@@ -1,11 +1,33 @@
 import * as THREE from 'three';
 import { CLOUD_SLOT_ORDER, VolumetricCloudLayer } from '../src/engine/volumetricClouds.ts';
 
+// Clouds 2.0 (2026-10-10, the clouds landing lane): the trace writes two attachments — the radiance and, in the second, the
+// distance (km) to the nearest cloud along the ray — and the resolve reprojects each history pixel by its neighbourhood's
+// nearest distance (tTraceDepth). Production binds both every trace (traceSlot); a fixture that seeds only the radiance
+// leaves the distance unbound, and the resolve then reads its neighbourhood as empty and clips the history to nothing.
+// The trace is seeded here with both attachments, the distance a constant two kilometres.
+const TRACE_DEPTH_KM = 2;
+function traceSeed(color) {
+  return new THREE.ShaderMaterial({
+    glslVersion: THREE.GLSL3,
+    vertexShader: 'void main(){gl_Position=vec4(position.xy,0.,1.);}',
+    fragmentShader: `layout(location=0) out highp vec4 radiance; layout(location=1) out highp vec4 nearest;
+      void main(){ radiance=${color}; nearest=vec4(${TRACE_DEPTH_KM.toFixed(1)},0.,0.,1.); }`,
+    depthTest: false, depthWrite: false, blending: THREE.NoBlending,
+  });
+}
+function bindTrace(layer, u) {
+  u.tTrace.value = layer.trace.textures[0];
+  u.tTraceDepth.value = layer.trace.textures[1];
+}
+
 function runUniformCase(layer, renderer, seed, mode) {
   const material = layer.resolveMaterial, u = material.uniforms;
   const count = layer.history[0].width * layer.history[0].height * 4;
   const before = new Uint16Array(count), after = new Uint16Array(count);
-  for (const target of [...layer.history, layer.trace]) layer.renderQuad(seed, target);
+  for (const target of layer.history) layer.renderQuad(seed, target);
+  const trace = traceSeed('vec4(1.73828125,.67236328125,.42578125,.35595703125)');
+  try { layer.renderQuad(trace, layer.trace); } finally { trace.dispose(); }
   renderer.readRenderTargetPixels(layer.history[0], 0, 0, 385, 193, before);
   const expected = [1.73828125, .67236328125, .42578125, .35595703125].map(THREE.DataUtils.toHalfFloat);
   if (expected.some((value, channel) => before[channel] !== value || before[count - 4 + channel] !== value)) {
@@ -25,7 +47,7 @@ function runUniformCase(layer, renderer, seed, mode) {
     u.uHistoryValid.value = mode === 'cut' && frame === 0 ? 0 : 1;
     u.uRebuildK.value = mode === 'cut' && frame < 16 ? frame : -1;
     u.uSlot.value.set(...CLOUD_SLOT_ORDER[frame % 16]);
-    u.tTrace.value = layer.trace.texture;
+    bindTrace(layer, u);
     u.tHistory.value = layer.history[index].texture;
     layer.renderQuad(material, layer.history[1 - index]);
     index = 1 - index;
@@ -45,18 +67,15 @@ function runUniformCase(layer, renderer, seed, mode) {
 function runSmoothEdgeCase(layer, renderer, seed, baseline = false) {
   const u = layer.resolveMaterial.uniforms;
   for (const target of layer.history) layer.renderQuad(seed, target);
-  const gradient = new THREE.ShaderMaterial({
-    vertexShader: 'void main(){gl_Position=vec4(position.xy,0.,1.);}',
-    fragmentShader: `void main(){ float c=.15+.5*gl_FragCoord.x/${layer.trace.width}.;
-      gl_FragColor=vec4(c,c,c,1.-c); }`,
-    depthTest:false, depthWrite:false, blending:THREE.NoBlending,
-  });
+  const gradient = traceSeed(`vec4(vec3(.15+.5*gl_FragCoord.x/${layer.trace.width}.),.85-.5*gl_FragCoord.x/${layer.trace.width}.)`);
   const oldFragment=layer.resolveMaterial.fragmentShader;
   try {
     if(baseline) {
+      // (Clouds 2.0: the neighbourhood's moments for the variance clip come from bilinear taps of the trace at this
+      // pixel's own position; the control fetches whole trace texels, so every 4 x 4 block shares one neighbourhood)
       layer.resolveMaterial.fragmentShader=oldFragment.replace(
-        'texture2D( tTrace, traceUv + vec2( x, y ) / uTraceSize )',
-        'texelFetch( tTrace, clamp( ivec2( tp ) + ivec2( x, y ), ivec2( 0 ), ivec2( uTraceSize ) - 1 ), 0 )');
+        'vec4 s = texture( tTrace, traceUv + o );',
+        'vec4 s = texelFetch( tTrace, clamp( ivec2( tp ) + ivec2( x, y ), ivec2( 0 ), ivec2( uTraceSize ) - 1 ), 0 );');
       if(layer.resolveMaterial.fragmentShader===oldFragment) throw new Error('Cloud negative control did not change its sampler');
       layer.resolveMaterial.needsUpdate=true;
     }
@@ -64,7 +83,7 @@ function runSmoothEdgeCase(layer, renderer, seed, baseline = false) {
     u.uPrevRight.value.copy(layer.cam.right); u.uPrevFwd.value.copy(layer.cam.fwd);
     u.uPrevTan.value.copy(layer.cam.tan);
     u.uHistoryValid.value=1; u.uRebuildK.value=-1; u.uSlot.value.set(0,0);
-    u.tTrace.value=layer.trace.texture; u.tHistory.value=layer.history[0].texture;
+    bindTrace(layer, u); u.tHistory.value=layer.history[0].texture;
     layer.renderQuad(layer.resolveMaterial,layer.history[1]);
     const pixels=new Uint16Array(385*193*4);
     renderer.readRenderTargetPixels(layer.history[1],0,0,385,193,pixels);
@@ -88,37 +107,51 @@ function runSmoothEdgeCase(layer, renderer, seed, baseline = false) {
   }
 }
 
-// The deck integral must not change with an unrelated interleaved refresh phase.
-// Evaluate the production GLSL against constant and sloped density columns so
-// temporal noise is isolated from view-ray sampling and reprojection.
+// The deck integral must not change with an unrelated interleaved refresh phase. Clouds 2.0 (2026-10-10): a deck's
+// vertical depth over a point is the closed-form column of its own cell up to the cell's top (cloudShaders.ts, the trace's
+// deep diffusion) — no quadrature, so nothing for a phase to move. Evaluate the production lines at constant inputs across
+// a row of phases (two cells, two rows), check the closed form's value, and prove the check with a phase-scaled control.
+const COLUMN = Object.freeze({
+  wgt: [.4, .3, .2, .1], density: [.01, .008, .006, .004], core: [1, 1, .8, 1], cells: [1, 0, 1, .5], lumps: [.5, 0, .25, 0],
+  base: [700, 1200, 2500, 6000], top: [1100, 1600, 2900, 6400], h: 800, cellA: [.6, .4], cellB: [.3, .9],
+});
+function columnExpected(cell) {
+  const C = COLUMN, share = .7;
+  let tau = 0;
+  for (let i = 0; i < 4; i++) {
+    const kc = 1 + (cell[0] * (1 + (.55 + .45 * cell[1] - 1) * C.lumps[i]) - 1) * C.cells[i];
+    const topC = C.base[i] + (C.top[i] - C.base[i]) * (.1 + .9 * kc);
+    tau += C.wgt[i] * C.density[i] * C.core[i] * Math.max(topC - C.h, 0);
+  }
+  return tau * share;
+}
 function runColumnPhaseCase(layer, renderer, baseline = false) {
   const source = layer.traceMaterial.fragmentShader;
-  const start = source.indexOf('float cloudColumnDepthAbove(');
-  const end = source.indexOf('// optical depth of the cloud above p toward the zenith', start);
-  if (start < 0 || end < 0) throw new Error('Production cloud column integral missing');
+  const start = source.indexOf('vec4 kc = mix( vec4( 1.0 ), vec4( cell.x )');
+  const tauAt = source.indexOf('float tauUp = ', start);
+  const end = source.indexOf(';', tauAt) + 1;
+  if (start < 0 || tauAt < 0 || end <= tauAt) throw new Error('Production cloud column missing');
   let column = source.slice(start, end);
-  if ((column.match(/cloudDensityK\(/g) || []).length !== 2) throw new Error('Cloud column sampling budget changed');
+  if (/jitter|uFrameNoise|uSlot|uSubPixel/.test(column)) throw new Error('Cloud column reads the refresh phase');
   if (baseline) {
     const stable = column;
-    column = column.replace('Weather w, float cellK', 'Weather w, float scale, float cellK')
-      .replace('rem * 0.22', 'rem * 0.22 * scale').replace('rem * 0.66', 'rem * 0.66 * scale');
-    if (column === stable) throw new Error('Column jitter negative control did not change the shader');
+    column = column.replace(/float tauUp = ([^;]+);/, 'float tauUp = ( $1 ) * ( .75 + .5 * phase );');
+    if (column === stable) throw new Error('Column phase negative control did not change the shader');
   }
-  const target = layer.trace;
+  const v4 = (a) => `vec4(${a.map((x) => x.toFixed(4)).join(',')})`, C = COLUMN;
+  const target = new THREE.WebGLRenderTarget(64, 8, { type: THREE.HalfFloatType, format: THREE.RGBAFormat,
+    minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, depthBuffer: false, generateMipmaps: false });
   const material = new THREE.ShaderMaterial({
     vertexShader: 'void main(){gl_Position=vec4(position.xy,0.,1.);}',
     fragmentShader: `
-      const float uBase=0., uThick=100., uDensity=1.;
-      struct Weather {float top;};
-      float cloudDensityK(vec3 p,Weather w,bool detail,float foot,float cellK){
-        return gl_FragCoord.y < ${(target.height / 2).toFixed(4)} ? .6 : clamp(1.-p.y/uThick,0.,1.);
-      }
-      ${column}
+      const vec4 wgt=${v4(C.wgt)}, uLayerDensity=${v4(C.density)}, uLayerCore=${v4(C.core)};
+      const vec4 uLayerCells=${v4(C.cells)}, uLayerLumps=${v4(C.lumps)}, uLayerBase=${v4(C.base)}, uLayerTop=${v4(C.top)};
       void main(){
-        Weather w;w.top=1.;
-        float phase=gl_FragCoord.x/${target.width.toFixed(4)};
-        float tau=cloudColumnDepthAbove(vec3(0.),w,${baseline ? '.75+.5*phase,' : ''}1.);
-        gl_FragColor=vec4(tau/uThick,0.,0.,1.);
+        float phase=gl_FragCoord.x/${target.width.toFixed(1)};
+        vec2 cell=gl_FragCoord.y<${(target.height / 2).toFixed(1)}?vec2(${C.cellA.map((x) => x.toFixed(4)).join(',')}):vec2(${C.cellB.map((x) => x.toFixed(4)).join(',')});
+        float h=${C.h.toFixed(1)};
+        ${column}
+        gl_FragColor=vec4(tauUp,0.,0.,1.);
       }`,
     depthTest:false, depthWrite:false, blending:THREE.NoBlending,
   });
@@ -134,11 +167,15 @@ function runColumnPhaseCase(layer, renderer, baseline = false) {
       }
       return {low,high,span:high-low};
     });
-    if(Math.abs(ranges[0].low-.6)>.001 || ranges[0].span!==0) throw new Error('Constant-density optical depth changed');
-    if(baseline ? ranges[1].span<.2 : ranges[1].span!==0) throw new Error(`Cloud column phase regression: ${JSON.stringify(ranges)}`);
-    if(!baseline && Math.abs(ranges[1].low-.538)>.001) throw new Error('Stable column changed the existing quadrature weights');
-    return {baseline,ranges};
-  } finally {material.dispose();}
+    const expected=[columnExpected(C.cellA),columnExpected(C.cellB)];
+    if(baseline) {
+      if(ranges.some(r=>r.span<.2*r.high)) throw new Error(`Cloud column phase regression not detected: ${JSON.stringify(ranges)}`);
+    } else {
+      if(ranges.some(r=>r.span!==0)) throw new Error(`Cloud column phase regression: ${JSON.stringify(ranges)}`);
+      if(ranges.some((r,k)=>Math.abs(r.low-expected[k])>2e-3*Math.max(1,expected[k]))) throw new Error(`Cloud column changed its closed form: ${JSON.stringify({ranges,expected})}`);
+    }
+    return {baseline,ranges,expected};
+  } finally {material.dispose(); target.dispose();}
 }
 
 // Exercise the production resolve on actual half-float targets. A uniform

@@ -5,11 +5,11 @@
   "vegetationSeed": 2001,
   "maps": {
     "verdant": {
-      "bytes": 1728437,
-      "sha256": "8d6f83648a8a68ed3b92375d76269294aeaab689cf4c01754cb5abd20c6f5a6f",
-      "obstacles": 6798,
-      "colliders": 6466,
-      "concealers": 7364
+      "bytes": 1973974,
+      "sha256": "a4faf88b41d0b54afee007c62e14e3fd186177b76c8844f7d515c82881a85e04",
+      "obstacles": 6835,
+      "colliders": 6683,
+      "concealers": 7940
     },
     "desert": {
       "bytes": 1288781,
@@ -26,11 +26,11 @@
       "concealers": 7256
     },
     "urban": {
-      "bytes": 2467459,
-      "sha256": "c0fc7fd344626fde1d4436bb2f6f8e386857fe34e721ddb01e41d9ceac540d47",
-      "obstacles": 2785,
-      "colliders": 5724,
-      "concealers": 2473
+      "bytes": 3939743,
+      "sha256": "c8bf2aa1ba1873315ea877677492cb7c44560ad35a5987bb89643d8650e1f007",
+      "obstacles": 2803,
+      "colliders": 7971,
+      "concealers": 2472
     },
     "coastal": {
       "bytes": 1687113,
@@ -82,11 +82,11 @@
       "concealers": 10071
     },
     "badlands": {
-      "bytes": 1412353,
-      "sha256": "88e1846acf9654ba9d9d3b07669e32cfd939a21c4dfc9d355e357cfe8359c21a",
-      "obstacles": 1727,
-      "colliders": 1431,
-      "concealers": 248
+      "bytes": 1515551,
+      "sha256": "39a0b1e67c2105a26abada63ec42b4f481372425b824a2c356c2bfc4e39e2f59",
+      "obstacles": 1677,
+      "colliders": 1385,
+      "concealers": 213
     },
     "monsoon": {
       "bytes": 2172168,
@@ -239,11 +239,11 @@
   "variants": {
     "assault-trenches": {
       "verdant": {
-        "bytes": 1861244,
-        "sha256": "f28cf9d91a68a378533ba6ea612ccf2263f33bd6a343ae1161a7ef5dde60b7bc",
-        "obstacles": 6804,
-        "colliders": 6379,
-        "concealers": 7228
+        "bytes": 2176218,
+        "sha256": "a6da1f2dc166ea08faee3d13e0c0dc2a0ed3c254f441ffbdf94fb065c06f06a8",
+        "obstacles": 6843,
+        "colliders": 6598,
+        "concealers": 7824
       },
       "desert": {
         "bytes": 1417503,
@@ -260,11 +260,11 @@
         "concealers": 7231
       },
       "urban": {
-        "bytes": 2585460,
-        "sha256": "a994fa4f5c25f7918f198ab40d1a84d1b52e29cbb6a9cbf3281a23372b5bba34",
-        "obstacles": 2914,
-        "colliders": 5769,
-        "concealers": 2473
+        "bytes": 4050482,
+        "sha256": "5a923f9516f69e286272615b05edf733572712cff0c28a7193a0f3e1af409f03",
+        "obstacles": 2929,
+        "colliders": 8013,
+        "concealers": 2472
       },
       "coastal": {
         "bytes": 1838688,
@@ -316,11 +316,11 @@
         "concealers": 10098
       },
       "badlands": {
-        "bytes": 1517803,
-        "sha256": "ff195de419c69c1673e96cbd75bab6d912c46ee7b165a9f1c055974d220cb320",
-        "obstacles": 1852,
-        "colliders": 1471,
-        "concealers": 248
+        "bytes": 1812882,
+        "sha256": "58b8afadef533a7fcffee37340abefea05f2ae0d7d1aba0c6e8114d88f36c42e",
+        "obstacles": 1802,
+        "colliders": 1425,
+        "concealers": 213
       },
       "monsoon": {
         "bytes": 2248092,

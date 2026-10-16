@@ -1,4 +1,4 @@
-// Source59 rack stocks and source79 folded aft screen. This is independently
+// Source59 rack stocks (the source79 folded aft screen is retired, 2026-10-15). This is independently
 // authored stock, not an opaque basket envelope or reference triangle payload.
 import * as THREE from 'three';
 import { closedSectionLoft, roundMember, type XY, type XYZ } from './abramsSourceXGeometry.ts';
@@ -142,55 +142,13 @@ function extendedFrame(): RackPart[] {
   return parts;
 }
 
-function screenReceiver(name: string, left: number, right: number): RackPart {
-  // Sparse manufacturing profile of the inclined strip and its upper curl.
-  // Source79 omits only the long aft stem face; close that 4.61mm stock here.
-  const profile: XY[]=[
-    [1.987225,-3.314295],[1.987155,-3.309685],[2.259495,-3.304345],
-    [2.269495,-3.299615],[2.272775,-3.289175],[2.267305,-3.279585],
-    [2.256575,-3.277275],[2.255705,-3.272665],[2.270075,-3.275945],
-    [2.277445,-3.288685],[2.272995,-3.302765],[2.259575,-3.308955],
-  ];
-  const ring=ccw(profile.map(([y,z])=>[-z,y]));
-  return part(name,closedSectionLoft([{z:left,ring},{z:right,ring}]).rotateY(Math.PI/2),79);
-}
-
-function foldedScreen(): RackPart[] {
-  // Each source79 strip is a zero-thickness folded sheet. Give it a concealed
-  // 2.5mm forward backing, leaving every measured aft face and fold unchanged.
-  const rows=[
-    [1.827235,-3.320975,1.928425,-3.343915,1.931195,-3.318665],
-    [1.929375,-3.319155,2.034725,-3.341725,2.037645,-3.316485],
-    [2.033705,-3.317085,2.139855,-3.339665,2.142765,-3.314415],
-    [2.139345,-3.315025,2.245055,-3.337605,2.247895,-3.312355],
-    [2.244545,-3.312965,2.350185,-3.335535,2.353025,-3.310295],
-  ];
-  const parts=rows.map(([y0,z0,y1,z1,y2,z2],i)=>{
-    const ring=ccw([[-z0,y0],[-z1,y1],[-z2,y2],[-z2-.0025,y2],[-z1-.0025,y1],[-z0-.0025,y0]]);
-    return part(`AftScreenFold${i}`,closedSectionLoft([
-      {z:-.440649,ring},{z:.329981,ring},
-    ]).rotateY(Math.PI/2),79);
-  });
-  // Source79/2346 is the real thin receiving sheet behind the five folds.
-  // Its upper106mm remains visible above them; keep the folded lower edge.
-  const backing: XY[]=[
-    [1.824465,-3.346465],[1.823955,-3.321335],[2.458735,-3.308955],
-    [2.458595,-3.303495],[1.814985,-3.316115],[1.815635,-3.351195],
-    [1.833365,-3.350955],[1.833295,-3.346465],
-  ];
-  const backingRing=ccw(backing.map(([y,z])=>[-z,y]));
-  parts.push(part('AftScreenBacking',closedSectionLoft([
-    {z:-.445899,ring:backingRing},{z:.335291,ring:backingRing},
-  ]).rotateY(Math.PI/2),79));
-  // Three actual79 receiving strips run behind the screen and overlap the
-  // rear rack courses. The sheet is not left floating in front of its rack.
-  for(const [i,[left,right]]of[[-.368759,-.332779],[-.073629,-.037649],[.221511,.257561]].entries()){
-    parts.push(screenReceiver(`AftScreenReceiver${i}`,left,right));
-  }
-  return parts;
-}
-
+/**
+ * The extension frame. Critic panel 2026-10-15 on the owner markup sheets: with the rack's soft sacks gone, source79's
+ * folded aft screen (five folded strips on a backing sheet and their three receiving strips) stood alone at the rack's
+ * rear and read as a random ribbed plank; the extension is deployed under its stowage chests, so the folded screen is
+ * gone.
+ */
 export function sourceExtendedRack(): RackPart[] {
-  return [...extendedFrame(),...foldedScreen()];
+  return extendedFrame();
 }
 

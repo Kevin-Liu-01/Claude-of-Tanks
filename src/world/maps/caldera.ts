@@ -98,11 +98,27 @@ export default {
     // (2026-10-11, the map-revival lane; gauntlet wave 395a: "a long straight dark bank band that reads as a stretched
     // skirt") the rim inside the playable square half as high: its inner face rose 23 m over the last 45 m (~34 deg at its
     // steepest), a straight dark bank along every edge; now ~12 m at ~16 deg, the caldera wall left to the horizon
-    hillScale: 0.55, microScale: 0.6, rimH: 28,
+    // (rimH 28 -> 8, the horizons stream's Caldera item HZ.20, 2026-10-15: the Hinterland's somma rings the floor 6-8 km
+    // out; from the edge eyes the 28 m rim's last 60 m stood 3.5-10.7° up and hid the somma (4-5°) and half the central
+    // cones — the brief: "the floor runs on for 3-8 km to the rim", "lowered to the floor carrying on")
+    hillScale: 0.55, microScale: 0.6, rimH: 8,
     mesas: null,
     marshes: [
       { x: -246, z: 242, r: 36, dip: 1.4 }, { x: 360, z: -230, r: 34, dip: 1.2 },
     ],
+    // (2026-10-15, the ground lane; the maps critics' wave on round 6: "the fields are flat texture blocks without water or
+    // bunds") Aso's paddies flooded for the late transplanting (paddies.ts: level basins held by bunds, a quarter metre of
+    // silty water, the rice in rows): five rows of two or three, 28 x 44 m each, turned with the land use's grid (10.3 deg)
+    // or across it, 10 m and more off every road within 8 m of their water, off the yards and both deployments. Found by a
+    // site probe over this map's own ground (the ground lane's scratch): each paddy's floor varies under 1.3 m before it
+    // is levelled.
+    paddies: ([
+      [100.3, [[-39.2, -2.7], [-44.8, -33.3]]],
+      [100.3, [[134.8, 93.3], [129.2, 62.7]]],
+      [100.3, [[158.8, -32.7], [153.2, -63.3]]],
+      [10.3, [[-168.7, 113.6], [-138, 108], [-107.3, 102.4]]],
+      [10.3, [[14.7, -123.2], [45.3, -128.8]]],
+    ] as const).flatMap(([yawDeg, row]) => row.map(([x, z]) => ({ x, z, widthM: 28, lengthM: 44, yawDeg }))),
     // (Caldera round 3, wave 131: "inside a perfectly octagonal ring road") the mining loop bends between its corners —
     // each long side bowed 8-10 m off its chord (inward where the west and east roads run beside it; the north-east side
     // keeps its line over the loading road's levelled bump); its corners stay where they were graded (rounding them ran
@@ -130,7 +146,11 @@ export default {
       { boundary: [[-299, 106], [-313, 121], [-324, 140], [-345, 134], [-359, 121], [-378, 111], [-385, 88], [-367, 72], [-348, 67], [-329, 53], [-304, 59], [-299, 85]], feather: 9, strength: 0.85 },
       { boundary: [[379, -179], [360, -168], [341, -151], [320, -164], [309, -181], [293, -199], [292, -226], [318, -237], [339, -237], [362, -239], [384, -227], [380, -201]], feather: 10, strength: 0.85 },
     ],
-    village: { x0: -178, x1: 188, z0: -174, z1: 190, cx: 4, cz: 14, feather: 44, flatten: 0.72, relief: 0.24 },
+    // (Caldera round 6, 2026-10-11; waves 412 and 414: "long, straight, full-width banks where the floor meets the wall: a
+    // level lip in the wide frames") the floor's flattening box held the ground 72 % level to within 44 m of its straight
+    // sides, so the rising ground met it on a ruled lip: the floor half-levelled and eased into the rise over 110 m, its
+    // own swells a third higher, so the foot of the wall is the ground's own irregular line, not the box's
+    village: { x0: -178, x1: 188, z0: -174, z1: 190, cx: 4, cz: 14, feather: 110, flatten: 0.5, relief: 0.32 },
     // (Caldera round 4, the map-revival lane, 2026-10-10; gauntlet wave 359: "no paddy grid", "Western farm boxes ... on
     // open lawn"; the bird view: a 370 m dark lawn inside the loop) Aso's farmsteads stand among their paddies: the
     // village's worn soil keeps to the yards and the roads' margins (the activity patches), and the paddies, bunds and
@@ -191,6 +211,10 @@ export default {
     // (the macro tints: the grassland's green patches and its cured gold, not the ash's warm greys)
     tintA: [0.94, 0.98, 0.86], tintB: [0.78, 0.82, 0.72], tintC: [1.02, 0.97, 0.80],
     roadTint: [0.49, 0.46, 0.43], strata: 0.05, midRelief: 1.15,
+    // (round 6, wave 412: the yards still "the same dark olive lawn", "no bare, worn packed earth anywhere") the worn ground
+    // — the yards, the tracks, the verges — packed earth paler than the black Andosol of the fields: the soil's grey-brown
+    // trodden and dried (the dirt layer where it is drawn as the land's soil)
+    soilTint: [1.55, 1.45, 1.30],
   },
   vegetation: {
     // Las Canadas on Tenerife: sparse Canary pine on bare cinder, a few Canary junipers, broom scrub (retama, codeso)
@@ -296,12 +320,21 @@ export default {
     sunIntensity: 4.0, sunColorHex: 0xffc9a0, hemiIntensity: 0.42, postExposure: 0.95, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 3.5 / 0xffb985 / 0.64); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0x4b4845 },
+    // 2026-10-09 (the skies lane; owner R139 "skybox ... too bland", 10-09 "not updated at all"): the caldera's own sky —
+    // every map shared the Earth-blue dome. Ash in the air: a thinner Rayleigh sky over a blue-absorbing aerosol (the tight
+    // lobe kept: no wide halo), the dark crater floor under the bounce, an ochre-ash band on the horizon and a smoky steel
+    // overhead (atmosphere.ts sky grade: the dome, the fog's colour and the sky light all follow it)
+    atmosphere: { rayleighScale: 0.8, mieScale: 7, mieG: 0.88, mieTintHex: 0xb8987a, groundAlbedoHex: 0x4b4845,
+      horizonTintHex: 0xc4a27a, horizonTintAmount: 0.6, horizonBandDeg: 9, zenithTintHex: 0x8e9cab, zenithTintAmount: 0.35 },
   },
   minimap: {
     base: [60, 57, 50], hard: [77, 73, 67], soft: [57, 54, 49],
     forest: 'rgba(35,43,31,.75)', forestStroke: 'rgba(22,27,20,.9)',
-    water: 'rgba(75,74,68,.55)', waterStroke: 'rgba(45,44,41,.78)',
+    bog: 'rgba(75,74,68,.55)', bogStroke: 'rgba(45,44,41,.78)',
     roadCasing: 'rgba(30,29,27,.96)', roadFill: 'rgba(112,104,94,.94)', buildingFill: '#aaa7a1',
   },
   shot: { pos: [-238, 50, -230], look: [42, 6, 66] },
+  // the horizons stream's Caldera item (HZ.20, 2026-10-15): the Hinterland past the red line (hinterland/drafts/caldera.ts)
+  // — the somma ringing the floor 6-8 km out and the central cones over it; `?hinterland=0` draws the old ring
+  hinterland: true,
 } satisfies import('./contracts.ts').MapCompositionConfig;

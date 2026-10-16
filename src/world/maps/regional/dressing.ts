@@ -3,7 +3,7 @@
 // the real place: flower boxes under the windows, the bench by the door, a woodpile under the eaves, the roof ladder
 // to the stack, a television aerial on the ridge, a potted plant on a stair. All dressing (no collision); a kit draws
 // their choices from its build stream and leaves them out on phones.
-import { faceBox, normalize3, shade, type EmitOptions, type Face, type PartSink, type Rgb, type Vec3 } from './geometry.ts';
+import { faceBox, facePoint, normalize3, shade, type EmitOptions, type Face, type PartSink, type Rgb, type Vec3 } from './geometry.ts';
 import type { HouseFrame } from './house.ts';
 import { hash01 } from './facade.ts';
 
@@ -141,8 +141,10 @@ export function bench(sink: PartSink, face: Face, u: number, length: number, woo
 }
 
 /**
- * A woodpile stacked against the wall under the eaves: courses of split logs, end grain out, read as rows of short
- * stacks (each a bark-dark body and a pale end-grain face), a board roof over it.
+ * A woodpile stacked against the wall under the eaves: courses of split billets, each course a few stacks of its own
+ * length and tone, the shadow between the billets dark and every billet's end grain a split wedge turned its own way
+ * (props lane A #2, 2026-10-14; WORKLIST: "billets as split wedges with end grain"; it replaces a pale plate on each stack
+ * and keeps the draws the stacks spent), a board roof over it.
  */
 export function woodpile(sink: PartSink, face: Face, u0: number, u1: number, height: number, rng: () => number): void {
   const depth = 0.42, row = 0.17;
@@ -153,8 +155,21 @@ export function woodpile(sink: PartSink, face: Face, u0: number, u1: number, hei
     let u = u0 + (r % 2 ? 0.05 : 0);
     while (u < u1 - 0.2) {
       const len = Math.min(u1 - u, 0.5 + rng() * 0.5), tone = 0.46 + rng() * 0.14, o = depth / 2 + (rng() - 0.5) * 0.04;
-      faceBox(sink, 'structureWood', face, u + len / 2, y, o, len - 0.02, row - 0.012, depth, { ...DECOR, colour: [tone * 0.62, tone * 0.5, tone * 0.38] });
-      faceBox(sink, 'structureWood', face, u + len / 2, y, o + depth / 2 + 0.003, len - 0.05, row - 0.03, 0.006, { ...DECOR, colour: [tone * 1.18, tone * 0.98, tone * 0.7] });
+      faceBox(sink, 'structureWood', face, u + len / 2, y, o, len - 0.02, row - 0.012, depth, { ...DECOR, colour: [tone * 0.4, tone * 0.32, tone * 0.25] });
+      // the billets' ends on the course's face: a wedge each (its point, its bark back), never a stream draw
+      const n = Math.max(2, Math.round((len - 0.04) / 0.105)), front = o + depth / 2 + 0.004;
+      for (let k = 0; k < n; k++) {
+        const h = hash01(r * 31 + k, Math.round(u * 997), 3), g = hash01(k * 17 + r, Math.round(u * 541), 11);
+        const cu = u + 0.02 + (k + 0.5) * (len - 0.04) / n + (g - 0.5) * 0.02, spin = h * Math.PI * 2;
+        // a split billet's end: a slice of the log, its point toward the heart, its arc the bark side
+        const rad = row * (0.5 + g * 0.16), span = 1.3 + g * 0.7, tipU = cu - Math.cos(spin + span / 2) * rad * 0.45, tipY = y - Math.sin(spin + span / 2) * rad * 0.45;
+        const pts: Vec3[] = [facePoint(face, tipU, tipY, front),
+          ...[0, 0.5, 1].map((t) => facePoint(face, tipU + Math.cos(spin + span * t) * rad, tipY + Math.sin(spin + span * t) * rad * 0.9, front))];
+        const nrm = cross3(sub3(pts[1], pts[0]), sub3(pts[2], pts[0]));
+        if (dot3(nrm, face.out) < 0) pts.reverse();
+        const e = tone * (1.08 + h * 0.3);
+        sink.polygon('structureWood', pts, { ...DECOR, colour: [e * 1.2, e * 0.98, e * 0.68] });
+      }
       u += len;
     }
   }

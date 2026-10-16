@@ -654,8 +654,12 @@ function topSpeedMps(entity) {
   return entity.spec.topSpeedKmh / 3.6 * (entity.modeSpeedMultiplier ?? 1);
 }
 
-function seatAirborne(entity, world, dropTo, { pitch = 0, roll = 0, vy = 0 } = {}) {
+function seatAirborne(entity, world, dropTo, { pitch: pitchGiven, roll: rollGiven, vy = 0, seat } = {}) {
   const state = entity.state;
+  // (physics stream F9) seat 'plane': set down on the plane the pad seat fitted (seatGrounded), not level — a hull set
+  // level on a steep roof starts with its uphill end metres inside it, which no hull in play does
+  const pitch = pitchGiven ?? (seat === 'plane' ? state._spring.pitch : 0);
+  const roll = rollGiven ?? (seat === 'plane' ? state._spring.roll : 0);
   // an inverted hull hangs its body below the root: seat its roof clear of the ground (a 2.5 m drop buried a heavy
   // hull's turret 0.7 m, and the first tick's lift read as a 0.67 m pop)
   const upright = Math.cos(pitch) * Math.cos(roll);
@@ -1084,6 +1088,14 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
           partRecord.shape2 = part;
           const under = undersideOver(partRecord, foot, rect, state);
           if (under === state.pos.y && !pointInsideCollisionRecord(record, part, state.pos.x, state.pos.z)) continue;
+          // (physics stream F8) a band under its building's roof is read point by point at the roof's top there, as the push
+          // reads it (collision.ts bandUndersideDepth)
+          if (collisionModule.recordHasBandRoofs?.(record)) {
+            const depth = collisionModule.bandUndersideDepth(record, part, { x: foot.centerX, z: foot.centerZ }, foot.forwardX,
+              foot.forwardZ, foot.rightX, foot.rightZ, foot.halfLength, foot.halfWidth, under);
+            if (depth > -Infinity && depth <= collisionModule.HULL_STEP_UP_M) metrics.roofSinkMaxM = Math.max(metrics.roofSinkMaxM, depth);
+            continue;
+          }
           const clear = Number.isFinite(foot.clearBottom) ? foot.clearBottom : under;
           if (hullPassesObstacleTop(under, top, record.min[1], true, clear) && clear <= top + 0.5) {
             metrics.roofSinkMaxM = Math.max(metrics.roofSinkMaxM, top - under);
@@ -1309,7 +1321,9 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
           // (a drawn top — a stone — is met by the hull's shell, not its root: a hull straddling a stone between its
           // tracks has its root under the stone's top with its belly clear; bodyPen reads the shell)
           if (part?.tp) continue;
-          const top = part?.y1 ?? record.max[1];
+          // (physics stream F8) a band under its building's roof tops out at the roof there (collision.ts bandRoofTopAt)
+          const roof = part ? collisionModule.bandRoofTopAt?.(record, part, state.pos.x, state.pos.z) ?? -Infinity : -Infinity;
+          const top = roof > -Infinity && roof < (part?.y1 ?? record.max[1]) ? roof : part?.y1 ?? record.max[1];
           const bottom = part?.y0 ?? record.min[1];
           if (state.pos.y <= bottom + 0.3) continue;
           if (!pointInsideCollisionRecord(record, part, state.pos.x, state.pos.z)) continue;

@@ -16,6 +16,7 @@ import { HORIZON_SEGMENTS, buildHorizonRing, resolveHorizonLightingGains, sample
 import { seaOpeningWeight } from './edgeWater.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { createHeightField } from './terrain.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // --- the characters ---------------------------------------------------------------------------------------------
 assert.deepEqual([...HORIZON_RELIEF_CHARACTERS].sort(), ['alpine', 'coastal', 'karst', 'martian', 'mesa', 'polar', 'rolling', 'volcanic'],
@@ -125,7 +126,7 @@ assert.equal(getMapConfig('whiteout').horizon.style, 'alpine', 'round 72: Whiteo
 // fall along the radius, so the crests crossed it as parallel diagonal combs. The drainage now follows the fall line.
 {
   // the program's constants the landcover is encoded against (terrain.ts, the ring branch of splatCompute)
-  const terrainSource = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+  const terrainSource = terrainSourceText();
   assert.ok(terrainSource.includes(`gRingAo = 1.0 - (1.0 - pow(ringRel.z, ${HORIZON_RELIEF_AO_POWER.toFixed(1)})) * ${HORIZON_RELIEF_AO_DEPTH.toFixed(1)} * ringW;`),
     'the terrain program reads the occlusion with the power and depth the landcover is encoded against');
   assert.ok(terrainSource.includes(`gRingSun = 1.0 - (1.0 - ringRel.w) * ${HORIZON_RELIEF_SUN_DEPTH.toFixed(2)} * ringW;`),

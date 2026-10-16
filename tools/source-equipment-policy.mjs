@@ -2,9 +2,11 @@ import {isPhotoReference,photoEquipmentVerdict} from './photo-reference-policy.m
 import {firstPartyConcept,conceptEquipmentVerdict} from './first-party-concept-policy.mjs';
 import {canonicalConfigurationPath} from './source-configuration-path.mjs';
 import { Matrix4, Vector3 } from 'three';
+import { carriesNoRoofWeapon } from '../src/vehicles/roofWeaponPolicy.ts';
 
 /** Source configuration decisions apply only to their hash-verified input.
- * Unregistered fleet vehicles retain the existing >=1 roof-MG requirement. */
+ * Unregistered fleet vehicles retain the existing >=1 roof-MG requirement, except those whose real counterpart carries
+ * no roof weapon (roofWeaponPolicy.ts), which must show none. */
 export function roofEquipmentVerdict(id, census, configuration, sourceReceipt = null) {
   if (!census || !Number.isInteger(census.mg) || census.mg < 0
       || !Number.isInteger(census.invalidWeaponMarkers) || census.invalidWeaponMarkers !== 0) {
@@ -15,7 +17,11 @@ export function roofEquipmentVerdict(id, census, configuration, sourceReceipt = 
     if (configuration) return {passed:false,reason:'Retired source equipment configuration cannot authorize a concept'};
     return conceptEquipmentVerdict(id,census);
   }
-  if (!configuration) return { passed: census.mg >= 1, required: '>=1', observed: census.mg };
+  // VH.14 (2026-10-14): roof weapons match the real vehicle. A vehicle listed in roofWeaponPolicy.ts carries none
+  // (no decorative gun); every other vehicle shows at least one, and roofWeaponPolicy.selftest holds that each works.
+  if (!configuration) return carriesNoRoofWeapon(id)
+    ? { passed: census.mg === 0, required: '0 (no roof weapon on the real vehicle)', observed: census.mg }
+    : { passed: census.mg >= 1, required: '>=1', observed: census.mg };
   const required = configuration.roofMachineGuns;
   if (configuration.id !== id || sourceReceipt?.id !== id
       || configuration.source?.path !== canonicalConfigurationPath(id)
@@ -94,9 +100,10 @@ export function censusEquipment(root) {
     if (!['pintleMG', 'openYokeRws'].includes(type)) { dressing++; return; }
     let stock = false;
     object.traverse(child => {
-      // Nested unrelated fittings cannot validate an empty outer marker.
+      // Nested unrelated fittings cannot validate an empty outer marker. The weapon's own pitch rig (a working station's
+      // auxiliaryWeapon group, VH.14) is the weapon itself: its receiver, barrel and feed count as the weapon's stock.
       for (let ancestor=child; ancestor && ancestor!==object; ancestor=ancestor.parent)
-        if (ancestor.userData?.fittingRoot) return;
+        if (ancestor.userData?.fittingRoot && ancestor.userData.fitting !== 'auxiliaryWeapon') return;
       if (rendersStock(child)) stock = true;
     });
     if (stock) mg++; else invalidWeaponMarkers++;

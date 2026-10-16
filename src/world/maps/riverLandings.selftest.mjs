@@ -100,7 +100,12 @@ for (const [bucket, geometries] of Object.entries(buckets)) {
     geometry.dispose();
   }
 }
-assert.ok(triangles <= 8000, `landing kit stays bounded, got ${triangles} triangles`);
+// #16 r2 (Lane C, 2026-10-14): Mangrove's three landings are the Ca Mau pole landings in their members (jettyKit.ts
+// 'stilts': leaning poles, lashed bearers and runners, rough boards, the handrail, sway braces, the tide sleeves) —
+// about 2,500 triangles a landing where the old kit's piles and slabs were 168; and the bank's reeds are the Ca Mau
+// nipa over its sedge (reedBeds.ts: three pinnate fronds a clump, ~350 triangles): the bound moves from 8,000 to 16,000
+assert.ok(triangles <= 16000, `landing kit stays bounded, got ${triangles} triangles`);
+console.log(`riverLandings.selftest: Mangrove's landings ${triangles} triangles`);
 const repeated = build();
 assert.deepEqual(repeated.receipts, receipts, 'landing placement and support receipts are deterministic');
 assert.deepEqual([repeated.calls, repeated.state], [original.calls, original.state], 'the rebuild draws the same RNG stream');
@@ -133,10 +138,32 @@ const SALTWIND_SPANS = { '-25': 7, '45': 8 };
 // the map-vehicles lane (P2, 2026-10-05): the beached and the moored boat are painted hulls in the baked bucket, two per
 // landing ahead of the strand's wrack; the wood keeps the piles, the decks, the gangway, the bollards and the lines
 // (round 3) and the hauled-out boat's stake and its line in four runs, after the landing's own timber
-const landingWood = (spans) => 2 * (spans + 1) + spans + 4 + 4 + 5;
-const LANDING_HULLS = 2;
+// #16 r2 (Lane C, 2026-10-14): Saltwind's piers are Dalmatian rivas (jettyKit.ts 'riva'): the masonry, its coping and
+// paving one stone piece, the landward stair a second (in place of the gangway plank), the weed line and the head's
+// cast-iron bollards one painted piece; the moored boat's two bollards are cast iron too (painted) and only their
+// lines stay timber — the wood a landing keeps is the two lines and the hauled-out boat's stake and line (5); the
+// paint is the beached hull, the jetty's painted piece, the moored hull and its two bollards
+const landingWood = () => 2 + 5;
+const LANDING_PAINT = 5;
+const LANDING_STONE = 2;
 const landingReceipts = (spans) => 1 + 2 * (spans + 1) + 2;
-function checkSaltwindSite(field, site, wood, paint, supportReceipts, woodStart, paintStart, receiptStart) {
+// the lowest and the highest surface a vertical line through (x, z) meets in a geometry
+function column(geometry, x, z) {
+  let lo = Infinity, hi = -Infinity;
+  const p = geometry.attributes.position, idx = geometry.index, n = idx ? idx.count : p.count;
+  for (let i = 0; i < n; i += 3) {
+    const a = idx ? idx.getX(i) : i, b = idx ? idx.getX(i + 1) : i + 1, c = idx ? idx.getX(i + 2) : i + 2;
+    const ax = p.getX(a), az = p.getZ(a), bx = p.getX(b), bz = p.getZ(b), cx = p.getX(c), cz = p.getZ(c);
+    const d = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz);
+    if (Math.abs(d) < 1e-12) continue;
+    const u = ((bz - cz) * (x - cx) + (cx - bx) * (z - cz)) / d, v = ((cz - az) * (x - cx) + (ax - cx) * (z - cz)) / d, w = 1 - u - v;
+    if (u < -1e-9 || v < -1e-9 || w < -1e-9) continue;
+    const y = u * p.getY(a) + v * p.getY(b) + w * p.getY(c);
+    lo = Math.min(lo, y); hi = Math.max(hi, y);
+  }
+  return [lo, hi];
+}
+function checkSaltwindSite(field, site, stone, paint, supportReceipts, stoneStart, paintStart, receiptStart) {
   const p = planRiverLanding(field, saltwind.terrain.lakes, site);
   assert.ok(p, `Saltwind lake ${site.lakeIndex}: actual low-bank landing is usable`);
   const spans = SALTWIND_SPANS[String(site.shoreAngleDeg)];
@@ -170,42 +197,46 @@ function checkSaltwindSite(field, site, wood, paint, supportReceipts, woodStart,
   // keel/bow burial bounds belong to the separately owned boat-grounding test.
   assert.ok(lowestHullGap <= 0 && highestHullGap > 0.30, 'actual hull touches shore and is not wholly buried');
   const piles = 2 * (spans + 1);
+  // #16 r2: the riva (one stone piece) stands under every support from 10 cm into its bed (deeper where a course runs
+  // on to a lower bay) up to the deck top (the paving 4 mm under the coping), clear of the route
+  const riva = stone[stoneStart];
   for (let i = 0; i < piles; i++) {
     const pile = supportReceipts[receiptStart + 1 + i];
     assert.equal(pile.kind, 'jetty-pile');
     assert.ok(Math.abs(pile.y - (field.getHeightAt(pile.x, pile.z) - 0.10)) < 1e-8);
-    const geometry = wood[woodStart + i];
-    geometry.computeBoundingBox();
-    assert.ok(Math.abs(geometry.boundingBox.min.y - pile.y) < 2e-6, 'emitted pile base is planted, not just the receipt');
-    assert.ok(Math.abs(geometry.boundingBox.max.y - (p.deckY + 0.045)) < 2e-6, 'each pile actually meets the deck');
+    // (the column a few centimetres either side along the pier too: a ray down a coping joint meets the course under it)
+    let lo = Infinity, hi = -Infinity;
+    for (const o of [-0.04, 0, 0.04]) {
+      const [l, h] = column(riva, pile.x + Math.cos(p.angle) * o, pile.z + Math.sin(p.angle) * o);
+      lo = Math.min(lo, l); hi = Math.max(hi, h);
+    }
+    assert.ok(lo <= pile.y + 2e-6, 'the masonry under each support is planted, not just the receipt');
+    assert.ok(hi >= p.deckY + 0.045 - 0.005 && hi <= p.deckY + 0.045 + 2e-6, 'and carries the deck at the deck top');
     assert.ok(field._roadDist(pile.x, pile.z) >= 7);
     for (const spawn of [saltwind.spawns.player, ...saltwind.spawns.enemies]) {
       assert.ok(Math.hypot(pile.x - spawn.x, pile.z - spawn.z) > 26);
     }
   }
   const dx = Math.cos(p.angle), dz = Math.sin(p.angle);
-  for (let k = 0; k < spans; k++) {
-    const geometry = wood[woodStart + piles + k];
-    geometry.computeBoundingBox();
-    assert.ok(Math.abs(geometry.boundingBox.min.y - (p.deckY - 0.045)) < 2e-6);
-    assert.ok(Math.abs(geometry.boundingBox.max.y - (p.deckY + 0.045)) < 2e-6);
-    let minAlong = Infinity, maxAlong = -Infinity, minAcross = Infinity, maxAcross = -Infinity;
-    const a = geometry.attributes.position;
+  {
+    let minAlong = Infinity, maxAlong = -Infinity, minAcross = Infinity, maxAcross = -Infinity, top = -Infinity;
+    const a = riva.attributes.position;
     for (let i = 0; i < a.count; i++) {
       const x = a.getX(i), z = a.getZ(i);
       const along = (x - p.x) * dx + (z - p.z) * dz;
       const across = -(x - p.x) * dz + (z - p.z) * dx;
       minAlong = Math.min(minAlong, along); maxAlong = Math.max(maxAlong, along);
       minAcross = Math.min(minAcross, across); maxAcross = Math.max(maxAcross, across);
-      assert.ok(field._roadDist(x, z) >= 7, 'full emitted deck remains clear of the route');
-      if (k === spans - 1 && along > p.length) {
-        assert.equal(field.getWaterMaskAt(x, z), 1, 'actual overhanging tip corners reach visible liquid');
+      top = Math.max(top, a.getY(i));
+      assert.ok(field._roadDist(x, z) >= 7, 'full emitted pier remains clear of the route');
+      if (along > p.length) {
+        assert.equal(field.getWaterMaskAt(x, z), 1, 'the head stands in visible liquid');
         assert.equal(field.getHeightAt(x, z), p.waterLevel);
       }
     }
-    assert.ok(Math.abs(minAlong - (k * 1.9 - 0.025)) < 4e-5);
-    assert.ok(Math.abs(maxAlong - ((k + 1) * 1.9 + 0.025)) < 4e-5);
-    assert.ok(Math.abs(minAcross + 0.75) < 4e-5 && Math.abs(maxAcross - 0.75) < 4e-5);
+    assert.ok(Math.abs(minAlong + 0.025) < 4e-5 && Math.abs(maxAlong - (p.length + 0.025)) < 4e-5, 'the pier from the shore end to the head');
+    assert.ok(Math.abs(minAcross + 0.75) < 4e-5 && Math.abs(maxAcross - 0.75) < 4e-5, 'the deck width the moorings key on');
+    assert.ok(Math.abs(top - (p.deckY + 0.045)) < 2e-6, 'the coping is the deck top');
   }
   for (const side of [-0.75, 0, 0.75]) {
     const tipX = p.x + dx * p.length - dz * side, tipZ = p.z + dz * p.length + dx * side;
@@ -220,6 +251,12 @@ function checkSaltwindSite(field, site, wood, paint, supportReceipts, woodStart,
   assert.equal(field.getWaterMaskAt(p.x, p.z), 0, 'shore end on dry sand');
   const gangway = supportReceipts[receiptStart + 1 + piles], moored = supportReceipts[receiptStart + 2 + piles];
   assert.equal(gangway.kind, 'jetty-gangway'); assert.equal(field.getWaterMaskAt(gangway.x, gangway.z), 0);
+  // the stair: from the sand at the gangway's foot to the deck top at the shore end
+  const stair = stone[stoneStart + 1];
+  stair.computeBoundingBox();
+  assert.ok(Math.abs(stair.boundingBox.max.y - (p.deckY + 0.045)) < 2e-6, 'the stair climbs to the deck top');
+  const [stairLo] = column(stair, gangway.x + dx * 0.05, gangway.z + dz * 0.05);
+  assert.ok(stairLo <= field.getHeightAt(gangway.x, gangway.z) - 0.09, 'its first step is set into the sand');
   assert.ok(Math.abs(gangway.y - field.getHeightAt(gangway.x, gangway.z)) < 1e-9 && gangway.baseClearance === -0.01);
   assert.equal(moored.kind, 'moored-boat'); assert.equal(field.getWaterMaskAt(moored.x, moored.z), 1, 'the moored hull floats over the core');
   assert.ok(Math.abs(moored.baseClearance + 0.28) < 1e-9 && Math.abs(moored.y - (p.waterLevel + field.getWaterDepthAt(moored.x, moored.z) - 0.28)) < 1e-9, 'hull at its draft');
@@ -266,17 +303,18 @@ for (const seed of [1337, 2025, 7719]) {
   assert.ok(strandWood > 0, 'the wrack line gathers timber or a broken crate beside the piers');
   const landingsWood = landingWood(7) + landingWood(8);
   assert.equal(result.buckets.wood.length, landingsWood + strandWood,
-    'two landings (boat, piles, decks, gangway, moored hull, bollards and lines), then the wrack line\'s timber and crate planks');
+    'two landings (the mooring lines, the stake and its line), then the wrack line\'s timber and crate planks');
+  assert.equal(result.buckets.stone.length, 2 * LANDING_STONE, '#16 r2: each riva and its stair in the stone bucket');
   for (const [bucket, geometries] of Object.entries(result.buckets)) {
-    if (bucket !== 'wood' && bucket !== 'baked') assert.equal(geometries.length, 0, 'dry landings do not activate a straw or other new bucket');
+    if (bucket !== 'wood' && bucket !== 'baked' && bucket !== 'stone') assert.equal(geometries.length, 0, 'dry landings do not activate a straw or other new bucket');
     for (const geometry of geometries) for (const attribute of Object.values(geometry.attributes)) {
       assert.ok([...attribute.array].every(Number.isFinite));
     }
   }
-  { let woodStart = 0, paintStart = 0, receiptStart = 0;
+  { let stoneStart = 0, paintStart = 0, receiptStart = 0;
     saltwind.props.riverLandings.forEach((site, i) => {
-      checkSaltwindSite(field, site, result.buckets.wood, result.buckets.baked, result.receipts, woodStart, paintStart, receiptStart);
-      woodStart += landingWood(i === 0 ? 7 : 8); paintStart += LANDING_HULLS; receiptStart += landingReceipts(i === 0 ? 7 : 8);
+      checkSaltwindSite(field, site, result.buckets.stone, result.buckets.baked, result.receipts, stoneStart, paintStart, receiptStart);
+      stoneStart += LANDING_STONE; paintStart += LANDING_PAINT; receiptStart += landingReceipts(i === 0 ? 7 : 8);
     }); }
   // round 56 (2026-09-24): the landings are the first wood pieces; the strand's wrack line that follows them (its
   // timber and crate planks in wood, everything else in baked) is audited by strandWrack.selftest, so the budgets
@@ -295,15 +333,21 @@ for (const seed of [1337, 2025, 7719]) {
   // 2340 / 74880; the draws and their state are unchanged
   // round 3 (the map-vehicles lane, 2026-10-07): each hauled-out boat's stake and its line in four runs (five boxes a
   // landing, no draws): 780 / 54600 / 1560 → 900 / 63000 / 1800, the merged 2340 / 74880 → 2700 / 86400
-  assert.equal(metrics.triangles, 900);
-  assert.equal(metrics.bytes, 63000);
-  assert.equal(metrics.vertices, 1800);
+  // #16 r2 (Lane C, 2026-10-14): the piers, their stairs and the moored boats' bollards left the wood for the stone and
+  // the paint (the rivas, jettyKit.ts); the wood keeps the two mooring lines and the stake and its line a landing
+  // (14 boxes): 900 / 63000 / 1800 → 168 / 11760 / 336, the merged 2700 / 86400 → 504 / 16128
+  // the hauled-out boat's stake is a round driven pole with its broomed head and the hitch's two turns (waterside.ts:
+  // 228 triangles, 238 vertices where the box had 12 and 24): 168 / 11760 / 336 -> 600 / 28048 / 764, the merged
+  // 504 / 16128 -> 1800 / 57600
+  assert.equal(metrics.triangles, 600);
+  assert.equal(metrics.bytes, 28048);
+  assert.equal(metrics.vertices, 764);
   // Same non-indexed merge used by props.ts: incremental bytes in its existing
   // wood batch, not a whole-world draw-count or renderer-memory certification.
   const expanded = landings.wood.map((geometry) => geometry.toNonIndexed());
   const merged = mergeGeometries(expanded, false);
-  assert.equal(merged.attributes.position.count, 2700); // round 58: was 3024; P2: was 3852; round 3: was 2340
-  assert.equal(Object.values(merged.attributes).reduce((n, a) => n + a.array.byteLength, 0), 86400); // round 58: was 96768; P2: was 123264; round 3: was 74880
+  assert.equal(merged.attributes.position.count, 1800); // round 58: was 3024; P2: was 3852; round 3: was 2340; #16 r2: was 2700, then 504
+  assert.equal(Object.values(merged.attributes).reduce((n, a) => n + a.array.byteLength, 0), 57600); // round 58: was 96768; P2: was 123264; round 3: was 74880; #16 r2: was 86400, then 16128
   for (const geometry of expanded) geometry.dispose();
   merged.dispose();
   const replay = build(saltwind, field);
@@ -317,5 +361,5 @@ for (const seed of [1337, 2025, 7719]) {
   assert.equal(replay.state, result.state);
   disposeBuckets(result.buckets);
   disposeBuckets(replay.buckets);
-  console.log(`riverLandings.selftest: Saltwind seed ${seed}: 2 beached boats/34 planted piles on the shelf-sized piers/2 gangways/2 moored hulls (painted hulls), +900 wood triangles/+86,400 merged bytes`);
+  console.log(`riverLandings.selftest: Saltwind seed ${seed}: 2 beached boats/2 rivas on 34 planted supports/2 stairs/2 moored hulls (painted hulls), +600 wood triangles/+57,600 merged bytes`);
 }

@@ -7,7 +7,7 @@
 import { PartSink, faceBox, pick, rgb, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { flowerBox } from './dressing.ts';
-import { doorCanopy, dressedQuoin, facadeOn, facadeRng, gableWindows, paintSurround, roofDormers, trimRun, windowHead } from './facade.ts';
+import { doorCanopy, dressedQuoin, facadeOn, facadeRng, gableWindows, hash01, paintSurround, roofDormers, trimRun, windowHead } from './facade.ts';
 import { windowUnit } from './openings.ts';
 import {
   bindFachwerk, hessianDialect, houseUvOffset, roofFor, stateFor, withPalette, type FachwerkPalette,
@@ -46,7 +46,10 @@ const townHouse: RegionalBuilder = (ctx) => {
     const ground = i === 0;
     sts.push({
       h: ground ? 3.1 + rng() * 0.3 : 2.75 + rng() * 0.2,
-      wall: ground ? (rng() < 0.6 ? 'stone' : render) : framed ? st.infill : render,
+      // (the maps lane, 2026-10-15; the critics: "oversized brick plinths": three ground storeys in five stood in coursed
+      // ashlar, a band of blocks under every row) the ashlar ground storey on about a third of the houses, the rest rendered
+      // to the eaves (the draw is the same one)
+      wall: ground ? (rng() < 0.3 ? 'stone' : render) : framed ? st.infill : render,
       framed: !ground && framed,
       // framed storeys oversail the street
       jetty: !ground && framed ? (gableFront ? [0.22, 0, 0, 0] : [0, 0, 0, 0.22]) : undefined,
@@ -108,8 +111,9 @@ const townHouse: RegionalBuilder = (ctx) => {
       }
     }
     // rendered fronts: sandstone quoins and a cornice (round 10; wave 301: quoins "about three times real size": 33 cm
-    // courses of long and short stones, 50 and 30 cm)
-    if (!framed) {
+    // courses of long and short stones, 50 and 30 cm); (the maps lane, 2026-10-15; the critics: "toy quoins" up every
+    // rendered corner of the town) on two houses in five, the grander fronts, chosen by the house's own measures (no draw)
+    if (!framed && hash01(bw, bd, frame.eaveY) < 0.4) {
       const b = frame.bodies[0];
       for (const [sx, sz] of [[-1, 1], [1, 1], [-1, -1], [1, -1]] as const) {
         const x = sx > 0 ? b.x1 : b.x0, z = sz > 0 ? b.z1 : b.z0;
@@ -221,9 +225,13 @@ export const FRANCONIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
   surfaces: {
     // w2/w3 captures: the first tints made the old town a sea of new orange tile (roof pixels at saturation 0.53 in the
     // establishing view, the base town's dark sheets 0.37); old plain tiles weather to a duller brown-red
-    roof: { kind: 'beavertail', tint: [0.42, 0.28, 0.22] },
+    // (the maps lane, 2026-10-15; the blind critics on Steinburg: "brown, not orange roofs") between the two: the fired
+    // clay's orange-red under its weathering, the patina in the per-house weather below rather than in every tile
+    roof: { kind: 'beavertail', tint: [0.54, 0.32, 0.21] },
     // (wave 116: "oversized clean ashlar") the town's dressed stone smaller and soiled, the Hessian villages' kept
-    stone: { kind: 'sandstone', tint: [0.64, 0.52, 0.42], dressed: true },
+    // (the maps lane, 2026-10-15; the critics: "oversized brick plinths", "toy quoins": the orange-pink ashlar read as brick)
+    // the pale yellow-grey Burgsandstein of the Franconian towns
+    stone: { kind: 'sandstone', tint: [0.7, 0.62, 0.5], dressed: true },
     // (the facades lane, 2026-10-08; the media lane's critics on Steinburg: the stucco "speckled", dots rather than render;
     // round 7 had halved the photo render's relief) the walls are a hand-floated lime render, broadly mottled, painted
     // for the street (regionalSurfaces.ts paintLimeRender), its three families under the map's tones; the photo render
@@ -241,8 +249,11 @@ export const FRANCONIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
   weather: {
     plaster: [[1, 1, 1], [1, 0.95, 0.86], [1, 0.92, 0.88], [0.97, 0.96, 0.92], [1, 0.9, 0.8]],
     stone: [[1, 1, 1], [0.92, 0.9, 0.88], [1.04, 0.98, 0.94]],
-    roof: [[1.06, 0.96, 0.92], [1, 1, 1], [0.9, 0.88, 0.88], [0.78, 0.86, 0.92], [0.7, 0.78, 0.86], [0.82, 0.92, 1.0]],
-    damp: 0.8, moss: 0.5,
+    // (the maps lane, 2026-10-15) the roofs' patina warm — fresher reds, weathered brown-reds, the odd darkened roof — and
+    // no longer the blue-greys that turned the town's tiles brown; the render's damp stains lighter (the critics: "frame-
+    // filling blotch-stained walls")
+    roof: [[1.08, 0.97, 0.9], [1, 1, 1], [1.04, 0.92, 0.84], [0.92, 0.88, 0.86], [0.84, 0.8, 0.8], [0.96, 0.9, 0.86]],
+    damp: 0.5, moss: 0.4,
   },
   wear: 0.25,
   // the yards of the outlying farms: sandstone walls round a kitchen garden, a gate (yards.ts)

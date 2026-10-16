@@ -48,6 +48,8 @@
 // shadow-named muzzleBore device — timing-proof top-level spellings per the
 // kit.js cycle law.
 import { KIT, FITTINGS, muzzleBore } from './kit.ts';
+import { withSpareTrackRun } from '../spareTrackSeat.ts';
+import { spareLinkBlock } from '../spareLinkGeometry.ts';
 import type * as THREE from 'three';
 // kv2 shaded-parity r4 tell 1 (r5 round): the WoT-style readability floor is
 // what keeps shade-side hardware in the ref's tonal family — but the link
@@ -429,14 +431,13 @@ function addKV2HullFrontHardware(P: SovietHeavyBuilderPort): void {
     }
   }
   P.add('hullDark', box(0.09, 0.05, 0.14), -1.35, 1.34, -1.845);
-  P.add('hullTrack', box(0.5, 0.045, 0.26), -0.55, 1.415, 2.60);               // spare links flush on the nose deck
-  // r4 tell 4 ("spare-links slab renders as a blank light-grey board"): link
-  // structure on the board — pin-gap seams + guide horns — and the board
-  // itself now rides the retoned rusty track family below.
-  for (let k = 0; k < 4; k++) {
-    P.add('hullDark', box(0.014, 0.006, 0.245), -0.685 + k * 0.09, 1.4405, 2.60); // pin-gap seams (flat on the board —
-  }                                                                              // the 1.39-1.44 nose-deck ceiling holds)
-  P.add('hullDark', box(0.46, 0.006, 0.05), -0.55, 1.4405, 2.60);               // grouser shadow bar
+  // VEH-13: the board, its seams and grouser bar are one registered run (spareTrackSeat.ts)
+  withSpareTrackRun(P, { site: 'kv-nose-deck-links', source: 'adhoc', rotation: [0, 0, 0] }, (P) => {
+    // spare links flush on the nose deck. r4 tell 4 ("spare-links slab renders as a blank light-grey board"); VEH-13
+    // (blind critics m1, "flat grey blocks"): two of the fleet's spare links (spareLinkGeometry.ts) over the board's
+    // old envelope (0.5 x 0.045 x 0.26), plates, barrels and grousers instead of painted seams on a slab
+    for (const dz of [-0.065, 0.065]) P.add('hullTrack', spareLinkBlock(0.5, 0.045, 0.13), -0.55, 1.415, 2.60 + dz);
+  });
 }
 
 function addKV2EngineDeckAndRearHardware(P: SovietHeavyBuilderPort): void {
@@ -968,16 +969,9 @@ function addKV2TurretSideHardware(P: SovietHeavyBuilderPort): void {
 function addKV2TurretFastenersAndWeapon(P: SovietHeavyBuilderPort): void {
   const { box } = KIT;
 
-  // roof DShK on the bustle plateau rear-LEFT corner, pointing rearward —
-  // the print's own rear-roof MG seat (§B3 mandatory census MG; FITTINGS
-  // stamped; parented to turretG so it yaws with the slab).
-  {
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'dshk', scale: 0.95, elev: 0.10,
-      seed: 12, ring: false, ammo: true, rotation: [0, Math.PI, 0] });
-    mg.position.set(-0.55, 1.472, -1.36);
-    P.turretG.add(mg);
-    P.add('turretDetail', box(0.14, 0.016, 0.14), -0.55, 1.470, -1.36);        // pintle foot plate into the plateau
-  }
+  // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle and every drawn gun works): the KV-2
+  // carried its DT machine guns in ball mounts (coaxial, turret rear, hull), never a roof gun, so the rear-roof DShK the
+  // old "every vehicle shows a roof MG" census added is gone (roofWeaponPolicy.ts).
   // rivet stud rows along the plate seams (dark studs, mask-safe buckets)
   const stud = (x: number, y: number, z: number, face: 'x' | 'z'): void => {
     if (face === 'z') P.add('turretDark', box(0.030, 0.030, 0.018), x, y, z);

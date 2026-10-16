@@ -16,13 +16,14 @@ import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRed
 // ground lane (2026-10-03): and its land use (landUse.ts, THREE-free) — the real functions too; the build wrappers'
 // height-field hook (attachTerrainLandUse) is a no-op here (the fixture's height field grows nothing)
 import { LAND_BAKE_LAYERS, bakeLandUseSteps, landUseTierOf, landUseUniformValues, resolveLandUseProfile } from './landUse.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // 2026-10-01 (frozen pins retired): the control used to be a copy of the 465a68f7c synchronous ground painter and the
 // noise observer pinned its exact frequencies/offsets, so any intended repaint of mud or rock failed here. The control
 // is now the CURRENT synchronous wrapper: the eight-row stepped painter must reproduce its native RGBA, texture
 // settings and pre-normal heights exactly, in row-major noise order, with no partial texture publication.
 // Native Canvas2D is mandatory. No upload-only stub or rasterizer skip is used.
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const source = terrainSourceText();
 const ast = ts.createSourceFile('terrain.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
 function declaration(name, text = source) {
   const tree = text === source ? ast : ts.createSourceFile('mutant.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);

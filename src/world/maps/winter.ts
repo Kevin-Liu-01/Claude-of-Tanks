@@ -417,7 +417,9 @@ export default {
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   // 2026-10-09 (the shadows lane: the deck's cells took 90 % of the sun over 86 % of the valley — lit and shaded snow
   // 1.13 : 1 under a cell): a broken stratocumulus passes part of the beam through its thinner cells (cloudscapes.ts deckBeam)
-  clouds: { regime: 'stratocumulus-deck', nightGlow: 0.3, nightGlowHex: 0xffc080, deckBeam: 0.4 },
+  // 2026-10-15 (the SKY lane; the owner's 10-13 ruling enforced on every map: no broken stratocumulus): the flat overcast
+  // closed (0.86 left breaks: the banned deck), its relief from the deck tune's cells, lumps and rolls under the sheet
+  clouds: { regime: 'stratocumulus-deck', coverage: 0.92, nightGlow: 0.3, nightGlowHex: 0xffc080, deckBeam: 0.4 },
   sky: {
     // FLAT OVERCAST: higher-but-weak sun (no warm horizon glow), heavy grey
     // cloud deck, raised ambient/env fill so light reads diffuse
@@ -439,12 +441,14 @@ export default {
     sunIntensity: 1.35, sunColorHex: 0xdfe7f2, hemiIntensity: 0.74, postExposure: 0.86,
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0xe5e7ec, warmth: 0.25, exposureEV: -0.25 },
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a winter overcast — a cold pearl band, a pale cold blue in the deck's gaps
+    atmosphere: { horizonTintHex: 0xd5dde6, horizonTintAmount: 0.35, horizonBandDeg: 9, zenithTintHex: 0x8ea9c8, zenithTintAmount: 0.25 },
   },
 
   minimap: {
     base: [170, 178, 186], hard: [128, 122, 114], soft: [150, 168, 186],
     forest: 'rgba(64,80,72,0.85)', forestStroke: 'rgba(38,50,44,0.9)',
-    water: 'rgba(158,190,214,0.85)', waterStroke: 'rgba(104,134,158,0.9)',
+    ice: 'rgba(158,190,214,0.85)', iceStroke: 'rgba(104,134,158,0.9)',
     roadCasing: 'rgba(60,54,46,0.9)', roadFill: 'rgba(120,108,96,0.95)',
     buildingFill: '#e4e7ec',
   },

@@ -21,7 +21,7 @@ import {
   const near = 0.5, far = 700;
   assert.equal(csmSampledFromM(0, near, far, true), 0, 'the first cascade is sampled from the camera');
   const x = 320 / 700;
-  assert.ok(Math.abs(csmSampledFromM(x, near, far, true) - (x - 0.125 * x * x) * (far - near)) < 1e-9, 'fade: x − x²/8 of the range');
+  assert.ok(Math.abs(csmSampledFromM(x, near, far, true) - (x - 0.06 * x) * (far - near)) < 1e-9, 'fade: x less its 6 % half-band (shadowCascadeFade.ts, 2026-10-14)');
   assert.ok(Math.abs(csmSampledFromM(x, near, far, false) - x * (far - near)) < 1e-9, 'no fade: the break itself');
   assert.ok(csmSampledFromM(x, near, far, true) < csmSampledFromM(x, near, far, false), 'the fade reaches the map earlier');
   assert.equal(csmSampledFromM(-1, near, far, true), 0, 'a negative break is clamped');

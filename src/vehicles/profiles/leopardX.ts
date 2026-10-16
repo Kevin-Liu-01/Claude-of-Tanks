@@ -1,5 +1,6 @@
 import { tankSeedId } from '../tankIdAliases.ts';
 import { captureAuxiliaryStock } from './auxiliaryStation.ts';
+import { withSpareTrackRun } from '../spareTrackSeat.ts';
 import { addFieldRoofWeapon } from './fieldRoofWeapon.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Four additive, independently authored source-study Leopards. No donor
@@ -15,6 +16,7 @@ import { addLeopardA5XSourceDetails } from './leopardA5XDetails.ts';
 import { leopardReturnRollers } from './leopardReturnRollers.ts';
 import { lineUpperReturnBand } from '../upperReturnBandStock.ts';
 import { cappedSmokeLauncherGeometry } from '../smokeLauncherGeometry.ts';
+import { machinedRing } from '../machineGunGeometry.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 
@@ -254,12 +256,16 @@ function bowFittings(P: TankBuilderPort, y: number, z: number, spareTracks: bool
     for (const x of [1.04, 1.4]) P.addEquipment('hullDetail', cylY(.012, .012, .15, 8), side * x, y + .057, z + .085);
     P.addEquipment('hullDark', cylZ(.092, .12, 12), side * .82, y - .07, z + .06);
     P.addEquipment('hullDetail', torus(.072, .026, 12, 6), side * .82, y - .065, z + .12, Math.PI / 2);
-    if (spareTracks) for (let i = 0; i < 3; i++) {
-      const x = side * (.15 + i * .18);
-      P.addEquipment('hullDark', box(.16, .027, .36), x, y + .105, z - .11, -.20);
-      P.addEquipment('hullDetail', box(.12, .044, .12), x, y + .135, z - .11, -.20);
-      P.addEquipment('hullDetail', cylX(.018, .19, 8), x, y + .125, z + .04);
-    }
+    // VEH-13: each side's three links are one registered run (spareTrackSeat.ts)
+    if (spareTracks) withSpareTrackRun(P, { site: `leopardx-bow-links-${side < 0 ? 'L' : 'R'}`, source: 'adhoc',
+      rotation: [-.20, 0, 0] }, (P) => {
+      for (let i = 0; i < 3; i++) {
+        const x = side * (.15 + i * .18);
+        P.addEquipment('hullDark', box(.16, .027, .36), x, y + .105, z - .11, -.20);
+        P.addEquipment('hullDetail', box(.12, .044, .12), x, y + .135, z - .11, -.20);
+        P.addEquipment('hullDetail', cylX(.018, .19, 8), x, y + .125, z + .04);
+      }
+    });
   }
 }
 
@@ -305,6 +311,11 @@ function driver(P: TankBuilderPort, y: number, x: number, z: number): void {
 
 function roofHatch(P: TankBuilderPort, d: Datum, x: number, y: number, z: number, r = .32): void {
   equip(P, d, 'turretDark', cylY(r + .027, r + .027, .025, 28), x, y + .012, z);
+  // 2026-10-11 (fleet-weapons lane, round 3b; wave 348's critics on the Leopard 2A7V: the hatch rings "broken chains of
+  // separate dark grey blocks with gaps between them ... loose beads", "chains of loose dark-grey rectangular blocks lying
+  // in arcs on the deck ... like rubble"): the periscope heads stand in a continuous armoured collar round the hatch, so
+  // they read as the vision blocks of one ring. The collar stays under the heads' tops and inside the roof's envelope.
+  equip(P, d, 'turretDetail', machinedRing(r + .03, r + .145, .05, .008, 32), x, y, z);
   P.addHatch('turretHatch', cylY(r, r, .032, 28), x - d.turretPivot[0], y + .039 - d.turretPivot[1], z - d.turretPivot[2]);
   equip(P, d, 'turretDetail', box(.16, .034, .035), x, y + .074, z);
   equip(P, d, 'turretDetail', box(.24, .040, .083), x, y + .041, z - r + .025);
@@ -336,8 +347,10 @@ function mg(P: TankBuilderPort, d: Datum, x: number, y: number, z: number, remot
   equip(P, d, 'turretDetail', cylY(.12, .15, remote ? .23 : .105, 20), x, y + (remote ? .11 : .05), z);
   // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the source-measured roof stations beside these guns (feed-side collision census).
   // 2026-10-08 (owner, 6763d7cc0): `automatic` makes the gun a working remote station (the 2A5M's original 7.62 mm)
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): where it is not the remote station it is the working
+  // crew-served loader's gun
   const weapon = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', scale: .76, sourceScale: true, remoteControlled: automatic,
-    tone: 'two-tone', elev: 0, ammo: true, shield: false, ring: false, seed: 260905, feed: 'right' });
+    working: !automatic, tone: 'two-tone', elev: 0, ammo: true, shield: false, ring: false, seed: 260905, feed: 'right' });
   weapon.name = `${tankSeedId(P.spec.id)}RoofMachineGun`; // schema-1 name (tankIdAliases.ts)
   weapon.scale.set(1,heightScale,lengthScale);
   weapon.position.set(x-d.turretPivot[0], y+(remote ? .22 : .08)-d.turretPivot[1], z-d.turretPivot[2]);
@@ -956,6 +969,11 @@ function a7CurvedWhip(P:TankBuilderPort,d:Datum,x:number,bottom:number,top:numbe
   const shaft=new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points),40,.0167,8,false);
   shaft.scale(1.287,1,1);
   equip(P,d,'turretDark',shaft,x,0,0);
+  // 2026-10-14 (the sealed-hull dump on leo2a7v: 11 of its open px at 256 were these whips' open tube ends, seen down
+  // the tube from above): a whip ends in its rounded tip, not an open tube.
+  const tip=new THREE.SphereGeometry(.0167,8,6);tip.scale(1.287,1,1);
+  const end=points[points.length-1]!;
+  equip(P,d,'turretDark',tip,x,end.y,end.z);
 }
 
 function a6Whip(P:TankBuilderPort,d:Datum,x:number): void {
@@ -1005,8 +1023,9 @@ function a6LowHatchMG(P:TankBuilderPort,d:Datum): void {
   // Full, unscaled-height pintle seats directly on the hatch flank. The
   // source rail remains alongside the barrel, not pierced by it; there is
   // no added tall pedestal above the already complete pintle assembly.
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
   const weapon=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:.76,sourceScale:true,
-    tone:'two-tone',elev:0,ammo:true,shield:false,ring:false,seed:260905});
+    tone:'two-tone',elev:0,ammo:true,shield:false,ring:false,seed:260905,working:true});
   weapon.name='leo2a6m_xRoofMachineGun';
   weapon.scale.set(1,1,1.75);
   weapon.position.set(-.80-d.turretPivot[0],2.546-d.turretPivot[1],.12-d.turretPivot[2]);

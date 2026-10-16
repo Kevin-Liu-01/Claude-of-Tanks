@@ -351,13 +351,18 @@ export class LocalPredictor {
    * them and held the last one for HELD_INPUT_LEASE_TICKS, then released drive and fire. The prediction steps those ticks
    * on the same rule instead of jumping over them: before, the hull resumed from where the stall began while the
    * authority's had kept moving (or had stopped), and the next row corrected it by the whole gap — metres at speed.
+   *
+   * 2026-10-15 (the MP stream): only the ticks after the hull's current one. A browser runs the rows that reached a stalled
+   * tab before its next frame, so by the time the sampler skips, a row newer than anything sampled may already have seated
+   * the hull on the authority's pose at its tick (reconcile's tick jump); stepping the whole range again from there ran the
+   * hull ahead by the overlap (the e2e seat-pause probe: 2.8 m after 0.3 s, 7.8 m and a hard snap after 0.7 s).
    */
   skipTicks(firstTick: number, count: number): void {
     if (this.terminal || !this.initialized || count <= 0) return;
     const control = this.lastControl;
     if (!control) return;
-    const steps = Math.min(count, MAX_STALL_STEPS);
-    for (let tick = firstTick + count - steps; tick < firstTick + count; tick++) {
+    const end = firstTick + count;
+    for (let tick = Math.max(end - MAX_STALL_STEPS, this.currentTick + 1); tick < end; tick++) {
       this.step(this.heldOrReleased(control, tick));
       this.storePose(tick);
       this.stats.stallTicks++;

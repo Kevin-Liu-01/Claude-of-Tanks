@@ -52,9 +52,9 @@ assert.match(post, /float sceneLuma = dot\( outputColor\.rgb, vec3\( 0\.2126, 0\
 assert.match(post, /uToe: \{ value: new THREE\.Vector4\(0, 0, 0, 0\) \},/);
 assert.match(post, /uniform vec4 uToe;/);
 assert.match(post, /const toeOn = model\.mode === 'physical' && model\.night < 0\.999;/, 'the grounded rig by day');
-assert.match(post, /u\.uToe\.value\.set\(toeSlope, toeOn \? lightTune\('GRADE_TOE_STOPS', GRADE_TOE_STOPS\) : 0,\s*lightTune\('GRADE_TOE_CHANNEL_FROM', GRADE_TOE_CHANNEL_FROM\), lightTune\('GRADE_TOE_CHANNEL_TO', GRADE_TOE_CHANNEL_TO\)\);/);
+assert.match(post, /u\.uToe\.value\.set\(toeSlope, toeOn \? lightTune\('GRADE_TOE_STOPS', tone\.toeStops\) : 0,\s*lightTune\('GRADE_TOE_CHANNEL_FROM', GRADE_TOE_CHANNEL_FROM\), lightTune\('GRADE_TOE_CHANNEL_TO', GRADE_TOE_CHANNEL_TO\)\);/);
 assert.match(post, /\} else \{\s*u\.uToe\.value\.set\(0, 0, 0, 0\);/, 'without a model (before the first preset) the constant slope');
-assert.match(post, /const toeSlope = THREE\.MathUtils\.lerp\(lightTune\('GRADE_TOE_SLOPE', GRADE_TOE_SLOPE\) \* model\.contrast, u\.uContrast\.value as number,\s*THREE\.MathUtils\.clamp\(model\.night, 0, 1\)\);/,
+assert.match(post, /const toeSlope = THREE\.MathUtils\.lerp\(lightTune\('GRADE_TOE_SLOPE', tone\.toeSlope\) \* model\.contrast, u\.uContrast\.value as number,\s*THREE\.MathUtils\.clamp\(model\.night, 0, 1\)\);/,
   'the toe\'s slope returns to the constant one with the night');
 assert.ok(CHANNEL_FROM > 0 && CHANNEL_FROM < CHANNEL_TO && CHANNEL_TO <= TOE_STOPS, 'the hand-over to the channels lies under the card, inside the toe');
 

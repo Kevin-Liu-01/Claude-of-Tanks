@@ -80,6 +80,15 @@ cap (indices 0..65535), or form 1, `varint byteLength` and a bitset (bit `i & 7`
 the last byte holding a set bit) — whichever is smaller; at most 8 KB for any legal set. Wire 5 wrote an index list
 capped at 4,096 and its encoder threw past it (below Monsoon's 9,119 crushable props), failing every later keyframe.
 
+The *viewer section*'s movement checkpoint (wire 7, 2026-10-15, the MP stream): `u8 movementVersion` with its high bit
+(0x80) set marks a masked checkpoint, written only on a delta whose baseline frame holds a viewer on the same checkpoint
+version and length: `u16 movementFlags`, `u8 count`, a `ceil(count / 8)`-byte mask (bit `i & 7` of byte `i >> 3` = value
+`i` changed since the baseline's, compared as f32), then the changed values as `f32` in index order; an unchanged value
+is the baseline's. A keyframe, or a baseline the mask cannot follow, writes every value as before; a masked checkpoint
+whose baseline viewer is missing decodes as `missing_baseline` (the client asks for a keyframe). The 63-value
+checkpoint cost 253 bytes on every snapshot to its seat; masked, a driving hull's is ~150 and a stopped one's ~90
+(`viewerMask.selftest`).
+
 The destroyed list is settled state, not a stream of falls (world state audit, 2026-10-01): a client lays a listed
 prop it has not seen fall at its final pose, silently, and leaves a prop whose `world_prop_destroyed` it still owes
 the presentation to that event. A host that resumes a match from a migration keyframe restores the keyframe's list

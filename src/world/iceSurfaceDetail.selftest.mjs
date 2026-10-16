@@ -120,8 +120,10 @@ function assertPackedRgb(packed, pigment) {
   return { maxError, maxTolerance };
 }
 function assertIceTone(tone, label) {
-  assert.ok(tone.bright > 0.01 && tone.bright < 0.05,
-    `${label}: strong seams occupy 1–5%, not a dense white network`);
+  // (2026-10-15, iceCracks.ts: one bright refrozen seam a tile among an open crack and a hairline, where three bright
+  // seams were "flat bright crack decals": the bright share falls from 1-2 % to 0.2-0.45 %)
+  assert.ok(tone.bright > 0.0015 && tone.bright < 0.05,
+    `${label}: strong seams occupy 0.15–5% (the phone tile's finer strokes the least), not a dense white network`);
   assert.ok(tone.quiet > 0.88 && tone.soft > 0.015,
     `${label}: broad quiet ice and feathered transitions both survive`);
   assert.ok(tone.sharpEdges < 0.07 && tone.max - tone.min > 0.65, label);
@@ -162,11 +164,15 @@ function inspectLayer(seed, tier) {
   assert.deepEqual(pigment, repeat.pigment, 'native path/gradient rasterization is seeded');
   assert.deepEqual(packed, repeat.packed); assert.deepEqual(normals, repeat.normals);
   assert.equal(first.ops.fills, 90, 'ten broad drift fields at nine wrap offsets');
-  assert.equal(first.ops.strokes.filter(op => op.segments === 6).length, 54,
-    'exactly three main paths, two strokes each, at nine wrap offsets');
-  const branches = first.ops.strokes.filter(op => op.segments === 2).length;
-  assert.ok(branches <= 54 && branches % 18 === 0, 'at most one short child per main path');
-  assert.equal(first.ops.strokes.length, 54 + branches, 'no uncounted recursive or fine scratch paths');
+  // (the looks lane, 2026-10-15, iceCracks.ts: the 226 reeds pair's "flat bright crack decals") the three seams are drawn
+  // segment by segment — tapered from their middles, their tone wandering — one each of a refrozen seam (two strokes a
+  // segment, one segment left as hair), an open crack (two) and a hairline (one): 29 strokes; four short crazes (8)
+  const strokes = first.ops.strokes;
+  assert.ok(strokes.every(op => op.segments === 1), 'every crack stroke is one segment (tapered, its tone along it)');
+  assert.equal(strokes.length % 9, 0, 'every stroke at nine wrap offsets');
+  const perWrap = strokes.length / 9, branches = perWrap - 37;
+  assert.ok(branches >= 0 && branches <= 3 * 4, `three seams, four crazes and at most one short fork a seam (${perWrap} strokes)`);
+  assert.ok(new Set(strokes.map(op => op.width.toFixed(2))).size >= 12, 'the seams taper: their widths vary along them');
   assert.deepEqual(normals, expectedRelief(seed, size), 'painted cracks and snow cannot emboss the relief');
   const tone = inspectPigment(pigment, size), relief = inspectNormals(normals);
   const packedRgb = assertPackedRgb(packed, pigment), packedTone = inspectPigment(packed, size);
@@ -195,7 +201,7 @@ function inspectLayer(seed, tier) {
     writeFileSync(join(values['out-dir'], `${tier}-${seed}-normal.png`), preview.toBuffer('image/png'), { flag: 'wx' });
   }
   return { seed, tier, size, textureCount: 2, rgbaBaseBytes: packed.byteLength + normals.byteLength,
-    stressPaths: 3, shortBranches: branches / 18,
+    stressPaths: 3, shortBranches: branches,
     pigmentHash: hash(pigment), packedHash: hash(packed), normalHash: hash(normals),
     tone, packedTone, packedRgb, relief, minRoughness, maxRoughness };
 }

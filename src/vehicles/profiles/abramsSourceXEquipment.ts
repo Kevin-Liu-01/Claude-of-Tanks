@@ -1,4 +1,4 @@
-import { beginAuxiliaryStation } from './auxiliaryStation.ts';
+import { beginAuxiliaryStation, stationFromGun } from './auxiliaryStation.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { drainTankBuild, tankProfileCheckpoint, type TankProfileBuild } from '../tankBuildCooperation.ts';
 // First-party sparse reconstruction of the owner's SEP v2 equipment study.
@@ -10,10 +10,11 @@ import { FITTINGS, KIT } from './kit.ts';
 import { closedSectionLoft, planeBoundedArmor, profiledTube, roundMember, type XYZ } from './abramsSourceXGeometry.ts';
 import { buildAbramsSourceXCitv } from './abramsSourceXCitv.ts';
 import { markEraHitFaces } from './eraHitFaces.ts';
-import { sourceStowageBag, type SourceStowageBagName } from './abramsSourceXStowage.ts';
+import { jerrycanParts } from '../accessoryKits.ts';
+import { ammoCanParts, fieldChestParts } from './fieldChest.ts';
 import { sourceMainRackStrip, sourceMainRackSupports, sourceExtendedRack } from './abramsSourceXRack.ts';
 import { buildAbramsSourceXAftCase } from './abramsSourceXAftCase.ts';
-import { sourceContainers, sourceContainerReceivers } from './abramsSourceXContainers.ts';
+import { SOURCE_CONTAINER_SEATS, sourceContainerReceivers } from './abramsSourceXContainers.ts';
 import { buildAbramsSourceXCrows, abramsCrowsReceiver } from './abramsSourceXCrows.ts';
 import { hardenSourceMuzzleRim, sourceMuzzleAssembly } from './abramsSourceXMuzzle.ts';
 import { buildAbramsSourceXCounterAssault } from './abramsSourceXCounterAssault.ts';
@@ -568,7 +569,10 @@ function localCommanderStation(C: EquipmentContext, a1: boolean): void {
   for (const s of [-1, 1]) box(C, `${label}WeaponEar${s}`, [.035, .172, .112],
     [-.507216 + s * .071, 2.723, -.014]);
   box(C, `${label}WeaponCradle`, [.177, .028, .184], [-.507216, 2.794, -.014]);
-  sourceM2(C, `${label}CommanderM2`, [-.507216, 2.863, .050], 'turret');
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the commander's M2 is a working station, pitching on
+  // the cradle ears' trunnion (y 2.80, z -0.014) and turning about it
+  stationFromGun(sourceM2(C, `${label}CommanderM2`, [-.507216, 2.863, .050], 'turret'),
+    { name: `abramsSourceX${label}Station`, caliberMm: 12.7, pivot: [0, -.063, -.064], muzzle: [0, 0, 1.279] });
 }
 
 function shieldPanel(C: EquipmentContext, name: string, a: XYZ, b: XYZ, bottom: number, top: number): void {
@@ -745,6 +749,8 @@ function loaderWeapon(C: EquipmentContext, shields: boolean): void {
   group.name = 'abramsSourceX_LoaderM240';
   group.userData.sourceOwner = 'Object_102';
   C.P.turretG.add(group);
+  // VH.14: the loader's M240 is a working station on its skate pintle (pitching on the receiver's trunnion)
+  stationFromGun(group, { name: 'abramsSourceXLoaderStation', caliberMm: 7.62, muzzle: [0, .011, .696] });
   if (!shields) return;
   for(const part of sourceLoaderShields())emit(C,part.name,part.geometry,[0,0,0],'turret',part.glass?'turretGlass':'turret');
   shieldPanel(C, 'CommanderShieldInboard', [-.075, 0, .041], [-.286, 0, -.395], 2.678275, 3.146435);
@@ -783,10 +789,41 @@ function basketRail(C: EquipmentContext, label: string, y: number, rearZ: number
   for (let i = 1; i < points.length; i++) rail(C, `${label}_${i}`, points[i - 1], points[i]);
 }
 
-function bag(C: EquipmentContext, name: SourceStowageBagName): void {
-  for (const part of sourceStowageBag(name, !!C.P.q)) {
-    emit(C, part.name, part.geometry, [0, 0, 0], 'turret', 'turretCloth');
+// Owner markup 2026-10-14 ("actual tank equipment ... in lieu of random thingies", on the M1A2 SEPv2's aft duffel
+// bag and the blank faces of its corner cans): the bustle rack carries real field equipment. The three tossed canvas
+// sacks are gone; the four source cans become the fleet's pressed 20 L jerrycan (stamped X faces, three-grip handle,
+// spout) on the same trays and seats; the rack bays hold steel stowage chests and rows of M2A1 ammunition cans. Rack
+// datums are turret-local (main rack floor y 0.412, bays split by the receiving plates at x -0.585, -0.068 and 0.448,
+// z -3.182..-2.684; extension floor y 0.404, x -1.065..0.926, z -3.70..-3.19); every item clears the plates, trays,
+// stiles and courses.
+function bustleRackStowage(C: EquipmentContext): void {
+  const P = C.P, high = !!P.q;
+  for (const [i, [x, y, z, yaw]] of SOURCE_CONTAINER_SEATS.entries()) {
+    const can = jerrycanParts(0.95, [-1, 1], high);
+    const paint = [can.body, ...can.stamps, can.spine, ...can.grips];
+    // issue stowage in the army's drab, never the camouflage (critic panel 2026-10-15; fieldChest.ts issued)
+    for (const g of paint) g.userData.issueDrab = true;
+    for (const [k, g] of paint.entries()) emit(C, `BustleCan${i}_${k}`, g.rotateY(Math.PI / 2 + yaw), [x, y + .002, z]);
+    if (can.spout) emit(C, `BustleCan${i}_Spout`, can.spout.rotateY(Math.PI / 2 + yaw), [x, y + .002, z], 'turret', 'turretDark');
   }
+  const place = (parts: { paint: THREE.BufferGeometry[]; dark: THREE.BufferGeometry[] }, x: number, y: number, z: number, yaw = 0) => {
+    for (const g of parts.paint) P.addEquipment('turret', g, x, y, z, 0, yaw, 0);
+    for (const g of parts.dark) P.addEquipment('turretDark', g, x, y, z, 0, yaw, 0);
+  };
+  // the two middle bays: one chest each, latches aft
+  for (const x of [-.327, .190]) place(fieldChestParts(.44, .30, .42, {high, front: -1, handles: false}), x, .412, -2.930);
+  // the outer bays behind the can trays: a row of five M2A1 cans standing long side fore and aft, latches aft, filling
+  // each bay between its frame and its receiving plate (critic panel 2026-10-15: two rows of two left the bay's inner
+  // third bare, its floor cross members reading as a loose dark bar, and the rows' lids overlapped 8 mm). Measured
+  // turret-local stock: left bay x -1.527 (frame) .. -0.592 (plate), right bay 0.455 .. 1.388; rear lower strip at
+  // z -3.187, the corner jerrycans from z -2.846; a can is 0.163 across its lid and 0.322 long with its latch, so the
+  // row spans z -3.1785..-2.8565 with 1.2 cm between cans and 3.5 cm to the frame and plate.
+  for (const cx of [-1.0595, .9215]) for (let k = -2; k <= 2; k++) {
+    place(ammoCanParts(high), cx + k * .175, .412, -3.013, Math.PI / 2);
+  }
+  // the extension: two chests side by side
+  place(fieldChestParts(.88, .34, .40, {high, front: -1}), -.55, .404, -3.450);
+  place(fieldChestParts(.78, .34, .40, {high, front: -1}), .42, .404, -3.450);
 }
 
 function* rearEquipmentCooperativeSteps(C: EquipmentContext, fullLoadout: boolean, cooperative = false): TankProfileBuild {
@@ -814,14 +851,8 @@ function* rearEquipmentCooperativeSteps(C: EquipmentContext, fullLoadout: boolea
   if (fullLoadout) {
     for (const part of sourceExtendedRack()) emit(C, part.name, part.geometry);
   yield* tankProfileCheckpoint(cooperative, "rearEquipment:for (const part of sourceExtendedRack()) emit(C, part.name, part.geometry);");
-    bag(C, 'AftBagLeft');
-  yield* tankProfileCheckpoint(cooperative, "rearEquipment:bag(C, 'AftBagLeft');");
-    bag(C, 'AftBagCenter');
-  yield* tankProfileCheckpoint(cooperative, "rearEquipment:bag(C, 'AftBagCenter');");
-    bag(C, 'AftBagRight');
-  yield* tankProfileCheckpoint(cooperative, "rearEquipment:bag(C, 'AftBagRight');");
-    for (const part of sourceContainers(!!C.P.q)) emit(C, part.name, part.geometry);
-  yield* tankProfileCheckpoint(cooperative, "rearEquipment:for (const part of sourceContainers(!!C.P.q)) emit(C, part.name, part.geometry);");
+    bustleRackStowage(C);
+  yield* tankProfileCheckpoint(cooperative, "rearEquipment:bustleRackStowage(C);");
     for (const part of sourceContainerReceivers()) emit(C, part.name, part.geometry);
   yield* tankProfileCheckpoint(cooperative, "rearEquipment:for (const part of sourceContainerReceivers()) emit(C, part.name, part.geometry);");
     // The tall source item is a thick electronic antenna stock, not a whip.

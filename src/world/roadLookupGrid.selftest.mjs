@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { registerHooks, stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // Brute-force reference lookup (the private declarations from 5b3224204, kept as an oracle algorithm, not a pinned
 // output): the optimized segment-stamping lookup must reproduce its nearest-segment grids byte for byte on every map,
@@ -48,7 +49,7 @@ const legacyDistance = `function segDist(
   return { d: Math.sqrt(ex * ex + ez * ez), t };
 }`;
 const sha = value => createHash('sha256').update(value).digest('hex');
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const source = terrainSourceText();
 function declaration(text, name) {
   const ast = ts.createSourceFile('terrain.ts', text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const matches = [];

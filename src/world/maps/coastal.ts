@@ -327,6 +327,8 @@ export default {
     fogDensity: 0.00046, fogTintHex: 0x93a7bd, fogMix: 0.6, envIntensity: 0.24,
     cloudOpacity: 0.85, cloudOpacity2: 0.55, cloudTintHex: 0xffffff,
     sunIntensity: 4.5, sunColorHex: 0xfff3e0, hemiIntensity: 0.36,
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a clear sea-breeze sky — a salt-white band over the bay, a clean blue overhead
+    atmosphere: { horizonTintHex: 0xdce7ee, horizonTintAmount: 0.35, horizonBandDeg: 8, zenithTintHex: 0x4c84cc, zenithTintAmount: 0.2 },
   },
 
   minimap: {

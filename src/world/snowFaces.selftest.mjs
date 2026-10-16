@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { tileableTorusNoise } from './proceduralTexture.ts';
 import { SNOW_ROCK_HOLD_LINE, mulberry32 } from './terrain.ts';
 import { groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 import { MAP_IDS } from './maps/mapIds.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // Skies lane (2026-10-06, the gauntlet's waves 127 and 128: Glacier's and Frosthollow's ring faces "a featureless,
 // vertically smeared grey sheet", "draped cloth"): the snow faces. Every change sits behind uReduxD.y > 1.5, so this pins:
@@ -26,7 +26,7 @@ for (const id of MAP_IDS) {
   else assert.ok(y === 0 || y === 1, `${id}: climate class ${y} stays under the guard (0 vegetated, 1 arid)`);
 }
 assert.equal(classOf('no-such-map'), 0, 'an unknown id runs the vegetated class');
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const source = terrainSourceText();
 assert.ok(/redux\.reduxD\.fill\(0\);/.test(source), 'the legacy A/B zeroes the class with the other redux terms');
 
 // 2. The shader's structure (SPLAT_COMMON_FRAG).

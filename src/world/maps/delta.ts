@@ -30,6 +30,23 @@ const river = [
     [129.4, 149.3, 28]],
 ].flatMap((reach) => createMarshChannel(reach.map(station)));
 
+// The flooded paddies (2026-10-12, item 4; the owner: "we need real water"): level basins of water held by their bunds
+// (terrain.paddies, paddies.ts), in terraced rows on the open floodplain, turned with the bunds (yaw -11) and off the roads,
+// the river, the village and both deployments. Two rows on alpha's bank — a pair a hundred metres in front of the deployment
+// and a row of three on the way to the char — and their rotations about the char on bravo's. (Found by a site probe over
+// the finished ground: each paddy's floor varies under 3.6 m before it is levelled, its twin as well.)
+const PADDY_W = 30, PADDY_L = 44, PADDY_YAW = -11, PADDY_STEP = PADDY_W + 3.2;
+const paddyRow = (x: number, z: number, count: number) => {
+  const yaw = PADDY_YAW * Math.PI / 180;
+  return Array.from({ length: count }, (_, k) => {
+    const off = (k - (count - 1) / 2) * PADDY_STEP;
+    return { x: x + Math.cos(yaw) * off, z: z - Math.sin(yaw) * off };
+  });
+};
+const paddies = [...paddyRow(-45, -310, 2), ...paddyRow(-10, -215, 3)]
+  .flatMap(({ x, z }) => [[x, z], [-8 - x, 28 - z]])
+  .map(([x, z]) => ({ x, z, widthM: PADDY_W, lengthM: PADDY_L, yawDeg: PADDY_YAW }));
+
 export default {
   id: 'delta',
   name: 'Jade River Delta',
@@ -45,6 +62,7 @@ export default {
       [[-396, 72], [-286, 52], [-144, 34], [8, 54], [162, 38], [302, 8]],
     ] },
     marshes: river,
+    paddies,
     // The market square on the char and a rice-drying yard on each bank: level aprons the zone-control discs seat on.
     hardstands: [
       { x: -4, z: 14, width: 50, length: 50, yawDeg: 45, grade: 0 },
@@ -201,6 +219,8 @@ export default {
     sunIntensity: 4.1, sunColorHex: 0xfbeed6, hemiIntensity: 0.34, postExposure: 0.95, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 3.55 / 0xffe7c5 / 0.42); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0x61694b },
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a humid river delta — a milky jade-white haze band, a washed pale blue overhead
+    atmosphere: { horizonTintHex: 0xdfe4d8, horizonTintAmount: 0.5, horizonBandDeg: 12, zenithTintHex: 0x84a4c6, zenithTintAmount: 0.3 },
   },
   minimap: {
     base: [63, 100, 55], hard: [105, 98, 74], soft: [48, 77, 62],

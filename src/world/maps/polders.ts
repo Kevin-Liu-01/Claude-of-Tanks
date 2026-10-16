@@ -385,7 +385,12 @@ export default {
   // (2026-10-13: the baked decks the phones show match the cumulus — Verdant's 620 m deck of 3200 m masses in place of
   // round 47's 420 m deck of 2600 m masses, the slant haze 0.00016 kept so the flat ring's grazing sky keeps its texture,
   // the fair-weather patchiness (cloudShadowAmp auto 0.22, was 0.18), the cirrus veil 0.72 -> 0.6, a near-white tint)
-  sky: { sunElevationDeg: 23, sunAzimuthDeg: 148, turbidity: 4.8, rayleigh: 1.5, mieCoefficient: 0.006, mieDirectionalG: 0.82, fogDensity: 0.00062, fogTintHex: 0x96a8ad, fogMix: 0.54, envIntensity: 0.24, cloudOpacity: 1.1, cloudOpacity2: 0.6, cloudTintHex: 0xf4f6f6, cloudHazeK: 0.00016, sunIntensity: 3.7, sunColorHex: 0xffe9ca, hemiIntensity: 0.43 },
+  sky: { sunElevationDeg: 23, sunAzimuthDeg: 148, turbidity: 4.8, rayleigh: 1.5, mieCoefficient: 0.006, mieDirectionalG: 0.82, fogDensity: 0.00062, fogTintHex: 0x96a8ad, fogMix: 0.54, envIntensity: 0.24, cloudOpacity: 1.1, cloudOpacity2: 0.6, cloudTintHex: 0xf4f6f6, cloudHazeK: 0.00016, sunIntensity: 3.7, sunColorHex: 0xffe9ca, hemiIntensity: 0.43,
+    // 2026-10-09 (the skies lane; owner R139 "skybox ... too bland"): a Dutch sea-wind sky — bright, luminous air full of
+    // white sea salt, a silvery band on the low horizon and a soft clear blue overhead (atmosphere.ts sky grade: the dome,
+    // the fog's colour and the sky light all follow it)
+    atmosphere: { rayleighScale: 1.1, mieScale: 7, mieG: 0.84,
+      horizonTintHex: 0xdde6ea, horizonTintAmount: 0.45, horizonBandDeg: 10, zenithTintHex: 0x7fa3cc, zenithTintAmount: 0.2 } },
   minimap: { base: [88, 112, 69], hard: [122, 117, 90], soft: [54, 80, 67], forest: 'rgba(44,78,43,.84)', forestStroke: 'rgba(26,51,27,.92)', water: 'rgba(66,103,114,.84)', waterStroke: 'rgba(35,67,78,.94)', roadCasing: 'rgba(54,47,36,.92)', roadFill: 'rgba(188,176,144,.96)', buildingFill: '#d3ccb9' },
   shot: { pos: [-268, 46, -256], look: [28, 1, 112] },
   // round 66 (2026-09-24, the FFT ocean): the polders' drained lakes take the sea wind across the flats — a short

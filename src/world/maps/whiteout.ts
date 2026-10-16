@@ -296,7 +296,9 @@ export default {
   // (deckLight 1: one lighting path; a share under 1 pays both) — with soft cells, base lumps and the detail's erosion, and
   // the snow under it lifting its base (ambientScale, the deck path's ground bounce: a quarter-albedo ground at 1). The
   // deck's structure lands in the overcast photos' band, and its level comes down toward the snow's it lights
-  clouds: { regime: 'low-stratus', baseM: 300, coverage: 1, scud: 0, nightGlow: 0.2, nightGlowHex: 0xfff0d0,
+  // 2026-10-07 (the clouds lane, wave 222: the structured deck "too high for low Arctic stratus" — "a lower, subtler
+  // deck that shows the sun's direction"): the base at 180 m
+  clouds: { regime: 'low-stratus', baseM: 180, coverage: 1, scud: 0, nightGlow: 0.2, nightGlowHex: 0xfff0d0,
     deckLight: 1, cells: 0.5, lumps: 0.6, deckDetail: 0.5, ambientScale: 3,
     // 2026-10-10 (the shadows lane; owner: "shadows are still really bad on maps like whiteout"): the closed deck cut the
     // cascades' sun to 2 % of its beam — lit and shaded snow 1.02 : 1, "flat, shadowless snow, with buildings that look like
@@ -306,7 +308,12 @@ export default {
     // stays at or under the snow relief's limit until that relief is redone)
     deckBeam: 0.25 },
   sky: { ...winter.sky, sunElevationDeg: 13, sunAzimuthDeg: 164, fogDensity: 0.00072, fogTintHex: 0xb3bfc9, fogMix: 0.56, cloudOpacity: 1.15, cloudOpacity2: 0.86, cloudAltM: 300, cloudHazeK: 0.00012, cloudUvM: 2000, cloudShadowAmp: 0.08, sunIntensity: 2.75, hemiIntensity: 0.58,
-    postExposure: 0.83 /* round 70: 0.86 (winter's) → 0.83, the snow re-grade's exposure half */ },
+    postExposure: 0.83 /* round 70: 0.86 (winter's) → 0.83, the snow re-grade's exposure half */,
+    // 2026-10-09 (the skies lane; owner R139 "skybox ... too bland", 10-09 "so empty"): a polar sky of its own (Frosthollow
+    // keeps winter's) — ice-crystal haze, the snowfield under the bounce, a pale ice band low on the horizon and a cold steel
+    // overhead (atmosphere.ts sky grade: the dome under the deck's gaps, the fog's colour and the sky light follow it)
+    atmosphere: { mieScale: 5, mieG: 0.84, mieTintHex: 0xeef4ff, groundAlbedoHex: 0xe8eef4,
+      horizonTintHex: 0xd2dde4, horizonTintAmount: 0.5, horizonBandDeg: 8, zenithTintHex: 0x9fb3c6, zenithTintAmount: 0.3 } },
   minimap: { ...winter.minimap, base: [161, 174, 186], hard: [137, 149, 159], soft: [107, 130, 149] },
   shot: { pos: [-256, 49, -262], look: [68, 0, 82] },
 } satisfies import('./contracts.ts').MapCompositionConfig;

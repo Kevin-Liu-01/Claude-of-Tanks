@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { initialTerrainLods, terrainLodForDistance, warmTerrainLodBuilds, chooseTerrainLodBuild } from './terrainLodPolicy.ts';
@@ -8,6 +7,7 @@ import { createHeightField } from './terrain.ts';
 import { installTerrainCraterMesh, TERRAIN_CRATER_LATTICE } from './terrainCraterMesh.ts';
 import { createDeformedHeightField, createTerrainDeformation, stampBounds } from '../sim/terrainDeformation.ts';
 import verdant from './maps/verdant.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // Ground lane (2026-10-08, crater-render-spec §B; the owner's "destructive explosions that leave holes and craters"):
 // the drawn terrain follows the battle's ground overlay. On Verdant's real height field, the actual chunk generators,
@@ -22,7 +22,7 @@ import verdant from './maps/verdant.ts';
 // 5. the cost per crater: vertices rewritten, bytes marked for upload, and the CPU time (reported).
 // No GPU or art claim.
 
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const source = terrainSourceText();
 const chunkSource = source.slice(source.indexOf('const CHUNKS = 8'));
 assert.ok(chunkSource.startsWith('const CHUNKS = 8'), 'chunk source boundary is exact');
 // the crater mesh's lattice is terrain.ts's own
