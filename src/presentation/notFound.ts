@@ -12,9 +12,9 @@ if (!localeRouteChanged) {
   localizeDocumentLinks(document, locale);
 }
 
+// The meta description is localized before JavaScript: the build writes /cn/404.html and the middleware serves the
+// localized shell for other /cn misses (src/presentation/localizedHtml.ts), so the runtime sets only the tab title.
 document.title = t('notFound.metaTitle');
-document.querySelector<HTMLMetaElement>('meta[name="description"]')
-  ?.setAttribute('content', t('notFound.metaDescription'));
 
 // GA4 as on the other public non-game pages (../googleAnalytics.ts gates the production host and Consent Mode), on
 // src/analytics.ts's after-idle schedule; this page carries no Vercel Analytics. Self-hosted builds compile it out.
