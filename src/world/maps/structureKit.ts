@@ -3714,52 +3714,143 @@ function makeRelayStationBroken(rng: Rng, style?: Palette, form: RelayForm = REL
   return merge(parts.map(ensureWorldNightEmissionMask));
 }
 
-function makeCornerOffice(rng: Rng, style?: Palette): THREE.BufferGeometry {
-  const out: THREE.BufferGeometry[] = [], p = style ?? PAL.urbanSteel, w = 8.4, d = 8.4, h = 6.6;
+/**
+ * A kit's corner office (the r2 sweep, 2026-10-16: "one form on 3 regions, identical geometry"): its ground floor, the
+ * dressing of its windows and the region's own work on it.
+ */
+interface CornerForm {
+  /** the front's ground floor a shop: its display window under the fascia, in place of two windows */
+  shop: boolean;
+  /** the windows' heads: plain, a sandstone head over each, a Rollladen box over each upper one */
+  heads: 'none' | 'stone' | 'shutters';
+  /** a blade sign off the front's corner, or a balcony on the upper floor of the +x side */
+  extra?: 'bladesign' | 'balcony';
+  /** air-conditioners hung under the +x side's upper windows */
+  aircon?: boolean;
+  /** the siege: the back and blind side's windows sheeted over, the front's ground floor bagged */
+  siege?: boolean;
+}
+const CORNER_DEFAULT: CornerForm = { shop: false, heads: 'none' };
+const CORNER_FORMS: Readonly<Record<string, CornerForm>> = {
+  // Shanghai: the grey-brick corner shop, its blade sign off the corner, air-conditioners under the windows
+  shanghai: { shop: true, heads: 'none', extra: 'bladesign', aircon: true },
+  // the Saar: the corner Kneipe, its shopfront, sandstone heads over the windows
+  saar: { shop: true, heads: 'stone' },
+  // Sarajevo, the siege: the plastered block, its balcony, the UNHCR sheeting in the windows, the ground floor bagged
+  sarajevo: { shop: false, heads: 'none', extra: 'balcony', siege: true },
+  // Franconia, 1984: the prefab office, a Rollladen box over every upper window
+  franconian: { shop: false, heads: 'shutters' },
+};
+// The old corner office painted 996 vertices from the kit's stream: the new build draws the same count first (every
+// pool after it keeps its paint and debris) and paints from those values in turn.
+const CORNER_STREAM_DRAWS = 996;
+
+/**
+ * The corner office (the r2 sweep, 2026-10-16: its windows were 21 dark plates on a solid block): a two-storey block on
+ * its plinth, its four walls cut for their windows (cutWallSlab) with the glass set back in the cuts and a sill under
+ * each, the floor inside between the storeys, the floor bands, the corner pilasters, the parapet's coping, the street
+ * door set back under its canopy on two posts with the sign box over it, the rooftop unit with its louvres and flue, the
+ * downpipes; a kit's form (CornerForm) on top.
+ */
+function makeCornerOffice(rng: Rng, style?: Palette, form: CornerForm = CORNER_DEFAULT): THREE.BufferGeometry {
+  const r = seatedStream(rng, CORNER_STREAM_DRAWS);
+  const out: THREE.BufferGeometry[] = [], p = style ?? PAL.urbanSteel, w = 8.4, d = 8.4, h = 6.6, pl = 0.36, t = 0.25, set = 0.12;
   // (a kit's office keeps within the family's footprint and its 0.4 m margin: its canopy 0.85 m deep)
   const canopy = style ? 0.85 : 1.25;
-  colored(out, mbox(w, h, d).translate(0, h / 2, 0), p[0], rng);
-  colored(out, mslab(w + 0.5, 0.24, d + 0.5).translate(0, h + 0.10, 0), p[2], rng);
-  for (const y of [2.25, 4.75]) {
-    for (const x of [-2.65, -0.9, 0.9, 2.65]) {
-      const paneColor = (Math.round(x * 10 + y * 7) % 3 === 0) ? 0xa49b7c : 0x58737b;
-      colored(out, markWorldAperture(box(1.12, 1.18, 0.09), [0, 0, 1]).translate(x, y, d / 2 + 0.04), paneColor, rng, 0.035);
-      colored(out, markWorldAperture(box(0.09, 1.18, 1.12), [1, 0, 0]).translate(w / 2 + 0.04, y, x), paneColor, rng, 0.035);
-    }
-    colored(out, mbox(w + 0.10, 0.18, 0.18).translate(0, y - 0.76, d / 2 + 0.04), p[1], _detailRng);
-    colored(out, mbox(0.18, 0.18, d + 0.10).translate(w / 2 + 0.04, y - 0.76, 0), p[1], _detailRng);
+  colored(out, mbox(w + 0.2, pl, d + 0.2).translate(0, pl / 2, 0), 0x8a8780, r, 0.02);
+  // the openings, each face's (onFace: u along the face)
+  const grid = (us: readonly number[], ys: readonly number[]): WallOpening[] => ys.flatMap((y) => us.map((u) => ({ u, y, w: 1.12, h: 1.18 })));
+  const U = [-2.65, -0.9, 0.9, 2.65];
+  const shopWindow: WallOpening = { u: 0.25, y: 1.6, w: 3.0, h: 1.9 };
+  const frontWins = [...(form.shop ? [shopWindow] : grid([-0.9, 0.9], [2.25])), ...grid([2.65], [2.25]), ...grid(U, [4.75])];
+  const door: WallOpening = { u: -2.55, y: pl + 1.1, w: 1.5, h: 2.2 };
+  const FACES: Array<{ axis: 'x' | 'z'; side: 1 | -1; half: number; wins: WallOpening[]; doors: WallOpening[] }> = [
+    { axis: 'z', side: 1, half: w / 2, wins: frontWins, doors: [door] },
+    { axis: 'x', side: 1, half: d / 2 - t, wins: grid(U, [2.25, 4.75]), doors: [] },
+    { axis: 'z', side: -1, half: w / 2, wins: grid(U, [2.25, 4.75]), doors: [] },
+    { axis: 'x', side: -1, half: d / 2 - t, wins: grid(U.slice(1), [2.25, 4.75]), doors: [] },
+  ];
+  const rel = (o: WallOpening): WallOpening => ({ ...o, y: o.y - pl });
+  for (const face of FACES) {
+    const at = face.axis === 'z' ? d / 2 : w / 2;
+    const top: Array<[number, number]> = [[face.half, h - pl], [-face.half, h - pl]];
+    colored(out, cutWallSlab(face.axis, face.side, at, face.half, top, face.doors.map(rel), face.wins.map(rel), t).translate(0, pl, 0), p[0], r, 0.035);
   }
-  colored(out, mbox(1.5, 2.55, 0.12).translate(-2.55, 1.28, d / 2 + 0.06), p[2], rng);
-  colored(out, pitchSkillionRoof(mroof(3.2, 0.14, canopy), 'z', 1, 0.07)
-    .translate(-2.55, 3.10, d / 2 + canopy / 2 - 0.09), p[1], rng);
-  for (const x of [-3.85, -1.25]) {
-    colored(out, mbox(0.13, 3.0, 0.13).translate(x, 1.5, d / 2 + canopy - 0.21), p[2], rng);
-  }
-  colored(out, mbox(2.5, 0.74, 2.2).translate(1.65, h + 0.49, -1.5), p[1], rng);
-  // (the looks lane, 2026-10-13: the block's members, painted without a draw) the back and blind side's windows, the
-  // floor bands round them, the corner pilasters, the parapet's coping, the rooftop unit's louvres and its flue, the
-  // downpipes, the shop sign over the street door and the plinth
-  const r = _detailRng;
-  for (const y of [2.25, 4.75]) {
-    for (const x of [-2.65, -0.9, 0.9, 2.65]) {
-      colored(out, markWorldAperture(box(1.12, 1.18, 0.09), [0, 0, -1]).translate(x, y, -d / 2 - 0.04), 0x58737b, r, 0);
-      if (x > -2) colored(out, markWorldAperture(box(0.09, 1.18, 1.12), [-1, 0, 0]).translate(-w / 2 - 0.04, y, x), 0x58737b, r, 0);
+  // the floor inside between the storeys, seen through the windows
+  colored(out, box(w - 2 * t, 0.22, d - 2 * t).translate(0, 3.5, 0), toneOf(p[0], 0.7), r, 0.02);
+  // the glass set back in each cut (sheeted over in the siege's back and blind side), the sill under it
+  FACES.forEach((face, fi) => {
+    const at = face.axis === 'z' ? d / 2 : w / 2, f = onFace(face.axis, face.side, at);
+    const normal: [number, number, number] = face.axis === 'z' ? [0, 0, face.side] : [face.side, 0, 0];
+    for (const o of face.wins) {
+      const sheeted = form.siege === true && fi >= 2 && (Math.round(o.u * 10 + o.y * 7) % 3 !== 0);
+      const plane = new THREE.PlaneGeometry(o.w, o.h);
+      if (face.axis === 'x') plane.rotateY(face.side * Math.PI / 2); else if (face.side < 0) plane.rotateY(Math.PI);
+      plane.translate(face.axis === 'x' ? face.side * (at - set) : o.u, o.y, face.axis === 'z' ? face.side * (at - set) : o.u);
+      const paneColor = sheeted ? 0xd2d6d2 : (Math.round(o.u * 10 + o.y * 7) % 3 === 0) ? 0xa49b7c : 0x58737b;
+      colored(out, sheeted ? plane : markWorldAperture(plane, normal), paneColor, r, 0.03);
+      if (sheeted) colored(out, f(o.w, 0.05, 0.03, o.u, o.y, -set + 0.03), 0x7a6a52, r, 0.02);
+      colored(out, f(o.w + 0.16, 0.07, set + 0.16, o.u, o.y - o.h / 2 - 0.035, 0.16 - (set + 0.16) / 2), p[2], r, 0.02);
+      if (form.heads === 'stone') colored(out, f(o.w + 0.24, 0.16, 0.1, o.u, o.y + o.h / 2 + 0.08, 0.05), toneOf(0xb8a888, 1), r, 0.03);
+      if (form.heads === 'shutters' && o.y > 4) colored(out, f(o.w + 0.12, 0.22, 0.18, o.u, o.y + o.h / 2 + 0.11, 0.09), 0xb8b4a8, r, 0.02);
     }
-    colored(out, mbox(w + 0.10, 0.18, 0.18).translate(0, y - 0.76, -d / 2 - 0.04), p[1], r, 0);
-    colored(out, mbox(0.18, 0.18, d + 0.10).translate(-w / 2 - 0.04, y - 0.76, 0), p[1], r, 0);
-    for (const x of [-2.65, -0.9, 0.9, 2.65]) {
-      colored(out, mbox(1.24, 0.07, 0.16).translate(x, y - 0.62, d / 2 + 0.08), p[2], r, 0);
-      colored(out, mbox(0.16, 0.07, 1.24).translate(w / 2 + 0.08, y - 0.62, x), p[2], r, 0);
+  });
+  // the floor bands round the block
+  for (const y of [1.49, 3.99]) {
+    for (const s of [-1, 1]) {
+      colored(out, box(w + 0.1, 0.18, 0.18).translate(0, y, s * (d / 2 + 0.04)), p[1], r, 0.02);
+      colored(out, box(0.18, 0.18, d + 0.1).translate(s * (w / 2 + 0.04), y, 0), p[1], r, 0.02);
     }
   }
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) colored(out, mbox(0.36, h, 0.36).translate(sx * (w / 2 - 0.1), h / 2, sz * (d / 2 - 0.1)), p[1], r, 0);
-  for (const sz of [-1, 1]) colored(out, mbox(w + 0.5, 0.12, 0.3).translate(0, h + 0.28, sz * (d / 2 + 0.08)), p[1], r, 0);
-  for (const sx of [-1, 1]) colored(out, mbox(0.3, 0.12, d + 0.5).translate(sx * (w / 2 + 0.08), h + 0.28, 0), p[1], r, 0);
-  for (let k = 0; k < 6; k++) colored(out, mbox(0.04, 0.08, 2.0).translate(1.65 + 1.27, h + 0.26 + k * 0.1, -1.5), p[2], r, 0);
-  colored(out, cylinder(0.12, 0.12, 0.6, 8).translate(0.85, h + 0.55, -2.2), p[2], r, 0);
-  for (const [x, z] of [[w / 2 + 0.08, -d / 2 + 0.3], [-w / 2 - 0.08, -d / 2 + 0.3]] as const) colored(out, mbox(0.11, h, 0.11).translate(x, h / 2, z), p[2], r, 0);
-  colored(out, mbox(3.4, 0.5, 0.1).translate(-2.55, 3.55, d / 2 + 0.1), 0x6b2f28, r, 0);
-  colored(out, mbox(w + 0.2, 0.36, d + 0.2).translate(0, 0.18, 0), 0x8a8780, r, 0);
+  // the roof slab, the parapet's coping, the corner pilasters, the downpipes
+  colored(out, mslab(w + 0.5, 0.24, d + 0.5).translate(0, h + 0.1, 0), p[2], r, 0.03);
+  for (const sz of [-1, 1]) colored(out, box(w + 0.5, 0.12, 0.3).translate(0, h + 0.28, sz * (d / 2 + 0.08)), p[1], r, 0.02);
+  for (const sx of [-1, 1]) colored(out, box(0.3, 0.12, d + 0.5).translate(sx * (w / 2 + 0.08), h + 0.28, 0), p[1], r, 0.02);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) colored(out, mbox(0.36, h, 0.36).translate(sx * (w / 2 - 0.1), h / 2, sz * (d / 2 - 0.1)), p[1], r, 0.02);
+  for (const [x, z] of [[w / 2 + 0.08, -d / 2 + 0.3], [-w / 2 - 0.08, -d / 2 + 0.3]] as const) colored(out, mbox(0.11, h, 0.11).translate(x, h / 2, z), p[2], r, 0.02);
+  // the street door set back in its cut, its frame, the canopy on two posts, the sign box over it
+  const fz = d / 2;
+  colored(out, onFace('z', 1, fz)(1.48, 2.19, 0.05, door.u, pl + 1.095, -set), p[2], r, 0.03);
+  for (const s of [-1, 1]) colored(out, box(0.12, 2.32, 0.12).translate(door.u + s * 0.81, pl + 1.16, fz + 0.06), p[1], r, 0.02);
+  colored(out, box(1.74, 0.12, 0.12).translate(door.u, pl + 2.26, fz + 0.06), p[1], r, 0.02);
+  colored(out, pitchSkillionRoof(mroof(3.2, 0.14, canopy), 'z', 1, 0.07).translate(-2.55, 3.10, fz + canopy / 2 - 0.09), p[1], r, 0.03);
+  for (const x of [-3.85, -1.25]) colored(out, mbox(0.13, 3.0, 0.13).translate(x, 1.5, fz + canopy - 0.21), p[2], r, 0.02);
+  colored(out, mbox(3.4, 0.5, 0.14).translate(-2.55, 3.55, fz + 0.12), 0x6b2f28, r, 0.02);
+  // the rooftop unit, its louvres and the flue
+  colored(out, mbox(2.5, 0.74, 2.2).translate(1.65, h + 0.49, -1.5), p[1], r, 0.03);
+  for (let k = 0; k < 6; k++) colored(out, box(0.04, 0.08, 2.0).translate(1.65 + 1.27, h + 0.26 + k * 0.1, -1.5), p[2], r, 0.02);
+  colored(out, cylinder(0.12, 0.12, 0.6, 8).translate(0.85, h + 0.55, -2.2), p[2], r, 0.02);
+  // the region's own work on it
+  if (form.shop) {
+    // the shopfront: the fascia board over the display window, its stall riser's plinth before it
+    colored(out, mbox(3.5, 0.42, 0.14).translate(shopWindow.u, shopWindow.y + shopWindow.h / 2 + 0.3, fz + 0.07), toneOf(p[2], 1.2), r, 0.02);
+    colored(out, mbox(3.3, 0.24, 0.24).translate(shopWindow.u, pl + 0.12, fz + 0.12), 0x8a8780, r, 0.02);
+  }
+  if (form.extra === 'bladesign') {
+    // the blade sign off the front by its +x corner, on its two brackets
+    colored(out, mbox(0.14, 2.4, 0.7).translate(3.55, 4.3, fz + 0.5), 0xa8322a, r, 0.02);
+    for (const y of [3.4, 5.2]) colored(out, box(0.08, 0.08, 0.16).translate(3.55, y, fz + 0.08), p[2], r, 0.02);
+  }
+  if (form.aircon) {
+    // the air-conditioners hung on the +x side under its upper windows
+    for (const z of [-2.65, -0.9, 0.9, 2.65]) {
+      colored(out, box(0.34, 0.5, 0.78).translate(w / 2 + 0.19, 3.75, z), 0xd2d2cc, r, 0.02);
+      colored(out, box(0.36, 0.05, 0.6).translate(w / 2 + 0.18, 3.475, z), p[2], r, 0.02);
+    }
+  }
+  if (form.extra === 'balcony') {
+    // the balcony on the +x side's upper floor before its middle windows: the slab, its rail on posts
+    colored(out, mslab(0.6, 0.15, 3.4).translate(w / 2 + 0.3, 3.93, 0), p[1], r, 0.02);
+    colored(out, box(0.05, 0.06, 3.4).translate(w / 2 + 0.57, 4.92, 0), p[2], r, 0.02);
+    for (const z of [-1.675, 0, 1.675]) colored(out, box(0.05, 0.92, 0.05).translate(w / 2 + 0.57, 4.465, z), p[2], r, 0.02);
+    for (const z of [-1.675, 1.675]) colored(out, box(0.55, 0.06, 0.05).translate(w / 2 + 0.3, 4.92, z), p[2], r, 0.02);
+  }
+  if (form.siege) {
+    // the front's ground-floor windows bagged up to their sills
+    for (const o of frontWins.filter((o) => o.y < 3)) for (let k = 0; k < 3; k++) {
+      colored(out, mbox(o.w + 0.4, 0.4, 0.4, 0.07).translate(o.u, pl + 0.2 + k * 0.4, fz + 0.22), toneOf(0x8e7f5e, 1 - (k % 2) * 0.05), r, 0.06);
+    }
+  }
   return mergeConnectedStructure('corneroffice', out);
 }
 
@@ -4677,7 +4768,7 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
       const meta = kind === 'relaystation'
         ? variant(kind, style, (rng) => makeRelayStation(rng, style, RELAY_FORMS[kit]), 'metal', (rng) => makeRelayStationBroken(rng, style, RELAY_FORMS[kit]))
         : kind === 'corneroffice'
-          ? variant(kind, style, (rng) => makeCornerOffice(rng, style), 'metal')
+          ? variant(kind, style, (rng) => makeCornerOffice(rng, style, CORNER_FORMS[kit]), 'metal')
           : variant(kind, style, (rng) => { B.securityoffice.build(rng).dispose(); return makeSecurityOfficeCraft(kindStream(`securityoffice@${kit}`), style, SECURITY_FORMS[kit]); }, 'metal');
       table[kit] = { ...(table[kit] ?? {}), [kind]: meta };
     }
