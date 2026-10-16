@@ -32,7 +32,13 @@ const outPath = resolve('src/vehicles/combatAnatomyCalibrations.ts');
 const groupOutputDir = resolve('src/vehicles/combatAnatomyGroups');
 const loaderOutputPath = resolve('src/vehicles/combatAnatomyLoaders.generated.ts');
 const check = process.argv.includes('--check');
-const COMBAT_ANATOMY_CALIBRATIONS = check
+// --ids=a,b re-measures only those tanks and keeps every other row as generated (a targeted lane update; the full
+// regen and the gate's --check stay fleet-wide).
+const onlyIds = (() => {
+  const arg = process.argv.find((a) => a.startsWith('--ids='));
+  return arg ? new Set(arg.slice(6).split(',').filter(Boolean)) : null;
+})();
+const COMBAT_ANATOMY_CALIBRATIONS = check || onlyIds
   ? (await import('../src/vehicles/combatAnatomyCalibrations.ts')).COMBAT_ANATOMY_CALIBRATIONS
   : Object.freeze({});
 const round = (value) => Number(value.toFixed(4));
@@ -616,7 +622,9 @@ function receiptFor(id) {
 }
 
 const rows = {};
+for (const id of onlyIds ?? []) if (!ALL_TANK_IDS.includes(id)) throw new Error(`[combat-anatomy] unknown id ${id}`);
 for (const id of ALL_TANK_IDS) {
+  if (onlyIds && !onlyIds.has(id) && COMBAT_ANATOMY_CALIBRATIONS[id]) { rows[id] = COMBAT_ANATOMY_CALIBRATIONS[id]; continue; }
   rows[id] = receiptFor(id);
   console.log(`[combat-anatomy] measured ${id}`);
 }

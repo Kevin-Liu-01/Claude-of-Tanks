@@ -43,7 +43,10 @@ for (const [id, d] of Object.entries(NATIONAL_DONOR_TURRETS)) {
     assert.deepEqual(spec.armor.turretPivot, [...d.pivot], `${id}: combat pivot on the ring seat`);
     assert.deepEqual(spec.armor.gunPivot, donorSpec.armor.gunPivot, `${id}: the donor's trunnion`);
     assert.deepEqual(spec.armor.gunBarrel, donorSpec.armor.gunBarrel, `${id}: the donor's barrel`);
-    const names = (plates) => [...new Set(plates.filter((p) => p.kind !== 'era').map((p) => p.name))].sort();
+    // Authored plates only: the anatomy calibration appends each vehicle's own measured roof structures (cupolas,
+    // hatches: <frame>_<kind>_<nn>_<face>) from its own geometry.
+    const structure = /^turret_[a-z_]+_\d{2}_(front|rear|left|right|top)$/;
+    const names = (plates) => [...new Set(plates.filter((p) => p.kind !== 'era' && !structure.test(p.name)).map((p) => p.name))].sort();
     assert.deepEqual(names(spec.armor.turretPlates), names(donorSpec.armor.turretPlates), `${id}: the donor turret's plates`);
     const turretModules = (s) => s.armor.modules.filter((m) => m.turretLocal).map((m) => m.module).sort();
     assert.deepEqual(turretModules(spec).filter((m) => m !== 'roofGun'), turretModules(donorSpec).filter((m) => m !== 'roofGun'),
