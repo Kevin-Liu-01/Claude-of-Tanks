@@ -436,12 +436,20 @@ the same ground; a peer stamps each crater once, from its event or, settled, fro
 from taking it), and its prediction rides the bowl. No route-grid refresh: a bowl 1.6–6 m wide under a 25 m cell's
 sample point changes nothing a route reads. Receipt: `sim/destructionCraters.selftest.mjs`.
 
-Every mode's ruleset keeps `craters: false` until the drawn terrain follows the overlay (the render below): a bowl the
-simulation digs under a flat drawn ground would sink hulls into it. A tool or a test passes its own rules to try them.
+Every mode that plays destruction digs craters since DST-04 (2026-10-15; `CRATERS_SWITCH` on, §9): the drawn terrain
+follows the overlay (the render below) and so does every ray. A tool or a test passes its own rules to try others.
 
-**Not yet (P3):** the world raycasts (shells and sight lines) march the base terrain, not the overlay: a heap stops
-nothing a ray passes over and a crater's bowl is read at the old ground. Heaps are at most 2.6 m and sight lines run at
-hull height, so P1 lives with it; P3 hands the deformed field to the world's terrain march.
+**The world's rays read the dug ground (DST-04, 2026-10-15).** Both worlds' ray marches — `world/map.ts` (solo, a
+network seat, the Studio) and `world/headlessCollisionWorld.ts` (the authority) — sample the base's fast height plus the
+bound overlay as drawn (`contactOffsetAt`, the lattice the terrain mesh follows); the march's upward ceiling counts the
+overlay's raise and a terrain hit takes the dug ground's normal. Shells, spotting's `hardLos`, the bots' looks and gun
+lanes, the drones' avoidance, the roof gun's check and the aim all read it: a heap stops what passes into it, a gun in
+a bowl fires out of it, a hull in a bowl is seen and struck over the rim, never through phantom ground. The authority
+binds its match's ground on its own (match-local) world; the solo smoke reads the match's ground as the authority's
+does. The presentation's running gear and the Studio's hulls stand on the same dug ground
+(`world/liveHeightFieldProxy.ts createDugHeightFieldProxy`). Receipt: `world/groundOverlayRaycast.selftest.mjs`.
+The drawn bowl is the lattice's: its deepest point reaches 78 % of the law's depth for a 125 mm crater (R 1.67 m), 89 %
+for a 152 mm shell and 95 % for the gunship's howitzer (R 3.44 m), the rim all of its height.
 
 **Render (P3).** The ground mesh is updated in place: the lattice vertices inside a stamp's influence, on every
 terrain LOD level that covers them, take `offsetAt(vertex)`, their normals are recomputed locally, and the position
@@ -609,8 +617,8 @@ readonly destruction: {
 };
 ```
 
-Craters stay off in every mode behind one switch, `CRATERS_SWITCH` in `sim/matchRuleset.ts`, until the switch-on gates
-pass. The column says what each mode takes once they ship. **Sections**
+Craters follow one switch, `CRATERS_SWITCH` in `sim/matchRuleset.ts`: on since DST-04 (2026-10-15), after the switch-on
+gates below. The column says what each mode takes. **Sections**
 (`readonly sections: boolean`, P2 §3.4) follow `structures` in every mode behind `SECTIONS_SWITCH`, off until their
 gates pass (the receipts below, paired pacing and fairness, the determinism and world-events audits with sections on,
 the cost of the openings-aware rays, and the motion strips of a wall panel coming down from a metre up, storeys dropping
