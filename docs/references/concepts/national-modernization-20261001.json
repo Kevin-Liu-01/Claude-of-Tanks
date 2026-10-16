@@ -315,12 +315,12 @@
       "hullWidthM": 4.363,
       "widthM": 4.363,
       "overallLengthM": 10.8464,
-      "tallestM": 3.2736,
+      "tallestM": 3.3286,
       "specDimensions": {
         "hullLengthM": 6.8784,
         "overallLengthM": 10.704791405,
         "widthM": 4.363,
-        "heightM": 3.2736
+        "heightM": 3.3286
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",

@@ -67,7 +67,10 @@ function fitDonorTurret(P:TankBuilderPort,id:string,kit:()=>void):void {
  const d=buildNationalDonorTurret(P,id),l=NATIONAL_ROOF_LOADOUTS[id];
  // The pedestal stands on the cupola's own top: probes stay inside its rim (the 99A2's commander periscope stands just
  // outside a 0.16 m ring and held the Qilin's station 3 cm in the air).
- const [x,z]=d.station,base=donorTurretSeatY(P,x,z,.12);
+ const [x,z]=d.station,top=donorTurretSeatY(P,x,z,.12),riser=d.stationRiserM??0,base=top+riser;
+ // The Qilin's 99A2 commander sight stands tall beside the cupola: a short adapter collar lifts the station so its
+ // barrel clears that sight at full depression, seated on the cupola's top.
+ if(riser>0)P.addEquipment('turretDetail',cylY(.20,.21,riser+.006,32),x,top+riser/2-.003,z);
  nationalRoofWeapon(P,[x,base,z],null,l);
  P.turretG.userData.nationalDonorStation={seat:[x,base,z],loadout:l.name};
  kit();

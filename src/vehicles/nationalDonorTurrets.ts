@@ -23,6 +23,9 @@ export interface NationalDonorTurret {
   station: readonly [number, number];
   /** National turret ERA sectors the kit adds where the donor turret has no ERA plate of that name. */
   addedTurretEra?: readonly string[];
+  /** A machined adapter collar between the cupola's top and the station's pedestal (metres), where the station's barrel
+   * at full depression must clear a tall donor sight beside the cupola. */
+  stationRiserM?: number;
   /** Listed overall height (ground to the tallest fitting, the roof weapon included), measured on the built concept. */
   heightM?: number;
   /** Extra options for the donor's own turret builder; each defaults to the donor's own output (e.g. antennaSeats for the
@@ -54,7 +57,7 @@ const TYPE96B_CUPOLA = [-.592, -.045 + .15] as const;
 
 export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret>> = {
   // The 99A2's right-rear whip stood inside the Qilin station's sweep from the cupola: it moves to the bustle corner.
-  t72b3_qilin: { donor: 'ztz99a2', pivot: ZTZ99A2_ON_T72B3, roofY: .83, station: ZTZ99A2_CUPOLA, heightM: 3.2736,
+  t72b3_qilin: { donor: 'ztz99a2', pivot: ZTZ99A2_ON_T72B3, roofY: .83, station: ZTZ99A2_CUPOLA, stationRiserM: .055, heightM: 3.3286,
     builderOptions: { antennaSeats: [[-1.06, -1.58], [1.06, -2.00]] } },
   t72b3m_kunlun: { donor: 'type96b', pivot: TYPE96B_ON_T72B3M, roofY: .70, station: TYPE96B_CUPOLA, heightM: 3.48048,
     addedTurretEra: ['turret_era_L', 'turret_era_R'],
