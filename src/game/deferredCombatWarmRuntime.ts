@@ -49,6 +49,8 @@ interface WarmTrace {
   /** When the countdown's hold was released (before the vision programs, which warm in the battle's background). */
   releasedAtPreBattleS?: number | null;
   releasedBeforeRollout?: boolean;
+  /** Where the count stood when the rare effects (warmed after the hold) were done. */
+  rareFinishedAtPreBattleS?: number | null;
   /** The vision warm's steps: one real frame each. */
   visionSteps?: number;
   error?: string;
@@ -226,19 +228,26 @@ export function createDeferredCombatWarmRuntime<
       trace.stages.terrainLookahead = Math.round(now() - terrainLookaheadStartedAt);
       trace.terrainLookaheadJobs = terrainLookaheadJobs;
 
-      await unlessLinksUnfinished('rarePrograms', () => combatWarm.warmRareChunked(6, guardedYield));
-      Object.assign(trace.stages, host.__COMBAT_RARE_WARM?.stages || {});
-
-      // (2026-10-16, the perf lane) the countdown's hold ends here, before the vision programs: the pre-battle count waits
-      // on this flag (preBattleCountdown.ts: held at 3 while warm work is pending), and the thermal sights are not
-      // needed to roll out. Their warm runs on in the battle's background, one bounded step a real frame (a compile
-      // slice of at most 8 ms, one link poll, or one actor's private first-bind render), each step restoring every
-      // material it swapped before it yields (thermalVehicles.warmSteps). A sight opened before its tank is warm
-      // compiles and links its variant at that first draw, as every sight did before this warm existed: a one-time
-      // hitch, never a stall.
+      // (2026-10-16, the perf lane; the coordinator's ruling: "a count held at 3 is a visible stall") the countdown's
+      // hold ends here, before the rare effects and the vision programs: the pre-battle count waits on this flag
+      // (preBattleCountdown.ts: held at 3 while warm work is pending), and neither is needed to roll out. They warm on in
+      // the battle's background, rare effects first (a first kill can come within seconds of rollout), then the sights,
+      // each capped a frame: the rare effects' steps take at most their 6 ms slice a frame (a real frame at each of
+      // their program checkpoints: combatWarmCoordinator COMBAT_WARM_PROGRAM_CHECKPOINT), the vision programs one bounded
+      // step a real frame (a compile slice of at most 8 ms, one link poll, or one actor's private first-bind render),
+      // every material restored before each yield (thermalVehicles.warmSteps). A kill before its variant is warm, or a
+      // sight opened before its tank is, compiles and links that variant at its first draw (nothing drains the rare
+      // warm on a kill: combatWarm.drain runs only at a non-deferred battle start and in shot mode): a one-time hitch,
+      // as before these warms existed, never a stall.
       trace.releasedAtPreBattleS = Number.isFinite(game.preBattleS) ? game.preBattleS ?? null : null;
       trace.releasedBeforeRollout = game.phase === 'battle' && typeof game.preBattleS === 'number' && game.preBattleS > 0;
       releaseHold();
+
+      const rareStartedAt = now();
+      await unlessLinksUnfinished('rarePrograms', () => combatWarm.warmRareChunked(6, guardedYield));
+      Object.assign(trace.stages, host.__COMBAT_RARE_WARM?.stages || {});
+      trace.stages.rareEffects = Math.round(now() - rareStartedAt);
+      trace.rareFinishedAtPreBattleS = Number.isFinite(game.preBattleS) ? game.preBattleS ?? null : null;
 
       const visionStartedAt = now();
       await unlessLinksUnfinished('visionPrograms', async () => {

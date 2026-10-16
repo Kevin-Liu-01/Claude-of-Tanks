@@ -34,7 +34,7 @@ const owner = createDeferredCombatWarmRuntime({
       await yieldForBudget(true);
     },
     async warmRareChunked(_budget, yieldForBudget) {
-      events.push('rare');
+      events.push(pending ? 'rare-held' : 'rare');
       await yieldForBudget(true);
     },
   },
@@ -66,7 +66,7 @@ assert.equal(pending, false, 'completed deployment warm releases rollout gate');
 assert.equal(owner.isActive(), false, 'completed queue releases its ownership slot');
 assert.deepEqual(events.slice(0, 4), ['first-frame', 'enemy-visuals', 'yield-forced', 'opening']);
 assert.deepEqual(events.slice(events.indexOf('rare')), ['rare', 'yield-forced', 'vision', 'yield-forced', 'vision-step-2'],
-  'the vision programs warm last, after the countdown\'s hold is released, one real frame a step');
+  'the rare effects, then the vision programs, warm after the countdown\'s hold is released (vision one real frame a step)');
 assert.equal(globalThis.__BATTLE_DEFERRED_WARM.releasedBeforeRollout, true, 'the hold was released before the count ran out');
 assert.equal(events.filter((event) => event === 'route').length, 3,
   'route preparation drains until the first empty job');
