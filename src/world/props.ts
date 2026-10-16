@@ -441,9 +441,11 @@ export const HAY_CRATE_SITES: Readonly<Record<string, number>> = Object.freeze({
  * lower (1.4 m over grade), so at 3 m two drivable cells north of the middle work lost their cover from the south and
  * the map's middle-band cover share fell from 0.300 to 0.299, under MAP-LAYOUT-BRIEF.md's 0.30 floor; at 5 m the work
  * screens them again (both works' pillboxes step back, the bands all hold: tools/map-layout-metrics.mjs). Kept here
- * rather than in the map module, whose authoring the relief receipts pin.
+ * rather than in the map module, whose authoring the relief receipts pin. (225 gate, 2026-10-15: on 225 the regional kits'
+ * sliver-triangle filter moved Glacier's share back to 0.299 at 5 m; 6 m, inside the 4.5-7 m span where every band held,
+ * gives it its margin.)
  */
-export const PILLBOX_SET_BACK_M: Readonly<Record<string, number>> = Object.freeze({ alpine: 5 });
+export const PILLBOX_SET_BACK_M: Readonly<Record<string, number>> = Object.freeze({ alpine: 6 });
 
 interface PropsSettings {
   sourcedPalette?: BuildingPaletteId;
