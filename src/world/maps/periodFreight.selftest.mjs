@@ -11,6 +11,7 @@ import { ISO_CONTAINER_INTRODUCED, FREIGHT_MIX, drawsPeriodFreight, freightForm,
 import { makeContainerRow } from './railKit.ts';
 import { attachStructureBuildContext } from './exteriorDetailKit.ts';
 import { ARCHITECTURE_STYLES } from './regional/index.ts';
+import { assertR2 } from '../../../tools/r2-standard.mjs';
 
 function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 function counted(seed) { const inner = mulberry32(seed); const r = () => { r.calls++; return inner(); }; r.calls = 0; return r; }
@@ -104,6 +105,28 @@ for (const id of ['airfield', 'whiteout', 'mars']) {
   assert.ok(a.buckets.steel.length > 0, `${id}: its boxes`);
   assert.deepEqual(a.buckets.steel.map((g) => Array.from(g.getAttribute('position').array.slice(0, 12))),
     b.buckets.steel.map((g) => Array.from(g.getAttribute('position').array.slice(0, 12))), `${id}: deterministic`);
+}
+
+// 5. (the r2 sweep, 2026-10-16: the rows graded box share 0.92-0.97, their upper crates and sheets' lashings floating) each
+// pre-container row to the bunker r2 standard as its merged buckets draw it: the stacks' solids (their collision) as
+// they were, their new joinery dressing (no collision, no draw from the seat's stream) welded to them. Six rows a map.
+const soup = (list) => {
+  const flat = list.map((g) => (g.index ? g.toNonIndexed() : g));
+  const coloured = flat.every((g) => g.attributes.color), out = new THREE.BufferGeometry();
+  for (const [name, size] of [['position', 3], ...(coloured ? [['color', 3]] : [])]) {
+    out.setAttribute(name, new THREE.Float32BufferAttribute(flat.flatMap((g) => [...g.attributes[name].array]), size));
+  }
+  return out;
+};
+for (const id of drawn) {
+  for (const seed of [1, 2, 3, 5, 8, 13]) {
+    const { buckets } = build(id, seed);
+    const parts = {};
+    for (const [k, list] of Object.entries(buckets)) if (list.length) parts[k] = [soup(list)];
+    assertR2({ kind: `structure:containerRow@${id}/${seed}`, maps: [id], route: 'house', caps: { near: 12000 },
+      resolve: () => ({ form: `period-freight:${id}`, build: () => parts }) });
+    for (const g of all(buckets)) g.dispose();
+  }
 }
 
 console.log(JSON.stringify({ test: 'periodFreight', isoYear: ISO_CONTAINER_INTRODUCED, periodRows: drawn }));

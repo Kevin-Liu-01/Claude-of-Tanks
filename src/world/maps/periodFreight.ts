@@ -230,11 +230,36 @@ function cores(parts: StackParts, local: Rng, w: number, h: number, l: number, u
 function bearers(parts: StackParts, local: Rng, w: number, l: number, count: number): void {
   for (let i = 0; i < count; i++) {
     const z = -l / 2 + 0.35 + (l - 0.7) * (count === 1 ? 0.5 : i / (count - 1)) + (local() - 0.5) * 0.12;
-    const g = paint(box(w + 0.16 + local() * 0.1, BEARER_H, 0.16, 0.55), local, TIMBER_GREY, 0.08);
-    g.rotateY((local() - 0.5) * 0.06);
-    g.translate((local() - 0.5) * 0.06, BEARER_H / 2, z);
+    const len = w + 0.16 + local() * 0.1;
+    const g = paint(box(len, BEARER_H, 0.16, 0.55), local, TIMBER_GREY, 0.08);
+    const yaw = (local() - 0.5) * 0.06, dx = (local() - 0.5) * 0.06;
+    g.rotateY(yaw);
+    g.translate(dx, BEARER_H / 2, z);
     parts.structureWood.push(fresh(g));
+    // its sawn ends, a hair proud (in its own pose: turned and moved as the bearer was)
+    const ends = new Dressing(), c = Math.cos(yaw), sn = Math.sin(yaw);
+    const pose = (p: readonly number[]) => [p[0] * c + p[2] * sn + dx, p[1] + BEARER_H / 2, -p[0] * sn + p[2] * c + z];
+    for (const e of [-1, 1]) {
+      const x = e * len / 2, q = [[x, -BEARER_H / 2, -0.08], [x, -BEARER_H / 2, 0.08], [x, BEARER_H / 2, 0.08], [x, BEARER_H / 2, -0.08]].map(pose);
+      const tip = pose([x + e * 0.008, 0, 0]), out = [e * c, 0, -e * sn];
+      for (let k = 0; k < 4; k++) ends.tri(q[k], q[(k + 1) % 4], tip, out);
+    }
+    parts.structureWood.push(ends.geometry(0x7a7266));
   }
+}
+
+/** A box part's distinct corners (to the millimetre). */
+function boxCorners(g: THREE.BufferGeometry): number[][] {
+  const p = g.attributes.position, seen = new Map<string, number[]>();
+  for (let i = 0; i < p.count; i++) {
+    const key = `${Math.round(p.getX(i) * 1000)},${Math.round(p.getY(i) * 1000)},${Math.round(p.getZ(i) * 1000)}`;
+    if (!seen.has(key)) seen.set(key, [p.getX(i), p.getY(i), p.getZ(i)]);
+  }
+  return [...seen.values()];
+}
+/** The four corners of a box's end: the four greatest along `key`, ordered by `order` (ascending). */
+function endOf(list: number[][], key: (p: number[]) => number, order: (p: number[]) => number): number[][] {
+  return [...list].sort((a, b) => key(b) - key(a)).slice(0, 4).sort((a, b) => order(a) - order(b));
 }
 
 /**
@@ -284,7 +309,7 @@ function tarpStack(parts: StackParts, local: Rng, mapId: string, upper: boolean)
     parts.baked.push(fold.geometry(pick(tones, 0.5), 0.92));
   }
   // the lashings: over the ridge (two slanted pieces) and down each side to the bearer end
-  const lashes = 3 + (local() < 0.5 ? 1 : 0), hitches = new Dressing();
+  const lashes = 3 + (local() < 0.5 ? 1 : 0), rope = new Dressing(), overs: THREE.BufferGeometry[] = [];
   const halfTop = (w * 0.94 + 0.06) / 2, slope = Math.atan2(ridge, halfTop), run = Math.hypot(halfTop, ridge);
   for (let i = 0; i < lashes; i++) {
     const z = -l / 2 + 0.6 + (l - 1.2) * (i / (lashes - 1)) + (local() - 0.5) * 0.2;
@@ -293,16 +318,30 @@ function tarpStack(parts: StackParts, local: Rng, mapId: string, upper: boolean)
       over.rotateZ(-s * slope);
       over.translate(s * halfTop / 2, h + BEARER_H + ridge / 2 + 0.018, z);
       parts.baked.push(fresh(over));
+      overs.push(over);
       const down = paint(box(0.03, h - 0.02, 0.04, 0.5), local, ROPE, 0.08);
       down.rotateZ(s * 0.025);
       down.translate(s * ((w + 0.06) / 2 + 0.012), BEARER_H + (h - 0.02) / 2, z);
       parts.baked.push(fresh(down));
-      // the lashing's hitch at its foot: the rope turned through an eyelet in the sheet's hem
-      const footX = s * ((w + 0.06) / 2 + 0.012 + Math.sin(0.025) * (h - 0.02) / 2);
-      hitches.quadBox(s * ((w + 0.06) / 2 - 0.02), footX + s * 0.012, BEARER_H - 0.01, BEARER_H + 0.07, z - 0.028, z + 0.028);
+      // the rope turned over the eave from the top's run into its fall, and at its foot through an eyelet in the sheet's
+      // hem: the turn and the hitch share the runs' end corners, one rope
+      const run0 = boxCorners(overs[overs.length - 1]), fall = boxCorners(down);
+      const outward = (p: number[]) => s * p[0];
+      const eave = endOf(run0, outward, (p) => p[2] * 1000 + p[1]);         // [z-, lo], [z-, hi], [z+, lo], [z+, hi]
+      const head = endOf(fall, (p) => p[1], (p) => p[2] * 1000 + outward(p)); // [z-, in], [z-, out], [z+, in], [z+, out]
+      // (a's and b's corners in the same order round the rope, [z-, low], [z-, high], [z+, low], [z+, high]: its faces
+      // the z- side, the high side, the z+ side, the low side)
+      const ring = (a: number[][], b: number[][], high: number[], low: number[]) => {
+        const o = [0, 1, 3, 2], outs = [[0, 0, -1], high, [0, 0, 1], low];
+        for (let k = 0; k < 4; k++) rope.quad(a[o[k]], a[o[(k + 1) % 4]], b[o[(k + 1) % 4]], b[o[k]], outs[k]);
+      };
+      ring(eave, head, [s, 1, 0], [-s, -1, 0]);
+      const foot = endOf(fall, (p) => -p[1], (p) => p[2] * 1000 + outward(p));
+      const eye = foot.map((p) => [p[0] - s * 0.045, p[1] - 0.03, p[2]]);
+      ring(foot, eye, [s, -1, 0], [-s, 1, 0]);
     }
   }
-  if (!hitches.empty) parts.baked.push(hitches.geometry(ROPE, 0.85));
+  if (!rope.empty) parts.baked.push(rope.geometry(ROPE, 0.9));
 }
 
 /** The distinct corners of a part's positions at height `y` (to the millimetre), in order round the y axis. */
