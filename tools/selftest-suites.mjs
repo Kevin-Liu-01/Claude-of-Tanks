@@ -1065,6 +1065,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/mp-rooms-p2p-e2e.selftest.mjs',
     'tools/mp-exit-e2e.selftest.mjs',
     'tools/mp-p2p-headless.selftest.mjs',
+    'tools/mp-p2p-headless-crash.selftest.mjs', // 2026-10-14 the MP stream: a crashed host's peers elect at once on their evidence (§13.22)
     'tools/mp-world-events-audit.selftest.mjs',
     // 2026-10-02 (ghost-crunch lane): the audit's ghost findings as deterministic authority → presentation scenarios.
     'tools/mp-world-events-scenarios.selftest.mjs',

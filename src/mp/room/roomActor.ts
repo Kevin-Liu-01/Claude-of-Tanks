@@ -29,7 +29,8 @@
  */
 import type { SeatClaims } from '../../../server/match/seatToken.ts';
 import {
-  ROOM_ADMIN_DISCONNECT_GRACE_MS, ROOM_CHAT_HISTORY, ROOM_CLIENT_MESSAGE, ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_IDLE_TTL_MS,
+  ROOM_ADMIN_DISCONNECT_GRACE_MS, ROOM_CHAT_HISTORY, ROOM_CLIENT_MESSAGE, ROOM_HOST_DISCONNECT_GRACE_MS, ROOM_HOST_UNREACHABLE_AFTER_MS,
+  ROOM_HOST_UNREACHABLE_TTL_MS, ROOM_IDLE_TTL_MS,
   ROOM_MATCH_LOST_AFTER_POLLS, ROOM_MATCH_POLL_MS, ROOM_MATCH_REPORT_STALE_AFTER_MS, ROOM_MAX_REGION_CHARS, ROOM_MAX_SEATS, ROOM_RATE_MAX_MESSAGES,
   ROOM_RATE_WINDOW_MS, ROOM_RELAY_ROOM_LIMIT, ROOM_RELAY_SEAT_LIMIT, ROOM_RELAY_WINDOW_MS, ROOM_RESUME_TOKEN_RE, ROOM_SEAT_DISCONNECT_TTL_MS,
   ROOM_SEAT_TOKEN_TTL_MS, ROOM_SERVER_MESSAGE, ROOM_SIGNAL_MAX_BYTES,
@@ -214,6 +215,11 @@ export class RoomActor {
   private hostReport: P2pHostReport | null = null;
   private hostReportDueAt: number | null = null;
   private steppedDown = new Set<string>();
+  /**
+   * Host-loss evidence (2026-10-14, §13.22): peers of the running p2p match that said they hear nothing from its host,
+   * playerId → when. Transient (a few seconds' worth): not persisted; the socket lease still covers a restart.
+   */
+  private hostUnreachable = new Map<string, number>();
   /** playerId → the reap deadline of a disconnected seat (2026-09-30). */
   private seatLeases = new Map<string, number>();
   private readonly sockets = new Map<string, RoomSocketRecord>();
@@ -457,6 +463,8 @@ export class RoomActor {
         if (this.runningP2pHostId() === socket.playerId) this.hostLeaseAt = now + ROOM_HOST_DISCONNECT_GRACE_MS;
         this.broadcastState();
         this.persist();
+        // a peer already hears nothing from this host: its page is gone, not its socket blipping (§13.22)
+        this.electIfHostLost(now);
       }
     }
     this.reschedule();
@@ -697,6 +705,10 @@ export class RoomActor {
     }
     if (command.type === 'match_report') {
       this.matchReport(socket, message, playerId, command);
+      return;
+    }
+    if (command.type === 'host_unreachable') {
+      this.hostUnreachableClaim(socket, message, playerId, command, now);
       return;
     }
     const kicked = command.type === 'kick' ? cleanId(command.playerId, 'unknown_player') : null;
@@ -958,7 +970,40 @@ export class RoomActor {
   }
 
   /** The running p2p match is over (verdict, or nobody left to host): tokens, report and leases go; the election clears. */
+  /**
+   * `host_unreachable` (2026-10-14, §13.22): a commander of the running p2p match, not its host, hears nothing from the
+   * host of the current generation. The claim is kept for ROOM_HOST_UNREACHABLE_TTL_MS; with the host's room socket gone
+   * too the room elects at once. Always acknowledged (a stale generation or a hearing peer changes nothing).
+   */
+  private hostUnreachableClaim(socket: RoomSocketRecord, message: RoomEnvelope, playerId: string, command: Record<string, unknown>, now: number): void {
+    const generation = command.generation, silentMs = command.silentMs;
+    if (typeof generation !== 'number' || !Number.isSafeInteger(generation) || generation < 0 ||
+        typeof silentMs !== 'number' || !Number.isFinite(silentMs) || silentMs < 0) throw new RoomError('invalid_command');
+    const room = this.room!;
+    const hostId = this.runningP2pHostId();
+    const player = room.players.find((entry) => entry.id === playerId);
+    if (hostId && hostId !== playerId && player && player.team !== 'spectator' && generation === room.host.generation &&
+        silentMs >= ROOM_HOST_UNREACHABLE_AFTER_MS) {
+      this.hostUnreachable.set(playerId, now);
+      this.electIfHostLost(now);
+    }
+    this.send(socket.id, { type: ROOM_SERVER_MESSAGE.ACK, ...(message.requestId ? { requestId: message.requestId } : {}), payload: { revision: room.revision } });
+  }
+
+  /** The running host's room socket is gone and a peer heard nothing from it within the claim window: elect now (§13.22). */
+  private electIfHostLost(now: number): void {
+    const hostId = this.runningP2pHostId();
+    if (!hostId || this.socketOfPlayer.has(hostId) || this.hostLeaseAt === null) return;
+    const witnesses = [...this.hostUnreachable].filter(([playerId, at]) => playerId !== hostId && now - at <= ROOM_HOST_UNREACHABLE_TTL_MS);
+    if (!witnesses.length) return;
+    this.log('info', 'host lost: its socket is gone and its peers hear nothing', { host: hostId, witnesses: witnesses.map(([playerId]) => playerId).join(','),
+      leaseLeftMs: Math.max(0, this.hostLeaseAt - now) });
+    // the same election the lease would hold at its end, without the wait (old clients read the detail they know)
+    this.migrateHost(now, 'timeout', false, 'socket_lease');
+  }
+
   private endP2pMatch(): void {
+    this.hostUnreachable.clear();
     this.matchTokens.clear();
     this.hostReport = null;
     this.hostReportDueAt = null;
@@ -1040,6 +1085,7 @@ export class RoomActor {
     this.hostReport = null;
     this.hostReportDueAt = now + ROOM_MATCH_REPORT_STALE_AFTER_MS;
     this.hostLeaseAt = null;
+    this.hostUnreachable.clear();
     room.revision++;
     this.touch(now);
     this.persist();

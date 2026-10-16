@@ -2197,6 +2197,30 @@ a preparation in flight awaited, a different battlefield or a failed preparation
 boot or a stop), `mp-p2p-headless.selftest` (the elected peer hosts on the one thread it prepared: `p2Cores` 1,
 `bootedPrepared`).
 
+### 13.22 A crashed host's peers vouch for its loss (MP stream, 2026-10-14)
+
+**Why.** The pagehide hand-off (§13.19) covers a host that closes, reloads or navigates; a host whose tab crashes, whose
+browser is killed or whose machine sleeps sends nothing, and the room waited out the 8 s socket lease
+(`ROOM_HOST_DISCONNECT_GRACE_MS`) before electing — 223's production window measured 8.4 s, the headless crash 8.0 s.
+The lease exists for a room-socket blip: a host whose page lives keeps feeding its peers over WebRTC while its room
+socket reconnects, and electing then would move a healthy match.
+
+**What.** The peers tell the two cases apart. A peer welcomed by the current host that has accepted no snapshot for
+`ROOM_HOST_UNREACHABLE_AFTER_MS` (1.5 s) sends `host_unreachable { generation, silentMs }`, again every
+`ROOM_HOST_UNREACHABLE_REPEAT_MS` while the silence lasts (a page that itself stalled, a frame gap over 500 ms, restarts
+its count). The room keeps each claim for `ROOM_HOST_UNREACHABLE_TTL_MS` (3 s), and when the running host's room socket is
+gone (the lease armed) and a commander other than the host claims within that window — before or after the drop — it
+elects at once: `host_changed { reason: 'timeout', detail: 'socket_lease' }`, the election the lease would have held,
+logged as `host lost` with its witnesses. A claim with the host's socket alive (a busy host page) and a socket gone
+with no claim (a blip) change nothing; the host's own claim, another generation, a spectator, a silence under 1.5 s are
+acknowledged and ignored. Additive: a room that predates the command refuses it (the client ignores the refusal), and the
+`host_changed` it sends is one every tab already reads. The room double (`tools/mp-p2p-room-double.ts`) mirrors the rule.
+
+Receipts: `roomActor.selftest` (the rule's cases on the real actor), `mp-p2p-headless-crash.selftest` (the headless flow
+with the production lease: the host's socket and links drop at once, both peers claim, elected 2.1 s after the crash
+against 8.0 s), `mp-p2p-headless.selftest`, `mp-room-lifecycle.selftest`, `roomWorkerProgram.selftest` (the Worker
+program typechecks). Ships with the rooms Worker (a planned Worker release) and the client; either alone is inert.
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers
