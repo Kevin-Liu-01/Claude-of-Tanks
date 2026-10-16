@@ -43,8 +43,15 @@ export interface ShedWreck {
   boardW: number;
   back: boolean;
   ends: boolean;
-  /** the covering's bucket and a coloured bucket's paint; its debris shape */
-  roof: { bucket: RegionalBucket; colour: Rgb | null; shape: 'tile' | 'slate' | 'splinter' | 'sheet' | 'straw' };
+  /** the covering's bucket and a coloured bucket's paint; its debris shape (null: a shed with no roof of its own) */
+  roof: { bucket: RegionalBucket; colour: Rgb | null; shape: 'tile' | 'slate' | 'splinter' | 'sheet' | 'straw' } | null;
+  /**
+   * masonry bodies of the build (a kažun's dry-stone round, an oven's dome on its block): each slumps into a heap of its
+   * own stones round a ragged stub of its lowest courses, its radius and height, the shed's frame
+   */
+  masses?: ReadonlyArray<{ x: number; z: number; r: number; h: number; bucket: RegionalBucket }>;
+  /** a doorway's lintel (a monolith over a dry-stone door): it falls across the doorway, its middle and length, its run */
+  lintel?: { x: number; z: number; len: number; yaw: number } | null;
   /** a stone back wall: its bucket, thickness and top */
   stone: { bucket: RegionalBucket; t: number; top: number } | null;
   /** the stacked wood's height (0: none) */
@@ -58,7 +65,7 @@ export interface ShedWreck {
 export function recordShed(sink: PartSink, legs: Array<{ foot: Vec3; head: Vec3 }>, wreck: Omit<ShedWreck, 'o' | 'ax' | 'az'>): void {
   const o = sink.framePoint([0, 0, 0]), px = sink.framePoint([1, 0, 0]), pz = sink.framePoint([0, 0, 1]);
   const full: ShedWreck = { ...wreck, o, ax: [px[0] - o[0], 0, px[2] - o[2]], az: [pz[0] - o[0], 0, pz[2] - o[2]] };
-  recordLattice(sink, legs, [Math.max(...wreck.posts.map((p) => p[3]))], wreck.post, 'structureWood', wreck.timber, null, full);
+  recordLattice(sink, legs, [Math.max(0.5, ...wreck.posts.map((p) => p[3]))], wreck.post, 'structureWood', wreck.timber, null, full);
 }
 
 type Writers = { mesh: DamageMeshWriter; pieces: DamagePieceWriter };
@@ -71,8 +78,8 @@ export function collapseShed(anatomy: StructureDamageAnatomy, shed: ShedWreck, s
   const mesh = new Mesh(out.mesh);
   const { W, D } = shed;
   const tints = (anatomy.kitPlan as { regional?: { tints?: WeatherTints } } | undefined)?.regional?.tints;
-  const roofBucket = WEATHER_ROUTE[shed.roof.bucket] ?? shed.roof.bucket;
-  const roofTint: Rgb = shed.roof.colour ?? tints?.roof ?? [0.85, 0.85, 0.85];
+  const roofBucket = shed.roof ? WEATHER_ROUTE[shed.roof.bucket] ?? shed.roof.bucket : 'regionalRoof';
+  const roofTint: Rgb = shed.roof?.colour ?? tints?.roof ?? [0.85, 0.85, 0.85];
   const stoneBucket = shed.stone ? WEATHER_ROUTE[shed.stone.bucket] ?? shed.stone.bucket : 'regionalStone';
   const padBucket = shed.pad ? WEATHER_ROUTE[shed.pad.bucket] ?? shed.pad.bucket : 'regionalStone';
   const stoneTint: Rgb = tints?.stone ?? [0.85, 0.85, 0.85];
@@ -139,6 +146,31 @@ export function collapseShed(anatomy: StructureDamageAnatomy, shed: ShedWreck, s
   }
   mesh.end();
 
+  // ---- the masonry bodies: a ragged ring of their lowest courses, their stones heaped inside and out, a lintel down
+  for (const m of shed.masses ?? []) {
+    const bucket = WEATHER_ROUTE[m.bucket] ?? m.bucket, tint: Rgb = m.bucket === 'stone' ? stoneTint : tints?.plaster ?? [0.85, 0.85, 0.85];
+    if (!mesh.begin(bucket, 'rubble')) continue;
+    const ring = Math.max(8, Math.round(m.r * 2 * Math.PI / 0.55));
+    for (let k = 0; k < ring; k++) {
+      const a = (k + rng() * 0.3) / ring * Math.PI * 2, top = 0.25 + rng() * rng() * 0.9;
+      const x = m.x + Math.cos(a) * (m.r - 0.25), z = m.z + Math.sin(a) * (m.r - 0.25);
+      box(bucket, [x, (top - 0.3) / 2, z], [Math.cos(a), 0, Math.sin(a)], [0, 1, 0], [-Math.sin(a), 0, Math.cos(a)], 0.28, (top + 0.3) / 2, 0.3, mulK(tint, 0.85 + rng() * 0.25));
+    }
+    const n = Math.min(60, Math.round(m.r * m.r * 9));
+    for (let k = 0; k < n; k++) {
+      const a = rng() * Math.PI * 2, d = Math.sqrt(rng()) * m.r * 1.25, x = m.x + Math.cos(a) * d, z = m.z + Math.sin(a) * d;
+      // (on the rubble mound's skin: the sim raises the ground under the heap, the stones lie on it, a few on each other)
+      const sz = 0.14 + rng() * 0.16, yaw = rng() * Math.PI, stack = k % 4 === 3 ? sz * 1.1 : 0;
+      box(bucket, [x, ground(x, z) + sz * 0.55 + stack, z], [Math.cos(yaw), 0, Math.sin(yaw)], [0, 1, 0], [-Math.sin(yaw), 0, Math.cos(yaw)], sz * 1.4, sz * 0.6, sz, mulK(tint, 0.8 + rng() * 0.3));
+    }
+    if (shed.lintel) {
+      const l = shed.lintel, tilt = 0.25 + rng() * 0.3, ux: Vec3 = [Math.cos(l.yaw) * Math.cos(tilt), Math.sin(tilt), Math.sin(l.yaw) * Math.cos(tilt)];
+      box(bucket, [l.x, ground(l.x, l.z) + 0.1 + Math.sin(tilt) * l.len * 0.45, l.z], ux, [-Math.cos(l.yaw) * Math.sin(tilt), Math.cos(tilt), -Math.sin(l.yaw) * Math.sin(tilt)],
+        [-Math.sin(l.yaw), 0, Math.cos(l.yaw)], l.len / 2, 0.11, 0.16, mulK(tint, 0.95));
+    }
+    mesh.end();
+  }
+
   // ---- the pads where the posts stood
   if (shed.pad && mesh.begin(padBucket, 'remnant')) {
     const p = shed.pad, tint = p.colour ?? stoneTint;
@@ -176,7 +208,7 @@ export function collapseShed(anatomy: StructureDamageAnatomy, shed: ShedWreck, s
   const lengths = D > 3.2 ? 3 : 2;
   const shift = fwd * W * (0.18 + rng() * 0.16);
   const panels: Array<{ c: Vec3; ux: Vec3; uy: Vec3; uz: Vec3; hl: number; hw: number }> = [];
-  for (let k = 0; k < lengths; k++) {
+  for (let k = 0; k < (shed.roof ? lengths : 0); k++) {
     const z0 = Z0 + (Z1 - Z0) * k / lengths + (k ? 0.06 : 0), z1 = Z0 + (Z1 - Z0) * (k + 1) / lengths - (k < lengths - 1 ? 0.06 : 0);
     const zc = (z0 + z1) / 2 + (along ? fz * 0.5 : 0);
     // the low edge (the front's, or the back's when it fell backward) on the ground, the high edge propped
@@ -227,7 +259,7 @@ export function collapseShed(anatomy: StructureDamageAnatomy, shed: ShedWreck, s
     }
     // the front beam down along the open side in two lengths, the wall plate under the roof's high edge
     const xfb = (fwd >= 0 ? W / 2 + 0.4 : W / 2 - 0.3) + shift * 0.5;
-    for (const [z0, z1] of [[-D / 2, -0.15 + (rng() - 0.5) * 0.6], [0.15, D / 2]] as const) {
+    for (const [z0, z1] of shed.posts.length && shed.roof ? [[-D / 2, -0.15 + (rng() - 0.5) * 0.6], [0.15, D / 2]] as const : []) {
       const ya = ground(xfb, z0) + 0.09, yb = ground(xfb + 0.2, z1) + 0.09;
       beam([xfb, ya, z0], [xfb + (rng() - 0.5) * 0.5, yb, z1], 0.16, 0.16, [0, 1, 0], mulK(timber, 0.92));
     }
@@ -274,14 +306,16 @@ export function collapseShed(anatomy: StructureDamageAnatomy, shed: ShedWreck, s
   mesh.end();
 
   // ---- the throw: boards and splinters, the covering's own pieces, down the fall
-  const cover = shed.roof.shape;
+  const cover = shed.roof?.shape ?? 'stone';
   for (let i = 0; i < out.pieces.capacity; i++) {
     const t = rng(), wood = i % 3 === 0;
     const x = (rng() - 0.5) * W + fx * t * W * 0.6, z = (rng() - 0.5) * D + fz * t * W * 0.6;
     const p = B(x, 0.6 + (1 - t) * 1.6, z);
-    const ok = wood
+    const ok = wood && (shed.boards || shed.posts.length)
       ? throwPieceAt(out.pieces, rng, 'structureWood', rng() < 0.5 ? 'beam' : 'splinter', p, [0.06 + rng() * 0.05, 0.03, 0.4 + rng() * 0.7], boardTint, 3)
-      : throwPieceAt(out.pieces, rng, roofBucket, cover, p, [0.18 + rng() * 0.12, 0.03, 0.22 + rng() * 0.14], roofTint, 3);
+      : shed.roof ? throwPieceAt(out.pieces, rng, roofBucket, cover, p, [0.18 + rng() * 0.12, 0.03, 0.22 + rng() * 0.14], roofTint, 3)
+        : throwPieceAt(out.pieces, rng, shed.masses?.length ? WEATHER_ROUTE[shed.masses[0].bucket] ?? shed.masses[0].bucket : 'regionalStone', 'stone', p,
+          [0.14 + rng() * 0.12, 0.1 + rng() * 0.08, 0.16 + rng() * 0.12], stoneTint, 3);
     if (!ok) break;
   }
   void peak;

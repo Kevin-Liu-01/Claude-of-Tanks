@@ -476,3 +476,122 @@ export function openShed(sink: PartSink, plan: ShedPlan, d: ShedDialect, look: (
 export function coveringRise(covering: ShedCovering): number {
   return COURSES[covering].butt + 0.01;
 }
+
+/** A round dry-stone or brick body (a kažun, an oven's dome): see `coursedRound`. */
+export interface RoundSpec {
+  /** the centre, the wall's outer radius, height and thickness */
+  cx: number;
+  cz: number;
+  R: number;
+  wallH: number;
+  T: number;
+  /** a course's height and a stone's (or brick's) length along the face */
+  course: number;
+  stone: number;
+  /** the corbelled cone over the wall in `rings` rings stepping in to a capstone of radius `cap`, `rise` high */
+  cone: { rings: number; rise: number; cap: number } | null;
+  bucket: RegionalBucket;
+  /** the doorway: its direction (radians about y from +x), its width and height (a monolith lintel and jambs) */
+  door: { angle: number; w: number; h: number } | null;
+  mobile: boolean;
+}
+
+/**
+ * A round body laid in courses (the props census #17, 2026-10-15, the judges on the kažun: "the wall and cone as courses
+ * of rough stones (stepped corbel rings with uneven stone faces) and a capstone; cut the doorway through the 0.6 m wall
+ * with a monolith lintel and jambs and a dark interior"): a structural core (the wall's ring, open at the door, and the
+ * cone's frustum) under its stones, each stone its own face, top and ends, a little proud or shy of its neighbours and
+ * its own tone, every course half a stone round from the one under it; the cone's rings stepping in, their ledges
+ * showing; the doorway cut through the ring with its jambs, its lintel over it and the dark of the hut behind.
+ * Returns the top and the lintel (for the wreck).
+ */
+export function coursedRound(sink: PartSink, spec: RoundSpec, look: () => number): { top: number; lintel: { x: number; z: number; len: number; yaw: number } | null } {
+  const { cx, cz, R, wallH, T, bucket } = spec;
+  const P = (a: number, y: number, r: number): Vec3 => [cx + Math.cos(a) * r, y, cz + Math.sin(a) * r];
+  const door = spec.door;
+  const gap = door ? Math.asin(Math.min(0.95, (door.w / 2 + 0.2) / R)) : 0, doorTop = door ? door.h + 0.22 : 0;
+  // the core: the wall's ring (open at the door to the lintel's top), the wall over the door, the cone's frustum, the cap
+  const ad = door ? door.angle : 0;
+  sink.cylinder(bucket, [cx, -0.3, cz], 'y', wallH + 0.3, R - 0.03, 18, {}, R - 0.03, false, door ? gap - ad : 0, door ? Math.PI * 2 - 2 * gap : Math.PI * 2);
+  if (door) sink.cylinder(bucket, [cx, doorTop, cz], 'y', wallH - doorTop, R - 0.03, 3, {}, R - 0.03, false, -(ad + gap), 2 * gap);
+  let top = wallH;
+  if (spec.cone) {
+    const c = spec.cone;
+    sink.cylinder(bucket, [cx, wallH - 0.01, cz], 'y', c.rise, R - 0.06, 16, {}, c.cap - 0.02, false);
+    top = wallH + c.rise;
+    sink.cylinder(bucket, [cx, top - 0.02, cz], 'y', 0.16, c.cap + 0.1, 10, {});
+    top += 0.14;
+  }
+  // the gap's range of angles (the stones there stop at the jambs under the lintel)
+  const inGap = (a: number): boolean => {
+    if (!door) return false;
+    let d = (a - ad) % (Math.PI * 2);
+    if (d > Math.PI) d -= Math.PI * 2;
+    if (d < -Math.PI) d += Math.PI * 2;
+    return Math.abs(d) < gap;
+  };
+  const stone = (a0: number, a1: number, y0: number, y1: number, ro: number, rIn: number): void => {
+    const am = (a0 + a1) / 2, out: Vec3 = [Math.cos(am), 0, Math.sin(am)];
+    const opts: EmitOptions = { decor: true, fine: true, shade: 0.8 + look() * 0.26 };
+    facing(sink, bucket, P(a0, y0, ro), P(a1, y0, ro), P(a1, y1, ro), P(a0, y1, ro), out, opts);
+    facing(sink, bucket, P(a0, y1, ro), P(a1, y1, ro), P(a1, y1, rIn), P(a0, y1, rIn), [0, 1, 0], opts);
+    facing(sink, bucket, P(a0, y0, rIn), P(a0, y0, ro), P(a0, y1, ro), P(a0, y1, rIn), [Math.sin(a0), 0, -Math.cos(a0)], opts);
+    facing(sink, bucket, P(a1, y0, rIn), P(a1, y0, ro), P(a1, y1, ro), P(a1, y1, rIn), [-Math.sin(a1), 0, Math.cos(a1)], opts);
+  };
+  const ringOf = (r: number, y0: number, y1: number, k: number, rIn: number, cutDoor: boolean): void => {
+    const n = Math.max(5, Math.round(Math.PI * 2 * r / spec.stone)), step = Math.PI * 2 / n, phase = (k % 2) * step / 2 + look() * step * 0.2;
+    for (let i = 0; i < n; i++) {
+      let a0 = phase + i * step + 0.006, a1 = a0 + step - 0.012;
+      if (cutDoor) {
+        // clip the stone to the jambs (a whole stone in the gap goes)
+        if (inGap(a0) && inGap(a1)) continue;
+        if (inGap(a1)) a1 = ad - gap + Math.round((a1 - (ad - gap)) / (Math.PI * 2)) * Math.PI * 2;
+        else if (inGap(a0)) a0 = ad + gap + Math.round((a0 - (ad + gap)) / (Math.PI * 2)) * Math.PI * 2;
+        if (a1 - a0 < 0.04) continue;
+      }
+      const jog = (look() - 0.5) * 0.015;
+      stone(a0, a1, y0 + jog, y1 + jog * 0.5, r + 0.005 + look() * 0.035, rIn);
+    }
+  };
+  sink.dressing(spec.mobile, () => {
+    const courses = Math.max(3, Math.round((wallH + 0.25) / spec.course)), h = (wallH + 0.25) / courses;
+    for (let k = 0; k < courses; k++) {
+      const y0 = -0.25 + k * h;
+      ringOf(R, y0, y0 + h, k, R - 0.08, y0 < doorTop);
+    }
+    if (spec.cone) {
+      const c = spec.cone, hr = c.rise / c.rings;
+      for (let j = 0; j < c.rings; j++) {
+        const r = R + (c.cap - R) * j / c.rings, rNext = R + (c.cap - R) * (j + 1) / c.rings;
+        ringOf(r, wallH + j * hr, wallH + (j + 1) * hr, courses + j, rNext - 0.06, false);
+      }
+    }
+  });
+  if (!door) return { top, lintel: null };
+  // the doorway: the reveal's sides through the wall, the jambs, the threshold and the lintel, the dark of the hut
+  const out: Vec3 = [Math.cos(ad), 0, Math.sin(ad)];
+  const face: Face = { origin: [cx + out[0] * R, 0, cz + out[2] * R], u: [out[2], 0, -out[0]], out, width: door.w + 0.6 };
+  const hw = door.w / 2;
+  for (const side of [-1, 1]) {
+    faceBox(sink, bucket, face, side * (hw + 0.12), door.h / 2, -T / 2 + 0.03, 0.24, door.h, T, { shade: 0.88 });
+  }
+  faceBox(sink, bucket, face, 0, door.h + 0.11, -T / 2 + 0.06, door.w + 0.7, 0.22, T + 0.12, {});
+  faceBox(sink, bucket, face, 0, -0.06, -T / 2 + 0.05, door.w + 0.1, 0.12, T + 0.1, { decor: true, shade: 0.85 });
+  sink.quad('dark', facePoint(face, -hw, 0, -T + 0.02), facePoint(face, hw, 0, -T + 0.02), facePoint(face, hw, door.h, -T + 0.02), facePoint(face, -hw, door.h, -T + 0.02), {});
+  const lp = facePoint(face, 0, 0, 0.5);
+  return { top, lintel: { x: lp[0], z: lp[2], len: door.w + 0.7, yaw: Math.atan2(face.u[2], face.u[0]) + 0.35 } };
+}
+
+/**
+ * Record a masonry build for its wreck (shedFall.ts): it slumps into a heap of its own stones round a stub of its
+ * lowest courses (`r`, `h` its radius and height about (x, z) of the emitting frame), the lintel down across its door.
+ */
+export function recordMasonry(sink: PartSink, m: { x: number; z: number; r: number; h: number; bucket: RegionalBucket },
+  lintel: { x: number; z: number; len: number; yaw: number } | null, stone: Rgb = [0.6, 0.58, 0.54]): void {
+  const legs = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sz]) => ({ foot: [m.x + sx * m.r, 0, m.z + sz * m.r] as Vec3, head: [m.x + sx * m.r, m.h, m.z + sz * m.r] as Vec3 }));
+  recordShed(sink, legs, {
+    W: 2 * m.r, D: 2 * m.r, pitchDeg: 0, eaveY: m.h, eave: 0, verge: 0, deck: 0, post: 0.3, posts: [], pad: null, timber: stone,
+    boards: null, boardW: 0.2, back: false, ends: false, roof: null, stone: null, pile: 0,
+    masses: [{ x: m.x, z: m.z, r: m.r, h: m.h, bucket: m.bucket }], lintel,
+  });
+}
