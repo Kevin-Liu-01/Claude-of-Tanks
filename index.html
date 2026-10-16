@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <!-- MOBILE-UX r1: pinch must never zoom the PAGE (pinch-out is the scope
-       gesture in battle — touchControls.js). maximum-scale/user-scalable stop
-       spec-compliant mobile browsers; iOS Safari ignores user-scalable, so
-       touchControls.js also cancels its non-standard gesture* pinch events.
+       gesture in battle — touchControls.ts). maximum-scale/user-scalable stop
+       spec-compliant mobile browsers; iOS Safari and every desktop browser
+       ignore them for a pinch, so the inline guard below (handed over to
+       ui/pinchZoomGuard.ts at boot) cancels ctrl+wheel and Safari's gesture*
+       pinch events from first paint.
        viewport-fit=cover exposes env(safe-area-inset-*) on notched phones —
        the touch HUD keeps its controls off the notch/home bar with them. -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
@@ -101,14 +103,40 @@
     // iOS third-party browsers can expose a layout viewport that is taller or
     // shorter than the actually visible page. Seed the real visual dimensions
     // before first paint; responsiveLayout.ts keeps these values live once the
-    // application module has loaded.
+    // application module has loaded. A pinch only magnifies: the visible area
+    // is measured as it is at pinch scale 1 (visual size x scale), the rule of
+    // responsiveLayout.ts layoutViewportSize(), so a page loaded or restored
+    // zoomed still lays out at its real size.
     (() => {
       const viewport = window.visualViewport;
       const root = document.documentElement;
-      const width = Math.max(1, Math.round(viewport?.width || window.innerWidth || 1));
-      const height = Math.max(1, Math.round(viewport?.height || window.innerHeight || 1));
+      const scale = viewport && Number.isFinite(viewport.scale) && viewport.scale > 0 ? viewport.scale : 1;
+      const width = Math.max(1, Math.round(viewport?.width ? viewport.width * scale : window.innerWidth || 1));
+      const height = Math.max(1, Math.round(viewport?.height ? viewport.height * scale : window.innerHeight || 1));
       root.style.setProperty('--cot-viewport-width', `${width}px`);
       root.style.setProperty('--cot-viewport-height', `${height}px`);
+    })();
+    // The game's pinch guard from first paint (ui/pinchZoomGuard.ts, the same
+    // rule: a ctrl+wheel or Safari gesture* pinch never zooms the page in; a
+    // page already zoomed in may zoom back out). main.ts only evaluates after
+    // its whole import graph has loaded; installPinchZoomGuard() then takes
+    // over and calls the remover left under the boot-guard symbol.
+    (() => {
+      const zoomedIn = () => (window.visualViewport?.scale || 1) > 1.01;
+      const guard = (event) => {
+        const cancel = event.type === 'wheel'
+          ? event.ctrlKey === true && !(zoomedIn() && event.deltaY > 0)
+          : !zoomedIn() || (event.type === 'gesturechange' && !(event.scale < 1));
+        if (cancel) event.preventDefault();
+      };
+      const options = { passive: false, capture: true };
+      const gestures = ['gesturestart', 'gesturechange', 'gestureend'];
+      for (const type of gestures) document.addEventListener(type, guard, options);
+      window.addEventListener('wheel', guard, options);
+      window[Symbol.for('claude-of-tanks.pinch-zoom-boot-guard')] = () => {
+        for (const type of gestures) document.removeEventListener(type, guard, { capture: true });
+        window.removeEventListener('wheel', guard, { capture: true });
+      };
     })();
   </script>
   <script type="module" src="/src/ui/localeBootstrap.ts"></script>

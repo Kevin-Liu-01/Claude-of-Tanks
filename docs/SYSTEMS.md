@@ -405,7 +405,14 @@ ctrl+wheel everywhere) is `ui/pinchZoomGuard.ts`, installed at boot in
 `main.ts` right after the responsive layout: it used to live only inside the
 touch controls, which a desktop never constructs, so a desktop trackpad pinch
 zoomed the browser and every visual-viewport-pinned surface folded into the
-zoomed corner (2026-09-20). Keyboard zoom stays available.
+zoomed corner (2026-09-20). Keyboard zoom stays available. Since 2026-10-15
+index.html's inline head script carries the same rule from first paint (the
+module guard takes over from it), the listeners run in the capture phase (the
+Studio dock's `stopPropagation` let a pinch past), and a page that is already
+zoomed in may always pinch back out. The Studio canvas zoom follows the same
+`wheelNotches.ts` travel model; DOM rails and the key-binding capture ignore
+ctrl+wheel. Pinch-zoom itself is no longer a layout event anywhere: see
+`responsiveLayout.ts` in PERFORMANCE.md.
 
 `garageReturnRuntime.ts` owns the opposite transition through three operations:
 immediate covered entry, player-facing leave, and Battle Again. It clears

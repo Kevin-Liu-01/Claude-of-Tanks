@@ -2,6 +2,7 @@ import { loadHudPreview, type HudPreviewScene } from './hudEditorScene.ts';
 import { createModal } from './modal.ts';
 import { t } from './i18n.ts';
 import { uiIconSVG, type UiIconId } from './uiIcons.ts';
+import { layoutViewportSize } from './responsiveLayout.ts';
 import { HUD_PARTS, hudCenter, hudProfile, readHudPreferences, saveHudPreferences,
   type HudPartId, type HudProfile } from './hudPreferences.ts';
 
@@ -17,7 +18,9 @@ function element<K extends keyof HTMLElementTagNameMap>(tag:K,cls:string,parent:
 /** Lazy editor: one still scene, inert HUD snapshots, no second renderer/simulation. */
 export function openHudEditor(trigger:HTMLElement):void {
   const draft=readHudPreferences();
-  const activeProfile=hudProfile(innerWidth,innerHeight,document.body.classList.contains('cot-touch-layout'));
+  // the viewport the runtime HUD customisation places parts in (hudCustomization.ts), so both pick one profile
+  const liveSize=():[number,number]=>{const {width,height}=layoutViewportSize(window);return [width,height];};
+  const activeProfile=hudProfile(...liveSize(),document.body.classList.contains('cot-touch-layout'));
   let scene:HudPreviewScene|null=null;
   let request:AbortController|null=null, closed=false;
   let zoom=1;
@@ -156,7 +159,7 @@ export function openHudEditor(trigger:HTMLElement):void {
     request?.abort();scene?.frame.remove();scene=null;delete modal.root.dataset.previewReady;
     stage.querySelectorAll('.hud-edit-part').forEach(node=>node.remove());list.replaceChildren();
     request=new AbortController();const pending=request;
-    [vw,vh]=profile===activeProfile?[innerWidth,innerHeight]:SIZES[profile];
+    [vw,vh]=profile===activeProfile?liveSize():SIZES[profile];
     stage.style.width=`${vw}px`;stage.style.height=`${vh}px`;
     for(const [id,b] of profileButtons)b.setAttribute('aria-pressed',String(profile===id));
     loading.hidden=false;loading.textContent=label('loading');save.disabled=true;inspector.inert=true;fit();

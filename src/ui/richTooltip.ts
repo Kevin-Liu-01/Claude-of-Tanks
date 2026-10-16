@@ -1,3 +1,5 @@
+import { layoutViewportSize } from './responsiveLayout.ts';
+
 /** A single reusable, viewport-clamped tooltip for delegated hover/focus/tap targets. */
 let serial = 0;
 export function createRichTooltip(host: HTMLElement, selector: string, content: (target: HTMLElement) => HTMLElement | null) {
@@ -23,7 +25,9 @@ export function createRichTooltip(host: HTMLElement, selector: string, content: 
   function position() {
     if (!anchor) return;
     const bounds = anchor.getBoundingClientRect();
-    const w = window.visualViewport?.width || innerWidth, h = window.visualViewport?.height || innerHeight;
+    // anchor rects and the fixed popover are layout-viewport coordinates: clamp in that space, so a pinch only
+    // magnifies the tooltip where it would sit unzoomed
+    const { width: w, height: h } = layoutViewportSize(window);
     const above = Math.max(0, bounds.top - 18), belowSpace = Math.max(0, h - bounds.bottom - 18);
     const useBelow = belowSpace >= above;
     tip.style.maxHeight = `${Math.max(48, useBelow ? belowSpace : above)}px`;

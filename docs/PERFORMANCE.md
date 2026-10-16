@@ -949,6 +949,22 @@ their own device-label breakpoints. Native display density and internal scene
 resolution remain independent: phones retain native DOM/canvas presentation,
 while the 3D renderer may scale within the output-pixel and quality budgets.
 
+A pinch is a magnifier, never a resize (2026-10-15, owner: "using both my
+fingers on track pad to like expand the screen in landing causes a bunch of
+weirdness and layout shifts"). Desktop trackpad pinch and phone pinch zoom the
+visual viewport, whose width and height shrink by the zoom scale while the
+layout viewport stays put. `layoutViewportSize()` measures the visible area
+as it is at scale 1 (visual size x scale): exactly the visual viewport at
+scale 1, which keeps the iOS third-party-browser and on-screen-keyboard cases,
+and the unchanged layout size under any zoom. The size variables, bands, panel
+policy, `cot:layoutchange` and so the renderer only move on a real window
+resize, browser zoom (cmd +/-, which changes the CSS-pixel viewport and fires
+a window resize) or an orientation change; a zoomed pan schedules nothing, and
+unchanged values are never rewritten. The index.html seed, the battle HUD
+lanes, HUD customisation and editor, and rich tooltips read the same helper.
+The public pages keep browser pinch-zoom for accessibility; the game page
+cancels it (`ui/pinchZoomGuard.ts`).
+
 Panel policy (2026-09-19, owner: "we're cutting it all off a lil too early, it's
 not mobile yet but we already lost all the side panel details"): a fine-pointer
 window keeps the two persistent Garage sidebars from

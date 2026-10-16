@@ -355,8 +355,8 @@ onPaintStall(({ phase, waitedMs }) => entryTelemetry.send({
 // before HUD/garage construction so their first visible frame already has the
 // correct width, height, orientation and interaction-mode attributes.
 installResponsiveLayout();
-// Browser pinch-zoom is never a page zoom here (2026-09-20): every surface is pinned to the visual viewport,
-// so a zoomed browser folded the UI into a corner; the guard used to exist only inside the touch controls.
+// Browser pinch-zoom is never a page zoom here (2026-09-20; the guard used to exist only inside the touch
+// controls). index.html's inline copy guards the splash from first paint; this hands over from it (2026-10-15).
 installPinchZoomGuard();
 // Apply static i18n attributes to the boot screen so the credits button,
 // gate prompt, and retry button respect the active locale from first paint.

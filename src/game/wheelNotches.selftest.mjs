@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {
-  PINCH_GAIN, WHEEL_GESTURE_GAP_MS, WHEEL_NOTCH_PX, createWheelNotcher, wheelDeltaPx, wheelNotchUnits,
+  PINCH_GAIN, WHEEL_DOLLY_MAX_UNITS, WHEEL_GESTURE_GAP_MS, WHEEL_NOTCH_PX, createWheelNotcher, wheelDeltaPx,
+  wheelDollyFactor, wheelNotchUnits,
 } from './wheelNotches.ts';
 
 // delta modes: a mouse click is one notch in every mode
@@ -46,5 +48,27 @@ assert.equal(wheelNotchUnits({ deltaY: -8, ctrlKey: true }), -8 / WHEEL_NOTCH_PX
   assert.equal(notcher.push({ deltaY: -60 }, WHEEL_GESTURE_GAP_MS + 100), -1);
   notcher.reset();
   assert.equal(notcher.push({ deltaY: -60 }, WHEEL_GESTURE_GAP_MS + 200), 0);
+}
+// a continuous dolly (the Studio orbit): one click is exactly the old 12 % step; a pinch glides a bounded distance
+{
+  const close = 1e-12;
+  assert.ok(Math.abs(wheelDollyFactor(wheelNotchUnits({ deltaY: 100 }), 0.12) - 1.12) < close, 'a click out is one 12 % notch');
+  assert.ok(Math.abs(wheelDollyFactor(wheelNotchUnits({ deltaY: -100 }), 0.12) - 0.88) < close, 'a click in is one 12 % notch');
+  assert.equal(wheelDollyFactor(0, 0.12), 1, 'a sideways swipe (deltaY 0) does not dolly');
+  assert.equal(wheelDollyFactor(Number.NaN, 0.12), 1);
+  assert.equal(wheelDollyFactor(40, 0.12), Math.pow(1.12, WHEEL_DOLLY_MAX_UNITS), 'a flung wheel is clamped per event');
+  let distance = 40;
+  for (let i = 0; i < 30; i++) distance *= wheelDollyFactor(wheelNotchUnits({ deltaY: -5, ctrlKey: true }), 0.12);
+  // per-event stepping took 40 m to 40 x 0.88^30 = 0.86 m (the 3 m clamp); by travel it is 40 x 0.88^3.75
+  assert.ok(Math.abs(distance - 40 * Math.pow(0.88, 30 * 5 / WHEEL_NOTCH_PX * PINCH_GAIN)) < 1e-9);
+  assert.ok(distance > 20, `one ordinary pinch dollies a bounded distance (40 m -> ${distance.toFixed(1)} m)`);
+}
+// every camera zoom consumer reads the shared model (the Studio was missed on 2026-09-19)
+{
+  const studio = readFileSync(new URL('./studio.ts', import.meta.url), 'utf8');
+  const onWheel = studio.slice(studio.indexOf('function onWheel(e: WheelEvent)'), studio.indexOf('function typingInUI('));
+  assert.match(onWheel, /wheelNotchUnits\(e\)/, 'the Studio camera follows the distance scrolled');
+  assert.match(onWheel, /wheelDollyFactor\(units, 0\.12\)/, 'the Studio orbit keeps its 12 % notch');
+  assert.doesNotMatch(onWheel, /e\.deltaY < 0 \? 1 : -1/, 'no per-event zoom step remains');
 }
 console.log('wheelNotches.selftest: mouse clicks, trackpad scrolls and pinches map to the same notch scale');

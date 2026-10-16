@@ -128,8 +128,15 @@ try {
   assert.equal(body.hasAttribute('data-cot-battle-layout'),false,'hidden battle releases side lanes');
   root.visible=true;root.attrs.style='';change(root,'style','display:none');flush();
   assert.equal(body.hasAttribute('data-cot-battle-layout'),true);
+  // a trackpad pinch shrinks the visual viewport by its scale but not the layout the HUD root is sized to: the
+  // lanes keep their geometry and nothing is rewritten
+  const beforePinch=writes;
+  Object.assign(viewport,{scale:2,width:683,height:384});listeners.get('cot:layoutchange')();flush();
+  assert.equal(writes,beforePinch,'a 2x pinch leaves every HUD lane where it was');
+  Object.assign(viewport,{scale:1,width:1366,height:768});
+  assert.equal(listeners.has('viewport:resize'),false,'no direct visual viewport listener: cot:layoutchange carries real changes');
   const before=properties.get('--hud-right-height');
-  viewport.height=420;listeners.get('viewport:resize')();flush();
+  viewport.height=420;listeners.get('cot:layoutchange')();flush();
   assert.notEqual(properties.get('--hud-right-height'),before,'virtual keyboard changes available space');
   const late=node({class:'cot-room-chat quiet'});visibleNodes.push(late);
   callbacks.mutation([{type:'childList',target:body}]);
@@ -180,7 +187,9 @@ try {
 const layout=readFileSync(new URL('./battleHudLayout.ts',import.meta.url),'utf8');
 const hud=readFileSync(new URL('./hud.ts',import.meta.url),'utf8');
 assert.match(layout,/new ResizeObserver\(schedule\)/,'map zoom and roster size changes relayout the lanes');
-assert.match(layout,/visualViewport\?\.addEventListener\('resize'/,'virtual keyboard/visual viewport changes reflow');
+assert.match(layout,/window\.addEventListener\('cot:layoutchange', schedule\)/,'virtual keyboard/visual viewport changes reflow through the shared layout event');
+assert.match(layout,/layoutViewportSize\(window\)/,'lanes measure the shared pinch-independent viewport');
+assert.doesNotMatch(layout,/visualViewport\?\.(width|height)/,'no raw visual viewport size (a pinch shrinks it)');
 assert.match(layout,/window\.addEventListener\('cot-hud-relayout', schedule\)/,'the network strip can request a relayout from outside the root');
 assert.match(hud,/\.cot-ear\.r\{right:0;top:var\(--hud-roster-top-right,52px\);\}/,'the right roster reads its lane from the layout, with its own lane as the fallback');
 assert.match(hud,/installBattleHudLayout\(root\)/);
