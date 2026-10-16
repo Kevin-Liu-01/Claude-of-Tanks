@@ -25,6 +25,9 @@ export interface NationalDonorTurret {
   addedTurretEra?: readonly string[];
   /** Listed overall height (ground to the tallest fitting, the roof weapon included), measured on the built concept. */
   heightM?: number;
+  /** Extra options for the donor's own turret builder; each defaults to the donor's own output (e.g. antennaSeats for the
+   * ZTZ-99A2: whips moved out of the concept station's sweep). */
+  builderOptions?: Readonly<Record<string, unknown>>;
 }
 
 // The T-72B3 and T-72B3M rings sit exactly where their own hulls carry them. A T-72B3M turret on the T-72B3 hull keeps
