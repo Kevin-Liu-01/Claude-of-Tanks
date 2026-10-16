@@ -537,7 +537,10 @@ const bergfried: RegionalBuilder = (ctx) => {
   const b0 = frame.bodies[0];
   quoins(sink, b0.x0, b0.x1, b0.z0, b0.z1, 0.9, frame.eaveY - 0.2);
   for (const face of ['front', 'right', 'back', 'left'] as const) {
-    putlogs(sink, storeyFaces(frame, 0)[face], 1.8, frame.floors[4] - 0.4, 6, rng);
+    // (the shaft is one plane to its eaves; no hole in an opening)
+    const inOpen = (u: number, y: number) => frame.spec.openings.some((o) => o.face === face && Math.abs(u - o.u) < o.w / 2 + 0.15
+      && y > frame.floors[o.storey] + o.y0 - 0.15 && y < frame.floors[o.storey] + o.y0 + o.h + 0.15);
+    putlogs(sink, () => storeyFaces(frame, 0)[face], 1.8, frame.floors[4] - 0.4, 6, rng, inOpen);
     gunLoop(sink, storeyFaces(frame, 0)[face], (rng() - 0.5) * S * 0.3, 1.6, 1.0);
     // the corbel band under the eaves
     const f = storeyFaces(frame, 4)[face];
