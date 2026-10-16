@@ -16,9 +16,14 @@ const DRAFT: HinterlandConfig = {
   outland: { woods: 0, hedges: 0, fields: 0, settle: { villages: 0, hamlets: 0, farms: 0, works: 1 },
     relief: { arcs: [{ azDeg: [45, 140], scale: 0.15 }] } },
   landforms: [
-    // east: the plateau's edge falls ~700 m to Davis Strait in rock steps over ~1.5 km, from ~1 km past the edge; the
-    // strait's pack ice from its foot (the water below) out to the horizon
-    { kind: 'escarpment', at: { azDeg: 90, distM: 2950 }, heightM: -700, lengthM: 20000, widthM: 7600, strikeDeg: 4, name: 'the fall to Davis Strait' },
+    // east (the brief: "a lip at about 1 km instead of a ring wall; pack ice to the horizon"): the plateau's lip ~1.1 km
+    // out, the fall ~700 m to Davis Strait in rock steps over ~1.5 km below it; the strait's pack ice from its foot out to
+    // the horizon
+    { kind: 'escarpment', at: { azDeg: 90, distM: 2430 }, heightM: -700, lengthM: 20000, widthM: 7600, strikeDeg: 4, name: 'the fall to Davis Strait' },
+    // (the plateau's last half-kilometre falls ~40 m to its lip, so from the east edge the eye sees over the lip to the
+    // pack ice; the battlefield's own edge falls 8 m to the red line for it, maps/whiteout.ts — on a level plateau the
+    // ground 0.8 km out stood above every bearing of the strait and it never showed)
+    { kind: 'valley', at: { azDeg: 90, distM: 1300 }, heightM: 90, lengthM: 20000, widthM: 2000, strikeDeg: 4, name: 'the plateau falling to its lip' },
     // west and north-west: the Cumberland Peninsula's nearer peaks, glaciated, their rock faces dark over the snow
     { kind: 'massif', at: { azDeg: 292, distM: 3400 }, heightM: 640, lengthM: 3800, widthM: 2600, strikeDeg: 30, name: 'the Sunneshine peaks',
       geology: { snow: { lineM: 0 }, erosion: 0.95, gullies: 0.9 }, cover: { bare: true }, peak: { along: 0.1, share: 0.5 } },
@@ -36,7 +41,7 @@ const DRAFT: HinterlandConfig = {
   ],
   water: [
     // Davis Strait's pack in winter: snow-covered floes, grey new ice and a few dark leads, 700 m below the plateau
-    { kind: 'sea', arc: { azDeg: [20, 160] }, coastM: 3250, coastWanderM: 300, level: -700, ice: 0.9, name: 'Davis Strait' },
+    { kind: 'sea', arc: { azDeg: [20, 160] }, coastM: 2700, coastWanderM: 250, level: -700, ice: 0.9, name: 'Davis Strait' },
   ],
   far: [
     { azDeg: [210, 20], distKm: [8, 30], reliefM: 1200, form: 'alpine', layers: 2, name: 'the Cumberland Peninsula: Penny Ice Cap\'s ranges' },
