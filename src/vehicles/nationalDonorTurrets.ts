@@ -40,7 +40,9 @@ const TYPE96B_ON_T72B3M: Point3 = [0, 1.52948397398, .1143146502203];
 const ZTZ99A2_ON_T72B3: Point3 = [0, 1.457100315, .065591405];
 
 // Commander's cupolas in each donor's turret frame (their builders' own datums).
-const T72B3_CUPOLA = [-.6042, -.265 - .065591405] as const;
+// The T-72B3 cupola's raised hatch ring (t72b3X.ts roofEquipment: r .358 at -.61355, -.363), its seat 70 mm aft of the
+// ring's centre so the station's 260 mm yaw base clears the commander's sight block on the ring's front edge.
+const T72B3_CUPOLA_RING = [-.61355 - .0000002374, -.363 - .065591405 - .07] as const;
 const T72B3M_CUPOLA = [-.62689 - .0000072471277, -.24424 - .1143146502203] as const;
 const ZTZ99A2_CUPOLA = [.52, -.88] as const;
 const TYPE96B_CUPOLA = [-.592, -.045 + .15] as const;
@@ -50,7 +52,7 @@ export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret
   t72b3m_kunlun: { donor: 'type96b', pivot: TYPE96B_ON_T72B3M, roofY: .70, station: TYPE96B_CUPOLA },
   t72b3m_hetman: { donor: 't72b3m_2016', pivot: T72B3M_RING, roofY: .82, station: T72B3M_CUPOLA },
   t72b3m_hetman_ii: { donor: 't72b3m_2016', pivot: T72B3M_RING, roofY: .82, station: T72B3M_CUPOLA },
-  t72b3_sich: { donor: 't72b3', pivot: T72B3_RING, roofY: .82, station: T72B3_CUPOLA },
+  t72b3_sich: { donor: 't72b3', pivot: T72B3_RING, roofY: .82, station: T72B3_CUPOLA_RING },
   t72b3_zubr: { donor: 't72b3m_2016', pivot: T72B3M_ON_T72B3, roofY: .82, station: T72B3M_CUPOLA },
   t72b3_zubr_ii: { donor: 't72b3m_2016', pivot: T72B3M_ON_T72B3, roofY: .82, station: T72B3M_CUPOLA },
 };

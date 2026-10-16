@@ -10,6 +10,7 @@
 import * as THREE from 'three';
 import {KIT} from './kit.ts';
 import {beamBetween,blindTube} from './measuredPrimitives.ts';
+import {sectionSolid} from './sectionSolid.ts';
 import {eraCassette,supportedSensor,strappedPack} from './modernizationFittings.ts';
 import {nationalLamp,nationalEye,nationalRoofSensor} from './nationalRoofSystems.ts';
 import {ukrainianDonorHull} from './nationalUkraine.ts';
@@ -100,8 +101,8 @@ class TurretStock {
         const first=this.top(px,pz);if(!first)continue;
         const steel=this.top(px,pz,buckets,false);
         if(!steel||Math.abs(steel.point.y-first.point.y)>1e-4||steel.n.y<minNy)continue;
-        const y=steel.point.y;
-        if(upTo>y+.02&&!this.clear([px,y+.012,pz],[px,upTo,pz],radius))continue;
+        const y=steel.point.y,lift=.012+radius*Math.sqrt(1-steel.n.y*steel.n.y)/steel.n.y;
+        if(upTo>y+lift+.01&&!this.clear([px,y+lift,pz],[px,upTo,pz],radius))continue;
         return [px,y,pz];
       }
     }
@@ -120,6 +121,23 @@ function basisEuler(x:THREE.Vector3,y:THREE.Vector3):V3 {
 function footPlate(P:TankBuilderPort,at:THREE.Vector3,normal:THREE.Vector3,size:V3=[.10,.022,.09]):void {
   const g=box(...size).applyQuaternion(new THREE.Quaternion().setFromUnitVectors(UP,normal));
   P.addEquipment('turretDetail',g,...at.clone().addScaledVector(normal,size[1]/2-.004).toArray());
+}
+
+/** The highest fixed surface under a square footprint (centre, corners, edge midpoints): a level plinth's seat. */
+function levelSeat(P:TankBuilderPort,S:TurretStock,x:number,z:number,half:number):number {
+  let y=-Infinity;
+  for(const dx of [-half,0,half])for(const dz of [-half,0,half]){const h=S.top(x+dx,z+dz,FIXED,false);if(h)y=Math.max(y,h.point.y);}
+  if(!Number.isFinite(y))throw new Error(`${P.spec.id}: no level seat at ${x},${z}`);
+  return y;
+}
+
+/** A command panorama on a pedestal standing on a plate laid on the surface found under it. */
+function panorama(P:TankBuilderPort,S:TurretStock,x:number,z:number,rise:number):void {
+  const seat=S.pad(x,z,0,{search:.10,radius:.03,buckets:FIXED});
+  if(!seat)throw new Error(`${P.spec.id}: no panorama seat near ${x},${z}`);
+  const n=S.top(seat[0],seat[2],FIXED,false)?.n??UP,base=levelSeat(P,S,seat[0],seat[2],.10);
+  footPlate(P,new THREE.Vector3(...seat),n,[.24,.02,.24]);
+  supportedSensor(P,[seat[0],base+rise,seat[2]],base+.004);
 }
 
 /** One ERA cassette laid face-down on the stock a ray finds (ERA sector by side: x<0 is turret_era_L). */
@@ -183,7 +201,7 @@ function bustleCaseModule(P:TankBuilderPort,S:TurretStock,i:number,rows:number):
 
 /** A guarded lamp or a sensor head on a bracket standing on a housing top. */
 function lampOnHousing(P:TankBuilderPort,S:TurretStock,x:number,z:number,shape:NationalRoofLoadout['lamp'],rise=0):void {
-  const seat=S.pad(x,z,0,{search:.06,radius:.03});
+  const seat=S.pad(x,z,0,{search:.06,radius:.03,buckets:FIXED});
   if(!seat)throw new Error(`${P.spec.id}: no lamp seat at ${x},${z}`);
   let base=seat[1];
   if(rise>0){
@@ -196,19 +214,22 @@ function lampOnHousing(P:TankBuilderPort,S:TurretStock,x:number,z:number,shape:N
 /** The anti-drone roof cage wings, laid by fieldRoofCage.ts's rule (the rule ghillieSuit.ts rebuilds a wing by): legs
  * on a 2 x 2 grid of pads found on this turret's own steel, the frame, a row every 14.5 cm, three stringers, a brace
  * from each outer leg up to the outer tube, and the hinge barrels on the inner tube. */
-interface CageWingLayout { side:number; inner:number; outer:number; z0:number; z1:number; y:number; legX:readonly[number,number]; legZ:readonly[number,number] }
+interface CageWingLayout { side:number; inner:number; outer:number; z0:number; z1:number; y:number; legX:readonly[number,number]; legZ:readonly[number,number];
+  /** Per-row outer leg distances where a row's outer leg stands inboard of the first row's (each joined to its brace by a stub). */
+  outerAt?:readonly[number,number] }
 function roofCageWings(P:TankBuilderPort,S:TurretStock,wings:readonly CageWingLayout[]):void {
   const record:{feet:V3[];corners:V3[]}[]=[];
   const bar=(a:V3,b:V3,r=.013)=>{const g=beamBetween(a,b,r,8);g.userData.fieldRoofCage=true;P.addEquipment('turretOpenLattice',g);};
   for(const w of wings){
     const {side,inner,outer,z0,z1,y}=w,feet:V3[]=[];
-    for(const lx of w.legX)for(const z of w.legZ){
-      const x=side*lx,p=S.pad(x,z,y,{radius:.024,search:0,buckets:FIXED});
+    for(const [k,lx]of w.legX.entries())for(const [j,z]of w.legZ.entries()){
+      const x=side*(k&&w.outerAt?w.outerAt[j]:lx),p=S.pad(x,z,y,{radius:.024,search:0,buckets:FIXED});
       if(!p)throw new Error(`${P.spec.id}: roof cage has no pad at ${x},${z}`);
       feet.push(p);
     }
     for(const [x,base,z]of feet){
-      P.addEquipment('turretDetail',box(.10,.024,.11),x,base+.006,z);
+      const n=S.top(x,z,FIXED,false)?.n??UP;
+      footPlate(P,new THREE.Vector3(x,base,z),n,[.10,.024,.11]);
       bar([x,base+.01,z],[x,y,z],.021);
     }
     const corners:V3[]=[[side*inner,y,z0],[side*outer,y,z0],[side*outer,y,z1],[side*inner,y,z1]];
@@ -216,8 +237,14 @@ function roofCageWings(P:TankBuilderPort,S:TurretStock,wings:readonly CageWingLa
     const rows=Math.ceil((z1-z0)/.145);
     for(let i=1;i<rows;i++){const z=z0+(z1-z0)*i/rows;bar([side*inner,y,z],[side*outer,y,z],.008);}
     for(let i=1;i<4;i++){const x=side*(inner+(outer-inner)*i/4);bar([x,y,z0],[x,y,z1],.008);}
-    const braceX=Math.max(...w.legX);
-    for(const z of w.legZ)bar([side*braceX,y-.12,z],[side*outer,y,z],.012);
+    // ghillieSuit.ts rebuilds a brace at every leg row from the outermost leg; a row whose outer leg stands inboard
+    // carries a stub out to that brace's foot.
+    const braceX=Math.max(...feet.map(f=>Math.abs(f[0])));
+    for(const z of w.legZ){
+      bar([side*braceX,y-.12,z],[side*outer,y,z],.012);
+      const own=Math.max(...feet.filter(f=>f[2]===z).map(f=>Math.abs(f[0])));
+      if(braceX-own>.01)bar([side*own,y-.12,z],[side*braceX,y-.12,z],.012);
+    }
     for(const z of [z0+.22,z1-.22])P.addEquipment('turretDark',cylZ(.026,.09,12),side*inner,y,z);
     record.push({feet,corners});
   }
@@ -228,8 +255,12 @@ function roofCageWings(P:TankBuilderPort,S:TurretStock,wings:readonly CageWingLa
 function antenna(P:TankBuilderPort,S:TurretStock,x:number,z:number,height:number):void {
   const p=S.pad(x,z,0,{search:.10,buckets:FIXED});
   if(!p)throw new Error(`${P.spec.id}: no antenna seat at ${x},${z}`);
-  P.addEquipment('turretDetail',cylY(.055,.070,.060,12),p[0],p[1]+.026,p[2]);
-  P.addEquipment('turretDark',cylY(.007,.014,height,10),p[0],p[1]+.05+height/2,p[2]);
+  // A plate on the surface, its high edge carrying the base drum level.
+  const n=S.top(p[0],p[2],FIXED,false)?.n??UP,rise=.075*Math.sqrt(1-n.y*n.y)/n.y;
+  footPlate(P,new THREE.Vector3(...p),n,[.15,.02,.15]);
+  const base=p[1]+.014+rise;
+  P.addEquipment('turretDetail',cylY(.055,.070,.060,12),p[0],base+.026,p[2]);
+  P.addEquipment('turretDark',cylY(.007,.014,height,10),p[0],base+.05+height/2,p[2]);
 }
 
 function utilityCase(P:TankBuilderPort,S:TurretStock,x:number,z:number,w:number,h:number,d:number,yaw=0):number {
@@ -241,7 +272,7 @@ function utilityCase(P:TankBuilderPort,S:TurretStock,x:number,z:number,w:number,
     feet.push([fx,hit.point.y,fz]);
   }
   const y=Math.max(...feet.map(f=>f[1]))+.026;
-  for(const [fx,fy,fz]of feet)P.addEquipment('turretDetail',box(.045,y-fy+.012,.055),fx,(y+fy)/2-.006,fz,0,yaw,0);
+  for(const [fx,fy,fz]of feet)P.addEquipment('turretDetail',box(.045,y-fy+.004,.040),fx,(y+fy)/2-.002,fz,0,yaw,0);
   P.addEquipment('turretDetail',box(w+.035,.026,d+.035),x,y+.006,z,0,yaw,0);
   const base=y+.019;
   P.addEquipment('turretDetail',box(w,h,d),x,base+h/2-.004,z,0,yaw,0);
@@ -254,7 +285,7 @@ function utilityCase(P:TankBuilderPort,S:TurretStock,x:number,z:number,w:number,
 function cableRun(P:TankBuilderPort,S:TurretStock,points:readonly V3[],radius=.011):void {
   const seated:V3[]=points.map(([x,y,z])=>{
     const skin=S.top(x,z,FIXED,false)?.point.y??y,height=Math.max(y,skin+radius+.014);
-    P.addEquipment('turretDetail',box(.040,height-skin+.012,.046),x,(skin+height)/2-.006,z);
+    P.addEquipment('turretDetail',box(.034,height-skin+.004,.034),x,(skin+height)/2-.002,z);
     P.addEquipment('turretDetail',box(.060,.022,.034),x,height+.002,z);
     return [x,height,z];
   });
@@ -279,10 +310,10 @@ function screenArm(P:TankBuilderPort,S:TurretStock,post:V3,armY:number):boolean 
   for(const y of [armY,armY-.010,armY-.020,armY-.030,armY-.040])for(const turn of [0,.05,-.05,.10,-.10,.16,-.16,.22,-.22,.30,-.30]){
     const from=new THREE.Vector3(post[0],y,post[2]);
     const dir=inward.clone().applyAxisAngle(UP,turn);
-    const hit=S.cast(from,dir,STEEL,1.2);if(!hit||hit.distance<.08)continue;
-    const end=hit.point.clone().addScaledVector(hit.n,-.012);
+    const hit=S.cast(from,dir,['turret'],1.2);if(!hit||hit.distance<.08)continue;
+    const end=hit.point.clone().addScaledVector(hit.n,-.004);
     if(!S.clear(from.toArray(),hit.point.clone().addScaledVector(hit.n,.03).toArray(),.016,SOLID,.03))continue;
-    const plate=box(.115,.032,.115).applyQuaternion(new THREE.Quaternion().setFromUnitVectors(UP,hit.n));
+    const plate=box(.09,.028,.09).applyQuaternion(new THREE.Quaternion().setFromUnitVectors(UP,hit.n));
     plate.userData.ukrainianProtection={role:'support-pad',owner:'turret',contact:hit.point.toArray(),normal:hit.n.toArray()};
     P.addEquipment('turretDetail',plate,...hit.point.clone().addScaledVector(hit.n,.006).toArray());
     const g=beamBetween(end.toArray(),from.toArray(),.015,8);g.userData.ukrainianProtection={role:'open-cage-rod',owner:'turret'};
@@ -398,10 +429,8 @@ function hetman(P:TankBuilderPort,S:TurretStock):void {
   }
   // Radome on the roof ventilator housing behind the hatches; the command panorama on the left rear shoulder.
   {
-    const top=S.top(0,-.80,FIXED,false);if(!top)throw new Error(`${P.spec.id}: no radome seat`);
-    nationalRoofSensor(P,0,-.80,top.point.y,l);
-    const seat=S.pad(-.98,-1.02,0,{search:.10,buckets:FIXED});if(!seat)throw new Error(`${P.spec.id}: no panorama seat`);
-    supportedSensor(P,[seat[0],seat[1]+.20,seat[2]],seat[1]-.006);
+    nationalRoofSensor(P,0,-.80,levelSeat(P,S,0,-.80,.17),l);
+    panorama(P,S,-.98,-1.02,.20);
   }
   // Radio and antenna-control cases on the rear boxes, aerials on the rear corner boxes outside the station's sweep.
   for(const i of [7,9]){
@@ -413,7 +442,7 @@ function hetman(P:TankBuilderPort,S:TurretStock):void {
     if(Math.hypot(c.x-sweep.x,c.z-sweep.z)<sweep.r)throw new Error(`${P.spec.id}: aerial inside the station sweep`);
     antenna(P,S,c.x,c.z,h);
   }
-  cableRun(P,S,[[-.98,.80,-1.02],[-.80,.78,-1.30],[-.52,.80,-1.56]],.011);
+  cableRun(P,S,[[-.86,.80,-1.10],[-.76,.78,-1.32],[-.52,.80,-1.56]],.011);
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -515,7 +544,7 @@ function commandBasket(P:TankBuilderPort,S:TurretStock):void {
     const over:V3=[target[0],postTop,target[2]];
     if(!S.clear([x,floor+.03,z],[x,postTop,z],.020)||!S.clear([x,postTop,z],over,.020))throw new Error(`${P.spec.id}: basket stay ${i} is blocked`);
     beam([x,floor,z],[x,postTop,z],.022);beam([x,postTop,z],over,.022);beam(over,[target[0],target[1]+.01,target[2]],.022);
-    P.addEquipment('turretDetail',box(.11,.024,.11),target[0],target[1]+.006,target[2]);
+    footPlate(P,new THREE.Vector3(...target),S.top(target[0],target[2],FIXED,false)?.n??UP,[.11,.024,.11]);
   }
   // The rear cable drum on two arms from the rear frame.
   for(const x of [-.19,.19])beam([x,.46,-2.62],[x,.46,-2.84],.02);
@@ -560,13 +589,8 @@ function hetmanII(P:TankBuilderPort,S:TurretStock):void {
   }
   // The scanner on the roof ventilator housing; two panoramas on the rear lids of the cabinets.
   {
-    const top=S.top(0,-.80,FIXED,false);if(!top)throw new Error(`${P.spec.id}: no scanner seat`);
-    nationalRoofSensor(P,0,-.80,top.point.y,l);
-    for(const [F,fa]of [[L,fit.l.pan],[R,fit.r.pan]] as const){
-      const p=F.at(F.face-.20,fa,0),seat=S.pad(p.x,p.z,0,{search:.10,radius:.03});
-      if(!seat)throw new Error(`${P.spec.id}: no panorama seat at ${p.toArray()}`);
-      supportedSensor(P,[seat[0],seat[1]+.17,seat[2]],seat[1]-.006);
-    }
+    nationalRoofSensor(P,0,-.80,levelSeat(P,S,0,-.80,.17),l);
+    for(const [F,fa]of [[L,fit.l.pan],[R,fit.r.pan]] as const){const p=F.at(F.face-.20,fa,0);panorama(P,S,p.x,p.z,.17);}
   }
   // Aerials on the basket's rear corners, a harness from the left panorama back along the basket.
   for(const [x,z,h]of [[-1.00,-2.62,2.6],[1.00,-2.62,2.2]] as const){
@@ -578,12 +602,148 @@ function hetmanII(P:TankBuilderPort,S:TurretStock):void {
 }
 
 // ---------------------------------------------------------------------------------------------------------------
+// T-72B3 Sich: the field modernization on the T-72B3 turret
+
+/** The T-72B3 turret's side stowage cases (t72b3XEquipment.ts sideCase): each is a straight case yawed 33.3 degrees
+ * whose outer wall stands vertical (u = 1.73557 m in the case frame) above a lower inward chamfer. In this turret's
+ * frame: the wall's rear and front ends, its outward normal and run, and its heights. */
+const B3_RING:V3=[.0000002374,1.457100315,.065591405];
+interface B3Case { rear:THREE.Vector3; front:THREE.Vector3; n:THREE.Vector3; run:THREE.Vector3; floor:number; chamferTop:number; top:number; lid:number }
+function b3Case(side:number):B3Case {
+  const a=Math.atan2(.54883,.835934),c=Math.cos(a),sn=side*Math.sin(a),shift=.172150015831;
+  const at=(u:number,v:number)=>{const x=side*u,z=v;return new THREE.Vector3(x*c+z*sn+(side>0?-.0007:0)-B3_RING[0],0,-x*sn+z*c+shift-B3_RING[2]);};
+  const rear=at(1.73557,-.59),front=at(1.73557,.327),run=front.clone().sub(rear).normalize();
+  const n=new THREE.Vector3(run.z,0,-run.x);if(n.x*side<0)n.negate();
+  return {rear,front,n,run,floor:1.6165-B3_RING[1],chamferTop:1.9417-B3_RING[1],top:2.0467-B3_RING[1],lid:2.0615-B3_RING[1]};
+}
+
+/** Kontakt-style brick housings clamped on a side case's outer wall: a steel back plate on the wall, hooked over the
+ * lid and gripping under the case floor, carrying rows x cols of small cassettes seated on it by ray. */
+function caseWallBricks(P:TankBuilderPort,S:TurretStock,side:number,v0:number,v1:number,segments:number,rows:number,cols:number):B3Case {
+  const b=b3Case(side),yaw=Math.atan2(b.n.x,b.n.z),depth=.045,lip=.06;
+  const top=b.lid+.026,bottom=b.floor-.022,len=(v1-v0)/segments;
+  for(let k=0;k<segments;k++){
+    const va=v0+k*len+.006,vb=v0+(k+1)*len-.006,m=(va+vb)/2;
+    const probe=b.rear.clone().addScaledVector(b.run,m+.59).addScaledVector(b.n,.6).setY((b.chamferTop+b.top)/2);
+    const face=S.cast(probe,b.n.clone().negate(),['turretDetail'],1);
+    if(!face)throw new Error(`${P.spec.id}: side case wall not found`);
+    const H=face.point.clone().setY(0);
+    P.addExternalArmor('turret',box(vb-va,top-bottom,depth),...H.clone().addScaledVector(b.n,depth/2).setY((top+bottom)/2).toArray(),0,yaw,0);
+    P.addExternalArmor('turret',box(vb-va,.022,lip+depth),...H.clone().addScaledVector(b.n,(depth-lip)/2).setY(b.lid+.013).toArray(),0,yaw,0);
+    // The claw reaches in under the chamfer to the case floor's outer edge (lowOuter, 179 mm inside the wall).
+    P.addExternalArmor('turret',box(vb-va,.018,.20+depth),...H.clone().addScaledVector(b.n,(depth-.20)/2).setY(b.floor-.012).toArray(),0,yaw,0);
+  }
+  S.refresh();
+  const cw=(v1-v0-.02)/(segments*cols)-.014,rh=(top-bottom-.04)/rows-.014;
+  for(let k=0;k<segments*cols;k++)for(let r=0;r<rows;r++){
+    const v=v0+.01+cw/2+k*(cw+.014);
+    const y=bottom+.02+rh/2+r*(rh+.014);
+    seatedEra(P,S,b.rear.clone().addScaledVector(b.run,v+.59).addScaledVector(b.n,.7).setY(y),b.n.clone().negate(),b.run,[cw,.075,rh]);
+  }
+  return b;
+}
+
+/** A receiving housing built out from the curved cast flank (closed, chamfered, its inner face buried in the casting),
+ * carrying a block of cassettes on its vertical outer face. */
+function flankHousing(P:TankBuilderPort,S:TurretStock,side:number,z0:number,z1:number,outer:number,bottom:number,top:number,rows:number,cols:number):void {
+  const ring=(z:number):{z:number;ring:[number,number][]}=>{
+    const pts:[number,number][]=[[.92,bottom],[outer-.04,bottom],[outer,bottom+.04],[outer,top-.04],[outer-.04,top],[.92,top]];
+    if(side<0){for(const p of pts)p[0]*=-1;pts.reverse();}
+    return {z,ring:pts};
+  };
+  P.addExternalArmor('turret',sectionSolid([ring(z0),ring(z0+.03),ring(z1-.03),ring(z1)]));
+  S.refresh();
+  const cw=(z1-z0-.04)/cols-.014,rh=(top-bottom-.04)/rows-.014;
+  for(let c=0;c<cols;c++)for(let r=0;r<rows;r++){
+    const z=z0+.02+cw/2+c*(cw+.014),y=bottom+.02+rh/2+r*(rh+.014);
+    seatedEra(P,S,new THREE.Vector3(side*3,y,z),new THREE.Vector3(-side,0,0),new THREE.Vector3(0,0,1),[cw,.075,rh]);
+  }
+}
+
+/** Roof-edge cassettes laid straight on the cast shoulder (the casting's own slope), seated by ray toward the axis. */
+function shoulderEra(P:TankBuilderPort,S:TurretStock,side:number,zs:readonly number[],y:number):void {
+  for(const z of zs){
+    const dir=new THREE.Vector3(-side*.82,-.57,0).normalize(),origin=new THREE.Vector3(side*1.05,y,z).addScaledVector(dir,-.6);
+    seatedEra(P,S,origin,dir,new THREE.Vector3(0,0,1),[.22,.07,.16]);
+  }
+}
+
+/** Shovel and pry bar on clips along a side case's lid. */
+function lidTools(P:TankBuilderPort,S:TurretStock,side:number):void {
+  const b=b3Case(side),yaw=Math.atan2(b.run.x,b.run.z);
+  for(const [inset,len,r]of [[.15,.50,.016],[.25,.52,.013]] as const){
+    const a=b.rear.clone().addScaledVector(b.run,.04).addScaledVector(b.n,-inset),e=a.clone().addScaledVector(b.run,len);
+    const y=b.lid+.034;
+    P.addEquipment('turretDetail',beamBetween([a.x,y,a.z],[e.x,y,e.z],r,8));
+    for(const t of [.15,.85]){
+      const p=a.clone().lerp(e,t);
+      P.addEquipment('turretDark',box(.07,.05,.035),p.x,b.lid+.024,p.z,0,yaw,0);
+    }
+    if(inset<.2){
+      const blade=a.clone().addScaledVector(b.run,-.0);
+      P.addEquipment('turretDetail',box(.17,.014,.20),blade.x,y,blade.z,0,yaw,0);
+    }
+  }
+}
+
+const SICH_SCREEN:Path=[[-1.36,-1.24],[-1.12,-1.56],[-.72,-1.84],[.78,-1.84],[1.16,-1.56],[1.38,-1.24]];
+const sichNet=():GhillieConfig=>screenNet('t72b3_sich',SICH_SCREEN,{bottom:.14,top:.72,roof:.74,x:1.90,front:1.70,
+  sideRuns:[{side:-1,z0:-1.56,z1:-1.24},{side:1,z0:-1.56,z1:-1.24}],back:[-1.10,1.14]});
+
+function sich(P:TankBuilderPort,S:TurretStock):void {
+  const l=NATIONAL_ROOF_LOADOUTS.t72b3_sich,sweep=stationSweep(P);
+  // Kontakt-style brick banks clamped on both side cases' walls, and a receiving housing built out from the bare cast
+  // flank between the commander-side cheek bank and its case.
+  caseWallBricks(P,S,-1,-.56,.30,2,3,2);
+  caseWallBricks(P,S,1,-.56,.30,2,3,2);
+  flankHousing(P,S,-1,-.34,-.05,1.55,.06,.44,2,2);
+  S.refresh();
+  roofCageWings(P,S,[
+    {side:-1,inner:1.06,outer:1.84,z0:-1.00,z1:.12,y:1.08,legX:[1.25,1.48],legZ:[-.10,-.62]},
+    {side:1,inner:.99,outer:1.80,z0:-1.34,z1:-.62,y:1.08,legX:[1.17,1.30],legZ:[-.84,-1.20],outerAt:[1.30,1.17]},
+  ]);
+  S.refresh();
+  bustleScreen(P,S,{path:SICH_SCREEN,bottom:.14,top:.72,armY:.13,arms:[0,1,2,3,4,5],ties:3});
+  S.refresh();
+  // Slit lamps on both side cases' forward lids, raised over the cheek bank and the smoke bank; the flat sensor head on
+  // the gunner-side lid; the spine on the roof ventilator housing.
+  lampOnHousing(P,S,-1.46,-.42,l.lamp,.20);
+  lampOnHousing(P,S,1.46,-.42,l.lamp,.20);
+  {
+    const seat=S.pad(1.05,-1.02,0,{search:.06,radius:.03,buckets:FIXED});if(!seat)throw new Error(`${P.spec.id}: no sensor seat`);
+    nationalEye(P,seat[0],seat[2],seat[1],l);
+    nationalRoofSensor(P,.066,-.82,levelSeat(P,S,.066,-.82,.17),l);
+  }
+  lidTools(P,S,-1);
+  // Utility cans on the rear case's lid and the tarpaulin roll strapped beside them.
+  for(const x of [-.40,-.20])utilityCase(P,S,x,-1.53,.15,.19,.17);
+  {
+    const top=S.top(.17,-1.53,FIXED,false);if(!top)throw new Error(`${P.spec.id}: no tarp seat`);
+    P.addEquipment('turretCloth',cylX(.082,.40,18),.17,top.point.y+.082,-1.53);
+    for(const x of [.04,.30])P.addEquipment('turretDark',box(.030,.175,.181),x,top.point.y+.082,-1.53);
+  }
+  cableRun(P,S,[[-1.20,.70,-.78],[-1.08,.70,-1.05],[-.80,.74,-1.28]],.012);
+  // Aerials outside the station's sweep: the gunner-side case's rear lid and the screen's rear-left corner post.
+  {
+    const a:V3=[.50,0,-1.52];
+    if(Math.hypot(a[0]-sweep.x,a[2]-sweep.z)<sweep.r)throw new Error(`${P.spec.id}: aerial inside the station sweep`);
+    antenna(P,S,a[0],a[2],2.3);
+    const [x,z]=SICH_SCREEN[2];
+    if(Math.hypot(x-sweep.x,z-sweep.z)<sweep.r)throw new Error(`${P.spec.id}: aerial inside the station sweep`);
+    P.addEquipment('turretDetail',box(.10,.05,.10),x,.745,z);
+    P.addEquipment('turretDetail',cylY(.048,.060,.05,12),x,.795,z);
+    P.addEquipment('turretDark',cylY(.007,.013,2.0,10),x,.82+1.0,z);
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------
 
 function turretUpArmour(P:TankBuilderPort,id:UkraineDonorId):void {
   const S=new TurretStock(P);
   try {
     if(id==='t72b3m_hetman')hetman(P,S);
     else if(id==='t72b3m_hetman_ii')hetmanII(P,S);
+    else sich(P,S);
   } finally { S.dispose(); }
 }
 
@@ -603,6 +763,6 @@ function fitUkraineDonorTurret(P:TankBuilderPort,id:UkraineDonorId):void {
   turretUpArmour(P,id);
   // The hull screens stay as the national protection lays them; the turret's own screens are this kit's (above).
   addNationalUkraineProtection(P,id,{turretScreens:false});
-  addVehicleGhillieSuit(P,id==='t72b3m_hetman'?hetmanNet():id==='t72b3m_hetman_ii'?hetmanIINet():{...NATIONAL_UKRAINE_GHILLIE[id],turret:undefined});
+  addVehicleGhillieSuit(P,id==='t72b3m_hetman'?hetmanNet():id==='t72b3m_hetman_ii'?hetmanIINet():sichNet());
 }
 void markSmokeTube;void blindTube;void cylX;void torus;
