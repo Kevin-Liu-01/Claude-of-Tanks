@@ -65,14 +65,20 @@ for(const spec of Object.values(TANK_SPECS)){
 let weaponPoses=0;
 for(const spec of Object.values(TANK_SPECS)){
  const seat=missionAttachmentFor(spec);
- const docks=[...missionAirframeVolumes(seat,true),...missionCradleVolumes(seat)].map(v=>new Box3(new Vector3(...v.min),new Vector3(...v.max)).translate(new Vector3(seat.x,seat.y,seat.z)));
+ // VH.14 launch interlock (ruling 2026-10-15): the stations park at rest while their drone launches, so the docked
+ // drone and cradle clear every pose a station takes inside its arc, and the launch column clears the stations at rest
+ const box3=v=>new Box3(new Vector3(...v.min),new Vector3(...v.max)).translate(new Vector3(seat.x,seat.y,seat.z));
+ const docked=[...missionAirframeVolumes(seat,false),...missionCradleVolumes(seat)].map(box3);
+ const column=missionAirframeVolumes(seat,true).map(box3);
  for(const gun of auxiliaryCapabilities(spec)?.guns??[]){
   assert.ok(gun.collisionParts?.length,spec.id+': controlled gun has finite stock');
   const policy=auxiliaryWeaponProfile(gun.caliberMm,spec.id);
   for(const turretYaw of [0,.61,1.9,-2.7]){
    const turretFrame=new Matrix4().makeRotationY(turretYaw).setPosition(...missionAttachmentTurretPivot(spec));
    const seatFrame=seat.frame==='turret'?turretFrame:new Matrix4();
-   for(let yaw=0;yaw<Math.PI*2;yaw+=Math.PI/12)for(const pitch of [-policy.depressionRad,0,policy.elevationRad]){
+   const [lo,hi]=gun.yawArc??[0,Math.PI*2],poses=[[0,0,column]];
+   for(let yaw=lo;yaw<=hi+1e-9;yaw+=(hi-lo)/24)for(const pitch of [-policy.depressionRad,0,policy.elevationRad])poses.push([yaw,pitch,docked]);
+   for(const [yaw,pitch,docks] of poses){
     const mount=new Matrix4().compose(new Vector3(...gun.position),new Quaternion(...gun.rotation).multiply(new Quaternion().setFromAxisAngle(new Vector3(0,1,0),yaw)),new Vector3(...gun.scale));
     const transform=new Matrix4().copy(seatFrame).invert().multiply(gun.owner==='turret'?turretFrame:new Matrix4()).multiply(mount)
      .multiply(new Matrix4().makeTranslation(...gun.pivot)).multiply(new Matrix4().makeRotationX(-pitch));
