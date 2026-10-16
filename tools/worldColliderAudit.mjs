@@ -319,6 +319,18 @@ const _rayDir = new THREE.Vector3();
 const _rayNormal = new THREE.Vector3();
 
 /** Nearest hit of a ray on the records (the game's own shell/LOS test), or -1. */
+/** Is (x, y, z) inside a record: a part's footprint over it and the height within the part's extent (the record's). */
+export function insideRecord3(record, x, y, z) {
+  if (y < record.min[1] || y > record.max[1]) return false;
+  const sh = record.shape2;
+  const parts = sh?.kind === 'compound' ? sh.parts : [sh ?? null];
+  for (const part of parts) {
+    const y0 = part?.y0 ?? record.min[1], y1 = part?.y1 ?? record.max[1];
+    if (y >= y0 && y <= y1 && pointInsideCollisionRecord(record, part, x, z)) return true;
+  }
+  return false;
+}
+
 export function rayRecords(records, ox, oy, oz, dx, dy, dz, maxDistance) {
   _rayOrigin.set(ox, oy, oz); _rayDir.set(dx, dy, dz);
   let best = -1;
@@ -549,7 +561,13 @@ function measureObject({ soup, field, ownTris, box, obstacle, collider, collider
     if (!s) { s = { own: sliceSegments(soup, ownTris, Y), all: sliceSegments(soup, allTris, Y) }; slices.set(Y, s); }
     return s;
   };
+  // (physics stream DST-03, 2026-10-16) a ray that starts inside a neighbour's record — the next module of a wall run, whose
+  // faces between modules are not drawn — meets no drawn face on its way into this one and read as stopped by air: the
+  // run's own end-on artefact, not the record's. Those rays are left out (startInside counts them).
+  const neighbours = (nearColliders ?? []).filter((r) => r !== collider && !(colliders?.includes(r)));
+  let startInside = 0;
   forEachShellRay(cx, cz, Math.max(0.3, reach), groundY, (ox, oy, oz, dx, dz, full) => {
+    if (neighbours.some((r) => !r.dead && insideRecord3(r, ox, oy, oz))) { startInside++; return; }
     // the ray as the game casts it: from its origin to where the terrain first rises over it
     const len = rayTerrainReach(groundAt, ox, oy, oz, dx, dz, full);
     if (len <= 0) return;
@@ -571,7 +589,7 @@ function measureObject({ soup, field, ownTris, box, obstacle, collider, collider
     }
   }, SHELL_HEIGHTS, SHELL_AZIMUTHS / 2);
   row.rays = hits; row.phantomRays = phantom; row.leakRays = leak; row.earlyRays = early;
-  row.phantomRaysSeen = phantomSeen; row.leakRaysSeen = leakSeen;
+  row.phantomRaysSeen = phantomSeen; row.leakRaysSeen = leakSeen; row.startInsideRays = startInside;
   return row;
 }
 
