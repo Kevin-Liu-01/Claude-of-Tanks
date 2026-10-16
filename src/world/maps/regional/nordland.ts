@@ -17,6 +17,7 @@ import {
   type HouseDialect, type HouseFrame, type Opening, type RoofSpec, type StoreySpec, type WallRect,
 } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { openShed } from './outbuildings.ts';
 import { woodpile } from './dressing.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import type { RegionalParts } from './geometry.ts';
@@ -786,8 +787,11 @@ const brent: RegionalBuilder = (ctx) => {
 };
 
 /**
- * The woodshed (vedskjul): a red board shed under a slate lean-to, open on its +x side with the cut wood stacked to the
- * eaves; the yards' outbuilding on its own small plot.
+ * The woodshed (vedskjul; the props census #17, 2026-10-15, the judges: "a red board-and-batten vedskjul with white
+ * corner boards and trims, a sill on stone pads, rafters and a slate lean-to with barge boards"): built member by member
+ * (outbuildings.ts openShed) on granite pads, its boards standing with battens over the joints (or lapped, as the
+ * house's), painted in the yard's paint with the white corner boards and barge boards, open on its +x side with the cut
+ * wood stacked to the plate; the yards' outbuilding on its own small plot.
  */
 const vedskjul: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
@@ -795,21 +799,15 @@ const vedskjul: RegionalBuilder = (ctx) => {
   const st = stateFor(ctx, [0.1, 0.8, 0.1]);
   const fit = wallsIn(ctx, 0.25, 0.18);
   const W = Math.max(2.4, fit.w), D = Math.max(2.4, fit.d);
-  const hLo = 2.1, pitch = 18, hHi = hLo + W * Math.tan(pitch * Math.PI / 180);
+  const paint = PAINT_RGB[st.paint];
   sink.placed(0, fit.cx, 0, fit.cz, () => {
-    sink.span(st.paint, -W / 2, -0.2, -D / 2, -W / 2 + 0.12, hHi, D / 2);
-    for (const sz of [-1, 1]) {
-      const end: Face = { origin: [0, 0, sz * D / 2], u: [sz, 0, 0], out: [0, 0, sz], width: W };
-      wallPolygon(sink, st.paint, end, sz > 0 ? [[-W / 2, -0.2], [W / 2, -0.2], [W / 2, hLo], [-W / 2, hHi]] : [[-W / 2, -0.2], [W / 2, -0.2], [W / 2, hHi], [-W / 2, hLo]], 0.1);
-      faceBox(sink, 'structureWood', end, sz * (W / 2 - 0.07), (hLo - 0.2) / 2, 0.02, 0.14, hLo + 0.2, 0.04, { colour: WHITE, decor: true }, 'caps');
-    }
-    for (const sz of [-1, 0, 1]) sink.span('structureWood', W / 2 - 0.14, -0.2, sz * (D / 2 - 0.1) - 0.07, W / 2, hLo, sz * (D / 2 - 0.1) + 0.07, { colour: WHITE });
-    const lean: RoofSpec = { kind: 'shed', pitchDeg: pitch, eave: 0.25, verge: 0.18, thickness: 0.1, bucket: 'roof' };
-    emitRoof(sink, roofGeometry(W, D, hLo, lean), lean);
-    sink.dressing(ctx.tier === 'mobile', () => {
-      const back: Face = { origin: [-W / 2 + 0.12, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
-      woodpile(sink, back, -D / 2 + 0.2, D / 2 - 0.2, 1.4 + look() * 0.4, look);
-    });
+    const pile = 1.4 + look() * 0.4;
+    openShed(sink, { W, D, hLo: 2.1, pitchDeg: 18, back: true, ends: true, pile, block: false, mobile: st.mobile }, {
+      timber: BOARD, post: 0.14, postColour: st.trim, pad: { bucket: 'stone', size: 0.3, top: 0.2 },
+      cladding: st.boards === 'standing' ? 'batten' : 'lapped', boards: [paint, shade(paint, 0.94), shade(paint, 1.05)],
+      boardW: st.boards === 'standing' ? 0.24 : 0.18, trim: st.trim,
+      covering: 'slate', roofBucket: 'roof', eave: 0.25, verge: 0.18,
+    }, look);
   });
   return sink.finish();
 };
