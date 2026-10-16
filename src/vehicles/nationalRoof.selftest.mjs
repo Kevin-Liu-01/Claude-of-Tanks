@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import {Box3,Vector3,Raycaster,Mesh,MeshBasicMaterial,DoubleSide} from 'three';
 import {createTank} from './tankFactory.ts';
-import {NATIONAL_ROOF_LOADOUTS} from './nationalRoofConfig.ts';
+import {NATIONAL_ROOF_LOADOUTS,nationalStationWidth} from './nationalRoofConfig.ts';
 import {NATIONAL_DONOR_TURRETS} from './nationalDonorTurrets.ts';
 import {auxiliaryWeaponProfile} from './auxiliaryWeapons.ts';
 
@@ -30,7 +30,7 @@ for(const quality of ['high','low']){
    ray.set(world.clone().add(new Vector3(dx*(l.caliber===30?.04:.03),dy*(l.caliber===30?.04:.03),.03)),new Vector3(0,0,-1));
    assert(ray.intersectObjects(proxies,false)[0]?.distance<.04,`${id}: physical muzzle rim`);
   }
-  const width=l.caliber===30?.245:.185,side=-l.feedSide;
+  const width=nationalStationWidth(l),side=-l.feedSide;
   const footWorld=new Vector3(side*(width/2-.025),.35,.015).applyMatrix4(pitch.matrixWorld);
   ray.set(footWorld,new Vector3(0,-1,0));ray.near=0;ray.far=.45;
   const crossing=ray.intersectObjects(proxies,false).filter(h=>Math.abs(h.face.normal.y)>.001)

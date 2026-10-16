@@ -1,9 +1,12 @@
 // Original concept equipment, in metres. These are separate authored loadouts,
 // not claims about service vehicles or copies of a national production RWS.
+/** A national station's mount type: the yoke, cradle housing, feed and support width it is built with
+ * (profiles/nationalRoofWeapon.ts NATIONAL_MOUNTS holds one row per type). */
+export type NationalRoofMount='fork'|'shield'|'wedge'|'drum'|'cradle'|'casemate';
 export interface NationalRoofLoadout {
   name:string;
   caliber:12.7|30;
-  mount:'fork'|'shield'|'wedge'|'drum';
+  mount:NationalRoofMount;
   feedSide:1|-1;
   axisHeight:number;
   muzzleZ:number;
@@ -30,3 +33,8 @@ export const NATIONAL_ROOF_LOADOUTS:Readonly<Record<string,NationalRoofLoadout>>
  t72b3m_hetman_ii:{name:'Hetman II command weapon',caliber:30,mount:'wedge',feedSide:-1,axisHeight:.77,muzzleZ:1.17,eyes:'twin',eyeRadius:.155,roof:'scanner',roofZ:-.10,lamp:'slit'},
  t72b3_zubr_ii:{name:'Zubr II protected cannon',caliber:30,mount:'drum',feedSide:-1,axisHeight:.76,muzzleZ:1.12,eyes:'monocle-right',eyeRadius:.175,roof:'split-panels',roofZ:-.04,lamp:'square'},
 };
+
+/** The station's receiver width (metres): the cradle, the trunnion's bearing span and the sight foot are laid from it. */
+export function nationalStationWidth(l:Pick<NationalRoofLoadout,'caliber'>):number {
+  return l.caliber===30?.245:.185;
+}
