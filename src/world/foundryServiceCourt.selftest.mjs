@@ -427,7 +427,10 @@ try {
       // differently: the yard is present and bounded in both runs, its exact counts are the planner receipt's
       for(const state of results) {
         assert.ok(state.yard&&state.yard.draws===0&&state.yard.placed>0&&state.yard.placed<=140,'the foundry yard is dressed, bounded and draw-free');
-        assert.deepEqual(Object.keys(state.yard.perMaterial).sort(),['baked','steel','wood'],'three buckets carry it');
+        // (props lane A #2, 2026-10-14/16: every yard family is on the vertex-colour material — the forms carry their own
+        // tones, the steel families' livery painted pale — one program for the clutter's LOD hook: yardClutterKit.ts
+        // YARD_FAMILY_MATERIAL; the yard's vertices ride the baked bucket alone)
+        assert.deepEqual(Object.keys(state.yard.perMaterial).sort(),['baked'],'the baked bucket carries it');
         assert.equal(state.inventory.some(row=>row.name.startsWith('yard-')),false,'no yard mesh of its own');
       }
     }
