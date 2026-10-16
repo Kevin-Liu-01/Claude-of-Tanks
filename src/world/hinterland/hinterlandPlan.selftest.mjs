@@ -21,13 +21,14 @@ const { createHinterlandWater } = await import('./field.ts');
 assert.equal(selectHinterland({ id: 'polders' }, ''), null);
 assert.equal(selectHinterland({ id: 'polders' }, '?hinterland=1'), HINTERLAND_LAB_DRAFTS.polders);
 assert.equal(selectHinterland({ id: 'polders' }, '?hinterland=0'), null);
-// (HOR-04, 2026-10-16: Olympus Basin has a lab draft now; Earthrise Basin has none)
-assert.equal(selectHinterland({ id: 'moon' }, '?hinterland=1'), null, 'no draft, no hinterland');
+// (HOR-04, 2026-10-16: Olympus Basin has a lab draft now; the drafts round gave Earthrise Basin one too — the random
+// map's id, which never takes a draft, stands for a map without one)
+assert.equal(selectHinterland({ id: 'random' }, '?hinterland=1'), null, 'no draft, no hinterland');
 // the map file's switch (HZ.16): `hinterland: true` ships the map's draft out of the lab; ?hinterland=0 keeps the ring
 const shipped = selectHinterland({ id: 'polders', hinterland: true }, '');
 assert.ok(shipped && shipped.lab === false && shipped.region === HINTERLAND_LAB_DRAFTS.polders.region, 'the switch ships the draft');
 assert.equal(selectHinterland({ id: 'polders', hinterland: true }, '?hinterland=0'), null);
-assert.equal(selectHinterland({ id: 'moon', hinterland: true }, ''), null, 'a switch without a draft draws nothing');
+assert.equal(selectHinterland({ id: 'random', hinterland: true }, ''), null, 'a switch without a draft draws nothing');
 {
   const { default: poldersMap } = await import('../maps/polders.ts');
   assert.equal(poldersMap.hinterland, true, 'Tidegate Polders ships the Hinterland (the pilot)');
