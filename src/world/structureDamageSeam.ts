@@ -157,7 +157,7 @@ export function createStructureDamageSeam(structureIdx: number, builder: string,
       .call(storeyKit, anatomy, storey, seed, out),
     // a collapse leaves a ruin, never a raft (collapseRuin.ts): whatever the kit writes, measured, and what it lacks added
     collapse: (seed, out) => keepRuinStanding(anatomy, seed, out,
-      (writers) => (collapseKit.collapse ?? DEFAULT_STRUCTURE_DAMAGE_KIT.collapse!).call(collapseKit, anatomy, seed, writers)),
+      (writers) => (collapseKit.collapse ?? DEFAULT_STRUCTURE_DAMAGE_KIT.collapse!).call(collapseKit, anatomy, seed, writers), builder),
   };
 }
 
