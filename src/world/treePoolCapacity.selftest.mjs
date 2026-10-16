@@ -16,7 +16,7 @@ import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { getMapConfig } from './maps/index.ts';
 import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
 import { applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, crownDappleTags } from './crownShadowDapple.ts';
-import { treeBiomeArid, treeBiomeOpen, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeOpen, treeBiomeRiparian, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread } from './treeBiomes.ts';
 import { TREE_GROWTH_PROFILES } from './treeGrowth.ts';
 import { resolveLandUseProfile } from './landUse.ts';
 import { markShadowOnly, setShadowCasterProfile } from '../engine/renderLayers.ts';
@@ -41,7 +41,7 @@ const dependencies = { THREE, mulberry32, TREE_ARCHETYPES, treeTrunkCollisionRad
   // trees round 2 (2026-10-03): the grown crowns' dappled shadow proxies
   applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, crownDappleTags,
   // trees round 2b (2026-10-03): the hyper-arid places' groves
-  treeBiomeArid, treeBiomeOpen, treeBiomeUpland, treeBiomeWoodSpread,
+  treeBiomeArid, treeBiomeOpen, treeBiomeUpland, treeBiomeWoodSpread, treeBiomeRiparian, // (integ/226: Skybridge's riparian cottonwoods, as the authored placement sandbox carries it)
   // trees round 5: the field law's conifer forms (vegetation.ts coniferForm)
   treeBiomeSlot, TREE_GROWTH_PROFILES,
   // (2026-10-07) the hedge trees' land use (vegetation.ts plantHedgeTrees), as the authored placement sandbox carries it
@@ -69,6 +69,8 @@ function compile(legacy) {
       const NEAR_VARIANTS = 3, FAR_VARIANTS = 2, speciesList = veg.species;
       ${section('  const palOf =', '  const foliageTex =')}
       const inAvoid = (x,z) => veg.avoid?.some(a => Math.hypot(x-a.x,z-a.z)<a.r) || false;
+      // (GND 2026-10-15) the paddies' cleared banks, as vegetation.ts declares them (the tree sandboxes share this form)
+      ${section('  const treeClearAt =', '  function inAvoid(')}
       const geometry = () => new THREE.BufferGeometry().setAttribute('position',
         new THREE.BufferAttribute(new Float32Array([0,0,0, 1,0,0, 0,1,0]), 3));
       const treeGeo = {}, treeGeoFar = {}, foliageMats = {}, foliageDepthMats = {};

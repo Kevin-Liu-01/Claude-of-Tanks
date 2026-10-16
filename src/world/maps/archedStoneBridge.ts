@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { box, jitterUV, scaleUV, slabBox } from '../propGeometry.ts';
+import { bevelBox } from './bevelBox.ts';
 import { cloneCollisionRecord, setCompoundShape, type SimpleCollisionShape } from '../collision.ts';
 import type { DressingBuckets, DressingHeightField, FocusedDressingContext, LayoutDisc, Rng } from './mapKits.ts';
 
@@ -28,6 +29,15 @@ export interface DressingBridgeDeck {
  * blown in the war): built in the abutment's own frame — u along the road, away from the river, y up from the bank,
  * v across the road — and placed on the bank. Concrete in the plaster bucket, the rebar in the dark one.
  */
+/**
+ * (props census r2 sweep, Lane C 2026-10-16: the ruin's pieces, the Norman masonry and the parapet runs were plain boxes,
+ * box-only shares 61-100 %) a dressed block or a cast member: its long arrises eased (bevelBox), by a sixth of its
+ * section's smaller side, at most 4 cm (the formwork's chamfer strip on the concrete, the mason's arris on the stone).
+ */
+function block(w: number, h: number, d: number, uv: number): THREE.BufferGeometry {
+  const [a, b] = [w, h, d].sort((p, q) => p - q);
+  return bevelBox(w, h, d, Math.min(0.04, Math.min(a, b) / 6), uv);
+}
 interface RuinFrame { x: number; y: number; z: number; cos: number; sin: number; side: number }
 function ruinFrame(centerX: number, centerZ: number, cross: number, halfSpan: number, side: number, heightField: DressingHeightField): RuinFrame {
   const x = centerX + Math.cos(cross) * halfSpan * side, z = centerZ + Math.sin(cross) * halfSpan * side;
@@ -55,7 +65,7 @@ function flipWinding(g: THREE.BufferGeometry): void {
 }
 /** A box from its extents in the ruin frame. */
 function ruinBox(u0: number, u1: number, y0: number, y1: number, v0: number, v1: number): THREE.BufferGeometry {
-  const g = box(u1 - u0, y1 - y0, v1 - v0, 0.6);
+  const g = block(u1 - u0, y1 - y0, v1 - v0, 0.6);
   return g.translate((u0 + u1) / 2, (y0 + y1) / 2, (v0 + v1) / 2);
 }
 /** Rebar run out of a broken concrete face at u = u0 toward -u: `n` bars across [v0, v1] at height y, each bent down. */
@@ -63,7 +73,8 @@ function rebar(u0: number, y: number, v0: number, v1: number, n: number, r: () =
   const bars: THREE.BufferGeometry[] = [];
   for (let k = 0; k < n; k++) {
     const v = v0 + ((k + 0.5) / n) * (v1 - v0), len = 0.45 + r() * 0.75, droop = 0.15 + r() * 0.6;
-    const bar = box(len, 0.035, 0.035, 1);
+    // a round bar (the r2 sweep: its square section a plain box)
+    const bar = new THREE.CylinderGeometry(0.0175, 0.0175, len, 6, 1).rotateZ(Math.PI / 2);
     bar.translate(-len / 2, 0, 0);
     bar.rotateZ(droop);
     bar.translate(u0, y + (r() - 0.5) * 0.08, v + (r() - 0.5) * 0.1);
@@ -97,9 +108,13 @@ function addBridgeAbutment(
     const ca = Math.cos(a), sa = Math.sin(a);
     const p0: [number, number] = [0.3, sv * half], p1: [number, number] = [0.3 + len * ca, sv * half + len * sa];
     const n: [number, number] = [-sa * t * sv, ca * t * sv];
-    const poly: [number, number][] = sv > 0 ? [p0, p1, [p1[0] + n[0], p1[1] + n[1]], [p0[0] + n[0], p0[1] + n[1]]]
-      : [p0, [p0[0] + n[0], p0[1] + n[1]], [p1[0] + n[0], p1[1] + n[1]], p1];
-    const wing = prism(poly.map(([u, v]) => [u, v] as const), -1.0, sv > 0 ? [seat + 0.6, 0.9, 0.9, seat + 0.6] : [seat + 0.6, seat + 0.6, 0.9, 0.9]);
+    // (props census r2 sweep, Lane C 2026-10-16: each wing a plain box, the abutment's box-only share 100 %) its end's
+    // arrises knocked off where the blast tore it, the top falling with the bank from the shelf to the end
+    const c = 0.12, nh: [number, number] = [n[0] / t, n[1] / t], p1n: [number, number] = [p1[0] + n[0], p1[1] + n[1]];
+    const poly: [number, number][] = [p0, [p1[0] - ca * c, p1[1] - sa * c], [p1[0] + nh[0] * c, p1[1] + nh[1] * c],
+      [p1n[0] - nh[0] * c, p1n[1] - nh[1] * c], [p1n[0] - ca * c, p1n[1] - sa * c], [p0[0] + n[0], p0[1] + n[1]]];
+    const topAt = ([u, v]: [number, number]) => (seat + 0.6) + (0.9 - (seat + 0.6)) * Math.min(1, Math.max(0, ((u - p0[0]) * ca + (v - p0[1]) * sa) / len));
+    const wing = prism(poly.map(([u, v]) => [u, v] as const), -1.0, poly.map(topAt));
     concrete(wing, true);
   }
   // the broken T-beam deck's stub on the shelf: its slab and three ribs run out over the river and end ragged, the
@@ -140,14 +155,14 @@ function addFallenBridgeSlabs(
     const turn = -cross + (rng() - 0.5) * 0.8, tip = (rng() - 0.5) * 0.5;
     const y = heightField.getHeightAt(x, z) + 0.3;
     const place = (g: THREE.BufferGeometry) => g.rotateZ(tip).rotateY(turn).translate(x, y, z);
-    const slab = box(L, 0.22, W, 0.7);
+    const slab = block(L, 0.22, W, 0.7);
     slab.translate(0, 0.35, 0);
     buckets.plaster.push(place(jitterUV(slab, rng)));
     // its ribs under it (one or two, broken shorter than the slab), and the rebar out of both broken ends
     const ribs = W > 3.1 ? [-W / 4, W / 4] : [0];
     for (const v of ribs) {
       const cut = r() * 0.5;
-      const rib = box(L - cut, 0.5, 0.34, 0.7);
+      const rib = block(L - cut, 0.5, 0.34, 0.7);
       rib.translate(-cut / 2, 0.0, v);
       buckets.plaster.push(place(jitterUV(rib, r)));
     }
@@ -267,7 +282,7 @@ function normanMasonry(b: {
         const a = Math.PI / 2 - b.halfAngle + (k + 0.5) * step, key = k === (n - 1) / 2;
         const depth = key ? RING * 1.35 : k % 2 ? RING * 0.82 : RING;
         const len = 2 * b.radius * Math.sin(step / 2) * 0.94;
-        const v = box(len, depth, PROUD + (key ? 0.05 : 0), 0.7);
+        const v = block(len, depth, PROUD + (key ? 0.05 : 0), 0.7);
         v.translate(0, depth / 2, 0);
         v.rotateZ(a - Math.PI / 2);
         v.translate(ax + Math.cos(a) * b.radius, b.centreY + Math.sin(a) * b.radius, zf + face * (PROUD + (key ? 0.05 : 0)) / 2);
@@ -275,14 +290,14 @@ function normanMasonry(b: {
       }
     }
     // the string course under the parapet, the body's length
-    const sc = box(b.bodyHalf * 2 + 0.3, 0.24, 0.14, 0.7);
+    const sc = block(b.bodyHalf * 2 + 0.3, 0.24, 0.14, 0.7);
     sc.translate(0, b.top - 0.14, zf + face * 0.05);
     add(sc);
     // the coping on the parapet in lengths (the parapet stands on the slab's edge, 0.5 m thick, 1.1 m tall)
     const copeLen = 1.45, nCope = b.copings ? Math.max(2, Math.round((b.parapetHalf * 2) / copeLen)) : 0;
     for (let k = 0; k < nCope; k++) {
       const x0 = -b.parapetHalf + (k * b.parapetHalf * 2) / nCope;
-      const c = box((b.parapetHalf * 2) / nCope - 0.02, 0.14, 0.64, 0.7);
+      const c = block((b.parapetHalf * 2) / nCope - 0.02, 0.14, 0.64, 0.7);
       c.translate(x0 + b.parapetHalf / nCope, b.deckY + BRIDGE_PARAPET_HEIGHT_M + 0.07, face * (b.halfWidth - BRIDGE_PARAPET_THICK_M / 2));
       add(c);
     }
@@ -294,7 +309,7 @@ function normanMasonry(b: {
         : [[px + w, zf], [px - w, zf], [px, zf - out]];
       add(prism(poly, b.bottom, capTop));
       add(prism(poly, capTop, [capTop + 0.75, capTop + 0.75, capTop]));
-      const pil = box(BRIDGE_PIER_M * 0.7, b.top - 0.26 - capTop - 0.6, 0.16, 0.7);
+      const pil = block(BRIDGE_PIER_M * 0.7, b.top - 0.26 - capTop - 0.6, 0.16, 0.7);
       pil.translate(px, (capTop + 0.6 + b.top - 0.26) / 2, zf + face * 0.08);
       add(pil);
     }
@@ -320,20 +335,20 @@ function addParapetRuns(ctx: FocusedDressingContext, cx: number, cz: number, ux:
   for (const side of [-1, 1]) for (let k = 0; k < runs; k++) {
     const xm = -parapetHalf + (k + 0.5) * L;
     const stone: THREE.BufferGeometry[] = [];
-    const wall = box(L - 0.02, H, T, 0.7);
+    const wall = block(L - 0.02, H, T, 0.7);
     wall.translate(0, H / 2, 0);
     stone.push(jitterUV(wall, r));
     if (coped) {
       const n = Math.max(2, Math.round(L / 1.45));
       for (let j = 0; j < n; j++) {
-        const c = box(L / n - 0.02, 0.14, T + 0.14, 0.7);
+        const c = block(L / n - 0.02, 0.14, T + 0.14, 0.7);
         c.translate(-L / 2 + (j + 0.5) * (L / n), H + 0.07, 0);
         stone.push(jitterUV(c, r));
       }
     }
     for (const end of [-1, 1]) {
       if ((end < 0 && k !== 0) || (end > 0 && k !== runs - 1)) continue;
-      const post = box(0.8, H + 0.4, 0.8, 0.7);
+      const post = block(0.8, H + 0.4, 0.8, 0.7);
       post.translate(end * L / 2, (H + 0.4) / 2, 0);
       stone.push(jitterUV(post, r));
     }

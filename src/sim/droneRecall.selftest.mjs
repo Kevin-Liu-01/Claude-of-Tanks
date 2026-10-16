@@ -30,8 +30,9 @@ assert.ok(RECALL.feedS > 0 && RECALL.feedS < 1, 'the hand-over into the feed is 
 assert.ok(!droneRecallOpen(0) && !droneRecallOpen(R.launchS) && !droneRecallOpen(DRONE_RECALL_OPENS_S - 1e-9) && droneRecallOpen(DRONE_RECALL_OPENS_S),
   'refused through the launch and the hand-over, open from the feed on');
 assert.ok(RECALL.cooldownS < R.cooldownS, `the recall cooldown (${RECALL.cooldownS} s) is shorter than the loss cooldown (${R.cooldownS} s)`);
-assert.ok(RECALL.landingS >= DRONE_ARRIVAL.descentS + DRONE_ARRIVAL.spoolS,
-  `the authority's landing window (${RECALL.landingS} s) holds the dock's landing (${DRONE_ARRIVAL.descentS + DRONE_ARRIVAL.spoolS} s)`);
+const DOCK_LANDING_S = DRONE_ARRIVAL.descentS + DRONE_ARRIVAL.spoolS + DRONE_ARRIVAL.pauseS;
+assert.ok(RECALL.landingS >= DOCK_LANDING_S + 1 / 30,
+  `the authority's landing window (${RECALL.landingS} s) holds the dock's landing (${DOCK_LANDING_S} s, drawn to the frame at 30 fps)`);
 // The bound: from anywhere, the flight home, the landing and the recall cooldown end a clear margin before a loss's.
 assert.equal(DRONE_RECALL_RELAUNCH_MAX_S, RECALL.maxTransitS + RECALL.approachS + RECALL.landingS + RECALL.cooldownS);
 assert.ok(DRONE_RECALL_RELAUNCH_MAX_S <= R.cooldownS - MARGIN_S,
@@ -134,7 +135,7 @@ function lifecycle(record) {
     if (v().returnS === 0) docked = s.timeS;
   }
   assert.ok(Math.abs(docked - (recalledAt + law)) <= DT + 1e-9, 'parked when the landing window closes');
-  assert.ok(landingSteps * DT >= DRONE_ARRIVAL.descentS + DRONE_ARRIVAL.spoolS, 'the landing runs its full duration before the dock counts it parked');
+  assert.ok(landingSteps * DT >= DOCK_LANDING_S, 'the landing runs its full duration before the dock counts it parked');
   assert.ok(Math.abs(v().cooldownS - RECALL.cooldownS) <= DT + 1e-9, `parked with the recall cooldown to run (${v().cooldownS.toFixed(3)} s)`);
   while (v().cooldownS > 0) { s.step(s.tick % 15 === 0); assert.equal(s.shells.length, 1, 'refused through the recall cooldown'); }
   s.step(true);

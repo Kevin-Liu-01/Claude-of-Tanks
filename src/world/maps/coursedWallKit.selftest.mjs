@@ -16,13 +16,14 @@ for (const coping of ['rollschicht', 'saddleback', 'tiled', 'block', 'slab']) {
   const g = buildCoursedWall(coping), e = extent(g), tris = g.attributes.position.count / 3;
   assert.deepEqual(Object.keys(g.attributes).sort(), ['normal', 'position', 'uv'], `${coping}: the stone bucket's attributes`);
   assert.equal(g.index, null);
-  assert.ok(tris <= Math.max(84, legacyTris), `${coping}: ${tris} triangles (the legacy ${legacyTris})`);
+  // (r2, 2026-10-16: the courses dressed — their arrises off — and the coping's eaves its own thickness: up to 110)
+  assert.ok(tris <= 110, `${coping}: ${tris} triangles (the legacy ${legacyTris})`);
   assert.ok(e.z <= 1.52 && e.z > 1.45, `${coping}: fills its 3 m module (${e.z.toFixed(2)})`);
   assert.ok(e.x < 0.36, `${coping}: stays on its line (${e.x.toFixed(2)})`);
   assert.ok(e.y0 <= -0.09 && e.y1 > 1.0 && e.y1 < 1.3, `${coping}: sunk and about the legacy's height (${e.y0.toFixed(2)}..${e.y1.toFixed(2)})`);
   const b = buildCoursedWall(coping, true), eb = extent(b);
   assert.ok(eb.y1 < 0.62, `${coping}: broken lies low (${eb.y1.toFixed(2)})`);
-  assert.ok(b.attributes.position.count / 3 <= 140, `${coping}: broken ${b.attributes.position.count / 3} triangles`);
+  assert.ok(b.attributes.position.count / 3 <= 1.5 * tris, `${coping}: broken ${b.attributes.position.count / 3} triangles (1.5 x the intact ${tris})`);
   for (const x of [g, b]) for (const v of x.attributes.position.array) assert.ok(Number.isFinite(v));
   assert.deepEqual(buildCoursedWall(coping).attributes.position.array, g.attributes.position.array, `${coping}: deterministic`);
 }
@@ -46,7 +47,41 @@ assert.equal(bA, bB, 'the legacy broken draws are spent exactly');
 assert.deepEqual(t.footprintBuild().attributes.position.array, COURSED_WALLSTONE.build(mulberry32(0x0f0f7)).attributes.position.array, 'the legacy footprint');
 built.dispose(); old.dispose();
 
+// the bunker r2 standard (tools/r2-standard.mjs; the LOOKS sweep's bar) on every coping
+{
+  const { r2Check } = await import('../../../tools/r2-standard.mjs');
+  const ARCH = { urban: 'franconian', railyard: 'ruhr', foundry: 'saar', caldera: 'kyushu', blackglass: 'shanghai', skybridge: 'glencanyon', ruinspires: 'sarajevo' };
+  const res = r2Check({ kind: 'destructible:wallstone@coursed', maps: Object.keys(ARCH), bucket: 'stone', caps: { near: 110 },
+    resolve: (m) => { const c = coursedCopingFor(ARCH[m]); return { form: c, build: () => buildCoursedWall(c), broken: () => buildCoursedWall(c, true) }; } });
+  assert.ok(res.ok, `the r2 standard:\n  ${res.problems.join('\n  ')}`);
+}
+
+// the dry-stone field wall (the non-brick maps' wallstone): crowned at the r2 bar, the legacy's draws, band, fit and footprint
+{
+  const { DESTRUCTIBLE_TYPES, wallStoneBox, wallStoneFor } = await import('./inhabitKit.ts');
+  const { dryStoneWallType } = await import('./coursedWallKit.ts');
+  const { r2Check } = await import('../../../tools/r2-standard.mjs');
+  const legacyStone = { ...DESTRUCTIBLE_TYPES.wallstone, mat: 'fieldStone' };
+  const ds = dryStoneWallType(legacyStone, null, () => mulberry32(0x0f0f7));
+  let dA = 0, dB = 0;
+  const ra = mulberry32(31), rb = mulberry32(31);
+  const drawn = ds.build(() => { dA++; return ra(); }), old = legacyStone.build(() => { dB++; return rb(); });
+  assert.equal(dA, dB, 'the dry-stone legacy draws are spent exactly');
+  assert.deepEqual(ds.contactBand, deriveRuntimeStructureContactBand({ baked: [old] }), 'the frozen band is the legacy module\'s');
+  assert.deepEqual(ds.fitGeometry.attributes.position.array, old.attributes.position.array, 'the terrain fit reads the legacy module');
+  assert.deepEqual(ds.footprintBuild().attributes.position.array, legacyStone.build(mulberry32(0x0f0f7)).attributes.position.array, 'the legacy footprint');
+  for (const seed of [1, 3, 77, 1234]) {
+    const box = wallStoneBox(mulberry32(seed));
+    const res = r2Check({ kind: 'destructible:wallstone (dry stone)', maps: ['field'], bucket: 'fieldStone',
+      resolve: () => ({ form: `envelope ${seed}`, build: () => wallStoneFor(box, true), broken: () => DESTRUCTIBLE_TYPES.wallstone.broken(mulberry32(seed + 1)) }) });
+    assert.ok(res.ok, `the r2 standard:\n  ${res.problems.join('\n  ')}`);
+  }
+  drawn.dispose(); old.dispose();
+  const propsSrc = readFileSync(new URL('../props.ts', import.meta.url), 'utf8');
+  assert.ok(propsSrc.includes("wallstone: dryStoneWallType({ ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket }, snowCap ? withSnowLoad : null, () => mulberry32(0x0f0f7))"), 'props.ts lays the crowned dry-stone walls');
+}
+
 const props = readFileSync(new URL('../props.ts', import.meta.url), 'utf8');
 assert.ok(props.includes('wallstone: coursedWallType(regionalArchitecture?.id, COURSED_WALLSTONE, () => mulberry32(0x0f0f7))'), 'props.ts lays the coursed walls');
 assert.ok(props.includes('fitWallSpan(pool.mats4[record.slot], pool.meta.fitGeometry ?? geoI, heightField, span, record, WALL_SEG);'), 'the fit reads the legacy');
-console.log(`coursedWallKit.selftest: 5 copings under the legacy ${legacyTris} triangles, broken low, kits mapped, legacy collision/fit/footprint, wired`);
+console.log(`coursedWallKit.selftest: 5 copings dressed (the r2 standard), broken low, kits mapped, legacy collision/fit/footprint, wired`);

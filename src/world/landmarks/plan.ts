@@ -94,7 +94,9 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
       const balances = span / 2 + 0.75 + Math.max(3.6, span * 0.42);
       const grade = Math.min(0.25, Math.max(0.05, num(p, 'grade')));
       const long = approach > 0 || rise > 0 ? span / 2 + (approach > 0 ? 2.6 : 0) + approach + 3.2 + (rise > 0 ? (rise + 0.5) / grade : 0) + 0.3 : 0;
-      return [num(p, 'width') / 2 + 1.1, Math.max(balances, long)];
+      // (#27, Lane C 2026-10-16) across: the bridge-keeper's hut on the bank beside the roadway (bridges.ts liftKeeper: its
+      // centre 2.9 m past the roadway's edge, 1.3 m to its wall and its eave's 0.3 m)
+      return [num(p, 'width') / 2 + 4.3, Math.max(balances, long)];
     } },
   viaduct: { family: 'bridge', defaults: { arches: 7, archSpan: 12, height: 22, width: 8 },
     footprint: (p) => [num(p, 'width') / 2 + 0.8, (num(p, 'arches') * (num(p, 'archSpan') + 3) + 3) / 2] },

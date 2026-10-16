@@ -116,7 +116,16 @@ function cartDoor(sink: PartSink, face: Face, u: number, y: number, w: number, h
   faceBox(sink, 'structureWood', face, wu, wy + wh / 2, go + 0.036, ww - 0.01, wh - 0.01, 0.012, { colour: shade(colour, 1.06), decor: true, uv: UV_MEMBER });
   // its two hinges and its ring
   for (const t of [0.2, 0.8]) faceBox(sink, 'structureMetal', face, wu - ww / 2 + 0.17, wy + wh * t, go + 0.046, 0.3, 0.04, 0.01, { colour: IRON, ...fine });
-  sink.cylinder('structureMetal', facePoint(face, wu + ww / 2 - 0.12, wy + wh * 0.52, go + 0.046), face.out[0] !== 0 ? 'x' : 'z', 0.012, 0.055, 8, { colour: IRON, ...fine });
+  // (the r2 sweep: the ring was a dark disc on the leaf) the drop ring hung from its staple: a loop of wrought iron
+  {
+    const ru = wu + ww / 2 - 0.12, ry = wy + wh * 0.52, ro = go + 0.05, R = 0.05;
+    faceBox(sink, 'structureMetal', face, ru, ry + R + 0.015, ro - 0.002, 0.03, 0.04, 0.025, { colour: IRON, ...fine });
+    for (let k = 0; k < 8; k++) {
+      const a0 = Math.PI * 2 * k / 8, a1 = Math.PI * 2 * (k + 1) / 8;
+      sink.member('structureMetal', facePoint(face, ru + Math.sin(a0) * R, ry + Math.cos(a0) * R, ro), facePoint(face, ru + Math.sin(a1) * R, ry + Math.cos(a1) * R, ro),
+        0.012, 0.012, face.out, { colour: IRON, ...fine, exposed: true }, 0);
+    }
+  }
   const fo = { decor: true, fineSides: true } as const;
   for (const side of [-1, 1]) faceBox(sink, 'stone', face, u + side * (w / 2 + 0.16), y + h / 2, 0.04, 0.32, h, 0.08, fo);
   // the arch: three voussoir blocks either side rising to the keystone, the spandrel stone above
@@ -434,7 +443,17 @@ const church: RegionalBuilder = (ctx) => {
       // the clock on the west face, under the belfry
       const cy = tower.floors[1] + clockH * 0.55, cz = T / 2 + 0.025;
       sink.cylinder('structureMetal', [0, cy, cz], 'z', 0.06, 0.62, 16, { colour: rgb(0xe0dccf), decor: true });
-      sink.cylinder('structureMetal', [0, cy, cz + 0.06], 'z', 0.03, 0.08, 6, { colour: IRON, decor: true });
+      // (the r2 sweep: the hands' boss was a dark disc on the dial) the hands on their arbor: the hour hand and the minute
+      // hand in wrought iron standing off the dial, the boss a knob on the arbor, the hours marked round the rim
+      const hz = cz + 0.075;
+      sink.cylinder('structureMetal', [0, cy, cz + 0.06], 'z', 0.07, 0.035, 8, { colour: IRON, decor: true });
+      sink.member('structureMetal', [0, cy, hz], [0.2, cy + 0.24, hz], 0.035, 0.012, [0, 0, 1], { colour: IRON, decor: true, exposed: true }, 0);
+      sink.member('structureMetal', [0, cy, hz + 0.014], [-0.05, cy + 0.47, hz + 0.014], 0.025, 0.012, [0, 0, 1], { colour: IRON, decor: true, exposed: true }, 0);
+      for (let k = 0; k < 12; k++) {
+        const a = Math.PI * 2 * k / 12, r0 = 0.5, r1 = k % 3 ? 0.55 : 0.58;
+        sink.member('structureMetal', [Math.sin(a) * r0, cy + Math.cos(a) * r0, cz + 0.061], [Math.sin(a) * r1, cy + Math.cos(a) * r1, cz + 0.061], 0.02, 0.008, [0, 0, 1],
+          { colour: IRON, decor: true, fine: true, exposed: true }, 0);
+      }
       // the spire: an octagon broached to the square of the cornice, its cross and the cockerel
       spire(sink, T / 2 + 0.08, tower.eaveY + 0.28, T * 2.4);
     });
@@ -882,6 +901,13 @@ export const LORRAIN_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Objec
   farmhouse: (ctx) => maison(ctx, { bays: ['logis', 'cart', 'stable'], storeys: 2 }),
   tavern: (ctx) => maison(ctx, { bays: ['shop', 'logis'], storeys: 3, fascia: rgb(0x3f5a46) }),
   cornershop: (ctx) => maison(ctx, { bays: ['shop', 'logis'], storeys: 2, fascia: rgb(0x7a3a2c) }),
+  // (the r2 sweep, 2026-10-16: the town's sixteen row houses stood in the generic props.ts row house, its windows dark
+  // plates on the render) the town house of the street rows: two or three storeys of the maison's dwelling bays, now and
+  // then a shop under them (the look stream's choice), its height the plot's
+  rowhouse: (ctx) => {
+    const shop = ctx.variant() < 0.35, storeys = ctx.info.h > 9.6 ? 3 : 2;
+    return maison(ctx, { bays: shop ? ['shop', 'logis'] : ['logis', 'logis'], storeys, ...(shop ? { fascia: rgb(0x5a4a3a) } : {}) });
+  },
   barn: grange,
   church,
   chapel,

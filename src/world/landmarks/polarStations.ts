@@ -5,9 +5,11 @@
 // second brings them to the r2 standard (WORKLIST #12: DYE-M, Cape Dyer, 1985): the Jamesway's quilted canvas and bow
 // ribs, its sleepers and framed plywood ends; the module train's window frames, panel joints, handrails, radio whips and
 // sign; the airstrip's plough berms, threshold markers and the shack's window and stove. Every draw is the old builders'.
-import { PartSink, rgb, shade, type Vec3 } from '../maps/regional/geometry.ts';
+import { PartSink, rgb, shade, type Face, type Vec3 } from '../maps/regional/geometry.ts';
 import { bar } from './kit.ts';
 import { drapedPath } from './grounds.ts';
+import { holedPolygon } from '../maps/regional/house.ts';
+import { chamferedSection, panelSlab, sectionMember, shellBody, type ShellHole } from '../maps/regional/steelMembers.ts';
 import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
 
 const PANEL = rgb(0xd9d8d0), PANEL_CREAM = rgb(0xd3ccb8), TRIM_RED = rgb(0x8a3026), TRIM_BLUE = rgb(0x34506e);
@@ -42,7 +44,8 @@ export const moduleTrain: LandmarkBuilder = (ctx) => {
     footing(sink, ctx, x, sz * (hd - 0.4), 0.35, 0.35, 0.15);
     bar(sink, 'structureMetal', [x, 0.15, sz * (hd - 0.4)], [x, floor, sz * (hd - 0.4)], 0.24, { colour: STEEL_DARK });
   }
-  sink.span('structureMetal', x0, floor - 0.25, -hd, x0 + total, floor, hd, { colour: STEEL_DARK });
+  // (the r2 sweep) the deck in its modules' floor cassettes, joined at every stilt line
+  panelSlab(sink, 'structureMetal', x0, floor - 0.25, -hd, x0 + total, floor, hd, L, (k) => shade(STEEL_DARK, 0.94 + 0.08 * (k % 2)), shade(STEEL_DARK, 0.85));
   for (const z of [-1.2, -0.6]) {
     sink.cylinder('structureMetal', [x0, floor - 0.55, z], 'x', total, 0.18, 6, { colour: STEEL, decor: true });
     // (the connectivity sweep, 217: the pipes hung 12 cm under the deck on nothing) a hanger from the deck at every stilt line
@@ -53,36 +56,48 @@ export const moduleTrain: LandmarkBuilder = (ctx) => {
     const a = x0 + k * L, b = a + L, garage = k === n - 1 && n > 2, top = garage ? eave + 1.6 : eave;
     const paint = k % 3 === 2 ? PANEL_CREAM : PANEL, trim = trims[(k + Math.floor(ctx.variant() * 4)) % 4];
     // (the arctic kit's panels: white, a module in three its pale blue-grey, the band under the eaves its orange or a dark trim)
-    sink.span(k % 3 === 2 ? 'plaster3' : 'plaster', a + 0.02, floor, -hd, b - 0.02, top, hd);
+    // (the looks lane's r2 sweep, 2026-10-16: 31 dark panes and doors stuck on solid boxes) the module's skin with its
+    // windows, or the garage's roller door, cut through it: each cut lined, the pane or the door set back in it
+    const mcx = (a + b) / 2, winX = [0.3, 0.7].map((f) => a + L * f), wy = floor + 1.3;
+    const holes: ShellHole[] = garage
+      ? [{ face: 's', u0: a + 0.8 - mcx, u1: b - 0.8 - mcx, y0: floor + 0.05, y1: top - 0.9, fill: 'leaf', leaf: shade(STEEL, 0.75), panels: false }]
+      : winX.flatMap((x): ShellHole[] => [{ face: 's', u0: x - 0.45 - mcx, u1: x + 0.45 - mcx, y0: wy, y1: wy + 0.8, fill: 'glass' },
+        { face: 'n', u0: mcx - x - 0.45, u1: mcx - x + 0.45, y0: wy, y1: wy + 0.8, fill: 'glass' }]);
+    shellBody(sink, k % 3 === 2 ? 'plaster3' : 'plaster', a + 0.02, floor, -hd, b - 0.02, top, hd, holes, {},
+      { reveal: 0.14, inset: garage ? 0.12 : 0.08, revealBucket: 'structureMetal', revealColour: shade(paint, 0.66) });
     if (trim === TRIM_RED || trim === SIGN_YELLOW) sink.span('plaster2', a, top - 0.55, -hd - 0.04, b, top - 0.25, hd + 0.04, { decor: true });
     else sink.span('structureMetal', a, top - 0.55, -hd - 0.04, b, top - 0.25, hd + 0.04, { colour: trim, decor: true });
-    sink.span('structureMetal', a - 0.05, top, -hd - 0.12, b + 0.05, top + 0.3, hd + 0.12, { colour: shade(paint, 0.78) });
-    if (ctx.snowCap) sink.span('structureMetal', a + 0.1, top + 0.3, -hd + 0.05, b - 0.1, top + 0.46, hd - 0.05, { colour: SNOW, decor: true });
+    // (the r2 sweep) the flat roof in its insulated panels across the module, their seams in tone; the snow on it a
+    // cushion with its edges rounded off by the wind
+    sink.placed(Math.PI / 2, 0, 0, 0, () => panelSlab(sink, 'structureMetal', -hd - 0.12, top, a - 0.05, hd + 0.12, top + 0.3, b + 0.05, 1.2,
+      (j) => shade(paint, 0.76 + 0.04 * (j % 2)), shade(paint, 0.72)));
+    if (ctx.snowCap) sectionMember(sink, 'structureMetal', [a + 0.1, top + 0.3, 0], [b - 0.1, top + 0.3, 0],
+      [[hd - 0.05, 0], [hd - 0.12, 0.12], [hd - 0.3, 0.16], [-hd + 0.3, 0.16], [-hd + 0.12, 0.12], [-hd + 0.05, 0]], { colour: SNOW, decor: true }, 'both', [0, 1, 0]);
     // the joint battens at the module's ends (both long faces)
     for (const sz of [-1, 1]) sink.span('structureMetal', a - 0.06, floor, sz * hd - 0.05, a + 0.06, top - 0.55, sz * hd + 0.05, { colour: shade(paint, 0.7), decor: true });
     if (garage) {
-      // the roller door on the front and the far end
-      sink.quad('structureMetal', [a + 0.8, floor + 0.05, hd + 0.03], [b - 0.8, floor + 0.05, hd + 0.03], [b - 0.8, top - 0.9, hd + 0.03], [a + 0.8, top - 0.9, hd + 0.03], { colour: shade(STEEL, 0.75), decor: true });
-      for (let y = floor + 0.4; y < top - 1.0; y += 0.35) sink.span('structureMetal', a + 0.8, y, hd + 0.03, b - 0.8, y + 0.04, hd + 0.06, { colour: shade(STEEL, 0.6), decor: true, fine: true });
+      // the roller door's slats on its curtain, set back in the cut, and its head box over the cut
+      for (let y = floor + 0.4; y < top - 1.0; y += 0.35) sink.span('structureMetal', a + 0.82, y, hd - 0.115, b - 0.82, y + 0.04, hd - 0.095, { colour: shade(STEEL, 0.6), decor: true, fine: true });
+      sink.span('structureMetal', a + 0.7, top - 0.9, hd, b - 0.7, top - 0.62, hd + 0.22, { colour: shade(STEEL, 0.7), decor: true });
       // the earth ramp up to the door
       sink.span('stone', a + 0.6, -0.3, hd, b - 0.6, floor - 0.05, hd + 1.6, { decor: true });
       continue;
     }
-    // two windows on each long face
+    // two windows on each long face (cut through the skin above)
     for (const sz of [-1, 1]) for (const f of [0.3, 0.7]) {
-      const x = a + L * f, z = sz * (hd + 0.03), y = floor + 1.3;
-      const pts: Vec3[] = sz > 0 ? [[x - 0.45, y, z], [x + 0.45, y, z], [x + 0.45, y + 0.8, z], [x - 0.45, y + 0.8, z]]
-        : [[x + 0.45, y, z], [x - 0.45, y, z], [x - 0.45, y + 0.8, z], [x + 0.45, y + 0.8, z]];
-      sink.polygon('glass', pts, { decor: true });
+      const x = a + L * f, y = wy;
       // (props census #12) its frame, proud of the cladding
       const fz = sz * (hd + 0.035), frame = { colour: shade(paint, 0.62), decor: true, fine: true };
       for (const [p0, p1] of [[[x - 0.5, y - 0.05], [x + 0.5, y - 0.05]], [[x - 0.5, y + 0.85], [x + 0.5, y + 0.85]], [[x - 0.5, y - 0.05], [x - 0.5, y + 0.85]], [[x + 0.5, y - 0.05], [x + 0.5, y + 0.85]]] as const) {
         bar(sink, 'structureMetal', [p0[0], p0[1], fz], [p1[0], p1[1], fz], 0.07, frame);
       }
     }
-    // the cladding's panel joints down both long faces (a panel every 1.2 m)
+    // the cladding's panel joints down both long faces (a panel every 1.2 m), stopping at the windows' frames
     for (let x = a + 1.2; x < b - 0.6; x += 1.2) for (const sz of [-1, 1]) {
-      sink.span('structureMetal', x - 0.025, floor + 0.05, sz * hd - 0.02, x + 0.025, top - 0.6, sz * hd + 0.02, { colour: shade(paint, 0.82), decor: true, fine: true });
+      const cut = winX.some((w) => Math.abs(x - w) < 0.56);
+      for (const [y0, y1] of cut ? [[floor + 0.05, wy - 0.1], [wy + 0.9, top - 0.6]] : [[floor + 0.05, top - 0.6]]) {
+        sink.span('structureMetal', x - 0.025, y0, sz * hd - 0.02, x + 0.025, y1, sz * hd + 0.02, { colour: shade(paint, 0.82), decor: true, fine: true });
+      }
     }
     // a roof vent or a stack
     if (ctx.rng() < 0.6) sink.span('structureMetal', a + L * 0.4, top + 0.3, -0.5, a + L * 0.6, top + 0.9, 0.3, { colour: STEEL, decor: true });
@@ -91,9 +106,11 @@ export const moduleTrain: LandmarkBuilder = (ctx) => {
   // the arctic entries at two doors: a vestibule box, its door and the steps down
   for (const k of [Math.min(1, n - 1), Math.max(0, n - 3)]) {
     const cx = x0 + (k + 0.5) * L;
-    sink.span('structureMetal', cx - 1.0, floor, hd, cx + 1.0, floor + 2.5, hd + 1.4, { colour: shade(PANEL_CREAM, 0.95) });
+    // (the r2 sweep) the entry's skin with its door cut through, the leaf set back, the frame round the cut
+    shellBody(sink, 'structureMetal', cx - 1.0, floor, hd, cx + 1.0, floor + 2.5, hd + 1.4,
+      [{ face: 's', u0: -0.45, u1: 0.45, y0: floor + 0.02, y1: floor + 2.0, fill: 'leaf', leaf: DOOR }], { colour: shade(PANEL_CREAM, 0.95) },
+      { reveal: 0.1, inset: 0.06, revealColour: shade(PANEL_CREAM, 0.7), frame: { bucket: 'structureMetal', colour: STEEL_DARK, width: 0.06, out: 0.03 } });
     sink.span('structureMetal', cx - 1.1, floor + 2.5, hd - 0.05, cx + 1.1, floor + 2.65, hd + 1.5, { colour: shade(PANEL, 0.75) });
-    sink.quad('structureMetal', [cx - 0.45, floor + 0.02, hd + 1.42], [cx + 0.45, floor + 0.02, hd + 1.42], [cx + 0.45, floor + 2.0, hd + 1.42], [cx - 0.45, floor + 2.0, hd + 1.42], { colour: DOOR, decor: true });
     for (let s = 0; s < 2; s++) sink.span('structureWood', cx - 0.7, 0, hd + 1.4 + s * 0.35, cx + 0.7, floor - s * (floor / 2), hd + 1.75 + s * 0.35, { colour: TIMBER, decor: true });
     // (props census #12) the steps' handrails, on their posts
     for (const sx of [-1, 1]) {
@@ -130,9 +147,10 @@ export const jamesway: LandmarkBuilder = (ctx) => {
   const L = num(ctx, 'length', 6), W = num(ctx, 'width', 3), r = W / 2, floor = 0.45, z0 = -L / 2;
   footing(sink, ctx, 0, 0, r + 0.1, L / 2 + 0.1, 0.05);
   // the platform on its sleepers (three runners along the hut) and its edge joist
-  sink.span('structureWood', -r - 0.05, 0.25, z0, r + 0.05, floor, -z0, { colour: shade(PLYWOOD, 0.75) });
-  for (const x of [-r + 0.25, 0, r - 0.25]) sink.span('structureWood', x - 0.1, 0.05, z0 + 0.1, x + 0.1, 0.25, -z0 - 0.1, { colour: shade(TIMBER, 0.85) });
-  for (const sx of [-1, 1]) sink.span('structureWood', sx * (r + 0.05) - 0.03, 0.25, z0, sx * (r + 0.05) + 0.03, floor, -z0, { colour: shade(TIMBER, 0.7), decor: true });
+  // (the looks lane's r2 sweep, 2026-10-16: plain boxes carried 71 % of the hut) the floor laid in its 4 × 8 ft plywood
+  // sheets, each its own tone, its edge joist round it; the sleepers sawn timbers with their arrises eased
+  panelSlab(sink, 'structureWood', -r - 0.05, 0.25, z0, r + 0.05, floor, -z0, 1.22, (k) => shade(PLYWOOD, 0.72 + 0.06 * (k % 2)), shade(TIMBER, 0.7));
+  for (const x of [-r + 0.25, 0, r - 0.25]) sectionMember(sink, 'structureWood', [x, 0.15, z0 + 0.1], [x, 0.15, -z0 - 0.1], chamferedSection(0.2, 0.2, 0.03), { colour: shade(TIMBER, 0.85) });
   const canvas = shade(CANVAS_OLIVE, 0.88 + 0.24 * ctx.variant());
   // the quilted canvas: bay by bay between the ribs, each panel bellied 3.5 cm at its middle, three seams along it
   const ribs: number[] = [z0];
@@ -154,12 +172,20 @@ export const jamesway: LandmarkBuilder = (ctx) => {
   for (const e of [-1, 1]) {
     const ring: Vec3[] = [];
     for (let k = 0; k <= 10; k++) { const a = Math.PI - (k / 10) * Math.PI; ring.push([Math.cos(a) * r, floor + Math.sin(a) * r, e * (L / 2)]); }
-    sink.polygon('structureWood', e > 0 ? ring.reverse() : ring, { colour: PLYWOOD });
+    const wy = floor + r * 0.62;
+    if (e > 0) sink.polygon('structureWood', ring.reverse(), { colour: PLYWOOD });
+    else {
+      // (the r2 sweep: a dark pane stuck on the plywood) the rear end 5 cm of plywood with its window cut through it
+      const endFace: Face = { origin: [0, 0, -L / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W };
+      const pts: Array<[number, number]> = [];
+      for (let k = 0; k <= 10; k++) { const a = (Math.PI * k) / 10; pts.push([Math.cos(a) * r, floor + Math.sin(a) * r]); }
+      holedPolygon(sink, 'structureWood', endFace, pts, [{ u0: -0.3, u1: 0.3, y0: wy - 0.25, y1: wy + 0.25 }], 0.05, 0.05, { colour: PLYWOOD });
+    }
     const zf = e * (L / 2 + 0.02), stud = { colour: shade(TIMBER, 0.8), decor: true };
     for (const x of [-r * 0.55, r * 0.55]) bar(sink, 'structureWood', [x, floor, zf], [x, floor + Math.sqrt(r * r - x * x) - 0.04, zf], 0.07, stud);
     bar(sink, 'structureWood', [-r * 0.78, floor + r * 0.6, zf], [r * 0.78, floor + r * 0.6, zf], 0.07, stud);
     if (e < 0) {
-      const wy = floor + r * 0.62, zw = zf - 0.005 * e;
+      const zw = -L / 2 + 0.025;
       sink.quad('glass', [0.3, wy - 0.25, zw], [-0.3, wy - 0.25, zw], [-0.3, wy + 0.25, zw], [0.3, wy + 0.25, zw], { decor: true });
       for (const [p, q] of [[[-0.36, wy - 0.31], [0.36, wy - 0.31]], [[-0.36, wy + 0.31], [0.36, wy + 0.31]], [[-0.33, wy - 0.31], [-0.33, wy + 0.31]], [[0.33, wy - 0.31], [0.33, wy + 0.31]]] as const) {
         bar(sink, 'structureWood', [p[0], p[1], zf - 0.01], [q[0], q[1], zf - 0.01], 0.06, { colour: shade(PLYWOOD, 0.55), decor: true, fine: true });
@@ -167,9 +193,11 @@ export const jamesway: LandmarkBuilder = (ctx) => {
     }
   }
   // the vestibule and the door on the front, the steps, the stovepipe and its rain cap
-  sink.span('plaster2', -0.9, floor, -z0, 0.9, floor + 2.2, -z0 + 1.2);
+  // (the r2 sweep: a dark door plate on a solid box) the vestibule's skin with its door cut through, the leaf set back
+  shellBody(sink, 'plaster2', -0.9, floor, -z0, 0.9, floor + 2.2, -z0 + 1.2,
+    [{ face: 's', u0: -0.42, u1: 0.42, y0: floor + 0.02, y1: floor + 1.95, fill: 'leaf', leaf: DOOR }], {},
+    { reveal: 0.09, inset: 0.05, revealBucket: 'structureWood', revealColour: shade(PLYWOOD, 0.6), frame: { bucket: 'structureWood', colour: shade(TIMBER, 0.8), width: 0.06, out: 0.03 } });
   sink.span('structureWood', -1.0, floor + 2.2, -z0 - 0.05, 1.0, floor + 2.32, -z0 + 1.3, { colour: shade(PLYWOOD, 0.6) });
-  sink.quad('structureWood', [-0.42, floor + 0.02, -z0 + 1.22], [0.42, floor + 0.02, -z0 + 1.22], [0.42, floor + 1.95, -z0 + 1.22], [-0.42, floor + 1.95, -z0 + 1.22], { colour: DOOR, decor: true });
   sink.span('structureWood', -0.6, 0, -z0 + 1.2, 0.6, floor * 0.5, -z0 + 1.55, { colour: TIMBER, decor: true });
   sink.cylinder('structureMetal', [r * 0.45, floor + r * 0.85, -z0 * 0.4], 'y', 1.4, 0.09, 6, { colour: IRON, decor: true });
   sink.cylinder('structureMetal', [r * 0.45, floor + r * 0.85 + 1.32, -z0 * 0.4], 'y', 0.2, 0.2, 6, { colour: IRON, decor: true }, 0.03);

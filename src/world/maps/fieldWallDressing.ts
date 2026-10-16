@@ -12,7 +12,8 @@
 // geometry carries position, normal and uv only (the props buckets merge them with the kit's own parts).
 import * as THREE from 'three';
 import { FIELD_STONE_FACE_V } from '../fieldStoneSurface.ts';
-import { buildDryStoneWallHead } from './inhabitKit.ts';
+import { buildDryStoneWallHead, crownStoneTop } from './inhabitKit.ts';
+import { dressedCourse } from './coursedWallKit.ts';
 
 export interface DressingGround { getHeightAt(x: number, z: number): number }
 
@@ -196,7 +197,7 @@ export function buildSnowLoad(g: THREE.BufferGeometry, seed: number, opts: SnowL
  * A fieldstone: a box with its corners knocked well back (each corner in by up to `knock` of its half extents), its
  * bottom left out, a print window of its own at `uvPerM`.
  */
-function fieldStone(w: number, h: number, d: number, r: () => number, knock: number, uvPerM: number, vAt?: number): THREE.BufferGeometry {
+function fieldStone(w: number, h: number, d: number, r: () => number, knock: number, uvPerM: number, vAt?: number, crown = 0): THREE.BufferGeometry {
   const g = new THREE.BoxGeometry(w, h, d);
   const p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv;
   const corners = new Map<string, [number, number, number]>();
@@ -225,7 +226,8 @@ function fieldStone(w: number, h: number, d: number, r: () => number, knock: num
   g.setIndex(kept);
   g.clearGroups();
   g.computeVertexNormals();
-  return g;
+  // (r2 sweep, 2026-10-16: the stone's top crowned, weathered round — never a bare knocked box)
+  return crown > 0 ? crownStoneTop(g, crown) : g;
 }
 
 /**
@@ -249,7 +251,7 @@ export function buildWallFootStones(
     const w = size * (1.2 + r() * 0.7), h = size * (0.5 + r() * 0.3), d = size * (0.8 + r() * 0.3);
     const off = half + d * 0.35 + r() * 0.22;
     const x = ax + tx * s + nx * side * off, z = az + tz * s + nz * side * off;
-    const stone = fieldStone(w, h, d, r, 0.3, uvPerM);
+    const stone = fieldStone(w, h, d, r, 0.3, uvPerM, undefined, h * 0.18);
     stone.rotateZ((r() - 0.5) * 0.25); stone.rotateX((r() - 0.5) * 0.2);
     stone.rotateY(Math.atan2(tx, tz) + Math.PI / 2 + (r() - 0.5) * 0.9);
     const y = ground.getHeightAt(x, z) + h * (0.5 - 0.33 - r() * 0.17);
@@ -278,7 +280,8 @@ export function buildWallTumble(
     const out = -0.2 + Math.pow(r(), 1.6) * 1.4, across = (r() - 0.5) * 2 * (half + 0.25 + out * 0.4);
     const px = x + ox * out - oz * across, pz = z + oz * out + ox * across;
     const size = (opts.mudV != null ? 0.07 : 0.1) + r() * (opts.mudV != null ? 0.14 : 0.2) * (1 - Math.min(0.6, Math.max(0, out) * 0.4));
-    const stone = fieldStone(size * (1.2 + r() * 0.7), size * (0.45 + r() * 0.3), size * (0.8 + r() * 0.3), r, 0.32, uvPerM, opts.mudV);
+    const sh = size * (0.45 + r() * 0.3);
+    const stone = fieldStone(size * (1.2 + r() * 0.7), sh, size * (0.8 + r() * 0.3), r, 0.32, uvPerM, opts.mudV, sh * 0.18);
     stone.rotateZ((r() - 0.5) * 0.7); stone.rotateX((r() - 0.5) * 0.5); stone.rotateY(r() * Math.PI);
     parts.push(stone.translate(px, ground.getHeightAt(px, pz) + size * (0.05 + r() * 0.12), pz));
   }
@@ -546,29 +549,8 @@ export function brickPierCapFor(architectureId: string | null | undefined): Bric
   return (architectureId ? PIER_CAPS[architectureId] : undefined) ?? 'slab';
 }
 
-/** A box on the brick print (its faces' uvs by place on the face, the print's 0.7 a metre; `soldier` turns its courses
- *  upright: the Rollschicht's bricks on edge), its bottom face left out. */
-function printedBox(w: number, h: number, d: number, cx: number, y0: number, cz: number, soldier = false): THREE.BufferGeometry {
-  const g = new THREE.BoxGeometry(w, h, d);
-  g.translate(cx, y0 + h / 2, cz);
-  const p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv;
-  for (let i = 0; i < p.count; i++) {
-    const ax = Math.abs(n.getX(i)), ay = Math.abs(n.getY(i));
-    let u = ay > 0.5 ? p.getX(i) : ax > 0.5 ? p.getZ(i) : p.getX(i), v = ay > 0.5 ? p.getZ(i) : p.getY(i);
-    if (soldier && ay < 0.5) [u, v] = [v, u];
-    uv.setXY(i, u * 0.7, v * 0.7);
-  }
-  // (the bottom face, -y: the box's fourth group)
-  const index = g.index!, keep: number[] = [];
-  for (let t = 0; t < index.count; t += 3) {
-    const a = index.getX(t);
-    if (n.getY(a) < -0.5) continue;
-    keep.push(index.getX(t), index.getX(t + 1), index.getX(t + 2));
-  }
-  g.setIndex(keep);
-  g.clearGroups();
-  return g;
-}
+/** A course on the brick print, dressed (its top arrises off; r2: never a bare box): coursedWallKit.ts dressedCourse. */
+const printedBox = dressedCourse;
 
 /** A gabled or hipped coping over a pier `w` square at height y (rise `rise`), on the brick print. */
 function copingRoof(w: number, y: number, rise: number, hipped: boolean): THREE.BufferGeometry {
@@ -648,18 +630,9 @@ function mudStub(thick: number, len: number, h: number, toward: 1 | -1, uvPerM: 
 function brickStub(thick: number, len: number, h: number, toward: 1 | -1, seed: number): THREE.BufferGeometry {
   const r = dressingRng(seed), parts: THREE.BufferGeometry[] = [];
   const upper = len * (0.45 + r() * 0.15), hLow = h * (0.45 + r() * 0.1);
-  const low = new THREE.BoxGeometry(thick, hLow, len);
-  low.translate(0, hLow / 2, 0);
-  const high = new THREE.BoxGeometry(thick * 0.98, h - hLow, upper);
-  high.translate(0, hLow + (h - hLow) / 2, toward * (len - upper) / 2);
-  for (const g of [low, high]) {
-    const p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv;
-    for (let i = 0; i < p.count; i++) {
-      const ax = Math.abs(n.getX(i)), ay = Math.abs(n.getY(i));
-      uv.setXY(i, (ay > 0.5 ? p.getX(i) : ax > 0.5 ? p.getZ(i) : p.getX(i)) * 0.7, (ay > 0.5 ? p.getZ(i) : p.getY(i)) * 0.7);
-    }
-    parts.push(g);
-  }
+  // (r2: the courses dressed, as the wall's own: coursedWallKit.ts)
+  parts.push(dressedCourse(thick, hLow, len, 0, 0, 0));
+  parts.push(dressedCourse(thick * 0.98, h - hLow, upper, 0, hLow, toward * (len - upper) / 2));
   return mergeParts(parts);
 }
 

@@ -107,7 +107,10 @@ assert.match(parts, /pos\.setXYZ\(i, x \* m \* 1\.15, y \* m \* 0\.30, z \* m \*
 {
   const src = await readFile(new URL('./debrisChunks.ts', import.meta.url), 'utf8');
   assert.match(src, /float sootK = smoothstep\( 1\.5, 7\.0, dCore \) \* clamp\( aCH\.w \* 2\.0, 0\.0, 1\.0 \);/, 'wreckage soot by distance');
-  assert.match(src, /vHeat = aCH\.w \* exp\( -age \* 1\.6 \) \* \( 1\.0 - grounded \* 0\.6 \) \* \( 1\.0 - 0\.9 \* smoothstep\( 2\.0, 6\.5, dCore \) \);/, 'glow near the fire');
+  // (re-pinned 2026-10-16, the cause: the fracture port 4916558b0 made a negative heat a landed piece's dust coat, so the
+  // glow reads only a positive heat; the glow law near the fire is unchanged)
+  assert.match(src, /vHeat = max\( aCH\.w, 0\.0 \) \* exp\( -age \* 1\.6 \) \* \( 1\.0 - grounded \* 0\.6 \) \* \( 1\.0 - 0\.9 \* smoothstep\( 2\.0, 6\.5, dCore \) \);/, 'glow near the fire');
+  assert.match(src, /float coat = max\( -aCH\.w, 0\.0 \);/, 'a negative heat is a dust coat, never a negative glow');
   const { createDebrisChunks } = await import('./debrisChunks.ts');
   const chunks = createDebrisChunks({ seed: 3, now: () => 0 });
   const sheet = chunks.group.children.find((m) => m.name === 'fx-chunks-sheet');

@@ -52,26 +52,120 @@ function box(w: number, h: number, d: number, uv = 0.55): THREE.BufferGeometry {
   for (let i = 0; i < a.count; i++) a.setXY(i, a.getX(i) * Math.max(w, d) * uv, a.getY(i) * h * uv);
   return g.toNonIndexed();
 }
-/** A board: a box without its top and bottom (it stands on a sill under a plate: they are never seen). */
-function board(w: number, h: number, d: number, uv = 0.55): THREE.BufferGeometry {
-  const g = box(w, h, d, uv), keep = [0, 1, 2, 3, 8, 9, 10, 11];
-  const out = new THREE.BufferGeometry();
-  for (const [name, a] of Object.entries(g.attributes)) {
-    const size = a.itemSize, src = a.array as Float32Array, dst = new Float32Array(keep.length * 3 * size);
-    keep.forEach((t, k) => dst.set(src.subarray(t * 3 * size, (t + 1) * 3 * size), k * 3 * size));
-    out.setAttribute(name, new THREE.BufferAttribute(dst, size));
+// ---- (r2, 2026-10-16) the shed's members as they are cut: the sweep read it 88 % plain boxes and its front lining a dark
+// plate on the boards. The boards, decks and lining are drawn in their real sections below; every solid part keeps its
+// box's bounds (its collision hull, and the wharf composer's finds by box), the stream its 21 parts.
+type Axis = 0 | 1 | 2;
+type Sec = ReadonlyArray<readonly [number, number]>;
+/**
+ * A prism of `section` ((a, b) points round the section) on the axes A and B, run along L from l0 to l1: flat-shaded,
+ * non-indexed, every face wound out; its sides' uvs round the section and along the run, its caps' in (a, b) when `caps`.
+ */
+function prism(section: Sec, A: Axis, B: Axis, L: Axis, l0: number, l1: number, caps: boolean, uv = 0.55): THREE.BufferGeometry {
+  let area = 0;
+  for (let i = 0; i < section.length; i++) {
+    const [a0, b0] = section[i], [a1, b1] = section[(i + 1) % section.length];
+    area += a0 * b1 - a1 * b0;
   }
-  g.dispose();
-  return out;
+  const sec = area < 0 ? [...section].reverse() : [...section];
+  const pos: number[] = [], nor: number[] = [], uvs: number[] = [];
+  const at = (a: number, b: number, l: number): THREE.Vector3 => {
+    const p = [0, 0, 0]; p[A] = a; p[B] = b; p[L] = l;
+    return new THREE.Vector3(p[0], p[1], p[2]);
+  };
+  const dir = (na: number, nb: number, nl: number): THREE.Vector3 => {
+    const p = [0, 0, 0]; p[A] = na; p[B] = nb; p[L] = nl;
+    return new THREE.Vector3(p[0], p[1], p[2]);
+  };
+  const _e1 = new THREE.Vector3(), _e2 = new THREE.Vector3();
+  const tri = (p: THREE.Vector3[], q: Array<[number, number]>, n: THREE.Vector3): void => {
+    _e1.subVectors(p[1], p[0]); _e2.subVectors(p[2], p[0]);
+    const order = _e1.cross(_e2).dot(n) >= 0 ? [0, 1, 2] : [0, 2, 1];
+    for (const k of order) { pos.push(p[k].x, p[k].y, p[k].z); nor.push(n.x, n.y, n.z); uvs.push(q[k][0], q[k][1]); }
+  };
+  let s = 0;
+  for (let i = 0; i < sec.length; i++) {
+    const [a0, b0] = sec[i], [a1, b1] = sec[(i + 1) % sec.length];
+    const ea = a1 - a0, eb = b1 - b0, len = Math.hypot(ea, eb) || 1;
+    const n = dir(eb / len, -ea / len, 0);
+    const u0 = s * uv, u1 = (s + len) * uv, v0 = l0 * uv, v1 = l1 * uv;
+    const p00 = at(a0, b0, l0), p10 = at(a1, b1, l0), p11 = at(a1, b1, l1), p01 = at(a0, b0, l1);
+    tri([p00, p10, p11], [[u0, v0], [u1, v0], [u1, v1]], n);
+    tri([p00, p11, p01], [[u0, v0], [u1, v1], [u0, v1]], n);
+    s += len;
+  }
+  if (caps) {
+    const faces = THREE.ShapeUtils.triangulateShape(sec.map(([a, b]) => new THREE.Vector2(a, b)), []);
+    for (const [l, sign] of [[l0, -1], [l1, 1]] as const) {
+      const n = dir(0, 0, sign);
+      for (const f of faces) tri(f.map((k) => at(sec[k][0], sec[k][1], l)), f.map((k) => [sec[k][0] * uv, sec[k][1] * uv] as [number, number]), n);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  return g;
 }
-/** A member from a to b, `w` x `t` in section (its length along its own y before it is turned). */
-function beam(a: V3, b: V3, w: number, t: number): THREE.BufferGeometry {
+/**
+ * An upright wall board `w` wide (along x when `alongX`, else along z), `h` high and `t` thick, its outer face (toward
+ * `out` along its thickness) eased at both arrises by `c` (a hexagonal section), open at its foot and head (it stands on
+ * a sill under a plate) — the plain board box it replaced, in the board's section.
+ */
+function easedBoard(w: number, h: number, t: number, alongX: boolean, out: 1 | -1, c = 0.008): THREE.BufferGeometry {
+  const ha = w / 2, hb = t / 2, k = Math.min(c, 0.3 * t);
+  const sec: Array<[number, number]> = [[ha, -hb * out], [ha, (hb - k) * out], [ha - k, hb * out], [-ha + k, hb * out], [-ha, (hb - k) * out], [-ha, -hb * out]];
+  return alongX ? prism(sec, 0, 2, 1, -h / 2, h / 2, false) : prism(sec, 2, 0, 1, -h / 2, h / 2, false);
+}
+/**
+ * A plank deck in the box (x0..x1, y0..y1, z0..z1): its planks `pw` wide run along `run` ('x' or 'z'), a V-joint between
+ * each two cut `gd` into the top. One closed solid with the box's bounds (the same hull to the collision and the
+ * composer's finds).
+ */
+function plankDeck(x0: number, x1: number, y0: number, y1: number, z0: number, z1: number, run: 'x' | 'z', pw = 0.2,
+  g = 0.014, gd = 0.012): THREE.BufferGeometry {
+  const [u0, u1] = run === 'z' ? [x0, x1] : [z0, z1];
+  const n = Math.max(1, Math.round((u1 - u0) / pw)), sec: Array<[number, number]> = [[u0, y0], [u1, y0], [u1, y1]];
+  for (let k = n - 1; k >= 1; k--) {
+    const u = u0 + (u1 - u0) * k / n;
+    sec.push([u + g, y1], [u, y1 - gd], [u - g, y1]);
+  }
+  sec.push([u0, y1]);
+  return run === 'z' ? prism(sec, 0, 1, 2, z0, z1, true) : prism(sec, 2, 1, 0, x0, x1, true);
+}
+/**
+ * The lining's run: horizontal boards from y0 to y1, `t` thick, between a0 and a1 along x (`alongX`) or z, at `at` across,
+ * its V-joints toward the shed's inside (`inward` along its thickness) — one closed solid in the old lining box's bounds.
+ */
+function boardLining(a0: number, a1: number, y0: number, y1: number, at: number, t: number, alongX: boolean, inward: 1 | -1,
+  bh = 0.22, g = 0.008, gd = 0.006): THREE.BufferGeometry {
+  const n = Math.max(1, Math.round((y1 - y0) / bh)), hb = t / 2, inner = at + hb * inward, outer = at - hb * inward;
+  const sec: Array<[number, number]> = [[outer, y0], [outer, y1], [inner, y1]];
+  for (let k = n - 1; k >= 1; k--) {
+    const y = y0 + (y1 - y0) * k / n;
+    sec.push([inner, y + g], [inner - gd * inward, y], [inner, y - g]);
+  }
+  sec.push([inner, y0]);
+  // (the section in (across, y), run along the wall)
+  return alongX ? prism(sec, 2, 1, 0, a0, a1, true) : prism(sec, 0, 1, 2, a0, a1, true);
+}
+/** A member from a to b, `w` x `t` in section with its four arrises chamfered by `c` (an octagonal section). */
+function mbeam(a: V3, b: V3, w: number, t: number, c = 0.012): THREE.BufferGeometry {
   const dir = new THREE.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
-  const len = dir.length();
-  const g = box(w, len, t);
+  const len = dir.length(), hw = w / 2, ht = t / 2, k = Math.min(c, 0.3 * w, 0.3 * t);
+  const sec: Array<[number, number]> = [[hw, ht - k], [hw - k, ht], [-hw + k, ht], [-hw, ht - k], [-hw, -ht + k], [-hw + k, -ht], [hw - k, -ht], [hw, -ht + k]];
+  // (x across, z deep, its length up y before it is turned, as beam's box)
+  const g = prism(sec, 0, 2, 1, -len / 2, len / 2, true);
   g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.normalize()));
   return g.translate((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
 }
+/** A chamfered member `w` x `h` x `d` about the origin, its length along its longest side (mbeam's section). */
+function mbox(w: number, h: number, d: number, c = 0.012): THREE.BufferGeometry {
+  if (h >= w && h >= d) return mbeam([0, -h / 2, 0], [0, h / 2, 0], w, d, c);
+  if (w >= d) return mbeam([-w / 2, 0, 0], [w / 2, 0, 0], h, d, c);
+  return mbeam([0, 0, -d / 2], [0, 0, d / 2], w, h, c);
+}
+
 /** Paint a geometry one tone (`hex` scaled by `k`), a little varied vertex to vertex. */
 function paint(g: THREE.BufferGeometry, hex: number, k: number, rng: () => number, jitter = 0.03): THREE.BufferGeometry {
   _c.set(hex);
@@ -109,23 +203,24 @@ export function buildMangroveFishShed(buckets: GeometryBuckets): StructureDimens
   const plankK = () => 0.82 + rng() * 0.3;
 
   // ---- the wharf's own members, as the base laid them (the composer finds them by their boxes)
-  put('wood', box(w + 6.2, 0.3, 4.0, 0.7).translate(0, 0.3, d / 2 + 2.0), 'stream');
+  // (its planks along the landing, the joints cut in its top: the box's bounds, so the composer still finds it)
+  put('wood', plankDeck(-(w + 6.2) / 2, (w + 6.2) / 2, 0.15, 0.45, d / 2, d / 2 + 4.0, 'x'), 'stream');
   for (const x of [-7.1, -4.8, 4.8, 7.1]) put('wood', box(0.25, 2.2, 0.25, 0.55).translate(x, -0.6, d / 2 + 2.0), 'stream');
 
   // ---- the floor: a deck of planks over the stilts (its underside at 0.35 m: the body piles reach into it)
-  put('wood', box(w, 0.12, d, 0.55).translate(0, 0.41, 0), 'stream');
+  put('wood', plankDeck(-w / 2, w / 2, 0.35, 0.47, -d / 2, d / 2, 'z'), 'stream');
   {
     const under: THREE.BufferGeometry[] = [];
     // the bearers across under the floor at every post line, the stilts under their ends and middles, sunk in the bank
     for (let k = 0; k <= 6; k++) {
       const z = -d / 2 + 0.15 + (d - 0.3) * k / 6;
-      under.push(tone(TIMBER, 0.62, box(w - 0.1, 0.16, 0.14).translate(0, 0.27, z)));
+      under.push(tone(TIMBER, 0.62, mbox(w - 0.1, 0.16, 0.14).translate(0, 0.27, z)));
       for (const x of [-w / 2 + 0.2, 0, w / 2 - 0.2]) {
         if (k === 4 && Math.abs(x) > 4 && x < 0) continue; // (the annex stands there)
-        under.push(tone(POST, 0.6, box(0.14, 1.88, 0.14).translate(x, 0.19 - 0.94, z)));
+        under.push(tone(POST, 0.6, mbox(0.14, 1.88, 0.14).translate(x, 0.19 - 0.94, z)));
       }
       // a cross-brace under the outer bays
-      if (k % 2 === 0) under.push(tone(POST, 0.6, beam([-w / 2 + 0.2, -0.9, z], [0, 0.17, z], 0.08, 0.05)));
+      if (k % 2 === 0) under.push(tone(POST, 0.6, mbeam([-w / 2 + 0.2, -0.9, z], [0, 0.17, z], 0.08, 0.05, 0.01)));
     }
     put('baked', merged(under), 'dressing');
   }
@@ -145,12 +240,12 @@ export function buildMangroveFishShed(buckets: GeometryBuckets): StructureDimens
   {
     // the plates on the posts, the tie beams across at every post line, the king posts to the ridge, the knee braces
     const frame: THREE.BufferGeometry[] = [];
-    for (const s of [-1, 1]) frame.push(tone(TIMBER, 0.78, box(0.18, 0.15, d).translate(s * px, plate + 0.075, 0)));
-    for (const s of [-1, 1]) frame.push(tone(TIMBER, 0.78, box(w - 0.2, 0.15, 0.18).translate(0, plate + 0.075, s * (d / 2 - 0.09))));
+    for (const s of [-1, 1]) frame.push(tone(TIMBER, 0.78, mbox(0.18, 0.15, d, 0.02).translate(s * px, plate + 0.075, 0)));
+    for (const s of [-1, 1]) frame.push(tone(TIMBER, 0.78, mbox(w - 0.2, 0.15, 0.18, 0.015).translate(0, plate + 0.075, s * (d / 2 - 0.09))));
     for (const z of zs.slice(1, -1)) {
-      frame.push(tone(TIMBER, 0.75, box(w - 0.36, 0.14, 0.12).translate(0, plate + 0.07, z)));
-      frame.push(tone(TIMBER, 0.75, box(0.12, top + roofH - plate - 0.19, 0.12).translate(0, (plate + top + roofH - 0.19) / 2, z)));
-      for (const s of [-1, 1]) frame.push(tone(TIMBER, 0.72, beam([s * (px - 0.05), plate - 0.75, z], [s * (px - 0.75), plate, z], 0.09, 0.06)));
+      frame.push(tone(TIMBER, 0.75, mbox(w - 0.36, 0.14, 0.12, 0.015).translate(0, plate + 0.07, z)));
+      frame.push(tone(TIMBER, 0.75, mbox(0.12, top + roofH - plate - 0.19, 0.12).translate(0, (plate + top + roofH - 0.19) / 2, z)));
+      for (const s of [-1, 1]) frame.push(tone(TIMBER, 0.72, mbeam([s * (px - 0.05), plate - 0.75, z], [s * (px - 0.75), plate, z], 0.09, 0.06, 0.01)));
     }
     put('baked', merged(frame), 'dressing');
   }
@@ -158,7 +253,8 @@ export function buildMangroveFishShed(buckets: GeometryBuckets): StructureDimens
   // ---- the walls: upright planks with their gaps between the posts, each its own weathering
   const plank = (x: number, z: number, y0: number, y1: number, alongX: boolean, list: THREE.BufferGeometry[]) => {
     if (y1 - y0 < 0.05) return;
-    const g = alongX ? board(0.22, y1 - y0, 0.03, 0.55) : board(0.03, y1 - y0, 0.22, 0.55);
+    // (each board's face to the weather eased at its arrises: the outer face of the wall it stands in)
+    const g = easedBoard(0.22, y1 - y0, 0.03, alongX, (alongX ? Math.sign(z) : Math.sign(x)) as 1 | -1);
     list.push(tone(PLANK, plankK(), g.translate(x, (y0 + y1) / 2, z), 0.02));
   };
   const step = 0.245;
@@ -178,8 +274,8 @@ export function buildMangroveFishShed(buckets: GeometryBuckets): StructureDimens
       const leaf = box(0.035, 1.0, b - a + 0.1).translate(0, -0.5, 0);
       leaf.rotateZ(-0.62).translate(-w / 2, 2.58, (a + b) / 2);
       sh.push(tone(PLANK, 0.9, leaf, 0.02));
-      sh.push(tone(TIMBER, 0.7, beam([-w / 2, 1.58, (a + b) / 2], [-w / 2 - 0.6, 1.8, (a + b) / 2], 0.04, 0.04)));
-      sh.push(tone(TIMBER, 0.75, box(0.08, 0.08, b - a + 0.2).translate(-w / 2 - 0.04, 1.52, (a + b) / 2)));
+      sh.push(tone(TIMBER, 0.7, mbeam([-w / 2, 1.58, (a + b) / 2], [-w / 2 - 0.6, 1.8, (a + b) / 2], 0.04, 0.04, 0.008)));
+      sh.push(tone(TIMBER, 0.75, mbox(0.08, 0.08, b - a + 0.2, 0.012).translate(-w / 2 - 0.04, 1.52, (a + b) / 2)));
     }
     put('baked', merged(sh), 'dressing');
   }
@@ -194,10 +290,10 @@ export function buildMangroveFishShed(buckets: GeometryBuckets): StructureDimens
     const door: THREE.BufferGeometry[] = [];
     // (the leaf hung from its rail by its head, against the wall's boards; its ledges on it; the opening's header)
     const lh = floor + 2.58 - (floor + 0.05);
-    for (let z = db + 0.05; z < db + 2.65; z += 0.2) door.push(tone(PLANK, 0.95 + rng() * 0.12, box(0.035, lh, 0.19).translate(w / 2 + 0.0175, floor + 0.05 + lh / 2, z), 0.02));
-    for (const y of [floor + 0.35, floor + 2.2]) door.push(tone(TIMBER, 0.75, box(0.04, 0.12, 2.6).translate(w / 2 + 0.055, y, db + 1.35)));
+    for (let z = db + 0.05; z < db + 2.65; z += 0.2) door.push(tone(PLANK, 0.95 + rng() * 0.12, easedBoard(0.19, lh, 0.035, false, 1).translate(w / 2 + 0.0175, floor + 0.05 + lh / 2, z), 0.02));
+    for (const y of [floor + 0.35, floor + 2.2]) door.push(tone(TIMBER, 0.75, mbox(0.04, 0.12, 2.6, 0.01).translate(w / 2 + 0.055, y, db + 1.35)));
     door.push(paint(box(0.06, 0.08, 6.0).translate(w / 2 + 0.03, floor + 2.62, (da + db + 2.6) / 2), 0x3a3836, 1, rng, 0.02));
-    door.push(paint(box(0.05, 0.22, 2.7).translate(w / 2 + 0.025, 3.0 + 0.11, (da + db) / 2), TIMBER, 0.7, rng));
+    door.push(paint(mbox(0.05, 0.22, 2.7, 0.012).translate(w / 2 + 0.025, 3.0 + 0.11, (da + db) / 2), TIMBER, 0.7, rng));
     put('baked', merged(door), 'decor');
   }
   {
@@ -224,8 +320,11 @@ export function buildMangroveFishShed(buckets: GeometryBuckets): StructureDimens
     // the lining behind the boards to breast height (the walls' collision: a hull stops at the shed's sides; the boards'
     // gaps show it below and the dark of the shed above), its runs broken at the door openings and the annex
     const lin: THREE.BufferGeometry[] = [], y1 = 1.6, lx = w / 2 - 0.045, lz = d / 2 - 0.045;
-    const runZ = (x: number, z0: number, z1: number) => { if (z1 - z0 > 0.1) lin.push(tone(TIMBER, 0.55, box(0.03, y1 - floor, z1 - z0).translate(x, (floor + y1) / 2, (z0 + z1) / 2), 0.02)); };
-    const runX = (z: number, x0: number, x1: number) => { if (x1 - x0 > 0.1) lin.push(tone(TIMBER, 0.55, box(x1 - x0, y1 - floor, 0.03).translate((x0 + x1) / 2, (floor + y1) / 2, z), 0.02)); };
+    // (r2: the lining is boarded — horizontal boards to breast height, their joints toward the inside, in the walls'
+    // plank tone a shade down — where a plain dark plate stood on the boards' backs, read from the dock as a painted
+    // opening; each run one solid in its old box's bounds)
+    const runZ = (x: number, z0: number, z1: number) => { if (z1 - z0 > 0.1) lin.push(tone(PLANK, 0.74, boardLining(z0, z1, floor, y1, x, 0.03, false, (x < 0 ? 1 : -1)), 0.02)); };
+    const runX = (z: number, x0: number, x1: number) => { if (x1 - x0 > 0.1) lin.push(tone(PLANK, 0.74, boardLining(x0, x1, floor, y1, z, 0.03, true, (z < 0 ? 1 : -1)), 0.02)); };
     runZ(-lx, -lz, -4.95); runZ(-lx, 0.15, lz);
     runZ(lx, -lz, 0.5); runZ(lx, 3.1, lz);
     runX(-lz, -lx, 0.62); runX(-lz, 1.78, lx);
@@ -268,10 +367,10 @@ export function buildMangroveFishShed(buckets: GeometryBuckets): StructureDimens
   {
     // the rafters at every post line and the purlins along them, under the sheet
     const tanP = roofH / (w / 2), rf: THREE.BufferGeometry[] = [];
-    for (const z of zs) for (const s of [-1, 1]) rf.push(tone(TIMBER, 0.7, beam([s * (w / 2 + over - 0.05), top - (over - 0.05) * tanP - 0.12, z], [0, top + roofH - 0.14, z], 0.08, 0.12)));
+    for (const z of zs) for (const s of [-1, 1]) rf.push(tone(TIMBER, 0.7, mbeam([s * (w / 2 + over - 0.05), top - (over - 0.05) * tanP - 0.12, z], [0, top + roofH - 0.14, z], 0.08, 0.12, 0.012)));
     for (const s of [-1, 1]) for (const t of [0.2, 0.55, 0.88]) {
       const x = s * (w / 2 + over) * (1 - t), y = top - over * tanP + (w / 2 + over) * t * tanP - 0.05;
-      rf.push(tone(TIMBER, 0.66, box(0.08, 0.08, d + over * 2 - 0.1).translate(x, y, 0)));
+      rf.push(tone(TIMBER, 0.66, mbox(0.08, 0.08, d + over * 2 - 0.1, 0.014).translate(x, y, 0)));
     }
     put('baked', merged(rf), 'dressing');
   }

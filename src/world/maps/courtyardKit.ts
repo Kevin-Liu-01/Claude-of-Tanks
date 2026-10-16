@@ -30,6 +30,31 @@ function merged(pieces: THREE.BufferGeometry[]): THREE.BufferGeometry {
   return g;
 }
 
+/** Collision (physics, 2026-10-16; structureCollision.ts): `pieces` merged, those `dressing` marks flagged per vertex
+ *  as surface dressing (userData.noCollisionVertices), no collision part, as the map vehicles' trim is. */
+function mergedDressed(pieces: THREE.BufferGeometry[], dressing: readonly boolean[]): THREE.BufferGeometry {
+  const counts = pieces.map((p) => p.getAttribute('position').count);
+  const g = merged(pieces);
+  const flags = new Uint8Array(g.getAttribute('position').count);
+  let at = 0;
+  counts.forEach((n, i) => { if (dressing[i]) flags.fill(1, at, at + n); at += n; });
+  g.userData.noCollisionVertices = flags;
+  return g;
+}
+
+/** Collision: an item that stands as its plan hull from its foot to its top (structureCollision.ts hullPrism), as the
+ *  old cylinder, sphere or box did, not as its lathe's or its battens' hundreds of facets. */
+function hulled<T extends THREE.BufferGeometry>(g: T): T {
+  g.userData.collisionHull = true;
+  return g;
+}
+
+/** Collision: no part (water, a shaft's lining under grade, a bucket on its rope). */
+function noCollision<T extends THREE.BufferGeometry>(g: T): T {
+  g.userData.noCollision = true;
+  return g;
+}
+
 /** A box w x h x d centred at (x, y, z), turned `yaw` about y (and `tilt` about its own x). */
 function block(w: number, h: number, d: number, x: number, y: number, z: number, yaw = 0, tilt = 0, uv = 1.0): THREE.BufferGeometry {
   const b = box(w, h, d, uv);
@@ -76,43 +101,46 @@ export function courtyardWell(rng: Rng, buckets: GeometryBuckets, x: number, z: 
   scaleUV(curb, 3, 1);
   buckets.stone.push(consumed(jitterUV(curb, rng)));
   // the posts: palm trunks forked at their heads either side of the shaft, the crossbar in the forks, the pulley on it
-  const wood: THREE.BufferGeometry[] = [];
+  // (collision: the posts and the crossbar; the forks, the wheel and its axle are dressing)
+  const wood: THREE.BufferGeometry[] = [], woodDressing: boolean[] = [];
   for (const s of [-1, 1]) {
     const px = x + s * (R1 + 0.02);
-    wood.push(rod([px, -0.2, z], [px, 1.85, z], 0.09, 7));
-    for (const t of [-1, 1]) wood.push(rod([px, 1.75, z], [px, 2.05, z + t * 0.1], 0.04, 5));
+    wood.push(rod([px, -0.2, z], [px, 1.85, z], 0.09, 7)); woodDressing.push(false);
+    for (const t of [-1, 1]) { wood.push(rod([px, 1.75, z], [px, 2.05, z + t * 0.1], 0.04, 5)); woodDressing.push(true); }
   }
-  wood.push(rod([x - R1 - 0.12, 1.96, z], [x + R1 + 0.12, 1.96, z], 0.055, 6));
+  wood.push(rod([x - R1 - 0.12, 1.96, z], [x + R1 + 0.12, 1.96, z], 0.055, 6)); woodDressing.push(false);
   const wheel = new THREE.CylinderGeometry(0.17, 0.17, 0.06, 10, 1);
   wheel.rotateZ(Math.PI / 2);
   wheel.translate(x + 0.2, 1.8, z);
-  wood.push(wheel);
-  wood.push(rod([x + 0.2, 1.8, z], [x + 0.2, 1.97, z], 0.02, 4));
-  buckets.wood.push(consumed(merged(wood)));
+  wood.push(wheel); woodDressing.push(true);
+  wood.push(rod([x + 0.2, 1.8, z], [x + 0.2, 1.97, z], 0.02, 4)); woodDressing.push(true);
+  buckets.wood.push(consumed(mergedDressed(wood, woodDressing)));
   // the bucket: staves on a little taper, its iron band and bail (wood), the rope down to it from the wheel (dark)
-  const pail: THREE.BufferGeometry[] = [];
+  // (the triage round, 2026-10-16: the rope hung 13 cm off the wheel, the bucket in the air under it — the wheel turns on
+  // the crossbar's line, x, so the rope leaves its rim on the side, z + its radius: the rope and the bucket hang there)
+  const pail: THREE.BufferGeometry[] = [], bx = x + 0.2, bz = z + 0.17;
   const staves = new THREE.CylinderGeometry(0.15, 0.12, 0.3, 9, 1, true);
-  staves.translate(x + 0.37, 0.95, z);
+  staves.translate(bx, 0.95, bz);
   pail.push(staves);
   const bottom = new THREE.CircleGeometry(0.12, 9);
   bottom.rotateX(-Math.PI / 2);
-  bottom.translate(x + 0.37, 0.81, z);
+  bottom.translate(bx, 0.81, bz);
   pail.push(bottom);
-  pail.push(rod([x + 0.23, 1.08, z], [x + 0.37, 1.22, z], 0.012, 4), rod([x + 0.37, 1.22, z], [x + 0.51, 1.08, z], 0.012, 4));
-  buckets.wood.push(consumed(merged(pail)));
-  buckets.dark.push(consumed(rod([x + 0.37, 1.22, z], [x + 0.37, 1.8, z], 0.012, 4)));
+  pail.push(rod([bx - 0.14, 1.08, bz], [bx, 1.22, bz], 0.012, 4), rod([bx, 1.22, bz], [bx + 0.14, 1.08, bz], 0.012, 4));
+  buckets.wood.push(noCollision(consumed(merged(pail))));
+  buckets.dark.push(noCollision(consumed(rod([bx, 1.22, bz], [bx, 1.8, bz], 0.012, 4))));
   // the water: in the shaft a metre down, and in the trough
   const well = new THREE.CircleGeometry(R0 + 0.02, 12);
   well.rotateX(-Math.PI / 2);
   well.translate(x, -0.85, z);
-  buckets.dark.push(consumed(well));
+  buckets.dark.push(noCollision(consumed(well)));
   // the shaft's lining down to it (the curb's inside carried on down)
   const lining = inward(new THREE.CylinderGeometry(R0, R0, 0.75, 12, 1, true));
   lining.translate(x, -0.47, z);
   lining.userData.uvJitter = 'none';
-  buckets.stone.push(lining);
+  buckets.stone.push(noCollision(lining));
   // (the trough's water the sixth part the UV pass takes its four draws for, as the old well's rope was)
-  buckets.dark.push(consumed(block(0.33, 0.01, 1.03, tx, 0.43, tz)));
+  buckets.dark.push(noCollision(consumed(block(0.33, 0.01, 1.03, tx, 0.43, tz))));
 }
 
 /** A surface turned to face the other way (a shaft's lining seen from inside): its triangles rewound, its normals
@@ -146,7 +174,9 @@ function jar(pr: number, ph: number): THREE.BufferGeometry {
 /** A grain sack slumped on the ground, its neck tied: `s` its size. */
 function sack(s: number): THREE.BufferGeometry {
   const P = (r: number, y: number) => new THREE.Vector2(r * s, y * s);
-  const g = new THREE.LatheGeometry([P(0.001, 0), P(0.85, 0.02), P(1.05, 0.25), P(1.0, 0.55), P(0.7, 0.85), P(0.25, 1.05), P(0.18, 1.1), P(0.28, 1.25), P(0.001, 1.28)], 8);
+  // (the triage round: the floor's fan from the axis reached a big sack's 0.54 m rim in triangles a third of a
+  // millimetre high — slivers; it now runs to a ring at 0.4 first)
+  const g = new THREE.LatheGeometry([P(0.001, 0), P(0.4, 0.01), P(0.85, 0.02), P(1.05, 0.25), P(1.0, 0.55), P(0.7, 0.85), P(0.25, 1.05), P(0.18, 1.1), P(0.28, 1.25), P(0.001, 1.28)], 8);
   g.scale(1, 0.62, 0.85);
   return g;
 }
@@ -170,19 +200,19 @@ export function courtyardClutter(
       const c = crate(cs);
       c.rotateY(rng() * Math.PI * 0.5);
       c.translate(cx, cs / 2, cz);
-      buckets.wood.push(consumed(jitterUV(c, rng)));
+      buckets.wood.push(hulled(consumed(jitterUV(c, rng))));
     } else if (roll < 0.62) {
       const pr = 0.22 + rng() * 0.16, ph = 0.5 + rng() * 0.3;
       const pot = jar(pr, ph);
       scaleUV(pot, 2, 1);
       pot.translate(cx, 0, cz);
-      buckets.stone.push(consumed(jitterUV(pot, rng)));
+      buckets.stone.push(hulled(consumed(jitterUV(pot, rng))));
     } else if (roll < 0.82) {
       const s = 0.42 + rng() * 0.22;
       const g = sack(s);
       scaleUV(g, 1.5, 1);
       g.translate(cx, 0, cz);
-      buckets.plaster.push(consumed(jitterUV(g, rng)));
+      buckets.plaster.push(hulled(consumed(jitterUV(g, rng))));
     } else {
       const rw = 1.5 + rng() * 0.8, rd = 2.2 + rng() * 0.6;
       // the rug and its woven border a hair over it
@@ -190,7 +220,7 @@ export function courtyardClutter(
         block(0.12, 0.006, rd - 0.36, rw / 2 - 0.12, 0.028, 0), block(0.12, 0.006, rd - 0.36, -rw / 2 + 0.12, 0.028, 0)]);
       rug.rotateY((rng() - 0.5) * 0.6);
       rug.translate(cx, 0.035, cz);
-      buckets.roof.push(consumed(jitterUV(rug, rng)));
+      buckets.roof.push(hulled(consumed(jitterUV(rug, rng))));
     }
   }
 }

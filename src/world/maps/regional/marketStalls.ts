@@ -289,7 +289,7 @@ function floorOf(sink: PartSink, d: StallDress, x0: number, z0: number, x1: numb
 /** A plank shutter hinged at the head of a front from x0 to x1 at z, propped up as an awning on two sticks. Dressing. */
 function shutterAwning(sink: PartSink, d: StallDress, x0: number, x1: number, z: number, y: number, footY: number): void {
   if (!d.shutter) return;
-  const c = d.shutter, len = 0.95, swing = 1.1;
+  const c = d.shutter, len = 0.95, swing = 1.45;
   sink.dressing(d.mobile, () => {
     const a: Vec3 = [x0, y, z], b: Vec3 = [x1, y, z], tip: Vec3 = [0, y + Math.sin(swing - Math.PI / 2) * len, z + Math.cos(swing - Math.PI / 2) * len];
     // the leaf: its boards across, two faces
@@ -337,6 +337,15 @@ export function openStall(sink: PartSink, d: StallDress, W: number, D: number, o
       const rg = cover(sink, d, 2 * pz + 0.1, 2 * px + 0.2, front + 0.1);
       rafters(sink, d, rg, 0.4, 2 * px + 0.2);
       crownTop = rg.ridgeTopY;
+      // (Lane C 2026-10-16, building-integrity: the sky showed through both open gables, 2 m2 from the side) the gable
+      // triangles closed over the end plates, a woven screen under a thatch or canvas, a sheet under a sheet roof
+      if (rg.gable) {
+        const sheet = d.cover === 'sheet';
+        const opts = { colour: sheet ? shade(d.coverColour ?? [0.55, 0.55, 0.55], 0.9) : shade(d.backColour ?? d.timber, 0.92) };
+        for (const end of [1, -1]) {
+          sink.prism(sheet ? 'structureMetal' : 'structureWood', rg.gable.map(([u, yy]): Vec3 => [u, yy, end > 0 ? rg.halfD - 0.03 : -rg.halfD]), [0, 0, 1], 0.03, opts);
+        }
+      }
     });
   }
   if (d.back) screen(sink, d, -px + 0.05, -pz, px - 0.05, -pz, y - 0.005, backH + 0.005);
@@ -345,8 +354,15 @@ export function openStall(sink: PartSink, d: StallDress, W: number, D: number, o
   sink.dressing(d.mobile, () => {
     if (d.goods.hats) for (const [sx, k] of [[-1, 0], [-1, 1], [1, 0]] as const) {
       const hy = front - 0.35 - k * 0.42;
-      sink.cylinder('straw', [sx * (px + 0.07), hy, pz], 'x', sx * 0.02, 0.2, 9, { decor: true }, 0.2);
-      sink.cylinder('straw', [sx * (px + 0.09), hy, pz], 'x', sx * 0.12, 0.2, 9, { decor: true }, 0.01);
+      // (Lane C 2026-10-16, building-integrity: a negative length turned the left-hand hats inside out) each run from its
+      // inboard end outward along +x, the crown's radii swapped on the left
+      if (sx > 0) {
+        sink.cylinder('straw', [px + 0.07, hy, pz], 'x', 0.02, 0.2, 9, { decor: true }, 0.2);
+        sink.cylinder('straw', [px + 0.09, hy, pz], 'x', 0.12, 0.2, 9, { decor: true }, 0.01);
+      } else {
+        sink.cylinder('straw', [-(px + 0.09), hy, pz], 'x', 0.02, 0.2, 9, { decor: true }, 0.2);
+        sink.cylinder('straw', [-(px + 0.21), hy, pz], 'x', 0.12, 0.01, 9, { decor: true }, 0.2);
+      }
     }
     if (d.goods.bananas) {
       for (const x of [-px * 0.5, px * 0.4]) {
@@ -360,6 +376,23 @@ export function openStall(sink: PartSink, d: StallDress, W: number, D: number, o
       sink.cylinder('structureWood', [cx, y, cz], 'y', 0.7, 0.04, 8, { colour: [0.6, 0.48, 0.3], decor: true }, 0.26);
     }
   });
+  // (Lane C 2026-10-16, building-integrity: the sky showed through the open ends over the counter, 2.53 m2 seen from the
+  // quarter) a Kohima stall's ends boarded as its back is: a rail between each end's posts at the counter's height, the
+  // boards nailed to it from there up under the shed's rafter (each board's head on the rafter's line), the end open
+  // below the rail as the counter's legs are
+  if (opts.shedRoof) {
+    const yr = y + (d.counter === 'machan' ? 0.62 : 0.82), z0 = -pz + 0.075, z1 = pz - 0.075;
+    const under = (z: number) => front + 0.05 + (backH - front) * (pz - z) / (2 * pz);
+    const n = Math.max(2, Math.round((z1 - z0) / 0.25)), pitch = (z1 - z0) / n;
+    for (const sx of [-1, 1]) {
+      const x = sx * px, xi = x - sx * 0.0125;
+      sink.span('structureWood', Math.min(xi, xi - sx * 0.06), yr - 0.08, -pz, Math.max(xi, xi - sx * 0.06), yr, pz, { colour: shade(d.timber, 0.85) });
+      for (let k = 0; k < n; k++) {
+        const zc = z0 + pitch * (k + 0.5), top = under(zc), bot = yr - 0.08;
+        freeBox(sink, 'structureWood', [x, (bot + top) / 2, zc], [pitch - 0.02, top - bot, 0.025], { colour: shade(d.backColour ?? d.timber, 0.84 + d.look() * 0.26) }, [0, 0, 1]);
+      }
+    }
+  }
   recordLattice(sink, legs, [front], 0.12, 'structureWood', d.timber, {
     x0: -0.9, x1: 0.9, y0: front, y1: Math.min(crownTop, front + 1.6), z0: -0.9, z1: 0.9, bucket: d.cover === 'nipa' ? 'straw' : 'structureMetal', tint: d.coverColour ?? [0.6, 0.52, 0.36],
   });

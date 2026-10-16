@@ -150,6 +150,8 @@ export async function censusKits({ kits = null } = {}) {
           }
           if (seed !== 47) row.hashes[seed] = geometryHash(parts);
           for (const hp of regionalKitPlanOf(parts)?.houses ?? []) {
+            // (a body recorded for the damage reading, house.ts recordBody, draws nothing: the drawn houses speak)
+            if (hp.recorded) continue;
             const s = hp.spec;
             row.specs.push({ area: s.w * s.d, plinth: s.plinth ? s.plinth.h : 0, eave: s.roof.eave ?? 0, ridge: !!s.roof.ridge, chimneys: s.chimneys.length, gutters: !!s.gutters,
               verge: !!s.verge, rafters: !!s.rafters, roof: s.roof.kind, thickness: s.roof.thickness ?? 0 });

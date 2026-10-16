@@ -540,6 +540,22 @@ const FEATURE_CACHE = 12;
 /** A feature contact matches last step's within this distance (m) and normal agreement. */
 const FEATURE_MATCH_M = 0.03;
 const FEATURE_MATCH_DOT = 0.95;
+/**
+ * The contact tests' result scratch lives in typed arrays, never in closure variables: a closure's number written in a
+ * hot loop is a new heap number every time in V8 (the 2026-10-16 house probe: a collapse's contact tests allocated a
+ * gigabyte a dozen seconds, the collector's to sweep), a typed array's slot is written in place.
+ */
+// a 2D footprint part's closest point (fpS): its boundary point, the outward normal, the distance
+const FP_BX = 0, FP_BZ = 1, FP_NX = 2, FP_NZ = 3, FP_DIST = 4;
+// a solid test's result (hitS): depth, normal (out of the solid), closest point
+const S_DEPTH = 0, S_NX = 1, S_NY = 2, S_NZ = 3, S_PX = 4, S_PY = 5, S_PZ = 6;
+// a body's solid in the world (swS): box centre or capsule a, capsule b
+const SW_CX = 0, SW_CY = 1, SW_CZ = 2, SW_BX = 3, SW_BY = 4, SW_BZ = 5;
+// two boxes' separating axis search (axS): the best score, its axis and B's reach, the centres' offset, the half extents
+const AX_BEST = 0, AX_X = 1, AX_Y = 2, AX_Z = 3, AX_REACH = 4, AX_TX = 5, AX_TY = 6, AX_TZ = 7;
+const AX_AHX = 8, AX_AHY = 9, AX_AHZ = 10, AX_BHX = 11, AX_BHY = 12, AX_BHZ = 13;
+// the axis found (satS): the overlap along it, B's half extent along it
+const SAT_OVERLAP = 0, SAT_REACH = 1;
 
 export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
   const capacity = Math.max(1, options.capacity ?? 32) | 0;
@@ -686,10 +702,25 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
 
   // ---- contact pool ----
   let bodyContactStart = 0;
-  /** Add a contact on body a (normal pushes a out of b). Within a body's budget the shallowest gives way. */
-  function addContact(a: number, b: number, sphere: number, partner: number,
-    x: number, y: number, z: number, nx: number, ny: number, nz: number, depth: number,
-    friction: number, restitution: number, kvx0: number, kvy0: number, kvz0: number): void {
+  /**
+   * The engine's hot calls pass only integers and references (2026-10-16, the house probe: a number handed to a function
+   * the compiler did not inline is a new heap number at every call, and the contact tests and the solver allocated a
+   * gigabyte in a collapse): what a call takes as numbers its caller writes into a typed scratch just before it.
+   *   qS: the query sphere or point (x, y, z, r) of sphereBox, sphereCapsule, sharedAxisContact, footprintClosest and
+   *       featureIntoBody; ctS: addContact's point, normal, depth, friction, restitution and partner velocity; fiS:
+   *       featureIntoBody's friction, restitution and partner velocity; prS: prismContacts's span and friction,
+   *       restitution; caS: considerAxis's candidate; jS: the impulse applyContactImpulse and applyBodyImpulse apply;
+   *       amS: angularTerm's result; armX/Y/Z: applyImpulse's arm.
+   */
+  const qS = new Float64Array(4), ctS = new Float64Array(12), fiS = new Float64Array(5), prS = new Float64Array(4);
+  const caS = new Float64Array(3), jS = new Float64Array(3), amS = new Float64Array(1);
+  // applyImpulse's arm (the API's point less the centre of mass)
+  const armX = new Float64Array(1), armY = new Float64Array(1), armZ = new Float64Array(1);
+  /** Add a contact on body a (normal pushes a out of b), its fields in ctS. Within a body's budget the shallowest gives
+   *  way. */
+  function addContact(a: number, b: number, sphere: number, partner: number): void {
+    const x = ctS[0], y = ctS[1], z = ctS[2], nx = ctS[3], ny = ctS[4], nz = ctS[5], depth = ctS[6];
+    const friction = ctS[7], restitution = ctS[8], kvx0 = ctS[9], kvy0 = ctS[10], kvz0 = ctS[11];
     let c = contactCount;
     if (contactCount - bodyContactStart >= contactsPerBody || contactCount >= maxContacts) {
       // replace the shallowest of this body's contacts if this one is deeper
@@ -727,16 +758,21 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
       if (!(depth > -CONTACT_MARGIN_M)) continue;
       // the contact point on the ground's surface under the sphere
       const toSurface = r - depth;
-      addContact(i, -1, base + k, 0, x - nx * toSurface, y - ny * toSurface, z - nz * toSurface, nx, ny, nz, depth,
-        friction, restitution, 0, 0, 0);
+      ctS[0] = x - nx * toSurface; ctS[1] = y - ny * toSurface; ctS[2] = z - nz * toSurface;
+      ctS[3] = nx; ctS[4] = ny; ctS[5] = nz; ctS[6] = depth; ctS[7] = friction; ctS[8] = restitution;
+      ctS[9] = 0; ctS[10] = 0; ctS[11] = 0;
+      addContact(i, -1, base + k, 0);
     }
   }
 
   // ---- static prisms ----
   // closest-point scratch of one 2D footprint part
-  let fpInside = false, fpBx = 0, fpBz = 0, fpNx = 0, fpNz = 0, fpDist = 0;
+  let fpInside = false;
+  const fpS = new Float64Array(5);
 
-  function footprintClosest(part: SimpleCollisionShape | null, record: CollisionRecord, x: number, z: number): void {
+  /** The footprint part's closest point to (qS[0], qS[2]) into fpS (fpInside: the point is inside it). */
+  function footprintClosest(part: SimpleCollisionShape | null, record: CollisionRecord): void {
+    const x = qS[0], z = qS[2];
     if (part === null || part.kind === 'obb') {
       let lx: number, lz: number, hw: number, hl: number, rx = 1, rz = 0, fx = 0, fz = 1, ox: number, oz: number;
       if (part === null) {
@@ -754,31 +790,31 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
         fpInside = true;
         if (hw - ax < hl - az) {
           const s = lx < 0 ? -1 : 1;
-          fpDist = hw - ax; fpNx = rx * s; fpNz = rz * s;
-          fpBx = ox + rx * s * hw + fx * lz; fpBz = oz + rz * s * hw + fz * lz;
+          fpS[FP_DIST] = hw - ax; fpS[FP_NX] = rx * s; fpS[FP_NZ] = rz * s;
+          fpS[FP_BX] = ox + rx * s * hw + fx * lz; fpS[FP_BZ] = oz + rz * s * hw + fz * lz;
         } else {
           const s = lz < 0 ? -1 : 1;
-          fpDist = hl - az; fpNx = fx * s; fpNz = fz * s;
-          fpBx = ox + fx * s * hl + rx * lx; fpBz = oz + fz * s * hl + rz * lx;
+          fpS[FP_DIST] = hl - az; fpS[FP_NX] = fx * s; fpS[FP_NZ] = fz * s;
+          fpS[FP_BX] = ox + fx * s * hl + rx * lx; fpS[FP_BZ] = oz + fz * s * hl + rz * lx;
         }
         return;
       }
       fpInside = false;
       const cxl = lx < -hw ? -hw : lx > hw ? hw : lx;
       const czl = lz < -hl ? -hl : lz > hl ? hl : lz;
-      fpBx = ox + rx * cxl + fx * czl; fpBz = oz + rz * cxl + fz * czl;
-      const dx = x - fpBx, dz = z - fpBz;
-      fpDist = Math.sqrt(dx * dx + dz * dz);
-      if (fpDist > 1e-12) { fpNx = dx / fpDist; fpNz = dz / fpDist; } else { fpNx = 1; fpNz = 0; }
+      fpS[FP_BX] = ox + rx * cxl + fx * czl; fpS[FP_BZ] = oz + rz * cxl + fz * czl;
+      const dx = x - fpS[FP_BX], dz = z - fpS[FP_BZ];
+      fpS[FP_DIST] = Math.sqrt(dx * dx + dz * dz);
+      if (fpS[FP_DIST] > 1e-12) { fpS[FP_NX] = dx / fpS[FP_DIST]; fpS[FP_NZ] = dz / fpS[FP_DIST]; } else { fpS[FP_NX] = 1; fpS[FP_NZ] = 0; }
       return;
     }
     if (part.kind === 'circle') {
       const dx = x - part.cx, dz = z - part.cz;
       const d = Math.sqrt(dx * dx + dz * dz);
-      if (d > 1e-12) { fpNx = dx / d; fpNz = dz / d; } else { fpNx = 1; fpNz = 0; }
+      if (d > 1e-12) { fpS[FP_NX] = dx / d; fpS[FP_NZ] = dz / d; } else { fpS[FP_NX] = 1; fpS[FP_NZ] = 0; }
       fpInside = d <= part.r;
-      fpDist = Math.abs(part.r - d);
-      fpBx = part.cx + fpNx * part.r; fpBz = part.cz + fpNz * part.r;
+      fpS[FP_DIST] = Math.abs(part.r - d);
+      fpS[FP_BX] = part.cx + fpS[FP_NX] * part.r; fpS[FP_BZ] = part.cz + fpS[FP_NZ] * part.r;
       return;
     }
     // convex: winding, then the nearest edge
@@ -811,18 +847,19 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
       if (d2 < best) { best = d2; bestX = qx0; bestZ = qz0; }
     }
     if (maxSigned <= 0) {
-      fpInside = true; fpDist = -maxSigned; fpNx = maxNx; fpNz = maxNz;
-      fpBx = x + maxNx * fpDist; fpBz = z + maxNz * fpDist;
+      fpInside = true; fpS[FP_DIST] = -maxSigned; fpS[FP_NX] = maxNx; fpS[FP_NZ] = maxNz;
+      fpS[FP_BX] = x + maxNx * fpS[FP_DIST]; fpS[FP_BZ] = z + maxNz * fpS[FP_DIST];
       return;
     }
     fpInside = false;
-    fpBx = bestX; fpBz = bestZ;
-    fpDist = Math.sqrt(best);
-    if (fpDist > 1e-12) { fpNx = (x - bestX) / fpDist; fpNz = (z - bestZ) / fpDist; } else { fpNx = maxNx; fpNz = maxNz; }
+    fpS[FP_BX] = bestX; fpS[FP_BZ] = bestZ;
+    fpS[FP_DIST] = Math.sqrt(best);
+    if (fpS[FP_DIST] > 1e-12) { fpS[FP_NX] = (x - bestX) / fpS[FP_DIST]; fpS[FP_NZ] = (z - bestZ) / fpS[FP_DIST]; } else { fpS[FP_NX] = maxNx; fpS[FP_NZ] = maxNz; }
   }
 
-  function prismContacts(i: number, part: SimpleCollisionShape | null, record: CollisionRecord, y0: number, y1: number,
-    friction: number, restitution: number): void {
+  /** Body i's spheres against a static prism (its span y0..y1, friction and restitution in prS). */
+  function prismContacts(i: number, part: SimpleCollisionShape | null, record: CollisionRecord): void {
+    const y0 = prS[0], y1 = prS[1], friction = prS[2], restitution = prS[3];
     const shape = shapes[i]!;
     const base = sphereBase[i];
     for (let k = 0, n = shape.sphereCount; k < n; k++) {
@@ -830,7 +867,8 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
       const x = sphereWorld[j], y = sphereWorld[j + 1], z = sphereWorld[j + 2];
       const r = shape.spheres[k * 4 + 3];
       if (y + r < y0 - CONTACT_MARGIN_M || y - r > y1 + CONTACT_MARGIN_M) continue;
-      footprintClosest(part, record, x, z);
+      qS[0] = x; qS[2] = z;
+      footprintClosest(part, record);
       let nx: number, ny: number, nz: number, depth: number, cx0: number, cy0: number, cz0: number;
       if (fpInside) {
         if (y >= y1) {
@@ -841,8 +879,8 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
         } else {
           // inside: out by the nearest of the side, the top and the bottom
           const up = y1 - y, down = y - y0;
-          if (fpDist <= up && fpDist <= down) {
-            depth = r + fpDist; nx = fpNx; ny = 0; nz = fpNz; cx0 = fpBx; cy0 = y; cz0 = fpBz;
+          if (fpS[FP_DIST] <= up && fpS[FP_DIST] <= down) {
+            depth = r + fpS[FP_DIST]; nx = fpS[FP_NX]; ny = 0; nz = fpS[FP_NZ]; cx0 = fpS[FP_BX]; cy0 = y; cz0 = fpS[FP_BZ];
           } else if (up <= down) {
             depth = r + up; nx = 0; ny = 1; nz = 0; cx0 = x; cy0 = y1; cz0 = z;
           } else {
@@ -851,34 +889,39 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
         }
       } else {
         const cy1 = y < y0 ? y0 : y > y1 ? y1 : y;
-        const dx = x - fpBx, dy = y - cy1, dz = z - fpBz;
+        const dx = x - fpS[FP_BX], dy = y - cy1, dz = z - fpS[FP_BZ];
         const d = Math.sqrt(dx * dx + dy * dy + dz * dz);
         if (d >= r + CONTACT_MARGIN_M) continue;
-        if (d > 1e-9) { nx = dx / d; ny = dy / d; nz = dz / d; } else { nx = fpNx; ny = 0; nz = fpNz; }
-        depth = r - d; cx0 = fpBx; cy0 = cy1; cz0 = fpBz;
+        if (d > 1e-9) { nx = dx / d; ny = dy / d; nz = dz / d; } else { nx = fpS[FP_NX]; ny = 0; nz = fpS[FP_NZ]; }
+        depth = r - d; cx0 = fpS[FP_BX]; cy0 = cy1; cz0 = fpS[FP_BZ];
       }
       if (!(depth > -CONTACT_MARGIN_M)) continue;
       // warm started by sphere like the ground (the static world is one partner: a sphere rarely touches two parts)
-      addContact(i, -2, base + k, STATIC_PARTNER, cx0, cy0, cz0, nx, ny, nz, depth, friction, restitution, 0, 0, 0);
+      ctS[0] = cx0; ctS[1] = cy0; ctS[2] = cz0; ctS[3] = nx; ctS[4] = ny; ctS[5] = nz; ctS[6] = depth;
+      ctS[7] = friction; ctS[8] = restitution; ctS[9] = 0; ctS[10] = 0; ctS[11] = 0;
+      addContact(i, -2, base + k, STATIC_PARTNER);
     }
+    fiS[0] = friction; fiS[1] = restitution; fiS[2] = 0; fiS[3] = 0; fiS[4] = 0;
     // the part's corners into the body (a wall's top edge under a slab's middle)
     if (part !== null && part.kind === 'convex') {
       const p = part.points;
       for (let a = 0; a < p.length; a += 2) {
-        featureIntoBody(i, p[a], y1, p[a + 1], -2, friction, restitution, 0, 0, 0);
-        if (y0 > bminY[i]) featureIntoBody(i, p[a], y0, p[a + 1], -2, friction, restitution, 0, 0, 0);
+        qS[0] = p[a]; qS[1] = y1; qS[2] = p[a + 1];
+        featureIntoBody(i, -2);
+        if (y0 > bminY[i]) { qS[0] = p[a]; qS[1] = y0; qS[2] = p[a + 1]; featureIntoBody(i, -2); }
       }
     } else if (part !== null && part.kind === 'obb') {
       const fx = Math.sin(part.yaw), fz = Math.cos(part.yaw), rx = fz, rz = -fx;
       for (let corner = 0; corner < 4; corner++) {
         const sw = corner & 1 ? part.hw : -part.hw, sl = corner & 2 ? part.hl : -part.hl;
         const x = part.cx + rx * sw + fx * sl, z = part.cz + rz * sw + fz * sl;
-        featureIntoBody(i, x, y1, z, -2, friction, restitution, 0, 0, 0);
+        qS[0] = x; qS[1] = y1; qS[2] = z;
+        featureIntoBody(i, -2);
       }
     } else if (part === null) {
       for (let corner = 0; corner < 4; corner++) {
-        featureIntoBody(i, corner & 1 ? record.max[0] : record.min[0], y1, corner & 2 ? record.max[2] : record.min[2], -2,
-          friction, restitution, 0, 0, 0);
+        qS[0] = corner & 1 ? record.max[0] : record.min[0]; qS[1] = y1; qS[2] = corner & 2 ? record.max[2] : record.min[2];
+        featureIntoBody(i, -2);
       }
     }
   }
@@ -900,12 +943,14 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
           const part = shape2.parts[p];
           const y0 = part.y0 ?? record.min[1], y1 = part.y1 ?? record.max[1];
           if (y1 < bminY[i] || y0 > bmaxY[i]) continue;
-          prismContacts(i, part, record, y0, y1, friction, restitution);
+          prS[0] = y0; prS[1] = y1; prS[2] = friction; prS[3] = restitution;
+          prismContacts(i, part, record);
         }
       } else {
         const part = shape2 ?? null;
         const y0 = part?.y0 ?? record.min[1], y1 = part?.y1 ?? record.max[1];
-        prismContacts(i, part, record, y0, y1, friction, restitution);
+        prS[0] = y0; prS[1] = y1; prS[2] = friction; prS[3] = restitution;
+        prismContacts(i, part, record);
       }
     }
     staticOut.length = 0;
@@ -913,14 +958,15 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
 
   // ---- solids (a point into a body; a sphere against a box or a capsule) ----
   // result scratch: depth, normal (out of the solid), closest point
-  let sDepth = 0, sNx = 0, sNy = 0, sNz = 0, sPx = 0, sPy = 0, sPz = 0;
+  const hitS = new Float64Array(7);
 
   /**
-   * A sphere (centre x, y, z, radius r) against a box (centre c, rotation matrix m row-major at mo in mArr, half
-   * extents h). Sets the scratch and returns true on contact (normal out of the box, toward the sphere).
+   * A sphere (qS: centre x, y, z, radius r) against a box (centre at bco in bc, rotation matrix row-major at mo in mArr,
+   * half extents at ho in hArr). Sets the scratch and returns true on contact (normal out of the box, toward the sphere).
    */
-  function sphereBox(x: number, y: number, z: number, r: number,
-    bcx: number, bcy: number, bcz: number, mArr: Float64Array, mo: number, hx: number, hy: number, hz: number): boolean {
+  function sphereBox(bc: Float64Array, bco: number, mArr: Float64Array, mo: number, hArr: Float64Array, ho: number): boolean {
+    const x = qS[0], y = qS[1], z = qS[2], r = qS[3];
+    const bcx = bc[bco], bcy = bc[bco + 1], bcz = bc[bco + 2], hx = hArr[ho], hy = hArr[ho + 1], hz = hArr[ho + 2];
     const dx = x - bcx, dy = y - bcy, dz = z - bcz;
     // local = Rᵀ d (columns of R are the box axes)
     const lx = mArr[mo] * dx + mArr[mo + 3] * dy + mArr[mo + 6] * dz;
@@ -932,31 +978,33 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
       // the centre is inside: out by the nearest face
       const ex = hx - ax, ey = hy - ay, ez = hz - az;
       let nlx = 0, nly = 0, nlz = 0;
-      if (ex <= ey && ex <= ez) { nlx = lx < 0 ? -1 : 1; sDepth = r + ex; }
-      else if (ey <= ez) { nly = ly < 0 ? -1 : 1; sDepth = r + ey; }
-      else { nlz = lz < 0 ? -1 : 1; sDepth = r + ez; }
-      sNx = mArr[mo] * nlx + mArr[mo + 1] * nly + mArr[mo + 2] * nlz;
-      sNy = mArr[mo + 3] * nlx + mArr[mo + 4] * nly + mArr[mo + 5] * nlz;
-      sNz = mArr[mo + 6] * nlx + mArr[mo + 7] * nly + mArr[mo + 8] * nlz;
-      sPx = x - sNx * (sDepth - r); sPy = y - sNy * (sDepth - r); sPz = z - sNz * (sDepth - r);
+      if (ex <= ey && ex <= ez) { nlx = lx < 0 ? -1 : 1; hitS[S_DEPTH] = r + ex; }
+      else if (ey <= ez) { nly = ly < 0 ? -1 : 1; hitS[S_DEPTH] = r + ey; }
+      else { nlz = lz < 0 ? -1 : 1; hitS[S_DEPTH] = r + ez; }
+      hitS[S_NX] = mArr[mo] * nlx + mArr[mo + 1] * nly + mArr[mo + 2] * nlz;
+      hitS[S_NY] = mArr[mo + 3] * nlx + mArr[mo + 4] * nly + mArr[mo + 5] * nlz;
+      hitS[S_NZ] = mArr[mo + 6] * nlx + mArr[mo + 7] * nly + mArr[mo + 8] * nlz;
+      hitS[S_PX] = x - hitS[S_NX] * (hitS[S_DEPTH] - r); hitS[S_PY] = y - hitS[S_NY] * (hitS[S_DEPTH] - r); hitS[S_PZ] = z - hitS[S_NZ] * (hitS[S_DEPTH] - r);
       return true;
     }
     const cxl = lx < -hx ? -hx : lx > hx ? hx : lx;
     const cyl = ly < -hy ? -hy : ly > hy ? hy : ly;
     const czl = lz < -hz ? -hz : lz > hz ? hz : lz;
-    sPx = bcx + mArr[mo] * cxl + mArr[mo + 1] * cyl + mArr[mo + 2] * czl;
-    sPy = bcy + mArr[mo + 3] * cxl + mArr[mo + 4] * cyl + mArr[mo + 5] * czl;
-    sPz = bcz + mArr[mo + 6] * cxl + mArr[mo + 7] * cyl + mArr[mo + 8] * czl;
-    const ox = x - sPx, oy = y - sPy, oz = z - sPz;
+    hitS[S_PX] = bcx + mArr[mo] * cxl + mArr[mo + 1] * cyl + mArr[mo + 2] * czl;
+    hitS[S_PY] = bcy + mArr[mo + 3] * cxl + mArr[mo + 4] * cyl + mArr[mo + 5] * czl;
+    hitS[S_PZ] = bcz + mArr[mo + 6] * cxl + mArr[mo + 7] * cyl + mArr[mo + 8] * czl;
+    const ox = x - hitS[S_PX], oy = y - hitS[S_PY], oz = z - hitS[S_PZ];
     const d = Math.sqrt(ox * ox + oy * oy + oz * oz);
     if (d >= r + CONTACT_MARGIN_M || d < 1e-12) return false;
-    sNx = ox / d; sNy = oy / d; sNz = oz / d; sDepth = r - d;
+    hitS[S_NX] = ox / d; hitS[S_NY] = oy / d; hitS[S_NZ] = oz / d; hitS[S_DEPTH] = r - d;
     return true;
   }
 
-  /** A sphere against a capsule a → b of radius cr (normal out of the capsule). */
-  function sphereCapsule(x: number, y: number, z: number, r: number,
-    ax: number, ay: number, az: number, bx: number, by: number, bz: number, cr: number): boolean {
+  /** A sphere (qS) against a capsule a (at ao in aArr) → b (at bo in bArr) of radius crArr[cro] (normal out of the
+   *  capsule). */
+  function sphereCapsule(aArr: Float64Array, ao: number, bArr: Float64Array, bo: number, crArr: Float64Array, cro: number): boolean {
+    const x = qS[0], y = qS[1], z = qS[2], r = qS[3];
+    const ax = aArr[ao], ay = aArr[ao + 1], az = aArr[ao + 2], bx = bArr[bo], by = bArr[bo + 1], bz = bArr[bo + 2], cr = crArr[cro];
     const ex = bx - ax, ey = by - ay, ez = bz - az;
     const len2 = ex * ex + ey * ey + ez * ez;
     let t = len2 > 1e-12 ? ((x - ax) * ex + (y - ay) * ey + (z - az) * ez) / len2 : 0;
@@ -965,24 +1013,24 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
     const ox = x - cx0, oy = y - cy0, oz = z - cz0;
     const d = Math.sqrt(ox * ox + oy * oy + oz * oz);
     if (d >= r + cr + CONTACT_MARGIN_M) return false;
-    if (d > 1e-9) { sNx = ox / d; sNy = oy / d; sNz = oz / d; } else { sNx = 0; sNy = 1; sNz = 0; }
-    sDepth = r + cr - d;
-    sPx = cx0 + sNx * cr; sPy = cy0 + sNy * cr; sPz = cz0 + sNz * cr;
+    if (d > 1e-9) { hitS[S_NX] = ox / d; hitS[S_NY] = oy / d; hitS[S_NZ] = oz / d; } else { hitS[S_NX] = 0; hitS[S_NY] = 1; hitS[S_NZ] = 0; }
+    hitS[S_DEPTH] = r + cr - d;
+    hitS[S_PX] = cx0 + hitS[S_NX] * cr; hitS[S_PY] = cy0 + hitS[S_NY] * cr; hitS[S_PZ] = cz0 + hitS[S_NZ] * cr;
     return true;
   }
 
   // a body's solid in the world: box centre and rotation, or capsule ends (scratch)
   const solidRot = new Float64Array(9);
-  let solidCx = 0, solidCy = 0, solidCz = 0, solidBx = 0, solidBy = 0, solidBz = 0;
+  const swS = new Float64Array(6);
   function solidToWorld(i: number, s: Float64Array, o: number): void {
     const m = i * 9;
     const r00 = rot[m], r01 = rot[m + 1], r02 = rot[m + 2];
     const r10 = rot[m + 3], r11 = rot[m + 4], r12 = rot[m + 5];
     const r20 = rot[m + 6], r21 = rot[m + 7], r22 = rot[m + 8];
     const x = s[o + 1], y = s[o + 2], z = s[o + 3];
-    solidCx = px[i] + r00 * x + r01 * y + r02 * z;
-    solidCy = py[i] + r10 * x + r11 * y + r12 * z;
-    solidCz = pz[i] + r20 * x + r21 * y + r22 * z;
+    swS[SW_CX] = px[i] + r00 * x + r01 * y + r02 * z;
+    swS[SW_CY] = py[i] + r10 * x + r11 * y + r12 * z;
+    swS[SW_CZ] = pz[i] + r20 * x + r21 * y + r22 * z;
     if (s[o] === SOLID_BOX) {
       // R_body · R_part
       const qx0 = s[o + 4], qy0 = s[o + 5], qz0 = s[o + 6], qw0 = s[o + 7];
@@ -996,9 +1044,9 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
       solidRot[6] = r20 * p00 + r21 * p10 + r22 * p20; solidRot[7] = r20 * p01 + r21 * p11 + r22 * p21; solidRot[8] = r20 * p02 + r21 * p12 + r22 * p22;
     } else {
       const bx0 = s[o + 4], by0 = s[o + 5], bz0 = s[o + 6];
-      solidBx = px[i] + r00 * bx0 + r01 * by0 + r02 * bz0;
-      solidBy = py[i] + r10 * bx0 + r11 * by0 + r12 * bz0;
-      solidBz = pz[i] + r20 * bx0 + r21 * by0 + r22 * bz0;
+      swS[SW_BX] = px[i] + r00 * bx0 + r01 * by0 + r02 * bz0;
+      swS[SW_BY] = py[i] + r10 * bx0 + r11 * by0 + r12 * bz0;
+      swS[SW_BZ] = pz[i] + r20 * bx0 + r21 * by0 + r22 * bz0;
     }
   }
 
@@ -1027,7 +1075,7 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
   // the separating axis of two boxes (scratch): unit normal from box B toward box A, its overlap (m, < 0 apart), and
   // B's half extent along it
   const satN = new Float64Array(3);
-  let satOverlap = 0, satReachB = 0;
+  const satS = new Float64Array(2);
   /**
    * Two oriented boxes' axis of least overlap over the fifteen candidate axes (three faces each, nine edge pairs; an
    * edge pair wins only clearly, faces give steadier contact). All of one pair's contacts push along it, so a box that
@@ -1035,46 +1083,51 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
    * side and clamp the two together (dcore's wedge creep, 2026-10-10).
    */
   // the candidate the axis search is on (module-free scratch: no closure per call)
-  let axisBest = Infinity, axisX = 0, axisY = 1, axisZ = 0, axisReach = 0;
-  let axTx = 0, axTy = 0, axTz = 0, axAo = 0, axBo = 0, axAhx = 0, axAhy = 0, axAhz = 0, axBhx = 0, axBhy = 0, axBhz = 0;
+  const axS = new Float64Array(14);
+  axS[AX_BEST] = Infinity; axS[AX_Y] = 1;
+  let axAo = 0, axBo = 0;
   let axAR: Float64Array = rot, axBR: Float64Array = rot;
-  function considerAxis(lx: number, ly: number, lz: number, edge: boolean): void {
+  /** The candidate axis in caS. */
+  function considerAxis(edge: boolean): void {
+    let lx = caS[0], ly = caS[1], lz = caS[2];
     const len = Math.sqrt(lx * lx + ly * ly + lz * lz);
     if (len < 1e-6) return;
     lx /= len; ly /= len; lz /= len;
     const aR = axAR, bR = axBR, ao = axAo, bo = axBo;
-    const ra = axAhx * Math.abs(aR[ao] * lx + aR[ao + 3] * ly + aR[ao + 6] * lz)
-      + axAhy * Math.abs(aR[ao + 1] * lx + aR[ao + 4] * ly + aR[ao + 7] * lz)
-      + axAhz * Math.abs(aR[ao + 2] * lx + aR[ao + 5] * ly + aR[ao + 8] * lz);
-    const rb = axBhx * Math.abs(bR[bo] * lx + bR[bo + 3] * ly + bR[bo + 6] * lz)
-      + axBhy * Math.abs(bR[bo + 1] * lx + bR[bo + 4] * ly + bR[bo + 7] * lz)
-      + axBhz * Math.abs(bR[bo + 2] * lx + bR[bo + 5] * ly + bR[bo + 8] * lz);
-    const dist = axTx * lx + axTy * ly + axTz * lz;
+    const ra = axS[AX_AHX] * Math.abs(aR[ao] * lx + aR[ao + 3] * ly + aR[ao + 6] * lz)
+      + axS[AX_AHY] * Math.abs(aR[ao + 1] * lx + aR[ao + 4] * ly + aR[ao + 7] * lz)
+      + axS[AX_AHZ] * Math.abs(aR[ao + 2] * lx + aR[ao + 5] * ly + aR[ao + 8] * lz);
+    const rb = axS[AX_BHX] * Math.abs(bR[bo] * lx + bR[bo + 3] * ly + bR[bo + 6] * lz)
+      + axS[AX_BHY] * Math.abs(bR[bo + 1] * lx + bR[bo + 4] * ly + bR[bo + 7] * lz)
+      + axS[AX_BHZ] * Math.abs(bR[bo + 2] * lx + bR[bo + 5] * ly + bR[bo + 8] * lz);
+    const dist = axS[AX_TX] * lx + axS[AX_TY] * ly + axS[AX_TZ] * lz;
     const overlap = ra + rb - Math.abs(dist);
     const score = edge ? overlap * 1.05 + 0.01 : overlap;
-    if (score < axisBest) {
-      axisBest = score;
+    if (score < axS[AX_BEST]) {
+      axS[AX_BEST] = score;
       const sign = dist < 0 ? -1 : 1;
-      axisX = lx * sign; axisY = ly * sign; axisZ = lz * sign;
-      satOverlap = overlap;
-      axisReach = rb;
+      axS[AX_X] = lx * sign; axS[AX_Y] = ly * sign; axS[AX_Z] = lz * sign;
+      satS[SAT_OVERLAP] = overlap;
+      axS[AX_REACH] = rb;
     }
   }
-  function boxBoxAxis(ac: Float64Array, aco: number, aR: Float64Array, ao: number, ahx: number, ahy: number, ahz: number,
-    bc: Float64Array, bR: Float64Array, bo: number, bhx: number, bhy: number, bhz: number): void {
-    axTx = ac[aco] - bc[0]; axTy = ac[aco + 1] - bc[1]; axTz = ac[aco + 2] - bc[2];
+  function boxBoxAxis(ac: Float64Array, aco: number, aR: Float64Array, ao: number, aH: Float64Array, aho: number,
+    bc: Float64Array, bR: Float64Array, bo: number, bH: Float64Array, bho: number): void {
+    const ahx = aH[aho], ahy = aH[aho + 1], ahz = aH[aho + 2], bhx = bH[bho], bhy = bH[bho + 1], bhz = bH[bho + 2];
+    axS[AX_TX] = ac[aco] - bc[0]; axS[AX_TY] = ac[aco + 1] - bc[1]; axS[AX_TZ] = ac[aco + 2] - bc[2];
     axAR = aR; axBR = bR; axAo = ao; axBo = bo;
-    axAhx = ahx; axAhy = ahy; axAhz = ahz; axBhx = bhx; axBhy = bhy; axBhz = bhz;
-    axisBest = Infinity; axisX = 0; axisY = 1; axisZ = 0; axisReach = 0;
-    for (let k = 0; k < 3; k++) considerAxis(aR[ao + k], aR[ao + 3 + k], aR[ao + 6 + k], false);
-    for (let k = 0; k < 3; k++) considerAxis(bR[bo + k], bR[bo + 3 + k], bR[bo + 6 + k], false);
+    axS[AX_AHX] = ahx; axS[AX_AHY] = ahy; axS[AX_AHZ] = ahz; axS[AX_BHX] = bhx; axS[AX_BHY] = bhy; axS[AX_BHZ] = bhz;
+    axS[AX_BEST] = Infinity; axS[AX_X] = 0; axS[AX_Y] = 1; axS[AX_Z] = 0; axS[AX_REACH] = 0;
+    for (let k = 0; k < 3; k++) { caS[0] = aR[ao + k]; caS[1] = aR[ao + 3 + k]; caS[2] = aR[ao + 6 + k]; considerAxis(false); }
+    for (let k = 0; k < 3; k++) { caS[0] = bR[bo + k]; caS[1] = bR[bo + 3 + k]; caS[2] = bR[bo + 6 + k]; considerAxis(false); }
     for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
       const ax = aR[ao + i], ay = aR[ao + 3 + i], az = aR[ao + 6 + i];
       const ex = bR[bo + j], ey = bR[bo + 3 + j], ez = bR[bo + 6 + j];
-      considerAxis(ay * ez - az * ey, az * ex - ax * ez, ax * ey - ay * ex, true);
+      caS[0] = ay * ez - az * ey; caS[1] = az * ex - ax * ez; caS[2] = ax * ey - ay * ex;
+      considerAxis(true);
     }
-    satN[0] = axisX; satN[1] = axisY; satN[2] = axisZ;
-    satReachB = axisReach;
+    satN[0] = axS[AX_X]; satN[1] = axS[AX_Y]; satN[2] = axS[AX_Z];
+    satS[SAT_REACH] = axS[AX_REACH];
   }
 
   // a body's box parts in the world this pair (scratch, up to MAX_PARTS per body), and their axes against one box
@@ -1090,8 +1143,8 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
    * spheres meet the box) but pushes along that part's shared axis against the box, the depth no more than the boxes'
    * overlap; otherwise the sphere's own nearest point stands (the scratch from sphereBox).
    */
-  function sharedAxisContact(a: number, k: number, x: number, y: number, z: number, r: number,
-    bhx: number, bhy: number, bhz: number): void {
+  function sharedAxisContact(a: number, k: number, bhArr: Float64Array, bho: number): void {
+    const x = qS[0], y = qS[1], z = qS[2], r = qS[3];
     const shape = shapes[a]!;
     const part = shape.sphereSolid[k];
     if (part < 0 || part >= MAX_PARTS) return;
@@ -1099,47 +1152,53 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
       const o = part * SOLID_STRIDE;
       if (shape.solids[o] !== SOLID_BOX) { partState[part] = 2; return; }
       boxPartToWorld(a, shape.solids, o, partC, part * 3, partR, part * 9);
-      boxBoxAxis(partC, part * 3, partR, part * 9, shape.solids[o + 8], shape.solids[o + 9], shape.solids[o + 10],
-        otherC, otherR, 0, bhx, bhy, bhz);
+      boxBoxAxis(partC, part * 3, partR, part * 9, shape.solids, o + 8, otherC, otherR, 0, bhArr, bho);
       partAxis[part * 5] = satN[0]; partAxis[part * 5 + 1] = satN[1]; partAxis[part * 5 + 2] = satN[2];
-      partAxis[part * 5 + 3] = satOverlap; partAxis[part * 5 + 4] = satReachB;
+      partAxis[part * 5 + 3] = satS[SAT_OVERLAP]; partAxis[part * 5 + 4] = satS[SAT_REACH];
       partState[part] = 1;
     }
     if (partState[part] !== 1) return;
     const nx = partAxis[part * 5], ny = partAxis[part * 5 + 1], nz = partAxis[part * 5 + 2];
     // (a plane's depth along the axis would give a sphere beside the box's face a phantom penetration — a slab resting on
     // a panel's edge flickered on and off it: the sphere's own depth stands, capped at the boxes' overlap)
-    const depth = Math.min(sDepth, Math.max(partAxis[part * 5 + 3], 0) + 0.002);
-    sNx = nx; sNy = ny; sNz = nz;
-    sDepth = depth;
-    sPx = x - nx * r; sPy = y - ny * r; sPz = z - nz * r;
+    const depth = Math.min(hitS[S_DEPTH], Math.max(partAxis[part * 5 + 3], 0) + 0.002);
+    hitS[S_NX] = nx; hitS[S_NY] = ny; hitS[S_NZ] = nz;
+    hitS[S_DEPTH] = depth;
+    hitS[S_PX] = x - nx * r; hitS[S_PY] = y - ny * r; hitS[S_PZ] = z - nz * r;
   }
 
   /**
    * A world point of something else (a static corner, a kinematic box's corner) inside one of body i's solids: a
    * contact pushing the body off it.
    */
-  function featureIntoBody(i: number, x: number, y: number, z: number, b: number,
-    friction: number, restitution: number, kvx0: number, kvy0: number, kvz0: number): void {
+  function featureIntoBody(i: number, b: number): void {
+    // the point in qS (a sphere of no radius), its friction, restitution and partner velocity in fiS
+    const x = qS[0], y = qS[1], z = qS[2];
+    const friction = fiS[0], restitution = fiS[1], kvx0 = fiS[2], kvy0 = fiS[3], kvz0 = fiS[4];
     if (x < bminX[i] || x > bmaxX[i] || y < bminY[i] || y > bmaxY[i] || z < bminZ[i] || z > bmaxZ[i]) return;
     const shape = shapes[i]!;
     const s = shape.solids;
+    qS[3] = 0;
     for (let o = 0; o < s.length; o += SOLID_STRIDE) {
       solidToWorld(i, s, o);
       let hit: boolean;
-      if (s[o] === SOLID_BOX) hit = sphereBox(x, y, z, 0, solidCx, solidCy, solidCz, solidRot, 0, s[o + 8], s[o + 9], s[o + 10]);
-      else hit = sphereCapsule(x, y, z, 0, solidCx, solidCy, solidCz, solidBx, solidBy, solidBz, s[o + 7]);
+      if (s[o] === SOLID_BOX) hit = sphereBox(swS, SW_CX, solidRot, 0, s, o + 8);
+      else hit = sphereCapsule(swS, SW_CX, swS, SW_BX, s, o + 7);
       // speculative like the spheres' contacts: a corner within the margin outside keeps its contact (no flicker on/off
       // as the solver holds a slab a millimetre off a pier's corner)
-      if (!hit || !(sDepth > -CONTACT_MARGIN_M)) continue;
+      if (!hit || !(hitS[S_DEPTH] > -CONTACT_MARGIN_M)) continue;
       // the point leaves the solid along +n: the body moves along −n
-      addContact(i, b, -1, PARTNER_NONE, x, y, z, -sNx, -sNy, -sNz, sDepth, friction, restitution, kvx0, kvy0, kvz0);
+      ctS[0] = x; ctS[1] = y; ctS[2] = z; ctS[3] = -hitS[S_NX]; ctS[4] = -hitS[S_NY]; ctS[5] = -hitS[S_NZ]; ctS[6] = hitS[S_DEPTH];
+      ctS[7] = friction; ctS[8] = restitution; ctS[9] = kvx0; ctS[10] = kvy0; ctS[11] = kvz0;
+      addContact(i, b, -1, PARTNER_NONE);
       return;
     }
   }
 
   // ---- kinematic boxes ----
-  function kinematicPointVelocity(k: number, x: number, y: number, z: number, out: Float64Array): void {
+  /** Kinematic box k's velocity at the point at po in pArr, into out. */
+  function kinematicPointVelocity(k: number, pArr: Float64Array, po: number, out: Float64Array): void {
+    const x = pArr[po], y = pArr[po + 1], z = pArr[po + 2];
     const o = k * 6, c = k * 3;
     const rx = x - kc[c], ry = y - kc[c + 1], rz = z - kc[c + 2];
     out[0] = kv[o] + kv[o + 4] * rz - kv[o + 5] * ry;
@@ -1168,12 +1227,14 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
         const j = (base + s) * 3;
         const x = sphereWorld[j], y = sphereWorld[j + 1], z = sphereWorld[j + 2];
         const r = shape.spheres[s * 4 + 3];
-        if (!sphereBox(x, y, z, r, kc[c], kc[c + 1], kc[c + 2], kr, k * 9, hx, hy, hz)) continue;
-        sharedAxisContact(i, s, x, y, z, r, hx, hy, hz);
-        if (!(sDepth > -CONTACT_MARGIN_M)) continue;
-        kinematicPointVelocity(k, sPx, sPy, sPz, kvScratch);
-        addContact(i, -3 - k, base + s, 1 + k, sPx, sPy, sPz, sNx, sNy, sNz, sDepth, friction, restitution,
-          kvScratch[0], kvScratch[1], kvScratch[2]);
+        qS[0] = x; qS[1] = y; qS[2] = z; qS[3] = r;
+        if (!sphereBox(kc, c, kr, k * 9, kh, c)) continue;
+        sharedAxisContact(i, s, kh, c);
+        if (!(hitS[S_DEPTH] > -CONTACT_MARGIN_M)) continue;
+        kinematicPointVelocity(k, hitS, S_PX, kvScratch);
+        ctS[0] = hitS[S_PX]; ctS[1] = hitS[S_PY]; ctS[2] = hitS[S_PZ]; ctS[3] = hitS[S_NX]; ctS[4] = hitS[S_NY]; ctS[5] = hitS[S_NZ];
+        ctS[6] = hitS[S_DEPTH]; ctS[7] = friction; ctS[8] = restitution; ctS[9] = kvScratch[0]; ctS[10] = kvScratch[1]; ctS[11] = kvScratch[2];
+        addContact(i, -3 - k, base + s, 1 + k);
       }
       // the box's corners and edge midpoints into the body (a deck edge under a turret's floor)
       const m = k * 9;
@@ -1183,8 +1244,10 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
         const x = kc[c] + kr[m] * lx + kr[m + 1] * ly + kr[m + 2] * lz;
         const y = kc[c + 1] + kr[m + 3] * lx + kr[m + 4] * ly + kr[m + 5] * lz;
         const z = kc[c + 2] + kr[m + 6] * lx + kr[m + 7] * ly + kr[m + 8] * lz;
-        kinematicPointVelocity(k, x, y, z, kvScratch);
-        featureIntoBody(i, x, y, z, -3 - k, friction, restitution, kvScratch[0], kvScratch[1], kvScratch[2]);
+        qS[0] = x; qS[1] = y; qS[2] = z;
+        kinematicPointVelocity(k, qS, 0, kvScratch);
+        fiS[0] = friction; fiS[1] = restitution; fiS[2] = kvScratch[0]; fiS[3] = kvScratch[1]; fiS[4] = kvScratch[2];
+        featureIntoBody(i, -3 - k);
       }
     }
   }
@@ -1208,7 +1271,7 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
       const box = s[o] === SOLID_BOX;
       if (box) {
         // b's box for the shared axes of a's box parts (computed on a sphere's first hit)
-        otherC[0] = solidCx; otherC[1] = solidCy; otherC[2] = solidCz;
+        otherC[0] = swS[SW_CX]; otherC[1] = swS[SW_CY]; otherC[2] = swS[SW_CZ];
         for (let m = 0; m < 9; m++) otherR[m] = solidRot[m];
         partState.fill(0);
       }
@@ -1216,14 +1279,14 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
         const j = (base + k) * 3;
         const x = sphereWorld[j], y = sphereWorld[j + 1], z = sphereWorld[j + 2];
         if (x < bminX[b] || x > bmaxX[b] || y < bminY[b] || y > bmaxY[b] || z < bminZ[b] || z > bmaxZ[b]) continue;
-        const r = shapeA.spheres[k * 4 + 3];
-        const hit = box
-          ? sphereBox(x, y, z, r, otherC[0], otherC[1], otherC[2], otherR, 0, s[o + 8], s[o + 9], s[o + 10])
-          : sphereCapsule(x, y, z, r, solidCx, solidCy, solidCz, solidBx, solidBy, solidBz, s[o + 7]);
+        qS[0] = x; qS[1] = y; qS[2] = z; qS[3] = shapeA.spheres[k * 4 + 3];
+        const hit = box ? sphereBox(otherC, 0, otherR, 0, s, o + 8) : sphereCapsule(swS, SW_CX, swS, SW_BX, s, o + 7);
         if (!hit) continue;
-        if (box) sharedAxisContact(a, k, x, y, z, r, s[o + 8], s[o + 9], s[o + 10]);
-        if (!(sDepth > -CONTACT_MARGIN_M)) continue;
-        addContact(a, b, base + k, 1 + kinematicCapacity + b, sPx, sPy, sPz, sNx, sNy, sNz, sDepth, friction, restitution, 0, 0, 0);
+        if (box) sharedAxisContact(a, k, s, o + 8);
+        if (!(hitS[S_DEPTH] > -CONTACT_MARGIN_M)) continue;
+        ctS[0] = hitS[S_PX]; ctS[1] = hitS[S_PY]; ctS[2] = hitS[S_PZ]; ctS[3] = hitS[S_NX]; ctS[4] = hitS[S_NY]; ctS[5] = hitS[S_NZ];
+        ctS[6] = hitS[S_DEPTH]; ctS[7] = friction; ctS[8] = restitution; ctS[9] = 0; ctS[10] = 0; ctS[11] = 0;
+        addContact(a, b, base + k, 1 + kinematicCapacity + b);
       }
     }
   }
@@ -1245,36 +1308,46 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
   }
   const rv = new Float64Array(3);
 
-  /** k = 1/m + n·(I⁻¹ (r × n)) × r, summed over the dynamic sides. */
-  function effectiveMass(c: number, nx: number, ny: number, nz: number): number {
+  /** k = 1/m + n·(I⁻¹ (r × n)) × r, summed over the dynamic sides, along contact c's direction (nxA, nyA, nzA at c);
+   *  1/k into out[c]. */
+  function effectiveMass(c: number, nxA: Float64Array, nyA: Float64Array, nzA: Float64Array, out: Float64Array): void {
     const a = cA[c], b = cB[c];
     let k = shapes[a]!.invMass;
-    k += angularTerm(a, cRax[c], cRay[c], cRaz[c], nx, ny, nz);
+    angularTerm(a, cRax, cRay, cRaz, c, nxA, nyA, nzA);
+    k += amS[0];
     if (b >= 0) {
       k += shapes[b]!.invMass;
-      k += angularTerm(b, cRbx[c], cRby[c], cRbz[c], nx, ny, nz);
+      angularTerm(b, cRbx, cRby, cRbz, c, nxA, nyA, nzA);
+      k += amS[0];
     }
-    return k > 1e-12 ? 1 / k : 0;
+    out[c] = k > 1e-12 ? 1 / k : 0;
   }
 
-  function angularTerm(i: number, rx: number, ry: number, rz: number, nx: number, ny: number, nz: number): number {
+  /** Body i's u · (I⁻¹ u), u = r × n (r and n at c in their arrays), into amS[0]. */
+  function angularTerm(i: number, rxA: Float64Array, ryA: Float64Array, rzA: Float64Array, c: number,
+    nxA: Float64Array, nyA: Float64Array, nzA: Float64Array): void {
+    const rx = rxA[c], ry = ryA[c], rz = rzA[c], nx = nxA[c], ny = nyA[c], nz = nzA[c];
     // u = r × n; return u · (I⁻¹ u)
     const ux = ry * nz - rz * ny, uy = rz * nx - rx * nz, uz = rx * ny - ry * nx;
     const m = i * 6;
     const ix = iiw[m] * ux + iiw[m + 1] * uy + iiw[m + 2] * uz;
     const iy = iiw[m + 1] * ux + iiw[m + 3] * uy + iiw[m + 4] * uz;
     const iz = iiw[m + 2] * ux + iiw[m + 4] * uy + iiw[m + 5] * uz;
-    return ux * ix + uy * iy + uz * iz;
+    amS[0] = ux * ix + uy * iy + uz * iz;
   }
 
-  /** Apply impulse j (world) at the contact: +j on a, −j on b. `pseudo` writes the split-impulse velocities. */
-  function applyContactImpulse(c: number, jx: number, jy: number, jz: number, pseudo: boolean): void {
+  /** Apply impulse j (world, in jS) at the contact: +j on a, −j on b. `pseudo` writes the split-impulse velocities. */
+  function applyContactImpulse(c: number, pseudo: boolean): void {
     const a = cA[c], b = cB[c];
-    applyBodyImpulse(a, jx, jy, jz, cRax[c], cRay[c], cRaz[c], pseudo);
-    if (b >= 0) applyBodyImpulse(b, -jx, -jy, -jz, cRbx[c], cRby[c], cRbz[c], pseudo);
+    applyBodyImpulse(a, false, cRax, cRay, cRaz, c, pseudo);
+    if (b >= 0) applyBodyImpulse(b, true, cRbx, cRby, cRbz, c, pseudo);
   }
 
-  function applyBodyImpulse(i: number, jx: number, jy: number, jz: number, rx: number, ry: number, rz: number, pseudo: boolean): void {
+  /** Impulse jS (negated: −jS) on body i at its arm r (at c in its arrays). */
+  function applyBodyImpulse(i: number, negate: boolean, rxA: Float64Array, ryA: Float64Array, rzA: Float64Array, c: number,
+    pseudo: boolean): void {
+    const jx = negate ? -jS[0] : jS[0], jy = negate ? -jS[1] : jS[1], jz = negate ? -jS[2] : jS[2];
+    const rx = rxA[c], ry = ryA[c], rz = rzA[c];
     const im = shapes[i]!.invMass;
     // torque impulse r × j, then I⁻¹
     const tx = ry * jz - rz * jy, ty = rz * jx - rx * jz, tz = rx * jy - ry * jx;
@@ -1306,9 +1379,9 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
       const t2x = ny * t1z - nz * t1y, t2y = nz * t1x - nx * t1z, t2z = nx * t1y - ny * t1x;
       cT1x[c] = t1x; cT1y[c] = t1y; cT1z[c] = t1z;
       cT2x[c] = t2x; cT2y[c] = t2y; cT2z[c] = t2z;
-      cMassN[c] = effectiveMass(c, nx, ny, nz);
-      cMassT1[c] = effectiveMass(c, t1x, t1y, t1z);
-      cMassT2[c] = effectiveMass(c, t2x, t2y, t2z);
+      effectiveMass(c, cNx, cNy, cNz, cMassN);
+      effectiveMass(c, cT1x, cT1y, cT1z, cMassT1);
+      effectiveMass(c, cT2x, cT2y, cT2z, cMassT2);
       relativeVelocity(c, rv);
       const vn = rv[0] * nx + rv[1] * ny + rv[2] * nz;
       // a contact still apart (inside the margin) lets the body close its gap this step and no more (speculative);
@@ -1343,10 +1416,10 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
         }
       }
       if (warm) {
-        applyContactImpulse(c,
-          cJn[c] * nx + cJt1[c] * t1x + cJt2[c] * t2x,
-          cJn[c] * ny + cJt1[c] * t1y + cJt2[c] * t2y,
-          cJn[c] * nz + cJt1[c] * t1z + cJt2[c] * t2z, false);
+        jS[0] = cJn[c] * nx + cJt1[c] * t1x + cJt2[c] * t2x;
+        jS[1] = cJn[c] * ny + cJt1[c] * t1y + cJt2[c] * t2y;
+        jS[2] = cJn[c] * nz + cJt1[c] * t1z + cJt2[c] * t2z;
+        applyContactImpulse(c, false);
       } else { cJn[c] = 0; cJt1[c] = 0; cJt2[c] = 0; }
     }
   }
@@ -1361,7 +1434,7 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
         const j0 = cJn[c];
         cJn[c] = Math.max(0, j0 + dj);
         dj = cJn[c] - j0;
-        if (dj !== 0) applyContactImpulse(c, dj * nx, dj * ny, dj * nz, false);
+        if (dj !== 0) { jS[0] = dj * nx; jS[1] = dj * ny; jS[2] = dj * nz; applyContactImpulse(c, false); }
         // friction in the box cone
         const limit = cFriction[c] * cJn[c];
         relativeVelocity(c, rv);
@@ -1376,8 +1449,8 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
         cJt2[c] = Math.max(-limit, Math.min(limit, t20 + d2));
         d2 = cJt2[c] - t20;
         if (d1 !== 0 || d2 !== 0) {
-          applyContactImpulse(c,
-            d1 * cT1x[c] + d2 * cT2x[c], d1 * cT1y[c] + d2 * cT2y[c], d1 * cT1z[c] + d2 * cT2z[c], false);
+          jS[0] = d1 * cT1x[c] + d2 * cT2x[c]; jS[1] = d1 * cT1y[c] + d2 * cT2y[c]; jS[2] = d1 * cT1z[c] + d2 * cT2z[c];
+          applyContactImpulse(c, false);
         }
       }
     }
@@ -1404,7 +1477,7 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
         const j0 = cJp[c];
         cJp[c] = Math.max(0, j0 + dj);
         dj = cJp[c] - j0;
-        if (dj !== 0) applyContactImpulse(c, dj * nx, dj * ny, dj * nz, true);
+        if (dj !== 0) { jS[0] = dj * nx; jS[1] = dj * ny; jS[2] = dj * nz; applyContactImpulse(c, true); }
       }
     }
   }
@@ -1819,7 +1892,9 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
       if (slot < 0 || slot >= capacity || !active[slot]) return;
       wake(slot);
       updateRotation(slot);
-      applyBodyImpulse(slot, jx, jy, jz, x - px[slot], y - py[slot], z - pz[slot], false);
+      jS[0] = jx; jS[1] = jy; jS[2] = jz;
+      armX[0] = x - px[slot]; armY[0] = y - py[slot]; armZ[0] = z - pz[slot];
+      applyBodyImpulse(slot, false, armX, armY, armZ, 0, false);
     },
     setVelocity(slot, lx, ly, lz, ax, ay, az) {
       if (slot < 0 || slot >= capacity || !active[slot]) return;

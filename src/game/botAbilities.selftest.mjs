@@ -67,7 +67,11 @@ for (const change of [
   assert.ok(!(f.planner.update(f.entity, 11.3, f.context) & B.SELF_RIGHT), 'landing does not reset jump discipline');
 }
 {
-  const f = fixture(); const enemy = fixture('bravo').entity;
+  // VH.14 (2026-10-15, engageShare 0.25): a station engages only a target whose armour turned towards it its round
+  // defeats over that share (stationAccepts). The Abrams's 12.7 mm M2 defeats none of another Abrams's (share 0), so the
+  // exposed enemy is a BMP-2
+  const f = fixture(); const enemySpec = getSpec('bmp2');
+  const enemy = { id: 'bot-bravo', team: 'bravo', spec: enemySpec, state: createTankState(enemySpec, new Vector3(), 0), combat: createCombatState(enemySpec) };
   enemy.state.pos.set(0, 0, 80);
 
   const world = { entities: [f.entity, enemy], visible: () => false, clear: () => true };

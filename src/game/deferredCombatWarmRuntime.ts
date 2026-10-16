@@ -5,6 +5,7 @@ import {
   type WorkYielder,
 } from '../engine/frameScheduler.ts';
 import {
+  ProgramUniformPreparationError,
   snapshotRendererPrograms,
   warmNewRendererProgramUniforms,
   type ContextProgramRenderer,
@@ -38,11 +39,20 @@ interface WarmTrace {
   generation: number;
   stages: Record<string, number>;
   enemyProgramUniformWarm?: RuntimeValue;
+  /** The stages whose programs were still linking when their window closed (the warm went on past them). */
+  unfinishedLinks?: Record<string, RuntimeValue>;
   navigationJobs?: number[];
   terrainLookaheadJobs?: number;
   totalMs?: number;
   finishedAtPreBattleS?: number | null;
   doneBeforeRollout?: boolean;
+  /** When the countdown's hold was released (before the vision programs, which warm in the battle's background). */
+  releasedAtPreBattleS?: number | null;
+  releasedBeforeRollout?: boolean;
+  /** Where the count stood when the rare effects (warmed after the hold) were done. */
+  rareFinishedAtPreBattleS?: number | null;
+  /** The vision warm's steps: one real frame each. */
+  visionSteps?: number;
   error?: string;
   cancelled?: boolean;
 }
@@ -133,6 +143,13 @@ export function createDeferredCombatWarmRuntime<
     const trace: WarmTrace = { done: false, generation, stages: {} };
     host.__BATTLE_DEFERRED_WARM = trace;
     const startedAt = now();
+    // the countdown's hold, released once: before the vision programs, or at the end (a failure, a cancellation)
+    let released = false;
+    const releaseHold = (): void => {
+      if (released || generation !== getGeneration()) return;
+      released = true;
+      setPending(false);
+    };
     let pending!: Promise<void>;
     pending = (async () => {
       // Leave the first battlefield frame's pre-paint microtask checkpoint
@@ -152,24 +169,58 @@ export function createDeferredCombatWarmRuntime<
         }
       };
 
+      // (2026-10-16, the perf lane) a stage whose programs are still linking when its strict window closes (five seconds
+      // of live battle, frame-paced: the driver drains every queued link first, and at load the battle's own frames are
+      // slow) has not failed the warm. Its links go on as submitted and an unfinished one waits at its first draw, as it
+      // would have anyway; the other stages do not wait on it. Every probed integ/226 entry (load 100-220) lost every
+      // stage after the first unfinished one to "incomplete: budget" — the vision programs, the opening and rare effects,
+      // the routes and the terrain tiles left to their first use in battle. The trace names the stage (unfinishedLinks);
+      // a stale battle (invalidated) still stops the warm.
+      const unlessLinksUnfinished = async (stage: string, run: () => Promise<void>): Promise<void> => {
+        try { await run(); } catch (error) {
+          if (!(error instanceof ProgramUniformPreparationError) || error.preparation.reason === 'invalidated') throw error;
+          (trace.unfinishedLinks ??= {})[stage] = {
+            ...(error.receipt ?? {}), reason: error.preparation.reason, pending: error.preparation.pending,
+          };
+          devTrace?.mark?.('battle:deferred-warm-links-unfinished', {
+            stage, reason: error.preparation.reason, pending: error.preparation.pending ?? -1 });
+        }
+      };
+
       const enemyVisualsStartedAt = now();
       const enemyProgramBaseline = snapshotRendererPrograms(renderer);
       await getBattleVisuals().stream(
         (entity) => entity.team === 'enemy', guardedYield, null, true,
       );
-      trace.enemyProgramUniformWarm = await warmNewRendererProgramUniforms(
-        renderer, enemyProgramBaseline, guardedYield, now,
-        { isCurrent: () => generation === getGeneration() && game.phase === 'battle' },
-      );
+      await unlessLinksUnfinished('enemyVisuals', async () => {
+        trace.enemyProgramUniformWarm = await warmNewRendererProgramUniforms(
+          renderer, enemyProgramBaseline, guardedYield, now,
+          { isCurrent: () => generation === getGeneration() && game.phase === 'battle' },
+        );
+      });
       trace.stages.enemyVisuals = Math.round(now() - enemyVisualsStartedAt);
 
-      const visionStartedAt = now();
-      if (warmVisionSteps) for (const _ of warmVisionSteps()) await guardedYield();
-      trace.stages.visionPrograms = Math.round(now() - visionStartedAt);
-
       const openingFxStartedAt = now();
-      await combatWarm.warmOpeningChunked(6, guardedYield);
+      await unlessLinksUnfinished('combatOpeningWarm', () => combatWarm.warmOpeningChunked(6, guardedYield));
       trace.stages.combatOpeningWarm = Math.round(now() - openingFxStartedAt);
+
+      // (2026-10-16, the perf lane; the coordinator's rulings: "a count held at 3 is a visible stall"; the enemy visuals
+      // stay in the hold, since a full enemy tank built at spot time is a mid-fight hitch) the countdown's hold ends here,
+      // after the enemy visuals and the opening effects: the pre-battle count waits on this flag (preBattleCountdown.ts:
+      // held at 3 while warm work is pending). Everything after warms on in the battle's background, in the order a
+      // battle needs it: the bots' opening routes (they move at rollout), the battle's terrain tiles, the rare effects (a
+      // first kill can come within seconds of rollout), the far terrain lookahead, then the sights. Each is capped a
+      // frame: the routes, tiles and lookahead one job per slice of at most 6 ms; the rare effects at most their 6 ms
+      // slice a frame (a real frame at each of their program checkpoints: combatWarmCoordinator
+      // COMBAT_WARM_PROGRAM_CHECKPOINT); the vision programs one bounded step a real frame (a compile slice of at most
+      // 8 ms, one link poll, or one actor's private first-bind render), every material restored before each yield
+      // (thermalVehicles.warmSteps). Whatever a battle reaches before its warm does the work at that first use — a bot
+      // plans its route, a tile streams, a kill or a sight compiles its variant at that draw (nothing drains the rare
+      // warm on a kill: combatWarm.drain runs only at a non-deferred battle start and in shot mode) — a one-time cost,
+      // as before these warms existed, never a stall.
+      trace.releasedAtPreBattleS = Number.isFinite(game.preBattleS) ? game.preBattleS ?? null : null;
+      trace.releasedBeforeRollout = game.phase === 'battle' && typeof game.preBattleS === 'number' && game.preBattleS > 0;
+      releaseHold();
 
       const navigationStartedAt = now();
       trace.navigationJobs = [];
@@ -186,6 +237,12 @@ export function createDeferredCombatWarmRuntime<
       await warmBattleTerrainTiles(guardedYield);
       trace.stages.navigation = Math.round(now() - navigationStartedAt);
 
+      const rareStartedAt = now();
+      await unlessLinksUnfinished('rarePrograms', () => combatWarm.warmRareChunked(6, guardedYield));
+      Object.assign(trace.stages, host.__COMBAT_RARE_WARM?.stages || {});
+      trace.stages.rareEffects = Math.round(now() - rareStartedAt);
+      trace.rareFinishedAtPreBattleS = Number.isFinite(game.preBattleS) ? game.preBattleS ?? null : null;
+
       const terrainLookaheadStartedAt = now();
       let terrainLookaheadJobs = 0;
       while ((world?.warmTerrainLookahead?.(camera.position, 1) ?? 0) > 0) {
@@ -195,8 +252,16 @@ export function createDeferredCombatWarmRuntime<
       trace.stages.terrainLookahead = Math.round(now() - terrainLookaheadStartedAt);
       trace.terrainLookaheadJobs = terrainLookaheadJobs;
 
-      await combatWarm.warmRareChunked(6, guardedYield);
-      Object.assign(trace.stages, host.__COMBAT_RARE_WARM?.stages || {});
+      const visionStartedAt = now();
+      await unlessLinksUnfinished('visionPrograms', async () => {
+        // every step a real frame: the vision programs' strict preparation polls their links once a step and spends one
+        // of its finite rounds each time, so an unforced yield (a no-op until the 6 ms slice is used) burned its 1024
+        // rounds in ~80 ms with the thermal links still in the driver's queue — 'budget', and the sights left to link at
+        // their first use. A forced yield gives the links real time (as warmNewRendererProgramUniforms forces its
+        // checkpoints) and caps the stage at one step a frame.
+        if (warmVisionSteps) for (const _ of warmVisionSteps()) { trace.visionSteps = (trace.visionSteps ?? 0) + 1; await guardedYield(true); }
+      });
+      trace.stages.visionPrograms = Math.round(now() - visionStartedAt);
       trace.done = true;
       trace.totalMs = Math.round(now() - startedAt);
       trace.finishedAtPreBattleS = Number.isFinite(game.preBattleS)
@@ -217,7 +282,7 @@ export function createDeferredCombatWarmRuntime<
       trace.doneBeforeRollout = false;
       if (generation !== getGeneration() && pendingPromise === pending) cancel();
     }).finally(() => {
-      if (generation === getGeneration()) setPending(false);
+      releaseHold();
       const ownsSlot = pendingPromise === pending;
       if (ownsSlot) pendingPromise = null;
       if (generation === getGeneration()

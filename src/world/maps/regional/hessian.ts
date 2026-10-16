@@ -532,7 +532,12 @@ const BOX_COLOURS: readonly Rgb[] = [0x4a3a2c, 0x3e5a3a, 0x6a4a30].map(rgb);
  * the front door, a woodpile under the eaves at the back, the chimney sweep's roof ladder, a television aerial on the
  * ridge (1980s). Every choice is drawn before the phones leave the parts out, so both tiers draw alike.
  */
-export function dressHessianHouse(sink: PartSink, frame: HouseFrame, st: HessianState, opts: { aerial?: number; boxes?: number } = {}): void {
+/**
+ * `clear`: spans of a face another body stands against (a farmhouse's stable wing): a window there keeps its draws but
+ * hangs no flower box, which would stand in that body's wall.
+ */
+export function dressHessianHouse(sink: PartSink, frame: HouseFrame, st: HessianState,
+  opts: { aerial?: number; boxes?: number; clear?: ReadonlyArray<{ face: Opening['face']; u0: number; u1: number }> } = {}): void {
   const rng = st.rng;
   const boxes = rng() < (opts.boxes ?? 0.55), bloom = pick(rng, BLOOMS), boxColour = pick(rng, BOX_COLOURS);
   const aerial = rng() < (opts.aerial ?? 0.45), aerialZ = (rng() - 0.5) * frame.roof.halfD;
@@ -540,7 +545,7 @@ export function dressHessianHouse(sink: PartSink, frame: HouseFrame, st: Hessian
   const picks = frame.spec.openings.map(() => rng());
   // the dressing draws the build stream (flower boxes, the woodpile, the aerial): a phone draws it as the desktop does
   // and keeps none of it (PartSink.dressing)
-  sink.dressing(st.mobile, () => houseDressing(sink, frame, st, rng, { boxes, bloom, boxColour, aerial, aerialZ, ladder, pile, seat, lantern, picks }));
+  sink.dressing(st.mobile, () => houseDressing(sink, frame, st, rng, { boxes, bloom, boxColour, aerial, aerialZ, ladder, pile, seat, lantern, picks, clear: opts.clear ?? [] }));
 }
 
 /**
@@ -549,10 +554,15 @@ export function dressHessianHouse(sink: PartSink, frame: HouseFrame, st: Hessian
  */
 function houseDressing(sink: PartSink, frame: HouseFrame, st: HessianState, rng: () => number, c: {
   boxes: boolean; bloom: Rgb; boxColour: Rgb; aerial: boolean; aerialZ: number; ladder: boolean; pile: boolean; seat: boolean;
-  lantern: boolean; picks: number[];
+  lantern: boolean; picks: number[]; clear: ReadonlyArray<{ face: Opening['face']; u0: number; u1: number }>;
 }): void {
-  const { boxes, bloom, boxColour, aerial, aerialZ, ladder, pile, seat, lantern, picks } = c;
+  const { boxes, bloom, boxColour, aerial, aerialZ, ladder, pile, seat, lantern, picks, clear } = c;
   const spec = frame.spec;
+  // (props census r2 sweep, Lane C 2026-10-16: a farmhouse's upper window over its stable wing hung its box into the
+  // wing's framed wall, an iron bracket lying flat on its post) a box that would stand in a body built against the face
+  // is drawn into a sink that is thrown away: its draws are spent as before, so the stream's later choices never move
+  const scratch = new PartSink();
+  const boxSink = (o: Opening): PartSink => (clear.some((s) => s.face === o.face && o.u + o.w / 2 + 0.16 > s.u0 && o.u - o.w / 2 - 0.16 < s.u1) ? scratch : sink);
   // the canopy over the front door (facade craft: its own stream, the build stream draws as before)
   if (facadeOn()) {
     const f = facadeRng();
@@ -567,7 +577,7 @@ function houseDressing(sink: PartSink, frame: HouseFrame, st: HessianState, rng:
     spec.openings.forEach((o, k) => {
       if (placed >= 8 || o.kind !== 'window' || o.state || o.storey > 1 || (o.face !== 'front' && o.face !== 'right') || picks[k] > 0.7) return;
       const face = storeyFaces(frame, o.storey)[o.face];
-      flowerBox(sink, face, o.u, frame.bodies[o.storey].y0 + o.y0, o.w, boxColour, bloom, rng);
+      flowerBox(boxSink(o), face, o.u, frame.bodies[o.storey].y0 + o.y0, o.w, boxColour, bloom, rng);
       placed++;
     });
     // (facade craft, desktop; wave 150 named the jettied corner house's flower boxes as what works) the street
@@ -577,7 +587,7 @@ function houseDressing(sink: PartSink, frame: HouseFrame, st: HessianState, rng:
       spec.openings.forEach((o, k) => {
         if (placed >= 12 || o.kind !== 'window' || o.state || o.storey > 1 || (o.face !== 'front' && o.face !== 'right') || picks[k] <= 0.7 || picks[k] > 0.94) return;
         const face = storeyFaces(frame, o.storey)[o.face];
-        flowerBox(sink, face, o.u, frame.bodies[o.storey].y0 + o.y0, o.w, boxColour, bloom, f, true);
+        flowerBox(boxSink(o), face, o.u, frame.bodies[o.storey].y0 + o.y0, o.w, boxColour, bloom, f, true);
         placed++;
       });
     }
@@ -671,9 +681,10 @@ const farmhouse: RegionalBuilder = (ctx) => {
   // the wing's footprint is kept off the dwelling's right face openings
   spec.openings = spec.openings.filter((o) => !(o.face === 'right' && o.storey === 0 && Math.abs(o.u + D * 0.16) < W * 0.4));
   const house = buildHouse(sink, spec, hessianDialect(st));
-  dressHessianHouse(sink, house, st);
   // the stable wing (ridge along x): stone ground, framed half storey, its gable toward +x
   const ww = Math.min(W * 0.66, 5.2);
+  // (its walls and its roof's eave against the dwelling's right face, whose u runs along -z: no flower box there)
+  dressHessianHouse(sink, house, st, { clear: [{ face: 'right', u0: D * 0.16 - ww / 2 - 0.3, u1: D * 0.16 + ww / 2 + 0.3 }] });
   sink.placed(Math.PI / 2, W / 2 + wingL / 2 - 0.2, 0, -D * 0.16, () => {
     const wst: HessianState = { ...st, crosses: false };
     const wing: HouseSpec = {

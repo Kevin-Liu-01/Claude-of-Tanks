@@ -1145,3 +1145,6 @@ export const SKYLINE_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Objec
 });
 
 
+
+// (looks r2 b-east, 2026-10-16: the deco tower's helpers for regional/skylineDeco.ts, the Bund towers' extract-then-own copy)
+export { uvOffset as skylineUvOffset, BRONZE, CHAR, COPPER, DECOR, STEEL, cornerBays, cornerCut, damageOf, faceFrame, fit, inset, pierFinials, podium, pyramidCrown, rectFaces, rubble, soot, spire, tierDamage, type Rect, type SkylineOptions, type TierDamage, type TowerFacade };

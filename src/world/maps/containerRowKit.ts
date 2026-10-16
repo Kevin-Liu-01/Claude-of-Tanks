@@ -246,6 +246,59 @@ function pushContainerShell(placePart: (g: THREE.BufferGeometry) => THREE.Buffer
 }
 
 /**
+ * A door leaf's hinge (the r2 sweep, 2026-10-16): its section in the leaf's plan — the strap (14 mm thick) along the leaf
+ * from 17 cm in to the pin's barrel (26 mm round, its axis `xk` out on the `sx` side), the barrel's front in two facets
+ * back to the leaf at its edge — carried 30 cm up about `yc`, capped (20 triangles, as the block's 12 and its 8 spare a
+ * box); its back on the leaf's face at `zf`, all inside the leaf's edge and the body's box. Painted in the livery (`hex`,
+ * grimed), so it reads as the door's own steel.
+ */
+function containerHinge(sx: number, xk: number, yc: number, zf: number, hex: number, local: () => number,
+  plain: readonly [number, number]): THREE.BufferGeometry {
+  const R0 = 0.026, T = 0.014, IN = 0.17, HH = 0.15;
+  // the section (x out along the leaf on the sx = 1 side, z out of it): the strap's back on the leaf, the barrel's back
+  // corner, its front in two facets, the strap's step and its front
+  const pts: Array<[number, number]> = [
+    [xk - IN, zf], [xk + R0 * 0.98, zf], [xk + R0, zf + R0 * 1.3], [xk - R0 * 0.4, zf + R0 * 2], [xk - R0 * 1.2, zf + T], [xk - IN, zf + T],
+  ].map(([x, z]) => [sx * x, z] as [number, number]);
+  const k = pts.length;
+  // (the section's turn: its edges' outward side from its signed area, as x and z run)
+  let area = 0;
+  for (let i = 0; i < k; i++) { const [ax, az] = pts[i], [bx, bz] = pts[(i + 1) % k]; area += ax * bz - bx * az; }
+  const turn = area > 0 ? 1 : -1;
+  const pos: number[] = [], nor: number[] = [];
+  /** a triangle wound to face `want` (its flat normal) */
+  const tri = (a: number[], b: number[], c: number[], want: readonly number[]): void => {
+    const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+    const cx = uy * vz - uz * vy, cy = uz * vx - ux * vz, cz = ux * vy - uy * vx;
+    if (cx * want[0] + cy * want[1] + cz * want[2] < 0) { const t = b; b = c; c = t; }
+    pos.push(...a, ...b, ...c); nor.push(...want, ...want, ...want);
+  };
+  const y0 = yc - HH, y1 = yc + HH;
+  for (let i = 0; i < k; i++) {
+    const [ax, az] = pts[i], [bx, bz] = pts[(i + 1) % k];
+    const l = Math.hypot(bx - ax, bz - az) || 1;
+    const nx = turn * (bz - az) / l, nz = -turn * (bx - ax) / l;
+    tri([ax, y0, az], [bx, y0, bz], [bx, y1, bz], [nx, 0, nz]);
+    tri([ax, y0, az], [bx, y1, bz], [ax, y1, az], [nx, 0, nz]);
+  }
+  // the caps, fanned from the barrel's back corner (it sees every other corner: the strap's step is the one reflex one)
+  for (let i = 2; i < k; i++) {
+    const [fx, fz] = pts[1], [ax, az] = pts[i], [bx, bz] = pts[(i + 1) % k];
+    tri([fx, y1, fz], [ax, y1, az], [bx, y1, bz], [0, 1, 0]);
+    tri([fx, y0, fz], [ax, y0, az], [bx, y0, bz], [0, -1, 0]);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  const n = pos.length / 3, uv = new Float32Array(n * 2);
+  for (let i = 0; i < n; i++) { uv[i * 2] = 0.62; uv[i * 2 + 1] = (plain[0] + plain[1]) / 2; }
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  paintHex(g, local, hex, 0.86, 0.04);
+  g.userData.uvJitter = 'none';
+  return g;
+}
+
+/**
  * One container body: the closed box minus its door face (dropped from the index, so the solid's hull is still the
  * whole 2.44 x 6.1 m rectangle), the recessed door leaf, the reveal strips that close the recess, four locking bars
  * with their handles and the hinges — every door part strictly inside the body's footprint, so the collision
@@ -365,13 +418,15 @@ function pushContainer(
     handle.translate(bx - Math.sign(bx) * 0.13, 1.05 + (local() - 0.5) * 0.1, zBar);
     place(handle);
   }
-  for (const hx of [-(W / 2 - 0.10), W / 2 - 0.10]) {
-    const hinge = new THREE.BoxGeometry(0.12, 0.34, 0.055);
-    for (let face = 0; face < 6; face++) mapBoxFaceUv(hinge, face, [0.62, 0.625], plain);
-    paintHex(hinge, local, post, 0.9, 0.04);
-    hinge.userData.uvJitter = 'none';
-    hinge.translate(hx, H * 0.5 + (local() - 0.5) * 0.3, L / 2 - R + 0.0275);
-    place(hinge);
+  // the hinges (the r2 sweep, 2026-10-16: a dark 12 x 34 cm block stuck on each leaf read as a painted plate on Mars's
+  // pale boxes): each leaf's hinge as built, a strap welded along the leaf from its pin's barrel at the outer edge, one
+  // section (a strap 14 mm thick running into the barrel's round) carried up its height; painted with the box, as the
+  // line paints its doors' hardware, a little grimed
+  for (const sx of [-1, 1]) {
+    // (the old block's 24 paint draws, then its height draw: every hinge at the height it had)
+    for (let i = 0; i < 24; i++) local();
+    const yc = H * 0.5 + (local() - 0.5) * 0.3;
+    place(containerHinge(sx, W / 2 - 0.085, yc, L / 2 - R, hex, local, plain));
   }
   for (const g of parts) target.push(g);
 }

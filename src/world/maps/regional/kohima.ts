@@ -3,9 +3,10 @@
 // deep verandas; the bazaar's timber shops under sheet roofs; the mission church of rough stone under a red tin roof;
 // Angami Naga houses with low plank walls and great thatched roofs that sweep near the ground, crossed gable horns over
 // the front; bamboo granaries on posts; and the battle's shells — bungalows broken to their plinths and chimneys.
-import { PartSink, alongPlot, faceBox, facePoint, facePoint as facePointOn, pick, plotAxes, rgb, shade, type Face, type RegionalParts, type Rgb } from './geometry.ts';
+import { PartSink, alongPlot, faceBox, facePoint, facePoint as facePointOn, pick, plotAxes, rgb, shade, type Face, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import {
-  buildHouse, closeGables, emitRoof, holedBox, holedPolygon, recordBody, recordShaft, roofCrown, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec,
+  buildHouse, closeGables, emitRoof, holedBox, holedPolygon, recordBody, recordShaft, roofCrown, roofGeometry, storeyFaces, windowRhythm, type HouseDialect, type Opening, type RoofSpec,
+  type WallRect,
 } from './house.ts';
 import { doorUnit, freeBox, openShop, windowUnit, type WindowStyle } from './openings.ts';
 import { openShed } from './outbuildings.ts';
@@ -54,6 +55,30 @@ const bungalow: RegionalBuilder = (ctx) => {
     const f = frame.faces.front, l = frame.faces.left;
     veranda(sink, { ...f, origin: [f.origin[0] - V / 2, f.origin[1], f.origin[2]], width: W + V }, 0.75, frame.eaveY - 0.2, W + V, V, WHITE, { bucket: 'structureMetal', colour: roofColour });
     veranda(sink, { ...l, origin: [l.origin[0], l.origin[1], l.origin[2] - 0.15], width: D - 0.3 }, 0.75, frame.eaveY - 0.2, D - 0.3, V, WHITE, { bucket: 'structureMetal', colour: roofColour });
+    // (the integrity check, 2026-10-16: the plinth seen 1 m in under the raised decks, the sky along the open verandas end
+    // on) each deck skirted down to the ground in white boards, its open ends hung with split-bamboo chiks from the
+    // lean-to down to the rail, as the bungalows kept the sun off theirs
+    const wallTop = frame.eaveY - 0.2, rise = Math.max(0.25, wallTop - 0.75 - 2.1), chik: Rgb = [0.72, 0.62, 0.42];
+    const runs: Array<[Face, number, readonly number[]]> = [
+      [{ ...f, origin: [f.origin[0] - V / 2, f.origin[1], f.origin[2]], width: W + V }, W + V, [-1, 1]],
+      [{ ...l, origin: [l.origin[0], l.origin[1], l.origin[2] - 0.15], width: D - 0.3 }, D - 0.3, [-1, 1]],
+    ];
+    for (const [vf, width, ends] of runs) {
+      faceBox(sink, 'structureWood', vf, 0, 0.31, V - 0.045, width - 0.02, 0.82, 0.03, { colour: shade(WHITE, 0.92) });
+      for (const sg of ends) {
+        const out: Vec3 = [vf.u[0] * sg, 0, vf.u[2] * sg];
+        const ef: Face = { origin: facePoint(vf, sg * width / 2, 0, V / 2), u: [out[2], 0, -out[0]], out, width: V };
+        // (the end face's u runs from the wall out, or back: its sign read off the veranda's out)
+        const ds = ef.u[0] * vf.out[0] + ef.u[2] * vf.out[2] > 0 ? 1 : -1;
+        faceBox(sink, 'structureWood', ef, 0, 0.31, -0.03, V - 0.08, 0.82, 0.03, { colour: shade(WHITE, 0.92) });
+        // (the kit connectivity, 2026-10-16: the chik stopped 3 cm short of the end post and hung free) it runs from the
+        // wall out to the end post's face, hung on it
+        const top = (o: number) => wallTop - rise * o / (V - 0.1) - 0.14, o0 = 0.08, o1 = V - 0.165, yb = 0.75 + 0.95;
+        const P = (o: number, y: number): Vec3 => facePoint(ef, ds * (o - V / 2), y, -0.07);
+        const pts = ds > 0 ? [P(o0, yb), P(o1, yb), P(o1, top(o1)), P(o0, top(o0))] : [P(o1, yb), P(o0, yb), P(o0, top(o0)), P(o1, top(o1))];
+        sink.prism('structureWood', pts, out, 0.015, { colour: chik, decor: true });
+      }
+    }
   });
   return sink.finish();
 };
@@ -136,6 +161,13 @@ function shop(sink: PartSink, ctx: RegionalBuildContext, x: number, W: number, D
     // the tin roof on its closed gables, the rafter feet under the eaves
     const roof = tin(26), rg = roofGeometry(W, D, top, roof);
     emitRoof(sink, rg, roof, roofColour);
+    // (the building-detail triage, 2026-10-16: the shop's rebuild passed no chimneys and lost it) the tea shop's hearth: its
+    // brick stack up through the tin at the back, its slab cap
+    {
+      const sx = W * 0.28, sz = -D * 0.22, at = rg.topAt(sx, sz) ?? rg.ridgeTopY, s0 = 0.21;
+      sink.span('stone', sx - s0, at - 0.45, sz - s0, sx + s0, at + 0.7, sz + s0, { tint: [0.78, 0.5, 0.42] });
+      sink.span('stone', sx - s0 - 0.07, at + 0.7, sz - s0 - 0.07, sx + s0 + 0.07, at + 0.78, sz + s0 + 0.07, { tint: [0.86, 0.84, 0.8] });
+    }
     closeGables(sink, rg, 'structureWood', { colour: shade(plank, 0.85) });
     // the rafter feet under the eaves, down the slope from the wall plate
     if (!mobile) {
@@ -240,9 +272,10 @@ const nagaHouse: RegionalBuilder = (ctx) => {
     door: (s2, face, o, y0) => doorUnit(s2, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(plank, 0.75), frame: { bucket: 'structureWood', width: 0.12, out: 0.06, colour: shade(plank, 0.7) }, steps: { bucket: 'stone' }, leafKind: 'plank' }, y0 + o.y0),
     // (the looks lane, 2026-10-15; WORKLIST #15 "kohima nagaHouse from members": the boards were one printed panel a run)
     // the walls in the Angami's broad adzed planks, each its own, battens over their joints, a rail at foot and head
-    dressWall: (s2, face, rect, own) => boardCladding(s2, face, rect, own, (k) => shade(plank, 0.82 + ((k * 7919 + Math.round(W * 13)) % 23) / 23 * 0.26),
-      shade(plank, 0.72), { mobile: ctx.tier === 'mobile', width: face.out[2] > 0.5 ? 0.42 : 0.3 }),
   };
+  const cladding = (s2: PartSink, face: Face, rect: WallRect, own: readonly Opening[]) => boardCladding(s2, face, rect, own,
+    (k) => shade(plank, 0.82 + ((k * 7919 + Math.round(W * 13)) % 23) / 23 * 0.26), shade(plank, 0.72),
+    { mobile: ctx.tier === 'mobile', width: face.out[2] > 0.5 ? 0.42 : 0.3 });
   // the thatch: steep, deep eaves sweeping down to near a metre off the ground
   const roof: RoofSpec = { kind: 'gable', pitchDeg: 52, eave: plot.turned ? 0.9 : 1.3, verge: plot.turned ? 0.7 : 0.9, thickness: 0.4, bucket: 'straw', ridge: 'round', thatch: 'rows' };
   alongPlot(sink, plot.turned, () => {
@@ -250,9 +283,15 @@ const nagaHouse: RegionalBuilder = (ctx) => {
     let frame;
     try {
       frame = buildHouse(sink, {
-        w: W, d: D, plinth: { h: 0.5, out: 0.8, bucket: 'stone' }, storeys: [{ h: 1.7, wall: 'structureWood', framed: true }], roof, gableBucket: 'structureWood',
+        w: W, d: D, plinth: { h: 0.5, out: 0.8, bucket: 'stone' }, storeys: [{ h: 1.7, wall: 'structureWood' }], roof, gableBucket: 'structureWood',
         openings, chimneys: [], gutters: null, verge: null, reveal: 0.12, spall: null,
       }, dialect);
+      // (Lane C 2026-10-16, houseDamage: a framed storey takes its infill from the wall's second layer, which a plank wall has not, so the damage path threw at damage.ts:325; as the LOOKS fishery fix 182dca492) the storey is unframed and its planks laid over the walls after the house is built, face by face round each face's openings
+      const faces = storeyFaces(frame, 0), body = frame.bodies[0];
+      for (const name of ['front', 'right', 'back', 'left'] as const) {
+        const face = faces[name];
+        cladding(sink, face, { u0: -face.width / 2, u1: face.width / 2, y0: body.y0, y1: body.y1 }, openings.filter((o) => o.face === name && o.storey === 0));
+      }
       // the front planks beside the door carved in relief: the mithun's head with its horns (the feast of merit's mark)
       // over the door's side planks, and the moon disc; and before the house the sitting stones of its forecourt
       const f = frame.faces.front, y0 = frame.floors[0];

@@ -199,5 +199,5 @@ export const gardenShed: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The dachas' garden plots (yards.ts): a picket fence and gate round the yard, the garden shed at its back, the beds. */
-export const DACHA_YARD: YardStyle = { kinds: ['cottage'], fence: 'fencepicket', gate: 'gate', shed: 'woodshed', shedSize: [2.6, 2.2], garden: true };
+/** The dachas' garden plots (yards.ts): a picket fence round the yard and its picket wicket (the fence family's gate, gateKit), the garden shed at its back, the beds. */
+export const DACHA_YARD: YardStyle = { kinds: ['cottage'], fence: 'fencepicket', gate: 'gatepicket', shed: 'woodshed', shedSize: [2.6, 2.2], garden: true };

@@ -312,16 +312,55 @@ function persiana(sink: PartSink, face: Face, u: number, y: number, w: number, h
   const drop = h * (0.3 + look() * 0.55), top = y + h + 0.12, bottom = top - drop - 0.12;
   const colour = look() < 0.75 ? shade(ESPARTO, 0.86 + look() * 0.26) : shade(BLIND_GREEN, 0.9 + look() * 0.2);
   const opts = { colour, decor: true, shadow: true } as const;
-  faceBox(sink, 'structureWood', face, u, (top + bottom) / 2, 0.07, w + 0.16, top - bottom, 0.016, opts);
-  faceBox(sink, 'structureWood', face, u, bottom + 0.045, 0.085, w + 0.18, 0.09, 0.08, opts);
+  // (props census r2 sweep, Lane C 2026-10-16: the mat hung 7 cm off the wall on nothing — six floating blinds on a
+  // posada, a dark plate laid over the window's surround) it hangs as the real ones do, from an iron rod carried clear
+  // of the surround and the sill's nose on two brackets driven into the wall over the lintel, the mat let down from
+  // the rod and rolled at its foot
+  const off = 0.14, iron = { colour: IRON, decor: true } as const;
+  for (const s of [-1, 1]) faceBox(sink, 'structureMetal', face, u + s * (w / 2 + 0.05), top + 0.02, off / 2, 0.03, 0.03, off + 0.02, iron);
+  faceBox(sink, 'structureMetal', face, u, top + 0.02, off, w + 0.2, 0.025, 0.025, iron);
+  faceBox(sink, 'structureWood', face, u, (top + 0.02 + bottom) / 2, off, w + 0.16, top + 0.02 - bottom, 0.016, opts);
+  faceBox(sink, 'structureWood', face, u, bottom + 0.045, off + 0.015, w + 0.18, 0.09, 0.08, opts);
+}
+
+/**
+ * The plank shutters (postigos) of a window (u, y: its bottom-centre): two leaves, each three boards side by side with
+ * their joints open a centimetre and two ledges across them, folded back flat on the wall either side of the surround,
+ * or now and then closed across the opening. (Props census r2 sweep, Lane C 2026-10-16: openings.ts laid each leaf as
+ * one board, six of the school's read as dark plates painted on the white walls.) Its draws are windowUnit's for its
+ * shutters, in their order: the leaves' fade, then whether they stand closed.
+ */
+function postigos(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, style: WindowStyle, rng: () => number): void {
+  const sh = style.shutters!, leaf = w / 2 + 0.03, sideOff = style.surround ? style.surround.width : 0;
+  const fade = 0.88 + rng() * 0.2;
+  const closed = rng() < (sh.closed ?? 0);
+  const sc = { colour: [sh.colour[0] * fade, sh.colour[1] * fade, sh.colour[2] * fade] as Rgb, decor: true, uv: UV_MEMBER };
+  const T = 0.035, boards = 3, joint = 0.012, lh = h + 0.02;
+  const leafAt = (cu: number, o: number, ledges: boolean) => {
+    for (let k = 0; k < boards; k++) {
+      faceBox(sink, 'structureWood', face, cu - leaf / 2 + (k + 0.5) * leaf / boards, y + h / 2, o, leaf / boards - joint, lh, T, { ...sc, fineSides: true });
+    }
+    if (ledges) for (const t of [0.18, 0.82]) faceBox(sink, 'structureWood', face, cu, y + h * t, o + T / 2 + 0.008, leaf - 0.04, 0.07, 0.02, { ...sc, fine: true }, { back: true, ends: true });
+  };
+  if (closed) {
+    // both leaves across the opening, proud of the frame, their ledges inside
+    const shut = Math.max(0, style.frameOut - sink.recess);
+    leafAt(u - leaf / 2 + 0.015, shut + 0.025, false);
+    leafAt(u + leaf / 2 - 0.015, shut + 0.028, false);
+    return;
+  }
+  // folded back flat on the wall (their back faces then never show), the ledged inner faces out
+  for (const side of [-1, 1]) leafAt(u + side * (w / 2 + sideOff + leaf / 2 + 0.02), T / 2 + 0.001, true);
 }
 
 function dialect(st: AndalusianState, look: () => number): HouseDialect {
   return {
     window: (sink, face, o, y0) => {
       const loft = o.kind === 'loft';
-      windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, loft ? { ...st.window, shutters: null, bars: 'none', surround: null } : st.window,
+      // (the shutters' two draws are windowUnit's last on the stream: the leaves drawn after it draw them in its place)
+      windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, loft ? { ...st.window, shutters: null, bars: 'none', surround: null } : { ...st.window, shutters: null },
         st.rng, loft ? 0 : st.litShare);
+      if (!loft && st.window.shutters) postigos(sink, face, o.u, y0 + o.y0, o.w, o.h, st.window, st.rng);
       if (!loft && o.storey === 0 && st.reja) reja(sink, face, o.u, y0 + o.y0, o.w, o.h, st.reja === 'box');
       if (!loft && o.storey > 0 && look() < 0.45) persiana(sink, face, o.u, y0 + o.y0, o.w, o.h, look);
     },
@@ -569,9 +608,15 @@ const posada: RegionalBuilder = (ctx) => {
       const timber = rgb(0x6a5440), leaf = rgb(0x4f6a34);
       for (const s of [-1, 1]) faceBox(sink, 'structureWood', f, du + s * 1.1, frame.floors[0] + 1.25, 1.55, 0.1, 2.5, 0.1, { colour: timber, decor: true });
       for (const s of [-1, 1]) faceBox(sink, 'structureWood', f, du + s * 1.1, frame.floors[0] + 2.55, 0.8, 0.08, 0.08, 1.6, { colour: timber, decor: true });
+      // (props census r2 sweep, Lane C 2026-10-16: the leaves between the two poles hung in the air) the laths nailed
+      // across the poles that carry the vine, and every clump of leaves bedded on them (its draws as before, in order)
+      const lathTop = frame.floors[0] + 2.63;
+      for (let o = 0.12; o < 1.6; o += 0.29) faceBox(sink, 'structureWood', f, du, lathTop - 0.02, o, 2.36, 0.04, 0.05, { colour: shade(timber, 1.1), decor: true });
       for (let k = 0; k < 14; k++) {
-        faceBox(sink, 'structureWood', f, du + (look() - 0.5) * 2.4, frame.floors[0] + 2.6 + look() * 0.25, 0.2 + look() * 1.3,
-          0.4 + look() * 0.4, 0.22 + look() * 0.2, 0.35 + look() * 0.3, { colour: shade(leaf, 0.75 + look() * 0.45), decor: true, shadow: true });
+        const lu = look(), ly = look(), lo = look(), lw = look(), lh = look(), ld = look(), tone = look();
+        const sy = 0.22 + lh * 0.2;
+        faceBox(sink, 'structureWood', f, du + (lu - 0.5) * 2.4, lathTop - 0.03 + ly * 0.04 + sy / 2, 0.2 + lo * 1.3,
+          0.4 + lw * 0.4, sy, 0.35 + ld * 0.3, { colour: shade(leaf, 0.75 + tone * 0.45), decor: true, shadow: true });
       }
       // the trough on the street against the wall's foot (the connectivity sweep: it stood at the ground floor's level,
       // a third of a metre over the street)
@@ -1243,7 +1288,7 @@ const palomar: RegionalBuilder = (ctx) => {
  * -x end, its mouth cut half a metre into it under a ring of brick voussoirs, the hearth's sill and the soot over the
  * mouth; the dome laid ring by ring in limewashed brick (outbuildings.ts coursedRound) to its flue under a tile cap; the
  * firewood rack on the plot's +x side, built member by member (openShed: posts on stone bases, the beam, the rafters,
- * the canal tiles in rows), its head on the oven, the wood stacked against the oven's side. It falls as its posts and
+ * the canal tiles in rows), boarded against the oven, the wood stacked along it. It falls as its posts and
  * tiles and the oven's own heap.
  */
 const horno: RegionalBuilder = (ctx) => {
@@ -1278,14 +1323,14 @@ const horno: RegionalBuilder = (ctx) => {
   sink.span('plaster', ox - 0.16, round.top - 0.25, cz - 0.16, ox + 0.16, round.top + 0.32, cz + 0.16);
   sink.span('roof', ox - 0.22, round.top + 0.32, cz - 0.22, ox + 0.22, round.top + 0.4, cz + 0.22, { decor: true });
   // the firewood rack: from the oven's side to the plot's +x edge, as long as the plot is deep less a hand (the solid
-  // within half a metre of the base's reach), its head plate resting on the oven's block
+  // within half a metre of the base's reach), its back posts close against the oven's side and boarded there, the wood
+  // stacked along the oven (the integrity check: a head plate resting on the block left the rack under a metre high,
+  // its front closed to the eye; a slot between the dome and the lean-to's head showed the stack as a pocket)
   const x0 = ox + h + 0.04, x1 = b.maxX - 0.02, sw = x1 - x0, rz = Math.max(h - 0.06, D / 2 - 0.3);
   if (sw > 0.35) {
-    const over = 0.26, RW = sw + over, pitch = 9;
-    const hLo = 1.05 + 0.16 - (RW - 0.16) * Math.tan(pitch * Math.PI / 180);
-    const rc = x1 - RW / 2;
+    const RW = sw, pitch = 14, rc = x1 - RW / 2;
     sink.placed(0, rc, 0, cz, () => {
-      openShed(sink, { W: RW, D: 2 * rz, hLo: Math.max(0.95, hLo), pitchDeg: pitch, back: false, ends: false, pile: 0.9 + look() * 0.2, noBackPosts: true, mobile,
+      openShed(sink, { W: RW, D: 2 * rz, hLo: 1.2, pitchDeg: pitch, back: true, ends: false, pile: 0.9 + look() * 0.2, pileHalf: h - 0.16, braces: false, mobile,
         masses: [{ x: ox - rc, z: 0, r: h, h: round.top, bucket: 'plaster' }] }, {
         timber: rgb(0x6a5440), post: 0.13, round: true, pad: { bucket: 'stone', size: 0.28, top: 0.14 },
         cladding: 'gapped', boards: [rgb(0x7a6450)], boardW: 0.2,

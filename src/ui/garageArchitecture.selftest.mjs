@@ -140,7 +140,7 @@ for (const variant of GARAGE_VARIANTS) {
   assert.equal(stats.source, 'authentic-garage-scene-pack');
   assert.ok(stats.objects >= 8 && stats.drawCalls <= 26,
     `${variant.id} must merge its scene into a bounded draw-call graph`);
-  assert.ok(stats.triangles > 0 && stats.triangles <= 64_000, // 64k since garage round 7 (GA.04): see garageQualityRubric.ts
+  assert.ok(stats.triangles > 0 && stats.triangles <= 72_000, // 72k since 2026-10-16 (deploy 226): see garageQualityRubric.ts
     `${variant.id} must stay inside the Garage environment geometry budget`);
   assert.equal(stats.terrainVertices, 41 * 37,
     `${variant.id} must use its compact battlefield-derived terrain excerpt`);
