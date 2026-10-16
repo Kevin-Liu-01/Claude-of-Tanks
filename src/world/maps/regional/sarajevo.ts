@@ -35,6 +35,7 @@ import {
 } from './sarajevoParts.ts';
 import { SARAJEVO_CIVIC_BUILDERS } from './sarajevoCivic.ts';
 import { SARAJEVO_TOWER_BUILDERS } from './sarajevoTowers.ts';
+import { ahDormer } from './sarajevoDormer.ts';
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
@@ -328,11 +329,7 @@ function ahBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
           return facePoint(face, Math.cos(t) * 0.42, eave + 1.0 + Math.sin(t) * 0.55, 0.02);
         }), { decor: true });
       } else if (rg.kind !== 'flat' && look() < 0.45) {
-        const dz = (look() - 0.5) * len * 0.4, ex = -rg.s, dw = 1.3;
-        sink.span('plaster', ex - 0.05, eave - 0.3, dz - dw / 2, ex + 1.3, eave + 1.5, dz + dw / 2);
-        const cap: RoofSpec = { kind: 'gable', pitchDeg: 40, eave: 0.12, verge: 0.12, thickness: 0.12, bucket: 'roof', ridge: 'round' };
-        sink.placed(Math.PI / 2, ex + 0.62, 0, dz, () => emitRoof(sink, roofGeometry(dw + 0.12, 1.45, eave + 1.5, cap), cap));
-        windowUnit(sink, { origin: [ex - 0.05, 0, dz], u: [0, 0, 1], out: [-1, 0, 0], width: dw }, 0, eave + 0.32, 0.75, 0.95, { ...AH_WINDOW, surround: null, sill: null }, look, 0.1);
+        ahDormer(sink, rg, eave, len, look, AH_WINDOW); // (looks r2 b-east, 2026-10-16: extracted to sarajevoDormer.ts, rebuilt there)
       }
       if (rg.kind !== 'flat' && look() < 0.4) {
         const at = (look() - 0.5) * len * 0.5;
