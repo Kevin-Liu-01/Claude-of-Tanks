@@ -108,6 +108,8 @@ interface DeploymentWarmTrace {
     cleanupError?: string;
   };
   deploymentUniformsDeferred?: boolean;
+  /** The vision (thermal) variants are warmed by the deferred countdown owner, not under the cover. */
+  visionProgramsDeferred?: boolean;
   deploymentTerrainPrograms?: TerrainProgramReceipt;
   deploymentVegetationPrograms?: TerrainProgramReceipt;
   deploymentShadowWarm?: RuntimeValue;
@@ -158,7 +160,6 @@ export interface SoloBattleDeploymentRuntimeOptions {
   preparePlayerPanel(): Promise<void>;
   prepareAtmosphere?(): Promise<void>;
   prepareNightLighting?(): Promise<void>;
-  warmVisionSteps?(): Generator<void>;
   runSceneWatchdog(assertCurrent: () => void): Promise<SceneWatchdogResult | void>;
   getGeneration(): number;
   advanceGeneration(): number;
@@ -695,13 +696,11 @@ export function createSoloBattleDeploymentRuntime(
         };
         mark('forwardPrograms');
 
-        if (options.warmVisionSteps) {
-          for (const _ of options.warmVisionSteps()) {
-            await guardedCoveredYield(true);
-            requireCurrent(generation);
-          }
-        }
-        mark('visionPrograms');
+        // 2026-10-15 (the perf lane): the vision (thermal) variants are no longer linked under the cover. They are only
+        // drawn when the player turns a vision mode on; the deferred countdown owner warms them for the whole roster
+        // (deferredCombatWarmRuntime), as it did de facto on every main entry probed (the covered warm missed its link
+        // budget before reaching this stage). Nine programs off the covered link queue (the 10-15 census, Urban).
+        trace.visionProgramsDeferred = true;
         trace.deploymentPostWarm = await post.warmFirstFrame(() => guardedCoveredYield(true));
         requireCurrent(generation);
         mark('postPasses');

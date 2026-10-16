@@ -262,7 +262,6 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
       if (panel === 'fail') throw new Error('player panel failed');
       calls.push(['playerPanelReady']);
     },
-    *warmVisionSteps() { calls.push(['visionWarm']); yield; },
     prepareNightLighting: async () => {
       calls.push(['nightLighting']);
       if (pauseNight) await nightGate;
@@ -469,8 +468,7 @@ for (const [before, after] of [
   ['terrain', 'camera'],
   ['camera', 'groundCover'],
   ['groundCoverReady', 'shadowWarm'],
-  ['shadowWarm', 'visionWarm'],
-  ['visionWarm', 'postWarm'],
+  ['shadowWarm', 'postWarm'],
   ['postWarm', 'postYielded'],
   ['postYielded', 'watchdog'],
   ['watchdogSettled', 'reveal'],
@@ -556,6 +554,9 @@ assert.deepEqual(happy.calls[order.indexOf('earlyCompileClosed') + 1], ['yield',
   'the early submission releases its task before the allied builds');
 assert.equal(happyTrace.deploymentEarlySubmission.submissionSlices, 3);
 assert.equal(typeof happyTrace.stages.earlyPrograms, 'number');
+// (2026-10-15) the vision (thermal) variants are the deferred countdown owner's, never linked under the cover
+assert.equal(happyTrace.visionProgramsDeferred, true);
+assert.equal(happyTrace.stages.visionPrograms, undefined);
 assert.ok(happy.lamps.current);
 assert.ok(happy.lamps.current.lights.every(light => light.intensity === 0), 'day starts with every manual light off');
 

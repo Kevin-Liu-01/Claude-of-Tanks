@@ -1950,7 +1950,6 @@ const battlePresentation = createBattlePresentationRuntime({
 // terrain, FX and first-frame warm order plus cancellation/fallback policy.
 const soloBattleDeployment = createSoloBattleDeploymentAccess({
   options: () => ({
-    warmVisionSteps: combatWarmComposition.warmVisionSteps,
     game,
     renderer,
     scene,
