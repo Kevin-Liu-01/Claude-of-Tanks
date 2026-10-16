@@ -8,8 +8,9 @@ import desert from './desert.ts';
 import winter from './winter.ts';
 import railyard from './railyard.ts';
 import mars from './mars.ts';
+import oasis from './oasis.ts';
 import polders from './polders.ts';
 import titan_gorge from './titan_gorge.ts';
 import verdant from './verdant.ts';
 
-export const HINTERLAND_LAB_DRAFTS: Readonly<Record<string, HinterlandConfig>> = Object.freeze({ alpine, copper_mesa, desert, mars, polders, railyard, titan_gorge, verdant, winter });
+export const HINTERLAND_LAB_DRAFTS: Readonly<Record<string, HinterlandConfig>> = Object.freeze({ alpine, copper_mesa, desert, mars, oasis, polders, railyard, titan_gorge, verdant, winter });
