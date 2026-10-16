@@ -187,8 +187,8 @@
       "concealers": 4807
     },
     "longleaf": {
-      "bytes": 857399,
-      "sha256": "b79eeb263f4e0afcbcc5ca83fa588d6fb702bb09f95a2016fff232f6abd70749",
+      "bytes": 857408,
+      "sha256": "80fe902efe9846e35af2632a262e6bfade57781da2e48df925054795efc1e76b",
       "obstacles": 2772,
       "colliders": 2607,
       "concealers": 2285
@@ -421,8 +421,8 @@
         "concealers": 4705
       },
       "longleaf": {
-        "bytes": 1062361,
-        "sha256": "2e636fe29101fc0388f8485737b99ff55bb163e84beb16a13ee7b3b9693ca6d9",
+        "bytes": 1062370,
+        "sha256": "1d6b9288c450efe1f3fe4f69d22fc242ee0566884e4647527c4cd3ce10ab49ad",
         "obstacles": 2978,
         "colliders": 2721,
         "concealers": 2358
