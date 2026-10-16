@@ -1,7 +1,7 @@
 // src/world/maps/regional/openings.ts — window, door, gate and step units shared by the regional dialects
 // (regional-buildings lane, 2026-10-03). Every unit is dressing (no collision) except where noted; panes go to the
 // glass bucket (dark interior at night) or the curtain bucket (a warm lit window at night, marked on its outward face).
-import { LocalFrame, faceBox, facePanel, facePoint, hashSeed, shade, streamFrom, type EmitOptions, type Face, type PartSink, type RegionalBucket, type Rgb, type Vec3, UV_MEMBER, UV_WORLD } from './geometry.ts';
+import { LocalFrame, faceBox, facePanel, facePoint, hashSeed, shade, streamFrom, type EmitOptions, type Face, type FaceSkip, type PartSink, type RegionalBucket, type Rgb, type Vec3, UV_MEMBER, UV_WORLD } from './geometry.ts';
 import { facadeOn, facadeRng, faceSlab, nalichnikApron, nalichnikCrest, windowHead, type CrestStyle, type HeadStyle } from './facade.ts';
 
 export interface WindowStyle {
@@ -293,17 +293,21 @@ export interface ShopStyle {
  * unit is dressing. (u, y): the opening's bottom middle; w x h its size.
  */
 /** A face-aligned box with every face (openShop's fittings stand free in the room: faceBox drops the back of anything at or behind the face). */
-export function freeBox(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y: number, o: number, su: number, sy: number, so: number, opts: EmitOptions): void {
-  sink.box(bucket, facePoint(face, u, y, o), [su / 2, sy / 2, so / 2], { ...opts, uv: opts.uv ?? UV_WORLD }, new LocalFrame(face.u, [0, 1, 0], face.out, [0, 0, 0]));
+export function freeBox(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y: number, o: number, su: number, sy: number, so: number, opts: EmitOptions,
+  coarse?: FaceSkip): void {
+  sink.box(bucket, facePoint(face, u, y, o), [su / 2, sy / 2, so / 2], { ...opts, uv: opts.uv ?? UV_WORLD }, new LocalFrame(face.u, [0, 1, 0], face.out, [0, 0, 0]), undefined, coarse);
 }
 
 export function openShop(sink: PartSink, face: Face, u: number, y: number, w: number, h: number,
   room: { wall: number; depth: number; width: number; height: number }, style: ShopStyle, rng: () => number): void {
   const T = room.wall, D = room.depth, burnt = !!style.burnt;
-  const wood = (k: number) => ({ colour: burnt ? shade(CHARRED, 0.8 + k * 0.4) : shade(style.timber, k), decor: true } as const);
+  // (the far form, props census #29: the cost guardrail) every fitting reads from afar by its face to the street, the
+  // rest of it fine joinery the near camera alone draws (EmitOptions.fineSides: the box's +out face coarse); the floor by
+  // its top, the goods near only
+  const wood = (k: number) => ({ colour: burnt ? shade(CHARRED, 0.8 + k * 0.4) : shade(style.timber, k), decor: true, fineSides: true } as const);
   const fy = y + (style.floor ?? 0);
   // the floor boards
-  faceBox(sink, 'structureWood', face, u, (fy + y) / 2 - 0.01, -T - D / 2, room.width, fy - y + 0.06, D, wood(0.62), { back: true });
+  freeBox(sink, 'structureWood', face, u, (fy + y) / 2 - 0.01, -T - D / 2, room.width, fy - y + 0.06, D, wood(0.62), { py: true, pz: true });
   // the shelves along the back wall, their uprights, the goods on them
   const back = -T - D + 0.2, sw = room.width - 0.3;
   faceBox(sink, 'structureWood', face, u, fy + 1.25, -T - D + 0.012, sw, 2.3, 0.02, wood(0.45), { back: true });
@@ -333,7 +337,7 @@ export function openShop(sink: PartSink, face: Face, u: number, y: number, w: nu
   // the shutter boards
   const sh = style.shutters;
   if (!sh) return;
-  const n = Math.max(3, Math.round(w / 0.32)), bw = w / n, bc = (k: number) => ({ colour: burnt ? CHARRED : shade(sh.colour, 0.88 + ((k * 7) % 5) * 0.06), decor: true });
+  const n = Math.max(3, Math.round(w / 0.32)), bw = w / n, bc = (k: number) => ({ colour: burnt ? CHARRED : shade(sh.colour, 0.88 + ((k * 7) % 5) * 0.06), decor: true, fineSides: true });
   if (sh.mode === 'closed' && !burnt) {
     for (let k = 0; k < n; k++) freeBox(sink, 'structureWood', face, u - w / 2 + bw * (k + 0.5), y + h / 2, -0.06, bw - 0.01, h - 0.04, 0.04, bc(k));
     freeBox(sink, 'structureWood', face, u, y + h * 0.55, -0.03, w - 0.04, 0.08, 0.03, { ...bc(0), fine: true });
