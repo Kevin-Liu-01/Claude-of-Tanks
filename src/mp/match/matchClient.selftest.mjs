@@ -257,6 +257,42 @@ function mulberry(seed) {
   assert.ok(player.client.stats().stalls >= 2);
 }
 
+// ------------------------------------------------------------ a starved tab is not a dead host (2026-10-15, the MP stream)
+// Every main rejoin of the §7 side-by-side opened a second link 7 s in: the returning tab painted its roster for 6-7 s,
+// yielding with scheduler.yield (whose continuations run ahead of ordinary tasks), so the channel's message tasks waited
+// while frames ran on, and 5 s without an accepted snapshot read as a dead host. The client posts one ordinary task at a
+// time (taskProbe); while it waits, the stall clock rests. Here the probe's tasks and the host's frames wait together.
+{
+  const world = createWorld({ link: { latencyMs: 30, jitterMs: 5, loss: 0 }, botList: [] });
+  const probes = [];
+  let starving = false;
+  const player = world.addClient({ token: 'tok-1', seed: 57, clientOptions: { taskProbe: (callback) => probes.push(callback) } });
+  const runProbes = () => { if (!starving) for (const callback of probes.splice(0)) callback(); };
+  player.client.connect();
+  for (let f = 0; f < 180; f++) { world.frame([player.driver]); runProbes(); }
+  assert.equal(player.client.phase, 'live');
+  const before = player.client.stats();
+  // 6.5 s starved: no frames reach the client (the server is held) and no ordinary task runs; the client's frames go on
+  starving = true;
+  world.freeze(true);
+  for (let f = 0; f < 390; f++) world.frame([player.driver]);
+  assert.equal(player.client.stats().reconnects, before.reconnects, 'a starved tab requests no fresh socket');
+  assert.notEqual(player.client.phase, 'stalled');
+  assert.ok(player.client.stats().taskStarvations >= 1, 'the starvation is counted');
+  // it wakes: the queued tasks run, the held frames arrive, the link it had is still live
+  starving = false;
+  world.freeze(false);
+  for (let f = 0; f < 120; f++) { world.frame([player.driver]); runProbes(); }
+  assert.equal(player.client.phase, 'live');
+  assert.equal(player.client.stats().reconnects, before.reconnects, 'the same link carries on');
+  assert.ok(player.client.stats().snapshotsAccepted > before.snapshotsAccepted, 'snapshots flow again');
+  // a host silent while this tab runs is still a stall: 5 s later a fresh socket is requested
+  world.freeze(true);
+  for (let f = 0; f < 330; f++) { world.frame([player.driver]); runProbes(); }
+  assert.ok(player.client.stats().reconnects > before.reconnects, 'a host silent while the tab runs still stalls');
+  world.freeze(false);
+}
+
 // ------------------------------------------------------------ every announced fall is retained for a migration boot, across a reset
 // (fix/mp-migration-props, 2026-10-02): a fall's event reaches the client the tick it happens, its frame later; a host that
 // dies between the two leaves the fall in the client's events alone, and a link reset clears those

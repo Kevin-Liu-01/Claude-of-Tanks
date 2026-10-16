@@ -69,6 +69,12 @@ export interface MatchClientOptions {
   pingBurstIntervalMs?: number;
   /** Errors kept for diagnostics. */
   maxErrors?: number;
+  /**
+   * Posts `callback` as an ordinary task (the browser: setTimeout 0). The client posts one at a time from update(); while
+   * one waits longer than TASK_STARVED_MS this tab's own tasks are starved (a long task, a scheduler.yield loop) and the
+   * recovery's stall clock does not run. Absent: never starved (the receipts' virtual clocks).
+   */
+  taskProbe?: ((callback: () => void) => void) | null;
 }
 
 export interface OwnShotEvent {
@@ -198,6 +204,8 @@ export interface MatchClientStats {
   resumeHintsSent: number;
   /** Fresh links asked for before the WELCOME after a "hello timeout" or a "peer offered again" CLOSE (MAX_HELLO_RETRIES). */
   helloRetries: number;
+  /** Episodes where this tab's own tasks were starved past TASK_STARVED_MS (the stall clock rested; taskProbe). */
+  taskStarvations: number;
 }
 
 /**
@@ -215,6 +223,8 @@ interface PendingPing {
 
 const MAX_PENDING_PINGS = 8;
 const MAX_TICKS_PER_FRAME = 4;
+/** A posted task waiting this long means this tab's own tasks are starved (taskProbe). */
+const TASK_STARVED_MS = 250;
 const CATCH_UP_LIMIT_TICKS = 8;
 /** Display-tick slew: 10 % of the error per frame, at most a tenth of a tick, resync past 8 ticks. */
 const DISPLAY_TICK_GAIN = 0.1;
@@ -314,6 +324,13 @@ export class MatchClient {
   private rateWindowBytesOut = 0;
   private bytesInPerS = 0;
   private bytesOutPerS = 0;
+  private readonly taskProbe: ((callback: () => void) => void) | null;
+  /** When the waiting probe was posted (null: none waiting). */
+  private probePostedAtMs: number | null = null;
+  /** The last frame this tab's tasks were seen starved (the recovery's stall clock restarts there). */
+  private starvedAtMs: number | null = null;
+  private starvations = 0;
+  private readonly onProbe = (): void => { this.probePostedAtMs = null; };
 
   constructor({
     transport,
@@ -332,6 +349,7 @@ export class MatchClient {
     pingBurstCount = 8,
     pingBurstIntervalMs = 200,
     maxErrors = 32,
+    taskProbe = null,
   }: MatchClientOptions) {
     if (!transport || typeof transport.send !== 'function') throw new TypeError('a transport is required');
     if (typeof token !== 'string' || !token) throw new TypeError('a seat token is required');
@@ -347,6 +365,7 @@ export class MatchClient {
     this.pingBurstCount = pingBurstCount;
     this.pingBurstIntervalMs = pingBurstIntervalMs;
     this.maxErrors = maxErrors;
+    this.taskProbe = taskProbe;
     this.serverClock = new ServerClock();
     this.tickClock = new TickClock(TICK_HZ);
     this.inputStream = new InputStream(input);
@@ -466,6 +485,7 @@ export class MatchClient {
   update(nowMs: number, elapsedS: number): MatchFrame | null {
     if (this.disposed || this.recovery.current === 'left') return null;
     this.serverClock.advance(nowMs);
+    this.observeTaskQueue(nowMs);
     this.stepRecovery(nowMs);
     this.observeRates(nowMs);
     const live = this.welcomeMessage !== null && this.transport.state === 'open' && this.recovery.current !== 'failed';
@@ -571,6 +591,7 @@ export class MatchClient {
       closeReason: this.closeReason,
       resumeHintsSent: this.resumeHintsSent,
       helloRetries: this.helloRetries,
+      taskStarvations: this.starvations,
     };
   }
 
@@ -986,6 +1007,24 @@ export class MatchClient {
 
   // ------------------------------------------------------------ recovery + rates
 
+  /**
+   * 2026-10-15 (the MP stream): one ordinary task in flight at a time; one still waiting past TASK_STARVED_MS means this
+   * tab could not have read the channel either (its message tasks wait behind the same work), so the stall clock rests.
+   */
+  private observeTaskQueue(nowMs: number): void {
+    const probe = this.taskProbe;
+    if (!probe) return;
+    if (this.probePostedAtMs !== null) {
+      if (nowMs - this.probePostedAtMs > TASK_STARVED_MS) {
+        if (this.starvedAtMs === null || nowMs - this.starvedAtMs > TASK_STARVED_MS * 2) this.starvations++;
+        this.starvedAtMs = nowMs;
+      }
+      return;
+    }
+    this.probePostedAtMs = nowMs;
+    probe(this.onProbe);
+  }
+
   private stepRecovery(nowMs: number): void {
     const step = this.recovery.update({
       nowMs,
@@ -993,6 +1032,7 @@ export class MatchClient {
       welcomed: this.welcomeMessage !== null,
       lastAuthorityAtMs: this.lastAuthorityAtMs,
       openedAtMs: this.openedAtMs,
+      starvedAtMs: this.starvedAtMs,
     });
     if (step.requestReconnect) {
       this.transport.reconnect(TRANSPORT_CLOSE.STALLED, `no accepted authority for ${Math.round(this.recovery.stallMs)} ms`);
