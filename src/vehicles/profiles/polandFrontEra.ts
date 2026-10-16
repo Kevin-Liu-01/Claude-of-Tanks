@@ -326,9 +326,11 @@ function lampPockets(P: TankBuilderPort, g: HullSurface): void {
       return {o: [0, 0, z] as V3, out: [1, 0, 0] as V3, up: [0, 1, 0] as V3, ring: [[lo, yb], [hi, yb], [hi, top[0] - t + .002], [lo, top[0] - t + .002]] as SectionPoint[]};
     }));
     P.addExternalArmor('hull', tagFrontPart(back, 'lamp pocket back plate', 'hull'));
-    const x = side * (x0 + x1) / 2, y = .995;
-    P.addEquipment('hullDetail', tagFrontPart(cylZ(.073, .085, P.q ? 16 : 12), 'pocket lamp housing', 'hull'), x, y, 2.9385);
-    P.addEquipment('hullGlass', tagFrontPart(nightLens(cylZ(.056, .012, P.q ? 16 : 12), 'headlight'), 'pocket lamp lens', 'hull'), x, y, 2.983);
+    // the round lamp: a bored housing whose mouth is 2 mm inside the pocket's, its lens 10 mm inside that mouth and
+    // lapping 6 mm into the bore's floor
+    const x = side * (x0 + x1) / 2, y = .995, mouth = z1 - .002;
+    P.addEquipment('hullDetail', tagFrontPart(blindTube(.073, .058, .085, .016, P.q ? 16 : 12), 'pocket lamp housing', 'hull'), x, y, mouth - .0425);
+    P.addEquipment('hullGlass', tagFrontPart(nightLens(cylZ(.056, .012, P.q ? 16 : 12), 'headlight'), 'pocket lamp lens', 'hull'), x, y, mouth - .010 - .006);
   }
 }
 
@@ -461,14 +463,17 @@ export function polishFrontSkirt(P: TankBuilderPort, level: PolishLevel, s: Poli
       eraModule(P, {owner: 'hull', sector: sectorOf('skirt_era', side), geometry: geo, outward: [side, 0, 0], minDot: .5,
         name: 'front-skirt cassette', guard: (nm, g2) => assertHullPart(id, nm, g2, {skirtTop: b.high})});
     }
-    // the grid's permanent bars: along its foot, between its rows and along its head, and its column ends
+    // the grid's permanent bars: along its foot, between its rows and along its head (split round the Zubr's screen-arm
+    // slot), and its column ends
     const zA = columns[0][0] - .008, zB = columns[columns.length - 1][1] + .008;
     const barY = [rows[0][0] - .006, ...rows.slice(1).map((r, i) => (rows[i][1] + r[0]) / 2), rows[rows.length - 1][1] + .006];
-    for (const y of barY) {
-      const g = new THREE.BoxGeometry(.016 + .004, .010, zB - zA).translate(side * (b.outer + .006), y, (zA + zB) / 2);
+    const runs: [number, number][] = level === 1 ? [[zA, columns[0][1] + .008], [columns[1][0] - .008, zB]] : [[zA, zB]];
+    for (const y of barY) for (const [r0, r1] of runs) {
+      const g = new THREE.BoxGeometry(.016 + .004, .010, r1 - r0).translate(side * (b.outer + .006), y, (r0 + r1) / 2);
       P.addEquipment('hullDetail', tagFrontPart(g, 'front-skirt bar', 'hull'));
     }
-    for (const z of [zA, ...columns.slice(1).map((c, i) => (columns[i][1] + c[0]) / 2), zB]) {
+    const ends = level === 1 ? [zA, columns[0][1] + .008, columns[1][0] - .008, zB] : [zA, ...columns.slice(1).map((c, i) => (columns[i][1] + c[0]) / 2), zB];
+    for (const z of ends) {
       const g = new THREE.BoxGeometry(.016 + .004, rows[rows.length - 1][1] - rows[0][0] + .012, .010)
         .translate(side * (b.outer + .006), (rows[0][0] + rows[rows.length - 1][1]) / 2, z);
       P.addEquipment('hullDetail', tagFrontPart(g, 'front-skirt upright', 'hull'));

@@ -55,8 +55,11 @@ function eraTile(P: TankBuilderPort, seats: Stock, side: number, origin: V3, dir
   const {point, normal} = seats.face(origin, direction);
   const up = new THREE.Vector3(0, 1, 0).addScaledVector(normal, -normal.y).normalize();
   const along = up.clone().cross(normal).normalize();
-  const corner = point.clone().addScaledVector(along, -size[2] / 2).addScaledVector(up, -size[1] / 2);
-  const g = stackTile(P, corner, along, up, normal, size[2], size[1], size[0] * .6, size[0] * .4);
+  // (each cassette's foot 12 mm higher than the rounded box's: the lowest course then clears the hull's deck-cabinet
+  // latches by 2.5 cm wherever the turret turns, as the frontal receipt requires of every changed part)
+  const lift = .012;
+  const corner = point.clone().addScaledVector(along, -size[2] / 2).addScaledVector(up, -size[1] / 2 + lift);
+  const g = stackTile(P, corner, along, up, normal, size[2], size[1] - lift, size[0] * .6, size[0] * .4);
   eraModule(P, {owner: 'turret', sector: eraSector(side), geometry: g, outward: tuple(normal), minDot: .5, name: 'cabinet cassette'});
 }
 

@@ -33,15 +33,15 @@ const SEAM = {half: .006, depth: .009};
 /** Facet A (raked 22 degrees in plan) and facet B (58 degrees): plan normals in (|x|, z). */
 const NA = [.375, .927] as const, NB = [.848, .530] as const;
 /** Courses bottom to top: heights, facet offsets at the course's foot, and the shoulder return's outer face. */
-// (the shelf rides 15 mm higher than first drawn: at the prow's apex, r 1.77 about the ring, the turret's sweep passes
-// over the rear deck's intake box, whose sloped front stands .087 over the ring seat there)
+// (the shelf rides 20 mm higher than first drawn: at the prow's apex, r 1.77 about the ring, the turret's sweep passes
+// over the rear deck's intake box, whose sloped front stands .087-.093 over the ring seat there)
 const COURSES = [
-  {yb: .14, yt: .25, a: 1.643, b: 1.674, ret: 1.44 as number | null},
+  {yb: .145, yt: .25, a: 1.643, b: 1.674, ret: 1.44 as number | null},
   {yb: .25, yt: .36, a: 1.573, b: 1.604, ret: 1.40 as number | null},
   {yb: .36, yt: .47, a: 1.503, b: 1.534, ret: null as number | null},
 ] as const;
-const SHELF = {bottom: .115, top: .14, proud: .025, lip: {x: 1.52, z0: .62, z1: .80}};
-const JAW = {x0: .40, x1: .52, blocks: [{yb: .14, yt: .29, front: 1.56}, {yb: .29, yt: .47, front: 1.45}]};
+const SHELF = {bottom: .12, top: .145, proud: .025, lip: {x: 1.52, z0: .62, z1: .80}};
+const JAW = {x0: .40, x1: .52, blocks: [{yb: .145, yt: .29, front: 1.56}, {yb: .29, yt: .47, front: 1.45}]};
 const RETURN_END = .62;
 const BROW = {x0: .40, x1: .95, z: [.44, .60, .72, .74] as const, thick: [.03, .045, .075] as const};
 

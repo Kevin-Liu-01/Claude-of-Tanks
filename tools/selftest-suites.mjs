@@ -599,6 +599,10 @@ export const SELFTEST_SUITES = Object.freeze({
     // vehicleMarkings and tankAssets (2026-10-02).
     'src/vehicles/fleetPassDefault.selftest.mjs',
     'src/vehicles/fleetFloorClearance.selftest.mjs',
+    // 2026-10-16 (release 227; the owner: "brand new era packages ... innovate for the hetman 2 and zubr 2 and also the
+    // zubr ... machine gun emplacements that are aut ocontrolled"): the three frontal ERA packages, lights, WKM-B stations
+    // and rear-arc gun curves
+    'src/vehicles/frontEraPackages.selftest.mjs',
     // the fleet pass harness itself, on a scripted factory (no fleet build)
     'src/vehicles/fleetPass.selftest.mjs',
     // 2026-10-01: the fleet geometry ledger (one full-fleet HIGH+LOW sweep) replaces the frozen per-receipt geometry pins.
