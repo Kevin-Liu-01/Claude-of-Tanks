@@ -220,9 +220,7 @@ function cores(parts: StackParts, local: Rng, w: number, h: number, l: number, u
   g.userData.structureSupport = { part: 'freight-core' };
   parts.baked.push(g);
   if (!upper) return;
-  // (the r2 sweep, 2026-10-16) the second core only takes the stacked box's four draws: a 4 cm block at the first's heart
-  // (its 24 paint draws as before; under the collision's least solid, and wholly inside the first as it always was)
-  const inner = paint(box(0.04, 0.04, 0.04, 0.5), local, CORE, 0.04);
+  const inner = paint(box(w * 0.8, h * 0.8, l * 0.8, 0.5), local, CORE, 0.04);
   inner.translate(0, h / 2, 0);
   inner.userData.uvJitter = 'consume';
   parts.baked.push(inner);
