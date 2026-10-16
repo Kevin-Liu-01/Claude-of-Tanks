@@ -449,15 +449,25 @@ const along = (p: Vec3, d: Vec3, k: number): Vec3 => [p[0] + d[0] * k, p[1] + d[
 
 /**
  * A rolled steel angle from a to b, its heel on the a-b line: one leg `w` wide in the frame's face (the face whose outward
- * normal is about `n`), the other leg turned into the frame, both `t` thick, welded along the heel.
+ * normal is about `n`), the other leg turned into the frame, both `t` thick, welded along the heel. Its ends abut the
+ * frame's nodes, so they take no caps (a set piece's piece is kept for its fall within landmarks/damage.ts's
+ * PIECE_TRI_CAP: the lookout's frame is one).
  */
 function angleBar(sink: PartSink, a: Vec3, b: Vec3, w: number, t: number, n: Vec3, opts: EmitOptions): void {
-  const d = normalize3([b[0] - a[0], b[1] - a[1], b[2] - a[2]]);
+  const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2], len = Math.hypot(dx, dy, dz);
+  if (len < 1e-3) return;
+  const d: Vec3 = [dx / len, dy / len, dz / len];
   const k = n[0] * d[0] + n[1] * d[1] + n[2] * d[2];
   const nn = normalize3([n[0] - d[0] * k, n[1] - d[1] * k, n[2] - d[2] * k]), across = normalize3(cross3(d, nn));
-  const o = { ...opts, exposed: true };
-  sink.member('structureMetal', along(a, across, w / 2), along(b, across, w / 2), w, t, [-nn[0], -nn[1], -nn[2]], o, 0);
-  sink.member('structureMetal', along(a, nn, -w / 2), along(b, nn, -w / 2), w, t, [-across[0], -across[1], -across[2]], o, 0);
+  const mid: Vec3 = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
+  const leg = (wide: Vec3, thick: Vec3) => {
+    // a leg spans `wide` from the heel by w and `thick` from it by t
+    const centre: Vec3 = [mid[0] + wide[0] * w / 2 + thick[0] * t / 2, mid[1] + wide[1] * w / 2 + thick[1] * t / 2, mid[2] + wide[2] * w / 2 + thick[2] * t / 2];
+    // (the frame right-handed, its x the far side of `wide`: the box is symmetric about its centre)
+    sink.box('structureMetal', centre, [w / 2, len / 2, t / 2], opts, new LocalFrame([-wide[0], -wide[1], -wide[2]], d, thick, [0, 0, 0]), { py: true, ny: true });
+  };
+  leg(across, [-nn[0], -nn[1], -nn[2]]);
+  leg([-nn[0], -nn[1], -nn[2]], [-across[0], -across[1], -across[2]]);
 }
 
 /**
