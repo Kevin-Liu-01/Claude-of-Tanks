@@ -13,6 +13,7 @@ import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts'
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { sheetHall } from './hall.ts';
 import { latticeFrame, recordLattice } from './lattice.ts';
+import { hotelNameBoard } from './queenstownSign.ts';
 
 const BRICK: RegionalBucket = 'stone', CONCRETE: RegionalBucket = 'plaster3';
 /** Corrugated iron: galvanised, rust-streaked, the company's red oxide, a faded green. */
@@ -92,19 +93,6 @@ function rustSkin(sink: PartSink, x0: number, y0: number, z0: number, x1: number
         piece(from, pu1, ya, yb);
       }
     }
-  }
-}
-
-/**
- * A painted name read at range: one block per capital at the capital's own width (an I or J narrow, an M or W wide),
- * centred on the face at height `y` across `span` metres, `out` proud of it. Dressing.
- */
-function lettering(sink: PartSink, f: Face, word: string, y: number, h: number, span: number, out: number, colour: Rgb): void {
-  const n = word.length, pitch = span / n;
-  for (let k = 0; k < n; k++) {
-    if (word[k] === ' ') continue;
-    const w = pitch * ('IJ.'.includes(word[k]) ? 0.32 : 'MW&'.includes(word[k]) ? 0.86 : 0.66);
-    faceBox(sink, 'structureWood', f, -span / 2 + pitch * (k + 0.5), y, out, w, h, 0.02, { colour, decor: true, fine: true });
   }
 }
 
@@ -511,9 +499,7 @@ const hotel: RegionalBuilder = (ctx) => {
     sink.placed(-Math.PI / 2, 0, 0, D / 2 + depth / 2, () => emitRoof(sink, roofGeometry(depth, W, 7.8, verandaRoof), verandaRoof, roofPaint));
     // the name board over the verandah: a cream ground, the name in dark capitals (round 3: two dark bars read as a
     // blank board), a dark rule round it
-    faceBox(sink, 'structureWood', f, 0, 8.55, 0.04, W * 0.56, 0.62, 0.04, { colour: rgb(0xe4e0d4), decor: true });
-    lettering(sink, f, pick(rng, ['EMPIRE HOTEL', 'HOTEL CENTRAL', 'MT LYELL M & R CO']), 8.55, 0.3, W * 0.5, 0.065, rgb(0x3a2a22));
-    for (const yy of [8.27, 8.83]) faceBox(sink, 'structureWood', f, 0, yy, 0.065, W * 0.54, 0.04, 0.02, { colour: rgb(0x5a4030), decor: true });
+    hotelNameBoard(sink, f, W, rng); // (looks r2 b-east, 2026-10-16: extracted to queenstownSign.ts, rebuilt there)
   });
   return sink.finish();
 };
