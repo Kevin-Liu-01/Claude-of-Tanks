@@ -18,6 +18,7 @@ import {
 } from './geometry.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from './house.ts';
 import { woodpile } from './dressing.ts';
+import { ladder } from './vernacular.ts';
 import { recordShed, type ShedWreck } from './shedFall.ts';
 
 const DEG = Math.PI / 180;
@@ -52,6 +53,8 @@ export interface ShedDialect {
   /** eave and verge overhangs past the frame and the cladding */
   eave: number;
   verge: number;
+  /** a thatch's courses (house.ts RoofSpec.thatch: the Mekong's nipa) */
+  thatch?: RoofSpec['thatch'];
 }
 
 export interface ShedPlan {
@@ -77,6 +80,17 @@ export interface ShedPlan {
   noBackPosts?: boolean;
   /** masonry bodies beside the shed that fall with it (shedFall.ts masses), in the shed's frame */
   masses?: ShedWreck['masses'];
+  /** a gable roof (its ridge along z over the middle) instead of the lean-to; both long sides then stand as high */
+  gable?: boolean;
+  /**
+   * a floor raised on the posts (a granary on its stilts): girders along the post lines, joists across, the deck; the
+   * cladding stands on the deck; `ratGuards` puts a disc round every post under the girders, `ladder` a ladder to the door
+   */
+  lift?: number;
+  ratGuards?: boolean;
+  ladder?: boolean;
+  /** the front clad as well, round a door `w` wide and `h` high at `u` along it (the plank leaf hung shut in its frame) */
+  front?: { u: number; w: number; h: number; leaf: Rgb } | null;
   mobile: boolean;
 }
 
@@ -135,13 +149,13 @@ function boardOn(sink: PartSink, bucket: RegionalBucket, face: Face, poly: Reado
  */
 interface SlopeFrame { at(v: number, h: number, z: number): Vec3; up: Vec3; n: Vec3; length: number; z0: number; z1: number }
 
-function slopeFrame(W: number, D: number, eaveY: number, roof: RoofSpec): SlopeFrame {
+function slopeFrame(W: number, D: number, eaveY: number, roof: RoofSpec, side: 1 | -1 = 1, gable = false): SlopeFrame {
   const tanP = Math.tan(roof.pitchDeg * DEG), cosP = Math.cos(roof.pitchDeg * DEG), sinP = Math.sin(roof.pitchDeg * DEG);
-  const x0 = W / 2 + roof.eave, y0 = eaveY - roof.eave * tanP + roof.thickness / cosP;
-  const up: Vec3 = [-cosP, sinP, 0], n: Vec3 = [sinP, cosP, 0];
+  const x0 = side * (W / 2 + roof.eave), y0 = eaveY - roof.eave * tanP + roof.thickness / cosP;
+  const up: Vec3 = [-side * cosP, sinP, 0], n: Vec3 = [side * sinP, cosP, 0];
   return {
     at: (v, h, z) => [x0 + up[0] * v + n[0] * h, y0 + up[1] * v + n[1] * h, z],
-    up, n, length: (W + 2 * roof.eave) / cosP, z0: -D / 2 - roof.verge, z1: D / 2 + roof.verge,
+    up, n, length: (gable ? W / 2 + roof.eave : W + 2 * roof.eave) / cosP, z0: -D / 2 - roof.verge, z1: D / 2 + roof.verge,
   };
 }
 
@@ -256,24 +270,28 @@ function underLine(poly: ReadonlyArray<readonly [number, number]>, ua: number, y
 
 /**
  * An open shed (see the file's head): returns what it laid. `look` is the kit's look stream (ctx.variant), so the
- * build stream never moves.
+ * build stream never moves. A gable shed (plan.gable) carries its ridge along z; a raised one (plan.lift) its floor on
+ * the posts; a closed one (plan.front) its front boarded round a door.
  */
 export function openShed(sink: PartSink, plan: ShedPlan, d: ShedDialect, look: () => number): ShedReading {
   const { W, D, hLo } = plan;
-  const tanP = Math.tan(plan.pitchDeg * DEG), cosP = Math.cos(plan.pitchDeg * DEG);
+  const gable = !!plan.gable, lift = plan.lift ?? 0;
+  const tanP = Math.tan(plan.pitchDeg * DEG), cosP = Math.cos(plan.pitchDeg * DEG), sinP = Math.sin(plan.pitchDeg * DEG);
   const s = d.post, half = s / 2, pc = d.postColour ?? d.timber;
   const padTop = d.pad ? d.pad.top : 0, sillH = 0.14, ph = 0.16, rh = 0.13, rw = 0.075;
   const stoneT = plan.stoneBack ? plan.stoneBack.t : 0;
   const xb = -W / 2 + stoneT + half, xf = W / 2 - half;
-  // the rafters' underside: through the front beam's line at hLo, rising to the back
-  const under = (x: number): number => hLo + (xf - x) * tanP;
+  // the rafters' underside: through the front beam's line at hLo, rising to the back (or to the ridge over the middle)
+  const reach = (x: number): number => (gable ? Math.abs(x) : x);
+  const under = (x: number): number => hLo + (xf - reach(x)) * tanP;
   const cov = COURSES[d.covering];
   const deckT = cov.deck;
-  // the deck (emitRoof's shed: its underside at the front face is eaveY, rising to -x) on the rafters' backs
+  // the deck (emitRoof's shed or gable: its underside at the front face is eaveY) on the rafters' backs
   const eaveY = hLo - half * tanP + rh / cosP;
-  const spec: RoofSpec = { kind: 'shed', pitchDeg: plan.pitchDeg, eave: d.eave, verge: d.verge, thickness: deckT, bucket: d.roofBucket, ridge: null,
-    ...(d.covering === 'thatch' ? { thatch: 'rows' as const } : {}) };
-  const underRoof = (x: number): number => eaveY + (W / 2 - x) * tanP;
+  const ridged = d.covering === 'thatch' || d.covering === 'canal' || d.covering === 'pantile' ? 'round' as const : 'saddle' as const;
+  const spec: RoofSpec = { kind: gable ? 'gable' : 'shed', pitchDeg: plan.pitchDeg, eave: d.eave, verge: d.verge, thickness: deckT, bucket: d.roofBucket,
+    ridge: gable ? ridged : null, ...(d.covering === 'thatch' ? { thatch: d.thatch ?? 'rows' } : {}) };
+  const underRoof = (x: number): number => eaveY + (W / 2 - reach(x)) * tanP;
   const trim = d.trim ?? shade(d.boards[0], 0.72);
   const member = { colour: d.timber, uv: UV_MEMBER } as const;
   const posts: ShedReading['posts'] = [];
@@ -284,7 +302,7 @@ export function openShed(sink: PartSink, plan: ShedPlan, d: ShedDialect, look: (
   // the post lines: the corners and as many between as a 2 m bay wants
   const along = (n: number): number[] => Array.from({ length: n + 1 }, (_, k) => -D / 2 + half + (D - s) * k / n);
   const bays = Math.max(1, Math.round((D - s) / 2.1));
-  const backZ = along(bays), frontZ = along(Math.max(1, Math.round((D - s) / 2.6)));
+  const backZ = along(bays), frontZ = along(plan.front || lift > 0 ? bays : Math.max(1, Math.round((D - s) / 2.6)));
   const padOf = (x: number, z: number): void => {
     if (!d.pad) return;
     const p = d.pad;
@@ -297,9 +315,12 @@ export function openShed(sink: PartSink, plan: ShedPlan, d: ShedDialect, look: (
     local.push([x, z, y0, y1]);
     legs.push({ foot: [x, y0, z], head: [x, y1, z] });
   };
+  // a ground sill on the pads (a shed on the ground); a raised floor's posts stand on the pads alone
+  const sills = !!d.pad && lift <= 0;
+  const foot = d.pad ? padTop : -0.3;
 
   // ---- the back: boards on posts and their sill, or the stone wall the rafters rest in
-  const backTop = under(xb - half);
+  const backTop = under(gable ? xb + half : xb - half);
   if (plan.stoneBack) {
     const sb = plan.stoneBack, wallTop = underRoof(-W / 2 + sb.t);
     sink.span(sb.bucket, -W / 2, -0.4, -D / 2, -W / 2 + sb.t, wallTop, D / 2, sb.colour ? { colour: sb.colour } : {});
@@ -311,10 +332,9 @@ export function openShed(sink: PartSink, plan: ShedPlan, d: ShedDialect, look: (
   } else {
     if (!plan.noBackPosts) {
       for (const z of backZ) padOf(xb, z);
-      if (d.pad) sink.span('structureWood', xb - half, padTop, -D / 2, xb + half, padTop + sillH, D / 2, member);
+      if (sills) sink.span('structureWood', xb - half, padTop, -D / 2, xb + half, padTop + sillH, D / 2, member);
       // the back posts on the sill and the wall plate along their heads
-      const backFoot = d.pad ? padTop + sillH : -0.3;
-      for (const z of backZ) postAt(xb, z, backFoot, backTop - ph);
+      for (const z of backZ) postAt(xb, z, sills ? padTop + sillH : foot, backTop - ph);
     }
     sink.span('structureWood', xb - half - 0.01, backTop - ph, -D / 2, xb + half + 0.01, backTop, D / 2, member);
   }
@@ -323,77 +343,99 @@ export function openShed(sink: PartSink, plan: ShedPlan, d: ShedDialect, look: (
   const frontTop = under(xf - half);
   for (const z of frontZ) {
     padOf(xf, z);
-    postAt(xf, z, d.pad ? padTop : -0.3, frontTop - ph);
+    postAt(xf, z, foot, frontTop - ph);
   }
   sink.span('structureWood', xf - half - 0.01, frontTop - ph, -D / 2, xf + half + 0.01, frontTop, D / 2, member);
-  for (const z of frontZ) {
-    for (const dir of [-1, 1]) {
-      const zt = z + dir * 0.62;
-      if (Math.abs(zt) > D / 2 - half) continue;
-      sink.member('structureWood', [xf - 0.04, frontTop - ph - 0.62, z + dir * half], [xf - 0.04, frontTop - ph, zt], 0.09, 0.08, [1, 0, 0],
-        { colour: shade(d.timber, 0.94), decor: true, exposed: true }, 0);
+  if (!plan.front) {
+    for (const z of frontZ) {
+      for (const dir of [-1, 1]) {
+        const zt = z + dir * 0.62;
+        if (Math.abs(zt) > D / 2 - half) continue;
+        sink.member('structureWood', [xf - 0.04, frontTop - ph - 0.62, z + dir * half], [xf - 0.04, frontTop - ph, zt], 0.09, 0.08, [1, 0, 0],
+          { colour: shade(d.timber, 0.94), decor: true, exposed: true }, 0);
+      }
     }
   }
   // the ends: a sill from back to front on the pads, and a stud in the middle of a wide end
-  if (plan.ends && d.pad) {
+  if (plan.ends) {
     for (const sz of [-1, 1]) {
       const z = sz * (D / 2 - half);
-      sink.span('structureWood', plan.stoneBack ? -W / 2 + stoneT : xb + half, padTop, z - half, xf - half, padTop + sillH, z + half, member);
+      if (sills) sink.span('structureWood', plan.stoneBack ? -W / 2 + stoneT : xb + half, padTop, z - half, xf - half, padTop + sillH, z + half, member);
       if (W - stoneT > 2.6) {
         const xm = (xb + xf) / 2;
         padOf(xm, z);
-        postAt(xm, z, padTop + sillH, under(xm) - 0.02);
+        postAt(xm, z, sills ? padTop + sillH : foot, under(xm) - 0.02);
       }
     }
+  }
+  // ---- a raised floor: girders along the post lines, joists across them, the deck; rat guards round the posts under it
+  if (lift > 0) {
+    for (const x of [xb, xf]) sink.span('structureWood', x - half - 0.02, lift - 0.34, -D / 2, x + half + 0.02, lift - 0.16, D / 2, member);
+    sink.span('structureWood', -W / 2, lift - 0.02, -D / 2, W / 2, lift + 0.04, D / 2, { colour: shade(d.timber, 1.05), uv: UV_MEMBER });
+    sink.dressing(plan.mobile, () => {
+      for (let z = -D / 2 + 0.3; z < D / 2 - 0.2; z += 0.6) sink.span('structureWood', -W / 2 + 0.02, lift - 0.16, z - 0.05, W / 2 - 0.02, lift - 0.02, z + 0.05, { colour: shade(d.timber, 0.9), decor: true, uv: UV_MEMBER });
+      if (plan.ratGuards) for (const [x, z] of local) sink.cylinder('structureWood', [x, lift - 0.5, z], 'y', 0.035, 0.27, 10, { colour: shade(d.timber, 1.2), decor: true });
+    });
   }
 
   // ---- the rafters, their tails out under the eaves, and the deck and its covering on them
   const nR = Math.max(3, Math.round((D - s) / 0.72));
-  const nrm = normalize3([tanP, 1, 0]);
   const xa = -W / 2 - Math.min(d.eave, 0.3) + 0.05, xe = W / 2 + d.eave - 0.05;
   sink.dressing(plan.mobile, () => {
     for (let k = 0; k <= nR; k++) {
-      const z = -D / 2 + half + (D - s) * k / nR;
-      sink.member('structureWood', [xa, under(xa), z], [xe, under(xe), z], rw, rh, nrm, { colour: shade(d.timber, 0.9 + look() * 0.12), decor: true, exposed: true }, 0);
+      const z = -D / 2 + half + (D - s) * k / nR, tone = { colour: shade(d.timber, 0.9 + look() * 0.12), decor: true, exposed: true } as const;
+      if (gable) {
+        for (const side of [-1, 1]) {
+          const x0 = side * xe;
+          sink.member('structureWood', [x0, under(x0), z], [0, under(0), z], rw, rh, normalize3([side * sinP, cosP, 0]), tone, 0);
+        }
+      } else sink.member('structureWood', [xa, under(xa), z], [xe, under(xe), z], rw, rh, normalize3([tanP, 1, 0]), tone, 0);
     }
+    // a gable's ridge pole under the rafters' heads
+    if (gable) sink.span('structureWood', -0.07, under(0) - 0.14, -D / 2, 0.07, under(0) + 0.02, D / 2, { colour: shade(d.timber, 0.92), decor: true, uv: UV_MEMBER });
   });
   const rg = roofGeometry(W, D, eaveY, spec);
   emitRoof(sink, rg, spec, d.roofColour);
-  const f = slopeFrame(W, D, eaveY, spec);
-  sink.dressing(plan.mobile, () => covering(sink, d, f, look));
-  // the barge boards along both verges and the fascia board along the low eave, from the roof's top down over its edge
-  sink.dressing(plan.mobile, () => {
+  const frames = gable ? [slopeFrame(W, D, eaveY, spec, 1, true), slopeFrame(W, D, eaveY, spec, -1, true)] : [slopeFrame(W, D, eaveY, spec)];
+  sink.dressing(plan.mobile, () => { for (const f of frames) covering(sink, d, f, look); });
+  // the barge boards along both verges of every slope, from the roof's top down over its edge
+  if (d.covering !== 'thatch') sink.dressing(plan.mobile, () => {
     const bh = deckT + cov.butt + 0.14;
-    for (const z of [f.z0 + 0.012, f.z1 - 0.012]) {
-      const a = f.at(0, cov.butt + 0.01 - bh / 2, z), b = f.at(f.length, cov.butt + 0.01 - bh / 2, z);
-      sink.member('structureWood', a, b, bh, 0.028, [0, 0, z > 0 ? 1 : -1], { colour: trim, decor: true, exposed: true }, 0.014);
+    for (const f of frames) {
+      for (const z of [f.z0 + 0.012, f.z1 - 0.012]) {
+        const a = f.at(0, cov.butt + 0.01 - bh / 2, z), b = f.at(f.length, cov.butt + 0.01 - bh / 2, z);
+        sink.member('structureWood', a, b, bh, 0.028, [0, 0, z > 0 ? 1 : -1], { colour: trim, decor: true, exposed: true }, 0.014);
+      }
     }
   });
 
   // ---- the cladding: separate boards on the posts' outer faces, their tops cut to the roof
   const boardTone = (): Rgb => shade(d.boards[Math.floor(look() * d.boards.length) % d.boards.length], 0.86 + look() * 0.24);
   const gap = d.cladding === 'gapped' ? d.gap ?? 0.03 : 0;
-  const bottom = d.pad ? padTop - 0.03 : -0.05;
+  const bottom = lift > 0 ? lift - 0.06 : d.pad ? padTop - 0.03 : -0.05;
   let faces = 0;
-  const clad = (face: Face, u0: number, u1: number, topAt: (u: number) => number): void => {
+  /** a board outline clipped under the roof line of a face whose top is topAt (a gable end's two slopes at its apex) */
+  const clipTop = (poly: Array<[number, number]>, u0: number, u1: number, topAt: (u: number) => number, apex: number | null): Array<[number, number]> => {
+    if (apex === null || apex <= u0 || apex >= u1) return underLine(poly, u0, topAt(u0), u1, topAt(u1));
+    return underLine(underLine(poly, u0, topAt(u0), apex, topAt(apex)), apex, topAt(apex), u1, topAt(u1));
+  };
+  const clad = (face: Face, u0: number, u1: number, topAt: (u: number) => number, apex: number | null = null, skip: [number, number] | null = null): void => {
     faces++;
+    const yTop = Math.max(topAt(u0), topAt(u1), apex === null ? -Infinity : topAt(apex));
     if (d.cladding === 'lapped') {
       // weatherboards across the face, each lower edge out over the one under it, cut to the roof line at the top
-      const yTop = Math.max(topAt(u0), topAt(u1));
       for (let y = bottom; y < yTop - 0.03; y += d.boardW) {
-        const poly = underLine([[u0, y], [u1, y], [u1, y + d.boardW + 0.02], [u0, y + d.boardW + 0.02]], u0, topAt(u0), u1, topAt(u1));
-        if (poly.length < 3) break;
-        boardOn(sink, 'structureWood', face, poly, 0, bt, { colour: boardTone() });
-        // the lap: the board's lower edge stands out over the one under it
-        // (only where the whole strip is under the roof line: a gable end's top boards keep their lap short)
+        const runs: Array<[number, number]> = skip && y < (plan.front ? bottom + plan.front.h : 0) ? [[u0, skip[0]], [skip[1], u1]] : [[u0, u1]];
+        for (const [ra, rb] of runs) {
+          if (rb - ra < 0.06) continue;
+          const poly = clipTop([[ra, y], [rb, y], [rb, y + d.boardW + 0.02], [ra, y + d.boardW + 0.02]], u0, u1, topAt, apex);
+          if (poly.length < 3) continue;
+          boardOn(sink, 'structureWood', face, poly, 0, bt, { colour: boardTone() });
+        }
+        // the lap: the board's lower edge stands out over the one under it (only where the whole strip is under the roof)
         const yl = y + 0.012, need = yl + 0.03;
-        const ta = topAt(u0), tb = topAt(u1);
-        let ua = u0, ub = u1;
-        if (ta < need && tb < need) continue;
-        if (ta < need) ua = lerp(u0, u1, (need - ta) / (tb - ta));
-        if (tb < need) ub = lerp(u0, u1, (need - ta) / (tb - ta));
-        if (ub - ua > 0.12) {
-          faceBox(sink, 'structureWood', face, (ua + ub) / 2, yl, bt + 0.006, ub - ua, 0.024, 0.012, { colour: shade(d.boards[0], 0.7), decor: true, fine: true }, 'ends');
+        if (Math.min(topAt(u0), topAt(u1)) > need && !(skip && y < bottom + (plan.front?.h ?? 0))) {
+          faceBox(sink, 'structureWood', face, (u0 + u1) / 2, yl, bt + 0.006, u1 - u0, 0.024, 0.012, { colour: shade(d.boards[0], 0.7), decor: true, fine: true }, 'ends');
         }
       }
       return;
@@ -401,11 +443,16 @@ export function openShed(sink: PartSink, plan: ShedPlan, d: ShedDialect, look: (
     const step = d.boardW + gap, n = Math.max(1, Math.round((u1 - u0 + gap) / step)), bw = (u1 - u0 + gap) / n - gap;
     for (let k = 0; k < n; k++) {
       const a = u0 + k * (bw + gap), b = a + bw;
-      boardOn(sink, 'structureWood', face, [[a, bottom], [b, bottom], [b, topAt(b)], [a, topAt(a)]], 0, bt, { colour: boardTone() });
+      // a board across the door stops over its head (the lintel's top)
+      const doorHit = skip && b > skip[0] && a < skip[1];
+      const yb = doorHit && plan.front ? bottom + plan.front.h + 0.12 : bottom;
+      const poly: Array<[number, number]> = apex !== null && a < apex && b > apex
+        ? [[a, yb], [b, yb], [b, topAt(b)], [apex, topAt(apex)], [a, topAt(a)]] : [[a, yb], [b, yb], [b, topAt(b)], [a, topAt(a)]];
+      if (Math.min(topAt(a), topAt(b)) - yb > 0.05) boardOn(sink, 'structureWood', face, poly, 0, bt, { colour: boardTone() });
       if (d.cladding === 'batten' && k > 0) {
         // the batten over the joint (dressing: it stands proud of the boards)
-        const yt = Math.min(topAt(a - 0.03), topAt(a + 0.03)) - 0.04;
-        faceBox(sink, 'structureWood', face, a, (bottom + yt) / 2, bt + 0.012, 0.06, yt - bottom, 0.024, { colour: d.batten ?? shade(d.boards[0], 0.9), decor: true, fineSides: true }, 'caps');
+        const yt = Math.min(topAt(a - 0.03), topAt(a + 0.03)) - 0.04, y0 = skip && a > skip[0] - 0.03 && a < skip[1] + 0.03 && plan.front ? bottom + plan.front.h + 0.12 : bottom;
+        if (yt - y0 > 0.1) faceBox(sink, 'structureWood', face, a, (y0 + yt) / 2, bt + 0.012, 0.06, yt - y0, 0.024, { colour: d.batten ?? shade(d.boards[0], 0.9), decor: true, fineSides: true }, 'caps');
       }
     }
   };
@@ -415,11 +462,29 @@ export function openShed(sink: PartSink, plan: ShedPlan, d: ShedDialect, look: (
     // the rails the boards are nailed to, between the back posts (inside, flush with the posts' faces)
     sink.dressing(plan.mobile, () => {
       for (let k = 0; k + 1 < backZ.length; k++) {
-        for (const y of [0.95, Math.min(1.9, backTop - ph - 0.3)]) {
+        for (const y of [Math.max(0.95, lift + 0.8), Math.min(Math.max(1.9, lift + 1.7), backTop - ph - 0.3)]) {
+          if (y > backTop - ph - 0.2) continue;
           sink.span('structureWood', -W / 2 + stoneT, y - 0.06, backZ[k] + half, -W / 2 + stoneT + 0.08, y + 0.06, backZ[k + 1] - half, { colour: shade(d.timber, 0.92), decor: true, uv: UV_MEMBER });
         }
       }
     });
+  }
+  if (plan.front) {
+    const fr = plan.front, face: Face = { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
+    const d0 = fr.u - fr.w / 2, d1 = fr.u + fr.w / 2;
+    clad(face, -D / 2 - bt, D / 2 + bt, () => underRoof(W / 2 + bt) - 0.005, null, [d0, d1]);
+    // the door's frame (jambs and a head on the floor), the plank leaf hung shut in it, its ledges, Z-brace and hinges
+    const y0 = bottom + 0.06, cas = { colour: trim, uv: UV_MEMBER } as const;
+    for (const u of [d0 - 0.05, d1 + 0.05]) faceBox(sink, 'structureWood', face, u, y0 + fr.h / 2 + 0.03, bt / 2, 0.1, fr.h + 0.06, bt + 0.04, cas);
+    faceBox(sink, 'structureWood', face, fr.u, y0 + fr.h + 0.06, bt / 2, fr.w + 0.2, 0.12, bt + 0.04, cas);
+    faceBox(sink, 'structureWood', face, fr.u, y0 + fr.h / 2, -0.01, fr.w - 0.02, fr.h, 0.04, { colour: fr.leaf, uv: UV_MEMBER });
+    const ledge = { colour: shade(fr.leaf, 0.82), decor: true, fine: true } as const;
+    for (const t of [0.15, 0.85]) {
+      faceBox(sink, 'structureWood', face, fr.u, y0 + fr.h * t, 0.022, fr.w - 0.1, 0.09, 0.024, ledge, 'ends');
+      faceBox(sink, 'structureMetal', face, d0 + 0.2, y0 + fr.h * t, 0.04, 0.36, 0.035, 0.008, { colour: [0.15, 0.14, 0.13], decor: true, fine: true });
+    }
+    sink.member('structureWood', facePoint(face, d0 + 0.08, y0 + fr.h * 0.2, 0.01), facePoint(face, d1 - 0.08, y0 + fr.h * 0.8, 0.01), 0.07, 0.024, face.out, ledge, 0);
+    if (plan.ladder && lift > 0.3) sink.dressing(plan.mobile, () => ladder(sink, face, fr.u, 0.1, lift + 0.02, shade(d.timber, 0.95)));
   }
   if (plan.ends) {
     for (const sz of [-1, 1]) {
@@ -427,14 +492,14 @@ export function openShed(sink: PartSink, plan: ShedPlan, d: ShedDialect, look: (
       // u along the end is x (sz > 0) or -x: the roof's underside at its outer face
       const top = (u: number): number => underRoof(sz * u) - 0.005;
       const u0 = sz > 0 ? -W / 2 + stoneT : -(W / 2), u1 = sz > 0 ? W / 2 : W / 2 - stoneT;
-      clad(end, u0, u1, top);
+      clad(end, u0, u1, top, gable ? 0 : null);
       // the corner boards at the open front and the back (trim), and the end's rail inside
       sink.dressing(plan.mobile, () => {
         const uf = sz > 0 ? W / 2 - 0.06 : -W / 2 + 0.06;
         const yt = top(sz > 0 ? W / 2 - 0.12 : -W / 2 + 0.12) - 0.02;
         faceBox(sink, 'structureWood', end, uf, (bottom + yt) / 2, bt + 0.012, 0.12, yt - bottom, 0.024, { colour: trim, decor: true, fineSides: true }, 'caps');
         const zr = sz * (D / 2 - 0.04);
-        for (const y of [0.95, 1.8]) {
+        for (const y of [Math.max(0.95, lift + 0.8), Math.max(1.8, lift + 1.6)]) {
           const x0 = xb + half, x1 = xf - half;
           if (y < under(x1) - 0.3) sink.span('structureWood', x0, y - 0.06, zr - 0.04, x1, y + 0.06, zr + 0.04, { colour: shade(d.timber, 0.92), decor: true, uv: UV_MEMBER });
         }
@@ -445,9 +510,9 @@ export function openShed(sink: PartSink, plan: ShedPlan, d: ShedDialect, look: (
   // ---- the wood stacked against the back, log ends out; a chopping block before the shed with its axe in it
   if (plan.pile > 0) {
     sink.dressing(plan.mobile, () => {
-      const backIn: Face = { origin: [xb + half + 0.02, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
+      const backIn: Face = { origin: [xb + half + 0.02, lift, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
       const lim = D / 2 - s - 0.12;
-      woodpile(sink, backIn, -lim, lim, Math.min(plan.pile, backTop - ph - 0.25), look);
+      woodpile(sink, backIn, -lim, lim, Math.min(plan.pile, backTop - ph - 0.25 - lift), look);
     });
   }
   if (plan.block) {
