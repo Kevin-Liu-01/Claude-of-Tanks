@@ -94,18 +94,40 @@ function compactSimple(shape: PackedSimpleShape): PackedSimpleShape | CompactSim
   return out;
 }
 
-function expandSimple(value: readonly RuntimeValue[]): RuntimeValue {
+/** A compact primitive back in packed numbers; with `box`, its v4 reference box in integers ([x0, z0, x1, z1, y0, y1],
+ *  y NaN when it has none: partBoxInto's reading, from the integers themselves). */
+function expandSimple(value: readonly RuntimeValue[], box?: Float64Array): RuntimeValue {
   const kind = PACKED_KIND[value[0] as string];
-  const numbers = value.slice(1);
-  if (!numbers.every((entry) => Number.isSafeInteger(entry))) throw new TypeError('collision primitive shape is invalid');
-  const from = cornersFrom(kind, numbers);
+  const count = value.length - 1;
+  for (let i = 1; i <= count; i++) {
+    if (!Number.isSafeInteger(value[i])) throw new TypeError('collision primitive shape is invalid');
+  }
+  const from = kind === 'v' ? 0 : kind === 'w' ? 2 : kind === 'p' ? 5 + 3 * (value[5] as number) : count;
   const out: (string | number)[] = [kind];
-  let x = 0, z = 0;
-  for (let i = 0; i < numbers.length; i++) {
-    const n = numbers[i] as number;
-    if (kind === 'p' && i === 4) { out.push(n); continue; }
-    if (i < from) out.push(n / SCALE);
-    else if ((i - from) % 2 === 0) { x += n; out.push(x / SCALE); } else { z += n; out.push(z / SCALE); }
+  let x = 0, z = 0, x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  for (let i = 0; i < count; i++) {
+    const n = value[i + 1] as number;
+    if (kind === 'p' && i === 4) out.push(n);
+    else if (i < from) out.push(n / SCALE);
+    else if ((i - from) % 2 === 0) {
+      x += n; out.push(x / SCALE);
+      if (x < x0) x0 = x; if (x > x1) x1 = x;
+    } else {
+      z += n; out.push(z / SCALE);
+      if (z < z0) z0 = z; if (z > z1) z1 = z;
+    }
+  }
+  if (box) {
+    box[4] = NaN; box[5] = NaN;
+    if (kind === 'c' || kind === 'o') {
+      const cx = value[1] as number, cz = value[2] as number, reach = kind === 'c' ? value[3] as number : 0;
+      box[0] = cx - reach; box[2] = cx + reach; box[1] = cz - reach; box[3] = cz + reach;
+      const extent = kind === 'c' ? 3 : 5;
+      if (count === extent + 2) { box[4] = value[extent + 1] as number; box[5] = value[extent + 2] as number; }
+    } else {
+      if (kind === 'w' || kind === 'p') { box[4] = value[1] as number; box[5] = value[2] as number; }
+      box[0] = x0; box[1] = z0; box[2] = x1; box[3] = z1;
+    }
   }
   return out;
 }
@@ -308,7 +330,51 @@ function resolveSimple(value: RuntimeValue, shapes: readonly PackedSimpleShape[]
 function resolveShape(value: RuntimeValue, shapes: readonly PackedSimpleShape[], compact: boolean): Shape {
   if (!Array.isArray(value) || value[0] !== 'm') return resolveSimple(value, shapes, compact);
   if (value.length < 2 || value.length > COLLISION_COMPOUND_MAX_PARTS + 1) throw new TypeError('collision compound shape is invalid');
-  return ['m', ...Array.from(value.slice(1), (part) => resolveSimple(part, shapes, compact))];
+  const out: unknown[] = ['m'];
+  for (let i = 1; i < value.length; i++) out.push(resolveSimple(value[i], shapes, compact));
+  return out as unknown as Shape;
+}
+
+/** v4 decode: the shape resolved as resolveShape does, its reference box into `box` in the same pass (an inline compact
+ *  part's from its integers, a dictionary part's read once a shard, any other's by partBoxInto); false when it has none. */
+function resolveShapeBoxed(value: RuntimeValue, shapes: readonly PackedSimpleShape[], box: Float64Array, part: Float64Array,
+  cache: Map<object, Float64Array | null>, into: { shape: Shape | undefined }): boolean {
+  const compound = Array.isArray(value) && value[0] === 'm';
+  if (compound && ((value as unknown[]).length < 2 || (value as unknown[]).length > COLLISION_COMPOUND_MAX_PARTS + 1)) {
+    throw new TypeError('collision compound shape is invalid');
+  }
+  const raw = compound ? value as readonly RuntimeValue[] : null;
+  const parts = raw ? raw.length - 1 : 1;
+  const out: unknown[] | null = raw ? ['m'] : null;
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, y0 = Infinity, y1 = -Infinity, exact = true;
+  for (let k = 0; k < parts; k++) {
+    const encoded = raw ? raw[k + 1] : value;
+    let simple: PackedSimpleShape;
+    let read: Float64Array | null;
+    if (isCompactSimple(encoded)) {
+      simple = expandSimple(encoded, part) as PackedSimpleShape;
+      if (!isSimpleShape(simple)) throw new TypeError('collision primitive shape is invalid');
+      read = part;
+    } else {
+      simple = resolveSimple(encoded, shapes, true);
+      const cached = cache.get(simple);
+      if (cached !== undefined) read = cached;
+      else {
+        read = partBoxInto(simple, part) ? part : null;
+        if (typeof encoded === 'number') cache.set(simple, read && Float64Array.from(read));
+      }
+    }
+    if (out) out.push(simple); else into.shape = simple;
+    if (!read) { exact = false; continue; }
+    if (read[0] < x0) x0 = read[0]; if (read[2] > x1) x1 = read[2];
+    if (read[1] < z0) z0 = read[1]; if (read[3] > z1) z1 = read[3];
+    if (read[4] === read[4]) { if (read[4] < y0) y0 = read[4]; if (read[5] > y1) y1 = read[5]; }
+  }
+  if (out) into.shape = out as unknown as Shape;
+  if (!exact || !Number.isFinite(x0) || !Number.isFinite(z0)) return false;
+  if (!Number.isFinite(y0)) { y0 = 0; y1 = 0; }
+  box[0] = x0; box[1] = y0; box[2] = z0; box[3] = x1; box[4] = y1; box[5] = z1;
+  return true;
 }
 
 function kindDictionary(value: RuntimeValue): readonly string[] {
@@ -329,52 +395,91 @@ function resolveKind(value: number, kinds: readonly string[] | undefined): strin
   return kinds[value];
 }
 
+/** v4 decode: one part's reference box in integers of 1/10000 m into `out` ([x0, z0, x1, z1, y0, y1], y NaN when the
+ *  part has none), exactly as boundsReference reads it; false when a number it reads is not exact. */
+function partBoxInto(part: PackedSimpleShape, out: Float64Array): boolean {
+  const kind = part[0], count = part.length - 1;
+  out[4] = NaN; out[5] = NaN;
+  if (kind === 'c' || kind === 'o') {
+    const cx = scaled(part[1] as number), cz = scaled(part[2] as number), reach = kind === 'c' ? scaled(part[3] as number) : 0;
+    if (cx === null || cz === null || reach === null) return false;
+    out[0] = cx - reach; out[2] = cx + reach; out[1] = cz - reach; out[3] = cz + reach;
+    const extent = kind === 'c' ? 3 : 5;
+    if (count === extent + 2) {
+      const lo = scaled(part[extent + 1] as number), hi = scaled(part[extent + 2] as number);
+      if (lo === null || hi === null) return false;
+      out[4] = lo; out[5] = hi;
+    }
+    return true;
+  }
+  if (kind === 'w' || kind === 'p') {
+    const lo = scaled(part[1] as number), hi = scaled(part[2] as number);
+    if (lo === null || hi === null) return false;
+    out[4] = lo; out[5] = hi;
+  }
+  const from = kind === 'v' ? 0 : kind === 'w' ? 2 : kind === 'p' ? 5 + 3 * (part[5] as number) : count;
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  for (let i = from; i + 1 < count; i += 2) {
+    const x = scaled(part[i + 1] as number), z = scaled(part[i + 2] as number);
+    if (x === null || z === null) return false;
+    if (x < x0) x0 = x; if (x > x1) x1 = x;
+    if (z < z0) z0 = z; if (z > z1) z1 = z;
+  }
+  out[0] = x0; out[1] = z0; out[2] = x1; out[3] = z1;
+  return true;
+}
+
+function integerSix(value: RuntimeValue): value is number[] {
+  if (!Array.isArray(value) || value.length !== 6) return false;
+  for (let i = 0; i < 6; i++) if (!Number.isSafeInteger(value[i])) return false;
+  return true;
+}
+
 function resolveRecords(
   value: RuntimeValue, shapes: readonly PackedSimpleShape[], kinds: readonly string[] | undefined, compact = false,
   referenced = false,
 ): PackedCollisionRecord[] {
   if (!Array.isArray(value)) throw new TypeError('collision records are invalid');
-  return Array.from(value, (record) => {
+  // (2026-10-16, the perf lane: v4 decode within reach of v3's) one pass a record, one output object, the shape resolved
+  // once, the dictionary parts' reference boxes read once a shard, scratch boxes reused
+  const box = new Float64Array(6), part = new Float64Array(6);
+  const cache = new Map<object, Float64Array | null>();
+  const slot: { shape: Shape | undefined } = { shape: undefined };
+  const out: PackedCollisionRecord[] = new Array(value.length);
+  for (let r = 0; r < value.length; r++) {
+    const record = value[r];
     if (!isRecord(record)) throw new TypeError('collision record is invalid');
-    // One record copy resolves both fields; dictionaries are not retained by the
-    // manifest, and kinds are immutable strings shared by all decoded records.
-    let resolved: Record<string, RuntimeValue> = { ...record };
-    if (referenced && resolved.D !== undefined) {
-      const steps = resolved.D;
-      if (resolved.b !== undefined || resolved.B !== undefined || !Array.isArray(steps) || steps.length !== 6
-          || !steps.every((n) => Number.isSafeInteger(n)) || resolved.s === undefined) {
-        throw new TypeError('collision record is invalid');
-      }
-      const reference = boundsReference(resolveShape(resolved.s, shapes, compact));
-      if (!reference) throw new TypeError('collision record is invalid');
-      // (the bounds in the key's place: the decoded record's keys are in v2's order)
-      const ordered: Record<string, RuntimeValue> = {};
-      for (const key of Object.keys(resolved)) {
-        if (key === 'D') ordered.b = steps.map((n, i) => ((n as number) + reference[i]) / SCALE);
-        else ordered[key] = resolved[key];
-      }
-      resolved = ordered;
+    // dictionaries are not retained by the manifest, and kinds are immutable strings shared by all decoded records
+    const steps = referenced ? record.D : undefined, bounds = compact ? record.B : undefined;
+    let shape: Shape | undefined, boxed = false;
+    if (record.s !== undefined) {
+      if (steps !== undefined) { boxed = resolveShapeBoxed(record.s, shapes, box, part, cache, slot); shape = slot.shape; }
+      else shape = resolveShape(record.s, shapes, compact);
     }
-    if (compact && resolved.B !== undefined) {
-      const bounds = resolved.B;
-      if (resolved.b !== undefined || !Array.isArray(bounds) || bounds.length !== 6 || !bounds.every((n) => Number.isSafeInteger(n))) {
-        throw new TypeError('collision record is invalid');
-      }
-      // (the bounds in the key's place: the decoded record's keys are in v2's order)
-      const ordered: Record<string, RuntimeValue> = {};
-      for (const key of Object.keys(resolved)) {
-        if (key === 'B') ordered.b = bounds.map((n) => (n as number) / SCALE);
-        else ordered[key] = resolved[key];
-      }
-      resolved = ordered;
-    }
-    if (typeof resolved.k === 'number') resolved.k = resolveKind(resolved.k, kinds);
-    if (!isPackedCollisionMetadata(resolved)) {
+    if ((steps !== undefined || bounds !== undefined) && (record.b !== undefined || (steps !== undefined && bounds !== undefined))) {
       throw new TypeError('collision record is invalid');
     }
-    if (resolved.s !== undefined) resolved.s = resolveShape(resolved.s, shapes, compact);
-    return resolved as PackedCollisionRecord;
-  });
+    const resolved: Record<string, RuntimeValue> = {};
+    for (const key in record) {
+      if (key === 'D' && steps !== undefined) {
+        // (the bounds in the key's place: the decoded record's keys are in v2's order)
+        if (!integerSix(steps) || !shape || !boxed) throw new TypeError('collision record is invalid');
+        resolved.b = [(steps[0] + box[0]) / SCALE, (steps[1] + box[1]) / SCALE, (steps[2] + box[2]) / SCALE,
+          (steps[3] + box[3]) / SCALE, (steps[4] + box[4]) / SCALE, (steps[5] + box[5]) / SCALE];
+      } else if (key === 'B' && bounds !== undefined) {
+        if (!integerSix(bounds)) throw new TypeError('collision record is invalid');
+        resolved.b = [bounds[0] / SCALE, bounds[1] / SCALE, bounds[2] / SCALE, bounds[3] / SCALE, bounds[4] / SCALE, bounds[5] / SCALE];
+      } else if (key === 'k') {
+        const kind = record.k;
+        resolved.k = typeof kind === 'number' ? resolveKind(kind, kinds) : kind;
+      } else if (key === 's') {
+        resolved.s = shape;
+      } else resolved[key] = record[key];
+    }
+    if (!isPackedCollisionMetadata(resolved)) throw new TypeError('collision record is invalid');
+    out[r] = resolved as PackedCollisionRecord;
+  }
+  return out;
 }
 
 /** Decode once at the I/O boundary; the match API and collision hot paths stay unchanged. */
