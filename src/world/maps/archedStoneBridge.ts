@@ -23,6 +23,55 @@ export interface DressingBridgeDeck {
   route: number;
 }
 
+/**
+ * (#27, 2026-10-15) The ruined crossing's pieces are a reinforced-concrete bridge's (the Delta: a 1930s RCC road bridge
+ * blown in the war): built in the abutment's own frame — u along the road, away from the river, y up from the bank,
+ * v across the road — and placed on the bank. Concrete in the plaster bucket, the rebar in the dark one.
+ */
+interface RuinFrame { x: number; y: number; z: number; cos: number; sin: number; side: number }
+function ruinFrame(centerX: number, centerZ: number, cross: number, halfSpan: number, side: number, heightField: DressingHeightField): RuinFrame {
+  const x = centerX + Math.cos(cross) * halfSpan * side, z = centerZ + Math.sin(cross) * halfSpan * side;
+  return { x, y: heightField.getHeightAt(x, z), z, cos: Math.cos(cross), sin: Math.sin(cross), side };
+}
+/** A geometry built in the frame's (u, y, v) placed on the bank: u runs from the river toward the bank on either side. */
+function placeRuin(g: THREE.BufferGeometry, f: RuinFrame): THREE.BufferGeometry {
+  // local x = u (mirrored by the side, so +u leaves the river on both banks), local z = v; then the road's heading
+  if (f.side < 0) { g.scale(-1, 1, 1); flipWinding(g); }
+  g.rotateY(-Math.atan2(f.sin, f.cos));
+  return g.translate(f.x, f.y, f.z);
+}
+function flipWinding(g: THREE.BufferGeometry): void {
+  const idx = g.index;
+  if (idx) { for (let i = 0; i < idx.count; i += 3) { const a = idx.getX(i + 1); idx.setX(i + 1, idx.getX(i + 2)); idx.setX(i + 2, a); } idx.needsUpdate = true; }
+  else {
+    for (const name of Object.keys(g.attributes)) {
+      const a = g.getAttribute(name) as THREE.BufferAttribute, n = a.itemSize;
+      for (let i = 0; i < a.count; i += 3) for (let k = 0; k < n; k++) { const t = a.getComponent(i + 1, k); a.setComponent(i + 1, k, a.getComponent(i + 2, k)); a.setComponent(i + 2, k, t); }
+      a.needsUpdate = true;
+    }
+  }
+  const nor = g.getAttribute('normal') as THREE.BufferAttribute | undefined;
+  if (nor) { for (let i = 0; i < nor.count; i++) nor.setX(i, -nor.getX(i)); nor.needsUpdate = true; }
+}
+/** A box from its extents in the ruin frame. */
+function ruinBox(u0: number, u1: number, y0: number, y1: number, v0: number, v1: number): THREE.BufferGeometry {
+  const g = box(u1 - u0, y1 - y0, v1 - v0, 0.6);
+  return g.translate((u0 + u1) / 2, (y0 + y1) / 2, (v0 + v1) / 2);
+}
+/** Rebar run out of a broken concrete face at u = u0 toward -u: `n` bars across [v0, v1] at height y, each bent down. */
+function rebar(u0: number, y: number, v0: number, v1: number, n: number, r: () => number): THREE.BufferGeometry[] {
+  const bars: THREE.BufferGeometry[] = [];
+  for (let k = 0; k < n; k++) {
+    const v = v0 + ((k + 0.5) / n) * (v1 - v0), len = 0.45 + r() * 0.75, droop = 0.15 + r() * 0.6;
+    const bar = box(len, 0.035, 0.035, 1);
+    bar.translate(-len / 2, 0, 0);
+    bar.rotateZ(droop);
+    bar.translate(u0, y + (r() - 0.5) * 0.08, v + (r() - 0.5) * 0.1);
+    bars.push(bar);
+  }
+  return bars;
+}
+
 function addBridgeAbutment(
   side: number,
   centerX: number,
@@ -33,30 +82,42 @@ function addBridgeAbutment(
   rng: Rng,
   buckets: DressingBuckets,
 ): void {
-  const x = centerX + Math.cos(cross) * halfSpan * side;
-  const z = centerZ + Math.sin(cross) * halfSpan * side;
-  const y = heightField.getHeightAt(x, z);
-  const abutment = box(6.2, 3.2, 5.4, 0.6);
-  abutment.rotateY(-cross);
-  abutment.translate(x, y + 1.2, z);
-  buckets.stone.push(jitterUV(abutment, rng));
-  const stub = box(3.8, 1.6, 4.6, 0.6);
-  stub.rotateY(-cross);
-  stub.rotateZ(-side * Math.cos(cross) * 0.30);
-  stub.rotateX(side * Math.sin(cross) * 0.30);
-  stub.translate(x - Math.cos(cross) * side * 4.0, y + 2.2,
-    z - Math.sin(cross) * side * 4.0);
-  buckets.stone.push(jitterUV(stub, rng));
-  const parapet = box(0.5, 1.1, 5.8, 0.8);
-  parapet.rotateY(-cross);
-  parapet.translate(x + Math.cos(cross + Math.PI / 2) * 2.6, y + 3.2,
-    z + Math.sin(cross + Math.PI / 2) * 2.6);
-  buckets.stone.push(jitterUV(parapet, rng));
-  const wing = box(1.6, 1.8, 6.4, 0.6);
-  wing.rotateY(-cross + side * 0.5);
-  wing.translate(x + Math.cos(cross) * side * 2.2, y + 0.6,
-    z + Math.sin(cross) * side * 2.2);
-  buckets.stone.push(jitterUV(wing, rng));
+  const f = ruinFrame(centerX, centerZ, cross, halfSpan, side, heightField);
+  const r = localRng(Math.round(f.x * 11 + f.z * 5));
+  const seat = 3.0, half = 3.6;
+  const concrete = (g: THREE.BufferGeometry, mapStream = false) => buckets.plaster.push(placeRuin(jitterUV(g, mapStream ? rng : r), f));
+  // the breast wall facing the river on its footing, the ballast wall behind the bearing shelf (the map's stream: the
+  // four draws a piece the round-1 abutment's four pieces took)
+  concrete(ruinBox(-0.5, 0.5, -1.2, seat, -half, half), true);
+  concrete(ruinBox(0.5, 1.0, -0.8, seat + 0.6, -half, half), true);
+  concrete(ruinBox(-1.2, 1.4, -1.4, -0.5, -half - 0.4, half + 0.4));
+  // the wing walls splayed back into the bank, their tops falling with it
+  for (const sv of [-1, 1]) {
+    const a = sv * 0.6, len = 4.6, t = 0.5;
+    const ca = Math.cos(a), sa = Math.sin(a);
+    const p0: [number, number] = [0.3, sv * half], p1: [number, number] = [0.3 + len * ca, sv * half + len * sa];
+    const n: [number, number] = [-sa * t * sv, ca * t * sv];
+    const poly: [number, number][] = sv > 0 ? [p0, p1, [p1[0] + n[0], p1[1] + n[1]], [p0[0] + n[0], p0[1] + n[1]]]
+      : [p0, [p0[0] + n[0], p0[1] + n[1]], [p1[0] + n[0], p1[1] + n[1]], p1];
+    const wing = prism(poly.map(([u, v]) => [u, v] as const), -1.0, sv > 0 ? [seat + 0.6, 0.9, 0.9, seat + 0.6] : [seat + 0.6, seat + 0.6, 0.9, 0.9]);
+    concrete(wing, true);
+  }
+  // the broken T-beam deck's stub on the shelf: its slab and three ribs run out over the river and end ragged, the
+  // rebar standing out of the broken faces, the end sagging where it tore
+  const deckTop = seat + 0.62, sag = 0.07;
+  const stub: THREE.BufferGeometry[] = [];
+  stub.push(ruinBox(-2.9, 0.55, deckTop - 0.22, deckTop, -3.3, -0.2), ruinBox(-2.2, 0.55, deckTop - 0.22, deckTop, -0.2, 1.4), ruinBox(-3.4, 0.55, deckTop - 0.22, deckTop, 1.4, 3.3));
+  const ribEnds = [-2.6, -2.0, -3.1];
+  [-2.4, 0, 2.4].forEach((v, k) => stub.push(ruinBox(ribEnds[k], 0.55, deckTop - 0.82, deckTop - 0.22, v - 0.18, v + 0.18)));
+  // the kerbs and a stump of the railing posts on the stub
+  for (const sv of [-1, 1]) {
+    stub.push(ruinBox(sv > 0 ? -3.4 : -2.9, 0.55, deckTop, deckTop + 0.25, sv * 3.3 - (sv > 0 ? 0.3 : 0), sv * 3.3 + (sv > 0 ? 0 : 0.3)));
+    for (const u of [-1.8, 0.2]) stub.push(ruinBox(u - 0.12, u + 0.12, deckTop + 0.25, deckTop + 1.05, sv * 3.15 - 0.12, sv * 3.15 + 0.12));
+  }
+  for (const g of stub) { g.translate(-0.55, 0, 0).rotateZ(sag).translate(0.55, 0, 0); concrete(g); }
+  const bars = [...rebar(-2.9, deckTop - 0.1, -3.2, -0.3, 6, r), ...rebar(-2.2, deckTop - 0.1, -0.1, 1.3, 3, r), ...rebar(-3.4, deckTop - 0.1, 1.5, 3.2, 4, r),
+    ...ribEnds.flatMap((u, k) => rebar(u, deckTop - 0.7, [-2.4, 0, 2.4][k] - 0.12, [-2.4, 0, 2.4][k] + 0.12, 2, r))];
+  for (const g of bars) { g.translate(-0.55, 0, 0).rotateZ(sag).translate(0.55, 0, 0); buckets.dark.push(placeRuin(g, f)); }
 }
 
 function addFallenBridgeSlabs(
@@ -68,15 +129,35 @@ function addFallenBridgeSlabs(
   rng: Rng,
   buckets: DressingBuckets,
 ): void {
+  // the dropped spans: T-beam deck lengths lying in the river where they fell, tipped on their ribs, the rebar out of
+  // their broken ends (the map's stream draws as the round-1 slabs: place, size, turn, tip and the slab's UV jitter)
+  const r = localRng(Math.round(centerX * 7 + centerZ * 3));
   for (let k = 0; k < 5; k++) {
     const offset = (rng() - 0.5) * halfSpan * 1.2;
     const x = centerX + Math.cos(cross) * offset;
     const z = centerZ + Math.sin(cross) * offset;
-    const slab = box(2.2 + rng() * 1.6, 0.7, 2.6 + rng() * 1.0, 0.7);
-    slab.rotateY(-cross + (rng() - 0.5) * 0.8);
-    slab.rotateZ((rng() - 0.5) * 0.5);
-    slab.translate(x, heightField.getHeightAt(x, z) + 0.3, z);
-    buckets.stone.push(jitterUV(slab, rng));
+    const L = 2.2 + rng() * 1.6, W = 2.6 + rng() * 1.0;
+    const turn = -cross + (rng() - 0.5) * 0.8, tip = (rng() - 0.5) * 0.5;
+    const y = heightField.getHeightAt(x, z) + 0.3;
+    const place = (g: THREE.BufferGeometry) => g.rotateZ(tip).rotateY(turn).translate(x, y, z);
+    const slab = box(L, 0.22, W, 0.7);
+    slab.translate(0, 0.35, 0);
+    buckets.plaster.push(place(jitterUV(slab, rng)));
+    // its ribs under it (one or two, broken shorter than the slab), and the rebar out of both broken ends
+    const ribs = W > 3.1 ? [-W / 4, W / 4] : [0];
+    for (const v of ribs) {
+      const cut = r() * 0.5;
+      const rib = box(L - cut, 0.5, 0.34, 0.7);
+      rib.translate(-cut / 2, 0.0, v);
+      buckets.plaster.push(place(jitterUV(rib, r)));
+    }
+    for (const end of [-1, 1]) {
+      for (const bar of rebar(0, 0.38, -W / 2 + 0.2, W / 2 - 0.2, 4, r)) {
+        if (end > 0) bar.rotateY(Math.PI);
+        bar.translate(end * L / 2, 0, 0);
+        buckets.dark.push(place(bar));
+      }
+    }
   }
 }
 
@@ -99,7 +180,6 @@ export function addRuinedRiverBridge(
   addFallenBridgeSlabs(centerX, centerZ, cross, halfSpan, heightField, rng, buckets);
 }
 
-/** Align a box's width axis (local +x) with the world direction (dx, dz); local +z then points to (-dz, dx). */
 /** The bridge's dressing: none over the round-61 body ('plain': Cliffbridge's gorge span, until its own pass), or a
  *  Norman river bridge's masonry ('norman': Amberford). */
 export type BridgeMasonry = 'plain' | 'norman';
@@ -115,10 +195,17 @@ export function localRng(seed: number): () => number {
   };
 }
 
-/** A prism from a convex polygon (xz, counter-clockwise from above) between y0 and y1 (y1 may be a per-corner array: a
- *  sloping top), its UVs metres x 0.7. Non-indexed. */
-export function prism(poly: readonly (readonly [number, number])[], y0: number, y1: number | readonly number[]): THREE.BufferGeometry {
-  const n = poly.length, top = (i: number) => (typeof y1 === 'number' ? y1 : y1[i]);
+/** A prism from a convex polygon (xz, either winding) between y0 and y1 (y1 may be a per-corner array: a sloping top),
+ *  every face pointing out, its UVs metres x 0.7. Non-indexed. */
+export function prism(input: readonly (readonly [number, number])[], y0: number, y1: number | readonly number[]): THREE.BufferGeometry {
+  // either winding: the polygon is put in the order whose faces all point out (a positive area in x-z), the per-corner
+  // tops following their corners
+  let area = 0;
+  for (let i = 0; i < input.length; i++) { const [ax, az] = input[i], [bx, bz] = input[(i + 1) % input.length]; area += ax * bz - bx * az; }
+  const flip = area > 0;
+  const poly = flip ? [...input].reverse() : input;
+  const tops = typeof y1 === 'number' ? null : (flip ? [...y1].reverse() : y1);
+  const n = poly.length, top = (i: number) => (tops ? tops[i] : (y1 as number));
   const pos: number[] = [], uv: number[] = [];
   const tri = (a: number[], b: number[], c: number[], u: number[][]) => { pos.push(...a, ...b, ...c); uv.push(...u[0], ...u[1], ...u[2]); };
   for (let i = 0; i < n; i++) {
@@ -130,8 +217,8 @@ export function prism(poly: readonly (readonly [number, number])[], y0: number, 
   }
   for (let i = 1; i + 1 < n; i++) {
     const [ax, az] = poly[0], [bx, bz] = poly[i], [qx, qz] = poly[i + 1];
-    tri([ax, top(0), az], [qx, top(i + 1), qz], [bx, top(i), bz], [[ax * 0.7, az * 0.7], [qx * 0.7, qz * 0.7], [bx * 0.7, bz * 0.7]]);
-    tri([ax, y0, az], [bx, y0, bz], [qx, y0, qz], [[ax * 0.7, az * 0.7], [bx * 0.7, bz * 0.7], [qx * 0.7, qz * 0.7]]);
+    tri([ax, top(0), az], [bx, top(i), bz], [qx, top(i + 1), qz], [[ax * 0.7, az * 0.7], [bx * 0.7, bz * 0.7], [qx * 0.7, qz * 0.7]]);
+    tri([ax, y0, az], [qx, y0, qz], [bx, y0, bz], [[ax * 0.7, az * 0.7], [qx * 0.7, qz * 0.7], [bx * 0.7, bz * 0.7]]);
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
@@ -222,6 +309,7 @@ export function archedBridgeDraws(deck: DressingBridgeDeck): number {
   return 4 * (12 + 2 * (arches - 1));
 }
 
+/** Align a box's width axis (local +x) with the world direction (dx, dz); local +z then points to (-dz, dx). */
 export function alignWidth<T extends THREE.BufferGeometry>(geometry: T, dx: number, dz: number): T {
   geometry.rotateY(Math.atan2(-dz, dx));
   return geometry;
