@@ -8,9 +8,13 @@
 // profile build. Fills sit strictly inside the body's own shells, so
 // silhouettes never move; behind a real gap they read as the dark interior
 // wall the eye expects. They are excluded from authored-geometry fingerprints.
+// 2026-10-16 (tank-opt HIDDEN; owner: "inside the tanks where we cant see, we dont have unneeded geometry"): a box
+// face pressed flat against same-component neighbours lies inside the component's own solid and is never drawn
+// (interiorFillFaces.ts); every other face keeps its exact triangles, so the solid's outer surface is unchanged.
 import * as THREE from 'three';
 import { FLEET_GROUP_BY_ID } from './fleetManifest.ts';
 import { INTERIOR_FILL_GROUP_LOADERS } from './interiorFillLoaders.generated.ts';
+import { drawnFillFaces, internalFillFaces } from './interiorFillFaces.ts';
 
 export interface InteriorFillRecord {
   /** Fine voxel size in metres (box indices are in these units). */
@@ -85,11 +89,32 @@ function decodeSextets(encoded: string): Uint16Array {
   return out;
 }
 
+/** One component's inclusive voxel spans (Uint16 sextets), empty when the record has none. */
+export function interiorFillSpans(record: InteriorFillRecord, component: InteriorFillComponent): Uint16Array {
+  const encoded = record[component];
+  return encoded ? decodeSextets(encoded) : new Uint16Array(0);
+}
+
+/**
+ * Box and face counts of a record (or of one component): `faces` the six per box, `internal` the faces its own solid
+ * buries (never drawn), so the mesh carries 2 x (faces - internal) triangles.
+ */
+export function interiorFillFaceCounts(record: InteriorFillRecord, only?: InteriorFillComponent): { boxes: number; faces: number; internal: number } {
+  let boxes = 0, internal = 0;
+  for (const component of only ? [only] : ['hull', 'turret', 'gun'] as const) {
+    const mask = internalFillFaces(interiorFillSpans(record, component));
+    boxes += mask.length;
+    internal += 6 * mask.length - drawnFillFaces(mask);
+  }
+  return { boxes, faces: 6 * boxes, internal };
+}
+
 /** Decode one component's boxes into [centre, size] metres in the TANK frame (build pose). */
 export function interiorFillBoxes(record: InteriorFillRecord, component: InteriorFillComponent): InteriorFillBox[] {
-  const encoded = record[component];
-  if (!encoded) return [];
-  const spans = decodeSextets(encoded);
+  return boxesFromSpans(record, interiorFillSpans(record, component));
+}
+
+function boxesFromSpans(record: InteriorFillRecord, spans: Uint16Array): InteriorFillBox[] {
   const boxes: InteriorFillBox[] = [];
   for (let i = 0; i + 5 < spans.length; i += 6) {
     const [x0, y0, z0, x1, y1, z1] = [spans[i], spans[i + 1], spans[i + 2], spans[i + 3], spans[i + 4], spans[i + 5]];
@@ -103,11 +128,17 @@ export function interiorFillBoxes(record: InteriorFillRecord, component: Interio
   return boxes;
 }
 
-/** Merge a component's boxes into one geometry (24 vertices per box, no index). */
-function interiorFillGeometry(boxes: readonly InteriorFillBox[]): THREE.BufferGeometry | null {
+/**
+ * Merge a component's boxes into one geometry (6 vertices per drawn face, no index). `internal` (interiorFillFaces.ts)
+ * marks the faces the component's own solid buries: they are left out, and every drawn face is written exactly as the
+ * full mesher wrote it (same corners, order, positions and normals), so only never-visible triangles disappear.
+ */
+function interiorFillGeometry(boxes: readonly InteriorFillBox[], internal: Uint8Array): THREE.BufferGeometry | null {
   if (!boxes.length) return null;
-  const positions = new Float32Array(boxes.length * 36 * 3);
-  const normals = new Float32Array(boxes.length * 36 * 3);
+  const drawn = drawnFillFaces(internal);
+  if (!drawn) return null;
+  const positions = new Float32Array(drawn * 6 * 3);
+  const normals = new Float32Array(drawn * 6 * 3);
   // 6 faces x 2 triangles; corners as (sx, sy, sz) signs
   const faces: ReadonlyArray<readonly [normal: readonly [number, number, number], corners: ReadonlyArray<readonly [number, number, number]>]> = [
     [[1, 0, 0], [[1, -1, -1], [1, 1, -1], [1, 1, 1], [1, -1, -1], [1, 1, 1], [1, -1, 1]]],
@@ -118,8 +149,12 @@ function interiorFillGeometry(boxes: readonly InteriorFillBox[]): THREE.BufferGe
     [[0, 0, -1], [[1, -1, -1], [-1, -1, -1], [-1, 1, -1], [1, -1, -1], [-1, 1, -1], [1, 1, -1]]],
   ];
   let k = 0;
-  for (const [cx, cy, cz, sx, sy, sz] of boxes) {
-    for (const [normal, corners] of faces) {
+  for (let b = 0; b < boxes.length; b++) {
+    const [cx, cy, cz, sx, sy, sz] = boxes[b];
+    const buried = internal[b];
+    for (let f = 0; f < faces.length; f++) {
+      if (buried & (1 << f)) continue;
+      const [normal, corners] = faces[f];
       for (const [ux, uy, uz] of corners) {
         positions[k] = cx + ux * sx / 2; positions[k + 1] = cy + uy * sy / 2; positions[k + 2] = cz + uz * sz / 2;
         normals[k] = normal[0]; normals[k + 1] = normal[1]; normals[k + 2] = normal[2];
@@ -155,8 +190,9 @@ export function applyInteriorFills({ specId, hullG, turretG, gunG = null, materi
   const targets: Array<readonly [InteriorFillComponent, THREE.Object3D]> = [['hull', hullG], ['turret', turretG]];
   if (gunG) targets.push(['gun', gunG]);
   for (const [component, parent] of targets) {
-    const boxes = interiorFillBoxes(record, component);
-    const geometry = interiorFillGeometry(boxes);
+    const spans = interiorFillSpans(record, component);
+    const boxes = boxesFromSpans(record, spans);
+    const geometry = interiorFillGeometry(boxes, internalFillFaces(spans));
     if (!geometry) continue;
     // Boxes are authored in the tank frame at build pose; rigs may carry a scale or offset
     // (profile `s`, turret pivot), so the geometry is taken into the rig's own frame.

@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { registerProfiledBuilders } from '../tankFactoryCore.ts';
 import { TANK_SPECS } from '../specs.ts';
-import { ensureInteriorFills, hasInteriorFills, interiorFillRecord, interiorFillBoxes } from '../interiorFills.ts';
+import { ensureInteriorFills, hasInteriorFills, interiorFillRecord, interiorFillBoxes, interiorFillFaceCounts } from '../interiorFills.ts';
 import { createTankState } from '../../sim/movement.ts';
 import { ZTZ100_PROTOTYPE_PROFILES, ZTZ100_PROTOTYPE_DATUMS as D,
   ZTZ100_PROTOTYPE_LAUNCHER as L } from './ztz100Prototype.ts';
@@ -179,6 +179,10 @@ assert.ok(hasInteriorFills(id), 'actual generated prototype fill record is loade
 const fillRecord = interiorFillRecord(id);
 const fillBoxes = Object.fromEntries(['hull', 'turret', 'gun'].map(key =>
   [key, interiorFillBoxes(fillRecord,key).length]));
+// 2026-10-16 (tank-opt HIDDEN): a box face its own fill solid buries is never drawn (interiorFillFaces.ts)
+const fillTriangles = Object.fromEntries(['hull', 'turret', 'gun'].map(key => {
+  const counts = interiorFillFaceCounts(fillRecord, key); return [key, 2 * (counts.faces - counts.internal)];
+}));
 function fillBounds(record) {
   return ['hull','turret','gun'].flatMap(owner=>interiorFillBoxes(record,owner).map(box=>({
     min:box.slice(0,3).map((c,k)=>c-box[k+3]/2),
@@ -213,10 +217,10 @@ try {
       assert.ok(launchParts.every(p => p.parent === 'gunG'), 'missile module follows the pitching launcher');
       assert.ok(!tank.root.getObjectByName('ztz100RemoteMachineGun'), 'no extra roof MG');
       checkSeats(); const cost = census(tank.root);
-      for (const [owner, count] of Object.entries(fillBoxes)) {
+      for (const [owner, count] of Object.entries(fillTriangles)) {
         const fill = tank.root.getObjectByName(`${owner}InteriorFill`);
-        assert.equal(fill?.geometry.attributes.position.count / 3 || 0, count * 12,
-          'runtime emits exactly the loaded generated fill boxes');
+        assert.equal(fill?.geometry.attributes.position.count / 3 || 0, count,
+          'runtime emits exactly the loaded generated fill boxes\' drawn faces');
       }
       tank.root.traverse(o => { if (o.isMesh) {
         materials.set(o, o.material); o.material = front;

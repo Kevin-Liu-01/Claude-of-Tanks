@@ -163,6 +163,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/moving-clearance-air.selftest.mjs',
     // 2026-10-02: the fleet watertight gate's own controls (the gate itself runs in fleetPassDefault)
     'src/vehicles/watertightAudit.selftest.mjs',
+    // 2026-10-16 (tank-opt HIDDEN): fill box faces their own solid buries are never drawn; the rest stay bit-identical
+    'src/vehicles/interiorFillFaces.selftest.mjs',
     'tools/barak-rear-bay-fill-policy.selftest.mjs',
     'src/vehicles/profiles/kurganetsRearDoorStock.selftest.mjs',
     'src/vehicles/profiles/kurganetsBowStock.selftest.mjs',

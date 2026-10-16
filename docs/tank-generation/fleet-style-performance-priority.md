@@ -206,6 +206,23 @@ probe's default five-second ceiling is a diagnostic timeout/budget, not the
 owner's definition of smooth switching. Do not invent favorable thresholds
 after seeing a candidate or count an unrun browser benchmark as a pass.
 
+**Interior-fill face cull (2026-10-16, tank-opt HIDDEN; owner 2026-10-15: "inside the tanks where we cant see, we
+dont have unneeded geometry").** `interiorFills.ts` no longer draws a fill box face whose outer voxel layer lies
+wholly inside its own component's solid (`interiorFillFaces.ts`); every other face keeps its exact triangles. Fleet
+fill triangles 751,644 → 607,646 (−143,998, 19.2 %; 27 tanks have nothing to cut); per tank mean −654, median −236,
+largest −5,538 (leo2a6_ua). Fills are their own draws and never detail-LOD objects, so a 1 + 15 battle saves the sum of
+its 16 tanks at every distance: about 10.5k triangles a frame for an average roster, 55.8k for the 16 heaviest.
+Exactness: `interiorFillFaces.selftest.mjs` checks every record against a voxel oracle and the mesh against the old
+six-face mesher minus the culled faces, bit for bit; `tools/interior-fill-surface-compare.mjs` `dump`/`compare`
+(battle builds of all 220 tanks, HIGH and LOW: every non-fill triangle, header and side table unchanged, removals
+equal to the prediction) and `raster` (each fill alone, 96 directions: a culled face is never the nearest surface);
+the watertight and sealed checks give identical leaks, lanes, bores, clearance and openings across the fleet (only
+`bodyTris`/`tris` and the informational `deepL`/`enclosedL` move). Two looks change, neither the outer surface: the
+killcam x-ray ghost (double-sided, no depth write) loses the culled layers inside fill volumes, and a dented wreck
+(the live-crumple vertex shader moves face corners, so T-junction seams in the fill open hairline cracks the culled
+faces used to back) changes about 12 ppm of a popped hull's pixels and 5 ppm of the turret's (worst view 97 px at
+512²). The pose-dependent trims (roof guns, belly, turret tail) failed their verify and are not part of this.
+
 ### FSP-02 — reusable primitives, not a generic donor vehicle
 
 Road wheels landed on 2026-09-22 (owner: "standardize our wheels across
