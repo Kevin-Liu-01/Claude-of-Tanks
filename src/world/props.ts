@@ -9682,7 +9682,8 @@ ${snowCap ? `
   const setPieceRecords: VehicleSetPiece[] = [];
   // (Lane C, #24) the spurs' standing vehicles the kits hand back, registered as destructibles on their rail poses
   const rollingStockRecords: { kind: RollingStockKind; x: number; y: number; z: number; yaw: number; pitch: number }[] = [];
-  const tramRecords: { kind: 'xk2_black_panther' | 'shanghai'; x: number; z: number; yaw: number }[] = [];
+  const tramRecords: { kind: 'k2' | 'shanghai'; // tank-ids:keep
+    x: number; z: number; yaw: number }[] = [];
   // (Lane C, #8 r2) the set pieces' intact builds (one a kind) and the spans each instance draws in the baked bucket
   const setPieceIntact = new Map<string, THREE.BufferGeometry>();
   // Plan W: every pooled structure's shells join the colliders before the first pass that reads them (the map kits
