@@ -7876,6 +7876,32 @@ village stood as a handful of roadside-plan buildings round the square.
   -> [8682, 8454, 10071].
 - *The blind critics* (2026-10-15, PASS +0.62; Opus 5/0 +1.20, Sonnet 5/0 +0.62).
 
+### 2026-10-15 — Kestrel Airfield: the revival round Hostomel's airport (the maps lane)
+
+**The owner, 10-09: Kestrel Airfield among the fourteen to bring up; 10-05: every map revitalized like Verdant.** Kestrel
+was an airfield on an empty lawn. The map-revival lane's rounds of 10-05..07 (MA.17) and the map-content lane's round 3
+(10-09) were never landed; the maps lane re-made them on integ/226 with the horizons lane's border forest (d9c1ca643).
+The airport's buildings, runway, aprons, roads, pads and objectives stand where they stood.
+- *The kit* (`maps/regional/hostomelDacha.ts`): the dachas of the garden cooperatives round the airport (the sadovi
+  tovarystva of Hostomel and Bucha): a cottage of one storey in planks or rendered block on a brick plinth under a steep
+  sheet or asbestos gable, the attic light cut through the boarded gable, a glazed veranda under its lean-to; the garden
+  shed boarded up to its lean-to; the yards' picket fences, gates and beds. The border hamlets past the edge are these
+  dachas now. The maintenance hangars carry their numbers on the long wall by the apron (`airfieldPaint.ts`).
+- *The plan:* two cooperatives (a rotation pair of eight dachas each) on the valley shoulders beside the access roads,
+  each on its concrete lane (roads 5 and 6, rejoining the access road on its own line), a field cross at the lane's mouth.
+- *The woods and the land:* the Polissia's pine and birch round the plateau (clusters 34, lone trees 30, rim 108), four
+  ruled Scots pine plantations past the runway's ends (9 x 9 m belts; `vegetation.standKeepOut` keeps the woodlots out of
+  their blocks); the valleys' bogs a peaty tan; `landUse.ts airfield`: hay meadow, pasture, small fields of rye and
+  potatoes outside the perimeter.
+- *The airport worked:* the taxiway centrelines, the stands' lead-ins, stop bars and numbers in worn paint
+  (`world/groundMarkings.ts`, one receive-only decal mesh, 3 call-site lines in props.ts); eight apron floodlight masts
+  (`landmarks/airfieldWorks.ts`); the An-26s in the dispersal pens, two burnt; more trucks and jeeps.
+- *Ruling (MA.37):* Kestrel keeps its growing season (no February pass); its horizon keys stay with the horizons lane.
+- *Measured* (every brief band holds): orphan 0.016, objective symmetry 1, separation 841 m, sightline median 120 m, no
+  solid in a road; census [2974, 3015, 2435] (with the border forest [3110, 3155, 2572]) -> [4445, 4929, 3647];
+  building integrity clean for the dacha and the shed (new ledger rows), the mast's open frame its only finding; kit
+  connectivity clean for the dacha, the shed and the mast.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance

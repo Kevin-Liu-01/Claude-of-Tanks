@@ -280,8 +280,7 @@ export default {
     rocks: 98, outcrops: 12, craters: 58, rubblePiles: 14, sandbagLines: 18, hedgehogs: 18,
     // the map-vehicles lane (2026-10-06, the period ruling): Hostomel, February 2022: the T-72B3, T-80BV and BMP-2,
     // and Ukraine's T-64BV
-    // (the map-content lane, 2026-10-09; the owner: Kestrel Airfield "unfinished") two more of the fight's hulks on the plateau
-    tankWrecks: { era: 'modern', count: 7, debris: true, ids: ['t72b3', 't80bv', 'bmp2', 't64bv_donbas'] },
+    tankWrecks: { era: 'modern', count: 5, debris: true, ids: ['t72b3', 't80bv', 'bmp2', 't64bv_donbas'] },
     // (the map-content lane, 2026-10-09, landed by the maps lane's Kestrel rebuild) the aprons' floodlight masts and the
     // holding apron's (landmarks/airfieldWorks.ts floodMast), rotation pairs about the runway's centre
     landmarks: [

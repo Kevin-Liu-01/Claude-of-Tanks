@@ -184,8 +184,12 @@ export const gardenShed: RegionalBuilder = (ctx) => {
     const rise = W * Math.tan(10 * Math.PI / 180);
     const front: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
     const back: Face = { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W };
-    wallPolygon(sink, 'wood', front, [[-W / 2, frame.eaveY], [W / 2, frame.eaveY], [-W / 2, frame.eaveY + rise]], 0.1);
-    wallPolygon(sink, 'wood', back, [[-W / 2, frame.eaveY], [W / 2, frame.eaveY], [W / 2, frame.eaveY + rise]], 0.1);
+    // (the boards' top edge 3 cm under the roof's underside at the high end: never a face lying on the roof slab's)
+    wallPolygon(sink, 'wood', front, [[-W / 2, frame.eaveY], [W / 2, frame.eaveY], [-W / 2, frame.eaveY + rise - 0.03]], 0.1);
+    wallPolygon(sink, 'wood', back, [[-W / 2, frame.eaveY], [W / 2, frame.eaveY], [W / 2, frame.eaveY + rise - 0.03]], 0.1);
+    // the lean-to's high side boarded up to the roof (the walls stop at the eave; the slab rises from +x to -x)
+    const high: Face = { origin: [-W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D };
+    wallPolygon(sink, 'wood', high, [[-D / 2, frame.eaveY], [D / 2, frame.eaveY], [D / 2, frame.eaveY + rise - 0.03], [-D / 2, frame.eaveY + rise - 0.03]], 0.1);
     // an old sheet patched over one side
     if (sheetWall) {
       const sf: Face = { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
