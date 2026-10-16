@@ -1554,6 +1554,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/foundryServiceCourt.selftest.mjs',
     // the map-revival lane (2026-10-09): no ISO box before 1966; the pre-container yards hold period freight
     'src/world/maps/periodFreight.selftest.mjs',
+    // the looks lane (2026-10-15): the container rows as built — draws kept, parts in their boxes, period liveries
+    'src/world/maps/containerRowKit.selftest.mjs',
     'src/world/autumnHeadlands.selftest.mjs',
     'src/world/loggingYardGrass.selftest.mjs',
     'src/world/grassChunkWork.selftest.mjs',
