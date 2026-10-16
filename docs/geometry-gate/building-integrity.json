@@ -3373,7 +3373,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 1.161,
+   "gapM2": 1.296,
    "invertedM2": 0
   },
   "landmark/delta:path#0": {
@@ -4223,5 +4223,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-16T10:13:59.401Z"
+ "updatedAt": "2026-10-16T10:19:57.088Z"
 }
