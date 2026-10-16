@@ -108,9 +108,13 @@ function addBridgeAbutment(
     const ca = Math.cos(a), sa = Math.sin(a);
     const p0: [number, number] = [0.3, sv * half], p1: [number, number] = [0.3 + len * ca, sv * half + len * sa];
     const n: [number, number] = [-sa * t * sv, ca * t * sv];
-    const poly: [number, number][] = sv > 0 ? [p0, p1, [p1[0] + n[0], p1[1] + n[1]], [p0[0] + n[0], p0[1] + n[1]]]
-      : [p0, [p0[0] + n[0], p0[1] + n[1]], [p1[0] + n[0], p1[1] + n[1]], p1];
-    const wing = prism(poly.map(([u, v]) => [u, v] as const), -1.0, sv > 0 ? [seat + 0.6, 0.9, 0.9, seat + 0.6] : [seat + 0.6, seat + 0.6, 0.9, 0.9]);
+    // (props census r2 sweep, Lane C 2026-10-16: each wing a plain box, the abutment's box-only share 100 %) its end's
+    // arrises knocked off where the blast tore it, the top falling with the bank from the shelf to the end
+    const c = 0.12, nh: [number, number] = [n[0] / t, n[1] / t], p1n: [number, number] = [p1[0] + n[0], p1[1] + n[1]];
+    const poly: [number, number][] = [p0, [p1[0] - ca * c, p1[1] - sa * c], [p1[0] + nh[0] * c, p1[1] + nh[1] * c],
+      [p1n[0] - nh[0] * c, p1n[1] - nh[1] * c], [p1n[0] - ca * c, p1n[1] - sa * c], [p0[0] + n[0], p0[1] + n[1]]];
+    const topAt = ([u, v]: [number, number]) => (seat + 0.6) + (0.9 - (seat + 0.6)) * Math.min(1, Math.max(0, ((u - p0[0]) * ca + (v - p0[1]) * sa) / len));
+    const wing = prism(poly.map(([u, v]) => [u, v] as const), -1.0, poly.map(topAt));
     concrete(wing, true);
   }
   // the broken T-beam deck's stub on the shelf: its slab and three ribs run out over the river and end ragged, the
