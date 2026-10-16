@@ -306,9 +306,24 @@ export function settleCatalogCuts(tmp: GeometryBuckets): void {
   // the builder's units to the back of their cuts
   const liftOf = (b: THREE.Box3, side: HallSide, off: number): number => (side === 'pz' ? b.min.z - (d / 2 - t + off) : side === 'nz' ? (-d / 2 + t - off) - b.max.z
     : side === 'px' ? b.min.x - (w / 2 - t + off) : (-w / 2 + t - off) - b.max.x);
+  // (the looks lane, 2026-10-16: a louvre stood a decimetre before its pane, 6 cm clear of the cut's sides, in the air)
+  // a louvre blade spans its cut from jamb to jamb, bearing on the reveals
+  const spanCut = (g: THREE.BufferGeometry, side: HallSide, hole: WallHole): void => {
+    const b = boxOf(g), alongX = side === 'pz' || side === 'nz';
+    const lo = alongX ? b.min.x : b.min.z, hi = alongX ? b.max.x : b.max.z, c = (lo + hi) / 2, k = hole.w / Math.max(1e-3, hi - lo);
+    g.translate(alongX ? -c : 0, 0, alongX ? 0 : -c);
+    g.scale(alongX ? k : 1, 1, alongX ? 1 : k);
+    g.translate(alongX ? hole.at : 0, 0, alongX ? 0 : hole.at);
+  };
+  const holeAt = (g: THREE.BufferGeometry, side: HallSide): WallHole | undefined => {
+    const b = boxOf(g), alongX = side === 'pz' || side === 'nz', c = alongX ? (b.min.x + b.max.x) / 2 : (b.min.z + b.max.z) / 2;
+    return holes[side].find((h) => Math.abs(c - h.at) < h.w / 2 && b.max.y > h.y0 && b.min.y < h.y1);
+  };
   for (const u of spec.units) {
     const lift = liftOf(boxOf(u.g), u.side, u.offset), n = u.side === 'pz' ? [0, 0, -1] : u.side === 'nz' ? [0, 0, 1] : u.side === 'px' ? [-1, 0, 0] : [1, 0, 0];
     u.g.translate(n[0] * lift, 0, n[2] * lift);
+    const hole = u.g.userData?.structureSupport?.support ? holeAt(u.g, u.side) : undefined;
+    if (hole) spanCut(u.g, u.side, hole);
   }
   // the cut openings' plates to the back of their cuts, their louvres a decimetre before them
   const lifts = new Map<string, { side: HallSide; lift: number }>();
@@ -318,12 +333,17 @@ export function settleCatalogCuts(tmp: GeometryBuckets): void {
     const b = boxOf(g), side = SIDE_OF(b, w, d)!;
     lifts.set(n, { side, lift: liftOf(b, side, 0.01) });
   }
+  const spans = new Map<string, WallHole>();
+  for (const g of plates) { const o = cut.has(named(g)) ? holeOf(g) : null; if (o) spans.set(named(g), o.hole); }
   for (const g of cat) {
-    const own = lifts.get(named(g)), carrier = lifts.get(String(g.userData?.structureSupport?.support ?? ''));
+    const sup = String(g.userData?.structureSupport?.support ?? '');
+    const own = lifts.get(named(g)), carrier = lifts.get(sup);
     const m = own ?? (carrier ? { side: carrier.side, lift: carrier.lift - 0.1 } : null);
     if (!m || hidden.has(g)) continue;
     const n = m.side === 'pz' ? [0, 0, -1] : m.side === 'nz' ? [0, 0, 1] : m.side === 'px' ? [-1, 0, 0] : [1, 0, 0];
     g.translate(n[0] * m.lift, 0, n[2] * m.lift);
+    const span = !own && carrier ? spans.get(sup) : undefined;
+    if (span) spanCut(g, m.side, span);
   }
   // the parts left out: each folded to a 2 cm stand-in sealed in the plinth under the core, on the core's foot (its draws
   // kept)
