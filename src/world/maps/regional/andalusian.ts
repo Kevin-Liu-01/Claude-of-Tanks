@@ -1060,15 +1060,37 @@ const cortijo: RegionalBuilder = (ctx) => {
   });
   // the stable wing along the far side, under a lean-to falling outward: its walls a prism under the slope
   const sw = clamp((x1 - x0) * 0.24, 2.8, 3.6), sx0 = x1 - sw;
-  const pitch = 13, low = 2.3, rise = sw * Math.tan(pitch * Math.PI / 180);
-  const wingEnd: Face = { origin: [(sx0 + x1) / 2, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: sw };
-  wallPolygon(sink, 'plaster', wingEnd, [[-sw / 2, -0.3], [sw / 2, -0.3], [sw / 2, low], [-sw / 2, low + rise]], D);
-  const wingFace: Face = { origin: [sx0, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D };
-  for (const u of [-D * 0.28, D * 0.08, D * 0.36]) {
-    doorUnit(sink, wingFace, u, 0, 1.2, 1.9, { leaf: shade(st.door, 0.85), frame: { bucket: 'plaster2', width: 0.14, out: 0.015 }, steps: null, leafKind: 'plank' });
-  }
+  const pitch = 13, low = 2.3;
+  // (the looks lane, 2026-10-15; WORKLIST #15: "andalusian cuadras wing ... on buildHouse"; the r2 probe read its three
+  // stable doors as plank plates laid on a solid prism) the wing on the house grammar: its whitewashed rubble walls on a
+  // low plinth, the three stable doors cut through the patio wall in their deep reveals, each a pair of ledged plank leaves
+  // under a timber lintel, a hatch for the hay over the middle one, the walls' ends closed up under the lean-to of tiles
   const lean: RoofSpec = { kind: 'shed', pitchDeg: pitch, eave: 0.25, verge: 0.12, thickness: 0.12, bucket: 'roof' };
-  sink.placed(0, (sx0 + x1) / 2, 0, 0, () => emitRoof(sink, roofGeometry(sw, D, low, lean), lean));
+  const wingDoors = [-D * 0.28, D * 0.08, D * 0.36];
+  const stable: Opening[] = wingDoors.map((u): Opening => ({ face: 'left', storey: 0, kind: 'door', u, w: 1.2, y0: 0, h: 1.9 }));
+  stable.push({ face: 'left', storey: 0, kind: 'loft', u: (wingDoors[0] + wingDoors[1]) / 2, w: 0.6, y0: 1.55, h: 0.45 });
+  const wingDialect: HouseDialect = {
+    window: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(st.door, 0.78), frame: { bucket: 'structureWood', width: 0.08, out: 0.03, colour: shade(st.door, 0.6) }, steps: null, leafKind: 'plank' }),
+    door: (s, face, o, y0) => {
+      doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(st.door, 0.85), frame: { bucket: 'plaster2', width: 0.14, out: 0.015 }, steps: null, leafKind: 'plank' });
+      // the timber lintel over the door, its ends bedded in the wall a hand each side
+      faceBox(s, 'structureWood', face, o.u, y0 + o.y0 + o.h + 0.09, 0.025, o.w + 0.5, 0.16, 0.05, { colour: shade(st.door, 0.55), decor: true });
+    },
+  };
+  sink.placed(0, (sx0 + x1) / 2, 0, 0, () => {
+    const wf = buildHouse(sink, {
+      w: sw, d: D, plinth: { h: 0.2, out: 0.03, bucket: 'stone' }, storeys: [{ h: low - 0.2, wall: 'plaster' }], roof: lean, gableBucket: 'plaster',
+      openings: stable, chimneys: [], gutters: null, verge: null, spall: null, reveal: 0.24,
+    }, wingDialect);
+    // the walls' ends up under the lean-to's rise
+    const tanP = Math.tan(pitch * Math.PI / 180);
+    for (const zs of [1, -1] as const) {
+      const end: Face = { origin: [0, 0, zs * D / 2], u: [zs, 0, 0], out: [0, 0, zs], width: sw };
+      const hi = -zs * sw / 2;
+      wallPolygon(sink, 'plaster', end, [[-sw / 2, wf.eaveY], [sw / 2, wf.eaveY], [hi, wf.eaveY + sw * tanP]], 0.2);
+    }
+  });
+
   // the patio walls between the house and the wing, the arched gateway in the front wall under its bell gable
   const px0 = x0 + hwide, wallTop = 2.3, gateW = clamp(sx0 - px0 - 1.7, 2.0, 2.8), gc = (px0 + sx0) / 2;
   const pier = (gateW / 2 + 0.35);

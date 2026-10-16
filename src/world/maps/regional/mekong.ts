@@ -3,11 +3,12 @@
 // iron, with a front veranda, a rail and a ladder; ground houses of rendered brick painted pale blue, green or yellow
 // under sheet roofs with a columned porch; open boat shelters and shrimp-pond guard huts on stilts; tin-roofed market
 // halls; a collapsed stilt house where the shelling found it.
-import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { PartSink, alongPlot, pick, plotAxes, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { hash01 } from './facade.ts';
 import { buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
-import { BAMBOO_MAT, RUSTED, WEATHERED_PLANK, boardWall, ladder, stilts, veranda } from './vernacular.ts';
+import { BAMBOO_MAT, RUSTED, WEATHERED_PLANK, ladder, stilts, veranda } from './vernacular.ts';
+import { boardCladding, matCladding, proppedShutter } from './villageCraft.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 const SHUTTER: readonly Rgb[] = [0x4f7a9a, 0x5a8a62, 0x8a5a3e, 0x6a8a9a].map(rgb);
@@ -21,29 +22,18 @@ function uvOffset(ctx: RegionalBuildContext): [number, number] {
 const nipa = (pitch: number): RoofSpec => ({ kind: 'gable', pitchDeg: pitch, eave: 0.6, verge: 0.4, thickness: 0.26, bucket: 'straw', ridge: 'round', thatch: 'nipa' });
 const tole = (pitch: number, kind: RoofSpec['kind'] = 'gable'): RoofSpec => ({ kind, pitchDeg: pitch, eave: 0.5, verge: 0.35, thickness: 0.06, bucket: 'roof', ridge: 'saddle' });
 
-/** Board-shuttered window openings (no glass in the stilt houses): a dark opening, a frame, a propped shutter. */
-function shutterWindow(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, colour: Rgb): void {
-  faceBox(sink, 'dark', face, u, y + h / 2, 0.005, w, h, 0.02, { decor: true });
-  faceBox(sink, 'structureWood', face, u, y + h + 0.05, 0.04, w + 0.16, 0.1, 0.06, { colour: shade(colour, 0.8), decor: true });
-  faceBox(sink, 'structureWood', face, u, y - 0.05, 0.04, w + 0.16, 0.1, 0.06, { colour: shade(colour, 0.8), decor: true });
-  // the top-hung shutter propped open on a stick (the connectivity sweep: the leaf floated level 7 cm off the wall under
-  // its hinge, and the stick was never drawn): the leaf hung from the hinge rail at the head and swung out sixty degrees
-  // from the wall, the stick from the sill up under its lip
-  const leaf = { colour, decor: true };
-  const P = (uu: number, yy: number, o: number): Vec3 => [face.origin[0] + face.u[0] * uu + face.out[0] * o, yy, face.origin[2] + face.u[2] * uu + face.out[2] * o];
-  sink.member('structureWood', P(u - w / 2, y + h + 0.02, 0), P(u + w / 2, y + h + 0.02, 0), 0.05, 0.04, face.out, { ...leaf, exposed: true });
-  const swing = Math.PI / 3, len = h * 0.95, hy = y + h + 0.02, along = (t: number) => P(u, hy - len * t * Math.cos(swing), 0.01 + len * t * Math.sin(swing));
-  const nrm: Vec3 = [face.out[0] * Math.cos(swing), Math.sin(swing), face.out[2] * Math.cos(swing)];
-  sink.member('structureWood', along(0), along(1), w, 0.035, nrm, { ...leaf, exposed: true }, 0.0175);
-  const stick = along(0.85);
-  sink.member('structureWood', P(u + w * 0.3, y, 0.05), [stick[0] + face.u[0] * w * 0.3, stick[1], stick[2] + face.u[2] * w * 0.3], 0.025, 0.025, face.u,
-    { colour: shade(colour, 0.7), decor: true, exposed: true, fine: true }, 0.0125);
-}
-
-/** The stilt house: plank or mat walls on a deck over posts, nipa or sheet roof, veranda, ladder. */
+/**
+ * The stilt house: plank or mat walls on a deck over posts, nipa or sheet roof, veranda, ladder.
+ * (the looks lane, 2026-10-15; WORKLIST #15: "mekong stiltHouse rebuilt on buildHouse (framed board or mat panels, cut
+ * openings)"; the r2 probe read its windows as dark plates on a box) the house on the house grammar, its framed storey
+ * on the deck: the door and the unglazed windows cut through the wall, each window's plank shutter hung from its head
+ * and propped open on a stick, the room's dark in the cut; the walls laid in vertical planks each its own weathering with
+ * battens over their joints, or in panels of woven palm mat held in a frame of poles; the gables boarded or matted under
+ * the nipa.
+ */
 function stiltHouse(ctx: RegionalBuildContext, opts: { lift?: number } = {}): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
+  const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
   const W = Math.max(4.6, Math.min(6.4, ctx.info.w - 0.8)), D = Math.max(6.0, Math.min(9.0, ctx.info.d - 1.8));
   const lift = opts.lift ?? 1.3 + rng() * 0.5;
   const post = pick(rng, WEATHERED_PLANK);
@@ -55,22 +45,32 @@ function stiltHouse(ctx: RegionalBuildContext, opts: { lift?: number } = {}): Re
   // base house gave: an open stilt house is a window under its floor)
   sink.span('structureWood', -W / 2 + 0.12, -0.25, -D / 2 + 0.12, W / 2 - 0.12, lift + 0.06, -D * 0.04, { colour: shade(wallColour, 0.72) });
   const wallH = 2.5, top = lift + 0.16 + wallH;
-  sink.placed(0, 0, lift + 0.16, 0, () => {
-    // the house body: a structural wall box behind board dressing
-    sink.span('structureWood', -W / 2, 0, -D / 2, W / 2, wallH, D / 2, { colour: shade(wallColour, 0.9) });
-    const faces: Face[] = [
-      { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W }, { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D },
-      { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W }, { origin: [-W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D },
-    ];
-    if (ctx.tier !== 'mobile') for (const f of faces) boardWall(sink, f, -f.width / 2 + 0.05, f.width / 2 - 0.05, 0.05, wallH - 0.05, wallColour);
-    // the door on the veranda front, shuttered openings on the sides
-    doorUnit(sink, faces[0], W * 0.18, 0, 0.85, 1.9, { leaf: shade(wallColour, 0.8), frame: { bucket: 'structureWood', width: 0.08, out: 0.06, colour: shade(post, 0.8) }, steps: null, leafKind: 'plank' }, 0);
-    const shutter = pick(rng, SHUTTER);
-    shutterWindow(sink, faces[0], -W * 0.22, 0.9, 0.8, 0.7, shutter);
-    for (const f of [faces[1], faces[3]]) for (const u of [-D * 0.22, D * 0.22]) if (rng() < 0.8) shutterWindow(sink, f, u, 0.9, 0.75, 0.65, shutter);
-  });
+  const shutter = pick(rng, SHUTTER);
+  const openings: Opening[] = [
+    { face: 'front', storey: 0, kind: 'door', u: W * 0.18, w: 0.85, y0: 0, h: 1.9 },
+    { face: 'front', storey: 0, kind: 'window', u: -W * 0.22, w: 0.8, y0: 0.9, h: 0.7 },
+  ];
+  for (const face of ['right', 'left'] as const) for (const u of [-D * 0.22, D * 0.22]) if (rng() < 0.8) openings.push({ face, storey: 0, kind: 'window', u, w: 0.75, y0: 0.9, h: 0.65 });
   const roof = thatched ? nipa(30 + rng() * 6) : tole(20 + rng() * 6);
-  emitRoof(sink, roofGeometry(W, D, top, roof), roof);
+  const plank = (k: number): Rgb => shade(wallColour, 0.86 + hash01(k, W, 3.1) * 0.24);
+  const dialect: HouseDialect = {
+    window: (s, face, o, y0) => proppedShutter(s, face, o.u, y0 + o.y0, o.w, o.h, shutter, mobile),
+    door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(wallColour, 0.8), frame: { bucket: 'structureWood', width: 0.08, out: 0.06, colour: shade(post, 0.8) }, steps: null, leafKind: 'plank' }, y0),
+    dressWall: (s, face, rect, own) => (mat ? matCladding(s, face, rect, own, (k) => shade(BAMBOO_MAT, 0.86 + hash01(k, D, 1.7) * 0.22), shade(post, 0.9), { mobile })
+      : boardCladding(s, face, rect, own, plank, shade(post, 0.85), { mobile })),
+  };
+  sink.placed(0, 0, lift + 0.16, 0, () => {
+    const prior = sink.paint;
+    // (the framed wall behind the cladding a shade under it: its joints read dark)
+    sink.paint = shade(wallColour, 0.55);
+    try {
+      buildHouse(sink, {
+        w: W, d: D, plinth: null, storeys: [{ h: wallH, wall: 'structureWood', framed: true }], roof, gableBucket: 'structureWood',
+        openings, chimneys: [], gutters: null, verge: null, reveal: 0.12, spall: null, skirt: null, rafters: shade(post, 0.8),
+      }, dialect);
+    } finally { sink.paint = prior; }
+  });
+  look();
   const front: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
   veranda(sink, front, lift, top - 0.05, W, 1.3, post, thatched ? { bucket: 'straw', thatch: 'nipa' } : { bucket: 'roof' });
   ladder(sink, { ...front, origin: [0, 0, D / 2 + 1.3] }, W * 0.3, 0, lift + 0.16, shade(post, 0.9));
