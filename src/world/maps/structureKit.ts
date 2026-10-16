@@ -2959,7 +2959,7 @@ function makeDesertTentCraft(rng: Rng, style?: TentStyle): THREE.BufferGeometry 
   // through the wall cloth — its pieces round them, the gauze set back in the opening — and the door's opening runs up
   // into the front gable, the tent's inside behind it
   const winY0 = wall * 0.4, winH = wall * 0.4, winW = 0.9;
-  const rope = 0x8a7c62, web = 0x7c6c50, dark = 0x2c2620;
+  const rope = 0x8a7c62, web = 0x7c6c50;
   const ridgeY = wall + rise;
   for (const side of [-1, 1]) for (let k = 0; k < bays; k++) {
     const z0 = -d / 2 + k * bay, z1 = z0 + bay, ex = side * (w / 2), wx = side * (w / 2 + 0.05);
@@ -4397,6 +4397,19 @@ function spentVariant(key: string, craft: LightStructureBuilder): LightStructure
   };
 }
 
+/**
+ * (props #12) Mars's stations (Olympus, 2100) as light-family variants: each spends its family's build (the Moon's
+ * craft, which spends the legacy builder's draws), then builds as Mars does — the family's footprint, class and debris.
+ */
+function marsSpaceTypes(): Record<string, DestructibleBuildingType> {
+  const B = DESTRUCTIBLE_BUILDING_TYPES;
+  return Object.fromEntries(SPACE_KINDS.map((kind) => {
+    const b = B[kind];
+    return [kind, lightMeta(b.id, b.family, b.hw, b.hl, b.h, PAL.orbital,
+      (rng) => { B[kind].build(rng).dispose(); return spaceCraftBuild(kind, 'mars'); }, 'metal')];
+  }));
+}
+
 /** The architecture kits' light-family variants (maps/regional): kit id -> family key -> the variant. */
 export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Record<string, DestructibleBuildingType>>>> = (() => {
   const B = DESTRUCTIBLE_BUILDING_TYPES;
@@ -4439,10 +4452,7 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
   };
   for (const kit of Object.keys(REGIONAL_HUTS)) if (!HUT_KITS_PENDING.has(kit)) table[kit] = { ...(table[kit] ?? {}), ...huts(kit) };
   // (props #12) Mars's stations (Olympus, 2100): each spends its family's build, then builds as Mars does
-  if (!SPACE_KITS_PENDING.has('olympus')) {
-    table.olympus = { ...(table.olympus ?? {}), ...Object.fromEntries(SPACE_KINDS.map((kind) => [kind,
-      variant(kind, PAL.orbital, (rng) => { B[kind].build(rng).dispose(); return spaceCraftBuild(kind, 'mars'); }, 'metal')])) };
-  }
+  if (!SPACE_KITS_PENDING.has('olympus')) table.olympus = { ...(table.olympus ?? {}), ...marsSpaceTypes() };
   // (the props census, 2026-10-14; integ/225 with props #1) the Virgin Lands: the field hut is the brigade's vagonchik,
   // the lean-to of saman (item/looks-tselina), beside the hut kit's tselina long house and motor pool
   table.tselina = {
@@ -4503,6 +4513,16 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
   return Object.freeze(Object.fromEntries(Object.entries(table).map(([kit, kinds]) => [kit, Object.freeze(kinds)])));
 })();
 
+
+/**
+ * (the r2 sweep, 2026-10-16: Mars and the Moon drew one station form, the Moon's) A map's own light-family variants where
+ * it has no architecture kit: map id -> family key -> the variant (props.ts LOCAL_TYPES, after the kits'). Mars draws
+ * its stations as Olympus Basin built them in 2100 until the Olympus kit lands (SPACE_KITS_PENDING), the Moon the
+ * generic forms (Earthrise Basin, 1972).
+ */
+export const MAP_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Record<string, DestructibleBuildingType>>>> = Object.freeze({
+  mars: Object.freeze(marsSpaceTypes()),
+});
 
 export const STRUCTURE_CATALOG = [
   ...Object.keys(STRUCTURE_BUILDERS).map((id) => ({ id, mode: 'merged' })),
