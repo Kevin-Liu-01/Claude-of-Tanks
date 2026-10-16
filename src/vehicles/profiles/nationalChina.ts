@@ -89,7 +89,7 @@ function yun(P:TankBuilderPort,c:NationalModernizationConfig):void {
 
 /** The Yun's hull package (release 227: shared by its cast turret and the Type 96B donor turret, unchanged): the twin
  * engine-deck cooling panels, six two-course skirt modules, two glacis tile rows and the slatted transom plate. */
-export function yunHull(P:TankBuilderPort,c:NationalModernizationConfig):void {
+function yunHull(P:TankBuilderPort,c:NationalModernizationConfig):void {
   coolingPanel(P,-.51,-2.38,.76,.91,8);
   coolingPanel(P,.51,-2.38,.76,.91,8);
   skirts(P,c,6,-2.58,2.70,1.94,.79);

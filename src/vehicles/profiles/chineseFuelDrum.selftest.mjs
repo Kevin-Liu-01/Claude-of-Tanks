@@ -61,7 +61,10 @@ function minimumPitchY(y,z,lo,hi){
 }
 function continuousMainGunClearance(tank,id,observations){
  const spec=getSpec(id),root=tank.root,gun=root.getObjectByName('rig_gun'),turret=root.getObjectByName('rig_turret'),recoil=root.getObjectByName('rig_recoil');
- assert.equal(spec.gunPitchByYawDeg,undefined,'no hidden yaw-dependent capability reduction');
+ // The drum envelope below takes the full legal -6..+14 degree range at every yaw. Release 227: the Kunlun's and the
+ // Yun's rear-deck depression stops (gunPitchByYawDeg: the cooling-panel slats, the transom plate) never relax it, so
+ // the drums still clear a gun that could depress fully over them; no other concept carries a stop.
+ if(!['t72b3m_kunlun','t80u_yun'].includes(id))assert.equal(spec.gunPitchByYawDeg,undefined,'no hidden yaw-dependent capability reduction');
  assert.equal(spec.gunDepressionDeg,6);assert.equal(spec.gunElevationDeg,14);
  // Capture actual native vertices before playing the real recuperator.
  root.updateMatrixWorld(true);const inverse=gun.matrixWorld.clone().invert(),vertices=[];

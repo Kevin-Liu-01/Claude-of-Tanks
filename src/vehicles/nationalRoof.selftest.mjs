@@ -17,12 +17,22 @@ for(const quality of ['high','low']){
   assert.equal(station.userData.caliberMm,l.caliber);
   assert.equal(auxiliaryWeaponProfile(l.caliber,id).shell.caliberMm,l.caliber);
   const stock=[];pitch.traverse(o=>{if(o.isMesh)stock.push(o)});
-  const hash=createHash('sha256');for(const m of stock)hash.update(Buffer.from(m.geometry.attributes.position.array.buffer));shapes.add(hash.digest('hex'));
+  // the whole station's stock (release 227: the Qilin's and the Kunlun's QJC-88 emplacements share their gun and differ
+  // in their mount and shield)
+  const hash=createHash('sha256');station.traverse(o=>{if(o.isMesh)hash.update(Buffer.from(o.geometry.attributes.position.array.buffer));});shapes.add(hash.digest('hex'));
+  const pintle=l.mount==='pintle';
   tank.root.updateMatrixWorld(true);
   const socket=new Vector3(...station.userData.auxiliaryMuzzle).sub(new Vector3(...station.userData.auxiliaryPivot));
   const world=socket.clone().applyMatrix4(pitch.matrixWorld);
   const mat=new MeshBasicMaterial({side:DoubleSide}),proxies=stock.map(m=>{const o=new Mesh(m.geometry,mat);o.matrixAutoUpdate=false;o.matrix.copy(m.matrixWorld);o.updateMatrixWorld(true);return o});
   const ray=new Raycaster(world.clone().add(new Vector3(0,0,.03)),new Vector3(0,0,-1),0,.2);
+  if(pintle){
+   // a crew-served QJC-88: the published muzzle is the flash hider's front plus the class's 11 mm marker (kit.ts
+   // fittingPintleMG), on the drawn barrel's axis
+   let nearest=Infinity;const q=new Vector3();
+   for(const m of stock){const p=m.geometry.attributes.position;for(let i=0;i<p.count;i++)nearest=Math.min(nearest,q.fromBufferAttribute(p,i).applyMatrix4(m.matrixWorld).distanceTo(world));}
+   assert(nearest<.045,`${id}: the published muzzle sits on the QJC-88's flash hider (${nearest.toFixed(3)} m)`);
+  }else{
   const floor=ray.intersectObjects(proxies,false)[0];
   assert(floor&&floor.distance>.07&&floor.distance<.12,`${id}: muzzle has a real recessed bore at the firing socket`);
   // Four radial probes land on its metal mouth, excluding an offset/floating socket.
@@ -42,6 +52,7 @@ for(const quality of ['high','low']){
    depth+=h.enter;previous=h.d;
   }
   assert(previous>.35-.03,`${id}: sight-foot probe reaches the receiver body`);
+  }
   mat.dispose();
   // Exclude the station's own bearings, which deliberately contact its stock.
   const fixed=[];turret.traverse(o=>{
@@ -91,8 +102,16 @@ for(const quality of ['high','low']){
   }
   supportMat.dispose();pitch.rotation.x=0;tank.root.updateMatrixWorld(true);
   let samples=0,positive=0;
-  for(let degrees=0;degrees<360;degrees+=10)for(const elevation of [-gunProfile.depressionRad,0,gunProfile.elevationRad]){
-   station.rotation.y=degrees*Math.PI/180;pitch.rotation.x=-elevation;tank.root.updateMatrixWorld(true);
+  // Release 227: a station with a traverse arc and a depression table (src/sim/auxiliarySystems.ts honours both) is swept
+  // over the arc it can take, at the depression its table allows at each yaw.
+  const arc=station.userData.yawArc,table=station.userData.depressionByYaw;
+  const depression=yaw=>{if(!table||yaw<table[0][0]||yaw>table.at(-1)[0])return gunProfile.depressionRad;
+   for(let i=1;i<table.length;i++)if(yaw<=table[i][0])return Math.min(gunProfile.depressionRad,table[i-1][1],table[i][1]);return gunProfile.depressionRad;};
+  const yaws=[];if(arc){for(let r=arc[0];r<arc[1];r+=10*Math.PI/180)yaws.push(r);yaws.push(arc[1]);}else for(let d=0;d<360;d+=10)yaws.push(d*Math.PI/180);
+  const restYaw=station.rotation.y;
+  for(const yaw of yaws)for(const elevation of [-depression(yaw),0,gunProfile.elevationRad]){
+   const degrees=Math.round(yaw*180/Math.PI);
+   station.rotation.y=restYaw+yaw;pitch.rotation.x=-elevation;tank.root.updateMatrixWorld(true);
    for(const v of local){const p=v.clone().applyMatrix4(pitch.matrixWorld),h=heightAt(p);
     if(!Number.isFinite(h.top))continue;samples++;
     assert(p.y-h.top>=.008,`${id}/${quality}: roof gun intersects ${h.name} by ${(h.top-p.y).toFixed(4)}m at yaw ${degrees}, elevation ${elevation}, point ${p.toArray()}`);

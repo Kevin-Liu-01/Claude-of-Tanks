@@ -12,7 +12,7 @@ import * as THREE from 'three';
 import {KIT,orientedSlab} from './kit.ts';
 import {chinaDonorHull,equipmentFoot,lowOptic,permanentParts,seatCheekTile,serviceCable,serviceCase} from './nationalChina.ts';
 import {weldedFlankHousing} from './weldedFlankHousing.ts';
-import {addChineseChevronBank,addChineseChevronFacet} from './chineseChevronEra.ts';
+import {addChineseChevronFacet} from './chineseChevronEra.ts';
 import {markSmokeTube} from '../vehicleAuxiliaryGeometry.ts';
 import {bustleCutZ} from '../donorBustleCut.ts';
 import {QILIN_BUSTLE_CUT_M} from '../nationalDonorTurrets.ts';
@@ -570,6 +570,16 @@ function yunMarkingBoards(P:TankBuilderPort,armour:readonly THREE.BufferGeometry
 /** The Yun's drone landing plate on its cage roof: [x, top, z, width, depth] (turret frame). */
 export const YUN_DOCK_LANDING=[0,.772,-2.26,.40,.34] as const;
 
+/** The Yun's chevron bank: two broad single-piece cassettes on each of the housing's three front facets. */
+function yunChevrons(P:TankBuilderPort,side:number):void {
+  const rows=YUN_WRAP.slice(3),bevel=(r:FlankRow)=>Math.min(.035,(r[4]-r[3])*.25,(r[2]-r[1])*.25);
+  for(let i=1;i<rows.length;i++){
+    const a=rows[i-1],b=rows[i];
+    const low=Math.max(a[3]+bevel(a),b[3]+bevel(b))+.012,top=Math.min(a[4]-bevel(a),b[4]-bevel(b))-.012;
+    addChineseChevronFacet(P,{a:[b[2],low,b[0]],b:[a[2],low,a[0]],height:top-low},side,Math.min(.10,(top-low)*.43),2);
+  }
+}
+
 /** Four roof smoke tubes a side behind the cheeks on shaped feet, firing out over the housing shelf. */
 function yunSmoke(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[]):void {
   for(const side of [-1,1])for(const z of [-1.25,-1.13,-1.01,-.89]){
@@ -601,9 +611,10 @@ function yun(P:TankBuilderPort):void {
   // Permanent armour first: one welded housing a side round the 96B wall, then the bustle module and the rear band.
   for(const side of [-1,1])tagged(P,YUN_MODEL,'wrap-housing').addExternalArmor('turret',weldedFlankHousing(YUN_WRAP,side,.035));
   yunBustle(P);
-  // The chevron bank on the housing's front walls (1 + 2 + 2 wall cassettes and a nose cassette a side, on their pads),
-  // then three flat tiles a side on the frozen housing's outer wall.
-  for(const side of [-1,1])addChineseChevronBank(tagged(P,YUN_MODEL,'chevron'),side,YUN_WRAP.slice(3),.10);
+  // The chevron bank on the housing's three front walls, two cassettes each on their pads (the cast Yun's nose cassette
+  // has no wall here: the 96B wedge runs on 0.18 m past the housing's front row), then three flat tiles a side on the
+  // frozen housing's outer wall.
+  for(const side of [-1,1])yunChevrons(tagged(P,YUN_MODEL,'chevron'),side);
   const armour=permanentParts(P,['turretExternalArmor']);
   for(const side of [-1,1])for(const z of [-1.00,-.62,-.24])seatCheekTile(tagged(P,YUN_MODEL,'flank-tile'),armour,side,z,.48,[.24,.075,.30]);
   yunMarkingBoards(tagged(P,YUN_MODEL,'marking-board'),armour);

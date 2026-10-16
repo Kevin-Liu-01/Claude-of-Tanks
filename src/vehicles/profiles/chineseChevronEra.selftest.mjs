@@ -4,14 +4,17 @@ import {createTank} from '../tankFactory.ts';
 import {chineseArrowCassette} from './chineseChevron.ts';
 // Owner 2026-10-15 (VEH-19, VEH-20): the Kunlun's chevron cassettes now lie on the Type 96B wedge (chinaDonorTurretKit.ts,
 // twelve again); the Qilin carries the production ZTZ-99A2 turret, whose chevrons are the 99A2's own (china.ts receipts).
-const IDS=['t80u_yun','t72b3m_kunlun'];
+// Release 227: the Yun's twelve lie on its wrap housing's front facets round its Type 96B (two a facet), and the Qilin's
+// own six on its flank brows (three a side) beside the 99A2's chevrons.
+const IDS=['t80u_yun','t72b3m_kunlun','t72b3_qilin'];
+const COUNT={t80u_yun:12,t72b3m_kunlun:12,t72b3_qilin:6};
 const v=p=>new T.Vector3(...p),mat=new T.MeshBasicMaterial({side:T.DoubleSide});
 const reports=[];
 try{for(const id of IDS)for(const quality of ['high','low']){
  const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242});
  try{
   const turret=tank.root.getObjectByName('rig_turret'),records=turret.userData.chineseChevronEra;
-  assert.equal(records.length,12,'both complete banks survive the native merge');
+  assert.equal(records.length,COUNT[id],'both complete banks survive the native merge');
   const mesh=turret.getObjectByName('turretExternalArmor'),before=mesh.geometry.attributes.position.array.slice();
   const pos=mesh.geometry.attributes.position;
   const keys=new Set(Array.from({length:pos.count},(_,i)=>[pos.getX(i),pos.getY(i),pos.getZ(i)].map(n=>n.toFixed(5)).join(',')));

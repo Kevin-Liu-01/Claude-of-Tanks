@@ -8,7 +8,7 @@
  * false draws the solenoid form (the class's remote back plate) on the same rig. `riserM` is the pintle column's
  * extra height (the fitting's own sleeve and clamp), measured so the moving gun clears the cupola's periscopes,
  * latch and sights over its whole arc. */
-export interface NationalEmplacement {
+interface NationalEmplacement {
   cls:'qjc88'|'nsvt'|'kord';
   shield:boolean|'low'|'armored';
   ring:{r:number;stubs:number};

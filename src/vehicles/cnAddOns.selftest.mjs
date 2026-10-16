@@ -22,13 +22,15 @@ const INVENTORY = {
     'cage-root': [2, 0], 'cage-front-post': [2, 0], 'cage-side-rail': [2, 0], 'cage-post': [2, 0], 'cage-rear-rail': [4, 0], 'cage-floor': [3, 0],
     'smoke-tube': [16, 0], 'service-case': [3, 0], 'spine-frame': [7, 0], 'low-optic': [3, 0], cable: [2, 0], antenna: [2, 0],
     'sight-hood': [3, 0], 'spine-sensor': [3, 0], 'slit-lamp': [2, 0], 'monocle-eye': [4, 0], 'side-electronics': [6, 0],
-    'gun-band': [5, 0], 'muzzle-strip': [1, 0], 'ring-race': [1, 0],
+    'gun-band': [5, 0], 'muzzle-strip': [1, 0], 'ring-race': [1, 0], 'marking-board': [2, 0], 'dock-bearer': [2, 0],
+    'dock-landing': [1, 0],
   },
   t72b3_qilin: {
     brow: [2, 0], 'brow-chevron': [12, 6], 'rear-flank-housing': [2, 0], 'flank-tile': [12, 6], 'rail-post': [4, 0],
     'rear-box-seam': [2, 0], 'bustle-plate': [1, 0], rack: [7, 0], 'flat-eye': [4, 0], 'split-sensor': [3, 0], lamp: [2, 0],
     camera: [3, 0], 'field-box': [1, 0], 'tool-chest': [1, 0], roll: [4, 0], carrier: [3, 0], cable: [2, 0],
     'cage-root': [2, 0], 'cage-side-rail': [2, 0], 'cage-post': [2, 0], 'cage-rear-rail': [3, 0], 'cage-floor': [4, 0],
+    'dock-bearer': [2, 0], 'dock-landing': [1, 0],
   },
 };
 const LIGHTS = { t80u_yun: [6, 0], t72b3_qilin: [4, 0], t72b3m_kunlun: [6, 2] };
@@ -77,9 +79,9 @@ for (const quality of ['high', 'low']) {
       if (id === 't72b3_qilin') {
         const body = new THREE.Box3(), shell = new THREE.Box3(), v = new THREE.Vector3();
         // the coordinator's ruling R1: the body is the shell and its external armour front to rear, the front ERA face
-        // included (the gun and roof equipment not)
+        // included (the gun, the roof equipment and the basket's drone landing plate not)
         for (const p of parts) {
-          if (!['turret', 'turretExternalArmor'].includes(p.bucket)) continue;
+          if (!['turret', 'turretExternalArmor'].includes(p.bucket) || p.role === 'dock-landing') continue;
           for (let i = 0; i < p.tri.length; i += 3) { v.set(p.tri[i], p.tri[i + 1], p.tri[i + 2]); body.expandByPoint(v); if (p.bucket === 'turret') shell.expandByPoint(v); }
         }
         const length = body.max.z - body.min.z;
