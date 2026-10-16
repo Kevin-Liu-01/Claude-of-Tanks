@@ -414,7 +414,7 @@ export function keepRuinStanding<R>(anatomy: StructureDamageAnatomy, seed: numbe
     if (wall && heightP90() < target) cornerPiers(anatomy, rng, wall, cap, measuringWriter, 0.42 + rng() * 0.18);
     if (wall && heightP90() < target) wallStubs(anatomy, rng, wall, cap, measuringWriter, 0.32);
     if (heightP90() < target) roofSlabs(anatomy, rng, measuringWriter, cap * 0.5);
-    for (let k = 0; k < 48 && wall && heightP90() < target; k++) wallFragment(anatomy, rng, wall, cap, measuringWriter, k);
+    for (let k = 0; k < 120 && wall && heightP90() < target && roomFor(measuringWriter, 3); k++) wallFragment(anatomy, rng, wall, cap, measuringWriter, k);
   } finally {
     kitPhase = false;
     measuring = false;
