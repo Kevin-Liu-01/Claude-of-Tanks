@@ -345,20 +345,25 @@ export function dressReservoirDam(site: ReservoirDamSite, ground: DamGround, buc
   // the road's parapets and lamp standards over the dam: upstream from abutment to abutment, downstream over the pocket
   // (the upstream parapet runs past the abutments over the corners the road's banks grade, to the rim's kerbs)
   const chordS = site.halfChordM + 8;
-  const parapet = (t: number, s0: number, s1: number) => {
-    const len = s1 - s0, mid = (s0 + s1) / 2;
-    pushConcrete(placedBox(len, PARAPET_H, PARAPET_T, at(mid, t, ground.getHeightAt(at(mid, t).x, at(mid, t).z) - 0.1), u));
+  /** A parapet's run (one straight wall, its foot 10 cm under the ground at its middle); returns its top's height. */
+  const parapet = (t: number, s0: number, s1: number): number => {
+    const len = s1 - s0, mid = (s0 + s1) / 2, foot = ground.getHeightAt(at(mid, t).x, at(mid, t).z) - 0.1;
+    pushConcrete(placedBox(len, PARAPET_H, PARAPET_T, at(mid, t, foot), u));
+    return foot + PARAPET_H;
   };
-  parapet(site.roadHalfM + PARAPET_T / 2, -chordS, chordS);
+  const upstreamTop = parapet(site.roadHalfM + PARAPET_T / 2, -chordS, chordS);
   const pocketS0 = site.pocketFromM, pocketS1 = site.pocketToM;
   // (round 7: the downstream parapet over the tailwater's brow, a few metres past its walls)
   const overS0 = pocketS0 - (site.naturalTailwater ? 3 : 0), overS1 = pocketS1 + (site.naturalTailwater ? 3 : 0);
   parapet(-(site.roadHalfM + PARAPET_T / 2), overS0, overS1);
   // the lamp standards (round 7: "stick lamp posts"): a concrete plinth on the parapet's line, a tapered steel pole, its
   // mast arm out over the carriageway and the luminaire's head
+  // (the maps lane, 2026-10-16; LOOKS' b-west stream: each plinth hung ~0.26 m over the parapet, set at the walkway's
+  // height plus the parapet's where the parapet's foot follows the ground at its middle) every plinth on the upstream
+  // parapet's own top, 5 cm into it
   for (let s = -chordS + 6; s <= chordS - 6; s += 12) {
-    const base = at(s, site.roadHalfM + PARAPET_T / 2, walkY + PARAPET_H);
-    pushConcrete(placedBox(0.62, 0.5, 0.62, base.clone().setY(walkY + PARAPET_H - 0.05), u));
+    const base = at(s, site.roadHalfM + PARAPET_T / 2, upstreamTop);
+    pushConcrete(placedBox(0.62, 0.5, 0.62, base.clone().setY(upstreamTop - 0.05), u));
     // (the maps lane, 2026-10-16; the LOOKS r2 sweep read the mast arm as floating: the pole and its arm were two kinds of
     // geometry, so the arm's rep never met its pole) the pole and the arm one run of steel, the arm from inside the pole's
     // head
