@@ -105,10 +105,13 @@ try {
   // timeout — cold vite transforms under machine load can legitimately exceed
   // the old 30 s budget, and stale-dep 504s from a failed attempt are not
   // capture errors.
+  // (2026-10-15: a run that waited hours for the capture lock met a cold transform past 90 s twice; COT_SHOTS_NAV_TIMEOUT_MS
+  // raises both budgets for such a run)
+  const navMs = Number(process.env.COT_SHOTS_NAV_TIMEOUT_MS) || 90000;
   for (let attempt = 0; ; attempt++) {
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
-      await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: navMs });
+      await page.waitForFunction('window.__GAME_READY === true', { timeout: navMs });
       break;
     } catch (err) {
       if (attempt >= 1) throw err;
