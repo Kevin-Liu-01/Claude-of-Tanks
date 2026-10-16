@@ -388,8 +388,13 @@ export interface StallKit { mud: RegionalBucket }
 export function souqStall(sink: PartSink, look: () => number, W: number, D: number, top: number, kit: StallKit): void {
   const MUD = kit.mud, floor = 0.18, wallZ = -D / 2 + 0.4, wt = 0.4, wallTop = top + 0.45;
   const palm = rgb(0x6a5a46), postZ = D / 2 - 0.2;
-  // the platform of beaten earth, skimmed with mud; its lip worn and a step down to the lane
-  sink.span(MUD, -W / 2 - 0.2, -0.3, -D / 2 - 0.2, W / 2 + 0.2, floor, D / 2 + 0.2);
+  // the platform of beaten earth, skimmed with mud; its corners worn round, its lip worn and a step down to the lane (the
+  // r2 sweep, 2026-10-16: "box share 0.66": the platform was one plain box)
+  {
+    const a = W / 2 + 0.2, b = D / 2 + 0.2, c = 0.22;
+    const plan: Array<[number, number]> = [[a - c, -b], [a, -b + c], [a, b - c], [a - c, b], [-a + c, b], [-a, b - c], [-a, -b + c], [-a + c, -b]];
+    sink.prism(MUD, plan.map(([x, z]) => [x, -0.3, z] as Vec3).reverse(), [0, 1, 0], floor + 0.3, {});
+  }
   for (let x = -W / 2 - 0.2; x < W / 2 + 0.1; x += 0.7) {
     const len = Math.min(0.7, W / 2 + 0.2 - x), drop = 0.03 + look() * 0.06;
     sink.span(MUD, x + 0.01, floor - 0.2, D / 2 + 0.2, x + len - 0.01, floor - drop, D / 2 + 0.32, { decor: true, tint: [0.94, 0.92, 0.88] });
@@ -464,11 +469,15 @@ export function souqStall(sink: PartSink, look: () => number, W: number, D: numb
     let y = y0;
     for (let b = 0; b < bands; b++) {
       const colour = b % 2 ? pick(look, accents) : ground, h = unit * (b % 2 ? 0.55 : 1.45);
-      faceBox(sink, 'structureWood', wall, u, y + h / 2, 0.016, rw, h, 0.012, { colour, decor: true });
+      // (the r2 sweep, 2026-10-16: a kilim laid flat on the plaster read as a painted plate) hung free off the wall from
+      // its rod on the pegs, a hand off the plaster
+      faceBox(sink, 'structureWood', wall, u, y + h / 2, 0.09, rw, h, 0.012, { colour, decor: true });
       y += h;
     }
-    for (const pu of [u - rw / 2 + 0.08, u + rw / 2 - 0.08]) faceBox(sink, 'structureWood', wall, pu, y + 0.05, 0.05, 0.04, 0.04, 0.1, { colour: palm, decor: true, fine: true });
-    for (let j = 0, m = Math.round(rw / 0.07); j < m; j++) faceBox(sink, 'structureWood', wall, u - rw / 2 + 0.035 + j * 0.07, y0 - 0.05, 0.017, 0.02, 0.1, 0.006, { colour: [0.82, 0.76, 0.62], decor: true, fine: true });
+    for (const pu of [u - rw / 2 + 0.08, u + rw / 2 - 0.08]) faceBox(sink, 'structureWood', wall, pu, y + 0.02, 0.05, 0.04, 0.04, 0.1, { colour: palm, decor: true, fine: true });
+    const rod = facePoint(wall, u - rw / 2 - 0.04, y + 0.02, 0.09);
+    sink.cylinder('structureWood', rod, 'x', rw + 0.08, 0.02, 6, { colour: palm, decor: true });
+    for (let j = 0, m = Math.round(rw / 0.07); j < m; j++) faceBox(sink, 'structureWood', wall, u - rw / 2 + 0.035 + j * 0.07, y0 - 0.05, 0.09, 0.02, 0.1, 0.006, { colour: [0.82, 0.76, 0.62], decor: true, fine: true });
   }
   // flat baskets of dates, chillies, turmeric and chickpeas on the counter; clay jars by the posts
   const basket = rgb(0xa08a5a), goods: readonly Rgb[] = [0x5a3020, 0xa83a1e, 0xc89a2a, 0xc8b080].map(rgb);
