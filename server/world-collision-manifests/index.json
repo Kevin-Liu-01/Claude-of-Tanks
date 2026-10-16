@@ -145,10 +145,10 @@
       "concealers": 2042
     },
     "polders": {
-      "bytes": 1300422,
-      "sha256": "6bde9eb5ecc76a84ecf1caa972422ac2593cd345628f627569ae5cf70e6fa112",
-      "obstacles": 4011,
-      "colliders": 3942,
+      "bytes": 1658979,
+      "sha256": "2686e643e0f017572913e70aa94e0cd90454715af7577b5188564308c6930d78",
+      "obstacles": 4176,
+      "colliders": 4380,
       "concealers": 3381
     },
     "copper_mesa": {
@@ -379,10 +379,10 @@
         "concealers": 2042
       },
       "polders": {
-        "bytes": 1467297,
-        "sha256": "7821f6b7973dbe81de85987c35c37069cf0b2189cee0e31a57ed5cbfe6b0c780",
-        "obstacles": 4311,
-        "colliders": 4153,
+        "bytes": 1888276,
+        "sha256": "98c8bc3eae32639470373b9dcc96666756a934c5ed2a03e8e00e2d658d825573",
+        "obstacles": 4483,
+        "colliders": 4591,
         "concealers": 3550
       },
       "copper_mesa": {
