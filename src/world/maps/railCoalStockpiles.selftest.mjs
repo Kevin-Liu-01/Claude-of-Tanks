@@ -35,7 +35,11 @@ registerHooks({load(url, context, next) {
 }});
 const {dressMapExtras: controlDress} = await import(controlUrl.href);
 const names = ['plaster','plaster2','plaster3','roof','stone','wood','dark','glass','curtain','straw','baked'];
-const isCoal = geometry => geometry.name === 'rail-coal-stockpile';
+// (the looks lane's r2 sub-stream, 2026-10-16) a heap's bunker or bay (coalBays.ts) is coal dressing too
+const isHeap = geometry => geometry.name === 'rail-coal-stockpile', isBay = geometry => geometry.name === 'rail-coal-bay';
+const isCoal = geometry => isHeap(geometry) || isBay(geometry);
+/** The regional forms' vertex counts: the plain heap's 516 (72 facets, 20 lumps); Foundry's coke 16 lumps more. */
+const HEAP_VERTICES = { foundry: 756 };
 const bytes = value => Buffer.from(value.buffer, value.byteOffset, value.byteLength);
 function hashGeometry(geometry) {
   const hash = createHash('sha256');
@@ -75,13 +79,14 @@ function coalStrip(field) {
   return { contains: (x, z) => stations.some(station => Math.hypot(x - station.x, z - station.z) < 3.4),
     tracks: (x, z) => stages.map(spur => nearestOnPath(spur.path, x, z)) };
 }
-function validatePile(geometry, obstacle, collider, field, strip = legacyStrip) {
+function validatePile(geometry, obstacle, collider, field, strip = legacyStrip, mapId = '') {
   assert.equal(geometry.index, null);
   const position = geometry.attributes.position, normal = geometry.attributes.normal;
   // (props census #3, lane B 2026-10-14: the heap's 72 facets and the 20 lumps and loose coal on them, 5 faces each)
-  assert.equal(position.count,516,'172 flat-shaded triangles per stockpile: the heap\'s 72 and its lumps\' 100');
-  assert.equal(Object.values(geometry.attributes).reduce((n, attr)=>n+attr.array.byteLength,0),22704,
-    'including color, merged vertex bytes: 44 a vertex (position, normal, color, uv), 516 vertices');
+  const vertices = HEAP_VERTICES[mapId] ?? 516;
+  assert.equal(position.count,vertices,`${vertices / 3} flat-shaded triangles per stockpile: the heap's 72 and its lumps'`);
+  assert.equal(Object.values(geometry.attributes).reduce((n, attr)=>n+attr.array.byteLength,0),vertices * 44,
+    `including color, merged vertex bytes: 44 a vertex (position, normal, color, uv), ${vertices} vertices`);
   assert.deepEqual(collider,obstacle);assert.notEqual(collider,obstacle);
   assert.notEqual(collider.shape2,obstacle.shape2);
   assert.equal(obstacle.kind,'coal-heap');assert.equal(obstacle.shape2.kind,'convex');
@@ -126,8 +131,24 @@ for(const mapId of MAP_IDS) {
       `${mapId}: every downstream seeded draw is preserved`);
     for(const name of names) assert.deepEqual(candidate.buckets[name].filter(g=>!isCoal(g)).map(hashGeometry),
       baseline.buckets[name].filter(g=>!isCoal(g)).map(hashGeometry),`${mapId}/${name}: unrelated geometry remains byte-exact`);
-    const coal=candidate.buckets.baked.filter(isCoal);
+    const coal=candidate.buckets.baked.filter(isHeap), bays=candidate.buckets.baked.filter(isBay);
     assert.equal(candidate.buckets.dark.filter(isCoal).length,0);
+    // (the r2 sub-stream) the Ruhr depot's sleeper bunker and the Saar works' concrete coke bay: one beside every heap
+    // there, dressing (no record), seated on the ground and close by its heap; every other map's heap stands bare
+    assert.equal(bays.length,mapId==='railyard'||mapId==='foundry'?coal.length:0,`${mapId}: a bunker or bay beside every heap`);
+    bays.forEach((bay,index)=>{
+      assert.ok(bay.userData.noCollision&&bay.userData.uvJitter==='none',`${mapId}: the bay is dressing`);
+      const p=bay.attributes.position, h=coal[index].attributes.position;
+      let cx=0,cz=0;for(let i=0;i<h.count;i++){cx+=h.getX(i);cz+=h.getZ(i);}cx/=h.count;cz/=h.count;
+      let seated=false;
+      for(let i=0;i<p.count;i++){
+        const x=p.getX(i),y=p.getY(i),z=p.getZ(i),g=field.getHeightAt(x,z);
+        assert.ok(Number.isFinite(y)&&y-g<1.45,`${mapId}: the bay stands under a man's shoulder`);
+        assert.ok(Math.hypot(x-cx,z-cz)<4.2,`${mapId}: the bay keeps by its heap`);
+        if(y<=g+0.005) seated=true;
+      }
+      assert.ok(seated,`${mapId}: the bay's foot in the ground`);
+    });
     // Amberford redesign (owner 2026-09-23, round 48): the river kit's water mill is the one other kit structure that
     // publishes a footprint (a convex prism in both sinks, like the coal heaps); every other kit stays soft dressing.
     const mills=candidate.obstacles.filter(record=>record.kind==='mill-house');
@@ -199,7 +220,7 @@ for(const mapId of MAP_IDS) {
     const soft=record=>record.kind!=='mill-house'&&record.kind!=='bridge'&&record.kind!=='rolling-stock'&&!street(record)&&!breakable(record)&&record.kind!=='dam-parapet';
     const heaps=candidate.obstacles.filter(soft), heapColliders=candidate.colliders.filter(soft);
     const strip=coalStrip(field);
-    coal.forEach((geometry,index)=>validatePile(geometry,heaps[index],heapColliders[index],field,strip));
+    coal.forEach((geometry,index)=>validatePile(geometry,heaps[index],heapColliders[index],field,strip,mapId));
     totals[mapId]=coal.length;
   } finally {dispose(baseline);dispose(candidate);}
 }

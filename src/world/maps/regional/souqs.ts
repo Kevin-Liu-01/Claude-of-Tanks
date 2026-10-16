@@ -54,6 +54,58 @@ function shopCell(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number
 
 // ------------------------------------------------------------------------------------------------ Wadi Rum
 
+/**
+ * An air-conditioner's outdoor unit on a wall (`face`, centred at u, y; the looks lane's r2 sub-stream 2026-10-16, the
+ * sweep: "a dark grille plate stuck on its front"): its casing (0.8 x 0.55 m, 0.4 m deep) open round the fan, the fan's
+ * chamber a reveal deep behind its guard (the bars fine), the fan's hub and blades in the dark, the coil's louvres down
+ * its side, its two brackets under it into the wall. Dressing.
+ */
+function acUnit(sink: PartSink, f: Face, u: number, y: number): void {
+  const w = 0.8, h = 0.55, d = 0.4, uc = u + 0.13, r = 0.2, back = d - 0.17;
+  const P = (uu: number, yy: number, o: number): Vec3 => facePoint(f, uu, yy, o);
+  const q = (a: Vec3, b: Vec3, c: Vec3, e: Vec3, out: Vec3, opts: EmitOptions): void => {
+    const n = [(b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1]), (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]),
+      (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])];
+    if (n[0] * out[0] + n[1] * out[1] + n[2] * out[2] < 0) sink.quad('structureMetal', e, c, b, a, opts); else sink.quad('structureMetal', a, b, c, e, opts);
+  };
+  const casing = { colour: rgb(0xd8d6ce), decor: true }, inner = { colour: rgb(0x2c2c2a), decor: true };
+  const U = f.u, O = f.out, nU: Vec3 = [-U[0], 0, -U[2]], up: Vec3 = [0, 1, 0], dn: Vec3 = [0, -1, 0];
+  const u0 = u - w / 2, u1 = u + w / 2, y0 = y - h / 2, y1 = y + h / 2, a0 = uc - r, a1 = uc + r, b0 = y - r, b1 = y + r;
+  // the casing: its top, bottom and ends, its front round the fan's opening (one welded sheet)
+  q(P(u0, y1, 0), P(u1, y1, 0), P(u1, y1, d), P(u0, y1, d), up, casing);
+  q(P(u0, y0, 0), P(u1, y0, 0), P(u1, y0, d), P(u0, y0, d), dn, casing);
+  q(P(u0, y0, 0), P(u0, y0, d), P(u0, y1, d), P(u0, y1, 0), nU, casing);
+  q(P(u1, y0, 0), P(u1, y0, d), P(u1, y1, d), P(u1, y1, 0), U, casing);
+  q(P(u0, y0, d), P(a0, y0, d), P(a0, y1, d), P(u0, y1, d), O, casing);
+  q(P(a1, y0, d), P(u1, y0, d), P(u1, y1, d), P(a1, y1, d), O, casing);
+  q(P(a0, y0, d), P(a1, y0, d), P(a1, b0, d), P(a0, b0, d), O, casing);
+  q(P(a0, b1, d), P(a1, b1, d), P(a1, y1, d), P(a0, y1, d), O, casing);
+  // the fan's chamber: its four sides in from the opening, its back (the coil) in the dark
+  q(P(a0, b0, d), P(a0, b0, back), P(a0, b1, back), P(a0, b1, d), U, inner);
+  q(P(a1, b0, d), P(a1, b0, back), P(a1, b1, back), P(a1, b1, d), nU, inner);
+  q(P(a0, b0, d), P(a1, b0, d), P(a1, b0, back), P(a0, b0, back), up, inner);
+  q(P(a0, b1, d), P(a1, b1, d), P(a1, b1, back), P(a0, b1, back), dn, inner);
+  q(P(a0, b0, back), P(a1, b0, back), P(a1, b1, back), P(a0, b1, back), O, { colour: rgb(0x161616), decor: true });
+  // the fan: its hub and three blades, its guard's bars across the opening
+  faceBox(sink, 'structureMetal', f, uc, y, back + 0.035, 0.07, 0.07, 0.07, { colour: rgb(0x3a3a38), decor: true });
+  for (let k = 0; k < 3; k++) {
+    const t = k * Math.PI * 2 / 3, c = Math.cos(t), s = Math.sin(t), c2 = Math.cos(t + 0.7), s2 = Math.sin(t + 0.7);
+    q(P(uc + c * 0.04, y + s * 0.04, back + 0.05), P(uc + c * 0.17, y + s * 0.17, back + 0.06), P(uc + c2 * 0.17, y + s2 * 0.17, back + 0.07),
+      P(uc + c2 * 0.04, y + s2 * 0.04, back + 0.05), O, { colour: rgb(0x3a3a38), decor: true, fine: true });
+  }
+  for (let k = 1; k < 6; k++) {
+    const t = a0 + (a1 - a0) * k / 6, v = b0 + (b1 - b0) * k / 6;
+    faceBox(sink, 'structureMetal', f, t, y, d + 0.006, 0.008, 2 * r, 0.008, { colour: rgb(0x4a4a48), decor: true, fine: true });
+    faceBox(sink, 'structureMetal', f, uc, v, d + 0.014, 2 * r, 0.008, 0.008, { colour: rgb(0x4a4a48), decor: true, fine: true });
+  }
+  // the coil's louvres down the casing's left of the fan, the brackets under it
+  for (let k = 0; k < 6; k++) faceBox(sink, 'structureMetal', f, u0 + 0.12, y0 + 0.08 + k * 0.075, d + 0.006, 0.16, 0.012, 0.012, { colour: rgb(0xb4b2aa), decor: true, fine: true });
+  for (const du of [-0.28, 0.28]) {
+    sink.member('structureMetal', P(u + du, y0 - 0.02, 0), P(u + du, y0 - 0.02, d - 0.04), 0.04, 0.03, dn, { colour: rgb(0x5a5a58), decor: true, exposed: true }, 0);
+    sink.member('structureMetal', P(u + du, y0 - 0.25, 0.01), P(u + du, y0 - 0.03, d - 0.06), 0.03, 0.03, nU, { colour: rgb(0x5a5a58), decor: true, exposed: true }, 0);
+  }
+}
+
 /** What the Wadi Rum souq takes from its kit: its roof furniture, its sheets, doors and goods. */
 export interface RumKit {
   rooftop: (sink: PartSink, W: number, D: number, top: number, rng: () => number) => void;
@@ -172,8 +224,7 @@ export function wadirumSouq(sink: PartSink, ctx: RegionalBuildContext, plot: { t
       // the air-conditioners on the end wall and the back, their cable runs up to the roof
       for (const [fn, u] of [['front', W * 0.2], ['left', D * 0.1]] as const) {
         const af = frame.faces[fn];
-        faceBox(sink, 'structureMetal', af, u, y0 + 2.45, 0.2, 0.8, 0.55, 0.4, { colour: rgb(0xd8d6ce), decor: true });
-        faceBox(sink, 'structureMetal', af, u, y0 + 2.45, 0.41, 0.42, 0.42, 0.01, { colour: rgb(0x3a3a3a), decor: true, fine: true });
+        acUnit(sink, af, u, y0 + 2.45);
         faceBox(sink, 'structureMetal', af, u + 0.5, (y0 + 2.45 + top) / 2, 0.02, 0.025, top - y0 - 2.45, 0.025, { colour: rgb(0x2a2a2a), decor: true, fine: true });
       }
       // the render fallen away in patches to the block on the end walls and the back
