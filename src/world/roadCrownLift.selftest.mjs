@@ -23,7 +23,7 @@ const cut = (from, to, keep = '') => {
   assert.ok(a >= 0 && b > a, `the hook's lines stand in terrain.ts: ${from.slice(0, 60)}`);
   source = source.slice(0, a) + keep + source.slice(b);
 };
-cut('  /**\n   * The map-revival lane (2026-10-07, Tidegate Polders\' lanes on the dyke crowns)', '}\n/** The road layer\'s class codes', '');
+cut('  /**\n   * The map-revival lane (2026-10-07, Tidegate Polders\' lanes on the dyke crowns)', '}\n/** The road frame layer\'s running-length unit', ''); // (the ground lane, 2026-10-15: the class codes moved to roadSurfaces.ts)
 cut('  // (the map-revival lane, 2026-10-07; RoadPathStyle.crownLiftM) the crowned banks of the lifted paths', '  const roads = layout.roads;');
 cut('    if (crownStyles) fillRoadCrowns(crownStyles, nodeElev);\n', '  // --- road node elevations:', '  }\n');
 cut('      // (the map-revival lane, 2026-10-07) a lifted path\'s crowned bank over the graded plane', '    }\n    const detailed = applyRoadShoulderDetail');
