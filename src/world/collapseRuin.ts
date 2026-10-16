@@ -182,6 +182,8 @@ function fillMound(anatomy: StructureDamageAnatomy, rng: () => number, slot: Fra
     ids.push(mesh.vertex(x, y, z, 0, 1, 0, x / 2, z / 2, slot.tint[0] * shade, slot.tint[1] * shade, slot.tint[2] * shade));
   }
   for (let k = 0; k < nz; k++) for (let i = 0; i < nx; i++) {
+    // (a sparse form's heap follows its pieces: no fill where it drew nothing)
+    if (intactPlanAt(anatomy, cxm - hw + (2 * hw * (i + 0.5)) / nx, czm - hd + (2 * hd * (k + 0.5)) / nz) === false) continue;
     const a = ids[k * (nx + 1) + i]!, b = ids[k * (nx + 1) + i + 1]!, c = ids[(k + 1) * (nx + 1) + i + 1]!, d = ids[(k + 1) * (nx + 1) + i]!;
     mesh.triangle(a, c, b); mesh.triangle(a, d, c);
   }
@@ -364,7 +366,49 @@ export function measureIntactParts(parts: Readonly<Record<string, readonly Buffe
     for (let i = 0; i < BINS; i++) { acc += bins[i]!; if (acc >= 0.9 * total) { p90 = ((i + 1) / BINS) * topY; break; } }
   }
   bins.fill(0);
-  return { p90M: p90, topM: topY, minX, maxX, minZ, maxZ };
+  // its plan: every triangle laid on a 32 × 32 grid over its box (a barycentric lattice no coarser than a cell)
+  const cells = new Uint8Array(PLAN_N * PLAN_N);
+  const sx = Math.max(1e-3, maxX - minX), sz = Math.max(1e-3, maxZ - minZ), cell = Math.min(sx, sz) / PLAN_N;
+  for (const list of Object.values(parts)) for (const geometry of list) {
+    const pos = geometry.getAttribute('position');
+    if (!pos) continue;
+    const index = geometry.getIndex();
+    const n = index ? index.count : pos.count;
+    for (let t = 0; t + 2 < n; t += 3) {
+      const a = index ? index.getX(t) : t, b = index ? index.getX(t + 1) : t + 1, c = index ? index.getX(t + 2) : t + 2;
+      const ax = pos.getX(a), az = pos.getZ(a), ux = pos.getX(b) - ax, uz = pos.getZ(b) - az, vx = pos.getX(c) - ax, vz = pos.getZ(c) - az;
+      const steps = Math.max(1, Math.min(64, Math.ceil(Math.max(Math.hypot(ux, uz), Math.hypot(vx, vz)) / cell)));
+      for (let i = 0; i <= steps; i++) for (let j = 0; j <= steps - i; j++) {
+        const x = ax + (ux * i + vx * j) / steps, z = az + (uz * i + vz * j) / steps;
+        const ci = Math.min(PLAN_N - 1, Math.max(0, Math.floor(((x - minX) / sx) * PLAN_N)));
+        const ck = Math.min(PLAN_N - 1, Math.max(0, Math.floor(((z - minZ) / sz) * PLAN_N)));
+        cells[ck * PLAN_N + ci] = 1;
+      }
+    }
+  }
+  let drawn = 0;
+  for (let i = 0; i < cells.length; i++) drawn += cells[i]!;
+  return { p90M: p90, topM: topY, minX, maxX, minZ, maxZ, cells, planFill: drawn / cells.length };
+}
+
+/** The intact plan's grid (measureIntactParts). */
+const PLAN_N = 32;
+/**
+ * Whether the intact form was drawn over (x, z) (body frame), within a cell: false only for a sparse form (under half its
+ * box drawn over: a guyed mast, a frame, a row) away from its pieces; null where nothing restricts (a dense form, no data).
+ * A heap follows the form's own pieces, not its box.
+ */
+export function intactPlanAt(anatomy: StructureDamageAnatomy, x: number, z: number): boolean | null {
+  const intact = anatomy.intact;
+  if (!intact || !intact.cells || !(intact.planFill < 0.5)) return null;
+  const sx = intact.maxX - intact.minX, sz = intact.maxZ - intact.minZ;
+  if (!(sx > 0 && sz > 0)) return null;
+  const ci = Math.floor(((x - intact.minX) / sx) * PLAN_N), ck = Math.floor(((z - intact.minZ) / sz) * PLAN_N);
+  for (let dk = -1; dk <= 1; dk++) for (let di = -1; di <= 1; di++) {
+    const i = ci + di, k = ck + dk;
+    if (i >= 0 && i < PLAN_N && k >= 0 && k < PLAN_N && intact.cells[k * PLAN_N + i]) return true;
+  }
+  return false;
 }
 
 /**
