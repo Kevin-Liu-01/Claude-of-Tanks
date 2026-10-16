@@ -605,15 +605,22 @@ function addRack(a: AuthoredSeatArgs, run: AuthoredRun, rack: RackSeat): void {
   post(rack.posts[2].top, rack.posts[3].top, 0.03, 0.03);
   if (run.group) {
     const frameG = run.frame === 'hull' ? a.hullG : a.turretG;
-    let material: THREE.Material | null = null;
-    run.group.traverse((o) => { const m = o as THREE.Mesh; if (!material && m.isMesh && /_detail$/.test(m.name)) material = m.material as THREE.Material; });
-    if (!material) return;
+    let material: THREE.Material | null = null, detail: THREE.Mesh | null = null;
+    run.group.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!material && m.isMesh && /_detail$/.test(m.name)) { material = m.material as THREE.Material; detail = m; }
+    });
+    if (!material || !detail) return;
     const geometry = mergeAll(pieces);
     // frame coordinates into the fitting's own
     geometry.applyMatrix4(relativeMatrix(frameG, run.group).invert());
     const mesh = new THREE.Mesh(geometry, material);
     mesh.name = `${run.group.name}_rack`;
     mesh.castShadow = true; mesh.receiveShadow = true;
+    // the rack is part of the fitting as its own slot: the same semantics as the fitting's other primitives (its hitbox
+    // role, and the Gallery's surface markup, which only picks primitives that opt in: t90RoofStudioSelectability)
+    const { fitting, combatHitboxRole, surfaceMarkupSelectable } = (detail as THREE.Mesh).userData;
+    Object.assign(mesh.userData, { fitting, fittingSlot: 'rack', combatHitboxRole, surfaceMarkupSelectable });
     run.group.add(mesh);
     run.group.userData.rackMounted = true;
     return;
