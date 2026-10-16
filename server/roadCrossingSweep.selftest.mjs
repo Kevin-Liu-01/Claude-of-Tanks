@@ -15,6 +15,7 @@ import '../src/vehicles/fleetFactory.ts';
 import { createAuthoritativeMatch } from '../src/sim/authoritativeMatch.ts';
 import { IMPACT_SOURCE_COLLIDER } from '../src/sim/movement.ts';
 import { collisionFootprintContainsPoint } from '../src/world/collision.ts';
+import { PLAYABLE_HALF_EXTENT_M } from '../src/world/battlefieldBounds.ts';
 import { createDedicatedWorldCollision } from './dedicatedWorldCollision.ts';
 
 /** The maps the maps lane rebuilt to the layout brief, and Blackglass, whose district it cleared off the roads. */
@@ -44,7 +45,10 @@ function crossingsOf(world) {
     if (road.length) pts.push(road[road.length - 1]);
     const kindAt = (i) => {
       const [x, z] = pts[i];
-      if (Math.max(Math.abs(x), Math.abs(z)) > 470) return null;
+      // (2026-10-16, the horizons stream: a hull's centre stops ~3 m inside the playable bound, so a stretch past
+      // PLAYABLE_HALF_EXTENT_M - 6 is never driven; with a map's rim lowered (item/hinterland-rims, Reservoir 38 -> 12) a
+      // border road's last 6 m at the edge reads as a causeway and the run drove into the bound at 467 m)
+      if (Math.max(Math.abs(x), Math.abs(z)) > PLAYABLE_HALF_EXTENT_M - 6) return null;
       if (bridges.some((r) => collisionFootprintContainsPoint(r, x, z, 0))) return 'bridge';
       for (const d of decks) {
         const dx = x - d.x, dz = z - d.z;
