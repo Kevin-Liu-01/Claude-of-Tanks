@@ -662,6 +662,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/dev/shotViews.selftest.mjs',
     'src/dev/shotRuntime.selftest.mjs',
     'src/engine/csmShaderRelease.selftest.mjs',
+    // 2026-10-16 (the perf lane): one material per program variant — live prototype twins, one uniform map
+    'src/engine/programVariants.selftest.mjs',
     'src/engine/renderLayers.selftest.mjs',
     'src/engine/shadowCasterProfiles.selftest.mjs',
     'src/engine/nearVehicleShadowDetail.selftest.mjs',
