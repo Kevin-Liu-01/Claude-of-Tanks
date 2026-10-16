@@ -5,10 +5,10 @@
   "vegetationSeed": 2001,
   "maps": {
     "verdant": {
-      "bytes": 1880514,
-      "sha256": "8931ba3e8e66e4b79885388d6050cd456d3e8d9a38a15b1913dd6006a91db14a",
+      "bytes": 1876275,
+      "sha256": "36bb01bd7c0bdc9d5f2882c39b463cde4447589c1ee814f522a981f85b4f8590",
       "obstacles": 6874,
-      "colliders": 6726,
+      "colliders": 6728,
       "concealers": 7940
     },
     "desert": {
@@ -96,10 +96,10 @@
       "concealers": 11564
     },
     "alpine": {
-      "bytes": 1599490,
-      "sha256": "0e1b9e767e5131a095b9436e4855123a6ee9f8d6dd925d2a8bbbbbab994856a6",
-      "obstacles": 2620,
-      "colliders": 2522,
+      "bytes": 1605188,
+      "sha256": "dbec3ac9d34e5f72aa0848171a37fd4d81be8ba9c7957d57f9a02dbbd5154ce2",
+      "obstacles": 2622,
+      "colliders": 2524,
       "concealers": 1139
     },
     "caldera": {
@@ -239,10 +239,10 @@
   "variants": {
     "assault-trenches": {
       "verdant": {
-        "bytes": 2078880,
-        "sha256": "4f1130ee0a7cea896716153a0598e43e1d933dba4ade47f69410de609b7e7c0d",
+        "bytes": 2074641,
+        "sha256": "c43aff2b1166e21b208425731e24b2f0ec810acef96fed9829c60b562c996162",
         "obstacles": 6882,
-        "colliders": 6641,
+        "colliders": 6643,
         "concealers": 7824
       },
       "desert": {
@@ -330,10 +330,10 @@
         "concealers": 11284
       },
       "alpine": {
-        "bytes": 1705621,
-        "sha256": "dbf1bc0a941fb3124a3089b521545ef5af0593365f4677c76f7df75f7bccc19b",
-        "obstacles": 2689,
-        "colliders": 2544,
+        "bytes": 1712643,
+        "sha256": "fa7483d6b6d620c88ba710bce63423bfaad8595719a193868e372916b599d9fd",
+        "obstacles": 2691,
+        "colliders": 2546,
         "concealers": 1139
       },
       "caldera": {
