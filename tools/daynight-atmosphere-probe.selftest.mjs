@@ -150,16 +150,16 @@ assert.deepEqual(worldFixtureCases(), [['urban', 'structure-window'], ['airfield
 assert(airfieldConfig.props.tacticalBeats.some(beat => beat.id === 'eastern-radar-berm' && beat.structure === 'relaystation'),
   'relay proof targets an explicitly authored fixture, not an optional congested Urban placement');
 assert.deepEqual(requestedVehicleFixtures([]), []);
-assert.deepEqual(requestedVehicleFixtures(['--vehicle-fixtures=m1a3,mbt70,t90m,t90m_proryv']),
-  ['m1a3', 'mbt70', 't90m', 't90m_proryv']);
-assert.deepEqual(requestedVehicleFixtures(['--vehicle-fixtures=namer_ifv,leo2_revolution_proto,cv90_x,m1a2_x']),
-  ['namer_ifv', 'leo2_revolution_proto', 'cv90_x', 'm1a2_x']);
-for (const value of ['', 'm1a3,m1a3', 'proryv', 'm1a3,mbt70,t90m,t90m_proryv,m1a1']) {
+assert.deepEqual(requestedVehicleFixtures(['--vehicle-fixtures=m1a3,mbt70,t90am,t90m_proryv']),
+  ['m1a3', 'mbt70', 't90am', 't90m_proryv']);
+assert.deepEqual(requestedVehicleFixtures(['--vehicle-fixtures=namer_ifv,leo2_revolution_proto,cv9040c,m1a2_abrams']),
+  ['namer_ifv', 'leo2_revolution_proto', 'cv9040c', 'm1a2_abrams']);
+for (const value of ['', 'm1a3,m1a3', 'proryv', 'm1a3,mbt70,t90am,t90m_proryv,m1a1']) {
   assert.throws(() => requestedVehicleFixtures([`--vehicle-fixtures=${value}`]), /canonical repair IDs/);
 }
 function focusedRow(kind) {
   const row = { ...structuredClone(good), kind,
-    specId: kind === 'shtora' ? 't90a_vladimir' : 'm1a1',
+    specId: kind === 'shtora' ? 't90a_2006' : 'm1a1',
     fixture: { kind, ownerUuid: 'authored-mesh', materialUuid: 'lens', slot: 7,
       ownerName: kind === 'streetlamp' ? 'destructible-lamp' : '', mask: 1, faceIndex: 12,
       point: [1.2, 2, 3], sourcePoint: [1, 2, 3], lineOfSight: 'authored-emissive-face' } };
@@ -530,7 +530,7 @@ async function exerciseEquipment(fault = null) {
   const run = load('equipmentPictures', {
     assert, report, save() {}, checkEquipmentGeometry,
     window: { __DEBUG: debug, __equipmentDamageProbe: { beginStateEpoch() {} } },
-    stage: async (...args) => { assert.deepEqual(args, ['verdant', 'leo2a6']); },
+    stage: async (...args) => { assert.deepEqual(args, ['verdant', 'leo2a4']); },
     evaluateWithin: async callback => callback(), readVisualState: () => good.day,
     equipmentGeometryReceipt: fingerprint,
     settle: async count => { assert.equal(count, 5); },

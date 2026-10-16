@@ -55,7 +55,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "ariete": {
+  "c1_ariete_preserie": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -118,7 +118,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7393911
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "ariete",
+        "anchorProfile": "c1_ariete_preserie",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -126,7 +126,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "ariete_c1": {
+  "c1_ariete_proto_serie1": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -145,7 +145,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7070764
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "ariete_c1",
+        "anchorProfile": "c1_ariete_proto_serie1",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -167,7 +167,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "ariete_c1",
+        "anchorProfile": "c1_ariete_proto_serie1",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -175,7 +175,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "ariete_c2": {
+  "c2_ariete_proto": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -194,7 +194,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7070764
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "ariete_c2",
+        "anchorProfile": "c2_ariete_proto",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -216,7 +216,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7267176
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "ariete_c2",
+        "anchorProfile": "c2_ariete_proto",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,

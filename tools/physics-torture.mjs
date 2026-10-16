@@ -95,13 +95,13 @@ const G = 9.81;
 // ---- hull classes and gravity worlds -----------------------------------------------------------------------------
 export const HULLS = Object.freeze({
   light: 'bmp2',
-  medium: 't90m',
-  mbt: 'm1a2',
-  heavy: 'jpz_e100_x',
+  medium: 't90am',
+  mbt: 'm1a1_abrams_hc',
+  heavy: 'jpz_e100',
   tall: 'm3a3_bradley',
   low: 'udes03',
-  fast: 'object695_x',
-  long: 'challenger_3x',
+  fast: 'object695',
+  long: 'challenger3',
 });
 
 /** The ruleset a world plays by, relabelled to the standard objective (the physics trio and launches kept). */
@@ -296,7 +296,7 @@ export const CASES = [
   { id: 'rest-kerb', group: 'rest', seconds: 7, terrain: TERRAIN.step(0.35, 0.4), input: hold(), rest: [3, 7] },
   { id: 'rest-roof', group: 'rest', seconds: 7, terrain: TERRAIN.flat(), obstacles: [box(0, 0, 7, 9, 0, 4)],
     spawn: { dropTo: 4.6 }, input: hold(), rest: [3, 7] },
-  { id: 'rest-wreck', group: 'rest', seconds: 8, terrain: TERRAIN.flat(), extras: [{ id: 'wreck', specId: 't90m', x: 0, z: 0, wreck: true }],
+  { id: 'rest-wreck', group: 'rest', seconds: 8, terrain: TERRAIN.flat(), extras: [{ id: 'wreck', specId: 't90am', x: 0, z: 0, wreck: true }],
     spawn: { x: 0.3, z: 0.4, dropTo: 3.2 }, input: hold(), rest: [4, 8] },
   { id: 'rest-bridge', group: 'rest', seconds: 7, terrain: TERRAIN.valley(-14, 14, 6),
     obstacles: [box(0, 0, 4.5, 16, -1.1, 0, { kind: 'bridge' })], spawn: { dropTo: 0.6 }, input: hold(), rest: [3, 7] },
@@ -411,9 +411,9 @@ export const CASES = [
   // Round 4: flat drops from 2 m (5.9 m/s) and 8 m (12.3 m/s) read how far the landing stroke goes (gearCompMaxM)
   { id: 'drop-2', group: 'air', seconds: (w) => w.dropS(2) + 3, terrain: TERRAIN.flat(), spawn: { dropTo: 2 }, input: hold(0, 0, true) },
   { id: 'drop-8', group: 'air', seconds: (w) => w.dropS(8) + 3, terrain: TERRAIN.flat(), spawn: { dropTo: 8 }, input: hold(0, 0, true) },
-  { id: 'land-tank', group: 'air', seconds: (w) => w.dropS(7) + 6, terrain: TERRAIN.flat(), extras: [{ id: 'lower', specId: 'm1a2', x: 0, z: 0 }],
+  { id: 'land-tank', group: 'air', seconds: (w) => w.dropS(7) + 6, terrain: TERRAIN.flat(), extras: [{ id: 'lower', specId: 'm1a1_abrams_hc', x: 0, z: 0 }],
     spawn: { x: 0.4, z: 0.6, dropTo: 7 }, input: hold(), rest: 'tail' },
-  { id: 'land-wreck', group: 'air', seconds: (w) => w.dropS(7) + 6, terrain: TERRAIN.flat(), extras: [{ id: 'wreck', specId: 't90m', x: 0, z: 0, wreck: true }],
+  { id: 'land-wreck', group: 'air', seconds: (w) => w.dropS(7) + 6, terrain: TERRAIN.flat(), extras: [{ id: 'wreck', specId: 't90am', x: 0, z: 0, wreck: true }],
     spawn: { x: -0.8, z: 1.2, dropTo: 7, yaw: 0.7 }, input: hold(), rest: 'tail' },
   { id: 'land-roof', group: 'air', seconds: (w) => w.dropS(8) + 6, terrain: TERRAIN.flat(), obstacles: [box(0, 0, 7, 9, 0, 4)], spawn: { dropTo: 8 },
     input: hold(), rest: 'tail' },
@@ -440,9 +440,9 @@ export const CASES = [
     extras: [{ id: 'oncoming', specId: 'same', x: 0, z: 30, yaw: Math.PI, speed: 'top', input: hold(1) }], input: hold(1),
     allowBlocked: true },
   { id: 'ram-tbone', group: 'contact', seconds: 5, terrain: TERRAIN.flat(), spawn: { speed: 'top' },
-    extras: [{ id: 'parked', specId: 't90m', x: 0, z: 20, yaw: Math.PI / 2 }], input: hold(1) },
+    extras: [{ id: 'parked', specId: 't90am', x: 0, z: 20, yaw: Math.PI / 2 }], input: hold(1) },
   { id: 'push-parked', group: 'contact', seconds: 8, terrain: TERRAIN.flat(),
-    extras: [{ id: 'parked', specId: 't90m', x: 0, z: 9.5, yaw: 0 }], input: hold(1), drive: [0, 8], allowBlocked: true },
+    extras: [{ id: 'parked', specId: 't90am', x: 0, z: 9.5, yaw: 0 }], input: hold(1), drive: [0, 8], allowBlocked: true },
   { id: 'wall-crash', group: 'contact', seconds: 5, terrain: TERRAIN.flat(), obstacles: [box(0, 22, 12, 1, 0, 6, { kind: 'wall' })],
     spawn: { speed: 'top' }, input: hold(1), allowBlocked: true, wall: { z: 21 } },
   { id: 'wall-thin', group: 'contact', seconds: 4, terrain: TERRAIN.flat(), obstacles: [box(0, 22, 12, 0.12, 0, 5, { kind: 'wall' })],
@@ -466,10 +466,10 @@ export const CASES = [
     obstacles: [box(-3.4, 18, 1, 8, 0, 4, { yaw: 0.35, kind: 'wall' }), box(3.4, 18, 1, 8, 0, 4, { yaw: -0.35, kind: 'wall' })],
     input: after(5, hold(1), hold(-1)), drive: [5.5, 8], allowBlocked: true },
   { id: 'stack3', group: 'contact', seconds: 10, terrain: TERRAIN.flat(),
-    extras: [{ id: 'base', specId: 'm1a2', x: 0, z: 0 }, { id: 'middle', specId: 't90m', x: 0.2, z: 0.3, dropTo: 3.4 }],
+    extras: [{ id: 'base', specId: 'm1a1_abrams_hc', x: 0, z: 0 }, { id: 'middle', specId: 't90am', x: 0.2, z: 0.3, dropTo: 3.4 }],
     spawn: { x: -0.1, z: -0.2, dropTo: 7.5 }, input: hold(), rest: [7, 10] },
   { id: 'sandwich', group: 'contact', seconds: 7, terrain: TERRAIN.flat(), obstacles: [box(0, 24, 12, 1, 0, 6, { kind: 'wall' })],
-    extras: [{ id: 'victim', specId: 't90m', x: 0, z: 14, yaw: 0 }], input: hold(1), allowBlocked: true },
+    extras: [{ id: 'victim', specId: 't90am', x: 0, z: 14, yaw: 0 }], input: hold(1), allowBlocked: true },
   { id: 'rollover-kerb', group: 'contact', seconds: 7, terrain: TERRAIN.flat(),
     obstacles: [box(9, 0, 0.6, 14, 0, 0.7, { kind: 'kerb' })], spawn: { yaw: Math.PI / 2, speed: 'top' }, input: hold(1), allowBlocked: true },
   { id: 'border', group: 'contact', seconds: 5, terrain: TERRAIN.flat(), spawn: { x: 440, yaw: Math.PI / 2, speed: 'top' },
@@ -640,6 +640,9 @@ function percentile(sorted, p) {
 
 // ---- one run -------------------------------------------------------------------------------------------------------
 const NEUTRAL = Object.freeze({ throttle: 0, steer: 0, brake: false });
+/** A takeoff this soon after a landing, at no more than its restitution, is the landing's rebound (ticks; m/s). */
+const REBOUND_WINDOW_TICKS = 30;
+const REBOUND_SLACK_MPS = 0.25;
 function playerInput(control) {
   return {
     throttle: control.throttle ?? 0, steer: control.steer ?? 0, brake: !!control.brake, fire: false,
@@ -748,7 +751,7 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
       spawn: { x: extra.x ?? 0, z: extra.z ?? 0, yaw: extra.yaw ?? 0 } });
   }
   const anchor = caseDef.anchor ?? { x: -300, z: -300 };
-  players.push({ id: 'anchor', specId: 't90m', team: 'bravo', spawn: { x: anchor.x, z: anchor.z, yaw: 0 } });
+  players.push({ id: 'anchor', specId: 't90am', team: 'bravo', spawn: { x: anchor.x, z: anchor.z, yaw: 0 } });
   const match = createAuthoritativeMatch({ mapId: caseDef.mapId ?? 'verdant', seed: 4242, countdownS: 0, worldCollision: world.worldCollision,
     ruleset, players });
   match.onMatchReady();
@@ -1221,8 +1224,11 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
     // a landing's rebound is returned by its springs as they extend (movement.ts constrainLoadedRide): read it off the
     // line, where the bounce is counted
     if (lastLanding && (state._ride.bounces ?? 0) > pre.bounces) {
-      const allowed = lastLanding.closing * physics.restitution;
-      const rebound = state._ride.v - (state._ride.groundV ?? 0);
+      // (a hull on its shell rebounds off still ground, its support's rate its own turn, and may strike it again while it
+      // slides, its closing the fall it had just made — movement.ts constrainShellRide)
+      const onShell = Math.cos(state.visualPitch || 0) * Math.cos(state.visualRoll || 0) < Math.cos(70 * Math.PI / 180);
+      const allowed = Math.max(lastLanding.closing, onShell ? -(prev?.rideV ?? 0) : 0) * physics.restitution;
+      const rebound = state._ride.v - (onShell ? 0 : (state._ride.groundV ?? 0));
       metrics.reboundExcessMps = Math.max(metrics.reboundExcessMps, rebound - allowed - gravity * DT);
     }
     if (state.grounded) airRun = 0;
@@ -1319,7 +1325,13 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
         // at speed x grade; only the excess is a throw)
         const dir = state.speed >= 0 ? 1 : -1, fx = Math.sin(state.yaw) * dir, fz = Math.cos(state.yaw) * dir;
         const rise = (world.contact(state.pos.x, state.pos.z) - world.contact(state.pos.x - fx * 1.5, state.pos.z - fz * 1.5)) / 1.5;
-        const excess = state._ride.v - Math.max(0, Math.abs(state.speed) * rise);
+        // (physics stream F7a, 2026-10-14; the coordinator: a rebound the impact law owes is no throw) a takeoff within
+        // REBOUND_WINDOW_TICKS of a landing, no faster than the ruleset's restitution of that landing's closing (and a
+        // quarter metre a second), is the landing's rebound: Foundry's BMP-2 off a 25 m roof landed at 21 m/s and rose
+        // off it at 3.2 m/s, its restitution 0.15
+        const rebound = lastLanding && tick - lastLanding.tick <= REBOUND_WINDOW_TICKS
+          && state._ride.v <= lastLanding.closing * physics.restitution + REBOUND_SLACK_MPS;
+        const excess = rebound ? 0 : state._ride.v - Math.max(0, Math.abs(state.speed) * rise);
         if (excess > metrics.takeoffMaxMps) metrics.takeoffMaxMps = excess;
         if (excess > 2.5) metrics.launches++;
       }
@@ -1467,7 +1479,7 @@ export function classify(metrics, caseDef) {
 // ---- matrix --------------------------------------------------------------------------------------------------------
 export async function runMatrix({ hulls = Object.keys(HULLS), worlds = Object.keys(WORLDS), cases = CASES.map((c) => c.id),
   replay = true, onRun = null } = {}) {
-  const ids = [...new Set([...hulls.map((h) => HULLS[h] ?? h), 't90m', 'm1a2'])];
+  const ids = [...new Set([...hulls.map((h) => HULLS[h] ?? h), 't90am', 'm1a1_abrams_hc'])];
   await ensureAuthorityFleet(ids);
   const results = [];
   for (const caseId of cases) {

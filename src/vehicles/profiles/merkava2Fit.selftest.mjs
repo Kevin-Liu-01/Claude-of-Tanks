@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
+import { tankSeedId } from '../tankIdAliases.ts'; // names and receipt keys built from an id keep its schema-1 spelling
 
 function build(id) {
   const visual = createTank(id, null, {
@@ -16,7 +17,7 @@ function build(id) {
 
 function assertConformalTurret(id, expectedPanels, expectedEra, expectsSecondaryCarrier) {
   const { visual, hull, turret } = build(id);
-  const fit = turret.userData[`${id}SourceFitReceipt`];
+  const fit = turret.userData[`${tankSeedId(id)}SourceFitReceipt`];
   assert.equal(fit.revision, 'outer-carrier-era-ring-r2', `${id} uses the visible ERA carrier-ring fit`);
   assert.equal(fit.roofDatumSource, 'source-oracle', `${id} equipment uses the rendered roof`);
   assert.equal(fit.sidePanelSeats.length, expectedPanels, `${id} seats every side panel`);
@@ -64,7 +65,7 @@ function assertConformalTurret(id, expectedPanels, expectedEra, expectsSecondary
   assert.ok(fit.eraMountSeats.every((seat) => seat.structuralOverlapM > 0 && seat.cleats === 2),
     `${id} ERA cradles positively overlap their carrier and retain both edge cleats`);
 
-  const rear = turret.userData[`${id}RearClosureReceipt`];
+  const rear = turret.userData[`${tankSeedId(id)}RearClosureReceipt`];
   assert.equal(rear.closedCrownAndFloor, true, `${id} closes the turret-to-bustle seam`);
   assert.ok(rear.rearOverlapM >= 0.12, `${id} closure overlaps the bustle root`);
   assert.equal(rear.basketTieCount, 2, `${id} has two structural basket tie shoes`);
@@ -89,7 +90,7 @@ assert.ok(mk2bHullAttachment.supports.every((seat) => seat.buriedOverlapM > 0),
   'Mk 2B bow supports have positive structural overlap');
 
 function assertRaisedFrontTerminal(id, visual, hull) {
-  const gear = hull.userData[`${id}RunningGearReceipt`];
+  const gear = hull.userData[`${tankSeedId(id)}RunningGearReceipt`];
   assert.equal(gear.revision, 'terminal-course-reseat-r3',
     `${id}: front-terminal clearance revision is current`);
   assert.ok(Math.abs(gear.previousSprocketZM - 2.05) < 1e-9,

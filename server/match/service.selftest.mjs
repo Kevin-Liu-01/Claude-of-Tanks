@@ -13,11 +13,11 @@ const rooms = createLocalRoomService({ service, seatSecret: secret });
 const room = rooms.createRoom({
   roomId: 'svc-room', mapId: 'verdant', seed: 11, countdownS: 0, world: 'terrain',
   seats: [
-    { playerId: 'alice', name: 'Alice', team: 'alpha', specId: 'm1a2' },
-    { playerId: 'bob', name: 'Bob', team: 'bravo', specId: 't90m' },
+    { playerId: 'alice', name: 'Alice', team: 'alpha', specId: 'm1a1_abrams_hc' },
+    { playerId: 'bob', name: 'Bob', team: 'bravo', specId: 't90am' },
     { playerId: 'eve', name: 'Eve', team: 'spectator', specId: '' },
   ],
-  bots: [{ playerId: 'bot-1', name: 'Bot', team: 'alpha', specId: 'leo2a7v' }],
+  bots: [{ playerId: 'bot-1', name: 'Bot', team: 'alpha', specId: 'leo2_improved' }],
 });
 assert.equal(service.actors.size, 1);
 
@@ -140,8 +140,8 @@ console.log('service.selftest: seat replacement and leave over sockets; the matc
   const base = `http://127.0.0.1:${service.address.port}`;
   const auth = { authorization: `Bearer ${secret}`, 'content-type': 'application/json' };
   const body = JSON.stringify({ mapId: 'verdant', seed: 5, countdownS: 0, world: 'terrain', seats: [
-    { playerId: 'carol', name: 'Carol', team: 'alpha', specId: 'm1a2' }, { playerId: 'dan', name: 'Dan', team: 'bravo', specId: 't90m' },
-  ], bots: [{ playerId: 'bot-x', name: 'X', team: 'bravo', specId: 'leo2a7v' }] });
+    { playerId: 'carol', name: 'Carol', team: 'alpha', specId: 'm1a1_abrams_hc' }, { playerId: 'dan', name: 'Dan', team: 'bravo', specId: 't90am' },
+  ], bots: [{ playerId: 'bot-x', name: 'X', team: 'bravo', specId: 'leo2_improved' }] });
   assert.equal((await fetch(`${base}/rooms`, { method: 'POST', body, headers: { 'content-type': 'application/json' } })).status, 401, 'no bearer, no room');
   assert.equal((await fetch(`${base}/rooms`, { method: 'POST', body, headers: { ...auth, authorization: 'Bearer wrong-secret-0123456789' } })).status, 401);
   const bad = await fetch(`${base}/rooms`, { method: 'POST', body: JSON.stringify({ mapId: 'verdant', seats: [{ team: 'red' }] }), headers: auth });
@@ -169,11 +169,11 @@ console.log('service.selftest: seat replacement and leave over sockets; the matc
 }
 
 // Capacity and duplicate rooms are refused; drain closes every client with SERVER_DRAIN and stops the listeners.
-assert.throws(() => rooms.createRoom({ roomId: 'svc-room', mapId: 'verdant', seats: [{ playerId: 'x', name: 'x', team: 'alpha', specId: 'm1a2' }], world: 'terrain' }), /already has a match/);
+assert.throws(() => rooms.createRoom({ roomId: 'svc-room', mapId: 'verdant', seats: [{ playerId: 'x', name: 'x', team: 'alpha', specId: 'm1a1_abrams_hc' }], world: 'terrain' }), /already has a match/);
 for (let index = 0; index < 3; index++) {
-  rooms.createRoom({ roomId: `filler-${index}`, mapId: 'verdant', seats: [{ playerId: 'f', name: 'f', team: 'alpha', specId: 'm1a2' }], world: 'terrain' });
+  rooms.createRoom({ roomId: `filler-${index}`, mapId: 'verdant', seats: [{ playerId: 'f', name: 'f', team: 'alpha', specId: 'm1a1_abrams_hc' }], world: 'terrain' });
 }
-assert.throws(() => rooms.createRoom({ roomId: 'one-too-many', mapId: 'verdant', seats: [{ playerId: 'f', name: 'f', team: 'alpha', specId: 'm1a2' }], world: 'terrain' }), /full/);
+assert.throws(() => rooms.createRoom({ roomId: 'one-too-many', mapId: 'verdant', seats: [{ playerId: 'f', name: 'f', team: 'alpha', specId: 'm1a1_abrams_hc' }], world: 'terrain' }), /full/);
 await service.close();
 await sleep(200);
 assert.equal(closeOf(alice)?.reason, CLOSE_REASON.SERVER_DRAIN);

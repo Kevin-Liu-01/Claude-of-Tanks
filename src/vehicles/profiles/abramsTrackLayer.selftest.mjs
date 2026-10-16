@@ -5,10 +5,10 @@ const M1_VARIANTS = [
   'm1a1',
   'm1a1ha',
   'ua_m1a1',
-  'm1a2',
-  'm1a2_tusk',
-  'm1a2_sepv2',
-  'm1a2_sepv3',
+  'm1a1_abrams_hc',
+  'm1a1_abrams_sa',
+  'm1a1_abrams_aim',
+  'm1a1_abrams_fep',
 ];
 const REMOVED_DUPLICATE_NAMES = new Set([
   'gear_frontRampPadBelt',

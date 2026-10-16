@@ -10,12 +10,12 @@ import {createTankState} from '../../sim/movement.ts';
 import {auditVisibleReturnRollerContact} from '../returnRollerContactTest.mjs';
 import {rollerSuspensionFixtures,finiteClearance as completeStockClearance} from '../returnRollerPhysicsTest.mjs';
 
-const cases=[['merkava3d_x',buildMerkava3DX],['merkava4_x',buildMerkava4X]];
+const cases=[['merkava3d',buildMerkava3DX],['merkava4',buildMerkava4X]];
 // The pre-roller witness (a source replay of merkavaX.ts without the lining call and the literal pre-roller gear
-// inputs of b0ed8d90f) is retired: whole-tank change detection of merkava3d_x / merkava4_x is the fleet geometry
+// inputs of b0ed8d90f) is retired: whole-tank change detection of merkava3d / merkava4 is the fleet geometry
 // ledger's. The rollers, spindles, lining, clearances, contact, suspension, broken-track and battle-LOD proofs run
 // on the current build and its live unlined twin. A live roller-free twin of the current builder still proves the
-// rollers are additive where it builds without a source replay (merkava3d_x); merkava4_x lines its upper band at
+// rollers are additive where it builds without a source replay (merkava3d); merkava4 lines its upper band at
 // the roller stations, so its roller-free twin cannot be built from current source and is not attempted.
 const stats={builds:0,rollers:0,poses:0,negativeControls:0,rows:[],physicalFailures:[],contactFailures:[],wheelQualityFailures:[],visibleContact:[]};
 const hash=g=>{const h=createHash('sha256');for(const key of Object.keys(g.attributes).sort()){
@@ -415,7 +415,7 @@ function moving(c,bounds,spindles,rollers,unlined,lining){
 }
 for(const [id,build]of cases)for(const quality of['high','low']){
  const current=capture(id,build,quality),unlined=capture(id,build,quality,true);
- const omitted=id==='merkava4_x'?null:capture(id,build,quality,false,{omitRollers:true});
+ const omitted=id==='merkava4'?null:capture(id,build,quality,false,{omitRollers:true});
  try{
   if(omitted){
    assert.equal(omitted.port.hullG.getObjectByName('gearReturnRollerRotors'),undefined,'Roller-free twin has no rotors');
@@ -463,8 +463,8 @@ for(const [id,build]of cases)for(const quality of['high','low']){
   carrierRecoveryControl(current);
   const continuous=continuousShoeClearance(current,stock);
   const lining=liningReceipt(current);
-  assert.equal(lining.changedVertices,id==='merkava4_x'?96:0,'Exactly four joined upper support frames per band');
-  assert.ok(Math.abs(lining.maximumDepthM-(id==='merkava4_x'?.0038:0))<2e-7);
+  assert.equal(lining.changedVertices,id==='merkava4'?96:0,'Exactly four joined upper support frames per band');
+  assert.ok(Math.abs(lining.maximumDepthM-(id==='merkava4'?.0038:0))<2e-7);
   if(lining.cells.length){
    assert.ok(lining.addedVolumeM3>0,'New lining is real positive stock, not a contact-only proxy');
    const bad=lining.cells.map(cell=>({...cell,poly:cell.poly.map((v,i)=>v.clone().add(new T.Vector3(0,i>=2?-.5:0,0)))}));
@@ -523,7 +523,7 @@ for(const [id,build]of cases)for(const quality of['high','low']){
  assert.equal(disposedRotorInstances,1,'Native rotor instance buffer disposed exactly once');
 }
 for(const quality of['high','low']){
- const legacy=capture('merkava4_x',buildMerkava4X,quality,false,{oldCarrier:true});
+ const legacy=capture('merkava4',buildMerkava4X,quality,false,{oldCarrier:true});
  try{
   const bounds=axialRollerStock(legacy,rollerBounds(legacy)),shoe=legacy.port.hullG.getObjectByName('gearTrackPads');let worst=Infinity;
   for(let phase=0;phase<16;phase++){
@@ -533,10 +533,10 @@ for(const quality of['high','low']){
   // 2026-09-17: on the 28 mm band with the 20 mm heavy pins the legacy midpoint seat no longer pierces the shoes; it still
   // leaves them inside the 2 mm contact gate that the seated rollers must meet, which is the relation the control guards.
   assert.ok(worst<.002,'Original averaging leaves the near-shoe stock inside the 2 mm contact gate: '+worst);stats.negativeControls++;
-  console.log(JSON.stringify({id:'merkava4_x',quality,oldMidpointRejectedClearanceM:worst}));
+  console.log(JSON.stringify({id:'merkava4',quality,oldMidpointRejectedClearanceM:worst}));
  }finally{legacy.dispose();}
- const chord=capture('merkava4_x',buildMerkava4X,quality,false,{chords:true});
- const control=capture('merkava4_x',buildMerkava4X,quality,true,{chords:true});
+ const chord=capture('merkava4',buildMerkava4X,quality,false,{chords:true});
+ const control=capture('merkava4',buildMerkava4X,quality,true,{chords:true});
  try{
   const rest=restAxles(chord),controlRest=restAxles(control),controlFixtures=rollerSuspensionFixtures(control);
   for(const [index,fixture]of rollerSuspensionFixtures(chord).entries()){
@@ -552,7 +552,7 @@ for(const quality of['high','low']){
  }finally{chord.dispose();control.dispose();}
 }
 for(const quality of['high','low']){
- for(const id of['t62mv1_x','t62mv1']){
+ for(const id of['t62mv1','t62_1975']){
   const control=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true});stats.builds++;
   try{
    for(const name of['gearReturnRollerTires','gearReturnRollerDiscs','gearReturnRollerRotors','gearMerkavaReturnSpindles'])

@@ -13,8 +13,8 @@ import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollis
 function skim(throttle) {
   const world = createDedicatedWorldCollision('verdant', { retain: true });
   const match = createAuthoritativeMatch({ players: [
-    { id: 'h1', specId: 'm1a2', team: 'alpha' },
-    { id: 'b1', specId: 't90m', team: 'bravo', bot: true, difficulty: 'easy' },
+    { id: 'h1', specId: 'm1a1_abrams_hc', team: 'alpha' },
+    { id: 'b1', specId: 't90am', team: 'bravo', bot: true, difficulty: 'easy' },
   ], mapId: 'verdant', seed: 7, countdownS: 0, gameMode: 'drone', worldCollision: world });
   match.onMatchReady();
   const pilot = match.entityById.get('h1'), inputs = new Map();

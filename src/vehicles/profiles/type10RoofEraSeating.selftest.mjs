@@ -6,11 +6,11 @@ function closeTo(actual, expected, label, epsilon = 1e-6) {
     `${label}: expected ${expected}, received ${actual}`);
 }
 
-const type10 = createTank('type10', null, {
+const type10_tk_x = createTank('type10_tk_x', null, {
   proceduralOnly: true,
   geometryReceipt: true,
 });
-const type10Turret = type10.root.getObjectByName('rig_turret');
+const type10Turret = type10_tk_x.root.getObjectByName('rig_turret');
 const type10Receipt = type10Turret?.userData.type10RoofBustleReceipt;
 assert.ok(type10Receipt, 'Type 10 exposes its roof and bustle seating receipt');
 assert.equal(type10Receipt.opticVariant, 'compact-right',
@@ -23,7 +23,7 @@ closeTo(type10Receipt.roofCarrierY - type10Receipt.opticBottomY, 0.012,
   'Type 10 optic embeds into its roof carrier');
 assert.ok(type10Receipt.bustleOverlapM >= 0.01,
   'Type 10 bustle rack overlaps the rear shell by at least 10 mm');
-type10.dispose();
+type10_tk_x.dispose();
 
 const type10b = createTank('type10b', null, {
   proceduralOnly: true,

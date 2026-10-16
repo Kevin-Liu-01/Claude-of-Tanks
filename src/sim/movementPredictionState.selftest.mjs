@@ -13,7 +13,7 @@ const field = { getHeightAt: height, getHeightAtFast: height, getGroundType: () 
 const drive = { throttle: 1, steer: 0.25, brake: false, fire: false,
   aimYaw: 0.2, aimPitch: 0, aimLocked: true };
 
-function entity(specId = 'm1a2') {
+function entity(specId = 'm1a1_abrams_hc') {
   const spec = getSpec(specId);
   return { id: 'viewer', spec, state: createTankState(spec, new Vector3(), 0),
     combat: { modules: { engine: { state: 'ok' }, trackL: { state: 'ok' } }, crew: {} },

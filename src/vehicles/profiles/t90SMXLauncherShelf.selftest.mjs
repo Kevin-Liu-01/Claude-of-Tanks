@@ -12,7 +12,7 @@ function first(root,x,z) {
     });
 }
 for(const quality of ['high','low']) {
-  const tank=createTank('t90sm_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const tank=createTank('t90sm',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   const helper=new THREE.Group(),material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
   helper.position.set(.008,1.532,.359);
   addT90SMLeftLauncherShelf({addEquipment(bucket,geometry,x,y,z){

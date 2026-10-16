@@ -25,14 +25,14 @@ function uniqueInstanceZs(mesh) {
   return [...zs].sort((a, b) => b - a);
 }
 
-for (const quality of ['high', 'low', 'ai']) for (const id of ['k2', 'k2b']) {
+for (const quality of ['high', 'low', 'ai']) for (const id of ['xk2_black_panther', 'k2b']) {
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality,
     camoSeed: 4242,
     geometryReceipt: true,
   });
-  const production = createTank('k2_x', null, {
+  const production = createTank('k2_black_panther', null, {
     proceduralOnly: true, quality, camoSeed: 4242, geometryReceipt: true,
   });
   await Promise.resolve();

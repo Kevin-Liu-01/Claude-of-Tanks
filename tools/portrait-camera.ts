@@ -6,10 +6,10 @@
 export function portraitSideRatio(id: string): number {
   // Retain Barak's complete aerials; a 5.7-degree wider side view fits both cards.
   if (id === 'merkava4_barak') return 0.70;
-  if (id === 'kf41_lynx_x') return 0.86;
+  if (id === 'kf41_lynx') return 0.86;
   // Mirrored, the KF51's full silhouette measured 123.8 card px against the 123.2 px envelope (0.88 × 140):
   // a touch more frontal shortens its projected barrel without dropping below the dense-core fill.
-  if (id === 'kf51_x') return 0.72;
-  if (id === 't72b3_x' || id === 'strv122_x') return 0.76;
+  if (id === 'kf51_panther') return 0.72;
+  if (id === 't72b3' || id === 'strv122') return 0.76;
   return 0.56;
 }

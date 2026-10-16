@@ -68,7 +68,7 @@ const plates = authoredEraSurfaces(geometry).map(verts => ({
   name: 'exact-trapezoid', kind: 'era', verts, mm: 20,
   era: { keReduction: .8, ceFlatMm: 200 },
 }));
-const armor = { ...getSpec('m1a2').armor, hullPlates: plates, turretPlates: [] };
+const armor = { ...getSpec('m1a1_abrams_hc').armor, hullPlates: plates, turretPlates: [] };
 const pose = tankPoseFromState({ pos: new Vector3(), yaw: 0, visualPitch: 0,
   visualRoll: 0, turretYaw: 0, gunPitch: 0 });
 function covered(x, z, spent = new Set()) {

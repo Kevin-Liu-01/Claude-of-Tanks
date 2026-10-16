@@ -45,14 +45,14 @@ function entity(id, specId, team, x, z, yaw = 0, hp = null) {
  * `host`: 'idle', 'moving' (2 m/s on the spot, as a hull under way reads) or 'firing' (a round every 8 s).
  */
 function standoff({ teammate = 'wreck', host: hostMode = 'idle', seconds = 90 } = {}) {
-  const host = entity('host', 'm1a2', 'player', 0, 0, 0, 1834);
+  const host = entity('host', 'm1a1_abrams_hc', 'player', 0, 0, 0, 1834);
   host.isPlayer = true;
-  const bot = entity('bot-bravo-0', 'aft10_x', 'enemy', 0, 248, Math.PI, 163);
+  const bot = entity('bot-bravo-0', 'aft10', 'enemy', 0, 248, Math.PI, 163);
   bot.combat.ammo = [0];
   bot.combat.ammoCapacity = [8];
   const mate = teammate === 'armed'
-    ? entity('bot-bravo-1', 'type10', 'enemy', 300, 640, Math.PI) // 512 m off: no support to retire to
-    : entity('bot-bravo-1', 'type10', 'enemy', -50, 380, Math.PI);
+    ? entity('bot-bravo-1', 'type10_tk_x', 'enemy', 300, 640, Math.PI) // 512 m off: no support to retire to
+    : entity('bot-bravo-1', 'type10_tk_x', 'enemy', -50, 380, Math.PI);
   if (teammate === 'wreck') { mate.combat.destroyed = true; mate.combat.hp = 0; }
   if (teammate === 'empty') { mate.combat.ammo = [0, 0, 0]; mate.combat.ammoCapacity = [14, 8, 6]; }
   if (teammate === 'armed') { mate.combat.ammo = [9, 4, 2]; mate.combat.ammoCapacity = [14, 8, 6]; }

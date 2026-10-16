@@ -19,7 +19,7 @@ import { staticMergePartMatrixWorld, staticMergePartsOf } from './staticMergePar
 // exactly as the plain-mesh course draws it. Returns the
 // SURFACE floor (robust low quantile — see below) and the 5 cm low-band
 // footprint. The whole-visual floor matters because mask-sovereign rebuilds
-// may sink a hull keel BELOW the gear line (m1a2_sepv2: keel +0.055 vs gear
+// may sink a hull keel BELOW the gear line (m1a1_abrams_aim: keel +0.055 vs gear
 // +0.10) — the support solve must seat whatever actually renders lowest.
 //
 // FLOOR = FIRST DENSE SHELL, NOT MIN: the absolute lowest vertex is

@@ -15,8 +15,8 @@ import { PINNED_SCENE } from './pinned-scene-acquisition.mjs';
 assert.equal(ACQUISITION_PROTOCOL, 'settled-pinned-map-timing-v6', 'natural-entry acquisition is explicitly versioned');
 
 const scene = {
-  protocol: PINNED_SCENE.protocol, selectedSpecId: 'm1a2',
-  playerEntityId: 'm1a2', playerSpecId: 'm1a2',
+  protocol: PINNED_SCENE.protocol, selectedSpecId: 'm1a1_abrams_hc',
+  playerEntityId: 'm1a1_abrams_hc', playerSpecId: 'm1a1_abrams_hc',
   entities: PINNED_SCENE.roster.map((specId, index) => ({
     entityId: specId, team: index < 4 ? 'player' : 'enemy', specId,
     isPlayer: index === 0, visualSpecId: specId,
@@ -46,7 +46,7 @@ const settings = {
 };
 const garage = {
   built: true, variant: 'verdant_motor_pool', mapId: 'verdant', exhibitCount: 5,
-  sourceVehicleIds: ['t90a_burlak', 'm1a2', 'leo2a5_a5nl', 't90m', 'k2'],
+  sourceVehicleIds: ['t90a_burlak_proto', 'm1a1_abrams_hc', 'leo2a4m', 't90am', 'xk2_black_panther'],
   optimizedTriangleParity: true, triangles: 100, optimizedTriangles: 100,
   nodes: 3, meshes: 2, geometries: 1, materials: 2, textures: 2,
 };

@@ -17,7 +17,7 @@ export interface HostBootPlan {
   bots: HostBootBot[];
 }
 
-const DEFAULT_BOT_SPEC = 'm1a2';
+const DEFAULT_BOT_SPEC = 'm1a1_abrams_hc';
 
 function botSpecFor(seats: readonly HostBootSeat[], team: 'alpha' | 'bravo', fallback: string): string {
   const counts = new Map<string, number>();

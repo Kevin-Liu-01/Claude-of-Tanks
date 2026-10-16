@@ -124,7 +124,7 @@ export function deriveObject695Reference(sourceBytes, donorBytes) {
   const preservation = verifyOnlySelectedTransforms(source, after);
   const shift = object695ModuleShift();
   const manifest = {
-    schemaVersion: 1, id: 'object695_x',
+    schemaVersion: 1, id: 'object695',
     scope: 'Owner-authorized family derivation: retained Object hull and running gear, complete corrected source Epokha turret. Local QA only.',
     source: RECIPE.source, donor: RECIPE.donor,
     rawParentSha256: '0af5ccde32d66d5f56cbf7b543e000f64fa28e18cc0eb560d92ed7b05e7f7fd2',

@@ -7,7 +7,7 @@ const centerOf = (part) => part.max.map((value, axis) => (value + part.min[axis]
 
 const cases = Object.freeze([
   Object.freeze({
-    id: 'amx56', owner: 'gunG', bodyBucket: 'gunMount', faceBucket: 'gunMountDark',
+    id: 'leclerc_s1', owner: 'gunG', bodyBucket: 'gunMount', faceBucket: 'gunMountDark',
     bodySize: [0.18, 0.15, 0.36], faceSize: [0.11, 0.08, 0.025],
     bodyZ: 5.02, faceZ: 5.21, supportRadiusM: 0.112,
   }),
@@ -22,7 +22,7 @@ const cases = Object.freeze([
     bodyZ: 3.38, faceZ: 3.525, supportRadiusM: 0.128,
   }),
   Object.freeze({
-    id: 'type90', owner: 'gunG', bodyBucket: 'gunMount', faceBucket: null,
+    id: 'type90_kyumaru', owner: 'gunG', bodyBucket: 'gunMount', faceBucket: null,
     bodySize: [0.335, 0.05, 0.24], bodyZ: 4.3994, supportRadiusM: 0.08125,
   }),
   Object.freeze({
@@ -30,7 +30,7 @@ const cases = Object.freeze([
     bodySize: [0.335, 0.05, 0.24], bodyZ: 4.3994, supportRadiusM: 0.08125,
   }),
   Object.freeze({
-    id: 'kf51b', owner: 'recoilG', bodyBucket: 'gun', faceBucket: 'gunDark',
+    id: 'kf51_u', owner: 'recoilG', bodyBucket: 'gun', faceBucket: 'gunDark',
     bodySize: [0.17046, 0.10, 0.31716], faceSize: [0.12065, 0.036, 0.20775],
     bodyZ: 4.60, faceZ: 4.60, supportRadiusM: 0.080, facePlacement: 'top-inset',
   }),

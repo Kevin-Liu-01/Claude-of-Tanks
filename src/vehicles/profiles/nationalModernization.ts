@@ -70,8 +70,8 @@ function build(P:TankBuilderPort,c:NationalModernizationConfig):void {
  if(c.package==='ua')addFieldRoofCage(P);
  // Zoria's roof gun sweeps all of its roof inboard of the left cage wing, so
  // its drone rides on a receiver laid across that wing (missionAttachmentReceiver.ts).
- if(c.id==='ua_t80u_modern')addMissionAttachmentReceiver(P,'ua_t80u_modern');
- if(c.package==='cn'||c.id==='ru_t72b3m_modern')addRearFieldStowage(P,c.package==='cn');
+ if(c.id==='t80u_zoria')addMissionAttachmentReceiver(P,'t80u_zoria');
+ if(c.package==='cn'||c.id==='t72b3m_bulat_m')addRearFieldStowage(P,c.package==='cn');
  P.topY=nationalModernizationDesign(c).roofY;
  P.hullG.userData.familyRebuild={donor:c.donor,package:c.package,model:c.model,revision:6,concept:true,
   preserved:'native-hull-core-running-gear-and-fenders',primaryHull:'donor-with-add-on-modernization',primaryTurret:'cast-ancestry-with-national-armor'};

@@ -139,7 +139,7 @@ function visibleFamilySeats(t,id){
   assert(ray(t,from,[-1,0,0],'turret',gun,.2),'visible loader MG spindle at bearing bridge height');
   const foot=ray(t,from,[-1,0,0],'turret',detail,.2);
   near(foot?.point.x,-.802,2e-5,'visible load-bearing bridge meets loader gun spindle');
-  if(id==='ariete_c2_x')opticsAndSeats(t,all);
+  if(id==='c2_ariete')opticsAndSeats(t,all);
 }
 function lodPresentation(t,id,quality){
   const camera=new T.OrthographicCamera(-5,5,5,-5,.1,1000),state=createTankState(getSpec(id),new T.Vector3(),0);
@@ -205,7 +205,7 @@ function commanderClearance(t){
 }
 
 function commanderDonor(t,options){
-  const donor=createTank('k2_x',null,options);
+  const donor=createTank('k2_black_panther',null,options);
   try{
     const actual=t.root.getObjectByName('arieteC2CommanderK2');
     const original=donor.root.getObjectByName('fitting_browningDerived_m2');
@@ -219,7 +219,7 @@ function commanderDonor(t,options){
       const a=actualStock[i].split(/[;,]/).map(Number),b=donorStock[i].split(/[;,]/).map(Number);
       a.forEach((v,j)=>near(v/1e5,b[j]/1e5,2e-5,'same neutral K2 fitting stock'));
     }
-    assert(getSpec('ariete_c2_x').gun.shells.every(s=>s.caliberMm===120),
+    assert(getSpec('c2_ariete').gun.shells.every(s=>s.caliberMm===120),
       'decorative roof fitting cannot be selected as a playable weapon');
   }finally{donor.dispose();}
 }
@@ -227,7 +227,7 @@ function commanderDonor(t,options){
 function poses(t){
   const yaw=t.root.getObjectByName('rig_turret'),gun=t.root.getObjectByName('rig_gun'),recoil=t.root.getObjectByName('rig_recoil'),before=census(t);
   for(const angle of [0,Math.PI/2,Math.PI])for(const pitch of [-9,0,20]){
-    yaw.rotation.y=angle;gun.rotation.x=-Math.max(pitch*Math.PI/180,minimumMechanicalGunPitch(getSpec('ariete_c2_x'),angle));t.root.updateMatrixWorld(true);opticsAndSeats(t);bore(t,true);
+    yaw.rotation.y=angle;gun.rotation.x=-Math.max(pitch*Math.PI/180,minimumMechanicalGunPitch(getSpec('c2_ariete'),angle));t.root.updateMatrixWorld(true);opticsAndSeats(t);bore(t,true);
     const muzzle=t.gunMuzzleWorld(new T.Vector3());recoil.position.z=-.12;t.root.updateMatrixWorld(true);
     near(t.gunMuzzleWorld(new T.Vector3()).distanceTo(muzzle),.12,2e-6,'cannon recoils as complete stock');recoil.position.z=0;
   }
@@ -249,7 +249,7 @@ function physicalBarrelRadius(z,factor=1){
   return 0;
 }
 function barrelHullHits(t,targets){
-  const gun=t.root.getObjectByName('rig_gun'),modern=!!t.root.getObjectByName('arieteC2CommanderK2'),stretch=modern?1.22:1,radial=modern?1.18:1,mouth=getSpec(modern?'ariete_c2_x':'ariete_c1_x').armor.gunBarrel.lengthM,length=(5.028094113-1.95976235)*S*stretch;
+  const gun=t.root.getObjectByName('rig_gun'),modern=!!t.root.getObjectByName('arieteC2CommanderK2'),stretch=modern?1.22:1,radial=modern?1.18:1,mouth=getSpec(modern?'c2_ariete':'c1_ariete').armor.gunBarrel.lengthM,length=(5.028094113-1.95976235)*S*stretch;
   const direction=new T.Vector3(0,0,-1).transformDirection(gun.matrixWorld);
   for(const radius of [.061,.071,.091,.111,.131])for(let i=0;i<12;i++){
     const angle=(i+.2)*Math.PI/6,origin=gun.localToWorld(new T.Vector3(Math.cos(angle)*radius,Math.sin(angle)*radius,mouth-.001));
@@ -278,13 +278,13 @@ function mechanicalClearance(t,id){
 }
 
 footprintAdapter();
-if(process.argv.includes('--filled'))await ensureInteriorFills(['ariete_c1_x','ariete_c2_x']);
+if(process.argv.includes('--filled'))await ensureInteriorFills(['c1_ariete','c2_ariete']);
 const costs=[],lodCosts=[];let clearancePoses=0;
 for(const quality of ['high','low']){
   const opts={quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false,camoSeed:4242};
-  const first=capturePrimaryHull(createTank,'ariete_c1_x',opts),second=capturePrimaryHull(createTank,'ariete_c2_x',opts),c1=first.tank,c2=second.tank;
+  const first=capturePrimaryHull(createTank,'c1_ariete',opts),second=capturePrimaryHull(createTank,'c2_ariete',opts),c1=first.tank,c2=second.tank;
   commanderDonor(c2,opts);
-  try{c1.root.updateMatrixWorld(true);c2.root.updateMatrixWorld(true);samePrimary(c1,c2);outwardWheels(c1);outwardWheels(c2);reactiveCassettes(c2);assertC2PrimaryHullDelta(first.stocks,second.stocks);assertC2ReceivingClearance(c2,first.stocks,second.stocks);clearancePoses+=mechanicalClearance(c1,'ariete_c1_x');clearancePoses+=mechanicalClearance(c2,'ariete_c2_x');gear(c2);bore(c2,true);poses(c2);negatives(c2);commanderClearance(c2);lodCosts.push(...lodPresentation(c1,'ariete_c1_x',quality),...lodPresentation(c2,'ariete_c2_x',quality));
+  try{c1.root.updateMatrixWorld(true);c2.root.updateMatrixWorld(true);samePrimary(c1,c2);outwardWheels(c1);outwardWheels(c2);reactiveCassettes(c2);assertC2PrimaryHullDelta(first.stocks,second.stocks);assertC2ReceivingClearance(c2,first.stocks,second.stocks);clearancePoses+=mechanicalClearance(c1,'c1_ariete');clearancePoses+=mechanicalClearance(c2,'c2_ariete');gear(c2);bore(c2,true);poses(c2);negatives(c2);commanderClearance(c2);lodCosts.push(...lodPresentation(c1,'c1_ariete',quality),...lodPresentation(c2,'c2_ariete',quality));
     // 2026-10-10 (the netting lane): the owner's order of 2026-10-09 ("a ton more netting and camo leaves all over") adds the
     // C2's field net and garnish, four draws. 2026-10-12 (cam-netting, the owner again: "the new ghillies/nets/leaves that
     // i had requested?"): the denser garnish brings the suit to 9.2k triangles at HIGH (net 6.5k, garnish 2.7k): 99.3k

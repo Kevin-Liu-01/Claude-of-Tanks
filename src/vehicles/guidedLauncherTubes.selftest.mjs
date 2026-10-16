@@ -3,7 +3,7 @@ import './tankFactory.ts';
 import { createTank } from './tankFactory.ts';
 import { getSpec, PRODUCTION_TANK_IDS } from './specs.ts';
 
-// Owner 2026-09-18: "minimum amount of missiles for IFVs with missiles should be how many tubes present. so the bmpt t90
+// Owner 2026-09-18: "minimum amount of missiles for IFVs with missiles should be how many tubes present. so the bmpt t90_1992
 // should have minimum 8 since it has 8 tubes". Every guided round declares the launcher tubes modelled for it
 // (0 = fired through the gun); its authored load is never below one round per tube; and wherever the built vehicle
 // publishes a tube census (userData.launcherTubes on any node), the spec's declaration must match the geometry.
@@ -45,7 +45,7 @@ for (const { id, shell } of guided) {
   } finally { tank.dispose?.(); }
 }
 assert.ok(published.length >= 6, `the rack-launcher vehicles publish their tube census (${published.join(' ')})`);
-assert.ok(published.filter(value => value === 'object695_x:12').length === 2 && published.filter(value => value === 'ztz100_prototype:8').length === 2,
+assert.ok(published.filter(value => value === 'object695:12').length === 2 && published.filter(value => value === 'ztz100_prototype:8').length === 2,
   'both concept ammunition types name their shared physical launcher census');
 const bmpt = getSpec('bmpt_t90').gun.shells.find((shell) => shell.guided);
 assert.equal(bmpt.launcherTubes, 8); assert.ok(bmpt.count >= 8, 'the BMPT T-90 carries at least its eight tubes of Ataka');

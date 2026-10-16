@@ -30,7 +30,7 @@ try {
         const { setModeWeapon } = await import('/src/sim/modeLoadout.ts');
         const { initializeAerial } = await import('/src/sim/aerialCombat.ts');
         const { matchRulesetFor } = await import('/src/sim/matchRuleset.ts');
-        await ensureAuthorityFleet(['m1a2', 'bwp1', 'strv103a', 'leclerc']);
+        await ensureAuthorityFleet(['m1a1_abrams_hc', 'bwp1', 'strv103a', 'leclerc_s2']);
         const { hud, frame, bus } = window.__HUD_LAYOUT;
         const player = frame.player, button = document.querySelector('.cot-special');
         let events = 0;
@@ -43,15 +43,15 @@ try {
           initializeAerial(player, matchRulesetFor(mode)); frame.matchModeState = { id: mode };
           hud.setMode('battle');
         };
-        enter('m1a2', 'ac130'); setModeWeapon(player, 'gunship'); hud.update(frame);
+        enter('m1a1_abrams_hc', 'ac130'); setModeWeapon(player, 'gunship'); hud.update(frame);
         const aircraft = read();
-        enter('m1a2', 'drone'); hud.update(frame);
+        enter('m1a1_abrams_hc', 'drone'); hud.update(frame);
         const drone = read();
         button.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
         button.dispatchEvent(new MouseEvent('click', { detail: 0, bubbles: true }));
         const hiddenEvents = events;
         const actions = [];
-        for (const id of ['bwp1', 'strv103a', 'leclerc']) {
+        for (const id of ['bwp1', 'strv103a', 'leclerc_s2']) {
           enter(id, 'drone'); hud.update(frame); actions.push(read());
         }
         enter('bwp1', 'drone');

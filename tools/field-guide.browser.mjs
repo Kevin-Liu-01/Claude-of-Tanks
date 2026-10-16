@@ -46,7 +46,7 @@ try{
    reports.push({name,id,passed:true});
   }
   // Live vehicle selection remains independent of the teaching example.
-  for(const [id,label] of [['m1a2_x','M1A2 Abrams'],['m551_sheridan','M551 Sheridan']]){
+  for(const [id,label] of [['m1a2_abrams','M1A2 Abrams'],['m551_sheridan','M551 Sheridan']]){
    await page.evaluate(([id,name])=>__GUIDE_QA.setVehicle(id,name),[id,label]);
    await page.locator('[data-chapter="crew"]').click();await page.locator('.is-open .cot-guide__technical summary').click();
    const image=page.locator('.is-open img[data-vehicle-id]');await image.evaluate(img=>img.decode());

@@ -4,7 +4,7 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { tankTier } from '../tier.ts';
 
-const id = 'leo2a5_a5nl';
+const id = 'leo2a4m';
 const spec = getSpec(id);
 assert.equal(spec.name, 'Leopard 2A4M'); // owner roster pass 2026-09-15 (the A5NL hull carries the 2A4M name)
 assert.equal(tankTier(id), 10, 'A5/A5NL is the Tier X A5 progression');

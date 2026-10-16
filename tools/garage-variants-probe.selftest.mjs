@@ -104,7 +104,7 @@ try {
   Object.defineProperty(globalThis, 'window', { configurable: true, value: {
     __GARAGE_WORKSHOP: { stats: () => ({ selected: 'desert_forward_depot', built: false,
       buildTimings: [{ chunk: 'leopard-bay', ms: 888, at: 6597 }],
-      workshopTransferTimings: [{ specId: 'leo2a5_a5nl', nodesAt: 6596 }] }) },
+      workshopTransferTimings: [{ specId: 'leo2a4m', nodesAt: 6596 }] }) },
     __GL_DIAG: { rescue: 'example', errors: ['retained diagnostic'] },
     __GARAGE_DRESSING_PROBE: { started: 2500, running: true, gaps: [16, 899],
       worstGap: { startMs: 6000, endMs: 6899, durationMs: 899 } },

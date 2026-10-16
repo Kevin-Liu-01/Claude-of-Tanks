@@ -89,7 +89,7 @@ export async function runSchematicParity() {
   });
   const synthetic = await syntheticSource();
   const cases: Case[] = [
-    ...['m1a2', 't90'].flatMap(id => [
+    ...['m1a1_abrams_hc', 't90_1992'].flatMap(id => [
       { id: `${id}-top`, url: iconUrl(id, 'top'), width: 192, height: 192 },
       { id: `${id}-side`, url: iconUrl(id, 'side'), width: 368, height: 184 },
     ]),

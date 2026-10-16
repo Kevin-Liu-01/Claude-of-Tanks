@@ -8,7 +8,7 @@
 // main-thread time inside WebGL's compile, link and status calls, the network (requests, bytes, cache hits) and long tasks.
 //
 //   node tools/time-to-battle-probe.mjs --roots=<A>,<B> --labels=main,pr --maps=verdant,titan_gorge,monsoon --out=<dir>
-//        [--runs=cold,warm] [--reps=1] [--spec=t90m_x] [--sides=13x14] [--profile] [--port=5491] [--session-mutex=<dir>]
+//        [--runs=cold,warm] [--reps=1] [--spec=t90m] [--sides=13x14] [--profile] [--port=5491] [--session-mutex=<dir>]
 //        [--warm=page|relaunch] [--browser-args=<flag>|<flag>]
 //
 // cold: a fresh browser profile (empty HTTP cache, empty GPU program cache, no storage) — a first visit. warm: a second
@@ -312,7 +312,7 @@ async function main(opt) {
   const maps = (opt.maps ?? 'verdant,titan_gorge,monsoon').split(',');
   const runs = (opt.runs ?? 'cold,warm').split(',');
   const reps = Number(opt.reps ?? 1);
-  const specId = opt.spec ?? 't90m_x';
+  const specId = opt.spec ?? 't90m';
   const [allies, enemies] = (opt.sides ?? '13x14').split('x').map(Number);
   const out = path.resolve(opt.out);
   mkdirSync(out, { recursive: true });

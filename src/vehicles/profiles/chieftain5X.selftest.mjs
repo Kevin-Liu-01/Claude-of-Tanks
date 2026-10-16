@@ -8,7 +8,7 @@ import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Historical fixture only: these original photo assertions are deliberately
 // unchanged. Current source-profile acceptance has its own actual-ID test.
-registerProfiledBuilders({ chieftain5_x: buildChieftain5XPhotoDraft });
+registerProfiledBuilders({ chieftain5: buildChieftain5XPhotoDraft });
 
 // WEG printed 4-7 anchors the chassis envelope and two six-cup banks.
 // Other constants below test explicit construction estimates, not AI metrics.
@@ -58,7 +58,7 @@ for (const quality of ['high', 'low']) {
   let tank, gear;
   KIT.buildRunningGear = (...args) => { gear = original(...args); return gear; };
   try {
-    tank = createTank('chieftain5_x', null, { quality, proceduralOnly: true,
+    tank = createTank('chieftain5', null, { quality, proceduralOnly: true,
       geometryReceipt: true, batchStatic: false });
   } finally { KIT.buildRunningGear = original; }
   try {

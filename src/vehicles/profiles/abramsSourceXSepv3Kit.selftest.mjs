@@ -33,7 +33,7 @@ function capture(id) {
   return { parts, urban, tank };
 }
 
-const { parts, urban, tank } = capture('m1a2_sepv3_x');
+const { parts, urban, tank } = capture('m1a2_abrams_sepv3');
 const count = (part) => parts.filter((p) => p.part === part).length;
 const hullOwned = (part) => /^(uaapu|sponson|tow-|pioneer|jerry)/.test(part);
 const hull = (p) => (hullOwned(p.part) ? p : { ...p, min: p.min.map((v, i) => v + TURRET[i]), max: p.max.map((v, i) => v + TURRET[i]) });
@@ -93,7 +93,7 @@ for (const row of binding.plates) assert.ok(row.registered && row.partCount > 0,
 // finished tank builds; the other Abrams studies carry no SEPv3 kit
 const meshes = []; tank.root.traverse((o) => { if (o.isMesh) meshes.push(o); });
 assert.ok(meshes.length > 0, 'the SEPv3 builds');
-for (const other of ['m1a2_sepv2_x', 'm1a2_x']) {
+for (const other of ['m1a2_abrams_sepv2', 'm1a2_abrams']) {
   assert.equal(capture(other).parts.length, 0, `${other} carries no SEPv3 kit`);
 }
 console.log(`abramsSourceXSepv3Kit: ${parts.length} kit parts on the M1A2 Abrams SEPv3 (Trophy launchers, radars and counterweights, UAAPU, sponson box, roof electronics, fender stowage) over the rectangular ARAT set with ${urban.length} urban parts; the SEP v2 and M1A2 studies stay clean PASS`);

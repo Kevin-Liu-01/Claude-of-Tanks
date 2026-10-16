@@ -406,6 +406,6 @@ function roofEquipment(P:TankBuilderPort,c:NationalModernizationConfig):void {
 export function buildNationalUkraine(P:TankBuilderPort,c:NationalModernizationConfig):void {
   if(c.model===0)zoria(P,c);else if(c.model===1)hetman(P,c);else sich(P,c);
   hullEquipment(P,c);roofEquipment(P,c);nationalRoofEquipment(P,c);
-  const id=c.model===0?'ua_t80u_modern':c.model===1?'ua_t72b3m_modern':'ua_t72b3_modern';
+  const id=c.model===0?'t80u_zoria':c.model===1?'t72b3m_hetman':'t72b3_sich';
   addNationalUkraineProtection(P,id);addVehicleGhillieSuit(P,NATIONAL_UKRAINE_GHILLIE[id]);
 }

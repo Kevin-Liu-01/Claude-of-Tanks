@@ -2,11 +2,11 @@
 // comparison material only: no source mesh, topology, material, animation or
 // texture data enters runtime.
 //
-// §5.248 germany-leopards round: the leo2a4m/leo2a6m donor-wrapper builders
+// §5.248 germany-leopards round: the leo2a4m_can/leo2a6m donor-wrapper builders
 // (buildLeo2A4 / buildLeo2A6 + add-on packages) are RETIRED — both ids now
 // build ground-up in profiles/leopard.ts (buildLeo2A4M / buildLeo2A6M,
 // print-measured §K builds). This module keeps only the OTCO field-mod
-// package, which deliberately layers on the resident leo2a4.
+// package, which deliberately layers on the resident leo2a2.
 
 import { KIT, FITTINGS, orientedSlab } from './kit.ts';
 import { buildLeo2A4 } from './leopard.ts';
@@ -136,5 +136,5 @@ function buildLeo2A4OTCO(P: ProceduralBuilderPort): void {
 }
 
 export const GERMANY_PROFILES = {
-  leo2a4_otco: { build: buildLeo2A4OTCO },
+  leo2a3: { build: buildLeo2A4OTCO },
 } satisfies VehicleProfileRecord;

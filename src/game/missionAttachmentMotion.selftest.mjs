@@ -17,16 +17,16 @@ import {DRONE_CLIMB} from '../fx/droneMotion.ts';
 // Saved physical failure positions must remain rejected after the generated
 // table moves. These are not fetched from the same policy being tested.
 const oldSeats={
- abramsx:[.5484,1.4272579645,3.53785],leo2a7v:[.54075,1.44973331666,3.569],
- cn_t72b3m_modern:[0,1.40031006305,2.374],m551a1_tts:[-.003,1.25949999582,2.745],
- t90a_vladimir_x:[0,1.1784657171,3.1686],
+ abramsx:[.5484,1.4272579645,3.53785],leo2_improved:[.54075,1.44973331666,3.569],
+ t72b3m_kunlun:[0,1.40031006305,2.374],m551a1_tts:[-.003,1.25949999582,2.745],
+ t90a_vladimir:[0,1.1784657171,3.1686],
 };
 for(const[id,[x,y,z]]of Object.entries(oldSeats)){
  await ensureInteriorFills([id]);const spec=TANK_SPECS[id],tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,quality:'high',camoSeed:4000});tank.root.updateMatrixWorld(true);
  const seat={frame:'hull',x,y,z,width:.34,depth:.32,footX:.108,footZ:.09,supportY:Array(4).fill(y-.045)};
  const stock=collectMissionStock(tank,'hull',-Infinity,false,spec);
  assert.ok(nativeMissionCollision(stock,seat),id+': old dock intersects full cannon motion');
- if(['cn_t72b3m_modern','m551a1_tts','t90a_vladimir_x'].includes(id))assert.ok(nativeMissionTakeoffCollision(stock,seat),id+': old seat lacks a clear takeoff corridor');
+ if(['t72b3m_kunlun','m551a1_tts','t90a_vladimir'].includes(id))assert.ok(nativeMissionTakeoffCollision(stock,seat),id+': old seat lacks a clear takeoff corridor');
  tank.dispose();
 }
 console.log('missionAttachmentMotion: five saved main-gun failures and three takeoff failures rejected');
@@ -60,7 +60,7 @@ root.traverse(o=>{if(o.isMesh)o.geometry.dispose();});material.dispose();
  const root=new Group(),turret=new Group();turret.name='rig_turret';root.add(turret);
  const steel=new Mesh(new BoxGeometry(.50,.06,.70),new MeshBasicMaterial());
  steel.name='turretExternalArmor';steel.position.set(-1.39,.70,-.45);turret.add(steel);root.updateMatrixWorld(true);
- const spec={id:'cn_t72b3m_modern',armor:{turretless:false}},candidate={frame:'turret',x:-1.40,z:-.45,width:.34,depth:.32,footX:.108,footZ:.09};
+ const spec={id:'t72b3m_kunlun',armor:{turretless:false}},candidate={frame:'turret',x:-1.40,z:-.45,width:.34,depth:.32,footX:.108,footZ:.09};
  const stock=collectMissionStock({root},'turret',-Infinity,false,spec),seat=nativeSupportedSeat(stock,candidate);
  assert.ok(seat,'four feet seat on the known welded housing');
  assert.ok(Math.abs(seat.supportY[0]-.73)<1e-7);assert.equal(nativeMissionCollision(stock,seat),null,'only the finite foot insertion is allowed');
@@ -71,7 +71,7 @@ root.traverse(o=>{if(o.isMesh)o.geometry.dispose();});material.dispose();
  steel.geometry.dispose();steel.material.dispose();
 }
 console.log('missionAttachmentMotion: permanent welded support, finite feet and equipment/region negative controls passed');
-for(const id of['m1a2','abramsx','leo2a7v']){
+for(const id of['m1a1_abrams_hc','abramsx','leo2_improved']){
  const spec=TANK_SPECS[id],tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,quality:'high',camoSeed:4000}),state=createTankState(spec,new Vector3(4,1,9),.3);
  syncMissionAttachment(tank.root,spec,{kind:'drone',active:false,cooldownS:0},false);
  const parked=tank.root.getObjectByName('Docked FPV mission payload'),position=new Vector3(),orientation=new Quaternion();

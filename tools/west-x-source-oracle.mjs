@@ -1,5 +1,5 @@
 // Local-only comparison oracle preparation. No output is a playable asset.
-// Usage: node tools/west-x-source-oracle.mjs <mk4|mk3d|k2|kf51> <unpacked-input>
+// Usage: node tools/west-x-source-oracle.mjs <mk4|mk3d|xk2_black_panther|kf51_evo> <unpacked-input>
 // The dated owner exception/provenance findings live in the source packet.
 import fs from 'node:fs';
 import os from 'node:os';
@@ -19,7 +19,7 @@ globalThis.FileReader = class {
   readAsDataURL(blob) { blob.arrayBuffer().then(b => {this.result='data:application/octet-stream;base64,'+Buffer.from(b).toString('base64');this.onloadend?.();}); }
 };
 const id=process.argv[2],file=process.argv[3];
-const ids={mk4:'merkava4_x',mk3d:'merkava3d_x',k2:'k2_x',kf51:'kf51_x'};
+const ids={mk4:'merkava4_x',mk3d:'merkava3d_x',k2:'k2_x',kf51:'kf51_x'}; // schema-1 source file stems (SSOT 2.19), tank-ids:keep
 if(!Object.hasOwn(ids,id)||!file)throw new Error('Expected candidate key and unpacked local FBX, OBJ or GLB input');
 const dir=fs.mkdtempSync(path.join(os.tmpdir(),'cot-west-x-oracle-'));
 const repo=fileURLToPath(new URL('../',import.meta.url));
@@ -29,10 +29,10 @@ const target=path.join(output,ids[id]+'_source.glb');
 execFileSync('git',['check-ignore','--no-index',target],{cwd:repo,stdio:'pipe'});
 const b=fs.readFileSync(file),ab=b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength);
 let scene;
-if(id==='k2') scene=(await new GLTFLoader().parseAsync(ab,'')).scene;
+if(id==='xk2_black_panther') scene=(await new GLTFLoader().parseAsync(ab,'')).scene;
 else if(id==='mk3d') scene=new OBJLoader().parse(b.toString());
 else scene=new FBXLoader().parse(ab,'');
-if(id==='kf51') for(const name of ['KF51_Turret_Msh','Gun_Msh']) { const o=scene.getObjectByName(name);o.position.set(0,0,0);o.quaternion.identity();o.scale.set(1,1,1); }
+if(id==='kf51_evo') for(const name of ['KF51_Turret_Msh','Gun_Msh']) { const o=scene.getObjectByName(name);o.position.set(0,0,0);o.quaternion.identity();o.scale.set(1,1,1); }
 scene.updateMatrixWorld(true);
 const report={id,rawBounds:new THREE.Box3().setFromObject(scene),meshes:[]};
 const islandMaps=new Map();
@@ -80,9 +80,9 @@ function isMk4TurretIsland(component) {
 }
 
 function canonicalVertex(point,key,mesh,index,mk4Scale) {
-  if(key==='kf51')point.applyAxisAngle(new THREE.Vector3(0,1,0),-Math.PI/2)
+  if(key==='kf51_evo')point.applyAxisAngle(new THREE.Vector3(0,1,0),-Math.PI/2)
     .sub(new THREE.Vector3(0,.1375615597,4.5264759064)).multiplyScalar(7.70/77.9067192078);
-  if(key==='k2')point.add(new THREE.Vector3(0,.0045,-.13185));
+  if(key==='xk2_black_panther')point.add(new THREE.Vector3(0,.0045,-.13185));
   if(key==='mk3d')point.add(new THREE.Vector3(0,.02034,.2258175));
   if(key==='mk4'){
     const {find,comps}=islandMaps.get(mesh);
@@ -93,8 +93,8 @@ function canonicalVertex(point,key,mesh,index,mk4Scale) {
 }
 
 function canonicalMeshOrigin(mesh,key) {
-  if(key==='kf51'&&mesh.name==='KF51_Turret_Msh')mesh.position.set(0,1.4596,.5185);
-  if(key==='kf51'&&mesh.name==='Gun_Msh')mesh.position.set(0,1.85491175,1.3478);
+  if(key==='kf51_evo'&&mesh.name==='KF51_Turret_Msh')mesh.position.set(0,1.4596,.5185);
+  if(key==='kf51_evo'&&mesh.name==='Gun_Msh')mesh.position.set(0,1.85491175,1.3478);
 }
 
 {

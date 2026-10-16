@@ -5,6 +5,7 @@ import {MG_CLASSES,addPintleBarrel,addPintleReceiver,createPintleLayout,machined
 import {sourceMachineGun} from './sourceMachineGun.ts';
 import type {NationalRoofLoadout} from '../nationalRoofConfig.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
+import {tankSeedId} from '../tankIdAliases.ts';
 type Point=readonly[number,number,number];
 type Gun=ReturnType<typeof sourceMachineGun>;
 const {box,cylX,cylY,cylZ}=KIT;
@@ -43,7 +44,8 @@ export function nationalRoofWeapon(P:TankBuilderPort,rws:Point,cupola:Point,l:Na
 /** The 12.7 mm class each nation's concept station carries: the NSV family in Ukraine and Poland, the Kord in Russia,
  * the QJC-88 in China (MG_CLASSES). */
 function nationalMgClass(P:TankBuilderPort):MgClassKey {
- const nation=String(P.spec?.id??'').split('_')[0];
+ // The nation prefix is schema-1 vocabulary (tankIdAliases.ts): the rename drops ua_/pl_/cn_/ru_ from these ids.
+ const nation=tankSeedId(String(P.spec?.id??'')).split('_')[0];
  return nation==='ru'?'kord':nation==='cn'?'qjc88':'nsvt';
 }
 

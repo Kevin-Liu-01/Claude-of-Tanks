@@ -35,7 +35,7 @@ const ports = {
   },
 };
 
-const pending = startDebugBattle(ports, 'm1a2', 'random', { fast: true });
+const pending = startDebugBattle(ports, 'm1a1_abrams_hc', 'random', { fast: true });
 await Promise.resolve();
 assert.equal(calls.filter((call) => call.startsWith('start:')).length, 11,
   'every independent QA acquisition must begin before the first one settles');
@@ -45,7 +45,7 @@ releaseAcquisition();
 assert.equal(await pending, 'started');
 assert.deepEqual(calls.slice(-2), [
   'prepare-world-services',
-  'battle:m1a2:fjord:fast',
+  'battle:m1a1_abrams_hc:fjord:fast',
 ], 'world services must attach once immediately before the start transaction');
 
 const mainSource = await readFile(new URL('../main.ts', import.meta.url), 'utf8');

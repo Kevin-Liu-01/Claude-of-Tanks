@@ -40,7 +40,7 @@ function assertFinitePose(c){c.P.hullG.traverse(o=>{if(!o.geometry)return;
   assert.ok(x.elements.every(Number.isFinite),`${o.name}: finite batched pose`);}
 });}
 let defaults=0,poses=0,negativeControls=0;
-for(const id of['m1a2','t90sm','jpz_e100_x'])for(const high of[true,false])for(const batch of[false,true]){
+for(const id of['m1a1_abrams_hc','t90sm_2013','jpz_e100'])for(const high of[true,false])for(const batch of[false,true]){
  const a=fixture(KIT,id,high,batch),b=fixture(KIT,id,high,batch);
  try{for(let phase=0;phase<8;phase++){
   for(const c of[a,b]){c.gear.conform({pos:new T.Vector3(),yaw:.2,visualPitch:0,visualRoll:0},(_x,z)=>.02*Math.sin(z),0,0,1/60);
@@ -58,7 +58,7 @@ for(const high of[true,false])for(const batch of[false,true]){
  const supplied=[...Object.values(road),...Object.values(idler),...Object.values(stock),...Object.values(roller)].filter(Boolean);
  const disposeCount=new Map(supplied.map(g=>[g,0]));for(const g of supplied)g.addEventListener('dispose',()=>disposeCount.set(g,disposeCount.get(g)+1));
  const calls=[],shoes=[];
- const c=fixture(KIT,'m1a2',high,batch,{roadWheelGeometry:road,idlerGeometry:idler,sprocketStockGeometry:stock,
+ const c=fixture(KIT,'m1a1_abrams_hc',high,batch,{roadWheelGeometry:road,idlerGeometry:idler,sprocketStockGeometry:stock,
   returnRollerStockGeometry:roller,returnRollerHullHalfWidthM:.9,
   trackOutsoleDimensions:{padHeight:.08,grouserHeight:.08},
   trackShoeBuilder:p=>{calls.push(p);const g=new T.BoxGeometry(p.trackW,.08,p.pitch*.8);shoes.push(g);return g;}});
@@ -79,7 +79,7 @@ for(const high of[true,false])for(const batch of[false,true]){
 }
 for(const options of[{roadWheelGeometry:{}},{idlerGeometry:{}},{sprocketStockGeometry:{}},
  {returnRollerStockGeometry:{}},{trackShoeBuilder:42},{trackOutsoleDimensions:{padHeight:.06,grouserHeight:.02}}]){
- assert.throws(()=>fixture(KIT,'m1a2',false,false,options));negativeControls++;
+ assert.throws(()=>fixture(KIT,'m1a1_abrams_hc',false,false,options));negativeControls++;
 }
 console.log(JSON.stringify({pass:true,defaultCases:defaults,defaultPoses:poses,overrideCases:4,negativeControls}));
 

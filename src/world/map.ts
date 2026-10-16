@@ -24,8 +24,10 @@ import type { HeightField, TerrainMapConfig } from './terrain.ts';
 import {
   createVegetation,
   createVegetationAsync,
+  outlandAdoptable,
+  outlandTreesEnabled,
 } from './vegetation.ts';
-import type { TreeObstacle } from './vegetation.ts';
+import type { OutlandTreeSpec, TreeObstacle } from './vegetation.ts';
 import { bindHorizonForestImpostors } from './horizonForestImpostors.ts';
 import type { HorizonPanoramaHandle } from './horizonPanorama.ts';
 import {
@@ -42,6 +44,7 @@ import { withGroundCoverHoles, type GroundCoverHole } from './sceneryPlan.ts';
 import { clearShrubsFromSolids } from './shrubClearance.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier } from '../engine/quality.ts';
+import { createStructureGroundOcclusion, type StructureGroundOcclusionHandle } from '../engine/structureGroundOcclusion.ts';
 import { startHorizonRingBuild } from './horizonRingPrefetch.ts';
 import { supplyHinterland, withdrawHinterland } from './hinterlandHook.ts';
 import { selectHinterland } from './hinterland/select.ts';
@@ -182,6 +185,8 @@ export interface WorldRuntime {
   heightField: WorldHeightField;
   minimapTextureState: SourcedTextureState;
   raycast(origin: THREE.Vector3, direction: THREE.Vector3, maxDistance: number): WorldRayHit | null;
+  /** 2026-10-09 (the shadows lane): the ground's sky beside the solids (structureGroundOcclusion.ts); null on the phones. */
+  groundOcclusion: StructureGroundOcclusionHandle | null;
   getObstacles(): CollisionRecord[];
   getColliders(): CollisionRecord[];
   queryObstacles: ObstacleQuery;
@@ -501,12 +506,22 @@ function assembleWorld(
   // line draws from it — the same trees under the same law at the rim's stature (horizonForestImpostors.ts); the
   // mobile tier and the receipts keep the ring's lobes.
   const ringForest = terrain.getObjectByName('horizon-forest');
+  // GND (2026-10-14; the owner's Kestrel border trees breaking into blobs): near the square the battlefield's own tree
+  // tiers draw the ring's trees (vegetation.ts adoptOutlandTrees: near, far, cross-fade, scope promotion), the rest
+  // keep their quads. Only this client assembly adopts (an atlas means a renderer): Node, server and receipt worlds keep
+  // their records; `?outlandTrees=0` keeps every quad (the A/B).
+  const adoptOutland = !!vegetation._treeImpostors && outlandTreesEnabled();
   if (ringForest && vegetation._treeImpostors) {
     bindHorizonForestImpostors(ringForest, {
       library: vegetation._treeImpostors, rimMix: vegetation._rimMix, rimTreeHeightM: vegetation._rimTreeHeightM,
       rimTreeTint: vegetation._rimTreeTint,
       setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
       releaseMaterial: (material) => engineCtx.releaseShadowMaterial?.(material),
+      ...(adoptOutland ? {
+        formVariant: vegetation._treeFormVariant,
+        adoptWithin: (tree: { x: number; z: number }) => outlandAdoptable(tree.x, tree.z),
+        adopt: (trees: readonly OutlandTreeSpec[]) => vegetation.adoptOutlandTrees(trees),
+      } : {}),
     });
   }
   // the horizons stream (2026-10-13): the Hinterland's near trees draw from the same atlas (hinterland/trees.ts), now
@@ -516,6 +531,11 @@ function assembleWorld(
     bindHinterlandTreeImpostors(hinterlandRoot, {
       library: vegetation._treeImpostors, rimMix: vegetation._rimMix, rimTreeTint: vegetation._rimTreeTint,
       setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
+      ...(adoptOutland ? {
+        formVariant: vegetation._treeFormVariant,
+        adoptWithin: (tree: { x: number; z: number }) => outlandAdoptable(tree.x, tree.z),
+        adopt: (trees: readonly OutlandTreeSpec[]) => vegetation.adoptOutlandTrees(trees),
+      } : {}),
     });
   }
   // the mountains lane (2026-10-03): the far horizon panorama bakes where the renderer is — under the loading cover with
@@ -553,6 +573,14 @@ function assembleWorld(
 
   const obstacles = [...props.obstacles, ...vegetation.treeObstacles];
   const colliders = [...props.colliders, ...vegetation.treeObstacles];
+  // 2026-10-09 (the shadows lane): the ground's sky beside the world's standing solids (structureGroundOcclusion.ts) —
+  // baked in a worker from the movement obstacles (the ground-bearing solids; trees stay out) while the battle entry
+  // warms, read by the aerial pass on the desktop tiers; a map's sky.lighting.groundOcclusion scales it (0: off)
+  const groundOcclusionScale = (config.sky as { lighting?: { groundOcclusion?: number } } | undefined)?.lighting?.groundOcclusion ?? 1;
+  const groundOcclusion: StructureGroundOcclusionHandle | null = getDeviceTier() !== 'mobile' && groundOcclusionScale > 0
+    && (engineCtx as { renderer?: THREE.WebGLRenderer }).renderer
+    ? createStructureGroundOcclusion(props.obstacles, { group, scale: groundOcclusionScale }) : null;
+  if (groundOcclusion) engineCtx.scene.userData.structureGroundOcclusion = groundOcclusion;
   // 2026-10-07 (the map-vehicles lane): the moored hulls stand in the water as a standing tank does, and lap it
   // through the same disturbance sources the vehicles feed (props.ts waterContacts); they follow the frame's own sources
   // (the vehicles keep the first slots), into one reused list, and stand from the first frame and after a reset
@@ -597,6 +625,14 @@ function assembleWorld(
   // the scenery lane (b12; Fjord, wave 74: foliage cards through a boulder): and no shrub stands inside a boulder or a
   // structure the props placed after it — cosmetic, its cover disc stays (shrubClearance.ts)
   group.userData.shrubsCleared = clearShrubsFromSolids(vegetation.group, groundCoverClearance());
+  // (sealed lane 2026-10-10, the owner's map vehicles) and no shrub's crown stands inside a parked vehicle or cart: the
+  // core rule above kept a bush whose centre stood beside a truck, its cards through the cab (props.ts
+  // parkedVehicleObstacles). Cosmetic, as the seal is.
+  const parkedVehicles = (props.group.userData.parkedVehicleObstacles as CollisionRecord[] | undefined) ?? [];
+  if (parkedVehicles.length) {
+    group.userData.shrubsClearedFromVehicles = clearShrubsFromSolids(vegetation.group,
+      createGroundCoverClearance(createObstacleGrid(parkedVehicles)), 1);
+  }
   group.userData.groundCoverSealMs = performance.now() - groundCoverSealStarted;
   // environment density pass (2026-09-12): the ground litter tier streams
   // stones, clods and splinters under the camera, kept out of the same sealed
@@ -786,6 +822,11 @@ function assembleWorld(
       terrain.userData.cancelSourcedTextures?.();
       unregisterDestructibles();
       vegetation.dispose();
+      // (2026-10-09, the shadows lane) the ground occlusion's worker and texture (structureGroundOcclusion.ts)
+      if (groundOcclusion) {
+        if (engineCtx.scene.userData.structureGroundOcclusion === groundOcclusion) delete engineCtx.scene.userData.structureGroundOcclusion;
+        groundOcclusion.dispose();
+      }
       litter.dispose();
       tallGrass.dispose(); // round 73: the sward, its materials and the pressure field's targets
       terrain.userData.disposeWater?.(); // water pass 8: the reactive field's render targets
@@ -801,6 +842,7 @@ function assembleWorld(
     /** Round 73: the tall-grass tier (diagnostics and the round's probes: state, meshes, the press field). */
     _tallGrass: tallGrass,
     raycast,
+    groundOcclusion,
     /** @returns {Array<{min:number[],max:number[]}>} static obstacle AABBs */
     getObstacles: () => obstacles,
     /** Shell/LOS cover records; exposed for deterministic server manifests. */
@@ -936,6 +978,11 @@ function assembleWorld(
       litter.update(cameraPos);
       tallGrass.update(dt, cameraPos, focusPos, cameraFwd); // round 73: the sward's ring, wind and press
       if (props.updateProps) props.updateProps(dt, cameraPos); // pole LOD + hinge-topple anims
+      if (groundOcclusion) {
+        // (2026-10-09) the world being updated is the one on screen: its ground occlusion is the pass's
+        engineCtx.scene.userData.structureGroundOcclusion = groundOcclusion;
+        groundOcclusion.update(dt);
+      }
     },
     /**
      * Build exact terrain lookahead meshes in an explicitly bounded batch.

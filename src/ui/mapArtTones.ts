@@ -15,7 +15,7 @@ export const MAP_ART_TONES: Readonly<Record<string, readonly [string, string, st
   steppe: ['#8ab2d4', '#929389', '#7f6d45'],
   railyard: ['#adb6be', '#5e5d51', '#4e4d2f'],
   frontier: ['#a7c4d9', '#566865', '#2f3935'],
-  fjord: ['#9cacb3', '#5c675c', '#232710'],
+  fjord: ['#a4c1d6', '#6c8184', '#2d3a37'],
   delta: ['#a6c4d8', '#607870', '#495e3f'],
   badlands: ['#91afca', '#9a7661', '#94613f'],
   monsoon: ['#a5b9c2', '#616f64', '#444d39'],
@@ -26,8 +26,8 @@ export const MAP_ART_TONES: Readonly<Record<string, readonly [string, string, st
   blackglass: ['#9cb3c9', '#6e777c', '#414041'],
   titan_gorge: ['#869bb2', '#78695f', '#715640'],
   skybridge: ['#8ea0b2', '#866a59', '#6b4933'],
-  polders: ['#a6bcce', '#606f6e', '#2b3731'],
-  copper_mesa: ['#8da0b2', '#62646b', '#60585b'],
+  polders: ['#a6c5da', '#5e6e6d', '#2c3831'],
+  copper_mesa: ['#88a0b5', '#9b887b', '#9f8372'],
   airfield: ['#9bc0db', '#7d877d', '#5c614f'],
   oasis: ['#a5c2dc', '#aea189', '#9e8e6e'],
   whiteout: ['#bac4ce', '#9aa5ab', '#99a4aa'],
@@ -42,4 +42,4 @@ export const MAP_ART_TONES: Readonly<Record<string, readonly [string, string, st
 });
 
 /** The bands' mean over every battlefield: the gradient before the battlefield is known. */
-export const MAP_ART_TONE_DEFAULT: readonly [string, string, string] = ['#99aebe', '#75786f', '#63604e'];
+export const MAP_ART_TONE_DEFAULT: readonly [string, string, string] = ['#99afc0', '#787971', '#656250'];

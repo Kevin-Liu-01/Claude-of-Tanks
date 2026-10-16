@@ -8,7 +8,7 @@ import {synchronizeNationalLegacyMetadata} from './nationalLegacySpecs.ts';
 import {NATIONAL_PROTECTION_WIDTHS_M} from './nationalProtectionDimensions.ts';
 const entries:Record<string,FleetTankSpec>={};
 for(const c of NATIONAL_MODERNIZATION_CONFIG){
-  const s=cloneFleetVariant(TANK_SPECS,c.id,'t90sm_x',{name:c.name,nation:c.nation,era:'next-generation'});
+  const s=cloneFleetVariant(TANK_SPECS,c.id,'t90sm',{name:c.name,nation:c.nation,era:'next-generation'});
   delete s.label;delete s.roster;delete s.publicVisualFallback;delete s.balancePeerOf;
   // Audit metadata, not a stat change: twelve modernized legacy hulls with the
   // T-90SM fire control would otherwise outvote the clean-sheet Tier X MBTs and
@@ -20,7 +20,7 @@ registerFleetSpecs(bindFleetRegistries(TANK_SPECS,MODEL_SOURCE,ALL_TANK_IDS),NAT
 let synchronized=false;
 export function synchronizeNationalModernizationMetadata():void {
   if(synchronized)return;synchronized=true;
-  const upper=TANK_SPECS.t90sm_x;
+  const upper=TANK_SPECS.t90sm;
   for(const c of NATIONAL_MODERNIZATION_CONFIG){
     const s=TANK_SPECS[c.id],hull=TANK_SPECS[c.donor],design=nationalModernizationDesign(c);
     s.armor=structuredClone(upper.armor);

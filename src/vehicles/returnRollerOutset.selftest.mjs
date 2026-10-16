@@ -12,7 +12,7 @@ function fixture(options={},high=true){
   const mats=Object.fromEntries(['hull','wheels','wheelsRecessed','rubber','detail','dark','shadow',
     'trackLink','spareTrack','burnt','trackL','trackR'].map(k=>[k,material]));
   mats.trackTexL=new THREE.Texture();mats.trackTexR=new THREE.Texture();
-  const port={spec:{id:'t90sm'},disposables:[],mats,hullG:new THREE.Group(),geometryReceipt:true,q:high,batchStatic:false,add(){}};
+  const port={spec:{id:'t90sm_2013'},disposables:[],mats,hullG:new THREE.Group(),geometryReceipt:true,q:high,batchStatic:false,add(){}};
   try{
     const gear=KIT.buildRunningGear(port,{...BASE,...options});gear.update(0,0);
     return{gear,root:port.hullG,receipt:port.hullG.userData.runningGearReceipts[0],dispose};
@@ -99,7 +99,7 @@ for(const high of[true,false]){
 for(const value of[NaN,Infinity,-.001,.5001,'bad'])assert.throws(()=>fixture({returnRollerOutsetM:value}),/return-roller outset/);
 const boundary=fixture({returnRollerOutsetM:.5});try{axes(boundary,0,.5);}finally{boundary.dispose();}
 
-// 2026-10-01 (owner: retire frozen pins): the four pinned m1a2/leo2a5 gear digests (recorded before the
+// 2026-10-01 (owner: retire frozen pins): the four pinned m1a1_abrams_hc/leo2a5 gear digests (recorded before the
 // optional source wheel/axle APIs) are gone; the fleet geometry ledger owns whole-tank change detection and
 // roadWheelRestHeights.selftest.mjs keeps the real-hull unlit-gear check for the same hulls.
 console.log('returnRollerOutset: high/low actual native axes, load/spin independence and zero/default equivalence PASS');

@@ -5,7 +5,7 @@ import {auditTankWheelQuality} from './wheelQuality.ts';
 import {measureSpatialArmClearance} from './suspensionClearance.ts';
 
 for (const quality of ['high', 'low']) {
-  const tank = createTank('leo2a6_x', null, {proceduralOnly:true, geometryReceipt:true, quality});
+  const tank = createTank('leo2a6', null, {proceduralOnly:true, geometryReceipt:true, quality});
   try {
     const arm=tank.root.getObjectByName('gearSuspensionLinks');
     const before=Array.from(arm.instanceMatrix.array), matrix=new THREE.Matrix4();

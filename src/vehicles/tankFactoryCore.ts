@@ -4175,7 +4175,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     buildRunningGearAssemblyStage7();
     // Fleet lane round 1 (2026-10-07): paired bogies (Horstmann, Chieftain) hang two arms from one hull pivot. Each
     // arm used to draw its own pivot boss at the same spot, two coincident forgings whose end caps fought in depth
-    // (the circularCapOverlap finding on chieftain5 / chieftain_mk10). The second arm's pivot boss now collapses.
+    // (the circularCapOverlap finding on chieftain3 / chieftain_mk9). The second arm's pivot boss now collapses.
     for (let i = 0; i < suspensionEntries.length; i++) {
       const link = suspensionEntries[i];
       for (let j = 0; j < i; j++) {
@@ -4255,7 +4255,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     }
     return { anchor, axle: jointCount++ };
   });
-  // 2026-10-10 (the inherited joint reds, chieftain5 18 vs 24): the receipt counts the bosses this unit draws. A shared
+  // 2026-10-10 (the inherited joint reds, chieftain3 18 vs 24): the receipt counts the bosses this unit draws. A shared
   // fixed bearing is one physical boss (a28e4d8e6 stopped drawing it twice), recorded apart so the wheel audit still
   // reconciles two joints per arm.
   if (runningGearReceipt) {
@@ -4413,11 +4413,11 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // see-through slot between rim plates on the modern rigs.
   // r7b: the toothed carrier rings ride the BAND edges (ringSpan = trackW) so
   // the drive end reads toothed from the side; teeth spaced at the link pitch.
-  // cfg.endRingSpan opt-in (m48 r8, §F.2 — default byte-identical): the
+  // cfg.endRingSpan opt-in (m48a5_patton r8, §F.2 — default byte-identical): the
   // toothed carrier rings ride ringSpan = trackW (the r7b band-edge law),
-  // whose cluster reaches xc + ~0.553·trackW — on the m48's wide-track
+  // whose cluster reaches xc + ~0.553·trackW — on the m48a5_patton's wide-track
   // gear that authored past the committed W/2 and silently width-rescaled
-  // the whole build ×0.9921 (probe-frame law receipt in the m48 packet).
+  // the whole build ×0.9921 (probe-frame law receipt in the m48a5_patton packet).
   // Radial tooth reach is untouched; the rings pull inboard only.
   const resolveEndWheelGeometry = () => {
     const sprocketEngagementR = (sprocket.trackR ?? sprocket.r) + sprocketWrap;
@@ -6623,7 +6623,7 @@ export const KIT = {
 // ===========================================================================
 
 // Round 46 (docs/CLEANUP-2026-09-22.md §4.2) removed the five shadowed core
-// builders (m4a3e8, tiger1, t34_85, m1a2_legacy, t90m); their archived hulls
+// builders (m4a3e8, tiger1, t34_85, m1a2_legacy, t90am); their archived hulls
 // and the profiles/ww2.ts pack left on 2026-09-25 with is2 and panther_g
 // (owner: delete the archived WWII / casemate tanks that are not in
 // production). The last one, leo2a7 (a donor row, never playable), left on
@@ -6860,7 +6860,7 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   // spare track links (dark oily track steel, r6) + baked-shadow AO panels
   hullTrack: ['hullG', 'spareTrack'], turretTrack: ['turretG', 'spareTrack'],
   hullShadow: ['hullG', 'shadow'],
-  // Per-SIDE in-lane track trim (russia §B4 t72b3m round, opt-in — no other
+  // Per-SIDE in-lane track trim (russia §B4 t72b3m_2022 round, opt-in — no other
   // caller): gear-fade strips / wrap chord fans / ramp joint fills are
   // running-gear dressing living INSIDE the track x-band. Merged into the
   // center-spanning hullDark bucket they defeat track-clip-audit's designed
@@ -6944,8 +6944,8 @@ const LOD0_KEEP = new Set([
 // the official critic pairs (round record in the packet):
 //  - HEM/DUST equalization (cap 0.85->0.8, *1.12->*1.05, tint -> ref) ships
 //    GLOBAL: held windows m47 A1 66.6/70.5, N1 r/g 1.005, t84 letterbox
-//    67.8, leo2a5 hull-side 71.4 all inside +-1.5L, graduate spot meds
-//    inside the 1.5L bar. It carries the t84 2b pale-reach and the leo2a5
+//    67.8, leo2a4_v hull-side 71.4 all inside +-1.5L, graduate spot meds
+//    inside the 1.5L bar. It carries the t84 2b pale-reach and the leo2a4_v
 //    1c BASE-class hem share (G 0.66 -> 0.696 at ground).
 //  - UP-FACE deck equalization (drop the *0.84) is OPT-IN per spec
 //    (visual.bakeDirtDeckEq): global removal moved graduate TOP-view medians
@@ -6953,7 +6953,7 @@ const LOD0_KEEP = new Set([
 //    OVERSHOOT their refs, which never took the proc deck penalty ONLY
 //    shared-canvas refs did). Knob-on closes the m47 B3 top census
 //    2189 -> 1561 vs ref 1160 with A1/N1 held exact — consumers (m46 R1
-//    re-baseline, m47 top view, leo2a5) flip it in their own lanes with
+//    re-baseline, m47 top view, leo2a4_v) flip it in their own lanes with
 //    re-cert bundled.
 // Down-face AO 0.28 (ref 0.26) and jitter 0.09 (ref 0.08) intentionally
 // kept — cited by no window.
@@ -8229,7 +8229,7 @@ function* createTankOwnedSteps(
   }
   const coreBindMergeFinishedAt = performance.now();
 
-  // ---- ERA bricks (t90m) ----
+  // ---- ERA bricks (t90am) ----
   let eraMesh: THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material> | null = null;
   const eraLocal: Array<THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material>> = [];
   try {
@@ -8375,7 +8375,9 @@ function* createTankOwnedSteps(
     root.userData.markingSeatPath = 'generated';
   } else {
     root.updateMatrixWorld(true);
-    finalizeVehicleMarkingSeats(spec, marking, decals, root, hullG, turretG);
+    // a re-solve (the generator) keeps the seats that still read as recorded (netting-225 seat stability)
+    finalizeVehicleMarkingSeats(spec, marking, decals, root, hullG, turretG,
+      solveMarkingSeats ? vehicleMarkingSeats(spec.id) : null);
     root.userData.markingSeatPath = 'surface-solver';
   }
   const decalGeo = new THREE.PlaneGeometry(1, 1);
@@ -8819,7 +8821,7 @@ function* createTankOwnedSteps(
     // Floor selection: the gear's analytic flat-run underside is the
     // load-bearing surface and the anchor. The scan's ABSOLUTE min only
     // overrides when a real surface sits well below the gear line (> 2.5 cm —
-    // the m1a2_sepv2 hull keel renders 4.5 cm under its print-raised tracks;
+    // the m1a1_abrams_aim hull keel renders 4.5 cm under its print-raised tracks;
     // capped at 12 cm so one mis-seated greeble cannot hover the tank).
     // Small sub-gear protrusions (tilted approach-ramp pad corners graze
     // ~1.6 cm under the flat run) stay IGNORED: seating them would float the
@@ -9038,7 +9040,7 @@ function* createTankOwnedSteps(
   let popTrailAcc = 0;               // trail emission cursor along the arc
   // Pre-wreck turret seat, captured at setDestroyed time. The spec's
   // armor.turretPivot is only where the PROCEDURAL turret sits — a GLB swap
-  // re-seats turretG on the model's real ring (t90m: y 1.607 z -1.042 vs
+  // re-seats turretG on the model's real ring (t90am: y 1.607 z -1.042 vs
   // spec 1.4/0.15). The pop arc, settle pose and resetDestroyed all key off
   // this captured seat so GLB turrets launch from and restore to their true
   // mount (killcam r3 made the old spec-pivot restage visibly ~1.2 m off).
@@ -10094,7 +10096,7 @@ function* createTankOwnedSteps(
         for (const d of decalMeshes) d.visible = true;
         // restore the CAPTURED pre-wreck seat, never spec.armor.turretPivot —
         // the spec pivot is only where the procedural turret sits; a GLB
-        // swap seats turretG on the model's real ring (t90m restaged 1.21 m
+        // swap seats turretG on the model's real ring (t90am restaged 1.21 m
         // off before this, clearly visible in the killcam r3 intact beat).
         turretG.position.copy(wreckSeat);
         turretG.rotation.set(0, 0, 0);

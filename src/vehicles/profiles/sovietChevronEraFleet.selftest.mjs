@@ -5,10 +5,10 @@ import { tankTier } from '../tier.ts';
 import { FLEET_RENEWAL_DONORS } from '../fleetRenewalSpecs.ts';
 
 // 2026-10-01: three former carrier builds are owner-directed rebuilds since 4c34b3e8b (fleet-renewal-publication-
-// 20260930.md): t72bu on t72bu_x (its Kontakt chevrons, "lower ERA chevron halves restored on both BUs"), t80u (now
-// the T-80UK) on t80u_x and t64bv1 on t72b3_x. Their reactive armour is the donor study's own construction, not this
+// 20260930.md): t72bu_1989 on t72bu (its Kontakt chevrons, "lower ERA chevron halves restored on both BUs"), t80uk (now
+// the T-80UK) on t80u and t64bv1 on t72b3. Their reactive armour is the donor study's own construction, not this
 // shared two-row carrier, so they leave the carrier cases below and are held to their donor's reactive sectors.
-const REBUILT = Object.freeze({ t72bu: 't72bu_x', t80u: 't80u_x', t64bv1: 't72b3_x' });
+const REBUILT = Object.freeze({ t72bu_1989: 't72bu', t80uk: 't80u', t64bv1: 't72b3' });
 const eraSectors = (id) => {
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });
   try { return [...(tank.root.userData.eraFinishReceipt?.sectors ?? [])].sort(); } finally { tank.dispose(); }
@@ -23,11 +23,11 @@ for (const [id, donorId] of Object.entries(REBUILT)) {
 const cases = Object.freeze({
   t80bv: Object.freeze({ receiptKey: 't80BVChevronEraReceipt', forwardM: 0.26, minimumRidgeY: 0.34 }),
   ua_t80bv: Object.freeze({ receiptKey: 'uaT80ChevronEraReceipt', forwardM: 0.23, minimumRidgeY: 0.32, omittedCarrierSurfaces: 1 }),
-  ua_t80u_kursk: Object.freeze({ receiptKey: 'uaT80ChevronEraReceipt', forwardM: 0.14 }),
-  t90a: Object.freeze({ receiptKey: 't90AChevronEraReceipt', forwardM: 0.24 }),
-  t90a_burlak: Object.freeze({ receiptKey: 't90AChevronEraReceipt', forwardM: 0 }),
-  t90a_vladimir: Object.freeze({ receiptKey: 't90aVladimirChevronEraReceipt', forwardM: 0.12 }),
-  t90: Object.freeze({ receiptKey: 't90ChevronEraReceipt', forwardM: 0.27 }),
+  t80u_kursk: Object.freeze({ receiptKey: 'uaT80ChevronEraReceipt', forwardM: 0.14 }),
+  t90a_2004: Object.freeze({ receiptKey: 't90AChevronEraReceipt', forwardM: 0.24 }),
+  t90a_burlak_proto: Object.freeze({ receiptKey: 't90AChevronEraReceipt', forwardM: 0 }),
+  t90a_2006: Object.freeze({ receiptKey: 't90aVladimirChevronEraReceipt', forwardM: 0.12 }),
+  t90_1992: Object.freeze({ receiptKey: 't90ChevronEraReceipt', forwardM: 0.27 }),
   t90m_proryv: Object.freeze({ receiptKey: 't90MProryvChevronEraReceipt', forwardM: 0 }),
 });
 
@@ -71,8 +71,8 @@ for (const [id, expected] of Object.entries(cases)) {
 }
 
 // 2026-09-15 owner roster pass: the T-90M X study carries the T-90M name; the retained hull is the T-90AM.
-assert.equal(getSpec('t90m').name, 'T-90AM');
-assert.equal(tankTier('t90m'), 9, 'the retained T-90AM occupies tier IX');
+assert.equal(getSpec('t90am').name, 'T-90AM');
+assert.equal(tankTier('t90am'), 9, 'the retained T-90AM occupies tier IX');
 assert.equal(getSpec('t90m_proryv').name, 'T-90M Proryv');
 assert.equal(tankTier('t90m_proryv'), 10, 'the new chevron Proryv occupies tier X');
 

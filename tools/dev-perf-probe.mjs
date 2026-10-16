@@ -20,7 +20,7 @@ function option(name, fallback) {
 }
 const profileName = option('profile', 'normal');
 const entryMode = option('entry', 'debug');
-const tankId = option('id', 'm1a2');
+const tankId = option('id', 'm1a1_abrams_hc');
 const mapId = option('map', 'verdant');
 if (!['debug', 'real'].includes(entryMode)) throw new Error('--entry must be debug or real');
 const deviceTier = option('tier', 'desktop');

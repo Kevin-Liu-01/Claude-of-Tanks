@@ -482,7 +482,7 @@ async function main() {
   const server = serverMode === 'child' ? await startChildServer() : await startInProcessServer();
   const seats = [];
   for (let index = 0; index < clientCount; index++) {
-    seats.push({ playerId: `c${index}`, name: `Soak ${index}`, team: index < teamSize ? 'alpha' : 'bravo', specId: index % 2 ? 't90m' : 'm1a2' });
+    seats.push({ playerId: `c${index}`, name: `Soak ${index}`, team: index < teamSize ? 'alpha' : 'bravo', specId: index % 2 ? 't90am' : 'm1a1_abrams_hc' });
   }
   const room = await server.createRoom(mapId, seats);
   const url = server.url;

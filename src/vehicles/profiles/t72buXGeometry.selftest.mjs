@@ -15,7 +15,7 @@ function frames(t){
   for(const[name,point]of [['rig_turret',SOURCE.yaw],['rig_gun',SOURCE.gun]]){
     const p=t.root.getObjectByName(name).getWorldPosition(new THREE.Vector3());point.forEach((v,i)=>near(p.getComponent(i),v,.000002,`${name} inferred source joint`));
   }
-  near(getSpec('t72bu_x').dims.heightM,2.16259918790,.000002,'casting roof remains distinct from highest mast');
+  near(getSpec('t72bu').dims.heightM,2.16259918790,.000002,'casting roof remains distinct from highest mast');
   assert.ok(t.root.getObjectByName('gunMount')?.isMesh,'actual pitching canvas and trunnion seat');
   const turret=t.root.getObjectByName('rig_turret'),gun=t.root.getObjectByName('rig_gun');
   for(const yaw of [0,-1.1,.79])for(const pitch of [0,-.07,.19]){
@@ -72,7 +72,7 @@ function gearAndEra(t){
   }
 }
 for(const quality of ['high','low']){
-  const t=createTank('t72bu_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
+  const t=createTank('t72bu',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try{t.root.updateMatrixWorld(true);frames(t);bore(t);sourceForms(t);gearAndEra(t);}finally{t.dispose();}
 }
 console.log('t72buXGeometry: actual high/low source joints, physical opening and recessed floor, crowns/drum air, native wheels and reactive backing pass; full visual gates separate');

@@ -7,9 +7,9 @@ const near = (value, target, epsilon = 1e-6) => Math.abs(value - target) <= epsi
 // Owner-directed 1.05 T-90 family size (2026-10-02, main 245aa4e4e): the factory bakes the source-frame build into the
 // installed frame. The builder's receipts are source-frame records, so every installed measurement below (vertices,
 // combat parts, rig stations, bounds) is read back into the source frame through `f` and compared to the same numbers.
-const f = VEHICLE_SIZE_FACTORS.t90a_vladimir ?? 1;
+const f = VEHICLE_SIZE_FACTORS.t90a_2006 ?? 1;
 
-const tank = createTank('t90a_vladimir', null, {
+const tank = createTank('t90a_2006', null, {
   proceduralOnly: true,
   quality: 'high',
   camoSeed: 4242,

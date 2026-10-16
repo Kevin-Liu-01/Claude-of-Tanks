@@ -10,7 +10,7 @@ try{
  await lock.acquire();refresh=setInterval(()=>lock.refresh(),30000);
  await withMapProbeSession({root:process.cwd(),cacheDir:resolve('.qa-dev/clutter-vite-cache')},async({browser,port})=>{
   const {page,errors}=await openGamePage(browser,{port,viewport:{width:1280,height:800}});
-  await beginSoloBattle(page,{specId:'m1a2',mapId:'verdant'});
+  await beginSoloBattle(page,{specId:'m1a1_abrams_hc',mapId:'verdant'});
   await page.mouse.click(640,400);
   await page.waitForFunction(()=>!!document.pointerLockElement);
   await page.evaluate(()=>{window.__DEBUG.game.player.combat.hp=0;window.__DEBUG.game.player.combat.destroyed=true;});

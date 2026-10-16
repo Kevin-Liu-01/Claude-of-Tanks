@@ -16,7 +16,7 @@ function near(hit,axis,expected,tolerance,label) {
 }
 
 for(const quality of ['high','low']) {
-  const tank=createTank('t90m_x',null,{proceduralOnly:true,geometryReceipt:true,quality,batchStatic:false});
+  const tank=createTank('t90m',null,{proceduralOnly:true,geometryReceipt:true,quality,batchStatic:false});
   try {
     tank.root.updateMatrixWorld(true);
     // Held-out visible source rays: none of these targets are computed from

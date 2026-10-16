@@ -15,9 +15,9 @@ for(const quality of ['high','low']) {
   let gear,port,cfg,tank;
   const buildGear=KIT.buildRunningGear;
   KIT.buildRunningGear=(p,input)=>{cfg=input;return buildGear(p,input);};
-  registerProfiledBuilders({k2_x:p=>{port=p;buildK2X(p);gear=p.gear;}});
-  try {tank=createTank('k2_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});}
-  finally {KIT.buildRunningGear=buildGear;registerProfiledBuilders({k2_x:buildK2X});}
+  registerProfiledBuilders({k2_black_panther:p=>{port=p;buildK2X(p);gear=p.gear;}});
+  try {tank=createTank('k2_black_panther',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});}
+  finally {KIT.buildRunningGear=buildGear;registerProfiledBuilders({k2_black_panther:buildK2X});}
   try {
     tank.root.updateMatrixWorld(true);
     const hull=tank.root.getObjectByName('rig_hull');
@@ -49,14 +49,14 @@ for(const quality of ['high','low']) {
     const before=Array.from(rotors.instanceMatrix.array);
     gear.update(.13,-.17,1/60);
     assert.notDeepEqual(Array.from(rotors.instanceMatrix.array),before,'real differential track scrolling rotates the wheels');
-    const state=createTankState(getSpec('k2_x'),new T.Vector3(),0);
+    const state=createTankState(getSpec('k2_black_panther'),new T.Vector3(),0);
     const rows=auditVisibleReturnRollerContact(tank,gear,state,{radiusM:.095175});
-    console.log(JSON.stringify({id:'k2_x',quality,rows}));
+    console.log(JSON.stringify({id:'k2_black_panther',quality,rows}));
     assert.ok(rows.every(r=>r.contact==='PASS'),'all selected LODs and 27 phases retain actual visible support within 6 mm');
     gear.resetPose();tank.root.updateMatrixWorld(true);
     const context={tank,port,cfg,gear,receipt:hull.userData.runningGearReceipts[0]};
     const continuous=continuousShoeClearance(context,rollerBounds),movement=moving(context,rollerBounds);
     assert.ok(movement.minimum>=-2e-6,`full suspension stroke must not push stock through return rollers: ${movement.minimum}`);
     console.log(JSON.stringify({quality,continuous,movement}));
-  } finally {tank.dispose();registerProfiledBuilders({k2_x:buildK2X});}
+  } finally {tank.dispose();registerProfiledBuilders({k2_black_panther:buildK2X});}
 }

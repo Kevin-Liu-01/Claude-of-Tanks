@@ -169,7 +169,7 @@ function weaponAndContact(t,all){
 }
 
 for(const quality of ['high','low']){
-  const t=createTank('strv122_x',null,{quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false});
+  const t=createTank('strv122',null,{quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false});
   try{
     t.root.updateMatrixWorld(true);const all=[];
     t.root.traverse(o=>{if(o.isMesh&&!o.userData.shadowOnly&&!o.userData.vehicleMarking

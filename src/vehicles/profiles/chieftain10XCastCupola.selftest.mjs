@@ -67,7 +67,7 @@ function checkCupola(all, frame) {
 }
 
 for (const quality of ['high', 'low']) {
-  const tank = createTank('chieftain_mk10_x', null, { quality, proceduralOnly: true,
+  const tank = createTank('chieftain_mk10', null, { quality, proceduralOnly: true,
     geometryReceipt: true, batchStatic: false });
   try {
     const root = tank.root, rig = root.getObjectByName('rig_turret');

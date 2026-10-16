@@ -10,7 +10,7 @@ try{
  await lock.acquire(45*60*1000);refresh=setInterval(()=>lock.refresh(),30000);
  await withMapProbeSession({root:process.cwd(),cacheDir:resolve('.qa-dev/gear-vite-cache')},async({browser,port})=>{
   const {page,errors}=await openGamePage(browser,{port,viewport:{width:1440,height:900}});
-  await beginSoloBattle(page,{specId:'m1a2',mapId:'verdant',gameMode:'zone_control'});
+  await beginSoloBattle(page,{specId:'m1a1_abrams_hc',mapId:'verdant',gameMode:'zone_control'});
   const origin=await page.evaluate(()=>{
    const D=window.__DEBUG,p=D.game.player;
    for(const tank of D.game.tanks)if(tank!==p)tank.modeActive=false;

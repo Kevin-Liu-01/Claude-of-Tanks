@@ -962,7 +962,11 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
       cookOffs(ctx, actor.x, y, actor.z, rack ? 6 : burn ? 1 : 2, rack ? 7 : 5, rack ? 0.9 : 1.6);
       const now = env.nowS;
       const sources = actorFlameSources(actor, rngFor(id, 51), rack ? 4 : 3);
-      addOwned(actor.uid, burningEmitter(`${id}:burn`, rngFor(id, 52), now + 0.35, timelineEnd, sources, rack ? 1.15 : 1, 26, 1.2));
+      // (kill glow, 10-14) the wreck's fire takes hold over seconds once the fireball has gone: it starts as the fireball
+      // dies and grows over 3 s, so the hull's outline reads through the first seconds after the kill; a fire the hull
+      // already had hands over to it (one fire per hull)
+      for (const e of emitters) if (e.owner === actor.uid && e.id.endsWith(':burn') && e.endS > now) e.endS = now + 0.6;
+      addOwned(actor.uid, burningEmitter(`${id}:burn`, rngFor(id, 52), now + 0.6, timelineEnd, sources, rack ? 1.15 : 1, 26, 3));
       addOwned(actor.uid, emberEmitter(`${id}:embers`, rngFor(id, 53), now + 1, timelineEnd, actor.x, y + 0.5, actor.z, 1.6, 10, 3));
     },
     burning(id, actor, on) {
@@ -972,6 +976,9 @@ export function createStudioCinematics(opts: StudioCinematicsOptions): StudioCin
         for (const e of emitters) if (e.owner === actor.uid && e.endS > now) e.endS = now;
         return;
       }
+      // (kill glow, 10-14) a wreck already burning from its kill burns once: a second fire on the same hull stacked its
+      // additive licks into a white-hot sheet over it
+      for (const e of emitters) if (e.owner === actor.uid && e.id.endsWith(':burn') && e.endS > now) return;
       const sources = actorFlameSources(actor, rngFor(id, 61), 2);
       addOwned(actor.uid, burningEmitter(`${id}:burn`, rngFor(id, 62), now, timelineEnd, sources, 0.8, 18, 0.8));
       addOwned(actor.uid, emberEmitter(`${id}:embers`, rngFor(id, 63), now + 0.5, timelineEnd, actor.x, actor.y + actor.heightM * 0.7, actor.z, 1.2, 6, 2.6));

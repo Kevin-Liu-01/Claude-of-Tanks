@@ -173,6 +173,9 @@ interface DressingContext {
   animated?: AnimatedDressing[];
   /** The map-vehicles lane (P5): the map's authored vehicle set pieces (vehicleSetPieces.ts). */
   vehicleSetPieces?: readonly VehicleSetPiece[];
+  /** 2026-10-12 (item 7): an intact set piece handed to the props as a destructible (setPieceDestructibles.ts) instead of
+   *  baked scenery; omitted (a sandboxed dressing), every piece is baked as before. */
+  setPieceDestructible?: (piece: VehicleSetPiece) => void;
   /** The map-vehicles lane (2026-10-06): the vegetation's tree trunks (props.ts sceneryTrees); a beached boat keeps its
    *  hull clear of them. Omitted, the boats seat as drawn. */
   trees?: readonly CollisionRecord[];
@@ -183,7 +186,7 @@ interface DressingContext {
 
 type FocusedDressingContext = Pick<
   DressingContext,
-  'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders' | 'animated' | 'clutter'
+  'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders' | 'animated' | 'clutter' | 'setPieceDestructible'
 > & { shore?: ShoreLedger; boats?: BoatFamily; trunks?: readonly Trunk[] };
 
 /** A boat hull into the painted (vertex-coloured) bucket, or the timber one without its colours where a kit has no
@@ -1143,23 +1146,63 @@ function dressWinterLakes({
   }
 }
 
+/**
+ * (the looks lane, 2026-10-15; the 225 gate) The frozen river's banks, dressed as the frozen ponds' shores were: goral's
+ * Biały Dunajec (maps/winter.ts, one ice ribbon down the valley, the marsh chain frozen) replaced Frosthollow's ten ponds,
+ * and their reeds and shore ice went with them. Down both banks of every station of the channel: a reed clump on the
+ * bank just past the ice, and shore-ice plates heaved up at its edge. Every station spends the same draws whether or
+ * not its points are clear, so the stream is the same whatever the terrain; no collision record (soft dressing).
+ */
+function dressWinterRiverBanks({ L, heightField, rng, buckets }: FocusedDressingContext): void {
+  const stations = L.marshes ?? [];
+  if (stations.length < 2) return;
+  const ICE = 0.96; // the channel's shoreline in its stations' radii (maps/winter.ts RIVER radii)
+  const onIce = (x: number, z: number, k: number) => stations.some((s) => Math.hypot(x - s.x, z - s.z) < s.r * ICE * k);
+  for (let i = 0; i < stations.length; i++) {
+    const s = stations[i], a = stations[Math.max(0, i - 1)], b = stations[Math.min(stations.length - 1, i + 1)];
+    const tl = Math.hypot(b.x - a.x, b.z - a.z) || 1, tx = (b.x - a.x) / tl, tz = (b.z - a.z) / tl;
+    for (const side of [-1, 1]) {
+      const at = (reach: number, along: number): [number, number] =>
+        [s.x - tz * side * reach + tx * along, s.z + tx * side * reach + tz * along];
+      // the reeds: on the bank, up to a sixth of the radius past the ice
+      const reedRoll = rng(), reedReach = s.r * ICE * (1.03 + rng() * 0.16), reedAlong = (rng() - 0.5) * s.r * 0.5;
+      const [rx, rz] = at(reedReach, reedAlong);
+      if (reedRoll < 0.55 && !onIce(rx, rz, 1.0) && isDressingPointClear(heightField, rx, rz, 480, 6)) {
+        winterReedClump(buckets, rng, heightField, rx, rz);
+      }
+      // the shore ice: plates heaved up along the ice's edge
+      const iceRoll = rng(), iceReach = s.r * ICE * (0.9 + rng() * 0.12), iceAlong = (rng() - 0.5) * s.r * 0.5;
+      const [ix, iz] = at(iceReach, iceAlong);
+      if (iceRoll >= 0.4 || onIce(ix, iz, 0.86) || !isDressingPointClear(heightField, ix, iz, 480, 6)) continue;
+      const slabCount = 2 + ((rng() * 3) | 0), edgeYaw = Math.atan2(tx, tz);
+      for (let k = 0; k < slabCount; k++) {
+        const width = 0.7 + rng() * 1.1, height = 0.22 + rng() * 0.34, depth = 0.14 + rng() * 0.10;
+        const roll = (rng() - 0.5) * 0.9, pitch = (rng() - 0.5) * 0.8, yaw = edgeYaw + (rng() - 0.5) * 0.9;
+        const px = ix + (rng() - 0.5) * 2.2, pz = iz + (rng() - 0.5) * 2.2;
+        buckets.plaster.push(jitterUV(winterIceWedge(heightField, px, pz, width, height, depth, yaw, roll, pitch, 0.9), rng));
+      }
+    }
+  }
+}
+
 function legacyDressingKits(mapId?: string): readonly string[] {
   if (mapId === 'coastal') return ['coastal'];
   if (mapId === 'autumn') return ['river'];
   if (mapId === 'railyard') return ['rail'];
-  if (mapId === 'winter') return ['winterLake'];
+  // (the looks lane, 2026-10-15) Frosthollow's ponds are goral's frozen river: its banks carry their reeds and shore ice
+  if (mapId === 'winter') return ['winterLake', 'winterRiver'];
   return [];
 }
 
 /** Add map-specific geometry before the shared material buckets are merged. */
 export function dressMapExtras({
   mapId, extraKits = null, riverLandings, L, heightField, rng, buckets, groundingReceipts = null,
-  obstacles, colliders, animated, vehicleSetPieces, trees, clutter,
+  obstacles, colliders, animated, vehicleSetPieces, trees, clutter, setPieceDestructible,
 }: DressingContext): void {
   const kits = extraKits || legacyDressingKits(mapId);
   const shore: ShoreLedger = { keepOut: [], jetties: [], landings: [] };
   const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, clutter, shore, animated, boats: boatFamilyForMap(mapId ?? ''),
-    trunks: trunksOf(trees) };
+    trunks: trunksOf(trees), setPieceDestructible };
   if (mapId === 'cliffbridge') {
     for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused);
   }
@@ -1171,6 +1214,7 @@ export function dressMapExtras({
   }
   if (kits.includes('rail')) dressRailYard(focused, mapId === 'skybridge');
   if (kits.includes('winterLake')) dressWinterLakes(focused);
+  if (kits.includes('winterRiver')) dressWinterRiverBanks(focused);
   // the map-revival lane (2026-10-05): Suzhou Creek's four bridges, on the decks terrain.ts resolved for the stations
   // authored crossing: 'bridge' (the arched spans, the abutments, the parapets and their collision, as Amberford's)
   if (kits.includes('shanghai')) {
@@ -1223,6 +1267,8 @@ function dressVehicleSetPieces(ctx: FocusedDressingContext, pieces: readonly Veh
     return made;
   };
   for (const piece of pieces) {
+    // (2026-10-12, item 7) an intact piece is a destructible of the props: it breaks under fire and under a hull
+    if (!piece.wrecked && ctx.setPieceDestructible) { ctx.setPieceDestructible(piece); continue; }
     const solid = solidOf(piece.kind, !!piece.wrecked), geo = solid.geo;
     const size = SET_PIECE_SIZE[piece.kind], yaw = (piece.yawDeg * Math.PI) / 180;
     const fx = Math.sin(yaw), fz = Math.cos(yaw), sx = fz, sz = -fx;
@@ -2568,6 +2614,39 @@ const RAIL_YARD_LINES = [
   { x: -66, z0: -235, z1: 235 },
   { x: -57, z0: -190, z1: 200 },
 ] as const;
+
+/** A laid line's ground in plan: the centreline from (ax, az) to (bx, bz) and the half-width its bed takes. */
+export interface RailBedSpan { ax: number; az: number; bx: number; bz: number; hw: number }
+/**
+ * Sealed lane 2026-10-11 (the owner's map vehicles: four Ironworks trucks and a Caldera handcart stood across a
+ * siding's sleepers and rails). The ground every line this kit lays takes — the yards' lines and the authored spurs:
+ * the ballast's half-width and its shoulders' 0.62 m run (layRailSpan), carried 1.5 m past each end, where a buffer
+ * stop stands (bufferStop: 0.8 m out, its struts 0.3 m behind) — as centreline segments with a half-width. The
+ * parked vehicles' and carts' seat passes keep off it (props.ts). It reads the layouts only: no draw, no dressing.
+ */
+export function railBedSpans(
+  mapId: string | undefined, extraKits: readonly string[] | null | undefined,
+  railSpurs: readonly RailSpurConfig[] | undefined,
+): RailBedSpan[] {
+  const SHOULDER_M = 0.62, PAST_END_M = 1.5, spans: RailBedSpan[] = [];
+  if ((extraKits || legacyDressingKits(mapId)).includes('rail')) {
+    const hw = RAIL_SPUR_BALLAST_M / 2 + SHOULDER_M;
+    for (const line of RAIL_YARD_LINES) spans.push({ ax: line.x, az: line.z0 - PAST_END_M, bx: line.x, bz: line.z1 + PAST_END_M, hw });
+  }
+  for (const spur of railSpurs ?? []) {
+    const hw = (spur.ballast ?? RAIL_SPUR_BALLAST_M) / 2 + SHOULDER_M, path = spur.path, last = path.length - 1;
+    for (let i = 1; i <= last; i++) {
+      let [ax, az] = path[i - 1], [bx, bz] = path[i];
+      const run = Math.hypot(bx - ax, bz - az);
+      if (run < 1e-6) continue;
+      const ux = (bx - ax) / run, uz = (bz - az) / run;
+      if (i === 1) { ax -= ux * PAST_END_M; az -= uz * PAST_END_M; }
+      if (i === last) { bx += ux * PAST_END_M; bz += uz * PAST_END_M; }
+      spans.push({ ax, az, bx, bz, hw });
+    }
+  }
+  return spans;
+}
 
 function addRailYardLines(
   heightField: DressingHeightField,

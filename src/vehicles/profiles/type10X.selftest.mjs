@@ -208,7 +208,7 @@ function spareLinksAndBacking(tank,quality) {
 }
 
 for(const quality of ['high','low']) {
-  const tank=createTank('type10_x',null,{quality,geometryReceipt:true,batchStatic:false,proceduralOnly:true,camoSeed:4242});
+  const tank=createTank('type10',null,{quality,geometryReceipt:true,batchStatic:false,proceduralOnly:true,camoSeed:4242});
   try {
     tank.root.updateMatrixWorld(true);
     envelopeAndOwnership(tank,quality);foldedGuard(tank,quality);sightAndRack(tank,quality);sourceRearAndCourses(tank,quality);

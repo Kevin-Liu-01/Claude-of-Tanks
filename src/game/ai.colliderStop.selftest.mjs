@@ -91,7 +91,7 @@ const WALL = { min: [-6, -1, 0], max: [6, 5, 3], kind: 'building' };
 function wallCase({ contactAt = null, route = [[20, 30]] } = {}) {
   const bot = entity('bot', 'ua_m1a1', 'enemy', -2, -0.6 - 0.5 * getSpec('ua_m1a1').dims.hullLengthM, 0);
   bot.state.speed = 6;
-  const host = entity('host', 'm1a2', 'player', 60, -80, 0);
+  const host = entity('host', 'm1a1_abrams_hc', 'player', 60, -80, 0);
   host.isPlayer = true;
   let seen = false;
   const ctl = controller(bot, { enemies: [host], obstacles: [WALL], spotted: () => seen });

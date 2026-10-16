@@ -258,7 +258,7 @@ export default {
     // M47 Pattons
     // the present-day coast (the coordinator, 2026-10-08: its civilians the Breton coast's today): a present-day cast,
     // the French Leclerc and a CV90 beside a T-90M, a BMP-3 and a Leopard 2A7V
-    tankWrecks: { era: 'modern', count: 5, debris: true, ids: ['leclerc', 't90m', 'cv90', 'bmp3', 'leo2a7v'] },
+    tankWrecks: { era: 'modern', count: 5, debris: true, ids: ['leclerc_s2', 't90am', 'cv90', 'bmp3', 'leo2_improved'] },
     sandbagLines: 10,
     hedgehogs: 7,
     // world-dressing r1: harbor-village inhabitants — fish-crate/barrel

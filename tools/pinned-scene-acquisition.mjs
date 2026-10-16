@@ -33,10 +33,10 @@ export function pinnedCamoScheme(mapId, camo = PINNED_SCENE.camo) {
 export const PINNED_SCENE = Object.freeze({
   protocol: 'm1a2-fixed-roster-v1',
   storageKey: 'cot.lastTank.v1',
-  playerSpecId: 'm1a2',
+  playerSpecId: 'm1a1_abrams_hc',
   roster: Object.freeze([
-    'm1a2', 'm1a3', 'm1a1', 'm1a1ha',
-    'm1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3', 'abramsx',
+    'm1a1_abrams_hc', 'm1a3', 'm1a1', 'm1a1ha',
+    'm1a1_abrams_sa', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'abramsx',
   ]),
   // (2026-10-06, the coordinator: the pinned M1A2 wore its factory sand on every map, a desert tank in the snow) the
   // camouflage the pinned tank wears on each staged battlefield — configurePinnedScene sets it before every

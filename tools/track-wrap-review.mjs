@@ -30,7 +30,7 @@ const flag = (name) => args.includes(`--${name}`);
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
 const { KIT } = await import('../src/vehicles/tankFactoryCore.ts');
 const { ALL_TANK_IDS } = await import('../src/vehicles/specs.ts');
-const ids = flag('all') ? [...ALL_TANK_IDS] : opt('ids', 'm1a2,t72b3m').split(',').filter(Boolean);
+const ids = flag('all') ? [...ALL_TANK_IDS] : opt('ids', 'm1a1_abrams_hc,t72b3m_2022').split(',').filter(Boolean);
 const EPS = 1e-6;
 
 function rampClearance(receipt, end) {

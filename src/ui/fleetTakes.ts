@@ -17,6 +17,7 @@
 import { getLocale, t, type SupportedLocale } from './i18n.ts';
 import { hrefForLocale } from './localeRouting.ts';
 import { sceneLinkPath } from '../game/studioSceneLink.ts';
+import { resolveTankId } from '../vehicles/tankIdAliases.ts';
 
 /** The media lane's per-vehicle index, beside the loops and posters it names. */
 export const FLEET_TAKES_INDEX = '/media/site50-r14/fleet/index.json';
@@ -56,9 +57,13 @@ function takeText(raw: unknown): TakeText | null {
 function parseFleetTakes(json: unknown): FleetTakeIndex {
   const vehicles = json && typeof json === 'object' ? (json as Record<string, unknown>).vehicles : null;
   if (!vehicles || typeof vehicles !== 'object' || Array.isArray(vehicles)) return NO_TAKES;
+  // The index names vehicles under the tank id schema it was written in (`tankIdSchema`, missing = 1): read every key
+  // in today's spelling, so a renamed vehicle keeps its take and a swapped id never shows another vehicle's (SSOT 2.19).
+  const schema = (json as Record<string, unknown>).tankIdSchema;
   const takes = new Map<string, FleetTake>();
-  for (const [vehicle, raw] of Object.entries(vehicles)) {
-    if (!vehicle || !raw || typeof raw !== 'object') continue;
+  for (const [written, raw] of Object.entries(vehicles)) {
+    if (!written || !raw || typeof raw !== 'object') continue;
+    const vehicle = resolveTankId(written, schema);
     const entry = raw as Record<string, unknown>;
     const title = takeText(entry.title);
     const loop = sitePath(entry.loop, /\.(?:webm|mp4)$/);

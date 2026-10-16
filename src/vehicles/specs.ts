@@ -89,7 +89,7 @@ type TrackSide = -1 | 1;
 // donor and the Leopard 2A7 donor left the saved fleet on 2026-09-23. The
 // combat rows live vehicles were cloned from survive as unregistered donor
 // templates in donorSpecs.ts.
-export const TANK_IDS: string[] = ['m1a2', 't90m', 't90m_proryv'];
+export const TANK_IDS: string[] = ['m1a1_abrams_hc', 't90am', 't90m_proryv'];
 
 
 // controls_gunnery r2: afterShot 4/3 → 2.8/2.2 with the movement.ts LN6
@@ -225,8 +225,8 @@ function armorT90M(): ArmorEnvelope {
 // ---------------------------------------------------------------------------
 
 export const TANK_SPECS: TankSpecRegistry = {
-  t90m: {
-    id: 't90m', name: 'T-90AM', nation: 'Russia', era: 'modern', role: 'mbt',
+  t90am: {
+    id: 't90am', name: 'T-90AM', nation: 'Russia', era: 'modern', role: 'mbt',
     hp: 2700,
     enginePowerHp: 1130, weightTons: 48, topSpeedKmh: 65, reverseSpeedKmh: 12,
     hullTraverseDegS: 44,
@@ -254,13 +254,13 @@ export const TANK_SPECS: TankSpecRegistry = {
     },
   },
 
-  m1a2: {
+  m1a1_abrams_hc: {
     // OWNER IDENTITY SWAP (2026-08-14): Tejas is the canonical M1A2. This row
-    // was the 'm1a2_legacy' procedural anchor that m1a2 used to structuredClone;
+    // was the 'm1a2_legacy' procedural anchor that m1a1_abrams_hc used to structuredClone;
     // the legacy record itself retired on 2026-09-23 (hidden-fleet cleanup), so
     // the anchor row now IS the M1A1 HC mark (2026-09-15 owner: the X study is
     // the M1A2; this hull is the HC mark).
-    id: 'm1a2', name: 'M1A1 Abrams HC', nation: 'USA', era: 'modern', role: 'mbt',
+    id: 'm1a1_abrams_hc', name: 'M1A1 Abrams HC', nation: 'USA', era: 'modern', role: 'mbt',
     hp: 2600,
     // Real SEPv3 reverses at ~40 km/h, but that reads arcade-y next to the
     // 5-8 km/h WW2 roster and sits far outside the WoT-feel envelope
@@ -292,32 +292,32 @@ export const TANK_SPECS: TankSpecRegistry = {
 };
 
 // The M1A1 HC anchor carries live ERA zones for its visible cassette arrays.
-TANK_SPECS.m1a2.armor.hullPlates.push(
+TANK_SPECS.m1a1_abrams_hc.armor.hullPlates.push(
   reactivePlate('m1a2_skirt_era_R', 'right'),
   reactivePlate('m1a2_skirt_era_L', 'left'),
   reactivePlate('m1a2_glacis_era_R', 'front'),
   reactivePlate('m1a2_glacis_era_L', 'front'),
 );
-TANK_SPECS.m1a2.armor.turretPlates.push(
+TANK_SPECS.m1a1_abrams_hc.armor.turretPlates.push(
   reactivePlate('m1a2_turret_era_R', 'right'),
   reactivePlate('m1a2_turret_era_L', 'left'),
 );
 
 // T-90M glacis ERA is split into two tiles so strips read locally.
 {
-  const t90 = TANK_SPECS.t90m.armor;
-  const l = t90.hullPlates[0];
+  const t90_1992 = TANK_SPECS.t90am.armor;
+  const l = t90_1992.hullPlates[0];
   // Re-place the single glacis ERA quad as two side-by-side tiles.
   const mk = (name: string, x0: number, x1: number): ArmorPlate => par(name, 15,
     [x0, 0.95, 3.42], [x1, 0.95, 3.42], [x0, 1.42, 2.02],
     { kind: 'era', era: l.era ?? undefined });
-  t90.hullPlates.splice(0, 1, mk('glacis_era_L', -1.5, -0.02), mk('glacis_era_R', 0.02, 1.5));
+  t90_1992.hullPlates.splice(0, 1, mk('glacis_era_L', -1.5, -0.02), mk('glacis_era_R', 0.02, 1.5));
 }
 
 // The established Proryv reconstruction remains addressable as T-90M at
 // tier IX.  Tier X is a distinct first-party configuration with the denser
 // two-row Relikt chevron front; both share the corrected long T-90 chassis.
-TANK_SPECS.t90m_proryv = structuredClone(TANK_SPECS.t90m);
+TANK_SPECS.t90m_proryv = structuredClone(TANK_SPECS.t90am);
 TANK_SPECS.t90m_proryv.id = 't90m_proryv';
 TANK_SPECS.t90m_proryv.name = 'T-90M Proryv';
 TANK_SPECS.t90m_proryv.hp = 2850;
@@ -341,14 +341,14 @@ TANK_SPECS.t90m_proryv.visual.number = '623';
 // study hulls and the two reference placeholders) retired with the hidden
 // fleet; jpz_e100 survives as an unregistered donor in donorSpecs.ts.
 const FIRST_PARTY_EXPANSION_TANK_IDS: string[] = [
-  'strv103',
+  'strv103b',
   // wave 2 (print-model crawl, 2026-07-28)
   'kv2',
 ];
 
 const FIRST_PARTY_EXPANSION_SPECS: TankSpecRegistry = {
-  strv103: {
-    id: 'strv103', name: 'Stridsvagn 103', nation: 'Sweden', era: 'modern', role: 'td',
+  strv103b: {
+    id: 'strv103b', name: 'Stridsvagn 103', nation: 'Sweden', era: 'modern', role: 'td',
     community: {
       author: 'Lukasz Wesiora (canisferus)',
       source: 'https://opengameart.org/content/stridsvagn-103',
@@ -531,8 +531,8 @@ export function finalizeFirstPartyRoster(): void {
 // Runtime geometry provenance. Registrars add procedural rows for the rest of
 // the fleet; native-playables-audit rejects every external runtime source.
 export const MODEL_SOURCE: ModelSourceRegistry = {
-  m1a2: { source: 'procedural' },
-  t90m: { source: 'procedural' },
+  m1a1_abrams_hc: { source: 'procedural' },
+  t90am: { source: 'procedural' },
   t90m_proryv: { source: 'procedural' },
 };
 

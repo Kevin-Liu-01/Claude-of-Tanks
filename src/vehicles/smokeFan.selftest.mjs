@@ -12,9 +12,9 @@ const tube = (x, y, z, azDeg, elDeg, owner = 'turret') => {
 // family's arc, innermost mouth innermost, and keeps its mouth, owner and elevation
 const parallel = [];
 for (const side of [-1, 1]) for (let k = 0; k < 6; k++) parallel.push(tube(side * (1.3 + 0.06 * k), 0.49, 1.38 + 0.07 * k, side * 51, 16));
-const fanned = fanSmokeMounts('m1a2', parallel);
+const fanned = fanSmokeMounts('m1a1_abrams_hc', parallel);
 assert.equal(fanned.length, parallel.length, 'every tube kept');
-const arc = smokeFanArc('m1a2');
+const arc = smokeFanArc('m1a1_abrams_hc');
 for (const side of [-1, 1]) {
   const mine = fanned.map((m, i) => ({ m, i })).filter(({ i }) => Math.sign(parallel[i].position[0]) === side);
   const azs = mine.map(({ m }) => az(m)).sort((a, b) => Math.abs(a) - Math.abs(b));
@@ -32,9 +32,9 @@ for (let i = 0; i < parallel.length; i++) {
   assert.ok(Math.abs(Math.hypot(...fanned[i].direction) - 1) < 1e-3, 'unit directions');
 }
 // the generic fan: a side's widest bore is kept, its inner tube brought in to 8 degrees, at least 5 degrees between tubes
-const generic = fanSmokeMounts('leo2a6', [tube(-1.1, 0.5, 1, -11, 29), tube(-1.2, 0.5, 1, -11, 29), tube(-1.3, 0.5, 1, -11, 29),
+const generic = fanSmokeMounts('leo2a4', [tube(-1.1, 0.5, 1, -11, 29), tube(-1.2, 0.5, 1, -11, 29), tube(-1.3, 0.5, 1, -11, 29),
   tube(1.1, 0.5, 1, 40, 29), tube(1.2, 0.5, 1, 60, 29)]);
-assert.equal(smokeFanArc('leo2a6'), null, 'the Leopard takes the generic fan');
+assert.equal(smokeFanArc('leo2a4'), null, 'the Leopard takes the generic fan');
 assert.deepEqual(generic.slice(0, 3).map(az).map((a) => +a.toFixed(1)), [-8, -13, -18], 'parallel tubes step out from 8 degrees');
 assert.deepEqual(generic.slice(3).map(az).map((a) => +a.toFixed(1)), [8, 60], 'a wide side keeps its widest bore');
 // a near-flat tube lofts its grenade (the 12 degree floor), a launcher on one side spreads across the bow
@@ -44,8 +44,8 @@ assert.ok(az(lone[0]) < 0 && az(lone.at(-1)) > 0, `a one-sided launcher spreads 
 // centreline tubes keep their bores; the law is a pure function of its input
 const centre = [tube(0, 0.5, 2, 0, 30)];
 assert.deepEqual(fanSmokeMounts('demo_centre', centre)[0].direction.map((v) => +v.toFixed(3)), centre[0].direction.map((v) => +v.toFixed(3)));
-assert.deepEqual(fanSmokeMounts('m1a2', parallel), fanned, 'deterministic');
+assert.deepEqual(fanSmokeMounts('m1a1_abrams_hc', parallel), fanned, 'deterministic');
 // the documented families
-assert.ok(smokeFanArc('t90m') && smokeFanArc('ua_t72b3m_modern') && smokeFanArc('challenger2') && smokeFanArc('type10')
-  && smokeFanArc('kf51_x') && smokeFanArc('m1a1'), 'documented families take their arcs');
+assert.ok(smokeFanArc('t90am') && smokeFanArc('t72b3m_hetman') && smokeFanArc('challenger2') && smokeFanArc('type10_tk_x')
+  && smokeFanArc('kf51_panther') && smokeFanArc('m1a1'), 'documented families take their arcs');
 console.log('smokeFan: parallel tubes fan across the family arc (innermost mouth innermost), mouths/owners/elevations kept, generic fan, elevation floor, one-sided launcher, centreline and determinism passed');

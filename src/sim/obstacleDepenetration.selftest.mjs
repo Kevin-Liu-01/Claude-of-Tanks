@@ -15,16 +15,16 @@ import { getSpec } from '../vehicles/specs.ts';
 import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
 import { createTankState, updateTank, SIM_DT } from './movement.ts';
 
-await ensureAuthorityFleet(['m1a2']);
+await ensureAuthorityFleet(['m1a1_abrams_hc']);
 const flat = { getHeightAt: () => 0, getNormalAt: () => ({ x: 0, y: 1, z: 0 }), getGroundType: () => 'firm' };
-const spec = getSpec('m1a2');
+const spec = getSpec('m1a1_abrams_hc');
 const halfLength = spec.dims.hullLengthM * 0.5;
 
 function hull(x, speed = 0, throttle = 0) {
   const state = createTankState(spec, new Vector3(x, 0, 0), Math.PI / 2); // facing +x
   state.speed = speed;
   return {
-    id: 'h', specId: 'm1a2', spec, state,
+    id: 'h', specId: 'm1a1_abrams_hc', spec, state,
     combat: { hp: spec.hp, maxHp: spec.hp, destroyed: false, reload: { t: 0, totalS: 5, kind: 'ready' }, shellSlot: 0, modules: {}, crew: {},
       fire: { burning: false, tickTimer: 0, ticksLeft: 0 }, magazine: null },
     input: { throttle, steer: 0, brake: false, fire: false, aimPoint: new Vector3(), shellSlot: 0, actionBits: 0 },

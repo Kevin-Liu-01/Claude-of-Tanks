@@ -48,11 +48,11 @@ const seated = (battle, label) => {
 };
 try {
   assert.ok(world.spawnPoints.enemies.length === 7, 'the map authors seven enemy pads');
-  const seven = play('standard', 'm1a2', 1, null);
+  const seven = play('standard', 'm1a1_abrams_hc', 1, null);
   assert.equal(seven.allies.length, 6, 'the default field keeps six allied bots');
   assert.equal(seven.enemies.length, 7, 'the default field keeps seven hostiles');
   seated(seven, '7 v 7');
-  const fourteen = play('standard', 'm1a2', 2, SIDES_PRESETS['14v14']);
+  const fourteen = play('standard', 'm1a1_abrams_hc', 2, SIDES_PRESETS['14v14']);
   assert.equal(fourteen.allies.length, 13, '14 v 14 fields thirteen allied bots');
   assert.equal(fourteen.enemies.length, 14, '14 v 14 fields fourteen hostiles');
   seated(fourteen, '14 v 14');
@@ -76,16 +76,16 @@ try {
   assert.equal(lineups.size, 16, 'different session seeds field different allied teams');
   assert.ok([...sidesByVehicle.values()].filter(sides => sides.size === 2).length >= 15,
     'vehicles rotate between allies and enemies rather than being assigned a permanent side');
-  const lone = play('turbo_ball', 't90m_x', 3, { allies: 0, enemies: BATTLE_FIELD_LIMIT - 1 });
+  const lone = play('turbo_ball', 't90m', 3, { allies: 0, enemies: BATTLE_FIELD_LIMIT - 1 });
   assert.equal(lone.allies.length, 0, 'a lone player fields no allied bots');
   assert.equal(lone.enemies.length, BATTLE_FIELD_LIMIT - 1, `1 v ${BATTLE_FIELD_LIMIT - 1} fields the whole limit against the player`);
   seated(lone, `1 v ${BATTLE_FIELD_LIMIT - 1}`);
-  const capped = play('capture_the_flag', 'leo2a7v', 4, { allies: 30, enemies: 30 });
+  const capped = play('capture_the_flag', 'leo2_improved', 4, { allies: 30, enemies: 30 });
   assert.equal(capped.enemies.length, 30, 'the typed enemy count is kept under the field limit');
   assert.equal(capped.allies.length, BATTLE_FIELD_LIMIT - 1 - 30, 'the allied bots yield to the field limit');
 
   const korea = PRODUCTION_TANK_IDS.find(id=>getSpec(id).nation==='South Korea');
-  for(const [id,count] of [['m1a2',6],['leo2a7v',13],[korea,30]]) {
+  for(const [id,count] of [['m1a1_abrams_hc',6],['leo2_improved',13],[korea,30]]) {
     const battle=play('standard',id,12,{allies:count,enemies:7,alliedNation:'player'});
     assert.equal(battle.allies.length,count,'same-nation teams keep every allied seat');
     assert.ok(battle.allies.every(entry=>entry.nation===getSpec(id).nation));
@@ -112,10 +112,10 @@ try {
   assert.equal(disposed,extra.length,'next battle releases reinforcement visuals');
   assert.equal(reused.allTanks.length,stockCount,'reinforcements do not leak into the catalog');
   assert.ok(extra.every(entity=>!reused.tankById.has(entity.id)));
-  const nationalHorde=play('endless_horde','m1a2',13,{allies:2,enemies:14,waveSize:5,enemyNation:'germany',alliedNation:'player'});
+  const nationalHorde=play('endless_horde','m1a1_abrams_hc',13,{allies:2,enemies:14,waveSize:5,enemyNation:'germany',alliedNation:'player'});
   assert.ok(nationalHorde.allies.every(entry=>entry.nation==='USA'));
   assert.ok(nationalHorde.enemies.every(entry=>entry.nation==='Germany'),'enemy formation is kept separate');
-  const horde = play('endless_horde', 'm1a2', 5, { allies: 2, enemies: 14, waveSize: 5, enemyNation: 'germany' });
+  const horde = play('endless_horde', 'm1a1_abrams_hc', 5, { allies: 2, enemies: 14, waveSize: 5, enemyNation: 'germany' });
   assert.equal(horde.allies.length, 2, 'Horde keeps its arranged allied bots');
   assert.equal(horde.enemies.length, 14, 'Horde keeps its arranged pool');
 } finally {

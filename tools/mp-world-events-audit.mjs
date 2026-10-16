@@ -384,13 +384,13 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
   try {
     // ---- start
     const p1 = spawn('p1', 'Creator', memoryStorage(), 0);
-    const room = await p1.room.create({ mode: 'lan', selection: { specId: 'm1a2' }, settings: { teamSize, mapId: MAP_ID, botsFill: true } });
+    const room = await p1.room.create({ mode: 'lan', selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize, mapId: MAP_ID, botsFill: true } });
     code = room.roomCode;
     const p2 = spawn('p2', 'Two', memoryStorage(), 1);
     const p3 = spawn('p3', 'Three', memoryStorage(), 2);
     await p1.room.setTeam('bravo');
-    await p2.room.join({ roomCode: code, selection: { specId: 't90m' }, team: 'alpha' });
-    await p3.room.join({ roomCode: code, selection: { specId: 'leo2a7v' }, team: 'alpha' });
+    await p2.room.join({ roomCode: code, selection: { specId: 't90am' }, team: 'alpha' });
+    await p3.room.join({ roomCode: code, selection: { specId: 'leo2_improved' }, team: 'alpha' });
     await until(() => p1.room.room?.players.length === 3, 'three seats', 10_000);
     await Promise.all(peers.map((peer) => peer.room.setReady(true)));
     await until(() => p1.room.room?.players.every((player) => player.ready), 'everyone ready', 10_000);

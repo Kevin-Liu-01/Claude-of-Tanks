@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { auxiliaryState, requestAuxiliary, smokeBlocks, stepRoofGun, auxiliaryShot } from './auxiliarySystems.ts';
 import { smokeVolume, SMOKE_WIND_X, SMOKE_WIND_Z } from './smokeScreen.ts';
 import { AUXILIARY_INVENTORY } from '../vehicles/auxiliaryInventory.generated.ts';
-function entity(id='a',team='alpha',specId='m1a2'){
+function entity(id='a',team='alpha',specId='m1a1_abrams_hc'){
  return {id,team,spec:{id:specId,dims:{heightM:2.8},armor:{turretPivot:[0,1.4,0]}},state:{pos:{x:0,y:0,z:0},yaw:0,turretYaw:0,visualPitch:0,visualRoll:0},combat:{destroyed:false,reload:{t:4},ammo:[7,8,9]}};
 }
 const tank=entity();
@@ -108,20 +108,20 @@ console.log('auxiliarySystems: actual muzzle obstruction veto PASS');
 // Same-caliber mounts must retain their own cartridge identity when different
 // vehicles fire consecutively; the emitted shell is also the hit-feed source.
 for (const [id, name] of [
-  ['m1a2', '12.7×99 mm M2 AP'],
-  ['t90a_x', '12.7×108 mm B-32 API'],
-  ['ztz100_x', '12.7×108 mm Type 54 API'],
+  ['m1a1_abrams_hc', '12.7×99 mm M2 AP'],
+  ['t90a', '12.7×108 mm B-32 API'],
+  ['ztz100', '12.7×108 mm Type 54 API'],
   ['vt4a1', '12.7×108 mm Type 54 API'],
-  ['t14_x', '7.62×54R mm B-32 API'],
+  ['t14_armata', '7.62×54R mm B-32 API'],
   ['challenger2e', '7.62×51 mm M61 AP'],
-  ['t14', '30×165 mm 3UBR6 AP-T'],
+  ['object148_proto', '30×165 mm 3UBR6 AP-T'],
   ['abramsx', '30×113 mm M789 HEDP'],
   // 2026-10-12 (owner order: "make the big roof autocannon on the m551 tts the autocannon, not the tiny machine gun in
   // front of the cupola"): the controls inventory lists a vehicle's heaviest station first, so the TTS's 30 mm station
   // is its working roof gun and fires the lightweight 30x113 mm round (its 2026-09-30 loadout). Before, the roof M2 was
   // built first and fired '12.7×99 mm M2 AP' while the 30 mm never aimed or fired.
   ['m551a1_tts', '30×113 mm M789 HEDP'],
-  ['m1a2', '12.7×99 mm M2 AP'],
+  ['m1a1_abrams_hc', '12.7×99 mm M2 AP'],
 ]) {
   const namedShooter=entity('named','alpha',id), namedTarget=entity('named-target','bravo');
   namedTarget.state.pos.z=100;

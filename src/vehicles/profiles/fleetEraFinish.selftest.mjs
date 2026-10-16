@@ -6,22 +6,22 @@ import { createTank } from '../tankFactory.ts';
 // into the same finish path. Updating this list is intentional review work,
 // not a side effect of inheriting a donor hull or turret.
 const ERA_VEHICLE_IDS = Object.freeze([
-  't64bv1', 't72b3m', 't72bu', 'pt91m',
-  't80bv', 't80u', 't84', 't90', 't90a', 't90a_vladimir',
-  't90a_burlak', 't90sm', 't90ms', 't90m', 't90m_proryv',
-  'type10b', 'ariete_c2', 'leo2a6m', 'leo2a7v', 'amx56',
-  'type99a', 'ztz99a2_prototype', 'ztz99a2', 't14',
-  'm1a2', 'm1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3',
+  't64bv1', 't72b3m_2022', 't72bu_1989', 'pt91m',
+  't80bv', 't80uk', 't84', 't90_1992', 't90a_2004', 't90a_2006',
+  't90a_burlak_proto', 't90sm_2013', 't90ms_2011', 't90am', 't90m_proryv',
+  'type10b', 'c2_ariete_proto', 'leo2a4_otco', 'leo2_improved', 'leclerc_s1',
+  'ztz99_longwei', 'ztz99a', 'ztz99a2', 'object148_proto',
+  'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1_abrams_aim', 'm1a1_abrams_fep',
   'merkava1b', 'merkava2b', 'merkava2d', 'merkava3c',
-  'merkava3d', 'merkava4b', 'amx30b2', 'm60a3',
-  'ua_t64bv', 'ua_t80bv', 'ua_t80u_kursk', 'ua_t84_oplot_m',
-  'leo2a6_ua', 't72m1_jaguar', 'pt91_twardy',
+  'merkava3_baz', 'merkava4b', 'amx30b2', 'm60a3',
+  't64bv_donbas', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m',
+  'leo2a6_ua', 't72m1_jaguar', 'pt91a_twardy',
   'bmpt_terminator2', 'm3a3_bradley', 'bmpt_t90',
-  'kf51b',
+  'kf51_u',
 ]);
 
 // 2026-10-01: the owner's September renewal (4c34b3e8b, fleet-renewal-publication-20260930.md: "T-64BV1 and UA
-// Donbas use modernized t72b3_x foundations") retired the old T-64 builder and its visual-only K-1 packages
+// Donbas use modernized t72b3 foundations") retired the old T-64 builder and its visual-only K-1 packages
 // (t64bv1-k1-hull-era, ukraine-k1-hull, ...). Every reactive cassette of the rebuilds is now a gameplay sector of
 // the T-72B3 study plus the modernization's own turret and side cassettes, routed through the same painted finish.
 const REBUILT_T64_ERA_SECTORS = Object.freeze([
@@ -29,7 +29,7 @@ const REBUILT_T64_ERA_SECTORS = Object.freeze([
 ]);
 const REQUIRED_T64_ERA_SECTORS = Object.freeze({
   t64bv1: REBUILT_T64_ERA_SECTORS,
-  ua_t64bv: REBUILT_T64_ERA_SECTORS,
+  t64bv_donbas: REBUILT_T64_ERA_SECTORS,
 });
 
 const uvSpan = (mesh) => {

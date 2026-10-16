@@ -7,7 +7,7 @@ import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 // hook only observes its actual factory call and restores the default option
 // for the negative control; neither builder nor receipt implementation is mocked.
 assert.equal(typeof globalThis.document, 'undefined');
-await ensureTankBuilder('t90m');
+await ensureTankBuilder('t90am');
 const target = new URL('./wrecks.ts', import.meta.url).href;
 const hookName = '__COT_WRECK_ERA_RECEIPT_TEST';
 let forceDefault = false, observation = null, hookCount = 0;
@@ -67,18 +67,18 @@ try {
     { materialMode: 'geometry-only', geometryReceipt: true },
     { materialMode: 'geometry-only', eraVisualBindingReceipt: true },
   ]) {
-    const visual = createTank('t90m', null, { camoSeed: 4532, quality: 'low', proceduralOnly: true, ...options });
+    const visual = createTank('t90am', null, { camoSeed: 4532, quality: 'low', proceduralOnly: true, ...options });
     try { assertReceipt(visual.root); } finally { visual.dispose(); }
   }
   for (const pop of [false, true]) {
     let control, candidate;
     try {
       forceDefault = true;
-      control = bakeTankWreck(null, 't90m', { seed: 2526, pop });
+      control = bakeTankWreck(null, 't90am', { seed: 2526, pop });
       assert.ok(control, 'forced-default real wreck control succeeds');
       const controlObservation = observation;
       forceDefault = false;
-      candidate = bakeTankWreck(null, 't90m', { seed: 2526, pop });
+      candidate = bakeTankWreck(null, 't90am', { seed: 2526, pop });
       assert.ok(candidate, 'production receipt-free wreck succeeds');
       assert.equal(controlObservation.receiptPresent, true);
       assert.equal(observation.receiptPresent, false);

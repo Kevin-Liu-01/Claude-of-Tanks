@@ -411,11 +411,11 @@ export async function setShotView(
 
   const selectedPlayerId = context.getSelectedSpecId();
   const featuredPlayerId = name === 'tank_closeup_t90m'
-      ? 't90m'
+      ? 't90am'
       : name === 'tank_closeup_leo2a7'
-        ? 'leo2a7v'
+        ? 'leo2_improved'
         : name === 'tank_closeup_modern'
-          ? 'm1a2'
+          ? 'm1a1_abrams_hc'
           : selectedPlayerId;
   await ensureShotWorld(
     context,

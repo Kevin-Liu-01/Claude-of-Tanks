@@ -2,14 +2,14 @@ import assert from 'node:assert/strict';
 import * as T from 'three';
 import {createTank} from '../tankFactory.ts';
 import {chineseArrowCassette} from './chineseChevron.ts';
-const IDS=['cn_t80u_modern','cn_t72b3m_modern','cn_t72b3_modern'];
+const IDS=['t80u_yun','t72b3m_kunlun','t72b3_qilin'];
 const v=p=>new T.Vector3(...p),mat=new T.MeshBasicMaterial({side:T.DoubleSide});
 const reports=[];
 try{for(const id of IDS)for(const quality of ['high','low']){
  const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242});
  try{
   const turret=tank.root.getObjectByName('rig_turret'),records=turret.userData.chineseChevronEra;
-  assert.equal(records.length,id==='cn_t72b3_modern'?8:12,'both complete banks survive the native merge');
+  assert.equal(records.length,id==='t72b3_qilin'?8:12,'both complete banks survive the native merge');
   const mesh=turret.getObjectByName('turretExternalArmor'),before=mesh.geometry.attributes.position.array.slice();
   const pos=mesh.geometry.attributes.position;
   const keys=new Set(Array.from({length:pos.count},(_,i)=>[pos.getX(i),pos.getY(i),pos.getZ(i)].map(n=>n.toFixed(5)).join(',')));

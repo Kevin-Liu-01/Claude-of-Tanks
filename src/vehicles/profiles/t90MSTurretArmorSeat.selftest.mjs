@@ -12,15 +12,15 @@ function authoredEnvelope(geometry, factor) {
   const bounds = geometry.boundingBox.clone();
   bounds.min.divideScalar(factor); bounds.max.divideScalar(factor);
   assert.ok(bounds.min.y >= 0.10,
-    `t90ms: turret armor stays above the ring instead of hanging below it (${bounds.min.y})`);
+    `t90ms_2011: turret armor stays above the ring instead of hanging below it (${bounds.min.y})`);
   assert.ok(bounds.max.z <= 1.62,
-    `t90ms: nose cassettes remain seated on the welded arrowhead (${bounds.max.z})`);
+    `t90ms_2011: nose cassettes remain seated on the welded arrowhead (${bounds.max.z})`);
   return bounds;
 }
 
 const emitted = [];
 
-const tank = createTank('t90ms', null, {
+const tank = createTank('t90ms_2011', null, {
   proceduralOnly: true,
   quality: 'high',
   camoSeed: 4242,
@@ -36,10 +36,10 @@ const tank = createTank('t90ms', null, {
 });
 
 try {
-  const factor = VEHICLE_SIZE_FACTORS.t90ms;
-  assert.equal(factor, 1.05, 't90ms: retains the owner-directed whole-vehicle enlargement');
+  const factor = VEHICLE_SIZE_FACTORS.t90ms_2011;
+  assert.equal(factor, 1.05, 't90ms_2011: retains the owner-directed whole-vehicle enlargement');
   assert.deepEqual(tank.root.getObjectByName('rig_hull')?.userData.vehicleSize,
-    { factor, baked: true }, 't90ms: installed frame explicitly records the baked scale');
+    { factor, baked: true }, 't90ms_2011: installed frame explicitly records the baked scale');
   // Observe source stock before the bake and compare every installed vertex.
   // A stale, missing, doubled or nonuniform bake cannot be hidden by dividing
   // arbitrary final bounds by a convenient value.
@@ -48,23 +48,23 @@ try {
     assert.equal(installed.length, authoredPositions.length);
     for (let i = 0; i < installed.length; i++) assert.ok(
       Math.abs(installed[i] - Math.fround(authoredPositions[i] * factor)) < 0.0000003,
-      't90ms: measured stock follows exactly the declared uniform scale');
+      't90ms_2011: measured stock follows exactly the declared uniform scale');
   }
   const receipt = tank.root.userData.eraFinishReceipt;
-  assert.ok(receipt, 't90ms: publishes its layered armor receipt');
+  assert.ok(receipt, 't90ms_2011: publishes its layered armor receipt');
   assert.equal(receipt.semanticBucket, 'externalArmor',
-    't90ms: fitted chevrons retain external-armor semantics');
+    't90ms_2011: fitted chevrons retain external-armor semantics');
   assert.ok(receipt.visualSectors.includes('t90ms-relikt-turret-era'),
-    't90ms: fitted chevrons remain registered as visible ERA');
+    't90ms_2011: fitted chevrons remain registered as visible ERA');
   assert.equal(receipt.partsBySector['t90ms-relikt-turret-era'], 8,
-    't90ms: keeps two rows of two main-chevron modules on both cheeks');
+    't90ms_2011: keeps two rows of two main-chevron modules on both cheeks');
   assert.equal(receipt.partsBySector['t90ms-relikt-nose-era'], 49,
-    't90ms: mounts twenty-four framed ERA modules inside the same chevron footprint');
+    't90ms_2011: mounts twenty-four framed ERA modules inside the same chevron footprint');
   assert.equal(receipt.partsBySector['t90ms-relikt-flank-era'], 54,
-    't90ms: retains the exact cheek, shoulder and flank cassette course');
+    't90ms_2011: retains the exact cheek, shoulder and flank cassette course');
 
   const turretArmor = tank.root.getObjectByName('turretExternalArmor');
-  assert.ok(turretArmor?.isMesh, 't90ms: merges turret armor into one draw bucket');
+  assert.ok(turretArmor?.isMesh, 't90ms_2011: merges turret armor into one draw bucket');
   const bounds = authoredEnvelope(turretArmor.geometry, factor);
   const protruding = turretArmor.geometry.clone().translate(0, 0, (1.621 - bounds.max.z) * factor);
   const sagging = turretArmor.geometry.clone().translate(0, (0.099 - bounds.min.y) * factor, 0);
@@ -85,23 +85,23 @@ try {
     return spanX >= 0.65 && spanY <= 0.30 && spanZ >= 0.60 && part.max[2] >= 1.0;
   });
   assert.equal(mainChevrons.length, 8,
-    't90ms: exposes upper and lower ERA rows on both diagonal cheeks');
+    't90ms_2011: exposes upper and lower ERA rows on both diagonal cheeks');
   for (const side of [-1, 1]) {
     const cheek = mainChevrons
       .filter((part) => Math.sign((part.min[0] + part.max[0]) * 0.5) === side)
       .sort((a, b) => Math.abs((a.min[0] + a.max[0]) * 0.5)
         - Math.abs((b.min[0] + b.max[0]) * 0.5));
-    assert.equal(cheek.length, 4, `t90ms: side ${side} has two modules in both ERA rows`);
+    assert.equal(cheek.length, 4, `t90ms_2011: side ${side} has two modules in both ERA rows`);
     const inner = cheek.slice(0, 2).sort((a, b) => a.min[1] - b.min[1]);
     const outer = cheek.slice(2, 4).sort((a, b) => a.min[1] - b.min[1]);
     assert.ok(inner[0].max[1] <= inner[1].min[1] + 0.015,
-      `t90ms: side ${side} inner lower and upper rows meet at one ridge`);
+      `t90ms_2011: side ${side} inner lower and upper rows meet at one ridge`);
     assert.ok(outer[0].max[1] <= outer[1].min[1] + 0.015,
-      `t90ms: side ${side} outer lower and upper rows meet at one ridge`);
+      `t90ms_2011: side ${side} outer lower and upper rows meet at one ridge`);
     const innerZ = (inner[0].min[2] + inner[0].max[2]) * 0.5;
     const outerZ = (outer[0].min[2] + outer[0].max[2]) * 0.5;
     assert.ok(outerZ < innerZ - 0.40,
-      `t90ms: side ${side} ERA follows the rearward-sloping / or \\ cheek`);
+      `t90ms_2011: side ${side} ERA follows the rearward-sloping / or \\ cheek`);
   }
 
   const turretRig = tank.root.getObjectByName('rig_turret');
@@ -115,7 +115,7 @@ try {
     ridgeY: 0.34,
     ridgeZOffset: 0.09,
     rearEdgeZOffset: -0.10,
-  }, 't90ms: the two ERA rows join forward into the side-view chevron ridge');
+  }, 't90ms_2011: the two ERA rows join forward into the side-view chevron ridge');
 
   const flankSeat = turretRig?.userData.t90MSFlankEraSeatReceipt;
   assert.deepEqual(flankSeat, {
@@ -126,14 +126,14 @@ try {
     shoulderCassettes: 8,
     roofPlates: 5,
     maxBackGapM: 0.004,
-  }, 't90ms: every non-frontal turret ERA part is projected onto its carrier facet');
+  }, 't90ms_2011: every non-frontal turret ERA part is projected onto its carrier facet');
 
   // Check actual back faces against the actual emitted carrier independently
   // of its receipt. Both are returned to the historical authoring frame.
   const carriers = emitted.filter(part => part.carrier);
   const plates = emitted.filter(part => !part.carrier);
-  assert.equal(carriers.length, 1, 't90ms: one complete welded carrier is present');
-  assert.equal(plates.length, 54, 't90ms: every fitted flank/shoulder/roof solid is tested');
+  assert.equal(carriers.length, 1, 't90ms_2011: one complete welded carrier is present');
+  assert.equal(plates.length, 54, 't90ms_2011: every fitted flank/shoulder/roof solid is tested');
   const carrierGeometry = carriers[0].geometry.clone().scale(1 / factor, 1 / factor, 1 / factor);
   try {
     const carrier = shellPart(carrierGeometry);
@@ -154,7 +154,7 @@ try {
           // Baked Float32 positions are divided back into the authoring
           // frame; allow 0.3 micrometres of representation error at the seat.
           assert.ok(gap >= 0.0009 - 0.0000003 && gap <= 0.004 + 0.0000003,
-            `t90ms: actual fitted back face has a finite carrier seat (${gap})`);
+            `t90ms_2011: actual fitted back face has a finite carrier seat (${gap})`);
         };
         let count = 0;
         for (const face of plate.triangles) if (face.triangle.getNormal(new Vector3()).dot(outward) < -0.05) {
@@ -163,10 +163,10 @@ try {
           assert.throws(() => assertSeat(point.clone().addScaledVector(outward, 0.05)), /finite carrier seat/,
             'a fitted back face displaced 50 mm off its real carrier is rejected');
         }
-        assert.ok(count >= 2, 't90ms: each complete fitted solid has actual back faces');
+        assert.ok(count >= 2, 't90ms_2011: each complete fitted solid has actual back faces');
       } finally { local.dispose(); }
     }
-    assert.ok(backFaces > 108, 't90ms: includes subdivided faces at the welded carrier ridges');
+    assert.ok(backFaces > 108, 't90ms_2011: includes subdivided faces at the welded carrier ridges');
   } finally { carrierGeometry.dispose(); }
 
   const towerReceipt = turretRig?.userData.t90msTagilWeaponTowerReceipt;
@@ -183,7 +183,7 @@ try {
     ammoBoxes: 1,
     feedLinks: 7,
     armorHitboxExpanded: false,
-  }, 't90ms: Tagil tower is forward-facing, detailed, and aligned to the marked roof plate');
+  }, 't90ms_2011: Tagil tower is forward-facing, detailed, and aligned to the marked roof plate');
 } finally {
   tank.dispose();
 }

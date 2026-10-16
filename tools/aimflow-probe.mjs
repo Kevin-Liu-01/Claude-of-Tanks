@@ -131,7 +131,7 @@ const view = (page) => page.evaluate(() => {
   console.log(`\n[aimflow-probe] === ${mode} mode ===`);
   const { page, pageErrors } = await boot({ stubNoLock: false });
 
-  await page.evaluate(() => window.__DEBUG.startBattle('m1a2'));
+  await page.evaluate(() => window.__DEBUG.startBattle('m1a1_abrams_hc'));
   await sleep(500);
   await page.evaluate(() => window.__DEBUG.fastForward(2));
   await page.mouse.click(800, 450);
@@ -405,7 +405,7 @@ const view = (page) => page.evaluate(() => {
   console.log(`\n[aimflow-probe] === ${mode} mode (cursor-aim fallback) ===`);
   const { page, pageErrors } = await boot({ stubNoLock: true });
 
-  await page.evaluate(() => window.__DEBUG.startBattle('m1a2'));
+  await page.evaluate(() => window.__DEBUG.startBattle('m1a1_abrams_hc'));
   await sleep(500);
   await page.evaluate(() => window.__DEBUG.fastForward(2));
   await page.mouse.click(800, 450); // latches the cursor-aim denial

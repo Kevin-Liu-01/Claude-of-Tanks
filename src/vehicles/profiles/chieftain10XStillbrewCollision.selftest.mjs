@@ -15,7 +15,7 @@ const SOURCE_AIR = [
 
 function build(quality) {
   const solids = [];
-  registerProfiledBuilders({ chieftain_mk10_x: p => buildChieftainMk10X(new Proxy(p, {
+  registerProfiledBuilders({ chieftain_mk10: p => buildChieftainMk10X(new Proxy(p, {
     get(target, key) {
       if (key !== 'add') return Reflect.get(target, key);
       return (bucket, g, ...args) => {
@@ -26,11 +26,11 @@ function build(quality) {
     },
   })) });
   try {
-    const tank = createTank('chieftain_mk10_x', null, { quality, proceduralOnly: true,
+    const tank = createTank('chieftain_mk10', null, { quality, proceduralOnly: true,
       geometryReceipt: true, batchStatic: false });
     tank.root.updateMatrixWorld(true); return { tank, solids };
   } catch (error) { solids.forEach(s => s.geometry.dispose()); throw error;
-  } finally { registerProfiledBuilders({ chieftain_mk10_x: buildChieftainMk10X }); }
+  } finally { registerProfiledBuilders({ chieftain_mk10: buildChieftainMk10X }); }
 }
 
 function outwardFaces(solid, matrix) {
@@ -133,7 +133,7 @@ for (const quality of ['high', 'low']) {
     assert.equal(raw.length, 58, 'all 58 original outward-facing Stillbrew triangle witnesses remain');
     const classified = classifyFaces(raw, meshes);
     assert.ok(classified.some(r => r.classification === 'exposed'), 'real exposed Stillbrew contacts are required');
-    const armor = getSpec('chieftain_mk10_x').armor;
+    const armor = getSpec('chieftain_mk10').armor;
     const contacts = [0, -.71, .83].flatMap(yaw => positiveContacts(classified, armor, yaw));
     const air = [0, -.71, .83].flatMap(yaw => negativeAir(armor, yaw, tank.root));
     console.log(JSON.stringify({ test: 'chieftain10XStillbrewCollision', quality,

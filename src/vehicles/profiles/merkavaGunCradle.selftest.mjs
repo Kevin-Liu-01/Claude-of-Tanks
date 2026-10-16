@@ -4,7 +4,7 @@ import { createTank } from '../tankFactory.ts';
 
 const MERKAVA_IDS = [
   'merkava1b', 'merkava2b', 'merkava2d',
-  'merkava3c', 'merkava3d', 'merkava4b',
+  'merkava3c', 'merkava3_baz', 'merkava4b',
 ];
 
 for (const id of MERKAVA_IDS) {

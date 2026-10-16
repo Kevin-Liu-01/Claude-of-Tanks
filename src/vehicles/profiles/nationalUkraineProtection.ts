@@ -10,20 +10,20 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 
 type Point=readonly[number,number,number];
 type Owner='hull'|'turret';
-type ProtectionId='ua_t80u_modern'|'ua_t72b3m_modern'|'ua_t72b3_modern'|'ua_t72b3m_hetman_ii';
+type ProtectionId='t80u_zoria'|'t72b3m_hetman'|'t72b3_sich'|'t72b3m_hetman_ii';
 interface ProtectionLayout {
   hullX:number; turretX:number; rearZ:number; sideBack:number; sideFront:number;
   bottom:number; top:number; rearHalf:number; hullPanels:readonly(readonly[number,number])[];
 }
 
 export const NATIONAL_UKRAINE_PROTECTION:Readonly<Record<ProtectionId,ProtectionLayout>>={
-  ua_t80u_modern:{hullX:2.34,turretX:1.87,rearZ:-2.12,sideBack:-1.51,sideFront:-.52,bottom:.28,top:.72,rearHalf:1.43,
+  t80u_zoria:{hullX:2.34,turretX:1.87,rearZ:-2.12,sideBack:-1.51,sideFront:-.52,bottom:.28,top:.72,rearHalf:1.43,
     hullPanels:[[-2.65,-1.44],[-1.27,-.05],[.15,1.43],[1.63,2.67]]},
-  ua_t72b3m_modern:{hullX:2.38,turretX:1.88,rearZ:-2.40,sideBack:-1.80,sideFront:-.56,bottom:.34,top:.78,rearHalf:1.42,
+  t72b3m_hetman:{hullX:2.38,turretX:1.88,rearZ:-2.40,sideBack:-1.80,sideFront:-.56,bottom:.34,top:.78,rearHalf:1.42,
     hullPanels:[[-2.65,-1.44],[-1.27,-.05],[.15,1.43],[1.63,2.67]]},
-  ua_t72b3_modern:{hullX:2.37,turretX:1.91,rearZ:-2.23,sideBack:-1.47,sideFront:-.50,bottom:.27,top:.74,rearHalf:1.47,
+  t72b3_sich:{hullX:2.37,turretX:1.91,rearZ:-2.23,sideBack:-1.47,sideFront:-.50,bottom:.27,top:.74,rearHalf:1.47,
     hullPanels:[[-2.65,-1.44],[-1.27,-.05],[.15,1.43],[1.63,2.67]]},
-  ua_t72b3m_hetman_ii:{hullX:2.43,turretX:1.97,rearZ:-3.19,sideBack:-2.40,sideFront:-.65,bottom:.40,top:.81,rearHalf:1.48,
+  t72b3m_hetman_ii:{hullX:2.43,turretX:1.97,rearZ:-3.19,sideBack:-2.40,sideFront:-.65,bottom:.40,top:.81,rearHalf:1.48,
     hullPanels:[[-2.65,-1.44],[-1.27,-.05],[.15,1.43],[1.63,2.67]]},
 };
 
@@ -31,8 +31,8 @@ export const NATIONAL_UKRAINE_PROTECTION:Readonly<Record<ProtectionId,Protection
  * Only end courses fall away; the retained armor/ERA and native gun limits
  * stay intact. The net, lashings, posts and support ends share this datum. */
 function hullCageTop(id:ProtectionId,z:number):number{
-  if(id==='ua_t72b3_modern')return 1.42-.10*Math.min(1,Math.max(0,(Math.abs(z)-1.35)/.75));
-  if(id==='ua_t72b3m_hetman_ii')return 1.46-.11*Math.min(1,Math.max(0,(Math.abs(z)-1.55)/.75));
+  if(id==='t72b3_sich')return 1.42-.10*Math.min(1,Math.max(0,(Math.abs(z)-1.35)/.75));
+  if(id==='t72b3m_hetman_ii')return 1.46-.11*Math.min(1,Math.max(0,(Math.abs(z)-1.55)/.75));
   return 1.46-.055*Math.min(1,Math.max(0,(Math.abs(z)-1.35)/.75));
 }
 
@@ -43,10 +43,10 @@ function hullCageTop(id:ProtectionId,z:number):number{
  * the armour, so these are only where it starts its search).
  */
 const DECKS:Readonly<Record<ProtectionId,{glacis:readonly[number,number];fall:number;glacisTop:number;roof:number;marks:readonly(readonly[number,number])[]}>>={
-  ua_t80u_modern:{glacis:[1.95,3.25],fall:.42,glacisTop:1.47,roof:.68,marks:[[-.92,-1.02],[-.53,-1.20]]},
-  ua_t72b3m_modern:{glacis:[1.95,3.45],fall:.38,glacisTop:1.50,roof:.72,marks:[[-.79,-1.12],[.79,-1.12]]},
-  ua_t72b3_modern:{glacis:[1.95,3.30],fall:.38,glacisTop:1.45,roof:.68,marks:[[-.78,-1.12],[1.21,-.34]]},
-  ua_t72b3m_hetman_ii:{glacis:[1.95,3.45],fall:.38,glacisTop:1.50,roof:.72,marks:[[-1.18,-2.30],[-1.24,-1.59]]},
+  t80u_zoria:{glacis:[1.95,3.25],fall:.42,glacisTop:1.47,roof:.68,marks:[[-.92,-1.02],[-.53,-1.20]]},
+  t72b3m_hetman:{glacis:[1.95,3.45],fall:.38,glacisTop:1.50,roof:.72,marks:[[-.79,-1.12],[.79,-1.12]]},
+  t72b3_sich:{glacis:[1.95,3.30],fall:.38,glacisTop:1.45,roof:.68,marks:[[-.78,-1.12],[1.21,-.34]]},
+  t72b3m_hetman_ii:{glacis:[1.95,3.45],fall:.38,glacisTop:1.50,roof:.72,marks:[[-1.18,-2.30],[-1.24,-1.59]]},
 };
 /**
  * The trident and the hull number keep their places on the turret roof (marks: the turret-frame seats the marking
@@ -62,7 +62,7 @@ function laidNet(panel:Omit<NonNullable<NonNullable<GhillieConfig['hull']>['top'
 
 /** The lower bow plate under the nose: [z of the nose, top of the plate] (the netting lane's bow drape). */
 const BOW:Readonly<Record<ProtectionId,readonly[number,number]>>={
-  ua_t80u_modern:[3.30,.98],ua_t72b3m_modern:[3.78,.96],ua_t72b3_modern:[3.46,.94],ua_t72b3m_hetman_ii:[3.78,.96],
+  t80u_zoria:[3.30,.98],t72b3m_hetman:[3.78,.96],t72b3_sich:[3.46,.94],t72b3m_hetman_ii:[3.78,.96],
 };
 
 /** Bounded panels follow the actual open screens, not a generic roof blanket.
@@ -109,10 +109,10 @@ function camouflage(id:ProtectionId,index:number):GhillieConfig{
   };
 }
 export const NATIONAL_UKRAINE_GHILLIE:Readonly<Record<ProtectionId,GhillieConfig>>={
-  ua_t80u_modern:camouflage('ua_t80u_modern',0),
-  ua_t72b3m_modern:camouflage('ua_t72b3m_modern',1),
-  ua_t72b3_modern:camouflage('ua_t72b3_modern',2),
-  ua_t72b3m_hetman_ii:camouflage('ua_t72b3m_hetman_ii',3),
+  t80u_zoria:camouflage('t80u_zoria',0),
+  t72b3m_hetman:camouflage('t72b3m_hetman',1),
+  t72b3_sich:camouflage('t72b3_sich',2),
+  t72b3m_hetman_ii:camouflage('t72b3m_hetman_ii',3),
 };
 
 function permanentStock(P:TankBuilderPort,owner:Owner):THREE.BufferGeometry[]{
@@ -187,7 +187,7 @@ export function addNationalUkraineProtection(P:TankBuilderPort,id:ProtectionId):
     }
     // Aft flank sections join the bustle screen below all roof stations.
     // Cast shoulders, hatch circles and the gun aperture stay uncovered.
-    const supportZ=id==='ua_t72b3m_hetman_ii'?[-2.04,-.85]:id==='ua_t72b3m_modern'?[-1.52,-.73]:[-1.22,-.70];
+    const supportZ=id==='t72b3m_hetman_ii'?[-2.04,-.85]:id==='t72b3m_hetman'?[-1.52,-.73]:[-1.22,-.70];
     for(const z of supportZ){
       foot(P,'turret',turret,[side*3,d.bottom+.08,z],[-side,0,0],[side*d.turretX,d.bottom+.08,z]);
       rod(P,'turret',[side*d.turretX,d.bottom,z],[side*d.turretX,d.top,z],.017);

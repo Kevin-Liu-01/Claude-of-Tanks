@@ -28,7 +28,7 @@ const fields = {
 };
 const barns = { ...fields, take: 's61-fixture-barns', map: 'no-such-map', title: { en: 'A T-14 advances past the barns' },
   loop: '/media/site50-r14/loops/s05-barn-advance-960.webm', poster: '/media/site50-r14/loops/s05-barn-advance.jpg' };
-dom.respond('/media/site50-r14/fleet/index.json', { collection: 'site50-r14', vehicles: { t90sm: fields, t14: barns } });
+dom.respond('/media/site50-r14/fleet/index.json', { collection: 'site50-r14', vehicles: { t90sm_2013: fields, object148_proto: barns } });
 
 const { mountInAction } = await import('./inAction.ts');
 assert.deepEqual(dom.state.fetches, [], 'loading the block\'s module fetches nothing');
@@ -49,7 +49,7 @@ const video = frame.querySelector('video');
 const title = section.querySelector('.fleet-take-title');
 const studio = section.querySelector('.fleet-take-studio');
 
-block.show('t90sm');
+block.show('t90sm_2013');
 await settle();
 assert.equal(section.hidden, false, 'a vehicle with a take shows the block');
 assert.equal(place.textContent, t('map.verdant'), 'the label names the take\'s battlefield');
@@ -69,23 +69,23 @@ dom.intersect(frame, 0.7);
 block.show(null);
 assert.equal(section.hidden, true, 'a vehicle being replaced hides the block at once');
 assert.equal(video.src, '', 'and releases its loop');
-block.show('t14');
+block.show('object148_proto');
 await settle();
 assert.equal(section.hidden, false);
 assert.equal(place.textContent, '', 'a map this build does not know is left unnamed');
 assert.equal(title.textContent, barns.title.en);
 assert.equal(video.src, barns.loop, 'the next vehicle\'s loop, while the block stays on screen');
-block.show('m1a2');
+block.show('m1a1_abrams_hc');
 await settle();
 assert.equal(section.hidden, true, 'a vehicle the index lacks shows no block');
 assert.equal(video.src, '', 'and no loop');
-block.show('t90sm');
-block.show('t14');
+block.show('t90sm_2013');
+block.show('object148_proto');
 block.show(null);
 await settle();
 assert.equal(section.hidden, true, 'only the latest selection is shown');
-block.show('t90sm');
-block.show('t14');
+block.show('t90sm_2013');
+block.show('object148_proto');
 await settle();
 assert.equal(title.textContent, barns.title.en, 'a quick change of vehicle shows the last one');
 assert.equal(dom.state.fetches.length, 1, 'one index request for the page');

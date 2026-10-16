@@ -29,9 +29,9 @@ const UKRAINIAN: GunPitchByYawCurve = Object.freeze([
 ]);
 
 export const M1A1_GUN_PITCH_BY_YAW: Readonly<Record<string, GunPitchByYawCurve>> = Object.freeze({
-  m1a1: BARE, m1a1ha: BARE, m1a2: BARE,
-  m1a2_tusk: URBAN, m1a2_sepv2: REAR_STOWAGE,
-  m1a2_sepv3: NETTED, ua_m1a1: UKRAINIAN,
+  m1a1: BARE, m1a1ha: BARE, m1a1_abrams_hc: BARE,
+  m1a1_abrams_sa: URBAN, m1a1_abrams_aim: REAR_STOWAGE,
+  m1a1_abrams_fep: NETTED, ua_m1a1: UKRAINIAN,
 });
 
 // Apply after derivative construction: the modern M1A2 models have their own

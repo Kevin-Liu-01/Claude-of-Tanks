@@ -11,7 +11,7 @@ import {
   AMX56_KIT_EXPOSED_SEGMENTS, AMX56_KIT_SIDE_STATIONS, amx56KitRightSegment, amx56KitSideRing,
 } from './leclercClassicXKitLayout.ts';
 
-export const AMX56_KIT_SURFACE_GROUP = 'amx56:fieldKit';
+export const AMX56_KIT_SURFACE_GROUP = 'amx56:fieldKit'; // a schema-1 name, not an id: seat signatures hash it (tank-ids:keep)
 // The AMX-10P 25 standoff kit's protection family (amx10pSpecs.ts): a balance
 // convention for the same owner-requested kit design, not source evidence.
 const PROTECTION = { physicalMm: 8, keMm: 15, ceMm: 30 } as const;

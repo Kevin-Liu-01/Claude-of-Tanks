@@ -122,20 +122,20 @@ for (const mode of ['capture_the_flag', 'zone_control', 'turbo_ball']) {
   assert.equal(dry.blocked.byteLength, 1681); assert.equal(dry.waterBlockedEdges.byteLength, 1681);
   assert.equal(createDryNavigationView(dry, field, () => true), dry, 'already-dry view adds no duplicate grid');
   const local = (a, b) => Math.hypot(a.x - b.x, a.z - b.z) < .01;
-  const mask = createNavigationReachability(dry, getSpec('m1a2'), [{ x: 0, z: -125 }], local);
+  const mask = createNavigationReachability(dry, getSpec('m1a1_abrams_hc'), [{ x: 0, z: -125 }], local);
   assert.equal(mask.byteLength, 1681);
   assert.equal(navigationReachabilityContains(dry, mask, { x: 0, z: 125 }, local), false);
   assert.equal(navigationReachabilityContains(dry, mask, { x: 0, z: -125 }, local), true);
-  assert.equal(createNavigationReachability(dry, getSpec('m1a2'), [{ x: 0, z: 0 }], () => false).some(Boolean), false,
+  assert.equal(createNavigationReachability(dry, getSpec('m1a1_abrams_hc'), [{ x: 0, z: 0 }], () => false).some(Boolean), false,
     'blocked authored pad cannot silently seed a nearest open cell across an obstacle');
   // Isolated diagonal neighbours cannot cross two blocked orthogonal cells.
   const blocked = new Uint8Array(1681).fill(1), center = 20 * 41 + 20;
   blocked[center] = 0; blocked[center + 42] = 0;
   const isolated = { heights: new Float32Array(1681), groundTypes: new Uint8Array(1681), blocked };
-  const diagonal = createNavigationReachability(isolated, getSpec('m1a2'), [{ x: 0, z: 0 }], local);
+  const diagonal = createNavigationReachability(isolated, getSpec('m1a1_abrams_hc'), [{ x: 0, z: 0 }], local);
   assert.equal(diagonal[center], 1); assert.equal(diagonal[center + 42], 0);
   blocked[center + 1] = 0; blocked[center + 41] = 0;
-  const open = createNavigationReachability(isolated, getSpec('m1a2'), [{ x: 0, z: 0 }], local);
+  const open = createNavigationReachability(isolated, getSpec('m1a1_abrams_hc'), [{ x: 0, z: 0 }], local);
   assert.equal(open[center + 42], 1, 'opening both orthogonal cells permits the diagonal');
   blocked[center] = 1;
   assert.equal(navigationReachabilityContains(isolated, open, { x: 5, z: 5 }, () => true), false,
@@ -145,7 +145,7 @@ for (const mode of ['capture_the_flag', 'zone_control', 'turbo_ball']) {
     'a reachable rounded cell still needs an actual clear connector to the objective');
   assert.equal(navigationReachabilityContains(isolated, open, { x: 5, z: 5 }, () => true), true);
   isolated.heights[center + 42] = 300;
-  const cliff = createNavigationReachability(isolated, getSpec('m1a2'), [{ x: 0, z: 0 }], local);
+  const cliff = createNavigationReachability(isolated, getSpec('m1a1_abrams_hc'), [{ x: 0, z: 0 }], local);
   assert.equal(cliff[center + 42], 0, 'impassable signed ascent is not included in the component');
   // This weak vehicle can descend a 10% grade but cannot return uphill. The
   // old one-direction component would mark the neighbouring valley reachable.
@@ -193,9 +193,9 @@ for (const mapId of ['ruinspires', 'desert', 'delta']) {
     const game = createGameState(); game.mapId = mapId;
     spawnTanks(game, { scene: { remove() {} } });
     for (const e of game.allTanks) e.visual = { root: {}, setVisible() {}, syncFromState() {}, dispose() {} };
-    setupBattle(game, 'm1a2', world, { gameMode: mode, deferVisuals: true, deferCamoRepaint: true, deferOpeningRoutes: true });
+    setupBattle(game, 'm1a1_abrams_hc', world, { gameMode: mode, deferVisuals: true, deferCamoRepaint: true, deferOpeningRoutes: true });
     const authority = createAuthoritativeMatch({ mapId, worldCollision: world, gameMode: mode, players: [
-      { id: 'duplicate-a', team: 'alpha', specId: 'm1a2' }, { id: 'duplicate-b', team: 'bravo', specId: 'm1a2' },
+      { id: 'duplicate-a', team: 'alpha', specId: 'm1a1_abrams_hc' }, { id: 'duplicate-b', team: 'bravo', specId: 'm1a1_abrams_hc' },
     ] });
     for (const key of ['flags', 'zones', 'goals', 'ball']) {
       assert.deepEqual(game.matchModeState[key], authority.modeController.state[key], `${mapId}/${mode}/${key}: real solo/server layout parity`);
@@ -284,11 +284,11 @@ for (const mapId of MAP_IDS) {
         let reached = false;
         for (const start of layout.anchors.deployments[team]) {
           const route = planBotRoute({ navigation: independentNavigation, start, goal: point,
-            spec: getSpec('m1a2'), rng: () => .5, useRoleDetour: false });
+            spec: getSpec('m1a1_abrams_hc'), rng: () => .5, useRoleDetour: false });
           const end = route.at(-1);
           if (end && Math.hypot(end[0] - point.x, end[1] - point.z) <= 1) {
             const reverse = planBotRoute({ navigation: independentNavigation, start: point, goal: start,
-              spec: getSpec('m1a2'), rng: () => .5, useRoleDetour: false });
+              spec: getSpec('m1a1_abrams_hc'), rng: () => .5, useRoleDetour: false });
             const returnEnd = reverse.at(-1);
             if (returnEnd && Math.hypot(returnEnd[0] - start.x, returnEnd[1] - start.z) <= 1) { reached = true; break; }
           }

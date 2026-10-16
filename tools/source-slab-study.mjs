@@ -9,7 +9,7 @@ import {measureSlabBounds} from './section-slab-bounds.mjs';
 if (!globalThis.ProgressEvent) globalThis.ProgressEvent=class {
   constructor(type,values) {this.type=type;Object.assign(this,values);}
 };
-const id='kf51_x',config=WEST_X_REFERENCE_OVERRIDES[id];
+const id='kf51_panther',config=WEST_X_REFERENCE_OVERRIDES[id];
 const bytes=fs.readFileSync(new URL(`../public${config.glb.path}`,import.meta.url));
 const reference=await loadReferenceGlb({...config,glb:{...config.glb,
   path:`data:model/gltf-binary;base64,${bytes.toString('base64')}`}},id,TANK_SPECS[id]);

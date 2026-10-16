@@ -7,7 +7,7 @@
 // camera/turret/reticle traces, so local behavior can be diffed against the
 // deployment empirically instead of by description.
 //
-// Sequences (all under pointer lock, m1a2, easy bots):
+// Sequences (all under pointer lock, m1a1_abrams_hc, easy bots):
 //   A mouse-look +400 px right      -> camera yaw response + gun convergence
 //   B mouse-look 200 px up          -> camera pitch response
 //   C W drive 1.2 s                 -> chase anchor (camera follows hull, yaw stays)
@@ -72,7 +72,7 @@ await page.waitForFunction('window.__GAME_READY === true', { timeout: 180000 });
 await sleep(1500);
 
 // battle + lock
-await page.evaluate(() => window.__DEBUG.startBattle('m1a2'));
+await page.evaluate(() => window.__DEBUG.startBattle('m1a1_abrams_hc'));
 await sleep(600);
 await page.evaluate(() => window.__DEBUG.fastForward(2));
 await page.mouse.click(800, 450);

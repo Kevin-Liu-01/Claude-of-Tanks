@@ -25,7 +25,7 @@ import {
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 const GERMANY_IDS = Object.freeze([
-  'leo2a4_otco', 'leo2a4m', 'leo2a6m', 'leo2a5_a5nl',
+  'leo2a3', 'leo2a4m_can', 'leo2a4_otco', 'leo2a4m',
 ] as const);
 
 type GermanStatOverrides = Partial<Pick<FleetTankSpec,
@@ -97,7 +97,7 @@ function variant(
 }
 
 const GERMANY_SPECS = {
-  leo2a4_otco: variant('leo2a4_otco', 'leo2a4', {
+  leo2a3: variant('leo2a3', 'leo2a2', {
     name: 'Leopard 2A3', number: 'OTCO', scheme: 'stripes',
     base: '#4b5140', weather: '#666a57', patches: ['#2d3328', '#665a42', '#77725e'],
     camoScale: 0.44,
@@ -106,7 +106,7 @@ const GERMANY_SPECS = {
       reverseSpeedKmh: 31, turretTraverseDegS: 36, gunPitchDegS: 31 },
     reloadS: 6.1, shellName: 'DM53 APFSDS', armorFactor: 1.08,
   }),
-  leo2a4m: variant('leo2a4m', 'leo2a4', {
+  leo2a4m_can: variant('leo2a4m_can', 'leo2a2', {
     name: 'Leopard 2A4M CAN', number: 'A4M', scheme: 'stripes',
     base: '#4a5141', weather: '#656b58', patches: ['#2b3329', '#625941', '#77705b'],
     camoScale: 0.42,
@@ -119,7 +119,7 @@ const GERMANY_SPECS = {
       reverseSpeedKmh: 31, turretTraverseDegS: 38, gunPitchDegS: 32 },
     reloadS: 5.9, shellName: 'DM53A1 APFSDS', armorFactor: 1.22,
   }),
-  leo2a6m: variant('leo2a6m', 'leo2a6', {
+  leo2a4_otco: variant('leo2a4_otco', 'leo2a4', {
     name: 'Leopard 2A4 OTCO', number: 'A6M', scheme: 'stripes',
     base: '#48503f', weather: '#626956', patches: ['#293128', '#605640', '#746d58'],
     camoScale: 0.40,
@@ -132,7 +132,7 @@ const GERMANY_SPECS = {
       reverseSpeedKmh: 31, turretTraverseDegS: 40, gunPitchDegS: 34 },
     reloadS: 5.7, shellName: 'DM63 APFSDS', armorFactor: 1.27,
   }),
-  leo2a5_a5nl: variant('leo2a5_a5nl', 'leo2a5', {
+  leo2a4m: variant('leo2a4m', 'leo2a4_v', {
     name: 'Leopard 2A4M', number: 'A5NL', scheme: 'stripes',
     base: '#465041', weather: '#626b58', patches: ['#273229', '#625a42', '#78715c'],
     camoScale: 0.39,
@@ -148,7 +148,7 @@ registerFleetSpecs(registries, GERMANY_IDS, GERMANY_SPECS);
 // Clone before adding the A6M's separate fitted frontal package. The
 // Ukrainian vehicle owns its own field-modernized sector layout.
 const LEOPARD_2A6_UA_ID = 'leo2a6_ua';
-const leopard2A6UA = variant(LEOPARD_2A6_UA_ID, 'leo2a6m', {
+const leopard2A6UA = variant(LEOPARD_2A6_UA_ID, 'leo2a4_otco', {
   name: 'Leopard 2A6 UA', nation: 'Ukraine', number: 'UA 26', scheme: 'digital',
   base: '#4d5343', weather: '#686858', patches: ['#2d382f', '#6c654d', '#4b5141'],
   camoScale: 0.46,
@@ -169,7 +169,7 @@ const eraLayer = (era: EraReduction, keMm: number, ceMm: number): PlateOptions =
   kind: 'era', era, keMm, ceMm,
 });
 
-registries.tankSpecs.leo2a5_a5nl.armor.hullPlates.push(
+registries.tankSpecs.leo2a4m.armor.hullPlates.push(
   rightSidePlate('a5nl_skirt_era_R', 18, 1.95, 0.78, 1.95, 1.49, -3.25, 3.25,
     eraLayer(ukrainianNizhSkirt, 180, 560)),
   leftSidePlate('a5nl_skirt_era_L', 18, 1.95, 0.78, 1.95, 1.49, -3.25, 3.25,
@@ -197,11 +197,11 @@ function addLeopard2A6UAFieldEraSectors(spec: FleetTankSpec): void {
 
 // A6M keeps only the requested frontal field package. Its certified ISAF
 // cage, skirts, and 3.98 m silhouette remain untouched.
-registries.tankSpecs.leo2a6m.armor.hullPlates.push(
+registries.tankSpecs.leo2a4_otco.armor.hullPlates.push(
   frontPlate('a6m_upper_glacis_era', 18, 1.46, 1.65, 2.12, 1.39, 3.08,
     eraLayer(ukrainianNizh, 620, 1120)),
 );
-registries.tankSpecs.leo2a6m.armor.turretPlates.push(
+registries.tankSpecs.leo2a4_otco.armor.turretPlates.push(
   rightCheekPlate('a6m_turret_cheek_era_R', 18, 0.32, 2.66, 1.48, 1.30,
     0.05, 0.78, 0.16, 0, eraLayer(ukrainianNizh, 780, 1280)),
   leftCheekPlate('a6m_turret_cheek_era_L', 18, 0.32, 2.66, 1.48, 1.30,
@@ -212,11 +212,11 @@ registries.tankSpecs.leo2a6m.armor.turretPlates.push(
 // the separate fitted upper-glacis ERA sector, but model the two broad cheek
 // layers as non-consumable spaced armor so damage, gallery overlays and the
 // procedural panel geometry all describe the same construction.
-registries.tankSpecs.leo2a7v.armor.hullPlates.push(
+registries.tankSpecs.leo2_improved.armor.hullPlates.push(
   frontPlate('a7v_upper_glacis_era', 18, 1.50 * LEOPARD_IMPROVED_HULL_WIDTH_SCALE, 1.60, 2.10, 1.43, 2.84,
     eraLayer(ukrainianNizh, 620, 1120)),
 );
-registries.tankSpecs.leo2a7v.armor.turretPlates.push(
+registries.tankSpecs.leo2_improved.armor.turretPlates.push(
   rightCheekPlate('a7v_turret_cheek_layer_R', 34, 0.36, 2.58, 1.40, 1.42,
     0.09, 0.66, 0.78, 0, { kind: 'spaced', keMm: 420, ceMm: 760 }),
   leftCheekPlate('a7v_turret_cheek_layer_L', 34, 0.36, 2.58, 1.40, 1.42,

@@ -30,7 +30,7 @@ const wetGoalField = { ...flat, getWaterMaskAt: (x,z) => x>5&&Math.abs(z)<12 ? 1
 assert.notDeepEqual(plan(wetGoalField,{x:13,z:2}).at(-1),[13,2], 'exact wet destination is not restored');
 
 function bot(speed, yaw) {
-  const spec=getSpec('m1a2'), state=createTankState(spec,new Vector3(0,0,0),yaw);
+  const spec=getSpec('m1a1_abrams_hc'), state=createTankState(spec,new Vector3(0,0,0),yaw);
   state.speed=speed;
   return { id:'liquid-test', specId:spec.id, spec, team:'alpha', state,
     combat:{hp:1000,maxHp:1000,destroyed:false,reload:{t:0,totalS:spec.gun.reloadS,kind:'ready'},shellSlot:0,

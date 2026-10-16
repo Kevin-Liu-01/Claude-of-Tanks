@@ -918,8 +918,8 @@ function buildStrv103A(P: SwedishBuilderPort): void {
 
 export const SWEDEN_PROFILES = {
   udes03: { build: buildUdes03 },
-  strv103: { build: buildStrv103B },
+  strv103b: { build: buildStrv103B },
   strv103a: { build: buildStrv103A },
   strv81: { build: buildStrv81 },
-  strv122: { build: buildStrv122 },
+  strv121: { build: buildStrv122 },
 } satisfies VehicleProfileRecord;

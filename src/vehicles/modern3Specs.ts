@@ -70,8 +70,8 @@ function offsetTurretRing(armor: ArmorEnvelope, offsetX: number): void {
 // ---------------------------------------------------------------------------
 
 const MODERN3_SPECS = {
-  chieftain_mk10: {
-    id: 'chieftain_mk10', name: 'Chieftain Mk 9', nation: 'UK', era: 'modern', role: 'mbt',
+  chieftain_mk9: {
+    id: 'chieftain_mk9', name: 'Chieftain Mk 9', nation: 'UK', era: 'modern', role: 'mbt',
     hp: 1750,
     enginePowerHp: 750, weightTons: 55, topSpeedKmh: 48, reverseSpeedKmh: 10,
     hullTraverseDegS: 28,
@@ -108,8 +108,8 @@ const MODERN3_SPECS = {
     },
   },
 
-  k2: {
-    id: 'k2', name: 'XK2 Black Panther', nation: 'South Korea', era: 'modern', role: 'mbt',
+  xk2_black_panther: {
+    id: 'xk2_black_panther', name: 'XK2 Black Panther', nation: 'South Korea', era: 'modern', role: 'mbt',
     hp: 2450,
     enginePowerHp: 1500, weightTons: 55, topSpeedKmh: 70, reverseSpeedKmh: 25,
     hullTraverseDegS: 44,
@@ -159,8 +159,8 @@ const MODERN3_SPECS = {
   // 6 roadwheels on the hybrid (torsion-bar + hydropneumatic) stance,
   // full skirts. Print: public/models/community-candidates/k1a1_kojf.glb
   // (semantic re-bake, LOCAL-ONLY quarantine — measurement/influence only).
-  k1a1: {
-    id: 'k1a1', name: 'K1E1', nation: 'South Korea', era: 'modern', role: 'mbt',
+  k1e1: {
+    id: 'k1e1', name: 'K1E1', nation: 'South Korea', era: 'modern', role: 'mbt',
     hp: 2200,
     enginePowerHp: 1200, weightTons: 53.2, topSpeedKmh: 65, reverseSpeedKmh: 25,
     hullTraverseDegS: 42,
@@ -205,8 +205,8 @@ const MODERN3_SPECS = {
     },
   },
 
-  type10: {
-    id: 'type10', name: 'Type 10 (TK-X)', nation: 'Japan', era: 'modern', role: 'mbt',
+  type10_tk_x: {
+    id: 'type10_tk_x', name: 'Type 10 (TK-X)', nation: 'Japan', era: 'modern', role: 'mbt',
     hp: 2300,
     enginePowerHp: 1200, weightTons: 48, topSpeedKmh: 70, reverseSpeedKmh: 25,
     hullTraverseDegS: 46,
@@ -224,16 +224,16 @@ const MODERN3_SPECS = {
     },
     // §5.336 OWNER-DECREED ENLARGEMENT (order verbatim 2026-08-17: "make the
     // type 10s larger..."): the §5.248 sovereign datums 6.84 / 9.49 / 3.24 /
-    // 2.68 are re-derived at the ordered ×1.10 (scale judged vs type90
+    // 2.68 are re-derived at the ordered ×1.10 (scale judged vs type90_kyumaru
     // side-by-side, receipts shots/type10-enlarge/scale-probe/). §5.304-class
     // divergence: the registered repaired print now reads ~9.1% SMALL vs
     // this row BY DECREE — adjudicated FALSE-class divergence (never chase
     // the print back). heightM = P95 envelope incl. the mandatory pano head
     // (§5.73-1 law; authored head cap 2.963 physical).
-    // EXACT ×1.10 published values (not rounded): type90's spec clones this
+    // EXACT ×1.10 published values (not rounded): type90_kyumaru's spec clones this
     // row's armor frame through userdrops5 make() + fitArmorToDims — exact
     // scaling makes that refit the exact inverse, so the owner-corrected
-    // type90 hit frame stays byte-invariant (guard law §5.336).
+    // type90_kyumaru hit frame stays byte-invariant (guard law §5.336).
     dims: { hullLengthM: 7.524, overallLengthM: 10.439, widthM: 3.564, heightM: 2.948 },
     // Native authored rig at the ×1.10 frame (§5.336): deck 1.6885 mid /
     // 1.782 engine, ring pivot [1.672, +0.235], bore 1.991, muzzle +6.653 =
@@ -241,11 +241,11 @@ const MODERN3_SPECS = {
     // edit (§D ERA-def/geometry coupling law); protection mm values are
     // gameplay truth and do not scale with visual size.
     // PIVOT CLONE-FRAME LAW (§5.362 re-auth): the two pivot arrays below are
-    // the §5.336 CLONE FRAME, kept byte-stable because userdrops5's type90
+    // the §5.336 CLONE FRAME, kept byte-stable because userdrops5's type90_kyumaru
     // row clones this armor through make() + fitArmorToDims (which scales
-    // pivots — the type90 hit frame must stay byte-invariant, guard law
+    // pivots — the type90_kyumaru hit frame must stay byte-invariant, guard law
     // §5.336) and japan.ts clones it for type10b. The LIVE rig/sim pivots
-    // for type10 + type10b are re-seated post-clone in japan.ts. Their gun
+    // for type10_tk_x + type10b are re-seated post-clone in japan.ts. Their gun
     // pivot comes from profiles/type10GunSeat.ts so the mantlet meets the
     // marked turret throat without moving the certified muzzle station.
     // rig_turret itself stays builder-pinned at [0, 1.672, 0.2354] (see
@@ -452,8 +452,8 @@ const MODERN3_SPECS = {
     },
   },
 
-  spz_puma_s1: {
-    id: 'spz_puma_s1', name: 'SPz Wotan', nation: 'Germany', era: 'modern', role: 'ifv',
+  spz_wotan: {
+    id: 'spz_wotan', name: 'SPz Wotan', nation: 'Germany', era: 'modern', role: 'ifv',
     hp: 2750,
     enginePowerHp: 1088, weightTons: 43, topSpeedKmh: 70, reverseSpeedKmh: 30,
     hullTraverseDegS: 50,
@@ -504,8 +504,8 @@ const MODERN3_SPECS = {
     },
   },
 
-  type89_light_tiger: {
-    id: 'type89_light_tiger', name: 'Raijū IFV', nation: 'Japan', era: 'next-generation', role: 'ifv',
+  raiju_ifv: {
+    id: 'raiju_ifv', name: 'Raijū IFV', nation: 'Japan', era: 'next-generation', role: 'ifv',
     hp: 2650,
     enginePowerHp: 1000, weightTons: 38.5, topSpeedKmh: 78, reverseSpeedKmh: 32,
     hullTraverseDegS: 54,
@@ -596,8 +596,8 @@ const MODERN3_SPECS = {
     },
   },
 
-  cv90_mkiv: {
-    id: 'cv90_mkiv', name: 'CV90 Mk IV', nation: 'Sweden', era: 'next-generation', role: 'ifv',
+  cv90_mk4_concept: {
+    id: 'cv90_mk4_concept', name: 'CV90 Mk IV', nation: 'Sweden', era: 'next-generation', role: 'ifv',
     hp: 2825,
     enginePowerHp: 1000, weightTons: 40, topSpeedKmh: 74, reverseSpeedKmh: 42,
     hullTraverseDegS: 52,
@@ -646,8 +646,8 @@ const MODERN3_SPECS = {
     },
   },
 
-  type89: {
-    id: 'type89', name: 'Hayate IFV', nation: 'Japan', era: 'modern', role: 'ifv',
+  hayate_ifv: {
+    id: 'hayate_ifv', name: 'Hayate IFV', nation: 'Japan', era: 'modern', role: 'ifv',
     hp: 1450,
     enginePowerHp: 600, weightTons: 26.5, topSpeedKmh: 70, reverseSpeedKmh: 16,
     hullTraverseDegS: 46,
@@ -688,15 +688,15 @@ const MODERN3_SPECS = {
       return a;
     })(),
     visual: {
-      // JGSDF 2-tone hard-edge (same family grammar as type10/type90)
+      // JGSDF 2-tone hard-edge (same family grammar as type10_tk_x/type90)
       scheme: 'stripes', base: '#3a4739', weather: '#455245',
       patches: ['#5f4f3a', '#2d382e'],
       marking: 'number', number: '1071', trackWidthM: 0.45, camoScale: 0.5,
     },
   },
 
-  ariete: {
-    id: 'ariete', name: 'C1 Ariete Preserie', nation: 'Italy', era: 'modern', role: 'mbt',
+  c1_ariete_preserie: {
+    id: 'c1_ariete_preserie', name: 'C1 Ariete Preserie', nation: 'Italy', era: 'modern', role: 'mbt',
     hp: 2150,
     enginePowerHp: 1250, weightTons: 54, topSpeedKmh: 65, reverseSpeedKmh: 25,
     hullTraverseDegS: 40,
@@ -732,8 +732,8 @@ const MODERN3_SPECS = {
     },
   },
 
-  ariete_c1: {
-    id: 'ariete_c1', name: 'C1 Ariete Prototype (Serie 1)', nation: 'Italy', era: 'modern', role: 'mbt',
+  c1_ariete_proto_serie1: {
+    id: 'c1_ariete_proto_serie1', name: 'C1 Ariete Prototype (Serie 1)', nation: 'Italy', era: 'modern', role: 'mbt',
     hp: 2300,
     enginePowerHp: 1270, weightTons: 56, topSpeedKmh: 63, reverseSpeedKmh: 25,
     hullTraverseDegS: 39,
@@ -773,8 +773,8 @@ const MODERN3_SPECS = {
     },
   },
 
-  ariete_c2: {
-    id: 'ariete_c2', name: 'C2 Ariete Prototype', nation: 'Italy', era: 'modern', role: 'mbt',
+  c2_ariete_proto: {
+    id: 'c2_ariete_proto', name: 'C2 Ariete Prototype', nation: 'Italy', era: 'modern', role: 'mbt',
     hp: 2600,
     enginePowerHp: 1500, weightTons: 59, topSpeedKmh: 65, reverseSpeedKmh: 30,
     hullTraverseDegS: 42,
@@ -850,7 +850,7 @@ const MODERN3_SPECS = {
     // the registered anchor, but the print's own p95 body envelope reads
     // 2.42 (roof 2.35 + cupola 2.42; nothing between 2.55 and the bare whips
     // at 4.11) — silhouetteHeightM lets the gate compare like with like
-    // (userdrops5 leo2a6 / modern2 ztz99a2 precedent).
+    // (userdrops5 leo2a4 / modern2 ztz99a2 precedent).
     dims: { hullLengthM: 6.98, overallLengthM: 10.60, widthM: 3.43, heightM: 2.95,
       silhouetteHeightM: 2.42 },
     armor: modernArmor({

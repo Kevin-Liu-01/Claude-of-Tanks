@@ -9,7 +9,7 @@ import {createTankState} from '../sim/movement.ts';
 import {smokeCanisterPosition} from '../sim/smokeBallistics.ts';
 import {packSmokeScreen,restoreSmokeScreen} from '../sim/smokeReceipt.ts';
 
-const ids=process.argv.includes('--all')?ALL_TANK_IDS.filter(id=>auxiliaryCapabilities({id})?.smoke.length):['kf41_lynx_x','lrmv_lynx','kf51_x','t14_x','ariete_c1_x','ariete_c2_x','griffin_viper','m1a2','leo2a4','ajax_x','borsuk','t90a_burlak','t90m','stb1','leo1a5','challenger2','merkava3d','fv510','m60a3','t14'];
+const ids=process.argv.includes('--all')?ALL_TANK_IDS.filter(id=>auxiliaryCapabilities({id})?.smoke.length):['kf41_lynx','lrmv_lynx','kf51_panther','t14_armata','c1_ariete','c2_ariete','griffin_viper','m1a1_abrams_hc','leo2a2','ajax','borsuk','t90a_burlak_proto','t90am','stb1','leo1a5','challenger2','merkava3_baz','fv510','m60a3','object148_proto'];
 let builds=0, launches=0;
 const failures=[];
 for(const id of ids)for(const quality of ['high','low']) {
@@ -17,7 +17,7 @@ for(const id of ids)for(const quality of ['high','low']) {
  try {
  const spec=getSpec(id), kit=auxiliaryCapabilities(spec);
  assert.ok(kit?.smoke.length,`${id}: rendered smoke equipment must enable its control`);
- if(id==='kf41_lynx_x'||id==='t14')for(const socket of kit.smoke)
+ if(id==='kf41_lynx'||id==='object148_proto')for(const socket of kit.smoke)
   assert.ok(Math.abs(Math.atan2(socket.direction[0],socket.direction[2]))<Math.PI/3,`${id}: smoke fans ahead of the turret, not sideways or behind it`);
  visual=createTank(id,null,{quality,proceduralOnly:true,decor:true,geometryReceipt:true,batchStatic:true,battleDetailLod:true});
  const sockets=[];

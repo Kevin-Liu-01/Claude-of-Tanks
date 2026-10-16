@@ -14,7 +14,7 @@ function first(root, origin, direction) {
 }
 
 for (const quality of ['high', 'low']) {
-  const tank=createTank('t90sm_x', null, {quality, proceduralOnly:true, geometryReceipt:true, batchStatic:false});
+  const tank=createTank('t90sm', null, {quality, proceduralOnly:true, geometryReceipt:true, batchStatic:false});
   try {
     tank.root.updateMatrixWorld(true);
     const turret=tank.root.getObjectByName('rig_turret');

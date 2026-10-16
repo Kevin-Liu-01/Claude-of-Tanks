@@ -26,8 +26,8 @@ const valid = [
   encodeMessage({ type: MESSAGE_TYPE.PING, clientTimeMs: 1234, snapshotAckTick: NO_TICK }),
   encodeMessage({ type: MESSAGE_TYPE.CHAT, text: 'hello 戦車' }),
   encodeMessage({ type: MESSAGE_TYPE.WELCOME, protocolVersion: 1, tickHz: 60, snapshotHz: 30, seat: 0, entityId: 1, team: 0, serverTick: 5, serverTimeMs: 83, seed: 1, capabilities: 1, roomId: 'room', mapId: 'verdant', mode: 'standard', rulesetJson: '{"mode":"standard"}', roster: [
-    { entityId: 1, seat: 0, team: 0, bot: false, connected: true, playerId: 'p1', name: 'One', specId: 'm1a2' },
-    { entityId: 2, seat: 255, team: 1, bot: true, connected: false, playerId: 'bot-2', name: 'Bot', specId: 't90m' },
+    { entityId: 1, seat: 0, team: 0, bot: false, connected: true, playerId: 'p1', name: 'One', specId: 'm1a1_abrams_hc' },
+    { entityId: 2, seat: 255, team: 1, bot: true, connected: false, playerId: 'bot-2', name: 'Bot', specId: 't90am' },
   ] }),
   encodeMessage(buildSnapshotPacket({
     tick: 40, serverTimeMs: 666, ackedInputTick: 38, ackedFireSeq: 0, ackedActionSeq: 0, inputMarginTicks: 2,

@@ -8,7 +8,7 @@ import { createHash } from 'node:crypto';
 
 /** Hulls a saved selection is resolved on: US, Russian, German, British, Chinese, Korean, IDF, X-series and brand. */
 export const BASELINE_REFERENCE_TANKS = Object.freeze([
-  'm1a2', 't90m', 'leo2a6', 'challenger_3', 'type99a', 'k2', 'sabra_mk2_x', 'abramsx', 't90m_x', 'm6_linebacker',
+  'm1a1_abrams_hc', 't90am', 'leo2a4', 'challenger3_proto', 'ztz99_longwei', 'xk2_black_panther', 'sabra_mk2', 'abramsx', 't90m', 'm6_linebacker',
 ]);
 /** Production's AUTO biomes (materials.ts BIOME_PATTERN) and two maps without a row of their own (they read Verdant). */
 export const BASELINE_AUTO_MAPS = Object.freeze([

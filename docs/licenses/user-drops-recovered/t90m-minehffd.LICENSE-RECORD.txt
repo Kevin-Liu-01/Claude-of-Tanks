@@ -16,5 +16,5 @@ Contents: t90m-minehffd.glb — normalized GLB converted from the author FBX:
 no basecolor texture (flat russian-green fallback), Thread/Turret-basket sets
 lack normal maps, factory paint reads gray-blue parade tone.
 Shipped as: public/models/tanks/t90m_minehffd.glb (model source for spec
-'t90m'; gameplay stats unchanged).
+'t90am'; gameplay stats unchanged).
 Attribution: "T-90M" by minehffd, CC-BY 4.0.

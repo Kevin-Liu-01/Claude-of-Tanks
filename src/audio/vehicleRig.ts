@@ -114,7 +114,11 @@ export interface VehicleRig {
   readonly netGain: number;
   setLod(lod: RigLod): void;
   setBurning(burning: boolean): void;
-  startEngine(): void;
+  /**
+   * The occupied hull's start-up: the starter's recording, the bank fading in under it. False while that recording
+   * has not decoded (the bank stays down; ask again), true once it fired or for a hull that is not ours.
+   */
+  startEngine(): boolean;
   update(frame: RigFrame): void;
   kill(fadeS?: number): void;
 }
@@ -495,9 +499,9 @@ export function createVehicleRig(deps: RigDeps, id: string, identity: VehicleAud
     },
     startEngine() {
       // Only the occupied hull hears its own start-up; remote engines are already idling.
-      if (lod !== 'own') return;
+      if (lod !== 'own' || dead) return true;
       engineStartAt = ctx.currentTime + 1.6;
-      pool.play(`engine_${identity.engine}_start`, { space: 'hull', bus: 'own', gainDb: -2 });
+      return !!pool.play(`engine_${identity.engine}_start`, { space: 'hull', bus: 'own', gainDb: -2 });
     },
     update,
     kill(fadeS = 0.4) {

@@ -81,12 +81,12 @@ export function runDeterminismAudit({ mapId = 'verdant', ticks = 3600, seed = 7,
   const droneToggle = (index, tick) => { const t = (tick + index * 131) % 900; return t === 300 || t === 720 ? PLAYER_ACTION_BITS.DRONE : 0; };
   const heSlot = (specId) => Math.max(0, getSpec(specId).gun.shells.findIndex((shell) => isHeClass(shell?.type)));
   const players = [
-    { id: 'h1', specId: 'm1a2', team: 'alpha' },
-    { id: 'h2', specId: 't90m', team: 'bravo' },
-    { id: 'b1', specId: 'leo2a7v', team: 'alpha', bot: true, difficulty: 'normal' },
-    { id: 'b2', specId: 'm1a2', team: 'bravo', bot: true, difficulty: 'normal' },
-    { id: 'b3', specId: 't90m', team: 'alpha', bot: true, difficulty: 'hard' },
-    { id: 'b4', specId: 'leo2a7v', team: 'bravo', bot: true, difficulty: 'easy' },
+    { id: 'h1', specId: 'm1a1_abrams_hc', team: 'alpha' },
+    { id: 'h2', specId: 't90am', team: 'bravo' },
+    { id: 'b1', specId: 'leo2_improved', team: 'alpha', bot: true, difficulty: 'normal' },
+    { id: 'b2', specId: 'm1a1_abrams_hc', team: 'bravo', bot: true, difficulty: 'normal' },
+    { id: 'b3', specId: 't90am', team: 'alpha', bot: true, difficulty: 'hard' },
+    { id: 'b4', specId: 'leo2_improved', team: 'bravo', bot: true, difficulty: 'easy' },
   ];
   const run = () => {
     const world = createDedicatedWorldCollision(mapId, { retain: true });
@@ -103,7 +103,7 @@ export function runDeterminismAudit({ mapId = 'verdant', ticks = 3600, seed = 7,
     let turretKills = 0;
     const drones = new Set();
     const inputs = new Map();
-    const h2Slot = craters ? heSlot('t90m') : 0;
+    const h2Slot = craters ? heSlot('t90am') : 0;
     for (let tick = 1; tick <= ticks; tick++) {
       if (kills && (tick === 240 || tick === 420)) {
         // the scripted hulls (a bot would put its fire out with its extinguisher)

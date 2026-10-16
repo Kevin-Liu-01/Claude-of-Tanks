@@ -11,16 +11,16 @@ const {
 
 const expected = new Map([
   ['kv2', 'early-cast-steel'],
-  ['t90m', 'soviet-single-pin'],
-  ['m1a2', 'nato-double-pin'],
+  ['t90am', 'soviet-single-pin'],
+  ['m1a1_abrams_hc', 'nato-double-pin'],
   ['merkava4b', 'merkava-heavy'],
   ['m3a3_bradley', 'compact-ifv'],
-  ['cv90_mkiv', 'compact-ifv'],
+  ['cv90_mk4_concept', 'compact-ifv'],
   ['bmp3', 'eastern-ifv'],
   ['challenger2', 'british-rubber-pad'],
-  ['leclerc', 'franco-italian-modular'],
-  ['type10', 'japanese-modular'],
-  ['strv103', 'hydropneumatic-dead-track'],
+  ['leclerc_s2', 'franco-italian-modular'],
+  ['type10_tk_x', 'japanese-modular'],
+  ['strv103b', 'hydropneumatic-dead-track'],
 ]);
 for (const [id, patternId] of expected) {
   assert.equal(trackPatternFor(TANK_SPECS[id]).id, patternId, `${id} track family`);
@@ -46,8 +46,8 @@ for (const [id, count] of counts) {
   assert.ok(count > 0, `${id}: family is exercised by the playable fleet`);
 }
 
-assert.equal(trackPatternFor(TANK_SPECS.m1a2, null, 'siege-wide').id, 'siege-wide');
-assert.throws(() => trackPatternFor(TANK_SPECS.m1a2, null, 'missing-family'),
+assert.equal(trackPatternFor(TANK_SPECS.m1a1_abrams_hc, null, 'siege-wide').id, 'siege-wide');
+assert.throws(() => trackPatternFor(TANK_SPECS.m1a1_abrams_hc, null, 'missing-family'),
   /Unknown track pattern/);
 
 // Legacy per-profile switches are forbidden. A family override is explicit;

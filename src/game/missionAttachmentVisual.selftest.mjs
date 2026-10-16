@@ -13,7 +13,7 @@ import {initializeAerial,stepAerial} from '../sim/aerialCombat.ts';
 import {matchRulesetFor} from '../sim/matchRuleset.ts';
 import {PLAYER_ACTION_BITS} from '../sim/playerActions.ts';
 import { collectMissionStock,nativeMissionCollision,nativeSupportedSeat,nativeRoofHeight } from '../../tools/mission-attachment-geometry.mjs';
-for(const id of ['m1a2','kf41_lynx_x','strv103'])for(const scale of [1,.8]){
+for(const id of ['m1a1_abrams_hc','kf41_lynx','strv103b'])for(const scale of [1,.8]){
  const spec=TANK_SPECS[id],seat=missionAttachmentFor(spec),root=new Group(),turret=new Group();
  root.position.set(10,2,20);root.rotation.set(-.12,.6,-.08,'YXZ');
  turret.name='rig_turret';turret.position.set(...missionAttachmentTurretPivot(spec));turret.scale.setScalar(scale);root.add(turret);
@@ -83,7 +83,7 @@ console.log('missionAttachmentVisual: turret/casemate ownership, rotation, scale
  for(let t=A.catchEndS;t<A.setDownAtS;t+=.01){const h=droneArrivalHeight(t/A.descentS);hoverSpan=Math.max(hoverSpan,Math.abs(h-A.hoverM));droneArrivalAttitude(t/A.descentS,att);maxTilt=Math.max(maxTilt,Math.abs(att.pitch),Math.abs(att.roll));}
  assert.ok(hoverSpan>.012&&hoverSpan<.04&&maxTilt>.045&&maxTilt<.12,`visible hover corrections (${(hoverSpan*100).toFixed(1)} cm, ${(maxTilt*57.3).toFixed(1)} deg)`);
  droneArrivalAttitude(1,att);assert.ok(Math.abs(att.pitch)<1e-9&&Math.abs(att.roll)<1e-9&&Math.abs(att.yaw)<1e-9,'level and aligned on the pads');
- const spec=TANK_SPECS.m1a2,root=new Group(),turret=new Group();turret.name='rig_turret';turret.position.set(...missionAttachmentTurretPivot(spec));root.add(turret);
+ const spec=TANK_SPECS.m1a1_abrams_hc,root=new Group(),turret=new Group();turret.name='rig_turret';turret.position.set(...missionAttachmentTurretPivot(spec));root.add(turret);
  const view={kind:'drone',active:false,cooldownS:0},dt=1/60;
  syncMissionAttachment(root,spec,view,false,dt);
  const drone=root.getObjectByName('Docked FPV mission payload'),detail=root.getObjectByName('Docked FPV airframe detail'),datum=drone.position.clone();
@@ -144,7 +144,7 @@ console.log('missionAttachmentVisual: resupply landing down the certified column
 
 // Use real factory rigs, not a rig synthesized from the same armor pivot as the
 // authority. Legacy armor reference pivots differ from the visible owner.
-for(const id of ['m1a2','t90m','amx56','strv103','leo2a7v']){
+for(const id of ['m1a1_abrams_hc','t90am','leclerc_s1','strv103b','leo2_improved']){
  const spec=TANK_SPECS[id],tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,quality:'high',camoSeed:4000});
  tank.root.position.set(10,2,20);tank.root.rotation.set(-.12,.6,-.08,'YXZ');
  const turret=tank.root.getObjectByName('rig_turret');

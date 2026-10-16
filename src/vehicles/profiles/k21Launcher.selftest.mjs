@@ -3,11 +3,11 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { ensureInteriorFills, hasInteriorFills, interiorFillRecord } from '../interiorFills.ts';
 
-await ensureInteriorFills(['k21_x']);
-assert.ok(hasInteriorFills('k21_x'), 'test requires the real generated K21 fills loaded');
+await ensureInteriorFills(['k21']);
+assert.ok(hasInteriorFills('k21'), 'test requires the real generated K21 fills loaded');
 // 2026-10-02: the K21 fills on its primary hull/turret shells (interior-fill-body-policy.mjs), which hold water as
 // built, so its record carries no solids; whatever the record carries must be installed, and none may cap a bore.
-const fillComponents=['hull','turret','gun'].filter(component=>interiorFillRecord('k21_x')[component]).length;
+const fillComponents=['hull','turret','gun'].filter(component=>interiorFillRecord('k21')[component]).length;
 const F=.90; // explicit owner size, no fitted registration
 const angle=Math.PI/9, sin=Math.sin(angle), cos=Math.cos(angle);
 const axis=new THREE.Vector3(0,sin,cos);
@@ -15,7 +15,7 @@ const canonical=(x,v,n)=>new THREE.Vector3(x-.000015,v*cos+n*sin-.0138,-v*sin+n*
 const rawN=p=>(p.y+.0138)*sin+p.z*cos;
 const rows=[];
 for(const quality of ['high','low']) {
-  const tank=createTank('k21_x',null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242});
+  const tank=createTank('k21',null,{proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242});
   try {
     const turret=tank.root.getObjectByName('rig_turret'),gun=tank.root.getObjectByName('rig_gun');
     assert.ok(turret&&gun,'actual turret and gun rigs are required');

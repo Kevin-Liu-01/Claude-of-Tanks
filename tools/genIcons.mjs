@@ -4,12 +4,12 @@
 //
 // Usage:
 //   node tools/genIcons.mjs
-//   node tools/genIcons.mjs --tanks m1a2,bmp2
-//   node tools/genIcons.mjs --ids=m1a2,bmp2   (compatibility alias)
+//   node tools/genIcons.mjs --tanks m1a1_abrams_hc,bmp2
+//   node tools/genIcons.mjs --ids=m1a1_abrams_hc,bmp2   (compatibility alias)
 //   node tools/genIcons.mjs --views armorSide,modulesSide,crewSide
-//   node tools/genIcons.mjs --views angle --ids=m1a2,bmp2
+//   node tools/genIcons.mjs --views angle --ids=m1a1_abrams_hc,bmp2
 //   node tools/genIcons.mjs --metadata-only  (refresh manifest, preserve images)
-//   node tools/genIcons.mjs --out /tmp/icons --ids=m1a2 --allow-partial
+//   node tools/genIcons.mjs --out /tmp/icons --ids=m1a1_abrams_hc --allow-partial
 // Angle generation atomically writes both the 512px source portrait and the
 // 256px Garage thumbnail through the same framing policy.
 

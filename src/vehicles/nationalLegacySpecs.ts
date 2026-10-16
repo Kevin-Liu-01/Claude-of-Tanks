@@ -6,7 +6,7 @@ import type {FleetTankSpec} from './specContracts.ts';
 import {NATIONAL_PROTECTION_WIDTHS_M} from './nationalProtectionDimensions.ts';
 const entries:Record<string,FleetTankSpec>={};
 for(const c of NATIONAL_LEGACY_CONFIG){
-  const s=cloneFleetVariant(TANK_SPECS,c.id,'t90sm_x',{name:c.name,nation:c.nation,era:'next-generation'});
+  const s=cloneFleetVariant(TANK_SPECS,c.id,'t90sm',{name:c.name,nation:c.nation,era:'next-generation'});
   delete s.label;delete s.roster;delete s.publicVisualFallback;delete s.balancePeerOf;
   s.variantOf=c.donor;entries[c.id]=s;
 }

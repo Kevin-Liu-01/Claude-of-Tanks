@@ -40,8 +40,8 @@ const probe = globalThis.window.__COT_AUDIO;
 
 const listener = { pos: { x: 0, y: 2, z: 0 }, forward: { x: 0, y: 0, z: 1 }, kind: 'player-tank', ownerId: 'me', scoped: false };
 const me = {
-  id: 'me', team: 'player', isPlayer: true, specId: 't72b3m',
-  spec: { id: 't72b3m', nation: 'Russia', role: 'mbt', weightTons: 46.5, enginePowerHp: 1130, topSpeedKmh: 70, reverseSpeedKmh: 15, gun: { caliberMm: 125, shells: [{ type: 'APFSDS' }] } },
+  id: 'me', team: 'player', isPlayer: true, specId: 't72b3m_2022',
+  spec: { id: 't72b3m_2022', nation: 'Russia', role: 'mbt', weightTons: 46.5, enginePowerHp: 1130, topSpeedKmh: 70, reverseSpeedKmh: 15, gun: { caliberMm: 125, shells: [{ type: 'APFSDS' }] } },
   state: { pos: { x: 0, y: 0, z: 0 }, speed: 0, yaw: 0, yawRate: 0, verticalSpeed: 0, grounded: true, turretYawRate: 0, gunPitch: 0 },
   input: { throttle: 0 },
   combat: { destroyed: false, hp: 1000, maxHp: 1000, modules: {}, ammo: [20], ammoCapacity: [20], shellSlot: 0 },
@@ -65,7 +65,7 @@ async function battle(map, features = null, { rollout = true } = {}) {
   landmarks = features;
   bus.emit('phase:change', { phase: 'garage' });
   bus.emit('phase:change', { phase: 'battle' });
-  await audio.warmBattleEvents(['t72b3m']);
+  await audio.warmBattleEvents(['t72b3m_2022']);
   audio.ambientOn(true);
   run(0.5);
   await settle();

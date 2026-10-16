@@ -33,7 +33,7 @@ const make=entities=>createMatchModeController({mode:'ac130',entities,revive(){t
  assert.equal(clear.step(1/60,1),null,'kills alone do not extract the convoy');
 }
 {
- const seats=[{playerId:'a',team:'alpha',specId:'m1a2'},{playerId:'b',team:'bravo',specId:'m1a2'}],bots=[];
+ const seats=[{playerId:'a',team:'alpha',specId:'m1a1_abrams_hc'},{playerId:'b',team:'bravo',specId:'m1a1_abrams_hc'}],bots=[];
  arrangeModeRoster('ac130',null,seats,bots);assert.ok(seats.every(s=>s.team==='alpha'));
  assert.equal(bots.filter(b=>b.team==='alpha').length,4,'human pilots never replace the ground escort');
  assert.equal(matchRulesetFor('ac130').allies,4);

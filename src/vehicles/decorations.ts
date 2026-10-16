@@ -1,6 +1,6 @@
 import { markSmokeTube, registerSmokeSockets } from './vehicleAuxiliaryGeometry.ts';
 import {NATIONAL_LEGACY_IDS} from './nationalLegacyConfig.ts';
-import { tankSeedId } from './tankIdAliases.ts';
+import { resolveTankId, tankSeedId } from './tankIdAliases.ts';
 // src/vehicles/decorations.ts — cosmetic external-stowage / fittings kit for
 // the whole fleet ("decoration system", 2026-07 round).
 //
@@ -2544,7 +2544,8 @@ function appendDefaultHullManifest(
  * historical manifest and jitter streams: their stowage stays exactly as authored.
  */
 function isSourceStudy(spec: FleetTankSpec): boolean {
-  return /_x$/.test(spec.id) || spec.id === 'leo2_revolution_proto';
+  // The `_x` suffix is schema-1 vocabulary (tankIdAliases.ts): a rename that drops it never changes the gate.
+  return /_x$/.test(tankSeedId(spec.id)) || spec.id === 'leo2_revolution_proto';
 }
 
 /**
@@ -2594,9 +2595,9 @@ function defaultManifest(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
  * Suited hulls (ghillieSuit.ts) and the Garage workshop exhibits stay out of the list.
  */
 const FIELD_FOLIAGE: Readonly<Record<string, { kind: VehicleFoliageKind }>> = Object.freeze({
-  ua_t80bv: { kind: 'oak' }, ua_t80u_kursk: { kind: 'oak' }, ua_t84_oplot_m: { kind: 'oak' },
+  ua_t80bv: { kind: 'oak' }, t80u_kursk: { kind: 'oak' }, t84bm_oplot_m: { kind: 'oak' },
   ua_challenger2: { kind: 'oak' }, ua_m2a3_bradley: { kind: 'oak' },
-  t72b3m: { kind: 'birch' }, t90m_proryv: { kind: 'birch' }, t90a: { kind: 'birch' },
+  t72b3m_2022: { kind: 'birch' }, t90m_proryv: { kind: 'birch' }, t90a_2004: { kind: 'birch' },
   pt91m: { kind: 'beech' }, t72_rys: { kind: 'beech' }, t72m1_jaguar: { kind: 'beech' },
 });
 
@@ -2647,7 +2648,7 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
   // carried the default draw (smoke, whip, IR light, side links, bow hooks, bucket, rations). It keeps those pieces and
   // gains a fat canvas roll across the rear deck, laid ahead of the roof gear so the stern reads at play distance; the
   // L37 on the commander's cupola is the profile's roof gun, so the decor adds none (as before).
-  challenger1: () => [
+  challenger1_mk2: () => [
     { kit: 'smoke', p: 1, v: { v: '4' }, slot: ['turretCheekPair', {}] },
     { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: 1 }] },
     { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.25 }, slot: ['rearDeck', { corner: -1 }] },
@@ -2693,7 +2694,7 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
   strv103a: (spec, rng) => defaultManifest(spec, rng)
     .map((row) => (row.kit === 'cable' || row.kit === 'travelLock' ? { ...row, p: 0 } : row)),
   // --- Modern ---
-  leo2a4: () => [
+  leo2a2: () => [
     // The family profile owns the complete hull-and-turret ghillie suit.
     // Keep normal stowage here, but do not layer the old rectangular side
     // veils or tied rolls over its shaped, cut-out carrier meshes.
@@ -2703,7 +2704,7 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: -1 }] },
     { kit: 'cable', p: 1, v: { len: 2.5 }, slot: ['hullSideTop', { side: 1 }] },
   ],
-  leo2a6: () => [
+  leo2a4: () => [
     { kit: 'basket', p: 1, v: { w: 1.5, d: 0.4, h: 0.3 }, slot: ['turretRearFrame', {}] },
     { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
     { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.15, w: 0.95 }, slot: ['rearDeck', { center: true }] },
@@ -2715,7 +2716,7 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRearRack', { x: -0.17 }] },
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
-  k2: (s) => [
+  xk2_black_panther: (s) => [
     { kit: 'basket', p: 1, v: { w: 1.3, d: 0.38, h: 0.3 }, slot: ['turretRearFrame', {}] },
     { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', { onBasket: true }] },
     { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.0, w: 0.85 }, slot: ['rearDeck', { center: true }] },
@@ -2727,7 +2728,7 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
     { kit: 'slat', p: 1, v: { w: Math.min(1.7, s.dims.widthM * 0.5), h: 0.5 }, slot: ['hullRearCage', {}] },
   ],
-  m1a2: () => [
+  m1a1_abrams_hc: () => [
     { kit: 'basket', p: 1, v: { w: 1.4, d: 0.42, h: 0.32 }, slot: ['turretRearFrame', {}] },
     { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', { onBasket: true }] },
     { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.1 }, slot: ['turretSide', { side: 1 }] },
@@ -2737,7 +2738,7 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
     { kit: 'rations', p: 1, v: { n: 2 }, slot: ['rearDeck', { center: true, small: true }] },
   ],
-  m1a2_tusk: () => [
+  m1a1_abrams_sa: () => [
     // Urban hard kit only: no foliage or grass-like camouflage geometry.
     { kit: 'basket', p: 1, v: { w: 1.75, d: 0.48, h: 0.36 }, slot: ['turretRearFrame', {}] },
     { kit: 'packs', p: 1, v: { n: 5 }, slot: ['turretRear', { onBasket: true }] },
@@ -2750,7 +2751,7 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'light', p: 1, v: { v: 'ir_large' }, slot: ['turretRoof', { rear: false, side: 1 }] },
     { kit: 'rations', p: 1, v: { n: 3 }, slot: ['rearDeck', { center: true, small: true }] },
   ],
-  m1a2_sepv2: () => [
+  m1a1_abrams_aim: () => [
     { kit: 'basket', p: 1, v: { w: 1.65, d: 0.46, h: 0.35 }, slot: ['turretRearFrame', {}] },
     { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', { onBasket: true }] },
     { kit: 'bin', p: 1, v: { v: 'steel', w: 0.66, h: 0.34, d: 0.46 }, slot: ['rearDeck', { corner: -1 }] },
@@ -2761,7 +2762,7 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'light', p: 1, v: { v: 'ir_large' }, slot: ['turretRoof', { rear: false, side: 1 }] },
     { kit: 'tools', p: 1, v: { set: ['shovel', 'sledge'] }, slot: ['fender', { side: 1, zFrac: 0.12, along: true }] },
   ],
-  m1a2_sepv3: () => [
+  m1a1_abrams_fep: () => [
     { kit: 'basket', p: 1, v: { w: 1.70, d: 0.47, h: 0.35 }, slot: ['turretRearFrame', {}] },
     { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', { onBasket: true }] },
     { kit: 'bin', p: 1, v: { v: 'steel', w: 0.72, h: 0.35, d: 0.48 }, slot: ['rearDeck', { corner: -1 }] },
@@ -2789,7 +2790,7 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
     { kit: 'tools', p: 1, v: { set: ['shovel', 'axe'] }, slot: ['fender', { side: -1, zFrac: 0.10, along: true }] },
   ],
-  challenger_3: () => [
+  challenger3_proto: () => [
     { kit: 'basket', p: 1, v: { w: 1.6, d: 0.45, h: 0.32 }, slot: ['turretRearFrame', {}] },
     { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', { onBasket: true }] },
     { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.1, w: 0.9 }, slot: ['rearDeck', { center: true }] },
@@ -2807,7 +2808,7 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
   // bustle basket and its packs early; at 1,796 and 1,172 triangles they cost the fleet cargo three of its seven loads.
   // Round 4 follow-up: they wait their turn again. With the cheaper ties, the retired pieces' light stand-ins and
   // packing, six of the Leclerc's seven loads now ride its turret (the bustle, the roof and the side ledges).
-  leclerc: () => [
+  leclerc_s2: () => [
     { kit: 'basket', p: 1, v: { w: 1.4, d: 0.42, h: 0.3 }, slot: ['turretRearFrame', {}] },
     { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
     { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.0, w: 0.85 }, slot: ['rearDeck', { center: true }] },
@@ -2818,7 +2819,7 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: -1 }] },
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
-  leclerc_xlr: (s) => [
+  leclerc_sxxi: (s) => [
     { kit: 'basket', p: 1, v: { w: 1.4, d: 0.42, h: 0.3 }, slot: ['turretRearFrame', {}] },
     { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
     { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.0, w: 0.85 }, slot: ['rearDeck', { center: true }] },
@@ -2830,7 +2831,7 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
     { kit: 'slat', p: 1, v: { w: Math.min(1.7, s.dims.widthM * 0.5), h: 0.5 }, slot: ['hullRearCage', {}] },
   ],
-  t14: (s) => [
+  object148_proto: (s) => [
     { kit: 'bin', p: 1, v: { v: 'steel', w: 0.7, h: 0.32, d: 0.42 }, slot: ['turretSide', { side: 1 }] },
     { kit: 'bin', p: 1, v: { v: 'steel', w: 0.7, h: 0.32, d: 0.42 }, slot: ['turretSide', { side: -1 }] },
     { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.1, w: 0.9 }, slot: ['rearDeck', { center: true }] },
@@ -2841,7 +2842,7 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'slat', p: 1, v: { w: Math.min(1.7, s.dims.widthM * 0.5), h: 0.5 }, slot: ['hullRearCage', {}] },
     { kit: 'tools', p: 1, v: { set: ['shovel', 'crowbar'] }, slot: ['fender', { side: -1, zFrac: -0.20, along: true }] },
   ],
-  kf51: () => [
+  kf51_evo: () => [
     { kit: 'basket', p: 1, v: { w: 1.5, d: 0.4, h: 0.3 }, slot: ['turretRearFrame', {}] },
     { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
     { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.1, w: 0.9 }, slot: ['rearDeck', { center: true }] },
@@ -2853,7 +2854,7 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRearRack', { x: 0.18 }] },
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
-  kf51b: () => [
+  kf51_u: () => [
     { kit: 'basket', p: 1, v: { w: 1.5, d: 0.4, h: 0.3 }, slot: ['turretRearFrame', {}] },
     { kit: 'packs', p: 1, v: { n: 3 }, slot: ['turretRear', { onBasket: true }] },
     { kit: 'camonet', p: 1, v: { v: 'drape', len: 1.1, w: 0.9 }, slot: ['rearDeck', { center: true }] },
@@ -2865,7 +2866,7 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRearRack', { x: 0.18 }] },
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
   ],
-  type10: () => [
+  type10_tk_x: () => [
     { kit: 'basket', p: 1, v: { w: 1.3, d: 0.36, h: 0.28 }, slot: ['turretRearFrame', {}] },
     { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', { onBasket: true }] },
     { kit: 'camonet', p: 1, v: { v: 'drape', len: 0.9, w: 0.8 }, slot: ['rearDeck', { center: true }] },
@@ -2876,7 +2877,7 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
     { kit: 'tracks', p: 1, v: { n: 3, linkW: 0.42 }, slot: ['turretSidePlate', { side: -1 }] },
   ],
-  t90m: () => [
+  t90am: () => [
     { kit: 'log', p: 1, v: { len: 2.6 }, slot: ['hullRearLow', {}] },
     { kit: 'drums', p: 1, v: { v: 'twin' }, slot: ['hullRear', {}] },
     { kit: 'cable', p: 1, v: { len: 2.3 }, slot: ['hullSideTop', { side: 1 }] },
@@ -2901,11 +2902,11 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // These source-study profiles already own their complete equipment and
   // open racks. Preserve their authored cargo without a random overlay.
   // Originals and unrelated X studies keep their existing loadouts.
-  if (['m1a2_x', 'm1a2_tusk_x', 'm1a2_sepv2_x', 'm1a2_sepv3_x', 'ua_m1a1_x'].includes(spec.id)) return [];
+  if (['m1a2_abrams', 'm1a2_abrams_tusk', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'ua_m1a2_abrams'].includes(spec.id)) return [];
   // The Type 100 is authored complete from the owner's reference renders (2026-09-16): pods, weapon
   // station, whips, sensor cubes, hatches and grilles, with a clean deck. The generic field load hung a
   // steel bin and jerrycans behind the stern and a canvas roll on the deck, which the renders never show.
-  if (spec.id === 'type100' || spec.id === 'ztz100_x' || spec.id === 'ztz100_prototype' || spec.id === 'object695_x') return [];
+  if (spec.id === 'type100' || spec.id === 'ztz100' || spec.id === 'ztz100_prototype' || spec.id === 'object695') return [];
   // The source-authored Revolution already carries its complete SEOSS,
   // RCWS, hatch, smoke, cable and service package. Generic coolers/crates
   // on this low roof obscure that equipment and the large EMES recess.
@@ -2916,7 +2917,8 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
       slot: ['fender', { side: -1, zFrac: -0.31, along: true }] },
   ];
   const decorId = decorIdentityFor(spec.id);
-  const curated = TANK_MANIFESTS[decorId];
+  // decorId is the schema-1 spelling (it seeds the kit); the manifest table is keyed by current ids (tankIdAliases.ts).
+  const curated = TANK_MANIFESTS[resolveTankId(decorId, 1)];
   // Give every playable a visible, deterministic field load rather than one
   // tiny hash-selected object that can disappear behind a bustle. Seven
   // station-aware pieces occupy the bustle, rear turret roof, engine deck,
@@ -2952,7 +2954,7 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // roof sensors. Keep the same seven-piece vocabulary, but make the portable
   // field items slightly more compact so aft stowage does not force an
   // out-of-family portrait crop.
-  const cargoScale = spec.id === 'challenger_3' ? 0.85
+  const cargoScale = spec.id === 'challenger3_proto' ? 0.85
     : spec.id === 'ztz85_iii' ? 0.94
       : 1;
   const cargoVariant = (v: FleetEquipmentVariant) => ({
@@ -2971,7 +2973,7 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
     ['fender', { side: seatSide, zFrac: -0.30, small: true }],
   ];
   const hardCaseRoutes = (seatSide: number, xOffset = 0): Array<[string, DecorSlotArgs]> => (
-    spec.id === 'm48'
+    spec.id === 'm48a5_patton'
       ? [
         ['hullRearRack', { x: seatSide * (0.12 + xOffset) }],
         ['rearDeck', { corner: seatSide, back: true, small: true }],
@@ -3038,7 +3040,7 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // on the roof front (8 of its 20 launch sockets, the PR head's). The round-5 true-size open-yoke RWS reads 1.03 m,
   // the station meets the turret side and overhangs the width guard, and the pair was lost (20 -> 12). The pair keeps
   // its roof-front seat by name: on the roof plate itself, outboard of the roof box, the PR head's yaw.
-  if (spec.id === 'type89_light_tiger') {
+  if (spec.id === 'raiju_ifv') {
     for (const row of base) if (row.kit === 'smoke') row.slot = ['turretRoofPair', { x: 0.76, z: 0.36, yaw: 0.55 }];
   }
   // Round 4 (2026-10-07): no loadout carries a cable spool or a camp chair. Wave 215 on the M60A1 and Type 99A: "a
@@ -3056,13 +3058,13 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(choose(hardCases, 'deck-case')),
-      slot: ['fleetCargo', { routes: spec.id === 'strv103'
+      slot: ['fleetCargo', { routes: spec.id === 'strv103b'
         ? strvRoofRoutes(0.65, -1.45) : strvARoutes(-1.22, -0.70, hardCaseRoutes(side, 0.12)) }],
     },
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(choose(softStowage, 'bustle-soft')),
-      slot: ['fleetCargo', { routes: spec.id === 'strv103'
+      slot: ['fleetCargo', { routes: spec.id === 'strv103b'
         ? strvRoofRoutes(-0.25, -1.45) : strvARoutes(1.32, -0.66, aftRoutes(-side, 0.12)) }],
     },
     {
@@ -3070,7 +3072,7 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
       v: cargoVariant(serviceItem),
       // A fire extinguisher lies in a hull rack or on the deck; laid across
       // the turret roof it read as a red drum with a blue lens.
-      slot: ['fleetCargo', { routes: spec.id === 'strv103'
+      slot: ['fleetCargo', { routes: spec.id === 'strv103b'
         ? strvRoofRoutes(-1.05, -1.30)
         : strvARoutes(-1.24, 0.22, serviceItem === 'fire-extinguisher' && decorEra(spec) === VEHICLE_ERAS.MODERN
           ? hullServiceRoutes(-side, 0.22)
@@ -3081,31 +3083,31 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
       v: cargoVariant(choose(pairedCans, 'rear-cans')),
       // The 103B has no rotating turret: its water-can cradle sits at the
       // exact roof point supplied by Gallery surface markup.
-      slot: ['fleetCargo', { routes: spec.id === 'strv103'
+      slot: ['fleetCargo', { routes: spec.id === 'strv103b'
         ? strvRoofRoutes(-0.80, -0.20) : strvARoutes(1.30, -1.42, normalPairedCanRoutes) }],
     },
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(choose(hardCases, 'deck-case', 3)),
-      slot: ['fleetCargo', { routes: spec.id === 'strv103'
+      slot: ['fleetCargo', { routes: spec.id === 'strv103b'
         ? strvRoofRoutes(1.15, -1.00) : strvARoutes(-0.36, -1.26, hardCaseRoutes(-side, 0.02)) }],
     },
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(service(2)),
-      slot: ['fleetCargo', { routes: spec.id === 'strv103'
+      slot: ['fleetCargo', { routes: spec.id === 'strv103b'
         ? strvRoofRoutes(0.85, -0.30) : strvARoutes(-1.25, -1.45, aftRoutes(side, 0.22)) }],
     },
     {
       kit: 'cargo', p: 1,
       v: cargoVariant(choose(softStowage, 'bustle-soft', 2)),
-      slot: ['fleetCargo', { routes: spec.id === 'strv103'
+      slot: ['fleetCargo', { routes: spec.id === 'strv103b'
         ? strvRoofRoutes(-0.25, -0.85) : strvARoutes(1.32, 0.22, aftRoutes(side, 0.02)) }],
     },
   ];
   // opt-in branch bundles take their seats before loose cargo crowds the turret's rear quarters
   const manifest = [...fieldFoliageRows(spec), ...cargo, ...base];
-  if (spec.id === 'ares_apc_x') {
+  if (spec.id === 'ares_apc') {
     // The tiny remote station is not a turret-bustle cargo shelf. The three
     // procedural soft packs read as sandbags perched on its weapon housing.
     return manifest.filter(row => row.kit !== 'packs' && row.kit !== 'sandbags'
@@ -3754,12 +3756,12 @@ function supportedSeat(
  * the machine-gun ring, so the gun can be neither seen nor traversed". The radius covers the ring and the gun's sweep.
  */
 const KEEP_CLEAR_HULL: Readonly<Record<string, ReadonlyArray<readonly [number, number, number]>>> = {
-  strv103: [[0.26, -0.22, 0.62], [0.06, -0.35, 0.34]],
+  strv103b: [[0.26, -0.22, 0.62], [0.06, -0.35, 0.34]],
   // round 4 (2026-10-07): and the periscope dome on the left of the roof (top at 2.02 m), which the decor chest stood on
   strv103a: [[0.28, -0.40, 0.70], [-0.535, -0.285, 0.26]],
   // round 4 (2026-10-07): the Challenger 1 commander's L37 cupola on the low right roof (turret-local (0.50, -0.81),
   // turret pivot z 0.362): the bedrolls the decor laid there would bury the new gun's pintle and can.
-  challenger1: [[0.50, -0.45, 0.62]],
+  challenger1_mk2: [[0.50, -0.45, 0.62]],
 };
 
 /** A disc of the frame's deck plane (frame-local x, z, radius) that no load may cover. */
@@ -3990,7 +3992,7 @@ function collectFieldEquipment(group: THREE.Group, frame: DecorFrame, screens: b
 
 /**
  * The bodies of the frame's roof guns (round 5, 2026-10-08; the lane lead after helper B's crew-scale machine-gun floor:
- * "decor loads now touch the grown guns on udes03, type90, type90a, carro45t, leo2a6m, pl01_105 and m46_patton"): every
+ * "decor loads now touch the grown guns on udes03, type90_kyumaru, type90a, carro45t, leo2a4_otco, pl01_105 and m46_patton"): every
  * connected piece of a pintle gun, M2 or remote-station fitting (receiver, barrel, cradle, ammunition box, shield), its
  * own box `group`-local and a centimetre proud, which a decor piece's placed box may not enter. The foot disc (collectKeepOut)
  * keeps the mount's base clear; these keep the gun itself out of the stowage, a barrel above a load leaving it be.
@@ -5836,7 +5838,7 @@ export function* attachTankDecorationsSteps(
         // the gun corridor and the repaired Leopard throats (real air beside the moving shield)
         const roofAllowed = (x: number, z: number): boolean => {
           if (Math.abs(x) < 0.24 && z > 0 && !casemate) return false;
-          if (['leo2a7v_x','leo2a6m_x','leo2a4m_x'].includes(spec.id)) {
+          if (['leo2a7v','leo2a6m','leo2a5m'].includes(spec.id)) {
             const pivot = turretG.getObjectByName('rig_gun')?.position;
             if (pivot && Math.abs(x-pivot.x)<.44+w/2 && z+d/2>pivot.z-.70) return false;
           }
@@ -5862,7 +5864,7 @@ export function* attachTankDecorationsSteps(
           if (Math.abs(x) < 0.24 && z > 0 && !casemate) continue; // gun corridor
           // The repaired Leopard throats are real air, including the full
           // footprint beside the moving shield, not just its center ray.
-          if (['leo2a7v_x','leo2a6m_x','leo2a4m_x'].includes(spec.id)) {
+          if (['leo2a7v','leo2a6m','leo2a5m'].includes(spec.id)) {
             const pivot = turretG.getObjectByName('rig_gun')?.position;
             if (pivot && Math.abs(x-pivot.x)<.44+w/2 && z+d/2>pivot.z-.70) continue;
           }
@@ -6028,7 +6030,7 @@ export function* attachTankDecorationsSteps(
         return false;
       },
       // A bank pair seated on the turret roof plate at (+-x, z), yaw +-yaw (2026-10-08; a curated seat, see the
-      // type89_light_tiger override in decorManifestFor): the bracket stands on the solid roof under it (decor,
+      // raiju_ifv override in decorManifestFor): the bracket stands on the solid roof under it (decor,
       // suits and fittings are not support), 4 mm into the plate; a side without roof there keeps no bank.
       turretRoofPair(args, parts, name) {
         const x = args.x ?? 0.7, z = args.z ?? 0.3, yaw = args.yaw ?? 0.55;

@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { CASES, HULLS, WORLDS, runCase } from './physics-torture.mjs';
 import { ensureAuthorityFleet } from '../src/vehicles/authorityFleet.ts';
 
-await ensureAuthorityFleet([...new Set([...Object.values(HULLS), 't90m', 'm1a2', 'm551_sheridan', 'merkava4b'])]);
+await ensureAuthorityFleet([...new Set([...Object.values(HULLS), 't90am', 'm1a1_abrams_hc', 'm551_sheridan', 'merkava4b'])]);
 
 const failures = [];
 let runs = 0;

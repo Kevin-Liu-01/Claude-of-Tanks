@@ -943,7 +943,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   dock.appendChild(tanksGroup.root);
   const secActors = section('addTanks', t('studioPanel.section.addTanks'), t('studioPanel.section.addTanksSub'));
   // -- tank picker (icon rows, filterable) --
-  let pickedId = 'm1a2';
+  let pickedId = 'm1a1_abrams_hc';
   const pick = el('div', 'pick');
   const pickBtn = el('button', 'pickBtn');
   const pickIcon = tankIcon(pickedId);
@@ -1053,7 +1053,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // === SELECTED ACTOR section ===
   const secSel = section('selectedTank', t('studioPanel.section.selectedTank'), t('studioPanel.section.selectedTankSub'));
   const selHead = el('div', 'selhead');
-  const selIcon = tankIcon('m1a2');
+  const selIcon = tankIcon('m1a1_abrams_hc');
   const selNames = el('div', 'nm');
   const selN1 = el('div', 'n1', '');
   const selN2 = el('div', 'n2', '');

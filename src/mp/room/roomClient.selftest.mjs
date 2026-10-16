@@ -41,7 +41,7 @@ const rejects = async (promise, code) => {
 try {
   // ---- create / join / state
   const a = client('alice');
-  const room = await a.create({ mode: 'private', selection: { specId: 'm1a2' }, settings: { teamSize: 2, mapId: 'verdant' } });
+  const room = await a.create({ mode: 'private', selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize: 2, mapId: 'verdant' } });
   assert.match(room.roomCode, /^[A-Z0-9]{6}$/);
   assert.equal(a.isAdmin, true);
   assert.equal(a.phase, 'joined');
@@ -54,7 +54,7 @@ try {
   const b = client('bob', bStorage);
   const states = [];
   a.onState((state) => states.push(state.revision));
-  const joined = await b.join({ roomCode: room.roomCode, selection: { specId: 't90m' } });
+  const joined = await b.join({ roomCode: room.roomCode, selection: { specId: 't90am' } });
   assert.equal(joined.players.length, 2);
   assert.equal(b.me.team, 'bravo');
   await until(() => a.room?.players.length === 2, 'alice sees bob');
@@ -140,7 +140,7 @@ try {
       transport: { createSocket: (url) => new WebSocket(url) },
     });
     clients.push(keep);
-    const kept = await keep.create({ mode: 'private', selection: { specId: 'm1a2' } });
+    const kept = await keep.create({ mode: 'private', selection: { specId: 'm1a1_abrams_hc' } });
     const touchedAt = server.roomService.rooms.get(kept.roomCode).snapshot.touchedAt;
     await until(() => keep.stats().keepalivesAnswered >= 4, 'four keepalive answers');
     const stats = keep.stats();
@@ -159,7 +159,7 @@ try {
       transport: { createSocket: (url) => new WebSocket(url), keepalive: null },
     });
     clients.push(legacy);
-    const kept = await legacy.create({ mode: 'private', selection: { specId: 'm1a2' } });
+    const kept = await legacy.create({ mode: 'private', selection: { specId: 'm1a1_abrams_hc' } });
     const touchedAt = server.roomService.rooms.get(kept.roomCode).snapshot.touchedAt;
     await until(() => legacy.stats().keepalivesAnswered >= 2, 'two envelope pongs');
     assert.equal(legacy.stats().keepalive, 'envelope');
@@ -181,7 +181,7 @@ try {
     const phases = [];
     gone.onClosed(({ reason }) => closedReasons.push(reason));
     gone.onPhase((change) => phases.push(change.phase));
-    const created = await gone.create({ mode: 'private', selection: { specId: 'm1a2' } });
+    const created = await gone.create({ mode: 'private', selection: { specId: 'm1a1_abrams_hc' } });
     // the room goes away behind the client's back (its storage reset, a redeploy) and the socket drops: the transport
     // reconnects inside its window and the client presents its capability to a room that has no such seat
     server.roomService.rooms.delete(created.roomCode);
@@ -203,7 +203,7 @@ try {
     const firstPhases = [];
     first.onClosed(({ reason }) => firstReasons.push(reason));
     first.onPhase((change) => firstPhases.push(change.phase));
-    const created = await first.create({ mode: 'private', selection: { specId: 'm1a2' } });
+    const created = await first.create({ mode: 'private', selection: { specId: 'm1a1_abrams_hc' } });
     const second = client('twin', shared);
     const secondReasons = [];
     second.onClosed(({ reason }) => secondReasons.push(reason));
@@ -233,7 +233,7 @@ try {
     const phases = [];
     lost.onClosed(({ reason }) => reasons.push(reason));
     lost.onPhase((change) => phases.push(change.phase));
-    await lost.create({ mode: 'private', selection: { specId: 'm1a2' } });
+    await lost.create({ mode: 'private', selection: { specId: 'm1a1_abrams_hc' } });
     await away.close();
     await until(() => reasons.length === 1, 'the window ran out', 5000);
     assert.equal(reasons[0], 'room_unreachable');
@@ -255,7 +255,7 @@ try {
     });
     clients.push(dead);
     const startedAt = Date.now();
-    await assert.rejects(dead.create({ mode: 'private', selection: { specId: 'm1a2' } }), (error) => error instanceof RoomConnectError && error.code === 'room_unreachable' && error.transportReason === 'timeout');
+    await assert.rejects(dead.create({ mode: 'private', selection: { specId: 'm1a1_abrams_hc' } }), (error) => error instanceof RoomConnectError && error.code === 'room_unreachable' && error.transportReason === 'timeout');
     const tookMs = Date.now() - startedAt;
     assert.ok(tookMs < 5_000, `the admission gave up in ${tookMs} ms, inside the request timeout, not the 60 s window`);
     assert.equal(dead.phase, 'idle', 'the failed create leaves the client idle');

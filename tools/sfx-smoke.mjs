@@ -128,7 +128,7 @@ async function openPage() {
 async function bootIntoBattle() {
   await page.mouse.click(640, 360);          // user gesture → audio.resume()
   await sleep(300);
-  await page.evaluate(() => window.__DEBUG.startBattle('m1a2'));
+  await page.evaluate(() => window.__DEBUG.startBattle('m1a1_abrams_hc'));
   await page.waitForFunction(
     'window.__COT_AUDIO && window.__COT_AUDIO.ctx && window.__COT_AUDIO.ctx.currentTime > 0',
     { timeout: 20000 },
@@ -251,10 +251,10 @@ try {
     { name: 'bullet_ground', ev: 'shell:expired', p: `{shellId:${++shellId}, pos:window.__P.pos(4,-1.5,9), hitTerrain:true, caliberMm:7.62}`, holdMs: 900, minRms: 1e-4, expect: ['bullet_dirt'] },
     // destruction and contact
     { name: 'tank_explosion', ev: 'tank:destroyed', holdMs: 5200,
-      p: `{id:window.__P.enemyId, specId:'t90m', pos:window.__P.pos(0,-1.5,30), killerId:window.__P.playerId, cause:'ammorack'}`,
+      p: `{id:window.__P.enemyId, specId:'t90am', pos:window.__P.pos(0,-1.5,30), killerId:window.__P.playerId, cause:'ammorack'}`,
       expect: ['tank_explode_ammo', 'debris_metal', 'turret_land', 'cookoff_loop'] },
     { name: 'tank_burnout', ev: 'tank:destroyed', holdMs: 3600,
-      p: `{id:window.__P.enemyId, specId:'t90m', pos:window.__P.pos(14,-1.5,26), killerId:null, cause:'fire'}`,
+      p: `{id:window.__P.enemyId, specId:'t90am', pos:window.__P.pos(14,-1.5,26), killerId:null, cause:'fire'}`,
       expect: ['burnout_blast'] },
     { name: 'tree_crush', ev: 'prop:crushed', holdMs: 2200,
       p: `{id:window.__P.playerId, isPlayer:true, speedMps:6, kind:'tree', h:7, pos:window.__P.pos(3,-1.5,5), dir:[0,0,1]}`,
@@ -263,7 +263,7 @@ try {
       p: `{aId:window.__P.playerId, bId:window.__P.enemyId, aIsPlayer:true, bIsPlayer:false, closingMps:8.5, dmgA:42, dmgB:75, pos:window.__P.pos(-2,-0.8,5)}`,
       expect: ['ram_heavy'] },
     { name: 'smoke', ev: 'auxiliary:smokeScreens', holdMs: 2200,
-      p: `{screens:[{born:window.__DEBUG.game.timeS + 1000, x:window.__P.pos(6,0,14)[0], y:window.__P.pos(6,0,14)[1], z:window.__P.pos(6,0,14)[2], source:['m1a2', ...window.__P.pos(0,0,0)]}]}`,
+      p: `{screens:[{born:window.__DEBUG.game.timeS + 1000, x:window.__P.pos(6,0,14)[0], y:window.__P.pos(6,0,14)[1], z:window.__P.pos(6,0,14)[2], source:['m1a1_abrams_hc', ...window.__P.pos(0,0,0)]}]}`,
       expect: ['smoke_launcher', 'smoke_burst'] },
   ];
 
@@ -356,9 +356,9 @@ try {
     await emit('shell:fired', fire(i % 2 ? 120 : 125, -14 + i * 4, 9 + (i % 3) * 3));
     await sleep(35);
   }
-  await emit('tank:destroyed', `{id:window.__P.enemyId, specId:'t90m', pos:window.__P.pos(-6,-1.5,24), killerId:window.__P.playerId, cause:'ammorack'}`);
+  await emit('tank:destroyed', `{id:window.__P.enemyId, specId:'t90am', pos:window.__P.pos(-6,-1.5,24), killerId:window.__P.playerId, cause:'ammorack'}`);
   await sleep(120);
-  await emit('tank:destroyed', `{id:window.__P.enemyId, specId:'t90m', pos:window.__P.pos(9,-1.5,21), killerId:window.__P.playerId, cause:'ammorack'}`);
+  await emit('tank:destroyed', `{id:window.__P.enemyId, specId:'t90am', pos:window.__P.pos(9,-1.5,21), killerId:window.__P.playerId, cause:'ammorack'}`);
   await sleep(4500);
   const vI16 = await tapStopAndFetch();
   const va = analyze(vI16, sampleRate);

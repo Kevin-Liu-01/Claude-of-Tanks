@@ -15,7 +15,7 @@ const footZ = (x) => SLANT * x - 10;
 const climb = (x, z, run) => Math.max(0, Math.min(RISE, (z - footZ(x)) / run * RISE));
 const faceField = { getHeightAt: (x, z) => climb(x, z, x < RAMP_X ? RAMP_RUN : FACE_RUN), getGroundType: () => 'medium' };
 const rampOnly = { getHeightAt: (x, z) => climb(x, z, RAMP_RUN), getGroundType: () => 'medium' };
-const spec = getSpec('m1a2');
+const spec = getSpec('m1a1_abrams_hc');
 
 /** The steepest ground (gradient over 2 m either way) under a route's polyline, sampled every 2 m. */
 function steepestUnder(field, route, start) {

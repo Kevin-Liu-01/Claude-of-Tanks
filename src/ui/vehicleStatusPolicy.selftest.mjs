@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {createCombatState,tickModuleRepairs,REPAIR_S} from '../sim/damage.ts';
 import {TANK_SPECS} from '../vehicles/specs.ts';
 import {createVehicleStatusReader,vehicleStatusCapacity} from './vehicleStatusPolicy.ts';
-const combat=createCombatState(TANK_SPECS.m1a2),read=createVehicleStatusReader();
+const combat=createCombatState(TANK_SPECS.m1a1_abrams_hc),read=createVehicleStatusReader();
 assert.equal(read(combat).length,0);
 assert.equal(read(combat,{inBush:true,spotted:false})[0].id,'conceal');
 assert.equal(read(combat,{inBush:true,fired:true,camo:.1}).length,0);

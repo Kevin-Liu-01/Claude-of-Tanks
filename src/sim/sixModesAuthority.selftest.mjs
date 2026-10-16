@@ -9,7 +9,7 @@ import { AERIAL_RULES } from './matchRuleset.ts';
 const modes=['juggernaut','infected','realistic','gun_game','drone','ac130'];
 for(const mode of modes){
  const match=createAuthoritativeMatch({gameMode:mode,countdownS:0,mapId:'verdant',seed:23,
-  players:[{id:'pilot',specId:'m1a2',team:'alpha',spawn:{x:0,z:-50,yaw:0}}, {id:'hostile',specId:'m1a2',team:'bravo',spawn:{x:0,z:80,yaw:Math.PI}},...(mode==='ac130'?[{id:'escort',specId:'m1a2',team:'alpha',bot:true,spawn:{x:10,z:-100,yaw:0}}]:[])]});
+  players:[{id:'pilot',specId:'m1a1_abrams_hc',team:'alpha',spawn:{x:0,z:-50,yaw:0}}, {id:'hostile',specId:'m1a1_abrams_hc',team:'bravo',spawn:{x:0,z:80,yaw:Math.PI}},...(mode==='ac130'?[{id:'escort',specId:'m1a1_abrams_hc',team:'alpha',bot:true,spawn:{x:10,z:-100,yaw:0}}]:[])]});
  match.onMatchReady();
  const pilot=match.entityById.get('pilot');const inputs=new Map([['pilot',{throttle:0,steer:0,brake:false,fire:false,aimYaw:0,aimPitch:-.7,shellSlot:0,actionBits:mode==='drone'?PLAYER_ACTION_BITS.DRONE:0}]]);
  match.step({dt:1/60,inputs});inputs.get('pilot').actionBits=0;
@@ -41,7 +41,7 @@ for(const mode of modes){
  }
 }
 for(const mode of ['juggernaut','infected','ac130']){
- const seats=[{playerId:'host',team:'alpha',specId:'m1a2'},{playerId:'guest',team:'bravo',specId:'m1a2'}],bots=[];
+ const seats=[{playerId:'host',team:'alpha',specId:'m1a1_abrams_hc'},{playerId:'guest',team:'bravo',specId:'m1a1_abrams_hc'}],bots=[];
  arrangeModeRoster(mode,null,seats,bots);
  assert.ok(bots.length);assert.ok(seats.length+bots.length<=42);
  if(mode==='juggernaut')assert.equal([...seats,...bots].filter(e=>e.team==='alpha').length,1);
@@ -55,7 +55,7 @@ console.log('sixModesAuthority: all six modes spawn and step; multiplayer flight
  const flat={getHeightAt:()=>0,getGroundType:()=> 'hard',getNormalAt:()=>new Vector3(0,1,0)};
  const match=createAuthoritativeMatch({gameMode:'drone',countdownS:0,mapId:'verdant',seed:23,
   worldCollision:{mapId:'verdant',heightField:flat,getObstacles:()=>[]},
-  players:[{id:'pilot',specId:'m1a2',team:'alpha',spawn:{x:0,z:0,yaw:0}},{id:'target',specId:'m1a2',team:'bravo',spawn:{x:0,z:70,yaw:0}}]});
+  players:[{id:'pilot',specId:'m1a1_abrams_hc',team:'alpha',spawn:{x:0,z:0,yaw:0}},{id:'target',specId:'m1a1_abrams_hc',team:'bravo',spawn:{x:0,z:70,yaw:0}}]});
  match.onMatchReady();const pilot=match.entityById.get('pilot'),target=match.entityById.get('target');
  const input={throttle:1,steer:0,brake:false,fire:false,aimYaw:0,aimPitch:0,shellSlot:0,actionBits:PLAYER_ACTION_BITS.DRONE};
  const inputs=new Map([['pilot',input]]);const hits=[];
