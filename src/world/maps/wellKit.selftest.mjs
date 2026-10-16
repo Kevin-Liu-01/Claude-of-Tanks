@@ -53,7 +53,9 @@ for (const [spec, key] of forms) {
   // (a draw well's wrought-iron crown and a sweep well's counterweight stand over the record's height: iron and a pole)
   assert.ok(a.y1 <= (what === 'well' ? (form === 'zhuravel' ? 5.2 : form === 'drawwell' ? 3.6 : 3.2) : 5.4), `${spec}: ${a.y1.toFixed(2)} m high`);
   // (a monument's plinth and its pedestal's stump stand when the figure, the cross or the stele is thrown down)
-  assert.ok(b.y1 < a.y1 - 0.4 && b.y1 <= (what === 'well' ? 1.4 : 1.7), `${spec}: broken lower than it stood (${b.y1.toFixed(2)} vs ${a.y1.toFixed(2)})`);
+  // (the r2 sweep, 2026-10-16: a wreck stands a quarter of its well's height; the sweep well's soha post, a 30 cm log,
+  // stands snapped at 2 m under its fallen sweep)
+  assert.ok(b.y1 < a.y1 - 0.4 && b.y1 <= (what === 'well' ? (form === 'zhuravel' ? 2.2 : 1.4) : 1.7), `${spec}: broken lower than it stood (${b.y1.toFixed(2)} vs ${a.y1.toFixed(2)})`);
   const again = what === 'well' ? buildWell(form, ctx, false) : buildMonument(form, ctx, false);
   assert.deepEqual(Array.from(again.getAttribute('position').array.slice(0, 300)), Array.from(intact.getAttribute('position').array.slice(0, 300)), `${spec}: deterministic`);
   builds += 2;
