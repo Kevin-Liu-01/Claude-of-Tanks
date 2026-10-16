@@ -23,7 +23,7 @@ const flatScale = new Vector3(1, .14, 1);
 export class CrushableClutter {
   readonly spans: VertexSpan[] = [];
   readonly instances: InstanceSlot[] = [];
-  readonly kind: 'rubble' | 'hedgehog' | 'small-rock' | 'coal-heap';
+  readonly kind: 'rubble' | 'hedgehog' | 'small-rock' | 'coal-heap' | 'field-wall';
   readonly x: number; readonly y: number; readonly z: number;
   readonly r: number; readonly h: number;
   readonly obstacles: CollisionRecord[]; readonly colliders: CollisionRecord[];
@@ -33,7 +33,7 @@ export class CrushableClutter {
   pressedPose: ((home: Matrix4, out: Matrix4) => void) | null = null;
   readonly crushHooks: Array<(crushed: boolean) => void> = [];
   constructor(
-    kind: 'rubble' | 'hedgehog' | 'small-rock' | 'coal-heap',
+    kind: 'rubble' | 'hedgehog' | 'small-rock' | 'coal-heap' | 'field-wall',
     x: number, y: number, z: number, r: number, h: number,
     obstacles: CollisionRecord[], colliders: CollisionRecord[],
   ) {

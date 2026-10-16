@@ -129,6 +129,8 @@ export interface FieldWorksBuilt {
   receipt: FieldWorksReceipt;
   /** (b17) The source of the cells' stone forms (desktop; null on a phone or without walls). */
   fine: FieldWallFineSource | null;
+  /** (physics stream, PH.15) The wall lines and the noise they were laid with, on every tier (fieldWallCollision.ts). */
+  walls?: { lines: number[][]; noise: SimplexNoise } | null;
 }
 
 const SQUARE = 466;
@@ -251,46 +253,15 @@ function pieceRng(x0: number, z0: number, first: number): () => number {
 }
 
 /**
- * A dry-stone wall along a line (the scenery lane, b13; wave 87: "a smooth grey kerb-like strip of even width ...
- * cast concrete rather than a drystone wall"). The line is cut into slots, each a top stone's length (0.32-0.8 m; a
- * phone's 0.8-1.6 m): the faces are battered and a little uneven slot by slot (a stone standing proud here, a course
- * line there), continuous so no crack opens, carrying the face print's courses (fieldWallFace.ts); the crown steps
- * from top stone to top stone, each tipped its own way, the odd one standing high, the odd one low. Along the wall
- * a stretch has fallen in (its upper courses tumbled at its foot), a breach opens here and there with its stones in
- * the gap, the heads are lower, and a fallen stone lies at the foot now and then. Deterministic for the line's place.
+ * A wall line's slots (moved out of layWall verbatim, physics stream PH.15, 2026-10-15): the line's own stream (lineRng,
+ * returned for layWall to draw on), the wall's height and its two uv offsets, and the slots, each whole, fallen in or a
+ * breach, with the phone's continuous crown and the fallen stretches eased in. The field walls' collision
+ * (fieldWallCollision.ts) reads the desktop's plan on every tier, so every host stands the same records.
  */
-function* layWall(env: WallEnv, pts: number[], cellOf: (x: number, z: number, coarse: boolean) => Buffers): Generator<FieldWorksSlice, void, void> {
-  const { ground, noise, heightAt, receipt } = env;
-  const [wh, ws, wl] = env.wallTone;
-  const stones = env.stones;
-  const n = pts.length / 2;
-  const S = [0];
-  for (let k = 1; k < n; k++) S.push(S[k - 1] + Math.hypot(pts[k * 2] - pts[k * 2 - 2], pts[k * 2 + 1] - pts[k * 2 - 1]));
-  const L = S[n - 1];
-  if (L < 1.0) return;
-  // the direction at each point from its neighbours (smooth along the line)
-  const dir: number[] = [];
-  for (let k = 0; k < n; k++) {
-    const a = Math.max(0, k - 1), b = Math.min(n - 1, k + 1);
-    let dx = pts[b * 2] - pts[a * 2], dz = pts[b * 2 + 1] - pts[a * 2 + 1];
-    const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
-    dir.push(dx, dz);
-  }
-  let seg = 0;
-  const at = (s: number): [number, number, number, number] => {
-    while (seg < n - 2 && S[seg + 1] < s) seg++;
-    while (seg > 0 && S[seg] > s) seg--;
-    const t = Math.min(1, Math.max(0, (s - S[seg]) / Math.max(1e-6, S[seg + 1] - S[seg])));
-    const x = pts[seg * 2] + (pts[seg * 2 + 2] - pts[seg * 2]) * t, z = pts[seg * 2 + 1] + (pts[seg * 2 + 3] - pts[seg * 2 + 1]) * t;
-    let dx = dir[seg * 2] + (dir[seg * 2 + 2] - dir[seg * 2]) * t, dz = dir[seg * 2 + 1] + (dir[seg * 2 + 3] - dir[seg * 2 + 1]) * t;
-    const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
-    return [x, z, dx, dz];
-  };
+export function planWallSlots(pts: number[], L: number, noise: SimplexNoise, mobile: boolean): {
+  rand: () => number; H0: number; uFace: number; uTop: number; slots: WallSlot[];
+} {
   const rand = lineRng(pts[0], pts[1], pts[pts.length - 2], pts[pts.length - 1]);
-  const mobile = env.mobile;
-  // (the near form is laid into the cell of each slot's middle, the far form into its segment's: buf is the current one)
-  let buf: Buffers = cellOf(pts[0], pts[1], false);
-  const slotCell = (s0: number, s1: number, coarse: boolean): Buffers => { const [x, z] = at((s0 + s1) / 2); return cellOf(x, z, coarse); };
   const H0 = 0.8 + rand() * 0.12;
   const uFace = rand() * 7, uTop = rand() * 7;
   // the slots, and what each is: whole, fallen in (its height a share of the wall's) or a breach (none)
@@ -332,6 +303,54 @@ function* layWall(env: WallEnv, pts: number[], cellOf: (x: number, z: number, co
     if (prev && prev.kind === 1) slots[i].h0 = (slots[i].h0 + prev.h1) / 2;
     if (next && next.kind === 1) slots[i].h1 = (slots[i].h1 + next.h0) / 2;
   }
+  return { rand, H0, uFace, uTop, slots };
+}
+/** One slot of a wall line (planWallSlots): its run along the line, its heights at its ends, and what it is. */
+export type WallSlot = { s0: number; s1: number; h0: number; h1: number; lean: number; tone: number; kind: 0 | 1 | 2; ridge: number; crest: number };
+
+/**
+ * A dry-stone wall along a line (the scenery lane, b13; wave 87: "a smooth grey kerb-like strip of even width ...
+ * cast concrete rather than a drystone wall"). The line is cut into slots, each a top stone's length (0.32-0.8 m; a
+ * phone's 0.8-1.6 m): the faces are battered and a little uneven slot by slot (a stone standing proud here, a course
+ * line there), continuous so no crack opens, carrying the face print's courses (fieldWallFace.ts); the crown steps
+ * from top stone to top stone, each tipped its own way, the odd one standing high, the odd one low. Along the wall
+ * a stretch has fallen in (its upper courses tumbled at its foot), a breach opens here and there with its stones in
+ * the gap, the heads are lower, and a fallen stone lies at the foot now and then. Deterministic for the line's place.
+ */
+function* layWall(env: WallEnv, pts: number[], cellOf: (x: number, z: number, coarse: boolean) => Buffers): Generator<FieldWorksSlice, void, void> {
+  const { ground, noise, heightAt, receipt } = env;
+  const [wh, ws, wl] = env.wallTone;
+  const stones = env.stones;
+  const n = pts.length / 2;
+  const S = [0];
+  for (let k = 1; k < n; k++) S.push(S[k - 1] + Math.hypot(pts[k * 2] - pts[k * 2 - 2], pts[k * 2 + 1] - pts[k * 2 - 1]));
+  const L = S[n - 1];
+  if (L < 1.0) return;
+  // the direction at each point from its neighbours (smooth along the line)
+  const dir: number[] = [];
+  for (let k = 0; k < n; k++) {
+    const a = Math.max(0, k - 1), b = Math.min(n - 1, k + 1);
+    let dx = pts[b * 2] - pts[a * 2], dz = pts[b * 2 + 1] - pts[a * 2 + 1];
+    const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
+    dir.push(dx, dz);
+  }
+  let seg = 0;
+  const at = (s: number): [number, number, number, number] => {
+    while (seg < n - 2 && S[seg + 1] < s) seg++;
+    while (seg > 0 && S[seg] > s) seg--;
+    const t = Math.min(1, Math.max(0, (s - S[seg]) / Math.max(1e-6, S[seg + 1] - S[seg])));
+    const x = pts[seg * 2] + (pts[seg * 2 + 2] - pts[seg * 2]) * t, z = pts[seg * 2 + 1] + (pts[seg * 2 + 3] - pts[seg * 2 + 1]) * t;
+    let dx = dir[seg * 2] + (dir[seg * 2 + 2] - dir[seg * 2]) * t, dz = dir[seg * 2 + 1] + (dir[seg * 2 + 3] - dir[seg * 2 + 1]) * t;
+    const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
+    return [x, z, dx, dz];
+  };
+  const mobile = env.mobile;
+  // (physics stream, PH.15: the line's stream and its slots from planWallSlots, the same draws in the same order)
+  const { rand, uFace, uTop, slots } = planWallSlots(pts, L, noise, mobile);
+  type Slot = WallSlot;
+  // (the near form is laid into the cell of each slot's middle, the far form into its segment's: buf is the current one)
+  let buf: Buffers = cellOf(pts[0], pts[1], false);
+  const slotCell = (s0: number, s1: number, coarse: boolean): Buffers => { const [x, z] = at((s0 + s1) / 2); return cellOf(x, z, coarse); };
   // the stations: each slot boundary's centre, direction, half widths and ground (a station is shared by the two
   // slots either side, so the base and the course line are continuous)
   const cache = new Map<number, Station>();
@@ -860,126 +879,134 @@ export function* buildFieldWorks(
     }
     return false;
   };
-  const step = options.mobile ? 2 : 1.5;
-  // the feet on a 2 m hash: one foot a metre or so along a line
-  const cell = 2, hash = new Map<number, number[]>();
-  const key = (x: number, z: number) => (Math.floor(x / cell) + 4096) * 8192 + (Math.floor(z / cell) + 4096);
-  const near = (x: number, z: number, r: number): boolean => {
-    const cx = Math.floor(x / cell), cz = Math.floor(z / cell);
-    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
-      const list = hash.get((cx + i + 4096) * 8192 + (cz + j + 4096));
-      if (!list) continue;
-      for (let k = 0; k < list.length; k += 2) if (Math.hypot(list[k] - x, list[k + 1] - z) < r) return true;
-    }
-    return false;
-  };
-  // the boundary's feet: a point on the line, the line's direction, the work it carries (0 a wall, 1 a bank)
-  const feet: number[] = []; // x, z, dx, dz, kind
-  let rowIndex = 0;
-  for (let x = -SQUARE; x <= SQUARE; x += step, rowIndex++) {
-    if (rowIndex % 40 === 39) yield { fine: true, progress: false, stage: 'field-works' };
-    for (let z = -SQUARE; z <= SQUARE; z += step) {
-      receipt.scanned++;
-      landAt(x, z, s);
-      if (!s.active) continue;
-      const wall = options.walls && s.boundary === 3 && s.edgeM < 1.05 && s.track < 0.5;
-      const bank = options.banks && s.boundary === 0 && s.hedge > 0.85 && s.edgeM < 1.1 && s.track < 0.5;
-      if (!wall && !bank) continue;
-      // down the distance field's gradient onto the boundary's line; the line runs square to it (a point right on the
-      // line, where the field folds, reads its gradient from a step to the side)
-      let px = x, pz = z, e0 = s.edgeM;
-      let gx = edgeAt(px + 0.4, pz) - edgeAt(px - 0.4, pz), gz = edgeAt(px, pz + 0.4) - edgeAt(px, pz - 0.4);
-      for (const [ox, oz] of [[0.55, 0.3], [-0.3, 0.55]]) {
-        if (Math.hypot(gx, gz) >= 0.2) break;
-        px = x + ox; pz = z + oz; e0 = edgeAt(px, pz);
-        gx = edgeAt(px + 0.4, pz) - edgeAt(px - 0.4, pz); gz = edgeAt(px, pz + 0.4) - edgeAt(px, pz - 0.4);
+  /**
+   * (physics stream PH.15) The boundary's lines at one scan step: the tier's own for the works it draws, and on a phone
+   * the desktop's too, which the walls' records stand on (fieldWallCollision.ts), so every host stands the same records.
+   */
+  function* scanLines(step: number, count: boolean): Generator<FieldWorksSlice, Array<{ pts: number[]; wall: boolean }>, void> {
+    // the feet on a 2 m hash: one foot a metre or so along a line
+    const cell = 2, hash = new Map<number, number[]>();
+    const key = (x: number, z: number) => (Math.floor(x / cell) + 4096) * 8192 + (Math.floor(z / cell) + 4096);
+    const near = (x: number, z: number, r: number): boolean => {
+      const cx = Math.floor(x / cell), cz = Math.floor(z / cell);
+      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+        const list = hash.get((cx + i + 4096) * 8192 + (cz + j + 4096));
+        if (!list) continue;
+        for (let k = 0; k < list.length; k += 2) if (Math.hypot(list[k] - x, list[k + 1] - z) < r) return true;
       }
-      const gl = Math.hypot(gx, gz);
-      if (gl < 0.2) continue;
-      const ux = gx / gl, uz = gz / gl;
-      const fx = px - ux * e0, fz = pz - uz * e0;
-      if (near(fx, fz, 0.9)) continue;
-      if (!fieldGate(fx, fz) || inSolid(fx, fz, wall ? 1.0 : 1.5) || inKeepOut(fx, fz, wall ? 1.0 : 1.8)) continue;
-      if (ground._roadDist(fx, fz) < FIELD_WORKS_ROAD_CORE_M + TOE_M[wall ? 0 : 1]) continue;
-      if (options.spawns.some((p) => Math.hypot(p.x - fx, p.z - fz) < SPAWN_CLEAR)) continue;
-      const list = hash.get(key(fx, fz));
-      if (list) list.push(fx, fz); else hash.set(key(fx, fz), [fx, fz]);
-      feet.push(fx, fz, -uz, ux, wall ? 0 : 1);
-    }
-  }
-  yield { fine: true, progress: false, stage: 'field-works' };
-  // chain the feet along their lines into walls and banks: each foot names its nearest neighbour ahead and behind along
-  // its own line (within 2.6 m, nearly in line, the same work, a line running the same way); two feet link when each
-  // names the other, so every foot links to at most two, and every chain is swept continuously
-  const count0 = feet.length / 5;
-  const byCell = new Map<number, number[]>();
-  for (let i = 0; i < count0; i++) { const k = key(feet[i * 5], feet[i * 5 + 1]); const l = byCell.get(k); if (l) l.push(i); else byCell.set(k, [i]); }
-  const fwd = new Int32Array(count0).fill(-1), back = new Int32Array(count0).fill(-1);
-  for (let i = 0; i < count0; i++) {
-    // (b13: a slice every four thousand feet: a map's twenty thousand feet were one long task)
-    if ((i & 4095) === 4095) yield { fine: true, progress: false, stage: 'field-works' };
-    const x = feet[i * 5], z = feet[i * 5 + 1], dx = feet[i * 5 + 2], dz = feet[i * 5 + 3], kind = feet[i * 5 + 4];
-    let bf = -1, bb = -1, df = 3.4, db = 3.4;
-    const cx = Math.floor(x / cell), cz = Math.floor(z / cell);
-    for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) {
-      const l = byCell.get((cx + a + 4096) * 8192 + (cz + b + 4096));
-      if (!l) continue;
-      for (const j of l) {
-        if (j === i || feet[j * 5 + 4] !== kind) continue;
-        const ox = feet[j * 5] - x, oz = feet[j * 5 + 1] - z, d = Math.hypot(ox, oz);
-        if (d < 0.3) continue;
-        const along = (ox * dx + oz * dz) / d;
-        if (Math.abs(along) < 0.85 || Math.abs(feet[j * 5 + 2] * dx + feet[j * 5 + 3] * dz) < 0.8) continue;
-        if (along > 0 && d < df) { df = d; bf = j; }
-        if (along < 0 && d < db) { db = d; bb = j; }
+      return false;
+    };
+    // the boundary's feet: a point on the line, the line's direction, the work it carries (0 a wall, 1 a bank)
+    const feet: number[] = []; // x, z, dx, dz, kind
+    let rowIndex = 0;
+    for (let x = -SQUARE; x <= SQUARE; x += step, rowIndex++) {
+      if (rowIndex % 40 === 39) yield { fine: true, progress: false, stage: 'field-works' };
+      for (let z = -SQUARE; z <= SQUARE; z += step) {
+        if (count) receipt.scanned++;
+        landAt!(x, z, s);
+        if (!s.active) continue;
+        const wall = options.walls && s.boundary === 3 && s.edgeM < 1.05 && s.track < 0.5;
+        const bank = options.banks && s.boundary === 0 && s.hedge > 0.85 && s.edgeM < 1.1 && s.track < 0.5;
+        if (!wall && !bank) continue;
+        // down the distance field's gradient onto the boundary's line; the line runs square to it (a point right on the
+        // line, where the field folds, reads its gradient from a step to the side)
+        let px = x, pz = z, e0 = s.edgeM;
+        let gx = edgeAt(px + 0.4, pz) - edgeAt(px - 0.4, pz), gz = edgeAt(px, pz + 0.4) - edgeAt(px, pz - 0.4);
+        for (const [ox, oz] of [[0.55, 0.3], [-0.3, 0.55]]) {
+          if (Math.hypot(gx, gz) >= 0.2) break;
+          px = x + ox; pz = z + oz; e0 = edgeAt(px, pz);
+          gx = edgeAt(px + 0.4, pz) - edgeAt(px - 0.4, pz); gz = edgeAt(px, pz + 0.4) - edgeAt(px, pz - 0.4);
+        }
+        const gl = Math.hypot(gx, gz);
+        if (gl < 0.2) continue;
+        const ux = gx / gl, uz = gz / gl;
+        const fx = px - ux * e0, fz = pz - uz * e0;
+        if (near(fx, fz, 0.9)) continue;
+        if (!fieldGate(fx, fz) || inSolid(fx, fz, wall ? 1.0 : 1.5) || inKeepOut(fx, fz, wall ? 1.0 : 1.8)) continue;
+        if (ground._roadDist(fx, fz) < FIELD_WORKS_ROAD_CORE_M + TOE_M[wall ? 0 : 1]) continue;
+        if (options.spawns.some((p) => Math.hypot(p.x - fx, p.z - fz) < SPAWN_CLEAR)) continue;
+        const list = hash.get(key(fx, fz));
+        if (list) list.push(fx, fz); else hash.set(key(fx, fz), [fx, fz]);
+        feet.push(fx, fz, -uz, ux, wall ? 0 : 1);
       }
     }
-    fwd[i] = bf; back[i] = bb;
-  }
-  // (and the ground between them must admit the work too: a link never bridges a road, a yard or a ditch)
-  const links = (i: number, j: number) => {
-    if (j < 0 || (fwd[j] !== i && back[j] !== i)) return false;
-    const mx = (feet[i * 5] + feet[j * 5]) * 0.5, mz = (feet[i * 5 + 1] + feet[j * 5 + 1]) * 0.5;
-    const wallLink = feet[i * 5 + 4] === 0;
-    return fieldGate(mx, mz) && !inSolid(mx, mz, wallLink ? 1.0 : 1.5) && !inKeepOut(mx, mz, wallLink ? 1.0 : 1.8)
-      && ground._roadDist(mx, mz) >= FIELD_WORKS_ROAD_CORE_M + TOE_M[wallLink ? 0 : 1];
-  };
-  const edgeA = new Int32Array(count0).fill(-1), edgeB = new Int32Array(count0).fill(-1);
-  yield { fine: true, progress: false, stage: 'field-works' };
-  for (let i = 0; i < count0; i++) {
-    if ((i & 4095) === 4095) yield { fine: true, progress: false, stage: 'field-works' };
-    if (links(i, fwd[i])) edgeA[i] = fwd[i];
-    if (links(i, back[i])) edgeB[i] = back[i];
-  }
-  const degree = (i: number) => (edgeA[i] >= 0 ? 1 : 0) + (edgeB[i] >= 0 ? 1 : 0);
-  const seen = new Uint8Array(count0);
-  const walk = (start: number): number[] => {
-    const chain = [start];
-    seen[start] = 1;
-    let prev = -1, cur = start;
-    for (;;) {
-      const a = edgeA[cur], b = edgeB[cur];
-      const next = a >= 0 && a !== prev && !seen[a] ? a : b >= 0 && b !== prev && !seen[b] ? b : -1;
-      if (next < 0) break;
-      seen[next] = 1; chain.push(next); prev = cur; cur = next;
+    yield { fine: true, progress: false, stage: 'field-works' };
+    // chain the feet along their lines into walls and banks: each foot names its nearest neighbour ahead and behind along
+    // its own line (within 2.6 m, nearly in line, the same work, a line running the same way); two feet link when each
+    // names the other, so every foot links to at most two, and every chain is swept continuously
+    const count0 = feet.length / 5;
+    const byCell = new Map<number, number[]>();
+    for (let i = 0; i < count0; i++) { const k = key(feet[i * 5], feet[i * 5 + 1]); const l = byCell.get(k); if (l) l.push(i); else byCell.set(k, [i]); }
+    const fwd = new Int32Array(count0).fill(-1), back = new Int32Array(count0).fill(-1);
+    for (let i = 0; i < count0; i++) {
+      // (b13: a slice every four thousand feet: a map's twenty thousand feet were one long task)
+      if ((i & 4095) === 4095) yield { fine: true, progress: false, stage: 'field-works' };
+      const x = feet[i * 5], z = feet[i * 5 + 1], dx = feet[i * 5 + 2], dz = feet[i * 5 + 3], kind = feet[i * 5 + 4];
+      let bf = -1, bb = -1, df = 3.4, db = 3.4;
+      const cx = Math.floor(x / cell), cz = Math.floor(z / cell);
+      for (let a = -2; a <= 2; a++) for (let b = -2; b <= 2; b++) {
+        const l = byCell.get((cx + a + 4096) * 8192 + (cz + b + 4096));
+        if (!l) continue;
+        for (const j of l) {
+          if (j === i || feet[j * 5 + 4] !== kind) continue;
+          const ox = feet[j * 5] - x, oz = feet[j * 5 + 1] - z, d = Math.hypot(ox, oz);
+          if (d < 0.3) continue;
+          const along = (ox * dx + oz * dz) / d;
+          if (Math.abs(along) < 0.85 || Math.abs(feet[j * 5 + 2] * dx + feet[j * 5 + 3] * dz) < 0.8) continue;
+          if (along > 0 && d < df) { df = d; bf = j; }
+          if (along < 0 && d < db) { db = d; bb = j; }
+        }
+      }
+      fwd[i] = bf; back[i] = bb;
     }
-    return chain;
-  };
-  // the chains as point lines (the feet in walk order), the open lines first (from a foot with one link), then any ring
-  const lines: Array<{ pts: number[]; wall: boolean }> = [];
-  for (const pass of [1, 2]) {
-    for (let start = 0; start < count0; start++) {
-      if (seen[start] || (pass === 1 && degree(start) !== 1) || degree(start) === 0) continue;
-      const chain = walk(start);
-      if (chain.length < 2) continue;
-      const pts: number[] = [];
-      for (const i of chain) pts.push(feet[i * 5], feet[i * 5 + 1]);
-      lines.push({ pts, wall: feet[start * 5 + 4] === 0 });
+    // (and the ground between them must admit the work too: a link never bridges a road, a yard or a ditch)
+    const links = (i: number, j: number) => {
+      if (j < 0 || (fwd[j] !== i && back[j] !== i)) return false;
+      const mx = (feet[i * 5] + feet[j * 5]) * 0.5, mz = (feet[i * 5 + 1] + feet[j * 5 + 1]) * 0.5;
+      const wallLink = feet[i * 5 + 4] === 0;
+      return fieldGate(mx, mz) && !inSolid(mx, mz, wallLink ? 1.0 : 1.5) && !inKeepOut(mx, mz, wallLink ? 1.0 : 1.8)
+        && ground._roadDist(mx, mz) >= FIELD_WORKS_ROAD_CORE_M + TOE_M[wallLink ? 0 : 1];
+    };
+    const edgeA = new Int32Array(count0).fill(-1), edgeB = new Int32Array(count0).fill(-1);
+    yield { fine: true, progress: false, stage: 'field-works' };
+    for (let i = 0; i < count0; i++) {
+      if ((i & 4095) === 4095) yield { fine: true, progress: false, stage: 'field-works' };
+      if (links(i, fwd[i])) edgeA[i] = fwd[i];
+      if (links(i, back[i])) edgeB[i] = back[i];
     }
+    const degree = (i: number) => (edgeA[i] >= 0 ? 1 : 0) + (edgeB[i] >= 0 ? 1 : 0);
+    const seen = new Uint8Array(count0);
+    const walk = (start: number): number[] => {
+      const chain = [start];
+      seen[start] = 1;
+      let prev = -1, cur = start;
+      for (;;) {
+        const a = edgeA[cur], b = edgeB[cur];
+        const next = a >= 0 && a !== prev && !seen[a] ? a : b >= 0 && b !== prev && !seen[b] ? b : -1;
+        if (next < 0) break;
+        seen[next] = 1; chain.push(next); prev = cur; cur = next;
+      }
+      return chain;
+    };
+    // the chains as point lines (the feet in walk order), the open lines first (from a foot with one link), then any ring
+    const lines: Array<{ pts: number[]; wall: boolean }> = [];
+    for (const pass of [1, 2]) {
+      for (let start = 0; start < count0; start++) {
+        if (seen[start] || (pass === 1 && degree(start) !== 1) || degree(start) === 0) continue;
+        const chain = walk(start);
+        if (chain.length < 2) continue;
+        const pts: number[] = [];
+        for (const i of chain) pts.push(feet[i * 5], feet[i * 5 + 1]);
+        lines.push({ pts, wall: feet[start * 5 + 4] === 0 });
+      }
+    }
+    yield { fine: true, progress: false, stage: 'field-works' };
+    trimFieldWorksOvershoots(lines);
+    yield { fine: true, progress: false, stage: 'field-works' };
+    return lines;
   }
-  yield { fine: true, progress: false, stage: 'field-works' };
-  trimFieldWorksOvershoots(lines);
-  yield { fine: true, progress: false, stage: 'field-works' };
+  const lines = yield* scanLines(options.mobile ? 2 : 1.5, true);
+  const deskWallLines = options.mobile && options.walls ? (yield* scanLines(1.5, false)).filter((line) => line.wall).map((line) => line.pts) : null;
 
   // walls first, then banks: two groups, the walls on their own stone, the banks on the props rock material
   // (b13: the walls by cell, a near form and a far form each; the banks one buffer)
@@ -1119,7 +1146,8 @@ export function* buildFieldWorks(
   // (b17) the cells' stone forms are built when the camera comes near (props.ts updateFieldWallLod), from the lines
   const fine = !options.mobile && wallLines.length
     ? { lines: wallLines, cellLines, env: { ground, noise, heightAt, wallTone: [wh, ws, wl] as const, mobile: false } } : null;
-  return { geometry: wallGeometry ?? bankGeometry, wallCells: wallCellList, wallGeometry, wallFarGeometry, bankGeometry, receipt, fine };
+  return { geometry: wallGeometry ?? bankGeometry, wallCells: wallCellList, wallGeometry, wallFarGeometry, bankGeometry, receipt, fine,
+    walls: (deskWallLines ?? wallLines).length ? { lines: deskWallLines ?? wallLines, noise } : null };
 }
 
 /**
