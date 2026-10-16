@@ -2515,6 +2515,10 @@ function bufferStop(
 // (terrain.ts, railSpurs.ts) keeps vegetation and scattered props off the line before this runs.
 function dressRailSpurs(ctx: FocusedDressingContext, spurs: readonly RailSpurConfig[]): void {
   const { heightField, rng, buckets } = ctx;
+  // (2026-10-15, the perf lane) one build of each rolling-stock kind serves every spur of the map: the builder is a pure
+  // function of the kind (its seed is the kind's), so a later spur's copies are the same geometry it would have rebuilt.
+  // Railyard rebuilt its wagons per spur: 0.38 s of a profiled entry in buildRollingStock (its vertex AO 0.36 s).
+  const stockGeometries = new Map<string, THREE.BufferGeometry>();
   for (const spur of spurs) {
     const lay: RailLay = {
       gauge: spur.gauge ?? RAIL_SPUR_GAUGE_M, ballast: spur.ballast ?? RAIL_SPUR_BALLAST_M,
@@ -2536,13 +2540,14 @@ function dressRailSpurs(ctx: FocusedDressingContext, spurs: readonly RailSpurCon
     // 2026-10-01: a coal stage beside the stub (after its stops, so a spur without one keeps its draws)
     if (spur.coalStage) addSpurCoalStage(ctx, spur);
     // 2026-10-06 (the map-vehicles lane, P5): the rolling stock standing on it (no draws)
-    if (spur.stock?.length) addSpurRollingStock(ctx, spur);
+    if (spur.stock?.length) addSpurRollingStock(ctx, spur, stockGeometries);
     // A spur that leaves the square through a cutting runs on in the open past the edge (railSpurs.ts RAIL_OPEN_*; the
     // round-67 tunnel portal is retired): the kit lays its first RAIL_OPEN_KIT_M on the open line's bed, after the
     // stops, so the square's dressing keeps its draws.
     const cuttings = resolveRailCuttings([spur]);
     if (cuttings && heightField.getOutlandHeightAt) dressRailOpenLine(ctx, cuttings[0], lay);
   }
+  for (const g of stockGeometries.values()) g.dispose();
 }
 
 // 2026-10-03 (the map-borders lane): the open line past the edge (railSpurs.ts RAIL_OPEN_*) — the track runs on from
@@ -2765,10 +2770,10 @@ function dressRailYard(
 // with a solid convex record from the ground to its top over its body (the buffers stand clear) that blocks shells.
 // No stream draws: the yard's dressing keeps its own.
 const RAIL_HEAD_Y = 0.335;
-function addSpurRollingStock(ctx: FocusedDressingContext, spur: RailSpurConfig): void {
+function addSpurRollingStock(ctx: FocusedDressingContext, spur: RailSpurConfig,
+  built: Map<string, THREE.BufferGeometry>): void {
   const { heightField, buckets } = ctx;
   if (!buckets.baked) return;
-  const built = new Map<string, THREE.BufferGeometry>();
   for (const p of railStockPlacements(spur, ROLLING_STOCK_LENGTH)) {
     const kind = p.kind as RollingStockKind;
     let geo = built.get(kind);
@@ -2791,7 +2796,6 @@ function addSpurRollingStock(ctx: FocusedDressingContext, spur: RailSpurConfig):
     ctx.obstacles?.push(record);
     ctx.colliders?.push(cloneCollisionRecord(record));
   }
-  for (const g of built.values()) g.dispose();
 }
 
 // 2026-10-01 (Cinder Junction): the stockpiles of a spur's coal stage (railSpurs.ts railCoalStageStations): the yards'
