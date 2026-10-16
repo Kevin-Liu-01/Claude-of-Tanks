@@ -10,6 +10,7 @@ import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { openShed } from './outbuildings.ts';
 import { BAMBOO_MAT, RUSTED, WEATHERED_PLANK, boardWall, ladder, stilts, veranda } from './vernacular.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { mekongBoatShelter, mekongFishShed } from './harbourSheds.ts'; // props #25: the boat shelter and the fish shed
 
 const SHUTTER: readonly Rgb[] = [0x4f7a9a, 0x5a8a62, 0x8a5a3e, 0x6a8a9a].map(rgb);
 
@@ -378,7 +379,7 @@ export const MEKONG_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
       straw: (h, s, l) => [h - 0.025, Math.min(1, s * 0.45), Math.min(1, l * 0.78)],
     },
   },
-  builders: MEKONG_BUILDERS,
+  builders: { ...MEKONG_BUILDERS, boatshed: mekongBoatShelter, fishery: mekongFishShed },
   // the yards: a woven-bamboo fence round raised vegetable beds, an open gap for a gate (yards.ts)
   yard: { kinds: ['cottage', 'farmhouse'], fence: 'fencewattle', gate: null, shed: null, garden: true },
 });

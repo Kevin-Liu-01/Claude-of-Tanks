@@ -14,6 +14,7 @@ import type { FractureRole } from '../fractureAnatomy.ts';
 import { bar, buildFallenMast, buildLatticeMast, corrugatedFace } from './mastKit.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { INDUSTRIAL_CLADDING, addConnectedExterior, structureBuildContext } from './exteriorDetailKit.ts';
+import { buildMangroveFishShed } from './mangroveFishShed.ts'; // props #25: the Mangrove wharf's fish shed
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
 import { ensureWorldNightEmissionMask, markWorldAperture, markWorldBeacon, markWorldWindowPane } from '../worldNightEmissionGeometry.ts';
 import {
@@ -829,6 +830,9 @@ export function makeFireStation(_rng: Rng, buckets: GeometryBuckets, wallBucket 
 }
 
 export function makeFishery(_rng: Rng, buckets: GeometryBuckets): StructureDimensions {
+  // (props census #25) Mangrove's wharf fishery is a Cà Mau fish shed of its own (mangroveFishShed.ts: the same stream
+  // draws, reach and wharf members)
+  if (structureBuildContext(buckets)?.mapId === 'mangrove') return buildMangroveFishShed(buckets);
   const out = parts(), w = 10.2, d = 15.5, wallH = 4.4, roofH = 1.8;
   out.wood.push(box(w, wallH, d).translate(0, wallH / 2 + 0.35, 0));
   out.wood.push(gable(w, roofH, 0.3).translate(0, wallH + 0.35, d / 2 - 0.15));

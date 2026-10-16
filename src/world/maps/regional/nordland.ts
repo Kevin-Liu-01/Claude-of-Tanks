@@ -10,15 +10,17 @@
 // stacks standing on the granite footings.
 import {
   PartSink, faceBox, facePoint, facePanel, pick, rgb, shade, UV_MEMBER,
-  type Face, type RegionalBucket, type Rgb,
+  type Face, type RegionalBucket, type Rgb, type Vec3,
 } from './geometry.ts';
 import {
-  buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm,
+  buildHouse, emitRoof, holedPolygon, roofGeometry, wallPolygon, windowRhythm,
   type HouseDialect, type HouseFrame, type Opening, type RoofSpec, type StoreySpec, type WallRect,
 } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { openShed } from './outbuildings.ts';
 import { woodpile } from './dressing.ts';
+import { boatHull, dryStoneFace, leantPole, slipway } from './waterfront.ts';
+import { recordLattice } from './lattice.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import type { RegionalParts } from './geometry.ts';
 import { fyr } from './fyr.ts'; // the light on its keeper's house (props census #5, lane B)
@@ -145,14 +147,16 @@ function gableCladding(sink: PartSink, face: Face, polygon: Array<[number, numbe
  * enough, the wicket as joinery — its frame standing out of the leaf, its own boards set back in it, its hinges and ring.
  */
 function boatDoor(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, leaf: Rgb,
-  frame: { bucket: RegionalBucket; width: number; out: number; colour?: Rgb }): void {
-  const r = sink.recess, go = r > 0 ? -r + 0.03 : 0.015, half = w / 2 - 0.02;
+  frame: { bucket: RegionalBucket; width: number; out: number; colour?: Rgb } | null, opts: { leaves?: 1 | 2; hinge?: -1 | 1 } = {}): void {
+  // (props census #25: one leaf alone, `w` wide and hung on its `hinge` side — a leaf swung back against the boards)
+  const single = opts.leaves === 1, hingeSide = opts.hinge ?? -1;
+  const r = sink.recess, go = r > 0 ? -r + 0.03 : 0.015, half = single ? w - 0.04 : w / 2 - 0.02;
   const lc = { colour: leaf, decor: true, uv: UV_MEMBER } as const, fine = { decor: true, fine: true } as const;
   const ledge = shade(leaf, 0.84);
   const wicket = half >= 1.05 && h >= 2.2;
-  const ww = Math.min(0.78, half - 0.3), wh = Math.min(1.85, h - 0.45), wu = u - w / 4 + 0.05, wy = y + 0.2, ft = 0.06;
-  for (const side of [-1, 1]) {
-    const cu = u + side * w / 4;
+  const ww = Math.min(0.78, half - 0.3), wh = Math.min(1.85, h - 0.45), wu = (single ? u : u - w / 4) + 0.05, wy = y + 0.2, ft = 0.06;
+  for (const side of single ? [hingeSide] : [-1, 1]) {
+    const cu = single ? u : u + side * w / 4;
     faceBox(sink, 'structureWood', face, cu, y + h / 2, go, half, h, 0.05, lc);
     const holed = wicket && side < 0;
     for (const t of [0.12, 0.5, 0.88]) {
@@ -179,6 +183,7 @@ function boatDoor(sink: PartSink, face: Face, u: number, y: number, w: number, h
     for (const t of [0.2, 0.8]) faceBox(sink, 'structureMetal', face, wu - ww / 2 + 0.17, wy + wh * t, go + 0.04, 0.3, 0.04, 0.01, { colour: IRON, ...fine });
     faceBox(sink, 'structureMetal', face, wu + ww / 2 - 0.12, wy + wh * 0.5, go + 0.045, 0.1, 0.1, 0.012, { colour: IRON, ...fine });
   }
+  if (!frame) return;
   const fo = { decor: true, ...(frame.colour ? { colour: frame.colour } : {}) };
   faceBox(sink, frame.bucket, face, u - w / 2 - frame.width / 2, y + h / 2, frame.out / 2, frame.width, h, frame.out, fo);
   faceBox(sink, frame.bucket, face, u + w / 2 + frame.width / 2, y + h / 2, frame.out / 2, frame.width, h, frame.out, fo);
@@ -522,89 +527,172 @@ const fiskebruk: RegionalBuilder = (ctx) => {
     const f = frame.faces.front;
     const yb = frame.eaveY + 0.6;
     faceBox(sink, 'structureWood', f, 0, yb, 0.7, 0.2, 0.22, 1.4, { colour: shade(BOARD, 0.8), decor: true, shadow: true });
-    // the salting shed against the -x side: a low red shed under a slate lean-to falling outward
-    const ax0 = -W / 2 - annex, sd = Math.min(D - 0.6, 9), sz0 = -D / 2 + 0.2, h1 = 3.0, h0 = 2.3;
-    const side: Face = { origin: [ax0, 0, sz0 + sd / 2], u: [0, 0, 1], out: [-1, 0, 0], width: sd };
-    sink.span('stone', ax0 - 0.04, -0.3, sz0, -W / 2, 0.35, sz0 + sd);
-    // the shed's body: its end profile run through its depth (low on the outer side, high against the hall)
-    const end: Face = { origin: [ax0 + annex / 2, 0, sz0 + sd], u: [1, 0, 0], out: [0, 0, 1], width: annex };
-    wallPolygon(sink, 'plaster2', end, [[-annex / 2, 0.35], [annex / 2, 0.35], [annex / 2, h1], [-annex / 2, h0]], sd);
-    boatDoor(sink, side, sd * 0.2, 0.35, 1.8, 1.9, shade(RED, 0.8), { bucket: 'structureWood', width: 0.12, out: 0.04, colour: WHITE });
-    const lean: RoofSpec = { kind: 'shed', pitchDeg: Math.atan2(h1 - h0, annex) * 180 / Math.PI, eave: 0.3, verge: 0.2, thickness: 0.1, bucket: 'roof' };
-    sink.placed(Math.PI, ax0 + annex / 2, 0, sz0 + sd / 2, () => emitRoof(sink, roofGeometry(annex, sd, h0, lean), lean));
-    // the deck on piles before the gable, the length of the plot, its edge beam
-    const fz = D / 2, x0 = -W / 2 - annex, x1 = W / 2 + 0.2;
-    sink.span('wood', x0, 0.32, fz, x1, 0.52, fz + deck);
-    for (let x = x0 + 0.3; x <= x1 - 0.2; x += (x1 - x0 - 0.5) / Math.max(2, Math.round((x1 - x0) / 2.6))) {
-      sink.span('wood', x - 0.14, -1.2, fz + deck - 0.4, x + 0.14, 0.32, fz + deck - 0.12);
+    sink.dressing(st.mobile, () => {
+      // the hoist beam's block and its fall down past the loft door, the hook over the deck
+      faceBox(sink, 'structureMetal', f, 0, yb - 0.24, 1.25, 0.14, 0.26, 0.14, { colour: IRON, decor: true });
+      const y0 = frame.floors[1] + 0.25;
+      faceBox(sink, 'structureMetal', f, 0, (yb - 0.37 + y0) / 2, 1.25, 0.022, yb - 0.37 - y0, 0.022, { colour: rgb(0x6a5e4c), decor: true, fine: true });
+      faceBox(sink, 'structureMetal', f, 0, y0 - 0.06, 1.25, 0.07, 0.12, 0.05, { colour: IRON, decor: true, fine: true });
+    });
+    // the salting shed against the -x side (props census #25: "one extruded polygon with a gate laid on its solid side"):
+    // its own boarded body on a granite sill, its gate cut through its outer wall, under a slate pent falling outward; built
+    // in a frame turned half round, so the pent (rising toward its own -x) rises toward the hall
+    const sd = Math.min(D - 0.6, 9), sz0 = -D / 2 + 0.2, h1 = 3.0, h0 = 2.35, sill = 0.35;
+    const pitchS = Math.atan2(h1 - h0, annex) * 180 / Math.PI;
+    sink.placed(Math.PI, -W / 2 - annex / 2, 0, sz0 + sd / 2, () => {
+      const shed = buildHouse(sink, {
+        w: annex, d: sd, plinth: { h: sill, out: 0.05, bucket: 'stone' }, storeys: [{ h: h0 - sill, wall: 'plaster2', framed: true }],
+        roof: { kind: 'shed', pitchDeg: pitchS, eave: 0.3, verge: 0.2, thickness: 0.1, bucket: 'roof' }, gableBucket: 'plaster2',
+        openings: [{ face: 'right', storey: 0, kind: 'gate', u: -sd * 0.3, w: 1.8, y0: 0, h: Math.min(1.9, h0 - sill - 0.08) },
+          { face: 'right', storey: 0, kind: 'loft', u: sd * 0.15, w: 0.55, y0: 1.0, h: 0.45 },
+          { face: 'right', storey: 0, kind: 'loft', u: sd * 0.36, w: 0.55, y0: 1.0, h: 0.45 }],
+        chimneys: [], gutters: null, verge: null, reveal: 0.1, spall: null,
+      }, dialect({ ...st, paint: 'plaster2' }));
+      const rise = annex * Math.tan(pitchS * Math.PI / 180), s2 = annex / 2;
+      wallPolygon(sink, 'plaster2', shed.faces.front, [[s2, h0], [-s2, h0 + rise], [-s2, h0]], 0.06);
+      wallPolygon(sink, 'plaster2', shed.faces.back, [[-s2, h0], [s2, h0], [s2, h0 + rise]], 0.06);
+    });
+    // the deck on piles before the gable, the length of the plot: its decking slab (structure: the quay a hull drives onto)
+    // and, as joinery, its planks across the joists, the joists on their bearers, the pile bents at both edges braced
+    // across, the edge beam
+    const fz = D / 2, x0 = -W / 2 - annex, x1 = W / 2 + 0.2, dy = 0.52;
+    sink.span('wood', x0, dy - 0.2, fz, x1, dy, fz + deck);
+    const bents = Math.max(2, Math.round((x1 - x0) / 2.6));
+    for (let k = 0; k <= bents; k++) {
+      const x = x0 + 0.3 + (x1 - x0 - 0.6) * k / bents;
+      sink.span('wood', x - 0.14, -1.2, fz + deck - 0.4, x + 0.14, dy - 0.2, fz + deck - 0.12);
     }
     sink.dressing(st.mobile, () => {
+      const wet = shade(BOARD, 0.72), plank = shade(BOARD, 0.95), bearer = { colour: shade(BOARD, 0.62), decor: true } as const;
+      for (let k = 0; k <= bents; k++) {
+        const x = x0 + 0.3 + (x1 - x0 - 0.6) * k / bents;
+        // the inner pile of the bent, its bearer across the two, the X braces between them (tarred, wet at the foot)
+        sink.span('structureWood', x - 0.12, -0.9, fz + 0.15, x + 0.12, dy - 0.2, fz + 0.39, { colour: wet, decor: true });
+        sink.span('structureWood', x - 0.11, dy - 0.42, fz + 0.05, x + 0.11, dy - 0.2, fz + deck - 0.02, bearer);
+        sink.member('structureWood', [x, -0.7, fz + 0.39], [x, dy - 0.45, fz + deck - 0.4], 0.1, 0.06, [1, 0, 0], { colour: wet, decor: true, exposed: true }, 0);
+        sink.member('structureWood', [x, dy - 0.45, fz + 0.39], [x, -0.7, fz + deck - 0.4], 0.1, 0.06, [1, 0, 0], { colour: wet, decor: true, exposed: true }, 0);
+      }
+      // the planks over the slab, laid across the deck board by board, their joints the slab's dark between them and their
+      // weathering each its own (a plank's top only: its edges stand a centimetre over the slab)
+      const pw = 0.24, n = Math.floor((x1 - x0) / pw);
+      for (let k = 0; k < n; k++) {
+        const xa = x0 + k * pw + 0.008, xb = xa + pw - 0.016, y = dy + 0.008 + look() * 0.006;
+        sink.quad('structureWood', [xa, y, fz + deck], [xb, y, fz + deck], [xb, y, fz + 0.02], [xa, y, fz + 0.02], { colour: shade(plank, 0.86 + look() * 0.24), decor: true });
+      }
+      // the edge beam along the water side
+      sink.span('structureWood', x0, dy - 0.32, fz + deck - 0.02, x1, dy + 0.06, fz + deck + 0.1, { colour: shade(BOARD, 0.7), decor: true });
+    });
+    sink.dressing(st.mobile, () => {
       // the fish boxes stacked by the doors, a row of barrels, the derrick at the deck's edge
+      const top = dy + 0.035;
       for (let k = 0; k < 5; k++) {
-        const bx = -W * 0.4 + (k % 3) * 0.75, by = 0.52 + Math.floor(k / 3) * 0.32;
+        const bx = -W * 0.4 + (k % 3) * 0.75, by = top + Math.floor(k / 3) * 0.32;
         sink.span('structureWood', bx, by, fz + 0.5, bx + 0.68, by + 0.3, fz + 1.0, { colour: shade(BOARD, 0.9 + look() * 0.2), decor: true, shadow: true });
       }
-      for (let k = 0; k < 4; k++) sink.cylinder('structureWood', [W * 0.05 + k * 0.62, 0.52, fz + 1.4], 'y', 0.85, 0.29, 10, { colour: shade(BOARD, 0.85 + k * 0.05), decor: true, shadow: true });
-      const mx = x0 + 1.2, mz = fz + deck - 0.6;
-      sink.member('structureWood', [mx, 0.5, mz], [mx, 5.4, mz], 0.2, 0.2, [0, 0, 1], { colour: shade(BOARD, 0.75), decor: true, shadow: true, exposed: true });
-      sink.member('structureWood', [mx, 1.2, mz], [mx + 3.2, 4.6, mz - 0.2], 0.16, 0.16, [0, 0, 1], { colour: shade(BOARD, 0.75), decor: true, shadow: true, exposed: true });
+      for (let k = 0; k < 4; k++) sink.cylinder('structureWood', [W * 0.05 + k * 0.62, top, fz + 1.4], 'y', 0.85, 0.29, 10, { colour: shade(BOARD, 0.85 + k * 0.05), decor: true, shadow: true });
+      const mx = x0 + 1.2, mz = fz + deck - 0.6, mast = shade(BOARD, 0.75);
+      sink.member('structureWood', [mx, top - 0.02, mz], [mx, 5.4, mz], 0.2, 0.2, [0, 0, 1], { colour: mast, decor: true, shadow: true, exposed: true });
+      sink.member('structureWood', [mx, 1.2, mz], [mx + 3.2, 4.6, mz - 0.2], 0.16, 0.16, [0, 0, 1], { colour: mast, decor: true, shadow: true, exposed: true });
       // the derrick's topping lift from the mast head to the boom's end (kitConnectivity: the boom's end hung on nothing)
       sink.member('structureMetal', [mx + 0.06, 5.32, mz + 0.04], [mx + 3.16, 4.66, mz - 0.14], 0.03, 0.03, [0, 0, 1], { colour: IRON, decor: true, exposed: true, fine: true }, 0.04);
+      // the boom's block, its fall and hook over the deck's edge; the guy from the mast head back to a cleat on the deck
+      sink.span('structureMetal', mx + 3.08, 4.32, mz - 0.27, mx + 3.24, 4.56, mz - 0.13, { colour: IRON, decor: true });
+      sink.member('structureMetal', [mx + 3.16, 4.33, mz - 0.2], [mx + 3.16, 2.0, mz - 0.2], 0.025, 0.025, [0, 0, 1], { colour: rgb(0x6a5e4c), decor: true, exposed: true, fine: true }, 0);
+      sink.span('structureMetal', mx + 3.12, 1.86, mz - 0.24, mx + 3.2, 2.0, mz - 0.16, { colour: IRON, decor: true, fine: true });
+      sink.member('structureMetal', [mx - 0.04, 5.3, mz], [mx - 1.0, top + 0.02, mz - 0.9], 0.025, 0.025, [0, 0, 1], { colour: IRON, decor: true, exposed: true, fine: true }, 0);
     });
   });
   return sink.finish();
 };
 
 /**
- * The boathouse (naust, the boatshed's plot): dry-stone side walls of fjord granite, the gables boarded and painted, the
- * wide doors to the slip on the water side (+z), a slate roof; the net store lean-to on the +x side; the slip down to
- * the shore before the doors.
+ * The boathouse (naust, the boatshed's plot; props census #25, the looks lane 2026-10-15: "dry-stone walls as single
+ * spans, blank on every face; the net store a blank polygon; the slip one prism"): its side and back walls of fjord
+ * granite laid dry in courses, battered out at the foot, on a footing sunk into the shore; the water gable boarded and
+ * painted between the walls' stone cheeks, the doors to the slip on their strap hinges, one leaf swung back against the
+ * boards and the færing drawn half out through it onto the slip; the boarded gables, the white barge boards, the slate
+ * roof on its rafters; the net store a boarded lean-to on its own sill against the +x wall with its own door; the slip
+ * of setts between its kerbs, the runners on it; oars against the boards.
  */
 const naust: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx, [0.1, 0.75, 0.15]);
-  const rng = st.rng;
+  const rng = st.rng, look = st.look;
   const bb = ctx.bounds;
   const slip = clamp((bb.maxZ - bb.minZ) * 0.14, 1.5, 2.6), store = clamp((bb.maxX - bb.minX) * 0.24, 2.2, 3.0);
   const W = clamp(bb.maxX - bb.minX - store - 0.8, 5.5, 9), D = clamp(bb.maxZ - bb.minZ - slip - 0.6, 7, 12);
   const cx = bb.minX + 0.4 + W / 2, cz = bb.minZ + 0.3 + D / 2;
+  const paint = PAINT_RGB[st.paint], lichen: Rgb = [1.06, 1.03, 0.78];
   sink.placed(0, cx, 0, cz, () => {
-    const wallH = 2.3, pitch = 40 + rng() * 5, tanP = Math.tan(pitch * Math.PI / 180), rise = (W / 2) * tanP;
-    // the dry-stone walls along both sides and the back, laid thick
-    for (const s of [-1, 1]) sink.span('stone', s > 0 ? W / 2 - 0.6 : -W / 2, -0.3, -D / 2, s > 0 ? W / 2 : -W / 2 + 0.6, wallH, D / 2);
-    sink.span('stone', -W / 2 + 0.6, -0.3, -D / 2, W / 2 - 0.6, 1.6, -D / 2 + 0.6);
-    // the gables: boards above the back wall, the whole water gable with its doors
-    const back: Face = { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W };
-    wallPolygon(sink, st.paint, { ...back, origin: [0, 0, -D / 2 + 0.06] }, [[-W / 2 + 0.6, 1.6], [W / 2 - 0.6, 1.6], [W / 2, wallH], [0, wallH + rise], [-W / 2, wallH]], 0.12);
-    const front: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
-    const dw = Math.min(3.4, W - 1.6), dh = 2.5;
-    // the water gable's boards: the jambs either side of the doors, the head over them, the gable to the ridge
-    for (const s of [-1, 1]) faceBox(sink, st.paint, front, s * (W / 2 - 0.6 + dw / 2) / 2, (wallH - 0.3) / 2, -0.06, W / 2 - 0.6 - dw / 2, wallH + 0.3, 0.12, {});
-    faceBox(sink, st.paint, front, 0, (dh + wallH) / 2, -0.06, dw, wallH - dh, 0.12, {});
-    wallPolygon(sink, st.paint, front, [[-W / 2, wallH], [W / 2, wallH], [0, wallH + rise]], 0.12);
-    boatDoor(sink, front, 0, 0, dw, dh, shade(PAINT_RGB[st.paint], 0.8), { bucket: 'structureWood', width: 0.14, out: 0.05, colour: WHITE });
-    if (!st.mobile) {
-      for (let u = -W / 2 + 0.85; u < W / 2 - 0.7; u += 0.32) {
-        if (Math.abs(u) < dw / 2 + 0.15) continue;
-        const h = wallH + (W / 2 - Math.abs(u)) * tanP - 0.15;
-        // (building-integrity: the battens stood 6 cm off the boards: on them)
-        faceBox(sink, 'structureWood', front, u, h / 2 + 0.05, 0.015, 0.05, h - 0.1, 0.03, { colour: shade(PAINT_RGB[st.paint], 0.78), decor: true, fine: true }, 'caps');
-      }
-    }
-    const roof = skifer(pitch, 0.32, 0.28);
-    emitRoof(sink, roofGeometry(W, D, wallH, roof), roof);
-    // the net store along the +x side: boards under a slate lean-to against the stone wall
-    const sx0 = W / 2, sx1 = W / 2 + store, sd = Math.min(D - 1.0, 6.5), h1 = 2.0, h0 = 1.55;
-    const sz0 = -D / 2 + 0.4;
-    sink.span('stone', sx0, -0.3, sz0, sx1, 0.15, sz0 + sd);
-    const e: Face = { origin: [(sx0 + sx1) / 2, 0, sz0 + sd], u: [1, 0, 0], out: [0, 0, 1], width: store };
-    wallPolygon(sink, st.paint, e, [[-store / 2, 0.15], [store / 2, 0.15], [store / 2, h0], [-store / 2, h1]], sd);
-    const lean: RoofSpec = { kind: 'shed', pitchDeg: Math.atan2(h1 - h0, store) * 180 / Math.PI, eave: 0.25, verge: 0.15, thickness: 0.1, bucket: 'roof' };
-    sink.placed(0, (sx0 + sx1) / 2, 0, sz0 + sd / 2, () => emitRoof(sink, roofGeometry(store, sd, h0, lean), lean));
-    // the slip before the doors: a ramp of granite setts and the timber runners on it, down to the plot's edge
-    const z0 = D / 2, z1 = D / 2 + slip;
-    sink.prism('stone', [[-dw / 2, 0.02, z0], [dw / 2, 0.02, z0], [dw / 2, -0.35, z1], [-dw / 2, -0.35, z1]], [0, -1, 0], 0.4);
-    if (!st.mobile) for (const u of [-0.7, 0.7]) sink.member('structureWood', [u, 0.08, z0 - 0.4], [u, -0.28, z1], 0.14, 0.1, [0, 1, 0], { colour: shade(BOARD, 0.7), decor: true });
+    const foot = 0.15, wallH = 2.5, pitch = 40 + rng() * 5, cheek = 0.6, top = foot + wallH;
+    // the doors as wide as the boats (to 3.2 m) and nearly the wall's height; one leaf swung back flat against the boards
+    // where the front has the room for it beside the opening (the boat then drawn half out through it)
+    const a = W / 2 - cheek, dw = Math.min(3.2, 2 * a - 0.5), dh = 2.2, open = dw + 0.24 <= a;
+    const frame = buildHouse(sink, {
+      w: W, d: D, plinth: { h: foot, out: 0.08, bucket: 'stone', course: false }, storeys: [{ h: wallH, wall: 'stone' }],
+      roof: skifer(pitch, 0.42, 0.3), gableBucket: st.paint, gableFramed: true, openings: [],
+      // the water gable between the stone cheeks is boards (below), not the walls' granite
+      abutted: [{ face: 'front', u0: -a, u1: a }],
+      chimneys: [], gutters: null, verge: { colour: WHITE, bucket: 'structureWood' }, reveal: 0.1, spall: null, rafters: shade(BOARD, 0.66),
+    }, dialect(st));
+    const f = frame.faces.front;
+    // the boarded front: the boards round the door opening, the opening cut through them
+    holedPolygon(sink, st.paint, f, [[-a, foot], [a, foot], [a, top], [-a, top]], [{ u0: -dw / 2, u1: dw / 2, y0: foot, y1: foot + dh }], 0.1, 0);
+    // the boat store behind the doors: its dark round the boat (a room seen through the open leaf)
+    const rd = 2.4, dark = { decor: true } as const;
+    sink.quad('dark', [-dw / 2, foot, D / 2 - rd], [dw / 2, foot, D / 2 - rd], [dw / 2, foot + dh, D / 2 - rd], [-dw / 2, foot + dh, D / 2 - rd], dark);
+    sink.quad('dark', [dw / 2, foot, D / 2 - rd], [dw / 2, foot, D / 2 - 0.1], [dw / 2, foot + dh, D / 2 - 0.1], [dw / 2, foot + dh, D / 2 - rd], dark);
+    sink.quad('dark', [-dw / 2, foot, D / 2 - 0.1], [-dw / 2, foot, D / 2 - rd], [-dw / 2, foot + dh, D / 2 - rd], [-dw / 2, foot + dh, D / 2 - 0.1], dark);
+    sink.quad('dark', [-dw / 2, foot + dh, D / 2 - 0.1], [-dw / 2, foot + dh, D / 2 - rd], [dw / 2, foot + dh, D / 2 - rd], [dw / 2, foot + dh, D / 2 - 0.1], dark);
+    sink.quad('dark', [-dw / 2, foot + 0.01, D / 2 - rd], [-dw / 2, foot + 0.01, D / 2 - 0.1], [dw / 2, foot + 0.01, D / 2 - 0.1], [dw / 2, foot + 0.01, D / 2 - rd], dark);
+    // the doors: the left leaf shut in the opening, the right swung back flat against the boards (or both shut)
+    sink.recess = 0.08;
+    try {
+      if (open) boatDoor(sink, f, -dw / 4, foot, dw / 2, dh, shade(paint, 0.8), null, { leaves: 1, hinge: -1 });
+      else boatDoor(sink, f, 0, foot, dw, dh, shade(paint, 0.8), null);
+    } finally { sink.recess = 0; }
+    if (open) boatDoor(sink, { ...f, origin: facePoint(f, 0, 0, 0.03) }, dw / 2 + 0.16 + dw / 4, foot + 0.02, dw / 2, dh - 0.04, shade(paint, 0.78), null, { leaves: 1, hinge: -1 });
+    // the opening's white frame
+    const fo = { colour: WHITE, decor: true };
+    for (const sgn of [-1, 1]) faceBox(sink, 'structureWood', f, sgn * (dw / 2 + 0.07), foot + dh / 2, 0.025, 0.14, dh, 0.05, fo);
+    faceBox(sink, 'structureWood', f, 0, foot + dh + 0.07, 0.025, dw + 0.28, 0.14, 0.05, fo);
+    cladding(sink, f, { u0: -a, u1: a, y0: foot, y1: top }, [{ face: 'front', storey: 0, kind: 'gate', u: 0, w: dw + 0.9, y0: 0, h: dh }], st);
+    // the dry-stone courses on the walls' outer faces and the front's cheeks (the net store's wall left bare behind it)
+    const sd = Math.min(D - 1.0, 6.5), sz0 = -D / 2 + 0.4;
+    sink.dressing(st.mobile, () => {
+      const dry = (face: Face, u0: number, u1: number) => dryStoneFace(sink, face, u0, u1, -0.2, top, look, { batter: 0.14, lichen });
+      dry(frame.faces.left, -D / 2, D / 2);
+      dry(frame.faces.back, -W / 2, W / 2);
+      dry(frame.faces.right, -D / 2, -(sz0 + sd) - 0.05);
+      dry(frame.faces.right, -sz0 + 0.05, D / 2);
+      dry(f, -W / 2, -a);
+      dry(f, a, W / 2);
+    });
+    // the net store: a boarded lean-to on its own sill against the +x wall, its pent falling outward, its door in its end
+    const h0 = 1.66, h1 = 2.0, pitchS = Math.atan2(h1 - h0, store) * 180 / Math.PI;
+    sink.placed(0, W / 2 + store / 2, 0, sz0 + sd / 2, () => {
+      const shed = buildHouse(sink, {
+        w: store, d: sd, plinth: { h: 0.14, out: 0.04, bucket: 'stone', course: false }, storeys: [{ h: h0 - 0.14, wall: st.paint, framed: true }],
+        roof: { kind: 'shed', pitchDeg: pitchS, eave: 0.22, verge: 0.14, thickness: 0.1, bucket: 'roof' }, gableBucket: st.paint,
+        openings: [{ face: 'front', storey: 0, kind: 'door', u: store * 0.1, w: 0.85, y0: 0, h: h0 - 0.22 },
+          { face: 'right', storey: 0, kind: 'loft', u: 0, w: 0.5, y0: 0.75, h: 0.42 }],
+        chimneys: [], gutters: null, verge: null, reveal: 0.06, spall: null,
+      }, dialect(st));
+      const rise = store * Math.tan(pitchS * Math.PI / 180), s2 = store / 2;
+      wallPolygon(sink, st.paint, shed.faces.front, [[s2, h0], [-s2, h0 + rise], [-s2, h0]], 0.06);
+      wallPolygon(sink, st.paint, shed.faces.back, [[-s2, h0], [s2, h0], [s2, h0 + rise]], 0.06);
+    });
+    // the slip before the doors, down to the plot's water edge; the færing drawn half out of the store onto it
+    const z0 = D / 2 + 0.04, z1 = Math.max(z0 + 0.8, bb.maxZ - cz - 0.08);
+    slipway(sink, 0, dw + 0.3, z0, z1, foot, -0.35, BOARD, { mobile: st.mobile });
+    sink.dressing(st.mobile, () => {
+      // the færing on the runners, its bow on the slip and its stern in the dark of the store (the keel follows the slip's fall)
+      const len = 5.2, bz = z1 - len / 2 - 0.2, fall = (-0.35 - foot) / Math.max(0.1, z1 - z0);
+      const yBow = foot + fall * clamp(bz + len / 2 - z0, 0, z1 - z0) + 0.15;
+      if (open) boatHull(sink, [dw / 4, Math.max(foot + 0.15, yBow + 0.1), bz], -Math.PI / 2, { length: len, beam: Math.min(1.42, dw / 2 - 0.2), depth: 0.55, sheer: 0.3,
+        stern: 'double', flat: 0.12, colour: pick(look, [rgb(0x2a2622), rgb(0x8a8a82), rgb(0xd8d4c8)]), inside: rgb(0x9a7a56), gunwale: shade(BOARD, 0.6), thwarts: 3 });
+      for (const k of [0, 1]) leantPole(sink, f, -dw / 2 - 0.5 - k * 0.2, 0.5 + k * 0.08, 3.1, -0.3, shade(BOARD, 1.05 + k * 0.1), true);
+    });
   });
   return sink.finish();
 };
@@ -620,11 +708,19 @@ const hjell: RegionalBuilder = (ctx) => {
   const x0 = bb.minX + 0.15, x1 = bb.maxX - 0.15, z0 = bb.minZ + 0.15, z1 = bb.maxZ - 0.15, zc = (z0 + z1) / 2;
   const h = 3.2, pole = shade(BOARD, 0.72);
   const n = Math.max(3, Math.round((x1 - x0) / 1.7));
+  const legs: Array<{ foot: Vec3; head: Vec3 }> = [];
   for (let k = 0; k <= n; k++) {
     const x = x0 + (x1 - x0) * k / n;
     // the trestle: two legs from the plot's edges crossing just under the rail
-    for (const s of [-1, 1]) sink.member('wood', [x, -0.2, s > 0 ? z1 : z0], [x, h + 0.15, zc - s * 0.25], 0.14, 0.14, [1, 0, 0], { exposed: true });
+    for (const s of [-1, 1]) {
+      const foot: Vec3 = [x, -0.2, s > 0 ? z1 : z0], head: Vec3 = [x, h + 0.15, zc - s * 0.25];
+      sink.member('wood', foot, head, 0.14, 0.14, [1, 0, 0], { exposed: true });
+      legs.push({ foot, head });
+    }
   }
+  // (props census #25, the looks lane 2026-10-15: "the probe finds no anatomy, so it falls to the default kit") the racks
+  // recorded as an open frame: shot, they fold over as their poles and rails (damage.ts describeLattice, latticeFall.ts)
+  recordLattice(sink, legs, [1.9, h], 0.14, 'wood', pole, null);
   // the rails, square across their middle so the fish hung either side lie against them (kitConnectivity: a rail's
   // section stood off to one side, and the fish on its far side hung 3.5 cm off it)
   sink.span('wood', x0, h - 0.12, zc - 0.07, x1, h + 0.02, zc + 0.07);
