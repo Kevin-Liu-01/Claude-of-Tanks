@@ -242,19 +242,98 @@ function dustAndContact(geo: THREE.BufferGeometry, rng: Rng): THREE.BufferGeomet
   return geo;
 }
 
+/**
+ * (r2, 2026-10-16: the sweep read the crates 100 % plain boxes — a painted block with a seam drawn on) A prism of
+ * `section` ((a, b) points round it) on the axes A and B, run along L from l0 to l1: flat-shaded, non-indexed, every face
+ * wound out, its caps closed; uvs round the section and along the run.
+ */
+function prismGeo(section: ReadonlyArray<readonly [number, number]>, A: 0 | 1 | 2, B: 0 | 1 | 2, L: 0 | 1 | 2, l0: number, l1: number,
+  uvScale = 0.7): THREE.BufferGeometry {
+  let area = 0;
+  for (let i = 0; i < section.length; i++) {
+    const [a0, b0] = section[i], [a1, b1] = section[(i + 1) % section.length];
+    area += a0 * b1 - a1 * b0;
+  }
+  const sec = area < 0 ? [...section].reverse() : [...section];
+  const pos: number[] = [], nor: number[] = [], uvs: number[] = [];
+  const at = (a: number, b: number, l: number): THREE.Vector3 => {
+    const p = [0, 0, 0]; p[A] = a; p[B] = b; p[L] = l;
+    return new THREE.Vector3(p[0], p[1], p[2]);
+  };
+  const dir = (na: number, nb: number, nl: number): THREE.Vector3 => {
+    const p = [0, 0, 0]; p[A] = na; p[B] = nb; p[L] = nl;
+    return new THREE.Vector3(p[0], p[1], p[2]);
+  };
+  const e1 = new THREE.Vector3(), e2 = new THREE.Vector3();
+  const tri = (p: THREE.Vector3[], q: Array<[number, number]>, n: THREE.Vector3): void => {
+    e1.subVectors(p[1], p[0]); e2.subVectors(p[2], p[0]);
+    const order = e1.cross(e2).dot(n) >= 0 ? [0, 1, 2] : [0, 2, 1];
+    for (const k of order) { pos.push(p[k].x, p[k].y, p[k].z); nor.push(n.x, n.y, n.z); uvs.push(q[k][0], q[k][1]); }
+  };
+  let s = 0;
+  for (let i = 0; i < sec.length; i++) {
+    const [a0, b0] = sec[i], [a1, b1] = sec[(i + 1) % sec.length];
+    const ea = a1 - a0, eb = b1 - b0, len = Math.hypot(ea, eb) || 1;
+    const n = dir(eb / len, -ea / len, 0);
+    const u0 = s * uvScale, u1 = (s + len) * uvScale, v0 = l0 * uvScale, v1 = l1 * uvScale;
+    tri([at(a0, b0, l0), at(a1, b1, l0), at(a1, b1, l1)], [[u0, v0], [u1, v0], [u1, v1]], n);
+    tri([at(a0, b0, l0), at(a1, b1, l1), at(a0, b0, l1)], [[u0, v0], [u1, v1], [u0, v1]], n);
+    s += len;
+  }
+  const faces = THREE.ShapeUtils.triangulateShape(sec.map(([a, b]) => new THREE.Vector2(a, b)), []);
+  for (const [l, sign] of [[l0, -1], [l1, 1]] as const) {
+    const n = dir(0, 0, sign);
+    for (const f of faces) tri(f.map((k) => at(sec[k][0], sec[k][1], l)), f.map((k) => [sec[k][0] * uvScale, sec[k][1] * uvScale] as [number, number]), n);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  return g;
+}
+/**
+ * A crate's board: `across` x `thick` in section (a along A, b along B), run along L over `len` about the origin, its
+ * face toward `face` (+1/-1 along B) eased at both arrises by `c` — the V-joint where two boards meet.
+ */
+function crateBoard(across: number, thick: number, len: number, A: 0 | 1 | 2, B: 0 | 1 | 2, L: 0 | 1 | 2, face: 1 | -1, c = 0.004): THREE.BufferGeometry {
+  const ha = across / 2, hb = thick / 2, k = Math.min(c, 0.3 * thick, 0.3 * across);
+  return prismGeo([[ha, -hb * face], [ha, (hb - k) * face], [ha - k, hb * face], [-ha + k, hb * face], [-ha, (hb - k) * face], [-ha, -hb * face]],
+    A, B, L, -len / 2, len / 2);
+}
+
 /** One wooden ammunition crate, its skids on y = 0, its length along x, its front (hasps, markings) toward +z. */
 function ammoCrate(o: Rng, style: CrateStyle = CRATE_OD): THREE.BufferGeometry {
   const { L, W, H } = AMMO_CRATE, skid = 0.022, lidT = 0.024, body = H - skid - lidT, top = skid + body;
   const parts: THREE.BufferGeometry[] = [];
   for (const sx of [-1, 1]) parts.push(P(box(0.05, skid, W - 0.02), style.worn, 0.08, o).translate(sx * (L / 2 - 0.13), skid / 2, 0));
-  parts.push(P(box(L - 0.012, body, W - 0.012), style.paint, 0.05, o).translate(0, skid + body / 2, 0));
-  // the boards' seam along both faces, and the lid's hinge line along the back
-  for (const sz of [-1, 1]) {
-    const seam = P(facePlane(L - 0.05, 0.006), CRATE_SEAM, 0.02, o);
-    if (sz < 0) seam.rotateY(Math.PI);
-    parts.push(seam.translate(0, skid + body * 0.5, sz * (W / 2 - 0.0045)));
+  // (r2) the body as it is nailed up: two boards edge to edge on each side, their faces' arrises eased so the joint
+  // between them reads as a V; the ends housed between the sides; the bottom board on the skids; the lid of two boards
+  // edge to edge. Each board its own shade of the paint.
+  const sideT = 0.016, face = W / 2 - 0.006, len = L - 0.012, endT = 0.016, inner = face - sideT;
+  for (const sz of [-1, 1] as const) {
+    for (const k of [0, 1]) {
+      const g = crateBoard(body / 2 - 0.001, sideT, len, 1, 2, 0, sz);
+      parts.push(P(g, style.paint, 0.05, o).translate(0, skid + body * (k + 0.5) / 2, sz * (face - sideT / 2)));
+    }
   }
-  parts.push(P(box(L, lidT, W + 0.004), style.lid, 0.05, o).translate(0, top + lidT / 2, 0));
+  for (const sx of [-1, 1] as const) {
+    const g = crateBoard(2 * inner, endT, body - 0.002, 2, 0, 1, sx, 0.003);
+    parts.push(P(g, style.paint, 0.05, o).translate(sx * (len / 2 - endT / 2), skid + body / 2, 0));
+  }
+  parts.push(P(crateBoard(2 * inner, 0.014, len - 2 * endT, 2, 1, 0, -1, 0.003), style.paint, 0.05, o).translate(0, skid + 0.007, 0));
+  // the lid's hinge line along the back, between the lid and the back board
+  {
+    const seam = P(facePlane(L - 0.05, 0.006), CRATE_SEAM, 0.02, o);
+    seam.rotateY(Math.PI);
+    parts.push(seam.translate(0, top - 0.004, -(W / 2 - 0.0045)));
+  }
+  {
+    const lw = (W + 0.004) / 2 - 0.0015;
+    for (const sz of [-1, 1]) {
+      const g = crateBoard(lw, lidT, L, 2, 1, 0, 1, 0.005);
+      parts.push(P(g, style.lid, 0.05, o).translate(0, top + lidT / 2, sz * (lw / 2 + 0.0015)));
+    }
+  }
   parts.push(P(box(L - 0.02, 0.006, 0.006), style.worn, 0.10, o).translate(0, top + lidT - 0.003, W / 2 + 0.002));
   // the end cleats: a frame proud of each end, the rope becket hanging between its rails
   for (const sx of [-1, 1]) {
@@ -298,8 +377,13 @@ function ammoCrate(o: Rng, style: CrateStyle = CRATE_OD): THREE.BufferGeometry {
 /** A steel ammunition can (the belt box): body, lid, the latch at one end, the carry handle on the lid, a marking. */
 function ammoCan(o: Rng): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
-  parts.push(P(box(0.27, 0.165, 0.14), CRATE_PAINT, 0.05, o).translate(0, 0.0825, 0));
-  parts.push(P(box(0.28, 0.022, 0.15), CRATE_LID, 0.05, o).translate(0, 0.176, 0));
+  // (r2) the can's pressed body, its four upright corners rounded; the lid over it, its edges rolled
+  const can = (w: number, d: number, y0: number, y1: number, c: number): THREE.BufferGeometry => {
+    const hw = w / 2, hd = d / 2;
+    return prismGeo([[hw, hd - c], [hw - c, hd], [-hw + c, hd], [-hw, hd - c], [-hw, -hd + c], [-hw + c, -hd], [hw - c, -hd], [hw, -hd + c]], 0, 2, 1, y0, y1);
+  };
+  parts.push(P(can(0.27, 0.14, 0, 0.165, 0.012), CRATE_PAINT, 0.05, o));
+  parts.push(P(can(0.28, 0.15, 0.165, 0.187, 0.014), CRATE_LID, 0.05, o));
   parts.push(P(box(0.012, 0.06, 0.04), HARDWARE, 0.05, o).translate(0.141, 0.15, 0));
   for (const sx of [-1, 1]) parts.push(P(box(0.012, 0.02, 0.012), HARDWARE, 0.05, o).translate(sx * 0.05, 0.197, 0));
   parts.push(P(box(0.11, 0.012, 0.014), HARDWARE, 0.05, o).translate(0, 0.21, 0));
@@ -1075,13 +1159,16 @@ function buildFieldTent(spec: TentSpec, o: Rng, down: boolean): THREE.BufferGeom
   if (down) {
     // collapsed: the canvas lies over what was in it — humped over the cot and the kit, its folds, a corner still pegged —
     // and draped from the rear pole's head, the one pole still up, leaning
+    // (r2, 2026-10-16: the sweep read the collapse a raft, 21-24 % of the pitched tent's height) the rear pole has not
+    // gone down: it leans in its peg's pull with the canvas hung from its head and the ridge's end, the cloth falling in
+    // folds from there over the cot and the kit to the pegged corner
     const humps = [[-0.55, 0.42, -0.1, 0.9], [0.35, 0.3, L / 2 - 0.6, 0.45], [0.1, 0.22, -L / 2 + 0.6, 0.6]];
-    const head = v3(0.25, 0.92, -L / 2 + 0.5);
+    const head = v3(0.22, 1.22, -L / 2 + 0.42);
     const fall = (u: number, v: number): V => {
       const x = (u - 0.5) * Math.min(W * 1.1, 2.44), z = (v - 0.5) * Math.min(L * 1.05, 3.6);
       let y = 0.03 + vnoise3(x * 1.7, 0, z * 1.7, seed + 4) * 0.12;
       for (const [hx, hy, hz, hr] of humps) y += hy * Math.max(0, 1 - Math.hypot(x - hx, (z - hz) * 0.7) / hr);
-      y = Math.max(y, head.y * Math.pow(Math.max(0, 1 - Math.hypot(x - head.x, z - head.z) / 1.1), 1.6) - 0.02);
+      y = Math.max(y, head.y * Math.pow(Math.max(0, 1 - Math.hypot(x - head.x, (z - head.z) * 0.8) / 1.35), 1.35) - 0.02);
       // the pegged corner pulled taut to its peg
       if (u > 0.85 && v < 0.15) y *= 0.4;
       return v3(x + Math.sin(z * 2.3 + seed) * 0.04, y, z);
@@ -1142,19 +1229,20 @@ function buildFieldTent(spec: TentSpec, o: Rng, down: boolean): THREE.BufferGeom
     for (let k = 0; k < 4; k++) {
       const a = corners[k], b = corners[(k + 1) % 4];
       // the roof's face from its eave to the apex, sagging in its middle (the door's slit up the front one)
-      const face = (u0: number, u1: number, v0: number, v1: number, nu: number, nv: number): void => sheet(m, (u, v) => {
-        const uu = u0 + (u1 - u0) * u, vv = v0 + (v1 - v0) * v;
+      /** the face's point at (uu along the eave, vv up to the apex), sagging in its middle */
+      const onFace = (uu: number, vv: number): V => {
         const e = a.clone().lerp(b, uu), q = e.clone().lerp(apex, vv);
         const sagged = 0.06 * Math.sin(Math.PI * uu) * Math.sin(Math.PI * Math.min(1, vv * 1.2));
         return q.add(v3(-q.x * sagged, -sagged * 0.6, -q.z * sagged));
-      }, nu, nv, inside, cloth);
+      };
+      const face = (u0: number, u1: number, v0: number, v1: number, nu: number, nv: number): void =>
+        sheet(m, (u, v) => onFace(u0 + (u1 - u0) * u, v0 + (v1 - v0) * v), nu, nv, inside, cloth);
       if (k === 2) {
         face(0, 0.36, 0, 0.55, 1, 2); face(0.64, 1, 0, 0.55, 1, 2); face(0, 1, 0.55, 1, 3, 2);
-        // the door's flap folded back over the face beside the door and tied there
-        sheet(m, (u, v) => {
-          const uu = 0.64 + 0.2 * u, vv = 0.5 * v, e = a.clone().lerp(b, uu), q = e.clone().lerp(apex, vv);
-          return q.add(v3(0, 0.03, 0.035));
-        }, 1, 2, inside, cloth);
+        // the door's flap folded back over the face beside the door and tied there: lying on the face's own sag, a
+        // centimetre out from it (r2: it stood 4.6 cm off the cloth, held by nothing)
+        const outward = v3(0, hl, H + 0.06 - wall).normalize().multiplyScalar(0.011);
+        sheet(m, (u, v) => onFace(0.64 + 0.2 * u, 0.5 * v).add(outward), 2, 2, inside, cloth);
       } else face(0, 1, 0, 1, 3, 3);
       // the eave wall below it (the door in the +z wall)
       if (k === 2) {
@@ -1438,6 +1526,8 @@ export function buildCampFireRing(mapId: string, x: number, y: number, z: number
   } else {
     for (const zz of [-0.15, -0.05, 0.05, 0.15]) rodCol(m, v3(-0.4, 0.2, zz), v3(0.4, 0.2, zz), 0.008, iron);
     for (const [gx, gz] of [[-0.38, -0.2], [0.38, -0.2], [-0.38, 0.2], [0.38, 0.2]]) rodCol(m, v3(gx, 0, gz), v3(gx, 0.2, gz), 0.01, iron);
+    // (r2: the bars stood in the air, 3-7 cm off the legs) the grate's side rails from leg to leg, the bars laid across them
+    for (const gx of [-0.38, 0.38]) rodCol(m, v3(gx, 0.19, -0.21), v3(gx, 0.19, 0.21), 0.011, iron);
   }
   const g = m.geometry(); g.translate(x, y, z);
   parts.push({ bucket: 'baked', geometry: g });
