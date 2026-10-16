@@ -1171,6 +1171,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/collisionManifestCodec.selftest.mjs',
     // 2026-10-14 (physics stream): every base and variant shard matches its index.json entry (the loaders' check)
     'server/collisionManifestIndex.selftest.mjs',
+    'server/collisionManifestRoutes.selftest.mjs', // 2026-10-16 physics: v2 serves 226's manifests (256 parts); /mp-collision holds production 224's byte for byte
     'server/dedicatedWorldCollisionMemory.selftest.mjs',
     'server/match/loop.selftest.mjs',
     'server/match/inputBuffer.selftest.mjs',
