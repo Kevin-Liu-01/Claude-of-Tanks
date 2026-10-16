@@ -7,9 +7,9 @@
 import { PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, holedBox, holedPolygon, recordShaft, windowRhythm, type HoleRect, type HouseDialect, type Opening } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
-import { ksarGhorfaSouk, souqStall } from './souqs.ts'; // props #23: the ghorfa souk and the souk stall
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { ksarGhorfaSouk, souqStall } from './souqs.ts'; // props #23: the ghorfa souk and the souk stall
 
 const BLUES: readonly Rgb[] = [0x2f6a9e, 0x3a7ab0, 0x2e5f8a].map(rgb);
 const TIMBER = rgb(0x7a6048);
