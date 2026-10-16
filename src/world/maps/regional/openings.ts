@@ -138,13 +138,36 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
     if (rng() < closed) {
       // closed: both leaves across the opening, proud of the frame
       const shut = Math.max(0, O - r);
-      faceBox(sink, 'structureWood', face, u - leaf / 2 + 0.015, y + h / 2, shut + 0.025, leaf, h + 0.02, 0.035, sc);
-      faceBox(sink, 'structureWood', face, u + leaf / 2 - 0.015, y + h / 2, shut + 0.028, leaf, h + 0.02, 0.035, sc);
+      if (sh.kind === 'louvred') {
+        // (props census r2 sweep, Lane C 2026-10-16: a closed leaf was one flat board across the opening, a painted plate)
+        // a closed louvred leaf is built as one: its stiles and rails, the slats between them with the dark of the reveal
+        // showing through their gaps
+        for (const side of [-1, 1]) {
+          const cu = u + side * (leaf / 2 - 0.015), o = shut + 0.025 + (side > 0 ? 0.003 : 0), lh = h + 0.02;
+          for (const e of [-1, 1]) faceBox(sink, 'structureWood', face, cu + e * (leaf / 2 - 0.02), y + h / 2, o, 0.04, lh, 0.035, sc);
+          for (const e of [-1, 1]) faceBox(sink, 'structureWood', face, cu, y + h / 2 + e * (lh / 2 - 0.025), o, leaf - 0.08, 0.05, 0.035, sc);
+          const n = Math.max(3, Math.round((lh - 0.1) / 0.055));
+          for (let k = 0; k < n; k++) faceBox(sink, 'structureWood', face, cu, y - 0.01 + 0.05 + (k + 0.5) * (lh - 0.1) / n, o, leaf - 0.08, 0.04, 0.014, { ...sc, fine: true });
+        }
+      } else {
+        faceBox(sink, 'structureWood', face, u - leaf / 2 + 0.015, y + h / 2, shut + 0.025, leaf, h + 0.02, 0.035, sc);
+        faceBox(sink, 'structureWood', face, u + leaf / 2 - 0.015, y + h / 2, shut + 0.028, leaf, h + 0.02, 0.035, sc);
+      }
     } else {
       for (const side of [-1, 1]) {
         const cu = u + side * (w / 2 + sideOff + leaf / 2 + 0.02);
         // the open leaf folded back flat on the wall (its back face then never shows), its rails on its face
         const T = 0.035, front = T + 0.001, ro = front + 0.01 - 0.002;
+        if (sh.kind === 'louvred' && !sh.paint) {
+          // (props census r2 sweep, Lane C 2026-10-16: the folded leaf beside a surround read as a painted plate) the
+          // louvred leaf built as one, its stiles, rails and slats on the wall, the wall seen through the slats' gaps
+          const lh = h + 0.02;
+          for (const e of [-1, 1]) faceBox(sink, 'structureWood', face, cu + e * (leaf / 2 - 0.02), y + h / 2, front - T / 2, 0.04, lh, T, { ...sc, fineSides: true });
+          for (const e of [-1, 1]) faceBox(sink, 'structureWood', face, cu, y + h / 2 + e * (lh / 2 - 0.025), front - T / 2, leaf - 0.08, 0.05, T, sc);
+          const n = Math.max(3, Math.round((lh - 0.1) / 0.055));
+          for (let k = 0; k < n; k++) faceBox(sink, 'structureWood', face, cu, y - 0.01 + 0.05 + (k + 0.5) * (lh - 0.1) / n, front - 0.012, leaf - 0.08, 0.04, 0.014, { ...sc, fine: true });
+          continue;
+        }
         faceBox(sink, 'structureWood', face, cu, y + h / 2, front - T / 2, leaf, h + 0.02, T, { ...sc, fineSides: true });
         if (sh.paint && facadeOn()) paintedLeaf(sink, face, cu, y + h / 2, leaf, h + 0.02, front, sh.paint);
         if (sh.kind === 'louvred') {
