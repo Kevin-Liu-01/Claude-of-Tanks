@@ -401,6 +401,9 @@ export function seatAuthoredSpareTracks(a: AuthoredSeatArgs): SpareTrackSeatRepo
       audit.live[run.site] = live;
       if (JSON.stringify(planned) !== JSON.stringify(live)) {
         audit.stale.push(`${run.site}: plan ${JSON.stringify(planned) ?? 'none'}, search ${JSON.stringify(live)}`);
+      } else if (planned !== undefined && JSON.stringify(answer) !== JSON.stringify(planned)) {
+        // the search still gives the recorded answer, but the build could not replay it (a game build would not either)
+        audit.stale.push(`${run.site}: the recorded answer ${JSON.stringify(planned)} does not replay`);
       }
     }
     if (result.ok && result.pose) {
