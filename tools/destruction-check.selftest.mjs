@@ -20,9 +20,14 @@ for (const r of report.rows) {
   assert.equal(r.hangingPanel, 0, `${r.builder}: nothing hangs from its fall (${r.hangingPanel} triangles up to ${r.hangingPanelM} m)`);
   assert.equal(r.pieces.stillHanging, 0, `${r.builder}: no still piece in the air`);
   assert.equal(r.pieces.overGround, 0, `${r.builder}: every thrown piece lies on the ground where it lands`);
-  assert.ok(r.bodies.inWorld > 0 && r.bodies.moving === 0, `${r.builder}: its rigid rubble came to rest (${r.bodies.asleep}/${r.bodies.inWorld} asleep, ${r.bodies.moving} moving)`);
-  assert.equal(r.bodies.hanging, 0, `${r.builder}: no body at rest in the air`);
-  assert.ok(r.bodies.onGround >= r.bodies.inWorld * 0.6, `${r.builder}: most of its bodies lie on the ground (${r.bodies.onGround}/${r.bodies.inWorld})`);
+  // (2026-10-15: on desktop the walls break as cells and the building comes down as its own pieces, bodies of the
+  // fracture's pool, baked into heaps once still; the kit's rubble bodies are for what the fracture does not take)
+  const fr = r.fracture;
+  assert.ok((r.bodies.inWorld > 0 || fr?.asBodies) && r.bodies.moving === 0 && (fr?.moving ?? 0) === 0,
+    `${r.builder}: its rigid rubble came to rest (${r.bodies.asleep}/${r.bodies.inWorld} asleep, ${r.bodies.moving} moving; fracture ${JSON.stringify(fr)})`);
+  assert.equal(r.bodies.hanging + (fr?.hanging ?? 0), 0, `${r.builder}: no body at rest in the air`);
+  assert.equal(fr?.highMeshes ?? 0, 0, `${r.builder}: nothing the fracture drew lies in the air`);
+  if (r.bodies.inWorld > 0) assert.ok(r.bodies.onGround >= r.bodies.inWorld * 0.6, `${r.builder}: most of its bodies lie on the ground (${r.bodies.onGround}/${r.bodies.inWorld})`);
   assert.ok(r.pass, `${r.builder}: ${r.failures.join('; ')}`);
 }
-console.log(`destruction-check selftest: ${report.rows.map((r) => `${r.builder} (${r.bodies.inWorld} bodies, ${r.pieces.thrown} pieces)`).join(', ')} — textured, nothing hanging from the fall, no hanging rims or pieces, rubble at rest on the ground — ok`);
+console.log(`destruction-check selftest: ${report.rows.map((r) => `${r.builder} (${r.bodies.inWorld} bodies, ${r.fracture ? `${r.fracture.asBodies ? 'down as bodies' : 'the kit\'s fall'}, ` : ''}${r.pieces.thrown} pieces)`).join(', ')} — textured, nothing hanging from the fall, no hanging rims or pieces, rubble at rest on the ground — ok`);
