@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { DoubleSide, Euler, Matrix4, Mesh, MeshBasicMaterial, Quaternion, Raycaster, Vector3 } from 'three';
 import { fitWallSpan, wallIslandEdges } from './wallSpanPlacement.ts';
 import { ADOBE_UV_PER_M, DESTRUCTIBLE_TYPES, WALL_SEG, buildAdobePilaster, buildDryStoneWallHead } from './maps/inhabitKit.ts';
+import { adobeCrownFor } from './maps/adobeWallKit.ts';
 import { createWallDressing } from './maps/fieldWallDressing.ts';
 import { sourcedStoneIsBrick } from './sourcedTextures.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -319,11 +320,13 @@ function sourceRunFixture(code, runs, field, seed, style = 'fieldstone') {
   // the fixture runs none
   const run = new Function('P', 'heightField', 'WALL_SEG', 'rng', 'buckets', 'box', 'jitterUV', 'addDestructible', 'noVeg', 'wallSpans', 'wallIslandEdges', 'legacyWallEdges',
     'mapId', 'sourcedStoneIsBrick', 'buildDryStoneWallHead', 'buildAdobePilaster', 'fieldWallBucket', 'drawnPlanRecord', 'breachRubbleFootprints', 'wallDressing',
-    'roughenChunk', `${code}; return addWallRun;`)(
+    'roughenChunk', 'adobeCrownFor', 'regionalArchitecture', `${code}; return addWallRun;`)(
     { wallStyle: style }, field, WALL_SEG, rng, buckets, box, jitterUV, add, field._noVeg, spans, wallIslandEdges, legacyWallEdges,
     field._layout?.id ?? 'verdant', sourcedStoneIsBrick, buildDryStoneWallHead, buildAdobePilaster, 'fieldStone', () => null, [],
     // the walls' feet and weather (fieldWallDressing.ts): their own streams, so the run's draws stay the props stream's
-    createWallDressing({ ground: field, snow: false, mobile: false, adobeBucket: 'fieldMud', mudUv: ADOBE_UV_PER_M }), roughenChunk);
+    createWallDressing({ ground: field, snow: false, mobile: false, adobeBucket: 'fieldMud', mudUv: ADOBE_UV_PER_M }), roughenChunk,
+    // (props lane A #6: a mud run's piers carry their region's crown)
+    adobeCrownFor, null);
   runs.forEach((args, runIndex) => {
     const [x0, z0, x1, z1] = args, start = records.length;
     const length = Math.hypot(x1 - x0, z1 - z0);
