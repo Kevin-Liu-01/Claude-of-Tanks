@@ -35,8 +35,9 @@ export interface HinterlandSettlement {
   vertical: HinterlandVerticalKind | null;
   /** Standing in a flood (Walcheren, October 1944): its roofs and trees stand out of the water. */
   flooded?: boolean;
-  /** Its tower's authored height (m), when a sightline village names one. */
+  /** Its tower's authored height (m), when a sightline village names one; slim: a near village's (spec.ts). */
   towerM?: number;
+  slimTower?: boolean;
   name?: string;
 }
 
@@ -56,6 +57,8 @@ export interface HinterlandVertical {
   yaw: number;
   settlement: number | null;
   name?: string;
+  /** A near village's slim tower (outlandGeometry: its own proportions). */
+  slim?: boolean;
 }
 
 /** A building's footprint in a settlement (HL-6: the kit builds one structure per footprint). */
@@ -127,6 +130,10 @@ export const VERTICAL_SIZE: Readonly<Record<HinterlandVerticalKind, readonly [nu
 });
 
 const SIDE_NAMES = ['n', 'e', 's', 'w'] as const;
+/** The headings a road tries (rad off its own) when the ground ahead climbs too steeply. */
+const ROAD_TURNS = Object.freeze([-0.25, 0.25, -0.5, 0.5, -0.7, 0.7, -0.87, 0.87]);
+/** A track's steepest stretch (a link between settlements past it is left out). */
+const TRACK_MAX_GRADE = 0.2;
 
 function sideOf(x: number, z: number): number {
   return Math.abs(x) > Math.abs(z) ? (x > 0 ? 1 : 3) : (z > 0 ? 0 : 2);
@@ -161,24 +168,60 @@ export function planHinterlandOutland(spec: HinterlandSpec, seed: number, inputs
 
   // ---- the exits run on: each road leaving the square continues along its last bearing, wandering gently, to 5 km
   const roadPts: { x: number; z: number }[] = [];
+  // (each exit's own line where it stops: the links below join it there)
+  const exitEnds: ({ x: number; z: number } | null)[] = inputs.exits.map((e) => (e.xs.length ? { x: e.xs[e.xs.length - 1], z: e.zs[e.xs.length - 1] } : null));
   inputs.exits.forEach((exit, index) => {
-    const n = exit.xs.length;
+    let n = exit.xs.length;
     if (n < 2) return;
     const xs: number[] = [], zs: number[] = [];
     for (let i = 0; i < n; i++) { xs.push(exit.xs[i]); zs.push(exit.zs[i]); }
+    // (the battlefield's own exit line runs on ~700 m past the edge over the ground the ring stood on; on the hinterland's
+    // it can climb a wall's apron — round 4: exit n's line rose 125 m in 340 m — so it stops where it climbs too steeply)
+    for (let i = 2; i < n; i++) {
+      const past = Math.max(Math.abs(xs[i]), Math.abs(zs[i])) - HINTERLAND_EDGE_M;
+      if (past < 60) continue;
+      let g = Infinity;
+      for (const back of [1, 3, 6]) {
+        const j = Math.max(0, i - back), run = Math.hypot(xs[i] - xs[j], zs[i] - zs[j]);
+        if (run > 1) g = Math.min(g, Math.abs(inputs.heightAt(xs[i], zs[i]) - inputs.heightAt(xs[j], zs[j])) / run);
+      }
+      if (g > (past < 300 ? 0.2 : 0.12)) { n = i; xs.length = n; zs.length = n; exitEnds[index] = { x: xs[n - 1], z: zs[n - 1] }; break; }
+    }
     let x = xs[n - 1], z = zs[n - 1];
     let dir = Math.atan2(xs[n - 1] - xs[Math.max(0, n - 4)], zs[n - 1] - zs[Math.max(0, n - 4)]);
     // bend outward if the exit's last stretch runs along the edge
     const out = Math.atan2(x, z);
     const turn = Math.atan2(Math.sin(out - dir), Math.cos(out - dir));
     if (Math.abs(turn) > 0.9) dir += turn * 0.5;
+    // (round 4, the Glacier edge-n frames: the exits ran on straight up the cirque wall at grades to 137 %) a road keeps
+    // to ground it can climb: where the ground ahead climbs past 6 % over each of the next 60, 120 and 240 m (a dike's
+    // bank is not a slope) it turns toward the gentlest heading within ±50°, and it ends where none is under 12 % (20 %
+    // over the rim's first 300 m) — at the foot of the slope, as a valley road ends at its head
+    let hPrev = inputs.heightAt(x, z);
+    const climb = (heading: number): number => {
+      let g = Infinity;
+      for (const run of [60, 120, 240]) g = Math.min(g, Math.abs(inputs.heightAt(x + Math.sin(heading) * run, z + Math.cos(heading) * run) - hPrev) / run);
+      return g;
+    };
     for (let d = 0; d < 5000; d += 60) {
       dir += 0.06 * noise2(d / 900 + index * 7.1, index * 3.3) + 0.04 * Math.atan2(Math.sin(out - dir), Math.cos(out - dir));
-      x += Math.sin(dir) * 60; z += Math.cos(dir) * 60;
+      let g = climb(dir);
+      if (g > 0.06) {
+        let best = g, turn = 0;
+        for (const dd of ROAD_TURNS) {
+          if (Math.max(Math.abs(x + Math.sin(dir + dd) * 60), Math.abs(z + Math.cos(dir + dd) * 60)) < HINTERLAND_EDGE_M + 20) continue;
+          const tg = climb(dir + dd) + 0.02 * Math.abs(dd);
+          if (tg < best) { best = tg; turn = dd; }
+        }
+        if (turn !== 0) { dir += turn; g = climb(dir); }
+        if (g > (d < 300 ? 0.2 : 0.12)) break;
+      }
+      x += Math.sin(dir) * 60; z += Math.cos(dir) * 60; hPrev = inputs.heightAt(x, z);
       if (inputs.wetAt(x, z) > 0.5) break;
       xs.push(x); zs.push(z);
     }
-    if (xs.length > n) {
+    // (a road that ends at once still runs its own line to where it stopped)
+    if (xs.length > n || n < exit.xs.length) {
       roads.push({ kind: pattern === 'dykeVillage' ? 'dikeRoad' : 'road', xs, zs, widthM: 5.5, from: `exit:${index}`, to: 'far' });
       for (let i = n; i < xs.length; i++) roadPts.push({ x: xs[i], z: zs[i] });
     }
@@ -298,8 +341,9 @@ export function planHinterlandOutland(spec: HinterlandSpec, seed: number, inputs
     const near = a.distM <= 2700;
     settlements.push({
       id: settlements.length, kind: 'village', x: at.x, z: at.z, yaw: nearestRoadYaw(at.x, at.z), radiusM: villageRadius,
-      buildings: Math.round(Math.max(10, per[0] * 0.7) + (Math.max(14, per[1] * 0.55) - Math.max(10, per[0] * 0.7)) * rng()),
+      buildings: a.buildings ?? Math.round(Math.max(10, per[0] * 0.7) + (Math.max(14, per[1] * 0.55) - Math.max(10, per[0] * 0.7)) * rng()),
       near, vertical: spec.region.verticals[0] ?? null, ...(a.name ? { name: a.name } : {}), ...(a.towerM ? { towerM: a.towerM } : {}),
+      ...(a.slim ? { slimTower: true } : {}),
     });
     anchored++;
   }
@@ -310,10 +354,7 @@ export function planHinterlandOutland(spec: HinterlandSpec, seed: number, inputs
 
   // ---- links: a spanning tree over the settlements and the exit roads' first stretch (Prim), plus `links` extra edges
   const nodes = settlements.filter((s) => s.near && s.kind !== 'farm').map((s) => ({ x: s.x, z: s.z, id: `s${s.id}` }));
-  inputs.exits.forEach((exit, index) => {
-    const n = exit.xs.length;
-    if (n) nodes.push({ x: exit.xs[n - 1], z: exit.zs[n - 1], id: `exit:${index}` });
-  });
+  exitEnds.forEach((end, index) => { if (end) nodes.push({ x: end.x, z: end.z, id: `exit:${index}` }); });
   if (nodes.length > 1) {
     const inTree = new Set<number>([0]);
     const edges: [number, number][] = [];
@@ -364,7 +405,8 @@ export function planHinterlandOutland(spec: HinterlandSpec, seed: number, inputs
     verticals.push({ kind: s.vertical, x: s.x + Math.sin(s.yaw + Math.PI / 2) * off, z: s.z + Math.cos(s.yaw + Math.PI / 2) * off,
       heightM: s.towerM ?? h * (s.kind === 'town' ? 1.25 : s.near ? 1 : 0.95),
       // (a church tower's footprint as outlandGeometry draws it: its buildings keep clear of it)
-      halfM: s.vertical === 'churchTower' ? Math.max(half, (s.towerM ?? h) / ((s.towerM ?? h) >= 70 ? 10 : 7)) : half, yaw: s.yaw, settlement: s.id });
+      halfM: s.vertical === 'churchTower' ? (s.slimTower ? Math.max(2.8, (s.towerM ?? h) / 10) : Math.max(half, (s.towerM ?? h) / ((s.towerM ?? h) >= 70 ? 10 : 7))) : half,
+      yaw: s.yaw, settlement: s.id, ...(s.slimTower ? { slim: true } : {}) });
   }
   const regionExtra = spec.region.verticals.slice(1);
   if (regionExtra.includes('windmill') && pattern === 'dykeVillage') {
@@ -650,21 +692,36 @@ function polylineDist(xs: ArrayLike<number>, zs: ArrayLike<number>, x: number, z
 
 /** A road between two points, bending round water and easing over the land (a straight run with a few kinks). */
 function routeLine(a: { x: number; z: number }, b: { x: number; z: number }, inputs: HinterlandPlanInputs, rng: () => number): { xs: number[]; zs: number[] } | null {
-  const xs: number[] = [a.x], zs: number[] = [a.z];
   const len = Math.hypot(b.x - a.x, b.z - a.z), steps = Math.max(2, Math.ceil(len / 50));
   const nx = -(b.z - a.z) / len, nz = (b.x - a.x) / len;
-  const bow = (rng() - 0.5) * len * 0.12;
-  for (let i = 1; i < steps; i++) {
-    const t = i / steps;
-    let x = a.x + (b.x - a.x) * t + nx * bow * Math.sin(Math.PI * t), z = a.z + (b.z - a.z) * t + nz * bow * Math.sin(Math.PI * t);
-    // keep out of the square and off water: step aside along the normal
-    for (let k = 0; k < 8 && (inputs.wetAt(x, z) > 0.3 || Math.max(Math.abs(x), Math.abs(z)) < HINTERLAND_EDGE_M + 20); k++) {
-      x += nx * 40 * (k % 2 ? -1 : 1) * (k + 1); z += nz * 40 * (k % 2 ? -1 : 1) * (k + 1);
+  const bow0 = (rng() - 0.5) * len * 0.12;
+  // (round 4: a track keeps to ground a cart climbs — its bow, then the other way and wider, else no track)
+  for (const bow of [bow0, -bow0 - Math.sign(bow0 || 1) * len * 0.1, bow0 + Math.sign(bow0 || 1) * len * 0.22]) {
+    const xs: number[] = [a.x], zs: number[] = [a.z];
+    for (let i = 1; i < steps; i++) {
+      const t = i / steps;
+      let x = a.x + (b.x - a.x) * t + nx * bow * Math.sin(Math.PI * t), z = a.z + (b.z - a.z) * t + nz * bow * Math.sin(Math.PI * t);
+      // keep out of the square and off water: step aside along the normal
+      for (let k = 0; k < 8 && (inputs.wetAt(x, z) > 0.3 || Math.max(Math.abs(x), Math.abs(z)) < HINTERLAND_EDGE_M + 20); k++) {
+        x += nx * 40 * (k % 2 ? -1 : 1) * (k + 1); z += nz * 40 * (k % 2 ? -1 : 1) * (k + 1);
+      }
+      xs.push(x); zs.push(z);
     }
-    xs.push(x); zs.push(z);
+    xs.push(b.x); zs.push(b.z);
+    // (its grade over a step and over two, the lesser: a dike's narrow bank is not a slope; the square's own ground is
+    // the battlefield's, its roads graded there)
+    let worst = 0;
+    const grade = (i: number, j: number): number => {
+      const run = Math.hypot(xs[i] - xs[j], zs[i] - zs[j]);
+      return run > 1 ? Math.abs(inputs.heightAt(xs[i], zs[i]) - inputs.heightAt(xs[j], zs[j])) / run : 0;
+    };
+    for (let i = 2; i < xs.length; i++) {
+      if (Math.max(Math.abs(xs[i]), Math.abs(zs[i])) < HINTERLAND_EDGE_M + 60) continue;
+      worst = Math.max(worst, Math.min(grade(i, i - 1), grade(i, i - 2)));
+    }
+    if (worst <= TRACK_MAX_GRADE) return { xs, zs };
   }
-  xs.push(b.x); zs.push(b.z);
-  return xs.length >= 2 ? { xs, zs } : null;
+  return null;
 }
 
 /** The planner's inputs from a field and a height sampler (the pyramid's), with the ground's exits. */

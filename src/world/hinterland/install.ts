@@ -23,12 +23,13 @@ export function createHinterlandObject(wire: HinterlandWire, engineCtx: unknown)
   const pyramid = wirePyramid(wire);
   const surface = createHinterlandSurface(wire);
   // (one air for the land and the outland: their far haze ends in the dome's own sky)
-  const air = createHinterlandAir();
+  const air = createHinterlandAir(wire.air ?? 1);
   const land = createHinterlandMesh({
     pyramid,
     surface,
     air,
-    hazeSigma: Math.max(0, wire.fogDensity) * 0.42,
+    // (a region's air: the alpine col's is clear, its ranges standing crisp at 10 km — regions.ts far.air)
+    hazeSigma: Math.max(0, wire.fogDensity) * 0.42 * (wire.air ?? 1),
     setupMaterial: engine.setupShadowMaterial ? (material, hook) => { engine.setupShadowMaterial!(material, hook); } : undefined,
   });
   group.add(land.mesh);

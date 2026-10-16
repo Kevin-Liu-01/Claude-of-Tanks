@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import { HL_EDGE_OFFSET_M, HL_EDGE_SCALE, type HinterlandWire } from './wire.ts';
 
-export interface HinterlandSurface { uniforms: Record<string, THREE.IUniform>; fragmentPars: string; albedo: string; roughness: string }
+export interface HinterlandSurface { uniforms: Record<string, THREE.IUniform>; fragmentPars: string; albedo: string; roughness: string; normal: string }
 
 /** Pack the surface levels into one RGBA8 texture (the finest first in a row, the rest shelved below it), and their
  * edge offsets into a second with the same layout. */
@@ -45,7 +45,14 @@ export function createHinterlandSurface(wire: HinterlandWire): HinterlandSurface
   const { texture, edges, blocks } = packSurface(wire.surface);
   const n = blocks.length;
   const rot = wire.landRot ?? [1, 0];
+  // the steep faces' strata: from 3° past the region's rock slope to 9° past it (the alpine 43–49°: the coordinator's
+  // "every face steeper than ~45°"), the beds' dip at most 6° (regular beds)
+  const rock = wire.rock ?? null;
+  const rad = Math.PI / 180;
   const uniforms: Record<string, THREE.IUniform> = {
+    uHlRock: { value: new THREE.Vector4(rock?.rgb[0] ?? 0, rock?.rgb[1] ?? 0, rock?.rgb[2] ?? 0, rock ? 1 : 0) },
+    uHlStrata: { value: new THREE.Vector4(Math.cos(((rock?.slopeDeg ?? 40) + 3) * rad), Math.cos(((rock?.slopeDeg ?? 40) + 9) * rad),
+      rock?.snowy ? 1 : 0, Math.tan(Math.min(6, Math.abs(rock?.dipDeg ?? 0)) * rad)) },
     uHlSurface: { value: texture },
     uHlEdges: { value: edges ?? texture },
     uHlLandRot: { value: new THREE.Vector3(rot[0], rot[1], edges && wire.landRot ? 1 : 0) },
@@ -76,10 +83,20 @@ float hlInside( vec4 e, vec2 d, float fw ) {
   hlEdgeDist = min( hlEdgeDist, min( abs( u ), abs( v ) ) );
   return clamp( 0.5 + u / fw, 0.0, 1.0 ) * clamp( 0.5 + v / fw, 0.0, 1.0 );
 }
+float hlHash( vec2 p ) { vec3 p3 = fract( vec3( p.xyx ) * 0.1031 ); p3 += dot( p3, p3.yzx + 33.33 ); return fract( ( p3.x + p3.y ) * p3.z ); }
+float hlNoise( vec2 x ) {
+  vec2 i = floor( x ), f = fract( x ), u = f * f * ( 3.0 - 2.0 * f );
+  return mix( mix( hlHash( i ), hlHash( i + vec2( 1.0, 0.0 ) ), u.x ), mix( hlHash( i + vec2( 0.0, 1.0 ) ), hlHash( i + vec2( 1.0, 1.0 ) ), u.x ), u.y );
+}
 vec4 hlSurfaceAt( vec2 p ) {
   int i = hlSurfaceLevel( p );
   vec4 b = uHlSBlock[i];
-  vec2 f = clamp( ( p + uHlSHalf[i] ) / b.w, vec2( 0.0 ), vec2( b.z - 1.001 ) );
+  // the lookup wanders ~0.6 texel off the grid on a smooth field, so a boundary that is no parcel's edge (snow and rock,
+  // a wood's, the water's) runs as a natural line, not the texel grid's blocks (the coordinator on the Glacier frames);
+  // a parcel's edges below are rebuilt from the exact point, so they stay straight
+  vec2 jq = p / ( 2.1 * b.w );
+  vec2 pj = p + ( vec2( hlNoise( jq ), hlNoise( jq + vec2( 17.3, -9.1 ) ) ) - 0.5 ) * 1.2 * b.w;
+  vec2 f = clamp( ( pj + uHlSHalf[i] ) / b.w, vec2( 0.0 ), vec2( b.z - 1.001 ) );
   ivec2 c = ivec2( floor( f ) ), o = ivec2( b.xy ) + c;
   vec2 t = f - vec2( c );
   vec4 s00 = texelFetch( uHlSurface, o, 0 ), s10 = texelFetch( uHlSurface, o + ivec2( 1, 0 ), 0 );
@@ -94,7 +111,7 @@ vec4 hlSurfaceAt( vec2 p ) {
   // edges"): each of the four texels weighs in only where its own field holds the point, by its bilinear weight
   vec4 e00 = texelFetch( uHlEdges, o, 0 ), e10 = texelFetch( uHlEdges, o + ivec2( 1, 0 ), 0 );
   vec4 e01 = texelFetch( uHlEdges, o + ivec2( 0, 1 ), 0 ), e11 = texelFetch( uHlEdges, o + ivec2( 1, 1 ), 0 );
-  vec2 d00 = ( t ) * b.w;
+  vec2 d00 = ( p + uHlSHalf[i] ) - vec2( c ) * b.w;
   float fw = max( 0.35, length( fwidth( p ) ) );
   float w00 = ( 1.0 - t.x ) * ( 1.0 - t.y ) * hlInside( e00, d00, fw );
   float w10 = t.x * ( 1.0 - t.y ) * hlInside( e10, d00 - vec2( b.w, 0.0 ), fw );
@@ -105,12 +122,51 @@ vec4 hlSurfaceAt( vec2 p ) {
   vec3 rgb = ws > 1e-3 ? ( s00.rgb * w00 + s10.rgb * w10 + s01.rgb * w01 + s11.rgb * w11 ) / ws : bil;
   return vec4( rgb, sn.a );
 }
-float hlHash( vec2 p ) { vec3 p3 = fract( vec3( p.xyx ) * 0.1031 ); p3 += dot( p3, p3.yzx + 33.33 ); return fract( ( p3.x + p3.y ) * p3.z ); }
-float hlNoise( vec2 x ) {
-  vec2 i = floor( x ), f = fract( x ), u = f * f * ( 3.0 - 2.0 * f );
-  return mix( mix( hlHash( i ), hlHash( i + vec2( 1.0, 0.0 ) ), u.x ), mix( hlHash( i + vec2( 0.0, 1.0 ) ), hlHash( i + vec2( 1.0, 1.0 ) ), u.x ), u.y );
-}
 bool hlFlag( float bit ) { return mod( floor( hlFlags / bit ), 2.0 ) > 0.5; }
+uniform vec4 uHlRock;   // the region's rock (linear), and 1 where the wire carries it
+uniform vec4 uHlStrata; // cos of the slope where the strata begin and where they are full; ledges hold snow; the dip's tangent
+float hlLedge = 0.0;
+// the steep faces' strata (round 4, the coordinator on Glacier's edge-n: "the ring's wall wins because its strata are
+// CRISP: thin, dark, regular beds with bright snow on every ledge"; the atlas's texels on the walls are 24–96 m): beds of
+// 13–28 m by world height, wandering and dipping gently, each a tone of its own, a dark joint at its foot and a snow
+// ledge along its top broken along the strike, streaked down the fall line; under a pixel that holds several beds they
+// average out to the face's tone (no shimmer). n: the world normal.
+vec3 hlStrataAt( vec3 w, vec3 n, out float ledge ) {
+  vec2 q = w.xz;
+  // (the beds wander over hundreds of metres, and a few metres over tens: no bed runs as a drawn contour)
+  float hb = w.y + ( hlNoise( q * 0.0035 ) - 0.5 ) * 70.0 + ( hlNoise( q * 0.016 + 3.7 ) - 0.5 ) * 10.0
+    + ( hlNoise( q * 0.07 + 1.3 ) - 0.5 ) * 4.0 + dot( q, vec2( 0.8, 0.6 ) ) * uHlStrata.w;
+  // (a bed 13–28 m: the phase runs at 1/18 m, swung over 230 m and 57 m of height)
+  float ph = hb / 18.0 + 0.4 * sin( hb / 37.0 ) + 0.09 * sin( hb / 9.1 + 1.7 );
+  float k = floor( ph ), fr = ph - k;
+  float e = max( fwidth( ph ), 0.015 );
+  float crisp = 1.0 - smoothstep( 0.22, 0.6, e );
+  float tone = 0.45 + 0.6 * hlHash( vec2( k, 7.13 ) );
+  // the along-strike coordinate: a bed's laminae smear along it, the fall line's streaks cross it
+  vec2 sd = normalize( vec2( -n.z, n.x ) + vec2( 1e-4, 0.0 ) );
+  float a = dot( q, sd );
+  // (laminae of ~5 m, read at two kilometres; under a pixel that holds several they average out)
+  float lam = ( hlNoise( vec2( a / 30.0, hb / 5.0 ) ) - 0.5 ) * ( 1.0 - smoothstep( 0.35, 0.9, fwidth( hb / 5.0 ) ) );
+  // the joint under each bed: a dark line
+  float joint = 1.0 - smoothstep( 0.03, 0.09 + e, fr );
+  // the ledge on its top: thin, broken into dashes of 8–60 m (over half of each bed's top), a bench bed's wider; and a
+  // second, sparser ledge mid-bed on some beds
+  float bench = step( 0.82, hlHash( vec2( k, 11.9 ) ) );
+  float lw = 0.08 + 0.12 * hlHash( vec2( k, 3.71 ) ) + 0.12 * bench;
+  float run = smoothstep( 0.45, 0.57, 0.55 * hlNoise( q * 0.02 + vec2( k * 3.1, k * 1.7 ) ) + 0.45 * hlNoise( q * 0.09 + vec2( k * 5.3, k * 2.9 ) ) );
+  float mid = step( 0.55, hlHash( vec2( k, 5.27 ) ) ) * smoothstep( 0.55, 0.65, hlNoise( q * 0.05 + vec2( k * 7.7, 3.3 ) ) );
+  // (the steepest walls hold little)
+  float hold = smoothstep( 0.12, 0.32, n.y );
+  float top = smoothstep( 1.0 - lw - e, 1.0 - lw + e, fr ) * run;
+  float sub = ( smoothstep( 0.46 - e, 0.46 + e, fr ) - smoothstep( 0.52 - e, 0.52 + e, fr ) ) * mid;
+  ledge = max( top, sub ) * hold * uHlStrata.z * crisp;
+  // the fall line's streaks (the water's varnish down the face): dark, here and there
+  float streak = smoothstep( 0.5, 0.85, hlNoise( vec2( a / 10.0, hb / 120.0 ) ) ) * ( 1.0 - smoothstep( 0.3, 0.8, fwidth( a / 10.0 ) ) );
+  // (a dark schist: two-thirds of the region's rock, each bed its own tone, its laminae and streaks)
+  vec3 rockC = uHlRock.rgb * 0.65 * mix( 0.72, tone * ( 1.0 - 0.6 * joint ) * ( 1.0 + 0.6 * lam ), crisp ) * ( 1.0 - 0.45 * streak );
+  vec3 snowC = vec3( 0.72, 0.79, 0.88 );
+  return mix( mix( rockC, snowC, ( 1.0 - crisp ) * uHlStrata.z * hold * 0.14 ), snowC, ledge );
+}
 `;
   const albedo = /* glsl */`{
     vec4 hlS = hlSurfaceAt( vHlWorld.xz );
@@ -129,6 +185,21 @@ bool hlFlag( float bit ) { return mod( floor( hlFlags / bit ), 2.0 ) > 0.5; }
       hlD += ( sin( vHlWorld.y * 0.9 + hlNoise( hlP * 0.02 ) * 6.0 ) * 0.08 ) * hlMid;
     }
     diffuseColor.rgb = hlAlb * clamp( 1.0 + hlD, 0.55, 1.5 );
+    // the steep faces: the strata over the atlas, by the face's own slope (computed in uniform control flow, so the
+    // beds' footprint is well defined at the slope's edge)
+    if ( uHlRock.w > 0.5 ) {
+      vec3 hlNW = normalize( ( vec4( vNormal, 0.0 ) * viewMatrix ).xyz );
+      // (and the atlas's bare rock at any slope — a rock texel's grey core by the bilinear albedo, not the scree's pale
+      // grey or a rock-and-snow blend — so a summit's rock and the bands read as beds, not soft grey blotches)
+      float hlLum = dot( hlAlb, vec3( 0.2126, 0.7152, 0.0722 ) );
+      float hlSat = ( max( hlAlb.r, max( hlAlb.g, hlAlb.b ) ) - min( hlAlb.r, min( hlAlb.g, hlAlb.b ) ) ) / max( 1e-3, max( hlAlb.r, max( hlAlb.g, hlAlb.b ) ) );
+      float hlRockCore = ( 1.0 - smoothstep( 0.1, 0.2, hlLum ) ) * ( 1.0 - smoothstep( 0.2, 0.35, hlSat ) ) * ( hlFlag( 4.0 ) ? 0.85 : 0.0 );
+      float hlSteep = max( 1.0 - smoothstep( uHlStrata.y, uHlStrata.x, hlNW.y ), hlRockCore ) * ( hlFlag( 1.0 ) ? 0.0 : 1.0 );
+      float hlL;
+      vec3 hlSt = hlStrataAt( vHlWorld, hlNW, hlL );
+      diffuseColor.rgb = mix( diffuseColor.rgb, hlSt, hlSteep );
+      hlLedge = hlL * hlSteep;
+    }
     // a field's boundary: its ditch and rank margin, a darker line a metre and a half wide, where a pixel resolves it
     float hlLine = ( 1.0 - smoothstep( 0.5, 1.6, hlEdgeDist ) ) * ( 1.0 - smoothstep( 1.0, 4.0, hlFoot ) );
     diffuseColor.rgb *= 1.0 - 0.24 * hlLine;
@@ -138,5 +209,23 @@ bool hlFlag( float bit ) { return mod( floor( hlFlags / bit ), 2.0 ) > 0.5; }
   if ( hlFlag( 1.0 ) ) roughnessFactor = hlFlag( 64.0 ) ? 0.12 : 0.2;
   else if ( hlFlag( 8.0 ) ) roughnessFactor = 0.7;
 `;
-  return { uniforms, fragmentPars, albedo, roughness };
+  // the ground's own relief under a pixel that resolves it: drifts and hummocks a few metres to a few tens across tilt
+  // the normal, so the outland reads as textured ground from the air as the battlefield's does (the coordinator on the
+  // Glacier bird view: "the playable square reads as a distinct lighter, textured tile against a flat outland")
+  const normal = /* glsl */`
+  {
+    float hlFootN = length( fwidth( vHlWorld.xz ) );
+    float hlBumpW = ( 1.0 - smoothstep( 2.0, 9.0, hlFootN ) ) * ( hlFlag( 8.0 ) ? 1.0 : 0.6 ) * ( hlFlag( 1.0 ) ? 0.0 : 1.0 );
+    if ( hlBumpW > 0.0 ) {
+      vec2 q = vHlWorld.xz;
+      float n0 = hlNoise( q * 0.11 ) + 0.6 * hlNoise( q * 0.034 );
+      float nx = hlNoise( ( q + vec2( 1.5, 0.0 ) ) * 0.11 ) + 0.6 * hlNoise( ( q + vec2( 1.5, 0.0 ) ) * 0.034 );
+      float nz = hlNoise( ( q + vec2( 0.0, 1.5 ) ) * 0.11 ) + 0.6 * hlNoise( ( q + vec2( 0.0, 1.5 ) ) * 0.034 );
+      vec3 hlTilt = vec3( n0 - nx, 0.0, n0 - nz ) * ( 2.4 * hlBumpW );
+      normal = normalize( normal + ( viewMatrix * vec4( hlTilt, 0.0 ) ).xyz );
+    }
+    // a ledge's snow lies on its level top: it faces the sky, not the wall's own fall
+    if ( hlLedge > 0.0 ) normal = normalize( mix( normal, ( viewMatrix * vec4( 0.0, 1.0, 0.0, 0.0 ) ).xyz, 0.6 * hlLedge ) );
+  }`;
+  return { uniforms, fragmentPars, albedo, roughness, normal };
 }
