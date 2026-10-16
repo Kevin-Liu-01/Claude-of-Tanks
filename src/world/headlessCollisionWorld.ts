@@ -263,20 +263,37 @@ export function createHeadlessCollisionWorld(
     };
   }
 
+  // (physics stream, 2026-10-16) a prop's and a tree's records by their index, built at the first crush: a crush marks
+  // its own records without scanning the world's (a keyframe restoring Saltwind's 4,641 crushed wall spans scanned every
+  // record for each, 9-20 s; restoreDestroyedObstacles). The lists are fixed once the world is built.
+  let byProp: Map<number, { obstacles: CollisionRecord[]; colliders: CollisionRecord[] }> | null = null;
+  let byTree: Map<number, { obstacles: CollisionRecord[]; colliders: CollisionRecord[] }> | null = null;
+  function recordIndex(): void {
+    byProp = new Map(); byTree = new Map();
+    const slot = (map: typeof byProp, key: number) => {
+      let entry = map!.get(key);
+      if (!entry) { entry = { obstacles: [], colliders: [] }; map!.set(key, entry); }
+      return entry;
+    };
+    for (const record of obstacles) {
+      if (record.propIdx != null) slot(byProp, record.propIdx).obstacles.push(record);
+      if (record.treeIdx != null) slot(byTree, record.treeIdx).obstacles.push(record);
+    }
+    for (const record of colliders) {
+      if (record.propIdx != null) slot(byProp, record.propIdx).colliders.push(record);
+      if (record.treeIdx != null) slot(byTree, record.treeIdx).colliders.push(record);
+    }
+  }
+
   function crushObstacle(obstacle: CollisionRecord | null | undefined) {
     if (!obstacle || obstacle.crushed) return false;
     obstacle.crushed = true;
     if (obstacle.propIdx != null || obstacle.treeIdx != null) {
-      const sameRecord = (record: CollisionRecord): boolean => (
-        obstacle.propIdx != null
-          ? record.propIdx === obstacle.propIdx
-          : record.treeIdx === obstacle.treeIdx
-      );
-      for (const record of obstacles) {
-        if (sameRecord(record)) record.crushed = true;
-      }
-      for (const record of colliders) {
-        if (sameRecord(record)) {
+      if (!byProp) recordIndex();
+      const same = obstacle.propIdx != null ? byProp!.get(obstacle.propIdx) : byTree!.get(obstacle.treeIdx!);
+      if (same) {
+        for (const record of same.obstacles) record.crushed = true;
+        for (const record of same.colliders) {
           record.crushed = true;
           record.dead = true;
         }

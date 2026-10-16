@@ -70,10 +70,14 @@ export function isSimpleShape(value: RuntimeValue): value is PackedSimpleShape {
     value.slice(1).every((entry) => typeof entry === 'number' && Number.isFinite(entry));
 }
 
+/** The most parts a compound record may carry (physics stream, 2026-10-16: 64 -> 256, the pillboxes' embrasures on their
+ * structure bands; 226's manifests are served on their own route, /mp-collision/v2, for this format). */
+export const COLLISION_COMPOUND_MAX_PARTS = 256;
+
 function isPackedShape(value: RuntimeValue): boolean {
   if (!Array.isArray(value)) return false;
   return value[0] === 'm'
-    ? value.length >= 2 && value.length <= 65 && value.slice(1).every(isSimpleShape)
+    ? value.length >= 2 && value.length <= COLLISION_COMPOUND_MAX_PARTS + 1 && value.slice(1).every(isSimpleShape)
     : isSimpleShape(value);
 }
 

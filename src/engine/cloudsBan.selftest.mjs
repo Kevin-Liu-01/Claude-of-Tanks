@@ -146,7 +146,7 @@ for (const [id, sky] of Object.entries(GARAGE_SKY_PRESETS)) {
 // or without a cell deck; and the vocabulary's cell-deck rows cannot be authored back into breaks by their own defaults
 {
   const closedDecks = skyMaps.filter((id) => cloudStackOf(dayLayer[id]).lanes.some((lane) => lane.cells >= 0.5 && lane.baseM < 2000));
-  assert.deepEqual(closedDecks.sort(), ['foundry', 'railyard', 'whiteout', 'winter'], 'the closed cell decks');
+  assert.deepEqual(closedDecks.sort(), ['foundry', 'whiteout', 'winter'], 'the closed cell decks (Cinder Junction on cumulus, 2026-10-16)');
   assert.equal(CLOUD_DECK_TUNE.CLOUD_DECK_COVER, 1, 'the render tune never opens a deck into breaks');
   // the negative control: Frosthollow's old 0.86 deck, and a stratocumulus deck at 0.7, are what the check catches
   for (const coverage of [0.86, 0.7]) {
@@ -171,7 +171,7 @@ for (const [id, sky] of Object.entries(GARAGE_SKY_PRESETS)) {
     const lin = (c) => { const s = c / 255; return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
     return 0.2126 * lin((hex >> 16) & 255) + 0.7152 * lin((hex >> 8) & 255) + 0.0722 * lin(hex & 255);
   };
-  for (const id of [...FORMER, 'blackglass']) {
+  for (const id of [...FORMER, 'blackglass', 'railyard']) {
     const s = { ...DEFAULT_SKY_PRESET, ...getMapConfig(id).sky };
     const overcastBranch = s.cloudOpacity >= 0.95 && s.cloudOpacity2 >= 0.9 && s.turbidity >= 7; // sky.ts updateCloudDecks
     assert.ok(!overcastBranch, `${id}: the phone deck is not the 340 m broken-stratus branch`);
@@ -221,7 +221,7 @@ for (const [id, sky] of Object.entries(GARAGE_SKY_PRESETS)) {
 {
   const verdant = dayLayer.verdant;
   const shape = (p) => [p.typeRange, p.cluster, p.baseFlat, p.stratiform, p.fieldMix, p.density, p.wispiness, p.anvil];
-  for (const id of ['blackglass', 'urban']) {
+  for (const id of ['blackglass', 'urban', 'railyard']) {
     const cfg = getMapConfig(id);
     assert.equal(cfg.clouds.regime, 'fair-weather-cumulus', `${id} authors Verdant's regime`);
     for (const time of BATTLE_TIMES) {

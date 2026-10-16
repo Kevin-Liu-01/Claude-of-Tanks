@@ -61,8 +61,9 @@ const RENDERED_WET = VISIBLE_WATER_MIN;
 assert.equal(RENDERED_WET, 0.015, 'the water sheet draws a fragment at a ramped mask of 0.015 and up');
 
 // ---- the sources: one liquid rule, and water only from liquidPatches ----
-assert.match(terrainSource, /const liquidWater = !!cfg\?\.splat\?\.seaLake && !T\.frozenMarshes;/,
-  'the world draws a liquid sheet only on a seaLake map without frozen marshes');
+// (integ/226: Caldera's paddies 3c38af2b5 hold their water on any unfrozen map; the marshes and lakes keep the seaLake rule)
+assert.match(terrainSource, /const marshLiquid = !!cfg\?\.splat\?\.seaLake && !T\.frozenMarshes;\s*const liquidWater = marshLiquid \|\| \(!!T\.paddies\?\.length && !T\.frozenMarshes\);/,
+  'the world draws a liquid sheet only on a seaLake map without frozen marshes, or for an unfrozen map\'s paddies');
 assert.match(terrainSource, /function getWaterMaskAt\(x: number, z: number\): number \{\s*if \(!liquidWater\) return 0;/,
   'without a liquid sheet the water mask is 0 everywhere (so every disc there is dry)');
 assert.match(mapSource, /minimapWater \?\?= splitMinimapWater\(\[\.\.\.layout\.marshes, \.\.\.layout\.lakes\], heightField\.getWaterMaskAt\);/,

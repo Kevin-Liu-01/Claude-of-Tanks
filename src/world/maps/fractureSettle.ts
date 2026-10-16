@@ -408,6 +408,7 @@ export class FractureSettle {
       done = a;
     }
     this.transform(b.tris, rotAxis(axis, done), pivot, pivot);
+    turnAxes(b, rotAxis(axis, done));
     if (o.hinged) { b.centre = centreOf(b.tris); this.write(b.tris, o.dust ?? this.dust); return; }
     this.settle(b, o);
   }
@@ -416,6 +417,7 @@ export class FractureSettle {
   drop(b: SettleBody, yaw = 0, shift: V3 = [0, 0, 0], o: FallOptions = {}): void {
     const R = rotAxis(UP, yaw);
     this.transform(b.tris, R, b.centre, add(b.centre, [shift[0], 0.0, shift[2]]));
+    turnAxes(b, R);
     this.settle(b, o);
   }
 
@@ -453,6 +455,7 @@ export class FractureSettle {
     const Rr = rotAxis(bL, roll);
     const R: Rot = [rotApply(Rr, R0[0]), rotApply(Rr, R0[1]), rotApply(Rr, R0[2])];
     this.transform(b.tris, R, b.centre, add(b.centre, [shift[0], 0, shift[2]]));
+    turnAxes(b, R);
     this.settle(b, o);
   }
 
@@ -551,6 +554,17 @@ export class FractureSettle {
           const top = topOf(pts, laid);
           if (top < bestTop) { best = laid; bestTop = top; }
           if (top <= o.ceiling) break;
+        }
+        // (2026-10-16: a sheet as wide as the station — the rover garage's canopy, a greenhouse's arched rib — tipped even
+        // 0.3 onto the heap still stood a metre over the station on a quarter of the seeds: laid level on what is under
+        // it instead, where it lies lowest)
+        if (bestTop > o.ceiling) {
+          for (const reach of [0, 1.7, 3.8, 7.5]) {
+            const level = this.rest(pts, { ...o, maxTilt: 0 }, about(flatTurn(b), c, [c[0] + out[0] * reach, c[1], c[2] + out[2] * reach]));
+            const top = topOf(pts, level);
+            if (top < bestTop) { best = level; bestTop = top; }
+            if (top <= o.ceiling) break;
+          }
         }
         xf = best;
       }
@@ -742,6 +756,13 @@ function breakOff(t: SettleTris, cutY: (x: number, z: number) => number): Settle
 }
 
 /** The turn that lays a body flat: its thinnest box axis upright, its longest level along where it points now. */
+/** A body's box axes turned with it (2026-10-16: they stayed as built, so a body laid, dropped or toppled and then
+ *  relayed by the ceiling was turned flat about its old axes — a greenhouse's arched rib came to rest on its edge, 8 m
+ *  tall, wherever it was relayed). */
+function turnAxes(b: SettleBody, R: Rot): void {
+  b.axes = [rotApply(R, b.axes[0]), rotApply(R, b.axes[1]), rotApply(R, b.axes[2])];
+}
+
 function flatTurn(b: SettleBody): Rot {
   const c = centreOf(b.tris);
   const ext = b.axes.map((a) => {

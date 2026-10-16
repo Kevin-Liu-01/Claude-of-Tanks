@@ -603,7 +603,7 @@ const groundHelpers = source.slice(mathStart, mathEnd);
 function groundFixture(code = groundCandidate, streetRows = true, foundry = false, {
   buildings = 1, crushables = 1, stacks = 1, rocks = 0, rejectCourtyards = false, disposeFailureAt = -1,
 } = {}) {
-  const group = new THREE.Group(), buckets = { stone: [], baked: [] }, commands = [], randoms = [], textures = [];
+  const group = new THREE.Group(), buckets = { stone: [], baked: [] }, commands = [], randoms = [], textures = [], craterSites = [];
   const inputs = [], disposedInputs = [], heightQueries = [], privateRandoms = [];
   class InputGeometry extends THREE.BufferGeometry {
     constructor() {
@@ -674,6 +674,8 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     foundryDonors: foundry ? [{ feature: buildingFeatures[0] }] : null,
     // (sealed lane 2026-10-11) a crater clod's drawn footprint for the parked vehicles' seat passes: the fixture runs none
     drawnPlanRecord: () => null, craterClodFootprints: [],
+    // (DST-04) the battle scars are crater sites now (props.ts mapCraterSites; world/mapCraters.ts lays their bowls)
+    mapCraterSites: craterSites,
     roughenChunk, // (props census #7: ruinGrammar.ts)
   };
   const api = new Function(...Object.keys(dependencies), stripTypeScriptTypes(
@@ -681,7 +683,7 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     + '\nreturn { run: placeGroundBlendDecals, reconform: () => reconformFoundryFoundations?.() };')(...Object.values(dependencies));
   const geometry = geo => ({ index: geo.index ? Array.from(geo.index.array) : null,
     attributes: Object.fromEntries(Object.entries(geo.attributes).map(([name, attr]) => [name, Array.from(attr.array)])) });
-  return { ...api, group, buckets, randoms, commands, buildingFeatures, inputs, disposedInputs,
+  return { ...api, group, buckets, randoms, commands, buildingFeatures, inputs, disposedInputs, craterSites,
     foundationCount: buildings + crushables + stacks + rocks + (streetRows && !rejectCourtyards ? 84 : 0),
     kinds: () => group.children.map(mesh => mesh.userData.terrainDecalKind),
     snapshot: () => ({ randoms, privateRandoms, heightQueries, commands, pixels: canvas.pixels, clods: buckets.baked.map(geometry),
@@ -731,7 +733,9 @@ for (const [streetRows, foundry, options] of [
     }
     assert.equal(after.randoms.length, 0, 'scar RNG has not started at the first boundary');
     assert.deepEqual(iterator.next(), { done: false, value: { fine: true, progress: false, stage: 'ground-scars' } });
-    assert.equal(after.kinds().includes('crater'), !options.rejectCourtyards);
+    // (DST-04) a crater is a site now, its bowl laid by world/mapCraters.ts: no flat decal of its own
+    assert.equal(after.kinds().includes('crater'), false);
+    assert.equal(after.craterSites.length > 0, !options.rejectCourtyards, 'the scars laid their crater sites');
     assert.ok(after.kinds().includes('scorch'));
     assert.equal(after.commands.some(command => command[0] === 'clear'), false, 'churn painter has not started');
     assert.equal(iterator.next().done, true);
@@ -766,7 +770,8 @@ for (const cancelAt of ['ground-foundations', 'ground-scars', null]) {
     } else {
       await assert.rejects(pending, error => error === failure);
       assert.equal(iterator.next().done, true);
-      assert.equal(h.kinds().includes('crater'), cancelAt === 'ground-scars');
+      // (DST-04) the scars' craters are sites (world/mapCraters.ts), laid by the scar pass the cancellation reached
+      assert.equal(h.craterSites.length > 0, cancelAt === 'ground-scars');
       assert.equal(h.kinds().includes('churn'), false);
       assert.equal(h.commands.some(command => command[0] === 'clear'), false);
       assert.equal(f.runtime._buildDetail, undefined, 'cancelled props cannot publish a runtime');

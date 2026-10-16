@@ -120,8 +120,10 @@ export interface TerrainDeformation {
   near(x: number, z: number): boolean;
   /** The overlay at (x, z): the stamps' sum, clamped to [−2.5, +3] m. */
   offsetAt(x: number, z: number): number;
-  /** The overlay on the terrain contact lattice's triangle under (x, z) (§7: what a deformed mesh would carry). */
-  contactOffsetAt(x: number, z: number): number;
+  /** The overlay on the terrain contact lattice's triangle under (x, z) (§7: what a deformed mesh would carry); `flipped`:
+   * the base surface splits that cell along its a–d diagonal (world/terrainContactSurface.ts terrainCellFlipped, the
+   * base's own Float32 corner heights decide, so the overlay rides the mesh's own triangles). */
+  contactOffsetAt(x: number, z: number, flipped?: boolean): number;
   /** A crater; false when its buckets are full (the caller then makes it a mark). */
   addCrater(x: number, z: number, radiusM: number, depthM: number, rimM: number, seed: number): boolean;
   /** A collapsed structure's heap over its footprint (cx, cz, half extents across/along, yaw), `heightM` high, rising
@@ -321,14 +323,19 @@ export function createTerrainDeformation(): TerrainDeformation {
     return offsetAt(-WORLD_HALF_M + ix * LATTICE_STEP, -WORLD_HALF_M + iz * LATTICE_STEP);
   }
 
-  function contactOffsetAt(x: number, z: number): number {
+  function contactOffsetAt(x: number, z: number, flipped = false): number {
     if (counts[bucketIndex(z) * BUCKETS + bucketIndex(x)] === 0) return 0;
     const gx = Math.max(0, Math.min(LATTICE_CELLS - 1e-6, (x + WORLD_HALF_M) / LATTICE_STEP));
     const gz = Math.max(0, Math.min(LATTICE_CELLS - 1e-6, (z + WORLD_HALF_M) / LATTICE_STEP));
     const ix = Math.floor(gx), iz = Math.floor(gz);
     const u = gx - ix, v = gz - iz;
-    // the contact sampler's triangle split (terrainContactSurface.ts): a, b = +x, c = +z, d = +x+z
+    // the contact sampler's triangle split (terrainContactSurface.ts): a, b = +x, c = +z, d = +x+z; a steep base cell
+    // (2026-10-15) splits along a–d
     const b = latticeOffset(ix + 1, iz), c = latticeOffset(ix, iz + 1);
+    if (flipped) {
+      const a = latticeOffset(ix, iz), d = latticeOffset(ix + 1, iz + 1);
+      return u >= v ? a + (b - a) * u + (d - b) * v : a + (c - a) * v + (d - c) * u;
+    }
     if (u + v <= 1) {
       const a = latticeOffset(ix, iz);
       return a + (b - a) * u + (c - a) * v;
@@ -397,6 +404,8 @@ export interface DeformableHeightField {
   getHeightAt(x: number, z: number): number;
   getHeightAtFast?(x: number, z: number): number;
   getContactHeightAt?(x: number, z: number): number;
+  /** The base surface's steep-cell split (world/terrain.ts getContactCellFlippedAt), which the overlay rides. */
+  getContactCellFlippedAt?(x: number, z: number): boolean;
   getNormalAt?(x: number, z: number): unknown;
   maxY?: number;
 }
@@ -415,6 +424,8 @@ export function createDeformedHeightField<T extends DeformableHeightField>(base:
   const normal = new Vector3();
   const baseFast = base.getHeightAtFast ? base.getHeightAtFast.bind(base) : base.getHeightAt.bind(base);
   const baseContact = base.getContactHeightAt ? base.getContactHeightAt.bind(base) : null;
+  // (2026-10-15) the base surface's steep-cell split, which the overlay's offsets ride (a stub field without one keeps b–c)
+  const baseFlippedAt = base.getContactCellFlippedAt ? base.getContactCellFlippedAt.bind(base) : null;
   const getHeightAt = (x: number, z: number): number => base.getHeightAt(x, z) + overlay.offsetAt(x, z);
   Object.defineProperties(field, {
     getHeightAt: { value: getHeightAt, writable: true, configurable: true },
@@ -438,7 +449,8 @@ export function createDeformedHeightField<T extends DeformableHeightField>(base:
   }
   if (baseContact) {
     Object.defineProperty(field, 'getContactHeightAt', {
-      value: (x: number, z: number): number => baseContact(x, z) + overlay.contactOffsetAt(x, z), writable: true, configurable: true,
+      value: (x: number, z: number): number => baseContact(x, z)
+        + overlay.contactOffsetAt(x, z, baseFlippedAt !== null && overlay.near(x, z) && baseFlippedAt(x, z)), writable: true, configurable: true,
     });
   }
   return field;

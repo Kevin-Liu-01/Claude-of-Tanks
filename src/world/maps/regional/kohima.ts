@@ -3,15 +3,17 @@
 // deep verandas; the bazaar's timber shops under sheet roofs; the mission church of rough stone under a red tin roof;
 // Angami Naga houses with low plank walls and great thatched roofs that sweep near the ground, crossed gable horns over
 // the front; bamboo granaries on posts; and the battle's shells — bungalows broken to their plinths and chimneys.
-import { PartSink, alongPlot, faceBox, facePoint, pick, plotAxes, rgb, shade, type Face, type RegionalParts, type Rgb } from './geometry.ts';
+import { PartSink, alongPlot, faceBox, facePoint, facePoint as facePointOn, pick, plotAxes, rgb, shade, type Face, type RegionalParts, type Rgb } from './geometry.ts';
 import {
   buildHouse, closeGables, emitRoof, holedBox, holedPolygon, recordBody, recordShaft, roofCrown, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec,
 } from './house.ts';
 import { doorUnit, freeBox, openShop, windowUnit, type WindowStyle } from './openings.ts';
 import { openShed } from './outbuildings.ts';
 import { BAMBOO_MAT, WEATHERED_PLANK, boardWall, veranda } from './vernacular.ts';
+import { boardCladding } from './villageCraft.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { kohimaBazaarRow, kohimaStall } from './marketKits.ts'; // props #23: the bazaar's stall and booths
 
 const TIN: readonly Rgb[] = [0x8a3a2e, 0x7a3428, 0x4f6a4a, 0x5a7a52].map(rgb);
 const WHITE = rgb(0xd4cfc2), GREEN_TRIM = rgb(0x3f5f46);
@@ -46,8 +48,12 @@ const bungalow: RegionalBuilder = (ctx) => {
       // Assam-type walls: lime plaster on split-bamboo ekra between timber posts, no masonry under it to show
       spall: null,
     }, dialect);
-    veranda(sink, frame.faces.front, 0.75, frame.eaveY - 0.2, W, V, WHITE, { bucket: 'structureMetal', colour: roofColour });
-    veranda(sink, frame.faces.left, 0.75, frame.eaveY - 0.2, D, V, WHITE, { bucket: 'structureMetal', colour: roofColour });
+    // (props census #15, Lane C 2026-10-16: "the two verandas simply overlap at the corner") the front veranda runs on
+    // over the corner to the side one's outer line, the side one stops short of it: one deck round the corner, the
+    // front's lean-to over it
+    const f = frame.faces.front, l = frame.faces.left;
+    veranda(sink, { ...f, origin: [f.origin[0] - V / 2, f.origin[1], f.origin[2]], width: W + V }, 0.75, frame.eaveY - 0.2, W + V, V, WHITE, { bucket: 'structureMetal', colour: roofColour });
+    veranda(sink, { ...l, origin: [l.origin[0], l.origin[1], l.origin[2] - 0.15], width: D - 0.3 }, 0.75, frame.eaveY - 0.2, D - 0.3, V, WHITE, { bucket: 'structureMetal', colour: roofColour });
   });
   return sink.finish();
 };
@@ -180,19 +186,6 @@ const bazaarShop: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/**
- * A bazaar row on the base market row's plot (12 x 5.2 m): two or three shops side by side along it under their own
- * tin gables, inside the plot (the single shop it replaces was 6 m deep on a 5.2 m plot).
- */
-const bazaarRow: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const L = ctx.info.w - 0.6, D = Math.max(3.8, Math.min(10, ctx.info.d - 1.4));
-  const n = Math.max(1, Math.min(3, Math.floor(L / 3.6)));
-  const w = L / n - 0.25;
-  for (let i = 0; i < n; i++) shop(sink, ctx, -L / 2 + (i + 0.5) * L / n, w, D, 0.9);
-  return sink.finish();
-};
-
 /** The mission church: rough stone, a steep red tin roof, a timber porch and a small belfry over the gable. */
 const church: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
@@ -245,6 +238,10 @@ const nagaHouse: RegionalBuilder = (ctx) => {
     window: (s2, face, o, y0) => windowUnit(s2, face, o.u, y0 + o.y0, o.w, o.h, { frame: shade(plank, 0.7), frameWidth: 0.06, frameOut: 0.03, bars: 'none', surround: null, sill: null,
       shutters: { colour: shade(plank, 0.8), kind: 'plank', closed: 0.6 } }, rng, 0.2),
     door: (s2, face, o, y0) => doorUnit(s2, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(plank, 0.75), frame: { bucket: 'structureWood', width: 0.12, out: 0.06, colour: shade(plank, 0.7) }, steps: { bucket: 'stone' }, leafKind: 'plank' }, y0 + o.y0),
+    // (the looks lane, 2026-10-15; WORKLIST #15 "kohima nagaHouse from members": the boards were one printed panel a run)
+    // the walls in the Angami's broad adzed planks, each its own, battens over their joints, a rail at foot and head
+    dressWall: (s2, face, rect, own) => boardCladding(s2, face, rect, own, (k) => shade(plank, 0.82 + ((k * 7919 + Math.round(W * 13)) % 23) / 23 * 0.26),
+      shade(plank, 0.72), { mobile: ctx.tier === 'mobile', width: face.out[2] > 0.5 ? 0.42 : 0.3 }),
   };
   // the thatch: steep, deep eaves sweeping down to near a metre off the ground
   const roof: RoofSpec = { kind: 'gable', pitchDeg: 52, eave: plot.turned ? 0.9 : 1.3, verge: plot.turned ? 0.7 : 0.9, thickness: 0.4, bucket: 'straw', ridge: 'round', thatch: 'rows' };
@@ -253,16 +250,25 @@ const nagaHouse: RegionalBuilder = (ctx) => {
     let frame;
     try {
       frame = buildHouse(sink, {
-        w: W, d: D, plinth: { h: 0.5, out: 0.8, bucket: 'stone' }, storeys: [{ h: 1.7, wall: 'structureWood' }], roof, gableBucket: 'structureWood',
-        openings, chimneys: [], gutters: null, verge: null, reveal: 0.1, spall: null,
+        w: W, d: D, plinth: { h: 0.5, out: 0.8, bucket: 'stone' }, storeys: [{ h: 1.7, wall: 'structureWood', framed: true }], roof, gableBucket: 'structureWood',
+        openings, chimneys: [], gutters: null, verge: null, reveal: 0.12, spall: null,
       }, dialect);
-      if (ctx.tier !== 'mobile') {
-        const y0 = frame.floors[0] + 0.05, y1 = frame.eaveY - 0.05;
-        boardRuns(sink, frame.faces.front, y0, y1, plank, [[du - 0.4, du + 0.4]]);
-        boardRuns(sink, frame.faces.right, y0, y1, plank, [[D * 0.18 - 0.28, D * 0.18 + 0.28]]);
-        boardRuns(sink, frame.faces.back, y0, y1, plank, []);
-        boardRuns(sink, frame.faces.left, y0, y1, plank, []);
+      // the front planks beside the door carved in relief: the mithun's head with its horns (the feast of merit's mark)
+      // over the door's side planks, and the moon disc; and before the house the sitting stones of its forecourt
+      const f = frame.faces.front, y0 = frame.floors[0];
+      for (const [u, y] of [[du - 0.75, y0 + 1.15], [du + 0.75, y0 + 1.15]] as const) {
+        if (Math.abs(u) > W / 2 - 0.4) continue;
+        faceBox(sink, 'structureWood', f, u, y, 0.06, 0.26, 0.2, 0.06, { colour: shade(plank, 1.12), decor: true });
+        for (const sx of [-1, 1]) sink.member('structureWood', facePointOn(f, u + sx * 0.1, y + 0.08, 0.07), facePointOn(f, u + sx * 0.32, y + 0.26, 0.07), 0.06, 0.04, f.out,
+          { colour: shade(plank, 1.15), decor: true, exposed: true, fine: true }, 0.01);
       }
+      sink.cylinder('structureWood', facePointOn(f, du + (du < 0 ? 1.4 : -1.4), y0 + 1.25, 0.03), 'z', 0.04, 0.17, 10, { colour: shade(plank, 1.2), decor: true, fine: true });
+      sink.dressing(ctx.tier === 'mobile', () => {
+        for (let k = 0; k < 3; k++) {
+          const x = -W / 2 + 0.9 + k * 1.1 + (ctx.variant() - 0.5) * 0.3, z = D / 2 + 0.95 + (ctx.variant() - 0.5) * 0.3;
+          sink.span('stone', x - 0.42, 0.42, z - 0.24, x + 0.42, 0.5 + 0.18 + ctx.variant() * 0.06, z + 0.24, { decor: true, shade: 0.94 });
+        }
+      });
     } finally { sink.paint = null; }
     // the crossed horns (kika) over the front gable
     const z = D / 2 + roof.verge - 0.1, apex = frame.roof.ridgeTopY;
@@ -355,33 +361,11 @@ const bellTower: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** A bazaar stall (the base market plot): timber posts under a painted tin roof, a plank counter of baskets. */
-const bazaarStall: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
-  const W = Math.max(4.5, Math.min(6.4, ctx.info.w - 0.4)), D = Math.max(3.6, Math.min(5.0, ctx.info.d - 0.4));
-  const floor = 0.3, back = 2.9, front = 2.35, post = pick(rng, WEATHERED_PLANK);
-  sink.span('stone', -W / 2 - 0.2, -0.3, -D / 2 - 0.2, W / 2 + 0.2, floor, D / 2 + 0.2);
-  for (const [x, z, h] of [[-1, -1, back], [1, -1, back], [-1, 1, front], [1, 1, front]] as const) {
-    sink.span('structureWood', x * (W / 2 - 0.15) - 0.08, floor, z * (D / 2 - 0.15) - 0.08, x * (W / 2 - 0.15) + 0.08, h, z * (D / 2 - 0.15) + 0.08, { colour: post });
-  }
-  sink.span('structureWood', -W / 2 + 0.1, floor, -D / 2 + 0.08, W / 2 - 0.1, back - 0.12, -D / 2 + 0.18, { colour: shade(post, 0.85) });
-  const roof: RoofSpec = { kind: 'shed', pitchDeg: Math.atan2(back - front, D) * 180 / Math.PI, eave: 0.35, verge: 0.3, thickness: 0.05, bucket: 'structureMetal', ridge: null };
-  sink.placed(-Math.PI / 2, 0, 0, 0, () => emitRoof(sink, roofGeometry(D, W, front, roof), roof, pick(rng, TIN)));
-  sink.span('structureWood', -W / 2 + 0.35, floor, D / 2 - 1.0, W / 2 - 0.35, floor + 0.85, D / 2 - 0.45, { colour: shade(post, 1.1) });
-  const produce: readonly Rgb[] = [0x6a8a3a, 0xb0802a, 0x8a3a2a, 0x9a8a5a].map(rgb);
-  for (let k = 0; k < 4; k++) {
-    const x = -W / 2 + 0.75 + k * (W - 1.5) / 3;
-    sink.cylinder('structureWood', [x, floor + 0.85, D / 2 - 0.72], 'y', 0.16, 0.26, 8, { colour: pick(rng, produce), decor: true }, 0.2);
-  }
-  return sink.finish();
-};
-
 export const KOHIMA_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   bathhouse: bungalow,
   farmhouse: nagaHouse,
   cornershop: bazaarShop,
-  marketRow: bazaarRow,
+  marketRow: kohimaBazaarRow,
   depot: bazaarShop,
   chapel: church,
   granary,
@@ -389,7 +373,7 @@ export const KOHIMA_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object
   ruin: shelled,
   // the base plots the first kit left: the steeple and the market stalls (gauntlet wave 15)
   tower: bellTower,
-  market: bazaarStall,
+  market: kohimaStall,
 });
 
 export const KOHIMA_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({

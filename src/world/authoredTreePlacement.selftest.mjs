@@ -15,7 +15,7 @@ import { deploymentClearings } from '../sim/matchPlacement.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { authoredTreeStations, insideClearPolygon, plannedSiteClearances, redistributeAuthoredTrees } from './authoredTreePlacement.ts';
 import { SHORELINE_SEGMENTS, shorelineDistance, shorelineRadiusAt } from './shoreline.ts';
-import { treeBiomeArid, treeBiomeOpen, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeOpen, treeBiomeRiparian, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread } from './treeBiomes.ts';
 import { TREE_GROWTH_PROFILES } from './treeGrowth.ts';
 import { resolveLandUseProfile } from './landUse.ts';
 import polders from './maps/polders.ts';
@@ -38,7 +38,7 @@ const dependencies = { THREE, mulberry32, treeRichness, TREE_ARCHETYPES, treeTru
   // the trees lane (2026-10-07): the hedge trees the authored rows came too close to are dropped after the rows
   excludeVegetation,
   // trees round 2b (2026-10-03): the hyper-arid places' groves (vegetation.ts placeTreeClusters)
-  treeBiomeArid, treeBiomeOpen, treeBiomeUpland, treeBiomeWoodSpread,
+  treeBiomeArid, treeBiomeOpen, treeBiomeUpland, treeBiomeWoodSpread, treeBiomeRiparian, // (integ/226: Skybridge's riparian cottonwoods)
   // trees round 5: the field law's conifer forms (vegetation.ts coniferForm)
   treeBiomeSlot, TREE_GROWTH_PROFILES, resolveLandUseProfile,
   // trees lane (2026-10-05): an opted-in map's stands inside its settlement rect (vegetation.ts authoredInSettlement)
@@ -62,6 +62,9 @@ const builder = new Function(...Object.keys(dependencies), `return ${stripTypeSc
   const _up = new THREE.Vector3(0, 1, 0), _c = new THREE.Color();
   const palOf = sp => veg.palettes[sp] || {};
   const inAvoid = (x,z) => veg.avoid?.some(a => Math.hypot(x-a.x,z-a.z)<a.r) || false;
+  // (the ground lane, 2026-10-15: the paddies' cleared banks, vegetation.ts inTreeClear on terrain _treeClearAt)
+  const treeClearAt = heightField._treeClearAt ?? null;
+  const inTreeClear = (x, z) => treeClearAt !== null && treeClearAt(x, z);
   ${source.slice(noiseStart, noiseEnd)}
   ${source.slice(start, end)}
   return { trees, treeObstacles, concealers, clusters, group, nextRoll: rng() };

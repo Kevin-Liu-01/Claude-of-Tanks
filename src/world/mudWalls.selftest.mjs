@@ -90,7 +90,7 @@ function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = 
 // 3. the wiring
 {
   const props = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
-  assert.match(props, /materialKind === 'fieldMud' \? mudHook : grimeHook/, 'the mud print takes the mud hook');
+  assert.match(props, /materialKind === 'fieldMud' \? mudHook\s*:/, 'the mud print takes the mud hook'); // (integ/226: the hook chain gained the ballast and clutter LOD arms)
   // (b15: the hay shares the straw's program; the mud print keeps its own)
   // (2026-10-15: props program keys name the hook family; the mud print's hook is its own family)
   assert.match(props, /kind === 'rock' \|\| kind === 'fieldStone' \|\| kind === 'pole' \|\| kind === 'ballast' \|\| kind === 'fieldMud' \? kind/, 'the mud print has its own program');

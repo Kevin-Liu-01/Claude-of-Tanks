@@ -544,6 +544,7 @@ function assembleWorld(
       library: vegetation._treeImpostors, rimMix: vegetation._ringMix, rimTreeHeightM: vegetation._rimTreeHeightM,
       // GND (2026-10-15): a map whose ring stands each species at its own stature (VegetationConfig `ringStature`)
       speciesHeightM: vegetation._ringSpeciesHeightM,
+      understory: vegetation._ringUnderstory, // (GND 2026-10-16: the young trees under the stands, VegetationConfig `ringUnderstory`)
       rimTreeTint: vegetation._rimTreeTint,
       setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
       releaseMaterial: (material) => engineCtx.releaseShadowMaterial?.(material),

@@ -45,10 +45,16 @@ export const GARAGE_WEATHER: Readonly<Record<string, GarageWeather>> = Object.fr
     cloudLayer: cumulus(0.40, 0.6),
   }),
   // Cinder Junction: the railyard's smoke takes the cumulus a shade warm-grey, a little more of it
+  // (2026-10-16: the battlefield's own sky is this cumulus now — the coordinator's ruling, Cinder Junction cumulus
+  // everywhere — so the yard takes the battle's cloudscape itself, as the resolver resolves it on the Garage's sky)
   railyard: Object.freeze({
-    ...fairDecks(0xece6dc),
-    cloudscape: Object.freeze({ regime: 'fair-weather-cumulus', coverage: 0.44, tintHex: 0xece6dc }),
-    cloudLayer: cumulus(0.44, 0.56),
+    ...fairDecks(0xefebe4),
+    cloudscape: Object.freeze({ regime: 'fair-weather-cumulus', coverage: 0.45, baseM: 1100, thicknessM: 800, towers: 0.15, streets: 0.3, cirrus: 0.2, tintHex: 0xefebe4 }),
+    cloudLayer: Object.freeze({
+      regime: 'fair-weather-cumulus', coverage: 0.45, baseM: 1100, thicknessM: 800, towers: 0.15, stratiform: 0.08, density: 0.12,
+      shadowThreshold: 0.55, deckBeam: 0, typeRange: [0.3, 0.62] as [number, number], wispiness: 0.35, shearM: 120, streets: 0.3, cirrus: 0.2,
+      cirrusAltM: 9500, ambientScale: 0.9, farBand: 0.25, farBandAltM: 1500, cluster: 0.6, baseFlat: 1, deckDetail: 0,
+    }),
   }),
   // Ironworks: the works' haze warms the cumulus
   foundry: Object.freeze({

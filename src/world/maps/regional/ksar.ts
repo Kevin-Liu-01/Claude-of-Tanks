@@ -9,6 +9,8 @@ import { buildHouse, holedBox, holedPolygon, recordShaft, windowRhythm, type Hol
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { ringSolid } from './millWorks.ts';
+import { ksarGhorfaSouk, souqStall } from './souqs.ts'; // props #23: the ghorfa souk and the souk stall
 
 const BLUES: readonly Rgb[] = [0x2f6a9e, 0x3a7ab0, 0x2e5f8a].map(rgb);
 const TIMBER = rgb(0x7a6048);
@@ -102,30 +104,8 @@ const ghorfaRange: RegionalBuilder = (ctx) => {
  * Medenine). The ghorfa range's court needs a plot three times as deep; this row stays inside its own.
  */
 const ghorfaShops: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
-  const W = Math.max(5, ctx.info.w - 0.5), D = Math.max(3.4, Math.min(6, ctx.info.d - 0.9));
-  const blue = pick(rng, BLUES);
-  const cw = 2.4, ch = 1.9, tierH = ch + cw / 2 + 0.1;
-  const n = Math.max(2, Math.floor(W / (cw + 0.12)));
-  const cellX = (i: number) => -n * (cw + 0.12) / 2 + (cw + 0.12) * (i + 0.5);
-  for (let i = 0; i < n; i++) ghorfa(sink, cellX(i), 0, D / 2, cw, ch, D, rng, blue);
-  // the upper tier over the middle cells, set back a little from the lane
-  const first = Math.floor((n - 1) / 2), last = n >= 4 ? first + 1 : first;
-  for (let i = first; i <= last; i++) {
-    // the terrace's edge over the lower cell's front, its spandrels filled flush with the lane front: the stair's top
-    // stones stand against it
-    ghorfaBed(sink, cellX(i), 0, ch, cw, D / 2, 0.4, tierH, false);
-    if (rng() < 0.2) continue;
-    ghorfa(sink, cellX(i), tierH, D / 2 - 0.4, cw, ch, D - 0.4, rng, blue);
-    ghorfaBed(sink, cellX(i), 0, ch, cw, D / 2 - 0.4, D - 0.4, tierH);
-  }
-  // the stair stones jutting from the front between the cells, from the ground up to the upper floor
-  const sx = cellX(first) - cw / 2 - 0.06;
-  for (let k = 0; k < 6; k++) {
-    const y = 0.35 + k * (tierH - 0.35) / 5.5;
-    sink.span(MUD, sx - 0.3, y - 0.05, D / 2 - 0.05, sx + 0.3, y + 0.1, D / 2 + 0.3 - k * 0.04, { decor: true });
-  }
+  // (props census #23, the looks lane 2026-10-15) the souk's cells member-built in souqs.ts
+  const sink = ksarGhorfaSouk(ctx, { blues: BLUES, timber: TIMBER, mud: MUD });
   return sink.finish();
 };
 
@@ -348,24 +328,77 @@ const borj: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** A domed hammam: a whitewashed block with three domes and a tiny lantern. */
+/**
+ * A domed hammam: a whitewashed block with three domes and a tiny lantern. (Props census #15, Lane C 2026-10-16: "no
+ * lantern, no vent, no furnace and no spout"; a blank box.) The bath block carries its domes pierced by glass bosses
+ * (the qamariyat) and the lantern on the great dome, high lights in its long walls and vents under the parapet, all cut
+ * through the walls, the parapet's spouts; behind it the furnace room, a body of its own against the back wall, its
+ * stoke hole cut low with the soot over it, the fuel stacked by it and the flue stack rising past the domes.
+ */
 const hammam: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
+  const look = ctx.variant;
   const W = Math.max(7, Math.min(12, ctx.info.w - 0.6)), D = Math.max(7, Math.min(12, ctx.info.d - 0.6));
-  const frame = buildHouse(sink, {
-    w: W, d: D, plinth: { h: 0.25, out: 0.06, bucket: MUD }, storeys: [{ h: 3.6, wall: 'plaster' }],
-    roof: { kind: 'flat', pitchDeg: 0, eave: 0.06, verge: 0.06, thickness: 0.2, bucket: 'plaster', parapet: 0.35 }, gableBucket: 'plaster',
-    openings: [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.2, y0: 0, h: 2.3 }], chimneys: [], gutters: null, verge: null,
-  }, {
-    window: () => {},
-    door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: pick(ctx.rng, BLUES), frame: { bucket: 'plaster', width: 0.2, out: 0.06, arch: true }, steps: { bucket: MUD }, leafKind: 'panel' }, y0 + o.y0),
+  // the bath block in front, the furnace room in the plot's back 2.2 m
+  const fd = 2.2, Dm = D - fd, zm = fd / 2, H = 3.6;
+  const roof = { kind: 'flat', pitchDeg: 0, eave: 0.06, verge: 0.06, thickness: 0.2, bucket: 'plaster', parapet: 0.35 } as const;
+  const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.2, y0: 0, h: 2.3 }];
+  for (const face of ['left', 'right'] as const) openings.push(...windowRhythm(face, 0, Dm, { w: 0.45, h: 0.45, sill: 2.55, spacing: 2.6, margin: 1.2, max: 3 }));
+  for (const u of [-W * 0.3, W * 0.3]) openings.push({ face: 'back', storey: 0, kind: 'loft', u, w: 0.22, h: 0.3, y0: 3.0 });
+  const lights: WindowStyle = { frame: shade(TIMBER, 0.8), frameWidth: 0.04, frameOut: 0.02, bars: 'cross', surround: { bucket: 'plaster', width: 0.1, out: 0.03 },
+    sill: { bucket: MUD, out: 0.05 }, shutters: null };
+  const leaf = pick(ctx.rng, BLUES);
+  const quiet: HouseDialect = {
+    // a vent or a stoke hole is left empty: its reveal and the dark behind it
+    window: (s, face, o, y0) => { if (o.kind !== 'loft') windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, lights, ctx.rng, 0.15); },
+    door: (s, face, o, y0) => {
+      if (o.w < 1) return;
+      doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf, frame: { bucket: 'plaster', width: 0.2, out: 0.06, arch: true }, steps: { bucket: MUD }, leafKind: 'panel' }, y0 + o.y0);
+    },
+  };
+  let top = 0;
+  sink.placed(0, 0, 0, zm, () => {
+    const frame = buildHouse(sink, {
+      w: W, d: Dm, plinth: { h: 0.25, out: 0.06, bucket: MUD }, storeys: [{ h: H, wall: 'plaster' }], roof, gableBucket: 'plaster',
+      openings, chimneys: [], gutters: null, verge: null, reveal: 0.3, core: 'adobe',
+    }, quiet);
+    top = frame.eaveY + 0.2;
+    // the domes, each pierced by its glass bosses; the lantern on the great one
+    for (const [x, z, r, great] of [[-W * 0.22, -Dm * 0.15, 1.5, false], [W * 0.22, -Dm * 0.15, 1.5, false], [0, Dm * 0.18, 1.9, true]] as const) {
+      const prof = [1.0, 0.97, 0.88, 0.7, 0.42, 0.12];
+      let y = top;
+      for (let k = 0; k + 1 < prof.length; k++) { sink.cylinder('plaster', [x, y, z], 'y', r * 0.24, r * prof[k], 12, {}, r * prof[k + 1], k === prof.length - 2); y += r * 0.24; }
+      for (let k = 0; k < (great ? 10 : 7); k++) {
+        const a = (k / (great ? 10 : 7)) * Math.PI * 2 + look() * 0.3, rr = r * 0.62;
+        sink.cylinder('glass', [x + Math.cos(a) * rr, top + r * 0.82, z + Math.sin(a) * rr], 'y', 0.09, 0.075, 6, { decor: true, fine: true }, 0.05);
+      }
+      if (great) {
+        sink.cylinder('plaster', [x, y - 0.05, z], 'y', 0.42, 0.32, 8, {}, 0.3);
+        sink.cylinder('plaster', [x, y + 0.37, z], 'y', 0.2, 0.42, 8, { decor: true }, 0.06);
+      }
+    }
+    // the spouts out of the parapet over the long walls
+    const sy = frame.eaveY + 0.1;
+    for (const sx of [-1, 1]) for (const z of [-Dm * 0.25, Dm * 0.25]) sink.span('plaster', sx * W / 2 - (sx > 0 ? 0 : 0.42), sy - 0.07, z - 0.07, sx * W / 2 + (sx > 0 ? 0.42 : 0), sy + 0.07, z + 0.07, { decor: true, tint: [0.75, 0.66, 0.55] });
   });
-  const top = frame.eaveY + 0.2;
-  for (const [x, z, r] of [[-W * 0.22, -D * 0.15, 1.6], [W * 0.22, -D * 0.15, 1.6], [0, D * 0.18, 2.0]] as const) {
-    const prof = [1.0, 0.97, 0.88, 0.7, 0.42, 0.12];
-    let y = top;
-    for (let k = 0; k + 1 < prof.length; k++) { sink.cylinder('plaster', [x, y, z], 'y', r * 0.24, r * prof[k], 12, {}, r * prof[k + 1], k === prof.length - 2); y += r * 0.24; }
-  }
+  // the furnace room: a low mud body against the bath's back wall, its stoke hole cut low in its back, its flue stack
+  const fw = Math.min(3.6, W - 1.6), fz = -D / 2 + fd / 2;
+  sink.placed(0, 0, 0, fz, () => {
+    buildHouse(sink, {
+      w: fw, d: fd, plinth: null, storeys: [{ h: 2.3, wall: MUD }], roof: { ...roof, parapet: 0.2 }, gableBucket: MUD,
+      openings: [{ face: 'back', storey: 0, kind: 'door', u: -fw * 0.18, w: 0.75, y0: 0.15, h: 0.8, arch: { spring: 0.55 } }],
+      chimneys: [], gutters: null, verge: null, reveal: 0.35, core: 'adobe',
+    }, quiet);
+    const back: Face = { origin: [0, 0, -fd / 2], u: [-1, 0, 0], out: [0, 0, -1], width: fw };
+    // the soot up the wall over the stoke hole, the fuel (palm wood and brush) stacked beside it
+    faceBox(sink, 'plaster', back, -fw * 0.18, 1.55, 0.004, 0.9, 1.1, 0.008, { decor: true, tint: [0.32, 0.3, 0.28] });
+    for (let k = 0; k < 5; k++) {
+      sink.cylinder('structureWood', [fw * 0.12 + k * 0.05, 0.08 + (k % 3) * 0.14, -fd / 2 - 0.25], 'x', 1.0, 0.07, 6, { colour: shade(TIMBER, 0.7 + look() * 0.3), decor: true });
+    }
+    // the flue: a square stack from the furnace room's roof to a hand past the great dome's lantern
+    sink.span(MUD, fw * 0.22 - 0.3, 2.3, -0.3, fw * 0.22 + 0.3, top + 3.0, 0.3);
+    sink.span(MUD, fw * 0.22 - 0.38, top + 3.0, -0.38, fw * 0.22 + 0.38, top + 3.12, 0.38, { decor: true });
+  });
   return sink.finish();
 };
 
@@ -409,64 +442,8 @@ const soukStall: RegionalBuilder = (ctx) => {
 
 /** The stall itself, W x D about the origin, its counter to +z (the ksar's market plot, Siwa's shop rows). */
 function stallBody(sink: PartSink, look: () => number, W: number, D: number, top = 2.55): void {
-  const floor = 0.18, wallZ = -D / 2 + 0.4;
-  // a beaten-earth platform skimmed with mud, the back wall of mud brick under plaster standing proud of the mat
-  sink.span(MUD, -W / 2 - 0.2, -0.3, -D / 2 - 0.2, W / 2 + 0.2, floor, D / 2 + 0.2);
-  sink.span(MUD, -W / 2, floor, -D / 2, W / 2, top + 0.45, wallZ);
-  // palm-trunk posts at the front, a trunk beam across them, three trunk joists back to the wall
-  const palm = rgb(0x6a5a46), postZ = D / 2 - 0.2;
-  for (const sx of [-1, 1]) sink.cylinder('structureWood', [sx * (W / 2 - 0.2), floor, postZ], 'y', top - floor, 0.14, 7, { colour: palm, uv: UV_MEMBER }, 0.12);
-  sink.member('structureWood', [-W / 2 - 0.1, top + 0.08, postZ], [W / 2 + 0.1, top + 0.08, postZ], 0.18, 0.18, [0, 1, 0], { colour: palm });
-  for (const t of [-0.36, 0, 0.36]) sink.member('structureWood', [t * W, top + 0.24, wallZ - 0.1], [t * W, top + 0.24, postZ + 0.15], 0.13, 0.13, [0, 1, 0], { colour: shade(palm, 0.92) });
-  // the mat's edge: a pole of bound ribs across the joists' ends, under the last ribs that ran out past them and the
-  // fronds hung from those (the connectivity sweep: the mat's edge floated 2 cm off the joists)
-  sink.member('structureWood', [-W / 2 - 0.1, top + 0.24, postZ + 0.2], [W / 2 + 0.1, top + 0.24, postZ + 0.2], 0.2, 0.07, [0, 1, 0], { colour: shade(palm, 0.85), decor: true, exposed: true }, 0);
-  // the jerid: palm ribs laid across the joists with gaps between them, fresh tan to sun-grey
-  const ribs = Math.max(12, Math.round((postZ + 0.3 - wallZ) / 0.21));
-  for (let k = 0; k < ribs; k++) {
-    // (2026-10-07, the map-revival lane, Oasis round 3; gauntlet wave 135: "clean white plastic slats with dangling white
-    // strips") the ribs were authored as display colours in the linear vertex colour, near white on screen: weathered
-    // jerid, tan going to sun-grey (sRGB ~0.58/0.50/0.39 to ~0.62/0.60/0.56), the frond tips a shade darker
-    const z = wallZ + 0.05 + (postZ + 0.3 - wallZ) * (k + 0.5) / ribs, tone = look();
-    const c: Rgb = [0.30 + tone * 0.045, 0.21 + tone * 0.11, 0.13 + tone * 0.15];
-    sink.span('structureWood', -W / 2 - 0.2 + look() * 0.15, top + 0.31, z - 0.07, W / 2 + 0.2 - look() * 0.15, top + 0.35, z + 0.07, { colour: c, decor: true, shadow: true });
-  }
-  // the frond tips hanging ragged over the lane edge, leaning out, some missing
-  for (let x = -W / 2 - 0.1; x < W / 2 + 0.1; x += 0.16 + look() * 0.16) {
-    if (look() < 0.2) continue;
-    const len = 0.2 + look() * 0.4, tone = look();
-    sink.member('structureWood', [x, top + 0.33, postZ + 0.3], [x + (look() - 0.5) * 0.16, top + 0.33 - len, postZ + 0.36 + look() * 0.12],
-      0.06 + look() * 0.07, 0.02, [0, 0, 1], { colour: [0.25 + tone * 0.06, 0.19 + tone * 0.08, 0.11 + tone * 0.09], decor: true, shadow: true, exposed: true });
-  }
-  // the counter: a plastered bench across the front, open at one end
-  sink.span(MUD, -W / 2 + 0.35, floor, D / 2 - 1.05, W / 2 - 0.95, floor + 0.75, D / 2 - 0.5);
-  // the kilims on the back wall: bands of madder, indigo, saffron and undyed wool
-  const wall: Face = { origin: [0, 0, wallZ], u: [1, 0, 0], out: [0, 0, 1], width: W };
-  const grounds: readonly Rgb[] = [0x8e2f24, 0x8e2f24, 0x2f3a5e, 0x9a5a2a].map(rgb);
-  const accents: readonly Rgb[] = [0xd8ccb0, 0xc08a2a, 0x2f3a5e, 0x6e2a3a, 0x2a2522].map(rgb);
-  for (const u of [-W * 0.27, W * 0.2]) {
-    const rw = 1.0 + look() * 0.4, rh = 1.5 + look() * 0.4, y0 = floor + 0.55, bands = 5 + 2 * Math.floor(look() * 3);
-    const ground = pick(look, grounds), unit = rh / (1.45 * (bands + 1) / 2 + 0.55 * (bands - 1) / 2);
-    // wide ground bands at either end and between the narrow accent stripes
-    for (let b = 0, y = y0; b < bands; b++) {
-      const colour = b % 2 ? pick(look, accents) : ground, h = unit * (b % 2 ? 0.55 : 1.45);
-      faceBox(sink, 'structureWood', wall, u, y + h / 2, 0.016, rw, h, 0.012, { colour, decor: true });
-      y += h;
-    }
-  }
-  // flat baskets of dates, chillies, turmeric and chickpeas on the counter; clay jars by the posts
-  const basket = rgb(0xa08a5a), goods: readonly Rgb[] = [0x5a3020, 0xa83a1e, 0xc89a2a, 0xc8b080].map(rgb);
-  for (let k = 0; k < 3; k++) {
-    const x = -W / 2 + 0.75 + k * (W - 2.1) / 2.4;
-    sink.cylinder('structureWood', [x, floor + 0.75, D / 2 - 0.78], 'y', 0.1, 0.22, 8, { colour: basket, decor: true }, 0.24);
-    sink.cylinder('structureWood', [x, floor + 0.85, D / 2 - 0.78], 'y', 0.07, 0.2, 8, { colour: pick(look, goods), decor: true }, 0.1);
-  }
-  const clay: Rgb = rgb(0xa8673e);
-  for (let k = 0, n = 2 + Math.floor(look() * 3); k < n; k++) {
-    const x = (look() < 0.5 ? -1 : 1) * (W / 2 - 0.55 - look() * 0.5), z = wallZ + 0.4 + look() * 1.2, r = 0.17 + look() * 0.08;
-    sink.cylinder('structureWood', [x, floor, z], 'y', r * 1.8, r * 0.7, 8, { colour: clay, decor: true }, r * 1.25);
-    sink.cylinder('structureWood', [x, floor + r * 1.8, z], 'y', r * 0.9, r * 1.25, 8, { colour: shade(clay, 0.95), decor: true }, r * 0.45);
-  }
+  // (props census #23, the looks lane 2026-10-15) member-built in souqs.ts: footings, the wall's courses and its store door
+  souqStall(sink, look, W, D, top, { mud: MUD });
 }
 
 export const KSAR_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
@@ -885,19 +862,27 @@ const ainSpring: RegionalBuilder = (ctx) => {
   const r = Math.max(2.4, Math.min(R.W, R.D) / 2 - 0.35);
   const along = R.W >= R.D;
   const px = along ? R.x0 + 0.3 + r : R.cx, pz = along ? R.cz : R.z0 + 0.3 + r;
-  const n = 20;
   // (Oasis round 3, wave 135: "the grey cut-stone block ... reads as modern masonry") the rim is the spring's old mud
-  // kerb, plastered and worn round, not dressed grey stone
-  for (let k = 0; k < n; k++) {
-    const a0 = k / n * Math.PI * 2, a1 = (k + 1) / n * Math.PI * 2, am = (a0 + a1) / 2;
-    sink.member(KERSHEF_OLD, [px + Math.cos(a0) * r, 0.3, pz + Math.sin(a0) * r], [px + Math.cos(a1) * r, 0.3, pz + Math.sin(a1) * r], 0.8, 0.55,
-      [Math.cos(am), 0, Math.sin(am)], { exposed: true }, 0);
+  // kerb, plastered and worn round, not dressed grey stone. (Props census #15, Lane C 2026-10-16: "a ring of 20 plain
+  // stone boxes 0.5 m high (no coping, no inner face, no floor)") the kerb is one solid ring, its outer face from the
+  // ground and its inner face down past the water to the pool's floor of pale sand, its worn coping a hand proud of both
+  const up: Vec3 = [0, 1, 0], e1: Vec3 = [0, 0, 1], e2: Vec3 = [1, 0, 0];
+  ringSolid(sink, KERSHEF_OLD, [px, -0.9, pz], up, e1, e2, r - 0.45, r, 1.45, 28, {});
+  ringSolid(sink, KERSHEF_OLD, [px, 0.55, pz], up, e1, e2, r - 0.5, r + 0.05, 0.1, 28, { decor: true, tint: [1.06, 1.04, 1.0] });
+  sink.cylinder('stone', [px, -0.95, pz], 'y', 0.05, r - 0.44, 24, { decor: true, tint: [1.12, 1.06, 0.9] });
+  // the water to the kerb's inner face; the steps run from the kerb down into it, each tread over the one below
+  sink.cylinder('glass', [px, 0.22, pz], 'y', 0.02, r - 0.44, 24, { decor: true });
+  for (let k = 0; k < 3; k++) sink.span(KERSHEF_OLD, px - 0.8, 0.5 - k * 0.2, pz + r - 0.95 - k * 0.35, px + 0.8, 0.62 - k * 0.2, pz + r - 0.4, { decor: true });
+  // the overflow's channel (the saqiya) out of the kerb toward the gardens: two low kerbs, the running water between
+  // (toward the plot's near side, clear of the café's wall and shelter on the far one)
+  const ch = along ? [0, -1] : [-1, 0], cx0 = px + ch[0] * (r - 0.1), cz0 = pz + ch[1] * (r - 0.1), cl = 1.6;
+  for (const side of [-1, 1]) {
+    const ox = -ch[1] * side * 0.32, oz = ch[0] * side * 0.32;
+    const x0 = cx0 + ox, z0 = cz0 + oz, x1 = x0 + ch[0] * cl, z1 = z0 + ch[1] * cl;
+    sink.span(KERSHEF_OLD, Math.min(x0, x1) - 0.1, -0.2, Math.min(z0, z1) - 0.1, Math.max(x0, x1) + 0.1, 0.32, Math.max(z0, z1) + 0.1, { decor: true });
   }
-  // (the buildings stream, 2026-10-12, the integrity check: the water stood 22 cm in from the ring wall, a slot of bare
-  // ground round it, and the steps hung over it short of the wall) the water meets the wall's inner face; the steps run
-  // from the wall down into it, each tread over the one below
-  sink.cylinder('glass', [px, 0.22, pz], 'y', 0.02, r + 0.02, 24, { decor: true });
-  for (let k = 0; k < 3; k++) sink.span(KERSHEF_OLD, px - 0.8, 0.5 - k * 0.2, pz + r - 0.5 - k * 0.35, px + 0.8, 0.62 - k * 0.2, pz + r + 0.05, { decor: true });
+  sink.span('glass', Math.min(cx0, cx0 + ch[0] * cl) - (ch[1] ? 0.22 : 0), 0.16, Math.min(cz0, cz0 + ch[1] * cl) - (ch[0] ? 0.22 : 0),
+    Math.max(cx0, cx0 + ch[0] * cl) + (ch[1] ? 0.22 : 0), 0.18, Math.max(cz0, cz0 + ch[1] * cl) + (ch[0] ? 0.22 : 0), { decor: true });
   // the rest of the plot: the café's low wall along the far edge and the palm-rib shelter by the pool
   const rest = along ? R.x1 - (px + r + 0.25) : R.z1 - (pz + r + 0.25);
   if (rest > 0.45) {

@@ -16,6 +16,7 @@ import { doorUnit, paneBucket, windowUnit, type WindowStyle } from './openings.t
 import { bloomDisc, pottedPlant, washingLine } from './dressing.ts';
 import { recordShed } from './shedFall.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { choufSouk } from './souqs.ts'; // props #23: the souk of Deir el-Qamar
 
 /** Shutters and doors: the Lebanese green, a blue-grey, a turquoise, a brown. */
 const SHUTTERS: readonly Rgb[] = [0x3f6a4a, 0x4f7a5a, 0x5a7488, 0x4a8a8a, 0x6a5040].map(rgb);
@@ -313,15 +314,40 @@ const hammam: RegionalBuilder = (ctx) => {
   const st = stateFor(ctx), rng = st.rng, look = st.look;
   const fp = footprint(ctx);
   const W = Math.max(6, fp.w - 0.1), D = Math.max(6, fp.d - 0.1), H = 4.4 + rng() * 0.4;
+  // (props census #15, Lane C 2026-10-16: "the 12.7 m front has only an arched door and one 0.6 m loft vent, and the
+  // other three faces are fully blank"; the door's fanlight a 1.6 x 0.8 glass plate on the stone) the arched door cut
+  // to its crown under its voussoirs, the vent and two grilled lights high on the front, the warm rooms' small lights
+  // down both sides, the stoke hole cut low in the back under the furnace's stack, its soot and its fuel
+  const doorU = -W * 0.18, spring = 2.15;
   const openings: Opening[] = [
-    { face: 'front', storey: 0, kind: 'door', u: -W * 0.18, w: 1.5, y0: 0, h: 2.5 },
+    { face: 'front', storey: 0, kind: 'door', u: doorU, w: 1.5, y0: 0, h: spring, arch: { spring } },
     { face: 'front', storey: 0, kind: 'loft', u: W * 0.22, w: 0.6, y0: 2.2, h: 0.8 },
+    ...[W * 0.05, W * 0.38].map((u): Opening => ({ face: 'front', storey: 0, kind: 'window', u, w: 0.5, y0: 2.9, h: 0.6 })),
+    { face: 'back', storey: 0, kind: 'door', u: W / 2 - 0.85, w: 0.8, y0: 0, h: 0.75, arch: { spring: 0.5 } },
   ];
+  for (const face of ['left', 'right'] as const) openings.push(...windowRhythm(face, 0, D, { w: 0.45, h: 0.55, sill: 2.9, spacing: 2.4, margin: 1.2, max: 3 }));
+  const grille: WindowStyle = { ...st.window, shutters: null, bars: 'cross' };
+  const base = dialect(st);
   sink.placed(0, fp.cx, 0, fp.cz, () => {
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.6, out: 0.1, bucket: 'stone' }, storeys: [{ h: H, wall: 'stone' }], roof: earthRoof(0.4), gableBucket: 'stone', openings,
-      chimneys: [], gutters: null, verge: null, reveal: 0.35, spall: null,
-    }, dialect(st));
+      chimneys: [], gutters: null, verge: null, reveal: 0.35, spall: null, core: 'stone',
+    }, {
+      ...base,
+      // the vent is left empty; the lights take their grilles and frames, no glass round head over them
+      window: (s, face, o, y0) => { if (o.kind !== 'loft') windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, grille, st.rng, 0.2); },
+      // the entrance's leaf under its arch's spring; the stoke hole left open on its dark
+      door: (s, face, o, y0) => {
+        if (o.w < 1) return;
+        doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(st.shutter, 0.8), frame: { bucket: 'stone', width: 0.16, out: 0.05 }, transom: false, steps: { bucket: 'stone' }, leafKind: 'panel' }, y0 + o.y0);
+      },
+    });
+    archHead(sink, frame.faces.front, doorU, frame.floors[0] + spring, 0.75, 'stone', 0.22, 7);
+    const back = frame.faces.back;
+    faceBox(sink, 'stone', back, -(W / 2 - 0.85), frame.floors[0] + 1.45, 0.004, 1.0, 1.3, 0.008, { decor: true, tint: [0.4, 0.37, 0.34] });
+    for (let k = 0; k < 4; k++) {
+      sink.cylinder('structureWood', [W / 2 - 1.9 - k * 0.04, 0.1 + (k % 2) * 0.13, -D / 2 - 0.3 - (k % 3) * 0.06], 'x', 0.9, 0.07, 6, { colour: shade(rgb(0x6a5440), 0.7 + look() * 0.3), decor: true });
+    }
     spouts(sink, frame, ['left', 'right'], look);
     const top = frame.eaveY + 0.3;
     // the hot room's dome over the back half on its octagonal drum, two smaller domes forward
@@ -339,42 +365,6 @@ const hammam: RegionalBuilder = (ctx) => {
     // the furnace stack at the back corner
     sink.span('stone', W / 2 - 1.3, 0, -D / 2 + 0.3, W / 2 - 0.4, top + 3.2, -D / 2 + 1.2);
   });
-  return sink.finish();
-};
-
-/** The souk's row: vaulted shops behind round arches on stone piers, plank doors and shutters, a flat roof. */
-const souk: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const st = stateFor(ctx), rng = st.rng, look = st.look;
-  const fp = footprint(ctx);
-  const H = 3.6;
-  onLot(sink, fp, (Wf, Df) => {
-    const W = Math.max(3.5, Wf - 0.1), L = Math.max(5, Df - 0.1);
-    const nb = Math.max(2, Math.round(L / 3.0)), bay = L / nb;
-    const openings: Opening[] = [];
-    for (let k = 0; k < nb; k++) openings.push({ face: 'right', storey: 0, kind: 'door', u: -L / 2 + (k + 0.5) * bay, w: Math.min(1.9, bay - 0.8), y0: 0, h: 2.3 });
-    const frame = buildHouse(sink, {
-      w: W, d: L, plinth: { h: 0.45, out: 0.08, bucket: 'stone' }, storeys: [{ h: H, wall: 'stone' }], roof: earthRoof(0.35), gableBucket: 'stone', openings,
-      chimneys: [], gutters: null, verge: null, reveal: 0.4, spall: null,
-    }, {
-      window: () => {},
-      door: (s, face, o, y0) => {
-        // the shop's plank doors folded open on the dark of the vault, the round arch over the opening
-        const r = s.recess, go = r > 0 ? -r + 0.03 : 0.015;
-        // (round 2, wave 123: "black voids"): the vault's back a deep brown of goods and shadow, not a black hole
-        faceBox(s, 'structureWood', face, o.u, y0 + o.y0 + o.h / 2, go, o.w, o.h, 0.04, { colour: rgb(0x3a2c22) });
-        for (const side of [-1, 1]) faceBox(s, 'structureWood', face, o.u + side * (o.w / 2 + 0.32), y0 + o.y0 + o.h / 2, 0.05, 0.6, o.h - 0.1, 0.05, { colour: shade(st.shutter, 0.85), decor: true });
-        roundHead(s, face, o.u, y0 + o.y0 + o.h + 0.02, o.w, 'glass', 0.2);
-      },
-    });
-    spouts(sink, frame, ['left', 'back'], look);
-    // the awnings of cloth over a few of the shops
-    for (let k = 0; k < nb; k++) {
-      if (rng() < 0.45) continue;
-      const u = -L / 2 + (k + 0.5) * bay, c = pick(rng, [rgb(0x9a3a2c), rgb(0x2f5a7a), rgb(0xc8b88a), rgb(0x4f6a3a)]);
-      faceBox(sink, 'structureWood', frame.faces.right, u, 3.05, 0.55, Math.min(2.2, bay - 0.3), 0.05, 1.1, { colour: c, decor: true });
-    }
-  }, 1);
   return sink.finish();
 };
 
@@ -696,7 +686,7 @@ export const CHOUF_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.
   // under the flat earth roof, its back to the terrace wall, sharing its walls with its neighbours (no stair)
   adobe: (ctx) => dar(ctx, { storeys: 1, roof: 'earth' }),
   bathhouse: hammam,
-  marketRow: souk,
+  marketRow: (ctx) => choufSouk(ctx, { st: stateFor(ctx), dialect, roof: earthRoof(0.35), spouts }),
   market: sabil,
   tavern: makeChurch(false),
   // (round 2, gauntlet wave 123: the border villages' generic tower and spire read as a Western church): their church

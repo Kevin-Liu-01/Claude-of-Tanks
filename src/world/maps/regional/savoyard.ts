@@ -245,15 +245,9 @@ const grange: RegionalBuilder = (ctx) => {
     }, dialect({ ...st, litShare: 0.1 }));
     purlins(sink, frame, LARCH_DARK);
     if (ctx.snowCap) drifts(sink, frame, openings, look);
-    if (logs) {
-      // the log courses' ends crossing at the corners of the upper floor (the notched joints)
-      const b = frame.bodies[1];
-      for (let y = b.y0 + 0.12; y < b.y1; y += 0.26) {
-        for (const [x, z] of [[b.x0, b.z0], [b.x1, b.z0], [b.x0, b.z1], [b.x1, b.z1]] as const) {
-          sink.span('structureWood', x - 0.22, y - 0.11, z - 0.22, x + 0.22, y + 0.11, z + 0.22, { colour: shade(LARCH_DARK, 0.9 + look() * 0.2), decor: true, fine: true });
-        }
-      }
-    }
+    // (props census #15, Lane C 2026-10-16: "the log hayloft is a flat wood-print face with 0.44 m square boxes stacked
+    // at the corners") the hayloft laid in hewn larch courses, saddle-notched, their ends running past the corners
+    if (logs) logWork(sink, frame, [1], look, MAZOT_LIGHT, ctx.tier === 'mobile', 0.26);
   });
   return sink.finish();
 };
