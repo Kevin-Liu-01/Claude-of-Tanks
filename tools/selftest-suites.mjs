@@ -1562,6 +1562,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/regional/wadiRumPosts.selftest.mjs',
     // the map-content lane (L2, wave 358a): a polar station's field works in its own stock (drums, drift fence)
     'src/world/maps/regional/polarWorks.selftest.mjs',
+    // props census #12 (2026-10-15): the stations as the Moon and Mars build them (maps/spaceKit.ts)
+    'src/world/maps/spaceKit.selftest.mjs',
     'src/world/wireMaterial.selftest.mjs',
     'src/world/maps/fieldWallDressing.selftest.mjs',
     'src/world/steelAtlasDemand.selftest.mjs',
