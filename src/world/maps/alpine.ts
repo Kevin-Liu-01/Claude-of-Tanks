@@ -214,6 +214,8 @@ export default {
     sunIntensity: 4.2, sunColorHex: 0xf8eedb, hemiIntensity: 0.34, postExposure: 0.95, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 2.85 / 0xffddbe / 0.54); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0x9ea0a2, exposureEV: -0.25 },
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): thin high-alpine air — a narrow bright band, a deep dark blue overhead
+    atmosphere: { horizonTintHex: 0xdee6ee, horizonTintAmount: 0.3, horizonBandDeg: 6, zenithTintHex: 0x2f62b8, zenithTintAmount: 0.35 },
   },
   minimap: {
     base: [154, 169, 183], hard: [132, 144, 154], soft: [105, 127, 143],

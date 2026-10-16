@@ -441,6 +441,8 @@ export default {
     sunIntensity: 1.35, sunColorHex: 0xdfe7f2, hemiIntensity: 0.74, postExposure: 0.86,
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0xe5e7ec, warmth: 0.25, exposureEV: -0.25 },
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a winter overcast — a cold pearl band, a pale cold blue in the deck's gaps
+    atmosphere: { horizonTintHex: 0xd5dde6, horizonTintAmount: 0.35, horizonBandDeg: 9, zenithTintHex: 0x8ea9c8, zenithTintAmount: 0.25 },
   },
 
   minimap: {

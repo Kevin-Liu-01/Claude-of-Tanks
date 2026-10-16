@@ -172,7 +172,10 @@ export default {
   horizon: { baseHex: 0x62766a, amp: 0.9, style: 'alpine', ringStyle: 'rolling', treeline: 0.80, snowline: 2, panorama: { regional: 'upland' }, forestHex: 0x304e40, rockHex: 0x828d87, haze: 0.90, grain: 0.52 },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'fair-weather-cumulus', coverage: 0.26, streets: 0.3, contrails: 0.3 },
-  sky: { ...frontier.sky, sunElevationDeg: 26, sunAzimuthDeg: 142, turbidity: 4.2, fogDensity: 0.00058, fogTintHex: 0x91a8b5, fogMix: 0.5, cloudOpacity: 1.0, cloudOpacity2: 0.66, sunIntensity: 3.8, hemiIntensity: 0.43 },
+  sky: { ...frontier.sky, sunElevationDeg: 26, sunAzimuthDeg: 142, turbidity: 4.2, fogDensity: 0.00058, fogTintHex: 0x91a8b5, fogMix: 0.5, cloudOpacity: 1.0, cloudOpacity2: 0.66, sunIntensity: 3.8, hemiIntensity: 0.43,
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): highland air — a cool clean band, a deep blue
+    atmosphere: { horizonTintHex: 0xdde5ea, horizonTintAmount: 0.3, horizonBandDeg: 7, zenithTintHex: 0x4a7cc4, zenithTintAmount: 0.25 },
+  },
   minimap: { ...frontier.minimap, base: [78, 105, 77], hard: [111, 114, 98], soft: [47, 75, 71], water: 'rgba(43,89,111,.86)', waterStroke: 'rgba(23,55,73,.94)' },
   shot: { pos: [-248, 57, -248], look: [108, -1, 74] },
   // round 66 (2026-09-24, the FFT ocean): a highland lake under a light breeze — a fine chop, no whitecaps; the

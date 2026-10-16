@@ -441,6 +441,8 @@ export default {
     sunIntensity: 4.25, sunColorHex: 0xffd4ad, hemiIntensity: 0.25, postExposure: 0.92,
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0xaa8161 },
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a Jordanian desert divide — an apricot dust band over the red rock, a deep blue overhead
+    atmosphere: { horizonTintHex: 0xe6c6a0, horizonTintAmount: 0.5, horizonBandDeg: 7, zenithTintHex: 0x4a7ac0, zenithTintAmount: 0.25 },
   },
   minimap: {
     base: [137, 81, 59], hard: [124, 91, 72], soft: [105, 69, 54],

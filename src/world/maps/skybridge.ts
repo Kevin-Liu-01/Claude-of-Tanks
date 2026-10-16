@@ -264,6 +264,8 @@ export default {
     sunIntensity: 3.85, sunColorHex: 0xffc19a, hemiIntensity: 0.31, postExposure: 0.93,
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0xaa8161 },
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a dry chasm's warm air — a light buff band, a clear blue
+    atmosphere: { horizonTintHex: 0xddd2c0, horizonTintAmount: 0.35, horizonBandDeg: 8, zenithTintHex: 0x5884c0, zenithTintAmount: 0.2 },
   },
   minimap: {
     base: [102, 77, 63], hard: [113, 91, 76], soft: [80, 65, 56],

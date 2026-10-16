@@ -226,6 +226,8 @@ export default {
     fogTintHex: 0x8293a5, fogMix: 0.50, envIntensity: 0.22,
     cloudOpacity: 1.0, cloudOpacity2: 0.7, cloudTintHex: 0xf4f4ef,
     sunIntensity: 4.25, sunColorHex: 0xffebcf, hemiIntensity: 0.38,
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a high basin's dry air — a pale sage-dust band, a deep clear blue
+    atmosphere: { horizonTintHex: 0xded4bc, horizonTintAmount: 0.35, horizonBandDeg: 7, zenithTintHex: 0x4778c2, zenithTintAmount: 0.25 },
   },
   minimap: {
     base: [82, 94, 55], hard: [112, 105, 86], soft: [48, 69, 55],

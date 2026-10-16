@@ -521,6 +521,8 @@ export default {
     sunIntensity: 4.25, sunColorHex: 0xfff0d6, hemiIntensity: 0.30,
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0x898165 },
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): the continental steppe's big dry sky — a straw dust band under a deep blue dome
+    atmosphere: { horizonTintHex: 0xe0d4b8, horizonTintAmount: 0.4, horizonBandDeg: 7, zenithTintHex: 0x3e72c0, zenithTintAmount: 0.3 },
   },
 
   minimap: {
