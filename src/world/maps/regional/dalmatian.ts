@@ -227,8 +227,11 @@ function dwelling(ctx: RegionalBuildContext, opts: { storeys?: number; shop?: bo
       for (let u = -W / 2 + 0.45; u <= W / 2 - 0.45; u += 0.35 + look() * 0.25) {
         const off = Math.abs(u - door.u) - door.w / 2;
         const trail = off > 0.05 && off < 0.6 && look() < 0.7, w = 0.35 + look() * 0.4, h = trail ? 0.7 + look() * 0.5 : 0.3 + look() * 0.3;
-        const y = trail ? 2.55 - h / 2 : 2.66 + (look() - 0.5) * 0.24;
-        faceBox(sink, 'structureWood', f, u + (look() - 0.5) * 0.15, y, 0.22 + look() * 0.12, w, h, 0.18 + look() * 0.16, { colour: shade(leaf, 0.75 + look() * 0.45), decor: true });
+        // (props census r2 sweep, Lane C 2026-10-16: a trailing clump hung 3 cm under the trellis and stood off the wall,
+        // floating) a trail hangs from the trellis and lies on the wall; the draws as before
+        const y = trail ? 2.6 - h / 2 : 2.66 + (look() - 0.5) * 0.24;
+        const du = (look() - 0.5) * 0.15, out = 0.22 + look() * 0.12, depth = 0.18 + look() * 0.16;
+        faceBox(sink, 'structureWood', f, u + du, y, trail ? depth / 2 + 0.005 : out, w, h, depth, { colour: shade(leaf, 0.75 + look() * 0.45), decor: true });
       }
     }
   });
