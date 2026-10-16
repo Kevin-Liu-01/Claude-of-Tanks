@@ -294,7 +294,7 @@ const marketHall: RegionalBuilder = (ctx) => mekongMarketHall(ctx, RUSTED);
 
 /** A collapsed stilt house: posts leaning, the deck broken, the roof sheets down. */
 /** A round pole from `a` to `b` (an octagon of radius `r` run along the axis). */
-function roundPole(sink: PartSink, a: Vec3, b: Vec3, r: number, opts: EmitOptions): void {
+function roundPole(sink: PartSink, a: Vec3, b: Vec3, r: number, opts: EmitOptions & { exposed?: boolean }): void {
   const d: Vec3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], len = Math.hypot(d[0], d[1], d[2]);
   if (len < 1e-3) return;
   const ax: Vec3 = [d[0] / len, d[1] / len, d[2] / len];
@@ -309,7 +309,7 @@ function roundPole(sink: PartSink, a: Vec3, b: Vec3, r: number, opts: EmitOption
 }
 
 /** A corrugated sheet `w` wide lying from `a` to `b` (its ribs along the run, its faces 12 mm apart, every face closed). */
-function corrugatedSheet(sink: PartSink, a: Vec3, b: Vec3, w: number, opts: EmitOptions): void {
+function corrugatedSheet(sink: PartSink, a: Vec3, b: Vec3, w: number, opts: EmitOptions & { exposed?: boolean }): void {
   const d: Vec3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], len = Math.hypot(d[0], d[1], d[2]);
   if (len < 1e-3) return;
   const ax: Vec3 = [d[0] / len, d[1] / len, d[2] / len];

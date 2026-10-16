@@ -257,7 +257,7 @@ export function bevelSpan(sink: PartSink, bucket: RegionalBucket, x0: number, y0
  * rounded edges, a sawn timber's eased arris; by a sixth of its section's smaller side, at most 3 cm.
  */
 export function bevelMember(sink: PartSink, bucket: RegionalBucket, a: Vec3, b: Vec3, width: number, depth: number, out: Vec3,
-  opts: EmitOptions = {}, embed = 0.02): void {
+  opts: EmitOptions & { ends?: boolean; exposed?: boolean } = {}, embed = 0.02): void {
   const d: Vec3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], len = Math.hypot(d[0], d[1], d[2]);
   if (len < 1e-3) return;
   const ay: Vec3 = [d[0] / len, d[1] / len, d[2] / len];
