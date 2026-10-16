@@ -186,6 +186,11 @@ function groundHouse(ctx: RegionalBuildContext): RegionalParts {
     const width = face === 'front' || face === 'back' ? W : D;
     for (const o of windowRhythm(face, 0, width, { w: 0.9, h: 1.2, sill: 0.9, spacing: 2.2, margin: 0.9, avoid: face === porchFace ? [[-1.0, 1.0]] : [] })) openings.push(o);
   }
+  // (props census #15, Lane C 2026-10-16: "the rear long wall has no opening at all and reads as one blank plane") the
+  // back wall to the yard: the kitchen's door off its middle and the rooms' windows either side of it, cut as the front's
+  const rear = plot.turned ? 'right' : 'back', rearWidth = plot.turned ? D : W, backDoor = rearWidth * 0.18;
+  openings.push({ face: rear, storey: 0, kind: 'door', u: backDoor, w: 0.95, y0: 0, h: 2.1 });
+  for (const o of windowRhythm(rear, 0, rearWidth, { w: 0.9, h: 1.0, sill: 1.1, spacing: 2.4, margin: 0.9, avoid: [[backDoor - 0.75, backDoor + 0.75]] })) openings.push(o);
   const dialect: HouseDialect = {
     window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, style, rng, 0.5),
     door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shutter, frame: { bucket: 'plaster', width: 0.14, out: 0.05 }, steps: { bucket: 'stone' }, leafKind: 'panel' }, y0 + o.y0),
