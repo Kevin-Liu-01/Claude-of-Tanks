@@ -67,6 +67,8 @@ function compile(body, constraintBody = constraints, helpers = helperSource) {
       moundCrestYs = null, mounds = [], raiseMounds = (x, z, h) => h,
       // (2026-10-07) and the canals' carve before the mounds (final queries); this fixture authors none
       compiledCanals = null, carveCanals = (canals, x, z, h) => h, liquidDepthM = 0,
+      // (the ground lane, 2026-10-12) and the paddies' levelled basins (terrain.paddies, paddies.ts levelPaddies); none here
+      compiledPaddies = null, levelPaddies = (paddies, x, z, h) => h,
       // (2026-10-07) and the lifted paths' crowned banks in the road plane's blend; this fixture lifts none
       gRoadLift = null, gRoadCrest = null,
       // the map-borders lane (2026-10-03): the foreground clearance past the playable edge (nil on this classic fixture),
