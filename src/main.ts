@@ -3618,6 +3618,10 @@ if (pendingRoomInvitePromise) {
   });
 }
 window.__GAME_READY = true;
+// 2026-10-12 (the perf stream): the pending battlefield's loading art, in idle time (onMapSelect does it for a new pick)
+if (worldRuntime.pendingMapId && worldRuntime.pendingMapId !== 'random') preloadImageWhenIdle(battleBackdrop(worldRuntime.pendingMapId));
+// 2026-10-13: the loading screen's blurred per-map placeholders (a ~15 kB lazy chunk), so its first frame is the map's own
+primeMapLqipWhenIdle();
 // 2026-10-15 (the MP stream, the §7 side-by-side's rejoin row): a tab opened on a room invite is on its way into a room
 // and, on a return, straight into a running match. The Garage's idle work (the neighbouring heroes, the dressing set
 // pieces) would share the main thread with the room's join and the battle entry, so it waits: a return to the Garage
@@ -3633,10 +3637,6 @@ if (pendingRoomInvitePromise) {
     setTimeout(() => { if (game.phase === 'garage' && !battleEntryLifecycle.pending) runGarageIdleWork(); }, INVITE_GARAGE_IDLE_DELAY_MS);
   }, () => runGarageIdleWork());
 } else runGarageIdleWork();
-// 2026-10-12 (the perf stream): the pending battlefield's loading art, in idle time (onMapSelect does it for a new pick)
-if (worldRuntime.pendingMapId && worldRuntime.pendingMapId !== 'random') preloadImageWhenIdle(battleBackdrop(worldRuntime.pendingMapId));
-// 2026-10-13: the loading screen's blurred per-map placeholders (a ~15 kB lazy chunk), so its first frame is the map's own
-primeMapLqipWhenIdle();
 window.__BOOT_TIMINGS = BOOT_TIMINGS;
 window.__BOOT_MS = Math.round(performance.now() - BOOT_T0);
 entryTelemetry.send({
