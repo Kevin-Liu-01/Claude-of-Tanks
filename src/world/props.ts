@@ -5443,8 +5443,8 @@ ${snowCap ? `
     const y = heightField.getHeightAt(x, z);
     const stoneStart = buckets.stone.length, woodStart = buckets.wood.length;
     // (props census #7: the pile's pieces are the ruin grammar's, drawn from the same stream as before)
-    const pile = rubblePileParts(x, y, z, pr, rrng);
-    buckets.stone.push(...pile.stone);
+    const pile = rubblePileParts(x, y, z, pr, rrng, (px, pz) => heightField.getHeightAt(px, pz)); // (looks r2: shards on the street)
+    buckets.stone.push(...pile.stone, ...pile.bed); // (looks r2: the beds under clear pieces, outside the records and plan)
     buckets.wood.push(...pile.wood);
     const drawn = drawnPlanRecord([...buckets.stone.slice(stoneStart, stoneStart + pile.chunks), ...buckets.wood.slice(woodStart)], y, 0.05);
     if (drawn) rubbleDrawnFootprints.push(drawn);
