@@ -35,10 +35,13 @@ const brow = (azDeg: number, lengthM: number, heightM = RISE, distM = BROW, name
   kind: 'escarpment' as const, at: { azDeg, distM }, heightM, lengthM, widthM: 1800, strikeDeg: azDeg - 90,
   geology: SLATE, cover: { forest: [0, 400] as const }, ...(name ? { name } : {}),
 });
-/** A V-shaped wooded valley out of the basin on its bearing, cut down through the plateau. */
-const valley = (azDeg: number, heightM: number, widthM: number, name?: string) => ({
-  kind: 'valley' as const, at: { azDeg, distM: 3600 }, heightM, lengthM: 4400, widthM, strikeDeg: azDeg, ...(name ? { name } : {}),
-});
+/** A V-shaped wooded valley out of the basin on its bearing: a notch opening the plateau down to the land under it, and
+ * a trough under that sinking its floor toward the lake (a single deep cut sank the floor below the lake past the
+ * plateau's back). */
+const valley = (azDeg: number, heightM: number, widthM: number, name?: string) => [
+  { kind: 'notch' as const, at: { azDeg, distM: 3600 }, heightM: 100, lengthM: 4400, widthM: widthM * 1.25, strikeDeg: azDeg, ...(name ? { name } : {}) },
+  { kind: 'valley' as const, at: { azDeg, distM: 3400 }, heightM, lengthM: 4200, widthM, strikeDeg: azDeg },
+];
 
 const DRAFT: HinterlandConfig = {
   place: 'The Rur dams in the Eifel (the Urft and Schwammenauel reservoirs), winter 1944-45: an upland lake in a basin cut '
@@ -75,14 +78,14 @@ const DRAFT: HinterlandConfig = {
     brow(270, 3200, RISE, BROW, 'the Steckenborn plateau'),
     brow(315, 3000, RISE - 2, BROW_DIAG),
     // the valleys between the brows, out of the basin
-    valley(22, 150, 1000, 'the Rur down to the dams'),
-    valley(68, 120, 800),
-    valley(114, 126, 820),
-    valley(160, 140, 900, 'the Urft valley'),
-    valley(204, 150, 1000, 'the Rur up toward Monschau'),
-    valley(248, 118, 800),
-    valley(294, 136, 860, 'the Kall valley'),
-    valley(338, 118, 800),
+    ...valley(22, 80, 900, 'the Rur down to the dams'),
+    ...valley(68, 55, 700),
+    ...valley(114, 55, 720),
+    ...valley(160, 62, 800, 'the Urft valley'),
+    ...valley(204, 60, 880, 'the Rur up toward Monschau'),
+    ...valley(248, 52, 700),
+    ...valley(294, 60, 760, 'the Kall valley'),
+    ...valley(338, 52, 700),
   ],
   far: [
     { azDeg: [0, 360], distKm: [4, 16], reliefM: 180, form: 'upland', layers: 2, name: 'the plateau running on' },
