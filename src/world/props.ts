@@ -238,6 +238,7 @@ import { createLoosePropBodies } from './loosePropBodies.ts';
 import type { UtilityNetwork } from './utilityNetwork.ts';
 import { attachStructureBuildContext, type GeometryBuckets, type StructureBuildContext, type StructureDimensions } from './maps/exteriorDetailKit.ts';
 import { makeRuin, roughenChunk, rubblePileParts } from './maps/regional/ruinGrammar.ts'; // props census #7: the plan ruin and the street rubble pile
+import { breachRubble } from './maps/wallBreachRubble.ts'; // (the looks lane, r2 sweep: the breach's drawn rubble)
 // regional-buildings lane (2026-10-03): the map's regional architecture kit replaces each placed building's geometry
 // after its placement is settled (maps/regional/index.ts) and paints the kit's roof and masonry (regionalSurfaces.ts)
 import { buildRegionalParts, kitLegacy, rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
@@ -6281,11 +6282,12 @@ ${snowCap ? `
           box(size * 1.5, size * 0.8, size, style === 'adobe' ? wallDressing.mudUv * 1.6 : 1.2), rng, size * 0.4,
         );
         if (wallB === 'fieldStone') wallDressing.stoneUv(block, rng); else jitterUV(block, rng);
-        block.rotateY(rng() * Math.PI);
+        const spin = rng() * Math.PI; block.rotateY(spin);
         const groundY = heightField.getHeightAt(x, z);
         block.translate(x, groundY + size * 0.3, z);
         const drawn = drawnPlanRecord([block], groundY, 0.05);
-        if (spill) block.dispose(); else buckets[wallB].push(block);
+        if (!spill) buckets[wallB].push(breachRubble(breachKind === 'brick', wallB === 'fieldStone', x, z, size, spin, (gx, gz) => heightField.getHeightAt(gx, gz)));
+        block.dispose(); // (the r2 sweep: the box drew; its draws and its footprint record stay, maps/wallBreachRubble.ts draws the piece)
         if (drawn) breachRubbleFootprints.push(drawn);
       }
     }
