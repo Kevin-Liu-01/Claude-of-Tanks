@@ -162,6 +162,28 @@ function container(sink: PartSink, colour: Rgb, look: () => number, mobile: bool
     sink.span('structureMetal', x - 0.1, 0.12, s * W - 0.03, x + 0.1, H - 0.12, s * W + 0.03, { colour: shade(colour, 0.84 + look() * 0.1), decor: true, fine: true });
   }
   for (const s of [-1, 1]) sink.span('structureMetal', s * L - 0.05, 0.1, -W + 0.08, s * L + 0.05, H - 0.1, W - 0.08, { colour: shade(colour, 0.7), decor: true });
+  // (props census #10: the screen as the siege left it) its corner castings; the doors' locking rods; rust run down from
+  // the top rail; the street side pocked by small-arms fire (its own hash: the look stream draws as before)
+  const mark = streamFrom(hashSeed('sarajevo-screen-wear', Math.round(colour[0] * 255), Math.round(colour[1] * 255), Math.round(colour[2] * 255)));
+  const casting = { colour: shade(colour, 0.55), decor: true };
+  for (const sx of [-1, 1]) for (const sy of [0, 1]) for (const sz of [-1, 1]) {
+    const x = sx * (L - 0.09), y = sy ? H - 0.09 : 0.09, z = sz * (W - 0.09);
+    sink.span('structureMetal', x - 0.1, y - 0.1, z - 0.1, x + 0.1, y + 0.1, z + 0.1, casting);
+  }
+  for (const z of [-0.85, -0.3, 0.3, 0.85]) {
+    sink.span('structureMetal', L + 0.05, 0.25, z - 0.025, L + 0.1, H - 0.25, z + 0.025, { colour: shade(colour, 0.5), decor: true, fine: true });
+  }
+  const rust = rgb(0x6a3a22);
+  for (let k = 0; k < 7; k++) {
+    const x = -L + 0.4 + mark() * (2 * L - 0.8), s = mark() < 0.5 ? -1 : 1, len = 0.5 + mark() * 1.2;
+    const za = s * (W + 0.002), zb = s * (W + 0.006);
+    sink.span('structureMetal', x - 0.05, H - 0.15 - len, Math.min(za, zb), x + 0.05, H - 0.15, Math.max(za, zb), { colour: shade(rust, 0.8 + mark() * 0.4), decor: true, fine: true });
+  }
+  const pock = rgb(0x1a1816);
+  for (let k = 0; k < 16; k++) {
+    const x = -L + 0.3 + mark() * (2 * L - 0.6), y = 0.6 + mark() * 1.6, r = 0.025 + mark() * 0.02, z = W + 0.005;
+    sink.quad('structureMetal', [x - r, y - r, z], [x + r, y - r, z], [x + r, y + r, z], [x - r, y + r, z], { colour: pock, decor: true, fine: true });
+  }
 }
 
 /**

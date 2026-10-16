@@ -68,7 +68,11 @@ import { buildFieldWallFineSteps, type FieldWallFineSource } from './fieldWorks.
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
 import type { GroundCoverHole, SceneryMapConfig } from './sceneryPlan.ts';
 type SceneryHardstand = { x: number; z: number; width: number; length: number; yawDeg?: number };
-import { SCENERY_DESTRUCTIBLE_TYPES, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap } from './maps/sceneryKit.ts';
+import { SCENERY_DESTRUCTIBLE_TYPES } from './maps/sceneryKit.ts';
+import {
+  AMMOBOX_LEGACY, bSandbagBroken, buildCampFireRing, buildHedgehogBeam, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, fieldworksTypes,
+  paintBurlap,
+} from './maps/fieldworksKit.ts'; // #10 fieldworks
 import {
   FORT_CONTACT_FLOOR_M, FORT_PRINT_MEAN, FORT_PRINT_SEED, buildPillbox, fortFor, pillboxBankField, pillboxBerm, pillboxFootprintGeometry, pillboxFooting,
 } from './maps/fortKit.ts'; // the fortifications lane: the pillbox
@@ -100,12 +104,10 @@ import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
 import {
   ADOBE_UV_PER_M,
   COURSED_WALLSTONE,
-  AMMOBOX_LEGACY,
   DESTRUCTIBLE_TYPES,
   DRY_STONE_KIND,
   FENCE_SEG,
   WALL_SEG,
-  bSandbagBroken,
   type DestructiblePropType,
   buildAdobePilaster,
   buildDryStoneWallHead,
@@ -4416,6 +4418,9 @@ ${snowCap ? `
       build: () => buildSandbagStack('sandbagwall'),
       broken: (rng) => buildSandbagHeap('sandbagwall', () => bSandbagBroken(rng).dispose()),
     },
+    // (props census #10) the field works as the map's period and side built them (maps/fieldworksKit.ts): the sandbags,
+    // the wire, the tent and the ammunition boxes, on the same keys and records
+    ...fieldworksTypes(mapId, mobileProps, DESTRUCTIBLE_TYPES),
     // the field wall is dry stone (inhabitKit.ts) on its own rubble print, except under a brick print, which keeps the
     // coursed module on the stone print
     // (wave 20, "no snow on top in a snow-buried valley": a snow map's dry-stone module carries the snow load along its
@@ -6581,17 +6586,9 @@ ${snowCap ? `
         angle + Math.PI + (vrng() - 0.5) * 0.5, 0.9 + vrng() * 0.15);
     };
     const placeCampFireRing = (cx: number, cz: number): void => {
-      const stoneCount = 5 + ((vrng() * 3) | 0);
+      // (props census #10) the ring as the map's camps built it (maps/fieldworksKit.ts): its stones on the old draws
       const y = heightField.getHeightAt(cx + 2.6, cz + 1.4);
-      for (let stoneIndex = 0; stoneIndex < stoneCount; stoneIndex++) {
-        const angle = (stoneIndex / stoneCount) * Math.PI * 2;
-        const stone = box(0.22 + vrng() * 0.1, 0.18, 0.2, 1.4);
-        jitterUV(stone, vrng);
-        stone.rotateY(vrng() * Math.PI);
-        stone.translate(cx + 2.6 + Math.cos(angle) * 0.55,
-          y + 0.08, cz + 1.4 + Math.sin(angle) * 0.55);
-        buckets.stone.push(stone);
-      }
+      for (const part of buildCampFireRing(mapId, cx + 2.6, y, cz + 1.4, vrng)) buckets[part.bucket].push(part.geometry);
     };
     const placeCampCargo = (cx: number, cz: number): void => {
       scatterDestructibles('firewood', cx, cz, 1, 2.2, 4.5);
@@ -8151,12 +8148,11 @@ ${snowCap ? `
       const beams = hedgehogBeamSpecs(hx, y, hz, yaw, scale, yawOffsets);
       const clutterObs: CollisionRecord[] = [], clutterCols: CollisionRecord[] = [];
       const clutter = new CrushableClutter('hedgehog', hx, y, hz, 1.2 * scale, 1.7 * scale, clutterObs, clutterCols);
-      for (const beamSpec of beams) {
-        const beam = box(0.16 * scale, 0.16 * scale, 2.1 * scale, 1.2);
-        beam.rotateX(beamSpec.tilt);
-        beam.rotateY(beamSpec.yaw);
-        beam.translate(hx, y + 0.62 * scale, hz);
-        buckets.dark.push(beam); clutter.ownPiece(beam);
+      for (const [beamIndex, beamSpec] of beams.entries()) {
+        // (#10 fieldworks: the beam as the map's period built it, maps/fieldworksKit.ts)
+        for (const part of buildHedgehogBeam(mapId, beamIndex, beamSpec.tilt, beamSpec.yaw, hx, y, hz, scale)) {
+          buckets[part.bucket].push(part.geometry); clutter.ownPiece(part.geometry);
+        }
         const record: PropsCollisionRecord = {
           min: [hx, beamSpec.minY, hz], max: [hx, beamSpec.maxY, hz],
           kind: 'hedgehog', hedgehogId,
