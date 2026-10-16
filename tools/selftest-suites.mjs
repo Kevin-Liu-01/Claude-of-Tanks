@@ -89,6 +89,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/missileLooks.selftest.mjs',
     'src/fx/missileWires.selftest.mjs',
     'src/fx/missileTrails.selftest.mjs',
+    'src/fx/missileBodies.selftest.mjs',
     'src/ui/vehicleControlCooldown.selftest.mjs',
     'src/ui/vehicleSpecialAction.selftest.mjs',
     'src/vehicles/vehicleAuxiliaryGeometry.selftest.mjs',

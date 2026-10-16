@@ -12,6 +12,7 @@ import { isUnguidedRocket } from '../sim/launcherPolicy.ts';
 import { MISSILE_LOOKS, missileLookFor } from './missileLooks.ts';
 import { createMissileWires, WIRE_LAY_M, WIRE_POINTS, WIRE_SLOTS } from './missileWires.ts';
 import { createSceneLightUniforms } from './sceneLight.ts';
+import { missileTailM } from './missileBodies.ts';
 
 // ---- 1. the family table: who flies on a wire ----------------------------------------------------------------------
 const wired = (name, sound = null) => missileLookFor(name, sound, false).wires;
@@ -183,7 +184,7 @@ try {
   const tube = shooter.visual.gunMuzzleWorld(new Vector3(), 1, true);
   const ends = line.filter((q) => Math.hypot(q[0] - tube.x, q[1] - tube.y, q[2] - tube.z) < 0.08);
   assert.ok(ends.length >= 1, 'the wire starts on the launcher\'s tube where it is now (the hull drove 10.7 m, the turret slewed)');
-  assert.ok(line.some((q) => Math.abs(q[0] - (shell.pos.x - 0.65 - 0.625 * MISSILE_LOOKS.tow.bodyLen)) < 0.05),
+  assert.ok(line.some((q) => Math.abs(q[0] - (shell.pos.x - missileTailM('tow', 0))) < 0.05),
     'and ends on the missile\'s tail');
   bus.emit('shell:hit', { shellId: 4242, pos: [shell.pos.x, 2, 0], normal: [-1, 0, 0], caliberMm: 152, kind: 'pen' });
   fx.update(1 / 60, [], camera);

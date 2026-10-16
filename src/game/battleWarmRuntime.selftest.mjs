@@ -26,6 +26,7 @@ import {
   warmStudioEffects,
 } from './battleWarmRuntime.ts';
 import { createFx } from '../fx/effects.ts';
+import { missileTailM } from '../fx/missileBodies.ts';
 import { registerWorldDestructibles } from '../world/destructibles.ts';
 import { createCameraRig } from '../engine/cameraRig.ts';
 import { createCombatWarmCoordinator } from './combatWarmCoordinator.ts';
@@ -475,9 +476,17 @@ try {
   const compiledWarmLights = [];
   assert.equal(fx.group.children.filter((object) => object.isPointLight).length, 2,
     'the real scene-attached FX graph owns its two default-layer lights');
-  const guidedPools = fx.group.children.filter((mesh) => mesh.isInstancedMesh
-    && (mesh.renderOrder === 25 || mesh.renderOrder === 26));
-  assert.equal(guidedPools.length, 2, 'the real missile body and flare pools are present');
+  // (FX lane 10-15) a missile's body is its family's airframe (fx/missileBodies.ts: one instanced pool per airframe,
+  // under one group) beside the one flare pool
+  const guidedPools = [];
+  fx.group.traverse((mesh) => {
+    if (mesh.isInstancedMesh && (mesh.renderOrder === 25 || mesh.renderOrder === 26)) guidedPools.push(mesh);
+  });
+  const flarePool = guidedPools.find((mesh) => mesh.renderOrder === 26);
+  const bodyPools = guidedPools.filter((mesh) => mesh.renderOrder === 25);
+  assert.ok(flarePool && bodyPools.length >= 10 && bodyPools.every((mesh) => /^fx-missile-body-/.test(mesh.name)),
+    'the real missile airframe and flare pools are present');
+  const konkursPool = bodyPools.find((mesh) => mesh.name === 'fx-missile-body-konkurs');
   const options = {
     fx,
     post: { prepareSoftParticles() {} },
@@ -523,8 +532,9 @@ try {
       stagedTracer = fx.group.children.find((mesh) => mesh.geometry?.getAttribute('aA'));
       assert.ok(stagedTracer.geometry.instanceCount > 0,
         'the real tracer issues a nonzero instanced draw, not compile-only zero instances');
+      assert.equal(flarePool.count, bodyPools.length, 'the warm stages one flare per airframe');
       for (const mesh of guidedPools) {
-        assert.equal(mesh.count, 1, 'guided body AND flare issue a nonzero native draw');
+        assert.ok(mesh.count >= 1, 'every airframe AND the flare issue a nonzero native draw');
         assert.equal(mesh.visible, true);
         assert.equal(mesh.frustumCulled, false);
         const matrix = new Matrix4();
@@ -674,27 +684,29 @@ try {
   const missileDirection = missile.vel.clone().normalize();
   for (let frame = 0; frame < 2; frame += 1) {
     fx.update(0.016, [missile], camera);
-    for (let index = 0; index < guidedPools.length; index += 1) {
-      const mesh = guidedPools[index];
+    // a round naming nothing flies the default airframe (a Konkurs at its 135 mm): the nose at the round, the flare at
+    // its tail
+    const tailM = missileTailM('konkurs', 0);
+    for (const [mesh, back] of [[konkursPool, 0], [flarePool, tailM + 0.04]]) {
       assert.equal(mesh.count, 1, 'live guided projection keeps one body/flare');
       const matrix = new Matrix4();
       mesh.getMatrixAt(0, matrix);
       const actualPosition = new Vector3().setFromMatrixPosition(matrix);
-      const expectedPosition = missile.pos.clone().addScaledVector(missileDirection,
-        index === 0 ? -0.65 : -1.35);
+      const expectedPosition = missile.pos.clone().addScaledVector(missileDirection, -back);
       assert.ok(actualPosition.distanceTo(expectedPosition) < 2e-6,
         'live body and flare retain the exact authored direction offsets');
     }
+    assert.ok(bodyPools.every((mesh) => mesh === konkursPool || mesh.count === 0), 'no other airframe draws');
     assert.ok(fx.getGuidedMissileDebug().trailSegments > 0, 'real missiles still retain trails');
     missile.prevPos.copy(missile.pos);
     missile.pos.addScaledVector(missileDirection, 2);
   }
-  const capacity = guidedPools[0].instanceMatrix.count;
+  const capacity = flarePool.instanceMatrix.count;
   const missiles = Array.from({ length: capacity + 2 }, (_, index) => ({
     ...missile, id: `capacity-${index}`, prevPos: missile.pos,
   }));
   fx.update(0.016, missiles, camera);
-  assert.ok(guidedPools.every((mesh) => mesh.count === capacity), 'live guided pool cap is unchanged');
+  assert.ok([konkursPool, flarePool].every((mesh) => mesh.count === capacity), 'live guided pool cap is unchanged');
   fx.resetAll();
   assert.ok(guidedPools.every((mesh) => mesh.count === 0));
   assert.deepEqual(fx.getGuidedMissileDebug(), { bodies: 0, trailSegments: 0 });
