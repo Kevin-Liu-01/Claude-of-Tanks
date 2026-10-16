@@ -84,8 +84,10 @@ export const shed: RegionalBuilder = (ctx) => {
       const vx = -W / 2 + w * 0.3, vz = D * 0.2, y0 = skid + h + 0.12, top = y0 + 0.95;
       sink.cylinder('structureMetal', [vx, y0 - 0.1, vz], 'y', 1.05, 0.08, 8, { colour: STEEL_DARK, decor: true });
       sink.cylinder('structureMetal', [vx, top, vz], 'y', 0.16, 0.2, 8, { colour: STEEL_DARK, decor: true }, 0.03);
+      // (kitConnectivity: a guy's foot stood 3 cm over the low eave) each foot on the sheet's top where it falls
+      const roofTop = (gx: number): number => skid + h + (w / 2 - gx) * Math.tan(4 * Math.PI / 180) + 0.08 / Math.cos(4 * Math.PI / 180) - 0.005;
       for (const [gx, gz] of [[-w / 2 + 0.1, -D / 2 + 0.15], [-w / 2 + 0.1, D / 2 - 0.15], [w / 2 - 0.1, vz]] as const) {
-        sink.member('structureMetal', [vx, top - 0.15, vz], [bx + gx, y0, gz], 0.012, 0.012, [0, 1, 0], { colour: STEEL_DARK, decor: true, fine: true, exposed: true }, 0);
+        sink.member('structureMetal', [vx, top - 0.15, vz], [bx + gx, roofTop(gx), gz], 0.012, 0.012, [0, 1, 0], { colour: STEEL_DARK, decor: true, fine: true, exposed: true }, 0);
       }
     });
     // the fuel drums on the open side
