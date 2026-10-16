@@ -9,7 +9,10 @@
 //      most of the height it stood, the crown at the far end; the same bytes twice, every vertex finite and on the
 //      ground's side of the frame's reach, every triangle facing its normal;
 //   4. a house with a frame beside it (the Queenstown headframe and its winding house) keeps the frame as a body of
-//      its own (E5).
+//      its own (E5);
+//   5. the Navajo windmill has a wreck of its own (navajoFall.ts; the r2 sweep fix b-west 2026-10-16: folded flat at
+//      its feet it stood 19 % of its height): its tower buckles at its second girt, the two lower panels standing on
+//      every leg's foot, the tower above folded over from there out along the ground.
 import assert from 'node:assert/strict';
 import { ARCHITECTURE_STYLES, buildRegionalParts, regionalKitPlanOf } from './index.ts';
 import { streamFrom } from './geometry.ts';
@@ -123,8 +126,27 @@ for (const [styleId, id, dims] of FRAMES) {
     top = Math.max(top, r.pos[i + 1]);
     assert.ok(r.pos[i + 1] > -1.0, `${label}: nothing under the ground (${r.pos[i + 1].toFixed(2)})`);
   }
+  const foot = Math.max(...lat.legs.map((l) => l.foot[1]));
+  if (a.kitPlan?.authored?.kind === 'windmill') {
+    // (5) buckled at its second girt: the lower panels stand on every foot, no higher than half the tower; the rest out
+    const stand = one.runs.filter((r) => r.role === 'remnant');
+    let standTop = -Infinity;
+    for (const r of stand) for (let i = 1; i < r.pos.length; i += 3) standTop = Math.max(standTop, r.pos[i]);
+    assert.ok(standTop > lat.girts[1] - 1.0 && standTop < foot + height * 0.55, `${label}: its lower panels stand to the buckle (${standTop.toFixed(1)}, girt ${lat.girts[1].toFixed(1)})`);
+    for (const l of lat.legs) {
+      let leg = false;
+      for (const r of stand) for (let i = 0; i < r.pos.length && !leg; i += 3) {
+        if (Math.hypot(r.pos[i] - l.foot[0], r.pos[i + 2] - l.foot[2]) < 0.3 && r.pos[i + 1] < l.foot[1] + 0.5) leg = true;
+      }
+      assert.ok(leg, `${label}: a leg standing on its foot (${l.foot.map((v) => v.toFixed(1)).join(', ')})`);
+    }
+    assert.ok(far > height * 0.35, `${label}: the tower above the buckle folded out along the ground (${far.toFixed(1)} m out of ${height.toFixed(1)})`);
+    assert.ok(top < foot + height * 0.55, `${label}: nothing fallen lies higher than the buckle (${top.toFixed(1)})`);
+    console.log(`lattice damage: ${label} — buckled at ${standTop.toFixed(1)} m of ${height.toFixed(1)}, folded ${far.toFixed(1)} m out`);
+    continue;
+  }
   assert.ok(far > height * 0.6, `${label}: the frame lies along the ground (${far.toFixed(1)} m out of ${height.toFixed(1)})`);
-  assert.ok(top < Math.max(...lat.legs.map((l) => l.foot[1])) + Math.max(3, height * 0.35), `${label}: nothing left standing high (${top.toFixed(1)})`);
+  assert.ok(top < foot + Math.max(3, height * 0.35), `${label}: nothing left standing high (${top.toFixed(1)})`);
   // a stub at every leg's foot: some rubble within a metre of each foot, under a metre and a half
   for (const l of lat.legs) {
     let stub = false;

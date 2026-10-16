@@ -8,6 +8,7 @@ import { buildHouse, holedFace, holedPolygon, recordBody, windowRhythm, type Hou
 import { doorUnit, rollerDoor, windowUnit, type WindowStyle } from './openings.ts';
 import { archHead } from './sarajevoParts.ts';
 import { recordLattice } from './lattice.ts';
+import { recordShed } from './shedFall.ts';
 import type { RegionalBuildContext } from './types.ts';
 import { board, rod } from './r2Members.ts';
 
@@ -580,7 +581,18 @@ export function navajoStands(sink: PartSink, ctx: RegionalBuildContext, kit: Sta
       board(sink, 'structureWood', [cx - 0.33, 0.43, cz], [cx + 0.33, 0.43, cz], [0, 1, 0], 0.06, 0.46, 0.02, { colour: rgb(0x9a2e24), decor: true });
     });
   }
-  recordLattice(sink, legs, [H], 0.14, 'structureWood', kit.juniper[0], { x0: -1.0, x1: 1.0, y0: H, y1: H + 1.0, z0: -0.8, z1: 0.8, bucket: 'structureWood', tint: [0.4, 0.36, 0.26] });
+  // (the r2 sweep fix b-west 2026-10-16: as an open frame it folded its posts flat to one side and covered a quarter of
+  // its plan) recorded as an open shed (shedFall.ts recordShed, the ramada's): its posts snap over their feet, its ply
+  // back and partitions and its ply-and-brush roofs come down over them in their lengths. The shed's frame: x from the
+  // back to the road (the stands' z), z along the row
+  sink.placed(-Math.PI / 2, 0, 0, 0, () => {
+    const posts = legs.map((l): [number, number, number, number] => [l.foot[2], -l.foot[0], -0.3, l.head[1]]);
+    recordShed(sink, posts.map(([x, z, f, h]) => ({ foot: [x, f, z] as Vec3, head: [x, h, z] as Vec3 })), {
+      W: D, D: W, pitchDeg: Math.atan2(0.3, D + 0.4) * 180 / Math.PI, eaveY: H + 0.07, eave: 0.25, verge: 0.1, deck: 0.1, post: 0.14, posts, pad: null,
+      timber: kit.juniper[0], boards: ply[0], boardW: 1.22, back: true, ends: true,
+      roof: { bucket: 'structureWood', colour: [0.42, 0.39, 0.26], shape: 'splinter', lattice: true }, stone: null, pile: 0,
+    });
+  });
 }
 
 // ------------------------------------------------------------------------------------------------ the Chouf
