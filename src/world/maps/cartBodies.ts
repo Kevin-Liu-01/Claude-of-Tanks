@@ -1692,7 +1692,11 @@ function cart2(c: Ctx, s: Cart2Spec): Assembly {
         // the shafts carry the frame forward and close in toward the beast's flanks (dressing, as a cart's handles)
         c.mesh.dressing(() => beam(c.mesh, [sx * (hw - 0.04), frameY, hl - 0.1], [sx * Math.min(hw - 0.04, 0.34), tipY, tipZ], 0.055, 0.07, woodOf(c, 2 + sx)));
       }
-      c.mesh.dressing(() => rod(c, [-Math.min(hw, 0.38), frameY + 0.01, hl + 0.25], [Math.min(hw, 0.38), frameY + 0.01, hl + 0.25], 0.025, woodOf(c, 5), true));
+      // the bar across the shafts (props census r2 sweep, Lane C 2026-10-16: it stopped 5-7 cm short of them, floating):
+      // its ends in the shafts where they pass its station
+      const t = Math.min(1, Math.max(0, 0.35 / Math.max(0.1, tipZ - (hl - 0.1))));
+      const bx = lerp(hw - 0.04, Math.min(hw - 0.04, 0.34), t), by = lerp(frameY, tipY, t);
+      c.mesh.dressing(() => rod(c, [-bx, by + 0.01, hl + 0.25], [bx, by + 0.01, hl + 0.25], 0.025, woodOf(c, 5), true));
     }
     // the floor across the frame
     const nb = Math.max(4, Math.round(s.bedL / 0.2));
@@ -1970,9 +1974,11 @@ function wagon4(c: Ctx, s: Wagon4Spec): Assembly {
       });
       if (s.seat) {
         // the spring seat across the box's front
-        for (const sx of [-1, 1]) beam(c.mesh, [sx * (hw - 0.05), floorY + s.sideH, hl - 0.45], [sx * (hw - 0.08), floorY + s.sideH + 0.18, hl - 0.48], 0.03, 0.05, IRON);
+        // (props census r2 sweep, Lane C 2026-10-16: the springs stood 3.5 cm inside the box's sides and the back board
+        // 2.5 cm over the seat, both floating) the springs' feet on the side boards' tops, the back board on the seat
+        for (const sx of [-1, 1]) beam(c.mesh, [sx * (hw + 0.008), floorY + s.sideH + 0.01, hl - 0.45], [sx * (hw - 0.08), floorY + s.sideH + 0.2, hl - 0.48], 0.03, 0.05, IRON);
         board(c, 0, floorY + s.sideH + 0.21, hl - 0.48, s.bedW - 0.06, 0.05, 0.36, woodOf(c, 34));
-        board(c, 0, floorY + s.sideH + 0.42, hl - 0.68, s.bedW - 0.06, 0.32, 0.04, woodOf(c, 35));
+        board(c, 0, floorY + s.sideH + 0.39, hl - 0.68, s.bedW - 0.06, 0.32, 0.04, woodOf(c, 35));
       }
     } else {
       // the dray's flat deck: low side rails and stake pockets
@@ -2053,7 +2059,11 @@ function trailer(c: Ctx, s: TrailerSpec): Assembly {
     // the ladder at the front (bale stacks), the lamps
     for (const sx of [-1, 1]) rod(c, [sx * (hw - 0.05), deckY, hl - 0.03], [sx * (hw - 0.05), deckY + 1.25, hl - 0.03], 0.022, chassis, true);
     for (let k = 1; k <= 3; k++) rod(c, [-hw + 0.05, deckY + k * 0.4, hl - 0.03], [hw - 0.05, deckY + k * 0.4, hl - 0.03], 0.016, chassis, true);
-    if (!c.coarse) for (const sx of [-1, 1]) c.mesh.box(sx * (hw - 0.12), deckY - 0.1, -hl - 0.02, 0.14, 0.07, 0.03, fixed(0x8a1a12, 0.3, 0, 'paint'), 0.006);
+    if (!c.coarse) for (const sx of [-1, 1]) {
+      c.mesh.box(sx * (hw - 0.12), deckY - 0.1, -hl - 0.02, 0.14, 0.07, 0.03, fixed(0x8a1a12, 0.3, 0, 'paint'), 0.006);
+      // (props census r2 sweep, Lane C 2026-10-16: the lamps hung 5 cm under the deck's end, floating) on their brackets
+      c.mesh.box(sx * (hw - 0.12), deckY - 0.05, -hl + 0.01, 0.04, 0.08, 0.04, chassis, 0);
+    }
   };
   const load = s.load === 'empty' ? undefined : () => bales(c, -hw + 0.02, hw - 0.02, -hl + 0.02, hl - 0.06, deckY + 0.018, 3);
   return { wheels, body, load, debris: { w: 0.16, l: s.deckL * 0.5 } };
@@ -2315,7 +2325,8 @@ function sled(c: Ctx, s: SledSpec): Assembly {
     runnerLips(c, [-rw, rw], 0.028, -hl, hl * 0.4);
     // round 4 (wave 260): straw dropped about it and along its track, clear of the snow its runners pushed up
     const ground = s.load === 'hay' ? () => groundSpill(c, {
-      x0: -rw - 0.15, x1: rw + 0.15, z0: -hl, z1: hl * 0.5, reach: 0.5, groundY: 0.03 + RUNNER_SNOW_SINK_M,
+      // (props census r2 sweep, Lane C 2026-10-16: the wisps lay 3 cm over the snow the runners sank into, floating) on it
+      x0: -rw - 0.15, x1: rw + 0.15, z0: -hl, z1: hl * 0.5, reach: 0.5, groundY: 0.01 + RUNNER_SNOW_SINK_M,
       wisps: 16, len: [0.12, 0.3], width: [0.012, 0.024], tangles: 4, spread: 0.14, mats: [HAY_PALE, HAY_A, HAY_DARK], salt: c.seed + 5011,
     }) : undefined;
     return { wheels: [], body, load, debris: { w: 0.08, l: 0.9 }, ground };
