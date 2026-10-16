@@ -79,7 +79,7 @@ assert.equal(a, c);
 
 // 6. The material wiring: the hook folds after the splat source is in, the key carries the signature, a lab switch.
 assert.match(terrain, /if \(splatFold\) shader\.fragmentShader = foldSplatUniforms\(shader\.fragmentShader, shader\.uniforms\)\.source;/);
-assert.match(terrain, /mat\.customProgramCacheKey = \(\) => `world-terrain-splat-v54-[^\n]*\$\{splatFoldKey\}`/);
+assert.match(terrain, /mat\.customProgramCacheKey = \(\) => `world-terrain-splat-v54-[^\n]*\$\{splatFoldKey\}(?:\$\{splatPrune \? '-p1' : ''\})?`/);
 globalThis.__COT_SPLAT_FOLD = false;
 assert.equal(splatFoldEnabled(), false, 'a lab tool can keep the uniforms live');
 delete globalThis.__COT_SPLAT_FOLD;
