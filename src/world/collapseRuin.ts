@@ -66,10 +66,14 @@ function measureTriangle(a: number, b: number, c: number): void {
   const y = (ay + by + cy) / 3;
   const bin = Math.max(0, Math.min(BINS - 1, Math.floor((y / binTop) * BINS)));
   bins[bin] += area;
-  // the plan it covers: its corners, its edges' midpoints and its centroid on the grid (cells about the triangle's size)
-  markCell(ax, az); markCell(bx, bz); markCell(cx, cz);
-  markCell((ax + bx) / 2, (az + bz) / 2); markCell((bx + cx) / 2, (bz + cz) / 2); markCell((cx + ax) / 2, (cz + az) / 2);
-  markCell((ax + bx + cx) / 3, (az + bz + cz) / 3);
+  // the plan it covers: a barycentric lattice over it, no coarser than the grid's cell (its corners included)
+  const cell = Math.min((2 * planHalfW) / GRID, (2 * planHalfD) / GRID);
+  const reach = Math.max(Math.hypot(ux, uz), Math.hypot(vx, vz), Math.hypot(cx - bx, cz - bz));
+  const n = Math.max(1, Math.min(48, Math.ceil(reach / cell)));
+  for (let i = 0; i <= n; i++) for (let j = 0; j <= n - i; j++) {
+    const s = i / n, t = j / n;
+    markCell(ax + ux * s + vx * t, az + uz * s + vz * t);
+  }
 }
 /** The area-weighted 90th percentile height written so far (bin resolution). */
 function heightP90(): number {
@@ -160,12 +164,13 @@ function fillMound(anatomy: StructureDamageAnatomy, rng: () => number, slot: Fra
   const hw = anatomy.w * 0.49, hd = anatomy.d * 0.49;
   const ids: number[] = _ids;
   ids.length = 0;
-  const lift = Math.min(0.6, 0.06 * anatomy.h);
+  // a rubble surface over the simulation's heap, no deeper than a hull's tracks sink in it
+  const lift = Math.min(0.25, 0.03 * anatomy.h);
   for (let k = 0; k <= nz; k++) for (let i = 0; i <= nx; i++) {
     const edge = i === 0 || k === 0 || i === nx || k === nz;
     const x = -hw + (2 * hw * i) / nx + (edge ? 0 : (rng() - 0.5) * (hw / nx)), z = -hd + (2 * hd * k) / nz + (edge ? 0 : (rng() - 0.5) * (hd / nz));
     const mound = bodyMoundHeightAt(anatomy, x, z);
-    const y = edge ? Math.max(0.03, mound * 0.6) : Math.max(0.08, mound) + lift * (0.4 + rng() * 0.8);
+    const y = edge ? Math.max(0.03, mound * 0.6) : Math.max(0.08, mound) + lift * (0.3 + rng() * 0.7);
     const shade = 0.72 + rng() * 0.25;
     ids.push(mesh.vertex(x, y, z, 0, 1, 0, x / 2, z / 2, slot.tint[0] * shade, slot.tint[1] * shade, slot.tint[2] * shade));
   }

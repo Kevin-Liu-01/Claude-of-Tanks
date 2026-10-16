@@ -1261,6 +1261,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/groundCoverCraters.selftest.mjs',
     // 2026-10-08 (destruction core lane, P2; wave 277): the collapse comes down storey by storey before its swap
     'src/sim/collapseCascade.selftest.mjs',
+    // 2026-10-16 (destruction lane): a collapse leaves a ruin, never a raft (the r2 sweep's anti-raft floors), every kit
+    'src/world/collapseRuin.selftest.mjs',
     // the kit seam's world side: the default kit, the aDamage tags, spans, depth materials and shadow touch (§16.4)
     'src/world/destructionKit.selftest.mjs',
     'src/world/fractureAnatomy.selftest.mjs',
