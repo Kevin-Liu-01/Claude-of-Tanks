@@ -98,7 +98,10 @@ function noticeInk(main){
   const count=(bits,r)=>{if(!r)return null;let n=0;
     for(let y=Math.max(0,Math.floor(r[1]*sy));y<Math.min(m.H,Math.ceil((r[1]+r[3])*sy));y++)for(let x=Math.max(0,Math.floor(r[0]*sx));x<Math.min(m.W,Math.ceil((r[0]+r[2])*sx));x++)n+=bits[y*m.W+x];
     return Math.round(n/sx/sy);};
-  const here=noticeBoxes(),out={};
+  // (Each page function is sent alone: noticeBoxes() restated.)
+  const box=selector=>{const el=document.querySelector(selector);if(!el||!el.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))return null;
+    const r=el.getBoundingClientRect();return r.width>=1&&r.height>=1?[r.left,r.top,r.width,r.height]:null;};
+  const here={d:box('.cot-sixth.on'),a:box('.cot-alert.show'),c:box('.cot-prebattle.on')},out={};
   for(const k of ['d','a','c'])if(here[k]&&main?.[k])out[k]={ink:count(m.union,here[k]),core:count(m.rest,here[k]),mainInk:count(m.union,main[k]),mainCore:count(m.rest,main[k]),box:here[k],main:main[k]};
   return out;
 }

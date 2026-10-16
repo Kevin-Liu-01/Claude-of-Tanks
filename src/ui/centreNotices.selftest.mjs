@@ -87,7 +87,7 @@ function feedRects(viewport, objective, kills, toasts) {
 }
 // A round button with the caption hanging under it (touchControls.ts .lb, measured: touchActionDock.fixture.json captions),
 // as the layout owner reads it (battleHudLayout.ts placeTouchCentre): one control, the caption's band at least as wide as
-// the button (verifier 2026-10-16, round 5: the detection and the 320 x 568 dock sat on the AUTO AIM and SCOPE captions).
+// the button (verifier 2026-10-16, round 6: the detection and the 320 x 568 dock sat on the AUTO AIM and SCOPE captions).
 function withCaption(r, c) {
   if (!c) return r;
   const half = Math.max(r.w, c.w) / 2, mid = r.x + r.w / 2;

@@ -14,17 +14,19 @@
  *   comfortable target, wherever it fits. 48 px everywhere is not possible: a 360 x 640 phone has a 45 px band
  *   between its minimap and the open ammo drawer, and a 320 x 568 phone or a 568 x 256 landscape browser has no
  *   room for a row of 48 px tiles that clears its joystick, FIRE cluster and instruments.
- * - The dock never scrolls and never covers a fixed control, an instrument, anything the reticle draws in any sight
- *   mode at any bloom (touchReticleFootprint: the ring, the scope's cross arms, the magazine and reload countdown, the
- *   scope's ammunition line, zoom plate and range tag), or the gun-limit warning's place (touchAimWarningSlot).
+ * - The dock never scrolls and never covers a fixed control (a round button's caption included), an instrument (the
+ *   swipe-to-aim hint included), anything the reticle draws in any sight mode at any bloom (touchReticleFootprint: the
+ *   ring, the magazine and reload countdown, the scope's ammunition line, zoom plate and range tag; the scope's cross
+ *   arms' tips are yielded live, touchAimKeepOut), or the gun-limit warning's place (touchAimWarningSlot).
  * - When the whole row does not fit, the dock shows the first controls (in a jump mode the jump comes first) and a
  *   More tile; More opens the rest beside it. The open panel may lie over instruments for that moment, never over the
  *   reticle's footprint or the gun-limit warning's place, and never over a touch control unless the screen leaves no
  *   other room (then it clears only the dock and the aim keep-out). Every control is one tap away, or two through
  *   More; none is ever off-screen.
  * - What the reticle draws away from the centre (the ring and gun mark riding a lagging, pinned or blocked gun; a
- *   turretless sight with all its readouts; the incoming-hit wedges and their damage figures) is never under a tile
- *   either: the dock sits under the reticle canvas and each tile that ink reaches dims (touchDockYield.ts).
+ *   turretless sight with all its readouts; the incoming-hit wedges and their damage figures; the scope's cross arms at
+ *   full bloom) is never under a tile either: the dock sits under the reticle canvas and each tile that ink reaches dims
+ *   (touchDockYield.ts).
  *
  * Rows fill from the bottom: the first control is the bottom-left tile, nearest the thumbs, and a second or third row
  * stacks above it. The dock shares the space above the reticle with the centre notices and the pre-battle countdown
@@ -192,7 +194,7 @@ export function touchReticleFootprint(width: number, height: number): TouchDockK
  * What neither the dock nor its More panel ever covers: the reticle's footprint less the scope's cross arms, and the
  * gun-limit warning's place. The arms (touchReticleFootprint [1] and [2]) reach 1.55 r + 3 from the aim point only in
  * the scope at full bloom, and on a portrait phone their tips are all that stood between the dock and a block for every
- * control (verifier 2026-10-16, round 5: 360 x 640 showed three controls and More where main's strip showed four). A
+ * control (verifier 2026-10-16, round 6: 360 x 640 showed three controls and More where main's strip showed four). A
  * tile may lie on an arm's tip; the scope reports the arms it draws to the live yield (touchDockYield.ts), so such a
  * tile dims under them, as under the ring riding a lagging gun, and the arms always draw over it.
  */
@@ -203,7 +205,7 @@ export function touchAimKeepOut(width: number, height: number, minimapBottom: nu
 
 /** The gun-limit warning's width on a portrait phone 341 to 480 px wide (battleHudLayout.css): its longest copy ("GUN
  *  TRAVEL LIMIT", "PRESS F TO FLIP") fits one line, and the 20 px it gives back either side are what a column of two
- *  44 px tiles beside it needs on 390 x 844 (verifier 2026-10-16, round 5). */
+ *  44 px tiles beside it needs on 390 x 844 (verifier 2026-10-16, round 6). */
 export const TOUCH_AIM_WARNING_PORTRAIT_W = 140;
 /**
  * The gun-limit warning's own place (.cot-aim-warning, battleHudLayout.css), reserved whether or not it shows, so the

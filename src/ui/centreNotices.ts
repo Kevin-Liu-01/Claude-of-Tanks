@@ -486,7 +486,7 @@ export function placeTouchCentre(input: TouchCentreInput, dock: TouchDockPlaceme
  * reserved (for the feeds' usual fill, `reference`) or first with the notices kept off it, the first as the search
  * finds it nearest the thumbs and as the nearest dock of one, two and three rows (a portrait phone's column beside the
  * reticle shows every control where its row above the reticle would take the notices' only clear place). Of these the
- * plan that shows the most controls on the dock wins (verifier 2026-10-16, round 5: 390 x 844 and 360 x 640 showed
+ * plan that shows the most controls on the dock wins (verifier 2026-10-16, round 6: 390 x 844 and 360 x 640 showed
  * three and More where main's strip showed four), then the one leaving the notices and the countdown (at that fill)
  * clearer of the reticle, then 48 px tiles and the dock nearest the thumbs. Its inputs never include the feeds'
  * current rows, so the dock never moves while kills and hits come and go.

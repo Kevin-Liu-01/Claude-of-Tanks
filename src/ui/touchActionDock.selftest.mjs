@@ -160,7 +160,7 @@ function feedLanes(viewport, objective) {
 }
 // A round button with the caption hanging under it (touchControls.ts .lb, measured: touchActionDock.fixture.json captions),
 // as the layout owner reads it (battleHudLayout.ts placeTouchCentre): one control, the caption's band at least as wide as
-// the button (verifier 2026-10-16, round 5: the detection and the 320 x 568 dock sat on the AUTO AIM and SCOPE captions).
+// the button (verifier 2026-10-16, round 6: the detection and the 320 x 568 dock sat on the AUTO AIM and SCOPE captions).
 function withCaption(r, c) {
   if (!c) return r;
   const half = Math.max(r.w, c.w) / 2, mid = r.x + r.w / 2;
@@ -201,13 +201,13 @@ for (const viewport of VIEWPORTS) {
       checkDock(`${label} x${count}`, { width, height, hard: input.controls, soft: [...input.instruments, ...input.drawer], lanes,
         feeds: input.feeds, keep: input.keepOut, anchor: input.anchor }, count, dock);
       placements++;
-      // Never fewer controls on screen at once than main's strip showed whole (verifier 2026-10-16, round 5: 390 x 844
+      // Never fewer controls on screen at once than main's strip showed whole (verifier 2026-10-16, round 6: 390 x 844
       // and 360 x 640 showed three and More where main showed four, 320 x 568 one where main showed two, 568 x 256 none
       // where main showed one). Main's strip of five controls scrolled under a hidden scrollbar; mainTiles is how many of
       // its tiles lay whole on screen (measured on main 5ab143d57), and its strip never widened past five whole tiles.
       assert.ok(dock.shown >= Math.min(count, viewport.mainTiles), `${label} x${count}: ${dock.shown} controls on the dock (main's strip showed ${viewport.mainTiles})`);
       // The owner's phones (verifier 2026-10-16: the dock above the ring cost 390 x 844 eight of a burst's kill rows and
-      // two of its incoming toasts; round 5: its row under the reticle showed three and More and hid the swipe-to-aim
+      // two of its incoming toasts; round 6: its row under the reticle showed three and More and hid the swipe-to-aim
       // hint). Off the feeds' lanes, the hint and the captions, 390 x 844 and 360 x 640 dock in a column two tiles wide
       // left of the reticle: every control up to six, five and More at seven. 844 x 390, whose feeds end high, shows
       // every control in one row.

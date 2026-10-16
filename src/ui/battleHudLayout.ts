@@ -410,7 +410,7 @@ export function installBattleHudLayout(root: HTMLElement, dockYield?: DockYield)
       let rect: TouchDockRect = { x: box.left, y: box.top, w: box.width, h: box.height };
       if (node.matches(dockInstrumentSelector)) { dockInstruments.push(rect); continue; }
       // A round button's caption hangs 17 px below it (touchControls.ts .lb: AUTO AIM, SCOPE, FIRE, ROCKET): part of the
-      // control, so nothing placed here lies on it (verifier 2026-10-16, round 5: the detection and the 320 x 568 dock
+      // control, so nothing placed here lies on it (verifier 2026-10-16, round 6: the detection and the 320 x 568 dock
       // sat on the AUTO AIM and SCOPE captions). The caption's band is reserved at least as wide as the button, so a
       // caption that changes with the button's state (LOCKED, RELEASE FIRES) never moves what is placed round it.
       if (node.classList.contains('round')) {
@@ -436,7 +436,7 @@ export function installBattleHudLayout(root: HTMLElement, dockYield?: DockYield)
     instrumentCount = dockInstruments.length;
     if (drawer) dockInstruments.push(drawer);
     // The swipe-to-aim hint (touchControls.ts .aimhint; "· LANDSCAPE RECOMMENDED" on a portrait phone): the dock keeps
-    // off it like an instrument (verifier 2026-10-16, round 5: on 390 x 844 the dock's row hid 82% of it); the notices
+    // off it like an instrument (verifier 2026-10-16, round 6: on 390 x 844 the dock's row hid 82% of it); the notices
     // may pass over it for their few seconds.
     const hint = read('.cot-touch-aim.on .aimhint');
     if (hint && hint.width >= 1 && hint.height >= 1) dockInstruments.push({ x: hint.left, y: hint.top, w: hint.width, h: hint.height });

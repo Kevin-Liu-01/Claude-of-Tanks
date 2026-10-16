@@ -1,14 +1,15 @@
 /**
  * The touch action dock yields to the reticle wherever the reticle actually draws (verifier 2026-10-15).
  *
- * touchActionDock.ts keeps the dock off everything the reticle draws around the screen centre. Three things the reticle
- * canvas (.cot-ret, hud.ts) draws are not there:
+ * touchActionDock.ts keeps the dock off what the reticle draws around the screen centre. Four things the reticle canvas
+ * (.cot-ret, hud.ts) draws are not kept off that way:
  * - the dispersion ring and the physical gun mark ride the gun's own point (view.gunX/gunY), which separates from the
  *   crosshair whenever the turret or gun lags the camera, hits a limit or is blocked; a turretless sight (Strv 103,
  *   Jagdpanzer E100) moves its whole sight there, readouts included, held 40 px inside the screen edge;
  * - the incoming-hit wedges, drawn round the centre from max(0.185 x shorter side, ring + 26) px out, about 64 px thick,
  *   with the damage figure ("-420", "CRIT") beyond them;
- * - the hit-confirm shards round the crosshair.
+ * - the hit-confirm shards round the crosshair;
+ * - the scope's cross arms, whose tips at full bloom a tile may lie on (touchActionDock.ts touchAimKeepOut).
  * How far the gun mark drifts has no useful bound: a 60 px touch flick turns the camera 8.9 degrees, and with the
  * slowest turret (9.2 deg/s) the mark leaves the screen, so a static keep-out sized for it would leave no room for any
  * tile (docs/BATTLE-UI-QA.md, "Gun mark drift"). Instead the dock sits under the reticle canvas (battleHudLayout.css),
