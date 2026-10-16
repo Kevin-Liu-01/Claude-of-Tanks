@@ -22,6 +22,7 @@ import { paintLimeRender, paintLimewash, paintNipaThatch } from './regionalSurfa
 import { graveParts } from './maps/regional/yards.ts'; // a churchyard's graves (placeYards; the facades lane)
 import type { YardStyle } from './maps/regional/types.ts';
 import { applyTone, terrainNearMeshHeightAt, type HeightField, type TerrainLayout } from './terrain.ts';
+import { placeGroundMarkings, type GroundMarkingsConfig } from './groundMarkings.ts'; // (the maps lane's Kestrel rebuild, 2026-10-15)
 import { authoredRoadStationCount, authoredRoadStationIndex, buildingRoadStationIndices } from './maps/roadStations.ts';
 import { roadSettlementJunction } from './roadSettlementJunction.ts';
 import { roadFencePath, fencePathSampler } from './roadFencePath.ts';
@@ -611,6 +612,7 @@ interface PropsSettings {
   rockTalusDeg?: number | null;
   extraKits?: readonly string[] | null;
   riverLandings?: readonly RiverLandingAnchor[];
+  groundMarkings?: GroundMarkingsConfig; // paint on the paved ground (groundMarkings.ts; Kestrel's apron markings). Default none
   /** The landmarks lane (2026-10-05): the map's set pieces — bridges, monuments, squares, gates, towers and civic
    * buildings (src/world/landmarks/) — placed once the settlement stands, before every scatter pass. */
   landmarks?: readonly LandmarkPlacement[];
@@ -9801,6 +9803,7 @@ ${snowCap ? `
     placeTrackTears(corridors);
   }
   yield* placeGroundBlendDecals();
+  if (P.groundMarkings) placeGroundMarkings(group, P.groundMarkings, (px, pz) => terrainNearMeshHeightAt(nearMeshVertexHeight, px, pz), (cfg as { terrain?: { hardstands?: SceneryHardstand[] } } | null)?.terrain?.hardstands ?? [], L.roads, aniso, (m) => engineCtx.setupShadowMaterial(m));
   yield { fine: true, stage: 'ground-decals' };
 
   // --- sourced-model InstancedMeshes (one per model, shared baked material) ---

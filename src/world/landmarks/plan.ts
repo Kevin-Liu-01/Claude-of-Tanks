@@ -313,6 +313,9 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [num(p, 'width') / 2 + 0.4, num(p, 'length') / 2 + 1.7] },
   drumCache: { family: 'works', drapes: true, dressing: () => true, defaults: { rows: 3, columns: 8 },
     footprint: (p) => [(Math.round(num(p, 'columns')) - 1) * 0.37 + 2.4, Math.max(2.2, (Math.round(num(p, 'rows')) - 1) * 0.37 + 0.6)] },
+  // (the maps lane's Kestrel rebuild, 2026-10-15: an apron's floodlight mast, airfieldWorks.ts)
+  floodMast: { family: 'works', defaults: { height: 22 },
+    footprint: (): [number, number] => [1.8, 1.8] },
   // (the airstrip: a draped strip, its markers the props' barrels, a windsock and a shack beside its middle)
   airstrip: { family: 'works', drapes: true, roadMargin: 0, defaults: { length: 460, width: 26 },
     footprint: (p) => [num(p, 'width') / 2 + 10, num(p, 'length') / 2 + 1.5] },

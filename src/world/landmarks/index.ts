@@ -14,6 +14,7 @@ import { bandstand, churchyard, fountain, garden, outfall, parkGate, parkSquare,
 import { aircraftWreck } from './wrecks.ts';
 import { airstrip, drumCache, guyedMast, jamesway, moduleTrain, radomeTower, snowFence, troposcatter } from './stations.ts';
 import { fuelTankFarm } from './tankFarm.ts';
+import { floodMast } from './airfieldWorks.ts';
 import { oreCars } from './mining.ts';
 import { conveyor, headframe, oreBin } from './mineWorks.ts';
 import { belfry, campanile, fireLookout, windmill } from './towers.ts';
@@ -36,6 +37,7 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   drumCache,
   equestrianStatue,
   fireLookout,
+  floodMast,
   fuelTankFarm,
   fountain,
   garden,
