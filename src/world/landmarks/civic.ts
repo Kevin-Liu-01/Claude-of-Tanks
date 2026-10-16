@@ -243,8 +243,10 @@ function orthodoxChurch(ctx: LandmarkBuildContext): ReturnType<LandmarkBuilder> 
   // (the maps lane, 2026-10-15, Verdant's paired capture: the church's walls blew out to a white blob with a halo under
   // the Kursk sun, 11 % of the frame clipped where main's view clipped 0.3 %) the lime render's tint a weathered white,
   // in line with the village's whitewashed khatas (was [1.0, 1.0, 0.99]: the smoothed render samples the print's
-  // brightest texels across the whole wall)
-  return { parts: smoothRender(sink.finish(), RENDER_SMOOTH), tints: { plaster: [0.8, 0.79, 0.76], plaster2: [1, 1, 1], plaster3: [1, 1, 1] } };
+  // brightest texels across the whole wall); (the blind critics on Verdant v2, PASS +0.38 with one loss: at 0.8 the church
+  // still blew out under High bloom into a glowing silhouette washing out half the frame) 0.7 over the village lime-wash
+  // (kolkhoz.ts whitewash, now eased in over a knee): about 0.45 a wall, lit by the sun without feeding the bloom
+  return { parts: smoothRender(sink.finish(), RENDER_SMOOTH), tints: { plaster: [0.7, 0.69, 0.66], plaster2: [1, 1, 1], plaster3: [1, 1, 1] } };
 }
 
 /** The UV scale of a church's and a monument's lime render over the village print (kit.ts smoothRender). */

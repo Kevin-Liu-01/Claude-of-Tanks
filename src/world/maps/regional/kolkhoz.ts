@@ -558,8 +558,13 @@ export const KOLKHOZ_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Objec
 /** the yard's trodden black-earth clay round a khata (facade craft): sRGB 4a3e30 as it should read, over the lime's albedo */
 const TRODDEN: Rgb = shade(rgb(0x4a3e30), 1 / 0.54);
 
-/** whitewash: the khatas' lime render, cool and bright (the photo render set stays off) */
-const whitewash = (_h: number, s: number, l: number): readonly [number, number, number] => [0.12, Math.min(1, s * 0.25), Math.min(1, l * 1.28 + 0.12)];
+/** whitewash: the khatas' lime render, cool and bright (the photo render set stays off); (the maps lane, 2026-10-15; the
+ *  blind critics on Verdant v2: High bloom blew the white walls out to glowing blanks) its brightest lime eased in over a
+ *  knee at 0.6, so the wash keeps its brushwork and stops short of the bloom's threshold */
+const whitewash = (_h: number, s: number, l: number): readonly [number, number, number] => {
+  const x = l * 1.28 + 0.12;
+  return [0.12, Math.min(1, s * 0.25), Math.min(1, x < 0.6 ? x : 0.6 + (x - 0.6) * 0.35)];
+};
 /**
  * The render painted as lime-wash brushed over mud plaster, not the plain render's canvas (the facades lane,
  * 2026-10-05; wave 116: the khatas and the church read "a grey stone-chip texture instead of lime-wash"). The blue

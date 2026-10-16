@@ -15,7 +15,9 @@ import { letterText, measureText } from './lettering.ts';
 import { gateStubs } from './plan.ts';
 import type { LandmarkBuilder } from './types.ts';
 
-const BANNER_RED = rgb(0xa8261e), STAR_RED = rgb(0xb3221c), WHITE = rgb(0xece8de), TIMBER = rgb(0x6a5440), TIMBER_DARK = rgb(0x4a3b2e);
+// (the maps lane, 2026-10-15; the blind critics on Verdant v2: the gate's sign blew out under High bloom) the banner's
+// frame, its lettering and the crest in a painted white, not a lamp's
+const BANNER_RED = rgb(0xa8261e), STAR_RED = rgb(0xb3221c), WHITE = rgb(0xc9c5bb), TIMBER = rgb(0x6a5440), TIMBER_DARK = rgb(0x4a3b2e);
 const VERMILION = rgb(0xc4452c), LACQUER_BLACK = rgb(0x1e1c1b), FRAME_WHITE = rgb(0xe8e4da), GILT = rgb(0xb8933e);
 
 const uvOffset = (rng: () => number): [number, number] => [rng() * 7.31, rng() * 5.17];
@@ -121,7 +123,8 @@ export const kolkhozArch: LandmarkBuilder = (ctx) => {
     const kind = String(ctx.params.wingFence || 'fencepicket'), x0 = px + p / 2 + 0.25;
     for (const sx of [-1, 1]) fenceRun(destructibles, kind, [sx * x0, 0], [sx * (x0 + wings), 0]);
   }
-  return { parts: smoothRender(sink.finish(), LIMEWASH_UV), tints: { plaster: [1, 1, 0.98] }, destructibles };
+  // (2026-10-15: the pillars' lime-wash at about two thirds, as the church's, under High bloom)
+  return { parts: smoothRender(sink.finish(), LIMEWASH_UV), tints: { plaster: [0.8, 0.8, 0.78] }, destructibles };
 };
 
 // ---------------------------------------------------------------------------------------------------------- town gate
