@@ -21,7 +21,7 @@ assert.equal(mg.name, 'm551a1TtsRoofM2', 'guns[1] is the roof M2 the owner place
 for (const gun of [cannon, mg]) assert.ok(gun.yawArc && gun.yawArc[0] < 0 && gun.yawArc[1] > 0, `${gun.name}: a traverse arc round its rest bearing`);
 assert.ok(cannon.depressionByYaw?.length, 'the 30 mm carries the turret front depression table');
 // One-station vehicles have no extra station state and no arc.
-for (const id of ['m1a2', 'abramsx', 'm1a2_tusk']) {
+for (const id of ['m1a1_abrams_hc', 'abramsx', 'm1a1_abrams_sa']) {
   assert.equal(AUXILIARY_INVENTORY[id].guns.length, 1, `${id}: one station`);
   assert.equal(createAuxiliaryState(TANK_SPECS[id]).stations, undefined, `${id}: no extra station state`);
   assert.equal(AUXILIARY_INVENTORY[id].guns[0].yawArc, undefined, `${id}: full traverse`);
