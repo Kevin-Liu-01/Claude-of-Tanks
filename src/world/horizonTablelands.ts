@@ -5,7 +5,7 @@
 // wanders round the ring (by `vary`) in whole strata (`stepM`), so the far skyline is flat-topped mesas at a few heights
 // with cliffs between them — Kaiparowits and the Straight Cliffs rather than the Alps. Opt-in per map
 // (horizon.summitCap), heights only and lowering only; the cut then settles by the bed stair's laws
-// (settleHorizonCut, shared with the dam's canyon).
+// (settleHorizonCut).
 import { suppressNeedles } from './horizonMassif.ts';
 
 export interface HorizonSummitCapSettings {
@@ -40,7 +40,7 @@ const smoothstep = (a: number, b: number, x: number): number => {
  * as a spike, so it comes down to one arc step over the higher of them, and the 3.6:1 radial cliff bound holds — each
  * law by lowering the higher vertex, over the masked vertices (the cut and its neighbours), in a few rounds.
  */
-export function settleHorizonCut(h: Float32Array, p: Float32Array, columns: number, mask: Float32Array): void {
+function settleHorizonCut(h: Float32Array, p: Float32Array, columns: number, mask: Float32Array): void {
   const n = columns, rowCount = h.length / n;
   const rOf = (i: number): number => Math.hypot(p[i * 3], p[i * 3 + 2]);
   const lowerTo = (i: number, j: number): void => {
@@ -59,7 +59,7 @@ export function settleHorizonCut(h: Float32Array, p: Float32Array, columns: numb
 }
 
 /** Mark a lowered vertex and its four neighbours for the settling. */
-export function markHorizonCut(mask: Float32Array, i: number, columns: number): void {
+function markHorizonCut(mask: Float32Array, i: number, columns: number): void {
   const n = columns, rowCount = mask.length / n, row = (i / n) | 0, k = i % n;
   mask[i] = 1;
   mask[row * n + (k + 1) % n] = 1;

@@ -8,16 +8,16 @@
 // the sawmill's open shed and its board store; the shepherds' huts (bacówki) on the meadows; the houses burnt in the
 // January fighting, their stacks standing in the snow.
 import {
-  PartSink, faceBox, facePoint, hashSeed, pick, rgb, shade, streamFrom,
+  PartSink, faceBox, facePoint, hashSeed, pick, rgb, shade, streamFrom, UV_MEMBER,
   type Face, type Rgb, type Vec3,
 } from './geometry.ts';
 import {
-  buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm,
-  type HouseDialect, type HouseFrame, type Opening, type RoofSpec, type StoreySpec,
+  buildHouse, emitRoof, holedBox, roofGeometry, storeyFaces, windowRhythm,
+  type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec, type StoreySpec,
 } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { woodpile } from './dressing.ts';
-import { coveringRise, openShed } from './outbuildings.ts';
+import { openShed } from './outbuildings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 const LOG = rgb(0x5a4330), LOG_DARK = rgb(0x3b2c20), PALE = rgb(0xc9ad7f), WHITE = rgb(0xe4e2dc), IRON = rgb(0x26282a);
@@ -199,7 +199,7 @@ function freeRanges(y0: number, y1: number, cuts: ReadonlyArray<readonly [number
  * `look` keeps the old seams' draws (one a course a storey): those draws are the courses' tones, so what the builder
  * draws after the walls keeps its look.
  */
-function logWork(sink: PartSink, frame: HouseFrame, storeys: readonly number[], look: () => number, win: WindowStyle,
+export function logWork(sink: PartSink, frame: HouseFrame, storeys: readonly number[], look: () => number, win: WindowStyle,
   mobile: boolean, course = 0.27): void {
   const tones: number[] = [];
   for (const i of storeys) {
@@ -294,11 +294,13 @@ function sunburst(sink: PartSink, face: Face, y: number, r: number, fine: boolea
 }
 
 /** The vertical boards of a gable: battens over the planks' joints, every 25 cm. */
-function gableBoards(sink: PartSink, face: Face, frame: HouseFrame): void {
+function gableBoards(sink: PartSink, face: Face, frame: HouseFrame, skip: ReadonlyArray<readonly [number, number]> = []): void {
   const g = frame.roof.gable;
   if (!g) return;
   const eave = frame.eaveY, s = frame.roof.s, top = Math.max(...g.map(([, y]) => y));
   for (let u = -s + 0.2; u < s - 0.15; u += 0.25) {
+    // (a batten never runs across a light cut through the gable)
+    if (skip.some(([a, b]) => u > a && u < b)) continue;
     // the batten runs from the eave line to the gable's edge above it
     const h = g.length === 3 ? eave + (s - Math.abs(u)) * frame.roof.tanP : Math.min(top, eave + (s - Math.abs(u)) * frame.roof.tanP);
     if (h - eave < 0.25) continue;
@@ -399,17 +401,28 @@ const willa: RegionalBuilder = (ctx) => {
       roof: gont(54, 0.65, 0.7), gableBucket: 'wood', openings, gutters: null, verge: null, reveal: 0.24, spall: null,
       chimneys: [{ x: -W * 0.2, z: -D * 0.2, sx: 0.65, sz: 0.65, above: 0.8, bucket: 'plaster', cap: 'slab' },
         { x: W * 0.2, z: D * 0.18, sx: 0.65, sz: 0.65, above: 0.8, bucket: 'plaster', cap: 'slab' }],
-    }, dialect(st));
+    }, {
+      ...dialect(st),
+      // (props census #15, Lane C 2026-10-16: the attic's gable windows were a white frame and a dark plate on the
+      // boards) cut through the gables with their reveals, the units set back in them
+      gableOpenings: (_face, poly) => (Math.max(...poly.map(([, y]) => y)) - poly[0][1] > 1.6
+        ? [-0.9, 0.9].map((u) => ({ u0: u - 0.26, u1: u + 0.26, y0: poly[0][1] + 0.62, y1: poly[0][1] + 1.28 })) : []),
+    });
     if (ctx.snowCap) roofSnow(sink, frame);
     logWork(sink, frame, [0], look, st.window, st.mobile);
     const f = frame.faces.front;
-    if (!st.mobile) { gableBoards(sink, f, frame); gableBoards(sink, frame.faces.back, frame); }
+    const attic: Array<[number, number]> = [[-1.25, -0.55], [0.55, 1.25]];
+    if (!st.mobile) { gableBoards(sink, f, frame, attic); gableBoards(sink, frame.faces.back, frame, attic); }
     sunburst(sink, f, frame.eaveY + 2.2, 1.6, st.mobile);
     sunburst(sink, frame.faces.back, frame.eaveY + 2.2, 1.6, st.mobile);
-    // the attic's small gable windows, white-framed, proud of the boards
-    for (const face of [f, frame.faces.back]) for (const u of [-0.9, 0.9]) {
-      faceBox(sink, 'structureWood', face, u, frame.eaveY + 0.95, 0.05, 0.7, 0.85, 0.04, { colour: PALE, decor: true });
-      faceBox(sink, 'dark', face, u, frame.eaveY + 0.95, 0.075, 0.52, 0.66, 0.01, { decor: true });
+    // the attic's small gable windows in their cut openings, white-framed
+    if (Math.max(...(frame.roof.gable ?? [[0, 0]]).map(([, y]) => y)) - frame.eaveY > 1.6) {
+      sink.recess = frame.gableReveal;
+      try {
+        for (const face of [f, frame.faces.back]) for (const u of [-0.9, 0.9]) {
+          windowUnit(sink, face, u, frame.eaveY + 0.62, 0.52, 0.66, { ...st.window, shutters: null, frame: PALE }, st.rng, 0.2);
+        }
+      } finally { sink.recess = 0; }
     }
     // the granite terrace before the door (the steep roof's deep eave over it; the villa's veranda and its lean-to went
     // with the second storey), its rail of split posts
@@ -515,12 +528,23 @@ const kosciol: RegionalBuilder = (ctx) => {
   }
   // the door into the tower and the boarded chamber oversailing the shaft
   const tf: Face = { origin: [0, 0, tz + h0 - 0.06], u: [1, 0, 0], out: [0, 0, 1], width: 2 * h0 };
-  doorUnit(sink, tf, 0, 0.45, 1.2, 2.3, { leaf: LOG_DARK, frame: { bucket: 'structureWood', width: 0.14, out: 0.06, colour: PALE }, steps: null, leafKind: 'plank' });
+  // (the r2 sweep: the leaf lay on the shaft's boards, a dark plate) the door hung deep in a heavy timber case standing
+  // out of the shaft, under a little shingle hood on two brackets
+  doorUnit(sink, tf, 0, 0.45, 1.2, 2.3, { leaf: LOG_DARK, frame: { bucket: 'structureWood', width: 0.18, out: 0.17, colour: PALE }, steps: null, leafKind: 'plank' });
+  {
+    const hy = 0.45 + 2.3 + 0.22, hood: RoofSpec = { kind: 'gable', pitchDeg: 40, eave: 0.08, verge: 0.04, thickness: 0.08, bucket: 'roof', ridge: 'saddle', decor: true };
+    sink.placed(0, 0, 0, tz + h0 + 0.24, () => emitRoof(sink, roofGeometry(1.7, 0.6, hy, hood), hood));
+    for (const sx of [-1, 1]) sink.member('structureWood', [sx * 0.72, hy - 0.55, tz + h0 - 0.04], [sx * 0.72, hy - 0.02, tz + h0 + 0.5], 0.09, 0.09, [sx, 0, 0],
+      { colour: LOG_DARK, decor: true, exposed: true }, 0);
+    sink.span('structureWood', -0.85, hy - 0.1, tz + h0 - 0.06, 0.85, hy, tz + h0 + 0.54, { colour: LOG_DARK, decor: true, uv: UV_MEMBER });
+  }
   const cw = h1 + 0.35, cy0 = shaft, cy1 = shaft + 2.4;
-  sink.span('wood', -cw, cy0, tz - cw, cw, cy1, tz + cw);
-  for (const [o, u] of [[[0, 0, tz + cw], [1, 0, 0]], [[0, 0, tz - cw], [-1, 0, 0]], [[cw, 0, tz], [0, 0, -1]], [[-cw, 0, tz], [0, 0, 1]]] as const) {
-    const fc: Face = { origin: o as Vec3, u: u as Vec3, out: [Math.sign(o[0]), 0, o[0] === 0 ? Math.sign(o[2] - tz) : 0], width: 2 * cw };
-    for (const s of [-0.55, 0.55]) faceBox(sink, 'dark', fc, s, cy0 + 1.35, 0.006, 0.45, 1.1, 0.01, { decor: true });
+  // (props census #15, Lane C 2026-10-16: the sound holes were dark plates on the boards) cut through the chamber's
+  // boarded walls with their reveals, the louvre boards across each
+  const sound = (): HoleRect[] => [-0.55, 0.55].map((u) => ({ u0: u - 0.225, u1: u + 0.225, y0: cy0 + 0.8, y1: cy0 + 1.9 }));
+  const chamber = holedBox(sink, 'wood', -cw, tz - cw, cw, tz + cw, cy0, cy1, { front: sound(), back: sound(), left: sound(), right: sound() }, 0.15, 0.12);
+  for (const fc of Object.values(chamber)) for (const u of [-0.55, 0.55]) for (let k = 0; k < 5; k++) {
+    faceBox(sink, 'structureWood', fc, u, cy0 + 0.92 + k * 0.21, -0.07, 0.44, 0.04, 0.1, { colour: LOG_DARK, decor: true, fine: true });
   }
   // the chamber's eaves and the bulb (frustum rings of shingle), its spike and cross
   const cap: RoofSpec = { kind: 'hip', pitchDeg: 30, eave: 0.4, verge: 0.4, thickness: 0.1, bucket: 'roof', ridge: null };
@@ -579,12 +603,11 @@ const drewutnia: RegionalBuilder = (ctx) => {
   const mobile = ctx.tier === 'mobile';
   sink.placed(0, fit.cx, 0, fit.cz, () => {
     const pile = 1.5 + look() * 0.4;
-    const shed = openShed(sink, { W, D, hLo: 2.2, pitchDeg: 24, back: true, ends: true, pile, block: true, mobile }, {
+    openShed(sink, { W, D, hLo: 2.2, pitchDeg: 24, back: true, ends: true, pile, block: true, mobile, snow: ctx.snowCap ? { t: 0.26, bucket: 'plaster' } : null }, {
       timber: LOG, post: 0.16, pad: { bucket: 'stone', size: 0.34, top: 0.18 },
       cladding: 'gapped', boards: [LOG_AGED, shade(LOG_AGED, 1.12), shade(LOG, 1.05)], boardW: 0.19, gap: 0.03, trim: LOG_DARK,
       covering: 'shingle', roofBucket: 'roof', eave: 0.25, verge: 0.18,
     }, look);
-    if (ctx.snowCap) roofSnowOn(sink, W, D, shed.roof.eaveY + coveringRise('shingle'), shed.roof.spec);
   });
   return sink.finish();
 };

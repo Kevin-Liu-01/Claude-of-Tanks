@@ -1,13 +1,16 @@
 #!/usr/bin/env node
 /**
  * Re-encode every committed world collision shard in the newest exact encoding (server/collisionManifestCodec.ts) without
- * rebuilding a world (the shards' storage budget, 2026-10-14: primitive-kind-dict-v3). Each shard's bytes are checked
+ * rebuilding a world (the shards' storage budget, 2026-10-14: primitive-kind-dict-v3; 2026-10-16: v4). Each shard's bytes are checked
  * against the index first; its decoded manifest is written again (tools/worldCollisionManifestFiles.mjs) and decoded
  * back, and every record, key, number and string must equal the original bit for bit (Object.is: no -0 for 0, no
  * rounding) before the index is rewritten with the new bytes and checksums. A shard already in the newest encoding is
  * left as it is.
  *
  *   node tools/transcode-collision-manifests.mjs [--check]     (--check: transcode in memory, report, write nothing)
+ *   node tools/transcode-collision-manifests.mjs --reindex     (a merge took the index from one side and the shards from
+ *     the other: a shard that no longer matches its entry is taken as it stands when its census still equals the entry's,
+ *     and the index is rebuilt from the shards; any census change still fails)
  */
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -19,6 +22,7 @@ import {
 } from './worldCollisionManifestFiles.mjs';
 
 const check = process.argv.includes('--check');
+const reindex = process.argv.includes('--reindex');
 const directory = collisionManifestDirectory;
 
 /** The first difference between two decoded values (key order, Object.is numbers), or null. */
@@ -56,11 +60,17 @@ for (const [id, variant] of shards) {
   const entry = variant ? variants[variant][id] : maps[id];
   const name = collisionManifestShardName(id, variant);
   const bytes = readFileSync(new URL(`${name}.json`, directory));
-  if (bytes.length !== entry.bytes || createHash('sha256').update(bytes).digest('hex') !== entry.sha256) {
-    throw new Error(`${name}: the committed shard does not match its index entry`);
-  }
+  const stale = bytes.length !== entry.bytes || createHash('sha256').update(bytes).digest('hex') !== entry.sha256;
+  if (stale && !reindex) throw new Error(`${name}: the committed shard does not match its index entry`);
   const published = JSON.parse(bytes.toString('utf8'));
   const original = decodeCollisionManifest(published);
+  if (stale) {
+    const counts = collisionManifestCounts(original);
+    if (counts.obstacles !== entry.obstacles || counts.colliders !== entry.colliders || counts.concealers !== entry.concealers) {
+      throw new Error(`${name}: the shard and its index entry describe different records (census): recapture it`);
+    }
+    console.log(`${name}: the index entry was stale (${entry.bytes} B named, ${bytes.length} B committed, same census): reindexed`);
+  }
   const text = JSON.stringify(encodeCollisionManifest(original));
   const difference = exactDifference(decodeCollisionManifest(JSON.parse(text)), original);
   if (difference) throw new Error(`${name}: the re-encoded shard decodes differently (${difference})`);

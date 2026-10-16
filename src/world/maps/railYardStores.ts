@@ -8,6 +8,7 @@
 // did (passed as unit values), so the yard's stream keeps its place.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { bevelBox } from './bevelBox.ts';
 
 type BG = THREE.BufferGeometry;
 const _c = new THREE.Color();
@@ -38,8 +39,26 @@ function merged(parts: BG[]): BG {
   return g;
 }
 
-const FLANGE = rgb(0x6e5538), FLANGE_DARK = rgb(0x4a3a28), BARREL = rgb(0x8a7454), CABLE = rgb(0x1d1d1e), HOLE = rgb(0x121110),
+const FLANGE = rgb(0x6e5538), FLANGE_DARK = rgb(0x4a3a28), BARREL = rgb(0x8a7454), CABLE = rgb(0x1d1d1e), ARBOR = rgb(0x2e2a26),
   CREOSOTE = rgb(0x3a3027), CREOSOTE_WORN = rgb(0x5c5143);
+const ARBOR_R = 0.09;
+
+/** The geometry turned inside out: its faces wound and its normals pointing the other way (a bore's lining). */
+function inward(g: BG): BG {
+  const ix = g.index!, n = g.attributes.normal;
+  for (let i = 0; i < ix.count; i += 3) { const b = ix.getX(i + 1); ix.setX(i + 1, ix.getX(i + 2)); ix.setX(i + 2, b); }
+  for (let i = 0; i < n.count; i++) n.setXYZ(i, -n.getX(i), -n.getY(i), -n.getZ(i));
+  return g;
+}
+/** A disc of radius `r` and `thick` (its axis y) with a hole of radius `hole` bored through it: its rim and two faces. */
+function ringFlange(r: number, hole: number, thick: number, seg: number): BG {
+  const rim = new THREE.CylinderGeometry(r, r, thick, seg, 1, true);
+  const faces = [1, -1].map((s) => new THREE.RingGeometry(hole, r, seg, 1).rotateX(-s * Math.PI / 2).translate(0, s * thick / 2, 0));
+  const g = mergeGeometries([rim, ...faces], false);
+  rim.dispose(); for (const f of faces) f.dispose();
+  if (!g) throw new Error('railYardStores: the flange does not merge');
+  return g;
+}
 
 /**
  * A cable drum of flange radius `radius` standing on its flanges at the origin (its axle along x before `yaw`), from
@@ -50,20 +69,16 @@ export function cableDrum(radius: number, yaw: number, v: readonly number[]): BG
   const W = radius * 1.1, R = radius, parts: BG[] = [];
   const axle = (g: BG) => { g.rotateZ(Math.PI / 2); g.translate(0, R, 0); return g; };
   const flangeTone = tone < 0.5 ? FLANGE : FLANGE_DARK;
-  for (const sx of [-1, 1]) {
-    const f = axle(new THREE.CylinderGeometry(R, R, 0.07, 18, 1, false));
-    f.translate(sx * (W / 2 - 0.035), 0, 0);
-    parts.push(paint(f, flangeTone, 0.3, 61 + sx));
-    // the arbor hole: a dark boss on the flange's outer face
-    const hole = axle(new THREE.CylinderGeometry(0.09, 0.09, 0.012, 8, 1, false));
-    hole.translate(sx * (W / 2 + 0.002), 0, 0);
-    parts.push(paint(hole, HOLE, 0.1, 63));
-  }
+  // (props r2, Lane C 2026-10-16: the arbor holes were dark discs stuck on the flanges, painted plates) each flange a
+  // plank disc with its arbor hole bored through, the hole lined by the steel arbor tube that runs the reel's width
+  for (const sx of [-1, 1]) parts.push(paint(axle(ringFlange(R, ARBOR_R, 0.07, 18)).translate(sx * (W / 2 - 0.035), 0, 0), flangeTone, 0.3, 61 + sx));
+  parts.push(paint(axle(inward(new THREE.CylinderGeometry(ARBOR_R, ARBOR_R, W + 0.01, 10, 1, true))), ARBOR, 0.15, 63));
   const barrelR = R * 0.48;
   parts.push(paint(axle(new THREE.CylinderGeometry(barrelR, barrelR, W - 0.14, 12, 1, true)), BARREL, 0.3, 64));
-  // the cable wound on: a full reel to most of the flange, or part paid out down toward the barrel
+  // the cable wound on: a full reel to most of the flange, or part paid out down toward the barrel (its ends against
+  // the flanges' inner faces, the arbor's way through it clear)
   const wound = barrelR + (R * 0.9 - barrelR) * (left < 0.7 ? 1 : 0.35);
-  parts.push(paint(axle(new THREE.CylinderGeometry(wound, wound, W - 0.16, 16, 1, false)), CABLE, 0.15, 65));
+  parts.push(paint(axle(new THREE.CylinderGeometry(wound, wound, W - 0.16, 16, 1, true)), CABLE, 0.15, 65));
   // the loose end: off the winding's front, hanging slack down the reel's face to the ground and lying there in a lazy
   // curve (a heavy cable's own weight: no straight runs), a metre or so out
   const a = (lie - 0.5) * 1.6, ex = (lie - 0.5) * (W - 0.4);
@@ -94,7 +109,9 @@ export function sleeperStack(v: readonly number[]): BG {
     const across = course % 2 === 1, n = course === courses - 1 ? keep : per;
     for (let k = 0; k < n; k++) {
       const off = -span / 2 + D / 2 + k * (D + gap);
-      const s = new THREE.BoxGeometry(across ? D : L, H, across ? L : D);
+      // (props r2, Lane C 2026-10-16: the stack was all sharp boxes) a sleeper's long arrises worn round by the years
+      // in the track and the yard's handling: eased 2 cm
+      const s = bevelBox(across ? D : L, H, across ? L : D, 0.02, 0.5);
       const lift = H / 2 + course * H;
       // a sleeper's ends a few centimetres out of line, its tone worn grey where it has lain in the weather
       const jog = (hash(course * 11 + k, salt) - 0.5) * 0.06;
@@ -117,10 +134,55 @@ function block(x0: number, x1: number, y0: number, y1: number, z0: number, z1: n
   g.translate((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2);
   return paint(g, tone, 0.25, salt);
 }
-/** A rail-section member from a to b (0.07 x 0.15), painted. */
+/** A flat-bottomed rail's section (a worn S 49: 0.15 m tall, its foot 0.125 m), across x, its height along z. */
+const RAIL_SECTION: ReadonlyArray<readonly [number, number]> = (() => {
+  // upright (w across, h up from the foot), counter-clockwise; laid with the foot toward +z
+  const up: Array<[number, number]> = [[-0.0625, 0], [0.0625, 0], [0.0625, 0.011], [0.012, 0.03], [0.008, 0.04], [0.008, 0.105],
+    [0.0335, 0.115], [0.0335, 0.15], [-0.0335, 0.15], [-0.0335, 0.115], [-0.008, 0.105], [-0.008, 0.04], [-0.012, 0.03], [-0.0625, 0.011]];
+  return up.map(([w, h]) => [w, 0.075 - h] as [number, number]).reverse();
+})();
+/** The rail section run `len` along y (centred), flat-shaded sides and its two cut ends: indexed, like BoxGeometry. */
+function railBar(len: number): BG {
+  const S = RAIL_SECTION, n = S.length, pos: number[] = [], nor: number[] = [], uv: number[] = [], idx: number[] = [];
+  const tri = (a: number, b: number, c: number, nx: number, ny: number, nz: number) => {
+    const ax = pos[a * 3], ay = pos[a * 3 + 1], az = pos[a * 3 + 2];
+    const ux = pos[b * 3] - ax, uy = pos[b * 3 + 1] - ay, uz = pos[b * 3 + 2] - az, vx = pos[c * 3] - ax, vy = pos[c * 3 + 1] - ay, vz = pos[c * 3 + 2] - az;
+    const d = (uy * vz - uz * vy) * nx + (uz * vx - ux * vz) * ny + (ux * vy - uy * vx) * nz;
+    if (d >= 0) idx.push(a, b, c); else idx.push(a, c, b);
+  };
+  const vert = (x: number, y: number, z: number, nx: number, ny: number, nz: number, u: number, v: number) => {
+    pos.push(x, y, z); nor.push(nx, ny, nz); uv.push(u, v); return pos.length / 3 - 1;
+  };
+  let run = 0;
+  for (let k = 0; k < n; k++) {
+    const [u0, v0] = S[k], [u1, v1] = S[(k + 1) % n], du = u1 - u0, dv = v1 - v0, l = Math.hypot(du, dv) || 1;
+    // (counter-clockwise in x, z: the outward normal is the edge turned clockwise)
+    const nx = dv / l, nz = -du / l;
+    const a = vert(u0, -len / 2, v0, nx, 0, nz, 0, run), b = vert(u1, -len / 2, v1, nx, 0, nz, 0, run + l);
+    const c = vert(u1, len / 2, v1, nx, 0, nz, len, run + l), d = vert(u0, len / 2, v0, nx, 0, nz, len, run);
+    tri(a, b, c, nx, 0, nz); tri(a, c, d, nx, 0, nz);
+    run += l;
+  }
+  const faces = THREE.ShapeUtils.triangulateShape(S.map(([u, v]) => new THREE.Vector2(u, v)), []);
+  for (const sy of [-1, 1]) {
+    const base = pos.length / 3;
+    for (const [u, v] of S) vert(u, sy * len / 2, v, 0, sy, 0, u, v);
+    for (const [a, b, c] of faces) tri(base + a, base + b, base + c, 0, sy, 0);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  return g;
+}
+/**
+ * A member bent from old rail, from a to b: (props r2, Lane C 2026-10-16) the rail's own section, its head, web and
+ * foot (it was a 0.07 x 0.15 box), the foot toward +z when it stands upright. Painted.
+ */
 function railMember(a: readonly number[], b: readonly number[], tone: readonly number[], salt: number): BG {
   const p = new THREE.Vector3(a[0], a[1], a[2]), q = new THREE.Vector3(b[0], b[1], b[2]), d = q.clone().sub(p), len = d.length();
-  const g = new THREE.BoxGeometry(0.07, len, 0.15);
+  const g = railBar(len);
   g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize()));
   g.translate((p.x + q.x) / 2, (p.y + q.y) / 2, (p.z + q.z) / 2);
   return paint(g, tone, 0.3, salt);
@@ -161,8 +223,13 @@ export function bufferStopGeometry(v: readonly number[]): BG {
   parts.push(railMember([-0.72, 0.6, 0.95], [0.72, 0.6, 0.95], frame, 84));
   parts.push(block(-0.035, 0.035, beamY + 0.19, beamY + 0.95, 0.0 + lean, 0.07 + lean, frame, 94));
   parts.push(block(-0.32, 0.32, beamY + 0.42, beamY + 0.98, -0.02 + lean, 0.0 + lean, frame, 95));
-  parts.push(block(-0.31, 0.31, beamY + 0.43, beamY + 0.97, -0.03 + lean, -0.02 + lean, BEAM_WHITE, 96));
-  parts.push(block(-0.25, 0.25, beamY + 0.49, beamY + 0.91, -0.04 + lean, -0.03 + lean, BEAM_RED, 97));
+  // (props r2, Lane C 2026-10-16: the red square was a plate stuck on the white board) the sign's face in one layer on
+  // its steel back: the red square and its white border round it, flush, as the board is painted
+  const zf0 = -0.03 + lean, zf1 = -0.02 + lean;
+  parts.push(block(-0.25, 0.25, beamY + 0.49, beamY + 0.91, zf0, zf1, BEAM_RED, 97));
+  parts.push(block(-0.31, 0.31, beamY + 0.43, beamY + 0.49, zf0, zf1, BEAM_WHITE, 96));
+  parts.push(block(-0.31, 0.31, beamY + 0.91, beamY + 0.97, zf0, zf1, BEAM_WHITE, 98));
+  for (const sx of [-1, 1]) parts.push(block(sx > 0 ? 0.25 : -0.31, sx > 0 ? 0.31 : -0.25, beamY + 0.49, beamY + 0.91, zf0, zf1, BEAM_WHITE, 99 + sx));
   const bands = 7, W = 2.3;
   for (let k = 0; k < bands; k++) {
     const x0 = -W / 2 + (k * W) / bands, x1 = -W / 2 + ((k + 1) * W) / bands;

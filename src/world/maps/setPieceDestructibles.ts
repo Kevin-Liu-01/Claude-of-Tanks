@@ -62,6 +62,7 @@ export function setPieceDestructibleTypes(mobile = false): Record<string, Destru
       // (Lane C, #8 r2) the phone tier draws the coarse builds (about half the triangles; the same footprint and record)
       build: () => buildSetPiece(kind, { coarse: mobile }),
       broken: () => buildSetPiece(kind, { wrecked: true, coarse: mobile }),
+      collisionSolid: () => buildSetPiece(kind, { coarse: true }), // (physics, 2026-10-16: every tier refits from the coarse build)
     };
     // the share of its height a hull cannot press it below: a machine crumples, it is not pancaked (propCrush.ts)
     Object.assign(out[setPieceDestructibleKind(kind)], { crushFloor: mass.floor });
@@ -100,6 +101,7 @@ export function rollingStockDestructibleTypes(mobile = false): Record<string, De
       instancePaint: (out) => { out.setRGB(1, 1, 1); },
       build: () => lifted(buildRollingStock(kind, { coarse: mobile })),
       broken: () => lifted(buildRollingStock(kind, { wrecked: true, coarse: mobile })),
+      collisionSolid: () => lifted(buildRollingStock(kind, { coarse: true })), // (physics: every tier the same records)
     };
     Object.assign(out[rollingStockDestructibleKind(kind)], { crushFloor: ROLLING_STOCK_MASS.floor });
   }
@@ -114,17 +116,19 @@ export function rollingStockDestructibleTypes(mobile = false): Record<string, De
 // their break swaps to the collapsed build, drawn with the baked material.
 
 /** The destructible kind a tram registers as: Sarajevo's K2 or Blackglass's Shanghai car (tramShanghai.ts). */
-export type TramKind = 'xk2_black_panther' | 'shanghai';
+export type TramKind = 'k2' | 'shanghai'; // the Sarajevo K2 tram's kind, not a tank id (tank-ids:keep)
 export function tramDestructibleKind(kind: TramKind): string { return `tram_${kind}`; }
 
 export function tramDestructibleTypes(mobile = false): Record<string, DestructiblePropType> {
-  const xk2_black_panther = SET_PIECE_SIZE.k2tram, sh = SHANGHAI_TRAM_SIZE;
+  const k2 = SET_PIECE_SIZE.k2tram, sh = SHANGHAI_TRAM_SIZE; // tank-ids:keep
   return {
-    [tramDestructibleKind('xk2_black_panther')]: {
+    [tramDestructibleKind('k2')]: { // tank-ids:keep
       cls: 'break', mat: 'baked', contact: 'ob', collider: true,
-      r: Math.hypot(xk2_black_panther.hw, xk2_black_panther.hl), h: xk2_black_panther.h, hw: xk2_black_panther.hw, hl: xk2_black_panther.hl, keep: 0.35, crushMin: 5.5, groundPose: true, castShadow: true,
+      r: Math.hypot(k2.hw, k2.hl), h: k2.h, hw: k2.hw, hl: k2.hl, // tank-ids:keep
+      keep: 0.35, crushMin: 5.5, groundPose: true, castShadow: true,
       build: () => buildSetPiece('k2tram', { wrecked: true, coarse: mobile }),
       broken: () => buildSetPiece('k2tram', { wrecked: true, collapsed: true, coarse: mobile }),
+      collisionSolid: () => buildSetPiece('k2tram', { wrecked: true, coarse: true }), // (physics: every tier the same records)
     },
     // (Blackglass, 1937) the Shanghai Electric Construction Company's car, burnt out on its avenue
     [tramDestructibleKind('shanghai')]: {
@@ -132,6 +136,7 @@ export function tramDestructibleTypes(mobile = false): Record<string, Destructib
       r: Math.hypot(sh.hw, sh.hl), h: sh.h, hw: sh.hw, hl: sh.hl, keep: 0.4, crushMin: 5.0, groundPose: true, castShadow: true,
       build: () => buildShanghaiTram('burnt', mobile),
       broken: () => buildShanghaiTram('collapsed', mobile),
+      collisionSolid: () => buildShanghaiTram('burnt', true), // (physics: every tier the same records)
     },
   };
 }

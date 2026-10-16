@@ -1,5 +1,7 @@
 // Clouds 2.0 (2026-10-06): the Beer shadow map's ground shade against the trace's own sun — the skies lane's acceptance
-// case on Frosthollow (its sunward frame showed the sun's disc through a gap in the 700 m stratocumulus deck while the
+// case on Frosthollow's stack (2026-10-16: Frosthollow's own deck is closed since the 10-13 ruling's enforcement, 0.92 — no
+// gap for a sun to show through — so the case runs on its stack at the 0.86 cover it was written for: a deck with gaps is
+// still what the map's path must price, wherever one is drawn) (its sunward frame showed the sun's disc through a gap in the 700 m stratocumulus deck while the
 // shade map, sampling the field once at the deck's base, kept the camera's own ground in cloud shadow; the trace sees the
 // sun through the whole 420 m slab, a slant of about 0.9 km at 33°). Pinned without a GPU by twins of the GLSL that
 // matters (cloudShaders.ts): the shell, the map's march by lanes and slices, the four-texel lookup blended as
@@ -64,7 +66,9 @@ assert.ok(shaders.includes('return m - log( max( dot( w, exp( m - od ) ), 1e-6 )
 // ---- Frosthollow's stack and sun
 const config = getMapConfig('winter');
 assert.equal(config.name, 'Frosthollow');
-const preset = deriveCloudLayerPreset({ ...DEFAULT_SKY_PRESET, ...config.sky, cloudscape: config.clouds ?? null });
+assert.equal(config.clouds.coverage, 0.92, 'Frosthollow\'s own deck is closed (cloudsBan.selftest)');
+// the case's deck: Frosthollow's stack at its former 0.86 cover, the gaps the shade map must follow
+const preset = deriveCloudLayerPreset({ ...DEFAULT_SKY_PRESET, ...config.sky, cloudscape: { ...config.clouds, coverage: 0.86 } });
 const stack = cloudStackOf(preset);
 const lane = stack.lanes[0];
 // the layer's shade law (volumetricClouds.ts updateFarShade): a deck with gaps draws its pattern under the deck's core

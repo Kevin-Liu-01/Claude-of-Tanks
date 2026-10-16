@@ -94,7 +94,9 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
       const balances = span / 2 + 0.75 + Math.max(3.6, span * 0.42);
       const grade = Math.min(0.25, Math.max(0.05, num(p, 'grade')));
       const long = approach > 0 || rise > 0 ? span / 2 + (approach > 0 ? 2.6 : 0) + approach + 3.2 + (rise > 0 ? (rise + 0.5) / grade : 0) + 0.3 : 0;
-      return [num(p, 'width') / 2 + 1.1, Math.max(balances, long)];
+      // (#27, Lane C 2026-10-16) across: the bridge-keeper's hut on the bank beside the roadway (bridges.ts liftKeeper: its
+      // centre 2.9 m past the roadway's edge, 1.3 m to its wall and its eave's 0.3 m)
+      return [num(p, 'width') / 2 + 4.3, Math.max(balances, long)];
     } },
   viaduct: { family: 'bridge', defaults: { arches: 7, archSpan: 12, height: 22, width: 8 },
     footprint: (p) => [num(p, 'width') / 2 + 0.8, (num(p, 'arches') * (num(p, 'archSpan') + 3) + 3) / 2] },
@@ -313,6 +315,9 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [num(p, 'width') / 2 + 0.4, num(p, 'length') / 2 + 1.7] },
   drumCache: { family: 'works', drapes: true, dressing: () => true, defaults: { rows: 3, columns: 8 },
     footprint: (p) => [(Math.round(num(p, 'columns')) - 1) * 0.37 + 2.4, Math.max(2.2, (Math.round(num(p, 'rows')) - 1) * 0.37 + 0.6)] },
+  // (the maps lane's Kestrel rebuild, 2026-10-15: an apron's floodlight mast, airfieldWorks.ts)
+  floodMast: { family: 'works', defaults: { height: 22 },
+    footprint: (): [number, number] => [1.8, 1.8] },
   // (the airstrip: a draped strip, its markers the props' barrels, a windsock and a shack beside its middle)
   airstrip: { family: 'works', drapes: true, roadMargin: 0, defaults: { length: 460, width: 26 },
     footprint: (p) => [num(p, 'width') / 2 + 10, num(p, 'length') / 2 + 1.5] },

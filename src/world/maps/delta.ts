@@ -32,8 +32,8 @@ const river = [
 
 // The flooded paddies (2026-10-12, item 4; the owner: "we need real water"): level basins of water held by their bunds
 // (terrain.paddies, paddies.ts), in terraced rows on the open floodplain, turned with the bunds (yaw -11) and off the roads,
-// the river, the village and both deployments. Two rows on alpha's bank — a pair a hundred metres in front of the deployment
-// and a row of three on the way to the char — and their rotations about the char on bravo's. (Found by a site probe over
+// the river, the village, both deployments and the homestead mounds. On alpha's bank a pair a hundred metres in front of
+// the deployment and one more on the way to the char, and their rotations about the char on bravo's. (Found by a site probe over
 // the finished ground: each paddy's floor varies under 3.6 m before it is levelled, its twin as well.)
 const PADDY_W = 30, PADDY_L = 44, PADDY_YAW = -11, PADDY_STEP = PADDY_W + 3.2;
 const paddyRow = (x: number, z: number, count: number) => {
@@ -43,7 +43,12 @@ const paddyRow = (x: number, z: number, count: number) => {
     return { x: x + Math.cos(yaw) * off, z: z - Math.sin(yaw) * off };
   });
 };
-const paddies = [...paddyRow(-45, -310, 2), ...paddyRow(-10, -215, 3)]
+// (2026-10-16, the 226 gate: scenery's "the straw stacks at the north homestead stand (water)") the second row's centre and
+// east paddies stood on homestead mounds — the levee homestead's on alpha's bank, the north homestead's after the turn
+// about the char — and levelled their basins into the mounds' flanks, flooding the stacks at their feet. The homesteads
+// stand on their mounds above the flood line (the brief), so that row keeps only its west paddy (clear of every mound on
+// both banks); no site within 200 m holds the other two clear of the mounds on both banks.
+const paddies = [...paddyRow(-45, -310, 2), ...paddyRow(-10, -215, 3).slice(0, 1)]
   .flatMap(({ x, z }) => [[x, z], [-8 - x, 28 - z]])
   .map(([x, z]) => ({ x, z, widthM: PADDY_W, lengthM: PADDY_L, yawDeg: PADDY_YAW }));
 
@@ -128,6 +133,8 @@ export default {
   vegetation: {
     species: ['palm', 'willow', 'eucalyptus', 'oak'], clusterMix: [['willow', 0.35], ['palm', 0.28], ['eucalyptus', 0.22], ['oak', 0.15]],
     loneMix: [['palm', 0.30], ['willow', 0.30], ['eucalyptus', 0.25], ['oak', 0.15]], rimMix: [['willow', 0.38], ['eucalyptus', 0.28], ['palm', 0.20], ['oak', 0.14]],
+    // GND (2026-10-15): the ring's trees at each species' own rim stature (vegetation.ts `ringStature`): eucalyptus x1.30 of the one mean
+    ringStature: 'species',
     clusterCount: 96, loneCount: 214, rimCount: 112, grassDensity: 1.22,
     clusterScrub: 2.2, bushCount: 1.45, bushSpecies: 'oak',
   },

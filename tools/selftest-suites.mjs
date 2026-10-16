@@ -75,6 +75,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/amx30B2Roof.selftest.mjs',
     'src/vehicles/fleetRenewal.selftest.mjs',
     'src/vehicles/nationalModernization.selftest.mjs',
+    'src/vehicles/nationalDonorTurrets.selftest.mjs',
     'src/vehicles/profiles/nationalUkraineProtection.selftest.mjs',
     'src/vehicles/nationalPolandProtection.selftest.mjs',
     'src/vehicles/nationalRoof.selftest.mjs',
@@ -661,6 +662,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/dev/shotViews.selftest.mjs',
     'src/dev/shotRuntime.selftest.mjs',
     'src/engine/csmShaderRelease.selftest.mjs',
+    // 2026-10-16 (the perf lane): one material per program variant — live prototype twins, one uniform map
+    'src/engine/programVariants.selftest.mjs',
     'src/engine/renderLayers.selftest.mjs',
     'src/engine/shadowCasterProfiles.selftest.mjs',
     'src/engine/nearVehicleShadowDetail.selftest.mjs',
@@ -774,6 +777,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/imagePreload.selftest.mjs',
     'src/ui/responsiveLayout.selftest.mjs',
     'src/ui/pinchZoomGuard.selftest.mjs',
+    'tools/pinch-zoom-probe.selftest.mjs',
+    'src/ui/hudEditorPreview.selftest.mjs',
     'src/ui/runtimeStyles.selftest.mjs',
     'src/ui/topAccentBorders.selftest.mjs',
     'src/vehicles/camoPolicy.selftest.mjs',
@@ -914,6 +919,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/structureStages.selftest.mjs',
     'src/fx/structureDebris.selftest.mjs', // 2026-10-12: thrown pieces lie where their flight meets the ground; still pieces belong to their building
     'src/fx/rubbleBodies.selftest.mjs', // 2026-10-12: a building's larger falling pieces are bodies of the one physics engine
+    // 2026-10-15 (the fracture package on integ/226): walls break where struck as cells, a section's fall keeps its stub and
+    // gaps its doors; a building cut into its own pieces (doors gapped in the stubs), brought down as bodies; the stages
+    // driving both, sections on and off, every piece at rest on what is under it, a lift bridge's named pieces as bodies
+    'src/fx/wallFracture.selftest.mjs',
+    'src/fx/structureFracture.selftest.mjs',
+    'src/fx/collapsePieces.selftest.mjs',
+    'src/fx/collapseBodies.selftest.mjs',
+    'src/fx/fractureStages.selftest.mjs',
     'tools/destruction-check.selftest.mjs', // 2026-10-12: Steinburg's buildings destroyed and judged (textured, nothing hanging, rubble at rest on the ground)
     'src/fx/structureMask.selftest.mjs', // 2026-10-13: nothing hangs from a falling building (straddling triangles come down with the front)
     'src/fx/latticeGround.selftest.mjs', // 2026-10-13: the landing solves read the ground as drawn from its lattice's vertices, once each
@@ -965,6 +978,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/skyCloudBake.selftest.mjs',
     'src/engine/skyHorizonCache.selftest.mjs',
     'src/engine/skyEnvironmentCache.selftest.mjs',
+    'src/engine/skyEnvironmentEnclosure.selftest.mjs',
     'src/engine/atmosphere.selftest.mjs',
     // 2026-10-01: the grounded light model (lighting lane): sun through the atmosphere, the sky's own light, the deck, the exposure law
     'src/engine/lightModel.selftest.mjs',
@@ -998,8 +1012,6 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-14 (the engine-cs lane; media wave f1 "hulls hover" on snow): the Studio support seats the snow takes' heroes on
     // the rendered ground, and the ground occlusion grounds them there (the snow cap, the crease's core; ordinary ground unchanged)
     'tools/studio-snow-contact.selftest.mjs',
-    // 2026-10-03 (the skies-and-atmosphere lane): the cumulus fields and the flat condensation base
-    'src/engine/cumulusFields.selftest.mjs',
     // 2026-10-03 (the shade-fill lane): shade on dark materials kept off black — the photographic toe, the dim's facing rule
     'src/engine/shadeFill.selftest.mjs',
     'src/engine/toneR1.selftest.mjs',
@@ -1163,12 +1175,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/middleware-diet.selftest.mjs',
     'tools/worker-generated-types.selftest.mjs',
     'server/dedicatedWorldCollision.selftest.mjs',
+    'server/collisionRestoreIndex.selftest.mjs', // 2026-10-16 physics: a whole destroyed set restores in linear time (Saltwind's walls)
     'server/convexOutlines.selftest.mjs', // 2026-10-08 the hitbox lane: every convex part holds its outline
     'server/mapResourceCache.selftest.mjs',
     'server/collisionManifestLoader.selftest.mjs',
     'server/collisionManifestCodec.selftest.mjs',
     // 2026-10-14 (physics stream): every base and variant shard matches its index.json entry (the loaders' check)
     'server/collisionManifestIndex.selftest.mjs',
+    'server/collisionManifestRoutes.selftest.mjs', // 2026-10-16 physics: v2 serves 226's manifests (256 parts); /mp-collision holds production 224's byte for byte
     'server/dedicatedWorldCollisionMemory.selftest.mjs',
     'server/match/loop.selftest.mjs',
     'server/match/inputBuffer.selftest.mjs',
@@ -1258,6 +1272,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/groundCoverCraters.selftest.mjs',
     // 2026-10-08 (destruction core lane, P2; wave 277): the collapse comes down storey by storey before its swap
     'src/sim/collapseCascade.selftest.mjs',
+    // 2026-10-16 (destruction lane): a collapse leaves a ruin, never a raft (the r2 sweep's anti-raft floors), every kit
+    'src/world/collapseRuin.selftest.mjs',
     // the kit seam's world side: the default kit, the aDamage tags, spans, depth materials and shadow touch (§16.4)
     'src/world/destructionKit.selftest.mjs',
     'src/world/fractureAnatomy.selftest.mjs',
@@ -1444,6 +1460,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/mapQuality.selftest.mjs',
     'src/world/waterMobility.selftest.mjs',
     'src/world/terrainContactSurface.selftest.mjs',
+    // 2026-10-15 (ground lane): the steep-cell diagonal — one split for the drawn mesh, the contact surface, the overlay
+    'src/world/terrainDiagonal.selftest.mjs',
     'tools/render-frame-sampler.selftest.mjs',
     'tools/environment-shot-camera.selftest.mjs',
     'tools/water-shore-camera.selftest.mjs',
@@ -1499,6 +1517,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // props lane A #19 (2026-10-15): the paved pads' render-only dressing (no step in the drive surface)
     'src/world/hardstandDressing.selftest.mjs',
     'src/world/landformGeology.selftest.mjs', // 2026-10-03: landform geology, and every smooth landform unchanged
+    'src/world/landformPath.selftest.mjs', // 2026-10-08: a ridge's curved axis (Skybridge round 6's meander) and the carved union
+    'src/world/maps/skybridgeArm.selftest.mjs', // 2026-10-08: Skybridge's reservoir arm generated as data, current
     'src/world/verdantTownPlan.selftest.mjs', // 2026-10-03: Verdant's classic town plan (every planned building on main's plot, the village walls)
     'src/world/townPlans.selftest.mjs', // 2026-10-03: recorded town plans and the carriageway post-pass (each settlement where PR #9's head seated it)
     'src/world/terrainMounds.selftest.mjs', // 2026-10-07: built mounds (Polders' molenbergen) level on their crests over the finished ground
@@ -1573,6 +1593,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/crushedStones.selftest.mjs', // 2026-10-10 the hitbox lane, round 3: a crushed stone splits and presses into its ground
     'src/world/rockDriveOver.selftest.mjs', // 2026-10-08 the hitbox lane: a drive-over stone has no collider; shells meet its ground; (2026-10-10) a low one is a crushable small rock
     'src/world/rubbleCollision.selftest.mjs', // 2026-10-09 the hitbox lane, round 3: a rubble pile's records from its drawn chunks
+    'src/world/fieldHutCover.selftest.mjs', // 2026-10-16 physics DST-03: a field hut stops rounds on its own slabs; canvas lets them through
     // the scenery lane (after wave 57): the telegraph poles' weathered timber
     'src/world/poleTimber.selftest.mjs',
     'src/world/scenery.selftest.mjs',
@@ -1590,12 +1611,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/fieldWallCollision.selftest.mjs', // 2026-10-15 physics PH.15: the field walls' crushable spans and their press
     // the scenery lane (b15, wave 106): the regions' field stacks and the straw props' hay print
     'src/world/haystacks.selftest.mjs',
+    'src/world/maps/sceneryR2.selftest.mjs', // 2026-10-16 props lane A, the r2 sweep: the scenery and field-stack kinds to the bunker r2 standard
     'src/world/maps/periodClutter.selftest.mjs',
     'src/world/maps/recordClearance.selftest.mjs', // 2026-10-13 (the perf stream): the street kits' clearance from a grid, as the walk
     // the scenery lane (b16, wave 121): the ksar gate post in place of the steel checkpoint hut on Desert and Redrock
     'src/world/maps/regional/ksarGate.selftest.mjs',
     // the fortifications lane (2026-10-09, R259; wave 315): the field works' pillbox rebuilt, its bank an earthwork
     'src/world/maps/fortKit.selftest.mjs',
+    'src/world/bunkerShells.selftest.mjs', // 2026-10-16 physics: rounds go in through a concrete pillbox's drawn embrasures and to its door's leaf
     // props census #10 (2026-10-14): the field works' period forms, draws, records and wrecks (maps/fieldworksKit.ts)
     'src/world/maps/fieldworksKit.selftest.mjs',
     'src/world/maps/lightWreck.selftest.mjs',
@@ -1658,6 +1681,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/leafDetail.selftest.mjs',
     // round 77c (2026-09-26): the horizon ring's forest drawn from the far tier's impostor atlas
     'src/world/horizonForestImpostors.selftest.mjs',
+    // 2026-10-15 (ground lane, the coordinator's ruling): the ring's trees at each species' own stature where a map says so;
+    // Verdant's owner-approved ring byte for byte
+    'src/world/ringSpeciesStature.selftest.mjs',
     'src/world/outlandTreeAdoption.selftest.mjs', // GND (2026-10-14): the ring's and the Hinterland's trees near the square drawn by the battlefield's tiers
     // trees round 2 (2026-10-03): the ring forest's shapes keep their own streams (a taller ring moves trees, not shapes)
     'src/world/horizonForestShapes.selftest.mjs',
@@ -1671,6 +1697,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/polderTrees.selftest.mjs',
     // the trees lane (2026-10-06, wave 178): the landscape-woods hook (a map's woods on its ridges and slopes)
     'src/world/landscapeWoods.selftest.mjs',
+    // the trees lane (2026-10-06, Skybridge round 4): a place's riparian slot by its water
+    'src/world/riparianTrees.selftest.mjs',
+    // the horizons stream (2026-10-16): the Skybridge port moves no other map's heights
+    'src/world/skybridgeArmIsolation.selftest.mjs',
     'src/world/foliageAtlasPadding.selftest.mjs',
     'src/world/broadleafBranchlets.selftest.mjs',
     'src/world/structureSurface.selftest.mjs',
@@ -1693,8 +1723,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/horizonCliffNormals.selftest.mjs', // the mountains lane (2026-10-04): the ring's cliffs take their geometry's normals
     'src/world/horizonCloudShade.selftest.mjs',
     'src/world/horizonRockfield.selftest.mjs',
-    // the map-revival lane (2026-10-06): Skybridge's Glen Canyon Dam — the canyon through the north ring and the arch
-    'src/world/horizonDam.selftest.mjs',
   'src/world/horizonAutumnGround.selftest.mjs',
     'src/world/edgeWater.selftest.mjs',
   'src/world/autumnHorizonSeam.selftest.mjs',
@@ -1738,6 +1766,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/railSpurs.selftest.mjs',
     'src/world/railSpurBerth.selftest.mjs',
     'src/world/railCutting.selftest.mjs',
+    // the map-revival lane (Skybridge round 4): Lake Powell's arm and Glen Canyon Dam in the battlefield
+    'src/world/maps/reservoirDam.selftest.mjs',
     // the map-borders lane (gauntlet wave 30): the land past the edge is the terrain seed's, never the map id's
     'src/world/borderLandform.selftest.mjs',
     // ... and its villages string along the exit roads from 110 m, each with its church (Frosthollow's north)
@@ -1768,6 +1798,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/northStation.selftest.mjs', // 2026-10-07: Suzhou's North Station a terminus on its own ground (mullions, pointed shed, forecourt, tracks)
     'src/world/maps/regional/yards.selftest.mjs', // 2026-10-03: the yards round a kit's houses, clear of roads, plots, objectives and pads
     'src/world/maps/regional/fineDetailLod.selftest.mjs', // 2026-10-03: a kit's fine joinery drawn near the camera only
+    'src/world/groundMarkings.selftest.mjs', // 2026-10-15 (maps lane, Kestrel): paint on the paved ground — Kestrel's apron markings
     'src/world/maps/regional/choufEarthRoof.selftest.mjs', // 2026-10-07: the Chouf's earth roofs in clay inside stone parapets, every other kit's build unchanged by the parapet hook
     'src/world/maps/regional/houseDamage.selftest.mjs', // 2026-10-07: the house kits' damage through the destruction seam (DESTRUCTION.md §16)
     'src/world/maps/regional/shellDamage.selftest.mjs', // 2026-10-08: houseless buildings read off their parts, dressed by their kit (§16)
@@ -1803,6 +1834,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/propFracture.selftest.mjs',
     'src/world/maps/gateKit.selftest.mjs', // 2026-10-13 the looks lane: every fence family's own gate, region by region
     'src/world/maps/fenceKit.selftest.mjs', // 2026-10-15 props lane A #6: the timber fences in their region's build, legacy collision
+    'src/world/maps/coursedWallKit.selftest.mjs', // 2026-10-16 props lane A #6: the brick-print field walls by region, legacy collision and fit
+    'src/world/maps/adobeWallKit.selftest.mjs', // 2026-10-16 props lane A #6: the mud field walls by region on the legacy section, legacy collision and fit
+    'src/world/maps/terraceRisers.selftest.mjs', // 2026-10-16 props lane A #6: the village terraces' risers built along their contours
     'tools/r2-standard.selftest.mjs', // 2026-10-14 props lane A (E14): the bunker r2 standard's receipt and its painted-opening detector
     'tools/cost-census.selftest.mjs', // 2026-10-14 props lane A (#2): the landing protocol's cost census (draws, triangles, programs, pools; base against branch)
     'src/world/maps/clutterKit.selftest.mjs', // 2026-10-14 props lane A (#2): every map's clutter forms (draws spent, caps, the shadow rule, r2Standard, +45k a map)

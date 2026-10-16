@@ -3,14 +3,17 @@
 // iron, with a front veranda, a rail and a ladder; ground houses of rendered brick painted pale blue, green or yellow
 // under sheet roofs with a columned porch; open boat shelters and shrimp-pond guard huts on stilts; tin-roofed market
 // halls; a collapsed stilt house where the shelling found it.
-import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { PartSink, alongPlot, pick, plotAxes, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { hash01 } from './facade.ts';
-import { buildHouse, emitRoof, roofGeometry, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { mekongChoStall, mekongMarketHall } from './marketKits.ts'; // props #23: the chợ stall and the market hall
+import { buildHouse, emitRoof, roofGeometry, storeyFaces, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec, type WallRect } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { openShed } from './outbuildings.ts';
-import { BAMBOO_MAT, RUSTED, WEATHERED_PLANK, boardWall, ladder, stilts, veranda } from './vernacular.ts';
+import { BAMBOO_MAT, RUSTED, WEATHERED_PLANK, ladder, stilts, veranda } from './vernacular.ts';
+import { boardCladding, matCladding, proppedShutter } from './villageCraft.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { mekongBoatShelter, mekongFishShed } from './harbourSheds.ts'; // props #25: the boat shelter and the fish shed
+import { orientedPrism } from './millWorks.ts';
 
 const SHUTTER: readonly Rgb[] = [0x4f7a9a, 0x5a8a62, 0x8a5a3e, 0x6a8a9a].map(rgb);
 
@@ -23,29 +26,18 @@ function uvOffset(ctx: RegionalBuildContext): [number, number] {
 const nipa = (pitch: number): RoofSpec => ({ kind: 'gable', pitchDeg: pitch, eave: 0.6, verge: 0.4, thickness: 0.26, bucket: 'straw', ridge: 'round', thatch: 'nipa' });
 const tole = (pitch: number, kind: RoofSpec['kind'] = 'gable'): RoofSpec => ({ kind, pitchDeg: pitch, eave: 0.5, verge: 0.35, thickness: 0.06, bucket: 'roof', ridge: 'saddle' });
 
-/** Board-shuttered window openings (no glass in the stilt houses): a dark opening, a frame, a propped shutter. */
-function shutterWindow(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, colour: Rgb): void {
-  faceBox(sink, 'dark', face, u, y + h / 2, 0.005, w, h, 0.02, { decor: true });
-  faceBox(sink, 'structureWood', face, u, y + h + 0.05, 0.04, w + 0.16, 0.1, 0.06, { colour: shade(colour, 0.8), decor: true });
-  faceBox(sink, 'structureWood', face, u, y - 0.05, 0.04, w + 0.16, 0.1, 0.06, { colour: shade(colour, 0.8), decor: true });
-  // the top-hung shutter propped open on a stick (the connectivity sweep: the leaf floated level 7 cm off the wall under
-  // its hinge, and the stick was never drawn): the leaf hung from the hinge rail at the head and swung out sixty degrees
-  // from the wall, the stick from the sill up under its lip
-  const leaf = { colour, decor: true };
-  const P = (uu: number, yy: number, o: number): Vec3 => [face.origin[0] + face.u[0] * uu + face.out[0] * o, yy, face.origin[2] + face.u[2] * uu + face.out[2] * o];
-  sink.member('structureWood', P(u - w / 2, y + h + 0.02, 0), P(u + w / 2, y + h + 0.02, 0), 0.05, 0.04, face.out, { ...leaf, exposed: true });
-  const swing = Math.PI / 3, len = h * 0.95, hy = y + h + 0.02, along = (t: number) => P(u, hy - len * t * Math.cos(swing), 0.01 + len * t * Math.sin(swing));
-  const nrm: Vec3 = [face.out[0] * Math.cos(swing), Math.sin(swing), face.out[2] * Math.cos(swing)];
-  sink.member('structureWood', along(0), along(1), w, 0.035, nrm, { ...leaf, exposed: true }, 0.0175);
-  const stick = along(0.85);
-  sink.member('structureWood', P(u + w * 0.3, y, 0.05), [stick[0] + face.u[0] * w * 0.3, stick[1], stick[2] + face.u[2] * w * 0.3], 0.025, 0.025, face.u,
-    { colour: shade(colour, 0.7), decor: true, exposed: true, fine: true }, 0.0125);
-}
-
-/** The stilt house: plank or mat walls on a deck over posts, nipa or sheet roof, veranda, ladder. */
+/**
+ * The stilt house: plank or mat walls on a deck over posts, nipa or sheet roof, veranda, ladder.
+ * (the looks lane, 2026-10-15; WORKLIST #15: "mekong stiltHouse rebuilt on buildHouse (framed board or mat panels, cut
+ * openings)"; the r2 probe read its windows as dark plates on a box) the house on the house grammar, its framed storey
+ * on the deck: the door and the unglazed windows cut through the wall, each window's plank shutter hung from its head
+ * and propped open on a stick, the room's dark in the cut; the walls laid in vertical planks each its own weathering with
+ * battens over their joints, or in panels of woven palm mat held in a frame of poles; the gables boarded or matted under
+ * the nipa.
+ */
 function stiltHouse(ctx: RegionalBuildContext, opts: { lift?: number } = {}): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
+  const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
   const W = Math.max(4.6, Math.min(6.4, ctx.info.w - 0.8)), D = Math.max(6.0, Math.min(9.0, ctx.info.d - 1.8));
   const lift = opts.lift ?? 1.3 + rng() * 0.5;
   const post = pick(rng, WEATHERED_PLANK);
@@ -57,22 +49,39 @@ function stiltHouse(ctx: RegionalBuildContext, opts: { lift?: number } = {}): Re
   // base house gave: an open stilt house is a window under its floor)
   sink.span('structureWood', -W / 2 + 0.12, -0.25, -D / 2 + 0.12, W / 2 - 0.12, lift + 0.06, -D * 0.04, { colour: shade(wallColour, 0.72) });
   const wallH = 2.5, top = lift + 0.16 + wallH;
-  sink.placed(0, 0, lift + 0.16, 0, () => {
-    // the house body: a structural wall box behind board dressing
-    sink.span('structureWood', -W / 2, 0, -D / 2, W / 2, wallH, D / 2, { colour: shade(wallColour, 0.9) });
-    const faces: Face[] = [
-      { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W }, { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D },
-      { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W }, { origin: [-W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D },
-    ];
-    if (ctx.tier !== 'mobile') for (const f of faces) boardWall(sink, f, -f.width / 2 + 0.05, f.width / 2 - 0.05, 0.05, wallH - 0.05, wallColour);
-    // the door on the veranda front, shuttered openings on the sides
-    doorUnit(sink, faces[0], W * 0.18, 0, 0.85, 1.9, { leaf: shade(wallColour, 0.8), frame: { bucket: 'structureWood', width: 0.08, out: 0.06, colour: shade(post, 0.8) }, steps: null, leafKind: 'plank' }, 0);
-    const shutter = pick(rng, SHUTTER);
-    shutterWindow(sink, faces[0], -W * 0.22, 0.9, 0.8, 0.7, shutter);
-    for (const f of [faces[1], faces[3]]) for (const u of [-D * 0.22, D * 0.22]) if (rng() < 0.8) shutterWindow(sink, f, u, 0.9, 0.75, 0.65, shutter);
-  });
+  const shutter = pick(rng, SHUTTER);
+  const openings: Opening[] = [
+    { face: 'front', storey: 0, kind: 'door', u: W * 0.18, w: 0.85, y0: 0, h: 1.9 },
+    { face: 'front', storey: 0, kind: 'window', u: -W * 0.22, w: 0.8, y0: 0.9, h: 0.7 },
+  ];
+  for (const face of ['right', 'left'] as const) for (const u of [-D * 0.22, D * 0.22]) if (rng() < 0.8) openings.push({ face, storey: 0, kind: 'window', u, w: 0.75, y0: 0.9, h: 0.65 });
   const roof = thatched ? nipa(30 + rng() * 6) : tole(20 + rng() * 6);
-  emitRoof(sink, roofGeometry(W, D, top, roof), roof);
+  const plank = (k: number): Rgb => shade(wallColour, 0.86 + hash01(k, W, 3.1) * 0.24);
+  const dialect: HouseDialect = {
+    window: (s, face, o, y0) => proppedShutter(s, face, o.u, y0 + o.y0, o.w, o.h, shutter, mobile),
+    door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(wallColour, 0.8), frame: { bucket: 'structureWood', width: 0.08, out: 0.06, colour: shade(post, 0.8) }, steps: null, leafKind: 'plank' }, y0),
+  };
+  const cladding = (s: PartSink, face: Face, rect: WallRect, own: readonly Opening[]) => (mat
+    ? matCladding(s, face, rect, own, (k) => shade(BAMBOO_MAT, 0.86 + hash01(k, D, 1.7) * 0.22), shade(post, 0.9), { mobile })
+    : boardCladding(s, face, rect, own, plank, shade(post, 0.85), { mobile }));
+  sink.placed(0, 0, lift + 0.16, 0, () => {
+    const prior = sink.paint;
+    // (the framed wall behind the cladding a shade under it: its joints read dark)
+    sink.paint = shade(wallColour, 0.55);
+    try {
+      const hf = buildHouse(sink, {
+        w: W, d: D, plinth: null, storeys: [{ h: wallH, wall: 'structureWood' }], roof, gableBucket: 'structureWood',
+        openings, chimneys: [], gutters: null, verge: null, reveal: 0.12, spall: null, skirt: null, rafters: shade(post, 0.8),
+      }, dialect);
+      // (Lane C 2026-10-16, houseDamage: a framed storey takes its infill from the wall's second layer, which a plank wall has not, so the damage path threw at damage.ts:325; as the LOOKS fishery fix 182dca492) the storey is unframed and its boards or mats laid over the walls after the house is built, face by face round each face's openings
+      const faces = storeyFaces(hf, 0), body = hf.bodies[0];
+      for (const name of ['front', 'right', 'back', 'left'] as const) {
+        const face = faces[name];
+        cladding(sink, face, { u0: -face.width / 2, u1: face.width / 2, y0: body.y0, y1: body.y1 }, openings.filter((o) => o.face === name && o.storey === 0));
+      }
+    } finally { sink.paint = prior; }
+  });
+  look();
   const front: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
   veranda(sink, front, lift, top - 0.05, W, 1.3, post, thatched ? { bucket: 'straw', thatch: 'nipa' } : { bucket: 'roof' });
   ladder(sink, { ...front, origin: [0, 0, D / 2 + 1.3] }, W * 0.3, 0, lift + 0.16, shade(post, 0.9));
@@ -188,6 +197,11 @@ function groundHouse(ctx: RegionalBuildContext): RegionalParts {
     const width = face === 'front' || face === 'back' ? W : D;
     for (const o of windowRhythm(face, 0, width, { w: 0.9, h: 1.2, sill: 0.9, spacing: 2.2, margin: 0.9, avoid: face === porchFace ? [[-1.0, 1.0]] : [] })) openings.push(o);
   }
+  // (props census #15, Lane C 2026-10-16: "the rear long wall has no opening at all and reads as one blank plane") the
+  // back wall to the yard: the kitchen's door off its middle and the rooms' windows either side of it, cut as the front's
+  const rear = plot.turned ? 'right' : 'back', rearWidth = plot.turned ? D : W, backDoor = rearWidth * 0.18;
+  openings.push({ face: rear, storey: 0, kind: 'door', u: backDoor, w: 0.95, y0: 0, h: 2.1 });
+  for (const o of windowRhythm(rear, 0, rearWidth, { w: 0.9, h: 1.0, sill: 1.1, spacing: 2.4, margin: 0.9, avoid: [[backDoor - 0.75, backDoor + 0.75]] })) openings.push(o);
   const dialect: HouseDialect = {
     window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, style, rng, 0.5),
     door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shutter, frame: { bucket: 'plaster', width: 0.14, out: 0.05 }, steps: { bucket: 'stone' }, leafKind: 'panel' }, y0 + o.y0),
@@ -275,37 +289,62 @@ function deltaShed(ctx: RegionalBuildContext, granary: boolean): RegionalParts {
  * A tin-roofed market hall: open sides, concrete posts, a long sheet roof, stall counters. On a market row's plot (wider
  * than deep) the hall lies along it (plotAxes): it no longer reaches 2.4 m past the plot's long sides.
  */
-const marketHall: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
-  const plot = plotAxes(ctx.info);
-  const W = Math.max(plot.turned ? 4.2 : 6, Math.min(10, plot.w - 0.6)), D = Math.max(plot.turned ? 6 : 10, Math.min(20, plot.d - 0.6));
-  alongPlot(sink, plot.turned, () => {
-    sink.span('stone', -W / 2, -0.3, -D / 2, W / 2, 0.25, D / 2);
-    const top = 3.4;
-    for (const sx of [-1, 0, 1]) for (let k = 0, n = Math.max(2, Math.round(D / 3.5) + 1); k < n; k++) {
-      const x = sx * (W / 2 - 0.2), z = -D / 2 + 0.2 + (D - 0.4) * k / (n - 1);
-      sink.span('plaster', x - 0.14, 0.25, z - 0.14, x + 0.14, top + (sx === 0 ? (plot.turned ? 0.65 : 1.4) : 0), z + 0.14);
-    }
-    const roof = plot.turned ? { ...tole(16), eave: 0.3 } : tole(16);
-    emitRoof(sink, roofGeometry(W, D, top, roof), roof, rng() < 0.5 ? pick(rng, RUSTED) : undefined);
-    // the stall platforms: fixed counters of plank on block (they stand as the base hall's walls stood: cover)
-    for (const side of [-1, 1]) for (let z = -D / 2 + 1.2; z < D / 2 - 1; z += 2.4) {
-      sink.span('structureWood', side * (W / 2 - 1.3) - 0.5, 0.25, z - 1.0, side * (W / 2 - 1.3) + 0.5, 1.15, z + 1.0, { colour: pick(rng, WEATHERED_PLANK) });
-    }
-  });
-  return sink.finish();
-};
+// (props census #23, the looks lane 2026-10-15: member-built in marketKits.ts)
+const marketHall: RegionalBuilder = (ctx) => mekongMarketHall(ctx, RUSTED);
 
 /** A collapsed stilt house: posts leaning, the deck broken, the roof sheets down. */
+/** A round pole from `a` to `b` (an octagon of radius `r` run along the axis). */
+function roundPole(sink: PartSink, a: Vec3, b: Vec3, r: number, opts: EmitOptions & { exposed?: boolean }): void {
+  const d: Vec3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], len = Math.hypot(d[0], d[1], d[2]);
+  if (len < 1e-3) return;
+  const ax: Vec3 = [d[0] / len, d[1] / len, d[2] / len];
+  const hint: Vec3 = Math.abs(ax[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0];
+  const u = unit3(cross3(ax, hint)), v = cross3(ax, u);
+  const pts: Vec3[] = [];
+  for (let k = 0; k < 8; k++) {
+    const t = (k / 8) * Math.PI * 2;
+    pts.push([a[0] + (u[0] * Math.cos(t) + v[0] * Math.sin(t)) * r, a[1] + (u[1] * Math.cos(t) + v[1] * Math.sin(t)) * r, a[2] + (u[2] * Math.cos(t) + v[2] * Math.sin(t)) * r]);
+  }
+  orientedPrism(sink, 'structureWood', pts, ax, len, opts);
+}
+
+/** A corrugated sheet `w` wide lying from `a` to `b` (its ribs along the run, its faces 12 mm apart, every face closed). */
+function corrugatedSheet(sink: PartSink, a: Vec3, b: Vec3, w: number, opts: EmitOptions & { exposed?: boolean }): void {
+  const d: Vec3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], len = Math.hypot(d[0], d[1], d[2]);
+  if (len < 1e-3) return;
+  const ax: Vec3 = [d[0] / len, d[1] / len, d[2] / len];
+  const across = unit3(cross3([0, 1, 0], ax)), up = unit3(cross3(ax, across));
+  const ribs = 10, t = 0.012;
+  const at = (k: number, lift: number, end: 0 | 1): Vec3 => {
+    const uu = -w / 2 + (w * k) / ribs, vv = (k % 2 ? 0.025 : 0) + lift, p = end ? b : a;
+    return [p[0] + across[0] * uu + up[0] * vv, p[1] + across[1] * uu + up[1] * vv, p[2] + across[2] * uu + up[2] * vv];
+  };
+  const face = (p: Vec3[], n: Vec3) => {
+    const c = cross3([p[1][0] - p[0][0], p[1][1] - p[0][1], p[1][2] - p[0][2]], [p[2][0] - p[0][0], p[2][1] - p[0][1], p[2][2] - p[0][2]]);
+    const q = c[0] * n[0] + c[1] * n[1] + c[2] * n[2] >= 0 ? p : [...p].reverse();
+    sink.quad('roof', q[0], q[1], q[2], q[3], opts);
+  };
+  const down: Vec3 = [-up[0], -up[1], -up[2]];
+  for (let k = 0; k < ribs; k++) {
+    face([at(k, 0, 0), at(k + 1, 0, 0), at(k + 1, 0, 1), at(k, 0, 1)], up);
+    face([at(k, -t, 0), at(k + 1, -t, 0), at(k + 1, -t, 1), at(k, -t, 1)], down);
+    for (const end of [0, 1] as const) face([at(k, 0, end), at(k + 1, 0, end), at(k + 1, -t, end), at(k, -t, end)], end ? ax : [-ax[0], -ax[1], -ax[2]]);
+  }
+  for (const k of [0, ribs]) face([at(k, 0, 0), at(k, 0, 1), at(k, -t, 1), at(k, -t, 0)], k ? across : [-across[0], -across[1], -across[2]]);
+}
+const cross3 = (p: Vec3, q: Vec3): Vec3 => [p[1] * q[2] - p[2] * q[1], p[2] * q[0] - p[0] * q[2], p[0] * q[1] - p[1] * q[0]];
+const unit3 = (p: Vec3): Vec3 => { const l = Math.hypot(p[0], p[1], p[2]) || 1; return [p[0] / l, p[1] / l, p[2] / l]; };
+
 const collapsed: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
   const W = Math.max(4.6, ctx.info.w - 1.0), D = Math.max(6, ctx.info.d - 2.0);
   const post = shade(pick(rng, WEATHERED_PLANK), 0.75);
+  // (props census r2 sweep, Lane C 2026-10-16: the ruin's box-only share 72 %) the stilts left standing are round poles,
+  // the fallen sheets corrugated; the draws as before
   for (let k = 0; k < 7; k++) {
     const x = (rng() - 0.5) * W, z = (rng() - 0.5) * D, h = 0.6 + rng() * 1.8;
-    sink.member('structureWood', [x, -0.3, z], [x + (rng() - 0.5) * 0.8, h, z + (rng() - 0.5) * 0.8], 0.16, 0.16, [1, 0, 0], { colour: post, exposed: true });
+    roundPole(sink, [x, -0.3, z], [x + (rng() - 0.5) * 0.8, h, z + (rng() - 0.5) * 0.8], 0.085, { colour: post, exposed: true });
   }
   // (the buildings stream, 2026-10-12, the integrity check: the fallen roof sheets hung at drawn heights over the mud)
   // each sheet's ends on what is under them: the thatch heap where it reaches, the ground elsewhere
@@ -319,7 +358,7 @@ const collapsed: RegionalBuilder = (ctx) => {
     const a = rng() * Math.PI, x = (rng() - 0.5) * W * 0.6, z = (rng() - 0.5) * D * 0.6;
     const ax = x - Math.cos(a) * 1.6, az = z - Math.sin(a) * 1.6; rng();
     const bx = x + Math.cos(a) * 1.6, bz = z + Math.sin(a) * 1.6; rng();
-    sink.member('roof', [ax, under(ax, az), az], [bx, under(bx, bz), bz], 1.6, 0.05, [0, 1, 0], { decor: true, exposed: true });
+    corrugatedSheet(sink, [ax, under(ax, az) + 0.02, az], [bx, under(bx, bz) + 0.02, bz], 1.6, { decor: true, exposed: true });
   }
   // (props census #7, lane B 2026-10-14; the judges: "the thatch a straw box") the fallen thatch slumped in a low mound
   // under the sheets, its ends ragged
@@ -328,25 +367,8 @@ const collapsed: RegionalBuilder = (ctx) => {
 };
 
 /** A market stall (the base market plot): a plank platform, a bamboo frame under a nipa-thatch roof, a counter of baskets. */
-const marketStall: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
-  const W = Math.max(4.5, Math.min(6.4, ctx.info.w - 0.4)), D = Math.max(3.6, Math.min(5.0, ctx.info.d - 0.4));
-  const floor = 0.2, top = 2.5;
-  // a plank platform on the mud (the canal-side stall), not a slab of concrete
-  sink.span('structureWood', -W / 2 - 0.2, -0.3, -D / 2 - 0.2, W / 2 + 0.2, floor, D / 2 + 0.2, { colour: shade(pick(rng, WEATHERED_PLANK), 0.82) });
-  for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
-    sink.span('structureWood', x * (W / 2 - 0.15) - 0.07, floor, z * (D / 2 - 0.15) - 0.07, x * (W / 2 - 0.15) + 0.07, top, z * (D / 2 - 0.15) + 0.07, { colour: BAMBOO_MAT });
-  }
-  const roof = nipa(24);
-  emitRoof(sink, roofGeometry(W, D, top, roof), roof);
-  sink.span('structureWood', -W / 2 + 0.35, floor, D / 2 - 1.0, W / 2 - 0.35, floor + 0.8, D / 2 - 0.45, { colour: pick(rng, WEATHERED_PLANK) });
-  const produce: readonly Rgb[] = [0x5a7a3a, 0xc0902a, 0x8a3a2a, 0xa8a090].map(rgb);
-  for (let k = 0; k < 4; k++) {
-    sink.cylinder('structureWood', [-W / 2 + 0.75 + k * (W - 1.5) / 3, floor + 0.8, D / 2 - 0.72], 'y', 0.14, 0.27, 8, { colour: pick(rng, produce), decor: true }, 0.22);
-  }
-  return sink.finish();
-};
+// (props census #23, the looks lane 2026-10-15: member-built in marketKits.ts)
+const marketStall: RegionalBuilder = (ctx) => mekongChoStall(ctx);
 
 export const MEKONG_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => stiltHouse(ctx),

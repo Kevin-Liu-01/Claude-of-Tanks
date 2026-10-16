@@ -22,7 +22,8 @@
 // so nothing placed after it moves.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { box, jitterUV } from '../propGeometry.ts';
+import { jitterUV } from '../propGeometry.ts';
+import { bevelBox } from './bevelBox.ts';
 
 type Rng = () => number;
 type BG = THREE.BufferGeometry;
@@ -117,11 +118,18 @@ function paint(geometry: BG, tone: readonly [number, number, number], grain: num
 const WEED = rgb(0x39412c), BARNACLE = rgb(0x9b978b), IRON = rgb(0x262728), RUST = rgb(0x4e3324), LASHING = rgb(0x8d7b58),
   WEED_STONE = rgb(0x3d4733);
 
+/**
+ * (props census r2 sweep, Lane C 2026-10-16: the jetty's members were plain boxes, its box-only share 100 %) every sawn or
+ * squared member's long arrises eased (bevelBox), by a fifth of its section's smaller side, at most 3 cm.
+ */
+function ease(p: number, q: number): number {
+  return Math.min(0.03, Math.min(p, q) * 0.2);
+}
 /** A member a -> b in the frame: a box section w x d (w horizontal and square to its run, d in the vertical plane). */
 function memberBox(a: Local, b: Local, w: number, d: number): BG {
   const dt = b[0] - a[0], dy = b[1] - a[1], ds = b[2] - a[2];
   const len = Math.hypot(dt, dy, ds);
-  const g = box(w, d, len, 1.2);
+  const g = bevelBox(w, d, len, ease(w, d), 1.2);
   g.rotateX(-Math.atan2(dy, Math.hypot(dt, ds)));
   g.rotateY(Math.atan2(dt, ds));
   g.translate((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
@@ -141,14 +149,15 @@ function roundMember(a: Local, b: Local, r0: number, r1: number, sides: number, 
 }
 /** An upright square post at (t, s) from y0 to y1, turned by `turn` about its axis. */
 function post(t: number, s: number, y0: number, y1: number, w: number, turn: number): BG {
-  const g = box(w, y1 - y0, w, 1.2);
+  const g = bevelBox(w, y1 - y0, w, ease(w, w), 1.2);
   g.rotateY(turn);
   g.translate(t, (y0 + y1) / 2, s);
   return g;
 }
 /** A box from its frame extents. */
 function slab(t0: number, t1: number, y0: number, y1: number, s0: number, s1: number, uv = 1.2): BG {
-  const g = box(t1 - t0, y1 - y0, s1 - s0, uv);
+  // (a slab's arrises a pencil round: a deck's or a coping's walking surface stays level to within 4 mm of its edges)
+  const g = bevelBox(t1 - t0, y1 - y0, s1 - s0, Math.min(0.004, ease(...[t1 - t0, y1 - y0, s1 - s0].sort((p, q) => p - q).slice(0, 2) as [number, number])), uv);
   g.translate((t0 + t1) / 2, (y0 + y1) / 2, (s0 + s1) / 2);
   return g;
 }
@@ -414,7 +423,9 @@ function riva(b: Build): void {
       const surf = b.surfaceAt((bay.a + bay.c) / 2, side * JETTY_HALF_WIDTH_M);
       if (surf !== null && surf > bay.foot + 0.15) {
         const s = side * (JETTY_HALF_WIDTH_M + 0.006);
-        b.painted(slab(bay.a, bay.c, Math.max(bay.foot, surf - 0.45), surf + 0.1, s - 0.006, s + 0.006), WEED_STONE, 0.4);
+        // (the r2 sweep: a 12 mm weed band read as a painted plate on the stone) the weed and barnacle growth at the waterline a
+        // band 6 cm proud of the pier's face, its arrises eased
+        b.painted(slab(bay.a, bay.c, Math.max(bay.foot, surf - 0.45), surf + 0.1, s - 0.055, s + 0.055), WEED_STONE, 0.4);
       }
     }
     // the hearting between the faces (the head's end face closes the last bay)
@@ -587,7 +598,7 @@ export function buildGangway(wood: BG[], x0: number, z0: number, ang: number, gr
   const treads = Math.max(3, Math.round(length / 0.3));
   for (let i = 0; i < treads; i++) {
     const [t, y] = at((i + 0.5) / treads);
-    const g = box(0.2, 0.04, 1.2, 1.2);
+    const g = bevelBox(0.2, 0.04, 1.2, 0.01, 1.2);
     g.rotateZ(pitch);
     g.translate(t, y - 0.02, 0);
     parts.push(g);

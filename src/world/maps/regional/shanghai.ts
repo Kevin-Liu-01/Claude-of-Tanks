@@ -40,6 +40,7 @@ import {
   signboard, soot, streetRoof, uvOffset, type Bank,
 } from './shanghaiParts.ts';
 import { SHANGHAI_BUND_BUILDERS } from './shanghaiBund.ts';
+import { hoistTackle } from './shanghaiHoist.ts';
 
 const DEC = { decor: true } as const;
 /** A Zhabei shop's goods on its shelves: bolts of cloth, tea and rice sacks, lacquer boxes, crocks. */
@@ -694,8 +695,7 @@ const godown: RegionalBuilder = (ctx) => {
       facePanel(sink, 'plaster', face, 0, eaveY - 0.45, 0.015, face.width - 1.2, 0.7, DEC);
       faceBox(sink, 'structureMetal', face, 0, eaveY - 0.45, 0.03, (face.width - 1.2) * 0.7, 0.3, 0.012, { colour: rgb(0x2a2724), decor: true, fine: true });
     }
-    sink.member('structureWood', [0, eaveY + 0.9, D / 2 - 0.4], [0, eaveY + 0.9, D / 2 + 1.0], 0.22, 0.22, [0, 1, 0], { colour: rgb(0x3b3029), decor: true, exposed: true, shadow: true }, 0);
-    sink.cylinder('structureMetal', [0, eaveY - 1.6, D / 2 + 0.85], 'y', 2.4, 0.015, 4, { colour: IRON, decor: true, fine: true });
+    hoistTackle(sink, eaveY, D); // (looks r2 b-east, 2026-10-16: extracted to shanghaiHoist.ts, rebuilt there)
     // pilasters along the long sides
     for (const face of [frame.faces.right, frame.faces.left]) {
       const n = Math.max(2, Math.round(D / 3.4));

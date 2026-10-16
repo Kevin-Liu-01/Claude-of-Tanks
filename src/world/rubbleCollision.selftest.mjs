@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { BoxGeometry, Vector3 } from 'three';
 import { rubbleCollisionRecords, RUBBLE_CHUNK_FLOOR_M, RUBBLE_SHELL_SLAB_M } from './rubbleCollision.ts';
 import { rayCollisionRecord, pointInsideCollisionRecord, setCircleShape } from './collision.ts';
+import { rubblePileParts } from './maps/regional/ruinGrammar.ts';
 
 const ground = 10, pr = 2.4;
 const chunk = (w, h, d, x, y, z, yaw = 0, tilt = 0) => new BoxGeometry(w, h, d).rotateX(tilt).rotateY(yaw).translate(x, ground + y, z);
@@ -44,4 +45,29 @@ assert.deepEqual(rubbleCollisionRecords(chunks, ground, 0, 0, pr), { obstacle, c
 const flat = rubbleCollisionRecords([chunk(0.4, 0.1, 0.3, 0, 0.05, 0)], ground, 0, 0, pr);
 assert.equal(flat.collider.shape2?.kind, 'circle', 'no chunk past the floor keeps the circle');
 assert.ok(RUBBLE_CHUNK_FLOOR_M === 0.2);
+// (physics DST-03, 2026-10-16) a street pile as props.ts lays it (ruinGrammar.ts rubblePileParts: chunks bedded in a fill
+// body, bonded courses, the shards' apron): its records read every stone piece it draws, so they reach its drawn top and
+// a shell into the fill body's flank stops on it
+let piles = 0, flanks = 0;
+for (let seed = 1; seed <= 24; seed++) {
+  let a = seed * 2654435761 >>> 0;
+  const rng = () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const x = (rng() - 0.5) * 400, z = (rng() - 0.5) * 400, pr = 1.4 + rng() * 1.6;
+  const pile = rubblePileParts(x, 2, z, pr, rng);
+  const { collider } = rubbleCollisionRecords(pile.stone, 2, x, z, pr);
+  let drawnTop = -Infinity;
+  for (const g of pile.stone) { g.computeBoundingBox(); drawnTop = Math.max(drawnTop, g.boundingBox.max.y); }
+  assert.ok(Math.abs(collider.max[1] - drawnTop) < 0.02, `pile ${seed}: its records reach its drawn top (${collider.max[1].toFixed(2)} of ${drawnTop.toFixed(2)})`);
+  const parts = collider.shape2.kind === 'compound' ? collider.shape2.parts : [collider.shape2];
+  assert.ok(parts.length <= 64, `pile ${seed}: within the shards' part limit (${parts.length})`);
+  for (let side = 0; side < 8; side++) {
+    const ang = side * Math.PI / 4, n = { x: 0, y: 0, z: 0, set(p, q, r) { this.x = p; this.y = q; this.z = r; } };
+    const origin = new Vector3(x - Math.cos(ang) * (pr + 4), 2.3, z - Math.sin(ang) * (pr + 4)), dir = new Vector3(Math.cos(ang), 0, Math.sin(ang));
+    const hit = rayCollisionRecord(origin, dir, collider, pr + 4, n);
+    assert.ok(hit >= 0, `pile ${seed} side ${side}: a shell 0.3 m over the ground into the heap stops on it`);
+    flanks++;
+  }
+  piles++;
+}
+console.log(`rubbleCollision.selftest: ${piles} street piles' records reach their drawn tops, ${flanks} shells into their flanks stopped`);
 console.log(`rubbleCollision.selftest: ${shellParts.length} shell slabs and ${moveParts.length} movement outlines from ${chunks.length} chunks; a shell over the rim flies on (the prism stopped it), one into the crown stops on it; deterministic`);

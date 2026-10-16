@@ -856,6 +856,9 @@ export function createAuthoritativeMatch({
   const teamIndex: Record<Team, number> = { [TEAM_ALPHA]: 0, [TEAM_BRAVO]: 0 };
   const pendingEvents: AuthoritativeEvent[] = [];
   const destroyedObstacleIndices: number[] = [];
+  // (physics stream, 2026-10-16) the same indices as a set: a restore of thousands (a keyframe, a migration, a late
+  // join over Saltwind's crushed walls) asks it, not the list, whether an index is in (the list keeps its order)
+  const destroyedObstacleSet = new Set<number>();
   let destructibleRevision = 0;
   const shells: DamageShell[] = [];
   const destroyedBeforeBurst = new Map<string, boolean>();
@@ -927,7 +930,9 @@ export function createAuthoritativeMatch({
   const trenchLines = (heightField as { assaultTrenchLines?: { sectors?: RuntimeValue; lines?: RuntimeValue } }).assaultTrenchLines;
   const placement = createMatchPlacement({
     mapId,
-    heightField, obstacles: staticObstacles, queryObstacles: worldCollision?.queryObstacles,
+    // the map's own ground, as the solo step places on it (state.ts): the match's pre-placed craters (world/mapCraters.ts)
+    // must not move a deployment slot (deploymentParity)
+    heightField: baseHeightField, obstacles: staticObstacles, queryObstacles: worldCollision?.queryObstacles,
     anchors: matchPlacementAnchors(layout.spawns), mode: normalizedGameMode,
     // index-aligned carved sectors (null where the terrain dropped a line), exactly as the solo path passes them
     assaultLines: (trenchLines?.sectors ?? trenchLines?.lines ?? null) as never,
@@ -1531,6 +1536,7 @@ export function createAuthoritativeMatch({
     const destroyedIndex = obstacleIndex.get(obstacle);
     if (typeof destroyedIndex === 'number' && Number.isSafeInteger(destroyedIndex)) {
       destroyedObstacleIndices.push(destroyedIndex);
+      destroyedObstacleSet.add(destroyedIndex);
       destructibleRevision++;
     }
     if (entity?.state) entity.state.speed *= obstacle.crushKeep ?? CRUSH_SPEED_KEEP;
@@ -1605,7 +1611,7 @@ export function createAuthoritativeMatch({
         if (worldCollision && typeof worldCollision.crushObstacle === 'function') worldCollision.crushObstacle(obstacle, 0, 1, 0);
         obstacle.crushed = true;
       }
-      if (!destroyedObstacleIndices.includes(index)) destroyedObstacleIndices.push(index);
+      if (!destroyedObstacleSet.has(index)) { destroyedObstacleIndices.push(index); destroyedObstacleSet.add(index); }
       restored++;
     }
     destructibleRevision = Math.max(destructibleRevision, Math.floor(finite(revision, 0)), destroyedObstacleIndices.length);

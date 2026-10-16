@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { DoubleSide, Euler, Matrix4, Mesh, MeshBasicMaterial, Quaternion, Raycaster, Vector3 } from 'three';
 import { fitWallSpan, wallIslandEdges } from './wallSpanPlacement.ts';
 import { ADOBE_UV_PER_M, DESTRUCTIBLE_TYPES, WALL_SEG, buildAdobePilaster, buildDryStoneWallHead } from './maps/inhabitKit.ts';
+import { adobeCrownFor } from './maps/adobeWallKit.ts';
 import { createWallDressing } from './maps/fieldWallDressing.ts';
 import { sourcedStoneIsBrick } from './sourcedTextures.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -80,7 +81,18 @@ function auditWall({ record, mesh }, geometry, field) {
   }
   assert.ok(Math.abs(record.ob.min[1] - minY) < 1e-8);
   assert.ok(Math.abs(record.ob.max[1] - maxY) < 1e-8, 'high end of sloped wall stays ballistic cover');
-  assert.deepEqual(record.col, { ...record.ob }, 'shell and hull collision agree');
+  // (physics DST-03, 2026-10-16) the shell record stands three parts along the module, each from its own lowest vertex to
+  // its own highest: the hull's box from end to end, the shells' following the sheared top down the slope
+  assert.deepEqual([record.col.min[1], record.col.max[1]], [record.ob.min[1], record.ob.max[1]], 'shell and hull records span the same heights');
+  assert.ok([0, 2].every((i) => record.col.min[i] >= record.ob.min[i] - 1e-6 && record.col.max[i] <= record.ob.max[i] + 1e-6), 'the shells within the hull\'s box');
+  const shellParts = record.col.shape2.kind === 'compound' ? record.col.shape2.parts : [record.col.shape2];
+  assert.equal(shellParts.length, 3, 'the shells meet three parts along the module');
+  assert.ok(shellParts.every((part) => part.y0 >= minY - 1e-6 && part.y1 <= maxY + 1e-6), 'each part within the module');
+  assert.ok(Math.abs(Math.max(...shellParts.map((part) => part.y1)) - maxY) < 1e-6, 'the high end stays ballistic cover');
+  const endGround = (sign) => field.getHeightAt(record.x + sign * halfLength * Math.sin(record.yaw), record.z + sign * halfLength * Math.cos(record.yaw));
+  const rise = Math.abs(endGround(1) - endGround(-1));
+  const tops = shellParts.map((part) => part.y1);
+  if (rise > 0.3) assert.ok(Math.max(...tops) - Math.min(...tops) > rise * 0.3, `down a slope the parts' tops follow the module (${rise.toFixed(2)} m along it)`);
   assert.equal(record.y, minY);
   assert.equal(record.h, maxY - minY);
   assert.ok(Math.abs(record.groundSupport.min - minGround) < 1e-8);
@@ -319,11 +331,13 @@ function sourceRunFixture(code, runs, field, seed, style = 'fieldstone') {
   // the fixture runs none
   const run = new Function('P', 'heightField', 'WALL_SEG', 'rng', 'buckets', 'box', 'jitterUV', 'addDestructible', 'noVeg', 'wallSpans', 'wallIslandEdges', 'legacyWallEdges',
     'mapId', 'sourcedStoneIsBrick', 'buildDryStoneWallHead', 'buildAdobePilaster', 'fieldWallBucket', 'drawnPlanRecord', 'breachRubbleFootprints', 'wallDressing',
-    'roughenChunk', `${code}; return addWallRun;`)(
+    'roughenChunk', 'adobeCrownFor', 'regionalArchitecture', `${code}; return addWallRun;`)(
     { wallStyle: style }, field, WALL_SEG, rng, buckets, box, jitterUV, add, field._noVeg, spans, wallIslandEdges, legacyWallEdges,
     field._layout?.id ?? 'verdant', sourcedStoneIsBrick, buildDryStoneWallHead, buildAdobePilaster, 'fieldStone', () => null, [],
     // the walls' feet and weather (fieldWallDressing.ts): their own streams, so the run's draws stay the props stream's
-    createWallDressing({ ground: field, snow: false, mobile: false, adobeBucket: 'fieldMud', mudUv: ADOBE_UV_PER_M }), roughenChunk);
+    createWallDressing({ ground: field, snow: false, mobile: false, adobeBucket: 'fieldMud', mudUv: ADOBE_UV_PER_M }), roughenChunk,
+    // (props lane A #6: a mud run's piers carry their region's crown)
+    adobeCrownFor, null);
   runs.forEach((args, runIndex) => {
     const [x0, z0, x1, z1] = args, start = records.length;
     const length = Math.hypot(x1 - x0, z1 - z0);
@@ -428,7 +442,7 @@ for (const seed of [1337, 2049, 7719]) {
   let expectedDraws = 0;
   const expectedNext = seeded(seed), expectedRng = () => { expectedDraws++; return expectedNext(); };
   const expectedIntact = DESTRUCTIBLE_TYPES.wallstone.build(expectedRng);
-  const referencePool = { records: reference.records, mats4: reference.matrices };
+  const referencePool = { meta: DESTRUCTIBLE_TYPES.wallstone, records: reference.records, mats4: reference.matrices }; // (its kind's meta: the refit reads its collisionSolid)
   legacyRefit(expectedIntact, referencePool, 'wallstone');
   // Original uninterrupted order: build, refit all contact colliders, fit all
   // complete spans, then construct the broken kit from the same RNG stream.

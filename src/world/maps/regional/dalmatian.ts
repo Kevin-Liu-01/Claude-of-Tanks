@@ -6,10 +6,11 @@
 // floor with a parapet; dry-stone shepherd huts (kažun) in the fields; stone boathouses on the quay; abandoned houses
 // stand roofless with their gables.
 import {
-  PartSink, alongPlot, faceBox, facePoint, pick, plotAxes, rgb, shade, UV_MEMBER,
+  PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER,
   type Face, type RegionalBucket, type RegionalParts, type Rgb,
 } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
+import { orientedPrism } from './millWorks.ts';
+import { buildHouse, windowRhythm, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { pottedPlant, tvAerial, wallLantern, washingLine } from './dressing.ts';
 import { balconette, dressedQuoin, facadeOn, facadeRng, trimRun } from './facade.ts';
@@ -17,6 +18,7 @@ import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import { coursedRound, recordMasonry } from './outbuildings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { dalmatianBoathouse } from './harbourSheds.ts'; // props #25: the boathouse
+import { dalmatianLoggia, dalmatianRibarnica } from './loggias.ts'; // props #23: the loggia and the fish market
 
 const SHUTTERS: readonly Rgb[] = [0x557a4c, 0x416650, 0x7a5a42, 0x7890a0, 0x8e7a52].map(rgb);
 const DOORS: readonly Rgb[] = [0x6e5440, 0x4f6a4e, 0x7a6048, 0x5e6c76].map(rgb);
@@ -226,8 +228,11 @@ function dwelling(ctx: RegionalBuildContext, opts: { storeys?: number; shop?: bo
       for (let u = -W / 2 + 0.45; u <= W / 2 - 0.45; u += 0.35 + look() * 0.25) {
         const off = Math.abs(u - door.u) - door.w / 2;
         const trail = off > 0.05 && off < 0.6 && look() < 0.7, w = 0.35 + look() * 0.4, h = trail ? 0.7 + look() * 0.5 : 0.3 + look() * 0.3;
-        const y = trail ? 2.55 - h / 2 : 2.66 + (look() - 0.5) * 0.24;
-        faceBox(sink, 'structureWood', f, u + (look() - 0.5) * 0.15, y, 0.22 + look() * 0.12, w, h, 0.18 + look() * 0.16, { colour: shade(leaf, 0.75 + look() * 0.45), decor: true });
+        // (props census r2 sweep, Lane C 2026-10-16: a trailing clump hung 3 cm under the trellis and stood off the wall,
+        // floating) a trail hangs from the trellis and lies on the wall; the draws as before
+        const y = trail ? 2.6 - h / 2 : 2.66 + (look() - 0.5) * 0.24;
+        const du = (look() - 0.5) * 0.15, out = 0.22 + look() * 0.12, depth = 0.18 + look() * 0.16;
+        faceBox(sink, 'structureWood', f, u + du, y, trail ? depth / 2 + 0.005 : out, w, h, depth, { colour: shade(leaf, 0.75 + look() * 0.45), decor: true });
       }
     }
   });
@@ -257,34 +262,41 @@ const farmhouse: RegionalBuilder = (ctx) => {
     gutters: null, verge: null, reveal: 0.32,
   }, dialect(st));
   eaveCourse(sink, frame);
-  // the stable wing on +x: one storey of rubble under a lean-to of canal tiles falling away from the house
+  // the stable wing on +x: one storey of rubble under a lean-to of canal tiles falling away from the house. (Props
+  // census #15, Lane C 2026-10-16: "two solid stone span boxes, a plank doorUnit laid on its end face (nothing cut),
+  // and a lean-to that is one slab") a house body of its own: its stable door cut through its low end, a light cut
+  // through each side, the lean-to's courses, its gutterless eave over the door; the damage reads it as its own body.
   const ww = Math.min(W * 0.7, 5.0);
-  const wx0 = W / 2, wx1 = W / 2 + wingL, wz = -D * 0.16;
-  const wallH = 2.5, wallLo = 2.1;
-  sink.span('stone', wx0 - 0.02, -0.3, wz - ww / 2, wx1, wallLo, wz + ww / 2);
-  sink.span('stone', wx0 - 0.02, wallLo, wz - ww / 2, wx0 + 0.6, wallH, wz + ww / 2);
-  const lean = { eave: 0.25, verge: 0.12 };
-  const leanFace: Face = { origin: [wx1, 0, wz], u: [0, 0, -1], out: [1, 0, 0], width: ww };
-  doorUnit(sink, leanFace, 0, 0, 1.4, 1.9, { leaf: shade(st.door, 0.9), frame: { bucket: 'stone', width: 0.2, out: 0.08 }, steps: null, leafKind: 'plank' });
-  const roofLen = wingL + 0.2;
-  const tan = (wallH + 0.15 - wallLo) / roofLen;
-  // the lean-to slab as a sloped prism from the house wall down to the outer wall
-  const t = 0.14, zA = wz - ww / 2 - lean.verge, zB = wz + ww / 2 + lean.verge;
-  const yHi = wallH + 0.12, yLo = wallLo - lean.eave * tan;
-  const xLo = wx1 + lean.eave;
-  sink.prism('roof', [[wx0, yHi, zA], [wx0, yHi, zB], [xLo, yLo, zB], [xLo, yLo, zA]], normalizeUp(tan), t, {},
-    { kind: 'plane', origin: [wx0, yHi + t, 0], u: [0, 0, 1], v: normalizeDown(tan) });
+  const wz = -D * 0.16;
+  // (its reach no further than the old wing's: its plinth and eave inside the old slab's)
+  const lean: RoofSpec = { kind: 'shed', pitchDeg: 16, eave: 0.22, verge: 0.12, thickness: 0.14, bucket: 'roof' };
+  const wl = wingL - 0.04;
+  sink.placed(0, W / 2 + wl / 2, 0, wz, () => {
+    const wf = buildHouse(sink, {
+      w: wl, d: ww, plinth: { h: 0.15, out: 0.04, bucket: 'stone' }, storeys: [{ h: 2.15, wall: 'stone' }], roof: lean, gableBucket: 'stone',
+      openings: [
+        { face: 'right', storey: 0, kind: 'door', u: 0, w: 1.3, y0: 0, h: 1.85 },
+        { face: 'front', storey: 0, kind: 'window', u: 0, w: 0.5, y0: 1.2, h: 0.45 },
+        { face: 'back', storey: 0, kind: 'window', u: 0, w: 0.5, y0: 1.2, h: 0.45 },
+      ],
+      chimneys: [], gutters: null, verge: null, reveal: 0.32, core: 'rubble',
+    }, {
+      ...dialect(st),
+      door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
+        leaf: shade(st.door, 0.9), frame: { bucket: 'stone', width: 0.2, out: 0.06 }, transom: false, steps: { bucket: 'stone' }, leafKind: 'plank',
+      }, 0.15),
+    });
+    // (Lane C 2026-10-16, building-integrity: the sky showed through the wing under its lean-to, 2.35 m2 from the front)
+    // the end walls' raking tops built up to the lean-to's underside (a shed roof leaves its ends open: roofGeometry
+    // gives a shed no gable)
+    const rg = wf.roof;
+    for (const end of [1, -1]) {
+      const z0 = end > 0 ? rg.halfD - 0.25 : -rg.halfD;
+      orientedPrism(sink, 'stone', [[rg.s, rg.eaveY - 0.02, z0], [-rg.s, rg.eaveY + 2 * rg.s * rg.tanP - 0.02, z0], [-rg.s, rg.eaveY - 0.02, z0]], [0, 0, 1], 0.25, {});
+    }
+  });
   return sink.finish();
 };
-
-function normalizeUp(tan: number): [number, number, number] {
-  const l = Math.hypot(tan, 1);
-  return [tan / l, 1 / l, 0];
-}
-function normalizeDown(tan: number): [number, number, number] {
-  const l = Math.hypot(1, tan);
-  return [1 / l, -tan / l, 0];
-}
 
 /** A stone storehouse with a loading quay on +x (the base depot's footprint). */
 const depot: RegionalBuilder = (ctx) => {
@@ -316,19 +328,43 @@ const depot: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** A small stone storehouse (no staddles on the coast): one storey, a low tiled roof. */
+/**
+ * A small stone storehouse (no staddles on the coast): one storey, a low tiled roof. (Props census #22, Lane C
+ * 2026-10-16: "no stone door surround or lintel, no quoins and no step".) It stands on a plinth course sunk into the
+ * ground, its door framed in dressed jambs under a monolith lintel and a stone step, its corners in long-and-short
+ * quoins, its vent cut through the side wall.
+ */
 const granary: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx);
-  const W = Math.max(3.4, ctx.info.w - 0.6), D = Math.max(4.2, ctx.info.d - 1.6);
+  const W = Math.max(3.4, ctx.info.w - 0.6), D = Math.max(4.2, ctx.info.d - 1.6), plinth = 0.3, dw = 0.95, dh = 1.95;
+  const base = dialect({ ...st, litShare: 0 });
   const frame = buildHouse(sink, {
-    w: W, d: D, plinth: null, storeys: [{ h: 2.6, wall: 'stone' }],
+    w: W, d: D, plinth: { h: plinth, out: 0.06, bucket: 'stone' }, storeys: [{ h: 2.4, wall: 'stone' }],
     roof: { kind: 'gable', pitchDeg: 22, eave: 0.18, verge: 0.06, thickness: 0.14, bucket: 'roof', ridge: 'round' },
-    gableBucket: 'stone', openings: [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 0.95, y0: 0, h: 1.95 },
-      { face: 'right', storey: 0, kind: 'loft', u: 0, w: 0.4, y0: 1.6, h: 0.4 }],
-    chimneys: [], gutters: null, verge: null,
-  }, dialect({ ...st, litShare: 0 }));
+    gableBucket: 'stone', openings: [{ face: 'front', storey: 0, kind: 'door', u: 0, w: dw, y0: 0, h: dh },
+      { face: 'right', storey: 0, kind: 'loft', u: 0, w: 0.4, y0: 1.4, h: 0.4 }],
+    chimneys: [], gutters: null, verge: null, reveal: 0.3, core: 'rubble',
+  }, {
+    ...base,
+    // the vent is left empty, its reveal and the store's dark; the door's leaf in the reveal, its dressed stone round it
+    window: (s, face, o, y0, fr) => { if (o.kind !== 'loft') base.window(s, face, o, y0, fr); },
+    door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
+      leaf: st.door, frame: { bucket: 'stone', width: 0.2, out: 0.05 }, transom: false, steps: { bucket: 'stone' }, leafKind: 'plank',
+    }, plinth),
+  });
   eaveCourse(sink, frame);
+  const f = frame.faces.front, y0 = frame.floors[0];
+  // the monolith lintel over the jambs, a hand wider than them each side
+  faceBox(sink, 'stone', f, 0, y0 + dh + 0.2 + 0.14, 0.04, dw + 0.4 + 0.3, 0.28, 0.09, { decor: true, fineSides: true, shade: 1.06 });
+  // the quoins up the four corners from the plinth to the eaves, long and short in turn
+  for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) {
+    const x = sx * W / 2, z = sz * D / 2;
+    for (let y = y0, k = 0; y < frame.eaveY - 0.2; y += 0.36, k++) {
+      const lx = k % 2 ? 0.24 : 0.46, lz = k % 2 ? 0.46 : 0.24;
+      sink.quoin('stone', x - sx * lx, y, z - sz * lz, x + sx * 0.035, Math.min(frame.eaveY, y + 0.34), z + sz * 0.035, sx, sz, { decor: true, shade: 1.05 });
+    }
+  }
   return sink.finish();
 };
 
@@ -420,97 +456,6 @@ const fishStore: RegionalBuilder = (ctx) => {
 };
 
 /**
- * The loggia (loža) of the harbour square: an open arcade of limestone piers carrying a stone architrave and a hipped
- * canal-tile roof, a solid back wall with a stone bench, two steps up from the square.
- */
-const loggia: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  // on a market row's plot (wider than deep) the loggia lies along it, its arcade down one long side (plotAxes)
-  const plot = plotAxes(ctx.info);
-  const W = Math.max(plot.turned ? 4.0 : 5.4, Math.min(8, plot.w - 0.8)), D = Math.max(8, Math.min(15, plot.d - 0.8));
-  alongPlot(sink, plot.turned, () => {
-    const H = 3.7, beam = 0.42, p = 0.26;
-    sink.span('stone', -W / 2, -0.45, -D / 2, W / 2, 0.32, D / 2);
-    faceBox(sink, 'stone', { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D }, 0, 0.08, 0.2, D, 0.16, 0.4, { decor: true });
-    // the back wall (-x) and its bench
-    sink.span('stone', -W / 2, 0.32, -D / 2, -W / 2 + 0.45, H, D / 2);
-    sink.span('stone', -W / 2 + 0.45, 0.32, -D / 2 + 0.6, -W / 2 + 0.95, 0.78, D / 2 - 0.6, { decor: true });
-    // the piers: along the open long side and the two ends
-    const nz = Math.max(3, Math.round(D / 3));
-    const piers: Array<[number, number]> = [];
-    for (let k = 0; k <= nz; k++) piers.push([W / 2 - p, -D / 2 + p + (D - 2 * p) * k / nz]);
-    for (const z of [-D / 2 + p, D / 2 - p]) piers.push([0.15, z]);
-    for (const [x, z] of piers) {
-      sink.span('stone', x - p, 0.32, z - p, x + p, H - beam, z + p);
-      sink.span('stone', x - p - 0.06, H - beam - 0.16, z - p - 0.06, x + p + 0.06, H - beam, z + p + 0.06, { decor: true });
-    }
-    // the architrave round the open sides
-    sink.span('stone', W / 2 - 2 * p - 0.04, H - beam, -D / 2, W / 2, H, D / 2);
-    for (const z of [-D / 2, D / 2 - 2 * p - 0.04]) sink.span('stone', -W / 2 + 0.45, H - beam, z, W / 2 - 2 * p, H, z + 2 * p + 0.04);
-    // round arches between the piers of the long side: a ring of voussoirs under the architrave
-    const open: Face = { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D };
-    for (let k = 0; k < nz; k++) {
-      const za = -D / 2 + p + (D - 2 * p) * k / nz, zb = -D / 2 + p + (D - 2 * p) * (k + 1) / nz;
-      const uc = -(za + zb) / 2, half = (zb - za) / 2 - p, spring = H - beam - 0.2 - half * 0.75;
-      // (the buildings stream, 2026-10-12, the integrity check: seven blocks spaced round the curve, each in the air)
-      // the voussoirs laid course to course from one pier's face to the other's, each joint closed
-      for (let a = 0; a < 6; a++) {
-        const t0 = Math.PI * a / 6 - 0.04, t1 = Math.PI * (a + 1) / 6 + 0.04;
-        const p0 = facePoint(open, uc + Math.cos(t0) * half, spring + Math.sin(t0) * half * 0.75, 0);
-        const p1 = facePoint(open, uc + Math.cos(t1) * half, spring + Math.sin(t1) * half * 0.75, 0);
-        sink.member('stone', p0, p1, 0.24, 0.12, open.out, { decor: true, exposed: true }, 0.02);
-      }
-    }
-    const roof = canalHip(22, 0.36);
-    emitRoof(sink, roofGeometry(W, D, H, roof), roof);
-  }, 1);
-  return sink.finish();
-};
-
-/**
- * The fish market (ribarnica) on the base market plot: four limestone piers with moulded bases and caps on a stepped
- * platform, an eave course of dressed stone, a low hipped roof of canal tiles; two stone tables for the morning catch
- * under it, crates of fish on the slabs (Trogir, Hvar, Supetar).
- */
-const fishMarket: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const look = ctx.variant;
-  const W = Math.max(4.8, Math.min(6.4, ctx.info.w - 0.3)), D = Math.max(3.8, Math.min(5.0, ctx.info.d - 0.3));
-  const floor = 0.32, top = 2.75, course = 0.3, p = 0.19;
-  // the platform of dressed slabs on a step all round
-  sink.span('stone', -W / 2 - 0.3, -0.3, -D / 2 - 0.3, W / 2 + 0.3, floor - 0.16, D / 2 + 0.3);
-  sink.span('stone', -W / 2 - 0.02, floor - 0.16, -D / 2 - 0.02, W / 2 + 0.02, floor, D / 2 + 0.02);
-  const px = W / 2 - 0.32, pz = D / 2 - 0.32;
-  for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
-    const x = sx * px, z = sz * pz;
-    sink.span('stone', x - p - 0.08, floor, z - p - 0.08, x + p + 0.08, floor + 0.24, z + p + 0.08);
-    sink.span('stone', x - p, floor + 0.24, z - p, x + p, top - 0.18, z + p);
-    sink.span('stone', x - p - 0.08, top - 0.18, z - p - 0.08, x + p + 0.08, top, z + p + 0.08);
-  }
-  // the eave course on the pier caps all round
-  const e = p + 0.06;
-  for (const sz of [-1, 1]) sink.span('stone', -px - e, top, sz * pz - e, px + e, top + course, sz * pz + e);
-  for (const sx of [-1, 1]) sink.span('stone', sx * px - e, top, -pz + e, sx * px + e, top + course, pz - e);
-  // the roof: canal tiles on four low slopes, laid along the long side
-  const roof: RoofSpec = canalHip(21, 0.32);
-  const along = W >= D, across = 2 * (along ? pz : px) + 2 * e, length = 2 * (along ? px : pz) + 2 * e;
-  sink.placed(along ? Math.PI / 2 : 0, 0, 0, 0, () => emitRoof(sink, roofGeometry(across, length, top + course, roof), roof));
-  // the tables: a limestone slab on two stone legs either side of the middle, crates of the catch on them
-  const L = Math.max(2.4, 2 * px - 1.0), crate = rgb(0x8a7458), catches: readonly Rgb[] = [0x9aa4a8, 0xa8aeb0, 0x7e8a90].map(rgb);
-  for (const sz of [-1, 1]) {
-    const z = sz * Math.min(0.85, pz - 0.6);
-    for (const sx of [-1, 1]) sink.span('stone', sx * (L / 2 - 0.35) - 0.13, floor, z - 0.26, sx * (L / 2 - 0.35) + 0.13, floor + 0.76, z + 0.26);
-    sink.span('stone', -L / 2, floor + 0.76, z - 0.38, L / 2, floor + 0.88, z + 0.38);
-    for (let k = 0, n = 2 + Math.floor(look() * 2); k < n; k++) {
-      const x = -L / 2 + 0.45 + (L - 0.9) * k / (n - 1) + (look() - 0.5) * 0.12;
-      sink.span('structureWood', x - 0.28, floor + 0.88, z - 0.19, x + 0.28, floor + 1.04, z + 0.19, { colour: shade(crate, 0.85 + look() * 0.3), decor: true });
-      sink.span('structureWood', x - 0.24, floor + 1.04, z - 0.15, x + 0.24, floor + 1.08, z + 0.15, { colour: pick(look, catches), decor: true });
-    }
-  }
-  return sink.finish();
-};
-
-/**
  * The customs house on the riva (the base bathhouse's plot): a rendered two-storey public building on a stone plinth,
  * a hipped roof, a string course and a cornice, dressed quoins, a central arched door under a stone balcony.
  */
@@ -567,10 +512,10 @@ export const DALMATIAN_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Obj
   woodshed: kazun,
   boatshed: (ctx) => dalmatianBoathouse(ctx, { st: stateFor(ctx), dialect }),
   fishery: fishStore,
-  marketRow: loggia,
+  marketRow: dalmatianLoggia,
   bathhouse: customsHouse,
   // the base market plot: the generic canvas stall becomes the fish market
-  market: fishMarket,
+  market: dalmatianRibarnica,
 });
 
 export const DALMATIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({

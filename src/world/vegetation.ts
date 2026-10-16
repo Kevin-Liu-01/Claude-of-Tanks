@@ -50,7 +50,7 @@ import { resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
 import {
   insideClearPolygon, plannedSiteClearances, redistributeAuthoredTrees, type AuthoredTreeFeature,
 } from './authoredTreePlacement.ts';
-import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeRiparian, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { SWARD_TONE, swardPatchAt, type SwardPatch } from './swardPatch.ts';
 import { createCraterFollower, createStaticCoverPatcher, followCraters, reseatCraterTrees, restoreCraterTrees, type GroundCoverCraters } from './groundCoverCraters.ts';
@@ -192,6 +192,16 @@ interface VegetationConfig {
    * battlefield's own rim (Longleaf's rim keeps the creek bottom's oaks; the flatwoods past the line are longleaf alone).
    * Absent: the rim mix. */
   ringMix?: SpeciesMix;
+  /** GND (2026-10-15; the coordinator's ruling: "birch and poplar shouldn't stand at pine height"): `'species'` stands
+   * each of the ring's trees at its own species' stature on the battlefield's rim (the mean of that species' rim trees;
+   * a species the rim does not grow, at the rim's mean instance scale × its own near height) instead of every species
+   * at the rim trees' one mean height. Absent: the one mean, as the ring always stood (Verdant's owner-approved forests
+   * stay bit for bit; ringSpeciesStature.selftest). */
+  ringStature?: 'species';
+  /** GND (2026-10-16; the critics past Kestrel's border: "a continuous forest mass and no understorey"): that share of
+   * the ring's stand placements gets a young tree of its parent's species beside it at stature[0]–stature[1] of the
+   * parent's height (horizonForestImpostors.ts resolveHorizonForestTrees). Absent: none. */
+  ringUnderstory?: { share: number; stature: readonly [number, number] };
   clusterCount: number;
   loneCount: number;
   rimCount: number;
@@ -213,6 +223,12 @@ interface VegetationConfig {
   palettes: Partial<Record<Species, VegetationPalette>>;
   avoid: VegetationDisc[] | null;
   belts?: VegetationBelt[];
+  /**
+   * The maps lane (Kestrel's pine plantations; the map-revival lane's 780c8a82e, 2026-10-06): rects only the belts plant
+   * in — the woodlots, the lone trees, the hedges and the saplings take no site inside one, so a plantation block holds
+   * its rows alone. Opt-in: a map that sets none draws and seats exactly as before.
+   */
+  standKeepOut?: readonly { x0: number; x1: number; z0: number; z1: number }[];
   /**
    * Trees round 2b: where the map's palms grow (a spring, a wadi bed, an oasis): a palm drawn anywhere else grows as
    * `palmFallback` (default: the map's first other species), so no draw moves.
@@ -499,6 +515,11 @@ export interface VegetationRuntime {
   /** GND (2026-10-15): the forest over the red line's species mix (VegetationConfig `ringMix`, else the rim's). */
   _ringMix: SpeciesMix;
   _rimTreeHeightM: number;
+  /** GND (2026-10-15): with VegetationConfig `ringStature: 'species'`, each ring species' height in metres (its rim
+   * trees' mean, else the rim's mean instance scale × its near rows' mean height); null otherwise (the one mean). */
+  _ringSpeciesHeightM: Readonly<Record<string, number>> | null;
+  /** GND (2026-10-16): VegetationConfig `ringUnderstory`, else null. */
+  _ringUnderstory: { share: number; stature: readonly [number, number] } | null;
   /** Round 77c: the rim trees' mean instance tint (linear r, g, b) — the ring's impostors take it, so the forest over
    * the red line is as dark as the rim (the ring's own tones average 0.99; the battlefield's value jitter and stand
    * shade average well under 1). */
@@ -6022,9 +6043,11 @@ function* vegetationBuildSteps(
     _evenSeat[0] = turn ? 2 * halvesAbout!.x - x : x; _evenSeat[1] = turn ? 2 * halvesAbout!.z - z : z;
     return _evenSeat;
   }
+  let placingBelts = false; // standKeepOut: the belts plant inside the kept-out rects
   function siteOk(x: number, z: number, margin: number, settled = false): boolean {
     if (Math.max(Math.abs(x), Math.abs(z)) > 455) return false;
     if (inAvoid(x, z) || inTreeClear(x, z) || overTreeCeiling(x, z)) return false;
+    if (!placingBelts && veg.standKeepOut?.some((r) => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1)) return false;
     if (!settled && x > v.x0 - 24 && x < v.x1 + 24 && z > v.z0 - 24 && z < v.z1 + 24) return false;
     if (admission()._roadDist(x, z) < 9 + margin) return false;
     if (admission().getGroundType(x, z) === 'soft' || noVeg(x, z)) return false;
@@ -6152,7 +6175,32 @@ function* vegetationBuildSteps(
     heights.sort((a, b) => a - b);
     return uplandBandOf(heights);
   })() : null;
+  // the trees lane (2026-10-06, the map-revival lane's Skybridge round 4: Glen Canyon's Fremont cottonwoods by the water):
+  // a place's riparian slot (treeBiomes.ts riparian) seats only within its reach of a lake's shore and no higher over the
+  // shore than its rise, or in the low ground (the lowest share of the square's heights, a fifth unless it names one);
+  // every other slot stands anywhere. A test on a seat, no draw (every placement's zone test, uplandZoneOk, reads it).
+  const riparian = treeBiomeRiparian(cfg?.id);
+  const riparianLow: number | null = riparian ? (() => {
+    const heights: number[] = [];
+    for (let z = -430; z <= 430; z += 24) for (let x = -430; x <= 430; x += 24) heights.push(heightField.getHeightAt(x, z));
+    heights.sort((a, b) => a - b);
+    return heights[Math.min(heights.length - 1, Math.floor(heights.length * (riparian.lowShare ?? 0.2)))];
+  })() : null;
+  function riparianZoneOk(x: number, z: number, sp: Species): boolean {
+    if (!riparian || sp !== riparian.slot) return true;
+    const h = heightField.getHeightAt(x, z);
+    if (h <= riparianLow!) return true;
+    for (const lake of heightField._layout?.lakes ?? []) {
+      const d = Math.hypot(x - lake.x, z - lake.z);
+      if (d - lake.r > riparian.reachM) continue;
+      // the shore: the lake's edge on the line from its centre to the seat
+      const f = lake.r / Math.max(1e-3, d);
+      if (h - heightField.getHeightAt(lake.x + (x - lake.x) * f, lake.z + (z - lake.z) * f) <= (riparian.riseM ?? Infinity)) return true;
+    }
+    return false;
+  }
   function uplandZoneOk(x: number, z: number, sp: Species): boolean {
+    if (!riparianZoneOk(x, z, sp)) return false;
     if (!uplandBand) return true;
     const form = formOf(sp)?.form ?? sp;
     return uplandZoneAllows(uplandBand, TREE_GROWTH_PROFILES[form as GrowthSpecies]?.family === 'conifer', heightField.getHeightAt(x, z));
@@ -6780,7 +6828,8 @@ function* vegetationBuildSteps(
       }
     }
   }
-  placeTreeBelts();
+  placingBelts = true;
+  try { placeTreeBelts(); } finally { placingBelts = false; }
   rememberAuthoredDonors(authoredLoneStart, trees.length - authoredLoneStart);
 
   // horizon rim forest: dense clustered blocks on the raised map border so
@@ -8876,9 +8925,13 @@ function* vegetationBuildSteps(
   // (horizonForestImpostors.ts); 0 where no atlas exists (the receipts, the mobile tier: the ring keeps its lobes).
   let rimTreeHeightM = 0;
   const rimTreeTint: [number, number, number] = [1, 1, 1];
+  // GND (2026-10-15): and per species, for a map whose ring stands each species at its own stature (`ringStature`)
+  let ringSpeciesHeightM: Record<string, number> | null = null;
   if (treeImpostors && rimTrees.length > 0) {
     let sum = 0, r = 0, g = 0, b = 0;
     let living = 0;
+    const bySpecies = new Map<string, { height: number; count: number }>();
+    let scaleSum = 0;
     for (const tree of rimTrees) {
       if ((tree.species as string) === 'snag') continue;
       living++;
@@ -8886,10 +8939,31 @@ function* vegetationBuildSteps(
       const e = tree.mat.elements;
       sum += Math.hypot(e[4], e[5], e[6]) * row.heightM;
       r += tree.tint.r; g += tree.tint.g; b += tree.tint.b;
+      if (veg.ringStature === 'species') {
+        const entry = bySpecies.get(tree.species) ?? { height: 0, count: 0 };
+        entry.height += Math.hypot(e[4], e[5], e[6]) * row.heightM;
+        entry.count++;
+        bySpecies.set(tree.species, entry);
+        scaleSum += Math.hypot(e[4], e[5], e[6]);
+      }
     }
     if (living > 0) {
       rimTreeHeightM = sum / living;
       rimTreeTint[0] = r / living; rimTreeTint[1] = g / living; rimTreeTint[2] = b / living;
+      if (veg.ringStature === 'species') {
+        ringSpeciesHeightM = {};
+        for (const [species, entry] of bySpecies) ringSpeciesHeightM[species] = entry.height / entry.count;
+        // a ring species the rim does not grow: the rim's mean instance scale × its own near rows' mean height
+        const scaleMean = scaleSum / living;
+        for (const [species] of veg.ringMix ?? veg.rimMix) {
+          if (ringSpeciesHeightM[species] !== undefined || (species as string) === 'snag') continue;
+          if (!treeImpostors.rows.some(row => row.species === species)) continue; // (the ring drops it too)
+          const base = treeImpostors.rowBase(species);
+          let rowHeight = 0;
+          for (let v = 0; v < treeImpostors.variants; v++) rowHeight += treeImpostors.rows[base + v].heightM;
+          ringSpeciesHeightM[species] = scaleMean * rowHeight / treeImpostors.variants;
+        }
+      }
     }
   }
   rimTrees.length = 0;
@@ -9015,7 +9089,7 @@ function* vegetationBuildSteps(
   return { group, update, dispose, getGrassWorkState, followCraters: followCraterLaw, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
     crushTree, resetToppled, advanceToppled: (dt: number) => { if (treeCrushAnims.length) updateTreeCrush(dt); }, _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
     _woodsMask: woodsMask,
-    _rimMix: veg.rimMix, _ringMix: veg.ringMix ?? veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _rimTreeTint: rimTreeTint,
+    _rimMix: veg.rimMix, _ringMix: veg.ringMix ?? veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _ringSpeciesHeightM: ringSpeciesHeightM, _ringUnderstory: veg.ringUnderstory ?? null, _rimTreeTint: rimTreeTint,
     warmImpostors: () => (treeImpostors ? treeImpostors.ensureBaked() : false),
     adoptOutlandTrees, _treeFormVariant: treeFormVariant, _outland: outlandBatches };
 }

@@ -3930,21 +3930,32 @@ function roofWeaponFloor(turret: THREE.Object3D, vehicleId: string): RoofWeaponF
     }
     return low;
   };
+  const swept = sweeps.map((sweep) => (x: number, z: number): number => {
+    let low = Infinity;
+    const bin = Math.floor(Math.hypot(x - sweep.x, z - sweep.z) / BIN);
+    for (let k = Math.max(0, bin - 1); k <= Math.min(sweep.floor.length - 1, bin + 1); k++) low = Math.min(low, sweep.floor[k]);
+    return low;
+  });
   return Object.assign((x: number, z: number): number => {
     let low = standing(x, z);
-    for (const sweep of sweeps) {
-      const bin = Math.floor(Math.hypot(x - sweep.x, z - sweep.z) / BIN);
-      for (let k = Math.max(0, bin - 1); k <= Math.min(sweep.floor.length - 1, bin + 1); k++) low = Math.min(low, sweep.floor[k]);
-    }
+    for (const floor of swept) low = Math.min(low, floor(x, z));
     return low;
-  }, { standing });
+  }, {
+    standing,
+    parts: swept.length > 1 ? swept.map((floor) => (x: number, z: number): number => Math.min(standing(x, z), floor(x, z))) : [],
+  });
 }
 
 /**
  * The lowest any roof weapon passes over (x, z): swept stations and standing guns (see roofWeaponFloor). `standing` is
- * the floor of what stands still alone: the crew guns and the stations' bases, as they are built.
+ * the floor of what stands still alone: the crew guns and the stations' bases, as they are built. `parts`, on a roof with
+ * more than one station, are the floors the net is cut round one by one (weaponOpenings): each station's sweep, with
+ * what stands still.
  */
-type RoofWeaponFloor = ((x: number, z: number) => number) & { readonly standing: (x: number, z: number) => number };
+type RoofWeaponFloor = ((x: number, z: number) => number) & {
+  readonly standing: (x: number, z: number) => number;
+  readonly parts: ReadonlyArray<(x: number, z: number) => number>;
+};
 
 /** The roof guns' fittings (crew pintles and stations) whose standing parts the turret's nets are cut round. */
 const ROOF_GUN_FITTINGS = /^(pintleMG|americanM2|americanRws|openYokeRws|weaponStationMount|auxiliaryWeapon)$/;
@@ -3998,8 +4009,24 @@ function openingsRound(blocked: ReadonlyArray<readonly [number, number]>, step: 
  * Openings a turret roof net is cut round under a roof gun: where the net, its rolled edges and its garnish cannot pass
  * under the gun's swept floor (round 5, 2026-10-08: the Leopard 2A6 UA's draped roof net ran over the aft station's
  * pedestal, 13 cm into its traverse at full depression).
+ *
+ * 2026-10-16 (integ/226 triage; VH.14 made the Leopard 2A4's loader MG3 a working station): on a roof with more than
+ * one station the net is cut round each station's sweep (with what stands still) one by one. One cut round all of them
+ * took the box round their joined sweeps, and the MG3's beside the FLW 200's bared the whole crown (leopard2A4Ghillie).
+ * A scrap the separate cuts would leave inside the joined cut, cut free of the rest of the net between two openings and
+ * the panel's edge, goes with the cut: it hangs on nothing (ghillieSuit: the M1A2 UA's cage-top net between the
+ * commander's and the loader's sweeps).
  */
 function weaponOpenings(panel: TopPanel, probe: SurfaceProbe | null, gunFloor: (x: number, z: number) => number): Point2[][] {
+  const whole = sweptOpenings(panel, probe, gunFloor);
+  const parts = (gunFloor as Partial<RoofWeaponFloor>).parts;
+  if (!whole.length || !parts || parts.length < 2) return whole;
+  const each = parts.flatMap((part) => sweptOpenings(panel, probe, part));
+  return [...each, ...openingScraps(panel, whole, each)];
+}
+
+/** The cells of a panel where the roof weapons' floor (or one part of it) stands too low over it, opened round. */
+function sweptOpenings(panel: TopPanel, probe: SurfaceProbe | null, gunFloor: (x: number, z: number) => number): Point2[][] {
   const step = 0.04;
   const blocked: Array<[number, number]> = [];
   for (let x = panel.x0; x <= panel.x1 + 1e-9; x += step) {
@@ -4011,6 +4038,41 @@ function weaponOpenings(panel: TopPanel, probe: SurfaceProbe | null, gunFloor: (
     }
   }
   return openingsRound(blocked, step);
+}
+
+/**
+ * The cloth the separate openings `each` leave inside the joined openings `whole` that no longer joins the panel's
+ * cloth outside them (on a `step` raster, through edge-sharing cells, inside the panel's outline and round its own
+ * holes), opened round as weaponOpenings's scraps.
+ */
+function openingScraps(panel: TopPanel, whole: readonly Point2[][], each: readonly Point2[][]): Point2[][] {
+  const step = 0.04;
+  const nx = Math.floor((panel.x1 - panel.x0) / step + 1e-9) + 1, nz = Math.floor((panel.z1 - panel.z0) / step + 1e-9) + 1;
+  const cloth = new Uint8Array(nx * nz), joined = new Uint8Array(nx * nz);
+  const stack: number[] = [];
+  for (let i = 0; i < nx; i++) {
+    for (let k = 0; k < nz; k++) {
+      const x = panel.x0 + i * step, z = panel.z0 + k * step;
+      if (panel.outline && !insidePoly(x, z, panel.outline)) continue;
+      if (panel.holes?.some((hole) => insidePoly(x, z, hole)) || each.some((hole) => insidePoly(x, z, hole))) continue;
+      const c = i * nz + k;
+      cloth[c] = 1;
+      if (!whole.some((hole) => insidePoly(x, z, hole))) { joined[c] = 1; stack.push(c); }
+    }
+  }
+  while (stack.length) {
+    const c = stack.pop()!, i = Math.floor(c / nz), k = c - i * nz;
+    for (const [a, b] of [[i - 1, k], [i + 1, k], [i, k - 1], [i, k + 1]]) {
+      if (a < 0 || a >= nx || b < 0 || b >= nz) continue;
+      const n = a * nz + b;
+      if (cloth[n] && !joined[n]) { joined[n] = 1; stack.push(n); }
+    }
+  }
+  const scraps: Array<[number, number]> = [];
+  for (let c = 0; c < cloth.length; c++) {
+    if (cloth[c] && !joined[c]) scraps.push([panel.x0 + Math.floor(c / nz) * step, panel.z0 + (c % nz) * step]);
+  }
+  return openingsRound(scraps, step);
 }
 
 /**

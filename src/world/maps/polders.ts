@@ -261,6 +261,8 @@ export default {
   vegetation: {
     species: ['poplar', 'willow', 'oak'], clusterMix: [['willow', 0.48], ['poplar', 0.36], ['oak', 0.16]],
     loneMix: [['poplar', 0.62], ['willow', 0.28], ['oak', 0.10]], rimMix: [['poplar', 0.54], ['willow', 0.34], ['oak', 0.12]],
+    // GND (2026-10-15): the ring's trees at each species' own rim stature (vegetation.ts `ringStature`): willow x0.78, poplar x1.13 of the one mean
+    ringStature: 'species',
     // (step 3, gauntlet wave 205: "free-standing trees scattered at random through the ploughed field") Zeeland's trees
     // stand in willow rows along the ditches, poplar windbreaks and farmyard groups: the woodlots off the cropped ground
     // (the trees lane's woodsOffArable) and fewer of them (42), the loose field trees mostly gone (64); willow rows on the

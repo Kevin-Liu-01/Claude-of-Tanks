@@ -833,11 +833,12 @@ function pnoiseXY(x: number, y: number, size: number, cellsX: number, cellsY: nu
  * their contrast, the ties grouted (pale cones, not dark holes) and a rust tear under one in five, and the runoff's dark
  * streaks down the wall over the broad pour mottling.)
  */
-function* boardFormed(s: number, tint: Tint, seed: number, worn = false): Generator<SurfaceSlice, [Uint8ClampedArray, Float32Array, Float32Array], void> {
+function* boardFormed(s: number, tint: Tint, seed: number, worn = false, pour = false): Generator<SurfaceSlice, [Uint8ClampedArray, Float32Array, Float32Array], void> {
   // (the destructible-buildings lane, 2026-10-11, `worn`: the pillboxes' eighty-year relics — wave 370, "plank-grain walls
   // read as timber", "wood-grain planks, with knots": the boards' grain, fins and joints a third as strong, the pour's
   // mottle and pores carrying the face)
-  const g = worn ? 0.32 : 1, mk = worn ? 1.6 : 1;
+  // (`pour`, the Skybridge port's 'poured' kind: the boards' planes, grain, fins and butt joints gone — one pour)
+  const g = pour ? 0 : worn ? 0.32 : 1, mk = worn ? 1.6 : 1;
   const px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s), rough = new Float32Array(s * s);
   const k = s / 256;
   const boards = 16, bh = s / boards, lift = s / 2, tie = s / 4, tieR = 2.6 * k, bleed = 24 * k;
@@ -938,9 +939,11 @@ export function* makeRegionalStone(kind: StoneSurfaceKind, tint: Tint, anisotrop
 export function* makeRegionalConcrete(kind: ConcreteSurfaceKind, tone: ((px: Uint8ClampedArray) => void) | null, anisotropy: number,
   seed = 0xb0a8, worn = false): Generator<SurfaceSlice, RegionalSurfaceTextures, void> {
   const s = 256;
-  const [px, hgt, rough] = yield* cached(`concrete:${kind}:${seed}${worn ? ':worn' : ''}`, () => boardFormed(s, [1, 1, 1], seed, worn));
+  const pour = kind === 'poured';
+  const [px, hgt, rough] = yield* cached(`concrete:${kind}:${seed}${worn ? ':worn' : ''}`, () => boardFormed(s, [1, 1, 1], seed, worn, pour));
   tone?.(px);
-  return finish(px, hgt, rough, s, anisotropy, worn ? 0.9 : 1.4, 0.72);
+  // (a pour's relief at two thirds of the formwork's: its lifts and ties only)
+  return finish(px, hgt, rough, s, anisotropy, worn ? 0.9 : pour ? 0.95 : 1.4, 0.72);
 }
 
 /** Paint-only access for receipts (no canvas): the raw buffers. */
@@ -948,7 +951,7 @@ export function* paintRegionalSurfaceBuffers(target: 'roof' | 'stone' | 'concret
   tint: Tint, seed: number, weathered = false):
   Generator<SurfaceSlice, { size: number; px: Uint8ClampedArray; hgt: Float32Array; rough: Float32Array }, void> {
   if (target === 'concrete') {
-    const [px, hgt, rough] = yield* boardFormed(256, tint, seed);
+    const [px, hgt, rough] = yield* boardFormed(256, tint, seed, false, kind === 'poured');
     return { size: 256, px, hgt, rough };
   }
   if (target === 'roof') {

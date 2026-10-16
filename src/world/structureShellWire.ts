@@ -1,7 +1,7 @@
 // src/world/structureShellWire.ts — a structure's geometry as the shell-band derivation reads it, packed for a worker
 // (2026-10-13, the perf stream: Plan W, structureShellPool.ts). structureCollision.ts reads exactly this of a bucket's
 // geometry: its position attribute's count and getX/getY/getZ, its index's count and getX, and the userData flags
-// noCollision and noCollisionVertices. The wire carries those values, never re-rounded: a non-interleaved Float32
+// noCollision, noCollisionVertices, collisionHull and collisionHullRanges. The wire carries those values, never re-rounded: a non-interleaved Float32
 // position array is copied as it is (getX reads it back unchanged); any other layout (interleaved, normalized, another
 // array type) is read through getX/getY/getZ into a Float64Array, which holds every value a getter returns exactly.
 // The unpacked geometry answers the same reads with the same numbers, in the same bucket and geometry order.
@@ -15,6 +15,10 @@ export interface StructureShellGeometryWire {
   indexCount: number;
   noCollision: boolean;
   noCollisionVertices: Uint8Array | null;
+  /** (physics, 2026-10-16) the geometry stands as its plan hull (structureCollision.ts hullPrism) */
+  collisionHull: boolean;
+  /** (physics, 2026-10-16) vertex ranges [start, end, ...] that each stand as their own hull */
+  collisionHullRanges: Uint32Array | null;
 }
 
 export type StructureShellWire = Array<[bucket: string, geometries: StructureShellGeometryWire[]]>;
@@ -58,8 +62,11 @@ export function packStructureShellWire(
       const flags = geometry.userData?.noCollisionVertices as Uint8Array | undefined;
       const noCollisionVertices = flags ? flags.slice() : null;
       if (noCollisionVertices) transfer.push(noCollisionVertices.buffer as ArrayBuffer);
+      const ranges = geometry.userData?.collisionHullRanges as ArrayLike<number> | undefined;
+      const collisionHullRanges = ranges?.length ? Uint32Array.from(ranges) : null;
+      if (collisionHullRanges) transfer.push(collisionHullRanges.buffer as ArrayBuffer);
       packed.push({ position, count, index, indexCount: sourceIndex?.count ?? 0,
-        noCollision: !!geometry.userData?.noCollision, noCollisionVertices });
+        noCollision: !!geometry.userData?.noCollision, noCollisionVertices, collisionHull: !!geometry.userData?.collisionHull, collisionHullRanges });
     }
     wire.push([bucket, packed]);
   }
@@ -78,6 +85,8 @@ export function unpackStructureShellWire(wire: StructureShellWire): Record<strin
       const userData: Record<string, unknown> = {};
       if (g.noCollision) userData.noCollision = true;
       if (g.noCollisionVertices) userData.noCollisionVertices = g.noCollisionVertices;
+      if (g.collisionHull) userData.collisionHull = true;
+      if (g.collisionHullRanges) userData.collisionHullRanges = g.collisionHullRanges;
       return { getAttribute: (name: string) => (name === 'position' ? position : undefined), getIndex: () => index, userData } as unknown as BufferGeometry;
     });
   }

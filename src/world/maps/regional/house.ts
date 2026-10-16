@@ -965,6 +965,8 @@ export interface HousePlan {
   crowns: HouseCrown[];
   /** a shaft recorded for the damage reading only (recordShaft): never the main body, always a tower */
   shaft?: boolean;
+  /** a body recorded for the damage reading only (recordBody): drawn nothing, so no census reads its spec as a house's */
+  recorded?: boolean;
 }
 
 /**
@@ -1032,6 +1034,7 @@ export function recordBody(sink: PartSink, cx: number, cz: number, w: number, d:
   const none: HouseDialect = { window: () => undefined, door: () => undefined };
   const lay = () => scratch.placed(0, cx, 0, cz, () => { buildHouse(scratch, spec, none); });
   if (pl) scratch.placed(pl.yaw, pl.x, pl.y, pl.z, lay); else lay();
+  planSink[planSink.length - 1].recorded = true;
   if (shaft) planSink[planSink.length - 1].shaft = true;
 }
 

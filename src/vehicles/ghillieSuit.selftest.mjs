@@ -217,7 +217,9 @@ for (const id of ids) {
   if (id === 't84') {
     const net=tank.root.getObjectByName('t84_ghillie_turret_net'),hard=[];
     turretRig.traverse(o=>{if(o.isMesh&&!/ghillie|Fill|Shadow|Decal/i.test(o.name))hard.push(o)});
-    for(const [x,z] of [[0,-.9],[0,-1.73],[.74,.62]]){
+    // 2026-10-16 (integ/226 triage; VH.14 76ef67d65): the KT-12.7 is a working station, so its swept floor opens the
+    // centre and right bustle packs' net round the gun; the bustle probe reads the left pack (x -0.68), which keeps cloth
+    for(const [x,z] of [[0,-.9],[-.68,-1.73],[.74,.62]]){
       const origin=turretRig.localToWorld(new THREE.Vector3(x,2,z));
       const probe=new THREE.Raycaster(origin,new THREE.Vector3(0,-1,0),0,3);
       const cloth=probe.intersectObject(net)[0],seat=probe.intersectObjects(hard)[0];

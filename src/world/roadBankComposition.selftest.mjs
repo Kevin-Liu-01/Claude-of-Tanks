@@ -67,6 +67,8 @@ function compile(body, constraintBody = constraints, helpers = helperSource) {
       moundCrestYs = null, mounds = [], raiseMounds = (x, z, h) => h,
       // (2026-10-07) and the canals' carve before the mounds (final queries); this fixture authors none
       compiledCanals = null, carveCanals = (canals, x, z, h) => h, liquidDepthM = 0,
+      // (the ground lane, 2026-10-12) and the paddies' levelled basins (terrain.paddies, paddies.ts levelPaddies); none here
+      compiledPaddies = null, levelPaddies = (paddies, x, z, h) => h,
       // (2026-10-07) and the lifted paths' crowned banks in the road plane's blend; this fixture lifts none
       gRoadLift = null, gRoadCrest = null,
       // the map-borders lane (2026-10-03): the foreground clearance past the playable edge (nil on this classic fixture),
@@ -74,7 +76,10 @@ function compile(body, constraintBody = constraints, helpers = helperSource) {
       clearanceReduction = () => 0, classicRimLift = (r) => border.liftAt(0, 0, r), authoringOnLandform = false,
       // the map-revival lane (2026-10-05, Orchard Valley): the contour terraces' zones (terrain.terraces); the standard
       // fixture authors none, so the micro-relief's terrace term reads nothing
-      terraceZones = [] } = fixture;
+      terraceZones = [],
+      // the map-revival lane (2026-10-08, Skybridge round 6): the lakes a point can reach (lakeCandidateIndex.ts); the
+      // fixture authors no lakes, so every point reads the plain loop (null)
+      lakesNear = () => null } = fixture;
     // Frontline Assault 2026-09-13: heightAt now ends with the assault-trenches carve; the
     // standard field (this fixture) has no plan, so the carve contributes nothing here.
     const trenchPlan = fixture.trenchPlan ?? (() => null);

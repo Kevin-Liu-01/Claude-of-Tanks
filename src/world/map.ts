@@ -44,12 +44,14 @@ import { withGroundCoverHoles, type GroundCoverHole } from './sceneryPlan.ts';
 import { clearShrubsFromSolids } from './shrubClearance.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier } from '../engine/quality.ts';
+import { splitProgramVariants } from '../engine/programVariants.ts';
 import { createStructureGroundOcclusion, type StructureGroundOcclusionHandle } from '../engine/structureGroundOcclusion.ts';
 import { startHorizonRingBuild } from './horizonRingPrefetch.ts';
 import { supplyHinterland, withdrawHinterland } from './hinterlandHook.ts';
 import { selectHinterland } from './hinterland/select.ts';
 import { startHinterlandBuild } from './hinterland/prefetch.ts';
 import { bindHinterlandTreeImpostors } from './hinterland/trees.ts';
+import { HINTERLAND_DEPTH_MARGIN_M } from './hinterland/project.ts';
 import { supplyHorizonRing, withdrawHorizonRing } from './horizonRingHook.ts';
 import { worldBuildConfig, type BuildMapConfig } from './worldBuildConfig.ts';
 import { startPlannedWreckBakes } from './wreckBakePrefetch.ts';
@@ -541,6 +543,9 @@ function assembleWorld(
     bindHorizonForestImpostors(ringForest, {
       // GND (2026-10-15): the forest over the line takes its own mix (VegetationConfig `ringMix`, else the rim's)
       library: vegetation._treeImpostors, rimMix: vegetation._ringMix, rimTreeHeightM: vegetation._rimTreeHeightM,
+      // GND (2026-10-15): a map whose ring stands each species at its own stature (VegetationConfig `ringStature`)
+      speciesHeightM: vegetation._ringSpeciesHeightM,
+      understory: vegetation._ringUnderstory, // (GND 2026-10-16: the young trees under the stands, VegetationConfig `ringUnderstory`)
       rimTreeTint: vegetation._rimTreeTint,
       setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
       releaseMaterial: (material) => engineCtx.releaseShadowMaterial?.(material),
@@ -560,7 +565,9 @@ function assembleWorld(
       setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
       ...(adoptOutland ? {
         formVariant: vegetation._treeFormVariant,
-        adoptWithin: (tree: { x: number; z: number }) => outlandAdoptable(tree.x, tree.z),
+        // (HORIZONS review, integ/225: Glacier's depth remap draws the land past the square's exit + 60 m nearer, and
+        // adopted trees in the battlefield's pools don't take it, so remapped land hid them) adopt only within 40 m
+        adoptWithin: (tree: { x: number; z: number }) => outlandAdoptable(tree.x, tree.z, HINTERLAND_DEPTH_MARGIN_M - 20),
         adopt: (trees: readonly OutlandTreeSpec[]) => vegetation.adoptOutlandTrees(trees),
       } : {}),
     });
@@ -853,6 +860,11 @@ function assembleWorld(
     return bodyQuery;
   };
   const unregisterDestructibles = props.registerDestructibles();
+  // (2026-10-16, the perf lane) every further program variant of a shared props material its own live twin, so a merged
+  // bucket and an instanced pool of one material stop re-resolving its program twice a frame (engine/programVariants.ts;
+  // the props only: the terrain's and the water's hooks keep their compile's uniform map on the material)
+  const programVariants = splitProgramVariants(props.group);
+  group.userData.programVariants = programVariants;
   return {
     mapId: config.id,
     terrainVariant: config.assaultTrenches ? 'assault-trenches' : null,

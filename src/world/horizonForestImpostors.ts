@@ -35,6 +35,15 @@ interface HorizonForestImpostorOptions {
   /** The mean height of the battlefield's rim trees in metres (vegetation.ts `_rimTreeHeightM`): the ring's trees
    * take the same mean stature, keeping the ring's own relative size spread. 0 leaves the lobes' stature law. */
   rimTreeHeightM: number;
+  /** GND (2026-10-15; vegetation.ts `_ringSpeciesHeightM`, the map's `ringStature: 'species'`): each species' own rim
+   * stature in metres; a placement of a species named here stands at (its scale / the ring's mean scale) × that height
+   * instead of × the one rim mean. Absent or null: the one mean for every species, bit for bit as before. */
+  speciesHeightM?: Readonly<Record<string, number>> | null;
+  /** GND (2026-10-16; the critics past Kestrel's border: "no understorey"; vegetation.ts `_ringUnderstory`): that share
+   * of the ring's stand placements (the near and band classes; a position hash picks them) gets a young tree of its
+   * parent's species beside it at stature[0]–stature[1] of the parent's height: the same atlas row, a quad of its own,
+   * no lobe shadow proxy. Absent or null: none, bit for bit as before. */
+  understory?: { share: number; stature: readonly [number, number] } | null;
   /** The rim trees' mean instance tint (vegetation.ts `_rimTreeTint`): every ring quad's colour is its own ring tone
    * × this, so the ring's forest carries the battlefield's value jitter and stand shade on average. */
   rimTreeTint?: readonly [number, number, number];
@@ -84,7 +93,7 @@ interface HorizonForestImpostorReceipt {
   /** The near class's lobe pools kept as shadow-only casters. */
   shadowProxies: number;
   species: Record<string, number>;
-  stature: { rimTreeHeightM: number; ringLobeHeightM: number; ratio: number };
+  stature: { rimTreeHeightM: number; ringLobeHeightM: number; ratio: number; species?: Readonly<Record<string, number>> };
   /** The rim tint every quad's tone was multiplied by. */
   tint: [number, number, number];
 }
@@ -144,7 +153,7 @@ export function horizonForestImpostorVariant(tone: number, variants: number): nu
  */
 export function resolveHorizonForestTrees(
   forest: THREE.Object3D, library: TreeImpostorLibrary,
-  options: Pick<HorizonForestImpostorOptions, 'rimMix' | 'rimTreeHeightM' | 'rimTreeTint' | 'formVariant'>,
+  options: Pick<HorizonForestImpostorOptions, 'rimMix' | 'rimTreeHeightM' | 'rimTreeTint' | 'formVariant' | 'speciesHeightM' | 'understory'>,
 ): ResolvedHorizonForest | null {
   const record = forest.userData.horizonForest as ForestRecord | undefined;
   if (!record?.placements) return null;
@@ -182,13 +191,38 @@ export function resolveHorizonForestTrees(
     let variant = horizonForestImpostorVariant(packed[o + 7], library.variants);
     if (options.formVariant) variant = Math.min(library.variants - 1, Math.max(0, options.formVariant(species, variant, x, z)));
     const row = library.rows[library.rowBase(species) + variant];
-    const targetHeight = (packed[o + 3] / ringScaleMean) * ringLobeHeightM * ratio;
+    // (GND 2026-10-15) a map whose ring stands each species at its own stature: that species' rim height
+    const own = options.speciesHeightM?.[species];
+    const targetHeight = own !== undefined && own > 0 ? (packed[o + 3] / ringScaleMean) * own
+      : (packed[o + 3] / ringScaleMean) * ringLobeHeightM * ratio;
     const tone = packed[o + 7];
     trees[i] = {
       index: i, x, y: packed[o + 1], z, yaw: packed[o + 4], species, variant, mirror: packed[o + 6] > 0.5,
       scale: targetHeight / Math.max(1e-3, row.heightM), tint: [tone * rim[0], tone * rim[1], tone * rim[2]],
       conifer, detail: packed[o + 9],
     };
+  }
+  // (GND 2026-10-16) the understorey: a young tree beside a share of the stand placements, after every placement's own
+  // (indices past the packed count; the ring's placements and their order untouched)
+  const under = options.understory;
+  if (under && under.share > 0) {
+    for (let i = 0; i < count; i++) {
+      const parent = trees[i];
+      if (parent.detail < 1 || horizonForestImpostorPick(parent.x + 17.31, parent.z - 9.13) >= under.share) continue;
+      const u = horizonForestImpostorPick(parent.x - 3.7, parent.z + 11.9), w = horizonForestImpostorPick(parent.z + 5.3, parent.x - 2.1);
+      const row = library.rows[library.rowBase(parent.species) + parent.variant];
+      const reach = parent.scale * row.radiusM * (1.1 + 0.6 * w), angle = u * Math.PI * 2;
+      const stature = under.stature[0] + (under.stature[1] - under.stature[0]) * w;
+      const x = parent.x + Math.cos(angle) * reach, z = parent.z + Math.sin(angle) * reach;
+      let variant = (parent.variant + 1) % library.variants;
+      if (options.formVariant) variant = Math.min(library.variants - 1, Math.max(0, options.formVariant(parent.species, variant, x, z)));
+      trees.push({
+        index: trees.length, x, y: parent.y, z,
+        yaw: parent.yaw + 2.4, species: parent.species, variant, mirror: !parent.mirror,
+        scale: parent.scale * stature, tint: [parent.tint[0] * 0.9, parent.tint[1] * 0.9, parent.tint[2] * 0.9],
+        conifer: parent.conifer, detail: parent.detail,
+      });
+    }
   }
   return { trees, ringLobeHeightM, ratio, tint: [rim[0], rim[1], rim[2]] };
 }
@@ -218,6 +252,7 @@ export function bindHorizonForestImpostors(
   const stride = HORIZON_FOREST_PLACEMENT_STRIDE;
   const packed = record.placements;
   const count = resolved.trees.length;
+  const placements = Math.floor(packed.length / stride); // (the understorey's trees come after the packed placements)
   const { ringLobeHeightM, ratio } = resolved;
   // the lobe pools: the near class becomes shadow-only proxies, the band and range classes go
   const pools = lobePoolsOf(forest);
@@ -274,6 +309,18 @@ export function bindHorizonForestImpostors(
     mesh.userData.horizonForestImpostor = { species: sp, mirror: mirror === '1' };
     for (let j = 0; j < bucket.length; j++) {
       const i = bucket[j], o = i * stride;
+      if (i >= placements) {
+        // (GND 2026-10-16) an understorey tree: its own place, turn and tint (resolveHorizonForestTrees)
+        const tree = resolved.trees[i];
+        quaternion.setFromAxisAngle(up, tree.yaw);
+        scale.setScalar(scaleOf[i]);
+        position.set(tree.x, tree.y, tree.z);
+        matrix.compose(position, quaternion, scale);
+        mesh.setMatrixAt(j, matrix);
+        mesh.setColorAt(j, color.setRGB(tree.tint[0], tree.tint[1], tree.tint[2]));
+        rows.array[j] = variantOf[i];
+        continue;
+      }
       quaternion.setFromAxisAngle(up, packed[o + 4]);
       scale.setScalar(scaleOf[i]);
       position.set(packed[o], packed[o + 1], packed[o + 2]);
@@ -302,7 +349,7 @@ export function bindHorizonForestImpostors(
       continue;
     }
     let j = 0;
-    for (let i = 0; i < count && j < mesh.count; i++) {
+    for (let i = 0; i < placements && j < mesh.count; i++) {
       const o = i * stride;
       if ((packed[o + 5] > 0.5) !== tag.conifer || packed[o + 9] !== 2 || packed[o + 6] !== tag.variant) continue;
       if (adoptedMask[i]) continue; // (the adopted tree's own near proxy casts its shadow: no double crown)
@@ -329,7 +376,7 @@ export function bindHorizonForestImpostors(
   }
   const receipt: HorizonForestImpostorReceipt = {
     instances: count, adopted, draws, shadowProxies, species: speciesCounts,
-    stature: { rimTreeHeightM: options.rimTreeHeightM, ringLobeHeightM, ratio },
+    stature: { rimTreeHeightM: options.rimTreeHeightM, ringLobeHeightM, ratio, ...(options.speciesHeightM ? { species: options.speciesHeightM } : {}) },
     tint: [rimTint.r, rimTint.g, rimTint.b],
   };
   forest.userData.horizonForestImpostors = receipt;

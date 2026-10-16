@@ -23,6 +23,7 @@ import { cloneCollisionRecord, collisionFootprintContainsPoint, setConvexShape, 
 import { createRecordClearance } from './recordClearance.ts';
 import { yardKeepOut, type YardKeepOut } from './regional/yards.ts';
 import { bankOf } from './regional/shanghaiParts.ts';
+import { bevelMember, bevelSpan, orientedPrism } from './regional/millWorks.ts';
 import type { RegionalBuildContext } from './regional/types.ts';
 
 interface BridgeDeck { x: number; z: number; ux: number; uz: number; halfLength: number; halfWidth: number; approachM?: number; waterY?: number }
@@ -46,7 +47,8 @@ interface StreetContext {
   colliders?: CollisionRecord[];
   /** (Lane C, #24) a burnt tram handed to the props as a breakable Shanghai car (tramShanghai.ts) at its seat, heading
    *  along the track; omitted, the tram is drawn from its parts with its static record as before. */
-  tramDestructible?: (tram: { kind: 'xk2_black_panther' | 'shanghai'; x: number; z: number; yaw: number }) => void;
+  tramDestructible?: (tram: { kind: 'k2' | 'shanghai'; // tank-ids:keep
+    x: number; z: number; yaw: number }) => void;
   /** the buildings placed (props.ts buildingFeatures, the plan's with their structure kind): the station's seat */
   buildings?: ReadonlyArray<{ x: number; z: number; w: number; d: number; rot: number; kind?: string }>;
 }
@@ -350,7 +352,8 @@ function dressBridgeheads(ctx: StreetContext): void {
           if (!mobile) {
             // the coil of wire along the bank behind the post
             for (let c = 0; c < 6; c++) {
-              sink.cylinder('structureMetal', [-2.4 + c * 0.9, 0.42, 2.6 * side], 'x', 0.86, 0.4, 6, { colour: rgb(0x3a3631), decor: true, fine: true }, 0.4, false);
+              // (props census r2 sweep, Lane C 2026-10-16: a six-sided coil's flat stood 7 cm over the ground, floating) on it
+              sink.cylinder('structureMetal', [-2.4 + c * 0.9, 0.35, 2.6 * side], 'x', 0.86, 0.4, 6, { colour: rgb(0x3a3631), decor: true, fine: true }, 0.4, false);
             }
           }
         });
@@ -364,7 +367,11 @@ function dressBridgeheads(ctx: StreetContext): void {
 function sampan(sink: PartSink, look: () => number): void {
   const L = 6.2 + look() * 1.6, W = 1.7, H = 0.5;
   const wood = { colour: shade(HULL, 0.85 + look() * 0.3), decor: true };
-  sink.span('structureWood', -L / 2 + 0.6, -0.25, -W / 2, L / 2 - 0.6, H, W / 2, wood);
+  // (props census r2 sweep, Lane C 2026-10-16: the sampan's box-only share 74 %) the hull's section a boat's, its flat
+  // bottom narrower than its flared sides, its gunwale; the bale's edges round, the hoops' and the scull's eased
+  const hull: Vec3[] = [[-L / 2 + 0.6, -0.25, -W / 2 + 0.22], [-L / 2 + 0.6, -0.25, W / 2 - 0.22], [-L / 2 + 0.6, H * 0.45, W / 2],
+    [-L / 2 + 0.6, H, W / 2], [-L / 2 + 0.6, H, -W / 2], [-L / 2 + 0.6, H * 0.45, -W / 2]];
+  orientedPrism(sink, 'structureWood', hull, [1, 0, 0], L - 1.2, wood);
   for (const e of [-1, 1]) {
     // the raised end: a wedge rising to the bow (and the stern), counter-clockwise seen from +z
     const x0 = e * (L / 2 - 0.6), x1 = e * L / 2;
@@ -389,7 +396,7 @@ function sampan(sink: PartSink, look: () => number): void {
   }
   const cane = { colour: shade(HULL, 1.45), decor: true, exposed: true };
   for (const hx of [rx - roofL / 2 + 0.04, rx, rx + roofL / 2 - 0.04]) {
-    for (let i = 0; i < segs; i += 2) sink.member('structureWood', arc(R + 0.015, i, hx), arc(R + 0.015, i + 2, hx), 0.035, 0.035, [1, 0, 0], cane, 0);
+    for (let i = 0; i < segs; i += 2) bevelMember(sink, 'structureWood', arc(R + 0.015, i, hx), arc(R + 0.015, i + 2, hx), 0.035, 0.035, [1, 0, 0], cane, 0);
   }
   // the cargo under the roof: a basket or two and a bale, and the floorboards' join
   const basket = { colour: shade(MAT, 1.15), decor: true };
@@ -397,9 +404,9 @@ function sampan(sink: PartSink, look: () => number): void {
   for (let k = 0; k < nb; k++) {
     sink.cylinder('structureWood', [rx - roofL * 0.25 + k * 0.55, H, (k % 2 ? 0.3 : -0.25)], 'y', 0.42, 0.22, 8, basket, 0.26);
   }
-  sink.span('structureWood', rx + roofL * 0.1, H, -0.35, rx + roofL * 0.1 + 0.7, H + 0.32, 0.15, { colour: shade(HESSIAN, 0.9), decor: true });
+  bevelSpan(sink, 'structureWood', rx + roofL * 0.1, H, -0.35, rx + roofL * 0.1 + 0.7, H + 0.32, 0.15, 0.06, { colour: shade(HESSIAN, 0.9), decor: true });
   // the scull over the stern
-  sink.member('structureWood', [-L / 2 + 0.3, H + 0.3, 0.2], [-L / 2 - 1.6, H - 0.3, 0.45], 0.08, 0.08, [0, 1, 0], { colour: shade(HULL, 1.2), decor: true, exposed: true }, 0);
+  bevelMember(sink, 'structureWood', [-L / 2 + 0.3, H + 0.3, 0.2], [-L / 2 - 1.6, H - 0.3, 0.45], 0.08, 0.08, [0, 1, 0], { colour: shade(HULL, 1.2), decor: true, exposed: true }, 0);
 }
 
 /**
@@ -501,8 +508,8 @@ function dressCreekQuays(ctx: StreetContext): void {
         sink.cylinder('stone', [px, py, pz], 'y', 0.55, 0.14, 6, { decor: true }, 0.12);
       }
       if (i % 20 === 7 && look() < 0.6) {
-        for (let xk2_black_panther = 0; xk2_black_panther < 5; xk2_black_panther++) {
-          const f = 1 - (xk2_black_panther + 1) / 6, [sx, sy, sz] = pt(a, ea, f);
+        for (let k = 0; k < 5; k++) {
+          const f = 1 - (k + 1) / 6, [sx, sy, sz] = pt(a, ea, f);
           sink.span('stone', sx - 0.6, sy - 0.25, sz - 0.6, sx + 0.6, sy + 0.08, sz + 0.6, { decor: true });
         }
       }

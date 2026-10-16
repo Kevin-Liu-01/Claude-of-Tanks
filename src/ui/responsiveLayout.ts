@@ -142,16 +142,108 @@ export function classifyViewport({
   });
 }
 
-function measureViewport(win: Window): Required<ViewportMeasurements> {
-  const viewport = win.visualViewport;
+/**
+ * A pinch (a trackpad spread, a two-finger zoom on a phone) zooms the VISUAL viewport: its width and height shrink
+ * to the layout size divided by the zoom, its offsets follow the pan, and window 'resize' never fires. It is a
+ * magnifier, never a different screen (2026-10-15, owner: "using both my fingers on track pad to like expand the
+ * screen in landing causes a bunch of weirdness and layout shifts").
+ */
+interface VisualViewportLike {
+  readonly width?: number;
+  readonly height?: number;
+  readonly offsetLeft?: number;
+  readonly offsetTop?: number;
+  readonly scale?: number;
+}
+
+interface LayoutViewportWindow {
+  readonly innerWidth?: number;
+  readonly innerHeight?: number;
+  readonly visualViewport?: VisualViewportLike | null;
+  readonly document?: { readonly documentElement?: { readonly clientWidth?: number } | null } | null;
+}
+
+interface LayoutViewportSize {
+  /** CSS px the page lays out across: the visible width as it is unmagnified. */
+  readonly width: number;
+  readonly height: number;
+  /** Visual-viewport offsets at rest (on-screen keyboard, iOS toolbars); 0 while pinch-zoomed. */
+  readonly offsetLeft: number;
+  readonly offsetTop: number;
+  /** visualViewport.scale, informational only: no layout reads it (see pinchZoomFactor). */
+  readonly visualScale: number;
+  /** How far a pinch magnifies the page (pinchZoomFactor); 1 at rest. */
+  readonly pinchFactor: number;
+}
+
+const finitePositive = (value: number | undefined): number =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0;
+
+/**
+ * How far a pinch magnifies the page: the layout viewport's width over the visual viewport's, exactly 1 at rest.
+ *
+ * Not visualViewport.scale: that is the page scale, and iOS gives it a resting value other than 1 with no pinch at
+ * all. Safari's per-site page zoom (the aA menu, Settings > Safari > Page Zoom, the SFSafariViewController in-app
+ * browser) rests at the zoom factor (a 322 px visual viewport at scale 1.25 on a 402 pt iPhone), and an iPad window
+ * narrower than Safari's minimum effective device width lays out 1024 px wide and rests shrunk to fit (scale 0.39).
+ * Visual size x scale oversized or shrank the whole app there (2026-10-16 iOS simulator review). The root's
+ * clientWidth is the layout viewport, the span the visual viewport covers at rest (both exclude a classic
+ * scrollbar), and no pinch changes it. It is a whole-pixel rounding, so within a pixel the page is at rest; with no
+ * reading (no document, a 0 before layout) the factor is 1, the measurement before 2026-10-16.
+ */
+export function pinchFactor(visualWidth: number | undefined, layoutWidth: number | undefined): number {
+  const visual = finitePositive(visualWidth);
+  const layout = finitePositive(layoutWidth);
+  if (!visual || !layout || Math.abs(layout - visual) <= 1) return 1;
+  return layout / visual;
+}
+
+/** pinchFactor() of a window: its visual viewport against its root's clientWidth. */
+export function pinchZoomFactor(win: LayoutViewportWindow | undefined = globalThis.window): number {
+  return pinchFactor(win?.visualViewport?.width, win?.document?.documentElement?.clientWidth);
+}
+
+/**
+ * The one viewport measurement every layout reader shares.
+ *
+ * At rest it is the visual viewport, exactly as before: iOS third-party browsers can report a layout viewport taller
+ * or shorter than the visible page, and the on-screen keyboard shrinks the visible height. Under a pinch it is that
+ * same visible area unmagnified (visual size x pinchZoomFactor): the layout width, and the visible height at that
+ * width, which keeps the keyboard-shrunk height. So a pinch never moves a band, a size variable or the renderer.
+ * innerWidth is not used while zoomed: WebKit on iOS reports a zoom-dependent innerWidth.
+ */
+export function layoutViewportSize(
+  win: LayoutViewportWindow | undefined = globalThis.window,
+): LayoutViewportSize {
+  const viewport = win?.visualViewport;
+  const factor = pinchZoomFactor(win);
+  const zoomed = factor !== 1;
+  const visualWidth = finitePositive(viewport?.width);
+  const visualHeight = finitePositive(viewport?.height);
   return {
-    width: Math.round(viewport?.width || win.innerWidth || 1),
-    height: Math.round(viewport?.height || win.innerHeight || 1),
-    offsetLeft: Math.round(viewport?.offsetLeft || 0),
-    offsetTop: Math.round(viewport?.offsetTop || 0),
-    visualScale: viewport?.scale || 1,
-    coarsePointer: !!win.matchMedia?.('(pointer: coarse)').matches,
-    hover: !!win.matchMedia?.('(hover: hover)').matches,
+    width: Math.max(1, Math.round(visualWidth ? visualWidth * factor : finitePositive(win?.innerWidth) || 1)),
+    height: Math.max(1, Math.round(visualHeight ? visualHeight * factor : finitePositive(win?.innerHeight) || 1)),
+    offsetLeft: zoomed ? 0 : Math.round(viewport?.offsetLeft || 0),
+    offsetTop: zoomed ? 0 : Math.round(viewport?.offsetTop || 0),
+    visualScale: finitePositive(viewport?.scale) || 1,
+    pinchFactor: factor,
+  };
+}
+
+/** True while a pinch magnifies the page in or out (the visual viewport is a part of the layout, or beyond it). */
+export function isPinchZoomed(win: LayoutViewportWindow | undefined = globalThis.window): boolean {
+  return pinchZoomFactor(win) !== 1;
+}
+
+function measureViewport(
+  win: Window,
+  pointerQuery: MediaQueryList | undefined,
+  hoverQuery: MediaQueryList | undefined,
+): Required<ViewportMeasurements> & { readonly pinchFactor: number } {
+  return {
+    ...layoutViewportSize(win),
+    coarsePointer: !!pointerQuery?.matches,
+    hover: !!hoverQuery?.matches,
   };
 }
 
@@ -173,31 +265,49 @@ export function installResponsiveLayout(
   const hoverQuery = win.matchMedia?.('(hover: hover)');
   let current: ViewportSnapshot | null = null;
   let frame = 0;
+  // Only what a layout reads emits cot:layoutchange. Offsets and the pinch scale have no layout consumer, and a
+  // zoomed pan changes nothing else, so neither may restyle the document or wake the renderer.
   const layoutKeys = [
-    'width', 'height', 'offsetLeft', 'offsetTop', 'visualScale',
+    'width', 'height',
     'widthBand', 'heightBand', 'widthDensity', 'heightDensity', 'orientation', 'input', 'overlayPanels',
   ] as const satisfies readonly (keyof ViewportSnapshot)[];
+  const written = new Map<string, string>();
+  const setVar = (name: string, value: string): void => {
+    if (written.get(name) === value) return;
+    written.set(name, value);
+    root.style.setProperty(name, value);
+  };
+  const setData = (key: string, value: string): void => {
+    if (body.dataset[key] !== value) body.dataset[key] = value;
+  };
 
   const apply = () => {
     frame = 0;
-    const next = classifyViewport(measureViewport(win));
+    const measured = measureViewport(win, pointerQuery, hoverQuery);
+    // A pixel of change that comes with a pinch (the page is magnified, or its scale just moved) is the rounding of
+    // visual size x factor, or the last rounding pixel before the factor leaves 1: never a new size. At rest and a
+    // steady scale (iOS page zoom included) a pixel is real, an iOS toolbar settling.
+    const pinching = measured.pinchFactor !== 1 || (!!current && measured.visualScale !== current.visualScale);
+    if (current && pinching && Math.abs(measured.width - current.width) <= 1
+      && Math.abs(measured.height - current.height) <= 1) {
+      measured.width = current.width;
+      measured.height = current.height;
+    }
+    const next = classifyViewport(measured);
     const changed = !current || layoutKeys.some((key) => current?.[key] !== next[key]);
     current = next;
 
-    body.dataset.cotWidth = next.widthBand;
-    body.dataset.cotHeight = next.heightBand;
-    body.dataset.cotWidthDensity = next.widthDensity;
-    body.dataset.cotHeightDensity = next.heightDensity;
-    body.dataset.cotOrientation = next.orientation;
-    body.dataset.cotInput = next.input;
-    body.dataset.cotPanels = next.overlayPanels ? 'overlay' : 'persistent';
-    body.dataset.cotViewport = 'visual';
-    root.style.setProperty('--cot-viewport-width', `${next.width}px`);
-    root.style.setProperty('--cot-viewport-height', `${next.height}px`);
-    root.style.setProperty('--cot-viewport-offset-left', `${next.offsetLeft}px`);
-    root.style.setProperty('--cot-viewport-offset-top', `${next.offsetTop}px`);
-    root.style.setProperty('--cot-viewport-scale', next.visualScale.toFixed(4));
-    root.style.setProperty('--cot-ui-scale', next.scale.toFixed(4));
+    setData('cotWidth', next.widthBand);
+    setData('cotHeight', next.heightBand);
+    setData('cotWidthDensity', next.widthDensity);
+    setData('cotHeightDensity', next.heightDensity);
+    setData('cotOrientation', next.orientation);
+    setData('cotInput', next.input);
+    setData('cotPanels', next.overlayPanels ? 'overlay' : 'persistent');
+    setData('cotViewport', 'visual');
+    setVar('--cot-viewport-width', `${next.width}px`);
+    setVar('--cot-viewport-height', `${next.height}px`);
+    setVar('--cot-ui-scale', next.scale.toFixed(4));
 
     if (changed) {
       win.dispatchEvent(new CustomEvent('cot:layoutchange', { detail: next }));
@@ -208,11 +318,16 @@ export function installResponsiveLayout(
     if (frame) return;
     frame = win.requestAnimationFrame(apply);
   };
+  // A pan inside a pinch-zoomed page moves only the offsets; at rest a scroll can carry an iOS keyboard or
+  // toolbar height change, so it still measures.
+  const onVisualScroll = () => {
+    if (!isPinchZoomed(win)) refresh();
+  };
 
   win.addEventListener('resize', refresh, { passive: true });
   win.addEventListener('orientationchange', refresh, { passive: true });
   win.visualViewport?.addEventListener('resize', refresh, { passive: true });
-  win.visualViewport?.addEventListener('scroll', refresh, { passive: true });
+  win.visualViewport?.addEventListener('scroll', onVisualScroll, { passive: true });
   pointerQuery?.addEventListener?.('change', refresh);
   hoverQuery?.addEventListener?.('change', refresh);
   apply();
@@ -225,7 +340,7 @@ export function installResponsiveLayout(
       win.removeEventListener('resize', refresh);
       win.removeEventListener('orientationchange', refresh);
       win.visualViewport?.removeEventListener('resize', refresh);
-      win.visualViewport?.removeEventListener('scroll', refresh);
+      win.visualViewport?.removeEventListener('scroll', onVisualScroll);
       pointerQuery?.removeEventListener?.('change', refresh);
       hoverQuery?.removeEventListener?.('change', refresh);
       delete responsiveWindow[RESPONSIVE_LAYOUT_HANDLE];

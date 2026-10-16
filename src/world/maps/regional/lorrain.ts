@@ -11,11 +11,13 @@ import {
   PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER,
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
-import { buildHouse, emitRoof, holedFace, roofGeometry, storeyFaces, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, holedFace, recordBody, roofGeometry, storeyFaces, wallPolygon, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { archHead } from './sarajevoParts.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { bench, wallLantern, woodpile } from './dressing.ts';
 import { openShed } from './outbuildings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { hallStalls, timberHalle, type HalleSpec } from './marketHall.ts';
 
 /** Shutters: the Lorraine grey-green, pale grey, brown, blue-grey, an oxblood, a sage. */
 const SHUTTERS: readonly Rgb[] = [0x7a8a78, 0xa4a69e, 0x6a5040, 0x6a7e8e, 0x7a3a30, 0x8a9a7a].map(rgb);
@@ -114,7 +116,16 @@ function cartDoor(sink: PartSink, face: Face, u: number, y: number, w: number, h
   faceBox(sink, 'structureWood', face, wu, wy + wh / 2, go + 0.036, ww - 0.01, wh - 0.01, 0.012, { colour: shade(colour, 1.06), decor: true, uv: UV_MEMBER });
   // its two hinges and its ring
   for (const t of [0.2, 0.8]) faceBox(sink, 'structureMetal', face, wu - ww / 2 + 0.17, wy + wh * t, go + 0.046, 0.3, 0.04, 0.01, { colour: IRON, ...fine });
-  sink.cylinder('structureMetal', facePoint(face, wu + ww / 2 - 0.12, wy + wh * 0.52, go + 0.046), face.out[0] !== 0 ? 'x' : 'z', 0.012, 0.055, 8, { colour: IRON, ...fine });
+  // (the r2 sweep: the ring was a dark disc on the leaf) the drop ring hung from its staple: a loop of wrought iron
+  {
+    const ru = wu + ww / 2 - 0.12, ry = wy + wh * 0.52, ro = go + 0.05, R = 0.05;
+    faceBox(sink, 'structureMetal', face, ru, ry + R + 0.015, ro - 0.002, 0.03, 0.04, 0.025, { colour: IRON, ...fine });
+    for (let k = 0; k < 8; k++) {
+      const a0 = Math.PI * 2 * k / 8, a1 = Math.PI * 2 * (k + 1) / 8;
+      sink.member('structureMetal', facePoint(face, ru + Math.sin(a0) * R, ry + Math.cos(a0) * R, ro), facePoint(face, ru + Math.sin(a1) * R, ry + Math.cos(a1) * R, ro),
+        0.012, 0.012, face.out, { colour: IRON, ...fine, exposed: true }, 0);
+    }
+  }
   const fo = { decor: true, fineSides: true } as const;
   for (const side of [-1, 1]) faceBox(sink, 'stone', face, u + side * (w / 2 + 0.16), y + h / 2, 0.04, 0.32, h, 0.08, fo);
   // the arch: three voussoir blocks either side rising to the keystone, the spandrel stone above
@@ -432,7 +443,17 @@ const church: RegionalBuilder = (ctx) => {
       // the clock on the west face, under the belfry
       const cy = tower.floors[1] + clockH * 0.55, cz = T / 2 + 0.025;
       sink.cylinder('structureMetal', [0, cy, cz], 'z', 0.06, 0.62, 16, { colour: rgb(0xe0dccf), decor: true });
-      sink.cylinder('structureMetal', [0, cy, cz + 0.06], 'z', 0.03, 0.08, 6, { colour: IRON, decor: true });
+      // (the r2 sweep: the hands' boss was a dark disc on the dial) the hands on their arbor: the hour hand and the minute
+      // hand in wrought iron standing off the dial, the boss a knob on the arbor, the hours marked round the rim
+      const hz = cz + 0.075;
+      sink.cylinder('structureMetal', [0, cy, cz + 0.06], 'z', 0.07, 0.035, 8, { colour: IRON, decor: true });
+      sink.member('structureMetal', [0, cy, hz], [0.2, cy + 0.24, hz], 0.035, 0.012, [0, 0, 1], { colour: IRON, decor: true, exposed: true }, 0);
+      sink.member('structureMetal', [0, cy, hz + 0.014], [-0.05, cy + 0.47, hz + 0.014], 0.025, 0.012, [0, 0, 1], { colour: IRON, decor: true, exposed: true }, 0);
+      for (let k = 0; k < 12; k++) {
+        const a = Math.PI * 2 * k / 12, r0 = 0.5, r1 = k % 3 ? 0.55 : 0.58;
+        sink.member('structureMetal', [Math.sin(a) * r0, cy + Math.cos(a) * r0, cz + 0.061], [Math.sin(a) * r1, cy + Math.cos(a) * r1, cz + 0.061], 0.02, 0.008, [0, 0, 1],
+          { colour: IRON, decor: true, fine: true, exposed: true }, 0);
+      }
       // the spire: an octagon broached to the square of the cornice, its cross and the cockerel
       spire(sink, T / 2 + 0.08, tower.eaveY + 0.28, T * 2.4);
     });
@@ -576,49 +597,125 @@ const mairie: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The covered market hall (halle): a tile roof on stone piers over a paved floor, open all round. */
+/**
+ * The covered market hall (halle; props census #23, the looks lane 2026-10-15: "six plain stone pier boxes ... no
+ * trusses, braces, goods or own destruction"): oak posts on chamfered Jaumont dés, knee-braced both ways to the plates
+ * and tie beams, king-post trusses with their purlins and common rafters under a low roof of canal tiles, its gables
+ * boarded with a louvred vent; a floor of setts inside its kerb; trestle stalls of the autumn's apples, cabbages, leeks
+ * and pumpkins, baskets, crates, sacks and a beam scale. Its frame falls as its posts and its roof (marketHall.ts).
+ */
 const halle: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng;
+  const rng = ctx.rng, look = ctx.variant;
   const fp = footprint(ctx);
   onLot(sink, fp, (W, L) => {
-    sink.span('stone', -W / 2, -0.3, -L / 2, W / 2, 0.22, L / 2);
-    const nz = Math.max(2, Math.round(L / 3.2) + 1), H = 3.2 + rng() * 0.4;
-    for (const sx of [-1, 1]) for (let k = 0; k < nz; k++) {
-      const z = -L / 2 + 0.35 + (L - 0.7) * k / (nz - 1), x = sx * (W / 2 - 0.35);
-      sink.span('stone', x - 0.26, 0.22, z - 0.26, x + 0.26, H, z + 0.26);
-      sink.span('stone', x - 0.34, H - 0.2, z - 0.34, x + 0.34, H, z + 0.34, { decor: true });
-    }
-    for (const sx of [-1, 1]) sink.span('structureWood', sx * (W / 2 - 0.35) - 0.16, H, -L / 2 + 0.1, sx * (W / 2 - 0.35) + 0.16, H + 0.32, L / 2 - 0.1, { colour: PLANK });
-    emitRoof(sink, roofGeometry(W - 0.4, L - 0.2, H + 0.32, canal(27, 0.55, 0.45)), canal(27, 0.55, 0.45));
+    const spec: HalleSpec = {
+      W, D: L, H: 2.9 + rng() * 0.4, roof: canal(27, 0.55, 0.45), timber: rgb(0x5c4634), bays: Math.max(2, Math.round(L / 3.0)),
+      mobile: ctx.tier === 'mobile', look, boardedGables: shade(PLANK, 1.1),
+      produce: [rgb(0x9a2a22), rgb(0xc8a23a), rgb(0x5d7042), rgb(0xd07a2a), rgb(0xd8d2b4)],
+    };
+    timberHalle(sink, spec);
+    hallStalls(sink, spec, { tables: L > 5.5 ? 2 : 1, scaleZ: 0 });
   });
   return sink.finish();
 };
 
-/** The arcaded houses of the square: two storeys over an arcade of round arches on stone piers, a deep tile roof. */
+/**
+ * The arcaded houses of the square (props census #23, the looks lane 2026-10-15: "plain pier boxes with stepped box
+ * corbels instead of arches, the shopfronts one dark slab, the back a blank plane"): two storeys of rendered rubble over
+ * an arcade of round arches on stone piers along the front (the lot's +z): each arch cut through the arcade wall, its
+ * voussoirs and keystone, the impost moulding at its springing; the walk behind it flagged, its ceiling the upper
+ * floor's joists on a beam; the shops at the back of the walk in the ground-floor body, their glazed fronts and doors cut
+ * in reveals under painted fascias, the goods set out before them; the back and the ends with their doors and windows.
+ * The arcade, the shops and the upper storeys are three bodies of the house plan.
+ */
 const arcades: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const st = stateFor(ctx), rng = st.rng;
+  const st = stateFor(ctx), rng = st.rng, look = st.look, mobile = ctx.tier === 'mobile';
   const fp = footprint(ctx);
-  const arcade = 2.0, H0 = 3.6;
+  const arcade = 2.0, H0 = 3.6, pier = 0.56, deep = 0.5;
   onLot(sink, fp, (Dp, F) => {
-    // the arcade along the front, the body's -x side (the lot's +z on a lot longer in x): piers and arches over the
-    // walk, the shops behind it
-    const nb = Math.max(2, Math.round(F / 3.2)), bay = F / nb, xf = -Dp / 2;
+    const nb = Math.max(2, Math.round(F / 3.2)), bay = F / nb, xf = -Dp / 2, bw = bay - pier, r = bw / 2;
+    const spring = H0 - 0.38 - r, us = Array.from({ length: nb }, (_, k) => -F / 2 + (k + 0.5) * bay);
+    // ---- the arcade wall: its front and back faces cut by the arches, the reveals through it the arches' soffits
+    const A: Face = { origin: [xf, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: F };
+    const Ai: Face = { origin: [xf + deep, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: F };
+    // (bare: the walk and the shops are seen through the arches, no room's dark behind them; the soffits drawn below)
+    const holes = us.map((u) => ({ u0: u - r, u1: u + r, y0: 0, y1: spring + r, spring, bare: true }));
+    holedFace(sink, 'stone', A, { u0: -F / 2, u1: F / 2, y0: -0.3, y1: H0 }, holes, 0);
+    holedFace(sink, 'stone', Ai, { u0: -F / 2, u1: F / 2, y0: -0.3, y1: H0 },
+      holes.map((h) => ({ ...h, u0: -h.u1, u1: -h.u0 })), 0);
+    // each arch's jambs, its soffit round the head (in the face's own segments) and its sill, through the wall
+    const n = r < 0.8 ? 4 : r < 1.3 ? 6 : 8;
+    for (const u of us) {
+      const P = (uu: number, yy: number, o: number) => facePoint(A, uu, yy, o), at = (t: number): [number, number] => [u + Math.cos(t) * r, spring + Math.sin(t) * r];
+      sink.quad('stone', P(u - r, 0, 0), P(u - r, 0, -deep), P(u - r, spring, -deep), P(u - r, spring, 0), { shade: 0.74 });
+      sink.quad('stone', P(u + r, 0, 0), P(u + r, spring, 0), P(u + r, spring, -deep), P(u + r, 0, -deep), { shade: 0.74 });
+      for (let j = 0; j < n; j++) {
+        const [ua, ya] = at(Math.PI * (j / n)), [ub, yb] = at(Math.PI * ((j + 1) / n));
+        sink.quad('stone', P(ua, ya, 0), P(ub, yb, 0), P(ub, yb, -deep), P(ua, ya, -deep), { shade: 0.68 });
+      }
+      sink.quad('stone', P(u - r, 0, 0), P(u + r, 0, 0), P(u + r, 0, -deep), P(u - r, 0, -deep), { shade: 0.9 });
+    }
+    // the wall's ends
+    for (const sz of [-1, 1]) {
+      const z = sz * F / 2, q: Vec3[] = sz > 0
+        ? [[xf, -0.3, z], [xf + deep, -0.3, z], [xf + deep, H0, z], [xf, H0, z]] : [[xf + deep, -0.3, z], [xf, -0.3, z], [xf, H0, z], [xf + deep, H0, z]];
+      sink.quad('stone', q[0], q[1], q[2], q[3]);
+    }
+    recordBody(sink, xf + arcade / 2, 0, arcade, F, H0, 'stone');
+    // the voussoirs and keystones, the impost mouldings at the springing on the piers
+    for (const u of us) {
+      archHead(sink, A, u, spring, r, 'stone', 0.22, 9);
+      faceBox(sink, 'stone', A, u, spring + r + 0.1, 0.06, 0.34, 0.42, 0.12, { decor: true, tint: [1.06, 1.04, 1.0] });
+    }
     for (let k = 0; k <= nb; k++) {
-      const z = -F / 2 + k * bay;
-      sink.span('stone', xf, -0.3, z - 0.28, xf + 0.5, H0, z + 0.28);
+      const u = -F / 2 + k * bay, w = k === 0 || k === nb ? pier / 2 + 0.06 : pier + 0.12, uc = k === 0 ? u + w / 2 - 0.06 : k === nb ? u - w / 2 + 0.06 : u;
+      faceBox(sink, 'stone', A, uc, spring + 0.06, 0.04, w, 0.14, 0.08, { decor: true, tint: [1.08, 1.05, 1.0] });
+      // the pier's plinth course at its foot
+      faceBox(sink, 'stone', A, uc, 0.18, 0.03, w, 0.36, 0.06, { decor: true, tint: [0.92, 0.9, 0.88] });
     }
-    for (let k = 0; k < nb; k++) {
-      const z = -F / 2 + (k + 0.5) * bay;
-      // the arch's spandrel: the wall over the opening, its soffit stepped to read the round head
-      const f: Face = { origin: [xf, 0, z], u: [0, 0, 1], out: [-1, 0, 0], width: bay };
-      faceBox(sink, 'stone', f, 0, H0 - 0.35, -0.25, bay - 0.56, 0.7, 0.5, { decor: true });
-      for (const side of [-1, 1]) faceBox(sink, 'stone', f, side * (bay / 2 - 0.55), H0 - 0.95, -0.25, 0.5, 0.5, 0.5, { decor: true });
-    }
-    // the shopfronts at the back of the arcade (a dark wall closed for the collision) and the upper storeys
-    sink.span('dark', xf + arcade - 0.05, -0.3, -F / 2 + 0.3, xf + arcade + 0.05, H0, F / 2 - 0.3);
-    sink.span(st.wall, xf + arcade, -0.3, -F / 2, Dp / 2, H0, F / 2);
+    // ---- the walk: flagged, its ceiling the upper floor's joists on a beam along the arcade wall
+    sink.span('stone', xf + deep, -0.3, -F / 2, xf + arcade, 0.1, F / 2, { tint: [0.9, 0.88, 0.85] });
+    sink.dressing(mobile, () => {
+      sink.span('structureWood', xf + deep - 0.02, H0 - 0.32, -F / 2 + 0.05, xf + deep + 0.24, H0, F / 2 - 0.05, { colour: shade(PLANK, 0.8), decor: true });
+      for (let z = -F / 2 + 0.35; z < F / 2 - 0.2; z += 0.55) {
+        sink.span('structureWood', xf + deep + 0.24, H0 - 0.2, z - 0.07, xf + arcade, H0, z + 0.07, { colour: shade(PLANK, 0.75 + look() * 0.1), decor: true });
+      }
+    });
+    // ---- the shops at the back of the walk: the ground floor's body, its fronts cut in reveals
+    const sw = Dp - arcade, scx = xf + arcade + sw / 2;
+    const sOpen: Opening[] = [];
+    us.forEach((u, k) => {
+      if (k % 3 === 2) sOpen.push({ face: 'left', storey: 0, kind: 'door', u, w: 1.1, y0: 0.1, h: 2.3 });
+      else sOpen.push({ face: 'left', storey: 0, kind: 'shopfront', u, w: Math.min(2.3, bw - 0.5), y0: 0.1, h: 2.65 });
+    });
+    sOpen.push({ face: 'right', storey: 0, kind: 'door', u: -F * 0.2, w: 0.95, y0: 0, h: 2.05 });
+    for (const o of windowRhythm('right', 0, F, { w: 0.8, h: 1.1, sill: 1.1, spacing: 2.8, margin: 1.2, avoid: [[-F * 0.2 - 0.9, -F * 0.2 + 0.9]], max: 4 })) sOpen.push(o);
+    for (const face of ['front', 'back'] as const) sOpen.push({ face, storey: 0, kind: 'window', u: 0, w: 0.8, y0: 1.1, h: 1.1 });
+    const signs = [rgb(0x2e4a3a), rgb(0x6a2a24), rgb(0x2a3a5a), rgb(0x5a4a2a)];
+    sink.placed(0, scx, 0, 0, () => {
+      const shops = buildHouse(sink, {
+        w: sw, d: F, plinth: null, storeys: [{ h: H0, wall: st.wall }], roof: { kind: 'flat', pitchDeg: 0, eave: 0, verge: 0, thickness: 0.1, bucket: 'roof' },
+        ownRoof: true, openings: sOpen, chimneys: [], gutters: null, verge: null, reveal: 0.26,
+      }, dialect(st));
+      const f = shops.faces.left;
+      sink.dressing(mobile, () => {
+        us.forEach((u, k) => {
+          if (k % 3 === 2) return;
+          // the painted fascia over the shop's front, its lettering a lighter band; the goods set out on the flags
+          const c = signs[(k + Math.floor(look() * 4)) % signs.length], wf = Math.min(2.3, bw - 0.5) + 0.3;
+          faceBox(sink, 'structureWood', f, u, 2.98, 0.05, wf, 0.38, 0.05, { colour: c, decor: true });
+          faceBox(sink, 'structureWood', f, u, 2.98, 0.08, wf * 0.7, 0.12, 0.012, { colour: shade(rgb(0xd8ccaa), 0.9 + look() * 0.1), decor: true, fine: true });
+          for (let j = 0; j < 3; j++) {
+            const p = facePoint(f, u - 0.7 + j * 0.7, 0, 0.5 + look() * 0.25);
+            if (look() < 0.5) sink.cylinder('structureWood', [p[0], 0.1, p[2]], 'y', 0.32, 0.22, 9, { colour: shade(rgb(0x8a7550), 0.9 + look() * 0.2), decor: true }, 0.26);
+            else sink.span('structureWood', p[0] - 0.24, 0.1, p[2] - 0.2, p[0] + 0.24, 0.42, p[2] + 0.2, { colour: shade(rgb(0x9a8466), 0.85 + look() * 0.2), decor: true });
+          }
+        });
+      });
+    });
+    // ---- the two storeys over it all: the house's own body, its windows to the square and to the back
     sink.placed(0, 0, H0, 0, () => {
       const openings: Opening[] = [];
       for (const s of [0, 1]) for (const o of windowRhythm('left', s, F, { w: 0.95, h: 1.4, sill: 0.8, spacing: 2.2, margin: 0.9 })) openings.push(o);
@@ -629,6 +726,7 @@ const arcades: RegionalBuilder = (ctx) => {
         gutters: { colour: rgb(0x6a6e6c) }, verge: null, reveal: 0.24,
       }, dialect(st));
       sink.band('stone', -Dp / 2 - 0.05, -0.12, -F / 2 - 0.05, Dp / 2 + 0.05, 0.14, F / 2 + 0.05, { decor: true });
+      anchors(sink, frame.faces.left, frame.floors[1] - 0.1, us);
       return frame;
     });
   });
@@ -803,6 +901,13 @@ export const LORRAIN_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Objec
   farmhouse: (ctx) => maison(ctx, { bays: ['logis', 'cart', 'stable'], storeys: 2 }),
   tavern: (ctx) => maison(ctx, { bays: ['shop', 'logis'], storeys: 3, fascia: rgb(0x3f5a46) }),
   cornershop: (ctx) => maison(ctx, { bays: ['shop', 'logis'], storeys: 2, fascia: rgb(0x7a3a2c) }),
+  // (the r2 sweep, 2026-10-16: the town's sixteen row houses stood in the generic props.ts row house, its windows dark
+  // plates on the render) the town house of the street rows: two or three storeys of the maison's dwelling bays, now and
+  // then a shop under them (the look stream's choice), its height the plot's
+  rowhouse: (ctx) => {
+    const shop = ctx.variant() < 0.35, storeys = ctx.info.h > 9.6 ? 3 : 2;
+    return maison(ctx, { bays: shop ? ['shop', 'logis'] : ['logis', 'logis'], storeys, ...(shop ? { fascia: rgb(0x5a4a3a) } : {}) });
+  },
   barn: grange,
   church,
   chapel,

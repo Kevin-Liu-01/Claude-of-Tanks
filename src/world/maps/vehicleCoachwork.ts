@@ -639,6 +639,16 @@ export function carDetails(mesh: VehicleMesh, prof: CarProfile, d: CarDetailSpec
       const y = d.mirrors === 'door' ? prof.belt(z) + 0.06 : prof.topY(z) + 0.05;
       const x = d.mirrors === 'door' ? prof.ghBase(z) + 0.02 : prof.halfW(z) - 0.12;
       mesh.outboard(() => {
+        // the mirror's foot (props census r2 sweep, Lane C 2026-10-16: the arm stood 2-3 cm off the body, a floating
+        // member on every car): a door mirror's sail from inside the belt up to the arm at the glass's base, a wing
+        // mirror's stalk from inside the wing's top
+        if (d.mirrors === 'door') {
+          const b = prof.belt(z) - 0.03;
+          mesh.box(x + 0.005, (b + y + 0.012) / 2, z, 0.07, y + 0.012 - b, 0.05, m);
+        } else {
+          const b = prof.topY(z) - 0.08;
+          mesh.box(x + 0.01, (b + y) / 2, z, 0.022, y - b, 0.022, m);
+        }
         mesh.box(x + 0.06, y, z, 0.12, 0.025, 0.03, m);
         mesh.box(x + 0.13, y + 0.04, z - 0.01, 0.05, 0.09, 0.13, m, 0.012);
       });

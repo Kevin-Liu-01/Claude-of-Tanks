@@ -78,6 +78,24 @@ assertTriangleInteriors(surface);
 assert.throws(() => assertTriangleInteriors(surface,
   (x, z) => field.getHeightAt(x, z) + field.getWaterDepthAt(x, z)), /emitted triangle/,
 'old continuous bed-plus-depth contact fails actual shoreline triangles');
+// (2026-10-07, the map-revival lane, Skybridge's canyon arm: the cells straddling a sheer wall drew their dry corners up
+// the wall, a sawtooth of water climbing it) a wall's corner takes the water's height: no emitted triangle stands more
+// than a metre over the water beside a 20 m wall, the sampler still answers its own triangles, and a shore's corners
+// (the gentle field above) keep their bed-plus-depth height
+{
+  const walled = {
+    size: 64,
+    getHeightAt: (x) => (Math.abs(x) < 20 ? -2 : 18),
+    getWaterMaskAt: (x) => (Math.abs(x) < 20 ? 1 : 0),
+    getWaterDepthAt(x, z) { return this.getWaterMaskAt(x, z) * 0.58; },
+  };
+  const wall = drain(shallowWaterGeometrySteps(walled)).value;
+  const p = wall.geometry.attributes.position, idx = wall.geometry.index.array;
+  let top = -Infinity;
+  for (let i = 0; i < idx.length; i++) top = Math.max(top, p.getY(idx[i]));
+  assert.ok(top <= -2 + 0.58 + 1e-6, `the sheet runs on flat under the wall (highest corner ${top.toFixed(2)} m)`);
+  assertTriangleInteriors(wall);
+}
 assert.ok(Math.abs(surface.heightAt(18, 0) - field.getHeightAt(18, 0) - 0.435) < 1e-6,
   'shoreline counterexample uses the drawn 0.435 m depth, not the continuous 0.58 m');
 for (const [x, z] of [[-33, 0], [33, 0], [0, -33], [0, 33], [28, 28]]) {
@@ -335,7 +353,8 @@ assert.match(terrain, /gSplatRough = mix\(gSplatRough, 0\.95, fMs \* uSea\)/, 'b
 assert.match(terrain, /gSplatAlbedo \*= 1\.0 - fMs \* uSea \* 0\.42/, 'only submerged liquid bed is darkened');
 const kits = readFileSync(new URL('./maps/mapKits.ts', import.meta.url), 'utf8');
 assert.match(kits, /const waterline = heightField\.getWaterSurfaceHeightAt\?\.\(x, z\)/);
-assert.match(kits, /buoy\.translate\(x, waterline \+ 0\.16, z\)/);
+// (integ/226: Lane C #16 r2 builds the mooring buoy on its chain at the waterline, waterside.ts buildMooringBuoy)
+assert.match(kits, /buildMooringBuoy\(coast, r, v, x, waterline, /);
 assert.match(fx, /const surfaceY = water\s*\? heightField\?\.getWaterSurfaceHeightAt\?\.\(x, z\)/);
 assert.match(fx, /surfaceY \+ \(water \? 0\.065 : 0\.035\)/);
 assert.match(fx, /float ring = 0\.28 \+ \(1\.0 - vFade\) \* 0\.66/);

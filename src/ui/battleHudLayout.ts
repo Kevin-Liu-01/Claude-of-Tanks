@@ -1,3 +1,5 @@
+import { layoutViewportSize } from './responsiveLayout.ts';
+
 /** Matches the scoreboard polygon; the objective clears each bottom corner by 8px. */
 export const SCORE_BOTTOM_INSET = 25;
 export function objectiveWidth(scoreWidth: number): number {
@@ -130,8 +132,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // The multiplayer v2 network strip (src/ui/multiplayerStatus.ts) lives outside the HUD root; it
     // asks for a relayout when it mounts, and the right roster takes the lane below it.
     observe('.cot-mp-status.battle,.cot-flight-hud,.flight-console');
-    const height = window.visualViewport?.height || window.innerHeight;
-    const width = window.visualViewport?.width || window.innerWidth;
+    // The lanes are placed in layout-viewport coordinates (getBoundingClientRect, fixed positioning), so they
+    // measure the same viewport the HUD root is sized to: a pinch leaves both unchanged.
+    const { width, height } = layoutViewportSize(window);
     const touch = document.body.classList.contains('cot-touch-layout');
     const tray = width < 1000 ? 'stacked' : 'inline';
     const sideNotices = !touch && width < 768;
@@ -322,7 +325,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
   watchAttributes(root, ['style', 'class'], true);
   window.addEventListener('resize', schedule, { passive: true });
   window.addEventListener('cot-hud-relayout', schedule);
-  window.visualViewport?.addEventListener('resize', schedule, { passive: true });
+  // Keyboard and toolbar changes of the visible height arrive here once responsiveLayout.ts has resized the root.
   window.addEventListener('cot:layoutchange', schedule);
   // Transforms (notably the spectator tray's entrance) do not resize the
   // border box. Measure the settled position without polling its animation.

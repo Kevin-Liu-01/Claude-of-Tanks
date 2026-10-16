@@ -28,7 +28,8 @@ for (const site of OLYMPUS_SETTLEMENT) {
 for (const id of ['missioncontrol', 'greenhouse', 'ascentlander', 'rovergarage']) {
   const type = DESTRUCTIBLE_BUILDING_TYPES[id], geometry = type.build(() => .5);
   const triangles = (geometry.index?.count ?? geometry.attributes.position.count) / 3;
-  assert(triangles < 2000, `${id}: bounded shared structure geometry`);
+  // (props #12, 2026-10-15: the stations built member by member under spaceKit.selftest's 2.5k cap a station)
+  assert(triangles <= 2500, `${id}: bounded shared structure geometry (${triangles})`);
   assert(geometry.userData.structureConnectivity.parts >= 30, `${id}: detailed connected assembly`);
   assert.equal(geometry.userData.structureConnectivity.connected, geometry.userData.structureConnectivity.parts);
   const bounds = new THREE.Box3().setFromBufferAttribute(geometry.attributes.position);

@@ -6,18 +6,26 @@ import type { HeightField } from './terrain.ts';
 import type { OceanField } from './oceanFft.ts';
 import { waterContactProfile } from './waterContact.ts';
 import type { WaterRippleField } from './waterRipples.ts';
-// the sheet's grid, its cell admission and its fragment discard are the tactical map's too (visibleWater.ts: the
-// minimap paints exactly the water this sheet draws)
-import { VISIBLE_WATER_MIN, WATER_SHEET_GRID_M as GRID_STEP_M, WATER_SHEET_MIN_COVERAGE as MIN_COVERAGE, glslFloat } from './visibleWater.ts';
+// the sheet's grid, its cell admission, the cells it leaves to the paddies and its fragment discard are the tactical
+// map's too (visibleWater.ts: the minimap paints exactly the water this sheet draws)
+import {
+  VISIBLE_WATER_MIN, WATER_SHEET_GRID_M as GRID_STEP_M, WATER_SHEET_MIN_COVERAGE as MIN_COVERAGE, glslFloat, paddySheetCell,
+} from './visibleWater.ts';
 
-/** (2026-10-12, item 4) A paddy's own surface's cell (m), and where a lattice cell is probed for a paddy (corners, centre). */
+/** (2026-10-12, item 4) A paddy's own surface's cell (m); the lattice cells it owns are visibleWater.ts paddySheetCell. */
 const PADDY_SURFACE_CELL_M = 2;
-const PADDY_CELL_PROBES: readonly (readonly [number, number])[] = [[0, 0], [1, 0], [0, 1], [1, 1], [0.5, 0.5]];
 /** (2026-10-15, the paddies' look pass; the coordinator: "muddy water … about 25 cm depth") The paddies the sheet's
  *  material knows by rectangle (a map plants ten), and their silt: a quarter metre of water over mud reads as a light
  *  khaki sheet, not the river's deep body (linear albedo). */
 export const PADDY_WATER_MAX = 16;
 export const PADDY_MUD_RGB = [0.17, 0.15, 0.09] as const;
+/**
+ * (2026-10-07, the map-revival lane, Skybridge's canyon arm: the sheet's 8 m cells straddling a sheer wall drew their dry
+ * corners up the wall — a blue sawtooth climbing every wall of the arm) a dry corner standing more than this over the
+ * highest wet corner beside it is a wall's, not a shore's: it takes that water's height, so the sheet runs on flat under
+ * the wall and the wall hides it. A shore's dry corners, within this of the water, keep their bed-plus-depth height.
+ */
+const WALL_RISE_M = 1.0;
 
 interface ShallowWaterGeometry {
   geometry: THREE.BufferGeometry;
@@ -170,19 +178,30 @@ export function* shallowWaterGeometrySteps(
   const admitted = new Uint8Array(Math.ceil(segments * segments / 8));
   const paddyQuads = field.getPaddyWaterQuads?.() ?? [];
   const paddyLevelAt = (x: number, z: number): number => field.getPaddyWaterLevelAt?.(x, z) ?? NaN;
-  // a lattice cell any of whose corners or centre stands over a paddy's water or bund
-  const paddyCell = (x0: number, z0: number, size: number): boolean => {
-    for (const [u, v] of PADDY_CELL_PROBES) if (paddyLevelAt(x0 + u * size, z0 + v * size) === paddyLevelAt(x0 + u * size, z0 + v * size)) return true;
-    return false;
-  };
+  // a lattice cell any of whose corners or centre stands over a paddy's water or bund (null on a map without paddies)
+  const paddyCell = paddySheetCell(field);
   const positions: number[] = [], normals: number[] = [], indices: number[] = [];
+  const surfaceY = (x: number, z: number): number => {
+    const wx = x * step - half, wz = z * step - half;
+    return field.getHeightAt(wx, wz) + (field.getWaterDepthAt?.(wx, wz) ?? 0);
+  };
   function vertex(x: number, z: number): number {
     const key = z * count + x;
     if (slots[key] >= 0) return slots[key];
     const wx = x * step - half, wz = z * step - half;
     const index = positions.length / 3;
     slots[key] = index;
-    positions.push(wx, field.getHeightAt(wx, wz) + (field.getWaterDepthAt?.(wx, wz) ?? 0), wz);
+    let y = surfaceY(x, z);
+    if (wet[key] <= MIN_COVERAGE) {
+      // a wall's corner: the highest wet corner round it, when the corner stands more than WALL_RISE_M over it
+      let water = -Infinity;
+      for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
+        const nx = x + dx, nz = z + dz;
+        if ((dx || dz) && nx >= 0 && nz >= 0 && nx < count && nz < count && wet[nz * count + nx] > MIN_COVERAGE) water = Math.max(water, surfaceY(nx, nz));
+      }
+      if (water > -Infinity && y > water + WALL_RISE_M) y = water;
+    }
+    positions.push(wx, y, wz);
     normals.push(0, 1, 0);
     return index;
   }
@@ -194,7 +213,7 @@ export function* shallowWaterGeometrySteps(
         && field.getWaterMaskAt((x + 0.5) * step - half, (z + 0.5) * step - half) <= MIN_COVERAGE) continue;
       // (2026-10-12, item 4) a paddy draws its own level surface below; the lattice keeps out of it (its nearest other
       // water is fourteen metres off: the paddies stand clear of the river and the roads' culverts)
-      if (paddyQuads.length && paddyCell(x * step - half, z * step - half, step)) continue;
+      if (paddyCell?.(x * step - half, z * step - half, step)) continue;
       const a = vertex(x, z), b = vertex(x + 1, z), c = vertex(x, z + 1), d = vertex(x + 1, z + 1);
       indices.push(a, c, b, b, c, d);
       const cell = z * segments + x;

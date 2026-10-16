@@ -24,6 +24,7 @@ import { box, jitterUV, pitchSkillionRoof, scaleUV } from '../propGeometry.ts';
 import { planGroundedObbPose, planGroundedSegment } from '../propPlacement.ts';
 import type { GroundedSegmentEndpoint } from '../propPlacement.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
+import { courtyardClutter, courtyardWell } from './courtyardKit.ts'; // the looks lane: the compounds' courtyard well and clutter
 import { landingBoatSeatOk, planRiverLanding, type RiverLanding, type RiverLandingAnchor } from './riverLandings.ts';
 import {
   JETTY_DECK_HALF_WIDTH_M, JETTY_DECK_THICKNESS_M, JETTY_SPAN_M, MOORED_BOAT_DRAFT_M, MOORED_BOAT_GAP_M,
@@ -51,6 +52,8 @@ import {
   dressStrandWrack, strandAdmits, strandBandAt, wrackBand,
   type StrandContext, type StrandJetty, type StrandKeepOut, type StrandLanding,
 } from './strandWrack.ts';
+import { dressReservoirDam } from './reservoirDam.ts';
+import { SKYBRIDGE_DAM } from './skybridge.ts';
 import {
   RAIL_OPEN_KIT_M, RAIL_SPUR_BALLAST_M, RAIL_SPUR_GAUGE_M, RAIL_SPUR_LAY_M, railCoalStageStations, railRunLength, railStockPlacements,
   resampleRailPath, resolveRailCuttings, type RailCutting, type RailSpurConfig,
@@ -188,7 +191,8 @@ interface DressingContext {
    *  under them, pitch along the track); omitted, the stock is baked with its static record as before. */
   rollingStockDestructible?: (stock: { kind: RollingStockKind; x: number; y: number; z: number; yaw: number; pitch: number }) => void;
   /** (Lane C, #24) the burnt trams handed to the props as breakable wrecks (sarajevoStreets.ts, shanghaiStreets.ts). */
-  tramDestructible?: (tram: { kind: 'xk2_black_panther' | 'shanghai'; x: number; z: number; yaw: number }) => void;
+  tramDestructible?: (tram: { kind: 'k2' | 'shanghai'; // tank-ids:keep
+    x: number; z: number; yaw: number }) => void;
   /** The map-vehicles lane (2026-10-06): the vegetation's tree trunks (props.ts sceneryTrees); a beached boat keeps its
    *  hull clear of them. Omitted, the boats seat as drawn. */
   trees?: readonly CollisionRecord[];
@@ -209,7 +213,7 @@ export type FocusedDressingContext = Pick<
   DressingContext,
   'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders' | 'animated' | 'clutter' | 'structure' | 'setPieceDestructible'
   | 'rollingStockDestructible' | 'tramDestructible'
-> & { shore?: ShoreLedger; boats?: BoatFamily; trunks?: readonly Trunk[] };
+> & { shore?: ShoreLedger; boats?: BoatFamily; trunks?: readonly Trunk[]; mapId?: string };
 
 /** A boat hull into the painted (vertex-coloured) bucket, or the timber one without its colours where a kit has no
  * painted bucket (the map-vehicles lane, P2). */
@@ -482,69 +486,6 @@ function adobeBlock(
     const hut = box(bw * 0.32, 0.9, bd * 0.3, 0.8);
     hut.translate(x - bw * 0.2, bh + 0.45, z - bd * 0.2);
     wallTarget.push(jitterUV(hut, rng));
-  }
-}
-
-// courtyard well: stone ring, two posts, crossbar + bucket
-function courtyardWell(rng: Rng, buckets: GeometryBuckets, x: number, z: number): void {
-  const ring = new THREE.CylinderGeometry(0.85, 0.95, 0.85, 9, 1);
-  scaleUV(ring, 3, 1);
-  ring.translate(x, 0.42, z);
-  buckets.stone.push(jitterUV(ring, rng));
-  for (const s of [-1, 1]) {
-    const p = box(0.14, 1.9, 0.14, 1.2);
-    p.translate(x + s * 0.75, 0.95, z);
-    buckets.wood.push(p);
-  }
-  const bar = box(1.8, 0.10, 0.10, 1.2);
-  bar.translate(x, 1.8, z);
-  buckets.wood.push(bar);
-  const bk = box(0.3, 0.3, 0.3, 1.2);
-  bk.translate(x + 0.2, 1.35, z);
-  buckets.dark.push(bk);
-  // The bucket hangs from an authored rope instead of levitating beneath the
-  // crossbar. This also keeps the complete well in one support chain.
-  const rope = box(0.035, 0.45, 0.035, 2.0);
-  rope.translate(x + 0.2, 1.575, z);
-  buckets.dark.push(rope);
-}
-
-// scattered courtyard living clutter: crates, clay pots, sacks, a rug
-function courtyardClutter(
-  rng: Rng,
-  buckets: GeometryBuckets,
-  w: number,
-  d: number,
-  n: number,
-): void {
-  for (let k = 0; k < n; k++) {
-    const cx = (rng() - 0.5) * (w - 5), cz = (rng() - 0.5) * (d - 5);
-    const roll = rng();
-    if (roll < 0.34) {
-      const cs = 0.5 + rng() * 0.4;
-      const crate = box(cs, cs, cs, 1.0);
-      crate.rotateY(rng() * Math.PI * 0.5);
-      crate.translate(cx, cs / 2, cz);
-      buckets.wood.push(jitterUV(crate, rng));
-    } else if (roll < 0.62) {
-      const pr = 0.22 + rng() * 0.16, ph = 0.5 + rng() * 0.3;
-      const pot = new THREE.CylinderGeometry(pr * 0.7, pr, ph, 8, 1);
-      scaleUV(pot, 2, 1);
-      pot.translate(cx, ph / 2, cz);
-      buckets.stone.push(jitterUV(pot, rng));
-    } else if (roll < 0.82) {
-      const s = 0.42 + rng() * 0.22;
-      const sack = new THREE.SphereGeometry(s, 7, 5);
-      scaleUV(sack, 1.5, 1);
-      sack.scale(1, 0.7, 1);
-      sack.translate(cx, s * 0.48, cz);
-      buckets.plaster.push(jitterUV(sack, rng));
-    } else {
-      const rug = box(1.5 + rng() * 0.8, 0.05, 2.2 + rng() * 0.6, 0.4);
-      rug.rotateY((rng() - 0.5) * 0.6);
-      rug.translate(cx, 0.035, cz);
-      buckets.roof.push(jitterUV(rug, rng));
-    }
   }
 }
 
@@ -948,7 +889,7 @@ export function dressMapExtras({
 }: DressingContext): void {
   const kits = extraKits || legacyDressingKits(mapId);
   const shore: ShoreLedger = { keepOut: [], jetties: [], landings: [] };
-  const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, clutter, structure, shore, animated, boats: boatFamilyForMap(mapId ?? ''),
+  const focused = { mapId, L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, clutter, structure, shore, animated, boats: boatFamilyForMap(mapId ?? ''),
     trunks: trunksOf(trees), setPieceDestructible, rollingStockDestructible, tramDestructible };
   if (mapId === 'cliffbridge') {
     for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused);
@@ -993,6 +934,9 @@ export function dressMapExtras({
   if (L.railSpurs?.length) dressRailSpurs(focused, L.railSpurs);
   // 2026-10-06 (the map-vehicles lane, P5): the authored vehicle set pieces, last (no draws)
   if (vehicleSetPieces?.length) dressVehicleSetPieces(focused, vehicleSetPieces);
+  // The map-revival lane (2026-10-06, Skybridge round 4): Glen Canyon Dam on the road over the arm's end, last, so every
+  // earlier draw of the stream holds (reservoirDam.ts; it draws no random numbers)
+  if (kits.includes('dam') && mapId === 'skybridge') dressReservoirDam(SKYBRIDGE_DAM, heightField, buckets, obstacles, colliders);
 }
 
 // The map-vehicles lane (P5, 2026-10-06): an authored vehicle at its spot (vehicleSetPieces.ts), seated on the ground
@@ -1683,15 +1627,32 @@ function dressAutumnRiver(ctx: FocusedDressingContext): void {
 // =============================================================================
 
 
-function addWeirAndMill(links: readonly LayoutDisc[], crossing: Readonly<{ x: number; z: number }> | null, heightField: DressingHeightField,
-  rng: Rng, buckets: DressingBuckets, ctx: FocusedDressingContext): void {
-  // the reach six links upstream of the bridge (the SW end of the chain is upstream)
+/** The river link the weir stands on: the reach six links upstream of the bridge (the SW end of the chain is upstream). */
+function weirLinkIndex(links: readonly LayoutDisc[], crossing: Readonly<{ x: number; z: number }> | null): number {
   let bridgeIndex = 0, bestDistance = Infinity;
   if (crossing) for (let i = 0; i < links.length; i++) {
     const d = Math.hypot(links[i].x - crossing.x, links[i].z - crossing.z);
     if (d < bestDistance) { bestDistance = d; bridgeIndex = i; }
   }
-  const index = Math.max(1, Math.min(links.length - 2, (crossing ? bridgeIndex : Math.floor(links.length * 0.4)) - 6));
+  return Math.max(1, Math.min(links.length - 2, (crossing ? bridgeIndex : Math.floor(links.length * 0.4)) - 6));
+}
+
+/**
+ * (Lane C 2026-10-16, the map-layout brief's solidPropsInWater) the structures a map stands in its river by design, as
+ * discs: Amberford's weir and its sluice across the channel. The one derivation the dressing and the layout metric share.
+ */
+export function riverStructureSites(mapId: string, L: { marshes?: readonly LayoutDisc[] }, decks: readonly { x: number; z: number }[]): Array<{ x: number; z: number; r: number }> {
+  if (mapId !== AMBERFORD) return [];
+  const links = (L.marshes || []).filter((marsh) => marsh.r <= 40);
+  if (links.length < 3) return [];
+  const link = links[weirLinkIndex(links, decks[0] ?? null)];
+  return [{ x: link.x, z: link.z, r: link.r * 0.65 + 1.5 }];
+}
+
+function addWeirAndMill(links: readonly LayoutDisc[], crossing: Readonly<{ x: number; z: number }> | null, heightField: DressingHeightField,
+  rng: Rng, buckets: DressingBuckets, ctx: FocusedDressingContext): void {
+  // the reach six links upstream of the bridge (the SW end of the chain is upstream)
+  const index = weirLinkIndex(links, crossing);
   const link = links[index], before = links[index - 1], after = links[index + 1];
   const tl = Math.hypot(after.x - before.x, after.z - before.z) || 1;
   const tx = (after.x - before.x) / tl, tz = (after.z - before.z) / tl; // downstream tangent
@@ -2268,7 +2229,7 @@ function addRailYardCoalHeaps(
     // An unloading strip east of the outer siding, not piles across tracks.
     const x = 84 + (oldX - 34) * 0.14, z = -52 + i * 7 + oldZ / 140;
     if (!buckets.baked || !coalSiteIsClear(heightField, x, z, length, ctx.obstacles ?? [])) continue;
-    const heap = makeCoalStockpile(heightField, x, z, radius, length, phase);
+    const heap = makeCoalStockpile(heightField, x, z, radius, length, phase, ctx.mapId);
     buckets.baked.push(heap);
     registerCoalStockpile(heap, ctx);
   }
@@ -2383,7 +2344,7 @@ function addSpurCoalStage(ctx: FocusedDressingContext, spur: RailSpurConfig): vo
     const size = rng(), stretch = rng(), phase = rng() * Math.PI;
     const radius = 1.1 + size * 0.5, length = radius * (1.15 + stretch * 0.2);
     if (!buckets.baked || !coalSiteIsClear(heightField, station.x, station.z, length, ctx.obstacles ?? [])) continue;
-    const heap = makeCoalStockpile(heightField, station.x, station.z, radius, length, phase);
+    const heap = makeCoalStockpile(heightField, station.x, station.z, radius, length, phase, ctx.mapId);
     buckets.baked.push(heap);
     registerCoalStockpile(heap, ctx);
   }

@@ -328,11 +328,12 @@ export default {
     forestHex: 0x35402f, rockHex: 0x62655c, haze: 1.06, grain: 0.8,
   },
 
-  // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  // (2026-10-03, the gauntlet's wave 27: the deck's kilometre-scale relief as fp14's dk3 shot it — cells 0.9 → 1, cellM
-  // 1300 → 2400, undulatus 0.35 → 0.7)
-  // (2026-10-09, the shadows lane: deckBeam — the cells passed a tenth of the sun over 92 % of the yard)
-  clouds: { regime: 'industrial-stratocumulus', coverage: 0.92, baseM: 800, thicknessM: 460, cells: 1, cellM: 2400, undulatus: 0.7, density: 0.16, sunGain: 0.7, tintHex: 0xbab5ac, nightGlow: 0.85, nightGlowHex: 0xffa050, deckBeam: 0.35 },
+  // 2026-10-16 (the coordinator's ruling: Cinder Junction goes cumulus everywhere — desktop, the phones' bake and the
+  // Garage — nearer the owner's fair-weather bar): the closed industrial deck gives way to a junction's hazy summer
+  // cumulus, Verdant's type, fuller in the smoky air (coverage 0.45, base 1100 m, 800 m deep, a few towers). The industrial
+  // character stays in the haze, the smoke and the aerial perspective (the sky block's grade and smog band), not in a
+  // ceiling; the works' glow stays on the bases at night
+  clouds: { regime: 'fair-weather-cumulus', coverage: 0.45, baseM: 1100, thicknessM: 800, towers: 0.15, streets: 0.3, cirrus: 0.2, nightGlow: 0.85, nightGlowHex: 0xffa050 },
   sky: {
     // (2026-10-14: the flat overcast went with the deck — the sky.ts deck auto-detect no longer trips: a hazy high sun,
     // the turbidity 9 -> 6.5 of a smoky summer day, the fill lowered toward a sunlit yard's; the phones' baked deck takes

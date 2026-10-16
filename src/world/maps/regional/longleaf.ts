@@ -13,6 +13,7 @@ import { buildHouse, emitRoof, holedPolygon, roofGeometry, wallPolygon, windowRh
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { bench, washingLine } from './dressing.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { beam, weatherboards } from './millWorks.ts';
 
 /** Painted trim and doors: white, the company's green, a barn red, a faded blue. */
 const TRIM: readonly Rgb[] = [0xe2ddd0, 0xe2ddd0, 0x3f5e45, 0x8a3a2c, 0x5a7488].map(rgb);
@@ -291,10 +292,14 @@ const managerHouse: RegionalBuilder = (ctx) => {
     const W = turned ? Wf - gD - 0.1 : Wf - 0.1, D = turned ? Df - 0.1 : Df - gD - 0.1;
     const bx = turned ? gD / 2 : 0, bz = turned ? 0 : -gD / 2;
     const streetLen = turned ? D : W;
+    // (props census #15, Lane C 2026-10-16: the piers stood 0.1 m over the ground, and a board house "with reveal 0.08 and
+    // NO battens or weatherboards") the piers from below the ground to the sill; a board house in lapped weatherboards
+    // round its openings in 0.14 m reveals
+    sink.placed(0, bx, 0, bz, () => piers(sink, W, D, lift));
+    const boards = rng() >= 0.6;
     sink.placed(0, bx, lift, bz, () => {
-      piers(sink, W, D, 0);
       const frame = buildHouse(sink, {
-        w: W, d: D, plinth: null, storeys: [{ h: wallH, wall: rng() < 0.6 ? 'plaster' : 'wood' }], roof: tin('hip', 30, 0.6, 0.6),
+        w: W, d: D, plinth: null, storeys: [{ h: wallH, wall: boards ? 'wood' : 'plaster' }], roof: tin('hip', 30, 0.6, 0.6),
         roofColour: sheet, gableBucket: 'wood',
         openings: [
           { face: street, storey: 0, kind: 'door', u: 0, w: 1.1, y0: 0, h: 2.4 },
@@ -304,8 +309,12 @@ const managerHouse: RegionalBuilder = (ctx) => {
           ...windowRhythm(turned ? 'right' : 'back', 0, streetLen, { w: 0.95, h: 1.9, sill: 0.4, spacing: 2.6, margin: 1.2, max: 3 }),
         ],
         chimneys: [-1, 1].map((s) => ({ x: turned ? -W * 0.15 : s * W * 0.28, z: turned ? s * D * 0.28 : -D * 0.15, sx: 0.6, sz: 0.6, above: 0.8, bucket: 'stone' as RegionalBucket, cap: 'slab' as const })),
-        gutters: null, verge: null, reveal: 0.08, spall: null,
+        gutters: null, verge: null, reveal: boards ? 0.14 : 0.08, spall: null,
       }, dialect(st, WHITE));
+      if (boards) {
+        for (const name of ['front', 'right', 'back', 'left'] as FaceName[]) weatherboards(sink, frame.faces[name], 0.02, wallH - 0.05, holesOf(frame, name), 0.2, WHITE, look);
+        for (const sx of [-1, 1]) for (const sz of [-1, 1]) sink.span('structureWood', sx * W / 2 - 0.06, 0, sz * D / 2 - 0.06, sx * W / 2 + 0.06, wallH, sz * D / 2 + 0.06, { colour: WHITE, decor: true });
+      }
       porch(sink, frame.faces[street], 0, wallH, streetLen, gD, st, -lift);
       if (look() < 0.6) bench(sink, frame.faces[street], streetLen * 0.3, 1.5, WHITE);
     });
@@ -418,7 +427,22 @@ const commissary: RegionalBuilder = (ctx) => {
         // (free-standing spans: the false front is seen from behind over the roof, so it keeps its back face)
         const top = frame.roof.ridgeY + 0.8;
         sink.span('wood', -W / 2, frame.eaveY, D / 2, W / 2, top, D / 2 + 0.16);
-        sink.span('structureWood', -W / 2 - 0.1, top - 0.12, D / 2 - 0.02, W / 2 + 0.1, top, D / 2 + 0.26, { colour: WHITE, decor: true });
+        // (props census #15, Lane C 2026-10-16: "a single plain 16 cm slab with a cap strip, no boarding, battens,
+        // bracketed cornice or back bracing") its battens up the street face, the cornice on its brackets, the corner
+        // boards, and the raking braces from its back down to the roof
+        const ff: Face = { origin: [0, 0, D / 2 + 0.16], u: [1, 0, 0], out: [0, 0, 1], width: W };
+        battens(sink, ff, frame.eaveY + 0.05, top - 0.35, 0.55, BATTEN);
+        sink.span('structureWood', -W / 2 - 0.18, top - 0.16, D / 2 - 0.02, W / 2 + 0.18, top, D / 2 + 0.42, { colour: WHITE, decor: true });
+        sink.span('structureWood', -W / 2 - 0.06, top - 0.34, D / 2 + 0.16, W / 2 + 0.06, top - 0.24, D / 2 + 0.24, { colour: WHITE, decor: true });
+        for (let k = 0, n = Math.max(3, Math.round(W / 1.2)); k <= n; k++) {
+          const u = -W / 2 + 0.1 + (W - 0.2) * k / n;
+          faceBox(sink, 'structureWood', ff, u, top - 0.25, 0.13, 0.08, 0.18, 0.26, { colour: WHITE, decor: true });
+        }
+        for (const sx of [-1, 1]) sink.span('structureWood', sx * W / 2 - 0.08, frame.eaveY, D / 2 + 0.1, sx * W / 2 + 0.08, top - 0.16, D / 2 + 0.22, { colour: WHITE, decor: true });
+        for (const u of [-W * 0.3, W * 0.3]) {
+          const yb = frame.roof.topAt(u, D / 2 - 1.6) ?? frame.eaveY;
+          beam(sink, 'structureWood', [u, top - 0.4, D / 2 - 0.04], [u, yb + 0.05, D / 2 - 1.6], 0.1, { colour: shade(WEATHERED, 0.85), decor: true });
+        }
       }
       faceBox(sink, 'structureWood', sf, 0, plat + h + (turned ? 0.25 : 0.9), 0.2, Math.min(streetLen - 1, 7), 0.9, 0.06, { colour: SIGN, decor: true });
       faceBox(sink, 'structureWood', sf, 0, plat + h + (turned ? 0.25 : 0.9), 0.235, Math.min(streetLen - 1.4, 6.4), 0.3, 0.01, { colour: WHITE, decor: true, fine: true });
@@ -663,27 +687,85 @@ const muleBarn: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The railroad's water tank: a stave tank under its conical cap on a timber trestle, the spout and its counterweight. */
+/**
+ * The railroad's water tank: a stave tank under its conical cap on a timber trestle (props census #22, Lane C
+ * 2026-10-16: "no ladder, catwalk, valve or counterweight ... unchamfered sticks with no sway"): four battered legs on
+ * their footing, girts and two tiers of sway braces on every side, the cap sills and joists under the tank, the plank
+ * catwalk round its foot with its rail, the ladder up a leg to the catwalk and up the staves to the roof hatch, the
+ * spout hinged at the outlet and raised on its chain over a sheave to the counterweight, and the valve's rod and lever.
+ */
 const waterTank: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
   const fp = footprint(ctx);
   const S = Math.min(fp.w, fp.d), legH = 6.5 + rng() * 1.5, R = Math.max(1.6, S / 2 - 0.15);
+  const timber = WEATHERED, dark = shade(WEATHERED, 0.86), dec = { decor: true } as const;
   sink.placed(0, fp.cx, 0, fp.cz, () => {
-    // the trestle's footing slab fills the plot, the legs at its corners, the cross braces
+    // the trestle's footing slab fills the plot, the legs battered in from its corners to the cap sills
     sink.span('stone', -fp.w / 2 + 0.05, -0.4, -fp.d / 2 + 0.05, fp.w / 2 - 0.05, 0.25, fp.d / 2 - 0.05);
-    const a = Math.min(fp.w, fp.d) / 2 - 0.4;
-    for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) sink.span('structureWood', sx * a - 0.17, 0.25, sz * a - 0.17, sx * a + 0.17, legH, sz * a + 0.17, { colour: WEATHERED });
-    for (const [x0, z0, x1, z1] of [[-a, -a, a, -a], [a, -a, a, a], [a, a, -a, a], [-a, a, -a, -a]] as const) {
-      sink.member('structureWood', [x0, 0.6, z0], [x1, legH - 0.4, z1], 0.14, 0.08, [Math.sign(x0 + x1) || 0, 0, Math.sign(z0 + z1) || 0], { colour: shade(WEATHERED, 0.9), decor: true, exposed: true }, 0);
+    const a = Math.min(fp.w, fp.d) / 2 - 0.4, foot = a, head = a - 0.35;
+    const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const;
+    for (const [sx, sz] of corners) beam(sink, 'structureWood', [sx * foot, 0.25, sz * foot], [sx * head, legH, sz * head], 0.32, { colour: timber });
+    const at = (y: number): number => foot + (head - foot) * (y - 0.25) / (legH - 0.25);
+    // the girts at mid height and the sway braces crossing in two tiers on every side
+    const mid = 0.25 + (legH - 0.25) * 0.5;
+    for (let k = 0; k < 4; k++) {
+      const [ax, az] = corners[k], [bx, bz] = corners[(k + 1) % 4];
+      const P = (sx: number, sz: number, y: number): [number, number, number] => [sx * at(y), y, sz * at(y)];
+      beam(sink, 'structureWood', P(ax, az, mid), P(bx, bz, mid), 0.16, { colour: dark, ...dec });
+      for (const [y0, y1] of [[0.6, mid - 0.1], [mid + 0.1, legH - 0.3]] as const) {
+        beam(sink, 'structureWood', P(ax, az, y0), P(bx, bz, y1), 0.1, { colour: dark, ...dec });
+        beam(sink, 'structureWood', P(bx, bz, y0), P(ax, az, y1), 0.1, { colour: dark, ...dec });
+      }
     }
-    sink.span('structureWood', -a - 0.3, legH, -a - 0.3, a + 0.3, legH + 0.3, a + 0.3, { colour: shade(WEATHERED, 0.95) });
-    // the stave tank, its hoops and the cap
-    sink.cylinder('wood', [0, legH + 0.3, 0], 'y', 3.6, R, 16, {});
-    for (const y of [0.5, 1.4, 2.3, 3.2]) sink.cylinder('structureMetal', [0, legH + 0.3 + y, 0], 'y', 0.06, R + 0.03, 16, { colour: IRON, decor: true, fine: true });
-    sink.cylinder('structureMetal', [0, legH + 3.9, 0], 'y', 1.3, R + 0.15, 16, { colour: pick(rng, TIN) }, 0.15);
-    // the spout swung up along the tank
-    sink.member('structureMetal', [R, legH + 1.2, 0], [R + 1.4, legH - 0.4, 0], 0.35, 0.35, [0, 0, 1], { colour: IRON, decor: true, exposed: true }, 0);
+    // the cap sills on the legs' heads, the joists across them, the tank's floor
+    for (const sx of [-1, 1]) sink.span('structureWood', sx * head - 0.2, legH, -head - 0.3, sx * head + 0.2, legH + 0.3, head + 0.3, { colour: shade(timber, 0.95) });
+    const floorY = legH + 0.42, cw = R + 0.75;
+    for (let k = -3; k <= 3; k++) sink.span('structureWood', -cw, legH + 0.3, k * (R / 3.5) - 0.07, cw, floorY, k * (R / 3.5) + 0.07, { colour: dark, ...dec });
+    // the stave tank, its hoops and the cap with its hatch
+    sink.cylinder('wood', [0, floorY, 0], 'y', 3.6, R, 16, {});
+    for (const y of [0.3, 0.9, 1.5, 2.1, 2.7, 3.3]) sink.cylinder('structureMetal', [0, floorY + y, 0], 'y', 0.06, R + 0.03, 16, { colour: IRON, decor: true, fine: true });
+    const roofY = floorY + 3.6;
+    sink.cylinder('structureMetal', [0, roofY, 0], 'y', 1.3, R + 0.15, 16, { colour: pick(rng, TIN) }, 0.15);
+    const hatchX = (R + 0.15) * 0.55;
+    sink.span('structureWood', hatchX - 0.3, roofY + 0.5, -0.32, hatchX + 0.3, roofY + 0.62, 0.32, { colour: timber, ...dec });
+    // the catwalk round the tank's foot: plank deck on the joists' ends, a post and two rails at its edge
+    for (const [x0, z0, x1, z1] of [[-cw, -cw, cw, -R], [-cw, R, cw, cw], [-cw, -R, -R, R], [R, -R, cw, R]] as const) {
+      sink.span('structureWood', x0, floorY - 0.04, z0, x1, floorY + 0.02, z1, { colour: shade(timber, 1.05), ...dec });
+    }
+    for (const [sx, sz] of corners) sink.span('structureWood', sx * cw - 0.05, floorY, sz * cw - 0.05, sx * cw + 0.05, floorY + 1.0, sz * cw + 0.05, { colour: dark, ...dec });
+    // its edge bearers under the deck's rim, on the joists' ends
+    for (const s2 of [-1, 1]) {
+      sink.span('structureWood', -cw, floorY - 0.2, s2 * (cw - 0.1) - 0.07, cw, floorY - 0.04, s2 * (cw - 0.1) + 0.07, { colour: dark, ...dec });
+      sink.span('structureWood', s2 * (cw - 0.1) - 0.07, floorY - 0.2, -cw, s2 * (cw - 0.1) + 0.07, floorY - 0.04, cw, { colour: dark, ...dec });
+    }
+    for (let k = 0; k < 4; k++) {
+      const [ax, az] = corners[k], [bx, bz] = corners[(k + 1) % 4];
+      for (const y of [0.5, 0.98]) beam(sink, 'structureWood', [ax * cw, floorY + y, az * cw], [bx * cw, floorY + y, bz * cw], 0.06, { colour: dark, ...dec });
+    }
+    // the ladder: up the +x,+z leg's outer face to the catwalk, and in iron up the staves to the hatch
+    const lx = cw - 0.05, lz0 = foot - 0.1;
+    for (const dz of [-0.22, 0.22]) beam(sink, 'structureWood', [lx + 0.2, 0.25, lz0 + dz], [lx, floorY + 0.9, lz0 + dz - 0.4], 0.08, { colour: dark, ...dec });
+    for (let y = 0.6; y < floorY; y += 0.32) {
+      const t = (y - 0.25) / (floorY + 0.65), x = lx + 0.2 - 0.2 * t, z = lz0 - 0.4 * t;
+      sink.span('structureWood', x - 0.03, y - 0.025, z - 0.24, x + 0.03, y + 0.025, z + 0.24, { colour: dark, ...dec, fine: true });
+    }
+    for (const dz of [-0.2, 0.2]) sink.span('structureMetal', R + 0.02, floorY, dz - 0.02, R + 0.06, roofY - 0.05, dz + 0.02, { colour: IRON, ...dec });
+    for (let y = floorY + 0.3; y < roofY - 0.1; y += 0.3) sink.span('structureMetal', R + 0.02, y, -0.2, R + 0.12, y + 0.025, 0.2, { colour: IRON, ...dec, fine: true });
+    // the spout hinged at the outlet on -x, raised along the tank on its chain over the sheave to the counterweight
+    const outY = floorY + 0.45;
+    sink.span('structureMetal', -R - 0.3, outY - 0.25, -0.25, -R + 0.05, outY + 0.25, 0.25, { colour: IRON, ...dec });
+    beam(sink, 'structureMetal', [-R - 0.25, outY, 0], [-R - 1.6, outY + 2.1, 0], 0.34, { colour: IRON, ...dec });
+    const sheave: [number, number, number] = [-R - 0.4, roofY + 0.2, 0];
+    sink.span('structureWood', -R - 0.6, roofY - 0.05, -0.08, -R + 0.1, roofY + 0.05, 0.08, { colour: dark, ...dec });
+    sink.cylinder('structureMetal', [sheave[0], sheave[1], -0.04], 'z', 0.08, 0.16, 10, { colour: IRON, ...dec });
+    beam(sink, 'structureMetal', [-R - 1.6, outY + 2.1, 0], [sheave[0] - 0.15, sheave[1], 0], 0.025, { colour: IRON, ...dec });
+    const weightY = floorY + 1.4;
+    beam(sink, 'structureMetal', [sheave[0] + 0.15, sheave[1], 0], [sheave[0] + 0.15, weightY + 0.5, 0], 0.025, { colour: IRON, ...dec });
+    sink.span('structureMetal', sheave[0] - 0.05, weightY - 0.25, -0.15, sheave[0] + 0.35, weightY + 0.5, 0.15, { colour: RUST, ...dec });
+    // the valve's rod down from the outlet to the lever on the leg
+    beam(sink, 'structureMetal', [-R - 0.1, outY - 0.25, 0.35], [-head + 0.2, 1.2, -head + 0.2], 0.03, { colour: IRON, ...dec });
+    sink.span('structureMetal', -head + 0.15, 1.1, -head + 0.15, -head + 0.25, 1.3, -head + 0.85, { colour: IRON, ...dec });
   });
   return sink.finish();
 };
@@ -703,9 +785,12 @@ const woodshed: RegionalBuilder = (ctx) => {
   const sheet = pick(rng, TIN);
   sink.placed(0, fp.cx, 0, fp.cz, () => {
     const sill = 0.22;
+    // (props census r2 sweep, Lane C 2026-10-16: over a 1.85 m door the batten broke off a hand above its head casing, a
+    // dark 6 x 29 cm stub lying on the boards) the door framed up close under the wall plate, as a shed door is: no stub
+    // of batten over its head
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: sill, out: 0.02, bucket: 'stone', course: false }, storeys: [{ h, wall: 'wood' }], roof: tin('shed', 10, 0.2, 0.15), roofColour: sheet,
-      openings: [{ face: 'front', storey: 0, kind: 'door', u: (rng() - 0.5) * Math.max(0, W - 1.2), w: 0.8, y0: 0, h: 1.85 },
+      openings: [{ face: 'front', storey: 0, kind: 'door', u: (rng() - 0.5) * Math.max(0, W - 1.2), w: 0.8, y0: 0, h: h - 0.25 },
         { face: 'right', storey: 0, kind: 'loft', u: 0, w: Math.min(0.5, D - 0.6), y0: h - 0.42, h: 0.14 }],
       chimneys: [], gutters: null, verge: null, reveal: 0.1, spall: null,
     }, {

@@ -14,6 +14,7 @@ import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { sheetHall } from './hall.ts';
 import { latticeFrame } from './lattice.ts';
+import { yardPad } from './glencanyonPads.ts';
 
 /** Poured concrete (the plaster2 canvas under a concrete tone), painted concrete, block (the stone painter's CMU). */
 const CONCRETE: RegionalBucket = 'plaster2', PAINTED: RegionalBucket = 'plaster3', BLOCK: RegionalBucket = 'stone', STUCCO: RegionalBucket = 'plaster';
@@ -65,6 +66,31 @@ function latticeTower(sink: PartSink, x: number, z: number, b0: number, b1: numb
   }
 }
 
+/**
+ * A porcelain bushing standing from `base` (Skybridge round 4, gauntlet waves 170-171: "the switchyard bushings read as
+ * chimneys" — the smooth 1.6 m brown columns): a slim core ringed by sheds, wide and thin, alternately larger and
+ * smaller, under an aluminium terminal cap with its stud.
+ */
+function bushing(sink: PartSink, base: Vec3, height: number, s: number): void {
+  // (the switchyard's structure keeps the kit's 12,000-triangle budget: four sheds of six sides, the cap a short drum)
+  const core = 0.07 * s, sheds = 4;
+  sink.cylinder('structureMetal', base, 'y', height, core, 6, { colour: PORCELAIN, decor: true });
+  for (let k = 0; k < sheds; k++) {
+    const y = base[1] + 0.12 + (height - 0.3) * (k / (sheds - 1)), r = (k % 2 ? 0.15 : 0.21) * s;
+    sink.cylinder('structureMetal', [base[0], y, base[2]], 'y', 0.05, r, 6, { colour: PORCELAIN, decor: true, fine: true }, r * 0.82);
+  }
+  sink.cylinder('structureMetal', [base[0], base[1] + height, base[2]], 'y', 0.18, 0.12 * s, 6, { colour: ALUMINIUM, decor: true });
+}
+
+/** An insulator string hung from `top`: its rod and a stack of porcelain discs (the dead-end towers' strain strings). */
+function insulatorString(sink: PartSink, top: Vec3, length: number): void {
+  sink.member('structureMetal', top, [top[0], top[1] - length, top[2]], 0.03, 0.03, [1, 0, 0], { colour: IRON, decor: true, exposed: true }, 0);
+  const discs = Math.max(4, Math.round(length / 0.26));
+  for (let d = 0; d < discs; d++) {
+    sink.cylinder('structureMetal', [top[0], top[1] - 0.15 - d * (length - 0.3) / (discs - 1), top[2]], 'y', 0.05, 0.14, 6, { colour: PORCELAIN, decor: true, fine: true }, 0.14);
+  }
+}
+
 /** A power transformer at (x, z) turned `yaw`: the tank (structure), radiator banks, three bushings, the conservator. */
 function transformer(sink: PartSink, x: number, z: number, yaw: number, s: number, colour: Rgb): void {
   sink.placed(yaw, x, 0, z, () => {
@@ -80,7 +106,7 @@ function transformer(sink: PartSink, x: number, z: number, yaw: number, s: numbe
     }
     for (let k = 0; k < 3; k++) {
       const bx = (k - 1) * w * 0.3;
-      sink.cylinder('structureMetal', [bx, 0.25 + h, -d * 0.2], 'y', 1.6 * s, 0.17, 8, { colour: PORCELAIN, decor: true }, 0.1);
+      bushing(sink, [bx, 0.25 + h, -d * 0.2], 1.3 * s, s);
     }
     sink.cylinder('structureMetal', [-w / 2 + 0.2, 0.25 + h + 0.55, d * 0.25], 'x', w - 0.4, 0.38 * s, 10, { colour: shade(colour, 1.05), decor: true });
     for (const xx of [-w / 2 + 0.6, w / 2 - 0.6]) sink.span('structureMetal', xx - 0.05, 0.25 + h, d * 0.25 - 0.05, xx + 0.05, 0.25 + h + 0.3, d * 0.25 + 0.05, { colour: IRON, decor: true });
@@ -94,7 +120,9 @@ function transformer(sink: PartSink, x: number, z: number, yaw: number, s: numbe
  */
 function busFrame(sink: PartSink, x: number, z0: number, z1: number, h: number, colour: Rgb): void {
   const c = 0.22;
-  for (const z of [z0, z1]) latticeTower(sink, x, z, c, c, h, colour, false, 2.4);
+  // (Skybridge round 6: the frames braced at the dead-end towers' 3.2 m bay and their strings' discs six-sided — the
+  // switchyard back inside the kit's 12,000-triangle budget, 12,952 -> 11,656, with round 4's bushings and strain strings)
+  for (const z of [z0, z1]) latticeTower(sink, x, z, c, c, h, colour, false, 3.2);
   // the beam: two chords and the web between them
   for (const dy of [0, -0.5]) sink.member('structureMetal', [x, h - 0.15 + dy, z0 - 0.3], [x, h - 0.15 + dy, z1 + 0.3], 0.07, 0.07, [0, 1, 0], { colour, decor: true, exposed: true }, 0);
   const n = Math.max(3, Math.round((z1 - z0 + 0.6) / 0.6));
@@ -109,9 +137,10 @@ function busFrame(sink: PartSink, x: number, z0: number, z1: number, h: number, 
   }
   for (let k = 0; k < 3; k++) {
     const z = z0 + (z1 - z0) * (k + 0.5) / 3;
-    // the string: a stack of discs on its rod hung from the bottom chord, the clamp and the bus tube along x
+    // the string: a stack of discs on its rod hung from the bottom chord, the clamp and the bus tube along x (its discs
+    // six-sided, Skybridge round 6: the switchyard inside the kit's 12,000-triangle budget with round 4's bushings)
     sink.member('structureMetal', [x, h - 0.65, z], [x, h - 1.96, z], 0.03, 0.03, [1, 0, 0], { colour: IRON, decor: true, exposed: true }, 0);
-    for (let d = 0; d < 6; d++) sink.cylinder('structureMetal', [x, h - 0.85 - d * 0.18, z], 'y', 0.05, 0.14, 8, { colour: PORCELAIN, decor: true }, 0.14);
+    for (let d = 0; d < 6; d++) sink.cylinder('structureMetal', [x, h - 0.85 - d * 0.18, z], 'y', 0.05, 0.14, 6, { colour: PORCELAIN, decor: true }, 0.14);
     pipe(sink, 'structureMetal', [x - 2.6, h - 2.0, z], [x + 2.6, h - 2.0, z], 0.07, 6, { colour: ALUMINIUM, decor: true });
   }
 }
@@ -391,15 +420,17 @@ const switchyard: RegionalBuilder = (ctx) => {
   const R = reach(ctx), W = Math.max(6, R.W - 0.3), D = Math.max(6, R.D - 0.3);
   sink.placed(0, R.cx, 0, R.cz, () => {
     // the pad: crushed rock over the yard (round 2: "a gravel pad"), the kerb round it
-    sink.span('structureMetal', -W / 2, -0.4, -D / 2, W / 2, 0.08, D / 2, { colour: rgb(0x8e877a), decor: true });
+    yardPad(sink, 'structureMetal', W, D, { colour: rgb(0x8e877a), decor: true }); // (looks r2 b-east: glencanyonPads.ts)
     const steel = GALV, h = 20 + rng() * 4;
     for (const sx of [-1, 1]) latticeTower(sink, sx * W * 0.28, -D / 2 + 2.6, 1.6, 0.6, h, steel);
     // the cross-arm between the towers and the line's insulator strings
     sink.member('structureMetal', [-W * 0.28, h - 0.4, -D / 2 + 2.6], [W * 0.28, h - 0.4, -D / 2 + 2.6], 0.5, 0.7, [0, 1, 0], { colour: steel, decor: true, exposed: true }, 0);
+    // (kitConnectivity: the strings hung 10 cm under the arm, whose depth stands up from h - 0.4, and the outer two dropped
+    // half a metre off their bus frames: each string now hangs from the arm over its frame and drops onto its beam's top chord)
     for (let k = 0; k < 3; k++) {
-      const x = (k - 1) * W * 0.2;
-      sink.cylinder('structureMetal', [x, h - 2.6, -D / 2 + 2.6], 'y', 2.2, 0.13, 6, { colour: PORCELAIN, decor: true }, 0.13);
-      sink.member('structureMetal', [x, h - 2.6, -D / 2 + 2.6], [x, 9.4, -D / 2 + 7.6], 0.05, 0.05, [1, 0, 0], { colour: IRON, decor: true, exposed: true, fine: true }, 0);
+      const x = (k - 1) * W * 0.22;
+      insulatorString(sink, [x, h - 0.38, -D / 2 + 2.6], 2.1);
+      sink.member('structureMetal', [x, h - 2.48, -D / 2 + 2.6], [x, 9.47, -D / 2 + 7.6], 0.05, 0.05, [1, 0, 0], { colour: IRON, decor: true, exposed: true, fine: true }, 0);
     }
     for (const x of [-W * 0.22, 0, W * 0.22]) busFrame(sink, x, -D / 2 + 6.8, -D / 2 + 8.4, 9.6, steel);
     const tc = pick(rng, TRANSFORMER);
@@ -425,7 +456,7 @@ const transformerYard: RegionalBuilder = (ctx) => {
   // the yard fills the old deck's reach (its bounds), walled round its edge
   const R = reach(ctx), W = Math.max(6, R.W - 0.3), D = Math.max(6, R.D - 0.3);
   sink.placed(0, R.cx, 0, R.cz, () => {
-    sink.span(CONCRETE, -W / 2, -0.4, -D / 2, W / 2, 0.08, D / 2, { decor: true });
+    yardPad(sink, CONCRETE, W, D, { decor: true }); // (looks r2 b-east: glencanyonPads.ts)
     const tc = pick(rng, TRANSFORMER);
     const cols = 3;
     for (let r = 0; r < 2; r++) for (let c = 0; c < cols; c++) {
@@ -920,6 +951,9 @@ const ruin: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng, look = ctx.variant;
   // the ruin fills the old ruin's reach (its bounds)
+  // (Skybridge round 7, gauntlet wave 259: "white toy-brick ruins", "clean white rubble blocks that look like foam"): a
+  // burnt-out house of block — its walls broken low, a few stubs to the sill, the charred tops dark, the chimney stack
+  // standing with its soot, the roof's rusted sheets and its burnt timbers down inside it, a scorch over the slab
   const R = reach(ctx), W = Math.max(5, R.W - 0.6), D = Math.max(6, R.D - 0.6), t = 0.22;
   // (props census #7, lane B 2026-10-14; the judges: "block slices to random tops, a heap cone") the ruin grammar: the
   // ranch house's own block walls broken, its door and windows cut through, the chimney standing with its firebox, the
@@ -964,7 +998,9 @@ export const GLENCANYON_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
   surfaces: {
     // the town's shingled gables; the Bureau's and the town's concrete block
     roof: { kind: 'shingle', tint: [0.46, 0.43, 0.40] },
-    stone: { kind: 'block', tint: [0.76, 0.73, 0.68] },
+    // (Skybridge round 7, gauntlet wave 259: the block walls and ruins read "white toy-brick", "foam": the block taken to a
+    // dust-stained buff, as the town's painted and weathered block stands in the canyon country's dust)
+    stone: { kind: 'block', tint: [0.72, 0.66, 0.58] },
     sourced: { plaster: false, wood: true },
     // (the facades lane, round 11; waves 319/320: the walls' procedural canvas read as "speckle", "sponge", "cork",
     // "camouflage noise": its 6 cm bumps shade as dots from the street, as Steinburg's did before round 8) the walls
@@ -979,14 +1015,15 @@ export const GLENCANYON_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
       plaster2: (_h, s, l) => [0.08, Math.min(1, s * 0.18 + 0.02), Math.min(1, l * 0.88 + 0.07)],
       plaster3: (_h, s, l) => [0.11, Math.min(1, s * 0.25), Math.min(1, l * 1.2 + 0.16)],
     },
-    // (Skybridge round 2: the dam's, the powerhouse's and the Bureau's concrete is poured, board-formed, as at the dam)
-    concrete: 'boardFormed',
+    // (Skybridge round 2: the dam's, the powerhouse's and the Bureau's concrete is poured; round 4, gauntlet waves 170-171,
+    // "the board-form planks are still there": one pour, its lifts, ties, mottling and runoff, no boards)
+    concrete: 'poured',
   },
   builders: GLENCANYON_BUILDERS,
   // the desert's dry air; the stucco houses each their own pale colour (peach, sky, sand, mint) and the concrete stained
   weather: {
     plaster: [[1, 1, 1], [1.08, 0.98, 0.9], [0.92, 0.98, 1.06], [1.04, 1.02, 0.9], [0.94, 1.04, 0.98]],
-    stone: [[1, 1, 1], [0.95, 0.94, 0.92], [1.03, 1.0, 0.96]],
+    stone: [[1, 1, 1], [0.93, 0.9, 0.86], [1.02, 0.97, 0.9], [0.88, 0.84, 0.78]],
     roof: [[1, 1, 1], [0.86, 0.84, 0.82], [1.06, 1.0, 0.94], [0.9, 0.86, 0.8]],
     damp: 0.2, moss: 0.02,
   },

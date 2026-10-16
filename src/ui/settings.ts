@@ -1359,7 +1359,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   }
 
   function onCaptureWheel(e: WheelEvent): void {
-    if (!capture || capture.slot === 'pad' || e.deltaY === 0) return;
+    // ctrl+wheel is a trackpad pinch, not a wheel notch: it never binds WheelUp/WheelDown (the pinch guard
+    // still keeps it from zooming the page)
+    if (!capture || capture.slot === 'pad' || e.deltaY === 0 || e.ctrlKey) return;
     e.preventDefault();
     e.stopPropagation();
     finishCapture(e.deltaY < 0 ? 'WheelUp' : 'WheelDown');

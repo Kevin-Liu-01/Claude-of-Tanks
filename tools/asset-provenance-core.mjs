@@ -9,7 +9,7 @@ import { PROJECT_CREATOR, PROJECT_COPYRIGHT } from '../src/authorship.ts';
 // models and partner branding are deliberately outside this receipt's scope.
 export const CONTENT_ROOTS = Object.freeze([
   'src/vehicles/', 'src/world/', 'public/icons/', 'public/maps/', 'public/fx/',
-  'public/audio/', 'public/media/', 'public/minimaps/', 'public/field-guide/', 'server/world-collision-manifests/',
+  'public/audio/', 'public/media/', 'public/minimaps/', 'public/field-guide/', 'server/world-collision-manifests/', 'server/world-collision-manifests-224/',
 ]);
 export const POLICY_FILES = Object.freeze(['LICENSE-POLICY.md', 'NOTICE.md', 'docs/ATTRIBUTION.md', 'LICENSES/Proprietary-Content-License.txt']);
 export const sha256 = (value) => createHash('sha256').update(value).digest('hex');

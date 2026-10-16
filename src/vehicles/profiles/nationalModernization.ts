@@ -23,6 +23,12 @@ import {nationalModernizationDesign,NATIONAL_GUN_PIVOT,NATIONAL_BARREL_LENGTH} f
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 import {addNationalMantlet,nationalGland} from './nationalMantlet.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+import {buildT72B3MXHull} from './t72b3mX.ts';
+import {buildZubrIIHull} from './zubrII.ts';
+import {buildNationalDonorTurret,donorTurretSeatY,nationalDonorTurret} from './nationalDonorTurret.ts';
+import {buildUkraineDonorKit,buildHetmanIIDonorKit} from './ukraineDonorTurretKit.ts';
+import {buildPolandDonorKit,buildZubrIIDonorKit} from './polandDonorTurretKit.ts';
+import {buildChinaDonorKit} from './chinaDonorTurretKit.ts';
 const {box,cylY,cylX,cylZ}=KIT;
 
 function mainWeapon(P:TankBuilderPort,c:NationalModernizationConfig|Pick<NationalModernizationConfig,'package'>):void {
@@ -55,6 +61,17 @@ function mainWeapon(P:TankBuilderPort,c:NationalModernizationConfig|Pick<Nationa
  if(!fitted&&c.package==='ru')P.add('gunMount',cylZ(.229,.15,32),0,0,.65);
  P.muzzleZ=NATIONAL_BARREL_LENGTH;
 }
+/** Owner 2026-10-15 (VEH-19..VEH-22): the donor fleet turret on this hull, its remote station on the commander's
+ * cupola (replacing the donor's own commander gun), then the country's hull package and turret up-armour. */
+function fitDonorTurret(P:TankBuilderPort,id:string,kit:()=>void):void {
+ const d=buildNationalDonorTurret(P,id),l=NATIONAL_ROOF_LOADOUTS[id];
+ const [x,z]=d.station,base=donorTurretSeatY(P,x,z,.16);
+ nationalRoofWeapon(P,[x,base,z],null,l);
+ P.turretG.userData.nationalDonorStation={seat:[x,base,z],loadout:l.name};
+ kit();
+ P.topY=d.roofY;
+}
+
 function build(P:TankBuilderPort,c:NationalModernizationConfig):void {
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
   addVehicleGhillieSuit(P);
@@ -62,6 +79,16 @@ function build(P:TankBuilderPort,c:NationalModernizationConfig):void {
  if(c.model===0){buildT80UXRunningGear(P);buildT80UXHullCore(P);buildT80UXFenders(P);}
  else if(c.model===1){buildT72B3MXRunningGear(P);buildT72B3MXHullCore(P);buildT72B3MXFenders(P);}
  else {buildT72B3XRunningGear(P);buildT72B3XHullCore(P);buildT72B3XFenders(P);}
+ const donor=nationalDonorTurret(c.id);
+ if(donor){
+  fitDonorTurret(P,c.id,()=>({ua:buildUkraineDonorKit,pl:buildPolandDonorKit,cn:buildChinaDonorKit} as const)[c.package as 'ua'|'pl'|'cn'](P,c));
+  // The Chinese concepts keep their rear field rack (cans and unditching log) on the native transom.
+  if(c.package==='cn')addRearFieldStowage(P,true);
+  P.hullG.userData.familyRebuild={donor:c.donor,package:c.package,model:c.model,revision:7,concept:true,
+   preserved:'native-hull-core-running-gear-and-fenders',primaryHull:'donor-with-add-on-modernization',
+   primaryTurret:`${donor.donor}-turret-with-national-up-armour`,turretDonor:donor.donor};
+  return;
+ }
  ({ua:buildNationalUkraine,pl:buildNationalPoland,cn:buildNationalChina,ru:buildNationalRussia}[c.package])(P,c);
  P.add('turret',cylY(.94,.94,.20,64),0,.005,0);
  mainWeapon(P,c);
@@ -79,6 +106,22 @@ function build(P:TankBuilderPort,c:NationalModernizationConfig):void {
 export const NATIONAL_MODERNIZATION_PROFILES={
  ...Object.fromEntries(NATIONAL_MODERNIZATION_CONFIG.map(c=>[c.id,{build:(P:TankBuilderPort)=>build(P,c)}])),
  ...Object.fromEntries(NATIONAL_LEGACY_CONFIG.map(c=>[c.id,{build:(P:TankBuilderPort)=>{
+   const donor=nationalDonorTurret(c.id);
+   if(donor){
+    P.hullG.position.set(0,0,0);
+    if(c.package==='ua'){
+     // Hetman II (as buildHetmanII): the complete native T-72B3M hull, then its own heavy hull package (the kit).
+     buildT72B3MXHull(P);
+     fitDonorTurret(P,c.id,()=>buildHetmanIIDonorKit(P));
+    }else{
+     buildZubrIIHull(P);
+     fitDonorTurret(P,c.id,()=>buildZubrIIDonorKit(P));
+    }
+    P.hullG.userData.familyRebuild={donor:c.donor,package:c.package,revision:3,concept:true,
+     preserved:'native-hull-and-national-hull-package',primaryTurret:`${donor.donor}-turret-with-national-up-armour`,
+     turretDonor:donor.donor};
+    return;
+   }
    (c.package==='ua'?buildHetmanII:buildZubrII)(P);
    // Hetman II owns its deeper bearing; Zubr II shares the compact ring.
    if(c.package==='pl')P.add('turret',cylY(.94,.94,.20,64),0,.005,0);

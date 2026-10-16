@@ -21,7 +21,7 @@ export function nationalRoofSystems(P:TankBuilderPort,l:NationalRoofLoadout):voi
   return hit.point.y;
  };
  try {
-  for(const side of [-1,1])lamp(P,side*.68,.96,seat(side*.68,.96),l.lamp);
+  for(const side of [-1,1])nationalLamp(P,side*.68,.96,seat(side*.68,.96),l.lamp);
   const sides=l.eyes==='twin'?[-1,1]:l.eyes==='monocle-left'?[-1]:[1];
   const cheekEyes=['t80u_bars_m','t72b3m_bulat_m','t72b3m_kunlun'].includes(P.spec.id);
   if(cheekEyes) {
@@ -33,16 +33,17 @@ export function nationalRoofSystems(P:TankBuilderPort,l:NationalRoofLoadout):voi
     // Keep the optical head ahead of removable ERA; its bracket reaches the permanent shell.
     const z=hit.point.z+.24;
     P.addEquipment('turretDetail',box(.18,.13,.31),x,y-.08,hit.point.z+.12);
-    eye(P,x,z,y-l.eyeRadius-.06,l);
+    nationalEye(P,x,z,y-l.eyeRadius-.06,l);
     anchors.push([x,y,hit.point.z]);
    }
    P.turretG.userData.cheekOptics={anchors,axisY:.43};
-  }else for(const side of sides)eye(P,side*1.03,.52,seat(side*1.03,.52),l);
-  roof(P,-.06,l.roofZ,seat(-.06,l.roofZ),l);
+  }else for(const side of sides)nationalEye(P,side*1.03,.52,seat(side*1.03,.52),l);
+  nationalRoofSensor(P,-.06,l.roofZ,seat(-.06,l.roofZ),l);
  }finally{material.dispose();}
 }
 
-function lamp(P:TankBuilderPort,x:number,z:number,base:number,shape:NationalRoofLoadout['lamp']):void {
+/** A guarded driving/search lamp on its own foot (base = the receiving surface's height). */
+export function nationalLamp(P:TankBuilderPort,x:number,z:number,base:number,shape:NationalRoofLoadout['lamp']):void {
  const y=base+.117;
  P.addEquipment('turretDetail',box(.13,.11,.13),x,base+.043,z);
  const round=shape==='round',w=shape==='slit'?.26:.20,h=shape==='slit'?.10:.17;
@@ -53,7 +54,8 @@ function lamp(P:TankBuilderPort,x:number,z:number,base:number,shape:NationalRoof
  P.addEquipment('turretDark',box(w+.062,.018,.020),x,y+h/2+.04,z+.13);
 }
 
-function eye(P:TankBuilderPort,x:number,z:number,base:number,l:NationalRoofLoadout):void {
+/** A sensor or dazzler head on its pedestal (the loadout's eye shape and radius). */
+export function nationalEye(P:TankBuilderPort,x:number,z:number,base:number,l:NationalRoofLoadout):void {
  const r=l.eyeRadius,y=base+r+.06;
  P.addEquipment('turretDetail',box(.20,.12,.20),x,base+.05,z);
  if(l.eyes==='flat') {
@@ -68,7 +70,8 @@ function eye(P:TankBuilderPort,x:number,z:number,base:number,l:NationalRoofLoado
  }
 }
 
-function roof(P:TankBuilderPort,x:number,z:number,base:number,l:NationalRoofLoadout):void {
+/** The loadout's roof sensor (radome, split panels, spine or scanner) on its plinth. */
+export function nationalRoofSensor(P:TankBuilderPort,x:number,z:number,base:number,l:NationalRoofLoadout):void {
  P.addEquipment('turretDetail',box(.35,.055,.33),x,base+.017,z);
  if(l.roof==='radome') {
   P.addEquipment('turretDetail',cylY(.10,.16,.18,24),x,base+.125,z);

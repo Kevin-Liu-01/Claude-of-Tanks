@@ -138,13 +138,34 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
     if (rng() < closed) {
       // closed: both leaves across the opening, proud of the frame
       const shut = Math.max(0, O - r);
-      faceBox(sink, 'structureWood', face, u - leaf / 2 + 0.015, y + h / 2, shut + 0.025, leaf, h + 0.02, 0.035, sc);
-      faceBox(sink, 'structureWood', face, u + leaf / 2 - 0.015, y + h / 2, shut + 0.028, leaf, h + 0.02, 0.035, sc);
+      if (r >= 0.22) {
+        // (props census r2 sweep, Lane C 2026-10-16: a closed leaf laid across a deep opening's face read as a painted
+        // plate) in a deep reveal the leaves close inside it, against the frame, each half the light
+        const half = w / 2 - 0.005, o = back + O + 0.02 + 0.0175;
+        for (const side of [-1, 1]) faceBox(sink, 'structureWood', face, u + side * (half / 2 + 0.0025), y + h / 2, o, half, h - 0.01, 0.035, sc);
+      } else if (sh.kind === 'louvred') {
+        // (the r2 sweep) on a shallow reveal a closed louvred leaf is built as one: its stiles and rails, the slats
+        // between them with the dark of the opening showing through their gaps
+        for (const side of [-1, 1]) {
+          const cu = u + side * (leaf / 2 - 0.015), o = shut + 0.025 + (side > 0 ? 0.003 : 0), lh = h + 0.02;
+          for (const e of [-1, 1]) faceBox(sink, 'structureWood', face, cu + e * (leaf / 2 - 0.02), y + h / 2, o, 0.04, lh, 0.035, sc);
+          for (const e of [-1, 1]) faceBox(sink, 'structureWood', face, cu, y + h / 2 + e * (lh / 2 - 0.025), o, leaf - 0.08, 0.05, 0.035, sc);
+          const n = Math.max(3, Math.round((lh - 0.1) / 0.055));
+          for (let k = 0; k < n; k++) faceBox(sink, 'structureWood', face, cu, y - 0.01 + 0.05 + (k + 0.5) * (lh - 0.1) / n, o, leaf - 0.08, 0.04, 0.014, { ...sc, fine: true });
+        }
+      } else {
+        faceBox(sink, 'structureWood', face, u - leaf / 2 + 0.015, y + h / 2, shut + 0.025, leaf, h + 0.02, 0.035, sc);
+        faceBox(sink, 'structureWood', face, u + leaf / 2 - 0.015, y + h / 2, shut + 0.028, leaf, h + 0.02, 0.035, sc);
+      }
     } else {
+      // (props census r2 sweep, Lane C 2026-10-16: a leaf folded back beyond a surround read as a painted plate) each
+      // leaf hinged at the opening's edge and folded back over the surround onto the wall
+      const so = style.surround ? style.surround.out : 0;
       for (const side of [-1, 1]) {
-        const cu = u + side * (w / 2 + sideOff + leaf / 2 + 0.02);
-        // the open leaf folded back flat on the wall (its back face then never shows), its rails on its face
-        const T = 0.035, front = T + 0.001, ro = front + 0.01 - 0.002;
+        const cu = u + side * (w / 2 + leaf / 2 + 0.005);
+        // the open leaf folded back flat over the jamb (its back face then never shows), its rails on its face
+        const T = 0.035, front = so + T + 0.001, ro = front + 0.01 - 0.002;
+        void sideOff;
         faceBox(sink, 'structureWood', face, cu, y + h / 2, front - T / 2, leaf, h + 0.02, T, { ...sc, fineSides: true });
         if (sh.paint && facadeOn()) paintedLeaf(sink, face, cu, y + h / 2, leaf, h + 0.02, front, sh.paint);
         if (sh.kind === 'louvred') {
@@ -367,7 +388,7 @@ const CHARRED: Rgb = [0.09, 0.08, 0.07];
 const GATE_IRON: Rgb = [0.15, 0.14, 0.13];
 
 /** Options for a gate pair: whether a leaf wide and tall enough carries a wicket (default yes). */
-export interface GateOptions { wicket?: boolean }
+export interface GateOptions { wicket?: boolean; /** a timber leaf's ledges' height (default 0.14) */ ledge?: number }
 
 /**
  * A pair of ledged-and-braced gate leaves in a wide opening (the barn, the cart shed, the yard gate). Props census E2
@@ -397,7 +418,7 @@ export function gateUnit(sink: PartSink, face: Face, u: number, y: number, w: nu
     if (y1 - y0 < 0.04) return;
     faceBox(sink, 'structureWood', face, bu, (y0 + y1) / 2, o, bw, y1 - y0, T, { colour, decor: true, uv: UV_MEMBER }, { ends: !sides, top: y1 >= y + h - 0.001 });
   };
-  const ledge = (u0: number, u1: number, yc: number, o: number, colour: Rgb, height = steel ? 0.1 : 0.14) => {
+  const ledge = (u0: number, u1: number, yc: number, o: number, colour: Rgb, height = steel ? 0.1 : options.ledge ?? 0.14) => {
     if (u1 - u0 < 0.12) return;
     faceBox(sink, 'structureWood', face, (u0 + u1) / 2, yc, o + L / 2, u1 - u0, height, L, { colour, decor: true, uv: UV_MEMBER, fineSides: true });
   };

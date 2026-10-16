@@ -1370,6 +1370,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   };
   chipsEl.addEventListener('scroll', syncCountryRailAffordances, { passive: true });
   chipsEl.addEventListener('wheel', (event) => {
+    // ctrl+wheel is a trackpad pinch: the app-wide pinch guard owns it, so the rail never scrolls on one
+    if (event.ctrlKey) return;
     const { maxScroll } = horizontalRailState(
       chipsEl.scrollLeft, chipsEl.scrollWidth, chipsEl.clientWidth,
     );
@@ -1581,7 +1583,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let customCamoStudioAccess: CustomCamoStudioAccess | null = null;
   function bindCamoStripScroll(strip: HTMLElement): void {
     strip.addEventListener('wheel', (event) => {
-      // Preserve native horizontal trackpad gestures and browser pinch zoom.
+      // Native horizontal trackpad gestures pan the strip themselves. ctrl+wheel is a trackpad pinch: the
+      // app-wide pinch guard owns it (ui/pinchZoomGuard.ts), so the strip must not scroll on it.
       if (event.ctrlKey || Math.abs(event.deltaX) >= Math.abs(event.deltaY)) return;
       const maxScroll = strip.scrollWidth - strip.clientWidth;
       if (maxScroll <= 1) return;
@@ -3233,7 +3236,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // vertical trackpad/mouse wheel pans the strip too (horizontal deltas
     // already pan natively via overflow-x; that path is untouched)
     cardsEl.addEventListener('wheel', (e) => {
-      if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
+      // ctrl+wheel is a trackpad pinch (the app-wide pinch guard owns it), never a sideways pan
+      if (e.ctrlKey || Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return;
       stopCoast();
       cardsEl.scrollLeft += e.deltaY;
       e.preventDefault();

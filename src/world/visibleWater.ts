@@ -19,6 +19,10 @@
  * (worn bank soil and village plots, wet ground, woods, slope — the ground mask's channels): the in-world capture shows
  * none of the six as water outside the river's sheet (two are grass on the bank, one a worn plot), so painting them
  * would put the fake water back. A paddy layer needs a CPU twin of those gates first (the ground lane's terrain.ts).
+ * Nor the real paddies' own surfaces (paddies.ts; 2026-10-16): the sheet's lattice keeps out of every cell a paddy
+ * stands in (paddySheetCell, shared with shallowWater.ts) and each paddy draws its own level surface there, so the
+ * raster skips those cells too — the mask still reads wet in them, and painting it put 3,611 cells (14.4k m²) of
+ * river-blue over Jade River Delta's ten paddies. Their minimap treatment stays the plate's (the world's own capture).
  *
  * Built lazily, once per world, by World.getVisibleWaterRaster — never by getMinimapFeatures, which the battle's audio
  * reads mid-fight (audioEngine.ts landmarks). The cost is bounded by sampling: the sheet grid's vertices and (where they
@@ -38,6 +42,30 @@ export const WATER_SHEET_MIN_COVERAGE = 0.002;
 const SUBDIVISION = 4;
 /** A sheet cell whose four corners and centre all reach this mask is water whole (no per-point samples). */
 const SOLID_SHEET_MASK = 0.5;
+
+/** (2026-10-12, item 4) Where a sheet cell is probed for a paddy: its four corners and its centre (cell units). */
+const PADDY_CELL_PROBES: readonly (readonly [number, number])[] = [[0, 0], [1, 0], [0, 1], [1, 1], [0.5, 0.5]];
+
+/** The paddy reads of a map that plants paddies (terrain.ts HeightField); absent on every other map. */
+interface PaddyCellSource {
+  getPaddyWaterLevelAt?(x: number, z: number): number;
+  getPaddyWaterQuads?(): readonly unknown[];
+}
+
+/**
+ * (2026-10-12, item 4) The sheet cells the paddies own: a cell (its (−x, −z) corner and side, m) any of whose corners or
+ * centre stands over a paddy's water or bund (getPaddyWaterLevelAt is a level there, NaN elsewhere). The sheet's lattice
+ * keeps out of them — each paddy draws its own level surface (shallowWater.ts) — and the raster with it. Null on a map
+ * without paddies, so neither pays a probe there.
+ */
+export function paddySheetCell(field: PaddyCellSource): ((x0: number, z0: number, size: number) => boolean) | null {
+  const levelAt = field.getPaddyWaterLevelAt;
+  if (!levelAt || !field.getPaddyWaterQuads?.().length) return null;
+  return (x0, z0, size) => {
+    for (const [u, v] of PADDY_CELL_PROBES) if (!Number.isNaN(levelAt.call(field, x0 + u * size, z0 + v * size))) return true;
+    return false;
+  };
+}
 
 /** A float for GLSL source (always with a decimal point). */
 export function glslFloat(value: number): string {
@@ -60,7 +88,7 @@ export interface VisibleWaterRaster {
   readonly samples: number;
 }
 
-interface VisibleWaterSource {
+interface VisibleWaterSource extends PaddyCellSource {
   readonly size: number;
   getWaterMaskAt(x: number, z: number): number;
 }
@@ -83,6 +111,7 @@ export function buildVisibleWaterRaster(field: VisibleWaterSource): VisibleWater
   const maskAt = (x: number, z: number): number => { samples++; return field.getWaterMaskAt(x, z); };
   const corner = new Float32Array(count * count);
   for (let z = 0; z < count; z++) for (let x = 0; x < count; x++) corner[z * count + x] = maskAt(x * step - half, z * step - half);
+  const paddyCell = paddySheetCell(field);
   for (let cz = 0; cz < segments; cz++) {
     for (let cx = 0; cx < segments; cx++) {
       const key = cz * count + cx;
@@ -93,6 +122,7 @@ export function buildVisibleWaterRaster(field: VisibleWaterSource): VisibleWater
         centre = maskAt(centreX, centreZ);
         if (centre <= WATER_SHEET_MIN_COVERAGE) continue; // the sheet skips this cell: nothing drawn in it
       }
+      if (paddyCell?.(cx * step - half, cz * step - half, step)) continue; // a paddy's own surface, not the sheet's water
       const row0 = cz * SUBDIVISION, col0 = cx * SUBDIVISION;
       if (Math.min(a, b, c, d) >= SOLID_SHEET_MASK) {
         if (Number.isNaN(centre)) centre = maskAt(centreX, centreZ);

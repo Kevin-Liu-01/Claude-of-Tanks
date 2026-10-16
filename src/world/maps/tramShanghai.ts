@@ -68,7 +68,9 @@ export function buildShanghaiTram(state: 'intact' | 'burnt' | 'collapsed', coars
   for (const bz of [-3.3, 3.3]) {
     mesh.push();
     if (collapsed) mesh.translate(0, -0.1, 0).rotateZ(0.04);
-    mesh.box(0, 0.5, bz, 1.7, 0.28, 2.1, FRAME, 0);
+    // (props r2, Lane C 2026-10-16: the car was 65 % sharp boxes) the bogie frame's plate edges and the underframe's
+    // rolled channels eased
+    mesh.box(0, 0.5, bz, 1.7, 0.28, 2.1, FRAME, 0.02);
     for (const az of [-0.7, 0.7]) for (const side of [1, -1]) {
       mesh.push().translate(side * 0.66, 0.33, bz + az).scale(side, 1, 1);
       mesh.lathe([[0.0001, -0.06], [0.3, -0.06], [0.33, -0.03], [0.33, 0.04], [0.35, 0.06], [0.0001, 0.06]], coarse ? 8 : 12, () => WHEEL);
@@ -80,7 +82,7 @@ export function buildShanghaiTram(state: 'intact' | 'burnt' | 'collapsed', coars
   // the underframe the whole length (a collapsed car's slewed on its bogies and dropped onto them)
   mesh.push();
   if (collapsed) mesh.translate(0, -0.12, 0).rotateY(0.05);
-  mesh.box(0, floor - 0.06, 0, 2.0, 0.14, bodyL * 2 + 1.2, FRAME, 0);
+  mesh.box(0, floor - 0.06, 0, 2.0, 0.14, bodyL * 2 + 1.2, FRAME, 0.02);
   // The saloon, bay by bay between its pillars (eight bays). A burnt car (the battle of Shanghai: wooden bodies on
   // steel underframes) has lost panels, pillars and roof boards in places: a bay's lower panel burnt away shows the
   // frame and the seat frames, a pillar burnt to a stub, the letterboard gone, two of the roof's bays open to their
@@ -121,6 +123,11 @@ export function buildShanghaiTram(state: 'intact' | 'burnt' | 'collapsed', coars
       mesh.box(side * (hw - 0.03), sill + 0.02, zc, 0.1, 0.04, bayL, CREAM, 0);
       // the seat frames a burnt car shows through its open windows
       if (wreck) mesh.box(side * 0.75, floor + 0.42, zc, 0.42, 0.06, bayL * 0.8, FRAME, 0);
+      // (props r2, Lane C 2026-10-16: the seat frames floated over the floor) each on its two cast standards down to
+      // the underframe
+      if (wreck && !coarse) mesh.dressing(() => {
+        for (const dz of [-0.3, 0.3]) mesh.box(side * 0.75, floor + 0.2, zc + dz * bayL, 0.05, 0.4, 0.05, FRAME, 0);
+      });
     }
     // the arched roof over the bay (a burnt car's sagging through its middle; two bays burnt open to their carlines)
     const open = wreck && !collapsed && (k === 2 || k === 5);
@@ -142,15 +149,17 @@ export function buildShanghaiTram(state: 'intact' | 'burnt' | 'collapsed', coars
     // the clerestory along the roof's crown with its deck lights (from a metre in from either end)
     const c0 = Math.max(z0, -bodyL + 0.8), c1 = Math.min(z1, bodyL - 0.8);
     if (!open && c1 > c0) {
-      mesh.box(0, eave + 0.26 - sag * 0.7 * mid((c0 + c1) / 2), (c0 + c1) / 2, 1.0, 0.16, c1 - c0, ROOF, 0);
+      // (props r2, Lane C 2026-10-16: it sagged less than the roof and stood 7 cm off a burnt car's) down with the roof
+      mesh.box(0, eave + 0.26 - sag * mid((c0 + c1) / 2), (c0 + c1) / 2, 1.0, 0.16, c1 - c0, ROOF, 0);
       if (!coarse && k > 0 && k < n - 1) for (const side of [1, -1]) {
-        mesh.box(side * 0.505, eave + 0.26 - sag * 0.7 * mid(zc), zc, 0.01, 0.1, 0.4, wreck ? DARK : GLASS, 0);
+        mesh.box(side * 0.505, eave + 0.26 - sag * mid((c0 + c1) / 2), zc, 0.01, 0.1, 0.4, wreck ? DARK : GLASS, 0);
       }
     }
     // the trolley pole on its base over the fourth bay (a burnt car's wrenched up and over; a collapsed car's comes down
     // with its roof)
     if (k === 3) {
-      const base = eave + 0.4 - sag * 0.6;
+      // (props r2: on the clerestory's deck, wherever the sag took it)
+      const base = eave + 0.4 - sag * mid((c0 + c1) / 2);
       mesh.box(0, base, -1.0, 0.4, 0.1, 0.4, FRAME, 0);
       const tip: [number, number, number] = wreck ? [0.9, eave + 1.5, 1.6] : [0, eave + 0.55, 3.6];
       mesh.tube([[0, base + 0.05, -1.0], tip], 0.035, coarse ? 4 : 6, FRAME, { caps: true });
@@ -179,7 +188,8 @@ export function buildShanghaiTram(state: 'intact' | 'burnt' | 'collapsed', coars
     mesh.box(0, head + 0.12, vz - end * 0.05, 0.9, 0.2, 0.08, DARK, 0);
     // the lifeguard tray on its two hangers from the vestibule's frame
     mesh.box(0, 0.22, vz + end * 0.15, 1.6, 0.04, 0.4, FRAME, 0);
-    for (const x of [-0.6, 0.6]) mesh.box(x, 0.43, z + end * 0.74, 0.05, 0.42, 0.05, FRAME, 0);
+    // (props r2, Lane C 2026-10-16: they stopped 2 cm short of the frame) up into the vestibule's frame
+    for (const x of [-0.6, 0.6]) mesh.box(x, (0.22 + floor - 0.11) / 2, z + end * 0.74, 0.05, floor - 0.11 - 0.22, 0.05, FRAME, 0);
     // the steps either side, each on two hangers from the vestibule's frame
     for (const side of [1, -1]) {
       mesh.box(side * 0.98, floor - 0.32, z + end * 0.45, 0.3, 0.04, 0.5, FRAME, 0);

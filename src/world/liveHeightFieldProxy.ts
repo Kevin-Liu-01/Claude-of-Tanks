@@ -8,6 +8,7 @@ interface HeightFieldLike<Normal> {
   getHeightAt(x: number, z: number): number;
   getHeightAtFast?(x: number, z: number): number;
   getContactHeightAt?(x: number, z: number): number;
+  getContactCellFlippedAt?(x: number, z: number): boolean;
   getNormalAt(x: number, z: number): Normal;
   getGroundType(x: number, z: number): string;
   getDriveGroundType?(x: number, z: number): string;
@@ -25,6 +26,8 @@ interface HeightFieldWorld<Normal> {
 interface LiveHeightFieldProxy<Normal> {
   getHeightAt(x: number, z: number): number;
   getContactHeightAt(x: number, z: number): number;
+  /** (2026-10-15) the contact surface's steep-cell split under (x, z) (terrainContactSurface.ts terrainCellFlipped). */
+  getContactCellFlippedAt(x: number, z: number): boolean;
   getHeightAtFast(x: number, z: number): number;
   getHeightAtExact(x: number, z: number): number;
   getNormalAt(x: number, z: number): Normal;
@@ -72,6 +75,9 @@ export function createLiveHeightFieldProxy<Normal>({
     getContactHeightAt(x, z) {
       const heightField = field();
       return heightField ? (heightField.getContactHeightAt?.(x, z) ?? fastHeight(heightField, x, z)) : 0;
+    },
+    getContactCellFlippedAt(x, z) {
+      return field()?.getContactCellFlippedAt?.(x, z) ?? false;
     },
     getHeightAt(x, z) {
       const heightField = field();

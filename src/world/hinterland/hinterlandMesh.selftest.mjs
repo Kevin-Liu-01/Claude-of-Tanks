@@ -129,6 +129,39 @@ const S0 = wire.surface[0], mid = (S0.n >> 1) * (S0.n + 1) * 4;
 assert.deepEqual([...S0.rgba.subarray(mid, mid + 4)], [0, 0, 0, 0], 'inside the square nothing is baked');
 const object = createHinterlandObject(copy, {});
 const land = object.getObjectByName('hinterland-land');
+// the land's and the outland's shaders take every patch (a replace on a chunk that moved would silently drop one): the
+// projection, the surface, the haze for the remapped depth's segment and the compression, and the written depth
+{
+  const THREE = await import('three');
+  const { hazeDistance, HINTERLAND_DEPTH_MARGIN_M } = await import('./project.ts');
+  const patched = (material) => {
+    const shader = { uniforms: {}, vertexShader: THREE.ShaderLib.standard.vertexShader, fragmentShader: THREE.ShaderLib.standard.fragmentShader };
+    material.onBeforeCompile(shader, null);
+    return shader;
+  };
+  const ls = patched(land.material);
+  for (const [re, what] of [ [/hlSurfaceAt\( vHlWorld\.xz \)/, 'the surface'],
+    [/hinterlandSegmentDepth\( hlHazeD, hlDrawnR \)/, 'the remapped segment\'s haze'], [/hinterlandProjectDrawn\( vHlWorld/, 'the remapped projection'], [/#define HL_REMAP/, 'the remap switched on (no ?hlDepth=0 in Node)'],
+    [/hlTilt/, 'the ground\'s relief normal'], [/hlHazeTarget\(/, 'the dome-sky haze target'],
+    [/hlStrataAt\( vHlWorld, hlNW, hlL \)/, 'the steep faces\' strata'], [/0\.6 \* hlLedge/, 'the ledges\' snow facing the sky']]) {
+    assert.match(ls.vertexShader + ls.fragmentShader, re, `the land's shader carries ${what}`);
+  }
+  // (the polders' rock travels; their ledges hold no snow)
+  assert.ok(wire.rock && wire.rock.rgb.every((c) => c > 0 && c < 1) && wire.rock.snowy === false, 'the region\'s rock travels for the strata');
+  const built = object.getObjectByName('hinterland-buildings');
+  const bs = patched(built.material);
+  assert.doesNotMatch(ls.fragmentShader + bs.fragmentShader, /gl_FragDepth/, 'the land and the outland keep early depth (the remap is geometry)');
+  assert.match(bs.vertexShader, /hinterlandProjectDrawn\( position/, 'the outland draws through the same remapped projection');
+  // the remap: the drawn distance to the square's exit and a margin, a fifth of the rest; monotonic, never past the drawn
+  let prev = 0;
+  for (let r = 0; r <= 3300; r += 50) {
+    const d = hazeDistance(r, 600);
+    assert.ok(d >= prev - 1e-9 && d <= r + 1e-9, 'monotonic and never farther than drawn');
+    if (r <= 600 + HINTERLAND_DEPTH_MARGIN_M) assert.equal(d, r, 'the battlefield and its margin keep their depth');
+    prev = d;
+  }
+  assert.ok(Math.abs(hazeDistance(2700, 600) - (660 + 0.2 * 2040)) < 1e-9);
+}
 assert.ok(land && land.isMesh && land.geometry.isInstancedBufferGeometry && land.frustumCulled === false, 'one instanced land draw');
 // the outland (HZ.11): the buildings and verticals in one draw, the trees in two, each standing on the drawn land
 const outland = object.getObjectByName('hinterland-outland');

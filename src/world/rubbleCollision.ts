@@ -10,7 +10,11 @@
 //            cut level by level, so a leaning slab of wall leans in its record);
 //   movement each such chunk's outline from the ground to its top: a crush trigger (a pile is crushable clutter, crushed
 //            by any hull on contact, crushableClutter.ts), so it meets a hull where the hull meets a chunk.
-// The apron's shards and the beam carry none: a shard lies under the floor, and a 14 cm beam is no cover.
+// The apron's shards and the beam carry none: a shard lies under the floor, and a 14 cm beam is no cover. (Physics stream
+// DST-03, 2026-10-16: props census #7 gave the heap a body — its chunks bedded in a fill mound, bonded brick courses —
+// and the records read the chunks alone: the world collider audit measured the drawn heap 0.6 m over its records and
+// 26 % of the shells through it passing drawn stone. The records read every stone piece the pile draws: the chunks, the
+// fill body and the courses; the shards stay under the floor.)
 // Pure and deterministic: the chunks' own vertices, no randomness.
 import type { BufferGeometry } from 'three';
 import { setCircleShape, setCompoundShape, type CollisionRecord, type SimpleCollisionShape } from './collision.ts';

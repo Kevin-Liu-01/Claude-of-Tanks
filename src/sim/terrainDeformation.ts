@@ -120,8 +120,10 @@ export interface TerrainDeformation {
   near(x: number, z: number): boolean;
   /** The overlay at (x, z): the stamps' sum, clamped to [−2.5, +3] m. */
   offsetAt(x: number, z: number): number;
-  /** The overlay on the terrain contact lattice's triangle under (x, z) (§7: what a deformed mesh would carry). */
-  contactOffsetAt(x: number, z: number): number;
+  /** The overlay on the terrain contact lattice's triangle under (x, z) (§7: what a deformed mesh would carry); `flipped`:
+   * the base surface splits that cell along its a–d diagonal (world/terrainContactSurface.ts terrainCellFlipped, the
+   * base's own Float32 corner heights decide, so the overlay rides the mesh's own triangles). */
+  contactOffsetAt(x: number, z: number, flipped?: boolean): number;
   /** A crater; false when its buckets are full (the caller then makes it a mark). */
   addCrater(x: number, z: number, radiusM: number, depthM: number, rimM: number, seed: number): boolean;
   /** A collapsed structure's heap over its footprint (cx, cz, half extents across/along, yaw), `heightM` high, rising
@@ -201,15 +203,27 @@ export interface RubbleMound {
 export function rubbleMoundHeightAt(mound: RubbleMound, x: number, z: number): number {
   const height = Math.max(0, mound.heightM);
   heapCrown(mound.cx, mound.cz, mound.hw, mound.hd, _moundCrown);
-  return heapHeight(mound.cx, mound.cz, mound.hw, mound.hd, Math.cos(mound.yaw), Math.sin(mound.yaw), height,
-    rubbleFalloffM(mound.hw, mound.hd, height), _moundCrown, x, z);
+  const h = _moundShape;
+  h.cx = mound.cx; h.cz = mound.cz; h.hw = mound.hw; h.hd = mound.hd; h.c = Math.cos(mound.yaw); h.s = Math.sin(mound.yaw);
+  h.heightM = height; h.falloffM = rubbleFalloffM(mound.hw, mound.hd, height);
+  return heapHeight(h, x, z);
 }
 const _moundCrown = new Float64Array(CROWN_PARAMS);
+const _moundShape: HeapShape = { cx: 0, cz: 0, hw: 0, hd: 0, c: 1, s: 0, heightM: 0, falloffM: 0, crown: _moundCrown };
+
+/** A mound as the overlay's stamp, its crown worked out once: rubbleProfile(stamp, x, z) is rubbleMoundHeightAt(mound, x,
+ * z) to the bit, for a ground sampled under falling pieces every step (no crown, no closure a sample). */
+export function rubbleStampOf(mound: RubbleMound): RubbleStamp {
+  const height = Math.max(0, mound.heightM);
+  return { kind: 'rubble', cx: mound.cx, cz: mound.cz, hw: mound.hw, hd: mound.hd, yaw: mound.yaw, heightM: height,
+    c: Math.cos(mound.yaw), s: Math.sin(mound.yaw), falloffM: rubbleFalloffM(mound.hw, mound.hd, height), t0: -Infinity,
+    growS: RUBBLE_GROW_S, crown: heapCrown(mound.cx, mound.cz, mound.hw, mound.hd, new Float64Array(CROWN_PARAMS)) };
+}
 
 /** A rubble mound's profile at (x, z) (§7): its crown over the plateau, a cosine skirt to nothing (`scale` of it: rising;
  * the heap is linear in its height, so a rising heap is the risen one scaled). */
 export function rubbleProfile(stamp: RubbleStamp, x: number, z: number, scale = 1): number {
-  return scale * heapHeight(stamp.cx, stamp.cz, stamp.hw, stamp.hd, stamp.c, stamp.s, stamp.heightM, stamp.falloffM, stamp.crown, x, z);
+  return scale * heapHeight(stamp, x, z);
 }
 
 /** A heap's crown from its footprint (CROWN_DROP): [lean cos, lean sin, three phases, four wave numbers]. */
@@ -231,9 +245,15 @@ function heapCrown(cx: number, cz: number, hw: number, hd: number, out: Float64A
   return out;
 }
 
-/** The heap at (x, z): the crown at the nearest plateau point, the cosine skirt from it past the plateau's edge. */
-function heapHeight(cx: number, cz: number, hw: number, hd: number, c: number, s: number, height: number, falloff: number,
-  crown: Float64Array, x: number, z: number): number {
+/** What a heap's height reads (a stamp's fields): its footprint, yaw's cos and sin, height, falloff and crown. */
+interface HeapShape { cx: number; cz: number; hw: number; hd: number; c: number; s: number; heightM: number; falloffM: number;
+  crown: Float64Array }
+/** The heap at (x, z): the crown at the nearest plateau point, the cosine skirt from it past the plateau's edge. (Its
+ *  shape by reference, not a dozen numbers: a number handed to a call is a new heap number each time in V8, and the
+ *  ground under falling pieces is read here every step.) */
+function heapHeight(shape: HeapShape, x: number, z: number): number {
+  const cx = shape.cx, cz = shape.cz, hw = shape.hw, hd = shape.hd, c = shape.c, s = shape.s, height = shape.heightM;
+  const falloff = shape.falloffM, crown = shape.crown;
   const dx = x - cx, dz = z - cz;
   // forward (sin yaw, cos yaw) along hd, right (cos yaw, −sin yaw) across hw
   const alongAt = dx * s + dz * c, acrossAt = dx * c - dz * s;
@@ -321,14 +341,19 @@ export function createTerrainDeformation(): TerrainDeformation {
     return offsetAt(-WORLD_HALF_M + ix * LATTICE_STEP, -WORLD_HALF_M + iz * LATTICE_STEP);
   }
 
-  function contactOffsetAt(x: number, z: number): number {
+  function contactOffsetAt(x: number, z: number, flipped = false): number {
     if (counts[bucketIndex(z) * BUCKETS + bucketIndex(x)] === 0) return 0;
     const gx = Math.max(0, Math.min(LATTICE_CELLS - 1e-6, (x + WORLD_HALF_M) / LATTICE_STEP));
     const gz = Math.max(0, Math.min(LATTICE_CELLS - 1e-6, (z + WORLD_HALF_M) / LATTICE_STEP));
     const ix = Math.floor(gx), iz = Math.floor(gz);
     const u = gx - ix, v = gz - iz;
-    // the contact sampler's triangle split (terrainContactSurface.ts): a, b = +x, c = +z, d = +x+z
+    // the contact sampler's triangle split (terrainContactSurface.ts): a, b = +x, c = +z, d = +x+z; a steep base cell
+    // (2026-10-15) splits along a–d
     const b = latticeOffset(ix + 1, iz), c = latticeOffset(ix, iz + 1);
+    if (flipped) {
+      const a = latticeOffset(ix, iz), d = latticeOffset(ix + 1, iz + 1);
+      return u >= v ? a + (b - a) * u + (d - b) * v : a + (c - a) * v + (d - c) * u;
+    }
     if (u + v <= 1) {
       const a = latticeOffset(ix, iz);
       return a + (b - a) * u + (c - a) * v;
@@ -397,6 +422,8 @@ export interface DeformableHeightField {
   getHeightAt(x: number, z: number): number;
   getHeightAtFast?(x: number, z: number): number;
   getContactHeightAt?(x: number, z: number): number;
+  /** The base surface's steep-cell split (world/terrain.ts getContactCellFlippedAt), which the overlay rides. */
+  getContactCellFlippedAt?(x: number, z: number): boolean;
   getNormalAt?(x: number, z: number): unknown;
   maxY?: number;
 }
@@ -415,6 +442,8 @@ export function createDeformedHeightField<T extends DeformableHeightField>(base:
   const normal = new Vector3();
   const baseFast = base.getHeightAtFast ? base.getHeightAtFast.bind(base) : base.getHeightAt.bind(base);
   const baseContact = base.getContactHeightAt ? base.getContactHeightAt.bind(base) : null;
+  // (2026-10-15) the base surface's steep-cell split, which the overlay's offsets ride (a stub field without one keeps b–c)
+  const baseFlippedAt = base.getContactCellFlippedAt ? base.getContactCellFlippedAt.bind(base) : null;
   const getHeightAt = (x: number, z: number): number => base.getHeightAt(x, z) + overlay.offsetAt(x, z);
   Object.defineProperties(field, {
     getHeightAt: { value: getHeightAt, writable: true, configurable: true },
@@ -438,7 +467,8 @@ export function createDeformedHeightField<T extends DeformableHeightField>(base:
   }
   if (baseContact) {
     Object.defineProperty(field, 'getContactHeightAt', {
-      value: (x: number, z: number): number => baseContact(x, z) + overlay.contactOffsetAt(x, z), writable: true, configurable: true,
+      value: (x: number, z: number): number => baseContact(x, z)
+        + overlay.contactOffsetAt(x, z, baseFlippedAt !== null && overlay.near(x, z) && baseFlippedAt(x, z)), writable: true, configurable: true,
     });
   }
   return field;

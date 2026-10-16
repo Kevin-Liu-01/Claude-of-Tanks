@@ -9,6 +9,8 @@ import { VILLAGE_BUILDERS } from '../src/world/maps/villageKit.ts';
 import { URBAN_BUILDERS } from '../src/world/maps/urbanKit.ts';
 import { STRUCTURE_BUILDERS } from '../src/world/maps/structureKit.ts';
 import { addCatalogExterior } from '../src/world/maps/exteriorDetailKit.ts';
+// (the looks lane, 2026-10-16) a cut hall's catalog openings settled as props.ts settles them after the catalog pass
+import { settleCatalogCuts } from '../src/world/maps/railKit.ts';
 import { LANDMARK_BUILDERS } from '../src/world/landmarks/index.ts';
 import { resolveLandmarkParams } from '../src/world/landmarks/plan.ts';
 
@@ -97,6 +99,7 @@ export async function runKitCensus({ kits = [], builders = [], seeds = [11, 29],
         const tmp = { plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [], glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [] };
         const info = build(mulberry(seed), tmp, seed % 2 ? 'plaster2' : 'plaster');
         addCatalogExterior(tmp, { id, info, variant: seed % 3 });
+        settleCatalogCuts(tmp); // a no-op unless the builder cut its hall (the warehouse, the factory)
         const row = analyse(`generic/${id}`, 'generic', id, tmp, seed);
         if (row) perSeed.push(row);
       }

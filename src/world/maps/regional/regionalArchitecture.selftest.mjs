@@ -35,6 +35,7 @@ import { createHeightField } from '../../terrain.ts';
 import { MAP_IDS, getMapConfig } from '../index.ts';
 import { bindStructureSpans, describeStructure, tagStructureVertices } from '../../structureDamageSeam.ts';
 import { createStructureDamage } from '../../../sim/structureDamage.ts';
+import { settleCatalogCuts } from '../railKit.ts'; // (integ/226: props.ts settles the catalog's cut halls after the catalog pass)
 import { registerHooks } from 'node:module';
 
 const STYLES = ARCHITECTURE_STYLES;
@@ -220,7 +221,7 @@ console.log(`regional coverage: every builder of a new kit reaches its bounds to
 
 // Surfaces: deterministic, in range, cached.
 for (const [target, kind] of [['roof', 'beavertail'], ['roof', 'canal'], ['roof', 'slate'], ['stone', 'sandstone'], ['stone', 'limestone'], ['stone', 'granite'],
-  ['concrete', 'boardFormed']]) {
+  ['concrete', 'boardFormed'], ['concrete', 'poured']]) {
   const paint = () => { const g = paintRegionalSurfaceBuffers(target, kind, [0.5, 0.4, 0.3], 7); let s = g.next(); while (!s.done) s = g.next(); return s.value; };
   const a = paint(), b = paint();
   assert.deepEqual(Buffer.from(a.px.buffer), Buffer.from(b.px.buffer), `${kind}: deterministic pixels`);
@@ -288,7 +289,7 @@ const dependencies = { roadSettlementJunction, buildingRoadStationIndices, THREE
   sampleObbGround, deriveRuntimeStructureCollisionProfile, appendStructureCollisionBand,
   rebuildRegionalStructure: recordingRebuild, resolveRegionalArchitecture,
   // destruction (2026-10-07): a placed structure is described and tagged where it is built (props.ts describeStructureAt)
-  bindStructureSpans, describeStructure, tagStructureVertices, createStructureDamage,
+  bindStructureSpans, describeStructure, tagStructureVertices, createStructureDamage, settleCatalogCuts,
   buildingFootprintClearsRoads, roadBuildingFrontage, roadBuildingDoorAxis, roadBuildingClearanceCandidates, roadParcelAddsNoExclusion,
   ...Object.fromEntries(['mulberry32', 'makeCottage', 'makeBarn', 'makeTower', 'makeRuin', 'makeAdobe', 'makeRowhouse'].map((key) => [key, originals[key]])),
 };

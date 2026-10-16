@@ -76,7 +76,9 @@ export type SurfaceTone = ((hue: number, saturation: number, lightness: number) 
 export type RenderSurfaceKind = 'limewash' | 'limeRender';
 export type StoneSurfaceKind = 'sandstone' | 'limestone' | 'granite' | 'brick' | 'greywacke' | 'rubble' | 'block' | 'gneiss' | 'fieldstone';
 /** Poured concrete prints a style can paint its plaster2 bucket with (regionalSurfaces.ts makeRegionalConcrete). */
-export type ConcreteSurfaceKind = 'boardFormed';
+/** 'boardFormed': the formwork's boards, lift lines and ties; 'poured' (Skybridge round 4's dam, wave 170-171: "the
+ * board-form planks are still there"): one pour with its lifts, ties, mottling and runoff, no boards. */
+export type ConcreteSurfaceKind = 'boardFormed' | 'poured';
 
 export interface ArchitectureSurfaces {
   /** map revival lane 2 (2026-10-06, Frosthollow's cost): 0 leaves out the wood and the joinery's cavity map (the AO
