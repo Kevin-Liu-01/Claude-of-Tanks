@@ -15,10 +15,21 @@ const KIND_ENCODING = 'primitive-kind-dict-v2';
  * would not decode bit for bit stays as v2 wrote it. Compact primitives carry their kind in capitals ('V', 'W', 'P',
  * 'C', 'O'), compact bounds the key 'B'.
  */
-const ENCODING = 'primitive-kind-dict-v3';
+const COMPACT_ENCODING = 'primitive-kind-dict-v3';
+/**
+ * (the perf lane, 2026-10-16: the shards' storage budget, integ/226 at 73.5 MB over the 68.7 MB budget) v3, plus two
+ * exact steps:
+ * - a record's bounds as 'D': the steps, in the same integers of 1/10000 m, from its shape's own reference box (the
+ *   parts' corners, circle extents, box centres and vertical extents: boundsReference) — a few digits where v3 wrote
+ *   seven a number; a record whose shape or bounds are not all exact integers keeps 'B' (or v2's 'b');
+ * - a concealer standing on a tree's circle centre (its x and z exactly a tree record's: the forest's) as
+ *   [the tree's index, radius, add] in place of [x, z, radius, add].
+ * Decoding gives every record, key order, number (Object.is) and concealer back as v3 had them.
+ */
+const ENCODING = 'primitive-kind-dict-v4';
 const MAX_PRIMITIVES = 131_072;
 const MAX_KINDS = 1024;
-type CollisionManifestEncoding = typeof LEGACY_ENCODING | typeof KIND_ENCODING | typeof ENCODING;
+type CollisionManifestEncoding = typeof LEGACY_ENCODING | typeof KIND_ENCODING | typeof COMPACT_ENCODING | typeof ENCODING;
 type Shape = NonNullable<PackedCollisionRecord['s']>;
 type CompactSimple = readonly [string, ...number[]];
 type EncodedSimple = PackedSimpleShape | CompactSimple | number;
@@ -28,7 +39,10 @@ type EncodedRecord = Omit<PackedCollisionRecord, 's' | 'k' | 'b'> & {
   k?: PackedCollisionRecord['k'] | number;
   b?: PackedCollisionRecord['b'];
   B?: readonly number[];
+  D?: readonly number[];
 };
+type Concealer = NonNullable<CollisionManifest['concealers']>[number];
+type EncodedConcealer = Concealer | readonly [number, number, number];
 
 interface EncodedManifest {
   encoding: CollisionManifestEncoding;
@@ -36,7 +50,7 @@ interface EncodedManifest {
   kinds?: string[];
   obstacles: EncodedRecord[];
   colliders: EncodedRecord[];
-  concealers?: CollisionManifest['concealers'];
+  concealers?: CollisionManifest['concealers'] | EncodedConcealer[];
   craters?: CollisionManifest['craters'];
 }
 
@@ -100,6 +114,65 @@ function isCompactSimple(value: RuntimeValue): value is readonly RuntimeValue[] 
   return Array.isArray(value) && typeof value[0] === 'string' && Object.hasOwn(PACKED_KIND, value[0]);
 }
 
+/**
+ * v4: a record's reference box in integers of 1/10000 m, [minX, minY, minZ, maxX, maxY, maxZ], from its packed shape
+ * alone: the corners of 'v', 'w' and 'p' parts, a circle's centre +- radius, a box's centre, the vertical extents of
+ * 'w' and 'p' parts and of circles and boxes that carry one (0 where no part has one). Null when a number is not an exact
+ * integer of 1/10000 m. Encoder and decoder compute it from the same packed numbers, so the steps 'D' are exact.
+ */
+function boundsReference(shape: Shape): number[] | null {
+  const parts = (shape[0] === 'm' ? shape.slice(1) : [shape]) as PackedSimpleShape[];
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  // (only the numbers the box reads: a box's yaw or a 'p' part's planes may have any decimals)
+  const at = (part: PackedSimpleShape, i: number): number | null => scaled(part[i + 1] as number);
+  for (const part of parts) {
+    const kind = part[0], count = part.length - 1;
+    const y = (i: number): boolean => {
+      const lo = at(part, i), hi = at(part, i + 1);
+      if (lo === null || hi === null) return false;
+      y0 = Math.min(y0, lo); y1 = Math.max(y1, hi);
+      return true;
+    };
+    if (kind === 'c' || kind === 'o') {
+      const cx = at(part, 0), cz = at(part, 1), reach = kind === 'c' ? at(part, 2) : 0;
+      if (cx === null || cz === null || reach === null) return null;
+      x0 = Math.min(x0, cx - reach); x1 = Math.max(x1, cx + reach);
+      z0 = Math.min(z0, cz - reach); z1 = Math.max(z1, cz + reach);
+      const extent = kind === 'c' ? 3 : 5;
+      if (count === extent + 2 && !y(extent)) return null;
+      continue;
+    }
+    if ((kind === 'w' || kind === 'p') && !y(0)) return null;
+    const from = kind === 'v' ? 0 : kind === 'w' ? 2 : kind === 'p' ? 5 + 3 * (part[5] as number) : count;
+    for (let i = from; i + 1 < count; i += 2) {
+      const x = at(part, i), z = at(part, i + 1);
+      if (x === null || z === null) return null;
+      x0 = Math.min(x0, x); x1 = Math.max(x1, x);
+      z0 = Math.min(z0, z); z1 = Math.max(z1, z);
+    }
+  }
+  if (!Number.isFinite(x0) || !Number.isFinite(z0)) return null;
+  if (!Number.isFinite(y0)) { y0 = 0; y1 = 0; }
+  return [x0, y0, z0, x1, y1, z1];
+}
+
+/** v4: the forest's circle centres by tree index (a tree record: kind 'tree', an index 't', one circle part); an index
+ *  two records share is left out. Built alike from the records the encoder writes and the decoder reads back. */
+function treeCentres(records: readonly PackedCollisionRecord[][]): Map<number, readonly [number, number]> {
+  const centres = new Map<number, readonly [number, number]>();
+  const shared = new Set<number>();
+  for (const list of records) {
+    for (const record of list) {
+      const t = (record as { t?: RuntimeValue }).t, shape = record.s;
+      if (record.k !== 'tree' || typeof t !== 'number' || !Number.isSafeInteger(t) || !shape || shape[0] !== 'c') continue;
+      if (centres.has(t)) shared.add(t);
+      centres.set(t, [shape[1] as number, shape[2] as number]);
+    }
+  }
+  for (const t of shared) centres.delete(t);
+  return centres;
+}
+
 function eachPrimitive(manifest: CollisionManifest, visit: (shape: PackedSimpleShape) => void) {
   for (const records of [manifest.obstacles, manifest.colliders]) {
     for (const { s } of records) {
@@ -113,10 +186,11 @@ function eachPrimitive(manifest: CollisionManifest, visit: (shape: PackedSimpleS
 export function encodeCollisionManifest(
   manifest: CollisionManifest, encoding: CollisionManifestEncoding = ENCODING,
 ): EncodedManifest {
-  if (encoding !== LEGACY_ENCODING && encoding !== KIND_ENCODING && encoding !== ENCODING) {
+  if (encoding !== LEGACY_ENCODING && encoding !== KIND_ENCODING && encoding !== COMPACT_ENCODING && encoding !== ENCODING) {
     throw new TypeError('collision manifest encoding is invalid');
   }
-  const compact = encoding === ENCODING;
+  const compact = encoding === COMPACT_ENCODING || encoding === ENCODING;
+  const referenced = encoding === ENCODING;
   const counts = new Map<string, number>();
   eachPrimitive(manifest, (shape) => {
     const key = JSON.stringify(shape);
@@ -153,11 +227,15 @@ export function encodeCollisionManifest(
     if (compact) {
       const bounds = value.b.map(scaled);
       if (bounds.every((n) => n !== null)) {
+        // (v4: the steps from the shape's reference box, when it has one)
+        const reference = referenced && value.s ? boundsReference(value.s) : null;
+        const steps = reference ? (bounds as number[]).map((n, i) => n - reference[i]) : null;
         // (the compact bounds take the key's place in the record, so the record's key order is v2's)
         const ordered: EncodedRecord = {};
         for (const key of Object.keys(result) as (keyof EncodedRecord)[]) {
-          if (key === 'b') ordered.B = bounds as number[];
-          else (ordered as Record<string, RuntimeValue>)[key] = result[key] as RuntimeValue;
+          if (key === 'b') {
+            if (steps) ordered.D = steps; else ordered.B = bounds as number[];
+          } else (ordered as Record<string, RuntimeValue>)[key] = result[key] as RuntimeValue;
         }
         return ordered;
       }
@@ -169,9 +247,39 @@ export function encodeCollisionManifest(
     encoding, shapes: compact ? shapes.map(compactSimple) as PackedSimpleShape[] : shapes,
     ...(encoding !== LEGACY_ENCODING ? { kinds } : {}),
     obstacles: manifest.obstacles.map(record), colliders: manifest.colliders.map(record),
-    concealers: manifest.concealers,
+    concealers: referenced ? encodeConcealers(manifest) : manifest.concealers,
     ...(manifest.craters ? { craters: manifest.craters } : {}),
   };
+}
+
+/** v4: each concealer on a tree's exact circle centre as [tree index, radius, add]; any other as it is. */
+function encodeConcealers(manifest: CollisionManifest): EncodedConcealer[] | undefined {
+  if (!manifest.concealers) return manifest.concealers;
+  const centres = treeCentres([manifest.obstacles, manifest.colliders]);
+  const byCentre = new Map<string, number | null>();
+  for (const [t, [x, z]] of centres) {
+    const key = `${x},${z}`;
+    byCentre.set(key, byCentre.has(key) ? null : t);
+  }
+  return manifest.concealers.map((entry) => {
+    const t = byCentre.get(`${entry[0]},${entry[1]}`);
+    if (t == null) return entry;
+    const centre = centres.get(t)!;
+    return Object.is(centre[0], entry[0]) && Object.is(centre[1], entry[1]) ? [t, entry[2], entry[3]] as const : entry;
+  });
+}
+
+/** v4: the concealers back, a tree reference on its tree's centre. */
+function decodeConcealers(value: RuntimeValue, records: readonly PackedCollisionRecord[][]): RuntimeValue {
+  if (!Array.isArray(value)) return value;
+  let centres: Map<number, readonly [number, number]> | null = null;
+  return value.map((entry) => {
+    if (!Array.isArray(entry) || entry.length !== 3) return entry;
+    centres ??= treeCentres(records);
+    const centre = typeof entry[0] === 'number' ? centres.get(entry[0]) : undefined;
+    if (!centre) throw new TypeError('world collision concealment is invalid');
+    return [centre[0], centre[1], entry[1], entry[2]];
+  });
 }
 
 function dictionary(value: RuntimeValue, compact: boolean): readonly PackedSimpleShape[] {
@@ -223,6 +331,7 @@ function resolveKind(value: number, kinds: readonly string[] | undefined): strin
 
 function resolveRecords(
   value: RuntimeValue, shapes: readonly PackedSimpleShape[], kinds: readonly string[] | undefined, compact = false,
+  referenced = false,
 ): PackedCollisionRecord[] {
   if (!Array.isArray(value)) throw new TypeError('collision records are invalid');
   return Array.from(value, (record) => {
@@ -230,6 +339,22 @@ function resolveRecords(
     // One record copy resolves both fields; dictionaries are not retained by the
     // manifest, and kinds are immutable strings shared by all decoded records.
     let resolved: Record<string, RuntimeValue> = { ...record };
+    if (referenced && resolved.D !== undefined) {
+      const steps = resolved.D;
+      if (resolved.b !== undefined || resolved.B !== undefined || !Array.isArray(steps) || steps.length !== 6
+          || !steps.every((n) => Number.isSafeInteger(n)) || resolved.s === undefined) {
+        throw new TypeError('collision record is invalid');
+      }
+      const reference = boundsReference(resolveShape(resolved.s, shapes, compact));
+      if (!reference) throw new TypeError('collision record is invalid');
+      // (the bounds in the key's place: the decoded record's keys are in v2's order)
+      const ordered: Record<string, RuntimeValue> = {};
+      for (const key of Object.keys(resolved)) {
+        if (key === 'D') ordered.b = steps.map((n, i) => ((n as number) + reference[i]) / SCALE);
+        else ordered[key] = resolved[key];
+      }
+      resolved = ordered;
+    }
     if (compact && resolved.B !== undefined) {
       const bounds = resolved.B;
       if (resolved.b !== undefined || !Array.isArray(bounds) || bounds.length !== 6 || !bounds.every((n) => Number.isSafeInteger(n))) {
@@ -258,17 +383,21 @@ export function decodeCollisionManifest(value: RuntimeValue): CollisionManifest 
     throw new TypeError('collision manifest is invalid');
   }
   if (value.encoding === undefined && value.shapes === undefined) return readCollisionManifest(value);
-  if (value.encoding !== LEGACY_ENCODING && value.encoding !== KIND_ENCODING && value.encoding !== ENCODING) {
+  if (value.encoding !== LEGACY_ENCODING && value.encoding !== KIND_ENCODING && value.encoding !== COMPACT_ENCODING
+      && value.encoding !== ENCODING) {
     throw new TypeError('collision manifest encoding is invalid');
   }
-  const compact = value.encoding === ENCODING;
+  const referenced = value.encoding === ENCODING;
+  const compact = value.encoding === COMPACT_ENCODING || referenced;
   const shapes = dictionary(value.shapes, compact);
   const kinds = value.encoding !== LEGACY_ENCODING ? kindDictionary(value.kinds) : undefined;
   // Metadata and each inline primitive are validated during this one pass;
   // dictionary primitives were validated once above, before any ref resolves.
+  const obstacles = resolveRecords(value.obstacles, shapes, kinds, compact, referenced);
+  const colliders = resolveRecords(value.colliders, shapes, kinds, compact, referenced);
   return {
-    obstacles: resolveRecords(value.obstacles, shapes, kinds, compact),
-    colliders: resolveRecords(value.colliders, shapes, kinds, compact), concealers: readCollisionConcealers(value.concealers),
+    obstacles, colliders,
+    concealers: readCollisionConcealers(referenced ? decodeConcealers(value.concealers, [obstacles, colliders]) : value.concealers),
     ...(value.craters !== undefined ? { craters: readCollisionCraters(value.craters) } : {}),
   };
 }
