@@ -25,13 +25,14 @@ import {NATIONAL_ROOF_LOADOUTS} from '../nationalRoofConfig.ts';
 import {POLISH_PROTECTION_LAYOUTS} from '../nationalPolandProtectionConfig.ts';
 import type {NationalModernizationConfig} from '../nationalModernizationConfig.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
-const {box, cylY, cylZ, cylX, torus} = KIT;
+const {box, cylY, cylX, torus} = KIT;
 
 type PolandDonorId = 't72b3_zubr' | 't72b3_zubr_ii';
 type V3 = readonly [number, number, number];
 /** Rows of POLISH_PROTECTION_LAYOUTS (hull screens unchanged; turret numbers describe the kit's own screens). */
 const PROTECTION_MODEL: Readonly<Record<PolandDonorId, number>> = {t72b3_zubr: 2, t72b3_zubr_ii: 3};
 const SIDES = [-1, 1] as const;
+const tuple = (v: THREE.Vector3): V3 => [v.x, v.y, v.z];
 const eraSector = (side: number): string => `turret_era_${side < 0 ? 'L' : 'R'}`;
 /** Round-stock facets: the authored count on the high tier, fewer on the far (low) tier. */
 const seg = (P: TankBuilderPort, high: number, low: number): number => (P.q ? high : low);
@@ -137,14 +138,20 @@ function levelSeat(casting: Stock, x: number, z: number, w: number, d: number): 
 // carries fine ERAWA tiles; slat screens hang outboard of the stowage boxes from welded stanchions; a compact rear rack
 // carries the camouflage roll, a service case, tools and the whips.
 
+// The screens and the rear rack are built to the Zubr's row of POLISH_PROTECTION_LAYOUTS, whose turret numbers the field
+// suit's drapes and rear-face net follow (turretX/Bottom/Top/Panels: the screen plane, its height and length; rearZ,
+// rearHalf, rearBottom/Top: the rack's slatted rear face).
+const ZUBR_ROW = POLISH_PROTECTION_LAYOUTS[PROTECTION_MODEL.t72b3_zubr];
 const ZUBR = {
   belt: {low: .040, high: .120, origin: [0, .08, .30] as V3, start: .34, chinX: .44, inner: .035, outer: .045},
   tile: [.040, .068, .125] as const,
   // front stanchions: right (-X) behind the right front roof cassette (z .234), left (+X) ahead of the top smoke tube
   // (z .09) and outboard of the gunner's sight hood (x .992)
   stanchion: {front: [[-1.14, .16], [1.14, .19]] as const, rear: [.70, -.98] as const, top: .80, arm: .755},
-  screen: {x: 1.95, front: .30, rear: -1.25, bottom: .24, top: .74},
-  rack: {front: -2.00, rear: -2.34, half: .84, floor: .085, top: .50, rails: [.30, .62] as const},
+  screen: {x: ZUBR_ROW.turretX, front: ZUBR_ROW.turretPanels[0][1], rear: ZUBR_ROW.turretPanels[0][0],
+    bottom: ZUBR_ROW.turretBottom, top: ZUBR_ROW.turretTop},
+  rack: {front: -2.00, rear: ZUBR_ROW.rearZ, half: ZUBR_ROW.rearHalf, floor: ZUBR_ROW.rearBottom, top: ZUBR_ROW.rearTop,
+    rails: [.30, .62] as const},
 } as const;
 
 /** The casting's outline at height y along a radial ray from the belt origin (plan angle phi from +X towards +Z). */
@@ -195,8 +202,7 @@ function zubrEraBelt(P: TankBuilderPort, casting: Stock): void {
         if (out.x * side < 0 && Math.abs(out.x) > Math.abs(out.z) * .2) out.negate();
         if (out.z < 0 && Math.abs(out.z) > Math.abs(out.x)) out.negate();
         const length = Math.min(ZUBR.tile[2], along.length() - .018);
-        eraTile(P, seats, side, mid.clone().addScaledVector(out, .3).toArray() as unknown as V3, out.clone().negate().toArray() as unknown as V3,
-          [ZUBR.tile[0], ZUBR.tile[1], length]);
+        eraTile(P, seats, side, tuple(mid.clone().addScaledVector(out, .3)), tuple(out.clone().negate()), [ZUBR.tile[0], ZUBR.tile[1], length]);
       }
     } finally { seats.dispose(); }
     // Bolt heads along the pannier's top edge.
@@ -344,6 +350,7 @@ function buildZubrTurret(P: TankBuilderPort, casting: Stock): void {
 // brackets from the cast roof shoulder; three stepped (staggered) courses of large ERAWA cassettes face it. A long open
 // basket stands on climbing rails behind the rear boxes with strapped loads, guarded rear lights and the whips.
 
+const ZUBR_II_ROW = POLISH_PROTECTION_LAYOUTS[PROTECTION_MODEL.t72b3_zubr_ii];
 const ZUBR_II = {
   wall: {x: 1.92, thick: .06, front: .42, knee: -.55, back: -.95, shoulder: [1.28, -1.59] as const, top: .80,
     low: .090, lowAft: .125, lid: .37, floor: [.088, .104] as const, cap: 1.72},
@@ -351,7 +358,9 @@ const ZUBR_II = {
   courses: [.215, .415, .615] as const,
   columns: [.30, .055, -.19, -.435, -.68] as const,
   stanchion: ZUBR.stanchion,
-  basket: {front: -2.03, rear: -2.64, half: 1.02, floor: .175, top: .74, rails: [.30, .62] as const,
+  // the basket to the Zubr II's layout row (its slatted sides are the row's turret panels, its rear face the rear cage)
+  basket: {front: ZUBR_II_ROW.turretPanels[0][1], rear: ZUBR_II_ROW.rearZ, half: ZUBR_II_ROW.rearHalf,
+    floor: ZUBR_II_ROW.rearBottom, top: ZUBR_II_ROW.rearTop, rails: [.30, .62] as const,
     railLow: .075, rise: [-1.95, -2.03] as const, slatSides: true},
 } as const;
 
@@ -511,10 +520,11 @@ function fitPolandDonorTurret(P: TankBuilderPort, id: PolandDonorId): void {
   try {
     if (id === 't72b3_zubr') buildZubrTurret(P, casting);
     else buildZubrIITurret(P, casting);
+    // The flat landing kept for the mission drone dock (turret frame): its seat record is solved on this build.
+    P.turretG.userData.polishDockLanding = [...(id === 't72b3_zubr' ? ZUBR_DOCK : ZUBR_II_DOCK)];
   } finally { casting.dispose(); }
   const stock: THREE.BufferGeometry[] = [];
   P.forEachBucketPart(['turret', 'turretExternalArmor'], g => { if (!Object.hasOwn(g.userData, 'eraHitFaceVertexStarts')) stock.push(g); });
   addPolishProtection(P, PROTECTION_MODEL[id], stock, {turretScreens: false, turretSuit: true});
 }
 
-void cylZ; void POLISH_PROTECTION_LAYOUTS; void ZUBR_II_DOCK;
