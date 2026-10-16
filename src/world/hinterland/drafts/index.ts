@@ -7,8 +7,9 @@ import frontier from './frontier.ts';
 import winter from './winter.ts';
 import railyard from './railyard.ts';
 import reservoir from './reservoir.ts';
+import urban from './urban.ts';
 import mars from './mars.ts';
 import polders from './polders.ts';
 import verdant from './verdant.ts';
 
-export const HINTERLAND_LAB_DRAFTS: Readonly<Record<string, HinterlandConfig>> = Object.freeze({ alpine, frontier, mars, polders, railyard, reservoir, verdant, winter });
+export const HINTERLAND_LAB_DRAFTS: Readonly<Record<string, HinterlandConfig>> = Object.freeze({ alpine, frontier, mars, polders, railyard, reservoir, urban, verdant, winter });
