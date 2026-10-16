@@ -36,8 +36,10 @@ const deltas = [
     "  const getContactHeightAt = createTerrainContactSampler(getHeightAt);\n\n",
     ""
   ],
+  // (the ground lane, 2026-10-15: the paddies' liquid water keeps the soft ground's release to the sea/lake/marsh maps,
+  // `marshLiquid`, so a paddy map's soft ground keeps its traction; the projected-out text follows the source)
   [
-    "  function getDriveGroundType(x: number, z: number): GroundType {\n    const ground = getGroundType(x, z);\n    // Lake/marsh placement bands include dry sand, road shoulders and pads.\n    // Release their water resistance at the same liquid boundary as wakes.\n    // Ordinary bogs, ice, roads and bridge decks keep their authored traction.\n    return ground === 'soft' && liquidWater && getWaterMaskAt(x, z) <= 0.02\n      ? 'medium' : ground;\n  }\n\n",
+    "  function getDriveGroundType(x: number, z: number): GroundType {\n    const ground = getGroundType(x, z);\n    // Lake/marsh placement bands include dry sand, road shoulders and pads.\n    // Release their water resistance at the same liquid boundary as wakes.\n    // Ordinary bogs, ice, roads and bridge decks keep their authored traction.\n    return ground === 'soft' && marshLiquid && getWaterMaskAt(x, z) <= 0.02\n      ? 'medium' : ground;\n  }\n\n",
     ""
   ],
   [
@@ -53,6 +55,12 @@ const deltas = [
   // the perf stream (2026-10-13, the fine grids seed the contact vertices): the historical side has no contact sampler
   [
     "    seedContactGrid: getContactHeightAt.seedGrid,\n",
+    ""
+  ],
+  // the ground lane (2026-10-15, the steep-cell diagonal): and the contact sampler's split query; the historical side has
+  // no contact sampler
+  [
+    "    getContactCellFlippedAt: getContactHeightAt.cellFlippedAt,\n",
     ""
   ],
   [
@@ -127,8 +135,10 @@ const deltas = [
   // faces' seeding weight, railSpurs.ts); the current slice follows the source, the historical side is unchanged
   // the landmarks lane (2026-10-05): and _railBerth on a map with a 'clearance' rail spur (railSpurs.ts railBerthField);
   // the current slice follows the source, the historical side is unchanged
+  // the ground lane (2026-10-15): and _treeClearAt / _paddyRiceAt on a map with paddies (the cleared banks, the rice);
+  // the current slice follows the source, the historical side is unchanged
   [
-    "    // Keep pavement clear without excluding vegetation along unrelated roads.\n    _noVeg: hardstandNoVeg ? (x, z) => hardstandNoVeg(x, z) || noVeg(x, z) : noVeg,\n    // ground lane (2026-10-08, wave 274's Monsoon slope): the sward follows its slopes and the map's sun, on a map whose\n    // ground profile asks it; `?ground=legacy` keeps the even carpet\n    ...((resolveGroundReduxProfile(cfg?.id).swardSlope ?? 0) > 0 && !legacyGroundLanes ? { _swardSlope: ((): readonly [number, number, number] => {\n      const sun = skySunDirection(cfg?.sky), l = Math.hypot(sun.x, sun.z) || 1;\n      return Object.freeze([sun.x / l, sun.z / l, Math.min(1, resolveGroundReduxProfile(cfg?.id).swardSlope ?? 0)] as const);\n    })() } : {}),\n    ...railBerthField(T.railSpurs), // the landmarks lane (2026-10-05): a 'clearance' spur's berth, for the grass and litter\n    // round 67: the cut faces' seeding weight, read on the uncut ground like the exclusion\n    ...(railCuttings !== null ? { _batterSeedAt: (x: number, z: number): number =>\n      railCuttingFaceSeedAt(railCuttings, railCuttingPortalYs, x, z, uncutHeightAt, T.rimH + 8, railOpenLines) } : {}),\n    _layout: layout,\n    ...(layout.roadStations ? {_createRoadPlacementSampler:function* () {\n      return yield* heightFieldBuildSteps(seed,originalRoadPlacementConfig(cfg),true);\n    }} : {}),\n    _mesaW: mesaWeight,\n    ...(liquidWater ? { _waterWetnessAt: waterWetnessAt, getOutlandWaterAt: outlandWaterAt } : {}),\n    ...(_sorStations ? { _sorWetnessAt: sorWetnessAt } : {}),\n  };",
+    "    // Keep pavement clear without excluding vegetation along unrelated roads.\n    _noVeg: hardstandNoVeg ? (x, z) => hardstandNoVeg(x, z) || noVeg(x, z) : noVeg,\n    ...(compiledPaddies !== null ? { _treeClearAt: (x: number, z: number): boolean => inPaddyClearing(compiledPaddies, x, z),\n      _paddyRiceAt: (x: number, z: number, out: PaddyRiceSeat): PaddyRiceSeat | null => paddyRiceAt(compiledPaddies, x, z, out) } : {}),\n    // ground lane (2026-10-08, wave 274's Monsoon slope): the sward follows its slopes and the map's sun, on a map whose\n    // ground profile asks it; `?ground=legacy` keeps the even carpet\n    ...((resolveGroundReduxProfile(cfg?.id).swardSlope ?? 0) > 0 && !legacyGroundLanes ? { _swardSlope: ((): readonly [number, number, number] => {\n      const sun = skySunDirection(cfg?.sky), l = Math.hypot(sun.x, sun.z) || 1;\n      return Object.freeze([sun.x / l, sun.z / l, Math.min(1, resolveGroundReduxProfile(cfg?.id).swardSlope ?? 0)] as const);\n    })() } : {}),\n    ...railBerthField(T.railSpurs), // the landmarks lane (2026-10-05): a 'clearance' spur's berth, for the grass and litter\n    // round 67: the cut faces' seeding weight, read on the uncut ground like the exclusion\n    ...(railCuttings !== null ? { _batterSeedAt: (x: number, z: number): number =>\n      railCuttingFaceSeedAt(railCuttings, railCuttingPortalYs, x, z, uncutHeightAt, T.rimH + 8, railOpenLines) } : {}),\n    _layout: layout,\n    ...(layout.roadStations ? {_createRoadPlacementSampler:function* () {\n      return yield* heightFieldBuildSteps(seed,originalRoadPlacementConfig(cfg),true);\n    }} : {}),\n    _mesaW: mesaWeight,\n    ...(liquidWater ? { _waterWetnessAt: waterWetnessAt, getOutlandWaterAt: outlandWaterAt } : {}),\n    ...(_sorStations ? { _sorWetnessAt: sorWetnessAt } : {}),\n  };",
     "    // Keep pavement clear without excluding vegetation along unrelated roads.\n    _noVeg: hardstandNoVeg ? (x, z) => hardstandNoVeg(x, z) || noVeg(x, z) : noVeg,\n    _layout: layout,\n    _mesaW: mesaWeight,\n    ...(liquidWater ? { _waterWetnessAt: waterWetnessAt } : {}),\n  };\n"
   ]
 ];
