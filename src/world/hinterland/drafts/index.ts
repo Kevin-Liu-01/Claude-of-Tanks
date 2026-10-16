@@ -4,6 +4,7 @@
 import type { HinterlandConfig } from '../spec.ts';
 import alpine from './alpine.ts';
 import badlands from './badlands.ts';
+import blackglass from './blackglass.ts';
 import caldera from './caldera.ts';
 import mars from './mars.ts';
 import polders from './polders.ts';
@@ -12,4 +13,4 @@ import verdant from './verdant.ts';
 import whiteout from './whiteout.ts';
 import winter from './winter.ts';
 
-export const HINTERLAND_LAB_DRAFTS: Readonly<Record<string, HinterlandConfig>> = Object.freeze({ alpine, badlands, caldera, mars, polders, railyard, verdant, whiteout, winter });
+export const HINTERLAND_LAB_DRAFTS: Readonly<Record<string, HinterlandConfig>> = Object.freeze({ alpine, badlands, blackglass, caldera, mars, polders, railyard, verdant, whiteout, winter });

@@ -359,6 +359,31 @@ function addVertical(S: Shapes, f: Frame, kind: string, H: number, half: number,
       box(S, f, -half, half, -1.5, 1.2, -half, half, lin([120, 118, 112]), lin([150, 146, 138]));
       return;
     }
+    case 'decoTower': case 'pyramidTower': case 'clockTower': {
+      // the Bund's 1930s towers (Suzhou Creek, 1937): stone-faced blocks read at 2-4 km — Broadway Mansions' and the
+      // Park Hotel's setbacks, Sassoon House's copper pyramid, the Customs House's clock stage under its cupola
+      const face = lin([200, 190, 170]), shade = lin([150, 142, 128]), copper = lin([78, 116, 96]), dial = lin([40, 40, 38]);
+      if (kind === 'decoTower') {
+        const tiers: [number, number][] = [[1, 0.56], [0.8, 0.74], [0.6, 0.88], [0.4, 1]];
+        let y0 = -1.5;
+        for (const [w, top] of tiers) { box(S, f, -half * w, half * w, y0, H * top, -half * w * 0.8, half * w * 0.8, face, shade); y0 = H * top; }
+      } else if (kind === 'pyramidTower') {
+        box(S, f, -half, half, -1.5, H * 0.74, -half, half, face, shade);
+        prism(S, f, 4, half * 1.0, 0, H * 0.74, H, copper, Math.PI / 4);
+      } else {
+        box(S, f, -half * 1.3, half * 1.3, -1.5, H * 0.46, -half, half, face, shade);
+        const t = half * 0.5;
+        box(S, f, -t, t, H * 0.46, H * 0.86, -t, t, face, shade);
+        for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const cu = a * (t + 0.05), cw = b * (t + 0.05), mid = H * 0.78, r = t * 0.62;
+          if (a) box(S, f, cu - 0.06, cu + 0.06, mid - r, mid + r, -r, r, dial);
+          else box(S, f, -r, r, mid - r, mid + r, cw - 0.06, cw + 0.06, dial);
+        }
+        prism(S, f, 8, t * 0.8, t * 0.5, H * 0.86, H * 0.93, face);
+        prism(S, f, 8, t * 0.5, 0, H * 0.93, H, shade);
+      }
+      return;
+    }
     default:
       box(S, f, -half, half, -1.5, H, -half, half, STONE);
   }

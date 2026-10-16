@@ -126,7 +126,7 @@ export const VERTICAL_SIZE: Readonly<Record<HinterlandVerticalKind, readonly [nu
   elevator: [36, 8], waterTower: [28, 5], windmill: [24, 5], postMill: [14, 4], chimney: [60, 3], headframe: [40, 7],
   coolingTower: [70, 26], slagTip: [45, 90], radome: [22, 11], mast: [60, 2], pylonLine: [30, 3], lighthouse: [32, 4],
   castle: [30, 22], kurgan: [6, 30], tvTower: [120, 6], kilnChimney: [36, 2.5], lookoutTower: [30, 3], burnerCone: [18, 7],
-  damWall: [80, 120], tropoScatter: [40, 20], fuelTanks: [12, 24],
+  damWall: [80, 120], tropoScatter: [40, 20], fuelTanks: [12, 24], decoTower: [78, 20], pyramidTower: [77, 18], clockTower: [80, 18],
 });
 
 const SIDE_NAMES = ['n', 'e', 's', 'w'] as const;

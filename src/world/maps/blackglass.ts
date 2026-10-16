@@ -79,7 +79,9 @@ export default {
   terrain: {
     // (the rim and the far country, round 2's rimH 14 and panorama ampM 24 / farRise 0 for wave 149's "conifer-covered
     // mountain ridges stand in for the flat Yangtze delta", are the horizons lane's: they go into Suzhou's hinterland draft)
-    hillScale: 0.62, microScale: 0.72, rimH: 36,
+    // (the horizons stream, 2026-10-16, with Suzhou's Hinterland draft, hinterland/drafts/blackglass.ts: rimH 36 -> 14, so
+    // the city carries on past the edge instead of a 36 m rim; the ring's ampM / farRise keys stay with the ring)
+    hillScale: 0.62, microScale: 0.72, rimH: 14,
     // the creek (was the flooded quarter's two marshes on its course)
     marshes: CREEK,
     village: { x0: -294, x1: 304, z0: -288, z1: 302, cx: 6, cz: 16, feather: 54, flatten: 0.82, relief: 0.46 },

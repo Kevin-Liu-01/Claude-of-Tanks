@@ -34,7 +34,9 @@ export type HinterlandVerticalKind =
   | 'postMill' | 'chimney' | 'headframe' | 'coolingTower' | 'slagTip' | 'radome' | 'mast' | 'pylonLine' | 'lighthouse'
   | 'castle' | 'kurgan' | 'tvTower' | 'kilnChimney' | 'lookoutTower' | 'burnerCone' | 'damWall'
   // (HOR-05, Whiteout: the DEW Line station's tropospheric-scatter billboards and its fuel farm)
-  | 'tropoScatter' | 'fuelTanks';
+  | 'tropoScatter' | 'fuelTanks'
+  // (Suzhou Creek: the Bund's 1930s towers — a block in setbacks, Sassoon House's pyramid, the Customs House's clock)
+  | 'decoTower' | 'pyramidTower' | 'clockTower';
 
 /** The far country's form (bands D–E): the panorama's regional classes, carried over as geometry (B-arch §4.6). */
 export type HinterlandFarForm =
