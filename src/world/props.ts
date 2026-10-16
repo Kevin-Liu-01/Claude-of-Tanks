@@ -10025,6 +10025,9 @@ ${snowCap ? `
     groundingReceipts: decorationGroundingReceipts,
     obstacles, colliders, animated: animatedDressing, vehicleSetPieces: P.vehicleSetPieces, trees: sceneryTrees,
     clutter: (clutter) => pendingClutter.push(clutter),
+    // (Lane C, #27) a dressing piece that stands as a structure of its own (the bridges' parapets): records, damage path, merge
+    structure: (id, tmp, x, y, z, rot) => { addStructureCollision(id, tmp as PropsBuckets, x, y, z, rot, true);
+      _quat.setFromAxisAngle(_upAxis, rot); _mat4.compose(_posv.set(x, y, z), _quat, _one); mergeInto(buckets, tmp as PropsBuckets, _mat4); },
   });
   yield { fine: true, stage: 'map-extras' };
   // the landmarks lane: the set pieces' furniture, after every seeded pass (placeLandmarks above)

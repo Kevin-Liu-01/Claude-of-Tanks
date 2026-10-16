@@ -168,11 +168,16 @@ interface DressingContext {
   /** (destruction stream, 2026-10-13) the props' sink for dressing a hull or a round flattens (crushableClutter.ts): the
    *  rail yard's coal stockpiles. Omitted, it stays solid. */
   clutter?: (clutter: CrushableClutter) => void;
+  /** (Lane C, #27 2026-10-15) the props' sink for a piece that stands as a structure of its own (props.ts
+   *  addStructureCollision): its parts in their body frame by bucket, placed at (x, y, z) turned `rot` about up, given its
+   *  records and its damage path (a round's blow, a ram) and merged into the buckets. Omitted, the caller builds the
+   *  piece as it did. The bridges' parapets (archedStoneBridge.ts, suzhouBridges.ts). */
+  structure?: (id: string, parts: Record<string, THREE.BufferGeometry[]>, x: number, y: number, z: number, rot: number) => void;
 }
 
 export type FocusedDressingContext = Pick<
   DressingContext,
-  'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders' | 'animated' | 'clutter'
+  'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders' | 'animated' | 'clutter' | 'structure'
 > & { shore?: ShoreLedger; boats?: BoatFamily; trunks?: readonly Trunk[] };
 
 /** A boat hull into the painted (vertex-coloured) bucket, or the timber one without its colours where a kit has no
@@ -1143,11 +1148,11 @@ function legacyDressingKits(mapId?: string): readonly string[] {
 /** Add map-specific geometry before the shared material buckets are merged. */
 export function dressMapExtras({
   mapId, extraKits = null, riverLandings, L, heightField, rng, buckets, groundingReceipts = null,
-  obstacles, colliders, animated, vehicleSetPieces, trees, clutter,
+  obstacles, colliders, animated, vehicleSetPieces, trees, clutter, structure,
 }: DressingContext): void {
   const kits = extraKits || legacyDressingKits(mapId);
   const shore: ShoreLedger = { keepOut: [], jetties: [], landings: [] };
-  const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, clutter, shore, animated, boats: boatFamilyForMap(mapId ?? ''),
+  const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, clutter, structure, shore, animated, boats: boatFamilyForMap(mapId ?? ''),
     trunks: trunksOf(trees) };
   if (mapId === 'cliffbridge') {
     for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused);

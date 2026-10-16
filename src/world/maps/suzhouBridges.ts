@@ -70,9 +70,13 @@ export function addSuzhouBridge(deck: DressingBridgeDeck, heightField: DressingH
         }
       }
     }
-    if (form === 'girder') girderSpan(sink, bodyHalf, face, W, deckY, seat, pier);
+    if (form === 'girder') girderSpan(sink, bodyHalf, face, W, deckY, seat, pier, !ctx.structure);
     else trussSpan(sink, bodyHalf, face, W, deckY, seat);
   });
+  // (#27) with the props' structure sink a girder bridge's balustrades stand as structures of their own, a run from pylon
+  // to pylon (the pylon and its lamp standard with it): a round's blow or a ram brings a run down, the deck stays
+  const balustradeRuns = form === 'girder' && !!ctx.structure;
+  if (balustradeRuns) girderBalustradeRuns(ctx, cx, cz, ux, uz, W, deckY, bodyHalf, pier);
   const parts = sink.finish();
   for (const [bucket, list] of Object.entries(parts)) for (const g of list) ((buckets as unknown as Record<string, unknown[]>)[bucket] ??= []).push(g);
   // ---- the record (world): the deck, the abutments and the pier, the two sides
@@ -87,7 +91,7 @@ export function addSuzhouBridge(deck: DressingBridgeDeck, heightField: DressingH
   solid(face, bodyHalf, W + 0.3, bottom, deckY - DECK_PART_M);
   if (pier) solid(-0.9, 0.9, W + 0.2, bottom, Math.min(seat, deckY - DECK_PART_M));
   const sideAt = form === 'truss' ? W - 1.6 : W - PARAPET_T / 2;
-  for (const side of [-1, 1]) {
+  for (const side of balustradeRuns ? [] : [-1, 1]) {
     recordParts.push({ kind: 'obb', cx: cx + vx * sideAt * side, cz: cz + vz * sideAt * side, hw: PARAPET_T / 2, hl: form === 'truss' ? face : bodyHalf,
       yaw, y0: deckY, y1: deckY + PARAPET_H });
   }
@@ -99,7 +103,7 @@ export function addSuzhouBridge(deck: DressingBridgeDeck, heightField: DressingH
 
 /** Riveted steel plate girders from abutment to abutment (over the pier), the concrete deck on them, the balustrades with
  *  their pylons and the lamp standards over the abutments and the pier. */
-function girderSpan(sink: PartSink, bodyHalf: number, face: number, W: number, deckY: number, seat: number, pier: boolean): void {
+function girderSpan(sink: PartSink, bodyHalf: number, face: number, W: number, deckY: number, seat: number, pier: boolean, balustrade = true): void {
   const slab = 0.25, webTop = deckY - slab, webBot = seat;
   const girders = [-(W - 0.8), -(W * 0.35), W * 0.35, W - 0.8];
   for (const z of girders) {
@@ -114,7 +118,9 @@ function girderSpan(sink: PartSink, bodyHalf: number, face: number, W: number, d
   // the deck slab, flush with the approaches; a concrete fascia beam along each edge over the outer girders
   sink.span(PLASTER, -bodyHalf, deckY - slab, -W, bodyHalf, deckY, W, { colour: CONCRETE });
   for (const sz of [-1, 1]) sink.span(PLASTER, -bodyHalf, deckY - 0.75, sz * (W - 0.12), bodyHalf, deckY + 0.02, sz * (W + 0.08), { colour: shade(CONCRETE, 0.9) });
-  // the balustrades: plinth, balusters, rail; pylons at the ends and over the pier
+  // the balustrades: plinth, balusters, rail; pylons at the ends and over the pier (or their runs, structures of their
+  // own: girderBalustradeRuns)
+  if (!balustrade) return;
   const pylons = pier ? [-bodyHalf + 0.3, 0, bodyHalf - 0.3] : [-bodyHalf + 0.3, bodyHalf - 0.3];
   for (const sz of [-1, 1]) {
     const zi = sz * (W - PARAPET_T), zo = sz * W;
@@ -134,6 +140,39 @@ function girderSpan(sink: PartSink, bodyHalf: number, face: number, W: number, d
       sink.member(METAL, [px, y0 + 3.7, zl], [px, y0 + 3.7, zl - sz * 0.7], 0.06, 0.06, [0, 1, 0], { colour: IRON, decor: true, exposed: true });
       sink.span(METAL, px - 0.17, y0 + 3.2, zl - sz * 0.7 - 0.17, px + 0.17, y0 + 3.62, zl - sz * 0.7 + 0.17, { colour: LAMP, decor: true });
     }
+  }
+}
+
+/**
+ * (#27) The girder bridge's balustrades as structures, one run a side between two pylons, built in the run's frame (x
+ * along the road from the run's middle, y over the deck, z across with the balustrade's line at 0, the road toward
+ * -side): the plinth, the balusters and the rail between, the pylon at the run's start (and the last pylon on the last
+ * run) with its cast-iron lamp standard over the road.
+ */
+function girderBalustradeRuns(ctx: FocusedDressingContext, cx: number, cz: number, ux: number, uz: number, W: number, deckY: number,
+  bodyHalf: number, pier: boolean): void {
+  if (!ctx.structure) return;
+  const pylons = pier ? [-bodyHalf + 0.3, 0, bodyHalf - 0.3] : [-bodyHalf + 0.3, bodyHalf - 0.3];
+  const vx = -uz, vz = ux, rot = Math.atan2(-uz, ux), line = W - PARAPET_T / 2;
+  for (const sz of [-1, 1]) for (let i = 0; i + 1 < pylons.length; i++) {
+    const a = pylons[i], b = pylons[i + 1], mid = (a + b) / 2, half = (b - a) / 2;
+    const sink = new PartSink([((mid * 0.31) % 5 + 5) % 5, sz > 0 ? 1.3 : 3.7]);
+    const t = PARAPET_T / 2;
+    sink.span(PLASTER, -half - 0.3, 0, -t, half + (i + 2 === pylons.length ? 0.3 : -0.3), 0.28, t, { colour: CONCRETE });
+    sink.span(PLASTER, -half, PARAPET_H - 0.16, -t - 0.04, half, PARAPET_H, t + 0.04, { colour: CONCRETE });
+    for (let x = -half + 0.5; x < half - 0.4; x += 0.36) {
+      sink.span(PLASTER, x - 0.07, 0.28, -0.07, x + 0.07, PARAPET_H - 0.16, 0.07, { colour: shade(CONCRETE, 1.04), decor: true, fine: true });
+    }
+    for (const px of i + 2 === pylons.length ? [-half, half] : [-half]) {
+      sink.span(PLASTER, px - 0.3, 0, -t - 0.06, px + 0.3, PARAPET_H + 0.3, t + 0.06, { colour: shade(CONCRETE, 0.95) });
+      const y0 = PARAPET_H + 0.3, toward = -sz; // the lamp's bracket reaches over the road
+      sink.span(METAL, px - 0.14, y0, -0.14, px + 0.14, y0 + 0.35, 0.14, { colour: IRON, decor: true });
+      sink.member(METAL, [px, y0 + 0.35, 0], [px, y0 + 3.9, 0], 0.09, 0.09, [0, 0, 1], { colour: IRON, decor: true, exposed: true });
+      sink.member(METAL, [px, y0 + 3.7, 0], [px, y0 + 3.7, toward * 0.7], 0.06, 0.06, [0, 1, 0], { colour: IRON, decor: true, exposed: true });
+      sink.span(METAL, px - 0.17, y0 + 3.2, toward * 0.7 - 0.17, px + 0.17, y0 + 3.62, toward * 0.7 + 0.17, { colour: LAMP, decor: true });
+    }
+    const parts = sink.finish() as unknown as Record<string, import('three').BufferGeometry[]>;
+    ctx.structure('bridge-balustrade', parts, cx + ux * mid + vx * line * sz, deckY, cz + uz * mid + vz * line * sz, rot);
   }
 }
 
