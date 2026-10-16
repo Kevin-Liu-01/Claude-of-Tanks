@@ -7876,6 +7876,19 @@ village stood as a handful of roadside-plan buildings round the square.
   -> [8682, 8454, 10071].
 - *The blind critics* (2026-10-15, PASS +0.62; Opus 5/0 +1.20, Sonnet 5/0 +0.62).
 
+### 2026-10-15 — Titan Gorge: the paved highways and the valley's homesites (the maps lane)
+
+**The owner, 10-09: Titan Gorge among the fourteen to bring up (new-style buildings, paved roads).** The Oljato chapter's
+town stood alone in the middle of an empty valley on sand tracks.
+- *The roads:* the three valley roads are the paved highways through the valley, as US-163 runs through Monument Valley:
+  two lanes of asphalt, 8 m (`terrain.roads.pathStyles`); the two cross roads stay the chapter's graded dirt.
+- *The homesites* (`maps/titanHomesites.ts`, the maps lane's homesite planner; `plannedSites` after the recorded town):
+  a Navajo valley is lived in far past its trading posts, so eight rotation pairs of homesites stand along the roads
+  across the floor: hogans, family camps, an abandoned camp. Each site and its twin about the centre are within 48 m of
+  a road, the brief's orphan law; a first pass at 58 m offsets read 0.176 against 0.15.
+- *Measured* (every brief band holds): objective symmetry 1.038, orphan 0.054, no solid in a road; census
+  [2814, 2645, 1226] -> [2971, 2798, 1226]; roadCrossingSweep (titan_gorge) green.
+
 ## Acceptance is visual and measured
 
 - Same camera/seed/tier before and after: tank-height foreground, middle-distance

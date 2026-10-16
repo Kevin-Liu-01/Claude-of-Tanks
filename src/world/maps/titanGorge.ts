@@ -186,7 +186,7 @@ export default {
     // and its light buildings (the huts, tents and motor pools) stand where that build placed them too
     townLightPlan: TOWN_LIGHT_PLANS.titan_gorge,
     // (the maps lane, 2026-10-15) and over the valley floor round it the families' homesites, seated after the town plan
-    // (titanHomesites.ts): eighteen pairs of hogans, camps and an abandoned camp or two along the roads
+    // (titanHomesites.ts): eight pairs of hogans, family camps and abandoned camps along the roads
     plannedSites: [...TITAN_HOMESITES],
     plannedSitesAfterPlan: true,
     // its five buildings that stand in a carriageway move by the least distance that clears it; the rest stay put
