@@ -28,7 +28,7 @@
 // keep theirs) and its fixed-seed build is the placement footprint. The broken state is this build broken by member
 // (propFracture.ts FENCE_FRACTURE: posts snap low, boards and rails lie along the line). Cost (WORKLIST #6 guardrail:
 // net triangles <= +0 on Saltwind, the delta, the coast and the desert): every form's module triangles are capped
-// (FENCE_TRIANGLE_CAP), the guardrail maps' forms under the legacy counts they replace (fenceKit.selftest). Pure geometry;
+// (FENCE_TRIANGLE_CAP), the guardrail maps within an r2 allowance of the legacy counts (fenceKit.selftest). Pure geometry;
 // no draws from any stream (hash noise).
 import * as THREE from 'three';
 import { FENCE_SEG, type DestructiblePropType } from './inhabitKit.ts';
@@ -77,7 +77,8 @@ export function fenceFormsFor(architectureId: string | null | undefined, mapId: 
 
 /** No module of any form draws more triangles than this (per kind). */
 export const FENCE_TRIANGLE_CAP: Readonly<Record<FenceKind, number>> = Object.freeze({
-  fenceplank: 170, fencepicket: 120, fencewattle: 124, fencerail: 96,
+  // (r2, 2026-10-16: every member a welded, chamfered solid — no bare quad or box — costs its edges and arrises)
+  fenceplank: 270, fencepicket: 200, fencewattle: 210, fencerail: 100,
 });
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -101,44 +102,50 @@ function shadeOf(col: Rgb, r: () => number, k = 0.14): Rgb {
   return [col[0] * v * w, col[1] * v, col[2] * v / w];
 }
 
+/** A triangle wound to face `out`, its normal its own (flat-shaded), its uvs and colour by place. */
+function orientedTri(m: Mesh, a: V3, b: V3, c: V3, out: V3, uv: (q: V3) => [number, number], col: Rgb): void {
+  const u: V3 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v: V3 = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+  let n = norm([u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]]);
+  if (n[0] * out[0] + n[1] * out[1] + n[2] * out[2] < 0) { const t = b; b = c; c = t; n = [-n[0], -n[1], -n[2]]; }
+  m.tri(a, b, c, n, n, n, uv(a), uv(b), uv(c), m.colour(col, true));
+}
+
 /**
- * A board in the fence's plane (x about `x`, t thick): from (y0) to (y1) and across z (zc ± w/2), its front and back
- * faces (its edges a hair: left out), its head flat, pointed or cut on a slant. A horizontal board (along z) when
- * `horizontal`: z from y0..y1 read as z0..z1 and its height w about the centre height zc.
+ * A board in the fence's plane (x about `x`, t thick), from y0 to y1 and across z (zc ± w/2): one welded solid — its two
+ * faces and its edges (r2: never a bare quad), its head pointed, cut on a slant, or flat with its arrises taken off.
  */
 function board(m: Mesh, x: number, t: number, zc: number, w: number, y0: number, y1: number, col: Rgb, u0: number,
   head: 'flat' | 'point' | 'slant' = 'flat'): void {
-  const za = zc - w / 2, zb = zc + w / 2, peak = head === 'point' ? w * 0.6 : head === 'slant' ? w * 0.35 : 0;
+  const za = zc - w / 2, zb = zc + w / 2, c = Math.min(0.014, w * 0.22);
+  const outline: Array<[number, number]> = head === 'point' ? [[za, y0], [zb, y0], [zb, y1], [zc, y1 + w * 0.6], [za, y1]]
+    : head === 'slant' ? [[za, y0], [zb, y0], [zb, y1 + w * 0.35], [za + c, y1 + c * 0.4], [za, y1 - c]]
+      : [[za, y0], [zb, y0], [zb, y1 - c], [zb - c, y1], [za + c, y1], [za, y1 - c]];
   const shade = weathered(col);
   const uv = (q: V3): [number, number] => [u0 + (q[2] - za) * WOOD_UV_PER_M, q[1] * WOOD_UV_PER_M];
-  for (const s of [1, -1]) {
-    const fx = x + s * t / 2, out: V3 = [s, 0, 0];
-    m.quad([fx, y0, za], [fx, y0, zb], [fx, y1, zb], [fx, y1, za], out, uv, shade, true);
-    if (peak > 0) {
-      const tip: V3 = head === 'point' ? [fx, y1 + peak, zc] : [fx, y1 + peak, zb];
-      const a: V3 = [fx, y1, za], b: V3 = [fx, y1, zb];
-      const n: V3 = [s, 0, 0], c = m.colour(shade(tip), true);
-      // (wound counter-clockwise seen from its own side: the +x face a-tip-b, the -x face a-b-tip)
-      if (s > 0) m.tri(a, tip, b, n, n, n, uv(a), uv(tip), uv(b), c); else m.tri(a, b, tip, n, n, n, uv(a), uv(b), uv(tip), c);
+  const n = outline.length, cz = outline.reduce((s2, p) => s2 + p[0], 0) / n, cy = outline.reduce((s2, p) => s2 + p[1], 0) / n;
+  for (const sgn of [1, -1]) {
+    const fx = x + sgn * t / 2, out: V3 = [sgn, 0, 0];
+    for (let k = 1; k + 1 < n; k++) {
+      const a: V3 = [fx, outline[0][1], outline[0][0]], b: V3 = [fx, outline[k][1], outline[k][0]], d: V3 = [fx, outline[k + 1][1], outline[k + 1][0]];
+      orientedTri(m, a, b, d, out, uv, shade([fx, (a[1] + b[1] + d[1]) / 3, 0]));
     }
   }
-}
-
-/** A horizontal board or rail along z (z0..z1) at height y (h tall, t thick about x): front, back and top. */
-function rail(m: Mesh, x: number, t: number, y: number, h: number, z0: number, z1: number, col: Rgb, u0: number, uvMode: 'grain' | 'flat' = 'grain'): void {
-  const shade = weathered(col);
-  const uv = (q: V3): [number, number] => (uvMode === 'flat' ? [0.5, 0.5] : [u0 + (q[1] - y) * WOOD_UV_PER_M, q[2] * WOOD_UV_PER_M]);
-  const ya = y - h / 2, yb = y + h / 2;
-  for (const s of [1, -1]) {
-    const fx = x + s * t / 2;
-    m.quad([fx, ya, z0], [fx, ya, z1], [fx, yb, z1], [fx, yb, z0], [s, 0, 0], uv, shade, uvMode !== 'flat');
+  // the edges round it (not the foot: it stands on a rail or the ground), each wound out from the outline's centre
+  for (let k = 1; k < n; k++) {
+    const [z1, ya] = outline[k], [z2, yb] = outline[(k + 1) % n];
+    const mz = (z1 + z2) / 2 - cz, my = (ya + yb) / 2 - cy, out: V3 = [0, my, mz];
+    m.quad([x - t / 2, ya, z1], [x + t / 2, ya, z1], [x + t / 2, yb, z2], [x - t / 2, yb, z2], out, uv, shade, true);
   }
-  m.quad([x - t / 2, yb, z0], [x + t / 2, yb, z0], [x + t / 2, yb, z1], [x - t / 2, yb, z1], Y, uv, shade, uvMode !== 'flat');
 }
 
-/** A square post (w across) from its sunk foot to `top`, its four sides and its top (flat, or a pyramid cap). */
+/** A rail along z (z0..z1) at height y, h tall and t thick about x: a member with its arrises taken off (r2). */
+function rail(m: Mesh, x: number, t: number, y: number, h: number, z0: number, z1: number, col: Rgb, u0: number, uvMode: 'grain' | 'flat' = 'grain'): void {
+  member(m, [x, y, z0], [x, y, z1], t, h, X, col, uvMode === 'flat' ? FLAT : grain(u0), { chamfer: Math.min(t, h) * 0.22, skipEnds: true, shade: weathered(col) });
+}
+
+/** A square post (w across) from its sunk foot to `top`, its arrises taken off, its top flat or a pyramid cap. */
 function post(m: Mesh, z: number, top: number, w: number, col: Rgb, u0: number, cap: 'flat' | 'pyramid' = 'flat', flat = false): void {
-  member(m, [0, -0.2, z], [0, top, z], w, w, Z, col, flat ? FLAT : grain(u0), { skipEnds: true, shade: weathered(col) });
+  member(m, [0, -0.2, z], [0, top, z], w, w, Z, col, flat ? FLAT : grain(u0), { chamfer: w * 0.12, skipEnds: true, shade: weathered(col) });
   const h = w / 2, c = m.colour(mul(col, 0.9), !flat), uvc: [number, number] = [0.5, 0.5];
   const q: V3[] = [[h, top, z + h], [-h, top, z + h], [-h, top, z - h], [h, top, z - h]];
   if (cap === 'pyramid') {
@@ -222,7 +229,7 @@ function plankFence(m: Mesh, c: Ctx): void {
       // vertical laths on two rails between posts standing on a sandstone plinth block
       member(m, [0, -0.15, Z0], [0, 0.3, Z0], 0.26, 0.26, Z, stone, FLAT, { skipEnds: false });
       post(m, Z0, 1.2, 0.11, postCol, 0.05, 'pyramid');
-      for (const y of [0.42, 0.98]) rail(m, -0.04, 0.045, y, 0.07, Z0 + 0.14, Z1 + 0.04, shadeOf(timber, r), 0.6);
+      for (const y of [0.42, 0.98]) rail(m, -0.04, 0.045, y, 0.07, Z0, Z1 + 0.04, shadeOf(timber, r), 0.6);
       for (let k = 0; k < 14; k++) {
         const zc = Z0 + 0.2 + (k + 0.5) * (L - 0.22) / 14;
         board(m, 0, 0.018, zc, 0.05, 0.32, 1.1 + (r() - 0.5) * 0.02, shadeOf(timber, r, 0.16), 0.1 + (k % 4) * 0.1, 'point');
@@ -233,7 +240,7 @@ function plankFence(m: Mesh, c: Ctx): void {
       // the allotment's boards lapped horizontally and tarred black, on a squared post with its battens behind
       const tar: Rgb = hexLin(0x2a2724);
       post(m, Z0, 1.25, 0.12, mul(tar, 1.2), 0.05);
-      for (const zc of [-0.1, Z1 - 0.06]) board(m, -0.04, 0.03, zc, 0.06, 0.1, 1.2, mul(tar, 1.1), 0.3);
+      for (const zc of [-0.1, Z1 - 0.06]) board(m, -0.016, 0.03, zc, 0.06, -0.12, 1.2, mul(tar, 1.1), 0.3);
       for (let k = 0; k < 6; k++) rail(m, 0.01 + (k % 2) * 0.004, 0.022, 0.2 + k * 0.18, 0.19, Z0 + 0.06, Z1 + 0.02, shadeOf(tar, r, 0.25), 0.1 + k * 0.1);
       return;
     }
@@ -259,7 +266,7 @@ function plankFence(m: Mesh, c: Ctx): void {
       for (const y of [0.3, 1.05]) rail(m, -0.035, 0.035, y, 0.07, Z0 + 0.04, Z1 + 0.03, shadeOf(timber, r), 0.6);
       for (let k = 0; k < 14; k++) {
         const zc = Z0 + 0.1 + (k + 0.5) * (L - 0.12) / 14;
-        board(m, 0, 0.016, zc, 0.07, 0.1, 1.22, shadeOf(timber, r, 0.22), 0.1 + (k % 4) * 0.1);
+        board(m, 0, 0.016, zc, 0.07, 0.1, 1.2, shadeOf(timber, r, 0.22), 0.1 + (k % 4) * 0.1, 'slant');
       }
       return;
     }
@@ -268,16 +275,12 @@ function plankFence(m: Mesh, c: Ctx): void {
       // (the footing heaped round the post's foot: three stones of the ruins)
       for (const [dx, dz] of [[0.16, -0.05], [-0.15, 0.1], [0.02, 0.2]] as const) {
         const s = 0.12 + r() * 0.1;
-        member(m, [dx, -0.1, Z0 + dz], [dx * 0.8, s, Z0 + dz + 0.04], 0.22 + r() * 0.1, 0.2, X, mix(stone, [0.3, 0.3, 0.3], r() * 0.4), FLAT);
+        member(m, [dx, -0.1, Z0 + dz], [dx * 0.8, s, Z0 + dz + 0.04], 0.22 + r() * 0.1, 0.2, X, mix(stone, [0.3, 0.3, 0.3], r() * 0.4), FLAT, { chamfer: 0.04 });
       }
       post(m, Z0, 1.2, 0.12, postCol, 0.05);
       for (const [y, tilt] of [[0.42, 0.04], [0.72, -0.03], [1.0, 0.02]] as const) {
-        const col = shadeOf(timber, r, 0.3), y0 = y + tilt * L / 2, y1 = y - tilt * L / 2, sh = weathered(col);
-        const uv = (q: V3): [number, number] => [0.2 + q[1], q[2] * WOOD_UV_PER_M];
-        for (const s of [1, -1]) {
-          const fx = 0.04 + s * 0.012;
-          m.quad([fx, y0 - 0.09, Z0], [fx, y1 - 0.09, Z1], [fx, y1 + 0.09, Z1], [fx, y0 + 0.09, Z0], [s, 0, 0], uv, sh, true);
-        }
+        const col = shadeOf(timber, r, 0.3), y0 = y + tilt * L / 2, y1 = y - tilt * L / 2;
+        member(m, [0.07, y0, Z0], [0.07, y1, Z1], 0.024, 0.18, X, col, grain(0.2 + y), { chamfer: 0.005, skipEnds: true, shade: weathered(col) });
       }
       return;
     }
@@ -291,7 +294,7 @@ function railFence(m: Mesh, c: Ctx): void {
       // the skigard: a pair of stakes tied with withy bands, the split poles leaning through them at a slant
       for (const dx of [-0.07, 0.07]) pole(m, [dx, -0.2, Z0], [dx, 1.3, Z0], 0.04, 0.035, shadeOf(postCol, r), 0.05 + dx, 4);
       for (let k = 0; k < 5; k++) {
-        const z0 = Z0 - 0.05 + k * 0.42, y0 = 0.05 + k * 0.03;
+        const z0 = Z0 - 0.05 + k * 0.42, y0 = -0.06;
         pole(m, [0, y0, z0], [0, y0 + 1.12, z0 + 0.95], 0.032, 0.026, shadeOf(timber, r, 0.2), 0.2 + k * 0.1, 4);
       }
       for (const y of [0.45, 1.05]) strand(m, [-0.09, y, Z0], [0.09, y, Z0], 0.03, mul(timber, 0.6));
@@ -369,9 +372,9 @@ function picketFence(m: Mesh, c: Ctx): void {
   const paint = hexLin(gate.picket);
   post(m, Z0, 1.05, 0.1, mul(paint, 0.94), 0.05, 'pyramid');
   for (const y of [0.32, 0.78]) rail(m, -0.035, 0.035, y, 0.07, Z0 + 0.05, Z1 + 0.03, mul(paint, 0.9), 0.6);
-  for (let k = 0; k < 9; k++) {
-    const zc = Z0 + 0.12 + (k + 0.5) * (L - 0.14) / 9;
-    board(m, 0, 0.022, zc, 0.085, 0.12, 0.92 + (r() - 0.5) * 0.02, shadeOf(paint, r, 0.07), 0.1 + (k % 3) * 0.12, 'point');
+  for (let k = 0; k < 8; k++) {
+    const zc = Z0 + 0.12 + (k + 0.5) * (L - 0.14) / 8;
+    board(m, 0, 0.022, zc, 0.09, 0.12, 0.92 + (r() - 0.5) * 0.02, shadeOf(paint, r, 0.07), 0.1 + (k % 3) * 0.12, 'point');
   }
 }
 
@@ -392,7 +395,7 @@ function wattleFence(m: Mesh, c: Ctx): void {
       pole(m, [0, -0.2, Z0], [0, 1.4, Z0], 0.06, 0.05, mix(timber, [0.08, 0.07, 0.06], 0.2), 0.05, 4);
       for (let k = 0; k < 11; k++) {
         const z = Z0 + 0.1 + (k + 0.5) * (L - 0.12) / 11, top = 1.0 + r() * 0.45, lean = (r() - 0.5) * 0.06;
-        pole(m, [0, -0.1, z], [lean, top, z + (r() - 0.5) * 0.04], 0.026, 0.016, shadeOf(timber, r, 0.3), 0.1 + k * 0.03, 3);
+        pole(m, [0, -0.1, z], [lean, top, z + (r() - 0.5) * 0.04], 0.026, 0.016, shadeOf(timber, r, 0.3), 0.1 + k * 0.03, 4);
       }
       for (const y of [0.35, 0.85]) strand(m, [0.03, y, Z0], [0.03, y, Z1], 0.004, hexLin(0x3a3634));
       return;
@@ -402,11 +405,11 @@ function wattleFence(m: Mesh, c: Ctx): void {
       const grid = f.wattle === 'yotsume', cane = mix(timber, [0.66, 0.6, 0.42], 0.35);
       pole(m, [0, -0.2, Z0], [0, 1.2, Z0], 0.045, 0.04, mul(cane, 0.8), 0.05, 5);
       const rails = grid ? [0.3, 0.55, 0.8, 1.05] : [0.35, 0.95];
-      for (const y of rails) pole(m, [0.04, y, Z0 + 0.03], [0.04, y, Z1 + 0.02], 0.02, 0.018, shadeOf(cane, r), 0.4 + y * 0.2, 3);
-      const n = grid ? 6 : 10;
+      for (const y of rails) pole(m, [0.04, y, Z0], [0.04, y, Z1 + 0.02], 0.02, 0.018, shadeOf(cane, r), 0.4 + y * 0.2, 4);
+      const n = grid ? 6 : 9;
       for (let k = 0; k < n; k++) {
         const z = Z0 + 0.15 + (k + 0.5) * (L - 0.2) / n;
-        pole(m, [0, -0.05, z], [0, 1.12 + (r() - 0.5) * 0.04, z], 0.02, 0.018, shadeOf(cane, r, 0.2), 0.1 + k * 0.05, 3);
+        pole(m, [0, -0.05, z], [0, 1.12 + (r() - 0.5) * 0.04, z], 0.02, 0.018, shadeOf(cane, r, 0.2), 0.1 + k * 0.05, 4);
       }
       return;
     }
@@ -415,9 +418,9 @@ function wattleFence(m: Mesh, c: Ctx): void {
       const rib = mix(timber, [0.62, 0.55, 0.42], 0.55), trunk = mix(timber, [0.25, 0.2, 0.15], 0.3);
       pole(m, [0, -0.2, Z0], [0, 1.3, Z0], 0.09, 0.085, trunk, 0.05, 5);
       for (const y of [0.3, 0.9]) rail(m, 0.04, 0.05, y, 0.07, Z0 + 0.06, Z1 + 0.03, shadeOf(trunk, r), 0.6);
-      for (let k = 0; k < 15; k++) {
-        const zc = Z0 + 0.12 + (k + 0.5) * (L - 0.14) / 15;
-        board(m, 0, 0.012, zc, 0.042, 0.0, 1.2 + (r() - 0.5) * 0.1, shadeOf(rib, r, 0.2), 0.1 + (k % 5) * 0.08, 'point');
+      for (let k = 0; k < 11; k++) {
+        const zc = Z0 + 0.12 + (k + 0.5) * (L - 0.14) / 11;
+        board(m, 0, 0.012, zc, 0.05, 0.0, 1.2 + (r() - 0.5) * 0.1, shadeOf(rib, r, 0.2), 0.1 + (k % 5) * 0.08, 'point');
       }
       return;
     }
@@ -425,31 +428,56 @@ function wattleFence(m: Mesh, c: Ctx): void {
       // Andalusian cane (Arundo) packed upright and wired to two canes laid along, a stake
       const cane = mix(timber, [0.72, 0.66, 0.48], 0.5);
       pole(m, [0, -0.2, Z0], [0, 1.25, Z0], 0.04, 0.035, mul(cane, 0.7), 0.05, 4);
-      for (const y of [0.35, 0.95]) pole(m, [0.03, y, Z0], [0.03, y, Z1], 0.016, 0.016, mul(cane, 0.85), 0.5, 3);
+      for (const y of [0.35, 0.95]) pole(m, [0.026, y, Z0], [0.026, y, Z1], 0.016, 0.016, mul(cane, 0.85), 0.5, 4);
       // (the canes packed edge to edge: each a strip, its own shade and height)
-      for (let k = 0; k < 16; k++) {
-        const zc = Z0 + 0.1 + (k + 0.5) * (L - 0.12) / 16;
-        board(m, 0, 0.012, zc, 0.026, -0.02, 1.2 + (r() - 0.5) * 0.12, shadeOf(cane, r, 0.2), 0.1 + (k % 5) * 0.06);
+      for (let k = 0; k < 14; k++) {
+        const z = Z0 + 0.1 + (k + 0.5) * (L - 0.12) / 14;
+        pole(m, [0, -0.05, z], [(r() - 0.5) * 0.03, 1.2 + (r() - 0.5) * 0.12, z], 0.015, 0.012, shadeOf(cane, r, 0.2), 0.1 + k * 0.03, 4);
       }
       return;
     }
   }
 }
 
-/** One fence module of `kind` in its region's build (on the structure wood). */
-export function buildFence(kind: FenceKind, gate: GateStyle, forms: FenceForms, seed = 0): THREE.BufferGeometry {
+/**
+ * The module pushed over by a hull (r2: a wreck that stands, not a raft): its posts snapped at the ground, the run
+ * lying over on its side of the line, bent where it broke at its middle — each half leaning its own way (55-75 degrees
+ * from upright), a little turned — its members its own (the same triangles: no more than the intact's). In place on the
+ * mesh's triangles (each moves with its own centroid's half).
+ */
+function pushOver(m: Mesh, seed: number): void {
+  const r = stream(0xb0e1 + seed), lean = [0.96 + r() * 0.3, 1.1 + r() * 0.25], yaw = [(r() - 0.5) * 0.18, (r() - 0.5) * 0.18];
+  for (let t = 0; t < m.p.length; t += 9) {
+    const half = (m.p[t + 2] + m.p[t + 5] + m.p[t + 8]) / 3 < 0 ? 0 : 1;
+    const ca = Math.cos(lean[half]), sa = Math.sin(lean[half]), cy = Math.cos(yaw[half]), sy = Math.sin(yaw[half]);
+    for (let k = t; k < t + 9; k += 3) {
+      for (const [arr, isPos] of [[m.p, true], [m.n, false]] as const) {
+        const x = arr[k], y = arr[k + 1], z = arr[k + 2];
+        // over about the line on the ground (x 0, y 0) toward +x, then turned about the module's centre
+        let nx = x * ca + y * sa, ny = -x * sa + y * ca;
+        if (isPos) ny = Math.max(ny, -0.04);
+        const tx = nx * cy + z * sy, tz = -nx * sy + z * cy;
+        arr[k] = tx; arr[k + 1] = ny; arr[k + 2] = tz;
+      }
+    }
+  }
+}
+
+/** One fence module of `kind` in its region's build (on the structure wood), intact or pushed over (`broken`). */
+export function buildFence(kind: FenceKind, gate: GateStyle, forms: FenceForms, seed = 0, broken = false): THREE.BufferGeometry {
   const m = new Mesh({ kind: 'wood' }), c: Ctx = { gate, forms, r: stream(0xfe0c + seed) };
   if (kind === 'fenceplank') plankFence(m, c);
   else if (kind === 'fencerail') railFence(m, c);
   else if (kind === 'fencepicket') picketFence(m, c);
   else wattleFence(m, c);
+  if (broken) pushOver(m, seed);
   const g = m.geometry();
   g.userData.fenceForm = kind === 'fenceplank' ? forms.plank : kind === 'fencerail' ? forms.rail : kind === 'fencepicket' ? forms.picket : forms.wattle;
   return g;
 }
 
 /** A fence kind's record on the structure wood (props.ts PropsDestructibleMeta: any material by name). */
-export type FenceType = Omit<DestructiblePropType, 'mat'> & { mat: 'structureWood' };
+export type FenceType = Omit<DestructiblePropType, 'mat'> & { mat: 'structureWood'; ownBroken?: boolean };
 
 /**
  * The map's timber fence kinds in its region's build (props.ts LOCAL_TYPES): each kind's record, class, contact and
@@ -471,6 +499,9 @@ export function fenceTypes(architectureId: string | null | undefined, mapId: str
         old.dispose();
         return buildFence(kind, gate, forms);
       },
+      // (r2, 2026-10-16: the module's own wreck, pushed over — the legacy broken builder's draws still spent first)
+      broken: (rng) => { legacy.broken!(rng).dispose(); return buildFence(kind, gate, forms, 0, true); },
+      ownBroken: true,
       footprintBuild: () => legacy.build(footprintRng()),
     };
     out[kind] = Object.defineProperty(entry, 'contactBand', { enumerable: true, get: () => band });
