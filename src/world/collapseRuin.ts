@@ -50,6 +50,8 @@ let kitPhase = false;
 const RUIN_RESERVE_VERTS = 200 * 24;
 /** The height the ruin's pieces scale by: the intact's p90 over its share (about its eaves), set per collapse. */
 let ruinScale = 1;
+/** The ruin's footprint in the body frame (its walls' rectangle: their centre and half extents), set per collapse. */
+let fcx = 0, fcz = 0, fhw = 1, fhd = 1;
 
 function resetMeasure(top: number, halfW: number, halfD: number): void {
   bins.fill(0); cells.fill(0);
@@ -154,8 +156,9 @@ function box(mesh: DamageMeshWriter, cx: number, cy: number, cz: number, hx: num
       _quad[i] = mesh.vertex(cx + lx * c + lz * s, cy + qy * hy, cz - lx * s + lz * c, nx, n[1], nz,
         i === 1 || i === 2 ? su : 0, i >= 2 ? sv : 0, r, g, b);
     }
-    mesh.triangle(_quad[0]!, _quad[1]!, _quad[2]!);
-    mesh.triangle(_quad[0]!, _quad[2]!, _quad[3]!);
+    // wound counter-clockwise seen from outside (its normal's side)
+    mesh.triangle(_quad[0]!, _quad[2]!, _quad[1]!);
+    mesh.triangle(_quad[0]!, _quad[3]!, _quad[2]!);
   }
 }
 
@@ -190,13 +193,13 @@ const _ids: number[] = [];
 function cornerPiers(anatomy: StructureDamageAnatomy, rng: () => number, slot: FractureSlot, cap: number,
   mesh: DamageMeshWriter, share: number): void {
   if (!roomFor(mesh, 4 * 6) || !mesh.begin(slot.bucket, 'remnant')) return;
-  const hw = anatomy.w / 2, hd = anatomy.d / 2;
+  const hw = fhw, hd = fhd;
   const t = Math.max(0.3, Math.min(0.8, slot.thicknessM > 0.05 ? slot.thicknessM * 1.6 : 0.45));
   for (let corner = 0; corner < 4; corner++) {
     const sx = corner & 1 ? 1 : -1, sz = corner & 2 ? 1 : -1;
     const height = Math.min(cap, ruinScale * share * (0.85 + rng() * 0.3));
     if (height < 0.6) continue;
-    const legX = Math.min(hw, Math.max(0.8, anatomy.w * (0.16 + rng() * 0.12))), legZ = Math.min(hd, Math.max(0.8, anatomy.d * (0.16 + rng() * 0.12)));
+    const legX = Math.min(hw, Math.max(0.8, 2 * hw * (0.16 + rng() * 0.12))), legZ = Math.min(hd, Math.max(0.8, 2 * hd * (0.16 + rng() * 0.12)));
     let h0 = -FOOT_M;
     for (let course = 0; course < 3; course++) {
       const top = height * (course === 0 ? 0.55 : course === 1 ? 0.82 : 1);
@@ -205,8 +208,8 @@ function cornerPiers(anatomy: StructureDamageAnatomy, rng: () => number, slot: F
       const shade = 0.82 + rng() * 0.16;
       // the leg along x (on the z face), then the leg along z (on the x face)
       const lx = legX * shrink * (0.85 + rng() * 0.15), lz = legZ * shrink * (0.85 + rng() * 0.15);
-      box(mesh, sx * (hw - lx / 2), cy, sz * (hd - t / 2), lx / 2, hy, t / 2, 0, slot.tint, shade);
-      box(mesh, sx * (hw - t / 2), cy, sz * (hd - lz / 2), t / 2, hy, lz / 2, 0, slot.tint, shade);
+      box(mesh, fcx + sx * (hw - lx / 2), cy, fcz + sz * (hd - t / 2), lx / 2, hy, t / 2, 0, slot.tint, shade);
+      box(mesh, fcx + sx * (hw - t / 2), cy, fcz + sz * (hd - lz / 2), t / 2, hy, lz / 2, 0, slot.tint, shade);
       h0 = top;
     }
   }
@@ -217,10 +220,10 @@ function cornerPiers(anatomy: StructureDamageAnatomy, rng: () => number, slot: F
 function wallStubs(anatomy: StructureDamageAnatomy, rng: () => number, slot: FractureSlot, cap: number,
   mesh: DamageMeshWriter, share: number): void {
   if (!mesh.begin(slot.bucket, 'remnant')) return;
-  const hw = anatomy.w / 2, hd = anatomy.d / 2;
+  const hw = fhw, hd = fhd;
   const t = Math.max(0.25, Math.min(0.7, slot.thicknessM > 0.05 ? slot.thicknessM * 1.4 : 0.4));
   for (let face = 0; face < 4 && roomFor(mesh, 2); face++) {
-    const alongX = face < 2, len = alongX ? anatomy.w : anatomy.d, off = alongX ? hd : hw, side = face & 1 ? 1 : -1;
+    const alongX = face < 2, len = alongX ? 2 * hw : 2 * hd, off = alongX ? hd : hw, side = face & 1 ? 1 : -1;
     const runs = Math.max(3, Math.min(9, Math.round(len / 1.6)));
     const gap = Math.floor(rng() * runs);
     for (let k = 1; k < runs - 1 && roomFor(mesh, 1); k++) {
@@ -231,8 +234,8 @@ function wallStubs(anatomy: StructureDamageAnatomy, rng: () => number, slot: Fra
       const u = (u0 + u1) / 2, hu = (u1 - u0) / 2 * (0.9 + rng() * 0.1);
       const shade = 0.8 + rng() * 0.18;
       const cy = (h - FOOT_M) / 2, hy = (h + FOOT_M) / 2;
-      if (alongX) box(mesh, u, cy, side * (off - t / 2), hu, hy, t / 2, 0, slot.tint, shade);
-      else box(mesh, side * (off - t / 2), cy, u, t / 2, hy, hu, 0, slot.tint, shade);
+      if (alongX) box(mesh, fcx + u, cy, fcz + side * (off - t / 2), hu, hy, t / 2, 0, slot.tint, shade);
+      else box(mesh, fcx + side * (off - t / 2), cy, fcz + u, t / 2, hy, hu, 0, slot.tint, shade);
     }
   }
   mesh.end();
@@ -245,10 +248,10 @@ function wallStubs(anatomy: StructureDamageAnatomy, rng: () => number, slot: Fra
 function wallFragment(anatomy: StructureDamageAnatomy, rng: () => number, slot: FractureSlot, cap: number,
   mesh: DamageMeshWriter, k: number): void {
   if (!roomFor(mesh, 3) || !mesh.begin(slot.bucket, 'remnant')) return;
-  const hw = anatomy.w / 2, hd = anatomy.d / 2;
+  const hw = fhw, hd = fhd;
   const t = Math.max(0.25, Math.min(0.7, slot.thicknessM > 0.05 ? slot.thicknessM * 1.4 : 0.4));
   const face = (k + Math.floor(rng() * 4)) & 3;
-  const alongX = face < 2, len = alongX ? anatomy.w : anatomy.d, off = alongX ? hd : hw, side = face & 1 ? 1 : -1;
+  const alongX = face < 2, len = alongX ? 2 * hw : 2 * hd, off = alongX ? hd : hw, side = face & 1 ? 1 : -1;
   const run = Math.min(len * 0.45, 1 + rng() * 1.5);
   const u = (rng() - 0.5) * Math.max(0, len - run);
   const height = Math.min(cap, ruinScale * (0.5 + rng() * 0.3));
@@ -260,8 +263,8 @@ function wallFragment(anatomy: StructureDamageAnatomy, rng: () => number, slot: 
     const l = run * (1 - c * 0.3);
     const uc = u + lean * (run - l) / 2;
     const hy = (y1 - y0) / 2, shade = 0.8 + rng() * 0.18;
-    if (alongX) box(mesh, uc, y0 + hy, side * (off - t / 2), l / 2, hy, t / 2, 0, slot.tint, shade);
-    else box(mesh, side * (off - t / 2), y0 + hy, uc, t / 2, hy, l / 2, 0, slot.tint, shade);
+    if (alongX) box(mesh, fcx + uc, y0 + hy, fcz + side * (off - t / 2), l / 2, hy, t / 2, 0, slot.tint, shade);
+    else box(mesh, fcx + side * (off - t / 2), y0 + hy, fcz + uc, t / 2, hy, l / 2, 0, slot.tint, shade);
     y0 = y1;
   }
   mesh.end();
@@ -272,9 +275,9 @@ function roofSlabs(anatomy: StructureDamageAnatomy, rng: () => number, mesh: Dam
   const roof = anatomy.roof;
   if (!roof || !roomFor(mesh, 6) || !mesh.begin(roof.covering.bucket, 'rubble')) return;
   for (let k = 0; k < 6 && roomFor(mesh, 1); k++) {
-    const x = (rng() - 0.5) * anatomy.w * 0.7, z = (rng() - 0.5) * anatomy.d * 0.7;
+    const x = fcx + (rng() - 0.5) * fhw * 1.4, z = fcz + (rng() - 0.5) * fhd * 1.4;
     const base = bodyMoundHeightAt(anatomy, x, z);
-    const len = Math.min(anatomy.w, anatomy.d) * (0.25 + rng() * 0.2);
+    const len = 2 * Math.min(fhw, fhd) * (0.25 + rng() * 0.2);
     const rise = Math.min(cap, len * (0.5 + rng() * 0.4));
     const shade = 0.7 + rng() * 0.25;
     // a slab stood on its end against the heap: a thin box, tall over the mound
@@ -364,6 +367,38 @@ export function measureIntactParts(parts: Readonly<Record<string, readonly Buffe
   return { p90M: p90, topM: topY, minX, maxX, minZ, maxZ };
 }
 
+/**
+ * The walls' rectangle in the body frame (a kit's body frame is not always centred on its walls): the ground storey's
+ * faces' ends, else the intact's plan box, else the anatomy's extents about the origin.
+ */
+function footprintOf(anatomy: StructureDamageAnatomy): void {
+  const faces = anatomy.storeys[0]?.faces ?? [];
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (const face of faces) {
+    for (const end of [-0.5, 0.5]) {
+      const x = face.origin[0] + face.u[0] * face.width * end, z = face.origin[2] + face.u[2] * face.width * end;
+      if (x < minX) minX = x; if (x > maxX) maxX = x; if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
+    }
+  }
+  const intact = anatomy.intact;
+  if (!(maxX - minX > 0.5 && maxZ - minZ > 0.5) && intact) { minX = intact.minX; maxX = intact.maxX; minZ = intact.minZ; maxZ = intact.maxZ; }
+  if (!(maxX - minX > 0.5 && maxZ - minZ > 0.5)) { minX = -anatomy.w / 2; maxX = anatomy.w / 2; minZ = -anatomy.d / 2; maxZ = anatomy.d / 2; }
+  // never past the body's reach about its walls' middle (the face origins' mean; the kits' receipts hold a collapse there)
+  if (faces.length) {
+    let mx = 0, mz = 0;
+    for (const face of faces) { mx += face.origin[0]; mz += face.origin[2]; }
+    mx /= faces.length; mz /= faces.length;
+    const reach = Math.max(anatomy.w, anatomy.d) / 2 + 4;
+    minX = Math.max(minX, mx - reach); maxX = Math.min(maxX, mx + reach); minZ = Math.max(minZ, mz - reach); maxZ = Math.min(maxZ, mz + reach);
+    reachBox[0] = mx - reach; reachBox[1] = mx + reach; reachBox[2] = mz - reach; reachBox[3] = mz + reach;
+  } else {
+    reachBox[0] = -Infinity; reachBox[1] = Infinity; reachBox[2] = -Infinity; reachBox[3] = Infinity;
+  }
+  fcx = (minX + maxX) / 2; fcz = (minZ + maxZ) / 2; fhw = Math.max(0.5, (maxX - minX) / 2); fhd = Math.max(0.5, (maxZ - minZ) / 2);
+}
+/** The body's reach about its walls' middle [minX, maxX, minZ, maxZ] (footprintOf). */
+const reachBox = new Float64Array(4);
+
 /** The structural slot of the ground storey's walls (its innermost layer: the masonry, the frame), else the pile's. */
 function wallSlot(anatomy: StructureDamageAnatomy): FractureSlot | null {
   const face = anatomy.storeys[0]?.faces[0];
@@ -391,9 +426,10 @@ export function keepRuinStanding<R>(anatomy: StructureDamageAnatomy, seed: numbe
   inner = out.mesh;
   writers.pieces = out.pieces;
   measuring = true;
-  // the plan the ruin covers: the intact's own box (about the body's origin), else the body's footprint
-  const halfW = intact ? Math.max(Math.abs(intact.minX), Math.abs(intact.maxX)) : anatomy.w / 2;
-  const halfD = intact ? Math.max(Math.abs(intact.minZ), Math.abs(intact.maxZ)) : anatomy.d / 2;
+  footprintOf(anatomy);
+  // the plan the ruin covers: the intact's own box about the body's origin, else the walls' rectangle about it
+  const halfW = intact ? Math.max(Math.abs(intact.minX), Math.abs(intact.maxX)) : Math.abs(fcx) + fhw;
+  const halfD = intact ? Math.max(Math.abs(intact.minZ), Math.abs(intact.maxZ)) : Math.abs(fcz) + fhd;
   resetMeasure(top, halfW, halfD);
   let result: R;
   try {
@@ -407,8 +443,11 @@ export function keepRuinStanding<R>(anatomy: StructureDamageAnatomy, seed: numbe
     // nothing stands past the eaves (a stub never stands over the roof line it carried)
     const cap = Math.max(1.2, reference * 0.7, anatomy.roof ? Math.min(top, anatomy.roof.eaveY) : top);
     // the plan: the interior heaped over the body's footprint, then (a row, a frame wider than its walls) the intact's box
-    if (pile && planShare() < RUIN_PLAN_SHARE) fillMound(anatomy, rng, pile, measuringWriter, -anatomy.w / 2, anatomy.w / 2, -anatomy.d / 2, anatomy.d / 2);
-    if (pile && intact && planShare() < RUIN_PLAN_SHARE) fillMound(anatomy, rng, pile, measuringWriter, intact.minX, intact.maxX, intact.minZ, intact.maxZ);
+    if (pile && planShare() < RUIN_PLAN_SHARE) fillMound(anatomy, rng, pile, measuringWriter, fcx - fhw, fcx + fhw, fcz - fhd, fcz + fhd);
+    if (pile && intact && planShare() < RUIN_PLAN_SHARE) {
+      fillMound(anatomy, rng, pile, measuringWriter, Math.max(intact.minX, reachBox[0]!), Math.min(intact.maxX, reachBox[1]!),
+        Math.max(intact.minZ, reachBox[2]!), Math.min(intact.maxZ, reachBox[3]!));
+    }
     // the height: the corners, then wall fragments round the plan until it stands (a heap of a great many pieces needs
     // more of them), the fallen covering's slabs once
     if (wall && heightP90() < target) cornerPiers(anatomy, rng, wall, cap, measuringWriter, 0.42 + rng() * 0.18);
