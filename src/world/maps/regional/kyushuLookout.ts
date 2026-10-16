@@ -40,7 +40,7 @@ function sectionMember(sink: PartSink, bucket: RegionalBucket, a: Vec3, b: Vec3,
     else sink.quad(bucket, at(p, a), at(q, a), at(q, b), at(p, b), opts);
   }
   for (const cap of caps) {
-    for (const [o, want] of [[a, ay.map((v) => -v) as Vec3], [b, ay]] as const) {
+    for (const [o, want] of [[a, [-ay[0], -ay[1], -ay[2]] as Vec3], [b, ay]] as const) {
       let pts = cap.map((p) => at(p, o));
       if (dot(cross(sub(pts[1], pts[0]), sub(pts[2], pts[0])), want) < 0) pts = pts.reverse();
       sink.polygon(bucket, pts, opts);
