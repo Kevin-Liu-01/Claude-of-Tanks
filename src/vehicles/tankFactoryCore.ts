@@ -124,6 +124,7 @@ export type { TrackGuideProfile, TrackOutsoleDimensions } from './profiles/abram
 import type { SuspensionPatternId, SuspensionPattern } from './suspensionPatterns.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createWeaponFinishMaterials, linkWeaponFinish, mainBarrelIsWeaponSteel, paintAmmoVertexColours, prepareWeaponFinishGeometry } from './weaponFinish.ts';
+import { ditherPaintTone, relaxFlatFans } from './surfaceFinish.ts';
 import { seatAuthoredSpareTracks } from './spareTrackSeatPass.ts';
 import { spareLinkBlock } from './spareLinkGeometry.ts';
 import { seatRoleForBucket, seatRoleForPart, spareTrackRunTag, type SeatRole } from './spareTrackSeat.ts';
@@ -8218,7 +8219,9 @@ function* createTankOwnedSteps(
       shiftPartCamouflage(list, merged);
       bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' || bucket === 'hullGun' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);
+      if (usesSharedMaterialTextures) ditherPaintTone(merged);
     }
+    if (usesSharedMaterialTextures) relaxFlatFans(merged);
     recordAuthoredRanges(merged, authoredRanges);
     const seatRanges = seatRoleRangesFor(bucket, list);
     weaponDamage.bind(list, merged);
