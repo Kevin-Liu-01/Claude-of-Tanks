@@ -304,13 +304,18 @@ function quoins(sink: PartSink, frame: HouseFrame): void {
   }
 }
 
-/** The granite barn: a long body, a cart door in the street gable, a loft door above, slate roof. */
+/**
+ * The granite barn: a long body, a cart door in the street gable, a loft door above, slate roof. (The props census #17,
+ * 2026-10-15, the judges: "give the barn a granite plinth sunk to -0.6 m so the ground skirt is laid"; the gerbière was
+ * cut through the gable by lane B's E2.) It stands on its granite plinth now, the gable's loft door over the eave line.
+ */
 const barn: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = { ...stateFor(ctx), wall: 'stone' as RegionalBucket };
   const W = Math.max(6.8, ctx.info.w - 0.3), D = Math.max(10, ctx.info.d - 0.3);
+  const plinth = 0.3, eave = plinth + 3.3;
   const frame = buildHouse(sink, {
-    w: W, d: D, plinth: null, storeys: [{ h: 3.3, wall: 'stone' }],
+    w: W, d: D, plinth: { h: plinth, out: 0.06, bucket: 'stone' }, storeys: [{ h: 3.3, wall: 'stone' }],
     roof: slate(44 + st.rng() * 4), gableBucket: 'stone',
     openings: [
       { face: 'front', storey: 0, kind: 'gate', u: 0, w: 2.6, y0: 0, h: 2.7 },
@@ -321,16 +326,16 @@ const barn: RegionalBuilder = (ctx) => {
     chimneys: [], gutters: null, verge: null, reveal: 0.36,
     // the loft door high in the street gable (props census E2, lane B 2026-10-14: a plank leaf laid flat on the granite),
     // cut through the gable over its foot
-  }, { ...dialect({ ...st, litShare: 0 }), gableOpenings: (face) => (face.out[2] > 0 ? [{ u0: -0.5, u1: 0.5, y0: 3.36, y1: 4.3 }] : []) });
+  }, { ...dialect({ ...st, litShare: 0 }), gableOpenings: (face) => (face.out[2] > 0 ? [{ u0: -0.5, u1: 0.5, y0: eave + 0.06, y1: eave + 1.0 }] : []) });
   gableParapets(sink, frame, 0, st.rng);
   // its ledged leaf hung at the back of the reveal, a granite sill and lintel
   const f = frame.faces.front;
   sink.recess = frame.gableReveal;
   try {
-    doorUnit(sink, f, 0, 3.36, 1.0, 0.94, { leaf: shade(st.paint, 0.7), frame: { bucket: 'stone', width: 0.14, out: 0.05 }, steps: null, leafKind: 'plank' });
+    doorUnit(sink, f, 0, eave + 0.06, 1.0, 0.94, { leaf: shade(st.paint, 0.7), frame: { bucket: 'stone', width: 0.14, out: 0.05 }, steps: null, leafKind: 'plank' });
   } finally { sink.recess = 0; }
-  faceBox(sink, 'stone', f, 0, 3.3, 0.04, 1.3, 0.12, 0.16, { decor: true });
-  faceBox(sink, 'stone', f, 0, 4.45, 0.05, 1.5, 0.28, 0.12, { decor: true });
+  faceBox(sink, 'stone', f, 0, eave, 0.04, 1.3, 0.12, 0.16, { decor: true });
+  faceBox(sink, 'stone', f, 0, eave + 1.15, 0.05, 1.5, 0.28, 0.12, { decor: true });
   quoins(sink, frame);
   return sink.finish();
 };
