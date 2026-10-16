@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { SRGBColorSpace, NoColorSpace } from 'three';
 import { makeSeaLayer } from './terrain.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // Inspect the real generator's CPU pixels. Native canvas upload, mipmapping,
 // and final shader response remain browser/render checks, not this stub's proof.
@@ -59,7 +59,7 @@ try {
   else globalThis.ImageData = previousImageData;
 }
 
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const source = terrainSourceText();
 assert.match(source, /iceLum \* 1\.18\), fMs \* 0\.9 \* \(1\.0 - uSea\)/,
   'giant pressure-crack albedo is exclusive to frozen sheets');
 assert.match(source, /iceN\.xy \* mix\(0\.5, 0\.04, uSea\)/,

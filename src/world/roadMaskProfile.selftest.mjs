@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { roadCoreMask } from './roadMaskProfile.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 function sampleFilteredMask(x, z, c, s, texelM) {
   // Same pixel-centre convention, Uint8 storage and bilinear lookup as uMask.
@@ -40,7 +41,7 @@ for (const texelM of [2, 4]) {
   }
 }
 
-const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const terrain = terrainSourceText();
 // (2026-10-05: a styled path's carriageway moves the edge by its half-width less the 3.85 m gauge; an unstyled road's
 // offset is 0 — roadPathStyles.selftest pins the styled bake)
 assert.match(terrain, /const core = roadCoreMask\(d, wob, wid \+ \(styleHalf > 0 \? styleHalf - 3\.85 : 0\), 1 \/ T\);/);
