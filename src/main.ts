@@ -181,7 +181,7 @@ import { createPlayerFrameInput } from './game/playerFrameInput.ts';
 import { createBattleFrameRuntime } from './game/battleFrameRuntime.ts';
 import { createBattlePresentationRuntime, loadMissionAttachmentVisual } from './game/battlePresentationRuntime.ts';
 import { createBattleHudFrameRuntime } from './game/battleHudFrameRuntime.ts';
-import { createMatchModeWorldPresentation } from './game/matchModeWorldPresentation.ts';
+import { createLazyMatchModeWorldPresentation } from './game/matchModeWorldLazy.ts';
 import { createBattleResultPresentationRuntime } from './game/battleResultPresentationRuntime.ts';
 import { createBattleEndingCamera } from './game/battleEndingCamera.ts';
 import { createSoloBattleDeploymentAccess } from './game/soloBattleDeploymentAccess.ts';
@@ -432,7 +432,9 @@ entryTelemetry.send({
 });
 const scene = new THREE.Scene();
 // campaign slice 3 (2026-09-12): trench works follow the live ground under each sector.
-const matchModeWorld = createMatchModeWorldPresentation(scene, {
+// (2026-10-16, the perf lane: 226's bundle budget) the presentation's module is its own chunk, fetched when the boot is
+// idle (matchModeWorldLazy.ts): the Garage draws no objective
+const matchModeWorld = createLazyMatchModeWorldPresentation(scene, {
   groundHeight: (x, z) => groundSampler(x, z),
   // tactical map 2026-09-15: objective icons fade near the camera and hold their screen size far away
   viewerPosition: () => camera.position,
@@ -1167,7 +1169,10 @@ battleHudRuntime = createMainBattleHudRuntime({
 });
 async function ensureBattleHud() {
   if (!battleHudRuntime) throw new Error('battle HUD runtime is not initialized');
-  return battleHudRuntime.preload();
+  // (2026-10-16, the perf lane) the mode objectives' presentation is its own chunk (matchModeWorldLazy.ts): every battle's
+  // interface load (solo, network, debug) waits for it here, so its markers are in from the battle's first frame
+  const [hud] = await Promise.all([battleHudRuntime.preload(), matchModeWorld.ready()]);
+  return hud;
 }
 // Preserve the staged progress contract without transferring battle-only UI
 // into a garage first visit. Battle intent/entry joins ensureBattleHud().
