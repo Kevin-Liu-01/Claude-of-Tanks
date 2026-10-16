@@ -1607,6 +1607,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/regional/ksarGate.selftest.mjs',
     // the fortifications lane (2026-10-09, R259; wave 315): the field works' pillbox rebuilt, its bank an earthwork
     'src/world/maps/fortKit.selftest.mjs',
+    'src/world/bunkerShells.selftest.mjs', // 2026-10-16 physics: rounds go in through a concrete pillbox's drawn embrasures and to its door's leaf
     // props census #10 (2026-10-14): the field works' period forms, draws, records and wrecks (maps/fieldworksKit.ts)
     'src/world/maps/fieldworksKit.selftest.mjs',
     'src/world/maps/lightWreck.selftest.mjs',
