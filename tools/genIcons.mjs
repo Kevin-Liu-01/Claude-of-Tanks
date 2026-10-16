@@ -145,7 +145,7 @@ page.on('console', (message) => {
 
 let failed = false;
 try {
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 180000 });
   await page.waitForFunction('window.__ICONS_READY === true', { timeout: 60000 });
   // Metadata receipts are just as dependent on the real demand-loaded builder
   // as rendered files. Auditing before this settle gate can fingerprint a
