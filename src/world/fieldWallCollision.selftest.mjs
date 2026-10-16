@@ -4,7 +4,7 @@
 //   - every standing slot's middle, at half its height, lies inside a span's shell record; a breach carries none;
 //   - the records stand from the sunk foot to the crown and no higher than a metre over the ground;
 //   - a shell flown at the wall across its line stops on a record within the wall's width of the line;
-//   - a phone's build and a desktop's stand the same records (the desktop's slot plan on every tier), build after build;
+//   - each tier stands the records of the walls it draws (a phone its own lines and slots), build after build;
 // and the press: a span's crush presses its vertices in a batch's cell and a stone form into a strip a fifth of their
 // height over the ground and touches no vertex out of its reach; a vertex two crushed spans reach stands again only once
 // neither is crushed; a rematch stands every vertex exactly as it was, normals too; the crush runs through the span's
@@ -47,12 +47,12 @@ let slotsChecked = 0, breaches = 0, shells = 0;
 for (const [name, lines, slope] of [['flat', [[-200, 0, 200, 0]], 0], ['sloped', [[-150, -40, 120, 60], [-100, 80, 90, -70]], 0.08]]) {
   const ground = fieldOf(lines, slope);
   const heightAt = (x, z) => ground.getHeightAt(x, z);
-  const desk = lay(ground, false), phone = lay(ground, true);
-  assert.ok(desk.walls && desk.walls.lines.length, `${name}: the walls report their lines`);
-  assert.deepEqual(phone.walls.lines, desk.walls.lines, `${name}: a phone lays the desktop's lines`);
-  const spans = fieldWallSpans(desk.walls.lines, desk.walls.noise, heightAt);
-  assert.equal(pack(fieldWallSpans(phone.walls.lines, phone.walls.noise, heightAt)), pack(spans), `${name}: a phone stands the desktop's records`);
-  assert.equal(pack(fieldWallSpans(desk.walls.lines, desk.walls.noise, heightAt)), pack(spans), `${name}: the same records build after build`);
+  for (const mobile of [false, true]) {
+  const tier = mobile ? `${name} (phone)` : name;
+  const desk = lay(ground, mobile);
+  assert.ok(desk.walls && desk.walls.lines.length, `${tier}: the walls report their lines`);
+  const spans = fieldWallSpans(desk.walls.lines, desk.walls.noise, heightAt, mobile);
+  assert.equal(pack(fieldWallSpans(lay(ground, mobile).walls.lines, desk.walls.noise, heightAt, mobile)), pack(spans), `${tier}: the same records build after build`);
   assert.ok(spans.length > 10, `${name}: the walls stand spans (${spans.length})`);
   for (const span of spans) {
     assert.ok(span.halfAlong * 2 <= FIELD_WALL_SPAN_M + 0.05, `${name}: a span runs at most ${FIELD_WALL_SPAN_M} m (${(span.halfAlong * 2).toFixed(2)})`);
@@ -76,9 +76,9 @@ for (const [name, lines, slope] of [['flat', [[-200, 0, 200, 0]], 0], ['sloped',
     const at = (s) => { let k = 0; while (k < n - 2 && S[k + 1] < s) k++; const t = Math.min(1, Math.max(0, (s - S[k]) / Math.max(1e-6, S[k + 1] - S[k])));
       return [pts[k * 2] + (pts[k * 2 + 2] - pts[k * 2]) * t, pts[k * 2 + 1] + (pts[k * 2 + 3] - pts[k * 2 + 1]) * t]; };
     // (the line's own spans for the shells: a crossing line's wall would stop a shell first; the spans are per line)
-    const own = fieldWallSpans([pts], noise, heightAt);
+    const own = fieldWallSpans([pts], noise, heightAt, mobile);
     assert.equal(pack(own), pack(spans.filter((span) => own.some((o) => o.cx === span.cx && o.cz === span.cz))), `${name}: a line's spans are its own`);
-    for (const slot of planWallSlots(pts, L, noise, false).slots) {
+    for (const slot of planWallSlots(pts, L, noise, mobile).slots) {
       const [x, z] = at((slot.s0 + slot.s1) / 2), g = heightAt(x, z);
       const h = Math.min(slot.h0, slot.h1);
       const held = spans.some((span) => inside(span.collider, x, g + h * 0.5, z));
@@ -104,6 +104,7 @@ for (const [name, lines, slope] of [['flat', [[-200, 0, 200, 0]], 0], ['sloped',
     }
   }
 
+  if (mobile) continue;
   // the press, on the desktop's mid forms in a batch and on a stone form
   const cells = desk.wallCells.filter((c) => c.near);
   const vertices = cells.reduce((s, c) => s + c.near.getAttribute('position').count, 0);
@@ -159,7 +160,8 @@ for (const [name, lines, slope] of [['flat', [[-200, 0, 200, 0]], 0], ['sloped',
   assert.deepEqual(Array.from(pos.array), Array.from(homeP), `${name}: a rematch stands every vertex as it was`);
   assert.deepEqual(Array.from(nor.array), Array.from(homeN), `${name}: and every normal`);
   if (stone) assert.deepEqual(Array.from(stone.getAttribute('position').array), Array.from(stoneHome), `${name}: the stone form too`);
+  }
 }
 assert.ok(breaches > 0, `breaches checked (${breaches})`);
 console.log(`fieldWallCollision.selftest: ${slotsChecked} standing slots inside their spans' records, ${breaches} breaches with none, ${shells} shells stopped at the wall; `
-  + 'phone and desktop stand the same records; a crush presses its span alone, shared vertices stand once neither span is crushed, a rematch restores every vertex');
+  + 'on both tiers; a crush presses its span alone, shared vertices stand once neither span is crushed, a rematch restores every vertex');
