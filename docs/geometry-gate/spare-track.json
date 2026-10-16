@@ -588,7 +588,7 @@
    "hostSweep": []
   },
   "centurion3": {
-   "inputHash": "a2c17c59a24506d7",
+   "inputHash": "d835912a6a7f25fd",
    "runs": [
     {
      "index": 0,
@@ -608,13 +608,13 @@
       "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.977,
+      "exposure": 0.966,
       "host": "hull<loftBand@profiles/uk.ts:351>"
      }
     },
     {
      "index": 1,
-     "site": "strip:strip@centurionBuildMarkingsStage1@profiles/uk.ts:2889",
+     "site": "strip:strip@centurionBuildMarkingsStage1@profiles/uk.ts:2892",
      "source": "strip",
      "frame": "hull",
      "registered": true,
@@ -636,7 +636,7 @@
     },
     {
      "index": 2,
-     "site": "strip:strip@centurionBuildMarkingsStage1@profiles/uk.ts:2889",
+     "site": "strip:strip@centurionBuildMarkingsStage1@profiles/uk.ts:2892",
      "source": "strip",
      "frame": "hull",
      "registered": true,
@@ -2953,7 +2953,7 @@
    "hostSweep": []
   },
   "strv81": {
-   "inputHash": "54647fe2a9f300ab",
+   "inputHash": "7acf1a631d50e7e0",
    "runs": [
     {
      "index": 0,
@@ -2981,7 +2981,7 @@
     },
     {
      "index": 1,
-     "site": "strip:strip@centurionBuildMarkingsStage1@profiles/uk.ts:2889",
+     "site": "strip:strip@centurionBuildMarkingsStage1@profiles/uk.ts:2892",
      "source": "strip",
      "frame": "hull",
      "registered": true,
@@ -3003,7 +3003,7 @@
     },
     {
      "index": 2,
-     "site": "strip:strip@centurionBuildMarkingsStage1@profiles/uk.ts:2889",
+     "site": "strip:strip@centurionBuildMarkingsStage1@profiles/uk.ts:2892",
      "source": "strip",
      "frame": "hull",
      "registered": true,
