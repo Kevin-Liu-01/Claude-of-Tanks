@@ -182,6 +182,34 @@ function strapHinge(m: Mesh, z0: number, y: number, len: number, iron: Rgb, uv: 
 }
 
 /**
+ * (r2, 2026-10-16: the sweep read every timber gate's wreck a raft, 6-22 % of its standing height: each leaf had been
+ * laid flat on the ground and squashed) A leaf off its hinges as it comes to rest: its foot slid `out` metres off the
+ * fence line and its face fallen back across the hanging post's stub, racked as it lies — leaning `lean0` from the
+ * upright at its hanging end (z0) to `lean1` at its far end (z1), toward -x when positive — moved `slide` along the run
+ * and slewed by `yaw` about the post. The vertices from `from` to `to` (the leaf's own members).
+ */
+function leanLeaf(m: Mesh, from: number, z0: number, z1: number, out: number, lean0: number, lean1: number, yaw: number,
+  slide = 0, pivotY = 0, to = m.mark): void {
+  for (let i = from; i < to; i += 3) {
+    const t = Math.min(1, Math.max(0, (m.p[i + 2] - z0) / (z1 - z0))), a = lean0 + (lean1 - lean0) * t;
+    const c = Math.cos(a), sn = Math.sin(a), x = m.p[i], y = m.p[i + 1] - pivotY;
+    if (y < 0) continue;
+    m.p[i] = out + x * c - y * sn; m.p[i + 1] = Math.max(0.004, pivotY + x * sn + y * c); m.p[i + 2] += slide;
+    const nx = m.n[i], ny = m.n[i + 1];
+    m.n[i] = nx * c - ny * sn; m.n[i + 1] = nx * sn + ny * c;
+  }
+  if (yaw) {
+    const c = Math.cos(yaw), sn = Math.sin(yaw);
+    for (let i = from; i < to; i += 3) {
+      const x = m.p[i], z = m.p[i + 2];
+      m.p[i] = x * c + z * sn; m.p[i + 2] = -x * sn + z * c;
+      const nx = m.n[i], nz = m.n[i + 2];
+      m.n[i] = nx * c + nz * sn; m.n[i + 2] = -nx * sn + nz * c;
+    }
+  }
+}
+
+/**
  * The north European five-bar field gate, hung on its post at z = 0 and swung open by `open`: heel and head stiles, a
  * deep top rail, four lower bars closer toward the foot (stock-proof), the brace from the heel's foot to the top rail,
  * a short dropper, strap hinges on pintles in the hanging post, the latch on the shutting post.
@@ -212,10 +240,8 @@ function fiveBarLeaf(m: Mesh, st: GateStyle, W: number, r: () => number, broken:
   // the latch on the head
   member(m, [0.05, y0 + H - 0.2, 0.14 + L - 0.18], [0.05, y0 + H - 0.2, 0.14 + L + 0.05], 0.018, 0.035, X, iron, g(0.9));
   if (broken) {
-    // off its hinges: laid down on its face beside the post, a bar snapped and lifted
-    m.tilt(start, [0, 0, 0.14], Z, Math.PI / 2 - 0.07);
-    m.turn(start, 0, 0, 0.35);
-    for (let i = start; i < m.mark; i += 3) m.p[i + 1] = Math.max(0.01, m.p[i + 1] * 0.25 + 0.03);
+    // off its hinges: fallen back across its post's stub, racked, its head end down in the grass
+    leanLeaf(m, start, 0.14, 0.14 + L, 0.42, 0.85, 1.2, 0.25, -0.08);
   } else {
     m.turn(start, 0, 0.0, st.open);
   }
@@ -237,9 +263,7 @@ function ranchLeaf(m: Mesh, st: GateStyle, W: number, r: () => number, broken: b
   strapHinge(m, 0.08, y0 + H - 0.14, 0.5, iron, g(0.9), 0.025);
   strapHinge(m, 0.08, y0 + 0.14, 0.5, iron, g(0.9), 0.025);
   if (broken) {
-    m.tilt(start, [0, 0, 0.12], Z, Math.PI / 2 - 0.05);
-    m.turn(start, 0, 0, -0.3);
-    for (let i = start; i < m.mark; i += 3) m.p[i + 1] = Math.max(0.01, m.p[i + 1] * 0.25 + 0.03);
+    leanLeaf(m, start, 0.18, 0.18 + L, 0.46, 0.85, 1.2, -0.2, -0.1);
   } else m.turn(start, 0, 0, st.open * 0.85);
 }
 
@@ -253,14 +277,13 @@ function poleLeaf(m: Mesh, st: GateStyle, W: number, r: () => number, broken: bo
   for (let k = 0; k < n; k++) {
     const y = y0 + 0.08 + k * (H - 0.12) / (n - 1);
     const sag = (r() - 0.5) * 0.04;
-    pole(m, [0.05 * (k % 2 ? 1 : -1), y, 0.09], [0.05 * (k % 2 ? 1 : -1), y + sag, 0.15 + L + 0.08], bamboo ? 0.024 : 0.034, bamboo ? 0.022 : 0.026,
+    // (r2: the bamboo gate's rails stopped 3 cm short of its slimmer post) the rails' heels against the post
+    pole(m, [0.05 * (k % 2 ? 1 : -1), y, bamboo ? 0.045 : 0.09], [0.05 * (k % 2 ? 1 : -1), y + sag, 0.15 + L + 0.08], bamboo ? 0.024 : 0.034, bamboo ? 0.022 : 0.026,
       jitter(timber, r), 0.05 + k * 0.2, 6, bamboo ? { nodes: 5, nodeCol: mul(timber, 0.72) } : {});
   }
   pole(m, [-0.06, y0 + 0.05, 0.2], [-0.06, y0 + H - 0.04, 0.15 + L - 0.06], bamboo ? 0.022 : 0.03, bamboo ? 0.02 : 0.026, jitter(timber, r), 0.66);
   if (broken) {
-    m.tilt(start, [0, 0, 0.1], Z, Math.PI / 2 - 0.08);
-    m.turn(start, 0, 0, 0.4);
-    for (let i = start; i < m.mark; i += 3) m.p[i + 1] = Math.max(0.01, m.p[i + 1] * 0.3 + 0.03);
+    leanLeaf(m, start, 0.15, 0.15 + L, 0.4, 0.85, 1.25, 0.3, -0.06);
   } else m.turn(start, 0, 0, st.open);
 }
 
@@ -349,6 +372,7 @@ function buildPicketGate(ctx: GateBuildContext, broken: boolean): THREE.BufferGe
     if (brace) member(m, [offset - 0.005, 0.34, z0 + 0.08], [offset - 0.005, 0.74, z1 - 0.08], 0.026, 0.065, X, mul(paint, 0.9), g(0.7));
   };
   // the fixed panel, as the fence
+  const fixedStart = m.mark;
   panel(mid + 0.06, W - 0.08, false, 0);
   // the wicket
   const start = m.mark;
@@ -356,17 +380,11 @@ function buildPicketGate(ctx: GateBuildContext, broken: boolean): THREE.BufferGe
   strapHinge(m, 0.06, 0.78, 0.3, iron, g(0.9), -0.005);
   strapHinge(m, 0.06, 0.3, 0.3, iron, g(0.9), -0.005);
   if (broken) {
-    m.tilt(start, [0, 0, 0.06], Z, Math.PI / 2 - 0.06);
-    m.turn(start, 0, 0, 0.5);
-    for (let i = start; i < m.mark; i += 3) m.p[i + 1] = Math.max(0.01, m.p[i + 1] * 0.2 + 0.03);
-    // and the fixed panel knocked flat too (a hull through the gate takes the whole module)
+    // the wicket off its hinges, fallen back across the first post's stub; the fixed panel shoved over the other way,
+    // its pickets bent over at the foot rail (a hull through the gate takes the whole module)
+    leanLeaf(m, start, 0.08, mid - 0.06, 0.34, 0.9, 1.15, 0.45, -0.04);
+    leanLeaf(m, fixedStart, mid + 0.06, W - 0.08, 0, -0.95, -1.1, 0, 0, 0.3, start);
   } else m.turn(start, 0, 0, st.open * 1.2);
-  if (broken) {
-    // the fixed panel's pickets down: tilt everything above the stubs that is not the wicket (written before it)
-    for (let i = 0; i < start; i += 3) {
-      if (m.p[i + 1] > 0.5 && m.p[i + 2] > mid) { m.p[i] += (m.p[i + 1] - 0.4) * 0.9; m.p[i + 1] = 0.05 + m.p[i + 1] * 0.08; }
-    }
-  }
   return m.geometry();
 }
 
@@ -387,10 +405,12 @@ function buildWattleGate(ctx: GateBuildContext, broken: boolean): THREE.BufferGe
     if (!broken) {
       // the head beam, the two roof boards and the ridge board
       member(m, [0, h + 0.05, -0.18], [0, h + 0.05, wick + 0.18], 0.13, 0.1, Y, jitter(post, r), g(0.5), { chamfer: 0.01 });
+      // (r2: the boards stood 12 cm over the head beam, held by nothing) the boards seated on the beam's arrises, the
+      // ridge board on their meeting
       for (const sx of [-1, 1]) {
-        member(m, [sx * 0.21, h + 0.12, -0.3], [sx * 0.21, h + 0.12, wick + 0.3], 0.5, 0.025, [-sx, 1.2, 0], jitter(mul(timber, 0.8), r), g(0.2 + sx * 0.05));
+        member(m, [sx * 0.21, h - 0.055, -0.3], [sx * 0.21, h - 0.055, wick + 0.3], 0.5, 0.025, [-sx, 1.2, 0], jitter(mul(timber, 0.8), r), g(0.2 + sx * 0.05), { chamfer: 0.006 });
       }
-      member(m, [0, h + 0.33, -0.32], [0, h + 0.33, wick + 0.32], 0.05, 0.05, Y, mul(timber, 0.75), g(0.8));
+      member(m, [0, h + 0.16, -0.32], [0, h + 0.16, wick + 0.32], 0.14, 0.03, X, mul(timber, 0.75), g(0.8), { chamfer: 0.006 });
     } else {
       // the roof boards fallen in front
       member(m, [0.6, 0.05, -0.2], [0.75, 0.04, wick + 0.25], 0.48, 0.025, Y, mul(timber, 0.8), g(0.15));
@@ -400,17 +420,15 @@ function buildWattleGate(ctx: GateBuildContext, broken: boolean): THREE.BufferGe
     const start = m.mark;
     for (let k = 0; k < 9; k++) {
       const z = 0.1 + (k + 0.5) * (wick - 0.2) / 9, c = jitter(timber, r, 0.18);
-      member(m, [0.04, 0.12, z], [0.04, 1.28 + (r() - 0.5) * 0.06, z], 0.085 + r() * 0.02, 0.025, Z, c, g(0.05 + (k % 4) * 0.2), { shade: timberShade(c) });
+      // (r2) riven palings: their arrises split round, not sawn square
+      member(m, [0.04, 0.12, z], [0.04, 1.28 + (r() - 0.5) * 0.06, z], 0.085 + r() * 0.02, 0.025, Z, c, g(0.05 + (k % 4) * 0.2), { chamfer: 0.006, shade: timberShade(c) });
     }
-    for (const y of [0.32, 1.02]) member(m, [0, y, 0.08], [0, y, wick - 0.08], 0.035, 0.07, X, jitter(timber, r), g(0.6));
-    member(m, [-0.01, 0.36, 0.14], [-0.01, 0.98, wick - 0.14], 0.03, 0.07, X, jitter(timber, r), g(0.7));
+    for (const y of [0.32, 1.02]) member(m, [0, y, 0.08], [0, y, wick - 0.08], 0.035, 0.07, X, jitter(timber, r), g(0.6), { chamfer: 0.008 });
+    member(m, [-0.01, 0.36, 0.14], [-0.01, 0.98, wick - 0.14], 0.03, 0.07, X, jitter(timber, r), g(0.7), { chamfer: 0.007 });
     strapHinge(m, 0.06, 1.0, 0.28, iron, g(0.9), -0.03);
     strapHinge(m, 0.06, 0.34, 0.28, iron, g(0.9), -0.03);
-    if (broken) {
-      m.tilt(start, [0, 0, 0.06], Z, Math.PI / 2 - 0.05);
-      m.turn(start, 0, 0, 0.6);
-      for (let i = start; i < m.mark; i += 3) m.p[i + 1] = Math.max(0.01, m.p[i + 1] * 0.22 + 0.03);
-    } else m.turn(start, 0, 0, st.open);
+    if (broken) leanLeaf(m, start, 0.1, wick - 0.1, 0.4, 0.85, 1.15, 0.5, -0.04);
+    else m.turn(start, 0, 0, st.open);
     // the woven panel of the tyn from the second post to the end, on its stakes
     wattlePanel(m, wick + 0.06, W - 0.02, withy, timber, r, broken, 1.15);
     return m.geometry();
@@ -442,8 +460,9 @@ function buildWattleGate(ctx: GateBuildContext, broken: boolean): THREE.BufferGe
     // sticks, ribs or canes upright on two rails (the coyote gate's juniper of uneven height, the jarid's pale ribs)
     const n = coyote ? 13 : palm ? 18 : 11;
     for (const y of [0.32, 0.92]) {
-      if (bamboo) pole(m, [0.03, y, 0.08], [0.03, y, L + 0.14], 0.022, 0.02, jitter(timber, r), 0.6, 6, { nodes: 4, nodeCol: mul(timber, 0.7) });
-      else member(m, [0.03, y, 0.08], [0.03, y, L + 0.14], 0.04, 0.06, X, jitter(post, r), g(0.6));
+      // (r2: the coyote gate's rails stopped 2.3 cm short of its stake) the rails' heels against the stake
+      if (bamboo) pole(m, [0.03, y, 0.05], [0.03, y, L + 0.14], 0.022, 0.02, jitter(timber, r), 0.6, 6, { nodes: 4, nodeCol: mul(timber, 0.7) });
+      else member(m, [0.03, y, 0.05], [0.03, y, L + 0.14], 0.04, 0.06, X, jitter(post, r), g(0.6));
     }
     const rib = palm ? mix(timber, [0.62, 0.55, 0.42], 0.55) : timber;
     for (let k = 0; k < n; k++) {
@@ -453,11 +472,8 @@ function buildWattleGate(ctx: GateBuildContext, broken: boolean): THREE.BufferGe
       else pole(m, [-0.01, 0.08, z + (coyote ? (r() - 0.5) * 0.03 : 0)], [-0.01 + (coyote ? (r() - 0.5) * 0.05 : 0), top, z], palm ? 0.014 : 0.026, palm ? 0.008 : 0.02, c, 0.1 + k * 0.03, 5);
     }
   }
-  if (broken) {
-    m.tilt(start, [0, 0, 0.08], Z, Math.PI / 2 - 0.06);
-    m.turn(start, 0, 0, 0.45);
-    for (let i = start; i < m.mark; i += 3) m.p[i + 1] = Math.max(0.01, m.p[i + 1] * 0.22 + 0.03);
-  } else m.turn(start, 0, 0, st.open);
+  if (broken) leanLeaf(m, start, 0.11, 0.11 + L, 0.4, 0.85, 1.2, 0.35, -0.06);
+  else m.turn(start, 0, 0, st.open);
   return m.geometry();
 }
 
@@ -475,11 +491,8 @@ function wattlePanel(m: Mesh, z0: number, z1: number, withy: Rgb, timber: Rgb, r
       pole(m, [x, y, za], [-x, y + 0.006, zb], 0.014, 0.014, jitter(withy, r, 0.22), 0.4 + (row % 3) * 0.1, 4);
     }
   }
-  if (broken) {
-    for (let i = start; i < m.mark; i += 3) {
-      if (m.p[i + 1] > 0.35) { m.p[i] += (m.p[i + 1] - 0.3) * 0.95; m.p[i + 1] = 0.06 + m.p[i + 1] * 0.06; }
-    }
-  }
+  // (r2) broken: shoved over whole, its stakes bent over a hand above the ground (was flattened to a raft)
+  if (broken) leanLeaf(m, start, z0, z1, 0, -0.9, -1.05, 0, 0, 0.22);
 }
 
 /**
