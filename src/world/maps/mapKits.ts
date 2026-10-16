@@ -64,6 +64,7 @@ import { dressFrozenRiverBanks } from './frozenRiverBanks.ts';
 import { CrushableClutter } from '../crushableClutter.ts';
 // (props census #3, lane B 2026-10-14: the coal stockpile lives in coalStockpile.ts, the industrial yard's)
 import { coalSiteIsClear, makeCoalStockpile, registerCoalStockpile } from './coalStockpile.ts';
+import { breakableSmallProp, type SmallPropSinks } from './smallPropBreak.ts';
 
 export type Rng = () => number;
 type GeometryBucketName = keyof GeometryBuckets & string;
@@ -1127,7 +1128,7 @@ const LANDING_MUD_M = 0.16;
  * not the kit's stream (every later draw holds).
  */
 function mooringStake(buckets: DressingBuckets, heightField: DressingHeightField, hull: THREE.BufferGeometry, x: number,
-  z: number, yaw: number, halfLength: number): void {
+  z: number, yaw: number, halfLength: number, sinks?: SmallPropSinks): void {
   const ax = Math.cos(yaw), az = -Math.sin(yaw);
   // the up-bank end: the end whose ground stands higher
   const hA = heightField.getHeightAt(x + ax * halfLength, z + az * halfLength), hB = heightField.getHeightAt(x - ax * halfLength, z - az * halfLength);
@@ -1149,6 +1150,7 @@ function mooringStake(buckets: DressingBuckets, heightField: DressingHeightField
   stake.rotateZ(0.12 * jitter);
   stake.translate(sx, ground + 0.2, sz);
   buckets.wood.push(stake);
+  breakableSmallProp('prop-mooring-stake', [stake], sinks); // (PRP-02) a hull or a round breaks it
   // the line in four runs, sagging 0.14 m at its middle
   const from: [number, number, number] = [head[0], head[1] - 0.03, head[2]], to: [number, number, number] = [sx, ground + 0.5, sz];
   const at = (t: number): [number, number, number] => [from[0] + (to[0] - from[0]) * t,
@@ -1335,6 +1337,7 @@ function addCoastalBuoys(
   rng: Rng,
   buckets: DressingBuckets,
   coast: DriftCoast = 'breton',
+  sinks?: SmallPropSinks,
 ): void {
   const buoyCount = big ? 5 : 2;
   for (let i = 0; i < buoyCount; i++) {
@@ -1352,6 +1355,7 @@ function addCoastalBuoys(
     const buoy = buildMooringBuoy(coast, r, v, x, waterline, heightField.getHeightAt(x, z), z);
     if (buckets.baked) buckets.baked.push(buoy);
     else { buoy.deleteAttribute('color'); buckets.plaster.push(buoy); }
+    breakableSmallProp('prop-buoy', [buoy], sinks); // (PRP-02) a hull or a round breaks it
   }
 }
 
@@ -1534,7 +1538,7 @@ function addCoastalJetty(
 }
 
 function dressCoastalShore({
-  L, heightField, rng, buckets, groundingReceipts, obstacles, shore, animated, boats, trunks,
+  L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, clutter, shore, animated, boats, trunks,
 }: FocusedDressingContext): void {
   const boatType = boats?.hull.type ?? 'canot', jettyForm = jettyFormForCoast(boatType), coast = driftCoastForBoat(boatType);
   const spawns = L.spawns ? [L.spawns.player, ...L.spawns.enemies] : undefined;
@@ -1547,7 +1551,7 @@ function dressCoastalShore({
     const big = lake.r >= 110;
     addCoastalBoats(lake, big, heightField, rng, buckets, groundingReceipts, shore, boats, trunks);
     addCoastalDriftwood(lake, heightField, rng, buckets, groundingReceipts, strand, coast);
-    addCoastalBuoys(lake, big, heightField, rng, buckets, coast);
+    addCoastalBuoys(lake, big, heightField, rng, buckets, coast, { obstacles, colliders, clutter });
     if (big) addCoastalJetty(lake, heightField, rng, buckets, shore, groundingReceipts, spawns, animated, boats, jettyForm);
   }
 }
@@ -1592,6 +1596,7 @@ function addFordMarkerPair(
   rng: Rng,
   buckets: DressingBuckets,
   style: FordStyle = 'gauge',
+  sinks?: SmallPropSinks,
 ): void {
   const [previousX, previousZ] = previous;
   const [x, z] = current;
@@ -1609,13 +1614,17 @@ function addFordMarkerPair(
     // with its rag), its turn, lean and height from the old post's five draws; painted (the post and its plaster cap
     // where a kit has no painted bucket)
     const v = [rng(), rng(), rng(), rng(), rng()];
+    // (PRP-02) a hull or a round breaks it (smallPropBreak.ts)
     if (buckets.baked || style === 'gauge') {
-      for (const piece of fordMarker(style, markerX, markerY, markerZ, v)) (buckets[piece.bucket] ?? buckets.wood).push(piece.geometry);
+      const pieces = fordMarker(style, markerX, markerY, markerZ, v);
+      for (const piece of pieces) (buckets[piece.bucket] ?? buckets.wood).push(piece.geometry);
+      breakableSmallProp('prop-ford-marker', pieces.map((piece) => piece.geometry), sinks);
     } else {
       const post = box(0.16, 1.5, 0.16, 1.6);
       post.rotateY(v[0] * Math.PI);
       post.translate(markerX, markerY + 0.72, markerZ);
       buckets.wood.push(post);
+      breakableSmallProp('prop-ford-marker', [post], sinks);
     }
   }
 }
@@ -1627,6 +1636,7 @@ function addRiverFordMarkers(
   rng: Rng,
   buckets: DressingBuckets,
   style: FordStyle = 'gauge',
+  sinks?: SmallPropSinks,
 ): void {
   for (const nodes of roads) {
     let prev = false;
@@ -1634,20 +1644,21 @@ function addRiverFordMarkers(
       const [nx, nz] = nodes[i];
       const now = isInRiver(links, nx, nz);
       if (now !== prev && i > 0) {
-        addFordMarkerPair(nodes[i - 1], nodes[i], heightField, rng, buckets, style);
+        addFordMarkerPair(nodes[i - 1], nodes[i], heightField, rng, buckets, style, sinks);
       }
       prev = now;
     }
   }
 }
 
-function dressAutumnRiver({ L, heightField, rng, buckets, boats }: FocusedDressingContext): void {
+function dressAutumnRiver(ctx: FocusedDressingContext): void {
+  const { L, heightField, rng, buckets, boats } = ctx;
   const boatType = boats?.hull.type ?? 'canot', reedForm = reedFormForBoat(boatType), fordStyle = fordStyleForBoat(boatType);
   const links = (L.marshes || []).filter((marsh) => marsh.r <= 40);
   if (links.length < 3) return;
   addRiverBankReeds(links, heightField, rng, buckets, reedForm);
   addRuinedRiverBridge(links, heightField, rng, buckets);
-  addRiverFordMarkers(L.roads, links, heightField, rng, buckets, fordStyle);
+  addRiverFordMarkers(L.roads, links, heightField, rng, buckets, fordStyle, ctx);
 }
 
 // =============================================================================
@@ -1753,12 +1764,12 @@ function dressAmberfordRiver(ctx: FocusedDressingContext): void {
   if (!decks.length) addRuinedRiverBridge(links, heightField, rng, buckets);
   // ford posts on every lane that wades the river; a lane a deck carries crosses dry-shod
   addRiverFordMarkers(L.roads.filter((_road, index) => !decks.some((deck) => deck.route === index)),
-    links, heightField, rng, buckets, fordStyleForBoat(ctx.boats?.hull.type ?? 'canot'));
+    links, heightField, rng, buckets, fordStyleForBoat(ctx.boats?.hull.type ?? 'canot'), ctx);
   addWeirAndMill(links, decks[0] ?? null, heightField, rng, buckets, ctx);
 }
 
 function dressLakeRiverLandings(
-  { L, heightField, rng, buckets, groundingReceipts, shore, animated, boats, trunks = [] }: FocusedDressingContext,
+  { L, heightField, rng, buckets, groundingReceipts, shore, animated, boats, trunks = [], obstacles, colliders, clutter }: FocusedDressingContext,
   anchors: readonly RiverLandingAnchor[],
 ): void {
   const boatType = boats?.hull.type ?? 'canot', jettyForm = jettyFormForCoast(boatType), reedForm = reedFormForBoat(boatType);
@@ -1789,7 +1800,7 @@ function dressLakeRiverLandings(
     if (landing.shore) dressShoreLanding(buckets, heightField, landing.shore, groundingReceipts, undefined, animated, boats, jettyForm);
     // round 3: the hauled-out boat's stake and line, after the landing's timber (its receipts walk the piles from the
     // landing's first piece)
-    if (hauled) mooringStake(buckets, heightField, hauled.hull, landing.boatX, landing.boatZ, landing.boatYaw, hauled.halfLength);
+    if (hauled) mooringStake(buckets, heightField, hauled.hull, landing.boatX, landing.boatZ, landing.boatYaw, hauled.halfLength, { obstacles, colliders, clutter });
     if (anchor.shoreReeds !== false) addRiverBankReeds([L.lakes![anchor.lakeIndex]], heightField, rng, buckets, reedForm);
     shore?.keepOut.push({ x: landing.boatX, z: landing.boatZ, r: 4.2 });
     if (landing.shore) registerShoreLanding(shore, landing.shore);
@@ -2058,6 +2069,7 @@ function bufferStop(
   z: number,
   yaw = 0,
   gauge = RAIL_SPUR_GAUGE_M,
+  sinks?: SmallPropSinks,
 ): void {
   const y = heightField.getHeightAt(x, z);
   // #24 r2 (Lane C, 2026-10-14): a rail-built buffer stop with its spring buffers (railYardStores.ts), from the old
@@ -2070,20 +2082,24 @@ function bufferStop(
     const post = (side: number): [number, number] => [x + side * 0.72 * Math.cos(yaw) + 0.05 * Math.sin(yaw), z - side * 0.72 * Math.sin(yaw) + 0.05 * Math.cos(yaw)];
     stop.userData.bufferStop = { beam: [x, y + 1.0, z], posts: [post(-1), post(1)] };
     buckets.baked.push(stop);
+    breakableSmallProp('prop-buffer-stop', [stop], sinks); // (PRP-02) a hull or a round breaks it
     return;
   }
   const c = Math.cos(yaw), s = Math.sin(yaw);
+  const pieces: THREE.BufferGeometry[] = [];
   for (const side of [-gauge / 2, gauge / 2]) {
     const strut = box(0.18, 1.5, 0.18, 1.4);
     strut.rotateX(-0.5);
     if (yaw !== 0) strut.rotateY(yaw);
     strut.translate(x + side * c + 0.3 * s, y + 0.75, z - side * s + 0.3 * c);
     buckets.dark.push(strut);
+    pieces.push(strut);
   }
   const beam = box(2.2, 0.45, 0.28, 1.0);
   if (yaw !== 0) beam.rotateY(yaw);
   beam.translate(x + -0.05 * s, y + 1.05, z + -0.05 * c);
   buckets.wood.push(jitterUV(beam, rng));
+  breakableSmallProp('prop-buffer-stop', [...pieces, beam], sinks);
 }
 
 // An authored spur: its path in spans of at most RAIL_SPUR_LAY_M (5 m — half the yards' span, so a slab across an
@@ -2104,7 +2120,7 @@ function dressRailSpurs(ctx: FocusedDressingContext, spurs: readonly RailSpurCon
       const closeEnd = (from: { ax: number; az: number }, to: { bx: number; bz: number }): void => {
         const dx = to.bx - from.ax, dz = to.bz - from.az, run = railRunLength(dx, dz);
         const ux = dx / run, uz = dz / run;
-        bufferStop(buckets, rng, heightField, to.bx + ux * 0.8, to.bz + uz * 0.8, Math.atan2(ux, uz), lay.gauge);
+        bufferStop(buckets, rng, heightField, to.bx + ux * 0.8, to.bz + uz * 0.8, Math.atan2(ux, uz), lay.gauge, ctx);
       };
       const last = spans[spans.length - 1], first = spans[0];
       if (spur.bufferStop !== 'start') closeEnd(last, last);
@@ -2184,13 +2200,14 @@ function addRailYardLines(
   rng: Rng,
   buckets: DressingBuckets,
   washoutLiquid: boolean,
+  sinks?: SmallPropSinks,
 ): void {
   for (const line of RAIL_YARD_LINES) {
     railLine(buckets, rng, heightField, line.x, line.z0, line.z1, washoutLiquid);
   }
   for (const line of RAIL_YARD_LINES) {
-    if (line.z1 < 230) bufferStop(buckets, rng, heightField, line.x, line.z1 + 0.8);
-    if (line.z0 > -230) bufferStop(buckets, rng, heightField, line.x, line.z0 - 0.8);
+    if (line.z1 < 230) bufferStop(buckets, rng, heightField, line.x, line.z1 + 0.8, 0, RAIL_SPUR_GAUGE_M, sinks);
+    if (line.z0 > -230) bufferStop(buckets, rng, heightField, line.x, line.z0 - 0.8, 0, RAIL_SPUR_GAUGE_M, sinks);
   }
 }
 
@@ -2219,6 +2236,7 @@ function addCableDrum(
   z: number,
   rng: Rng,
   buckets: DressingBuckets,
+  sinks?: SmallPropSinks,
 ): void {
   // #24 r2 (Lane C, 2026-10-14): a cable reel in its members (railYardStores.ts), from the old drum's radius, turn and
   // UV draws; painted (timber where a kit has no painted bucket)
@@ -2227,6 +2245,7 @@ function addCableDrum(
   drum.translate(x, y, z);
   if (buckets.baked) buckets.baked.push(drum);
   else { drum.deleteAttribute('color'); buckets.wood.push(drum); }
+  breakableSmallProp('prop-cable-drum', [drum], sinks); // (PRP-02) a hull or a round breaks it
 }
 
 function addSleeperStack(
@@ -2235,6 +2254,7 @@ function addSleeperStack(
   z: number,
   rng: Rng,
   buckets: DressingBuckets,
+  sinks?: SmallPropSinks,
 ): void {
   // #24 r2 (Lane C, 2026-10-14): the permanent way's store, creosoted sleepers in crossing courses (railYardStores.ts),
   // from the old crib's six sleepers' UV draws (24); painted (timber where a kit has no painted bucket)
@@ -2244,6 +2264,7 @@ function addSleeperStack(
   stack.translate(x, y - 0.02, z);
   if (buckets.baked) buckets.baked.push(stack);
   else { stack.deleteAttribute('color'); buckets.wood.push(stack); }
+  breakableSmallProp('prop-sleeper-stack', [stack], sinks); // (PRP-02) a hull or a round breaks it
 }
 
 function addRailYardSupplies(
@@ -2251,14 +2272,15 @@ function addRailYardSupplies(
   heightField: DressingHeightField,
   rng: Rng,
   buckets: DressingBuckets,
+  sinks?: SmallPropSinks,
 ): void {
   for (let i = 0; i < 9; i++) {
     const x = village.x0 + 8 + rng() * 30;
     const z = village.z0 + 12 + rng() * (village.z1 - village.z0 - 24);
     if (heightField._roadDist(x, z) < 7) continue;
     const y = heightField.getHeightAt(x, z);
-    if (rng() < 0.5) addCableDrum(x, y, z, rng, buckets);
-    else addSleeperStack(x, y, z, rng, buckets);
+    if (rng() < 0.5) addCableDrum(x, y, z, rng, buckets, sinks);
+    else addSleeperStack(x, y, z, rng, buckets, sinks);
   }
 }
 
@@ -2266,9 +2288,9 @@ function dressRailYard(
   ctx: FocusedDressingContext, washoutLiquid = false,
 ): void {
   const { L, heightField, rng, buckets } = ctx;
-  addRailYardLines(heightField, rng, buckets, washoutLiquid);
+  addRailYardLines(heightField, rng, buckets, washoutLiquid, ctx);
   addRailYardCoalHeaps(heightField, rng, buckets, ctx);
-  addRailYardSupplies(L.village, heightField, rng, buckets);
+  addRailYardSupplies(L.village, heightField, rng, buckets, ctx);
 }
 
 // 2026-10-06 (the map-vehicles lane, P5): a spur's standing rolling stock (railSpurs.ts railStockPlacements,
