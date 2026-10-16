@@ -65,11 +65,15 @@ const noWorld = { obstacles: [], colliders: [] };
   for (const [x, z] of [[10.123, -20.988], [11, -20], [-200, 200], [-170, 201], [5, 5]]) {
     assert.equal(restoredGround.offsetAt(x, z), ground.offsetAt(x, z), `the restored ground at ${x}, ${z}`);
   }
-  // off in every mode until the terrain follows; a mode's rules dig nothing
+  // on in every mode that plays destruction since DST-04 (2026-10-15): the standard ruleset digs; Turbo Ball digs nothing
   const standard = createDestructionMatch({ rules: matchRulesetFor('standard').destruction, ...noWorld, ground: createTerrainDeformation() });
   standard.shellWorldHit(howitzer, null, 0, 0, 0, 0, 1, true);
   standard.step();
-  assert.equal(standard.drainCraters([]), 0, 'the standard ruleset digs nothing yet');
+  assert.equal(standard.drainCraters([]), 1, 'the standard ruleset digs');
+  const turbo = createDestructionMatch({ rules: matchRulesetFor('turbo_ball').destruction, ...noWorld, ground: createTerrainDeformation() });
+  turbo.shellWorldHit(howitzer, null, 0, 0, 0, 0, 1, true);
+  turbo.step();
+  assert.equal(turbo.drainCraters([]), 0, 'Turbo Ball digs nothing');
 }
 
 // ---- both simulations dig at the same moment
