@@ -36,6 +36,7 @@
 
 import desert from './desert.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
+import { TITAN_HOMESITES } from './titanHomesites.ts'; // the maps lane, 2026-10-15: the valley's homesites
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
@@ -61,7 +62,11 @@ export default {
       [[366, -454], [304, -304], [246, -168], [191.28, -64.47], [172, -28], [92, 108], [40.03, 190.91], [8, 242], [-25.84, 289.09], [-84, 370], [-176, 466]],
       [[-382, -72], [-260, -92], [-215.93, -80.05], [-142, -60], [-12, -82], [29.28, -71.04], [116, -48], [191.28, -64.47], [244, -76], [372, -54]],
       [[-334, 228], [-214, 192], [-96, 220], [-61.9, 211.34], [30, 188], [40.03, 190.91], [154, 224], [203.83, 213.27], [284, 196]],
-    ] },
+    ],
+    // (the maps lane, 2026-10-15; the owner, 10-09: Titan Gorge's roads paved) the three valley roads are the paved
+    // highways through the valley, as US-163 runs through Monument Valley, two lanes of worn asphalt with the sand blown
+    // to their edges; the two cross roads stay the graded dirt of the chapter's roads
+    pathStyles: [{ surface: 'asphalt', widthM: 8 }, { surface: 'asphalt', widthM: 8 }, { surface: 'asphalt', widthM: 8 }, null, null] },
     landforms: [
       // The valley's red-rock shelves: stepped walls of bedded sandstone (cliff bands, benches, talus) along the west
       // and east sides (landformGeology.ts).
@@ -180,6 +185,10 @@ export default {
     townPlan: TOWN_PLANS.titan_gorge,
     // and its light buildings (the huts, tents and motor pools) stand where that build placed them too
     townLightPlan: TOWN_LIGHT_PLANS.titan_gorge,
+    // (the maps lane, 2026-10-15) and over the valley floor round it the families' homesites, seated after the town plan
+    // (titanHomesites.ts): eight pairs of hogans, family camps and abandoned camps along the roads
+    plannedSites: [...TITAN_HOMESITES],
+    plannedSitesAfterPlan: true,
     // its five buildings that stand in a carriageway move by the least distance that clears it; the rest stay put
     roadBuildingClearance: true,
     blockFill: true, wallStyle: 'adobe', wallStoneChance: 0.18,
