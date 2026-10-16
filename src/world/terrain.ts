@@ -41,6 +41,7 @@ import {
 } from './railSpurs.ts';
 import { roadCoreMask, roadLaneSharpness } from './roadMaskProfile.ts';
 import { trackSurfaceAt, trackSurfacePolicy, type TrackSurface } from './trackSurface.ts';
+import { roadPaveSampler } from './roadPave.ts';
 import { completeRoadEndpoints, gradeRoadPortals, alignHardstandRoadPortals,
   usesInheritedRoadGrades, remapInheritedRoadElevations, alignAddedRoadJunctionGrades,
   originalRoadPlacementConfig } from './maps/roadEndpoints.ts';
@@ -620,6 +621,7 @@ export interface HeightField {
   waterRipplesActive?(): boolean;
   /** Presentation-only; simulation/headless fields may omit this query. */
   getTrackSurfaceAt?(x: number, z: number): TrackSurface;
+  getRoadPaveAt?(x: number, z: number): number; // presentation: the paved share of a carriageway (roadPave.ts)
   /** Round 61 (2026-09-24): the bridge decks resolved from the stations authored `crossing: 'bridge'` (empty on every
    * other map) — the kit, the navigation grid and the FX read the same planes the height field is exempted under. */
   bridgeDecks?: readonly BridgeDeckPlane[];
@@ -2858,6 +2860,7 @@ function* heightFieldBuildSteps(
     if (compiledCanals !== null && canalWetness(compiledCanals, x, z) > 0.5) return T.softLakes ? 'soft' : 'hard';
     return 'medium';
   }
+  const roadPaveAt = roadPaveSampler(cfg?.splat, layout.village); // the FX lane's street dust (roadPave.ts)
 
   function getDriveGroundType(x: number, z: number): GroundType {
     const ground = getGroundType(x, z);
@@ -3058,6 +3061,7 @@ function* heightFieldBuildSteps(
     ...(railCuttings !== null ? { getOutlandSeatWeightAt: (x: number, z: number): number =>
       railCuttingSeatWeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt, railOpenLines) } : {}),
     getWaterMaskAt, getWaterDepthAt, getTrackSurfaceAt,
+    getRoadPaveAt: (x: number, z: number): number => roadPaveAt(gridSample(gRoadDist, x, z), x, z, bridgeDecks.length > 0 && bridgeDeckOver(x, z) !== null),
     // the map-borders lane: where the near ring hands its continued ground over to the authored ranges
     getBorderHandOverAt: border.handOverAt,
     // (a receipt's classic border — the rim before the landform — publishes no woods, hedges or parcels)
