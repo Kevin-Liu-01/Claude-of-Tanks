@@ -474,6 +474,9 @@ const lighting: MainLightingRuntime = await bootStage(
 // before honoring it because all PCF samplers remain active in the shader.
 // Subsequent garage frames skip the invisible 100-700 m shadow redraws.
 if (!STUDIO_BOOT_INTENT) lighting.setFarCascadeDormant(true);
+// (2026-10-16, the engine-cs lane) every flip out of the Garage's sealed bay lights the open ground with the grounded
+// model's environment, never the bay's full-dome bake (sky.ts syncEnvironmentEnclosure)
+lighting.onEnclosureChange((enclosed) => { if (!enclosed) sky.syncEnvironmentEnclosure(); });
 mountDiagOverlay({ tier: resolveDeviceTier(renderer), diag: _diag, rescue: _diagRescue, renderer });
 
 const engineCtx = {
