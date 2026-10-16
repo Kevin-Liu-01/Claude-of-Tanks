@@ -9,10 +9,10 @@ import {
 } from './geometry.ts';
 import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { buildSmockMill } from './windmills.ts';
 import { facadeOn, trimRun, windowHead } from './facade.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
-import { buildSmockMill } from './windmills.ts';
 
 const GREENS: readonly Rgb[] = [0x2f6a46, 0x3c7a52, 0x2a5a40].map(rgb);
 const WHITE = rgb(0xd6d2c8);
