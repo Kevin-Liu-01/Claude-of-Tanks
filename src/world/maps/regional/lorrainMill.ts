@@ -19,11 +19,12 @@ import * as THREE from 'three';
 import { getDeviceTier } from '../../../engine/quality.ts';
 import {
   LocalFrame, PartSink, faceBox, facePoint, hashSeed, pick, rgb, shade, streamFrom, REGIONAL_BUCKETS,
-  type EmitOptions, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
+  type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
 import { buildHouse, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { buildRegionalParts } from './index.ts';
+import { millAxle, ringSolid, waterWheel } from './millWorks.ts';
 import { LORRAIN_STYLE } from './lorrain.ts';
 import type { RegionalBuildContext, RegionalBuilder, RegionalGround } from './types.ts';
 
@@ -42,25 +43,6 @@ const WHEEL_HALF = 0.46;
 export const MILL_WHEEL_OFFSET = 0.9;
 
 const canal = (pitch: number): RoofSpec => ({ kind: 'gable', pitchDeg: pitch, eave: 0.32, verge: 0.18, thickness: 0.16, bucket: 'roof', ridge: 'round' });
-
-/**
- * A solid ring (an annulus `len` deep along `ax`): its outer and inner sides and its two faces, so a millstone's eye, a
- * shroud's or a hand wheel's rim is open through. e1 × e2 must be `ax`.
- */
-function ringSolid(sink: PartSink, bucket: RegionalBucket, c: Vec3, ax: Vec3, e1: Vec3, e2: Vec3, rIn: number, rOut: number,
-  len: number, segs: number, opts: EmitOptions): void {
-  const at = (k: number, r: number, t: number): Vec3 => {
-    const a = (k / segs) * Math.PI * 2, cs = Math.cos(a) * r, sn = Math.sin(a) * r;
-    return [c[0] + ax[0] * t + e1[0] * cs + e2[0] * sn, c[1] + ax[1] * t + e1[1] * cs + e2[1] * sn, c[2] + ax[2] * t + e1[2] * cs + e2[2] * sn];
-  };
-  for (let i = 0; i < segs; i++) {
-    const j = i + 1;
-    sink.quad(bucket, at(i, rOut, 0), at(j, rOut, 0), at(j, rOut, len), at(i, rOut, len), opts);
-    sink.quad(bucket, at(j, rIn, 0), at(i, rIn, 0), at(i, rIn, len), at(j, rIn, len), opts);
-    sink.quad(bucket, at(i, rIn, len), at(i, rOut, len), at(j, rOut, len), at(j, rIn, len), opts);
-    sink.quad(bucket, at(j, rIn, 0), at(j, rOut, 0), at(i, rOut, 0), at(i, rIn, 0), opts);
-  }
-}
 
 /** The Jaumont quoins at a body's four corners, long and short stones in turn (lorrain.ts quoins). */
 function quoins(sink: PartSink, b: { x0: number; x1: number; z0: number; z1: number }, y0: number, y1: number): void {
@@ -224,30 +206,11 @@ function roue(ctx: RegionalBuildContext, p: MillWheelParams): RegionalParts {
   sink.span('stone', -0.36, top, bearingZ0, 0.36, cy - 0.36, bearingZ1);
   sink.span('structureWood', -0.3, cy - 0.36, bearingZ0 + 0.04, 0.3, cy - 0.17, bearingZ1 - 0.04, { colour: WET_OAK });
   sink.span('structureMetal', -0.22, cy + 0.15, bearingZ0 + 0.1, 0.22, cy + 0.2, bearingZ1 - 0.1, { colour: IRON, decor: true });
-  // the axle from over the bearing through the house wall (its hole is the house's), banded in iron
-  const a0 = bearingZ0 + 0.06, a1 = zHouse + 0.36;
-  sink.cylinder('structureWood', [0, cy, a0], 'z', a1 - a0, 0.17, 8, { colour: WET_OAK });
-  for (const z of [-WHEEL_HALF - 0.12, WHEEL_HALF + 0.12, zHouse - 0.05]) sink.cylinder('structureMetal', [0, cy, z - 0.03], 'z', 0.06, 0.19, 8, { colour: IRON, decor: true });
-  // the hub and its flanges at the shrouds
-  sink.cylinder('structureMetal', [0, cy, -WHEEL_HALF - 0.06], 'z', 2 * WHEEL_HALF + 0.12, 0.34, 12, { colour: IRON });
-  // the shrouds and their arms, eight to a shroud
-  const ax: Vec3 = [0, 0, 1], e1: Vec3 = [1, 0, 0], e2: Vec3 = [0, 1, 0];
-  for (const side of [-1, 1]) {
-    const z = side * WHEEL_HALF;
-    ringSolid(sink, 'structureWood', [0, cy, z - 0.045], ax, e1, e2, R - 0.3, R, 0.09, 24, { colour: WET_OAK });
-    for (let k = 0; k < 8; k++) {
-      const a = (k / 8) * Math.PI * 2 + Math.PI / 16, c = Math.cos(a), s = Math.sin(a);
-      const r0 = 0.3, r1 = R - 0.26, rm = (r0 + r1) / 2;
-      sink.box('structureWood', [c * rm, cy + s * rm, z], [(r1 - r0) / 2, 0.07, 0.055], { colour: shade(WET_OAK, 1.08) },
-        new LocalFrame([c, s, 0], [-s, c, 0], [0, 0, 1], [0, 0, 0]));
-    }
-  }
-  // the floats: 24 boards between the shrouds, standing a hand past the rims
-  for (let k = 0; k < 24; k++) {
-    const a = (k / 24) * Math.PI * 2, c = Math.cos(a), s = Math.sin(a), rm = R - 0.22;
-    sink.box('structureWood', [c * rm, cy + s * rm, 0], [0.3, 0.025, WHEEL_HALF - 0.05], { colour: shade(OAK, 0.82 + (k % 3) * 0.06) },
-      new LocalFrame([c, s, 0], [-s, c, 0], [0, 0, 1], [0, 0, 0]));
-  }
+  // the axle from over the bearing through the house wall (its hole is the house's), banded in iron; the wheel on it
+  sink.placed(0, 0, cy, 0, () => {
+    millAxle(sink, bearingZ0 + 0.06, zHouse + 0.36, WET_OAK, IRON, [-WHEEL_HALF - 0.12, WHEEL_HALF + 0.12, zHouse - 0.05]);
+    waterWheel(sink, { R, half: WHEEL_HALF, kind: 'breast', wood: WET_OAK, boards: OAK, iron: IRON, solid: true });
+  });
   return sink.finish();
 }
 
