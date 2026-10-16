@@ -297,8 +297,10 @@ for (const config of [polders, mangrove, orchard]) for (const seed of config.id 
     // the south-east dispersal quarter, between the revetment rows and south of them
     { id: 'quarter-pines', species: 'pine', count: 12, path: [[150, -168], [310, -168]], width: 2 },
     { id: 'quarter-birches', species: 'birch', count: 10, path: [[160, -244], [310, -244]], width: 2 },
-    // across the cargo hangar's plot (x -253..-197, z -230..-194)
-    { id: 'over-the-hangar', species: 'pine', count: 6, path: [[-245, -212], [-205, -212]] },
+    // across the cargo hangar's plot — on the terminal side since Kestrel's round 5 (the maps lane's Kestrel rebuild,
+    // 2026-10-15: behind the cargo apron the An-225's hangar slab, a hardstand, stands where the plot was): x 197..253,
+    // z 194..230
+    { id: 'over-the-hangar', species: 'pine', count: 6, path: [[205, 212], [245, 212]] },
   ];
   for (const feature of stands) for (const point of authoredTreeStations(feature)) assert.ok(inRect(point.x, point.z));
   const yard = [[150, -256], [320, -256], [320, -232], [150, -232]];
