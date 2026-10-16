@@ -15,7 +15,7 @@ import * as THREE from 'three';
 import {KIT} from './kit.ts';
 import {blindTube} from './measuredPrimitives.ts';
 import {Stock, sectionLoft, crosswiseSolid, eraModule, sectorOf, hardwareBlock, mosaicLayout, assertHullPart,
-  assertTurretPart, nightLens, type LoftStation, type V3} from './eraModuleKit.ts';
+  assertTurretPart, nightLens, tagFrontPart, type LoftStation, type V3} from './eraModuleKit.ts';
 import type {SectionPoint} from './sectionSolid.ts';
 import type {PolishFrontSkirt} from './nationalPoland.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
@@ -325,10 +325,10 @@ function lampPockets(P: TankBuilderPort, g: HullSurface): void {
       const yb = g.glacisAt(z) - .004, lo = side < 0 ? -x1 + t - .002 : x0 + t - .002, hi = side < 0 ? -x0 - t + .002 : x1 - t + .002;
       return {o: [0, 0, z] as V3, out: [1, 0, 0] as V3, up: [0, 1, 0] as V3, ring: [[lo, yb], [hi, yb], [hi, top[0] - t + .002], [lo, top[0] - t + .002]] as SectionPoint[]};
     }));
-    P.addExternalArmor('hull', back);
+    P.addExternalArmor('hull', tagFrontPart(back, 'lamp pocket back plate', 'hull'));
     const x = side * (x0 + x1) / 2, y = .995;
-    P.addEquipment('hullDetail', cylZ(.073, .085, P.q ? 16 : 12), x, y, 2.9385);
-    P.addEquipment('hullGlass', nightLens(cylZ(.056, .012, P.q ? 16 : 12), 'headlight'), x, y, 2.983);
+    P.addEquipment('hullDetail', tagFrontPart(cylZ(.073, .085, P.q ? 16 : 12), 'pocket lamp housing', 'hull'), x, y, 2.9385);
+    P.addEquipment('hullGlass', tagFrontPart(nightLens(cylZ(.056, .012, P.q ? 16 : 12), 'headlight'), 'pocket lamp lens', 'hull'), x, y, 2.983);
   }
 }
 
@@ -373,12 +373,12 @@ function ledClusters(P: TankBuilderPort, g: HullSurface): void {
     const base = g.glacisAt(z1);
     for (const X of [.855, .965]) for (const dy of [.045, .115]) {
       const x = side * X, y = base + dy;
-      P.addEquipment('hullDark', blindTube(.032, .026, .04, .014, P.q ? 16 : 10), x, y, z1 + .02 - .002);
-      P.addEquipment('hullGlass', nightLens(cylZ(.024, .010, P.q ? 16 : 10), 'headlight'), x, y, z1 + .04 - .002 - .008 - .005);
+      P.addEquipment('hullDark', tagFrontPart(blindTube(.032, .026, .04, .014, P.q ? 16 : 10), 'LED pod cup', 'hull'), x, y, z1 + .02 - .002);
+      P.addEquipment('hullGlass', tagFrontPart(nightLens(cylZ(.024, .010, P.q ? 16 : 10), 'headlight'), 'LED pod lens', 'hull'), x, y, z1 + .04 - .002 - .008 - .005);
     }
     for (const k of [0, 1, 2]) {
       const y = top - .004 - k * .012;
-      P.addEquipment('hullDark', new THREE.BoxGeometry(x1 - x0 - .01, .006, .045 - k * .01).rotateX(.35), side * (x0 + x1) / 2, y, z1 + (.045 - k * .01) / 2 - .004);
+      P.addEquipment('hullDark', tagFrontPart(new THREE.BoxGeometry(x1 - x0 - .01, .006, .045 - k * .01).rotateX(.35), 'LED louvre', 'hull'), side * (x0 + x1) / 2, y, z1 + (.045 - k * .01) / 2 - .004);
     }
   }
 }
@@ -466,12 +466,12 @@ export function polishFrontSkirt(P: TankBuilderPort, level: PolishLevel, s: Poli
     const barY = [rows[0][0] - .006, ...rows.slice(1).map((r, i) => (rows[i][1] + r[0]) / 2), rows[rows.length - 1][1] + .006];
     for (const y of barY) {
       const g = new THREE.BoxGeometry(.016 + .004, .010, zB - zA).translate(side * (b.outer + .006), y, (zA + zB) / 2);
-      P.addEquipment('hullDetail', g);
+      P.addEquipment('hullDetail', tagFrontPart(g, 'front-skirt bar', 'hull'));
     }
     for (const z of [zA, ...columns.slice(1).map((c, i) => (columns[i][1] + c[0]) / 2), zB]) {
       const g = new THREE.BoxGeometry(.016 + .004, rows[rows.length - 1][1] - rows[0][0] + .012, .010)
         .translate(side * (b.outer + .006), (rows[0][0] + rows[rows.length - 1][1]) / 2, z);
-      P.addEquipment('hullDetail', g);
+      P.addEquipment('hullDetail', tagFrontPart(g, 'front-skirt upright', 'hull'));
     }
     // the front return: two courses of two along its falling face, the upper course offset half a cassette
     const r = s.ret, len = r.z1 - r.z0;

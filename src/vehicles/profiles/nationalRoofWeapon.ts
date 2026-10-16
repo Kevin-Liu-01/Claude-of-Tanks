@@ -3,6 +3,8 @@ import {KIT,orientedSlab} from './kit.ts';
 import {boxSections,blindTube,beamBetween} from './measuredPrimitives.ts';
 import {MG_CLASSES,addPintleBarrel,addPintleReceiver,createPintleLayout,machinedRing,type MgClassKey} from '../machineGunGeometry.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
+import {captureAuxiliaryStock} from './auxiliaryStation.ts';
+import {markVehicleNightLens} from '../vehicleNightLighting.ts';
 import {nationalStationWidth,type NationalRoofLoadout,type NationalRoofMount} from '../nationalRoofConfig.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 import {tankSeedId} from '../tankIdAliases.ts';
@@ -20,7 +22,8 @@ export function nationalRoofWeapon(P:TankBuilderPort,rws:Point,cupola:Point|null
   yaw:rws,pivot:[x,y,z],muzzle:[x,y,z+l.muzzleZ]});
  const cannon=l.caliber===30,w=nationalStationWidth(l),half=supportHalfWidth(l,w),mount=nationalMount(l.mount);
  gun.stage('yaw');
- gun.add('turretDetail',cylY(.21,.26,.13,32),x,b+.055,z);
+ if(mount.bearing)mount.bearing(gun,x,b,z);
+ else gun.add('turretDetail',cylY(.21,.26,.13,32),x,b+.055,z);
  // 2026-10-11 (fleet-weapons lane, round 4; wave 386's critics: "a camo-painted drum on a U-shaped yoke on a cone",
  // "a camo box on a plain U-shaped yoke over a smooth cone"): the station stands on a tapered armoured pedestal from its
  // bearing ring up to the yoke's cross-beam (half a millimetre under it), not a round cone.
@@ -176,6 +179,98 @@ function sight(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):
  for(const dy of [-.043,.046])g.add('turretGlass',cylZ(dy<0?.035:.047,.015,20),sx,y+.20+dy,z+.196);
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+// Release 227 (owner 2026-10-16: "make thhe zubr 2 and zubr autocannons into proper machine gun emplacements that are
+// aut ocontrolled"): the Zubr's and Zubr II's 12.7 mm WKM-B emplacements. Both lay the fleet's NSV-class heavy machine
+// gun (machineGunGeometry.ts, Poland's class) in the open cradle; the auxiliary roof-station logic aims and fires them.
+
+/** The Zubr's field emplacement: a square-cut 10 mm light shield in four bolted plates round a .10 x .09 barrel port,
+ * braced by two gussets to the cradle rails. No receiver housing: the gun lies open in its cradle. */
+function cradleShield(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
+ const sz=z+.25,t=.010,W=.38,top=.18,bottom=-.12,port=[.10,.09] as const;
+ g.add('turretDetail',box(W,top-port[1]/2,t),x,y+(top+port[1]/2)/2,sz);
+ g.add('turretDetail',box(W,-bottom-port[1]/2,t),x,y+(bottom-port[1]/2)/2,sz);
+ for(const s of [-1,1])g.add('turretDetail',box((W-port[0])/2,port[1],t),x+s*(port[0]/2+(W-port[0])/4),y,sz);
+ // the gussets from the cradle rails' front ends (z + .15) to the shield's back face
+ const railX=w/2-.006,front=z-.08+.23;
+ for(const s of [-1,1])g.add('turretDetail',box(.012,.08,sz-t/2-front+.004),x+s*railX,y-.03,(front+sz-t/2)/2);
+ // bolt heads along the shield's top edge
+ for(const s of [-.15,-.05,.05,.15])g.add('turretDark',cylZ(.008,.006,8),x+s,y+top-.02,sz+t/2+.002);
+ void l;
+}
+
+/** The Zubr's 150-round box (issue drab) on the feed side, its lid, and the link chute into the receiver. */
+function cradleFeed(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
+ const half=supportHalfWidth(l,w),side=l.feedSide,fx=x+side*(half+.15);
+ g.add('turretAmmo',box(.20,.17,.30),fx,y+.03,z-.12);
+ g.add('turretAmmo',box(.214,.02,.314),fx,y+.125,z-.12);
+ for(const dz of [-.22,-.02])g.add('turretDark',box(.03,.04,.028),fx+side*.105,y+.04,z+dz);
+ feedBridge(g,side,half,x,y,y+.15,z);
+}
+
+/** The Zubr II's armoured emplacement: a casemate of side plates and two fixed roof strips round the open cradle, a
+ * three-piece raked front plate round the barrel port. The side plates ride 1 cm inside the yoke's cheeks (they pitch
+ * between them), the trunnion passing through them. */
+function casemateHousing(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
+ const half=supportHalfWidth(l,w),px=half-.01,z0=z-.30,z1=z+.22;
+ for(const s of [-1,1]){
+  g.add('turretDetail',box(.012,.20,z1-z0),x+s*px,y,(z0+z1)/2);
+  g.add('turretDetail',box(.06,.012,z1-z0),x+s*(px-.018),y+.106,(z0+z1)/2);
+ }
+ // the front plate, raked 30 degrees back about its centre: a top piece and two side pieces leave the port open
+ const W=.30,H=.18,port=.09,rake=-Math.PI/6,fz=z1+.012;
+ const piece=(pw:number,ph:number,dx:number,dy:number)=>{
+  const geo=box(pw,ph,.012).translate(dx,dy,0).rotateX(rake);
+  g.add('turretDetail',geo,x,y,fz);
+ };
+ piece(W,H/2-port/2,0,(H/2+port/2)/2);
+ for(const s of [-1,1])piece((W-port)/2,H/2+port/2,s*(port/2+(W-port)/4),(port/2-H/2)/2);
+}
+
+/** The Zubr II's 200-round box on the feed side (outside its side plate) and the chute through the plate. */
+function casemateFeed(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
+ const half=supportHalfWidth(l,w),side=l.feedSide,fx=x+side*(half+.18);
+ g.add('turretAmmo',box(.24,.20,.34),fx,y+.02,z-.13);
+ g.add('turretAmmo',box(.254,.02,.354),fx,y+.13,z-.13);
+ feedBridge(g,side,half,x,y,y+.15,z);
+}
+
+/** The Zubr II's sensor head (a Horus-type concept: day, thermal and rangefinder windows) on its bracket opposite the
+ * feed, and the illuminator housing under it: a bored box whose lens (finish) sits 10 mm inside its mouth. */
+function casemateSight(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
+ const half=supportHalfWidth(l,w),side=-l.feedSide,sx=x+side*(half+.16);
+ g.add('turretDetail',box(.065,.19,.12),x+side*(w/2-.025),y+.115,z+.015);
+ g.add('turretDetail',box(.15,.07,.12),x+side*(half+.02),y+.17,z+.03);
+ g.add('turretDetail',box(.20,.18,.25),sx,y+.20,z+.075);
+ const face=z+.075+.125+.006;
+ g.add('turretGlass',box(.075,.05,.012),sx-side*.045,y+.235,face);
+ g.add('turretGlass',cylZ(.035,.012,20),sx+side*.045,y+.235,face);
+ g.add('turretGlass',cylZ(.018,.012,12),sx,y+.16,face);
+ // the illuminator housing: four walls round a .072 x .047 bore 18 mm deep, on a back block
+ const hy=y+.08,hz=z+.16,bw=.072,bh=.047,depth=.018,front=hz+.04;
+ g.add('turretDark',box(.09,.06,.08-depth),sx,hy,hz-depth/2);
+ for(const s of [-1,1]){
+  g.add('turretDark',box(.09,(.06-bh)/2,depth),sx,hy+s*(bh/2+(.06-bh)/4),front-depth/2);
+  g.add('turretDark',box((.09-bw)/2,bh,depth),sx+s*(bw/2+(.09-bw)/4),hy,front-depth/2);
+ }
+}
+
+/** The illuminator's lens, authored in the turret frame at the rest pose as factory stock captured into the station's
+ * pitch stage (the factory moves it under auxiliaryWeaponPitch and registers its night emitter there). */
+function casemateIlluminator(P:TankBuilderPort,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
+ const half=supportHalfWidth(l,w),side=-l.feedSide,sx=x+side*(half+.16);
+ const done=captureAuxiliaryStock(P,l.name,'pitch');
+ P.addEquipment('turretGlass',markVehicleNightLens(box(.07,.045,.012),'headlight'),sx,y+.08,z+.16+.04-.010-.006);
+ done();
+}
+
+/** The Zubr II's bearing ring with a low armoured ring guard round it (16 sides), one yaw-stage piece. */
+function casemateBearing(g:Gun,x:number,b:number,z:number):void {
+ const profile=[[.27,0],[.30,0],[.30,.07],[.27,.07]].map(([r,h])=>new THREE.Vector2(r,h));
+ const guard=new THREE.LatheGeometry(profile,16).translate(0,-.004-.055,0).toNonIndexed();
+ g.add('turretDetail',KIT.mergeAll([cylY(.21,.26,.13,32).toNonIndexed(),guard]),x,b+.055,z);
+}
+
 function supportHalfWidth(l:NationalRoofLoadout,w:number):number {
  return w*nationalMount(l.mount).halfShare;
 }
@@ -191,6 +286,8 @@ interface NationalMountRow {
  /** The ammunition feed (default: the drum on a drum mount, else the box) and the sight (default: the side sight). */
  feed?:StationPart;
  sight?:StationPart;
+ /** The bearing ring at the station's foot (default: the plain ring), as one yaw-stage piece. */
+ bearing?:(g:Gun,x:number,b:number,z:number)=>void;
  /** Further pieces on the yaw stage (after the yoke) and on the pitch stage (after the sight). */
  yaw?:(g:Gun,l:NationalRoofLoadout,x:number,b:number,y:number,z:number,w:number)=>void;
  pitch?:StationPart;
@@ -204,6 +301,9 @@ const NATIONAL_MOUNTS:Readonly<Partial<Record<NationalRoofMount,NationalMountRow
  shield:{halfShare:.5,housing:shieldHousing},
  wedge:{halfShare:.74,housing:wedgeHousing},
  drum:{halfShare:.74,housing:drumHousing,feed:drumFeed},
+ cradle:{halfShare:.5,housing:cradleShield,feed:cradleFeed},
+ casemate:{halfShare:.74,housing:casemateHousing,feed:casemateFeed,sight:casemateSight,bearing:casemateBearing,
+  finish:casemateIlluminator},
 };
 function nationalMount(mount:NationalRoofMount):NationalMountRow {
  const row=NATIONAL_MOUNTS[mount];

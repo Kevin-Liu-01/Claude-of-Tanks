@@ -103,18 +103,25 @@ function registerSources(mesh: THREE.Object3D, emitters: readonly NightLightEmit
   registerNightLightEmitters(mesh, emitters);
 }
 
-/** The merged mesh (not a guessed hull datum) is the emitter owner. */
-export function registerVehicleNightLensMesh(mesh: LensMesh, parts: readonly THREE.BufferGeometry[]): void {
+/** The merged mesh (not a guessed hull datum) is the emitter owner. `frame` carries the parts' authoring frame into
+ * the mesh's own (a remote station's stage, whose merged stock the factory moves under the station). */
+export function registerVehicleNightLensMesh(mesh: LensMesh, parts: readonly THREE.BufferGeometry[], frame?: THREE.Matrix4): void {
   registerSmokeSockets(mesh, parts);
   const lamps = parts.filter(part => lensDefinition(part));
   if (!lamps.length) return;
   const material = mesh.material;
   if (!(material instanceof THREE.MeshStandardMaterial)) throw new TypeError('Night lens requires one standard material');
   installNightEmissionMask(material);
+  const place = (aperture: ReturnType<typeof apertureFrame>): ReturnType<typeof apertureFrame> => {
+    if (!frame) return aperture;
+    const p = new THREE.Vector3(...aperture.position).applyMatrix4(frame);
+    const d = new THREE.Vector3(...aperture.direction).transformDirection(frame);
+    return {position: [p.x, p.y, p.z], direction: [d.x, d.y, d.z]};
+  };
   registerSources(mesh, lamps.map(part => {
     const definition = lensDefinition(part)!;
     return {
-      kind: definition.kind, ...apertureFrame(part, definition),
+      kind: definition.kind, ...place(apertureFrame(part, definition)),
       color: definition.kind === 'shtora' || definition.tint === 'red' ? NIGHT_SHTORA_COLOR : NIGHT_HEADLIGHT_COLOR,
       intensity: definition.kind === 'headlight' ? 1200 : 0,
       range: definition.kind === 'headlight' ? 75 : 0,

@@ -190,10 +190,15 @@ export function eraModule(P: TankBuilderPort, o: {owner: Owner; sector: string; 
   const name = o.name ?? o.sector;
   o.guard?.(name, o.geometry);
   markEraHitFaces(o.geometry, o.outward, o.minDot ?? .5);
+  tagFrontPart(o.geometry, name, o.owner);
   o.geometry.userData.frontEraModule = name;
+  o.geometry.userData.frontEraSector = o.sector;
   P.destructibleCluster(o.sector, () => {
     P.addExternalArmor(o.owner, o.geometry);
-    if (P.q) for (const h of o.hardware ?? []) { o.guard?.(`${name} hardware`, h); P.addExternalArmor(o.owner, markEraFurniture(h)); }
+    if (P.q) for (const h of o.hardware ?? []) {
+      o.guard?.(`${name} hardware`, h); tagFrontPart(h, `${name} hardware`, o.owner); h.userData.frontEraSector = o.sector;
+      P.addExternalArmor(o.owner, markEraFurniture(h));
+    }
   });
 }
 
@@ -253,6 +258,7 @@ export function frameRails(P: TankBuilderPort, owner: Owner, rect: {o: V3; u: V3
 
 /** A lens marked as a night emitter BEFORE its pose: its +Z aperture (or +Y with apertureAxis 'y') is the lit face. */
 export function nightLens(g: THREE.BufferGeometry, kind: VehicleLampKind, tint?: 'red' | 'warm'): THREE.BufferGeometry {
+  g.userData.frontEraLamp = kind;
   return markVehicleNightLens(g, kind, tint ? {tint} : {});
 }
 
@@ -298,6 +304,13 @@ export function frontEnvelope(id: string): FrontEnvelope {
   return e;
 }
 
+/** Names a new frontal-package part (the receipt frontEraPackages.selftest finds every new part by this tag). */
+export function tagFrontPart<T extends THREE.BufferGeometry>(g: T, name: string, owner: Owner): T {
+  g.userData.frontEraPart ??= name;
+  g.userData.frontEraOwner ??= owner;
+  return g;
+}
+
 /** The highest hull stock (turret frame) at a plan radius about the ring, or null inside or beyond the measured span. */
 export function hullTopAt(e: FrontEnvelope, r: number): number | null {
   const k = e.hullTops;
@@ -317,6 +330,7 @@ function eachVertex(g: THREE.BufferGeometry, f: (p: THREE.Vector3) => void): voi
 /** Hull-part guard: E1 (front-arc tops at least 3 cm under the depressed barrel; skirt parts may instead stand no higher
  * than `skirtTop`) and E2 (tops over |x| < .55 under the driver's 9-degree sight plane). Throws with the part name. */
 export function assertHullPart(id: string, name: string, g: THREE.BufferGeometry, o: {skirtTop?: number} = {}): void {
+  tagFrontPart(g, name, 'hull');
   const e = frontEnvelope(id), [rx, , rz] = e.ring, [dz, dy] = e.driver, tan9 = Math.tan(9 * Math.PI / 180);
   eachVertex(g, p => {
     if (p.z > rz) {
@@ -333,6 +347,7 @@ export function assertHullPart(id: string, name: string, g: THREE.BufferGeometry
  * 2.5 cm over the hull stock at their plan radius), E5 (at least .10 from every smoke tube's line of fire) and E6 (under
  * the gunner's sight's lower ray over x .60-.97). Throws with the part name. */
 export function assertTurretPart(id: string, name: string, g: THREE.BufferGeometry, o: {smoke?: number} = {}): void {
+  tagFrontPart(g, name, 'turret');
   const e = frontEnvelope(id), smokeMin = o.smoke ?? .10;
   const d = new THREE.Vector3();
   eachVertex(g, p => {

@@ -16,7 +16,7 @@ import * as THREE from 'three';
 import {KIT} from './kit.ts';
 import {blindTube} from './measuredPrimitives.ts';
 import {Stock, sectionLoft, crosswiseSolid, eraModule, sectorOf, hardwareBlock, assertHullPart, assertTurretPart,
-  nightLens, type LoftStation, type V3} from './eraModuleKit.ts';
+  nightLens, tagFrontPart, type LoftStation, type V3} from './eraModuleKit.ts';
 import type {SectionPoint} from './sectionSolid.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 const {cylX, cylZ} = KIT;
@@ -201,13 +201,13 @@ function brow(P: TankBuilderPort, casting: Stock, side: number): void {
 function dazzlers(P: TankBuilderPort): void {
   for (const side of SIDES) {
     const x = side * 1.50, y = .255, z = .70;
-    P.addEquipment('turretDetail', new THREE.BoxGeometry(.08, y - .055 - SHELF.top + .004, .10), x, (SHELF.top - .004 + y - .055) / 2, z);
+    P.addEquipment('turretDetail', tagFrontPart(new THREE.BoxGeometry(.08, y - .055 - SHELF.top + .004, .10), 'dazzler bracket', 'turret'), x, (SHELF.top - .004 + y - .055) / 2, z);
     // an open-mouthed hood: a 44 mm bore 16 mm deep in a 55 mm housing
     const hood = blindTube(.055, .044, .11, .016, P.q ? 20 : 12);
     assertTurretPart(ID, 'dazzler hood', hood.clone().translate(x, y, z));
-    P.addEquipment('turretDetail', hood, x, y, z);
+    P.addEquipment('turretDetail', tagFrontPart(hood, 'dazzler hood', 'turret'), x, y, z);
     // the lens's face 10 mm inside the hood's mouth (z + .055), lapping into the hood bore
-    P.addEquipment('turretGlass', nightLens(cylZ(.042, .012, P.q ? 20 : 12), 'marker', 'red'), x, y, z + .055 - .010 - .006);
+    P.addEquipment('turretGlass', tagFrontPart(nightLens(cylZ(.042, .012, P.q ? 20 : 12), 'marker', 'red'), 'dazzler lens', 'turret'), x, y, z + .055 - .010 - .006);
   }
 }
 
@@ -269,11 +269,13 @@ function ledBars(P: TankBuilderPort): void {
   for (const c of LED.xs) for (const side of SIDES) {
     const cx = side * c;
     for (const k of [-1, 0, 1]) {
-      P.addEquipment('hullGlass', nightLens(new THREE.BoxGeometry(lw, lh, lt), 'headlight'), cx + k * LED.pitch, LED.y, face - lt / 2);
+      // (glass, though the T-72B3M hull had no glass bucket (one draw more): the field net opens only round Glass, Hatch
+      // and Cupola stock, so a lens in another bucket would be netted over)
+      P.addEquipment('hullGlass', tagFrontPart(nightLens(new THREE.BoxGeometry(lw, lh, lt), 'headlight'), 'LED bar lens', 'hull'), cx + k * LED.pitch, LED.y, face - lt / 2);
     }
     // dividers between the lenses and liners along the slot's top and bottom: dark, beside (never in front of) a lens
     const liner = (w: number, h: number, x: number, y: number) =>
-      P.addEquipment('hullDark', new THREE.BoxGeometry(w, h, LED.depth - .004), x, y, back + (LED.depth - .004) / 2 - .002);
+      P.addEquipment('hullDark', tagFrontPart(new THREE.BoxGeometry(w, h, LED.depth - .004), 'LED bar liner', 'hull'), x, y, back + (LED.depth - .004) / 2 - .002);
     for (const k of [-.5, .5]) liner(LED.pitch - lw, lh, cx + k * LED.pitch, LED.y);
     for (const dy of [-1, 1]) liner(2 * LED.half - .004, LED.slot - lh / 2 - .001, cx, LED.y + dy * (LED.slot + lh / 2) / 2);
   }
@@ -349,7 +351,7 @@ function aprons(P: TankBuilderPort, hull: Stock): void {
     const hook = hardwareBlock([side * .62, .915, 3.353], [.06, .06, .012]);
     eraModule(P, {owner: 'hull', sector: sectorOf('glacis_era', side), geometry: g, outward: [0, -.86, .51], minDot: .5,
       name: 'lower-plate apron', hardware: [hook], guard: (nm, geo) => assertHullPart(ID, nm, geo)});
-    for (const X of APRON.knuckles) P.addEquipment('hullDetail', cylX(.022, .10, P.q ? 12 : 8), side * X, .955, 3.35);
+    for (const X of APRON.knuckles) P.addEquipment('hullDetail', tagFrontPart(cylX(.022, .10, P.q ? 12 : 8), 'apron hinge knuckle', 'hull'), side * X, .955, 3.35);
   }
 }
 
