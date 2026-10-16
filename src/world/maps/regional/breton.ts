@@ -4,6 +4,7 @@
 // the roof as coped parapets on granite kneelers, each with a massive gable-end stack; stone dormers (lucarnes) rising
 // through the eaves on the long front; small casements with painted plank shutters (blue, green, red); granite barns;
 // a chapel with a pierced bell gable.
+import { bretonGranary } from './bretonGranary.ts';
 import {
   PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER,
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
@@ -342,18 +343,8 @@ const barn: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** A small granite outbuilding (the base granary's footprint). */
-const granary: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const st = { ...stateFor(ctx), wall: 'stone' as RegionalBucket };
-  const W = Math.max(3.4, ctx.info.w - 0.6), D = Math.max(4.2, ctx.info.d - 1.6);
-  const frame = buildHouse(sink, {
-    w: W, d: D, plinth: null, storeys: [{ h: 2.5, wall: 'stone' }], roof: slate(48), gableBucket: 'stone',
-    openings: [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 0.9, y0: 0, h: 1.9 }], chimneys: [], gutters: null, verge: null,
-  }, dialect({ ...st, litShare: 0 }));
-  gableParapets(sink, frame, 0, st.rng);
-  return sink.finish();
-};
+/** A small granite outbuilding (the base granary's footprint): bretonGranary.ts, props census #22's. */
+const granary: RegionalBuilder = (ctx) => bretonGranary(ctx, { uvOffset, stateFor, slate, dialect, gableParapets, quoins });
 
 /** The chapel: granite nave, slate roof, a pierced bell gable on the west front, a porch door. */
 const chapel: RegionalBuilder = (ctx) => {
