@@ -16,8 +16,10 @@ import type { RegionalBuildContext } from './types.ts';
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
 /** A box standing free on a face's plane (u, y, o its centre): every face drawn (faceBox drops a seated box's back). */
-function freeBox(sink: PartSink, face: Face, u: number, y: number, o: number, su: number, sy: number, so: number, opts: EmitOptions, bucket: RegionalBucket = 'structureWood'): void {
-  sink.box(bucket, facePoint(face, u, y, o), [su / 2, sy / 2, so / 2], { ...opts, uv: opts.uv ?? { kind: 'world' } }, new LocalFrame(face.u, [0, 1, 0], face.out, [0, 0, 0]));
+function freeBox(sink: PartSink, face: Face, u: number, y: number, o: number, su: number, sy: number, so: number, opts: EmitOptions, bucket: RegionalBucket = 'structureWood',
+  caps = true): void {
+  sink.box(bucket, facePoint(face, u, y, o), [su / 2, sy / 2, so / 2], { ...opts, uv: opts.uv ?? { kind: 'world' } }, new LocalFrame(face.u, [0, 1, 0], face.out, [0, 0, 0]),
+    caps ? undefined : { py: true, ny: true });
 }
 const uvOffset = (ctx: RegionalBuildContext): [number, number] => [ctx.rng() * 7.31, ctx.rng() * 5.17];
 const IRON: Rgb = [0.16, 0.16, 0.16];
@@ -60,12 +62,12 @@ export function mekongBoatShelter(ctx: RegionalBuildContext): RegionalParts {
   for (const sx of [-1, 1]) for (const z of zs) {
     const x = sx * px;
     sink.span('stone', x - 0.18, -0.35, z - 0.18, x + 0.18, 0.12, z + 0.18, { tint: [0.82, 0.8, 0.76] });
-    sink.cylinder('structureWood', [x, 0.12, z], 'y', plate + 0.14 - 0.12, 0.085, 8, { colour: shade(timber, 0.95 + look() * 0.1) }, 0.08);
+    sink.cylinder('structureWood', [x, 0.12, z], 'y', plate + 0.14 - 0.12, 0.085, 6, { colour: shade(timber, 0.95 + look() * 0.1) }, 0.08);
     legs.push({ foot: [x, 0.12, z], head: [x, plate, z] });
   }
   for (const x of [-W / 4, W / 4]) {
     sink.span('stone', x - 0.16, -0.35, -D / 2 + 0.12 - 0.16, x + 0.16, 0.12, -D / 2 + 0.12 + 0.16, { tint: [0.82, 0.8, 0.76] });
-    sink.cylinder('structureWood', [x, 0.12, -D / 2 + 0.12], 'y', plate + 0.14 - 0.12, 0.075, 8, { colour: timber }, 0.07);
+    sink.cylinder('structureWood', [x, 0.12, -D / 2 + 0.12], 'y', plate + 0.14 - 0.12, 0.075, 6, { colour: timber }, 0.07);
   }
   for (const sx of [-1, 1]) sink.span('structureWood', sx * px - 0.08, plate, -D / 2, sx * px + 0.08, plate + 0.14, D / 2, { colour: shade(timber, 0.9) });
   sink.dressing(mobile, () => {
@@ -82,7 +84,7 @@ export function mekongBoatShelter(ctx: RegionalBuildContext): RegionalParts {
   const under = (x: number) => rg.ridgeY - Math.abs(x) * rg.tanP - 0.03;
   sink.dressing(mobile, () => {
     const bam = { colour: shade(BAMBOO_MAT, 0.85), decor: true, exposed: true } as const;
-    for (let z = -D / 2; z <= D / 2 + 1e-6; z += D / Math.max(1, Math.round(D / 0.75))) {
+    for (let z = -D / 2; z <= D / 2 + 1e-6; z += D / Math.max(1, Math.round(D / 1.0))) {
       for (const s of [-1, 1]) sink.member('structureWood', [s * (rg.s + roof.eave * 0.85), under(rg.s + roof.eave * 0.85) - 0.05, z], [0, under(0) - 0.05, z], 0.08, 0.08, [0, 0, 1], bam, 0.04);
     }
     for (const s of [-1, 1]) for (const t of [0.35, 0.72]) {
@@ -106,9 +108,9 @@ export function mekongBoatShelter(ctx: RegionalBuildContext): RegionalParts {
         for (const y of [0.24, top - 0.06]) faceBox(sink, 'structureWood', face, (a + b) / 2, y, 0.035, b - a + 0.08, 0.06, 0.05, { colour: shade(BAMBOO_MAT, 0.75), decor: true });
       }
     } else {
-      for (let u = u0 + 0.11; u < u1 - 0.1; u += 0.235) {
+      for (let u = u0 + 0.14; u < u1 - 0.12; u += 0.29) {
         const top = y1(u);
-        freeBox(sink, face, u, (0.18 + top) / 2, 0, 0.21, top - 0.18, 0.03, { colour: shade(wallTone, 0.84 + look() * 0.26) });
+        freeBox(sink, face, u, (0.18 + top) / 2, 0, 0.265, top - 0.18, 0.03, { colour: shade(wallTone, 0.84 + look() * 0.26) }, 'structureWood', false);
       }
     }
   };
@@ -125,8 +127,11 @@ export function mekongBoatShelter(ctx: RegionalBuildContext): RegionalParts {
   for (const x of [-0.7, 0.7]) sink.member('structureWood', [x, yb - 0.1, z0], [x, yf - 0.1, z1], 0.16, 0.12, [0, 1, 0], { colour: shade(timber, 0.7), exposed: true }, 0.06);
   sink.dressing(mobile, () => {
     for (let z = z0 + 0.15; z < z1 - 0.1; z += 0.3) {
-      const y = yAt(z);
-      sink.span('structureWood', -1.05, y - 0.02, z - 0.12, 1.05, y + 0.03, z + 0.12, { colour: shade(pick(look, WEATHERED_PLANK), 0.8 + look() * 0.25), decor: true });
+      // a board's top across the bearers (its edges a hand's breadth over them)
+      const ya = yAt(z - 0.13) + 0.03, yb2 = yAt(z + 0.13) + 0.03;
+      const bc = shade(pick(look, WEATHERED_PLANK), 0.8 + look() * 0.25);
+      sink.quad('structureWood', [-1.05, yb2, z + 0.13], [1.05, yb2, z + 0.13], [1.05, ya, z - 0.13], [-1.05, ya, z - 0.13], { colour: bc, decor: true });
+      sink.quad('structureWood', [-1.05, ya - 0.03, z - 0.13], [1.05, ya - 0.03, z - 0.13], [1.05, yb2 - 0.03, z + 0.13], [-1.05, yb2 - 0.03, z + 0.13], { colour: shade(bc, 0.7), decor: true });
     }
     // the sampan on the slip under its hood, its bow to the creek; paddles and a net on the wall
     const len = Math.min(6.2, D * 0.72), bz = Math.min(D / 2 - len / 2 + 0.6, z1 - len / 2 - 0.1);

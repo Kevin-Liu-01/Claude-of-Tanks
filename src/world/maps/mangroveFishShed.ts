@@ -52,6 +52,18 @@ function box(w: number, h: number, d: number, uv = 0.55): THREE.BufferGeometry {
   for (let i = 0; i < a.count; i++) a.setXY(i, a.getX(i) * Math.max(w, d) * uv, a.getY(i) * h * uv);
   return g.toNonIndexed();
 }
+/** A board: a box without its top and bottom (it stands on a sill under a plate: they are never seen). */
+function board(w: number, h: number, d: number, uv = 0.55): THREE.BufferGeometry {
+  const g = box(w, h, d, uv), keep = [0, 1, 2, 3, 8, 9, 10, 11];
+  const out = new THREE.BufferGeometry();
+  for (const [name, a] of Object.entries(g.attributes)) {
+    const size = a.itemSize, src = a.array as Float32Array, dst = new Float32Array(keep.length * 3 * size);
+    keep.forEach((t, k) => dst.set(src.subarray(t * 3 * size, (t + 1) * 3 * size), k * 3 * size));
+    out.setAttribute(name, new THREE.BufferAttribute(dst, size));
+  }
+  g.dispose();
+  return out;
+}
 /** A member from a to b, `w` x `t` in section (its length along its own y before it is turned). */
 function beam(a: V3, b: V3, w: number, t: number): THREE.BufferGeometry {
   const dir = new THREE.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
@@ -146,7 +158,7 @@ export function buildMangroveFishShed(buckets: GeometryBuckets): StructureDimens
   // ---- the walls: upright planks with their gaps between the posts, each its own weathering
   const plank = (x: number, z: number, y0: number, y1: number, alongX: boolean, list: THREE.BufferGeometry[]) => {
     if (y1 - y0 < 0.05) return;
-    const g = alongX ? box(0.22, y1 - y0, 0.03, 0.55) : box(0.03, y1 - y0, 0.22, 0.55);
+    const g = alongX ? board(0.22, y1 - y0, 0.03, 0.55) : board(0.03, y1 - y0, 0.22, 0.55);
     list.push(tone(PLANK, plankK(), g.translate(x, (y0 + y1) / 2, z), 0.02));
   };
   const step = 0.245;

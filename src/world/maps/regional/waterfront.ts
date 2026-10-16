@@ -82,8 +82,9 @@ export function boatHull(sink: PartSink, at: Vec3, yaw: number, spec: HullSpec,
       // the inside, a plank's thickness in, wound to face in
       const ia = Math.max(0.005, a.hb - th), ib = Math.max(0.005, b.hb - th);
       const ka = Math.max(0.005, a.bw - th), kb = Math.max(0.005, b.bw - th);
-      q(P(a.x, a.gun - 0.01, side * ia), P(b.x, b.gun - 0.01, side * ib), P(b.x, b.chine + th, side * kb), P(a.x, a.chine + th, side * ka), inner);
-      q(P(a.x, a.chine + th, side * ka), P(b.x, b.chine + th, side * kb), P(b.x, b.keel + th, 0), P(a.x, a.keel + th, 0), inner);
+      // (its quads turned so they split on the outside's diagonal: crossed diagonals let a twisted panel's inside poke out)
+      q(P(a.x, a.chine + th, side * ka), P(a.x, a.gun - 0.01, side * ia), P(b.x, b.gun - 0.01, side * ib), P(b.x, b.chine + th, side * kb), inner);
+      q(P(a.x, a.keel + th, 0), P(a.x, a.chine + th, side * ka), P(b.x, b.chine + th, side * kb), P(b.x, b.keel + th, 0), inner);
       // the gunwale: the cap over the planking's edge
       q(P(a.x, a.gun, side * a.hb), P(b.x, b.gun, side * b.hb), P(b.x, b.gun - 0.01, side * ib), P(a.x, a.gun - 0.01, side * ia), rail);
     }
