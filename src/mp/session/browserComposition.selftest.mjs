@@ -252,7 +252,7 @@ function createRecordedPresentation(options, record) {
   return presentation;
 }
 
-function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120_000, p2p = null, layoutTier = null, sharesIndices = true, loadAuthorityObstacles = null, clock = () => 1000, enterGarage = null } = {}) {
+function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120_000, p2p = null, layoutTier = null, sharesIndices = true, loadAuthorityObstacles = null, clock = () => 1000, enterGarage = null, submitPrograms = null } = {}) {
   const calls = [];
   const bus = [];
   const game = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0, preBattleS: 0, result: null, resultReason: null, mapId: 'verdant', phase: 'garage', gameMode: 'standard', matchModeState: null };
@@ -326,6 +326,7 @@ function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120
     warm: {
       atmosphere: async (initial) => calls.push(`warm.atmosphere:${initial.meta?.weatherSeed}`),
       nightLighting: async () => calls.push('warm.nightLighting'),
+      ...(submitPrograms ? { submitPrograms: (signal) => { calls.push(`warm.submitPrograms:${signal instanceof AbortSignal}`); return submitPrograms(signal); } } : {}),
       terrain: async (view) => calls.push(`warm.terrain:${view.entities.size}`),
       wrecks: async (view) => calls.push(`warm.wrecks:${view.entities.size}`),
       playerPanel: async (view, viewerId) => calls.push(`warm.panel:${view.entities.get(viewerId)?.specId}`),
@@ -1010,6 +1011,32 @@ for (const [reason, message] of [
   assert.equal(stalled.battleLoad.visible, false, 'the loader clears');
   assert.equal(stalled.menu.shown.length, 1, 'the room opens again');
   stalled.composition.dispose();
+}
+
+// ------------------------------------------------------------ the early program submission (2026-10-15, after the perf lane's
+// link census): with a submitPrograms port, the WELCOME sets the battle's lights up (garage lights off, the authority's
+// weather, the night pool) and submits the scene's programs before the roster resolves; activation does not repeat the
+// lights; a submission that never settles holds nothing
+{
+  const early = createHarness({ submitPrograms: () => new Promise(() => {}) });
+  const room = makeRoomSession(early.calls);
+  const entry = early.composition.beginRoom({ role: 'host', session: room, lobbyState: room.lobby });
+  const owner = early.sessions[0];
+  await owner.enter({ matchStart: matchStart(1, 'alpine'), room: snapshot({ phase: 'starting', round: 1 }), spectator: false, playerId: 'me' });
+  await owner.welcome();
+  const lit = early.calls.filter((call) => typeof call === 'string' && (call.startsWith('warm.') || call.startsWith('garageLighting')));
+  assert.deepEqual(lit, ['garageLighting:false', 'warm.atmosphere:99', 'warm.nightLighting', 'warm.submitPrograms:true'],
+    'the WELCOME sets the lights up and submits the programs before anything else warms');
+  owner.frame(frame());
+  await settle(12);
+  assert.equal(await entry, true, 'a submission that never settles holds nothing');
+  const order = early.calls.filter((call) => typeof call === 'string' && (call.startsWith('warm.') || call.startsWith('garageLighting')));
+  assert.equal(order.filter((call) => call.startsWith('warm.atmosphere')).length, 1, 'activation does not set the weather again');
+  assert.equal(order.filter((call) => call === 'warm.nightLighting').length, 1, 'nor the night pool');
+  assert.equal(order.filter((call) => call === 'garageLighting:false').length, 1, 'nor the garage lights');
+  assert.ok(order.indexOf('warm.compile') > order.indexOf('warm.submitPrograms:true'), 'the strict compile still follows');
+  assert.ok('atmosphere' in early.ports.trace.stages, 'the trace keeps its atmosphere stage');
+  early.composition.dispose();
 }
 
 composition.dispose();
