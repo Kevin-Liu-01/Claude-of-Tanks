@@ -4257,7 +4257,25 @@
    "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
+  },
+  "landmark/verdant:windmill#9": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.588,
+   "gapM2": 1.874,
+   "invertedM2": 0
+  },
+  "landmark/verdant:windmill#10": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 1.171,
+   "gapM2": 4.173,
+   "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-16T14:34:53.861Z"
+ "updatedAt": "2026-10-16T15:12:21.487Z"
 }

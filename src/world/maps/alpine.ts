@@ -201,6 +201,12 @@ export default {
   // map revival lane 2 (2026-10-05): the Grande Croix at the foot of the southern climb, beside its chapel
   scenery: {
     landmarks: [{ kind: 'waysidecross', x: -96, z: -224, yawDeg: 0, scale: 1.15, name: 'the Grande Croix' }],
+    // (the maps lane, 2026-10-16; integ/226's mapLayoutBrief: two approach lanes against the brief's three since Glacier
+    // 4c) a roche moutonnee on the valley floor — glacier-smoothed bedrock, its long axis down the valley along the ice's
+    // flow — at the 65 % slice's lateral +60 m, where the middle's broad field opens east of the valley road (33 m off it;
+    // west of there the road runs along the slice, 5-12 m away, and a rock would stand on its verge): it splits the field
+    // into a western and an eastern approach as the 35 % slice's ground does, 129 m clear of the middle zone
+    rocks: [{ form: 'outcrop', geology: 'granite', x: -8.9, z: 100.5, radius: 6.5, height: 4.6, yawDeg: 74, shed: 0.6, name: 'the roche moutonnee' }],
   },
   // the horizons stream's Glacier item (2026-10-14): the Hinterland past the red line (hinterland/drafts/alpine.ts);
   // delete this line for the old ring
