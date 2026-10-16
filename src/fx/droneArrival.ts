@@ -1,3 +1,4 @@
+import { AERIAL_RULES } from '../sim/matchRuleset.ts';
 /**
  * The landing on a carrier's dock, shared by the dock's own animation (game/missionAttachmentVisual.ts) and the
  * airframe flying home (fx/dronePresentation.ts), which hands over at the landing's first pose. Presentation only.
@@ -33,18 +34,17 @@ export function droneArrivalAttitude(u: number, out: { pitch: number; yaw: numbe
   return out;
 }
 
-/** The airframe flying home after a flight ends in the air (recall, battery, signal): presentation only. The sim's
- * cooldown and every gameplay timing are unchanged; the flight is bounded so it is home before the next airframe. */
+/** The airframe flying home after a flight ends in the air (recall, battery, signal): drawn here, timed by the recall's
+ * law (sim/droneRecall.ts, the rules in AERIAL_RULES.drone.recall): its pace, its climb and sink, and its bound, so a
+ * recalled airframe is parked inside the window the authority holds the dock for (owner 2026-10-14). */
 export const DRONE_RETURN = Object.freeze({
   /** Hold while an impact for this shell may still be on its way (a client applies events and snapshots together). */
   graceS: .12,
   /** Transit height over the dock: the airframe climbs or glides to it on the way home (the world's raycast lifts it
    * over whatever lies ahead), then descends the dock's column from there. */
-  cruiseAboveDockM: 15,
-  /** Transit ground speed: the distance home over `targetS`, inside these bounds (m/s). */
-  minSpeed: 18, maxSpeed: 55, targetS: 11,
+  cruiseAboveDockM: AERIAL_RULES.drone.recall.cruiseAboveDockM,
   /** Within this horizontal distance of the column the airframe stops and descends it. */
   columnM: 1.2,
-  /** The whole flight home, start to hand-over, is abandoned past this (the next airframe is ready at the cooldown). */
-  maxS: 20,
+  /** A flight home not handed over this long past its timing law is abandoned (the dock relaunches soon after). */
+  overrunS: 3,
 });

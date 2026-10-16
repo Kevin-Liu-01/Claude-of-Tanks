@@ -42,6 +42,30 @@
 .flight-hint{font-size:10px;color:#a9b6c0;line-height:1.4;max-width:350px}
 .cot-drone-return{display:flex;align-items:center;gap:7px;padding:6px 9px;flex-shrink:0;font-size:11px}
 .cot-drone-return .flight-icon svg{width:17px;height:17px}
+/* Owner 2026-10-14: no recall until the pilot is in the drone's feed; the control stands dimmed and inert until then. */
+.cot-drone-return:disabled{cursor:default;opacity:.42;filter:saturate(.3)}.cot-drone-return:disabled:active{filter:saturate(.3)}
+/* The moment the recall opens, the return control lights: its edge takes the console's accent and it flares three
+   times, so a touch pilot (whose hint line is hidden) sees it open, not just un-dim. Reduced motion keeps a steady glow. */
+.cot-flight-hud[data-kind=drone] .cot-drone-return:not(:disabled)::before{background:var(--flight-accent)}
+.cot-flight-hud[data-kind=drone] .cot-drone-return:not(:disabled){animation:drone-recall-open .6s ease-out 3}
+@keyframes drone-recall-open{0%{filter:drop-shadow(0 0 0 transparent) brightness(1)}30%{filter:drop-shadow(0 0 10px var(--flight-accent)) brightness(1.35)}100%{filter:drop-shadow(0 0 0 transparent) brightness(1)}}
+/* The tank row while a recalled drone flies home and lands (data-phase=returning, ui/droneControlState.ts): busy rather
+   than refused, so it keeps full strength in the amber of a drone in use, and its drone keeps settling down onto the pad
+   while the countdown runs to the relaunch. */
+.cot-vehicle-controls>.cot-drone-control[data-phase=returning]{opacity:1;color:#ffdc94;box-shadow:inset 0 -2px #efb84e99}
+/* The touch action dock (body.cot-touch-layout[data-hud-dock], battleHudLayout.css) restates every tile's colour and
+   shadow at (0,3,2), dims a cooling tile's icon to half at (0,5,2) and rings a tile in the open More panel at (0,5,2),
+   and its cooldown shade (::after) covers an inset underline. On the dock the cue outranks all of them at (0,6,2): the
+   amber icon at full strength, an amber bottom edge (the border, outside the shade) and an amber ring and glow.
+   droneReturningCascade.selftest.mjs resolves the winning declarations on desktop, the touch strip and the dock. */
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button.cot-auxiliary.cot-drone-control[data-phase=returning]{opacity:1;color:#ffdc94;border-bottom-color:#efb84e;box-shadow:0 4px 13px rgba(0,0,0,.4),0 0 0 1px rgba(239,184,78,.5),0 0 10px rgba(239,184,78,.32)}
+body.cot-touch-layout[data-hud-dock] .cot-vehicle-controls>button.cot-auxiliary.cot-drone-control[data-phase=returning] .si{opacity:1}
+.cot-drone-control[data-phase=returning] .si svg{animation:drone-homing 1.2s cubic-bezier(.3,.6,.4,1) infinite}
+@keyframes drone-homing{0%{transform:translateY(-3px);opacity:.45}70%,100%{transform:none;opacity:1}}
+@media(prefers-reduced-motion:reduce){
+ .cot-flight-hud[data-kind=drone] .cot-drone-return:not(:disabled){animation:none;filter:drop-shadow(0 0 5px var(--flight-accent))}
+ .cot-drone-control[data-phase=returning] .si svg{animation:none}
+}
 html[data-flight=drone] .cot-touch .fire,html[data-flight=drone] .cot-touch .scope,html[data-flight=drone] .cot-touch .autoaim,
 html[data-flight=gunship] .cot-touch .joy,html[data-flight=gunship] .cot-touch .autoaim,html[data-flight=gunship] .cot-touch .fire.alt,
 html[data-flight=drone] .cot-touch .jump,html[data-flight=gunship] .cot-touch .jump{display:none!important}
@@ -153,6 +177,7 @@ html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-wi
 .cot-flight-hud[data-kind=drone] .flight-key{border:0;border-radius:4px;background:#e2edf01c;color:#e5eff2;min-width:19px;height:20px}
 .cot-flight-hud[data-kind=drone] .flight-hint{grid-column:1/-1;grid-row:5;max-width:none;text-align:center;font-size:9px;line-height:1.5;color:#c2d0d5}
 .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):hover::after{background:linear-gradient(155deg,#354d59f5,#172832f5)}
+.cot-flight-hud[data-kind=drone] .cot-drone-return:disabled:hover::after{background:linear-gradient(155deg,#233641ec,#081219f5)}
 .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):focus-visible{outline:none;filter:drop-shadow(0 0 4px #fff)}
 .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):focus-visible::before{background:#fff}
 .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):focus-visible::after{inset:3px}

@@ -5,6 +5,7 @@ import { AERIAL_RULES, DRONE_WARHEAD, type MatchRuleset } from './matchRuleset.t
 import { PLAYER_ACTION_BITS } from './playerActions.ts';
 import { missionAttachmentFor, type MissionCarrierSpec } from './missionAttachment.ts';
 import {droneLaunchHeight} from './droneLaunch.ts';
+import {droneDockS,droneRecallOpen,DRONE_RECALL_OPENS_S} from './droneRecall.ts';
 import {missionAttachmentPose,type MissionCarrierPose} from './missionAttachmentPose.ts';
 import type { ShellSpec } from './shellSpec.ts';
 import type { AerialView } from './matchModes.ts';
@@ -22,6 +23,8 @@ export interface AerialEntity {
 interface Flight {
   view: AerialView; shell: ShellEntity<ShellSpec> | null; shellId: number; readyAt: number;
   born: number; center: Vector3; launch: Vector3;
+  /** A recalled airframe: the sim time it is parked on its dock after flying home and landing (0 when none). */
+  dockAt: number;
 }
 const flights = new WeakMap<AerialEntity, Flight>();
 const direction = new Vector3();
@@ -124,7 +127,7 @@ export function initializeAerial(entity: AerialEntity, ruleset: MatchRuleset): v
   const view: AerialView = { kind: ruleset.aerial === 'drone' ? 'drone' : 'gunship', active: ruleset.aerial === 'gunship', launching: false,
     x: entity.state.pos.x, y: entity.state.pos.y, z: entity.state.pos.z, yaw: entity.state.yaw, pitch: -.6, batteryS: 0, cooldownS: 0 };
   entity.aerial = view;
-  const flight = { view, shell: null, shellId: -1, readyAt: 0, born: 0, center: new Vector3(0, entity.state.pos.y, 0), launch: new Vector3() };
+  const flight = { view, shell: null, shellId: -1, readyAt: 0, born: 0, center: new Vector3(0, entity.state.pos.y, 0), launch: new Vector3(), dockAt: 0 };
   flights.set(entity, flight);
   if(view.kind === 'gunship') positionGunship(entity, flight, 0);
 }
@@ -157,11 +160,24 @@ function steerDrone(entity: AerialEntity, v: AerialView, shell: ShellEntity<Shel
   if (!entity.bot && entity.input.brake) direction.y += rules.climbMps;
 }
 
-function flightExpired(flight: Flight, timeS: number, toggle: boolean): boolean {
+/** The airframe is lost or spent: it struck something, its battery ran out or it flew past the link's range. */
+function flightLost(flight: Flight, timeS: number): boolean {
   const shell = flight.shell;
   const rules = AERIAL_RULES.drone;
   return !!shell && (shell.id !== flight.shellId || shell.dead || timeS - flight.born >= rules.batteryS ||
-    shell.pos.distanceToSquared(flight.launch) > rules.rangeM ** 2 || toggle);
+    shell.pos.distanceToSquared(flight.launch) > rules.rangeM ** 2);
+}
+/**
+ * A recall the authority accepted (owner 2026-10-14): the airframe leaves the fight (its warhead is retired with the
+ * shell, as before) and flies home to land on its carrier's dock, drawn by fx/dronePresentation.ts on the same timing
+ * law; the next launch is ready the shorter recall cooldown after it is parked. The distance home is measured to the
+ * dock as it stands now.
+ */
+function recallDrone(entity: AerialEntity, flight: Flight, shell: ShellEntity<ShellSpec>, timeS: number): void {
+  launchOrigin(entity, launchPosition);
+  const dx = shell.pos.x - launchPosition.x, dz = shell.pos.z - launchPosition.z;
+  flight.dockAt = timeS + droneDockS(Math.sqrt(dx * dx + dz * dz), shell.pos.y - launchPosition.y);
+  flight.readyAt = flight.dockAt + AERIAL_RULES.drone.recall.cooldownS;
 }
 
 function droneToggleRequested(entity:AerialEntity,flight:Flight,timeS:number):boolean {
@@ -174,7 +190,7 @@ export function stepAerial(entity: AerialEntity, timeS: number, dt: number, next
   const v = flight.view;
   if (entity.combat.destroyed) {
     if (flight.shell && flight.shell.id === flight.shellId) flight.shell.dead = true;
-    v.active = false; flight.shell = null; return;
+    v.active = false; flight.shell = null; flight.dockAt = 0; v.recallS = 0; v.returnS = 0; return;
   }
   if (v.kind === 'gunship') {
     positionGunship(entity, flight, timeS);
@@ -183,20 +199,29 @@ export function stepAerial(entity: AerialEntity, timeS: number, dt: number, next
   const rules = AERIAL_RULES.drone;
   const toggle = droneToggleRequested(entity,flight,timeS);
   entity.input.auxiliaryBits = (entity.input.auxiliaryBits ?? 0) & ~PLAYER_ACTION_BITS.DRONE;
-  if (flight.shell && flightExpired(flight, timeS, toggle)) {
+  // A toggle in flight is a recall, accepted only once the pilot is in the drone's own feed (sim/droneRecall.ts); an
+  // earlier press is refused (dropped, never queued). A loss in the same step wins over a recall.
+  const lost = !!flight.shell && flightLost(flight, timeS);
+  const recalled = !lost && !!flight.shell && toggle && droneRecallOpen(timeS - flight.born);
+  if (flight.shell && (lost || recalled)) {
+    if (recalled) recallDrone(entity, flight, flight.shell, timeS);
+    else flight.readyAt = timeS + rules.cooldownS;
     if (flight.shell.id === flight.shellId) flight.shell.dead = true;
-    flight.shell = null; v.active = false; v.launching = false; flight.readyAt = timeS + rules.cooldownS;
+    flight.shell = null; v.active = false; v.launching = false;
   } else if (toggle && !flight.shell && timeS >= flight.readyAt) {
     launchOrigin(entity, flight.launch);
     const launchYaw=entity.state.yaw+(entity.spec && missionAttachmentFor(entity.spec).frame==='turret' ? entity.state.turretYaw??0 : 0);
     direction.set(Math.sin(launchYaw), .4, Math.cos(launchYaw)).normalize();
     const shell = createShell(DRONE_WARHEAD, entity.id, !!entity.isPlayer, flight.launch, direction, nextId());
     shell.gravityMps2 = 0; shell.vel.set(0,0,0);
-    flight.shell = shell; flight.shellId = shell.id; flight.born = timeS;
+    flight.shell = shell; flight.shellId = shell.id; flight.born = timeS; flight.dockAt = 0;
     v.active = true; v.launching = true; v.yaw = launchYaw; v.pitch = .2;
     launchShell(shell);
   }
   v.cooldownS = Math.max(0, flight.readyAt - timeS);
+  const flownS = timeS - flight.born;
+  v.recallS = flight.shell && !droneRecallOpen(flownS) ? DRONE_RECALL_OPENS_S - flownS : 0;
+  v.returnS = Math.max(0, flight.dockAt - timeS);
   const shell = flight.shell;
   if (!shell) return;
   advanceDrone(entity,flight,shell,timeS,dt,world);
@@ -243,20 +268,20 @@ function advanceDrone(entity:AerialEntity,flight:Flight,shell:ShellEntity<ShellS
 
 /** Flight state rides only the encrypted host-migration checkpoint. */
 export interface AerialCheckpoint {
-  view: AerialView; readyAt: number; born: number;
+  view: AerialView; readyAt: number; born: number; dockAt?: number;
   center: number[]; launch: number[];
   shell: { pos: number[]; velocity: number[]; ageS: number; distM: number } | null;
 }
 export function captureAerial(entity: AerialEntity): AerialCheckpoint | null {
   const flight = flights.get(entity); if (!flight) return null;
   const shell = flight.shell;
-  return { view: { ...flight.view }, readyAt: flight.readyAt, born: flight.born,
+  return { view: { ...flight.view }, readyAt: flight.readyAt, born: flight.born, dockAt: flight.dockAt,
     center: flight.center.toArray(), launch: flight.launch.toArray(),
     shell: shell && !shell.dead && shell.id === flight.shellId ? { pos: shell.pos.toArray(), velocity: shell.vel.toArray(), ageS: shell.ageS, distM: shell.distM } : null };
 }
 export function restoreAerial(entity: AerialEntity, checkpoint: AerialCheckpoint, nextId: () => number, launchShell: (shell: ShellEntity<ShellSpec>) => void): void {
   const flight = flights.get(entity); if (!flight) return;
-  Object.assign(flight.view, checkpoint.view); flight.readyAt = checkpoint.readyAt; flight.born = checkpoint.born;
+  Object.assign(flight.view, checkpoint.view); flight.readyAt = checkpoint.readyAt; flight.born = checkpoint.born; flight.dockAt = checkpoint.dockAt ?? 0;
   flight.center.fromArray(checkpoint.center); flight.launch.fromArray(checkpoint.launch);
   flight.shell = null;
   if (checkpoint.shell) {
