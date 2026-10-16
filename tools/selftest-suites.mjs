@@ -1749,6 +1749,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/track-geometry.selftest.mjs',
     'tools/marketing-shots/battle-campaign.selftest.mjs',
     'tools/marketing-shots/showcase-r2.selftest.mjs',
+    // 2026-10-12 (home r2): the live-battle capture director's clock, freezes, bursts and staging helpers
+    'tools/marketing-shots/mode-battle-director.selftest.mjs',
   ]),
   post: Object.freeze([
     'src/audio/lazyAudio.selftest.mjs',

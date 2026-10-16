@@ -1,0 +1,6 @@
+{
+  "purpose": "The home page's Garage section (public/media/home/garage-m1a3-fleet.webp): the M1A3 Abrams in the Verdant Motor Pool with the full Garage interface and the fleet rail. capture-showcase-r2-ui.mjs --config home-garage.json captures the 3840x2160 master; it is published at 1920x1080 (cwebp q84).",
+  "shots": [
+    { "id": "garage-m1a3-fleet", "kind": "garage", "sourceType": "garage", "source": "garage-m1a3-fleet.png", "variantId": "verdant_motor_pool", "vehicleId": "m1a3", "output": "public/media/home/garage-m1a3-fleet.webp", "width": 1920, "height": 1080 }
+  ]
+}
