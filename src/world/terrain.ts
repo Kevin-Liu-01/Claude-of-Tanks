@@ -3061,7 +3061,6 @@ function* heightFieldBuildSteps(
     ...(railCuttings !== null ? { getOutlandSeatWeightAt: (x: number, z: number): number =>
       railCuttingSeatWeight(railCuttings, railCuttingPortalYs, x, z, outlandHeightAt, railOpenLines) } : {}),
     getWaterMaskAt, getWaterDepthAt, getTrackSurfaceAt,
-    getRoadPaveAt: (x: number, z: number): number => roadPaveAt(gridSample(gRoadDist, x, z), x, z, bridgeDecks.length > 0 && bridgeDeckOver(x, z) !== null),
     // the map-borders lane: where the near ring hands its continued ground over to the authored ranges
     getBorderHandOverAt: border.handOverAt,
     // (a receipt's classic border — the rim before the landform — publishes no woods, hedges or parcels)
@@ -3081,6 +3080,7 @@ function* heightFieldBuildSteps(
     bridgeDecks, // round 61
     size: MAP_SIZE, minY, maxY,
     _roadDist: (x: number, z: number) => gridSample(gRoadDist, x, z),
+    getRoadPaveAt: (x: number, z: number): number => roadPaveAt(gridSample(gRoadDist, x, z), x, z, bridgeDecks.length > 0 && bridgeDeckOver(x, z) !== null),
     _villageMask: villageMask,
     // ground lane (2026-10-03): the field system the terrain material draws (landUse.ts) — on the field itself, so the
     // client, the browser host and the server's collision shards place hedgerow trees and field bushes alike;
