@@ -164,6 +164,8 @@ for (const x of [124, 128, 132]) for (const z of [-168, -164, -160]) {
 
 // Skybridge used to fit these intersecting automatic sheets independently.
 // Check both open cores and their shared middle, beyond protected roads/pads.
+// (the map-revival lane, 2026-10-06, Skybridge round 4: the arm's water is a chain of round discs, so a join is ground
+// inside two discs' cores at once)
 for (const seed of [1337, 2049]) {
   const config = getMapConfig('skybridge');
   const field = createHeightField(seed, config);
@@ -173,7 +175,7 @@ for (const seed of [1337, 2049]) {
     if (field.getWaterMaskAt(x, z) < 1 || field._roadDist(x, z) < 18) continue;
     const y = field.getHeightAt(x, z);
     low = Math.min(low, y); high = Math.max(high, y); coreSamples++;
-    if (field._layout.lakes.every(lake => shorelineDistance(lake, x, z) < 0.85)) joinSamples++;
+    if (field._layout.lakes.filter(lake => shorelineDistance(lake, x, z) < 0.85).length >= 2) joinSamples++;
   }
   assert.ok(coreSamples > 80 && joinSamples > 0, 'Skybridge exercises both wet cores and their actual overlapping join');
   assert.ok(high - low < 1e-8, `Skybridge auto sheets are one horizontal surface, not a ${high - low}m step`);

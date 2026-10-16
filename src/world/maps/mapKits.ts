@@ -51,6 +51,8 @@ import {
   dressStrandWrack, strandAdmits, strandBandAt, wrackBand,
   type StrandContext, type StrandJetty, type StrandKeepOut, type StrandLanding,
 } from './strandWrack.ts';
+import { dressReservoirDam } from './reservoirDam.ts';
+import { SKYBRIDGE_DAM } from './skybridge.ts';
 import {
   RAIL_OPEN_KIT_M, RAIL_SPUR_BALLAST_M, RAIL_SPUR_GAUGE_M, RAIL_SPUR_LAY_M, railCoalStageStations, railRunLength, railStockPlacements,
   resampleRailPath, resolveRailCuttings, type RailCutting, type RailSpurConfig,
@@ -993,6 +995,9 @@ export function dressMapExtras({
   if (L.railSpurs?.length) dressRailSpurs(focused, L.railSpurs);
   // 2026-10-06 (the map-vehicles lane, P5): the authored vehicle set pieces, last (no draws)
   if (vehicleSetPieces?.length) dressVehicleSetPieces(focused, vehicleSetPieces);
+  // The map-revival lane (2026-10-06, Skybridge round 4): Glen Canyon Dam on the road over the arm's end, last, so every
+  // earlier draw of the stream holds (reservoirDam.ts; it draws no random numbers)
+  if (kits.includes('dam') && mapId === 'skybridge') dressReservoirDam(SKYBRIDGE_DAM, heightField, buckets, obstacles, colliders);
 }
 
 // The map-vehicles lane (P5, 2026-10-06): an authored vehicle at its spot (vehicleSetPieces.ts), seated on the ground
