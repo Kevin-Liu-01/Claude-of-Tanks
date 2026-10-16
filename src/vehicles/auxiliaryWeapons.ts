@@ -69,6 +69,10 @@ const type54=ammunition(heavy,'12.7×108 mm Type 54 API');
 // the Chinese hulls fire, take their own 12.7×108 mm cartridge's name (game numbers unchanged)
 const b32Nsvt=ammunition(heavy,'12.7×108 mm B-32 API');
 const ubr6=ammunition(cannon,'30×165 mm 3UBR6 AP-T');
+// Release 227 (owner 2026-10-16: the Qilin's and Kunlun's roof guns become "the more classic machine gunn emplacement"):
+// the QJC-88 on its open cupola pintle depresses 5 degrees, the real cupola mount's limit (as griffinRoofM2 is held to
+// its cradle's); the auxiliary control still aims and fires it by itself.
+const qjc88Cupola:AuxiliaryWeaponProfile=ammunition({...heavy,depressionRad:.087},'12.7×108 mm Type 54 API');
 // 2026-10-09 (owner order: the Griffin 50 mm's old roof M2 is back, now its working roof gun): the 1.28-scale gun's
 // 1.5 m barrel sweeps low over the roof's raised service plates from its elevated cradle, so it depresses 4.6 degrees,
 // not the heavy mount's 10.3 (fieldEquipment.selftest's 360-degree sweep: at 6.9 degrees and 320 degrees of traverse
@@ -99,8 +103,8 @@ const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
   t72b3m_wilk:cannon,
   t72b3_zubr:heavy,
   t80u_yun:type54,
-  t72b3m_kunlun:ubr6,
-  t72b3_qilin:type54,
+  t72b3m_kunlun:qjc88Cupola,
+  t72b3_qilin:qjc88Cupola,
   t80u_bars_m:b32Heavy,
   t72b3m_bulat_m:ubr6,
   t72b3_bastion_m:b32Heavy,

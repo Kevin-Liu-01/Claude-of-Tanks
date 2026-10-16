@@ -19,13 +19,15 @@ export interface NationalDonorTurret {
   pivot: Point3;
   /** The turret's structural roof in its own frame (P.topY). */
   roofY: number;
-  /** Plan seat of the fitted remote weapon station in the turret frame: the commander's cupola, whose own gun it replaces. */
+  /** Plan seat of the fitted remote weapon station in the turret frame: the commander's cupola, whose own gun it replaces,
+   * or a roof seat of its own beside it (release 227: the Yun's faceted station keeps its left-roof seat apart from the
+   * Type 96B cupola, as on its cast turret). */
   station: readonly [number, number];
   /** National turret ERA sectors the kit adds where the donor turret has no ERA plate of that name. */
   addedTurretEra?: readonly string[];
-  /** A machined adapter collar between the cupola's top and the station's pedestal (metres), where the station's barrel
-   * at full depression must clear a tall donor sight beside the cupola. */
-  stationRiserM?: number;
+  /** The main gun's mechanical depression stops over the rear deck (sim/gunPitchLimits.ts: absolute hull-relative yaw
+   * 0..180 degrees, minimum pitch degrees), measured with the gun's sweep over this hull's deck fittings. */
+  gunPitchByYawDeg?: readonly (readonly [number, number])[];
   /** Listed overall height (ground to the tallest fitting, the roof weapon included), measured on the built concept. */
   heightM?: number;
   /** Extra options for the donor's own turret builder; each defaults to the donor's own output (e.g. antennaSeats for the
@@ -57,12 +59,16 @@ const TYPE96B_CUPOLA = [-.592, -.045 + .15] as const;
 
 export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret>> = {
   // The 99A2's right-rear whip stood inside the Qilin station's sweep from the cupola: it moves to the bustle corner.
-  t72b3_qilin: { donor: 'ztz99a2', pivot: ZTZ99A2_ON_T72B3, roofY: .83, station: ZTZ99A2_CUPOLA, stationRiserM: .055, heightM: 3.3286,
+  t72b3_qilin: { donor: 'ztz99a2', pivot: ZTZ99A2_ON_T72B3, roofY: .83, station: ZTZ99A2_CUPOLA, heightM: 3.3286,
     builderOptions: { antennaSeats: [[-1.06, -1.58], [1.06, -2.00]] } },
+  // Release 227: the gun's depression over the rear deck stops at 5 degrees, so the barrel clears the engine-deck
+  // cooling panels' slats by 25 mm (it came within 15 mm at 6 degrees, yaw 165-195).
   t72b3m_kunlun: { donor: 'type96b', pivot: TYPE96B_ON_T72B3M, roofY: .70, station: TYPE96B_CUPOLA, heightM: 3.48048,
+    gunPitchByYawDeg: [[0, -6], [150, -6], [158, -5], [180, -5]],
     addedTurretEra: ['turret_era_L', 'turret_era_R'],
     // The Type 96B's 3 m rear whip would make the listed height (body and roof weapon: the sim's body height) 5.2 m.
-    builderOptions: { mastTopY: 3.40 } },
+    // Release 227: the boot's heel keeps the mantlet boot over the B3M driver's hatch at full elevation.
+    builderOptions: { mastTopY: 3.40, bootHeel: true } },
   t72b3m_hetman: { donor: 't72b3m_2016', pivot: T72B3M_RING, roofY: .82, station: T72B3M_CUPOLA, heightM: 3.382 },
   t72b3m_hetman_ii: { donor: 't72b3m_2016', pivot: T72B3M_RING, roofY: .82, station: T72B3M_CUPOLA, heightM: 3.402 },
   t72b3_sich: { donor: 't72b3', pivot: T72B3_RING, roofY: .82, station: T72B3_CUPOLA_RING, heightM: 3.305 },

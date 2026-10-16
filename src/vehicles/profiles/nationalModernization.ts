@@ -15,7 +15,7 @@ import {buildHetmanII} from './hetmanII.ts';
 import {buildZubrII} from './zubrII.ts';
 import {NATIONAL_LEGACY_CONFIG} from '../nationalLegacyConfig.ts';
 import {boxSections} from './measuredPrimitives.ts';
-import {nationalRoofWeapon} from './nationalRoofWeapon.ts';
+import {nationalCupolaPintle,nationalRoofWeapon} from './nationalRoofWeapon.ts';
 import {nationalRoofSystems} from './nationalRoofSystems.ts';
 import {NATIONAL_ROOF_LOADOUTS} from '../nationalRoofConfig.ts';
 import {NATIONAL_MODERNIZATION_CONFIG,type NationalModernizationConfig} from '../nationalModernizationConfig.ts';
@@ -64,15 +64,19 @@ function mainWeapon(P:TankBuilderPort,c:NationalModernizationConfig|Pick<Nationa
 /** Owner 2026-10-15 (VEH-19..VEH-22): the donor fleet turret on this hull, its remote station on the commander's
  * cupola (replacing the donor's own commander gun), then the country's hull package and turret up-armour. */
 function fitDonorTurret(P:TankBuilderPort,id:string,kit:()=>void):void {
- const d=buildNationalDonorTurret(P,id),l=NATIONAL_ROOF_LOADOUTS[id];
- // The pedestal stands on the cupola's own top: probes stay inside its rim (the 99A2's commander periscope stands just
- // outside a 0.16 m ring and held the Qilin's station 3 cm in the air).
- const [x,z]=d.station,top=donorTurretSeatY(P,x,z,.12),riser=d.stationRiserM??0,base=top+riser;
- // The Qilin's 99A2 commander sight stands tall beside the cupola: a short adapter collar lifts the station so its
- // barrel clears that sight at full depression, seated on the cupola's top.
- if(riser>0)P.addEquipment('turretDetail',cylY(.20,.21,riser+.006,32),x,top+riser/2-.003,z);
- nationalRoofWeapon(P,[x,base,z],null,l);
- P.turretG.userData.nationalDonorStation={seat:[x,base,z],loadout:l.name};
+ const d=buildNationalDonorTurret(P,id),l=NATIONAL_ROOF_LOADOUTS[id],[x,z]=d.station;
+ if(l.mount==='pintle'){
+  // Release 227: a classic emplacement on the commander's cupola. Its flange sits 2 mm into the cupola's own top (the
+  // highest permanent surface inside the 0.10 m foot, never the periscopes beyond it).
+  const base=donorTurretSeatY(P,x,z,.10)-.002;
+  nationalCupolaPintle(P,[x,base,z],l);
+  P.turretG.userData.nationalDonorStation={seat:[x,base,z],loadout:l.name,emplacement:true};
+ }else{
+  // The pedestal stands on the cupola's own top (or the roof seat the donor row lists): probes stay inside its rim.
+  const base=donorTurretSeatY(P,x,z,.12);
+  nationalRoofWeapon(P,[x,base,z],null,l);
+  P.turretG.userData.nationalDonorStation={seat:[x,base,z],loadout:l.name};
+ }
  kit();
  P.topY=d.roofY;
 }

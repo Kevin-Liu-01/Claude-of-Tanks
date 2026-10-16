@@ -99,6 +99,7 @@ function synchronizeDonorTurretConcept(c:(typeof NATIONAL_MODERNIZATION_CONFIG)[
   s.armor.modules=structuredClone([...hull.armor.modules.filter(m=>!m.turretLocal&&!moved.has(m.module)),...turretModules]);
   s.armor.crew=structuredClone([...hull.armor.crew.filter(m=>!m.turretLocal),...turret.armor.crew.filter(m=>m.turretLocal)]);
   s.armor.turretPivot=[...d.pivot];
+  if(d.gunPitchByYawDeg)s.gunPitchByYawDeg=d.gunPitchByYawDeg.map(([yaw,pitch])=>[yaw,pitch] as const);
   s.armor.gunPivot=[...turret.armor.gunPivot];
   s.armor.gunBarrel={...turret.armor.gunBarrel};
   s.dims={...hull.dims,hullLengthM:design.hullLength,widthM:NATIONAL_PROTECTION_WIDTHS_M[c.id]??design.width,

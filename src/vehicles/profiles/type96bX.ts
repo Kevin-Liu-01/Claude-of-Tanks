@@ -229,8 +229,25 @@ function addType96Cupola(P: TankBuilderPort): void {
     equipment(P, 'turret', 'Detail', cylX(.036, .34, P.q ? 20 : 12), -.592, 2.432, -.493);
 }
 /** Options for reusing the Type 96B turret on another hull. mastTopY lowers the rear whip's tip (Type 96B frame,
- * default its own 5.26855 m) for a concept whose listed height is its body and roof weapon, keeping the whip's rake. */
-export interface Type96TurretOptions { mastTopY?: number }
+ * default its own 5.26855 m) for a concept whose listed height is its body and roof weapon, keeping the whip's rake.
+ * Release 227 (each defaults to the Type 96B's own output, byte-identical): `bins: false` leaves out the two open side
+ * bins and `smoke: false` the twelve cheek launchers, for a concept whose own armour housing fills their volume and
+ * which carries its own smoke tubes; `bootHeel: true` lifts the mantlet boot's rear rings (behind the trunnion) to a
+ * heel line, so the boot clears a lower host's driver's hatch at full elevation and its shoulder covers at every yaw. */
+export interface Type96TurretOptions { mastTopY?: number; bins?: boolean; smoke?: boolean; bootHeel?: boolean }
+
+// The boot's heel line in the gun frame (z, y): the lower points of the rings at and behind the trunnion rise to it (the
+// trunnion ring's lowest point 8 mm); ahead of the trunnion nothing moves.
+const TYPE96_BOOT_HEEL: readonly (readonly [number, number])[] = [[-.40, -.149], [-.28, -.178], [0, -.236]];
+function bootHeelY(z: number): number {
+    const h = TYPE96_BOOT_HEEL;
+    if (z <= h[0][0]) return h[0][1];
+    for (let i = 1; i < h.length; i++) if (z <= h[i][0] + 1e-9) {
+        const t = (z - h[i - 1][0]) / (h[i][0] - h[i - 1][0]);
+        return h[i - 1][1] + (h[i][1] - h[i - 1][1]) * t;
+    }
+    return -Infinity;
+}
 export function buildType96Turret(P: TankBuilderPort, options: Type96TurretOptions = {}): void {
     P.add('turret', cylY(1.00, 1.04, .15, P.q ? 40 : 22), 0, .045, 0);
     P.add('turret', sectionSolid([
@@ -241,8 +258,8 @@ export function buildType96Turret(P: TankBuilderPort, options: Type96TurretOptio
         turretStation(P, 1.33, .70, 1.00, .50, 1.66, 1.83, 2.05),
         turretStation(P, 1.93, .29, .40, .26, 1.72, 1.84, 1.98),
     ], { sideQuadDiagonal: 'convex' }));
-    addTurretBins(P);
-    addType96SmokeLaunchers(P);
+    if (options.bins !== false) addTurretBins(P);
+    if (options.smoke !== false) addType96SmokeLaunchers(P);
     addType96Cupola(P);
     addSecondaryHatch(P);
     equipment(P, 'turret', 'Detail', cylY(.205, .205, .145, P.q ? 26 : 14), -.766, 2.291, -.994);
@@ -269,7 +286,8 @@ export function buildType96Turret(P: TankBuilderPort, options: Type96TurretOptio
     ].map(([z, half, bottom, top]) => ({
         z: z - 1.6, ring: Array.from({ length: P.q ? 20 : 12 }, (_, i) => {
             const a = i * Math.PI * 2 / (P.q ? 20 : 12);
-            return [Math.cos(a) * half, (top + bottom) / 2 - 1.8602 + Math.sin(a) * (top - bottom) / 2] as const;
+            const y = (top + bottom) / 2 - 1.8602 + Math.sin(a) * (top - bottom) / 2;
+            return [Math.cos(a) * half, options.bootHeel && z - 1.6 <= 1e-9 ? Math.max(y, bootHeelY(z - 1.6)) : y] as const;
         }),
     }));
     // Object_6 is the pitching mantlet boot; the tube and ambiguous Object_11

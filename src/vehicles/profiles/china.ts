@@ -30,6 +30,7 @@ import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { mount } from './fittingMount.ts';
 import { DRUM_ISSUE_PAINTS, fuelDrumParts, hash01, place } from '../accessoryPrimitives.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+import { bustleCutZ } from '../donorBustleCut.ts';
 
 type Vec3Tuple = [number, number, number];
 type Vec2Tuple = [number, number];
@@ -1066,6 +1067,14 @@ export interface ZTZ99A2TurretOptions {
   /** Turret-local plan seats of the two whip antennas (default: the 99A2's own pair at x ±1.06, z -1.58). A reusing
    * vehicle whose remote station sweeps the right-rear roof moves that whip clear of the sweep. */
   antennaSeats?: readonly (readonly [x: number, z: number])[];
+  /** Release 227 (owner 2026-10-16: "make the qilin turret 10% shorter"): metres cut out of the bustle band
+   * (donorBustleCut.ts): every authored z of the shell plan and of each part maps through bustleCutZ, so the parts move
+   * and keep their size (a rail running the band keeps both ends), the rear armour assembly translates as one piece,
+   * and nothing ahead of the band (chevrons, face ERA, smoke banks, cupola, sights, mantlet, gun) moves. Default 0. */
+  bustleCutM?: number;
+  /** false leaves out the rear flank fit (the rear side cassette, the rear stowage box, the dark side strip and the two
+   * rail stanchions aft of the band's front) for a reusing vehicle that fits its own rear flank housings there. */
+  rearFlank?: boolean;
 }
 
 /** The production ZTZ-99A2 turret in its own turret frame. It places P.turretG
@@ -1082,14 +1091,18 @@ export function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort, options: ZTZ99
   // -1.72 m shell datum, while the lower ring climbs exactly 0.42 m from
   // the forward belt to keep the bustle clear of the engine deck.
   P.turretG.position.set(0, 1.56, 0.12);
-  const plan: Vec2Tuple[] = [
+  const cut = options.bustleCutM ?? 0;
+  // The identity when nothing is cut (the fleet 99A2 stays byte-identical).
+  const bz = (z: number): number => (cut > 0 ? bustleCutZ(z, cut) : z);
+  const rearFlank = options.rearFlank !== false;
+  const plan: Vec2Tuple[] = ([
     // Stop the primary shell behind the ridge. The closed chevrons below
     // own the complete frontal projection, matching the VT-4A1 hierarchy.
     [0.30, 0.62], [0.82, 0.52], [1.40, 0.28], [1.56, -0.30],
     [1.50, -1.50], [1.18, -2.22], [0.82, -2.22],
     [-0.82, -2.22], [-1.18, -2.22], [-1.50, -1.50],
     [-1.56, -0.30], [-1.40, 0.48], [-0.82, 1.15], [-0.30, 1.43],
-  ];
+  ] as Vec2Tuple[]).map(([x, z]) => [x, bz(z)] as Vec2Tuple);
   const lower = [0.02, 0.02, 0.03, 0.05, 0.18, 0.44, 0.44,
     0.44, 0.44, 0.18, 0.05, 0.03, 0.02, 0.02];
   const belt = [0.32, 0.32, 0.34, 0.36, 0.43, 0.49, 0.49,
@@ -1149,21 +1162,27 @@ export function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort, options: ZTZ99
   // Side cassette and bustle-box grammar comes directly from the production
   // ZTZ photographs: deep rectangular armor flanks, compact smoke banks and
   // a continuous aft service volume seated on the rising shell.
+  // The rail runs the bustle band: both its ends map (-2.10 .. -0.12), so it stays attached at both stanchions.
+  const railRear = bz(-2.10), railFront = -0.12;
+  const railLength = cut > 0 ? railFront - railRear : 1.98, railZ = cut > 0 ? (railFront + railRear) / 2 : -1.11;
   for (const s of [-1, 1]) {
     P.addExternalArmor('turret', box(0.18, 0.48, 0.82), s * 1.50, 0.36, -0.52, 0, -s * 0.04, 0);
-    P.addExternalArmor('turret', box(0.20, 0.44, 0.84), s * 1.42, 0.43, -1.36, 0, -s * 0.08, 0);
-    P.addEquipment('turret', box(0.18, 0.30, 0.58), s * 1.30, 0.56, -1.93, 0, -s * 0.08, 0);
-    P.add('turretDark', box(0.032, 0.36, 1.52), s * 1.595, 0.39, -0.82, 0, -s * 0.04, 0);
-    P.add('turretDetail', box(0.035, 0.035, 1.98), s * 1.49, 0.76, -1.11, 0, -s * 0.05, 0);
+    if (rearFlank) {
+      P.addExternalArmor('turret', box(0.20, 0.44, 0.84), s * 1.42, 0.43, bz(-1.36), 0, -s * 0.08, 0);
+      P.addEquipment('turret', box(0.18, 0.30, 0.58), s * 1.30, 0.56, bz(-1.93), 0, -s * 0.08, 0);
+      P.add('turretDark', box(0.032, 0.36, 1.52), s * 1.595, 0.39, bz(-0.82), 0, -s * 0.04, 0);
+    }
+    P.add('turretDetail', box(0.035, 0.035, railLength), s * 1.49, 0.76, railZ, 0, -s * 0.05, 0);
     for (const z of [-0.16, -0.82, -1.48, -2.06]) {
-      P.add('turretDetail', box(0.034, 0.40, 0.034), s * 1.50, 0.55, z, 0, -s * 0.05, 0);
+      if (!rearFlank && z < -1.27) continue;
+      P.add('turretDetail', box(0.034, 0.40, 0.034), s * 1.50, 0.55, bz(z), 0, -s * 0.05, 0);
     }
     liftEye(P, 'turretDetail', s * 0.98, 0.82, -1.18);
   }
-  P.addExternalArmor('turret', box(2.22, 0.36, 0.16), 0, 0.62, -2.17, -0.10, 0, 0);
-  P.add('turretDark', box(2.02, 0.18, 0.035), 0, 0.57, -2.27, -0.10, 0, 0);
+  P.addExternalArmor('turret', box(2.22, 0.36, 0.16), 0, 0.62, bz(-2.17), -0.10, 0, 0);
+  P.add('turretDark', box(2.02, 0.18, 0.035), 0, 0.57, bz(-2.27), -0.10, 0, 0);
   for (let i = 0; i < 7; i++) {
-    P.add('turretDetail', box(0.030, 0.30, 0.038), -0.90 + i * 0.30, 0.62, -2.30, -0.10, 0, 0);
+    P.add('turretDetail', box(0.030, 0.30, 0.038), -0.90 + i * 0.30, 0.62, bz(-2.30), -0.10, 0, 0);
   }
 
   // Compact production roof suite: commander weapon right, stabilized sight
@@ -1236,8 +1255,9 @@ export function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort, options: ZTZ99
     fullHeightFrontCoverage: true,
     bustleExtensionM,
     bustleUndersideRiseM,
-    formerRearStationM: -1.72,
-    armoredBustleRearZM: -2.22,
+    formerRearStationM: bz(-1.72),
+    armoredBustleRearZM: bz(-2.22),
+    ...(cut > 0 ? { bustleCutM: cut } : {}),
     rearLowerStationYM: 0.44,
     risingUndersideClearsEngineDeck: true,
   });

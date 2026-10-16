@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import {KIT,orientedSlab} from './kit.ts';
+import {KIT,FITTINGS,orientedSlab} from './kit.ts';
+import {mount} from './fittingMount.ts';
 import {boxSections,blindTube,beamBetween} from './measuredPrimitives.ts';
 import {MG_CLASSES,addPintleBarrel,addPintleReceiver,createPintleLayout,machinedRing,type MgClassKey} from '../machineGunGeometry.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
@@ -46,8 +47,42 @@ export function nationalRoofWeapon(P:TankBuilderPort,rws:Point,cupola:Point|null
  feed(gun,l,x,y,z,w);
  sight(gun,l,x,y,z,w);
  const root=gun.finish();root.userData.nationalRoofLoadout=l.name;
+ if(l.yawArc)root.userData.yawArc=[...l.yawArc];
+ if(l.depressionByYaw)root.userData.depressionByYaw=l.depressionByYaw.map(r=>[...r]);
  if(!cupola)return;
  const [cx,cy,cz]=cupola;KIT.cupola(P,'turret',cx,cy-.006,cz,.27,.11,8);
+}
+
+/**
+ * Release 227 (owner 2026-10-16: "make their machine guns much smalelr and make thhem into the more classic machine gunn
+ * emplacement on the turrets"): the loadout's emplacement on the commander's cupola, its foot at `seat` (the cupola's
+ * own top, 2 mm into it). It is the fleet's open pintle mount (FITTINGS.pintleMG: flange, column, cradle and trunnion,
+ * the class's receiver, feed, ammunition can and barrel, a race ring round the foot and a light shield) in the working
+ * station's rig, so the auxiliary roof-gun control (src/sim/auxiliarySystems.ts) turns and fires it by itself; a
+ * crew-served emplacement keeps its spade grips, leaf sight and true crew barrel, the solenoid form its back plate.
+ * There is no second cupola and no collar: any riser is the pintle's own sleeve and clamp.
+ */
+export function nationalCupolaPintle(P:TankBuilderPort,seat:Point,l:NationalRoofLoadout):THREE.Group {
+ const e=l.emplacement;
+ if(l.mount!=='pintle'||!e)throw new Error(`${P.spec?.id}: ${l.name} is not a pintle emplacement`);
+ const fitting=FITTINGS.pintleMG({mats:P.mats,cls:e.cls,scale:1,tone:'two-tone',elev:.08,shield:e.shield,ammo:true,
+  ring:{...e.ring},riser:e.riserM,working:e.crewServed,remoteControlled:!e.crewServed,datumBarrel:false,
+  seed:emplacementSeed(l.name)}) as THREE.Group;
+ if(fitting.userData.caliberMm!==l.caliber)throw new Error(`${P.spec?.id}: ${l.name} draws a ${fitting.userData.caliberMm} mm gun`);
+ fitting.name=l.name;
+ fitting.userData.nationalRoofLoadout=l.name;
+ fitting.userData.auxiliaryMuzzle=[0,fitting.userData.barrelAxisLocalY,fitting.userData.muzzleLocalZ];
+ if(l.yawArc)fitting.userData.yawArc=[...l.yawArc];
+ if(l.depressionByYaw)fitting.userData.depressionByYaw=l.depressionByYaw.map(r=>[...r]);
+ mount(P,'turret',fitting,seat[0],seat[1],seat[2]);
+ return fitting;
+}
+
+/** A stable fitting seed from the loadout's name (FITTINGS seeds only small finish variations). */
+function emplacementSeed(name:string):number {
+ let h=2166136261;
+ for(let i=0;i<name.length;i++){h^=name.charCodeAt(i);h=Math.imul(h,16777619);}
+ return (h>>>0)%100000;
 }
 
 /** The 12.7 mm class each nation's concept station carries: the NSV family in Ukraine and Poland, the Kord in Russia,
