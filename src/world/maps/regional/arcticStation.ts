@@ -4,10 +4,53 @@
 // the radome, the banks) stay in arctic.ts.
 import { LocalFrame, PartSink, faceBox, facePoint, rgb, shade, type EmitOptions, type Face, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, holedPolygon, type HoleRect, type HouseDialect, type Opening } from './house.ts';
-import { latticeFrame, recordLattice } from './lattice.ts';
+import { recordLattice, type LatticeReading, type LatticeSpec } from './lattice.ts';
+import { recordShed } from './shedFall.ts';
 import { doorUnit, windowUnit } from './openings.ts';
 import type { RegionalBuilder } from './types.ts';
+import { angleMember, bandRing, chamferedSection, iBeam, panelSlab, pier, sectionMember, tubeMember } from './steelMembers.ts';
 import { GALV, OLIVE, PLY, STEEL_DARK, WINDOW, bank, boxFace, clamp, radome, uvOffset, wallsIn, wave } from './arctic.ts';
+
+/**
+ * A four-legged lattice frame (lattice.ts latticeFrame, member for member) in steel sections: the legs, girts and X braces
+ * angles, the pads round concrete piers; recorded for the damage reading as latticeFrame records its own.
+ */
+function angleLattice(sink: PartSink, spec: LatticeSpec, crown: LatticeReading['crown'] = null): void {
+  const cx = spec.cx ?? 0, cz = spec.cz ?? 0;
+  const corners: Array<[number, number]> = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+  const at = (k: number, y: number): Vec3 => {
+    const t = (y - spec.y0) / Math.max(1e-6, spec.y1 - spec.y0), half = spec.foot + (spec.head - spec.foot) * t;
+    return [cx + corners[k][0] * half, y, cz + corners[k][1] * half];
+  };
+  const opts = { ...(spec.colour ? { colour: spec.colour } : {}) };
+  const legs: Array<{ foot: Vec3; head: Vec3 }> = [];
+  for (let k = 0; k < 4; k++) {
+    const foot = at(k, spec.y0), head = at(k, spec.y1);
+    const under: Vec3 = [foot[0] + (foot[0] - head[0]) * 0.4 / Math.max(1e-6, spec.y1 - spec.y0), -0.4, foot[2] + (foot[2] - head[2]) * 0.4 / Math.max(1e-6, spec.y1 - spec.y0)];
+    // (the heel of each leg's angle to the frame's outside corner)
+    angleMember(sink, spec.bucket, spec.pad ? foot : under, head, spec.size, spec.size * 0.16, opts, 'b', [-corners[k][0], 0, -corners[k][1]]);
+    if (spec.pad) pier(sink, spec.pad.bucket, foot[0], foot[2], spec.pad.size * 0.56, -0.4, spec.pad.top, 0, { decor: true, shade: 0.9 }, 8);
+    legs.push({ foot, head });
+  }
+  const girts: number[] = [];
+  const n = Math.max(1, spec.panels);
+  const levels = Array.from({ length: n + 1 }, (_, i) => spec.y0 + (spec.y1 - spec.y0) * (i / n));
+  for (let i = 1; i <= n; i++) girts.push(levels[i]);
+  sink.dressing(!!spec.mobile, () => {
+    for (let i = 1; i <= n; i++) for (let k = 0; k < 4; k++) {
+      angleMember(sink, spec.bucket, at(k, levels[i]), at((k + 1) % 4, levels[i]), spec.girt, spec.girt * 0.18, { ...opts, decor: true }, 'none', [0, 1, 0]);
+    }
+    if (spec.braces !== false) for (let i = 0; i < n; i++) {
+      const ya = levels[i] + (i === 0 ? 0.3 : 0), yb = levels[i + 1];
+      for (let k = 0; k < 4; k++) {
+        const j = (k + 1) % 4;
+        angleMember(sink, spec.bucket, at(k, ya), at(j, yb), spec.brace, spec.brace * 0.18, { ...opts, decor: true }, 'none');
+        angleMember(sink, spec.bucket, at(j, ya), at(k, yb), spec.brace, spec.brace * 0.18, { ...opts, decor: true }, 'none');
+      }
+    }
+  });
+  recordLattice(sink, legs, girts, spec.size, spec.bucket, spec.colour ?? null, crown);
+}
 
 /**
  * The radar tower (the water tower's plot): a four-legged lattice tower tapering to a railed platform under the short
@@ -23,7 +66,9 @@ export const radarTower: RegionalBuilder = (ctx) => {
     // vent; the cable ladder not built; the open lattice falls as solid metal-clad drums") the lattice on its footings
     // (lattice.ts: legs, girts and X braces in every panel), recorded so it folds over as its members with the radome
     // as its crown; the cable ladder up the +x face; the hut a building with its door and window cut
-    latticeFrame(sink, { foot: B, head: T, y0: 0.25, y1: H, size: 0.2, girt: 0.09, brace: 0.09, panels: 4, bucket: 'structureMetal', colour: GALV,
+    // (the looks lane's r2 sweep, 2026-10-16: square bars) the frame laid in hot-rolled angles on round piers (angleLattice:
+    // lattice.ts latticeFrame's frame and its record, in steel sections)
+    angleLattice(sink, { foot: B, head: T, y0: 0.25, y1: H, size: 0.2, girt: 0.09, brace: 0.09, panels: 4, bucket: 'structureMetal', colour: GALV,
       pad: { bucket: 'stone', size: 0.9, top: 0.25 }, mobile },
       { x0: -T - 1.6, x1: T + 1.6, y0: H, y1: H + 0.6 + 2 * clamp(T + 0.4, 1.4, 2.4), z0: -T - 1.6, z1: T + 1.6, bucket: 'structureMetal', tint: GALV });
     sink.dressing(mobile, () => {
@@ -60,8 +105,10 @@ export const radarTower: RegionalBuilder = (ctx) => {
         door: (s2, face, o, y0) => doorUnit(s2, face, o.u, y0 + o.y0, o.w, o.h, { leaf: STEEL_DARK, frame: { bucket: 'structureMetal', width: 0.08, out: 0.04, colour: STEEL_DARK }, steps: { bucket: 'stone' }, leafKind: 'panel' }),
       });
       const f = hut.faces.front;
-      faceBox(sink, 'structureMetal', f, 0.6, 1.7, 0.03, 0.45, 0.35, 0.06, { colour: STEEL_DARK, decor: true });
-      for (let y = 1.58; y < 1.85; y += 0.07) faceBox(sink, 'structureMetal', f, 0.6, y, 0.065, 0.4, 0.025, 0.02, { colour: GALV, decor: true, fine: true });
+      // (the r2 sweep: a dark plate stuck on the wall) the louvred vent a weather hood standing off the wall, its blades
+      // across its open front
+      faceBox(sink, 'structureMetal', f, 0.6, 1.7, 0.08, 0.45, 0.35, 0.16, { colour: shade(GALV, 0.8), decor: true });
+      for (let y = 1.58; y < 1.85; y += 0.07) faceBox(sink, 'structureMetal', f, 0.6, y, 0.165, 0.4, 0.025, 0.02, { colour: GALV, decor: true, fine: true });
       sink.cylinder('structureMetal', [0.9, 2.3, -0.5], 'y', 0.6, 0.06, 6, { colour: STEEL_DARK, decor: true });
     });
   });
@@ -87,10 +134,12 @@ export const jamesway: RegionalBuilder = (ctx) => {
   // (props census #3, lane B 2026-10-14; the judges: "the floor platform ONE solid wood span ... the vestibule ONE span box
   // under a slab roof, its door a slab standing proud with no opening ... the end window a unit stuck on the plywood")
   // the floor: its deck on joists on sleepers laid on the snow, the deck the structure
-  sink.span('wood', x0, 0.36, z0, x1, fl, zH);
+  // (the looks lane's r2 sweep, 2026-10-16: plain boxes carried 65 % of the hut) the deck in its plywood sheets, the
+  // sleepers and the joists sawn timbers with their arrises eased
+  panelSlab(sink, 'wood', x0, 0.36, z0, x1, fl, zH, 1.22, () => [1, 1, 1], [1, 1, 1]);
   sink.dressing(mobile, () => {
-    for (let z = z0 + 0.25; z < zH - 0.1; z += 1.1) sink.span('structureWood', x0 - 0.1, -0.15, z - 0.1, x1 + 0.1, 0.14, z + 0.1, { colour: shade(timber, 0.8), decor: true });
-    for (let x = x0 + 0.2; x < x1; x += 0.6) sink.span('structureWood', x - 0.05, 0.14, z0 + 0.05, x + 0.05, 0.36, zH - 0.05, { colour: timber, decor: true });
+    for (let z = z0 + 0.25; z < zH - 0.1; z += 1.1) sectionMember(sink, 'structureWood', [x0 - 0.1, -0.005, z], [x1 + 0.1, -0.005, z], chamferedSection(0.2, 0.29, 0.03), { colour: shade(timber, 0.8), decor: true });
+    for (let x = x0 + 0.2; x < x1; x += 0.6) sectionMember(sink, 'structureWood', [x, 0.25, z0 + 0.05], [x, 0.25, zH - 0.05], chamferedSection(0.1, 0.22, 0.02), { colour: timber, decor: true });
     // (the deck's board joints as lines on its top, in board lengths of 3 m: the integrity gate reads a 4 mm line 15 m
     // long as a sliver)
     const jc = { colour: shade(timber, 0.7), decor: true, fine: true };
@@ -107,6 +156,18 @@ export const jamesway: RegionalBuilder = (ctx) => {
     sink.cylinder('structureMetal', [xa, fl, zc], 'x', bayW / 2, r, 10, { colour: tone }, r - sag, false, -Math.PI / 2, Math.PI);
     sink.cylinder('structureMetal', [xa + bayW / 2, fl, zc], 'x', bayW / 2, r - sag, 10, { colour: tone }, r, false, -Math.PI / 2, Math.PI);
   }
+  // (the r2 sweep: its collapse read the vestibule's house alone and laid a heap over a fifth of the hut) the hut recorded
+  // as an open shed on its rib feet (shedFall.ts): it racks over, its canvas down in lengths over the buckled ribs on its
+  // floor, its plywood ends down and leaning
+  sink.placed(Math.PI / 2, (x0 + vx0) / 2, 0, zc, () => {
+    const D = vx0 - x0, posts: Array<[number, number, number, number]> = [];
+    for (let k = 0; k <= bays; k++) for (const side of [-1, 1]) posts.push([side * (r - 0.05), -D / 2 + k * (D / bays), fl, fl + r * 0.6]);
+    recordShed(sink, posts.map(([x, z, f, h]) => ({ foot: [x, f, z] as Vec3, head: [x, h, z] as Vec3 })), {
+      W: 2 * r, D, pitchDeg: 38, eaveY: fl + r * 0.55, eave: 0.05, verge: 0.05, deck: 0.04, post: 0.1, posts, pad: null,
+      timber: shade(OLIVE, 0.75), boards: shade(OLIVE, 1.25), boardW: 0.6, back: false, ends: true,
+      roof: { bucket: 'structureMetal', colour: OLIVE, shape: 'sheet' }, stone: null, pile: 0, lift: fl, gable: true,
+    });
+  });
   // the far end wall in plywood with its window cut through it; the entrance end closed round the vestibule
   const endW: Face = { origin: [x0 + 0.06, 0, zc], u: [0, 0, 1], out: [-1, 0, 0], width: 2 * r };
   const pts: Array<[number, number]> = [];
@@ -152,9 +213,10 @@ export const jamesway: RegionalBuilder = (ctx) => {
     }
   });
   // the boardwalk along its side: boards on two stringers
-  sink.span('wood', x0, fl - 0.2, zH, x1, fl - 0.15, bb.maxZ - 0.15);
+  // (the r2 sweep) its boards laid across it, each its own tone, on two sawn stringers
+  sink.placed(Math.PI / 2, 0, 0, 0, () => panelSlab(sink, 'wood', -(bb.maxZ - 0.15), fl - 0.2, x0, -zH, fl - 0.15, x1, 0.3, () => [1, 1, 1], [1, 1, 1]));
   sink.dressing(mobile, () => {
-    for (const z of [zH + 0.2, bb.maxZ - 0.35]) sink.span('structureWood', x0, -0.3, z - 0.07, x1, fl - 0.2, z + 0.07, { colour: shade(timber, 0.85), decor: true });
+    for (const z of [zH + 0.2, bb.maxZ - 0.35]) sectionMember(sink, 'structureWood', [x0, (fl - 0.5) / 2, z], [x1, (fl - 0.5) / 2, z], chamferedSection(0.14, fl - 0.2 + 0.3, 0.02), { colour: shade(timber, 0.85), decor: true });
     for (let x = x0 + 0.15; x < x1; x += 0.3) sink.span('structureWood', x - 0.003, fl - 0.155, zH, x + 0.003, fl - 0.145, bb.maxZ - 0.15, { colour: shade(timber, 0.7), decor: true, fine: true });
   });
   // the banks: along the windward side (away from the boardwalk) and against the far end
@@ -209,8 +271,9 @@ function module(sink: PartSink, x0: number, z0: number, x1: number, z1: number, 
     const stepZ = Math.max(2.4, (z1 - z0 - 0.4) / Math.max(1, Math.round((z1 - z0 - 0.4) / 3)));
     for (const x of [x0 + 0.25, x1 - 0.25]) {
       const zs: number[] = [];
-      for (let z = z0 + 0.2; z <= z1 - 0.19; z += stepZ) { zs.push(z); sink.span('structureMetal', x - 0.13, -0.4, z - 0.13, x + 0.13, floor - 0.28, z + 0.13, { colour: STEEL_DARK }); }
-      sink.span('structureMetal', x - 0.16, floor - 0.3, z0, x + 0.16, floor, z1, { colour: STEEL });
+      // (the looks lane's r2 sweep, 2026-10-16) the piles steel pipe, the beam on them a rolled I-section
+      for (let z = z0 + 0.2; z <= z1 - 0.19; z += stepZ) { zs.push(z); tubeMember(sink, 'structureMetal', [x, -0.4, z], [x, floor - 0.28, z], 0.14, 8, { colour: STEEL_DARK }, 'none'); }
+      iBeam(sink, 'structureMetal', [x, floor - 0.15, z0], [x, floor - 0.15, z1], 0.3, 0.32, 0.03, 0.02, { colour: STEEL });
       // (round 3, wave 130: "sits directly on the snow like a barracks block, with none of the steel piles") the raised
       // floor's piles braced in X between each pair, the way the line's trains stand clear of the snow
       if (!mobile && floor > 1.6) {
@@ -232,13 +295,17 @@ function module(sink: PartSink, x0: number, z0: number, x1: number, z1: number, 
     // a metre and more up them and tailing out three metres, past both ends; the lee side scoured
     if (floor > 1.6) {
       const hz = 1.0 + 0.4 * (0.5 + 0.5 * Math.sin(x0 * 0.37 + z0 * 0.21)), foot = -0.3, out = 3.0, za = z0 - 1.2, zb = z1 + 1.2;
-      const a: Vec3 = [x0 + 0.1, hz, za], b: Vec3 = [x0 + 0.1, hz, zb], c: Vec3 = [x0 - out, foot, zb], d: Vec3 = [x0 - out, foot, za];
-      const f: Vec3 = [x0 + 1.2, foot, za], g: Vec3 = [x0 + 1.2, foot, zb];
+      // (the looks lane's r2 sweep, 2026-10-16) its crest wandering: a station at each end and one between, each its own
+      // height up the piles (wave: no draw)
+      const zs = [za, (za + zb) / 2, zb], hs = [hz, hz * (0.82 + 0.36 * wave(zb, x0 + z0)), hz];
+      const T = zs.map((z, k): Vec3 => [x0 + 0.1, hs[k], z]), O = zs.map((z): Vec3 => [x0 - out, foot, z]), F = zs.map((z): Vec3 => [x0 + 1.2, foot, z]);
       // the windward slope, the short lee face under the floor and the two ends (each wound to face out)
-      sink.polygon('plaster', [a, d, c, b], { decor: true });
-      sink.polygon('plaster', [a, b, g, f], { decor: true });
-      sink.polygon('plaster', [a, f, d], { decor: true });
-      sink.polygon('plaster', [b, c, g], { decor: true });
+      for (let k = 0; k < 2; k++) {
+        sink.polygon('plaster', [T[k], O[k], O[k + 1], T[k + 1]], { decor: true });
+        sink.polygon('plaster', [T[k], T[k + 1], F[k + 1], F[k]], { decor: true });
+      }
+      sink.polygon('plaster', [T[0], F[0], O[0]], { decor: true });
+      sink.polygon('plaster', [T[2], O[2], F[2]], { decor: true });
     }
   }
   // the box: a house of its own on its piles (props census #13, lane B 2026-10-15: each module a body that breaks and
@@ -257,10 +324,14 @@ function module(sink: PartSink, x0: number, z0: number, x1: number, z1: number, 
   };
   sink.placed(0, (x0 + x1) / 2, floor, (z0 + z1) / 2, () => buildHouse(sink, {
     w: x1 - x0, d: z1 - z0, plinth: null, storeys: [{ h, wall: paint }],
-    roof: { kind: 'flat', pitchDeg: 0, eave: 0.12, verge: 0.12, thickness: 0.22, bucket: 'roof' }, openings, chimneys: [],
+    // (the r2 sweep: the house's flat slab was one plain box) the roof laid below in its insulated panels
+    roof: { kind: 'flat', pitchDeg: 0, eave: 0.12, verge: 0.12, thickness: 0, bucket: 'roof' }, openings, chimneys: [],
     gutters: null, verge: null, reveal: MODULE_REVEAL, rafters: null, spall: null,
   }, units));
-  sink.span(band, x0 - 0.03, floor + h - 0.5, z0 - 0.03, x1 + 0.03, floor + h - 0.1, z1 + 0.03);
+  // the flat roof in its insulated panels across the module, its eaves 12 cm over the walls
+  panelSlab(sink, 'roof', x0 - 0.12, floor + h, z0 - 0.12, x1 + 0.12, floor + h + 0.22, z1 + 0.12, 1.2, () => [1, 1, 1], [1, 1, 1]);
+  // the fascia band: a ring round the walls (it was a slab through the body)
+  bandRing(sink, band, x0, floor + h - 0.5, z0, x1, floor + h - 0.1, z1, 0.03);
   if (mobile) return;
   // the panel seams down every face
   const seam = { colour: shade(PAINT_RGB[paint], 0.8), decor: true, fine: true } as const;
@@ -421,12 +492,20 @@ export const tropo: RegionalBuilder = (ctx) => {
     // the panels: 28 vertical strips that overlap into one curved sheet, each a shade darker toward the edges (the curve
     // reads in the light the strips take); solid, the same on every tier
     const n = 28;
+    // (the looks lane's r2 sweep, 2026-10-16: the face was 28 loose boxes) one welded skin 12 cm thick on the parabola,
+    // its 28 panels each a shade darker toward the edges, closed along its head, foot and edges
+    const skin = (t: number, y: number, o: number): Vec3 => [cx + t * bw, y, curve(t) + o];
     for (let k = 0; k < n; k++) {
-      const t = (k + 0.5) / n - 0.5, x = cx + t * bw;
-      const ang = Math.atan(8 * SAG * t / bw);
-      const c: Vec3 = [x, foot + H / 2, curve(t)];
-      const f = new LocalFrame([Math.cos(ang), 0, Math.sin(ang)], [0, 1, 0], [-Math.sin(ang), 0, Math.cos(ang)], c);
-      sink.box('regionalPlaster', c, [bw / n / 2 + 0.06, H / 2, 0.06], { colour: shade(PANEL, 0.84 + 0.16 * (1 - 4 * t * t)) }, f);
+      const ta = k / n - 0.5, tb = (k + 1) / n - 0.5, tm = (ta + tb) / 2, yb = foot, yt = foot + H;
+      const o = { colour: shade(PANEL, 0.84 + 0.16 * (1 - 4 * tm * tm)) };
+      sink.quad('regionalPlaster', skin(ta, yb, 0.06), skin(tb, yb, 0.06), skin(tb, yt, 0.06), skin(ta, yt, 0.06), o);
+      sink.quad('regionalPlaster', skin(tb, yb, -0.06), skin(ta, yb, -0.06), skin(ta, yt, -0.06), skin(tb, yt, -0.06), o);
+      sink.quad('regionalPlaster', skin(ta, yt, 0.06), skin(tb, yt, 0.06), skin(tb, yt, -0.06), skin(ta, yt, -0.06), o);
+      sink.quad('regionalPlaster', skin(ta, yb, -0.06), skin(tb, yb, -0.06), skin(tb, yb, 0.06), skin(ta, yb, 0.06), o);
+    }
+    for (const [t, e] of [[-0.5, -1], [0.5, 1]] as const) {
+      const a = skin(t, foot, 0.06), b = skin(t, foot, -0.06), c = skin(t, foot + H, -0.06), d = skin(t, foot + H, 0.06);
+      sink.quad('regionalPlaster', ...(e > 0 ? [a, b, c, d] : [b, a, d, c]) as [Vec3, Vec3, Vec3, Vec3], { colour: shade(PANEL, 0.84) });
     }
     // the panel joints: across the face every sixth of its height and down it every fourth strip, a darker grey that
     // holds at range (not fine joinery)
@@ -445,11 +524,11 @@ export const tropo: RegionalBuilder = (ctx) => {
     // the edge ribs, and the rails along the head and the foot of the face
     for (const t of [-0.5, 0.5]) {
       const x = cx + t * bw;
-      sink.member('structureMetal', [x, foot - 0.2, curve(t) + 0.1], [x, foot + H + 0.2, curve(t) + 0.1], 0.24, 0.2, [0, 0, 1], { colour: STEEL, exposed: true });
+      angleMember(sink, 'structureMetal', [x, foot - 0.2, curve(t) + 0.1], [x, foot + H + 0.2, curve(t) + 0.1], 0.24, 0.04, { colour: STEEL }, 'both', [0, 0, 1]);
     }
     for (const y of [foot - 0.1, foot + H + 0.1]) for (let k = 0; k < n; k++) {
       const ta = k / n - 0.5, tb = (k + 1) / n - 0.5;
-      sink.member('structureMetal', [cx + ta * bw, y, curve(ta) + 0.1], [cx + tb * bw, y, curve(tb) + 0.1], 0.2, 0.18, [0, 1, 0], { colour: STEEL, decor: true, exposed: true });
+      angleMember(sink, 'structureMetal', [cx + ta * bw, y, curve(ta) + 0.1], [cx + tb * bw, y, curve(tb) + 0.1], 0.2, 0.035, { colour: STEEL, decor: true }, 'none', [0, 1, 0]);
     }
     // the space truss: the rear frame a flat plane 2.2 m behind the vertex, verticals at nine stations front and rear on
     // concrete footings, six levels of chords, webs from the rear to the face at every station and level, the rear plane
@@ -462,24 +541,25 @@ export const tropo: RegionalBuilder = (ctx) => {
     for (let l = 0; l <= 5; l++) levels.push(foot - 0.6 + (crest - foot + 0.6) * l / 5);
     for (const t of stations) {
       const x = sx(t);
-      sink.member('structureMetal', [x, -0.3, rear], [x, crest, rear], 0.28, 0.28, [0, 0, 1], truss);
-      sink.member('structureMetal', [x, -0.3, front(t)], [x, crest, front(t)], 0.2, 0.2, [0, 0, 1], truss);
-      for (const z of [rear, front(t)]) sink.span('stone', x - 0.45, -0.4, z - 0.45, x + 0.45, 0.25, z + 0.45, { decor: true });
-      for (const y of levels) sink.member('structureMetal', [x, y, rear], [x, y, front(t)], 0.1, 0.1, [1, 0, 0], light);
+      // (the r2 sweep: hot-rolled angles on round concrete piers, where square bars stood on blocks)
+      angleMember(sink, 'structureMetal', [x, -0.3, rear], [x, crest, rear], 0.28, 0.035, truss, 'b', [0, 0, 1]);
+      angleMember(sink, 'structureMetal', [x, -0.3, front(t)], [x, crest, front(t)], 0.2, 0.03, truss, 'b', [0, 0, 1]);
+      for (const z of [rear, front(t)]) pier(sink, 'stone', x, z, 0.42, -0.4, 0.25, 0, { decor: true }, 6);
+      for (const y of levels) angleMember(sink, 'structureMetal', [x, y, rear], [x, y, front(t)], 0.1, 0.02, light, 'none', [1, 0, 0]);
     }
     for (let j = 0; j + 1 < stations.length; j++) {
       const ta = stations[j], tb = stations[j + 1], xa = sx(ta), xb = sx(tb);
       for (let l = 0; l < levels.length; l++) {
         const y = levels[l];
-        sink.member('structureMetal', [xa, y, rear], [xb, y, rear], 0.14, 0.14, [0, 1, 0], light);
-        sink.member('structureMetal', [xa, y, front(ta)], [xb, y, front(tb)], 0.12, 0.12, [0, 1, 0], light);
+        angleMember(sink, 'structureMetal', [xa, y, rear], [xb, y, rear], 0.14, 0.025, light, 'none', [0, 1, 0]);
+        angleMember(sink, 'structureMetal', [xa, y, front(ta)], [xb, y, front(tb)], 0.12, 0.022, light, 'none', [0, 1, 0]);
         if (l + 1 < levels.length) {
           const y2 = levels[l + 1];
-          sink.member('structureMetal', [xa, y, rear], [xb, y2, rear], 0.09, 0.09, [0, 0, 1], light);
-          sink.member('structureMetal', [xb, y, rear], [xa, y2, rear], 0.09, 0.09, [0, 0, 1], light);
+          angleMember(sink, 'structureMetal', [xa, y, rear], [xb, y2, rear], 0.09, 0.02, light, 'none', [0, 0, 1]);
+          angleMember(sink, 'structureMetal', [xb, y, rear], [xa, y2, rear], 0.09, 0.02, light, 'none', [0, 0, 1]);
           if (!mobile) {
             const xs = (j + l) % 2 === 0 ? xa : xb, ts = (j + l) % 2 === 0 ? ta : tb;
-            sink.member('structureMetal', [xs, y, rear], [xs, y2, front(ts)], 0.08, 0.08, [1, 0, 0], light);
+            angleMember(sink, 'structureMetal', [xs, y, rear], [xs, y2, front(ts)], 0.08, 0.018, light, 'none', [1, 0, 0]);
           }
         }
       }
@@ -493,21 +573,21 @@ export const tropo: RegionalBuilder = (ctx) => {
     // the raking legs: A-frames from footings 2.6 m behind the rear frame up to it at three fifths of the height
     for (const t of [-0.5, -0.25, 0.25, 0.5]) {
       const x = sx(t);
-      sink.member('structureMetal', [x, -0.3, rear - 2.6], [x, foot + H * 0.6, rear], 0.24, 0.24, [1, 0, 0], truss);
-      sink.span('stone', x - 0.5, -0.4, rear - 3.1, x + 0.5, 0.25, rear - 2.1, { decor: true });
+      angleMember(sink, 'structureMetal', [x, -0.3, rear - 2.6], [x, foot + H * 0.6, rear], 0.24, 0.035, truss, 'none', [1, 0, 0]);
+      pier(sink, 'stone', x, rear - 2.6, 0.48, -0.4, 0.25, 0, { decor: true }, 6);
     }
     // the feed horn at the focus on its own tower: four tapering legs braced in X, a platform, the pyramidal horn's mouth
     // turned to the reflector, the waveguide down the tower
     const tw = 0.85, tz = fz + 0.9, legTop = fy - 0.7;
     const legAt = (s: number, y: number): number => s * tw * (1 - 0.4 * (y + 0.3) / (legTop + 0.3));
     for (const ox of [-1, 1]) for (const oz of [-1, 1]) {
-      sink.member('structureMetal', [cx + legAt(ox, -0.3), -0.3, tz + legAt(oz, -0.3)], [cx + legAt(ox, legTop), legTop, tz + legAt(oz, legTop)],
-        0.16, 0.16, [1, 0, 0], { colour: GALV, exposed: true });
+      angleMember(sink, 'structureMetal', [cx + legAt(ox, -0.3), -0.3, tz + legAt(oz, -0.3)], [cx + legAt(ox, legTop), legTop, tz + legAt(oz, legTop)],
+        0.16, 0.025, { colour: GALV }, 'none', [ox, 0, oz]);
     }
     if (!mobile) for (let y = 0.6; y + 2.4 < legTop; y += 2.4) {
       for (const [ax, az, bx, bz] of [[-1, -1, 1, -1], [1, -1, 1, 1], [1, 1, -1, 1], [-1, 1, -1, -1]] as const) {
-        sink.member('structureMetal', [cx + legAt(ax, y), y, tz + legAt(az, y)], [cx + legAt(bx, y + 2.4), y + 2.4, tz + legAt(bz, y + 2.4)],
-          0.06, 0.06, [0, 1, 0], { colour: GALV, decor: true, exposed: true });
+        angleMember(sink, 'structureMetal', [cx + legAt(ax, y), y, tz + legAt(az, y)], [cx + legAt(bx, y + 2.4), y + 2.4, tz + legAt(bz, y + 2.4)],
+          0.06, 0.012, { colour: GALV, decor: true }, 'none', [0, 1, 0]);
       }
     }
     sink.span('structureMetal', cx - 0.8, legTop - 0.1, tz - 0.8, cx + 0.8, legTop + 0.05, tz + 0.8, { colour: GALV });
@@ -538,12 +618,14 @@ export const derelict: RegionalBuilder = (ctx) => {
   const W = fit.w, D = fit.d, floor = 1.1;
   sink.placed(0, fit.cx, 0, fit.cz, () => {
     for (const x of [-W / 2 + 0.25, W / 2 - 0.25]) {
+      // (the looks lane's r2 sweep, 2026-10-16) the piles steel pipe, the beam on them a rolled I-section, the deck in its
+      // floor cassettes
       for (let z = -D / 2 + 0.2; z <= D / 2 - 0.19; z += (D - 0.4) / Math.max(1, Math.round((D - 0.4) / 2.6))) {
-        sink.span('structureMetal', x - 0.13, -0.4, z - 0.13, x + 0.13, floor - 0.28, z + 0.13, { colour: STEEL_DARK });
+        tubeMember(sink, 'structureMetal', [x, -0.4, z], [x, floor - 0.28, z], 0.14, 8, { colour: STEEL_DARK }, 'none');
       }
-      sink.span('structureMetal', x - 0.16, floor - 0.3, -D / 2, x + 0.16, floor, D / 2, { colour: STEEL });
+      iBeam(sink, 'structureMetal', [x, floor - 0.15, -D / 2], [x, floor - 0.15, D / 2], 0.3, 0.32, 0.03, 0.02, { colour: STEEL });
     }
-    sink.span('wood', -W / 2, floor, -D / 2, W / 2, floor + 0.2, D / 2);
+    panelSlab(sink, 'wood', -W / 2, floor, -D / 2, W / 2, floor + 0.2, D / 2, 1.2, () => [1, 1, 1], [1, 1, 1]);
     const hWall = 1.6 + look() * 0.8, deck = floor + 0.2, top = deck + 2.6, zSplit = -D / 2 + D * 0.4;
     // (the map-content L2 receipts: a ruin breaks piece by piece, its pieces read off its standing walls) the walls stand
     // as their insulated panels, some 1.2 m each, every other one a little recessed at its joints, so each panel is a
@@ -551,10 +633,13 @@ export const derelict: RegionalBuilder = (ctx) => {
     // wall line (x for the long walls, z for the end wall)
     const panels = (a0: number, a1: number, alongX: boolean, across: number, height: (k: number, n: number) => number): void => {
       const n = Math.max(1, Math.round((a1 - a0) / 1.2)), pw = (a1 - a0) / n;
+      // (the r2 sweep: each panel a plain box) each an insulated sandwich panel, its edges rolled (a chamfered section),
+      // standing from the deck to its ragged top
       for (let k = 0; k < n; k++) {
         const t0 = across + (k % 2 ? 0.02 : 0), t1 = across + (k % 2 ? 0.18 : 0.2), ya = deck + height(k, n);
-        if (alongX) sink.span('plaster3', a0 + k * pw, deck, t0, a0 + (k + 1) * pw, ya, t1);
-        else sink.span('plaster3', t0, deck, a0 + k * pw, t1, ya, a0 + (k + 1) * pw);
+        const m = a0 + (k + 0.5) * pw, tm = (t0 + t1) / 2, sec = chamferedSection(pw, t1 - t0, 0.025);
+        if (alongX) sectionMember(sink, 'plaster3', [m, deck, tm], [m, ya, tm], sec, {}, 'both', [0, 0, 1]);
+        else sectionMember(sink, 'plaster3', [tm, deck, m], [tm, ya, m], sec, {}, 'both', [1, 0, 0]);
       }
     };
     // the long wall to the eaves at the door end, its last panel sheared; beyond the window gap broken down toward the
