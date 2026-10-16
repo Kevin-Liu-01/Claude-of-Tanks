@@ -150,7 +150,8 @@ anatomy.intact = intact;
   const kitAlone = (anatomy) => { const writer = recorder(); raftKit(anatomy, { mesh: writer, pieces }); return writer; };
   // a frame by its kit's plan (latticeFall.ts latticeOf), by a body's, and by its builder: its own legs, never masonry
   const legs = [[-2, -2], [2, -2], [2, 2], [-2, 2]].map(([x, z]) => ({ foot: [x, 0, z], head: [x * 0.6, 9, z * 0.6] }));
-  const framed = { ...house(), intact, kitPlan: { damage: { lattice: { legs, girts: [3, 6], size: 0.25, bucket: 'structureMetal', colour: [0.4, 0.4, 0.42], crown: null } } } };
+  // (a tower: no roof of its own; a roofed open hall drops its roof over its plan, below)
+  const framed = { ...house(), roof: null, intact, kitPlan: { damage: { lattice: { legs, girts: [3, 6], size: 0.25, bucket: 'structureMetal', colour: [0.4, 0.4, 0.42], crown: null } } } };
   assert.equal(ruinKind(framed), 'frame');
   const masonryAdded = (writer, alone) => writer.runs.slice(alone.runs.length).filter((r) => r.role === 'remnant' && r.bucket !== 'structureMetal');
   {
@@ -160,6 +161,12 @@ anatomy.intact = intact;
     const { p90 } = measure(writer.tris, 0.25, 5, 4);
     assert.ok(p90 >= 0.25 * intact.p90M, `its buckled legs stand (${(p90 / intact.p90M).toFixed(2)} of the intact)`);
     assert.ok(!writer.runs.some((r) => r.role === 'rubble' && r.bucket === 'regionalStone' && writer.runs.indexOf(r) >= alone.runs.length), 'no heap where it drew nothing');
+  }
+  {
+    const hall = { ...house(), intact, kitPlan: framed.kitPlan };
+    const writer = raftWith(hall), alone = kitAlone(hall);
+    assert.equal(masonryAdded(writer, alone).length, 0, 'a roofed open hall stands no masonry either');
+    assert.ok(writer.runs.slice(alone.runs.length).some((r) => r.role === 'rubble'), 'its fallen roof heaped over its plan');
   }
   const bodied = { ...house(), intact, kitPlan: { bodies: [{ ...house(), kitPlan: framed.kitPlan }] } };
   assert.equal(ruinKind(bodied), 'frame', 'a frame among its bodies');

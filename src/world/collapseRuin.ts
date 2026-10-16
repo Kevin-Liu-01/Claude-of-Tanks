@@ -277,6 +277,40 @@ function member(mesh: DamageMeshWriter, ax: number, az: number, bx: number, bz: 
   box(mesh, (ax + bx) / 2, cy, (az + bz) / 2, len / 2, hy, t / 2, Math.atan2(-dz, dx), tint, shade);
 }
 
+/** A strut from A to B (any direction), `t` across: an oriented box written vertex by vertex (no allocation). */
+const _sa = new Float64Array(3), _sb = new Float64Array(3);
+function strut(mesh: DamageMeshWriter, ax: number, ay: number, az: number, bx: number, by: number, bz: number, t: number,
+  tint: Rgb, shade: number): void {
+  let dx = bx - ax, dy = by - ay, dz = bz - az;
+  const len = Math.hypot(dx, dy, dz);
+  if (!(len > 1e-3)) return;
+  dx /= len; dy /= len; dz /= len;
+  // two axes across the strut: against world up unless it runs nearly vertical
+  let ux = 0, uy = 1, uz = 0;
+  if (Math.abs(dy) > 0.9) { ux = 1; uy = 0; }
+  let px = dy * uz - dz * uy, py = dz * ux - dx * uz, pz = dx * uy - dy * ux;
+  const pl = Math.hypot(px, py, pz) || 1; px /= pl; py /= pl; pz /= pl;
+  const qx = dy * pz - dz * py, qy = dz * px - dx * pz, qz = dx * py - dy * px;
+  const h = t / 2, r = tint[0] * shade, g = tint[1] * shade, b = tint[2] * shade;
+  // the four long faces (±p, ±q), each a quad from A to B
+  for (let f = 0; f < 4; f++) {
+    const sgn = f & 1 ? -1 : 1, onP = f < 2;
+    const nx = onP ? px * sgn : qx * sgn, ny = onP ? py * sgn : qy * sgn, nz = onP ? pz * sgn : qz * sgn;
+    const ox = onP ? qx : px, oy = onP ? qy : py, oz = onP ? qz : pz;
+    _sa[0] = nx * h; _sa[1] = ny * h; _sa[2] = nz * h;
+    _sb[0] = ox * h; _sb[1] = oy * h; _sb[2] = oz * h;
+    const v0 = mesh.vertex(ax + _sa[0]! - _sb[0]!, ay + _sa[1]! - _sb[1]!, az + _sa[2]! - _sb[2]!, nx, ny, nz, 0, 0, r, g, b);
+    const v1 = mesh.vertex(bx + _sa[0]! - _sb[0]!, by + _sa[1]! - _sb[1]!, bz + _sa[2]! - _sb[2]!, nx, ny, nz, len, 0, r, g, b);
+    const v2 = mesh.vertex(bx + _sa[0]! + _sb[0]!, by + _sa[1]! + _sb[1]!, bz + _sa[2]! + _sb[2]!, nx, ny, nz, len, t, r, g, b);
+    const v3 = mesh.vertex(ax + _sa[0]! + _sb[0]!, ay + _sa[1]! + _sb[1]!, az + _sa[2]! + _sb[2]!, nx, ny, nz, 0, t, r, g, b);
+    // wound outward: (v1 - v0) × (v3 - v0) along the face normal, or the other way round
+    const e1x = dx * len, e1y = dy * len, e1z = dz * len, e2x = 2 * _sb[0]!, e2y = 2 * _sb[1]!, e2z = 2 * _sb[2]!;
+    const cx = e1y * e2z - e1z * e2y, cy = e1z * e2x - e1x * e2z, cz = e1x * e2y - e1y * e2x;
+    if (cx * nx + cy * ny + cz * nz > 0) { mesh.triangle(v0, v1, v2); mesh.triangle(v0, v2, v3); }
+    else { mesh.triangle(v0, v2, v1); mesh.triangle(v0, v3, v2); }
+  }
+}
+
 interface FrameLegs { legs: ReadonlyArray<{ foot: readonly number[]; head: readonly number[] }>; size: number; bucket: string; colour: Rgb | null }
 /** The frame's lattice reading (latticeFall.ts latticeOf), its own or its first body's. */
 function latticeLegs(anatomy: StructureDamageAnatomy): FrameLegs | null {
@@ -331,11 +365,22 @@ function frameStubs(anatomy: StructureDamageAnatomy, rng: () => number, cap: num
   let low = Infinity;
   for (const y of _stubTop) low = Math.min(low, y);
   if (Number.isFinite(low)) {
-    for (const f of [0.35, 0.75]) {
+    // girts up the standing panels (their bracing reads as the frame's own, and stands)
+    for (const f of [0.2, 0.36, 0.52, 0.68, 0.84, 0.97]) {
       const gy = low * f;
       for (let k = 0; k < _stubX.length && roomFor(mesh, 1); k++) {
         const j = (k + 1) % _stubX.length;
         member(mesh, _stubX[k]!, _stubZ[k]!, _stubX[j]!, _stubZ[j]!, gy, t * 0.35, t * 0.6, tint, 0.8 + rng() * 0.15);
+      }
+    }
+  }
+  // each bay's X bracing up the standing panels (the frame's own diagonals)
+  if (Number.isFinite(low)) {
+    for (let k = 0; k < _stubX.length && roomFor(mesh, 2); k++) {
+      const j = (k + 1) % _stubX.length;
+      for (const [y0, y1] of [[low * 0.2, low * 0.6], [low * 0.6, low * 0.97]]) {
+        strut(mesh, _stubX[k]!, y0, _stubZ[k]!, _stubX[j]!, y1, _stubZ[j]!, t * 0.55, tint, 0.78 + rng() * 0.15);
+        strut(mesh, _stubX[j]!, y0, _stubZ[j]!, _stubX[k]!, y1, _stubZ[k]!, t * 0.55, tint, 0.78 + rng() * 0.15);
       }
     }
   }
@@ -366,9 +411,9 @@ function framePosts(rng: () => number, slot: FractureSlot, cap: number, mesh: Da
       box(mesh, x, (h1 - FOOT_M) / 2, z, t / 2, (h1 + FOOT_M) / 2, t / 2, 0, slot.tint, shade);
       box(mesh, x + (alongX ? lean : 0), (h1 + h) / 2, z + (alongX ? 0 : lean), t / 2, (h - h1) / 2, t / 2, 0, slot.tint, shade);
     }
-    // a panel of the wall leant against its posts
-    if (roomFor(mesh, 1) && rng() < 0.7) {
-      const pl = Math.min(len * 0.4, 1.4 + rng() * 1.4), ph = Math.min(cap, ruinScale * share * (0.5 + rng() * 0.3));
+    // panels of the wall leant against its posts
+    for (let p = 0; p < 2 && roomFor(mesh, 1); p++) {
+      const pl = Math.min(len * 0.45, 1.6 + rng() * 1.6), ph = Math.min(cap, ruinScale * share * (0.6 + rng() * 0.35));
       const u = (rng() - 0.5) * (len - pl);
       const x = alongX ? fcx + u : fcx + side * (off + 0.25), z = alongX ? fcz + side * (off + 0.25) : fcz + u;
       box(mesh, x, ph / 2 - 0.1, z, alongX ? pl / 2 : 0.05, ph / 2, alongX ? 0.05 : pl / 2, 0, slot.tint, 0.75 + rng() * 0.2);
@@ -622,6 +667,13 @@ export function keepRuinStanding<R>(anatomy: StructureDamageAnatomy, seed: numbe
     const cap = Math.max(1.2, reference * 0.7, anatomy.roof ? Math.min(top, anatomy.roof.eaveY) : top);
     // the plan: the interior heaped over the body's footprint, then (a row, a frame wider than its walls) the intact's box
     if (kind === 'frame') {
+      // an open shed's frame (lattice.ts `shed`) drops its roof and floor over its plan: the heap there
+      const shedFrame = !!(latticeLegs(anatomy) as { shed?: unknown } | null)?.shed || (!!anatomy.roof && !(builder !== null && FRAME_BUILDER.test(builder)));
+      if (shedFrame && pile && planShare() < RUIN_PLAN_SHARE) fillMound(anatomy, rng, pile, measuringWriter, fcx - fhw, fcx + fhw, fcz - fhd, fcz + fhd);
+      if (shedFrame && pile && intact && planShare() < RUIN_PLAN_SHARE) {
+        fillMound(anatomy, rng, pile, measuringWriter, Math.max(intact.minX, reachBox[0]!), Math.min(intact.maxX, reachBox[1]!),
+          Math.max(intact.minZ, reachBox[2]!), Math.min(intact.maxZ, reachBox[3]!));
+      }
       // an open frame: its own legs buckled and standing, nothing heaped where it drew nothing, no masonry
       for (let pass = 0; pass < 3 && heightP90() < target; pass++) {
         frameStubs(anatomy, rng, cap, measuringWriter, 0.36 + pass * 0.1, frameSlot(anatomy));
