@@ -33,6 +33,8 @@ type V3 = readonly [number, number, number];
 const PROTECTION_MODEL: Readonly<Record<PolandDonorId, number>> = {t72b3_zubr: 2, t72b3_zubr_ii: 3};
 const SIDES = [-1, 1] as const;
 const eraSector = (side: number): string => `turret_era_${side < 0 ? 'L' : 'R'}`;
+/** Round-stock facets: the authored count on the high tier, fewer on the far (low) tier. */
+const seg = (P: TankBuilderPort, high: number, low: number): number => (P.q ? high : low);
 
 /** Raycast seats on permanent stock only: the donor casting plus the kit's own welded housings, never removable ERA,
  * stowage boxes or other fittings. */
@@ -200,7 +202,7 @@ function zubrEraBelt(P: TankBuilderPort, casting: Stock): void {
     // Bolt heads along the pannier's top edge.
     for (let i = 1; i < rings.length - 1; i += 2) {
       const [, , ot, it] = rings[i];
-      P.addEquipment('turretDark', cylY(.016, .016, .012, 8), ot[0] * .8 + it[0] * .2, b.high + .005, ot[2] * .8 + it[2] * .2);
+      P.addEquipment('turretDark', cylY(.016, .016, .012, seg(P, 8, 6)), ot[0] * .8 + it[0] * .2, b.high + .005, ot[2] * .8 + it[2] * .2);
     }
   }
 }
@@ -211,7 +213,7 @@ function stanchionArm(P: TankBuilderPort, casting: Stock, side: number, px: numb
   armY: number, toX: number): void {
   weldedBlock(P, casting, px, pz, .12, .12, top);
   P.addEquipment('turretDetail', box(.17, .022, .17), px, top + .011, pz);
-  lattice(P, beamBetween([px + side * .06, armY, pz], [toX, armY, pz], .022, 8), 'side-mount');
+  lattice(P, beamBetween([px + side * .06, armY, pz], [toX, armY, pz], .022, seg(P, 8, 5)), 'side-mount');
   lattice(P, box(.07, .07, .09).translate(px + side * .085, armY, pz), 'mount-shoe');
 }
 
@@ -226,7 +228,7 @@ function zubrScreens(P: TankBuilderPort, casting: Stock, lamp: Parameters<typeof
     for (const [px, sz] of [front, [side * st.rear[0], st.rear[1]]] as const) {
       stanchionArm(P, casting, side, px, sz, st.top, st.arm, x);
       lattice(P, box(.06, .05, .08).translate(x, s.top + .02, sz), 'screen-clamp');
-      lattice(P, beamBetween([side * (s.x - .34), st.arm - .012, sz], [x, mid, sz], .012, 6), 'screen-brace');
+      lattice(P, beamBetween([side * (s.x - .34), st.arm - .012, sz], [x, mid, sz], .012, seg(P, 6, 4)), 'screen-brace');
     }
     for (const z of [s.front, s.rear]) lattice(P, box(.034, s.top - s.bottom + .034, .034).translate(x, mid, z), 'screen-frame');
     for (const y of [s.bottom, mid, s.top]) lattice(P, box(.031, .029, s.front - s.rear + .034).translate(x, y, (s.front + s.rear) / 2), 'screen-frame');
@@ -239,8 +241,8 @@ function zubrScreens(P: TankBuilderPort, casting: Stock, lamp: Parameters<typeof
     const lx = side * (s.x - .07), lz = front[1], seat = st.arm + .022, y = seat + .047;
     P.addEquipment('turretDetail', box(.105, .084, .13), lx, y, lz);
     P.addModuleVisual('optics', 'turretGlass', box(.074, .035, .013), lx, y + .006, lz + .071);
-    for (const dx of [-.068, .068]) P.addEquipment('turretDetail', beamBetween([lx + dx, seat - .008, lz - .06], [lx + dx, seat + .133, lz + .058], .008));
-    P.addEquipment('turretDetail', beamBetween([lx - .068, seat + .133, lz + .058], [lx + .068, seat + .133, lz + .058], .008));
+    for (const dx of [-.068, .068]) P.addEquipment('turretDetail', beamBetween([lx + dx, seat - .008, lz - .06], [lx + dx, seat + .133, lz + .058], .008, seg(P, 10, 5)));
+    P.addEquipment('turretDetail', beamBetween([lx - .068, seat + .133, lz + .058], [lx + .068, seat + .133, lz + .058], .008, seg(P, 10, 5)));
   }
 }
 
@@ -260,10 +262,10 @@ function rearRack(P: TankBuilderPort, casting: Stock, r: RackPlan): void {
   for (const side of SIDES) for (const rx of r.rails) {
     const x = side * rx, {point} = casting.face([x, low, -3], [0, 0, 1]);
     if (r.rise && low !== railY) {
-      P.addEquipment('turretDetail', beamBetween([x, low, point.z + .06], [x, low, r.rise[0]], .022, 8));
-      P.addEquipment('turretDetail', beamBetween([x, low, r.rise[0] + .015], [x, railY, r.rise[1] - .015], .022, 8));
-      P.addEquipment('turretDetail', beamBetween([x, railY, r.rise[1]], [x, railY, r.rear - .02], .022, 8));
-    } else P.addEquipment('turretDetail', beamBetween([x, railY, point.z + .06], [x, railY, r.rear - .02], .022, 8));
+      P.addEquipment('turretDetail', beamBetween([x, low, point.z + .06], [x, low, r.rise[0]], .022, seg(P, 8, 5)));
+      P.addEquipment('turretDetail', beamBetween([x, low, r.rise[0] + .015], [x, railY, r.rise[1] - .015], .022, seg(P, 8, 5)));
+      P.addEquipment('turretDetail', beamBetween([x, railY, r.rise[1]], [x, railY, r.rear - .02], .022, seg(P, 8, 5)));
+    } else P.addEquipment('turretDetail', beamBetween([x, railY, point.z + .06], [x, railY, r.rear - .02], .022, seg(P, 8, 5)));
   }
   const bars = r.slatSides ? [r.front, (2 * r.front + r.rear) / 3, (r.front + 2 * r.rear) / 3, r.rear] : [r.front, (r.front + r.rear) / 2, r.rear];
   for (const z of bars) P.addEquipment('turretDetail', box(r.half * 2 + .03, .024, .03), 0, r.floor + .022, z);
@@ -289,8 +291,8 @@ function zubrRackLoad(P: TankBuilderPort): void {
   const r = ZUBR.rack, z = (r.front + r.rear) / 2, deck = r.floor + .034;
   P.addEquipment('turretDetail', box(r.half * 2 - .06, .016, r.front - r.rear - .05), 0, deck - .008, z);
   // The camouflage roll, strapped across the rack.
-  P.addEquipment('turretCloth', cylX(.105, .80, 18), .30, deck + .105, z);
-  for (const x of [.04, .56]) P.addEquipment('turretDark', torus(.108, .011, 18, 6).rotateY(Math.PI / 2), x, deck + .105, z);
+  P.addEquipment('turretCloth', cylX(.105, .80, seg(P, 18, 10)), .30, deck + .105, z);
+  for (const x of [.04, .56]) P.addEquipment('turretDark', torus(.108, .011, seg(P, 18, 10), seg(P, 6, 4)).rotateY(Math.PI / 2), x, deck + .105, z);
   // A service case and a strapped pack.
   P.addEquipment('turretDetail', box(.32, .19, .22), -.50, deck + .095, z + .02);
   P.addEquipment('turretDetail', box(.334, .018, .234), -.50, deck + .199, z + .02);
@@ -298,14 +300,14 @@ function zubrRackLoad(P: TankBuilderPort): void {
   strappedPack(P, 'turret', [-.12, deck + .07, z], [.26, .14, .24]);
   // Tools clamped outside the rack's left side rail; the whips on its rear corners.
   const tx = r.half + .040;
-  P.addEquipment('turretDark', beamBetween([tx, r.top, r.front - .02], [tx, r.top, r.rear + .03], .013));
+  P.addEquipment('turretDark', beamBetween([tx, r.top, r.front - .02], [tx, r.top, r.rear + .03], .013, seg(P, 10, 6)));
   for (const zz of [r.front - .06, r.rear + .07]) P.addEquipment('turretDark', box(.07, .045, .025), r.half + .022, r.top, zz);
   P.addEquipment('turretDetail', box(.03, .12, .20), r.half + .028, (r.floor + r.top) / 2 + .01, (r.front + r.rear) / 2 + .05);
-  P.addEquipment('turretDark', beamBetween([r.half + .028, (r.floor + r.top) / 2 + .07, (r.front + r.rear) / 2 + .05], [r.half + .028, r.top - .02, (r.front + r.rear) / 2 + .05], .012));
+  P.addEquipment('turretDark', beamBetween([r.half + .028, (r.floor + r.top) / 2 + .07, (r.front + r.rear) / 2 + .05], [r.half + .028, r.top - .02, (r.front + r.rear) / 2 + .05], .012, seg(P, 10, 6)));
   for (const side of SIDES) {
     const x = side * r.half, zz = r.rear;
-    P.addEquipment('turretDetail', cylY(.050, .060, .06, 12), x, r.top + .044, zz);
-    P.addEquipment('turretDark', cylY(.008, .014, .70, 8), x, r.top + .424, zz);
+    P.addEquipment('turretDetail', cylY(.050, .060, .06, seg(P, 12, 8)), x, r.top + .044, zz);
+    P.addEquipment('turretDark', cylY(.008, .014, .70, seg(P, 8, 6)), x, r.top + .424, zz);
   }
 }
 
@@ -403,13 +405,23 @@ function zubrIICabinets(P: TankBuilderPort, casting: Stock): void {
         }
       });
     } finally { seats.dispose(); }
+    // The near tier shows the wall's bolt row above the top course (fastener detail, permanent steel).
+    if (P.q) {
+      for (let z = w.front - .06; z >= w.back + .02; z -= .1225)
+        P.addEquipment('turretDark', cylX(.013, .012, 8), side * (w.x + .005), w.top - .045, z);
+      const [ax, az] = outer[2], [bx, bz] = outer[3];
+      for (const f of [.2, .5, .8]) {
+        const px = ax + (bx - ax) * f, pz = az + (bz - az) * f;
+        P.addEquipment('turretDark', cylX(.013, .012, 8).rotateY(-side * Math.PI / 4), px + side * .0035, w.top - .045, pz - .0035);
+      }
+    }
     // Bolted access lids, a clamped crowbar and bolt rows on the lid.
     for (const z of [.12, -.50]) {
       P.addEquipment('turretDetail', box(.27, .022, .38), side * (w.x - .17), w.top + .015, z);
       P.addEquipment('turretDark', box(.07, .018, .12), side * (w.x - .17), w.top + .034, z);
     }
     const bx = side * (w.x - w.lid + .06);
-    P.addEquipment('turretDark', beamBetween([bx, w.top + .022, .34], [bx, w.top + .022, -.84], .015));
+    P.addEquipment('turretDark', beamBetween([bx, w.top + .022, .34], [bx, w.top + .022, -.84], .015, seg(P, 10, 6)));
     for (const z of [.26, -.76]) P.addEquipment('turretDark', box(.05, .03, .03), bx, w.top + .016, z);
     // Square driving lamps on the cabinets' front ends.
     nationalLamp(P, side * (w.x - .17), w.front - .09, w.top + .004, NATIONAL_ROOF_LOADOUTS.t72b3_zubr_ii.lamp);
@@ -426,22 +438,22 @@ function zubrIIBasketLoad(P: TankBuilderPort): void {
   const b = ZUBR_II.basket, z = (b.front + b.rear) / 2, deck = b.floor + .034;
   P.addEquipment('turretDetail', box(b.half * 2 - .06, .016, b.front - b.rear - .05), 0, deck - .008, z);
   for (const side of SIDES) strappedPack(P, 'turret', [side * .56, deck + .10, z], [.44, .20, .42]);
-  P.addEquipment('turretCloth', cylX(.12, .62, 18), 0, deck + .12, z - .05);
-  for (const x of [-.20, .20]) P.addEquipment('turretDark', torus(.123, .012, 18, 6).rotateY(Math.PI / 2), x, deck + .12, z - .05);
+  P.addEquipment('turretCloth', cylX(.12, .62, seg(P, 18, 10)), 0, deck + .12, z - .05);
+  for (const x of [-.20, .20]) P.addEquipment('turretDark', torus(.123, .012, seg(P, 18, 10), seg(P, 6, 4)).rotateY(Math.PI / 2), x, deck + .12, z - .05);
   // Guarded rear lights on the rear corner posts, facing aft.
   for (const side of SIDES) {
     const x = side * (b.half - .10), y = b.top - .16, zz = b.rear - .045;
     P.addEquipment('turretDetail', box(.18, .12, .07), x, y, zz);
     P.addEquipment('turretGlass', markVehicleNightLens(box(.12, .05, .012), 'marker'), x, y + .01, zz - .041);
-    for (const dx of [-.10, .10]) P.addEquipment('turretDark', beamBetween([x + dx, y - .07, b.rear - .01], [x + dx, y + .08, zz - .07], .007));
-    P.addEquipment('turretDark', beamBetween([x - .10, y + .08, zz - .07], [x + .10, y + .08, zz - .07], .007));
+    for (const dx of [-.10, .10]) P.addEquipment('turretDark', beamBetween([x + dx, y - .07, b.rear - .01], [x + dx, y + .08, zz - .07], .007, seg(P, 10, 5)));
+    P.addEquipment('turretDark', beamBetween([x - .10, y + .08, zz - .07], [x + .10, y + .08, zz - .07], .007, seg(P, 10, 5)));
     // the bracket the lamp hangs on, off the rear corner post
     P.addEquipment('turretDetail', box(.10, .03, .05), side * (b.half - .05), y + .075, b.rear - .01);
   }
   // Whips on the basket's front corner posts.
   for (const side of SIDES) {
-    P.addEquipment('turretDetail', cylY(.050, .060, .06, 12), side * b.half, b.top + .044, b.front);
-    P.addEquipment('turretDark', cylY(.008, .014, .75, 8), side * b.half, b.top + .449, b.front);
+    P.addEquipment('turretDetail', cylY(.050, .060, .06, seg(P, 12, 8)), side * b.half, b.top + .044, b.front);
+    P.addEquipment('turretDark', cylY(.008, .014, .75, seg(P, 8, 6)), side * b.half, b.top + .449, b.front);
   }
 }
 
@@ -454,8 +466,8 @@ function zubrIISensors(P: TankBuilderPort): void {
   P.addEquipment('turretDetail', box(.26, .13, .25), ox, base + .065, oz);
   P.addModuleVisual('optics', 'turretGlass', box(.18, .070, .014), ox, base + .083, oz + .132);
   P.addEquipment('turretDetail', box(.29, .025, .28), ox, base + .142, oz);
-  for (const dx of [-.156, .156]) P.addEquipment('turretDetail', beamBetween([ox + dx, base - .002, oz - .10], [ox + dx, base + .20, oz + .14], .010));
-  P.addEquipment('turretDetail', beamBetween([ox - .156, base + .20, oz + .14], [ox + .156, base + .20, oz + .14], .010));
+  for (const dx of [-.156, .156]) P.addEquipment('turretDetail', beamBetween([ox + dx, base - .002, oz - .10], [ox + dx, base + .20, oz + .14], .010, seg(P, 10, 5)));
+  P.addEquipment('turretDetail', beamBetween([ox - .156, base + .20, oz + .14], [ox + .156, base + .20, oz + .14], .010, seg(P, 10, 5)));
   // The split-panel roof sensor on the right rear stanchion.
   nationalRoofSensor(P, -st.rear[0], st.rear[1], base, l);
 }
