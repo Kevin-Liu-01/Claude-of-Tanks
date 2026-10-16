@@ -1165,6 +1165,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/middleware-diet.selftest.mjs',
     'tools/worker-generated-types.selftest.mjs',
     'server/dedicatedWorldCollision.selftest.mjs',
+    'server/collisionRestoreIndex.selftest.mjs', // 2026-10-16 physics: a whole destroyed set restores in linear time (Saltwind's walls)
     'server/convexOutlines.selftest.mjs', // 2026-10-08 the hitbox lane: every convex part holds its outline
     'server/mapResourceCache.selftest.mjs',
     'server/collisionManifestLoader.selftest.mjs',
