@@ -36,9 +36,10 @@ const { ensureInteriorFills } = await import('../src/vehicles/interiorFills.ts')
 const { geometryFingerprint } = await import('../src/vehicles/tankAssets.ts');
 const { combatAnatomyCalibration, registerCombatAnatomyCalibrations } = await import(
   '../src/vehicles/combatAnatomyCalibrationRegistry.ts');
+// (--fingerprints-only runs on a base tree without the ring helper)
 const {
   measureTurretRing, turretRingCut, turretRingRadius, turretRingSides, TURRET_RING_LIFT_M, TURRET_RING_PLATE_NAME,
-} = await import('../src/vehicles/turretRingWell.ts');
+} = process.argv.includes('--fingerprints-only') ? {} : await import('../src/vehicles/turretRingWell.ts');
 
 const args = process.argv.slice(2);
 const opt = (name, fallback = '') => {
@@ -108,7 +109,7 @@ const r4 = (value) => Math.round(value * 1e4) / 1e4;
 const rig = (root, name) => root.getObjectByName(name);
 const plateOf = (root) => {
   const plates = [];
-  root.traverse((object) => { if (object.name === TURRET_RING_PLATE_NAME || object.userData?.turretRingPlate) plates.push(object); });
+  root.traverse((object) => { if ((TURRET_RING_PLATE_NAME && object.name === TURRET_RING_PLATE_NAME) || object.userData?.turretRingPlate) plates.push(object); });
   return plates;
 };
 
@@ -278,6 +279,7 @@ for (const id of ids) {
   if (base.has(id)) {
     checks.battleBase = !!L && L.fpIntact === base.get(id).battle;
     checks.iconsBase = !!F && F.fpIntact === base.get(id).icons;
+    if (base.get(id).bot) checks.botBase = !!B && B.fpIntact === base.get(id).bot;
   }
   row.checks = checks;
   row.pass = Object.values(checks).every(Boolean);

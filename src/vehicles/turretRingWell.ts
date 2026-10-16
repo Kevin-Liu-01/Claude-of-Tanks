@@ -30,9 +30,13 @@
  *    in the hull, bearing by bearing (down past the deck where it falls away under the race; up to the deck where it
  *    stands over the race's plane). The plate takes the hull's dents on the CPU (the field at its vertices, ramped with
  *    the burn clock as the shader ramps the hull's: `ramp`), one draw per wreck, one program for the fleet.
- *  - A static map hulk (world/wrecks.ts): the bake cuts the same prism out of every hull part (exactly: what lies outside
- *    it is kept, clipped, never dropped whole) and merges the well as real geometry with the same band
- *    (`buildTurretRingWellGeometry`) into its one baked mesh: no extra draws.
+ *    A long hull face near the rim is split into the polygon's sectors first, so a dent on its far corner cannot shear
+ *    it in over the race.
+ *  - A static map hulk (world/wrecks.ts): once its parts are posed and crumpled, the bake cuts the race's prism and the
+ *    well's out of every hull-side part (exactly: what lies outside is kept, clipped, never dropped whole) and merges the
+ *    well as real geometry with the same band (`planTurretRingHulk`, `buildTurretRingWellGeometry`) into its one baked
+ *    mesh: no extra draws. The well's wall keeps clear of the hull's skin (an exterior depth pass: a sponson, a lower
+ *    side, a track under a wide ring), narrowing to a ledge under the lip where it must, its floor over the rest.
  */
 import * as THREE from 'three';
 import { FIRST_PARTY_VEHICLE_AUTHORSHIP } from '../authorship.ts';
@@ -63,8 +67,9 @@ const STUB_H_M = 0.16;
 /** A live cut reaches this far under the race (m): past the deck's plates, so no deck face under the ring is left for
  *  a dent to tilt up through the plate (the plate covers what lies deeper). */
 const LIVE_CUT_DEPTH_M = 0.2;
-/** Every cut reaches this far over the race (m): the turret's band (nothing of the hull's stands higher under it). */
-const CUT_RISE_M = 0.35;
+/** Every cut reaches this far over the race (m): past the turret's band and the tallest wall a race lies inside (a
+ *  pocket's, a dish's: where one runs in over the rim, the cut takes it whole and the band closes it to its top). */
+const CUT_RISE_M = 0.6;
 /** The band reaches this far past the deck it closes under the race (m). */
 const BAND_PAD_M = 0.01;
 /** A hulk's band reaches further under the deck: its cut faces are the crumpled hull's, and the deck's cut edge bows
@@ -416,13 +421,14 @@ export function measureTurretRing(
 
 /** The floor's lowest reach under the deck: the race's lip and a hand's breadth of wall (m). */
 const WELL_MIN_DEPTH_M = LIP_M + 0.04;
-/** The exterior pass's views (unit directions the eye looks along: 8 bearings × level, down 35° and up 35°, straight
- *  down and up) and its pixel (m). */
+/** The exterior pass's views (unit directions the eye looks along: 12 bearings × level, 10° and 35° down and up,
+ *  straight down and up) and its pixel (m). */
 const EXTERIOR_VIEWS: readonly (readonly [number, number, number])[] = (() => {
   const views: [number, number, number][] = [[0, -1, 0], [0, 1, 0]];
-  for (let b = 0; b < 8; b++) {
-    const a = (b / 8) * Math.PI * 2 + Math.PI / 8;
-    for (const e of [0, -0.61, 0.61]) views.push([-Math.sin(a) * Math.cos(e), Math.sin(e), -Math.cos(a) * Math.cos(e)]);
+  for (let b = 0; b < 12; b++) {
+    const a = (b / 12) * Math.PI * 2 + Math.PI / 12;
+    // level, grazing up and down (an overhang's underside, a glacis under a wide ring) and steeper
+    for (const e of [0, 0.17, -0.17, 0.61, -0.61]) views.push([-Math.sin(a) * Math.cos(e), Math.sin(e), -Math.cos(a) * Math.cos(e)]);
   }
   return views;
 })();
@@ -445,11 +451,15 @@ function exteriorSkin(triangles: readonly number[], cx: number, cz: number, deck
   const reach = Math.max(0.5 * rimR, rimR - raceWidth(rimR)) - 0.018 + margin;
   const lo = floorY - 0.05;
   const count = triangles.length / 9;
+  // and the band round its rim closes it from the side down past the lip (its reach under the race's top at the least:
+  // a crumpled deck round the ring lets the eye in under the race's plane only where the band does not reach)
   const disc: number[] = [];
+  const top = deckY + TURRET_RING_LIFT_M, bandFoot = lip - HULK_BAND_PAD_M;
   for (let k = 0; k < 32; k++) {
     const a0 = (k / 32) * Math.PI * 2, a1 = ((k + 1) / 32) * Math.PI * 2;
-    disc.push(cx, deckY + TURRET_RING_LIFT_M, cz, cx + Math.sin(a0) * rimR, deckY + TURRET_RING_LIFT_M, cz + Math.cos(a0) * rimR,
-      cx + Math.sin(a1) * rimR, deckY + TURRET_RING_LIFT_M, cz + Math.cos(a1) * rimR);
+    const x0 = cx + Math.sin(a0) * rimR, z0 = cz + Math.cos(a0) * rimR, x1 = cx + Math.sin(a1) * rimR, z1 = cz + Math.cos(a1) * rimR;
+    disc.push(cx, top, cz, x0, top, z0, x1, top, z1);
+    disc.push(x0, top, z0, x0, bandFoot, z0, x1, bandFoot, z1, x0, top, z0, x1, bandFoot, z1, x1, top, z1);
   }
   const total = count + disc.length / 9;
   const all = new Float32Array(total * 9);
@@ -513,7 +523,6 @@ function exteriorSkin(triangles: readonly number[], cx: number, cz: number, deck
       const r = Math.hypot(x - cx, z - cz);
       if (r < reach && y >= lo && y <= lip) {
         skin.push({ r, y });
-        exteriorReport?.(x, y, z, owner[p]);
       }
     }
   }
@@ -528,10 +537,12 @@ function wellClearOfSkin(skin: readonly { r: number; y: number }[], deckY: numbe
   const openR = Math.max(0.5 * rimR, rimR - raceWidth(rimR));
   const gearR = openR - 0.018;
   const shallowest = deckY - WELL_MIN_DEPTH_M;
+  // over the skin inside the wall; where the skin stands too close under the lip for any floor over it, a pan the lip
+  // deep (the well's cut then takes nothing under the lip)
   const floorFor = (wellR: number): number => {
     let floor = floorY;
     for (const point of skin) if (point.r < wellR + EXTERIOR_MARGIN_M) floor = Math.max(floor, point.y + 0.03);
-    return Math.min(floor, shallowest);
+    return floor > shallowest ? deckY - LIP_M : floor;
   };
   // the widest wall that keeps the well half its depth (or 0.6 m), else the deepest one
   const want = Math.min(0.6, 0.5 * (deckY - floorY));
@@ -544,9 +555,6 @@ function wellClearOfSkin(skin: readonly { r: number; y: number }[], deckY: numbe
   return best;
 }
 
-/** Tools: hear every point of the hull's skin the exterior pass finds inside the well's reach (hull frame) and its face. */
-let exteriorReport: ((x: number, y: number, z: number, face: number) => void) | null = null;
-export function setTurretRingExteriorReport(report: typeof exteriorReport): void { exteriorReport = report; }
 
 /** The ring a wreck draws from its receipt (or its own measure) and the anatomy: the well's floor (the receipt's; a
  *  receipt without one, the calibrated hull's belly plus its floor plate) and the autoloader's carousel. */
@@ -561,7 +569,7 @@ export function turretRingSeatFrom(
   const receiptFloor = receipt.floorY;
   const floorY = typeof receiptFloor === 'number' && Number.isFinite(receiptFloor) ? receiptFloor
     : hullFloorY !== null && Number.isFinite(hullFloorY) ? hullFloorY + 0.12 : receipt.deckY - 0.9;
-  const depth = clamp(receipt.deckY - floorY, WELL_MIN_DEPTH_M, 1.3);
+  const depth = clamp(receipt.deckY - floorY, LIP_M, 1.3);
   const gearR = openR - 0.018;
   const receiptWell = receipt.wellR, receiptSkin = receipt.skinR;
   const wellR = typeof receiptWell === 'number' && Number.isFinite(receiptWell) ? clamp(receiptWell, 0.5 * openR, gearR) : gearR;
@@ -591,7 +599,7 @@ export function turretRingSeatFrom(
 
 /** The prism the hull gives way inside: the polygon round the race's rim (corner k at bearing 2πk/sides, x = sin,
  *  z = cos, on radius `r`), from `yLo` to `yHi`, in the hull frame. */
-export interface TurretRingCut {
+interface TurretRingCut {
   cx: number;
   cz: number;
   r: number;
@@ -691,8 +699,8 @@ const LIVE_ZONE_M = 0.36;
 const LIVE_BAND_M = 0.08;
 /** A face whose every edge is shorter than this is short (m). */
 const REFINE_EDGE_M = 0.09;
-/** Nor is a face refined that lies wholly this far under the race's top (m): a dent lifts it with the plate over it. */
-const REFINE_UNDER_M = 0.05;
+/** Nor is a face refined that lies wholly this far under the race's top (m): past the most a dent lifts a corner. */
+const REFINE_UNDER_M = 0.3;
 
 /** A cutter: the prism, and (a live cut's) its refinement: the zone's polygon, the band's and the sectors' lines. */
 interface RingCutter {
@@ -1166,7 +1174,7 @@ export function buildTurretRingPlateGeometry(seat: TurretRingSeat, sides: number
 
 /** A dent field (materials.ts makeBurnUniforms uCrHull / uCrHullDir, the hull frame): centre and R², inward direction
  *  and depth. */
-export interface TurretRingDents { readonly centres: readonly THREE.Vector4[]; readonly dirs: readonly THREE.Vector4[] }
+interface TurretRingDents { readonly centres: readonly THREE.Vector4[]; readonly dirs: readonly THREE.Vector4[] }
 
 /** The dent field at a hull-frame point, at full depth ((1 − r²/R²)² · depth along each dent, the burn hook's law). */
 function dentAt(dents: TurretRingDents, x: number, y: number, z: number, out: Float64Array): void {
@@ -1219,13 +1227,30 @@ export function turretRingPlateDents(geometry: THREE.BufferGeometry, origin: THR
       }
     }
   }
+  // and by the most the field lifts the hull just outside the rim over the rim itself: a deck there the field moves in
+  // (at most 0.72 of its distance) and up slides under the race's edge, not over it
+  const lift = new Float64Array(sides);
+  const rimY = (k: number): number => origin.y + position.getY(layout.rim + k);
   for (let k = 0; k < sides; k++) {
-    const up = Math.max(rise[k], rise[(k + sides - 1) % sides]), down = Math.max(sink[k], sink[(k + sides - 1) % sides]);
+    const x = position.getX(layout.rim + k), z = position.getZ(layout.rim + k);
+    const r = Math.hypot(x, z) || 1;
+    const own = offsets[(layout.rim + k) * 3 + 1];
+    for (const reach of RIM_LIFT_REACH_M) {
+      dentAt(dents, origin.x + x * (1 + reach / r), rimY(k), origin.z + z * (1 + reach / r), f);
+      if (f[1] - own > lift[k]) lift[k] = f[1] - own;
+    }
+  }
+  for (let k = 0; k < sides; k++) {
+    const before = (k + sides - 1) % sides;
+    const up = Math.max(rise[k], rise[before], lift[k]), down = Math.max(sink[k], sink[before]);
     for (const start of [layout.rim, layout.outer[1], layout.outer[2], layout.inner[0], layout.inner[1]]) offsets[(start + k) * 3 + 1] += up;
     offsets[(layout.outer[0] + k) * 3 + 1] -= down;
   }
   return offsets;
 }
+
+/** How far outside the rim the plate's edge looks for the field's lift (m): past the band polygon's reach. */
+const RIM_LIFT_REACH_M = [0.02, 0.05, 0.08, 0.12];
 
 /** The burn hook's dent share at a wreck age (its smoothstep over the blast's first 0.35 s; disarmed: none). */
 export function turretRingDentShare(ageS: number): number {
@@ -1290,7 +1315,12 @@ vec3 cotRingN = vec3( 0.0, 1.0, 0.0 );
   float rr = length( q );
   float ang = atan( q.x, q.y );
   vec3 base;
-  if ( vCotRingA.w > 1.5 ) {
+  if ( !gl_FrontFacing ) {
+    // the plate seen from under it (where the cut took a plate's underside the eye reached past the hull's side): the
+    // ring's soot-black underside, out of the sun
+    base = vec3( 0.024, 0.022, 0.02 );
+    cotRingSun = 0.0; cotRingSky = 0.3; cotRingRough = 0.95;
+  } else if ( vCotRingA.w > 1.5 ) {
     // the band's inner face: the deck's cut edge over the race, scorched steel
     base = vec3( 0.096, 0.086, 0.074 );
     cotRingRough = 0.6; cotRingMetal = 0.3;
@@ -1327,7 +1357,7 @@ vec3 cotRingN = vec3( 0.0, 1.0, 0.0 );
       float rc = length( hc );
       if ( tCar < t && rc > vCotRingB.y && rc < vCotRingB.z ) { t = tCar; kind = 2; }
     }
-    {
+    if ( depth > ${(STUB_H_M + 0.04).toFixed(2)} ) {
       float tStub = ( depth - ${STUB_H_M.toFixed(2)} ) / down;
       if ( tStub < t && length( q + v2 * tStub ) < ${STUB_R_M.toFixed(2)} ) { t = tStub; kind = 3; }
     }
@@ -1413,7 +1443,7 @@ interface RingEngineContext {
 }
 
 /** The ring material's program key: every wreck's material compiles to the fleet's one program. */
-const TURRET_RING_PROGRAM_KEY = 'turret-ring-well-v2';
+const TURRET_RING_PROGRAM_KEY = 'turret-ring-well-v3';
 
 /**
  * A wreck's ring material, on the engine context's cascade registration (a stub's or a tool's takes the hooks
@@ -1423,7 +1453,9 @@ const TURRET_RING_PROGRAM_KEY = 'turret-ring-well-v2';
  * wreck warm compiles it: createTurretRingPresentation.stageWarm). `releaseTurretRingWellMaterial` frees it.
  */
 export function createTurretRingWellMaterial(engineCtx: RingEngineContext | null | undefined): THREE.MeshStandardMaterial {
-  const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.82, metalness: 0.1 });
+  // two-sided: where the cut took a plate's underside the eye reached past the hull's side, the plate closes it from
+  // under too
+  const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.82, metalness: 0.1, side: THREE.DoubleSide });
   material.name = 'TurretRingWell';
   material.userData.vehicleMaterialRole = 'turretRingWell';
   material.userData.provenance = { ...FIRST_PARTY_VEHICLE_AUTHORSHIP, assetId: TURRET_RING_WELL_ASSET_ID };
@@ -1438,7 +1470,7 @@ export function createTurretRingWellMaterial(engineCtx: RingEngineContext | null
   return material;
 }
 
-export function releaseTurretRingWellMaterial(material: THREE.Material, engineCtx: RingEngineContext | null | undefined): void {
+function releaseTurretRingWellMaterial(material: THREE.Material, engineCtx: RingEngineContext | null | undefined): void {
   engineCtx?.releaseShadowMaterial?.(material);
   material.dispose();
 }
@@ -1627,12 +1659,12 @@ export function createTurretRingPresentation(options: TurretRingPresentationOpti
 function wellWallRadius(seat: TurretRingSeat): number { return Math.min(seat.openR - 0.018, seat.wellR ?? Infinity); }
 
 /** A hulk's ring: its seat and its two cuts. */
-export interface TurretRingHulk {
+interface TurretRingHulk {
   seat: TurretRingSeat;
   sides: number;
-  /** Above the race's lip on the rim's polygon (its cut faces the band closes; the bake cuts it on the bent hull), then
-   *  under it on the polygon of the well's wall down to the floor (the wall closes those; cut as the hull is posed). */
-  cuts: [TurretRingCut, TurretRingCut];
+  /** Above the race's lip on the rim's polygon (its cut faces the band closes), then (unless the well is a pan the lip
+   *  deep) under it on the polygon of the well's wall down to the floor (the wall closes those). */
+  cuts: TurretRingCut[];
 }
 
 /**
@@ -1651,7 +1683,6 @@ export function planTurretRingHulk(seat: TurretRingSeat,
     // the hull's skin within a crumple's reach of the well as posed: the well keeps clear of it as it is bent
     const triangles: number[] = [];
     const tri = new Float64Array(9);
-    const seated = seat.deckY - seat.depth;
     for (const { geometry, toHull, fill } of parts) {
       const position = geometry.getAttribute('position');
       if (fill || !position) continue;
@@ -1662,8 +1693,8 @@ export function planTurretRingHulk(seat: TurretRingSeat,
         for (let i = 0; i < 9; i++) triangles.push(tri[i]);
       }
     }
-    clear = wellClearOfSkin(exteriorSkin(triangles, seat.cx, seat.cz, seat.deckY, seat.rimR, seated), seat.deckY, seat.rimR,
-      seated);
+    clear = wellClearOfSkin(exteriorSkin(triangles, seat.cx, seat.cz, seat.deckY, seat.rimR, floor0), seat.deckY, seat.rimR,
+      floor0);
   }
   const lip = seat.deckY - LIP_M;
   const top = seat.deckY + TURRET_RING_LIFT_M;
@@ -1674,13 +1705,13 @@ export function planTurretRingHulk(seat: TurretRingSeat,
     wellSeat.carousel = wellSeat.depth >= 0.3 && rOut > wellSeat.carousel.rIn + 0.08
       ? { ...wellSeat.carousel, rOut, h: Math.min(wellSeat.carousel.h, 0.42 * wellSeat.depth) } : null;
   }
+  const race: TurretRingCut = { cx: seat.cx, cz: seat.cz, r: seat.rimR, sides, yLo: lip, yHi: seat.deckY + CUT_RISE_M, top };
   return {
     seat: wellSeat,
     sides,
-    cuts: [
-      { cx: seat.cx, cz: seat.cz, r: seat.rimR, sides, yLo: lip, yHi: seat.deckY + CUT_RISE_M, top },
-      { cx: seat.cx, cz: seat.cz, r: clear.wellR, sides, yLo: clear.floorY - 0.02, yHi: lip, top },
-    ],
+    // a pan the lip deep takes nothing under the lip
+    cuts: clear.floorY >= lip - 1e-6 ? [race]
+      : [race, { cx: seat.cx, cz: seat.cz, r: clear.wellR, sides, yLo: clear.floorY - 0.02, yHi: lip, top }],
   };
 }
 
@@ -1728,8 +1759,8 @@ export function buildTurretRingWellGeometry(seat: TurretRingSeat, rim: ArrayLike
     pushQuad(out, normals, at(gearR, a0, lip), at(gearR, a1, lip), at(gearR, a1, floor), at(gearR, a0, floor), inward(am));
     pushQuad(out, normals, [seat.cx, floor, seat.cz], at(gearR, a0, floor), at(gearR, a1, floor), null, up);
   }
-  // the slip-ring stub (six sides and its top)
-  for (let s = 0; s < 6; s++) {
+  // the slip-ring stub (six sides and its top), in a well deep enough for it
+  for (let s = 0; s < (seat.depth > STUB_H_M + 0.04 ? 6 : 0); s++) {
     const a0 = (s / 6) * Math.PI * 2, a1 = ((s + 1) / 6) * Math.PI * 2, am = (a0 + a1) / 2;
     pushQuad(out, normals, at(STUB_R_M, a0, floor + STUB_H_M), at(STUB_R_M, a1, floor + STUB_H_M), at(STUB_R_M, a1, floor),
       at(STUB_R_M, a0, floor), outward(am));
