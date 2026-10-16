@@ -26,7 +26,7 @@ const owner = createDeferredCombatWarmRuntime({
       await yieldForBudget(true);
     },
   }),
-  *warmVisionSteps() { events.push('vision'); yield; events.push('vision-step-2'); },
+  *warmVisionSteps() { events.push(pending ? 'vision-held' : 'vision'); yield; events.push('vision-step-2'); },
   combatWarm: {
     cancelRare() { events.push('cancel-rare'); },
     async warmOpeningChunked(_budget, yieldForBudget) {
@@ -64,8 +64,10 @@ assert.equal(owner.schedule(3), first, 'one battle generation owns one warm prom
 await first;
 assert.equal(pending, false, 'completed deployment warm releases rollout gate');
 assert.equal(owner.isActive(), false, 'completed queue releases its ownership slot');
-assert.deepEqual(events.slice(0, 7), ['first-frame', 'enemy-visuals', 'yield-forced', 'vision', 'yield-forced', 'vision-step-2', 'opening'],
-  'the vision programs\' steps each take a real frame (their strict preparation polls its links once a step)');
+assert.deepEqual(events.slice(0, 4), ['first-frame', 'enemy-visuals', 'yield-forced', 'opening']);
+assert.deepEqual(events.slice(events.indexOf('rare')), ['rare', 'yield-forced', 'vision', 'yield-forced', 'vision-step-2'],
+  'the vision programs warm last, after the countdown\'s hold is released, one real frame a step');
+assert.equal(globalThis.__BATTLE_DEFERRED_WARM.releasedBeforeRollout, true, 'the hold was released before the count ran out');
 assert.equal(events.filter((event) => event === 'route').length, 3,
   'route preparation drains until the first empty job');
 assert.equal(events.filter((event) => event === 'terrain-lookahead').length, 3,
@@ -294,7 +296,7 @@ for (const staleDuringEnemies of [false, true]) {
   if (staleDuringEnemies) {
     assert.deepEqual(steps, ['enemy-visuals'], 'a battle gone stale while its enemies link stops the warm');
   } else {
-    assert.deepEqual(steps, ['enemy-visuals', 'vision', 'opening', 'route', 'terrain-grid', 'rare'],
+    assert.deepEqual(steps, ['enemy-visuals', 'opening', 'route', 'terrain-grid', 'rare', 'vision'],
       'unfinished enemy links leave every later stage warming');
     assert.equal(trace.error, undefined, 'no failed-warm warning');
     assert.deepEqual(warned, []);
@@ -328,11 +330,11 @@ for (const thrown of ['budget', 'other']) {
   try { await runtime.schedule(70); } finally { console.warn = warn; }
   const trace = globalThis.__BATTLE_DEFERRED_WARM;
   if (thrown === 'budget') {
-    assert.deepEqual(steps, ['enemy-visuals', 'vision', 'opening', 'terrain-grid', 'rare'], 'unfinished vision links leave the later stages warming');
+    assert.deepEqual(steps, ['enemy-visuals', 'opening', 'terrain-grid', 'rare', 'vision'], 'unfinished vision links end the warm cleanly');
     assert.deepEqual(trace.unfinishedLinks.visionPrograms, { reason: 'budget', pending: 4 });
     assert.equal(trace.error, undefined);
   } else {
-    assert.deepEqual(steps, ['enemy-visuals', 'vision'], 'any other failure still fails the warm');
+    assert.deepEqual(steps, ['enemy-visuals', 'opening', 'terrain-grid', 'rare', 'vision'], 'any other failure still fails the warm');
     assert.match(trace.error, /vision broke/);
   }
 }
