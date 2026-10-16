@@ -470,6 +470,10 @@ export function hullYieldingRecord(record: { crushable?: boolean; kind?: string 
  *  world-hit resolve). A receipt keeps this list and the mass table together (setPieceDestructibles.selftest). */
 export const DENSE_SET_PIECE_KINDS: ReadonlySet<string> = new Set([
   'setpiece_stz3', 'setpiece_bv206', 'setpiece_snocat', 'setpiece_an26', 'setpiece_d8h', 'setpiece_k2tram', 'setpiece_haulpak',
+  // (Lane C, #24) the spurs' rolling stock (maps/setPieceDestructibles.ts rollingStockDestructibleTypes)
+  'rolling_omm', 'rolling_g10', 'rolling_tank', 'rolling_v60', 'rolling_covered4', 'rolling_gondola4', 'rolling_tank4', 'rolling_tem1',
+  // (Lane C, #24) Sarajevo's burnt K2s (tramDestructibleTypes)
+  'tram_k2', 'tram_shanghai',
 ]);
 
 /** The smallest calibre (mm) that wrecks heavy plant where it stops: a gun or autocannon round does; a machine-gun

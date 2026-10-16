@@ -44,6 +44,9 @@ interface StreetContext {
   buckets: Record<string, THREE.BufferGeometry[] | undefined>;
   obstacles?: CollisionRecord[];
   colliders?: CollisionRecord[];
+  /** (Lane C, #24) a burnt tram handed to the props as a breakable Shanghai car (tramShanghai.ts) at its seat, heading
+   *  along the track; omitted, the tram is drawn from its parts with its static record as before. */
+  tramDestructible?: (tram: { kind: 'xk2_black_panther' | 'shanghai'; x: number; z: number; yaw: number }) => void;
   /** the buildings placed (props.ts buildingFeatures, the plan's with their structure kind): the station's seat */
   buildings?: ReadonlyArray<{ x: number; z: number; w: number; d: number; rot: number; kind?: string }>;
 }
@@ -259,6 +262,14 @@ function dressTramAvenue(ctx: StreetContext, keep: YardKeepOut | null, road: num
   };
   const placeTram = (s: Station, cx: number, cz: number, onTrack: boolean): void => {
     const y = hf.getHeightAt(cx, cz);
+    // (Lane C, #24) a breakable Shanghai car of the props: its footprint still holds the avenue's later dressing clear
+    if (ctx.tramDestructible) {
+      ctx.tramDestructible({ kind: 'shanghai', x: cx, z: cz, yaw: Math.atan2(s.tx, s.tz) });
+      const nx = -s.tz, nz = s.tx;
+      records.add(setConvexShape({ min: [0, y, 0], max: [0, y + 3.2, 0], kind: 'tram-wreck' },
+        [[1, 1], [1, -1], [-1, -1], [-1, 1]].flatMap(([a, b]) => [cx + s.tx * TRAM_HL * a + nx * TRAM_HW * b, cz + s.tz * TRAM_HL * a + nz * TRAM_HW * b])));
+      return;
+    }
     const sink = new PartSink([look() * 5, look() * 5]);
     sink.placed(Math.atan2(-s.tz, s.tx), cx, y + (onTrack ? 0.08 : 0.02), cz, () => burntTram(sink, look));
     push(ctx, sink);

@@ -99,7 +99,8 @@ const COAL = material('cargo', [0.022, 0.021, 0.02], 0.7, 0, 0, 0.3);
 // ---------------------------------------------------------------------------------------------------- the sink
 
 interface Ctx {
-  readonly mesh: VehicleMesh;
+  /** (writable: wreckSled measures the body in a scratch mesh before it tips it) */
+  mesh: VehicleMesh;
   readonly coarse: boolean;
   /** Per-model salt for the boards' shades and the loads' noise. */
   readonly seed: number;
@@ -704,7 +705,7 @@ function emitWheel(c: Ctx, w: WheelPlace): void {
  * fallen onto that side about the far wheel's hub (a four-wheeler pitched onto its broken corner as well), the load
  * slumped toward the low side, two boards loose on the ground.
  */
-function assemble(c: Ctx, a: Assembly, wrecked: boolean): void {
+function assemble(c: Ctx, a: Assembly, wrecked: boolean, tilt = 1): void {
   const mesh = c.mesh;
   if (!wrecked) {
     for (const w of a.wheels) emitWheel(c, w);
@@ -722,7 +723,7 @@ function assemble(c: Ctx, a: Assembly, wrecked: boolean): void {
   const pivot = keep.find((w) => w.side > 0 && (!lost || Math.abs(w.z - lost.z) < 0.4)) ?? keep[0];
   const span = Math.max(0.3, pivot ? pivot.x - (lost?.x ?? -pivot.x) : 0.6);
   const drop = lost ? lost.y * 0.85 : 0.2;
-  const roll = Math.asin(Math.min(0.9, drop / span));
+  const roll = Math.asin(Math.min(0.9, drop / span)) * tilt;
   const four = a.wheels.length >= 4;
   for (const w of keep) {
     if (w === pivot || !four) emitWheel(c, w);
@@ -730,13 +731,15 @@ function assemble(c: Ctx, a: Assembly, wrecked: boolean): void {
   }
   if (lost) {
     // the lost wheel lies flat beside the bed, its outer face up
-    mesh.push().translate(lost.x - lost.r * 0.75, lost.halfWidth, lost.z + lost.r * 0.35).rotateZ(Math.PI / 2).rotateX(0.4);
+    // (Lane C, #8 r2) resting on its low rim edge: the tilt took that edge under the ground on the small wheels
+    const restY = lost.halfWidth * Math.cos(0.4) + lost.r * Math.sin(0.4);
+    mesh.push().translate(lost.x - lost.r * 0.75, restY, lost.z + lost.r * 0.35).rotateZ(Math.PI / 2).rotateX(0.4);
     lost.emit();
     mesh.pop();
   }
   mesh.push();
   if (pivot) mesh.translate(pivot.x, pivot.y, pivot.z).rotateZ(roll);
-  if (four && lost) mesh.rotateX(Math.asin(Math.min(0.5, drop * 0.5 / Math.max(0.5, Math.abs(lost.z - (keep.find((w) => w.side < 0)?.z ?? 0))))));
+  if (four && lost) mesh.rotateX(tilt * Math.asin(Math.min(0.5, drop * 0.5 / Math.max(0.5, Math.abs(lost.z - (keep.find((w) => w.side < 0)?.z ?? 0))))));
   if (pivot) mesh.translate(-pivot.x, -pivot.y, -pivot.z);
   if (a.rest) mesh.translate(0, a.rest.y, a.rest.z).rotateX(a.rest.pitch * 0.6).translate(0, -a.rest.y, -a.rest.z);
   a.body();
@@ -2402,7 +2405,16 @@ function sled(c: Ctx, s: SledSpec): Assembly {
 
 /** A sled smashed: heeled over onto one runner and slewed, its load spilled beside it. */
 function wreckSled(c: Ctx, a: Assembly, halfWidth: number, spill = 1.9): void {
-  c.mesh.push().translate(halfWidth, 0, 0).rotateZ(-0.55).rotateY(0.18).translate(-halfWidth, 0, 0);
+  // (Lane C, #8 r2; the census judge: a wreck's corner under the ground lifted the whole wreck by it) tipped onto its side
+  // about its own lowest outer edge (the runner's, measured from the body in a scratch mesh), not a line inside it, and
+  // turned on the ground after the tip, so no runner goes under it
+  const real = c.mesh, probe = new VehicleMesh();
+  probe.coarse = real.coarse;
+  c.mesh = probe;
+  a.body();
+  c.mesh = real;
+  const edge = Math.max(halfWidth, probe.maxXBelow(0.15));
+  c.mesh.push().translate(edge, 0, 0).rotateY(0.18).rotateZ(-0.55).translate(-edge, 0, 0);
   a.body();
   c.mesh.pop();
   if (a.load) {
@@ -2424,6 +2436,9 @@ interface CartBuildOptions {
   readonly wrecked: boolean;
   readonly seed: number;
   readonly snow?: boolean;
+  /** (Lane C, #8 r2) a wheeled wreck's fall, 0 (level) to 1 (the full fall onto the lost wheel's side): cartKit.ts
+   *  settles it at the most its low corner allows before it would go into the ground. */
+  readonly tilt?: number;
 }
 
 function assembly(c: Ctx, m: CartModel): Assembly {
@@ -2454,7 +2469,7 @@ function assembly(c: Ctx, m: CartModel): Assembly {
 export function buildCart(mesh: VehicleMesh, m: CartModel, o: CartBuildOptions): void {
   const c: Ctx = { mesh, coarse: o.coarse, seed: o.seed, woods: m.wood.map((hex) => woodMat(hex)), snow: o.snow };
   const a = assembly(c, m);
-  if (!o.wrecked || a.wheels.length) { assemble(c, a, o.wrecked); return; }
+  if (!o.wrecked || a.wheels.length) { assemble(c, a, o.wrecked, o.tilt ?? 1); return; }
   // the hay sledge's spill lies a little closer since its heap sits within the rack (the wave-161 pass)
   wreckSled(c, a, m.kind === 'sled' ? m.width / 2 : m.kind === 'sledge' ? m.bedW / 2 + 0.3 : 0.3, m.kind === 'sledge' ? 1.6 : 1.9);
 }

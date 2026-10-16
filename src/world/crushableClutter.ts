@@ -15,7 +15,9 @@ interface VertexSpan {
   homeNormal: Float32Array;
 }
 interface InstanceSlot { mesh: InstancedMesh; slot: number; home: Matrix4 }
-const pieceOwners = new WeakMap<BufferGeometry, CrushableClutter>();
+/** Anything that owns pieces drawn inside a merged material bucket and moves their vertices there (bindClutterBatch). */
+interface SpanOwner { readonly spans: VertexSpan[] }
+const pieceOwners = new WeakMap<BufferGeometry, SpanOwner>();
 const flatScale = new Vector3(1, .14, 1);
 
 /** Preserve the existing material batches/rock instances: collapse only this
@@ -76,6 +78,32 @@ export class CrushableClutter {
     }
     position.addUpdateRange(first * 3, p.length); normal.addUpdateRange(first * 3, n.length);
     position.needsUpdate = true; normal.needsUpdate = true;
+  }
+}
+
+/**
+ * (Lane C, #8 r2, 2026-10-14) A piece drawn inside a merged material bucket that can be hidden there and shown again:
+ * a vehicle set piece's intact build (props.ts), so a map's set pieces cost no draw of their own. Hidden, its vertices
+ * collapse onto its first one (degenerate triangles, nothing drawn); shown, they return to their home positions.
+ */
+export class HiddenSpanPiece {
+  readonly spans: VertexSpan[] = [];
+  private hidden = false;
+
+  ownPiece(geometry: BufferGeometry): void { pieceOwners.set(geometry, this); }
+
+  setHidden(hidden: boolean): void {
+    if (hidden === this.hidden) return;
+    this.hidden = hidden;
+    for (const {position, first, homePosition: p} of this.spans) {
+      for (let i = 0; i < p.length; i += 3) {
+        const at = first + i / 3;
+        if (hidden) position.setXYZ(at, p[0]!, p[1]!, p[2]!);
+        else position.setXYZ(at, p[i]!, p[i + 1]!, p[i + 2]!);
+      }
+      position.addUpdateRange(first * 3, p.length);
+      position.needsUpdate = true;
+    }
   }
 }
 

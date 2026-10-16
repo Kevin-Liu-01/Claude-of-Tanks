@@ -2442,7 +2442,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (record?.crushable !== true) return false;
     const kind = record.kind;
     return !(kind === 'wallstone' || kind === 'walladobe' || kind === 'sandbagsmall' || kind === 'sandbagbig' || kind === 'sandbagwall'
-      || kind === 'small-rock' || kind === 'bunker' || /^setpiece_(stz3|bv206|snocat|an26|d8h|k2tram|haulpak)$/.test(kind ?? ''));
+      || kind === 'small-rock' || kind === 'bunker'
+      || /^(setpiece_(stz3|bv206|snocat|an26|d8h|k2tram|haulpak)|rolling_(omm|g10|tank|v60|covered4|gondola4|tank4|tem1)|tram_(xk2_black_panther|shanghai))$/.test(kind ?? ''));
   }
   /**
    * A strike round's step from `from` to `to` through the world: light cover it meets — a hut, a fence, a tree, crates —
@@ -2473,7 +2474,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       // (Lane C, item 7) a gun round that stops on heavy plant wrecks it there, as a battle round's does (state.ts
       // crushWorldPropFromShell; collision.ts shellSparesStoppedRecord: a machine-gun bullet leaves it standing)
       const plant = hit.record as { crushable?: boolean; crushed?: boolean; kind?: string } | null | undefined;
-      if (plant?.crushable === true && !plant.crushed && /^setpiece_/.test(plant.kind ?? '') && world.crushObstacle
+      if (plant?.crushable === true && !plant.crushed && /^(setpiece|rolling|tram)_/.test(plant.kind ?? '') && world.crushObstacle
         && (Number(sh.spec?.caliberMm) || 0) >= 20) {
         world.crushObstacle(hit.record, _strikeDir.x, _strikeDir.z, Number(sh.spec?.velocityMps) || 0, 'shell');
       }

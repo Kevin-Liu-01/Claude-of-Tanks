@@ -457,6 +457,9 @@ function placementFixture({ authored = true, random = () => 0.25, code = placeme
     },
     planGroundedObbPose: () => ({ y: 0, normalX: 0, normalY: 1, normalZ: 0,
       min: 0, max: 0, spread: 0, maxEmbed: state.maxEmbed, maxFloat: 0 }),
+    // (Lane C, #8 r2) a bake with its ground contact seats on its tracks (wrecks.ts seatHulk): the same fixture pose
+    seatHulk: () => ({ y: 0, normalX: 0, normalY: 1, normalZ: 0,
+      min: 0, max: 0, spread: 0, maxEmbed: state.maxEmbed, maxFloat: 0 }),
     // the road footprint law (roadFootprint.ts): far from every road unless a case puts the wreck on one
     heightField: { _roadDist: () => roadDistance }, shiftClearOfRoadCore, boxClearOfRoadCore, placedB: [],
     // the sharp-bend law (roadFootprint.ts): no bend near the fixture's seats

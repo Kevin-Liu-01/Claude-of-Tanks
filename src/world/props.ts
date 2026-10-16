@@ -11,7 +11,7 @@ import { ensureWorldNightEmissionMask, markWorldWindowPane } from './worldNightE
 import { prepareWorldStaticNightFixture, prepareWorldStructureNightFixture, setWorldNightFixtureActive } from './worldNightFixtureInstances.ts';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { mergePropsMaterialGeometrySteps } from './propsMaterialGeometry.ts';
-import { CrushableClutter, bindClutterBatch, isLooseSurfaceRock } from './crushableClutter.ts';
+import { CrushableClutter, HiddenSpanPiece, bindClutterBatch, isLooseSurfaceRock } from './crushableClutter.ts';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
@@ -199,9 +199,14 @@ import {
   pitchRoofPlane, pitchSkillionRoof, scaleUV, slabBox,
 } from './propGeometry.ts';
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
-import { bakeTankWreckSteps, bakeWreckDebris, wreckRemnantPaint, type WreckBake } from './wrecks.ts';
+import { bakeTankWreckSteps, seatHulk, wreckRemnantPaint, type WreckBake } from './wrecks.ts';
+import { buildWreckDebris, seatWreckDebris } from './wreckDebris.ts';
 import type { VehicleSetPiece } from './maps/vehicleSetPieces.ts';
-import { setPieceDestructibleKind, setPieceDestructibleTypes } from './maps/setPieceDestructibles.ts';
+import type { RollingStockKind } from './maps/rollingStock.ts';
+import {
+  rollingStockDestructibleKind, rollingStockDestructibleTypes, setPieceDestructibleKind, setPieceDestructibleTypes, tramDestructibleKind,
+  tramDestructibleTypes,
+} from './maps/setPieceDestructibles.ts';
 import { createWreckBakeClient } from './wreckBakeClient.ts';
 import type { WreckBakePrefetch } from './wreckBakePrefetch.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
@@ -4353,6 +4358,9 @@ ${snowCap ? `
   const looseRecords: LooseDestructibleRecord[] = []; // physics-class records; sleeping records cost no update work
   const activeLoose: LooseDestructibleRecord[] = []; // only awake records, bounded by the local interaction area
   const dPools = new Map<string, DestructiblePool>(); // kind -> {meta, mats4: Matrix4[], imI, imB, nBroken}
+  // (Lane C, #8 r2) a set piece kind's intact instances, as spans in the baked bucket (by slot): the pool's own intact
+  // mesh stays hidden and mirrors its instances' hide and show onto them
+  const setPieceSpans = new Map<string, HiddenSpanPiece[]>();
   const wallSpans = new Map<DestructibleRecord, WallSpan>();
   const _dq = new THREE.Quaternion();
   const _de = new THREE.Euler();
@@ -4446,7 +4454,10 @@ ${snowCap ? `
     // the map-vehicles lane (2026-10-05): the eight vehicle roles as the map's fleet builds them (same records)
     ...civilianVehicleTypes(mapId, mobileProps),
     // (2026-10-12, item 7) the authored vehicle set pieces, breakable (maps/setPieceDestructibles.ts)
-    ...setPieceDestructibleTypes(),
+    ...setPieceDestructibleTypes(mobileProps),
+    // (Lane C, #24) the spurs' rolling stock, breakable (maps/setPieceDestructibles.ts)
+    ...rollingStockDestructibleTypes(mobileProps),
+    ...tramDestructibleTypes(mobileProps),
     // (b42, the scenery lane; wave 260's "misplaced modern caravan" on Frosthollow) a map with a period draws each modern
     // roadside kind that came into use after it in its period form, at the same seats (maps/periodClutterKit.ts); its
     // keys (barrier, roadsign, cone, transformer, cablespool) never meet the vehicle roles' on any map (batch 6 merge)
@@ -8344,9 +8355,12 @@ ${snowCap ? `
         // bounded search: a hulk seated 25 m from Steinburg's eastern zone sent it 280 m away and broke the layout's
         // symmetry (matchPlacement, mapLayoutBrief)
         if (hulkOnObjective(x, z, Math.hypot(footHx, footHz))) return false;
-        const support = planGroundedObbPose(
-          heightField, x, z, footHx, footHz, yaw, 0.14,
-        );
+        // (Lane C, #8 r2) seated on its track runs (wrecks.ts seatHulk: the terrain over its ground contact alone, a
+        // least-squares plane at most 4 cm over the deepest dip), not sunk under the lowest of nine samples plus 0.14 m
+        // across a tossed turret's envelope (the census judge: hulks 0.42-0.90 m under the terrain)
+        const support = baked.contact
+          ? seatHulk(heightField, x, z, yaw, baked.contact)
+          : planGroundedObbPose(heightField, x, z, footHx, footHz, yaw, 0.14);
         // A rigid hulk cannot conform to a cliff lip or deep ditch. Reject
         // those candidates and let the seeded road pass find a supported
         // site instead of either floating a track or burying half the tank.
@@ -8367,16 +8381,18 @@ ${snowCap ? `
         // read without adding draw calls, animation, or live vehicle state.
         let debrisTris = 0;
         if (wCfg?.debris !== false) {
-          const debris = bakeWreckDebris(seed + 17001 + wreckSerial * 97, {
-            modern: isPostwarVehicleEra(era),
+          // (Lane C, #8 r2) built from a tank's own kinds of parts and seated piece by piece on the terrain under each
+          // (wreckDebris.ts), not boxes laid in the hulk's sunk plane (two thirds of them were wholly underground)
+          const debris = buildWreckDebris(seed + 17001 + wreckSerial * 97, {
+            modern: isPostwarVehicleEra(era), contact: baked.contact,
           });
           wreckSerial++;
-          debris.geo.rotateY(yaw);
-          debris.geo.applyQuaternion(_quat);
-          debris.geo.translate(x, y + 0.01, z);
-          wreckGeos.push(debris.geo);
-          // (sealed lane) and its torn track, wheels and plates on the ground round it: a Steinburg truck stood on them
-          pushWreckDrawnFootprint(debris.geo, y, 0.05);
+          for (const piece of seatWreckDebris(debris, heightField, x, z, yaw)) {
+            wreckGeos.push(piece);
+            // (sealed lane) and its torn track, wheels and plates on the ground round it: a Steinburg truck stood on them
+            piece.computeBoundingBox();
+            pushWreckDrawnFootprint(piece, piece.boundingBox!.min.y, 0.05);
+          }
           debrisTris = debris.tris;
           bakedTris += debrisTris;
         }
@@ -9589,6 +9605,11 @@ ${snowCap ? `
   // (2026-10-12, item 7) the intact set pieces the kits hand back, registered as destructibles once the kits are done
   // (declared here, ahead of the join: the join stands immediately before the kits, structureShellPool.selftest)
   const setPieceRecords: VehicleSetPiece[] = [];
+  // (Lane C, #24) the spurs' standing vehicles the kits hand back, registered as destructibles on their rail poses
+  const rollingStockRecords: { kind: RollingStockKind; x: number; y: number; z: number; yaw: number; pitch: number }[] = [];
+  const tramRecords: { kind: 'xk2_black_panther' | 'shanghai'; x: number; z: number; yaw: number }[] = [];
+  // (Lane C, #8 r2) the set pieces' intact builds (one a kind) and the spans each instance draws in the baked bucket
+  const setPieceIntact = new Map<string, THREE.BufferGeometry>();
   // Plan W: every pooled structure's shells join the colliders before the first pass that reads them (the map kits
   // below scan every record); the async build waits here for the pool's workers
   if (shellPool && pendingShells.length) yield { stage: 'structure-shells', structureShells: shellPool.settled(STRUCTURE_SHELL_WAIT_MS) };
@@ -9600,16 +9621,59 @@ ${snowCap ? `
     obstacles, colliders, animated: animatedDressing, vehicleSetPieces: P.vehicleSetPieces, trees: sceneryTrees,
     clutter: (clutter) => pendingClutter.push(clutter),
     setPieceDestructible: (piece) => { setPieceRecords.push(piece); },
+    rollingStockDestructible: (stock) => { rollingStockRecords.push(stock); },
+    tramDestructible: (tram) => { tramRecords.push(tram); },
   });
   yield { fine: true, stage: 'map-extras' };
   // the landmarks lane: the set pieces' furniture, after every seeded pass (placeLandmarks above)
   landmarkFurniture = true;
   for (const [kind, x, y, z, yaw, scale] of landmarkDestructibles) addDestructible(kind, x, y, z, yaw, scale);
-  // (item 7) the authored set pieces, as authored (no veto moves them), seated on the ground under their corners
+  // (item 7) the authored set pieces, as authored (no veto moves them), seated on the ground under their corners.
+  // (Lane C, #8 r2; the coordinator: the r2 rule, draws +0) each intact piece draws in the baked bucket at its pool
+  // instance's own pose, as a span that hides when the instance is hidden (setPieceSpans, finalizeDestructiblePool): its
+  // kind's pool keeps the matrices, the crush and burn copy and the broken state, and draws nothing until a break
+  // an intact instance drawn in the baked bucket at its pool matrix, as a span its hidden pool mirrors
+  const bakeIntactSpan = (kind: string, rec: DestructibleRecord, bucket: 'baked' | 'structureMetal' = 'baked'): void => {
+    const pool = dPools.get(kind);
+    if (!pool || rec.slot < 0) return;
+    let intact = setPieceIntact.get(kind);
+    if (!intact) { intact = pool.meta.build(mulberry32(0x5e7b1ece)); setPieceIntact.set(kind, intact); }
+    const g = intact.clone().applyMatrix4(pool.mats4[rec.slot]);
+    buckets[bucket].push(g);
+    const span = new HiddenSpanPiece();
+    span.ownPiece(g);
+    let slots = setPieceSpans.get(kind);
+    if (!slots) { slots = []; setPieceSpans.set(kind, slots); }
+    slots[rec.slot] = span;
+  };
   for (const piece of setPieceRecords) {
-    addDestructible(setPieceDestructibleKind(piece.kind), piece.x, heightField.getHeightAt(piece.x, piece.z), piece.z,
-      (piece.yawDeg * Math.PI) / 180, 1);
+    const kind = setPieceDestructibleKind(piece.kind);
+    const rec = addDestructible(kind, piece.x, heightField.getHeightAt(piece.x, piece.z), piece.z, (piece.yawDeg * Math.PI) / 180, 1);
+    bakeIntactSpan(kind, rec);
   }
+  // (Lane C, #24) the rolling stock on its rails: the exact rail pose (the ground under the rails, pitched along them)
+  // over the destructible's own ground seat, which would take the lowest ground under its long footprint
+  for (const stock of rollingStockRecords) {
+    const kind = rollingStockDestructibleKind(stock.kind);
+    const rec = addDestructible(kind, stock.x, stock.y, stock.z, stock.yaw, 1, -stock.pitch, 0);
+    const pool = dPools.get(kind);
+    if (pool && rec.slot >= 0) {
+      _quat.setFromEuler(new THREE.Euler(-stock.pitch, stock.yaw, 0, 'YXZ'));
+      pool.mats4[rec.slot].compose(_posv.set(stock.x, stock.y, stock.z), _quat, _scalev.set(1, 1, 1));
+      rec.y = stock.y;
+    }
+    bakeIntactSpan(kind, rec);
+  }
+  // (Lane C, #24) the burnt trams on their track (Sarajevo's K2s, Blackglass's Shanghai cars), seated on their wheels
+  for (const tram of tramRecords) {
+    const kind = tramDestructibleKind(tram.kind);
+    // (Lane C, #24) Blackglass draws no painted bucket of its own: its Shanghai car's intact span goes into the regional
+    // metal its streets' tram poles and girders draw already (the same streams; draws +0)
+    bakeIntactSpan(kind, addDestructible(kind, tram.x, heightField.getHeightAt(tram.x, tram.z), tram.z, tram.yaw, 1),
+      kind === 'tram_shanghai' ? 'structureMetal' : 'baked');
+  }
+  for (const g of setPieceIntact.values()) g.dispose();
+  setPieceIntact.clear();
   landmarkFurniture = false;
   // (what the veto left out, by kind, on the receipt: the authoring sees what a vetoed piece displaced)
   if (landmarkVetoes.length && group.userData.landmarks) group.userData.landmarks.vetoed = { ...landmarkVetoed };
@@ -10652,7 +10716,8 @@ ${snowCap ? `
     let material = (meta.mat === 'straw' ? mats.hay : mats[meta.mat]) || mats.baked;
     if (meta.mat === 'vehicle' && meta.instancePaint) material = vehicleSurfaceMaterial();
     // (item 7) a set piece's build carries its own painted vertex colours (the painted bucket's family), no paint atlas
-    if (kind.startsWith('setpiece_')) material = mats.baked;
+    // (Lane C, #24) and so does a wagon's or a tram's (rolling_*, tram_*)
+    if (/^(setpiece|rolling|tram)_/.test(kind)) material = mats.baked;
     if (kind === 'lamp') {
       // One material for the whole instanced lamp family, not per fixture.
       // Other baked props keep their existing non-emissive shader.
@@ -10697,6 +10762,19 @@ ${snowCap ? `
     if (DESTRUCTIBLE_BUILDING_TYPES[kind]) prepareWorldStructureNightFixture(imI, true);
     group.add(imI);
     pool.imI = imI;
+    // (Lane C, #8 r2) a set piece kind draws its intact instances in the baked bucket (setPieceSpans): this mesh draws
+    // nothing and mirrors every hide (a zero-scale matrix: a break, the crush copy taking the prop) and show (a restore,
+    // a rematch) onto the instance's span there
+    const spans = setPieceSpans.get(kind);
+    if (spans) {
+      imI.visible = false;
+      const setMatrix = imI.setMatrixAt.bind(imI);
+      imI.setMatrixAt = (index: number, matrix: THREE.Matrix4) => {
+        setMatrix(index, matrix);
+        spans[index]?.setHidden(Math.abs(matrix.determinant()) < 1e-9);
+        return imI;
+      };
+    }
     if (meta.broken) {
       // (destruction core, 2026-10-09; the owner: "destructible objects/props: not looking good") the light dressing's broken
       // state is its intact build broken (propFracture.ts); the legacy builder still runs first, so it spends its draws from
@@ -10897,8 +10975,9 @@ ${snowCap ? `
     },
     // canvas drapes and drags as cloth (wave 352: "canvas never reads as cloth")
     cloth: (kind) => kind === 'tent' || (dPools.get(kind)?.meta.mat as string | undefined) === 'canvas',
-    // a vehicle a round destroys burns (its char over seconds, never a flip to the burnt pool), and a near miss shows on it
-    burns: (kind) => dPools.get(kind)?.meta.mat === 'vehicle',
+    // a vehicle a round destroys burns (its char over seconds, never a flip to the burnt pool), and a near miss shows on it;
+    // (Lane C, #8 r2) nothing burns in the Moon's vacuum (the audio's atmosphere there is 'vacuum' too): its rovers break
+    burns: (kind) => mapId !== 'moon' && dPools.get(kind)?.meta.mat === 'vehicle',
     onBurn: (x, y, z, heightM) => emitBreakFx('vehicleburn', x, y + 0.3, z, 0, 0, heightM),
   });
 

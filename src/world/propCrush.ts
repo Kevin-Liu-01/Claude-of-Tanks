@@ -11,6 +11,11 @@
  * track edges, sags round all that (the droop: nothing stands higher than the crush beside it allows), and a heap
  * crossed again later is flattened further where the tracks cross it.
  *
+ * Heavy plant (Lane C, 2026-10-15, the owner: "destroyed vehicles must crumple"; a 30-tonne dozer pressed flat to a slab
+ * under a hull read as a model swap): a field may carry a floor, the share of the prop's height a hull cannot press it
+ * below (its kind's data: the destructible type's crushFloor). Over a floor the body keeps more of its bulk, its upper
+ * works rack over along the hull's travel and its panels buckle, so it ends a crumpled machine, not a pancake.
+ *
  * Pure and deterministic: the field moves only with the hull poses it is given, and the crumple's breakup is hashed
  * from the vertex's rest place. The presentation draws this; the simulation's crush event stays the authority on
  * collision (props.ts: the record's obstacle is ghosted by the event, never by the press).
@@ -41,6 +46,10 @@ const SQUASH = 0.17;
 /** The crumple's breakup of a pressed surface (m), and how far a pressed body's sides bulge out as it flattens (m). */
 const NOISE_M = 0.1;
 const BULGE_M = 0.14;
+/** Over a floor (heavy plant): the share of the height over the cap that stands (the crushed upper works keep their
+ *  bulk), how far they rack over along the hull's travel per metre over the cap, the panels' buckle (m) and their
+ *  breakup (m). */
+const HEAVY = { squash: 0.42, rack: 0.5, buckle: 0.07, noise: 0.16 } as const;
 /** Canvas (wave 352: "canvas never reads as cloth"): it lies flat, folds in soft waves, drapes down wide and is dragged on
  *  with the hull. */
 const CLOTH = { squash: 0.06, noise: 0.03, fold: 0.07, foldK: 5.5, droop: 0.65, push: 0.55, lift: 1 };
@@ -66,6 +75,11 @@ export interface CrushField {
   stale: boolean;
   /** Canvas: it drapes and drags (CLOTH). */
   readonly cloth: boolean;
+  /** The share of `top` no hull presses it below (0: pressed to the floor; heavy plant: its kind's crushFloor). */
+  readonly floor: number;
+  /** The travel of the hull that last pressed it (unit, its own frame; 0, 0 untouched): the heavy body racks along it. */
+  dirX: number;
+  dirZ: number;
   /** A burst's dents (wave 351: a near miss must show): each a crater pushed in along its direction, packed
    *  [cx, cy, cz, dx, dy, dz, r, depth] in the prop's frame, at most MAX_DENTS (the deepest kept). */
   readonly dents: number[];
@@ -93,14 +107,15 @@ export function addDent(f: CrushField, cx: number, cy: number, cz: number, dx: n
 }
 
 /** A field over a footprint of half extents (hw, hl) about the prop's origin, its rest top `top`. */
-export function createCrushField(hw: number, hl: number, top: number, cell = CRUSH_CELL_M, cloth = false): CrushField {
+export function createCrushField(hw: number, hl: number, top: number, cell = CRUSH_CELL_M, cloth = false, floor = 0): CrushField {
   const x0 = -hw - MARGIN_M, z0 = -hl - MARGIN_M;
   const nx = Math.max(2, Math.ceil((2 * (hw + MARGIN_M)) / cell) + 1);
   const nz = Math.max(2, Math.ceil((2 * (hl + MARGIN_M)) / cell) + 1);
   const n = nx * nz;
   const cap = new Float32Array(n).fill(Infinity);
   return { x0, z0, nx, nz, cell, top: Math.max(0.2, top), cap, eff: new Float32Array(n).fill(Infinity),
-    pushX: new Float32Array(n), pushZ: new Float32Array(n), touched: false, stale: false, cloth, dents: [] };
+    pushX: new Float32Array(n), pushZ: new Float32Array(n), touched: false, stale: false, cloth, dents: [],
+    floor: Math.max(0, Math.min(0.9, floor)), dirX: 0, dirZ: 0 };
 }
 
 /** Whether a hull rectangle (centre, unit forward, half extents; the prop's frame) meets the prop's box (half extents
@@ -130,6 +145,8 @@ export function pressField(f: CrushField, cx: number, cz: number, fx: number, fz
   const j0 = Math.max(0, Math.floor((cz - reach - f.z0) / f.cell)), j1 = Math.min(f.nz - 1, Math.ceil((cz + reach - f.z0) / f.cell));
   if (i0 > i1 || j0 > j1) return false;
   let changed = false;
+  // heavy plant: nothing pressed below its floor (the hull rides up on it)
+  const least = f.floor * f.top;
   for (let j = j0; j <= j1; j++) {
     const pz = f.z0 + j * f.cell - cz;
     for (let i = i0; i <= i1; i++) {
@@ -155,6 +172,7 @@ export function pressField(f: CrushField, cx: number, cz: number, fx: number, fz
         cap = FLOOR_M + 0.3 + (1 - w) * f.top;
         lat = SPLAY_M * w * (v < 0 ? -1 : 1);
       }
+      if (cap < least) cap = least;
       if (cap < f.cap[k] - 1e-4) { f.cap[k] = cap; changed = true; }
       if (push > 0 || lat !== 0) {
         // the shove along the hull's travel and its splay across it, each kept at the largest it has been
@@ -167,7 +185,7 @@ export function pressField(f: CrushField, cx: number, cz: number, fx: number, fz
       }
     }
   }
-  if (changed) { f.touched = true; f.stale = true; }
+  if (changed) { f.touched = true; f.stale = true; f.dirX = fx; f.dirZ = fz; }
   return changed;
 }
 
@@ -242,8 +260,17 @@ export function deformPositions(f: CrushField, rest: ArrayLike<number>, out: Flo
       const pressed = Math.max(0, Math.min(1, (f.top - cap) / f.top));
       if (f.cloth) cap += (Math.sin(x * CLOTH.foldK + z * 1.7) * 0.7 + Math.sin(z * CLOTH.foldK * 0.8 - x) * 0.3) * CLOTH.fold * pressed
         + hash3(x, y, z) * CLOTH.noise * pressed;
-      else cap += hash3(x, y, z) * NOISE_M * pressed;
-      if (y > cap) {
+      else cap += hash3(x, y, z) * (f.floor > 0 ? HEAVY.noise : NOISE_M) * pressed;
+      if (y > cap && f.floor > 0) {
+        // heavy plant: the upper works squashed into less of themselves, racked over along the hull's travel (the higher,
+        // the further), the panels buckled in waves across them
+        const over = y - cap, deep = Math.min(1, pressed / Math.max(0.1, 1 - f.floor));
+        ny = cap + over * HEAVY.squash;
+        const rack = HEAVY.rack * over * HEAVY.squash * deep;
+        nx += f.dirX * rack; nz += f.dirZ * rack;
+        const buckle = HEAVY.buckle * deep * Math.sin(x * 5.1 + z * 3.7 + y * 2.3) * Math.sin(z * 4.3 - y * 6.1 + x * 1.9);
+        nx += buckle * Math.sign(x || 1); ny += buckle * 0.6; nz += buckle * 0.4 * Math.sign(z || 1);
+      } else if (y > cap) {
         ny = cap + (y - cap) * (f.cloth ? CLOTH.squash : SQUASH);
         // a body pressed flat bulges out at its sides (its roof and doors spread), canvas spreads more
         const spread = (f.cloth ? 1.5 : 1) * BULGE_M * pressed * Math.min(1, (y - cap) / Math.max(0.3, f.top * 0.6));

@@ -48,6 +48,7 @@ import {
   resampleRailPath, resolveRailCuttings, type RailCutting, type RailSpurConfig,
 } from '../railSpurs.ts';
 import { RAIL_BALLAST_BED, RAIL_BALLAST_SHOULDER, tagRailBallast } from '../railBallast.ts';
+import { bufferStopGeometry, cableDrum, sleeperStack } from './railYardStores.ts'; // #24 r2: the yard's stores
 import { dressSarajevo } from './sarajevoStreets.ts';
 import { dressFrozenRiverBanks } from './frozenRiverBanks.ts';
 import { CrushableClutter } from '../crushableClutter.ts';
@@ -180,6 +181,11 @@ interface DressingContext {
   /** 2026-10-12 (item 7): an intact set piece handed to the props as a destructible (setPieceDestructibles.ts) instead of
    *  baked scenery; omitted (a sandboxed dressing), every piece is baked as before. */
   setPieceDestructible?: (piece: VehicleSetPiece) => void;
+  /** (Lane C, #24) a spur's standing vehicle handed to the props as a destructible, its pose on the rails (y the ground
+   *  under them, pitch along the track); omitted, the stock is baked with its static record as before. */
+  rollingStockDestructible?: (stock: { kind: RollingStockKind; x: number; y: number; z: number; yaw: number; pitch: number }) => void;
+  /** (Lane C, #24) the burnt trams handed to the props as breakable wrecks (sarajevoStreets.ts, shanghaiStreets.ts). */
+  tramDestructible?: (tram: { kind: 'xk2_black_panther' | 'shanghai'; x: number; z: number; yaw: number }) => void;
   /** The map-vehicles lane (2026-10-06): the vegetation's tree trunks (props.ts sceneryTrees); a beached boat keeps its
    *  hull clear of them. Omitted, the boats seat as drawn. */
   trees?: readonly CollisionRecord[];
@@ -194,6 +200,7 @@ interface DressingContext {
 type FocusedDressingContext = Pick<
   DressingContext,
   'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders' | 'animated' | 'clutter' | 'setPieceDestructible'
+  | 'rollingStockDestructible' | 'tramDestructible'
 > & { shore?: ShoreLedger; boats?: BoatFamily; trunks?: readonly Trunk[] };
 
 /** A boat hull into the painted (vertex-coloured) bucket, or the timber one without its colours where a kit has no
@@ -945,12 +952,12 @@ function legacyDressingKits(mapId?: string): readonly string[] {
 export function dressMapExtras({
   buildings,
   mapId, extraKits = null, riverLandings, L, heightField, rng, buckets, groundingReceipts = null,
-  obstacles, colliders, animated, vehicleSetPieces, trees, clutter, setPieceDestructible,
+  obstacles, colliders, animated, vehicleSetPieces, trees, clutter, setPieceDestructible, rollingStockDestructible, tramDestructible,
 }: DressingContext): void {
   const kits = extraKits || legacyDressingKits(mapId);
   const shore: ShoreLedger = { keepOut: [], jetties: [], landings: [] };
   const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, clutter, shore, animated, boats: boatFamilyForMap(mapId ?? ''),
-    trunks: trunksOf(trees), setPieceDestructible };
+    trunks: trunksOf(trees), setPieceDestructible, rollingStockDestructible, tramDestructible };
   if (mapId === 'cliffbridge') {
     for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused);
   }
@@ -2289,6 +2296,18 @@ function bufferStop(
   gauge = RAIL_SPUR_GAUGE_M,
 ): void {
   const y = heightField.getHeightAt(x, z);
+  // #24 r2 (Lane C, 2026-10-14): a rail-built buffer stop with its spring buffers (railYardStores.ts), from the old
+  // beam's four UV draws; painted (the old struts and beam where a kit has no painted bucket)
+  if (buckets.baked) {
+    const stop = bufferStopGeometry([rng(), rng(), rng(), rng()]);
+    stop.rotateY(yaw);
+    stop.translate(x, y, z);
+    // (the receipts read the beam's centre and the two posts' feet, astride the gauge)
+    const post = (side: number): [number, number] => [x + side * 0.72 * Math.cos(yaw) + 0.05 * Math.sin(yaw), z - side * 0.72 * Math.sin(yaw) + 0.05 * Math.cos(yaw)];
+    stop.userData.bufferStop = { beam: [x, y + 1.0, z], posts: [post(-1), post(1)] };
+    buckets.baked.push(stop);
+    return;
+  }
   const c = Math.cos(yaw), s = Math.sin(yaw);
   for (const side of [-gauge / 2, gauge / 2]) {
     const strut = box(0.18, 1.5, 0.18, 1.4);
@@ -2437,13 +2456,13 @@ function addCableDrum(
   rng: Rng,
   buckets: DressingBuckets,
 ): void {
-  const radius = 0.7 + rng() * 0.4;
-  const drum = new THREE.CylinderGeometry(radius, radius, radius * 1.1, 10, 1);
-  scaleUV(drum, 3, 1);
-  drum.rotateZ(Math.PI / 2);
-  drum.rotateY(rng() * Math.PI);
-  drum.translate(x, y + radius, z);
-  buckets.wood.push(jitterUV(drum, rng));
+  // #24 r2 (Lane C, 2026-10-14): a cable reel in its members (railYardStores.ts), from the old drum's radius, turn and
+  // UV draws; painted (timber where a kit has no painted bucket)
+  const radius = 0.7 + rng() * 0.4, yaw = rng() * Math.PI;
+  const drum = cableDrum(radius, yaw, [rng(), rng(), rng(), rng()]);
+  drum.translate(x, y, z);
+  if (buckets.baked) buckets.baked.push(drum);
+  else { drum.deleteAttribute('color'); buckets.wood.push(drum); }
 }
 
 function addSleeperStack(
@@ -2453,15 +2472,14 @@ function addSleeperStack(
   rng: Rng,
   buckets: DressingBuckets,
 ): void {
-  for (let layer = 0; layer < 3; layer++) {
-    for (let side = -1; side <= 1; side += 2) {
-      const sleeper = box(2.2, 0.14, 0.30, 1.2);
-      if (layer % 2) sleeper.rotateY(Math.PI / 2);
-      sleeper.translate(x + (layer % 2 ? side * 0.7 : 0), y + 0.1 + layer * 0.16,
-        z + (layer % 2 ? 0 : side * 0.7));
-      buckets.wood.push(jitterUV(sleeper, rng));
-    }
-  }
+  // #24 r2 (Lane C, 2026-10-14): the permanent way's store, creosoted sleepers in crossing courses (railYardStores.ts),
+  // from the old crib's six sleepers' UV draws (24); painted (timber where a kit has no painted bucket)
+  const v: number[] = [];
+  for (let k = 0; k < 24; k++) v.push(rng());
+  const stack = sleeperStack(v);
+  stack.translate(x, y - 0.02, z);
+  if (buckets.baked) buckets.baked.push(stack);
+  else { stack.deleteAttribute('color'); buckets.wood.push(stack); }
 }
 
 function addRailYardSupplies(
@@ -2501,12 +2519,17 @@ function addSpurRollingStock(ctx: FocusedDressingContext, spur: RailSpurConfig):
   for (const p of railStockPlacements(spur, ROLLING_STOCK_LENGTH)) {
     const kind = p.kind as RollingStockKind;
     let geo = built.get(kind);
-    if (!geo) { geo = buildRollingStock(kind); built.set(kind, geo); }
+    if (!geo && !ctx.rollingStockDestructible) { geo = buildRollingStock(kind); built.set(kind, geo); }
     const L = ROLLING_STOCK_LENGTH[kind], reach = L * 0.3;
     const yF = heightField.getHeightAt(p.x + p.ux * reach, p.z + p.uz * reach);
     const yB = heightField.getHeightAt(p.x - p.ux * reach, p.z - p.uz * reach);
     const pitch = Math.atan2(yF - yB, reach * 2), y = (yF + yB) / 2 + RAIL_HEAD_Y;
-    const g = geo.clone();
+    // (Lane C, #24) a vehicle the props break: its pose on the rails, the props' record and draw (no static record here)
+    if (ctx.rollingStockDestructible) {
+      ctx.rollingStockDestructible({ kind, x: p.x, y: y - RAIL_HEAD_Y, z: p.z, yaw: Math.atan2(p.ux, p.uz), pitch });
+      continue;
+    }
+    const g = geo!.clone();
     g.rotateX(-pitch);
     g.rotateY(Math.atan2(p.ux, p.uz));
     g.translate(p.x, y, p.z);
