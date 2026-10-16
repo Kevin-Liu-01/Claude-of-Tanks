@@ -924,7 +924,9 @@ const brent: RegionalBuilder = (ctx) => {
 /** Birch rounds stacked against a back wall's inner face (at x = `xb`, their ends to +x), along z within ±`lim`, to
  *  `height`: honeycomb courses of round logs, each its own girth, length and tone. Dressing. */
 function birchStack(sink: PartSink, xb: number, lim: number, height: number, look: () => number): void {
-  const r = 0.1, rise = r * Math.sqrt(3);
+  // (the facade receipt's 12,000-triangle budget a kit build: rounds of 24 cm, a third fewer logs, stacked to 1.5 m at most)
+  const r = 0.12, rise = r * Math.sqrt(3);
+  height = Math.min(height, 1.5);
   for (let k = 0, y = r; y + r <= height + 0.02; k++, y += rise) {
     for (let z = -lim + r + (k % 2 ? r : 0); z <= lim - r; z += 2 * r) {
       const rr = r * (0.88 + look() * 0.12), len = 0.38 + look() * 0.08, t = 0.85 + look() * 0.3;
