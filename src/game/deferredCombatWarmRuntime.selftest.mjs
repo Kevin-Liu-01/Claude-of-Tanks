@@ -253,6 +253,55 @@ for (const cancelAt of [null, 'initial', 'batch']) {
   });
 }
 
+// (2026-10-16, the perf lane) enemy programs still linking when their five-second window closes leave the rest of the
+// warm running: vision, the opening effects, the routes, the terrain and the rare effects all still warm, and the trace
+// says how many links were unfinished; a stale battle still stops the warm
+for (const staleDuringEnemies of [false, true]) {
+  const steps = [];
+  let current = 60, tick = 0;
+  const KHR = { COMPLETION_STATUS_KHR: 0x91b1 };
+  const linkingGl = { getExtension: (name) => (name === 'KHR_parallel_shader_compile' ? KHR : null),
+    getProgramParameter: () => false, isContextLost: () => false };
+  const linking = { info: { programs: [] }, getContext: () => linkingGl };
+  const runtime = createDeferredCombatWarmRuntime({
+    game, renderer: linking, camera: { position: {} },
+    getBattleVisuals: () => ({ async stream() {
+      for (let k = 0; k < 3; k++) linking.info.programs.push({ id: 900 + k, program: {}, getUniforms: () => ({}), getAttributes: () => ({}) });
+      steps.push('enemy-visuals');
+    } }),
+    *warmVisionSteps() { steps.push('vision'); },
+    combatWarm: {
+      cancelRare() {},
+      async warmOpeningChunked() { steps.push('opening'); },
+      async warmRareChunked() { steps.push('rare'); },
+    },
+    async warmBattleTerrainTiles() { steps.push('terrain-grid'); },
+    getWorld: () => null,
+    getGeneration: () => current,
+    setPending() {},
+    prepareNextOpeningRoute: () => { steps.push('route'); return false; },
+    now: () => (tick += 250),
+    yieldFrame: async () => {},
+    createYielder: () => async () => { if (staleDuringEnemies && steps.length === 1) current++; },
+  });
+  const warned = [];
+  const warn = console.warn;
+  console.warn = (...args) => { warned.push(args.join(' ')); };
+  try { await runtime.schedule(current); } finally { console.warn = warn; }
+  const trace = globalThis.__BATTLE_DEFERRED_WARM;
+  if (staleDuringEnemies) {
+    assert.deepEqual(steps, ['enemy-visuals'], 'a battle gone stale while its enemies link stops the warm');
+  } else {
+    assert.deepEqual(steps, ['enemy-visuals', 'vision', 'opening', 'route', 'terrain-grid', 'rare'],
+      'unfinished enemy links leave every later stage warming');
+    assert.equal(trace.error, undefined, 'no failed-warm warning');
+    assert.deepEqual(warned, []);
+    assert.equal(trace.enemyProgramUniformWarm.incomplete, 'budget');
+    assert.equal(trace.enemyProgramUniformWarm.pending, 3, 'the trace counts the unfinished links');
+    assert.equal(trace.done, true);
+  }
+}
+
 delete globalThis.__COMBAT_RARE_WARM;
 delete globalThis.__BATTLE_DEFERRED_WARM;
-console.log('deferredCombatWarmRuntime.selftest: staged work, cancellation, and revision ownership passed');
+console.log('deferredCombatWarmRuntime.selftest: staged work, cancellation, revision ownership, and warming on past unfinished enemy links passed');

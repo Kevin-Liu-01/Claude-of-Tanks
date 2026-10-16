@@ -5,6 +5,7 @@ import {
   type WorkYielder,
 } from '../engine/frameScheduler.ts';
 import {
+  ProgramUniformPreparationError,
   snapshotRendererPrograms,
   warmNewRendererProgramUniforms,
   type ContextProgramRenderer,
@@ -157,10 +158,24 @@ export function createDeferredCombatWarmRuntime<
       await getBattleVisuals().stream(
         (entity) => entity.team === 'enemy', guardedYield, null, true,
       );
-      trace.enemyProgramUniformWarm = await warmNewRendererProgramUniforms(
-        renderer, enemyProgramBaseline, guardedYield, now,
-        { isCurrent: () => generation === getGeneration() && game.phase === 'battle' },
-      );
+      try {
+        trace.enemyProgramUniformWarm = await warmNewRendererProgramUniforms(
+          renderer, enemyProgramBaseline, guardedYield, now,
+          { isCurrent: () => generation === getGeneration() && game.phase === 'battle' },
+        );
+      } catch (error) {
+        // (2026-10-16, the perf lane) the enemies' programs still linking when their window closes (five seconds of
+        // live battle: the driver drains every queued link first) are not a failed warm. They link on as they were
+        // submitted and an unfinished one waits at its first draw, as before; what must not happen is the rest of this
+        // warm dropping with them — every probed integ/226 entry lost its vision programs, its opening and rare effects,
+        // its route preparation and its terrain tiles to "incomplete: budget". A stale battle still stops here.
+        if (!(error instanceof ProgramUniformPreparationError) || error.preparation.reason === 'invalidated') throw error;
+        trace.enemyProgramUniformWarm = {
+          ...(error.receipt ?? {}), incomplete: error.preparation.reason, pending: error.preparation.pending,
+        };
+        devTrace?.mark?.('battle:deferred-warm-enemy-uniforms-incomplete', {
+          reason: error.preparation.reason, pending: error.preparation.pending ?? -1 });
+      }
       trace.stages.enemyVisuals = Math.round(now() - enemyVisualsStartedAt);
 
       const visionStartedAt = now();
