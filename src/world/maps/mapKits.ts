@@ -20,7 +20,7 @@
 // supplied collision sinks.
 
 import * as THREE from 'three';
-import { box, gablePrism, jitterUV, pitchSkillionRoof, scaleUV } from '../propGeometry.ts';
+import { box, jitterUV, pitchSkillionRoof, scaleUV } from '../propGeometry.ts';
 import { planGroundedObbPose, planGroundedSegment } from '../propPlacement.ts';
 import type { GroundedSegmentEndpoint } from '../propPlacement.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
@@ -58,7 +58,12 @@ import {
 import { RAIL_BALLAST_BED, RAIL_BALLAST_SHOULDER, tagRailBallast } from '../railBallast.ts';
 import { bufferStopGeometry, cableDrum, sleeperStack } from './railYardStores.ts'; // #24 r2: the yard's stores
 import { dressSarajevo } from './sarajevoStreets.ts';
-import { addArchedStoneBridge, addRuinedRiverBridge, alignWidth, archedBridgeDraws, type DressingBridgeDeck } from './archedStoneBridge.ts';
+import { addArchedStoneBridge, addRuinedRiverBridge, alignWidth, archedBridgeDraws, localRng, type DressingBridgeDeck } from './archedStoneBridge.ts';
+import {
+  MILL_HOUSE_D, MILL_HOUSE_W, MILL_WHEEL_OFFSET, MILL_WHEEL_R, SLUICE_GATE_W, SLUICE_PIER_W,
+  buildMillHouse, buildMillWheel, buildWeirSluice, mergeMillPlain,
+} from './regional/lorrainMill.ts';
+import type { RegionalParts } from './regional/geometry.ts';
 import { addSuzhouBridge } from './suzhouBridges.ts';
 import { dressFrozenRiverBanks } from './frozenRiverBanks.ts';
 import { CrushableClutter } from '../crushableClutter.ts';
@@ -1693,69 +1698,98 @@ function addWeirAndMill(links: readonly LayoutDisc[], crossing: Readonly<{ x: nu
   let nx = -tz, nz = tx; // the bank normal toward the town side (+z)
   if (nz < 0) { nx = -nx; nz = -nz; }
   const water = heightField.getHeightAt(link.x, link.z);
-  // the weir: a stone sill across the channel with a pier at each end, its crest 0.5 m above the water
+  // (props census #22, Lane C 2026-10-15) the weir: a coursed sill of dressed limestone across the channel, its crest
+  // 0.5 m over the water, stepped down its downstream face, the sluice in its middle (regional/lorrainMill.ts vanne) and
+  // a pier at each end under its coping. The map's stream draws what it drew (the sill's and the two piers' jitters);
+  // every new piece draws a stream of its own.
+  const local = localRng(Math.round(link.x * 37 + link.z * 101));
   const sillLength = link.r * 1.3;
-  const sill = alignWidth(box(sillLength, 0.9, 1.5, 0.8), nx, nz);
-  jitterUV(sill, rng);
-  buckets.stone.push(sill.translate(link.x, water + 0.05, link.z));
-  for (const end of [-1, 1]) {
-    const pierX = link.x + nx * end * (sillLength / 2 + 0.7), pierZ = link.z + nz * end * (sillLength / 2 + 0.7);
-    const pier = alignWidth(box(1.3, 1.9, 1.7, 0.8), nx, nz);
-    jitterUV(pier, rng);
-    buckets.stone.push(pier.translate(pierX, water + 0.55, pierZ));
+  const down = Math.sign(-nz * tx + nx * tz) || 1; // the sill's local +z downstream (+1) or upstream (-1)
+  const across = (geometry: THREE.BufferGeometry, along: number, y: number, flow: number): THREE.BufferGeometry =>
+    alignWidth(geometry, nx, nz).translate(link.x + nx * along - nz * flow, y, link.z + nz * along + nx * flow);
+  const gap = SLUICE_GATE_W / 2 + SLUICE_PIER_W, half = Math.max(1, sillLength / 2 - gap);
+  for (const side of [-1, 1]) {
+    const mid = side * (gap + half / 2);
+    const body = box(half, 0.62, 1.7, 0.8);
+    jitterUV(body, side < 0 ? rng : local);
+    buckets.stone.push(across(body, mid, water - 0.09, 0));
+    // the crest course in blocks a little off the line, set to the upstream edge; the low step downstream
+    const count = Math.max(1, Math.round(half / 1.15)), block = half / count;
+    for (let k = 0; k < count; k++) {
+      const h = 0.28 + (local() - 0.5) * 0.04;
+      const crest = jitterUV(box(block - 0.03, h, 1.25, 0.8), local);
+      buckets.stone.push(across(crest, mid - half / 2 + (k + 0.5) * block, water + 0.5 - h / 2, -down * 0.15 + (local() - 0.5) * 0.04));
+    }
+    buckets.stone.push(across(jitterUV(box(half, 0.3, 0.5, 0.8), local), mid, water - 0.09, down * 1.1));
   }
-  // the mill house on the bank: stone body, tiled gable roof, wheel on the river side in a stone leat
+  for (const end of [-1, 1]) {
+    const pier = box(1.3, 1.9, 1.7, 0.8);
+    jitterUV(pier, rng);
+    buckets.stone.push(across(pier, end * (sillLength / 2 + 0.7), water + 0.55, 0));
+    buckets.stone.push(across(jitterUV(box(1.45, 0.14, 1.85, 0.8), local), end * (sillLength / 2 + 0.7), water + 1.57, 0));
+  }
+  const sluiceBase = water - 0.4, sluiceYaw = Math.atan2(-nz, nx);
+  const sluicePlace = { x: link.x, y: sluiceBase, z: link.z, yaw: sluiceYaw, mapId: AMBERFORD, seed: Math.round(link.x * 31 + link.z * 17) };
+  millStructure(ctx, buckets, 'weir-sluice', buildWeirSluice(sluicePlace, water - sluiceBase, down > 0 ? 1 : -1), sluicePlace);
+  // the mill house on the bank (regional/lorrainMill.ts moulin), the wheel in its race between the house and the water
   const setback = link.r * 1.05 + 9;
   const mx = link.x + nx * setback, mz = link.z + nz * setback;
   if (Math.max(Math.abs(mx), Math.abs(mz)) > 470 || heightField._roadDist(mx, mz) < 9) return;
-  const ground = heightField.getHeightAt(mx, mz);
-  const width = 7.6, depth = 9.2, wallHeight = 4.4;
-  const body = alignWidth(box(width, wallHeight, depth, 0.6), tx, tz);
-  jitterUV(body, rng);
-  buckets.stone.push(body.translate(mx, ground + wallHeight / 2 - 0.2, mz));
-  const roof = gablePrism(depth + 0.8, 2.9, width + 0.7, 0.4); // ridge along the river (extruded along local z)
-  roof.rotateY(Math.PI / 2);
-  alignWidth(roof, tx, tz);
-  buckets.roof.push(roof.translate(mx, ground + wallHeight - 0.25, mz));
-  // door on the lane side, two windows on the river side
-  const door = alignWidth(box(1.3, 2.3, 0.14, 1.0), tx, tz);
-  buckets.dark.push(door.translate(mx + nx * (depth / 2 + 0.02), ground + 0.95, mz + nz * (depth / 2 + 0.02)));
-  for (const along of [-2.2, 2.2]) {
-    const window = alignWidth(box(0.9, 1.1, 0.14, 1.0), tx, tz);
-    buckets.dark.push(window.translate(mx + tx * along - nx * (depth / 2 + 0.02), ground + 2.6, mz + tz * along - nz * (depth / 2 + 0.02)));
+  // the four draws that jittered the old body's texture seed the house; the two leat walls' eight the wheel
+  const seedOf = (n: number): number => {
+    let h = 2166136261;
+    for (let k = 0; k < n; k++) h = Math.imul(h ^ Math.floor(rng() * 4294967296), 16777619) >>> 0;
+    return h;
+  };
+  const houseSeed = seedOf(4), wheelSeed = seedOf(8);
+  // the house's frame: local +z the lane front (the bank normal), local +x along the river; `along` its downstream sign
+  const yaw = Math.atan2(nx, nz), ux = nz, uz = -nx;
+  const along: 1 | -1 = ux * tx + uz * tz >= 0 ? 1 : -1;
+  const at = (x: number, z: number): [number, number] => [mx + ux * x + nx * z, mz + uz * x + nz * z];
+  const groundAt = (x: number, z: number): number => heightField.getHeightAt(...at(x, z));
+  const W = MILL_HOUSE_W, D = MILL_HOUSE_D;
+  // a bank mill: its floor on the lowest ground of its footprint, its walls into the bank on the high side
+  const samples: number[] = [];
+  for (const x of [-W / 2, 0, W / 2]) for (const z of [-D / 2, 0, D / 2]) samples.push(groundAt(x, z));
+  const baseY = Math.max(Math.min(...samples) - 0.02, Math.max(...samples) - 3.0);
+  // the race against the river wall: its water on the bank's highest ground there, the wheel a third sunk in it
+  const wheelX = -along * 0.6, wheelZ = -(D / 2 + 0.06 + MILL_WHEEL_OFFSET), raceL = 2 * MILL_WHEEL_R + 2.6;
+  const race: number[] = [];
+  for (const x of [-raceL / 2, 0, raceL / 2]) for (const z of [-0.5, 0.5]) race.push(groundAt(wheelX + x, wheelZ + z));
+  const raceWater = Math.max(...race) + 0.08, raceBase = Math.min(...race) - 0.4;
+  const wheelCentre = raceWater + MILL_WHEEL_R - 0.85;
+  const lowEnd: 1 | -1 = groundAt(wheelX - raceL / 2, wheelZ) < groundAt(wheelX + raceL / 2, wheelZ) ? -1 : 1;
+  const housePlace = { x: mx, y: baseY, z: mz, yaw, mapId: AMBERFORD, seed: houseSeed, heightAt: heightField.getHeightAt.bind(heightField) };
+  const house = buildMillHouse(housePlace, along, { x: wheelX, y: wheelCentre - baseY });
+  const [wx, wz] = at(wheelX, wheelZ);
+  const wheelPlace = { x: wx, y: raceBase, z: wz, yaw, mapId: AMBERFORD, seed: wheelSeed };
+  const wheel = buildMillWheel(wheelPlace, raceWater - raceBase, wheelCentre - raceBase, raceL, lowEnd);
+  if (ctx.structure) {
+    // the house, the wheel and the sluice stand as structures of their own: their records and the sections path
+    ctx.structure('mill-house', house, mx, baseY, mz, yaw);
+    ctx.structure('mill-wheel', wheel, wx, raceBase, wz, yaw);
+    return;
   }
-  // the wheel: a wooden drum on an axle along the river, half sunk in a stone leat between the house and the water
-  const wheelX = mx - nx * (depth / 2 + 1.9), wheelZ = mz - nz * (depth / 2 + 1.9);
-  const wheelGround = heightField.getHeightAt(wheelX, wheelZ);
-  const wheelY = wheelGround + 1.9;
-  const drum = new THREE.CylinderGeometry(2.5, 2.5, 0.8, 14, 1);
-  drum.rotateZ(Math.PI / 2); // axis along local x
-  alignWidth(drum, tx, tz);
-  scaleUV(drum, 2, 1);
-  buckets.wood.push(drum.translate(wheelX, wheelY, wheelZ));
-  for (let spoke = 0; spoke < 6; spoke++) {
-    const bar = box(0.16, 5.4, 0.16, 1.6);
-    bar.rotateX(spoke * Math.PI / 6);
-    bar.rotateY(Math.PI / 2);
-    alignWidth(bar, tx, tz);
-    buckets.dark.push(bar.translate(wheelX, wheelY, wheelZ));
-  }
-  const axle = alignWidth(box(3.0, 0.3, 0.3, 1.0), tx, tz);
-  buckets.dark.push(axle.translate(wheelX, wheelY, wheelZ));
-  for (const side of [-1, 1]) {
-    const leat = alignWidth(box(0.5, 1.1, 8.0, 0.7), tx, tz);
-    jitterUV(leat, rng);
-    buckets.stone.push(leat.translate(wheelX + tx * side * 1.1, wheelGround + 0.35, wheelZ + tz * side * 1.1));
-  }
-  // the house blocks like a building: its footprint is a convex prism in both collision sinks
-  const hx = tx * width / 2, hz = tz * width / 2, dx = nx * depth / 2, dz = nz * depth / 2;
+  mergeMillPlain(house, housePlace, buckets);
+  mergeMillPlain(wheel, wheelPlace, buckets);
+  // a sandboxed dressing: the house blocks like a building, its footprint a convex prism in both collision sinks
+  const hx = ux * W / 2, hz = uz * W / 2, dx = nx * D / 2, dz = nz * D / 2;
   const footprint = convexHull2([
     [mx + hx + dx, mz + hz + dz], [mx - hx + dx, mz - hz + dz], [mx - hx - dx, mz - hz - dz], [mx + hx - dx, mz + hz - dz],
   ]);
-  const record = setConvexShape({ min: [0, ground - 0.2, 0], max: [0, ground + wallHeight + 2.6, 0], kind: 'mill-house' }, footprint);
+  const record = setConvexShape({ min: [0, baseY - 0.2, 0], max: [0, baseY + 8.4, 0], kind: 'mill-house' }, footprint);
   ctx.obstacles?.push(record);
   ctx.colliders?.push(cloneCollisionRecord(record));
 }
+
+/** A mill structure handed to the props as a structure of its own, or merged plain where the caller has no sink. */
+function millStructure(ctx: FocusedDressingContext, buckets: DressingBuckets, id: string, parts: RegionalParts,
+  place: { x: number; y: number; z: number; yaw: number }): void {
+  if (ctx.structure) ctx.structure(id, parts, place.x, place.y, place.z, place.yaw);
+  else mergeMillPlain(parts, place, buckets);
+}
+
+const AMBERFORD = 'autumn';
 
 function dressAmberfordRiver(ctx: FocusedDressingContext): void {
   const { L, heightField, rng, buckets } = ctx;
@@ -2113,6 +2147,10 @@ function bufferStop(
 // (terrain.ts, railSpurs.ts) keeps vegetation and scattered props off the line before this runs.
 function dressRailSpurs(ctx: FocusedDressingContext, spurs: readonly RailSpurConfig[]): void {
   const { heightField, rng, buckets } = ctx;
+  // (2026-10-15, the perf lane) one build of each rolling-stock kind serves every spur of the map: the builder is a pure
+  // function of the kind (its seed is the kind's), so a later spur's copies are the same geometry it would have rebuilt.
+  // Railyard rebuilt its wagons per spur: 0.38 s of a profiled entry in buildRollingStock (its vertex AO 0.36 s).
+  const stockGeometries = new Map<string, THREE.BufferGeometry>();
   for (const spur of spurs) {
     const lay: RailLay = {
       gauge: spur.gauge ?? RAIL_SPUR_GAUGE_M, ballast: spur.ballast ?? RAIL_SPUR_BALLAST_M,
@@ -2134,13 +2172,14 @@ function dressRailSpurs(ctx: FocusedDressingContext, spurs: readonly RailSpurCon
     // 2026-10-01: a coal stage beside the stub (after its stops, so a spur without one keeps its draws)
     if (spur.coalStage) addSpurCoalStage(ctx, spur);
     // 2026-10-06 (the map-vehicles lane, P5): the rolling stock standing on it (no draws)
-    if (spur.stock?.length) addSpurRollingStock(ctx, spur);
+    if (spur.stock?.length) addSpurRollingStock(ctx, spur, stockGeometries);
     // A spur that leaves the square through a cutting runs on in the open past the edge (railSpurs.ts RAIL_OPEN_*; the
     // round-67 tunnel portal is retired): the kit lays its first RAIL_OPEN_KIT_M on the open line's bed, after the
     // stops, so the square's dressing keeps its draws.
     const cuttings = resolveRailCuttings([spur]);
     if (cuttings && heightField.getOutlandHeightAt) dressRailOpenLine(ctx, cuttings[0], lay);
   }
+  for (const g of stockGeometries.values()) g.dispose();
 }
 
 // 2026-10-03 (the map-borders lane): the open line past the edge (railSpurs.ts RAIL_OPEN_*) — the track runs on from
@@ -2303,10 +2342,10 @@ function dressRailYard(
 // with a solid convex record from the ground to its top over its body (the buffers stand clear) that blocks shells.
 // No stream draws: the yard's dressing keeps its own.
 const RAIL_HEAD_Y = 0.335;
-function addSpurRollingStock(ctx: FocusedDressingContext, spur: RailSpurConfig): void {
+function addSpurRollingStock(ctx: FocusedDressingContext, spur: RailSpurConfig,
+  built: Map<string, THREE.BufferGeometry>): void {
   const { heightField, buckets } = ctx;
   if (!buckets.baked) return;
-  const built = new Map<string, THREE.BufferGeometry>();
   for (const p of railStockPlacements(spur, ROLLING_STOCK_LENGTH)) {
     const kind = p.kind as RollingStockKind;
     let geo = built.get(kind);
@@ -2334,7 +2373,6 @@ function addSpurRollingStock(ctx: FocusedDressingContext, spur: RailSpurConfig):
     ctx.obstacles?.push(record);
     ctx.colliders?.push(cloneCollisionRecord(record));
   }
-  for (const g of built.values()) g.dispose();
 }
 
 // 2026-10-01 (Cinder Junction): the stockpiles of a spur's coal stage (railSpurs.ts railCoalStageStations): the yards'

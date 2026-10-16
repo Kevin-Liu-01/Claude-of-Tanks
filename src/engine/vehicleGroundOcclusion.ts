@@ -156,7 +156,7 @@ export const GROUND_AO_CONTACT_MAX = 0.6;
 /**
  * 2026-10-10 (round 4; the owner's recovered screenshot — an elevated rear quarter on grass, "super super dark rectangular
  * shadows under tracks"): from that camera the ground under a hull's rear overhang and along its runs read as a slab. Measured
- * on the owner's framing (leo2a6_ua and ua_m1a1_x, Verdant day): main 62b 10 luma (0.12–0.25 of the turf around it, a 2.8–3.8×
+ * on the owner's framing (leo2a6_ua and ua_m1a2_abrams, Verdant day): main 62b 10 luma (0.12–0.25 of the turf around it, a 2.8–3.8×
  * step at its edge), round 3's 0.55 cap 17–20 (0.21–0.42, 2.0–2.2×), 0.35 25–28 (0.27–0.61, 1.4–1.8×; the hull's own
  * sun-shadow edge alone, with no occlusion, is 1.3–1.5×). At 0.35 the ground under a belly keeps 0.65 of its sky: no longer
  * the darkest thing in the frame, still a quarter darker than the shade beside it, so the hull sits on the ground; the

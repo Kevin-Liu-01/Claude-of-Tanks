@@ -1092,6 +1092,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-11 (MP lane): a late HELLO is admitted; a seat closed with "hello timeout" says hello again
     'src/mp/host/helloGate.selftest.mjs',
     'src/mp/host/worldCollision.selftest.mjs',
+    'src/mp/host/worldCollisionMobileTier.selftest.mjs', // 2026-10-16 physics PH.15: a phone-tier host plays the desktop's shard records
     // 2026-10-08 (destruction core lane): Frontline's authority plays the trench variant every client builds
     'src/mp/host/frontlineVariant.selftest.mjs',
     'src/mp/host/hostRuleset.selftest.mjs',
@@ -1246,6 +1247,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/destructionCraters.selftest.mjs',
     // 2026-10-15 (destruction lane, DST-04): the world's ray march reads the dug ground (craters' bowls, heaps), both worlds
     'src/world/groundOverlayRaycast.selftest.mjs',
+    // 2026-10-15 (destruction lane, DST-04): a map's pre-placed craters as real bowls, laid first by every match
+    'src/world/mapCraters.selftest.mjs',
     // 2026-10-08 (destruction core lane, P2): sections — holes, fallen panels, roofs and storeys that rays pass
     'src/sim/structureSections.selftest.mjs',
     'src/sim/destructionSections.selftest.mjs',
@@ -1584,6 +1587,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/stoneWalls.selftest.mjs',
     // the scenery lane (b13, wave 87): the karst field walls laid as dry stone, their face print, the T cut back
     'src/world/fieldWalls.selftest.mjs',
+    'src/world/fieldWallCollision.selftest.mjs', // 2026-10-15 physics PH.15: the field walls' crushable spans and their press
     // the scenery lane (b15, wave 106): the regions' field stacks and the straw props' hay print
     'src/world/haystacks.selftest.mjs',
     'src/world/maps/periodClutter.selftest.mjs',
@@ -1607,6 +1611,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // props lane A #19 (2026-10-15): the field's fallen timber by species, from its members
     'src/world/maps/timberForms.selftest.mjs',
     'src/world/maps/craterEjecta.selftest.mjs',
+    'src/world/maps/felledPoles.selftest.mjs',
     'src/world/foundryServiceCourt.selftest.mjs',
     // the map-revival lane (2026-10-09): no ISO box before 1966; the pre-container yards hold period freight
     'src/world/maps/periodFreight.selftest.mjs',
@@ -1624,6 +1629,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/vegetationLighting.selftest.mjs',
     'src/world/vegetationFarSeams.selftest.mjs',
     'src/world/vegetationProgramKey.selftest.mjs',
+    'src/world/canopyNeedleTransmit.selftest.mjs', // GND (2026-10-15): a back-lit needle crown transmits its needles' dulled green, never a lime glow (Kestrel chase-s)
     'src/world/vegetationResources.selftest.mjs',
     'src/world/foliageOcclusionSweep.selftest.mjs',
     'src/world/authoredTreePlacement.selftest.mjs',
@@ -1647,6 +1653,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/understorey.selftest.mjs',
     // round 77b (2026-09-26): the far-tier impostors baked from the near trees and the leaf-scale crown detail
     'src/world/treeImpostors.selftest.mjs',
+    // trees Fix B (2026-10-15): the impostor bake keeps the near tier's crown coverage (the give-back before the bake's cut)
+    'tools/impostor-bake-coverage.selftest.mjs',
     'src/world/leafDetail.selftest.mjs',
     // round 77c (2026-09-26): the horizon ring's forest drawn from the far tier's impostor atlas
     'src/world/horizonForestImpostors.selftest.mjs',
@@ -1794,6 +1802,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-09 (destruction core lane): the light dressing's broken states made from their own intact builds.
     'src/world/maps/propFracture.selftest.mjs',
     'src/world/maps/gateKit.selftest.mjs', // 2026-10-13 the looks lane: every fence family's own gate, region by region
+    'src/world/maps/fenceKit.selftest.mjs', // 2026-10-15 props lane A #6: the timber fences in their region's build, legacy collision
     'tools/r2-standard.selftest.mjs', // 2026-10-14 props lane A (E14): the bunker r2 standard's receipt and its painted-opening detector
     'tools/cost-census.selftest.mjs', // 2026-10-14 props lane A (#2): the landing protocol's cost census (draws, triangles, programs, pools; base against branch)
     'src/world/maps/clutterKit.selftest.mjs', // 2026-10-14 props lane A (#2): every map's clutter forms (draws spent, caps, the shadow rule, r2Standard, +45k a map)

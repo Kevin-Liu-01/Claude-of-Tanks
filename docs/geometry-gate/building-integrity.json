@@ -4204,6 +4204,15 @@
    "gapM2": 0,
    "invertedM2": 0
   },
+  "landmark/polders:church#7": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
   "franconian/warehouse": {
    "floating": 0,
    "sliver": 0,
@@ -4214,5 +4223,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-16T08:04:00.617Z"
+ "updatedAt": "2026-10-16T08:15:52.625Z"
 }

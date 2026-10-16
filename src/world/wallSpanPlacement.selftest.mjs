@@ -227,12 +227,15 @@ function poolFinalizer(fixture, field, drng, overrides = {}) {
     PROP_FRACTURE, fractureProp, fractureSeed, seed: 2002,
     // (integ/225 with props #1 huts) the kinds whose broken builder is their own on the map (props.ts ownBroken: its
     // structure variants and its pillbox); the fixture map has neither
-    ownBroken: new Set(), ...overrides };
+    ownBroken: new Set(),
+    // (Lane C, #8 r2) the set piece kinds that draw their intact instances in the baked bucket (props.ts setPieceSpans):
+    // the fixture's walls are none
+    setPieceSpans: new Map(), ...overrides };
   const functions = new Function('bindings', `const {
     THREE, mats, drng, refitDestructibleColliders, sealGroundCoverPlacements, fitWallSpan,
     heightField, wallSpans, WALL_SEG, tintDestructibleInstances, destructibleCastsShadow,
     DESTRUCTIBLE_BUILDING_TYPES, prepareWorldStructureNightFixture, group, PROP_FRACTURE, fractureProp, fractureSeed, seed,
-    ownBroken
+    ownBroken, setPieceSpans
   } = bindings; ${prepareSource}; ${finalSource};
   return { prepare: prepareDestructiblePoolGeometry, finalize: finalizeDestructiblePool };`)(bindings);
   return { ...functions, group: bindings.group };

@@ -90,7 +90,8 @@ const noWorld = { obstacles: [], colliders: [] };
   assert.match(authority, /destruction\.drainCraters\(craterEvents\);\s*for \(const \{ sourceId, \.\.\.event \} of craterEvents\) emitFrom\(sourceId \?\? null, 'terrain_crater', event\);/, 'authority: terrain_crater (its source kept on the authority, 2026-10-13)');
   for (const text of [solo, authority]) assert.match(text, /groundTypeAt: \(x, z\) => /, 'no crater on hard ground, alike');
   // the drawn ground and the decals follow the battle's overlay: bound per battle, a round's mirror on a network seat
-  assert.match(solo, /ground\.overlay\.reset\(\);\s*world\.bindGroundOverlay\?\.\(ground\.overlay\);/, 'solo binds its ground');
+  // (DST-04, 2026-10-15: the map's pre-placed craters go in between, first: world/mapCraters.selftest)
+  assert.match(solo, /ground\.overlay\.reset\(\);[\s\S]{0,240}?world\.bindGroundOverlay\?\.\(ground\.overlay\);/, 'solo binds its ground');
   const presentation = readFileSync(new URL('../mp/presentation/battlePresentation.ts', import.meta.url), 'utf8');
   assert.match(presentation, /bindGroundOverlay\?\.\(destruction\.ground\);/, 'a network seat binds its mirror\'s ground');
   assert.match(presentation, /function dispose\(\): void \{\s*disposed = true;\s*\(worldCollision[^\n]*bindGroundOverlay\?\.\(null\);/, 'and unbinds it');

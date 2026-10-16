@@ -15,6 +15,7 @@ import { createSoloBattleDeploymentRuntime } from './soloBattleDeploymentRuntime
 function createFixture(failure) {
   const events = [];
   let generation = 0, nowMs = 0, compileAttempts = 0, fxDrawAttempts = 0;
+  let earlySubmitted = false;
   let openingRetries = 0, destructionWarmed = false, fxRestores = 0, armorRestores = 0;
   const scene = new Scene(), camera = new PerspectiveCamera();
   const initialCameraMask = camera.layers.mask;
@@ -113,6 +114,15 @@ function createFixture(failure) {
     } },
     forwardProgramWarm: {
       compileSceneSteps: function* () {
+        // (2026-10-15) the deployment's early submission comes first, before any FX staging; the tested compilation is
+        // warmDeploymentFx's own, over the staged graph
+        if (!earlySubmitted) {
+          earlySubmitted = true;
+          assert.equal(fxRoot.visible, false, 'the early submission precedes the FX staging');
+          events.push('early-compile');
+          yield;
+          return;
+        }
         compileAttempts++;
         assert.equal(fxRoot.visible, true, 'compile sees the staged FX graph');
         assert.equal(armorMesh.visible, true, 'compile sees the borrowed armor geometry');
