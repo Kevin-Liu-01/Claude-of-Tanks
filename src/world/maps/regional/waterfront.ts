@@ -71,7 +71,12 @@ export function boatHull(sink: PartSink, at: Vec3, yaw: number, spec: HullSpec,
     const a = st[i], b = st[i + 1];
     for (const side of [-1, 1]) {
       // (the strakes' corners counter-clockwise seen from outside: the port side's run mirrored)
-      const q = (p0: Vec3, p1: Vec3, p2: Vec3, p3: Vec3, o: EmitOptions) => (side > 0 ? sink.quad(bucket, p0, p1, p2, p3, o) : sink.quad(bucket, p3, p2, p1, p0, o));
+      // (each strake panel as its two triangles: the hull twists toward its ends, and a twisted quad fanned on one normal
+      // turns its second triangle's face inside out)
+      // (the port side the starboard's mirror: the same diagonal, the triangles wound the other way)
+      const q = (p0: Vec3, p1: Vec3, p2: Vec3, p3: Vec3, o: EmitOptions) => {
+        if (side > 0) { sink.polygon(bucket, [p0, p1, p2], o); sink.polygon(bucket, [p0, p2, p3], o); } else { sink.polygon(bucket, [p0, p2, p1], o); sink.polygon(bucket, [p0, p3, p2], o); }
+      };
       q(P(a.x, a.keel, 0), P(b.x, b.keel, 0), P(b.x, b.chine, side * b.bw), P(a.x, a.chine, side * a.bw), bottomTone);
       q(P(a.x, a.chine, side * a.bw), P(b.x, b.chine, side * b.bw), P(b.x, b.gun, side * b.hb), P(a.x, a.gun, side * a.hb), out);
       // the inside, a plank's thickness in, wound to face in
@@ -82,6 +87,11 @@ export function boatHull(sink: PartSink, at: Vec3, yaw: number, spec: HullSpec,
       // the gunwale: the cap over the planking's edge
       q(P(a.x, a.gun, side * a.hb), P(b.x, b.gun, side * b.hb), P(b.x, b.gun - 0.01, side * ib), P(a.x, a.gun - 0.01, side * ia), rail);
     }
+  }
+  // the planking's ends closed at the stem (and a double-ender's stern): its section across the last station, both faces
+  for (const k of spec.stern === 'double' ? [0, N] : [0]) {
+    const e = st[k], ring = [P(e.x, e.keel, 0), P(e.x, e.chine, e.bw), P(e.x, e.gun, e.hb), P(e.x, e.gun, -e.hb), P(e.x, e.chine, -e.bw)];
+    sink.polygon(bucket, k === 0 ? ring : [...ring].reverse(), rail);
   }
   // the stem (and a double-ender's sternpost): a post up the meeting of the planks
   const posts = spec.stern === 'double' ? [0, N] : [0];

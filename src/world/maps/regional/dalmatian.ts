@@ -15,6 +15,7 @@ import { pottedPlant, tvAerial, wallLantern, washingLine } from './dressing.ts';
 import { balconette, dressedQuoin, facadeOn, facadeRng, trimRun } from './facade.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { dalmatianBoathouse } from './harbourSheds.ts'; // props #25: the boathouse
 
 const SHUTTERS: readonly Rgb[] = [0x557a4c, 0x416650, 0x7a5a42, 0x7890a0, 0x8e7a52].map(rgb);
 const DOORS: readonly Rgb[] = [0x6e5440, 0x4f6a4e, 0x7a6048, 0x5e6c76].map(rgb);
@@ -353,31 +354,6 @@ const kazun: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** A stone boathouse: a big round-arched opening to the water, rubble walls, a low tiled roof. */
-const boathouse: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const st = stateFor(ctx);
-  const W = Math.max(5.5, Math.min(8.5, ctx.info.w - 0.6)), D = Math.max(8, Math.min(13, ctx.info.d - 0.6));
-  const frame = buildHouse(sink, {
-    w: W, d: D, plinth: null, storeys: [{ h: 3.4, wall: 'stone' }],
-    roof: { kind: 'gable', pitchDeg: 22, eave: 0.2, verge: 0.08, thickness: 0.15, bucket: 'roof', ridge: 'round' },
-    gableBucket: 'stone', openings: [
-      { face: 'front', storey: 0, kind: 'gate', u: 0, w: Math.min(3.4, W - 1.6), y0: 0, h: 2.9 },
-      { face: 'right', storey: 0, kind: 'window', u: 0, w: 0.5, y0: 1.9, h: 0.6 },
-      { face: 'left', storey: 0, kind: 'window', u: 0, w: 0.5, y0: 1.9, h: 0.6 },
-    ],
-    chimneys: [], gutters: null, verge: null,
-  }, dialect({ ...st, litShare: 0 }));
-  eaveCourse(sink, frame);
-  // the arch voussoirs over the gate read as a stone ring
-  const f = frame.faces.front, gw = Math.min(3.4, W - 1.6);
-  for (let k = 0; k <= 8; k++) {
-    const a = Math.PI * k / 8;
-    faceBox(sink, 'stone', f, Math.cos(a) * (gw / 2 + 0.12), 2.9 + Math.sin(a) * 0.55, 0.06, 0.34, 0.3, 0.14, { decor: true });
-  }
-  return sink.finish();
-};
-
 /**
  * An abandoned house (the war of 1991–95 and the emigration before it): the stone shell standing to its gables, the
  * wall heads broken in slopes, not steps, a breach or two down toward the sill, window holes through the walls that
@@ -593,7 +569,7 @@ export const DALMATIAN_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Obj
   cornershop: (ctx) => dwelling(ctx, { shop: true, render: true }),
   farmhouse, depot, granary, ruin,
   woodshed: kazun,
-  boatshed: boathouse,
+  boatshed: (ctx) => dalmatianBoathouse(ctx, { st: stateFor(ctx), dialect }),
   fishery: fishStore,
   marketRow: loggia,
   bathhouse: customsHouse,

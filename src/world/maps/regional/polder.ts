@@ -12,6 +12,7 @@ import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts'
 import { facadeOn, trimRun, windowHead } from './facade.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { polderPakhuis } from './harbourSheds.ts'; // props #25: the fish trade's pakhuis
 
 const GREENS: readonly Rgb[] = [0x2f6a46, 0x3c7a52, 0x2a5a40].map(rgb);
 const WHITE = rgb(0xd6d2c8);
@@ -329,7 +330,7 @@ export const POLDER_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object
   woodshed: tarShed,
   ruin,
   // the fish auction and mussel sheds of the Scheldt harbours: a brick pakhuis
-  fishery: pakhuis,
+  fishery: (ctx) => polderPakhuis(ctx, { st: stateFor(ctx), dialect }),
 });
 
 export const POLDER_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
