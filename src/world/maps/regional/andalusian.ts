@@ -1016,7 +1016,12 @@ const escuela: RegionalBuilder = (ctx) => {
     faceBox(sink, 'stone', f, 0, 3.75, 0.1, 2.5, 0.26, 0.2, { decor: true, shadow: true });
     for (const s of [-1, 1]) sink.member('stone', facePoint(f, s * 1.25, 3.88, 0.1), facePoint(f, 0, 4.45, 0.1), 0.2, 0.2, f.out, { decor: true, exposed: true }, 0);
     faceBox(sink, 'stone', f, 0, frame.floors[1] + 1.7, 0.03, 2.3, 0.62, 0.06, { decor: true, shadow: true });
-    faceBox(sink, 'dark', f, 0, frame.floors[1] + 1.7, 0.065, 1.95, 0.22, 0.01, { decor: true });
+    // (props census #15, Lane C 2026-10-16: the inscription was a dark plate on the plaque) its sunken field framed by a
+    // moulding, the field a shade darker in the shadow of its frame
+    const py = frame.floors[1] + 1.7;
+    for (const dy of [-0.2, 0.2]) faceBox(sink, 'stone', f, 0, py + dy, 0.075, 2.1, 0.05, 0.03, { decor: true, fine: true });
+    for (const du of [-1.03, 1.03]) faceBox(sink, 'stone', f, du, py, 0.075, 0.05, 0.45, 0.03, { decor: true, fine: true });
+    faceBox(sink, 'stone', f, 0, py, 0.062, 2.0, 0.36, 0.004, { decor: true, shade: 0.78 });
   });
   return sink.finish();
 };
@@ -1241,7 +1246,9 @@ const horno: RegionalBuilder = (ctx) => {
   const B = clamp(Math.min(D - 0.1, W - 0.65), 1.8, 2.6), h = B / 2;
   const ox = b.minX + 0.05 + h;
   sink.span('stone', ox - h - 0.04, -0.4, cz - h - 0.04, ox + h + 0.04, 0.3, cz + h + 0.04);
-  sink.span('plaster', ox - h, 0.3, cz - h, ox + h, 1.05, cz + h);
+  // (props census #15, Lane C 2026-10-16: the oven's mouth was a dark plate on its block) the mouth cut through the
+  // block's front under its round head, its dark inside
+  holedBox(sink, 'plaster', ox - h, cz - h, ox + h, cz + h, 0.3, 1.05, { front: [{ u0: -0.275, u1: 0.275, y0: 0.51, y1: 0.93, spring: 0.655 }] }, 0.2, 0.35);
   sink.cylinder('plaster', [ox, 1.05, cz], 'y', 0.2, h * 0.98, 12, {}, h * 0.95);
   // the dome: stacked frustums swelling in and closing
   let y = 1.25, r = h * 0.95;
@@ -1252,7 +1259,6 @@ const horno: RegionalBuilder = (ctx) => {
   }
   sink.span('plaster', ox - 0.16, y - 0.2, cz - 0.16, ox + 0.16, y + 0.35, cz + 0.16);
   const f: Face = { origin: [ox, 0, cz + h], u: [1, 0, 0], out: [0, 0, 1], width: B };
-  faceBox(sink, 'dark', f, 0, 0.72, 0.006, 0.55, 0.42, 0.01, { decor: true });
   faceBox(sink, 'stone', f, 0, 0.47, 0.12, 0.85, 0.08, 0.24, { decor: true });
   // the firewood rack: two posts on the plot's +x side and a lean-to of tiles falling to them from the oven, as long as
   // the plot is deep (0.3 m short of its ends: the solid within half a metre of the base's reach, regionalArchitecture's
