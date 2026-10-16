@@ -125,6 +125,7 @@ import type { SuspensionPatternId, SuspensionPattern } from './suspensionPattern
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createWeaponFinishMaterials, linkWeaponFinish, mainBarrelIsWeaponSteel, paintAmmoVertexColours, prepareWeaponFinishGeometry } from './weaponFinish.ts';
 import { seatAuthoredSpareTracks } from './spareTrackSeatPass.ts';
+import { spareLinkBlock } from './spareLinkGeometry.ts';
 import { seatRoleForBucket, seatRoleForPart, spareTrackRunTag, type SeatRole } from './spareTrackSeat.ts';
 
 /** A rig group's identity-placed child: its plates are authored in the group's frame (planLiveCrumple). */
@@ -152,6 +153,8 @@ interface TankMaterials {
   shadow: THREE.MeshStandardMaterial;
   trackLink: THREE.MeshStandardMaterial;
   spareTrack: THREE.MeshStandardMaterial;
+  /** VEH-13: the stowed spare links' weathered steel (materials.ts); absent sets fall back to `spareTrack`. */
+  spareLink?: THREE.MeshStandardMaterial;
   glass: THREE.MeshStandardMaterial;
   barrel: THREE.MeshStandardMaterial;
   canvasCloth: THREE.MeshStandardMaterial;
@@ -1284,7 +1287,7 @@ interface AuthoredRange {
 
 type RigGroupKey = 'hullG' | 'turretG' | 'recoilG' | 'gunG' | 'barrel0G' | 'barrel1G';
 type TankMaterialKey = 'hull' | 'rubber' | 'detail' | 'dark' | 'wood' | 'bark' | 'canvasCloth' | 'canvasPale'
-  | 'glass' | 'barrel' | 'spareTrack' | 'shadow' | 'wheels' | 'weaponSteel';
+  | 'glass' | 'barrel' | 'spareTrack' | 'spareLink' | 'shadow' | 'wheels' | 'weaponSteel';
 type BucketDefinition = readonly [RigGroupKey, TankMaterialKey];
 type OriginalMaterialRecord = [VehicleMesh, THREE.Material | THREE.Material[], boolean];
 
@@ -6568,11 +6571,11 @@ function spareTrackStrip(
         x, y, z, rx, ry, 0);
     }
   }
+  // VEH-13 (2026-10-15): each link is the fleet's one spare link (spareLinkGeometry.ts) over the old slab's envelope
+  // (y -0.0225..0.05), not a slab and a bar
   for (let k = 0; k < links; k++) {
     const localZ = (k - (links - 1) / 2) * 0.165;
-    P.addEquipment(steel, tagged(xform(box(0.5, 0.045, 0.15), 0, 0, localZ)),
-      x, y, z, rx, ry, 0);
-    P.addEquipment(steel, tagged(xform(box(0.44, 0.06, 0.05), 0, 0.02, localZ)),
+    P.addEquipment(steel, tagged(xform(spareLinkBlock(0.5, 0.0725, 0.156), 0, 0.01375, localZ)),
       x, y, z, rx, ry, 0);
   }
 }
@@ -6872,6 +6875,8 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   gunBarrel1: ['barrel1G', 'barrel'], gunBarrel1Dark: ['barrel1G', 'weaponSteel'],
   // spare track links (dark oily track steel, r6) + baked-shadow AO panels
   hullTrack: ['hullG', 'spareTrack'], turretTrack: ['turretG', 'spareTrack'],
+  // VEH-13: every built spare-link run's links (the seat pass moves them here from hull/turretTrack), weathered steel
+  hullTrackLinks: ['hullG', 'spareLink'], turretTrackLinks: ['turretG', 'spareLink'],
   hullShadow: ['hullG', 'shadow'],
   // Per-SIDE in-lane track trim (russia §B4 t72b3m round, opt-in — no other
   // caller): gear-fade strips / wrap chord fans / ramp joint fills are
@@ -7094,6 +7099,7 @@ function createNonRenderingTankMaterials(camoUvScale = CAMO_UV_REPEATS_PER_M): T
     shadow: make(0x181a17),
     trackLink: make(0x2d302b),
     spareTrack: make(0x292c27),
+    spareLink: make(0x292c27),
     glass: make(0x243e49, { transparent: true, opacity: 0.7 }),
     barrel: make(0x555d49),
     canvasCloth: make(0x41452f),
@@ -8224,7 +8230,8 @@ function* createTankOwnedSteps(
       prepareWeaponFinishGeometry(merged, boxUV);
       paintAmmoVertexColours(merged, issueDrab, false);
     }
-    const mesh = new THREE.Mesh(merged, issueDrab ?? weaponSteel ?? (matKey === 'weaponSteel' ? mats.dark : mats[matKey]));
+    const mesh = new THREE.Mesh(merged, issueDrab ?? weaponSteel ?? (matKey === 'weaponSteel' ? mats.dark
+      : matKey === 'spareLink' ? mats.spareLink ?? mats.spareTrack : mats[matKey]));
     tagMergedBucket(bucket, mesh);
     if (seatRanges.length) mesh.userData.seatRoleRanges = seatRanges;
     // A merged material bucket can contain live equipment mixed with trim.

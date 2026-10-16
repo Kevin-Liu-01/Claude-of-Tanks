@@ -1,5 +1,6 @@
 import { buildT80UK } from './t80ukRenewal.ts';
 import { withSpareTrackRun } from '../spareTrackSeat.ts';
+import { spareLinkBlock } from '../spareLinkGeometry.ts';
 import { buildAmx30Casting } from './amx30X.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { captureAuxiliaryStock } from './auxiliaryStation.ts';
@@ -1804,7 +1805,7 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
     // VEH-13: the four flank links are one registered run (spareTrackSeat.ts; local +Y out of the -X flank)
     withSpareTrackRun(P, { site: 'leclerc-flank-links', source: 'adhoc', rotation: [0, 0, Math.PI / 2] }, (P) => {
       for (let k = 0; k < 4; k++) {
-        P.add('turretTrack', box(0.045, 0.15, 0.16), -1.5805, 0.29, 0.42 + k * 0.19);
+        P.add('turretTrack', spareLinkBlock(0.045, 0.15, 0.16, -1), -1.5805, 0.29, 0.42 + k * 0.19); // VEH-13: the fleet's link
         P.add('turretTrack', box(0.05, 0.05, 0.06), -1.583, 0.35, 0.42 + k * 0.19);
       }
     });                                                                            // (90-ladder r1: tops 1.965/1.975 — the fresh -1.6 front col reads the ref line at 1.97, the old 1.915 seat undershot)

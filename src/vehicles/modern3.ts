@@ -1,5 +1,6 @@
 import { weaponAssembly } from './profiles/weaponStock.ts';
 import { withSeatRole, withSpareTrackRun } from './spareTrackSeat.ts';
+import { spareLinkBlock } from './spareLinkGeometry.ts';
 // src/vehicles/modern3.ts — HD procedural builder pack #3 (modern roster).
 // Vehicles (docs/history/research/modern-roster.md): Chieftain Mk 10 (§19), K2 Black
 // Panther (§23), Type 10 (§24), M2A2 Bradley (§6), BMP-2 (§17), C1 Ariete (§26),
@@ -1919,7 +1920,7 @@ function buildType10Native2026(
     // VEH-13: the hanger rail and its links are one registered run on the rear plate (spareTrackSeat.ts)
     withSpareTrackRun(P, { site: 'type10-rear-links', source: 'adhoc', rotation: [-Math.PI / 2, 0, 0] }, (P) => {
       P.add('hullDetail', box(0.374, 0.055, 0.0264), 1.122, 1.10, -3.773);        // spare-link hanger rail
-      P.add('hullTrack', box(0.33, 0.176, 0.022), 1.122, 1.188, -3.7752);         // hung spare links
+      P.add('hullTrack', spareLinkBlock(0.33, 0.176, 0.022, -1), 1.122, 1.188, -3.7752); // the hung spare link (VEH-13: the fleet's link)
     });
     P.add('hullDetail', box(0.20, 0.20, 0.020), 0.02, 1.50, -3.774);              // convoy plate
     P.add('hullDark', box(0.16, 0.16, 0.012), 0.02, 1.50, -3.782);

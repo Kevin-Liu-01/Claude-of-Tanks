@@ -1,5 +1,6 @@
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { withSpareTrackRun } from '../spareTrackSeat.ts';
+import { spareLinkBlock } from '../spareLinkGeometry.ts';
 import { buildT64Modern } from './t72ModernVariants.ts';
 // Soviet/Russian modern family procedural profiles (fidelity oracles:
 // recovered T-62/T-64/T-72/T-90 variants + PT-91M). Owned by the
@@ -1235,8 +1236,13 @@ export function buildT62Obr1975Chassis(P: RussiaChassisPort, o: T62ChassisOption
   // run (spareTrackSeat.ts), seated on the deck that had grown over it
   [-1, 1].forEach((s) => {
     withSpareTrackRun(P, { site: `t62-aft-links-${s < 0 ? 'L' : 'R'}`, source: 'adhoc', rotation: [0.06, 0, 0] }, (P) => {
-      P.add('hullTrack', box(0.946, 0.08, 0.21), s * 0.583, 1.415, -2.55, 0.06, 0, 0);
-      P.add('hullTrack', box(0.858, 0.07, 0.17), s * 0.539, 1.425, -2.68, 0.08, 0, 0);
+      // VEH-13 (blind critics m1, "flat grey blocks"): each row is the fleet's links side by side over the old slab
+      for (const [w, h, d, x, y, z, rx] of [[0.946, 0.08, 0.21, 0.583, 1.415, -2.55, 0.06], [0.858, 0.07, 0.17, 0.539, 1.425, -2.68, 0.08]]) {
+        const n = Math.round(w / 0.15), pitch = w / n;
+        for (let i = 0; i < n; i++) {
+          P.add('hullTrack', KIT.xform(spareLinkBlock(pitch, h, d), s * x - w / 2 + pitch * (i + 0.5), 0, 0), 0, y, z, rx, 0, 0);
+        }
+      }
     });
   });
   // §B3.2 DENSITY (owner directive 2026-08-06, CEILING-CERT tank ->

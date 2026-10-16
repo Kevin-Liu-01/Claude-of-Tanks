@@ -352,6 +352,16 @@ export function seatAuthoredSpareTracks(a: AuthoredSeatArgs): SpareTrackSeatRepo
     }
     frames = collect();
   }
+  // the built runs' links take the spare links' own weathered steel: off the track-steel buckets they share with other
+  // dressing (bustle racks, skirt strips, ERA belts) into their own
+  for (const [from, to] of [['hullTrack', 'hullTrackLinks'], ['turretTrack', 'turretTrackLinks']] as const) {
+    const list = a.buckets[from];
+    if (!list?.length) continue;
+    const links = list.filter((part) => part.userData.spareTrackRun);
+    if (!links.length) continue;
+    a.buckets[from] = list.filter((part) => !part.userData.spareTrackRun);
+    (a.buckets[to] ??= []).push(...links);
+  }
   // the decor keeps its pieces out of every built run (decorations.ts), frame coordinates
   a.root.userData.spareTrackBoxes = {
     hull: kept.hull.map((b) => [...b.min.toArray(), ...b.max.toArray()]),

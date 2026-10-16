@@ -1,5 +1,6 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { spareTrackPart, spareTrackRunTag } from '../spareTrackSeat.ts';
+import { spareLinkBlock } from '../spareLinkGeometry.ts';
 // Independent first-party Merkava X constructions. Source archives are local
 // comparison inputs only; neither builder calls an earlier Merkava profile.
 import * as THREE from 'three';
@@ -289,8 +290,8 @@ function merkava3TurretDetails(P: TankBuilderPort): void {
   for(const [x,y,z]of[[.354,2.14,-3.727],[.354,2.162,-3.576],[-.446,2.13,-3.805],[-.446,2.152,-3.655]]){
     const run=stackRuns.get(x)??spareTrackRunTag({site:'merkava3d-basket-links',source:'adhoc',rotation:[.145,0,0]});
     stackRuns.set(x,run);
-    put('turretDetail',spareTrackPart(run,box(.64,.15,.18)),x,y,z,.145);
-    for(const dx of[-.21,0,.21])put('turretDark',spareTrackPart(run,box(.065,.04,.188)),x+dx,y+.036,z,.145);
+    // VEH-13 (blind critics m1, "flat grey blocks"): three of the fleet's links stacked over the old block's envelope
+    for(const dy of[-.05,0,.05])put('turretTrack',spareTrackPart(run,KIT.xform(spareLinkBlock(.64,.05,.18),0,dy,0)),x,y,z,.145);
   }
   chainCurtain(P,MK3,-4.04,1.04,2.06,.10);
   // Measured mounting flange, lower neck and spring base seat the whip on

@@ -63,7 +63,7 @@ export function seatRoleForBucket(bucket: string): SeatRole {
   if (/(Hatch|Cupola)$/.test(bucket)) return 'hatch';
   if (/Glass$/.test(bucket)) return 'sight';
   if (/(Cloth|CanvasPale|Wood|Bark|Rubber)$/.test(bucket)) return 'soft';
-  if (/^(hull|turret)Track$/.test(bucket)) return 'run';
+  if (/^(hull|turret)Track(Links)?$/.test(bucket)) return 'run';
   if (/RunningGear|^gear/.test(bucket)) return 'gear';
   if (/Shadow$/.test(bucket)) return 'ignore';
   if (/OpenLattice|FittingPaint/.test(bucket)) return 'fitting';

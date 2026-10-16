@@ -43,12 +43,16 @@ KIT.spareTrackStrip({
     legacyParts.push({ bucket, geometry, transform });
   },
 }, 'hull', 0, 1, 2, 3, 0.3, 0);
-assert.equal(legacyParts.length, 12,
-  'three-link legacy strip contains six link parts plus two rails and four feet');
+// VEH-13 (2026-10-15): each strip link is one merged link of the fleet's shared part (spareLinkGeometry.ts)
+assert.equal(legacyParts.length, 9,
+  'three-link legacy strip contains three links plus two rails and four feet');
 assert.equal(legacyParts.filter(({ bucket }) => bucket === 'hullDetail').length, 6,
   'legacy strip publishes six carrier/support parts in the detail finish');
-assert.equal(legacyParts.filter(({ bucket }) => bucket === 'hullTrack').length, 6,
-  'legacy strip retains six worn-track link parts');
+assert.equal(legacyParts.filter(({ bucket }) => bucket === 'hullTrack').length, 3,
+  'legacy strip retains three worn-track links');
+for (const { bucket, geometry } of legacyParts) {
+  if (bucket === 'hullTrack') assert.ok(geometry.getAttribute('position').count / 3 >= 60, 'a strip link has its plate, barrels and grouser');
+}
 for (const part of legacyParts) part.geometry.dispose();
 
 // VEH-13 (2026-10-15): the single centre-ray gap check gave way to the build's own seat receipts (spareTrackSeat.ts):
