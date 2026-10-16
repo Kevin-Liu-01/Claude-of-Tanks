@@ -3,6 +3,7 @@
 // so the parity lab (Verdant) and a migration in progress can be captured on one build while production keeps the ring.
 import type { HinterlandConfig } from '../spec.ts';
 import alpine from './alpine.ts';
+import delta from './delta.ts';
 import winter from './winter.ts';
 import railyard from './railyard.ts';
 import mars from './mars.ts';
@@ -10,4 +11,4 @@ import monsoon from './monsoon.ts';
 import polders from './polders.ts';
 import verdant from './verdant.ts';
 
-export const HINTERLAND_LAB_DRAFTS: Readonly<Record<string, HinterlandConfig>> = Object.freeze({ alpine, mars, monsoon, polders, railyard, verdant, winter });
+export const HINTERLAND_LAB_DRAFTS: Readonly<Record<string, HinterlandConfig>> = Object.freeze({ alpine, delta, mars, monsoon, polders, railyard, verdant, winter });
