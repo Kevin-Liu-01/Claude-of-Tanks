@@ -593,6 +593,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-r5/fleet-media.selftest.mjs',
     'tools/media-r5/fleet.selftest.mjs',
     'tools/media-r5/fleet-rekey.selftest.mjs',
+    'tools/media-r5/combat.selftest.mjs',
     'tools/public-repo-hygiene.selftest.mjs',
     'tools/tool-only-public-files.selftest.mjs',
     'server/processShutdown.selftest.mjs',

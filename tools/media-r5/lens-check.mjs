@@ -21,6 +21,15 @@ export const FORE_SHARE = 0.04;
  *  screen box. Houses that line a street stand at the frame's sides and stay out of it; a roof or a wreck under the
  *  lens is in it. */
 export const FORE_ZONE = 0.03;
+/** Roadside shrines (combat round, 2026-10-13: a wayside cross by the Verdant road covered s225's hero over its last
+ *  second while the sightline test passed it, thin as it is): a cross, calvary, shrine, statue, monument, obelisk or
+ *  grave in front of the hull counts toward the foreground's cover of it however low or crushable. */
+export const ROADSIDE_SHRINE = /cross|calvary|shrine|statue|monument|obelisk|grave/i;
+// a conductor counts across the frame's top where it draws this many pixels across at the filmed resolution, FILM_PX
+// high (the finals: 1080p films). (2026-10-14 the floor was 3 px, after the telephone line lying against s232's fields
+// barely read at 2; 2026-10-15, the coordinator after s229's review 6: the 380 kV line drew 1-3 px across the top of
+// every frame where the 3 px floor read it at 0.01 of the frame, so a conductor counts once it draws a pixel wide)
+const FILM_PX = Number(process.env.FILM_PX ?? 1080), WIRE_TOP_PX = Number(process.env.WIRE_TOP_PX ?? 1);
 /** A lens looking down more than this many degrees flattens a hull into its roof (composition wave c1). */
 export const STEEP_DEG = 30;
 
@@ -66,16 +75,31 @@ export function absoluteShots(scene, model) {
   });
 }
 
+/** A 2D segment clipped to an axis-aligned box (Liang-Barsky): the part inside, or null. */
+function clipSegment(p, q, x0, y0, x1, y1) {
+  let t0 = 0, t1 = 1;
+  const dx = q[0] - p[0], dy = q[1] - p[1];
+  for (const [pp, qq] of [[-dx, p[0] - x0], [dx, x1 - p[0]], [-dy, p[1] - y0], [dy, y1 - p[1]]]) {
+    if (pp === 0) { if (qq < 0) return null; continue; }
+    const r = qq / pp;
+    if (pp < 0) { if (r > t1) return null; if (r > t0) t0 = r; } else { if (r < t0) return null; if (r < t1) t1 = r; }
+  }
+  return [[p[0] + t0 * dx, p[1] + t0 * dy], [p[0] + t1 * dx, p[1] + t1 * dy]];
+}
+
 /**
  * The lens's view of the hero over the take: { blocked, outOfFrame, samples, worst, blockedAt, perSample } where blocked
  * and outOfFrame are fractions of the samples, worst lists the first blocked moments ({ tMs, by }), blockedAt every
  * blocked time and perSample each sample's { tMs, seen (any hull point in frame), centred (the hull's centre inside
  * 70 % of the frame), clear (no blocker), distM (lens to hull centre), box (the hull's screen box), whole (the box inside
  * the frame), size (its half height), fore ({ share, kind, zone, zoneKind }: the largest thing nearer the lens than the
- * hull, as a share of the frame, and the largest inside the foreground zone, FORE_ZONE), at (the hull's [x, z]), eye
+ * hull, as a share of the frame, and the largest inside the foreground zone, FORE_ZONE; cover/coverKind: the largest
+ * share of the hull's visible screen box one standing thing nearer the lens hides; shrine/shrineKind: the same for a
+ * roadside shrine however low), at (the hull's [x, z]), eye
  * (the lens), pitchDeg (the lens's look up or down; composition wave c1, 2026-10-07: a 40-60° look-down makes the tanks
  * roof plans), heightM (the lens over the ground under it) and facing (the nose's screen x less the tail's: + the hull
- * faces right) }.
+ * faces right), wire/wireKind (the longest overhead conductor reading 2 px or more across the frame's upper half, in
+ * frame widths) and wireHero (the kind of a wire passing across the hull's visible box nearer the lens, else null) }.
  */
 export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {}) {
   const shots = absoluteShots(scene, model), dur = scene.storyboard?.durationMs ?? 0;
@@ -179,6 +203,11 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
     // flagged FOREGROUND, the hedgehogs, fences, benches, crates and drums under the lens scored nothing while the
     // sightlines' low-cover rule left them out; it cannot hide a hull, but it crowds the frame).
     let foreShare = 0, foreKind = null, zoneShare = 0, zoneKind = null, clutter = 0, clutterKind = null;
+    // cover: the largest share of the hull's visible screen box (clipped to the frame) that one standing thing nearer
+    // the lens hides (anything from LOW_COVER_M up); shrine: the same for the roadside shrines, whatever their height
+    let cover = 0, coverKind = null, shrine = 0, shrineKind = null;
+    const seenBox = box ? [Math.max(-1, box[0]), Math.max(-1, box[1]), Math.min(1, box[2]), Math.min(1, box[3])] : null;
+    const seenArea = seenBox ? Math.max(1e-6, (seenBox[2] - seenBox[0]) * (seenBox[3] - seenBox[1])) : 1;
     // clutter: the foreground without architecture (houses and anything over 4 m: a street's frontages are its set,
     // not in the shot's way; composition wave c2 scored them up), so props, low cover and shrubs
     const zoneTop = box ? Math.min(box[1], 0.2) : 0.2;
@@ -202,6 +231,12 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
       const share = w > 0 && h > 0 ? (w * h) / 4 : 0;
       if (share > foreShare) { foreShare = share; foreKind = r.kind; }
       if (share > clutter && r.kind !== 'structure' && r.max[1] - r.min[1] <= 4) { clutter = share; clutterKind = r.kind; }
+      if (seenBox && seenBox[2] > seenBox[0] && seenBox[3] > seenBox[1]) {
+        const ow = Math.min(a1, seenBox[2]) - Math.max(a0, seenBox[0]), oh = Math.min(b1, seenBox[3]) - Math.max(b0, seenBox[1]);
+        const hidden = ow > 0 && oh > 0 ? (ow * oh) / seenArea : 0;
+        if (r.max[1] - r.min[1] >= LOW_COVER_M && hidden > cover) { cover = hidden; coverKind = r.kind; }
+        if (ROADSIDE_SHRINE.test(r.kind ?? '') && hidden > shrine) { shrine = hidden; shrineKind = r.kind; }
+      }
       const zw = Math.min(0.6, a1) - Math.max(-0.6, a0), zh = Math.min(zoneTop, b1) - Math.max(-1, b0);
       const zone = zw > 0 && zh > 0 ? (zw * zh) / 4 : 0;
       if (zone > zoneShare) { zoneShare = zone; zoneKind = r.kind; }
@@ -289,16 +324,46 @@ export function lensReport(scene, model, { stepMs = 100, aspect = 16 / 9 } = {})
         if (top[1] > box[3] && foot[1] < box[3]) { merger = 1; mergerKind = r.kind; break; }
       }
     }
+    // the overhead wires (2026-10-14, the coordinator on the combat round's 224 review: s225 and s226 ended under a
+    // telephone line): each conductor's polyline through the lens, cut at the near plane and clipped to the frame. A
+    // stretch reads as a line where it is a pixel or more across at FILM_PX (radius x FILM_PX / (depth x ty)); `wire` is the
+    // longest single conductor reading 2 px or more across the frame's upper half, in frame widths, and `wireHero` the
+    // kind of one reading at all that passes across the hull's visible box nearer the lens than the hull
+    let wire = 0, wireKind = null, wireHero = null;
+    const toLens = (q) => { const d = [q[0] - cam.x, q[1] - cam.y, q[2] - cam.z]; return [d[0] * right[0] + d[1] * right[1] + d[2] * right[2], d[0] * up[0] + d[1] * up[1] + d[2] * up[2], d[0] * fw[0] + d[1] * fw[1] + d[2] * fw[2]]; };
+    for (const w of model.wires ?? []) {
+      const nx = Math.max(w.min[0], Math.min(cam.x, w.max[0])), ny = Math.max(w.min[1], Math.min(cam.y, w.max[1])), nz = Math.max(w.min[2], Math.min(cam.z, w.max[2]));
+      if (Math.hypot(nx - cam.x, ny - cam.y, nz - cam.z) > w.r * FILM_PX / ty) continue;
+      let upper = 0;
+      for (let i = 0; i + 1 < w.pts.length; i++) {
+        let a = toLens(w.pts[i]), b = toLens(w.pts[i + 1]);
+        if (a[2] <= 0.3 && b[2] <= 0.3) continue;
+        if (a[2] <= 0.3 || b[2] <= 0.3) {
+          const f = (0.3 - a[2]) / (b[2] - a[2]), cut = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, 0.3];
+          if (a[2] <= 0.3) a = cut; else b = cut;
+        }
+        const depth = (a[2] + b[2]) / 2, px = w.r * FILM_PX / (depth * ty);
+        if (px < 1) continue;
+        const s0 = [a[0] / a[2] / tx, a[1] / a[2] / ty], s1 = [b[0] / b[2] / tx, b[1] / b[2] / ty];
+        const inFrame = clipSegment(s0, s1, -1, -1, 1, 1);
+        if (inFrame && px >= WIRE_TOP_PX && (inFrame[0][1] + inFrame[1][1]) / 2 > 0) upper += Math.hypot(inFrame[1][0] - inFrame[0][0], inFrame[1][1] - inFrame[0][1]) / 2;
+        if (inFrame && seenBox && depth < distM && clipSegment(inFrame[0], inFrame[1], seenBox[0], seenBox[1], seenBox[2], seenBox[3])) wireHero = w.kind;
+      }
+      if (upper > wire) { wire = upper; wireKind = w.kind; }
+    }
     perSample.push({ tMs: t, seen: inView, centred, clear: !isBlocked && blockedRays === 0, distM: +distM.toFixed(1),
+      wire: +wire.toFixed(3), wireKind, wireHero,
       muzzle: muzzleS ? muzzleS.map((v) => +v.toFixed(3)) : null, gunRoom, sliced, stacked, overlap: +overlap.toFixed(3), turretOverlap: +turretOverlap.toFixed(3), merger, mergerKind,
-      box, whole, size: box ? +((box[3] - box[1]) / 2).toFixed(3) : 0, fore: { share: +foreShare.toFixed(3), kind: foreKind, zone: +zoneShare.toFixed(3), zoneKind, clutter: +clutter.toFixed(3), clutterKind },
+      box, whole, size: box ? +((box[3] - box[1]) / 2).toFixed(3) : 0, fore: { share: +foreShare.toFixed(3), kind: foreKind, zone: +zoneShare.toFixed(3), zoneKind, clutter: +clutter.toFixed(3), clutterKind, cover: +cover.toFixed(3), coverKind, shrine: +shrine.toFixed(3), shrineKind },
       at: [+x.toFixed(2), +z.toFixed(2)], eye: [+cam.x.toFixed(2), +cam.y.toFixed(2), +cam.z.toFixed(2)], facing,
       pitchDeg: +(Math.asin(Math.max(-1, Math.min(1, fw[1]))) * 180 / Math.PI).toFixed(1), heightM: +(cam.y - model.heightAt(cam.x, cam.z)).toFixed(1) });
   }
   // inside: the share of samples with the lens inside a record (2026-10-08: the dolly zooms ran S12, S15 and S49's lenses
   // into rubble and walls for their last 0.2 s, and S30's through a longhouse, all under the 5 % blocked allowance; the
   // lens inside anything is never allowed)
-  return { blocked: samples ? blocked / samples : 0, outOfFrame: samples ? outOfFrame / samples : 0, inside: samples ? insideCount / samples : 0, samples, worst, blockedAt, perSample };
+  // wiresUnbuilt: the dump strings a power line by the rule, not as built (wire-model.mjs; combat-check fails on it)
+  return { blocked: samples ? blocked / samples : 0, outOfFrame: samples ? outOfFrame / samples : 0, inside: samples ? insideCount / samples : 0, samples, worst, blockedAt, perSample,
+    wiresUnbuilt: !!model.wiresUnbuilt };
 }
 
 /**

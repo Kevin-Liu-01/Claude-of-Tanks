@@ -2076,7 +2076,7 @@
   }
  },
  "15": {
-  "note": "flank-left[60,-25]/column at 15 m/s; orbitLowR",
+  "note": "flank-left[60,-25]/column at 15 m/s; orbitLowR; 2026-10-15: keys 3300/4950 lift +1, orbit -8 (the orchard village's stall)",
   "rail": "spline",
   "travelS": 1.5,
   "routes": {
@@ -2194,9 +2194,9 @@
     "tMs": 3300,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": 10,
+    "orbit": 2,
     "radius": 14.5,
-    "lift": 3.05,
+    "lift": 4.05,
     "fov": 39,
     "lookHero": [
      0,
@@ -2208,9 +2208,9 @@
     "tMs": 4950,
     "frame": "travel",
     "lookFrame": "travel",
-    "orbit": 42.5,
+    "orbit": 34.5,
     "radius": 16.21875,
-    "lift": 4.046875,
+    "lift": 5.046875,
     "fov": 38.5,
     "lookHero": [
      0,
@@ -2406,59 +2406,59 @@
   }
  },
  "17": {
-  "note": "diagonal-right[-40,-90]/column at 9 m/s; pushZoomL",
+  "note": "diagonal-right[-40,-90]/column at 9 m/s; pushZoomL; 2026-10-15: routes x -6, pace x0.9 (the crossroads' new structure)",
   "rail": "spline",
   "travelS": 1.5,
   "routes": {
    "hero": {
     "pts": [
      [
-      -40,
+      -46,
       -90
      ],
      [
-      -27.2,
+      -33.2,
       -73.2
      ],
      [
-      -16.5,
+      -22.5,
       -55
      ],
      [
-      -3,
+      -9,
       -38.6
      ],
      [
-      8.4,
+      2.4,
       -20.9
      ]
     ],
-    "speed": 9
+    "speed": 8.1
    },
    "ally1": {
     "pts": [
      [
-      -48.1,
+      -54.1,
       -105.1
      ],
      [
-      -36.5,
+      -42.5,
       -87.5
      ],
      [
-      -23.4,
+      -29.4,
       -70.9
      ],
      [
-      -12.3,
+      -18.3,
       -52.9
      ],
      [
-      0.3,
+      -5.7,
       -36
      ]
     ],
-    "speed": 9.6
+    "speed": 8.64
    }
   },
   "aim": {
