@@ -119,7 +119,7 @@ function qilin(P:TankBuilderPort,c:NationalModernizationConfig):void {
   frontTiles(P,2.06,2,.57,.38);
 }
 
-function permanentParts(P:TankBuilderPort,names:string[]):THREE.BufferGeometry[] {
+export function permanentParts(P:TankBuilderPort,names:string[]):THREE.BufferGeometry[] {
   const parts:THREE.BufferGeometry[]=[];
   P.forEachBucketPart(names,g=>{if(!Array.isArray(g.userData.eraHitFaceVertexStarts))parts.push(g);});
   return parts;
@@ -294,7 +294,7 @@ function stockRoof(parts:readonly THREE.BufferGeometry[],x:number,z:number):numb
 
 /** The receiver is sampled at all four feet and through the centre; this is
  * a shaped adapter on the real casting/housing, not a floating accessory. */
-function equipmentFoot(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:number,z:number,w:number,d:number):number {
+export function equipmentFoot(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:number,z:number,w:number,d:number):number {
   const rows=[z-d/2,z+d/2].map(zz=>({z:zz,left:stockRoof(parts,x-w/2,zz),right:stockRoof(parts,x+w/2,zz)}));
   let high=-Infinity;
   for(const dx of [-w/2,0,w/2])for(const dz of [-d/2,0,d/2])high=Math.max(high,stockRoof(parts,x+dx,z+dz));
@@ -306,7 +306,7 @@ function equipmentFoot(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x
   return top;
 }
 
-function serviceCase(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:number,z:number,w:number,h:number,d:number):number {
+export function serviceCase(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:number,z:number,w:number,h:number,d:number):number {
   const base=equipmentFoot(P,parts,x,z,w*.92,d*.92)-.003;
   const ring:SectionPoint[]=[[x-w/2,base+.025],[x-w/2+.03,base],[x+w/2-.03,base],
     [x+w/2,base+.025],[x+w/2,base+h-.025],[x+w/2-.03,base+h],[x-w/2+.03,base+h],[x-w/2,base+h-.025]];
@@ -322,7 +322,7 @@ function serviceCase(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:n
   return base+h;
 }
 
-function lowOptic(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:number,z:number,w:number,h:number,d:number,round:boolean):void {
+export function lowOptic(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:number,z:number,w:number,h:number,d:number,round:boolean):void {
   const base=equipmentFoot(P,parts,x,z,w*.88,d*.88)-.003;
   P.addEquipment('turretDetail',box(w,h,d),x,base+h/2,z);
   if(round){
@@ -333,7 +333,7 @@ function lowOptic(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:numb
   for(const dx of [-w/2-.01,w/2+.01])P.addEquipment('turretDetail',box(.018,h+.010,.035),x+dx,base+h/2,z+d/2+.013);
 }
 
-function serviceCable(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],points:readonly (readonly[number,number])[]):void {
+export function serviceCable(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],points:readonly (readonly[number,number])[]):void {
   const path=points.map(([x,z])=>[x,stockRoof(parts,x,z)+.013,z] as const);
   for(let i=1;i<path.length;i++)P.addEquipment('turretDark',beamBetween(path[i-1],path[i],.010,8));
   for(const [x,y,z]of path)P.addEquipment('turretDetail',box(.045,.034,.032),x,y+.002,z);

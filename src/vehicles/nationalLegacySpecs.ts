@@ -35,6 +35,8 @@ export function synchronizeNationalLegacyMetadata():void {
       heightM:donorTurret?.heightM??d.heightM,overallLengthM:d.hullLength/2+reach};
     stripSilhouetteDimensions(s.dims);
     s.visual={...s.visual,number:String(830+index)};
-    s.description='Original game concept. '+d.description+' Separate development of the earlier welded-turret design; the current '+TANK_SPECS[c.predecessor].name+' remains available.';
+    s.description=donorTurret
+      ?'Original game concept. '+d.description+' A separate national package from the '+TANK_SPECS[c.predecessor].name+' on the same donor turret.'
+      :'Original game concept. '+d.description+' Separate development of the earlier welded-turret design; the current '+TANK_SPECS[c.predecessor].name+' remains available.';
   }
 }

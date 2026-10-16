@@ -12,12 +12,12 @@ export const POLISH_PROTECTION_LAYOUTS = [
     rearZ:-2.62, rearHalf:1.37, rearBottom:.44, rearTop:.77, rearSeatZ:-1.98, rearSeatY:.515},
   {id:'t72b3_zubr', hullX:2.30, hullBottom:.94, hullTop:1.37,
     hullPanels:[[-2.32,-.92],[-.72,.56],[.89,2.30]],
-    turretX:1.81, turretBottom:.33, turretTop:.53, turretPanels:[[-1.38,-.40]],
-    rearZ:-2.11, rearHalf:1.13, rearBottom:.41, rearTop:.65, rearSeatZ:-1.50, rearSeatY:.415},
+    turretX:1.95, turretBottom:.24, turretTop:.74, turretPanels:[[-1.25,.10]],
+    rearZ:-2.34, rearHalf:.84, rearBottom:.085, rearTop:.50, rearSeatZ:-1.30, rearSeatY:.075},
   {id:'t72b3_zubr_ii', hullX:2.35, hullBottom:.72, hullTop:1.34,
     hullPanels:[[-2.43,-1.25],[-1.07,.11],[.29,1.47],[1.65,2.68]],
-    turretX:2.05, turretBottom:.38, turretTop:.72, turretPanels:[[-1.98,-1.24],[-1.08,-.34]],
-    rearZ:-2.99, rearHalf:1.34, rearBottom:.44, rearTop:.78, rearSeatZ:-2.18, rearSeatY:.51},
+    turretX:1.02, turretBottom:.175, turretTop:.74, turretPanels:[[-2.64,-2.03]],
+    rearZ:-2.64, rearHalf:1.02, rearBottom:.175, rearTop:.74, rearSeatZ:-1.30, rearSeatY:.075},
 ] as const;
 
 type Layout = (typeof POLISH_PROTECTION_LAYOUTS)[number];
@@ -66,9 +66,9 @@ const POLISH_FIELD: Readonly<Partial<Record<Layout['id'], {
   t80u_husarz: {deck: 1.53, glacis: 1.95, fall: .41, stern: -3.24, bow: 3.34, pivot: .07187, ring: 1.30,
     roof: .70, brow: 1.70, marks: [[-.64, -1.18], [-1.11, -.71]]},
   t72b3_zubr: {deck: 1.46, glacis: 1.90, fall: .48, stern: -3.12, bow: 3.28, pivot: .065591, ring: 1.24,
-    roof: .64, brow: 1.55, marks: [[-.51, -1.12], [-1.09, -.66]]},
+    roof: .70, brow: .25, marks: [[-.51, -1.12], [-1.09, -.66]]},
   t72b3_zubr_ii: {deck: 1.46, glacis: 1.90, fall: .48, stern: -3.12, bow: 3.28, pivot: .065591, ring: 1.24,
-    roof: .80, brow: 1.85, marks: [[-1.31, -1.93], [1.30, -1.97]]},
+    roof: .70, brow: .20, marks: [[-1.31, -1.93], [1.30, -1.97]]},
 };
 
 const square = ([x, z]: readonly [number, number], r: number): Point2[] => [[x - r, z - r], [x + r, z - r], [x + r, z + r], [x - r, z + r]];
