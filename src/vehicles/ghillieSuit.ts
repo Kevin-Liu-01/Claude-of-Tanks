@@ -229,8 +229,11 @@ interface GhillieBuilderPort {
   /** The cloth the suit clones, and the scheme wheel paint its theatre is read from (round 5). */
   mats: { canvasCloth: THREE.MeshStandardMaterial; wheels?: THREE.MeshStandardMaterial };
   disposables: DisposableResource[];
-  /** Steps run once the tank is assembled, after its profile's postAssemble (TankBuilderPort.afterAssemble). */
-  afterAssemble?: Array<(rig: never) => void>;
+  /**
+   * Steps run once the tank is assembled, after its profile's postAssemble (TankBuilderPort.afterAssemble). A step may
+   * return its work as checkpoints; the factory runs it after the core build, one checkpoint per slice.
+   */
+  afterAssemble?: Array<(rig: never) => void | Generator<void, void, void>>;
 }
 
 // Shared physical-ghillie authoring process.
@@ -5010,7 +5013,7 @@ function fieldSpecies(cfg: GhillieConfig, theatre: SuitTheatre): readonly [Spray
   return [own ?? 'spruce', 'beech'];
 }
 
-function addGhillieOwner(
+function* addGhillieOwner(
   P: GhillieBuilderPort,
   cfg: GhillieConfig,
   owner: GhillieOwner,
@@ -5021,7 +5024,7 @@ function addGhillieOwner(
   cover: CoverPalette,
   clearance: FieldClearance | null = null,
   cap: SuitCap | null = null,
-): void {
+): Generator<void, void, void> {
   const leafy = cfg.style === 'leafy';
   // push 3b's field roof cage: its tubes hold up nothing laid on the turret, and (on a draped net suit) each of its
   // wings carries a net of its own
@@ -5133,10 +5136,16 @@ function addGhillieOwner(
         },
       });
     } else tops.push(laid);
+    // a checkpoint between the suit's stages (2026-10-16): the factory runs the suit in its own slices after the core
+    yield;
   }
   const surfaces: ClothSurface[] = [...tops];
-  for (const panel of panels.side ?? []) surfaces.push(sideCloth(panel, cfg, support, uvk, gunFloor?.standing ?? null));
+  for (const panel of panels.side ?? []) {
+    surfaces.push(sideCloth(panel, cfg, support, uvk, gunFloor?.standing ?? null));
+    yield;
+  }
   for (const panel of panels.face ?? []) surfaces.push(faceCloth(panel, cfg, support, uvk));
+  yield;
   if (leafy && cage.length && gunFloor) cage.forEach((wing, i) => surfaces.push(...cageWingCloths(wing, i, cfg, probe, uvk, gunFloor, dock)));
   if (gunFloor || dock) {
     const inColumn = (p: readonly number[]): boolean => !!dock && p[1] > dock.min.y - 0.05
@@ -5204,10 +5213,11 @@ function addGhillieOwner(
         : (card) => foliageCardPoints(card).every((p) => clearance.netOk(owner, p))
           && denseCardPoints(card).every((p) => clearance.linesOk(owner, p)) : undefined,
     };
-    surfaces.forEach((surface, k) => {
-      (field ? addFieldTufts : addTufts)(foliage, surface, ctx, cfg.seed + k * 1000 + (owner === 'turret' ? 37 : owner === 'gun' ? 71 : 0));
+    for (let k = 0; k < surfaces.length; k++) {
+      (field ? addFieldTufts : addTufts)(foliage, surfaces[k], ctx, cfg.seed + k * 1000 + (owner === 'turret' ? 37 : owner === 'gun' ? 71 : 0));
       if (k < tops.length) topCards = foliage.cardCount;
-    });
+      yield;
+    }
   }
   const suitMats = suitMaterialsOf(P), netGeos = surfaces.map((s) => s.geometry);
   // the suit's parts share one net material (an empty part still builds and disposes its own throwaway, as before)
@@ -5349,7 +5359,12 @@ function suitCapOf(P: GhillieBuilderPort): SuitCap | null {
     top: box.max.y + FIELD_CAP_M };
 }
 
-function buildGhillieSuit(P: GhillieBuilderPort, cfg: GhillieConfig): void {
+/**
+ * The suit's build, as checkpoints (2026-10-16, PERF: the garage's default tank wears a suit and its build was one long
+ * task). The factory runs it after the core build, before the decorations that read it, and the vehicle it reads is the
+ * one the assembly left (tankFactoryCore.ts runDeferredAssembly); nothing it draws or decides depends on where it pauses.
+ */
+function* buildGhillieSuit(P: GhillieBuilderPort, cfg: GhillieConfig): Generator<void, void, void> {
   const theatre = buildTheatre(P);
   const cover = buildCoverPalette(P, theatre);
   const owners: readonly [GhillieOwner, THREE.Group, readonly THREE.Object3D[]][] = [
@@ -5361,11 +5376,12 @@ function buildGhillieSuit(P: GhillieBuilderPort, cfg: GhillieConfig): void {
   // before the turret's suit, so that suit also clears the hull's)
   const clearance = cfg.fieldClearanceM !== undefined ? fieldClearance(P, cfg.fieldClearanceM, cfg.conservativeGunEnvelope === true) : null;
   const cap = isFieldNet(cfg) ? suitCapOf(P) : null;
+  yield;
   for (const [owner, parent, others] of owners) {
     const panels = cfg[owner];
     if (!panels) continue;
     if (owner === 'turret') clearance?.addHullSuit();
-    addGhillieOwner(P, cfg, owner, parent, panels, others, theatre, cover, clearance, cap);
+    yield* addGhillieOwner(P, cfg, owner, parent, panels, others, theatre, cover, clearance, cap);
   }
 }
 
@@ -5416,6 +5432,10 @@ export function addVehicleGhillieSuit(P: GhillieBuilderPort, config?: GhillieCon
   // laid against the finished armour: after the profile's own postAssemble chain, which it never wraps (a port without
   // that stage builds at once)
   if (P.afterAssemble) P.afterAssemble.push(() => buildGhillieSuit(P, cfg));
-  else buildGhillieSuit(P, cfg);
+  else {
+    // a port without that stage builds at once
+    const steps = buildGhillieSuit(P, cfg);
+    for (let step = steps.next(); !step.done; step = steps.next()) { /* every checkpoint at once */ }
+  }
   return true;
 }
