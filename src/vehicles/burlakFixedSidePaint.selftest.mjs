@@ -15,7 +15,7 @@ function hash(g){const h=createHash('sha256');for(const key of Object.keys(g.att
  h.update(Buffer.from(a.array.buffer,a.array.byteOffset,a.array.byteLength));}
  if(g.index){const a=g.index.array;h.update(Buffer.from(a.buffer,a.byteOffset,a.byteLength));}return h.digest('hex');}
 function build(quality,camoPattern,old=false){const emissions=[],selected=[];
- registerProfiledBuilders({t90a_burlak_x:P=>buildT90BurlakX(new Proxy(P,{get(target,key){
+ registerProfiledBuilders({t90a_burlak:P=>buildT90BurlakX(new Proxy(P,{get(target,key){
   if(!methods.has(key))return Reflect.get(target,key);
   return(...args)=>{const g=args.find(a=>a?.isBufferGeometry),chosen=key==='addMudguard'&&args[0]===LABEL;
    if(chosen){assert.ok(['hullTrackGuardL','hullTrackGuardR'].includes(args[1]));
@@ -25,9 +25,9 @@ function build(quality,camoPattern,old=false){const emissions=[],selected=[];
    return target[key](...args);
   };
  }}))});
- try{return{emissions,selected,tank:createTank('t90a_burlak_x',null,{quality,proceduralOnly:true,
+ try{return{emissions,selected,tank:createTank('t90a_burlak',null,{quality,proceduralOnly:true,
   materialMode:'rendered',geometryReceipt:false,batchStatic:false,decor:true,camoPattern,camoSeed:4242})};}
- finally{registerProfiledBuilders({t90a_burlak_x:buildT90BurlakX});}
+ finally{registerProfiledBuilders({t90a_burlak:buildT90BurlakX});}
 }
 function clouds(root){root.updateMatrixWorld(true);const rows=[],v=new T.Vector3();root.traverse(o=>{
  if(!o.isMesh||!changedBuckets.has(o.name))return;assert.ok(!o.isInstancedMesh&&!o.isBatchedMesh);

@@ -3,10 +3,11 @@ import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { createTankState } from '../../sim/movement.ts';
+import { tankSeedId } from '../tankIdAliases.ts'; // names and receipt keys built from an id keep its schema-1 spelling
 
 const MERKAVA_IDS = [
   'merkava1b', 'merkava2b', 'merkava2d',
-  'merkava3c', 'merkava3d', 'merkava4b',
+  'merkava3c', 'merkava3_baz', 'merkava4b',
 ];
 
 const GLACIS_CLOSURES = Object.freeze({
@@ -14,7 +15,7 @@ const GLACIS_CLOSURES = Object.freeze({
   merkava2b: [1.95, 2.98],
   merkava2d: [1.95, 3.12],
   merkava3c: [2.15, 2.71],
-  merkava3d: [1.85, 2.83],
+  merkava3_baz: [1.85, 2.83],
   merkava4b: [2.10, 3.30],
 });
 
@@ -25,11 +26,11 @@ const RUNNING_GEAR_REVISIONS = Object.freeze({
 
 const REMOVED_SURFACES = [
   { id: 'merkava3c', mesh: 'hullRunningGearDark', min: [-1.72, 0.145, -3.20], max: [-1.72, 0.445, 1.70] },
-  { id: 'merkava3d', mesh: 'hullRunningGearDark', min: [-1.72, 0.145, -3.28], max: [-1.72, 0.300, 1.70] },
-  { id: 'merkava3d', mesh: 'hullCloth', min: [-1.716, 0.375, -3.13], max: [-1.716, 0.420, 1.59] },
-  { id: 'merkava3d', mesh: 'hullRunningGearDark', min: [-1.716, 0.300, -3.13], max: [-1.716, 0.375, 1.59] },
-  { id: 'merkava3d', mesh: 'hullRunningGearDark', min: [-1.092, 0.14, -3.60], max: [-1.092, 0.70, 2.20] },
-  { id: 'merkava3d', mesh: 'hullRunningGearDark', min: [1.092, 0.14, -3.60], max: [1.092, 0.70, 2.20] },
+  { id: 'merkava3_baz', mesh: 'hullRunningGearDark', min: [-1.72, 0.145, -3.28], max: [-1.72, 0.300, 1.70] },
+  { id: 'merkava3_baz', mesh: 'hullCloth', min: [-1.716, 0.375, -3.13], max: [-1.716, 0.420, 1.59] },
+  { id: 'merkava3_baz', mesh: 'hullRunningGearDark', min: [-1.716, 0.300, -3.13], max: [-1.716, 0.375, 1.59] },
+  { id: 'merkava3_baz', mesh: 'hullRunningGearDark', min: [-1.092, 0.14, -3.60], max: [-1.092, 0.70, 2.20] },
+  { id: 'merkava3_baz', mesh: 'hullRunningGearDark', min: [1.092, 0.14, -3.60], max: [1.092, 0.70, 2.20] },
 ];
 
 const round = (value, places = 4) => Number(value.toFixed(places));
@@ -115,7 +116,7 @@ for (const id of MERKAVA_IDS) {
   assert.equal(visual.root.getObjectByName('rig_hull')?.userData.nativeRoadWheelStations, 6,
     `${id}: running-gear receipt records six road-wheel stations`);
   const hull = visual.root.getObjectByName('rig_hull');
-  const gearReceipt = hull.userData[`${id}RunningGearReceipt`];
+  const gearReceipt = hull.userData[`${tankSeedId(id)}RunningGearReceipt`];
   assert.equal(gearReceipt?.revision,
     RUNNING_GEAR_REVISIONS[id] ?? 'terminal-course-reseat-r2',
     `${id}: terminal-course reseat is audited`);
@@ -134,7 +135,7 @@ for (const id of MERKAVA_IDS) {
       `${id}: front terminal is seated at the shared raised station`);
   }
 
-  const closureReceipt = hull.userData[`${id}GlacisClosureReceipt`];
+  const closureReceipt = hull.userData[`${tankSeedId(id)}GlacisClosureReceipt`];
   assert.equal(closureReceipt?.revision, 'upper-lower-glacis-web-r1',
     `${id}: lower glacis cavity has a structural closure`);
   assert.ok(Math.abs(closureReceipt.rearStationZM - GLACIS_CLOSURES[id][0]) < 1e-9);
@@ -147,16 +148,16 @@ for (const id of MERKAVA_IDS) {
 
 // 2026-09-22 nation wheel standard (owner: "israel uses merkava mk 4b or namer wheels"): the Mk 3D draws the Mk 4B
 // five-layer dished face through nationWheelConstructions.ts; its former four-ring pressed face is gone.
-const mk3d = visuals.get('merkava3d');
+const mk3d = visuals.get('merkava3_baz');
 const mk3dFaceNames = [
   'gearRoadWheelOuterDishes', 'gearRoadWheelDishBreaks', 'gearRoadWheelMidDishes',
   'gearRoadWheelInnerDishes', 'gearRoadWheelHubCaps',
 ];
 for (const name of mk3dFaceNames) {
   const layer = mk3d.root.getObjectByName(name);
-  assert.ok(layer?.isInstancedMesh, `merkava3d: ${name} is suspension-driven`);
-  assert.equal(layer.count, 12, `merkava3d: ${name} follows all twelve road wheels`);
-  assert.equal(layer.userData.dynamicWheelFace, true, `merkava3d: ${name} cannot remain parked on the hull`);
+  assert.ok(layer?.isInstancedMesh, `merkava3_baz: ${name} is suspension-driven`);
+  assert.equal(layer.count, 12, `merkava3_baz: ${name} follows all twelve road wheels`);
+  assert.equal(layer.userData.dynamicWheelFace, true, `merkava3_baz: ${name} cannot remain parked on the hull`);
 }
 
 const tireMatrix = new THREE.Matrix4();

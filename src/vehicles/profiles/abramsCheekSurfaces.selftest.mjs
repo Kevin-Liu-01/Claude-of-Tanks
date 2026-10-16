@@ -6,7 +6,7 @@ import {shellPart,mirroredSurfaceError,slabWarps} from '../../../tools/base-shel
 import {shellEdgeTopology,properSurfaceCrossings} from '../../../tools/base-shell-integrity.mjs';
 
 // Actual family builders, including roster names whose stable IDs still say A2.
-const ids=['m1a1','m1a1ha','ua_m1a1','m1a2','m1a2_tusk','m1a2_sepv2','m1a2_sepv3'];
+const ids=['m1a1','m1a1ha','ua_m1a1','m1a1_abrams_hc','m1a1_abrams_sa','m1a1_abrams_aim','m1a1_abrams_fep'];
 for(const quality of ['high','low'])for(const id of ids){
  const cheeks=[];
  const tank=createTank(id,null,{proceduralOnly:true,quality,camoSeed:4242,geometryReceipt:true,

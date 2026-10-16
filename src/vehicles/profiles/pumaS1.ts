@@ -514,7 +514,7 @@ function addTurret(P: PumaS1BuilderPort): void {
     seed: 172,
   });
   pumaRoofOptics.name = 'pumaS1K2bStyleRoofOptics';
-  pumaRoofOptics.userData.hostVariant = 'spz_puma_s1';
+  pumaRoofOptics.userData.hostVariant = 'spz_wotan';
   pumaRoofOptics.userData.sensorRole = 'commander-panoramic';
   mount(P, 'turret', pumaRoofOptics, 0.62, 0.88, 0.52, [0, -0.05, 0]);
   P.turretG.userData.pumaS1RoofOpticsReceipt = Object.freeze({
@@ -548,7 +548,7 @@ function addTurret(P: PumaS1BuilderPort): void {
     seed: 173,
   });
   pumaRoofRws.name = 'pumaS1CompactRoofRws';
-  pumaRoofRws.userData.hostVariant = 'spz_puma_s1';
+  pumaRoofRws.userData.hostVariant = 'spz_wotan';
   mount(P, 'turret', pumaRoofRws, 0.42, 0.74, -0.90, [0, 0.04, 0]);
   P.turretG.userData.pumaS1RoofRwsReceipt = Object.freeze({
     designFamily: pumaRoofRws.userData.designFamily,
@@ -676,5 +676,5 @@ function buildPumaS1(P: PumaS1BuilderPort): void {
 }
 
 export const PUMA_S1_PROFILES = Object.freeze({
-  spz_puma_s1: Object.freeze({ build: buildPumaS1 }),
+  spz_wotan: Object.freeze({ build: buildPumaS1 }),
 }) satisfies VehicleProfileRecord;

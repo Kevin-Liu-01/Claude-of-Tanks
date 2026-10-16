@@ -15,13 +15,13 @@ const articulated = (id: string) => ({
 export const T90_X_REFERENCE_OVERRIDES = {
   // 2026-09-12 (owner decision): the T-90A carries the same Russian X track
   // standard and scores 91.4 against its thin-tracked source; fleet bar.
-  t90a_x: { ...articulated('t90a_x'), qualityBar: 'fleet' },
+  t90a: { ...articulated('t90a'), qualityBar: 'fleet' },
   // 2026-09-12 (owner decision): the Russian X track standard (.030 band,
   // .036 pad) is applied to the T-90M as well; against the thin-tracked source
   // it scores 91.0 on hull curves, so the class is qualified at the fleet bar.
-  t90m_x: { ...articulated('t90m_x'), qualityBar: 'fleet' },
-  t90sm_x: articulated('t90sm_x'),
-  t90a_vladimir_x: {
+  t90m: { ...articulated('t90m'), qualityBar: 'fleet' },
+  t90sm: articulated('t90sm'),
+  t90a_vladimir: {
     source: 'glb', qualityBar: 'exemplar',
     glb: {
       path: '/models/community-candidates/t90a_vladimir_x_source.glb',

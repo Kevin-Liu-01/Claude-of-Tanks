@@ -6,7 +6,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
-import { AMMOBOX_LEGACY, DESTRUCTIBLE_TYPES } from './inhabitKit.ts';
+import { DESTRUCTIBLE_TYPES } from './inhabitKit.ts';
+import { AMMOBOX_LEGACY } from './fieldworksKit.ts';
 
 function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 function counted(seed) { const r = mulberry32(seed); const c = () => { c.n++; return r(); }; c.n = 0; return c; }

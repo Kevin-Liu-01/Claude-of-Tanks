@@ -25,7 +25,7 @@ function receiptFor(testCase) {
   const output = outputResolution({ width, height, devicePixelRatio: dpr, mobile: testCase.tier === 'mobile' });
   const dynScale = baseDynamicScale(output.pixelRatio, PRESETS[testCase.preset]);
   const renderScale = Number(internalPixelRatio(output.pixelRatio, PRESETS[testCase.preset], dynScale).toFixed(3));
-  return { mapId: testCase.mapId, playerSpecId: 'm1a2', phase: 'battle', shotMode: false,
+  return { mapId: testCase.mapId, playerSpecId: 'm1a1_abrams_hc', phase: 'battle', shotMode: false,
     externalActive: true, scoped: false, viewport: [width, height], canvasCss: [width, height], dpr,
     aspect: camera.aspect, projection: camera.projectionMatrix.toArray(), zoom: 1, view: null, filmOffset: 0,
     fov: 55, near: 0.5, far: 4000, requested: testCase, preset: testCase.preset, contextLost: false,
@@ -467,7 +467,7 @@ try {
 const source = fs.readFileSync(new URL('./environment-motion-probe.mjs', import.meta.url), 'utf8');
 assert.ok(!source.includes('agent-browser'));
 assert.ok(!source.includes('__SHOTS.set'));
-assert.match(source, /beginSoloBattle\(\{ specId: 'm1a2', mapId, randomRoster: false/);
+assert.match(source, /beginSoloBattle\(\{ specId: 'm1a1_abrams_hc', mapId, randomRoster: false/);
 assert.match(source, /recordVideo: \{ dir: videoDir, size: videoSize \}/);
 assert.ok(source.indexOf('const context = await browser.newContext(options)') < source.indexOf('page = await context.newPage()'));
 assert.match(source, /context.close\(\)/);

@@ -40,7 +40,7 @@ function checkInsulators(meshes,turret,detail,dark) {
 }
 
 for(const quality of ['high','low']) {
-  const tank=createTank('amx40_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const tank=createTank('amx40',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try {
     tank.root.updateMatrixWorld(true);
     const meshes=[];tank.root.traverse(m=>{if(m.isMesh&&!m.name.startsWith('procShadow_')&&!m.userData.vehicleMarking)meshes.push(m)});

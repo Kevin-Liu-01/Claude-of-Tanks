@@ -19,9 +19,9 @@ const reject = (fn, code) => {
 };
 
 function fullRoom({ teamSize = 14 } = {}) {
-  const room = createRoom({ roomCode: 'ROOM01', mode: 'private', creator: { id: 'p1', name: 'One' }, selection: { specId: 'm1a2' }, settings: { teamSize }, now: T0 });
+  const room = createRoom({ roomCode: 'ROOM01', mode: 'private', creator: { id: 'p1', name: 'One' }, selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize }, now: T0 });
   for (let index = 2; index <= ROOM_MAX_PLAYERS; index++) {
-    joinRoom(room, { player: { id: `p${index}`, name: `Player ${index}` }, selection: { specId: index % 2 ? 't90m' : 'm1a2' }, now: T0 + index });
+    joinRoom(room, { player: { id: `p${index}`, name: `Player ${index}` }, selection: { specId: index % 2 ? 't90am' : 'm1a1_abrams_hc' }, now: T0 + index });
   }
   return room;
 }
@@ -57,23 +57,23 @@ function fullRoom({ teamSize = 14 } = {}) {
   const suffixed = joinRoom(room, { player: { id: 'p2', name: 'one two' }, now: T0 + 1 });
   assert.equal(suffixed.name, 'one two 2', 'case-insensitive collisions are suffixed');
   reject(() => joinRoom(room, { player: { id: 'p3', name: 'Three' }, selection: { specId: 'Bad Spec' }, now: T0 }), 'invalid_vehicle');
-  const equipped = joinRoom(room, { player: { id: 'p4', name: 'Four' }, selection: { specId: 'm1a2', equipment: ['a', 'b', 'c', 'd', 'a'], camo: 'desert' }, now: T0 });
+  const equipped = joinRoom(room, { player: { id: 'p4', name: 'Four' }, selection: { specId: 'm1a1_abrams_hc', equipment: ['a', 'b', 'c', 'd', 'a'], camo: 'desert' }, now: T0 });
   assert.deepEqual(equipped.equipment, ['a', 'b', 'c'], 'equipment is bounded and deduplicated');
   assert.equal(equipped.camo, 'desert');
 }
 {
   const room = createRoom({ roomCode: 'ROOM04', mode: 'private', creator: { id: 'p1', name: 'One' }, now: T0 });
-  reject(() => joinRoom(room, { player: { id: 'p4', name: 'Four' }, selection: { specId: 'm1a2', camo: 'Factory!' }, now: T0 }), 'invalid_camo');
+  reject(() => joinRoom(room, { player: { id: 'p4', name: 'Four' }, selection: { specId: 'm1a1_abrams_hc', camo: 'Factory!' }, now: T0 }), 'invalid_camo');
 }
 
 // ---- commands: readiness, vehicle lock, team switch, admin-only settings, moves, kicks
 {
-  const room = createRoom({ roomCode: 'ROOM05', mode: 'private', creator: { id: 'admin', name: 'Admin' }, selection: { specId: 'm1a2' }, settings: { teamSize: 2 }, now: T0 });
+  const room = createRoom({ roomCode: 'ROOM05', mode: 'private', creator: { id: 'admin', name: 'Admin' }, selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize: 2 }, now: T0 });
   joinRoom(room, { player: { id: 'g1', name: 'Guest' }, now: T0 + 1 });
   reject(() => applyRoomCommand(room, 'g1', { type: 'set_ready', ready: true }, T0 + 2), 'vehicle_required');
-  applyRoomCommand(room, 'g1', { type: 'select_vehicle', specId: 't90m' }, T0 + 3);
+  applyRoomCommand(room, 'g1', { type: 'select_vehicle', specId: 't90am' }, T0 + 3);
   applyRoomCommand(room, 'g1', { type: 'set_ready', ready: true }, T0 + 4);
-  reject(() => applyRoomCommand(room, 'g1', { type: 'select_vehicle', specId: 'm1a2' }, T0 + 5), 'vehicle_locked');
+  reject(() => applyRoomCommand(room, 'g1', { type: 'select_vehicle', specId: 'm1a1_abrams_hc' }, T0 + 5), 'vehicle_locked');
   reject(() => applyRoomCommand(room, 'g1', { type: 'set_team', team: 'alpha' }, T0 + 5), 'vehicle_locked');
   applyRoomCommand(room, 'g1', { type: 'set_ready', ready: false }, T0 + 6);
   applyRoomCommand(room, 'g1', { type: 'set_team', team: 'alpha' }, T0 + 7);
@@ -107,8 +107,8 @@ function fullRoom({ teamSize = 14 } = {}) {
 
 // ---- start gating and bot fill
 {
-  const room = createRoom({ roomCode: 'ROOM07', mode: 'private', creator: { id: 'admin', name: 'Admin' }, selection: { specId: 'm1a2' }, settings: { teamSize: 3, mapId: 'verdant' }, now: T0 });
-  joinRoom(room, { player: { id: 'g1', name: 'Guest' }, selection: { specId: 't90m' }, now: T0 + 1 });
+  const room = createRoom({ roomCode: 'ROOM07', mode: 'private', creator: { id: 'admin', name: 'Admin' }, selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize: 3, mapId: 'verdant' }, now: T0 });
+  joinRoom(room, { player: { id: 'g1', name: 'Guest' }, selection: { specId: 't90am' }, now: T0 + 1 });
   joinRoom(room, { player: { id: 'w1', name: 'Watcher' }, team: 'spectator', now: T0 + 2 });
   reject(() => applyRoomCommand(room, 'admin', { type: 'start' }, T0 + 3), 'players_not_ready');
   applyRoomCommand(room, 'admin', { type: 'set_ready', ready: true }, T0 + 4);
@@ -222,7 +222,7 @@ function fullRoom({ teamSize = 14 } = {}) {
   applyRoomCommand(room, 'p2', { type: 'host_decline', declined: true }, T0 + 30);
   assert.equal(room.players.find((p) => p.id === 'p2').hostDeclined, true);
   reject(() => applyRoomCommand(room, 'p2', { type: 'host_decline', declined: 'yes' }, T0 + 31), 'invalid_command');
-  const playing = createRoom({ roomCode: 'ROOM12', mode: 'private', creator: { id: 'p1', name: 'One' }, selection: { specId: 'm1a2' }, settings: { teamSize: 1 }, now: T0 });
+  const playing = createRoom({ roomCode: 'ROOM12', mode: 'private', creator: { id: 'p1', name: 'One' }, selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize: 1 }, now: T0 });
   applyRoomCommand(playing, 'p1', { type: 'set_ready', ready: true }, T0 + 1);
   planStart(playing, { seed: 1, now: T0 + 1 });
   assert.equal(playing.phase, 'starting');
@@ -242,16 +242,16 @@ function fullRoom({ teamSize = 14 } = {}) {
 
 // ---- the lifecycle proofs (2026-09-30): an emptied room's next joiner is its admin; `unable` on a decline is a boolean
 {
-  const room = createRoom({ roomCode: 'ROOM13', mode: 'private', creator: { id: 'creator', name: 'Creator' }, selection: { specId: 'm1a2' }, settings: { teamSize: 2 }, now: T0 });
+  const room = createRoom({ roomCode: 'ROOM13', mode: 'private', creator: { id: 'creator', name: 'Creator' }, selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize: 2 }, now: T0 });
   assert.equal(removePlayer(room, 'creator', T0 + 1), true);
   assert.deepEqual(room.players, []);
   assert.equal(room.adminId, 'creator', 'nothing to migrate to: the departed id stays on record while the room is empty');
   assert.doesNotThrow(() => readRoomSnapshot(JSON.parse(JSON.stringify(serializeRoom(room)))), 'an empty room validates');
-  const late = joinRoom(room, { player: { id: 'late', name: 'Late' }, selection: { specId: 't90m' }, now: T0 + 2 });
+  const late = joinRoom(room, { player: { id: 'late', name: 'Late' }, selection: { specId: 't90am' }, now: T0 + 2 });
   assert.equal(late.isAdmin, true, 'the first seat to join an emptied room owns it');
   assert.equal(room.adminId, 'late');
   assert.doesNotThrow(() => readRoomSnapshot(JSON.parse(JSON.stringify(serializeRoom(room)))), 'the joiner\'s snapshot validates (the departed creator as admin failed the identity check before)');
-  const second = joinRoom(room, { player: { id: 'second', name: 'Second' }, selection: { specId: 't90m' }, now: T0 + 3 });
+  const second = joinRoom(room, { player: { id: 'second', name: 'Second' }, selection: { specId: 't90am' }, now: T0 + 3 });
   assert.equal(second.isAdmin, false, 'only the first seat');
   assert.equal(room.players.filter((p) => p.isAdmin).length, 1);
   applyRoomCommand(room, 'late', { type: 'set_ready', ready: true }, T0 + 4);

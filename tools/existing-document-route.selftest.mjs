@@ -37,7 +37,7 @@ try{
   await check(origin,'/gallery.html?id=merkava3d_x&layer=markup',200,'Tank Gallery');
   // Vite extracts inline module bodies; assert the requested HTML title here.
   // Native track-duplicate-audit separately verifies module execution/readiness.
-  await check(origin,'/tools/track-duplicate-audit.html?id=t90a_burlak_x',200,'<title>Track duplicate audit</title>');
+  await check(origin,'/tools/track-duplicate-audit.html?id=t90a_burlak',200,'<title>Track duplicate audit</title>');
   await check(origin,'/gallery?id=merkava3d_x',200,'Tank Gallery');
   await check(origin,'/definitely-missing-document.html',404,'not-found');
   await check(origin,'/definitely-missing-route',404,'not-found');

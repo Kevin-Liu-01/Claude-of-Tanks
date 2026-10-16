@@ -23,7 +23,7 @@ import type { FleetTankSpec, ModelSourceRecord } from './specContracts.ts';
 
 // ===========================================================================
 // Modern-class residents (spec+build, the modern1.ts pattern): challenger2 +
-// challenger_3. Armor tables, spec rows, helpers and builders below moved
+// challenger3_proto. Armor tables, spec rows, helpers and builders below moved
 // byte-intact from modern1.ts (§5.75).
 // ===========================================================================
 
@@ -201,8 +201,8 @@ const CHALLENGER_SPEC_IDS = [
   'challenger2',
   'challenger2e',
   'ua_challenger2',
-  'challenger_3',
-  'challenger_3x',
+  'challenger3_proto',
+  'challenger3',
 ] as const;
 type ChallengerSpecId = typeof CHALLENGER_SPEC_IDS[number];
 
@@ -309,8 +309,8 @@ const CHALLENGER_SPECS = {
       trackWidthM: 0.65, camoScale: 0.42,
     },
   },
-  challenger_3: {
-    id: 'challenger_3', name: 'Challenger 3 Prototype', nation: 'UK', era: 'modern', role: 'mbt',
+  challenger3_proto: {
+    id: 'challenger3_proto', name: 'Challenger 3 Prototype', nation: 'UK', era: 'modern', role: 'mbt',
     hp: 2500,
     // CV12-9A uprate path (1,500 hp program figure), 66 t combat
     enginePowerHp: 1500, weightTons: 66, topSpeedKmh: 60, reverseSpeedKmh: 20,
@@ -342,8 +342,8 @@ const CHALLENGER_SPECS = {
       marking: 'number', number: '30', trackWidthM: 0.65, camoScale: 0.48,
     },
   },
-  challenger_3x: {
-    id: 'challenger_3x', name: 'Challenger 3', nation: 'UK', era: 'modern', role: 'mbt',
+  challenger3: {
+    id: 'challenger3', name: 'Challenger 3', nation: 'UK', era: 'modern', role: 'mbt',
     hp: 2780,
     enginePowerHp: 1800, weightTons: 76, topSpeedKmh: 58, reverseSpeedKmh: 22,
     hullTraverseDegS: 36,
@@ -379,7 +379,7 @@ const allTankIds: string[] = ALL_TANK_IDS;
 // Register specs + model-source rows + garage roster ids (idempotent — vite
 // HMR can re-evaluate this module; the modern1.ts mechanism, moved with its
 // residents). §5.75 ORDER GUARD: modern1.ts registered challenger2 and
-// challenger_3 BEFORE merkava4/leo2a6, and the garage carousel is ordered by
+// challenger3_proto BEFORE merkava4/leo2a6, and the garage carousel is ordered by
 // ALL_TANK_IDS (main.ts); modern1 always evaluates before this module (its
 // helpers are imported above), so re-insert at the original slot instead of
 // appending to the tail — a pure refactor must not reorder the roster.

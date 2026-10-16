@@ -60,7 +60,7 @@ near(munitionChargeKg({ type: 'HE', caliberMm: 120, name: 'L31A7 HESH' }), 5.18,
 assert.equal(munitionClassForShell(auxiliaryWeaponProfile(12.7).shell), 'small_arms');
 assert.equal(munitionClassForShell(auxiliaryWeaponProfile(7.62).shell), 'small_arms');
 assert.equal(munitionClassForShell(auxiliaryWeaponProfile(30).shell), 'autocannon_he', 'M789 HEDP is typed AP, named HEDP');
-assert.equal(munitionClassForShell(auxiliaryWeaponProfile(30, 't14').shell), 'autocannon_ap', '3UBR6 AP-T stays kinetic');
+assert.equal(munitionClassForShell(auxiliaryWeaponProfile(30, 'object148_proto').shell), 'autocannon_ap', '3UBR6 AP-T stays kinetic');
 const [gunshipCannon, gunshipHowitzer, gunshipMissile] = GUNSHIP_WEAPONS;
 assert.equal(munitionClassForShell(gunshipCannon), 'autocannon_ap');
 assert.equal(munitionClassForShell(gunshipHowitzer), 'howitzer');

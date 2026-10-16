@@ -30,7 +30,7 @@ const {getSpec}=await import('./specs.ts');
 const {createTankState}=await import('../sim/movement.ts');
 const {Vector3}=await import('three');
 const {syncJuggernautVisual,clearJuggernautVisual}=await import('../game/juggernautVisual.ts');
-const id='m1a2_sepv3_x';await ensureTankBuilder(id);
+const id='m1a2_abrams_sepv3';await ensureTankBuilder(id);
 const visual=createTank(id,null,{quality:'high'}),spec=getSpec(id);
 const state=createTankState(spec,new Vector3(),0);
 state.modeScale=1.12;

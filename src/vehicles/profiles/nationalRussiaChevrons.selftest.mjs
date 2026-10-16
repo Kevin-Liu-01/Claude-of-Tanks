@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import {createTank} from '../tankFactory.ts';
 import {measureGunHullClearance} from './bradleyGunClearance.test-support.mjs';
 
-const IDS=['ru_t80u_modern','ru_t72b3m_modern','ru_t72b3_modern'];
+const IDS=['t80u_bars_m','t72b3m_bulat_m','t72b3_bastion_m'];
 const material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
 const vec=p=>new THREE.Vector3(...p);
 const key=p=>p.toArray().map(v=>v.toFixed(5)).join(',');
@@ -110,7 +110,7 @@ try {
    tank.root.updateMatrixWorld(true);
    const turret=tank.root.getObjectByName('rig_turret'),applique=turret.getObjectByName('turretExternalArmor');
    const leaves=turret.userData.russianChevronEra.leaves;
-   assert.equal(leaves.length,id==='ru_t72b3m_modern'?32:28,'front cap, diagonal cheek and shoulder all receive both courses');
+   assert.equal(leaves.length,id==='t72b3m_bulat_m'?32:28,'front cap, diagonal cheek and shoulder all receive both courses');
    for(const leaf of leaves){const g=actualLeaf(applique,leaf);geometries.push(g);closedSolid(g);frontNormal(g,leaf);}
    assertMirror(leaves);const gunGap=gunCorridor(tank,leaves),continuousGap=continuousHullGap(tank,geometries);
    const inward=leaves.map(l=>({...l,...Object.fromEntries(['back','face'].map(k=>[k,l[k].map(p=>[p[0]-l.side*.20,p[1],p[2]])]))}));

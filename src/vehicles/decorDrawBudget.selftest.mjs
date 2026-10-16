@@ -15,7 +15,7 @@ import assert from 'node:assert/strict';
 import { createTank } from './tankFactory.ts';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
 
-const BEFORE = Object.freeze({ challenger1: 9, leclerc: 9, t64bv1: 10, type90a: 8, m1a1: 9, merkava3c: 9 });
+const BEFORE = Object.freeze({ challenger1_mk2: 9, leclerc_s2: 9, t64bv1: 10, type90a: 8, m1a1: 9, merkava3c: 9 });
 
 const warn = console.warn;
 console.warn = () => {};

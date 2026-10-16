@@ -7,7 +7,7 @@ import { NATIVE_FAMILY_ORDER } from '../fleetOrder.ts';
 import { createTankState, SIM_DT, updateTank } from '../../sim/movement.ts';
 import { SPECIAL_ACTION_KINDS, specialActionKind } from '../../sim/specialActions.ts';
 
-const LINE = ['udes03', 'strv103a', 'strv103'];
+const LINE = ['udes03', 'strv103a', 'strv103b'];
 const TIERS = [8, 9, 10];
 const MIN_HP = [1400, 1800, 2400];
 const MIN_ALPHA = [400, 420, 440];
@@ -189,7 +189,7 @@ for (const spec of specs) {
     `${spec.id}: the loaded track run visibly reshapes with the hydraulic suspension`);
 }
 
-const hillSpec = getSpec('strv103');
+const hillSpec = getSpec('strv103b');
 const hillState = createTankState(hillSpec, new THREE.Vector3(), 0);
 const hillEntity = {
   spec: hillSpec,

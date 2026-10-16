@@ -32,7 +32,7 @@ for (const edge of edges.values()) assert.deepEqual(edge, { count: 2, winding: 0
 assert(Math.abs(volume - 0.37352) < 1e-6, 'closure is a positive solid inside the original shell');
 closure.dispose();
 
-for (const id of ['challenger_3', 'challenger_3x']) {
+for (const id of ['challenger3_proto', 'challenger3']) {
   for (const quality of ['high', 'low']) {
     const visual = createTank(id, null, {
       proceduralOnly: true, quality: 'high', geometryQuality: quality, camoSeed: 4242, geometryReceipt: true,

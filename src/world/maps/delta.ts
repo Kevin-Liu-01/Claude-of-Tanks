@@ -15,6 +15,7 @@
 // on the char and a rice-drying yard on each bank carry the zone-control discs.
 
 import { createMarshChannel } from './marshChannel.ts';
+import { CHAR_VILLAGE } from './deltaVillage.ts'; // the maps lane, 2026-10-14: the char's market village
 
 // The braided river: a stem from each map edge splits round the char the market village stands on, and the pattern
 // turns through 180 degrees about the char's centre (-4, 14).
@@ -127,10 +128,10 @@ export default {
       { kind: 'path', x: -44, z: -6, yawDeg: 45, name: "the temple's brick court", params: { length: 18, width: 18, surface: 'stone' } },
       { kind: 'bengalTemple', x: -44, z: -6, yawDeg: 45, name: 'the aat-chala temple by the market', params: { side: 9 } },
     ],
-    plan: ['marketRow', 'farmhouse', 'fishery', 'market', 'chapel', 'granary',
-      'farmhouse', 'cornershop', 'ruin', 'boatshed', 'farmhouse', 'depot', 'marketRow', 'woodshed',
-      'boatshed', 'market', 'cottage', 'farmhouse', 'granary', 'marketRow', 'depot', 'ruin',
-      'boatshed', 'cornershop', 'farmhouse', 'woodshed'],
+    // (the maps lane, 2026-10-14: the plan is the char's own, CHAR_VILLAGE above; was the roadside plan's 26 entries
+    // ['marketRow', 'farmhouse', 'fishery', ...], most of which found no dry lot on the char)
+    plan: [],
+    plannedSites: CHAR_VILLAGE,
     destructibleBuildings: ['stilthouse', 'longhouse', 'fishershack', 'fieldhospital'],
     tacticalBeats: [
       { id: 'western-levee-fort', role: 'brawl', x: -286, z: -72, yawDeg: -34,

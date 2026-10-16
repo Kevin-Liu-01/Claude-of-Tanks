@@ -7,7 +7,7 @@ import {getSpec,TANK_SPECS} from './specs.ts';
 import {applyVehicleSizePolicy,VEHICLE_SIZE_FACTORS} from './vehicleSizePolicy.ts';
 import {synchronizeSuppliedSourceCombatMetadata} from './suppliedSourceFleetSpecs.ts';
 import {synchronizeSecondWaveXCombatMetadata} from './sourceXSecondWaveSpecs.ts';
-for(const [id,name] of Object.entries({k21_x:'K21',cv90105_tml_x:'CV90105 TML',cv90_x:'CV9040C',cv90_mkiv_x:'CV90 Mk 4',sabra_mk2_x:'Sabra Mk 2',kf41_lynx_x:'KF41 Lynx',spz_puma_s1_x:'Puma S1',ajax_x:'Ajax',griffin50_x:'Griffin 50 mm',spz_puma_s1:'SPz Wotan',marder2:'Marder 2'}))assert.equal(tankDisplayName(getSpec(id)),name,`${id}: owner-selected roster identity`);
+for(const [id,name] of Object.entries({k21:'K21',cv90105_tml:'CV90105 TML',cv9040c:'CV9040C',cv90_mk4:'CV90 Mk 4',sabra_mk2:'Sabra Mk 2',kf41_lynx:'KF41 Lynx',puma_s1:'Puma S1',ajax:'Ajax',griffin50mm:'Griffin 50 mm',spz_wotan:'SPz Wotan',marder2:'Marder 2'}))assert.equal(tankDisplayName(getSpec(id)),name,`${id}: owner-selected roster identity`);
 const before=JSON.parse(readFileSync(new URL('./vehicleSizeBaseline.fixture.json',import.meta.url)));
 const near=(a,b,label,tolerance=.00002)=>assert.ok(Math.abs(a-b)<tolerance,`${label}: ${a} != ${b}`);
 // f88172442 measurements, taken before the owner's 2026-09-29 size request.

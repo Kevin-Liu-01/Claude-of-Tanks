@@ -11,7 +11,7 @@ function tank(id){
  const root=new T.Group(),turret=new T.Group(),mesh=new T.Mesh(geometry,paint);
  turret.name='rig_turret';root.add(mesh,turret);return {root,mesh,spec:TANK_SPECS[id]};
 }
-for(const id of ['m1a2','kf41_lynx_x','strv103']){
+for(const id of ['m1a1_abrams_hc','kf41_lynx','strv103b']){
  const a=tank(id),b=tank(id);
  preview.update(a.root,a.spec,'juggernaut',.016);
  assert.notEqual(a.mesh.material,paint);
@@ -63,7 +63,7 @@ for(const id of ['m1a2','kf41_lynx_x','strv103']){
  assert.notEqual(b.mesh.material,paint,'return recreates selected-mode preview');
  preview.clear();preview.clear();
 }
-const direct=tank('m1a2');
+const direct=tank('m1a1_abrams_hc');
 preview.update(direct.root,direct.spec,'juggernaut',0);
 const garageMaterial=direct.mesh.material;
 syncJuggernautVisual(direct.root,{widthM:3,hullLengthM:7,heightM:2.6},1.12,100,100,0);
@@ -71,7 +71,7 @@ assert.notEqual(direct.mesh.material,garageMaterial,'battle upgrades the simplif
 assert.equal(pulseJuggernautImpact(direct.root,[0,1,0]),true,'battle retains impact ripples');
 clearJuggernautVisual(direct.root);preview.clear();
 // The first menu click must reuse the exact material prepared with the vehicle.
-const cold=tank('m1a2');
+const cold=tank('m1a1_abrams_hc');
 prepareGarageTankEnergyVisual(cold.root,cold.spec.dims);
 const readyPaint=cold.mesh.material;
 const coldShader={uniforms:{},vertexShader:T.ShaderLib.standard.vertexShader,fragmentShader:T.ShaderLib.standard.fragmentShader};
@@ -90,7 +90,7 @@ assert.equal(coldShader.uniforms.juggernautStrength.value,0,'parked skin stops g
 scene.add(cold.root);
 assert.equal(preview.update(cold.root,cold.spec,'juggernaut',0),false,'returning to a cached hero never relinks');
 preview.clear();
-const discarded=tank('m1a2');
+const discarded=tank('m1a1_abrams_hc');
 prepareGarageTankEnergyVisual(discarded.root,discarded.spec.dims);
 const discardedPaint=discarded.mesh.material;let released=0;
 discardedPaint.addEventListener('dispose',()=>released++);

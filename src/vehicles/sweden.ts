@@ -33,7 +33,7 @@ import {
 } from './fleetSpecRegistry.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
-const SWEDEN_IDS = Object.freeze(['strv81', 'udes03', 'strv103a', 'strv122'] as const);
+const SWEDEN_IDS = Object.freeze(['strv81', 'udes03', 'strv103a', 'strv121'] as const);
 
 interface SiegeGunOptions {
   name: string;
@@ -60,7 +60,7 @@ function siegeGun({
   velocityMps,
   heDamage,
 }: SiegeGunOptions): FleetGunSpec {
-  const gun = structuredClone(registries.tankSpecs.strv103.gun);
+  const gun = structuredClone(registries.tankSpecs.strv103b.gun);
   gun.reloadS = reloadS;
   gun.baseAccuracy = accuracy;
   gun.aimTimeS = aimTimeS;
@@ -271,7 +271,7 @@ const SWEDEN_SPECS = {
       reverseSpeedKmh: 12, turretTraverseDegS: 24, gunPitchDegS: 20 },
     reloadS: 7.1, armorFactor: 1.05,
   }),
-  udes03: variant('udes03', 'strv103', {
+  udes03: variant('udes03', 'strv103b', {
     name: 'UDES 03', number: '03', role: 'td', scheme: 'solid',
     base: '#45513f', weather: '#55614d', patches: [], camoScale: 0.46,
     dims: { hullLengthM: 5.91, overallLengthM: 7.65, widthM: 2.85, heightM: 1.90 },
@@ -288,7 +288,7 @@ const SWEDEN_SPECS = {
       }),
     },
   }),
-  strv103a: variant('strv103a', 'strv103', {
+  strv103a: variant('strv103a', 'strv103b', {
     name: 'Strv 103A', number: '103A', role: 'td', scheme: 'solid',
     base: '#46503b', weather: '#525a44', patches: [], camoScale: 0.5,
     dims: { hullLengthM: 7.04, overallLengthM: 8.99, widthM: 3.60, heightM: 2.14 },
@@ -305,7 +305,7 @@ const SWEDEN_SPECS = {
       }),
     },
   }),
-  strv122: variant('strv122', 'leo2a5', {
+  strv121: variant('strv121', 'leo2a4_v', {
     name: 'Stridsvagn 121', number: '122', scheme: 'splinter',
     base: '#34493c', weather: '#4b5b4c', patches: ['#202b26', '#5c644c', '#81745a'],
     camoScale: 0.42,
@@ -333,9 +333,9 @@ enforceTurretlessArmor(SWEDEN_SPECS.strv103a);
 
 // Upgrade the stable Strv 103 public ID to the supplied 103B identity while
 // preserving saves and protocol keys.
-const strv103 = registries.tankSpecs.strv103;
-if (strv103) {
-  Object.assign(strv103, {
+const strv103b = registries.tankSpecs.strv103b;
+if (strv103b) {
+  Object.assign(strv103b, {
     name: 'Strv 103B', nation: 'Sweden', hp: 2400,
     enginePowerHp: 900, weightTons: 39.7, topSpeedKmh: 65, reverseSpeedKmh: 50,
     hullTraverseDegS: 54,
@@ -351,22 +351,22 @@ if (strv103) {
       accuracy: 0.18, aimTimeS: 1.05, damage: 520, apcrPen: 380,
       apcrPenFar: 350, heatPen: 425, velocityMps: 1600, heDamage: 620,
     }),
-    armor: siegeArmor(strv103.dims, {
+    armor: siegeArmor(strv103b.dims, {
       frontPhysicalMm: 75, frontKeMm: 220, frontCeMm: 300,
       lowerPhysicalMm: 65, lowerKeMm: 170, lowerCeMm: 220,
       sideMm: 50, sideKeMm: 65, sideCeMm: 90,
       rearMm: 40, roofMm: 40, trackMm: 30,
     }),
   });
-  delete strv103.community;
-  strv103.visual = {
-    ...strv103.visual,
+  delete strv103b.community;
+  strv103b.visual = {
+    ...strv103b.visual,
     scheme: 'splinter', base: '#384b3d', weather: '#4e5b49',
     patches: ['#263329', '#62644b', '#776b50'], marking: 'number',
     number: '103B', camoScale: 0.48,
   };
-  enforceTurretlessArmor(strv103);
-  registries.modelSources.strv103 = { source: 'procedural' };
+  enforceTurretlessArmor(strv103b);
+  registries.modelSources.strv103b = { source: 'procedural' };
 }
 
 registerFleetSpecs(registries, SWEDEN_IDS, SWEDEN_SPECS);

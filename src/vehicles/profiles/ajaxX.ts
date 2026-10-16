@@ -537,5 +537,5 @@ export function buildAjaxX(P:TankBuilderPort):void {
   P.hullG.position.set(0,0,0);P.turretG.position.set(-.05,2.10,-1.05);P.gunG.position.set(.05,.406,1.72);
   hull(P);gear(P);turret(P);P.topY=2.695-2.10;
   preserveSourceStudyGunMountAppearance(P);
-  P.hullG.userData.xRebuild={candidate:'ajax_x',independent:true,sourceLocalOnly:true,datumVersion:1};
+  P.hullG.userData.xRebuild={candidate:'ajax',independent:true,sourceLocalOnly:true,datumVersion:1};
 }

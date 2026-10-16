@@ -20,9 +20,9 @@
 // grass margin with tracks and hedges, a polder's water ditches, a paddy's earth bunds or a karst field's dry stone
 // walls.
 
-export type LandRegion = 'steppe' | 'bocage' | 'temperate' | 'polder' | 'upland' | 'strip' | 'paddy' | 'terrace' | 'karst'
+export type LandRegion = 'steppe' | 'bocage' | 'temperate' | 'polder' | 'upland' | 'strip' | 'podhale' | 'paddy' | 'terrace' | 'karst'
   | 'brownfield' | 'coalfield' | 'cityfloor' | 'citycourt' | 'cityslope' | 'cemetery' | 'park'
-  | 'worksfloor' | 'furnace' | 'sidings' | 'court' | 'cinder' | 'secano' | 'terraceDry' | 'terraceSummer' | 'bare';
+  | 'worksfloor' | 'furnace' | 'sidings' | 'court' | 'cinder' | 'secano' | 'terraceDry' | 'terraceSummer' | 'bare' | 'tselina';
 
 /** How a region's fields are bounded (the material's uLandE.z). */
 export type LandBoundary = 'margin' | 'ditch' | 'bund' | 'wall';
@@ -192,6 +192,11 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   upland: [[0, 0.50], [13, 0.20], [3, 0.08], [1, 0.07], [4, 0.07], [5, 0.08], [2, 0.0]],
   // the strip fields of a Franconian / Saxon village (Gewannflur): many narrow strips, every crop of the rotation
   strip: [[0, 0.16], [1, 0.20], [2, 0.12], [3, 0.14], [4, 0.14], [7, 0.12], [5, 0.12]],
+  // the Podhale's strip fields in January (map revival lane 2, 2026-10-05): oats and potatoes ploughed in, the furrows
+  // showing through a thin snow; the stubble of the rye and the oats; the hay meadows; a strip of barley stubble
+  // (round 2, gauntlet wave 110b: "hard-edged dirt rectangles ... the strips read as yellow bands") the snow lies on all
+  // of them: the plough's share small, the stubble and the meadows most of the rotation, the whole under half the strength
+  podhale: [[4, 0.08], [5, 0.40], [13, 0.40], [2, 0.12]],
   // the chars of the Jamuna: small paddies, flooded, green and ripe, jute and a little grazing
   paddy: [[9, 0.38], [8, 0.22], [14, 0.15], [10, 0.10], [4, 0.07], [0, 0.08], [7, 0.0]],
   // a Japanese caldera floor (Aso): rectangular paddies, green and flooded, vegetable plots, meadow
@@ -251,15 +256,19 @@ const ROTATIONS: Readonly<Record<LandRegion, readonly (readonly [LandCropId, num
   // and cut, the stubble, the fallow turned, the barbecho grazed (cured and patchy in summer, not a green pasture: wave
   // 108b's "hard straight seam between golden field and green pasture"), the plateau's vines, a field of sunflower
   secano: [[1, 0.28], [2, 0.16], [5, 0.22], [4, 0.14], [17, 0.10], [12, 0.06], [6, 0.04]],
+  // the Virgin Lands' grain steppe (the Sary-Arka, Akmola and Kustanai): spring wheat and its stubble in long strips
+  // against the black fallow (Barayev's strips), a little barley, mown hay and the unploughed feather-grass remnant
+  tselina: [[1, 0.30], [5, 0.32], [4, 0.18], [2, 0.08], [13, 0.06], [17, 0.06]],
 });
 
 /** Each region's field boundary. */
 const BOUNDARIES: Readonly<Record<LandRegion, LandBoundary>> = Object.freeze({
   steppe: 'margin', bocage: 'margin', temperate: 'margin', upland: 'margin', strip: 'margin',
+  podhale: 'margin',
   polder: 'ditch', paddy: 'bund', terrace: 'bund', karst: 'wall', brownfield: 'margin', coalfield: 'margin',
   cityfloor: 'margin', citycourt: 'margin', cityslope: 'margin', cemetery: 'margin', park: 'margin',
   worksfloor: 'margin', furnace: 'margin', sidings: 'margin', court: 'margin', cinder: 'margin',
-  secano: 'margin', terraceDry: 'bund', terraceSummer: 'bund', bare: 'margin',
+  secano: 'margin', terraceDry: 'bund', terraceSummer: 'bund', bare: 'margin', tselina: 'margin',
 });
 
 /** The rotation's cumulative shares at slots 0..5 (slot 6 takes the rest), normalised. */
@@ -336,6 +345,9 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
     strength: 1, heading: 1.62, blockU: 200, blockV: 84, maxSplit: 4, marginM: 1.2, trackShare: 0.5, hedgeShare: 0.15,
     warpM: 18, region: 'strip', salt: 67,
   },
+  // Frosthollow (winter) has no land use (map revival lane 2, round 3, 2026-10-06): the Podhale's strip fields under
+  // the January snow showed as a trace at most (strength 0.14–0.26), while the land-use path cost the chase view 1.0–1.5 ms
+  // of GPU in an in-page toggle hold; the 'podhale' region stays for a map that shows its strips.
   // Delta (the Jamuna chars): small paddies between earth bunds, a few raised paths, palm lines on some bunds (~60°)
   delta: {
     strength: 1, heading: 1.05, blockU: 80, blockV: 52, maxSplit: 3, marginM: 0.7, trackShare: 0.12, hedgeShare: 0.12,
@@ -424,6 +436,15 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
     strength: 0.65, heading: 0.066, blockU: 84, blockV: 52, maxSplit: 3, marginM: 1.5, trackShare: 0.3, hedgeShare: 0.3,
     warpM: 14, region: 'coalfield', salt: 97,
   },
+  // Tarkhan Steppe (the map-revival lane, 2026-10-05, through the coordinator: the Sary-Arka grain steppe of the Virgin
+  // Lands): Barayev's strip fields — long strips of wheat, stubble and black fallow about 100 m wide, laid across the
+  // prevailing south-westerly along the steppe highway's bearing (~84°); dirt tracks on some of the long lines, a
+  // shelterbelt on a few strip ends. (Gauntlet wave 106: "hard-edged unblended fallow-field colour masks in the aerial
+  // views" — the strips wander more over their length, the crop's colour a little softer, fewer fallow strips.)
+  steppe: {
+    strength: 0.64, heading: 1.457, blockU: 620, blockV: 104, maxSplit: 2, marginM: 1.8, trackShare: 0.35, hedgeShare: 0.18,
+    warpM: 12, region: 'tselina', salt: 103,
+  },
   // 2026-10-05, Ruinspires (the cities lane; Sarajevo under siege): the city's own ground inside the village — strips
   // along the valley (the contour on both flanks), every zone mirrored through the Square of the Republic as the map is:
   // the valley floor's hardstanding (|z| < 70), the block interiors' courts and gardens (70–185), the allotments and
@@ -450,6 +471,8 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   },
   // (Orchard Valley has no row: its karst fields (2026-10-05) laid a cadastral quilt over the Chouf's terraces and most
   // of the establishing view's cost; the coordinator dropped it on 2026-10-06, and the terraces carry the valley's ground)
+  // (Amberford has no row: its openfield strips (2026-10-05) carried most of the establishing view's cost (the land-use
+  // toggle 1.2-1.6 ms of +1.98); the coordinator dropped it on 2026-10-07, as Orchard's, and the kit stays)
 });
 
 /** The map's land use, or null (no fields). */

@@ -133,9 +133,9 @@ syntheticConcavity();
 let previousCells;
 for(const quality of ['high','low']){
   const options={quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242};
-  const before=createTank('chieftain_mk10_x',null,options);let beforeHash;
+  const before=createTank('chieftain_mk10',null,options);let beforeHash;
   try {beforeHash=snapshot(before.root);}finally{before.dispose();}
-  const captured=captureChieftain10Collision(()=>createTank('chieftain_mk10_x',null,options));
+  const captured=captureChieftain10Collision(()=>createTank('chieftain_mk10',null,options));
   try {
     assert.equal(snapshot(captured.tank.root),beforeHash,'offline capture changes no actual visible/hidden buffer, transform or instance');
     const cells=captured.turretCollision;

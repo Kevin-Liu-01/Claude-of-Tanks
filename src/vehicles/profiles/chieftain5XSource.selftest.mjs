@@ -11,7 +11,7 @@ import { near } from '../../../tools/receipt-kit.test-support.mjs';
 // eleven material-batch owners. Fixed scalar witnesses came from that source.
 // Warped source axes/cup banks are explicitly regularized construction, and
 // these focused checks do not assert whole-model silhouette qualification.
-const D = CHIEFTAIN5_X_DATUMS.chieftain5_x;
+const D = CHIEFTAIN5_X_DATUMS.chieftain5;
 const cast = (objects, origin, direction, far = 12) => new THREE.Raycaster(
   new THREE.Vector3(...origin), new THREE.Vector3(...direction).normalize(), 0, far)
   .intersectObjects(objects, false)[0];
@@ -27,7 +27,7 @@ function sourceScalars(tank, all) {
   near(tank.root.getObjectByName('rig_muzzle').getWorldPosition(new THREE.Vector3()).z,
     6.8120532036, .000002, 'source physical muzzle, not an inner stock');
   // Until 2026-09-22 the gunDark bore wall and stock met this ray at the measured recessed source
-  // bore floor 6.24935 (gunBoreFloorZ; gunBoreRadiusM .0804 in chieftain5_x.supplied-build-scalars.json);
+  // bore floor 6.24935 (gunBoreFloorZ; gunBoreRadiusM .0804 in chieftain5.supplied-build-scalars.json);
   // owner 2026-09-22 ("the point of adding holes instead of carving them into the barrel is that we
   // save on triangles"): the tube was closed at the source mouth. The measurement stays recorded here.
   // 2026-10-10 (re-pinned to the owner's physical bores, a28e4d8e6 deployed 206, which carve a 12-sided inward wall and a
@@ -106,7 +106,7 @@ for (const quality of ['high', 'low']) {
   const original = KIT.buildRunningGear;
   KIT.buildRunningGear = (...args) => { gear = original(...args); return gear; };
   let tank;
-  try { tank = createTank('chieftain5_x', null, { quality, proceduralOnly: true,
+  try { tank = createTank('chieftain5', null, { quality, proceduralOnly: true,
     geometryReceipt: true, batchStatic: false }); } finally { KIT.buildRunningGear = original; }
   try {
     tank.root.updateMatrixWorld(true);

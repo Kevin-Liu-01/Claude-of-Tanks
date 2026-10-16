@@ -105,6 +105,8 @@ function mix3b(a: Rgb, b: Rgb, t: number): Rgb {
  *  read before it is written, so a mix may take its own scratch as `a` */
 const _e: [number, number, number] = [0, 0, 0];
 const _f: [number, number, number] = [0, 0, 0];
+const _g: [number, number, number] = [0, 0, 0];
+const _h: [number, number, number] = [0, 0, 0];
 function mixInto(out: [number, number, number], a: Rgb, b: Rgb, t: number): Rgb {
   out[0] = a[0] + (b[0] - a[0]) * t; out[1] = a[1] + (b[1] - a[1]) * t; out[2] = a[2] + (b[2] - a[2]) * t;
   return out;
@@ -276,7 +278,9 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     book(m, 'billow', R, life);
     // white-hot on the event frame (the blackbody ramp's top), an orange heart at +0.1 s, soot by +0.3 s; the
     // thermobaric rocket's ball rolls on
-    heat(m, thermobaric ? 1.45 : 1.55, thermobaric ? 1.6 : shaped ? 11 : heavy ? 7 : 9);
+    // (HE look v2: "nothing peach or orange after ~0.3 s except embers") the thermobaric ball's heat no longer rolls on
+    // for a second and a half: an orange heart to ~0.3 s like every other burst's
+    heat(m, thermobaric ? 1.45 : 1.55, thermobaric ? 6 : shaped ? 11 : heavy ? 7 : 9);
     C.media(m);
   }
   // the light: on the ground for a moment (a bright ground takes far less of it) and inside the burst's own medium for
@@ -312,8 +316,16 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
   // fireball's own soot and the earth column's soil inside it
   const smokeC0: Rgb = shaped || thermobaric ? mixInto(_e, mixInto(_e, SOOT, BLAST_RESIDUE, 0.45), soilC, 0.12)
     : mixInto(_e, mixInto(_e, BLAST_RESIDUE, SOOT, 0.25), soilC, 0.12);
-  const smokeAged: Rgb = snowy ? mixInto(_f, SMOKE_AGED, soilC, 0.12)
+  let smokeAged: Rgb = snowy ? mixInto(_f, SMOKE_AGED, soilC, 0.12)
     : mixInto(_f, SMOKE_AGED, L.dust, 0.08);
+  // (HE look v2, the coordinator: "overlapping bursts must not merge into one big orange blob ... have pooled bodies take
+  // the dust look rather than the fire look") a pooled burst's cloud (the governor's fewer, larger bodies) is the ground's
+  // own dust thrown up by the salvo, not the explosive's dark smoke: up to 70 % of the way to the earth look
+  let cloudC0: Rgb = smokeC0;
+  if (crowd > 0) {
+    cloudC0 = mixInto(_g, smokeC0, mixInto(_h, L.ejecta, L.dust, 0.55), 0.7 * crowd);
+    smokeAged = mixInto(_f, smokeAged, L.dust, 0.7 * crowd);
+  }
   for (let i = 0; i < smokeN; i++) {
     const u = (i + R()) / smokeN;
     const a = R() * TAU, r = R() * 0.3 * D;
@@ -331,7 +343,7 @@ export function groundBurst(C: BlastContext, I: GroundBurstInput): void {
     shape(m, life, 0.4 * D * dk, (1.6 + 0.4 * u + 0.35 * R()) * D * dk * crowdSize, 6, R);
     // (fx 8i: "never thins") its erosion starts at a third of its life (~3-4 s), so the cloud thins as it climbs
     // (8j) a body you see into at its edges, not a wall: a little thinner
-    look(m, smokeC0, smokeAged, 0.78, 0.0, 0.33);
+    look(m, cloudC0, smokeAged, 0.78, 0.0, 0.33);
     book(m, 'billow', R, life);
     heat(m, 0.3, 4.5);
     C.media(m);
@@ -1153,6 +1165,9 @@ export function killDust(C: BlastContext, x: number, y: number, z: number, s: nu
   const sq = Math.sqrt(s);
   const dk = C.distBoost(x, y, z);
   const n = Math.round((6 + 4 * s) * Math.sqrt(L.dustK));
+  // (HE look v2, the coordinator: "the snow-dust puffs read as flat white cotton ... eroded, low, fast-settling") powder
+  // thrown off snow stays low, small, faint and short, and settles instead of billowing up
+  const snow = surface === 'snow';
   for (let i = 0; i < n; i++) {
     const a = (i / n) * TAU + (R() - 0.5) * 0.7;
     // (fx 9, wave 405: "flat tan cutouts with jagged, star-shaped edges, pressed onto the hull side at hull height; it
@@ -1160,10 +1175,11 @@ export function killDust(C: BlastContext, x: number, y: number, z: number, s: nu
     // swells, in the smooth medium (a ball that develops lobes), fading in: billows climbing off the ground round the hull
     const r0 = (2.0 + R() * 0.6) * sq, v = (2.0 + R() * 3.0) * sq;
     place(m, x + Math.cos(a) * r0, y + 0.12 + R() * 0.15, z + Math.sin(a) * r0, bo + R() * 0.1);
-    move(m, Math.cos(a) * v, 1.4 + R() * 1.0, Math.sin(a) * v, 2.0, 0.6 + R() * 0.3, 0.9, 0);
-    const life = (2.8 + R() * 1.2) * Math.min(1.3, sq);
-    shape(m, life, 0.5 * sq * dk, (3.0 + R() * 1.6) * sq * Math.sqrt(L.dustK) * dk, 2.0, R);
-    look(m, mix3(L.ejecta, L.dust, 0.78), L.dust, Math.min(0.55, 0.38 * L.dustK + 0.14), 0.12, 0.45);
+    move(m, Math.cos(a) * v, snow ? 0.5 + R() * 0.4 : 1.4 + R() * 1.0, Math.sin(a) * v, snow ? 2.6 : 2.0,
+      snow ? 0.05 : 0.6 + R() * 0.3, 0.9, snow ? -0.6 : 0);
+    const life = (2.8 + R() * 1.2) * Math.min(1.3, sq) * (snow ? 0.5 : 1);
+    shape(m, life, 0.5 * sq * dk, (3.0 + R() * 1.6) * sq * Math.sqrt(L.dustK) * dk * (snow ? 0.65 : 1), 2.0, R);
+    look(m, mix3(L.ejecta, L.dust, 0.78), L.dust, Math.min(0.55, 0.38 * L.dustK + 0.14) * (snow ? 0.7 : 1), 0.12, 0.45);
     book(m, 'burst', R, life * 1.2);
     card(m, 1.0 + R() * 0.2, R, 0.06);
     heat(m, 0, 1);

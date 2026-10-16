@@ -16,21 +16,21 @@ function receiptFor(id) {
 }
 
 // 2026-10-01: the owner's September renewal (4c34b3e8b, fleet-renewal-publication-20260930.md: "T-80UK uses
-// t80u_x") rebuilt the t80u slot as the T-80UK command tank on the complete t80u_x source study, whose casting is
+// t80u") rebuilt the t80uk slot as the T-80UK command tank on the complete t80u source study, whose casting is
 // that study's own; the shared dome receipt and the T-80U reseat below left with the retired builder.
 {
-  assert.equal(FLEET_RENEWAL_DONORS.t80u, 't80u_x', 't80u: the renewal builds the T-80UK on the T-80U study');
-  const tank = createTank('t80u', null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });
+  assert.equal(FLEET_RENEWAL_DONORS.t80uk, 't80u', 't80uk: the renewal builds the T-80UK on the T-80U study');
+  const tank = createTank('t80uk', null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });
   try {
     assert.deepEqual(tank.root.getObjectByName('rig_hull').userData.familyRebuild,
-      { donor: 't80u_x', revision: 1, variant: 'command' }, 't80u: the T-80UK command rebuild');
+      { donor: 't80u', revision: 1, variant: 'command' }, 't80uk: the T-80UK command rebuild');
     assert.equal(tank.root.getObjectByName('rig_turret').userData.t80CastTurretReceipt, undefined,
-      't80u: no half-retired shared dome under the study casting');
+      't80uk: no half-retired shared dome under the study casting');
   } finally { tank.dispose(); }
 }
 
 const built = Object.fromEntries(
-  ['t80', 't80b', 't80bv', 'ua_t80bv', 'ua_t80u_kursk']
+  ['t80', 't80b', 't80bv', 'ua_t80bv', 't80u_kursk']
     .map((id) => [id, receiptFor(id)]),
 );
 

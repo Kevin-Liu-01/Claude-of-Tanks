@@ -7,7 +7,7 @@ function bottom(mesh,x,z){
     .intersectObject(mesh,false)[0]?.point.y;
 }
 for(const quality of ['high','low']){
-  const tank=createTank('t90sm_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const tank=createTank('t90sm',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{
     tank.root.updateMatrixWorld(true);const hull=tank.root.getObjectByName('hull');
     for(const [x,z,y]of [[.66,-2.7459,.493488],[.9,-2.7459,.493012],[.66,-2.7,.50353],

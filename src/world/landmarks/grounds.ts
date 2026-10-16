@@ -22,7 +22,7 @@ export interface GroundsDestructible { kind: string; x: number; z: number; yawDe
 
 /** A module's nominal length along its run (the props' destructible kinds: inhabitKit.ts DESTRUCTIBLE_TYPES' hl × 2). */
 const MODULE_LENGTH: Readonly<Record<string, number>> = Object.freeze({
-  fenceplank: 2.5, fencepicket: 2.5, fencewattle: 2.5, fencerail: 2.5, wallstone: 3.08, walladobe: 3.06, barbedwire: 2.64,
+  fenceplank: 2.5, fencepicket: 2.5, fencewattle: 2.5, fencerail: 2.5, fenceiron: 2.5, wallstone: 3.08, walladobe: 3.06, barbedwire: 2.64,
 });
 /** The gate module's span from its hanging post (its origin) to its shutting post along its +z (maps/gateKit.ts: a fence
  * family's gate fills a fence module, the looks lane 2026-10-13; the farm gate it replaced spanned 1.75 m), and the gap

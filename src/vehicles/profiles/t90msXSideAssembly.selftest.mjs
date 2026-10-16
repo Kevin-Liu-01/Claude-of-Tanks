@@ -8,7 +8,7 @@ const witnesses=[
   [1,-.4,1.48885078],[1,-.1,1.58233326],[1,.2,1.65982083],
 ];
 for(const quality of ['high','low']) {
-  const tank=createTank('t90ms_x',null,{quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false});
+  const tank=createTank('t90ms_tagil',null,{quality,geometryReceipt:true,proceduralOnly:true,batchStatic:false});
   try {
     tank.root.updateMatrixWorld(true);
     const turret=tank.root.getObjectByName('rig_turret');

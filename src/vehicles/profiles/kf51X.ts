@@ -377,7 +377,7 @@ export function buildKF51X(P: TankBuilderPort): void {
   ));
   P.addEquipment('gunDark',cylZ(.025,.73,12),-.28,.13,1.34);
   P.muzzleZ=KF51_X_DATUMS.muzzleZ-GUN_Z;P.topY=3.10-RING_Y;
-  P.hullG.userData.xRebuild={candidate:'kf51_x',independent:true,datumVersion:1,sourceLocalOnly:true};
+  P.hullG.userData.xRebuild={candidate:'kf51_panther',independent:true,datumVersion:1,sourceLocalOnly:true};
 }
 
-export const KF51_X_PROFILES = { kf51_x: { build: buildKF51X } } as const;
+export const KF51_X_PROFILES = { kf51_panther: { build: buildKF51X } } as const;

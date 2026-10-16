@@ -243,12 +243,12 @@ for (const quality of ['high', 'low']) {
   verifyM1A3Mantlet(m1);
   m1.dispose();
 
-  const sep = createTank('m1a2_sepv3_x',null,{proceduralOnly:true,quality,geometryReceipt:true});
+  const sep = createTank('m1a2_abrams_sepv3',null,{proceduralOnly:true,quality,geometryReceipt:true});
   const armor=sep.root.getObjectByName('hullExternalArmor');
   armor.geometry.computeBoundingBox();
   assert.ok(armor.geometry.boundingBox.max.x>2.21, 'SEPv3 has the enlarged side package');
   assert.ok(armor.geometry.boundingBox.min.x< -2.21, 'both flanks are enlarged');
-  assert.ok(getSpec('m1a2_sepv3_x').dims.widthM>=4.47, 'spec includes the heavy kit, preventing unwanted downscaling');
+  assert.ok(getSpec('m1a2_abrams_sepv3').dims.widthM>=4.47, 'spec includes the heavy kit, preventing unwanted downscaling');
   const pos=armor.geometry.attributes.position;
   const atRadius=r=>{let n=0;for(let i=0;i<pos.count;i++)if(Math.abs(Math.abs(pos.getX(i))-r)<.004)n++;return n;};
   const liveFaceCount=atRadius(2.215),backingCount=atRadius(1.915);

@@ -28,10 +28,10 @@ const hostSecret = createHash('sha256').update(`${SEAT_SECRET}:${matchId}`).dige
 const tokenFor = (seat, playerId, team, specId) => signSeatToken(hostSecret, { v: 1, roomId: 'ROOM02', seat, playerId, name: playerId, team, specId, iat: Date.now() - 1000, exp: Date.now() + 3_600_000 });
 // alice, bob and carl on one side, close together on the bare height field; dave (the other side, far off) never connects
 const seats = [
-  { seat: 0, playerId: 'alice', name: 'Alice', team: 'alpha', specId: 'm1a2', spawn: { x: -40, z: 0, yaw: 0 } },
-  { seat: 1, playerId: 'bob', name: 'Bob', team: 'alpha', specId: 'm1a2', spawn: { x: 0, z: 0, yaw: 0 } },
-  { seat: 2, playerId: 'carl', name: 'Carl', team: 'alpha', specId: 'leo2a7v', spawn: { x: 40, z: 0, yaw: 0 } },
-  { seat: 3, playerId: 'dave', name: 'Dave', team: 'bravo', specId: 't90m', spawn: { x: 600, z: 600, yaw: Math.PI } },
+  { seat: 0, playerId: 'alice', name: 'Alice', team: 'alpha', specId: 'm1a1_abrams_hc', spawn: { x: -40, z: 0, yaw: 0 } },
+  { seat: 1, playerId: 'bob', name: 'Bob', team: 'alpha', specId: 'm1a1_abrams_hc', spawn: { x: 0, z: 0, yaw: 0 } },
+  { seat: 2, playerId: 'carl', name: 'Carl', team: 'alpha', specId: 'leo2_improved', spawn: { x: 40, z: 0, yaw: 0 } },
+  { seat: 3, playerId: 'dave', name: 'Dave', team: 'bravo', specId: 't90am', spawn: { x: 600, z: 600, yaw: Math.PI } },
 ];
 const roomPlayers = [
   { id: 'alice', connected: false, team: 'alpha' }, // the host that went (its tab closed)
@@ -103,17 +103,17 @@ async function migrationCase({ label, hold, carlBackAfterMs, holdFor = null }) {
   const starting = alice.start(config);
   await settle(12);
   await starting;
-  const aliceClient = new MatchClient({ transport: new MigratingTransport(alice.transport), token: tokenFor(0, 'alice', 'alpha', 'm1a2'), clock: time.clock, controls: idle });
+  const aliceClient = new MatchClient({ transport: new MigratingTransport(alice.transport), token: tokenFor(0, 'alice', 'alpha', 'm1a1_abrams_hc'), clock: time.clock, controls: idle });
   clients.push(aliceClient);
   aliceClient.connect();
   const bobTransport = new MigratingTransport(rtcFor('bob'));
-  const bobClient = new MatchClient({ transport: bobTransport, token: tokenFor(1, 'bob', 'alpha', 'm1a2'), clock: time.clock,
+  const bobClient = new MatchClient({ transport: bobTransport, token: tokenFor(1, 'bob', 'alpha', 'm1a1_abrams_hc'), clock: time.clock,
     controls: () => ({ ...idle(), throttle: bobDrives ? 1 : 0 }) });
   clients.push(bobClient);
   bobClient.connect();
   const carlRtc = rtcFor('carl');
   const carlTransport = new MigratingTransport(carlRtc);
-  const carlClient = new MatchClient({ transport: carlTransport, token: tokenFor(2, 'carl', 'alpha', 'leo2a7v'), clock: time.clock, controls: idle });
+  const carlClient = new MatchClient({ transport: carlTransport, token: tokenFor(2, 'carl', 'alpha', 'leo2_improved'), clock: time.clock, controls: idle });
   clients.push(carlClient);
   carlClient.connect();
   await advance(TICK_MS * 30);

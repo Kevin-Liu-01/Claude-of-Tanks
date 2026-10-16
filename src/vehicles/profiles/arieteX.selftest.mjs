@@ -8,7 +8,7 @@ import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
 // Isolated historical PHOTO primitive regression. The actual supplied-file X
 // is tested separately; this must never count as its visual acceptance.
-registerProfiledBuilders({ ariete_c1_x: buildArieteX });
+registerProfiledBuilders({ c1_ariete: buildArieteX });
 
 // Independent CIO envelope anchors. Interior station/optic-depth assertions
 // below are construction contracts, NOT claimed measurements of the AI GLB.
@@ -96,7 +96,7 @@ function checkRearStowage(meshes, yaw) {
 }
 
 for (const quality of ['high', 'low']) {
-  const tank = createTank('ariete_c1_x', null, { quality, proceduralOnly: true,
+  const tank = createTank('c1_ariete', null, { quality, proceduralOnly: true,
     geometryReceipt: true, batchStatic: false });
   try {
     tank.root.updateMatrixWorld(true);

@@ -31,36 +31,12 @@
   "floating": 1,
   "dangling": 0
  },
- "kit:chouf:tavern": {
-  "floating": 1,
-  "dangling": 0
- },
  "kit:hostomel:ruin": {
   "floating": 0,
   "dangling": 1
  },
- "kit:hostomel:tower": {
-  "floating": 4,
-  "dangling": 0
- },
  "kit:kyushu:factory": {
   "floating": 4,
-  "dangling": 0
- },
- "kit:kyushu:stack": {
-  "floating": 2,
-  "dangling": 0
- },
- "kit:kyushu:watertower": {
-  "floating": 4,
-  "dangling": 0
- },
- "kit:navajo:caravanserai": {
-  "floating": 1,
-  "dangling": 2
- },
- "kit:navajo:compoundSouk": {
-  "floating": 1,
   "dangling": 0
  },
  "kit:navajo:ramada": {
@@ -72,7 +48,7 @@
   "dangling": 0
  },
  "kit:sarajevo:broadcasttower": {
-  "floating": 12,
+  "floating": 4,
   "dangling": 0
  },
  "kit:sarajevo:factory": {
@@ -102,14 +78,6 @@
  "kit:shanghai:firestation": {
   "floating": 8,
   "dangling": 0
- },
- "kit:shanghai:parkingdeck": {
-  "floating": 285,
-  "dangling": 0
- },
- "kit:shanghai:ruin": {
-  "floating": 2,
-  "dangling": 1
  },
  "kit:shanghai:warehouse": {
   "floating": 1,

@@ -9,10 +9,10 @@ type Course = readonly [z: number, low: number, top: number];
 type Hem = readonly [z: number, low: number, outer: number];
 type Rail = readonly [low: number, high: number];
 type Emit = (points: readonly Point[], group: string) => void;
-// 2026-10-01: t62mv1_x left with its source build (owner's rebuild on the
+// 2026-10-01: t62mv1 left with its source build (owner's rebuild on the
 // skirtless T-62 obr. 1975 chassis, 4c34b3e8b/cdbfe54dc).
-export const SOVIET_AUX_IDS = ['t72b_1987_x', 't80u_x', 't72b3_x',
-  't72b3m_x', 't72bu_x', 't90_x', 't90a_burlak_x', 't90ms_x'] as const;
+export const SOVIET_AUX_IDS = ['t72b_1987', 't80u', 't72b3',
+  't72b3m_2016', 't72bu', 't90', 't90a_burlak', 't90ms_tagil'] as const;
 
 function sub(a: Point, b: Point): Point { return [a[0]-b[0], a[1]-b[1], a[2]-b[2]]; }
 function cross(a: Point, b: Point): Point {
@@ -84,7 +84,7 @@ const B3M_PANELS: readonly (readonly [number,number,number,number])[]=[
   [-1.389,-.795,1.53164,.79919],[-.785,-.19,1.53164,.79919],[-.18,.415,1.53164,.79919],
   [.423,1.018,1.53164,.79919],[1.029,1.624,1.53164,.79919],[1.637,2.232,1.52077,.79884],
   [2.242,3.182,1.47615,.7984]];
-function t72b3m(emit: Emit, side: number): void {
+function t72b3m_2022(emit: Emit, side: number): void {
   const lane=side<0?-1.962:1.958;
   B3M_PANELS.forEach(([a,b,top,low],i)=>{
     flatPanel(emit,side,lane-side*.0095,a,b,low,top,`b3m-fixed-backing-${side}-${i}`);
@@ -95,7 +95,7 @@ function t72b3m(emit: Emit, side: number): void {
   flatPanel(emit,side,lane-side*.007,-2.5555,-1.7305,.660,.800,`b3m-rear-curtain-${side}`);
 }
 
-function t72bu(emit: Emit, side: number): void {
+function t72bu_1989(emit: Emit, side: number): void {
   const x=side<0?-1.7605:1.7475;
   const rows: readonly (readonly [number,number,number])[]=[[-2.85,-1.90,.736],
     [-1.89,-.91,.741],[-.90,.10,.745],[.11,1.09,.751],[1.10,2.1,.757],[2.11,3.18,.764]];
@@ -187,8 +187,8 @@ function msRearRails(emit: Emit, side: number): void {
 }
 
 const authors: Readonly<Record<string,(emit: Emit,side: number)=>void>>={
-  t72b_1987_x:t72b1987,t80u_x:t80,t72b3_x:t72b3,t72b3m_x:t72b3m,
-  t72bu_x:t72bu,t90_x:t90aw,t90a_burlak_x:burlak,t90ms_x:msCurtains,
+  t72b_1987:t72b1987,t80u:t80,t72b3:t72b3,t72b3m_2016:t72b3m_2022,
+  t72bu:t72bu_1989,t90:t90aw,t90a_burlak:burlak,t90ms_tagil:msCurtains,
 };
 
 /** Called after source dimensions/pivots and authored ERA setup, before the
@@ -205,9 +205,9 @@ export function applySourceXSovietAuxArmor(spec: FleetTankSpec,id: string): void
     if(!seed)throw new Error(`${id}: explicit donor skirt balance missing`);
     author(emitter(replacements,seed),side);
   }
-  if(id==='t90ms_x') {
+  if(id==='t90ms_tagil') {
     const cage=old.find(p=>p.name==='slat_cage'&&removable(p));
-    if(!cage)throw new Error('t90ms_x: explicit donor cage balance missing');
+    if(!cage)throw new Error('t90ms_tagil: explicit donor cage balance missing');
     const emit=emitter(replacements,cage);
     for(const side of [-1,1]){msFrontRails(emit,side);msRearRails(emit,side);}
   }

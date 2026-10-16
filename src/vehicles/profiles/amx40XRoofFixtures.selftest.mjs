@@ -69,7 +69,7 @@ function weaponChecks(all, dark, detail) {
 }
 
 for (const quality of ['high', 'low']) {
-  const tank = createTank('amx40_x', null, { quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false });
+  const tank = createTank('amx40', null, { quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false });
   try {
     tank.root.updateMatrixWorld(true);
     const all = [];

@@ -44,7 +44,7 @@ export const ABRAMS_FLAMMABLE_BAY_OFFSET = Object.freeze({
 // floor between the Burlak gantry and the K2 square, its gun under the west_center hoist's load. 2026-10-05, gauntlet
 // wave 89 ("a sand-coloured turret rises right behind the T-90's turret or gun"): beside the east FLAMMABLE canisters
 // the tank stood behind the hero from the default and close Garage cameras, 7.5–8.4k px of it inside the hero's dilated
-// silhouette with the m1a2, t90m and leo2a7v heroes (13–14k px close); here it stands beside the camera, outside both
+// silhouette with the m1a1_abrams_hc, t90am and leo2_improved heroes (13–14k px close); here it stands beside the camera, outside both
 // views, on its own terrain pad (garageFacilityDetails.ts). Every outdoor pack seats its signature facility where the
 // Verdant canister station would put the tank. One placement carries the tank, removed skirts, tools and floor station.
 export const ABRAMS_WELDING_BAY_PLACEMENT = Object.freeze({

@@ -5,12 +5,12 @@ import {
 } from './projectileTracers.ts';
 
 // ammunition lineage: green for Soviet-lineage ammunition, red for NATO's and everyone else's
-assert.equal(tracerLineage({ id: 't90m', nation: 'Russia' }), 'east');
+assert.equal(tracerLineage({ id: 't90am', nation: 'Russia' }), 'east');
 assert.equal(tracerLineage({ id: 'ztz99a', nation: 'China' }), 'east');
-assert.equal(tracerLineage({ id: 'ua_t72b3m_modern', nation: 'Ukraine' }), 'east', 'a Ukrainian T-72 fires Soviet-lineage rounds');
+assert.equal(tracerLineage({ id: 't72b3m_hetman', nation: 'Ukraine' }), 'east', 'a Ukrainian T-72 fires Soviet-lineage rounds');
 assert.equal(tracerLineage({ id: 'ua_m2a3_bradley', nation: 'Ukraine' }), 'nato', 'a donated Bradley fires NATO rounds');
-assert.equal(tracerLineage({ id: 'pl_t72b3_modern', nation: 'Poland' }), 'east');
-assert.equal(tracerLineage({ id: 'leo2a6', nation: 'Germany' }), 'nato');
+assert.equal(tracerLineage({ id: 't72b3_zubr', nation: 'Poland' }), 'east');
+assert.equal(tracerLineage({ id: 'leo2a4', nation: 'Germany' }), 'nato');
 assert.equal(tracerLineage(null), 'nato', 'an unknown shooter takes the red default');
 // classes by calibre: belt mix and burn time
 const mg = tracerClassFor(12.7, 'nato'), mgEast = tracerClassFor(7.62, 'east'), cannon = tracerClassFor(30, 'east'), tank = tracerClassFor(120, 'nato');
@@ -33,8 +33,8 @@ assert.equal(tracerCaliber({ type: 'HE' }, null), 100);
 // the runtime
 const scene = new THREE.Scene();
 let now = 10;
-const shooters = { a: { id: 'm1a2', nation: 'USA' }, b: { id: 't90m', nation: 'Russia' }, c: { id: 'leo2a6', nation: 'Germany' },
-  d: { id: 'k2', nation: 'South Korea' }, e: { id: 'ztz99a', nation: 'China' } };
+const shooters = { a: { id: 'm1a1_abrams_hc', nation: 'USA' }, b: { id: 't90am', nation: 'Russia' }, c: { id: 'leo2a4', nation: 'Germany' },
+  d: { id: 'xk2_black_panther', nation: 'South Korea' }, e: { id: 'ztz99a', nation: 'China' } };
 const tr = createProjectileTracers({ shooter: (id) => shooters[id] ?? null, scene, now: () => now, capacity: 64 });
 const geo = tr.mesh.geometry;
 const head = geo.getAttribute('aHead'), tail = geo.getAttribute('aTail'), core = geo.getAttribute('aCore'), halo = geo.getAttribute('aHalo');

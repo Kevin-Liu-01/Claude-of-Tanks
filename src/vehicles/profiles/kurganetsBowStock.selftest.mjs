@@ -10,7 +10,7 @@ import { getSpec } from '../specs.ts';
 import { createTankState } from '../../sim/movement.ts';
 import { isTrackShoeMesh } from '../../../tools/track-clip-classification.mjs';
 import { VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
-const id = 'kurganets25_x', front = new T.MeshBasicMaterial({ side: T.FrontSide }), double = new T.MeshBasicMaterial({ side: T.DoubleSide });
+const id = 'kurganets25', front = new T.MeshBasicMaterial({ side: T.FrontSide }), double = new T.MeshBasicMaterial({ side: T.DoubleSide });
 // Owner-directed whole-vehicle size (2026-10-02, main 245aa4e4e): the factory bakes the source-frame build into the
 // installed frame at this factor. Source calipers below stay in the source frame; probes of the installed scene map
 // them by `f`. The recorded builder parts are captured before the bake, so seats() stays in the source frame.
@@ -201,7 +201,7 @@ function clearance(b, intrude = false) {
     return count;
 }
 // The frozen pre-correction stock digests (unchanged non-hull parts, aft hull, running gear) are retired:
-// whole-tank change detection of kurganets25_x is the fleet geometry ledger's.
+// whole-tank change detection of kurganets25 is the fleet geometry ledger's.
 await ensureInteriorFills([id]);
 assert.ok(hasInteriorFills(id), 'test must exercise the generated runtime fill');
 const report = [];

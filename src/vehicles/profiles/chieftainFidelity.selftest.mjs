@@ -19,7 +19,7 @@ function forwardEdgeInBand(mesh, { minY, maxY, minAbsX, maxAbsX }) {
   return forwardZ;
 }
 
-for (const id of ['chieftain5', 'chieftain_mk10']) {
+for (const id of ['chieftain3', 'chieftain_mk9']) {
   const tank = createTank(id, null, {
     proceduralOnly: true,
     geometryReceipt: true,
@@ -185,7 +185,7 @@ for (const id of ['chieftain5', 'chieftain_mk10']) {
     `${id}: one visibly thick forward armor plate caps each cheek`);
   assert(Math.abs(shellReceipt.frontShellDatumSourceY - shellReceipt.mantletDatumSourceY) < 1e-12,
     `${id}: both forward shells are centered on the mantlet datum`);
-  assert(Math.abs(shellReceipt.frontShellDropM - (id === 'chieftain_mk10' ? 0.34 : 0.31)) < 1e-12,
+  assert(Math.abs(shellReceipt.frontShellDropM - (id === 'chieftain_mk9' ? 0.34 : 0.31)) < 1e-12,
     `${id}: variant shell lift is removed before the mantlet alignment drop`);
   const forwardShellMinY = Math.min(...forwardShellPanels.map((part) => part.min[1]));
   const forwardShellMaxY = Math.max(...forwardShellPanels.map((part) => part.max[1]));
@@ -223,7 +223,7 @@ for (const id of ['chieftain5', 'chieftain_mk10']) {
     `${id}: source-compared equipment seating contract remains active`);
   assert.equal(equipmentReceipt.roofSeatDatum, 'local-facet-surfaces',
     `${id}: each roof fitting family uses its actual local crown facet`);
-  const expectedCupolaSeatSourceY = id === 'chieftain_mk10' ? 0.73 : 0.71;
+  const expectedCupolaSeatSourceY = id === 'chieftain_mk9' ? 0.73 : 0.71;
   const expectedCupolaSeatLocalY = -0.18 + (expectedCupolaSeatSourceY + 0.18) * 0.8228;
   assert(Math.abs(equipmentReceipt.cupolaSeatSourceY - expectedCupolaSeatSourceY) < 1e-12,
     `${id}: cupola lower rim touches the authored crown before height scaling`);
@@ -278,7 +278,7 @@ for (const id of ['chieftain5', 'chieftain_mk10']) {
       pintleGpmg = object;
     }
   });
-  const expectedPintleY = id === 'chieftain_mk10' ? 0.799132 : 0.782676;
+  const expectedPintleY = id === 'chieftain_mk9' ? 0.799132 : 0.782676;
   assert(pintleGpmg && Math.abs(pintleGpmg.position.y - expectedPintleY) < 1e-9,
     `${id}: pintle GPMG remains seated on its variant-specific roof shell`);
   const radioWhips = combatParts.filter((part) =>
@@ -289,7 +289,7 @@ for (const id of ['chieftain5', 'chieftain_mk10']) {
   assert.equal(radioWhips.length, 3,
     `${id}: all three long radio whips remain actual visible geometry`);
 
-  if (id === 'chieftain_mk10') {
+  if (id === 'chieftain_mk9') {
     assert.equal(shellReceipt.upperShellType, 'thick-stillbrew-plate-shell',
       'Mk.10: the complete upper package is identified as a thick Stillbrew plate shell');
     assert(shellReceipt.upperShellStandOffM > 0.12,
@@ -324,13 +324,13 @@ for (const [id, height] of turretHeights) {
   assert(height > 1.09 && height < 1.14,
     `${id}: seated roof equipment remains inside the compact taller-turret envelope`);
 }
-assert(turretHeights.get('chieftain_mk10') > turretHeights.get('chieftain5'),
+assert(turretHeights.get('chieftain_mk9') > turretHeights.get('chieftain3'),
   'Mk.10 armored thermal head remains the slightly taller variant-specific roof detail');
-assert(shellReceipts.get('chieftain_mk10').upperShellStandOffM
-    - shellReceipts.get('chieftain5').upperShellStandOffM > 0.05,
+assert(shellReceipts.get('chieftain_mk9').upperShellStandOffM
+    - shellReceipts.get('chieftain3').upperShellStandOffM > 0.05,
   'Mk.10 Stillbrew shell remains materially deeper than the Mk.5 production cap');
-assert(shellReceipts.get('chieftain_mk10').upperShellForwardZ
-    - shellReceipts.get('chieftain5').upperShellForwardZ > 0.05,
+assert(shellReceipts.get('chieftain_mk9').upperShellForwardZ
+    - shellReceipts.get('chieftain3').upperShellForwardZ > 0.05,
   'Mk.10 Stillbrew front projects visibly farther than the Mk.5 shell');
 
 console.log('chieftainFidelity.selftest: tracks, low angular cores, reclined-to-square gun fronts, layered armor shells, and complete seated equipment verified');

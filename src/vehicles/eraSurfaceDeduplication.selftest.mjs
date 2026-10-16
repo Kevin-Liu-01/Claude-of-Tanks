@@ -181,7 +181,7 @@ async function nativeChild(reference) {
   try {
     const { createTank } = await import('./tankFactory.ts');
     const results = [];
-    for (const cycle of [0, 1]) for (const id of ['m1a2', 'challenger_3x', 'challenger2', 'leo2_revolution']) {
+    for (const cycle of [0, 1]) for (const id of ['m1a1_abrams_hc', 'challenger3', 'challenger2', 'leo2_revolution']) {
       for (const quality of ['high', 'low']) {
         active = { calls: 0, inputFaces: 0, outputFaces: 0, legacyReads: 0, currentReads: 0, selections: [] };
         const visual = createTank(id, null, { quality, materialMode: 'geometry-only', proceduralOnly: true,
@@ -191,7 +191,7 @@ async function nativeChild(reference) {
       }
     }
     assert.equal(served, 1);
-    for (const id of ['m1a2', 'challenger_3x']) {
+    for (const id of ['m1a1_abrams_hc', 'challenger3']) {
       const affected = results.filter(row => row.id === id);
       assert.ok(affected.every(row => row.inputFaces > 0 && row.currentReads < row.legacyReads), `${id} actual affected fitting path exercised`);
     }

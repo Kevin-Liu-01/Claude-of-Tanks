@@ -201,7 +201,10 @@ function captureContext(seed) {
   assert.ok(fpv.log.sparks > 15, "a drone's warhead throws fragments");
   const tos = captureContext(6);
   groundBurst(tos.ctx, { x: 0, y: 0, z: 0, munition: 'rocket', chargeKg: 8, surface: 'soil' });
-  assert.ok(tos.log.media.filter((m) => m.heat > 1.4 && m.cool < 2).length >= 5, 'a thermobaric rocket rolls a long fireball');
+  // (HE look v2, re-pinned deliberately: "nothing peach or orange after ~0.3 s except embers") the thermobaric ball is the
+  // biggest, five lobes, but its orange heart is gone into soot by ~0.3 s like every burst's
+  const tosBall = tos.log.media.filter((m) => m.heat > 1.4);
+  assert.ok(tosBall.length >= 5 && tosBall.every((m) => m.heat * Math.exp(-m.cool * 0.3) < 0.3), 'a thermobaric rocket\'s fireball: five lobes, soot by 0.3 s');
   const maxSize = (log) => Math.max(...log.media.map((m) => m.size1));
   assert.ok(maxSize(big) > maxSize(a) * 1.4, 'the gunship howitzer throws a far bigger cloud than tank HE');
   assert.ok(a.flash > 0 && a.fire > 0 && a.pulses > 0, 'an explosive burst flashes, burns and lights the ground');

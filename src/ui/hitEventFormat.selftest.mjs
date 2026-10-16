@@ -17,7 +17,7 @@ assert.equal(shellDisplayName({ shellName: 'APFSDS', shellType: 'APFSDS' }), '')
 assert.equal(shellDisplayName({ shellName: 'DM53', shellType: 'APFSDS' }), 'DM53');
 assert.equal(shellDisplayName({ shellName: null, shellType: null }), '');
 
-const spec = getSpec('m1a2');
+const spec = getSpec('m1a1_abrams_hc');
 const shell = spec.gun.shells[0];
 const flightDistM = 700;
 assert.equal(nominalPenFor({

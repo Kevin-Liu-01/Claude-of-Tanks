@@ -63,7 +63,7 @@ function gearFingerprint(root) {
 // 2026-10-01 (owner: retire frozen pins): the eight pinned donor gear digests (captured before the
 // optional road-station APIs) are gone; the fleet geometry ledger owns whole-tank change detection. These
 // real hulls, including M1A2 gear that shares a masked lamp material, still prove gear never emits light.
-for (const id of ['t90sm', 't90m', 'm1a2', 'leo2a5']) {
+for (const id of ['t90sm_2013', 't90am', 'm1a1_abrams_hc', 'leo2a4_v']) {
   for (const quality of ['high', 'low']) {
     const tank = createTank(id, null, { proceduralOnly: true, quality,
       geometryReceipt: true, batchStatic: false });
@@ -89,7 +89,7 @@ function fixture(options = {}, high = true, batchStatic = false) {
     'detail', 'dark', 'shadow', 'trackLink', 'spareTrack', 'burnt', 'trackL', 'trackR']
     .map(key => [key, material]));
   mats.trackTexL = new THREE.Texture(); mats.trackTexR = new THREE.Texture();
-  const port = { spec: { id: 't90sm' }, disposables: [], mats,
+  const port = { spec: { id: 't90sm_2013' }, disposables: [], mats,
     hullG: new THREE.Group(), geometryReceipt: true, q: high, batchStatic, add() {} };
   const gear = KIT.buildRunningGear(port, { ...BASE, ...options });
   gear.update(0, 0);
@@ -381,7 +381,7 @@ for(const high of [true,false]) {
     model.gear.resetPose();
     assert.ok(model.root.getObjectByName('gearSuspensionJointBosses').instanceMatrix.version>resetVersion,'reset boss instance transforms are actually marked for GPU upload');
   } finally {model.dispose();}
-  const tank=createTank('t90sm_x',null,{proceduralOnly:true,quality:high?'high':'low',geometryReceipt:true,batchStatic:false});
+  const tank=createTank('t90sm',null,{proceduralOnly:true,quality:high?'high':'low',geometryReceipt:true,batchStatic:false});
   try {
     assertMeasuredBosses(tank.root);tank.root.updateMatrixWorld(true);
     assertSourceArm(tank.root);

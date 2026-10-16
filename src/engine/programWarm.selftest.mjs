@@ -1601,16 +1601,22 @@ for (const remaining of ['batch', 'pass', 'empty-pass']) {
 }
 
 // 2026-10-14 (the MP stream; deploy 223's rejoin idled through its 5 s compile window and the 5 s retry with the same 37
-// programs never finishing): a strict drain stops 2 s after its last finished link; a cohort that keeps linking keeps
-// its window
+// programs never finishing): a strict drain that opts in (stallMs, the covered network entry's windows) stops 2 s after
+// its last finished link; a cohort that keeps linking keeps its window. Opt-in since the 224 returning-tab Garage freeze:
+// a drain without stallMs (the Garage hero, every other caller) waits out its 5 s deadline as before
 {
-  const run = (linkAt) => {
+  const run = (linkAt, stallMs = 2000) => {
     const f = firstUseFixture({ names: Object.keys(linkAt) });
     f.state.queryMs = 0;
     f.state.query = (name) => f.now() >= linkAt[name];
-    const result = preparationResult(f.prepare({ strict: true }), () => f.advance(9));
+    const result = preparationResult(f.prepare({ strict: true, ...(stallMs ? { stallMs } : {}) }), () => f.advance(9));
     return { result, elapsed: f.now() };
   };
+  const garage = run({ a: Infinity }, 0);
+  assert.equal(garage.result.reason, 'budget');
+  assert.ok(garage.elapsed >= 5000, `without stallMs the drain keeps its whole 5 s window (${garage.elapsed} ms): the Garage hero is never cut short`);
+  const garageLate = run({ a: 4400 }, 0);
+  assert.deepEqual(garageLate.result, { status: 'complete', pending: 0 }, 'a link at 4.4 s still completes a drain without stallMs');
   const never = run({ a: Infinity, b: Infinity });
   assert.deepEqual(never.result, { status: 'incomplete', pending: 2, reason: 'budget' });
   assert.ok(never.elapsed >= 2000 && never.elapsed < 2200, `nothing links: the drain stops after 2 s, not 5 (${never.elapsed} ms)`);

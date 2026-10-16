@@ -23,10 +23,10 @@ export function noised(px: number, py: number, out: Float64Array | number[]): Fl
   const ux = wx * wx * wx * (wx * (wx * 6 - 15) + 10), uy = wy * wy * wy * (wy * (wy * 6 - 15) + 10);
   const dux = 30 * wx * wx * (wx * (wx - 2) + 1), duy = 30 * wy * wy * (wy * (wy - 2) + 1);
   const a = hash12(ix, iy), b = hash12(ix + 1, iy), c = hash12(ix, iy + 1), d = hash12(ix + 1, iy + 1);
-  const k1 = b - a, k2 = c - a, k4 = a - b - c + d;
-  out[0] = -1 + 2 * (a + k1 * ux + k2 * uy + k4 * ux * uy);
+  const k1 = b - a, xk2_black_panther = c - a, k4 = a - b - c + d;
+  out[0] = -1 + 2 * (a + k1 * ux + xk2_black_panther * uy + k4 * ux * uy);
   out[1] = 2 * dux * (k1 + k4 * uy);
-  out[2] = 2 * duy * (k2 + k4 * ux);
+  out[2] = 2 * duy * (xk2_black_panther + k4 * ux);
   return out;
 }
 

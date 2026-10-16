@@ -11,15 +11,15 @@ import {KIT} from './kit.ts';
 // The old failures occurred with AND without fills; fills cannot seat stock.
 let checks=0;
 for(const filled of[false,true]) {
-  if(filled)await ensureInteriorFills(['ajax_x']);
-  assert.equal(hasInteriorFills('ajax_x'),filled,'cold/filled state is explicit');checks++;
+  if(filled)await ensureInteriorFills(['ajax']);
+  assert.equal(hasInteriorFills('ajax'),filled,'cold/filled state is explicit');checks++;
   for(const quality of[undefined,'high','low']) {
-    assert.equal(hasInteriorFills('ajax_x'),filled,'a preceding build cannot secretly load fills');checks++;
+    assert.equal(hasInteriorFills('ajax'),filled,'a preceding build cannot secretly load fills');checks++;
     let gear;
     const build=KIT.buildRunningGear;
     KIT.buildRunningGear=(...args)=>{gear=build(...args);return gear;};
     let tank;
-    try{tank=createTank('ajax_x',null,{proceduralOnly:true,geometryReceipt:true,...(quality?{quality}:{})});}
+    try{tank=createTank('ajax',null,{proceduralOnly:true,geometryReceipt:true,...(quality?{quality}:{})});}
     finally{KIT.buildRunningGear=build;}
     try {
       const label=`${filled?'filled':'cold'} ${quality??'default'}`;
@@ -89,7 +89,7 @@ for(const filled of[false,true]) {
           }
         }finally{for(const[m,side]of saved)m.side=side;gear.update(0,0,0);tank.root.updateMatrixWorld(true);}
         assert.ok(sampled>1000&&receivingHits>1000,'actual native stock witness cannot be empty');checks++;
-        console.log(JSON.stringify({id:'ajax_x',filled,quality,phases:16,sampled,receivingHits,minimumAirM:minimumAir}));
+        console.log(JSON.stringify({id:'ajax',filled,quality,phases:16,sampled,receivingHits,minimumAirM:minimumAir}));
       }
       // Lower only the real flap/fold geometry: its old floating ownership
       // cannot pass because an AABB or generated fill happens to be nearby.

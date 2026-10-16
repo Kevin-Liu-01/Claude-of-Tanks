@@ -161,9 +161,12 @@ const mosque: RegionalBuilder = (ctx) => {
     for (let k = 0; k + 1 < prof.length; k++) { sink.cylinder('plaster', [x, y, 0], 'y', r * 0.26, r * prof[k], 12, {}, r * prof[k + 1], k === prof.length - 2); y += r * 0.26; }
     sink.cylinder('structureMetal', [x, y, 0], 'y', 0.5, 0.05, 6, { colour: rgb(0xb8933e), decor: true }, 0.02);
   }
-  // the minaret at the front corner
-  const mx = W / 2 + 0.2, mz = D / 2 + 0.2;
-  sink.cylinder('plaster', [mx, 0, mz], 'y', 11.5, 0.75, 10, {}, 0.55);
+  // the minaret at a rear corner, engaged in the walls (the 225 gate, 2026-10-15: standing clear of the front corner it
+  // reached 1.1 m past the chapel's 5.7 m plot, and the front's doors leave it no room there): its shaft reaches at most
+  // 0.3 m past the plot's side and back
+  const mr = 0.75;
+  const mx = Math.min(W / 2 + 0.2, ctx.info.w / 2 + 0.3 - mr), mz = -Math.min(D / 2 + 0.2, ctx.info.d / 2 + 0.3 - mr);
+  sink.cylinder('plaster', [mx, 0, mz], 'y', 11.5, mr, 10, {}, 0.55);
   sink.cylinder('plaster', [mx, 8.6, mz], 'y', 0.3, 1.05, 10, { decor: true });
   sink.cylinder('plaster', [mx, 11.5, mz], 'y', 1.3, 0.55, 10, {}, 0.05);
   return sink.finish();
@@ -269,8 +272,14 @@ export const BENGAL_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
   region: 'Jamuna chars (Sirajganj, Bogura): homesteads of corrugated iron on earthen plinths, a tin bazaar, a village mosque',
   surfaces: {
     roof: { kind: 'sheet', tint: [0.60, 0.62, 0.63] },
-    stone: { kind: 'brick', tint: [0.62, 0.32, 0.24] },
+    // (round 11; waves 319/320: "clean, saturated, uniformly tiled brick with no soot") an industrial town's brick, soiled
+    stone: { kind: 'brick', tint: [0.62, 0.32, 0.24], weathered: true },
     sourced: { plaster: false, wood: true },
+    // (the facades lane, round 11; waves 319/320: the walls' procedural canvas read as "speckle", "sponge", "cork",
+    // "camouflage noise": its 6 cm bumps shade as dots from the street, as Steinburg's did before round 8) the walls
+    // painted as the region renders them (regionalSurfaces.ts paintLimewash), every family under the kit's and the map's
+    // tones
+    render: { kind: 'limewash', seed: 0x6b4e },
     tones: {
       plaster: (_h, s, l) => [0.12, Math.min(1, s * 0.25), Math.min(1, l * 1.25 + 0.1)],
       plaster2: (_h, s, l) => [0.1, Math.min(1, s * 0.4 + 0.08), Math.min(1, l * 1.1 + 0.05)],

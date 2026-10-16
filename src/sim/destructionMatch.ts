@@ -29,8 +29,8 @@ import {
   CRATER_DEFORM_MIN_RADIUS_M, cookOffChargeKg, craterFor, FUEL_CHARGE_KG, kineticStructurePoints, munitionChargeKg,
   munitionClassForShell, penetratorHoleRadiusM, type CraterShape, type MunitionShellLike,
 } from './munitionBlast.ts';
-import { createStructureDamage, type StructureDamage, type StructureState } from './structureDamage.ts';
-import { rubbleHeightFor, type TerrainDeformation } from './terrainDeformation.ts';
+import { createStructureDamage, structureRubbleHeightM, type StructureDamage, type StructureState } from './structureDamage.ts';
+import type { TerrainDeformation } from './terrainDeformation.ts';
 import type { StructureMaterial } from './structureMaterial.ts';
 
 
@@ -147,7 +147,7 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
       onCollapse: (structure) => {
         // (it rises on the match's clock, ground.setTime; a restored host's settled heap stands risen)
         ground?.addRubble(structure.cx, structure.cz, structure.hw, structure.hd, structure.yaw,
-          rubbleHeightFor(structure.topY - structure.baseY), restoring ? -Infinity : undefined);
+          structureRubbleHeightM(structure), restoring ? -Infinity : undefined);
         options.onCollapse?.(structure);
       },
     })

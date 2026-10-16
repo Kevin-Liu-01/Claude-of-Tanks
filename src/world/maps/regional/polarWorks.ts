@@ -19,7 +19,8 @@
 // draws its own shape from a seed of its own. Pure geometry: no DOM, no materials.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { DESTRUCTIBLE_TYPES, bSandbagBroken } from '../inhabitKit.ts';
+import { DESTRUCTIBLE_TYPES } from '../inhabitKit.ts';
+import { bSandbagBroken } from '../fieldworksKit.ts';
 
 type Rng = () => number;
 /** A colour in HSL (sRGB), the world code's authoring space; stored linear. */

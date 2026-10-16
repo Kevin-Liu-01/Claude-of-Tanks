@@ -23,6 +23,8 @@
  * writes src/vehicles/auxiliaryInventory.generated.ts, and the receipts re-derive it from the live bores.
  */
 
+import { tankSeedId } from './tankIdAliases.ts';
+
 type Vec3 = readonly [number, number, number];
 export interface SmokeMountLike { owner: 'hull' | 'turret'; position: Vec3; direction: Vec3 }
 
@@ -52,7 +54,9 @@ const DEG = Math.PI / 180;
 
 /** The arc a vehicle's launchers follow: its family's, or null for the generic fan. */
 export function smokeFanArc(id: string): { inner: number; outer: number } | null {
-  for (const arc of FAMILY_ARCS) if (arc.pattern.test(id)) return { inner: arc.inner, outer: arc.outer };
+  // The family patterns read the schema-1 id vocabulary (tankIdAliases.ts): a rename never changes a launcher's arc.
+  const seedId = tankSeedId(String(id));
+  for (const arc of FAMILY_ARCS) if (arc.pattern.test(seedId)) return { inner: arc.inner, outer: arc.outer };
   return null;
 }
 

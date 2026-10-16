@@ -20,7 +20,7 @@
    "seeThroughPx": 23,
    "tris": 75392
   },
-  "amx30_x": {
+  "amx30b": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -36,7 +36,7 @@
    "seeThroughPx": 23,
    "tris": 78700
   },
-  "amx40": {
+  "amx40_proto": {
    "sealed": false,
    "openPx": 297,
    "openViews": 6,
@@ -44,7 +44,7 @@
    "seeThroughPx": 3,
    "tris": 82056
   },
-  "amx40_x": {
+  "amx40": {
    "sealed": true,
    "openPx": 12,
    "openViews": 0,
@@ -52,7 +52,7 @@
    "seeThroughPx": 0,
    "tris": 103014
   },
-  "amx56": {
+  "leclerc_s1": {
    "sealed": true,
    "openPx": 1,
    "openViews": 0,
@@ -60,7 +60,7 @@
    "seeThroughPx": 0,
    "tris": 109808
   },
-  "ariete": {
+  "c1_ariete_preserie": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -68,7 +68,7 @@
    "seeThroughPx": 0,
    "tris": 86534
   },
-  "ariete_c1": {
+  "c1_ariete_proto_serie1": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -76,7 +76,7 @@
    "seeThroughPx": 0,
    "tris": 80466
   },
-  "ariete_c1_x": {
+  "c1_ariete": {
    "sealed": true,
    "openPx": 196,
    "openViews": 0,
@@ -84,7 +84,7 @@
    "seeThroughPx": 0,
    "tris": 96142
   },
-  "ariete_c2": {
+  "c2_ariete_proto": {
    "sealed": true,
    "openPx": 2,
    "openViews": 0,
@@ -156,7 +156,7 @@
    "seeThroughPx": 26,
    "tris": 77950
   },
-  "centurion5": {
+  "centurion5_2": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -164,7 +164,7 @@
    "seeThroughPx": 12,
    "tris": 81842
   },
-  "challenger_3": {
+  "challenger3_proto": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -172,7 +172,7 @@
    "seeThroughPx": 164,
    "tris": 93516
   },
-  "challenger_3x": {
+  "challenger3": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -180,7 +180,7 @@
    "seeThroughPx": 129,
    "tris": 104748
   },
-  "challenger1": {
+  "challenger1_mk2": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -188,7 +188,7 @@
    "seeThroughPx": 9,
    "tris": 92280
   },
-  "challenger1_x": {
+  "challenger1_mk3": {
    "sealed": true,
    "openPx": 9,
    "openViews": 0,
@@ -212,7 +212,7 @@
    "seeThroughPx": 130,
    "tris": 116292
   },
-  "chieftain_mk10": {
+  "chieftain_mk9": {
    "sealed": true,
    "openPx": 8,
    "openViews": 0,
@@ -220,7 +220,7 @@
    "seeThroughPx": 0,
    "tris": 77272
   },
-  "chieftain_mk10_x": {
+  "chieftain_mk10": {
    "sealed": true,
    "openPx": 99,
    "openViews": 0,
@@ -228,7 +228,7 @@
    "seeThroughPx": 0,
    "tris": 107440
   },
-  "chieftain5": {
+  "chieftain3": {
    "sealed": true,
    "openPx": 2,
    "openViews": 0,
@@ -236,7 +236,7 @@
    "seeThroughPx": 3,
    "tris": 80152
   },
-  "chieftain5_x": {
+  "chieftain5": {
    "sealed": true,
    "openPx": 8,
    "openViews": 0,
@@ -252,7 +252,7 @@
    "seeThroughPx": 0,
    "tris": 72360
   },
-  "cv90_mkiv": {
+  "cv90_mk4_concept": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -284,7 +284,7 @@
    "seeThroughPx": 0,
    "tris": 72370
   },
-  "jpz_e100_x": {
+  "jpz_e100": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -292,7 +292,7 @@
    "seeThroughPx": 0,
    "tris": 103634
   },
-  "k1a1": {
+  "k1e1": {
    "sealed": true,
    "openPx": 8,
    "openViews": 0,
@@ -300,7 +300,7 @@
    "seeThroughPx": 233,
    "tris": 81478
   },
-  "k1a1_x": {
+  "k1a1": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -308,7 +308,7 @@
    "seeThroughPx": 0,
    "tris": 95390
   },
-  "k2": {
+  "xk2_black_panther": {
    "sealed": false,
    "openPx": 156,
    "openViews": 6,
@@ -316,7 +316,7 @@
    "seeThroughPx": 233,
    "tris": 90902
   },
-  "k2_x": {
+  "k2_black_panther": {
    "sealed": true,
    "openPx": 9,
    "openViews": 0,
@@ -332,7 +332,7 @@
    "seeThroughPx": 219,
    "tris": 99492
   },
-  "kf51": {
+  "kf51_evo": {
    "sealed": true,
    "openPx": 6,
    "openViews": 0,
@@ -340,7 +340,7 @@
    "seeThroughPx": 0,
    "tris": 120434
   },
-  "kf51_x": {
+  "kf51_panther": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -348,7 +348,7 @@
    "seeThroughPx": 0,
    "tris": 72154
   },
-  "kf51b": {
+  "kf51_u": {
    "sealed": true,
    "openPx": 4,
    "openViews": 0,
@@ -364,7 +364,7 @@
    "seeThroughPx": 0,
    "tris": 78986
   },
-  "leclerc": {
+  "leclerc_s2": {
    "sealed": true,
    "openPx": 1,
    "openViews": 0,
@@ -372,7 +372,7 @@
    "seeThroughPx": 0,
    "tris": 103732
   },
-  "leclerc_classic_x": {
+  "amx56": {
    "sealed": true,
    "openPx": 1,
    "openViews": 0,
@@ -380,7 +380,7 @@
    "seeThroughPx": 12,
    "tris": 125820
   },
-  "leclerc_x": {
+  "leclerc_xlr": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -388,7 +388,7 @@
    "seeThroughPx": 0,
    "tris": 121124
   },
-  "leclerc_xlr": {
+  "leclerc_sxxi": {
    "sealed": true,
    "openPx": 6,
    "openViews": 0,
@@ -420,7 +420,7 @@
    "seeThroughPx": 0,
    "tris": 95724
   },
-  "leo2a4": {
+  "leo2a2": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -428,7 +428,7 @@
    "seeThroughPx": 8339,
    "tris": 109768
   },
-  "leo2a4_otco": {
+  "leo2a3": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -436,7 +436,7 @@
    "seeThroughPx": 8,
    "tris": 94380
   },
-  "leo2a4m": {
+  "leo2a4m_can": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -444,7 +444,7 @@
    "seeThroughPx": 0,
    "tris": 100406
   },
-  "leo2a4m_x": {
+  "leo2a5m": {
    "sealed": true,
    "openPx": 11,
    "openViews": 0,
@@ -452,7 +452,7 @@
    "seeThroughPx": 0,
    "tris": 82186
   },
-  "leo2a5": {
+  "leo2a4_v": {
    "sealed": true,
    "openPx": 2,
    "openViews": 0,
@@ -460,7 +460,7 @@
    "seeThroughPx": 0,
    "tris": 106170
   },
-  "leo2a5_a5nl": {
+  "leo2a4m": {
    "sealed": true,
    "openPx": 2,
    "openViews": 0,
@@ -468,7 +468,7 @@
    "seeThroughPx": 0,
    "tris": 113570
   },
-  "leo2a5_x": {
+  "leo2a5": {
    "sealed": true,
    "openPx": 3,
    "openViews": 0,
@@ -476,7 +476,7 @@
    "seeThroughPx": 0,
    "tris": 94942
   },
-  "leo2a6": {
+  "leo2a4": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -492,7 +492,7 @@
    "seeThroughPx": 13598,
    "tris": 136468
   },
-  "leo2a6_x": {
+  "leo2a6": {
    "sealed": true,
    "openPx": 190,
    "openViews": 0,
@@ -500,7 +500,7 @@
    "seeThroughPx": 0,
    "tris": 98638
   },
-  "leo2a6m": {
+  "leo2a4_otco": {
    "sealed": true,
    "openPx": 2,
    "openViews": 0,
@@ -508,7 +508,7 @@
    "seeThroughPx": 0,
    "tris": 105372
   },
-  "leo2a6m_x": {
+  "leo2a6m": {
    "sealed": true,
    "openPx": 1,
    "openViews": 0,
@@ -516,7 +516,7 @@
    "seeThroughPx": 0,
    "tris": 90646
   },
-  "leo2a7v": {
+  "leo2_improved": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -524,7 +524,7 @@
    "seeThroughPx": 66,
    "tris": 101346
   },
-  "leo2a7v_x": {
+  "leo2a7v": {
    "sealed": true,
    "openPx": 8,
    "openViews": 0,
@@ -556,7 +556,7 @@
    "seeThroughPx": 0,
    "tris": 118038
   },
-  "m1a2": {
+  "m1a1_abrams_hc": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -564,7 +564,7 @@
    "seeThroughPx": 0,
    "tris": 118306
   },
-  "m1a2_sepv2": {
+  "m1a1_abrams_aim": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -572,7 +572,7 @@
    "seeThroughPx": 16,
    "tris": 121406
   },
-  "m1a2_sepv2_x": {
+  "m1a2_abrams_sepv2": {
    "sealed": true,
    "openPx": 1,
    "openViews": 0,
@@ -580,7 +580,7 @@
    "seeThroughPx": 0,
    "tris": 153474
   },
-  "m1a2_sepv3": {
+  "m1a1_abrams_fep": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -588,7 +588,7 @@
    "seeThroughPx": 5674,
    "tris": 133996
   },
-  "m1a2_sepv3_x": {
+  "m1a2_abrams_sepv3": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -596,7 +596,7 @@
    "seeThroughPx": 0,
    "tris": 148966
   },
-  "m1a2_tusk": {
+  "m1a1_abrams_sa": {
    "sealed": true,
    "openPx": 5,
    "openViews": 0,
@@ -604,7 +604,7 @@
    "seeThroughPx": 0,
    "tris": 127902
   },
-  "m1a2_tusk_x": {
+  "m1a2_abrams_tusk": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -612,7 +612,7 @@
    "seeThroughPx": 0,
    "tris": 136118
   },
-  "m1a2_x": {
+  "m1a2_abrams": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -660,7 +660,7 @@
    "seeThroughPx": 1,
    "tris": 79439
   },
-  "m48": {
+  "m48a5_patton": {
    "sealed": true,
    "openPx": 20,
    "openViews": 0,
@@ -756,7 +756,7 @@
    "seeThroughPx": 23,
    "tris": 115730
   },
-  "merkava3d": {
+  "merkava3_baz": {
    "sealed": true,
    "openPx": 8,
    "openViews": 0,
@@ -764,7 +764,7 @@
    "seeThroughPx": 0,
    "tris": 124346
   },
-  "merkava3d_x": {
+  "merkava3d": {
    "sealed": true,
    "openPx": 8,
    "openViews": 0,
@@ -772,7 +772,7 @@
    "seeThroughPx": 0,
    "tris": 80714
   },
-  "merkava4_x": {
+  "merkava4": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -804,7 +804,7 @@
    "seeThroughPx": 0,
    "tris": 79588
   },
-  "pt91_twardy": {
+  "pt91a_twardy": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -828,7 +828,7 @@
    "seeThroughPx": 22,
    "tris": 72952
   },
-  "spz_puma_s1": {
+  "spz_wotan": {
    "sealed": true,
    "openPx": 1,
    "openViews": 0,
@@ -844,7 +844,7 @@
    "seeThroughPx": 4,
    "tris": 68022
   },
-  "strv103": {
+  "strv103b": {
    "sealed": true,
    "openPx": 7,
    "openViews": 0,
@@ -860,7 +860,7 @@
    "seeThroughPx": 4599,
    "tris": 62650
   },
-  "strv122": {
+  "strv121": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -868,7 +868,7 @@
    "seeThroughPx": 1,
    "tris": 112738
   },
-  "strv122_x": {
+  "strv122": {
    "sealed": true,
    "openPx": 4,
    "openViews": 0,
@@ -884,7 +884,7 @@
    "seeThroughPx": 7,
    "tris": 84158
   },
-  "t14": {
+  "object148_proto": {
    "sealed": false,
    "openPx": 353,
    "openViews": 14,
@@ -892,7 +892,7 @@
    "seeThroughPx": 0,
    "tris": 79712
   },
-  "t14_x": {
+  "t14_armata": {
    "sealed": true,
    "openPx": 6,
    "openViews": 0,
@@ -900,7 +900,7 @@
    "seeThroughPx": 0,
    "tris": 81338
   },
-  "t62mv1": {
+  "t62_1975": {
    "sealed": true,
    "openPx": 3,
    "openViews": 0,
@@ -908,7 +908,7 @@
    "seeThroughPx": 4,
    "tris": 67904
   },
-  "t62mv1_x": {
+  "t62mv1": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -924,7 +924,7 @@
    "seeThroughPx": 4,
    "tris": 77558
   },
-  "t72b_1987_x": {
+  "t72b_1987": {
    "sealed": true,
    "openPx": 13,
    "openViews": 0,
@@ -932,7 +932,7 @@
    "seeThroughPx": 0,
    "tris": 80262
   },
-  "t72b3_x": {
+  "t72b3": {
    "sealed": true,
    "openPx": 1,
    "openViews": 0,
@@ -940,7 +940,7 @@
    "seeThroughPx": 0,
    "tris": 74796
   },
-  "t72b3m": {
+  "t72b3m_2022": {
    "sealed": true,
    "openPx": 8,
    "openViews": 0,
@@ -948,7 +948,7 @@
    "seeThroughPx": 0,
    "tris": 115494
   },
-  "t72b3m_x": {
+  "t72b3m_2016": {
    "sealed": true,
    "openPx": 5,
    "openViews": 0,
@@ -956,7 +956,7 @@
    "seeThroughPx": 1,
    "tris": 85818
   },
-  "t72bu": {
+  "t72bu_1989": {
    "sealed": true,
    "openPx": 15,
    "openViews": 0,
@@ -964,7 +964,7 @@
    "seeThroughPx": 0,
    "tris": 79512
   },
-  "t72bu_x": {
+  "t72bu": {
    "sealed": true,
    "openPx": 1,
    "openViews": 0,
@@ -1004,7 +1004,7 @@
    "seeThroughPx": 4,
    "tris": 81112
   },
-  "t80u": {
+  "t80uk": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1012,7 +1012,7 @@
    "seeThroughPx": 116,
    "tris": 80576
   },
-  "t80u_x": {
+  "t80u": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1028,7 +1028,7 @@
    "seeThroughPx": 10559,
    "tris": 85870
   },
-  "t90": {
+  "t90_1992": {
    "sealed": true,
    "openPx": 9,
    "openViews": 0,
@@ -1036,7 +1036,7 @@
    "seeThroughPx": 7,
    "tris": 84220
   },
-  "t90_x": {
+  "t90": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1044,7 +1044,7 @@
    "seeThroughPx": 0,
    "tris": 97786
   },
-  "t90a": {
+  "t90a_2004": {
    "sealed": false,
    "openPx": 126,
    "openViews": 3,
@@ -1052,7 +1052,7 @@
    "seeThroughPx": 0,
    "tris": 84216
   },
-  "t90a_burlak": {
+  "t90a_burlak_proto": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1060,7 +1060,7 @@
    "seeThroughPx": 0,
    "tris": 79044
   },
-  "t90a_burlak_x": {
+  "t90a_burlak": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1068,7 +1068,7 @@
    "seeThroughPx": 0,
    "tris": 87590
   },
-  "t90a_vladimir": {
+  "t90a_2006": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1076,7 +1076,7 @@
    "seeThroughPx": 2,
    "tris": 78884
   },
-  "t90a_vladimir_x": {
+  "t90a_vladimir": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1084,7 +1084,7 @@
    "seeThroughPx": 0,
    "tris": 80470
   },
-  "t90a_x": {
+  "t90a": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1092,7 +1092,7 @@
    "seeThroughPx": 18,
    "tris": 99722
   },
-  "t90m": {
+  "t90am": {
    "sealed": true,
    "openPx": 5,
    "openViews": 0,
@@ -1108,7 +1108,7 @@
    "seeThroughPx": 4,
    "tris": 97110
   },
-  "t90m_x": {
+  "t90m": {
    "sealed": true,
    "openPx": 7,
    "openViews": 0,
@@ -1116,7 +1116,7 @@
    "seeThroughPx": 33,
    "tris": 102010
   },
-  "t90ms": {
+  "t90ms_2011": {
    "sealed": true,
    "openPx": 10,
    "openViews": 0,
@@ -1124,7 +1124,7 @@
    "seeThroughPx": 4,
    "tris": 73670
   },
-  "t90ms_x": {
+  "t90ms_tagil": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1132,7 +1132,7 @@
    "seeThroughPx": 0,
    "tris": 84118
   },
-  "t90sm": {
+  "t90sm_2013": {
    "sealed": false,
    "openPx": 114,
    "openViews": 3,
@@ -1140,7 +1140,7 @@
    "seeThroughPx": 3,
    "tris": 76494
   },
-  "t90sm_x": {
+  "t90sm": {
    "sealed": true,
    "openPx": 10,
    "openViews": 0,
@@ -1148,7 +1148,7 @@
    "seeThroughPx": 4,
    "tris": 106724
   },
-  "type10": {
+  "type10_tk_x": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1156,7 +1156,7 @@
    "seeThroughPx": 61,
    "tris": 86258
   },
-  "type10_x": {
+  "type10": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1188,7 +1188,7 @@
    "seeThroughPx": 0,
    "tris": 65454
   },
-  "type89": {
+  "hayate_ifv": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1196,7 +1196,7 @@
    "seeThroughPx": 0,
    "tris": 63908
   },
-  "type89_light_tiger": {
+  "raiju_ifv": {
    "sealed": true,
    "openPx": 4,
    "openViews": 0,
@@ -1204,7 +1204,7 @@
    "seeThroughPx": 0,
    "tris": 84582
   },
-  "type90": {
+  "type90_kyumaru": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1212,7 +1212,7 @@
    "seeThroughPx": 72,
    "tris": 74038
   },
-  "type90_x": {
+  "type90": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1228,7 +1228,7 @@
    "seeThroughPx": 71,
    "tris": 83086
   },
-  "type99a": {
+  "ztz99_longwei": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1252,7 +1252,7 @@
    "seeThroughPx": 19039,
    "tris": 145192
   },
-  "ua_m1a1_x": {
+  "ua_m1a2_abrams": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1268,7 +1268,7 @@
    "seeThroughPx": 15,
    "tris": 77706
   },
-  "ua_t64bv": {
+  "t64bv_donbas": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1284,7 +1284,7 @@
    "seeThroughPx": 24,
    "tris": 79354
   },
-  "ua_t80u_kursk": {
+  "t80u_kursk": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1292,7 +1292,7 @@
    "seeThroughPx": 3,
    "tris": 76530
   },
-  "ua_t84_oplot_m": {
+  "t84bm_oplot_m": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1348,7 +1348,7 @@
    "seeThroughPx": 13,
    "tris": 71966
   },
-  "ztz99a2_prototype": {
+  "ztz99a": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1364,7 +1364,7 @@
    "seeThroughPx": 0,
    "tris": 96086
   },
-  "ztz100_x": {
+  "ztz100": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1372,7 +1372,7 @@
    "seeThroughPx": 36,
    "tris": 80682
   },
-  "object695_x": {
+  "object695": {
    "sealed": false,
    "openPx": 80,
    "openViews": 6,
@@ -1380,7 +1380,7 @@
    "seeThroughPx": 0,
    "tris": 82582
   },
-  "ariete_c2_x": {
+  "c2_ariete": {
    "sealed": true,
    "openPx": 160,
    "openViews": 0,
@@ -1388,7 +1388,7 @@
    "seeThroughPx": 0,
    "tris": 97514
   },
-  "spz_puma_s1_x": {
+  "puma_s1": {
    "sealed": true,
    "openPx": 38,
    "openViews": 0,
@@ -1396,7 +1396,7 @@
    "seeThroughPx": 0,
    "tris": 72568
   },
-  "cv90_x": {
+  "cv9040c": {
    "sealed": true,
    "openPx": 16,
    "openViews": 0,
@@ -1404,7 +1404,7 @@
    "seeThroughPx": 9,
    "tris": 47940
   },
-  "type89_x": {
+  "type89": {
    "sealed": true,
    "openPx": 10,
    "openViews": 0,
@@ -1460,7 +1460,7 @@
    "seeThroughPx": 0,
    "tris": 101600
   },
-  "ua_t80u_modern": {
+  "t80u_zoria": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1468,7 +1468,7 @@
    "seeThroughPx": 12,
    "tris": 96094
   },
-  "ua_t72b3m_modern": {
+  "t72b3m_hetman": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1476,7 +1476,7 @@
    "seeThroughPx": 0,
    "tris": 100326
   },
-  "ua_t72b3_modern": {
+  "t72b3_sich": {
    "sealed": true,
    "openPx": 5,
    "openViews": 0,
@@ -1484,7 +1484,7 @@
    "seeThroughPx": 786,
    "tris": 101436
   },
-  "pl_t80u_modern": {
+  "t80u_husarz": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1492,7 +1492,7 @@
    "seeThroughPx": 0,
    "tris": 100106
   },
-  "pl_t72b3m_modern": {
+  "t72b3m_wilk": {
    "sealed": true,
    "openPx": 1,
    "openViews": 0,
@@ -1500,7 +1500,7 @@
    "seeThroughPx": 2,
    "tris": 108638
   },
-  "pl_t72b3_modern": {
+  "t72b3_zubr": {
    "sealed": true,
    "openPx": 1,
    "openViews": 0,
@@ -1508,7 +1508,7 @@
    "seeThroughPx": 0,
    "tris": 100846
   },
-  "cn_t80u_modern": {
+  "t80u_yun": {
    "sealed": true,
    "openPx": 10,
    "openViews": 0,
@@ -1516,7 +1516,7 @@
    "seeThroughPx": 0,
    "tris": 93210
   },
-  "cn_t72b3m_modern": {
+  "t72b3m_kunlun": {
    "sealed": true,
    "openPx": 1,
    "openViews": 0,
@@ -1524,7 +1524,7 @@
    "seeThroughPx": 0,
    "tris": 97982
   },
-  "cn_t72b3_modern": {
+  "t72b3_qilin": {
    "sealed": true,
    "openPx": 6,
    "openViews": 0,
@@ -1532,7 +1532,7 @@
    "seeThroughPx": 0,
    "tris": 94158
   },
-  "ru_t80u_modern": {
+  "t80u_bars_m": {
    "sealed": true,
    "openPx": 0,
    "openViews": 0,
@@ -1540,7 +1540,7 @@
    "seeThroughPx": 0,
    "tris": 97054
   },
-  "ru_t72b3m_modern": {
+  "t72b3m_bulat_m": {
    "sealed": true,
    "openPx": 2,
    "openViews": 0,
@@ -1548,7 +1548,7 @@
    "seeThroughPx": 0,
    "tris": 103326
   },
-  "ru_t72b3_modern": {
+  "t72b3_bastion_m": {
    "sealed": true,
    "openPx": 3,
    "openViews": 0,
@@ -1556,7 +1556,7 @@
    "seeThroughPx": 0,
    "tris": 98042
   },
-  "ua_t72b3m_hetman_ii": {
+  "t72b3m_hetman_ii": {
    "sealed": true,
    "openPx": 6,
    "openViews": 0,
@@ -1564,7 +1564,7 @@
    "seeThroughPx": 185,
    "tris": 115314
   },
-  "pl_t72b3_zubr_ii": {
+  "t72b3_zubr_ii": {
    "sealed": true,
    "openPx": 12,
    "openViews": 0,

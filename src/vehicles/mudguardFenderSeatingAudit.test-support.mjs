@@ -31,12 +31,12 @@ export function createMudguardFenderSeatingAudit() {
           `${id}/${guard.label}: mudguard material uses its textured family bucket`);
       }
 
-      if (id === 't72bu') {
-        assert(hullRig, 't72bu: hull articulation rig');
+      if (id === 't72bu_1989') {
+        assert(hullRig, 't72bu_1989: hull articulation rig');
         [t72buGear] = hullRig.userData.runningGearReceipts || [];
       }
-      if (id === 't72bu_x') [t72buXGear] = hullRig?.userData.runningGearReceipts || [];
-      if (id === 't90m' || id === 't90m_proryv') {
+      if (id === 't72bu') [t72buXGear] = hullRig?.userData.runningGearReceipts || [];
+      if (id === 't90am' || id === 't90m_proryv') {
         proryvGuards.set(id, (hullRig?.userData.sharedMudguards || [])
           .filter((receipt) => receipt.label.startsWith('t90m-proryv-')));
       }
@@ -57,29 +57,29 @@ export function createMudguardFenderSeatingAudit() {
         `fleet mudguard receipt coverage regressed (${registeredParts} parts)`);
 
       // 2026-10-01: the owner's September renewal (4c34b3e8b, docs/tank-generation/fleet-renewal-publication-20260930.md)
-      // rebuilt the T-72BU 1989 on the t72bu_x foundation, so its running gear is the source-measured t72bu_x course. The
+      // rebuilt the T-72BU 1989 on the t72bu foundation, so its running gear is the source-measured t72bu course. The
       // separately authored 2026-08-18 gear (354e8fa97) and its exact 9 cm / 6 cm z-only gaps are gone. A z-only gap
       // ignores the raised idler (0.28 m above the axle line): the source idler reads -0.0099 m in z but stands 0.0516 m
       // clear of the lead wheel circle to circle. Protect the donor law and the T-72 family's side-plane clearance law
       // (pt91mPendekarFidelity, t72JaguarRedesign: centre distance minus both radii above 2 cm).
-      assert.equal(FLEET_RENEWAL_DONORS.t72bu, 't72bu_x', 't72bu: the renewal builds the T-72BU 1989 on t72bu_x');
-      assert(t72buGear, 't72bu: running-gear receipt');
-      assert(t72buXGear, 't72bu_x: running-gear receipt');
+      assert.equal(FLEET_RENEWAL_DONORS.t72bu_1989, 't72bu', 't72bu_1989: the renewal builds the T-72BU 1989 on t72bu');
+      assert(t72buGear, 't72bu_1989: running-gear receipt');
+      assert(t72buXGear, 't72bu: running-gear receipt');
       for (const key of ['wheelZs', 'wheelY', 'wheelR', 'idler', 'sprocket']) {
-        assert.deepEqual(t72buGear[key], t72buXGear[key], `t72bu: ${key} is the t72bu_x donor's`);
+        assert.deepEqual(t72buGear[key], t72buXGear[key], `t72bu_1989: ${key} is the t72bu donor's`);
       }
-      assert.equal(t72buGear.wheelZs.length, 6, 't72bu: six native road-wheel stations');
+      assert.equal(t72buGear.wheelZs.length, 6, 't72bu_1989: six native road-wheel stations');
       const frontRoadWheelZ = Math.max(...t72buGear.wheelZs);
       const rearRoadWheelZ = Math.min(...t72buGear.wheelZs);
       const terminalClearance = (end, z) => Math.hypot(end.z - z, end.y - t72buGear.wheelY) - (end.r + t72buGear.wheelR);
       const frontTerminalGap = terminalClearance(t72buGear.idler, frontRoadWheelZ);
       const rearTerminalGap = terminalClearance(t72buGear.sprocket, rearRoadWheelZ);
       assert(frontTerminalGap > 0.02,
-        `t72bu: forward idler clears lead road wheel in the side plane (${frontTerminalGap})`);
+        `t72bu_1989: forward idler clears lead road wheel in the side plane (${frontTerminalGap})`);
       assert(rearTerminalGap > 0.02,
-        `t72bu: aft sprocket clears rear road wheel in the side plane (${rearTerminalGap})`);
+        `t72bu_1989: aft sprocket clears rear road wheel in the side plane (${rearTerminalGap})`);
 
-      for (const id of ['t90m', 't90m_proryv']) {
+      for (const id of ['t90am', 't90m_proryv']) {
         const guards = proryvGuards.get(id) || [];
         assert.equal(guards.length, 4, `${id}: four terminal Proryv mudguards are registered`);
         assert.ok(guards.every((guard) => guard.material === 'painted-steel' && guard.bucket === 'hull'),
@@ -91,10 +91,10 @@ export function createMudguardFenderSeatingAudit() {
       }
 
       const expectedClosedShoulders = [
-        'chieftain5', 'chieftain_mk10', 't90ms',
-        'kf51', 'kf51b',
-        'leo2a4', 'leo2a4_otco',
-        'leo2a6', 'leo2a6m', 'leo2a6_ua',
+        'chieftain3', 'chieftain_mk9', 't90ms_2011',
+        'kf51_evo', 'kf51_u',
+        'leo2a2', 'leo2a3',
+        'leo2a4', 'leo2a4_otco', 'leo2a6_ua',
       ];
       for (const id of expectedClosedShoulders) {
         const receipt = shoulderReceipts.get(id);
@@ -108,7 +108,7 @@ export function createMudguardFenderSeatingAudit() {
           `${id}: every structural shoulder/mudguard part is registered`);
       }
 
-      for (const id of ['chieftain5', 'chieftain_mk10']) {
+      for (const id of ['chieftain3', 'chieftain_mk9']) {
         const receipt = shoulderReceipts.get(id);
         assert.equal(receipt.steppedShelvesVisibleFromSide, false,
           `${id}: bow shoulder may not read as exposed stair steps`);
@@ -117,15 +117,15 @@ export function createMudguardFenderSeatingAudit() {
       }
 
       {
-        const receipt = shoulderReceipts.get('t90ms');
+        const receipt = shoulderReceipts.get('t90ms_2011');
         assert.equal(receipt.steppedShelves, false,
-          't90ms: replace thin craft stairs with a continuous rake');
+          't90ms_2011: replace thin craft stairs with a continuous rake');
         assert.equal(receipt.architecture, 'continuous-sloped-shoulder-and-closed-outer-shell');
         assert.ok(receipt.shellRearTopY > receipt.shellFrontTopY,
-          't90ms: terminal guard follows a decisive forward/downward slope');
+          't90ms_2011: terminal guard follows a decisive forward/downward slope');
       }
 
-      for (const id of ['leo2a4', 'leo2a4_otco', 'leo2a6', 'leo2a6m', 'leo2a6_ua']) {
+      for (const id of ['leo2a2', 'leo2a3', 'leo2a4', 'leo2a4_otco', 'leo2a6_ua']) {
         const receipt = shoulderReceipts.get(id);
         assert.equal(receipt.shoulderMergedIntoGlacis, true,
           `${id}: shoulder flange must merge into the glacis`);
@@ -133,7 +133,7 @@ export function createMudguardFenderSeatingAudit() {
           `${id}: terminal web remains beyond the animated shoe plane`);
       }
 
-      for (const id of ['kf51', 'kf51b']) {
+      for (const id of ['kf51_evo', 'kf51_u']) {
         const receipt = shoulderReceipts.get(id);
         assert.equal(receipt.shoulderMergedIntoGlacis, true,
           `${id}: Panther shoulder must merge into the glacis`);

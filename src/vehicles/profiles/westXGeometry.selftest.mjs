@@ -17,19 +17,19 @@ registerProfiledBuilders(Object.fromEntries(Object.entries({
 // different nonzero pad thickness from the supplied static meshes; therefore
 // the exact ground datum is tested through the actual factory contact surface.
 const sources = {
-  k2_x: { width: 3.71906, length: 10.8448, height: 4.73527,
+  k2_black_panther: { width: 3.71906, length: 10.8448, height: 4.73527,
     gunY: 1.99253, muzzle: 6.91807, boreR: .0878, roadR: .3225,
     wheels: [-2.17585, -1.28085, -.38585, .50915, 1.40415, 2.29915],
     roofs: [[-2.9, 1.7035], [0, 1.5775], [2.6, 1.4145], [3.58, 1.1519]] },
-  kf51_x: { width: 3.5603123, length: 10.74975, height: 5.7214742,
+  kf51_panther: { width: 3.5603123, length: 10.74975, height: 5.7214742,
     gunY: 1.85491175, muzzle: 6.89975, boreR: .0892, roadR: .328,
     wheels: [-2.2118, -1.4265, -.6365, .1300, .8573, 1.5808, 2.352],
     roofs: [[-2.6, 1.8272], [0, 1.6025], [2.5, 1.4145], [3.79, 1.2302]] },
-  merkava3d_x: { width: 3.976352, length: 8.83824, height: 5.15869,
+  merkava3d: { width: 3.976352, length: 8.83824, height: 5.15869,
     gunY: 2.0898, muzzle: 4.855985, boreR: .08485, roadR: .371,
     wheels: [-2.3236825, -1.4406825, -.3106825, .5473175, 1.4058175, 2.2588175],
     roofs: [[-2.1, 1.7145], [-.5, 1.7073], [3.0, 1.4569], [3.73, 1.1646]] },
-  merkava4_x: { width: 3.7768898, length: 8.705041, height: 4.9327283,
+  merkava4: { width: 3.7768898, length: 8.705041, height: 4.9327283,
     gunY: 1.9934619, muzzle: 4.805527, boreR: .0811, roadR: .3467,
     wheels: [-2.062, -1.267, -.199, .739, 1.617, 2.417],
     roofs: [[-2.0, 1.604], [0, 1.604], [2.8, 1.347], [3.77, 1.0475]] },
@@ -61,13 +61,13 @@ for (const quality of ['high', 'low']) for (const [id, source] of Object.entries
       assert.ok(Number.isFinite(bottom) && top > bottom + .002,
         `${id}: closed, positive-thickness body at ${z}`);
     }
-    if (id === 'k2_x') {
+    if (id === 'k2_black_panther') {
       for (const side of [-1, 1]) {
         // 2026-09-13 fender-to-skirt closure: the inner skin rises to the sponson shelf (1.380 here)
         near(verticalHit(hull, side * 1.75, 1.44), 1.380, .012, `${id}: continuous inner skirt skin closes onto the shelf`);
         near(verticalHit(hull, side * 1.80, 1.44), 1.34064, .012, `${id}: separate outer skirt plate`);
       }
-    } else if (id === 'kf51_x') {
+    } else if (id === 'kf51_panther') {
       for (const [z, top, bottom] of [[-3.8,1.80405,1.48806],[-3.7,1.86889,1.14991],[-3.5,1.82725,.90884]]) {
         near(verticalHit(hull, .4, z), top, .008, `${id}: actual raised stern roof ${z}`);
         near(verticalHit(hull, .4, z, true), bottom, .008, `${id}: source upswept rear underfloor ${z}`);
@@ -79,7 +79,7 @@ for (const quality of ['high', 'low']) for (const [id, source] of Object.entries
         near(verticalHit(skirt, side*1.735, -.5), 1.5769, .015, `${id}: separate upper flank chamfer`);
         near(verticalHit(skirt, side*1.779, -.5), 1.1465, .018, `${id}: outer flank is a lower belt, not a box wall`);
       }
-    } else if (id === 'merkava4_x') {
+    } else if (id === 'merkava4') {
       for (const side of [-1, 1]) {
         // The requested finite shoulder return covers this old source plane.
         // Retain the original measured witness and tolerance: it must still
@@ -96,7 +96,7 @@ for (const quality of ['high', 'low']) for (const [id, source] of Object.entries
     assert.ok(armor?.isMesh, `${id}: first-party structural turret mesh`);
     // Physical ray hits reject a generic symmetrical loaf even if its overall
     // bounding box and author-declared dimensions happen to match the source.
-    if (id === 'merkava3d_x') {
+    if (id === 'merkava3d') {
       const left = verticalHit(armor, -.9, .6), right = verticalHit(armor, .9, .6);
       near(left, 2.226907, .001, `${id}: continuous repaired left-forward gunner shoulder`);
       near(right, 2.433, .02, `${id}: high right-forward cheek`);
@@ -115,7 +115,7 @@ for (const quality of ['high', 'low']) for (const [id, source] of Object.entries
         near(verticalHit(fittings,x,z),y,.003,`${id}: seated access-panel slope ${x}/${z}`);
       near(verticalHit(fittings,-.6,2.85),1.65492,.006,`${id}: shaped front clamp body`);
       near(verticalHit(fittings,-.8,2.85),1.59043,.003,`${id}: clamp does not fill its empty bounding rectangle`);
-    } else if (id === 'merkava4_x') {
+    } else if (id === 'merkava4') {
       for (const [z, roof] of [[-1, 2.562], [.5, 2.449], [1.5, 2.194]]) {
         near(verticalHit(armor, .5, z), roof, .02, `${id}: raised/sloping source roof ${z}`);
       }
@@ -126,7 +126,7 @@ for (const quality of ['high', 'low']) for (const [id, source] of Object.entries
       near(verticalHit(fittings,.7,1.3),1.63349,.001,`${id}: right engine access base cover`);
       near(verticalHit(fittings,1.0,1.5),1.65826,.001,`${id}: separate stepped sliding cover`);
       assert.equal(verticalHit(fittings,-.2,1.5),undefined,`${id}: no invented center-deck radiator grille`);
-    } else if (id === 'kf51_x') {
+    } else if (id === 'kf51_panther') {
       near(verticalHit(armor, 0, 1.48), 1.665, .025, `${id}: gun well floor is not a roof bridge`);
       near(verticalHit(armor,-.75,1.85),2.17568,.003,`${id}: separate sight recess has a real lower floor`);
       const fittings=tank.root.getObjectByName('turretDetail');
@@ -155,7 +155,7 @@ for (const quality of ['high', 'low']) for (const [id, source] of Object.entries
       recoil.position.z-=.05;tank.root.updateMatrixWorld(true);
       near(verticalHit(movingGun,0,6.65),2.0719,.003,`${id}: sight translates with actual recoil`);
       recoil.position.z+=.05;tank.root.updateMatrixWorld(true);
-    } else if (id === 'k2_x') {
+    } else if (id === 'k2_black_panther') {
       for (const side of [-1, 1]) {
         near(verticalHit(armor, side * 1.4, -.9), 2.3275, .01, `${id}: structural rear armor cassette ${side}`);
       }
@@ -196,7 +196,7 @@ for (const quality of ['high', 'low']) for (const [id, source] of Object.entries
     });
     near(terminal.getCenter(point).y, source.gunY, .003, `${id}: physical muzzle is centered on its bore`);
     near((terminal.max.y - terminal.min.y) / 2, source.boreR, .013, `${id}: physical terminal radius`);
-    if (id === 'kf51_x') {
+    if (id === 'kf51_panther') {
       near(verticalHit(tank.root.getObjectByName('gun'), 0, 5), 1.95691, .006, `${id}: broad fore-tube jacket before reduced terminal`);
     }
     assert.equal(rig.parent, tank.root.getObjectByName('rig_turret'), `${id}: gun pitches within turret yaw`);

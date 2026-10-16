@@ -38,6 +38,8 @@ export interface StructureSpan {
   partClass: DamagePartClass;
   first: number;
   count: number;
+  /** The named piece of a set piece this part is (geometry userData.damagePiece, landmarks/pieces.ts), or null. */
+  piece: string | null;
 }
 
 export interface StructureDamageSeam {
@@ -198,7 +200,8 @@ export function bindStructureSpans(sources: readonly BufferGeometry[], position:
     if (typeof id === 'number' && Number.isSafeInteger(id)) {
       let list = spans.get(id);
       if (!list) { list = []; spans.set(id, list); }
-      list.push({ mesh, geometryId, instanceId, position, bucket, partClass: partClassOf(bucket, fine), first, count });
+      const piece = typeof source.userData.damagePiece === 'string' ? source.userData.damagePiece : null;
+      list.push({ mesh, geometryId, instanceId, position, bucket, partClass: partClassOf(bucket, fine), first, count, piece });
     }
     first += count;
   }

@@ -31,7 +31,7 @@ import {
   LocalFrame, PartSink, faceBox, facePanel, facePoint, normalize3, rgb, shade,
   type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3,
 } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, holedBox, recordBody, recordShaft, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, paneBucket, windowUnit, type WindowStyle } from './openings.ts';
 import { faceSlab, hash01, pilaster, trimRing, trimRun } from './facade.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -75,22 +75,6 @@ function damageOf(ctx: RegionalBuildContext, option: Damage | 'auto' | undefined
 }
 
 /** A shell hole in a face: a ragged dark void, the broken masonry round it standing a little proud. */
-function shellHole(sink: PartSink, face: Face, u: number, y: number, r: number, o: number, rim: RegionalBucket): void {
-  const ring: Vec3[] = [], hole: Vec3[] = [];
-  const n = 9;
-  for (let k = 0; k < n; k++) {
-    const a = (k / n) * Math.PI * 2, j = 0.62 + hash01(u, y, k, 1.7) * 0.5;
-    ring.push(facePoint(face, u + Math.cos(a) * r * 1.35 * j, y + Math.sin(a) * r * 1.2 * j, o));
-    hole.push(facePoint(face, u + Math.cos(a) * r * j * 0.9, y + Math.sin(a) * r * j * 0.85, o + 0.012));
-  }
-  // fans from the centre (star-shaped outlines)
-  const c = facePoint(face, u, y, o), ch = facePoint(face, u, y, o + 0.012);
-  for (let k = 0; k < n; k++) {
-    sink.polygon(rim, [c, ring[k], ring[(k + 1) % n]], { ...DECOR, shade: 0.62 });
-    sink.polygon('dark', [ch, hole[k], hole[(k + 1) % n]], DECOR);
-  }
-}
-
 /**
  * Soot climbing a surface over a burnt floor: a strip `w` wide centred on u, dark at its foot and fading upward, `o`
  * out of the face (fine: drawn near the camera only). A weathered bucket darkens by its shade; a painted one (a
@@ -251,8 +235,15 @@ function dressFace(sink: PartSink, face: Face, fi: number, bays: number, y0: num
   const glassO = 0.03;
   const cornerGone = (bay: number, floor: number) => !!corner?.from && floor >= corner.floor
     && (corner.from.end > 0 ? bay >= bays - corner.from.n : bay < corner.from.n);
-  const blown = (bay: number, floor: number) => !!dmg.blown && dmg.blown.face === fi && bay >= dmg.blown.b0 && bay <= dmg.blown.b1
-    && floor >= dmg.blown.f0 && floor <= dmg.blown.f1;
+  // (props census #9) a shell's hit blows out the bay it struck (or the two it straddles), the facade gone to its slab and
+  // the dark behind: it was a dark star painted on the piers and the spandrel
+  const struck = dmg.holes.filter((hole) => hole.face === fi && hole.floor < floors && !(corner?.from && hole.floor >= corner.floor)).flatMap((hole) => {
+    const at = hole.t * bays, b0 = Math.max(0, Math.min(bays - 1, Math.floor(at - hole.r / bw))), b1 = Math.max(0, Math.min(bays - 1, Math.floor(at + hole.r / bw)));
+    return Array.from({ length: b1 - b0 + 1 }, (_, k) => `${b0 + k}:${hole.floor}`);
+  });
+  const hit = new Set(struck);
+  const blown = (bay: number, floor: number) => (!!dmg.blown && dmg.blown.face === fi && bay >= dmg.blown.b0 && bay <= dmg.blown.b1
+    && floor >= dmg.blown.f0 && floor <= dmg.blown.f1) || hit.has(`${bay}:${floor}`);
   const spOpts: EmitOptions = { ...DECOR, ...(sp.colour ? { colour: sp.colour } : {}), ...(sp.shade ? { shade: sp.shade } : {}) };
   for (let f = 0; f < floors; f++) {
     const y = y0 + f * fh, burnt = dmg.burnt.has(f);
@@ -311,13 +302,6 @@ function dressFace(sink: PartSink, face: Face, fi: number, bays: number, y0: num
       const pw = corner0 ? pier.w * 1.2 : pier.w;
       faceBox(sink, pier.bucket, face, corner0 ? u - Math.sign(u) * pw / 2 : u, (y0 + yTop) / 2, pier.out / 2, pw, yTop - y0, pier.out, pOpts);
     }
-  }
-  // shell holes on this face
-  for (const hole of dmg.holes) {
-    if (hole.face !== fi || hole.floor >= floors) continue;
-    const u = -W / 2 + hole.t * W, y = y0 + hole.floor * fh + fh * 0.55;
-    if (corner?.from && hole.floor >= corner.floor) continue;
-    shellHole(sink, face, u, y, hole.r, (pier?.out ?? sp.out) + 0.01, sp.bucket);
   }
 }
 
@@ -389,7 +373,9 @@ function pierFinials(sink: PartSink, r: Rect, y: number, bay: number, bucket: Re
     for (let k = 0; k <= n; k++) {
       const u = -face.width / 2 + k * bw, corner = k === 0 || k === n;
       const h = corner ? 1.6 : 1.0;
-      faceBox(sink, bucket, face, u, y + h / 2, 0.25, corner ? 0.8 : 0.5, h, 0.5, { ...DECOR, fineSides: true });
+      // (props census #9) standing over the parapet's top, nothing behind them: their backs drawn, their feet on it left
+      // out (seated, their backs were open; their feet lay on the parapet's top, one face over another)
+      faceBox(sink, bucket, face, u, y + h / 2, 0.26, corner ? 0.8 : 0.5, h, 0.5, { ...DECOR, fineSides: true }, { bottom: true });
     }
   }
 }
@@ -417,20 +403,38 @@ function fit(ctx: RegionalBuildContext, minW: number, minD: number, pad = 0.4): 
 
 /** A granite podium of tall openings under a cornice: the street storeys of a Bund building. */
 function podium(sink: PartSink, r: Rect, h: number, bucket: RegionalBucket, rng: () => number, opts: { arcade?: boolean; door?: Rgb } = {}): void {
-  sink.span(bucket, r.x0, -0.5, r.z0, r.x1, h, r.z1);
-  const faces = rectFaces(r);
+  // (props census #9) its tall openings cut through its walls, the glass at the back of the reveals; the door's bay its
+  // doorway with the light over it (the openings were dark plates on a solid span, the door's leaf on one)
+  const faces = rectFaces(r), rev = 0.34;
+  const holes: HoleRect[][] = faces.map(() => []);
+  const door = { fi: 0, k: Math.floor(Math.max(1, Math.round(faces[0].width / 4.2)) / 2) };
   faces.forEach((face, fi) => {
     const n = Math.max(1, Math.round(face.width / 4.2)), bw = face.width / n;
     for (let k = 0; k < n; k++) {
       const u = -face.width / 2 + (k + 0.5) * bw, ow = bw * 0.62, oh = h * 0.72;
-      // the opening: a deep reveal read by its dark back and its stone frame standing proud, an arch head on an arcade
-      faceBox(sink, 'dark', face, u, 0.5 + oh / 2, 0.015, ow, oh, 0.02, DECOR);
-      if (fi === 0 && k === Math.floor(n / 2)) {
-        doorUnit(sink, face, u, 0.4, Math.min(2.2, ow * 0.7), Math.min(3.4, oh * 0.8), { leaf: opts.door ?? BRONZE,
-          frame: { bucket, width: 0.3, out: 0.12, arch: true }, transom: true, steps: { bucket }, leafKind: 'glazed' }, 0.4);
-        continue;
-      }
-      facePanel(sink, paneBucket(rng, 0.45), face, u, 0.5 + oh * 0.5, 0.03, ow - 0.2, oh - 0.3, { ...DECOR, window: face.out });
+      if (fi === door.fi && k === door.k) {
+        const dw = Math.min(2.2, ow * 0.7), dh = Math.min(3.4, oh * 0.8);
+        holes[fi].push({ u0: u - dw / 2, u1: u + dw / 2, y0: 0.4, y1: 0.4 + dh });
+        if (0.5 + oh - (0.4 + dh + 0.6) > 0.5) holes[fi].push({ u0: u - (ow - 0.2) / 2, u1: u + (ow - 0.2) / 2, y0: 0.4 + dh + 0.6, y1: 0.5 + oh });
+      } else holes[fi].push({ u0: u - ow / 2, u1: u + ow / 2, y0: 0.5, y1: 0.5 + oh });
+    }
+  });
+  holedBox(sink, bucket, r.x0, r.z0, r.x1, r.z1, -0.5, h, { front: holes[0], right: holes[1], back: holes[2], left: holes[3] }, 0.4, rev);
+  faces.forEach((face, fi) => {
+    const n = Math.max(1, Math.round(face.width / 4.2)), bw = face.width / n;
+    for (let k = 0; k < n; k++) {
+      const u = -face.width / 2 + (k + 0.5) * bw, ow = bw * 0.62, oh = h * 0.72;
+      if (fi === door.fi && k === door.k) {
+        const dw = Math.min(2.2, ow * 0.7), dh = Math.min(3.4, oh * 0.8);
+        sink.recess = rev;
+        try {
+          doorUnit(sink, face, u, 0.4, dw, dh, { leaf: opts.door ?? BRONZE, frame: { bucket, width: 0.3, out: 0.12, arch: true }, steps: { bucket }, leafKind: 'glazed' }, 0.4);
+        } finally { sink.recess = 0; }
+        if (0.5 + oh - (0.4 + dh + 0.6) > 0.5) {
+          const y0 = 0.4 + dh + 0.6, y1 = 0.5 + oh;
+          facePanel(sink, paneBucket(rng, 0.45), face, u, (y0 + y1) / 2, -rev + 0.016, ow - 0.2, y1 - y0, { ...DECOR, window: face.out });
+        }
+      } else facePanel(sink, paneBucket(rng, 0.45), face, u, 0.5 + oh * 0.5, -rev + 0.016, ow, oh, { ...DECOR, window: face.out });
       faceBox(sink, bucket, face, u - ow / 2 - 0.12, 0.5 + oh / 2, 0.08, 0.24, oh, 0.16, { ...DECOR, fineSides: true });
       faceBox(sink, bucket, face, u + ow / 2 + 0.12, 0.5 + oh / 2, 0.08, 0.24, oh, 0.16, { ...DECOR, fineSides: true });
       if (opts.arcade) faceSlab(sink, bucket, face, archBand(u, 0.5 + oh, ow + 0.48, 0.42, ow * 0.25), 0, 0.16);
@@ -472,6 +476,9 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
     const stone: RegionalBucket = 'stone';
     const podiumH = 8.5;
     podium(sink, plot, podiumH, stone, rng, { arcade: rng() < 0.5 });
+    // (props census #9, E13: the tower reader) the podium and the shaft (its first tier's plan, to the crown, in storey
+    // bands) as bodies for the damage reading: the podium breaks as a house, the shaft topples
+    recordBody(sink, (plot.x0 + plot.x1) / 2, (plot.z0 + plot.z1) / 2, plot.x1 - plot.x0, plot.z1 - plot.z0, podiumH, stone);
     // the vertical line of the deco shaft: piers standing well out, the spandrels set back between them and darker
     const facade: TowerFacade = {
       pier: { bucket: stone, w: 0.66, out: 0.5 }, spandrel: { bucket: stone, h: 1.1, out: 0.07, shade: 0.62 },
@@ -490,7 +497,8 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
       const tierDmg = t === 0 ? dmg : { ...dmg, corner: null, blown: null, burnt: new Set<number>(), holes: dmg.holes.filter((h) => h.floor < n) };
       const top = towerTier(sink, r, y, n, fh, facade, tierDmg, rng);
       // the setback: the piers carried up past the parapet as finials, the terrace parapet between them
-      sink.span(stone, r.x0, top - 0.3, r.z0, r.x1, top + 0.9, r.z1);
+      // (from the tier's top: run 0.3 m down it stood behind the top floor's glass, the pane on stone instead of the dark)
+      sink.span(stone, r.x0, top, r.z0, r.x1, top + 0.9, r.z1);
       pierFinials(sink, r, top + 0.9, facade.bay, stone);
       left -= n; y = top;
       if (left <= 0) break;
@@ -499,6 +507,10 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
     }
     // the crown
     const cx = (r.x0 + r.x1) / 2, cz = (r.z0 + r.z1) / 2, half = Math.min(r.x1 - r.x0, r.z1 - r.z0) / 2;
+    {
+      const r0 = inset(plot, Math.min(1.2, (plot.x1 - plot.x0) * 0.05));
+      recordBody(sink, (r0.x0 + r0.x1) / 2, (r0.z0 + r0.z1) / 2, r0.x1 - r0.x0, r0.z1 - r0.z0, y + 0.9, stone, false, true);
+    }
     if (damage === 3) {
       // the crown shot away: its stump and the broken frame
       sink.span(stone, cx - half * 0.6, y + 0.9, cz - half * 0.6, cx + half * 0.6, y + 3.1, cz + half * 0.6);
@@ -511,7 +523,8 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
       for (let k = 0; k < 3; k++) {
         sink.span(stone, cx - s, yy, cz - s, cx + s, yy + 2.6, cz + s);
         for (const face of rectFaces({ x0: cx - s, x1: cx + s, z0: cz - s, z1: cz + s })) {
-          for (let f = -1; f <= 1; f++) faceBox(sink, stone, face, f * s * 0.55, yy + 1.6, 0.18, 0.28, 3.2, 0.36, { ...DECOR, fineSides: true });
+          // (the fins stand 0.6 m over the drum: their backs drawn, a centimetre off it)
+          for (let f = -1; f <= 1; f++) faceBox(sink, stone, face, f * s * 0.55, yy + 1.6, 0.19, 0.28, 3.2, 0.36, { ...DECOR, fineSides: true });
         }
         yy += 2.6; s *= 0.7;
       }
@@ -823,30 +836,47 @@ export function stationHall(opts: SkylineOptions = {}): RegionalBuilder {
       glazing: 'bays', mullions: 2, mullion: rgb(0x4a4a44) };
     const hdmg = tierDamage(rng, damage, 2);
     const hTop = towerTier(sink, head, 0, 2, 5.2, hfacade, hdmg, rng, { base: -0.5 });
+    // (E13) the head building, the pavilion and the clock tower as bodies for the damage reading
+    recordBody(sink, (head.x0 + head.x1) / 2, (head.z0 + head.z1) / 2, head.x1 - head.x0, head.z1 - head.z0, hTop + 1.2, stone, false, true);
     trimRing(sink, stone, head, hTop - 0.4, [{ h: 0.15, out: 0.14 }, { h: 0.25, out: 0.4 }]);
     sink.span(stone, head.x0, hTop - 0.3, head.z0, head.x1, hTop + 1.2, head.z1);
     // the pavilion: taller, its arch and lunette to the forecourt
     const pw = Math.min(W * 0.36, 16), pav = { x0: -pw / 2 + (plot.x0 + plot.x1) / 2, x1: pw / 2 + (plot.x0 + plot.x1) / 2, z0: head.z0 - 0.5, z1: plot.z1 };
-    sink.span(stone, pav.x0, -0.5, pav.z0, pav.x1, hTop + 6, pav.z1);
+    // (props census #9) the arch cut through the pavilion's front wall (its dark lunette was a plate on a solid span): the
+    // wall its piers, the sill under the arch and a strip over each of the arch's twelve segments, all `cut` deep on the
+    // pavilion's core; the dark at the back of the opening, the glass and its radiating bars in it
+    const cut = 0.6, rev = cut - 0.06, pTop = hTop + 6;
     const front: Face = { origin: [(pav.x0 + pav.x1) / 2, 0, pav.z1], u: [1, 0, 0], out: [0, 0, 1], width: pw };
-    const archW = pw * 0.56, archH = hTop + 1.5;
-    const lunette: Array<[number, number]> = [[-archW / 2, 0.2], [archW / 2, 0.2]];
-    for (let k = 0; k <= 12; k++) { const a = Math.PI * k / 12; lunette.push([Math.cos(a) * archW / 2, archH - archW / 2 + Math.sin(a) * archW / 2]); }
-    faceSlab(sink, 'dark', front, lunette, 0, 0.02);
+    const archW = pw * 0.56, archH = hTop + 1.5, ar = archW / 2, yS = archH - ar;
+    sink.span(stone, pav.x0, -0.5, pav.z0, pav.x1, pTop, pav.z1 - cut);
+    recordBody(sink, (pav.x0 + pav.x1) / 2, (pav.z0 + pav.z1) / 2, pw, pav.z1 - pav.z0, pTop, stone, false, true);
+    const wall = (poly: Array<[number, number]>) => faceSlab(sink, stone, front, poly, -cut, cut, { decor: false }, true);
+    wall([[-pw / 2, -0.5], [-ar, -0.5], [-ar, pTop], [-pw / 2, pTop]]);
+    wall([[ar, -0.5], [pw / 2, -0.5], [pw / 2, pTop], [ar, pTop]]);
+    wall([[-ar, -0.5], [ar, -0.5], [ar, 0.2], [-ar, 0.2]]);
+    for (let k = 0; k < 12; k++) {
+      const a0 = Math.PI * k / 12, a1 = Math.PI * (k + 1) / 12, ua = Math.cos(a0) * ar, ub = Math.cos(a1) * ar;
+      wall([[ub, yS + Math.sin(a1) * ar], [ua, yS + Math.sin(a0) * ar], [ua, pTop], [ub, pTop]]);
+    }
+    const lunette: Array<[number, number]> = [[-ar, 0.2], [ar, 0.2]];
+    for (let k = 0; k <= 12; k++) { const a = Math.PI * k / 12; lunette.push([Math.cos(a) * ar, yS + Math.sin(a) * ar]); }
+    sink.polygon('dark', lunette.map(([u, y]) => facePoint(front, u, y, -rev - 0.004)), DECOR);
     const glassPts = lunette.map(([u, y]): [number, number] => [u * 0.92, y < 1 ? 4.0 : y - 0.25]);
-    if (damage < 2) faceSlab(sink, 'glass', front, glassPts, 0.02, 0.01, { window: [0, 0, 1] });
+    if (damage < 2) faceSlab(sink, 'glass', front, glassPts, -rev + 0.01, 0.01, { window: [0, 0, 1] });
     for (let k = 1; k < 8; k++) {
       const a = Math.PI * k / 8;
-      sink.member('structureMetal', facePoint(front, 0, archH - archW / 2, 0.05), facePoint(front, Math.cos(a) * archW * 0.46, archH - archW / 2 + Math.sin(a) * archW * 0.46, 0.05),
+      sink.member('structureMetal', facePoint(front, 0, yS, -rev + 0.06), facePoint(front, Math.cos(a) * archW * 0.46, yS + Math.sin(a) * archW * 0.46, -rev + 0.06),
         0.08, 0.06, [0, 0, 1], { ...DECOR, colour: STEEL, fine: true });
     }
     trimRun(sink, stone, front, -pw / 2, pw / 2, hTop + 5.4, [{ h: 0.2, out: 0.2 }, { h: 0.3, out: 0.45 }], { ret: 0.5 });
     // the clock tower on the pavilion's corner
     const tx = pav.x1 - 2.2, tz = pav.z1 - 2.2, tTop = hTop + 6 + 9;
     sink.span(stone, tx - 1.8, hTop + 6, tz - 1.8, tx + 1.8, tTop, tz + 1.8);
+    recordShaft(sink, tx, tz, 3.6, tTop, stone, true);
     for (const face of rectFaces({ x0: tx - 1.8, x1: tx + 1.8, z0: tz - 1.8, z1: tz + 1.8 })) {
       faceSlab(sink, 'structureMetal', face, circle(0, tTop - 2.4, 1.1, 16), 0, 0.04, { colour: rgb(0xe0dccf) });
-      faceBox(sink, 'dark', face, 0, tTop - 2.4, 0.06, 0.07, 0.8, 0.02, DECOR);
+      // (the hand 5 cm wide: at 7 cm it read as a dark plate on the dial)
+      faceBox(sink, 'dark', face, 0, tTop - 2.4, 0.06, 0.05, 0.8, 0.02, DECOR);
     }
     pyramidCrown(sink, tx, tz, 2.0, tTop, 3.6, COPPER);
     // the train shed: brick side walls, a glass barrel vault on iron ribs

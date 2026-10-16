@@ -344,11 +344,13 @@ export type DamagePartClass = 'wall' | 'roof' | 'glass' | 'trim' | 'interior';
 
 /**
  * Intact parts to hide from a stage on: a whole section, a part class, a class within a section — or, with both null,
- * everything the structure has (a collapse).
+ * everything the structure has (a collapse). `piece` names one of a set piece's named pieces instead (a statue's figure,
+ * a gate's merlon, a windmill's sail: landmarks/pieces.ts): its own parts' spans go, whatever the other two say.
  */
 export interface DamageHide {
   section: number | null;
   partClass: DamagePartClass | null;
+  piece?: string;
 }
 
 /** What a stage returns beside what it wrote. */

@@ -9,12 +9,12 @@ import {buildChallenger1X as supplied} from './challenger1X.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 // Historical photo fittings only; never current supplied-file acceptance.
 function createTank(...args) {
- registerProfiledBuilders({challenger1_x:photoDraft});
+ registerProfiledBuilders({challenger1_mk3:photoDraft});
  try{return createPlayableTank(...args);}
- finally{registerProfiledBuilders({challenger1_x:supplied});}
+ finally{registerProfiledBuilders({challenger1_mk3:supplied});}
 }
 for(const quality of ['high','low']) {
- const tank=createTank('challenger1_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+ const tank=createTank('challenger1_mk3',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
  try {
   tank.root.scale.setScalar(1 / 1.10); tank.root.updateMatrixWorld(true);const meshes=[];
   tank.root.traverse(m=>{if(m.isMesh&&!m.name.startsWith('procShadow_')&&!m.userData.vehicleMarking)meshes.push(m);});

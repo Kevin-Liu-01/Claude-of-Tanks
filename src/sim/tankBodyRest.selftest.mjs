@@ -18,7 +18,7 @@ function ok(cond, label) {
   else { failures++; console.error(`FAIL  ${label}`); }
 }
 
-await ensureAuthorityFleet(['m1a2', 't90m']);
+await ensureAuthorityFleet(['m1a1_abrams_hc', 't90am']);
 const flat = { getHeightAt: () => 0, getNormalAt: () => ({ x: 0, y: 1, z: 0 }), getGroundType: () => 'firm' };
 
 function hull(id, specId, x, y, z, yaw, wreck = false) {
@@ -83,8 +83,8 @@ console.log('[1] a hull hopping beside a wreck in a crater is not lifted onto it
   // class the lane names. On its real tracks it pivots on the left track's inner edge and its root rose 0.57 m, past
   // this check's 0.3 m.)
   const crater = { ...flat, getHeightAt: (x, z) => (Math.abs(x) < 1.85 && Math.abs(z) < 5 ? -1.7 : 0) };
-  const wreck = hull('wreck', 't90m', 0, -1.7, 0, 0, true);
-  const m1 = hull('m1a2', 'm1a2', 3.6, 0, 0, 0);
+  const wreck = hull('wreck', 't90am', 0, -1.7, 0, 0, true);
+  const m1 = hull('m1a1_abrams_hc', 'm1a1_abrams_hc', 3.6, 0, 0, 0);
   run(crater, [wreck], wreck, 1); // the wreck settles on the crater floor
   airborne(m1, -0.25);
   const y0 = m1.state.pos.y;
@@ -96,8 +96,8 @@ console.log('[1] a hull hopping beside a wreck in a crater is not lifted onto it
 
 console.log('[2] a hull dropped on a wreck rests on its roof as on ground');
 {
-  const wreck = hull('wreck', 't90m', 0, 0, 0, 0, true);
-  const m1 = hull('m1a2', 'm1a2', 0.4, 3.0, 0.6, 0.3);
+  const wreck = hull('wreck', 't90am', 0, 0, 0, 0, true);
+  const m1 = hull('m1a1_abrams_hc', 'm1a1_abrams_hc', 0.4, 3.0, 0.6, 0.3);
   airborne(m1, -1);
   const { airS, topY } = run(flat, [wreck, m1], m1, 10);
   const roof = m1.state.pos.y;
@@ -108,8 +108,8 @@ console.log('[2] a hull dropped on a wreck rests on its roof as on ground');
 
 console.log('[3] from the roof it drives off and comes down on the ground');
 {
-  const wreck = hull('wreck', 't90m', 0, 0, 0, 0, true);
-  const m1 = hull('m1a2', 'm1a2', 0.4, 3.0, 0.6, 0.3);
+  const wreck = hull('wreck', 't90am', 0, 0, 0, 0, true);
+  const m1 = hull('m1a1_abrams_hc', 'm1a1_abrams_hc', 0.4, 3.0, 0.6, 0.3);
   airborne(m1, -1);
   run(flat, [wreck, m1], m1, 10, (t) => { m1.input.throttle = t > 2 ? 0.8 : 0; });
   const away = Math.hypot(m1.state.pos.x - wreck.state.pos.x, m1.state.pos.z - wreck.state.pos.z);
@@ -120,8 +120,8 @@ console.log('[3] from the roof it drives off and comes down on the ground');
 console.log('[4] a hull spinning and pitching on the roof stops and rights itself');
 {
   // the battle's state after the lift: a yaw spin and a pitching shell on the wreck's roof
-  const wreck = hull('wreck', 't90m', 0, 0, 0, 0, true);
-  const m1 = hull('m1a2', 'm1a2', 0.4, 3.0, 0.6, 0.3);
+  const wreck = hull('wreck', 't90am', 0, 0, 0, 0, true);
+  const m1 = hull('m1a1_abrams_hc', 'm1a1_abrams_hc', 0.4, 3.0, 0.6, 0.3);
   airborne(m1, -1);
   m1.state.yawRate = -0.58;
   m1.state._spring.pitchV = 0.5;
@@ -132,15 +132,15 @@ console.log('[4] a hull spinning and pitching on the roof stops and rights itsel
 
 console.log('[5] controls: a hard roof landing is still an impact, and a hull jumping off a roof is let go');
 {
-  const lower = hull('lower', 't90m', 0, 0, 0, 0);
-  const upper = hull('upper', 'm1a2', 0.6, 2.45, 0.4, 0);
+  const lower = hull('lower', 't90am', 0, 0, 0, 0);
+  const upper = hull('upper', 'm1a1_abrams_hc', 0.6, 2.45, 0.4, 0);
   airborne(upper, -6);
   resolveTankBodyContacts([lower, upper], SIM_DT);
   ok(upper.state.grounded === false && upper.state._body.dynamicSupport === true
     && Math.abs(upper.state._spring.pitchV) + Math.abs(upper.state._spring.rollV) > 0.05,
   'a 6 m/s landing bounces as an impact, with its angular kick');
-  const wreck = hull('wreck', 't90m', 0, 0, 0, 0, true);
-  const m1 = hull('m1a2', 'm1a2', 0.4, 3.0, 0.6, 0.3);
+  const wreck = hull('wreck', 't90am', 0, 0, 0, 0, true);
+  const m1 = hull('m1a1_abrams_hc', 'm1a1_abrams_hc', 0.4, 3.0, 0.6, 0.3);
   airborne(m1, -1);
   run(flat, [wreck, m1], m1, 2);
   const roof = m1.state.pos.y;

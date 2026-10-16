@@ -11,7 +11,7 @@ import { missionAttachmentTurretPivot } from '../sim/missionAttachment.ts';
 import { AERIAL_RULES } from '../sim/matchRuleset.ts';
 import { TANK_SPECS } from '../vehicles/specs.ts';
 
-const dt = 1 / 60, spec = TANK_SPECS.m1a2, measured = {};
+const dt = 1 / 60, spec = TANK_SPECS.m1a1_abrams_hc, measured = {};
 function carrier() {
   const root = new Group(), turret = new Group();
   turret.name = 'rig_turret'; turret.position.set(...missionAttachmentTurretPivot(spec)); root.add(turret);

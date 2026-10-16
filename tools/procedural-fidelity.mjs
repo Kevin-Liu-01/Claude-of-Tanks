@@ -73,7 +73,7 @@ try {
   });
 
   const urlFor = (id) => `http://localhost:${server.config.server.port}/tools/procedural-fidelity.html?id=${encodeURIComponent(id)}${COMPONENTS ? '&components=1' : ''}`;
-  await page.goto(`${urlFor(requestedPartition?.comparisons[0] || 'm1a2')}&registry=1`, { waitUntil:'domcontentloaded', timeout:90000 });
+  await page.goto(`${urlFor(requestedPartition?.comparisons[0] || 'm1a1_abrams_hc')}&registry=1`, { waitUntil:'domcontentloaded', timeout:90000 });
   await page.waitForFunction('Array.isArray(window.__REFERENCE_IDS)', { timeout:90000 });
   const discovered = await page.evaluate('window.__REFERENCE_IDS');
   // Use the same registration boundary as geometry-gate: an unregistered
@@ -94,7 +94,7 @@ try {
     const errorStart = browserErrors.length;
     let rawSourceComparison=null;
     try {
-      if(id==='k1a1_x'){
+      if(id==='k1a1'){
         await page.goto(`${urlFor(id)}&comparison=raw-source`,{waitUntil:'domcontentloaded',timeout:90000});
         await page.waitForFunction('window.__FIDELITY_READY === true || typeof window.__FIDELITY_ERROR === "string"',{timeout:90000,polling:60});
         const rawError=await page.evaluate('window.__FIDELITY_ERROR');if(rawError)throw new Error(rawError);

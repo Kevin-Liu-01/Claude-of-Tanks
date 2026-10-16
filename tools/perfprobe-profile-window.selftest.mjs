@@ -174,7 +174,7 @@ const task = (startTime, duration) => ({ startTime, duration, name: 'self', attr
 
 const source = readFileSync(new URL('./perfprobe.mjs', import.meta.url), 'utf8');
 const early = source.indexOf('if (profileWindow) await beginWindowProfile()');
-const entry = source.indexOf("await D.beginBattleEntry('m1a2', map)");
+const entry = source.indexOf("await D.beginBattleEntry('m1a1_abrams_hc', map)");
 assert.ok(early > 0 && early < source.indexOf('waitForControl: true, profileWindow, drawAttribution, schedulerTrace })') && early < entry);
 const stop = source.indexOf('if (profileWindow) await finishWindowProfile()');
 assert.ok(stop > source.indexOf('recordPerfRosterEdges(rosterProvenance, perf)'));

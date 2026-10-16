@@ -11,6 +11,11 @@
  * - Loading is lazy, deduplicated and concurrency-limited; groups of assets
  *   load on demand (a battle's roster, its map's scene, a crew language) and
  *   least-recently-used banks are evicted past the tier's decoded budget.
+ * - Two lanes share the decode slots (2026-10-14): the front lane is served
+ *   before the bulk. An asset joins it when loaded `{ front: true }` (the
+ *   sounds of a battle's countdown) or the first time something asks to play
+ *   it before it has decoded, so a sound wanted now never waits behind a
+ *   battle's worth of banks queued for later.
  * - Failure is local: a missing or undecodable file mutes that one variant.
  */
 
@@ -44,10 +49,11 @@ export interface AssetLibrary {
   record(id: string): SfxAssetRecord | undefined;
   /** At least one variant decoded. */
   has(id: string): boolean;
-  /** A decoded variant, avoiding an immediate repeat. */
+  /** A decoded variant, avoiding an immediate repeat; asked for before it has decoded, the asset joins the front lane. */
   pick(id: string, random: () => number): AudioBuffer | null;
   variant(id: string, index: number): AudioBuffer | null;
-  load(ids: Iterable<string>): Promise<void>;
+  /** Decode assets (deduplicated); `front` puts them in the front lane, ahead of every bulk load queued before or after. */
+  load(ids: Iterable<string>, options?: { front?: boolean }): Promise<void>;
   /**
    * Keep assets decoded for the current context (the battle set, the garage
    * set, live loops): eviction never drops a pinned asset, so a sound that
@@ -144,7 +150,11 @@ export function createAssetLibrary({
   let voiceBytes = 0;
   let failed = 0;
   const pinned = new Set<string>();
-  const waiting: (() => void)[] = [];
+  // Files waiting for a decode slot, by asset: the front lane is always served first.
+  interface Waiter { readonly id: string; readonly resolve: () => void }
+  const frontWaiting: Waiter[] = [];
+  const bulkWaiting: Waiter[] = [];
+  const frontIds = new Set<string>();
   const CONCURRENCY = 6;
   const root = base.endsWith('/') ? base : `${base}/`;
   for (const [id, decoded] of seed ?? []) {
@@ -172,12 +182,24 @@ export function createAssetLibrary({
     }
   }
 
-  async function slot<T>(task: () => Promise<T>): Promise<T> {
-    if (active >= CONCURRENCY) await new Promise<void>((resolve) => waiting.push(resolve));
+  async function slot<T>(id: string, task: () => Promise<T>): Promise<T> {
+    if (active >= CONCURRENCY) {
+      await new Promise<void>((resolve) => (frontIds.has(id) ? frontWaiting : bulkWaiting).push({ id, resolve }));
+    }
     active++;
     try { return await task(); } finally {
       active--;
-      waiting.shift()?.();
+      (frontWaiting.shift() ?? bulkWaiting.shift())?.resolve();
+    }
+  }
+
+  /** Move an asset into the front lane, its files already queued in the bulk included (once per asset). */
+  function promote(id: string): void {
+    if (frontIds.has(id) || !SFX_ASSETS[id]) return;
+    frontIds.add(id);
+    for (let i = 0; i < bulkWaiting.length;) {
+      if (bulkWaiting[i].id === id) frontWaiting.push(bulkWaiting.splice(i, 1)[0]);
+      else i++;
     }
   }
 
@@ -236,7 +258,7 @@ export function createAssetLibrary({
     target.promise = (async () => {
       if (!(await ready)) { target.state = 'failed'; return; }
       const files = Array.from({ length: Math.max(1, Math.min(rec.n, maxVariants)) }, (_, i) => `${root}audio/sfx/${rec.g}/${id}_${i}.webm`);
-      const buffers = await Promise.all(files.map((url) => slot(async () => {
+      const buffers = await Promise.all(files.map((url) => slot(id, async () => {
         try {
           const res = await fetchImpl(url);
           if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -287,6 +309,8 @@ export function createAssetLibrary({
     pick(id, random) {
       const entry = entries.get(id);
       if (!entry || entry.state !== 'ready') {
+        // wanted now: ahead of whatever is queued for later
+        if (entry?.state !== 'failed') promote(id);
         if (!entry || entry.state === 'idle') void loadOne(id);
         return null;
       }
@@ -297,8 +321,10 @@ export function createAssetLibrary({
       if (!entry || entry.state !== 'ready') return null;
       return entry.buffers[index] ?? null;
     },
-    async load(ids) {
-      await Promise.all([...new Set(ids)].map(loadOne));
+    async load(ids, options) {
+      const unique = [...new Set(ids)];
+      if (options?.front) for (const id of unique) promote(id);
+      await Promise.all(unique.map(loadOne));
     },
     pin(ids, replace = false) {
       if (replace) pinned.clear();

@@ -29,8 +29,8 @@ for (const id of SAVED_TANK_IDS) {
 
 // The 2026-10-13 rulings themselves.
 const label = (id) => TANK_SPECS[id].label;
-assert.equal(label('type90').shortName, 'Type 90 Kyū-maru');
-assert.equal(label('type90_x').displayName, 'Type 90');
+assert.equal(label('type90_kyumaru').shortName, 'Type 90 Kyū-maru');
+assert.equal(label('type90').displayName, 'Type 90');
 assert.equal(label('warrior_tes_h').displayName, 'Warrior TES(H)');
 assert.equal(label('warrior_tes_h').shortName, 'Warrior TES(H)');
 assert.ok(label('warrior_tes_h').searchAliases.includes('Warrior MILAN X'), 'the old name still finds it');

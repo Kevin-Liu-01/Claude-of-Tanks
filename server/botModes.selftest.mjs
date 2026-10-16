@@ -14,8 +14,8 @@ const jumpsByMode = new Map();
 for(const mapId of maps){
   for(const gameMode of modes){
     const world=createDedicatedWorldCollision(mapId);
-    const players=[{id:'human',specId:'m1a2',team:'alpha'}];
-    for(let i=0;i<7;i++)players.push({id:`bot-${i}`,specId:['m1a2','t90m','leo2a7v'][i%3],team:i<3?'alpha':'bravo',bot:true});
+    const players=[{id:'human',specId:'m1a1_abrams_hc',team:'alpha'}];
+    for(let i=0;i<7;i++)players.push({id:`bot-${i}`,specId:['m1a1_abrams_hc','t90am','leo2_improved'][i%3],team:i<3?'alpha':'bravo',bot:true});
     const match=createAuthoritativeMatch({mapId,gameMode,seed:57001,countdownS:0,worldCollision:world,players});
     match.onMatchReady();
     const starts=new Map(match.entities.map(e=>[e.id,e.state.pos.clone()]));
