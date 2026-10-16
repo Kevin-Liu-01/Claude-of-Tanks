@@ -1965,11 +1965,11 @@
   },
   "bengal/farmhouse": {
    "floating": 0,
-   "sliver": 8,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0,
+   "gapM2": 1.38,
    "invertedM2": 0
   },
   "bengal/market": {
@@ -4241,5 +4241,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-16T13:25:17.290Z"
+ "updatedAt": "2026-10-16T14:35:24.394Z"
 }
