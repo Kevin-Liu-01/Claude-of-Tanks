@@ -35,6 +35,8 @@ export function createHinterlandObject(wire: HinterlandWire, engineCtx: unknown)
     // (a region's air: the alpine col's is clear, its ranges standing crisp at 10 km — regions.ts far.air)
     hazeSigma: Math.max(0, wire.fogDensity) * 0.42 * (wire.air ?? 1),
     setupMaterial: engine.setupShadowMaterial ? (material, hook) => { engine.setupShadowMaterial!(material, hook); } : undefined,
+    // (Glacier round 6: a finer patch on the full tiers — the crags' faces and skylines smooth at 2–6 km)
+    patchQuads: lite ? 16 : 32,
   });
   group.add(land.mesh);
   const outland = createHinterlandOutlandObjects(wire, pyramid, engine, air);

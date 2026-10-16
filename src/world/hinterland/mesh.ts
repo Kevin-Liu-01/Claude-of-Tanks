@@ -89,6 +89,10 @@ export interface HinterlandMeshOptions {
   surface?: { uniforms: Record<string, THREE.IUniform>; fragmentPars: string; albedo: string; roughness?: string; normal?: string; key?: string } | null;
   /** The far haze's target: the dome's own sky (air.ts); absent, the fog colour. */
   air?: HinterlandAir | null;
+  /** Quads per patch side (default HINTERLAND_PATCH_QUADS, 16). Glacier round 6: 32 on the full tiers — at 16 a node
+   * 2 km out set its vertices 40 m apart, and the crags' silhouettes and faces read as hard low-poly facets (the critics
+   * on round 5d); the light tiers keep 16. */
+  patchQuads?: number;
 }
 
 export interface HinterlandMeshHandle {
@@ -104,7 +108,7 @@ export interface HinterlandMeshHandle {
 export function createHinterlandMesh(options: HinterlandMeshOptions): HinterlandMeshHandle {
   const lod = options.lod ?? HINTERLAND_LOD_DESKTOP;
   const atlas = packHinterlandHeights(options.pyramid.levels);
-  const Q = HINTERLAND_PATCH_QUADS;
+  const Q = options.patchQuads ?? HINTERLAND_PATCH_QUADS;
   // the patch: (Q + 1)² vertices on [0, 1]², u in x and v in z
   const grid = new THREE.InstancedBufferGeometry();
   const positions = new Float32Array((Q + 1) * (Q + 1) * 3);
@@ -241,7 +245,7 @@ ${surface?.normal ?? ''}`)
   };
   if (options.setupMaterial) options.setupMaterial(material, patch);
   else material.onBeforeCompile = patch;
-  material.customProgramCacheKey = () => `hinterland-land-${atlas.blocks.length}-${surface ? `land-${surface.key ?? ''}` : 'debug'}-${HINTERLAND_WRITE_DEPTH ? 'depth' : 'drawn'}`;
+  material.customProgramCacheKey = () => `hinterland-land-${atlas.blocks.length}-q${Q}-${surface ? `land-${surface.key ?? ''}` : 'debug'}-${HINTERLAND_WRITE_DEPTH ? 'depth' : 'drawn'}`;
 
   const mesh = new THREE.Mesh(grid, material);
   mesh.name = 'hinterland-land';
