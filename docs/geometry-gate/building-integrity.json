@@ -771,8 +771,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.794,
-   "gapM2": 0,
+   "insideM2": 0.401,
+   "gapM2": 0.315,
    "invertedM2": 0
   },
   "mekong/marketRow": {
@@ -1320,7 +1320,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.086,
+   "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2454,7 +2454,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 0.086,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -4286,5 +4286,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-16T15:09:00.308Z"
+ "updatedAt": "2026-10-16T15:18:25.293Z"
 }
