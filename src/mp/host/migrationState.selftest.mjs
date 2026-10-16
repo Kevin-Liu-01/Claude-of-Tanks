@@ -217,7 +217,7 @@ assert.equal(store.config, null);
 assert.throws(() => chunkMigrationBlob(MIGRATION_EVENT_KIND.KEYFRAME, 1, 0, new Uint8Array(MIGRATION_CHUNK_BYTES * 65)), /too large/);
 
 // ---- the boot config blob carries no secret
-const config = { roomId: 'R', matchId: 'm1', generation: 2, mapId: 'verdant', mode: 'standard', seed: 3, seats, bots, countdownS: 5, battleLimitS: null, hostSecret: SECRET, manifestBase: '/mp-collision', resume: null };
+const config = { roomId: 'R', matchId: 'm1', generation: 2, mapId: 'verdant', mode: 'standard', seed: 3, seats, bots, countdownS: 5, battleLimitS: null, hostSecret: SECRET, manifestBase: '/mp-collision/v2', resume: null };
 const configBytes = encodeBootConfig(config);
 assert.doesNotMatch(new TextDecoder().decode(configBytes), /hostSecret|mp-collision/);
 const configBack = decodeBootConfig(configBytes);

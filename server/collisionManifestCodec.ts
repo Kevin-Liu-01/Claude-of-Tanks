@@ -3,7 +3,7 @@ import type {
   CollisionManifest, PackedCollisionRecord, PackedSimpleShape,
 } from '../src/world/headlessCollisionWorld.ts';
 import {
-  isPackedCollisionMetadata, isSimpleShape, readCollisionConcealers, readCollisionCraters, readCollisionManifest,
+  COLLISION_COMPOUND_MAX_PARTS, isPackedCollisionMetadata, isSimpleShape, readCollisionConcealers, readCollisionCraters, readCollisionManifest,
 } from './collisionManifestFormat.ts';
 
 const LEGACY_ENCODING = 'primitive-dict-v1';
@@ -199,7 +199,7 @@ function resolveSimple(value: RuntimeValue, shapes: readonly PackedSimpleShape[]
 
 function resolveShape(value: RuntimeValue, shapes: readonly PackedSimpleShape[], compact: boolean): Shape {
   if (!Array.isArray(value) || value[0] !== 'm') return resolveSimple(value, shapes, compact);
-  if (value.length < 2 || value.length > 65) throw new TypeError('collision compound shape is invalid');
+  if (value.length < 2 || value.length > COLLISION_COMPOUND_MAX_PARTS + 1) throw new TypeError('collision compound shape is invalid');
   return ['m', ...Array.from(value.slice(1), (part) => resolveSimple(part, shapes, compact))];
 }
 

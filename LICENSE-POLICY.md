@@ -41,6 +41,7 @@ public/maps/**
 public/media/**
 public/minimaps/**
 server/world-collision-manifests/**
+server/world-collision-manifests-225/**
 src/audio/*.generated.ts
 src/docs/*.generated.json
 src/fx/*.ledger.json
