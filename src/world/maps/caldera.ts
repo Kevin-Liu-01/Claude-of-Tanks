@@ -98,7 +98,10 @@ export default {
     // (2026-10-11, the map-revival lane; gauntlet wave 395a: "a long straight dark bank band that reads as a stretched
     // skirt") the rim inside the playable square half as high: its inner face rose 23 m over the last 45 m (~34 deg at its
     // steepest), a straight dark bank along every edge; now ~12 m at ~16 deg, the caldera wall left to the horizon
-    hillScale: 0.55, microScale: 0.6, rimH: 28,
+    // (rimH 28 -> 8, the horizons stream's Caldera item HZ.20, 2026-10-15: the Hinterland's somma rings the floor 6-8 km
+    // out; from the edge eyes the 28 m rim's last 60 m stood 3.5-10.7° up and hid the somma (4-5°) and half the central
+    // cones — the brief: "the floor runs on for 3-8 km to the rim", "lowered to the floor carrying on")
+    hillScale: 0.55, microScale: 0.6, rimH: 8,
     mesas: null,
     marshes: [
       { x: -246, z: 242, r: 36, dip: 1.4 }, { x: 360, z: -230, r: 34, dip: 1.2 },
@@ -143,7 +146,11 @@ export default {
       { boundary: [[-299, 106], [-313, 121], [-324, 140], [-345, 134], [-359, 121], [-378, 111], [-385, 88], [-367, 72], [-348, 67], [-329, 53], [-304, 59], [-299, 85]], feather: 9, strength: 0.85 },
       { boundary: [[379, -179], [360, -168], [341, -151], [320, -164], [309, -181], [293, -199], [292, -226], [318, -237], [339, -237], [362, -239], [384, -227], [380, -201]], feather: 10, strength: 0.85 },
     ],
-    village: { x0: -178, x1: 188, z0: -174, z1: 190, cx: 4, cz: 14, feather: 44, flatten: 0.72, relief: 0.24 },
+    // (Caldera round 6, 2026-10-11; waves 412 and 414: "long, straight, full-width banks where the floor meets the wall: a
+    // level lip in the wide frames") the floor's flattening box held the ground 72 % level to within 44 m of its straight
+    // sides, so the rising ground met it on a ruled lip: the floor half-levelled and eased into the rise over 110 m, its
+    // own swells a third higher, so the foot of the wall is the ground's own irregular line, not the box's
+    village: { x0: -178, x1: 188, z0: -174, z1: 190, cx: 4, cz: 14, feather: 110, flatten: 0.5, relief: 0.32 },
     // (Caldera round 4, the map-revival lane, 2026-10-10; gauntlet wave 359: "no paddy grid", "Western farm boxes ... on
     // open lawn"; the bird view: a 370 m dark lawn inside the loop) Aso's farmsteads stand among their paddies: the
     // village's worn soil keeps to the yards and the roads' margins (the activity patches), and the paddies, bunds and
@@ -204,6 +211,10 @@ export default {
     // (the macro tints: the grassland's green patches and its cured gold, not the ash's warm greys)
     tintA: [0.94, 0.98, 0.86], tintB: [0.78, 0.82, 0.72], tintC: [1.02, 0.97, 0.80],
     roadTint: [0.49, 0.46, 0.43], strata: 0.05, midRelief: 1.15,
+    // (round 6, wave 412: the yards still "the same dark olive lawn", "no bare, worn packed earth anywhere") the worn ground
+    // — the yards, the tracks, the verges — packed earth paler than the black Andosol of the fields: the soil's grey-brown
+    // trodden and dried (the dirt layer where it is drawn as the land's soil)
+    soilTint: [1.55, 1.45, 1.30],
   },
   vegetation: {
     // Las Canadas on Tenerife: sparse Canary pine on bare cinder, a few Canary junipers, broom scrub (retama, codeso)
@@ -323,4 +334,7 @@ export default {
     roadCasing: 'rgba(30,29,27,.96)', roadFill: 'rgba(112,104,94,.94)', buildingFill: '#aaa7a1',
   },
   shot: { pos: [-238, 50, -230], look: [42, 6, 66] },
+  // the horizons stream's Caldera item (HZ.20, 2026-10-15): the Hinterland past the red line (hinterland/drafts/caldera.ts)
+  // — the somma ringing the floor 6-8 km out and the central cones over it; `?hinterland=0` draws the old ring
+  hinterland: true,
 } satisfies import('./contracts.ts').MapCompositionConfig;

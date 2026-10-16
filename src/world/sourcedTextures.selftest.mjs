@@ -278,7 +278,10 @@ const volcanicPixels = {
   // (2026-10-11, Caldera round 4/5, wave 412 PASS: the grass set tinted the tawny susuki green, 62c452fbc)
   G: [38, 50, 47, 125, 21, 11, 6, 100, 216, 117, 59, 255, 2, 2, 2, 25],
   D: [19, 23, 27, 130, 9, 6, 4, 104, 90, 57, 41, 255, 1, 1, 1, 26],
-  R: [22, 23, 25, 130, 10, 9, 9, 104, 69, 57, 51, 255, 5, 5, 5, 26],
+  // (2026-10-14, Caldera round 6 on main, the maps lane; waves 412/414: the rise's faces "near-black featureless soil
+  // faces") the steep ground a weathered andesite grey-brown lifted off near-black (tint 0.52/0.50/0.46, desat 0.6, lift
+  // 0.025; was 0.36/0.35/0.34, 0.75, 0.015): was [22, 23, 25, 130, 10, 9, 9, 104, 69, 57, 51, 255, 5, 5, 5, 26]
+  R: [31, 35, 37, 130, 16, 14, 12, 104, 108, 80, 66, 255, 7, 8, 8, 26],
 };
 for (const [key, expected] of Object.entries(volcanicPixels)) {
   assert.deepEqual([...volcanicLayers[key].albedo.image.pixels], expected,

@@ -8027,6 +8027,18 @@ steady rest −6 to −14 % on Monsoon, Verdant, Redrock and Frosthollow, no blu
 - RMSE does not see structure: the per-pixel jitter left the error unchanged and removed the hatching the eye locks onto.
 - A smoother composite filter (a B-spline in place of Catmull-Rom) cuts Monsoon's speckle 11 % and blurs crisp cumulus
   (Verdant +15 %, Redrock +14 % against the sharp reference): reconstruction is not where to buy smoothness on this sky.
+
+### 2026-10-14 — Obsidian Caldera round 6 on main: the floor eased into the wall, a weathered andesite rise, paler yards (the maps lane)
+
+**Waves 412/414 on round 5: "long, straight, full-width banks where the floor meets the wall", the rise's faces "near-
+black featureless soil", the yards "the same dark olive lawn", "bright green blurred blotches" by the farmyards.**
+Round 6 (4a8fc2388, never landed) re-applied on main: the floor's flattening box eased over 110 m (flatten 0.72 -> 0.5,
+relief 0.24 -> 0.32), so the wall's foot is the ground's own line; the steep ground a weathered andesite grey-brown
+lifted off near-black (sourcedTextures R: tint 0.52/0.50/0.46, desat 0.6, lift 0.025); the worn yards' soil paler
+(soilTint); a crop's colour held to the calibrated sward's luminance (0.09), so the rice at a yard's feathered edge no
+longer glows lime. The paddy water's mute stays with the paddies item (GW.01). The outer slopes' tree stream re-seats on
+the eased ground (198 out, 152 in, 178-295 m past the village box); census [2519, 2394, 1080] -> [2476, 2351, 1035].
+
 - (Clouds 2.0 carries the same three changes: `cloudShaders.ts` keys the trace's blue noise on the history pixel and
   carries the resolve's reprojection by `uWindStep`; `volumetricClouds.ts` holds the floor and the capture settle.)
 
