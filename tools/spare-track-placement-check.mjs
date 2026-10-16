@@ -559,11 +559,13 @@ function collect(visual, spec) {
   const meshesByName = new Map();
   const allMeshes = [];
   visitMeshes(root, (m) => { allMeshes.push(m); if (!meshesByName.has(m.name)) meshesByName.set(m.name, []); meshesByName.get(m.name).push(m); });
-  const bucketNames = new Set(census.map((c) => c.bucket));
+  // the seat pass moves every built run's links from hull/turretTrack into hull/turretTrackLinks (their own steel)
+  const MOVED = { hullTrack: 'hullTrackLinks', turretTrack: 'turretTrackLinks' };
+  const bucketNames = new Set(census.flatMap((c) => (MOVED[c.bucket] ? [c.bucket, MOVED[c.bucket]] : [c.bucket])));
   let live = 0, dead = 0;
   // 1. census (bucket) parts
   census.forEach((c, ci) => {
-    const cands = meshesByName.get(c.bucket) || [];
+    const cands = [...(meshesByName.get(c.bucket) || []), ...(MOVED[c.bucket] ? meshesByName.get(MOVED[c.bucket]) || [] : [])];
     let host = cands.find((m) => partInMesh(c.part, m));
     if (!host) host = allMeshes.find((m) => !excludedMesh(m) && m.name !== c.bucket && bucketNames.has(m.name) && partInMesh(c.part, m));
     if (!host) { dead++; c.dead = true; return; }
@@ -1723,7 +1725,8 @@ function coverageOf(res) {
  * (coverage above); this catches a new hand-drawn helper before it ever builds.
  */
 const LINT_RE = /\b\w*spare_?(link|track)\w*\s*\(/i;
-const LINT_OK = /^(FITTINGS\.spareTrackLinks|spareTrackStrip|withSpareTrackRun|spareTrackRunTag|spareTrackPart|fittingSpareTrackLinks)$/;
+// spareLinkBlock / emitSpareLink: the fleet's one link part (spareLinkGeometry.ts); its parts are covered by the census
+const LINT_OK = /^(FITTINGS\.spareTrackLinks|spareTrackStrip|withSpareTrackRun|spareTrackRunTag|spareTrackPart|fittingSpareTrackLinks|spareLinkBlock|emitSpareLink)$/;
 const LINT_FILES_OK = new Map([['arieteXPhotoDraft.ts', 'retired photo draft, built only by its own selftests']]);
 function sourceLint() {
   const dir = path.join(WT, 'src/vehicles/profiles');

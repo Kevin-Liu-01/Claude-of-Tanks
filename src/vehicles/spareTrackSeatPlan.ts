@@ -40,12 +40,12 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
     "fitting@hull(1.05,1.56,-2.45)": -1,
   },
   "centurion3": {
-    "strip@hull(-0.55,1.41,3.05)": 0,
+    "strip@hull(-0.55,1.41,3.05)": 1,
     "strip@hull(-1.26,1.38,-3.58)": -1,
     "strip@hull(1.26,1.38,-3.58)": -1,
   },
   "centurion5": {
-    "strip@hull(-0.55,1.41,3.05)": 0,
+    "strip@hull(-0.55,1.41,3.05)": 1,
     "strip@hull(-1.26,1.38,-3.58)": -1,
     "strip@hull(1.26,1.38,-3.58)": -1,
   },
@@ -156,7 +156,7 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   },
   "merkava3d_x": {
     "merkava3d-basket-links@turret(-0.45,0.48,-2.78)": 1,
-    "merkava3d-basket-links@turret(0.35,0.49,-2.71)": 1,
+    "merkava3d-basket-links@turret(0.35,0.49,-2.70)": 1,
   },
   "merkava4b": {
     "merkava-bow-links@hull(0.00,1.32,3.12)": -1,
