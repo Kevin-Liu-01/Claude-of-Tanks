@@ -265,7 +265,8 @@ for (const yaw of [0, 0.4, 1.2, Math.PI / 2, 2.6, -0.7]) {
   for (const mode of GAME_MODE_IDS) {
     const ruleset = matchRulesetFor(mode);
     assert.equal(ruleset.destruction.structures, mode !== 'turbo_ball', `${mode}: structures`);
-    assert.equal(ruleset.destruction.craters, false, `${mode}: craters off until the drawn terrain follows the overlay (P3)`);
+    // craters on wherever structures are (DST-04, 2026-10-15): the drawn terrain and the world's ray march follow the overlay
+    assert.equal(ruleset.destruction.craters, mode !== 'turbo_ball', `${mode}: craters`);
   }
   assert.equal(matchRulesetFor('ac130').destruction.craterScale, 1.25);
   const make = () => world(building(0, 0, 0, 4, 5, 3), building(1, 20, 0, 10, 8, 7));

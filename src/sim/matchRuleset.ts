@@ -331,10 +331,11 @@ const ENDING_HOLD_S = 8;
  * The crater switch (destruction core lane, 2026-10-08; docs/DESTRUCTION.md §7, crater-render-spec §F): on, the
  * simulation digs craters in every mode that plays destruction, and the drawn terrain (world/terrainCraterMesh.ts), the
  * ground cover (world/groundCoverCraters.ts) and the crater's own surface (fx/craterMarks.ts) follow the dug ground.
- * Off until the switch-on gates pass (pacing and fairness paired against craters off, both audits, cost with a
- * barrage, the network's stamp-once and late join).
+ * On since the destruction lane's DST-04 round (2026-10-15): pacing and fairness paired against craters off, both
+ * audits and the network's stamp-once and late join passed on 2026-10-08; the world's ray march now reads the dug ground
+ * (world/map.ts, world/headlessCollisionWorld.ts); the barrage's cost and the motion strips run in the 225/226 final pass.
  */
-const CRATERS_SWITCH = false;
+const CRATERS_SWITCH = true;
 // sections (P2: holes, fallen walls, roofs and storeys that shells and sight lines pass) stay off until their gates pass
 // (docs/DESTRUCTION.md §3.4, §13): the receipts, the paired pacing and fairness, the cost runs and the motion strips
 const SECTIONS_SWITCH = false;

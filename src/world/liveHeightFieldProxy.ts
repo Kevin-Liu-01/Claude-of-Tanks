@@ -1,4 +1,5 @@
 import type { TrackSurface } from './trackSurface.ts';
+import { createDeformedHeightField, type DeformableHeightField, type TerrainDeformation } from '../sim/terrainDeformation.ts';
 
 interface HeightFieldLike<Normal> {
   size: number;
@@ -112,4 +113,48 @@ export function createLiveHeightFieldProxy<Normal>({
     get minY() { return field()?.minY ?? 0; },
     get maxY() { return field()?.maxY ?? 0; },
   };
+}
+
+/**
+ * The live ground as the battle (or the Studio) has dug it (DST-04, 2026-10-15; docs/DESTRUCTION.md §7): the world's
+ * bound overlay added as the simulation adds it (sim/terrainDeformation.ts createDeformedHeightField: heights plus
+ * `offsetAt`, the contact surface plus `contactOffsetAt`, the dug ground's normal), so the presentation's running gear
+ * and the Studio's hulls ride the craters and heaps the simulation's hulls ride. Every other member reads through to
+ * `base`. One wrapper per bound overlay (rebuilt when the world binds another); no allocation per query.
+ */
+export function createDugHeightFieldProxy<P extends DeformableHeightField>(
+  base: P,
+  overlayOf: () => TerrainDeformation | null,
+): P {
+  let bound: TerrainDeformation | null = null;
+  let dug: P = base;
+  const current = (): P => {
+    const overlay = overlayOf();
+    if (overlay !== bound) {
+      bound = overlay;
+      dug = overlay ? createDeformedHeightField(base, overlay) : base;
+    }
+    return dug;
+  };
+  const proxy = Object.create(base) as P;
+  Object.defineProperties(proxy, {
+    getHeightAt: { value: (x: number, z: number): number => current().getHeightAt(x, z), configurable: true },
+    getHeightAtFast: {
+      value: (x: number, z: number): number => {
+        const field = current();
+        return field.getHeightAtFast ? field.getHeightAtFast(x, z) : field.getHeightAt(x, z);
+      },
+      configurable: true,
+    },
+    getContactHeightAt: {
+      value: (x: number, z: number): number => {
+        const field = current();
+        return field.getContactHeightAt ? field.getContactHeightAt(x, z) : field.getHeightAt(x, z);
+      },
+      configurable: true,
+    },
+    getNormalAt: { value: (x: number, z: number) => current().getNormalAt?.(x, z), configurable: true },
+    maxY: { get: () => current().maxY ?? 0, configurable: true },
+  });
+  return proxy;
 }
