@@ -356,7 +356,8 @@ const SEAT = { cx: 0.1, cz: 0.2, deckY: 1.5, openR: 0.78, rimR: 0.84, skirt: 0.0
     }
   }
   close(bandTop, 1.52 + 0.002, 1e-5, 'the band up over the cut faces standing over the race');
-  close(bandBottom, 1.47 - 0.03, 1e-5, 'and down past the lowest (a hulk\'s pad)');
+  // past the lowest cut face, and on every bearing past the lip (the exterior pass counts on it), by a hulk's pad
+  close(bandBottom, Math.min(1.47, SEAT.deckY - 0.055) - 0.03, 1e-5, 'and down past the lowest and past the lip');
   assert.ok(ledge > 0, 'the step under the lip runs in to the narrowed wall');
   assert.equal(geometry.userData.provenance?.creator, 'Kevin B. Liu');
 }

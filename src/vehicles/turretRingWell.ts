@@ -1069,8 +1069,8 @@ function restoreTurretRingMeshes(hullCut: TurretRingHullCut): void {
 /** Per polygon corner, the band's reach under and over the race's top (ring frame: y = 0 on the race): the whole of the
  *  cut faces on the corner's two sides (`rim`: emptyTurretRingRim's highest, then lowest, per side), so wherever the
  *  polygon cut the hull — the deck falling away under the race, standing over it, a wall the rim crossed — the band
- *  closes it; on a side with no cut face, the seat's measured skirt. */
-function rimBand(seat: TurretRingSeat, sides: number, rim: ArrayLike<number> | null, pad = BAND_PAD_M):
+ *  closes it; on a side with no cut face, the seat's measured skirt; and at the least `reach` under the race's top. */
+function rimBand(seat: TurretRingSeat, sides: number, rim: ArrayLike<number> | null, pad = BAND_PAD_M, reach = 0):
   { lo: Float64Array; hi: Float64Array } {
   const raceTop = seat.deckY + TURRET_RING_LIFT_M;
   const lo = new Float64Array(sides), hi = new Float64Array(sides);
@@ -1078,10 +1078,10 @@ function rimBand(seat: TurretRingSeat, sides: number, rim: ArrayLike<number> | n
     const before = (k + sides - 1) % sides;
     const top = rim ? Math.max(rim[before], rim[k]) : -Infinity;
     const bottom = rim && rim.length >= 2 * sides ? Math.min(rim[sides + before], rim[sides + k]) : top;
-    const reach = Number.isFinite(top) ? top - raceTop : -seat.skirt - TURRET_RING_LIFT_M;
-    const under = Number.isFinite(bottom) ? Math.min(bottom - raceTop, reach) : reach;
-    lo[k] = Math.min(0, under) - pad;
-    hi[k] = reach > 0 ? reach + BAND_TOP_M : 0;
+    const over = Number.isFinite(top) ? top - raceTop : -seat.skirt - TURRET_RING_LIFT_M;
+    const under = Number.isFinite(bottom) ? Math.min(bottom - raceTop, over) : over;
+    lo[k] = Math.min(0, under, -reach) - pad;
+    hi[k] = over > 0 ? over + BAND_TOP_M : 0;
   }
   return { lo, hi };
 }
@@ -1696,6 +1696,7 @@ export function planTurretRingHulk(seat: TurretRingSeat,
     clear = wellClearOfSkin(exteriorSkin(triangles, seat.cx, seat.cz, seat.deckY, seat.rimR, floor0), seat.deckY, seat.rimR,
       floor0);
   }
+  clear = { ...clear, floorY: overBelly(seat, clear.wellR, clear.floorY, parts) };
   const lip = seat.deckY - LIP_M;
   const top = seat.deckY + TURRET_RING_LIFT_M;
   const wellSeat: TurretRingSeat = { ...seat, depth: seat.deckY - clear.floorY, wellR: clear.wellR };
@@ -1713,6 +1714,44 @@ export function planTurretRingHulk(seat: TurretRingSeat,
     cuts: clear.floorY >= lip - 1e-6 ? [race]
       : [race, { cx: seat.cx, cz: seat.cz, r: clear.wellR, sides, yLo: clear.floorY - 0.02, yHi: lip, top }],
   };
+}
+
+/** The hulk's own belly under the well (its LOW build's: a receipt measured on another build may sit lower): the floor
+ *  stays a hand's breadth over every down-facing face under the wall near it; too close under the lip, a pan. */
+function overBelly(seat: TurretRingSeat, wellR: number, floorY: number,
+  parts: Iterable<{ geometry: THREE.BufferGeometry; toHull: THREE.Matrix4 | null; fill: boolean }>): number {
+  const lip = seat.deckY - LIP_M;
+  if (floorY >= lip - 1e-6) return floorY;
+  const box = new THREE.Box3(new THREE.Vector3(seat.cx - wellR, floorY - 0.05, seat.cz - wellR),
+    new THREE.Vector3(seat.cx + wellR, floorY + 0.15, seat.cz + wellR));
+  const partBox = new THREE.Box3(), tri = new Float64Array(9);
+  const wall = ringPrism({ cx: seat.cx, cz: seat.cz, r: wellR, sides: 32, yLo: -Infinity, yHi: Infinity, top: seat.deckY });
+  const corners = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  let floor = floorY;
+  for (const { geometry, toHull, fill } of parts) {
+    const position = geometry.getAttribute('position');
+    if (fill || !position) continue;
+    if (!geometry.boundingBox) geometry.computeBoundingBox();
+    partBox.copy(geometry.boundingBox!);
+    if (toHull) partBox.applyMatrix4(toHull);
+    if (!partBox.intersectsBox(box)) continue;
+    const index = geometry.index, count = index ? index.count : position.count;
+    for (let k = 0; k + 2 < count; k += 3) {
+      readTriangle(position, index ? index.getX(k) : k, index ? index.getX(k + 1) : k + 1, index ? index.getX(k + 2) : k + 2,
+        toHull, tri);
+      const maxY = Math.max(tri[1], tri[4], tri[7]);
+      if (maxY < floorY - 0.05 || maxY > floorY + 0.15) continue;
+      const e1x = tri[3] - tri[0], e1y = tri[4] - tri[1], e1z = tri[5] - tri[2];
+      const e2x = tri[6] - tri[0], e2y = tri[7] - tri[1], e2z = tri[8] - tri[2];
+      const ny = e1z * e2x - e1x * e2z;
+      const length = Math.hypot(e1y * e2z - e1z * e2y, ny, e1x * e2y - e1y * e2x);
+      if (!(length > 1e-12) || ny > -0.5 * length) continue;
+      // any of it under the wall (clear of none of the wall polygon's sides)
+      corners[0] = tri[0]; corners[2] = tri[2]; corners[6] = tri[3]; corners[8] = tri[5]; corners[12] = tri[6]; corners[14] = tri[8];
+      if (!wall.sides.some((side) => wholly(side, corners, true))) floor = Math.max(floor, maxY + 0.03);
+    }
+  }
+  return floor > seat.deckY - WELL_MIN_DEPTH_M ? lip : floor;
 }
 
 /** One quad (or, with `d` null, one triangle), wound to face `n` (the bake's material is one-sided). */
@@ -1734,7 +1773,8 @@ function pushQuad(out: number[], normals: number[], a: number[], b: number[], c:
 export function buildTurretRingWellGeometry(seat: TurretRingSeat, rim: ArrayLike<number> | null,
   sides = turretRingSides(false)): THREE.BufferGeometry {
   const out: number[] = [], normals: number[] = [];
-  const { lo, hi } = rimBand(seat, sides, rim, HULK_BAND_PAD_M);
+  // (on every bearing past the lip: the exterior pass counts on it to close the rim from the side)
+  const { lo, hi } = rimBand(seat, sides, rim, HULK_BAND_PAD_M, LIP_M + TURRET_RING_LIFT_M);
   const top = seat.deckY + TURRET_RING_LIFT_M;
   const lip = seat.deckY - LIP_M, floor = seat.deckY - seat.depth;
   const gearR = wellWallRadius(seat);
