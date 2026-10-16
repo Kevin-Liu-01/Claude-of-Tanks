@@ -170,8 +170,9 @@ for(const mapId of MAP_IDS) {
       assert.equal(body.y1,deck.deckY,'the deck part\'s top is the deck plane');assert.ok(body.y0<deck.deckY-0.9,'the deck part is a standable floor (round 63: from the crown line)');
       assert.ok(body.hw===deck.halfWidth&&body.hl>deck.halfLength,'the deck spans the road and its abutments');
       // (Lane C #27, 2026-10-15) Suzhou Creek's girder abutments carry their granite 0.3 m past the deck each side: an
-      // abutment covers the road's width at least
-      assert.ok(parts.slice(1,3).every(part=>part.y0<deck.bedY&&part.hw>=deck.halfWidth),'the abutments are footed below the bed');
+      // abutment covers the road's width, and no more than a granite course past it (the arched builder's are the deck's)
+      assert.ok(parts.slice(1,3).every(part=>part.y0<deck.bedY&&part.hw>=deck.halfWidth&&part.hw<=deck.halfWidth+0.3+1e-9),
+        'the abutments are footed below the bed and span the road (at most the girder abutments\' 0.3 m of granite past it)');
       for(const record of records){
         assert.equal(Math.min(...parts.map(part=>part.y0)),record.min[1]);assert.equal(Math.max(...parts.map(part=>part.y1)),record.max[1]);
       }
@@ -183,11 +184,19 @@ for(const mapId of MAP_IDS) {
     // P5 (the map-vehicles lane): Cinder Junction's standing rolling stock carries its own solid records
     const stock=candidate.obstacles.filter(record=>record.kind==='rolling-stock');
     if(mapId!=='railyard') assert.equal(stock.length,0,`${mapId}: no rolling stock`);
-    const solids=coal.length+mills.length+bridges.length+screens.length+stock.length;
+    // (Lane C PRP-02b, 2026-10-15) the yards' small props that break when rammed or shot (buffer stops, cable drums,
+    // sleeper stacks: maps/smallPropBreak.ts) publish their convex records in both sinks
+    const breakable=record=>String(record.kind).startsWith('prop-');
+    const small=candidate.obstacles.filter(breakable);
+    assert.equal(candidate.colliders.filter(breakable).length,small.length);
+    // (HORIZONS, Skybridge's reservoir dam: its parapet runs carry their own records)
+    const dam=candidate.obstacles.filter(record=>record.kind==='dam-parapet');
+    if(mapId!=='skybridge') assert.equal(dam.length,0,`${mapId}: no dam parapet`);
+    const solids=coal.length+mills.length+bridges.length+screens.length+stock.length+small.length+dam.length;
     assert.equal(candidate.obstacles.length,solids);assert.equal(candidate.colliders.length,solids);
     if(railMaps.includes(mapId)) assert.ok(coal.length>0,`${mapId}: retain recognizable coal stockpiles`);
     else assert.equal(coal.length,0,`${mapId}: all26 other map outputs unchanged`);
-    const soft=record=>record.kind!=='mill-house'&&record.kind!=='bridge'&&record.kind!=='rolling-stock'&&!street(record);
+    const soft=record=>record.kind!=='mill-house'&&record.kind!=='bridge'&&record.kind!=='rolling-stock'&&!street(record)&&!breakable(record)&&record.kind!=='dam-parapet';
     const heaps=candidate.obstacles.filter(soft), heapColliders=candidate.colliders.filter(soft);
     const strip=coalStrip(field);
     coal.forEach((geometry,index)=>validatePile(geometry,heaps[index],heapColliders[index],field,strip));
