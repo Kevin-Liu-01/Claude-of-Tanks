@@ -1,97 +1,96 @@
 // src/world/landmarks/index.ts — the set-piece builders by kind (the landmarks lane, 2026-10-05). A map authors its set
 // pieces in `props.landmarks` (types.ts LandmarkPlacement); plan.ts holds each kind's parameters and footprint,
 // compose.ts places them in the props build. Every builder draws the piece in its own frame from its own streams.
-import { nodeKitRequire } from '../kitRegistryNode.ts';
+import { preloadEveryKit } from '../kitRegistryNode.ts';
 import { resolveLandmarkParams } from './plan.ts';
 import type { LandmarkBuilder, LandmarkKind, LandmarkParams, LandmarkPlacement } from './types.ts';
 
 // ---- THE LANDMARK REGISTRY (2026-10-15, the perf lane) -------------------------------------------------------------
-// Every set-piece kind is ONE ROW of LANDMARK_TABLE: its kind, its module and the module's loader (the builder is the
-// module's export of the kind's own name). A new set piece (LOOKS, Lane C, MAPS) is one more row here; nothing else
-// imports a builder module. A row may also name what its piece needs beside its own module:
+// Every set-piece kind is ONE ROW of LANDMARK_TABLE: its kind and its module's loader (the builder is the module's
+// export of the kind's own name). A new set piece (LOOKS, Lane C, MAPS) is one more row here; nothing else loads a
+// builder module on demand. A row may also name what its piece needs beside its own module:
 //   spawns — the pieces it places after itself (compose.ts: a built piece's `children`, a square's centre piece);
 //   styles — the architecture styles its builder resolves (maps/regional/index.ts: a house row's kit).
-// - The browser loads a map's builders when its world build starts (map.ts createMapAsync: loadLandmarkBuilders with
-//   landmarkKitsOf), so a battle entry downloads and compiles the set pieces its map places, not all of them.
+// - The browser loads a map's builders when its world build starts (worldKits.ts loadMapKits, from map.ts
+//   createMapAsync), so a battle entry downloads and compiles the set pieces its map places, not all of them.
 // - Node (the headless collision builds, the server's world, the receipts, the bake tools) loads every builder with this
-//   module, synchronously and in this table's order (kitRegistryNode.ts), exactly as the static imports did.
+//   module, in this table's order, before any module importing it runs (kitRegistryNode.ts), as the static imports did.
 // A kind of the table read before it is loaded (the browser only) fails closed with its kind: never a silent skip.
 type LandmarkModule = Record<string, unknown>;
 interface LandmarkRow {
-  readonly file: string;
   readonly load: () => Promise<LandmarkModule>;
   readonly spawns?: (params: LandmarkParams) => ReadonlyArray<Pick<LandmarkPlacement, 'kind'> & { params?: LandmarkPlacement['params'] }>;
   readonly styles?: (params: LandmarkParams) => ReadonlyArray<string | null | undefined>;
 }
 const LANDMARK_TABLE: Readonly<Record<string, LandmarkRow>> = Object.freeze({
-  aircraftWreck: { file: './wrecks.ts', load: () => import('./wrecks.ts') },
-  airstrip: { file: './stations.ts', load: () => import('./stations.ts') },
-  baileyBridge: { file: './bridges.ts', load: () => import('./bridges.ts') },
-  bandstand: { file: './parks.ts', load: () => import('./parks.ts') },
-  belfry: { file: './towers.ts', load: () => import('./towers.ts') },
-  bengalTemple: { file: './temples.ts', load: () => import('./temples.ts') },
-  campanile: { file: './towers.ts', load: () => import('./towers.ts') },
-  church: { file: './civic.ts', load: () => import('./civic.ts') },
-  churchyard: { file: './parks.ts', load: () => import('./parks.ts') },
-  colonialBungalow: { file: './colonial.ts', load: () => import('./colonial.ts') },
-  columnMonument: { file: './monuments.ts', load: () => import('./monuments.ts') },
-  conveyor: { file: './mineWorks.ts', load: () => import('./mineWorks.ts') },
-  drumCache: { file: './stations.ts', load: () => import('./stations.ts') },
-  equestrianStatue: { file: './monuments.ts', load: () => import('./monuments.ts') },
-  fireLookout: { file: './towers.ts', load: () => import('./towers.ts') },
-  floodMast: { file: './airfieldWorks.ts', load: () => import('./airfieldWorks.ts') },
-  fuelTankFarm: { file: './tankFarm.ts', load: () => import('./tankFarm.ts') },
-  fishRack: { file: './fjordWorks.ts', load: () => import('./fjordWorks.ts') },
-  fountain: { file: './parks.ts', load: () => import('./parks.ts') },
-  garden: { file: './parks.ts', load: () => import('./parks.ts') },
-  grainElevator: { file: './grainElevator.ts', load: () => import('./grainElevator.ts') },
-  guyedMast: { file: './stations.ts', load: () => import('./stations.ts') },
-  headframe: { file: './mineWorks.ts', load: () => import('./mineWorks.ts') },
-  jamesway: { file: './stations.ts', load: () => import('./stations.ts') },
-  granary: { file: './civic.ts', load: () => import('./civic.ts') },
-  houseRow: { file: './village.ts', load: () => import('./village.ts'),
+  aircraftWreck: { load: () => import('./wrecks.ts') },
+  airstrip: { load: () => import('./stations.ts') },
+  baileyBridge: { load: () => import('./bridges.ts') },
+  bandstand: { load: () => import('./parks.ts') },
+  belfry: { load: () => import('./towers.ts') },
+  bengalTemple: { load: () => import('./temples.ts') },
+  campanile: { load: () => import('./towers.ts') },
+  church: { load: () => import('./civic.ts') },
+  churchyard: { load: () => import('./parks.ts') },
+  colonialBungalow: { load: () => import('./colonial.ts') },
+  columnMonument: { load: () => import('./monuments.ts') },
+  conveyor: { load: () => import('./mineWorks.ts') },
+  drumCache: { load: () => import('./stations.ts') },
+  equestrianStatue: { load: () => import('./monuments.ts') },
+  fireLookout: { load: () => import('./towers.ts') },
+  floodMast: { load: () => import('./airfieldWorks.ts') },
+  fuelTankFarm: { load: () => import('./tankFarm.ts') },
+  fishRack: { load: () => import('./fjordWorks.ts') },
+  fountain: { load: () => import('./parks.ts') },
+  garden: { load: () => import('./parks.ts') },
+  grainElevator: { load: () => import('./grainElevator.ts') },
+  guyedMast: { load: () => import('./stations.ts') },
+  headframe: { load: () => import('./mineWorks.ts') },
+  jamesway: { load: () => import('./stations.ts') },
+  granary: { load: () => import('./civic.ts') },
+  houseRow: { load: () => import('./village.ts'),
     styles: (p) => [String(p.kit)] },
-  hayRack: { file: './fjordWorks.ts', load: () => import('./fjordWorks.ts') },
-  khan: { file: './village.ts', load: () => import('./village.ts') },
-  kolkhozArch: { file: './gates.ts', load: () => import('./gates.ts') },
-  lavoir: { file: './village.ts', load: () => import('./village.ts') },
-  liftBridge: { file: './bridges.ts', load: () => import('./bridges.ts') },
-  harbour: { file: './harbour.ts', load: () => import('./harbour.ts') },
-  lighthouse: { file: './harbour.ts', load: () => import('./harbour.ts') },
-  marketHall: { file: './civic.ts', load: () => import('./civic.ts') },
-  memorialWall: { file: './monuments.ts', load: () => import('./monuments.ts') },
-  moduleTrain: { file: './stations.ts', load: () => import('./stations.ts') },
-  mole: { file: './harbour.ts', load: () => import('./harbour.ts') },
-  obelisk: { file: './monuments.ts', load: () => import('./monuments.ts') },
-  oreBin: { file: './mineWorks.ts', load: () => import('./mineWorks.ts') },
-  oreCars: { file: './mining.ts', load: () => import('./mining.ts') },
-  parkGate: { file: './parks.ts', load: () => import('./parks.ts') },
-  outfall: { file: './parks.ts', load: () => import('./parks.ts') },
-  parkSquare: { file: './parks.ts', load: () => import('./parks.ts'),
+  hayRack: { load: () => import('./fjordWorks.ts') },
+  khan: { load: () => import('./village.ts') },
+  kolkhozArch: { load: () => import('./gates.ts') },
+  lavoir: { load: () => import('./village.ts') },
+  liftBridge: { load: () => import('./bridges.ts') },
+  harbour: { load: () => import('./harbour.ts') },
+  lighthouse: { load: () => import('./harbour.ts') },
+  marketHall: { load: () => import('./civic.ts') },
+  memorialWall: { load: () => import('./monuments.ts') },
+  moduleTrain: { load: () => import('./stations.ts') },
+  mole: { load: () => import('./harbour.ts') },
+  obelisk: { load: () => import('./monuments.ts') },
+  oreBin: { load: () => import('./mineWorks.ts') },
+  oreCars: { load: () => import('./mining.ts') },
+  parkGate: { load: () => import('./parks.ts') },
+  outfall: { load: () => import('./parks.ts') },
+  parkSquare: { load: () => import('./parks.ts'),
     spawns: (p) => (p.centre === 'none' || p.centre === '' ? [] : [{ kind: String(p.centre) as LandmarkKind }]) },
-  path: { file: './parks.ts', load: () => import('./parks.ts') },
-  piazza: { file: './parks.ts', load: () => import('./parks.ts') },
-  quay: { file: './harbour.ts', load: () => import('./harbour.ts') },
-  radomeTower: { file: './stations.ts', load: () => import('./stations.ts') },
-  statue: { file: './monuments.ts', load: () => import('./monuments.ts') },
-  slipway: { file: './harbour.ts', load: () => import('./harbour.ts') },
-  snowFence: { file: './stations.ts', load: () => import('./stations.ts') },
-  stairway: { file: './parks.ts', load: () => import('./parks.ts') },
-  stabbur: { file: './fjordWorks.ts', load: () => import('./fjordWorks.ts') },
-  stationHall: { file: './civic.ts', load: () => import('./civic.ts') },
-  stoneArchBridge: { file: './bridges.ts', load: () => import('./bridges.ts') },
-  tennisCourt: { file: './colonial.ts', load: () => import('./colonial.ts') },
-  torii: { file: './gates.ts', load: () => import('./gates.ts') },
-  townGate: { file: './gates.ts', load: () => import('./gates.ts') },
-  townHall: { file: './civic.ts', load: () => import('./civic.ts') },
-  trestleBridge: { file: './bridges.ts', load: () => import('./bridges.ts') },
-  triumphalArch: { file: './gates.ts', load: () => import('./gates.ts') },
-  troposcatter: { file: './stations.ts', load: () => import('./stations.ts') },
-  trussBridge: { file: './bridges.ts', load: () => import('./bridges.ts') },
-  viaduct: { file: './bridges.ts', load: () => import('./bridges.ts') },
-  waterTower: { file: './waterWorks.ts', load: () => import('./waterWorks.ts') },
-  valveTower: { file: './waterWorks.ts', load: () => import('./waterWorks.ts') },
-  windmill: { file: './towers.ts', load: () => import('./towers.ts') },
+  path: { load: () => import('./parks.ts') },
+  piazza: { load: () => import('./parks.ts') },
+  quay: { load: () => import('./harbour.ts') },
+  radomeTower: { load: () => import('./stations.ts') },
+  statue: { load: () => import('./monuments.ts') },
+  slipway: { load: () => import('./harbour.ts') },
+  snowFence: { load: () => import('./stations.ts') },
+  stairway: { load: () => import('./parks.ts') },
+  stabbur: { load: () => import('./fjordWorks.ts') },
+  stationHall: { load: () => import('./civic.ts') },
+  stoneArchBridge: { load: () => import('./bridges.ts') },
+  tennisCourt: { load: () => import('./colonial.ts') },
+  torii: { load: () => import('./gates.ts') },
+  townGate: { load: () => import('./gates.ts') },
+  townHall: { load: () => import('./civic.ts') },
+  trestleBridge: { load: () => import('./bridges.ts') },
+  triumphalArch: { load: () => import('./gates.ts') },
+  troposcatter: { load: () => import('./stations.ts') },
+  trussBridge: { load: () => import('./bridges.ts') },
+  viaduct: { load: () => import('./bridges.ts') },
+  waterTower: { load: () => import('./waterWorks.ts') },
+  valveTower: { load: () => import('./waterWorks.ts') },
+  windmill: { load: () => import('./towers.ts') },
 });
 /** The kinds compose.ts places itself whenever a map has set pieces (a building's worn approach paths). */
 const COMPOSED_KINDS: readonly string[] = ['path'];
@@ -144,8 +143,5 @@ export async function loadLandmarkBuilders(kinds: Iterable<string>): Promise<voi
   wanted.forEach((kind, k) => admitBuilders(kind, modules[k]));
 }
 
-// Node: every builder now, synchronously, in the table's order (kitRegistryNode.ts)
-{
-  const load = nodeKitRequire(import.meta.url);
-  if (load) for (const kind of Object.keys(LANDMARK_TABLE)) admitBuilders(kind, load(LANDMARK_TABLE[kind].file));
-}
+// Node: every builder now, one module after another in the table's order (kitRegistryNode.ts)
+if (preloadEveryKit()) for (const kind of Object.keys(LANDMARK_TABLE)) admitBuilders(kind, await LANDMARK_TABLE[kind].load());
