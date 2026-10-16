@@ -403,11 +403,12 @@ body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-relation=friendly] .rel
    main does) and the alert in 8 px type, main's smallest. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices] .cot-sixth{left:var(--hud-notice-x);top:var(--hud-notice-top);width:var(--hud-notice-w);max-width:var(--hud-notice-w);transform:translate(-50%,-6px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices] .cot-sixth.on{transform:translate(-50%,0)}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices] .cot-alert{left:var(--hud-alert-x);top:var(--hud-alert-top);bottom:auto;width:max-content;max-width:var(--hud-alert-w);white-space:normal;transform:translate(-50%,7px)}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices] .cot-alert.show{transform:translate(-50%,0)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices] .cot-alert{left:var(--hud-alert-x);top:var(--hud-alert-top);bottom:auto;width:max-content;max-width:var(--hud-alert-w);white-space:normal;translate:-50% 0;transform:translate(0,7px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices] .cot-alert.show{transform:translate(0,0)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices] .cot-alert-copy{display:block;overflow:visible;text-overflow:clip;white-space:normal}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices][data-hud-notices-flank] .cot-alert{transform:translate(0,7px)}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices][data-hud-notices-flank] .cot-alert.show{transform:translate(0,0)}
+/* The alert's centring is its own translate, never transitioned: a plan that turns a flanking alert into a centred one
+   (round 6: the drone joining the kit mid-notice) moves it at once instead of sliding it across the aim buttons. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices][data-hud-notices-flank] .cot-alert{translate:0 0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices='compact'] .cot-sixth{grid-template-columns:20px minmax(0,1fr);gap:6px;min-height:32px;padding:4px 10px;font-size:9px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices='compact'] .cot-sixth .sig svg{width:20px;height:20px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-hud-notices='compact'] .cot-sixth .lb{font-size:10px;letter-spacing:.12em}

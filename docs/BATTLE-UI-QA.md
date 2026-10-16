@@ -566,6 +566,42 @@ rendered receipt:
 Round 5's trade (three tiles and More on 390×844, 360×640 and 667×375, where main's
 strip showed four, four and three) is gone: see *Round 6*.
 
+**Round 6** (the round-5 verifier, against main 5ab143d57):
+
+- *Captions*: on 360×640 (31 of 53 states, en and zh) and on 390×844 in a kill burst
+  with the network chip, the detection landed on the AUTO AIM and SCOPE captions,
+  which hang 17 px under their buttons (`touchControls.ts` `.lb`); on 320×568 the
+  dock's tiles sat on them in every state. Main never puts anything there. Each
+  round button is now one control with its caption (`battleHudLayout.ts`: the band
+  at least as wide as the button, so LOCKED or RELEASE FIRES moves nothing); the
+  receipt overlap-checks every visible caption like any control.
+- *Aim hint*: on 390×844 the dock's row hid 82% of "Swipe to aim · LANDSCAPE
+  RECOMMENDED" (main 0%). The visible hint is a dock-only obstacle; the receipt fails
+  any docked tile on it.
+- *Controls on screen*: main's strip scrolled under a hidden scrollbar, showing 4
+  tiles whole on 390×844 and 360×640, 3 on 667×375, 2 on 320×568 and 1 on 568×256 and
+  568×320; round 5's dock showed 3, 3, 3, 1, 0 and 1. What stood between those phones
+  and a block for every control: the tips of the scope's cross arms at full bloom
+  (they reach 1.55 r + 3 px, 0.55 r past the ring), the 180 px gun-limit warning's
+  place on 390×844, and the plan's order (the notices' clearance before the dock's
+  controls). Now the dock's keep-out leaves the arms to the live yield (`drawScope`
+  reports them; a tile under them dims, as under a lagging gun's ring), a portrait
+  phone's warning is 140 px ("GUN TRAVEL LIMIT" still one line, en and zh), and the
+  plan weighs the nearest dock of one, two and three rows and keeps the one showing
+  the most controls before the notices' clearance. The receipt pins main's whole
+  strip tiles per screen (`battle-hud-layout.main-feeds.json` `tiles`) and fails a
+  state that shows fewer.
+- *Notice ink*: where the dock's room was the notices' clear place (360×640, 320×568,
+  568×320) the notices clear less than before, and on 390×844 in a burst with the
+  chip the cheapest place clear of the battle sight put the detection on the scope's
+  zoom plate (more ink than main's). Below clearance 3 a place now costs what it
+  covers of the reticle, and a dock in the notices' lane is taken only where every
+  other leaves the notices on the crosshair (568×256). The receipt reads the reticle's
+  ink from its own canvas (both sights, at rest and at full bloom, magazine and
+  SWITCHING) and fails any notice or countdown covering more of it, or of the
+  resting crosshair, than main's box in the same state (main's boxes pinned per
+  state).
+
 Receipts: `touchActionDock.selftest.mjs` plans 1–7 controls on every touch case of
 the browser receipt with and without an objective (the layout's own
 `planTouchCentre` call, 154 placements), and checks the rule tile by tile (size,

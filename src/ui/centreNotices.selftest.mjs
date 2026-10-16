@@ -339,8 +339,9 @@ assert.deepEqual(alertReserve(390, 28), { w: 260, h: 43 }, 'unmeasured: one line
 for (const pattern of [
   /\[data-hud-notices\] \.cot-sixth\{left:var\(--hud-notice-x\);top:var\(--hud-notice-top\);width:var\(--hud-notice-w\);max-width:var\(--hud-notice-w\);transform:translate\(-50%,-6px\)\}/,
   /\[data-hud-notices\] \.cot-sixth\.on\{transform:translate\(-50%,0\)\}/,
-  /\[data-hud-notices\] \.cot-alert\{left:var\(--hud-alert-x\);top:var\(--hud-alert-top\);bottom:auto;width:max-content;max-width:var\(--hud-alert-w\);/,
-  /\[data-hud-notices\]\[data-hud-notices-flank\] \.cot-alert\.show\{transform:translate\(0,0\)\}/,
+  /\[data-hud-notices\] \.cot-alert\{left:var\(--hud-alert-x\);top:var\(--hud-alert-top\);bottom:auto;width:max-content;max-width:var\(--hud-alert-w\);white-space:normal;translate:-50% 0;transform:translate\(0,7px\)\}/,
+  /\[data-hud-notices\] \.cot-alert\.show\{transform:translate\(0,0\)\}/,
+  /\[data-hud-notices\]\[data-hud-notices-flank\] \.cot-alert\{translate:0 0\}/,
   /\[data-hud-notices\] \.cot-alert-copy\{display:block;overflow:visible;text-overflow:clip;white-space:normal\}/,
   /@media \(max-height:550px\)\{body\[data-cot-battle-layout\]\[data-cot-width\]\[data-cot-height\]\.cot-touch-layout\[data-hud-notices='compact'\] \.cot-sixth \.sub\{display:none\}\}/,
   /\[data-hud-notices='compact'\] \.cot-alert\{box-sizing:border-box;gap:6px;min-height:28px;padding:4px 10px;font-size:8px;line-height:1\.2\}/,

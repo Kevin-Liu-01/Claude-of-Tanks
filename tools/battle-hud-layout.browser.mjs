@@ -218,7 +218,10 @@ function dockIssues(){
   const cx=innerWidth/2,cy=innerHeight/2,ring=Math.max(32,Math.ceil(.15*Math.min(innerWidth,innerHeight)));
   const distance=r=>Math.hypot(Math.max(r.left-cx,0,cx-r.right),Math.max(r.top-cy,0,cy-r.bottom));
   // The dock's keep-out: the reticle's footprint less the scope's arm tips (yielded live), and the warning's place.
-  const footprint=window.__HUD_LAYOUT.touchAimKeepOut(innerWidth,innerHeight,document.querySelector('.cot-minimap')?.getBoundingClientRect().bottom??114);
+  // The minimap's bottom as battleHudLayout.ts reads it (a hidden minimap reads as 114).
+  const minimap=document.querySelector('.cot-minimap');
+  const minimapBottom=minimap&&minimap.getClientRects().length&&getComputedStyle(minimap).visibility!=='hidden'?minimap.getBoundingClientRect().bottom:114;
+  const footprint=window.__HUD_LAYOUT.touchAimKeepOut(innerWidth,innerHeight,minimapBottom);
   const keepGap=(r,k)=>'r' in k?Math.hypot(Math.max(r.left-k.x,0,k.x-r.right),Math.max(r.top-k.y,0,k.y-r.bottom))-k.r
     :Math.hypot(Math.max(r.left-k.x-k.w,0,k.x-r.right),Math.max(r.top-k.y-k.h,0,k.y-r.bottom));
   const crosses=(a,b)=>Math.min(a.right,b.right)-Math.max(a.left,b.left)>.5&&Math.min(a.bottom,b.bottom)-Math.max(a.top,b.top)>.5;
@@ -942,8 +945,9 @@ for(const row of feedTable){
 }
 console.log(`feeds against main (least margin over ${feedTable.length} states; kill rows / ring-clear rows / toasts): ${Object.entries(margins).map(([n,m])=>`${n} ${m.k}/${m.r}/${m.t}`).join(', ')}`);
 const tileMargins={};
-for(const row of tileTable){const m=tileMargins[row.name]??={least:Infinity,main:row.main};m.least=Math.min(m.least,row.shown);}
-console.log(`controls shown whole against main's strip (fewest over ${tileTable.length} states): ${Object.entries(tileMargins).map(([n,m])=>`${n} ${m.least} (main ${m.main})`).join(', ')}`);
+for(const row of tileTable){const m=tileMargins[row.name]??={margin:Infinity,fewest:Infinity,main:row.main};
+  m.margin=Math.min(m.margin,row.shown-Math.min(row.laid,row.main));m.fewest=Math.min(m.fewest,row.shown);}
+console.log(`controls shown whole against main's strip (least margin over ${tileTable.length} states, fewest shown, main's whole tiles): ${Object.entries(tileMargins).map(([n,m])=>`${n} +${m.margin} (${m.fewest}; main ${m.main})`).join(', ')}`);
 const inkMargins={};
 for(const row of inkTable){const m=inkMargins[row.name]??={worst:-Infinity,n:0};m.worst=Math.max(m.worst,row.ink-row.main);m.n++;}
 console.log(`notice ink against main's (largest excess over ${inkTable.length} notices, px; <= 0 holds): ${Object.entries(inkMargins).map(([n,m])=>`${n} ${m.worst}`).join(', ')}`);
