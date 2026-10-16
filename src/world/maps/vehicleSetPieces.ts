@@ -412,11 +412,27 @@ const STZ_GREY = material('paint', linearHex(0x4c5044), 0.62, 0.15, 0, 1);
  * The STZ-3 (STZ-NATI) crawler tractor of the kolkhozes, 1937-41: the engine under a narrow bonnet behind its radiator,
  * the starting crank, the exhaust stack, the driver's pan seat over the fuel tank with the steering levers before it,
  * the mudguards over the tracks, each track on four road wheels between the idler ahead and the sprocket astern.
+ * (PRP-05, Lane C 2026-10-15) Wrecked, its own wreck: the right track thrown and lying out flat beside it, the tractor
+ * down on its bare right wheels and rolled toward it, the bonnet blown off and lying on the ground on the left, the
+ * radiator knocked forward, the exhaust stack bent over, the seat gone, a lever snapped.
  */
-function stz3(mesh: VehicleMesh, coarse: boolean): void {
+function stz3(mesh: VehicleMesh, coarse: boolean, wrecked = false): void {
   const gauge = 0.715, tw = 0.39;
+  if (wrecked) {
+    // the thrown track: its belt laid out on the ground beside the right wheels, a little skewed, its grousers up (outboard:
+    // lying flat outside the body, it neither fits nor collides)
+    mesh.outboard(() => {
+      mesh.push().translate(gauge + 0.75, 0, 0.1).rotateY(0.12);
+      mesh.box(0, 0.035, 0, tw, 0.07, 3.3, BLACK_STEEL, 0);
+      if (!coarse) mesh.dressing(() => { for (let k = 0; k < 18; k++) mesh.box(0, 0.08, -1.55 + k * 0.18, tw, 0.03, 0.05, RUSTY, 0); });
+      mesh.pop();
+    });
+    // the tractor rolled toward it, down on its bare right wheels
+    mesh.push().rotateZ(-0.06).translate(0, -0.05, 0);
+  }
   for (const sx of [1, -1]) {
     const x = sx * gauge;
+    const thrown = wrecked && sx > 0;
     // the track: a belt round the sprocket (astern, high), the idler ahead and the ground run
     const path: Vec3[] = [];
     const sprocket = { z: -1.18, y: 0.47, r: 0.33 }, idler = { z: 1.15, y: 0.37, r: 0.3 };
@@ -424,11 +440,13 @@ function stz3(mesh: VehicleMesh, coarse: boolean): void {
     for (let k = 0; k <= n; k++) { const a = Math.PI / 2 + (k / n) * Math.PI; path.push([x, sprocket.y + Math.sin(a) * sprocket.r, sprocket.z + Math.cos(a) * sprocket.r]); }
     path.push([x, 0.04, -0.6], [x, 0.04, 0.6]);
     for (let k = 0; k <= n; k++) { const a = -Math.PI / 2 + (k / n) * Math.PI; path.push([x, idler.y + Math.sin(a) * idler.r, idler.z + Math.cos(a) * idler.r]); }
-    mesh.sweep(path, [[-tw / 2, -0.035], [tw / 2, -0.035], [tw / 2, 0.035], [-tw / 2, 0.035]], () => BLACK_STEEL,
-      { closedPath: true, closedSection: true, creases: [0, 1, 2, 3], up: [1, 0, 0] });
-    if (!coarse) mesh.dressing(() => {
-      for (let k = 0; k < 13; k++) mesh.box(x, 0.0, -0.95 + k * 0.17, tw, 0.03, 0.05, RUSTY, 0);
-    });
+    if (!thrown) {
+      mesh.sweep(path, [[-tw / 2, -0.035], [tw / 2, -0.035], [tw / 2, 0.035], [-tw / 2, 0.035]], () => BLACK_STEEL,
+        { closedPath: true, closedSection: true, creases: [0, 1, 2, 3], up: [1, 0, 0] });
+      if (!coarse) mesh.dressing(() => {
+        for (let k = 0; k < 13; k++) mesh.box(x, 0.0, -0.95 + k * 0.17, tw, 0.03, 0.05, RUSTY, 0);
+      });
+    }
     for (const w of [sprocket, idler]) {
       mesh.push().translate(x, w.y, w.z).scale(sx, 1, 1);
       mesh.lathe([[0.0001, -0.12], [w.r - 0.05, -0.12], [w.r - 0.05, 0.12], [0.0001, 0.12]], coarse ? 10 : 14, () => RUSTY);
@@ -445,22 +463,39 @@ function stz3(mesh: VehicleMesh, coarse: boolean): void {
   }
   // the hull: the engine and gearbox casing, the bonnet over the engine, the radiator ahead with its crank
   mesh.box(0, 0.62, 0.1, 1.0, 0.42, 2.3, BLACK_STEEL, 0.02);
-  mesh.box(0, 1.08, 0.55, 0.78, 0.52, 1.3, STZ_GREY, coarse ? 0 : 0.05);
+  if (!wrecked) mesh.box(0, 1.08, 0.55, 0.78, 0.52, 1.3, STZ_GREY, coarse ? 0 : 0.05);
+  else {
+    // the engine bare where the bonnet was, the bonnet itself blown off onto the ground on the left, upside down
+    mesh.box(0, 0.98, 0.55, 0.6, 0.32, 1.1, BLACK_STEEL, 0.02);
+    mesh.outboard(() => {
+      mesh.push().translate(-1.55, 0.2, 0.9).rotateZ(2.6).rotateY(0.5);
+      mesh.box(0, 0, 0, 0.78, 0.4, 1.3, STZ_GREY, 0);
+      mesh.pop();
+    });
+  }
+  mesh.push();
+  if (wrecked) mesh.translate(0, 0.62, 1.27).rotateX(0.32).translate(0, -0.62, -1.27);
   mesh.box(0, 1.08, 1.27, 0.86, 0.92, 0.16, STZ_GREY, coarse ? 0 : 0.03);
   if (!coarse) mesh.dressing(() => {
     for (let k = 0; k < 8; k++) mesh.box(-0.3 + k * 0.086, 1.1, 1.355, 0.02, 0.62, 0.01, DARK, 0);
   });
+  mesh.pop();
   beam(mesh, [0, 0.72, 1.36], [0, 0.72, 1.55], 0.03, 0.03, BLACK_STEEL);
   beam(mesh, [0, 0.72, 1.55], [0.12, 0.6, 1.55], 0.03, 0.03, BLACK_STEEL);
-  // the exhaust stack and the air intake
-  tubeRod(mesh, [0.22, 1.32, 0.9], [0.22, 2.15, 0.9], 0.045, BLACK_STEEL, 8);
-  tubeRod(mesh, [-0.22, 1.32, 0.95], [-0.22, 1.85, 0.95], 0.06, STZ_GREY, 8);
-  // the fuel tank, the driver's pan seat on its spring, the steering levers, the drawbar
+  // the exhaust stack (a wreck's bent over) and the air intake
+  if (!wrecked) tubeRod(mesh, [0.22, 1.32, 0.9], [0.22, 2.15, 0.9], 0.045, BLACK_STEEL, 8);
+  else { tubeRod(mesh, [0.22, 1.12, 0.9], [0.24, 1.55, 0.92], 0.045, BLACK_STEEL, 8); tubeRod(mesh, [0.24, 1.55, 0.92], [0.62, 1.72, 1.1], 0.045, BLACK_STEEL, 8); }
+  tubeRod(mesh, [-0.22, wrecked ? 1.12 : 1.32, 0.95], [-0.22, 1.85, 0.95], 0.06, STZ_GREY, 8);
+  // the fuel tank, the driver's pan seat on its spring (gone from a wreck), the steering levers, the drawbar
   mesh.box(0, 1.0, -0.75, 1.0, 0.36, 0.55, STZ_GREY, coarse ? 0 : 0.04);
   tubeRod(mesh, [0, 1.18, -0.85], [0, 1.36, -0.88], 0.03, BLACK_STEEL, 6);
-  mesh.box(0, 1.38, -0.9, 0.42, 0.06, 0.38, BLACK_STEEL, 0.02);
-  for (const sx of [1, -1]) tubeRod(mesh, [sx * 0.18, 0.9, -0.3], [sx * 0.2, 1.6, -0.5], 0.018, BLACK_STEEL, 6);
+  if (!wrecked) mesh.box(0, 1.38, -0.9, 0.42, 0.06, 0.38, BLACK_STEEL, 0.02);
+  for (const sx of [1, -1]) {
+    if (wrecked && sx > 0) tubeRod(mesh, [sx * 0.18, 0.9, -0.3], [sx * 0.42, 1.15, -0.2], 0.018, BLACK_STEEL, 6);
+    else tubeRod(mesh, [sx * 0.18, 0.9, -0.3], [sx * 0.2, 1.6, -0.5], 0.018, BLACK_STEEL, 6);
+  }
   beam(mesh, [0, 0.55, -1.2], [0, 0.55, -1.75], 0.12, 0.06, BLACK_STEEL);
+  if (wrecked) mesh.pop();
 }
 
 // ---------------------------------------------------------------------------------------------------- the An-26
@@ -581,7 +616,7 @@ export function buildSetPiece(kind: SetPieceKind, opts: { wrecked?: boolean; coa
   let wheels: { z: number; y: number; r: number }[] = [];
   if (kind === 'lrv') { lrv(mesh, coarse, !!opts.wrecked); wheels = [{ z: 1.145, y: 0.41, r: 0.41 }, { z: -1.145, y: 0.41, r: 0.41 }]; }
   else if (kind === 'k2tram') { k2tram(mesh, coarse); wheels = [7.95, 6.05, 0.95, -0.95, -6.05, -7.95].map((z) => ({ z, y: 0.35, r: 0.35 })); }
-  else if (kind === 'stz3') { stz3(mesh, coarse); wheels = [{ z: -1.18, y: 0.47, r: 0.33 }, { z: 0, y: 0.2, r: 0.5 }]; }
+  else if (kind === 'stz3') { stz3(mesh, coarse, !!opts.wrecked); wheels = [{ z: -1.18, y: 0.47, r: 0.33 }, { z: 0, y: 0.2, r: 0.5 }]; }
   else if (kind === 'an26') { an26(mesh, coarse, !!opts.wrecked); }
   else if (kind === 'bv206') bv206(mesh, coarse, 'orange', !!opts.wrecked);
   else if (kind === 'snocat') snocat(mesh, coarse, !!opts.wrecked);
