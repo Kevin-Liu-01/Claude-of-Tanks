@@ -34,7 +34,9 @@ function flight() {
   const bot = match.entityById.get('b1'), inputs = new Map(), ground = (x, z) => match.heightField.getHeightAt(x, z);
   const path = [];
   let launched = false;
-  for (let tick = 1; tick <= 60 * 90; tick++) {
+  // 180 s: on integ/226's Verdant the bot's approach to a gun solution (its launch trigger) takes about 110 s from these
+  // spawns (it took under 90 s before the 226 world); the loop ends with the flight, so the cap costs nothing when it passes
+  for (let tick = 1; tick <= 60 * 180; tick++) {
     inputs.set('h1', { throttle: 0, steer: 0, brake: true, fire: false, fireIntentSeq: null, aimLocked: false, shellSlot: 0, actionBits: 0,
       aimYaw: 0, aimPitch: 0, aimDistance: 300 });
     match.step({ dt: SIM_DT, inputs });
