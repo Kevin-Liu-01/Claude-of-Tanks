@@ -57,3 +57,43 @@ export function revolveDisc(sink: PartSink, face: Face, u: number, y: number, r:
   sink.member('structureMetal', facePoint(face, u, y, 0.06), facePoint(face, u - r * 0.45, y + r * 0.3, 0.06), 0.07, 0.02, face.out, { colour: IRON, decor: true }, 0);
   sink.member('structureMetal', facePoint(face, u, y, 0.065), facePoint(face, u + r * 0.62, y + r * 0.36, 0.065), 0.05, 0.02, face.out, { colour: IRON, decor: true }, 0);
 }
+
+/**
+ * A tower clock (the looks lane, r2 sweep 2026-10-16: revolveDisc pasted a dark disc on the wall under a white one, its
+ * hands flat bars): the white dial set in a moulded roundel of the wall's own masonry standing a hand proud of the face,
+ * the black chapter ring painted on the dial and twelve hour batons inside it, and the hands at ten past ten — each a
+ * slender bar ending in an open lozenge, as a turret clock's hands are pierced. (u, y) its centre on the face, r the dial's
+ * radius, `frame` the roundel's masonry.
+ */
+export function towerClock(sink: PartSink, face: Face, u: number, y: number, r: number, frame: RegionalBucket): void {
+  const n = 16, dial = 0.05, lip = 0.11, rim = r * 1.16;
+  const at = (a: number, rr: number, o: number): Vec3 => facePoint(face, u + Math.cos(a) * rr, y + Math.sin(a) * rr, o);
+  const iron = { colour: IRON, decor: true }, fine = { colour: IRON, decor: true, fine: true };
+  const disc: Vec3[] = [];
+  for (let i = 0; i < n; i++) {
+    const a0 = i / n * Math.PI * 2, a1 = (i + 1) / n * Math.PI * 2;
+    // the roundel: its face, its outer edge back to the wall and its inner edge down to the dial
+    sink.quad(frame, at(a0, r, lip), at(a0, rim, lip), at(a1, rim, lip), at(a1, r, lip), { decor: true });
+    sink.quad(frame, at(a0, rim, lip), at(a0, rim, 0), at(a1, rim, 0), at(a1, rim, lip), { decor: true, fine: true });
+    sink.quad(frame, at(a1, r, lip), at(a1, r, dial), at(a0, r, dial), at(a0, r, lip), { decor: true });
+    // the chapter ring
+    sink.quad('structureMetal', at(a0, r * 0.8, dial + 0.003), at(a0, r * 0.87, dial + 0.003), at(a1, r * 0.87, dial + 0.003), at(a1, r * 0.8, dial + 0.003), iron);
+    disc.push(at(a0, r, dial));
+  }
+  sink.polygon('structureMetal', disc, { colour: rgb(0xe9e4d6), decor: true });
+  const stroke = (a: Vec3, b: Vec3, w: number) => sink.member('structureMetal', a, b, w, 0.008, face.out, fine, 0);
+  for (let k = 0; k < 12; k++) {
+    const a = k / 12 * Math.PI * 2;
+    stroke(at(a, r * 0.66, dial + 0.003), at(a, r * (k % 3 === 0 ? 0.78 : 0.75), dial + 0.003), Math.min(0.035, r * 0.045));
+  }
+  // the hands: the hour hand to ten, the minute hand to two, each a bar ending in an open lozenge
+  for (const [a, len, o, w] of [[Math.PI * 5 / 6, 0.56, dial + 0.012, 0.04], [Math.PI / 6, 0.84, dial + 0.024, 0.032]] as const) {
+    const pt = (t: number, s: number): Vec3 => facePoint(face, u + Math.cos(a) * r * t - Math.sin(a) * r * s, y + Math.sin(a) * r * t + Math.cos(a) * r * s, o);
+    const l0 = len - 0.26, lm = len - 0.15, half = 0.075, bw = Math.min(w, r * 0.05) * 0.6;
+    stroke(pt(-0.1, 0), pt(l0, 0), Math.min(w, r * 0.05));
+    stroke(pt(l0, 0), pt(lm, half), bw);
+    stroke(pt(l0, 0), pt(lm, -half), bw);
+    stroke(pt(lm, half), pt(len, 0), bw);
+    stroke(pt(lm, -half), pt(len, 0), bw);
+  }
+}

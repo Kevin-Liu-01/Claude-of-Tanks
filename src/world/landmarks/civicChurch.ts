@@ -2,10 +2,10 @@
 // sweep 2026-10-16): the Orthodox village church of the black-earth governorates and the Western hall church.
 import { LocalFrame, PartSink, faceBox, facePoint, rgb, type Face, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
-import { LIMEWASH_UV, archSurround, archWindow, archedBody, archedSlab, bar, cornerPilasters, cross, dome, drum, extrude, moulding, portico, revolve, smoothRender, tentRoof, type ArchHole, type FaceName } from './kit.ts';
+import { LIMEWASH_UV, archSurround, archWindow, archedBody, archedFace, prismBody, archedSlab, bar, cornerPilasters, cross, dome, drum, extrude, moulding, portico, revolve, smoothRender, tentRoof, type ArchHole, type FaceName } from './kit.ts';
 import { ageWall } from './age.ts';
 import type { LandmarkBuildContext, LandmarkBuilder } from './types.ts';
-import { DOME_GREEN, FRAME_WHITE, GILT, GREEN_IRON, SLATE_BLUE, bell, cornice, doorLeaf, lit, revolveDisc, uvOffset } from './civicKit.ts';
+import { DOME_GREEN, FRAME_WHITE, GILT, GREEN_IRON, SLATE_BLUE, bell, cornice, doorLeaf, lit, towerClock, uvOffset } from './civicKit.ts';
 
 /** Glaze and dress every opening of a body face. */
 function dressOpenings(sink: PartSink, ctx: LandmarkBuildContext, face: Face, holes: readonly ArchHole[], reveal: number,
@@ -14,6 +14,30 @@ function dressOpenings(sink: PartSink, ctx: LandmarkBuildContext, face: Face, ho
     archWindow(sink, face, h, reveal, FRAME_WHITE, lit(ctx, litShare));
     if (surround) archSurround(sink, surround.bucket, face, h, surround.width, surround.out);
   }
+}
+
+/**
+ * A drum with its windows cut (the looks lane, r2 sweep 2026-10-16: kit.ts drum painted them as dark slots on its ring):
+ * an n-sided masonry prism with its corners where the drum's ring stood, round-headed windows through `windows` of its
+ * facets with their reveals, glazed at the back in their frames under a dressed surround, the cornice over it. Returns its
+ * top, as drum() does.
+ */
+function glazedDrum(sink: PartSink, bucket: RegionalBucket, x: number, y: number, z: number, r: number, h: number, segments: number,
+  windows: number, foot = 0): number {
+  const rIn = r * Math.cos(Math.PI / segments), facet = 2 * rIn * Math.tan(Math.PI / segments);
+  const every = Math.max(1, Math.round(segments / windows)), ww = Math.min(0.7, facet * 0.56), reveal = Math.min(0.32, r * 0.16);
+  const holes: Record<number, ArchHole[]> = {};
+  for (let k = 0; k < windows; k++) holes[(k * every) % segments] = [{ u: 0, w: ww, y0: y + h * 0.22, spring: y + h * 0.78 - ww / 2, form: 'round' }];
+  // (`foot`: the walls run on down through a sloping roof to stand on the vault under it; the floor closes the prism)
+  const faces = prismBody(sink, bucket, x, z, rIn, segments, y - foot, y + h, holes, reveal);
+  sink.polygon(bucket, faces.map((f) => facePoint(f, f.width / 2, y - foot)).reverse());
+  for (const [i, list] of Object.entries(holes)) for (const hole of list) {
+    archWindow(sink, faces[Number(i)], hole, reveal, FRAME_WHITE, false);
+    archSurround(sink, bucket, faces[Number(i)], hole, Math.min(0.12, facet * 0.1), 0.05);
+  }
+  // the cornice on the prism's corners (revolve's ring turned half a facet onto them)
+  revolve(sink, bucket, x, z, [[r, y + h], [r * 1.09, y + h], [r * 1.09, y + h + 0.22], [r * 0.98, y + h + 0.22]], segments, {}, Math.PI / segments - Math.PI / 2);
+  return y + h + 0.22;
 }
 
 /**
@@ -32,10 +56,13 @@ function bellStage(sink: PartSink, bucket: RegionalBucket, zc: number, side: num
       { ends: true, top: true, bottom: false }));
   }
   // the bells on a beam across the stage
-  sink.span('structureWood', -side / 2 + t, spring + 0.25, zc - 0.09, side / 2 - t, spring + 0.43, zc + 0.09, { colour: rgb(0x4a3b2e), decor: true });
-  bell(sink, 0, spring + 0.25, zc, Math.min(0.72, side * 0.14));
-  bell(sink, -side * 0.24, spring + 0.25, zc, Math.min(0.42, side * 0.08));
-  bell(sink, side * 0.24, spring + 0.25, zc, Math.min(0.36, side * 0.07));
+  // (the looks lane, r2 sweep: at the spring line the beam's ends stood in the side arches' openings, carried by
+  // nothing) the beam over the arches' crowns, its ends in the solid walls, the bells hung from it
+  const hang = spring + archW / 2 + 0.12;
+  sink.span('structureWood', -side / 2 + t - 0.15, hang, zc - 0.09, side / 2 - t + 0.15, hang + 0.18, zc + 0.09, { colour: rgb(0x4a3b2e), decor: true });
+  bell(sink, 0, hang - 0.16, zc, Math.min(0.72, side * 0.14));
+  bell(sink, -side * 0.24, hang - 0.16, zc, Math.min(0.42, side * 0.08));
+  bell(sink, side * 0.24, hang - 0.16, zc, Math.min(0.36, side * 0.07));
 }
 
 /** A slender spire over a small dome: the needle (шпиль) of the classicist bell towers, a gilt ball and the cross. */
@@ -82,7 +109,10 @@ function orthodoxChurch(ctx: LandmarkBuildContext): ReturnType<LandmarkBuilder> 
     back: [upper(-side), upper(side)],
     front: [upper(-side), upper(side)],
   };
-  const cubeFaces = archedBody(sink, wall, 0, (zCubeFront + zCubeBack) / 2, W, W, plinthTop, Hc, cubeHoles, 0.42);
+  // (the r2 sweep: the portico doors were leaves stood on the wall) the portals cut through the north and south faces
+  const cubePortal = (): ArchHole => ({ u: 0, w: 1.5, y0: plinthTop, spring: 2.9, form: 'round' });
+  const cubeCut: Partial<Record<FaceName, ArchHole[]>> = { ...cubeHoles, left: [...(cubeHoles.left ?? []), cubePortal()], right: [...(cubeHoles.right ?? []), cubePortal()] };
+  const cubeFaces = archedBody(sink, wall, 0, (zCubeFront + zCubeBack) / 2, W, W, plinthTop, Hc, cubeCut, 0.42);
   for (const name of ['left', 'right', 'back', 'front'] as const) dressOpenings(sink, ctx, cubeFaces[name], cubeHoles[name] ?? [], 0.42, surround, 0.25);
   cornerPilasters(sink, wall, 0, (zCubeFront + zCubeBack) / 2, W, W, plinthTop, Hc - 0.35, 0.55, 0.08);
   cornice(sink, wall, 0, (zCubeFront + zCubeBack) / 2, W, W, Hc, 1.3);
@@ -91,8 +121,9 @@ function orthodoxChurch(ctx: LandmarkBuildContext): ReturnType<LandmarkBuilder> 
     portico(sink, f, { width: Math.min(6.6, W * 0.6), depth: 2.3, height: Hc * 0.6, columns: 4, bucket: 'plaster', roofBucket: 'structureMetal',
       roofColour: GREEN_IRON });
     // the portal under the portico
-    const door: ArchHole = { u: 0, w: 1.5, y0: plinthTop, spring: 2.9, form: 'round' };
-    doorLeaf(sink, f, door, -0.02);
+    const door = cubePortal();
+    doorLeaf(sink, f, door, 0.42);
+    archSurround(sink, 'plaster', f, door, 0.2, 0.08);
   }
   // the cube's low hipped roof, the drum and the dome with its lantern
   const roofCube: RoofSpec = { kind: 'hip', pitchDeg: 17, eave: 0.45, verge: 0.45, thickness: 0.12, bucket: 'structureMetal', ridge: null };
@@ -100,7 +131,7 @@ function orthodoxChurch(ctx: LandmarkBuildContext): ReturnType<LandmarkBuilder> 
   sink.placed(0, 0, 0, (zCubeFront + zCubeBack) / 2, () => emitRoof(sink, rgCube, roofCube, GREEN_IRON));
   const zc = (zCubeFront + zCubeBack) / 2, Rd = W * 0.27;
   const drumBase = rgCube.ridgeY - 0.3;
-  const drumTop = drum(sink, wall, 0, drumBase, zc, Rd, Math.max(3, W * 0.34), 16, { windows: 8 });
+  const drumTop = glazedDrum(sink, wall, 0, drumBase, zc, Rd, Math.max(3, W * 0.34), 16, 8, Rd * Math.tan(roofCube.pitchDeg * Math.PI / 180) + 0.1);
   const domeTop = dome(sink, 'structureMetal', 0, drumTop, zc, Rd * 1.04, heads === 5 ? 'onion' : 'helm', 16, { colour: DOME_GREEN });
   const lantern = drum(sink, wall, 0, domeTop - 0.1, zc, Rd * 0.2, 1.1, 8, {});
   const headTop = dome(sink, 'structureMetal', 0, lantern, zc, Rd * 0.24, 'onion', 10, { colour: GILT });
@@ -109,28 +140,31 @@ function orthodoxChurch(ctx: LandmarkBuildContext): ReturnType<LandmarkBuilder> 
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
       const x = sx * W * 0.3, z = zc + sz * W * 0.3;
       const roofY = rgCube.topAt(x, z - zc) ?? Hc;
-      const top = drum(sink, wall, x, roofY - 0.4, z, Rd * 0.36, 1.9, 10, { windows: 4 });
+      const top = glazedDrum(sink, wall, x, roofY - 0.4, z, Rd * 0.36, 1.9, 10, 4);
       const t2 = dome(sink, 'structureMetal', x, top, z, Rd * 0.4, 'onion', 10, { colour: DOME_GREEN });
       cross(sink, 'structureMetal', x, t2 - 0.05, z, 1.2, 'orthodox', GILT);
     }
   }
   // ---- the apse: a half drum on the cube's east face under its half dome
   const apseH = Hc * 0.68;
-  sink.cylinder(wall, [0, plinthTop, zCubeBack], 'y', apseH - plinthTop, Ra, 14, {}, Ra, false, 0, Math.PI);
+  // (the r2 sweep: the apse's windows were panes on its curved face) seven facets — the half of a 14-gon — with three
+  // windows cut through the second, the middle and the sixth, glazed at the back of their reveals
+  const apseIn = Ra * Math.cos(Math.PI / 14), apseFacet = 2 * Ra * Math.sin(Math.PI / 14), apseWin = Math.min(0.9, apseFacet - 0.42);
+  for (let k = 0; k < 7; k++) {
+    const a = (k + 0.5) / 7 * Math.PI, nx = Math.cos(a), nz = -Math.sin(a);
+    const f: Face = { origin: [nx * apseIn, 0, zCubeBack + nz * apseIn], u: [nz, 0, -nx], out: [nx, 0, nz], width: apseFacet };
+    const holes: ArchHole[] = k % 2 ? [{ u: 0, w: apseWin, y0: 2.4, spring: 4.4, form: 'round' }] : [];
+    archedFace(sink, wall, f, { u0: -apseFacet / 2, u1: apseFacet / 2, y0: plinthTop, y1: apseH }, holes, 0.36);
+    for (const h of holes) {
+      archWindow(sink, f, h, 0.36, FRAME_WHITE, lit(ctx, 0.2), { bars: false });
+      archSurround(sink, 'plaster', f, h, 0.14, 0.06);
+    }
+  }
   sink.cylinder(wall, [0, apseH, zCubeBack], 'y', 0.3, Ra + 0.12, 14, {}, Ra + 0.18, true, 0, Math.PI);
   for (let k = 0; k < 6; k++) {
     const r0 = Ra + 0.24, a0 = k / 6 * Math.PI / 2, a1 = (k + 1) / 6 * Math.PI / 2;
     sink.cylinder('structureMetal', [0, apseH + 0.3 + Math.sin(a0) * Ra * 0.62, zCubeBack], 'y', (Math.sin(a1) - Math.sin(a0)) * Ra * 0.62,
       r0 * Math.cos(a0), 14, { colour: GREEN_IRON }, r0 * Math.cos(a1), k === 5, 0, Math.PI);
-  }
-  for (const j of [3, 7, 10]) {
-    // narrow windows round the apse, each on the centre of one of its fourteen facets
-    const a = (j + 0.5) / 14 * Math.PI, facet = Ra * Math.cos(Math.PI / 28) + 0.012;
-    const nx = Math.cos(-a), nz = Math.sin(-a);
-    const f: Face = { origin: [nx * facet, 0, zCubeBack + nz * facet], u: [nz, 0, -nx], out: [nx, 0, nz], width: 1 };
-    const h: ArchHole = { u: 0, w: 0.9, y0: 2.4, spring: 4.4, form: 'round' };
-    archWindow(sink, f, h, 0.0, FRAME_WHITE, lit(ctx, 0.2), { bars: false });
-    archSurround(sink, 'plaster', f, h, 0.14, 0.06);
   }
   // ---- the refectory: lower, narrower, three windows a side, a low hipped roof
   const Hr = Math.max(5.2, Hc * 0.6);
@@ -168,7 +202,7 @@ function orthodoxChurch(ctx: LandmarkBuildContext): ReturnType<LandmarkBuilder> 
   cornice(sink, wall, 0, zt, T2, T2, bs1, 1);
   // the octagon with its round windows, then the crown
   const R3 = T2 * 0.4;
-  const octTop = drum(sink, wall, 0, bs1 + 0.02, zt, R3, Math.max(2, towerTop * 0.08), 8, { windows: 4 });
+  const octTop = glazedDrum(sink, wall, 0, bs1 + 0.02, zt, R3, Math.max(2, towerTop * 0.08), 8, 4);
   if (crown === 'onion') {
     const neck = drum(sink, wall, 0, octTop, zt, R3 * 0.62, 1.1, 10, {});
     const top = dome(sink, 'structureMetal', 0, neck, zt, R3 * 0.72, 'onion', 12, { colour: DOME_GREEN });
@@ -283,7 +317,7 @@ function westernChurch(ctx: LandmarkBuildContext): ReturnType<LandmarkBuilder> {
     }
     // the clock face under the belfry
     const cy = Ht - 6.2;
-    revolveDisc(sink, f, 0, cy, 0.95);
+    towerClock(sink, f, 0, cy, 0.95, wall);
   }
   // corner buttresses on the tower
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
@@ -295,7 +329,7 @@ function westernChurch(ctx: LandmarkBuildContext): ReturnType<LandmarkBuilder> {
   if (helm) {
     // the baroque helm: a bell-shaped cap, a lantern, a small onion
     const capTop = dome(sink, 'structureMetal', 0, spireBase, zt, T * 0.58, 'onion', 12, { colour: SLATE_BLUE });
-    const lantern = drum(sink, wall, 0, capTop - 0.2, zt, T * 0.16, 1.6, 8, { windows: 4 });
+    const lantern = glazedDrum(sink, wall, 0, capTop - 0.2, zt, T * 0.16, 1.6, 8, 4);
     const top = dome(sink, 'structureMetal', 0, lantern, zt, T * 0.18, 'onion', 10, { colour: SLATE_BLUE });
     cross(sink, 'structureMetal', 0, top - 0.05, zt, 1.6, 'latin', GILT);
   } else {

@@ -5,11 +5,14 @@ import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts
 import { LIMEWASH_UV, archSurround, archWindow, archedBody, archedSlab, bar, cornerPilasters, cross, dome, drum, extrude, moulding, portico, revolve, smoothRender, tentRoof, type ArchHole, type FaceName } from './kit.ts';
 import { ageWall } from './age.ts';
 import type { LandmarkBuildContext, LandmarkBuilder } from './types.ts';
-import { FRAME_WHITE, IRON, bell, doorLeaf, lit, revolveDisc, uvOffset } from './civicKit.ts';
+import { FRAME_WHITE, IRON, bell, doorLeaf, lit, towerClock, uvOffset } from './civicKit.ts';
+import { letterText } from './lettering.ts';
 
 // ---------------------------------------------------------------------------------------------------------- the station
 
 const BRICK_RED_IRON = rgb(0x7a3b2e), CAST_IRON = rgb(0x30393a), CANOPY_WOOD = rgb(0x6e5a46), BOARD_WHITE = rgb(0xe9e5d8);
+/** The name a map's station carries on its board (Verdant's is Prokhorovka, on the Kursk–Belgorod line). */
+const STATION_NAMES: Readonly<Record<string, string>> = { verdant: 'ПРОХОРОВКА' };
 
 /**
  * The railway station (the Kursk–Kharkov–Azov line's stations of the 1870s-80s; any line's country station): a long
@@ -110,11 +113,15 @@ export const stationHall: LandmarkBuilder = (ctx) => {
   // the name board between the storeys and the clock over the door (platform face)
   const pf = cf.front;
   sink.box('structureWood', facePoint(pf, 0, H1 + 0.55, 0.05), [Wc * 0.3, 0.3, 0.05], { colour: BOARD_WHITE, decor: true }, frameOf(pf));
-  for (let k = 0; k < 10; k++) {
-    const u = -Wc * 0.26 + Wc * 0.52 * (k + 0.5) / 10;
-    sink.box('structureMetal', facePoint(pf, u, H1 + 0.55, 0.105), [0.1, 0.17, 0.005], { colour: IRON, decor: true, fine: true }, frameOf(pf));
-  }
-  revolveDisc(sink, pf, 0, H2 - 1.25, 0.5);
+  // (the looks lane, r2 sweep 2026-10-16: ten dark tiles stood for the letters) the board's moulded frame and the station's
+  // name sign-written on it (lettering.ts), the clock in its roundel over the door
+  const board: Face = { origin: facePoint(pf, 0, 0, 0.1), u: pf.u, out: pf.out, width: Wc * 0.6 };
+  const rim = { colour: CANOPY_WOOD, decor: true, fine: true } as const, bw = Wc * 0.3, by = H1 + 0.55;
+  for (const y of [by - 0.27, by + 0.27]) sink.member('structureWood', facePoint(board, -bw, y, 0), facePoint(board, bw, y, 0), 0.06, 0.03, pf.out, rim, 0);
+  for (const u of [-bw + 0.03, bw - 0.03]) sink.member('structureWood', facePoint(board, u, by - 0.24, 0), facePoint(board, u, by + 0.24, 0), 0.06, 0.03, pf.out, rim, 0);
+  const name = String(ctx.params.board ?? STATION_NAMES[ctx.mapId] ?? 'ВОКЗАЛ');
+  letterText(sink, 'structureMetal', board, name, 0, by - 0.17, { capHeight: 0.34, maxWidth: Wc * 0.5, colour: IRON, fine: true });
+  towerClock(sink, pf, 0, H2 - 1.25, 0.5, trim);
   // ---- the platform canopy on cast-iron columns, its roof falling toward the track
   if (canopyL > 0) {
     const z0 = D / 2, depth = 3.7, yIn = Hw - 0.55, yOut = yIn - 0.5, cols = Math.max(2, Math.round(canopyL / 3.8));
