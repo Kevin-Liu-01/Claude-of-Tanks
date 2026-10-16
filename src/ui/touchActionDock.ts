@@ -70,6 +70,11 @@ interface TouchDockInput {
    *  reserves it): kept clear like instruments, unless the screen leaves no room for even a lone More tile (568 x 256);
    *  then the dock may stand in them. */
   readonly lanes?: readonly TouchDockRect[];
+  /** The kill feed's and incoming-damage feed's lanes at their fullest on main (battleHudLayout.ts touchFeedLanes): kept
+   *  clear like instruments, and given up after the notices' lanes, only where not even a lone More tile fits beside
+   *  them, so the dock never costs the feeds a row main showed (verifier 2026-10-16: on 390 x 844 the dock above the
+   *  ring cut the burst from 11 kill rows and 3 incoming toasts to 3 and 1). */
+  readonly feeds?: readonly TouchDockRect[];
   /** The reticle's footprint and the gun-limit warning's place (touchAimKeepOut): neither the dock nor its More panel
    *  comes within a 2 px hairline of them, even in the panel's last resort. */
   readonly keepOut?: readonly TouchDockKeepOut[];
@@ -313,11 +318,17 @@ export function placeTouchActionDock(input: TouchDockInput): TouchDockPlacement 
   const ax = input.anchor && Number.isFinite(input.anchor.x) ? input.anchor.x : width / 2;
   const ay = input.anchor && Number.isFinite(input.anchor.y) ? input.anchor.y
     : height - EDGE_PX - Math.max(0, insets?.bottom ?? 0);
-  // Clear of the reserved lanes first, down to a lone More tile; only a screen without room even for that stands the
-  // dock in a lane (never on a control, an instrument, the reticle's footprint or the gun-limit warning's place).
+  // Clear of the reserved lanes and the feeds' lanes first, down to a lone More tile; then clear of the feeds' lanes
+  // alone; only a screen without room even for that stands the dock in a lane (never on a control, an instrument, the
+  // reticle's footprint or, in the first two tiers, the gun-limit warning's place).
   const reserved = input.lanes ?? [];
-  for (const [tier, dockLanes] of (reserved.length ? [[obstacles, soft, reserved], [obstacles, soft]] : [[obstacles, soft]]).entries()) {
-    const placed = placeTiers(input, n, dockLanes, keep, ax, ay, tier > 0);
+  const feeds = input.feeds ?? [];
+  const tiers: (readonly (readonly TouchDockRect[])[])[] = [];
+  if (reserved.length) tiers.push(feeds.length ? [obstacles, soft, reserved, feeds] : [obstacles, soft, reserved]);
+  if (feeds.length) tiers.push([obstacles, soft, feeds]);
+  tiers.push([obstacles, soft]);
+  for (const [tier, dockLanes] of tiers.entries()) {
+    const placed = placeTiers(input, n, dockLanes, keep, ax, ay, tier > 0 && reserved.length > 0);
     if (placed) return placed;
   }
   return null;

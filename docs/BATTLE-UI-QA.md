@@ -462,15 +462,19 @@ cheapest place (highest, then most central) that clears the widest of the reticl
 keep-outs any place clears (3: everything either sight draws at any bloom; 2: the
 battle sight at full bloom; 1: the crosshair core, the 64 px round the aim point and
 the magazine and countdown under it), stacked (detection over the alert) or flanking
-the reticle's column on one line, at full size or compact (the 299 px landscape
-type, 120 px wide); the countdown scaled down to 60% or as one compact 40 px line.
-The alert's box is a reserve (260 px, two lines, clamped), not its text, so nothing
-moves while notices come and go; notices are never pushed by the feeds, which end
-above the notices while one shows. `planTouchCentre` tries the notices' place
-reserved before the dock and the dock placed first, and keeps whichever leaves the
-notices and the countdown clearer of the reticle, then shows more controls, then 48
-px tiles. Keep-out each screen clears (worst state, 1–7 controls; main measured in
-the same fixture states):
+the reticle's column on one line, or split (each at its own clear place, where
+neither fits beside the feeds' rows), at full size or compact (round 5: 180, 150 or
+120 px wide, the detection keeping its second line wherever main shows it, the alert
+in 8 px type, main's smallest); the countdown scaled down to 60% or as one compact
+40 px line. The alert's box is a reserve as tall as the longest alert needs at its
+width (measured in the page's own type, never clamped), not its text, so nothing
+moves while notices come and go; notices are never pushed by the feeds, and keep off
+every row the feeds show (see *Feeds kept*, round 5). `planTouchDock` tries the
+notices' place reserved before the dock and the dock placed first, and keeps
+whichever leaves the notices and the countdown clearer of the reticle (at the feeds'
+usual fill), then shows more controls, then sits nearer the thumbs (in steps of two
+tile rows), then 48 px tiles. Keep-out each screen clears (worst state, 1–7
+controls; main measured in the same fixture states):
 
 | Viewport | Notices: branch / main | Countdown: branch / main |
 |---|---|---|
@@ -478,34 +482,73 @@ the same fixture states):
 | 390×844 (+zh) | 3 / 1 | 3 / 0 |
 | 844×390 | 3 / 0 | 3 / 0 |
 | 667×375 (+zh) | 3 / 0 | 3 / 0 |
-| 320×568 | 2 / 0 | 3 / 0 |
+| 320×568 | 1 / 0 | 3 / 0 |
 | 568×256 | 0, least covering / 0 | 0, least covering / 0 |
-| 568×320 | 1 / 0 | 2 / 0 |
+| 568×320 | 3 / 0 | 2 / 0 |
 | 844×300 | 3 / 0 | 3 / 0 |
 | 932×430 | 3 / 0 | 3 / 0 |
 | 1024×768 | 3 / 2 | 3 / 1 |
 | 768×1024 | 3 / 1 | 3 / 2 |
 
-320×568, 568×320 and 568×256 have no place left that clears more: their objective
-plate, minimap, settings trio, joystick, drive gauge and consumables leave no band
-above the ring at full bloom wide enough for even the compact notices (the solver
+320×568 and 568×256 have no place left that clears more: on 320×568 (round 5: 2
+before) the whole alert (three or four lines) and the detection's second line no
+longer fit both notices between the minimap, the ammo rail at y 215 and the ring;
+568×256's objective plate, minimap, settings trio, joystick, drive gauge and
+consumables leave no band above the ring for even the compact notices (the solver
 searches every position, size and arrangement). Mouse layouts are unchanged.
 
 Placements from the layout code for the receipt's 13 touch cases (11 sizes; Mars
-objective shown):
+objective shown; round 5, off the feeds' lanes):
 
 | Viewport | 5 controls | 6 | 7 | Where |
 |---|---|---|---|---|
-| 360×640 | 44px 3×2 | 44px 3×2 | 5 + More (2) | under the settings trio; notices compact under the minimap |
-| 390×844 (+zh) | 48px row | 48px row | 44px row | above the reticle (y 277); notices above it from y 163 |
-| 844×390 | 44px row | 44px row | 44px row | by the thumbs; notices flank the reticle's column |
-| 667×375 (+zh) | 48px 2×3 | 48px 2×3 | 5 + More (2) | left of the reticle, above the joystick |
+| 360×640 | 44px 2×2: 3 + More (2) | 3 + More (3) | 3 + More (4) | left of the reticle, under the minimap |
+| 390×844 (+zh) | 48px row: 3 + More (2) | 3 + More (3) | 3 + More (4) | under the reticle (y 572), over the second FIRE |
+| 844×390 | 44px row | 44px row | 44px row | by the thumbs |
+| 667×375 (+zh) | 48px 2×2: 3 + More (2) | 3 + More (3) | 3 + More (4) | left of the reticle, above the joystick |
 | 320×568 | 1 + More (4) | 1 + More (5) | 1 + More (6) | by the thumbs |
 | 568×256 | More (5) | More (6) | More (7) | in the notices' lane, left of the reticle |
 | 568×320 | 1 + More (4) | 1 + More (5) | 1 + More (6) | left of the reticle, by the joystick |
 | 844×300 | 48px 2×3 | 48px 2×3 | 5 + More (2) | left of the reticle |
 | 932×430 | 48px row | 48px row | 48px row | by the thumbs |
 | 1024×768, 768×1024 | 48px row | 48px row | 48px row | by the thumbs |
+
+**Feeds kept** (round 5): round 4's notices and countdown emptied the kill feed and
+the incoming-damage feed on every touch screen (a notice within 12 px of either
+column ended both feeds 8 px above it, even above the feeds' own start), long alerts
+were clamped to two lines, and on 390×844 the dock above the ring cut a burst from
+11 kill rows and 3 incoming toasts to 3 and 1. Now each feed keeps main's lane:
+`touchStripBox` restates where main's touch strip stood (above the ammo selector, or
+between the driving instruments and the aim buttons on a landscape phone; never
+wider than its five-control kit) and each feed ends where it ended on main
+(`battleFeedStack` is main's own share of the left column). The dock keeps off those
+lanes at their fullest (a separate tier in `placeTouchActionDock`, given up only
+where not even a lone More tile fits, which no receipt screen needs), the notices
+and the countdown keep off the rows the feeds show now (re-placed when a kill or a
+hit changes them; the dock never moves for them), and a box ends a feed only where
+it truly lies in that feed's column and starts below the feed's start
+(`touchFeedFloor`). Where the strip's place is free now a feed may grow past main's
+end, never into the battle sight at full bloom (`touchFeedRingFloor`), and never at
+the cost of a kill row or a toast main showed. Rows shown, worst over every state
+with five, six and seven controls, this branch (main five controls), from the
+rendered receipt:
+
+| Viewport | Burst: kills (clear of the ring) / toasts | Notifications kills | Countdown kills | Standard kills | Combined + spotted: kills / toasts | Idle kills |
+|---|---|---|---|---|---|---|
+| 390×844 (+zh) | 11 (10) / 3 vs 11 (10) / 3 | 6 (6) | 6 (4) | 6 (6) | 6 (6) / 1 (1) | 6 (6) |
+| 360×640 | 3 (3) / 0 vs 1 (1) / 0 | 1 (1) | 1 (1) | 2 (2) | 3 (1) / 0 (0) | 3 (1) |
+| 320×568 | 1 (1) / 0 vs 0 (0) / 0 | 0 (0) | 0 (0) | 2 (1) | 1 (0) / 0 (0) | 1 (0) |
+| 844×390 | 1 (1) / 1 vs 1 (1) / 1 | 2 (2) | 2 (0) | 4 (4) | 1 (1) / 1 (1) | 2 (2) |
+| 667×375 (+zh) | 1 (0) / 1 vs 1 (0) / 1 | 1 (1) | 2 (0) | 3 (3) | 1 (1) / 1 (1) | 2 (2) |
+| 568×320, 568×256, 844×300 | 0 / 0 vs 0 / 0 | 0 (0) | 0 (0) | 0 (0) | 0 (0) / 0 (0) | 0 (0) |
+| 932×430 | 3 (3) / 2 vs 3 (3) / 2 | 4 (4) | 5 (0) | 6 (6) | 3 (3) / 1 (1) | 5 (5) |
+| 1024×768 | 16 (15) / 6 vs 15 (14) / 6 | 5 (5) | 6 (2) | 6 (6) | 6 (6) / 1 (1) | 6 (6) |
+| 768×1024 | 16 (13) / 8 vs 16 (13) / 8 | 6 (6) | 6 (3) | 6 (6) | 6 (6) / 1 (1) | 6 (6) |
+
+The trade: on 390×844, 360×640 and 667×375 the dock now shows three tiles and More,
+since no five-tile spot clear of the reticle's footprint lies outside the feeds'
+lanes (390×844's whole band above the ring is the feeds' in a burst; its dock went
+under the reticle, about 295 px nearer the thumbs than round 4's).
 
 Receipts: `touchActionDock.selftest.mjs` plans 1–7 controls on every touch case of
 the browser receipt with and without an objective (the layout's own
@@ -526,7 +569,8 @@ touch-control rects and the notices' and countdown's natural boxes: measured in
 Chromium touch emulation for 360×640, 390×844, 844×390, 667×375 and 320×568 (the
 boxes for all eleven); derived from the stylesheet rules for the other six sizes.
 `tools/battle-hud-layout.browser.mjs` checks the same rule rendered, in every state
-of every touch case with five, six and seven controls (the seventh from a real kit:
+(round 5: with detection over the combined state, and the longest alerts in en and
+zh) of every touch case with five, six and seven controls (the seventh from a real kit:
 the M1A3 with the MBT-70's hydropneumatic gear shows a missile beside its special
 action, so every HUD update keeps it), measures the notices and countdown against
 the reticle's keep-outs in every state, taps every control with a touch (through
@@ -537,8 +581,14 @@ check none lies under a tile and all lie inside the footprint, puts the gun mark
 every tile (battle sight and scope at full bloom, a turretless sight, a panel tile
 behind an open More) and stages an incoming penetration from eight bearings (one
 with CRIT), reading the reticle canvas's own pixels under each tile: every tile with
-ink under it must be dimmed and the canvas must stack above the dock. Re-measure the
-fixture when a touch control moves.
+ink under it must be dimmed and the canvas must stack above the dock. In every touch
+state it compares the feeds with main's (`tools/fixtures/battle-hud-layout.main-feeds.json`,
+main 5ab143d57 with five controls: kill rows, kill rows clear of the full-bloom ring,
+incoming toasts, the detection's second line) and fails an alert whose text is cut
+(scroll size past its box, any line clamp) or set under 8 px; `--record-main=<file>
+--main-label=<commit>` against a server of main's tree records those numbers again.
+Re-measure the fixture when a touch control moves (and main's feed lanes,
+`mainFeeds`, pinned there from main 5ab143d57).
 
 ## Font delivery — 2026-10-01
 

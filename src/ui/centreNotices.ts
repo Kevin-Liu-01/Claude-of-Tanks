@@ -34,7 +34,7 @@ export interface NoticeSize { readonly w: number; readonly h: number }
 export type ReticleClearance = 0 | 1 | 2 | 3;
 
 export interface NoticeLane {
-  readonly arrangement: 'stack' | 'flank';
+  readonly arrangement: 'stack' | 'flank' | 'split';
   readonly detection: TouchDockRect;
   readonly alert: TouchDockRect;
   readonly clearance: ReticleClearance;
@@ -57,20 +57,26 @@ export interface CountdownLane extends TouchDockRect {
 }
 
 /**
- * The compact notices' boxes: detection without its second line in 9 px type, the alert in 8 px type on at most two
- * lines (the stylesheet's own 299 px landscape notices, narrowed to 120 px), and the countdown on one 40 px line.
+ * The compact notices' default boxes (the page measures its own, battleHudLayout.ts): detection in 9 px type without
+ * its second line (where main hides it too: a landscape phone), the alert in 8 px type (main's smallest) 180 px wide,
+ * where the longest alert takes two lines (verifier 2026-10-16: the old 120 px alert, clamped to two lines, cut
+ * "AMMUNITION TYPE EMPTY · SELECT ANOTHER TYPE" short where main showed it whole), and the countdown on one 40 px line.
  */
 export const COMPACT_NOTICES = Object.freeze({
-  detection: Object.freeze({ w: 120, h: 32 }), alert: Object.freeze({ w: 120, h: 28 }),
+  detection: Object.freeze({ w: 120, h: 32 }), alert: Object.freeze({ w: 180, h: 28 }),
   countdown: Object.freeze({ w: 156, h: 40 }),
 });
+/** The compact alert's widest box (main's handset-landscape alert, max-width 180 px). */
+export const COMPACT_ALERT_MAX_W = 180;
 
 /**
  * The alert's reserved box, not its current text (the lane must not move with the copy): up to 260 px wide (the screen
- * less 32), and two lines tall, its one-line height `lineBox` plus 15 px (a second line of 12 px type and less).
+ * less 32), and as tall as the longest alert in the catalogue needs at that width (the page measures it,
+ * battleHudLayout.ts naturalCentreSizes); `lineBox` plus 15 px (a second line of 12 px type and less) where nothing
+ * was measured.
  */
-export function alertReserve(width: number, lineBox: number): NoticeSize {
-  return { w: Math.min(260, width - 32), h: lineBox + 15 };
+export function alertReserve(width: number, lineBox: number, measured?: number): NoticeSize {
+  return { w: Math.min(260, width - 32), h: measured ? Math.max(lineBox, measured) : lineBox + 15 };
 }
 
 /** Gap between detection and the alert, and between a notice and an instrument, control or tile. */
@@ -83,6 +89,10 @@ const CORE_RADIUS_PX = 32;
 /** Moving a lane sideways costs this much per px against moving it down; flanking costs a fixed amount more. */
 const SHIFT_COST = 1.5;
 const FLANK_COST = 24;
+/** Split notices (each at its own place) cost both places and this much more: a stack or a flank wins where one fits. */
+const SPLIT_COST = 48;
+/** The dock's distance from the thumbs, as planTouchDock weighs it: two tile rows a step. */
+const DOCK_REACH_STEP_PX = 96;
 /** The countdown shrinks in these steps, to 60% at most; each 10% costs as much as moving 40 px. */
 const COUNTDOWN_SCALES = [1, .9, .8, .7, .6] as const;
 const COUNTDOWN_SCALE_COST = 400;
@@ -143,7 +153,7 @@ function freeX(width: number, y: number, w: number, h: number, target: number, o
   return nearestFree(blockedScratch, EDGE_PX, Math.floor(width - EDGE_PX - w), target);
 }
 
-interface Candidate { cost: number; boxes: [TouchDockRect, TouchDockRect]; arrangement: 'stack' | 'flank' }
+interface Candidate { cost: number; boxes: [TouchDockRect, TouchDockRect]; arrangement: 'stack' | 'flank' | 'split' }
 
 const insideShape = (k: TouchDockKeepOut, x: number, y: number) => 'r' in k
   ? Math.hypot(x - k.x, y - k.y) <= k.r : x >= k.x && x <= k.x + k.w && y >= k.y && y <= k.y + k.h;
@@ -223,6 +233,57 @@ function leastCoveringNotices(width: number, height: number, top: number, obstac
         y - top + SHIFT_COST * (Math.abs(dx + detection.w - cx) + Math.abs(ax - cx)) / 2 + FLANK_COST, 'flank', boxes);
     }
   }
+  // Split: the detection at its least covering place, the alert at its own off the detection.
+  const least = (size: NoticeSize, avoid: readonly TouchDockRect[]) => {
+    let pick: { r: TouchDockRect; cover: number; cost: number } | null = null;
+    for (let y = Math.ceil(top); y + size.h <= height - EDGE_PX; y += 2) {
+      for (const x of freeEdges(width, y, size.w, size.h, avoid)) {
+        const r = { x, y, w: size.w, h: size.h };
+        const cover = reticleOverlap(tiers, bound, r), cost = y - top + SHIFT_COST * Math.abs(x + size.w / 2 - cx);
+        if (!pick || cover < pick.cover || (cover === pick.cover && cost < pick.cost)) pick = { r, cover, cost };
+      }
+    }
+    return pick;
+  };
+  const d = least(detection, obstacles);
+  const a = d ? least(alert, [...obstacles, d.r]) : null;
+  if (d && a) consider(d.cover + a.cover, d.cost + a.cost + SPLIT_COST, 'split', [d.r, a.r]);
+  return best;
+}
+
+/** One box's cheapest place (highest, then most central) clear of the obstacles and the keep-out, or null; `limit`: give
+ *  up on places costing at least this much. */
+function singlePlace(width: number, height: number, top: number, size: NoticeSize, obstacles: readonly TouchDockRect[],
+  keep: readonly TouchDockKeepOut[], limit = Infinity): { x: number; y: number; cost: number } | null {
+  const cx = width / 2;
+  let best: { x: number; y: number; cost: number } | null = null;
+  for (let y = Math.ceil(top); y + size.h <= height - EDGE_PX; y++) {
+    if (y - top >= Math.min(limit, best ? best.cost : Infinity)) break;
+    const x = freeX(width, y, size.w, size.h, cx - size.w / 2, obstacles, keep);
+    if (x === null) continue;
+    const cost = y - top + SHIFT_COST * Math.abs(x + size.w / 2 - cx);
+    if (!best || cost < best.cost) best = { x, y, cost };
+  }
+  return best;
+}
+
+/** Split: each notice at its own cheapest place, the second off the first (both orders tried), where neither a stack nor
+ *  a flank fits between the feeds' rows, the dock and the reticle (a portrait phone's pockets). */
+function splitNotices(width: number, height: number, top: number, obstacles: readonly TouchDockRect[], keep: readonly TouchDockKeepOut[],
+  detection: NoticeSize, alert: NoticeSize, limit = Infinity): Candidate | null {
+  let best: Candidate | null = null;
+  for (const detectionFirst of [true, false]) {
+    const [a, b] = detectionFirst ? [detection, alert] : [alert, detection];
+    const first = singlePlace(width, height, top, a, obstacles, keep, Math.min(limit, best?.cost ?? Infinity) - SPLIT_COST);
+    if (!first) continue;
+    const firstBox = { x: first.x, y: first.y, w: a.w, h: a.h };
+    const second = singlePlace(width, height, top, b, [...obstacles, firstBox], keep,
+      Math.min(limit, best?.cost ?? Infinity) - SPLIT_COST - first.cost);
+    if (!second) continue;
+    const secondBox = { x: second.x, y: second.y, w: b.w, h: b.h };
+    const cost = first.cost + second.cost + SPLIT_COST;
+    if (!best || cost < best.cost) best = { cost, arrangement: 'split', boxes: detectionFirst ? [firstBox, secondBox] : [secondBox, firstBox] };
+  }
   return best;
 }
 
@@ -260,7 +321,8 @@ function searchNotices(width: number, height: number, top: number, obstacles: re
       best = { cost, arrangement: 'flank', boxes: [{ x: dx, y, w: detection.w, h: detection.h }, { x: ax, y, w: alert.w, h: alert.h }] };
     }
   }
-  return best;
+  const split = splitNotices(width, height, top, obstacles, keep, detection, alert, best?.cost ?? Infinity);
+  return split && (!best || split.cost < best.cost) ? split : best;
 }
 
 /**
@@ -269,25 +331,29 @@ function searchNotices(width: number, height: number, top: number, obstacles: re
  * keep-out, else compact (COMPACT_NOTICES). Where no place clears even the crosshair core (568 x 256), the compact
  * notices go where they cover the least of the reticle (clearance 0). Null only when nothing fits the screen at all.
  */
-export function placeNoticeLane({ width, height, top, obstacles, detection, alert }: {
+export function placeNoticeLane({ width, height, top, obstacles, detection, alert, compact = [COMPACT_NOTICES] }: {
   readonly width: number; readonly height: number; readonly top: number; readonly obstacles: readonly TouchDockRect[];
   readonly detection: NoticeSize; readonly alert: NoticeSize;
+  /** The compact notices' boxes as the page measures them, widest first (battleHudLayout.ts naturalCentreSizes: 180,
+   *  150 and 120 px, each as tall as its longest copy needs there); COMPACT_NOTICES by default. */
+  readonly compact?: readonly { readonly detection: NoticeSize; readonly alert: NoticeSize }[];
 }): NoticeLane | null {
   if (!(width > 0) || !(height > 0)) return null;
   const tiers = reticleTiers(width, height);
-  const compactDetection = { w: Math.min(detection.w, COMPACT_NOTICES.detection.w), h: Math.min(detection.h, COMPACT_NOTICES.detection.h) };
-  const compactAlert = { w: Math.min(alert.w, COMPACT_NOTICES.alert.w), h: Math.min(alert.h, COMPACT_NOTICES.alert.h) };
+  const options = (compact.length ? compact : [COMPACT_NOTICES]).map((o) => ({
+    detection: { w: Math.min(detection.w, o.detection.w), h: o.detection.h }, alert: { w: Math.min(alert.w, o.alert.w), h: o.alert.h } }));
+  const sizes = [{ detection, alert, compact: false }, ...options.map((o) => ({ ...o, compact: true }))];
   for (let level = 3; level >= 1; level--) {
-    for (const compact of [false, true]) {
-      const found = searchNotices(width, height, top, obstacles, tiers[level - 1],
-        compact ? compactDetection : detection, compact ? compactAlert : alert);
+    for (const size of sizes) {
+      const found = searchNotices(width, height, top, obstacles, tiers[level - 1], size.detection, size.alert);
       if (found) {
         return { arrangement: found.arrangement, detection: found.boxes[0], alert: found.boxes[1],
-          clearance: level as ReticleClearance, compact, cost: found.cost, cover: 0 };
+          clearance: level as ReticleClearance, compact: size.compact, cost: found.cost, cover: 0 };
       }
     }
   }
-  const least = leastCoveringNotices(width, height, top, obstacles, compactDetection, compactAlert);
+  const smallest = options[options.length - 1];
+  const least = leastCoveringNotices(width, height, top, obstacles, smallest.detection, smallest.alert);
   return least ? { arrangement: least.arrangement, detection: least.boxes[0], alert: least.boxes[1], clearance: 0, compact: true,
     cost: least.cost, cover: least.cover } : null;
 }
@@ -356,45 +422,77 @@ export interface TouchCentrePlan {
   readonly order: 'notices' | 'dock';
 }
 
-/**
- * The dock, the notices and the countdown together. `controls`: touch controls (never covered by anything placed
- * here); `instruments`: what the dock and notices keep clear of (the dock's soft obstacles, plus the score, objective,
- * minimap...); `drawer`: the open ammo drawer, a soft obstacle for the dock only (the player's own passing gesture);
- * `lanes`: places the dock keeps clear of besides the notices (the gun-limit warning's); `keepOut`: the dock's aim
- * keep-out (touchAimKeepOut). The notices and the countdown keep clear of the lanes too.
- */
-export function planTouchCentre({ width, height, top, count, controls, instruments, drawer = [], lanes, keepOut, anchor, insets,
-  detection, alert, countdown }: {
+/** The plan's inputs. `controls`: touch controls (never covered by anything placed here); `instruments`: what the dock
+ *  and notices keep clear of (the dock's soft obstacles, plus the score, objective, minimap...); `drawer`: the open ammo
+ *  drawer, a soft obstacle for the dock only (the player's own passing gesture); `lanes`: places the dock keeps clear of
+ *  besides the notices (the gun-limit warning's), which the notices and the countdown keep clear of too; `feeds`: the
+ *  kill feed's and incoming-damage feed's lanes at their fullest on main (battleHudLayout.ts touchFeedLanes), which the
+ *  dock keeps clear of; `reference`: the feeds' rows at their usual fill (three kill rows a side and an incoming toast,
+ *  FEED_REFERENCE), which the notices' reserved place keeps clear of; `rows`: the rows the feeds show now (the same rows
+ *  main shows), which the notices and the countdown keep clear of; `keepOut`: the dock's aim keep-out
+ *  (touchAimKeepOut); `compact`: the compact notices' boxes as the page measures them. */
+export interface TouchCentreInput {
   readonly width: number; readonly height: number; readonly top: number; readonly count: number;
   readonly controls: readonly TouchDockRect[]; readonly instruments: readonly TouchDockRect[];
   readonly drawer?: readonly TouchDockRect[]; readonly lanes: readonly TouchDockRect[];
+  readonly feeds?: readonly TouchDockRect[]; readonly reference?: readonly TouchDockRect[]; readonly rows?: readonly TouchDockRect[];
   readonly keepOut: readonly TouchDockKeepOut[];
   readonly anchor?: { readonly x: number; readonly y: number } | null;
   readonly insets?: { readonly top?: number; readonly right?: number; readonly bottom?: number; readonly left?: number } | null;
   readonly detection: NoticeSize; readonly alert: NoticeSize; readonly countdown: NoticeSize | null;
-}): TouchCentrePlan {
-  const fixed = [...controls, ...instruments, ...lanes];
+  readonly compact?: readonly { readonly detection: NoticeSize; readonly alert: NoticeSize }[];
+}
+
+/**
+ * The notices and the countdown around a placed dock and the feeds' rows (`feedRows`): never on a dock tile (unless
+ * the dock stands in their lane, 568 x 256: there they read over it), a control, an instrument, the gun-limit
+ * warning's place or a feed row, so a notice never costs the feeds a row main shows (verifier 2026-10-16: the kill and
+ * incoming-damage feeds collapsed to nothing under every notice and the countdown).
+ */
+export function placeTouchCentre(input: TouchCentreInput, dock: TouchDockPlacement | null, feedRows: readonly TouchDockRect[]):
+  { readonly notices: NoticeLane | null; readonly countdown: CountdownLane | null } {
+  const { width, height, top, controls, instruments, lanes, detection, alert, countdown, compact } = input;
+  const fixed = [...controls, ...instruments, ...lanes, ...feedRows];
+  const tiles = dock ? dock.tiles : [];
+  const notices = placeNoticeLane({ width, height, top, obstacles: dock && !dock.inLane ? [...fixed, ...tiles] : fixed, detection, alert, compact });
+  const placed = countdown ? placeCountdownLane({ width, height, top, obstacles: [...fixed, ...tiles], box: countdown }) : null;
+  return { notices, countdown: placed };
+}
+
+/**
+ * The dock, and the order it was placed in: off the feeds' fullest lanes always; either after the notices' place was
+ * reserved (for the feeds' usual fill, `reference`) or first with the notices kept off it, whichever leaves the notices
+ * and the countdown (at that fill) clearer of the reticle, then shows more controls on the dock (at 48 px rather than
+ * 44), then sits higher and nearer the thumbs. Its inputs never include the feeds' current rows, so the dock never
+ * moves while kills and hits come and go.
+ */
+export function planTouchDock(input: TouchCentreInput): { readonly order: TouchCentrePlan['order']; readonly dock: TouchDockPlacement | null } {
+  const { width, height, count, controls, instruments, drawer = [], lanes, feeds = [], reference = [], keepOut, anchor, insets } = input;
   const soft = [...instruments, ...drawer];
   const dockAt = (reserved: readonly TouchDockRect[]) => count > 0
-    ? placeTouchActionDock({ width, height, count, obstacles: controls, soft, lanes: [...lanes, ...reserved], keepOut, anchor, insets })
+    ? placeTouchActionDock({ width, height, count, obstacles: controls, soft, lanes: [...lanes, ...reserved], feeds, keepOut, anchor, insets })
     : null;
-  const finish = (order: TouchCentrePlan['order'], dock: TouchDockPlacement | null, notices: NoticeLane | null): TouchCentrePlan => {
-    const tiles = dock ? [...dock.tiles] : [];
-    const placed = countdown ? placeCountdownLane({ width, height, top, obstacles: [...fixed, ...tiles], box: countdown }) : null;
-    return { order, dock, notices, countdown: placed };
-  };
-  const first = placeNoticeLane({ width, height, top, obstacles: fixed, detection, alert });
-  const reserved = finish('notices', dockAt(first ? [first.detection, first.alert] : []), first);
+  const first = placeTouchCentre(input, null, reference).notices;
+  const reservedDock = dockAt(first ? [first.detection, first.alert] : []);
+  const reserved = { order: 'notices' as const, dock: reservedDock, ...placeTouchCentre(input, reservedDock, reference) };
   const dockFirst = dockAt([]);
-  const after = placeNoticeLane({ width, height, top, obstacles: dockFirst ? [...fixed, ...dockFirst.tiles] : fixed, detection, alert });
-  const docked = finish('dock', dockFirst, after);
+  const docked = { order: 'dock' as const, dock: dockFirst, ...placeTouchCentre(input, dockFirst, reference) };
   const ax = anchor?.x ?? width / 2, ay = anchor?.y ?? height;
+  const reach = (plan: TouchCentrePlan) => plan.dock ? Math.hypot(plan.dock.x + plan.dock.w / 2 - ax, plan.dock.y + plan.dock.h / 2 - ay) : 1e9;
+  // The dock's reach from the thumbs counts in steps of two tile rows (DOCK_REACH_STEP_PX), before its tile size and
+  // the notices' size: a reserved place that sends the dock across the screen loses to keeping it by the thumbs.
   const score = (plan: TouchCentrePlan): number[] => [
     plan.notices?.clearance ?? -1, -(plan.notices?.cover ?? 0), plan.countdown?.clearance ?? -1, -(plan.countdown?.cover ?? 0),
-    plan.dock?.shown ?? 0, plan.dock?.tile ?? 0, plan.notices?.compact === false ? 1 : 0,
-    -(plan.notices?.cost ?? 1e9) - (plan.dock ? Math.hypot(plan.dock.x + plan.dock.w / 2 - ax, plan.dock.y + plan.dock.h / 2 - ay) : 1e9),
+    plan.dock?.shown ?? 0, -Math.round(reach(plan) / DOCK_REACH_STEP_PX), plan.dock?.tile ?? 0, plan.notices?.compact === false ? 1 : 0,
+    -(plan.notices?.cost ?? 1e9) - reach(plan),
   ];
   const a = score(reserved), b = score(docked);
   for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] > b[i] ? reserved : docked;
   return reserved;
+}
+
+/** The whole plan at once (planTouchDock, then placeTouchCentre for `rows`, the reference fill by default). */
+export function planTouchCentre(input: TouchCentreInput): TouchCentrePlan {
+  const { order, dock } = planTouchDock(input);
+  return { order, dock, ...placeTouchCentre(input, dock, input.rows ?? input.reference ?? []) };
 }

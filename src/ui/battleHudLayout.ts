@@ -1,6 +1,9 @@
-import { t } from './i18n.ts';
+import { getLocale, t } from './i18n.ts';
 import { touchAimKeepOut, touchAimWarningSlot, type TouchDockPlacement, type TouchDockRect } from './touchActionDock.ts';
-import { alertReserve, planTouchCentre, type NoticeSize, type TouchCentrePlan } from './centreNotices.ts';
+import {
+  COMPACT_ALERT_MAX_W, COMPACT_NOTICES, alertReserve, placeTouchCentre as placeCentreNotices, planTouchDock, reticleTiers,
+  type NoticeSize, type TouchCentreInput, type TouchCentrePlan,
+} from './centreNotices.ts';
 import type { DockYield, DockYieldTile } from './touchDockYield.ts';
 
 /** Matches the scoreboard polygon; the objective clears each bottom corner by 8px. */
@@ -38,11 +41,105 @@ export function battleSideStack(height: number, chat: boolean, toastCount: numbe
     chatHeight: Math.max(0, available - toastHeight - gap) };
 }
 
+/** How main shares the left column between the kill feed, the incoming-damage toasts and an open chat, `space` px
+ *  tall: the kill rows, and below them (`below` px further down) the toasts and the chat (battleSideStack). */
+export function battleFeedStack(space: number, kills: number, toasts: number, chat: boolean) {
+  const leftSpace = Math.max(0, space);
+  const chatReserve = chat ? Math.min(leftSpace, Math.max(62, Math.min(140, leftSpace * .4))) : 0;
+  const damageReserve = toasts ? Math.min(116, Math.max(0, (leftSpace - chatReserve) * .45)) : 0;
+  const killRows = battleNotificationRows(leftSpace - chatReserve - damageReserve - (chat || toasts ? 8 : 0), kills);
+  const killHeight = killRows ? killRows * 29 - 3 : 0;
+  const below = killHeight ? killHeight + 8 : 0;
+  return { killRows, killHeight, below, ...battleSideStack(leftSpace - below, chat, toasts) };
+}
+
+// TOUCH FEEDS (verifier 2026-10-16). On main the touch vehicle-controls strip stood above the ammo selector (between the
+// driving instruments and the aim buttons on a landscape phone), and the kill feed and the incoming-damage feed ended
+// 8 px above it in the columns it crossed: on 390 x 844, 11 kill rows and 3 incoming toasts in a burst. The action
+// dock moved the controls away and the centre notices moved clear of the reticle, and both cost the feeds their rows
+// (every notice and the countdown emptied both feeds on every touch screen). Now the feeds keep main's lanes: the dock
+// keeps off them at their fullest (touchActionDock.ts feeds), the notices and the countdown keep off the rows the feeds
+// show (centreNotices.ts placeTouchCentre), and a box limits a feed only where it truly lies in that feed's column and
+// starts below the feed's top (touchFeedFloor). Where the strip's place is free now, a feed may grow past main's end,
+// never into the battle sight at full bloom (touchFeedRingFloor).
+const TOUCH_STRIP_BUTTON_PX = 74, TOUCH_STRIP_GAP_PX = 3, TOUCH_STRIP_HEIGHT_PX = 44;
+/** The feeds' lanes follow main's strip of at most this many controls (main's five-control kit). */
+const TOUCH_STRIP_MAX_CONTROLS = 5;
+type LayoutBox = Pick<DOMRect, 'left' | 'top' | 'right' | 'bottom' | 'width' | 'height'>;
+/** The box main's touch strip of `count` controls took (battleHudLayout.css: 74 px buttons 3 px apart, 44 px tall;
+ *  the width is main's natural scroll width plus 2, as its column tests used it). */
+export function touchStripBox(width: number, height: number, count: number, at: {
+  readonly ammo?: LayoutBox | null; readonly joy?: LayoutBox | null; readonly drive?: LayoutBox | null; readonly autoaim?: LayoutBox | null;
+  readonly dp?: LayoutBox | null; readonly map?: LayoutBox | null; readonly chrome?: LayoutBox | null;
+}): TouchDockRect | null {
+  if (!(count > 0)) return null;
+  const h = TOUCH_STRIP_HEIGHT_PX, natural = count * (TOUCH_STRIP_BUTTON_PX + TOUCH_STRIP_GAP_PX) - 1;
+  const { ammo, map, chrome } = at;
+  let room = Math.min(440, width - 24);
+  let top = (ammo?.top ?? height - 80) - h - 8;
+  let w = Math.min(room, natural);
+  let left = Math.max(12, Math.min(width - w - 12, (ammo ? ammo.left + ammo.width / 2 : width / 2) - w / 2));
+  if (height < 550 && width > height) {
+    left = Math.max(at.joy?.right || 0, at.drive?.right || 0) + 8;
+    room = Math.max(52, Math.min(440, (at.autoaim?.left || width - 12) - left - 8));
+    w = Math.min(room, natural);
+    top = (at.dp?.top || height - 44) - h - 8;
+  }
+  if (width < height && map && map.left < width / 2 && map.bottom + 8 > top) {
+    left = map.right + 8; room = Math.max(52, width - left - 12); w = Math.min(room, natural);
+  }
+  if (width < height && chrome && left + w > chrome.left && top < chrome.bottom + 8) top = chrome.bottom + 8;
+  if (width < height && ammo && top + h > ammo.top && top < ammo.bottom && left < ammo.left) {
+    room = Math.max(52, ammo.left - left - 8); w = Math.min(room, natural);
+  }
+  return { x: left, y: top, w, h };
+}
+/** The feeds' usual fill: the notices' reserved place is planned for it (centreNotices.ts planTouchDock). */
+export const FEED_REFERENCE = Object.freeze({ kills: 3, toasts: 1 });
+/** The lowest a feed in the column [x0, x1] grows to by itself: 8 px above the battle sight at full bloom (its ring and
+ *  the magazine stack under the aim point) where the column reaches it. */
+export function touchFeedRingFloor(width: number, height: number, x0: number, x1: number): number {
+  let top = Infinity;
+  for (const k of reticleTiers(width, height)[1]) {
+    if ('r' in k) {
+      const dx = Math.max(x0 - k.x, 0, k.x - x1);
+      if (dx < k.r) top = Math.min(top, k.y - Math.sqrt(k.r * k.r - dx * dx));
+    } else if (k.x < x1 && k.x + k.w > x0) top = Math.min(top, k.y);
+  }
+  return top - 8;
+}
+/** The floor `box` puts under a feed in the column [x0, x1] that starts at `top`: none unless the box truly lies in the
+ *  column (no slop); 8 px above the box where it starts below the feed's top; the top itself (no rows) where it covers
+ *  the feed's start, which the placements allow only where main showed no row there. */
+export function touchFeedFloor(box: TouchDockRect | null | undefined, x0: number, x1: number, top: number): number {
+  if (!box || !(box.x < x1 && box.x + box.w > x0) || box.y + box.h <= top) return Infinity;
+  return box.y > top ? box.y - 8 : top;
+}
+
+/** The compact notices' widths, widest first: the alert's at each (in 8 px type, main's smallest, wrapping onto as many
+ *  lines as the longest alert needs there), and the detection's where it keeps its second line ("ENEMY HAS VISUAL
+ *  CONTACT", wrapping at the narrower widths); where main hides that line the compact detection is 120 px. */
+const COMPACT_WIDTHS = [COMPACT_ALERT_MAX_W, 150, 120] as const;
+/** The compact alert's least height (battleHudLayout.css min-height). */
+const COMPACT_ALERT_MIN_H = 28;
+/** The longest alerts the HUD shows (hud.ts showAlert; their fill-ins at their widest), which the alert's box is sized for. */
+function longestAlerts(): string[] {
+  return [t('hud.alert.waveCleared', { wave: 88, seconds: 88 }), t('hud.alert.flagDroppedEnemy'), t('hud.alert.ammoTypeEmpty'),
+    t('hud.alert.atgmDeselected'), t('hud.alert.lineTaken', { line: 8, total: 8 }), t('hud.alert.ammoDepletedNext')];
+}
+
 export const REPORT_MAP_GAP = 12;
 /** A bottom-anchored report budget; notification counts never enter this policy. */
 export function battleReportDock(bottom: number, ceiling: number, compact: boolean) {
   const height = Math.min(compact ? 160 : 260, Math.max(0, bottom - ceiling));
   return { top: bottom - height, height, bottom };
+}
+
+/** The touch feeds' lanes and rows the layout owner hands the dock and the notices (touchFeedInputs). */
+interface TouchFeedInputs {
+  readonly lanes: readonly TouchDockRect[]; readonly reference: readonly TouchDockRect[]; readonly rows: readonly TouchDockRect[];
+  /** Where each feed ended on main (8 px above its strip, or its fixed floor). */
+  readonly mainLeft: number; readonly mainRight: number;
 }
 
 /** How far a touch on a docked tile may travel and still be a tap (Android's touch slop is 8 dp). */
@@ -160,10 +257,12 @@ export function installBattleHudLayout(root: HTMLElement, dockYield?: DockYield)
     }
     return bottom;
   }
-  function leftFloor(height: number, touch: boolean): number {
+  // `steady`: without the vehicle-status strip (it shows and hides with the modules' state), for the feeds' lanes the
+  // dock keeps off, which must not move while the player takes hits.
+  function leftFloor(height: number, touch: boolean, steady = false): number {
     const status = read('.cot-dp');
     return Math.min(height - 12,
-      status ? Math.min(status.top - (touch ? 8 : 36), (statusDockBottom() ?? height) - (read('.cot-vehicle-status:not([hidden])')?.height ?? 0)) : height,
+      status ? Math.min(status.top - (touch ? 8 : 36), steady ? height : (statusDockBottom() ?? height) - (read('.cot-vehicle-status:not([hidden])')?.height ?? 0)) : height,
       read('.cot-spec.show')?.top ?? height,
       touch ? read('.cot-touch.on .joy')?.top ?? height : height,
       touch ? read('.cot-touch.on .fire.alt')?.top ?? (height <= 340 ? height - 206 : height) : height,
@@ -179,6 +278,41 @@ export function installBattleHudLayout(root: HTMLElement, dockYield?: DockYield)
       map && map.left > width / 2 ? map.top - REPORT_MAP_GAP : height,
       read('.cot-spec.show')?.top ?? height,
       width < 768 ? read('.cot-drive')?.top ?? height : height);
+  }
+  // The touch feeds' lanes (TOUCH FEEDS above): where main's strip of these controls ended each feed, the lanes at
+  // their fullest from there (the dock keeps off them; their start without the gun-limit warning and their end without
+  // the vehicle-status strip, so neither moves the dock), the rows at the usual fill (the notices' reserved place keeps
+  // off them) and the rows main shows now (the notices and the countdown keep off them).
+  function touchFeedInputs(row: HTMLElement, width: number, height: number, map: DOMRect | null, ammo: DOMRect | null,
+    chrome: DOMRect | null, sideWidth: number, anchorSteady: number, anchorLeft: number, anchorRight: number,
+    content: { readonly chat: boolean; readonly toasts: number; readonly left: number; readonly right: number }): TouchFeedInputs {
+    // Main's strip for this kit, but never wider than its five-control one (the kit main's receipts measured): a bigger
+    // kit (a drone, a second missile) never costs the feeds rows they showed with five controls.
+    let count = 0;
+    for (const child of row.children) if (child !== moreTile && child.getClientRects().length) count++;
+    const strip = touchStripBox(width, height, Math.min(count, TOUCH_STRIP_MAX_CONTROLS), { ammo, joy: read('.cot-touch.on .joy'), drive: read('.cot-drive'),
+      autoaim: read('.cot-touch.on .autoaim'), dp: read('.cot-dp'), map, chrome });
+    const stripLeft = strip && strip.x < sideWidth + 12 ? strip.y - 8 : Infinity;
+    const stripRight = strip && strip.x + strip.w > width - sideWidth - 12 ? strip.y - 8 : Infinity;
+    const mainLeft = Math.min(leftFloor(height, true), stripLeft), mainRight = Math.min(rightFloor(height, width, map), stripRight);
+    const steadyLeft = Math.min(leftFloor(height, true, true), stripLeft);
+    // The left column's rows (kills, the incoming toasts under them, an open chat) as one column wide: they share one
+    // floor, so a box beside a narrower toast would still end the column above it.
+    const rowsOf = (anchor: number, floor: number, kills: number, toasts: number, chat: boolean, right: number): TouchDockRect[] => {
+      const out: TouchDockRect[] = [];
+      const share = battleFeedStack(floor - anchor, kills, toasts, chat);
+      if (share.killHeight) out.push({ x: 0, y: anchor, w: sideWidth, h: share.killHeight });
+      if (share.toastHeight) out.push({ x: 0, y: anchor + share.below, w: sideWidth, h: share.toastHeight });
+      if (chat && share.chatHeight > 0) out.push({ x: 0, y: anchor + share.below + share.chatOffset, w: sideWidth, h: share.chatHeight });
+      const rightRows = battleNotificationRows(mainRight - anchorRight, right);
+      if (rightRows) out.push({ x: width - sideWidth, y: anchorRight, w: sideWidth, h: rightRows * 29 - 3 });
+      return out;
+    };
+    const lanes: TouchDockRect[] = [];
+    if (steadyLeft > anchorSteady) lanes.push({ x: 0, y: anchorSteady, w: sideWidth, h: steadyLeft - anchorSteady });
+    if (mainRight > anchorRight) lanes.push({ x: width - sideWidth, y: anchorRight, w: sideWidth, h: mainRight - anchorRight });
+    return { lanes, reference: rowsOf(anchorSteady, steadyLeft, FEED_REFERENCE.kills, FEED_REFERENCE.toasts, false, FEED_REFERENCE.kills),
+      rows: rowsOf(anchorLeft, mainLeft, content.left, content.toasts, content.chat, content.right), mainLeft, mainRight };
   }
   // The touch centre plan's inputs (centreNotices.ts planTouchCentre, touchActionDock.ts): the touch controls nothing
   // placed here ever covers; the instruments (and the open ammo drawer) the dock never covers and the notices keep
@@ -200,6 +334,10 @@ export function installBattleHudLayout(root: HTMLElement, dockYield?: DockYield)
   // roster row, a tile's cooldown) reuses it instead of searching again.
   const dockKey: number[] = [];
   let dockInputs: number[] = [];
+  // The notices' and the countdown's own key: the dock's, plus the feeds' current rows (they follow the feeds; the dock never does).
+  const noticeKey: number[] = [];
+  let noticeInputs: number[] = [];
+  let dockPlan: ReturnType<typeof planTouchDock> | null = null;
   let centrePlan: TouchCentrePlan | null = null;
   let moreTile: HTMLButtonElement | null = null;
   // The tiles last published to the live yield (touchDockYield.ts): republished only when a tile's control, place or
@@ -257,7 +395,7 @@ export function installBattleHudLayout(root: HTMLElement, dockYield?: DockYield)
     if (node.style.getPropertyValue(property) === value) return;
     if (value) node.style.setProperty(property, value); else node.style.removeProperty(property);
   }
-  function placeTouchCentre(row: HTMLElement, width: number, height: number, top: number): TouchCentrePlan | null {
+  function placeTouchCentre(row: HTMLElement, width: number, height: number, top: number, feeds: TouchFeedInputs): TouchCentrePlan | null {
     const more = ensureMoreTile(row);
     // A control behind More stays laid out (visibility only), so it still counts here.
     const controls: HTMLElement[] = [];
@@ -304,20 +442,32 @@ export function installBattleHudLayout(root: HTMLElement, dockYield?: DockYield)
     const anchor = joy && fire ? { x: (joy.x * 2 + joy.w + fire.x * 2 + fire.w) / 4, y: (joy.y * 2 + joy.h + fire.y * 2 + fire.h) / 4 } : null;
     dockKey.length = 0;
     dockKey.push(width, height, top, controls.length, insets.top, insets.right, insets.bottom, insets.left, anchor?.x ?? -1, anchor?.y ?? -1,
-      sizes.detection.w, sizes.detection.h, sizes.alert.w, sizes.alert.h, sizes.countdown.w, sizes.countdown.h);
-    for (const list of [dockControls, dockInstruments, noticeObstacles]) {
+      sizes.detection.w, sizes.detection.h, sizes.alert.w, sizes.alert.h, sizes.countdown.w, sizes.countdown.h,
+      sizes.compact.length);
+    for (const o of sizes.compact) dockKey.push(o.detection.w, o.detection.h, o.alert.w, o.alert.h);
+    for (const list of [dockControls, dockInstruments, noticeObstacles, feeds.lanes, feeds.reference]) {
       dockKey.push(list.length);
       for (const o of list) dockKey.push(o.x, o.y, o.w, o.h);
     }
-    if (dockKey.length !== dockInputs.length || dockKey.some((value, i) => value !== dockInputs[i])) {
+    const input: TouchCentreInput = { width, height, top: top + 8, count: controls.length, controls: dockControls,
+      instruments: noticeObstacles, drawer: dockInstruments.slice(instrumentCount), lanes: [warning], feeds: feeds.lanes,
+      reference: feeds.reference, keepOut: touchAimKeepOut(width, height, minimapBottom), anchor, insets,
+      detection: sizes.detection, alert: sizes.alert, countdown: sizes.countdown, compact: sizes.compact };
+    let replaced = false;
+    if (!dockPlan || dockKey.length !== dockInputs.length || dockKey.some((value, i) => value !== dockInputs[i])) {
       dockInputs = dockKey.slice();
-      const before = centrePlan?.dock ?? null;
-      centrePlan = planTouchCentre({ width, height, top: top + 8, count: controls.length, controls: dockControls,
-        instruments: noticeObstacles, drawer: dockInstruments.slice(instrumentCount), lanes: [warning],
-        keepOut: touchAimKeepOut(width, height, minimapBottom), anchor, insets,
-        detection: sizes.detection, alert: sizes.alert, countdown: sizes.countdown });
+      const before = dockPlan?.dock ?? null;
+      dockPlan = planTouchDock(input);
+      replaced = true;
       // An instrument that changed size without moving the dock (the damage panel on a hit) keeps an open More panel.
-      if (!sameDock(before, centrePlan.dock)) setDockOpen(false);
+      if (!sameDock(before, dockPlan.dock)) setDockOpen(false);
+    }
+    noticeKey.length = 0;
+    noticeKey.push(feeds.rows.length);
+    for (const o of feeds.rows) noticeKey.push(o.x, o.y, o.w, o.h);
+    if (replaced || !centrePlan || noticeKey.length !== noticeInputs.length || noticeKey.some((value, i) => value !== noticeInputs[i])) {
+      noticeInputs = noticeKey.slice();
+      centrePlan = { order: dockPlan.order, dock: dockPlan.dock, ...placeCentreNotices(input, dockPlan.dock, feeds.rows) };
     }
     const plan = centrePlan;
     const placement = plan?.dock ?? null;
@@ -360,17 +510,68 @@ export function installBattleHudLayout(root: HTMLElement, dockYield?: DockYield)
   // compact notices and countdown are its fallback, so these are read with them off and remembered per viewport, or a
   // compact box would feed back into the next placement). The alert's box is a reserve, not its current text
   // (alertReserve), so the lane never moves with the copy.
-  let centreSizes: { width: number; height: number; detection: NoticeSize; alert: NoticeSize; countdown: NoticeSize } | null = null;
+  // The compact notices are measured too (verifier 2026-10-16): the compact detection keeps its second line wherever
+  // main shows it (every portrait screen and tablet; battleHudLayout.css hides it only where main does), and the alert's
+  // boxes, full and compact, are as tall as the longest alerts in the catalogue need at their widths, so no alert is
+  // ever cut short (the stylesheet no longer clamps it). Read with a hidden copy in the page's own styles, once per size
+  // and locale.
+  let centreSizes: { width: number; height: number; locale: string; detection: NoticeSize; alert: NoticeSize; countdown: NoticeSize;
+    compact: { detection: NoticeSize; alert: NoticeSize }[] } | null = null;
   function naturalCentreSizes(width: number, height: number): NonNullable<typeof centreSizes> {
-    if (centreSizes?.width === width && centreSizes.height === height) return centreSizes;
+    const locale = getLocale();
+    if (centreSizes?.width === width && centreSizes.height === height && centreSizes.locale === locale) return centreSizes;
     const body = document.body;
-    for (const name of ['data-hud-notices', 'data-hud-countdown']) if (body.hasAttribute(name)) body.toggleAttribute(name, false);
+    const saved = ['data-hud-notices', 'data-hud-countdown'].map((name) => [name, body.getAttribute(name)] as const);
+    for (const [name] of saved) if (body.hasAttribute(name)) body.toggleAttribute(name, false);
     const sixth = root.querySelector<HTMLElement>('.cot-sixth'), alert = root.querySelector<HTMLElement>('.cot-alert');
     const countdown = root.querySelector<HTMLElement>('.cot-prebattle');
-    centreSizes = { width, height,
-      detection: { w: sixth?.offsetWidth || Math.min(248, width - 28), h: sixth?.offsetHeight || 48 },
-      alert: alertReserve(width, alert?.offsetHeight || 38),
-      countdown: { w: countdown?.offsetWidth || Math.min(390, width - 32), h: countdown?.offsetHeight || 136 } };
+    const detection = { w: sixth?.offsetWidth || Math.min(248, width - 28), h: sixth?.offsetHeight || 48 };
+    const alertLine = alert?.offsetHeight || 38;
+    const countdownSize = { w: countdown?.offsetWidth || Math.min(390, width - 32), h: countdown?.offsetHeight || 136 };
+    const full = alertReserve(width, alertLine);
+    let alertH = 0;
+    const compact: { detection: NoticeSize; alert: NoticeSize }[] = [];
+    if (sixth && alert) {
+      // Hidden copies beside the real ones (the HUD's own box sizing applies only there).
+      const copyOf = (node: HTMLElement) => {
+        const copy = node.cloneNode(true) as HTMLElement;
+        copy.classList.remove('show', 'on');
+        copy.removeAttribute('role'); copy.removeAttribute('aria-live'); copy.setAttribute('aria-hidden', 'true');
+        copy.style.cssText = 'visibility:hidden;left:0;top:0;transform:none;transition:none;animation:none;pointer-events:none';
+        root.append(copy);
+        return copy;
+      };
+      const alertHeight = (maxW: number) => {
+        const copy = copyOf(alert);
+        copy.style.maxWidth = `${maxW}px`;
+        const text = copy.querySelector('.cot-alert-copy');
+        let h = 0;
+        for (const line of longestAlerts()) { if (text) text.textContent = line; h = Math.max(h, copy.offsetHeight || 0); }
+        copy.remove();
+        return h;
+      };
+      body.setAttribute('data-hud-notices', 'full');
+      alertH = alertHeight(full.w);
+      body.setAttribute('data-hud-notices', 'compact');
+      const copy = copyOf(sixth);
+      const sub = copy.querySelector<HTMLElement>('.sub');
+      const keepsSub = !!sub && getComputedStyle(sub).display !== 'none';
+      for (const w of COMPACT_WIDTHS) {
+        const alertW = Math.min(w, full.w), detectionW = Math.min(detection.w, keepsSub ? w : COMPACT_NOTICES.detection.w);
+        copy.style.width = copy.style.maxWidth = `${detectionW}px`;
+        compact.push({ detection: { w: detectionW, h: copy.offsetHeight || COMPACT_NOTICES.detection.h },
+          alert: { w: alertW, h: Math.max(COMPACT_ALERT_MIN_H, alertHeight(alertW)) } });
+      }
+      copy.remove();
+    }
+    for (const [name, value] of saved) {
+      if (value === null) { if (body.hasAttribute(name)) body.toggleAttribute(name, false); } else body.setAttribute(name, value);
+    }
+    centreSizes = { width, height, locale, detection,
+      alert: alertReserve(width, alertLine, alertH),
+      countdown: countdownSize,
+      compact: compact.length ? compact : [{ detection: { w: Math.min(detection.w, COMPACT_NOTICES.detection.w), h: COMPACT_NOTICES.detection.h },
+        alert: { w: Math.min(COMPACT_ALERT_MAX_W, full.w), h: COMPACT_NOTICES.alert.h } }] };
     return centreSizes;
   }
   // Where the plan puts the notices and the countdown (battleHudLayout.css body[data-hud-notices] /
@@ -425,10 +626,12 @@ export function installBattleHudLayout(root: HTMLElement, dockYield?: DockYield)
     const scoreBottom = score?.bottom || 64;
     const top = Math.max(scoreBottom, read('.cot-mode-status.show')?.bottom || 0);
     const telemetry = read('.cot-net');
-    const leftAnchor = Math.max(top, read('.cot-ear.l')?.bottom || 0,
+    // The left feeds' start without the gun-limit warning (a landscape phone shows it above them while the gun is at a
+    // limit): the start of the lane the dock keeps off, which must not move with the warning.
+    const leftAnchorSteady = Math.max(top, read('.cot-ear.l')?.bottom || 0,
       !touch && width < 768 && telemetry && telemetry.top < height / 2 ? telemetry.bottom : 0,
-      touch && width > height ? read('.cot-aim-warning:not([hidden])')?.bottom || 0 : 0,
       map && map.left < width / 2 ? map.bottom : 0) + 8;
+    const leftAnchor = Math.max(leftAnchorSteady, (touch && width > height ? read('.cot-aim-warning:not([hidden])')?.bottom || 0 : 0) + 8);
     const systems = read('.cot-vehicle-controls');
     let systemsHeight = systems?.height ?? 0;
     const ammo = read('.cot-shells');
@@ -439,10 +642,34 @@ export function installBattleHudLayout(root: HTMLElement, dockYield?: DockYield)
     let dockWidth = Math.min(systemsWidth, naturalWidth);
     let systemsLeft = Math.max(12, Math.min(width - dockWidth - 12,
       (ammo ? ammo.left + ammo.width / 2 : width / 2) - dockWidth / 2));
+    const sideWidth = Math.min(400, width / 2 - 24);
+    const chat = !!read('.cot-room-chat:not([hidden])');
+    const toastHost = root.querySelector<HTMLElement>('.cot-si-toasthost');
+    const toastCount = toastHost?.childElementCount || 0;
+    const setRows = (host: Element | null, rows: number) => {
+      if (!host) return;
+      for (let index = 0; index < host.children.length; index++) {
+        const item = host.children[index] as HTMLElement;
+        item.hidden = index >= rows;
+      }
+    };
+    const killLeft = root.querySelector('.cot-kill-lane.l');
+    const killRight = root.querySelector('.cot-kill-lane.r');
+    const killCountLeft = killLeft?.childElementCount || 0, killCountRight = killRight?.childElementCount || 0;
+    const earRight = read('.cot-ear.r');
+    const strip = read('.cot-mp-status.battle');
+    // A strip in the right roster's column pushes the roster below it (the roster's own top is otherwise its CSS lane).
+    const rosterTopRight = strip && earRight && strip.right > earRight.left && strip.bottom > earRight.top - 8 ? Math.ceil(strip.bottom) + 6 : null;
+    const rosterBottomRight = earRight ? (rosterTopRight ?? earRight.top) + (earRight.bottom - earRight.top) : 0;
+    const chrome = touch ? read('.cot-touch.on .mobile-chrome') : null;
+    const rightAnchor = Math.max(top, rosterBottomRight, chrome?.bottom || 0) + 8;
+    // Touch: the feeds' lanes as main had them (TOUCH FEEDS above), for the dock and the notices to keep off.
+    const feeds = touch && systems && systemsElement ? touchFeedInputs(systemsElement, width, height, map, ammo, chrome, sideWidth,
+      leftAnchorSteady, leftAnchor, rightAnchor, { chat, toasts: toastCount, left: killCountLeft, right: killCountRight }) : null;
     // Touch: the action dock (touchActionDock.ts) lays the controls out as tiles (48 px, never under 44) at the free
     // spot nearest the thumbs, clear of the crosshair, and never scrolls; when the whole row does not fit its last
     // tile is More. The older strip placement below remains only for a screen without room for a single tile.
-    const centre = touch && systems && systemsElement ? placeTouchCentre(systemsElement, width, height, top) : null;
+    const centre = feeds && systemsElement ? placeTouchCentre(systemsElement, width, height, top, feeds) : null;
     if (!centre) { publishYield(null, [], null); applyCentre(null); }
     const dock = centre?.dock ?? null;
     if (dock) {
@@ -462,7 +689,7 @@ export function installBattleHudLayout(root: HTMLElement, dockYield?: DockYield)
     }
     // Portrait rotation can leave the system strip level with the settings
     // buttons. Keep the touch navigation reachable before placing that strip.
-    const touchChrome = touch ? read('.cot-touch.on .mobile-chrome') : null;
+    const touchChrome = chrome;
     if (!dock && touch && width < height && touchChrome && systemsLeft + dockWidth > touchChrome.left
       && systemsTop < touchChrome.bottom + 8) systemsTop = touchChrome.bottom + 8;
     if (!dock && touch && width < height && ammo && systemsTop + systemsHeight > ammo.top
@@ -470,55 +697,60 @@ export function installBattleHudLayout(root: HTMLElement, dockYield?: DockYield)
       systemsWidth = Math.max(52, ammo.left - systemsLeft - 8);
       dockWidth = Math.min(systemsWidth, naturalWidth);
     }
-    const sideWidth = Math.min(400, width / 2 - 24);
-    const chat = !!read('.cot-room-chat:not([hidden])');
-    const toastHost = root.querySelector<HTMLElement>('.cot-si-toasthost');
-    const toastCount = toastHost?.childElementCount || 0;
-    const setRows = (host: Element | null, rows: number) => {
-      if (!host) return;
-      for (let index = 0; index < host.children.length; index++) {
-        const item = host.children[index] as HTMLElement;
-        item.hidden = index >= rows;
-      }
-    };
-    const killLeft = root.querySelector('.cot-kill-lane.l');
-    const killRight = root.querySelector('.cot-kill-lane.r');
     // Touch: the centre notices own the lane centreNotices.ts gave them, clear of the reticle (they are never pushed
-    // down by the feeds, which used to put them on the crosshair of most phones); while one shows, a side feed whose
-    // column reaches that lane ends above it.
-    const alertShown = read('.cot-alert.show');
-    const noticeShown = !!(read('.cot-sixth.on') || alertShown);
+    // down by the feeds, which used to put them on the crosshair of most phones) and of the rows the feeds show.
     const noticeLane = centre?.notices ?? null;
-    let noticeFloorLeft = height, noticeFloorRight = height;
-    if (noticeLane && noticeShown) {
-      for (const box of [noticeLane.detection, noticeLane.alert]) {
-        if (box.x < sideWidth + 12) noticeFloorLeft = Math.min(noticeFloorLeft, box.y - 8);
-        if (box.x + box.w > width - sideWidth - 12) noticeFloorRight = Math.min(noticeFloorRight, box.y - 8);
-      }
-    }
-    const leftBottom = Math.min(leftFloor(height, touch), noticeFloorLeft,
-      systemsHeight && systemsLeft < sideWidth + 12 ? systemsTop - 8 : height);
     const countdown = read('.cot-prebattle.on');
-    const leftKillBottom = countdown && countdown.left < sideWidth
-      && countdown.bottom > leftAnchor ? Math.min(leftBottom - noticeReserve, countdown.top - 8) : leftBottom - noticeReserve;
-    const leftSpace = Math.max(0, leftKillBottom - leftAnchor);
-    // Keep incoming damage and an open chat usable during a burst of kills.
-    const chatReserve = chat ? Math.min(leftSpace, Math.max(62, Math.min(140, leftSpace * .4))) : 0;
-    const damageReserve = toastCount ? Math.min(116, Math.max(0, (leftSpace - chatReserve) * .45)) : 0;
-    const killRowsLeft = battleNotificationRows(leftSpace - chatReserve - damageReserve - (chat || toastCount ? 8 : 0), killLeft?.childElementCount || 0);
-    setRows(killLeft, killRowsLeft);
+    let leftBottom: number, rightBottom: number, killRowsLeft: number, killRowsRight: number, stack: ReturnType<typeof battleSideStack>;
+    let leftTop: number;
+    if (centre && feeds) {
+      // Each feed grows past main's end into free room, never into the battle sight at full bloom; the dock, a notice
+      // shown or the countdown shown ends it only where it truly lies in that feed's column below the feed's start.
+      let floorLeft = Math.max(feeds.mainLeft, Math.min(leftFloor(height, touch), touchFeedRingFloor(width, height, 0, sideWidth)));
+      let floorRight = Math.max(feeds.mainRight, Math.min(rightFloor(height, width, map), touchFeedRingFloor(width, height, width - sideWidth, width)));
+      const boxes: (TouchDockRect | null)[] = [dock,
+        read('.cot-sixth.on') ? noticeLane?.detection ?? null : null, read('.cot-alert.show') ? noticeLane?.alert ?? null : null,
+        countdown ? centre.countdown ?? { x: countdown.left, y: countdown.top, w: countdown.width, h: countdown.height } : null];
+      for (const box of boxes) {
+        floorLeft = Math.min(floorLeft, touchFeedFloor(box, 0, sideWidth, leftAnchor));
+        floorRight = Math.min(floorRight, touchFeedFloor(box, width - sideWidth, width, rightAnchor));
+      }
+      leftBottom = floorLeft; rightBottom = floorRight;
+      // Never fewer kill rows or incoming toasts than main shows: main's own share of the column where nothing ends it
+      // sooner (the placements keep every box off those rows), a grown share only where it shows no fewer of either.
+      const steady = battleFeedStack(feeds.mainLeft - leftAnchor, killCountLeft, toastCount, chat);
+      let share = steady;
+      if (floorLeft >= feeds.mainLeft) {
+        const grown = battleFeedStack(floorLeft - leftAnchor, killCountLeft, toastCount, chat);
+        share = grown.killRows >= steady.killRows && grown.toastRows >= steady.toastRows ? grown
+          : { ...steady, ...battleSideStack(floorLeft - leftAnchor - steady.below, chat, toastCount) };
+      } else {
+        share = { ...steady, chatHeight: Math.max(0, Math.min(steady.chatHeight, floorLeft - leftAnchor - steady.below - steady.chatOffset)) };
+      }
+      killRowsLeft = share.killRows;
+      setRows(killLeft, killRowsLeft);
+      leftTop = leftAnchor + share.below;
+      stack = share;
+      killRowsRight = battleNotificationRows(floorRight - rightAnchor, killCountRight);
+    } else {
+      leftBottom = Math.min(leftFloor(height, touch),
+        systemsHeight && systemsLeft < sideWidth + 12 ? systemsTop - 8 : height);
+      const leftKillBottom = countdown && countdown.left < sideWidth
+        && countdown.bottom > leftAnchor ? Math.min(leftBottom - noticeReserve, countdown.top - 8) : leftBottom - noticeReserve;
+      const leftSpace = Math.max(0, leftKillBottom - leftAnchor);
+      // Keep incoming damage and an open chat usable during a burst of kills.
+      const chatReserve = chat ? Math.min(leftSpace, Math.max(62, Math.min(140, leftSpace * .4))) : 0;
+      const damageReserve = toastCount ? Math.min(116, Math.max(0, (leftSpace - chatReserve) * .45)) : 0;
+      killRowsLeft = battleNotificationRows(leftSpace - chatReserve - damageReserve - (chat || toastCount ? 8 : 0), killCountLeft);
+      setRows(killLeft, killRowsLeft);
+      const killsLeft = Math.min(Math.max(0, killRowsLeft * 29 - 3), read('.cot-kill-lane.l')?.height || 0);
+      leftTop = leftAnchor + (killsLeft ? killsLeft + 8 : 0);
+      stack = battleSideStack(leftBottom - noticeReserve - leftTop, chat, toastCount);
+      rightBottom = Math.min(rightFloor(height, width, map),
+        systemsHeight && systemsLeft + dockWidth > width - sideWidth - 12 ? systemsTop - 8 : height);
+      killRowsRight = 0;
+    }
     const killHeightLeft = Math.max(0, killRowsLeft * 29 - 3);
-    const killsLeft = Math.min(killHeightLeft, read('.cot-kill-lane.l')?.height || 0);
-    const leftTop = leftAnchor + (killsLeft ? killsLeft + 8 : 0);
-    const earRight = read('.cot-ear.r');
-    const strip = read('.cot-mp-status.battle');
-    // A strip in the right roster's column pushes the roster below it (the roster's own top is otherwise its CSS lane).
-    const rosterTopRight = strip && earRight && strip.right > earRight.left && strip.bottom > earRight.top - 8 ? Math.ceil(strip.bottom) + 6 : null;
-    const rosterBottomRight = earRight ? (rosterTopRight ?? earRight.top) + (earRight.bottom - earRight.top) : 0;
-    const chrome = touch ? read('.cot-touch.on .mobile-chrome') : null;
-    const rightAnchor = Math.max(top, rosterBottomRight, chrome?.bottom || 0) + 8;
-    const rightBottom = Math.min(rightFloor(height, width, map), noticeFloorRight,
-      systemsHeight && systemsLeft + dockWidth > width - sideWidth - 12 ? systemsTop - 8 : height);
     const rosterStart = rosterTopRight ?? earRight?.top ?? scoreBottom + 8;
     const rosterCount = Number(root.querySelector<HTMLElement>('.cot-ear.r')?.dataset.count) || 0;
     const rosterMinimum = earRight ? (root.querySelector('.cot-ear.r.icon-grid') ? 124 : 22 + Math.min(14, rosterCount) * 12) : 0;
@@ -527,10 +759,12 @@ export function installBattleHudLayout(root: HTMLElement, dockYield?: DockYield)
       root.classList.contains('compact-shot-report'));
     const dockReport = !touch;
     root.classList.toggle('tight-shot-report', dockReport && report.height < 220);
-    const rightKillFloor = dockReport ? report.top - 8 : rightBottom;
-    const rightKillBottom = countdown && countdown.right > width - sideWidth
-      && countdown.bottom > rightAnchor ? Math.min(rightBottom, countdown.top - 8) : rightBottom;
-    const killRowsRight = battleNotificationRows(Math.min(rightKillBottom, rightKillFloor) - rightAnchor, killRight?.childElementCount || 0);
+    if (!(centre && feeds)) {
+      const rightKillFloor = dockReport ? report.top - 8 : rightBottom;
+      const rightKillBottom = countdown && countdown.right > width - sideWidth
+        && countdown.bottom > rightAnchor ? Math.min(rightBottom, countdown.top - 8) : rightBottom;
+      killRowsRight = battleNotificationRows(Math.min(rightKillBottom, rightKillFloor) - rightAnchor, killCountRight);
+    }
     setRows(killRight, killRowsRight);
     const killHeightRight = Math.max(0, killRowsRight * 29 - 3);
     const killsRight = Math.min(killHeightRight, read('.cot-kill-lane.r')?.height || 0);
@@ -546,7 +780,6 @@ export function installBattleHudLayout(root: HTMLElement, dockYield?: DockYield)
       && noticeLeft < systemsLeft + dockWidth && width - noticeLeft > systemsLeft) {
       noticeTop = systemsTop + systemsHeight + 8;
     }
-    const stack = battleSideStack(leftBottom - noticeReserve - leftTop, chat, toastCount);
     setRows(toastHost, stack.toastRows);
     if (touch && width > height && height <= 340) noticeTop = Math.max(top + 16, scoreBottom + 52);
     if (sideNotices) noticeTop = Math.max(top + 8, leftBottom - noticeReserve + 8);
@@ -629,6 +862,8 @@ export function installBattleHudLayout(root: HTMLElement, dockYield?: DockYield)
   window.addEventListener('cot-hud-relayout', schedule);
   window.visualViewport?.addEventListener('resize', schedule, { passive: true });
   window.addEventListener('cot:layoutchange', schedule);
+  // The notices' sizes are measured in the HUD's own type: once a web font arrives, measure them again.
+  document.fonts?.addEventListener?.('loadingdone', () => { if (!centreSizes) return; centreSizes = null; schedule(); });
   // Transforms (notably the spectator tray's entrance) do not resize the
   // border box. Measure the settled position without polling its animation.
   const transitionFinished = (event: Event) => {

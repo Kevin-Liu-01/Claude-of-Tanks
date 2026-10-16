@@ -18,6 +18,7 @@ import {
   TOUCH_ACTION_RETICLE_READOUTS,
 } from './touchActionDock.ts';
 import { alertReserve, planTouchCentre } from './centreNotices.ts';
+import { FEED_REFERENCE, battleFeedStack, battleNotificationRows } from './battleHudLayout.ts';
 import { arrangeVehicleControls } from './vehicleControlOrder.ts';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
@@ -39,7 +40,7 @@ const keepDistance = (r, k) => 'r' in k ? discDistance(r, k) - k.r
  * reserved lanes (dock only, unless no placement clear of them exists at all); `keep`: the aim keep-out (dock and
  * panel, always); `fallbackPanel`: the panel may have needed its last resort (clear of the dock and keep-out only).
  */
-function checkDock(name, { width, height, hard, soft, lanes = [], keep, insets = {}, anchor }, count, dock, { fallbackPanel = false } = {}) {
+function checkDock(name, { width, height, hard, soft, lanes = [], feeds = [], keep, insets = {}, anchor }, count, dock, { fallbackPanel = false } = {}) {
   assert.ok(dock, `${name}: ${count} controls get a dock`);
   const { tile } = dock;
   assert.ok(tile === TOUCH_ACTION_TILE_PX || tile === TOUCH_ACTION_MIN_TILE_PX, `${name}: 48 px tiles, 44 px (Apple's minimum) at least`);
@@ -85,9 +86,11 @@ function checkDock(name, { width, height, hard, soft, lanes = [], keep, insets =
     lanesGivenUp.add(name.split(' ')[0]);
   }
   if (dock.inLane) {
-    assert.equal(placeTouchActionDock({ width, height, count, obstacles: hard, soft: [...soft, ...lanes], keepOut: keep, anchor, insets }), null,
+    assert.equal(placeTouchActionDock({ width, height, count, obstacles: hard, soft: [...soft, ...lanes, ...feeds], keepOut: keep, anchor, insets }), null,
       `${name}: the dock stands in a reserved lane only when no placement clears the lanes`);
   }
+  // The feeds' lanes (main's, at their fullest) are never given up on these screens: the dock never costs a feed a row.
+  for (const r of dock.tiles) for (const lane of feeds) assert.ok(!overlaps(r, lane), `${name}: a dock tile lies in a feed's lane`);
 }
 const lanesGivenUp = new Set();
 
@@ -133,12 +136,28 @@ for (const v of VIEWPORTS.filter((viewport) => viewport.source === 'derived' && 
   }
 }
 const HARD = /^(joy|fire|fireAlt|scope|autoaim|chrome|con\d|ammo)$/;
-const OWNER = new Set(['small-phone', 'phone', 'landscape']);
 const summary = [];
 let placements = 0;
 /** The layout's own inputs for one fixture viewport (battleHudLayout.ts placeTouchCentre), with or without the
  *  objective plate (Standard has none: the score's bottom is the objective bottom, and portrait phones lift their
  *  settings trio and minimap to it, battleHudLayout.css). */
+// Main's feed lanes at their fullest, and its rows at the usual fill (touchActionDock.fixture.json mainFeeds, pinned
+// from main 5ab143d57; battleHudLayout.ts touchFeedInputs hands the same on).
+function feedLanes(viewport, objective) {
+  const { width } = viewport;
+  const side = Math.min(400, width / 2 - 24);
+  const m = viewport.mainFeeds[objective ? 'objective' : 'standard'];
+  const [la, le] = m.left, [ra, re] = m.right;
+  const lanes = [], reference = [];
+  if (le > la) lanes.push({ x: 0, y: la, w: side, h: le - la });
+  if (re > ra) lanes.push({ x: width - side, y: ra, w: side, h: re - ra });
+  const share = battleFeedStack(le - la, FEED_REFERENCE.kills, FEED_REFERENCE.toasts, false);
+  if (share.killHeight) reference.push({ x: 0, y: la, w: side, h: share.killHeight });
+  if (share.toastHeight) reference.push({ x: 0, y: la + share.below, w: side, h: share.toastHeight });
+  const right = battleNotificationRows(re - ra, FEED_REFERENCE.kills);
+  if (right) reference.push({ x: width - side, y: ra, w: side, h: right * 29 - 3 });
+  return { lanes, reference };
+}
 function centreInputs(viewport, objective, count) {
   const { width, height } = viewport;
   const o = structuredClone(viewport.obstacles);
@@ -153,6 +172,7 @@ function centreInputs(viewport, objective, count) {
     controls: Object.entries(o).filter(([k]) => HARD.test(k)).map(([, r]) => r),
     instruments: Object.entries(o).filter(([k]) => !HARD.test(k) && k !== 'ammoDrawerOpen').map(([, r]) => r),
     drawer: o.ammoDrawerOpen ? [o.ammoDrawerOpen] : [], lanes: [touchAimWarningSlot(width, height, minimapBottom)],
+    feeds: feedLanes(viewport, objective).lanes, reference: feedLanes(viewport, objective).reference,
     keepOut: touchAimKeepOut(width, height, minimapBottom),
     anchor: { x: (o.joy.x * 2 + o.joy.w + o.fire.x * 2 + o.fire.w) / 4, y: (o.joy.y * 2 + o.joy.h + o.fire.y * 2 + o.fire.h) / 4 },
     detection: viewport.centre.detection, alert: alertReserve(width, viewport.centre.alertLine), countdown: viewport.centre.countdown };
@@ -170,13 +190,16 @@ for (const viewport of VIEWPORTS) {
       // Reserved lanes: the gun-limit warning's place, and the notices' place when the plan reserved it first.
       const lanes = [...input.lanes, ...(plan.order === 'notices' && plan.notices ? [plan.notices.detection, plan.notices.alert] : [])];
       checkDock(`${label} x${count}`, { width, height, hard: input.controls, soft: [...input.instruments, ...input.drawer], lanes,
-        keep: input.keepOut, anchor: input.anchor }, count, dock);
+        feeds: input.feeds, keep: input.keepOut, anchor: input.anchor }, count, dock);
       placements++;
-      // The owner's phones: every control on the dock itself, but seven on 360 x 640 (its only room clear of the
-      // reticle and the notices is the block under the settings trio: six tiles there, the seventh behind More).
-      if (viewport.cases.some((c) => OWNER.has(c)) && (count <= 6 || !viewport.cases.includes('small-phone'))) {
-        assert.equal(dock.more, false, `${label}: the owner's phones show all ${count} controls`);
-      }
+      // The owner's phones (verifier 2026-10-16: the dock above the ring cost 390 x 844 eight of a burst's kill rows and
+      // two of its incoming toasts). Off the feeds' lanes, 390 x 844 keeps its row under the reticle: four slots, so
+      // five to seven controls show three tiles and More; 360 x 640 its block left of the reticle, three tiles and More
+      // from five controls; 844 x 390, whose feeds end high, every control in one row.
+      if (viewport.cases.includes('phone') && count >= 4) assert.deepEqual([dock.y, dock.shown, dock.more], [572, count > 4 ? 3 : 4, count > 4],
+        `${label}: 390 x 844 docks under the reticle`);
+      if (viewport.cases.includes('small-phone') && count >= 5) assert.deepEqual([dock.shown, dock.more], [3, true], `${label}: 360 x 640 shows three and More`);
+      if (viewport.cases.includes('landscape')) assert.equal(dock.more, false, `${label}: 844 x 390 shows all ${count} controls`);
       if (viewport.cases.includes('landscape')) assert.equal(dock.rows, 1, `${label}: 844 x 390 keeps one row`);
       if (count >= 5) row.push(`${count}:${dock.tile}px ${dock.columns}x${dock.rows}@${dock.x},${dock.y}${dock.more ? ` +More(${dock.flyout.length})` : ''}`);
     }
@@ -425,6 +448,13 @@ try {
     getAttribute(key) { return this.attrs.has(key) ? this.attrs.get(key) : null; }
     setAttribute(key, value) { this.attrs.set(key, String(value)); }
     hasAttribute(key) { return this.attrs.has(key); }
+    removeAttribute(key) { this.attrs.delete(key); }
+    // The layout owner measures hidden copies of the notices beside them (naturalCentreSizes): a copy has no size here.
+    cloneNode() { const copy = new FakeElement([...this.selectors], this.rect); copy.visible = false; return copy; }
+    remove() {
+      if (this.parentElement) { this.parentElement.children = this.parentElement.children.filter((c) => c !== this); this.parentElement.childElementCount = this.parentElement.children.length; }
+      all.splice(all.indexOf(this), 1);
+    }
     toggleAttribute(key, on) { if (on) this.attrs.set(key, ''); else this.attrs.delete(key); }
     getClientRects() { return this.visible && !this.hiddenFlag ? [{}] : []; }
     getBoundingClientRect() { const r = this.rect ?? { x: 0, y: 0, w: 0, h: 0 }; return { left: r.x, top: r.y, right: r.x + r.w, bottom: r.y + r.h, width: r.w, height: r.h, x: r.x, y: r.y }; }
@@ -501,6 +531,10 @@ try {
     controls: [o.joy, o.fire, o.fireAlt, o.scope, o.autoaim, o.chrome, cons0, o.ammo], instruments: [o.dp, o.drive, o.minimap, o.top, o.mode, o.net],
     drawer: [o.ammoDrawerOpen], lanes: [touchAimWarningSlot(v.width, v.height, o.minimap.y + o.minimap.h)],
     keepOut: touchAimKeepOut(v.width, v.height, o.minimap.y + o.minimap.h), anchor: { x: (o.joy.x * 2 + o.joy.w + o.fire.x * 2 + o.fire.w) / 4, y: (o.joy.y * 2 + o.joy.h + o.fire.y * 2 + o.fire.h) / 4 },
+    // 320 x 568's feeds show no row on main (its strip stood just under the settings), so they reserve nothing; the
+    // copies the owner measures have no size here, so the compact notices take their least boxes.
+    feeds: [], reference: [],
+    compact: [180, 150, 120].map((w) => ({ detection: { w: 120, h: 32 }, alert: { w, h: 28 } })),
     detection: v.centre.detection, alert: alertReserve(v.width, v.centre.alertLine), countdown: v.centre.countdown });
   const expected = plan.dock;
   // The notices and the countdown take the plan's places (applyCentre: centre x, top, width; compact when needed).
@@ -625,8 +659,11 @@ try {
 assert.match(layout, /observeSize\('\.cot-touch \.joy,\.cot-touch \.round,\.cot-cons,\.cot-vehicle-controls>button'\);/, 'touch buttons and tiles: by size only');
 assert.doesNotMatch(layout.match(/observe\('[^']*'(?:, true)?\);/g).join('\n'), /cot-touch \.(?:fire|round|joy|autoaim|scope)|cot-cons|cot-vehicle-controls>button/,
   'no touch button or tile is class-observed');
-assert.match(layout, /if \(dockKey\.length !== dockInputs\.length \|\| dockKey\.some\(\(value, i\) => value !== dockInputs\[i\]\)\) \{/, 'the solver runs only when its inputs change');
+assert.match(layout, /if \(!dockPlan \|\| dockKey\.length !== dockInputs\.length \|\| dockKey\.some\(\(value, i\) => value !== dockInputs\[i\]\)\) \{/, 'the solver runs only when its inputs change');
+// The dock's inputs never include the feeds' current rows (only main's lanes at their fullest): kills and hits never move it.
+assert.match(layout, /for \(const list of \[dockControls, dockInstruments, noticeObstacles, feeds\.lanes, feeds\.reference\]\) \{/);
+assert.doesNotMatch(layout.slice(layout.indexOf('dockKey.length = 0;'), layout.indexOf('noticeKey.length = 0;')), /feeds\.rows/, 'the dock never keys on the feeds\' rows');
 assert.match(read('./i18nCatalog.en-US.json'), /"systems\.more": "\{count\} more vehicle controls",/);
 assert.match(read('./i18nCatalog.zh-CN.json'), /"systems\.more": "另外 \{count\} 个车辆控制",/);
 
-console.log(`touchActionDock: ${receiptTouchCases.length} touch cases (${VIEWPORTS.length} sizes) x 1-7 controls x objective/standard = ${placements} placements (planTouchCentre) keep the rule (tiles >= 44 px, no scroll, no control or instrument covered, the reticle's whole footprint in every sight at every bloom and the gun-limit warning's place clear, More beyond what fits; reserved lanes given up only where nothing else fits: ${[...lanesGivenUp].join(', ') || 'none'}); ${placed} random layouts; footprint pinned to hud.ts; a tile acts on a tap and hands a swipe to the aim pad; FIRE presses and holds never relayout\n  ${summary.join('\n  ')}`);
+console.log(`touchActionDock: ${receiptTouchCases.length} touch cases (${VIEWPORTS.length} sizes) x 1-7 controls x objective/standard = ${placements} placements (planTouchCentre) keep the rule (tiles >= 44 px, no scroll, no control or instrument covered, the reticle's whole footprint in every sight at every bloom and the gun-limit warning's place clear, main's feed lanes never entered, More beyond what fits; reserved lanes given up only where nothing else fits: ${[...lanesGivenUp].join(', ') || 'none'}); ${placed} random layouts; footprint pinned to hud.ts; a tile acts on a tap and hands a swipe to the aim pad; FIRE presses and holds never relayout\n  ${summary.join('\n  ')}`);

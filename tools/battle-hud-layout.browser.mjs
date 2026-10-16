@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Committed rendered regression; accepts an existing dev server and Playwright.
 // node tools/battle-hud-layout.browser.mjs --url=http://127.0.0.1:5189 --out=/tmp/hud-check
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 const arg = (name, fallback) => process.argv.find(v=>v.startsWith(`--${name}=`))?.split('=').slice(1).join('=') || fallback;
 const { chromium } = await import(arg('playwright-module','playwright'));
@@ -18,13 +18,39 @@ const cases = [
   ['chinese-landscape',667,375,true,'zh-CN'],
   ['chinese-laptop',1280,720,false,'zh-CN'],['chinese-phone',390,844,true,'zh-CN'],
 ];
-const states = ['idle','feed-burst','notifications','countdown','reports','log','chat','combined','spectator','settings','sniper','large-map','ammo-expanded','special','mode-standard','mode-capture_the_flag','mode-zone_control','mode-turbo_ball','mode-endless_horde','mode-frontline_assault','mode-mars','ended'];
+// combined-spotted: the combined state with detection lit (verifier 2026-10-16: the incoming-damage toast vanished
+// under it); alert-*: the longest alerts over detection, in en and zh (round 4 clamped them to two lines).
+const states = ['idle','feed-burst','notifications','countdown','reports','log','chat','combined','combined-spotted','spectator','settings','sniper','large-map','ammo-expanded','special','mode-standard','mode-capture_the_flag','mode-zone_control','mode-turbo_ball','mode-endless_horde','mode-frontline_assault','mode-mars','alert-wave','alert-ammo','alert-flag','ended'];
 const reports=[];const errors=[];const reticleReach=[];const swipes=[];const droneCues=[];const liveInk=[];
+// MAIN'S FEEDS (verifier 2026-10-16). On every touch screen and state, the kill feed and the incoming-damage feed show
+// no fewer rows than main does, the kill rows clear of the battle sight at full bloom no fewer than main's, the alert
+// shows its whole text (no clamp, nothing scrolled away), and the detection keeps its second line wherever main shows
+// it. Main's numbers (five controls) are pinned in tools/fixtures/battle-hud-layout.main-feeds.json; --record-main=<file>
+// (with --main-label=<commit>) against a server of main's tree measures them again (the same states, nothing else).
+// The pseudo-states are touch checks (a mouse layout keeps main's own notice places, unchanged).
+const TOUCH_ONLY = new Set(['combined-spotted','alert-wave','alert-ammo','alert-flag']);
+const recordMain = arg('record-main','');
+const MAIN_FEEDS = recordMain ? null : JSON.parse(await readFile(new URL('./fixtures/battle-hud-layout.main-feeds.json', import.meta.url),'utf8'));
+const mainRecord = {};
+const feedTable = [];
+function feedNumbers(){
+  const vis=e=>!e.hidden&&e.checkVisibility({checkOpacity:true,checkVisibilityCSS:true})&&e.getBoundingClientRect().height>1;
+  const rows=[...document.querySelectorAll('.cot-kill-lane .cot-kf')].filter(vis).map(e=>e.getBoundingClientRect());
+  const cx=innerWidth/2,cy=innerHeight/2,ring=Math.max(32,Math.ceil(.15*Math.min(innerWidth,innerHeight)));
+  const clear=rows.filter(r=>Math.hypot(Math.max(r.left-cx,0,cx-r.right),Math.max(r.top-cy,0,cy-r.bottom))>=ring).length;
+  const sixth=document.querySelector('.cot-sixth.on'),sub=sixth?.querySelector('.sub');
+  const copy=document.querySelector('.cot-alert.show .cot-alert-copy'),style=copy&&getComputedStyle(copy);
+  return {k:rows.length,r:clear,t:[...document.querySelectorAll('.cot-si-toast')].filter(vis).length,sub:sixth?!!(sub&&vis(sub)):null,
+    alert:copy?{text:copy.textContent,sh:copy.scrollHeight,ch:copy.clientHeight,sw:copy.scrollWidth,cw:copy.clientWidth,
+      clamp:style.webkitLineClamp,size:style.fontSize}:null};
+}
 // The centre notices and the countdown against the reticle (round 4; centreNotices.ts): the widest keep-out each box
 // clears, 3 everything the reticle draws at any bloom, 2 the battle sight at full bloom, 1 the crosshair core, 0 none.
 // Each touch screen of the receipt must reach its floor (centreNotices.selftest.mjs pins the same table; main reaches 0
-// on every phone); a size outside the table (a rotation mid-check) is recorded only.
-const CENTRE_FLOOR={'360x640':[3,3],'390x844':[3,3],'844x390':[3,3],'667x375':[3,3],'320x568':[2,3],'568x256':[0,0],'568x320':[1,2],
+// on every phone); a size outside the table (a rotation mid-check) is recorded only. 320 x 568 reaches 1 (round 5): with
+// the feeds' rows kept, the whole alert shown and the detection's second line kept, its only room left between the
+// minimap, the ammo rail and the ring is too short for both notices.
+const CENTRE_FLOOR={'360x640':[3,3],'390x844':[3,3],'844x390':[3,3],'667x375':[3,3],'320x568':[1,3],'568x256':[0,0],'568x320':[1,2],
   '844x300':[3,3],'932x430':[3,3],'1024x768':[3,3],'768x1024':[3,3]};
 function centreClearance(){
   const tiers=window.__HUD_LAYOUT.reticleTiers(innerWidth,innerHeight);
@@ -268,7 +294,22 @@ try {
         if(base.startsWith('mode-')&&decoration.mode!==base.slice(5))
           result.failures.push(`expected objective ${base.slice(5)}, saw ${decoration.mode}`);
       }
-      if(state==='notifications'||state==='combined'||state==='spectator'||state==='feed-burst'||result.failures.length)
+      if(touch&&MAIN_FEEDS){
+        const now=await page.evaluate(feedNumbers);
+        result.feeds=now;
+        const main=MAIN_FEEDS.cases[name]?.[base];
+        if(now.alert&&(now.alert.sh>now.alert.ch+1||now.alert.sw>now.alert.cw+1||(now.alert.clamp&&now.alert.clamp!=='none')))
+          result.failures.push(`the alert is cut short ("${now.alert.text}": ${now.alert.sw}x${now.alert.sh} in ${now.alert.cw}x${now.alert.ch}, clamp ${now.alert.clamp})`);
+        if(now.alert&&parseFloat(now.alert.size)<8)result.failures.push(`the alert's type (${now.alert.size}) is under main's smallest (8px)`);
+        if(main){
+          if(now.k<main.k)result.failures.push(`${now.k} kill rows (main ${main.k})`);
+          if(now.r<main.r)result.failures.push(`${now.r} kill rows clear of the full-bloom ring (main ${main.r})`);
+          if(now.t<main.t)result.failures.push(`${now.t} incoming-damage toasts (main ${main.t})`);
+          if(main.sub&&now.sub===false)result.failures.push('the detection dropped its second line (main shows it)');
+          feedTable.push({name,state,k:now.k,r:now.r,t:now.t,sub:now.sub,main});
+        }
+      }
+      if(state==='notifications'||state==='combined'||state==='combined-spotted'||state==='spectator'||state==='feed-burst'||state.startsWith('alert-')||result.failures.length)
         await page.screenshot({path:resolve(out,`${name}-${state}.png`)});
       reports.push({name,...page.viewportSize(),touch,locale,state,...result});
       if(result.failures.length)console.log(`${name}/${state}: ${result.failures.join('; ')}`);
@@ -309,7 +350,15 @@ try {
       await page.evaluate(()=>document.querySelector('.cot-vehicle-controls').scrollLeft=0);
     }
     async function enter(state){
-      await page.evaluate(state=>window.__HUD_LAYOUT.state(state),state);
+      await page.evaluate(state=>{
+        const f=window.__HUD_LAYOUT;
+        const base={'combined-spotted':'combined','alert-wave':'mode-endless_horde','alert-ammo':'mode-endless_horde','alert-flag':'mode-capture_the_flag'}[state];
+        f.state(base??state);
+        if(state==='combined-spotted'){f.bus.emit('player:spotted',{timeS:f.frame.timeS-4});f.hud.update(f.frame);}
+        if(state==='alert-wave')f.bus.emit('mode:wave_cleared',{wave:12,nextWaveInS:30});
+        if(state==='alert-ammo')f.bus.emit('ammo:empty',{id:f.frame.player.id});
+        if(state==='alert-flag')f.bus.emit('mode:flag_dropped',{team:f.frame.player.team});
+      },state);
       // ResizeObserver + its scheduled layout pass, and spectator's enter state.
       if(state==='ended')await page.waitForFunction(()=>
         ['.es-hero','.es-report','.es-actions'].every(selector=>
@@ -336,7 +385,31 @@ try {
         if(await page.locator('.cot-shell[aria-hidden="true"]').count())errors.push(`${name}: ammo drawer failed to expand`);
       }
     }
+    if(recordMain){
+      // Main's numbers only: each touch state as the receipt enters it, five controls, nothing else checked.
+      if(touch){
+        const record=mainRecord[name]={};
+        for(const state of states){
+          if(state==='settings'||state==='ended')continue;
+          await enter(state);
+          await openDrawer(state);
+          const {k,r,t,sub}=await page.evaluate(feedNumbers);
+          record[state]={k,r,t,sub};
+          if(state==='notifications')for(const variant of ['damaged','repaired','empty']){
+            await page.evaluate(variant=>{const {bus,frame}=window.__HUD_LAYOUT;
+              if(variant==='empty')bus.emit('ammo:empty',{id:frame.player.id});
+              else bus.emit('module:state',{id:frame.player.id,module:'engine',state:variant==='damaged'?'red':'yellow',repaired:variant==='repaired'});},variant);
+            await page.evaluate(async()=>{await new Promise(requestAnimationFrame);await new Promise(requestAnimationFrame);});
+            const n=await page.evaluate(feedNumbers);
+            record[`notifications-${variant}`]={k:n.k,r:n.r,t:n.t,sub:n.sub};
+          }
+        }
+      }
+      await context.close();
+      continue;
+    }
     for(const state of states){
+      if(!touch&&TOUCH_ONLY.has(state))continue;
       await enter(state);
       await openDrawer(state);
       await check(state);
@@ -758,8 +831,18 @@ try {
   }
 } finally {
   await browser.close();
-  await writeFile(resolve(out,'report.json'),JSON.stringify({reports,errors,reticleReach,swipes,droneCues,liveInk},null,2));
+  if(recordMain)await writeFile(resolve(recordMain),`${JSON.stringify({source:`${arg('main-label',`main at ${arg('url','')}`)} (five controls), measured by tools/battle-hud-layout.browser.mjs --record-main on ${new Date().toISOString().slice(0,10)}`,
+    fields:{k:'kill rows shown',r:'kill rows clear of the full-bloom ring',t:'incoming-damage toasts shown',sub:'detection shows its second line (null: no detection)'},cases:mainRecord},null,1)}\n`);
+  else await writeFile(resolve(out,'report.json'),JSON.stringify({reports,errors,reticleReach,swipes,droneCues,liveInk,feedTable},null,2));
 }
+if(recordMain){console.log(`main's feeds recorded for ${Object.keys(mainRecord).length} touch screens: ${resolve(recordMain)}`);process.exit(0);}
+// Per touch screen: the fewest kill rows, ring-clear kill rows and toasts against main's, over every state and kit.
+const margins={};
+for(const row of feedTable){
+  const m=margins[row.name]??={k:Infinity,r:Infinity,t:Infinity,states:0};
+  m.k=Math.min(m.k,row.k-row.main.k);m.r=Math.min(m.r,row.r-row.main.r);m.t=Math.min(m.t,row.t-row.main.t);m.states++;
+}
+console.log(`feeds against main (least margin over ${feedTable.length} states; kill rows / ring-clear rows / toasts): ${Object.entries(margins).map(([n,m])=>`${n} ${m.k}/${m.r}/${m.t}`).join(', ')}`);
 const failed=reports.filter(r=>r.failures.length);
 console.log(`reticle reach per case: ${reticleReach.join(', ')}\nswipes: ${swipes.join(', ')}\ndrone cue: ${droneCues.join(', ')}`);
 console.log(`${reports.length} state/viewport checks; ${failed.length} failed; ${errors.length} browser errors. ${out}`);

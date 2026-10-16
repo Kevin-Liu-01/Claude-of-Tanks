@@ -1,7 +1,47 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
-import { battleSideStack, battleNotificationRows, battleRosterHeight, installBattleHudLayout, objectiveWidth, battleReportDock, REPORT_MAP_GAP } from './battleHudLayout.ts';
+import {
+  battleSideStack, battleNotificationRows, battleRosterHeight, installBattleHudLayout, objectiveWidth, battleReportDock, REPORT_MAP_GAP,
+  battleFeedStack, touchStripBox, touchFeedFloor, touchFeedRingFloor,
+} from './battleHudLayout.ts';
+
+// TOUCH FEEDS (verifier 2026-10-16: every centre notice and the countdown emptied the kill and incoming-damage feeds on
+// every touch screen; on 390 x 844 the dock cut the burst from 11 kill rows and 3 toasts to 3 and 1). The feeds keep
+// main's lanes: where main's touch strip ended them (touchStripBox, restating main's placement, pinned here against the
+// strip main drew on each touch viewport of the receipt), main's share of the left column (battleFeedStack: main's own
+// arithmetic), and a box ends a feed only where it truly lies in that feed's column below the feed's start.
+{
+  const VIEWPORTS = JSON.parse(readFileSync(new URL('./touchActionDock.fixture.json', import.meta.url), 'utf8'));
+  const box = (r) => r && { left: r.x, top: r.y, right: r.x + r.w, bottom: r.y + r.h, width: r.w, height: r.h };
+  for (const v of VIEWPORTS) {
+    const o = v.obstacles;
+    const strip = touchStripBox(v.width, v.height, 5, { ammo: box(o.ammo), joy: box(o.joy), drive: box(o.drive), autoaim: box(o.autoaim),
+      dp: box(o.dp), map: box(o.minimap), chrome: box(o.chrome) });
+    const main = v.mainFeeds.strip;
+    // Main drew the strip at its natural width less the 2 px its column tests added (scrollWidth + 2), capped by the room.
+    assert.deepEqual([Math.floor(strip.x), Math.floor(strip.y), strip.h], [main.x, main.y, main.h], `${v.cases[0]}: main's strip of five controls`);
+    assert.ok(strip.w >= main.w - 1e-9 && strip.w <= main.w + 2 + 1e-9, `${v.cases[0]}: main's strip width (${strip.w} for ${main.w})`);
+  }
+  assert.equal(touchStripBox(390, 844, 0, {}), null, 'no controls, no strip');
+  // Main's share of the 390 x 844 left column in a burst (211..408): 3 kill rows, then 3 incoming toasts; with an
+  // open chat its reserve first.
+  const burst = battleFeedStack(408 - 211, 8, 8, false);
+  assert.deepEqual([burst.killRows, burst.toastRows, burst.below], [3, 3, 92]);
+  assert.deepEqual([battleFeedStack(197, 3, 0, false).killRows, battleFeedStack(197, 8, 0, false).killRows], [3, 6]);
+  assert.ok(battleFeedStack(197, 8, 8, true).chatHeight >= 54, 'an open chat keeps its composer');
+  // A box ends a feed only where it truly lies in the feed's column (no slop) and starts below the feed's top.
+  assert.equal(touchFeedFloor({ x: 405, y: 70, w: 214, h: 42 }, 0, 400, 132), Infinity, '1024 x 768: detection right of the left lane');
+  assert.equal(touchFeedFloor({ x: 400, y: 70, w: 214, h: 42 }, 0, 400, 132), Infinity, 'touching the lane edge is not lying in it');
+  assert.equal(touchFeedFloor({ x: 131, y: 40, w: 214, h: 42 }, 219, 390, 163), Infinity, 'a box wholly above the feed limits nothing');
+  assert.equal(touchFeedFloor({ x: 131, y: 303, w: 214, h: 42 }, 219, 390, 163), 295, 'below the feed\'s start it ends the feed 8 px above it');
+  assert.equal(touchFeedFloor({ x: 131, y: 150, w: 214, h: 42 }, 219, 390, 163), 163, 'a box over the feed\'s start leaves it no row');
+  assert.equal(touchFeedFloor(null, 0, 400, 132), Infinity);
+  // Grown past main's end, a feed stops 8 px above the battle sight at full bloom where its column reaches it.
+  assert.ok(Math.abs(touchFeedRingFloor(390, 844, 0, 171) - (422 - Math.sqrt(59 * 59 - 24 * 24) - 8)) < 1e-9, '390 x 844: the ring at x 171');
+  assert.equal(touchFeedRingFloor(1024, 768, 0, 240), Infinity, '1024 x 768: the toast column never reaches the ring');
+  assert.ok(touchFeedRingFloor(1024, 768, 0, 400) < 384, '1024 x 768: the kill lane\'s inner 3 px do (r 115 at x 512)');
+}
 
 for (const space of [0, 80, 124, 320, 500]) {
   const height = battleRosterHeight(600, space, 124);

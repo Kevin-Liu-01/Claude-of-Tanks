@@ -151,7 +151,12 @@ draws in either sight at any bloom (`touchReticleFootprint`, pinned to hud.ts) a
 gun-limit warning's place; More beyond what fits; a tile acts on a tap's lift and a
 swipe from it aims). `centreNotices.ts` plans it together with the centre notices and
 the pre-battle countdown (`planTouchCentre`: they clear as much of the reticle as the
-screen allows, never pushed by the feeds). The dock sits under the reticle canvas and
+screen allows, never pushed by the feeds). The feeds keep main's lanes (round 5,
+`touchStripBox`/`battleFeedStack` in battleHudLayout.ts): the dock keeps off them, the
+notices and the countdown off the rows they show, and a box ends a feed only where it
+truly lies in its column below its start (`touchFeedFloor`); the browser receipt
+compares every touch state with main's numbers (`tools/fixtures/battle-hud-layout.main-feeds.json`).
+Alerts are never clamped. The dock sits under the reticle canvas and
 dims each tile the live ink reaches (`touchDockYield.ts`: the ring and gun mark at the
 gun's own point, a turretless sight, incoming-hit wedges and figures). Re-measure
 `touchActionDock.fixture.json` when a touch control moves.
