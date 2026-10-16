@@ -18,6 +18,8 @@ import { minimumMechanicalGunPitch, type GunPitchByYawCurve } from '../sim/gunPi
 import { casemateGunYawLimit } from './casemateGunPose.ts';
 import { mergeAll } from './factoryGeometry.ts';
 import { SPARE_TRACK_SEAT_PLAN, type SeatPlanEntry } from './spareTrackSeatPlan.ts';
+import { MISSION_DOCK_SEATS } from '../sim/missionDockSeats.generated.ts';
+import { missionAirframeVolumes, missionCradleVolumes } from '../sim/missionDockVolumes.ts';
 import {
   seatAngularLow, seatGunSlices, seatRadialProfile, seatReceipt, seatRoleForMesh, seatRoleForPart, solveSpareTrackSeat,
   SeatSoup, measureSeat, remountSeats, seatSourceBounds, rackSeat, searchPoses, seatExposure, type RackSeat, AUTHORED_SEARCH, NO_SEARCH, type SeatAngularProfile, type SeatResult,
@@ -149,11 +151,31 @@ function seatEnv(frames: SeatFrames, frame: 'hull' | 'turret', region: THREE.Box
       ...moved(frames.gun, new THREE.Matrix4().multiplyMatrices(turretToHull, gunToTurret), true)]
     : [...frames.turret, ...moved(frames.gun, gunToTurret, false),
       ...moved(frames.hull, turretToHull.clone().invert(), true)];
-  return { frame, soup: new SeatSoup(sources, region.clone().expandByScalar(SOUP_MARGIN_M)), motion, markings: markingBoxes[frame] };
+  return { frame, soup: new SeatSoup(sources, region.clone().expandByScalar(SOUP_MARGIN_M)), motion, markings: markingBoxes[frame],
+    dock: dockBoxes[frame] };
 }
 
 /** The current build's marking keep-outs per frame (set by seatAuthoredSpareTracks, read by seatEnv). */
 let markingBoxes: Record<'hull' | 'turret', THREE.Box3[]> = { hull: [], turret: [] };
+/** The current build's drone-dock keep-outs per frame (set by seatAuthoredSpareTracks, read by seatEnv). */
+let dockBoxes: Record<'hull' | 'turret', THREE.Box3[]> = { hull: [], turret: [] };
+/** Clearance round the dock's volumes, as the decor keeps it (decorations.ts DOCK_KEEP_OUT_CLEAR). */
+const DOCK_CLEAR_M = 0.03;
+
+/**
+ * The drone dock's keep-out boxes on its own frame, from the vehicle's seat record (as decorations.ts dockKeepOut reads
+ * it): the open cradle's solids, the parked airframe and its launch column, each DOCK_CLEAR_M clear. The dock is seated
+ * by tools/gen-mission-attachment-seats.mjs on the finished tank, so a run the solver chooses must leave its seat free.
+ */
+function dockKeepOutBoxes(specId: string): Record<'hull' | 'turret', THREE.Box3[]> {
+  const out: Record<'hull' | 'turret', THREE.Box3[]> = { hull: [], turret: [] };
+  const seat = MISSION_DOCK_SEATS[specId];
+  if (!seat) return out;
+  const at = new THREE.Vector3(seat.x, seat.y, seat.z);
+  out[seat.frame] = [...missionCradleVolumes(seat), ...missionAirframeVolumes(seat, true)].map((v) =>
+    new THREE.Box3(new THREE.Vector3(...v.min), new THREE.Vector3(...v.max)).translate(at).expandByScalar(DOCK_CLEAR_M));
+  return out;
+}
 
 // ------------------------------------------------------------------------------------------------ S2/S3 (factory)
 
@@ -203,6 +225,7 @@ export function seatAuthoredSpareTracks(a: AuthoredSeatArgs): SpareTrackSeatRepo
     markingBoxes[m.parent].push(new THREE.Box3(new THREE.Vector3(m.pos[0] - half, m.pos[1] - half, m.pos[2] - half),
       new THREE.Vector3(m.pos[0] + half, m.pos[1] + half, m.pos[2] + half)));
   }
+  dockBoxes = dockKeepOutBoxes(a.spec.id);
   a.root.updateMatrixWorld(true);
   const frameOf = (o: THREE.Object3D): 'hull' | 'turret' | null =>
     under(o, a.gunG) ? null : under(o, a.turretG) ? 'turret' : under(o, a.hullG) ? 'hull' : null;
@@ -675,7 +698,8 @@ export function decorSeatEnv(spec: SeatSpec, hullG: THREE.Group, turretG: THREE.
       }
     }
     // the decor's own stations keep their own marking rules; the authored pass's keep-outs belong to its build
-    return { ...seatEnv(frames, frame, region, motion), markings: undefined };
+    // (the decor keeps its pieces out of the dock itself: decorations.ts dockKeepOut)
+    return { ...seatEnv(frames, frame, region, motion), markings: undefined, dock: undefined };
   };
 }
 
