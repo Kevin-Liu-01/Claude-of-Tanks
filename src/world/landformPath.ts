@@ -174,6 +174,21 @@ function preparePath(control: ReadonlyArray<readonly [number, number]>, reach: n
 }
 
 /**
+ * The world-plan box outside which a path ridge is exactly zero (terrain.ts landformSupportBounds' contract, the perf
+ * stream's skip): every point past the reach of every segment lies outside the curve's own box grown by the reach, so
+ * the frame answers false there and the form adds nothing; a metre of margin as the other kinds take. (2026-10-16, the
+ * horizons stream: Skybridge's path ridges were the only unbounded landforms, landformSupportBounds.selftest)
+ */
+export function landformPathBounds(path: PreparedLandformPath): [number, number, number, number] {
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  for (let i = 0; i < path.xs.length; i++) {
+    x0 = Math.min(x0, path.xs[i]); x1 = Math.max(x1, path.xs[i]); z0 = Math.min(z0, path.zs[i]); z1 = Math.max(z1, path.zs[i]);
+  }
+  const m = path.reach + 1;
+  return [x0 - m, x1 + m, z0 - m, z1 + m];
+}
+
+/**
  * The ridge frame of (x, z) on the path, written to `out`: lx its station from the curve's middle, lz its signed
  * distance (left of the direction of travel positive). False (and `out` untouched) beyond the reach.
  */

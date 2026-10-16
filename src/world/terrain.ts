@@ -57,7 +57,7 @@ import { stampShoreDirtMask } from './shoreDirtMask.ts';
 import { stampWorkedGroundMask, stampYardWearMask, type WorkedGroundPatch, type YardWearBox } from './workedGroundMask.ts';
 import { COPPER_QUARRY, insideCopperQuarry, sampleCopperQuarrySurface } from './copperQuarrySurface.ts';
 import { preparePlayableRelief, samplePlayableRelief, type PlayableRelief, type PreparedPlayableRelief } from './playableRelief.ts';
-import { landformPathFrame, prepareLandformPath, type LandformPathFrame, type PreparedLandformPath } from './landformPath.ts';
+import { landformPathBounds, landformPathFrame, prepareLandformPath, type LandformPathFrame, type PreparedLandformPath } from './landformPath.ts';
 import { createGeologyRockSampler, createGeologyZoneSampler, knollGeologyHeight, ridgeGeologyHeight, type GeologyZones, type LandformGeology } from './landformGeology.ts';
 import { sampleRedrockCanyon } from './redrockCanyon.ts';
 import { createBorderLandform, resolveBorderLandform, type BorderLandformSettings } from './borderLandform.ts';
@@ -1132,7 +1132,7 @@ export function createLayout(cfg: TerrainMapConfig | null = null, completeRoads 
       if (form.widths && form.widths.length !== form.path.length) throw new Error('A landform path takes one width per control point');
       const widest = form.widths ? Math.max(...form.widths) : form.width || 45;
       const path = prepareLandformPath(form.path, Math.max(1, widest) * (1 + outline) + 4);
-      return { ...form, x: path.cx, z: path.cz, length: path.length, yawDeg: 0, _c: 1, _s: 0, _path: path,
+      return { ...form, x: path.cx, z: path.cz, length: path.length, yawDeg: 0, _c: 1, _s: 0, _path: path, _bounds: landformPathBounds(path),
         ...(form.widths ? { _widths: Float64Array.from(form.widths) } : {}) };
     }
     const yaw = THREE.MathUtils.degToRad(form.yawDeg || 0);
