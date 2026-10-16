@@ -12,7 +12,7 @@
  * Every bucket mesh and batch is in world space (identity matrices under the world root, never moved), so a span's
  * positions, the anatomy's placement and the presentation's pivots are all world points.
  */
-import { keepRuinStanding, measureIntactParts } from './collapseRuin.ts';
+import { frameByName, keepRuinStanding, measureIntactParts } from './collapseRuin.ts';
 import { BufferAttribute, type BufferGeometry, type Material, type Object3D } from 'three';
 import {
   damageSeed, kitPlanFor, structureDamageKitChain,
@@ -114,6 +114,7 @@ export function describeStructure(args: DescribeStructureArgs): StructureDamageA
   const input: StructureDescribeInput = { ...args, seed, kitPlan: kitPlanFor(args.parts, args.style) };
   // the intact form as drawn, once (collapseRuin.ts: what a collapse keeps a ruin standing against)
   const intact = measureIntactParts(args.parts);
+  if (intact && frameByName(args.builder)) intact.frame = true;
   for (const kit of structureDamageKitChain(args.builder, args.style)) {
     if (kit === DEFAULT_STRUCTURE_DAMAGE_KIT || !kit.describe) continue;
     try {
@@ -157,7 +158,7 @@ export function createStructureDamageSeam(structureIdx: number, builder: string,
       .call(storeyKit, anatomy, storey, seed, out),
     // a collapse leaves a ruin, never a raft (collapseRuin.ts): whatever the kit writes, measured, and what it lacks added
     collapse: (seed, out) => keepRuinStanding(anatomy, seed, out,
-      (writers) => (collapseKit.collapse ?? DEFAULT_STRUCTURE_DAMAGE_KIT.collapse!).call(collapseKit, anatomy, seed, writers)),
+      (writers) => (collapseKit.collapse ?? DEFAULT_STRUCTURE_DAMAGE_KIT.collapse!).call(collapseKit, anatomy, seed, writers), builder),
   };
 }
 

@@ -25,7 +25,7 @@
  */
 import type { BufferGeometry } from 'three';
 import { STRUCTURE_WALL_STUB_M } from './collision.ts';
-import { intactPlanAt } from './collapseRuin.ts';
+import { intactPlanAt, ruinKind } from './collapseRuin.ts';
 import {
   bodyMoundHeightAt, damageRng, holeOutlineK, registerStructureDamageKit,
   type BreachSpec, type DamageFace, type DamageMeshWriter, type DamageOpening, type DamagePieceWriter,
@@ -662,13 +662,15 @@ function collapse(anatomy: StructureDamageAnatomy, seed: number, out: DamageWrit
     }
     mesh.end();
   }
+  const frameHeap = ruinKind(anatomy) === 'frame' ? 0.2 : 1;
   // the heap: chunks in the building's own buckets by their shares, seated on the sim's mound
   const total = anatomy.rubble.reduce((sum, slot) => sum + slot.share, 0) || 1;
   const reach = { x: anatomy.w / 2 + 2, z: anatomy.d / 2 + 2 };
   for (const slot of anatomy.rubble) {
     if (!mesh.begin(slot.bucket, 'rubble')) continue;
     const unit = unitOf(slot.material).size;
-    const wanted = Math.round((slot.share / total) * Math.min(400, (mesh.capacity - mesh.vertices) / VERTS_PER_BOX));
+    // (2026-10-16) an open frame falls as members, not as a masonry heap: a fifth of the pile (collapseRuin.ts stands its legs)
+    const wanted = Math.round((slot.share / total) * Math.min(400, (mesh.capacity - mesh.vertices) / VERTS_PER_BOX) * frameHeap);
     for (let k = 0; k < wanted && roomFor(mesh, 1); k++) {
       const x = (rng() * 2 - 1) * reach.x, z = (rng() * 2 - 1) * reach.z;
       // (2026-10-16) a sparse form's heap follows its own pieces (a guyed mast's, not its guys' whole square)
