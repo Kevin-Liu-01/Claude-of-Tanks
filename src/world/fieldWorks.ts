@@ -3,8 +3,8 @@
 // 3 wall, edgeM the distance to the field's edge). The karst's dry stone walls stand on the grid's wall boundaries and
 // a bocage's hedge lines get their earth banks, on the same layout the terrain draws (the boundary band, the same field
 // gate: off the villages, the roads, the water and the slopes), so a wall stands exactly where the ground shows its
-// footing. They are decor: a low rubble wall or a bank is crossed, not cover — no collision (should they ever matter in
-// play they become crushable like the fences, never blocking), no taller than a metre, kept off the roads, the bridges
+// footing. A low rubble wall or a bank is crossed, not hard cover: the banks carry no collision, and the walls (physics
+// stream PH.15, 2026-10-15) stand as crushable spans like the fences, never blocking (fieldWallCollision.ts); no taller than a metre, kept off the roads, the bridges
 // and their approaches, the aprons and yards, every mode's objective discs and the spawn pads (the maps lane owns the
 // layouts these keep clear); one welded mesh, casting no shadow: the walls (group 0) on their own stone (the face
 // print, fieldWallFace.ts), the banks (group 1) on the props rock material.
@@ -129,6 +129,8 @@ export interface FieldWorksBuilt {
   receipt: FieldWorksReceipt;
   /** (b17) The source of the cells' stone forms (desktop; null on a phone or without walls). */
   fine: FieldWallFineSource | null;
+  /** (physics stream, PH.15) The wall lines (the desktop's on every tier) and the noise they were laid with (fieldWallCollision.ts). */
+  walls?: { lines: number[][]; noise: SimplexNoise } | null;
 }
 
 const SQUARE = 466;
@@ -251,46 +253,15 @@ function pieceRng(x0: number, z0: number, first: number): () => number {
 }
 
 /**
- * A dry-stone wall along a line (the scenery lane, b13; wave 87: "a smooth grey kerb-like strip of even width ...
- * cast concrete rather than a drystone wall"). The line is cut into slots, each a top stone's length (0.32-0.8 m; a
- * phone's 0.8-1.6 m): the faces are battered and a little uneven slot by slot (a stone standing proud here, a course
- * line there), continuous so no crack opens, carrying the face print's courses (fieldWallFace.ts); the crown steps
- * from top stone to top stone, each tipped its own way, the odd one standing high, the odd one low. Along the wall
- * a stretch has fallen in (its upper courses tumbled at its foot), a breach opens here and there with its stones in
- * the gap, the heads are lower, and a fallen stone lies at the foot now and then. Deterministic for the line's place.
+ * A wall line's slots (moved out of layWall verbatim, physics stream PH.15, 2026-10-15): the line's own stream (lineRng,
+ * returned for layWall to draw on), the wall's height and its two uv offsets, and the slots, each whole, fallen in or a
+ * breach, with the phone's continuous crown and the fallen stretches eased in. The field walls' collision
+ * (fieldWallCollision.ts) reads the desktop's plan on every tier, so every host stands the same records.
  */
-function* layWall(env: WallEnv, pts: number[], cellOf: (x: number, z: number, coarse: boolean) => Buffers): Generator<FieldWorksSlice, void, void> {
-  const { ground, noise, heightAt, receipt } = env;
-  const [wh, ws, wl] = env.wallTone;
-  const stones = env.stones;
-  const n = pts.length / 2;
-  const S = [0];
-  for (let k = 1; k < n; k++) S.push(S[k - 1] + Math.hypot(pts[k * 2] - pts[k * 2 - 2], pts[k * 2 + 1] - pts[k * 2 - 1]));
-  const L = S[n - 1];
-  if (L < 1.0) return;
-  // the direction at each point from its neighbours (smooth along the line)
-  const dir: number[] = [];
-  for (let k = 0; k < n; k++) {
-    const a = Math.max(0, k - 1), b = Math.min(n - 1, k + 1);
-    let dx = pts[b * 2] - pts[a * 2], dz = pts[b * 2 + 1] - pts[a * 2 + 1];
-    const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
-    dir.push(dx, dz);
-  }
-  let seg = 0;
-  const at = (s: number): [number, number, number, number] => {
-    while (seg < n - 2 && S[seg + 1] < s) seg++;
-    while (seg > 0 && S[seg] > s) seg--;
-    const t = Math.min(1, Math.max(0, (s - S[seg]) / Math.max(1e-6, S[seg + 1] - S[seg])));
-    const x = pts[seg * 2] + (pts[seg * 2 + 2] - pts[seg * 2]) * t, z = pts[seg * 2 + 1] + (pts[seg * 2 + 3] - pts[seg * 2 + 1]) * t;
-    let dx = dir[seg * 2] + (dir[seg * 2 + 2] - dir[seg * 2]) * t, dz = dir[seg * 2 + 1] + (dir[seg * 2 + 3] - dir[seg * 2 + 1]) * t;
-    const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
-    return [x, z, dx, dz];
-  };
+export function planWallSlots(pts: number[], L: number, noise: SimplexNoise, mobile: boolean): {
+  rand: () => number; H0: number; uFace: number; uTop: number; slots: WallSlot[];
+} {
   const rand = lineRng(pts[0], pts[1], pts[pts.length - 2], pts[pts.length - 1]);
-  const mobile = env.mobile;
-  // (the near form is laid into the cell of each slot's middle, the far form into its segment's: buf is the current one)
-  let buf: Buffers = cellOf(pts[0], pts[1], false);
-  const slotCell = (s0: number, s1: number, coarse: boolean): Buffers => { const [x, z] = at((s0 + s1) / 2); return cellOf(x, z, coarse); };
   const H0 = 0.8 + rand() * 0.12;
   const uFace = rand() * 7, uTop = rand() * 7;
   // the slots, and what each is: whole, fallen in (its height a share of the wall's) or a breach (none)
@@ -332,6 +303,54 @@ function* layWall(env: WallEnv, pts: number[], cellOf: (x: number, z: number, co
     if (prev && prev.kind === 1) slots[i].h0 = (slots[i].h0 + prev.h1) / 2;
     if (next && next.kind === 1) slots[i].h1 = (slots[i].h1 + next.h0) / 2;
   }
+  return { rand, H0, uFace, uTop, slots };
+}
+/** One slot of a wall line (planWallSlots): its run along the line, its heights at its ends, and what it is. */
+export type WallSlot = { s0: number; s1: number; h0: number; h1: number; lean: number; tone: number; kind: 0 | 1 | 2; ridge: number; crest: number };
+
+/**
+ * A dry-stone wall along a line (the scenery lane, b13; wave 87: "a smooth grey kerb-like strip of even width ...
+ * cast concrete rather than a drystone wall"). The line is cut into slots, each a top stone's length (0.32-0.8 m; a
+ * phone's 0.8-1.6 m): the faces are battered and a little uneven slot by slot (a stone standing proud here, a course
+ * line there), continuous so no crack opens, carrying the face print's courses (fieldWallFace.ts); the crown steps
+ * from top stone to top stone, each tipped its own way, the odd one standing high, the odd one low. Along the wall
+ * a stretch has fallen in (its upper courses tumbled at its foot), a breach opens here and there with its stones in
+ * the gap, the heads are lower, and a fallen stone lies at the foot now and then. Deterministic for the line's place.
+ */
+function* layWall(env: WallEnv, pts: number[], cellOf: (x: number, z: number, coarse: boolean) => Buffers): Generator<FieldWorksSlice, void, void> {
+  const { ground, noise, heightAt, receipt } = env;
+  const [wh, ws, wl] = env.wallTone;
+  const stones = env.stones;
+  const n = pts.length / 2;
+  const S = [0];
+  for (let k = 1; k < n; k++) S.push(S[k - 1] + Math.hypot(pts[k * 2] - pts[k * 2 - 2], pts[k * 2 + 1] - pts[k * 2 - 1]));
+  const L = S[n - 1];
+  if (L < 1.0) return;
+  // the direction at each point from its neighbours (smooth along the line)
+  const dir: number[] = [];
+  for (let k = 0; k < n; k++) {
+    const a = Math.max(0, k - 1), b = Math.min(n - 1, k + 1);
+    let dx = pts[b * 2] - pts[a * 2], dz = pts[b * 2 + 1] - pts[a * 2 + 1];
+    const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
+    dir.push(dx, dz);
+  }
+  let seg = 0;
+  const at = (s: number): [number, number, number, number] => {
+    while (seg < n - 2 && S[seg + 1] < s) seg++;
+    while (seg > 0 && S[seg] > s) seg--;
+    const t = Math.min(1, Math.max(0, (s - S[seg]) / Math.max(1e-6, S[seg + 1] - S[seg])));
+    const x = pts[seg * 2] + (pts[seg * 2 + 2] - pts[seg * 2]) * t, z = pts[seg * 2 + 1] + (pts[seg * 2 + 3] - pts[seg * 2 + 1]) * t;
+    let dx = dir[seg * 2] + (dir[seg * 2 + 2] - dir[seg * 2]) * t, dz = dir[seg * 2 + 1] + (dir[seg * 2 + 3] - dir[seg * 2 + 1]) * t;
+    const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
+    return [x, z, dx, dz];
+  };
+  const mobile = env.mobile;
+  // (physics stream, PH.15: the line's stream and its slots from planWallSlots, the same draws in the same order)
+  const { rand, uFace, uTop, slots } = planWallSlots(pts, L, noise, mobile);
+  type Slot = WallSlot;
+  // (the near form is laid into the cell of each slot's middle, the far form into its segment's: buf is the current one)
+  let buf: Buffers = cellOf(pts[0], pts[1], false);
+  const slotCell = (s0: number, s1: number, coarse: boolean): Buffers => { const [x, z] = at((s0 + s1) / 2); return cellOf(x, z, coarse); };
   // the stations: each slot boundary's centre, direction, half widths and ground (a station is shared by the two
   // slots either side, so the base and the course line are continuous)
   const cache = new Map<number, Station>();
@@ -860,7 +879,10 @@ export function* buildFieldWorks(
     }
     return false;
   };
-  const step = options.mobile ? 2 : 1.5;
+  // (physics stream PH.15) a phone scans the walls' lines at the desktop's step: the walls stand crushable records
+  // (fieldWallCollision.ts), and a phone's build must stand the desktop's records index for index (the committed shards,
+  // which every host's authority plays on, are the desktop's: tools/capture-world-collision-manifests.mjs --tier=mobile)
+  const step = options.mobile && !options.walls ? 2 : 1.5;
   // the feet on a 2 m hash: one foot a metre or so along a line
   const cell = 2, hash = new Map<number, number[]>();
   const key = (x: number, z: number) => (Math.floor(x / cell) + 4096) * 8192 + (Math.floor(z / cell) + 4096);
@@ -1119,7 +1141,8 @@ export function* buildFieldWorks(
   // (b17) the cells' stone forms are built when the camera comes near (props.ts updateFieldWallLod), from the lines
   const fine = !options.mobile && wallLines.length
     ? { lines: wallLines, cellLines, env: { ground, noise, heightAt, wallTone: [wh, ws, wl] as const, mobile: false } } : null;
-  return { geometry: wallGeometry ?? bankGeometry, wallCells: wallCellList, wallGeometry, wallFarGeometry, bankGeometry, receipt, fine };
+  return { geometry: wallGeometry ?? bankGeometry, wallCells: wallCellList, wallGeometry, wallFarGeometry, bankGeometry, receipt, fine,
+    walls: wallLines.length ? { lines: wallLines, noise } : null };
 }
 
 /**

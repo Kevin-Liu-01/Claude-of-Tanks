@@ -1092,6 +1092,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-11 (MP lane): a late HELLO is admitted; a seat closed with "hello timeout" says hello again
     'src/mp/host/helloGate.selftest.mjs',
     'src/mp/host/worldCollision.selftest.mjs',
+    'src/mp/host/worldCollisionMobileTier.selftest.mjs', // 2026-10-16 physics PH.15: a phone-tier host plays the desktop's shard records
     // 2026-10-08 (destruction core lane): Frontline's authority plays the trench variant every client builds
     'src/mp/host/frontlineVariant.selftest.mjs',
     'src/mp/host/hostRuleset.selftest.mjs',
@@ -1586,6 +1587,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/stoneWalls.selftest.mjs',
     // the scenery lane (b13, wave 87): the karst field walls laid as dry stone, their face print, the T cut back
     'src/world/fieldWalls.selftest.mjs',
+    'src/world/fieldWallCollision.selftest.mjs', // 2026-10-15 physics PH.15: the field walls' crushable spans and their press
     // the scenery lane (b15, wave 106): the regions' field stacks and the straw props' hay print
     'src/world/haystacks.selftest.mjs',
     'src/world/maps/periodClutter.selftest.mjs',

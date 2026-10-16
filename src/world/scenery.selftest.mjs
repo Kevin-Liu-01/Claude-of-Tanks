@@ -713,7 +713,7 @@ const yard = propsSource.indexOf('  yield* placeYardDressing();'), pass = propsS
 const merge = propsSource.indexOf('  yield* mergeMaterialBuckets();');
 assert.ok(yard > 0 && pass > yard && merge > pass, 'the pass runs after every placement and before the bucket merge');
 assert.match(propsSource, /new THREE\.Mesh\(merged, mats\.rock\)/, 'the rock forms draw on the props rock material (its cascade setup and hook)');
-const pools = propsSource.indexOf('  yield* finalizeDestructiblePools();'), works = propsSource.indexOf('  yield* placeFieldBoundaryWorks();');
+const pools = propsSource.indexOf('  yield* finalizeDestructiblePools();'), works = propsSource.indexOf('  yield* placeFieldBoundaryWorks({');
 assert.ok(pools > merge && works > pools, 'the field works build once the pools\' refit has made every solid final (the placement they keep off reads those)');
 assert.match(propsSource, /mats\.fieldStone\.color\.setRGB\(masonryTint\[0\], masonryTint\[1\], masonryTint\[2\]\)/, 'a map\'s masonry tint reaches the field walls\' print');
 assert.doesNotMatch(propsSource, /mats\.stone\.color\.setRGB\(masonryTint/, 'the masonry tint never multiplies the house masonry (a regional kit\'s print under it burns out)');

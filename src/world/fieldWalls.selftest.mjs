@@ -288,7 +288,8 @@ const lay = (lines, mobile = false) => drain(buildFieldWorks(fieldOf(lines), noi
 
 // ---------------------------------------------------------------------------------------------- 3. the wiring
 {
-  const props = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
+  // (2026-10-15: the field works' pass and their LOD switch live in fieldBoundaryWorks.ts; props.ts calls them)
+  const props = readFileSync(new URL('./props.ts', import.meta.url), 'utf8') + readFileSync(new URL('./fieldBoundaryWorks.ts', import.meta.url), 'utf8');
   assert.match(props, /const print = yield\* makeDryWall\(aniso, mobileProps \? 256 : 512\);/, 'the walls paint their print (half size on the phones)');
   assert.match(props, /map: print\.albedo, normalMap: print\.normal, roughnessMap: print\.surface, aoMap: print\.surface,\n\s*vertexColors: true,/, 'on their own material, the vertex tone over the print');
   assert.match(props, /engineCtx\.setupShadowMaterial\(wallMaterial, \(shader\) => \{ grimeHook\(shader\); applyStoneWallHook\(shader, stoneShape\); \}\);/, 'a lit material on the cascades, under the grime and the lichen by world place');
