@@ -209,8 +209,9 @@ export function mekongFishShed(ctx: RegionalBuildContext): RegionalParts {
     };
     // the boards over the frame: upright, their gaps, broken round the openings (laid over the house's plank walls after
     // it is built: a plank wall reads and breaks as planks, so its storey is no framed one of the damage kit's)
-    const boards = (s: PartSink, face: Face, rect: { u0: number; u1: number; y0: number; y1: number }, ops: readonly Opening[]) => {
-      if (mobile) return;
+    // (Lane C 2026-10-16, phoneIdentity: the phone skipped the boards and their look draws, 76 of the desktop's 302) the
+    // phone builds them as dressing it leaves out: the same draws, no geometry
+    const boards = (s: PartSink, face: Face, rect: { u0: number; u1: number; y0: number; y1: number }, ops: readonly Opening[]) => s.dressing(mobile, () => {
       const holes = ops.map((o) => [o.u - o.w / 2 - 0.04, o.u + o.w / 2 + 0.04, rect.y0 + o.y0 - 0.04, rect.y0 + o.y0 + o.h + 0.04] as const);
       for (let u = rect.u0 + 0.12; u < rect.u1 - 0.1; u += 0.24) {
         const cut = holes.filter(([a, b]) => u > a - 0.1 && u < b + 0.1);
@@ -220,7 +221,7 @@ export function mekongFishShed(ctx: RegionalBuildContext): RegionalParts {
           cur = Math.max(cur, b);
         }
       }
-    };
+    });
     sink.paint = shade(plank, 0.95);
     try {
       sink.placed(0, 0, floor, 0, () => {
