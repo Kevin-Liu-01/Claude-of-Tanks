@@ -15,6 +15,7 @@ import { archGlazing, archHead, openBelfry } from './sarajevoParts.ts';
 import { doorUnit, paneBucket, windowUnit, type WindowStyle } from './openings.ts';
 import { pottedPlant, washingLine } from './dressing.ts';
 import { recordShed } from './shedFall.ts';
+import { bevelSpan, orientedPrism } from './millWorks.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { choufSouk } from './souqs.ts'; // props #23: the souk of Deir el-Qamar
 
@@ -594,21 +595,25 @@ const arisha: RegionalBuilder = (ctx) => {
   const fp = footprint(ctx);
   const W = Math.max(2.4, fp.w - 0.05), D = Math.max(2.4, fp.d - 0.05), H = 2.5;
   const LEAVES: readonly Rgb[] = [0x4f6a2e, 0x5f7a34, 0x3f5a26, 0x6a7a3a].map(rgb), GRAPE = rgb(0x3a2a40), BARK = rgb(0x4a3a2c);
+  // (props census r2 sweep, Lane C 2026-10-16: the arbour's box-only share 65 %) the terrace's corners and the post bases'
+  // arrises dressed, the beams and rails eased
+  const chamfered = (x0: number, z0: number, x1: number, z1: number, y: number, c: number): Vec3[] => [
+    [x1, y, z0 + c], [x1, y, z1 - c], [x1 - c, y, z1], [x0 + c, y, z1], [x0, y, z1 - c], [x0, y, z0 + c], [x0 + c, y, z0], [x1 - c, y, z0]];
   sink.placed(0, fp.cx, 0, fp.cz, () => {
-    sink.span('stone', -W / 2, -0.3, -D / 2, W / 2, 0.2, D / 2);
+    orientedPrism(sink, 'stone', chamfered(-W / 2, -D / 2, W / 2, D / 2, -0.3, 0.12), [0, 1, 0], 0.5, {});
     // the terrace's dressed edge: a coping course a hand proud all round its top
     sink.band('stone', -W / 2 - 0.04, 0.08, -D / 2 - 0.04, W / 2 + 0.04, 0.22, D / 2 + 0.04, { decor: true, shade: 0.92 });
     // the posts on their stone bases (the corners, and a middle one on a long side)
     const xs = W > 3.4 ? [-1, 0, 1] : [-1, 1], legs: Array<{ foot: Vec3; head: Vec3 }> = [], posts: Array<[number, number, number, number]> = [];
     for (const sz of [-1, 1]) for (const k of xs) {
       const x = k * (W / 2 - 0.15), z = sz * (D / 2 - 0.15);
-      sink.span('stone', x - 0.15, 0.2, z - 0.15, x + 0.15, 0.42, z + 0.15, { shade: 0.88 });
+      orientedPrism(sink, 'stone', chamfered(x - 0.15, z - 0.15, x + 0.15, z + 0.15, 0.2, 0.04), [0, 1, 0], 0.22, { shade: 0.88 });
       sink.cylinder('structureWood', [x, 0.42, z], 'y', H - 0.42, 0.08, 8, { colour: TIMBER }, 0.075);
       legs.push({ foot: [x, 0.42, z], head: [x, H, z] }); posts.push([x, z, 0.42, H]);
     }
     // the two beams in their notches over the post heads, run out past them; the rails across; the battens along
-    for (const sz of [-1, 1]) sink.span('structureWood', -W / 2 - 0.15, H - 0.14, sz * (D / 2 - 0.15) - 0.07, W / 2 + 0.15, H + 0.02, sz * (D / 2 - 0.15) + 0.07, { colour: TIMBER, uv: UV_MEMBER });
-    for (let x = -W / 2 + 0.3; x < W / 2 - 0.15; x += 0.55) sink.span('structureWood', x - 0.035, H + 0.02, -D / 2 - 0.1, x + 0.035, H + 0.09, D / 2 + 0.1, { colour: shade(TIMBER, 1.08), decor: true, uv: UV_MEMBER });
+    for (const sz of [-1, 1]) bevelSpan(sink, 'structureWood', -W / 2 - 0.15, H - 0.14, sz * (D / 2 - 0.15) - 0.07, W / 2 + 0.15, H + 0.02, sz * (D / 2 - 0.15) + 0.07, 0.025, { colour: TIMBER, uv: UV_MEMBER });
+    for (let x = -W / 2 + 0.3; x < W / 2 - 0.15; x += 0.55) bevelSpan(sink, 'structureWood', x - 0.035, H + 0.02, -D / 2 - 0.1, x + 0.035, H + 0.09, D / 2 + 0.1, 0.012, { colour: shade(TIMBER, 1.08), decor: true, uv: UV_MEMBER });
     sink.dressing(mobile, () => {
       for (let z = -D / 2 + 0.3; z < D / 2 - 0.15; z += 0.6) sink.span('structureWood', -W / 2, H + 0.09, z - 0.02, W / 2, H + 0.13, z + 0.02, { colour: shade(TIMBER, 1.12), decor: true, fine: true });
       // the vine: its trunk twisting up the corner post, out along the beam and over the rails
