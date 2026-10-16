@@ -330,6 +330,13 @@ uniform vec2 uUpperDrift;
 uniform vec4 uRain;
 // QA (round 9 candidate): 0 the rain law over the weather and the anvil field, 1 rain under the towers' cores only
 uniform float uRainCore;
+// 2026-10-15 (the SKY lane; the C2 diagnosis critic on Monsoon from 400 m: the storm "renders as a see-through box with
+// straight walls and diagonal streaks"): the rain shafts' run was a box — cut off below a fixed elevation (dir.y -0.03:
+// from above the ground the shafts under the eye ended in a level line across the frame, and from the ground the rain
+// veil over terrain below that line did too), begun at 3 km and ended at 24 km in one step, and full to the base
+// plane. QA knob CLOUD_RAIN_SOFT (1; 0 = the box): the run follows the ray to the ground (the scene depth ends it), its
+// density ramps in over its first 1.5 km, out over its last quarter, and in over the 60 m under the base
+uniform float uRainSoft;
 uniform vec4 uFogBank;
 // a in front of b (premultiplied radiance, transmittance)
 vec4 cloudOver( vec4 a, vec4 b ) { return vec4( a.rgb + a.a * b.rgb, a.a * b.a ); }
@@ -386,7 +393,7 @@ float cloudPrecip( vec2 pxz ) {
 vec4 slabRain( vec3 dir, float cosT, float jitter, float sceneT, out float tLayer ) {
 	tLayer = 1e9;
 	vec4 none = vec4( 0.0, 0.0, 0.0, 1.0 );
-	if ( uRain.x <= 0.0 || dir.y > 0.35 || dir.y < -0.03 || uCamPos.y > uBase ) return none;
+	if ( uRain.x <= 0.0 || dir.y > 0.35 || dir.y < ( uRainSoft > 0.5 ? -0.3 : -0.03 ) || uCamPos.y > uBase ) return none;
 	float tEnd = dir.y > 0.002 ? ( uBase - uCamPos.y ) / dir.y : ${f(CLOUD_RAIN_RANGE_M[1])};
 	tEnd = min( min( tEnd, ${f(CLOUD_RAIN_RANGE_M[1])} ), sceneT );
 	float tStart = ${f(CLOUD_RAIN_RANGE_M[0])};
@@ -408,6 +415,8 @@ vec4 slabRain( vec3 dir, float cosT, float jitter, float sceneT, out float tLaye
 		float reach = 1.0 - uRain.y * ( 0.55 + 0.45 * streak );
 		float vprof = 1.0 - smoothstep( reach - 0.18, reach + 0.04, fall / drop );
 		float rho = uRain.x * uRain.w * prec * ( 0.4 + 0.9 * streak ) * vprof;
+		if ( uRainSoft > 0.5 ) rho *= smoothstep( tStart, tStart + 1500.0, t ) * ( 1.0 - smoothstep( ${f(CLOUD_RAIN_RANGE_M[1] * 0.75)}, ${f(CLOUD_RAIN_RANGE_M[1])}, t ) )
+			* smoothstep( 0.0, 60.0, fall );
 		if ( rho <= 0.0 ) continue;
 		// lit by the lower sky under the cloud (darker under a heavy core) and the sun's forward glow through the drops
 		// (round 7, wave 221 on Monsoon: a shaft in front of a tower's dark core read as blue sky through it — under the
@@ -1417,6 +1426,7 @@ export class VolumetricCloudLayer {
     }
     t.uOpaqueCut.value = lightTune('CLOUD_OPAQUE_CUT', 1);
     t.uRainCore.value = lightTune('CLOUD_RAIN_CORE', 0);
+    t.uRainSoft.value = lightTune('CLOUD_RAIN_SOFT', 1);
     // QA (round 10): the cost lab's knobs — the step cap, the entry refinement, the far cascade's bilinear read, the
     // streets' share; the march's budget the tier's (round 11)
     const budget = CLOUD_TIERS[this.traceTier] ?? CLOUD_TIERS.high;

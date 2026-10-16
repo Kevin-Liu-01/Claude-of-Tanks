@@ -76,6 +76,10 @@ const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
   assert.match(glsl, /float w = mix\( 40\.0, 1500\.0, age \* age \);/, 'a fresh trail 40 m wide');
   assert.match(glsl, /float peak = B\.w \* sqrt\( 40\.0 \/ w \) \* \( w \/ wf \);/, 'its depth spreads with its width');
   assert.match(glsl, /if \( uRain\.x <= 0\.0/, 'the rain by its amount');
+  // 2026-10-15 (Monsoon's "see-through box"): the rain's run follows the ray down to the scene, ramps in, out and under the base
+  assert.ok(glsl.includes("dir.y < ( uRainSoft > 0.5 ? -0.3 : -0.03 )"), 'no level cut under the eye');
+  assert.ok(glsl.includes('if ( uRainSoft > 0.5 ) rho *= smoothstep( tStart, tStart + 1500.0, t ) * ( 1.0 - smoothstep( ${f(CLOUD_RAIN_RANGE_M[1] * 0.75)}, ${f(CLOUD_RAIN_RANGE_M[1])}, t ) )'), 'no near or far wall');
+  assert.ok(glsl.includes('* smoothstep( 0.0, 60.0, fall );'), 'no hard top at the base plane');
   assert.match(glsl, /if \( uFogBank\.x <= 0\.0/, 'the fog bank by its amount');
   assert.doesNotMatch(glsl, /pow\( \(/, 'no pow of a signed difference (undefined in GLSL for a negative base)');
   assert.doesNotMatch(glsl, /texture\( tWeather|texture\( tStreets|texture2D\( tWeather/, 'the mipmapped weather fields are read at level zero (divergent loops pick unrelated mips)');
