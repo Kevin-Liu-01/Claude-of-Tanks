@@ -1241,16 +1241,67 @@ function collapseRuntimeFootprint(source: number[][]): number[][] {
  * as a separate noCollision geometry's would be; any other geometry as it is.
  */
 function withoutDressing(geometry: BufferGeometry): BufferGeometry {
-  const flags = geometry.userData?.noCollisionVertices as Uint8Array | undefined;
+  const dressing = geometry.userData?.noCollisionVertices as Uint8Array | undefined;
+  const ranges = geometry.userData?.collisionHullRanges as ArrayLike<number> | undefined;
   const index = geometry.getIndex();
-  if (!flags || !index) return geometry;
+  if (!dressing && !ranges?.length) return geometry;
+  // (the hull ranges' vertices stand in their hulls, collectSolids: left out here as the dressing is)
+  let flags = dressing;
+  if (ranges?.length) {
+    flags = dressing ? dressing.slice() : new Uint8Array(geometry.getAttribute('position')?.count ?? 0);
+    for (let r = 0; r + 1 < ranges.length; r += 2) flags.fill(1, ranges[r], ranges[r + 1]);
+  }
+  // (physics, 2026-10-16) a merged light kind's geometry is unindexed (structureKit.ts merge): its triangles' corners
+  // are its vertices in order
+  const corners = index ? index.count : geometry.getAttribute('position')?.count ?? 0;
+  const corner = (i: number) => (index ? index.getX(i) : i);
   const kept: number[] = [];
-  for (let t = 0; t + 2 < index.count; t += 3) {
-    const a = index.getX(t), b = index.getX(t + 1), c = index.getX(t + 2);
-    if (!(flags[a] && flags[b] && flags[c])) kept.push(a, b, c);
+  for (let t = 0; t + 2 < corners; t += 3) {
+    const a = corner(t), b = corner(t + 1), c = corner(t + 2);
+    if (!(flags![a] && flags![b] && flags![c])) kept.push(a, b, c);
   }
   const keptIndex = { count: kept.length, getX: (i: number) => kept[i] };
   return { getAttribute: (name: string) => geometry.getAttribute(name), getIndex: () => keptIndex, userData: {} } as unknown as BufferGeometry;
+}
+
+const EMPTY_GEOMETRY = { getAttribute: () => undefined, getIndex: () => null, userData: {} } as unknown as BufferGeometry;
+
+/**
+ * A geometry a kit flags `userData.collisionHull` stands as its plan hull from its lowest point to its highest, its
+ * dressing (noCollisionVertices) left out: a turned jar, a slumped sack, a crate on its battens (maps/courtyardKit.ts;
+ * physics, 2026-10-16). A lathe's hundreds of facets and a crate's dozen battens, each its own solid, pushed a desert
+ * compound's bands over the dense and part limits (DENSE_SOURCE_LIMIT, PART_LIMIT), and its walls were rastered with
+ * them (the certification 82-86 of 100); the hull is the solid the old cylinder, sphere or box stood as. The worker's
+ * wire carries the flag (structureShellWire.ts).
+ */
+/** (A merged light kind's parts flagged so — the rover garage's wheels and tapered posts — are vertex ranges of its
+ *  merge, `userData.collisionHullRanges` [start, end, ...]: structureKit.ts merge. Each range stands as its own hull.) */
+function hullPrism(geometry: BufferGeometry, start = 0, end = geometry.getAttribute('position')?.count ?? 0): BufferGeometry {
+  const position = geometry.getAttribute('position');
+  const flags = geometry.userData?.noCollisionVertices as Uint8Array | undefined;
+  const plan: Array<[number, number]> = [];
+  let minY = Infinity, maxY = -Infinity;
+  for (let i = start; i < end; i++) {
+    if (flags?.[i]) continue;
+    plan.push([position.getX(i), position.getZ(i)]);
+    const y = position.getY(i);
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  const hull = capConvexCorners(convexHull2(plan));
+  const n = hull.length / 2;
+  if (n < 3 || !(maxY > minY)) return EMPTY_GEOMETRY;
+  const xyz = new Float64Array(6 * n);
+  for (let i = 0; i < n; i++) {
+    xyz[3 * i] = hull[2 * i]; xyz[3 * i + 1] = minY; xyz[3 * i + 2] = hull[2 * i + 1];
+    xyz[3 * (n + i)] = hull[2 * i]; xyz[3 * (n + i) + 1] = maxY; xyz[3 * (n + i) + 2] = hull[2 * i + 1];
+  }
+  const triangles: number[] = [];
+  for (let i = 1; i + 1 < n; i++) triangles.push(0, i + 1, i, n, n + i, n + i + 1);
+  for (let i = 0; i < n; i++) { const j = (i + 1) % n; triangles.push(i, j, n + j, i, n + j, n + i); }
+  const prism = { count: 2 * n, getX: (i: number) => xyz[3 * i], getY: (i: number) => xyz[3 * i + 1], getZ: (i: number) => xyz[3 * i + 2] };
+  const index = { count: triangles.length, getX: (i: number) => triangles[i] };
+  return { getAttribute: (name: string) => (name === 'position' ? prism : undefined), getIndex: () => index, userData: {} } as unknown as BufferGeometry;
 }
 
 function collectSolids(buckets: StructureGeometryBuckets) {
@@ -1261,6 +1312,11 @@ function collectSolids(buckets: StructureGeometryBuckets) {
       // regional kits (maps/regional/geometry.ts) finish their surface dressing — framing, joinery, shutters, gutters —
       // as separate geometries flagged noCollision: a member 3 cm proud of a wall is not a collision part
       if (geometry.userData?.noCollision) continue;
+      if (geometry.userData?.collisionHull) { solids.push(...geometrySolids(hullPrism(geometry), bucket)); continue; }
+      const ranges = geometry.userData?.collisionHullRanges as ArrayLike<number> | undefined;
+      for (let r = 0; ranges && r + 1 < ranges.length; r += 2) {
+        solids.push(...geometrySolids(hullPrism(geometry, ranges[r], ranges[r + 1]), bucket));
+      }
       solids.push(...geometrySolids(withoutDressing(geometry), bucket));
     }
   }

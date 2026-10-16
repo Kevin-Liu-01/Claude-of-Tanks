@@ -418,11 +418,26 @@ function paint<T extends THREE.BufferGeometry>(geo: T, hex: number, rng: Rng, ji
 }
 
 function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
-  const geometry = mergeGeometries(
-    parts.map((geo) => (geo.index ? geo.toNonIndexed() : geo)),
-    false,
-  );
+  const flat = parts.map((geo) => (geo.index ? geo.toNonIndexed() : geo));
+  const geometry = mergeGeometries(flat, false);
   if (!geometry) throw new Error('structure geometry merge produced no result');
+  // (physics, 2026-10-16) a part its kit marks as dressing (userData.noCollision: a solar panel's rims and mullions, a
+  // cable) is drawn and no collision part: its vertices flagged on the merge (structureCollision.ts withoutDressing), as
+  // the map vehicles' trim is
+  // the parts it marks userData.collisionHull (a rover's wheel, a tapered post) each stand as their hull: their vertex
+  // ranges kept on the merge (collisionHullRanges)
+  if (parts.some((geo) => geo.userData?.noCollision || geo.userData?.collisionHull)) {
+    const flags = new Uint8Array(geometry.getAttribute('position').count), ranges: number[] = [];
+    let at = 0;
+    flat.forEach((geo, i) => {
+      const n = geo.getAttribute('position').count;
+      if (parts[i].userData?.noCollision) flags.fill(1, at, at + n);
+      else if (parts[i].userData?.collisionHull) ranges.push(at, at + n);
+      at += n;
+    });
+    if (flags.includes(1)) geometry.userData.noCollisionVertices = flags;
+    if (ranges.length) geometry.userData.collisionHullRanges = Uint32Array.from(ranges);
+  }
   return geometry;
 }
 
