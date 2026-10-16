@@ -9,15 +9,17 @@ import { resolveFarRangeAmp } from '../world/horizonFarRange.ts';
 import { getMapConfig } from '../world/maps/index.ts';
 import { MAP_IDS } from '../world/maps/catalog.ts';
 
-// Frosthollow, Cinder Junction, Ironworks: cell decks with breaks — their far country stands to its full height
+// Frosthollow, Cinder Junction, Ironworks: closed overcasts since the 10-13 ruling's enforcement (a deck is closed or it
+// is cumulus: cloudsBan.selftest) — their far country stands to half the deck's depth, over the legacy 0.82 of its base
 const far = { ampM: 900 };
 for (const id of ['winter', 'railyard', 'foundry']) {
   const cfg = getMapConfig(id);
   const b = resolveCloudBase(cfg);
   assert.equal(b.deck, true, `${id}: a deck`);
-  assert.equal(b.closed, false, `${id}: with breaks (the render tune opens the cell deck: cover ${b.cover.toFixed(2)})`);
-  assert.equal(b.capM, CLOUD_BASE_NO_CAP_M);
-  assert.equal(resolveFarRangeAmp(far, b.closed ? b.capM / 0.82 : CLOUD_BASE_NO_CAP_M), far.ampM, `${id}: its far peaks uncapped (the legacy cap: ${Math.round(0.82 * b.baseM)} m)`);
+  assert.equal(b.closed, true, `${id}: closed (cover ${b.cover.toFixed(2)})`);
+  assert.equal(b.capM, b.baseM + 0.5 * (b.topM - b.baseM));
+  assert.ok(b.capM > 0.82 * b.baseM, `${id}: the cap (${b.capM} m) over the legacy one (${Math.round(0.82 * b.baseM)} m)`);
+  assert.equal(resolveFarRangeAmp(far, b.capM / 0.82), Math.min(far.ampM, b.capM), `${id}: the far peaks rise into the deck's lower half`);
   assert.ok(b.baseM < 1000 && b.topM > b.baseM, `${id}: a low deck (${b.baseM} m)`);
 }
 // a closed deck caps the far country at half its depth, never a flat top under its base
@@ -43,9 +45,9 @@ for (const id of MAP_IDS) {
   assert.equal(resolveCloudCover(cfg), b.cover);
   if (b.closed) closed.push(`${id} (${b.baseM}-${b.topM} m, cap ${b.capM} m)`);
 }
-assert.ok(CLOUD_DECK_TUNE.CLOUD_DECK_COVER < 1, 'the cell decks\' render tune opens them');
+assert.equal(CLOUD_DECK_TUNE.CLOUD_DECK_COVER, 1, 'the render tune leaves a deck\'s cover (no broken deck: cloudsBan.selftest)');
 // the ring reads it (horizon.ts), the legacy min over the authored altitudes gone
 const horizon = readFileSync(new URL('../world/maps/horizon.ts', import.meta.url), 'utf8');
 assert.match(horizon, /const cloudBase = resolveCloudBase\(cfg as Parameters<typeof resolveCloudBase>\[0\]\);\s*const deckBaseM = cloudBase\.closed \? cloudBase\.capM \/ 0\.82 : CLOUD_BASE_NO_CAP_M;/);
 assert.doesNotMatch(horizon, /cfg\?\.sky\?\.cloudAltM \?\? Infinity/, 'the legacy cap is gone');
-console.log(`cloudBase.selftest: Frosthollow, Cinder Junction and Ironworks uncapped; closed decks capped at half their depth: ${closed.join(', ') || 'none'} PASS`);
+console.log(`cloudBase.selftest: Frosthollow, Cinder Junction and Ironworks capped at half their closed decks' depth; closed decks capped at half their depth: ${closed.join(', ') || 'none'} PASS`);

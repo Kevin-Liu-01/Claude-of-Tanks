@@ -147,7 +147,10 @@ assert.ok(stacks.winter.lanes[0].cells > 0, 'a stratocumulus deck carries its ce
   assert.ok(cloudDeckTau(stacks.whiteout) > 10 && cloudDeckTau(stacks.railyard) > 10, 'a closing deck is optically thick');
   // the law is the closing deck's (a broken deck keeps the old law and its grey bases over snow; a convective sky too)
   assert.ok(stacks.whiteout.closing === 1 && stacks.railyard.closing > 0.5, 'an overcast takes the light under the cover');
-  assert.ok(stacks.fjord.closing === 0 && stacks.verdant.closing === 0 && stacks.monsoon.closing === 0 && stacks.winter.closing < 0.2, 'a broken deck and a convective sky keep the old law');
+  // (2026-10-15, the 10-13 ruling enforced on every map: Frosthollow's deck closed, 0.86 -> 0.92 — it takes the closing
+  // law with Cinder Junction's and Ironworks')
+  assert.ok(stacks.winter.closing > 0.5 && stacks.foundry.closing > 0.5, 'the closed cell decks take the light under the cover');
+  assert.ok(stacks.fjord.closing === 0 && stacks.verdant.closing === 0 && stacks.monsoon.closing === 0, 'a convective sky keeps the old law');
 }
 
 // ---- the packing: vec4 lanes, an absent lane without density, the channel matrix column-major as GLSL reads M * v

@@ -180,7 +180,10 @@ export default {
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   // (2026-10-09, the shadows lane: deckBeam — the veil's cells took 90 % of the sun over half the creek while the camera
   // metered open sun; a smoke veil is thin and passes part of the beam)
-  clouds: { regime: 'ash-veil', nightGlow: 0.7, nightGlowHex: 0xffc890, deckBeam: 0.4 },
+  // 2026-10-15 (the SKY lane; the owner's 10-13 ruling enforced on every map): the ash veil drew a low lumpy cell deck at
+  // 800 m with breaks (0.88 of the sky) — the banned broken stratocumulus — over the canal town: Verdant's fair-weather
+  // cumulus in the river delta's humid haze instead (no deck, so no deck beam)
+  clouds: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 1250, tintHex: 0xf2efe8, nightGlow: 0.7, nightGlowHex: 0xffc890 },
   sky: {
     sunElevationDeg: 18, sunAzimuthDeg: 242, turbidity: 8.4, rayleigh: 1.3,
     mieCoefficient: 0.013, mieDirectionalG: 0.88, fogDensity: 0.00082,
@@ -188,8 +191,9 @@ export default {
     // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the overcast deck authored explicitly (it took
     // the auto branch's 340 m / 0.00015 / 2400 m) — a 330 m deck of 2300 m masses with a thinner slant haze
     // (0.00013) so the low sky between the arcologies keeps modeled cloud; diffuse light patchiness (cloudShadowAmp 0.12)
-    cloudOpacity: 1.34, cloudOpacity2: 1.12, cloudTintHex: 0xaeb8c1,
-    cloudAltM: 330, cloudHazeK: 0.00013, cloudUvM: 2300, cloudShadowAmp: 0.12,
+    // (2026-10-15, the 10-13 ruling: the deck went with the ash veil — the phones' baked deck takes Verdant-scale cumulus:
+    // the classic deck altitude, a white tint, the cirrus veil at 0.55)
+    cloudOpacity: 1.0, cloudOpacity2: 0.55, cloudTintHex: 0xeceff2,
     sunIntensity: 3.9, sunColorHex: 0xffc697, hemiIntensity: 0.32, postExposure: 0.91, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 3.5 / 0xffb77e / 0.38); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0x4b4845 },

@@ -22,6 +22,8 @@ import { sceneWindOf } from '../world/sceneWind.ts';
 import { resolveTreeWind } from '../world/treeClimate.ts';
 import { horizonPanoramaDeckM } from '../world/maps/horizon.ts';
 import { GARAGE_SKY_PRESETS } from '../game/garageSkyPresets.ts';
+import { withGarageWeather } from '../game/garageWeather.ts';
+import { CLOUD_DECK_TUNE, cloudStackOf } from './cloudLayers.ts';
 import { STUDIO_TIMES, planStudioLight } from '../game/studioLight.ts';
 
 await loadCloudscapeLayers(); // a map's cloudscape resolves behind the battle entry, as in a battle
@@ -32,6 +34,17 @@ const LEGACY_BROKEN = 'broken';
 const FORMER = Object.freeze(['fjord', 'polders', 'copper_mesa']);
 const CUMULIFORM = Object.freeze(['fair-weather-cumulus', 'cloud-streets', 'sea-streets', 'towering-cumulus', 'cumulus-humilis']);
 const here = (file) => readFileSync(new URL(file, import.meta.url), 'utf8');
+/**
+ * 2026-10-15 (the coordinator: the 10-13 ruling enforced on all 33 maps and every Garage sky, "a receipt that fails if any
+ * map resolves to the banned deck type"): the banned look by what Clouds 2.0 draws, whatever the regime is called — a
+ * stratocumulus deck (a flat lane carrying cells: the lumpy grey deck) whose drawn cover leaves breaks. A deck is
+ * closed (an overcast's sheet, its relief under it) or the sky is cumuliform; a broken cell deck is the Fjord look (keyed
+ * on the cells, not the flatness: an opening deck's lane flattens less, 0.45 at 0.7 cover, and is the banned look most).
+ * A cumulus lane carries no cells (asserted below for the cumuliform regimes). A LOW deck (base under 2 km): Urban's
+ * altocumulus at 2.8 km is a mid-level mackerel sky of small cells, not the low lumpy deck with heavy dark bases.
+ */
+const brokenDecks = (layer) => cloudStackOf(layer).lanes.filter((lane) => lane.cells >= 0.5 && lane.baseM < 2000)
+  .map((lane) => lane.cover * (CLOUD_DECK_TUNE.CLOUD_DECK_COVER ?? 1)).filter((cover) => cover < 1);
 
 // ---- the vocabulary: the regime is gone from the union, the table and the guard
 assert.ok(!isCloudscapeRegime(BANNED), 'broken-stratocumulus is no cloudscape regime');
@@ -65,6 +78,7 @@ for (const id of skyMaps) {
     assert.equal(p.regime, scape.regime, `${id} at ${time} keeps its authored ${scape.regime}`);
     assert.notEqual(p.regime, BANNED, `${id} at ${time}`);
     if (time === 'day') dayLayer[id] = p;
+    assert.deepEqual(brokenDecks(p), [], `${id} at ${time}: no broken stratocumulus deck (a deck is closed or the sky is cumulus)`);
     // a cumulus regime cannot be knobbed into a deck (the banned look rebuilt from a cumulus row: cells, the deck's
     // transmitted lighting, its lumps and interior octave, a stratiform sheet)
     if (CUMULIFORM.includes(scape.regime)) {
@@ -96,6 +110,7 @@ for (const id of skyMaps) {
       const p = layerOf(preset);
       assert.notEqual(p.regime, BANNED, `${id} seed ${seed} (${weather.timeOfDay})`);
       assert.equal(p.regime, (preset.cloudscape ?? {}).regime ?? p.regime, `${id} seed ${seed}: the variant keeps the map's own regime`);
+      assert.deepEqual(brokenDecks(p), [], `${id} seed ${seed} (${weather.timeOfDay}): no broken stratocumulus deck`);
     }
     runtime.reset();
   }
@@ -113,6 +128,7 @@ for (const id of skyMaps) {
     const p = layerOf(plan.sky);
     assert.notEqual(p.regime, BANNED, `Studio ${id} ${time}`);
     assert.ok(!plan.sky.cloudLayer || !Object.hasOwn(plan.sky.cloudLayer, 'regime'), `Studio ${id} ${time}: no raw regime override`);
+    assert.deepEqual(brokenDecks(p), [], `Studio ${id} ${time}: no broken stratocumulus deck`);
   }
 }
 
@@ -121,6 +137,25 @@ for (const [id, sky] of Object.entries(GARAGE_SKY_PRESETS)) {
   assert.equal(sky.cloudscape, undefined, `Garage ${id}: no cloudscape`);
   const p = layerOf(sky);
   assert.ok(p.regime !== BANNED && p.regime !== LEGACY_BROKEN, `Garage ${id} resolves to ${p.regime}`);
+  // the sky the Garage draws (its fair weather over the overcast yards: garageWeather.ts): no broken deck either
+  const drawn = layerOf(withGarageWeather(id, sky));
+  assert.ok(drawn.regime !== BANNED && drawn.regime !== LEGACY_BROKEN, `Garage ${id} draws ${drawn.regime}`);
+  assert.deepEqual(brokenDecks(drawn), [], `Garage ${id}: no broken stratocumulus deck`);
+}
+// the decks the world draws today: closed (Frosthollow, Cinder Junction, Ironworks, Whiteout), every other sky cumuliform
+// or without a cell deck; and the vocabulary's cell-deck rows cannot be authored back into breaks by their own defaults
+{
+  const closedDecks = skyMaps.filter((id) => cloudStackOf(dayLayer[id]).lanes.some((lane) => lane.cells >= 0.5 && lane.baseM < 2000));
+  assert.deepEqual(closedDecks.sort(), ['foundry', 'railyard', 'whiteout', 'winter'], 'the closed cell decks');
+  assert.equal(CLOUD_DECK_TUNE.CLOUD_DECK_COVER, 1, 'the render tune never opens a deck into breaks');
+  // the negative control: Frosthollow's old 0.86 deck, and a stratocumulus deck at 0.7, are what the check catches
+  for (const coverage of [0.86, 0.7]) {
+    const old = layerOf({ ...getMapConfig('winter').sky, cloudscape: { ...getMapConfig('winter').clouds, coverage } });
+    assert.ok(brokenDecks(old).length > 0, `the check sees a broken cell deck at ${coverage}`);
+  }
+  for (const id of ['winter', 'foundry']) assert.equal(getMapConfig(id).clouds.coverage, 0.92, `${id}: closed (0.86 / 0.88 left the banned breaks)`);
+  assert.equal(getMapConfig('blackglass').clouds.regime, 'fair-weather-cumulus', 'Suzhou Creek: its ash veil was a low broken cell deck');
+  assert.ok(cloudStackOf(dayLayer.urban).lanes.every((lane) => lane.cells < 0.5 || lane.baseM >= 2000), 'Urban: its cells stand at mid level (altocumulus)');
 }
 
 // ---- the phones' baked decks (sky.ts over skyCloudBake.ts): one fair-weather cumulus bake for every map, so a map's deck
@@ -136,7 +171,7 @@ for (const [id, sky] of Object.entries(GARAGE_SKY_PRESETS)) {
     const lin = (c) => { const s = c / 255; return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
     return 0.2126 * lin((hex >> 16) & 255) + 0.7152 * lin((hex >> 8) & 255) + 0.0722 * lin(hex & 255);
   };
-  for (const id of FORMER) {
+  for (const id of [...FORMER, 'blackglass']) {
     const s = { ...DEFAULT_SKY_PRESET, ...getMapConfig(id).sky };
     const overcastBranch = s.cloudOpacity >= 0.95 && s.cloudOpacity2 >= 0.9 && s.turbidity >= 7; // sky.ts updateCloudDecks
     assert.ok(!overcastBranch, `${id}: the phone deck is not the 340 m broken-stratus branch`);

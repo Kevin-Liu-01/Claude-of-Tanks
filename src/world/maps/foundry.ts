@@ -189,7 +189,8 @@ export default {
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   // (2026-10-09, the shadows lane: deckBeam — the cells passed a tenth of the sun over 88 % of the works)
-  clouds: { regime: 'industrial-stratocumulus', coverage: 0.88, tintHex: 0xd8cec0, nightGlow: 0.9, nightGlowHex: 0xff8a40, deckBeam: 0.35 },
+  // 2026-10-15 (the SKY lane; the 10-13 ruling on every map): the works' overcast closed (0.88 left breaks: the banned deck)
+  clouds: { regime: 'industrial-stratocumulus', coverage: 0.92, tintHex: 0xd8cec0, nightGlow: 0.9, nightGlowHex: 0xff8a40, deckBeam: 0.35 },
   sky: {
     sunElevationDeg: 25, sunAzimuthDeg: 128, turbidity: 7.8, rayleigh: 1.35,
     // round 76 (2026-09-26, the deck pass): the industrial haze comes off the whole frame and onto the deck's base and

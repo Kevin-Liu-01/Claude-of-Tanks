@@ -88,7 +88,9 @@ export const CLOUD_LANES_MAX = 4;
  * every cell deck's lanes (cells 0.5 or more: a stratocumulus; an overcast's faint cells and the convective lanes keep theirs); the QA knobs of the same names still override.
  */
 export const CLOUD_DECK_TUNE: Readonly<Record<string, number>> = Object.freeze({
-  CLOUD_DECK_FILTER: 1.6, CLOUD_DECK_COVER: 0.92, CLOUD_DECK_SHAPE: 1.4, CLOUD_DECK_DETAIL: 1.4,
+  // (2026-10-15, the 10-13 ruling on every map: the cover scale 0.92 opened the cell decks into the banned broken deck —
+  // a deck is closed or it is cumulus — so the tune keeps the relief and leaves the cover)
+  CLOUD_DECK_FILTER: 1.6, CLOUD_DECK_COVER: 1, CLOUD_DECK_SHAPE: 1.4, CLOUD_DECK_DETAIL: 1.4,
 });
 /** The local weather's world period (m; cloudShaders.ts CLOUD2_PERIODS.local) and its cell channel's cell (m) on it. */
 const CLOUD_LOCAL_PERIOD_M = 48000;
