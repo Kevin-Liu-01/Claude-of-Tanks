@@ -11,13 +11,14 @@
 // tall pointed gate with its studded doors, and inside, the deep pointed arcades of the ground floor's stores and the
 // upper gallery's, under flat roofs behind a parapet. Its gate is shut: the court is closed to a hull. `form: 'arcade'`
 // builds only its street range, the arcade open to the street, as a market's row of shops.
-import { PartSink, REGIONAL_BUCKETS, bodyFaces, facePoint, newRegionalParts, rgb, streamFrom, type Face, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
+import { PartSink, REGIONAL_BUCKETS, bodyFaces, facePoint, rgb, streamFrom, type Face, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
 import { buildRegionalParts, resolveRegionalArchitecture } from '../maps/regional/index.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
 import { archedFace, archedSlab, bar, cornerPilasters, extrude, moulding, type ArchHole } from './kit.ts';
 import { ageWall } from './age.ts';
 import { drapedRect } from './grounds.ts';
 import type { LandmarkBuilder } from './types.ts';
+import { finishLandmark, prebuiltPiece } from './pieces.ts';
 
 const TIMBER = rgb(0x5f4a36), DOOR = rgb(0x4d3324), IRON = rgb(0x2a2c2d);
 const uvOffset = (rng: () => number): [number, number] => [rng() * 7.31, rng() * 5.17];
@@ -206,8 +207,11 @@ export const houseRow: LandmarkBuilder = (ctx) => {
   const D = Math.max(6, Number(ctx.params.depth));
   const widths = Array.from({ length: count }, () => W + (ctx.variant() - 0.5) * 1.2);
   const sum = widths.reduce((a, b) => a + b, 0);
-  const parts = newRegionalParts();
-  let x = -count * W / 2;
+  // (props census #15, Lane C 2026-10-16: "built as one landmark, the row is a setpiece, so all six houses are
+  // breach-only and can never collapse") each house a named piece of the row (pieces.ts): every other one slumps where
+  // it stands at the row's first damage, the rest when it is breached
+  const sink = new PartSink();
+  let x = -count * W / 2, k = 0;
   for (const raw of widths) {
     const w = raw * count * W / sum, seed = Math.floor(ctx.rng() * 4294967296);
     const house = buildRegionalParts(style, {
@@ -217,8 +221,9 @@ export const houseRow: LandmarkBuilder = (ctx) => {
       // collision are the desktop's, as every piece's are)
       mapId: ctx.mapId, snowCap: ctx.snowCap, tier: 'desktop',
     }, streamFrom((seed ^ 0x27d4eb2f) >>> 0));
-    for (const name of REGIONAL_BUCKETS) for (const g of house[name] ?? []) { g.translate(x + w / 2, 0, 0); parts[name].push(g); }
-    x += w;
+    for (const name of REGIONAL_BUCKETS) for (const g of house[name] ?? []) g.translate(x + w / 2, 0, 0);
+    prebuiltPiece(sink, { name: `house-${k}`, kind: 'detach', at: k % 2 === 0 ? 'breached' : 'damaged', fall: 'slump', outward: false }, house);
+    x += w; k++;
   }
-  return { parts };
+  return { parts: finishLandmark(sink) };
 };
