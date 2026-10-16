@@ -223,7 +223,20 @@ export function makeGantry(
   return { w: span + 5, d: 5.4, h: legH + girderH + 0.8 };
 }
 
-/** Open-sided loading shed: platform, posts, mono-pitch roof, crate stacks. */
+/** A timber from a to b, its section w (across, square to `up`) x h (toward `up`), its four arrises chamfered c. */
+function timber(a: P3, b: P3, w: number, h: number, c = 0.015, up: P3 = [0, 1, 0]): THREE.BufferGeometry {
+  return bar(chamferSec(w, h, Math.min(c, 0.3 * Math.min(w, h))), a, b, up, 1.0);
+}
+
+/**
+ * Open-sided loading shed: platform, posts, mono-pitch roof, crate stacks. (The looks lane's r2 sweep, 2026-10-16,
+ * sub-stream b-west; the sweep: 99 % of its surface plain boxes, the owner's "slab on six sticks".) The platform a
+ * concrete deck with its arrises bullnosed and a timber rubbing strip along its loading edge, its steps at the ends; the
+ * posts dressed timber with chamfered arrises on their steel base plates; the roof a sheet deck on its frame with fascia boards
+ * at both eaves and barge boards on the verges; the frame's eave beams, rafters, purlins and knee braces dressed
+ * timber; the crates' arrises eased. The stream's parts are the same parts in the same order and take the same
+ * draws; the platform keeps its band (the Ironworks court's support census); every part new to the stream is dressing.
+ */
 export function makeShed(
   rng: () => number,
   buckets: GeometryBuckets,
@@ -232,8 +245,9 @@ export function makeShed(
   const roofAngle = 0.09;
   const roofCenterY = 0.55 + ph + 0.06;
   const roofBottomOffset = 0.07;
-  const plat = box(w, 0.55, d, 0.6);
-  plat.translate(0, 0.27, 0);
+  // the platform: its top's arrises bullnosed (8 cm), its band -0.005..0.545 as the box's was (the court's support role)
+  const plat = bar([[-d / 2, -0.005], [d / 2, -0.005], [d / 2, 0.465], [d / 2 - 0.03, 0.525], [d / 2 - 0.08, 0.545], [-d / 2 + 0.08, 0.545], [-d / 2 + 0.03, 0.525], [-d / 2, 0.465]],
+    [-w / 2, 0, 0], [w / 2, 0, 0], [0, 1, 0], 0.6);
   buckets.stone.push(jitterUV(plat, rng));
   for (const [sx, sz] of [[-1, -1], [0, -1], [1, -1], [-1, 1], [0, 1], [1, 1]]) {
     const z = sz * (d / 2 - 0.5);
@@ -241,11 +255,12 @@ export function makeShed(
     // uphill row visibly short and drove the downhill row through the roof.
     const roofUndersideY = roofCenterY + Math.tan(roofAngle) * z - roofBottomOffset;
     const postH = roofUndersideY - 0.55;
-    const post = box(0.22, postH, 0.22, 1.2);
-    post.translate(sx * (w / 2 - 0.5), 0.55 + postH / 2, z);
+    // a dressed post, its arrises chamfered
+    const post = timber([sx * (w / 2 - 0.5), 0.55, z], [sx * (w / 2 - 0.5), 0.55 + postH, z], 0.22, 0.22, 0.03, [0, 0, 1]);
     buckets.wood.push(jitterUV(post, rng));
   }
-  const roof = box(w + 0.8, 0.12, d + 0.8, 0.35);
+  // the roof's sheet deck (a symmetric section: its pitch receipt regresses its vertices)
+  const roof = bar(chamferSec(w + 0.8, 0.12, 0.035), [0, 0, -(d + 0.8) / 2], [0, 0, (d + 0.8) / 2], [0, 1, 0], 0.35);
   pitchRoofPlane(roof, 'z', -1, roofAngle, 'skillion');
   roof.translate(0, roofCenterY, 0);
   buckets.roof.push(jitterUV(roof, rng));
@@ -258,31 +273,49 @@ export function makeShed(
   const xs = [-(w / 2 - 0.5), 0, w / 2 - 0.5];
   for (const sz of [-1, 1]) {
     const z = sz * (d / 2 - 0.5), y = under(z);
-    frame.push(memberGeo([-(w / 2 - 0.3), y - 0.11, z], [w / 2 - 0.3, y - 0.11, z], 0.18, 0.22));
+    frame.push(dressing(timber([-(w / 2 - 0.3), y - 0.11, z], [w / 2 - 0.3, y - 0.11, z], 0.18, 0.22, 0.02)));
     for (const sx of [-1, 1]) {
       const x = sx * (w / 2 - 0.5);
-      frame.push(memberGeo([x, y - 0.95, z], [x - sx * 0.8, y - 0.2, z], 0.09, 0.09));
-      frame.push(memberGeo([x, y - 0.95, z], [x, y - 0.2, z - sz * 0.75], 0.09, 0.09));
+      frame.push(dressing(timber([x, y - 0.95, z], [x - sx * 0.8, y - 0.2, z], 0.09, 0.09, 0.012, [0, 0, 1])));
+      frame.push(dressing(timber([x, y - 0.95, z], [x, y - 0.2, z - sz * 0.75], 0.09, 0.09, 0.012, [1, 0, 0])));
     }
     for (const x of xs) steel.push(boxAt(0.36, 0.05, 0.36, x, 0.575, z));
   }
   const za = -(d / 2 - 0.2), zb = d / 2 - 0.2;
-  for (const x of xs) frame.push(memberGeo([x, under(za) - 0.07, za], [x, under(zb) - 0.07, zb], 0.14, 0.12));
-  for (const z of [-d / 6, d / 6]) frame.push(memberGeo([-(w / 2 - 0.3), under(z) - 0.05, z], [w / 2 - 0.3, under(z) - 0.05, z], 0.08, 0.1));
+  for (const x of xs) frame.push(dressing(timber([x, under(za) - 0.07, za], [x, under(zb) - 0.07, zb], 0.14, 0.12, 0.015)));
+  for (const z of [-d / 6, d / 6]) frame.push(dressing(timber([-(w / 2 - 0.3), under(z) - 0.05, z], [w / 2 - 0.3, under(z) - 0.05, z], 0.08, 0.1, 0.012)));
   const top = (z: number): number => roofCenterY + Math.tan(roofAngle) * z + 0.06;
   // (structureConnectivity: the ribs lie in the sheet's plane through the shared orientation helper, as the sheet does)
   for (let x = -(w / 2 + 0.1); x <= w / 2 + 0.1; x += 0.6) {
     const rib = pitchRoofPlane(box(0.05, 0.04, (d + 0.7) / Math.cos(roofAngle), 1.0), 'z', -1, roofAngle, 'skillion');
     buckets.roof.push(dressing(rib.translate(x, top(0), 0)));
   }
+  // the fascia boards along both eaves and the barge boards on the verges, in the deck's plane, against its edges
+  const e = (d + 0.8) / 2, ec = e * Math.cos(roofAngle), es = e * Math.sin(roofAngle);
+  for (const sz of [-1, 1]) {
+    const ze = sz * (ec + 0.0125), ye = roofCenterY + sz * es - 0.03;
+    frame.push(dressing(bar([[-0.0125, -0.1], [0.0125, -0.1], [0.0125, 0.1], [-0.0125, 0.1]], [-(w / 2 + 0.425), ye, ze], [w / 2 + 0.425, ye, ze])));
+  }
+  for (const sx of [-1, 1]) {
+    const x = sx * (w / 2 + 0.4125);
+    frame.push(dressing(bar([[-0.0125, -0.1], [0.0125, -0.1], [0.0125, 0.1], [-0.0125, 0.1]], [x, roofCenterY - es - 0.03, -ec], [x, roofCenterY + es - 0.03, ec])));
+  }
   const low = -(d / 2 + 0.45), gy = top(low) - 0.12;
   steel.push(dressing(new THREE.CylinderGeometry(0.07, 0.07, w + 0.8, 7, 1).rotateZ(Math.PI / 2).translate(0, gy, low)));
   steel.push(dressing(new THREE.CylinderGeometry(0.05, 0.05, gy - 0.55, 6, 1).translate(w / 2 + 0.3, (gy + 0.55) / 2, low)));
+  // the platform's loading edge: a timber rubbing strip along each long face; its steps at the ends (dressing)
+  for (const sz of [-1, 1]) frame.push(dressing(timber([-w / 2 + 0.1, 0.3, sz * (d / 2 + 0.04)], [w / 2 - 0.1, 0.3, sz * (d / 2 + 0.04)], 0.08, 0.2, 0.012)));
+  for (const sx of [-1, 1]) for (let k = 0; k < 2; k++) {
+    const y1 = 0.18 * (k + 1), x0 = sx * (w / 2 + 0.33 - k * 0.3);
+    buckets.stone.push(dressing(bar(chamferSec(0.3, y1 + 0.005, 0.02), [x0, (y1 - 0.005) / 2, -0.8], [x0, (y1 - 0.005) / 2, 0.8], [0, 1, 0], 0.6)));
+  }
+  // the crates: boarded boxes with their arrises eased
   for (let k = 0, n = 3 + ((rng() * 4) | 0); k < n; k++) {
     const cs = 0.55 + rng() * 0.5;
-    const crate = box(cs, cs, cs, 1.0);
-    crate.rotateY(rng() * Math.PI * 0.5);
-    crate.translate((rng() - 0.5) * (w - 2.2), 0.55 + cs / 2, (rng() - 0.5) * (d - 2.2));
+    const crate = bar(chamferSec(cs, cs, 0.03), [0, 0, -cs / 2], [0, 0, cs / 2], [0, 1, 0]);
+    const yaw = rng() * Math.PI * 0.5, cx = (rng() - 0.5) * (w - 2.2), cz = (rng() - 0.5) * (d - 2.2);
+    crate.rotateY(yaw);
+    crate.translate(cx, 0.55 + cs / 2, cz);
     buckets.wood.push(jitterUV(crate, rng));
   }
   return { w: w + 0.8, d: d + 0.8, h: ph + 1.0 };
