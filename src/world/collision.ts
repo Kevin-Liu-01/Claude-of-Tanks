@@ -564,7 +564,9 @@ export function shellSparesStoppedRecord(record: { kind?: string } | null | unde
 }
 
 function isDenseCrushableCover(kind: string | undefined): boolean {
-  return kind === 'wallstone' || kind === 'walladobe' ||
+  // (physics DST-03, 2026-10-16; the coordinator: "field huts stop shells as drawn ... HE detonates on them and the hut
+  // takes damage through its destruction path") a field hut's timber walls stop a round as its shell slabs stand them
+  return kind === 'wallstone' || kind === 'walladobe' || kind === 'fieldhut' ||
     kind === 'sandbagsmall' || kind === 'sandbagbig' || kind === 'sandbagwall' || kind === 'small-rock'
     || isFortifiedCoverKind(kind) || (kind != null && DENSE_SET_PIECE_KINDS.has(kind));
 }
