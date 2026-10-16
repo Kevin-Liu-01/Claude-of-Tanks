@@ -8270,8 +8270,8 @@ The airport's buildings, runway, aprons, roads, pads and objectives stand where 
   and the back wall's cladding stands on the wall: kit connectivity 0 floating, 0 free ends (the baseline 0 / 1).
 - *Measured with the An-225* (every brief band holds): objective symmetry 1.015 (the near apron zones and the far ones as
   round 5 measured them), orphan 0.07, separation 841 m, sightline median 118 m; census [4445, 4929, 3647] ->
-  [4614, 5107, 3872]; airfield's shard current built alone and after Verdant and Steinburg; 24 158 desktop triangles
-  for the wreck (budget 26 000).
+  [4614, 5107, 3872] (on integ/226 f26e05d8c, merged in: [4720, 5213, 3872]); airfield's shard current built alone and
+  after Verdant and Steinburg; 24 158 desktop triangles for the wreck (budget 26 000).
 
 ## Acceptance is visual and measured
 
