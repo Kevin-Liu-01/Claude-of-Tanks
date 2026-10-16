@@ -1440,6 +1440,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/groundRedux.selftest.mjs',
     'src/world/terrainMaterialV2.selftest.mjs',
     'src/world/terrainSplatFold.selftest.mjs',
+    'src/world/terrainSplatPrune.selftest.mjs',
     'src/world/groundPressure.selftest.mjs',
     'src/world/tallGrass.selftest.mjs',
     'src/world/cinderYard.selftest.mjs', // ground lane (2026-10-08, wave 260): Cinder Junction's cinder yard and its weed clumps

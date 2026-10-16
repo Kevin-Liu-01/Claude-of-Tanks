@@ -67,6 +67,7 @@ import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaB
 import { cinderYardWeedsAt, groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 import { LAND_BAKE_LAYERS, LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, withLevelPaddies, type LandFieldSample, type LandUseProfile } from './landUse.ts';
 import { foldSplatUniforms, splatFoldEnabled, splatFoldSignature } from './terrainSplatFold.ts';
+import { pruneFoldedSplatBranches, splatPruneEnabled } from './terrainSplatPrune.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
   textureFromRgbaPixels as canvasToTexture,
@@ -7952,6 +7953,8 @@ function* createSplatMaterialSteps(
   // the perf stream (2026-10-12): the folded values' signature keys the program (two maps never share a folded program);
   // computed once from the same assignments the compile makes, with their userData side effects put back
   const splatFold = splatFoldEnabled();
+  // the perf lane (2026-10-15): and the folded program's off features removed from its source (terrainSplatPrune.ts)
+  const splatPrune = splatFold && splatPruneEnabled();
   const splatFoldKey = splatFold ? ((): string => {
     const probe = { uniforms: {} } as unknown as MaterialShader;
     const hadSun = Object.prototype.hasOwnProperty.call(mat.userData, 'sunDirUniform');
@@ -8010,6 +8013,9 @@ function* createSplatMaterialSteps(
     // the perf stream (2026-10-12): the map's constant terms folded into the program (terrainSplatFold.ts) — the off
     // features compile out instead of holding registers for every pixel
     if (splatFold) shader.fragmentShader = foldSplatUniforms(shader.fragmentShader, shader.uniforms).source;
+    // the perf lane (2026-10-15): the gated blocks whose conditions are false over those constants leave the source (a map
+    // without fields sends no land use to the compiler; terrainSplatPrune.ts proves each removal a no-op)
+    if (splatPrune) shader.fragmentShader = pruneFoldedSplatBranches(shader.fragmentShader).source;
   };
   // the scenery lane (visual/shadow-bias, 2026-10-04): the ground casts no shadow (its chunks and the horizon ring that
   // draws its faces with this material keep castShadow false), so it takes no caster's acne bias: its shadows meet each
@@ -8017,7 +8023,7 @@ function* createSplatMaterialSteps(
   mat.userData.cotShadowReceiverOnly = true;
   engineCtx.setupShadowMaterial(mat, splatHook);
   // (a map's own snow-on-rock law compiles its own source, so it keys its own program; every other map keeps the key)
-  mat.customProgramCacheKey = () => `world-terrain-splat-v54-${seaOpenings.length ? 'coast' : 'land'}${snowHold ? `-${snowHold.replace(/[^0-9.]+/g, '_')}` : ''}${splatFoldKey}`; // terrain v3 (2026-10-02): v54; the perf stream: + the folded values' signature
+  mat.customProgramCacheKey = () => `world-terrain-splat-v54-${seaOpenings.length ? 'coast' : 'land'}${snowHold ? `-${snowHold.replace(/[^0-9.]+/g, '_')}` : ''}${splatFoldKey}${splatPrune ? '-p1' : ''}`; // terrain v3 (2026-10-02): v54; the perf stream: + the folded values' signature
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   mat.userData.formationUniform = formationUniform;
   mat.userData.formationLowUniform = formationLowUniform;
