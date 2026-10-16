@@ -368,9 +368,12 @@ const hammam: RegionalBuilder = (ctx) => {
       const prof = [1.0, 0.97, 0.88, 0.7, 0.42, 0.12];
       let y = top;
       for (let k = 0; k + 1 < prof.length; k++) { sink.cylinder('plaster', [x, y, z], 'y', r * 0.24, r * prof[k], 12, {}, r * prof[k + 1], k === prof.length - 2); y += r * 0.24; }
+      // (kitConnectivity: the bosses stood 2 cm off the dome) each seated into the dome's surface where it stands (the
+      // frustum between its 0.7 r and 0.42 r rings at 0.62 r), sunk past the slope under its foot
+      const surface = top + r * 0.24 * (3 + (0.7 - 0.62) / (0.7 - 0.42));
       for (let k = 0; k < (great ? 10 : 7); k++) {
         const a = (k / (great ? 10 : 7)) * Math.PI * 2 + look() * 0.3, rr = r * 0.62;
-        sink.cylinder('glass', [x + Math.cos(a) * rr, top + r * 0.82, z + Math.sin(a) * rr], 'y', 0.09, 0.075, 6, { decor: true, fine: true }, 0.05);
+        sink.cylinder('glass', [x + Math.cos(a) * rr, surface - 0.07, z + Math.sin(a) * rr], 'y', 0.16, 0.075, 6, { decor: true, fine: true }, 0.05);
       }
       if (great) {
         sink.cylinder('plaster', [x, y - 0.05, z], 'y', 0.42, 0.32, 8, {}, 0.3);

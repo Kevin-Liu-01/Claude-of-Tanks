@@ -459,9 +459,11 @@ function liftKeeper(sink: PartSink, ctx: LandmarkBuildContext, W: number, roadEn
   const white = { colour: PAINT_WHITE }, black = { colour: PAINT_BLACK };
   for (const zs of [-1, 1]) {
     const x = zs * (W / 2 + 0.55), z = zs * (roadEnd + 0.7), y = yD;
-    sink.span('structureWood', x - 0.12, y - 0.3, z - 0.12, x + 0.12, y + 0.35, z + 0.12, { ...black, decor: true });
+    // (kitConnectivity: the foot stood 9 cm over what carries it and the counterweight box 3 cm off its post) the foot
+    // run down 0.6 m into the abutment's fill, the box against the post
+    sink.span('structureWood', x - 0.12, y - 0.9, z - 0.12, x + 0.12, y + 0.35, z + 0.12, { ...black, decor: true });
     sink.span('structureWood', x - 0.09, y + 0.35, z - 0.09, x + 0.09, y + 1.15, z + 0.09, { ...white, decor: true });
-    sink.span('structureWood', x - 0.2, y + 0.55, z - 0.32, x + 0.2, y + 0.95, z - 0.12, { ...black, decor: true });
+    sink.span('structureWood', x - 0.2, y + 0.55, z - 0.32, x + 0.2, y + 0.95, z - 0.08, { ...black, decor: true });
     // the arm, raised: 4.4 m in 0.55 m bands
     for (let k = 0; k < 8; k++) {
       const a = y + 1.15 + k * 0.55;

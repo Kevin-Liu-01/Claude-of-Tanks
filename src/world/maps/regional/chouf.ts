@@ -625,11 +625,15 @@ const arisha: RegionalBuilder = (ctx) => {
       // the leaves in clusters over the lattice (each a few leaves at their own tilts, seen from above and below)
       const n = Math.round(W * D * 2.6);
       for (let k = 0; k < n; k++) {
-        const cx = (look() - 0.5) * (W - 0.3), cz = (look() - 0.5) * (D - 0.3), cy = H + 0.2 + look() * 0.12, colour = LEAVES[Math.floor(look() * LEAVES.length) % LEAVES.length];
+        // (kitConnectivity, the leaves made blades: they hung over the lattice on nothing) each cluster laid along the
+        // batten nearest it, its blades resting on the batten's back (the vine is tied to the lattice)
+        const rx = (look() - 0.5) * (W - 0.3), cz = (look() - 0.5) * (D - 0.3); look();
+        const cx = -W / 2 + 0.3 + Math.max(0, Math.min(Math.floor((W - 0.45) / 0.55), Math.round((rx + W / 2 - 0.3) / 0.55))) * 0.55;
+        const cy = H + 0.095, colour = LEAVES[Math.floor(look() * LEAVES.length) % LEAVES.length];
         for (let j = 0; j < 3; j++) {
           const tilt = (look() - 0.5) * 1.1, yaw = look() * Math.PI * 2, r = 0.2 + look() * 0.12;
           const nrm = normalize3([Math.sin(tilt) * Math.cos(yaw), Math.cos(tilt), Math.sin(tilt) * Math.sin(yaw)]);
-          const c: Vec3 = [cx + (look() - 0.5) * 0.35, cy + (look() - 0.5) * 0.08, cz + (look() - 0.5) * 0.35];
+          const c: Vec3 = [cx + (look() - 0.5) * 0.04, cy + (look() - 0.5) * 0.004, cz + (look() - 0.5) * 0.35];
           // (Lane C 2026-10-16, regionalArchitecture's ray audit: the leaf was two faces in one plane, so a view met its back
           // as often as its front) each leaf a thin closed blade: its five-pointed outline (bloomDisc's) as a slab 6 mm thick
           const ref: Vec3 = Math.abs(nrm[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0];
