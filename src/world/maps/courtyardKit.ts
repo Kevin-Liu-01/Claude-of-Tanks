@@ -116,17 +116,19 @@ export function courtyardWell(rng: Rng, buckets: GeometryBuckets, x: number, z: 
   wood.push(rod([x + 0.2, 1.8, z], [x + 0.2, 1.97, z], 0.02, 4)); woodDressing.push(true);
   buckets.wood.push(consumed(mergedDressed(wood, woodDressing)));
   // the bucket: staves on a little taper, its iron band and bail (wood), the rope down to it from the wheel (dark)
-  const pail: THREE.BufferGeometry[] = [];
+  // (the triage round, 2026-10-16: the rope hung 13 cm off the wheel, the bucket in the air under it — the wheel turns on
+  // the crossbar's line, x, so the rope leaves its rim on the side, z + its radius: the rope and the bucket hang there)
+  const pail: THREE.BufferGeometry[] = [], bx = x + 0.2, bz = z + 0.17;
   const staves = new THREE.CylinderGeometry(0.15, 0.12, 0.3, 9, 1, true);
-  staves.translate(x + 0.37, 0.95, z);
+  staves.translate(bx, 0.95, bz);
   pail.push(staves);
   const bottom = new THREE.CircleGeometry(0.12, 9);
   bottom.rotateX(-Math.PI / 2);
-  bottom.translate(x + 0.37, 0.81, z);
+  bottom.translate(bx, 0.81, bz);
   pail.push(bottom);
-  pail.push(rod([x + 0.23, 1.08, z], [x + 0.37, 1.22, z], 0.012, 4), rod([x + 0.37, 1.22, z], [x + 0.51, 1.08, z], 0.012, 4));
+  pail.push(rod([bx - 0.14, 1.08, bz], [bx, 1.22, bz], 0.012, 4), rod([bx, 1.22, bz], [bx + 0.14, 1.08, bz], 0.012, 4));
   buckets.wood.push(noCollision(consumed(merged(pail))));
-  buckets.dark.push(noCollision(consumed(rod([x + 0.37, 1.22, z], [x + 0.37, 1.8, z], 0.012, 4))));
+  buckets.dark.push(noCollision(consumed(rod([bx, 1.22, bz], [bx, 1.8, bz], 0.012, 4))));
   // the water: in the shaft a metre down, and in the trough
   const well = new THREE.CircleGeometry(R0 + 0.02, 12);
   well.rotateX(-Math.PI / 2);
@@ -172,7 +174,9 @@ function jar(pr: number, ph: number): THREE.BufferGeometry {
 /** A grain sack slumped on the ground, its neck tied: `s` its size. */
 function sack(s: number): THREE.BufferGeometry {
   const P = (r: number, y: number) => new THREE.Vector2(r * s, y * s);
-  const g = new THREE.LatheGeometry([P(0.001, 0), P(0.85, 0.02), P(1.05, 0.25), P(1.0, 0.55), P(0.7, 0.85), P(0.25, 1.05), P(0.18, 1.1), P(0.28, 1.25), P(0.001, 1.28)], 8);
+  // (the triage round: the floor's fan from the axis reached a big sack's 0.54 m rim in triangles a third of a
+  // millimetre high — slivers; it now runs to a ring at 0.4 first)
+  const g = new THREE.LatheGeometry([P(0.001, 0), P(0.4, 0.01), P(0.85, 0.02), P(1.05, 0.25), P(1.0, 0.55), P(0.7, 0.85), P(0.25, 1.05), P(0.18, 1.1), P(0.28, 1.25), P(0.001, 1.28)], 8);
   g.scale(1, 0.62, 0.85);
   return g;
 }
