@@ -124,6 +124,7 @@ export type { TrackGuideProfile, TrackOutsoleDimensions } from './profiles/abram
 import type { SuspensionPatternId, SuspensionPattern } from './suspensionPatterns.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createWeaponFinishMaterials, linkWeaponFinish, mainBarrelIsWeaponSteel, paintAmmoVertexColours, prepareWeaponFinishGeometry } from './weaponFinish.ts';
+import { ditherPaintTone, relaxFlatFans } from './surfaceFinish.ts';
 
 /** A rig group's identity-placed child: its plates are authored in the group's frame (planLiveCrumple). */
 const _identity4 = new THREE.Matrix4();
@@ -8150,7 +8151,9 @@ function* createTankOwnedSteps(
       shiftPartCamouflage(list, merged);
       bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);
+      if (usesSharedMaterialTextures) ditherPaintTone(merged);
     }
+    if (usesSharedMaterialTextures) relaxFlatFans(merged);
     recordAuthoredRanges(merged, authoredRanges);
     weaponDamage.bind(list, merged);
     const station=list[0]?.userData.auxiliaryStation as {name:string;stage:string}|undefined;
