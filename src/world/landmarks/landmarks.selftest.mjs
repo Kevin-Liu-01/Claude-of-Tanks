@@ -754,6 +754,8 @@ for (const id of MAP_IDS) {
     let nearest = Infinity, at = null;
     for (const record of [...shard.obstacles, ...shard.colliders]) {
       if (record.k === 'tree' || record.t != null) continue;
+      // (Lane C 2026-10-16) a buffer stop stands on the track's own end: PRP-02 gave it a breakable record of its own
+      if (record.k === 'prop-buffer-stop') continue;
       if (record.b[3] < -480 || record.b[0] > 480) continue;
       const gap = recordGapToPath(record, spur.path);
       if (gap < nearest) { nearest = gap; at = `${record.k ?? 'solid'} at (${((record.b[0] + record.b[3]) / 2).toFixed(1)}, ${((record.b[2] + record.b[5]) / 2).toFixed(1)})`; }
