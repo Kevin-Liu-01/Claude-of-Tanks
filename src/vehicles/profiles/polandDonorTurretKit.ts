@@ -205,6 +205,16 @@ function zubrEraBelt(P: TankBuilderPort, casting: Stock): void {
   }
 }
 
+/** A welded stanchion on the cast roof shoulder (top plate at `top`) and a cantilever arm from its outer face out over
+ * the stowage box lids to x `toX`, its root in a bolted shoe. */
+function stanchionArm(P: TankBuilderPort, casting: Stock, side: number, px: number, pz: number, top: number,
+  armY: number, toX: number): void {
+  weldedBlock(P, casting, px, pz, .12, .12, top);
+  P.addEquipment('turretDetail', box(.17, .022, .17), px, top + .011, pz);
+  lattice(P, beamBetween([px + side * .06, armY, pz], [toX, armY, pz], .022, 8), 'side-mount');
+  lattice(P, box(.07, .07, .09).translate(px + side * .085, armY, pz), 'mount-shoe');
+}
+
 /** Screens hang outboard of the stowage boxes on two cantilever arms per side. Each arm leaves a welded stanchion on
  * the cast roof shoulder, passes over the box lids and clamps the screen's top rail; a knee brace drops to its mid
  * rail. The front stanchions carry the round driving lamps, the arms' outer ends the laser-warning heads. */
@@ -214,11 +224,7 @@ function zubrScreens(P: TankBuilderPort, casting: Stock, lamp: Parameters<typeof
     const x = side * s.x;
     const front = st.front[side < 0 ? 0 : 1];
     for (const [px, sz] of [front, [side * st.rear[0], st.rear[1]]] as const) {
-      weldedBlock(P, casting, px, sz, .12, .12, st.top);
-      P.addEquipment('turretDetail', box(.17, .022, .17), px, st.top + .011, sz);
-      const from: V3 = [px + side * .06, st.arm, sz], to: V3 = [x, st.arm, sz];
-      lattice(P, beamBetween(from, to, .022, 8), 'side-mount');
-      lattice(P, box(.07, .07, .09).translate(px + side * .085, st.arm, sz), 'mount-shoe');
+      stanchionArm(P, casting, side, px, sz, st.top, st.arm, x);
       lattice(P, box(.06, .05, .08).translate(x, s.top + .02, sz), 'screen-clamp');
       lattice(P, beamBetween([side * (s.x - .34), st.arm - .012, sz], [x, mid, sz], .012, 6), 'screen-brace');
     }
@@ -238,21 +244,40 @@ function zubrScreens(P: TankBuilderPort, casting: Stock, lamp: Parameters<typeof
   }
 }
 
+interface RackPlan {
+  front: number; rear: number; half: number; floor: number; top: number; rails: readonly number[];
+  /** Rails run under the rear stowage boxes at `railLow`; a rack standing higher has them climb to `floor - .01`
+   * behind the boxes, between z `rise[0]` and `rise[1]`. */
+  railLow?: number; rise?: readonly [number, number];
+  /** Slatted side faces and a mid post per side (the long basket). */
+  slatSides?: boolean;
+}
+
 /** Four rails leave the cast shell's lower rear under the rear stowage boxes and carry an open rack; its rear face is
  * the slatted rear cage. */
-function rearRack(P: TankBuilderPort, casting: Stock, r: {front: number; rear: number; half: number; floor: number;
-  top: number; rails: readonly number[]}): void {
-  const railY = r.floor - .01;
+function rearRack(P: TankBuilderPort, casting: Stock, r: RackPlan): void {
+  const railY = r.floor - .01, low = r.railLow ?? railY;
   for (const side of SIDES) for (const rx of r.rails) {
-    const {point} = casting.face([side * rx, railY, -3], [0, 0, 1]);
-    P.addEquipment('turretDetail', beamBetween([side * rx, railY, point.z + .06], [side * rx, railY, r.rear - .02], .022, 8));
+    const x = side * rx, {point} = casting.face([x, low, -3], [0, 0, 1]);
+    if (r.rise && low !== railY) {
+      P.addEquipment('turretDetail', beamBetween([x, low, point.z + .06], [x, low, r.rise[0]], .022, 8));
+      P.addEquipment('turretDetail', beamBetween([x, low, r.rise[0] + .015], [x, railY, r.rise[1] - .015], .022, 8));
+      P.addEquipment('turretDetail', beamBetween([x, railY, r.rise[1]], [x, railY, r.rear - .02], .022, 8));
+    } else P.addEquipment('turretDetail', beamBetween([x, railY, point.z + .06], [x, railY, r.rear - .02], .022, 8));
   }
-  for (const z of [r.front, (r.front + r.rear) / 2, r.rear])
-    P.addEquipment('turretDetail', box(r.half * 2 + .03, .024, .03), 0, r.floor + .012 + .01, z);
-  const mid = (r.floor + r.top) / 2;
+  const bars = r.slatSides ? [r.front, (2 * r.front + r.rear) / 3, (r.front + 2 * r.rear) / 3, r.rear] : [r.front, (r.front + r.rear) / 2, r.rear];
+  for (const z of bars) P.addEquipment('turretDetail', box(r.half * 2 + .03, .024, .03), 0, r.floor + .022, z);
+  const mid = (r.floor + r.top) / 2, length = r.front - r.rear;
   for (const side of SIDES) {
-    for (const z of [r.front, r.rear]) lattice(P, box(.032, r.top - r.floor, .032).translate(side * r.half, mid + .01, z), 'rear-frame');
-    for (const y of [mid, r.top]) lattice(P, box(.028, .028, r.front - r.rear).translate(side * r.half, y, (r.front + r.rear) / 2), 'rear-frame');
+    const posts = r.slatSides ? [r.front, (r.front + r.rear) / 2, r.rear] : [r.front, r.rear];
+    for (const z of posts) lattice(P, box(.032, r.top - r.floor, .032).translate(side * r.half, mid + .01, z), 'rear-frame');
+    for (const y of r.slatSides ? [r.floor + .03, mid, r.top] : [mid, r.top])
+      lattice(P, box(.028, .028, length).translate(side * r.half, y, (r.front + r.rear) / 2), 'rear-frame');
+    if (r.slatSides) {
+      const count = Math.ceil(length / .16);
+      for (let i = 1; i < count; i++) if (i !== count / 2)
+        lattice(P, box(.018, r.top - r.floor - .03, .018).translate(side * r.half, mid + .015, r.rear + i * length / count), 'screen-slat');
+    }
   }
   for (const y of [r.floor + .03, mid, r.top]) lattice(P, box(r.half * 2 + .032, .028, .028).translate(0, y, r.rear), 'rear-frame');
   lattice(P, box(r.half * 2 + .032, .028, .028).translate(0, r.top, r.front), 'rear-frame');
@@ -303,6 +328,145 @@ function buildZubrTurret(P: TankBuilderPort, casting: Stock): void {
   zubrSensors(P, casting);
 }
 
+// ---------------------------------------------------------------------------------------------------------------------
+// Zubr II: the heavy fit. A long squared armour cabinet closes each flank round the donor's stowage boxes: a flat outer
+// wall with clipped rear shoulder, a welded floor under the boxes and a lid over their outer ends, carried by stanchion
+// brackets from the cast roof shoulder; three stepped (staggered) courses of large ERAWA cassettes face it. A long open
+// basket stands on climbing rails behind the rear boxes with strapped loads, guarded rear lights and the whips.
+
+const ZUBR_II = {
+  wall: {x: 1.92, thick: .06, front: .42, knee: -.55, back: -.95, shoulder: [1.28, -1.59] as const, top: .80,
+    low: .090, lowAft: .125, lid: .37, floor: [.088, .104] as const, cap: 1.72},
+  tile: [.075, .19, .22] as const,
+  courses: [.215, .415, .615] as const,
+  columns: [.30, .055, -.19, -.435, -.68] as const,
+  stanchion: ZUBR.stanchion,
+  basket: {front: -2.03, rear: -2.64, half: 1.02, floor: .175, top: .74, rails: [.30, .62] as const,
+    railLow: .075, rise: [-1.95, -2.03] as const, slatSides: true},
+} as const;
+
+/** The cabinet wall's plan path on one side: outer face points and inward normals (front, knee, back, shoulder end). */
+function cabinetPath(side: number): {outer: [number, number][]; inner: [number, number][]} {
+  const w = ZUBR_II.wall, [sx, sz] = w.shoulder, t = w.thick;
+  const outer: [number, number][] = [[w.x, w.front], [w.x, w.knee], [w.x, w.back], [sx, sz]];
+  // the shoulder runs at 45 degrees: x - z = const; its inner face is offset t along (-1, 1)/sqrt2
+  const c = w.x - w.back - t * Math.SQRT2;
+  const inner: [number, number][] = [[w.x - t, w.front], [w.x - t, w.knee], [w.x - t, (w.x - t) - c], [sx - t / Math.SQRT2, sz + t / Math.SQRT2]];
+  return {outer: outer.map(([x, z]) => [side * x, z]), inner: inner.map(([x, z]) => [side * x, z])};
+}
+
+function zubrIICabinets(P: TankBuilderPort, casting: Stock): void {
+  const w = ZUBR_II.wall;
+  for (const side of SIDES) {
+    const {outer, inner} = cabinetPath(side);
+    // The wall's lower edge clears the hull's deck cabinets where it sweeps beyond r 2.0 (its rear and shoulder).
+    const lows = [w.low, w.low, w.lowAft, w.lowAft];
+    const wall = loft(outer.map(([ox, oz], i) => {
+      const [ix, iz] = inner[i];
+      return [[ix, lows[i], iz], [ox, lows[i], oz], [ox, w.top, oz], [ix, w.top, iz]] as V3[];
+    }));
+    P.addExternalArmor('turret', wall);
+    // The lid over the boxes' outer ends: the same path, w.lid deep.
+    const lidIn = outer.map(([ox, oz], i): [number, number] => {
+      if (i < 2) return [ox - side * w.lid, oz];
+      const c = w.x - w.back - w.lid * Math.SQRT2;
+      return i === 2 ? [side * (w.x - w.lid), (w.x - w.lid) - c] : [ox - side * w.lid / Math.SQRT2, oz + w.lid / Math.SQRT2];
+    });
+    P.addExternalArmor('turret', loft(outer.map(([ox, oz], i) => {
+      const [ix, iz] = lidIn[i];
+      return [[ix, w.top - .02, iz], [ox, w.top - .02, oz], [ox, w.top + .004, oz], [ix, w.top + .004, iz]] as V3[];
+    })));
+    // The welded floor under the boxes, from inside the casting's lower flank to the wall, ahead of the knee.
+    const floorRings: V3[][] = [];
+    for (let z = w.front; z >= w.knee - 1e-6; z -= (w.front - w.knee) / 5) {
+      const {point} = casting.face([side * 3, (w.floor[0] + w.floor[1]) / 2, z], [-side, 0, 0]);
+      const ix = point.x - side * .03, ox = side * (w.x - w.thick + .012);
+      floorRings.push([[ix, w.floor[0], z], [ox, w.floor[0], z], [ox, w.floor[1], z], [ix, w.floor[1], z]]);
+    }
+    P.addExternalArmor('turret', loft(floorRings));
+    // The front cap closes the wall outboard of the Relikt fan's outer lip.
+    P.addExternalArmor('turret', box(w.x - w.cap, w.top - w.low, .04), side * (w.x + w.cap) / 2, (w.top + w.low) / 2, w.front - .02);
+    // Stepped ERAWA courses: the middle course staggered half a pitch; two columns on the clipped shoulder.
+    const seats = new Stock(P.spec.id, [wall]);
+    try {
+      ZUBR_II.courses.forEach((y, row) => {
+        for (const z0 of ZUBR_II.columns) {
+          const z = row === 1 ? z0 - .1225 : z0;
+          eraTile(P, seats, side, [side * 2.6, y, z], [-side, 0, 0], ZUBR_II.tile);
+        }
+        const [ax, az] = outer[2], [bx, bz] = outer[3], n = [-(bz - az), bx - ax];
+        const len = Math.hypot(n[0], n[1]), out: [number, number] = [n[0] / len, n[1] / len];
+        if (out[0] * side < 0) { out[0] = -out[0]; out[1] = -out[1]; }
+        for (const f of row === 1 ? [.43] : [.24, .64]) {
+          const px = ax + (bx - ax) * f, pz = az + (bz - az) * f;
+          eraTile(P, seats, side, [px + out[0] * .5, y, pz + out[1] * .5], [-out[0], 0, -out[1]], ZUBR_II.tile);
+        }
+      });
+    } finally { seats.dispose(); }
+    // Bolted access lids, a clamped crowbar and bolt rows on the lid.
+    for (const z of [.12, -.50]) {
+      P.addEquipment('turretDetail', box(.27, .022, .38), side * (w.x - .17), w.top + .015, z);
+      P.addEquipment('turretDark', box(.07, .018, .12), side * (w.x - .17), w.top + .034, z);
+    }
+    const bx = side * (w.x - w.lid + .06);
+    P.addEquipment('turretDark', beamBetween([bx, w.top + .022, .34], [bx, w.top + .022, -.84], .015));
+    for (const z of [.26, -.76]) P.addEquipment('turretDark', box(.05, .03, .03), bx, w.top + .016, z);
+    // Square driving lamps on the cabinets' front ends.
+    nationalLamp(P, side * (w.x - .17), w.front - .09, w.top + .004, NATIONAL_ROOF_LOADOUTS.t72b3_zubr_ii.lamp);
+    // Lid brackets from welded stanchions on the cast roof shoulder.
+    // (the lid's inner edge: x - lid on the flat wall, the 45-degree line behind the knee of the shoulder)
+    const lidInner = (z: number): number => z >= w.back ? w.x - w.lid : (w.x - w.back - w.lid * Math.SQRT2) + z;
+    const st = ZUBR_II.stanchion, front = st.front[side < 0 ? 0 : 1];
+    stanchionArm(P, casting, side, front[0], front[1], st.top, w.top - .01, side * (lidInner(front[1]) + .04));
+    stanchionArm(P, casting, side, side * st.rear[0], st.rear[1], st.top, w.top - .01, side * (lidInner(st.rear[1]) + .04));
+  }
+}
+
+function zubrIIBasketLoad(P: TankBuilderPort): void {
+  const b = ZUBR_II.basket, z = (b.front + b.rear) / 2, deck = b.floor + .034;
+  P.addEquipment('turretDetail', box(b.half * 2 - .06, .016, b.front - b.rear - .05), 0, deck - .008, z);
+  for (const side of SIDES) strappedPack(P, 'turret', [side * .56, deck + .10, z], [.44, .20, .42]);
+  P.addEquipment('turretCloth', cylX(.12, .62, 18), 0, deck + .12, z - .05);
+  for (const x of [-.20, .20]) P.addEquipment('turretDark', torus(.123, .012, 18, 6).rotateY(Math.PI / 2), x, deck + .12, z - .05);
+  // Guarded rear lights on the rear corner posts, facing aft.
+  for (const side of SIDES) {
+    const x = side * (b.half - .10), y = b.top - .16, zz = b.rear - .045;
+    P.addEquipment('turretDetail', box(.18, .12, .07), x, y, zz);
+    P.addEquipment('turretGlass', markVehicleNightLens(box(.12, .05, .012), 'marker'), x, y + .01, zz - .041);
+    for (const dx of [-.10, .10]) P.addEquipment('turretDark', beamBetween([x + dx, y - .07, b.rear - .01], [x + dx, y + .08, zz - .07], .007));
+    P.addEquipment('turretDark', beamBetween([x - .10, y + .08, zz - .07], [x + .10, y + .08, zz - .07], .007));
+    // the bracket the lamp hangs on, off the rear corner post
+    P.addEquipment('turretDetail', box(.10, .03, .05), side * (b.half - .05), y + .075, b.rear - .01);
+  }
+  // Whips on the basket's front corner posts.
+  for (const side of SIDES) {
+    P.addEquipment('turretDetail', cylY(.050, .060, .06, 12), side * b.half, b.top + .044, b.front);
+    P.addEquipment('turretDark', cylY(.008, .014, .75, 8), side * b.half, b.top + .449, b.front);
+  }
+}
+
+function zubrIISensors(P: TankBuilderPort): void {
+  const l = NATIONAL_ROOF_LOADOUTS.t72b3_zubr_ii, st = ZUBR_II.stanchion, base = st.top + .022;
+  // The monocle eye on the left rear stanchion, looking forward over the gunner's cupola (on the front stanchion it
+  // would blind the gunner's sight); the independent optic on the right front stanchion.
+  nationalEye(P, st.rear[0], st.rear[1], base, l);
+  const [ox, oz] = st.front[0];
+  P.addEquipment('turretDetail', box(.26, .13, .25), ox, base + .065, oz);
+  P.addModuleVisual('optics', 'turretGlass', box(.18, .070, .014), ox, base + .083, oz + .132);
+  P.addEquipment('turretDetail', box(.29, .025, .28), ox, base + .142, oz);
+  for (const dx of [-.156, .156]) P.addEquipment('turretDetail', beamBetween([ox + dx, base - .002, oz - .10], [ox + dx, base + .20, oz + .14], .010));
+  P.addEquipment('turretDetail', beamBetween([ox - .156, base + .20, oz + .14], [ox + .156, base + .20, oz + .14], .010));
+  // The split-panel roof sensor on the right rear stanchion.
+  nationalRoofSensor(P, -st.rear[0], st.rear[1], base, l);
+}
+
+function buildZubrIITurret(P: TankBuilderPort, casting: Stock): void {
+  zubrIICabinets(P, casting);
+  rearRack(P, casting, ZUBR_II.basket);
+  zubrIIBasketLoad(P);
+  zubrIISensors(P);
+}
+
 /** Zubr: its unchanged Polish hull package, then the turret fit. */
 export function buildPolandDonorKit(P: TankBuilderPort, c: NationalModernizationConfig): void {
   hullEquipment(P, c);
@@ -320,10 +484,11 @@ function fitPolandDonorTurret(P: TankBuilderPort, id: PolandDonorId): void {
   const casting = new Stock(P.spec.id, castingGeometry);
   try {
     if (id === 't72b3_zubr') buildZubrTurret(P, casting);
+    else buildZubrIITurret(P, casting);
   } finally { casting.dispose(); }
   const stock: THREE.BufferGeometry[] = [];
   P.forEachBucketPart(['turret', 'turretExternalArmor'], g => { if (!Object.hasOwn(g.userData, 'eraHitFaceVertexStarts')) stock.push(g); });
-  addPolishProtection(P, PROTECTION_MODEL[id], stock, {turretScreens: false, turretSuit: id === 't72b3_zubr'});
+  addPolishProtection(P, PROTECTION_MODEL[id], stock, {turretScreens: false, turretSuit: true});
 }
 
-void cylZ; void markVehicleNightLens; void POLISH_PROTECTION_LAYOUTS;
+void cylZ; void POLISH_PROTECTION_LAYOUTS;
