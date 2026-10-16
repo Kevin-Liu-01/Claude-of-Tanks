@@ -80,9 +80,21 @@ const sorNearFieldStart = '      h += (m1 * 0.16 + m2 * 0.07) * (1 - vm) * (1 - 
 const sorPanEnd = '      if (h < level) h = level;\n    }\n';
 for (const text of [sorNearFieldStart, sorPanEnd]) assert.equal(source.split(text).length, 2, 'one current sor pan slice');
 const sorNearField = source.slice(source.indexOf(sorNearFieldStart), source.indexOf(sorPanEnd) + sorPanEnd.length);
+// (the maps lane, 2026-10-16; HORIZONS' Skybridge rounds 6-8, item/horizons-skybridge 0e3771bd5) a path ridge — the
+// drowned meander arm and its side canyons follow their curves (landformPath.ts) — is prepared in createLayout, which the
+// placement-origin fixture freezes at its pre-path text: the relief-law constructor restores the CURRENT path block in
+// that historical createLayout (a relief law of the same kind as the rim's: no road moved), so the placement sampler is
+// compared against the arm it actually carves.
+const pathBlockStart = '    if (form.path) {\n      // (round 6) a path ridge:';
+const pathBlockEnd = '        ...(form.widths ? { _widths: Float64Array.from(form.widths) } : {}) };\n    }\n';
+assert.equal(source.split(pathBlockStart).length, 2, 'one current path-ridge block');
+const pathBlock = source.slice(source.indexOf(pathBlockStart), source.indexOf(pathBlockEnd, source.indexOf(pathBlockStart)) + pathBlockEnd.length);
+const historicalLandformPrep = '  t.landforms = (t.landforms || []).map((form) => {\n    const yaw = THREE.MathUtils.degToRad(form.yawDeg || 0);\n    if (form.relief) return';
+assert.equal(referenceSource.split(historicalLandformPrep).length, 2, 'one historical landform preparation');
 // 2026-10-01: Sirocco Wadi's bank bake, mesa routing and crossing grades left with its old country roads
 // (docs/MAP-LAYOUT-BRIEF.md), so the relief-law constructor no longer restores them.
 const reliefLawSource = referenceSource
+  .replace(historicalLandformPrep, historicalLandformPrep.replace('(form) => {\n', '(form) => {\n' + pathBlock))
   .replace(historicalNearField, sorNearField)
   .replace(historicalDeckResolve, historicalDeckResolve + authoredDecks)
   .replace(historicalDetailExit, historicalDetailExit.replace('return h;', `return ${dryDeckClamp};`))
