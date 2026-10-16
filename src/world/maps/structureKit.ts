@@ -953,7 +953,7 @@ export function makeBathhouse(
     style === 'timber' ? 'wood' : 'stone');
   // (the garage critic, 2026-10-15, Monsoon: "a long blank white wall with two domes on top, a billboard") the domed hall
   // lit down both flanks (its back has the civic pass's windows; the timber hall's flanks its catalog openings), a cornice
-  // under the roof's edge, a parapet with its coping and each dome raised on its drum
+  // under the roof's edge, a parapet with its coping and the domes raised on the roof's fill
   if (style !== 'timber') freshParts(out, () => {
     for (const sx of [-1, 1]) for (const z of [-3.6, 0, 3.6]) addWindow(out, sx * (w / 2 + 0.04), 2.25, z, 'x', 0.7, 1.25, 'stone');
     out.stone.push(detailUv(box(w + 0.3, 0.22, d + 0.3).translate(0, wallH - 0.2, 0)));
@@ -964,9 +964,13 @@ export function makeBathhouse(
         const coping = alongX ? box(len + 0.1, 0.08, 0.32) : box(0.32, 0.08, len + 0.1);
         out.stone.push(coping.translate(sx * (w / 2 + 0.04), wallH + 0.15 + 0.59, sz * (d / 2 + 0.04)));
       }
-      for (const [x, z, r] of [[-3.2, -2.0, 2.8], [2.8, -2.1, 2.5], [0, 2.6, 2.35]]) {
-        out[walls].push(cylinder(r * 1.02, r * 1.04, 0.45, 12).translate(x, wallH + 0.15 + 0.22, z));
-      }
+      // (the building-integrity ledger, 226) the roof filled up inside the parapet to a terrace 3 cm under its top, as a
+      // hammam's roof is, the domes' feet 12 cm in it: a drum under each dome left 2 to 73 cm slots against
+      // its neighbours and the parapet, 0.45-0.63 m deep, whose bare deck read from above as the hall's inside (1.3 m2;
+      // the drums stood behind the parapet from the street). The fill's edges stand in the parapet; the street sees
+      // what it saw.
+      const deck = wallH + 0.15, terrace = deck + 0.52;
+      out.roof.push(slab(w + 0.08, terrace - deck, d + 0.08).translate(0, (deck + terrace) / 2, 0));
     }
   });
   addConnectedExterior(out, { id: 'bathhouse', w, d, wallH, profile: 'civic', variant: 3,
