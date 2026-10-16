@@ -56,6 +56,31 @@ built.dispose(); old.dispose();
   assert.ok(res.ok, `the r2 standard:\n  ${res.problems.join('\n  ')}`);
 }
 
+// the dry-stone field wall (the non-brick maps' wallstone): crowned at the r2 bar, the legacy's draws, band, fit and footprint
+{
+  const { DESTRUCTIBLE_TYPES, wallStoneBox, wallStoneFor } = await import('./inhabitKit.ts');
+  const { dryStoneWallType } = await import('./coursedWallKit.ts');
+  const { r2Check } = await import('../../../tools/r2-standard.mjs');
+  const legacyStone = { ...DESTRUCTIBLE_TYPES.wallstone, mat: 'fieldStone' };
+  const ds = dryStoneWallType(legacyStone, null, () => mulberry32(0x0f0f7));
+  let dA = 0, dB = 0;
+  const ra = mulberry32(31), rb = mulberry32(31);
+  const drawn = ds.build(() => { dA++; return ra(); }), old = legacyStone.build(() => { dB++; return rb(); });
+  assert.equal(dA, dB, 'the dry-stone legacy draws are spent exactly');
+  assert.deepEqual(ds.contactBand, deriveRuntimeStructureContactBand({ baked: [old] }), 'the frozen band is the legacy module\'s');
+  assert.deepEqual(ds.fitGeometry.attributes.position.array, old.attributes.position.array, 'the terrain fit reads the legacy module');
+  assert.deepEqual(ds.footprintBuild().attributes.position.array, legacyStone.build(mulberry32(0x0f0f7)).attributes.position.array, 'the legacy footprint');
+  for (const seed of [1, 3, 77, 1234]) {
+    const box = wallStoneBox(mulberry32(seed));
+    const res = r2Check({ kind: 'destructible:wallstone (dry stone)', maps: ['field'], bucket: 'fieldStone',
+      resolve: () => ({ form: `envelope ${seed}`, build: () => wallStoneFor(box, true), broken: () => DESTRUCTIBLE_TYPES.wallstone.broken(mulberry32(seed + 1)) }) });
+    assert.ok(res.ok, `the r2 standard:\n  ${res.problems.join('\n  ')}`);
+  }
+  drawn.dispose(); old.dispose();
+  const propsSrc = readFileSync(new URL('../props.ts', import.meta.url), 'utf8');
+  assert.ok(propsSrc.includes("wallstone: dryStoneWallType({ ...DESTRUCTIBLE_TYPES.wallstone, mat: fieldWallBucket }, snowCap ? withSnowLoad : null, () => mulberry32(0x0f0f7))"), 'props.ts lays the crowned dry-stone walls');
+}
+
 const props = readFileSync(new URL('../props.ts', import.meta.url), 'utf8');
 assert.ok(props.includes('wallstone: coursedWallType(regionalArchitecture?.id, COURSED_WALLSTONE, () => mulberry32(0x0f0f7))'), 'props.ts lays the coursed walls');
 assert.ok(props.includes('fitWallSpan(pool.mats4[record.slot], pool.meta.fitGeometry ?? geoI, heightField, span, record, WALL_SEG);'), 'the fit reads the legacy');

@@ -1240,7 +1240,7 @@ function roughStone(
  * in rough courses standing a little proud of it, and flattish top stones laid across. About 300 triangles: the faces
  * no one sees are left out.
  */
-function dryStoneModule(r: Rng, broken: boolean): THREE.BufferGeometry {
+function dryStoneModule(r: Rng, broken: boolean, crowned = false): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
   const L = WALL_SEG, H = broken ? 0.32 + r() * 0.16 : 0.92, bottom = 0.26, top = broken ? 0.22 : 0.18;
   const halfAt = (y: number) => bottom + (top - bottom) * Math.min(1, y / 0.92);
@@ -1371,22 +1371,24 @@ function dryStoneModule(r: Rng, broken: boolean): THREE.BufferGeometry {
     // a through-stone or two, long enough to show its ends on both faces, laid at a course line
     for (let k = 0, n = 1 + (r() < 0.5 ? 1 : 0); k < n; k++) {
       const y = lines[1 + Math.floor(r() * 2)] + 0.04, len = 0.18 + r() * 0.12, th = 0.09 + r() * 0.05;
-      const ts = roughStone(halfAt(y) * 2 + 0.12, th, len, r, [0, 1, 2, 4, 5]);
+      const ts = roughStone(halfAt(y) * 2 + 0.12, th, len, r, [0, 1, 2, 4, 5], 0.1, 0.1, 0);
       parts.push(tagStone(ts.translate((r() - 0.5) * 0.03, y, (r() - 0.5) * (L - 0.6)), DRY_STONE_KIND.through));
     }
     // the top (b14, wave 97: "a dead-level top"): a coping of stones set on edge across the wall, as a Dalmatian or a
     // Cotswold waller finishes one — each 6-15 cm thick along the wall, standing 12-20 cm on the rubble under it, its
     // own lean, the odd flat top stone among them — so the top is a ragged line of copes, not a course. The material
     // settles them and drops the odd one (props.ts), so a run's modules differ
-    let z = -L / 2 + 0.005;
+    let z = -L / 2 + 0.005, ci = 0;
     while (z < L / 2 - 0.04) {
       const flat = r() < 0.12;
+      // (r2 sweep: on the crowned module the flat copes and every other on-edge cope weathered round on top)
+      const round = crowned && (flat || ci++ % 2 === 0);
       const len = Math.min(L / 2 - z, flat ? 0.22 + r() * 0.2 : 0.06 + r() * 0.09);
       const ch = flat ? 0.08 + r() * 0.06 : 0.12 + r() * 0.08;
       const a = Math.max(0, Math.floor((z + L / 2) / CELL)), b = Math.min(cells, Math.ceil((z + len + L / 2) / CELL));
       let base = 0;
       for (const sky of skylines) for (let i = a; i <= b; i++) base = Math.max(base, sky[i]);
-      const cope = roughStone(top * 2 + 0.04 + r() * 0.08, ch, len * 0.96, r, [0, 1, 2, 4, 5], 0.3, 0.18);
+      const cope = roughStone(top * 2 + 0.04 + r() * 0.08, ch, len * 0.96, r, [0, 1, 2, 4, 5], 0.3, 0.18, round ? ch * 0.16 : 0);
       cope.rotateX((r() - 0.5) * (flat ? 0.08 : 0.3)); cope.rotateZ((r() - 0.5) * 0.1);
       parts.push(tagStone(cope.translate((r() - 0.5) * 0.04, base + ch * 0.42, z + len / 2), DRY_STONE_KIND.cope));
       z += len * (0.94 + r() * 0.05);
@@ -1495,12 +1497,21 @@ export function buildAdobePilaster(seed: number, thick: number, height: number, 
 }
 
 function bWallStone(rng: Rng): THREE.BufferGeometry {
+  return wallStoneFor(wallStoneBox(rng), false);
+}
+/** The dry-stone module's envelope from the stream (the legacy course builder's draws: bWallStone's only ones). */
+export function wallStoneBox(rng: Rng): THREE.Box3 {
   const envelope = wallStoneEnvelope(rng);
   envelope.computeBoundingBox();
   const box3 = envelope.boundingBox!.clone();
   envelope.dispose();
+  return box3;
+}
+/** The dry-stone module fitted to its envelope (its own stream, named by the envelope); `crowned`: its top stones and
+ *  copes weathered round on top (r2 sweep 2026-10-16; the drawn module of coursedWallKit.ts dryStoneWallType). */
+export function wallStoneFor(box3: THREE.Box3, crowned: boolean): THREE.BufferGeometry {
   const seed = Math.round((box3.max.x - box3.min.x) * 1e6 + (box3.max.y - box3.min.y) * 1e4 + box3.max.z * 1e3);
-  return fitToEnvelope(dryStoneModule(dryStoneRng(seed), false), box3);
+  return fitToEnvelope(dryStoneModule(dryStoneRng(seed), false, crowned), box3);
 }
 
 function bWallStoneBroken(rng: Rng): THREE.BufferGeometry {

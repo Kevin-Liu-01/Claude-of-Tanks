@@ -18,7 +18,7 @@
 // (the print's 0.7 repeats a metre, by place on each face). Pure geometry; no draws from any stream.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { type DestructiblePropType } from './inhabitKit.ts';
+import { wallStoneBox, wallStoneFor, type DestructiblePropType } from './inhabitKit.ts';
 import { deriveRuntimeStructureContactBand, type StructureCollisionRuntimeBand } from '../structureCollision.ts';
 
 const WALL_SEG = 3.0, UV = 0.7, Z0 = -WALL_SEG / 2, Z1 = WALL_SEG / 2;
@@ -176,6 +176,32 @@ export function coursedWallType(architectureId: string | null | undefined, legac
     },
     broken: (rng) => { legacy.broken!(rng).dispose(); return buildCoursedWall(coping, true); },
     footprintBuild: () => legacy.build(footprintRng()),
+  };
+  Object.defineProperty(entry, 'contactBand', { enumerable: true, get: () => band });
+  Object.defineProperty(entry, 'fitGeometry', { enumerable: true, get: () => fit });
+  return entry;
+}
+
+/**
+ * The dry-stone field wall (the non-brick maps' wallstone) at the r2 bar (the LOOKS sweep: boxShare 0.62 on five maps' forms):
+ * its top stones and copes weathered round on top (inhabitKit wallStoneFor crowned). The legacy module still builds first
+ * from the pool's stream (its envelope's draws; `load` the map's snow load on both), its contact band frozen as the
+ * pool's, its module the one the run's terrain fit reads (fitGeometry), its fixed-seed build the placement footprint.
+ */
+export function dryStoneWallType(legacy: Omit<DestructiblePropType, 'mat'> & { mat: string }, load: ((wall: THREE.BufferGeometry) => THREE.BufferGeometry) | null,
+  footprintRng: () => () => number): Omit<CoursedWallType, 'mat'> & { mat: string } {
+  let band: StructureCollisionRuntimeBand | undefined, fit: THREE.BufferGeometry | undefined;
+  const full = (box: THREE.Box3, crowned: boolean) => { const wall = wallStoneFor(box, crowned); return load ? load(wall) : wall; };
+  const entry: Omit<CoursedWallType, 'mat'> & { mat: string } = {
+    ...legacy,
+    build: (rng) => {
+      const box = wallStoneBox(rng), old = full(box, false);
+      band = deriveRuntimeStructureContactBand({ baked: [old] });
+      fit?.dispose();
+      fit = old;
+      return full(box, true);
+    },
+    footprintBuild: () => full(wallStoneBox(footprintRng()), false),
   };
   Object.defineProperty(entry, 'contactBand', { enumerable: true, get: () => band });
   Object.defineProperty(entry, 'fitGeometry', { enumerable: true, get: () => fit });
