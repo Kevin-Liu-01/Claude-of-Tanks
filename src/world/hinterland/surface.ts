@@ -65,6 +65,9 @@ export function surfaceLevelsFor(levels: readonly HinterlandLevel[]): { texelM: 
   });
 }
 
+/** A snow-dusted spruce wood's crowns (linear), before its dusting. */
+const SNOW_SPRUCE: readonly [number, number, number] = [0.022, 0.036, 0.034];
+
 /** The fields' mean albedo far out (linear): a far field system's contrast closes toward it (aerial texture loss). */
 const FAR_FIELD_MEAN: readonly [number, number, number] = [0.1, 0.12, 0.055];
 
@@ -156,7 +159,14 @@ export function bakeHinterlandSurface(
         if (cover.settle > 0.5) flags |= HL_SURFACE_FLAG.settlement;
         // the woods' share is carried in the albedo too: a wood's floor under its canopy, darker for a closed one
         if (cover.woods > 0.05 && !(flags & HL_SURFACE_FLAG.water)) {
-          const w = Math.min(1, cover.woods), c = woodsAlbedo;
+          // (a snow-covered place's woods from above: spruce crowns dark blue-green under a dusting of snow, a little
+          // lighter or darker crown to crown — the round-4c bird view read them as flat olive slabs)
+          let c: readonly [number, number, number] = woodsAlbedo;
+          if (snowy) {
+            const dust = 0.16 + 0.2 * hash12(x * 0.011 + 3.3, z * 0.013 - 1.7);
+            c = [SNOW_SPRUCE[0] + (0.72 - SNOW_SPRUCE[0]) * dust, SNOW_SPRUCE[1] + (0.79 - SNOW_SPRUCE[1]) * dust, SNOW_SPRUCE[2] + (0.88 - SNOW_SPRUCE[2]) * dust];
+          }
+          const w = Math.min(1, cover.woods);
           albedo = [albedo[0] + (c[0] - albedo[0]) * w, albedo[1] + (c[1] - albedo[1]) * w, albedo[2] + (c[2] - albedo[2]) * w];
           if (woodsShare) woodsShare[j * S.n + i] = Math.round(255 * w);
         }

@@ -56,7 +56,21 @@ export interface HinterlandLandformConfig {
   /** A massif's main summit, authored: its place along the strike (-1..1 of the half-length) and its share of the
    * height (default 0.5), a shoulder either side of it; the crest falls from it to both ends — a mountain with its
    * summit and shoulders, not a table (round 4, Mont Froid from edge-w). */
-  peak?: { along: number; share?: number };
+  peak?: { along: number; share?: number;
+    /** One side of the summit steeper than the other by this factor (1 symmetric): an offset summit block, not a cone. */
+    asym?: number;
+    /** A gendarme: a rock tower on the summit's ridge a little way along the crest. */
+    gendarme?: boolean;
+    /** false: the mass keeps its level crest (a wall with its summit on it); default, the crest falls from the summit
+     * to both ends (a mountain with its shoulders). */
+    tent?: boolean };
+  /** A massif's headwall: on its side facing the map, a cliff band this tall rising from just above its talus apron
+   * (round 5, the critics: "a dark headwall over 60° in the lower 250–400 m behind Les Tavernettes"). */
+  headwall?: { heightM: number };
+  /** A massif's couloirs: this many snow-filled gullies down its face toward the map, each over a debris fan. */
+  couloirs?: number;
+  /** A ridge's crest notched into minor peaks and cols (round 5, edge-s: "the crest is flat at one height"). */
+  notched?: boolean;
   name?: string;
 }
 
