@@ -662,6 +662,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/dev/shotViews.selftest.mjs',
     'src/dev/shotRuntime.selftest.mjs',
     'src/engine/csmShaderRelease.selftest.mjs',
+    // 2026-10-16 (the perf lane): one material per program variant — live prototype twins, one uniform map
+    'src/engine/programVariants.selftest.mjs',
     'src/engine/renderLayers.selftest.mjs',
     'src/engine/shadowCasterProfiles.selftest.mjs',
     'src/engine/nearVehicleShadowDetail.selftest.mjs',
@@ -915,6 +917,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/structureStages.selftest.mjs',
     'src/fx/structureDebris.selftest.mjs', // 2026-10-12: thrown pieces lie where their flight meets the ground; still pieces belong to their building
     'src/fx/rubbleBodies.selftest.mjs', // 2026-10-12: a building's larger falling pieces are bodies of the one physics engine
+    // 2026-10-15 (the fracture package on integ/226): walls break where struck as cells, a section's fall keeps its stub and
+    // gaps its doors; a building cut into its own pieces (doors gapped in the stubs), brought down as bodies; the stages
+    // driving both, sections on and off, every piece at rest on what is under it, a lift bridge's named pieces as bodies
+    'src/fx/wallFracture.selftest.mjs',
+    'src/fx/structureFracture.selftest.mjs',
+    'src/fx/collapsePieces.selftest.mjs',
+    'src/fx/collapseBodies.selftest.mjs',
+    'src/fx/fractureStages.selftest.mjs',
     'tools/destruction-check.selftest.mjs', // 2026-10-12: Steinburg's buildings destroyed and judged (textured, nothing hanging, rubble at rest on the ground)
     'src/fx/structureMask.selftest.mjs', // 2026-10-13: nothing hangs from a falling building (straddling triangles come down with the front)
     'src/fx/latticeGround.selftest.mjs', // 2026-10-13: the landing solves read the ground as drawn from its lattice's vertices, once each
@@ -1172,6 +1182,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/collisionManifestCodec.selftest.mjs',
     // 2026-10-14 (physics stream): every base and variant shard matches its index.json entry (the loaders' check)
     'server/collisionManifestIndex.selftest.mjs',
+    'server/collisionManifestRoutes.selftest.mjs', // 2026-10-16 physics: v2 serves 226's manifests (256 parts); /mp-collision holds production 224's byte for byte
     'server/dedicatedWorldCollisionMemory.selftest.mjs',
     'server/match/loop.selftest.mjs',
     'server/match/inputBuffer.selftest.mjs',
@@ -1604,6 +1615,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/regional/ksarGate.selftest.mjs',
     // the fortifications lane (2026-10-09, R259; wave 315): the field works' pillbox rebuilt, its bank an earthwork
     'src/world/maps/fortKit.selftest.mjs',
+    'src/world/bunkerShells.selftest.mjs', // 2026-10-16 physics: rounds go in through a concrete pillbox's drawn embrasures and to its door's leaf
     // props census #10 (2026-10-14): the field works' period forms, draws, records and wrecks (maps/fieldworksKit.ts)
     'src/world/maps/fieldworksKit.selftest.mjs',
     'src/world/maps/lightWreck.selftest.mjs',

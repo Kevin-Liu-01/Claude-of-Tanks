@@ -442,7 +442,7 @@ for (const seed of [1337, 2049, 7719]) {
   let expectedDraws = 0;
   const expectedNext = seeded(seed), expectedRng = () => { expectedDraws++; return expectedNext(); };
   const expectedIntact = DESTRUCTIBLE_TYPES.wallstone.build(expectedRng);
-  const referencePool = { records: reference.records, mats4: reference.matrices };
+  const referencePool = { meta: DESTRUCTIBLE_TYPES.wallstone, records: reference.records, mats4: reference.matrices }; // (its kind's meta: the refit reads its collisionSolid)
   legacyRefit(expectedIntact, referencePool, 'wallstone');
   // Original uninterrupted order: build, refit all contact colliders, fit all
   // complete spans, then construct the broken kit from the same RNG stream.
