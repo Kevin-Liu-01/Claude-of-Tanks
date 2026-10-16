@@ -238,7 +238,8 @@ function zubrScreens(P: TankBuilderPort, casting: Stock, lamp: Parameters<typeof
     // Round driving lamps on the front stanchions, ahead of everything on the roof and clear of the gunner's sight.
     nationalLamp(P, front[0], front[1], st.top + .022, lamp);
     // Laser-warning heads on the front arms' outer ends, guarded.
-    const lx = side * (s.x - .07), lz = front[1], seat = st.arm + .022, y = seat + .047;
+    const lx = side * (s.x - .07), lz = front[1], seat = st.arm + .022, y = seat + .039;
+    P.addEquipment('turretDetail', box(.07, .036, .09), lx, seat - .012, lz);
     P.addEquipment('turretDetail', box(.105, .084, .13), lx, y, lz);
     P.addModuleVisual('optics', 'turretGlass', box(.074, .035, .013), lx, y + .006, lz + .071);
     for (const dx of [-.068, .068]) P.addEquipment('turretDetail', beamBetween([lx + dx, seat - .008, lz - .06], [lx + dx, seat + .133, lz + .058], .008, seg(P, 10, 5)));
@@ -304,12 +305,19 @@ function zubrRackLoad(P: TankBuilderPort): void {
   for (const zz of [r.front - .06, r.rear + .07]) P.addEquipment('turretDark', box(.07, .045, .025), r.half + .022, r.top, zz);
   P.addEquipment('turretDetail', box(.03, .12, .20), r.half + .028, (r.floor + r.top) / 2 + .01, (r.front + r.rear) / 2 + .05);
   P.addEquipment('turretDark', beamBetween([r.half + .028, (r.floor + r.top) / 2 + .07, (r.front + r.rear) / 2 + .05], [r.half + .028, r.top - .02, (r.front + r.rear) / 2 + .05], .012, seg(P, 10, 6)));
+  // A drone-dock bearer laid across the rack's front and rear top rails over the roll: a flat permanent landing outside
+  // the remote station's sweep with nothing overhead (the mission dock's seat, ZUBR_DOCK).
+  P.addEquipment('turretDetail', box(.40, .014, .37), ZUBR_DOCK[0], r.top + .021, ZUBR_DOCK[2]);
+  for (const dx of [-.16, .16]) P.addEquipment('turretDetail', box(.03, .03, .37), ZUBR_DOCK[0] + dx, r.top, ZUBR_DOCK[2]);
   for (const side of SIDES) {
     const x = side * r.half, zz = r.rear;
     P.addEquipment('turretDetail', cylY(.050, .060, .06, seg(P, 12, 8)), x, r.top + .044, zz);
     P.addEquipment('turretDark', cylY(.008, .014, .70, seg(P, 8, 6)), x, r.top + .424, zz);
   }
 }
+
+/** The Zubr's drone-dock landing (turret frame: centre x, bearer top y, centre z). */
+const ZUBR_DOCK = [.30, ZUBR.rack.top + .028, (ZUBR.rack.front + ZUBR.rack.rear) / 2] as const;
 
 function zubrSensors(P: TankBuilderPort, casting: Stock): void {
   const l = NATIONAL_ROOF_LOADOUTS.t72b3_zubr;
@@ -415,14 +423,17 @@ function zubrIICabinets(P: TankBuilderPort, casting: Stock): void {
         P.addEquipment('turretDark', cylX(.013, .012, 8).rotateY(-side * Math.PI / 4), px + side * .0035, w.top - .045, pz - .0035);
       }
     }
-    // Bolted access lids, a clamped crowbar and bolt rows on the lid.
-    for (const z of [.12, -.50]) {
-      P.addEquipment('turretDetail', box(.27, .022, .38), side * (w.x - .17), w.top + .015, z);
-      P.addEquipment('turretDark', box(.07, .018, .12), side * (w.x - .17), w.top + .034, z);
+    // Bolted access lids; the right lid carries a clamped crowbar, the left keeps its middle clear as the drone dock's
+    // flat landing (ZUBR_II_DOCK), outside the remote station's sweep with nothing overhead.
+    for (const z of [.25, -.70]) {
+      P.addEquipment('turretDetail', box(.27, .022, .30), side * (w.x - .17), w.top + .015, z);
+      P.addEquipment('turretDark', box(.07, .018, .10), side * (w.x - .17), w.top + .034, z);
     }
-    const bx = side * (w.x - w.lid + .06);
-    P.addEquipment('turretDark', beamBetween([bx, w.top + .022, .34], [bx, w.top + .022, -.84], .015, seg(P, 10, 6)));
-    for (const z of [.26, -.76]) P.addEquipment('turretDark', box(.05, .03, .03), bx, w.top + .016, z);
+    if (side < 0) {
+      const bx = side * (w.x - w.lid + .06);
+      P.addEquipment('turretDark', beamBetween([bx, w.top + .022, .34], [bx, w.top + .022, -.84], .015, seg(P, 10, 6)));
+      for (const z of [.26, -.76]) P.addEquipment('turretDark', box(.05, .03, .03), bx, w.top + .016, z);
+    }
     // Square driving lamps on the cabinets' front ends.
     nationalLamp(P, side * (w.x - .17), w.front - .09, w.top + .004, NATIONAL_ROOF_LOADOUTS.t72b3_zubr_ii.lamp);
     // Lid brackets from welded stanchions on the cast roof shoulder.
@@ -433,6 +444,9 @@ function zubrIICabinets(P: TankBuilderPort, casting: Stock): void {
     stanchionArm(P, casting, side, side * st.rear[0], st.rear[1], st.top, w.top - .01, side * (lidInner(st.rear[1]) + .04));
   }
 }
+
+/** The Zubr II's drone-dock landing on the left cabinet lid (turret frame: centre x, lid top y, centre z). */
+const ZUBR_II_DOCK = [ZUBR_II.wall.x - ZUBR_II.wall.lid / 2, ZUBR_II.wall.top + .004, -.22] as const;
 
 function zubrIIBasketLoad(P: TankBuilderPort): void {
   const b = ZUBR_II.basket, z = (b.front + b.rear) / 2, deck = b.floor + .034;
@@ -503,4 +517,4 @@ function fitPolandDonorTurret(P: TankBuilderPort, id: PolandDonorId): void {
   addPolishProtection(P, PROTECTION_MODEL[id], stock, {turretScreens: false, turretSuit: true});
 }
 
-void cylZ; void POLISH_PROTECTION_LAYOUTS;
+void cylZ; void POLISH_PROTECTION_LAYOUTS; void ZUBR_II_DOCK;
