@@ -2169,6 +2169,24 @@ Receipt: `predictionStall.selftest` (the real sampler, the real authority input 
 movement model; a seat driving and turning stalls 0.3 / 0.6 / 1 / 2 s: the largest correction after it wakes is 0.2-5 cm,
 against 2.1 m and 1.5 m for the two old behaviours).
 
+### 13.26 The scene's programs link while the roster is painted (MP stream, 2026-10-15)
+
+**Why.** The perf lane's link census (urban solo entry): 187 programs on main against 149 on Sept 30. Props programs
+grew to 40 from 22 (4.4 MB of fragment source), the terrain splat fragment to 374 K characters from 205 K, and nine
+thermal programs now compile at entry. A link batch drains about four times slower. Every program reached the driver in
+one late submission (the strict compile after the roster), and the first covered draw waited in `getUniforms` for the
+whole queue; the black watchdog linked the rest. In the MP entry that was compile 0.9 → 1.3 s and the black watchdog
+0.1 → 0.8 s.
+
+**What.** With a `warm.submitPrograms` port, the first WELCOME sets the battle's lights up: garage lights off, the
+authority's weather (the WELCOME's seed) and the night pool. That makes the light signature final, so the scene's
+programs are submitted to the driver's parallel compile on the strict compile's own passes (matching keys). They link
+while the roster is painted. Activation skips the lights it already set up and keeps its `atmosphere` stage; the strict
+compile answers the linked programs from three's cache. The solo deployment's twin is `item/perf-entry-early-programs`.
+
+Receipt: `browserComposition.selftest`. The WELCOME runs garage lights off, weather, night pool and submission in that
+order, activation does not repeat them, and a submission that never settles holds nothing.
+
 ### 13.25 The returning tab's entry overlaps what it can (MP stream, 2026-10-15)
 
 **Why.** In the §7 side-by-side (Verdant, built sites, n=3), the rejoin took 24.1 s on Sept 30 and 32.2 s on main
