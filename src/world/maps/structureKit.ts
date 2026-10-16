@@ -4183,6 +4183,7 @@ function hutTools(out: THREE.BufferGeometry[], rng: Rng): HutTools {
     cylinder: (rt, rb, h, segments) => cylinder(rt, rb, h, segments),
     pitch: (geo, axis, outward, angle, kind) => pitchRoofPlane(geo, axis, outward, angle, kind),
     aperture: (geo, normal) => markWorldAperture(geo, normal),
+    beacon: (geo) => markWorldBeacon(geo),
     put: (geo, color, jitter = 0.04) => piece(colored(out, geo, color, rng, jitter), { role: named.role, material: named.material }, named.group),
     tag: (role, group, material) => { named = { role, group, material }; },
     rng,

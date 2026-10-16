@@ -34,6 +34,8 @@ export interface HutTools {
   pitch<T extends THREE.BufferGeometry>(geo: T, axis: 'x' | 'z', outward: -1 | 1, angle: number, kind: 'gable' | 'skillion'): T;
   /** markWorldAperture: a pane that glows at night when the kind is manned */
   aperture<T extends THREE.BufferGeometry>(geo: T, normal: V3): T;
+  /** markWorldBeacon: a lamp that burns at night, manned or not (a mast's beacon) */
+  beacon<T extends THREE.BufferGeometry>(geo: T): T;
   /** paint and keep a part, named by the last tag */
   put<T extends THREE.BufferGeometry>(geo: T, color: number, jitter?: number): T;
   /** name the parts put from here on: their piece of the wreck (a group is one piece), its role and its material */

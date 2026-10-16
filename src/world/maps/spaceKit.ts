@@ -76,9 +76,13 @@ function hatch(T: HutTools, P: SpacePaint, x: number, y0: number, z0: number, w:
   for (const s of [-1, 1]) T.put(T.mbox(f, h, fd).translate(x + s * (w / 2 + f / 2), y0 + h / 2, fz), P.frame);
   T.put(T.box(w, h, 0.03).translate(x, y0 + h / 2, z0 + nz * 0.015), P.dark, 0.01);
   T.tag('door', 'hatch-leaf', 'metal');
-  const leaf = T.mbox(w * 0.96, h * 0.96, 0.05);
-  leaf.translate(w * 0.48, 0, 0).rotateY(-0.3 * nz).translate(-w * 0.48, 0, 0);
-  T.put(leaf.translate(x, y0 + h / 2, z0 + nz * (fd - 0.04 + 0.025)), P.hull);
+  const swing = (g: THREE.BufferGeometry): THREE.BufferGeometry =>
+    g.translate(w * 0.48, 0, 0).rotateY(-0.3 * nz).translate(-w * 0.48, 0, 0).translate(x, y0 + h / 2, z0 + nz * (fd - 0.04 + 0.025));
+  T.put(swing(T.mbox(w * 0.96, h * 0.96, 0.05)), P.hull);
+  // the leaf's viewport: its ring proud of the leaf's outer face, the pane in it (lit at night, the airlock manned)
+  const port = (r: number, d: number, z: number): THREE.BufferGeometry => { const g = T.cylinder(r, r, d, 12); g.rotateX(Math.PI / 2); return g.translate(0, h * 0.2, nz * z); };
+  T.put(swing(port(0.15, 0.04, 0.035)), P.frame);
+  T.put(T.aperture(swing(port(0.11, 0.02, 0.05)), [nz * Math.sin(-0.3 * nz), 0, nz * Math.cos(-0.3 * nz)]), P.glass, 0.02);
 }
 
 /**
@@ -159,8 +163,9 @@ function habModule(T: HutTools, world: SpaceWorld): void {
     ladder(T, P, 0, len / 2 + 0.56, cy - 0.8);
     T.tag('fitting', 'ports', 'metal');
     for (const s of [-1, 1]) for (const z of [-1.2, 1.2]) {
+      // (the flange's face 3 cm behind the glass's: they stood flush, and the flange's disc covered the pane)
       const ring = T.cylinder(0.3, 0.3, 0.1, 12); ring.rotateZ(Math.PI / 2);
-      T.put(ring.translate(s * (r + 0.02), cy + 0.5, z), P.frame);
+      T.put(ring.translate(s * (r - 0.01), cy + 0.5, z), P.frame);
       const pane = T.cylinder(0.22, 0.22, 0.04, 12); pane.rotateZ(Math.PI / 2);
       T.put(T.aperture(pane.translate(s * (r + 0.05), cy + 0.5, z), [s, 0, 0]), P.glass, 0.02);
     }
@@ -781,7 +786,7 @@ function missionControl(T: HutTools, world: SpaceWorld): void {
     T.put(T.cylinder(0.08, 0.1, 4.6, 8).translate(1.4, 0.12 + 5.6 + 2.3, -1.2), P.frame);
     T.tag('fitting', 'mast-head', 'metal');
     T.put(T.cylinder(0.6, 0.12, 0.25, 12).translate(1.4, 0.12 + 10.3, -1.2), P.hull, 0.03);
-    T.put(T.cylinder(0.14, 0.14, 0.24, 8).translate(1.4, 0.12 + 10.55, -1.2), P.accent);
+    T.put(T.beacon(T.cylinder(0.14, 0.14, 0.24, 8).translate(1.4, 0.12 + 10.55, -1.2)), P.accent);
     return;
   }
   // Mars (MARSHA): the printed tower, its barrel swelling and drawn in again, its course ridges, its slit windows in
@@ -822,7 +827,7 @@ function missionControl(T: HutTools, world: SpaceWorld): void {
   T.tag('post', 'mast', 'metal');
   T.put(T.cylinder(0.08, 0.1, 1.6, 8).translate(0, 10.92 + 0.8, 0), P.frame);
   T.tag('fitting', 'beacon', 'metal');
-  T.put(T.cylinder(0.14, 0.14, 0.24, 8).translate(0, 12.6 - 0.15, 0), P.accent);
+  T.put(T.beacon(T.cylinder(0.14, 0.14, 0.24, 8).translate(0, 12.6 - 0.15, 0)), P.accent);
 }
 
 // --- the greenhouse ---------------------------------------------------------------------------------------------------
