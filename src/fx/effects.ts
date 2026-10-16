@@ -6874,7 +6874,10 @@ function* createFxSteps(
       const bodies = rubble && !first.done
         ? rubble.throw(first.value, 'block', pos.x, pos.y + 0.6, pos.z, 0, 0, 0, 1, 0.5, 0.5, 0.5, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0) ? 1 : 0
         : 0;
-      return laid + bodies;
+      // (2026-10-15) the fracture's own draw (a bucket's material casting through the default depth program: its faces,
+      // its bodies, its heaps) compiles with the warm too, not at the first broken wall
+      const fractured = fractureStages && !first.done ? fractureStages.warm(pos, bucketMaterials.get(first.value)?.material ?? null) : 0;
+      return laid + bodies + fractured;
     },
     propCrush(pos: THREE.Vector3, dir: THREE.Vector3, heightM = 6): void {
       const gy = groundY(pos.x, pos.z);

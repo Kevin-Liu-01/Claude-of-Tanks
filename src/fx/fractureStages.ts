@@ -113,6 +113,12 @@ export interface FractureStages {
   took(structureIdx: number): boolean;
   /** A breach event after the stages laid it (sections on: a storey's drop lets go of its floor). */
   breach(e: StructureBreachEvent): void;
+  /**
+   * The combat warm (the stages' warm beside it): one triangle in a bucket's material, unculled, casting through the
+   * default depth program as the fracture's faces, bodies and heaps do, so the warm's render compiles what the first
+   * broken wall would; the reset after it takes it away. The meshes laid.
+   */
+  warm(at: { x: number; y: number; z: number }, material: THREE.Material | null): number;
   /** Per render frame: the walls' drawing, the pool's steps, the pieces' poses, the cuts laid ahead. */
   update(): void;
   shiftTime(delta: number): void;
@@ -167,6 +173,8 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
   const clamps: Array<{ seam: StructureDamageSeam; storey: number; faceIndex: number; face: DamageFace; stubTop: number; top: number }> = [];
   const refused = new Map<StructureDamageSeam, Refused[]>();
   let last = o.now();
+  /** The warm's own meshes (gone at the reset after its render). */
+  const warmed: THREE.Mesh[] = [];
   /** Record boxes of a structure that no longer hold its pieces (a lift bridge's leaves over their gap): world x/z. */
   const passes = new Map<number, number[]>();
   let envBase: RigidEnvironment | null = null, envWrapped: RigidEnvironment | null = null;
@@ -496,8 +504,26 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
         break;
       }
     },
+    warm(at, material) {
+      if (!material) return 0;
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute([at.x, at.y + 0.5, at.z, at.x + 0.3, at.y + 0.5, at.z, at.x, at.y + 0.8, at.z], 3));
+      g.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1], 3));
+      g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1], 2));
+      g.setAttribute('color', new THREE.Float32BufferAttribute([1, 1, 1, 1, 1, 1, 1, 1, 1], 3));
+      const mesh = new THREE.Mesh(g, material);
+      mesh.name = 'fx-fracture-warm';
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.frustumCulled = false;
+      o.group.add(mesh);
+      warmed.push(mesh);
+      return 1;
+    },
     shiftTime(delta) { last += delta; },
     reset() {
+      for (const m of warmed) { m.removeFromParent(); m.geometry.dispose(); }
+      warmed.length = 0;
       fracture.reset();
       landmarks.reset();
       bodies.reset();

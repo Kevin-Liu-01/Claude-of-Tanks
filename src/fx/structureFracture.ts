@@ -223,6 +223,8 @@ const WORK_SORT = 1, WORK_CUT = 3, WORK_BODY = 240, WORK_REDRAW = 320;
 /** A body still this long (s) may bake early to make room in the fracture's share of the pool for a new round's body. */
 const SHARE_STILL_S = 0.5;
 const BAKE_AGE_S = 30;
+/** A body this old moving slower than these is baked where it is (it rocks on the heap). */
+const SLOW_AGE_S = 6, SLOW_MPS = 0.35, SLOW_RADS = 0.6;
 const SOUND_GAP_S = 0.06;
 /** (dcore 2026-10-11, wave 388a: "carton-like sections need chipping") a fallen chunk of six cells or more cracks on a
  *  landing this hard (m/s) into clumps of three or four cells along its courses, while the pool has room for them. */
@@ -1039,7 +1041,10 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       half: [Math.max(0.04, (run.u1 - run.u0) / 2), Math.max(0.04, (run.v1 - run.v0) / 2), Math.max(0.04, (run.d1 - run.d0) / 2)] as [number, number, number],
       mass: run.mass,
     }));
-    const shape = createRigidShape(parts, { ...BODY_SHAPE, maxSpheres: parts.length > 1 ? 16 : 12 });
+    // (its spheres by its size: a patch of wall two metres across on a dozen rocks on the heap)
+    let faceArea = 0;
+    for (const part of parts) if (part.kind === 'box') faceArea = Math.max(faceArea, 4 * part.half[0] * part.half[1]);
+    const shape = createRigidShape(parts, { ...BODY_SHAPE, maxSpheres: Math.min(24, (parts.length > 1 ? 16 : 12) + Math.round(faceArea * 2)) });
     // the body's culling sphere (body frame, round its centre): the farthest corner of its parts, and a margin
     let bodyRadius = 0.3;
     for (const part of parts) {
@@ -1209,6 +1214,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     return true;
   }
   const _pose = new Float64Array(7);
+  const _vel = new Float64Array(6);
   const _atP = new THREE.Vector3(), _atQ = new THREE.Quaternion(), _atS = new THREE.Vector3(), _atM = new THREE.Matrix4();
   const _crackVel = new Float64Array(6);
   /**
@@ -1463,7 +1469,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       const cluster = order[i];
       let foot = Infinity;
       for (let k = 0; k < cluster.length; k += 2) foot = Math.min(foot, heightOf(cluster[k], cluster[k + 1], 0));
-      for (const piece of splitCluster(cluster, per)) {
+      for (const piece of splitCluster(live, cluster, per)) {
         const g = live.wall.faces[piece[0]];
         let mid = 0;
         for (let k = 0; k < piece.length; k += 2) mid += heightOf(piece[k], piece[k + 1], 0.5);
@@ -1476,12 +1482,30 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       }
     }
   }
-  /** A cluster cut into pieces of at most `max` cells, in the order it was gathered (edge to edge: each piece hangs
-   *  together). */
-  function splitCluster(cells: number[], max: number): number[][] {
+  /**
+   * A cluster cut into pieces of at most `max` cells, compact ones (2026-10-15, the port's destruction check: cut in the
+   * order it was gathered, a piece snaked across a wall, its box six metres long round a few cells, and rocked on the
+   * heap for seconds): its cells taken by blocks of a metre and a half along the face and four courses up (face by face),
+   * so each piece is a patch of wall a few courses high that hangs together.
+   */
+  function splitCluster(live: Live, cells: number[], max: number): number[][] {
     if (cells.length / 2 <= max) return [cells];
+    const n = cells.length / 2;
+    const keyOf = new Float64Array(n), order = new Int32Array(n);
+    for (let i = 0; i < n; i++) {
+      const f = cells[2 * i], c = cells[2 * i + 1], g = live.wall.faces[f];
+      cellRect(g, c, rect);
+      const bu = Math.floor(((rect[0] + rect[1]) / 2 + g.width / 2) / 1.5), bv = Math.floor((g.origin[1] + (rect[2] + rect[3]) / 2) / 1.3);
+      keyOf[i] = f * 1e8 + bv * 1e4 + bu + ((rect[0] + rect[1]) / 2 + g.width / 2) * 1e-3;
+      order[i] = i;
+    }
+    const sorted = Array.from(order).sort((a, b) => keyOf[a] - keyOf[b] || a - b);
     const out: number[][] = [];
-    for (let i = 0; i < cells.length; i += max * 2) out.push(cells.slice(i, i + max * 2));
+    for (let i = 0; i < n; i += max) {
+      const piece: number[] = [];
+      for (let k = i; k < Math.min(n, i + max); k++) piece.push(cells[2 * sorted[k]], cells[2 * sorted[k] + 1]);
+      out.push(piece);
+    }
     return out;
   }
 
@@ -1666,7 +1690,11 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
         b.age += dt;
         b.still = o.pool.asleep(b.handle) ? b.still + dt : 0;
         if (!b.tipped && b.still > 0.25) { b.tipped = true; if (tipIfStanding(b, _pose)) { b.still = 0; continue; } }
-        if ((b.still >= BAKE_STILL_S || b.age >= BAKE_AGE_S) && !o.holdBake?.(b.structureIdx, b.pose[1])) bake(b);
+        // (one that only creeps, rocking on the heap, six seconds on lies where it is: woken by its neighbours its sleep
+        // never came)
+        const old = b.age >= SLOW_AGE_S && o.pool.velocity(b.handle, _vel)
+          && Math.hypot(_vel[0], _vel[1], _vel[2]) < SLOW_MPS && Math.hypot(_vel[3], _vel[4], _vel[5]) < SLOW_RADS;
+        if ((b.still >= BAKE_STILL_S || b.age >= BAKE_AGE_S || old) && !o.holdBake?.(b.structureIdx, b.pose[1])) bake(b);
       }
       profEnd('fr.poses', tPose);
     },
