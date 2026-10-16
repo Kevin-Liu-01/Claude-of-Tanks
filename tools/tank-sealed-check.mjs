@@ -17,6 +17,13 @@
 // magenta see-through). --gate exits non-zero when any tank has a hole or
 // see-through cluster at or above --min-area (default 6 px at 256 px over
 // the bounding sphere, roughly a 15 cm gap on a main battle tank).
+//
+// Gun bores are open by design (2026-10-14, coordinator: the netting drape moved type10b's and leo2a7v's framing and
+// single pixels inside their muzzle bores failed the hull). Every physical mouth the factory publishes (userData
+// .physicalMouth with its muzzleSeatReceipt radius and depth, the frames the muzzle-bore probes measure) masks its bore:
+// a hole or inside-out pixel whose visible surface lies inside that bore cylinder, or on the muzzle face out to the
+// tube's outer radius (the carved rim's seam with the outer wall), each grown by one pixel's footprint, is counted as
+// borePx and is never an opening. --no-bore-mask restores the raw census.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
@@ -85,7 +92,37 @@ function boundingSphere(tris) {
   return { center, radius };
 }
 
-function rasterizeView(tris, meshes, sphere, view) {
+/** The tank's physical gun bores in world space: each mouth frame's inverse matrix, local radius and depth (frame -Z
+ * points into the bore; the frame's origin is the mouth plane), and its uniform world scale. */
+function collectBores(root) {
+  root.updateMatrixWorld(true);
+  const bores = [];
+  root.traverseVisible((o) => {
+    const seat = o.userData?.muzzleSeatReceipt;
+    if (!o.userData?.physicalMouth || !seat) return;
+    const r = Number(seat.physicalInnerRadiusM ?? seat.innerRadiusM), depth = Number(seat.physicalBoreDepthM);
+    if (!(r > 0) || !(depth > 0)) return;
+    const outer = Math.max(r, Number(seat.outerRadiusM ?? seat.measuredOuterRadiusM) || r);
+    const scale = o.getWorldScale(new THREE.Vector3());
+    bores.push({ name: o.name, inv: o.matrixWorld.clone().invert(), r, outer, depth, worldScale: Math.max(1e-6, Math.abs(scale.x)) });
+  });
+  return bores;
+}
+const _boreLocal = new THREE.Vector3();
+/** True when a world point lies inside a bore cylinder, or on its muzzle face out to the tube's outer radius, each
+ * grown by `tolM` metres. */
+function insideBore(bores, x, y, z, tolM) {
+  for (const b of bores) {
+    _boreLocal.set(x, y, z).applyMatrix4(b.inv);
+    const tol = tolM / b.worldScale;
+    if (_boreLocal.z > tol || _boreLocal.z < -(b.depth + tol)) continue;
+    const radial = Math.hypot(_boreLocal.x, _boreLocal.y);
+    if (radial <= b.r + tol || (Math.abs(_boreLocal.z) <= tol && radial <= b.outer + tol)) return true;
+  }
+  return false;
+}
+
+function rasterizeView(tris, meshes, sphere, view, bores = []) {
   const { d } = view; const up0 = Math.abs(d.y) < 0.99 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
   const right = new THREE.Vector3().crossVectors(up0, d).normalize(); const up = new THREE.Vector3().crossVectors(d, right).normalize();
   const scale = RES / (2 * sphere.radius); const cx = sphere.center.x, cy = sphere.center.y, cz = sphere.center.z;
@@ -121,13 +158,24 @@ function rasterizeView(tris, meshes, sphere, view) {
   }
   // classify + cluster
   const INVERTED_DEPTH = 0.08; // metres: a front face this close behind a back face is an inside-out thin part, not an opening
-  const kind = new Uint8Array(N); let holePx = 0, throughPx = 0, silhouette = 0, invertedPx = 0;
+  const kind = new Uint8Array(N); let holePx = 0, throughPx = 0, silhouette = 0, invertedPx = 0, borePx = 0;
+  // A bore pixel: the back face the player would see lies inside a gun bore (grown by one pixel's footprint).
+  const pixelM = 1 / scale;
+  const inBore = (p) => {
+    if (!bores.length) return false;
+    const qx = p % RES, qy = (p - qx) / RES, ox = (qx + 0.5 - RES / 2) / scale, oy = (qy + 0.5 - RES / 2) / scale, depth = zBack[p];
+    return insideBore(bores, cx + right.x * ox + up.x * oy + d.x * depth, cy + right.y * ox + up.y * oy + d.y * depth,
+      cz + right.z * ox + up.z * oy + d.z * depth, pixelM);
+  };
   for (let p = 0; p < N; p++) {
     if (!covered[p]) continue; silhouette++;
     const hasFront = Number.isFinite(z[p]), hasBack = Number.isFinite(zBack[p]);
-    if (hasBack && zBack[p] < (hasFront ? z[p] : Infinity) - SEAM_EPS) { flag[p] = 2; kind[p] = (hasFront && z[p] - zBack[p] < INVERTED_DEPTH) ? 3 : 1; if (kind[p] === 1) holePx++; else invertedPx++; }
+    if (hasBack && zBack[p] < (hasFront ? z[p] : Infinity) - SEAM_EPS) {
+      if (inBore(p)) { flag[p] = 1; borePx++; if (hasFront) z[p] = Math.min(z[p], zBack[p]); else z[p] = zBack[p]; continue; }
+      flag[p] = 2; kind[p] = (hasFront && z[p] - zBack[p] < INVERTED_DEPTH) ? 3 : 1; if (kind[p] === 1) holePx++; else invertedPx++;
+    }
     else if (hasFront) { flag[p] = 1; if (hasBack) z[p] = Math.min(z[p], zBack[p]); }
-    else if (hasBack) { flag[p] = 2; kind[p] = 1; holePx++; z[p] = zBack[p]; }
+    else if (hasBack) { z[p] = zBack[p]; if (inBore(p)) { flag[p] = 1; borePx++; continue; } flag[p] = 2; kind[p] = 1; holePx++; }
     else { kind[p] = 2; throughPx++; }
   }
   const clusters = []; const seen = new Uint8Array(N); const stack = [];
@@ -151,7 +199,7 @@ function rasterizeView(tris, meshes, sphere, view) {
     const ox = (sx - RES / 2) / scale, oy = (sy - RES / 2) / scale;
     c.world = [cx + right.x * ox + up.x * oy + d.x * depth, cy + right.y * ox + up.y * oy + d.y * depth, cz + right.z * ox + up.z * oy + d.z * depth].map((v) => +v.toFixed(2));
   }
-  return { name: view.name, silhouette, holePx, throughPx, invertedPx, clusters, kind, flag };
+  return { name: view.name, silhouette, holePx, throughPx, invertedPx, borePx, clusters, kind, flag };
 }
 
 async function writeImage(path, view) {
@@ -195,7 +243,31 @@ if (flag('self-test')) {
   const insideOut = evaluate('inside-out box');
   box.geometry = new THREE.BoxGeometry(2, 1, 3); box.scale.x = -1; // mirrored placement renders correctly on the GPU
   const mirrored = evaluate('mirrored box');
-  const ok = closed.open === 0 && closed.inverted === 0 && (insideOut.open + insideOut.inverted) > 0 && insideOut.viewsOpen === VIEWS.length && mirrored.open === 0 && mirrored.inverted === 0;
+  // A gun bore: an inside-out open tube (and an inside-out rim annulus on its muzzle face) in front of the closed box
+  // reads as an opening from every view that sees it,
+  // until a physical mouth frame (radius and depth in its seat receipt, -Z into the bore) masks it. The same frame
+  // moved 0.5 m aside masks nothing, so the mask is the bore and only the bore.
+  box.scale.x = 1;
+  const tube = new THREE.CylinderGeometry(0.06, 0.06, 0.3, 16, 1, true).rotateX(Math.PI / 2);
+  const tubeIndex = tube.index; for (let i = 0; i < tubeIndex.count; i += 3) { const b = tubeIndex.getX(i + 1); tubeIndex.setX(i + 1, tubeIndex.getX(i + 2)); tubeIndex.setX(i + 2, b); }
+  const barrel = new THREE.Mesh(tube, material); barrel.name = 'boreTube'; barrel.position.set(0, 0, 1.65); root.add(barrel);
+  // the carved rim's seam: an inside-out annulus on the muzzle face out to the tube's outer radius
+  const rim = new THREE.Mesh(new THREE.RingGeometry(0.06, 0.09, 16).rotateY(Math.PI), material); rim.name = 'boreRim'; rim.position.set(0, 0, 1.8); root.add(rim);
+  const mouth = new THREE.Object3D(); mouth.name = 'muzzleBoreShadowFallback'; mouth.position.set(0, 0, 1.8);
+  mouth.userData.physicalMouth = true; mouth.userData.muzzleSeatReceipt = { physicalInnerRadiusM: 0.06, outerRadiusM: 0.09, physicalBoreDepthM: 0.3 };
+  const boreCase = (label, withMouth) => {
+    if (withMouth) root.add(mouth); else root.remove(mouth);
+    const { tris, meshes } = collectTriangles(root); const sphere = boundingSphere(tris); const bores = collectBores(root);
+    let open = 0, inverted = 0, masked = 0;
+    for (const view of VIEWS) { const r = rasterizeView(tris, meshes, sphere, view, bores); open += r.holePx; inverted += r.invertedPx; masked += r.borePx; }
+    console.log(`self-test ${label}: open ${open}, inside-out ${inverted}, bore px ${masked}`); return { open: open + inverted, masked };
+  };
+  const unmasked = boreCase('bore unmasked', false);
+  const masked = boreCase('bore masked', true);
+  mouth.position.x = 0.5;
+  const aside = boreCase('bore mask aside', true);
+  const boreOk = unmasked.open > 0 && unmasked.masked === 0 && masked.open === 0 && masked.masked === unmasked.open && aside.open === unmasked.open && aside.masked === 0;
+  const ok = boreOk && closed.open === 0 && closed.inverted === 0 && (insideOut.open + insideOut.inverted) > 0 && insideOut.viewsOpen === VIEWS.length && mirrored.open === 0 && mirrored.inverted === 0;
   console.log(ok ? 'self-test PASS' : 'self-test FAIL'); process.exit(ok ? 0 : 1);
 }
 const report = []; let failures = 0;
@@ -207,6 +279,7 @@ for (const id of ids) {
   try { tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: flag('receipt') }); } catch (error) { console.log(`${id}: build failed: ${error.message}`); failures++; continue; }
   const { tris, meshes } = collectTriangles(tank.root);
   const sphere = boundingSphere(tris);
+  const bores = flag('no-bore-mask') ? [] : collectBores(tank.root);
   if (flag('materials')) {
     const rows = new Map();
     tank.root.traverseVisible((o) => { if (!o.isMesh) return; for (const m of (Array.isArray(o.material) ? o.material : [o.material])) { if (!m) continue; const key = `${o.name || o.type} :: ${m.name || m.type}#${m.uuid.slice(0, 6)} side=${m.side} transparent=${m.transparent} opacity=${m.opacity} alphaTest=${m.alphaTest} depthWrite=${m.depthWrite}${Object.keys(m.userData || {}).length ? ' ud:' + Object.keys(m.userData).join('/') : ''}`; rows.set(key, (rows.get(key) || 0) + 1); } });
@@ -228,8 +301,8 @@ for (const id of ids) {
   }
   const views = []; let worst = null;
   for (const view of VIEWS) {
-    const r = rasterizeView(tris, meshes, sphere, view);
-    const entry = { name: r.name, silhouette: r.silhouette, holePx: r.holePx, throughPx: r.throughPx, invertedPx: r.invertedPx, clusters: r.clusters };
+    const r = rasterizeView(tris, meshes, sphere, view, bores);
+    const entry = { name: r.name, silhouette: r.silhouette, holePx: r.holePx, throughPx: r.throughPx, invertedPx: r.invertedPx, borePx: r.borePx, clusters: r.clusters };
     views.push(entry);
     if (!worst || r.holePx + r.throughPx > worst.holePx + worst.throughPx) worst = r;
     if (writeImages && (r.clusters.length || flag('images-all'))) await writeImage(`${outDir}/${id}__${r.name}.png`, r);
@@ -237,6 +310,7 @@ for (const id of ids) {
   const holeViews = views.filter((v) => v.clusters.some((c) => c.kind === 'hole')).length;
   const throughViews = views.filter((v) => v.clusters.some((c) => c.kind === 'see-through')).length;
   const holePx = views.reduce((s, v) => s + v.holePx, 0), throughPx = views.reduce((s, v) => s + v.throughPx, 0), invertedPx = views.reduce((s, v) => s + v.invertedPx, 0);
+  const borePx = views.reduce((s, v) => s + v.borePx, 0);
   const invertedViews = views.filter((v) => v.clusters.some((c) => c.kind === 'inverted')).length;
   const meshTally = new Map();
   for (const v of views) for (const c of v.clusters) for (const m of c.meshes) { const n = m.replace(/\(\d+\)$/, ''); meshTally.set(n, (meshTally.get(n) || 0) + c.area); }
@@ -249,8 +323,8 @@ for (const id of ids) {
     ledgerVerdict = verdict.message;
     if (!verdict.pass) failures++;
   } else if (!sealed) failures++;
-  report.push({ id, interiorFillRecordLoaded: hasInteriorFills(id), tris: tris.length, radiusM: +sphere.radius.toFixed(2), sealed, holeViews, invertedViews, throughViews, holePx, invertedPx, throughPx, topMeshes, views: views.filter((v) => v.clusters.length) });
-  console.log(`${id}: ${sealed ? 'SEALED' : 'OPEN'} — ${tris.length} tris, open px ${holePx} in ${holeViews}/${views.length} views, inside-out px ${invertedPx} in ${invertedViews} views, see-through px ${throughPx} in ${throughViews} views${topMeshes.length ? ' — ' + topMeshes.join(', ') : ''}${ledgerVerdict ? ' — ' + ledgerVerdict : ''} (${((performance.now() - started) / 1000).toFixed(1)} s)`);
+  report.push({ id, interiorFillRecordLoaded: hasInteriorFills(id), tris: tris.length, radiusM: +sphere.radius.toFixed(2), sealed, holeViews, invertedViews, throughViews, holePx, invertedPx, throughPx, bores: bores.length, borePx, topMeshes, views: views.filter((v) => v.clusters.length) });
+  console.log(`${id}: ${sealed ? 'SEALED' : 'OPEN'} — ${tris.length} tris, open px ${holePx} in ${holeViews}/${views.length} views, inside-out px ${invertedPx} in ${invertedViews} views, see-through px ${throughPx} in ${throughViews} views, bore px ${borePx} masked in ${bores.length} bore(s)${topMeshes.length ? ' — ' + topMeshes.join(', ') : ''}${ledgerVerdict ? ' — ' + ledgerVerdict : ''} (${((performance.now() - started) / 1000).toFixed(1)} s)`);
   if (worst && (worst.holePx || worst.throughPx)) console.log(`   worst view ${worst.name}: ${worst.clusters.slice(0, 4).map((c) => `${c.kind} ${c.area}px world(${(c.world || []).join(',')}) ${c.meshes.join('/')}`).join(' | ')}`);
   if (flag('clusters')) for (const v of views) for (const c of v.clusters) console.log(`   ${v.name}: ${c.kind} ${c.area}px world(${(c.world || []).join(',')}) ${c.meshes.join('/')}`);
   tank.dispose?.();

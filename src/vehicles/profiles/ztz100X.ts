@@ -1,6 +1,6 @@
 import { beginAuxiliaryStation } from './auxiliaryStation.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
-// ZTZ-100 (`ztz100_x`, owner 2026-09-17: "add a new ztz100 tank … use the glb model and our best most up to date
+// ZTZ-100 (`ztz100`, owner 2026-09-17: "add a new ztz100 tank … use the glb model and our best most up to date
 // tank generation procedures based off of models"; "the ztz 100 should NOT be based off of the type 100 at all. it
 // needs to be completely separate following completely inspired generation").
 //
@@ -713,5 +713,5 @@ function buildZtz100X(P: TankBuilderPort): void {
 }
 
 export const ZTZ100_X_PROFILES = Object.freeze({
-  ztz100_x: Object.freeze({ build: buildZtz100X }),
+  ztz100: Object.freeze({ build: buildZtz100X }),
 }) satisfies VehicleProfileRecord;

@@ -15,7 +15,7 @@ import {createTankState} from '../../sim/movement.ts';
 const restore=installCanvasFixture();
 // The independent Twardy still clones Pendekar's combat balance, but must
 // retain its own pre-rebuild spatial armor and narrow track envelope.
-const twardy=getSpec('pt91_twardy');
+const twardy=getSpec('pt91a_twardy');
 assert.equal(twardy.visual.trackWidthM,.50);
 assert.deepEqual(twardy.armor.hullPlates.find(p=>p.era)?.verts,
  [[-1.2841,1.1692,2.669],[-1.0519,1.1692,2.669],[-1.0519,1.2365,2.4558],[-1.2841,1.2365,2.4558]]);
@@ -42,7 +42,7 @@ function componentTriangles(part,offset=new T.Vector3()){const rows=[];for(let i
 let checks=0;
 for(const quality of['high','low']){
  const options={proceduralOnly:true,geometryReceipt:true,quality,camoSeed:4242,batchStatic:false};
- const donor=createTank('t72bu_x',null,options),tank=createTank('pt91m',null,options);
+ const donor=createTank('t72bu',null,options),tank=createTank('pt91m',null,options);
  try{
   donor.root.updateMatrixWorld(true);tank.root.updateMatrixWorld(true);
   const core=['hull','turret','gun','gunMount'];
@@ -50,7 +50,7 @@ for(const quality of['high','low']){
   const gear=[];donor.root.traverse(o=>{if(o.geometry&&/^gear/.test(o.name)&&!gear.includes(o.name))gear.push(o.name);});
   assert.ok(gear.length>8);assert.equal(geometryBytes(tank.root,gear),geometryBytes(donor.root,gear),'complete native donor wheels/rollers/links retain buffers and instances');
   for(const name of['rig_hull','rig_turret','rig_gun','rig_recoil'])assert.deepEqual(tank.root.getObjectByName(name).matrixWorld.elements,donor.root.getObjectByName(name).matrixWorld.elements,name+' stays in donor frame');
-  const spec=getSpec('pt91m');assert.equal(spec.variantOf,'t72bu_x');assert.equal(spec.gun.caliberMm,125);
+  const spec=getSpec('pt91m');assert.equal(spec.variantOf,'t72bu');assert.equal(spec.gun.caliberMm,125);
   assert.deepEqual(spec.armor.turretPivot,[...DATUMS.turretPivot]);
   near(spec.armor.gunBarrel.lengthM,DATUMS.muzzleZ-DATUMS.trunnion[2]);
   const turret=tank.root.getObjectByName('rig_turret'),seats=turret.userData.pt91mEraSeats;
@@ -69,7 +69,7 @@ for(const quality of['high','low']){
   const rows=tank.root.userData.eraVisualBindingReceipt.plates;assert.equal(rows.length,6);
   for(const row of rows){assert.ok(row.registered&&row.ownerMatches&&row.fittedSurfaces.length,'actual ERA triangles bind to live armor');assert.equal(tank.stripEra(row.name),true);assert.equal(geometryBytes(tank.root,core),coreBefore,'spent kit never deletes donor casting or chassis');}
   assert.notEqual(geometryBytes(tank.root,['hullExternalArmor','turretExternalArmor']),armorBefore);assert.equal(tank.resetEra(),true);assert.equal(geometryBytes(tank.root,['hullExternalArmor','turretExternalArmor']),armorBefore,'ERA resets exact stock');
-  const state=createTankState(spec,new T.Vector3(),0),donorState=createTankState(getSpec('t72bu_x'),new T.Vector3(),0);
+  const state=createTankState(spec,new T.Vector3(),0),donorState=createTankState(getSpec('t72bu'),new T.Vector3(),0);
   for(const yaw of Array.from({length:24},(_,i)=>i*Math.PI/12))for(const deg of[-spec.gunDepressionDeg,0,spec.gunElevationDeg]){
    for(const s of[state,donorState]){s.turretYaw=yaw;s.gunPitch=deg*Math.PI/180;}
    tank.syncFromState(state,0);donor.syncFromState(donorState,0);

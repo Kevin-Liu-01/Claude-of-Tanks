@@ -93,7 +93,7 @@ async function scenario(failAt = null, cleanupFailures = [], gatePassed = true, 
   let failure;
   try {
     await run(fakeFs, path, () => '/fixture/tmp', createServer, puppeteer, process, console,
-      { fixture_x:'fixture', unregistered_tank:'fixture', ztz100_prototype:'modern2', object695_x:'modern2', type100:'modern2' },
+      { fixture_x:'fixture', unregistered_tank:'fixture', ztz100_prototype:'modern2', object695:'modern2', type100:'modern2' },
       validateSelectedIds, partitionConceptIds, readConceptDesign);
   }
   catch (error) { failure = error; }
@@ -149,7 +149,7 @@ for (const gatePassed of [true, false]) {
   assert.equal(result.process.exitCode, gatePassed ? undefined : 1);
 }
 
-for (const ids of [['ztz100_prototype', 'object695_x'], ['fixture_x', 'ztz100_prototype'], ['type100'], ['type100','object695_x','fixture_x']]) {
+for (const ids of [['ztz100_prototype', 'object695'], ['fixture_x', 'ztz100_prototype'], ['type100'], ['type100','object695','fixture_x']]) {
   const result = await scenario(null, [], true, ids);
   assert.equal(result.failure, undefined);
   const report = JSON.parse(result.writes[0].content);

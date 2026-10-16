@@ -9,7 +9,7 @@
 // railroad's water tank on its trestle; privies and woodsheds; a house burnt to its chimney. Galvanised sheet roofs
 // over everything (the mill's fires took the shingles), the boards weathered silver or whitewashed, the trim painted.
 import { PartSink, faceBox, facePoint, pick, rgb, shade, type Face, type RegionalBucket, type Rgb } from './geometry.ts';
-import { buildHouse, wallPolygon, windowRhythm, type FaceName, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, holedPolygon, wallPolygon, windowRhythm, type FaceName, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { bench, washingLine } from './dressing.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -671,7 +671,12 @@ const burnt: RegionalBuilder = (ctx) => {
       sink.span('structureWood', x0, 0.6, z0, x1, 0.85, z1, { colour: CHAR });
     }
     // the chimney standing whole, a corner of the wall frame, the fallen roof sheet
-    sink.span('stone', -0.35, -0.5, -0.35, 0.35, 5.6 + rng(), 0.35);
+    // (props census #7, lane B 2026-10-14: the stack a bare box) the chimney standing whole over its firebox, cut
+    // through its face to the hearth's dark
+    const ch = 5.6 + rng();
+    sink.span('stone', -0.35, -0.5, -0.35, 0.35, ch, -0.05);
+    holedPolygon(sink, 'stone', { origin: [0, 0, 0.35], u: [1, 0, 0], out: [0, 0, 1], width: 0.7 }, [[-0.35, -0.5], [0.35, -0.5], [0.35, ch], [-0.35, ch]],
+      [{ u0: -0.2, u1: 0.2, y0: 0.62, y1: 1.2 }], 0.4, 0.34);
     sink.member('structureWood', [-W / 2 + 0.15, 0.85, D / 2 - 0.15], [-W / 2 + 0.15, 2.4 + rng() * 0.8, D / 2 - 0.15], 0.12, 0.12, [0, 0, 1], { colour: CHAR, decor: true, exposed: true }, 0);
     // (the buildings stream, 2026-10-12, the integrity check: the sheet hung over the burnt-out floor on nothing) the
     // fallen sheet lying across the front corner from the side sill to the front one, clear of the stack

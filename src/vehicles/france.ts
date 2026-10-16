@@ -1,9 +1,9 @@
 // FRANCE lane (§5.38 owner priority wave, 2026-08-08) — self-contained
 // modern3-style module: specs registered at import, builders exported.
-// First resident: amx40 (AMX-40 export prototype — the KojfDiscord AW print
+// First resident: amx40_proto (AMX-40 export prototype — the KojfDiscord AW print
 // at public/models/community-candidates/amx-40_armored_warfare.glb is a
 // LOCAL-ONLY visual reference; the playable is our authored construction.
-// NOTE: leclerc/amx30/amx30b2 stay in profiles/misc.ts (family migration
+// NOTE: leclerc_s2/amx30/amx30b2 stay in profiles/misc.ts (family migration
 // is a separate, owner-approvable move).
 //
 // Registration pattern (modern3.ts): tankFactory.ts passes FRANCE_BUILDERS
@@ -109,9 +109,9 @@ function muzzleBore(
 
 // =================================== AMX-40 =================================
 // NEW BUILD r1, MEASURED RE-LAY (§5.38 owner priority: "fully model a custom
-// amx40 based on this model using our strongest visual comparison and
+// amx40_proto based on this model using our strongest visual comparison and
 // geometric comparison techniques"). Oracle: the KojfDiscord AW print
-// (LOCAL-ONLY quarantine), registered as `amx40` in the three harness maps +
+// (LOCAL-ONLY quarantine), registered as `amx40_proto` in the three harness maps +
 // the vertex REG; receipt docs/references/vertex/amx40.json (2026-08-08).
 // PRINT FRAME (as-loaded, k 1.65 clamp): x/z read PUBLISHED-TRUE (width
 // 3.353 / bodyLen 6.796 / overall 10.027) and the turret ROOF sits at the
@@ -119,10 +119,10 @@ function muzzleBore(
 // straight off the receipt curves. The ONLY stylization is the optics
 // tower (cupola dome 2.77 / pano head 3.09 over z -0.75..+0.8) + two rod
 // masts (4.14 @ [-1.0, -1.68], 5.10 @ [+0.72, +0.74]) above the published
-// 2.38 height datum — the k2/t90m "RWS band" class (the real vehicle IS
+// 2.38 height datum — the xk2_black_panther/t90m "RWS band" class (the real vehicle IS
 // 3.08 to the sight head; published heightM rides the roof datum). Build
 // follows the banked POST-WARP AUTHORING FRAME law (spz_puma packet note
-// 2 / t90m batch-23 precedent): optics band capped at the 2.40 grace
+// 2 / t90am batch-23 precedent): optics band capped at the 2.40 grace
 // line (dims-true), masts as LOW raked whips at the print's own seats,
 // and the y-knee normalize plan (knee 2.39) is FILED in
 // docs/references/tanks/amx40.md for the orchestrator §E lane.
@@ -140,7 +140,7 @@ function muzzleBore(
 // stowage boxes on both turret flanks (±1.53), CN120-25 with thermal
 // sleeve segments and NO bore evacuator (compressed-air scavenging —
 // receipt gunContour r 0.131/0.121 sleeve, 0.063 bare gap, 0.076
-// muzzle), roof 7.62 FORWARD on a LOW mount (type10 published-line
+// muzzle), roof 7.62 FORWARD on a LOW mount (type10_tk_x published-line
 // precedent: a roof-standing MG owns heightM p95).
 function buildAMX40(P: FranceBuilderPort): void {
   const { box, cylY, cylZ, frustum, polyMultiLoft, buildGun, buildRunningGear,
@@ -704,7 +704,7 @@ function buildAMX40(P: FranceBuilderPort): void {
     smR.position.set(1.13, 0.48, -0.45);
     P.turretG.add(smR);
     // roof 7.62 AANF1 beside the cupola — LOW mount, FORWARD rest
-    // (CROWS-forward law; type10 precedent: receiver at the published
+    // (CROWS-forward law; type10_tk_x precedent: receiver at the published
     // height line so heightM p95 stays on the roof plateau)
     // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the roof detail beside the cupola (feed-side collision census).
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.9, seed: 12, elev: -0.03, ammo: true, feed: 'right' });
@@ -712,7 +712,7 @@ function buildAMX40(P: FranceBuilderPort): void {
     P.turretG.add(mg);
     P.addEquipment('turret', box(0.12, 0.18, 0.12), -0.46, 0.84, 0.30);                 // continuous roof-to-receiver pedestal
     // antenna whips CLIPPED LOW over the aft roof, both raked hard aft
-    // (type10 rack-tail precedent; the print's 4.14/5.10 vertical rod
+    // (type10_tk_x rack-tail precedent; the print's 4.14/5.10 vertical rod
     // masts live in the filed normalize plan — seats documented in the
     // packet). base:false + hand pots so the whole stack stays ≤ 2.398
     // world and heightM p95 keeps the roof plateau.
@@ -880,4 +880,4 @@ function buildAMX40(P: FranceBuilderPort): void {
   P.topY = 1.26;
 }
 
-export const FRANCE_BUILDERS = { amx40: buildAMX40 };
+export const FRANCE_BUILDERS = { amx40_proto: buildAMX40 };

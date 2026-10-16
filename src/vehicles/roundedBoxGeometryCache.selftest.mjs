@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { createRoundedBoxGeometryCache, cachedRoundedBoxGeometry } from './roundedBoxGeometryCache.ts';
 
-const nativeIds=['m1a2','challenger2','leclerc','leo2_revolution'];
+const nativeIds=['m1a1_abrams_hc','challenger2','leclerc_s2','leo2_revolution'];
 const factoryUrl=new URL('./factoryGeometry.ts',import.meta.url);
 
 function same(a,b,{bounds=true}={}){

@@ -12,8 +12,8 @@ import {createCombatState,resolveShellHit} from '../sim/damage.ts';
 
 // Independent named-module census, not the generated triangle count. Passive
 // western armor/cages and the thirteen non-reactive variants are not ERA.
-const ERA_IDS=['t62mv1_x','t72b_1987_x','t80u_x','t72b3_x','t72b3m_x',
-  't72bu_x','t90_x','t90a_burlak_x','t90ms_x'];
+const ERA_IDS=['t62mv1','t72b_1987','t80u','t72b3','t72b3m_2016',
+  't72bu','t90','t90a_burlak','t90ms_tagil'];
 const shellSpec={name:'Second-wave live ERA audit',type:'APFSDS',caliberMm:120,
   pen100Mm:5000,pen1000Mm:5000,pen2000Mm:5000,dmg:1,velocityMps:1700,moduleDmg:0,tracer:'APFSDS'};
 const vector=a=>new THREE.Vector3(...a);
@@ -32,14 +32,14 @@ for(const id of ids)assert.ok(SECOND_WAVE_X_IDS.includes(id),`known second-wave 
 function expectedZones(id){
   if(!ERA_IDS.includes(id))return[];
   const names=['hull/glacis_era_L','hull/glacis_era_R','turret/turret_era_L','turret/turret_era_R'];
-  if(id!=='t80u_x')names.push('hull/skirt_era_L','hull/skirt_era_R');
-  if(id==='t90ms_x')names.push('turret/side_era_L','turret/side_era_R');
+  if(id!=='t80u')names.push('hull/skirt_era_L','hull/skirt_era_R');
+  if(id==='t90ms_tagil')names.push('turret/side_era_L','turret/side_era_R');
   return names.sort();
 }
 function expectedStats(id,name){
-  if(id==='t62mv1_x')return name.startsWith('turret_')?[15,15,15,.2,450]:[15,15,15,.05,280];
+  if(id==='t62mv1')return name.startsWith('turret_')?[15,15,15,.2,450]:[15,15,15,.05,280];
   if(name.startsWith('skirt_'))return[12,12,12,.05,280];
-  return[15,15,15,.2,id==='t80u_x'?400:450];
+  return[15,15,15,.2,id==='t80u'?400:450];
 }
 function assertCensus(id,spec,binding,finish){
   const expected=expectedZones(id);

@@ -314,7 +314,7 @@ function* beavertail(s: number, tint: Tint, seed: number): Generator<SurfaceSlic
       const t = onUp ? up : here;
       const r = onUp ? (row + 1) % rows : row;
       const k = hash2(t.col, r, seed);
-      const k2 = hash2(t.col, r, seed + 7);
+      const xk2_black_panther = hash2(t.col, r, seed + 7);
       const fyT = onUp ? (fy - (1 - tail)) / Math.max(1e-3, tail) * 0.25 : fy * 0.75 + 0.25;
       // joints between neighbouring tiles of a course, and the shadow the overlapping tails cast down-slope
       const joint = Math.min(t.fx, 1 - t.fx) < 0.045 ? 1 : 0;
@@ -322,7 +322,7 @@ function* beavertail(s: number, tint: Tint, seed: number): Generator<SurfaceSlic
       const curve = Math.sin(t.fx * Math.PI);
       const grain = grainF(x, y);
       const weather = weatherF(x, y);
-      const lichen = smooth(0.68, 0.86, lichenF(x, y)) * smooth(0.45, 0.8, k2);
+      const lichen = smooth(0.68, 0.86, lichenF(x, y)) * smooth(0.45, 0.8, xk2_black_panther);
       const soot = smooth(0.55, 0.85, weather) * 0.25;
       // (the facades lane, round 6; gauntlet wave 241: "one clean terracotta tile texture ... no moss, soot, patched
       // repairs") an old roof's life on each tile: a tile replaced (new orange) or sooted dark here and there; rosettes
@@ -344,7 +344,7 @@ function* beavertail(s: number, tint: Tint, seed: number): Generator<SurfaceSlic
       const moss = onUp ? 0 : smooth(0.45, 0.95, edgeUp) * smooth(0.62, 0.86, lichenF((x + 61) % s, (y + 37) % s)) * (1 - fresh);
       let v = 0.78 + k * 0.32 + curve * 0.08 + (grain - 0.5) * 0.12 - soot * (1 - fresh);
       v *= (1 - edgeUp * 0.38 - joint * 0.45) * (sooty ? 0.7 : 1);
-      const hueShift = (k2 - 0.5) * 0.16;
+      const hueShift = (xk2_black_panther - 0.5) * 0.16;
       let rr = tint[0] * v * (1 + hueShift), gg = tint[1] * v * (1 - hueShift * 0.4), bb = tint[2] * v * (1 - hueShift * 0.6);
       if (fresh) { rr *= 1.28; gg *= 1.12; bb *= 0.96; }
       const lich = fresh ? 0 : lichen;
@@ -376,19 +376,19 @@ function* canal(s: number, tint: Tint, seed: number): Generator<SurfaceSlice, [U
       const yy = (y / rl + stagger + hash2(pair, cover ? 1 : 0, seed) * 0.3) % rowsN;
       const row = Math.floor(yy), fy = yy - row; // 0 at the tail end of the tile (down-slope)
       const k = hash2(pair * 2 + (cover ? 1 : 0), row, seed + 1);
-      const k2 = hash2(pair * 2 + (cover ? 1 : 0), row, seed + 2);
+      const xk2_black_panther = hash2(pair * 2 + (cover ? 1 : 0), row, seed + 2);
       const prof = Math.sin(lx * Math.PI); // cover crown / pan trough
       // a lap seam where the tile above starts: a thin dark line and a shadow under the tail
       const lap = fy < 0.05 ? 1 : 0;
       const shadowTail = cover ? smooth(0.0, 0.12, fy) : 1;
       const grime = (1 - prof) * (cover ? 0.35 : 0.15) + (cover ? 0 : 0.18);
       // grey-ochre crust lichen, a partial veil over the clay (never a white blot)
-      const lichen = smooth(0.64, 0.86, lichenF(x, y)) * (cover ? 0.55 : 0.25) * smooth(0.3, 0.7, k2);
+      const lichen = smooth(0.64, 0.86, lichenF(x, y)) * (cover ? 0.55 : 0.25) * smooth(0.3, 0.7, xk2_black_panther);
       const fade = fadeF(x, y);
       let v = (0.74 + k * 0.38) * (0.88 + prof * 0.18) - grime * 0.35;
       v *= 0.65 + 0.35 * shadowTail;
       v *= 1 - lap * 0.35;
-      const pale = smooth(0.4, 0.9, fade) * 0.35 + k2 * 0.15; // sun-bleached tiles go toward pale ochre
+      const pale = smooth(0.4, 0.9, fade) * 0.35 + xk2_black_panther * 0.15; // sun-bleached tiles go toward pale ochre
       let rr = tint[0] * v * (1 + pale * 0.15), gg = tint[1] * v * (1 + pale * 0.45), bb = tint[2] * v * (1 + pale * 0.55);
       rr = rr * (1 - lichen) + 0.6 * lichen; gg = gg * (1 - lichen) + 0.57 * lichen; bb = bb * (1 - lichen) + 0.47 * lichen;
       put(px, j, rr, gg, bb);
@@ -412,13 +412,13 @@ function* slate(s: number, tint: Tint, seed: number): Generator<SurfaceSlice, [U
       const i = y * s + x, j = i * 4;
       const xx = ((x + off) % s + s) % s;
       const col = Math.floor(xx / tw), fx = xx / tw - col;
-      const k = hash2(col, row, seed), k2 = hash2(col, row, seed + 3), k3 = hash2(col, row, seed + 8);
+      const k = hash2(col, row, seed), xk2_black_panther = hash2(col, row, seed + 3), k3 = hash2(col, row, seed + 8);
       // a ragged tail: each slate's down-slope edge sits a few pixels off the course line
       const tailJ = (k3 - 0.5) * 0.18;
       const shadow = fy + tailJ < 0.14 ? 1 - (fy + tailJ) / 0.14 : 0;
       const joint = Math.min(fx, 1 - fx) < 0.035 ? 1 : 0;
       const grain = grainF(x, (y * 3) % s);
-      const rust = smooth(0.78, 0.95, k2) * 0.6;
+      const rust = smooth(0.78, 0.95, xk2_black_panther) * 0.6;
       const lichen = smooth(0.72, 0.88, lichenF(x, y)) * smooth(0.5, 0.9, k);
       let v = 0.7 + k * 0.42 + (grain - 0.5) * 0.18;
       v *= 1 - shadow * 0.5 - joint * 0.4;
@@ -444,10 +444,10 @@ function* pantile(s: number, tint: Tint, seed: number): Generator<SurfaceSlice, 
     for (let x = 0; x < s; x++) {
       const i = y * s + x, j = i * 4;
       const col = Math.floor(x / tw), fx = x / tw - col;
-      const k = hash2(col, row, seed), k2 = hash2(col, row, seed + 5);
+      const k = hash2(col, row, seed), xk2_black_panther = hash2(col, row, seed + 5);
       const roll = Math.sin(Math.min(1, fx / 0.62) * Math.PI) * (fx < 0.62 ? 1 : 0) - (fx >= 0.62 ? Math.sin((fx - 0.62) / 0.38 * Math.PI) * 0.5 : 0);
       const lap = fy < 0.07 ? 1 - fy / 0.07 : 0;
-      const lichen = smooth(0.7, 0.86, lichenF(x, y)) * smooth(0.4, 0.9, k2);
+      const lichen = smooth(0.7, 0.86, lichenF(x, y)) * smooth(0.4, 0.9, xk2_black_panther);
       let v = (0.78 + k * 0.3) * (0.82 + roll * 0.22);
       v *= 1 - lap * 0.45;
       let rr = tint[0] * v, gg = tint[1] * v, bb = tint[2] * v;
@@ -575,6 +575,11 @@ interface MasonryRecipe {
   raked?: number;
   /** the share of bricks over-fired dark (clinkers) */
   clinker?: number;
+  /**
+   * (round 11) coal soot: the grime clouds and the rain's runs carry a soot that greys the stone as well as darkening it
+   * (0 none): an industrial town's brick goes brown-black, not merely darker red
+   */
+  soot?: number;
 }
 
 /** The masonry's default lichen: a warm yellow-grey crust. */
@@ -649,6 +654,19 @@ const DRESSED: Partial<MasonryRecipe> = Object.freeze({ courseMin: 46, courseMax
   speckle: 0.04, lichen: 0.22, grime: 0.22, rubble: 0.15, bedding: 0.05, mottle: 0.3, streaks: 0.28, tooling: 0.55, margin: 7, chips: 0.2,
   raked: 0.25 });
 
+/**
+ * (the facades lane, round 11; waves 319/320 on Ironworks, Copper Mesa and Cinder Junction: "clean, saturated, uniformly
+ * tiled brick with no soot, mortar relief, streaking or base wear") an industrial town's stone, soiled: the soot's broad
+ * clouds darker and the rain's runs down every course, the joints' mortar more often lost, the odd clinker. A style asks
+ * for it with `stone.weathered`; the brick of the incredibles (Verdant, Cinder Junction, Highland Reservoir) keeps its own.
+ */
+const WEATHERED: Partial<MasonryRecipe> = Object.freeze({ grime: 0.6, streaks: 0.6, raked: 0.24, chips: 0.18, spread: 0.26, soot: 0.55 });
+
+/** A recipe with a style's dressing and weathering laid over its kind's. */
+function recipeOf(kind: StoneSurfaceKind, dressed: boolean, weathered = false): MasonryRecipe {
+  return { ...MASONRY[kind], ...(dressed ? DRESSED : {}), ...(weathered ? WEATHERED : {}) };
+}
+
 /** One course of a stone tile's layout: its rows (canvas px, from the top) and its blocks' columns. */
 export interface MasonryCourse { y0: number; y1: number; blocks: ReadonlyArray<{ x0: number; x1: number; split: boolean }> }
 /** A stone tile's block layout (masonryLayout). */
@@ -660,7 +678,7 @@ export interface MasonryLayout { size: number; mortar: number; wobble: number; c
  * dressed quoins, maps/regional/facade.ts dressedQuoin). (facades lane, 2026-10-06)
  */
 export function masonryLayout(kind: StoneSurfaceKind, dressed = false, seed = 0x51a7, s = 512): MasonryLayout {
-  const R: MasonryRecipe = dressed ? { ...MASONRY[kind], ...DRESSED } : MASONRY[kind];
+  const R: MasonryRecipe = recipeOf(kind, dressed);
   const rowsE = courseEdges(s, R.courseMin, R.courseMax + 1, seed);
   const courses: MasonryCourse[] = [];
   for (let r = 0; r + 1 < rowsE.length; r++) {
@@ -683,8 +701,9 @@ function jointWobble(R: MasonryRecipe): number {
   return R.tooling ? 0.5 + R.relief : 1.2 + R.relief * 2.4;
 }
 
-function* masonry(s: number, kind: StoneSurfaceKind, tint: Tint, seed: number, dressed = false): Generator<SurfaceSlice, [Uint8ClampedArray, Float32Array, Float32Array], void> {
-  const R: MasonryRecipe = dressed ? { ...MASONRY[kind], ...DRESSED } : MASONRY[kind];
+function* masonry(s: number, kind: StoneSurfaceKind, tint: Tint, seed: number, dressed = false, weathered = false):
+  Generator<SurfaceSlice, [Uint8ClampedArray, Float32Array, Float32Array], void> {
+  const R: MasonryRecipe = recipeOf(kind, dressed, weathered);
   const px = new Uint8ClampedArray(s * s * 4), hgt = new Float32Array(s * s), rough = new Float32Array(s * s);
   const rowsE = courseEdges(s, R.courseMin, R.courseMax + 1, seed);
   const colsE: number[][] = [];
@@ -723,7 +742,7 @@ function* masonry(s: number, kind: StoneSurfaceKind, tint: Tint, seed: number, d
       const dy = Math.min(y - by0, by1 - y) + wob * 0.8;
       const d = Math.min(dx, dy);
       const joint = d < R.mortar ? 1 : 0;
-      const k = hash2(c, r, seed), k2 = hash2(c, r, seed + 1);
+      const k = hash2(c, r, seed), xk2_black_panther = hash2(c, r, seed + 1);
       // (round 6) the joint run this texel lies on (a vertical one keyed by its x and course, a bed joint by its block
       // and y; both wrap with the tile) and the corner of the joint grid nearest it
       const vx = x - bx0 < bx1 - x ? bx0 : bx1, hy = y - by0 < by1 - y ? by0 : by1;
@@ -740,7 +759,7 @@ function* masonry(s: number, kind: StoneSurfaceKind, tint: Tint, seed: number, d
       const pill = R.pillow > 0 ? Math.pow(bev, 0.6) : 1;
       const tex = texF(x, y) * 0.8 + hash2(x, y, seed + 3) * 0.2;
       const big = bigF(x, y);
-      const lichen = R.lichen * smooth(0.7, 0.88, lichenF(x, y)) * smooth(0.45, 0.85, k2);
+      const lichen = R.lichen * smooth(0.7, 0.88, lichenF(x, y)) * smooth(0.45, 0.85, xk2_black_panther);
       const runs = R.streaks ? R.streaks * smooth(0.55, 0.9, pnoise2(x, y, s, 22, 3, seed + 53)) * 0.36 : 0;
       const grime = R.grime * smooth(0.5, 0.95, big) * 0.5 + runs;
       const speck = R.speckle > 0 ? (hash2(x, y, seed + 17) > 0.93 ? 1 : hash2(x, y, seed + 19) > 0.95 ? -1 : 0) * R.speckle : 0;
@@ -765,10 +784,15 @@ function* masonry(s: number, kind: StoneSurfaceKind, tint: Tint, seed: number, d
         }
         const clink = R.clinker && hash2(c, r, seed + 81) < R.clinker ? 1 : 0;
         const v = ((1 + (k - 0.5) * 2 * R.spread) * (0.86 + 0.14 * pill) * cloud + bed - grime + speck * 0.12 + tool * 0.035) * (1 - chip * 0.12) * (clink ? 0.6 : 1);
-        const h = (k2 - 0.5) * R.hue * 2 + (clink ? -0.06 : 0);
+        const h = (xk2_black_panther - 0.5) * R.hue * 2 + (clink ? -0.06 : 0);
         rr = tint[0] * v * (1 + h); gg = tint[1] * v; bb = tint[2] * v * (1 - h);
         const lt = R.lichenTint ?? LICHEN_CRUST;
         rr = rr * (1 - lichen) + lt[0] * lichen; gg = gg * (1 - lichen) + lt[1] * lichen; bb = bb * (1 - lichen) + lt[2] * lichen;
+        if (R.soot) {
+          // the soot in the grime and the runs: toward a brown-black, the stone's own colour going out of it
+          const so = Math.min(0.7, R.soot * (smooth(0.3, 0.95, big) * 0.85 + runs * 1.1));
+          rr = rr * (1 - so) + 0.13 * so; gg = gg * (1 - so) + 0.115 * so; bb = bb * (1 - so) + 0.1 * so;
+        }
         hgt[i] = clamp(0.3 + pill * (R.faceRamp ?? 0.45) + (tex - 0.5) * R.relief * 0.5 + tool * 0.06 - chip * 0.04);
         rough[i] = clamp(0.82 + (tex - 0.5) * 0.1 + lichen * 0.1 + chip * 0.06);
       }
@@ -894,10 +918,11 @@ export function* makeRegionalRoof(kind: RoofSurfaceKind, tint: Tint, anisotropy:
 }
 
 /** The stone bucket's texture set for a style (512 px). */
-export function* makeRegionalStone(kind: StoneSurfaceKind, tint: Tint, anisotropy: number, seed = 0x51a7, dressed = false):
-  Generator<SurfaceSlice, RegionalSurfaceTextures, void> {
+export function* makeRegionalStone(kind: StoneSurfaceKind, tint: Tint, anisotropy: number, seed = 0x51a7, dressed = false,
+  weathered = false): Generator<SurfaceSlice, RegionalSurfaceTextures, void> {
   const s = 512;
-  const [px, hgt, rough] = yield* cached(`stone:${kind}${dressed ? ':dressed' : ''}:${tint.join(',')}:${seed}`, () => masonry(s, kind, tint, seed, dressed));
+  const [px, hgt, rough] = yield* cached(`stone:${kind}${dressed ? ':dressed' : ''}${weathered ? ':weathered' : ''}:${tint.join(',')}:${seed}`,
+    () => masonry(s, kind, tint, seed, dressed, weathered));
   // (sandstone: squared stone with tight joints, not pillowed blocks — wave 199; round 6, wave 241: "heavily embossed",
   // "cartoon bevels": the brick and the sandstone a third shallower, their tooling and joints carrying the face)
   const relief = kind === 'brick' || kind === 'sandstone' ? 1.5 : kind === 'limestone' ? 2.0 : kind === 'granite' ? 2.4 : 3.0;
@@ -918,7 +943,8 @@ export function* makeRegionalConcrete(kind: ConcreteSurfaceKind, tone: ((px: Uin
 
 /** Paint-only access for receipts (no canvas): the raw buffers. */
 export function* paintRegionalSurfaceBuffers(target: 'roof' | 'stone' | 'concrete', kind: RoofSurfaceKind | StoneSurfaceKind | ConcreteSurfaceKind,
-  tint: Tint, seed: number): Generator<SurfaceSlice, { size: number; px: Uint8ClampedArray; hgt: Float32Array; rough: Float32Array }, void> {
+  tint: Tint, seed: number, weathered = false):
+  Generator<SurfaceSlice, { size: number; px: Uint8ClampedArray; hgt: Float32Array; rough: Float32Array }, void> {
   if (target === 'concrete') {
     const [px, hgt, rough] = yield* boardFormed(256, tint, seed);
     return { size: 256, px, hgt, rough };
@@ -928,7 +954,7 @@ export function* paintRegionalSurfaceBuffers(target: 'roof' | 'stone' | 'concret
     const [px, hgt, rough] = yield* painter(256, tint, seed);
     return { size: 256, px, hgt, rough };
   }
-  const [px, hgt, rough] = yield* masonry(512, kind as StoneSurfaceKind, tint, seed);
+  const [px, hgt, rough] = yield* masonry(512, kind as StoneSurfaceKind, tint, seed, false, weathered);
   return { size: 512, px, hgt, rough };
 }
 

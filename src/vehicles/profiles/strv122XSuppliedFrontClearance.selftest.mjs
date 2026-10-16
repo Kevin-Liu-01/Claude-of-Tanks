@@ -82,7 +82,7 @@ function ceilingAndRoof(hull){
 }
 verifyDistances();
 for(const quality of['high','low']){
- const tank=createTank('strv122_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+ const tank=createTank('strv122',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
  try{
   tank.root.updateMatrixWorld(true);let band=[],hull=[];let hullMesh;
   tank.root.traverse(m=>{if(m.name==='hull'){hullMesh=m;hull.push(...triangles(m));}

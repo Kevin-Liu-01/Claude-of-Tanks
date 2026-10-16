@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import ts from 'typescript-compiler-api';
 import { Vector3 } from 'three';
-import { setObbShape, setCompoundShape, shellPassesThroughCollisionRecord } from '../world/collision.ts';
+import { setObbShape, setCompoundShape, shellPassesThroughCollisionRecord, DENSE_SET_PIECE_KINDS, SET_PIECE_WRECK_MIN_CALIBER_MM } from '../world/collision.ts';
 import { createHeadlessCollisionWorld } from '../world/headlessCollisionWorld.ts';
 import { packCollisionRecord } from '../../tools/headlessWorldCollision.mjs';
 
@@ -49,6 +49,8 @@ function studioTrace() {
   const collisionSource = readFileSync(new URL('../world/collision.ts', import.meta.url), 'utf8');
   const kinds = new Set(['structure', 'tree', 'fencepicket', 'fencerail', 'quonsethut', 'barrel', 'crate', undefined]);
   for (const m of collisionSource.matchAll(/kind === '([a-z0-9_-]+)'/g)) kinds.add(m[1]); // (a hyphen too: 'small-rock')
+  // (Lane C, item 7) the vehicle set pieces: the heavy plant in collision.ts's set, the rover light cover
+  for (const kind of [...DENSE_SET_PIECE_KINDS, 'setpiece_lrv']) kinds.add(kind);
   for (const kind of kinds) {
     for (const crushable of [true, false, undefined]) {
       const record = { kind, crushable };
@@ -101,6 +103,29 @@ const shell = (z, x = 0) => ({ dead: false, pos: new Vector3(x, 1, z), spec: { v
   assert.ok(Math.abs(struck[0].z + 45.1) < 1e-6, `on its face (z ${struck[0].z})`);
 }
 
+// ---- heavy plant (Lane C, item 7): a gun round stops on a haul truck and wrecks it there, as a battle round does; a
+// machine-gun bullet stops on it and leaves it standing (collision.ts SET_PIECE_WRECK_MIN_CALIBER_MM)
+{
+  assert.equal(SET_PIECE_WRECK_MIN_CALIBER_MM, 20, 'the Studio restates the battle\'s calibre floor (20 mm)');
+  const truck = setObbShape({ min: [0, 0, 0], max: [0, 4.6, 0], kind: 'setpiece_haulpak', crushable: true, propIdx: 11 }, 60, -45, 2.3, 3.95, 0);
+  const plantWorld = { raycast: (o, d, max) => {
+    if (truck.crushed || Math.abs(d.z) < 1e-9) return null;
+    const dist = (-48.95 - o.z) / d.z;
+    return dist >= 0 && dist <= max ? { dist, kind: 'prop', record: truck, point: new Vector3(60, 1, -48.95), normal: new Vector3(0, 0, -1) } : null;
+  }, crushObstacle: (record, dx, dz, speed, cause) => { crushes.push({ propIdx: record.propIdx, kind: record.kind, dx, dz, speed, cause }); record.crushed = true; return true; } };
+  crushes.length = 0;
+  const mg = studioTrace();
+  const bullet = { dead: false, pos: new Vector3(60, 1, -30), spec: { velocityMps: 890, caliberMm: 12.7 } };
+  assert.equal(mg.api.traceStrikeRound(bullet, plantWorld, new Vector3(60, 1, -60), new Vector3(60, 1, -30)), true, 'a bullet stops on it');
+  assert.equal(crushes.length, 0, 'and the truck stands');
+  assert.equal(mg.struck[0].record?.kind, 'setpiece_haulpak');
+  const gun = studioTrace();
+  const round = { dead: false, pos: new Vector3(60, 1, -30), spec: { velocityMps: 800, caliberMm: 125 } };
+  assert.equal(gun.api.traceStrikeRound(round, plantWorld, new Vector3(60, 1, -60), new Vector3(60, 1, -30)), true, 'a 125 mm round stops on it');
+  assert.deepEqual(crushes.map((c) => [c.propIdx, c.kind, c.cause]), [[11, 'setpiece_haulpak', 'shell']], 'and wrecks it where it stops');
+  assert.equal(gun.struck.length, 1, 'the strike lands on it too');
+}
+
 // ---- a step that meets nothing (or only the ground) leaves the round flying
 {
   const { api, struck } = studioTrace();
@@ -112,4 +137,4 @@ const shell = (z, x = 0) => ({ dead: false, pos: new Vector3(x, 1, z), spec: { v
 
 console.log('studioStrikeCover: a Studio strike round breaks the light cover in its path (the world\'s own crush, along its '
   + 'heading) and flies on to the house wall, which takes the strike; dense cover stops it and stands; a clear step leaves '
-  + 'it flying; the Studio\'s pass-through law is collision.ts\'s PASS');
+  + 'it flying; heavy plant stops a round and a gun round wrecks it; the Studio\'s pass-through law is collision.ts\'s PASS');

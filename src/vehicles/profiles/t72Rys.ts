@@ -13,5 +13,5 @@ export function buildT72Rys(P:TankBuilderPort):void {
   supportedSensor(P,[.32,.91,-.51],.60);
   attachedCage(P,'turret',[0,.26,-2.01],2.02,.45,.43);
   strappedPack(P,'turret',[0,.36,-1.75],[1.03,.23,.32]);
-  P.hullG.userData.familyRebuild={donor:'t80u_x',revision:1,variant:'polish-rys-concept'};
+  P.hullG.userData.familyRebuild={donor:'t80u',revision:1,variant:'polish-rys-concept'};
 }

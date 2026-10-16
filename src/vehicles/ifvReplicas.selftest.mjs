@@ -7,8 +7,8 @@ import { synchronizeIfvReplicaCombatMetadata } from './ifvReplicaSpecs.ts';
 import { censusEquipment } from '../../tools/source-equipment-policy.mjs';
 import { verifyCv9040CTrunnions } from './cv9040CTrunnions.test-support.mjs';
 
-const pairs=[['spz_puma_s1','spz_puma_s1_x',30,2],['cv90','cv90_x',40,0],['type89_light_tiger','type89_x',35,2]];
-const originals=new Map([...pairs.map(([id])=>id),'cv90_mkiv','cv90_mkiv_x'].map(id=>[id,structuredClone(getSpec(id))]));
+const pairs=[['spz_wotan','puma_s1',30,2],['cv90','cv9040c',40,0],['raiju_ifv','type89',35,2]];
+const originals=new Map([...pairs.map(([id])=>id),'cv90_mk4_concept','cv90_mk4'].map(id=>[id,structuredClone(getSpec(id))]));
 const replicaAnatomy=new Map(pairs.map(([,id])=>[id,structuredClone(getSpec(id).armor)]));
 synchronizeIfvReplicaCombatMetadata();synchronizeIfvReplicaCombatMetadata();
 for(const [id,armor] of replicaAnatomy)assert.deepEqual(getSpec(id).armor,armor,`${id}: synchronization preserves finalized anatomy`);
@@ -52,7 +52,7 @@ for(const [original,id,caliber,tubes] of pairs){
       const muzzle0=new Vector3(),muzzle1=new Vector3();tank.gunMuzzleWorld(muzzle0);
       gun.rotation.x=-.25;tank.root.updateMatrixWorld(true);tank.gunMuzzleWorld(muzzle1);
       assert(muzzle1.distanceTo(muzzle0)>.25,'gun actually articulates');
-      if(id==='cv90_x') {
+      if(id==='cv9040c') {
         for(const pitch of [-s.gunDepressionDeg,0,s.gunElevationDeg]) {
           gun.rotation.x=-pitch*Math.PI/180;
           verifyCv9040CTrunnions(tank.root);
@@ -64,7 +64,7 @@ for(const [original,id,caliber,tubes] of pairs){
         } finally {gun.position.z=seatedZ;}
       }
       assert.equal(s.armor.crew.length,3,'three vehicle crew, no invented loader');
-      assert.equal(s.armor.crew.some(c=>c.turretLocal),id!=='spz_puma_s1_x','correct remote or manned turret layout');
+      assert.equal(s.armor.crew.some(c=>c.turretLocal),id!=='puma_s1','correct remote or manned turret layout');
     }finally{tank.dispose();}
   }}finally{previous.dispose();}
 }

@@ -8,7 +8,7 @@ import { createTankState } from '../../sim/movement.ts';
 // fall below the old upper wedge and expose the unwanted tall box directly.
 const rows = [
   {id:'cv90', scale:.9, knee:2.14, floor:.24, nose:3.28, chin:1},
-  {id:'cv90_mkiv', scale:.9, knee:2.24, floor:.20, nose:3.49, chin:1.07},
+  {id:'cv90_mk4_concept', scale:.9, knee:2.24, floor:.20, nose:3.49, chin:1.07},
 ];
 const ray = new T.Raycaster();
 function cast(objects, frame, xyz, direction, far=5) {
@@ -46,7 +46,7 @@ for(const quality of ['high','low']) for(const row of rows) {
     old.position.set(0,.75*row.scale,-.10*row.scale);frame.add(old);tank.root.updateMatrixWorld(true);
     assert.throws(()=>bow([hull,old]),assert.AssertionError,'the old square belly must fail the same rays');
     frame.remove(old);old.geometry.dispose();
-    if(row.id==='cv90_mkiv') {
+    if(row.id==='cv90_mk4_concept') {
       const gun=tank.root.getObjectByName('rig_gun'),mount=tank.root.getObjectByName('gunMount');
       const turret=tank.root.getObjectByName('turret'),state=createTankState(getSpec(row.id),new T.Vector3(),0);
       assert.ok(Math.abs(gun.position.z-getSpec(row.id).armor.gunPivot[2])<1e-8,`${quality}: visual and authored gun pivots agree`);
@@ -74,12 +74,12 @@ for(const quality of ['high','low']) for(const row of rows) {
 }
 // The new armor masks have finite returns, a central circular gland, and
 // actual pitch-axis bearings. Barrel recoil must leave the mask seated.
-for(const quality of ['high','low']) for(const id of ['cv90_x','bmp3m_dragun125_x']) {
+for(const quality of ['high','low']) for(const id of ['cv9040c','bmp3m_dragun125']) {
   const tank=createTank(id,null,{proceduralOnly:true,quality,camoSeed:4242,geometryReceipt:true,batchStatic:false});
   try {
     const frame=tank.root.getObjectByName('rig_gun'),mount=tank.root.getObjectByName('gunMount');
     const state=createTankState(getSpec(id),new T.Vector3(),0);
-    const origin=id==='cv90_x'?[.18,.08,.6]:[.23,.06,.6];
+    const origin=id==='cv9040c'?[.18,.08,.6]:[.23,.06,.6];
     for(const degrees of [-getSpec(id).gunDepressionDeg,0,getSpec(id).gunElevationDeg]) {
       state.gunPitch=T.MathUtils.degToRad(degrees);state.turretYaw=-.65;
       tank.syncFromState(state,1);tank.root.updateMatrixWorld(true);

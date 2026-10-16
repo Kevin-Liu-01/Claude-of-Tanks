@@ -6,11 +6,11 @@ import {FLEET_RENEWAL_NEW_IDS,FLEET_RENEWAL_DONORS} from './fleetRenewalSpecs.ts
 import {VEHICLE_ROLE_PROFILES} from './roleProfiles.ts';
 import {ensureInteriorFills} from './interiorFills.ts';
 
-const donors={...FLEET_RENEWAL_DONORS,bmpt_terminator2:'t80u_x',t84:'t72b3m_x',
-  type96_72_long:'t72b3_x',type96_80_feng:'t80u_x',type96_72m_lei:'t72b3m_x'};
+const donors={...FLEET_RENEWAL_DONORS,bmpt_terminator2:'t80u',t84:'t72b3m_2016',
+  type96_72_long:'t72b3',type96_80_feng:'t80u',type96_72m_lei:'t72b3m_2016'};
 const stock=mesh=>Array.from(mesh.geometry.getAttribute('position').array);
-assert.equal(getSpec('t72b3m').name,'T-72B3M obr. 2022');
-assert.equal(getSpec('t72b3m_x').name,'T-72B3M obr. 2016');
+assert.equal(getSpec('t72b3m_2022').name,'T-72B3M obr. 2022');
+assert.equal(getSpec('t72b3m_2016').name,'T-72B3M obr. 2016');
 for(const id of FLEET_RENEWAL_NEW_IDS) {
   assert(getSpec(id).name.includes('(Concept)'),'original hybrids are clearly named concepts');
   assert(VEHICLE_ROLE_PROFILES[id],'explicit shared scouting/concealment profile');
@@ -50,9 +50,9 @@ for(const quality of ['high','low']) for(const [id,donorId] of Object.entries(do
 // This final-stock path reproduces the player's visible stair-step defect.
 // The command tank has closed native shells; its external kit must not grow
 // a voxel grid between roof optics, ERA, smoke tubes and the turret casting.
-await ensureInteriorFills(['t80u']);
+await ensureInteriorFills(['t80uk']);
 for(const quality of ['high','low']) {
-  const t=createTank('t80u',null,{proceduralOnly:true,geometryReceipt:true,quality});
+  const t=createTank('t80uk',null,{proceduralOnly:true,geometryReceipt:true,quality});
   try {
     const fills=[];t.root.traverse(o=>{if(o.isMesh&&/InteriorFill/.test(o.name))fills.push(o)});
     assert.equal(fills.length,0,'no generated stair/grid stock outside T-80UK shell');

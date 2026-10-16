@@ -6,7 +6,7 @@ import {getSpec,ALL_TANK_IDS,TANK_SPECS} from './specs.ts';
 import {auditFleetBalance} from './balanceAudit.ts';
 import {NATIONAL_MODERNIZATION_CONFIG} from './nationalModernizationConfig.ts';
 import {NATIONAL_LEGACY_CONFIG} from './nationalLegacyConfig.ts';
-const configs=[...NATIONAL_MODERNIZATION_CONFIG,...NATIONAL_LEGACY_CONFIG.map(c=>({...c,model:c.donor==='t72b3m_x'?1:2}))];
+const configs=[...NATIONAL_MODERNIZATION_CONFIG,...NATIONAL_LEGACY_CONFIG.map(c=>({...c,model:c.donor==='t72b3m_2016'?1:2}))];
 import {NATIONAL_ROOF_LOADOUTS} from './nationalRoofConfig.ts';
 import {auxiliaryWeaponProfile} from './auxiliaryWeapons.ts';
 import {decorManifestFor} from './decorations.ts';
@@ -156,7 +156,7 @@ function physicalMounts(tank,c){
  }finally{tank.resetEra();mat.dispose();}
 }
 for(const quality of ['high','low']) {
- for(const donorId of ['t80u_x','t72b3m_x','t72b3_x']){
+ for(const donorId of ['t80u','t72b3m_2016','t72b3']){
   const t=createTank(donorId,null,{proceduralOnly:true,quality,geometryReceipt:true});
   hulls.set(`${quality}:${donorId}`,fingerprint(t.root.getObjectByName('hull').geometry));gears.set(`${quality}:${donorId}`,gearDatums(t.root));t.dispose();
  }
@@ -233,6 +233,6 @@ for(const quality of ['high','low']) {
  assert(hullShapes.size>=3,`${quality}: three distinct retained donor hull foundations`);
  assert.equal(silhouettes.size,14,`${quality}: each concept has a distinct structural turret`);
 }
-assert.equal(getSpec('t62mv1_x').gun.caliberMm,125);
+assert.equal(getSpec('t62mv1').gun.caliberMm,125);
 assert.equal(tankTier('bmpt_terminator2'),9);
 console.log('National modernization: 14 registrations, original concepts, preserved chassis mechanics, retained native hull vertices and distinct cast and welded modernization turrets, supported bearings, gun apertures, roof seats, full turret sweep, module owners, yaw/pitch and remote weapons PASS');

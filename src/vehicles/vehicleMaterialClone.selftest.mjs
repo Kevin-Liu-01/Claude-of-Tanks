@@ -117,8 +117,8 @@ const assertRegistered = (material, label) => {
   assert.ok(shader.fragmentShader.includes('gl_FragColor.a += 2.0;'), `${label}: and the vehicle tag`);
 };
 try {
-  // m1a2: the shoes; m60a1: a profile's track-band finish; t72b3m: tyre rubber isolated from gunmetal
-  for (const id of ['m1a2', 'm60a1', 't72b3m']) {
+  // m1a1_abrams_hc: the shoes; m60a1: a profile's track-band finish; t72b3m_2022: tyre rubber isolated from gunmetal
+  for (const id of ['m1a1_abrams_hc', 'm60a1', 't72b3m_2022']) {
     const visual = createTank(id, engineCtx, { proceduralOnly: true, quality: 'low', geometryQuality: 'high' });
     visuals.push(visual);
     const pads = [];
@@ -148,7 +148,7 @@ try {
     });
     assert.equal(new Set(pads).size, 1, `${id}: both shoe streams share the one registered shoe material`);
   }
-  for (const [kind, ids] of [['trackPad', ['m1a2', 'm60a1', 't72b3m']], ['trackBandFinish', ['m60a1']], ['isolated', ['t72b3m']]]) {
+  for (const [kind, ids] of [['trackPad', ['m1a1_abrams_hc', 'm60a1', 't72b3m_2022']], ['trackBandFinish', ['m60a1']], ['isolated', ['t72b3m_2022']]]) {
     for (const id of ids) assert.ok(seenKinds.get(kind)?.has(id), `${id}: a ${kind} clone was covered`);
   }
 } finally {

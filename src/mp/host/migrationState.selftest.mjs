@@ -34,10 +34,10 @@ await assert.rejects(deriveMigrationKey('short'), /at least 16/);
 
 // ---- two actors on the same roster: capture from A after some play, restore B, compare
 const seats = [
-  { seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 'm1a2' },
-  { seat: 1, playerId: 'p2', name: 'Two', team: 'bravo', specId: 't90m' },
+  { seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 'm1a1_abrams_hc' },
+  { seat: 1, playerId: 'p2', name: 'Two', team: 'bravo', specId: 't90am' },
 ];
-const bots = [{ playerId: 'bot-a', name: 'Bot A', team: 'alpha', specId: 'leo2a7v' }, { playerId: 'bot-b', name: 'Bot B', team: 'bravo', specId: 'leo2a7v' }];
+const bots = [{ playerId: 'bot-a', name: 'Bot A', team: 'alpha', specId: 'leo2_improved' }, { playerId: 'bot-b', name: 'Bot B', team: 'bravo', specId: 'leo2_improved' }];
 let nowMs = 1000;
 const now = () => nowMs;
 const schedule = () => () => {};

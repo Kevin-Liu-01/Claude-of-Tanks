@@ -67,8 +67,8 @@ const houseWorld = () => {
 };
 function shellHouse(bravoZ, extra = []) {
   const match = createAuthoritativeMatch({ mapId: 'verdant', countdownS: 0, worldCollision: houseWorld(), players: [
-    { id: 'shooter', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -30, yaw: 0 } },
-    { id: 'enemy', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: bravoZ, yaw: Math.PI } },
+    { id: 'shooter', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -30, yaw: 0 } },
+    { id: 'enemy', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 0, z: bravoZ, yaw: Math.PI } },
     ...extra,
   ] });
   match.onMatchReady();
@@ -78,7 +78,7 @@ function shellHouse(bravoZ, extra = []) {
 }
 const worldEvents = (match, viewerId) => match.eventsForViewer(viewerId).filter((event) => /^(structure_|terrain_crater|world_prop_destroyed)/.test(event.type));
 {
-  const match = shellHouse(600, [{ id: 'mate', specId: 'm1a2', team: 'alpha', spawn: { x: 300, z: 300, yaw: 0 } }]);
+  const match = shellHouse(600, [{ id: 'mate', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 300, z: 300, yaw: 0 } }]);
   const enemyView = match.snapshot({ tick: 1200, serverTimeMs: 20_000, viewerId: 'enemy', ackInputSeq: 1 });
   assert.ok(!enemyView.entities.some((entity) => entity.id === 'shooter'), 'the shooter is hidden from bravo (the case under test)');
   const own = worldEvents(match, 'shooter').filter((event) => event.type === 'structure_stage');
@@ -125,8 +125,8 @@ const worldEvents = (match, viewerId) => match.eventsForViewer(viewerId).filter(
     crushObstacle(obstacle) { obstacle.crushed = true; return true; },
   };
   const match = createAuthoritativeMatch({ mapId: 'verdant', countdownS: 0, worldCollision: world, players: [
-    { id: 'rammer', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
-    { id: 'far', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 600, yaw: Math.PI } },
+    { id: 'rammer', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
+    { id: 'far', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 0, z: 600, yaw: Math.PI } },
   ] });
   match.onMatchReady();
   const drive = new Map([['rammer', { throttle: 1, steer: 0, brake: false, fire: false, aimYaw: 0, aimPitch: 0, shellSlot: 0 }]]);
@@ -159,8 +159,8 @@ const worldEvents = (match, viewerId) => match.eventsForViewer(viewerId).filter(
     crushObstacle(obstacle) { obstacle.crushed = true; return true; },
   };
   const match = createAuthoritativeMatch({ mapId: 'verdant', countdownS: 0, worldCollision: world, players: [
-    { id: 'gunner', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
-    { id: 'far', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 600, yaw: Math.PI } },
+    { id: 'gunner', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
+    { id: 'far', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 0, z: 600, yaw: Math.PI } },
   ] });
   match.onMatchReady();
   const fire = new Map([['gunner', { throttle: 0, steer: 0, brake: false, fire: true, aimYaw: 0, aimPitch: 0, shellSlot: 0 }]]);

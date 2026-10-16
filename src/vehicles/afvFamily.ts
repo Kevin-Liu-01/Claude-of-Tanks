@@ -190,7 +190,7 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
       he('M792 HEI-T', 25, 56, 1100, 300, 0.42),
     ],
   }),
-  bmpt_terminator2: variant('bmpt_terminator2', 't72b3m', {
+  bmpt_terminator2: variant('bmpt_terminator2', 't72b3m_2022', {
     name: 'BMPT Terminator 2', nation: 'Russia', number: 'BMPT-2',
     // The previous digital field peaked in pale sage/khaki. Under the
     // garage key those tones made the ERA, engine covers and station armor
@@ -456,8 +456,8 @@ const AFV_FAMILY_SPECS: Record<string, FleetTankSpec> = {
   // -------------------------------------------------------------------------
   // §5.363 OWNER ORDER (verbatim): "add a bmp terminator 2 where it has an
   // even crazier beefier two autocannon turret with even more equipment and
-  // decorations and even some era on a t90 hull". NEW id on the certified
-  // T-90A donor (spec clone t90a; geometry T90_PROFILES.t90a + the beefed
+  // decorations and even some era on a t90_1992 hull". NEW id on the certified
+  // T-90A donor (spec clone t90a_2004; geometry T90_PROFILES.t90a_2004 + the beefed
   // station in profiles/afvFamily.ts). FALSE-0/photo-class — never gated.
   // Tier 10 (one over bmpt_terminator2's 9 — the beefier variant).
   // -------------------------------------------------------------------------
@@ -479,7 +479,7 @@ AFV_FAMILY_SPECS.m3a3_bradley.armor.turretPlates.push(
   reactivePlate('m3a3_turret_side_L', 'left'),
 );
 
-AFV_FAMILY_SPECS.bmpt_t90 = variant('bmpt_t90', 't90a', {
+AFV_FAMILY_SPECS.bmpt_t90 = variant('bmpt_t90', 't90a_2004', {
   name: 'BMPT T-90', nation: 'Russia', number: 'BMPT-90',
   base: '#414c39', weather: '#565f48', patches: ['#2b3329', '#615a43', '#6f6852'],
   // Published stance: the T-90A donor's 6.86 hull IS the vehicle; overall
@@ -524,7 +524,7 @@ AFV_FAMILY_SPECS.bmpt_terminator2.armor.turretPlates =
 // reactive fields. T-90A intentionally omits Proryv's flank kit, so restore
 // only those two gameplay zones for this station; the anatomy receipt seats
 // them to the station's own authored cassette faces.
-const bmptT90FlankEra = registries.tankSpecs.t90m?.armor.turretPlates
+const bmptT90FlankEra = registries.tankSpecs.t90am?.armor.turretPlates
   .filter((plate) => plate.kind === 'era' && /side/i.test(plate.name))
   .map((plate) => structuredClone(plate)) || [];
 AFV_FAMILY_SPECS.bmpt_t90.armor.turretPlates.push(...bmptT90FlankEra);

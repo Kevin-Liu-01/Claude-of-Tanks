@@ -888,8 +888,8 @@ vec3 noised(vec2 x) {
   vec2 u = w * w * w * (w * (w * 6.0 - 15.0) + 10.0);
   vec2 du = 30.0 * w * w * (w * (w - 2.0) + 1.0);
   float a = hash12(p), b = hash12(p + vec2(1.0, 0.0)), c = hash12(p + vec2(0.0, 1.0)), d = hash12(p + vec2(1.0, 1.0));
-  float k1 = b - a, k2 = c - a, k4 = a - b - c + d;
-  return vec3(-1.0 + 2.0 * (a + k1 * u.x + k2 * u.y + k4 * u.x * u.y), 2.0 * du * vec2(k1 + k4 * u.y, k2 + k4 * u.x));
+  float k1 = b - a, xk2_black_panther = c - a, k4 = a - b - c + d;
+  return vec3(-1.0 + 2.0 * (a + k1 * u.x + xk2_black_panther * u.y + k4 * u.x * u.y), 2.0 * du * vec2(k1 + k4 * u.y, xk2_black_panther + k4 * u.x));
 }
 const mat2 ROT = mat2(1.6, 1.2, -1.2, 1.6);
 `;
@@ -1999,12 +1999,23 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
   const bakeAux = (): boolean => !!(options.cloudShade && STRIP_AUX_FRAGMENT && lightTune('PANO_CLOUD_SHADE', 1) > 0);
   const bakeFragments = (): string[] => [HEIGHT_FRAGMENT, LIGHT_FRAGMENT, STRIP_FRAGMENT, SKYLINE_FRAGMENT, SKYLINE_BLUR_FRAGMENT,
     ...(bakeAux() ? [STRIP_AUX_FRAGMENT!] : [])];
-  let preparedBake: { materials: THREE.ShaderMaterial[]; geometry: THREE.BufferGeometry } | null = null;
+  let preparedBake: { materials: THREE.ShaderMaterial[]; geometry: THREE.BufferGeometry; compiled: Promise<unknown> | null } | null = null;
+  // 2026-10-14 (the engine-cs lane; the Studio's "Cannot read properties of undefined (reading 'isReady')", on main too):
+  // three's compileAsync polls each material it compiled every 10 ms — properties.get(material).currentProgram.isReady() —
+  // until the driver has linked them all, from a timer its promise does not guard. The bake draws as soon as the world is
+  // covered, then released the prepared hold: a disposed material's properties are gone, the next poll read
+  // currentProgram of a fresh empty record and threw, once a map. The hold now ends when the parallel compile has settled
+  // (the programs stay in three's cache for the bake either way).
   const releasePreparedBake = (): void => {
     if (!preparedBake) return;
-    for (const m of preparedBake.materials) m.dispose();
-    preparedBake.geometry.dispose();
+    const held = preparedBake;
     preparedBake = null;
+    const release = (): void => {
+      for (const m of held.materials) m.dispose();
+      held.geometry.dispose();
+    };
+    if (held.compiled) held.compiled.then(release, release);
+    else release();
   };
   function prepareBake(renderer: HorizonPanoramaPrepareRenderer | null | undefined): boolean {
     if (baked || preparedBake || !renderer || typeof renderer.compileAsync !== 'function' || unsupported(renderer)) return false;
@@ -2020,12 +2031,12 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     const bound = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, depthBuffer: false, stencilBuffer: false });
     const previousTarget = renderer.getRenderTarget();
-    preparedBake = { materials, geometry };
+    preparedBake = { materials, geometry, compiled: null };
     try {
       renderer.setRenderTarget(bound);
       // compileAsync builds every program now (the driver links them in parallel) and polls their readiness; nothing
-      // waits on it here: the bake later takes the programs from the cache, linked or not
-      renderer.compileAsync(scene, camera).catch(() => { /* the bake compiles them itself */ });
+      // waits on it here: the bake later takes the programs from the cache, linked or not (the hold waits on it: above)
+      preparedBake.compiled = renderer.compileAsync(scene, camera).catch(() => { /* the bake compiles them itself */ });
     } catch {
       releasePreparedBake();
       return false;

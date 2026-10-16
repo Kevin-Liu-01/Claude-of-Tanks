@@ -13,11 +13,11 @@ import { near } from '../../../tools/receipt-kit.test-support.mjs';
 // T-72B 1987 upper assembly and 125 mm gun) is covered by fleetRenewal (donor hull and wheels, hit-frame
 // articulation) and nationalModernization (125 mm); the T-72B 1987 frames stay witnessed below.
 const SOURCES={
-  t72b_1987_x:{yaw:[-.0000548974,1.4040902854,-.0343498434],gun:[-.0000548633,1.6208176016,1.2669569241],
+  t72b_1987:{yaw:[-.0000548974,1.4040902854,-.0343498434],gun:[-.0000548633,1.6208176016,1.2669569241],
     muzzle:5.766827075,boreFloor:5.59804,boreRadius:.0625,roof:2.105640266,wheelY:.43082499504089355,
     wheels:[-1.835365,-1.024875,-.17634,.599355,1.400955,2.228465],
     hull:[[-.6,1.38950],[0,1.38950],[1.2,1.38950]],era:6},
-  t80u_x:{yaw:[0,1.55158,.0718698169],gun:[0,1.7564274071,1.4199398169],
+  t80u:{yaw:[0,1.55158,.0718698169],gun:[0,1.7564274071,1.4199398169],
     muzzle:6.002754533,boreFloor:5.83777,boreRadius:.0625,roof:2.172451481,wheelY:.42247000336647034,
     wheels:[-1.96246,-1.107005,-.274385,.47443,1.317665,2.088745],
     hull:[[-1.5,1.563],[0,1.544],[1.5,1.522]],era:4},
@@ -62,7 +62,7 @@ function checkGear(tank,id,source){
   assert.equal(tank.root.getObjectByName('rig_hull').userData.runningGearReceipts.length,1);
   assert.ok(tank.root.getObjectByName('gearTrackPads')?.isInstancedMesh);
   assert.equal(tank.root.getObjectByName('gearTrackInnerLinks'),undefined);
-  if(id==='t72b_1987_x'){
+  if(id==='t72b_1987'){
     const band=new THREE.Box3().setFromObject(tank.root.getObjectByName('gearTrackBandR'));
     near(band.max.x-band.min.x,.60311,.000002,'T72 source band width retained');
     near(band.min.x,1.04641+.012,.000002,'T72 documented12mm physical lane clearance correction');
@@ -73,7 +73,7 @@ function checkGear(tank,id,source){
 }
 function checkKnownSourceFixtures(tank,id){
   const detail=tank.root.getObjectByName('hullDetail');
-  if(id==='t72b_1987_x'){
+  if(id==='t72b_1987'){
     const straps=tank.root.getObjectByName('hullDark');
     for(const x of [-.821,-.363,.363,.821]){
       near(top(straps,x,-3.653),1.787,.00001,'T72 retaining hoop wraps around the transverse drum axis');
@@ -81,7 +81,7 @@ function checkKnownSourceFixtures(tank,id){
       assert.equal(air.length,0,'T72 retaining hoop does not become a broad horizontal disk');
     }
   }
-  if(id==='t80u_x'){
+  if(id==='t80u'){
     const air=new THREE.Raycaster(new THREE.Vector3(1.36,1.74,-3.31),new THREE.Vector3(0,-1,0),0,.26).intersectObject(detail,false);
     assert.equal(air.length,0,'T80 source empty rear cradle does not acquire a fuel drum');
     const apron=tank.root.getObjectByName('hullRubber');

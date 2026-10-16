@@ -298,7 +298,7 @@ try {
   check('garage Esc closes settings again', true);
 
   console.log('\n[pause-probe] === end-overlay Esc unchanged ===');
-  await page.evaluate(() => window.__DEBUG.startBattle('m1a2'));
+  await page.evaluate(() => window.__DEBUG.startBattle('m1a1_abrams_hc'));
   await page.waitForFunction('window.__DEBUG.game.phase === "battle"', { timeout: 10000 });
   await sleep(600); // a few live ticks
   await page.evaluate(() => window.__DEBUG.slayEnemies());

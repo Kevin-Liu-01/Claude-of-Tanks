@@ -49,6 +49,8 @@ import {
 import { RAIL_BALLAST_BED, RAIL_BALLAST_SHOULDER, tagRailBallast } from '../railBallast.ts';
 import { dressSarajevo } from './sarajevoStreets.ts';
 import { CrushableClutter } from '../crushableClutter.ts';
+// (props census #3, lane B 2026-10-14: the coal stockpile lives in coalStockpile.ts, the industrial yard's)
+import { coalSiteIsClear, makeCoalStockpile, registerCoalStockpile } from './coalStockpile.ts';
 
 type Rng = () => number;
 type GeometryBucketName = keyof GeometryBuckets & string;
@@ -173,6 +175,9 @@ interface DressingContext {
   animated?: AnimatedDressing[];
   /** The map-vehicles lane (P5): the map's authored vehicle set pieces (vehicleSetPieces.ts). */
   vehicleSetPieces?: readonly VehicleSetPiece[];
+  /** 2026-10-12 (item 7): an intact set piece handed to the props as a destructible (setPieceDestructibles.ts) instead of
+   *  baked scenery; omitted (a sandboxed dressing), every piece is baked as before. */
+  setPieceDestructible?: (piece: VehicleSetPiece) => void;
   /** The map-vehicles lane (2026-10-06): the vegetation's tree trunks (props.ts sceneryTrees); a beached boat keeps its
    *  hull clear of them. Omitted, the boats seat as drawn. */
   trees?: readonly CollisionRecord[];
@@ -183,7 +188,7 @@ interface DressingContext {
 
 type FocusedDressingContext = Pick<
   DressingContext,
-  'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders' | 'animated' | 'clutter'
+  'L' | 'heightField' | 'rng' | 'buckets' | 'groundingReceipts' | 'obstacles' | 'colliders' | 'animated' | 'clutter' | 'setPieceDestructible'
 > & { shore?: ShoreLedger; boats?: BoatFamily; trunks?: readonly Trunk[] };
 
 /** A boat hull into the painted (vertex-coloured) bucket, or the timber one without its colours where a kit has no
@@ -1143,23 +1148,63 @@ function dressWinterLakes({
   }
 }
 
+/**
+ * (the looks lane, 2026-10-15; the 225 gate) The frozen river's banks, dressed as the frozen ponds' shores were: goral's
+ * Biały Dunajec (maps/winter.ts, one ice ribbon down the valley, the marsh chain frozen) replaced Frosthollow's ten ponds,
+ * and their reeds and shore ice went with them. Down both banks of every station of the channel: a reed clump on the
+ * bank just past the ice, and shore-ice plates heaved up at its edge. Every station spends the same draws whether or
+ * not its points are clear, so the stream is the same whatever the terrain; no collision record (soft dressing).
+ */
+function dressWinterRiverBanks({ L, heightField, rng, buckets }: FocusedDressingContext): void {
+  const stations = L.marshes ?? [];
+  if (stations.length < 2) return;
+  const ICE = 0.96; // the channel's shoreline in its stations' radii (maps/winter.ts RIVER radii)
+  const onIce = (x: number, z: number, k: number) => stations.some((s) => Math.hypot(x - s.x, z - s.z) < s.r * ICE * k);
+  for (let i = 0; i < stations.length; i++) {
+    const s = stations[i], a = stations[Math.max(0, i - 1)], b = stations[Math.min(stations.length - 1, i + 1)];
+    const tl = Math.hypot(b.x - a.x, b.z - a.z) || 1, tx = (b.x - a.x) / tl, tz = (b.z - a.z) / tl;
+    for (const side of [-1, 1]) {
+      const at = (reach: number, along: number): [number, number] =>
+        [s.x - tz * side * reach + tx * along, s.z + tx * side * reach + tz * along];
+      // the reeds: on the bank, up to a sixth of the radius past the ice
+      const reedRoll = rng(), reedReach = s.r * ICE * (1.03 + rng() * 0.16), reedAlong = (rng() - 0.5) * s.r * 0.5;
+      const [rx, rz] = at(reedReach, reedAlong);
+      if (reedRoll < 0.55 && !onIce(rx, rz, 1.0) && isDressingPointClear(heightField, rx, rz, 480, 6)) {
+        winterReedClump(buckets, rng, heightField, rx, rz);
+      }
+      // the shore ice: plates heaved up along the ice's edge
+      const iceRoll = rng(), iceReach = s.r * ICE * (0.9 + rng() * 0.12), iceAlong = (rng() - 0.5) * s.r * 0.5;
+      const [ix, iz] = at(iceReach, iceAlong);
+      if (iceRoll >= 0.4 || onIce(ix, iz, 0.86) || !isDressingPointClear(heightField, ix, iz, 480, 6)) continue;
+      const slabCount = 2 + ((rng() * 3) | 0), edgeYaw = Math.atan2(tx, tz);
+      for (let k = 0; k < slabCount; k++) {
+        const width = 0.7 + rng() * 1.1, height = 0.22 + rng() * 0.34, depth = 0.14 + rng() * 0.10;
+        const roll = (rng() - 0.5) * 0.9, pitch = (rng() - 0.5) * 0.8, yaw = edgeYaw + (rng() - 0.5) * 0.9;
+        const px = ix + (rng() - 0.5) * 2.2, pz = iz + (rng() - 0.5) * 2.2;
+        buckets.plaster.push(jitterUV(winterIceWedge(heightField, px, pz, width, height, depth, yaw, roll, pitch, 0.9), rng));
+      }
+    }
+  }
+}
+
 function legacyDressingKits(mapId?: string): readonly string[] {
   if (mapId === 'coastal') return ['coastal'];
   if (mapId === 'autumn') return ['river'];
   if (mapId === 'railyard') return ['rail'];
-  if (mapId === 'winter') return ['winterLake'];
+  // (the looks lane, 2026-10-15) Frosthollow's ponds are goral's frozen river: its banks carry their reeds and shore ice
+  if (mapId === 'winter') return ['winterLake', 'winterRiver'];
   return [];
 }
 
 /** Add map-specific geometry before the shared material buckets are merged. */
 export function dressMapExtras({
   mapId, extraKits = null, riverLandings, L, heightField, rng, buckets, groundingReceipts = null,
-  obstacles, colliders, animated, vehicleSetPieces, trees, clutter,
+  obstacles, colliders, animated, vehicleSetPieces, trees, clutter, setPieceDestructible,
 }: DressingContext): void {
   const kits = extraKits || legacyDressingKits(mapId);
   const shore: ShoreLedger = { keepOut: [], jetties: [], landings: [] };
   const focused = { L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, clutter, shore, animated, boats: boatFamilyForMap(mapId ?? ''),
-    trunks: trunksOf(trees) };
+    trunks: trunksOf(trees), setPieceDestructible };
   if (mapId === 'cliffbridge') {
     for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused);
   }
@@ -1171,6 +1216,7 @@ export function dressMapExtras({
   }
   if (kits.includes('rail')) dressRailYard(focused, mapId === 'skybridge');
   if (kits.includes('winterLake')) dressWinterLakes(focused);
+  if (kits.includes('winterRiver')) dressWinterRiverBanks(focused);
   // the map-revival lane (2026-10-05): Suzhou Creek's four bridges, on the decks terrain.ts resolved for the stations
   // authored crossing: 'bridge' (the arched spans, the abutments, the parapets and their collision, as Amberford's)
   if (kits.includes('shanghai')) {
@@ -1223,6 +1269,8 @@ function dressVehicleSetPieces(ctx: FocusedDressingContext, pieces: readonly Veh
     return made;
   };
   for (const piece of pieces) {
+    // (2026-10-12, item 7) an intact piece is a destructible of the props: it breaks under fire and under a hull
+    if (!piece.wrecked && ctx.setPieceDestructible) { ctx.setPieceDestructible(piece); continue; }
     const solid = solidOf(piece.kind, !!piece.wrecked), geo = solid.geo;
     const size = SET_PIECE_SIZE[piece.kind], yaw = (piece.yawDeg * Math.PI) / 180;
     const fx = Math.sin(yaw), fz = Math.cos(yaw), sx = fz, sz = -fx;
@@ -2569,6 +2617,39 @@ const RAIL_YARD_LINES = [
   { x: -57, z0: -190, z1: 200 },
 ] as const;
 
+/** A laid line's ground in plan: the centreline from (ax, az) to (bx, bz) and the half-width its bed takes. */
+export interface RailBedSpan { ax: number; az: number; bx: number; bz: number; hw: number }
+/**
+ * Sealed lane 2026-10-11 (the owner's map vehicles: four Ironworks trucks and a Caldera handcart stood across a
+ * siding's sleepers and rails). The ground every line this kit lays takes — the yards' lines and the authored spurs:
+ * the ballast's half-width and its shoulders' 0.62 m run (layRailSpan), carried 1.5 m past each end, where a buffer
+ * stop stands (bufferStop: 0.8 m out, its struts 0.3 m behind) — as centreline segments with a half-width. The
+ * parked vehicles' and carts' seat passes keep off it (props.ts). It reads the layouts only: no draw, no dressing.
+ */
+export function railBedSpans(
+  mapId: string | undefined, extraKits: readonly string[] | null | undefined,
+  railSpurs: readonly RailSpurConfig[] | undefined,
+): RailBedSpan[] {
+  const SHOULDER_M = 0.62, PAST_END_M = 1.5, spans: RailBedSpan[] = [];
+  if ((extraKits || legacyDressingKits(mapId)).includes('rail')) {
+    const hw = RAIL_SPUR_BALLAST_M / 2 + SHOULDER_M;
+    for (const line of RAIL_YARD_LINES) spans.push({ ax: line.x, az: line.z0 - PAST_END_M, bx: line.x, bz: line.z1 + PAST_END_M, hw });
+  }
+  for (const spur of railSpurs ?? []) {
+    const hw = (spur.ballast ?? RAIL_SPUR_BALLAST_M) / 2 + SHOULDER_M, path = spur.path, last = path.length - 1;
+    for (let i = 1; i <= last; i++) {
+      let [ax, az] = path[i - 1], [bx, bz] = path[i];
+      const run = Math.hypot(bx - ax, bz - az);
+      if (run < 1e-6) continue;
+      const ux = (bx - ax) / run, uz = (bz - az) / run;
+      if (i === 1) { ax -= ux * PAST_END_M; az -= uz * PAST_END_M; }
+      if (i === last) { bx += ux * PAST_END_M; bz += uz * PAST_END_M; }
+      spans.push({ ax, az, bx, bz, hw });
+    }
+  }
+  return spans;
+}
+
 function addRailYardLines(
   heightField: DressingHeightField,
   rng: Rng,
@@ -2581,104 +2662,6 @@ function addRailYardLines(
   for (const line of RAIL_YARD_LINES) {
     if (line.z1 < 230) bufferStop(buckets, rng, heightField, line.x, line.z1 + 0.8);
     if (line.z0 > -230) bufferStop(buckets, rng, heightField, line.x, line.z0 - 0.8);
-  }
-}
-
-type CoalVertex = readonly [number, number, number];
-
-function coalSiteIsClear(
-  field: DressingHeightField, x: number, z: number, radius: number,
-  obstacles: readonly CollisionRecord[],
-): boolean {
-  let low = Infinity, high = -Infinity;
-  for (let iz = -2; iz <= 2; iz++) for (let ix = -2; ix <= 2; ix++) {
-    const px = x + ix * radius / 2, pz = z + iz * radius / 2;
-    if (field._roadDist(px, pz) < 7 || field.getWaterMaskAt?.(px, pz) > 0.01) return false;
-    const y = field.getHeightAt(px, pz);
-    if (!Number.isFinite(y)) return false;
-    low = Math.min(low, y); high = Math.max(high, y);
-  }
-  if (high - low > 0.4) return false;
-  return !obstacles.some(record => record.min[0] < x + radius + 0.5
-    && record.max[0] > x - radius - 0.5 && record.min[2] < z + radius + 0.5
-    && record.max[2] > z - radius - 0.5);
-}
-
-function coalFacet(
-  positions: number[], colors: number[], uvs: number[],
-  a: CoalVertex, b: CoalVertex, c: CoalVertex, phase: number,
-): void {
-  // Three small irregular facets retain a granular highlight, not smooth
-  // interpolated ellipsoid normals. No additional seeded draws are consumed.
-  const middle: CoalVertex = [(a[0] + b[0] + c[0]) / 3,
-    (a[1] + b[1] + c[1]) / 3 + 0.015 * (1 + Math.sin(phase * 2.7)),
-    (a[2] + b[2] + c[2]) / 3];
-  const corners = [a, b, c];
-  for (let edge = 0; edge < 3; edge++) {
-    const shade = 0.032 + 0.012 * Math.sin(phase * 4.1 + edge * 1.7);
-    for (const vertex of [corners[edge], corners[(edge + 1) % 3], middle]) {
-      positions.push(...vertex);
-      colors.push(shade * 0.94, shade, shade * 1.03);
-      uvs.push(vertex[0] * 0.6, vertex[2] * 0.6);
-    }
-  }
-}
-
-function makeCoalStockpile(
-  field: DressingHeightField, x: number, z: number,
-  radius: number, length: number, phase: number,
-): THREE.BufferGeometry {
-  const base: CoalVertex[] = [], shoulder: CoalVertex[] = [];
-  const height = 0.66 + (radius - 1.1) * 0.36;
-  for (let i = 0; i < 8; i++) {
-    const angle = i * Math.PI / 4;
-    const dx = Math.cos(angle) * radius, dz = Math.sin(angle) * length;
-    base.push([x + dx, field.getHeightAt(x + dx, z + dz) - 0.05, z + dz]);
-    const sx = x + dx * 0.47 + radius * 0.08, sz = z + dz * 0.47;
-    shoulder.push([sx, field.getHeightAt(sx, sz) + height * (0.54 + 0.06 * Math.sin(i * 2 + phase)), sz]);
-  }
-  const peak: CoalVertex = [x - radius * 0.1, field.getHeightAt(x - radius * 0.1, z) + height, z];
-  const positions: number[] = [], colors: number[] = [], uvs: number[] = [];
-  for (let i = 0; i < 8; i++) {
-    const next = (i + 1) % 8;
-    // Clockwise XZ winding faces upward in Three's Y-up world.
-    coalFacet(positions, colors, uvs, base[i], shoulder[i], base[next], phase + i * 3);
-    coalFacet(positions, colors, uvs, base[next], shoulder[i], shoulder[next], phase + i * 3 + 1);
-    coalFacet(positions, colors, uvs, shoulder[i], peak, shoulder[next], phase + i * 3 + 2);
-  }
-  const geometry = new THREE.BufferGeometry();
-  geometry.name = 'rail-coal-stockpile';
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-  geometry.computeVertexNormals();
-  return geometry;
-}
-
-function registerCoalStockpile(geometry: THREE.BufferGeometry, ctx: FocusedDressingContext): void {
-  const position = geometry.getAttribute('position'), points: Array<[number, number]> = [];
-  let low = Infinity, high = -Infinity;
-  for (let i = 0; i < position.count; i++) {
-    points.push([position.getX(i), position.getZ(i)]);
-    low = Math.min(low, position.getY(i)); high = Math.max(high, position.getY(i));
-  }
-  // Same ordinary conservative vertical prism as authored rocks: exact
-  // projected convex footprint/Y bounds, not a rectangular invisible wall.
-  const record = setConvexShape({min: [0, low, 0], max: [0, high, 0], kind: 'coal-heap'}, convexHull2(points));
-  const shell = cloneCollisionRecord(record);
-  ctx.obstacles?.push(record);
-  ctx.colliders?.push(shell);
-  // (destruction stream, 2026-10-13; the owner: every prop under a size destructible by ramming or shooting) a hull
-  // drives through a coal pile and a round bursts it: crushed, the pile lies flattened where it stood
-  if (ctx.clutter) {
-    let cx = 0, cz = 0;
-    for (const [x, z] of points) { cx += x; cz += z; }
-    cx /= Math.max(1, points.length); cz /= Math.max(1, points.length);
-    let r = 0;
-    for (const [x, z] of points) r = Math.max(r, Math.hypot(x - cx, z - cz));
-    const pile = new CrushableClutter('coal-heap', cx, low, cz, r, high - low, [record], [shell]);
-    pile.ownPiece(geometry);
-    ctx.clutter(pile);
   }
 }
 

@@ -174,7 +174,7 @@ function cornerPartitionChecks(turret) {
 // metadata). Material-fused source nodes cannot support honest component
 // silhouette masks, so explicit occupied/empty-space probes are essential.
 for (const quality of ['high', 'low']) {
-  const tank = createTank('t14_x', null, { quality, proceduralOnly: true, geometryReceipt: true });
+  const tank = createTank('t14_armata', null, { quality, proceduralOnly: true, geometryReceipt: true });
   const structuralGeometry = tank.root.getObjectByName('turret')?.geometry;
   let structuralDisposals = 0;
   structuralGeometry?.addEventListener('dispose', () => { structuralDisposals++; });

@@ -19,6 +19,7 @@ import { createAuthorityObstacles } from '../mp/presentation/authorityObstacles.
 import { createPropCrushPresentation } from './propCrushPresentation.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { isFortifiedCoverRecord } from '../sim/fortifiedCover.ts';
+import { shellSparesStoppedRecord } from './collision.ts';
 
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 const start = source.indexOf('  const D_CELL = 8;');
@@ -207,8 +208,8 @@ function exerciseAuthority(mode, f) {
   const bus = { emit() {} };
   if (mode === 'solo') {
     // (2026-10-09: the solo caller asks the pillbox ledger first, sim/fortifiedCover.ts; none of these is a pillbox)
-    const call = compileFunction(`${soloCaller};return crushWorldPropFromShell;`, ['_seg', 'isFortifiedCoverRecord'])({ x: 1, z: 0 },
-      isFortifiedCoverRecord);
+    const call = compileFunction(`${soloCaller};return crushWorldPropFromShell;`, ['_seg', 'isFortifiedCoverRecord', 'shellSparesStoppedRecord'])({ x: 1, z: 0 },
+      isFortifiedCoverRecord, shellSparesStoppedRecord);
     for (const record of f.records.filter((r) => r.ob)) {
       call(world, bus, { spec: { velocityMps: 900 } }, { record: record.col || record.ob });
     }

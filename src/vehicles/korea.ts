@@ -69,7 +69,7 @@ function variant(
 }
 
 const KOREA_SPECS = {
-  k2b: variant('k2b', 'k2', {
+  k2b: variant('k2b', 'xk2_black_panther', {
     name: 'K2B', number: 'K2B', scheme: 'digital',
     base: '#313b38', weather: '#47504a', patches: ['#202725', '#4e5750', '#67685e'],
     camoScale: 0.36,

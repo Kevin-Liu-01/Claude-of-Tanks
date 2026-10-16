@@ -103,9 +103,9 @@ assert.ok(roof.leakL > 400, `a roof hole under the gun still leaks the turret in
 const ids = Object.keys(M1A1_GUN_PITCH_BY_YAW);
 const recorded = Object.keys(JSON.parse(read(CLEARANCE_AIR_FILE)).tanks).sort();
 assert.deepEqual(recorded, [...ids].sort(), 'every legacy M1A1 mount, and only those, declares its clearance cells');
-await ensureInteriorFills(['m1a2', 'm1a1ha']);
+await ensureInteriorFills(['m1a1_abrams_hc', 'm1a1ha']);
 const report = {};
-for (const id of ['m1a2', 'm1a1ha']) {
+for (const id of ['m1a1_abrams_hc', 'm1a1ha']) {
   const tank = createTank(id, null, { proceduralOnly: true });
   try {
     const { tris, meshes } = collectTriangles(tank.root);
@@ -119,4 +119,4 @@ for (const id of ['m1a2', 'm1a1ha']) {
     report[id] = `${policy.movingClearanceL} L`;
   } finally { tank.dispose(); }
 }
-console.log(`moving-clearance-air.selftest: shared rule wired; synthetic slot ${closed.movingClearanceL} L reported apart, holed wall ${wall.leakL} L and roof ${roof.leakL} L still leak; declared cells exact or stale; m1a2 ${report.m1a2}, m1a1ha ${report.m1a1ha} of moving-clearance air with 0 L leak`);
+console.log(`moving-clearance-air.selftest: shared rule wired; synthetic slot ${closed.movingClearanceL} L reported apart, holed wall ${wall.leakL} L and roof ${roof.leakL} L still leak; declared cells exact or stale; m1a1_abrams_hc ${report.m1a1_abrams_hc}, m1a1ha ${report.m1a1ha} of moving-clearance air with 0 L leak`);

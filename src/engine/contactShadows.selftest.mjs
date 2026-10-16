@@ -204,8 +204,12 @@ assert.match(post, /updateContactShadowUniforms\(aerial\.uniforms, camera, scene
 
 const lighting = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
 assert.match(lighting, /#define COT_SUN_VIS_CAPTURED 1\nfloat cotSunVis = 1\.0;/, 'the capture marks itself for the alpha write');
-assert.match(lighting, /#if defined\( COT_SUN_VIS_CAPTURED \) && defined\( OPAQUE \) && defined\( USE_CSM \)\ngl_FragColor\.a = 2\.0 \+ cotSunVis;\n#endif/,
+// (2026-10-14, contact r2) the terrain alone (COT_SNOW_COVER) writes a snowy pixel's visibility in the snow band between the lit
+// band and the vehicles' (sceneAlpha.ts, pinned by sceneAlpha.selftest); every other material writes 2 + v as before
+assert.match(lighting, /#if defined\( COT_SUN_VIS_CAPTURED \) && defined\( OPAQUE \) && defined\( USE_CSM \)\n#ifdef COT_SNOW_COVER\n[\s\S]*?\n#else\ngl_FragColor\.a = 2\.0 \+ cotSunVis;\n#endif\n#endif/,
   'opaque CSM pixels write two plus their sun visibility into alpha (cards, water and glass stay below 1.5)');
+assert.ok(near(contactShadowSunVisibility(3.05 + 2 * 0.15 + 0.4 * 0.14), 0.4) && contactShadowSunVisibility(3.05) === 0,
+  'decode: a snowy terrain pixel\'s visibility in the snow band');
 assert.equal(contactShadowSunVisibility(2.0), 0, 'decode: an opaque pixel in cascade shadow');
 assert.equal(contactShadowSunVisibility(3.0), 1, 'decode: a sunlit opaque pixel');
 assert.ok(near(contactShadowSunVisibility(2.4), 0.4), 'decode: a penumbra pixel');

@@ -40,7 +40,7 @@ for(const [label,g]of Object.entries({oldKnee,oldClosure,oldReturn,oldTail,oldM4
  assert.ok(properSurfaceCrossings(shellPart(g)).length>0,`${label}: malformed historic faces are detected`);
  assert.throws(()=>intact(shellPart(g),label));g.dispose();
 }
-const families={amx40:'bow',leclerc:'closure',leclerc_xlr:'closure',amx56:'closure',chieftain5:'return',chieftain_mk10:'return',abramsx:'tail',m48:'m48bow',object695_x:'objectReturn',ua_t72b3m_hetman_ii:'shoulder'};
+const families={amx40_proto:'bow',leclerc_s2:'closure',leclerc_sxxi:'closure',leclerc_s1:'closure',chieftain3:'return',chieftain_mk9:'return',abramsx:'tail',m48a5_patton:'m48bow',object695:'objectReturn',t72b3m_hetman_ii:'shoulder'};
 let checked=0;
 for(const [id,family]of Object.entries(families))for(const quality of ['high','low']){
  const emissions=[];

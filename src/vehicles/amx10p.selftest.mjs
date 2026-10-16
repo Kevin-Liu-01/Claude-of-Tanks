@@ -39,7 +39,7 @@ for (const [id, tier, caliber, turretCrew] of [['amx10p','IX',20,2],['amx10p_25'
       assert(Math.abs(size.z-5.98)<.18,'compact amphibious hull envelope');
       const wheels=tank.root.getObjectByName('rig_hull').userData.wheelPatternReceipts;
       assert.equal(wheels.length,1); assert.equal(wheels[0].stations,5,'five physical road-wheel stations');
-      assert.equal(wheels[0].nationStandard.donor,'amx40','French wheel stock; own axle positions');
+      assert.equal(wheels[0].nationStandard.donor,'amx40_proto','French wheel stock; own axle positions');
       assert.equal(censusEquipment(tank.root).mg,0,'French turret/coax configuration');
       const gun=tank.root.getObjectByName('rig_gun');
       if(id==='amx10p') {

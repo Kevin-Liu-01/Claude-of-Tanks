@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 
-const tank = createTank('m48', null, { proceduralOnly: true, geometryReceipt: true });
+const tank = createTank('m48a5_patton', null, { proceduralOnly: true, geometryReceipt: true });
 const turretRig = tank.root.getObjectByName('rig_turret');
 const turret = tank.root.getObjectByName('turret');
 assert.ok(turretRig && turret, 'M48 structural turret remains complete');

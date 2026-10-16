@@ -70,20 +70,20 @@ const { createHostPortPair } = await import('./hostProtocol.ts');
 const { createMatchHostCore } = await import('./matchHostCore.ts');
 
 const seats = [
-  { seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 'type96b_x' },
-  { seat: 1, playerId: 'p2', name: 'Two', team: 'bravo', specId: 'm1a2' },
-  { seat: 9, playerId: 'w', name: 'Watcher', team: 'spectator', specId: 'leo2a7v' },
+  { seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 'type96b' },
+  { seat: 1, playerId: 'p2', name: 'Two', team: 'bravo', specId: 'm1a1_abrams_hc' },
+  { seat: 9, playerId: 'w', name: 'Watcher', team: 'spectator', specId: 'leo2_improved' },
 ];
 const options = { roomId: 'fleet', mapId: 'verdant', seed: 3, seats, world: 'terrain', autoStart: false, countdownS: 1 };
-assert.equal(isCombatAnatomyCalibrationReady('type96b_x'), false);
-assert.throws(() => createMatchActor(options), /combat anatomy is not loaded for type96b_x, m1a2/,
+assert.equal(isCombatAnatomyCalibrationReady('type96b'), false);
+assert.throws(() => createMatchActor(options), /combat anatomy is not loaded for type96b, m1a1_abrams_hc/,
   'an unloaded roster is refused, naming the hulls');
 await ensureAuthorityFleet(seats.map((seat) => seat.specId).slice(0, 2));
-assert.equal(isCombatAnatomyCalibrationReady('leo2a7v'), false, 'a spectator\'s vehicle is not loaded');
-assert.equal(isCombatAnatomyCalibrationReady('t90m'), false, 'only the roster\'s groups are loaded');
+assert.equal(isCombatAnatomyCalibrationReady('leo2_improved'), false, 'a spectator\'s vehicle is not loaded');
+assert.equal(isCombatAnatomyCalibrationReady('t90am'), false, 'only the roster\'s groups are loaded');
 const actor = createMatchActor(options);
 const hull = actor.authority.entities.find((entity) => entity.id === 'p1');
-assert.equal(hull.spec, getSpec('type96b_x'));
+assert.equal(hull.spec, getSpec('type96b'));
 assert.ok(hull.spec.armor.collisionShells.turret.length > 0, 'the authority traces the finalized hit shells');
 actor.stop();
 
@@ -97,12 +97,12 @@ actor.stop();
   }));
   pair.main.post({ type: 'boot', config: {
     roomId: 'FLEET1', matchId: 'm-1', generation: 1, mapId: 'verdant', mode: 'standard', seed: 7,
-    seats: [{ seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 't90m', equipment: [] }],
+    seats: [{ seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 't90am', equipment: [] }],
     bots: [{ playerId: 'b1', name: 'Bot', team: 'bravo', specId: 'type96_80_feng' }],
     countdownS: 1, battleLimitS: null, hostSecret: 'host-secret-0123456789abcdef', manifestBase: null, resume: null,
   } });
   await ready;
-  assert.equal(isCombatAnatomyCalibrationReady('t90m'), true, 'the seat\'s group loaded at boot');
+  assert.equal(isCombatAnatomyCalibrationReady('t90am'), true, 'the seat\'s group loaded at boot');
   assert.equal(isCombatAnatomyCalibrationReady('type96_80_feng'), true, 'the bot\'s group loaded at boot');
   assert.equal(core.actor?.authority.entities.length, 2);
   core.dispose();

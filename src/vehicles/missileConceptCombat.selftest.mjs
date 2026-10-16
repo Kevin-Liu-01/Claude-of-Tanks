@@ -8,8 +8,8 @@ import { createCombatState, selectShell, startReload, tickReload } from '../sim/
 import { SIM_DT, shotRecoilScale } from '../sim/movement.ts';
 
 const definitions = {
-  ztz100_prototype: { cells: 8, ammo: [16, 8, 180], reload: [12, 12, .30], counterpart: 'ztz100_x', caliber: 35 },
-  object695_x: { cells: 12, ammo: [24, 12, 240], reload: [14, 14, .22], counterpart: 'kurganets25_x', caliber: 30 },
+  ztz100_prototype: { cells: 8, ammo: [16, 8, 180], reload: [12, 12, .30], counterpart: 'ztz100', caliber: 35 },
+  object695: { cells: 12, ammo: [24, 12, 240], reload: [14, 14, .22], counterpart: 'kurganets25', caliber: 30 },
 };
 const input = (slot, fire = false) => ({ throttle: 0, steer: 0, brake: true, fire,
   aimYaw: .4, aimPitch: .1, aimDistance: 400, shellSlot: slot, actionBits: 0 });
@@ -22,9 +22,9 @@ for (const [id, expected] of Object.entries(definitions)) {
   assert.equal(spec.gun.shells[0].guided, true, 'missiles are the actual initial selected weapon');
   assert.equal(spec.gun.launcherMuzzles.length, expected.cells);
   assert.equal(new Set(spec.gun.launcherMuzzles.map(p => JSON.stringify(p))).size, expected.cells);
-  assert.equal(counterpart.gun.launcherMuzzles?.length ?? 0, id === 'object695_x' ? 12 : 0,
+  assert.equal(counterpart.gun.launcherMuzzles?.length ?? 0, id === 'object695' ? 12 : 0,
     'service counterpart retains its own launchers, separate from concept geometry');
-  assert.equal(counterpart.gun.caliberMm, id === 'object695_x' ? 57 : 105);
+  assert.equal(counterpart.gun.caliberMm, id === 'object695' ? 57 : 105);
   const layout = internalLayoutFor(id);
   assert.equal(layout.confidence, 'owner-directed');
   assert(layout.crew.every(station => station.frame === 'hull'), 'original unmanned design has no turret crew');
@@ -44,7 +44,7 @@ for (const [id, expected] of Object.entries(definitions)) {
 
   const match = createAuthoritativeMatch({ mapId: 'verdant', countdownS: 0, players: [
     { id: 'launcher', specId: id, team: 'alpha', spawn: { x: 0, z: -200, yaw: 0 } },
-    { id: 'target', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 200, yaw: Math.PI } },
+    { id: 'target', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 0, z: 200, yaw: Math.PI } },
   ] });
   match.onMatchReady();
   const entity = match.entityById.get('launcher');
@@ -83,7 +83,7 @@ for (const [id, expected] of Object.entries(definitions)) {
     }
   } finally { visual.dispose(); }
 }
-assert(TANK_SPECS.object695_x.hp < TANK_SPECS.kurganets25_x.hp);
-assert(TANK_SPECS.object695_x.gun.launcherSalvo.rounds > TANK_SPECS.ztz100_prototype.gun.launcherSalvo.rounds);
-assert(TANK_SPECS.object695_x.gun.shells[0].dmg < TANK_SPECS.ztz100_prototype.gun.shells[0].dmg);
+assert(TANK_SPECS.object695.hp < TANK_SPECS.kurganets25.hp);
+assert(TANK_SPECS.object695.gun.launcherSalvo.rounds > TANK_SPECS.ztz100_prototype.gun.launcherSalvo.rounds);
+assert(TANK_SPECS.object695.gun.shells[0].dmg < TANK_SPECS.ztz100_prototype.gun.shells[0].dmg);
 console.log('missile concepts: distinct roles, independent cannon feeds, shared missile reloads, 20 physical launchers and authoritative muzzle agreement PASS');

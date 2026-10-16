@@ -7,15 +7,15 @@ import { ensureInteriorFills } from './interiorFills.ts';
 // Owner Gallery selections, 2026-09-30. Positions are in each mesh's local
 // authored frame, independent of presentation centering and random UUIDs.
 const probes = {
-  chieftain_mk10: [['hullShadow', .98, .3, 0], ['hullInteriorFill', .9555, .3, .5]],
-  chieftain5: [['hullRunningGearDark', .89, .2, 1.68],
+  chieftain_mk9: [['hullShadow', .98, .3, 0], ['hullInteriorFill', .9555, .3, .5]],
+  chieftain3: [['hullRunningGearDark', .89, .2, 1.68],
     ['hullRunningGearDark', .89, .2, -1.2], ['hullRunningGearDark', 1.095, .3, 0]],
-  jpz_e100_x: [['hullShadow', .9768, .2, 0]],
+  jpz_e100: [['hullShadow', .9768, .2, 0]],
   k2b: [['hullRunningGearDark', 1.09, .2, 0],
     ['hullRunningGearDark', .94, .3, 2.2], ['hullRunningGearDark', .94, .3, -1.6]],
-  k2: [['hullRunningGearDark', 1.09, .2, 0],
+  xk2_black_panther: [['hullRunningGearDark', 1.09, .2, 0],
     ['hullRunningGearDark', .94, .3, 2.2], ['hullRunningGearDark', .94, .3, -1.6]],
-  strv103: [['hullRunningGearDark', 1.01, .3, 0]],
+  strv103b: [['hullRunningGearDark', 1.01, .3, 0]],
   strv103a: [['hullRunningGearDark', .99, .3, 0]],
   udes03: [['hullRunningGearDark', .7975, .4, 0]],
 };

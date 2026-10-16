@@ -2,6 +2,7 @@
 // the nearest researched donor and applies explicit identity/balance changes;
 // visual geometry remains in the demand-loaded procedural family builders.
 import { TANK_SPECS, ALL_TANK_IDS, fitArmorToDims } from './specs.ts';
+import { tankSeedId } from './tankIdAliases.ts';
 import {T72BU_X_SOURCE_DATUMS,createT72BUXArmorZones} from './t72buXArmor.ts';
 import { REVOLUTION_PROTO_FRAME } from './profiles/leopardRevolutionPrototypeFrame.ts';
 import {
@@ -75,7 +76,9 @@ function armorWithoutEra(
   return armor;
 }
 
-function abramsReactiveArmor(baseId: string, prefix: string): ArmorEnvelope {
+function abramsReactiveArmor(baseId: string, idPrefix: string): ArmorEnvelope {
+  // Plate names keep their schema-1 spelling (tankIdAliases.ts), so a rename never renames a hit zone.
+  const prefix = tankSeedId(idPrefix);
   const armor = copy(requireFleetSpec(baseId).armor);
   // The donor M1A2 now owns live ERA zones for its visible cassette arrays.
   // Derivative marks replace those zones with their own namespace rather
@@ -138,7 +141,7 @@ function makeRevolutionPrototype(): FleetTankSpec {
 }
 
 function makeLeopardImproved(): FleetTankSpec {
-  const spec = make('leo2a7', 'leo2a7v', 'Leopard 2 Improved', 'Germany', {
+  const spec = make('leo2a7', 'leo2_improved', 'Leopard 2 Improved', 'Germany', {
     hp: 2650, weightTons: 66.5, topSpeedKmh: 63,
     // Preserve the configured height and broad-body P95 datum. Narrow only
     // the hull after the donor fit so the turret armor does not shrink.
@@ -191,7 +194,7 @@ function merkavaArmor({ glacis, lower, wedge, notch, side }: MerkavaArmorOptions
 
 // T-72B obr. 1985 left the saved fleet on 2026-09-23 (hidden-fleet cleanup);
 // its make() row stays the combat donor of t72m1_jaguar (poland.ts) and
-// t72b_1987_x (sourceXSecondWaveSpecs.ts) as an unregistered template.
+// t72b_1987 (sourceXSecondWaveSpecs.ts) as an unregistered template.
 DONOR_SPECS.t72b_1987 = make('t72b3', 't72b_1987', 'T-72B obr. 1985', 'USSR/Russia',
   { hp: 1950, weightTons: 44.5, topSpeedKmh: 60, reverseSpeedKmh: 12, gun: { reloadS: 7.2 } });
 
@@ -213,7 +216,7 @@ const spec=make('t72b3', 'pt91m', 'PT-91M Pendekar', 'Poland',
       },
       dims: { ...T72BU_X_SOURCE_DATUMS.dims, widthM:3.66 } });
   // Owner-selected first-party T-72BU shape; retain Pendekar combat balance.
-  spec.variantOf='t72bu_x';spec.publicVisualFallback=null;
+  spec.variantOf='t72bu';spec.publicVisualFallback=null;
   const {turretPivot,trunnion,muzzleZ}=T72BU_X_SOURCE_DATUMS;
   spec.armor.turretPivot=[...turretPivot];
   spec.armor.gunPivot=[trunnion[0]-turretPivot[0],trunnion[1]-turretPivot[1],trunnion[2]-turretPivot[2]];
@@ -228,7 +231,7 @@ const spec=make('t72b3', 'pt91m', 'PT-91M Pendekar', 'Poland',
 }
 
 const SPECS: FleetTankSpec[] = [
-  make('challenger2', 'challenger1', 'Challenger 1 Mk.3', 'UK',
+  make('challenger2', 'challenger1_mk2', 'Challenger 1 Mk.3', 'UK',
     {
       // Tier IX late-Cold-War heavy MBT: strong protection and a dependable
       // rifled-gun cycle, paid for with lower agility than its faster peers.
@@ -249,7 +252,7 @@ const SPECS: FleetTankSpec[] = [
         ],
       },
       dims: { hullLengthM: 8.32, overallLengthM: 11.5, widthM: 3.52, heightM: 2.95 } }),
-  make('chieftain_mk10', 'chieftain5', 'Chieftain Mk.5', 'UK',
+  make('chieftain_mk9', 'chieftain3', 'Chieftain Mk.5', 'UK',
     { hp: 1850, topSpeedKmh: 48, gun: { reloadS: 7.8 },
       visual: { trackWidthM: 0.656 },
       dims: { hullLengthM: 7.52, overallLengthM: 10.79, widthM: 3.50, heightM: 2.90 } }),
@@ -280,7 +283,7 @@ const SPECS: FleetTankSpec[] = [
       // Owner source measured hood top is 2.866 m above its track datum.
       dims: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 4.00,
         heightM: 2.64, silhouetteHeightM: 2.866 } }),
-  make('leo2a6', 'leo2a5', 'Leopard 2A4 V', 'Germany',
+  make('leo2a4', 'leo2a4_v', 'Leopard 2A4 V', 'Germany',
     { hp: 2350, weightTons: 59.5, gun: { reloadS: 6.4 },
       dims: { hullLengthM: 7.72, overallLengthM: 9.97, widthM: 3.75, heightM: 2.64 },
       // bakeDirt deck equalizer (f243966; r10 A/B: deck med -> 56.6 toward
@@ -295,24 +298,24 @@ const SPECS: FleetTankSpec[] = [
       // seated cover measures a 2.80 m combat envelope; 2.44 m remains the
       // bare turret datum and is no longer honest for this configured mark.
       dims: { heightM: 2.80 } }),
-  make('m1a2', 'm1a2_sepv2', 'M1A1 Abrams AIM', 'USA',
+  make('m1a1_abrams_hc', 'm1a1_abrams_aim', 'M1A1 Abrams AIM', 'USA',
     { hp: 2600, weightTons: 66.8, gun: { reloadS: 6.0 },
-      armor: abramsReactiveArmor('m1a2', 'm1a2_sepv2'),
+      armor: abramsReactiveArmor('m1a1_abrams_hc', 'm1a1_abrams_aim'),
       // §5.73-1 P95 datum: elevated armored CROWS plus its seated ghillie
       // cover measures 3.44 m on the authoritative mask.
       dims: { heightM: 3.44 } }),
-  // m1a2_sepv3 (§5.07 owner order 2026-08-07): M1A2 SEPv3 — redesignated
+  // m1a1_abrams_fep (§5.07 owner order 2026-08-07): M1A2 SEPv3 — redesignated
   // M1A2C in Sept 2018; first shown AUSA Oct 2015. PURE PROCEDURAL variant
-  // on the m1a2 family rig (ABRAMS_PROFILES m1a2_sepv3) — NO recovered GLB
+  // on the m1a1_abrams_hc family rig (ABRAMS_PROFILES m1a1_abrams_fep) — NO recovered GLB
   // ships or registers for this id (the local m1a2_sepv3_dannzjs.glb is a
   // measurement-influence source only: its print is the adjudicated
   // mislabeled-Leopard/odd-dims asset, see docs/references/tanks/m1a2.md;
   // footprint stays 7.93/9.77/3.66; §5.73-1 now derives height from the
   // mandatory-kit P95 envelope (3.18 below). community: null — original
   // build, nothing recovered to credit.
-  make('m1a2', 'm1a2_sepv3', 'M1A2 SEPv3', 'USA',
+  make('m1a1_abrams_hc', 'm1a1_abrams_fep', 'M1A2 SEPv3', 'USA',
     { hp: 2700, weightTons: 67.5, gun: { reloadS: 5.8 },
-      armor: abramsReactiveArmor('m1a2', 'm1a2_sepv3'),
+      armor: abramsReactiveArmor('m1a1_abrams_hc', 'm1a1_abrams_fep'),
       // FALSE-0 four-box + temporary 1024 datum replica: the wide/low CROWS
       // plus mandatory ghillie cover measures a 3.18 m P95 envelope.
       dims: { heightM: 3.18 }, community: null, visual: { number: '34' } }),
@@ -376,7 +379,7 @@ const SPECS: FleetTankSpec[] = [
         notch: [400, 480], side: [360, 520],
       }),
       dims: { hullLengthM: 7.60, overallLengthM: 9.04, widthM: 3.72, heightM: 2.66 } }),
-  make('merkava4', 'merkava3d', 'Merkava Mk.3D', 'Israel',
+  make('merkava4', 'merkava3_baz', 'Merkava Mk.3D', 'Israel',
     { hp: 2500, enginePowerHp: 1200, weightTons: 65,
       topSpeedKmh: 60, reverseSpeedKmh: 20, hullTraverseDegS: 38,
       turretTraverseDegS: 38, gunPitchDegS: 30, gunDepressionDeg: 8,
@@ -412,7 +415,7 @@ const SPECS: FleetTankSpec[] = [
       }),
       publicVisualFallback: null, community: null,
       dims: { hullLengthM: 7.60, overallLengthM: 9.04, widthM: 3.72, heightM: 2.66 } }),
-  make('leo1a5', 't62mv1', 'T-62 obr. 1975', 'USSR/Russia',
+  make('leo1a5', 't62_1975', 'T-62 obr. 1975', 'USSR/Russia',
     { hp: 1750, weightTons: 38, topSpeedKmh: 50, reverseSpeedKmh: 8,
       gun: {
         reloadS: 7.2,
@@ -454,7 +457,7 @@ const SPECS: FleetTankSpec[] = [
         silhouetteOverallLengthM: 8.61,
         silhouetteHeightM: 2.28,
       } }),
-  make('t72b3', 't72b3m', 'T-72B3M obr. 2016', 'Russia',
+  make('t72b3', 't72b3m_2022', 'T-72B3M obr. 2016', 'Russia',
     { hp: 2250, enginePowerHp: 1130, topSpeedKmh: 70, reverseSpeedKmh: 20, gun: { reloadS: 6.5 },
       visual: {
         // Keep the authored factory-green field coherent under the warm
@@ -465,17 +468,17 @@ const SPECS: FleetTankSpec[] = [
         weather: '#2e422d',
         solidWeatheringIntensity: 0.03,
       } }),
-  make('t90a', 't72bu', 'T-72BU obr. 1989', 'USSR/Russia',
+  make('t90a_2004', 't72bu_1989', 'T-72BU obr. 1989', 'USSR/Russia',
     { hp: 2050, weightTons: 46.5, topSpeedKmh: 65, gun: { reloadS: 7.0 } }),
-  make('t90m', 't90sm', 'T-90SM obr. 2013', 'Russia',
+  make('t90am', 't90sm_2013', 'T-90SM obr. 2013', 'Russia',
     { hp: 2400, weightTons: 48, topSpeedKmh: 72, gun: { reloadS: 6.4 },
       // The procedural T-90SM fit has a Relikt glacis and frontal turret
       // field. It does not carry the donor Proryv skirt or turret-flank kit.
-      armor: armorWithoutEra('t90m', (_owner, name) => /skirt|side/i.test(name)),
+      armor: armorWithoutEra('t90am', (_owner, name) => /skirt|side/i.test(name)),
       dims: { hullLengthM: 6.86, overallLengthM: 9.63, widthM: 3.78, heightM: 2.23 } }),
-  make('type10', 'type90', 'Type 90 Kyu-maru', 'Japan',
+  make('type10_tk_x', 'type90_kyumaru', 'Type 90 Kyu-maru', 'Japan',
     // heightM DATUM 2.34 -> 2.55 (§5.73-1 P95-ENVELOPE LAW, owner-ratified;
-    // t14/type99a precedent): heightM = the P95 envelope including mandatory
+    // object148_proto/type99a precedent): heightM = the P95 envelope including mandatory
     // roof kit, NOT the bare 2.34 turret roof (Wikipedia infobox) and NOT the
     // published 3.05 "over sights+MG" (weaponsystems.net) — 3.05 is a
     // 1-2-column MAX over the swung M2, exactly the spike class the gate's
@@ -493,7 +496,7 @@ const SPECS: FleetTankSpec[] = [
         autoloader: { magazineSize: 3, intraClipS: 2.2, fullReloadS: 18.5 },
       },
       dims: { hullLengthM: 7.45, overallLengthM: 9.76, widthM: 3.43, heightM: 2.55 } }),
-  make('t90a', 't90a_vladimir', 'T-90A obr. 2006', 'Russia',
+  make('t90a_2004', 't90a_2006', 'T-90A obr. 2006', 'Russia',
     { hp: 2300, topSpeedKmh: 65, gun: { reloadS: 6.6 } }),
 ];
 
@@ -582,25 +585,25 @@ function leopard2A5ChevronSpacedArmor(): ArmorPlate[] {
 }
 
 {
-  const leopard2A5 = SPECS.find((spec) => spec.id === 'leo2a5');
-  if (!leopard2A5) throw new Error('Additional fleet spec missing: leo2a5');
+  const leopard2A5 = SPECS.find((spec) => spec.id === 'leo2a4_v');
+  if (!leopard2A5) throw new Error('Additional fleet spec missing: leo2a4_v');
   leopard2A5.armor.turretPlates = leopard2A5.armor.turretPlates
     .filter((plate) => !/^turret_wedge_[LR]$/.test(plate.name))
     .concat(leopard2A5ChevronSpacedArmor());
 }
 
 // SEPv3 ammo identity (coordinator wiki reference 2026-08-07): the AMP round
-// ships under its developmental XM designation on this mark (the base m1a2
+// ships under its developmental XM designation on this mark (the base m1a1_abrams_hc
 // row carries the fielded 'M1147 AMP' name — the copy is renamed, not the
 // base). Ammunition Data Link handling is the row's reloadS edge.
 {
-  const sepv3 = SPECS.find((s) => s.id === 'm1a2_sepv3');
-  if (!sepv3) throw new Error('Additional fleet spec missing: m1a2_sepv3');
+  const sepv3 = SPECS.find((s) => s.id === 'm1a1_abrams_fep');
+  if (!sepv3) throw new Error('Additional fleet spec missing: m1a1_abrams_fep');
   const amp = sepv3.gun.shells.find((sh) => /AMP/.test(sh.name));
   if (amp) amp.name = 'XM1147 AMP';
 }
 
-// §5.364 type90 gun-trunnion true-up (owner order: "properly attached ...
+// §5.364 type90_kyumaru gun-trunnion true-up (owner order: "properly attached ...
 // arc up and down porperly"). The visual rig now pitches about the turret-
 // face trunnion (profiles/misc.ts buildType90 — world y 1.686, z 1.30). The
 // inherited type10-scaled armor row kept its donor pivot at world (1.722,
@@ -615,21 +618,22 @@ function leopard2A5ChevronSpacedArmor(): ArmorPlate[] {
 // law: pivots are authored data — this is the authored correction, never a
 // calibration remap.
 {
-  const t90 = SPECS.find((s) => s.id === 'type90');
-  if (!t90) throw new Error('Additional fleet spec missing: type90');
-  t90.armor.gunPivot = [0, 0.2397, 1.0713];
-  t90.armor.gunBarrel.lengthM = 4.66;
+  const t90_1992 = SPECS.find((s) => s.id === 'type90_kyumaru');
+  if (!t90_1992) throw new Error('Additional fleet spec missing: type90_kyumaru');
+  t90_1992.armor.gunPivot = [0, 0.2397, 1.0713];
+  t90_1992.armor.gunBarrel.lengthM = 4.66;
 }
 
 // These early/non-Trophy Merkava profiles render removable flank packages.
 // Register the exact semantic clusters as single-use reactive armor so the
 // first intersecting hit depletes and removes the package in gameplay.
-for (const id of ['merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3d', 'merkava4b']) {
+for (const id of ['merkava1b', 'merkava2b', 'merkava2d', 'merkava3c', 'merkava3_baz', 'merkava4b']) {
   const spec = SPECS.find((candidate) => candidate.id === id);
   if (!spec) throw new Error(`Additional fleet spec missing: ${id}`);
   spec.armor.turretPlates.push(
-    reactivePlate(`merkava_${id}_turret_era_R`, 'right'),
-    reactivePlate(`merkava_${id}_turret_era_L`, 'left'),
+    // Schema-1 names (tankIdAliases.ts): the X rebuilds' visual clusters name these plates literally.
+    reactivePlate(`merkava_${tankSeedId(id)}_turret_era_R`, 'right'),
+    reactivePlate(`merkava_${tankSeedId(id)}_turret_era_L`, 'left'),
   );
 }
 

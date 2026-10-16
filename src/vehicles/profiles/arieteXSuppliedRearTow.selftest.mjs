@@ -84,7 +84,7 @@ function physicalContacts(root, all) {
 }
 
 for (const quality of ['high', 'low']) {
-  const tank = createTank('ariete_c1_x', null,
+  const tank = createTank('c1_ariete', null,
     { quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false });
   try {
     tank.root.updateMatrixWorld(true);

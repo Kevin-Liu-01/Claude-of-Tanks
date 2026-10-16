@@ -43,7 +43,7 @@ const expected = Object.freeze({
     trackWidth: 0.50, sideStations: 9, rearExtension: 0.15, guided: false,
     rearTrackDepartureZ: -2.45,
   }),
-  cv90_mkiv: Object.freeze({
+  cv90_mk4_concept: Object.freeze({
     name: 'CV90 Mk 4 Concept', tier: 10, caliber: 50, weight: 40,
     dims: Object.freeze({ hullLengthM: 6.282, overallLengthM: 7.596, widthM: 3.636, heightM: 3.528 }),
     hullReceiptKey: 'cv90MkivIndependentHullReceipt',
@@ -121,7 +121,7 @@ for (const [id, target] of Object.entries(expected)) {
     assert.equal(hullReceipt.lowerRubberStripRemoved, true);
     assert.equal(hullReceipt.rearTrackDeparture, 'rear-wheel-tangent-wrap-v2');
     assert.equal(hullReceipt.rearTrackDepartureZM, target.rearTrackDepartureZ);
-    assert.equal(hullReceipt.auxiliaryFuelDrums, id === 'cv90_mkiv' ? 2 : undefined);
+    assert.equal(hullReceipt.auxiliaryFuelDrums, id === 'cv90_mk4_concept' ? 2 : undefined);
     assert.equal(hullReceipt.fenderBridge, 'continuous-glacis-shoulder-skirt-seat-v2');
     assert.equal(hullReceipt.tracksExtendedForRearHull, false);
     assert.equal(hullReceipt.rearHullExtensionM, target.rearExtension);
@@ -154,7 +154,7 @@ for (const [id, target] of Object.entries(expected)) {
         `${id} complete cannon rig is recessed into the turret`);
     }
     assert.equal(gun.getObjectByName('rig_muzzle')?.position.z,
-      id === 'cv90_mkiv' ? 3.76 * 0.9 : 3.12 * 0.9,
+      id === 'cv90_mk4_concept' ? 3.76 * 0.9 : 3.12 * 0.9,
       `${id} publishes the correct compact muzzle station`);
     assert.ok(tank.root.getObjectByName('muzzleBoreShadowRim'),
       `${id} cannon has a recessed bore`);
@@ -170,7 +170,7 @@ for (const [id, target] of Object.entries(expected)) {
       .map(([z]) => z));
     assert.ok(Math.abs(rearGroundDepartureZ - target.rearTrackDepartureZ) < 1e-6,
       `${id} flat run leaves at the authored rear-wheel tangent`);
-    assert.equal(gear?.xcRight, id === 'cv90_mkiv' ? 1.50 : 1.41,
+    assert.equal(gear?.xcRight, id === 'cv90_mk4_concept' ? 1.50 : 1.41,
       `${id} track inner face is seated against its own belly section`);
     assert.equal(gear?.suspensionDynamic, true);
     assert.equal(gear?.suspensionPlacement, 'inboard-behind-road-wheel');
@@ -199,7 +199,7 @@ for (const [id, target] of Object.entries(expected)) {
 }
 
 const cv90Size = bounds.get('cv90');
-const mkivSize = bounds.get('cv90_mkiv');
+const mkivSize = bounds.get('cv90_mk4_concept');
 assert.ok(mkivSize.x > cv90Size.x && mkivSize.y > cv90Size.y && mkivSize.z > cv90Size.z,
   'Mk IV is visibly larger than the Tier IX CV90 in every principal dimension');
 

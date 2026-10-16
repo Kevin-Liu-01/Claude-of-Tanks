@@ -92,7 +92,7 @@ function observeRng(module) {
 // These are sync/stepped consistency and lifecycle tests, not an independent
 // original-output oracle. The pre-change artifact comparison passed 25,148
 // assertions; tankFactoryStaging separately retains original decorated-core goldens.
-for (const id of ['m1a1', 'strv103', 'leo2_revolution_proto']) {
+for (const id of ['m1a1', 'strv103b', 'leo2_revolution_proto']) {
   const reference = fixture(id), staged = fixture(id);
   const referenceRng = observeRng(candidate);
   let stagedRng;

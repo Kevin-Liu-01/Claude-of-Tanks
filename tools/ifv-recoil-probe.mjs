@@ -137,7 +137,7 @@ try {
   await sleep(900);
   const missile = await fireCase('m2a2_bradley', 1);
   await sleep(900);
-  const mbt = await fireCase('m1a2', 0);
+  const mbt = await fireCase('m1a1_abrams_hc', 0);
 
   const entry = (run, tag) => run.log.find((x) => x.tag === tag);
   console.log('[ifv-recoil] strokes', JSON.stringify({

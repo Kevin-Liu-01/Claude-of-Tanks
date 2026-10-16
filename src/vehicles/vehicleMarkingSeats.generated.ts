@@ -71,10 +71,10 @@ import { VEHICLE_MARKING_SEATS as SEATS_T72B3MX } from './vehicleMarkingSeatGrou
 import { VEHICLE_MARKING_SEATS as SEATS_T72BUX } from './vehicleMarkingSeatGroups/t72buX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_T80 } from './vehicleMarkingSeatGroups/t80.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_T80UX } from './vehicleMarkingSeatGroups/t80uX.generated.ts';
-import { VEHICLE_MARKING_SEATS as SEATS_T90 } from './vehicleMarkingSeatGroups/t90.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_T90AWX } from './vehicleMarkingSeatGroups/t90AwX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_T90BURLAKX } from './vehicleMarkingSeatGroups/t90BurlakX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_T90X } from './vehicleMarkingSeatGroups/t90X.generated.ts';
+import { VEHICLE_MARKING_SEATS as SEATS_T90_1992 } from './vehicleMarkingSeatGroups/t90_1992.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_T90MSX } from './vehicleMarkingSeatGroups/t90msX.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_TOS1ATAGIL } from './vehicleMarkingSeatGroups/tos1aTagil.generated.ts';
 import { VEHICLE_MARKING_SEATS as SEATS_TYPE10X } from './vehicleMarkingSeatGroups/type10X.generated.ts';
@@ -157,10 +157,10 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
   SEATS_T72BUX,
   SEATS_T80,
   SEATS_T80UX,
-  SEATS_T90,
   SEATS_T90AWX,
   SEATS_T90BURLAKX,
   SEATS_T90X,
+  SEATS_T90_1992,
   SEATS_T90MSX,
   SEATS_TOS1ATAGIL,
   SEATS_TYPE10X,

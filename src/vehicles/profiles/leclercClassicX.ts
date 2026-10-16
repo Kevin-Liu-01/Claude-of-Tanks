@@ -20,10 +20,10 @@ function buildLeclercClassicX(P: TankBuilderPort): void {
   addLeclercClassicXTurret(P);
   addLeclercClassicXEquipment(P);
   addLeclercClassicXFieldKit(P);
-  P.hullG.userData.xRebuild = { candidate: 'leclerc_classic_x', independent: true,
+  P.hullG.userData.xRebuild = { candidate: 'amx56', independent: true,
     sourceLocalOnly: true, datumVersion: 1 };
 }
 
 export const LECLERC_CLASSIC_X_PROFILES = Object.freeze({
-  leclerc_classic_x: { build: buildLeclercClassicX },
+  amx56: { build: buildLeclercClassicX },
 });

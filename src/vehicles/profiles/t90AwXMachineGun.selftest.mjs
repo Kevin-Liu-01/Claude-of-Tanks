@@ -22,7 +22,7 @@ function contains(meshes, point) {
   return found;
 }
 for(const quality of ['high','low']){
-  const tank=createTank('t90_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const tank=createTank('t90',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{
     tank.root.updateMatrixWorld(true);
     const turret=tank.root.getObjectByName('rig_turret'),gun=tank.root.getObjectByName('t90XMountedNsvt');

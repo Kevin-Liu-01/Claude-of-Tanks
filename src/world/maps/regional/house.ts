@@ -77,6 +77,12 @@ export interface Opening {
   h: number;
   /** war wear: a burnt-out opening (charred void, soot plume up the wall) or one boarded over (wear pass) */
   state?: 'burnt' | 'boarded';
+  /**
+   * a round head (props census E10, lane B 2026-10-14): the opening's head is a semicircle across its width springing
+   * `spring` over its bottom (default its height), cut through the wall with the rest (holedFace) — the dialect's unit
+   * fills the rectangle under it and sarajevoParts archHead rings it
+   */
+  arch?: { spring?: number };
 }
 
 export interface ChimneySpec {
@@ -98,7 +104,7 @@ export interface ChimneySpec {
 export interface HouseSpec {
   w: number;
   d: number;
-  plinth: { h: number; out: number; bucket: RegionalBucket } | null;
+  plinth: { h: number; out: number; bucket: RegionalBucket; /** its water table course (default on): a hall's kerb has none */ course?: boolean } | null;
   storeys: StoreySpec[];
   roof: RoofSpec;
   /** the wall bucket of the gable triangles (defaults to the top storey's wall) */
@@ -106,6 +112,19 @@ export interface HouseSpec {
   /** the gable triangles are timber framed */
   gableFramed?: boolean;
   openings: Opening[];
+  /** a hall open to its roof: the top storey has no attic floor at its eaves (its inside is seen up to the roof) */
+  hollow?: boolean;
+  /**
+   * Shell breaches through the storey walls (props census #7): a ragged hole `r` across at (u, y over the storey's
+   * floor) on a face, cut through the wall into the dark of the room behind — never a dark plate on the wall.
+   */
+  breaches?: ReadonlyArray<{ face: FaceName; storey: number; u: number; y: number; r: number; seed: number; spall?: RegionalBucket }>;
+  /**
+   * Spans of a face another solid stands against up every storey (props census #13: a tower in the house's corner, a
+   * hand proud of its walls or flush with them): the storey walls leave them out — the tower's own face is the wall there,
+   * and the openings cut through it look into its dark, never at a house wall a hand behind it.
+   */
+  abutted?: ReadonlyArray<{ face: FaceName; u0: number; u1: number }>;
   chimneys: ChimneySpec[];
   gutters?: { colour: Rgb } | null;
   /**
@@ -120,6 +139,11 @@ export interface HouseSpec {
    * this far, the jambs, head and sill showing the wall's thickness (granite 0.3+, brick 0.15, a framed wall 0.1).
    */
   reveal?: number;
+  /**
+   * the core under a rendered wall when the kit's default is not this house's (damage.ts renderCore: a block house in a
+   * mud-brick village, a stone house rendered over): what a breach shows and how the house falls (props census E8)
+   */
+  core?: 'adobe' | 'brick' | 'rubble' | 'concrete' | 'stone';
   /** rafter feet showing under the eaves overhang (their colour), or none (a kit leaves them out on phones) */
   rafters?: Rgb | null;
   /**
@@ -138,6 +162,16 @@ export interface HouseSpec {
    * over the render); null for none
    */
   skirt?: { bucket: RegionalBucket; colour?: Rgb; tint?: Rgb } | null;
+  /**
+   * the face pass for a hand-built body (props census BS-3, lane B 2026-10-14; the 10-12 plan: "give hand-built bodies the
+   * same face pass"): the builder lays its own roof (a chala's curved hips, a Naga thatch with its horns, a flat earth roof
+   * on vigas), so the house lays none — no covering, gables, verges, rafter feet or gutters — but still builds its walls
+   * cut by their openings in reveals, the units in them, the sill shadows and runs, the eave's rain shadow, the foot's
+   * grime, the plinth and its water table, the render's spall and the war wear, and registers its plan, so the damage
+   * reads the body as a house. `roof` still describes the covering the builder lays (its eave, pitch and kind) for the
+   * rain shadow and the damage anatomy
+   */
+  ownRoof?: boolean;
 }
 
 /** What a dialect sees of the house it dresses. */
@@ -152,6 +186,8 @@ export interface HouseFrame {
   roof: RoofGeometry;
   /** the openings' reveal depth (HouseSpec.reveal) */
   reveal: number;
+  /** the gable openings' reveal depth (HouseDialect.gableOpenings): the reveal's, within the gable wall's 0.32 m */
+  gableReveal: number;
 }
 
 export interface HouseDialect {
@@ -163,6 +199,13 @@ export interface HouseDialect {
   dressWall?(sink: PartSink, face: Face, rect: WallRect, openings: Opening[], frame: HouseFrame): void;
   /** a framed gable: the members inside the gable polygon (u, y pairs on the face) */
   dressGable?(sink: PartSink, face: Face, polygon: Array<[number, number]>, frame: HouseFrame): void;
+  /**
+   * the openings a gable carries (its loft windows, a pitching hole, a vent), as rectangles inside the gable polygon:
+   * the house cuts them through the gable wall with their reveals before it dresses the gable, and dressGable's units
+   * stand set back in them (PartSink.recess). Props census E2 (lane B, 2026-10-14): gable windows drawn on the solid
+   * gable were glass stuck on the plaster. The same on every tier (the gable is collision).
+   */
+  gableOpenings?(face: Face, polygon: Array<[number, number]>, frame: HouseFrame): HoleRect[];
   /** under-jetty beam ends and sill beams */
   dressJetty?(sink: PartSink, face: Face, u0: number, u1: number, y: number, depth: number, frame: HouseFrame): void;
 }
@@ -426,14 +469,21 @@ const RENDERS: ReadonlySet<RegionalBucket> = new Set<RegionalBucket>(['plaster',
  * pier (a splinter, a sheet come loose). Decor 15 mm proud of the wall, clear of every opening, from the
  * wear context's own spall stream: the walls, the damage decisions and the collision never change.
  */
+/** An opening wholly inside one of a face's abutted spans (HouseSpec.abutted). */
+function inAbutted(abut: ReadonlyArray<{ u0: number; u1: number }>, o: Opening): boolean {
+  return abut.some((a) => o.u - o.w / 2 >= a.u0 - 1e-6 && o.u + o.w / 2 <= a.u1 + 1e-6);
+}
+
 function spallRender(sink: PartSink, spec: HouseSpec, wall: RegionalBucket, face: Face,
-  body: { y0: number; y1: number }, storey: number, own: readonly Opening[]): void {
+  body: { y0: number; y1: number }, storey: number, own: readonly Opening[], covered: ReadonlyArray<{ u0: number; u1: number }> = []): void {
   const wear = wearContext, rng = wear?.spall;
   const bucket = spec.spall === undefined ? 'stone' : spec.spall;
   if (!wear || !rng || wear.amount <= 0 || !bucket || !RENDERS.has(wall)) return;
   if (rng() >= Math.min(0.75, 0.25 + 1.5 * wear.amount)) return;
   const half = face.width / 2, y0 = body.y0, y1 = body.y1;
   const keepOut = own.map((o) => ({ u0: o.u - o.w / 2 - 0.1, u1: o.u + o.w / 2 + 0.1, y0: y0 + o.y0 - 0.1, y1: y0 + o.y0 + o.h + 0.1 }));
+  // (an abutted span is no wall of this house's: its losses fall where a tower stands)
+  for (const c of covered) keepOut.push({ u0: c.u0 - 0.1, u1: c.u1 + 0.1, y0: y0 - 1, y1: y1 + 1 });
   const windows = own.filter((o) => o.kind === 'window' && !o.state);
   // (facade craft, desktop; wave 172: "a hard-edged texture-blend patch on the blank Steinburg gable") each loss in its
   // layers (layeredLoss); the losses keep their places and count, so the craft only adds to the plain build
@@ -772,6 +822,102 @@ export function emitRoof(sink: PartSink, rg: RoofGeometry, roof: RoofSpec, colou
   }
 }
 
+/** A shed roof laid by `placeShed`: its geometry (in its own frame) and the height of its underside over any point. */
+export interface PlacedShed {
+  rg: RoofGeometry;
+  /** the underside of the slab over (x, z) of the emitting frame (past its eaves the plane runs on) */
+  undersideAt(x: number, z: number): number;
+}
+
+/**
+ * A shed (mono-pitch) roof laid to fall the way it is told (props census E4, lane B 2026-10-14). emitRoof's shed rises
+ * toward -x of its own frame; the kits turned it half round with `sink.placed(Math.PI, …)` to face it, and cut their
+ * posts to the eave height while the turn had put the eave at the other side — the kyushu hisashi, the ruhr station
+ * canopy and the navajo equipment shed stood 0.3-1.0 m short of their roofs. Here the fall is named: (cx, cz) the
+ * middle of the roof's plan, `run` its width down the slope (eave line to eave line, the walls' or posts' lines),
+ * `span` its length along the slope's contour, `fall` the horizontal unit vector pointing downhill, `highY` the
+ * underside on the high line. Posts and plates read `undersideAt` and stand under it.
+ */
+export function placeShed(sink: PartSink, spec: { cx: number; cz: number; run: number; span: number; fall: readonly [number, number];
+  highY: number; roof: RoofSpec; colour?: Rgb }): PlacedShed {
+  const roof: RoofSpec = { ...spec.roof, kind: 'shed' };
+  const tanP = Math.tan(roof.pitchDeg * DEG);
+  const eaveY = spec.highY - spec.run * tanP;
+  const rg = roofGeometry(spec.run, spec.span, eaveY, roof);
+  // the frame's +x runs downhill: (cos yaw, -sin yaw) = fall (PartSink.framePoint)
+  const [fx, fz] = spec.fall, yaw = Math.atan2(-fz, fx);
+  sink.placed(yaw, spec.cx, 0, spec.cz, () => emitRoof(sink, rg, roof, spec.colour));
+  return {
+    rg,
+    undersideAt: (x, z) => eaveY + (spec.run / 2 - ((x - spec.cx) * fx + (z - spec.cz) * fz)) * tanP,
+  };
+}
+
+/** A lean-to against a wall: what `leanTo` lays and the heights it found. */
+export interface LeanToSpec {
+  /** the wall it leans on and its run along the wall (face u) */
+  face: Face;
+  u0: number;
+  u1: number;
+  /** the post line's distance out from the wall (the roof's low eave line); `from` its high line's (0: at the wall) */
+  depth: number;
+  from?: number;
+  /** the underside on the high line */
+  highY: number;
+  /**
+   * a roof the lean-to must pass under (the main roof's eave over the wall): its eave line height, overhang and slope.
+   * The high line drops to clear that eave's lip by the lean-to's slab and a hand.
+   */
+  under?: { eaveY: number; eave: number; tanP: number };
+  roof: Omit<RoofSpec, 'kind'>;
+  roofColour?: Rgb;
+  /** the posts at these u's, their square section, their bucket and colour; their feet sunk to `foot` (default -0.3) */
+  posts: { at: readonly number[]; size: number; bucket: RegionalBucket; colour?: Rgb; decor?: boolean; foot?: number; round?: boolean } | null;
+  /** the plate (a keta beam, a wall plate, an iron girder) along the post heads, carrying the low eave */
+  plate?: { h: number; w: number; bucket: RegionalBucket; colour?: Rgb } | null;
+}
+
+/**
+ * A lean-to roof against a wall, falling away from it, on posts and a plate (props census E4 and E3, lane B 2026-10-14):
+ * its high line meets the wall (or tucks under the eave of the roof over it), its low eave runs out past a plate along
+ * the post heads, and every post stands from its sunk foot to the plate's underside — the roof rests on the plate and
+ * the plate on the posts. Returns the heights it laid (the dialects hang their screens and boards from them).
+ */
+export function leanTo(sink: PartSink, spec: LeanToSpec): { highY: number; plateTop: number; postTop: number; shed: PlacedShed } {
+  const from = spec.from ?? 0, run = spec.depth - from;
+  let highY = spec.highY;
+  if (spec.under) {
+    // the lean-to's top stays a hand under the main eave's underside wherever the one runs under the other: both are
+    // planes, so the ends of the overlap bound it (the main eave's lip, the lean-to's back edge)
+    const u = spec.under, tanL = Math.tan(spec.roof.pitchDeg * DEG);
+    const a = Math.max(0, from - spec.roof.eave), b = Math.min(u.eave, spec.depth + spec.roof.eave);
+    for (const o of a <= b ? [a, b] : []) {
+      highY = Math.min(highY, u.eaveY - o * u.tanP - 0.05 - spec.roof.thickness + (o - from) * tanL);
+    }
+  }
+  const uc = (spec.u0 + spec.u1) / 2, f = spec.face;
+  const mid = facePoint(f, uc, 0, from + run / 2);
+  const shed = placeShed(sink, { cx: mid[0], cz: mid[2], run, span: spec.u1 - spec.u0, fall: [f.out[0], f.out[2]], highY,
+    roof: { ...spec.roof, kind: 'shed' }, ...(spec.roofColour ? { colour: spec.roofColour } : {}) });
+  const line = facePoint(f, uc, 0, spec.depth);
+  // the plate's top meets the underside over the post line (a hand's bearing buried in the slab)
+  const plateTop = shed.undersideAt(line[0], line[2]) + 0.01;
+  const ph = spec.plate?.h ?? 0, postTop = plateTop - ph;
+  if (spec.plate) {
+    const p = spec.plate, len = spec.u1 - spec.u0 + 0.1;
+    faceBox(sink, p.bucket, f, uc, plateTop - p.h / 2, spec.depth, len, p.h, p.w, { ...(p.colour ? { colour: p.colour } : {}), uv: UV_MEMBER });
+  }
+  if (spec.posts) {
+    const p = spec.posts, foot = p.foot ?? -0.3;
+    const opts: EmitOptions = { ...(p.colour ? { colour: p.colour } : {}), ...(p.decor ? { decor: true } : {}), uv: UV_MEMBER };
+    for (const u of p.at) {
+      if (p.round) sink.cylinder(p.bucket, facePoint(f, u, foot, spec.depth), 'y', postTop - foot, p.size / 2, 8, opts);
+      else faceBox(sink, p.bucket, f, u, (foot + postTop) / 2, spec.depth, p.size, postTop - foot, p.size, opts, { top: !!spec.plate });
+    }
+  }
+  return { highY, plateTop, postTop, shed };
+}
+
 /** The four faces of storey `i` of a built house (a jettied storey's faces stand proud of the ground storey's). */
 export function storeyFaces(frame: HouseFrame, i: number): Record<FaceName, Face> {
   const b = frame.bodies[Math.max(0, Math.min(frame.bodies.length - 1, i))];
@@ -815,6 +961,32 @@ export interface HousePlan {
   members: HouseMember[];
   /** the frame's timber colour (the first member's), or null for an unframed house */
   timber: Rgb | null;
+  /** the roof's crowns (roofCrown): ridge turrets, belfries, drums, bell-cotes, each its own damage piece */
+  crowns: HouseCrown[];
+  /** a shaft recorded for the damage reading only (recordShaft): never the main body, always a tower */
+  shaft?: boolean;
+}
+
+/**
+ * A feature standing on a house's roof — a ridge turret (Dachreiter), a belfry, a drum, a bell-cote, a lantern (props
+ * census E7, lane B 2026-10-14): its box in the house's frame (the frame buildHouse built it in), the bucket and tint
+ * of its walls, and the damage piece its parts are drawn as (geometry.ts PartSink.piece). The damage kit throws it with
+ * the roof's section and hides its parts (damage.ts), so a turret never stands in the air over a fallen roof.
+ */
+export interface HouseCrown {
+  piece: string;
+  kind: 'turret' | 'belfry' | 'drum' | 'bellcote' | 'lantern';
+  x0: number; x1: number; z0: number; z1: number; y0: number; y1: number;
+  bucket: RegionalBucket;
+  tint: Rgb | null;
+}
+
+/** Draw a roof's crown (`body`) as its own damage piece and record it in the house's plan (HouseCrown). */
+export function roofCrown(sink: PartSink, frame: HouseFrame, crown: Omit<HouseCrown, 'piece' | 'tint'> & { tint?: Rgb | null }, body: () => void): void {
+  const plans = planSink, plan = plans?.find((p) => p.frame === frame) ?? null;
+  const name = `crown:${plans && plan ? plans.indexOf(plan) : 0}:${plan ? plan.crowns.length : 0}`;
+  if (plan) plan.crowns.push({ ...crown, tint: crown.tint ?? null, piece: name });
+  sink.piece(name, body);
 }
 
 interface HouseMember {
@@ -837,6 +1009,35 @@ export function withHousePlans<T>(build: () => T): [T, HousePlan[]] {
   const prior = planSink, plans: HousePlan[] = [];
   planSink = plans;
   try { return [build(), plans]; } finally { planSink = prior; }
+}
+
+/**
+ * Record a body the builder draws by other means (a sheet-clad section of a works, a court wall, a hall of spans) as a
+ * house of its box for the damage reading, drawing nothing: the house grammar runs into a scratch sink at the sink's own
+ * placement, so the plan carries a house `w` x `d` x `height` at (cx, cz) and damage.ts reads it as a body of its own
+ * (it breaks and falls into its own heap; such builds went down to the default kit's bounding-box spalls). A `shaft`
+ * (a round minaret, a blast furnace, a stove) is a tower body (towerBody: it topples in its courses) and never the main
+ * one. A no-op outside withHousePlans. (Props census #13, lane B 2026-10-15.) With `bands` (props census #9, E13: the
+ * tower reader) the body is read in storey bands as the shell reading cuts a wall (3.2 m, at most six), so a tower's
+ * floors break and fall band by band.
+ */
+export function recordBody(sink: PartSink, cx: number, cz: number, w: number, d: number, height: number, wall: RegionalBucket, shaft = false, bands = false): void {
+  if (!planSink) return;
+  const scratch = new PartSink(sink.uvOffset), pl = sink.placement();
+  const n = bands ? Math.max(1, Math.min(6, Math.round((height - 0.1) / 3.2))) : 1;
+  const spec: HouseSpec = {
+    w, d, plinth: null, storeys: Array.from({ length: n }, () => ({ h: (height - 0.1) / n, wall })), roof: { kind: 'flat', pitchDeg: 0, eave: 0, verge: 0, thickness: 0.1, bucket: wall },
+    openings: [], chimneys: [], gutters: null, verge: null, reveal: 0, rafters: null, spall: null,
+  };
+  const none: HouseDialect = { window: () => undefined, door: () => undefined };
+  const lay = () => scratch.placed(0, cx, 0, cz, () => { buildHouse(scratch, spec, none); });
+  if (pl) scratch.placed(pl.yaw, pl.x, pl.y, pl.z, lay); else lay();
+  if (shaft) planSink[planSink.length - 1].shaft = true;
+}
+
+/** A round or polygonal shaft recorded as a square tower body of its girth (recordBody), in bands when asked. */
+export function recordShaft(sink: PartSink, cx: number, cz: number, girth: number, height: number, wall: RegionalBucket, bands = false): void {
+  recordBody(sink, cx, cz, girth, girth, height, wall, true, bands);
 }
 
 /** Dress one face with the member capture pointed at it (a no-op outside withHousePlans). */
@@ -874,7 +1075,7 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
     // stone plinth under a stone ground storey, in the one stone print, read as the wall run down into the ground) the
     // plinth's water table: a dressed course along its top, 4.5 cm proud of it and a shade paler, its underside the
     // shadow line that parts the plinth from the wall, its top the doors' threshold. Decor (no collision), never cast
-    if (facadeGroundCraft() && p.h >= 0.2) {
+    if (facadeGroundCraft() && p.h >= 0.2 && p.course !== false) {
       const o = p.out + 0.045, t = Math.min(0.12, p.h * 0.3);
       sink.span(p.bucket, -spec.w / 2 - o, p.h - t, -spec.d / 2 - o, spec.w / 2 + o, p.h + 0.005, spec.d / 2 + o,
         { decor: true, tint: [1.1, 1.08, 1.05], shadeAt: (q: Vec3) => (q[1] < p.h - t + 0.001 ? 0.7 : 1) });
@@ -902,8 +1103,8 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
     return f;
   };
   const faces = frameFaces(bodies[0]);
-  const frame: HouseFrame = { spec, faces, floors, eaveY, bodies, roof: rg, reveal };
-  const plan: HousePlan | null = planSink ? { spec, frame, place: sink.placement(), uvOffset: sink.uvOffset, members: [], timber: null } : null;
+  const frame: HouseFrame = { spec, faces, floors, eaveY, bodies, roof: rg, reveal, gableReveal: Math.min(0.28, Math.max(0.12, reveal)) };
+  const plan: HousePlan | null = planSink ? { spec, frame, place: sink.placement(), uvOffset: sink.uvOffset, members: [], timber: null, crowns: [] } : null;
   if (plan) planSink!.push(plan);
   if (facadeOn()) groundSkirt(sink, spec, faces);
   const roofPatch = wearHouse(spec, rg);
@@ -927,9 +1128,13 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
     for (const name of FACE_NAMES) {
       const face = sf[name];
       const own = spec.openings.filter((o) => o.face === name && o.storey === i);
-      const holes = own.map((o) => {
+      const holes: HoleRect[] = own.map((o) => {
         // a shopfront keeps its stall riser: the glazing starts above it
         const riser = o.kind === 'shopfront' ? 0.55 : 0;
+        if (o.arch) {
+          const spring = b.y0 + o.y0 + (o.arch.spring ?? o.h);
+          return { u0: o.u - o.w / 2, u1: o.u + o.w / 2, y0: b.y0 + o.y0 + riser, y1: spring + o.w / 2, spring };
+        }
         return { u0: o.u - o.w / 2, u1: o.u + o.w / 2, y0: b.y0 + o.y0 + riser, y1: b.y0 + o.y0 + o.h };
       });
       // weathering: rain runs from each sill down the wall below it; a burnt opening's soot climbs the wall over it
@@ -939,16 +1144,27 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
         if (o.kind === 'window' && o.state !== 'burnt') stains.push({ u0: h.u0 + 0.06, u1: h.u1 - 0.06, y0: h.y0 - 1.1, y1: h.y0, bottom: 1, top: 0.82 });
         if (o.state === 'burnt') stains.push({ u0: h.u0 - 0.3, u1: h.u1 + 0.3, y0: h.y1, y1: h.y1 + 1.7, bottom: 0.32, top: 1 });
       });
+      // the shell breaches: each cut as its bounding square, the masonry restored round its ragged outline below
+      const brs = (spec.breaches ?? []).filter((br) => br.face === name && br.storey === i);
+      for (const br of brs) holes.push({ u0: br.u - br.r, u1: br.u + br.r, y0: b.y0 + br.y - br.r, y1: b.y0 + br.y + br.r });
+      // the abutted spans: left out, the storey's height, with no reveal (the solid against them is the wall there); an
+      // opening inside one has no reveal either
+      const abut = (spec.abutted ?? []).filter((a) => a.face === name);
+      own.forEach((o, k) => { if (inAbutted(abut, o)) holes[k] = { ...holes[k], bare: true }; });
+      for (const a of abut) holes.push({ u0: a.u0, u1: a.u1, y0: b.y0, y1: b.y1, bare: true });
       holedFace(sink, wall, face, { u0: -face.width / 2, u1: face.width / 2, y0: b.y0, y1: b.y1 }, holes, reveal, stains,
-        own.map((o) => (o.state === 'burnt' ? 0.4 : 1)), i === bodies.length - 1 ? rainShadow[name] : 1, i === 0 ? footGrime : 1);
+        [...own.map((o) => (o.state === 'burnt' ? 0.4 : 1)), ...brs.map(() => 1), ...abut.map(() => 1)], i === bodies.length - 1 ? rainShadow[name] : 1, i === 0 ? footGrime : 1);
+      for (const br of brs) breachFill(sink, wall, face, br.u, b.y0 + br.y, br.r, Math.max(reveal, 0.12), reveal <= 0, br.seed, br.spall ?? null);
     }
-    sink.quad(wall, [b.x0, b.y1, b.z1], [b.x1, b.y1, b.z1], [b.x1, b.y1, b.z0], [b.x0, b.y1, b.z0]);
+    // (a hollow body — a hall open to its roof — has no attic floor at its eaves: from inside, its back was all the
+    // integrity gate saw)
+    if (!spec.hollow || i < bodies.length - 1) sink.quad(wall, [b.x0, b.y1, b.z1], [b.x1, b.y1, b.z1], [b.x1, b.y1, b.z0], [b.x0, b.y1, b.z0]);
     // the underside: a jetty's soffit, or the ground storey's base (seen where the ground falls away from it)
     sink.quad(wall, [b.x0, b.y0, b.z0], [b.x1, b.y0, b.z0], [b.x1, b.y0, b.z1], [b.x0, b.y0, b.z1], { shade: 0.8 });
   });
   // the roof and gables in the top body's frame
   const moveRoof = (fn: () => void) => (Math.abs(roofCx) < 1e-6 && Math.abs(roofCz) < 1e-6 ? fn() : sink.placed(0, roofCx, 0, roofCz, fn));
-  moveRoof(() => {
+  if (!spec.ownRoof) moveRoof(() => {
     emitRoof(sink, rg, spec.roof, spec.roofColour);
     if (roofPatch) emitRoofPatch(sink, rg, spec.roof, roofPatch);
     if (rg.gable) {
@@ -959,10 +1175,16 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
         // the gable polygon is symmetric in u, and each face's own u axis mirrors it into place
         const poly = rg.gable.map(([u, yy]): [number, number] => [u, yy]);
         // a gable hung with roof slate or tile courses its tiles downward (roof UVs run v down the slope)
-        wallPolygon(sink, gableBucket, face, poly, 0.32, gableBucket === 'roof'
-          ? { uv: { kind: 'plane', origin: facePoint(face, 0, 0, 0), u: face.u, v: [0, -1, 0] } } : {});
+        const gopts: EmitOptions = gableBucket === 'roof' ? { uv: { kind: 'plane', origin: facePoint(face, 0, 0, 0), u: face.u, v: [0, -1, 0] } } : {};
+        const gHoles = dialect.gableOpenings?.(face, poly, frame) ?? [];
+        const gReveal = frame.gableReveal;
+        if (gHoles.length) holedPolygon(sink, gableBucket, face, poly, gHoles, 0.32, gReveal, gopts);
+        else wallPolygon(sink, gableBucket, face, poly, 0.32, gopts);
         if (spec.gableFramed && dialect.dressGable) {
-          capturingMembers(plan, spec.storeys.length, name, eaveY, rg.ridgeTopY, () => dialect.dressGable!(sink, face, poly, frame));
+          sink.recess = gHoles.length ? gReveal : 0;
+          try {
+            capturingMembers(plan, spec.storeys.length, name, eaveY, rg.ridgeTopY, () => dialect.dressGable!(sink, face, poly, frame));
+          } finally { sink.recess = 0; }
         }
       }
       if (spec.verge) {
@@ -991,15 +1213,20 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
       if (storey.framed && dialect.dressWall) {
         capturingMembers(plan, i, name, bodies[i].y0, bodies[i].y1,
           () => dialect.dressWall!(sink, face, { u0: -face.width / 2, u1: face.width / 2, y0: bodies[i].y0, y1: bodies[i].y1 }, own, frame));
-      } else spallRender(sink, spec, storey.wall, face, bodies[i], i, own);
-      // the units stand in the cut openings, set back by the reveal; (round 6) a sill shadows a rendered or masonry wall
+      } else spallRender(sink, spec, storey.wall, face, bodies[i], i, own, (spec.abutted ?? []).filter((a) => a.face === name));
+      // the units stand in the cut openings, set back by the reveal; (round 6) a sill shadows a rendered or masonry wall;
+      // an opening inside an abutted span draws its unit into nothing (its draws kept: the house's stream is unchanged)
+      const abut = (spec.abutted ?? []).filter((a) => a.face === name);
+      const scratch = abut.length ? new PartSink(sink.uvOffset) : null;
       sink.recess = reveal;
+      if (scratch) scratch.recess = reveal;
       try {
         withSillShadow(!storey.framed && SILL_SHADOWED.has(storey.wall) ? storey.wall : null, () => {
           for (const o of own) {
-            if (o.state) damagedOpening(sink, face, o, bodies[i].y0, reveal);
-            else if (o.kind === 'door' || o.kind === 'gate' || o.kind === 'shopfront') dialect.door(sink, face, o, bodies[i].y0, frame);
-            else dialect.window(sink, face, o, bodies[i].y0, frame);
+            const into = scratch && inAbutted(abut, o) ? scratch : sink;
+            if (o.state) damagedOpening(into, face, o, bodies[i].y0, reveal);
+            else if (o.kind === 'door' || o.kind === 'gate' || o.kind === 'shopfront') dialect.door(into, face, o, bodies[i].y0, frame);
+            else dialect.window(into, face, o, bodies[i].y0, frame);
           }
         });
       } finally { sink.recess = 0; }
@@ -1057,7 +1284,7 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
     }
   }
   // rafter feet under the eaves overhang, every 0.8 m along both eaves (dressing)
-  if (spec.rafters && (rg.kind === 'gable' || rg.kind === 'halfhip' || rg.kind === 'hip') && spec.roof.eave >= 0.25) {
+  if (!spec.ownRoof && spec.rafters && (rg.kind === 'gable' || rg.kind === 'halfhip' || rg.kind === 'hip') && spec.roof.eave >= 0.25) {
     const e = spec.roof.eave, c = spec.rafters;
     moveRoof(() => {
       const n = Math.max(2, Math.round((rg.ridgeHalf > 0 ? 2 * rg.halfD : 2 * rg.halfD) / 0.8));
@@ -1072,7 +1299,7 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
     });
   }
   // gutters and downpipes on the eaves sides (+x, -x)
-  if (spec.gutters && spec.roof.kind !== 'flat') {
+  if (!spec.ownRoof && spec.gutters && spec.roof.kind !== 'flat') {
     const colour = spec.gutters.colour;
     const ex = rg.s + spec.roof.eave - 0.06, gy = eaveY - spec.roof.eave * rg.tanP - 0.1;
     const gz = roofD / 2 + (rg.kind === 'gable' ? spec.roof.verge : spec.roof.verge) - 0.05;
@@ -1109,7 +1336,9 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
   return frame;
 }
 
-export interface HoleRect { u0: number; u1: number; y0: number; y1: number }
+/** An opening cut in a wall; `spring`: a round head across its width springs there (Opening.arch), y1 its crown. */
+/** `bare`: a span left out of the face with no reveal (HouseSpec.abutted: a solid stands against it) */
+export interface HoleRect { u0: number; u1: number; y0: number; y1: number; spring?: number; bare?: boolean }
 /** A weathering stain on a face: the wall inside it shaded from `bottom` (at y0) to `top` (at y1). */
 export interface Stain { u0: number; u1: number; y0: number; y1: number; bottom: number; top: number }
 
@@ -1123,8 +1352,9 @@ export function holedFace(sink: PartSink, bucket: RegionalBucket, face: Face, re
   stains: readonly Stain[] = [], revealShade: readonly number[] = [], topShade = 1, bottomShade = 1): void {
   const m = 0.04;
   const kept: number[] = [];
-  const hs = holes.map((h) => ({ u0: Math.max(h.u0, rect.u0 + m), u1: Math.min(h.u1, rect.u1 - m), y0: Math.max(h.y0, rect.y0),
-    y1: Math.min(h.y1, rect.y1 - m) })).filter((h, k) => {
+  // (a bare span keeps no margin: it may run to the face's corner and the storey's top)
+  const hs = holes.map((h) => ({ u0: Math.max(h.u0, rect.u0 + (h.bare ? 0 : m)), u1: Math.min(h.u1, rect.u1 - (h.bare ? 0 : m)),
+    y0: Math.max(h.y0, rect.y0), y1: Math.min(h.y1, rect.y1 - (h.bare ? 0 : m)), spring: h.spring, bare: h.bare })).filter((h, k) => {
     const ok = h.u1 - h.u0 > 0.05 && h.y1 - h.y0 > 0.05;
     if (ok) kept.push(k);
     return ok;
@@ -1168,13 +1398,51 @@ export function holedFace(sink: PartSink, bucket: RegionalBucket, face: Face, re
     for (const [a, b] of cuts) { strip(cur, a); cur = Math.max(cur, b); }
     strip(cur, rect.u1);
   }
+  // (E10) a round-headed opening: the wall back in its head's corners, a fan from each corner over the arc
+  const arcOf = (h: (typeof hs)[number]) => {
+    const c = (h.u0 + h.u1) / 2, rr = (h.u1 - h.u0) / 2, sp = Math.min(h.spring!, h.y1 - rr);
+    // the arc's segments by its size (a window's head in six, a carriage gate's in eight)
+    const n = rr < 0.8 ? 4 : rr < 1.3 ? 6 : 8;
+    return { c, rr, sp, n, at: (t: number): [number, number] => [c + Math.cos(t) * rr, sp + Math.sin(t) * rr] };
+  };
+  for (const h of hs) {
+    if (h.spring === undefined) continue;
+    const a = arcOf(h);
+    for (const side of [-1, 1]) {
+      const corner = P(side < 0 ? h.u0 : h.u1, h.y1), q = a.n / 2;
+      for (let j = 0; j < q; j++) {
+        // the quarter arc from the springer (t = 0 or π) to the crown (π/2)
+        const t0 = side > 0 ? (Math.PI / 2) * (j / q) : Math.PI - (Math.PI / 2) * (j / q);
+        const t1 = side > 0 ? (Math.PI / 2) * ((j + 1) / q) : Math.PI - (Math.PI / 2) * ((j + 1) / q);
+        const [ua, ya] = a.at(t0), [ub, yb] = a.at(t1);
+        sink.polygon(bucket, side > 0 ? [P(ua, ya), corner, P(ub, yb)] : [P(ua, ya), P(ub, yb), corner]);
+      }
+    }
+  }
   if (reveal <= 0) return;
   const r = -reveal;
   // (facade craft, desktop; wave 150: "windows set flush in the wall, with no reveal depth") the reveals a third darker,
   // as the wall's thickness shades them
   const deep = facadeOn() ? 0.68 : 1;
   hs.forEach((h, k) => {
+    if (h.bare) return;
     const dark = (revealShade[kept[k]] ?? 1) * deep;
+    if (h.spring !== undefined) {
+      // (E10) the jambs to the springing line, the intrados round the head, the sill; the room behind the whole shape
+      const a = arcOf(h), back = r - 0.004;
+      sink.quad(bucket, P(h.u0, h.y0), P(h.u0, h.y0, r), P(h.u0, a.sp, r), P(h.u0, a.sp), { shade: 0.74 * dark });
+      sink.quad(bucket, P(h.u1, h.y0), P(h.u1, a.sp), P(h.u1, a.sp, r), P(h.u1, h.y0, r), { shade: 0.74 * dark });
+      for (let j = 0; j < a.n; j++) {
+        const [ua, ya] = a.at(Math.PI * (j / a.n)), [ub, yb] = a.at(Math.PI * ((j + 1) / a.n));
+        sink.quad(bucket, P(ua, ya), P(ub, yb), P(ub, yb, r), P(ua, ya, r), { shade: 0.68 * dark });
+      }
+      sink.quad(bucket, P(h.u0, h.y0), P(h.u1, h.y0), P(h.u1, h.y0, r), P(h.u0, h.y0, r), { shade: 0.9 * dark });
+      sink.quad('dark', P(h.u0, h.y0, back), P(h.u1, h.y0, back), P(h.u1, a.sp, back), P(h.u0, a.sp, back), { decor: true });
+      const fan: Vec3[] = [P(a.c, a.sp, back)];
+      for (let j = 0; j <= a.n; j++) { const [uu, yy] = a.at(Math.PI * (j / a.n)); fan.push(P(uu, yy, back)); }
+      sink.polygon('dark', fan, { decor: true });
+      return;
+    }
     // left jamb faces +u, right jamb -u, the head down, the sill up
     sink.quad(bucket, P(h.u0, h.y0), P(h.u0, h.y0, r), P(h.u0, h.y1, r), P(h.u0, h.y1), { shade: 0.74 * dark });
     sink.quad(bucket, P(h.u1, h.y0), P(h.u1, h.y1), P(h.u1, h.y1, r), P(h.u1, h.y0, r), { shade: 0.74 * dark });
@@ -1185,12 +1453,180 @@ export function holedFace(sink: PartSink, bucket: RegionalBucket, face: Face, re
   });
 }
 
+/**
+ * A shell breach's masonry (props census #7): the wall was cut through as the square round (u, y) ± r; the masonry
+ * between that square and the breach's ragged outline is restored in sectors through the wall's depth (their inner
+ * sides the breach's broken jambs), the render torn off in a wider ring on the face round it, and — on a wall with no
+ * reveal of its own — the room's dark behind it.
+ */
+function breachFill(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, y: number, r: number, depth: number, back: boolean, seed: number,
+  spall: RegionalBucket | null): void {
+  let a = seed >>> 0;
+  const rnd = (): number => { a = (Math.imul(a ^ (a >>> 15), 0x2c1b3c6d) + 0x9e3779b9) >>> 0; return (a & 0xffffff) / 0x1000000; };
+  const n = 12, inner: Array<[number, number]> = [];
+  for (let j = 0; j < n; j++) {
+    const t = (j / n) * Math.PI * 2, rr = r * (0.62 + rnd() * 0.3);
+    inner.push([u + Math.cos(t) * rr, y + Math.sin(t) * rr]);
+  }
+  // where a ray from the middle through an inner point leaves the square
+  const toSquare = (p: [number, number]): [number, number] => {
+    const dx = p[0] - u, dy = p[1] - y, k = r / Math.max(Math.abs(dx), Math.abs(dy), 1e-6);
+    return [u + dx * k, y + dy * k];
+  };
+  const corners: Array<[number, number]> = [[u + r, y + r], [u - r, y + r], [u - r, y - r], [u + r, y - r]];
+  const angle = (p: [number, number]): number => { const t = Math.atan2(p[1] - y, p[0] - u); return t < 0 ? t + Math.PI * 2 : t; };
+  for (let j = 0; j < n; j++) {
+    const p0 = inner[j], p1 = inner[(j + 1) % n], q0 = toSquare(p0), q1 = toSquare(p1);
+    const a0 = angle(q0), a1 = angle(q1) <= a0 ? angle(q1) + Math.PI * 2 : angle(q1);
+    const between = corners.filter((c) => { const t = angle(c); return (t > a0 && t < a1) || (t + Math.PI * 2 > a0 && t + Math.PI * 2 < a1); })
+      .sort((c, d) => ((angle(c) < a0 ? angle(c) + Math.PI * 2 : angle(c)) - (angle(d) < a0 ? angle(d) + Math.PI * 2 : angle(d))));
+    // the sector, counter-clockwise seen from outside: the inner chord, out along the ray, round the square, back in
+    const poly: Array<[number, number]> = [p0, q0, ...between, q1, p1];
+    const pts = poly.map(([pu, py]) => facePoint(face, pu, py, 0));
+    const inward: Vec3 = [-face.out[0], -face.out[1], -face.out[2]];
+    sink.prism(bucket, pts.reverse(), inward, depth, { shade: 0.82 });
+  }
+  if (back) sink.quad('dark', facePoint(face, u - r, y - r, -depth - 0.004), facePoint(face, u + r, y - r, -depth - 0.004), facePoint(face, u + r, y + r, -depth - 0.004),
+    facePoint(face, u - r, y + r, -depth - 0.004), { decor: true });
+  if (spall) {
+    // the render torn off round it: a ring of the masonry under it (decor), wider than the square
+    // (each ray's outer point past the square's edge on it: the ring never folds over a corner)
+    const out = inner.map((p) => {
+      const q = toSquare(p), dx = q[0] - u, dy = q[1] - y, d = Math.hypot(dx, dy), k = (d + r * (0.25 + rnd() * 0.35)) / d;
+      return [q, [u + dx * k, y + dy * k]] as const;
+    });
+    for (let j = 0; j < n; j++) {
+      const [i0, o0] = out[j], [i1, o1] = out[(j + 1) % n];
+      // counter-clockwise seen from outside: out along the first ray, round, back in along the next
+      sink.quad(spall, facePoint(face, i0[0], i0[1], 0.012), facePoint(face, o0[0], o0[1], 0.012), facePoint(face, o1[0], o1[1], 0.012),
+        facePoint(face, i1[0], i1[1], 0.012), { decor: true, shade: 0.78 });
+    }
+  }
+}
+
 /** A wall polygon (u, y pairs, counter-clockwise seen from outside) on a face, `depth` thick inward. */
 export function wallPolygon(sink: PartSink, bucket: RegionalBucket, face: Face, poly: Array<[number, number]>, depth: number, opts: EmitOptions = {}): void {
   const pts = poly.map(([u, yy]) => facePoint(face, u, yy, 0));
   const inward: Vec3 = [-face.out[0], -face.out[1], -face.out[2]];
   // prism(): points ccw seen from +dir (from inside) — the outside-ccw polygon reversed
   sink.prism(bucket, pts.reverse(), inward, depth, opts);
+}
+
+/**
+ * A convex wall polygon (a gable) with rectangular openings cut through it (HouseDialect.gableOpenings): the polygon
+ * sliced at the openings' sills and heads, each slice cut at their jambs, every piece its own prism `depth` deep — the
+ * pieces' sides at an opening are its jambs, head and sill, the full depth of the wall; the room behind is the dark
+ * quad holedFace sets at the reveal's back, which the unit then stands in front of. `stains` shade the wall itself as
+ * holedFace's do (props census #9: a burnt window's soot is the wall darkened over it, never a plate laid on it): the
+ * pieces split again at their edges, each row of a stained piece's corners its own shade. `edgeBreaks` split the
+ * polygon's own edges at those heights (a tall wall a cut deep: its 0.4 m edge in one quad, the weathering's damp
+ * breaks cut its diagonal 2 cm from the corner, a sliver 40 m long).
+ */
+export function holedPolygon(sink: PartSink, bucket: RegionalBucket, face: Face, poly: Array<[number, number]>, holes: readonly HoleRect[],
+  depth: number, reveal: number, opts: EmitOptions = {}, stains: readonly Stain[] = [], edgeBreaks: readonly number[] = []): void {
+  const ys = poly.map(([, y]) => y), lo = Math.min(...ys), hi = Math.max(...ys);
+  const hs = holes.filter((h) => h.u1 - h.u0 > 0.05 && h.y1 - h.y0 > 0.05 && h.y0 > lo - 1e-6 && h.y1 < hi);
+  const ss = stains.map((t) => ({ ...t, y0c: Math.max(t.y0, lo), y1c: Math.min(t.y1, hi) })).filter((t) => t.u1 - t.u0 > 0.05 && t.y1c - t.y0c > 0.05);
+  const stainAt = (t: (typeof ss)[number], yy: number) => t.bottom + (t.top - t.bottom) * Math.min(1, Math.max(0, (yy - t.y0) / (t.y1 - t.y0)));
+  const cuts = [...new Set([...hs.flatMap((h) => [h.y0, h.y1]), ...ss.flatMap((t) => [t.y0c, t.y1c])])].sort((a, b) => a - b);
+  const levels = [lo, ...cuts.filter((y) => y > lo + 1e-4 && y < hi - 1e-4), hi];
+  const pieces: Array<{ pc: Array<[number, number]>; lo?: number; hi?: number; midY?: number }> = [];
+  for (let i = 0; i + 1 < levels.length; i++) {
+    const ya = levels[i], yb = levels[i + 1];
+    const band = clipFace(clipFace(poly, [0, -1, -ya]), [0, 1, yb]);
+    if (band.length < 3) continue;
+    const through = hs.filter((h) => h.y0 <= ya + 1e-6 && h.y1 >= yb - 1e-6).sort((a, b) => a.u0 - b.u0);
+    const live = ss.filter((t) => t.y0c <= ya + 1e-6 && t.y1c >= yb - 1e-6);
+    const marks = [...new Set(live.flatMap((t) => [t.u0, t.u1]))].sort((a, b) => a - b);
+    const push = (pc: Array<[number, number]>) => {
+      if (!live.length) { pieces.push({ pc }); return; }
+      const stained = (q: Array<[number, number]>) => {
+        const us = q.map(([u]) => u), mid = (Math.min(...us) + Math.max(...us)) / 2;
+        const inStain = live.filter((t) => mid > t.u0 && mid < t.u1);
+        if (!inStain.length) { pieces.push({ pc: q }); return; }
+        pieces.push({ pc: q, lo: inStain.reduce((v, t) => v * stainAt(t, ya), 1), hi: inStain.reduce((v, t) => v * stainAt(t, yb), 1), midY: (ya + yb) / 2 });
+      };
+      let rest = pc;
+      for (const x of marks) {
+        const left = clipFace(rest, [1, 0, x]);
+        if (left.length >= 3) stained(left);
+        rest = clipFace(rest, [-1, 0, -x]);
+        if (rest.length < 3) return;
+      }
+      stained(rest);
+    };
+    let rest = band;
+    for (const h of through) {
+      const left = clipFace(rest, [1, 0, h.u0]);
+      if (left.length >= 3) push(left);
+      rest = clipFace(rest, [-1, 0, -h.u1]);
+    }
+    if (rest.length >= 3) push(rest);
+  }
+  // the faces: each piece's front (the slices meet inside the wall: no faces between them; its back is the attic's,
+  // which the dark behind each opening hides), the polygon's own edges round its outside and the openings' jambs, heads
+  // and sills through its depth (wallPolygon's prism, holed)
+  const P = (u: number, y: number, o: number): Vec3 => facePoint(face, u, y, o);
+  const k0 = opts.shade ?? 1;
+  for (const { pc, lo: sl, hi: sh, midY } of pieces) {
+    sink.polygon(bucket, pc.map(([u, y]) => P(u, y, 0)), sl === undefined ? opts : { ...opts, shadeAt: (q) => k0 * (q[1] < midY! ? sl : sh!) });
+  }
+  for (let i = 0; i < poly.length; i++) {
+    const [ua, ya] = poly[i], [ub, yb] = poly[(i + 1) % poly.length];
+    const cuts = edgeBreaks.filter((y) => y > Math.min(ya, yb) + 1e-4 && y < Math.max(ya, yb) - 1e-4).sort((a, b) => (yb > ya ? a - b : b - a));
+    if (!cuts.length) { sink.quad(bucket, P(ub, yb, 0), P(ua, ya, 0), P(ua, ya, -depth), P(ub, yb, -depth), opts); continue; }
+    const stops: Array<[number, number]> = [[ua, ya], ...cuts.map((y): [number, number] => [ua + (ub - ua) * (y - ya) / (yb - ya), y]), [ub, yb]];
+    for (let k = 0; k + 1 < stops.length; k++) {
+      const [u0, y0] = stops[k], [u1, y1] = stops[k + 1];
+      sink.quad(bucket, P(u1, y1, 0), P(u0, y0, 0), P(u0, y0, -depth), P(u1, y1, -depth), opts);
+    }
+  }
+  const back = -reveal - 0.004;
+  for (const h of hs) {
+    sink.quad(bucket, P(h.u0, h.y0, 0), P(h.u0, h.y0, -depth), P(h.u0, h.y1, -depth), P(h.u0, h.y1, 0), { ...opts, shade: 0.74 });
+    sink.quad(bucket, P(h.u1, h.y0, 0), P(h.u1, h.y1, 0), P(h.u1, h.y1, -depth), P(h.u1, h.y0, -depth), { ...opts, shade: 0.74 });
+    sink.quad(bucket, P(h.u0, h.y1, 0), P(h.u0, h.y1, -depth), P(h.u1, h.y1, -depth), P(h.u1, h.y1, 0), { ...opts, shade: 0.66 });
+    sink.quad(bucket, P(h.u0, h.y0, 0), P(h.u1, h.y0, 0), P(h.u1, h.y0, -depth), P(h.u0, h.y0, -depth), { ...opts, shade: 0.9 });
+    // (no reveal: the opening looks into a lit body, a greenhouse's: no room behind it)
+    if (reveal > 0) sink.quad('dark', P(h.u0, h.y0, back), P(h.u1, h.y0, back), P(h.u1, h.y1, back), P(h.u0, h.y1, back), { decor: true });
+  }
+}
+
+/**
+ * Where a tall wall's narrow edges are split (holedPolygon's edge breaks): a centimetre over each of the weathering
+ * pass's damp breaks (weather.ts, 0.35, 1.0, 1.8 m), so its cut there never meets a corner (one quad's diagonal cut 2 cm
+ * from its corner left a 40 m sliver; a corner on the break in float32 was cut again a hair from itself).
+ */
+export const DAMP_EDGE_BREAKS: readonly number[] = [0.36, 1.01, 1.81];
+
+/**
+ * A box (a podium, a lobby, a slab block) whose faces carry openings cut through them (props census #9): a core `cut`
+ * in from every face and the faces holed slabs `cut` deep round it (front and back across the full width, the sides
+ * between them), each opening's reveal back to `reveal` with the dark behind it, for a unit's pane or leaf to stand in.
+ * `cut` may differ by face (a slab block's loggias a bay deep along its front); `more` carries per-face reveals, the
+ * faces' stains and the edge breaks (holedPolygon's). The faces come back by name (bodyFaces' frame, centred on each).
+ */
+export function holedBox(sink: PartSink, bucket: RegionalBucket, x0: number, z0: number, x1: number, z1: number, y0: number, y1: number,
+  holes: Partial<Record<FaceName, readonly HoleRect[]>>, cut: number | Record<FaceName, number>, reveal: number, opts: EmitOptions = {},
+  more: { reveals?: Partial<Record<FaceName, number>>; stains?: Partial<Record<FaceName, readonly Stain[]>>; edgeBreaks?: readonly number[] } = {}): Record<FaceName, Face> {
+  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, wx = x1 - x0, wz = z1 - z0;
+  const c = (name: FaceName) => (typeof cut === 'number' ? cut : cut[name]);
+  sink.span(bucket, x0 + c('left'), y0, z0 + c('back'), x1 - c('right'), y1, z1 - c('front'), opts);
+  const faces: Record<FaceName, Face> = {
+    front: { origin: [cx, 0, z1], u: [1, 0, 0], out: [0, 0, 1], width: wx },
+    right: { origin: [x1, 0, cz], u: [0, 0, -1], out: [1, 0, 0], width: wz },
+    back: { origin: [cx, 0, z0], u: [-1, 0, 0], out: [0, 0, -1], width: wx },
+    left: { origin: [x0, 0, cz], u: [0, 0, 1], out: [-1, 0, 0], width: wz },
+  };
+  for (const name of FACE_NAMES) {
+    // (the sides between the front's and the back's walls: the right face's u runs toward the back, the left's toward
+    // the front)
+    const [ua, ub] = name === 'front' || name === 'back' ? [-wx / 2, wx / 2]
+      : name === 'right' ? [-(wz / 2 - c('front')), wz / 2 - c('back')] : [-(wz / 2 - c('back')), wz / 2 - c('front')];
+    holedPolygon(sink, bucket, faces[name], [[ua, y0], [ub, y0], [ub, y1], [ua, y1]], holes[name] ?? [], c(name), more.reveals?.[name] ?? reveal, opts,
+      more.stains?.[name] ?? [], more.edgeBreaks ?? DAMP_EDGE_BREAKS);
+  }
+  return faces;
 }
 
 function shadeRgb(c: Rgb, k: number): Rgb {

@@ -726,7 +726,7 @@ async function completedCamoWakes(method,legacy=false){
     invalidateGaragePresentation:activity.invalidate,
   });
   try{
-    camo[method]('sabra_mk2_x',method==='set'?'openai':{});
+    camo[method]('sabra_mk2',method==='set'?'openai':{});
     assert.equal(activity.isDirty(),false,'no repaint-completion signal before the pixels are ready');
     assert.ok(harness.delayed,'painting retains the idle timer until completion');
     finishPaint();await camo.completed();

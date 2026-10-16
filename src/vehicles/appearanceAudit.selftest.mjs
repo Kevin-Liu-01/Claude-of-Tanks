@@ -91,7 +91,7 @@ assert.deepEqual(auditTankAppearance(tracks).issues, []);
   const expected = {
     merkava3c: { canvasPale: 2, materialsMax: 26, before: 24 },
     merkava4b: { canvasPale: 2, materialsMax: 24, before: 22 },
-    leclerc: { canvas: 2, materialsMax: 22, before: 22 },
+    leclerc_s2: { canvas: 2, materialsMax: 22, before: 22 },
     k2b: { materialsMax: 25, before: 25 },
     carro45t: { materialsMax: 23, before: 23 },
   };

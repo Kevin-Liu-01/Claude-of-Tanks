@@ -23,10 +23,10 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { buildBedrock, buildRockFormation } from './sceneryRocks.ts';
+import { SCENERY_DESTRUCTIBLE_TYPES, buildConductor, buildPylon } from './maps/sceneryKit.ts';
 import {
-  SANDBAG_WEAVE_UV, SCENERY_DESTRUCTIBLE_TYPES, buildConductor, buildPylon, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap,
-  sandbagBag,
-} from './maps/sceneryKit.ts';
+  SANDBAG_WEAVE_UV, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap, sandbagBag,
+} from './maps/fieldworksKit.ts';
 import {
   BEDROCK_TREE_CLEAR, LANDMARK_RADIUS, STONE_LANDMARKS, isDestructibleLandmark, isStoneLandmark, pylonLegHalf, rockReach,
   sceneryClearances, withGroundCoverHoles,

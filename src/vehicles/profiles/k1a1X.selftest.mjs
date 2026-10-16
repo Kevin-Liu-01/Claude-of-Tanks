@@ -5,7 +5,7 @@ import {registerProfiledBuilders} from '../tankFactoryCore.ts';
 import {K1A1_X_PROFILES} from './k1a1X.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 
-registerProfiledBuilders({k1a1_x:K1A1_X_PROFILES.k1a1_x.build});
+registerProfiledBuilders({k1a1:K1A1_X_PROFILES.k1a1.build});
 const v=(x,y,z)=>new THREE.Vector3(x,y,z);
 const hit=(object,origin,direction,far=15)=>new THREE.Raycaster(origin,direction,0,far).intersectObject(object,true)[0];
 const top=(object,x,z)=>hit(object,v(x,7,z),v(0,-1,0))?.point.y;
@@ -182,7 +182,7 @@ function sourceWhipChecks(tank,label) {
 }
 
 for(const quality of ['high','low']) {
-  const tank=createTank('k1a1_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
+  const tank=createTank('k1a1',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try {
     tank.root.updateMatrixWorld(true);
     const b=new THREE.Box3().setFromObject(tank.root),size=b.getSize(v(0,0,0));

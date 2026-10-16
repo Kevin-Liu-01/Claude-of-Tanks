@@ -38,12 +38,12 @@ try {
       const record = createServiceRecordDialog({ vehicle: () => 'M1A2 Abrams SEP v3', map: () => 'Glacier Pass', modeIcon: () => 'modeStandard' }, () => {});
       window.__RECORD_TEST = { record, seed() {
         // Populate newly earned medals, multi-line names, a full chain, and large stats.
-        bus.emit('ui:battleStart', { specId: 'm1a2', mapId: 'winter' });
+        bus.emit('ui:battleStart', { specId: 'm1a1_abrams_hc', mapId: 'winter' });
         for (let i = 0; i < 8; i++) {
           clock = 20 + i * 4;
           bus.emit('shell:fired', { shooterId: 'me', shellId: i, caliberMm: 120 });
           bus.emit('shell:hit', { attackerId: 'me', targetId: `e${i}`, shellId: i, damage: 1800, kind: 'pen', destroyed: true });
-          bus.emit('tank:destroyed', { id: `e${i}`, killerId: 'me', specId: 't90m', cause: i === 2 ? 'ammorack' : 'shot' });
+          bus.emit('tank:destroyed', { id: `e${i}`, killerId: 'me', specId: 't90am', cause: i === 2 ? 'ammorack' : 'shot' });
         }
         bus.emit('battle:ended', { result: 'victory', mapId: 'winter', durationS: 180, gameMode: 'standard', roster: [] });
       } };

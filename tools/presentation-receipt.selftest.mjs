@@ -7,7 +7,7 @@ import { presentationNumberSource, presentationReceiptErrors, rekeyPresentationS
 // Actual saved/runtime disagreement from frozen nine-tank release 74d189dfa.
 const cases = [
   ['leo2_revolution', { xM:0, zM:.0788 }, { centerYM:1.9843, topHalfM:6.4532, sideHalfM:3.2266 }, 1.9893],
-  ['leo2a7v_x', { xM:.0002, zM:-.0659 }, { centerYM:2.7753, topHalfM:7.5592, sideHalfM:3.7796 }, 2.7825],
+  ['leo2a7v', { xM:.0002, zM:-.0659 }, { centerYM:2.7753, topHalfM:7.5592, sideHalfM:3.7796 }, 2.7825],
 ];
 let negatives = 0;
 for (const [id, anchor, projection, staleY] of cases) {
@@ -70,8 +70,8 @@ assert.match(assets, /if \(saved\) failures\.push\(\.\.\.presentationReceiptErro
 
 // A valid existing A7V image need not be re-framed to the latest pixel centroid.
 const proposal = { xM:.0002, zM:-.0677 }, anchor = cases[1][1], projection = cases[1][2];
-assert.deepEqual(presentationReceiptErrors('leo2a7v_x', anchor, projection, anchor, projection), []);
-assert.ok(presentationReceiptErrors('leo2a7v_x', proposal, { ...projection, topHalfM:7.5611 }, anchor, projection).length,
+assert.deepEqual(presentationReceiptErrors('leo2a7v', anchor, projection, anchor, projection), []);
+assert.ok(presentationReceiptErrors('leo2a7v', proposal, { ...projection, topHalfM:7.5611 }, anchor, projection).length,
   'retain the rejected proposal-as-capture policy as a negative witness'); negatives++;
 
 // Synthetic byte fixtures test provenance/atomic source editing, not images.

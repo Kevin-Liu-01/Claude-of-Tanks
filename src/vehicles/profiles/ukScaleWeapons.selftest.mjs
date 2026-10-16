@@ -42,7 +42,7 @@ for (const [id, expectedScale, expectedFamily] of [
 
 for (const [id, objectName, receiptName] of [
   ['vickers_mk1', 'vickers_mk1_loader_roof_machine_gun', 'vickersRoofMachineGunReceipt'],
-  ['centurion5', 'centurion5_loader_roof_machine_gun', 'centurionRoofMachineGunReceipt'],
+  ['centurion5_2', 'centurion5_loader_roof_machine_gun', 'centurionRoofMachineGunReceipt'],
 ]) {
   const tank = createTank(id, null, {
     proceduralOnly: true,

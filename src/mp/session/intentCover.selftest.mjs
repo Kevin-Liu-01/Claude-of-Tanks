@@ -30,7 +30,7 @@ cover.show({
     mapId: 'verdant',
     players: [
       { id: 'host', team: 'alpha', specId: 'm1a1' },
-      { id: 'guest', team: 'bravo', specId: 't90m' },
+      { id: 'guest', team: 'bravo', specId: 't90am' },
     ],
   },
 });
@@ -42,7 +42,7 @@ assert.equal(calls[0][0], 'cover', 'render cover is acquired synchronously');
 assert.equal(calls[1][0], 'show', 'the opaque room briefing follows in the same turn');
 assert.equal(calls[1][1].mapName, 'Map verdant');
 assert.deepEqual(calls[1][1].allies, [{ id: 'm1a1', isPlayer: true }]);
-assert.deepEqual(calls[1][1].enemies, [{ id: 't90m', isPlayer: false }]);
+assert.deepEqual(calls[1][1].enemies, [{ id: 't90am', isPlayer: false }]);
 assert.deepEqual(calls[2], ['progress', 0.005, 'Loading multiplayer runtime']);
 
 await cover.releaseAfterFailure();

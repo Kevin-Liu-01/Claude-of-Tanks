@@ -12,7 +12,7 @@ const id='marder2',s=getSpec(id);
 assert.equal(s.name,'Marder 2');assert.equal(tankTier(id),10);
 assert.equal(s.gun.caliberMm,50);assert.equal(s.gun.shells.some(r=>r.guided),false);
 assert.equal(s.gun.launcherMuzzles,undefined);
-const independent=['spz_puma_s1','spz_puma_s1_x','kurganets25_x','borsuk'];
+const independent=['spz_wotan','puma_s1','kurganets25','borsuk'];
 const tuning=new Map(independent.map(id=>[id,JSON.stringify(getSpec(id).gun)]));
 for(let i=0;i<2;i++){synchronizeIfvReplicaCombatMetadata();synchronizeSuppliedSourceCombatMetadata();}
 for(const [id,before]of tuning)assert.equal(JSON.stringify(getSpec(id).gun),before,`${id}: independent Marder registration never replaces an existing weapon`);

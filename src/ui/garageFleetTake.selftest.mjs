@@ -36,7 +36,7 @@ const take = {
   poster: '/media/site50-r14/loops/s21-fields-assault.jpg',
   scene: '/media/site50-r14/scenes/s21-fields-assault.scene.json',
 };
-dom.respond('/media/site50-r14/fleet/index.json', { collection: 'site50-r14', vehicles: { t90sm: take } });
+dom.respond('/media/site50-r14/fleet/index.json', { collection: 'site50-r14', vehicles: { t90sm_2013: take } });
 const SHOTS = [
   { img: '/media/site50-r14/stills/s21-fields-assault-close.webp', bootImg: '/media/site50-r14/stills/s21-fields-assault-boot.webp', capKey: 'media.site50.title.s21FieldsAssault' },
   { img: '/media/site50-r14/stills/s07-lake-shellfire.webp', capKey: 'media.site50.title.s07LakeShellfire' },
@@ -84,7 +84,7 @@ function mountPanel(module) {
 
 // 1. A pristine Garage: nothing before it is playable, wherever the panel is.
 const garagePanel = mountPanel(() => import('./fleetTakes.ts'));
-garagePanel.panel.setVehicle('t90sm'); // createGarage's first selection
+garagePanel.panel.setVehicle('t90sm_2013'); // createGarage's first selection
 dom.intersect(garagePanel.shot, 1);
 await settle();
 assert.equal(garagePanel.imports, 0, 'the cold Garage loads no fleet-takes code');
@@ -128,7 +128,7 @@ control.click();
 assert.equal(video.paused, false, 'the play control resumes it, once');
 
 // 4. A tank the index lacks: the rotation returns with its caption and timer; the loop is released.
-garagePanel.panel.setVehicle('m1a2');
+garagePanel.panel.setVehicle('m1a1_abrams_hc');
 assert.ok(!garagePanel.element.classList.contains('vehicle'), 'the stills return');
 assert.equal(garagePanel.caption.textContent, t(SHOTS[0].capKey), 'with the still\'s caption');
 assert.equal(garagePanel.shot.getAttribute('title'), null);
@@ -138,7 +138,7 @@ assert.equal(garagePanel.intervals.size, 1, 'the rotation resumes for a viewer w
 [...garagePanel.intervals.values()][0]();
 await settle();
 assert.equal(garagePanel.preloads.at(-1), SHOTS[1].img, 'and advances');
-garagePanel.panel.setVehicle('t90sm');
+garagePanel.panel.setVehicle('t90sm_2013');
 assert.equal(garagePanel.intervals.size, 0, 'the take suspends it again');
 assert.equal(video.src, take.loop);
 assert.equal(dom.state.fetches.length, 1, 'one index request for the Garage\'s life');
@@ -154,7 +154,7 @@ assert.equal(video.src, take.loop, 'back in the Garage it plays again');
 // 6. A missing index (main until the media lane ships it): the rotation as before, forever.
 const missing = mountPanel(() => import('./fleetTakes.ts?missing-index'));
 dom.state.responses.clear();
-missing.panel.setVehicle('t90sm');
+missing.panel.setVehicle('t90sm_2013');
 dom.intersect(missing.shot, 1);
 await missing.play();
 assert.equal(missing.imports, 1);

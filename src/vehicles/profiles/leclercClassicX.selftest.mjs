@@ -275,7 +275,7 @@ function fieldPackage(tank, all) {
 // spaced plates on the exact loft triangles (leclercClassicXKitArmor.ts), in the AMX-10P 25 kit's protection
 // family; the open slat screens below stay unarmored, and the retained source skirt is the layer behind.
 function fieldKitArmor(all) {
-  const spec = getSpec('leclerc_classic_x');
+  const spec = getSpec('amx56');
   const kit = spec.armor.hullPlates.filter(p => p.surfaceGroup?.startsWith(`${AMX56_KIT_SURFACE_GROUP}:`));
   const loft = all.find(m => m.name === 'hullExternalArmor');
   const key = vs => vs.map(v => v.map(n => n.toFixed(5)).join(',')).sort().join('|');
@@ -328,7 +328,7 @@ for (const quality of ['high', 'low']) {
   const original = KIT.buildRunningGear;
   let tank, gear;
   KIT.buildRunningGear = (...args) => { gear = original(...args); return gear; };
-  try { tank = createTank('leclerc_classic_x', null,
+  try { tank = createTank('amx56', null,
     { quality, proceduralOnly: true, geometryReceipt: true, batchStatic: false }); }
   finally { KIT.buildRunningGear = original; }
   try {

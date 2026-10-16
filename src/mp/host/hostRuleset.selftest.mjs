@@ -35,7 +35,7 @@ import { createInProcessMatchHost } from '../../../server/rooms/localRoomService
   assert.equal(hostRulesetFor('not-a-mode', null, null).mode, 'standard', 'an unknown mode normalizes to Standard');
 }
 
-const seats = [{ seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 'm1a2', equipment: [] }, { seat: 1, playerId: 'p2', name: 'Two', team: 'bravo', specId: 't90m', equipment: [] }];
+const seats = [{ seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 'm1a1_abrams_hc', equipment: [] }, { seat: 1, playerId: 'p2', name: 'Two', team: 'bravo', specId: 't90am', equipment: [] }];
 const arrangement = { allies: null, enemies: null, waveSize: null, enemyNation: null, scoreTarget: 100, respawnS: 4 };
 
 // ---- the browser host's core boots the arranged ruleset (the Worker's path) and seals it for the elected host

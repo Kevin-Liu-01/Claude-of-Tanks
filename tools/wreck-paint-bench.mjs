@@ -12,8 +12,8 @@ import { createCaptureLock } from './capture-lock.mjs';
 
 const TOOL = fileURLToPath(import.meta.url);
 export const RECIPES = Object.freeze([
-  Object.freeze({ specId: 't90m', seed: 2526, pop: false }),
-  Object.freeze({ specId: 'k2', seed: 2002, pop: true }),
+  Object.freeze({ specId: 't90am', seed: 2526, pop: false }),
+  Object.freeze({ specId: 'xk2_black_panther', seed: 2002, pop: true }),
 ]);
 const CATEGORIES = ['constructor', 'collection', 'normalization', 'painting', 'compaction', 'rest'];
 const hash = value => createHash('sha256').update(value).digest('hex');

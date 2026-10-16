@@ -92,7 +92,7 @@ const visuals = [];
 let suitMeshes = 0, leafMeshes = 0, decorMeshes = 0;
 try {
   // a leafy suit (birch sprays), the ULCANS multispectral cover (painted garnish), a spruce suit
-  for (const id of ['pt91_twardy', 'm1a2_sepv3', 'strv103']) {
+  for (const id of ['pt91a_twardy', 'm1a1_abrams_fep', 'strv103b']) {
     const visual = createTank(id, engineCtx, { proceduralOnly: true, quality: 'low', geometryQuality: 'high' });
     visuals.push(visual);
     visual.root.traverse((object) => {
@@ -113,15 +113,15 @@ try {
     });
   }
   // the decor layer on a dressed hull goes through the same registration (decorations.ts buildDecorMaterials)
-  const dressed = createTank('leo2a6', engineCtx, { quality: 'low', geometryQuality: 'high', decor: true });
+  const dressed = createTank('leo2a4', engineCtx, { quality: 'low', geometryQuality: 'high', decor: true });
   visuals.push(dressed);
   dressed.root.traverse((object) => {
     if (!object.isMesh || !object.userData.__decor) return;
     decorMeshes++;
-    assertRegistered(object.material, `leo2a6/${object.name}`);
+    assertRegistered(object.material, `leo2a4/${object.name}`);
     // cosmetic stowage is dressing that distance detail may drop; working smoke banks stay resident
     const expected = object.userData.smokeSockets?.length ? 'equipment' : object.parent?.parent?.userData?.decorFunctional ? 'equipment' : 'nonArmor';
-    assert.equal(object.userData.combatHitboxRole, expected, `leo2a6/${object.name}: ${expected} role`);
+    assert.equal(object.userData.combatHitboxRole, expected, `leo2a4/${object.name}: ${expected} role`);
   });
 } finally {
   for (const visual of visuals) visual.dispose();

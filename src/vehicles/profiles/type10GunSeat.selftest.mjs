@@ -8,7 +8,7 @@ const closeTo = (actual, expected, tolerance, label) => {
     `${label}: expected ${expected} ±${tolerance}, received ${actual}`);
 };
 
-for (const id of ['type10', 'type10b']) {
+for (const id of ['type10_tk_x', 'type10b']) {
   const visual = createTank(id, null, {
     proceduralOnly: true,
     geometryReceipt: true,

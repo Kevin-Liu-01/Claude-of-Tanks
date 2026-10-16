@@ -20,7 +20,7 @@ function helper(){
 }
 helper();assert.equal(packet.rays.length,24);
 for(const quality of ['high','low']){
-  const t=createTank('t90_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const t=createTank('t90',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{t.root.updateMatrixWorld(true);const ms=[];t.root.traverseVisible(m=>{if(m.isMesh&&!m.userData.shadowOnly)ms.push(m);});
     for(const r of packet.rays){const h=hit(ms,r.origin,r.direction);assert.ok(h&&h.point.distanceTo(new THREE.Vector3(...r.point))<.006,`${quality} whole-source ${r.label}: ${h?.point.toArray()} vs ${r.point}`);
       if(r.label==='forward roof')assert.ok(h.face.normal.clone().transformDirection(h.object.matrixWorld).dot(new THREE.Vector3(...r.normal))>.99999,'true shallow source roof crossfall');

@@ -13,4 +13,4 @@ function buildXk2(P: TankBuilderPort & Modern3BuilderPort): void {
   P.turretG.position.set(...XK2_FRAME.turretPivot);
 }
 
-export const XK2_PROFILES = { k2: { build: buildXk2 } } as const;
+export const XK2_PROFILES = { xk2_black_panther: { build: buildXk2 } } as const;

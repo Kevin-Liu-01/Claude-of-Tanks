@@ -19,7 +19,7 @@ type Point = readonly [number, number, number];
 type Strip = readonly [z: number, left: number, right: number, low: number, high: number];
 
 export const CHALLENGER1_X_DATUMS = Object.freeze({
-  challenger1_x: {
+  challenger1_mk3: {
     // Handbook xiii fixes overall/width/hood. Hull and armor roof are inferred
     // separately; its 9.80 m "gun in crutch" is emphatically NOT hull length.
     dims: { hullLengthM: 8.39, overallLengthM: 11.56, widthM: 3.51, heightM: 2.50 },
@@ -29,7 +29,7 @@ export const CHALLENGER1_X_DATUMS = Object.freeze({
     muzzleZ: 7.365,
   },
 });
-const D = CHALLENGER1_X_DATUMS.challenger1_x;
+const D = CHALLENGER1_X_DATUMS.challenger1_mk3;
 
 function local(g: THREE.BufferGeometry, p: Point): THREE.BufferGeometry {
   return g.translate(-p[0], -p[1], -p[2]);
@@ -309,4 +309,4 @@ export function buildChallenger1X(P: TankBuilderPort): void {
   gun(P);
 }
 
-export const CHALLENGER1_X_PROFILES = Object.freeze({ challenger1_x: { build: buildChallenger1X } });
+export const CHALLENGER1_X_PROFILES = Object.freeze({ challenger1_mk3: { build: buildChallenger1X } });

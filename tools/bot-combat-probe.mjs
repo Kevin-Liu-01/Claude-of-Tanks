@@ -1,7 +1,7 @@
 // Shared bot-combat integration probe.
 // Runs real 7v7 setup through the fixed-step simulation and exports the full
 // DEV recorder plus per-team combat/fire-discipline telemetry.
-// Usage: node tools/bot-combat-probe.mjs [--seconds 90] [--tank m1a2]
+// Usage: node tools/bot-combat-probe.mjs [--seconds 90] [--tank m1a1_abrams_hc]
 //   [--map verdant] [--out .qa-bots/bot-combat.json]
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -14,7 +14,7 @@ const opt = (name, fallback) => {
   return i >= 0 ? args[i + 1] : fallback;
 };
 const seconds = Math.max(30, Number(opt('seconds', '90')) || 90);
-const tankId = opt('tank', 'm1a2');
+const tankId = opt('tank', 'm1a1_abrams_hc');
 const mapId = opt('map', 'verdant');
 const output = resolve(opt('out', '.qa-bots/bot-combat.json'));
 const port = 6100 + Math.floor(Math.random() * 300);

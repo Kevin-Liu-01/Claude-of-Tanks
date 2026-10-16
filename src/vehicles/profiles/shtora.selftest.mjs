@@ -31,18 +31,18 @@ for (const scale of [1, 1.32, 1.5]) for (const round of [false, true]) for (cons
   port._shtoraRed?.dispose(); port.mats.dark.dispose();
 }
 
-for (const id of ['t90_x', 't90a_x', 't90a_vladimir_x', 't90a', 't90a_vladimir']) for (const quality of ['high', 'low']) {
+for (const id of ['t90', 't90a', 't90a_vladimir', 't90a_2004', 't90a_2006']) for (const quality of ['high', 'low']) {
   const tank = createTank(id, null, { proceduralOnly: true, quality, geometryReceipt: true, batchStatic: false });
   try {
     tank.root.updateMatrixWorld(true);
     const turret = tank.root.getObjectByName('rig_turret'), lenses = [];
-    if (id === 't90a_x' || id === 't90a_vladimir_x') {
+    if (id === 't90a' || id === 't90a_vladimir') {
       const sight = tank.root.getObjectByName('turretGlass');
       assert.ok(sight?.geometry.getAttribute('position').count > 0,
         `${id}/${quality} retains a real viewing optic separate from red dazzlers`);
       assert.equal(vehicleNightLightEmittersFor(sight).filter(lamp => lamp.kind === 'shtora').length, 0,
         'viewing glass is not relabeled Shtora geometry');
-      const station = id === 't90a_x' ? [-.01,.61,1.0149] : [0,.809,.784];
+      const station = id === 't90a' ? [-.01,.61,1.0149] : [0,.809,.784];
       const aperture = turret.localToWorld(new THREE.Vector3(...station));
       const forward = new THREE.Vector3(0,0,1).transformDirection(turret.matrixWorld);
       const ray = new THREE.Raycaster(aperture.clone().addScaledVector(forward,.1),forward.clone().negate(),0,.11);

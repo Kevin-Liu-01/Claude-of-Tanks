@@ -14,7 +14,7 @@ const controls = (shellSlot, fire) => ({ throttle: 0, steer: 0, brake: true, fir
   shellSlot, aimYaw: 0, aimPitch: .25, aimDistance: 300, actionBits: 0 });
 
 // Swapping ammo must neither bypass nor extend a shared barrel/feed's cycle.
-for (const id of ['mbt70', 'm1a2', 'leclerc']) {
+for (const id of ['mbt70', 'm1a1_abrams_hc', 'leclerc_s2']) {
   const spec = getSpec(id), combat = createCombatState(spec);
   const gun = combat.reload;
   const ammo = [...combat.ammo];
@@ -50,7 +50,7 @@ function authorityHarness(id = 'm1a3') {
   const match = createAuthoritativeMatch({ mapId: 'verdant', countdownS: 0, seed: 12,
     worldCollision: { mapId: 'verdant', heightField: flat, obstacles: [] }, players: [
       { id: 'shooter', specId: id, team: 'alpha', spawn: { x: 0, z: 0, yaw: 0 } },
-      { id: 'target', specId: 'm1a2', team: 'bravo', spawn: { x: 400, z: -400, yaw: 0 } },
+      { id: 'target', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 400, z: -400, yaw: 0 } },
     ] });
   match.onMatchReady();
   const entity = match.entityById.get('shooter'), fired = [];

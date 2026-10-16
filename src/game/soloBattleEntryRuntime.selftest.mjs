@@ -30,8 +30,8 @@ const runtime = createSoloBattleEntryRuntime({
   audio: { loadingOn: (active) => order.push(`loading:${active}`) },
   enterGarage: () => order.push('garage'),
   nextFrame: async () => { order.push('frame'); },
-  isVisibleSpecId: (id) => id === 'm1a2',
-  getSelectedSpecId: () => 'leo2a7v',
+  isVisibleSpecId: (id) => id === 'm1a1_abrams_hc',
+  getSelectedSpecId: () => 'leo2_improved',
   getSelectedMapId: () => 'desert',
   reportError: () => order.push('error'),
   // entry resilience (2026-09-25): the player sees the reason after the Garage is painted and the loader faded
@@ -41,7 +41,7 @@ const runtime = createSoloBattleEntryRuntime({
 
 await runtime.beginSelected({ specId: 'invalid', randomRoster: false, gameMode: 'horde' });
 assert.deepEqual(loadingArgs, [
-  'leo2a7v', 'desert', { randomRoster: false, gameMode: 'horde' },
+  'leo2_improved', 'desert', { randomRoster: false, gameMode: 'horde' },
 ]);
 assert.deepEqual(order, ['cover', 'load', 'error', 'beacon:cold chunk failed', 'loading:false', 'garage', 'frame', 'hide',
   'notice:cold chunk failed'],
@@ -51,17 +51,17 @@ assert.equal(lifecycle.renderingCovered, false);
 
 order.length = 0;
 shouldFail = false;
-await runtime.beginSelected({ specId: 'm1a2', mapId: 'winter' });
+await runtime.beginSelected({ specId: 'm1a1_abrams_hc', mapId: 'winter' });
 assert.deepEqual(loadingArgs, [
-  'm1a2', 'winter', { randomRoster: true, gameMode: 'standard' },
+  'm1a1_abrams_hc', 'winter', { randomRoster: true, gameMode: 'standard' },
 ]);
 assert.deepEqual(order, ['cover', 'load']);
 assert.equal(lifecycle.pending, false);
 assert.equal(lifecycle.renderingCovered, false);
 
 for (const mapId of MAP_IDS) {
-  await runtime.beginSelected({ specId: 'm1a2', mapId, gameMode: 'mars' });
-  assert.deepEqual(loadingArgs, ['m1a2', mapId, { randomRoster: true, gameMode: 'mars' }],
+  await runtime.beginSelected({ specId: 'm1a1_abrams_hc', mapId, gameMode: 'mars' });
+  assert.deepEqual(loadingArgs, ['m1a1_abrams_hc', mapId, { randomRoster: true, gameMode: 'mars' }],
     `${mapId}: Mars solo entry retains the selected battlefield and rules`);
 }
 
@@ -77,7 +77,7 @@ assert.throws(() => createSoloBattleEntryRuntime({}), /requires every recovery p
     audio: { loadingOn: () => {} },
     enterGarage: () => events.push('garage'),
     nextFrame: async () => {},
-    isVisibleSpecId: () => true, getSelectedSpecId: () => 'm1a2', getSelectedMapId: () => 'desert',
+    isVisibleSpecId: () => true, getSelectedSpecId: () => 'm1a1_abrams_hc', getSelectedMapId: () => 'desert',
     reportError: (message) => events.push(`report:${message}`),
     presentFailure: () => { throw new Error('modal unavailable'); },
     onFailure: () => { throw new Error('beacon unavailable'); },
@@ -88,7 +88,7 @@ assert.throws(() => createSoloBattleEntryRuntime({}), /requires every recovery p
   assert.throws(() => createSoloBattleEntryRuntime({
     lifecycle: createBattleEntryLifecycle({ nextFrame: async () => {} }), loading: { begin() {} },
     battleLoad: { showPending() {} }, audio: { loadingOn() {} }, enterGarage() {}, nextFrame: async () => {},
-    isVisibleSpecId: () => true, getSelectedSpecId: () => 'm1a2', getSelectedMapId: () => 'desert', presentFailure: 'nope',
+    isVisibleSpecId: () => true, getSelectedSpecId: () => 'm1a1_abrams_hc', getSelectedMapId: () => 'desert', presentFailure: 'nope',
   }), /requires every recovery port/, 'a non-callable notice port is refused');
 }
 
@@ -133,7 +133,7 @@ for (const outcome of ['success', 'import-failure', 'paint-failure']) {
       await new Promise((resolve, reject) => { releasePaint = resolve; rejectPaint = reject; });
     },
     isVisibleSpecId: () => true,
-    getSelectedSpecId: () => 'm1a2', getSelectedMapId: () => 'random',
+    getSelectedSpecId: () => 'm1a1_abrams_hc', getSelectedMapId: () => 'random',
     reportError: () => events.push('error'),
   });
   const pending = entry.beginSelected();
@@ -222,11 +222,11 @@ assert.match(entryComposition.slice(0, entryComposition.indexOf('\n});')),
     loading: { async begin(...args) { covers.push(['load', args[1]]); } },
     battleLoad: { showPending: (map) => covers.push(['cover', map]), hide: async () => {} },
     audio: { loadingOn() {} }, enterGarage() {}, nextFrame: async () => {},
-    isVisibleSpecId: () => true, getSelectedSpecId: () => 'm1a2', getSelectedMapId: () => 'random',
+    isVisibleSpecId: () => true, getSelectedSpecId: () => 'm1a1_abrams_hc', getSelectedMapId: () => 'random',
     ...(describePendingMap ? { describePendingMap } : {}),
   });
   await make((specId, mapId) => {
-    assert.equal(specId, 'm1a2'); assert.equal(mapId, 'random');
+    assert.equal(specId, 'm1a1_abrams_hc'); assert.equal(mapId, 'random');
     return { mapId: 'railyard', mapName: 'Cinder Junction', thumb: '/maps/railyard.webp' };
   }).beginSelected({});
   assert.deepEqual(covers, [['cover', { mapId: 'railyard', mapName: 'Cinder Junction', thumb: '/maps/railyard.webp' }], ['load', 'random']],

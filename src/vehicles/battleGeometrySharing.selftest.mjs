@@ -28,16 +28,16 @@ for(const mode of ['animated','morph','metadata','draw-range','unsafe-name']){
 for(const row of [a,b,changed]){row.mesh.geometry.dispose();row.mesh.material.dispose();}
 function digest(g){const h=createHash('sha256');for(const [name,at] of Object.entries(g.attributes).sort()){h.update(name);h.update(Buffer.from(at.array.buffer,at.array.byteOffset,at.array.byteLength));}if(g.index)h.update(Buffer.from(g.index.array.buffer,g.index.array.byteOffset,g.index.array.byteLength));return h.digest('hex');}
 const options={quality:'high',proceduralOnly:true,geometryReceipt:true,camoSeed:4242,batchStatic:true,battleDetailLod:true};
-const preview=createTank('type90',null,{...options,staticPreview:true});
+const preview=createTank('type90_kyumaru',null,{...options,staticPreview:true});
 assert.deepEqual(battleGeometrySharingStats(),{geometries:0,leases:0,attributeBytes:0},'Garage previews retain their existing construction/ownership');
 preview.dispose();
-const one=createTank('type90',null,options),two=createTank('type90a',null,options);
+const one=createTank('type90_kyumaru',null,options),two=createTank('type90a',null,options);
 const originals=new Map();for(const visual of [one,two])visual.root.traverse(o=>{if(o.isMesh&&!o.isBatchedMesh)originals.set(o,{geometry:o.geometry,digest:digest(o.geometry)});});
 const oneGeo=new Set();one.root.traverse(o=>{if(o.isMesh)oneGeo.add(o.geometry);});const common=new Set();two.root.traverse(o=>{if(o.isMesh&&oneGeo.has(o.geometry))common.add(o.geometry);});
 assert.ok(common.size>=20,'real variant builds share repeated rigid stocks');
 let disposed=0;for(const g of common)g.addEventListener('dispose',()=>disposed++);
 for(const visual of [one,two]){
- const state=createTankState(getSpec(visual===one?'type90':'type90a'),new T.Vector3(12,.7,-9),.83);
+ const state=createTankState(getSpec(visual===one?'type90_kyumaru':'type90a'),new T.Vector3(12,.7,-9),.83);
  for(let i=0;i<60;i++){state.turretYaw=i*.03;state.gunPitch=Math.sin(i*.1)*.15;state.visualPitch=Math.sin(i*.11)*.13;state.visualRoll=Math.cos(i*.12)*.09;visual.syncFromState(state,.016,i%2?150:12);}
  visual.setDestroyed({pop:true,ageS:.42});visual.syncFromState(state,.12,150);visual.resetForGaragePresentation();
 }

@@ -243,19 +243,19 @@ for (const id of ALL_TANK_IDS) {
   assert.equal(new Set(cargo.map((row) => row.v?.v)).size, 7,
     `${id}: equipment set does not repeat the same prop`);
   assert.ok(cargo.every((row) => row.slot[0] === 'fleetCargo'
-    && row.slot[1].routes.length >= (id === 'strv103' ? 1 : 4)),
+    && row.slot[1].routes.length >= (id === 'strv103b' ? 1 : 4)),
   `${id}: equipment owns its required placement route network`);
   assert.ok(cargo.every((row) => row.v?.nation === getSpec(id).nation),
     `${id}: field equipment inherits the vehicle nation palette`);
   const preferred = cargo.map((row) => row.slot[1].routes[0]);
   assert.deepEqual([...new Set(preferred.map((route) => route[0]))].sort(),
-    (id === 'strv103'
+    (id === 'strv103b'
       ? ['hullRoof']
       : ['hullRearRack', 'turretRear']).sort(),
     `${id}: preferred equipment stays on the bustle and hull rear rack`);
   const routeStations = new Set(cargo.flatMap((row) => row.slot[1].routes.map((route) => route[0])));
   assert.deepEqual([...routeStations].sort(),
-    (id === 'strv103'
+    (id === 'strv103b'
       ? ['hullRoof']
       : ['fender', 'hullRearRack', 'rearDeck', 'turretRear', 'turretRoof', 'turretSide']).sort(),
     `${id}: fallback network covers aft equipment stations only`);
@@ -283,7 +283,7 @@ for (const v of UNPLACED_VARIANTS) assert.ok(!distributed.has(v), `${v}: no play
 assert.equal(distributed.size, FLEET_EQUIPMENT_VARIANTS.length - UNPLACED_VARIANTS.size,
   `${distributed.size} cargo variants are visibly distributed across the playable fleet`);
 
-const strvCargo = decorManifestFor(getSpec('strv103'), () => 0.5)
+const strvCargo = decorManifestFor(getSpec('strv103b'), () => 0.5)
   .filter((row) => row.kit === 'cargo');
 const strvRoofStations = new Map([
   ['mechanics-tool-chest', { x: 0.65, z: -1.45 }],
@@ -336,12 +336,12 @@ const strvCanBase = strvCanPosition.clone()
 assert.ok(Math.abs(strvCanBase.sub(annotatedRoofHit.p).dot(annotatedRoofHit.n) + 0.004) < 1e-7,
   'Strv 103B can cradle embeds 4 mm into the roof carrier instead of floating');
 
-const m48 = {
-  id: 'm48', nation: 'USA', era: 'cold-war',
+const m48a5_patton = {
+  id: 'm48a5_patton', nation: 'USA', era: 'cold-war',
   dims: { widthM: 3.63, heightM: 3.09, hullLengthM: 6.95, overallLengthM: 9.30 },
   armor: { turretless: false },
 };
-const m48Cargo = decorManifestFor(m48, () => 0.5)
+const m48Cargo = decorManifestFor(m48a5_patton, () => 0.5)
   .filter((row) => row.kit === 'cargo');
 const hardCaseIds = new Set([
   'beer-cooler-blue', 'cooler-red', 'insulated-chest-olive',
@@ -377,7 +377,7 @@ for (const randomValue of [.13, .5, .87]) {
 assert.equal(decorManifestFor(getSpec('griffin_viper'), () => .5)
   .find(row => row.kit === 'cable').slot[0], 'hullSideCable',
 'Viper uses its measured horizontal cable seat');
-assert.equal(decorManifestFor(getSpec('griffin50_x'), () => .5)
+assert.equal(decorManifestFor(getSpec('griffin50mm'), () => .5)
   .find(row => row.kit === 'cable').slot[0], 'hullSideTop',
 'Viper repair preserves the source Griffin equipment layout');
 const revolutionManifest = decorManifestFor(getSpec('leo2_revolution'), () => 0.5);

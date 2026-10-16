@@ -283,11 +283,14 @@ export function buildRumShed(rng: Rng): THREE.BufferGeometry {
     r.rotateZ(fall);
     parts.push(r.translate(0.05, frontH + 0.47, z));
   }
-  // the palm-rib roof: ribs laid front to back over the rafters, a hand apart, each a shade of its own
+  // the purlins across the rafters (the r2 standard found the ribs riding the air between rafters running their way)
+  const rafterTop = (x: number) => frontH + 0.54 + (x - 0.05) * Math.tan(fall);
+  for (const x of [-SW / 2 + 1.0, 0, SW / 2 - 0.9]) parts.push(block(0.12, 0.1, SD - 0.2, x, rafterTop(x), 0, TIMBER, rng, 0.06));
+  // the palm-rib roof: ribs laid front to back over the purlins, a hand apart, each a shade of its own
   for (let z = -SD / 2 + 0.1; z <= SD / 2 - 0.1; z += 0.16) {
     const rib = block(SW - 0.2, 0.05, 0.1, 0, -0.025, 0, PALM_RIB, rng, 0.12);
     rib.rotateZ(fall);
-    parts.push(rib.translate(0.1, frontH + 0.6, z));
+    parts.push(rib.translate(0.1, rafterTop(0.1) + 0.125, z));
   }
   // the pool's drums under the roof and its timber box by the back wall
   for (const [x, z, c] of [[-1.6, -3.7, [0.36, 0.44, 0.28]], [-1.0, -3.9, [0.56, 0.3, 0.22]], [-1.5, 3.6, [0.36, 0.44, 0.28]]] as const) {
@@ -297,12 +300,32 @@ export function buildRumShed(rng: Rng): THREE.BufferGeometry {
   return merge(parts.map((g) => dampFoot(g, 0.8)));
 }
 
-/** The shade shelled: the back wall's stumps and its footing, the roof's ribs and timber strewn, the drums down. */
+/**
+ * The shade shelled: the back wall's stumps and its footing, the side walls' stubs, the front beam and its posts down
+ * across the floor, the roof come down in mats of ribs lying over the drums and the box (its whole plan, a heap, not a
+ * raft: the r2 standard), loose ribs and timber strewn, the drums down.
+ */
 export function buildRumShedBroken(rng: Rng): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [block(0.7, 0.5, SD + 0.2, -SW / 2 + 0.25, -0.3, 0, STONE, rng, 0.05)];
   for (let z = -SD / 2 + 0.8; z < SD / 2 - 0.8; z += 2.0) {
     if (rng() < 0.35) continue;
     parts.push(block(0.5, 0.5 + rng() * 1.8, 1.8, -SW / 2 + 0.25, 0, z, rng() < 0.5 ? RENDER : STONE, rng, 0.05));
+  }
+  for (const s of [-1, 1]) parts.push(block(SW * 0.3, 0.6 + rng() * 0.4, 0.4, -SW / 2 + SW * 0.15, 0, s * (SD / 2 - 0.2), STONE, rng, 0.04));
+  // the front beam down along the front, its posts lying out from it
+  const beam = block(0.24, 0.22, SD - 0.6, 0, 0, 0, TIMBER, rng, 0.06);
+  beam.rotateY((rng() - 0.5) * 0.12);
+  parts.push(beam.translate(SW / 2 - 0.9, 0.0, 0));
+  for (let k = 0; k < 4; k++) {
+    const post = block(0.2, 0.2, SH - 0.6, 0, 0, 0, TIMBER, rng, 0.08);
+    post.rotateY(0.3 + rng() * 0.6);
+    parts.push(post.translate(SW / 2 - 1.4 - rng() * 0.4, 0.0, -SD / 2 + 1.2 + k * (SD - 2.4) / 3));
+  }
+  // the roof's mats: the ribs still bound in sheets, lying tipped over what is under them
+  for (let k = 0; k < 5; k++) {
+    const mat = block(SW * (0.36 + rng() * 0.08), 0.06, SD * 0.18, 0, 0, 0, PALM_RIB, rng, 0.12);
+    mat.rotateZ((rng() - 0.5) * 0.5); mat.rotateX((rng() - 0.5) * 0.3); mat.rotateY((rng() - 0.5) * 0.25);
+    parts.push(mat.translate(-SW * 0.16 + (k % 2) * SW * 0.3, 0.5 + rng() * 0.6, -SD / 2 + SD * 0.13 + k * SD * 0.185));
   }
   for (let i = 0; i < 14; i++) {
     const b = block(2 + rng() * 3, 0.08, 0.14, 0, 0, 0, rng() < 0.6 ? PALM_RIB : TIMBER, rng, 0.1);
@@ -310,6 +333,7 @@ export function buildRumShedBroken(rng: Rng): THREE.BufferGeometry {
     parts.push(b.translate((rng() - 0.5) * (SW - 3), 0.05 + rng() * 0.25, (rng() - 0.5) * (SD - 3)));
   }
   parts.push(drum(1.0, 0, -2.0, [0.36, 0.44, 0.28], rng, true), drum(-0.8, 0, 2.6, [0.56, 0.3, 0.22], rng, true));
+  parts.push(drum(-1.6, 0, -3.7, [0.36, 0.44, 0.28], rng), block(2.4, 0.9, 0.7, -SW / 2 + 1.2, 0, 0.8, TIMBER, rng, 0.08));
   return merge(parts.map((g) => dampFoot(g, 0.8)));
 }
 
@@ -445,12 +469,17 @@ function buildBedouinTentBroken(plan: TentPlan, rng: Rng): THREE.BufferGeometry 
   const { w, l } = plan;
   const parts: THREE.BufferGeometry[] = [];
   const bumps = Array.from({ length: 5 }, () => [(rng() - 0.5) * w * 0.7, (rng() - 0.5) * l * 0.7, 0.15 + rng() * 0.35] as const);
+  // (one ridge pole still standing, leaning, the roof hanging from it in a fold: a heap, not a raft — the r2 standard)
+  const pz = (rng() < 0.5 ? -1 : 1) * l * (0.15 + rng() * 0.15), ph = plan.ridge * (0.6 + rng() * 0.1);
   parts.push(sheet((i, j) => {
     const x = -w / 2 + w * i / 6, z = -l / 2 + l * j / 8;
     let y = 0.04;
     for (const [bx, bz, bh] of bumps) y += bh * Math.exp(-((x - bx) ** 2 + (z - bz) ** 2) / 0.9);
-    return [x, Math.min(y, 0.9), z];
+    y = Math.min(y, 0.9);
+    y = Math.max(y, ph * Math.exp(-(x * x) / (0.35 * w) - ((z - pz) ** 2) / (0.25 * l)));
+    return [x, y, z];
   }, 6, 8, (i) => GOAT[i % GOAT.length], rng));
+  parts.push(member([0.05, 0, pz - 0.1], [0, ph - 0.03, pz], 0.08, POLE, rng));
   for (let k = 0; k < plan.poles + 2; k++) {
     const z = (rng() - 0.5) * l * 0.8, x = (rng() - 0.5) * w * 0.6, a = rng() * Math.PI;
     const r = Math.min(0.9 + rng() * 0.5, (w / 2 - Math.abs(x) - 0.08) / Math.max(0.2, Math.abs(Math.cos(a))));

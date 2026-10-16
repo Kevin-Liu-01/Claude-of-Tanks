@@ -13,7 +13,7 @@ const pose = (mesh, index) => {
   return { position, scale };
 };
 
-for (const id of ['leclerc', 'leclerc_xlr', 'amx56']) {
+for (const id of ['leclerc_s2', 'leclerc_sxxi', 'leclerc_s1']) {
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality: 'high',

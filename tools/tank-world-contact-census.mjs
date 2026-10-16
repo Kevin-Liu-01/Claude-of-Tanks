@@ -47,7 +47,7 @@ export const CLASSES = Object.freeze(['terrain', 'walls', 'roofs', 'objects', 't
 const STUDIES = Object.freeze(['stones']);
 export const VARIANTS = Object.freeze(['base', 'assault-trenches']);
 /** The hulls the sites rotate through (light, medium, main battle, heavy). */
-export const CENSUS_HULLS = Object.freeze(['t90m', 'jpz_e100_x', 'bmp2', 'm1a2']);
+export const CENSUS_HULLS = Object.freeze(['t90am', 'jpz_e100', 'bmp2', 'm1a1_abrams_hc']);
 const WORLD_HALF_M = 512;
 const DT = 1 / 60;
 
@@ -440,7 +440,7 @@ function wallManeuvers(world, site, seed) {
     }
     if (!out.some(([m]) => m === 'pivot')) {
       // parked along the wall, its side half a metre off it, turning in place
-      const spec = getSpec('t90m');
+      const spec = getSpec('t90am');
       const off = 0.5 * spec.dims.widthM + 0.5;
       const px = e.mx + e.nx * off, pz = e.mz + e.nz * off;
       if (!solidAt(records, px, pz, world.contact(px, pz))) {
@@ -689,17 +689,17 @@ function tankManeuvers(world, site, seed) {
   return [
     ['headon', { ...driveAcross({ ...p0, yaw, speed: 10, driveS: 2.5, total: 7, governMps: 10 }), ...o,
       extras: [{ id: 'oncoming', specId: 'same', ...p1, yaw: yaw + Math.PI, speed: 10, input: (t) => (t < 2.5 ? hold(1) : hold(0, 0, true)) }] }],
-    ['push', { ...driveAcross({ ...at(-7), yaw, driveS: 6, total: 10, governMps: 4 }), ...o, extras: [{ id: 'parked', specId: 't90m', ...pp, yaw }] }],
+    ['push', { ...driveAcross({ ...at(-7), yaw, driveS: 6, total: 10, governMps: 4 }), ...o, extras: [{ id: 'parked', specId: 't90am', ...pp, yaw }] }],
     ['tbone', { ...driveAcross({ ...at(-14), yaw, speed: 10, driveS: 2, total: 6, governMps: 10 }), ...o,
-      extras: [{ id: 'parked', specId: 'm1a2', ...pp, yaw: yaw + Math.PI / 2 }] }],
-    ['stack', { ...dropOn({ ...at(0.3, 0.2), yaw: yaw + 0.3, dropTo: 3.5, total: 9 }), extras: [{ id: 'lower', specId: 'm1a2', ...pw, yaw }] }],
+      extras: [{ id: 'parked', specId: 'm1a1_abrams_hc', ...pp, yaw: yaw + Math.PI / 2 }] }],
+    ['stack', { ...dropOn({ ...at(0.3, 0.2), yaw: yaw + 0.3, dropTo: 3.5, total: 9 }), extras: [{ id: 'lower', specId: 'm1a1_abrams_hc', ...pw, yaw }] }],
     ['climb-onto', { ...driveAcross({ ...at(-6.5), yaw, throttle: 0.5, driveS: 6, total: 10, governMps: 2.5 }), ...o,
       extras: [{ id: 'parked', specId: 'bmp2', ...pw, yaw }] }],
-    ['wreck-drop', { ...dropOn({ ...at(-0.6, 0.4), yaw: yaw + 0.7, dropTo: 3, total: 9 }), extras: [{ id: 'wreck', specId: 't90m', ...pw, yaw, wreck: true }] }],
+    ['wreck-drop', { ...dropOn({ ...at(-0.6, 0.4), yaw: yaw + 0.7, dropTo: 3, total: 9 }), extras: [{ id: 'wreck', specId: 't90am', ...pw, yaw, wreck: true }] }],
     ['wreck-ram', { ...driveAcross({ ...at(-14), yaw, speed: 9, driveS: 2.5, total: 7, governMps: 9 }), ...o,
-      extras: [{ id: 'wreck', specId: 'm1a2', ...pp, yaw: yaw + 0.4, wreck: true }] }],
+      extras: [{ id: 'wreck', specId: 'm1a1_abrams_hc', ...pp, yaw: yaw + 0.4, wreck: true }] }],
     ['side-scrape', { ...driveAcross({ ...at(-10, -2.1), yaw, speed: 7, driveS: 3, total: 7, governMps: 7 }), ...o,
-      extras: [{ id: 'other', specId: 't90m', ...at(-10, 2.1), yaw, speed: 7, input: (t) => (t < 4 ? hold(1, -0.25) : hold(0, 0, true)) }] }],
+      extras: [{ id: 'other', specId: 't90am', ...at(-10, 2.1), yaw, speed: 7, input: (t) => (t < 4 ? hold(1, -0.25) : hold(0, 0, true)) }] }],
   ];
 }
 
@@ -1057,7 +1057,7 @@ async function main() {
   const variants = list(args.variants, ['base']);
   const classes = list(args.classes, [...CLASSES]);
   const sites = Number(args.sites ?? 4);
-  await ensureAuthorityFleet([...new Set([...CENSUS_HULLS, 't90m', 'm1a2', 'bmp2'])]);
+  await ensureAuthorityFleet([...new Set([...CENSUS_HULLS, 't90am', 'm1a1_abrams_hc', 'bmp2'])]);
   if (args.out) mkdirSync(args.out, { recursive: true });
   for (const mapId of maps) {
     for (const variant of variants) {

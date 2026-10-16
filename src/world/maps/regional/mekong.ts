@@ -278,14 +278,21 @@ const collapsed: RegionalBuilder = (ctx) => {
   }
   // (the buildings stream, 2026-10-12, the integrity check: the fallen roof sheets hung at drawn heights over the mud)
   // each sheet's ends on what is under them: the thatch heap where it reaches, the ground elsewhere
-  const under = (px: number, pz: number): number => (Math.abs(px) <= W * 0.3 && Math.abs(pz) <= D * 0.25 ? 0.47 : 0.02);
+  // (the thatch's mound under them: its slope's height where they reach it, the ground elsewhere)
+  const moundR = Math.min(W * 0.32, D * 0.27), moundTop = Math.min(W, D) * 0.1;
+  const under = (px: number, pz: number): number => {
+    const r = Math.hypot(px, pz);
+    return r >= moundR ? 0.02 : r <= moundTop ? 0.47 : 0.02 + 0.45 * (moundR - r) / (moundR - moundTop);
+  };
   for (let k = 0; k < 4; k++) {
     const a = rng() * Math.PI, x = (rng() - 0.5) * W * 0.6, z = (rng() - 0.5) * D * 0.6;
     const ax = x - Math.cos(a) * 1.6, az = z - Math.sin(a) * 1.6; rng();
     const bx = x + Math.cos(a) * 1.6, bz = z + Math.sin(a) * 1.6; rng();
     sink.member('roof', [ax, under(ax, az), az], [bx, under(bx, bz), bz], 1.6, 0.05, [0, 1, 0], { decor: true, exposed: true });
   }
-  sink.span('straw', -W * 0.3, -0.1, -D * 0.25, W * 0.3, 0.45, D * 0.25, { decor: true });
+  // (props census #7, lane B 2026-10-14; the judges: "the thatch a straw box") the fallen thatch slumped in a low mound
+  // under the sheets, its ends ragged
+  sink.cylinder('straw', [0, -0.1, 0], 'y', 0.57, moundR, 9, { decor: true }, moundTop, true, rng() * 3);
   return sink.finish();
 };
 

@@ -57,7 +57,7 @@ export function addChieftain5XSourceGun(P: TankBuilderPort, trunnion: Point): vo
   // floor at 6.24935 behind a dark stock disc. The factory's dark mouth disc at
   // the tube edge hid that recess entirely; the measurement stays recorded in
   // chieftain5XSource.selftest.mjs and docs/references/tanks/
-  // chieftain5_x.supplied-build-scalars.json (gunBoreRadiusM, gunBoreFloorZ).
+  // chieftain5.supplied-build-scalars.json (gunBoreRadiusM, gunBoreFloorZ).
   P.add('gun', new THREE.CircleGeometry(.1017, 40), 0, 0, muzzle - trunnion[2]);
   P.muzzleZ = muzzle - trunnion[2];
 }

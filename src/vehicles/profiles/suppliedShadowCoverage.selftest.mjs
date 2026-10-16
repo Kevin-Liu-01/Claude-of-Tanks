@@ -8,22 +8,22 @@ import { VEHICLE_SIZE_FACTORS } from '../vehicleSizePolicy.ts';
 // These are actual shadow extrema after the existing 50 mm body inset, not
 // source-triangle ratios. Removing an armor/hatch opt-in must fail coverage.
 const cases = {
-  kurganets25_x: [['hull', 'min', 'x', -2.0145], ['hull', 'max', 'x', 2.0145]],
-  ztz100_x: [['hull', 'min', 'z', -3.838]],
+  kurganets25: [['hull', 'min', 'x', -2.0145], ['hull', 'max', 'x', 2.0145]],
+  ztz100: [['hull', 'min', 'z', -3.838]],
   // Restored Object_27 LEFT flange: source X=-2.1026399136 at Y1.76282.
   // Right authored armor stays +2.10; the 50 mm inset is asymmetric here.
   // Independent source/native proof: docs/history/research/stale-qa-witness-repair-20260918.md.
   warrior_tes_h: [['hull', 'min', 'x', -2.05264], ['hull', 'max', 'x', 2.05]],
-  griffin50_x: [['hull', 'max', 'x', 1.75]],
-  ajax_x: [], // Its lower side armor extends a diagonal, not an AABB extreme.
-  kf41_lynx_x: [['hull', 'max', 'x', 1.75], ['hull', 'max', 'y', 2.26], ['turret', 'max', 'y', .823]],
-  cv90_mkiv_x: [['hull', 'min', 'x', -1.5819], ['hull', 'max', 'x', 1.5106]],
-  cv90105_tml_x: [['hull', 'max', 'x', 1.5085], ['turret', 'max', 'y', .9165]],
-  sabra_mk2_x: [['hull', 'max', 'x', 1.805968], ['turret', 'max', 'y', 1.378]],
-  aft10_x: [], // No additional fixed armor stock; preserve its existing caster.
-  bmp3m_dragun125_x: [['hull', 'max', 'x', 1.96]],
-  k21_x: [['hull', 'max', 'x', 1.684]],
-  type96b_x: [['hull', 'max', 'z', 3.51476]],
+  griffin50mm: [['hull', 'max', 'x', 1.75]],
+  ajax: [], // Its lower side armor extends a diagonal, not an AABB extreme.
+  kf41_lynx: [['hull', 'max', 'x', 1.75], ['hull', 'max', 'y', 2.26], ['turret', 'max', 'y', .823]],
+  cv90_mk4: [['hull', 'min', 'x', -1.5819], ['hull', 'max', 'x', 1.5106]],
+  cv90105_tml: [['hull', 'max', 'x', 1.5085], ['turret', 'max', 'y', .9165]],
+  sabra_mk2: [['hull', 'max', 'x', 1.805968], ['turret', 'max', 'y', 1.378]],
+  aft10: [], // No additional fixed armor stock; preserve its existing caster.
+  bmp3m_dragun125: [['hull', 'max', 'x', 1.96]],
+  k21: [['hull', 'max', 'x', 1.684]],
+  type96b: [['hull', 'max', 'z', 3.51476]],
 };
 // Owner-directed whole-vehicle scale; the caster still uses a physical 50 mm inset. The factors come from the size
 // policy itself: a hand-kept copy missed main's 0.9 Kurganets-25 and BMP-3M Dragun (2026-10-02).
@@ -31,7 +31,7 @@ const resized=VEHICLE_SIZE_FACTORS;
 // Legacy casters (no supplied-armor calipers) still take the three-draw, owner, no-colour-write, finite and
 // budget checks. Their former byte-exact position digests are retired: whole-tank change detection is the
 // fleet geometry ledger's.
-const legacy = ['leclerc', 'm1a2'];
+const legacy = ['leclerc_s2', 'm1a1_abrams_hc'];
 const ids = [...Object.keys(cases), ...legacy];
 await ensureInteriorFills(ids);
 const point = new THREE.Vector3();
@@ -88,13 +88,13 @@ for (const quality of ['high', 'low']) for (const id of ids) {
       assert.ok(Math.abs(caster.boundingBox.min.x - armor.boundingBox.min.x - .05) < .000002, 'Warrior: left caster derives from real stock with exactly 50 mm inset');
       assert.ok(Math.abs(armor.boundingBox.max.x - caster.boundingBox.max.x - .05) < .000002, 'Warrior: right caster retains the same physical inset');
     }
-    if (id === 'ajax_x' || id === 'griffin50_x') {
+    if (id === 'ajax' || id === 'griffin50mm') {
       const owner = root.getObjectByName('rig_hull');
       const direction = new THREE.Vector3(.6143820296592883, -.7708333333333333, .16837664283966375);
       // The owner stretched Griffin's hull Z by 1.10. Apply the inverse
       // transpose to this fixed caliper direction (without renormalizing),
       // preserving the original source-stock support values and tolerances.
-      if (id === 'griffin50_x') direction.z /= 1.10;
+      if (id === 'griffin50mm') direction.z /= 1.10;
       const baseline = ['hull', 'hullTrackGuardL', 'hullTrackGuardR', 'hullRubber', 'hullFixedPaintedBodywork'].map(name => owner.getObjectByName(name));
       const original = support(baseline, owner, direction);
       const armor = support([owner.getObjectByName('hullExternalArmor')], owner, direction);
@@ -104,7 +104,7 @@ for (const quality of ['high', 'low']) for (const id of ids) {
       // authenticated extension is now 194.167 mm, not the old 365.635 mm.
       // See docs/history/research/stale-qa-witness-repair-20260918.md. The inset
       // must retain that real lower-side silhouette without extending past it.
-      const measuredExtension = (id === 'ajax_x' ? .421735 : .194166655) * .90;
+      const measuredExtension = (id === 'ajax' ? .421735 : .194166655) * .90;
       assert.ok(Math.abs(armor - original - measuredExtension) < .001, `${id}: original source-stock witness stays fixed`);
       assert.ok(actual > original + measuredExtension - .10, `${id}: lower side armor participates in the shadow`);
       assert.ok(actual < armor, `${id}: caster remains inside the measured side armor`);

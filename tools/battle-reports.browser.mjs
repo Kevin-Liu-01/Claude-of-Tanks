@@ -36,15 +36,15 @@ try {
    await import('/src/ui/serviceRecord.css');
    const bus=createBus();installBattleRecords(bus);let clock=10;
    installServiceRecord(bus,{playerId:()=> 'me',playerTeam:()=> 'player',teamOf:id=>id==='me'?'player':'enemy',gameMode:()=> 'standard',clockS:()=>clock,playerHpFraction:()=>1,playerMaxHp:()=>2600,playerNation:()=> 'USA',playerAerialKind:()=>null,respawns:()=>false});
-   bus.emit('ui:battleStart',{specId:'m1a2',mapId:'winter'});
-   for(let i=0;i<3;i++){clock=20+i*4;bus.emit('shell:fired',{shooterId:'me',shellId:i,caliberMm:120});bus.emit('shell:hit',{attackerId:'me',targetId:`e${i}`,shellId:i,damage:1800,kind:'pen',destroyed:true});bus.emit('tank:destroyed',{id:`e${i}`,killerId:'me',specId:'t90m',cause:i===2?'ammorack':'shot'});}
+   bus.emit('ui:battleStart',{specId:'m1a1_abrams_hc',mapId:'winter'});
+   for(let i=0;i<3;i++){clock=20+i*4;bus.emit('shell:fired',{shooterId:'me',shellId:i,caliberMm:120});bus.emit('shell:hit',{attackerId:'me',targetId:`e${i}`,shellId:i,damage:1800,kind:'pen',destroyed:true});bus.emit('tank:destroyed',{id:`e${i}`,killerId:'me',specId:'t90am',cause:i===2?'ammorack':'shot'});}
    bus.emit('battle:ended',{result:'victory',mapId:'winter',durationS:180,gameMode:'standard',roster:[]});
    const host=document.createElement('div');document.body.append(host);
    const screen=createEndScreen(createBus(),host);
-   const ally=Array.from({length:15},(_,i)=>({id:`a${i}`,name:`Allied Commander ${i+1}`,specId:i%2?'leo2a5':'m1a2',dmg:2315-i*110,kills:i%4,deaths:i%2,dead:i>8,isPlayer:i===0}));
-   const enemies=Array.from({length:15},(_,i)=>({id:`e${i}`,name:`Enemy Commander ${i+1}`,specId:'t90m',dmg:1600-i*90,kills:i%3,dead:true}));
-   const sum={playerVehicle:'M1A2 Abrams',playerSpecId:'m1a2',map:'Glacier Pass',mapId:'winter',timeS:180,stats:{dealt:2315,received:740,blocked:1240,fired:20,hits:14,pens:9,assist:870,modulesDestroyed:4,spotted:6},kills:[{id:'e1',name:'T-90M',specId:'t90m',dmg:1800}],allies:ally,enemies,awards:{medals:['first_blood','detonator'],achievements:[]},finalBlow:{cause:'ammorack',attacker:'M1A2 Abrams',target:'T-90M',shell:'M829A3',attackerIsPlayer:true,targetIsPlayer:false}};
-   const record=createServiceRecordDialog({vehicle:id=>id==='m1a2'?'M1A2 Abrams':'T-90M',map:()=> 'Glacier Pass',modeIcon:()=> 'modeStandard'},()=>{});
+   const ally=Array.from({length:15},(_,i)=>({id:`a${i}`,name:`Allied Commander ${i+1}`,specId:i%2?'leo2a4_v':'m1a1_abrams_hc',dmg:2315-i*110,kills:i%4,deaths:i%2,dead:i>8,isPlayer:i===0}));
+   const enemies=Array.from({length:15},(_,i)=>({id:`e${i}`,name:`Enemy Commander ${i+1}`,specId:'t90am',dmg:1600-i*90,kills:i%3,dead:true}));
+   const sum={playerVehicle:'M1A2 Abrams',playerSpecId:'m1a1_abrams_hc',map:'Glacier Pass',mapId:'winter',timeS:180,stats:{dealt:2315,received:740,blocked:1240,fired:20,hits:14,pens:9,assist:870,modulesDestroyed:4,spotted:6},kills:[{id:'e1',name:'T-90M',specId:'t90am',dmg:1800}],allies:ally,enemies,awards:{medals:['first_blood','detonator'],achievements:[]},finalBlow:{cause:'ammorack',attacker:'M1A2 Abrams',target:'T-90M',shell:'M829A3',attackerIsPlayer:true,targetIsPlayer:false}};
+   const record=createServiceRecordDialog({vehicle:id=>id==='m1a1_abrams_hc'?'M1A2 Abrams':'T-90M',map:()=> 'Glacier Pass',modeIcon:()=> 'modeStandard'},()=>{});
    window.__REPORTS={screen,sum,record};screen.show('victory',sum);
   });
   for(const result of ['victory','defeat','draw']) {

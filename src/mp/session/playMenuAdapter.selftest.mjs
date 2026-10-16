@@ -26,7 +26,7 @@ const freePort = () => new Promise((resolve, reject) => {
   probe.once('error', reject);
   probe.listen(0, '127.0.0.1', () => { const { port } = probe.address(); probe.close(() => resolve(port)); });
 });
-const selection = { specId: 'm1a2', mapId: 'verdant', equipment: [], camo: 'factory' };
+const selection = { specId: 'm1a1_abrams_hc', mapId: 'verdant', equipment: [], camo: 'factory' };
 const clients = [];
 /** Node's `ws` reports a socket closed before its handshake completed as an 'error' nobody may own (the transport drops
  * its listeners with the socket, as the exit flow's receipt requires); a browser socket never throws for it. */
@@ -67,7 +67,7 @@ try {
   assert.equal(lobby.hostId, 'alice');
   assert.equal(lobby.phase, 'waiting');
   assert.equal(lobby.players.length, 1);
-  assert.equal(lobby.players[0].specId, 'm1a2');
+  assert.equal(lobby.players[0].specId, 'm1a1_abrams_hc');
   const observed = [];
   const stop = host.observe((state) => observed.push(state.revision));
   assert.equal(observed.length, 1, 'observe replays the newest lobby at once');
@@ -77,7 +77,7 @@ try {
   // ---- join: the guest's connection, the lobby on both sides, a seat command
   const guestEvents = [];
   const guest = adapter(guestEvents);
-  const joined = await guest.connect({ kind: 'join', mode: 'private', roomsUrl: server.url, roomCode: created.roomInfo.roomCode.toLowerCase(), player: { id: 'bob', name: 'Bob' }, selection: { ...selection, specId: 't90m' }, teamSize: 2 });
+  const joined = await guest.connect({ kind: 'join', mode: 'private', roomsUrl: server.url, roomCode: created.roomInfo.roomCode.toLowerCase(), player: { id: 'bob', name: 'Bob' }, selection: { ...selection, specId: 't90am' }, teamSize: 2 });
   assert.equal(joined.role, 'client');
   assert.equal(joined.roomInfo.hostName, 'Alice');
   await until(() => observed.length >= 2 && created.session.lobby.players.length === 2, 'the host sees the guest');

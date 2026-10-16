@@ -30,7 +30,7 @@
 // carries its own colour divided by that texel's.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { sandbagBag } from './sceneryKit.ts';
+import { sandbagBag } from './fieldworksKit.ts';
 import { FractureSettle, edgeRuns, type SettleTris } from './fractureSettle.ts';
 import type { DamageMeshWriter, FractureMaterial } from '../destructionKit.ts';
 import type {
@@ -2148,21 +2148,25 @@ export function fortFractureEdge(material: FractureMaterial, piece: FracturePiec
     x ^= x + Math.imul(x ^ (x >>> 7), x | 61);
     return ((x ^ (x >>> 14)) >>> 0) / 4294967296;
   };
-  const n = 5, rough = Math.min(0.12, Math.min(hu, hv) * 0.5);
+  // (E1, the r2 standard: a wreck within 1.5 x its intact triangles; the 5 x 5 grid a cap ran the hex form's wreck to
+  // 1.81 x) the break's grid by its size: a cell about 40 cm across, at least two along the break and one through it;
+  // the ragged depth on every vertex but the break's two ends, so the line it leaves on the faces wanders too
+  const nu = Math.max(2, Math.min(6, Math.round((2 * hu) / 0.4))), nv = Math.max(1, Math.min(6, Math.round((2 * hv) / 0.4)));
+  const rough = Math.min(0.12, Math.min(hu, hv) * 0.5);
   const fresh: Rgb = [0.42, 0.4, 0.36], rust: Rgb = [0.12, 0.05, 0.025];
   for (const side of [1, -1] as const) {
     if (!out.begin(piece.bucket, 'rim')) return;
     const idx: number[] = [];
-    for (let j = 0; j <= n; j++) for (let i = 0; i <= n; i++) {
-      const edge = i === 0 || j === 0 || i === n || j === n;
-      const d = (edge ? rnd() * 0.3 : 0.2 + rnd() * 0.8) * rough * side;
-      const p = add(add(add(base, scl(U, (i / n * 2 - 1) * hu)), scl(V, (j / n * 2 - 1) * hv)), scl(A, d));
+    for (let j = 0; j <= nv; j++) for (let i = 0; i <= nu; i++) {
+      const end = i === 0 || i === nu, face = j === 0 || j === nv;
+      const d = (end ? rnd() * 0.3 : face ? 0.1 + rnd() * 0.6 : 0.2 + rnd() * 0.8) * rough * side;
+      const p = add(add(add(base, scl(U, (i / nu * 2 - 1) * hu)), scl(V, (j / nv * 2 - 1) * hv)), scl(A, d));
       const k = 0.8 + rnd() * 0.35;
       idx.push(out.vertex(p[0], p[1], p[2], A[0] * side, A[1] * side, A[2] * side, FLAT_UV[0], FLAT_UV[1],
         fresh[0] * k / FORT_PRINT_MEAN, fresh[1] * k / FORT_PRINT_MEAN, fresh[2] * k / FORT_PRINT_MEAN));
     }
-    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
-      const a = idx[j * (n + 1) + i], b = idx[j * (n + 1) + i + 1], c = idx[(j + 1) * (n + 1) + i + 1], d = idx[(j + 1) * (n + 1) + i];
+    for (let j = 0; j < nv; j++) for (let i = 0; i < nu; i++) {
+      const a = idx[j * (nu + 1) + i], b = idx[j * (nu + 1) + i + 1], c = idx[(j + 1) * (nu + 1) + i + 1], d = idx[(j + 1) * (nu + 1) + i];
       if (side > 0) { out.triangle(a, b, c); out.triangle(a, c, d); } else { out.triangle(a, c, b); out.triangle(a, d, c); }
     }
     // the bars: a few of each mat's, bent out of the break
@@ -2261,7 +2265,8 @@ function buildConcreteWreck(style: 'regelbau' | 'dot' | 'hex', O: BuildOpts): TH
     const out = flat(p.c as V3);
     const struck = dot3(out, blow) < -0.3;
     const foot = liftFoot(i);
-    const scores = (p.scores ?? []).filter(() => rng() < 0.5);
+    // (E1: a third of the lifts' scores crack, not half: the wreck within 1.5 x the intact)
+    const scores = (p.scores ?? []).filter(() => rng() < 0.34);
     const parts = nearCorner(p) ? [S.body([i])] : S.snap(i, fortFractureEdge, scores, O.seed ^ (i * 41));
     for (const b of parts) {
       if (foot) {
@@ -2307,15 +2312,16 @@ function buildConcreteWreck(style: 'regelbau' | 'dot' | 'hex', O: BuildOpts): TH
     (n[1] > 0.5 ? 0.95 : 0.8) * (0.85 + hash3(Math.round(q[0] * 3), Math.round(q[2] * 3), 1, O.seed) * 0.25));
   const rust: Shade = () => [0.1, 0.045, 0.022];
   const ext = Math.max(...L.plan.map(([x, z]) => Math.hypot(x, z)));
-  for (let k = 0; k < 30; k++) {
-    const a = r(0, Math.PI * 2), rr = k < 18 ? ext * r(0.75, 1.12) : ext * Math.sqrt(rng()) * 0.7;
+  // (E1: 24 chunks and 18 clods, was 30 and 26: the wreck within 1.5 x the intact on every form)
+  for (let k = 0; k < 24; k++) {
+    const a = r(0, Math.PI * 2), rr = k < 15 ? ext * r(0.75, 1.12) : ext * Math.sqrt(rng()) * 0.7;
     const x = Math.cos(a) * rr, z = Math.sin(a) * rr, s = 0.14 + rng() * rng() * 0.5;
     const y = S.heightAt(x, z);
     lump(m, x, y + s * 0.18, z, s * (1 + rng() * 0.7), s * (0.5 + rng() * 0.4), s * (0.8 + rng() * 0.5), rng, chunk, true, r(0, Math.PI), 0.7);
     if (s > 0.32 && rng() < 0.55) bar(m, [x, y + s * 0.3, z], [x + r(-0.4, 0.4), y + s * 0.3 + r(0.2, 0.6), z + r(-0.4, 0.4)], rust);
   }
   const clod: Shade = (q) => mul(T.earth, 0.65 + vnoise(q[0], q[1], q[2], 0.2, O.seed + 181) * 0.4);
-  for (let k = 0; k < 26; k++) {
+  for (let k = 0; k < 18; k++) {
     const a = r(0, Math.PI * 2), rr = ext + r(0.4, 2.6) + Math.max(0, Math.cos(a) * blow[0] + Math.sin(a) * blow[2]) * r(0, 1.2);
     const x = Math.cos(a) * rr, z = Math.sin(a) * rr, s = 0.1 + rng() * 0.22;
     lump(m, x, S.heightAt(x, z) + s * 0.12, z, s * 1.4, s * 0.55, s, rng, clod, false, r(0, Math.PI), 0.5);

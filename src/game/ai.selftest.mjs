@@ -78,9 +78,9 @@ function tick(ctl, bot, seconds, onTick = null) {
 
 console.log('[1] symmetric friendly-fire geometry');
 {
-  const shooter = entity('s', 't90m', 'player', 0, 0);
-  const ally = entity('a', 'm1a2', 'player', 0, 70);
-  const enemy = entity('e', 'm1a2', 'enemy', 0, 150);
+  const shooter = entity('s', 't90am', 'player', 0, 0);
+  const ally = entity('a', 'm1a1_abrams_hc', 'player', 0, 70);
+  const enemy = entity('e', 'm1a1_abrams_hc', 'enemy', 0, 150);
   const ap = new Vector3(0, 1.5, 150);
   const apShell = shooter.spec.gun.shells[0];
   const heShell = { ...apShell, type: 'HE', caliberMm: 120 };
@@ -104,8 +104,8 @@ console.log('[1] symmetric friendly-fire geometry');
 
 console.log('[2] moving-friendly prediction');
 {
-  const shooter = entity('s', 't90m', 'enemy', 0, 0);
-  const crossing = entity('crossing', 'm1a2', 'enemy', -12, 80, Math.PI / 2);
+  const shooter = entity('s', 't90am', 'enemy', 0, 0);
+  const crossing = entity('crossing', 'm1a1_abrams_hc', 'enemy', -12, 80, Math.PI / 2);
   crossing.state.speed = 16;
   const slowShell = { ...shooter.spec.gun.shells[0], velocityMps: 100 };
   const risk = botFriendlyFireRisk(shooter, new Vector3(0, 1, 160), slowShell, [crossing]);
@@ -114,9 +114,9 @@ console.log('[2] moving-friendly prediction');
 
 console.log('[3] trigger hold and firing-lane response');
 {
-  const bot = entity('bot', 't90m', 'player', 0, 0);
-  const ally = entity('ally', 'm1a2', 'player', 0, 35);
-  const target = entity('target', 'm1a2', 'enemy', 0, 80);
+  const bot = entity('bot', 't90am', 'player', 0, 0);
+  const ally = entity('ally', 'm1a1_abrams_hc', 'player', 0, 35);
+  const target = entity('target', 'm1a1_abrams_hc', 'enemy', 0, 80);
   const ctl = controller(bot, [target], [ally]);
   const firedBlocked = tick(ctl, bot, 3);
   const blocked = ctl.debugInfo();
@@ -130,9 +130,9 @@ console.log('[3] trigger hold and firing-lane response');
 
 console.log('[3b] a lane search that finds no lane waits before the next one (Steinburg 7v7 seed 88677 CPU)');
 {
-  const bot = entity('bot', 't90m', 'player', 0, 0);
-  const ally = entity('ally', 'm1a2', 'player', 0, 35);
-  const target = entity('target', 'm1a2', 'enemy', 0, 80);
+  const bot = entity('bot', 't90am', 'player', 0, 0);
+  const ally = entity('ally', 'm1a1_abrams_hc', 'player', 0, 35);
+  const target = entity('target', 'm1a1_abrams_hc', 'enemy', 0, 80);
   // every other sight line is clear; the lateral lane points (22-46 m to either side) are masked, so no search can
   // succeed
   let laneRays = 0;
@@ -152,10 +152,10 @@ console.log('[3b] a lane search that finds no lane waits before the next one (St
 
 console.log('[4] distributed target scoring');
 {
-  const bot = entity('bot', 't90m', 'player', 0, 0);
-  const a = entity('a', 'm1a2', 'enemy', -40, 80);
-  const b = entity('b', 'm1a2', 'enemy', 40, 80);
-  const wing = entity('wing', 'm1a2', 'player', 20, 0);
+  const bot = entity('bot', 't90am', 'player', 0, 0);
+  const a = entity('a', 'm1a1_abrams_hc', 'enemy', -40, 80);
+  const b = entity('b', 'm1a1_abrams_hc', 'enemy', 40, 80);
+  const wing = entity('wing', 'm1a1_abrams_hc', 'player', 20, 0);
   wing.aiCtl = { targetId: 'b' };
   const ctl = controller(bot, [a, b], [wing]);
   tick(ctl, bot, 0.5);
@@ -164,8 +164,8 @@ console.log('[4] distributed target scoring');
 
 console.log('[5] deployment contact discipline');
 {
-  const bot = entity('bot', 't90m', 'player', 0, 0);
-  const distant = entity('distant', 'm1a2', 'enemy', 0, 170);
+  const bot = entity('bot', 't90am', 'player', 0, 0);
+  const distant = entity('distant', 'm1a1_abrams_hc', 'enemy', 0, 170);
   const ctl = controller(bot, [distant], []);
   ok(!tick(ctl, bot, 10), 'does not turn a normal deployment sightline into an opening spawn shot');
   distant.state.pos.z = 70;
@@ -174,10 +174,10 @@ console.log('[5] deployment contact discipline');
 
 console.log('[6] role-aware survival is team invariant');
 function survival(team, enemyTeam) {
-  const bot = entity(`bot-${team}`, 'm1a2', team, 0, 0);
+  const bot = entity(`bot-${team}`, 'm1a1_abrams_hc', team, 0, 0);
   bot.combat.hp = 400;
-  const support = entity(`support-${team}`, 't90m', team, 0, -80);
-  const target = entity(`target-${enemyTeam}`, 't90m', enemyTeam, 0, 80);
+  const support = entity(`support-${team}`, 't90am', team, 0, -80);
+  const target = entity(`target-${enemyTeam}`, 't90am', enemyTeam, 0, 80);
   const ctl = controller(bot, [target], [support], 19);
   tick(ctl, bot, 1);
   return ctl.debugInfo();
@@ -185,8 +185,8 @@ function survival(team, enemyTeam) {
 
 console.log('[7] ally right-of-way and predictive yielding');
 {
-  const follower = entity('z-follower', 'm1a2', 'player', 0, 0, 0);
-  const stopped = entity('a-lead', 't90m', 'player', 0, 12, 0);
+  const follower = entity('z-follower', 'm1a1_abrams_hc', 'player', 0, 0, 0);
+  const stopped = entity('a-lead', 't90am', 'player', 0, 12, 0);
   follower.state.speed = 8;
   const ctl = controller(follower, [], [stopped], 73);
   ctl.setWaypoints([[0, 220]], { loop: false });
@@ -198,8 +198,8 @@ console.log('[7] ally right-of-way and predictive yielding');
     'closing-speed guard brakes before physical hull contact');
 }
 {
-  const crossingBot = entity('z-crossing-yield', 'm1a2', 'player', 0, 0, 0);
-  const crossingAlly = entity('a-crossing-priority', 'm1a2', 'player', -12, 10, Math.PI / 2);
+  const crossingBot = entity('z-crossing-yield', 'm1a1_abrams_hc', 'player', 0, 0, 0);
+  const crossingAlly = entity('a-crossing-priority', 'm1a1_abrams_hc', 'player', -12, 10, Math.PI / 2);
   crossingBot.state.speed = 7;
   crossingAlly.state.speed = 8;
   const ctl = controller(crossingBot, [], [crossingAlly], 79);
@@ -214,8 +214,8 @@ console.log('[7] ally right-of-way and predictive yielding');
 
 console.log('[7b] human right-of-way and sustained safe escape on both teams');
 for (const team of ['player', 'enemy']) {
-  const bot = entity('a-bot', 'm1a2', team, 0, 0);
-  const human = entity('z-human', 'm1a2', team, 0, 7, Math.PI);
+  const bot = entity('a-bot', 'm1a1_abrams_hc', team, 0, 0);
+  const human = entity('z-human', 'm1a1_abrams_hc', team, 0, 7, Math.PI);
   human.isPlayer = true;
   const friends = [human];
   const ctl = controller(bot, [], friends, 73);
@@ -227,14 +227,14 @@ for (const team of ['player', 'enemy']) {
   }
   ok(ctl.debugInfo().allyYielding, `${team}: human has right-of-way regardless of ID`);
   ok(reverseTicks > 30, `${team}: reverse escape persists across route updates`);
-  const rear = entity('rear', 'm1a2', team, 0, -5);
+  const rear = entity('rear', 'm1a1_abrams_hc', team, 0, -5);
   friends.push(rear);
   ctl.update(SIM_DT, 22);
   ok(bot.input.throttle >= 0, `${team}: new rear traffic cancels escape immediately`);
 }
 for (const hazard of ['wall', 'cliff', 'water']) {
-  const bot = entity('a-bot', 'm1a2', 'player', 0, 0);
-  const human = entity('z-human', 'm1a2', 'player', 0, 7, Math.PI);
+  const bot = entity('a-bot', 'm1a1_abrams_hc', 'player', 0, 0);
+  const human = entity('z-human', 'm1a1_abrams_hc', 'player', 0, 7, Math.PI);
   human.isPlayer = true;
   const extra = hazard === 'wall' ? {
     getObstacles: () => [{ min: [-8, -1, -9], max: [8, 8, -4], kind: 'building' }],
@@ -254,8 +254,8 @@ for (const hazard of ['wall', 'cliff', 'water']) {
 console.log('[7c] real movement clears stopped teammates and head-on traffic');
 for (const team of ['player', 'enemy']) {
   for (const headOn of [false, true]) {
-    const a = entity('a-route', 'm1a2', team, 0, 0);
-    const b = entity('z-route', 'm1a2', team, 0, headOn ? 28 : 12, headOn ? Math.PI : 0);
+    const a = entity('a-route', 'm1a1_abrams_hc', team, 0, 0);
+    const b = entity('z-route', 'm1a1_abrams_hc', team, 0, headOn ? 28 : 12, headOn ? Math.PI : 0);
     const ca = controller(a, [], [b], 73);
     const cb = headOn ? controller(b, [], [a], 74) : null;
     ca.setWaypoints([[0, 160]], { loop: false });
@@ -276,8 +276,8 @@ for (const team of ['player', 'enemy']) {
 
 console.log('[7d] a stalled friendly column clears and keeps advancing');
 for (const team of ['player', 'enemy']) {
-  const lead = entity('parked', 'm1a2', team, 0, 22);
-  const bots = [0, 1, 2].map(i => entity(`column-${i}`, 'm1a2', team, 0, 10 - i * 13));
+  const lead = entity('parked', 'm1a1_abrams_hc', team, 0, 22);
+  const bots = [0, 1, 2].map(i => entity(`column-${i}`, 'm1a1_abrams_hc', team, 0, 10 - i * 13));
   const controls = bots.map((bot, i) => controller(bot, [], [lead, ...bots.filter(b => b !== bot)], 80 + i));
   controls.forEach(c => c.setWaypoints([[0, 180]], { loop: false }));
   for (let i = 0; i < 60 * 60; i++) {
@@ -288,8 +288,8 @@ for (const team of ['player', 'enemy']) {
 }
 console.log('[7e] opening routes do not strand bots outside combat for minutes');
 for (const team of ['player', 'enemy']) {
-  const bot = entity('opening', 'm1a2', team, 0, 0);
-  const foe = entity('contact', 't90m', team === 'player' ? 'enemy' : 'player', 0, 200, Math.PI / 2);
+  const bot = entity('opening', 'm1a1_abrams_hc', team, 0, 0);
+  const foe = entity('contact', 't90am', team === 'player' ? 'enemy' : 'player', 0, 200, Math.PI / 2);
   const ctl = controller(bot, [foe], [], 71);
   ctl.setWaypoints([[0, 0]], { loop: false });
   tick(ctl, bot, 30);
@@ -298,8 +298,8 @@ for (const team of ['player', 'enemy']) {
 
 console.log('[8] humanized fire-control estimate');
 {
-  const bot = entity('aim-bot', 't90m', 'player', 0, 0);
-  const mover = entity('mover', 'm1a2', 'enemy', 0, 120, Math.PI / 2);
+  const bot = entity('aim-bot', 't90am', 'player', 0, 0);
+  const mover = entity('mover', 'm1a1_abrams_hc', 'enemy', 0, 120, Math.PI / 2);
   mover.state.speed = 12;
   const ctl = controller(bot, [mover], [], 101);
   tick(ctl, bot, 0.6);
@@ -319,7 +319,7 @@ console.log('[8] humanized fire-control estimate');
 
 console.log('[9] current-feature support actions are team invariant');
 function supportActions(team) {
-  const bot = entity(`support-${team}`, 'strv103', team, 0, 0);
+  const bot = entity(`support-${team}`, 'strv103b', team, 0, 0);
   bot.consumableReadyAt = [0, 0, 0];
   bot.combat.modules.engine = { hp: 0, maxHp: 100, state: 'red', repairT: 0 };
   bot.combat.crew = { driver: true, gunner: false };
@@ -363,12 +363,12 @@ ok(JSON.stringify(alliedSupport) === JSON.stringify([
   const loader = entity('context-loader', 'pl01_105', 'player', 0, 0);
   loader.combat.magazine = { rounds: 2, capacity: 4 };
   loader.combat.gunReload = { t: 0, totalS: 0, kind: 'ready' };
-  const loaderTarget = entity('context-loader-target', 'm1a2', 'enemy', 0, 70);
+  const loaderTarget = entity('context-loader-target', 'm1a1_abrams_hc', 'enemy', 0, 70);
   const loaderEnemies = [];
   const loaderCtl = controller(loader, loaderEnemies, [], 109);
-  const suspension = entity('context-suspension', 'strv103', 'enemy', 0, 0);
+  const suspension = entity('context-suspension', 'strv103b', 'enemy', 0, 0);
   suspension.specialAction = { kind: 'hydropneumatic_aim', active: false };
-  const suspensionTarget = entity('context-suspension-target', 'm1a2', 'player', 0, 70);
+  const suspensionTarget = entity('context-suspension-target', 'm1a1_abrams_hc', 'player', 0, 70);
   const suspensionCtl = controller(suspension, [suspensionTarget], [], 113);
   let loaderTime = 0, suspensionTime = 0;
   function advanceLoader() {
@@ -418,24 +418,24 @@ ok(JSON.stringify(alliedSupport) === JSON.stringify([
 console.log('[10] bot philosophy r1: target hierarchy objective → closest → weakest');
 {
   // an enemy on the mission objective outranks a closer one off it
-  const bot = entity('bot', 't90m', 'player', 0, 0);
-  const onObjective = entity('onObjective', 'm1a2', 'enemy', 5, 80);
-  const near = entity('near', 'm1a2', 'enemy', 20, 35);
+  const bot = entity('bot', 't90am', 'player', 0, 0);
+  const onObjective = entity('onObjective', 'm1a1_abrams_hc', 'enemy', 5, 80);
+  const near = entity('near', 'm1a1_abrams_hc', 'enemy', 20, 35);
   const ctl = controller(bot, [onObjective, near], [], 41, 'normal',
     { getObjective: () => ({ x: 0, z: 80, radiusM: 30 }) });
   tick(ctl, bot, 0.5);
   ok(ctl.targetId === 'onObjective', 'enemies on the mission objective rank first');
   // without an objective the closest enemy leads
-  const bot2 = entity('bot2', 't90m', 'player', 0, 0);
-  const far2 = entity('far2', 'm1a2', 'enemy', 5, 80);
-  const near2 = entity('near2', 'm1a2', 'enemy', 20, 35);
+  const bot2 = entity('bot2', 't90am', 'player', 0, 0);
+  const far2 = entity('far2', 'm1a1_abrams_hc', 'enemy', 5, 80);
+  const near2 = entity('near2', 'm1a1_abrams_hc', 'enemy', 20, 35);
   const ctl2 = controller(bot2, [far2, near2], []);
   tick(ctl2, bot2, 0.5);
   ok(ctl2.targetId === 'near2', 'with no objective the closest enemy leads');
   // inside one distance band the weakest hull leads
-  const bot3 = entity('bot3', 't90m', 'player', 0, 0);
-  const healthy = entity('healthy', 'm1a2', 'enemy', -6, 70);
-  const weak = entity('weak', 'm1a2', 'enemy', 8, 74);
+  const bot3 = entity('bot3', 't90am', 'player', 0, 0);
+  const healthy = entity('healthy', 'm1a1_abrams_hc', 'enemy', -6, 70);
+  const weak = entity('weak', 'm1a1_abrams_hc', 'enemy', 8, 74);
   weak.combat.hp = 220;
   const ctl3 = controller(bot3, [healthy, weak], []);
   tick(ctl3, bot3, 0.5);
@@ -444,8 +444,8 @@ console.log('[10] bot philosophy r1: target hierarchy objective → closest → 
 
 console.log('[11] bot philosophy r1: no retaliation at an unseen gun');
 {
-  const bot = entity('bot', 't90m', 'player', 0, 0);
-  const sniper = entity('sniper', 'm1a2', 'enemy', 0, 160);
+  const bot = entity('bot', 't90am', 'player', 0, 0);
+  const sniper = entity('sniper', 'm1a1_abrams_hc', 'enemy', 0, 160);
   let sniperSpotted = false;
   const ctl = controller(bot, [sniper], [], 41, 'normal',
     { spotting: { isSpotted: (id) => id !== 'sniper' || sniperSpotted } });
@@ -465,9 +465,9 @@ console.log('[11] bot philosophy r1: no retaliation at an unseen gun');
 
 console.log('[12] bot philosophy r1: a hurt hull backs off with its bow on the shooter');
 {
-  const bot = entity('bot', 't90m', 'player', 0, 0);
+  const bot = entity('bot', 't90am', 'player', 0, 0);
   bot.combat.hp = 300;
-  const shooter = entity('shooter', 'm1a2', 'enemy', 0, 120);
+  const shooter = entity('shooter', 'm1a1_abrams_hc', 'enemy', 0, 120);
   const ctl = controller(bot, [shooter], []);
   tick(ctl, bot, 0.5);
   ctl.notifyUnderFire(shooter, { selfHit: true, damaging: true, kind: 'pen' });
@@ -480,8 +480,8 @@ console.log('[12] bot philosophy r1: a hurt hull backs off with its bow on the s
 
 console.log('[13] bot philosophy r1: a flank shot re-angles the hull');
 {
-  const bot = entity('bot', 't90m', 'player', 0, 0);
-  const flanker = entity('flanker', 'm1a2', 'enemy', 120, 0);
+  const bot = entity('bot', 't90am', 'player', 0, 0);
+  const flanker = entity('flanker', 'm1a1_abrams_hc', 'enemy', 120, 0);
   const ctl = controller(bot, [flanker], []);
   tick(ctl, bot, 0.5);
   ctl.notifyUnderFire(flanker, { selfHit: true, damaging: false, kind: 'nonpen' });
@@ -501,8 +501,8 @@ console.log('[14] round 60: a passive target is pressed to a point-blank side as
   // deployment discipline holds a 220 m contact until 135 s; the target then has to prove passive for 15 s and
   // the bot's shells have to have failed for 15 s more before the press can begin.
   const press = (targetFires) => {
-    const bot = entity('press-bot', 'm1a2', 'player', 0, 0);
-    const still = entity('still', 't90m', 'enemy', 0, 220, Math.PI); // nose on the bot: a front aspect
+    const bot = entity('press-bot', 'm1a1_abrams_hc', 'player', 0, 0);
+    const still = entity('still', 't90am', 'enemy', 0, 220, Math.PI); // nose on the bot: a front aspect
     const ctl = controller(bot, [still], [], 77);
     let firstPressThrottle = null; // the strongest drive in the first 3 s of pressing (the pinned fixture hull
     let firstPressScooting = null; // trips the stuck watchdog — round 62's conservation chase closes on the 220 m
@@ -541,8 +541,8 @@ console.log('[22] round 67: both side points on water — the press ring falls b
   // in at the glacis. A map that avoids liquid: water everywhere beyond 55 m either side of the target's axis, so the
   // two 75° side points (68 m out) and the 90° / 60° / 105° fallbacks stand in it and the 45° one (50 m out) on land.
   const press = (water) => {
-    const bot = entity('press-bot', 'm1a2', 'player', 0, 0);
-    const still = entity('still', 't90m', 'enemy', 0, 220, Math.PI);
+    const bot = entity('press-bot', 'm1a1_abrams_hc', 'player', 0, 0);
+    const still = entity('still', 't90am', 'enemy', 0, 220, Math.PI);
     const field = water
       ? { ...hf, navigationWaterPolicy: 'avoid-liquid', getWaterMaskAt: (x) => (Math.abs(x) > 55 ? 1 : 0) }
       : hf;
@@ -569,8 +569,8 @@ console.log('[15] round 60: a sniper with a solution on a passive target keeps f
 {
   // The receipt's own reload cycle: a shot sets the channel to the spec reload, the fixture decays it.
   const cadence = (targetFires) => {
-    const bot = entity('td', 'strv103', 'player', 0, 0);
-    const side = entity('side', 'm1a2', 'enemy', 0, 80, Math.PI / 2); // side on, inside the sniper deployment reach
+    const bot = entity('td', 'strv103b', 'player', 0, 0);
+    const side = entity('side', 'm1a1_abrams_hc', 'enemy', 0, 80, Math.PI / 2); // side on, inside the sniper deployment reach
     const ctl = controller(bot, [side], [], 91);
     let shots = 0;
     // The target needs 20 s to prove passive and a scoot leg begun on the last shot before that runs 14 s more,
@@ -596,8 +596,8 @@ console.log('[15] round 60: a sniper with a solution on a passive target keeps f
 
 console.log('[16] round 60: an overturned bot asks for the self-right and holds its drive still');
 {
-  const bot = entity('roof', 'm1a2', 'player', 0, 0);
-  const foe = entity('foe', 't90m', 'enemy', 0, 90, Math.PI);
+  const bot = entity('roof', 'm1a1_abrams_hc', 'player', 0, 0);
+  const foe = entity('foe', 't90am', 'enemy', 0, 90, Math.PI);
   const ctl = controller(bot, [foe], [], 5);
   tick(ctl, bot, 1);
   bot.state.overturned = true;
@@ -615,8 +615,8 @@ console.log('[17] round 60: the weak-spot probe scores only zones the gun can re
 {
   // A crest masks everything below 1.4 m at the target plane: the hull zones are out of reach, the turret is not.
   const run = (raycast) => {
-    const bot = entity('probe-bot', 'm1a2', 'player', 0, 0);
-    const side = entity('side', 't90m', 'enemy', 0, 80, Math.PI / 2); // inside the flanker's deployment reach
+    const bot = entity('probe-bot', 'm1a1_abrams_hc', 'player', 0, 0);
+    const side = entity('side', 't90am', 'enemy', 0, 80, Math.PI / 2); // inside the flanker's deployment reach
     const ctl = controller(bot, [side], [], 33, 'hard', { raycast });
     let sum = 0, n = 0;
     tick(ctl, bot, 4, (_, t) => { if (t > 2) { sum += bot.input.aimPoint.y; n++; } });
@@ -624,7 +624,7 @@ console.log('[17] round 60: the weak-spot probe scores only zones the gun can re
   };
   const open = run(() => null);
   const crest = run((origin, dir, maxDist) => (origin.y + dir.y * maxDist < 1.4 ? { dist: maxDist * 0.6 } : null));
-  const eyeY = getSpec('m1a2').dims.heightM * 0.85;
+  const eyeY = getSpec('m1a1_abrams_hc').dims.heightM * 0.85;
   const masked = run((origin) => (origin.y < eyeY - 0.05 ? { dist: 40 } : null)); // every gun-height ray; the eye's still clear
   ok(open.info.penGateOk === true, 'an open side reads as penetrable');
   ok(crest.info.penGateOk === true, 'with the hull masked the probe falls back to the visible turret');
@@ -639,8 +639,8 @@ console.log('[18] round 62: a bot without contact searches on reachable legs and
   // connected component of the navigation grid. The planner answers an empty route for the sector and a
   // two-point route for anything else; the pinned fixture hull never arrives, so every leg fails on strikes.
   const search = (withPlanner) => {
-    const bot = entity('seeker', 'm1a2', 'player', 0, 0);
-    const hidden = entity('hidden', 't90m', 'enemy', 0, 400, Math.PI);
+    const bot = entity('seeker', 'm1a1_abrams_hc', 'player', 0, 0);
+    const hidden = entity('hidden', 't90am', 'enemy', 0, 400, Math.PI);
     const plans = [];
     const planRoute = (start, goal) => {
       plans.push([goal.x, goal.z]);
@@ -686,8 +686,8 @@ console.log('[19] round 62: no round is fired at a zone the probe rates unpenetr
   // 0.56) and an HE round would burst for nothing on that armour — before round 62 the HE fallback fired it
   // anyway. The same gun on the Leopard's rear fires.
   const shots = (targetYaw) => {
-    const bot = entity('td', 'strv103', 'player', 0, 0);
-    const foe = entity('foe', 'leo2a7v', 'enemy', 0, 80, targetYaw);
+    const bot = entity('td', 'strv103b', 'player', 0, 0);
+    const foe = entity('foe', 'leo2_improved', 'enemy', 0, 80, targetYaw);
     const ctl = controller(bot, [foe], [], 23, 'normal');
     let fired = false;
     let holds = 0;
@@ -714,8 +714,8 @@ console.log('[20] round 62: a lay the rack cannot afford is closed on, not taken
   // of landing on a T-90M's silhouette. At a bot that far the round is held and the hull closes; at a live
   // player the range doctrine is untouched and the gun fires.
   const volley = (isPlayer) => {
-    const bot = entity('mbt', 'm1a2', 'player', 0, 0);
-    const far = entity('far', 't90m', 'enemy', 0, 380, Math.PI / 2); // side on: penetrable
+    const bot = entity('mbt', 'm1a1_abrams_hc', 'player', 0, 0);
+    const far = entity('far', 't90am', 'enemy', 0, 380, Math.PI / 2); // side on: penetrable
     far.isPlayer = isPlayer;
     const ctl = controller(bot, [far], [], 45);
     let fired = false;
@@ -746,10 +746,10 @@ console.log('[20] round 62: a lay the rack cannot afford is closed on, not taken
 console.log('[21] round 62: an empty rack rams when the ram law allows it and retires when it does not');
 {
   const empty = (targetHp, ownHp = 2700) => {
-    const bot = entity('dry', 't90m', 'player', 0, 0);
+    const bot = entity('dry', 't90am', 'player', 0, 0);
     bot.combat.hp = ownHp; bot.combat.maxHp = 2700;
     bot.combat.ammo = [0, 0, 0]; bot.combat.ammoCapacity = [24, 16, 12];
-    const foe = entity('foe', 'm1a2', 'enemy', 0, 60, Math.PI);
+    const foe = entity('foe', 'm1a1_abrams_hc', 'enemy', 0, 60, Math.PI);
     foe.combat.hp = targetHp; foe.combat.maxHp = 2600;
     const ctl = controller(bot, [foe], [], 9);
     let fired = false;
@@ -779,8 +779,8 @@ console.log('[21] round 62: an empty rack rams when the ram law allows it and re
 
 console.log('[22] modern vehicle abilities use the shared bot control path');
 {
-  const bot = entity('smoke-bot', 'm1a2', 'player', 0, 0);
-  const enemy = entity('smoke-threat', 't90m', 'enemy', 0, 90);
+  const bot = entity('smoke-bot', 'm1a1_abrams_hc', 'player', 0, 0);
+  const enemy = entity('smoke-threat', 't90am', 'enemy', 0, 90);
   bot.combat.hp = 280;
   bot.combat.reload.t = 6;
   const ctl = controller(bot, [enemy], []);
@@ -792,8 +792,8 @@ console.log('[22] modern vehicle abilities use the shared bot control path');
 
 console.log('[23] independent launcher channels and every authored ammo slot');
 {
-  const bot = entity('multi-weapon', 'm1a2', 'player', 0, 0);
-  const enemy = entity('multi-weapon-target', 't90m', 'enemy', 0, 80);
+  const bot = entity('multi-weapon', 'm1a1_abrams_hc', 'player', 0, 0);
+  const enemy = entity('multi-weapon-target', 't90am', 'enemy', 0, 80);
   const missile = {...bot.spec.gun.shells[1], guided: true, pen100Mm: 1200, pen1000Mm: 1200, velocityMps: 350};
   bot.spec = {...bot.spec, gun: {...bot.spec.gun, shells: [...bot.spec.gun.shells.slice(0,3), missile]}};
   bot.combat.ammo = [10,10,10,5]; bot.combat.ammoCapacity = [10,10,10,5];
@@ -809,7 +809,7 @@ console.log('[23] independent launcher channels and every authored ammo slot');
 
 console.log('[24] fall danger overrides a route without braking a flying tank');
 {
-  const bot=entity('edge-driver','m1a2','player',0,0);
+  const bot=entity('edge-driver','m1a1_abrams_hc','player',0,0);
   const cliff={...hf,getHeightAt:(_x,z)=>z>15?-25:0};
   const ctl=controller(bot,[],[],41,'normal',{heightField:cliff});
   ctl.setWaypoints([[0,80]],{loop:false});
@@ -824,8 +824,8 @@ console.log('[24] fall danger overrides a route without braking a flying tank');
 
 console.log('[25] mission movement survives visible combat distractions');
 for (const mission of ['carrier', 'striker', 'recover', 'escort']) {
-  const bot = entity(`mission-${mission}`, 'm1a2', 'player', 0, 0, Math.PI);
-  const enemy = entity('distraction', 't90m', 'enemy', 0, 90);
+  const bot = entity(`mission-${mission}`, 'm1a1_abrams_hc', 'player', 0, 0, Math.PI);
+  const enemy = entity('distraction', 't90am', 'enemy', 0, 90);
   let routeCalls = 0;
   const ctl = controller(bot, [enemy], [], 912, 'normal', {
     getObjective: () => ({ x: 0, z: -100, radiusM: 15, mission }),
@@ -839,9 +839,9 @@ for (const mission of ['carrier', 'striker', 'recover', 'escort']) {
 }
 console.log('[26] a mobile teammate flanks while its partner pins the contact');
 {
-  const fast = entity('a-mobile', 'leo2a7v', 'player', -30, 0);
-  const anchor = entity('b-anchor', 'm1a2', 'player', 30, 25);
-  const enemy = entity('crossfire-target', 't90m', 'enemy', 0, 90, Math.PI);
+  const fast = entity('a-mobile', 'leo2_improved', 'player', -30, 0);
+  const anchor = entity('b-anchor', 'm1a1_abrams_hc', 'player', 30, 25);
+  const enemy = entity('crossfire-target', 't90am', 'enemy', 0, 90, Math.PI);
   fast.spec = { ...fast.spec, topSpeedKmh: 80 };
   anchor.spec = { ...anchor.spec, topSpeedKmh: 40 };
   const a = controller(fast, [enemy], [anchor], 333);
@@ -856,8 +856,8 @@ console.log('[26] a mobile teammate flanks while its partner pins the contact');
 
 console.log('[27] infection invalidates cached targets and aggressors');
 for(const converted of ['target','shooter']) {
- const bot=entity('hunter','m1a2','enemy',0,0);
- const formerEnemy=entity('converted','t90m','player',0,70,Math.PI);
+ const bot=entity('hunter','m1a1_abrams_hc','enemy',0,0);
+ const formerEnemy=entity('converted','t90am','player',0,70,Math.PI);
  const ctl=controller(bot,[formerEnemy],[],912);
  tick(ctl,bot,3);
  ok(ctl.targetId===formerEnemy.id, `${converted}: acquire the opposing tank first`);

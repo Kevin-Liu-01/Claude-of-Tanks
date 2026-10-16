@@ -77,7 +77,7 @@ const rearCorners=[[1.02,.16,.24],[1.31,.20,-.72],[1.22,.56,-.86],[.96,.45,.12],
 for(const points of [lowerCorners,rearCorners]) {
   const old=orientedSlab(...points);assert.ok(properSurfaceCrossings(shellPart(old)).length>0,'legacy Leopard 1A5 stock crossing is detected');old.dispose();
 }
-for(const quality of ['high','low'])for(const id of ['leo1a5','leo2a6m','leo2a6_ua']) {
+for(const quality of ['high','low'])for(const id of ['leo1a5','leo2a4_otco','leo2a6_ua']) {
   const repaired=[];
   const visual=createTank(id,null,{proceduralOnly:true,quality,geometryReceipt:true,partCensus(bucket,g,source){
     if(source==='add'&&['leo1a5-lower-bow','leo1a5-rear-applique','leo2a6m-thermal-skin'].includes(g.userData.primaryStockRole))repaired.push(g);
@@ -118,7 +118,7 @@ function cast(objects,frame,point,direction,far=2) {
 }
 for(const quality of ['high','low']) {
   const parts=[];
-  const panther=createTank('kf51b',null,{proceduralOnly:true,quality,batchStatic:false,geometryReceipt:true,
+  const panther=createTank('kf51_u',null,{proceduralOnly:true,quality,batchStatic:false,geometryReceipt:true,
     partCensus(_bucket,g,source){if(source==='add'&&g.userData.primaryStockRole==='kf51u-recessed-shell'){assertClosedRecess(g,`${quality} KF51-U shell`);parts.push(shellPart(g));}}});
   try {
     assert.equal(parts.length,1);outerSupport(parts[0]);
