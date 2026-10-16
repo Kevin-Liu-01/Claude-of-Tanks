@@ -24,8 +24,8 @@
 import { holeOutlineK, type DamageFace, type FractureMaterial, type StructureDamageAnatomy, type Vec3 } from '../world/destructionKit.ts';
 
 /** The cell a wall breaks into: wide and tall (m), before a face's own fitting. */
-export const CELL_W_M = 0.5;
-export const CELL_H_M = 0.4;
+const CELL_W_M = 0.5;
+const CELL_H_M = 0.4;
 
 export const CELL_INTACT = 0;
 /** Cracked: it stands and carries; the presentation draws its cracks. */
@@ -128,7 +128,7 @@ export interface WallFracture {
 export type WallStrikeKind = 'blast' | 'kinetic' | 'shaped';
 
 /** A round on a wall, in the body frame. */
-export interface WallStrike {
+interface WallStrike {
   x: number;
   y: number;
   z: number;
@@ -143,7 +143,7 @@ export interface WallStrike {
 }
 
 /** What one strike did: the struck face, and its cells by what they became (cell indices in that face). */
-export interface WallStrikeOutcome {
+interface WallStrikeOutcome {
   face: number;
   /** The strike's point on the face (u along it, y over the storey floor). */
   u: number;
@@ -171,7 +171,7 @@ function faceMaterial(face: DamageFace): FractureMaterial {
 }
 
 /** Samples of a gable's top edge along its face. */
-export const GABLE_SAMPLES = 33;
+const GABLE_SAMPLES = 33;
 
 /** A gable's top edge at u along its face (m over the face's floor), from its samples. */
 export function gableTopAt(g: FaceGrid, u: number): number {
@@ -431,7 +431,7 @@ export function strikeWall(wall: WallFracture, strike: WallStrike, out: WallStri
  * The load paths of one face stack, bottom-up: every standing cell that bears on nothing standing falls (as clusters in
  * `out.fallen`), every one that bears on less than half its width sags. Returns the cells fallen.
  */
-export function settleLoads(wall: WallFracture, name: string, out: Pick<WallStrikeOutcome, 'fallen' | 'sagged'>): number {
+function settleLoads(wall: WallFracture, name: string, out: Pick<WallStrikeOutcome, 'fallen' | 'sagged'>): number {
   const stack = wall.stacks.get(name);
   if (!stack) return 0;
   const fresh: number[] = []; // face, cell pairs that fell this pass

@@ -1588,7 +1588,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
 
 /** A dust coat on vertex colours in place: each colour `share` of the way to a pale greyed dust of itself (its luminance,
  *  lifted a little and warmed: masonry grit). Shared with the wall fracture's bodies. */
-export function dustCoat(colors: Float32Array, size: number, share: number, from = 0, to = colors.length): void {
+function dustCoat(colors: Float32Array, size: number, share: number, from = 0, to = colors.length): void {
   for (let i = from; i + 2 < to; i += size) {
     const r = colors[i], g = colors[i + 1], b = colors[i + 2];
     const dust = 0.2126 * r + 0.7152 * g + 0.0722 * b;

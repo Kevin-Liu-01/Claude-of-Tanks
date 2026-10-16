@@ -49,7 +49,7 @@ const RULES: Readonly<Record<string, readonly PieceRule[]>> = Object.freeze({
 
 const STAGE_RANK: Readonly<Record<string, number>> = Object.freeze({ damaged: 1, breached: 2, collapsed: 3 });
 
-export interface LandmarkBodiesOptions {
+interface LandmarkBodiesOptions {
   pool: DebrisPhysics;
   group: THREE.Group;
   /** Keep a span's original positions before the first change (the stages' reset restores them). */

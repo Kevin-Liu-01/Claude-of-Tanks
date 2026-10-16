@@ -34,7 +34,7 @@ import {
   createWallStrikeOutcome, dropFace, gableTopAt, strikeWall, type FaceGrid, type WallFracture, type WallStrikeKind,
 } from './wallFracture.ts';
 
-export interface StructureFractureOptions {
+interface StructureFractureOptions {
   pool: DebrisPhysics;
   group: THREE.Group;
   /** A bucket's material for a building (its spans' own, else the world's). */
@@ -225,6 +225,8 @@ const SHARE_STILL_S = 0.5;
 const BAKE_AGE_S = 30;
 /** A body this old moving slower than these is baked where it is (it rocks on the heap). */
 const SLOW_AGE_S = 6, SLOW_MPS = 0.35, SLOW_RADS = 0.6;
+/** What counts as all but stopped for the shove over of a piece standing on its edge (m/s, rad/s). */
+const TIP_MPS = 0.3, TIP_RADS = 0.5;
 const SOUND_GAP_S = 0.06;
 /** (dcore 2026-10-11, wave 388a: "carton-like sections need chipping") a fallen chunk of six cells or more cracks on a
  *  landing this hard (m/s) into clumps of three or four cells along its courses, while the pool has room for them. */
@@ -1292,9 +1294,16 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     if (Math.abs(_tipA.y) > 0.4) return false;
     let up = 0;
     for (let k = 0; k < 3; k++) { _tipB.set(k === 0 ? 1 : 0, k === 1 ? 1 : 0, k === 2 ? 1 : 0).applyQuaternion(_q); up += h[k] * Math.abs(_tipB.y); }
-    if (up < 3 * h[thin]) return false;
+    // (a door and its lintel stand on their sill a box round the plinth and the rail they carry: two and a half times
+    // as tall as that is deep is on its end)
+    if (up < 2.5 * h[thin]) return false;
     const hl = Math.hypot(_tipA.x, _tipA.z) || 1;
-    const j = b.massKg * 1.2 * ((Math.imul(b.handle + 7, 0x9e3779b1) >>> 0) % 2 ? 1 : -1) / hl;
+    // over the way it leans (its thin axis dips away from the side its top leans to), else a side of its own; a stockier
+    // piece harder
+    const lean = -_tipA.y;
+    const side = Math.abs(lean) > 0.02 ? Math.sign(lean) : (Math.imul(b.handle + 7, 0x9e3779b1) >>> 0) % 2 ? 1 : -1;
+    const k = 1.2 + 0.8 * Math.min(1, Math.max(0, (3 - up / h[thin]) / 0.5));
+    const j = b.massKg * k * side / hl;
     o.pool.impulse(b.handle, _tipA.x * j, 0, _tipA.z * j, pose[0], pose[1] + up * 0.8, pose[2]);
     return true;
   }
@@ -1689,7 +1698,14 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
         writePose(b, _pose);
         b.age += dt;
         b.still = o.pool.asleep(b.handle) ? b.still + dt : 0;
-        if (!b.tipped && b.still > 0.25) { b.tipped = true; if (tipIfStanding(b, _pose)) { b.still = 0; continue; } }
+        // (the port's receipt, 2026-10-16: a door and its lintel came down onto their own sill upright and stood there,
+        // creeping, for seconds) one that has all but stopped standing on its edge is shoved over as one at rest is
+        if (!b.tipped && (b.still > 0.25 || (b.age > 0.6 && o.pool.velocity(b.handle, _vel)
+          && Math.hypot(_vel[0], _vel[1], _vel[2]) < TIP_MPS && Math.hypot(_vel[3], _vel[4], _vel[5]) < TIP_RADS))) {
+          const tipped = tipIfStanding(b, _pose);
+          if (tipped || b.still > 0.25) b.tipped = true;
+          if (tipped) { b.still = 0; continue; }
+        }
         // (one that only creeps, rocking on the heap, six seconds on lies where it is: woken by its neighbours its sleep
         // never came)
         const old = b.age >= SLOW_AGE_S && o.pool.velocity(b.handle, _vel)

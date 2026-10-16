@@ -63,7 +63,7 @@ export interface FractureHost {
 }
 
 /** A round burst on a wall (structureStages' pending strike). */
-export interface FractureStrike {
+interface FractureStrike {
   structureId: number; x: number; y: number; z: number; dirX: number; dirZ: number;
   munition: MunitionClass; chargeKg: number; caliberMm: number;
 }
@@ -84,7 +84,7 @@ export interface StageFracture {
   fallRoof(e: StructureBreachEvent, seam: StructureDamageSeam): boolean;
 }
 
-export interface FractureStagesOptions {
+interface FractureStagesOptions {
   /** Where the bodies, the redrawn faces and the heaps are drawn (the fx group). */
   group: THREE.Group;
   /** The fx clock (s). */
