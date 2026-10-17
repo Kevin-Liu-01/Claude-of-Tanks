@@ -1910,6 +1910,14 @@ function* heightFieldBuildSteps(
    * waterline the dry shore stands at least the lip, falling away within a few metres.
    */
   function holdWaterInBanks(x: number, z: number, h: number, lakesOn: boolean): number {
+    // (the ring's seam row seats on the square's edge from the outland's own composition: the banks fade out over the
+    // last 28 m, so the seam meets the ground as before)
+    const edgeKeep = 1 - smoothstep(480, 508, Math.max(Math.abs(x), Math.abs(z)));
+    if (edgeKeep <= 0) return h;
+    const held = holdWaterInBanksCore(x, z, h, lakesOn);
+    return edgeKeep >= 1 ? held : h + (held - h) * edgeKeep;
+  }
+  function holdWaterInBanksCore(x: number, z: number, h: number, lakesOn: boolean): number {
     let level = marshBank.level, coverage = marshBank.coverage, floor = marshBank.floor;
     if (lakesOn && lakeBankLaw !== null) {
       if ((lakeHeightResult.bedCoverage ?? 0) > coverage) { coverage = lakeHeightResult.bedCoverage!; level = lakeHeightResult.bedLevel!; }

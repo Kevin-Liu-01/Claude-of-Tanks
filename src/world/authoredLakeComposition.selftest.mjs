@@ -83,7 +83,13 @@ for (const seed of [1337, 2049, 7719]) {
     if (field._roadDist(x, z) < 24) continue;
     const inside = field.getHeightAt(x - Math.cos(angle) * .0001, z - Math.sin(angle) * .0001);
     const outside = field.getHeightAt(x + Math.cos(angle) * .0001, z + Math.sin(angle) * .0001);
-    assert.ok(Math.abs(inside - lake.level) < 1e-10, 'exact-core side keeps the authored level');
+    // (the ground lane, 2026-10-17; waterBank.ts) the core's dry rim past the waterline (0.89 r) stands the lip over the
+    // water's top; under full water (0.80 r) the floor keeps the authored level
+    assert.ok(inside >= lake.level - 1e-10, 'exact-core side never falls under the authored level');
+    const under = field.getHeightAt(lake.x + Math.cos(angle) * radius * .80, lake.z + Math.sin(angle) * radius * .80);
+    if (field.getWaterMaskAt(lake.x + Math.cos(angle) * radius * .80, lake.z + Math.sin(angle) * radius * .80) === 1) {
+      assert.ok(Math.abs(under - lake.level) < 1e-10, 'under full water the floor keeps the authored level');
+    }
     assert.ok(Math.abs(outside - inside) < .000001,
       `no apron/core discontinuity at ${x},${z}: ${outside - inside}`);
     coreBoundarySamples++;
