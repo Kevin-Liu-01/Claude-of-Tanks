@@ -311,6 +311,10 @@ export function polyTurret(
   height: number,
   flare = 1.08,
   inset = 0.78,
+  // TANK-OPT companions (227): a prism that hangs below the ring is seen from underneath once a cook-off throws the
+  // turret, so it can close its bottom with an outward fan on the lower ring. Off by default: every existing caller
+  // keeps its bytes.
+  closeBottom = false,
 ): THREE.BufferGeometry {
   const center = planCenter(plan);
   const lower = scaledRing(plan, 0, flare, center);
@@ -318,6 +322,7 @@ export function polyTurret(
   const positions: number[] = [];
   pushOrientedSides(positions, lower, upper, center);
   pushTopFan(positions, upper, center, height);
+  if (closeBottom) pushOrientedFan(positions, lower, center, false, 0);
   return geometryFromTriangles(positions);
 }
 
