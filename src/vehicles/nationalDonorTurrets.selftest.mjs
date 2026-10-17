@@ -43,9 +43,10 @@ for (const [id, d] of Object.entries(NATIONAL_DONOR_TURRETS)) {
     const cut = Number(d.builderOptions?.bustleCutM ?? 0);
     const mapped = cut > 0 ? new Set([...turret].map((k) => { const [x, y, z] = k.split(',').map(Number); return key(x / 1e4, y / 1e4, bustleCutZ(z / 1e4, cut)); })) : turret;
     // A donor built with its own ring collar (ringCollar: the Qilin's turns in place on its pivot) leaves out the 99A2's
-    // collar (cylY 1.08/1.14, y -0.08..0.02, centred 0.12 m behind the pivot), and carries its own, concentric.
+    // collar (cylY 1.08/1.14, y -0.08..0.02, centred 0.12 m behind the pivot: its rims and cap centres), and carries its
+    // own, concentric.
     const collar = d.builderOptions?.ringCollar;
-    const fleetCollar = (x, y, z) => Boolean(collar) && y > -.0805 && y < .0205 && Math.hypot(x, z + .12) > 1.075 && Math.hypot(x, z + .12) < 1.145;
+    const fleetCollar = (x, y, z) => Boolean(collar) && y > -.0805 && y < .0205 && (Math.hypot(x, z + .12) < 1e-3 || (Math.hypot(x, z + .12) > 1.075 && Math.hypot(x, z + .12) < 1.145));
     const omitted = (k) => { const [x, y, z] = k.split(',').map((n) => n / 1e4); if (fleetCollar(x, y, z)) return true; if (!(cut > 0)) return false;
       return (d.builderOptions?.rearFlank === false && Math.abs(x) > 1.19 && Math.abs(x) < 1.41 && y > .40 && z < ZTZ99A2_BUSTLE_CUT_FRONT_Z)
         || Math.abs(Math.abs(x) - .40) < 2e-4 || (Math.abs(x) < .40 && Math.abs(z - .20) < 2e-4); };
@@ -66,7 +67,10 @@ for (const [id, d] of Object.entries(NATIONAL_DONOR_TURRETS)) {
     // hatches: <frame>_<kind>_<nn>_<face>) from its own geometry.
     const structure = /^turret_[a-z_]+_\d{2}_(front|rear|left|right|top)$/;
     const names = (plates) => [...new Set(plates.filter((p) => p.kind !== 'era' && !structure.test(p.name)).map((p) => p.name))].sort();
-    assert.deepEqual(names(spec.armor.turretPlates), names(donorSpec.armor.turretPlates), `${id}: the donor turret's plates`);
+    // (a concept built without the 96B's open side bins, bins: false, carries no stowage-screen plates: its own armour
+    // housing fills their volume)
+    const donorPlates = d.builderOptions?.bins === false ? donorSpec.armor.turretPlates.filter((p) => !/^turret_stowage_screen_[LR]$/.test(p.name)) : donorSpec.armor.turretPlates;
+    assert.deepEqual(names(spec.armor.turretPlates), names(donorPlates), `${id}: the donor turret's plates`);
     const turretModules = (s) => s.armor.modules.filter((m) => m.turretLocal).map((m) => m.module).sort();
     assert.deepEqual(turretModules(spec).filter((m) => m !== 'roofGun'), turretModules(donorSpec).filter((m) => m !== 'roofGun'),
       `${id}: the donor turret's modules`);
