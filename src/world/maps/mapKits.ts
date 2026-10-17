@@ -2027,7 +2027,7 @@ function layRailSpan(
   };
   for (let sI = 0; sI < nS; sI++) {
     const t = (sI + 0.5) / nS;
-    const sl = sized(bevelBox(lay.gauge + 0.66, 0.09, 0.28, 0.018, 1.4), lay.gauge + 0.66, 0.09, 0.28);
+    const sl = box(lay.gauge + 0.66, 0.09, 0.28, 1.4);
     weather(sl, ax + dx * t, az + dz * t, false);
     const jitter = (rng() - 0.5) * 0.05;
     if (lay.conform === 'full') {
@@ -2039,7 +2039,7 @@ function layRailSpan(
     }
     buckets.wood.push(sl);
     const ti = sI / nS; // on the span's start for the first: the gap across the joint with the last span closes too
-    const infill = sized(bevelBox(lay.gauge + 0.66, 0.09, 0.28, 0.018, 1.4), lay.gauge + 0.66, 0.09, 0.28);
+    const infill = box(lay.gauge + 0.66, 0.09, 0.28, 1.4);
     infill.userData.railInfill = true;
     weather(infill, ax + dx * ti, az + dz * ti, true);
     const hashJ = (((Math.imul(Math.round((ax + dx * ti) * 100) ^ Math.imul(Math.round((az + dz * ti) * 100), 0x27d4eb2d), 0x165667b1) >>> 8) & 0xffff) / 65535 - 0.5) * 0.05;
