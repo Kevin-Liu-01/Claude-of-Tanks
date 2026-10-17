@@ -64,7 +64,8 @@ import { sampleRedrockCanyon } from './redrockCanyon.ts';
 import { createBorderLandform, resolveBorderLandform, type BorderLandformSettings } from './borderLandform.ts';
 import type { FarmsteadStyle } from './borderFarmsteads.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
-import { canalWetness, carveCanals, compileCanals, inCanal, type CanalConfig, canalLevelAt } from './canals.ts';
+import { canalWetness, carveCanals, compileCanals, inCanal, type CanalConfig } from './canals.ts';
+import { canalLevelAt } from './canals.ts'; // (the ground lane, 2026-10-17: the sheet holds a canal's level)
 import { compilePaddies, inPaddy, inPaddyClearing, levelPaddies, paddyCanals, paddyRiceAt, paddyWaterLevelAt, paddyWaterQuads,
   resolvePaddyFloors, PADDY_DEPTH_M, type PaddyConfig, type PaddyRiceSeat, type PaddyWaterQuad } from './paddies.ts';
 import { createShallowWaterSurface, shallowWaterGeometrySteps } from './shallowWater.ts';
@@ -664,9 +665,10 @@ export interface HeightField {
   /** Round 47 (2026-09-23): the map's bay contours evaluated anywhere, the square included — wetness 0..1 and the bay's
    * water level — so the horizon ring, the terrain material and the sheet apron continue the coast past the red line. */
   getOutlandWaterAt?(x: number, z: number): { wetness: number; level: number } | null;
-  /** (ground lane, 2026-10-17; MASTER #14, "water meets its banks level") the level of the lake or liquid marsh that
-   * holds (x, z) — one level per body (a marsh's plane) — which the sheet holds instead of following its bed up the
-   * banks (the beds are carved under it: waterBank.ts); NaN where no lake or marsh holds it. */
+  /** (ground lane, 2026-10-17; MASTER #14, "water meets its banks level") the water's top of the lake or liquid marsh
+   * that holds (x, z) — its level (the floor) plus the map's full depth, one surface per body (a marsh's plane), or a
+   * canal's own level — which the sheet holds instead of following its bed up the banks (waterBank.ts carves the beds
+   * under it); NaN where no lake, marsh or canal holds it. */
   getWaterBodySurfaceAt?(x: number, z: number): number;
   /** Water pass 8: one splash into the reactive field (shell impacts); absent without the field. */
   addWaterImpulse?(x: number, z: number, radiusM: number, amplitudeM: number, foam?: number): void;
@@ -1915,7 +1917,8 @@ function* heightFieldBuildSteps(
     }
     if (coverage > 0) {
       const mask = smoothstep(waterRampStart, waterRampEnd, waterWetnessAt(x, z));
-      return mask > 0 ? waterBedAt(level, liquidDepthM, mask) : Math.max(h, level + WATER_BANK_LIP_M);
+      const surface = level + liquidDepthM;
+      return mask > 0 ? waterBedAt(surface, liquidDepthM, mask) : Math.max(h, surface + WATER_BANK_LIP_M);
     }
     return floor > h ? floor : h;
   }
@@ -2361,7 +2364,7 @@ function* heightFieldBuildSteps(
           if (coverage > marshBank.coverage) { marshBank.coverage = coverage; marshBank.level = level; }
           else if (coverage === 0) {
             const beyondM = (md - marshWaterline) * shorelineRadiusAt(m, Math.atan2(z - m.z, x - m.x));
-            if (beyondM <= WATER_BANK_REACH_M) marshBank.floor = Math.max(marshBank.floor, waterShoreFloor(level, beyondM));
+            if (beyondM <= WATER_BANK_REACH_M) marshBank.floor = Math.max(marshBank.floor, waterShoreFloor(level + liquidDepthM, beyondM));
           }
         }
       }
@@ -2769,7 +2772,7 @@ function* heightFieldBuildSteps(
     // Activate after road/pad heights are fixed. Sample the same pre-sheet
     // terrain as the marsh policy; tiny connected drainage cells must not
     // cram a multi-metre bank into the fixed ice lake's 0.38-radius apron.
-    if (liquidDepthM > 0) lakeBankLaw = { rampStart: waterRampStart, rampEnd: waterRampEnd };
+    if (liquidDepthM > 0) lakeBankLaw = { depthM: liquidDepthM, rampStart: waterRampStart, rampEnd: waterRampEnd };
     liquidLakeBanks = buildLiquidLakeBanks(liquidLakes,
       (x, z) => heightAt(x, z, false, false, false));
     lakeIndex = buildLakeCandidateIndex(_LAKES, liquidLakeBanks);
@@ -3303,7 +3306,7 @@ function* heightFieldBuildSteps(
         const canal = compiledCanals !== null ? canalLevelAt(compiledCanals, x, z) : Number.NaN;
         if (canal === canal) return canal;
         const body = outlandWaterAt(x, z);
-        return body ? body.level : Number.NaN;
+        return body ? body.level + liquidDepthM : Number.NaN;
       } } : {}),
     ...(_sorStations ? { _sorWetnessAt: sorWetnessAt } : {}),
   };

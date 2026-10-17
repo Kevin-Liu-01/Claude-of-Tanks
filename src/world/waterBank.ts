@@ -2,16 +2,19 @@
  * waterBank.ts — level water held in its banks (the ground lane, 2026-10-17; MASTER #14 / GW.14, the critics' "tilted water
  * wedge climbing the far bank" at Mangrove, Monsoon and Delta's banks).
  *
- * A lake's or liquid marsh's water stands at its level (HeightField getWaterBodySurfaceAt) and the sheet holds that level
- * (shallowWater.ts). The carve had kept the bed flat AT the level out past the waterline (a marsh's flat core runs to
- * 0.94 of its radius, its water ends near 0.76; a lake's core to 0.94, its water near 0.89) and drawn the water a full
- * depth over that bed, thinning with the shore's coverage: the water's top stood over the level and over the ground
- * round it (Mangrove's flats lie at the level), and fell to the bed down the shore's band — the tilted wedge. Now:
- * - under the water (coverage > 0) the bed is the level less the depth its coverage holds (so the bed plus that depth,
- *   the simulation's water top, is the level), raised by a lip's share toward the waterline;
- * - past the waterline the dry shore stands at least a lip over the level across one sheet cell (a low bank, where the
- *   native ground lies under the water's level, is raised to it: the levee that holds the water), then falls away.
- * Every map without liquid water, and all ground farther than the lip's fall from a waterline, is untouched.
+ * A lake's or liquid marsh's level is its floor (the bed its carve holds flat; the ring and the bays read it so) and its
+ * water's top is that floor plus the map's full depth: one surface per body (HeightField getWaterBodySurfaceAt), which the
+ * sheet holds (shallowWater.ts). The carve had kept the bed flat at the floor out past the waterline (a marsh's flat core
+ * runs to 0.94 of its radius, its water ends near 0.76; a lake's core to 0.94, its water near 0.89) and drawn the depth
+ * thinning with the shore's coverage over it, so the water's top fell to the bed down the shore's band (the tilted wedge),
+ * and a shore lower than the water's top lay under it. Now:
+ * - under the water (coverage > 0) the bed is the surface less the depth its coverage holds (the floor under full water,
+ *   rising to the waterline), so the bed plus that depth (the simulation's water top) is the surface, a lip's share over
+ *   it toward the shore;
+ * - past the waterline the dry shore stands at least a lip over the surface across one sheet cell (a shore lower than the
+ *   water's top is raised to it: the bank that holds the water), then falls away to the native ground.
+ * Every map without liquid water, every floor under full water, and all ground farther than the floor's reach from a
+ * waterline, is untouched.
  */
 import { shallowWaterDepth } from './waterContact.ts';
 
@@ -44,17 +47,17 @@ export function waterlineDistance(start: number, end: number, rampStart: number)
   return start + (end - start) * inverseSmoothstep(1 - rampStart);
 }
 
-/** The bed under a body's water at coverage `mask` (0..1]: the level less the depth that coverage holds, a lip's share
- * over it toward the waterline. */
-export function waterBedAt(level: number, depthM: number, mask: number): number {
-  return level - shallowWaterDepth(mask, depthM) + WATER_BANK_LIP_M * (1 - mask);
+/** The bed under a body's water at coverage `mask` (0..1]: its surface less the depth that coverage holds (the floor under
+ * full water), a lip's share over it toward the waterline. */
+export function waterBedAt(surface: number, depthM: number, mask: number): number {
+  return surface - shallowWaterDepth(mask, depthM) + WATER_BANK_LIP_M * (1 - mask);
 }
 
-/** The lowest dry shore a body allows `beyondM` past its waterline: a lip over its level, falling away; -Infinity past the
- * floor's reach. */
-export function waterShoreFloor(level: number, beyondM: number): number {
+/** The lowest dry shore a body allows `beyondM` past its waterline: a lip over its surface, falling away; -Infinity past
+ * the floor's reach. */
+export function waterShoreFloor(surface: number, beyondM: number): number {
   if (beyondM > WATER_BANK_REACH_M) return -Infinity;
-  return level + WATER_BANK_LIP_M - WATER_BANK_FALL * Math.max(0, beyondM - WATER_BANK_PLATEAU_M);
+  return surface + WATER_BANK_LIP_M - WATER_BANK_FALL * Math.max(0, beyondM - WATER_BANK_PLATEAU_M);
 }
 
 /** A body's water coverage (HeightField getWaterMaskAt's law) from its shoreline wetness and the map's water ramp. */

@@ -3,15 +3,15 @@ import { WATER_BANK_REACH_M, waterCoverage, waterShoreFloor, waterlineDistance }
 
 export interface LakeHeightResult {
   height: number; wetness: number;
-  /** (2026-10-17, with a LakeBankLaw) the most covering lake's level and its own coverage there (0: none covers the
-   * point), and the highest dry-shore floor of the lakes whose waterline the point lies past (-Infinity: none in reach);
+  /** (2026-10-17, with a LakeBankLaw) the most covering lake's floor (its level) and its own coverage there (0: none
+   * covers the point), and the highest dry-shore floor of the lakes whose waterline the point lies past (-Infinity: none);
    * the caller sets the bed by the water's true mask (terrain.ts applyHeightConstraints). */
   bedLevel?: number; bedCoverage?: number; shoreFloor?: number;
 }
 
 /** (the ground lane, 2026-10-17; waterBank.ts) a liquid lake's water held level in its banks: the map's water ramp, so
  * the composition can report the most covering lake and the shores' floor (LakeHeightResult). */
-export interface LakeBankLaw { rampStart: number; rampEnd: number }
+export interface LakeBankLaw { depthM: number; rampStart: number; rampEnd: number }
 
 function smoothstep(a: number, b: number, x: number): number {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
@@ -61,7 +61,7 @@ export function composeLakeHeight(
       if (coverage > bedCoverage) { bedCoverage = coverage; bedLevel = levels[index]; }
       else if (coverage === 0) {
         const beyondM = Math.max(0, (distance - waterlineDistance(start, 0.96, bank.rampStart)) * radius);
-        if (beyondM <= WATER_BANK_REACH_M) floor = Math.max(floor, waterShoreFloor(levels[index], beyondM));
+        if (beyondM <= WATER_BANK_REACH_M) floor = Math.max(floor, waterShoreFloor(levels[index] + bank.depthM, beyondM));
       }
     }
     if (!(distance < band)) continue;
