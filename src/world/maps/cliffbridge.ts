@@ -348,10 +348,14 @@ export default {
     // lips' hard beds in blocks, leaning out over the void. Decor: the gorge's landform stays the battlefield's rock.
     canyonWalls: [
       // (the gorge is cut in three stages, its walls stepped by ledges a few metres wide: benchM reads them as one wall)
-      { x: 0, z: 0, length: 540, width: 192, yawDeg: 0, span: 0.9, tone: [0.1, 0.16, 0.6], benchM: 8, name: "the Tajo's walls" },
+      // (r6 first pair, 2026-10-17: the walls read cold grey-white with Lake Powell's calcite bathtub ring at their foot) the
+      // calcarenite warm, a buff-ochre as the Tajo's walls stand in the sun, and no lake ring: the gorge is floored by its river bed
+      { x: 0, z: 0, length: 540, width: 192, yawDeg: 0, span: 0.9, tone: [0.09, 0.3, 0.54], benchM: 8, ring: false, name: "the Tajo's walls" },
     ],
     caprock: [
-      { x: 0, z: 0, length: 540, width: 192, yawDeg: 0, trench: true, span: 0.9, tone: [0.11, 0.14, 0.68],
+      // (r6 first pair: the lips sat on the first ledge, a pale band low on the wall) up the benches to the walls' tops, and
+      // the hard capping bed a shade paler than the wall, not white
+      { x: 0, z: 0, length: 540, width: 192, yawDeg: 0, trench: true, benchM: 8, span: 0.9, tone: [0.1, 0.26, 0.6],
         thickness: [1.2, 2.2], blockM: [6, 14], name: "the Tajo's lips" },
     ],
   },

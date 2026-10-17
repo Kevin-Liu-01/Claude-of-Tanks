@@ -35,6 +35,9 @@ export interface CanyonWallSpec {
    * a gentle run shorter than this (m) under a further rise is a ledge of the wall, not its brow (default 0: the first
    * gentle run is the brow, as on Glen Canyon's single sheer walls). */
   benchM?: number;
+  /** (the maps lane, 2026-10-17, Aegis r6) the lake's calcite bathtub ring over the water (default true; a dry gorge
+   * floored by its river bed has none). */
+  ring?: boolean;
   /** sRGB HSL base tone of the rock (default Navajo sandstone). */
   tone?: readonly [number, number, number];
   /** (Skybridge round 6) a path trench's control points (its landform's `path`, landformPath.ts): the skin follows the
@@ -136,7 +139,7 @@ export function buildCanyonWall(spec: CanyonWallSpec, ground: CastleGround, nois
         // (round 6, wave 259: "no legible bathtub ring") the lake's calcite ring: a pale band some five metres over the
         // water, its top a crisp line where the lake stood longest, wavering a little along the wall
         const ringTop = yLow + 5.2 + 0.6 * noise.noise(w.s * 0.05 + salt, side * 2.9);
-        const ring = 1 - smooth(ringTop - 0.35, ringTop + 0.15, y);
+        const ring = spec.ring === false ? 0 : 1 - smooth(ringTop - 0.35, ringTop + 0.15, y);
         l *= 1 + 0.62 * ring; sa *= 1 - 0.55 * ring;
         l *= 1 - 0.1 * flute - 0.12 * (1 - Math.min(1, p / 0.9));
         col.push(mesh.vert(pt, hsl(h, sa, l), groundAt(pt[0], pt[2])));
