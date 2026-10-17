@@ -22,12 +22,18 @@ import { MAP_IDS, getMapConfig } from './index.ts';
 import { createHeightField } from '../terrain.ts';
 
 // the running gear
+// (landed on main 2026-10-17) a wreck may lie on a part that is no running gear (Lane C's r2 D8H wreck slumps onto its
+// blade, its burnt tracks clear of the band): no seat on its gear then, the corner plane seats it, and no map places it
 const GEAR = { snocat: 4, bv206: 4, d8h: 2, haulpak: 4 };
+const wreckOnCorners = new Set();
 for (const kind of RUNNING_GEAR_SEATED) {
   for (const wrecked of [false, true]) {
     const gear = setPieceRunningGear(kind, wrecked);
     const left = gear.contacts.filter((c) => c.x0 + c.x1 < 0), right = gear.contacts.filter((c) => c.x0 + c.x1 > 0);
-    assert.ok(left.length && right.length, `${kind}${wrecked ? ' wrecked' : ''}: ground contacts on both sides`);
+    if (wrecked && !(left.length && right.length)) {
+      wreckOnCorners.add(kind);
+      assert.equal(seatOnRunningGear({ x: 0, z: 0, yawDeg: 0 }, gear, () => 0), null, `${kind} wrecked: no seat without gear on both sides`);
+    } else assert.ok(left.length && right.length, `${kind}${wrecked ? ' wrecked' : ''}: ground contacts on both sides`);
     if (!wrecked) assert.ok(gear.contacts.length >= GEAR[kind], `${kind}: its running gear reads (${gear.contacts.length} contacts)`);
     assert.ok(gear.floor.length >= 24 && gear.floor.length % 3 === 0, `${kind}: its floor points`);
     const size = SET_PIECE_SIZE[kind];
@@ -56,6 +62,7 @@ for (const mapId of MAP_IDS) {
   const ground = (x, z) => field.getHeightAt(x, z);
   let worstCorner = 0, deepest = 0;
   for (const piece of pieces) {
+    assert.ok(!(piece.wrecked && wreckOnCorners.has(piece.kind)), `${mapId}: no ${piece.kind} wreck placed off its gear (${piece.x}, ${piece.z})`);
     const gear = setPieceRunningGear(piece.kind, !!piece.wrecked);
     const seat = seatOnRunningGear(piece, gear, ground);
     assert.ok(seat, `${mapId}: ${piece.kind} at (${piece.x}, ${piece.z}) seats on its gear`);

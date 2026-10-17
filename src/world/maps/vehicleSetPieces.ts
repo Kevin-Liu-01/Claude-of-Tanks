@@ -680,13 +680,16 @@ export interface GearContact { readonly x0: number; readonly x1: number; readonl
  * 6 cm of its lowest, and points every 0.4 m down each contact's middle, at most a few hundred). */
 export interface RunningGear { readonly contacts: readonly GearContact[]; readonly floor: Float32Array }
 
-/** The floor's band over the piece's lowest point; the gap two floor faces may leave and still be one contact. */
-const FLOOR_BAND_M = 0.06, GEAR_JOIN_M = 0.1;
+/** The floor's band over the piece's lowest point; the gap two floor faces may leave and still be one contact (0.3 m: a
+ * lathed tyre's bottom vertices stand some 0.2 m apart across its tread, a dual pair's tyres closer; the works kinds'
+ * separate contacts, a side's front and rear gear and the two sides, stand 0.6 m apart and more). */
+const FLOOR_BAND_M = 0.06, GEAR_JOIN_M = 0.3;
 
 /**
  * A built piece's running gear (pure: no stream draws). Its floor faces (the solids' triangles lying wholly within 6 cm of
- * its lowest point: a track's flat run under its wheels, a tyre's bottom, a pontoon's belt) in plan, joined where they
- * touch into contacts; its floor points for the seat.
+ * its lowest point: a track's flat run under its wheels, a pontoon's belt) and its floor vertices (the solids' vertices
+ * within those 6 cm: a round tyre's bottom rings, whose faces each rise past the band) in plan, joined where they touch
+ * into contacts; its floor points for the seat.
  */
 export function runningGearOf(geometry: THREE.BufferGeometry): RunningGear {
   const p = geometry.getAttribute('position'), index = geometry.getIndex();
@@ -705,7 +708,13 @@ export function runningGearOf(geometry: THREE.BufferGeometry): RunningGear {
       z0: Math.min(p.getZ(a), p.getZ(b), p.getZ(c)), z1: Math.max(p.getZ(a), p.getZ(b), p.getZ(c)),
     });
   }
-  // the faces joined where their boxes touch (within 10 cm), until no two contacts touch
+  // (landed on main 2026-10-17: Lane C's r2 Haulpak stands on lathed tyres, no face of which lies wholly in the band) the
+  // floor vertices, each a point, so a round tyre's bottom reads as its contact
+  for (let i = 0; i < p.count; i++) {
+    if ((skip && skip[i]) || p.getY(i) > band) continue;
+    boxes.push({ x0: p.getX(i), x1: p.getX(i), z0: p.getZ(i), z1: p.getZ(i) });
+  }
+  // the faces and points joined where their boxes touch (within 30 cm), until no two contacts touch
   let contacts = boxes;
   for (let merged = true; merged;) {
     merged = false;

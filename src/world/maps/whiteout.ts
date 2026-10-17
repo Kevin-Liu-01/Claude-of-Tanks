@@ -240,8 +240,9 @@ export default {
       { kind: 'snocat', x: 290, z: 104, yawDeg: 10 }, { kind: 'bv206', x: -306, z: 218, yawDeg: 60 },
       { kind: 'd8h', x: 134, z: -304, yawDeg: 200 }, { kind: 'bv206', x: -62, z: 318, yawDeg: 95 },
       { kind: 'snocat', x: 410, z: 14, yawDeg: 300 }, { kind: 'd8h', x: 402, z: -186, yawDeg: 20 },
-      // the dump's burnt-out carrier
-      { kind: 'bv206', x: -398, z: -380, yawDeg: 70, wrecked: true },
+      // the dump's burnt-out carrier (landed on main 2026-10-17: Lane C's r2 wreck, its rear car twisted on the steering
+      // unit, sank 0.33 m at -398 on its gear seat; 7 m east-north-east it sinks 0.27)
+      { kind: 'bv206', x: -392, z: -376, yawDeg: 70, wrecked: true },
     ],
   },
   // the map-content lane (2026-10-09; the owner: "so empty", and the bird view the judge): the plateau's frost-shattered
