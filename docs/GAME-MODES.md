@@ -492,6 +492,11 @@ numbers:
 
 The infected keep their green energy skin: it is how a player tells a zombie, not why it was strong.
 
+The Horde's larger field peaks at 25 live vehicles from wave 7 (17 before). At that peak the mobile tier renders about a
+quarter fewer frames than at the old peak (54 to 40 fps on the M5 Max, p99 33 to 50 ms), still below the 14 v 14
+preset's 28 vehicles; the arrangement panel's pool and allied bots shrink it (`docs/PERFORMANCE.md` "Endless Horde field
+on the mobile tier").
+
 The rule cards (play menu, arrangement panel, pre-battle chips) show both hulls in the one hull chip, the humans' first
 and the zombies' after a slash (`rulesetLines`: Infected "+50 % / -70 % hull", the Horde "+100 % / -85 % hull"), so the
 zombie modes add no line of their own. The zombies' bots playing a tier down is wired into both bot builders, the
