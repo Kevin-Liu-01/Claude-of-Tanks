@@ -15,10 +15,14 @@ interface NationalEmplacement {
   riserM:number;
   crewServed:boolean;
 }
+/** A national station's mount type: the yoke, cradle housing, feed and support width it is built with
+ * (profiles/nationalRoofWeapon.ts NATIONAL_MOUNTS holds one row per type). 'pintle' is the classic emplacement on the
+ * commander's cupola (release 227), built by nationalCupolaPintle from the loadout's `emplacement`, never from a row. */
+export type NationalRoofMount='fork'|'shield'|'wedge'|'drum'|'cradle'|'casemate'|'pintle';
 export interface NationalRoofLoadout {
   name:string;
   caliber:12.7|30;
-  mount:'fork'|'shield'|'wedge'|'drum'|'pintle';
+  mount:NationalRoofMount;
   /** Present exactly when mount is 'pintle'. */
   emplacement?:NationalEmplacement;
   /** Measured traverse limits (mount-local radians, unwrapped, containing 0): tools/roof-station-arcs.mjs. */
@@ -80,3 +84,12 @@ export const NATIONAL_ROOF_LOADOUTS:Readonly<Record<string,NationalRoofLoadout>>
  t72b3m_hetman_ii:{name:'Hetman II command weapon',caliber:30,mount:'wedge',feedSide:-1,axisHeight:.77,muzzleZ:1.17,eyes:'twin',eyeRadius:.155,roof:'scanner',roofZ:-.10,lamp:'slit'},
  t72b3_zubr_ii:{name:'Zubr II protected cannon',caliber:30,mount:'drum',feedSide:-1,axisHeight:.76,muzzleZ:1.12,eyes:'monocle-right',eyeRadius:.175,roof:'split-panels',roofZ:-.04,lamp:'square'},
 };
+
+/** The station's receiver width (metres): the cradle, the trunnion's bearing span and the sight foot are laid from it. */
+export function nationalStationWidth(l:Pick<NationalRoofLoadout,'caliber'>&Partial<Pick<NationalRoofLoadout,'emplacement'>>):number {
+  // a cupola emplacement (mount 'pintle'): its class's receiver body at the fitting's scale 1
+  if(l.emplacement)return EMPLACEMENT_RECEIVER_WIDTH_M[l.emplacement.cls];
+  return l.caliber===30?.245:.185;
+}
+/** Receiver body widths (m) of the emplacement classes as built (machineGunGeometry.ts MG_CLASSES body[0] x s). */
+const EMPLACEMENT_RECEIVER_WIDTH_M:Readonly<Record<NationalEmplacement['cls'],number>>={qjc88:.092,nsvt:.09408,kord:.099};

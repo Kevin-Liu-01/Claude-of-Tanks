@@ -4,7 +4,7 @@ import {mount} from './fittingMount.ts';
 import {boxSections,blindTube,beamBetween} from './measuredPrimitives.ts';
 import {MG_CLASSES,addPintleBarrel,addPintleReceiver,createPintleLayout,machinedRing,type MgClassKey} from '../machineGunGeometry.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
-import type {NationalRoofLoadout} from '../nationalRoofConfig.ts';
+import {nationalStationWidth,type NationalRoofLoadout,type NationalRoofMount} from '../nationalRoofConfig.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 import {tankSeedId} from '../tankIdAliases.ts';
 type Point=readonly[number,number,number];
@@ -19,7 +19,7 @@ export function nationalRoofWeapon(P:TankBuilderPort,rws:Point,cupola:Point|null
  const [x,b,z]=rws,y=b+l.axisHeight;
  const gun=sourceMachineGun(P,[0,0,0],{name:l.name,caliberMm:l.caliber,
   yaw:rws,pivot:[x,y,z],muzzle:[x,y,z+l.muzzleZ]});
- const cannon=l.caliber===30,w=cannon?.245:.185,half=supportHalfWidth(l,w);
+ const cannon=l.caliber===30,w=nationalStationWidth(l),half=supportHalfWidth(l,w),mount=nationalMount(l.mount);
  gun.stage('yaw');
  gun.add('turretDetail',cylY(.21,.26,.13,32),x,b+.055,z);
  // 2026-10-11 (fleet-weapons lane, round 4; wave 386's critics: "a camo-painted drum on a U-shaped yoke on a cone",
@@ -34,6 +34,7 @@ export function nationalRoofWeapon(P:TankBuilderPort,rws:Point,cupola:Point|null
   gun.add('turretDetail',box(.044,.40,.12),x+side*(half+.028),y-.16,z);
   gun.add('turretDark',cylX(.073,.065,20),x+side*(half+.045),y,z);
  }
+ mount.yaw?.(gun,l,x,b,y,z,w);
  gun.stage('pitch');
  gun.add('turretDark',cylX(.055,half*2+.095,20),x,y,z);
  // 2026-10-10 (fleet-weapons lane, round 3; wave 348a's critics on these stations: "a fat, featureless dark-grey tube
@@ -42,13 +43,15 @@ export function nationalRoofWeapon(P:TankBuilderPort,rws:Point,cupola:Point|null
  // in an open cradle of two side rails on a tray, its bore on the station's axis and its muzzle at the loadout's muzzle;
  // the 30 mm gun keeps its receiver and gains a cooling jacket, a gas cylinder and a baffled muzzle brake.
  if(cannon)nationalCannon(gun,l,x,y,z,w);
- else nationalMachineGun(gun,l,x,y,z,w,nationalMgClass(P));
- housing(gun,l,x,y,z,w);
- feed(gun,l,x,y,z,w);
- sight(gun,l,x,y,z,w);
+ else nationalMachineGun(gun,l,x,y,z,w,nationalMgClass(P),mount.cradle!==false);
+ mount.housing(gun,l,x,y,z,w);
+ (mount.feed??feed)(gun,l,x,y,z,w);
+ (mount.sight??sight)(gun,l,x,y,z,w);
+ mount.pitch?.(gun,l,x,y,z,w);
  const root=gun.finish();root.userData.nationalRoofLoadout=l.name;
  if(l.yawArc)root.userData.yawArc=[...l.yawArc];
  if(l.depressionByYaw)root.userData.depressionByYaw=l.depressionByYaw.map(r=>[...r]);
+ mount.finish?.(P,l,x,y,z,w);
  if(!cupola)return;
  const [cx,cy,cz]=cupola;KIT.cupola(P,'turret',cx,cy-.006,cz,.27,.11,8);
 }
@@ -95,7 +98,7 @@ function nationalMgClass(P:TankBuilderPort):MgClassKey {
 
 /** The fleet heavy machine gun in an open cradle: receiver centred where the old receiver block stood (z - 0.08),
  * bore on the trunnion axis, muzzle at the loadout's muzzle. */
-function nationalMachineGun(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number,cls:MgClassKey):void {
+function nationalMachineGun(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number,cls:MgClassKey,cradle=true):void {
  const def=MG_CLASSES[cls];
  const sink:{add(slot:string,geometry:THREE.BufferGeometry,px?:number,py?:number,pz?:number,rx?:number,ry?:number,rz?:number):void}={
   add(){},
@@ -117,6 +120,7 @@ function nationalMachineGun(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:numb
   feed:l.feedSide>0?'left':'right',barrelLength,muzzleBoreDepth:.07},parts);
  addPintleReceiver(layout);
  addPintleBarrel(layout);
+ if(!cradle)return;
  // the open cradle: a tray under the receiver and two side rails the trunnion, the sight foot and the feed bridge bear on
  const trayTop=dy+layout.bodyBottom-.002, depth=.46;
  g.add('turretDark',box(w,.012,depth),x,trayTop-.006,recCentreZ);
@@ -139,43 +143,58 @@ function nationalCannon(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w
  for(const at of [-.115,-.07,-.025])g.add('turretDark',machinedRing(.048,.058,.014,.003,24).rotateX(Math.PI/2),x,y,z+tip+at-.007);
 }
 
-function housing(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
+function forkHousing(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
  const half=supportHalfWidth(l,w);
- if(l.mount==='fork') {
-  for(const side of [-1,1])g.add('turretDetail',beamBetween([x+side*(half+.10),y-.085,z-.23],[x+side*(half+.10),y+.14,z+.30],.017),0,0,0);
-  g.add('turretDetail',box(w+.24,.025,.19),x,y+.12,z+.20);
-  g.add('turretDetail',box(w+.24,.030,.050),x,y-.060,z-.24);
- } else if(l.mount==='shield') {
-  for(const side of [-1,1])g.add('turretDetail',boxSections([[z-.39,.035,y+.18,y-.14],[z+.27,.035,y+.24,y-.12],[z+.43,.025,y+.09,y-.07]]),x+side*(half+.12),0,0);
-  g.add('turretDetail',box(w+.32,.035,.31),x,y+.22,z+.08);
-  g.add('turretDetail',box(w+.32,.065,.075),x,y+.06,z-.31);
- } else if(l.mount==='wedge') {
-  g.add('turretDetail',boxSections([[z-.39,w*.72,y+.12,y-.14],[z+.24,w*.65,y+.19,y-.11],[z+.53,w*.31,y+.055,y-.055]]),x,0,0);
-  for(const at of [-.21,-.08,.05,.18])g.add('turretDark',box(w*.95,.009,.025),x,y+.193,z+at);
- } else if(l.caliber===30) {
-  g.add('turretDetail',cylZ(w*.69,.43,24),x,y,z-.12);
-  g.add('turretDetail',cylZ(w*.43,.35,24),x,y,z+.22);
-  for(const at of [-.30,-.05,.32])g.add('turretDark',cylZ(w*(at===.32?.47:.73),.026,24),x,y,z+at);
- }
+ for(const side of [-1,1])g.add('turretDetail',beamBetween([x+side*(half+.10),y-.085,z-.23],[x+side*(half+.10),y+.14,z+.30],.017),0,0,0);
+ g.add('turretDetail',box(w+.24,.025,.19),x,y+.12,z+.20);
+ g.add('turretDetail',box(w+.24,.030,.050),x,y-.060,z-.24);
+}
+
+function shieldHousing(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
+ const half=supportHalfWidth(l,w);
+ for(const side of [-1,1])g.add('turretDetail',boxSections([[z-.39,.035,y+.18,y-.14],[z+.27,.035,y+.24,y-.12],[z+.43,.025,y+.09,y-.07]]),x+side*(half+.12),0,0);
+ g.add('turretDetail',box(w+.32,.035,.31),x,y+.22,z+.08);
+ g.add('turretDetail',box(w+.32,.065,.075),x,y+.06,z-.31);
+}
+
+function wedgeHousing(g:Gun,_l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
+ g.add('turretDetail',boxSections([[z-.39,w*.72,y+.12,y-.14],[z+.24,w*.65,y+.19,y-.11],[z+.53,w*.31,y+.055,y-.055]]),x,0,0);
+ for(const at of [-.21,-.08,.05,.18])g.add('turretDark',box(w*.95,.009,.025),x,y+.193,z+at);
+}
+
+function drumHousing(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
  // round 4 (wave 386 on the T-72B3's station: "the machine gun is reduced to a thin rod with a knob, with no receiver,
  // feed or ammunition box"): a drum-fed 12.7 mm gun lies open in its cradle, its receiver, feed cover and barrel in
  // view; the round shroud that hid all but the muzzle is gone and the drum is its ammunition.
+ if(l.caliber!==30)return;
+ g.add('turretDetail',cylZ(w*.69,.43,24),x,y,z-.12);
+ g.add('turretDetail',cylZ(w*.43,.35,24),x,y,z+.22);
+ for(const at of [-.30,-.05,.32])g.add('turretDark',cylZ(w*(at===.32?.47:.73),.026,24),x,y,z+at);
 }
 
+/** The box-fed station's ammunition box with its lid and latches, and the feed bridge into the receiver. */
 function feed(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
  const half=supportHalfWidth(l,w);
  const side=l.feedSide,fx=x+side*(half+.18),cannon=l.caliber===30;
  // round 4: the ammunition drum and box are issue drab, not the hull's camouflage ('turretAmmo', rendered builds)
- if(l.mount==='drum') {
-  g.add('turretAmmo',cylX(cannon?.205:.165,.25,24),fx,y+.005,z-.10);
-  g.add('turretDark',cylX(cannon?.153:.115,.018,24),fx+side*.126,y+.005,z-.10);
- } else {
-  const h=cannon?.30:.23;
-  g.add('turretAmmo',box(.25,h,.38),fx,y+.045,z-.15);
-  g.add('turretAmmo',box(.269,.026,.399),fx,y+.045+h/2,z-.15);
-  for(const dz of [-.26,-.04])g.add('turretDark',box(.036,.048,.032),fx+side*.13,y+.015,z+dz);
- }
- g.add('turretDark',box(.22,.07,.12),x+side*(half+.06),y+(l.mount==='drum'?.17:.19),z-.05);
+ const h=cannon?.30:.23;
+ g.add('turretAmmo',box(.25,h,.38),fx,y+.045,z-.15);
+ g.add('turretAmmo',box(.269,.026,.399),fx,y+.045+h/2,z-.15);
+ for(const dz of [-.26,-.04])g.add('turretDark',box(.036,.048,.032),fx+side*.13,y+.015,z+dz);
+ feedBridge(g,side,half,x,y,y+.19,z);
+}
+
+/** The drum-fed station's ammunition drum with its end cap, and the feed bridge into the receiver. */
+function drumFeed(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
+ const half=supportHalfWidth(l,w);
+ const side=l.feedSide,fx=x+side*(half+.18),cannon=l.caliber===30;
+ g.add('turretAmmo',cylX(cannon?.205:.165,.25,24),fx,y+.005,z-.10);
+ g.add('turretDark',cylX(cannon?.153:.115,.018,24),fx+side*.126,y+.005,z-.10);
+ feedBridge(g,side,half,x,y,y+.17,z);
+}
+
+function feedBridge(g:Gun,side:number,half:number,x:number,y:number,bridgeY:number,z:number):void {
+ g.add('turretDark',box(.22,.07,.12),x+side*(half+.06),bridgeY,z-.05);
  g.add('turretDark',box(.065,.15,.12),x+side*(half-.025),y+.125,z-.05);
 }
 
@@ -193,5 +212,38 @@ function sight(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):
 }
 
 function supportHalfWidth(l:NationalRoofLoadout,w:number):number {
- return w*(l.mount==='drum'||l.mount==='wedge'?.74:.5);
+ return w*nationalMount(l.mount).halfShare;
+}
+
+type StationPart=(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number)=>void;
+/** One row per mount type (nationalRoofConfig.ts NationalRoofMount). Release 227 S0 (2026-10-16): the per-mount
+ * pieces that were branches on l.mount are table rows, so a new mount adds a row and changes no existing station. */
+interface NationalMountRow {
+ /** The yoke's half span as a share of the receiver width (nationalStationWidth). */
+ halfShare:number;
+ /** The pitching housing (shield, shroud, wedge or drum jacket) round the gun. */
+ housing:StationPart;
+ /** The ammunition feed (default: the drum on a drum mount, else the box) and the sight (default: the side sight). */
+ feed?:StationPart;
+ sight?:StationPart;
+ /** Further pieces on the yaw stage (after the yoke) and on the pitch stage (after the sight). */
+ yaw?:(g:Gun,l:NationalRoofLoadout,x:number,b:number,y:number,z:number,w:number)=>void;
+ pitch?:StationPart;
+ /** Factory-bucket stock authored after the station is finished (e.g. a night lens through captureAuxiliaryStock). */
+ finish?:(P:TankBuilderPort,l:NationalRoofLoadout,x:number,y:number,z:number,w:number)=>void;
+ /** false: the 12.7 mm gun is laid without the open cradle's tray and rails (the mount carries its own). */
+ cradle?:boolean;
+}
+const NATIONAL_MOUNTS:Readonly<Partial<Record<NationalRoofMount,NationalMountRow>>>={
+ fork:{halfShare:.5,housing:forkHousing},
+ shield:{halfShare:.5,housing:shieldHousing},
+ wedge:{halfShare:.74,housing:wedgeHousing},
+ drum:{halfShare:.74,housing:drumHousing,feed:drumFeed},
+};
+function nationalMount(mount:NationalRoofMount):NationalMountRow {
+ // the classic cupola emplacement has no station row: fitDonorTurret builds it with nationalCupolaPintle
+ if(mount==='pintle')throw new Error("national roof station: a 'pintle' emplacement is built by nationalCupolaPintle, not nationalRoofWeapon");
+ const row=NATIONAL_MOUNTS[mount];
+ if(!row)throw new Error(`national roof station: no mount row for '${mount}'`);
+ return row;
 }
