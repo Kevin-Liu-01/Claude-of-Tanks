@@ -12,7 +12,7 @@ import {
 } from './geometry.ts';
 import { buildHouse, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
-import { doorCanopy, facadeGround, facadeOn, pilaster } from './facade.ts';
+import { doorCanopy, facadeOn, pilaster } from './facade.ts';
 import { roofLadder, wallLantern } from './dressing.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 // (the looks lane's r2 sweep, 2026-10-16: the module train, the billboard, the derelict, the radar tower and the Jamesway hut
@@ -182,16 +182,8 @@ const YELLOW = rgb(0xd2a62a);
  * overhead door and the concrete-filled guard posts at its jambs, the flue pipe and its rain cap over each chimney chase,
  * and the roof ladder up to the first flue from the eave on its side.
  */
-function steelCraft(sink: PartSink, frame: HouseFrame, openings: readonly Opening[], band: readonly [number, number] | null = null,
-  aprons: readonly Opening['face'][] = []): void {
+function steelCraft(sink: PartSink, frame: HouseFrame, openings: readonly Opening[], band: readonly [number, number] | null = null): void {
   if (!facadeOn()) return;
-  // the snow's height at a point of this frame (the facade ground through the sink's placements; level in a bare build)
-  const ground = facadeGround();
-  const snowAt = (p: Vec3): number => {
-    if (!ground) return 0;
-    const q = sink.framePoint(p);
-    return ground.at(q[0], q[2]) - q[1];
-  };
   const y0 = frame.floors[0] + 0.02, y1 = frame.eaveY - 0.02;
   const runs: Array<[number, number]> = band ? [[y0, band[0] - 0.02], [band[1] + 0.02, y1]] : [[y0, y1]];
   for (const name of ['front', 'right', 'back', 'left'] as const) {
@@ -228,15 +220,15 @@ function steelCraft(sink: PartSink, frame: HouseFrame, openings: readonly Openin
       const u = room(o.u + off) >= room(o.u - off) ? o.u + off : o.u - off;
       if (room(u) > 0.1) wallLantern(sink, face, u, top + 0.12);
     } else if (o.kind === 'gate') {
-      // the lamp over the door's head (its frame stands 14 cm over the opening), the posts a stride out at the jambs, each
-      // standing 1.1 m over what is under it — the apron's top, or the snow where it lies higher (the blind pair: on a slope
-      // the far posts stood buried to their caps)
+      // the lamp over the door's head (its frame stands 14 cm over the opening); the jamb guards beside the frame, concrete-
+      // filled pipes in safety yellow a hand off the wall, braced back to it twice (the blind pair: free posts a stride out
+      // stood buried to their caps where a slope's snow rose over the apron; on the wall they stand with the door)
       wallLantern(sink, face, o.u, top + 0.36);
       for (const side of [-1, 1]) {
-        const p = facePoint(face, o.u + side * (o.w / 2 + 0.3), 0, 0.45), snow = snowAt(p);
-        const base = aprons.includes(o.face) ? Math.max(0.08, snow) : snow, foot = Math.min(base, snow) - 0.3;
-        sink.cylinder('structureMetal', [p[0], foot, p[2]], 'y', base + 1.1 - foot, 0.1, 8, { colour: YELLOW, decor: true });
-        sink.cylinder('structureMetal', [p[0], base + 1.1, p[2]], 'y', 0.07, 0.1, 8, { colour: shade(YELLOW, 0.8), decor: true }, 0.05);
+        const u = o.u + side * (o.w / 2 + 0.26), p = facePoint(face, u, -0.2, 0.16);
+        sink.cylinder('structureMetal', p, 'y', 1.75, 0.085, 8, { colour: YELLOW, decor: true });
+        sink.cylinder('structureMetal', [p[0], 1.55, p[2]], 'y', 0.05, 0.085, 8, { colour: shade(YELLOW, 0.8), decor: true }, 0.04);
+        for (const y of [0.55, 1.3]) faceBox(sink, 'structureMetal', face, u, y, 0.06, 0.05, 0.05, 0.12, { colour: STEEL_DARK, decor: true });
       }
     }
   }
@@ -325,7 +317,7 @@ const garage: RegionalBuilder = (ctx) => {
       gutters: null, verge: { colour: STEEL, bucket: 'structureMetal' }, reveal: 0.14, spall: null,
     }, dialect(rng, paint));
     drifts(sink, frame, openings, look);
-    steelCraft(sink, frame, openings, null, ['right']);
+    steelCraft(sink, frame, openings);
     // (round 3, wave 130: "uniformly clean, no rust streaking") the rust run from under the eaves on every wall
     for (const name of ['front', 'back', 'left', 'right'] as const) {
       rustStreaks(sink, frame.faces[name], frame.eaveY - 0.15, rustStream(frame.eaveY * 13.1 + frame.faces[name].width * 5.3 + name.length), 0.3,
@@ -402,7 +394,7 @@ const warehouse: RegionalBuilder = (ctx) => {
       gutters: null, verge: { colour: STEEL, bucket: 'structureMetal' }, reveal: 0.14, spall: null,
     }, dialect(rng, paint));
     drifts(sink, frame, openings, look);
-    steelCraft(sink, frame, openings, [5.85, 6.35], ['front']);
+    steelCraft(sink, frame, openings, [5.85, 6.35]);
     // (round 3, wave 130: "uniformly clean, no rust streaking") the rust run from under the eaves on every wall
     for (const name of ['front', 'back', 'left', 'right'] as const) {
       rustStreaks(sink, frame.faces[name], frame.eaveY - 0.15, rustStream(frame.eaveY * 13.1 + frame.faces[name].width * 5.3 + name.length), 0.3,
