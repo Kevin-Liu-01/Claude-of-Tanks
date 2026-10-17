@@ -484,8 +484,28 @@ semantic metadata on every node and geometry, with cyclic-reference handling and
 217-tank roster (CPU-seconds, load about 25): the ten receipts 1,961 s, the five that replace them 1,025 s (the three
 passes 602 s); a whole cold suite 91 CPU-min instead of 106.
 
-Receipts share `tools/receipt-kit.test-support.mjs` (`near`, `nearStrict`, `geometryHash`) instead of defining their
-own copies. Source-shape guards, functional simulation tests and real visual checks still make different claims:
+Receipts share `tools/receipt-kit.test-support.mjs` (`near`, `nearStrict`, `geometryHash`, `graphLabels`) instead of
+defining their own copies.
+
+**No equality asserts on three.js objects (2026-10-16, test-speed R10).** A failing `assert.equal`/`deepEqual` makes
+node inspect both operands at depth 1000 with every typed-array element and diff the two dumps line by line; a
+supplied message does not stop it and `util.inspect.defaultOptions` is ignored. In the 226 gate the T-72 X receipts
+compared two scene graphs after VH.14 moved the AA gun under a pitch node and were killed at 28-40 GB sixteen times.
+Measured on node 24.13 under a 4 GB heap cap: two differing small meshes 6.1 GB and 11 s, two 200-mesh scenes 27.5 GB
+and 15 s; the pre-fix `t72b3XGeometry` receipt on today's tanks passed 12 GB in 65 s and was stopped there, and the same
+file after `--fix` fails in 21 s at 620 MB with a one-line message.
+
+`tools/object3d-assert-lint.selftest.mjs` fails on any node:assert equality call whose operand is an Object3D (or a
+list of them), a geometry, an attribute, a material or a texture: assert a boolean
+(`assert.ok(group.parent === turret, ...)`) or compare `graphLabels(...)` (identity labels such as `Mesh "hull" #12`),
+uuids or names. `node tools/object3d-assert-lint.mjs --fix` rewrites identity asserts as booleans and deep ones through
+`graphLabels`; `--types` runs the TypeScript checker over the whole import graph as the slower audit (about 50 s and
+4 GB, run it when touching many receipts); `// object3d-assert-ok: <reason>` on the call's line or the line above
+accepts a false positive. The lint caches each file's result by its bytes, so an unchanged tree lints in under a second;
+`COT_SELFTEST_CACHE=0` re-lints every file. A memory kill (137) or a timeout is a GO-blocking red until the receipt
+passes under the standard cap; never retry it at 24-40 GB.
+
+Source-shape guards, functional simulation tests and real visual checks still make different claims:
 a source regex does not prove a rendered result. The full gate inventory is not a
 substitute for the map/contact, shadow-motion and real Garage/battle review.
 
