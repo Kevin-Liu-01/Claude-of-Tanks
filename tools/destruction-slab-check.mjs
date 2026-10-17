@@ -320,11 +320,15 @@ export function footprintOf(triLists, cell = 0.25, growM = SLAB.footprintGrowM) 
 /** Luminance of a linear RGB. */
 const luma = (r, g, b) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
 
+/** The materials the intact world draws its buildings in (runSlabCheck fills it): a run in one of them looks like the
+ *  building it came from, map or none (census lane, 2026-10-17). */
+const WORLD_MATERIALS = new WeakSet();
+
 /** What a material draws as: its name, whether it has a map, its tint luminance. */
 function materialFacts(material) {
   const m = Array.isArray(material) ? material[0] : material;
   return {
-    name: m?.name ?? '', map: !!m?.map, fallback: /fx-structure-fallback/.test(m?.name ?? ''),
+    name: m?.name ?? '', type: m?.type ?? '', world: !!m && WORLD_MATERIALS.has(m), map: !!m?.map, fallback: /fx-structure-fallback/.test(m?.name ?? ''),
     color: m?.color ? [m.color.r, m.color.g, m.color.b] : [1, 1, 1], vertexColors: !!m?.vertexColors, side: m?.side ?? 0,
   };
 }
@@ -447,13 +451,15 @@ export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => fals
         reasons.push(`outside: ${outside.toFixed(1)} m² (${(outsideShare * 100).toFixed(0)} %) past the intact walls, ${lift.toFixed(1)} m up`);
       }
       if (elevated && floatingShare >= SLAB.floatingShare) reasons.push(`floating: ${(floatingShare * 100).toFixed(0)} % of it unsupported, ${lift.toFixed(1)} m up`);
-      if (m.fallback || !m.map) reasons.push(`untextured: ${m.name || '(unnamed material)'}`);
+      // (a material the intact world draws the building in is no untextured box, map or none: noted, not flagged)
+      if (m.fallback || (!m.map && !m.world)) reasons.push(`untextured: ${m.name || '(unnamed material)'}`);
+      else if (!m.map) attributes.push(`no map (the world's own ${m.type || 'material'}${m.name ? ` ${m.name}` : ''}, as the intact building draws)`);
       if (L < SLAB.darkLuma) attributes.push(`dark (tint luminance ${L.toFixed(3)})`);
     }
     if (!reasons.length) return;
     const horizontal = Math.abs(s.axes[2][1]) > 0.8;
     findings.push({
-      mesh: p.d.name, sheet: !!p.sheet, material: m.name, map: m.map, tint: tint.map((c) => +c.toFixed(3)), slab,
+      mesh: p.d.name, sheet: !!p.sheet, material: m.name, materialType: m.type, worldMaterial: m.world, map: m.map, tint: tint.map((c) => +c.toFixed(3)), slab,
       orientation: horizontal ? 'horizontal' : vertical ? 'vertical' : 'tilted',
       extentsM: s.ext.map((e) => +e.toFixed(2)), areaM2: +(s.ext[0] * s.ext[1]).toFixed(1),
       centre: s.centre.map((c) => +c.toFixed(2)), liftM: +lift.toFixed(2), outsideShare: +outsideShare.toFixed(2),
@@ -609,7 +615,8 @@ export function renderPng(file, layers, { eye, target, fov = 50, width = 1280, h
 /** The check, as a function: the report (pass, per-building rows with their snapshots and findings). */
 export async function runSlabCheck({
   mapId = 'verdant', ids = null, builders = null, perBuilder = 1, rounds = 40, roundGapS = 0.45, settleS = 10,
-  sections = true, fracture = true, renderDir = null, maxSnapshots = 40, storeys = [0], log = () => {},
+  sections = true, fracture = true, renderDir = null, maxSnapshots = 40, storeys = [0], log = () => {}, rejoin = false,
+  renderLimit = 5,
 } = {}) {
   installWorldBuildFixture();
   const [maps, terrain, vegetation, props, models, fleet] = await Promise.all([
@@ -628,6 +635,7 @@ export async function runSlabCheck({
   const { rubbleHeightFor, rubbleMoundHeightAt } = await import('../src/sim/terrainDeformation.ts');
   const { createObstacleGrid, shellPassesThroughCollisionRecord } = await import('../src/world/collision.ts');
   const { munitionClassForShell, munitionChargeKg } = await import('../src/sim/munitionBlast.ts');
+  const { createDestructionMirror } = rejoin ? await import('../src/mp/presentation/destructionMirror.ts') : { createDestructionMirror: null };
   await models.preloadPropModels();
 
   const config = maps.getMapConfig(mapId);
@@ -639,6 +647,10 @@ export async function runSlabCheck({
   log(`props built: ${built.structureDamage.size} structures`);
   const worldMaterials = new Map();
   for (const entry of built.structureMaterials) if (entry.role === 'surface' && !worldMaterials.has(entry.bucket)) worldMaterials.set(entry.bucket, entry.material);
+  for (const entry of built.structureMaterials) if (entry.material) WORLD_MATERIALS.add(entry.material);
+  for (const spans of built.structureSpans.values()) for (const span of spans) {
+    for (const m of [span.mesh.material].flat()) if (m) WORLD_MATERIALS.add(m);
+  }
   const table = createStructureDamage(built.obstacles, built.colliders);
   const seams = new Map();
   const seamOf = (id) => {
@@ -697,17 +709,55 @@ export async function runSlabCheck({
       scars: null, crumble: 1, ...(fx ? { fracture: fx.attach } : {}) });
     const events = [];
     let collapsed = false;
+    // whose runs are whose (census lane, 2026-10-17): a burst's blast reaches the neighbours (sim applyBlast), and their
+    // stage runs land in the same debris group, untagged rubble and remnants with no structure in their names: a run is
+    // the structure's whose event (or strike) laid it; one laid by a per-frame update (a storey's fall ending) the
+    // nearest struck structure's
+    const struckIds = new Set([id]);
+    const foreign = new Map();
+    const ownerRoots = () => [debris.group, fxGroup];
+    const childSets = () => ownerRoots().map((g) => new Set(g.children));
+    const markNew = (before, ownerId) => ownerRoots().forEach((g, k) => {
+      for (const ch of g.children) if (!before[k].has(ch) && ch.userData.__owner === undefined) {
+        if (ownerId !== null) { ch.userData.__owner = ownerId; continue; }
+        ch.geometry?.computeBoundingSphere?.();
+        const cc = ch.geometry?.boundingSphere?.center;
+        if (!cc) continue;
+        let best = id, bestD = Infinity;
+        for (const sid of struckIds) {
+          const pl = seamOf(sid)?.anatomy?.placement;
+          if (!pl) continue;
+          const dd = Math.hypot(cc.x - pl.x, cc.z - pl.z);
+          if (dd < bestD) { bestD = dd; best = sid; }
+        }
+        ch.userData.__owner = best;
+      }
+    });
+    const attributed = (ownerId, fn) => { const before = childSets(); fn(); markNew(before, ownerId); };
+    let stageNow = 0, holes = 0;
+    const STAGE_RANK = { intact: 0, damaged: 1, breached: 2, collapsed: 3 };
     const bus = { emit(type, e) {
-      if (e?.structureId === id) events.push({ t: +clock.toFixed(3), type, stage: e.stage ?? null, hole: e.hole ?? null, storeyDown: !!e.storeyDown,
-        y: e.y !== undefined ? +(+e.y).toFixed(2) : null });
+      if (e?.structureId === id) {
+        events.push({ t: +clock.toFixed(3), type, stage: e.stage ?? null, hole: e.hole ?? null, storeyDown: !!e.storeyDown,
+          y: e.y !== undefined ? +(+e.y).toFixed(2) : null, ...(e.settled ? { settled: true } : {}) });
+        if (type === DESTRUCTION_BUS_EVENTS.stage) stageNow = Math.max(stageNow, STAGE_RANK[e.stage] ?? 0);
+        else holes++;
+      } else if (typeof e?.structureId === 'number') {
+        struckIds.add(e.structureId);
+        foreign.set(e.structureId, (foreign.get(e.structureId) ?? 0) + 1);
+      }
       if (type === DESTRUCTION_BUS_EVENTS.stage && e.stage === 'collapsed') {
         const st = table.byId(e.structureId);
         if (st) mounds.push({ cx: st.cx, cz: st.cz, hw: st.hw, hd: st.hd, yaw: st.yaw, heightM: rubbleHeightFor(st.topY - st.baseY) });
         if (e.structureId === id) collapsed = true;
       }
-      if (type === DESTRUCTION_BUS_EVENTS.stage) stages.stage(e, seamOf(e.structureId));
-      else if (type === DESTRUCTION_BUS_EVENTS.breach) { stages.breach(e, seamOf(e.structureId)); fx?.breach(e); }
+      if (type === DESTRUCTION_BUS_EVENTS.stage) attributed(e.structureId, () => stages.stage(e, seamOf(e.structureId)));
+      else if (type === DESTRUCTION_BUS_EVENTS.breach) attributed(e.structureId, () => { stages.breach(e, seamOf(e.structureId)); fx?.breach(e); });
     } };
+    /** The damage stage a snapshot shows, in the owner's words: hit (holes, no stage yet), damaged, heavily damaged
+     *  (the sim's `breached`), collapse, then the settled ruin. */
+    const phaseNow = (atEnd) => (atEnd ? (collapsed ? 'settled ruin' : 'settled (standing)')
+      : stageNow === 0 ? (holes ? 'hit' : 'intact') : ['', 'damaged', 'heavily damaged', 'collapse'][stageNow]);
     const sd = createStudioDestruction({ getObstacles: () => built.obstacles, getColliders: () => built.colliders }, bus,
       { rules: matchRulesetFor('standard').destruction, sections });
     const st0 = a.storeys[0];
@@ -725,7 +775,9 @@ export async function runSlabCheck({
     const record = shellRecord.get(id);
     // the building's own drawn meshes: the fx group's for this structure, its stage runs, the rubble bodies
     const own = new RegExp(`-${id}(-|$)`);
-    const accept = (m) => (m.parent === fxGroup ? own.test(m.name) || /^fx-collapse-(?!baked)/.test(m.name) : true);
+    // (a run another structure's event laid is that structure's: never judged against this one's plan)
+    const accept = (m) => (m.userData.__owner !== undefined && m.userData.__owner !== id ? false
+      : m.parent === fxGroup ? own.test(m.name) || /^fx-collapse-(?!baked)/.test(m.name) : true);
     const supportAt = (x, z, y) => query(x - 0.3, z - 0.3, x + 0.3, z + 0.3, queryOut)
       .some((rr) => !rr.crushed && !rr.dead && rr.max[1] >= y - SLAB.supportBandM && rr.min[1] <= y + 0.05
         && x >= rr.min[0] - 0.3 && x <= rr.max[0] + 0.3 && z >= rr.min[2] - 0.3 && z <= rr.max[2] + 0.3);
@@ -759,10 +811,15 @@ export async function runSlabCheck({
     {
       const meshes = drawnMeshes([debris.group, fxGroup, bodies?.group], accept);
       const judged = judgeSlabs(meshes, { footprint, groundAt: ground, supportAt });
-      snapshots.push({ t: 0, label: 'intact', meshes: meshes.length, pieces: judged.pieces, findings: judged.findings.map(strip),
+      snapshots.push({ t: 0, label: 'intact', phase: 'intact', meshes: meshes.length, pieces: judged.pieces, findings: judged.findings.map(strip),
         render: shoot('intact', meshes, judged.findings, true) });
     }
     const spanIssues = spanTroubles(seam.spans);
+    /** One render frame of the presentation (effects.ts update order); a run it lays goes to the nearest struck building. */
+    const frame = () => { const before = childSets(); stages.update(); fx?.update(); debris.update(); bodies?.update(); markNew(before, null); };
+    /** effects.ts resetAll's destruction part: the mask, the runs, the bodies, the stages (flattened parts back), the fracture. */
+    const resetPresentation = () => { mask.reset(); debris.reset(); bodies?.reset(); stages.reset(); fx?.reset(); };
+    const intactTriangles = intactLists.reduce((n, l) => n + l.length / 9, 0);
     const due = [];
     let lastEventCount = 0, fired = 0, collapsedAt = -1;
     const lastS = rounds * roundGapS + settleS + 4;
@@ -774,18 +831,16 @@ export async function runSlabCheck({
         const y = sf.origin[1] + Math.max(0.6, Math.min(sf.height - 0.6, ys[fired % ys.length] * sf.height));
         const [hx, hy, hz] = toWorld(sf.origin[0] + sf.u[0] * uu, y, sf.origin[2] + sf.u[2] * uu);
         sd.strike(spec, record, hx, hy, hz, -nx, -nz);
-        stages.strike(id, seam, hx, hy, hz, -nx, -nz, munition, chargeKg, spec.caliberMm);
+        attributed(id, () => stages.strike(id, seam, hx, hy, hz, -nx, -nz, munition, chargeKg, spec.caliberMm));
         fired++;
       }
       sd.step();
-      stages.update();
-      fx?.update();
-      debris.update();
-      bodies?.update();
+      frame();
       if (collapsedAt < 0 && collapsed) collapsedAt = clock;
       if (events.length > lastEventCount) {
         // each new stage or breach: judged once its pieces are laid (0.8 s) and once they have fallen (3 s)
         for (const dt of [0.8, 3.0]) if (!due.some((d) => Math.abs(d - (clock + dt)) < 0.4)) due.push(clock + dt);
+        due.sort((x, y) => x - y);
         lastEventCount = events.length;
       }
       const atEnd = (collapsedAt >= 0 && clock > collapsedAt + settleS) || (tick + 1) * STEP > lastS;
@@ -798,18 +853,70 @@ export async function runSlabCheck({
           const label = atEnd ? 'final' : `t${clock.toFixed(1)}-${last ? (last.stage ?? (last.storeyDown ? 'storeyDown' : last.hole === 255 ? 'sectionDown' : 'hole')) : 'none'}`;
           const flagged = judged.findings.length > 0;
           const firstFlag = flagged && !snapshots.some((p) => p.findings.length);
-          snapshots.push({ t: +clock.toFixed(2), label, events: events.length, meshes: meshes.length, pieces: judged.pieces, findings: judged.findings.map(strip),
-            render: firstFlag || atEnd || (flagged && rendered < 5) ? shoot(label, meshes, judged.findings, !collapsed || !fx?.took(id)) : null });
+          snapshots.push({ t: +clock.toFixed(2), label, phase: phaseNow(atEnd), events: events.length, foreignEvents: [...foreign.values()].reduce((x, y) => x + y, 0),
+            meshes: meshes.length, pieces: judged.pieces, findings: judged.findings.map(strip),
+            render: firstFlag || atEnd || (flagged && rendered < renderLimit) ? shoot(label, meshes, judged.findings, !collapsed || !fx?.took(id)) : null });
         }
         if (atEnd) break;
       }
     }
+    // ---- the mid-match rejoin (census lane, 2026-10-17): a seat that joins or rejoins lays the authority's log down
+    // settled (mp/presentation/destructionMirror.ts applyLog: every stage and breach raised with `settled: true`, the
+    // structure's records restored) over a world stood up again (effects resetAll). At each cut of this building's log —
+    // its first hole, each of its stages, the whole log — the presentation is reset, the log's prefix laid through the
+    // mirror on the same bus, and the building judged as laid, at 0.8 s and at 3 s (the last as settled).
+    const resetChecks = [];
+    const checkReset = (when) => {
+      resetPresentation();
+      const left = drawnMeshes([debris.group, fxGroup, bodies?.group]).length;
+      const tris = drawnSpanTriangles(seam.spans).reduce((n, l) => n + l.length / 9, 0);
+      resetChecks.push({ when, meshesLeft: left, spanTriangles: tris, intactTriangles });
+    };
+    if (rejoin && createDestructionMirror) {
+      const logAll = sd.match.log.slice();
+      const cuts = [];
+      let sawHole = false;
+      logAll.forEach((entry, i) => {
+        if (entry.structureId !== id) return;
+        if (entry.kind === 'breach' && !sawHole) { sawHole = true; cuts.push({ cut: 'first hole', n: i + 1 }); }
+        else if (entry.kind === 'stage') cuts.push({ cut: { breached: 'heavily damaged', collapsed: 'collapse' }[entry.stage] ?? entry.stage, n: i + 1 });
+      });
+      cuts.push({ cut: 'whole log', n: logAll.length });
+      const seenCut = new Set();
+      let rejoinRenders = 0;
+      for (const { cut, n } of cuts) {
+        if (seenCut.has(n) || n === 0) continue;
+        seenCut.add(n);
+        checkReset(`before rejoin @ ${cut}`);
+        mounds.length = 0; collapsed = false; stageNow = 0; holes = 0;
+        const mirror = createDestructionMirror({ getObstacles: () => built.obstacles, getColliders: () => built.colliders }, bus);
+        mirror.setSections(sections);
+        const t0 = clock;
+        mirror.applyLog(logAll.slice(0, n), null, null);
+        const marks = [[2 * STEP, 'laid', false], [0.8, '0.8s', false], [3.0, '3s', true]];
+        for (let tick = 1, mi = 0; mi < marks.length; tick++) {
+          clock = t0 + tick * STEP;
+          frame();
+          if (clock - t0 < marks[mi][0] - 1e-9) continue;
+          const meshes = drawnMeshes([debris.group, fxGroup, bodies?.group], accept);
+          const judged = judgeSlabs(meshes, { footprint, groundAt: ground, supportAt, settled: marks[mi][2] });
+          const label = `rejoin-${cut.replace(/ /g, '_')}-${marks[mi][1]}`;
+          const flagged = judged.findings.length > 0;
+          snapshots.push({ t: +clock.toFixed(2), label, phase: `rejoin @ ${cut}`, rejoin: { cut, entries: n, of: logAll.length },
+            meshes: meshes.length, pieces: judged.pieces, findings: judged.findings.map(strip),
+            render: flagged && rejoinRenders++ < 3 ? shoot(label, meshes, judged.findings, !collapsed) : null });
+          mi++;
+        }
+      }
+    }
+    // stand it all up again for the next building (a blast on this one reaches its neighbours' spans)
+    checkReset('after');
     const flaggedSnaps = snapshots.filter((p) => p.findings.length);
     const row = {
       id, builder: seam.builder, kit: a.kit, style: seam.style, anatomy: { w: +a.w.toFixed(2), d: +a.d.toFixed(2), h: +a.h.toFixed(2), storeys: a.storeys.length,
         floors: a.storeys.filter((st) => st.floor).length, roof: a.roof?.kind ?? null }, fired, collapsedAtS: +collapsedAt.toFixed(2),
-      events, spanIssues, snapshots, pass: !flaggedSnaps.length && !spanIssues.length,
-      worst: flaggedSnaps.flatMap((p) => p.findings.map((f) => ({ t: p.t, label: p.label, ...f }))).sort((p, q) => q.areaM2 - p.areaM2).slice(0, 12),
+      events, foreign: Object.fromEntries(foreign), resetChecks, spanIssues, snapshots, pass: !flaggedSnaps.length && !spanIssues.length,
+      worst: flaggedSnaps.flatMap((p) => p.findings.map((f) => ({ t: p.t, label: p.label, phase: p.phase, ...f }))).sort((p, q) => q.areaM2 - p.areaM2).slice(0, 12),
     };
     rows.push(row);
     log(`#${id} ${seam.builder}: ${row.pass ? 'PASS' : `FAIL (${flaggedSnaps.length} of ${snapshots.length} snapshots flag stray slabs; ${spanIssues.length} span issues)`}`);
@@ -877,6 +984,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     settleS: Number(args.settle ?? 10), sections: args.sections !== '0', fracture: args.fracture !== '0',
     renderDir: typeof args.render === 'string' ? args.render : null, maxSnapshots: Number(args['max-snapshots'] ?? 40),
     storeys: typeof args.storeys === 'string' ? args.storeys.split(',').map(Number) : [0],
+    rejoin: args.rejoin === '1' || args.rejoin === true, renderLimit: Number(args['render-limit'] ?? 5),
     log: (...m) => console.log('[slab-check]', ...m),
   });
   if (typeof args.json === 'string') writeFileSync(args.json, JSON.stringify(report, null, 1));
@@ -884,7 +992,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     console.log(`${r.pass ? 'PASS' : 'FAIL'} #${r.id} ${r.builder} (${r.kit}; ${r.anatomy.w} x ${r.anatomy.d} x ${r.anatomy.h} m, ${r.anatomy.storeys} storeys, ${r.anatomy.floors} floors):`
       + ` ${r.fired} rounds, ${r.events.length} events, ${r.collapsedAtS >= 0 ? `collapsed at ${r.collapsedAtS} s` : 'standing'}`);
     for (const p of r.snapshots) if (p.findings.length) {
-      console.log(`  t=${p.t}s ${p.label}: ${p.findings.length} stray slab(s)${p.render ? ` -> ${p.render}` : ''}`);
+      console.log(`  t=${p.t}s ${p.label} [${p.phase ?? ''}]: ${p.findings.length} stray slab(s)${p.render ? ` -> ${p.render}` : ''}`);
       for (const f of p.findings.slice(0, 8)) console.log(`    ${f.mesh} [${f.material}] ${f.orientation} ${f.extentsM.join(' x ')} m at ${f.centre.join(', ')} (lift ${f.liftM} m): ${f.reasons.join('; ')}${f.attributes.length ? ` (${f.attributes.join(', ')})` : ''}`);
     }
     for (const s of r.spanIssues) console.log(`  span: ${s}`);
