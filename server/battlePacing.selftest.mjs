@@ -23,8 +23,10 @@ import { gatherPacingShares, pacingRunDirectory, pacingShardReport } from './bat
 //   COT_PACING_REPORT=<file> writes the match records: tools/pacing-tail.mjs merges a run played in shards, judges it
 //   by the same gate and, given the PR head's records on the same matches, compares the share inside 90 s.
 // - COT_PACING_JOBS=<n> plays the maps on n worker threads of this file (default: a quarter of the cores, 1 to 4;
-//   COT_PACING_JOBS=1 plays them on the main thread). Every mode above takes it for what this receipt plays itself
-//   (the core run with a run directory plays up to n unclaimed shares at once, one worker each). The maps are dealt
+//   COT_PACING_JOBS=1 plays them on the main thread). Every mode above takes it for what this receipt plays itself,
+//   except that the core run with a run directory plays the unclaimed shares one at a time on the main thread unless
+//   COT_PACING_JOBS is set (then up to n at once, one worker each): a pool counts this receipt as one slot, so it runs
+//   one thread however the pool orders it beside the shards (test-speed R9a). The maps are dealt
 //   round-robin and each worker plays its share in MAPS order; the records and the log come back in MAPS order and
 //   sample order, so the report, the printed lines and the gate equal the one-thread run's. Each match is a function of
 //   its seed and map alone (the shards of tools/pacing-tail.mjs rely on it too); a record that moved with the job count
@@ -38,6 +40,8 @@ const PARTIAL = MAPS.length < MAP_IDS.length;
 const RUN_DIR = process.env.COT_SELFTEST_RUN_DIR;
 const JOBS = Math.floor(Number(process.env.COT_PACING_JOBS))
   || Math.max(1, Math.min(4, Math.floor(availableParallelism() / 4)));
+// The unclaimed shares of the core run this receipt plays at once, each on its own worker thread when more than one.
+const SHARE_PLAYERS = Math.floor(Number(process.env.COT_PACING_JOBS)) || 1;
 // Each worker's old-generation cap: max(2048, 1.5 x the one-thread run's peak heap). That run's whole-process max RSS,
 // an upper bound on its heap, was 1,118 MB over all 33 maps (2026-10-13), and a worker plays at most 9 of them.
 const WORKER_HEAP_MB = 2048;
@@ -87,10 +91,10 @@ async function playHere(maps) {
   return matches;
 }
 
-// One share of the core run played here (on its own worker thread when JOBS > 1), as its shard would report it.
+// One share of the core run played here (on its own worker thread when SHARE_PLAYERS > 1), as its shard would report it.
 async function playShare(shard) {
   const maps = pacingShardMaps(MAP_IDS, shard);
-  if (JOBS <= 1) return pacingShardReport(shard, maps, (await playMaps(maps, SAMPLES)).matches, 'battlePacing');
+  if (SHARE_PLAYERS <= 1) return pacingShardReport(shard, maps, (await playMaps(maps, SAMPLES)).matches, 'battlePacing');
   const worker = new Worker(new URL(import.meta.url), {
     workerData: { maps, samples: SAMPLES },
     resourceLimits: { maxOldGenerationSizeMb: WORKER_HEAP_MB },
@@ -103,7 +107,7 @@ async function playShare(shard) {
 }
 
 // The run's matches: the core run merges the shards' records from this run and plays only the shares nobody else
-// plays (up to JOBS at a time); the tail and a subset of the maps play everything here, as before.
+// plays (SHARE_PLAYERS at a time); the tail and a subset of the maps play everything here, as before.
 async function playAll() {
   const say = (message) => console.log(`battlePacing.selftest: ${message}`);
   if (!TAIL && !PARTIAL && !RUN_DIR) {
@@ -112,7 +116,7 @@ async function playAll() {
       + 'receipts (docs/DEVELOPMENT.md, "The pacing tail")');
   }
   if (TAIL || PARTIAL || !RUN_DIR) return playHere(MAPS);
-  const { reports, playedHere } = await gatherPacingShares(RUN_DIR, { playShare, players: JOBS, log: say });
+  const { reports, playedHere } = await gatherPacingShares(RUN_DIR, { playShare, players: SHARE_PLAYERS, log: say });
   const matches = pacingRunOrder(MAP_IDS, mergeShardReports([...reports.values()], MAP_IDS));
   for (const mapId of MAPS) console.log(pacingMapLine(mapId, matches, SAMPLES));
   const shards = [...reports.keys()].sort((a, b) => a - b);

@@ -641,9 +641,12 @@ exactly once, at their seeds, played on this tree. It judges the 132 by the same
 - **Ordering.** The runner admits the judge after every other receipt, so in `npm test` it only merges. A pool that
   orders receipts some other way still plays each share once. The judge waits while a live process holds a share's
   claim, however long it plays; a pool's timeout bounds a hung one, whose claim then dies. It gives an unclaimed share
-  10 s in case a shard is starting, and then claims and plays what is left, up to `COT_PACING_JOBS` shares at a time.
+  10 s in case a shard is starting, and then claims and plays what is left, one share at a time on its own thread, so
+  it never runs more threads than the one slot a pool counts (`COT_PACING_JOBS=n` plays n shares at once on worker
+  threads).
 - **Missing shares.** The judge always judges all 132. Without a run directory, as in
-  `node server/battlePacing.selftest.mjs`, it plays them all itself.
+  `node server/battlePacing.selftest.mjs`, it plays them all itself, on `COT_PACING_JOBS` worker threads (by default
+  a quarter of the cores, at most four).
 - **The protocol's receipt.** `server/battlePacingRun.selftest.mjs` covers the partition, the report check, the merge,
   the claims and the hand-over, on fixtures.
 - **Cost (measured 2026-10-16).** The eight shards and the old receipt played byte-identical records. CPU time is
