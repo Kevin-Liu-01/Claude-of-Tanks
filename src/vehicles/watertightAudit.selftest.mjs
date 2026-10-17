@@ -30,7 +30,7 @@ const recordOf = async (id) => (await INTERIOR_FILL_GROUP_LOADERS[FLEET_GROUP_BY
   const audit = await createWatertightAudit({ records: {} });
   const tank = build('jpz_e100');
   try { audit.check('jpz_e100', tank); } finally { tank.dispose(); }
-  assert.throws(() => audit.finish(), /gen-interior-fills\.mjs --ids=<id> --rounds=8 --min-fine=1[\s\S]*jpz_e100: [\d.]+ L reaches the deep interior/);
+  assert.throws(() => audit.finish(), /gen-interior-fills\.mjs --ids=<id> --release[\s\S]*jpz_e100: [\d.]+ L reaches the deep interior/);
 }
 // 3. a fill-policy hull is measured on the boundary its generation bounded (all-mesh air would read 61.81 L)
 {

@@ -696,8 +696,9 @@ The chain (`tools/tank-regen-changed.mjs`) regenerates the paint catalog and leg
 seats, spare-track, anatomy and marking to a fixpoint (seats read the fills and roof guns; the dock seats feed the
 spare-track keep-out), then the geometry ledger, the manual reference, centering and icons (capture lock, holds of at
 most 20 minutes; centering re-runs the CPU steps for any id whose anchors moved). Every CPU child runs
-`nice -n 10 node --max-old-space-size=4096` after `headroom can-start`; fills run as `--jobs` parallel parts merged by
-the tool itself (`gen-interior-fills --merge-from`). Options: `--dry-run`, `--steps=a,b`, `--no-gpu`, `--jobs=N`,
+`nice -n 10 node --max-old-space-size=4096` after `headroom can-start`; fills run with the release preset
+(`gen-interior-fills --release`, = `--rounds=8 --min-fine=1`; the bare defaults warn) as `--jobs` parallel parts merged
+by the tool itself (`gen-interior-fills --merge-from`). Options: `--dry-run`, `--steps=a,b`, `--no-gpu`, `--jobs=N`,
 `--all` (every step on the whole fleet first: bootstrap or explicit full) and `--check --all` (nightly: every step's
 whole-fleet `--check`, writes nothing).
 

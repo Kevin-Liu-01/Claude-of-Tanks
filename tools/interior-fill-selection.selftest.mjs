@@ -51,4 +51,9 @@ const generator = readFileSync('tools/gen-interior-fills.mjs', 'utf8');
 assert.match(generator, /const \{ rounds: ROUNDS, minFine: MIN_FINE, release: RELEASE_PRESET \} = interiorFillOptions\(args\);/,
   'the generator reads its rounds and fine-box floor from interiorFillOptions');
 assert.doesNotMatch(generator, /opt\('(rounds|min-fine)'/, 'the generator keeps no private flag parsing');
+// The release chain (tank-regen-changed's fills step) generates through the preset, never the bare defaults.
+const { STEPS } = await import('./changed-only/steps.mjs');
+const fillsStep = STEPS.find((step) => step.tool === 'tools/gen-interior-fills.mjs');
+assert.ok(fillsStep?.flags.includes('--release'), 'the release chain passes gen-interior-fills --release');
+assert.equal(interiorFillOptions(fillsStep.flags).release, true, 'the release chain resolves to the release preset');
 console.log('interior fill selection: --release = --rounds=8 --min-fine=1, contradictions fail, a repeated id fails PASS');

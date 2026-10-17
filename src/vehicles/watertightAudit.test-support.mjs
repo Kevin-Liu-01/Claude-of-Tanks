@@ -60,7 +60,7 @@ export async function createWatertightAudit({ records: replaced = null } = {}) {
     },
     finish() {
       assert.equal(leaks.length, 0, `${leaks.length} hull(s) leak past the ${WATERTIGHT_MAX_LEAK_L} L watertight gate `
-        + `(regenerate: node tools/gen-interior-fills.mjs --ids=<id> --rounds=8 --min-fine=1):\n  ${leaks.join('\n  ')}`);
+        + `(regenerate: node tools/gen-interior-fills.mjs --ids=<id> --release):\n  ${leaks.join('\n  ')}`);
       console.log(`watertight: ${measured} hulls hold water with their shipped fills (${fillPolicyHulls} on their fill-policy `
         + `boundary); ${laneL.toFixed(2)} L of track-lane air, ${retainedL.toFixed(2)} L of retained source air, `
         + `${boreL.toFixed(2)} L of declared bore air (${boreHulls} physical bores) and ${movingL.toFixed(2)} L of moving-part `

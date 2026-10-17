@@ -188,9 +188,10 @@ export const STEPS = Object.freeze([
   },
   {
     name: 'fills', device: 'cpu', tool: 'tools/gen-interior-fills.mjs',
-    // The release flags (226: fills made at the old defaults 4/12 had to be redone); explicit, so a default change in
-    // the tool cannot silently change what the chain generates.
-    flags: ['--voxel=0.025', '--cell=2', '--rounds=8', '--min-fine=1'],
+    // The release flags (226: fills made at the old defaults 4/12 had to be redone). --release is the tool's named
+    // preset (--rounds=8 --min-fine=1, tools/interior-fill-selection.mjs INTERIOR_FILL_RELEASE, test-speed R4c): the
+    // preset's module is in the step's closure, so a change to it re-keys every fills row; the grid stays explicit.
+    flags: ['--voxel=0.025', '--cell=2', '--release'],
     full: ['--all'], scoped: (list) => [ids(list)],
     check: null, checkScoped: null,
     outputs: ['interiorFills', 'movingClearanceAir'],

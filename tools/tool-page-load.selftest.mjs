@@ -108,7 +108,8 @@ assert.match(readFileSync('tools/tool-page-load.mjs', 'utf8'), /const \{ COT_NAV
 
 // (4) wiring in the release and regen browser tools
 const ICONS_LOADERS = ['genIcons', 'tank-assets-check', 'presentation-centering', 'muzzle-bore-probe'];
-const SERVED = [...ICONS_LOADERS, 'track-duplicate-audit', 'module-visual-align-probe', 'geometry-gate', 'tank-standard-check'];
+const SERVED = [...ICONS_LOADERS, 'track-duplicate-audit', 'module-visual-align-probe', 'geometry-gate', 'tank-standard-check',
+  'procedural-fidelity'];
 for (const tool of SERVED) {
   const source = readFileSync(`tools/${tool}.mjs`, 'utf8');
   assert.match(source, /import \{[^}]*\bboundOrigin\b[^}]*\btoolServerOptions\b[^}]*\} from '\.\/tool-page-load\.mjs';/, `${tool}: imports the helpers`);
@@ -117,7 +118,7 @@ for (const tool of SERVED) {
   assert.doesNotMatch(source, /strictPort:\s*true/, `${tool}: no strict port`);
   assert.doesNotMatch(source, /localhost:\$\{|server\.config\.server\.port/, `${tool}: no \`localhost\` URL`);
 }
-for (const tool of [...ICONS_LOADERS, 'module-visual-align-probe', 'geometry-gate']) {
+for (const tool of [...ICONS_LOADERS, 'module-visual-align-probe', 'geometry-gate', 'procedural-fidelity']) {
   const source = readFileSync(`tools/${tool}.mjs`, 'utf8');
   assert.match(source, /loadReadyPage\(page, /, `${tool}: its first page load retries a timeout`);
   assert.doesNotMatch(source, /Number\(process\.env\.COT_NAV_(TIMEOUT_MS|RETRIES)\)/, `${tool}: no private navigation budget`);

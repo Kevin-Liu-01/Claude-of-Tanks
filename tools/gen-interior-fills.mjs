@@ -3,9 +3,9 @@
 //
 //   node tools/gen-interior-fills.mjs --ids=a,b | --all [--release] [--voxel=0.025] [--cell=2] [--out=src/vehicles/generated/interiorFills.generated.ts] [--stats]
 //   node tools/gen-interior-fills.mjs --ids=a,b | --all --merge-from=partA,partB   # write parts measured with --out-dir
-//   --release = --rounds=8 --min-fine=1, the flags every shipped record is generated with (2026-10-16; the release and
-//   regen chains pass them: tank-regen-changed spells them out); without them the bare exploration defaults (4 rounds,
-//   min-fine 12) apply and a warning says so.
+//   --release = --rounds=8 --min-fine=1, the flags every shipped record is generated with (2026-10-16; the release
+//   chain passes it: tank-regen-changed's fills step, tools/changed-only/steps.mjs); without them the bare exploration
+//   defaults (4 rounds, min-fine 12) apply and a warning says so.
 //
 // For each tank the body is voxelised (tools/tank-voxel-body.mjs), the exterior flood-filled and the deep interior
 // found exactly as tools/tank-watertight-check.mjs does. Every deep-interior voxel the water reaches (a leak) is a
