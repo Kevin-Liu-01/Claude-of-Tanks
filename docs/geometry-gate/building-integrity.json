@@ -2868,8 +2868,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 3.934,
-   "gapM2": 5.072,
+   "insideM2": 1.953,
+   "gapM2": 9.304,
    "invertedM2": 0
   },
   "saar/gantry": {
@@ -4457,5 +4457,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-16T16:32:28.171Z"
+ "updatedAt": "2026-10-17T12:42:29.993Z"
 }
