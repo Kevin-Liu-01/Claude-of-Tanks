@@ -677,8 +677,8 @@ function facing(sink: PartSink, bucket: RegionalBucket, q: readonly Vec3[], n: V
 
 /** A block's four sides in the house grammar's order. */
 const SIDES: readonly Side[] = ['front', 'right', 'back', 'left'];
-/** The share of a kershef house's windows behind palm-plank shutters (E10). */
-const SHUTTERED = 0.45;
+/** The share of a kershef house's windows behind palm-plank shutters (E10), and the dress over which a palm lintel heads one (E11). */
+const SHUTTERED = 0.5, LINTELLED = 0.68;
 
 /**
  * A kershef window (props census #26 cut it through the mass; WORKPLAN-227 §5 builds it as Verdant's are, through
@@ -689,11 +689,12 @@ const SHUTTERED = 0.45;
 function kershefWindow(wall: RegionalBucket, dress: number, tone: Rgb): WindowStyle {
   return {
     frame: shade(tone, 0.85), frameWidth: 0.05, frameOut: 0.04, bars: 'two',
-    surround: { bucket: wall, width: 0.09, out: 0.04 },
+    // (a window under a palm lintel has no lip: the lintel bears on the mud either side of it)
+    surround: dress > LINTELLED ? null : { bucket: wall, width: 0.09, out: 0.04 },
     sill: { bucket: 'structureWood', out: 0.06, colour: shade(PALM, 0.75) },
     // (closed, most of them, against the sun: the leaves inside the deep reveal)
     shutters: dress < SHUTTERED ? { colour: tone, kind: 'plank', closed: 0.65 } : null,
-    head: dress > 0.55 ? { kind: 'lintel', bucket: 'structureWood', h: 0.12, out: 0.1, ext: 0.12, colour: shade(PALM, 0.8) } : null,
+    head: dress > LINTELLED ? { kind: 'lintel', bucket: 'structureWood', h: 0.12, out: 0.1, ext: 0.12, colour: shade(PALM, 0.8) } : null,
   };
 }
 
@@ -770,8 +771,9 @@ function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: nu
         if (rng() < (low ? (opts.packed ? 0.45 : 0.38) : (opts.packed ? 0.3 : 0.16))) continue;
         const u = -width / 2 + 0.3 + (k + 0.5) * (width - 0.6) / m + (rng() - 0.5) * 0.2;
         const w = 0.42 + look() * 0.14, hh = 0.48 + look() * 0.14, dress = look(), tone = look() < 0.5 ? PALM : PALM_GREY;
-        // its reach along the wall: its lip, or the shutters folded back beside it; the corners' arcs stay clear
-        const reach = w / 2 + (dress < SHUTTERED ? w / 2 + 0.06 : 0.14);
+        // its reach along the wall: room for its shutters folded back beside it, whether it has them or not (no window
+        // dropped for its dress); the corners' arcs stay clear
+        const reach = w + 0.06;
         if (Math.abs(u) + reach > width / 2) continue;
         if (name === 'front' && door && low && Math.abs(u - door.u) < door.w / 2 + 0.45 + reach) continue;
         const o: Opening = { face: name, storey: 0, kind: 'window', u, w, y0: st * sh + sill, h: hh };
@@ -946,7 +948,8 @@ const kershefHouse: RegionalBuilder = (ctx) => {
 /**
  * Old Shali (a caravanserai or compound plot): the town's houses heaped together, a block to each cell of the plot,
  * packed against each other (their battered walls lean apart into narrow clefts as they rise), lower at the edges and
- * highest in the middle, a room set back on some roofs; the outer faces on the plot's edge, doors to the front lane.
+ * highest in the middle, a room set back on some roofs; the outer faces on the plot's edge, doors to the front lane. A
+ * caravanserai's heap stands round an open court. Each block a kershef house of the grammar (kershefBlock).
  */
 const shaliCluster: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
@@ -955,7 +958,10 @@ const shaliCluster: RegionalBuilder = (ctx) => {
   // (looks 227: a cell about a house's size, 6-8 m: a compound's 14.5 m depth two of them)
   const nx = R.W > 15 ? 3 : 2, nz = R.D > 16.5 ? 3 : 2;
   const cw = R.W / nx, cd = R.D / nz, blocks: RegionalParts[] = [];
+  // (looks 227) a caravanserai's houses stand round its court: a heap of nine leaves its middle cell open
+  const court = ctx.structureId === 'caravanserai' && nx === 3 && nz === 3;
   for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+    if (court && i === 1 && j === 1) continue;
     // each cell's block reaches 0.1 m past its inner boundaries (the neighbours' feet meet), 0.25 m in from the plot's edge
     const x0 = R.x0 + i * cw + (i === 0 ? 0.25 : -0.1), x1 = R.x0 + (i + 1) * cw - (i === nx - 1 ? 0.25 : -0.1);
     const z0 = R.z0 + j * cd + (j === 0 ? 0.25 : -0.1), z1 = R.z0 + (j + 1) * cd - (j === nz - 1 ? 0.25 : -0.1);
@@ -967,7 +973,8 @@ const shaliCluster: RegionalBuilder = (ctx) => {
     if (i === nx - 1) outer.push('right');
     if (j === 0) outer.push('back');
     if (i === 0) outer.push('left');
-    const bucket = rng() < 0.35 ? KERSHEF_OLD : MUD, room = storeys >= 2 && rng() < 0.45;
+    // (a room on fewer roofs of a heap of nine: the kits' triangle budget holds the whole heap)
+    const bucket = rng() < 0.35 ? KERSHEF_OLD : MUD, room = storeys >= 2 && rng() < (nx * nz > 6 ? 0.3 : 0.45);
     blocks.push(kershefBlock(sink, x0, z0, x1, z1, 0, h, bucket, rng, look, { door: j === nz - 1, faces: outer.length ? outer : ['front'], shade: !room && look() < 0.4, packed: true }));
     // a room set back on the roof terrace of some blocks
     if (room) {
