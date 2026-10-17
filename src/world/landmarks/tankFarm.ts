@@ -73,34 +73,39 @@ export const fuelTankFarm: LandmarkBuilder = (ctx) => {
     sink.quad(bermBucket, ...((n[0] * out[0] + n[1] * out[1] + n[2] * out[2]) >= 0 ? pts : [pts[3], pts[2], pts[1], pts[0]] as [Vec3, Vec3, Vec3, Vec3]));
   };
   /** The berm along a run from a to b, its crest on that line, in lengths of 4 m or less, each laid on the ground under
-   * it: the inner face, the crest, the outer face; `capA`/`capB` close an end (the gap's sides). */
-  const berm = (ax: number, az: number, bx: number, bz: number, capA = false, capB = false) => {
+   * it: the inner face, the crest, the outer face. An end is 'cap' (closed square: the gap's sides) or 'mitre' (a corner:
+   * each of its section's points, `o` out from the crest line, carried `o` on past the corner along the run, so the next
+   * run's mitre lands on the same points and the corner closes with no end faces). */
+  const berm = (ax: number, az: number, bx: number, bz: number, endA: 'cap' | 'mitre', endB: 'cap' | 'mitre') => {
     const len = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.ceil(len / 4));
-    const tx = (bx - ax) / len, tz = (bz - az) / len, nx = tz, nz = -tx;
+    const tx = (bx - ax) / len, tz = (bz - az) / len;
+    // the normal out of the bund (away from the farm's middle), the offsets' positive side
+    const flip = tz * (ax + bx) - tx * (az + bz) < 0 ? -1 : 1, nx = tz * flip, nz = -tx * flip;
     const offs = [-crest - run, -crest, crest, crest + run];
-    const section = (x: number, z: number): Vec3[] => offs.map((o, i) => {
-      const px = x + nx * o, pz = z + nz * o, g = gl(px, pz);
+    const section = (x: number, z: number, along: number): Vec3[] => offs.map((o, i) => {
+      const px = x + nx * o + tx * along * o, pz = z + nz * o + tz * along * o, g = gl(px, pz);
       return [px, i === 0 || i === 3 ? g - 0.15 : g + wallH, pz] as Vec3;
     });
-    let prev = section(ax, az);
-    if (capA) faceOut([prev[0], prev[1], prev[2], prev[3]], [-tx, 0, -tz]);
+    let prev = section(ax, az, endA === 'mitre' ? -1 : 0);
+    if (endA === 'cap') faceOut([prev[0], prev[1], prev[2], prev[3]], [-tx, 0, -tz]);
     for (let k = 1; k <= n; k++) {
-      const next = section(ax + (bx - ax) * k / n, az + (bz - az) * k / n);
+      const next = section(ax + (bx - ax) * k / n, az + (bz - az) * k / n, k === n && endB === 'mitre' ? 1 : 0);
       faceOut([prev[0], prev[1], next[1], next[0]], [-nx, 0.6, -nz]);
       faceOut([prev[1], prev[2], next[2], next[1]], [0, 1, 0]);
       faceOut([prev[2], prev[3], next[3], next[2]], [nx, 0.6, nz]);
       prev = next;
     }
-    if (capB) faceOut([prev[0], prev[1], prev[2], prev[3]], [tx, 0, tz]);
+    if (endB === 'cap') faceOut([prev[0], prev[1], prev[2], prev[3]], [tx, 0, tz]);
   };
-  // the crest lines a face's run outside the old wall's, the runs carried past the corners by a face's run so the corners
-  // close, the gap at the front between the two front runs' capped ends
+  // the crest lines a face's run outside the old wall's, mitred at the four corners (landed 2026-10-17: the runs carried
+  // square past the corners left each one's open end standing past the other's outer toe, the integrity ledger's holes),
+  // the gap at the front between the two front runs' capped ends
   const ov = crest + run, bx = ex - t / 2 + run, bz = ez - t / 2 + run;
-  berm(-bx - ov, -bz, bx + ov, -bz);
-  berm(-bx, -bz, -bx, bz + ov);
-  berm(bx, -bz, bx, bz + ov);
-  berm(-bx - ov, bz, -1.4 - ov, bz, false, true);
-  berm(1.4 + ov, bz, bx + ov, bz, true, false);
+  berm(-bx, -bz, bx, -bz, 'mitre', 'mitre');
+  berm(-bx, -bz, -bx, bz, 'mitre', 'mitre');
+  berm(bx, -bz, bx, bz, 'mitre', 'mitre');
+  berm(-bx, bz, -1.4 - ov, bz, 'mitre', 'cap');
+  berm(1.4 + ov, bz, bx, bz, 'cap', 'mitre');
   // the manifold's line: straight from 0.5 m over the ground at one end to 0.5 m over it at the other
   const manifoldY = (mx: number): number => {
     const z = ez - t - 0.75, a = gl(-ex + 1.0, z) + 0.5, b = gl(ex - 1.0, z) + 0.5;
@@ -178,8 +183,12 @@ export const fuelTankFarm: LandmarkBuilder = (ctx) => {
     // its outlet valve on the nozzle (the body and the hand wheel), the earthing straps from the shell to the ground
     sink.span('structureMetal', x - 0.18, y0 + 0.02, z + R + 0.05, x + 0.18, y0 + 0.38, z + R + 0.4, { colour: shade(IRON, 1.4), decor: true });
     sink.cylinder('structureMetal', [x, y0 + 0.62, z + R + 0.22], 'y', 0.04, 0.22, 10, { colour: rgb(0xa8302a), decor: true }, 0.22, false);
+    // (landed 2026-10-17: the shell's 20-sided courses stand R cos 9 degrees from the axis at their flats, so a strap headed
+    // at R + 0.01 stood 2 cm off the plate between two staves; the old bund wall's welded hull had hidden it from the
+    // connectivity receipt) each strap's head 2 cm into the plate's flat
+    const rs = R * Math.cos(Math.PI / 20) - 0.02;
     for (const a of [0.8, 3.9]) {
-      const sx = x + Math.cos(a) * (R + 0.01), sz = z + Math.sin(a) * (R + 0.01);
+      const sx = x + Math.cos(a) * rs, sz = z + Math.sin(a) * rs;
       bar(sink, 'structureMetal', [sx, y0 + 0.5, sz], [sx + Math.cos(a) * 0.5, gl(sx, sz) - 0.1, sz + Math.sin(a) * 0.5], 0.03, { colour: rgb(0x9a6a3a), decor: true, fine: true });
     }
   }

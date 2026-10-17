@@ -251,10 +251,12 @@ export const troposcatter: LandmarkBuilder = (ctx) => {
     const a = skin(t, foot, 0.06), b = skin(t, foot, -0.06), c = skin(t, foot + H, -0.06), d = skin(t, foot + H, 0.06);
     sink.quad('regionalPlaster', ...(s > 0 ? [a, b, c, d] : [b, a, d, c]) as [Vec3, Vec3, Vec3, Vec3], { colour: shade(TROPO_PANEL, 0.84) });
   }
-  // the panels' stiffeners down the back of the skin at every joint (angles: the purlins the panels are bolted to)
+  // the panels' stiffeners down the back of the skin at every joint (angles: the purlins the panels are bolted to; landed
+  // 2026-10-17: a leg at least a 800th of the screen's height thick, so the R6 screens' 24 m angles are no slivers)
+  const stiff = Math.max(0.02, H / 800);
   for (let k = 1; k < n; k++) {
     const t = k / n - 0.5;
-    angleMember(sink, 'structureMetal', [t * bw, foot, curve(t) - 0.11], [t * bw, foot + H, curve(t) - 0.11], 0.1, 0.02, { colour: TROPO_STEEL, decor: true }, 'none', [0, 0, -1]);
+    angleMember(sink, 'structureMetal', [t * bw, foot, curve(t) - 0.11], [t * bw, foot + H, curve(t) - 0.11], 0.1, stiff, { colour: TROPO_STEEL, decor: true }, 'none', [0, 0, -1]);
   }
   const joint = { colour: shade(TROPO_WHITE, 0.62), decor: true } as const;
   for (let j = 1; j < 6; j++) {
