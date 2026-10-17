@@ -98,8 +98,11 @@ function camouflage(id:ProtectionId,index:number):GhillieConfig{
       laidNet({x0:-1.5,x1:1.5,z0:k.glacis[0],z1:k.glacis[1],nx:30,nz:Math.round((k.glacis[1]-k.glacis[0])/.1),
        yAt:(_x:number,z:number)=>k.glacisTop-Math.max(0,z-k.glacis[0])*k.fall,garnishRiseM:.1,seed:137}),
      ],
-     // (release 227, round 2: Hetman II's bow drape is tied over its hinged lower-plate aprons, under its nose sill)
-     face:[{z:bowZ,x0:-1.02,x1:1.02,y0:bowTop-.36,y1:bowTop,nx:20,ny:5,seed:101,...(id==='t72b3m_hetman_ii'?{y1:.935,seatGapM:.012}:{})}],
+     // (release 227, round 2: Hetman II's bow drape is tied over the faces of its hinged lower-plate aprons, under its
+     // nose sill: the T-72B3M lower plate rises from (z 2.60, y .533) to (3.342, .955), the aprons' faces stand .07 off it)
+     face:[id==='t72b3m_hetman_ii'
+      ?{z:3.2,zAt:(_x:number,y:number)=>2.60+(y+.07*.869-.533)/.5687+.07*.494,x0:-1.0,x1:1.0,y0:.64,y1:.92,nx:20,ny:5,seed:101,seatGapM:.012}
+      :{z:bowZ,x0:-1.02,x1:1.02,y0:bowTop-.36,y1:bowTop,nx:20,ny:5,seed:101}],
      side:[-1,1].flatMap(side=>d.hullPanels.map(([z0,z1],i)=>({
       side,z0:z0+.055,z1:z1-.055,nz:15,ny:7,seed:37+side+i*17,
       // Tied under the header (tiedTop): the drape starts 4 mm under the header's centre line, 1.4 cm outside the

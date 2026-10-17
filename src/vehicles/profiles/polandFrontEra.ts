@@ -1,7 +1,7 @@
 // Release 227: the Zubr's and Zubr II's own frontal ERA (owner 2026-10-16: "for our turret upghrades, it should be a
 // brand new era packages for both though, donnt make it just copy the t90ms. innovate for the hetman 2 and zubr 2 and
 // also the zubr"). An original Polish concept in an orthogonal, framed language of the ERAWA-2 lineage, not a T-90M/MS
-// Relikt layout: welded cheek boxes faced by a grid of cassettes between perimeter bars ("Krata", the Zubr, level 1),
+// Relikt layout: welded cheek boxes faced by a grid of cassettes in a frame of bars and mullions ("Krata", the Zubr, level 1),
 // raised by the Zubr II to raked boxes faced by a stepped terrace of two-layer cassettes that funnel into the mantlet
 // ("Krata-2", level 2); framed glacis fields (level 1) or stepped glacis terraces (level 2); framed lower-plate fields;
 // and fitted front-skirt grids. The two read as one family at two levels of advancement and as a national design

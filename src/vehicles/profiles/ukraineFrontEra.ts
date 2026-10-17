@@ -416,6 +416,22 @@ function bowModules(P: TankBuilderPort): void {
   }
 }
 
+/** The driver's periscope block under the hatch's front edge (the T-72B3M's dark block, x +-.19, y 1.477-1.505, z
+ * 1.987-2.072) stood 1.6-4.3 cm clear of the glacis (round 2; the critic: "a thin black slab sticks forward from under
+ * the driver's hatch disc and looks like a loose sliver"): a welded base seats it on the plate (2 mm into the block),
+ * and three vision windows face forward on its front, under the driver's sight plane. */
+function periscopeSeat(P: TankBuilderPort, glacisAt: (z: number) => number): void {
+  const z0 = 1.99, z1 = 2.068, top = 1.479;
+  const base = crosswiseSolid([-.185, .185].map(x => ({x, ring: [[z0, glacisAt(z0) - .004], [z1, glacisAt(z1) - .004], [z1, top], [z0, top]] as [number, number][]})));
+  assertHullPart(ID, 'periscope base', base);
+  P.addEquipment('hullDetail', base);
+  for (const x of [-.12, 0, .12]) {
+    const g = new THREE.BoxGeometry(.10, .014, .003).translate(x + .002, 1.489, 2.0725 + .0005);
+    assertHullPart(ID, 'periscope window', g);
+    P.addEquipment('hullGlass', g);
+  }
+}
+
 /** Hetman II's hull front: called in the Hetman II kit after its hull package. */
 export function hetmanIIGlacis(P: TankBuilderPort): void {
   const core: THREE.BufferGeometry[] = [];
@@ -425,6 +441,7 @@ export function hetmanIIGlacis(P: TankBuilderPort): void {
     const glacisAt = (z: number) => hull.top(0, z);
     sillSegments(P, glacisAt);
     ledBars(P);
+    periscopeSeat(P, glacisAt);
     railsAndKeel(P, glacisAt);
     chevronBands(P, glacisAt);
     aprons(P, hull);
