@@ -148,6 +148,9 @@ body.cot-touch-layout .cot-shell.sel{border-color:#ffbd5c;border-bottom-color:#f
   background:linear-gradient(180deg,rgba(58,42,17,.97),rgba(30,20,9,.97));
   box-shadow:inset 0 0 0 1px rgba(255,196,107,.5),0 0 16px rgba(240,160,48,.5);}
 body.cot-touch-layout .cot-shell.sel .ty{font-size:8px;}
+/* out of ammo (owner 2026-10-17): the collapsed tray shows only the selected slot, so its empty state outranks the frame */
+body.cot-touch-layout .cot-shell.sel.empty{border-color:var(--hud-edge);border-bottom-color:var(--hud-danger);
+  background:var(--hud-panel);box-shadow:inset 0 -2px 0 var(--hud-danger);}
 /* MOBILE-UX r1 (owner: "move equipment to right side in a vertical column"):
    the consumable tray re-parks on the RIGHT EDGE as a thumb-reachable
    column sitting above the FIRE cluster. 48 px targets; the selection/used/

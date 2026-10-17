@@ -1887,6 +1887,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/hudMagazine.selftest.mjs',
     // 2026-10-17 (owner): out of ammo, every reload indicator shows its empty state; unlimited rounds never run dry
     'src/ui/hudAmmoOut.selftest.mjs',
+    // ...and the live HUD paints those states (reticle, rack, tray, struck controls) over a recording canvas
+    'src/ui/hudAmmoOutPaint.selftest.mjs',
     'src/ui/hudAmmunitionPresentation.selftest.mjs',
     'src/ui/hudConsumablePresentation.selftest.mjs',
     // 2026-10-14 (owner): a jump mode puts the jump farthest left in the vehicle-controls row, for every loadout

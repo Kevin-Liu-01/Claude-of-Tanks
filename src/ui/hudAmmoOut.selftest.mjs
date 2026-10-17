@@ -5,8 +5,9 @@
 // refills to capacity whatever is stowed; a salvo counter wraps), and the determinism audit hashes that reload state,
 // so the edge case lives in presentation. This receipt fires real hulls dry through the simulation and reads every
 // indicator the way a battle does: the aim frame from the real aim controller (shared by solo and the network client),
-// then the HUD's derivations: the reticle sweep, countdown and ready pulse, the autoloader/salvo rack, the launcher and
-// magazine controls. Unlimited rounds (the ruleset's mark on the shell cards) never run dry.
+// then the HUD's derivations: the reticle sweep and countdown, the autoloader/salvo rack, the launcher and magazine
+// controls. Unlimited rounds (the ruleset's mark on the shell cards) never run dry. hudAmmoOutPaint.selftest paints
+// the same states through the live HUD; tools/hud-ammo-states.browser.mjs renders them in Chrome.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
@@ -18,7 +19,7 @@ import { createCombatState, selectFirstAvailableShell, startMagazineReload, star
 import { magazineFedRounds, magazineFeedRounds } from '../sim/magazineIndicator.ts';
 import { matchRulesetFor, refillUnlimitedAmmunition } from '../sim/matchRuleset.ts';
 import { createAimController } from '../game/aimController.ts';
-import { autoloaderHudState, reloadHudFraction, reloadHudReadyPulse, reticleWeaponDry } from './hud.ts';
+import { ammunitionSlotViewState, autoloaderHudState, reloadHudFraction, reticleWeaponDry } from './hud.ts';
 import { depletedMissileLabel, magazineFeedEmpty } from './vehicleSpecialAction.ts';
 
 // --- the feed derivation (sim/magazineIndicator) ---
@@ -44,12 +45,17 @@ import { depletedMissileLabel, magazineFeedEmpty } from './vehicleSpecialAction.
   assert.equal(reticleWeaponDry({ type: 'APFSDS', count: 0 }, true), false, 'a pending host selection keeps its own read');
   assert.equal(reticleWeaponDry({ type: 'APFSDS' }), false, 'a card without a count is the authored default, not empty');
   assert.equal(reticleWeaponDry(null), false);
+  // The reticle's reuse keys (count, unlimited mark, pending) cover the dry read: it is the tray's empty state.
+  for (const card of [{ type: 'HE', count: 0 }, { type: 'HE', count: 2 }, { type: 'HE' }, { type: 'HE', count: Number.NaN },
+    { type: 'HE', count: 0, unlimited: true }, { type: 'X', count: -1 }]) {
+    for (const pending of [false, true]) {
+      assert.equal(reticleWeaponDry(card, pending), !pending && ammunitionSlotViewState(card).empty, JSON.stringify(card));
+    }
+  }
   const loading = { t: 3, totalS: 6, kind: 'shell' };
   assert.equal(reloadHudFraction(loading), 0.5);
   assert.equal(reloadHudFraction(loading, false, true), 0, 'a dry weapon sweeps nothing (and so counts nothing down)');
   assert.equal(reloadHudFraction(loading, true, true), 1, 'a pending selection keeps its full unavailable ring');
-  assert.equal(reloadHudReadyPulse(true, false), true);
-  assert.equal(reloadHudReadyPulse(true, false, false, true), false, 'a dry weapon never flashes ready');
   const magazine = { rounds: 4, capacity: 4, feed: 2 };
   const capped = autoloaderHudState(magazine, { t: 0, totalS: 1, kind: 'ready' });
   assert.deepEqual([capped.readyShells, capped.feedShells, capped.visibleShells], [2, 2, 4],
@@ -60,6 +66,10 @@ import { depletedMissileLabel, magazineFeedEmpty } from './vehicleSpecialAction.
   const dry = autoloaderHudState({ rounds: 3, capacity: 4 }, { t: 5, totalS: 10, kind: 'magazine' }, null, true);
   assert.deepEqual([dry.dry, dry.readyShells, dry.feedShells, dry.overflow, dry.fullReload, dry.reloading],
     [true, 0, 0, 0, false, false], 'a dry rack: every shell spent, nothing loading, no +N');
+  const dryCycling = autoloaderHudState({ rounds: 2, capacity: 4 }, { t: 1, totalS: 2, kind: 'intraClip' }, null, true);
+  assert.deepEqual([dryCycling.intraClip, dryCycling.reloading], [false, false], 'a dry rack never cycles its clip');
+  const cycling = autoloaderHudState({ rounds: 2, capacity: 4 }, { t: 1, totalS: 2, kind: 'intraClip' });
+  assert.deepEqual([cycling.intraClip, cycling.reloading], [true, true]);
   const big = autoloaderHudState({ rounds: 8, capacity: 8, feed: 6 }, null);
   assert.deepEqual([big.rounds, big.readyShells, big.overflow], [6, 4, 2], 'the +N overflow counts fed rounds only');
   const unknown = autoloaderHudState({ rounds: 2, capacity: 3 }, null);
@@ -135,8 +145,6 @@ function read(tank) {
   assert.equal(view.dry, true);
   assert.equal(view.sweep, 0, 'no amber sweep, no countdown');
   assert.equal(view.rack, null, 'a single-shot gun has no rack; the HUD draws one struck round instead');
-  settle(tank.combat);
-  assert.equal(reloadHudReadyPulse(true, false, false, read(tank).dry), false, 'the reload ending never flashes ready');
 }
 
 // 2. An autoloader (M1A3: four-round magazine, cannon rounds in slots 0 and 2, a guided round in slot 1).
@@ -209,7 +217,14 @@ function read(tank) {
   assert.equal(view.dry, false);
   assert.equal(view.frame.magazine.feed, view.frame.magazine.capacity, 'the clip cadence is untouched');
   assert.equal(reticleWeaponDry({ type: 'APFSDS', count: 0, unlimited: true }), false);
+  // The ∞ mark itself lifts the cap: stowage counters at zero (a mirror between refills) still feed the whole rack.
+  const empty = tankOf('m1a3', [0, 0, 0]);
+  const capped = read(empty);
+  assert.deepEqual([capped.frame.magazine.feed, capped.frame.magazine.rounds, capped.frame.magazine.capacity], [4, 4, 4],
+    'unlimited rounds never cap the magazine by the stowage counters');
+  assert.deepEqual([capped.dry, capped.rack.readyShells, capped.rack.feedShells], [false, 4, 4]);
   unlimitedRounds = false;
+  assert.deepEqual([read(empty).frame.magazine.feed, read(empty).rack.readyShells], [0, 0], 'the same counters, finite: capped');
 }
 
 // 6. The network mirror: the client reads the authority's indicator and its own mirrored ammunition.
@@ -221,23 +236,16 @@ function read(tank) {
     'a mirrored magazine is capped by the mirrored stowage (no wire change)');
 }
 
-// 7. The painted states: one owner each, desktop and mobile share the canvas and the controls row.
+// 7. The struck controls' danger ink is a HUD token (the live wiring is hudAmmoOutPaint.selftest's).
 {
   const hud = readFileSync(new URL('./hud.ts', import.meta.url), 'utf8');
   const layout = readFileSync(new URL('./battleHudLayout.css', import.meta.url), 'utf8');
-  const aim = readFileSync(new URL('../game/aimController.ts', import.meta.url), 'utf8');
-  assert.match(aim, /magazineFeedRounds\(combat, player\.spec, indicator, unlimited\)/, 'the aim frame caps by the feed');
-  assert.match(hud, /if \(view\.ammoSelectionPending \|\| draw\.dry\) readyPulseT = -1;/, 'a dry sight disarms the pulse');
-  assert.match(hud, /paintAutoloaderMagazine\(view, draw\);\s*paintDryRound\(draw\);/, 'a dry single-shot gun shows a struck round');
-  assert.match(hud, /if \(magazine\.dry\) paintDrySlash\(/, 'a dry rack is struck through');
-  assert.match(hud, /missileButton\.classList\.toggle\('empty',missileEmpty\)/, 'a spent launcher control is struck');
-  assert.match(hud, /specialButton\.classList\.toggle\('empty', specialEmpty\)/, 'a spent special control is struck');
-  assert.match(hud, /reload\.t > 0\.001 && !reticleWeaponDry\(lastShells\?\.\[i\]\)/, 'the tray slot shows no cooldown when dry');
+  const touch = readFileSync(new URL('./touchControls.ts', import.meta.url), 'utf8');
   assert.match(hud, /--hud-danger:#[0-9a-f]{6};/, 'the danger ink is a HUD token');
   assert.match(layout, /\.cot-vehicle-controls>button\.empty \.si::after\{[^}]*background:var\(--hud-danger\)/,
     'the struck control reads the token');
-  assert.doesNotMatch(hud.slice(hud.indexOf('function updateSpecialAction')), /textContent=emptyMissileLabel/,
-    'no "0/N" text on a spent control: the state is shown, the count is spoken');
+  assert.match(touch, /\.cot-shell\.sel\.empty\{[^}]*border-bottom-color:var\(--hud-danger\)/,
+    'the collapsed phone tray shows its selected empty slot in the token, over the amber frame');
 }
 
 console.log('hudAmmoOut.selftest: conventional, autoloader, salvo rack and ATGM fired dry through the simulation show no '

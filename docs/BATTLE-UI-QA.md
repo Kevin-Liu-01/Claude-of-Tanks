@@ -95,6 +95,22 @@ Spawns use the same upright tank-and-return-arrow glyph on the minimap and
 world beacon, tinted for the viewer's team. The compact glyph has a dark backing,
 fits its radius, and stays inside the minimap at the map edges.
 
+### Out of ammo and unlimited rounds
+
+A weapon with no round left shows no reload sweep, countdown or ready pulse.
+Its ring turns to sparse, muted danger dashes. A single-shot gun shows one
+struck round. A rack shows spent slots for rounds stowage cannot load, and an
+empty rack is struck through. Spent launcher and magazine-reload controls are
+struck and disabled. Their count is spoken, not printed. Under unlimited rounds
+nothing ever reads empty. `src/ui/hudAmmoOut.selftest.mjs` covers the
+derivations and `src/ui/hudAmmoOutPaint.selftest.mjs` covers the live paint,
+both in `npm test`. For the rendered frames on desktop and phone (it takes
+the capture lease):
+
+```sh
+node tools/hud-ammo-states.browser.mjs --url=http://127.0.0.1:5189 --out=/absolute/new-evidence-directory
+```
+
 ### Vehicle controls and score alignment
 
 The objective follows the scoreboard's measured center, including the shifted

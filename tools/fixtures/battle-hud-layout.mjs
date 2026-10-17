@@ -17,8 +17,8 @@ import { createSettings } from '../../src/ui/settings.ts';
 import { createEndOverlayRuntime } from '../../src/ui/endOverlayRuntime.ts';
 import '../../src/vehicles/fleetRegistration.ts';
 import { TANK_SPECS } from '../../src/vehicles/specs.ts';
-import { magazineFeedRounds, magazineIndicator } from '../../src/sim/magazineIndicator.ts';
 import { matchRulesetFor } from '../../src/sim/matchRuleset.ts';
+import { createAimController } from '../../src/game/aimController.ts';
 import { createTankState } from '../../src/sim/movement.ts';
 import { createCombatState } from '../../src/sim/damage.ts';
 import { createSpecialActionState } from '../../src/sim/specialActionPolicy.ts';
@@ -51,8 +51,8 @@ const defaultAim = () => ({shellSlot:0, reload:{t:0,totalS:6}, shells:[
 const frame = {matchModeState:{id:'mars'}, auxiliaryKeyLabels:{smoke:'G',lights:'N',roofGun:'B',missile:'E'}, timeS:60, mode:'battle', player, tanks, spotting:{isSpotted:()=>true},
   aim:defaultAim()};
 // Owner 2026-10-17 (out of ammo): the reload indicators' empty edge case and unlimited rounds. Each stage is a real
-// combat state; the aim frame is composed the way game/aimController composes it (magazineIndicator capped by the
-// stowage feed, shell cards carrying the ruleset's unlimited mark), so the screenshots show what a battle shows.
+// combat state and the real game/aimController composes its aim frame (the magazine capped by the stowage feed, the
+// shell cards carrying the ruleset's unlimited mark), so the screenshots show what a battle shows.
 const AMMO_STAGES = {
   'ammo-reload': {spec:'m1a1_abrams_hc', reload:{t:3.2,totalS:6,kind:'shell'}},
   'ammo-dry-cannon': {spec:'m1a1_abrams_hc', ammo:[0,0,0], reload:{t:3.2,totalS:6,kind:'shell'}},
@@ -64,25 +64,39 @@ const AMMO_STAGES = {
   'ammo-unlimited': {spec:'m1a3', mode:'juggernaut', rules:{ammo:'unlimited'}, magazineRounds:3,
     reload:{t:1.4,totalS:2.5,kind:'intraClip'}},
 };
+let ammoUnlimited = false;
+const ammoAim = createAimController({
+  getGame: () => ({player, tanks:[player]}),
+  getRig: () => ({aimPoint:new Vector3(0, 2, 200), aimDist:200, mode:'CHASE', zoom:1}),
+  worldRaycast: () => null,
+  targetVisible: () => true,
+  // The shell cards as game/playerBattleActions builds them; the controller writes the counts.
+  getShellCards: () => player.spec.gun.shells.map((shell) => ({name:shell.name, type:shell.guided === true ? 'ATGM' : shell.type,
+    dmg:shell.dmg, penLabel:`${Math.round(shell.pen100Mm)} mm`, count:0, ...(ammoUnlimited ? {unlimited:true} : {})})),
+  // Sized to the fixture's default ring (5% of the short side) at the 200 m aim distance and the HUD's 60° fallback FOV.
+  computeDispersion: (_spec, _state, distM) => 0.05 * Math.min(innerWidth, innerHeight) * Math.tan(Math.PI / 6) * distM
+    / (innerHeight * 0.5),
+  now: () => 0,
+});
+const ammoVisual = {gunMuzzleWorld(out) { return out.set(0, 2, 0); }, gunDirWorld(out) { return out.set(0, 0, 1); }};
 function stageAmmo(name) {
   const stage = AMMO_STAGES[name];
   if (!stage) return;
   const spec = TANK_SPECS[stage.spec];
   const combat = createCombatState(spec);
   player.spec = spec; player.combat = combat; player.specialAction = createSpecialActionState(spec);
+  player.visual = ammoVisual;
   stage.ammo?.forEach((count, slot) => { if (slot < combat.ammo.length) combat.ammo[slot] = count; });
   if (combat.magazine && stage.magazineRounds != null) combat.magazine.rounds = stage.magazineRounds;
   if (stage.salvoShots != null) combat.launcherSalvoShots = stage.salvoShots;
   Object.assign(combat.reload, stage.reload);
   const ruleset = {...matchRulesetFor(stage.mode || 'standard'), ...stage.rules};
-  const unlimited = ruleset.ammo === 'unlimited';
-  const shells = spec.gun.shells.map((shell, slot) => ({name:shell.name, type:shell.guided === true ? 'ATGM' : shell.type,
-    dmg:shell.dmg, penLabel:`${Math.round(shell.pen100Mm)} mm`, count:combat.ammo[slot], ...(unlimited ? {unlimited:true} : {})}));
-  const indicator = magazineIndicator(combat, spec);
-  const capacity = indicator?.capacity || 0;
-  const feed = Math.min(capacity, magazineFeedRounds(combat, spec, indicator, unlimited));
-  frame.aim = {...defaultAim(), shellSlot:combat.shellSlot, reload:{...stage.reload}, shells,
-    magazine:{rounds:Math.min(indicator?.rounds || 0, feed), capacity, feed, launcher:indicator?.launcher === true}};
+  ammoUnlimited = ruleset.ammo === 'unlimited';
+  const aim = {singleReticle:false, point:new Vector3(), distM:0, dispersionRadM:0, gunLimitSpec:false,
+    reload:{t:0, totalS:0}, magazine:{rounds:0, capacity:0, launcher:false}, shellSlot:0, shells:[], zoom:1, gunDistM:0,
+    gunTargetId:null, gunMarker:new Vector3(), blockedDistM:null, blockedLabel:false, penRatio:null};
+  ammoAim.update(aim);
+  frame.aim = aim;
   frame.matchModeState = {id:ruleset.mode, score:{alpha:2,bravo:1}, target:750,
     ...(ruleset.mode === 'juggernaut' ? {boss:{id:tanks[8].id, hp:5200, maxHp:8000}} : {})};
   panel.setTank(spec); panel.setState(combat);

@@ -508,7 +508,6 @@ interface ReticlePaintState {
   magazineRounds: number;
   magazineLauncher: boolean;
   magazineFeed: number;
-  dry: boolean;
   shellType: string;
   shellCount: number;
   shellUnlimited: boolean;
@@ -704,6 +703,8 @@ const RELOAD_ACCENT = 'rgba(240,160,48,0.95)';    // reload sweep + countdown
 // Owner 2026-10-17 (out of ammo): a spent weapon's ink. The DOM controls read the same danger as --hud-danger.
 const DRY_ACCENT = 'rgba(240,90,90,0.92)';
 const DRY_RING = 'rgba(214,120,112,0.62)';
+/** The reticle's reload and empty-weapon inks by role (hudAmmoOutPaint.selftest reads the painted canvas by them). */
+export const RETICLE_AMMO_INK = Object.freeze({ reload: RELOAD_ACCENT, dry: DRY_ACCENT, dryRing: DRY_RING });
 export const AUTOLOADER_HUD_SHELLS = 4;
 const AUTOLOADER_HUD_ARC_DEPTH = 2.25;
 const AUTOLOADER_HUD_OUTER_ROTATION = 0.14;
@@ -813,8 +814,8 @@ export function reloadHudCountdown(reload: ReloadView, pending = false): string 
   return reload.t >= 10 ? `${Math.ceil(reload.t)}` : reload.t.toFixed(1);
 }
 
-export function reloadHudReadyPulse(wasReloading: boolean, reloading: boolean, pending = false, dry = false): boolean {
-  return !pending && !dry && wasReloading && !reloading;
+export function reloadHudReadyPulse(wasReloading: boolean, reloading: boolean, pending = false): boolean {
+  return !pending && wasReloading && !reloading;
 }
 
 /**
@@ -3783,7 +3784,7 @@ export function initHud(bus: EventBus): HudRuntime {
     singleReticle: false, atGunLimit: false, gunLimitSpec: false,
     selfRightLabel: null,
     zoom: 1, reloadKind: '', ammoSelectionPending: false, magazineCapacity: 0, magazineRounds: 0,
-    magazineLauncher: false, magazineFeed: -1, dry: false,
+    magazineLauncher: false, magazineFeed: -1,
     shellType: '', shellCount: 0, shellUnlimited: false, drawnR: 0,
   };
   /** The reticle's weapon is the selected card (renderShells runs before the canvas paints). */
@@ -3832,7 +3833,8 @@ export function initHud(bus: EventBus): HudRuntime {
       && reticlePaint.magazineRounds === ((magazine?.rounds ?? 0) | 0)
       && reticlePaint.magazineLauncher === (magazine?.launcher === true)
       && reticlePaint.magazineFeed === magazineFeedKey(magazine)
-      && reticlePaint.dry === selectedWeaponDry(view)
+      // The dry state needs no key of its own: reticleWeaponDry reads only this card's count and unlimited mark
+      // and the pending flag, all compared here (owner 2026-10-17, out of ammo).
       && reticlePaint.shellType === (shell.type || '')
       && reticlePaint.shellCount === shellCount(shell)
       && reticlePaint.shellUnlimited === (shell.unlimited === true);
@@ -3865,7 +3867,6 @@ export function initHud(bus: EventBus): HudRuntime {
     reticlePaint.magazineRounds = (mag?.rounds ?? 0) | 0;
     reticlePaint.magazineLauncher = mag?.launcher === true;
     reticlePaint.magazineFeed = magazineFeedKey(mag);
-    reticlePaint.dry = selectedWeaponDry(view);
     reticlePaint.shellType = shell.type || ''; reticlePaint.shellCount = shellCount(shell);
     reticlePaint.shellUnlimited = shell.unlimited === true;
     reticlePaint.drawnR = lastDrawnR;
@@ -4321,9 +4322,10 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.shadowBlur = 0;
     // The dotted sweep, countdown numeral and ready-pulse edge detector all
     // read the same canonical reload state.
+    // Out of ammo (owner 2026-10-17) disarms it too: a weapon that turns dry mid-reload never flashes ready.
     if (view.ammoSelectionPending || draw.dry) readyPulseT = -1;
     else if (reloadHudReadyPulse(wasReloading, isReloading)) readyPulseT = lastTimeS;
-    wasReloading = !view.ammoSelectionPending && !draw.dry && isReloading;
+    wasReloading = !view.ammoSelectionPending && isReloading; // a dry weapon is never reloading (reloadHudFraction)
     const markLw = draw.markerLineWidth;
     ctx.globalAlpha = 0.5;
     ctx.strokeStyle = 'rgba(6,9,12,0.9)';
