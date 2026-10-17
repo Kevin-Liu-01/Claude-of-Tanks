@@ -1,8 +1,9 @@
-// src/world/maps/regional/shanghaiParts.ts — the Shanghai kit's (shanghai.ts, shanghaiBund.ts) shared parts: the lot's
-// fill, the creek's banks, the paints and window styles, the street rows' roofs and their stepped party walls, the
-// war's marks on a wall (shell pocks, a shell's breach, soot), the shop signboards, the sandbags at a door.
+// src/world/maps/regional/shanghaiParts.ts — the Shanghai kit's (shanghai.ts, shanghaiLanes.ts, shanghaiBund.ts) shared
+// parts: the lot's fill and a street row's, the creek's banks, the paints and window styles, the street rows' raised
+// ridges and their stepped party walls, a segmental arch's outline, the war's marks on a wall (shell pocks, a shell's
+// breach, soot, a roof fallen in), the shop signboards, the sandbags at a door.
 import { PartSink, faceBox, facePanel, facePoint, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
-import { emitRoof, roofGeometry, type RoofGeometry, type RoofSpec } from './house.ts';
+import type { RoofSpec } from './house.ts';
 import type { WindowStyle } from './openings.ts';
 import type { RegionalBuildContext } from './types.ts';
 
@@ -20,6 +21,44 @@ export function fillOf(bounds: { minX: number; maxX: number; minZ: number; maxZ:
 export const clampTo = (v: number, a: number, b: number): number => Math.max(a, Math.min(b, v));
 export const choose = <T>(r: number, list: readonly T[]): T => list[Math.min(list.length - 1, Math.max(0, Math.floor(r * list.length)))];
 export const DEG = Math.PI / 180;
+
+/**
+ * A street-row building's footprint: the base geometry's bounds (the row's houses meet and the gaps between them stay
+ * the base's), its street front no further out than the plot's (the base's steps and porches reach past it), and its
+ * sides no further out than the plot's width (the buildings stream, 2026-10-13, the weird-buildings survey: the base's
+ * eaves, downpipes and side dressing reach 0.5-1.5 m past its walls, so a house filling them stood 1-2 m into each
+ * neighbour of a row laid wall to wall, its walls through theirs and the roofs crossed).
+ */
+export const rowFill = (ctx: RegionalBuildContext): Fill => {
+  const half = ctx.info.w / 2 - 0.15;
+  return fillOf({ ...ctx.bounds, minX: Math.max(ctx.bounds.minX, -half), maxX: Math.min(ctx.bounds.maxX, half) }, 0.05, ctx.info.d / 2 - 0.1);
+};
+
+/** A segmental arch's outline on a face (convex, counter-clockwise seen from outside): base from u - r to u + r at y. */
+export function archOutline(face: Face, u: number, y: number, r: number, rise: number, o = 0, n = 8): Vec3[] {
+  const pts: Vec3[] = [facePoint(face, u - r, y, o), facePoint(face, u + r, y, o)];
+  for (let k = 1; k < n; k++) {
+    const a = (k / n) * Math.PI;
+    pts.push(facePoint(face, u + Math.cos(a) * r, y + Math.sin(a) * rise, o));
+  }
+  return pts;
+}
+
+/**
+ * A roof fallen in where the fire took it: the dark hole on the front slope and the charred rafters across it.
+ * Dressing over the roof slab (the slab keeps the building's collision).
+ */
+export function roofHole(sink: PartSink, ridgeTopY: number, zc: number, s: number, roof: RoofSpec, u: number, look: () => number): void {
+  const tanP = Math.tan(roof.pitchDeg * DEG), w = 1.6 + look() * 1.4;
+  const a0 = s * 0.12, a1 = s * 0.82;
+  const y0 = ridgeTopY - a0 * tanP + 0.02, y1 = ridgeTopY - a1 * tanP + 0.02;
+  sink.quad('dark', [u - w / 2, y1, zc + a1], [u + w / 2, y1, zc + a1], [u + w / 2, y0, zc + a0], [u - w / 2, y0, zc + a0], { decor: true });
+  for (let k = 0; k < 3; k++) {
+    const x = u - w / 2 + (k + 0.5) * w / 3;
+    sink.member('structureWood', [x, y0 + 0.05, zc + a0], [x + (look() - 0.5) * 0.3, y1 + 0.05, zc + a1], 0.1, 0.1, [0, 1, 0], { colour: CHAR, decor: true, exposed: true }, 0);
+  }
+}
+
 
 /**
  * Suzhou Creek's line across the district (blackglass.ts CREEK_STATIONS, coarsened): the kit reads a building's bank
@@ -102,16 +141,6 @@ export function pyramid(sink: PartSink, bucket: RegionalBucket, cx: number, cz: 
   const apex: Vec3 = [cx, y1, cz];
   for (const [p, q] of [[a, b], [b, c], [c, d], [d, a]] as const) sink.polygon(bucket, [p, q, apex], opts);
   sink.polygon(bucket, [d, c, b, a], opts);
-}
-
-/**
- * A street row's gable roof, its ridge along x (the eaves to the street and the yard), over the body x0..x1, z0..z1.
- * Returns the roof's geometry in its own frame: topAt(a, 0) is the roof top at a metres across from the ridge.
- */
-export function streetRoof(sink: PartSink, x0: number, x1: number, z0: number, z1: number, eaveY: number, roof: RoofSpec, colour?: Rgb): RoofGeometry {
-  const rg = roofGeometry(z1 - z0, x1 - x0, eaveY, roof);
-  sink.placed(Math.PI / 2, (x0 + x1) / 2, 0, (z0 + z1) / 2, () => emitRoof(sink, rg, roof, colour));
-  return rg;
 }
 
 /**
