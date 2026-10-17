@@ -69,6 +69,9 @@ const NOTICE_ALERTS = [
   ['armorOn','ui:armorOverlayState',{on:true}],
 ];
 const LONG_ALERTS = ['wave123','autoAimLong','flagDroppedEnemy','ammoEmpty'];
+// Where every place clear of the reticle crosses a side lane whole, that lane holds no row while the element shows
+// (mouseNoticePlan.selftest.mjs lists the same: its last resort before any reticle ink).
+const EMPTY_LANES_OK={'mouse-768x600':/alert|countdown|revive|medal/};
 // [key, fixture state, kill rows kept (null: as staged), rosters a side (null: 7), notice set ('' none), sight, Tab held]
 function noticeStages(){
   const out=[];
@@ -363,7 +366,7 @@ try {
           if(!lane||!lane.staged)continue;
           const mainRows=mainStage?._l?.[i]??-1;
           if(!set&&lane.shown<mainRows)failures.push(`the ${side==='l'?'left':'right'} lane shows ${lane.shown} kill rows with nothing up (main ${mainRows})`);
-          if(set&&lane.shown<1&&(mainRows<0||mainRows>0))failures.push(`the ${side==='l'?'left':'right'} lane shows no kill row while ${set} is up`);
+          if(set&&lane.shown<1&&(mainRows<0||mainRows>0)&&!EMPTY_LANES_OK[name]?.test(set))failures.push(`the ${side==='l'?'left':'right'} lane shows no kill row while ${set} is up`);
         }
         // a kill burst and Tab move nothing: the same set and sight in k0, k3, the burst and Tab share every box
         const [ctx,,sight]=key.split('|');

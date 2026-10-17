@@ -189,6 +189,10 @@ const FLANK_COST = 24, SPLIT_COST = 60;
 interface LanePrice { readonly row: number; readonly px: number; readonly fixed: number }
 const BATTLE_LANES: LanePrice = { row: 30, px: .25, fixed: 40 };
 const PREBATTLE_LANES: LanePrice = { row: 2, px: .25, fixed: 0 };
+/** A lane left without a kill row while elements show (the last resort before any reticle ink). */
+const EMPTY_LANE_COST = 900;
+/** The band a lane needs for one kill row: the left lane's damage toasts take up to 45 % of it (battleHudLayout.ts). */
+const LANE_ROW_PX = [62, 26] as const;
 /** The flank's inner edges sit this far either side of the centre line (the scope arm and its margin). */
 const HUG_PX = MOUSE_RETICLE.armHalfWidthPx + MOUSE_RETICLE_MARGIN_PX;
 /** The search's vertical step; the cheapest place is then refined to the px within a step of it. */
@@ -197,8 +201,9 @@ const Y_STEP = 8;
  *  countdown's 17 px kicker at 10 px, and half size (8.5 px) is the last resort before sharing a notice's place. */
 const SCALES = [1, .9, .8, .7, .6, .5] as const;
 const SCALE_COSTS = [0, 80, 160, 240, 320, 1200] as const;
-/** The compact card costs as much as moving 200 px down; sharing the alert's place (waiting out 2.4 s) 60. */
-const MEDAL_COMPACT_COST = 200, MEDAL_SHARE_ALERT_COST = 60;
+/** The compact card costs as much as moving 200 px down; sharing the alert's place (waiting out its 2.4 s) is kept for
+ *  where nothing else clears the reticle. */
+const MEDAL_COMPACT_COST = 200, MEDAL_SHARE_ALERT_COST = 600;
 
 const rowsIn = (h: number) => Math.min(8, Math.max(0, Math.floor((h + 3) / 29)));
 const overlapsAny = (r: PlanRect, list: readonly PlanRect[]) => list.some((o) => r.x < o.x + o.w && r.x + r.w > o.x && r.y < o.y + o.h && r.y + r.h > o.y);
@@ -404,7 +409,7 @@ const laneClear: [number, number] = [NaN, NaN];
 /**
  * The band each lane keeps while `box` shows (`out[o .. o + 4)`, NaN: its own): its rows start below the box or end
  * above it, whichever keeps more of its rows clear of the battle sight (ending above moves nothing). Returns the cost
- * at `price`, Infinity where the lane would hold no row.
+ * at `price`, EMPTY_LANE_COST more for a lane left without a row.
  */
 function yieldLanes(input: MouseNoticeInput, x: number, y: number, w: number, h: number, out: number[], o: number,
   price: LanePrice = BATTLE_LANES): number {
@@ -417,8 +422,9 @@ function yieldLanes(input: MouseNoticeInput, x: number, y: number, w: number, h:
     const clear = Number.isNaN(laneClear[side]) ? lane.bottom : laneClear[side];
     const before = rowsIn(clear - lane.top);
     const below = Math.ceil(y + h + g), above = Math.floor(y - g);
-    const keptBelow = rowsIn(lane.bottom - below), keptAbove = rowsIn(above - lane.top);
-    if (!keptBelow && !keptAbove) return Infinity;
+    const need = LANE_ROW_PX[side];
+    const keptBelow = lane.bottom - below >= need ? rowsIn(lane.bottom - below) : 0, keptAbove = above - lane.top >= need ? rowsIn(above - lane.top) : 0;
+    if (!keptBelow && !keptAbove && lane.bottom - lane.top >= need) cost += EMPTY_LANE_COST;
     const clearBelow = keptBelow ? rowsIn(clear - below) : -1, clearAbove = keptAbove ? rowsIn(Math.min(clear, above) - lane.top) : -1;
     if (clearAbove >= clearBelow) {
       out[o + side * 2 + 1] = above;
@@ -433,16 +439,17 @@ function yieldLanes(input: MouseNoticeInput, x: number, y: number, w: number, h:
 const NO_YIELD: PlanGiveWay = Object.freeze([NaN, NaN, NaN, NaN]);
 const giveWayOf = (s: readonly number[], o: number): PlanGiveWay =>
   Number.isNaN(s[o]) && Number.isNaN(s[o + 1]) && Number.isNaN(s[o + 2]) && Number.isNaN(s[o + 3]) ? NO_YIELD : [s[o], s[o + 1], s[o + 2], s[o + 3]];
-/** Whether every lane keeps a row while both bands `gw[0..4)` and `gw[4..8)` apply. */
-function jointRows(input: MouseNoticeInput, gw: readonly number[]): boolean {
+/** What the lanes left without a kill row cost while both bands `gw[0..4)` and `gw[4..8)` apply. */
+function jointRows(input: MouseNoticeInput, gw: readonly number[]): number {
+  let cost = 0;
   for (let side = 0; side < 2; side++) {
     const lane = input.lanes[side];
     if (!lane) continue;
     const t = Math.max(lane.top, Number.isNaN(gw[side * 2]) ? -Infinity : gw[side * 2], Number.isNaN(gw[4 + side * 2]) ? -Infinity : gw[4 + side * 2]);
     const b = Math.min(lane.bottom, Number.isNaN(gw[side * 2 + 1]) ? Infinity : gw[side * 2 + 1], Number.isNaN(gw[5 + side * 2]) ? Infinity : gw[5 + side * 2]);
-    if (!rowsIn(b - t) && rowsIn(lane.bottom - lane.top)) return false;
+    if (b - t < LANE_ROW_PX[side] && lane.bottom - lane.top >= LANE_ROW_PX[side]) cost += EMPTY_LANE_COST;
   }
-  return true;
+  return cost;
 }
 
 /**
@@ -452,10 +459,12 @@ function jointRows(input: MouseNoticeInput, gw: readonly number[]): boolean {
 function walkY(yPref: number, yMin: number, yMax: number, limit: () => number, visit: (y: number, yCost: number) => void,
   step = Y_STEP): void {
   const start = Math.max(yMin, Math.min(yMax, yPref));
+  // (a range wholly below or above yPref, as walkFine's, still prices each y from yPref)
+  const costAt = (y: number) => y < yPref ? (yPref - y) * UP_COST : y - yPref;
   let up = start, down = start + step;
   for (;;) {
-    const upCost = up >= yMin ? Math.max(0, yPref - up) * UP_COST : Infinity;
-    const downCost = down <= yMax ? Math.max(0, down - yPref) : Infinity;
+    const upCost = up >= yMin ? costAt(up) : Infinity;
+    const downCost = down <= yMax ? costAt(down) : Infinity;
     const cost = Math.min(upCost, downCost);
     if (cost === Infinity || cost >= limit()) return;
     if (upCost <= downCost) {
@@ -498,11 +507,11 @@ function singleBest(env: Env, w: number, h: number, yPref: number, base: number,
     }
     const m = freeIn(env, band(env, y, hh), w / 2, EDGE_PX + w / 2, input.width - EDGE_PX - w / 2, cx, extra, w / 2);
     if (Number.isNaN(m)) return;
-    const lane = env.lanes === 'yield' ? yieldLanes(input, m - w / 2, y, w, h, yieldScratch, 0, price) : 0;
-    // shown with `partner` (a placed box's lane bands), every lane must still keep a row
-    if (partner && lane < Infinity) {
+    let lane = env.lanes === 'yield' ? yieldLanes(input, m - w / 2, y, w, h, yieldScratch, 0, price) : 0;
+    // shown with `partner` (a placed box's lane bands): a lane the two leave without a row
+    if (partner) {
       for (let i = 0; i < 4; i++) { jointScratch[i] = partner[i]; jointScratch[4 + i] = yieldScratch[i]; }
-      if (!jointRows(input, jointScratch)) return;
+      lane += jointRows(input, jointScratch);
     }
     const cost = base + yCost + SHIFT_COST * Math.abs(m - cx) + lane;
     if (cost < out.cost) {
@@ -512,6 +521,39 @@ function singleBest(env: Env, w: number, h: number, yPref: number, base: number,
   }, () => out.cost < Infinity ? out.y : NaN);
   return out;
 }
+
+/**
+ * Up to `k` more places for one `w` x `h` box, apart from each other and from `skip` (centre x, top y, cost; cheapest
+ * first) on the coarse grid: the detection's cheapest place can leave the alert none where a dearer one would not.
+ */
+function otherPlaces(env: Env, w: number, h: number, yPref: number, bound: number, k: number, skip: readonly Single[],
+  out: number[]): number[] {
+  const { input } = env;
+  const cx = input.width / 2, hh = Math.ceil(h);
+  const found: number[] = [];
+  walkY(yPref, Math.ceil(input.top + MOUSE_NOTICE_GAP_PX), input.height - EDGE_PX - hh, () => bound, (y, yCost) => {
+    const m = freeIn(env, band(env, y, hh), w / 2, EDGE_PX + w / 2, input.width - EDGE_PX - w / 2, cx);
+    if (Number.isNaN(m)) return;
+    const lane = env.lanes === 'yield' ? yieldLanes(input, m - w / 2, y, w, h, yieldScratch, 0) : 0;
+    found.push(m, y, yCost + SHIFT_COST * Math.abs(m - cx) + lane);
+  });
+  const order: number[] = [];
+  for (let i = 0; i < found.length; i += 3) order.push(i);
+  order.sort((a, b) => found[a + 2] - found[b + 2]);
+  out.length = 0;
+  const apart = (x: number, y: number, ox: number, oy: number) => Math.abs(x - ox) >= w || Math.abs(y - oy) >= h;
+  for (const i of order) {
+    if (out.length >= k * 3) break;
+    const x = found[i], y = found[i + 1];
+    if (skip.some((o) => Number.isFinite(o.cost) && !apart(x, y, o.x, o.y))) continue;
+    let ok = true;
+    for (let j = 0; ok && j < out.length; j += 3) ok = apart(x, y, out[j], out[j + 1]);
+    if (ok) out.push(x, y, found[i + 2]);
+  }
+  return out;
+}
+const alternatives: number[] = [];
+const ALTERNATIVES = 3;
 
 interface PairResult { cost: number; arrangement: MouseNoticePlan['arrangement']; det: PlannedNotice; alert: PlannedAlert }
 interface Config { readonly dw: number; readonly dh: number; readonly aw: number; readonly ah: number; readonly base: number }
@@ -555,12 +597,11 @@ function searchPair(input: MouseNoticeInput, envs: readonly Env[]): PairResult |
   const minBase = list[0].base;
   for (const env of envs) {
     const yielding = env.lanes === 'yield';
-    /** Both boxes' lane bands (gw[0..4) the detection's, gw[4..8) the alert's) and their cost; Infinity where the two
-     *  shown together would leave a lane no row. */
+    /** Both boxes' lane bands (gw[0..4) the detection's, gw[4..8) the alert's) and their cost, a lane the two shown
+     *  together would leave without a row included. */
     const laneCost = (dx: number, dy: number, dw: number, dh: number, ax: number, ay: number, aw: number, ah: number) => {
       if (!yielding) return 0;
-      const cost = yieldLanes(input, dx, dy, dw, dh, gw, 0) + yieldLanes(input, ax, ay, aw, ah, gw, 4);
-      return cost < Infinity && jointRows(input, gw) ? cost : Infinity;
+      return yieldLanes(input, dx, dy, dw, dh, gw, 0) + yieldLanes(input, ax, ay, aw, ah, gw, 4) + jointRows(input, gw);
     };
     const offer = (cost: number, arrangement: PairResult['arrangement'], det: Omit<PlannedNotice, 'giveWay'>,
       alert: Omit<PlannedAlert, 'giveWay'>) => {
@@ -609,22 +650,36 @@ function searchPair(input: MouseNoticeInput, envs: readonly Env[]): PairResult |
         }
       }
     }, () => best === null ? NaN : best.det.y);
-    // split: the detection at its own cheapest place (with the lanes yielding: also its cheapest off them), then the
-    // alert at its own, off the detection and keeping every lane a row while both show
+    // split: the detection at its own cheapest place (with the lanes yielding: also its cheapest off them, and a few
+    // dearer places apart from those), then the alert at its own, off the detection, pricing a lane the two would
+    // leave without a row
     let lastDw = -1;
+    const others: number[] = [];
     for (const c of list) {
       if (c.base + SPLIT_COST >= bestCost()) continue;
-      for (let k = 0; k < (yielding ? 2 : 1); k++) {
-        const dets = k ? detOff : detAny;
-        if (c.dw !== lastDw) {
-          singleBest(env, c.dw, c.dh, yPref, 0, bestCost(), detAny);
-          if (yielding) singleBest(envs[0], c.dw, c.dh, yPref, 0, bestCost(), detOff);
-        }
+      if (c.dw !== lastDw) {
         lastDw = c.dw;
-        if (!Number.isFinite(dets.cost)) continue;
-        const fixed = c.base + SPLIT_COST + dets.cost - dets.lane;
+        singleBest(env, c.dw, c.dh, yPref, 0, bestCost(), detAny);
+        detOff.cost = Infinity;
+        others.length = 0;
+        if (yielding) {
+          singleBest(envs[0], c.dw, c.dh, yPref, 0, bestCost(), detOff);
+          for (const v of otherPlaces(env, c.dw, c.dh, yPref, bestCost(), ALTERNATIVES, [detAny, detOff], alternatives)) others.push(v);
+        }
+      }
+      for (let k = 0; k < 2 + others.length / 3; k++) {
+        let dx: number, dy: number, dcost: number;
+        if (k < 2) {
+          const dets = k ? detOff : detAny;
+          if (!Number.isFinite(dets.cost)) continue;
+          dx = dets.x; dy = dets.y; dcost = dets.cost - dets.lane;
+        } else {
+          dx = others[(k - 2) * 3]; dy = others[(k - 2) * 3 + 1];
+          dcost = others[(k - 2) * 3 + 2] - yieldLanes(input, dx - c.dw / 2, dy, c.dw, c.dh, partnerScratch, 0);
+        }
+        const fixed = c.base + SPLIT_COST + dcost;
         if (fixed >= bestCost()) continue;
-        const detBox: PlanRect = { x: dets.x - c.dw / 2, y: dets.y, w: c.dw, h: c.dh };
+        const detBox: PlanRect = { x: dx - c.dw / 2, y: dy, w: c.dw, h: c.dh };
         const detLanes = yielding ? (yieldLanes(input, detBox.x, detBox.y, c.dw, c.dh, partnerScratch, 0), partnerScratch) : null;
         singleBest(env, c.aw, c.ah, yPref, fixed, bestCost(), two, [detBox], BATTLE_LANES, detLanes);
         if (!Number.isFinite(two.cost)) continue;
