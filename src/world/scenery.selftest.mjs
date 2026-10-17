@@ -675,6 +675,7 @@ for (const mapId of maps.MAP_IDS) {
   const authored = (config.scenery.rocks?.length ?? 0) + (config.scenery.landmarks?.length ?? 0)
     + (config.scenery.rockFields?.length ?? 0) + (config.scenery.bedrock?.length ?? 0)
     + (config.scenery.castles?.length ?? 0) + (config.scenery.caprock?.length ?? 0) + (config.scenery.canyonWalls?.length ?? 0)
+    + (config.scenery.jebelSkins?.length ?? 0) // (the maps lane, 2026-10-14: a jebel's jointed face is an authored feature)
     + (config.scenery.powerLines ?? []).reduce((n, line) => n + line.towers.length, 0);
   for (const feature of receipt.features.filter((f) => f.family === 'rockField')) {
     assert.ok(feature.placedOf[0] >= Math.ceil(feature.placedOf[1] * 0.75), `${mapId}: ${feature.name} lays most of its count (${feature.placedOf.join('/')})`);

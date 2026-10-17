@@ -3635,10 +3635,15 @@ function addT90SMLegacyHullDeckAndGear(P: T90BuilderPort): void {
     const log = FITTINGS.unditchingLog({ mats: P.mats, len: 0.9, r: 0.08, straps: 2, seed: 5 });
     log.position.set(0, 1.28, -2.90);
     P.hullG.add(log);
+    // VEH-13 outline rule (2026-10-17): the spare course rides the turret's bustle rack, laid across its top bars
+    // (turret frame; the finished turret is this frame x 1.05). The deck station (0.62, 0.60) sits in the turret's
+    // traverse and the gun's depression sweep, and so does every front-deck station. The solver's racks stood past
+    // the hull side.
     const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.5, seed: 7 });
-    links.position.set(0.62, 0, 0.60);
-    seatFittingOnHorizontalPlate(links, 1.40);
-    P.hullG.add(links);
+    links.position.set(0.43, 0, -1.90);
+    links.rotation.y = Math.PI / 2;
+    seatFittingOnHorizontalPlate(links, 0.562);
+    P.turretG.add(links);
     const cable = FITTINGS.towCable({
       mats: P.mats, eyes: false, r: 0.018,
       pts: [[-0.55, 1.424, -0.40], [-0.95, 1.420, -1.05], [-0.60, 1.428, -1.70]], seed: 9,
@@ -5816,10 +5821,8 @@ function buildT90MS(P: T90BuilderPort): void {
     const log = FITTINGS.unditchingLog({ mats: P.mats, len: 0.9, r: 0.08, straps: 2, seed: 5 });
     log.position.set(0, 1.42, -3.05);
     P.hullG.add(log);
-    const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.5, seed: 7 });
-    links.position.set(0.62, 0, 0.60);
-    seatFittingOnHorizontalPlate(links, 1.545);
-    P.hullG.add(links);
+    // VEH-13 outline rule (2026-10-17): the spare course moved to the bustle top (rebuildT90MSTurretExact); the deck
+    // station here sits in the gun's depression sweep, and the solver's rear-plate rack stood past the hull's length.
   }
   buildRunningGear(P, {
     // The 788 mm station cadence needs individually readable road wheels.
@@ -6324,6 +6327,15 @@ function rebuildT90MSTurretExact(P: T90BuilderPort): void {
       }
     }
   });
+  // VEH-13 outline rule (2026-10-17): the spare course rides the bustle top, laid across it (turret frame; the finished
+  // turret is this frame x 1.05). It is added after the rebuild, which clears the turret group.
+  {
+    const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.5, seed: 7 });
+    links.position.set(0.38, 0, -1.90);
+    links.rotation.y = Math.PI / 2;
+    seatFittingOnHorizontalPlate(links, 0.653);
+    P.turretG.add(links);
+  }
   P.turretG.userData.t90MSCheekEraReceipt = Object.freeze({
     rowsPerCheek: chevronRows.length,
     modulesPerRow: 2,

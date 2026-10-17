@@ -337,8 +337,10 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       // course now hangs flush on the rear plate's flat field (z -4.026, x 0.15-0.95, y 1.10-1.50), clear of the
       // centre box and the right lamp housing, with its length across the plate. Builder frame: the finished vehicle is
       // this frame times 1.10, so the world plate at z -4.026 is -3.66 here.
-      const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.44, seed: 7, rotation: [-Math.PI / 2, -Math.PI / 2, 0] });
-      links.position.set(0.50, 1.191, -3.7005);
+      // three links, centred in the field, so neither end leaves a pocket under 12 cm against the centre box or the
+      // lamp housing (B2 reads such a pocket as enclosed sky in some grid phases)
+      const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.44, seed: 7, rotation: [-Math.PI / 2, -Math.PI / 2, 0] });
+      links.position.set(0.4773, 1.191, -3.7005);
       P.hullG.add(links);
     }
   };
