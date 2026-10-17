@@ -6,8 +6,8 @@
 // pacing tail"). Records never outlive their run, so nothing here is a cache: every share is played in every run, by
 // exactly one process, and the judge reads only what this run wrote on this tree (each tree has its own subdirectory).
 // - A share is played by whoever claims it first. A claim names its pid, and it is created atomically (link), so no
-//   two live processes hold one. The claim of a process that died (a shard that failed earlier in this run) is taken
-//   over.
+//   two live processes hold one. A shard whose match fails its assertion releases its claim before it fails; the claim
+//   of a process that died holding one (killed by a pool's memory cap or timeout) is taken over.
 // - A shard receipt claims its own share, plays its maps on one thread with every per-match assertion and writes the
 //   records (atomically, so a reader sees all of them or none). If the share already has records from this run, or
 //   the judge holds its claim, the shard has nothing to play: the judge receipt plays and judges those matches.
@@ -77,6 +77,18 @@ export function claimPacingShare(dir, shard, { pid = process.pid, by, alive = pi
   if (holder?.pid !== pid && alive(holder?.pid)) { unlinkSync(temporary); return false; }
   renameSync(temporary, path);
   return readJson(path)?.pid === pid;
+}
+
+/**
+ * Gives up share `shard`'s claim in `dir` when `pid` holds it: a shard whose match failed its assertion releases its
+ * claim before it fails, so the judge plays that share at once and need not trust the dead holder's pid, which the
+ * system may hand to an unrelated live process before the judge looks (the judge would wait on that process).
+ */
+export function releasePacingShare(dir, shard, { pid = process.pid, root = PACING_ROOT } = {}) {
+  const path = shardFile(dir, shard, 'claim', root);
+  if (readJson(path)?.pid !== pid) return false;
+  try { unlinkSync(path); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  return true;
 }
 
 /** Writes shard `shard`'s report into `dir`. */
@@ -185,8 +197,14 @@ export async function runPacingShard(shard, dir, loadPlay, { log = console.log, 
       return { played: false };
     }
   }
-  const { playPacingMaps } = await loadPlay();
-  const { matches } = await playPacingMaps(maps, samples, (line) => log(line));
+  let matches;
+  try {
+    const { playPacingMaps } = await loadPlay();
+    ({ matches } = await playPacingMaps(maps, samples, (line) => log(line)));
+  } catch (error) {
+    if (dir) releasePacingShare(dir, shard, { pid }); // the judge plays this share again and fails on it too
+    throw error;
+  }
   if (dir) writePacingShardReport(dir, shard, pacingShardReport(shard, maps, matches, name));
   const stats = pacingStats(matches);
   for (const entry of stats.fast) log(`${name}: fast match ${entry.mapId} seed ${entry.seed} ${entry.timeS.toFixed(0)} s`);

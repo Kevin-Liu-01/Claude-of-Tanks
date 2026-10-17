@@ -85,6 +85,14 @@ export function selftestRunDirectory(env = process.env, make = () => mkdtempSync
   return { dir: make(), created: true };
 }
 
+// The environment the result cache keys receipts on: a copy taken before the run directory is
+// set, without it. The directory's path changes every run and a receipt reads only what its own
+// run wrote there, so it is not an input; keyed, it would make every receipt that reads it miss.
+export function selftestCacheEnv(env = process.env) {
+  const { COT_SELFTEST_RUN_DIR: _runDirectory, ...keyed } = env;
+  return keyed;
+}
+
 // This caches compilation, NEVER test results or module instances. Every file
 // still executes all assertions in a fresh process. Node validates source and
 // engine versions. Respect explicit cache/coverage settings and opt-outs.
@@ -326,7 +334,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     // Gate P18: proofs are keyed on the root commit; the first run adopts the URL-keyed store.
     const cacheLocation = resolveSelftestCacheDir(REPO_ROOT, childEnv);
     if (cacheLocation.adoption === 'linked') console.log(`[selftests] result cache now keyed on the ${cacheLocation.identity}; adopted ${cacheLocation.legacyDir}`);
-    const cache = createSelftestCache({ alwaysRun: SELFTEST_FRESH_FILES, env: childEnv, cacheDir: cacheLocation.dir });
+    const cache = createSelftestCache({ alwaysRun: SELFTEST_FRESH_FILES, env: selftestCacheEnv(childEnv), cacheDir: cacheLocation.dir });
     const runtimes = createRuntimeIndex(cacheLocation.dir);
     if (command.shard) console.log(`[selftests] shard ${command.shard.index}/${command.shard.count}: ${command.shard.receipts} of ${command.shard.selected} selected receipts (~${(command.shard.loadMs / 60_000).toFixed(1)} min weighted; partition ${command.shard.partition})`);
     else if (command.only.length) console.log(`[selftests] --only=${command.only.join(',')}: ${suite.length} receipts`);

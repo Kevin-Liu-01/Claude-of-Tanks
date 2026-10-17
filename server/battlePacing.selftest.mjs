@@ -105,8 +105,13 @@ async function playShare(shard) {
 // The run's matches: the core run merges the shards' records from this run and plays only the shares nobody else
 // plays (up to JOBS at a time); the tail and a subset of the maps play everything here, as before.
 async function playAll() {
-  if (TAIL || PARTIAL || !RUN_DIR) return playHere(MAPS);
   const say = (message) => console.log(`battlePacing.selftest: ${message}`);
+  if (!TAIL && !PARTIAL && !RUN_DIR) {
+    say(`no run directory (COT_SELFTEST_RUN_DIR): all ${MAP_IDS.length * SAMPLES} matches play here on ${Math.min(JOBS, MAPS.length)} `
+      + 'thread(s), beside any shard that played its share in this run; a pool that runs the shards exports one directory for its '
+      + 'receipts (docs/DEVELOPMENT.md, "The pacing tail")');
+  }
+  if (TAIL || PARTIAL || !RUN_DIR) return playHere(MAPS);
   const { reports, playedHere } = await gatherPacingShares(RUN_DIR, { playShare, players: JOBS, log: say });
   const matches = pacingRunOrder(MAP_IDS, mergeShardReports([...reports.values()], MAP_IDS));
   for (const mapId of MAPS) console.log(pacingMapLine(mapId, matches, SAMPLES));

@@ -10,7 +10,7 @@ import { MAP_IDS } from '../src/world/maps/mapIds.ts';
 import { mergeShardReports, PACING_SAMPLES, PACING_SHARDS, pacingMapLine, pacingRunOrder, pacingSeed, pacingShardMaps,
   pacingShardReportProblem } from './battlePacing.test-support.mjs';
 import { claimPacingShare, gatherPacingShares, PACING_ROOT, pacingRunDirectory, pacingShareHolder, pacingShardReport,
-  readPacingShardReport, runPacingShard, writePacingShardReport } from './battlePacingRun.test-support.mjs';
+  readPacingShardReport, releasePacingShare, runPacingShard, writePacingShardReport } from './battlePacingRun.test-support.mjs';
 
 const SAMPLES = PACING_SAMPLES.core;
 const shards = Array.from({ length: PACING_SHARDS }, (_, index) => index + 1);
@@ -235,6 +235,18 @@ try {
   ran = await runPacingShard(6, dir, play.load, { log: quiet, pid: 6000,
     alive: (pid) => { if (pid === JUDGE) writePacingShardReport(dir, 6, report(6)); return false; } });
   assert.deepEqual([ran.played, play.calls()], [false, 0], 'records that land during the claim are not played again');
+  // a match that fails its assertion fails the shard, which first gives up its claim: the judge then plays that share at
+  // once instead of trusting the dead shard's pid (the system may reuse it for a live process the judge would wait on)
+  const failingPlay = async () => ({ playPacingMaps: async () => { throw new Error('fixture: blackglass/2 resolves by the cap'); } });
+  await assert.rejects(runPacingShard(7, dir, failingPlay, { log: quiet, pid: 7000, alive: () => false }), /resolves by the cap/);
+  assert.equal(pacingShareHolder(dir, 7), null, 'a failed shard releases its claim');
+  assert.ok(!existsSync(join(pacingRunDirectory(dir), 'shard-7.json')), 'and writes no records');
+  claimPacingShare(dir, 8, { pid: JUDGE, by: 'battlePacing' });
+  assert.equal(releasePacingShare(dir, 8, { pid: 8000 }), false, 'only its holder releases a claim');
+  assert.equal(pacingShareHolder(dir, 8).pid, JUDGE);
+  assert.equal(releasePacingShare(dir, 8, { pid: JUDGE }), true);
+  assert.equal(pacingShareHolder(dir, 8), null);
+  assert.equal(releasePacingShare(dir, 8, { pid: JUDGE }), false, 'an unclaimed share has nothing to release');
   play = fakePlay();
   ran = await runPacingShard(5, undefined, play.load, { log: quiet });
   assert.deepEqual([ran.played, play.calls()], [true, 1], 'no run directory: the shard plays and writes nothing');

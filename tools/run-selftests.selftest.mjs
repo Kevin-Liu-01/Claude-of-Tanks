@@ -6,7 +6,8 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
 import { runSelftestFile, runSelftestSuite, selftestChildEnv, selftestFailFast, selftestCommand, selftestPlan,
-  selftestRunDirectory, SELFTEST_LAST_FILES, SELFTEST_OWNED_LEASE_FILES, SELFTEST_FRESH_FILES } from './run-selftests.mjs';
+  selftestCacheEnv, selftestRunDirectory, SELFTEST_LAST_FILES, SELFTEST_OWNED_LEASE_FILES, SELFTEST_FRESH_FILES } from './run-selftests.mjs';
+import { createSelftestCache } from './selftest-cache.mjs';
 // The runners read COT_SHOTS_LOCK_TIMEOUT_MS (landing chains export three hours); this receipt pins the default wait.
 process.env.COT_SHOTS_LOCK_TIMEOUT_MS = '';
 
@@ -357,6 +358,23 @@ const shardIndices = registry.map((file, index) => (/^server\/battlePacingShard\
 assert.equal(shardIndices.length, 8, 'the eight battlePacing shards are registered');
 assert.ok(shardIndices.every((index) => index < registry.indexOf('server/battlePacing.selftest.mjs')),
   'the shards precede their judge in registry order');
+// the result cache keys a receipt on the variables its files read, but not on the run directory: its path changes every
+// run (keyed, a receipt that reads it would never be reused), and a receipt reads only what its own run wrote there
+const cacheEnvRoot = mkdtempSync(join(tmpdir(), 'cot-selftest-run-dir-key-'));
+try {
+  writeFileSync(join(cacheEnvRoot, 'judge.selftest.mjs'),
+    'console.log(process.env.COT_SELFTEST_RUN_DIR, process.env.COT_PACING_JOBS);\n');
+  const keyWith = (env) => createSelftestCache({ root: cacheEnvRoot, cacheDir: join(cacheEnvRoot, '.cache'), env, argv: [],
+    nodeVersion: 'v-test' }).inputKey('judge.selftest.mjs').key;
+  const runA = { COT_SELFTEST_RUN_DIR: '/tmp/cot-selftest-run-a', COT_PACING_JOBS: '4', NODE_COMPILE_CACHE: '/c' };
+  const runB = { ...runA, COT_SELFTEST_RUN_DIR: '/tmp/cot-selftest-run-b' };
+  assert.notEqual(keyWith(runA), keyWith(runB), 'the raw environment keys on the run directory (the defect left out below)');
+  assert.equal(keyWith(selftestCacheEnv(runA)), keyWith(selftestCacheEnv(runB)), 'two runs\' directories, one key');
+  assert.notEqual(keyWith(selftestCacheEnv(runA)), keyWith(selftestCacheEnv({ ...runA, COT_PACING_JOBS: '1' })),
+    'every other variable a receipt reads still keys it');
+  assert.deepEqual(selftestCacheEnv(runA), { COT_PACING_JOBS: '4', NODE_COMPILE_CACHE: '/c' });
+  assert.equal(runA.COT_SELFTEST_RUN_DIR, '/tmp/cot-selftest-run-a', 'the caller\'s environment is left alone');
+} finally { rmSync(cacheEnvRoot, { recursive: true, force: true }); }
 
 // Real fresh processes prove that compiled code reuse does not cache test
 // results/global state and that editing the source cannot reuse a stale pass.

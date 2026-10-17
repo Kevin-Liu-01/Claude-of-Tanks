@@ -416,8 +416,9 @@ and removes it afterwards. A caller can export its own directory instead, and th
 runner keeps it. A judge receipt (`SELFTEST_LAST_FILES` in
 `tools/run-selftests.mjs`) merges records that other receipts of the same run
 wrote there. The pool admits a judge after everything else. The judge plays any
-share that nobody else plays in the run. The battlePacing shards are the first
-users; see "The pacing tail".
+share that nobody else plays in the run. The result cache does not key on the
+directory's path, which changes every run (`selftestCacheEnv`). The battlePacing
+shards are the first users; see "The pacing tail".
 
 Result reuse is based on source syntax and file contents:
 
@@ -625,15 +626,18 @@ exactly once, at their seeds, played on this tree. It judges the 132 by the same
 
 - **Who makes the directory.** `tools/run-selftests.mjs` makes a fresh directory for each invocation. A gate that runs
   the receipts with its own pool must export one fresh directory for that pool, for example
-  `export COT_SELFTEST_RUN_DIR=$G/selftest-run` before `pool.mjs`. Without one, the judge cannot see the shards'
-  records and plays all 132 again on four threads. Separate `--shard=i/n` invocations are separate runs too: they
-  share records only through one exported directory.
+  `export COT_SELFTEST_RUN_DIR=$G/selftest-run` before `pool.mjs`, and should admit the judges
+  (`SELFTEST_LAST_FILES` in `tools/run-selftests.mjs`) after the rest. Without a directory the judge cannot see the
+  shards' records and plays all 132 again on four threads; it says so in its log. Separate `--shard=i/n` invocations
+  are separate runs too: they share records only through one exported directory.
 - **Records do not outlive their run.** No run reuses another run's records. Each tree writes into its own
   subdirectory.
 - **Each share is played once.** A share is played by whichever process claims it first. A claim is created
   atomically and names its pid. A shard whose share already has records from this run, or whose claim the live judge
-  holds, has nothing to play and passes; the judge plays and judges those matches. A dead holder's claim (a shard that
-  failed earlier in the run) is taken over.
+  holds, has nothing to play and passes; the judge plays and judges those matches. A shard whose match fails its
+  assertion releases its claim before it fails, so the judge plays that share at once (and fails on it too) without
+  trusting the dead shard's pid, which the system may hand to another process. The claim of a holder killed outright
+  (a memory cap or a timeout) is taken over once its pid is dead.
 - **Ordering.** The runner admits the judge after every other receipt, so in `npm test` it only merges. A pool that
   orders receipts some other way still plays each share once. The judge waits while a live process holds a share's
   claim, however long it plays; a pool's timeout bounds a hung one, whose claim then dies. It gives an unclaimed share
