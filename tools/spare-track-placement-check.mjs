@@ -1136,6 +1136,20 @@ function analyse(id) {
     const grid = new TriGrid(hostBodies.map((b) => b));
     const MM = motionModel(visual, spec, bodies);
     const ownIds = new Set(); bundles.forEach((B) => B.bodies.forEach((b) => ownIds.add(b.id)));
+    // the plan outline (x, z, root space): the hull rig's own bodies, never a run or the decor's loads. This is the seat
+    // pass's rule (spareTrackSeatPass.ts planOutline), measured independently: no run may stand past it (PROUD).
+    const outline = [Infinity, -Infinity, Infinity, -Infinity];
+    for (const b of bodies) {
+      if (b.rig !== 'hull' || b.kind === 'decor' || ownIds.has(b.id)) continue;
+      outline[0] = Math.min(outline[0], b.aabb[0]); outline[1] = Math.max(outline[1], b.aabb[3]);
+      outline[2] = Math.min(outline[2], b.aabb[2]); outline[3] = Math.max(outline[3], b.aabb[5]);
+    }
+    // --seed-proud (the receipt's seeded break): the first run's measured box is carried 5 cm past the outline's right
+    // edge, and it must read PROUD
+    if (SEED_PROUD && bundles.length) {
+      const B = bundles[0], dx = outline[1] + 0.05 - B.aabb[3];
+      B.aabb = [B.aabb[0] + dx, B.aabb[1], B.aabb[2], B.aabb[3] + dx, B.aabb[4], B.aabb[5]];
+    }
     let H = null;
     if (process.env.V_FAST !== '1' && !MM.turretless && bundles.some((B) => B.rig === 'hull')) H = sweepHeightmaps(MM, bodies, new Set());
     const out = [];
@@ -1244,6 +1258,7 @@ function analyse(id) {
         host: support.host, support: { ...support, host: undefined },
         intersections: inter, near, sweep, onMovingPart, flags, verdict: flags.length ? 'FLAG' : 'ok', alt, traverse, vis, registered: !!B.registered,
         racked: !!B.racked,
+        proud: proudOf(B.aabb, outline),
         index: B.index, gunPivot: MM.pivot ? MM.pivot.toArray().map(r3) : null,
       });
     }
@@ -1495,8 +1510,16 @@ async function renderCrop(res, focus, file, caption) {
 }
 
 // ------------------------------------------------------------------ classification (census v4 classes + the verifier's corrections)
-const PRIORITY = ['ON_GUN', 'IN_SWEEP', 'HANGING', 'FLOATING', 'WEIRD', 'INTERSECTING'];
+const PRIORITY = ['ON_GUN', 'IN_SWEEP', 'HANGING', 'FLOATING', 'WEIRD', 'INTERSECTING', 'PROUD'];
 const GATED = new Set([...PRIORITY, 'BURIED', 'UNCOVERED', 'STALE']);
+/** Past the plan outline by more than this (m) a run is PROUD (the seat pass refuses 2 mm; the receipt's boxes are exact). */
+const PROUD_M = 0.005;
+/** How far a run's box stands past the plan outline [x0, x1, z0, z1], and on which side. */
+function proudOf(a, o) {
+  const sides = [['left', o[0] - a[0]], ['right', a[3] - o[1]], ['rear', o[2] - a[2]], ['front', a[5] - o[3]]];
+  const [side, m] = sides.reduce((best, s) => (s[1] > best[1] ? s : best), ['none', 0]);
+  return { m: Math.round(m * 1000) / 1000, side };
+}
 // the shared seat roles that make a host WEIRD (spareTrackSeat.ts SeatRole -> tag)
 const ROLE_TAGS = { grille: 'grille', launcher: 'launcher', light: 'light', soft: 'softload', era: 'era', hatch: 'hatch',
   sight: 'sight', weapon: 'weapon', antenna: 'antenna' };
@@ -1633,6 +1656,7 @@ function classifyRun(b) {
     const d = inter[c]?.depthM || 0;
     if (d > 0.01) add('INTERSECTING', `cuts ${c} ${cm(d)} (${inter[c].with})`);
   }
+  if ((b.proud?.m ?? 0) > PROUD_M) add('PROUD', `stands ${cm(b.proud.m)} past the vehicle's plan outline (${b.proud.side})`);
   const hostLabel = b.host?.label, mdw = s.sunkMaxDepthWith || '';
   if ((s.sunkMaxDepthM || 0) > 0.01 && mdw && hostLabel && !mdw.startsWith(hostLabel) && !buried) add('INTERSECTING', `clips ${mdw.split(' [')[0]} by ${cm(s.sunkMaxDepthM)}`);
   if ((s.sunkDeep1cmShare || 0) > 0.10 && !buried) add('INTERSECTING', `${pct(s.sunkDeep1cmShare)} sunk > 1 cm into armour (max ${cm(s.sunkMaxDepthM || 0)})`);
@@ -1782,6 +1806,9 @@ const CROPS = arg('crops', null);
 const SHARD = arg('shard', null);
 const LEDGER = arg('ledger', null);
 const UPDATE = flag('update'), CHECK = flag('check'), GATE = flag('gate');
+// the receipt's seeded break (PROUD): never with --update, so a seeded row cannot reach the ledger
+const SEED_PROUD = flag('seed-proud');
+if (SEED_PROUD && UPDATE) throw new Error('--seed-proud is a seeded break: it never writes the ledger (drop --update)');
 const ALL_IDS = [...(specs.ALL_TANK_IDS ?? specs.SAVED_TANK_IDS ?? specs.TANK_IDS)];
 let ids = (arg('ids', '') || '').split(',').map((s) => s.trim()).filter(Boolean);
 if (ids.length === 1 && ids[0] === 'all') ids = [...ALL_IDS];

@@ -849,6 +849,28 @@ export interface SeatEnv {
   markings?: readonly THREE.Box3[];
   /** The drone dock's keep-out boxes of this frame (frame coordinates): a chosen seat never enters one. */
   dock?: readonly THREE.Box3[];
+  /**
+   * The vehicle's plan outline in this frame's coordinates (x and z; the hull frame's own geometry, skirts included):
+   * no seat, authored or chosen, lets a run stand past it (the owner's rule, 2026-10-16: a run never sticks out of the
+   * tank's declared width or length).
+   */
+  outline?: THREE.Box3;
+}
+
+/** How far a run's box may reach past the plan outline (float noise, not a stand-off). */
+export const OUTLINE_TOL_M = 0.002;
+const _corner = new THREE.Vector3();
+/** How far (m) a run's box at `pose` stands past the plan outline in x or z (0 when inside). */
+export function outlineExcess(outline: THREE.Box3, shape: SeatRunShape, pose: SeatPose): number {
+  let excess = 0;
+  const b = shape.box;
+  for (let i = 0; i < 8; i++) {
+    _corner.set(i & 1 ? b.max.x : b.min.x, i & 2 ? b.max.y : b.min.y, i & 4 ? b.max.z : b.min.z)
+      .applyQuaternion(pose.quat).add(pose.pos);
+    excess = Math.max(excess, outline.min.x - _corner.x, _corner.x - outline.max.x, outline.min.z - _corner.z,
+      _corner.z - outline.max.z);
+  }
+  return excess;
 }
 
 /**
@@ -862,6 +884,8 @@ export function measureSeat(env: SeatEnv, shape: SeatRunShape, pose: SeatPose, o
   const out: SeatMeasure = { ok: false, reason: null, support: 0, air: 0, gapP90: 0, maxEmbed: 0, forbidden: 0,
     forbiddenRole: null, spreadDeg: 0, clear: Infinity, clearRole: null, cut: 0, sweep: Infinity, exposure: 1 };
   const fail = (reason: string): boolean => { if (!out.reason) out.reason = reason; return !full; };
+  // ---- R0: inside the vehicle's plan outline (width and length), whatever else holds
+  if (env.outline && outlineExcess(env.outline, shape, pose) > OUTLINE_TOL_M && fail('outline')) return out;
   const ax = runAxes(shape);
   const base = shape.box.min.getComponent(ax.n);
   const top = shape.box.max.getComponent(ax.n);
