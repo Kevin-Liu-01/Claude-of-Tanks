@@ -212,13 +212,18 @@ export const headframe: LandmarkBuilder = (ctx) => {
       s.cylinder('structureMetal', [x, gl(x, z) - 0.02, z], 'y', 0.88, 0.29, 10, { colour: dz > 0.5 ? rgb(0x7a2a1e) : IRON, decor: true });
     }
   });
-  // the ropes down from the sheaves to the winding house's drums and to the cage: they come down slack with the frame
+  // the ropes down from the sheaves to the cage: they come down slack with the frame
   piece(sink, { name: 'ropes', kind: 'lattice', at: 'collapse', fall: 'drop' }, (s) => {
-    for (const sx of [-1, 1]) {
-      bar(s, 'structureMetal', [sx * 0.9, hubY + R, zs - 0.2], [sx * 0.9, hy + 4.2, hz1 - 0.4], 0.05, { colour: IRON, decor: true });
-      bar(s, 'structureMetal', [sx * 0.9, hubY - R * 0.2, zs + R * 0.9], [sx * 0.9, g0 + 1.3, zs + 0.6], 0.05, { colour: IRON, decor: true });
-    }
+    for (const sx of [-1, 1]) bar(s, 'structureMetal', [sx * 0.9, hubY - R * 0.2, zs + R * 0.9], [sx * 0.9, g0 + 1.3, zs + 0.6], 0.05, { colour: IRON, decor: true });
   });
+  // (227, the maps lane: Copper Mesa's R6 on lane B's pieces) the ropes rising from the set-back winding house's drums to
+  // the sheaves, each a piece of its own: fifteen metres of rope run back past the frame's hinge, which the frame's fall
+  // swung up into the air with it (landmarkDamage: "nothing of its fall left in the air"); cut loose, each lies flat
+  for (const sx of [-1, 1]) {
+    piece(sink, { name: `rope-${sx < 0 ? 'l' : 'r'}`, kind: 'detach', at: 'collapse', fall: 'flat', clear: 0.5 }, (s) => {
+      bar(s, 'structureMetal', [sx * 0.9, hubY + R, zs - 0.2], [sx * 0.9, hy + 4.2, hz1 - 0.4], 0.05, { colour: IRON, decor: true });
+    });
+  }
   piece(sink, { name: 'frame', kind: 'lattice', at: 'collapse', fall: 'topple' }, (sink) => {
     collar(sink);
     for (const sx of [-1, 1]) sink.span('stone', sx * 2.4 - 0.55, Math.min(padAt(sx) - 0.8, -0.6), az - 0.55, sx * 2.4 + 0.55, padAt(sx) + 0.4, az + 0.55);
