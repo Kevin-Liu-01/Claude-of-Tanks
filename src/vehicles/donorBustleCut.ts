@@ -9,7 +9,7 @@
 /** The default band of the ZTZ-99A2 bustle (turret-local z, metres): ahead of it nothing moves. */
 export const ZTZ99A2_BUSTLE_CUT_FRONT_Z = -1.27;
 /** Behind this station the bustle's rear armour assembly translates as one piece. */
-const ZTZ99A2_BUSTLE_CUT_REAR_Z = -1.83;
+export const ZTZ99A2_BUSTLE_CUT_REAR_Z = -1.83;
 
 /** A turret-local z after cutting `cutM` metres out of the bustle band [rear, front]. The identity when cutM is 0. */
 export function bustleCutZ(z: number, cutM: number, front = ZTZ99A2_BUSTLE_CUT_FRONT_Z, rear = ZTZ99A2_BUSTLE_CUT_REAR_Z): number {

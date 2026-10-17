@@ -103,6 +103,9 @@ function synchronizeDonorTurretConcept(c:(typeof NATIONAL_MODERNIZATION_CONFIG)[
   // its turret plates, modules and crew, so the hit model is the turret that is drawn.
   const cut=Number(d.builderOptions?.bustleCutM??0);
   if(cut>0)cutDonorTurretArmor(s.armor,cut);
+  // A donor turret built without its open side bins (the Yun's Type 96B: its armour housings fill that volume) carries
+  // no stowage screens in its hit model either: nothing is drawn where they stood.
+  if(d.builderOptions?.bins===false)s.armor.turretPlates=s.armor.turretPlates.filter(p=>!/^turret_stowage_screen_[LR]$/.test(p.name));
   s.armor.turretPivot=[...d.pivot];
   if(d.gunPitchByYawDeg)s.gunPitchByYawDeg=d.gunPitchByYawDeg.map(([yaw,pitch])=>[yaw,pitch] as const);
   s.armor.gunPivot=[...turret.armor.gunPivot];

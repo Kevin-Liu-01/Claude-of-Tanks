@@ -18,7 +18,7 @@ import { stepRoofGun, auxiliaryState } from '../sim/auxiliarySystems.ts';
 
 const EXPECT = {
   t72b3_qilin: { name: 'Qilin cupola QJC-88', pintle: true, shield: 'standard', arc: true, table: true, excluded: -69 },
-  t72b3m_kunlun: { name: 'Kunlun cupola QJC-88', pintle: true, shield: 'low', arc: false, table: false },
+  t72b3m_kunlun: { name: 'Kunlun cupola QJC-88', pintle: true, shield: 'standard', arc: false, table: false },
   t80u_yun: { name: 'Yun faceted station', pintle: false, arc: true, table: false, excluded: 147.5 },
 };
 

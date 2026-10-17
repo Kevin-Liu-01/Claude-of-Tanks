@@ -50,11 +50,12 @@ const TYPE96B_ON_T72B3M: Point3 = [0, 1.52948397398 + .020, .1143146502203];
 // Release 227: 2 mm higher again, so the 99A2 shell's lower course passes 25 mm over the B3 driver's hatch at every yaw
 // (23.5 mm at yaw 290).
 // Release 227 (owner 2026-10-16: "make the yun keep all its extra add ons and modifications but altered slightly to be
-// wrapped around the type 96b turret base"): the Type 96B ring rides 50 mm above the T-80U's own yaw datum, so the 96B
-// barrel (its trunnion 0.85 m further forward and 68 mm lower than the cast Yun's) clears the T-80U's armoured front lamp
-// brows by 25 mm at full depression and the 96B shell's floor clears the T-80U roof; a stationary ring race on the hull
-// closes the running gap under the collar (nationalChina.ts yunRingRace).
-const TYPE96B_ON_T80U: Point3 = [0, 1.55158 + .050, .0718698169];
+// wrapped around the type 96b turret base"): the Type 96B ring rides 40 mm above the T-80U's own yaw datum, so the 96B
+// shell's floor and the Yun's wrap clear the T-80U roof and its drums at every yaw; where the 96B barrel (its trunnion
+// 0.85 m further forward and 68 mm lower than the cast Yun's) would meet the T-80U's front lamp brows and its slatted
+// transom, its depression stops follow the measured clearance (gunPitchByYawDeg below). A stationary ring race on the
+// hull closes the running gap under the collar (nationalChina.ts yunRingRace).
+const TYPE96B_ON_T80U: Point3 = [0, 1.55158 + .040, .0718698169];
 const ZTZ99A2_ON_T72B3: Point3 = [0, 1.457100315 + .056, .065591405];
 
 // Commander's cupolas in each donor's turret frame (their builders' own datums).
@@ -72,10 +73,11 @@ export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret
   // Release 227 (owner 2026-10-16: "also make the qqilin turret 10% shorter ... and redesign the qilin turret around this
   // principle"): the 99A2 bustle loses 0.395 m (donorBustleCut.ts: the body 3.954 -> 3.559 m, the rear armour assembly
   // moved forward as one piece, nothing ahead of z -1.27 moved); its rear flank fit gives way to the Qilin's own rear
-  // flank housings (chinaDonorTurretKit.ts), and both whips stand on the right rear, clear of the cupola emplacement.
+  // flank housings (chinaDonorTurretKit.ts), and both whips stand on the right rear roof edge, at least 1.6 m from the
+  // cupola emplacement and clear of the drone's dock on the right rear roof.
   t72b3_qilin: { donor: 'ztz99a2', pivot: ZTZ99A2_ON_T72B3, roofY: .83, station: ZTZ99A2_CUPOLA, heightM: 3.213,
     addedTurretEra: ['turret_era_L', 'turret_era_R'],
-    builderOptions: { bustleCutM: QILIN_BUSTLE_CUT_M, rearFlank: false, antennaSeats: [[-1.06, -1.40], [-1.14, -.96]] } },
+    builderOptions: { bustleCutM: QILIN_BUSTLE_CUT_M, rearFlank: false, antennaSeats: [[-1.20, -1.25], [-1.14, -.96]] } },
   // Release 227: the gun's depression over the rear deck stops at 5 degrees, so the barrel clears the engine-deck
   // cooling panels' slats by 25 mm (it came within 15 mm at 6 degrees, yaw 165-195).
   t72b3m_kunlun: { donor: 'type96b', pivot: TYPE96B_ON_T72B3M, roofY: .70, station: TYPE96B_CUPOLA, heightM: 3.35,

@@ -236,10 +236,12 @@ export function lowOptic(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[]
   for(const dx of [-w/2-.01,w/2+.01])P.addEquipment('turretDetail',box(.018,h+.010,.035),x+dx,base+h/2,z+d/2+.013);
 }
 
-export function serviceCable(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],points:readonly (readonly[number,number])[]):void {
+/** A service cable over the roof: segments between the points, a clip at each point. `clipEnds: false` leaves the
+ * two end points bare (each end then stops inside the receiver it plugs into, a case face or a pedestal). */
+export function serviceCable(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],points:readonly (readonly[number,number])[],clipEnds=true):void {
   const path=points.map(([x,z])=>[x,stockRoof(parts,x,z)+.013,z] as const);
   for(let i=1;i<path.length;i++)P.addEquipment('turretDark',beamBetween(path[i-1],path[i],.010,8));
-  for(const [x,y,z]of path)P.addEquipment('turretDetail',box(.045,.034,.032),x,y+.002,z);
+  path.forEach(([x,y,z],i)=>{if(clipEnds||(i>0&&i<path.length-1))P.addEquipment('turretDetail',box(.045,.034,.032),x,y+.002,z);});
 }
 
 
@@ -334,7 +336,8 @@ export function chinaDonorHull(P:TankBuilderPort,c:NationalModernizationConfig):
  * hull than the cast turret did: a machined race bedded 6-35 mm into the sloping T-80U roof, its top 2 mm under the
  * collar's underside, so no daylight shows under the collar. Its front edge stays behind the driver's hatch rim. */
 function yunRingRace(P:TankBuilderPort):void {
-  const g=machinedRing(.98,1.10,1.5696-1.522,.004,P.q?24:16);
+  // its top 2 mm under the Type 96B ring collar's underside (pivot 1.59158 - 0.030)
+  const g=machinedRing(.98,1.10,1.5596-1.522,.004,P.q?24:16);
   g.userData.chineseModernization={model:0,role:'ring-race'};
   P.addEquipment('hullDetail',g,0,1.522,.0718698169);
 }

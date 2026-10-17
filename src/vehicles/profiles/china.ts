@@ -30,7 +30,7 @@ import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { mount } from './fittingMount.ts';
 import { DRUM_ISSUE_PAINTS, fuelDrumParts, hash01, place } from '../accessoryPrimitives.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
-import { bustleCutZ } from '../donorBustleCut.ts';
+import { bustleCutZ, ZTZ99A2_BUSTLE_CUT_FRONT_Z, ZTZ99A2_BUSTLE_CUT_REAR_Z } from '../donorBustleCut.ts';
 
 type Vec3Tuple = [number, number, number];
 type Vec2Tuple = [number, number];
@@ -1061,6 +1061,40 @@ function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
  * vehicle with its own fitted remote station omits the commander's QJC-88 (one
  * working roof gun, never a duplicate), and one with its own marking seats
  * omits the 99A2's painted star and number. */
+
+/** Splits, in place, every triangle of a non-indexed geometry that crosses the plane z = z0 (all attributes
+ * interpolated), so a piecewise map in z moves no point of the surface on its unmoved side. An edge shared by two
+ * triangles is cut at the identical point (each edge is interpolated from its lower-z end), so no crack opens. */
+function splitTrianglesAtZ(g: BufferGeometry, z0: number): void {
+  if (g.index) throw new Error('splitTrianglesAtZ: non-indexed geometry only');
+  const names = Object.keys(g.attributes), pos = g.getAttribute('position');
+  const sizes = names.map((n) => g.getAttribute(n).itemSize), out: number[][] = names.map(() => []);
+  const vertex = (i: number): number[][] => names.map((n) => Array.from({ length: g.getAttribute(n).itemSize }, (_, k) => g.getAttribute(n).getComponent(i, k)));
+  const lower = (a: number[][], b: number[][]): boolean => a[0][2] < b[0][2] || (a[0][2] === b[0][2] && (a[0][0] < b[0][0] || (a[0][0] === b[0][0] && a[0][1] < b[0][1])));
+  const cutEdge = (a: number[][], b: number[][]): number[][] => {
+    const [u, v] = lower(a, b) ? [a, b] : [b, a], t = (z0 - u[0][2]) / (v[0][2] - u[0][2]);
+    return u.map((attr, n) => attr.map((c, k) => (n === 0 && k === 2 ? z0 : c + (v[n][k] - c) * t)));
+  };
+  const emit = (...tri: number[][][]): void => { for (const v of tri) v.forEach((attr, n) => out[n].push(...attr)); };
+  let changed = false;
+  for (let i = 0; i < pos.count; i += 3) {
+    const V = [vertex(i), vertex(i + 1), vertex(i + 2)], side = V.map((v) => Math.sign(v[0][2] - z0));
+    if (!(side.includes(1) && side.includes(-1))) { emit(...V); continue; }
+    changed = true;
+    const on = side.indexOf(0);
+    if (on >= 0) {
+      const a = V[on], b = V[(on + 1) % 3], c = V[(on + 2) % 3], bc = cutEdge(b, c);
+      emit(a, b, bc, a, bc, c);
+    } else {
+      const k = side.findIndex((s) => side.filter((t) => t === s).length === 1);
+      const a = V[k], b = V[(k + 1) % 3], c = V[(k + 2) % 3], ab = cutEdge(a, b), ac = cutEdge(a, c);
+      emit(a, ab, ac, ab, b, c, ab, c, ac);
+    }
+  }
+  if (!changed) return;
+  names.forEach((n, i) => g.setAttribute(n, new Float32BufferAttribute(out[i], sizes[i])));
+}
+
 export interface ZTZ99A2TurretOptions {
   roofGun?: boolean;
   decals?: boolean;
@@ -1119,7 +1153,11 @@ export function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort, options: ZTZ99
   if (cut > 0) {
     // The loft's crown ring is inset towards the plan's centroid, so cutting the plan itself would pull the front
     // crown edge forward with the moved centroid: the shell is lofted on its own plan and every vertex then maps
-    // through the cut (vertices ahead of the band stay exactly where they are).
+    // through the cut (vertices ahead of the band stay exactly where they are). The loft's triangles that cross the
+    // band's two ends are first split there, so the cut is exact on every piece and no point of the surface ahead of the
+    // band moves (the gun throat's clip planes then cut it where they cut the fleet shell).
+    splitTrianglesAtZ(shell, ZTZ99A2_BUSTLE_CUT_FRONT_Z);
+    splitTrianglesAtZ(shell, ZTZ99A2_BUSTLE_CUT_REAR_Z);
     const position = shell.getAttribute('position');
     for (let i = 0; i < position.count; i++) position.setZ(i, bz(position.getZ(i)));
     position.needsUpdate = true;

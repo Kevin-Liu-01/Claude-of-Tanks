@@ -35,7 +35,7 @@ export interface NationalRoofLoadout {
   lamp:'round'|'slit'|'square';
 }
 // The emplacements' pintle risers (m), measured with the moving gun's clearance sweep (tools/roof-station-arcs.mjs).
-const KUNLUN_RISER_M=0;
+const KUNLUN_RISER_M=.04;
 const QILIN_RISER_M=.02;
 export const NATIONAL_ROOF_LOADOUTS:Readonly<Record<string,NationalRoofLoadout>>={
  t80u_zoria:{name:'Bureviy open cradle',caliber:12.7,mount:'fork',feedSide:1,axisHeight:.62,muzzleZ:1.04,eyes:'monocle-left',eyeRadius:.145,roof:'split-panels',roofZ:-.12,lamp:'round'},
@@ -51,10 +51,12 @@ export const NATIONAL_ROOF_LOADOUTS:Readonly<Record<string,NationalRoofLoadout>>
   eyes:'monocle-right',eyeRadius:.15,roof:'spine',roofZ:-.16,lamp:'slit'},
  // Release 227 (owner 2026-10-16: "for the qilin and kunlun, make their machine guns much smalelr and make thhem into the
  // more classic machine gunn emplacement on the turrets"): the Kunlun's 30 mm station gives way to a QJC-88 12.7 mm on an
- // open pintle at the Type 96B commander's cupola, its ring inside the cupola's latch clevis (r .158) and a low shield.
+ // open pintle at the Type 96B commander's cupola, its ring inside the cupola's latch clevis (r .158), behind the class's
+// standard light shield (round 2: the 0.14 m 'low' leaves read as no shield at all from the front); its 40 mm riser keeps
+// the gun's back plate and grips 20 mm over the clevis pin with the gun facing aft at full elevation and in recoil.
  // The pintle's trunnion stands .304 m over its foot plus the measured riser; its crew barrel's muzzle 1.321 m ahead.
  t72b3m_kunlun:{name:'Kunlun cupola QJC-88',caliber:12.7,mount:'pintle',feedSide:1,axisHeight:.304+KUNLUN_RISER_M,muzzleZ:1.321,
-  emplacement:{cls:'qjc88',shield:'low',ring:{r:.12,stubs:3},riserM:KUNLUN_RISER_M,crewServed:true},
+  emplacement:{cls:'qjc88',shield:true,ring:{r:.12,stubs:3},riserM:KUNLUN_RISER_M,crewServed:true},
   eyes:'twin',eyeRadius:.145,roof:'scanner',roofZ:-.16,lamp:'square'},
  // Release 227: the Qilin's QJC-88 on the ZTZ-99A2 commander's cupola, its ring inside the commander's periscope (whose
  // inner end stands at r .15) and the 99A2's own standard shield; its arc leaves out the commander's stabilised sight.

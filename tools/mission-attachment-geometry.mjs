@@ -21,10 +21,9 @@ const WELDED_SUPPORT_PATCHES={
  t72b3m_hetman_ii:{region:{minX:-.20,maxX:.20,minZ:-2.45,maxZ:-2.11},plane:()=>.72,tolerance:.000002},
  t72b3_sich:{region:{minX:.23,maxX:.57,minZ:-1.66,maxZ:-1.34},plane:()=>.74,tolerance:.000002},
  // Release 227: the Yun's landing plate on its rear cage roof (chinaDonorTurretKit.ts YUN_DOCK_LANDING); its Type 96B
- // roof lies inside the faceted station's sweep.
+ // roof lies inside the faceted station's sweep. (The Qilin docks on its own roof's right rear, outside its QJC-88's
+ // muzzle circle: native support.)
  t80u_yun:{region:{minX:-.20,maxX:.20,minZ:-2.43,maxZ:-2.09},plane:()=>.772,tolerance:.000002},
- // and the Qilin's on its rear basket (QILIN_DOCK_LANDING): the cut bustle's roof is its emplacement's sweep and field fit
- t72b3_qilin:{region:{minX:-.20,maxX:.20,minZ:-2.295,maxZ:-1.955},plane:()=>.732,tolerance:.000002},
 };
 function weldedSupportRegion(output,mesh,tri){
  if(output.frame!=='turret'||tri.getNormal(vector).y<.9)return null;

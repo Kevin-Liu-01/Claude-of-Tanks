@@ -119,3 +119,141 @@ export function meshPoints(meshes, frameInv, keep = () => true) {
   }
   return new Float64Array(out);
 }
+
+// ---- Round 2 (2026-10-16): the seating, penetration and z-fight census, and the dense two-way sweeps.
+
+/** Dense surface samples of a triangle soup: every vertex plus a barycentric grid with spacing <= h. */
+export function densePoints(tri, h = .01) {
+  const out = [];
+  for (let t = 0; t < tri.length; t += 9) {
+    const ax = tri[t], ay = tri[t + 1], az = tri[t + 2], bx = tri[t + 3], by = tri[t + 4], bz = tri[t + 5], cx = tri[t + 6], cy = tri[t + 7], cz = tri[t + 8];
+    const l = Math.max(Math.hypot(bx - ax, by - ay, bz - az), Math.hypot(cx - ax, cy - ay, cz - az), Math.hypot(cx - bx, cy - by, cz - bz));
+    const n = Math.max(1, Math.ceil(l / h));
+    for (let i = 0; i <= n; i++) for (let j = 0; j <= n - i; j++) {
+      const u = i / n, v = j / n, w = 1 - u - v;
+      out.push(ax * w + bx * u + cx * v, ay * w + by * u + cy * v, az * w + bz * u + cz * v);
+    }
+  }
+  return new Float64Array(out);
+}
+
+/** Is p inside the closed soup B (ray parity along a slightly skewed +X ray)? */
+export function insideClosed(B, x, y, z) {
+  let n = 0; const dx = 1, dy = 1.3e-4, dz = 2.1e-4, T = B.tri;
+  for (let t = 0; t < T.length; t += 9) {
+    const e1x = T[t + 3] - T[t], e1y = T[t + 4] - T[t + 1], e1z = T[t + 5] - T[t + 2], e2x = T[t + 6] - T[t], e2y = T[t + 7] - T[t + 1], e2z = T[t + 8] - T[t + 2];
+    const px = dy * e2z - dz * e2y, py = dz * e2x - dx * e2z, pz = dx * e2y - dy * e2x, det = e1x * px + e1y * py + e1z * pz;
+    if (Math.abs(det) < 1e-14) continue;
+    const inv = 1 / det, tx = x - T[t], ty = y - T[t + 1], tz = z - T[t + 2], u = (tx * px + ty * py + tz * pz) * inv;
+    if (u < 0 || u > 1) continue;
+    const qx = ty * e1z - tz * e1y, qy = tz * e1x - tx * e1z, qz = tx * e1y - ty * e1x, v = (dx * qx + dy * qy + dz * qz) * inv;
+    if (v < 0 || u + v > 1) continue;
+    if ((e2x * qx + e2y * qy + e2z * qz) * inv > 0) n++;
+  }
+  return n % 2 === 1;
+}
+
+/** How deep A's surface goes inside the closed part B: the largest distance from a dense sample of A lying inside B to
+ * B's surface (0 when nothing of A is inside B). */
+export function penetrationDepth(A, B, h = .008) {
+  const S = A.dense ??= densePoints(A.tri, h), bx = B.box;
+  let best = 0;
+  for (let i = 0; i < S.length; i += 3) {
+    const x = S[i], y = S[i + 1], z = S[i + 2];
+    if (x <= bx.min.x || x >= bx.max.x || y <= bx.min.y || y >= bx.max.y || z <= bx.min.z || z >= bx.max.z) continue;
+    if (!insideClosed(B, x, y, z)) continue;
+    let d = Infinity;
+    for (let t = 0; t < B.tri.length; t += 9) { const c = closestOnTriangle(B.tri, t, x, y, z); d = Math.min(d, Math.hypot(c[0] - x, c[1] - y, c[2] - z)); if (d <= best) break; }
+    if (d > best) best = d;
+  }
+  return best;
+}
+
+function triFrame(T, t) {
+  const ux = T[t + 3] - T[t], uy = T[t + 4] - T[t + 1], uz = T[t + 5] - T[t + 2], vx = T[t + 6] - T[t], vy = T[t + 7] - T[t + 1], vz = T[t + 8] - T[t + 2];
+  let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const a = Math.hypot(nx, ny, nz);
+  if (a < 1e-10) return null; nx /= a; ny /= a; nz /= a;
+  return { nx, ny, nz, d: nx * T[t] + ny * T[t + 1] + nz * T[t + 2], area: a / 2 };
+}
+function inTriangle(T, t, px, py, pz, n) { // p (already on the plane) inside triangle t?
+  const s = (ax, ay, az, bx, by, bz) => { const cx = (by - ay) * (pz - az) - (bz - az) * (py - ay), cy = (bz - az) * (px - ax) - (bx - ax) * (pz - az), cz = (bx - ax) * (py - ay) - (by - ay) * (px - ax); return cx * n.nx + cy * n.ny + cz * n.nz; };
+  const a = s(T[t], T[t + 1], T[t + 2], T[t + 3], T[t + 4], T[t + 5]), b = s(T[t + 3], T[t + 4], T[t + 5], T[t + 6], T[t + 7], T[t + 8]), c = s(T[t + 6], T[t + 7], T[t + 8], T[t], T[t + 1], T[t + 2]);
+  return (a > 1e-9 && b > 1e-9 && c > 1e-9) || (a < -1e-9 && b < -1e-9 && c < -1e-9);
+}
+/** Same-facing coplanar faces of two parts that overlap (z-fighting): area (m^2) of A's faces lying within `tol` of a
+ * parallel, same-facing face of B with A's sample points inside B's triangle. Opposite-facing coplanar faces are two
+ * parts resting face to face (both hidden) and do not count. */
+export function coplanarOverlap(A, B, tol = .002, isHidden = () => false) {
+  let area = 0; const T = A.tri, U = B.tri;
+  const ub = []; for (let s = 0; s < U.length; s += 9) ub.push(triFrame(U, s));
+  for (let t = 0; t < T.length; t += 9) {
+    const f = triFrame(T, t); if (!f || f.area < 2e-5) continue;
+    for (let s = 0, k = 0; s < U.length; s += 9, k++) {
+      const g = ub[k]; if (!g) continue;
+      if (f.nx * g.nx + f.ny * g.ny + f.nz * g.nz < .9995 || Math.abs(f.d - g.d) > tol) continue;
+      // centroid and edge midpoints of A's face, inside B's face?
+      let hits = 0;
+      for (const [u, v, w] of [[1 / 3, 1 / 3, 1 / 3], [.5, .5, 0], [0, .5, .5], [.5, 0, .5], [.7, .15, .15], [.15, .7, .15], [.15, .15, .7]]) {
+        const px = T[t] * u + T[t + 3] * v + T[t + 6] * w, py = T[t + 1] * u + T[t + 4] * v + T[t + 7] * w, pz = T[t + 2] * u + T[t + 5] * v + T[t + 8] * w;
+        if (inTriangle(U, s, px, py, pz, g) && !isHidden(px, py, pz)) hits++;
+      }
+      if (hits) area += f.area * hits / 7;
+    }
+  }
+  return area;
+}
+
+/** The seating census of tagged add-on parts against their owner's stock (one owner's census parts, owner-local):
+ *  - FLOAT: every tagged part reaches untagged permanent stock through a chain of parts in contact (gap <= 2 mm); a
+ *    chain passes from a reactive cassette only to that cassette's own pieces, never on to permanent parts, so parts
+ *    touching only each other (or only ERA) float together;
+ *  - ON-ERA: no tagged permanent part rests on ERA alone;
+ *  - CROSS: no tagged part goes deeper into another part (untagged, or tagged with another role) than the pair's burial
+ *    allowance, either way round (feet 6 mm, welded housing roots, struts ending 30 mm inside, a thin part's own radius);
+ *  - ERA-OVERLAP: no two separate reactive cassettes cross, whatever their roles;
+ *  - ZFIGHT: no visible same-facing coplanar overlap between faces of different materials (a face lying inside a third
+ *    part touching either is hidden);
+ *  - SLOT: no air slot under `slotM` (2 mm < gap < slotM) between two pieces of armour (shell, permanent external armour),
+ *    at least one of them tagged, nor under `eraSlotM` between two separate reactive cassettes. A cassette's standoff
+ *    over its own receiver (its seat pad fills the gap) is by design.
+ * Returns the list of problems (strings). */
+export function seatingCensus(parts, { allowance = () => .010, slotM = .015, eraSlotM = .010, family = (role) => role } = {}) {
+  const problems = [], P = parts;
+  const near = (a, b, e) => a.box.min.x - e <= b.box.max.x && a.box.max.x + e >= b.box.min.x && a.box.min.y - e <= b.box.max.y && a.box.max.y + e >= b.box.min.y
+    && a.box.min.z - e <= b.box.max.z && a.box.max.z + e >= b.box.min.z;
+  const vol = (p) => { const s = p.box.getSize(new THREE.Vector3()); return s.x * s.y * s.z; };
+  const sameCassette = (a, b) => { const [small, big] = vol(a) < vol(b) ? [a, b] : [b, a]; return big.box.clone().expandByScalar(.015).containsPoint(small.box.getCenter(new THREE.Vector3())); };
+  const armour = (p) => p.era || p.bucket === 'turret' || p.bucket === 'turretExternalArmor' || p.bucket === 'hullExternalArmor';
+  const label = (p) => `${p.role ?? p.bucket}${p.era ? '/ERA' : ''}[${p.box.min.toArray().map((v) => v.toFixed(3))}..${p.box.max.toArray().map((v) => v.toFixed(3))}]`;
+  const adj = new Map(P.map((p) => [p, []])), pairs = [];
+  for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) {
+    const A = P[i], B = P[j], tagged = Boolean(A.role || B.role);
+    if (!near(A, B, tagged ? slotM : .003)) continue;
+    const g = partGap(A, B, tagged ? slotM : .003);
+    if (g <= .002) { adj.get(A).push(B); adj.get(B).push(A); }
+    if (tagged) pairs.push([A, B, g]);
+  }
+  const hidden = (A, B, x, y, z) => [...adj.get(A), ...adj.get(B)].some((q) => q !== A && q !== B && q.box.containsPoint(new THREE.Vector3(x, y, z)) && insideClosed(q, x, y, z));
+  for (const [A, B, g] of pairs) {
+    const same = Boolean(A.role && B.role && family(A.role) === family(B.role)), cassettes = A.era && B.era;
+    if (g === 0) {
+      if (cassettes && !sameCassette(A, B)) problems.push(`ERA-OVERLAP ${label(A)} x ${label(B)}`);
+      else if (!same && !cassettes) {
+        const allow = Math.max(A.role ? allowance(A, B) : 0, B.role ? allowance(B, A) : 0), d = Math.max(penetrationDepth(A, B), penetrationDepth(B, A));
+        if (d > allow + 1e-4) problems.push(`CROSS ${(d * 1000).toFixed(1)} mm (allowed ${(allow * 1000).toFixed(0)}) ${label(A)} x ${label(B)}`);
+      }
+    } else if (g > .002 && g < (cassettes ? eraSlotM : slotM) && armour(A) && armour(B) && (cassettes ? !sameCassette(A, B) : !(A.era || B.era)))
+      problems.push(`SLOT ${(g * 1000).toFixed(1)} mm ${label(A)} ~ ${label(B)}`);
+    if (g <= .002 && A.bucket !== B.bucket) {
+      const a = Math.max(coplanarOverlap(A, B, .002, (x, y, z) => hidden(A, B, x, y, z)), coplanarOverlap(B, A, .002, (x, y, z) => hidden(A, B, x, y, z)));
+      if (a > 2e-4) problems.push(`ZFIGHT ${(a * 1e4).toFixed(1)} cm2 ${label(A)} | ${label(B)}`);
+    }
+  }
+  const seen = new Set(P.filter((p) => !p.role && !p.era)), queue = [...seen];
+  while (queue.length) { const p = queue.shift(); for (const q of adj.get(p)) if (!seen.has(q) && (!p.era || (q.era && sameCassette(p, q)))) { seen.add(q); queue.push(q); } }
+  for (const p of P.filter((q) => q.role)) {
+    if (!seen.has(p)) problems.push(`FLOAT ${label(p)}: no chain of contacts to permanent stock`);
+    else if (!p.era && adj.get(p).length && adj.get(p).every((q) => q.era)) problems.push(`ON-ERA ${label(p)}: rests on removable ERA alone`);
+  }
+  return problems;
+}
