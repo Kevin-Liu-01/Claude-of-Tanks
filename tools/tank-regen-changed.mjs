@@ -157,7 +157,8 @@ async function runGpuStep(step, ids, state) {
   const list = ids ?? state.ids;
   const perChunk = Math.max(1, Math.floor(step.chunkS / step.perIdS));
   const chunks = [];
-  // A whole-fleet run is chunked too; the chunks together cover every id, written by the tool's own --ids merge.
+  // A whole-fleet run longer than one hold is chunked too; the chunks together cover every id, written by the tool's
+  // own --ids merge.
   for (let index = 0; index < list.length; index += perChunk) chunks.push(list.slice(index, index + perChunk));
   for (const [index, chunk] of chunks.entries()) {
     const lock = createCaptureLock();
@@ -166,7 +167,9 @@ async function runGpuStep(step, ids, state) {
     const refresh = setInterval(() => lock.refresh(), 60_000);
     try {
       await gate(step.gb);
-      const run = await runChild([step.tool, ...step.flags, ...step.scoped(chunk)],
+      // A whole-fleet run that fits one hold runs the tool's own whole-fleet mode (no --ids), exactly as a full regen.
+      const scope = !ids && chunks.length === 1 ? step.full : step.scoped(chunk);
+      const run = await runChild([step.tool, ...step.flags, ...scope],
         { niced: false, timeoutS: Math.min(1200, timeoutFor(step, chunk.length)), label: `${step.name}-${index + 1}` });
       if (run.code !== 0) return run;
     } finally { clearInterval(refresh); lock.release(); }
