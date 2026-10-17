@@ -188,7 +188,7 @@ try {
   for (const shard of shards.filter((shard) => shard !== 4)) writePacingShardReport(dir, shard, report(shard));
   claimPacingShare(dir, 4, { pid: 4444, by: 'battlePacingShard4' });
   const holding = new Set([4444]);
-  h = harness(dir, { live: holding, onSleep: (n) => { if (n === 3600) holding.delete(4444); } });
+  h = harness(dir, { live: holding, pollMs: 30_000, onSleep: (n) => { if (n === 120) holding.delete(4444); } });
   ({ reports, playedHere } = await h.run);
   assert.deepEqual(playedHere, [4]);
   assert.deepEqual(h.playedAt, [3_600_000], 'an hour of polls, then played the moment its holder died');

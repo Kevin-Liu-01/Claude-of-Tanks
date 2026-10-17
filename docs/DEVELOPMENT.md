@@ -636,12 +636,17 @@ exactly once, at their seeds, played on this tree. It judges the 132 by the same
   failed earlier in the run) is taken over.
 - **Ordering.** The runner admits the judge after every other receipt, so in `npm test` it only merges. A pool that
   orders receipts some other way still plays each share once. The judge waits while a live process holds a share's
-  claim, gives an unclaimed share 10 s in case a shard is starting, and then claims and plays what is left, up to
-  `COT_PACING_JOBS` shares at a time.
+  claim, however long it plays; a pool's timeout bounds a hung one, whose claim then dies. It gives an unclaimed share
+  10 s in case a shard is starting, and then claims and plays what is left, up to `COT_PACING_JOBS` shares at a time.
 - **Missing shares.** The judge always judges all 132. Without a run directory, as in
   `node server/battlePacing.selftest.mjs`, it plays them all itself.
 - **The protocol's receipt.** `server/battlePacingRun.selftest.mjs` covers the partition, the report check, the merge,
   the claims and the hand-over, on fixtures.
+- **Cost (measured 2026-10-16).** The eight shards and the old receipt played byte-identical records. CPU time is
+  unchanged (1,032 s for the shards against 973 s for the old receipt, beside each other on a loaded host). Each
+  shard runs one thread at 0.5-0.9 GB. Scaled from the old receipt's best of 318 s by simulated match time, the
+  longest shard takes about 185 s on a quiet core and the shortest about 96 s. Shard 2 is the longest because
+  Blackglass's matches run to the 900 s cap. The judge merges in 0.2 s.
 
 The tail takes a few hours in one process, so play it in shards. Every seed is keyed to its map's index in `MAP_IDS`,
 so a shard plays exactly the full run's matches (`COT_PACING_MAPS` used to key seeds to the filtered list and played
