@@ -297,6 +297,10 @@ export default {
     // every row's whole footprint off every road's core and out of the river (props.ts)
     streetRowClearance: true,
     // The zones' squares and the kickoff's stay open (rotation pairs, the bank square's twin the kickoff's smaller square).
+    // (item 58, 2026-10-17, the render budget) the kerbs and pavements line the valley floor's streets, the avenues and
+    // the bridges' streets (roads 0-6); the mahalas' setted lanes up the flanks (the bench and terrace streets, the
+    // trunks) run wall to wall without, as Sarajevo's kaldrma lanes do (props.ts curbRoads; 144 k triangles of kerb units)
+    curbRoads: [0, 1, 2, 3, 4, 5, 6],
     streetRowKeepouts: [
       { x: Z_BENCH[0], z: Z_BENCH[1], r: 31 }, { x: -Z_BENCH[0], z: -Z_BENCH[1], r: 31 },
       { x: Z_BANK[0], z: Z_BANK[1], r: 31 }, { x: -Z_BANK[0], z: -Z_BANK[1], r: 20 },
@@ -319,11 +323,15 @@ export default {
     sideSkip: 0.04, spacingPad: 4.5, maxSpread: 4.2,
     // no overhead utility line: the avenues are city streets, lit by their lampposts
     well: false, hayCrates: false, fences: true, telegraph: false, carts: false, logs: false,
-    rocks: 96, outcrops: 10, craters: 128, rubblePiles: 480,
+    // (item 58, the render budget) the street rubble at main's 160 piles: the valley round's 480 stood in for the fall
+    // the ruins now lay at their own feet (the ruin grammar's breach rubble), at 476 triangles a pile
+    rocks: 96, outcrops: 10, craters: 128, rubblePiles: 160,
     hedgehogs: 38, sandbagLines: 26, townCraters: true,
     // the map-vehicles lane (2026-10-06, the period ruling): Sarajevo, 1992-96: the T-72M1 (the M-84's parent), the
     // T-55 (its Type 59 copy) and the BMP
-    tankWrecks: { era: 'cold-war', count: 9, debris: true, ids: ['t72m1_jaguar', 'type59', 'bmp2'] },
+    // (item 58, the render budget) four hulks, main's four: the valley's open floor seated three more of the ~49 k-triangle
+    // bakes than main's layout had room for (seven, past the props' 300 k hulk budget)
+    tankWrecks: { era: 'cold-war', count: 4, debris: true, ids: ['t72m1_jaguar', 'type59', 'bmp2'] },
     inhabit: {
       stalls: 1, benches: 8, coreClutter: 34, drums: 20,
       trucks: 10, jeeps: 8, drumClusters: 10, camps: 3, modernClutter: 44,

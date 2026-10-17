@@ -563,6 +563,10 @@ interface PropsSettings {
   tacticalBeats: TacticalBeatSettings[];
   streetRows: boolean;
   curbs: boolean;
+  /** The roads (by index into the layout's paths) that carry the kerbs and pavements; default every street in the town.
+   * (item 58, 2026-10-17, Ruinspires: the valley floor's avenues and bridge streets keep them, the mahalas' setted lanes
+   * up the flanks run wall to wall without.) A road left out still draws its pieces' UV jitter, so no later draw moves. */
+  curbRoads?: readonly number[];
   monument: boolean;
   townCraters: boolean;
   snowCap?: boolean;
@@ -8990,7 +8994,7 @@ ${snowCap ? `
             const walk = slabBox(segLen, (kerbTop[0] + rise[0] / 2 - walkFoot[0] + kerbTop[1] + rise[1] / 2 - walkFoot[1]) / 2,
               WALK_DEPTH_M, 0.9); // r2: un-stretched paving
             jitterUV(walk, rng);
-            if (spanned) { g.dispose(); walk.dispose(); continue; }
+            if (spanned || (P.curbRoads && !P.curbRoads.includes(ri))) { g.dispose(); walk.dispose(); continue; }
             g.rotateY(yaw);
             g.translate(px, 0, pz);
             buckets[kerbBucket].push(g);

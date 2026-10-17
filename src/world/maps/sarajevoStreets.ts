@@ -850,6 +850,12 @@ function clumpNoise(x: number, z: number, scale: number, salt: number): number {
 
 /** The kerb line (props.ts kerbs 5.05 m off every line): the pavement's litter lies between it and the frontage. */
 const KERB_M = 5.05;
+/**
+ * The valley floor's streets, the kerbed ones (ruinspires.ts: roads 0-1 the avenues, 2-6 the bridges' streets; its
+ * `curbRoads`). Item 58 (2026-10-17, the render budget): the mahalas' setted lanes up the flanks run wall to wall with no
+ * kerb to sweep the fall to, so the kerb heaps and the gutter's litter keep to these.
+ */
+const FLOOR_STREETS = 7;
 const SPALL = rgb(0x8b8378), BRICK = rgb(0x8a4e3a), CHAR_WOOD = rgb(0x2d2621), STUMP = rgb(0x9a8569), STUMP_TOP = rgb(0xc7ad84);
 /** The sheeting the city hung against the snipers: UNHCR's blue-and-white plastic, grey blankets, a rust-red tarp. */
 const SHEETS: readonly Rgb[] = [rgb(0x3c6e9f), rgb(0xd3d4cf), rgb(0x8f908a), rgb(0x7d3d2c), rgb(0x4d7fae), rgb(0xc9c7bd)];
@@ -908,7 +914,7 @@ function dressSiegeStreets(ctx: TramContext, keep: YardKeepOut | null, limit = 3
   const clearAt = (x: number, z: number, r: number, tx = 1, tz = 0) => solids.clears(x, z, r, r, tx, tz, 0.15)
     && clearOfKeepOut(keep, x, z, r, r, tx, tz) && clearOfRoads(roads, x, z, r, r * 0.6, tx, tz);
   for (const [ri, line] of roads.entries()) {
-    if (!line || line.length < 2) continue;
+    if (!line || line.length < 2 || ri >= FLOOR_STREETS) continue;
     const st = resample(line, mobile ? 5.0 : 3.0, limit);
     for (const s of st) {
       for (const side of [-1, 1]) {
