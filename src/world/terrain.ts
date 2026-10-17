@@ -29,9 +29,10 @@ import { hinterlandSupplyFor } from './hinterlandHook.ts';
 import { onPresetChange, resolvePresetName, texSize } from '../engine/quality.ts';
 import { terrainWallSkyLift } from '../engine/groundBounce.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
-import { shorelineDistance, shorelineRadiusAt, shorelineWetness, sampleShorelineMask } from './shoreline.ts';
+import { shorelineDistance, shorelineRadiusAt, shorelineWetness, shorelineWetnessFromDistance, sampleShorelineMask } from './shoreline.ts';
+import { WATER_BANK_REACH_M, waterBedAt, waterCoverage, waterShoreFloor, waterlineDistance } from './waterBank.ts';
 import { alignLiquidLakeLevels, buildLiquidLakeBanks, buildLiquidMarshSurfaces, LIQUID_MARSH_CORE, LIQUID_MARSH_STRIDE } from './liquidMarshSurface.ts';
-import { composeLakeHeight, type LakeHeightResult } from './lakeHeightComposition.ts';
+import { composeLakeHeight, type LakeBankLaw, type LakeHeightResult } from './lakeHeightComposition.ts';
 import { buildLakeCandidateIndex, lakeCandidatesAt, type LakeCandidateIndex } from './lakeCandidateIndex.ts';
 import { buildLiquidMarshIndex, liquidMarshIndexBucket, sampleIndexedMarshWetness } from './liquidMarshIndex.ts';
 import { createHardstandVegetationExclusion, stampHardstandRoadGrids, stampHardstandRoadMask, type HardstandConfig } from './hardstandSurface.ts';
@@ -663,6 +664,10 @@ export interface HeightField {
   /** Round 47 (2026-09-23): the map's bay contours evaluated anywhere, the square included — wetness 0..1 and the bay's
    * water level — so the horizon ring, the terrain material and the sheet apron continue the coast past the red line. */
   getOutlandWaterAt?(x: number, z: number): { wetness: number; level: number } | null;
+  /** (ground lane, 2026-10-17; MASTER #14, "water meets its banks level") the level of the lake or liquid marsh that
+   * holds (x, z) — one level per body (a marsh's plane) — which the sheet holds instead of following its bed up the
+   * banks (the beds are carved under it: waterBank.ts); NaN where no lake or marsh holds it. */
+  getWaterBodySurfaceAt?(x: number, z: number): number;
   /** Water pass 8: one splash into the reactive field (shell impacts); absent without the field. */
   addWaterImpulse?(x: number, z: number, radiusM: number, amplitudeM: number, foam?: number): void;
   /** Water pass 8: true when the reactive field carries the wakes (the FX layer then skips its ring prints). */
@@ -1739,6 +1744,10 @@ function* heightFieldBuildSteps(
   const liquidDepthM = liquidWater ? waterContactProfile(cfg?.id || '').depthM : 0;
   const waterRampStart = cfg?.splat?.seaRamp?.[0] ?? 0.40;
   const waterRampEnd = cfg?.splat?.seaRamp?.[1] ?? 0.78;
+  // (the ground lane, 2026-10-17; waterBank.ts) a liquid marsh's visible waterline (its shoreline law's wetness at the ramp's
+  // start) and the lake law the in-square composition holds its banks by (set with the lakes' banks, below)
+  const marshWaterline = waterlineDistance(0.45, 1, waterRampStart);
+  let lakeBankLaw: LakeBankLaw | null = null;
   let liquidSurfaces: Float64Array | null = null;
   let liquidLakeBanks: Float64Array | null = null;
   // Authored drainage contours may have wide grading aprons that overlap a
@@ -1916,7 +1925,7 @@ function* heightFieldBuildSteps(
     let lakeWetness = 0;
     if (lakesOn) {
       composeLakeHeight(_LAKES, lakeLevels, liquidLakeBanks, continuousLakeAprons,
-        x, z, h, settlementWeight, lakeHeightResult, lakesNear(x, z));
+        x, z, h, settlementWeight, lakeHeightResult, lakesNear(x, z), lakeBankLaw, marshWeight < 1);
       h = lakeHeightResult.height;
       lakeWetness = lakeHeightResult.wetness;
     }
@@ -2281,6 +2290,9 @@ function* heightFieldBuildSteps(
     let marshW = 0;
     let waterWeight = 0, waterLevelSum = 0, waterWeightSum = 0;
     let waterCoreSum = 0, waterCoreCount = 0;
+    // (2026-10-17, waterBank.ts) under a liquid marsh's water the bed that holds its top at its level (the most covering
+    // marsh's), past every waterline the dry shore's floor
+    let bankFloor = -Infinity, bedCoverage = 0, bed = 0;
     for (let mi = 0; mi < _MARSHES.length; mi++) {
       if (index) {
         while (!bits && ++word < liquidIndexWords) bits = index[bucket + word];
@@ -2321,13 +2333,21 @@ function* heightFieldBuildSteps(
         const priority = weight / Math.max(1e-9, 1 - weight);
         waterWeightSum += priority; waterLevelSum += level * priority;
         if (md <= LIQUID_MARSH_CORE) { waterCoreSum += level; waterCoreCount++; }
+        if (m.sorFlat === undefined && liquidDepthM > 0) {
+          const coverage = waterCoverage(shorelineWetnessFromDistance(md, false), waterRampStart, waterRampEnd);
+          if (coverage > bedCoverage) { bedCoverage = coverage; bed = waterBedAt(level, liquidDepthM, coverage); }
+          else if (coverage === 0) {
+            const beyondM = (md - marshWaterline) * shorelineRadiusAt(m, Math.atan2(z - m.z, x - m.x));
+            if (beyondM <= WATER_BANK_REACH_M) bankFloor = Math.max(bankFloor, waterShoreFloor(level, beyondM));
+          }
+        }
       }
     }
     if (waterCoreCount) {
       // All base/micro/macro relief is overwritten by a fully flat core.
       // Keep the canonical lake, pad and road constraints, without spending
       // thirteen simplex evaluations on a value that cannot reach the mesh.
-      return applyHeightConstraints(x, z, waterCoreSum / waterCoreCount, 1, vm,
+      return applyHeightConstraints(x, z, bedCoverage > 0 ? bed : Math.max(waterCoreSum / waterCoreCount, bankFloor), 1, vm,
         lakesOn, padsOn, roadsOn, gridIndex, fx, fz, 0, rd);
     }
     if (surfaces) h = baseTerrainHeight(x, z, cw, vm) - liquidDip;
@@ -2412,6 +2432,7 @@ function* heightFieldBuildSteps(
       h += (target - h) * waterWeight;
       marshW = Math.max(marshW, waterWeight); // road berm noise cannot ripple liquid cores
     }
+    if (bankFloor > h) h = bankFloor; // (2026-10-17, waterBank.ts) level water held in its banks
     // frozen/ice lakes: pull the terrain to a flat sheet at the lake level.
     // The flat sheet runs almost to the shore (0.94 r), and the grade toward
     // the surrounding terrain extends well OUTSIDE the sheet (1.32 r): the
@@ -2726,6 +2747,7 @@ function* heightFieldBuildSteps(
     // Activate after road/pad heights are fixed. Sample the same pre-sheet
     // terrain as the marsh policy; tiny connected drainage cells must not
     // cram a multi-metre bank into the fixed ice lake's 0.38-radius apron.
+    if (liquidDepthM > 0) lakeBankLaw = { depthM: liquidDepthM, rampStart: waterRampStart, rampEnd: waterRampEnd };
     liquidLakeBanks = buildLiquidLakeBanks(liquidLakes,
       (x, z) => heightAt(x, z, false, false, false));
     lakeIndex = buildLakeCandidateIndex(_LAKES, liquidLakeBanks);
@@ -3253,7 +3275,11 @@ function* heightFieldBuildSteps(
       return yield* heightFieldBuildSteps(seed,originalRoadPlacementConfig(cfg),true);
     }} : {}),
     _mesaW: mesaWeight,
-    ...(liquidWater ? { _waterWetnessAt: waterWetnessAt, getOutlandWaterAt: outlandWaterAt } : {}),
+    ...(liquidWater ? { _waterWetnessAt: waterWetnessAt, getOutlandWaterAt: outlandWaterAt,
+      getWaterBodySurfaceAt: (x: number, z: number): number => {
+        const body = outlandWaterAt(x, z);
+        return body ? body.level : Number.NaN;
+      } } : {}),
     ...(_sorStations ? { _sorWetnessAt: sorWetnessAt } : {}),
   };
 }
