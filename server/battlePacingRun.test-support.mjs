@@ -58,11 +58,10 @@ export function pacingShareHolder(dir, shard, { root = PACING_ROOT } = {}) {
 /**
  * Claims share `shard` in `dir` for process `pid`: true when `pid` now holds it. A share nobody claimed is created
  * atomically (a complete file is linked into place, so a reader never sees a half-written claim and two creators
- * cannot both win). A claim whose holder is dead, or any claim with `force`, is taken over: two processes taking over
- * the same dead claim at once may both play the share, which writes the same records twice and costs time, nothing
- * else.
+ * cannot both win). A claim whose holder is dead is taken over: two processes taking over the same dead claim at once
+ * may both play the share, which writes the same records twice and costs time, nothing else.
  */
-export function claimPacingShare(dir, shard, { pid = process.pid, by, alive = pidAlive, force = false, root = PACING_ROOT } = {}) {
+export function claimPacingShare(dir, shard, { pid = process.pid, by, alive = pidAlive, root = PACING_ROOT } = {}) {
   const path = shardFile(dir, shard, 'claim', root);
   mkdirSync(dirname(path), { recursive: true });
   const temporary = temporaryOf(path);
@@ -75,7 +74,7 @@ export function claimPacingShare(dir, shard, { pid = process.pid, by, alive = pi
     if (error.code !== 'EEXIST') { unlinkSync(temporary); throw error; }
   }
   const holder = readJson(path);
-  if (!force && holder?.pid !== pid && alive(holder?.pid)) { unlinkSync(temporary); return false; }
+  if (holder?.pid !== pid && alive(holder?.pid)) { unlinkSync(temporary); return false; }
   renameSync(temporary, path);
   return readJson(path)?.pid === pid;
 }
@@ -95,22 +94,22 @@ export function readPacingShardReport(dir, shard, { count = PACING_SHARDS, sampl
 }
 
 /**
- * Every share's records for this run: Map shard -> report. A share with valid records is taken as it is; a share
- * whose claim a live process holds is waited for (at most `maxWaitMs`, after which it is played here regardless); an
- * unclaimed share waits out `graceMs` from the start; any other share (no claim, a dead holder's, refused records) is
- * claimed and played here by `playShare(shard)`, at most `players` at a time, and its report written for the shards.
- * A failure of `playShare` (an assertion inside a match) fails the whole call once the shares in flight settle.
+ * Every share's records for this run: { reports: Map shard -> report, playedHere: the shards played here }. A share
+ * with valid records is taken as it is; a share whose claim a live process holds is waited for (that process is
+ * playing it in this run; a pool's timeout bounds a hung one, whose claim then dies); an unclaimed share waits out
+ * `graceMs` from the start; any other share (no claim, a dead holder's, refused records) is claimed and played here by
+ * `playShare(shard)`, at most `players` at a time, and its report written for the shards. A failure of `playShare` (an
+ * assertion inside a match) fails the whole call once the shares in flight settle.
  */
 export async function gatherPacingShares(dir, {
   playShare, players = 1,
   shards = Array.from({ length: PACING_SHARDS }, (_, index) => index + 1),
   count = PACING_SHARDS, samples = PACING_SAMPLES.core, mapIds = MAP_IDS, root = PACING_ROOT, pid = process.pid,
-  alive = pidAlive, sleep = pause, now = () => Date.now(), graceMs = 10_000, pollMs = 1_000, maxWaitMs = 45 * 60_000,
-  log = () => {},
+  alive = pidAlive, sleep = pause, now = () => Date.now(), graceMs = 10_000, pollMs = 1_000, log = () => {},
 } = {}) {
   const reports = new Map(), playing = new Map(), refused = new Set(), playedHere = [];
   const started = now();
-  let failure = null, overdue = false;
+  let failure = null;
   for (;;) {
     if (failure) {
       await Promise.allSettled([...playing.values()]);
@@ -126,11 +125,14 @@ export async function gatherPacingShares(dir, {
         log(`shard ${shard}'s records do not stand for this run (${problem}); its share plays again`);
       }
       // an unclaimed share waits out the grace; a claim a live process holds is refused (the share is waited for)
-      if (!overdue && !pacingShareHolder(dir, shard, { root }) && now() - started < graceMs) { waiting++; continue; }
-      if (playing.size >= players || !claimPacingShare(dir, shard, { pid, by: 'battlePacing', alive, force: overdue, root })) {
+      if (!pacingShareHolder(dir, shard, { root }) && now() - started < graceMs) { waiting++; continue; }
+      if (playing.size >= players || !claimPacingShare(dir, shard, { pid, by: 'battlePacing', alive, root })) {
         waiting++;
         continue;
       }
+      // the holder may have written its records and exited between the read above and the claim
+      const landed = readPacingShardReport(dir, shard, { count, samples, mapIds, root }).report;
+      if (landed) { reports.set(shard, landed); continue; }
       playedHere.push(shard);
       playing.set(shard, (async () => {
         try {
@@ -148,11 +150,6 @@ export async function gatherPacingShares(dir, {
     }
     if (failure) continue;
     if (!waiting && !playing.size) break;
-    if (!overdue && now() - started >= maxWaitMs) {
-      overdue = true;
-      log(`stopped waiting after ${Math.round(maxWaitMs / 60_000)} min; the shares still held are played here`);
-      continue;
-    }
     await Promise.race([sleep(pollMs), ...playing.values()]);
   }
   return { reports, playedHere };
@@ -176,14 +173,15 @@ export async function runPacingShard(shard, dir, loadPlay, { log = console.log, 
   const maps = pacingShardMaps(MAP_IDS, shard);
   const samples = PACING_SAMPLES.core;
   if (dir) {
-    const { report } = readPacingShardReport(dir, shard);
-    if (report) {
-      log(`${name}: ${maps.join(', ')} already played in this run (by ${report.by}); server/battlePacing.selftest.mjs judges them`);
-      return { played: false };
-    }
     if (!claimPacingShare(dir, shard, { pid, by: name, alive })) {
       const holder = pacingShareHolder(dir, shard);
       log(`${name}: ${holder?.by ?? 'another process'} (pid ${holder?.pid}) is playing ${maps.join(', ')} in this run and judges them`);
+      return { played: false };
+    }
+    // read after the claim: a holder that wrote this share's records and exited has left a claim this shard just took
+    const { report } = readPacingShardReport(dir, shard);
+    if (report) {
+      log(`${name}: ${maps.join(', ')} already played in this run (by ${report.by}); server/battlePacing.selftest.mjs judges them`);
       return { played: false };
     }
   }

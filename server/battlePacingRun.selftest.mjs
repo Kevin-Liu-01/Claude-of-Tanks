@@ -68,7 +68,7 @@ assert.throws(() => mergeShardReports(shards.slice(1).map((shard) => report(shar
   'a missing shard fails the merge closed');
 assert.throws(() => mergeShardReports([...shards, 2].map((shard) => report(shard)), MAP_IDS), /in two shards/);
 
-// the claims: one live holder per share, created whole; a dead holder's claim is taken over, and `force` takes any
+// the claims: one live holder per share, created whole; a dead holder's claim is taken over
 const claims = mkdtempSync(join(tmpdir(), 'cot-battle-pacing-claim-'));
 try {
   const live = new Set([100, 200]);
@@ -83,20 +83,21 @@ try {
   live.delete(100);
   assert.equal(claimPacingShare(claims, 1, { pid: 200, by: 'battlePacing', alive }), true, 'a dead holder\'s claim is taken over');
   assert.equal(pacingShareHolder(claims, 1).pid, 200);
-  assert.equal(claimPacingShare(claims, 1, { pid: 300, alive, force: true }), true, 'force takes a live holder\'s claim');
   assert.equal(claimPacingShare(claims, 2, { pid: 100, alive, root: '/another/tree' }), true);
   assert.equal(claimPacingShare(claims, 2, { pid: 200, alive }), true, 'another tree\'s claim is not this tree\'s');
   const leftovers = readFileSync(join(pacingRunDirectory(claims), 'shard-1.claim'), 'utf8');
-  assert.equal(JSON.parse(leftovers).pid, 300, 'a claim file is always whole JSON');
+  assert.equal(JSON.parse(leftovers).pid, 200, 'a claim file is always whole JSON');
 } finally { rmSync(claims, { recursive: true, force: true }); }
 
 // the gather (a fake clock, sleep and pid table; `playShare` plays a fixture share and counts what is in flight)
 const JUDGE = 7000;
-function harness(dir, { live = new Set(), players = 2, onSleep = () => {}, timeOf, fail = null, wrong = null, ...rest } = {}) {
+function harness(dir, { live = new Set(), players = 2, onSleep = () => {}, onAlive = () => {}, timeOf, fail = null, wrong = null,
+  ...rest } = {}) {
   const clock = { t: 0 }, sleeps = [], played = [], logs = [], playedAt = [];
   let inFlight = 0, maxInFlight = 0;
   const run = gatherPacingShares(dir, {
-    pid: JUDGE, players, alive: (pid) => pid === JUDGE || live.has(pid), now: () => clock.t, log: (message) => logs.push(message),
+    pid: JUDGE, players, alive: (pid) => { onAlive(pid); return pid === JUDGE || live.has(pid); }, now: () => clock.t,
+    log: (message) => logs.push(message),
     // a turn of the event loop, as a real timer gives, so a share in flight can settle
     sleep: async (ms) => { sleeps.push(ms); clock.t += ms; onSleep(sleeps.length); await new Promise((resolve) => { setImmediate(resolve); }); },
     playShare: async (shard) => {
@@ -158,6 +159,16 @@ try {
   assert.deepEqual(h.playedAt, [0], 'a dead holder is not waited for');
   assert.equal(reports.get(5).by, 'battlePacing');
 
+  // a holder that writes its records and exits between the judge's read and its claim: the records are taken, not replayed
+  dir = newDir();
+  for (const shard of shards.filter((shard) => shard !== 6)) writePacingShardReport(dir, shard, report(shard));
+  claimPacingShare(dir, 6, { pid: 6161, by: 'battlePacingShard6' });
+  h = harness(dir, { onAlive: (pid) => { if (pid === 6161) writePacingShardReport(dir, 6, report(6)); } });
+  ({ reports, playedHere } = await h.run);
+  assert.equal(reports.size, 8);
+  assert.deepEqual(playedHere, [], 'records that land during the claim are merged');
+  assert.equal(reports.get(6).by, undefined, 'the shard\'s own records');
+
   // records that do not stand for this run (a stale shard count, a reseeded match) are refused, named and played again
   dir = newDir();
   for (const shard of shards) writePacingShardReport(dir, shard, report(shard));
@@ -171,15 +182,16 @@ try {
   assert.match(h.logs.join('\n'), /shard 6's records do not stand for this run \(.*played seed/);
   assert.equal(readPacingShardReport(dir, 6).report?.by, 'battlePacing', 'the refused records are replaced');
 
-  // a live holder that never finishes is waited for at most maxWaitMs, then its share is played here regardless
+  // a live holder is waited for however long it plays; once it dies without records (a pool's timeout killed it),
+  // its share is taken over at the next poll
   dir = newDir();
   for (const shard of shards.filter((shard) => shard !== 4)) writePacingShardReport(dir, shard, report(shard));
   claimPacingShare(dir, 4, { pid: 4444, by: 'battlePacingShard4' });
-  h = harness(dir, { live: new Set([4444]), maxWaitMs: 60_000 });
+  const holding = new Set([4444]);
+  h = harness(dir, { live: holding, onSleep: (n) => { if (n === 3600) holding.delete(4444); } });
   ({ reports, playedHere } = await h.run);
   assert.deepEqual(playedHere, [4]);
-  assert.deepEqual(h.playedAt, [60_000]);
-  assert.match(h.logs.join('\n'), /stopped waiting after 1 min/);
+  assert.deepEqual(h.playedAt, [3_600_000], 'an hour of polls, then played the moment its holder died');
 
   // a match that fails its assertion in a share played here fails the judge; so does a share that is not its share
   dir = newDir();
@@ -217,6 +229,12 @@ try {
   play = fakePlay();
   ran = await runPacingShard(4, dir, play.load, { log: quiet, pid: 4001, alive: () => false });
   assert.deepEqual([ran.played, play.calls()], [true, 1], 'a dead holder\'s share is played');
+  // the judge writes this share's records and exits between the shard's read and its claim: nothing to play
+  claimPacingShare(dir, 6, { pid: JUDGE, by: 'battlePacing' });
+  play = fakePlay();
+  ran = await runPacingShard(6, dir, play.load, { log: quiet, pid: 6000,
+    alive: (pid) => { if (pid === JUDGE) writePacingShardReport(dir, 6, report(6)); return false; } });
+  assert.deepEqual([ran.played, play.calls()], [false, 0], 'records that land during the claim are not played again');
   play = fakePlay();
   ran = await runPacingShard(5, undefined, play.load, { log: quiet });
   assert.deepEqual([ran.played, play.calls()], [true, 1], 'no run directory: the shard plays and writes nothing');
@@ -226,7 +244,7 @@ try {
   ({ reports, playedHere } = await h.run);
   assert.equal(reports.get(3).by, 'battlePacingShard3');
   assert.equal(reports.get(4).by, 'battlePacingShard4');
-  assert.deepEqual([...playedHere].sort(), [1, 2, 5, 6, 7, 8]);
+  assert.deepEqual([...playedHere].sort(), [1, 2, 5, 7, 8]);
 } finally {
   for (const dir of dirs) rmSync(dir, { recursive: true, force: true });
 }
