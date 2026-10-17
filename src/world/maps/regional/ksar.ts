@@ -891,7 +891,13 @@ function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: nu
       const hs2 = 1.95, palm = { colour: shade(PALM, 0.9), decor: true, uv: UV_MEMBER } as const;
       for (const [px, pz] of [[sx0, sz0], [sx0 + sw, sz0], [sx0, sz0 + sd], [sx0 + sw, sz0 + sd]] as const) ps.span('structureWood', px - 0.06, top - 0.02, pz - 0.06, px + 0.06, top + hs2, pz + 0.06, palm);
       for (const pz of [sz0, sz0 + sd]) ps.span('structureWood', sx0 - 0.1, top + hs2 - 0.02, pz - 0.06, sx0 + sw + 0.1, top + hs2 + 0.1, pz + 0.06, palm);
-      ps.span('structureWood', sx0 - 0.25, top + hs2 + 0.1, sz0 - 0.2, sx0 + sw + 0.25, top + hs2 + 0.16, sz0 + sd + 0.2, { colour: shade(PALM_GREY, 0.95 + look() * 0.1), decor: true });
+      const mat = shade(PALM_GREY, 0.95 + look() * 0.1);
+      ps.span('structureWood', sx0 - 0.25, top + hs2 + 0.1, sz0 - 0.2, sx0 + sw + 0.25, top + hs2 + 0.16, sz0 + sd + 0.2, { colour: mat, decor: true });
+      // (the integrity gate: an open frame on the roof read as a see-through gap) its back and its two ends screened with
+      // jerid panels from the terrace to the mat, as Siwa's roof shelters stand against the wind; open to the terrace
+      const screen = { colour: shade(mat, 0.92), decor: true } as const;
+      ps.span('structureWood', sx0 - 0.02, top - 0.02, sz0 - 0.04, sx0 + sw + 0.02, top + hs2 + 0.1, sz0 + 0.0, screen);
+      for (const x of [sx0, sx0 + sw]) ps.span('structureWood', x - 0.02, top - 0.02, sz0, x + 0.02, top + hs2 + 0.1, sz0 + sd, screen);
     }
   }
   withParts(body, [ps.finish()]);
