@@ -6,7 +6,7 @@
 // watch tower; a domed hammam.
 import * as THREE from 'three';
 import { PartSink, bodyFaces, faceBox, facePoint, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, holedBox, holedPolygon, leanTo, recordShaft, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening } from './house.ts';
+import { buildHouse, holedBox, holedPolygon, leanTo, recordShaft, roofGeometry, windowRhythm, withHousePlans, type HoleRect, type HouseDialect, type HouseFrame, type Opening } from './house.ts';
 import { paintBand } from './facade.ts';
 import { bench, pottedPlant } from './dressing.ts';
 import { roundBody, type BodyBox } from './roundedBody.ts';
@@ -742,7 +742,8 @@ function withParts(parts: RegionalParts, more: readonly RegionalParts[]): Region
  * built in sinks of its own and returned for the builder to add (withParts); its dressing on the lane goes to `sink`.
  */
 function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: number, y0: number, h: number, bucket: RegionalBucket,
-  rng: () => number, look: () => number, opts: { door?: boolean; faces?: ReadonlyArray<Side>; shade?: boolean; packed?: boolean } = {}): RegionalParts {
+  rng: () => number, look: () => number, opts: { door?: boolean; faces?: ReadonlyArray<Side>; shade?: boolean; packed?: boolean; onto?: KershefPlan | null } = {}):
+  { parts: RegionalParts; plan: KershefPlan | null } {
   const ground = y0 === 0, top = y0 + h;
   const batter = Math.min(0.45, 0.08 * (top - (ground ? -0.3 : y0))) * (0.8 + look() * 0.4);
   const rc = Math.max(batter + 0.3, Math.min(1.7, Math.min(x1 - x0, z1 - z0) * 0.21));
@@ -799,7 +800,9 @@ function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: nu
   let plan: HouseFrame | null = null;
   hs.placed(0, cx, y0, cz, () => {
     // (E15: its rain goods, the palm spouts this builder lays through the parapet with its own roof)
-    const frame = plan = buildHouse(hs, {
+    // (a room on a roof is described as the upper storeys of the house under it, its own plan folded into that one's:
+    // stackPlan)
+    const house = (): HouseFrame => buildHouse(hs, {
       // (the footing is rubble with no dressed course over it: the mud band at the wall's foot is its band)
       w: W, d: D, plinth: ground ? { h: foot, out: 0.07, bucket: 'stone', course: false } : null,
       storeys: [{ h: h - foot, wall: bucket }],
@@ -808,6 +811,7 @@ function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: nu
       // (no stone apron round a Siwan house: the lane's sand runs to its footing)
       skirt: null,
     }, dialect);
+    const frame = plan = opts.onto ? withHousePlans(house)[0] : house();
     if (!door) return;
     const f = frame.faces.front, fy = frame.floors[0], e = door.w / 2 + 0.1, band = 0.42 + look() * 0.18;
     // the doorway limewashed round its frame on most houses (E16), its head over the lintel
@@ -920,43 +924,49 @@ function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: nu
       pottedPlant(sink, p[0], 0, p[2], 0.42, look);
     }
   }
-  if (plan) batteredPlan(plan, batter, top - y0);
-  return body;
+  if (!plan) return { parts: body, plan: null };
+  batteredPlan(plan, batter, top - y0, storeys);
+  if (opts.onto) stackPlan(opts.onto, plan, [cx, y0, cz]);
+  return { parts: body, plan: { frame: plan, at: [cx, y0, cz] } };
+}
+
+/** A kershef block's house plan and the origin of its frame (the block's foot in the builder's frame). */
+interface KershefPlan { frame: HouseFrame; at: readonly [number, number, number] }
+
+/**
+ * A room on a roof described as the upper storeys of the house it stands on (houseDamage: its own body's collapse
+ * left its walls' stubs standing in the air over the heap of the house under it): its bands appended to that plan,
+ * moved into its frame, its openings re-hung in them, the plan's eave and roof the room's.
+ */
+function stackPlan(base: KershefPlan, room: HouseFrame, at: readonly [number, number, number]): void {
+  const dx = at[0] - base.at[0], dy = at[1] - base.at[1], dz = at[2] - base.at[2];
+  const b = base.frame, n = b.bodies.length;
+  for (const r of room.bodies) b.bodies.push({ x0: r.x0 + dx, x1: r.x1 + dx, z0: r.z0 + dz, z1: r.z1 + dz, y0: r.y0 + dy, y1: r.y1 + dy });
+  b.floors.push(...room.floors.map((y) => y + dy));
+  b.spec.storeys.push(...room.spec.storeys);
+  for (const o of room.spec.openings) b.spec.openings.push({ ...o, storey: o.storey + n });
+  b.eaveY = room.eaveY + dy;
+  b.roof = roofGeometry(room.roof.s * 2, room.roof.halfD * 2, b.eaveY, b.spec.roof);
 }
 
 /**
  * The plan the damage reads, made to follow the batter (the coordinator, 2026-10-17: a breach the damage draws on the
  * grammar's upright face stood up to the batter off the leaning wall — the floating dark patch the owner flags): the
- * storey cut into bands about a metre high wherever no opening crosses the cut, each band's body drawn in by the batter
- * three quarters up it (batterParts: `batter` at the block's top, `span` over its foot), the openings re-hung in their bands, the
- * roof over the top band. The walls drawn are the grammar's one storey battered whole; only the description the damage
- * reads changes, so a breach lands on the leaning wall, within a few centimetres of it. The rounded corners stay outside
- * the description (its faces run the body's full width, so a wall panel's fall takes its corners): a breach centred on
- * a corner's arc still stands off it by up to the arc's depth there. Run after the builder's own last use of the
- * openings (their heights become their bands').
+ * storey cut at the house's floors (`floors` of them, its window rows one to each), each floor's body drawn in by the
+ * batter seven tenths up it (batterParts: `batter` at the block's top, `span` over its foot), the openings re-hung in
+ * their floors, the roof over the top one. The walls drawn are the grammar's one lift of mud battered whole; only the
+ * description the damage reads changes, so a breach at a tank's gun height lands within a hand of the leaning wall
+ * (houseDamage: the cuts are real floors — a roof's fall stops on the top floor, a stub stands from the ground floor).
+ * The rounded corners stay outside the description (its faces run the body's full width, so a wall panel's fall takes
+ * its corners): a breach centred on a corner's arc still stands off it by up to the arc's depth there. Run after the
+ * builder's own last use of the openings (their heights become their floors').
  */
-function batteredPlan(frame: HouseFrame, batter: number, span: number): void {
+function batteredPlan(frame: HouseFrame, batter: number, span: number, floors: number): void {
   const spec = frame.spec, b0 = frame.bodies[0], foot = b0.y0, top = b0.y1;
-  // a cut never runs through an opening (with its sill and head margins): each band a metre or so, its cut moved to the
-  // nearest height clear of every opening
-  const blocked = spec.openings.map((o) => [foot + o.y0 - 0.05, foot + o.y0 + o.h + 0.15] as const);
-  const clearAt = (y: number): boolean => !blocked.some(([a, b]) => y > a && y < b);
-  const candidates = [...new Set([...blocked.flat(), ...Array.from({ length: Math.ceil((top - foot) / 0.25) }, (_, k) => foot + k * 0.25)])]
-    .filter((y) => y > foot + 0.4 && y < top - 0.4 && clearAt(y)).sort((p, q) => p - q);
-  const cuts = [foot];
-  for (;;) {
-    const last = cuts[cuts.length - 1], want = last + 1.0;
-    if (top - last < 1.4) break;
-    const next = candidates.filter((y) => y > last + 0.4 && y < top - 0.4).sort((p, q) => Math.abs(p - want) - Math.abs(q - want))[0];
-    if (next === undefined) break;
-    cuts.push(next);
-  }
-  cuts.push(top);
+  const cuts = Array.from({ length: floors + 1 }, (_, k) => foot + (top - foot) * k / floors);
   const wall = spec.storeys[0];
-  // each band's faces drawn in by the batter three quarters up it, where a tank's round meets a wall: a breach's skin
-  // lands within a few centimetres of the wall there, a hand into it at the band's foot, never a hand proud of it
   const bands = cuts.slice(0, -1).map((y0, k) => {
-    const y1 = cuts[k + 1], inset = batter * (y0 + 0.75 * (y1 - y0)) / span;
+    const y1 = cuts[k + 1], inset = batter * (y0 + 0.7 * (y1 - y0)) / span;
     return { x0: b0.x0 + inset, x1: b0.x1 - inset, z0: b0.z0 + inset, z1: b0.z1 - inset, y0, y1 };
   });
   for (const o of spec.openings) {
@@ -1002,10 +1012,10 @@ const kershefHouse: RegionalBuilder = (ctx) => {
   const x0 = R.x0 + 0.25, x1 = R.x1 - 0.25, z0 = R.z0 + 0.25, z1 = R.z1 - 0.25, h = 3.1 + rng() * 0.5;
   const bucket = rng() < 0.3 ? KERSHEF_OLD : MUD, upper = rng() < 0.55;
   // (a house without its upper room keeps a jerid shade on its roof terrace instead, on most plots)
-  const blocks = [kershefBlock(sink, x0, z0, x1, z1, 0, h, bucket, rng, look, { door: true, shade: !upper && look() < 0.7 })];
+  const house = kershefBlock(sink, x0, z0, x1, z1, 0, h, bucket, rng, look, { door: true, shade: !upper && look() < 0.7 }), blocks = [house.parts];
   if (upper) {
     const ux1 = x0 + (x1 - x0) * (0.5 + rng() * 0.2), uz1 = z0 + (z1 - z0) * (0.45 + rng() * 0.15);
-    blocks.push(kershefBlock(sink, x0 + 0.45, z0 + 0.45, ux1, uz1, h, 2.6, MUD, rng, look, { faces: ['front', 'right'] }));
+    blocks.push(kershefBlock(sink, x0 + 0.45, z0 + 0.45, ux1, uz1, h, 2.6, MUD, rng, look, { faces: ['front', 'right'], onto: house.plan }).parts);
   }
   return withParts(sink.finish(), blocks);
 };
@@ -1040,12 +1050,14 @@ const shaliCluster: RegionalBuilder = (ctx) => {
     if (i === 0) outer.push('left');
     // (a room on fewer roofs of a heap of nine: the kits' triangle budget holds the whole heap)
     const bucket = rng() < 0.35 ? KERSHEF_OLD : MUD, room = storeys >= 2 && rng() < (nx * nz > 6 ? 0.3 : 0.45);
-    blocks.push(kershefBlock(sink, x0, z0, x1, z1, 0, h, bucket, rng, look, { door: j === nz - 1, faces: outer.length ? outer : ['front'], shade: !room && look() < 0.4, packed: true }));
+    const block = kershefBlock(sink, x0, z0, x1, z1, 0, h, bucket, rng, look, { door: j === nz - 1, faces: outer.length ? outer : ['front'], shade: !room && look() < 0.4, packed: true });
+    blocks.push(block.parts);
     // a room set back on the roof terrace of some blocks
     if (room) {
       const ux0 = x0 + (x1 - x0) * (0.18 + rng() * 0.12), uz0 = z0 + (z1 - z0) * (0.18 + rng() * 0.12);
       const ux1 = ux0 + (x1 - x0) * (0.4 + rng() * 0.15), uz1 = uz0 + (z1 - z0) * (0.4 + rng() * 0.15);
-      blocks.push(kershefBlock(sink, ux0, uz0, Math.min(x1 - 0.6, ux1), Math.min(z1 - 0.6, uz1), h, 2.4, MUD, rng, look, { faces: outer.length ? outer : ['front'], packed: true }));
+      blocks.push(kershefBlock(sink, ux0, uz0, Math.min(x1 - 0.6, ux1), Math.min(z1 - 0.6, uz1), h, 2.4, MUD, rng, look,
+        { faces: outer.length ? outer : ['front'], packed: true, onto: block.plan }).parts);
     }
   }
   return withParts(sink.finish(), blocks);

@@ -393,11 +393,10 @@ for (const style of ARCHITECTURE_STYLES) {
     }
   }
 }
-for (const id of ['siwa/adobe']) assert.ok(shellIds.has(id), `${id}: reads as a shell`);
 // the Zeeland schuur (props census #17, 7e65d8abf) and the Shanghai rowhouse (#29, c53405cdb) are built on buildHouse
 // now: each hands back a house plan, and the runtime's own describe takes the house kit's reading from it (the house
 // kits break it: houseDamage.selftest.mjs), never a shell read off its parts; its stages still run as a shell's are
-for (const id of ['polder/barn', 'shanghai/rowhouse']) {
+for (const id of ['polder/barn', 'shanghai/rowhouse', 'siwa/adobe']) {
   const [sid, bid] = id.split('/'), style = ARCHITECTURE_STYLES.find((s) => s.id === sid);
   assert.ok(!shellIds.has(id), `${id}: not read as a shell`);
   for (const [w, d, h, seed] of [[10, 12, 7, 7], [14, 22, 9, 25]]) {
