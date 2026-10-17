@@ -20,7 +20,11 @@ const KINDS = [
   ['sarajevo', 'arcology', null, 3], ['sarajevo', 'needletower', null, 2], ['sarajevo', 'terracetower', null, 2],
   ['sarajevo', 'parkingdeck', null, 2], ['sarajevo', 'broadcasttower', null, 4],
   ['sarajevo', 'megatower', { x: 0, z: 0 }, 2], ['sarajevo', 'megatower', { x: 0, z: 200 }, 2],
-  ['glencanyon', 'arcology', null, 2], ['glencanyon', 'needletower', null, 1],
+  // (item/maps-skybridge-page-227, 2026-10-17: Skybridge round 7's Page as a low township — the arcology plot is the
+  // single-storey shopping centre, one recorded body read through the house route, no tower: it left this list (was
+  // ['glencanyon', 'arcology', null, 2], the powerhouse); the needletower plot is a church whose cross tower records
+  // its shaft in bands beside the sanctuary and the hall)
+  ['glencanyon', 'needletower', null, 1],
   ['shanghai', 'arcology', null, 2], ['shanghai', 'needletower', null, 2], ['shanghai', 'megatower', null, 2],
   ['shanghai', 'terracetower', null, 2], ['shanghai', 'broadcasttower', null, 2], ['shanghai', 'parkingdeck', null, 1],
   ['shanghai', 'civichall', { x: 0, z: 0 }, 1], ['shanghai', 'civichall', { x: 0, z: 200 }, 3],
