@@ -252,7 +252,9 @@ export interface StructureDamageAnatomy {
    */
   intact?: { p90M: number; topM: number; minX: number; maxX: number; minZ: number; maxZ: number;
     /** Its plan on a 32 × 32 grid over that box (1: drawn over), and the share drawn over. */
-    cells: Uint8Array; planFill: number };
+    cells: Uint8Array; planFill: number;
+    /** An open frame by its builder's name (collapseRuin.ts ruinKind): a water tower, a windmill, a mast, a gantry. */
+    frame?: boolean };
   /**
    * The kit's own plan of the building, opaque to the core (house.ts HouseSpec and HouseFrame, a landmark's plan): a
    * kit's builders read it back to fracture exactly what it built. Absent for the default kit.

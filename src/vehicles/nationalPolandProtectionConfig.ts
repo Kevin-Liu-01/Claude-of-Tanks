@@ -66,9 +66,9 @@ const POLISH_FIELD: Readonly<Partial<Record<Layout['id'], {
   t80u_husarz: {deck: 1.53, glacis: 1.95, fall: .41, stern: -3.24, bow: 3.34, pivot: .07187, ring: 1.30,
     roof: .70, brow: 1.70, marks: [[-.64, -1.18], [-1.11, -.71]]},
   t72b3_zubr: {deck: 1.46, glacis: 1.90, fall: .48, stern: -3.12, bow: 3.28, pivot: .065591, ring: 1.24,
-    roof: .70, brow: .25, marks: [[-.51, -1.12], [-1.09, -.66]]},
+    roof: .70, brow: .25, marks: [[-.442, -1.251], [-.356, -.776]]},
   t72b3_zubr_ii: {deck: 1.46, glacis: 1.90, fall: .48, stern: -3.12, bow: 3.28, pivot: .065591, ring: 1.24,
-    roof: .70, brow: .20, marks: [[-1.31, -1.93], [1.30, -1.97]]},
+    roof: .70, brow: .20, marks: [[-.356, -.776], [-1.136, -.018]]},
 };
 
 const square = ([x, z]: readonly [number, number], r: number): Point2[] => [[x - r, z - r], [x + r, z - r], [x + r, z + r], [x - r, z + r]];

@@ -81,12 +81,23 @@ function gearAndFitting(tank){
     assert.ok(SOURCE.wheels.some(z=>Math.abs(z-p.z)<.000002),'documented average of paired source axle stations');
   }
   const gun=tank.root.getObjectByName('sourceMachineGun_turretDark'),group=gun.parent;
-  assert.equal(group.parent,tank.root.getObjectByName('rig_turret'));
-  const axis=new THREE.Vector3(0,0,1).transformDirection(group.matrixWorld),source=new THREE.Vector3(-.21215,.54465,.81139).normalize();
+  // 2026-10-16 (226 gate): VH.14 (76ef67d65, every drawn gun works) makes the AA gun a working roof station: the
+  // fitting rides its station's pitch node under the turret, so ownership is an ancestor test (a boolean: assert.equal on
+  // two scene graphs made node inspect both whole and ran the process past 40 GB)
+  assert.ok(ridesUnder(group,tank.root.getObjectByName('rig_turret')),'the AA station rides the turret');
+  const source=new THREE.Vector3(-.21215,.54465,.81139).normalize();
+  // the working station rests level; posed at the source's elevation (its pitch node), the fitting is the source's
+  const pitchNode=group.parent?.name==='auxiliaryWeaponPitch'?group.parent:null,restPitch=pitchNode?.rotation.x??0;
+  if(pitchNode){pitchNode.rotation.x=0;tank.root.updateMatrixWorld(true);
+    const level=new THREE.Vector3(0,0,1).transformDirection(group.matrixWorld);
+    pitchNode.rotation.x=-(Math.asin(source.y)-Math.asin(Math.max(-1,Math.min(1,level.y))));tank.root.updateMatrixWorld(true);}
+  const axis=new THREE.Vector3(0,0,1).transformDirection(group.matrixWorld);
   near(axis.distanceTo(source),0,.000002,'coherent elevated source AA firing axis');
   const muzzle=new THREE.Vector3(-1.0939276,3.7383842,1.4189293),ray=new THREE.Raycaster(muzzle.clone().addScaledVector(source,.01),source.clone().negate(),0,.06);
   near(ray.intersectObject(gun,false)[0]?.point.distanceTo(muzzle),0,.000003,'actual source AA barrel end');
+  if(pitchNode){pitchNode.rotation.x=restPitch;tank.root.updateMatrixWorld(true);}
 }
+const ridesUnder=(o,a)=>{for(let p=o.parent;p;p=p.parent)if(p===a)return true;return false;};
 for(const quality of ['high','low']){
   const tank=createTank('t72b3m_2016',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try{tank.root.updateMatrixWorld(true);frames(tank);bore(tank);covers(tank);gearAndFitting(tank);}

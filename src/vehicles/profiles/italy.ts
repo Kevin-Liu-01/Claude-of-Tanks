@@ -1055,9 +1055,15 @@ function buildCarro45T(P: ItalyBuilderPort): void {
         if (s > 0) {
           P.add('hullDark', box(0.06, 0.03, 1.10), 1.50, 1.545, 2.62);             // crowbar on the bow fender (bare steel, FSP-06; outside the turret swing circle)
           P.add('hullDetail', box(0.09, 0.04, 0.60), 1.52, 1.545, -2.45);          // shovel aft of the swing circle, clear of the st0/st1 windows
+          // 2026-10-16 (226 gate, the coordinator: an add-on must not stretch the declared dimensions): the deck seat aft of
+          // the swing is an engine grille, and the seat solver's remount stood the links on the right apron, 10.5 cm
+          // outside the 3.43 m design width (concept check: width +3.2 %). No other hull station holds them inside the
+          // envelope, so they ride the turret's right wall, laid on its 34-degree slope under the bustle band, well
+          // inside the width (outer face x 1.46) and clear of the smoke bank and the gun's sweep (seats as authored).
           const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.40, seed: 77 });
-          links.position.set(1.05, 1.56, -2.45);                                   // spare links aft of the swing, clear of the st windows
-          P.hullG.add(links);
+          links.position.set(1.3068, 0.5108, -0.30);
+          links.rotation.set(0, 0, -0.995);
+          P.turretG.add(links);
         } else {
           P.add('hullDetail', box(0.07, 0.03, 0.90), -1.50, 1.545, 2.72);          // jack bar on the bow fender (outside the swing circle)
           P.add('hullDark', box(0.16, 0.05, 0.30), -1.52, 1.55, -2.45);            // jack block aft of the swing

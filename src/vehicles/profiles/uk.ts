@@ -2839,7 +2839,10 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
     } else {
       // 20-pdr: the print tube reads nearly as thick as the L7's (0.25); a
       // hair fatter here so the thin tube holds its plan center columns.
-      buildGun(P, { len: gunLen, r: 0.125, sleeve: false, evac: 0.52, evacR: 1.12, collar: false, baseR: 0.145 });
+      // 2026-10-16: the tube stops 20 mm inside the tip collar (below), whose cap is the muzzle face; a tube cap on that
+      // same plane merged with the collar's when the bore was carved and opened the collar's outer annulus.
+      buildGun(P, { len: gunLen, r: 0.125, sleeve: false, evac: 0.52, evacR: 1.12, collar: false, baseR: 0.145,
+        tubeInset: 0.02 });
       // §B3.1 (shadow-named, 3fca39b): bore on the TIP-COLLAR face (gunLen) —
       // the 20-pdr tip collar (below) caps at exactly gunLen, PAST the buildGun
       // tube face, so the len-0.02 seat buried the shadow disc 8mm behind the
