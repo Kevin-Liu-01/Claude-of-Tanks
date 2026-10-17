@@ -62,15 +62,6 @@ const QUEENSTOWN_STREETS = [
 export default {
   id: 'copper_mesa', name: 'Copper Mesa Mine',
   blurb: 'Ore terraces and haul-road switchbacks encircle an abandoned open-pit mine',
-  // TEMPORARY, integ/216 ONLY (the coordinator's fallback, 2026-10-11): map-content L2's mine works measure the long-sight
-  // share at 0.0247 against the brief's 0.03 floor. Removing every L2 landmark only reaches 0.0299, and the largest single
-  // loss is the conveyors' elevated galleries, which the sight raster counts as solid columns from the ground (it has no
-  // underside) though a 2.4 m eye line passes under them in the game. 217 removes this band and restores 0.03: the
-  // galleries see-under (or an overhead record), the most blocking set pieces moved off the long haul corridors, 0.03
-  // re-verified by the map-content lane. Do not carry this band past 217.
-  layoutBrief: { bands: {
-    sightLongShare: { band: [0.025, 0.15], reason: 'integ/216 only: L2 mine works under the see-through-gallery raster artifact; 217 restores the 0.03 floor' },
-  } },
   terrain: {
     hillScale: 0.72, microScale: 0.8, rimH: 38, quarryBenches: true,
     village: { x0: 64, x1: 256, z0: -190, z1: 128, cx: 160, cz: -24, feather: 40, flatten: 0.78, relief: 0.18 },
@@ -231,17 +222,21 @@ export default {
     ],
     // the open cut's machines (vehicleSetPiecesWorks.ts): the Haulpak dump trucks on the haul roads and in the cut, the
     // D8 dozers on the benches (the australia1970s fleet's town vehicles stay the inhabit pass's)
+    // (the map-content lane's R6) seated on their own gear (vehicleSetPieces.ts seatOnRunningGear); the ones on bumpy
+    // ground, a rock or a fence moved a few metres to a flatter, clear seat; and (the coordinator's ruling of 2026-10-11
+    // on the basin's long sight lines) the six that stood across them moved off the haul corridors to the yards' edges,
+    // each crossing none of the long lines it crossed (plan: one sweep's long rays, the seat's footprint against them)
     vehicleSetPieces: [
-      { kind: 'haulpak', x: -110, z: -40, yawDeg: 30 }, { kind: 'haulpak', x: -20, z: 70, yawDeg: 200 },
-      { kind: 'haulpak', x: -150, z: -10, yawDeg: 100, wrecked: true }, { kind: 'haulpak', x: 200, z: -270, yawDeg: 40 },
-      { kind: 'haulpak', x: 40, z: -30, yawDeg: 0 }, { kind: 'haulpak', x: -200, z: 160, yawDeg: 300 },
-      { kind: 'haulpak', x: 390, z: -250, yawDeg: 170 }, { kind: 'haulpak', x: -380, z: -200, yawDeg: 20 },
-      { kind: 'd8h', x: -180, z: 90, yawDeg: 60 }, { kind: 'd8h', x: 40, z: -100, yawDeg: 250 }, { kind: 'd8h', x: 380, z: 300, yawDeg: 10 },
-      { kind: 'haulpak', x: -60, z: 100, yawDeg: 70 }, { kind: 'haulpak', x: -260, z: -200, yawDeg: 10 },
-      { kind: 'haulpak', x: -330, z: -320, yawDeg: 120, wrecked: true }, { kind: 'haulpak', x: -360, z: 330, yawDeg: 30 },
-      { kind: 'haulpak', x: -420, z: 200, yawDeg: 160 }, { kind: 'haulpak', x: 120, z: 220, yawDeg: 270 },
-      { kind: 'haulpak', x: 160, z: 280, yawDeg: 0 }, { kind: 'haulpak', x: 370, z: -400, yawDeg: 200 },
-      { kind: 'd8h', x: 400, z: 60, yawDeg: 90 }, { kind: 'd8h', x: 390, z: 140, yawDeg: 200 }, { kind: 'd8h', x: -60, z: -160, yawDeg: 20 },
+      { kind: 'haulpak', x: -194, z: -124, yawDeg: 30 }, { kind: 'haulpak', x: -24, z: 68, yawDeg: 200 },
+      { kind: 'haulpak', x: -210, z: -46, yawDeg: 100, wrecked: true }, { kind: 'haulpak', x: 200, z: -270, yawDeg: 40 },
+      { kind: 'haulpak', x: 34, z: -30, yawDeg: 135 }, { kind: 'haulpak', x: -200, z: 160, yawDeg: 300 },
+      { kind: 'haulpak', x: 390, z: -252, yawDeg: 170 }, { kind: 'haulpak', x: -380, z: -200, yawDeg: 20 },
+      { kind: 'd8h', x: -174, z: 78, yawDeg: 60 }, { kind: 'd8h', x: 40, z: -100, yawDeg: 250 }, { kind: 'd8h', x: 376, z: 304, yawDeg: 10 },
+      { kind: 'haulpak', x: -60, z: 100, yawDeg: 70 }, { kind: 'haulpak', x: -258, z: -200, yawDeg: 25 },
+      { kind: 'haulpak', x: -324, z: -320, yawDeg: 120, wrecked: true }, { kind: 'haulpak', x: -364, z: 324, yawDeg: 30 },
+      { kind: 'haulpak', x: -424, z: 192, yawDeg: 190 }, { kind: 'haulpak', x: 120, z: 214, yawDeg: 270 },
+      { kind: 'haulpak', x: 160, z: 280, yawDeg: 0 }, { kind: 'haulpak', x: 372, z: -398, yawDeg: 200 },
+      { kind: 'd8h', x: 406, z: 60, yawDeg: 90 }, { kind: 'd8h', x: 402, z: 140, yawDeg: 200 }, { kind: 'd8h', x: -48, z: -160, yawDeg: 155 },
     ],
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): banding 0.26 — the ore benches inside the square
@@ -266,8 +261,34 @@ export default {
       { form: 'blocks', geology: 'breccia', x: -58, z: 20, radius: 6, height: 2.6, yawDeg: 25, tone: CONGLOMERATE, name: 'the conglomerate blocks on the pit\'s west lip' },
       { form: 'blocks', geology: 'breccia', x: -20, z: -8, radius: 6, height: 2.5, yawDeg: 140, tone: CONGLOMERATE, name: 'the conglomerate blocks in the pit\'s mouth' },
       { form: 'blocks', geology: 'breccia', x: -70, z: 8, radius: 5.5, height: 2.4, yawDeg: 60, tone: CONGLOMERATE, name: 'the conglomerate blocks west of the lip' },
+      // (the map-content lane's R6; gauntlet wave 358a: "no mullock heaps ... round the shaft") the waste rock tipped beside
+      // each shaft's collar, on its open side (mining.ts: the skip road runs out the other way): loose stone a hull rolls over
+      // (the map-content lane's R6c, 2026-10-11, the fairness follow-up on main's 67.5 % alpha lean: the cover census of the
+      // contested middle about the deployments' turning point (-48.1, 2.6) found alpha's forward line just south of the
+      // centre covered — 60 m blocks at (14, -56), (-105, -55), (75, -55) and (134, -54), 16-25 covered cells of 34-36,
+      // the town standing mostly in alpha's half — and its rotation twins on bravo's forward line open (0-8), where the
+      // fairness probe's deaths put bravo dying; the cover alpha has there, turned about the point: the hills' own
+      // conglomerate in blocks, as the hitbox lane's fields above)
+      { form: 'blocks', geology: 'breccia', x: -111, z: 61, radius: 7, height: 2.5, yawDeg: 15, tone: CONGLOMERATE, name: 'the conglomerate blocks north-west of the pit (bravo\'s forward line)' },
+      { form: 'blocks', geology: 'breccia', x: 9, z: 61, radius: 7, height: 2.5, yawDeg: 95, tone: CONGLOMERATE, name: 'the conglomerate blocks north of the pit (bravo\'s forward line)' },
+      { form: 'blocks', geology: 'breccia', x: -171, z: 60, radius: 7, height: 2.4, yawDeg: 50, tone: CONGLOMERATE, name: 'the conglomerate blocks on the west flat (bravo\'s forward line)' },
+      { form: 'blocks', geology: 'breccia', x: -230, z: 59, radius: 7, height: 2.4, yawDeg: 130, tone: CONGLOMERATE, name: 'the conglomerate blocks under the west rim (bravo\'s forward line)' },
+      { form: 'scree', geology: 'breccia', x: 9, z: 190, radius: 5, height: 1.4, yawDeg: 180, tone: CONGLOMERATE, name: 'the North Lyell mullock' },
+      { form: 'scree', geology: 'breccia', x: 31, z: -200, radius: 5, height: 1.4, yawDeg: 0, tone: CONGLOMERATE, name: 'the Prince Lyell mullock' },
+      { form: 'scree', geology: 'breccia', x: 309, z: -151, radius: 4.5, height: 1.3, yawDeg: 90, tone: CONGLOMERATE, name: 'the east shaft mullock' },
+      { form: 'scree', geology: 'breccia', x: -293, z: -305, radius: 4.5, height: 1.3, yawDeg: 200, tone: CONGLOMERATE, name: 'the south-west old shaft mullock' },
+      { form: 'scree', geology: 'breccia', x: -391, z: 249, radius: 4.5, height: 1.3, yawDeg: 90, tone: CONGLOMERATE, name: 'the north-west old shaft mullock' },
     ],
   },
+  // (the coordinator's ruling of 2026-10-11, after the map-content lane's L2: the brief's 0.03 floor on long sight lines
+  // left no room for the mine) a band of the map's own: the Mount Lyell works and Queenstown stand in the basin by
+  // design, and with the open cut's rim they close its long lines (wave 358a passed the works; main's 0.031 had none of
+  // them); the galleries see-through and the haul trucks off the corridors keep what can be kept (0.026)
+  // PERMANENT (program item 69, landed on main 2026-10-17; replaces main's temporary integ/216 band [0.025, 0.15], which
+  // was to expire at 217): the basin's own long-sight floor is 0.024, not the brief's 0.03; no expiry
+  layoutBrief: { bands: {
+    sightLongShare: { band: [0.024, 0.15], reason: 'the Mount Lyell works, Queenstown and the open cut\'s rim close the basin\'s long lines by design (the works passed wave 358a; main\'s 0.031 had none of them)' },
+  } },
   horizon: { baseHex: 0x6a625c, amp: 1.35, style: 'alpine', treeline: 0.38, snowline: 2, bareRock: 0.7, outcrops: 0.5,
     panorama: { regional: 'ridges' }, forestHex: 0x22392b, rockHex: 0x8c8884, haze: 0.88, grain: 0.6 },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the haze a step cooler than the 0xffe0b6 sun
