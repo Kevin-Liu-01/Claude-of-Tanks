@@ -274,9 +274,10 @@ export function flagMaskStops(mask = HERO_FLAG_MASK) {
 
 /** The Garage card's CSS for the same mask (the flag layer sits in a ::before). */
 export function heroFlagMaskCss(mask = HERO_FLAG_MASK, facing = 'left') {
-  const ax = (facing === 'right' ? 1 - mask.anchorX : mask.anchorX) * 100;
+  const pct = (ratio) => Number((ratio * 100).toFixed(2));
+  const ax = pct(facing === 'right' ? 1 - mask.anchorX : mask.anchorX);
   const stops = flagMaskStops(mask).map(([t, a]) => `rgba(0,0,0,${a}) ${(t * 100).toFixed(1)}%`).join(',');
-  return `radial-gradient(ellipse ${mask.radiusX * 100}% ${mask.radiusY * 100}% at ${ax}% ${mask.anchorY * 100}%,${stops})`;
+  return `radial-gradient(ellipse ${pct(mask.radiusX)}% ${pct(mask.radiusY)}% at ${ax}% ${pct(mask.anchorY)}%,${stops})`;
 }
 
 // ---------------------------------------------------------------------------

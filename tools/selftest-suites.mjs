@@ -1923,6 +1923,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/track-geometry.selftest.mjs',
     'tools/marketing-shots/battle-campaign.selftest.mjs',
     'tools/marketing-shots/showcase-r2.selftest.mjs',
+    // 2026-10-17 tank hero cards: the showroom camera, one flag mask for the compositor and the Garage CSS,
+    // the whole tank inside every card, the obverse flag with its fly off the far edge
+    'tools/hero-cards.selftest.mjs',
   ]),
   post: Object.freeze([
     'src/audio/lazyAudio.selftest.mjs',
