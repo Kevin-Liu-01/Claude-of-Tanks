@@ -332,6 +332,13 @@ export default {
       // church, its west tower and needle spire over the polder, its front to the court
       { kind: 'church', x: 50, z: -24, yawDeg: -90, ground: 'reserve', name: 'the village church',
         params: { tradition: 'western', length: 28, width: 11, tower: 34, crown: 'spire' } },
+      // (2026-10-17, the maps lane; the village blind 227, pose 5: "the church tower reads as a bare slab with no
+      // churchyard") its kerkhof before the west tower, as a Walcheren church keeps it: a white picket fence round the
+      // graves under their crosses and headstones, the gate on the tower's axis and the flagged path to the portal, and
+      // the path on from the gate to the village road
+      { kind: 'churchyard', x: 29.5, z: -24, yawDeg: -90, ground: 'reserve', name: 'the churchyard',
+        params: { width: 12, depth: 12, fence: 'fencepicket', holyGate: false, tradition: 'latin', graves: 12 } },
+      { kind: 'path', x: 18.3, z: -24, yawDeg: -90, name: 'the path from the churchyard gate to the road', params: { length: 9.6, width: 1.6 } },
     ],
     plan: ['mill', 'farmhouse', 'granary', 'fishery', 'depot', 'cottage', 'woodshed', 'tavern', 'farmhouse', 'barn', 'barn', 'cottage', 'granary', 'ruin', 'depot', 'woodshed', 'farmhouse', 'barn'],
     // (2026-10-06, the map-revival lane, step 1) the farm court stands exactly as the PR head seated it (the town-plan
@@ -359,6 +366,13 @@ export default {
     // (step 3, gauntlet wave 205: "potato-shaped boulders with decal lichen" on marine clay) no stone on the polder: no
     // scattered rocks, no outcrops (and none round the tactical beats)
     haystacks: 18, rocks: 0, outcrops: 0, craters: 48, rubblePiles: 10, cropFields: 10, sandbagLines: 14, hedgehogs: 8,
+    // (2026-10-17, the maps lane; the village blind 227's after-defects, props.ts dressingRules) the fences stop short of
+    // the houses (pose 2: "the white fence runs into the new gable house's corner"), the yard clutter spaced and the
+    // fenced yards free of loose fence runs (pose 2: "haystacks/crate/barrel/cart are packed like a staged prop pile"),
+    // the hedgehogs at the village's approaches (pose 4: "a dark object lies in the middle of the road") and the field
+    // works on ground their bags can follow (pose 5: "a dark rectangular block on the distant hillside", a breastwork
+    // stepped up the main dyke's batter)
+    dressingRules: { fencesClearBuildings: true, yardClutterClear: true, hedgehogsAtApproaches: true, fieldWorksLevel: true },
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
     tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },

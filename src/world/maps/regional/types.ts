@@ -169,6 +169,12 @@ export interface YardStyle {
   shedSize?: readonly [number, number];
   /** kitchen-garden beds in the yard */
   garden: boolean;
+  /** (2026-10-17, the maps lane; the Polders village blind 227, pose 6: "gate/fence sections overlap and stack near the
+   *  black shed") a run lays only modules it holds — each scaled down to its slot, at most a fifth, else one module fewer —
+   *  so no module and no gate stands through its neighbour (a 4 m run took two 2.4 m modules); and the outbuilding keeps
+   *  out of the gate's way: a flank yard's shed takes the corner away from its street gate, a back yard's the near
+   *  corner where the far one stands behind the gate (yards.ts) */
+  tidy?: boolean;
 }
 
 export type RegionalGeometryBuckets = Record<string, THREE.BufferGeometry[]>;
