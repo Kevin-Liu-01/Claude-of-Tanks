@@ -107,7 +107,11 @@ export default {
     hardstands: [
       // (round 11, the gauntlet's wave 282: "a huge empty sand lot with a large blotchy red stain" — the square's packed
       // earth a trace, unmottled)
-      { x: 8, z: 0, width: 60, length: 60, yawDeg: 0, grade: 0, paint: { cover: 0.25, mottle: 0 } },
+      // (MAPS 227, the blind critics on v2: "the lower 55 %: an empty flat sand plane ... no tracks, stones or ripples to
+      // carry scale" over the square) the stain that made it a trace was the dirt layer's red clay; packed from the
+      // wadi's own sand now (roadLayer 'ground' below), the square takes back its worked ground as the aprons have it —
+      // the trucks' and jeeps' tracks across it (terrain.ts padRut), drifted over in patches
+      { x: 8, z: 0, width: 60, length: 60, yawDeg: 0, grade: 0, paint: { cover: 0.55, mottle: 0.35 } },
       // apron bank law (docs/MAP-LAYOUT-BRIEF.md): tilted 7 % down to the east with its ground
       { x: -122, z: 21, width: 60, length: 60, yawDeg: -87, level: 6.2, grade: 0.07, paint: { cover: 0.6, mottle: 0.35 } },
       { x: 138, z: -21, width: 60, length: 60, yawDeg: 0, grade: 0, paint: { cover: 0.6, mottle: 0.35 } },
