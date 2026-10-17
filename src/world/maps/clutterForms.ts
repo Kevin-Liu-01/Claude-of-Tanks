@@ -576,9 +576,17 @@ function endCap(m: Mesh, c: V3, out: V3, r: number, spin: number, col: Rgb): voi
 const between = (f: WoodpileForm): Rgb => mix(hexLin(0x2a2119), f.bark, 0.16);
 /** A long pile's body: the gaps between its billet ends (the bark of the billets behind, in their shadow). */
 const faceBody = (f: WoodpileForm): Rgb => mix(between(f), f.bark, 0.45);
-/** A long pile's billet-end cell by make (row height, width; m): the birch polennitsa's splits the largest, the ricks' the
- *  smallest (a long pile's face spends 4 triangles a cell over its two faces: rick 140, lean-to 112, polennitsa 80). */
-const faceCell = (f: WoodpileForm): readonly [number, number] => (f.kind === 'polennitsa' ? [0.23, 0.25] : f.kind === 'leanto' ? [0.2, 0.21] : [0.185, 0.21]);
+/** The long piles whose faces are split ends (billetFace): the ricks and cordwood and the lean-to stacks, each between its
+ *  stakes. The polennitsa keeps its round ends between its cribs, its birch bark as light as its end grain. */
+const splitFace = (f: WoodpileForm): boolean => f.kind === 'rick' || f.kind === 'cord' || f.kind === 'leanto';
+/** A long pile's billet-end cell by make (row height, width; m); its face spends 4 triangles a cell over its two faces:
+ *  rick 140, lean-to 112. */
+const faceCell = (f: WoodpileForm): readonly [number, number] => (f.kind === 'leanto' ? [0.2, 0.21] : [0.185, 0.21]);
+/** A form's own stream for its faces (a hash of its make: no draw from the pile's stream). */
+function faceStream(f: WoodpileForm): Rng {
+  let a = Math.floor((f.bark[0] * 7919 + f.end[1] * 104729 + f.length * 1009 + f.height * 9173) * 1000) | 0;
+  return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
 /**
  * A long pile's face of billet ends (the Polders village blind, 2026-10-17: "the foreground woodpile is a crude box with
  * a low-res triangle texture" — each end had been one small triangle on the near-black body, a polka of triangles): the
@@ -629,7 +637,7 @@ function roundProfile(f: WoodpileForm, R: number, H: number): Array<[number, num
  * lean-to stack under its boarded roof, the Norwegian round holzhausen with its bark crown, the brushwood and tamarisk
  * bundles of the Saharan villages, the dung-cake stacks of the Bengal chars. A long pile is two billet lengths deep:
  * its body one shape (its top uneven, the colour between the billets), each face the billets' end grain, a course of
- * billets across its top. Near ≤ 300 triangles (a polennitsa 292, a lean-to 288, a rick 244), far ≤ 30.
+ * billets across its top. Near ≤ 300 triangles (a polennitsa 284, a lean-to 288, a rick 244), far ≤ 30.
  */
 export function woodpileNear(f: WoodpileForm, rng: Rng): THREE.BufferGeometry {
   const m = newMesh();
@@ -674,8 +682,21 @@ export function woodpileNear(f: WoodpileForm, rng: Rng): THREE.BufferGeometry {
   // the long piles
   const xEnd = L / 2 - (f.kind === 'polennitsa' ? 0.15 : 0.02);
   const sec: Array<[number, number]> = [[-D / 2, 0], [D / 2, 0], [D / 2, H * 0.95], [D * 0.18, H], [-D * 0.22, H * 0.97], [-D / 2, H * 0.93]];
-  prismX(m, sec, -xEnd, xEnd, faceBody(f), mul(f.bark, 0.8));
-  for (const sz of [-1, 1]) billetFace(m, xEnd, H, sz * D / 2, sz, f, rng);
+  const split = splitFace(f);
+  prismX(m, sec, -xEnd, xEnd, split ? faceBody(f) : between(f), mul(f.bark, 0.8));
+  const rows = Math.max(3, Math.round(H / 0.16)), cols = Math.max(4, Math.round((2 * xEnd) / 0.21));
+  if (split) {
+    // the split ends from the form's own stream, inside its stakes; the round ends' draws (four an end) spent, so the
+    // crown's billets and the stakes — and the collision the pool derives from the form — stand as they stood
+    const faces = faceStream(f);
+    for (const sz of [-1, 1]) billetFace(m, xEnd, H, sz * D / 2, sz, f, faces);
+    for (let k = 0; k < 2 * rows * cols * 4; k++) rng();
+  } else {
+    for (const sz of [-1, 1]) for (let i = 0; i < rows; i++) for (let j = 0; j < cols; j++) {
+      const x = -xEnd + (j + 0.5 + ((i % 2) - 0.5) * 0.35) * (2 * xEnd) / cols, y = (i + 0.5) * H * 0.92 / rows;
+      endCap(m, [Math.max(-xEnd + 0.07, Math.min(xEnd - 0.07, x)), y, sz * D / 2], [0, 0, sz], 0.085 + rng() * 0.02, rng() * 6, tone(f.end, rng, 0.25));
+    }
+  }
   for (let k = 0; k < (f.kind === 'leanto' ? 0 : 4); k++) {
     const x = -xEnd * 0.75 + k * xEnd * 0.5 + (rng() - 0.5) * 0.08;
     billet(m, [x, H * 0.96, (rng() - 0.5) * 0.1], [0, 0, 1], D * (0.55 + rng() * 0.15), 0.07, rng() * 2, f, rng);
@@ -720,8 +741,8 @@ export function woodpileFar(f: WoodpileForm): THREE.BufferGeometry {
     lathe(m, [[D / 2, 0], [D / 2, H * 0.6], [0.04, H]], 6, (_k, b) => (f.kind === 'dung' ? mul(f.split, 0.92) : b ? f.bark : mix(f.end, between(f), 0.62)),
       { faceted: true, capTop: true });
   } else {
-    // (a long pile's faces seen from afar: its billet ends over half of each face, the body in the gaps between)
-    const c = f.kind === 'bundles' ? f.bark : mix(f.end, faceBody(f), 0.5);
+    // (a split-faced pile's faces seen from afar: its billet ends over half of each face, the body in the gaps between)
+    const c = f.kind === 'bundles' ? f.bark : splitFace(f) ? mix(f.end, faceBody(f), 0.5) : mix(f.end, between(f), 0.74);
     prismX(m, [[-D / 2, 0], [D / 2, 0], [D / 2, H * 0.95], [0, H], [-D / 2, H * 0.95]], -L / 2, L / 2, c, mul(f.bark, 0.8));
   }
   return finish(m);
