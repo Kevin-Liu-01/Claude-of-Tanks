@@ -215,10 +215,10 @@
       "concealers": 7024
     },
     "mars": {
-      "bytes": 1068172,
-      "sha256": "1662c7c09ce46d5cb9a675a8881b068eda4d68db6c175548c682f204deee3637",
+      "bytes": 1078597,
+      "sha256": "c0ee0a12ac3ae2c98fae485b36bd2264cff112a46762adad8afce61413088a12",
       "obstacles": 963,
-      "colliders": 979,
+      "colliders": 973,
       "concealers": 0
     },
     "moon": {
@@ -449,10 +449,10 @@
         "concealers": 7086
       },
       "mars": {
-        "bytes": 1398204,
-        "sha256": "ff43319a2c0395dfce9af3d998ba1fddf01e4085dc8672785e1b3e7c78e8fa4a",
+        "bytes": 1408617,
+        "sha256": "9f05703811113e090ebab2de80b80bef3d7b99ada435a2fd543e5c12fbd980d3",
         "obstacles": 1083,
-        "colliders": 1017,
+        "colliders": 1011,
         "concealers": 0
       },
       "moon": {
