@@ -24,6 +24,10 @@ export const NO_ROOF_WEAPON: Readonly<Record<string, string>> = Object.freeze({
     + 'firing post; no pintle or roof machine gun.',
   ajax: 'Ajax (turreted Scout SV): 40 mm CT40 and a coaxial 7.62 mm L94A1 chain gun; the Protector remote station fits '
     + 'only on the turretless variants (or in place of the Orion sight), so the turreted Ajax carries no roof gun.',
+  // 2026-10-16 (226 gate): VH.14 (76ef67d65) removed the Marder 1A3's turret-roof MG3 pintle as no roof weapon on the
+  // real vehicle but did not list it; the 1A3 carries the external coaxial MG3 (drawn on the gun plant).
+  marder1a3: 'Schützenpanzer Marder 1A3: 20 mm Rh 202 and the coaxial 7.62 mm MG3 on the external gun mount; the rear '
+    + 'remote MG3 of the first Marders was deleted in the 1A1 programme, and the 1A3 carries no roof machine gun.',
   spz_puma: 'Schützenpanzer Puma: 30 mm MK30-2/ABM, a coaxial 5.56 mm MG4 and the MELLS (Spike-LR) launcher in an '
     + 'unmanned turret; no roof machine gun.',
   spz_wotan: 'Schützenpanzer Puma S1: 30 mm MK30-2/ABM, a coaxial 5.56 mm MG4 and the MELLS launcher; the S1 carries no '
