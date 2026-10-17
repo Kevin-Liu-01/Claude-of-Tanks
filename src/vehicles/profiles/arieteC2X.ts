@@ -129,12 +129,34 @@ function reactiveArmor(P: TankBuilderPort): void {
   }
 }
 
+// Owner 2026-10-17 (close-up of the C2 gun: "c2 ariete has gap in gun"): the C2 stretches the supplied barrel x1.22
+// along the bore about the trunnion, but the fixed gun shroud (gunMount) is not stretched, so the barrel's open rear
+// ring moved 52 mm (gun frame; 64 mm after the family scale) ahead of the shroud's front lip and left a see-through
+// ring slot. The barrel's rear ring continues backward as a closed sleeve of its own section: it starts inside the
+// shroud's front chamfer (buried below its skin) and ends 6 mm inside the barrel, where its front cap also closes the
+// barrel's open rear. 0.5 mm under the barrel radius (48 segments, phase-aligned) so the two skins never fight;
+// recoil slides it back into the shroud with the tube. Gun frame, before the family enlargement; the muzzle and the
+// barrel length datum are unchanged.
+const ARIETE_C2_BARREL_STRETCH = 1.22, ARIETE_C2_BARREL_RADIAL = 1.18;
+function seatStretchedBarrelInShroud(P: TankBuilderPort): void {
+  const barrelRearZ = (1.95976235 - SOURCE.trunnion[2]) * ARIETE_C2_BARREL_STRETCH;
+  const barrelRadius = .12248 * ARIETE_C2_BARREL_RADIAL;
+  // the shroud's front chamfer runs r .157286 at z 1.960603 to r .122 at its 2.043872 lip (arieteXSuppliedGun.ts)
+  const chamferRearZ = 1.960603 - SOURCE.trunnion[2], lipZ = 2.043872 - SOURCE.trunnion[2];
+  const sleeveRadius = barrelRadius - .0005;
+  const emergeZ = chamferRearZ + (lipZ - chamferRearZ) * (.157286 - sleeveRadius) / (.157286 - .122);
+  const z0 = emergeZ - .01, z1 = barrelRearZ + .006;
+  P.add('gun', new THREE.LatheGeometry([new THREE.Vector2(0, z0), new THREE.Vector2(sleeveRadius, z0),
+    new THREE.Vector2(sleeveRadius, z1), new THREE.Vector2(0, z1)], 48).rotateX(Math.PI / 2));
+}
+
 export function buildArieteC2X(P: TankBuilderPort): void {
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts), laid on the assembled build
   addVehicleGhillieSuit(P);
   buildArieteXSupplied(P, D.boreRadiusM / S / 1.18, true);
   P.scaleBuckets(['gun', 'gunDark'], 1.18, 1.18, 1.22);
   P.muzzleZ *= 1.22;
+  seatStretchedBarrelInShroud(P);
   gunnerSight(P); panoramicSight(P); commanderWeapon(P); coolingDeck(P); protection(P); reactiveArmor(P);
   enlargeArieteXFamily(P);
   // VEH-13 (2026-10-16): a seam strip under each forward glacis joint closes the 2-4 cm seam (x +-1.05, z 3.86-3.97)

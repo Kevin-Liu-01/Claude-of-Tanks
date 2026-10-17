@@ -1367,6 +1367,27 @@ function addPL01Gun(P: PolishBuilderPort, context: PL01BuildContext): void {
     },
   ] as const satisfies readonly FacetedGunHousingStation[];
   P.addGunExtra(facetedGunHousing(housingStations));
+  // 227 gun-gaps (owner 2026-10-17, "fix any of these" with the C2 gun gap): the housing pitches about a trunnion
+  // 0.43 m behind its rear ring, so at full elevation (+20 deg) that ring rose up to 0.16 m clear of the turret's
+  // narrow nose ridge and the sky showed through the notch behind it along the gun line (96 mm, 15 of 24 directions).
+  // An upper tail of the same six-facet section now continues the housing aft from inside its rear ring to z 0.18:
+  // at rest it fairs the ring's 5 cm step into the ridge and is otherwise buried in the in-leaning roof band; at +20
+  // its top slopes from the ring down into the roof (it sinks under the roof by z 0.15), and at -10 it is wholly
+  // inside the shell. Only the band above the shoulder line, where the notch opens, is carried aft.
+  P.addGunExtra(facetedGunHousing([
+    {
+      z: 0.18,
+      bottomHalfWidth: 0.20, bottomY: -0.07,
+      shoulderHalfWidth: 0.24, shoulderY: throatShoulderY,
+      topHalfWidth: 0.17, topY: 0.15,
+    },
+    {
+      z: throatRearZ + 0.02,
+      bottomHalfWidth: 0.24, bottomY: -0.07,
+      shoulderHalfWidth: 0.272, shoulderY: throatShoulderY,
+      topHalfWidth: 0.214, topY: throatTopY - 0.006,
+    },
+  ]));
   P.addGunExtraDark(box(0.38, 0.03, 0.05), 0, gunAssemblyY(0.225), 2.10); // cover spine seam
   P.addGunExtraDark(box(0.42, 0.36 * equipmentHeightScale, 0.03), 0, gunAssemblyY(0.03), 3.262); // cover end plate
   // Armored coaxial 7.62 mm fairing and visible receiver beside the main

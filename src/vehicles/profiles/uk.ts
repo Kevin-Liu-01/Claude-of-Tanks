@@ -3546,6 +3546,14 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     // dark ring vents, slotted tip; NO evacuator, NO thermal sleeve; the
     // muzzle never clears the +3.17 nose, so overhang masks stay empty) =====
     P.addGunExtra(cylZ(0.075, 0.30, 12, 0.092), 0, 0, 0.26);
+    // 227 gun-gaps (owner 2026-10-17, "fix any of these" with the C2 gun gap): the turret buckets are offset 0.25 m
+    // aft below (the measured turret station) while the gun group stays at z 0.55, so the raked face sits 0.27 m behind
+    // the trunnion and the recoiling base ended 0.075 m behind it: from 12-14 of 24 directions the background showed
+    // along the gun line between the RARDEN and the face (83-305 mm behind the pivot, 80-350 mm at -9 deg). The cradle
+    // now continues aft as a 0.070 m sleeve (just over the 0.067 m recoiling base it receives) from 0.03 m behind the
+    // trunnion into the face. Its 0.49 m reach keeps the rear rim behind the raked face at rest, +30 and -9 deg, and
+    // 3 mm under the roof plane at -9 deg (the face rakes back to the roof edge above the axis).
+    P.addGunExtra(cylZ(0.070, 0.46, 12), 0, 0, -0.26);
     buildGun(P, { len: 1.84, r: 0.030, sleeve: false, evac: null, collar: false, baseR: 0.058 });
     // Fleet visual standard (2026-09-12): the mouth sits ON the tip face at
     // 1.872 (the former seat at 1.84 was buried inside the dark hider nose

@@ -3389,8 +3389,12 @@ function addT90MProryvGunAndFinish(
   // world 2.35..3.2 read my 0.118 at 0.031 x6) and the bare-tube cy back to
   // 0 (the 0.010/0.021 seats overshot both quantized frames; r 0.102 at the
   // 1.61 axis splits them).
+  // 227 gun-gaps (owner 2026-10-17, "fix any of these" with the C2 gun gap): r1 shortened the saddle's root cone to
+  // end at z 0.45, but the sleeve still began at the 0.53 clamp (0.55), so a 60 mm see-through ring opened between
+  // the cone and the clamp at every pose. The sleeve's rear now starts inside the cone (0.42): the cone tapers onto
+  // the sleeve and the clamp rides it, as the comment above always described.
   tubeGun(P, [
-    [0.55, 0.85, 0.108, 0.108, 0, 0.006], [0.85, 1.40, 0.108, 0.108, 0, 0.006],
+    [0.42, 0.85, 0.108, 0.108, 0, 0.006], [0.85, 1.40, 0.108, 0.108, 0, 0.006],
     [1.40, 1.92, 0.108, 0.108, 0, 0.006],
     [1.92, 2.16, 0.102], [2.16, 2.62, 0.102],
     [2.62, 3.08, 0.102], [3.08, 3.54, 0.102],

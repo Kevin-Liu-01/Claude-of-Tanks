@@ -148,21 +148,68 @@ function buildCv90RunningGear(P: TankBuilderPort): void {
   });
 }
 
+// Lower turret shell stations (world z; belly, shoulder and roof half-widths about the turret axis at the floor, knee
+// and roof heights).
+const CV90_MKIV_TURRET_STATIONS: readonly (readonly [number, number, number, number, number, number, number])[] = [
+  [-2.08,.76,.83,.75,1.83,2.01,2.081],[-1.65,1.14,1.48,1.41,1.74,1.95,2.10],
+  [-.85,1.37,1.52,1.39,1.58,1.82,2.155],[.36,1.38,1.53,1.38,1.58,1.82,2.13],
+  [.85,1.05,1.27,1.10,1.61,1.87,2.01],[1.12,.35,.66,.51,1.64,1.80,1.92],
+];
+
+/** The shell's upper-wall section at world z, exactly as armorLoft's sectionSolid triangulates it: the knee K and roof
+ *  edge R interpolate between stations, and each side quad is split along one diagonal (K_i to R_i+1 on +X, R_i to
+ *  K_i+1 on -X; the -X contour runs the other way), so the section bends at that diagonal's crossing D. Turret frame x
+ *  (about the turret axis), world y. */
+function cv90MkivUpperWallSection(side: number, z: number): { K: [number, number], D: [number, number], R: [number, number] } {
+  const S=CV90_MKIV_TURRET_STATIONS;
+  let i=0; while(i<S.length-2&&z>S[i+1][0])i++;
+  const t=(z-S[i][0])/(S[i+1][0]-S[i][0]);
+  const K0:[number,number]=[side*S[i][2],S[i][5]],K1:[number,number]=[side*S[i+1][2],S[i+1][5]];
+  const R0:[number,number]=[side*S[i][3],S[i][6]],R1:[number,number]=[side*S[i+1][3],S[i+1][6]];
+  const lerp=(a: readonly number[],b: readonly number[]):[number,number]=>[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t];
+  return {K:lerp(K0,K1),D:side>0?lerp(K0,R1):lerp(R0,K1),R:lerp(R0,R1)};
+}
+
+/** A 23 mm applique plate lying on the shell's in-leaning upper wall from the knee ridge upward, conforming to the
+ *  loft's own section (bend included) at ten stations along its length: inner face 4 mm under the skin, so no air is
+ *  left behind it. */
+function cv90MkivUpperWallPlate(P: TankBuilderPort, side: number, z0: number, z1: number, height: number, py: number, pz: number): void {
+  const zs=Array.from({length:10},(_,k)=>z0+(z1-z0)*k/9);
+  const inset=.004,thick=.023;
+  const sub=(a: readonly number[],b: readonly number[])=>[a[0]-b[0],a[1]-b[1]],len=(v: readonly number[])=>Math.hypot(v[0],v[1]);
+  const outward=(a: readonly number[],b: readonly number[])=>{const d=sub(b,a),l=len(d);return [side*d[1]/l,-side*d[0]/l];};
+  P.addEquipment('turretDetail',sectionSolid(zs.map((z)=>{
+    const {K,D,R}=cv90MkivUpperWallSection(side,z);
+    const kd=len(sub(D,K)),dr=len(sub(R,D)),up=Math.min(height,.9*(kd+dr)),from=.006;
+    // the plate's top U along the section; its middle M is the bend when the bend lies inside the plate
+    const U=up<=kd?[K[0]+(D[0]-K[0])*up/kd,K[1]+(D[1]-K[1])*up/kd]:[D[0]+(R[0]-D[0])*(up-kd)/dr,D[1]+(R[1]-D[1])*(up-kd)/dr];
+    const bend=kd>from+.01&&up-kd>.01;
+    const M=bend?D:[(K[0]+U[0])/2,(K[1]+U[1])/2];
+    const B=[K[0]+(M[0]-K[0])*from/len(sub(M,K)),K[1]+(M[1]-K[1])*from/len(sub(M,K))];
+    // the bend's offsets ride the mitre (the two faces' mean normal, lengthened by 1/cos of the half angle)
+    const nB=outward(B,M),nU=outward(M,U),nM=[(nB[0]+nU[0])/2,(nB[1]+nU[1])/2],lM=len(nM),nMu=[nM[0]/lM,nM[1]/lM];
+    const at=(p: readonly number[],n: readonly number[],out: number):[number,number]=>[p[0]+n[0]*out,p[1]-py+n[1]*out];
+    const mIn=at(M,nMu,-inset/lM),mOut=at(M,nMu,(thick-inset)/lM);
+    const ring:[number,number][]=[at(B,nB,-inset),at(B,nB,thick-inset),mOut,at(U,nU,thick-inset),at(U,nU,-inset),mIn];
+    let area=0; for(let k=0;k<ring.length;k++){const a=ring[k],b=ring[(k+1)%ring.length];area+=a[0]*b[1]-b[0]*a[1];}
+    return {z:z-pz,ring:area>0?ring:ring.reverse()};
+  })),0,0,0);
+}
+
 function buildCv90TurretArmor(P: TankBuilderPort, py: number, pz: number): void {
-  P.add('turret',armorLoft([
-    [-2.08,.76,.83,.75,1.83,2.01,2.081],[-1.65,1.14,1.48,1.41,1.74,1.95,2.10],
-    [-.85,1.37,1.52,1.39,1.58,1.82,2.155],[.36,1.38,1.53,1.38,1.58,1.82,2.13],
-    [.85,1.05,1.27,1.10,1.61,1.87,2.01],[1.12,.35,.66,.51,1.64,1.80,1.92],
-  ],py,pz));
+  P.add('turret',armorLoft(CV90_MKIV_TURRET_STATIONS,py,pz));
   // Compact sloped crew citadel rises from the much wider lower turret shoulders.
   P.add('turret',armorLoft([
     [-1.12,.65,.72,.61,2.07,2.15,2.30],[-.33,.65,.74,.58,2.07,2.17,2.34],
     [.39,.43,.62,.32,2.07,2.15,2.27],
   ],py,pz));
-  for(const side of [-1,1]) {
-    for(const z of [-1.05,-.38,.24])turretEquipment(P,'turretDetail',box(.023,.34,.58),side*1.53,1.93,z);
-
-  }
+  // 227 gun-gaps (owner 2026-10-17, of this vehicle's roof: parts "sticking out ... not coming from the turret"): three
+  // vertical 0.34 m plates per side straddled the knee ridge (y 1.82) while the wall above it leans in 23 deg, so air
+  // opened behind each plate up to 0.12 m at its top edge; and they were placed symmetrically in WORLD x about a turret
+  // whose axis sits at x -0.035, so the +X row also stood 24-47 mm off the ridge and the -X row sank into it. The plates
+  // now lie on the in-leaning upper wall in the turret frame, from the ridge up 0.34 m (0.9 of the wall where it is
+  // shorter), following the loft through each station they span.
+  for(const side of [-1,1])for(const z of [-1.05,-.38,.24])cv90MkivUpperWallPlate(P,side,z-.29,z+.29,.34,py,pz);
   // Source arrays differ by side: +X is three across in two rows, −X is two across in three rows.
   turretEquipment(P,'turretDetail',box(.52,.34,.035),.655,1.86,1.00,-.77);
   turretEquipment(P,'turretDetail',box(.34,.39,.035),-.91,1.795,.83,-.77,-.30);
@@ -199,7 +246,12 @@ function buildCv90CrewHatch(P: TankBuilderPort, px: number, py: number, pz: numb
 function buildCv90RoofSights(P: TankBuilderPort, px: number, py: number, pz: number): void {
   // Open A-frame feet carry the source sight neck; the space between them remains real air.
   for(const side of [-1,1])towerStrut(P,[.2341+side*.165,2.18,-.63],[.2341+side*.070,2.455,-.66],.055,.16);
-  turretEquipment(P,'turretDetail',box(.23,.12,.21),.2341,2.455,-.66);
+  // Owner 2026-10-17 ("the part of its assembly that looks like its sticking out above the turret and its not coming
+  // from the turret"): the 0.12 m neck topped out at y 2.515 while the head's lowest rings are 2.55/2.56, so the head
+  // (the vehicle's highest point) hung 35-45 mm clear of everything over the whole neck footprint. The neck now runs
+  // from the same 2.395 seat on the struts up into the head (top 2.585: 25 mm into its rear rings and 5 mm under the
+  // raked front cap at the neck's z -.555 face), so the head is carried by the neck the struts already hold.
+  turretEquipment(P,'turretDetail',box(.23,.19,.21),.2341,2.49,-.66);
   // Source sight head has raked front/rear caps; a bounding box overstates
   // its full-height roof coverage by roughly 0.1m in side elevation.
   P.addEquipment('turretDetail',sectionSolid([

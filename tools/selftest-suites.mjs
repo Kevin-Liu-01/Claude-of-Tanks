@@ -189,6 +189,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/existing-document-route.selftest.mjs',
     'tools/geometry-gate-policy.selftest.mjs',
     'tools/tank-sealed-check.selftest.mjs',
+    // 2026-10-17 (227 gun-gaps): the nine closed gun junctions at rest/elevation/depression and a seeded tube pull
+    'tools/gun-junction-census.selftest.mjs',
     'tools/reference-supplement.selftest.mjs',
     'tools/fidelity-component-floor.selftest.mjs',
     'tools/fidelity-visibility.selftest.mjs',
@@ -814,6 +816,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t14RoofFidelity.selftest.mjs',
     'src/vehicles/profiles/t90SprocketTier.selftest.mjs',
     'src/vehicles/profiles/ztz85iiiAttachment.selftest.mjs',
+    // 2026-10-17 (227 gun-gaps): the CV90 Mk 4 sight head carried by its neck, side plates on the in-leaning wall
+    'src/vehicles/profiles/cv90MkivRoofSight.selftest.mjs',
     'src/vehicles/runningGearCadence.selftest.mjs',
     'src/world/sourcedTextures.selftest.mjs',
     'src/world/sourcedImageCache.selftest.mjs',

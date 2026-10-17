@@ -28,8 +28,13 @@
 // Receipt 2026-10-17 (227, all 220 ids, 2 mm, rest/max elevation/max depression): gun-junction c2_ariete 50 mm and
 // ztz85_iii 10 mm; mount t90m_proryv/t90am 58-70 mm, pl01/pl01_105 88-96 mm at max elevation; aperture fv510,
 // fv510_milan, m3a3_bradley, spz_wotan; off-axis slivers t72b3_qilin, ztz99a2, vt4a1, bmpt_t90, cv90_mk4 (smoke-tube mouths).
-// --gate exits non-zero when any gun-junction, tube-segment or mount run is at least --min-mm (default 4 mm) long and
-// seen from at least 2 directions, or any off-axis opening reaches --min-px pixels.
+// --gate exits non-zero when any gun-junction, tube-segment, mount or aperture run is at least --min-mm (default 4 mm)
+// long and seen from at least 2 directions, or any off-axis opening reaches --min-px pixels.
+// --seed-recoil-m=<m> is the negative control: it slides the recoil rig m metres forward along the bore (the tube pulled
+// off its seat), which must open a gun-junction run of about m at a closed junction.
+// Fixes 2026-10-17 (227, same census): c2_ariete, ztz85_iii, t90am, t90m_proryv, pl01, pl01_105, fv510, fv510_milan
+// and spz_wotan CLOSED at rest, full elevation and full depression; tools/gun-junction-census.selftest.mjs holds them
+// (4 mm, 12 directions) with a seeded control.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
@@ -44,6 +49,7 @@ const AZIMUTHS = Number(opt('azimuths', '24'));
 const MUZZLE_M = Number(opt('muzzle-m', '0.8'));
 const MIN_MM = Number(opt('min-mm', '4'));
 const MIN_PX = Number(opt('min-px', '12'));
+const SEED_RECOIL_M = Number(opt('seed-recoil-m', '0'));
 const BEHIND_PIVOT_M = 0.35;
 const SEAM_EPS = 0.004, INVERTED_DEPTH = 0.08, AXIS_TOL = 0.002;
 // Sample points sit off the pixel centres by irrational fractions so a round-metre edge (a 0.25 m box seen edge-on)
@@ -350,6 +356,7 @@ for (const id of ids) {
   let tank;
   try { tank = createTank(id, null, { proceduralOnly: true }); } catch (error) { console.log(`${id}: build failed: ${error.message}`); failures++; continue; }
   const spec = getSpec(id);
+  if (SEED_RECOIL_M) { const recoil = tank.root.getObjectByName('rig_recoil'); if (recoil) recoil.position.z += SEED_RECOIL_M; }
   const built = performance.now();
   const rows = [];
   for (const pose of poses) rows.push(censusPose(tank, spec, pose));
