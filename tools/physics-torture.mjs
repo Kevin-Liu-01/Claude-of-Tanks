@@ -760,6 +760,10 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
     ruleset, players });
   match.onMatchReady();
   const subject = match.entityById.get('subject');
+  // (the structures the subject's ram brought down, from their first event: the step loop; the census reads it too)
+  const yielded = new Set();
+  let seenEventCount = match.pendingEventCount;
+  caseDef.yielded = yielded;
   for (const entity of match.entities) {
     entity.combat.hp = entity.combat.maxHp = 1e7;
     // explicit spawns are honoured exactly (placement may nudge them clear of the case's own obstacles)
@@ -927,6 +931,17 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
       bounces: before._ride.bounces ?? 0,
     };
     match.step({ dt: DT, inputs });
+    // (physics DST-02, 2026-10-17) a building the subject's ram brings down yields to it by design (structureDamage.ts
+    // yieldTo: the hull keeps driving through while it falls): from the tick its first stage or breach event names the
+    // ram, its records are no overlap, no solid the hull stands inside and no drawn shell it is pushed into
+    if (match.pendingEventCount !== seenEventCount) {
+      seenEventCount = match.pendingEventCount;
+      for (const event of match.eventsForViewer('subject')) {
+        if ((event.type === 'structure_stage' || event.type === 'structure_breach') && event.cause === 'ram' && Number.isFinite(event.structureId)) {
+          yielded.add(event.structureId);
+        }
+      }
+    }
     trace?.(tick, match);
     metrics.ticks++;
     const state = subject.state;
@@ -1075,7 +1090,7 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
     }
     for (let i = 0; i < world.obstacles.length; i++) {
       const record = world.obstacles[i];
-      if (record.crushed) continue;
+      if (record.crushed || (record.structureIdx != null && yielded.has(record.structureIdx))) continue;
       // (census v3) a compound record stands a hull on its parts, each at its own top (a roof's band stairs, a stone's tiers,
       // a wreck's hull and turret): the sink is read part by part, from the underside over that part alone
       if (record.shape2?.kind === 'compound' && !record.crushable && record.max[1] - record.min[1] >= 0.9) {
@@ -1313,7 +1328,7 @@ function runCaseOn(hullId, worldId, caseDef, { replay = true, trace = null } = {
       if (under > metrics.fellThroughM) metrics.fellThroughM = under;
       let inside = 0;
       for (const record of world.obstacles) {
-        if (record.crushed || record.crushable) continue;
+        if (record.crushed || record.crushable || (record.structureIdx != null && yielded.has(record.structureIdx))) continue;
         if (state.pos.x < record.min[0] || state.pos.x > record.max[0] || state.pos.z < record.min[2] || state.pos.z > record.max[2]) continue;
         const shape = record.shape2 ?? null;
         const parts = shape?.kind === 'compound' ? shape.parts : [shape];
