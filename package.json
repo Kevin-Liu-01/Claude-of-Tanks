@@ -66,6 +66,8 @@
     "tank:appearance:check": "node tools/tank-assets-check.mjs --live-only --skip-bore",
     "tank:markings:check": "node tools/vehicle-marking-visibility.mjs",
     "tank:release:check": "node tools/tank-release-check.mjs",
+    "tank:regen:changed": "node tools/tank-regen-changed.mjs",
+    "tank:changed": "node tools/changed-ids.mjs",
     "tank:native:check": "node tools/native-playables-audit.mjs",
     "tank:family:check": "node src/vehicles/fleetOrder.selftest.mjs",
     "tank:roster": "node tools/vehicle-roster-report.mjs",

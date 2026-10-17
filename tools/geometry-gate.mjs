@@ -156,12 +156,17 @@ const all = [...byId.values()].sort((a, b) => a.geoMin - b.geoMin);
 const passed = all.filter((r) => r.gatePassed).length;
 // A requested set can legitimately contain only first-party/procedural tanks.
 // Do not churn the ledger timestamp when no comparison row was evaluated.
+// A rerun that changes no row keeps the file byte-identical (2026-10-16): a fresh timestamp alone used to invalidate every
+// receipt that hashes docs/ (573 in 226).
 if (rows.length) {
-  fs.writeFileSync(ledgerPath, `${JSON.stringify({
-    generatedAt: new Date().toISOString(),
+  const body = {
     gate: 'every component >= its registered floor (90 fleet / 92 exemplar / 99 historical preservation); min is the headline; preservation is not source fidelity',
     passed, total: all.length, rows: all,
-  }, null, 1)}\n`);
+  };
+  let previous = null;
+  try { previous = JSON.parse(fs.readFileSync(ledgerPath, 'utf8')); } catch { /* first run */ }
+  const unchanged = previous && (({ generatedAt, ...rest }) => JSON.stringify(rest))(previous) === JSON.stringify(body);
+  if (!unchanged) fs.writeFileSync(ledgerPath, `${JSON.stringify({ generatedAt: new Date().toISOString(), ...body }, null, 1)}\n`);
 }
 const runSorted = rows.slice().sort((a, b) => a.geoMin - b.geoMin);
 const runPassed = rows.filter((r) => r.gatePassed).length;

@@ -333,8 +333,14 @@ for (const id of ids) {
 if (ledger && flag('update-ledger')) {
   try {
     const updated = updatedSealedLedger(ledger, report, new Date().toISOString(), ids);
-    writeFileSync(resolve(ledgerPath), JSON.stringify(updated, null, 1) + '\n');
-    console.log(`ledger updated: ${ledgerPath}`);
+    // Unchanged rows keep the file byte-identical (2026-10-16): a timestamp-only rewrite invalidated every receipt
+    // that hashes docs/.
+    const strip = ({ generatedAt, ...rest }) => JSON.stringify(rest);
+    if (strip(updated) === strip(ledger)) console.log(`ledger unchanged: ${ledgerPath}`);
+    else {
+      writeFileSync(resolve(ledgerPath), JSON.stringify(updated, null, 1) + '\n');
+      console.log(`ledger updated: ${ledgerPath}`);
+    }
   } catch (error) {
     console.error(error.message);
     process.exitCode = 1;
