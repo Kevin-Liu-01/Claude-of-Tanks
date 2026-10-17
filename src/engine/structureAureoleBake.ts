@@ -51,18 +51,6 @@ export function aureoleSunOf(elevationDeg: number, azimuthDeg: number): [number,
   return [Math.sin(phi) * Math.sin(theta), Math.cos(phi), Math.sin(phi) * Math.cos(theta)];
 }
 
-/** (227 v2) The disc's directions as unit vectors toward them (y up), the elevation floor held: the hulls' aureole. */
-export function aureoleDirections(sun: readonly number[], radiusDeg = AUREOLE_RADIUS_DEG, samples = 8): Float64Array {
-  const off = aureoleOffsets(sun, radiusDeg, samples);
-  const out = new Float64Array(samples * 3);
-  for (let k = 0; k < samples; k++) {
-    // a ground offset s = −(d.x, d.z) / d.y back to the unit direction d
-    const sx = off[2 * k], sz = off[2 * k + 1], l = Math.hypot(sx, sz, 1);
-    out[3 * k] = -sx / l; out[3 * k + 1] = 1 / l; out[3 * k + 2] = -sz / l;
-  }
-  return out;
-}
-
 /**
  * The aureole's directions as ground displacements: per direction the (x, z) a point one metre over the plane casts its
  * shadow at, relative to its foot. `sun` is the direction toward the sun (y up).
