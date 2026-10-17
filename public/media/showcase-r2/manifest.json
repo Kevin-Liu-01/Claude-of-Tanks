@@ -702,13 +702,13 @@
       "quality": {
         "passed": true,
         "metrics": {
-          "meanLuma": 167.6258,
-          "p05": 72.1504,
-          "p95": 216.6616,
+          "meanLuma": 111.7452,
+          "p05": 38.5932,
+          "p95": 194.0414,
           "clippedBlack": 0,
           "clippedWhite": 0,
-          "meanSaturation": 0.34,
-          "edgeMean": 10.3103
+          "meanSaturation": 0.6445,
+          "edgeMean": 8.79
         }
       }
     },
