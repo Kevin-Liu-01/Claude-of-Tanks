@@ -2,15 +2,16 @@
 // kinds build on the structure wood's attributes inside their old module (2.4 m along z, a post sunk at its start), under
 // their triangle caps, deterministic; each map's forms are its region's (keyed as the gates are, so fence and gate agree);
 // the WORKLIST #6 guardrail maps (Saltwind, the delta, the coast, the desert) draw no more fence triangles than before;
-// the legacy module's draws spent and its footprint kept; the collision what's drawn — every opaque span of every form's
-// module stops a line through it, and every form's record as dense as the fence it draws (the looks lane, 227); the broken
+// the legacy module's draws spent, its footprint and its obstacle (what a hull crushes) kept; a collider of the drawn module
+// (the looks lane, 227): every opaque span of every form's module stops a line through it, and every form's collider as dense
+// as the fence it draws; the broken
 // state lies low; props.ts lays them.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DESTRUCTIBLE_TYPES } from './inhabitKit.ts';
 import { GATE_STYLES } from './gateKit.ts';
 import { FENCE_FORMS, FENCE_KINDS, FENCE_TRIANGLE_CAP, buildFence, drawnRecordBand, fenceFormsFor, fenceTypes } from './fenceKit.ts';
-import { applyStructureCollisionBand } from '../structureCollision.ts';
+import { applyStructureCollisionBand, deriveRuntimeStructureContactBand } from '../structureCollision.ts';
 import { rayCollisionRecord } from '../collision.ts';
 import { gateStyleFor } from './gateKit.ts';
 
@@ -90,7 +91,7 @@ for (const [arch, mapId, counts, load, walls] of [
   assert.ok(after - walls <= before + load * 0.015, `${mapId}: fence triangles ${after} (walls saved ${walls}) within 1.5 % of the legacy ${before}`);
 }
 
-// 4. the legacy module's draws and footprint; the band the drawn module's
+// 4. the legacy module's draws, footprint and obstacle band; a collider, its band the drawn module's
 const types = fenceTypes('kolkhoz', 'verdant', DESTRUCTIBLE_TYPES, () => mulberry32(0x0f0f7));
 for (const kind of FENCE_KINDS) {
   const t = types[kind], legacy = DESTRUCTIBLE_TYPES[kind];
@@ -105,7 +106,9 @@ for (const kind of FENCE_KINDS) {
   const built = t.build(() => { drawsA++; return a(); });
   const old = legacy.build(() => { drawsB++; return b(); });
   assert.equal(drawsA, drawsB, `${kind}: the legacy draws are spent exactly`);
-  assert.deepEqual(t.contactBand, drawnRecordBand(built), `${kind}: the band is the drawn module's`);
+  assert.deepEqual(t.contactBand, deriveRuntimeStructureContactBand({ baked: [old] }), `${kind}: the obstacle's band is the legacy module's (a hull crushes it as before)`);
+  assert.equal(t.collider, true, `${kind}: a collider of its own`);
+  assert.deepEqual(t.colliderBand, drawnRecordBand(built), `${kind}: the collider's band is the drawn module's`);
   assert.deepEqual(t.footprintBuild().attributes.position.array, legacy.build(mulberry32(0x0f0f7)).attributes.position.array, `${kind}: the legacy footprint`);
   built.dispose(); old.dispose();
 }
@@ -138,8 +141,8 @@ for (const kind of FENCE_KINDS) {
     for (let z = -1.15; z <= 1.15; z += step) zs.push(z);
     for (let y = 0.05; y <= top - 0.03; y += step) ys.push(y);
     const drawn = ys.map((y) => zs.map((z) => { for (let i = 0; i < p.length; i += 9) if (hitsTri(y, z, p, i)) return true; return false; }));
-    const rec = { min: [0, t.contactBand.minY, 0], max: [0, t.contactBand.maxY, 0] };
-    applyStructureCollisionBand(rec, t.contactBand, 0, 0, 0, 0);
+    const rec = { min: [0, t.colliderBand.minY, 0], max: [0, t.colliderBand.maxY, 0] };
+    applyStructureCollisionBand(rec, t.colliderBand, 0, 0, 0, 0);
     const blocks = (y, z) => rayCollisionRecord({ x: -2, y, z }, { x: 1, y: 0, z: 0 }, rec, 4, n) >= 0;
     let drawnN = 0, recN = 0, open = 0, interiorHere = 0;
     for (let j = 0; j < ys.length; j++) for (let i = 0; i < zs.length; i++) {

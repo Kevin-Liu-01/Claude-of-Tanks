@@ -23,12 +23,12 @@
 // sunk 0.2 m. On the structure wood (craftMesh: its grain along a member's length, the colour albedo over the print);
 // stone, concrete and steel members sample a flat texel and carry their colour.
 //
-// The collision is what's drawn (props.ts fenceTypes; the looks lane, 227, the coordinator: "a fence that LOOKS solid is
-// seen and shot through between the old rails"): the legacy builder still runs first on the pool's stream (its draws) and
-// its fixed-seed build is still the placement footprint, but the pool's contact band — the module's obstacle and collider,
-// which movement, the shells' light-cover sweep, spotting and every sight line read — is the drawn module's side
-// silhouette (drawnRecordBoxes): its covered area in rectangles, so a board fence stops a line where its boards stand and
-// a lath, picket, pole or woven fence lets one through only where it shows a gap. The broken state is this build broken by member
+// The collision (props.ts fenceTypes): the legacy builder still runs first on the pool's stream (its draws), its contact band
+// is frozen as the module's obstacle — what a hull meets and crushes, exactly as before — and its fixed-seed build is the
+// placement footprint. (The looks lane, 227, the coordinator: "a fence that LOOKS solid is seen and shot through between
+// the old rails") Each module has a collider of its own besides, its band the drawn module's side silhouette
+// (drawnRecordBand): what spotting, every sight line and the shells meet, so a board fence stops a line where its boards
+// stand and a lath, picket, pole or woven fence lets one through only where it shows a gap. The broken state is this build broken by member
 // (propFracture.ts FENCE_FRACTURE: posts snap low, boards and rails lie along the line). Cost (WORKLIST #6 guardrail:
 // net triangles <= +0 on Saltwind, the delta, the coast and the desert): every form's module triangles are capped
 // (FENCE_TRIANGLE_CAP), the guardrail maps within an r2 allowance of the legacy counts (fenceKit.selftest). Pure geometry;
@@ -618,8 +618,8 @@ export type FenceType = Omit<DestructiblePropType, 'mat'> & { mat: 'structureWoo
 /**
  * The map's timber fence kinds in its region's build (props.ts LOCAL_TYPES): each kind's record, class, contact and
  * debris plan unchanged; its legacy builder still runs first on the pool's stream (its draws), its fixed-seed build the
- * placement footprint (`legacyRng` the props' mulberry32 at 0x0f0f7); its contact band — the pool's collision — the drawn
- * module's (drawnRecordBand).
+ * placement footprint (`legacyRng` the props' mulberry32 at 0x0f0f7), its contact band frozen as the obstacle's; a collider
+ * besides, its band the drawn module's (drawnRecordBand).
  */
 export function fenceTypes(architectureId: string | null | undefined, mapId: string, base: Readonly<Record<FenceKind, DestructiblePropType>>,
   footprintRng: () => () => number): Record<FenceKind, FenceType> {
@@ -627,14 +627,18 @@ export function fenceTypes(architectureId: string | null | undefined, mapId: str
   const out = {} as Record<FenceKind, FenceType>;
   for (const kind of FENCE_KINDS) {
     const legacy = base[kind];
-    let band: StructureCollisionRuntimeBand | undefined;
+    let band: StructureCollisionRuntimeBand | undefined, sight: StructureCollisionRuntimeBand | undefined;
     const entry: FenceType = {
       ...legacy, mat: 'structureWood',
+      // (the looks lane, 227) a collider of its own, its band what's drawn: spotting, sight lines and the shells meet the
+      // fence's members; the obstacle a hull crushes keeps the legacy module's band, so a fence breaks under a hull as before
+      collider: true,
       build: (rng) => {
-        // (the legacy module's draws spent first, as before)
-        legacy.build(rng).dispose();
+        const old = legacy.build(rng);
+        band = deriveRuntimeStructureContactBand({ baked: [old] });
+        old.dispose();
         const drawn = buildFence(kind, gate, forms);
-        band = drawnRecordBand(drawn);
+        sight = drawnRecordBand(drawn);
         return drawn;
       },
       // (r2, 2026-10-16: the module's own wreck, pushed over — the legacy broken builder's draws still spent first)
@@ -642,7 +646,10 @@ export function fenceTypes(architectureId: string | null | undefined, mapId: str
       ownBroken: true,
       footprintBuild: () => legacy.build(footprintRng()),
     };
-    out[kind] = Object.defineProperty(entry, 'contactBand', { enumerable: true, get: () => band });
+    out[kind] = Object.defineProperties(entry, {
+      contactBand: { enumerable: true, get: () => band },
+      colliderBand: { enumerable: true, get: () => sight },
+    });
   }
   return out;
 }

@@ -10699,14 +10699,17 @@ ${snowCap ? `
       ?? deriveRuntimeStructureContactBand({ baked: [geometry] });
     const shellSlabs = SLAB_SHELL_KINDS.has(kind) ? localShellSlabs(geometry) : null;
     const shellBand = kind === 'bunker' && fort ? pillboxShellBand(fort.style) : null; // (bandShells.ts: its embrasures and door open)
+    // (the looks lane, 227) a kind whose collider has a band of its own (the timber fences' drawn silhouette, fenceKit.ts):
+    // its collider takes that, its obstacle the contact band
+    const colliderBand = pool.meta?.colliderBand;
     for (const record of pool.records) {
       if (!record.ob) continue;
       const scaledExtent = (part: SimpleCollisionShape) => (part.y0 !== undefined && part.y1 !== undefined
         ? { y0: part.y0 * record.sc, y1: part.y1 * record.sc }
         : {});
-      const scaledBand = record.sc === 1 ? contactBand : {
-        ...contactBand,
-        parts: contactBand.parts.map((part) => part.kind === 'circle'
+      const scaled = (source: typeof contactBand) => (record.sc === 1 ? source : {
+        ...source,
+        parts: source.parts.map((part) => part.kind === 'circle'
           ? { ...part, cx: part.cx * record.sc, cz: part.cz * record.sc, r: part.r * record.sc, ...scaledExtent(part) }
           : part.kind === 'obb'
             ? {
@@ -10722,10 +10725,13 @@ ${snowCap ? `
               ...(part.tp ? { tp: part.tp.map((value, i) => (i < 2 || (i - 2) % 3 === 2 ? value * record.sc : value)) } : {}),
               ...scaledExtent(part),
             }),
-      };
+      });
+      const scaledBand = scaled(contactBand);
       applyStructureCollisionBand(record.ob, scaledBand, record.x, record.z, record.yaw, record.y);
       if (record.col) {
-        applyStructureCollisionBand(record.col, scaledBand, record.x, record.z, record.yaw, record.y);
+        applyStructureCollisionBand(record.col, colliderBand ? scaled(colliderBand) : scaledBand, record.x, record.z, record.yaw, record.y);
+        // (its own band's height: a drawn fence stands over its legacy module's 1.0-1.1 m, its posts sunk under it)
+        if (colliderBand) { record.col.min[1] = record.y + colliderBand.minY * record.sc; record.col.max[1] = record.y + colliderBand.maxY * record.sc; }
         // (the hitbox lane, 2026-10-07) a dense stack's shells and sight lines meet its own slabs, not the contact prism
         if (shellBand) placeLocalShellBand(record.col, shellBand, record.x, record.y, record.z, record.yaw);
         else if (shellSlabs?.length) placeLocalShellSlabs(record.col, shellSlabs, record.x, record.y, record.z, record.yaw, record.sc);
