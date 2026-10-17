@@ -211,9 +211,9 @@ export const headframe: LandmarkBuilder = (ctx) => {
     for (const sx of [-1, 1]) s.span('stone', sx * 1.6 - 0.35, Math.min(binAt(sx) - 0.8, -0.6), zs + half + 2.05, sx * 1.6 + 0.35, binAt(sx) + 0.4, zs + half + 2.75);
     for (const sx of [-1, 1]) bar(s, 'structureMetal', [sx * 1.6, binAt(sx) + 0.4, zs + half + 2.4], [sx * 1.6, g0 + 5.5, zs + half + 2.4], 0.22, legOpts);
   });
-  // the ore bin on the legs' front and its chute: it comes off its legs and down beside them (the 227 films: with its legs it
-  // lay tipped on one of them, propped in the air)
-  piece(sink, { name: 'ore-bin', kind: 'detach', at: 'collapse', fall: 'drop' }, (s) => {
+  // the ore bin on the legs' front and its chute: it comes off its legs and lies on its side past them (the 227 films: with
+  // its legs it lay tipped on one of them, propped in the air; dropped alone it stood on a corner)
+  piece(sink, { name: 'ore-bin', kind: 'detach', at: 'collapse', fall: 'flat', clear: 2 }, (s) => {
     s.span('structureMetal', -1.8, g0 + 5.5, zs + half, 1.8, g0 + 9.0, zs + half + 2.6, { colourAt: rusting(STEEL, g0 + 5.5, g0 + 9.0, 0.45) });
     s.polygon('structureMetal', [[-1.8, g0 + 5.5, zs + half + 2.6], [1.8, g0 + 5.5, zs + half + 2.6], [0.8, g0 + 4.2, zs + half + 3.4], [-0.8, g0 + 4.2, zs + half + 3.4]], { colour: shade(STEEL, 0.8), decor: true });
   });
