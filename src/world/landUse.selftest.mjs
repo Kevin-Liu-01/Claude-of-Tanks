@@ -96,7 +96,8 @@ const URBAN = new Map([['ruinspires', 1], ['foundry', 2]]); // (2: a works' grou
   const map = readFileSync(new URL('./maps/ruinspires.ts', import.meta.url), 'utf8');
   assert.ok(map.includes('const RIVER_AMP = 60, RIVER_L = 800;') && map.includes('const riverZ = (x: number) => RIVER_AMP * Math.sin(Math.PI * x / RIVER_L);'),
     'the land use\'s Miljacka is the map\'s river line');
-  const streets = readFileSync(new URL('./maps/sarajevoStreets.ts', import.meta.url), 'utf8');
+  // (the cemeteries left the street kit for maps/sarajevoCemetery.ts on main, 379197183; re-landed 2026-10-17)
+  const streets = readFileSync(new URL('./maps/sarajevoCemetery.ts', import.meta.url), 'utf8');
   assert.ok(streets.includes('{ x: -50, z: 244, hx: 30, hz: 18 }, { x: 50, z: -244, hx: 30, hz: 18 },'),
     'the mown cemeteries stand on the street kit\'s cemetery plots (60 x 36 m)');
 }

@@ -293,7 +293,9 @@ export default {
         structure: 'securityoffice', outcrop: { count: 6, radius: 10, scaleMax: 2.8 } },
     ],
     blockFill: false, streetRows: true, streetRowsAfterLandmarks: true,
-    streetRowRoadStride: 1, ruinChance: 0.48, curbs: true, lampposts: true,
+    // (item 58, the render budget) three street rows in five stand as ruins (0.48 before): the siege's shells are the ruin
+    // grammar's, half a house's triangles
+    streetRowRoadStride: 1, ruinChance: 0.6, curbs: true, lampposts: true,
     // every row's whole footprint off every road's core and out of the river (props.ts)
     streetRowClearance: true,
     // The zones' squares and the kickoff's stay open (rotation pairs, the bank square's twin the kickoff's smaller square).
@@ -329,14 +331,16 @@ export default {
     hedgehogs: 38, sandbagLines: 26, townCraters: true,
     // the map-vehicles lane (2026-10-06, the period ruling): Sarajevo, 1992-96: the T-72M1 (the M-84's parent), the
     // T-55 (its Type 59 copy) and the BMP
-    // (item 58, the render budget) three hulks, one of each of the period's vehicles: the valley's open floor had seated
-    // seven of the ~49 k-triangle bakes (342 k triangles, past the props' 300 k hulk budget; main's layout had room for four)
-    tankWrecks: { era: 'cold-war', count: 3, debris: true, ids: ['t72m1_jaguar', 'type59', 'bmp2'] },
+    // (item 58, the render budget) five hulks, the expansion maps' floor of story beats (mapQuality), the cast cycled T-72M1,
+    // BMP-2, Type 59: the valley's open floor had seated seven of the 41-66 k-triangle bakes (342 k triangles, past the
+    // props' 300 k hulk budget), two of them the heaviest, the Type 59
+    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['t72m1_jaguar', 'bmp2', 'type59'] },
     inhabit: {
       stalls: 1, benches: 8, coreClutter: 34, drums: 20,
-      // (item 58, the render budget) the parked fleet thinned, 24 vehicles to 17: the besieged city's fuel ran out in the
-      // first winter, and the cars its streets kept are the siege's burnt ones (sarajevoStreets.ts); 6-9 k triangles each
-      trucks: 5, jeeps: 5, drumClusters: 10, camps: 3, modernClutter: 44,
+      // (item 58, the render budget) the parked vehicles and carts thinned (main's layout had 27, the valley 28): the
+      // besieged city's fuel ran out in the first winter, and the cars its streets kept are the siege's burnt ones
+      // (sarajevoStreets.ts); 6-9 k triangles each
+      trucks: 4, jeeps: 4, drumClusters: 10, camps: 3, modernClutter: 44,
       roadFence: 'fenceplank', yardFence: 'fencerail',
     },
   },

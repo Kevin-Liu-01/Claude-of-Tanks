@@ -550,12 +550,13 @@ function lockupGarages(rng: () => number, style: ArchitectureStyle): THREE.Buffe
     });
     // the fourth door banked with sandbags
     sandbagRun(s, [3.7, -3.0], [3.7, -5.6], 3, look);
-    // the bins' shelter against the +z end wall: two block cheeks, a low front, a sheet roof, the bins in its shade
-    s.span('plaster3', -1.8, 0, 5.75, -1.6, 2.0, 6.65);
-    s.span('plaster3', 1.6, 0, 5.75, 1.8, 2.0, 6.65);
-    s.span('plaster3', -1.6, 0, 6.45, 1.6, 0.9, 6.65);
-    s.span('structureMetal', -1.85, 2.0, 5.75, 1.85, 2.06, 6.7, { colour: rgb(0x6c6a62), decor: true });
-    for (const x of [-0.8, 0.2]) s.span('dark', x, 0, 5.9, x + 0.7, 1.1, 6.35, { decor: true });
+    // the bins' shelter against the +z end wall: two block cheeks and a sheet roof, the bins in its shade (2026-10-17, re-
+    // landed on main: within the family's reach, the Nissen hut's porch 0.45 m off its end wall, as the regional
+    // receipt holds; the round's shelter stood 0.95 m out, past it)
+    s.span('plaster3', -1.8, 0, 5.75, -1.6, 2.0, 6.2);
+    s.span('plaster3', 1.6, 0, 5.75, 1.8, 2.0, 6.2);
+    s.span('structureMetal', -1.85, 2.0, 5.75, 1.85, 2.06, 6.24, { colour: rgb(0x6c6a62), decor: true });
+    for (const x of [-0.8, 0.2]) s.span('dark', x, 0, 5.8, x + 0.7, 1.1, 6.18, { decor: true });
     // the siege: pocks along the row and the ends, the rubble before the burnt door
     shellPocks(s, f.right, wallRect(f.right, 0.15, 2.9), 26, keepsOf(spec.openings, 'right', frame), look);
     shellPocks(s, f.back, wallRect(f.back, 0.15, 2.9), 10, [], look);

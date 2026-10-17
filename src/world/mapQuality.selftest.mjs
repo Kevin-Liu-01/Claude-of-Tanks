@@ -57,7 +57,8 @@ const curatedWreckDonors = new Set(Object.values(WRECK_ROSTER_POOLS).flat());
 // Existing desktop caps are deliberate scene budgets, not a variety knob.
 const extraWreckBudget = { moon: 3, urban: 6, railyard: 6, frontier: 6, delta: 6,
   badlands: 7, monsoon: 7, alpine: 6, caldera: 7, foundry: 8,
-  ruinspires: 9, blackglass: 8, titan_gorge: 8, skybridge: 8 };
+  // (2026-10-17, MAPS lane A item 58: Ruinspires' render budget keeps five hulks, the expansion floor; was 9)
+  ruinspires: 5, blackglass: 8, titan_gorge: 8, skybridge: 8 };
 
 function auditUtilityPoleStations(hf, mapId) {
   const stations = [];
@@ -227,7 +228,8 @@ for (const mapId of MAP_IDS) {
 // the period ruling's named casts (2026-10-06; the Fulda Gap keeps six of its seven types inside its six slots)
 assert.deepEqual(getMapConfig('frontier').props.tankWrecks.ids, ['m60a3', 'm1a1', 'leo1a5', 'marder1a3', 't80b', 'bmp2'],
   'the Fulda Gap in the 1980s: NATO and Soviet armour of the decade');
-assert.deepEqual(getMapConfig('ruinspires').props.tankWrecks.ids, ['t72m1_jaguar', 'type59', 'bmp2'], 'Sarajevo, 1992-96');
+// (2026-10-17, item 58: the same cast cycled T-72M1, BMP-2, Type 59, so the heaviest bake, the Type 59, comes up once in five)
+assert.deepEqual(getMapConfig('ruinspires').props.tankWrecks.ids, ['t72m1_jaguar', 'bmp2', 'type59'], 'Sarajevo, 1992-96');
 assert.deepEqual(getMapConfig('airfield').props.tankWrecks.ids, ['t72b3', 't80bv', 'bmp2', 't64bv_donbas'], 'Hostomel, 2022');
 assert.deepEqual(getMapConfig('verdant').props.tankWrecks.ids, ['kv2'], 'Kursk, 1943: the KV-2');
 assert.ok(battlefieldWrecks.size >= 20, `the period casts still bring a broad variety of hulks (${battlefieldWrecks.size} types)`);
