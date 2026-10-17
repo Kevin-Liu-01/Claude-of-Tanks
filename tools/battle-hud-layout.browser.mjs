@@ -23,24 +23,31 @@ const cases = [
     .map(([w,h])=>[`mouse-${w}x${h}`,w,h,false,'en-US',{lite:true}]),
   ['chinese-small-desktop',1024,600,false,'zh-CN',{lite:true}],['chinese-short-mouse',844,390,false,'zh-CN',{lite:true}],
   ['chinese-phone-mouse',390,844,false,'zh-CN',{lite:true}],
+  // odd windows: 1366 x 768 at 125 % zoom, a 1080p window at 150 % zoom less the browser's chrome, a squat ultrawide, the
+  // compact-detection edge, a 768-wide landscape, a 481-wide portrait at the 9 px edge
+  ...[[1093,614],[1280,609],[2560,1080],[1000,551],[768,600],[481,700]].map(([w,h])=>[`mouse-${w}x${h}`,w,h,false,'en-US',{lite:true}]),
 ];
 const states = ['idle','feed-burst','notifications','countdown','reports','log','chat','combined','spectator','settings','sniper','large-map','ammo-expanded','special','mode-standard','mode-capture_the_flag','mode-zone_control','mode-turbo_ball','mode-endless_horde','mode-frontline_assault','mode-mars','ended'];
 const reports=[];const errors=[];
 // MOUSE CENTRE NOTICES (desk-notices, 2026-10-16: "Keep desktop centre notices off the crosshair"). On every mouse case
-// the detection, the alert (all 26 kinds; the four longest in every context), the countdown, the medal card and the
+// the detection, the alert (all 27 kinds; the four longest in every context), the countdown, the medal card and the
 // revive count are staged with 0 and 3 kill rows, in a kill burst, with 14 v 14 rosters, without an objective and in
-// capture the flag, in the battle sight and the scope. Each must
-// - cover no reticle ink where the plan reports a clear place (body[data-hud-notice-tiers], mouseNoticePlan.ts): the
-//   ink is the canvas's own pixels (alpha >= 12), the union of both sights at rest and at full bloom with the magazine,
-//   SWITCHING and gun-limit readouts (tier 2), the battle sight alone at full bloom (tier 1) or at rest (tier 0);
+// capture the flag, in the battle sight and the scope, together (an alert during the countdown, the medal and the
+// revive count beside both notices) and with Tab held. The mouse layout must carry its plan (body[data-hud-notice-tiers],
+// mouseNoticePlan.ts: main has none, so main fails here), and each element must
+// - cover no reticle ink at the keep-out its plan clears (2 unless the plan says otherwise): the ink is the canvas's own
+//   pixels (alpha >= 12), the union of both sights at rest and at full bloom with the magazine, SWITCHING and gun-limit
+//   readouts (tier 2), the battle sight alone at full bloom (tier 1) or at rest (tier 0);
 // - never cover more of it, nor of the resting crosshair, than main does in the same stage (main's numbers are pinned
 //   in tools/fixtures/battle-hud-layout.main-notices.json; --record-main=<file> --main-label=<commit> against a server
 //   of main's tree measures them again);
-// - show its whole text (no clamp, nothing outside its six-sided frame; the detection's second line wherever main shows
-//   it, above 550 px tall);
-// - keep its box through a kill burst (k0, k3 and the burst stage the same box);
-// - overlap no other HUD part (rosters, score, objective, kill lanes, damage toasts, chat, minimap, damage panel, drive,
-//   systems, ammunition, consumables, report, network readouts) and no other notice it is shown with.
+// - show its whole text (no clamp, nothing outside its six-sided frame; the alert in main's type size or larger; the
+//   detection's second line wherever main shows it, above 550 px tall);
+// - keep its box through a kill burst and while Tab is held (k0, k3, the burst and Tab stage the same box);
+// - overlap no other HUD part (rosters, held Tab rosters too, score, objective, kill lanes, damage toasts, chat, minimap,
+//   damage panel, drive, systems, ammunition, consumables, report, network readouts) and no other element it is shown
+//   with (only an element its plan marks as sharing a notice's place, tier 's', may meet that notice);
+// and the side lanes keep every kill row main shows while nothing is up, and at least one while anything is.
 const recordMain = arg('record-main','');
 const MAIN_NOTICES = recordMain ? null : JSON.parse(await readFile(new URL('./fixtures/battle-hud-layout.main-notices.json', import.meta.url),'utf8'));
 const mainRecord = {};
@@ -59,18 +66,28 @@ const NOTICE_ALERTS = [
   ['endingWave','ending:begin',{captionKey:'ending.lastStand',captionValues:{wave:'123'}}],['waveInbound','mode:wave_started',{wave:123}],
   ['flagTaken','mode:flag_taken','ours'],['reloadDenied','ui:magazineReloadDenied',{reason:'MAGAZINE_RELOADING'}],
   ['specialDenied','ui:specialActionDenied',{reason:'OTHER'}],['crewUnharmed','ui:consumableDenied',{slot:1,reason:'NOTHING'}],
+  ['armorOn','ui:armorOverlayState',{on:true}],
 ];
 const LONG_ALERTS = ['wave123','autoAimLong','flagDroppedEnemy','ammoEmpty'];
-// [key, fixture state, kill rows kept (null: as staged), rosters a side (null: 7), notice set, sight]
+// [key, fixture state, kill rows kept (null: as staged), rosters a side (null: 7), notice set ('' none), sight, Tab held]
 function noticeStages(){
   const out=[];
   const sets=['det',...LONG_ALERTS.map(k=>`det+alert:${k}`),'countdown','medal','det+medal','revive'];
   for(const [ctx,state,kills,rosters] of [['k0','idle',0,null],['k3','idle',null,null],['burst','feed-burst',null,null],
     ['r14','idle',null,14],['std','mode-standard',null,null],['ctf','mode-capture_the_flag',null,null]])
-    for(const set of sets)out.push([`${ctx}|${set}|battle`,state,kills,rosters,set,'battle']);
+    for(const set of sets)out.push([`${ctx}|${set}|battle`,state,kills,rosters,set,'battle',false]);
   for(const set of ['det+alert:wave123','countdown','medal','revive'])for(const ctx of ['k0','k3','burst'])
-    out.push([`${ctx}|${set}|scope`,ctx==='burst'?'feed-burst':'idle',ctx==='k0'?0:null,null,set,'scope']);
-  for(const [k] of NOTICE_ALERTS)if(!LONG_ALERTS.includes(k))out.push([`k3|alert:${k}|battle`,'idle',null,null,`alert:${k}`,'battle']);
+    out.push([`${ctx}|${set}|scope`,ctx==='burst'?'feed-burst':'idle',ctx==='k0'?0:null,null,set,'scope',false]);
+  for(const [k] of NOTICE_ALERTS)if(!LONG_ALERTS.includes(k))out.push([`k3|alert:${k}|battle`,'idle',null,null,`alert:${k}`,'battle',false]);
+  // together: an alert during the countdown (H, R and E work before the roll-out), the medal and the revive count
+  // beside both notices
+  for(const set of ['det+countdown','alert:wave123+countdown','alert:armorOn+countdown','det+alert:atgmSelected+countdown',
+    'det+alert:wave123+medal','det+alert:wave123+revive'])out.push([`k3|${set}|battle`,'idle',null,null,set,'battle',false]);
+  // Tab held (wider, taller rosters): the same boxes as without it, clear of the rosters
+  for(const set of ['det+alert:wave123','det+medal','countdown','det+alert:wave123+revive'])out.push([`tab|${set}|battle`,'idle',null,null,set,'battle',true]);
+  out.push(['tab14|det+alert:wave123|battle','idle',null,14,'det+alert:wave123','battle',true]);
+  // nothing up: the lanes hold every row main holds
+  out.push(['burst||battle','feed-burst',null,null,'','battle',false]);
   // the revive count needs a reviving mode's rules, which also reshape the systems strip: stage those last
   return [...out.filter(s=>!s[4].includes('revive')),...out.filter(s=>s[4].includes('revive'))];
 }
@@ -84,7 +101,9 @@ async function noticePrep(alerts){
   const names=Object.values(TANK_SPECS).map(s=>s.name).filter(Boolean).sort((a,b)=>b.length-a.length);
   const mods=['engine','ammoRack','gun','turret','fuelTank','transmission','radio','trackL','turretRing','gunBreech','driver','commander','gunner','loader','optics','fireControl'];
   const labels=mods.map(m=>[m,reg.moduleAlertLabel(m)]).sort((a,b)=>b[1].length-a[1].length);
-  const medals=MEDALS.map(m=>[m.id,t(`service.medal.${m.id}.name`)]).sort((a,b)=>b[1].length-a[1].length);
+  // the tallest card: the longest name, then the longest description
+  const medals=MEDALS.map(m=>[m.id,t(`service.medal.${m.id}.name`),t(`service.medal.${m.id}.desc`)])
+    .sort((a,b)=>(b[1].length*3+b[2].length)-(a[1].length*3+a[2].length));
   window.__NOTICE={alerts,longSpec:names[0],longModule:labels[0][0],medal:medals[0][0],reviveRules:rules.matchRulesetFor('capture_the_flag'),
     restingAim:{...f.frame.aim},restingTime:f.frame.timeS};
   window.__stretchTimers=true;
@@ -120,15 +139,16 @@ async function noticeMasks(){
   let count=0;for(let i=0;i<n;i++)count+=union[i];
   return Math.round(count/(W/cssW)**2);
 }
-function noticeStage([state,kills,rosters,set,sight]){
+function noticeStage([state,kills,rosters,set,sight,tab]){
   const f=window.__HUD_LAYOUT,N=window.__NOTICE;
+  document.querySelector('.cot-hud').classList.remove('rosters-expanded');
   f.bus.emit('battle:presented');
   f.frame.mode='battle';
   f.state(state);
   f.frame.mode='battle';
   if(rosters){f.roster(rosters,rosters);}
   if(kills!==null)for(const lane of document.querySelectorAll('.cot-kill-lane'))while(lane.children.length>kills)lane.lastElementChild.remove();
-  for(const part of set.split('+')){
+  for(const part of set?set.split('+'):[]){
     if(part==='det'){f.bus.emit('player:spotted',{timeS:f.frame.timeS-4});f.hud.update(f.frame);}
     else if(part.startsWith('alert:')){
       const [,ev,payload]=N.alerts.find(a=>a[0]===part.slice(6));let p=payload;
@@ -148,6 +168,8 @@ function noticeStage([state,kills,rosters,set,sight]){
       f.bus.emit('tank:destroyed',{id:f.frame.player.id,killerId:f.tanks[8].id,cause:'fire'});f.hud.update(f.frame);}
   }
   if(sight==='scope'){f.frame.mode='sniper';f.hud.setMode('sniper');f.hud.update(f.frame);}
+  // Tab (hud.ts): the rosters widen and take 30 px rows while it is held
+  if(tab)document.querySelector('.cot-hud').classList.add('rosters-expanded');
   window.dispatchEvent(new Event('cot-hud-relayout'));
 }
 function noticeMeasure(){
@@ -173,7 +195,11 @@ function noticeMeasure(){
   };
   const els={d:document.querySelector('.cot-sixth.on'),a:document.querySelector('.cot-alert.show'),c:document.querySelector('.cot-prebattle.on'),
     m:document.querySelector('.cot-medal-toasts[data-placement="ready"] .cot-medal-toast'),r:document.querySelector('.cot-revive.on')};
-  const out={tiers:document.body.dataset.hudNoticeTiers||'',notices:{},failures:[]};
+  const out={tiers:document.body.dataset.hudNoticeTiers??null,notices:{},failures:[],lanes:{}};
+  for(const side of ['l','r']){
+    const lane=document.querySelector(`.cot-kill-lane.${side}`);
+    if(lane)out.lanes[side]={staged:lane.children.length,shown:[...lane.children].filter(c=>!c.hidden&&c.getClientRects().length).length};
+  }
   const OTHERS=['.cot-ear.l','.cot-ear.r','.cot-top','.cot-mode-status.show','.cot-kill-lane.l','.cot-kill-lane.r','.cot-net','.cot-drive','.cot-dp',
     '.cot-minimap','.cot-si-toasthost','.cot-si-cardhost:not(:empty)','.cot-room-chat:not([hidden])','.cot-spec.show','.cot-shell','.cot-con',
     '.cot-vehicle-controls','.cot-mp-status.battle'];
@@ -293,38 +319,61 @@ try {
         if(recordMain){
           const rec=mainRecord[name]??={};const pick={};
           for(const [k,n] of Object.entries(got.notices))if(n.union||n.battle||n.rest)pick[k]=[n.union,n.battle,n.rest];
-          if(Object.keys(pick).length)rec[key]=pick;
+          // main's alert type size and the kill rows each lane shows
+          if(got.notices.a)pick._f=got.notices.a.font;
+          pick._l=[got.lanes.l?.shown??-1,got.lanes.r?.shown??-1];
+          rec[key]=pick;
           continue;
         }
         const failures=[];
+        const mainStage=pinned?.[key];
+        if(got.tiers===null)failures.push('the mouse layout carries no notice plan (body[data-hud-notice-tiers])');
         for(const [k,shown] of Object.entries(want))if(shown&&!got.notices[k])failures.push(`${k} was staged but is not shown`);
-        const tier=k=>{const m=got.tiers.match(new RegExp(`${k}(\\d|-)`));return m&&m[1]!=='-'?Number(m[1]):-1;};
+        // the keep-out each element's plan clears ('2' unless the plan says less), and whether it shares a notice's place
+        const tier=k=>{const m=(got.tiers??'').match(new RegExp(`${k}(\\d|-)(s?)`));return m?(m[1]==='-'?-1:Number(m[1])):2;};
+        const shares=k=>new RegExp(`${k}\\ds`).test(got.tiers??'');
+        // the medal card waits only on a notice whose place it shares, or where its plan has no place at all
+        if(set.includes('medal')&&!got.notices.m&&tier('m')>=0){
+          const waits=shares('m')&&(got.notices.d||got.notices.a);
+          if(!waits)failures.push('the medal card has a place but is not shown');
+        }
         for(const [k,n] of Object.entries(got.notices)){
           const what={d:'detection',a:'alert',c:'countdown',m:'medal',r:'revive count'}[k];
-          const t=tier(k),main=pinned?.[key]?.[k]??[0,0,0];
+          const t=tier(k),main=mainStage?.[k]??[0,0,0];
           const own=t===2?n.union:t===1?n.battle:t===0?n.rest:0;
           if(t>=0&&own>0)failures.push(`the ${what} covers ${own} px of reticle ink its plan clears (tier ${t}; ${n.box.join(',')})`);
           if(n.union>main[0]||n.rest>main[2])failures.push(`the ${what} covers more reticle ink than main (${n.union}/${n.rest} px; main ${main[0]}/${main[2]})`);
           if(k==='m'&&t<0)failures.push('the medal card is shown where its plan has no place');
-          // The pre-battle count takes its own cheapest place (no notice shares it in a real battle); the revive count
-          // keeps off the notices unless its plan found no such place (tiers 'r<n>s').
-          const sharing=hit=>(k==='c'&&hit==='notice d')||(k==='d'&&hit==='notice c')||
-            (/r\ds/.test(got.tiers)&&((k==='r'&&/^notice [da]$/.test(hit))||((k==='d'||k==='a')&&hit==='notice r')));
+          // only an element its plan marks as sharing a notice's place (tier 's') may meet that notice
+          const sharing=hit=>{const m=hit.match(/^notice ([dacmr])$/);if(!m)return false;
+            const [x,y]=[k,m[1]],notice=v=>v==='d'||v==='a';
+            return (notice(y)&&shares(x))||(notice(x)&&shares(y));};
           for(const hit of n.hits)if(!sharing(hit))failures.push(`the ${what} overlaps ${hit}`);
           if(n.clip>.75)failures.push(`the ${what}'s text runs ${n.clip} px outside its frame`);
-          if(k==='a'&&(n.font<9||(n.clamp&&n.clamp!=='none')))failures.push(`the alert is clamped or under 9 px (${n.font} px, clamp ${n.clamp})`);
+          if(k==='a'){
+            const mainFont=mainStage?._f??(height<=550||width<=480?9:12);
+            if(n.font<mainFont||n.font<9||(n.clamp&&n.clamp!=='none'))failures.push(`the alert is clamped or smaller than main's type (${n.font} px, main ${mainFont}; clamp ${n.clamp})`);
+          }
           if(k==='d'&&n.sub!==(height>550))failures.push(`the detection's second line is ${n.sub?'shown':'hidden'} at ${height} px tall (main: ${height>550?'shown':'hidden'})`);
           noticeTable.push({name,key,k,box:n.box,union:n.union,rest:n.rest,main:main[0],tier:t});
         }
-        // a kill burst moves nothing: the same set and sight in k0, k3 and the burst share every box
+        // the lanes: every row main shows while nothing is up; at least one while anything is
+        for(const [i,side] of [[0,'l'],[1,'r']]){
+          const lane=got.lanes[side];
+          if(!lane||!lane.staged)continue;
+          const mainRows=mainStage?._l?.[i]??-1;
+          if(!set&&lane.shown<mainRows)failures.push(`the ${side==='l'?'left':'right'} lane shows ${lane.shown} kill rows with nothing up (main ${mainRows})`);
+          if(set&&lane.shown<1&&(mainRows<0||mainRows>0))failures.push(`the ${side==='l'?'left':'right'} lane shows no kill row while ${set} is up`);
+        }
+        // a kill burst and Tab move nothing: the same set and sight in k0, k3, the burst and Tab share every box
         const [ctx,,sight]=key.split('|');
-        if(['k0','k3','burst'].includes(ctx)){
+        if(['k0','k3','burst','tab'].includes(ctx)&&set){
           const sig=`${set}|${sight}`,boxes=JSON.stringify(Object.fromEntries(Object.entries(got.notices).map(([k,n])=>[k,n.box])));
           const before=seen.get(sig);
           if(before&&before.boxes!==boxes)failures.push(`a notice moved between ${before.ctx} and ${ctx}: ${before.boxes} -> ${boxes}`);
           if(!before)seen.set(sig,{ctx,boxes});
         }
-        reports.push({name,...page.viewportSize(),touch,locale,state:`notices-${key}`,failures,rects:[],notices:got.notices,tiers:got.tiers});
+        reports.push({name,...page.viewportSize(),touch,locale,state:`notices-${key}`,failures,rects:[],notices:got.notices,tiers:got.tiers,lanes:got.lanes});
         if(failures.length){console.log(`${name}/notices ${key}: ${failures.join('; ')}`);await page.screenshot({path:resolve(out,`${name}-notices-${key.replaceAll('|','-').replaceAll(':','_')}.png`)});}
       }
       await page.evaluate(()=>{window.__stretchTimers=false;window.__HUD_LAYOUT.bus.emit('battle:presented');window.__HUD_LAYOUT.state('idle');});
@@ -626,7 +675,7 @@ try {
   await browser.close();
   await writeFile(resolve(out,'report.json'),JSON.stringify({reports,errors},null,2));
   if(recordMain)await writeFile(resolve(recordMain),JSON.stringify({label:arg('main-label','main'),
-    note:'Main\'s reticle ink under each centre notice per mouse case and stage: [union of both sights at rest and full bloom with readouts, battle sight, resting battle sight] px; stages with none are omitted.',
+    note:'Main\'s reticle ink under each centre notice per mouse case and stage: [union of both sights at rest and full bloom with readouts, battle sight, resting battle sight] px (notices on none are omitted); _f its alert type size in px; _l the kill rows its left and right lanes show (-1: no lane).',
     cases:mainRecord})+'\n');
 }
 if(!recordMain&&noticeTable.length){

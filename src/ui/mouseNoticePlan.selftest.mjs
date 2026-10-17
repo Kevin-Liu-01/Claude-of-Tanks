@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  alertReserve, detectionHeight, MOUSE_NOTICE_GAP_PX, MOUSE_RETICLE, MOUSE_RETICLE_MARGIN_PX, mouseReticleFootprint, planMouseNotices,
+  alertReserve, detectionHeight, MOUSE_NOTICE_GAP_PX, MOUSE_RETICLE, MOUSE_RETICLE_MARGIN_PX, mouseNoticePlanWork, mouseReticleFootprint,
+  planMouseNotices,
 } from './mouseNoticePlan.ts';
+import { battleRosterHeight } from './battleHudLayout.ts';
 
 // The mouse census viewports (desk-notices round, 2026-10-16): the fixed HUD boxes the rendered fixture
 // (tools/fixtures/battle-hud-layout.html, mars objective, 7 v 7) measured on integ/226, [x, y, w, h]; lanes are
@@ -29,11 +31,15 @@ const VIEWPORTS = [
   { vp: [844, 390], score: [259, 0, 326, 62], obj: [292, 62, 260, 41], map: [703, 249, 125, 125], dp: [12, 217, 160, 45], drive: [184, 154, 108, 108], sys: [12, 286, 382, 32], ammo: [12, 326, 325, 52], card: [528, 115, 300, 122], net: [707, 8, 127, 28], lanes: [111, 146, 111, 107], cd: [240, 136] },
 ];
 const box = ([x, y, w, h]) => ({ x, y, w, h });
-/** The planner's input as battleHudLayout.ts assembles it from those boxes. */
-function inputFor(v, { objective = true } = {}) {
+/** The planner's input as battleHudLayout.ts assembles it from those boxes (each roster down to its Tab height). */
+function inputFor(v, { objective = true, rosters = 7 } = {}) {
   const [width, height] = v.vp;
   const top = objective ? v.obj[1] + v.obj[3] : v.score[1] + v.score[3];
-  const obstacles = [v.score, ...(objective ? [v.obj] : []), v.earL, v.earR, v.map, v.dp, v.drive, v.sys, v.ammo, v.card, v.net].filter(Boolean).map(box);
+  const wide = (ear, available) => ear && [ear[0], ear[1], ear[2], Math.max(ear[3], battleRosterHeight(height, available, 48, rosters, true))];
+  const earL = wide(v.earL, v.lanes[1] - (v.earL?.[1] ?? 0));
+  const earR = wide(v.earR, Math.min(v.map[1] - 12, height - 92) - (v.earR?.[1] ?? 0));
+  if (earR) earR[3] = Math.min(earR[3], Math.max(v.earR[3], v.card[1] - v.earR[1] - 32));
+  const obstacles = [v.score, ...(objective ? [v.obj] : []), earL, earR, v.map, v.dp, v.drive, v.sys, v.ammo, v.card, v.net].filter(Boolean).map(box);
   obstacles.push({ x: v.dp[0], y: v.dp[1] - 36, w: v.dp[2], h: 36 });
   const side = Math.min(400, width / 2 - 24);
   const lane = (x, from, to) => to - from >= 26 ? { x, w: side, top: from, bottom: to } : null;
@@ -62,7 +68,7 @@ function intrusion(r, keep) {
   }
   return worst;
 }
-const alertBox = (a) => ({ x: a.anchor === 'centre' ? a.x - a.w / 2 : a.anchor === 'start' ? a.x : a.x - a.w, y: a.y, w: a.w, h: a.h });
+const alertBox = (a) => ({ x: a.anchor === 'centre' ? a.x - a.w / 2 : a.anchor === 'start' ? a.x : a.x - a.w, y: a.y, w: a.w, h: a.h, giveWay: a.giveWay });
 
 // 1. The footprint restates hud.ts and aerialHud.css; a change there fails here until MOUSE_RETICLE follows.
 const hud = readFileSync(new URL('./hud.ts', import.meta.url), 'utf8');
@@ -121,54 +127,98 @@ for (const [w, h] of [[340, 28], [200, 29.6], [159, 40.4]]) assert.ok(alertReser
 for (const [w, h] of [[248, 48], [230, 48], [214, 52.6], [164, 52.6]]) assert.ok(detectionHeight(w, false) >= h && detectionHeight(w, false) <= h + 1);
 assert.equal(detectionHeight(248, true), 32);
 
-// 4. Every viewport, with and without the objective: the notices clear everything the reticle draws, every fixed
-//    instrument, the lanes as the plan leaves them and each other; nothing leaves the screen; the alert keeps 12 px
-//    type where main's is 12 px, the detection its second line where main shows it.
-const t0 = performance.now();
-let plans = 0;
+// 4. Every viewport, with and without the objective: the detection and the alert clear everything the reticle draws
+//    (main's own type size, the detection's second line wherever main shows it); the countdown, the revive count and
+//    the medal card each have a place (none falls back to the CSS defaults) clear of the keep-out its tier names, off
+//    both notices' places (sharing one only where SHARED lists it); nothing leaves the screen or touches an instrument;
+//    a lane an element crosses keeps a row while it shows (and while the detection and the alert show together), and
+//    keeps all its rows while nothing shows (the plan holds no lane change outside `giveWay`).
+const SHARED = { '844x390': ['countdown', 'revive', 'medal'] };
+const TIER_FLOOR = { countdown: 2, revive: 1, medal: 1 };
+const LOW_TIER = { '844x390': { revive: 1, medal: 1 }, '540x720': { revive: 1 } };
+let plans = 0, slowest = 0, ms = 0, work = 0, mostWork = 0;
 for (const v of VIEWPORTS) {
   for (const objective of [true, false]) {
     const input = inputFor(v, { objective });
+    const t1 = performance.now();
     const plan = planMouseNotices(input);
+    const spent = performance.now() - t1;
+    ms += spent;
+    slowest = Math.max(slowest, spent);
+    work += mouseNoticePlanWork.bands;
+    mostWork = Math.max(mostWork, mouseNoticePlanWork.bands);
     plans++;
-    const name = `${v.vp.join('x')}${objective ? '' : ' (standard)'}`;
-    assert.equal(plan.clearance, 2, `${name}: a place clears the whole reticle`);
+    const vp = v.vp.join('x'), name = `${vp}${objective ? '' : ' (standard)'}`;
+    assert.equal(plan.clearance, 2, `${name}: the notices clear the whole reticle`);
+    assert.ok(!('laneTop' in plan), 'no lane moves while nothing shows');
     const keep = mouseReticleFootprint(input.width, input.height);
     const det = plan.detection, alert = alertBox(plan.alert);
     assert.equal(det.h, detectionHeight(det.w, input.compactDetection));
     assert.ok(det.w >= 164 && det.w <= 248, `${name}: the detection is between 164 and 248 wide`);
-    assert.equal(plan.alert.small, input.smallAlert || plan.alert.small, `${name}: 9 px only where it must`);
-    const boxes = [['detection', det], ['alert', alert]];
-    if (plan.medal) boxes.push(['medal', plan.medal]);
-    if (plan.countdown) boxes.push(['countdown', plan.countdown]);
-    if (plan.revive) boxes.push(['revive', plan.revive]);
-    for (const [label, r] of boxes) {
-      const tier = r.clearance ?? 2;
-      if (label !== 'revive') assert.equal(tier, 2, `${name}: the ${label} clears the whole reticle`);
+    assert.equal(plan.alert.small, input.smallAlert, `${name}: the alert keeps main's type size`);
+    assert.ok(plan.alert.h >= alertReserve(plan.alert.w, plan.alert.small), `${name}: the alert's slot holds every alert`);
+    for (const label of ['countdown', 'revive', 'medal']) assert.ok(plan[label], `${name}: the ${label} has a place`);
+    const boxes = [['detection', det, 2], ['alert', alert, 2], ['countdown', plan.countdown], ['revive', plan.revive], ['medal', plan.medal]];
+    for (const [label, r, fixedTier] of boxes) {
+      const tier = fixedTier ?? r.clearance;
+      const floor = LOW_TIER[vp]?.[label] !== undefined ? Math.min(LOW_TIER[vp][label], TIER_FLOOR[label] ?? 2) : (TIER_FLOOR[label] ?? 2);
+      assert.ok(tier >= (fixedTier ? 2 : objective ? floor : Math.min(floor, 1)), `${name}: the ${label} clears tier ${tier}`);
       assert.ok(intrusion(r, tier === 2 ? keep : mouseReticleFootprint(input.width, input.height, tier)) <= 0,
         `${name}: the ${label} keeps ${MOUSE_RETICLE_MARGIN_PX} px off the reticle (tier ${tier})`);
       assert.ok(r.x >= 11.5 && r.y >= 0 && r.x + r.w <= input.width - 11.5 && r.y + r.h <= input.height - 11.5, `${name}: the ${label} stays on screen`);
       for (const o of input.obstacles) assert.ok(!overlap(r, o, MOUSE_NOTICE_GAP_PX - .01), `${name}: the ${label} keeps ${MOUSE_NOTICE_GAP_PX} px off ${JSON.stringify(o)}`);
+      if (!fixedTier) {
+        const shares = overlap(r, det, MOUSE_NOTICE_GAP_PX - .01) || overlap(r, alert, MOUSE_NOTICE_GAP_PX - .01);
+        assert.equal(r.sharesNotices, shares, `${name}: the ${label} reports whether it shares a notice's place`);
+        // the medal card may wait out a 2.4 s alert in the alert's place, never the 8 s detection
+        const sharesDet = overlap(r, det, MOUSE_NOTICE_GAP_PX - .01);
+        if (label === 'medal' ? sharesDet : shares) assert.ok(SHARED[vp]?.includes(label), `${name}: the ${label} shares a notice's place`);
+      }
+      // the lanes' bands while it shows: off the box, each keeping a row
+      for (let side = 0; side < 2; side++) {
+        const lane = input.lanes[side];
+        const [t, b] = [r.giveWay[side * 2], r.giveWay[side * 2 + 1]];
+        if (!lane) { assert.ok(Number.isNaN(t) && Number.isNaN(b)); continue; }
+        const top = Number.isNaN(t) ? lane.top : t, bottom = Number.isNaN(b) ? lane.bottom : b;
+        assert.ok(top >= lane.top && bottom <= lane.bottom, `${name}: the ${label}'s band lies in the lane`);
+        assert.ok(bottom - top >= 26, `${name}: a lane keeps a row while the ${label} shows`);
+        assert.ok(!overlap(r, { x: lane.x, y: top, w: lane.w, h: bottom - top }, MOUSE_NOTICE_GAP_PX - .01), `${name}: the ${label} keeps off the ${side ? 'right' : 'left'} lane`);
+      }
     }
     assert.ok(!overlap(det, alert, MOUSE_NOTICE_GAP_PX - .01), `${name}: the detection and the alert stand apart`);
-    // the lanes start below every notice crossing their column, and none is emptied
     for (let side = 0; side < 2; side++) {
       const lane = input.lanes[side];
-      if (!lane) { assert.ok(Number.isNaN(plan.laneTop[side])); continue; }
-      const laneTop = plan.laneTop[side];
-      assert.ok(laneTop >= lane.top);
-      const moved = { x: lane.x, y: laneTop, w: lane.w, h: lane.bottom - laneTop };
-      if (laneTop > lane.top) assert.ok(lane.bottom - laneTop >= 26, `${name}: a moved lane keeps a row`);
+      if (!lane) continue;
+      const pick = (v2, fallback, f) => Number.isNaN(v2) ? fallback : v2;
+      const top = Math.max(pick(det.giveWay[side * 2], lane.top), pick(plan.alert.giveWay[side * 2], lane.top));
+      const bottom = Math.min(pick(det.giveWay[side * 2 + 1], lane.bottom), pick(plan.alert.giveWay[side * 2 + 1], lane.bottom));
+      assert.ok(bottom - top >= 26, `${name}: the ${side ? 'right' : 'left'} lane keeps a row while both notices show`);
+    }
+    // Tab: a held roster widens up to the nearest element beside it, never narrower than it is
+    for (const [ear, side] of [[v.earL, 0], [v.earR, 1]]) {
+      if (!ear) continue;
+      const wideBottom = input.obstacles.find((o) => o.x === ear[0] && o.y === ear[1]).y + input.obstacles.find((o) => o.x === ear[0] && o.y === ear[1]).h;
       for (const [label, r] of boxes) {
-        assert.ok(!overlap(r, moved, MOUSE_NOTICE_GAP_PX - .01), `${name}: the ${label} keeps off the ${side ? 'right' : 'left'} lane`);
+        if (!(r.y < wideBottom + 8 && r.y + r.h > ear[1] - 8)) continue;
+        const room = side ? ear[0] + ear[2] - (r.x + r.w) - 8 : r.x - 8 - ear[0];
+        assert.ok(room >= ear[2], `${name}: the held ${side ? 'right' : 'left'} roster keeps its width beside the ${label}`);
       }
     }
     // determinism: the same inputs give the same plan
     assert.deepEqual(planMouseNotices(input), plan, `${name}: the plan is a function of its inputs`);
   }
 }
-const ms = performance.now() - t0;
-assert.ok(ms / plans < 100, `planning stays cheap (${(ms / plans).toFixed(1)} ms a viewport)`);
+// Planning runs once per viewport and HUD arrangement (battleHudLayout.ts caches the last few, and waits for a resize to
+// settle). Its work is counted in bands (each a sorted, merged scan of the fixed boxes), so the bound holds on any machine.
+assert.ok(work / plans < 2000 && mostWork < 4500, `planning stays cheap (${Math.round(work / plans)} bands a plan, ${mostWork} at most)`);
+
+// 4b. Larger rosters (14 and 20 a side widen the icon grids) keep every guarantee that matters most.
+for (const v of VIEWPORTS.filter((x) => x.earL)) for (const rosters of [14, 20]) {
+  const input = inputFor(v, { rosters });
+  const plan = planMouseNotices(input);
+  assert.equal(plan.clearance, 2, `${v.vp.join('x')} r${rosters}: the notices clear the reticle`);
+  assert.equal(plan.alert.small, input.smallAlert, `${v.vp.join('x')} r${rosters}: main's type size`);
+}
 
 // 5. Main's placements where they were fine: a centred stack under the score from 1280 x 800 up, the detection at
 //    main's own top; the flank beside the scope's centre-line arm where only one notice fits above it.
@@ -192,12 +242,17 @@ for (const [w, h] of [[1024, 600], [1000, 600], [1024, 768], [1152, 648], [1280,
 // 6. The layout owner calls the plan on the mouse path only, and every rule it drives is keyed to the mouse layout.
 const layout = readFileSync(new URL('./battleHudLayout.ts', import.meta.url), 'utf8');
 const css = readFileSync(new URL('./battleHudLayout.css', import.meta.url), 'utf8');
-assert.match(layout, /const plan = touch \? null : mouseNoticePlan\(/, 'touch never plans');
+assert.match(layout, /let plan: MouseNoticePlan \| null = null;\s+if \(!touch\) \{[^}]*?\n[\s\S]*?plan = mouseNoticePlan\(/, 'touch never plans');
+assert.equal(layout.match(/= mouseNoticePlan\(/g)?.length, 1, 'one call site');
 assert.match(layout, /document\.body\.toggleAttribute\('data-hud-notices', !touch\)/);
 for (const rule of css.split('\n').filter((line) => line.includes('[data-hud-notices]'))) {
   assert.match(rule, /\[data-hud-notices\](\[data-hud-alert-type='small'\])?:not\(\.cot-touch-layout\)/, `mouse-only rule: ${rule.slice(0, 80)}`);
 }
 assert.doesNotMatch(css, /:not\(\.cot-touch-layout\):is\(\[data-cot-width='phone'\],\[data-cot-width='compact'\]\) :is\(\.cot-sixth,\.cot-alert\)/,
   'the old side column next to the aim point is gone');
+// the lanes yield only to what is shown, and the held rosters stop short of it
+assert.match(layout, /const shown = \[read\('\.cot-sixth\.on'\) && plan\.detection, read\('\.cot-alert\.show'\) && plan\.alert, countdown && plan\.countdown,\s+read\('\.cot-revive\.on'\) && plan\.revive, medalReady && plan\.medal\];/);
+assert.match(css, /\.rosters-expanded \.cot-ear\.l\{width:min\(320px,calc\(50vw - 184px\),var\(--hud-roster-wide-left,320px\)\)\}/);
+assert.doesNotMatch(css, /data-hud-alert-type/, 'the alert never drops below main\'s type size');
 
-console.log(`mouseNoticePlan.selftest: ${plans} mouse plans clear the reticle, the instruments and the lanes (${(ms / plans).toFixed(1)} ms a plan)`);
+console.log(`mouseNoticePlan.selftest: ${plans} mouse plans clear the reticle, the instruments and the lanes (${Math.round(work / plans)} bands, ${(ms / plans).toFixed(1)} ms a plan; slowest ${slowest.toFixed(1)} ms)`);

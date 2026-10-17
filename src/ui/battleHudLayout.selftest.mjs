@@ -63,7 +63,7 @@ for (const bottom of [120,240,480,800]) for (const ceiling of [80,180,400]) for 
 // Observer lifecycle in a deterministic DOM: no-op attribute records must not
 // turn layout into a per-frame job, but real state/viewport changes still do.
 const originals = new Map(['document','window','ResizeObserver','MutationObserver',
-  'requestAnimationFrame','getComputedStyle'].map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
+  'requestAnimationFrame','getComputedStyle','setTimeout','clearTimeout'].map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
 try {
   const frames=new Map(); let nextFrame=1; let measures=0; let writes=0;
   const callbacks={}; const watched=[]; const listeners=new Map();
@@ -89,6 +89,9 @@ try {
     addEventListener:(type,fn)=>listeners.set(type,fn)};
   globalThis.getComputedStyle=()=>({visibility:'visible'});
   globalThis.requestAnimationFrame=fn=>{const id=nextFrame++;frames.set(id,fn);return id;};
+  const timers=new Map(); let nextTimer=1;
+  globalThis.setTimeout=fn=>{const id=nextTimer++;timers.set(id,fn);return id;};
+  globalThis.clearTimeout=id=>{timers.delete(id);};
   globalThis.ResizeObserver=class{constructor(fn){callbacks.resize=fn;}observe(){}};
   globalThis.MutationObserver=class{constructor(fn){callbacks.mutation=fn;}observe(target,options){watched.push({target,options});}};
   const flush=()=>{const work=[...frames.values()];frames.clear();for(const fn of work)fn();};
@@ -220,6 +223,11 @@ try {
   }
   map.getBoundingClientRect=()=>rect(8,100,8,100);callbacks.resize();flush();
   assert.equal(properties.get('--hud-flight-right-clearance'),'12px','a top-left mobile map releases the lower rack lane');
+  // The sizes above arrived in one rapid run: the mouse notice plan (mouseNoticePlan.ts) waited for it to settle, on one
+  // timer, and the settled window relayouts once.
+  assert.equal(timers.size,1,'a resize in progress leaves the notice plan to one settle timer');
+  for(const fn of [...timers.values()])fn();timers.clear();
+  assert.equal(frames.size,1,'the settled resize relayouts once');flush();
 } finally {
   for(const [key,descriptor] of originals){
     if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];
