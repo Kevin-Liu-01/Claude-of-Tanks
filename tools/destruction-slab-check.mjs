@@ -609,7 +609,7 @@ export function renderPng(file, layers, { eye, target, fov = 50, width = 1280, h
 /** The check, as a function: the report (pass, per-building rows with their snapshots and findings). */
 export async function runSlabCheck({
   mapId = 'verdant', ids = null, builders = null, perBuilder = 1, rounds = 40, roundGapS = 0.45, settleS = 10,
-  sections = true, fracture = true, renderDir = null, maxSnapshots = 40, storeys = [0], log = () => {},
+  sections = true, fracture = true, renderDir = null, maxSnapshots = 40, storeys = [0], log = () => {}, rejoin = false,
 } = {}) {
   installWorldBuildFixture();
   const [maps, terrain, vegetation, props, models, fleet] = await Promise.all([
@@ -620,6 +620,7 @@ export async function runSlabCheck({
   const { createStructureStages } = await import('../src/fx/structureStages.ts');
   const rubbleMod = await import('../src/fx/rubbleBodies.ts').catch(() => null);
   const fractureMod = fracture ? await import('../src/fx/fractureStages.ts').catch(() => null) : null;
+  const mirrorMod = rejoin ? await import('../src/mp/presentation/destructionMirror.ts') : null;
   const { createStudioDestruction } = await import('../src/game/studioDestruction.ts');
   const { matchRulesetFor } = await import('../src/sim/matchRuleset.ts');
   const { DESTRUCTION_BUS_EVENTS } = await import('../src/sim/destructionEvents.ts');
@@ -667,6 +668,7 @@ export async function runSlabCheck({
     picks.push(...[...byBuilder.values()].flat());
   }
   log(`buildings: ${picks.map((id) => `#${id} ${built.structureDamage.get(id).builder}`).join(', ')}`);
+  log(`census: ${[...built.structureDamage].map(([sid, d]) => `#${sid} ${d.builder}/${d.anatomy.kit ?? '-'}/${d.anatomy.storeys?.length ?? 0}st${shellRecord.has(sid) ? '' : '/noshell'}`).join(', ')}`);
   const solids = [];
   for (const r of built.colliders) if (r.structureIdx !== undefined) solids.push(r);
   for (const r of built.obstacles) if (r.structureIdx === undefined && !shellPassesThroughCollisionRecord(r)) solids.push(r);
@@ -685,19 +687,31 @@ export async function runSlabCheck({
     // the intact plan, from the spans as drawn before the first round
     const intactLists = drawnSpanTriangles(seam.spans);
     const footprint = footprintOf(intactLists);
-    const mask = createStructureMask(4096, { holes: true });
     const env = { groundAt: (x, z) => ground(x, z), queryStatic: query, isSolid: (r) => !r.crushed && !r.dead };
-    const bodies = rubbleMod ? rubbleMod.createRubbleBodies({ now: () => clock, environment: () => env, capacity: rubbleMod.RUBBLE_BODY_CAPACITY,
-      materialFor: (bucket) => worldMaterials.get(bucket) ?? null }) : null;
-    const debris = debrisMod.createStructureDebris({ now: () => clock, groundY: ground, baseGroundY: ground0, poolCapacity: 256, pieceCap: 1024, bodies });
-    const fxGroup = new THREE.Group();
-    const fx = fractureMod ? fractureMod.createFractureStages({ group: fxGroup, now: () => clock, environment: () => env, groundAt: ground,
-      materialFor: (bucket) => worldMaterials.get(bucket) ?? null }) : null;
-    const stages = createStructureStages({ mask, debris, now: () => clock, materialFor: (bucket) => worldMaterials.get(bucket) ?? null,
-      scars: null, crumble: 1, ...(fx ? { fracture: fx.attach } : {}) });
+    // the presentation as effects.ts wires it (fresh for the live run and for each rejoin)
+    const present = () => {
+      const mask = createStructureMask(4096, { holes: true });
+      const bodies = rubbleMod ? rubbleMod.createRubbleBodies({ now: () => clock, environment: () => env, capacity: rubbleMod.RUBBLE_BODY_CAPACITY,
+        materialFor: (bucket) => worldMaterials.get(bucket) ?? null }) : null;
+      const debris = debrisMod.createStructureDebris({ now: () => clock, groundY: ground, baseGroundY: ground0, poolCapacity: 256, pieceCap: 1024, bodies });
+      const fxGroup = new THREE.Group();
+      const fx = fractureMod ? fractureMod.createFractureStages({ group: fxGroup, now: () => clock, environment: () => env, groundAt: ground,
+        materialFor: (bucket) => worldMaterials.get(bucket) ?? null }) : null;
+      const stages = createStructureStages({ mask, debris, now: () => clock, materialFor: (bucket) => worldMaterials.get(bucket) ?? null,
+        scars: null, crumble: 1, ...(fx ? { fracture: fx.attach } : {}) });
+      return { mask, bodies, debris, fxGroup, fx, stages };
+    };
+    const { bodies, debris, fxGroup, fx, stages } = present();
     const events = [];
+    // every event the live bus carried (any structure), with the log's length when it came: a rejoin's cuts
+    const timeline = [];
+    let stageNow = 'intact';
     let collapsed = false;
     const bus = { emit(type, e) {
+      if (rejoin && (type === DESTRUCTION_BUS_EVENTS.stage || type === DESTRUCTION_BUS_EVENTS.breach)) {
+        timeline.push({ t: clock, type, e: { ...e }, logLen: sd.match.log.length });
+      }
+      if (type === DESTRUCTION_BUS_EVENTS.stage && e?.structureId === id) stageNow = e.stage;
       if (e?.structureId === id) events.push({ t: +clock.toFixed(3), type, stage: e.stage ?? null, hole: e.hole ?? null, storeyDown: !!e.storeyDown,
         y: e.y !== undefined ? +(+e.y).toFixed(2) : null });
       if (type === DESTRUCTION_BUS_EVENTS.stage && e.stage === 'collapsed') {
@@ -725,6 +739,28 @@ export async function runSlabCheck({
     const record = shellRecord.get(id);
     // the building's own drawn meshes: the fx group's for this structure, its stage runs, the rubble bodies
     const own = new RegExp(`-${id}(-|$)`);
+    const own2 = own;
+    // a run with no structure in its name (a stage's rim, room, remnant, rubble; a rubble body) belongs to the structure
+    // whose footprint it stands nearest (a neighbour the blasts bring down lays its own pile beside this one)
+    const footDist = (st, x, z) => {
+      const fx = Math.sin(st.yaw), fz = Math.cos(st.yaw), dx = x - st.cx, dz = z - st.cz;
+      const lz = dx * fx + dz * fz, lx = dx * fz - dz * fx;
+      return Math.hypot(Math.max(0, Math.abs(lx) - st.hw), Math.max(0, Math.abs(lz) - st.hd));
+    };
+    const mine = (m) => {
+      if (/^fx-(fracture|collapse|landmark)/.test(m.name) && own.test(m.name)) return true;
+      let sx = 0, sz = 0;
+      const n = m.tris.length / 3;
+      for (let o = 0; o < m.tris.length; o += 3) { sx += m.tris[o]; sz += m.tris[o + 2]; }
+      const x = sx / n, z = sz / n;
+      const self = table.byId(id);
+      const dSelf = self ? footDist(self, x, z) : 0;
+      if (dSelf <= 0) return true;
+      for (const st of table.structures) if (st.id !== id && footDist(st, x, z) < dSelf - 0.25) { m.ownerGuess = st.id; return false; }
+      return true;
+    };
+    const ownMeshes = (list) => { const keep = list.filter(mine); neighbourMeshes += list.length - keep.length; return keep; };
+    let neighbourMeshes = 0;
     const accept = (m) => (m.parent === fxGroup ? own.test(m.name) || /^fx-collapse-(?!baked)/.test(m.name) : true);
     const supportAt = (x, z, y) => query(x - 0.3, z - 0.3, x + 0.3, z + 0.3, queryOut)
       .some((rr) => !rr.crushed && !rr.dead && rr.max[1] >= y - SLAB.supportBandM && rr.min[1] <= y + 0.05
@@ -757,9 +793,9 @@ export async function runSlabCheck({
     void groundTris;
     // before the first round: the building as it stands (its spans), judged as a control
     {
-      const meshes = drawnMeshes([debris.group, fxGroup, bodies?.group], accept);
+      const meshes = ownMeshes(drawnMeshes([debris.group, fxGroup, bodies?.group], accept));
       const judged = judgeSlabs(meshes, { footprint, groundAt: ground, supportAt });
-      snapshots.push({ t: 0, label: 'intact', meshes: meshes.length, pieces: judged.pieces, findings: judged.findings.map(strip),
+      snapshots.push({ t: 0, label: 'intact', stage: 'intact', meshes: meshes.length, pieces: judged.pieces, findings: judged.findings.map(strip),
         render: shoot('intact', meshes, judged.findings, true) });
     }
     const spanIssues = spanTroubles(seam.spans);
@@ -792,23 +828,102 @@ export async function runSlabCheck({
       if ((due.length && clock >= due[0]) || atEnd) {
         due.shift();
         if (snapshots.length < maxSnapshots || atEnd) {
-          const meshes = drawnMeshes([debris.group, fxGroup, bodies?.group], accept);
+          const meshes = ownMeshes(drawnMeshes([debris.group, fxGroup, bodies?.group], accept));
           const judged = judgeSlabs(meshes, { footprint, groundAt: ground, supportAt, settled: atEnd });
           const last = events[events.length - 1];
           const label = atEnd ? 'final' : `t${clock.toFixed(1)}-${last ? (last.stage ?? (last.storeyDown ? 'storeyDown' : last.hole === 255 ? 'sectionDown' : 'hole')) : 'none'}`;
           const flagged = judged.findings.length > 0;
           const firstFlag = flagged && !snapshots.some((p) => p.findings.length);
-          snapshots.push({ t: +clock.toFixed(2), label, events: events.length, meshes: meshes.length, pieces: judged.pieces, findings: judged.findings.map(strip),
+          snapshots.push({ t: +clock.toFixed(2), label, stage: atEnd ? (collapsed ? 'settled' : `final-${stageNow}`) : stageNow, events: events.length, meshes: meshes.length, pieces: judged.pieces, findings: judged.findings.map(strip),
             render: firstFlag || atEnd || (flagged && rendered < 5) ? shoot(label, meshes, judged.findings, !collapsed || !fx?.took(id)) : null });
         }
         if (atEnd) break;
+      }
+    }
+    if (rejoin) {
+      // the rejoin (a late joiner, a reconnect, a migration): a fresh presentation over the same world, the match's log
+      // laid down settled by the peer's own destructionMirror.applyLog at a cut through the live run, then the rest of
+      // the live events played on through the mirror as a joined seat sees them (applyStageEvent / applyBreachEvent)
+      const fullLog = sd.match.log.slice();
+      stages.reset(); fx?.reset?.();
+      const intactCount = intactLists.reduce((n, t) => n + t.length, 0);
+      const backCount = drawnSpanTriangles(seam.spans).reduce((n, t) => n + t.length, 0);
+      if (backCount !== intactCount) log(`#${id}: rejoin: spans did not stand again (${backCount / 9} of ${intactCount / 9} triangles)`);
+      const own = (stage) => timeline.find((ev) => ev.type === DESTRUCTION_BUS_EVENTS.stage && ev.e.structureId === id && ev.e.stage === stage);
+      const cuts = [];
+      const dmg = own('damaged'), brc = own('breached'), col = own('collapsed');
+      const firstHole = timeline.find((ev) => ev.type === DESTRUCTION_BUS_EVENTS.breach && ev.e.structureId === id);
+      if (firstHole && (!dmg || firstHole.t < dmg.t)) cuts.push({ label: 'hit', t: firstHole.t, logLen: firstHole.logLen });
+      if (dmg) cuts.push({ label: 'damaged', t: dmg.t, logLen: dmg.logLen });
+      if (brc) cuts.push({ label: 'breached', t: brc.t, logLen: brc.logLen });
+      if (col) {
+        const before = timeline.filter((ev) => ev.t < col.t - 1e-6).pop();
+        if (before && (!brc || before.t > brc.t + 1e-6)) cuts.push({ label: 'precollapse', t: before.t, logLen: before.logLen });
+      }
+      cuts.push({ label: 'end', t: Infinity, logLen: fullLog.length });
+      const seen = new Set();
+      for (const cut of cuts) {
+        if (seen.has(cut.logLen)) continue;
+        seen.add(cut.logLen);
+        mounds.length = 0;
+        clock = 0;
+        for (const r of [...built.obstacles, ...built.colliders]) { r.crushed = false; r.dead = false; r.openings = null; }
+        const P = present();
+        let stageJ = 'intact', collapsedJ = false, collapsedJAt = -1;
+        const busJ = { emit(type, e) {
+          if (type === DESTRUCTION_BUS_EVENTS.stage && e.stage === 'collapsed') {
+            const st = table.byId(e.structureId);
+            if (st) mounds.push({ cx: st.cx, cz: st.cz, hw: st.hw, hd: st.hd, yaw: st.yaw, heightM: rubbleHeightFor(st.topY - st.baseY) });
+            if (e.structureId === id) { collapsedJ = true; if (collapsedJAt < 0) collapsedJAt = clock; }
+          }
+          if (type === DESTRUCTION_BUS_EVENTS.stage && e.structureId === id) stageJ = e.stage;
+          if (type === DESTRUCTION_BUS_EVENTS.stage) P.stages.stage(e, seamOf(e.structureId));
+          else if (type === DESTRUCTION_BUS_EVENTS.breach) { P.stages.breach(e, seamOf(e.structureId)); P.fx?.breach(e); }
+        } };
+        const mirror = mirrorMod.createDestructionMirror({ getObstacles: () => built.obstacles, getColliders: () => built.colliders }, busJ);
+        mirror.setSections(sections);
+        mirror.applyLog(fullLog.slice(0, cut.logLen), null);
+        const joinStage = stageJ;
+        const rest = Number.isFinite(cut.t) ? timeline.filter((ev) => ev.t > cut.t + 1e-6) : [];
+        const t0 = Number.isFinite(cut.t) ? cut.t : 0;
+        const dueJ = [0.5, 3.0];
+        let next = 0, judgedLive = 0;
+        const lastRel = rest.length ? rest[rest.length - 1].t - t0 : 0;
+        const endS = rest.length ? Math.max(3.2, lastRel + 4) : 3.2 + settleS;
+        for (let tick = 0; ; tick++) {
+          clock = tick * STEP;
+          let fresh = false;
+          while (next < rest.length && rest[next].t - t0 <= clock + 1e-9) {
+            const ev = rest[next++];
+            if (ev.type === DESTRUCTION_BUS_EVENTS.stage) mirror.applyStageEvent(ev.e); else mirror.applyBreachEvent(ev.e);
+            if (ev.e.structureId === id) fresh = true;
+          }
+          if (fresh && judgedLive < 8) for (const dt of [0.8, 3.0]) if (!dueJ.some((d) => Math.abs(d - (clock + dt)) < 0.4)) { dueJ.push(clock + dt); judgedLive++; }
+          dueJ.sort((p, q) => p - q);
+          P.stages.update(); P.fx?.update(); P.debris.update(); P.bodies?.update();
+          const settleEnd = collapsedJAt >= 0 ? collapsedJAt + settleS : -1;
+          const atEnd = clock >= Math.max(endS, settleEnd);
+          if ((dueJ.length && clock >= dueJ[0]) || atEnd) {
+            const d0 = dueJ.shift();
+            const meshes = ownMeshes(drawnMeshes([P.debris.group, P.fxGroup, P.bodies?.group], (m) => (m.parent === P.fxGroup ? own2.test(m.name) || /^fx-collapse-(?!baked)/.test(m.name) : true)));
+            const isJoinSnap = !atEnd && (d0 === 0.5 || d0 === 3.0) && next === 0;
+            const judged = judgeSlabs(meshes, { footprint, groundAt: ground, supportAt, settled: atEnd || (isJoinSnap && d0 === 3.0) });
+            const label = `rejoin-${cut.label}-${atEnd ? 'final' : isJoinSnap ? `join+${d0}` : `t${clock.toFixed(1)}-${stageJ}`}`;
+            const flagged = judged.findings.length > 0;
+            snapshots.push({ t: +clock.toFixed(2), label, stage: `rejoin-${cut.label}`, rejoin: { cut: cut.label, cutT: Number.isFinite(cut.t) ? +cut.t.toFixed(2) : null,
+              logEntries: cut.logLen, joinStage, stageNow: stageJ, continued: rest.length }, meshes: meshes.length, pieces: judged.pieces,
+              findings: judged.findings.map(strip), render: flagged && rendered < 9 ? shoot(label, meshes, judged.findings, !collapsedJ || !P.fx?.took(id)) : null });
+            if (atEnd) break;
+          }
+        }
+        P.stages.reset(); P.fx?.reset?.();
       }
     }
     const flaggedSnaps = snapshots.filter((p) => p.findings.length);
     const row = {
       id, builder: seam.builder, kit: a.kit, style: seam.style, anatomy: { w: +a.w.toFixed(2), d: +a.d.toFixed(2), h: +a.h.toFixed(2), storeys: a.storeys.length,
         floors: a.storeys.filter((st) => st.floor).length, roof: a.roof?.kind ?? null }, fired, collapsedAtS: +collapsedAt.toFixed(2),
-      events, spanIssues, snapshots, pass: !flaggedSnaps.length && !spanIssues.length,
+      events, spanIssues, snapshots, pass: !flaggedSnaps.length && !spanIssues.length, neighbourMeshesExcluded: neighbourMeshes,
       worst: flaggedSnaps.flatMap((p) => p.findings.map((f) => ({ t: p.t, label: p.label, ...f }))).sort((p, q) => q.areaM2 - p.areaM2).slice(0, 12),
     };
     rows.push(row);
@@ -877,7 +992,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     settleS: Number(args.settle ?? 10), sections: args.sections !== '0', fracture: args.fracture !== '0',
     renderDir: typeof args.render === 'string' ? args.render : null, maxSnapshots: Number(args['max-snapshots'] ?? 40),
     storeys: typeof args.storeys === 'string' ? args.storeys.split(',').map(Number) : [0],
-    log: (...m) => console.log('[slab-check]', ...m),
+    log: (...m) => console.log('[slab-check]', ...m), rejoin: args.rejoin === '1' || args.rejoin === true,
   });
   if (typeof args.json === 'string') writeFileSync(args.json, JSON.stringify(report, null, 1));
   for (const r of report.rows) {
