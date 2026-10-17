@@ -468,7 +468,11 @@ the former receipts' checks, with their assertions unchanged, in `*Audit.test-su
   whose lattice no longer matches the build fails the gate by name. The pass builds without the fill
   registry, so the audit attaches each tank's fills
   through `applyInteriorFills` and removes them again; it costs about 1 s of CPU a hull (209 s for the fleet) and no
-  extra build. A stale fill record fails by name with its regeneration command.
+  extra build. A stale fill record fails by name with its regeneration command. Named carries (2026-10-16,
+  `tools/watertight-carry.mjs`): `docs/geometry-gate/watertight-carry.json` lists each inherited leaking hull with its
+  leak volume in litres, an owner, a date and a cause. A listed hull passes at or below its litres; the gate fails on
+  any unlisted leak, any listed hull that leaks more, and any listed hull that now holds water (delete its row in the
+  commit that seals it). Lower or delete rows; never raise one to turn a red green.
 
 The builds stay separate where the checks read different models: camo seeds move seeded stowage, the generated seats
 and calibrations are solved on the default seed, the ledger pins seed 4242, and `fleetFloorClearance` needs the static

@@ -5,6 +5,8 @@
 // and carries the fleet watertight gate (2026-10-02, watertightAudit.test-support.mjs). The first four read the build as
 // it leaves the factory (vehicleMarkings restores the turret yaw it probes; watertight attaches the shipped fills and
 // removes them again); tankAssets lets one microtask run before it certifies the shadow casters, so it comes last.
+// The watertight gate passes the inherited leakers named in docs/geometry-gate/watertight-carry.json at or below their
+// listed litres and fails any other leak, a larger one, or a listed hull that now holds water (2026-10-16, R7c).
 // The running-gear registration audit (2026-10-04) reads first: the units P.gear registers are the units drawn.
 import { runFleetPass } from './fleetPass.test-support.mjs';
 import { createTank } from './tankFactory.ts';
