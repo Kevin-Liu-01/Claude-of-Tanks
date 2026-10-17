@@ -138,10 +138,10 @@
       "concealers": 1226
     },
     "skybridge": {
-      "bytes": 1742904,
-      "sha256": "616dc4fb2caf8181aeefbb5118d7ac8d496f50e9a1d687aba112d975c90eeb3b",
-      "obstacles": 2607,
-      "colliders": 2631,
+      "bytes": 1735864,
+      "sha256": "9b24ba9e983aff3e1c7c5f49b816c2f9a531cb8bd6f118cf7f92501bb09f9c70",
+      "obstacles": 2611,
+      "colliders": 2644,
       "concealers": 1003
     },
     "polders": {
@@ -372,10 +372,10 @@
         "concealers": 1226
       },
       "skybridge": {
-        "bytes": 1775036,
-        "sha256": "718247a367edaad007b106aed4ad494bfe00157067eb25ec14daa202198a14eb",
-        "obstacles": 2671,
-        "colliders": 2657,
+        "bytes": 1768008,
+        "sha256": "8852d73e6cdbe6897b294c3cdd95f423c31f9527e96c88790f70087221967585",
+        "obstacles": 2675,
+        "colliders": 2670,
         "concealers": 1003
       },
       "polders": {

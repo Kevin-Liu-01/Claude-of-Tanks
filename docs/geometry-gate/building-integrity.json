@@ -205,7 +205,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 4.025,
+   "gapM2": 0.648,
    "invertedM2": 0
   },
   "andalusian/farmhouse": {
@@ -660,11 +660,11 @@
   },
   "glencanyon/needletower": {
    "floating": 0,
-   "sliver": 12,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
-   "gapM2": 0,
+   "insideM2": 4.433,
+   "gapM2": 5.731,
    "invertedM2": 0
   },
   "queenstown/warehouse": {
@@ -2652,8 +2652,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
-   "gapM2": 0,
+   "insideM2": 1.11,
+   "gapM2": 5.451,
    "invertedM2": 0
   },
   "glencanyon/gantry": {
@@ -2661,8 +2661,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.794,
-   "gapM2": 0,
+   "insideM2": 0,
+   "gapM2": 0.37,
    "invertedM2": 0
   },
   "glencanyon/foundryoffice": {
@@ -4457,5 +4457,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-16T16:32:28.171Z"
+ "updatedAt": "2026-10-17T17:47:14.012Z"
 }
