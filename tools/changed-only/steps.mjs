@@ -120,6 +120,23 @@ export const DECLARED_DYNAMIC = Object.freeze({
   },
 });
 
+/**
+ * Tool-side modules that read a per-id table only at the id they are handed. A step that reaches a table through one
+ * of these (and no other edge) keys that table per id instead of whole. `pin` is sha256/16 of the module's sorted
+ * trimmed source lines naming the table's export (tools/changed-only/graph.mjs accessorPin): a new use, such as an
+ * enumeration, breaks it and the table counts whole again until reviewed.
+ */
+export const PER_ID_ACCESSORS = Object.freeze({
+  'src/vehicles/auxiliaryInventory.ts': {
+    tables: ['auxiliaryInventory'], exportName: 'AUXILIARY_INVENTORY', pin: '60ffc036ad5f9c5a',
+    note: 'auxiliaryCapabilities(spec) returns AUXILIARY_INVENTORY[spec.id]',
+  },
+  'src/vehicles/ghillieSuit.ts': {
+    tables: ['missionDockSeats'], exportName: 'MISSION_DOCK_SEATS', pin: 'b290c053cb31034c',
+    note: 'the cradle keep-out reads MISSION_DOCK_SEATS[specId] of the suit being built',
+  },
+});
+
 const ids = (list) => `--ids=${list.join(',')}`;
 
 /**

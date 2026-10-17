@@ -72,6 +72,11 @@ export function dynamicSites(text, filename) {
   return sites;
 }
 
+/** The sorted, trimmed source lines that name `exportName`: what a per-id accessor declaration is pinned to. */
+export function accessorPin(text, exportName) {
+  return h16(text.split('\n').map((line) => line.trim()).filter((line) => line.includes(exportName)).sort().join('\n'));
+}
+
 /** Literal first arguments of calls to `helper` (an import helper), plus any call whose argument is not a literal. */
 export function helperImports(text, filename, helper) {
   const source = ts.createSourceFile(filename, text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
