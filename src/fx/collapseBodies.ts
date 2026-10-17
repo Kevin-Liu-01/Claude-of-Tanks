@@ -961,6 +961,16 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
         if (b && reachesPast(b, [{ center: [0, 0, 0], half: spec.half }])) pp.shape = boxShapeOf(b, spec.massKg);
       });
     }
+    // (destruction-slabs 227) each mesh names the body box it rides in (its own frame): receipts measure what it draws
+    // against what it rests on (a slab drawn metres off its body hovers)
+    const whole0 = shape ? boundsOf(parts, false) : null;
+    for (const pp of parts) {
+      const boxes = whole0
+        ? [{ c: [(whole0[0] + whole0[3]) / 2 - pp.offset.x, (whole0[1] + whole0[4]) / 2 - pp.offset.y, (whole0[2] + whole0[5]) / 2 - pp.offset.z],
+          h: [(whole0[3] - whole0[0]) / 2, (whole0[4] - whole0[1]) / 2, (whole0[5] - whole0[2]) / 2] }]
+        : piece.boxes.map((b) => ({ c: [b.center[0] - pp.offset.x, b.center[1] - pp.offset.y, b.center[2] - pp.offset.z], h: [...b.half] }));
+      for (const m of pp.meshes) m.userData.bodyBoxes = boxes;
+    }
     const spawn = pieceSpawn(piece, placement);
     // (the physics lane, 2026-10-11, wave 409: "a released piece with zero kick, perfectly upright, stays balanced unless
     // something hits it") a piece let go without a shove (a floor, a panel that waits for its support) leaves with a
@@ -1278,6 +1288,13 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
         x: pose[0] + _o.x + gx, y: pose[1] + _o.y + gy, z: pose[2] + _o.z + gz, qx: pose[3], qy: pose[4], qz: pose[5], qw: pose[6],
         vx, vy, vz, wx, wy, wz,
       });
+      {
+        // (its body's box, read before the buckle reshapes what it draws: the grown box was read from the flat sheet)
+        const own = part.shape ? boundsOf([part], true) : null;
+        const boxes = own ? [{ c: [(own[0] + own[3]) / 2, (own[1] + own[4]) / 2, (own[2] + own[5]) / 2], h: [(own[3] - own[0]) / 2, (own[4] - own[1]) / 2, (own[5] - own[2]) / 2] }]
+          : [{ c: [0, 0, 0], h: [...spec.half] }];
+        for (const m of part.meshes) m.userData.bodyBoxes = boxes;
+      }
       if (kind === 'roof' && h >= 0) buckleSheet(part, spec.half, _q, sid * 977 + pid * 16 + k);
       if (keen && h >= 0) {
         // its landing's dust where it lies along the fall, and the broken masonry thrown off its broken ends

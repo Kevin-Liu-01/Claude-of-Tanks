@@ -785,6 +785,8 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
         geo.computeBoundingSphere();
         const mesh = new THREE.Mesh(geo, material);
         mesh.name = `fx-structure-${run.role}-${run.bucket}`;
+        // (destruction-slabs 227) whose run it is, for receipts that judge one building's runs
+        mesh.userData.structure = stageStructure;
         mesh.matrixAutoUpdate = false;
         mesh.castShadow = run.role !== 'debris';
         mesh.receiveShadow = true;
