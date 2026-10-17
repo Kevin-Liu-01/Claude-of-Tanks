@@ -4455,6 +4455,24 @@
    "insideM2": 0,
    "gapM2": 5.844,
    "invertedM2": 0
+  },
+  "olympus/gantry": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 2.169,
+   "gapM2": 23.681,
+   "invertedM2": 0
+  },
+  "olympus/containerRow": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.231,
+   "gapM2": 0,
+   "invertedM2": 0
   }
  },
  "updatedAt": "2026-10-17T12:42:29.993Z"
