@@ -872,8 +872,19 @@ try {
   }
   // --game-mode / --map: the admin sets them in the lobby (the controls the player uses), before anyone readies
   if (gameModeOption) {
-    await activate(pages.a, `.cot-play [data-game-mode="${gameModeOption}"]`);
+    // (2026-10-17) the room lobby keeps the rule cards in a section it does not lay out, so a pointer click finds no box
+    // ("Node is either not clickable or not an Element"): the card's own click handler sends set_game_mode as the host
+    await pages.a.evaluate((mode) => {
+      const card = document.querySelector(`.cot-play [data-game-mode="${mode}"]`);
+      if (!card) throw new Error(`no game mode card ${mode}`);
+      card.click();
+    }, gameModeOption);
     await waitFor(pages.a, (mode) => document.querySelector(`.cot-play [data-game-mode="${mode}"]`)?.classList.contains('on'), `A game mode ${gameModeOption}`, 15_000, { args: [gameModeOption] });
+    if (!live) {
+      const roomMode = () => rooms.room(report.room.code)?.room?.settings?.gameMode ?? null;
+      for (let waited = 0; roomMode() !== gameModeOption && waited < 15_000; waited += 100) await sleep(100);
+      if (roomMode() !== gameModeOption) report.findings.push(`--game-mode ${gameModeOption} did not take: the room plays ${roomMode()}`);
+    }
   }
   if (mapOption) {
     // (2026-10-14) since the play menu syncs the host's Garage pick into the room (syncGarageSelection: set_map), the
@@ -893,7 +904,7 @@ try {
       if (roomMap() !== mapOption) report.findings.push(`--map ${mapOption} did not take: the room plays ${roomMap()}`);
     }
   }
-  if (gameModeOption || mapOption) step('lobby-settings', { gameMode: gameModeOption || null, map: mapOption || null, roomMap: live ? null : rooms.room(report.room.code)?.room?.settings?.mapId ?? null });
+  if (gameModeOption || mapOption) step('lobby-settings', { gameMode: gameModeOption || null, map: mapOption || null, roomMap: live ? null : rooms.room(report.room.code)?.room?.settings?.mapId ?? null, roomGameMode: live ? null : rooms.room(report.room.code)?.room?.settings?.gameMode ?? null });
   await activate(pages.c,'.cot-play [data-action="ready"]');
   await activate(pages.b,'.cot-play [data-action="ready"]');
   await activate(pages.a,'.cot-play [data-action="ready"]');
