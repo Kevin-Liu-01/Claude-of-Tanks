@@ -14,6 +14,8 @@ export function packSmokeScreen(screen: SmokeScreen): SmokeScreen {
   const source=screen.source.map(v=>typeof v==='number'?round(v):v) as unknown as SmokeSource;
   const receipt:SmokeScreen={x:round(screen.x),y:round(screen.y),z:round(screen.z),yaw:round(screen.yaw),born:screen.born,
     source,flightMs:screen.canisters.map(s=>Math.round(s[6]*1000))};
+  // (FX lane 2026-10-17) the drift it was launched on (its map's wind), so the client's screen drifts as the authority's
+  if(screen.wind)receipt.wind=[round(screen.wind[0]),round(screen.wind[1])];
   // (2026-10-09) a canister that struck a wall sends its bounces (already to the millimetre: the authority rounds them),
   // a walled bank its walls; the open field sends neither
   const paths=screen.canisters.map(s=>s.length>7?s.slice(7):0);

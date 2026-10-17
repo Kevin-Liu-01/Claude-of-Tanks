@@ -1,28 +1,58 @@
 import { Vector3 } from 'three';
 import type { SmokeSource } from './smokeReceipt.ts';
 import { smokeCanisterPosition, SMOKE_CANISTER_RADIUS_M, type SmokeCanister, type SmokePoint, type SmokeWorld } from './smokeBallistics.ts';
+import { sceneWindFor } from '../world/sceneWind.ts';
 /** Shared deterministic smoke envelope, used by spotting and presentation. `clip` (per canister, its bank's walls:
  * decimetres per SMOKE_CLIP_DIRS bearing, or 0 in the open) and `paths` (per canister, its bounces as the receipt's
  * groups, or 0) are the wire's; the authority's own screens carry the bounces in their canisters. */
 export interface SmokeScreen {
   x:number; y:number; z:number; yaw:number; born:number; canisters?:readonly SmokeCanister[]; banks?:readonly number[];
   source?:SmokeSource; flightMs?:readonly number[]; clip?:readonly (readonly number[] | 0)[]; paths?:readonly (readonly number[] | 0)[];
+  /** (FX lane 2026-10-17) the drift the authority launched it on (m/s, world xz): its map's surface wind at
+   *  SMOKE_DRIFT_SHARE (smokeWindForMap); absent, the legacy breeze (SMOKE_WIND_X/Z). It crosses the wire with the screen,
+   *  so a client's screen drifts exactly as the authority's sight block does. */
+  wind?:readonly [number, number];
 }
 export interface SmokeVolume { x:number; y:number; z:number; radius:number; height:number; density:number }
 export type SmokeGround = (x:number,z:number) => number;
 export const SMOKE_DURATION_S = 18;
 export const smokeBankCount = (screen:SmokeScreen):number => screen.banks?.length ?? 5;
+/** The legacy breeze (m/s): a screen launched without its map's wind (a receipt, an older record) drifts on it. */
 export const SMOKE_WIND_X = .18;
 export const SMOKE_WIND_Z = .10;
-const WIND = Math.hypot(SMOKE_WIND_X, SMOKE_WIND_Z), WIND_UX = SMOKE_WIND_X / WIND, WIND_UZ = SMOKE_WIND_Z / WIND;
+/**
+ * (FX lane 2026-10-17, the owner's backlog: "smoke-screen sim on the map wind") a screen drifts along its map's surface
+ * wind (world/sceneWind.ts, the one wind the trees, the grass, the columns and the clouds share) at this share of its
+ * speed: Verdant's 3.6 m/s carries a screen ~0.54 m/s, ~10 m over its 18 s, Tarkhan Steppe's 5.4 m/s ~15 m. A screen
+ * blown at the full wind would leave the cover it was fired to make within seconds; this keeps it a screen that leans
+ * and creeps the way every other smoke on the map goes.
+ */
+export const SMOKE_DRIFT_SHARE = .15;
+/** A map's smoke drift (m/s, world xz), rounded to the wire's 1e-4 so the authority and every client hold the same. */
+export function smokeWindForMap(mapId: string | null | undefined): readonly [number, number] {
+  const w = sceneWindFor(mapId);
+  const round = (n: number) => Math.round(n * 10000) / 10000;
+  return [round(w.dirX * w.speed * SMOKE_DRIFT_SHARE), round(w.dirZ * w.speed * SMOKE_DRIFT_SHARE)];
+}
+/** A screen's drift (its own, else the legacy breeze). */
+function windX(screen: SmokeScreen): number { return screen.wind ? screen.wind[0] : SMOKE_WIND_X; }
+function windZ(screen: SmokeScreen): number { return screen.wind ? screen.wind[1] : SMOKE_WIND_Z; }
 const clamp = (v:number) => Math.max(0,Math.min(1,v));
 const smooth = (v:number) => {const t=clamp(v);return t*t*(3-2*t);};
 
 // ---- walls (2026-10-09, the owner: "smoke can go into buildings instead of bouncing off them") -----------------------
 /** Bearings a bank's walls are read along at launch (from +x toward +z, evenly). */
 export const SMOKE_CLIP_DIRS = 12;
-/** How far they are read: the cloud's full radius (10.5 m) and the breeze's drift (3.7 m over 18 s) past it. */
+/** How far they are read: the cloud's full radius (10.5 m) and the breeze's drift over its 18 s past it (the legacy
+ *  breeze's 3.7 m: 14.2 m; a screen on its map's wind reads as far as that wind carries it, smokeClipReach). */
 const CLIP_REACH_M = 14.2;
+const CLOUD_RADIUS_M = 10.5;
+/** How far a screen's walls are read at launch for its drift (m/s, world xz; none: the legacy breeze's 14.2 m), in
+ *  whole decimetres so the authority and the wire agree. */
+export function smokeClipReach(wind?: readonly [number, number] | null): number {
+  if (!wind) return CLIP_REACH_M;
+  return Math.max(CLIP_REACH_M, Math.round((CLOUD_RADIUS_M + Math.hypot(wind[0], wind[1]) * SMOKE_DURATION_S) * 10) / 10);
+}
 /** Read at three heights over the rest; the middle distance counts, so the cloud spills over a low wall (two of the three
  * pass over it) and through an open doorway, while a house's wall, and a wall with a window in it, stop it. */
 const CLIP_HEIGHTS_M = [.6, 1.6, 2.8] as const;
@@ -31,7 +61,7 @@ const WALL_MARGIN_M = .3, REACH_MIN_M = .6;
 
 /** At launch: how far a bank's cloud may spread from its canister's rest toward each SMOKE_CLIP_DIRS bearing before a
  * wall (whole decimetres, at least 1), or 0 when nothing stands within reach (the open field sends nothing). */
-export function smokeClip(rest: SmokePoint, world: SmokeWorld): number[] | 0 {
+export function smokeClip(rest: SmokePoint, world: SmokeWorld, reach = CLIP_REACH_M): number[] | 0 {
   const out: number[] = [];
   const from = new Vector3(), dir = new Vector3();
   const read = [0, 0, 0];
@@ -41,14 +71,14 @@ export function smokeClip(rest: SmokePoint, world: SmokeWorld): number[] | 0 {
     dir.x = Math.cos(a); dir.z = Math.sin(a);
     // (the low and the high read first: both free, and the middle distance is free whatever the middle reads)
     for (const h of [0, 2, 1]) {
-      if (h === 1 && read[0]! >= CLIP_REACH_M && read[2]! >= CLIP_REACH_M) { read[1] = CLIP_REACH_M; break; }
+      if (h === 1 && read[0]! >= reach && read[2]! >= reach) { read[1] = reach; break; }
       from.x = rest.x; from.y = rest.y + CLIP_HEIGHTS_M[h]!; from.z = rest.z;
-      const hit = world.raycast(from, dir, CLIP_REACH_M);
-      read[h] = hit && hit.kind !== 'terrain' && hit.dist < CLIP_REACH_M ? hit.dist : CLIP_REACH_M;
+      const hit = world.raycast(from, dir, reach);
+      read[h] = hit && hit.kind !== 'terrain' && hit.dist < reach ? hit.dist : reach;
     }
     const free = read.slice().sort((p, q) => p - q)[1]!;
     const dm = Math.max(1, Math.round(free * 10));
-    if (dm < Math.round(CLIP_REACH_M * 10)) walled = true;
+    if (dm < Math.round(reach * 10)) walled = true;
     out.push(dm);
   }
   return walled ? out : 0;
@@ -103,8 +133,9 @@ export function smokeWallRoom(screen: SmokeScreen, bank: number, x: number, z: n
   if (!clip) return Infinity;
   const dx = x - _rest.x, dz = z - _rest.z;
   let room = Infinity;
+  const open = Math.round(smokeClipReach(screen.wind) * 10);
   for (let k = 0; k < SMOKE_CLIP_DIRS; k++) {
-    if (clip[k]! >= Math.round(CLIP_REACH_M * 10)) continue;
+    if (clip[k]! >= open) continue;
     const a = k / SMOKE_CLIP_DIRS * Math.PI * 2;
     room = Math.min(room, clip[k]! / 10 - (dx * Math.cos(a) + dz * Math.sin(a)));
   }
@@ -140,10 +171,15 @@ function bankFootprint(screen:SmokeScreen,now:number,bank:number,out:SmokeVolume
     const landedAge=Math.max(0,age-shot[6]);
     // (a walled bank: the breeze carries it no nearer its downwind wall than its margin and a metre)
     const clip=screen.clip?.[screen.banks![bank+2]!];
+    const wx=windX(screen),wz=windZ(screen);
     if(clip){
-      const drift=Math.min(WIND*landedAge,Math.max(0,wallDistance(clip,WIND_UX,WIND_UZ)-WALL_MARGIN_M-1));
-      out.x+=WIND_UX*drift;out.z+=WIND_UZ*drift;
-    }else{out.x+=SMOKE_WIND_X*landedAge;out.z+=SMOKE_WIND_Z*landedAge;}
+      const wind=Math.hypot(wx,wz);
+      if(wind>1e-9){
+        const ux=wx/wind,uz=wz/wind;
+        const drift=Math.min(wind*landedAge,Math.max(0,wallDistance(clip,ux,uz)-WALL_MARGIN_M-1));
+        out.x+=ux*drift;out.z+=uz*drift;
+      }
+    }else{out.x+=wx*landedAge;out.z+=wz*landedAge;}
     footing.shot=true;footing.restY=out.y;footing.rise=landedAge*.055;
     const growth=smooth(landedAge/2.2);
     out.radius=1.2+growth*9.3;
@@ -155,8 +191,8 @@ function bankFootprint(screen:SmokeScreen,now:number,bank:number,out:SmokeVolume
   const fade=1-smooth((age-13.5)/4.5);
   const side=bank*3.6+Math.sin(bank*4.1+screen.born)*.45;
   const fore=-bank*bank*.45;
-  out.x=screen.x+Math.cos(screen.yaw)*side+Math.sin(screen.yaw)*fore+SMOKE_WIND_X*Math.max(0,age-1);
-  out.z=screen.z-Math.sin(screen.yaw)*side+Math.cos(screen.yaw)*fore+SMOKE_WIND_Z*Math.max(0,age-1);
+  out.x=screen.x+Math.cos(screen.yaw)*side+Math.sin(screen.yaw)*fore+windX(screen)*Math.max(0,age-1);
+  out.z=screen.z-Math.sin(screen.yaw)*side+Math.cos(screen.yaw)*fore+windZ(screen)*Math.max(0,age-1);
   footing.shot=false;footing.restY=screen.y;footing.rise=Math.max(0,age-1)*.055;
   out.radius=1.2+growth*(4.4+Math.sin(bank*2.7)*.35);
   out.height=.8+growth*3.2;
@@ -228,4 +264,10 @@ export function smokeBlocks(screens:Iterable<SmokeScreen>,a:{x:number;y:number;z
 export function smokeScreenSummary(screen:SmokeScreen):SmokeScreen {
   const {x,y,z,yaw,born}=screen;
   return {x,y,z,yaw,born};
+}
+
+/** A screen's drift for the presentation (its own, else the legacy breeze), written into `out`. */
+export function smokeScreenWind(screen: SmokeScreen | null | undefined, out: { x: number; z: number }): { x: number; z: number } {
+  out.x = screen ? windX(screen) : SMOKE_WIND_X; out.z = screen ? windZ(screen) : SMOKE_WIND_Z;
+  return out;
 }
