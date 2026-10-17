@@ -18,8 +18,11 @@ the canonical `src/vehicles/` sources.
 
 ## User capabilities
 
-- search by vehicle name, stable ID, alias, nation, role, era, or tier;
-- filter by nation and era;
+- search by vehicle name, stable ID, alias, nation, class, role, era, or tier, with
+  `class:`, `role:`, `status:`, `era:`, `nation:` and `tier:` tokens
+  (`src/vehicles/vehicleFacetSearch.ts`);
+- filter by nation, era, class (with the concept-and-prototype cut) and battle
+  role (`src/vehicles/vehicleFacets.ts`);
 - orbit, zoom, and select hero/front/left/right/rear/top/elevated cameras;
 - enable or pause an automatic turntable;
 - change hull yaw, turret yaw, and gun elevation within authored limits;

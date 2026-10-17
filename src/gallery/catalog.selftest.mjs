@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 // The factory registers every first-party expansion module before finalizing
 // ALL_TANK_IDS. The browser gallery imports it first for the same reason.
 import '../vehicles/tankFactory.ts';
@@ -32,6 +33,26 @@ assert.deepEqual(filterGalleryRecords(records, { query: first.id }), [first], 's
 assert.ok(filterGalleryRecords(records, { nation: first.nation }).every((record) => record.nation === first.nation));
 assert.ok(filterGalleryRecords(records, { era: first.eraKey }).every((record) => record.eraKey === first.eraKey));
 
+// Fleet facets (vehicleFacets.ts): every record is classified, the class and role filters and the facet search
+// narrow the archive, and the concept-and-prototype option is the non-service cut.
+assert.ok(records.every((record) => record.vehicleClass?.label && record.battleRole?.label && record.designStatus?.label),
+  'every gallery record carries its class, role and status');
+const tds = filterGalleryRecords(records, { vehicleClass: 'td' });
+assert.ok(tds.length > 0 && tds.every((record) => record.vehicleClass.id === 'td'), 'the class filter narrows to one class');
+assert.deepEqual(filterGalleryRecords(records, { query: 'class:td' }).map((record) => record.id),
+  tds.map((record) => record.id), 'the class: token matches the class filter');
+assert.ok(filterGalleryRecords(records, { battleRole: 'scout' }).every((record) => record.battleRole.id === 'scout'));
+assert.ok(filterGalleryRecords(records, { vehicleClass: 'concept-prototype' })
+  .every((record) => record.designStatus.id !== 'service'), 'concept & prototype excludes in-service vehicles');
+assert.ok(filterGalleryRecords(records, { query: 'tank destroyer' }).length >= tds.length, 'class labels are searchable');
+assert.deepEqual(filterGalleryRecords(records, { vehicleClass: 'td', battleRole: 'flanker' }), [], 'filters AND');
+assert.deepEqual(filterGalleryRecords(records, { vehicleClass: 'all', battleRole: 'all' }), records);
+const galleryHtml = readFileSync(new URL('../../site/gallery.html', import.meta.url), 'utf8');
+for (const [id, key] of [['classFilter', 'fleet.filter.allClasses'], ['roleFilter', 'fleet.filter.allRoles']]) {
+  assert.match(galleryHtml, new RegExp(`<select id="${id}"[^>]*><option value="all" data-i18n="${key}">`),
+    `the archive offers the ${id} select`);
+}
+
 const serialized = serializeGallerySpec(getSpec(first.id));
 assert.equal(serialized.schema, 'claude-of-tanks/gallery-spec@2');
 assert.equal(serialized.id, first.id);
@@ -39,6 +60,10 @@ assert.equal(serialized.authorship.creator, 'Kevin B. Liu');
 assert.equal(serialized.authorship.geometry, 'first-party-procedural');
 assert.deepEqual(serialized.era, { id: first.eraKey, label: first.era });
 assert.equal('class' in serialized, false, 'public gallery export must not expose retired classes');
+assert.deepEqual(serialized.vehicleClass, { id: first.vehicleClass.id, label: first.vehicleClass.label },
+  'the export names the fleet-facet class under its own key');
+assert.equal(serialized.battleRole.id, first.battleRole.id);
+assert.equal(serialized.designStatus.id, first.designStatus.id);
 assert.ok(Array.isArray(serialized.gun.shells));
 assert.ok(Number.isFinite(serialized.protection.armorPlateCount));
 

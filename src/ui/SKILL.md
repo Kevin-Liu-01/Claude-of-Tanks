@@ -15,7 +15,9 @@ Present game and session state with fast, legible desktop/mobile interactions.
 medals, achievements, history with each battle's kill trace) into the dialog
 `garage.ts` owns, only while it is open; `medalArt.ts` draws every medal and
 achievement as inline SVG; `medalToast.ts` shows medals as they are earned;
-`garage.ts` owns roster/loadout presentation; its intent-loaded
+`garage.ts` owns roster/loadout presentation; its Filter toggle lazily loads
+`garageFacetPanel.ts` (class, role, era chips and facet search over the pure
+`garageFacetFilter.ts`), so the facet tables stay off the game entry; its intent-loaded
 `camoSwatchPainter.ts` owns deterministic exact camouflage cards;
 `garageStage.ts` owns the typed visible hero podium and environment bridge;
 `garageArchitecture.ts` owns the two-pack async cache and phase-tracked assets;
