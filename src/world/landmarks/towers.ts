@@ -80,27 +80,27 @@ export const windmill: LandmarkBuilder = (ctx) => {
   if (style === 'post') {
     const bw = 3.8, bd = 4.6, bh = 5.0, lift = Math.max(3.2, H - bh - 1.8);
     // (227, lane B; the anti-raft floor: the mill fell as a heap at its feet, 13 % of its height) the trestle on its stone
-    // piers and the post one open frame (pieces.ts 'lattice'): the post runs up inside the body to its eaves, so the frame
-    // breaks over its standing trestle (world/toppleHinge.ts; the piers in it, what the crosstrees stand on); the body with
-    // its windshaft, tail pole and ladder comes off the post whole and goes over (the 227 films: one frame with the body,
-    // cut at the hinge, stood half a body on the trestle), the sails off it
+    // piers and the post one open frame (pieces.ts 'lattice') under the hinge: it stands through the fall (world/
+    // toppleHinge.ts; the piers in it, what the crosstrees stand on); the body with its windshaft comes off the post and goes
+    // over, its roof torn off it, the tail pole and the ladder down flat, the sails off it (the 227 films: one frame with the
+    // body, cut at the hinge, stood half a body on the trestle; the post run up into the body stood as a bare mast)
     const hubY = lift + bh * 0.8, hubZ = bd / 2 + 0.7;
+    const roof: RoofSpec = { kind: 'gable', pitchDeg: 38, eave: 0.25, verge: 0.3, thickness: 0.1, bucket: 'roof', ridge: 'saddle' };
     piece(sink, { name: 'frame', kind: 'lattice', at: 'collapse', fall: 'slump' }, (s) => {
       for (const [x, z] of [[-2.6, 0], [2.6, 0], [0, -2.6], [0, 2.6]] as const) s.span('stone', x - 0.42, base, z - 0.42, x + 0.42, 0.55, z + 0.42);
       s.span('structureWood', -2.8, 0.55, -0.2, 2.8, 0.95, 0.2, { colour: TIMBER_DARK });
       s.span('structureWood', -0.2, 0.55, -2.8, 0.2, 0.95, 2.8, { colour: TIMBER_DARK });
-      revolve(s, 'structureWood', 0, 0, [[0.3, 0.55], [0.26, lift + bh]], 8, { colour: TIMBER_DARK });
+      revolve(s, 'structureWood', 0, 0, [[0.3, 0.55], [0.26, lift]], 8, { colour: TIMBER_DARK });
       for (const [x, z] of [[-2.4, 0], [2.4, 0], [0, -2.4], [0, 2.4]] as const) bar(s, 'structureWood', [x, 0.95, z], [x * 0.07, lift - 0.6, z * 0.07], 0.2, { colour: TIMBER_DARK });
     });
+    piece(sink, { name: 'roof', kind: 'detach', at: 'collapse', fall: 'drop' }, (s) => s.placed(0, 0, lift, 0, () => emitRoof(s, roofGeometry(bw, bd, bh, roof), roof)));
     piece(sink, { name: 'body', kind: 'detach', at: 'collapse', fall: 'topple' }, (s) => {
-      // the body: boards, a gable roof, the door at the back up the ladder
-      const roof: RoofSpec = { kind: 'gable', pitchDeg: 38, eave: 0.25, verge: 0.3, thickness: 0.1, bucket: 'roof', ridge: 'saddle' };
+      // the body: boards, the door at the back up the ladder
       s.placed(0, 0, lift, 0, () => {
         // (the maps lane, 2026-10-16; the building-integrity gate: 5.7 m2 of the body seen into from below, its underside
         // open over the post) the body's floor, the joists' boards under the walls, the post's head under it
         s.span('structureWood', -bw / 2, -0.16, -bd / 2, bw / 2, 0, bd / 2, { colour: TIMBER_DARK });
         const f = archedBody(s, 'structureWood', 0, 0, bw, bd, 0, bh, {}, 0, { colour: BOARD_GREY });
-        emitRoof(s, roofGeometry(bw, bd, bh, roof), roof);
         plankDoor(s, f.back, 0, 0.1, 0.9, 1.8, TIMBER_DARK, 0.02);
         for (let k = -3; k <= 3; k++) {
           for (const name of ['left', 'right'] as const) {
