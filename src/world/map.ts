@@ -46,6 +46,7 @@ import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { splitProgramVariants } from '../engine/programVariants.ts';
 import { createStructureGroundOcclusion, type StructureGroundOcclusionHandle } from '../engine/structureGroundOcclusion.ts';
+import { aureoleSunOf } from '../engine/structureAureoleBake.ts';
 import { startHorizonRingBuild } from './horizonRingPrefetch.ts';
 import { supplyHinterland, withdrawHinterland } from './hinterlandHook.ts';
 import { selectHinterland } from './hinterland/select.ts';
@@ -614,9 +615,15 @@ function assembleWorld(
   // baked in a worker from the movement obstacles (the ground-bearing solids; trees stay out) while the battle entry
   // warms, read by the aerial pass on the desktop tiers; a map's sky.lighting.groundOcclusion scales it (0: off)
   const groundOcclusionScale = (config.sky as { lighting?: { groundOcclusion?: number } } | undefined)?.lighting?.groundOcclusion ?? 1;
+  // (227, SKY-03) a thin deck's map (clouds.deckBeam) starts the aureole's soft shadow with it, for the map's own sun (the
+  // aerial pass re-bakes it when the light model gives the deck an aureole under another sun)
+  const mapSky = config.sky as { sunElevationDeg?: number; sunAzimuthDeg?: number } | undefined;
+  const aureoleSun = ((config as { clouds?: { deckBeam?: number } }).clouds?.deckBeam ?? 0) > 0
+    && typeof mapSky?.sunElevationDeg === 'number' && typeof mapSky.sunAzimuthDeg === 'number'
+    ? aureoleSunOf(mapSky.sunElevationDeg, mapSky.sunAzimuthDeg) : null;
   const groundOcclusion: StructureGroundOcclusionHandle | null = getDeviceTier() !== 'mobile' && groundOcclusionScale > 0
     && (engineCtx as { renderer?: THREE.WebGLRenderer }).renderer
-    ? createStructureGroundOcclusion(props.obstacles, { group, scale: groundOcclusionScale }) : null;
+    ? createStructureGroundOcclusion(props.obstacles, { group, scale: groundOcclusionScale, aureoleSun }) : null;
   if (groundOcclusion) engineCtx.scene.userData.structureGroundOcclusion = groundOcclusion;
   // 2026-10-07 (the map-vehicles lane): the moored hulls stand in the water as a standing tank does, and lap it
   // through the same disturbance sources the vehicles feed (props.ts waterContacts); they follow the frame's own sources

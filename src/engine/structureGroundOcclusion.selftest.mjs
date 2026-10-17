@@ -125,7 +125,7 @@ assert.match(post, /texel\.rgb \*= min\( 1\.0, cotStructureGroundShade\( vUv, uC
 assert.match(post, /float cotGroundPre = max\( texel\.r, max\( texel\.g, texel\.b \) \);\s*if \( uVehGround > 0\.5/, 'the hulls\' factor read from the colour it scaled');
 assert.match(post, /updateStructureGroundUniforms\(aerial\.uniforms, scene, renderer, lightFx\.contactShadows\);/, 'the contact-shadow lever');
 const map = read('../world/map.ts');
-assert.match(map, /createStructureGroundOcclusion\(props\.obstacles, \{ group, scale: groundOcclusionScale \}\)/, 'the world bakes its obstacles');
+assert.match(map, /createStructureGroundOcclusion\(props\.obstacles, \{ group, scale: groundOcclusionScale, aureoleSun \}\)/, 'the world bakes its obstacles');
 assert.match(map, /getDeviceTier\(\) !== 'mobile'/, 'never on the phones');
 assert.match(map, /groundOcclusion\.update\(dt\);/, 'the world polls its destroyed solids');
 assert.match(map, /groundOcclusion\.dispose\(\);/);
