@@ -31,6 +31,13 @@ export interface CanyonWallSpec {
   waterLevel?: number;
   /** The share of the length the skin runs (default 0.82: the ends are the trench's heads). */
   span?: number;
+  /** (the maps lane, 2026-10-17, Aegis r6) a wall stepped by benches (a gorge cut in stages, its ledges a few metres wide):
+   * a gentle run shorter than this (m) under a further rise is a ledge of the wall, not its brow (default 0: the first
+   * gentle run is the brow, as on Glen Canyon's single sheer walls). */
+  benchM?: number;
+  /** (the maps lane, 2026-10-17, Aegis r6) the lake's calcite bathtub ring over the water (default true; a dry gorge
+   * floored by its river bed has none). */
+  ring?: boolean;
   /** sRGB HSL base tone of the rock (default Navajo sandstone). */
   tone?: readonly [number, number, number];
   /** (Skybridge round 6) a path trench's control points (its landform's `path`, landformPath.ts): the skin follows the
@@ -77,7 +84,13 @@ export function buildCanyonWall(spec: CanyonWallSpec, ground: CastleGround, nois
       for (let r = 1; r < spec.width * 0.75; r += 0.25) {
         const y0 = at(s, r), y1 = at(s, r + 0.5);
         if (Number.isNaN(foot)) { if (y1 - y0 > 0.4) { foot = r; footY = y0; } }
-        else if (y1 - y0 < 0.12) { brow = r; browY = y0; break; }
+        else if (y1 - y0 < 0.12) {
+          // a ledge: the ground rises again within benchM (spec.benchM, 0 = none)
+          let rises = false;
+          for (let q = r + 0.5; q <= r + (spec.benchM ?? 0) && q < spec.width * 0.75; q += 0.25) if (at(s, q + 0.5) - at(s, q) > 0.4) { rises = true; break; }
+          if (rises) continue;
+          brow = r; browY = y0; break;
+        }
       }
       walls.push(Number.isFinite(brow) && browY - footY > 4 ? { s, foot, footY, brow, browY } : null);
     }
@@ -126,7 +139,7 @@ export function buildCanyonWall(spec: CanyonWallSpec, ground: CastleGround, nois
         // (round 6, wave 259: "no legible bathtub ring") the lake's calcite ring: a pale band some five metres over the
         // water, its top a crisp line where the lake stood longest, wavering a little along the wall
         const ringTop = yLow + 5.2 + 0.6 * noise.noise(w.s * 0.05 + salt, side * 2.9);
-        const ring = 1 - smooth(ringTop - 0.35, ringTop + 0.15, y);
+        const ring = spec.ring === false ? 0 : 1 - smooth(ringTop - 0.35, ringTop + 0.15, y);
         l *= 1 + 0.62 * ring; sa *= 1 - 0.55 * ring;
         l *= 1 - 0.1 * flute - 0.12 * (1 - Math.min(1, p / 0.9));
         col.push(mesh.vert(pt, hsl(h, sa, l), groundAt(pt[0], pt[2])));

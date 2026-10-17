@@ -29,6 +29,9 @@ export interface CaprockSpec {
   yawDeg: number;
   /** A trench (a canyon arm): the brows are the walls' tops, the lips leaning out over the floor. */
   trench?: boolean;
+  /** (the maps lane, 2026-10-17, Aegis r6) a trench's wall stepped by benches: a gentle run shorter than this (m) under a
+   * further rise is a ledge of the wall, not its brow (default 0: the first gentle run is the brow; canyonWall.ts benchM). */
+  benchM?: number;
   /** The share of the length the ledge runs (its middle; the ends are the ridge's ramps or the trench's heads). Default
    * 0.82. */
   span?: number;
@@ -113,6 +116,9 @@ export function buildCaprockRim(spec: CaprockSpec, ground: CastleGround, noise: 
           if (Number.isNaN(foot)) {
             if (y1 - y0 > 0.4) { foot = r; footY = y0; }
           } else if (y1 - y0 < 0.12) {
+            let rises = false;
+            for (let q = r + 0.5; q <= r + (spec.benchM ?? 0) && q < spec.width * 0.75; q += 0.25) if (at(q + 0.5) - at(q) > 0.4) { rises = true; break; }
+            if (rises) continue;
             if (y0 - footY > 3) found = { s, r, y: y0 };
             break;
           }
