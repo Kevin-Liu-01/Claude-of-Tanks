@@ -369,7 +369,10 @@ export function gardenParts(w: number, d: number, look: () => number, drop = 0, 
       for (let x = x0; x <= last + 1e-6; x += 0.45) {
         for (const [y, r] of [[0.45, 0.17], [0.85, 0.15], [1.2, 0.12]] as const) {
           // (the lowest clump sits down into the row's leafy foot: the r2 sweep found it a few centimetres over it)
-          const c: Vec3 = [x + (look() - 0.5) * 0.08, base + y - r * (y < 0.5 ? 0.9 : 0.6), z + (look() - 0.5) * 0.1];
+          // (the 227 sweep: a clump 2 cm off its cane on Caldera) each clump round its own cane where the cane stands at
+          // its height (a frame's canes lean in to their tie), its jitter a hand's breadth at most
+          const jx = look() - 0.5, jz = look() - 0.5, lean = frame ? 0.28 - 0.32 * Math.min(1, y / 1.45) : 0;
+          const c: Vec3 = [x + jx * 0.04, base + y - r * (y < 0.5 ? 0.9 : 0.6), z + (jz < 0 ? -lean : lean) + jz * 0.04];
           mound(sink, c, X, Z, r, r * 0.9, r * 1.5, shade(leaf, 0.85 + look() * 0.3), dec, look() * 6, 4);
           if (y < 1.2) clumps.push([c[0], c[1], c[2], r]);
         }

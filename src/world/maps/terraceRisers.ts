@@ -167,7 +167,8 @@ export function* traceTerraceRisers(zones: readonly TerraceRiserZone[], o: Terra
             if (!o.clear(fxp, fzp) || !inside(zone.polygon, fxp, fzp)) continue;
             const y = at(fxp, fzp), r = 0.12 + hash(k, n, 0x7e5) * 0.12, h = r * (0.55 + hash(k, n, 0x7e6) * 0.3), turn = hash(k, n, 0x7e7) * Math.PI;
             const pt = (ang: number, rr: number, yy: number): Vec3 => [fxp + Math.cos(turn + ang) * rr, yy, fzp + Math.sin(turn + ang) * rr];
-            const ring = [0, 1, 2, 3, 4].map((q) => pt((q / 5) * Math.PI * 2, r * (0.8 + hash(q, k, 0x7e8) * 0.35), y - h * 0.3));
+            // (the 227 sweep: a shed stone's downhill side 3 cm over the slope) its bed each corner down into the ground there
+            const ring = [0, 1, 2, 3, 4].map((q) => { const p = pt((q / 5) * Math.PI * 2, r * (0.8 + hash(q, k, 0x7e8) * 0.35), y - h * 0.3); return [p[0], Math.min(p[1], at(p[0], p[2]) - 0.03), p[2]] as Vec3; });
             // (227) the shed stone rounded: a shoulder ring between its bed and its crown, turned a half step
             const shoulder = [0, 1, 2, 3, 4].map((q) => pt(((q + 0.5) / 5) * Math.PI * 2, r * (0.62 + hash(q, k, 0x7ea) * 0.2), y + h * 0.42));
             const apex: Vec3 = [fxp, y + h, fzp], col = tone(k, n, 0x7e9, 0.85);
