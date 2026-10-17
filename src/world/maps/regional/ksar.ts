@@ -5,8 +5,8 @@
 // block to the roof terrace and a parapet; a whitewashed mosque with a squat square minaret; the borj, a tapering
 // watch tower; a domed hammam.
 import * as THREE from 'three';
-import { PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, holedBox, holedPolygon, leanTo, recordShaft, windowRhythm, type HoleRect, type HouseDialect, type Opening } from './house.ts';
+import { PartSink, bodyFaces, faceBox, facePoint, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { buildHouse, holedBox, holedPolygon, leanTo, recordShaft, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening } from './house.ts';
 import { paintBand } from './facade.ts';
 import { bench, pottedPlant } from './dressing.ts';
 import { roundBody, type BodyBox } from './roundedBody.ts';
@@ -796,9 +796,10 @@ function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: nu
     },
   };
   const hs = new PartSink(sink.uvOffset);
+  let plan: HouseFrame | null = null;
   hs.placed(0, cx, y0, cz, () => {
     // (E15: its rain goods, the palm spouts this builder lays through the parapet with its own roof)
-    const frame = buildHouse(hs, {
+    const frame = plan = buildHouse(hs, {
       // (the footing is rubble with no dressed course over it: the mud band at the wall's foot is its band)
       w: W, d: D, plinth: ground ? { h: foot, out: 0.07, bucket: 'stone', course: false } : null,
       storeys: [{ h: h - foot, wall: bucket }],
@@ -913,7 +914,56 @@ function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: nu
       pottedPlant(sink, p[0], 0, p[2], 0.42, look);
     }
   }
+  if (plan) batteredPlan(plan, batter, top - y0);
   return body;
+}
+
+/**
+ * The plan the damage reads, made to follow the batter (the coordinator, 2026-10-17: a breach the damage draws on the
+ * grammar's upright face stood up to the batter off the leaning wall — the floating dark patch the owner flags): the
+ * storey cut into bands about a metre high wherever no opening crosses the cut, each band's body drawn in by the batter
+ * three quarters up it (batterParts: `batter` at the block's top, `span` over its foot), the openings re-hung in their bands, the
+ * roof over the top band. The walls drawn are the grammar's one storey battered whole; only the description the damage
+ * reads changes, so a breach lands on the leaning wall, within a few centimetres of it. The rounded corners stay outside
+ * the description (its faces run the body's full width, so a wall panel's fall takes its corners): a breach centred on
+ * a corner's arc still stands off it by up to the arc's depth there. Run after the builder's own last use of the
+ * openings (their heights become their bands').
+ */
+function batteredPlan(frame: HouseFrame, batter: number, span: number): void {
+  const spec = frame.spec, b0 = frame.bodies[0], foot = b0.y0, top = b0.y1;
+  // a cut never runs through an opening (with its sill and head margins): each band a metre or so, its cut moved to the
+  // nearest height clear of every opening
+  const blocked = spec.openings.map((o) => [foot + o.y0 - 0.05, foot + o.y0 + o.h + 0.15] as const);
+  const clearAt = (y: number): boolean => !blocked.some(([a, b]) => y > a && y < b);
+  const candidates = [...new Set([...blocked.flat(), ...Array.from({ length: Math.ceil((top - foot) / 0.25) }, (_, k) => foot + k * 0.25)])]
+    .filter((y) => y > foot + 0.4 && y < top - 0.4 && clearAt(y)).sort((p, q) => p - q);
+  const cuts = [foot];
+  for (;;) {
+    const last = cuts[cuts.length - 1], want = last + 1.0;
+    if (top - last < 1.4) break;
+    const next = candidates.filter((y) => y > last + 0.4 && y < top - 0.4).sort((p, q) => Math.abs(p - want) - Math.abs(q - want))[0];
+    if (next === undefined) break;
+    cuts.push(next);
+  }
+  cuts.push(top);
+  const wall = spec.storeys[0];
+  // each band's faces drawn in by the batter three quarters up it, where a tank's round meets a wall: a breach's skin
+  // lands within a few centimetres of the wall there, a hand into it at the band's foot, never a hand proud of it
+  const bands = cuts.slice(0, -1).map((y0, k) => {
+    const y1 = cuts[k + 1], inset = batter * (y0 + 0.75 * (y1 - y0)) / span;
+    return { x0: b0.x0 + inset, x1: b0.x1 - inset, z0: b0.z0 + inset, z1: b0.z1 - inset, y0, y1 };
+  });
+  for (const o of spec.openings) {
+    const at = foot + o.y0, k = Math.max(0, bands.findIndex((b) => at >= b.y0 - 1e-6 && at < b.y1 - 1e-6));
+    o.storey = k;
+    o.y0 = at - bands[k].y0;
+  }
+  spec.storeys = bands.map((b) => ({ ...wall, h: b.y1 - b.y0 }));
+  frame.bodies.splice(0, frame.bodies.length, ...bands);
+  frame.floors.splice(0, frame.floors.length, ...bands.map((b) => b.y0));
+  frame.faces = bodyFaces(b0.x1 - b0.x0, b0.z1 - b0.z0);
+  const t = bands[bands.length - 1];
+  frame.roof = roofGeometry(t.x1 - t.x0, t.z1 - t.z0, frame.eaveY, spec.roof);
 }
 
 /**
