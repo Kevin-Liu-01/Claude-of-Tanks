@@ -191,11 +191,13 @@ export default {
     // lane A's apron bank law).
     hardstands: [
       { x: 22, z: -192, width: 56, length: 56, yawDeg: 76, grade: 'road', bankM: 24 },
-      // (2026-10-17, the maps lane; 227 backlog) the ford green re-centred on the seat zone 2 is played on (144, 60), and
-      // 60 m: since 0133ecade the zone seated on the green's north half within 4 m of the steep cells (Lane C, 2026-10-16);
-      // the f3 seat on the north meadow (128, 96-106) is no seat for it — graded level there, the drives read 534 m from
-      // alpha against 371 m from bravo (objective symmetry 1.44)
-      { x: 144, z: 60, width: 60, length: 60, yawDeg: -22, grade: 'road', bankM: 18 },
+      // (2026-10-17, the maps lane; 227 backlog) the ford green stays where it was: zone 2 is played on its north half at
+      // (144, 60), and the steep cells Lane C found within 4 m of that seat (2026-10-16) were the f3 hedge-bank's faces
+      // (retired below), not the green's edge. Re-centring the green on the seat (60 m at 144, 60) was tried and backed
+      // out: its south bank no longer held Pine Hollow's bog above the water (12.4 % wet, minimapLiquidWater) or eased
+      // the ford approach (road grade 0.180 at 185, 27). The f3 seat on the north meadow (128, 96-106) is no seat for
+      // zone 2 — graded level there, the drives read 534 m from alpha against 371 m from bravo (objective symmetry 1.44)
+      { x: 154, z: 54, width: 56, length: 56, yawDeg: -22, grade: 'road', bankM: 18 },
       { x: 0, z: 102, width: 56, length: 56, yawDeg: 0, level: 4.5, grade: 0, bankM: 18 },
     ],
     clearMarshVeg: true, // keep the channel clear of tufts; reeds stay on the banks

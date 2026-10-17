@@ -40,11 +40,11 @@
       "concealers": 4325
     },
     "autumn": {
-      "bytes": 2084112,
-      "sha256": "e3cce310cfe3888d4de88be9a3f81291ca31122ed7ab851059c1ae38fae1bcc0",
-      "obstacles": 5855,
-      "colliders": 6235,
-      "concealers": 5650
+      "bytes": 2096413,
+      "sha256": "c9485ab3ae9d4de50c3ac52c740ebb59e4438914cd0ed66cfe667c9a1d723647",
+      "obstacles": 6228,
+      "colliders": 6610,
+      "concealers": 6033
     },
     "steppe": {
       "bytes": 1286864,
@@ -274,11 +274,11 @@
         "concealers": 4343
       },
       "autumn": {
-        "bytes": 2323428,
-        "sha256": "87ba232544b63466e4b3ea72adb3a216c7bd284549ea32b787390b319d2ff988",
-        "obstacles": 6075,
-        "colliders": 6338,
-        "concealers": 5730
+        "bytes": 2307623,
+        "sha256": "aa36d6272cf5fb8d0629badeb54f6f22a46cb9aa1792301fb85721e7ba1587bd",
+        "obstacles": 5758,
+        "colliders": 6016,
+        "concealers": 5390
       },
       "steppe": {
         "bytes": 1384667,
