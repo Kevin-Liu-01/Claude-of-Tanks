@@ -23,6 +23,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-17 (owner): fragile zombies and sturdy humans in Infected and the Horde (rules, hunt, measured band), and
     // unlimited rounds in every special and arcade mode
     'src/sim/zombieBalance.selftest.mjs',
+    // the zombies' tier-down wiring in both bot builders (the authority per seat, the solo battle per setting)
+    'src/game/zombieBotTier.selftest.mjs',
     'src/sim/specialModeAmmo.selftest.mjs',
     'src/sim/modeAdditions.selftest.mjs',
     'src/fx/sceneLightTint.selftest.mjs',

@@ -492,41 +492,58 @@ numbers:
 
 The infected keep their green energy skin: it is how a player tells a zombie, not why it was strong.
 
+The rule cards (play menu, arrangement panel, pre-battle chips) show both hulls in the one hull chip, the humans' first
+and the zombies' after a slash (`rulesetLines`: Infected "+50 % / -70 % hull", the Horde "+100 % / -85 % hull"), so the
+zombie modes add no line of their own. The zombies' bots playing a tier down is wired into both bot builders, the
+authority's `initializeBot` (each seat's own difficulty) and the solo `createBattleBot` (the stored setting);
+`src/game/zombieBotTier.selftest.mjs` reads the tier each controller was built with (`aiCtl.difficulty`) in both.
+
 Measured headlessly with `tools/mode-balance-probe.mjs` (the shared authority on Verdant, every seat a normal-difficulty
-bot, a seeded draw of production ground vehicles, 8 seeds — 16 for Infected now; in the Horde the `h1` seat reads as the human while the mode
-controller steps). "Before" is the 16aeab482 table run through today's code (`--before`, bit-identical to the
-investigation's runs on 16aeab482):
+bot, a seeded draw of production ground vehicles; in the Horde the `h1` seat reads as the human while the mode controller
+steps). "Before" is the 16aeab482 table run through today's code (`--before`, bit-identical to the investigation's runs
+on 16aeab482). "Now" covers 72 Infected seeds (1-64, 101-108) and 32 Horde seeds (1-24, 101-108); the hold-out is every
+seed no rule was tuned on (the Infected starter count was chosen on seeds 1-16, the Horde on 1-8). Every row the earlier
+rounds recorded (Infected 1-16 and 101-108, Horde 1-8 and 101-108, the before rows) reproduced bit for bit at this tree:
 
 | Mode | Humans win | Round ends (mean) | Human seat survives (mean / median) | Human kills / min | Zombie kills / min | Kill ratio | Waves (mean, best) |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Infected before | 0 / 8 | 136 s | 115 s / 117 s | 0.76 | 4.50 | 0.17 | — |
-| Infected now | 6 / 16 | 375 s | 331 s / 355 s | 5.80 | 1.48 | 3.93 | — |
-| Endless Horde before | 0 / 8 | 114 s | 114 s / 94 s | 0.36 | 1.09 | 0.33 | 1.1 (2) |
-| Endless Horde now | 0 / 8 (no clock: the numbers overrun every run) | 361 s | 361 s / 350 s | 6.48 | 0.67 | 9.74 | 4.75 (8) |
+| Infected before (8 seeds) | 0 / 8 | 136 s | 115 s / 117 s | 0.76 | 4.50 | 0.17 | — |
+| Infected now (72 seeds) | 24 / 72 | 377 s | 306 s / 338 s | 6.10 | 1.40 | 4.36 | — |
+| Infected now, hold-out (56) | 18 / 56 | 378 s | 298 s / 316 s | 6.19 | 1.38 | 4.49 | — |
+| Endless Horde before (8 seeds) | 0 / 8 | 114 s | 114 s / 94 s | 0.36 | 1.09 | 0.33 | 1.1 (2) |
+| Endless Horde now (32 seeds) | 0 / 32 (no clock: the numbers overrun every run) | 346 s | 346 s / 346 s | 6.46 | 0.63 | 10.18 | 4.66 (8) |
+| Endless Horde now, hold-out (24) | 0 / 24 | 341 s | 341 s / 346 s | 6.45 | 0.62 | 10.33 | 4.63 (7) |
 
 The humans now cut through the zombies — four to ten zombies for every human lost — and the numbers still decide:
-the outbreak takes 10 rounds in 16 (with four starting infected the survivors won 12 in 16, with six 1 in 8), and the Horde overruns the human seat in every run, at 3:33-9:14 and waves 3-8, after the human side's 18-95 kills. The
-probe's human is a bot; a player who uses cover lasts longer. `src/sim/zombieBalance.selftest.mjs` pins the rules,
-their invariants (a survivor outlasts four infected, a human outlasts eight Horde hostiles through wave 10, no
-fire-rate buff), the controller's hunt and fodder revive, and the measured band in `src/sim/zombieBalance.measured.json`
-(recorded with `--record`; it fails when the balance rules change until the band is measured again): Infected survivors
-win 35-70 % at a kill ratio of 3 or more; the Horde's human seat lasts 4:00 and three waves or more at a kill ratio of 5
-or more, and is still overrun in most runs.
+the outbreak takes two rounds in three (the survivors won 6 of the 16 tuning seeds, 16 of 48 on seeds 17-64 and 2 of 8
+on 101-108; with four starting infected they won 12 in 16, with six 1 in 8), and the Horde overruns the human seat in
+every run, at 1:11-9:14 and waves 1-8, after the human side's 4-95 kills. The probe's human is a bot; a player who uses
+cover lasts longer. `src/sim/zombieBalance.selftest.mjs` pins the rules, their invariants (a survivor outlasts four
+infected, a human outlasts eight Horde hostiles through wave 10, no fire-rate buff), the controller's hunt and fodder
+revive, and the measured band in `src/sim/zombieBalance.measured.json` (recorded with `--record`; it fails when the
+balance rules change until the band is measured again). The band holds on all seeds and on the hold-out alone, with at
+least 48 Infected and 24 Horde seeds of which 32 and 16 are hold-out: Infected survivors win 20-70 % at a kill ratio of
+3 or more; the Horde's human seat lasts 4:00 and three waves or more at a kill ratio of 5 or more, and is still overrun in
+most runs. The first band (35-70 % on 16 seeds) was fitted to the seeds the starter count was chosen on and failed on
+seeds 101-108 (2 of 8); the survivors' rate over 72 seeds is a third (33 %, hold-out 32 %), and 20 % sits about 2.4
+standard errors under it.
 
-Re-measure (minutes of wall time per seed; gate on `headroom can-start`):
+Re-measure (about 1.5-4 minutes of wall time per seed under load; gate on `headroom can-start`):
 
-    node tools/mode-balance-probe.mjs --mode=infected --seeds=1-8 --jobs=4 --out=DIR --tag=infAfter
-    node tools/mode-balance-probe.mjs --mode=endless_horde --seeds=1-8 --jobs=4 --out=DIR --tag=hordeAfter
+    node tools/mode-balance-probe.mjs --mode=infected --seeds=1-64,101-108 --jobs=6 --out=DIR --tag=infAfter
+    node tools/mode-balance-probe.mjs --mode=endless_horde --seeds=1-24,101-108 --jobs=6 --out=DIR --tag=hordeAfter
     node tools/mode-balance-probe.mjs --mode=infected --before --seeds=1-8 --jobs=4 --out=DIR --tag=infBefore
-    node tools/mode-balance-probe.mjs --table DIR infBefore infAfter
+    node tools/mode-balance-probe.mjs --mode=endless_horde --before --seeds=1-8 --jobs=4 --out=DIR --tag=hordeBefore
+    node tools/mode-balance-probe.mjs --table DIR infBefore infAfter hordeBefore hordeAfter
     node tools/mode-balance-probe.mjs --record=src/sim/zombieBalance.measured.json --dir=DIR \
-      --tags=infected:infBefore:infAfter,endless_horde:hordeBefore:hordeAfter
+      --tags=infected:infBefore:infAfter:1-16,endless_horde:hordeBefore:hordeAfter:1-8
 
 ## Verification
 
     node src/sim/matchRuleset.selftest.mjs
     node src/sim/matchModes.selftest.mjs
     node src/sim/zombieBalance.selftest.mjs
+    node src/game/zombieBotTier.selftest.mjs
     node src/sim/specialModeAmmo.selftest.mjs
     node src/game/campaignOperations.selftest.mjs
     node src/ui/minimapObjectives.selftest.mjs

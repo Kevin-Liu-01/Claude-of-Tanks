@@ -775,11 +775,12 @@ export function rulesetLines(ruleset: MatchRuleset): RulesetLine[] {
   if (ruleset.gunGame) line('gunGame', { kills: String(ruleset.gunGame.killsPerWeapon) });
   if (ruleset.gravityScale !== 1) line('gravity', { value: `${Math.round(ruleset.gravityScale * 100) / 100} g` });
   if (ruleset.speedMultiplier !== 1) line('speed', { value: percent(ruleset.speedMultiplier) });
-  // the humans' hull, then the zombies' (owner 2026-10-17: the Horde's and the Infected's hostiles are low-hull fodder)
+  // the humans' hull; where the hostiles' differs (owner 2026-10-17: the Horde's and the Infected's are low-hull fodder)
+  // the same chip pairs it after a slash, own / hostile ("+100 % / -85 %"), so the card gains no line of its own
   const humanHull = ruleset.hpScale * (ruleset.infection?.survivorHpScale ?? 1);
-  if (humanHull !== 1) line('hp', { value: percent(humanHull) });
   const hostileHull = hostileHullScale(ruleset);
-  if (hostileHull != null) line('hostileHull', { value: `${Math.round(hostileHull * 100)} %` });
+  if (hostileHull != null) line('hp', { value: `${percent(humanHull)} / ${percent(hostileHull)}` });
+  else if (humanHull !== 1) line('hp', { value: percent(humanHull) });
   if (ruleset.damageScale !== 1) line('damage', { value: percent(ruleset.damageScale) });
   if (ruleset.reloadScale !== 1) line('reload', { value: percent(1 / ruleset.reloadScale) });
   if (ruleset.ammo === 'he_only') line('ammoHeOnly');

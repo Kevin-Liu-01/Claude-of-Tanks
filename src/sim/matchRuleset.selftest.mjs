@@ -62,11 +62,10 @@ assert.deepEqual({ ...horde.horde, cacheHeal: { ...horde.horde.cacheHeal } }, {
 assert.deepEqual([1, 2, 3, 4, 5, 6, 7].map((w) => hordeWaveSize(horde.horde, w)), [6, 8, 10, 13, 15, 17, 20], 'the wave law grows without a cap');
 assert.equal(horde.timeLimitS, null); assert.equal(horde.respawnS, null); assert.equal(horde.hpScale, 2, 'the humans\' hull');
 assert.equal(horde.ammo, 'unlimited');
-assert.deepEqual(rulesetLines(horde).map((line) => line.key), ['hp', 'hostileHull', 'ammoUnlimited', 'noRespawn', 'noClock', 'allies', 'enemyPool', 'hordeWaves', 'waveRepair']);
-assert.equal(rulesetLines(horde)[0].values.value, '+100 %', 'the humans\' hull');
-assert.equal(rulesetLines(horde)[1].values.value, '15 %', 'the zombies\' hull');
-assert.equal(rulesetLines(horde)[8].values.value, '30 %');
-assert.deepEqual(rulesetLines(horde)[7].values, { value: '6', step: '2' });
+assert.deepEqual(rulesetLines(horde).map((line) => line.key), ['hp', 'ammoUnlimited', 'noRespawn', 'noClock', 'allies', 'enemyPool', 'hordeWaves', 'waveRepair']);
+assert.equal(rulesetLines(horde)[0].values.value, '+100 % / -85 %', 'one hull chip: the humans\' hull, then the zombies\' after a slash');
+assert.equal(rulesetLines(horde)[7].values.value, '30 %');
+assert.deepEqual(rulesetLines(horde)[6].values, { value: '6', step: '2' });
 assert.equal(HORDE_WAVE_REPAIR, 0.3);
 {
   const near = (a, b) => Math.abs(a - b) < 1e-9;
@@ -106,7 +105,7 @@ const arrangedHorde = matchRulesetFor('endless_horde', null, { allies: 0, enemie
 assert.equal(arrangedHorde.allies, 0); assert.equal(arrangedHorde.enemies, 18); assert.equal(arrangedHorde.horde.waveSize, 8);
 assert.equal(arrangedHorde.enemyNation, 'russia');
 assert.ok(Object.isFrozen(arrangedHorde) && Object.isFrozen(arrangedHorde.horde));
-assert.deepEqual(rulesetLines(arrangedHorde).map((line) => line.key), ['hp', 'hostileHull', 'ammoUnlimited', 'noRespawn', 'noClock', 'noAllies', 'enemyPool', 'enemyNation', 'hordeWaves', 'waveRepair']);
+assert.deepEqual(rulesetLines(arrangedHorde).map((line) => line.key), ['hp', 'ammoUnlimited', 'noRespawn', 'noClock', 'noAllies', 'enemyPool', 'enemyNation', 'hordeWaves', 'waveRepair']);
 assert.equal(arrangedHorde.horde.hostileHpScale, 0.15, 'an arranged wave keeps the fodder law');
 assert.equal(matchRulesetFor('endless_horde', null, { waveSize: 12, enemies: 6 }).horde.waveSize, 6, 'the first wave never exceeds the pool');
 assert.equal(matchRulesetFor('endless_horde', null, {}), horde, 'an empty arrangement is the base ruleset');

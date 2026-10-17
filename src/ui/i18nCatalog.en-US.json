@@ -3234,7 +3234,6 @@
   "rules.line.gravity": "{value} gravity",
   "rules.line.speed": "{value} speed",
   "rules.line.hp": "{value} hull",
-  "rules.line.hostileHull": "{value} hostile hull",
   "rules.line.damage": "{value} damage",
   "rules.line.reload": "{value} reload rate",
   "rules.line.ammoHeOnly": "HE rounds only",

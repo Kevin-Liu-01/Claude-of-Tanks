@@ -10,7 +10,11 @@
 //                                                                          one capped child per seed, DIR/<tag>.<seed>.json
 //   node tools/mode-balance-probe.mjs --table DIR <tag...>                 aggregate the rows of each tag
 //   node tools/mode-balance-probe.mjs --record=src/sim/zombieBalance.measured.json --dir=DIR \
-//     --tags=infected:<before>:<after>,endless_horde:<before>:<after>      the band zombieBalance.selftest checks
+//     --tags=infected:<before>:<after>:<tuned>,endless_horde:<before>:<after>:<tuned>
+//                                                                          the band zombieBalance.selftest checks; <tuned>
+//                                                                          (optional, e.g. 1-16) names the seeds the rules
+//                                                                          were tuned on, and the record adds a hold-out
+//                                                                          aggregate of every other seed
 //
 // Options: --map=verdant, --capS=900 (simulated seconds), --difficulty=normal (every seat; the ruleset may step the
 // Horde's hostiles down), --hostileDifficulty (the hostile seats before that step), --rules='{json}' (a partial ruleset
@@ -89,19 +93,27 @@ if (flag('table')) {
 }
 
 if (arg('record', null) != null) {
-  // --record=OUT --dir=DIR --tags=infected:BEFORE_TAG:AFTER_TAG,endless_horde:BEFORE_TAG:AFTER_TAG — the measured band
-  // src/sim/zombieBalance.selftest.mjs checks: each mode's balance rules as measured, and its before/after aggregates
+  // --record=OUT --dir=DIR --tags=infected:BEFORE_TAG:AFTER_TAG[:TUNED],endless_horde:... — the measured band
+  // src/sim/zombieBalance.selftest.mjs checks: each mode's balance rules as measured, and its before/after aggregates;
+  // TUNED seeds (the ones a rule was chosen on) also yield `after.<mode>.holdout`, the aggregate of the other seeds, so
+  // the band is checked on runs the tuning never saw (critic 2026-10-17: a band fitted to its tuning seeds failed on 101-108)
   const { matchRulesetFor } = await import(new URL('src/sim/matchRuleset.ts', ROOT).href);
   const dir = arg('dir', '.');
   const record = { tool: 'tools/mode-balance-probe.mjs', map: 'verdant', difficulty: 'normal', rules: {}, before: {}, after: {} };
   for (const entry of arg('tags', '').split(',').filter(Boolean)) {
-    const [mode, beforeTag, afterTag] = entry.split(':');
+    const [mode, beforeTag, afterTag, tuned] = entry.split(':');
     const r = matchRulesetFor(mode);
     record.rules[mode] = JSON.parse(JSON.stringify({ hpScale: r.hpScale, reloadScale: r.reloadScale, damageScale: r.damageScale,
       speedMultiplier: r.speedMultiplier, ammo: r.ammo, respawnS: r.respawnS, timeLimitS: r.timeLimitS, allies: r.allies, enemies: r.enemies,
       infection: r.infection ?? null, horde: r.horde ?? null }));
     record.before[mode] = aggregate(readRows(dir, beforeTag));
-    record.after[mode] = aggregate(readRows(dir, afterTag));
+    const afterRows = readRows(dir, afterTag);
+    record.after[mode] = aggregate(afterRows);
+    if (tuned) {
+      const tunedSeeds = new Set(parseSeeds(tuned));
+      record.after[mode].tunedSeeds = [...tunedSeeds];
+      record.after[mode].holdout = aggregate(afterRows.filter((row) => !tunedSeeds.has(row.seed)));
+    }
   }
   writeFileSync(arg('record'), `${JSON.stringify(record, null, 2)}\n`);
   console.log(`recorded ${Object.keys(record.rules).join(', ')} to ${arg('record')}`);

@@ -3234,7 +3234,6 @@
   "rules.line.gravity": "重力 {value}",
   "rules.line.speed": "速度 {value}",
   "rules.line.hp": "车体耐久 {value}",
-  "rules.line.hostileHull": "敌方车体耐久 {value}",
   "rules.line.damage": "伤害 {value}",
   "rules.line.reload": "装填速率 {value}",
   "rules.line.ammoHeOnly": "仅限高爆弹",
