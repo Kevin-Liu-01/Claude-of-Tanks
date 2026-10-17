@@ -6344,6 +6344,8 @@ export function initHud(bus: EventBus): HudRuntime {
   function applyMode(): void {
     if (mode === 'hidden') {document.documentElement.classList.remove('cot-thermal-flight');document.documentElement.dataset.flight='';}
     root.style.display = mode === 'hidden' ? 'none' : 'block';
+    // the layout owner holds a medal card placed clear of the battle sight only while the scope is up (battleHudLayout.ts)
+    root.classList.toggle('cot-scoped', mode === 'sniper');
     // scope shadow fades in over ~0.1 s on ENTERING sniper (movement §9.2)
     if (mode === 'sniper' && scopePrevMode !== 'sniper') scopeFadeMs = performance.now();
     scopePrevMode = mode;

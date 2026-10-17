@@ -457,11 +457,12 @@ export function installBattleHudLayout(root: HTMLElement): void {
             Math.max(0, report.top - rosterStart - 32)) : 0],
         systemsLeft, systemsTop, dockWidth, systemsHeight, sideWidth, planLeftAnchor, planLeftBottom, planRightAnchor, Math.min(rightBottom, rightKillFloor), report);
     }
-    // The medal card waits (keeping its time) while a notice whose place it shares is up, and where it has no place.
+    // The medal card waits (keeping its time) while a notice whose place it shares is up, where it has no place, and
+    // while the scope is up where its place clears the battle sight only (a short window: hud.ts marks the scope).
     let medalReady = false;
     if (plan && banner?.childElementCount) {
       const slot = plan.medal;
-      medalReady = !!slot;
+      medalReady = !!slot && !(slot.clearance < 2 && root.classList.contains('cot-scoped'));
       if (slot?.sharesNotices) {
         const meets = (box: PlanRect) => box.x < slot.x + slot.w && box.x + box.w > slot.x && box.y < slot.y + slot.h && box.y + box.h > slot.y;
         if ((root.querySelector('.cot-sixth.on') && meets(plan.detection)) || (root.querySelector('.cot-alert.show') && meets(alertBox(plan.alert)))) medalReady = false;

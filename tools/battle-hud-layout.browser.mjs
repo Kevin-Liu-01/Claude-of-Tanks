@@ -45,8 +45,10 @@ const reports=[];const errors=[];
 //   detection's second line wherever main shows it, above 550 px tall);
 // - keep its box through a kill burst and while Tab is held (k0, k3, the burst and Tab stage the same box);
 // - overlap no other HUD part (rosters, held Tab rosters too, score, objective, kill lanes, damage toasts, chat, minimap,
-//   damage panel, drive, systems, ammunition, consumables, report, network readouts) and no other element it is shown
-//   with (only an element its plan marks as sharing a notice's place, tier 's', may meet that notice);
+//   damage panel, drive, systems, ammunition, consumables, report, network readouts, the scope-vision toggle and the
+//   flight console, with the aerial sheet loaded as in battle) and no other element it is shown with (only an element
+//   its plan marks as sharing a notice's place, tier 's', may meet that notice);
+// - the medal card waits in the scope where its place clears the battle sight only (a short window);
 // and the side lanes keep every kill row main shows while nothing is up, and at least one while anything is (but where
 // every place clear of the reticle crosses a lane whole: EMPTY_LANES_OK).
 const recordMain = arg('record-main','');
@@ -102,6 +104,9 @@ function noticeStages(){
 }
 async function noticePrep(alerts){
   const f=window.__HUD_LAYOUT;
+  // the game loads the aerial HUD's sheet with hud.ts (battleHudAccess.ts): the scope-vision toggle and the flight console
+  // stand where they do in battle
+  await import('/src/ui/aerialHud.css');
   const {TANK_SPECS}=await import('/src/vehicles/specs.ts');
   const reg=await import('/src/ui/moduleRegistry.ts');
   const {MEDALS}=await import('/src/game/serviceRecord.ts');
@@ -211,7 +216,7 @@ function noticeMeasure(){
   }
   const OTHERS=['.cot-ear.l','.cot-ear.r','.cot-top','.cot-mode-status.show','.cot-kill-lane.l','.cot-kill-lane.r','.cot-net','.cot-drive','.cot-dp',
     '.cot-minimap','.cot-si-toasthost','.cot-si-cardhost:not(:empty)','.cot-room-chat:not([hidden])','.cot-spec.show','.cot-shell','.cot-con',
-    '.cot-vehicle-controls','.cot-mp-status.battle'];
+    '.cot-vehicle-controls','.cot-mp-status.battle','.cot-scope-vision:not([hidden])','.cot-flight-hud:not([hidden]) .flight-console'];
   const others=[];
   for(const s of OTHERS)for(const e of document.querySelectorAll(s))if(vis(e)&&!(s==='.cot-kill-lane.l'||s==='.cot-kill-lane.r')||(vis(e)&&e.children.length&&[...e.children].some(c=>!c.hidden)))others.push([s,e.getBoundingClientRect()]);
   const R=e=>{const r=e.getBoundingClientRect();return {x:r.x,y:r.y,w:r.width,h:r.height};};
@@ -341,11 +346,14 @@ try {
         // the keep-out each element's plan clears ('2' unless the plan says less), and whether it shares a notice's place
         const tier=k=>{const m=(got.tiers??'').match(new RegExp(`${k}(\\d|-)(s?)`));return m?(m[1]==='-'?-1:Number(m[1])):2;};
         const shares=k=>new RegExp(`${k}\\ds`).test(got.tiers??'');
-        // the medal card waits only on a notice whose place it shares, or where its plan has no place at all
+        // the medal card waits only on a notice whose place it shares, where its plan has no place at all, and in the
+        // scope where its place clears the battle sight only
+        const scopedShort=stage[4]==='scope'&&tier('m')<2;
         if(set.includes('medal')&&!got.notices.m&&tier('m')>=0){
-          const waits=shares('m')&&(got.notices.d||got.notices.a);
+          const waits=(shares('m')&&(got.notices.d||got.notices.a))||scopedShort;
           if(!waits)failures.push('the medal card has a place but is not shown');
         }
+        if(set.includes('medal')&&got.notices.m&&scopedShort)failures.push(`the medal card shows in the scope where its place clears the battle sight only (tier ${tier('m')})`);
         for(const [k,n] of Object.entries(got.notices)){
           const what={d:'detection',a:'alert',c:'countdown',m:'medal',r:'revive count'}[k];
           const t=tier(k),main=mainStage?.[k]??[0,0,0];
@@ -357,7 +365,10 @@ try {
           const sharing=hit=>{const m=hit.match(/^notice ([dacmr])$/);if(!m)return false;
             const [x,y]=[k,m[1]],notice=v=>v==='d'||v==='a';
             return (notice(y)&&shares(x))||(notice(x)&&shares(y));};
-          for(const hit of n.hits)if(!sharing(hit))failures.push(`the ${what} overlaps ${hit}`);
+          // a place that clears the battle sight only (tier 1 or 0: the countdown on a 481 px portrait, the revive count on a
+          // short window) is not kept off the scope's furniture; its ink is held to main's above
+          const scopeFurniture=hit=>hit.startsWith('.cot-scope-vision')&&t<2;
+          for(const hit of n.hits)if(!sharing(hit)&&!scopeFurniture(hit))failures.push(`the ${what} overlaps ${hit}`);
           if(n.clip>.75)failures.push(`the ${what}'s text runs ${n.clip} px outside its frame`);
           if(k==='a'){
             const mainFont=mainStage?._f??(height<=550||width<=480?9:12);
