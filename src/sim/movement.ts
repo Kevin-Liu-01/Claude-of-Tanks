@@ -1039,6 +1039,8 @@ const FLOOR_LIFT_MAX_M_PER_STEP = 0.25;
  * rock climbs too, and its census was worse (roofs 2517 -> 2545, terrain 369 -> 401); at half a metre both are better
  * (2511, 365). */
 const SUPPORT_STEP_M = 0.5;
+/** Below this travel (m/s) a hull has no travel to climb by (DST-02): the support's whole unexplained rise is the solver's. */
+const SOLVER_RISE_CREEP_MPS = 1;
 /**
  * The whole-hull floor lift climbs at the hull's own pace (destruction stream, 2026-10-13; the owner: "tanks driving on
  * odd surfaces like rocks and other irregularities will stop being glitchy and weird"). A rock's movement tier entered
@@ -2611,7 +2613,12 @@ function updateVerticalContact(state: TankState, groundedAtStart: boolean, dt: n
       // Frontier: a T-90 slid off a 54-degree roof hung at its eave with a track corner across it; its support stepped
       // 0.9 m in one step and again each time the corner crossed back, the ground's rate took the steps, and the hull
       // left the eave at 2.6 m/s.
-      if (solverRise > SUPPORT_STEP_M) ride.supportY += solverRise;
+      //
+      // (physics stream DST-02, 2026-10-17; 227: the Reservoir pivot hops) and a hull hardly travelling — pivoting on the
+      // spot, creeping — has no travel to climb by: any rise its travel does not explain is the solver's, by position
+      // only. A pivoting Abrams on a 51-degree pitched roof read its uphill station's rise, step after step, as the
+      // ground's rate (each under the half metre), rode it 5 m up the roof and left it at 5.9 m/s, over on its back.
+      if (solverRise > (Math.abs(state.speed) < SOLVER_RISE_CREEP_MPS ? 0 : SUPPORT_STEP_M)) ride.supportY += solverRise;
     }
     const groundVStart = ride.groundV;
     updateRideSupportVelocity(ride, supportY, dt);
