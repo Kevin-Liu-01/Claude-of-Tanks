@@ -302,9 +302,9 @@
    "floating": 0,
    "sliver": 0,
    "floatingM2": 0,
-   "holeM2": 3.727,
-   "insideM2": 0.877,
-   "gapM2": 55.573,
+   "holeM2": 3.589,
+   "insideM2": 0,
+   "gapM2": 55.485,
    "invertedM2": 0
   },
   "hessian/woodshed": {
@@ -329,18 +329,18 @@
    "floating": 0,
    "sliver": 0,
    "floatingM2": 0,
-   "holeM2": 3.882,
-   "insideM2": 1.04,
-   "gapM2": 81.868,
+   "holeM2": 3.884,
+   "insideM2": 0.813,
+   "gapM2": 82.378,
    "invertedM2": 0
   },
   "landmark/copper_mesa:headframe#14": {
    "floating": 0,
    "sliver": 0,
    "floatingM2": 0,
-   "holeM2": 3.884,
+   "holeM2": 4.203,
    "insideM2": 0,
-   "gapM2": 53.071,
+   "gapM2": 48.659,
    "invertedM2": 0
   },
   "longleaf/farmhouse": {
@@ -374,9 +374,9 @@
    "floating": 0,
    "sliver": 0,
    "floatingM2": 0,
-   "holeM2": 3.734,
+   "holeM2": 4.237,
    "insideM2": 0,
-   "gapM2": 64.028,
+   "gapM2": 63,
    "invertedM2": 0
   },
   "kolkhoz/chapel": {
@@ -3490,7 +3490,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 30.214,
+   "gapM2": 44.046,
    "invertedM2": 0
   },
   "landmark/whiteout:guyedMast#11": {
@@ -4502,5 +4502,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-17T19:04:05.235Z"
+ "updatedAt": "2026-10-17T20:27:29.529Z"
 }

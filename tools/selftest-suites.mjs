@@ -1762,6 +1762,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/ammoCrates.selftest.mjs',
     'src/world/maps/rollingStock.selftest.mjs',
     'src/world/maps/vehicleSetPieces.selftest.mjs',
+    // the map-content lane's R6 (wave 358a): the works vehicles on their own gear, their prints and ground contact
+    'src/world/maps/setPieceSeat.selftest.mjs',
     'src/world/maps/strandWrack.selftest.mjs',
     'src/world/maps/shoreJetty.selftest.mjs',
     // #16 r2 (Lane C, 2026-10-14): the waterside family in its members (jetty forms, gangway, driftwood, buoys, fords, reeds)

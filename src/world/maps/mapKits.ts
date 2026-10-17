@@ -43,7 +43,9 @@ import {
 } from './jettyKit.ts';
 import { BOAT_FAMILIES, boatFamilyForMap, familyBoat, type BoatFamily } from './boatHulls.ts';
 import { ROLLING_STOCK_BODY, ROLLING_STOCK_LENGTH, buildRollingStock, type RollingStockKind } from './rollingStock.ts';
-import { SET_PIECE_SIZE, buildSetPiece, type VehicleSetPiece } from './vehicleSetPieces.ts';
+import {
+  RUNNING_GEAR_SEATED, SET_PIECE_SIZE, buildSetPiece, runningGearOf, seatOnRunningGear, type RunningGear, type VehicleSetPiece,
+} from './vehicleSetPieces.ts';
 import { dressShanghai } from './shanghaiStreets.ts';
 import {
   cloneCollisionRecord, convexHull2, setConvexShape, type CollisionRecord,
@@ -945,11 +947,13 @@ export function dressMapExtras({
 
 // The map-vehicles lane (P5, 2026-10-06): an authored vehicle at its spot (vehicleSetPieces.ts), seated on the ground
 // under its footprint's corners (pitched and rolled to the plane through them), into the painted bucket, with a solid
-// convex record over its footprint from the ground to its top (a shell collider where the kind stops shells).
+// convex record over its footprint from the ground to its top (a shell collider where the kind stops shells). The works
+// vehicles (the map-content lane's R6, wave 358a: "hovers above the snow", "hovers on the slope") sit on their own running
+// gear instead (vehicleSetPieces.ts seatOnRunningGear: no floor point more than 2 cm clear of the ground).
 function dressVehicleSetPieces(ctx: FocusedDressingContext, pieces: readonly VehicleSetPiece[]): void {
   const { heightField, buckets } = ctx;
   if (!buckets.baked) return;
-  type Built = { geo: THREE.BufferGeometry; hull: number[]; top: number };
+  type Built = { geo: THREE.BufferGeometry; hull: number[]; top: number; gear: RunningGear | null };
   const built = new Map<string, Built>();
   const solidOf = (kind: VehicleSetPiece['kind'], wrecked: boolean): Built => {
     const key = `${kind}${wrecked ? '/w' : ''}`;
@@ -965,7 +969,7 @@ function dressVehicleSetPieces(ctx: FocusedDressingContext, pieces: readonly Veh
       pts.push([p.getX(i), p.getZ(i)]);
       top = Math.max(top, p.getY(i));
     }
-    const made = { geo, hull: convexHull2(pts), top };
+    const made = { geo, hull: convexHull2(pts), top, gear: RUNNING_GEAR_SEATED.has(kind) ? runningGearOf(geo) : null };
     built.set(key, made);
     return made;
   };
@@ -978,8 +982,10 @@ function dressVehicleSetPieces(ctx: FocusedDressingContext, pieces: readonly Veh
     const at = (a: number, b: number): [number, number] => [piece.x + sx * a * size.hw + fx * b * size.hl, piece.z + sz * a * size.hw + fz * b * size.hl];
     const h = (a: number, b: number) => { const [x, z] = at(a, b); return heightField.getHeightAt(x, z); };
     const hFL = h(-1, 1), hFR = h(1, 1), hBL = h(-1, -1), hBR = h(1, -1);
-    const pitch = Math.atan2((hFL + hFR - hBL - hBR) / 2, size.hl * 2), roll = Math.atan2((hFR + hBR - hFL - hBL) / 2, size.hw * 2);
-    const y = (hFL + hFR + hBL + hBR) / 4;
+    const seat = solid.gear ? seatOnRunningGear(piece, solid.gear, (x, z) => heightField.getHeightAt(x, z)) : null;
+    const pitch = seat ? seat.pitch : Math.atan2((hFL + hFR - hBL - hBR) / 2, size.hl * 2);
+    const roll = seat ? seat.roll : Math.atan2((hFR + hBR - hFL - hBL) / 2, size.hw * 2);
+    const y = seat ? seat.y : (hFL + hFR + hBL + hBR) / 4;
     const g = geo.clone();
     g.rotateZ(roll);
     g.rotateX(-pitch);
