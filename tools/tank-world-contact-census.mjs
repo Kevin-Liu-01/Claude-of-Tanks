@@ -836,6 +836,8 @@ export async function censusMap(mapId, { variant = 'base', classes = CLASSES, si
               let deepest = 0;
               for (const record of shells) {
                 if (s.pos.x < record.min[0] || s.pos.x > record.max[0] || s.pos.z < record.min[2] || s.pos.z > record.max[2]) continue;
+                // (a building the subject's ram brought down yields to it: physics-torture.mjs runCase's caseDef.yielded)
+                if (caseDef.yielded?.has(record.structureIdx)) continue;
                 for (const part of partsOf(record)) {
                   const y0 = part?.y0 ?? record.min[1], y1 = part?.y1 ?? record.max[1];
                   if (y <= y0 || y >= y1) continue;

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { Vector3 } from 'three';
 import {
-  collisionFootprintContainsPoint, convexHull2, createObstacleGrid,
-  pushHullFromObstacle, pushHullFromHull, rayCollisionFootprintEntry2,
+  collisionClearanceContainsPoint, collisionFootprintContainsPoint, convexHull2, createObstacleGrid,
+  pushHullFromObstacle, pushHullFromHull, rayCollisionClearanceEntry2, rayCollisionFootprintEntry2,
   rayCollisionRecord, setCircleShape, setCompoundShape, setConvexShape, setObbShape,
   shellPassesThroughCollisionRecord, cloneCollisionRecord,
   createHullFootprint, hullFootprint, hullPassesObstacleTop, hullUndersideOver,
@@ -298,6 +298,100 @@ assert.deepEqual(sharedOut, [], 'cell candidates still obey exact AABB rejection
     `the glacis stands as 0.65, clears as its tracks, 0 (${wallStand}, ${glacis.clearBottom})`);
   assert.equal(pushHullFromObstacle({ x: 0, z: 0 }, 0, 1, 1, 0, 3.2, 1.6, wall, { x: 0, z: 0 }, wallStand, 4.5,
     glacis.clearBottom), true, 'the low wall pushes the hull whose glacis is over it');
+}
+
+// Clearance bevels (bots lane 227, 2026-10-16). A footprint grown by a margin edge by edge meets margin / sin(θ/2) out
+// from a corner of interior angle θ: Verdant's smock mill (226) carries 0.15 m plinth slivers whose 2.6-degree corners
+// grew a T-90AM's 3.29 m lane margin into needles ~150 m long, and the bots' corner router read the mill as blocking the
+// lane from the north-east spawn to its first waypoint (the hard bot drove 115 m east first; 66 s to a gun solution on
+// 225, 110 s on 226). The clearance query bevels each corner sharper than 60 degrees at the margin out along its bisector.
+{
+  const margin = 3.29;
+  // the mill's south-west plinth sliver as Verdant's v2 shards carry it (structure 18, part 1)
+  const sliver = setConvexShape(rec(16), [265.3431, 284, 263.15, 286.4053, 265.4053, 284.15]);
+  const ux = -15 / Math.hypot(15, 15), uz = -15 / Math.hypot(15, 15);
+  assert.ok(rayCollisionFootprintEntry2(sliver, 190, 390, ux, uz, 21.2, margin) != null,
+    'the plain offset edges grow the sliver a needle across the spawn lane 120 m away (the defect class)');
+  assert.equal(rayCollisionClearanceEntry2(sliver, 190, 390, ux, uz, 21.2, margin), null,
+    'the clearance ray leaves the spawn lane clear');
+  // a point on the needle, 40 m out from the sliver along its sharp corner's bisector
+  const tipX = 263.15 - 40 * 0.6905, tipZ = 286.4053 + 40 * 0.7233;
+  assert.equal(collisionFootprintContainsPoint(sliver, tipX, tipZ, margin), true, 'the plain clearance holds a point 40 m out');
+  assert.equal(collisionClearanceContainsPoint(sliver, tipX, tipZ, margin), false, 'the bevelled clearance does not');
+  assert.equal(collisionClearanceContainsPoint(sliver, 263.15, 286.4053, 0), true, 'margin 0: the corner itself is held');
+
+  // blunt footprints keep the plain offset edges exactly: a rotated rectangle (90-degree corners) and an octagon
+  const c30 = Math.cos(0.52), s30 = Math.sin(0.52);
+  const box = setConvexShape(rec(3), [[-4, -2], [4, -2], [4, 2], [-4, 2]].flatMap(([x, z]) => [x * c30 + z * s30, -x * s30 + z * c30]));
+  const octagon = setConvexShape(rec(3), Array.from({ length: 8 }, (_, k) => [5 * Math.cos(k * Math.PI / 4 + 0.2), 5 * Math.sin(k * Math.PI / 4 + 0.2)]).flat());
+  for (const shape of [box, octagon]) {
+    for (let x = -12; x <= 12; x += 0.37) for (let z = -12; z <= 12; z += 0.41) {
+      assert.equal(collisionClearanceContainsPoint(shape, x, z, margin), collisionFootprintContainsPoint(shape, x, z, margin),
+        `a blunt footprint's clearance is its plain clearance at (${x}, ${z})`);
+    }
+    for (let k = 0; k < 64; k++) {
+      const a = k * 0.0982, sx = 14 * Math.sin(a), sz = 14 * Math.cos(a);
+      for (const aim of [-0.3, 0, 0.21]) {
+        const dx = -Math.sin(a + aim), dz = -Math.cos(a + aim);
+        assert.equal(rayCollisionClearanceEntry2(shape, sx, sz, dx, dz, 30, margin), rayCollisionFootprintEntry2(shape, sx, sz, dx, dz, 30, margin),
+          'a blunt footprint\'s clearance ray is its plain ray');
+      }
+    }
+  }
+
+  // any convex footprint: the bevelled clearance holds every point within the margin (the true clearance) and lies inside
+  // the plain one; a clearance ray enters where the clearance begins
+  let state = 22701;
+  const random = () => ((state = (Math.imul(state, 1664525) + 1013904223) >>> 0) / 4294967296);
+  const distanceTo = (points, x, z) => {
+    let inside = true, best = Infinity;
+    for (let i = 0; i < points.length; i += 2) {
+      const ax = points[i], az = points[i + 1], bx = points[(i + 2) % points.length], bz = points[(i + 3) % points.length];
+      const ex = bx - ax, ez = bz - az, length2 = ex * ex + ez * ez;
+      const t = length2 > 0 ? Math.max(0, Math.min(1, ((x - ax) * ex + (z - az) * ez) / length2)) : 0;
+      best = Math.min(best, Math.hypot(x - ax - ex * t, z - az - ez * t));
+      if (ex * (z - az) - ez * (x - ax) < 0) inside = false;
+    }
+    return inside ? 0 : best;
+  };
+  let needles = 0;
+  for (let trial = 0; trial < 160; trial++) {
+    const stretch = trial % 2 ? 0.02 + random() * 0.2 : 1; // half the footprints are slivers
+    const raw = Array.from({ length: 3 + Math.floor(random() * 4) }, () => [random() * 6 - 3, (random() * 6 - 3) * stretch]);
+    const angle = random() * Math.PI;
+    const hull = convexHull2(raw.map(([x, z]) => [x * Math.cos(angle) - z * Math.sin(angle), x * Math.sin(angle) + z * Math.cos(angle)]));
+    if (hull.length < 6) continue;
+    const shape = setConvexShape(rec(2), hull), points = shape.shape2.points;
+    const ccw = [];
+    let area = 0;
+    for (let i = 0; i < points.length; i += 2) area += points[i] * points[(i + 3) % points.length] - points[(i + 2) % points.length] * points[i + 1];
+    for (let i = 0; i < points.length; i += 2) ccw.push(...(area >= 0 ? [points[i], points[i + 1]] : [points[points.length - 2 - i], points[points.length - 1 - i]]));
+    // the shards carry either winding: the same footprint wound the other way reads the same
+    const reversed = [];
+    for (let i = points.length - 2; i >= 0; i -= 2) reversed.push(points[i], points[i + 1]);
+    const flipped = { min: shape.min, max: shape.max, shape2: { ...shape.shape2, points: reversed } };
+    const m = 0.5 + random() * 3.5;
+    for (let k = 0; k < 120; k++) {
+      const x = random() * 40 - 20, z = random() * 40 - 20;
+      const held = collisionClearanceContainsPoint(shape, x, z, m), plain = collisionFootprintContainsPoint(shape, x, z, m);
+      assert.equal(collisionClearanceContainsPoint(flipped, x, z, m), held, 'the clearance reads either winding alike');
+      if (distanceTo(ccw, x, z) <= m - 1e-9) assert.ok(held, `the bevelled clearance holds a point ${distanceTo(ccw, x, z).toFixed(3)} m from the footprint (margin ${m.toFixed(2)})`);
+      if (held) assert.ok(plain, 'the bevelled clearance lies inside the plain one');
+      if (plain && !held) needles++;
+      const dx = Math.sin(k), dz = Math.cos(k);
+      const entry = rayCollisionClearanceEntry2(shape, x, z, dx, dz, 40, m);
+      const flippedEntry = rayCollisionClearanceEntry2(flipped, x, z, dx, dz, 40, m);
+      assert.ok(entry === flippedEntry || (entry != null && flippedEntry != null && Math.abs(entry - flippedEntry) < 1e-9),
+        'the clearance ray reads either winding alike');
+      if (entry != null) {
+        const plainEntry = rayCollisionFootprintEntry2(shape, x, z, dx, dz, 40, m);
+        assert.ok(plainEntry != null && entry >= plainEntry - 1e-9, 'a clearance ray enters no sooner than the plain ray');
+        assert.ok(collisionClearanceContainsPoint(shape, x + dx * (entry + 1e-6), z + dz * (entry + 1e-6), m + 1e-6),
+          'a clearance ray enters where the clearance begins');
+      }
+    }
+  }
+  assert.ok(needles > 0, 'the random slivers grew needles the bevel cut');
 }
 
 console.log('collision.selftest: exact environment shapes and spatial broad phase passed');
