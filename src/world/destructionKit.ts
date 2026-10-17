@@ -256,6 +256,13 @@ export interface StructureDamageAnatomy {
     /** An open frame by its builder's name (collapseRuin.ts ruinKind): a water tower, a windmill, a mast, a gantry. */
     frame?: boolean };
   /**
+   * What the building actually draws (structureEnclosure.ts; destruction-slabs 227): per storey band its drawn walls, its
+   * enclosed interior and each face's setback to the drawn wall, measured once at describe. Every damage writer places
+   * against it, never against the faces' rectangles alone (they are a box round every part for the default reading).
+   * Absent where no parts were handed over.
+   */
+  enclosure?: import('./structureEnclosure.ts').StructureEnclosure;
+  /**
    * The kit's own plan of the building, opaque to the core (house.ts HouseSpec and HouseFrame, a landmark's plan): a
    * kit's builders read it back to fracture exactly what it built. Absent for the default kit.
    */
@@ -387,6 +394,9 @@ export interface BreachSpec {
   cause: DestructionCause;
   /** `damageSeed(anatomy.seed, section, hole)`. */
   seed: number;
+  /** How far behind the face's plane the drawn wall stands at `u` (m; structureEnclosure.ts faceSetback): the kit lays its
+   *  rim, room and cut there. 0 or absent where the face is the wall. */
+  setback?: number;
 }
 
 // ---- Kits ------------------------------------------------------------------------------------------------------
@@ -479,6 +489,19 @@ export function structureDamageKitChain(builder: string, style: string | null): 
 
 export function propDamageKitFor(kind: string): PropDamageKit | null {
   return propKits.get(kind) ?? propKits.get('default') ?? null;
+}
+
+/**
+ * The body's centre in its frame (x, z): its ground storey's faces' mean origin. A kit's faces stand about the origin;
+ * the default reading's about its walls' own box (destruction-slabs 227), so a reader reaching round the body reaches
+ * round this, not the origin.
+ */
+export function anatomyCentre(anatomy: Pick<StructureDamageAnatomy, 'storeys'>): [number, number] {
+  const faces = anatomy.storeys[0]?.faces;
+  if (!faces?.length) return [0, 0];
+  let x = 0, z = 0;
+  for (const f of faces) { x += f.origin[0]; z += f.origin[2]; }
+  return [x / faces.length, z / faces.length];
 }
 
 // ---- The body frame's heap and the kit's plan ------------------------------------------------------------------

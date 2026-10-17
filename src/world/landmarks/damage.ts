@@ -22,7 +22,7 @@
 // A set piece with no named piece and no frame describes nothing here: its reading is the one it had.
 import type { BufferGeometry } from 'three';
 import {
-  damageRng, damageSeed, registerStructureDamageKit, structureDamageKitChain,
+  anatomyCentre, damageRng, damageSeed, registerStructureDamageKit, structureDamageKitChain,
   type BreachSpec, type DamageHide, type DamageStageResult, type DamageWriters, type StructureCut, type StructureDamageAnatomy,
   type StructureDamageKit, type StructureDescribeInput,
 } from '../destructionKit.ts';
@@ -80,7 +80,18 @@ function keepRuns(input: StructureDescribeInput, name: string): PieceRun[] {
 function describeBody(input: StructureDescribeInput): StructureDamageAnatomy {
   const parts: Record<string, BufferGeometry[]> = {};
   for (const [bucket, list] of Object.entries(input.parts)) parts[bucket] = (list as readonly BufferGeometry[]).filter((g) => !g.userData.damagePiece);
-  const bodyInput: StructureDescribeInput = { ...input, parts };
+  // (destruction-slabs 227) the body's own box (its parts less the named pieces: no sails' sweep, no tail pole), not the
+  // whole set piece's
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, maxY = 0;
+  for (const list of Object.values(parts)) for (const g of list) {
+    if (!g.boundingBox) g.computeBoundingBox();
+    const box = g.boundingBox;
+    if (!box || box.isEmpty()) continue;
+    minX = Math.min(minX, box.min.x); maxX = Math.max(maxX, box.max.x); minZ = Math.min(minZ, box.min.z); maxZ = Math.max(maxZ, box.max.z);
+    maxY = Math.max(maxY, box.max.y);
+  }
+  const measured = Number.isFinite(minX) ? { w: Math.max(0.5, maxX - minX), d: Math.max(0.5, maxZ - minZ), h: Math.max(0.5, maxY) } : {};
+  const bodyInput: StructureDescribeInput = { ...input, ...measured, parts };
   for (const kit of structureDamageKitChain('', input.style)) {
     if (kit === DEFAULT_STRUCTURE_DAMAGE_KIT || !kit.describe) continue;
     try {
@@ -143,7 +154,9 @@ const _q = [0, 0, 0];
 
 /** The body's half extent along a level direction (its plan's box). */
 function reachAlong(a: StructureDamageAnatomy, dx: number, dz: number): number {
-  return Math.abs(dx) * a.w / 2 + Math.abs(dz) * a.d / 2;
+  // (destruction-slabs 227) about the body's own centre (the default reading's faces stand about its walls' box)
+  const [cx, cz] = anatomyCentre(a);
+  return cx * dx + cz * dz + Math.abs(dx) * a.w / 2 + Math.abs(dz) * a.d / 2;
 }
 
 /** Where a piece comes to rest (its own seed): the pose before its seat on the ground. */
@@ -341,11 +354,73 @@ function chips(p: KeptPiece, a: StructureDamageAnatomy, out: DamageWriters, coun
   }
 }
 
+/** The steepest a fallen piece is laid along the ground under it (rad). */
+const GROUND_TILT_MAX = 35 * Math.PI / 180;
+/** A piece this thin (m, its least extent) is draped over the ground under it where that ground is no plane. */
+const DRAPE_THIN_M = 0.6;
+/**
+ * (destruction-slabs 227: Polders' mound windmill laid its 5.4 x 4.4 m sails flat by their lowest point, standing 1.5 m
+ * out over the slope) a piece laid flat or dropped lies along the ground under it: turned onto the least-squares plane of
+ * the ground under its footprint (35 degrees at most), then seated by its lowest point over the whole footprint. Returns
+ * the plane (y = ax + bz + c) for a drape, or null.
+ */
+function fitGround(p: KeptPiece, pose: Pose): [number, number, number] | null {
+  const fall = p.fall ?? 'topple';
+  if (fall !== 'flat' && fall !== 'drop') return null;
+  let total = 0;
+  for (const run of p.runs) total += run.pos.length / 3;
+  const every = Math.max(1, Math.floor(total / 96));
+  let n = 0, sx = 0, sz = 0, sg = 0, sxx = 0, szz = 0, sxz = 0, sxg = 0, szg = 0, cy = 0, i = 0;
+  forEachVertex(p, pose, (x, y, z) => {
+    if (i++ % every) return;
+    const g = pieceGroundAt(p.ground, x, z);
+    n++; sx += x; sz += z; sg += g; sxx += x * x; szz += z * z; sxz += x * z; sxg += x * g; szg += z * g; cy += y;
+  });
+  if (n < 3) return null;
+  const mx = sx / n, mz = sz / n, mg = sg / n;
+  const cxx = sxx / n - mx * mx, czz = szz / n - mz * mz, cxz = sxz / n - mx * mz, cxg = sxg / n - mx * mg, czg = szg / n - mz * mg;
+  const det = cxx * czz - cxz * cxz;
+  if (!(Math.abs(det) > 1e-9)) return null;
+  let ga = (cxg * czz - czg * cxz) / det, gb = (czg * cxx - cxg * cxz) / det;
+  const slope = Math.hypot(ga, gb), cap = Math.tan(GROUND_TILT_MAX);
+  if (slope > cap) { ga *= cap / slope; gb *= cap / slope; }
+  const gc = mg - ga * mx - gb * mz;
+  // the turn from up onto the plane's normal (-a, 1, -b), about the footprint's centre
+  const nl = Math.hypot(ga, 1, gb), nx = -ga / nl, ny = 1 / nl, nz = -gb / nl;
+  const angle = Math.acos(Math.min(1, ny));
+  if (angle > 1e-4) {
+    const q = rotation(nz, 0, -nx, angle);
+    const cx = mx, cyy = cy / n, cz = mz;
+    const wx = pose.px + pose.tx - cx, wy = pose.py + pose.ty - cyy, wz = pose.pz + pose.tz - cz;
+    apply(q, wx, wy, wz, _q);
+    pose.r = multiply(q, pose.r);
+    pose.tx = _q[0] + cx - pose.px; pose.ty = _q[1] + cyy - pose.py; pose.tz = _q[2] + cz - pose.pz;
+  }
+  return [ga, gb, gc];
+}
+
 /** A piece comes off: its spans hidden, its triangles laid where it rests, chips thrown. */
 function detach(a: StructureDamageAnatomy, plan: LandmarkPlan, p: KeptPiece, out: DamageWriters, res: DamageStageResult): void {
   const pose = restPose(a, plan, p);
+  const plane = fitGround(p, pose);
   seat(p, pose);
-  if (!layPiece(p, pose, out)) return;
+  // a thin piece over ground that is no plane (a mound's crest) drapes over it, vertex by vertex
+  let drape = false;
+  if (plane) {
+    let gapMax = 0;
+    const least = Math.min(p.max[0] - p.min[0], p.max[1] - p.min[1], p.max[2] - p.min[2]);
+    forEachVertex(p, pose, (x, y, z) => { gapMax = Math.max(gapMax, y - pieceGroundAt(p.ground, x, z)); });
+    drape = least <= DRAPE_THIN_M && gapMax > 0.45 + least;
+  }
+  const ok = drape
+    ? layPiece(p, pose, out, (x, y, z, q) => {
+      apply(pose.r, x - pose.px, y - pose.py, z - pose.pz, q);
+      q[0] += pose.px + pose.tx; q[1] += pose.py + pose.ty; q[2] += pose.pz + pose.tz;
+      q[1] += pieceGroundAt(p.ground, q[0], q[2]) - (plane![0] * q[0] + plane![1] * q[2] + plane![2]);
+      return true;
+    })
+    : layPiece(p, pose, out);
+  if (!ok) return;
   res.hides.push({ section: null, partClass: null, piece: p.name } satisfies DamageHide);
   chips(p, a, out, 6);
 }
@@ -401,7 +476,9 @@ function rupture(a: StructureDamageAnatomy, p: KeptPiece, dirX: number, dirZ: nu
   }
   // what it held, on the ground under the hole: a wet stain (water), a burn (fuel), a heap (grain); a radome held air
   if (v.contents === 'none') return;
-  const spillBucket = v.contents === 'grain' ? 'straw' : 'dark';
+  // (destruction-slabs 227: drawn in the 'dark' bucket — the world's window material, untextured — it read as a black
+  // plate) a wet or burnt stain on the ground's own stone, its tint darkened; grain its straw
+  const spillBucket = v.contents === 'grain' ? 'straw' : 'stone';
   if (out.mesh.begin(spillBucket, 'rubble')) {
     const reach = v.contents === 'grain' ? 1.2 + rng() * 0.8 : 1.8 + rng() * 1.6;
     const mx = sx + nx * reach * 0.6, mz = sz + nz * reach * 0.6, n = 12;
@@ -432,8 +509,19 @@ function takeStage(a: StructureDamageAnatomy, plan: LandmarkPlan, stage: 'damage
 
 // ---------------------------------------------------------------------------------------------------------- the kit
 
-function damagedLandmark(a: StructureDamageAnatomy, seed: number, out: DamageWriters): DamageStageResult {
+/** The set piece's plan with its body carrying what the world measured on the set piece (its heap, its intact form, its
+ *  drawn enclosure: destruction-slabs 227 — the body kit's writers place against them). */
+function synced(a: StructureDamageAnatomy): LandmarkPlan | null {
   const plan = landmarkPlanOf(a);
+  if (!plan) return null;
+  plan.body.mound = a.mound;
+  if (a.intact) plan.body.intact = a.intact;
+  if (a.enclosure) plan.body.enclosure = a.enclosure;
+  return plan;
+}
+
+function damagedLandmark(a: StructureDamageAnatomy, seed: number, out: DamageWriters): DamageStageResult {
+  const plan = synced(a);
   const res: DamageStageResult = { cuts: [], hides: [] };
   if (!plan) return res;
   // an open frame has no wall to spall
@@ -443,7 +531,7 @@ function damagedLandmark(a: StructureDamageAnatomy, seed: number, out: DamageWri
 }
 
 function breachLandmark(a: StructureDamageAnatomy, hole: BreachSpec, out: DamageWriters): DamageStageResult {
-  const plan = landmarkPlanOf(a);
+  const plan = synced(a);
   const res: DamageStageResult = { cuts: [], hides: [] };
   if (!plan) return res;
   // an open frame takes no round hole (a round passes its members)
@@ -491,10 +579,9 @@ function pose0(dx: number, dz: number): Pose {
 }
 
 function collapseLandmark(a: StructureDamageAnatomy, seed: number, out: DamageWriters): DamageStageResult {
-  const plan = landmarkPlanOf(a);
+  const plan = synced(a);
   const res: DamageStageResult = { cuts: [], hides: [] };
   if (!plan) return res;
-  plan.body.mound = a.mound;
   const kit = bodyKit(plan, 'collapse');
   merge(res, kit.collapse!.call(kit, plan.body, seed, out));
   const given = (out as DamageWriters & { fallAxis?: [number, number] }).fallAxis;
@@ -602,13 +689,13 @@ export function registerLandmarkDamageKits(): void {
       collapse: collapseLandmark,
       // sections (P2) stay the body's
       sectionDown: (a, section, seed, out) => {
-        const plan = landmarkPlanOf(a);
+        const plan = synced(a);
         if (!plan) return { cuts: [], hides: [] };
         const kit = bodyKit(plan, 'sectionDown');
         return kit.sectionDown!.call(kit, plan.body, section, seed, out);
       },
       storeyDown: (a, storey, seed, out) => {
-        const plan = landmarkPlanOf(a);
+        const plan = synced(a);
         if (!plan) return { cuts: [], hides: [] };
         const kit = bodyKit(plan, 'storeyDown');
         return kit.storeyDown!.call(kit, plan.body, storey, seed, out);

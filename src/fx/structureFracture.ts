@@ -25,6 +25,7 @@ import * as THREE from 'three';
 import type { MunitionClass } from '../sim/destructionEvents.ts';
 import { createRigidShape, type RigidPartSpec } from '../sim/rigidBody.ts';
 import { damageSeed, type FractureSlot } from '../world/destructionKit.ts';
+import { storeyInterior } from '../world/structureEnclosure.ts';
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
 import type { DebrisPhysics } from './debrisPhysics.ts';
 import { emitDebrisLanding } from './clock.ts';
@@ -77,13 +78,13 @@ export interface StructureFracture {
    * when it struck none.
    */
   strike(seam: StructureDamageSeam, x: number, y: number, z: number, dirX: number, dirZ: number, munition: MunitionClass,
-    chargeKg: number, caliberMm: number, radiusM?: number): number[] | null;
+    chargeKg: number, caliberMm: number, radiusM?: number, settled?: boolean): number[] | null;
   /**
    * A wall section fell (sections on: the sim's `sectionDown` for a storey's face): every cell of that face from
    * `stubV` up (m over its storey floor; a ground storey keeps its stub, a door its gap down to the sill) comes down as
    * bodies, with what lost its load path over it; `dirX`, `dirZ` the blow (world). False when it has no such face.
    */
-  dropFace(seam: StructureDamageSeam, storey: number, faceIndex: number, stubV: number, dirX: number, dirZ: number): boolean;
+  dropFace(seam: StructureDamageSeam, storey: number, faceIndex: number, stubV: number, dirX: number, dirZ: number, settled?: boolean): boolean;
   /** With sections on the sim holds a storey over a fallen face on its floor until its own fall: so does the field. */
   holdStoreys(structureIdx: number, seam: StructureDamageSeam): void;
   /** Whether a building's queued drawing is done (its faces drawn as they stand). */
@@ -96,6 +97,8 @@ export interface StructureFracture {
   standing(structureIdx: number): THREE.Mesh[];
   /** The building came down: its standing faces leave (the collapse drew them); its bodies and heaps stay. */
   release(structureIdx: number): void;
+  /** A storey dropped (sections on): the rooms laid in it and over it go (destruction-slabs 227: they stood in the air). */
+  dropRooms(structureIdx: number, fromStorey: number, only?: boolean): void;
   /** Per frame (after the pool's step): the strikes' drawing within its budget, live bodies' poses, still ones baked. */
   update(): void;
   /** Finish every queued strike's drawing now (receipts, a settle), or one building's (a storey dropping with its face). */
@@ -140,6 +143,9 @@ interface FaceDraw {
   seam: StructureDamageSeam;
   grid: FaceGrid;
   face: number;
+  /** Whether the face drew any triangle of the building (destruction-slabs 227: a face of the anatomy's box over no wall
+   *  drew none, yet its broken edges, its chunks and a room were laid there) — none: no edges, no chunks, no room. */
+  drawn: boolean;
   groups: Map<THREE.Material, FaceGroup>;
   meshes: THREE.Mesh[];
   core: FractureSlot;
@@ -191,7 +197,8 @@ interface Live {
   /** The building's triangles sorted by face (sortByFace, at its first strike), each face's dropped once taken. */
   byFace: Map<number, { soups: Map<THREE.Material, { layout: Layout; soup: number[] }>; flat: Array<[StructureSpan, number]> }> | null;
   room: THREE.Mesh[];
-  roomStoreys: Set<number>;
+  /** The rooms laid (storey and enclosed component keys: structureEnclosure storeyInterior). */
+  roomStoreys: Set<string>;
   baked: THREE.Mesh[];
   /** Baked bodies' meshes waiting to join the building's merged heap, and that heap (one mesh a material and layout:
    *  a hundred clumps lying still drew a hundred draw calls and their shadows each, the decisive wave's hitch probe). */
@@ -429,9 +436,11 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       const face = live.seam.anatomy.storeys[grid.storey].faces[grid.faceIndex];
       const core = face.layers.find((l) => l.material !== 'plaster' && l.material !== 'glass') ?? face.layers[face.layers.length - 1]
         ?? { material: grid.material, bucket: face.bucket, tint: [1, 1, 1], thicknessM: grid.thickness, share: 1 };
-      const draw: FaceDraw = { seam: live.seam, grid, face: f, groups: new Map(), meshes: [], core,
-        depthMin: new Float32Array(grid.state.length).fill(-grid.thickness), depthMax: new Float32Array(grid.state.length) };
       const entry = live.byFace!.get(f) ?? null;
+      let drawn = false;
+      if (entry) for (const soup of entry.soups.values()) if (soup.soup.length) { drawn = true; break; }
+      const draw: FaceDraw = { seam: live.seam, grid, face: f, drawn, groups: new Map(), meshes: [], core,
+        depthMin: new Float32Array(grid.state.length).fill(-grid.thickness), depthMax: new Float32Array(grid.state.length) };
       job = { draw, entry, materials: entry ? [...entry.soups.keys()] : [], m: 0, tri: 0 };
       live.claiming.set(f, job);
     }
@@ -709,9 +718,9 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     draw.meshes.length = 0;
     const g = draw.grid;
     const rows = g.rowY.length - 1;
-    // the reveals and recesses in the wall's core (small: a few quads a broken edge)
+    // the reveals and recesses in the wall's core (small: a few quads a broken edge); none on a face that drew nothing
     const caps: number[] = [];
-    const cg = capGroup(draw);
+    const cg = draw.drawn ? capGroup(draw) : null;
     if (cg) {
       const tint = draw.core.tint;
       const T = g.thickness;
@@ -836,34 +845,50 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   }
 
   // ---- the room behind a holed storey -------------------------------------------------------------------------------
+  /**
+   * (destruction-slabs 227) the room behind a holed storey is its drawn enclosure behind the hole (structureEnclosure
+   * storeyInterior: the enclosed component behind its gone cells, under what covers it), never the box the anatomy's
+   * faces span about the origin; none where the band encloses under half its box (a frame, a pipe run, a tank farm).
+   */
   function roomFor(live: Live, storey: number, draw: FaceDraw): void {
-    if (live.roomStoreys.has(storey)) return;
-    live.roomStoreys.add(storey);
     const a = live.seam.anatomy;
     const st = a.storeys[storey];
     const cg = capGroup(draw);
-    if (!cg) return;
+    if (!cg || !st) return;
+    // the hint: the middle of the face's gone cells, behind the wall
+    const g = draw.grid;
+    let su = 0, sn = 0;
+    for (let c = 0; c < g.state.length; c++) {
+      if (g.state[c] !== CELL_GONE && g.state[c] !== CELL_FALLEN) continue;
+      cellRect(g, c, rect);
+      su += (rect[0] + rect[1]) / 2; sn++;
+    }
+    const hu = sn ? su / sn : 0;
+    const back = g.thickness + 0.5;
+    const hx = g.origin[0] + g.u[0] * hu - g.out[0] * back, hz = g.origin[2] + g.u[2] * hu - g.out[2] * back;
+    const interior = storeyInterior(a, storey, hx, hz, (a.storeys[storey + 1]?.y0 ?? st.y1) - 0.02);
+    if (!interior || live.roomStoreys.has(interior.key)) return;
+    live.roomStoreys.add(interior.key);
     const roomLayout: Layout = { names: ['uv', 'color'], sizes: [2, 3], stride: 11 };
     const room = o.roomMaterial?.(live.seam, draw.core.bucket) ?? null;
     const layout = room ? roomLayout : cg.layout;
     const material = room ?? cg.material;
-    const t = draw.grid.thickness + 0.04;
-    const hw = a.w / 2 - t, hd = a.d / 2 - t;
-    if (!(hw > 0.3 && hd > 0.3)) return;
-    const y0 = st.y0 + 0.02, y1 = st.y1 - 0.02;
+    const { y0, y1 } = interior;
     const col = a.interior.color;
     const list: number[] = [];
     // inward-facing walls, floor and ceiling of the storey's room
     const q = (p0: number[], p1: number[], p2: number[], p3: number[], n: number[], shade: number) =>
       pushQuad(list, layout, p0, p1, p2, p3, n, col, shade);
-    q([-hw, y0, hd], [hw, y0, hd], [hw, y1, hd], [-hw, y1, hd], [0, 0, -1], 1);
-    q([-hw, y0, -hd], [hw, y0, -hd], [hw, y1, -hd], [-hw, y1, -hd], [0, 0, 1], 1);
-    q([hw, y0, -hd], [hw, y0, hd], [hw, y1, hd], [hw, y1, -hd], [-1, 0, 0], 0.9);
-    q([-hw, y0, -hd], [-hw, y0, hd], [-hw, y1, hd], [-hw, y1, -hd], [1, 0, 0], 0.9);
-    q([-hw, y0, -hd], [hw, y0, -hd], [hw, y0, hd], [-hw, y0, hd], [0, 1, 0], 1.3);
-    q([-hw, y1, -hd], [hw, y1, -hd], [hw, y1, hd], [-hw, y1, hd], [0, -1, 0], 0.7);
+    for (const [ax, az, bx, bz, nx, nz] of interior.walls) q([ax, y0, az], [bx, y0, bz], [bx, y1, bz], [ax, y1, az], [nx, 0, nz], Math.abs(nx) > 0.5 ? 0.9 : 1);
+    for (const [x0, z0, x1, z1] of interior.rects) {
+      q([x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], [0, 1, 0], 1.3);
+      q([x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1], [0, -1, 0], 0.7);
+    }
+    if (!list.length) return;
     const mesh = new THREE.Mesh(interleavedOf(layout, Float32Array.from(list)), material);
     mesh.name = `fx-fracture-room-${live.seam.structureIdx}`;
+    mesh.userData.storey = storey;
+    mesh.userData.roomKey = interior.key;
     mesh.matrixAutoUpdate = false;
     bodyToWorld(live, mesh.matrix);
     mesh.matrixWorldNeedsUpdate = true;
@@ -1070,7 +1095,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
           e.arrays.push(src);
         }
       }
-      const cg = g.opening[cell] ? null : capGroup(draw);
+      const cg = g.opening[cell] || !draw.drawn ? null : capGroup(draw);
       if (cg) {
         let e = byMaterial.get(cg.material);
         if (!e) { e = { layout: cg.layout, arrays: [], list: [] }; byMaterial.set(cg.material, e); }
@@ -1560,7 +1585,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
         while (w.drawn < w.faces.length) {
           const draw = live.faces.get(w.faces[w.drawn++]);
           if (!draw) continue;
-          if (draw.grid.state.some((st) => st === CELL_GONE || st === CELL_FALLEN)) roomFor(live, draw.grid.storey, draw);
+          if (draw.drawn && draw.grid.state.some((st) => st === CELL_GONE || st === CELL_FALLEN)) roomFor(live, draw.grid.storey, draw);
           redraw(live, draw);
           live.version++;
           o.onRedrawn?.(live.seam, draw.grid.storey, draw.grid.faceIndex, false);
@@ -1586,24 +1611,28 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     return live;
   }
   /** The faces an outcome touched, its bodies planned, its drawing queued; the [storey, face] pairs. */
-  function queue(live: Live, bdx: number, bdz: number, kind: WallStrikeKind, seed: number): number[] {
+  function queue(live: Live, bdx: number, bdz: number, kind: WallStrikeKind, seed: number, settled = false): number[] {
     // the faces it touched: the struck one, and every one a fallen cluster runs through
     const touched = new Set<number>(outcome.face >= 0 ? [outcome.face] : []);
     for (const cl of outcome.fallen) for (let i = 0; i < cl.length; i += 2) touched.add(cl[i]);
     for (let i = 0; i < outcome.sagged.length; i += 2) touched.add(outcome.sagged[i]);
-    // bodies: the knocked chunks, then what fell (planned now, spawned as the drawing goes)
+    // bodies: the knocked chunks, then what fell (planned now, spawned as the drawing goes); a settled event (a late
+    // joiner's log, destruction-slabs 227) cuts its cells and draws them at once and throws nothing
     const specs: BodySpec[] = [];
-    const budget = bodiesPerStrike - (outcome.face >= 0 ? planKnocked(live, outcome.face, outcome.knocked, bdx, bdz, kind, outcome.u, outcome.v,
-      Math.ceil(bodiesPerStrike / 2), seed, specs) : 0);
-    planFallen(live, outcome.fallen, budget, damageSeed(seed, 2), specs);
+    if (!settled) {
+      const budget = bodiesPerStrike - (outcome.face >= 0 ? planKnocked(live, outcome.face, outcome.knocked, bdx, bdz, kind, outcome.u, outcome.v,
+        Math.ceil(bodiesPerStrike / 2), seed, specs) : 0);
+      planFallen(live, outcome.fallen, budget, damageSeed(seed, 2), specs);
+    }
     work.push({ live, faces: [...touched], bodies: specs, step: live.byFace ? 1 : 0, claimed: 0, spawned: 0, drawn: 0 });
+    if (settled) advanceWork(Infinity, live);
     const faces: number[] = [];
     for (const f of touched) faces.push(live.wall.faces[f].storey, live.wall.faces[f].faceIndex);
     return faces;
   }
 
   return {
-    strike(seam, x, y, z, dirX, dirZ, munition, chargeKg, caliberMm, radiusM) {
+    strike(seam, x, y, z, dirX, dirZ, munition, chargeKg, caliberMm, radiusM, settled = false) {
       const a = seam.anatomy;
       const hole = holeFor(munition, chargeKg, caliberMm);
       if (radiusM !== undefined && radiusM > 0) hole.radiusM = radiusM;
@@ -1625,9 +1654,9 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
         return null;
       }
       live.lastX = x; live.lastY = y; live.lastZ = z; live.lastAt = t;
-      return queue(live, bdx, bdz, hole.kind, seed);
+      return queue(live, bdx, bdz, hole.kind, seed, settled);
     },
-    dropFace(seam, storey, faceIndex, stubV, dirX, dirZ) {
+    dropFace(seam, storey, faceIndex, stubV, dirX, dirZ, settled = false) {
       const live = liveOf(seam);
       if (!live) return false;
       const f = live.wall.faces.findIndex((g) => g.storey === storey && g.faceIndex === faceIndex);
@@ -1639,7 +1668,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       dropFace(live.wall, f, stubV, outcome);
       outcome.face = -1;
       if (!outcome.fallen.length) return true;
-      queue(live, bdx, bdz, 'blast', seed);
+      queue(live, bdx, bdz, 'blast', seed, settled);
       return true;
     },
     holdStoreys(structureIdx, seam) {
@@ -1667,6 +1696,18 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       for (const m of live.room) { o.group.remove(m); m.geometry.dispose(); }
       live.faces.clear();
       live.room.length = 0;
+    },
+    dropRooms(structureIdx, fromStorey, only = false) {
+      const live = lives.get(structureIdx);
+      if (!live) return;
+      for (let i = live.room.length - 1; i >= 0; i--) {
+        const m = live.room[i];
+        const st = m.userData.storey as number;
+        if (only ? st !== fromStorey : !(st >= fromStorey)) continue;
+        o.group.remove(m); m.geometry.dispose();
+        live.roomStoreys.delete(m.userData.roomKey as string);
+        live.room.splice(i, 1);
+      }
     },
     flush(structureIdx) {
       if (structureIdx !== undefined) { const live = lives.get(structureIdx); if (live) advanceWork(Infinity, live); return; }

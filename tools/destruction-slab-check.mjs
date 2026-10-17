@@ -418,7 +418,11 @@ export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => fals
     // (allstages 32f2ebd02) the fracture port's storey room, fx-fracture-room-*, is one mesh of six quads: a closed box whose
     // least extent is the storey height, so judged whole it was never a slab; its walls, floor and ceiling are the sheets
     if (!isSlab(shape) && (isOpen(tris) || CLOSED_ROOM.test(d.name))) {
-      for (const sheet of planarFacets(tris)) { const sh = shapeOf(sheet); if (isSlab(sh)) pieces.push({ d, tris: sheet, shape: sh, sheet: true, gid }); }
+      // (destruction-slabs 227) a sheet of a fallen object lying on the ground (a windmill's cap on its side: an open
+      // shell) is that object's side, not a plate standing in the open
+      const grounded = !ROOM_RUN.test(d.name) && !STANDING_RUN.test(d.name) && shape.min[1] - groundAt(shape.centre[0], shape.centre[2]) < 0.4
+        && shape.ext[2] > SLAB.thickMaxM;
+      for (const sheet of planarFacets(tris)) { const sh = shapeOf(sheet); if (isSlab(sh)) pieces.push({ d, tris: sheet, shape: sh, sheet: true, gid, grounded }); }
       pieces.push({ d, tris, shape, gid });
     } else pieces.push({ d, tris, shape, gid });
   }
@@ -479,7 +483,8 @@ export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => fals
     const attributes = [];
     if (slab) {
       // a plate past the walls in the air, or a panel standing in the open past them (one lying on the ground is debris)
-      if ((elevated || vertical) && outsideShare >= SLAB.outsideShare && outside >= SLAB.outsideAreaM2) {
+      if (p.grounded) attributes.push('a side of a fallen object lying on the ground');
+      else if ((elevated || vertical) && outsideShare >= SLAB.outsideShare && outside >= SLAB.outsideAreaM2) {
         reasons.push(`outside: ${outside.toFixed(1)} m² (${(outsideShare * 100).toFixed(0)} %) past the intact walls${planNote}, ${lift.toFixed(1)} m up`);
       }
       if (restedRoof) attributes.push('a fallen roof slab at rest');
@@ -491,7 +496,7 @@ export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => fals
       if (flatHigh && outside >= 1 && outsideShare >= 0.05) {
         reasons.push(`on the wall heads: a fallen roof slab lying flat ${lift.toFixed(1)} m up (${(s.ext[0] * s.ext[1]).toFixed(1)} m², ${(outsideShare * 100).toFixed(0)} % past the walls' plan at height)`);
       }
-      if (elevated && floatingShare >= SLAB.floatingShare) reasons.push(`floating: ${(floatingShare * 100).toFixed(0)} % of it unsupported, ${lift.toFixed(1)} m up`);
+      if (elevated && !p.grounded && floatingShare >= SLAB.floatingShare) reasons.push(`floating: ${(floatingShare * 100).toFixed(0)} % of it unsupported, ${lift.toFixed(1)} m up`);
       // (destruction-slabs 227) a fallen roof slab at rest drawn well off the body it rides in (the body grown round
       // everything partitioned to it: the drawn slab hovers over what the body rests on)
       const bodyBoxes = p.d.mesh?.userData?.bodyBoxes;

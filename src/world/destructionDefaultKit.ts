@@ -26,8 +26,9 @@
 import type { BufferGeometry } from 'three';
 import { STRUCTURE_WALL_STUB_M } from './collision.ts';
 import { intactPlanAt, ruinKind } from './collapseRuin.ts';
+import { enclosedAt, faceSetback, measureEnclosure } from './structureEnclosure.ts';
 import {
-  bodyMoundHeightAt, damageRng, holeOutlineK, registerStructureDamageKit,
+  anatomyCentre, bodyMoundHeightAt, damageRng, holeOutlineK, registerStructureDamageKit,
   type BreachSpec, type DamageFace, type DamageMeshWriter, type DamageOpening, type DamagePieceWriter,
   type DamageRoof, type DamageStageResult, type DamageStorey, type DamageWriters, type DebrisShape, type FaceName,
   type FractureMaterial, type FractureSlot, type Rgb, type StructureCut, type StructureDamageAnatomy, type StructureDamageKit,
@@ -125,13 +126,14 @@ function roofCovering(bucket: string, tint: Rgb, style: DefaultKitStyle | null):
   return { material, bucket, tint, thicknessM: material === 'metal' ? 0.01 : 0.04, share: 1 };
 }
 
-/** The four faces of a w × d body on a storey (house.ts bodyFaces: front +Z, right +X, back −Z, left −X). */
-function storeyFaces(w: number, d: number, y0: number, height: number, section0: number, layers: FractureSlot[], bucket: string): DamageFace[] {
+/** The four faces of a w × d body about (cx, cz) on a storey (house.ts bodyFaces: front +Z, right +X, back −Z, left −X). */
+function storeyFaces(w: number, d: number, cx: number, cz: number, y0: number, height: number, section0: number, layers: FractureSlot[],
+  bucket: string): DamageFace[] {
   const faces: Record<FaceName, { origin: Vec3; u: Vec3; out: Vec3; width: number }> = {
-    front: { origin: [0, y0, d / 2], u: [1, 0, 0], out: [0, 0, 1], width: w },
-    right: { origin: [w / 2, y0, 0], u: [0, 0, -1], out: [1, 0, 0], width: d },
-    back: { origin: [0, y0, -d / 2], u: [-1, 0, 0], out: [0, 0, -1], width: w },
-    left: { origin: [-w / 2, y0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: d },
+    front: { origin: [cx, y0, cz + d / 2], u: [1, 0, 0], out: [0, 0, 1], width: w },
+    right: { origin: [cx + w / 2, y0, cz], u: [0, 0, -1], out: [1, 0, 0], width: d },
+    back: { origin: [cx, y0, cz - d / 2], u: [-1, 0, 0], out: [0, 0, -1], width: w },
+    left: { origin: [cx - w / 2, y0, cz], u: [0, 0, 1], out: [-1, 0, 0], width: d },
   };
   return FACE_ORDER.map((name, i) => ({ name, ...faces[name], height, section: section0 + i, bucket, layers,
     openings: [], members: [], masonry: null }));
@@ -159,6 +161,73 @@ function placeOpenings(parts: Readonly<Record<string, readonly BufferGeometry[]>
   }
 }
 
+/** Buckets that are no body wall (the body's top and box ignore them). */
+const NOT_BODY = new Set(['glass', 'curtain', 'roof', 'regionalRoof', 'straw', 'thatch', 'hay']);
+const BODY_BIN_M = 0.5;
+/**
+ * The body's top where no roof bucket gives the eaves (destruction-slabs 227: a church's towers and domes were storeys up
+ * to 26.6 m): the drawn walls' plan box per half metre up, and the top of the highest band whose box is still at least
+ * 45 % of the widest one's (a tower, a spire, a dome or a belfry over the body is no storey). Its parts' walls only (the
+ * named pieces, glass, roofs and fine trim left out).
+ */
+function bodyTopOf(parts: StructureDescribeInput['parts'], top: number): number {
+  const nb = Math.max(1, Math.ceil(top / BODY_BIN_M));
+  const box = new Float64Array(nb * 4);
+  for (let b = 0; b < nb; b++) { box[b * 4] = Infinity; box[b * 4 + 1] = Infinity; box[b * 4 + 2] = -Infinity; box[b * 4 + 3] = -Infinity; }
+  for (const [bucket, list] of Object.entries(parts)) {
+    if (NOT_BODY.has(bucket)) continue;
+    for (const g of list ?? []) {
+      if (g.userData?.damagePiece || g.userData?.fine === true) continue;
+      const pos = g.getAttribute('position');
+      if (!pos) continue;
+      const index = g.getIndex();
+      const n = index ? index.count : pos.count;
+      for (let t = 0; t + 2 < n; t += 3) {
+        const a = index ? index.getX(t) : t, b = index ? index.getX(t + 1) : t + 1, c = index ? index.getX(t + 2) : t + 2;
+        const ax = pos.getX(a), ay = pos.getY(a), az = pos.getZ(a);
+        const ux = pos.getX(b) - ax, uy = pos.getY(b) - ay, uz = pos.getZ(b) - az, vx = pos.getX(c) - ax, vy = pos.getY(c) - ay, vz = pos.getZ(c) - az;
+        const ny = uz * vx - ux * vz, nl = Math.hypot(uy * vz - uz * vy, ny, ux * vy - uy * vx);
+        if (!(nl > 1e-9) || Math.abs(ny) > 0.5 * nl) continue;
+        const reach = Math.max(Math.hypot(ux, uy, uz), Math.hypot(vx, vy, vz));
+        const m = Math.max(1, Math.min(48, Math.ceil(reach / BODY_BIN_M)));
+        for (let i = 0; i <= m; i++) for (let j = 0; j <= m - i; j++) {
+          const x = ax + (ux * i + vx * j) / m, y = ay + (uy * i + vy * j) / m, z = az + (uz * i + vz * j) / m;
+          const k = Math.min(nb - 1, Math.max(0, Math.floor(y / BODY_BIN_M))) * 4;
+          if (x < box[k]) box[k] = x; if (z < box[k + 1]) box[k + 1] = z; if (x > box[k + 2]) box[k + 2] = x; if (z > box[k + 3]) box[k + 3] = z;
+        }
+      }
+    }
+  }
+  let widest = 0;
+  const area = new Float64Array(nb);
+  for (let b = 0; b < nb; b++) {
+    area[b] = box[b * 4 + 2] > box[b * 4] ? (box[b * 4 + 2] - box[b * 4]) * Math.max(0.1, box[b * 4 + 3] - box[b * 4 + 1]) : 0;
+    widest = Math.max(widest, area[b]);
+  }
+  if (!(widest > 0)) return top;
+  for (let b = nb - 1; b >= 0; b--) if (area[b] >= 0.45 * widest) return Math.min(top, (b + 1) * BODY_BIN_M);
+  return top;
+}
+
+/**
+ * The body's walls' box in its frame (destruction-slabs 227: the faces stood on the box of every part about the origin —
+ * a church's forecourt, a station's canopy — so every writer that read them stood past the walls): the enclosed plan of
+ * its walls up to the eaves, grown out to the walls' outer faces; a body that encloses nothing (a frame) its walls' box;
+ * null for none drawn.
+ */
+function bodyBoxOf(parts: StructureDescribeInput['parts'], eave: number): [number, number, number, number] | null {
+  const lo = Math.min(0.5, eave * 0.2);
+  const probe = measureEnclosure(parts, { storeys: [{ index: 0, y0: lo, y1: Math.max(lo + 0.5, eave), jetty: [0, 0, 0, 0], framed: false, faces: [], floor: null }] });
+  const band = probe?.bands[0];
+  if (!probe || !band) return null;
+  const grow = probe.cell * 1.5;
+  if (band.interiorM2 >= 4 && Number.isFinite(band.interiorBox[0])) {
+    const s = band.solidBox, ib = band.interiorBox;
+    return [Math.max(s[0], ib[0] - grow), Math.max(s[1], ib[1] - grow), Math.min(s[2], ib[2] + grow), Math.min(s[3], ib[3] + grow)];
+  }
+  return Number.isFinite(band.solidBox[0]) ? [band.solidBox[0], band.solidBox[1], band.solidBox[2], band.solidBox[3]] : null;
+}
+
 export function describeDefault(input: StructureDescribeInput): StructureDamageAnatomy {
   const style = styleOf(input.style);
   const summary = summarize(input.parts);
@@ -172,8 +241,13 @@ export function describeDefault(input: StructureDescribeInput): StructureDamageA
   let top = 0;
   for (const entry of summary.values()) top = Math.max(top, entry.maxY);
   const height = Math.max(1, Number.isFinite(input.h) && input.h > 0 ? Math.max(input.h, top) : top);
-  const eave = roofEntry && roofEntry.minY > 1 ? Math.min(roofEntry.minY, height) : height;
+  // (destruction-slabs 227) without a roof bucket the eaves are the body's top, not the top of its towers and domes
+  const eave = roofEntry && roofEntry.minY > 1 ? Math.min(roofEntry.minY, height) : Math.max(1, bodyTopOf(input.parts, height));
   const count = Math.max(1, Math.min(12, Math.round(eave / STOREY_M)));
+  // the faces on the body's walls (their box, about its own centre), never the box of every part about the origin
+  const body = bodyBoxOf(input.parts, eave);
+  const bw = body ? Math.max(1, body[2] - body[0]) : input.w, bd = body ? Math.max(1, body[3] - body[1]) : input.d;
+  const bcx = body ? (body[0] + body[2]) / 2 : 0, bcz = body ? (body[1] + body[3]) / 2 : 0;
   const storeyH = eave / count;
   const wallTint = tintOf(summary.get(wallBucket));
   const layers = wallLayers(wallBucket, wallTint, style);
@@ -183,7 +257,7 @@ export function describeDefault(input: StructureDescribeInput): StructureDamageA
     const y0 = i * storeyH;
     storeys.push({
       index: i, y0, y1: y0 + storeyH, jetty: [0, 0, 0, 0], framed: false,
-      faces: storeyFaces(input.w, input.d, y0, storeyH, i * 4, layers, wallBucket),
+      faces: storeyFaces(bw, bd, bcx, bcz, y0, storeyH, i * 4, layers, wallBucket),
       floor: i === 0 ? null : {
         thicknessM: concrete ? 0.25 : 0.22,
         structure: concrete
@@ -197,7 +271,7 @@ export function describeDefault(input: StructureDescribeInput): StructureDamageA
   let roof: DamageRoof | null = null;
   if (roofBucket && roofEntry) {
     const rise = Math.max(0, roofEntry.maxY - eave);
-    const half = Math.max(0.5, Math.min(input.w, input.d) / 2);
+    const half = Math.max(0.5, Math.min(bw, bd) / 2);
     roof = {
       kind: rise > 0.6 ? 'gable' : 'flat', section: count * 4, pitchDeg: Math.atan2(rise, half) * 180 / Math.PI,
       eaveY: eave, ridgeY: Math.max(eave, roofEntry.maxY), thicknessM: 0.2,
@@ -218,7 +292,7 @@ export function describeDefault(input: StructureDescribeInput): StructureDamageA
   }
   return {
     structureIdx: input.structureIdx, kit: 'default', seed: input.seed, massClass: input.massClass,
-    placement: input.placement, w: input.w, d: input.d, h: height,
+    placement: input.placement, w: bw, d: bd, h: height,
     plinth: null, storeys, roof, chimneys: [],
     interior: { color: ROOM, open: OPEN_SHELLS.test(input.builder) },
     rubble,
@@ -455,7 +529,10 @@ function breach(anatomy: StructureDamageAnatomy, hole: BreachSpec, out: DamageWr
   if (!located) return { cuts: [], hides: [] };
   const { storey, face } = located;
   const depth = thicknessOf(face);
-  const cx = face.origin[0] + face.u[0] * hole.u, cz = face.origin[2] + face.u[2] * hole.u;
+  // (destruction-slabs 227) on the drawn wall behind the face (its setback): the rim, the room and the cut go there, never
+  // on the face's plane metres in front of it
+  const back = Number.isFinite(hole.setback) ? hole.setback! : 0;
+  const cx = face.origin[0] + face.u[0] * hole.u - face.out[0] * back, cz = face.origin[2] + face.u[2] * hole.u - face.out[2] * back;
   const cy = storey.y0 + hole.y;
   const radius = Math.max(0.15, hole.radiusM);
   const mesh = out.mesh;
@@ -541,17 +618,22 @@ function wallPanelDown(anatomy: StructureDamageAnatomy, storey: DamageStorey, fa
   const at = (u: number, inward: number): [number, number] =>
     [face.origin[0] + face.u[0] * u - face.out[0] * inward, face.origin[2] + face.u[2] * u - face.out[2] * inward];
   const mesh = out.mesh;
-  // the stub's broken top: the core's units along the face in one course, stepped up a second here and there
+  const fi = storey.faces.indexOf(face);
+  // the stub's broken top: the core's units along the face in one course, stepped up a second here and there — only where
+  // a wall is drawn behind the face, on it (its setback: destruction-slabs 227)
   if (mesh.begin(core.bucket, 'remnant')) {
     const unitW = Math.max(0.2, unitOf(core.material).size), unitH = unitW * 0.5;
     const n = Math.max(1, Math.round(face.width / unitW)), w = face.width / n;
     for (let i = 0; i < n && roomFor(mesh, 2); i++) {
       const u = -face.width / 2 + (i + 0.5) * w;
+      const back = faceSetback(anatomy, storey.index, fi, u);
       const courses = rng() < 0.4 ? 2 : 1;
       for (let c = 0; c < courses; c++) {
-        const [x, z] = at(u + (rng() - 0.5) * w * 0.1, depth * (0.5 + (rng() - 0.5) * 0.1));
-        writeBox(mesh, x, stubTop + (c + 0.5) * unitH * (0.85 + rng() * 0.3) - unitH * 0.35, z,
-          w * 0.5 * (0.88 + rng() * 0.1), unitH * 0.5, depth * 0.4, yaw + (rng() - 0.5) * 0.06, core.tint, 0.78 + rng() * 0.2);
+        const jitterU = (rng() - 0.5) * w * 0.1, jitterD = depth * (0.5 + (rng() - 0.5) * 0.1);
+        const sw = 0.88 + rng() * 0.1, sy = 0.85 + rng() * 0.3, yawJ = (rng() - 0.5) * 0.06, shade = 0.78 + rng() * 0.2;
+        if (!Number.isFinite(back)) continue;
+        const [x, z] = at(u + jitterU, back + jitterD);
+        writeBox(mesh, x, stubTop + (c + 0.5) * unitH * sy - unitH * 0.35, z, w * 0.5 * sw, unitH * 0.5, depth * 0.4, yaw + yawJ, core.tint, shade);
       }
     }
     mesh.end();
@@ -603,11 +685,12 @@ function sectionDown(anatomy: StructureDamageAnatomy, section: number, seed: num
     return { cuts: [], hides: [] };
   }
   const pieces = out.pieces;
+  const [rcx, rcz] = anatomyCentre(anatomy);
   // the covering slides off and falls: its own units across the roof's plan, thrown outward a little
   for (let k = 0; k < 120 && pieces.count < pieces.capacity; k++) {
-    const x = (rng() - 0.5) * anatomy.w, z = (rng() - 0.5) * anatomy.d;
-    const y = roof.eaveY + (roof.ridgeY - roof.eaveY) * (1 - Math.abs(x) / Math.max(0.5, anatomy.w / 2)) * rng();
-    pushPiece(pieces, roof.covering, rng, x, y, z, x * 0.3 + (rng() - 0.5), rng(), z * 0.3 + (rng() - 0.5));
+    const x = rcx + (rng() - 0.5) * anatomy.w, z = rcz + (rng() - 0.5) * anatomy.d;
+    const y = roof.eaveY + (roof.ridgeY - roof.eaveY) * (1 - Math.abs(x - rcx) / Math.max(0.5, anatomy.w / 2)) * rng();
+    pushPiece(pieces, roof.covering, rng, x, y, z, (x - rcx) * 0.3 + (rng() - 0.5), rng(), (z - rcz) * 0.3 + (rng() - 0.5));
   }
   return { cuts: [], hides: [{ section: null, partClass: 'roof' }] };
 }
@@ -623,16 +706,17 @@ function storeyDown(anatomy: StructureDamageAnatomy, storeyIndex: number, seed: 
   if (!storey) return { cuts: [], hides: [] };
   const pieces = out.pieces;
   const halfW = anatomy.w / 2 * 0.9, halfD = anatomy.d / 2 * 0.9;
+  const [scx, scz] = anatomyCentre(anatomy);
   if (storey.floor) {
     const slot = storey.floor.structure;
     for (let k = 0; k < 90 && pieces.count < pieces.capacity; k++) {
-      pushPiece(pieces, slot, rng, (rng() * 2 - 1) * halfW, storey.y0, (rng() * 2 - 1) * halfD,
+      pushPiece(pieces, slot, rng, scx + (rng() * 2 - 1) * halfW, storey.y0, scz + (rng() * 2 - 1) * halfD,
         (rng() - 0.5) * 0.8, -0.5 - rng() * 1.5, (rng() - 0.5) * 0.8, k < 8 ? 2.5 : 1);
     }
   }
   for (let k = 0; k < 60 && pieces.count < pieces.capacity && anatomy.rubble.length; k++) {
     const slot = anatomy.rubble[k % anatomy.rubble.length]!;
-    pushPiece(pieces, slot, rng, (rng() * 2 - 1) * halfW, storey.y0 + rng() * (storey.y1 - storey.y0), (rng() * 2 - 1) * halfD,
+    pushPiece(pieces, slot, rng, scx + (rng() * 2 - 1) * halfW, storey.y0 + rng() * (storey.y1 - storey.y0), scz + (rng() * 2 - 1) * halfD,
       (rng() - 0.5) * 0.6, -1 - rng() * 2, (rng() - 0.5) * 0.6);
   }
   return { cuts: [], hides: storey.faces.map((face) => ({ section: face.section, partClass: null })) };
@@ -643,9 +727,11 @@ function collapse(anatomy: StructureDamageAnatomy, seed: number, out: DamageWrit
   const mesh = out.mesh;
   const ground = anatomy.storeys[0];
   if (!ground) return { cuts: [], hides: [{ section: null, partClass: null }] };
-  // the stubs: ragged runs along each ground-storey face, taller at a masonry building's corners
+  // the stubs: ragged runs along each ground-storey face, taller at a masonry building's corners — only where a wall is
+  // drawn behind the face, on it (its setback: destruction-slabs 227)
   const stub = anatomy.remnant.stubHeightM;
-  for (const face of ground.faces) {
+  for (let fi = 0; fi < ground.faces.length; fi++) {
+    const face = ground.faces[fi]!;
     const slot = face.layers[face.layers.length - 1] ?? face.layers[0]!;
     if (!mesh.begin(slot.bucket, 'remnant')) continue;
     const yaw = Math.atan2(face.out[0], face.out[2]) + Math.PI / 2;
@@ -655,10 +741,13 @@ function collapse(anatomy: StructureDamageAnatomy, seed: number, out: DamageWrit
       const u0 = -face.width / 2 + (k / runs) * face.width, u1 = -face.width / 2 + ((k + 1) / runs) * face.width;
       const corner = anatomy.remnant.corners && (k === 0 || k === runs - 1);
       const h = stub * (corner ? 1.2 + rng() * 0.6 : 0.3 + rng() * 0.7);
+      const shade = 0.85 + rng() * 0.15;
       if (h < 0.1) continue;
       const u = (u0 + u1) / 2;
-      writeBox(mesh, face.origin[0] + face.u[0] * u - face.out[0] * depth / 2, h / 2, face.origin[2] + face.u[2] * u - face.out[2] * depth / 2,
-        (u1 - u0) / 2, h / 2, depth / 2, yaw, slot.tint, 0.85 + rng() * 0.15);
+      const back = faceSetback(anatomy, 0, fi, u);
+      if (!Number.isFinite(back)) continue;
+      writeBox(mesh, face.origin[0] + face.u[0] * u - face.out[0] * (back + depth / 2), h / 2,
+        face.origin[2] + face.u[2] * u - face.out[2] * (back + depth / 2), (u1 - u0) / 2, h / 2, depth / 2, yaw, slot.tint, shade);
     }
     mesh.end();
   }
@@ -666,15 +755,19 @@ function collapse(anatomy: StructureDamageAnatomy, seed: number, out: DamageWrit
   // the heap: chunks in the building's own buckets by their shares, seated on the sim's mound
   const total = anatomy.rubble.reduce((sum, slot) => sum + slot.share, 0) || 1;
   const reach = { x: anatomy.w / 2 + 2, z: anatomy.d / 2 + 2 };
+  const [hcx, hcz] = anatomyCentre(anatomy);
   for (const slot of anatomy.rubble) {
     if (!mesh.begin(slot.bucket, 'rubble')) continue;
     const unit = unitOf(slot.material).size;
     // (2026-10-16) an open frame falls as members, not as a masonry heap: a fifth of the pile (collapseRuin.ts stands its legs)
     const wanted = Math.round((slot.share / total) * Math.min(400, (mesh.capacity - mesh.vertices) / VERTS_PER_BOX) * frameHeap);
     for (let k = 0; k < wanted && roomFor(mesh, 1); k++) {
-      const x = (rng() * 2 - 1) * reach.x, z = (rng() * 2 - 1) * reach.z;
-      // (2026-10-16) a sparse form's heap follows its own pieces (a guyed mast's, not its guys' whole square)
-      if (intactPlanAt(anatomy, x, z) === false) continue;
+      const x = hcx + (rng() * 2 - 1) * reach.x, z = hcz + (rng() * 2 - 1) * reach.z;
+      // (2026-10-16) a sparse form's heap follows its own pieces (a guyed mast's, not its guys' whole square); (destruction-
+      // slabs 227) every building's heap lies on what it drew (its walls and their enclosure, grown a metre and a half),
+      // never over a forecourt or a tank farm's yard
+      const drawn = enclosedAt(anatomy, x, z, 1.5);
+      if (drawn === false || (drawn === null && intactPlanAt(anatomy, x, z) === false)) continue;
       const top = bodyMoundHeightAt(anatomy, x, z);
       if (top < 0.05 && rng() < 0.7) continue;
       const size = unit * (0.8 + rng() * 1.6);

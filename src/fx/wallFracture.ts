@@ -22,6 +22,7 @@
  * the building's first strike (a few hundred cells a face), nothing per frame.
  */
 import { holeOutlineK, type DamageFace, type FractureMaterial, type StructureDamageAnatomy, type Vec3 } from '../world/destructionKit.ts';
+import { faceSetback, faceSetbackMedian } from '../world/structureEnclosure.ts';
 
 /** The cell a wall breaks into: wide and tall (m), before a face's own fitting. */
 const CELL_W_M = 0.5;
@@ -111,6 +112,10 @@ export interface FaceGrid {
   readonly damage: Float32Array;
   /** How far each cell has sagged (m, down). */
   readonly sag: Float32Array;
+  /** 1 where no wall is drawn at the grid's plane over the cell (destruction-slabs 227: the anatomy's face ran past the
+   *  drawn walls): void — nothing breaks, nothing falls, nothing is drawn — but it bears what stands over it (an upper
+   *  storey's wall over a hall's gate is carried by what the face does not model). */
+  readonly absent: Uint8Array;
 }
 
 export interface WallFracture {
@@ -242,9 +247,15 @@ function gableOver(anatomy: StructureDamageAnatomy, storeyIndex: number, face: D
   return apex - face.height > 0.8 ? top : null;
 }
 
-function layGrid(anatomy: StructureDamageAnatomy, storeyIndex: number, faceIndex: number): FaceGrid {
+function layGrid(anatomy: StructureDamageAnatomy, storeyIndex: number, faceIndex: number): FaceGrid | null {
   const storey = anatomy.storeys[storeyIndex];
   const face = storey.faces[faceIndex];
+  // (destruction-slabs 227) on the drawn wall: the grid stands at the face's median setback (structureEnclosure.ts), a
+  // face with no wall drawn behind it lays none, and a cell over no drawn wall at that plane is void (absent)
+  const med = faceSetbackMedian(anatomy, storeyIndex, faceIndex);
+  if (!(med.share > 0)) return null;
+  const back = Number.isFinite(med.median) ? med.median : 0;
+  const origin: Vec3 = back !== 0 ? [face.origin[0] - face.out[0] * back, face.origin[1], face.origin[2] - face.out[2] * back] : face.origin;
   const material = faceMaterial(face);
   const law = cellLaw(material);
   const wallHeight = Math.max(0.3, face.height);
@@ -318,12 +329,26 @@ function layGrid(anatomy: StructureDamageAnatomy, storeyIndex: number, faceIndex
     }
   }
   const skin = face.layers.length > 1 ? Math.max(0.02, face.layers[0].thicknessM || 0.03) : Math.min(0.06, faceWallThickness(face) * 0.3);
+  const opening = Uint8Array.from(state, (v) => (v === CELL_OPENING ? 1 : 0));
+  // a cell over no drawn wall at the grid's plane (its stretch of the face reads no setback near the median's): void
+  const absent = new Uint8Array(n);
+  if (anatomy.enclosure) {
+    const thick = faceWallThickness(face) + 0.35;
+    const walled = (u: number): boolean => { const sb = faceSetback(anatomy, storeyIndex, faceIndex, u); return Number.isFinite(sb) && Math.abs(sb - back) <= thick; };
+    for (let c = 0; c < n; c++) {
+      const u0 = cellU[2 * c], u1 = cellU[2 * c + 1];
+      if (walled(u0 + 0.02) || walled((u0 + u1) / 2) || walled(u1 - 0.02)) continue;
+      absent[c] = 1;
+      state[c] = CELL_VOID;
+      opening[c] = 0;
+    }
+  }
   return {
     storey: storeyIndex, faceIndex, section: face.section, name: face.name,
-    origin: face.origin, u: face.u, out: face.out, width: face.width, height, wallHeight, gableTop,
+    origin, u: face.u, out: face.out, width: face.width, height, wallHeight, gableTop,
     thickness: faceWallThickness(face), skinM: skin, material, bonded: law.bonded,
     rowY: Float32Array.from(rowsY), rowStart: Int32Array.from(rowStart), cellU: Float32Array.from(cellU),
-    state, opening: Uint8Array.from(state, (v) => (v === CELL_OPENING ? 1 : 0)), damage: new Float32Array(n), sag: new Float32Array(n),
+    state, opening, damage: new Float32Array(n), sag: new Float32Array(n), absent,
   };
 }
 
@@ -333,6 +358,7 @@ export function createWallFracture(anatomy: StructureDamageAnatomy): WallFractur
   const stacks = new Map<string, number[]>();
   anatomy.storeys.forEach((storey, s) => storey.faces.forEach((_face, f) => {
     const grid = layGrid(anatomy, s, f);
+    if (!grid) return;
     const list = stacks.get(grid.name) ?? [];
     list.push(faces.length);
     stacks.set(grid.name, list);
@@ -577,7 +603,8 @@ function bearOn(grid: FaceGrid, sup: Uint8Array, r: number, u0: number, u1: numb
   for (let c = grid.rowStart[r]; c < grid.rowStart[r + 1]; c++) {
     const a = grid.cellU[2 * c], b = grid.cellU[2 * c + 1];
     if (b <= u0 || a >= u1) continue;
-    if (!standing(grid.state[c]) || !sup[c]) continue;
+    // (an absent cell bears: what stands over it is carried by what the face does not model)
+    if (!grid.absent[c] && (!standing(grid.state[c]) || !sup[c])) continue;
     bearing += Math.min(b, u1) - Math.max(a, u0);
   }
   // a sliver of contact is no bearing (a corner on a corner)

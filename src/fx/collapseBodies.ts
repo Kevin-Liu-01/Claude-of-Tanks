@@ -36,7 +36,8 @@ import * as THREE from 'three';
 import { createRigidShape, type RigidEnvironment, type RigidShape } from '../sim/rigidBody.ts';
 import type { CollisionRecord } from '../world/collision.ts';
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
-import type { StructureDamageAnatomy } from '../world/destructionKit.ts';
+import { anatomyCentre, type StructureDamageAnatomy } from '../world/destructionKit.ts';
+import { bandEnclosure, enclosedAt } from '../world/structureEnclosure.ts';
 import { rubbleProfile, rubbleStampOf, type RubbleMound, type RubbleStamp } from '../sim/terrainDeformation.ts';
 import type { DebrisPhysics } from './debrisPhysics.ts';
 import type { WreckTurretTank } from '../sim/wreckTurrets.ts';
@@ -246,6 +247,10 @@ interface LivePiece {
   rested: boolean;
   /** Its body's shape: the plan's, or the box round what it draws when that reaches past it. */
   shape: RigidShape | null;
+  /** Its body's extent from its frame's origin along its axes (the grown box's when it has one; null: the plan's). */
+  half: [number, number, number] | null;
+  /** Looked at once at rest for lying high past the walls (a partial roof fall: destruction-slabs 227). */
+  placed: boolean;
 }
 
 interface LiveCollapse {
@@ -950,15 +955,26 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     if (!parts.some((pp) => pp.meshes.length)) return;
     // (2026-10-15, the port's receipt: a hip roof's slab, its eave boards and verges past its banded boxes, lay a metre
     // into the ground) a body reaches as far as what it draws: a roof slab's or part's box grown to its triangles
+    // (destruction-slabs 227: a tavern's slab body grown 3.7 m under its plane round the gable infill partitioned to it
+    // rested on a floor while the slab drew flat over the eaves) it grows in the slab's plane only: along its normal (the
+    // piece frame's y) it keeps the planned box, 0.35 m under it and 0.6 m over at most — what a piece draws never sets
+    // its thickness
     let shape: RigidShape | null = null;
+    let half: [number, number, number] | null = null;
     if (piece.kind === 'roof') {
       const whole = boundsOf(parts, false);
-      if (whole && reachesPast(whole, piece.boxes)) shape = boxShapeOf(whole, piece.massKg);
+      if (whole) clampNormal(whole, piece.boxes);
+      if (whole && reachesPast(whole, piece.boxes)) {
+        shape = boxShapeOf(whole, piece.massKg);
+        half = [Math.max(Math.abs(whole[0]), Math.abs(whole[3])), Math.max(Math.abs(whole[1]), Math.abs(whole[4])), Math.max(Math.abs(whole[2]), Math.abs(whole[5]))];
+      }
       parts.forEach((pp, k) => {
         const spec = piece.parts[k];
         if (!spec) return;
         const b = boundsOf([pp], true);
-        if (b && reachesPast(b, [{ center: [0, 0, 0], half: spec.half }])) pp.shape = boxShapeOf(b, spec.massKg);
+        const own = [{ center: [0, 0, 0], half: spec.half }];
+        if (b) clampNormal(b, own);
+        if (b && reachesPast(b, own)) pp.shape = boxShapeOf(b, spec.massKg);
       });
     }
     // (destruction-slabs 227) each mesh names the body box it rides in (its own frame): receipts measure what it draws
@@ -982,7 +998,8 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       tumble = { wx: Math.cos(a) * w, wz: Math.sin(a) * w };
     }
     const lp: LivePiece = { piece, com: [0, 0, 0], handle: -1, parts, broken: false, still: 0, sounds: 0, dusts: 0, kicked: false,
-      shattered: false, tipped: false, pose: new Float64Array(7).fill(NaN), spawn: { ...spawn, ...(tumble ?? {}) }, rested: false, shape };
+      shattered: false, tipped: false, pose: new Float64Array(7).fill(NaN), spawn: { ...spawn, ...(tumble ?? {}) }, rested: false, shape, half,
+      placed: false };
     writeWhole(lp, [spawn.x, spawn.y, spawn.z, spawn.qx, spawn.qy, spawn.qz, spawn.qw]);
     lc.pieces.push(lp);
     if (now) spawnBody(lc, lp); else lc.spawnQueue.push(lp);
@@ -1001,6 +1018,14 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       }
     }
     return b[3] >= b[0] ? b : null;
+  }
+  /** Bounds held to the planned boxes along the frame's y (a roof slab's normal): 0.35 m under them, 0.6 m over at most. */
+  function clampNormal(b: number[], boxes: ReadonlyArray<{ center: readonly number[]; half: readonly number[] }>): void {
+    let lo = Infinity, hi = -Infinity;
+    for (const box of boxes) { lo = Math.min(lo, box.center[1] - box.half[1]); hi = Math.max(hi, box.center[1] + box.half[1]); }
+    if (!(hi >= lo)) return;
+    b[1] = Math.max(b[1], lo - 0.35); b[4] = Math.min(b[4], hi + 0.6);
+    if (!(b[4] > b[1] + 0.06)) { b[1] = lo; b[4] = hi; }
   }
   /** Whether bounds reach more than 5 cm past every box's (in the same frame). */
   function reachesPast(b: number[], boxes: ReadonlyArray<{ center: readonly number[]; half: readonly number[] }>): boolean {
@@ -1045,6 +1070,26 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       return;
     }
     restOnGround(lp, lp.pose);
+  }
+  /**
+   * Whether a body at `at` (world pose) with extents `half` (its frame's) lies 1.5 m or more over the ground and a tenth or
+   * more of its plan outside the top storey's drawn walls (structureEnclosure: the building's walls and what they enclose).
+   */
+  function highPastWalls(c: LiveCollapse, at: ArrayLike<number>, half: readonly number[]): boolean {
+    const a = c.seam.anatomy;
+    if (!(at[1] - env.groundAt(at[0], at[2]) >= 1.5)) return false;
+    const band = Math.max(0, a.storeys.length - 1);
+    const f = frameOf(a);
+    _q.set(at[3], at[4], at[5], at[6]);
+    let n = 0, out = 0;
+    for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) {
+      _o.set((i / 4 - 0.5) * 2 * half[0], 0, (j / 4 - 0.5) * 2 * half[2]).applyQuaternion(_q);
+      const wx = at[0] + _o.x, wz = at[2] + _o.z;
+      const bx = (wx - f.x) * f.c - (wz - f.z) * f.s, bz = (wx - f.x) * f.s + (wz - f.z) * f.c;
+      n++;
+      if (enclosedAt(a, bx, bz, 0.3, band) === false) out++;
+    }
+    return out >= 0.1 * n;
   }
   /** A piece (or its parts) laid at rest on the ground under `at` (its pose now), its thinnest side down. */
   function restOnGround(lp: LivePiece, at: ArrayLike<number>): void {
@@ -1422,7 +1467,17 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
           if (pieceKick(p.piece, { yaw: c.yaw }, pose, impulse)) pool.impulse(p.handle, impulse[0], impulse[1], impulse[2], impulse[3], impulse[4], impulse[5]);
         }
         settle(p.handle, p, age, dtS);
-        if (!p.tipped && p.still > 0.25) { p.tipped = true; tipIfStanding(p.handle, pieceHalf(p.piece), p.piece.massKg, c.structureIdx * 131 + p.piece.index); }
+        if (!p.tipped && p.still > 0.25) { p.tipped = true; tipIfStanding(p.handle, p.half ?? pieceHalf(p.piece), p.piece.massKg, c.structureIdx * 131 + p.piece.index); }
+        // (destruction-slabs 227) a partial roof fall's slab come to rest high and out past the walls (across the wall heads,
+        // its overhang over the street: "a giant flat roof") breaks into its sheets, which find the shell or the ground;
+        // one that cannot break is laid on the ground under it
+        if (c.partial && !p.placed && p.still > 0.4 && p.piece.kind === 'roof') {
+          p.placed = true;
+          if (pool.framePoseAt(p.handle, pose) && highPastWalls(c, pose, p.half ?? pieceHalf(p.piece))) {
+            if (p.parts.length > 1 && !p.broken) { p.broken = true; breaking.push(c, p); }
+            else { byHandle.delete(p.handle); pool.release(p.handle); p.handle = -1; restOnGround(p, pose); }
+          }
+        }
       } else if (p.broken) {
         for (let k = 0; k < p.parts.length; k++) {
           const part = p.parts[k];
@@ -1435,6 +1490,12 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
             // (wave 407: roof sheets "propped at steep angles like an open book") a roof sheet propped steeper than
             // about 45 degrees goes down onto the heap too
             tipIfStanding(part.handle, spec.half, spec.massKg, c.structureIdx * 131 + p.piece.index * 16 + k, p.piece.kind === 'roof' ? 0.7 : 0.4);
+            // (destruction-slabs 227) a partial roof fall's sheet still high and out past the walls lies on the ground under it
+            if (c.partial && p.piece.kind === 'roof' && pool.framePoseAt(part.handle, pose) && highPastWalls(c, pose, spec.half)) {
+              byHandle.delete(part.handle); pool.release(part.handle); part.handle = -1;
+              writePart(part, pose);
+              partOnGround(part, spec.half);
+            }
           }
         }
       }
@@ -1453,14 +1514,26 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       const st = a.storeys[k];
       let t = 0.25;
       for (const f of st.faces) t = Math.max(t, f.layers.reduce((sum, l) => sum + (l.thicknessM || 0), 0));
-      const hw = a.w / 2 - t - 0.05, hl = a.d / 2 - t - 0.05;
+      // (destruction-slabs 227) the storey's drawn enclosure (its interior's box), never the anatomy's w x d about the
+      // origin (a floor solid past the walls held a roof slab out over the street); none where it encloses under half
+      let bcx: number, bcz: number, hw: number, hl: number;
+      const band = bandEnclosure(a, k);
+      if (band) {
+        const ib = band.interiorBox;
+        if (!(band.share >= 0.5 && ib[2] - ib[0] > 0.9 && ib[3] - ib[1] > 0.9)) continue;
+        bcx = (ib[0] + ib[2]) / 2; bcz = (ib[1] + ib[3]) / 2; hw = (ib[2] - ib[0]) / 2 - 0.05; hl = (ib[3] - ib[1]) / 2 - 0.05;
+      } else {
+        [bcx, bcz] = anatomyCentre(a);
+        hw = a.w / 2 - t - 0.05; hl = a.d / 2 - t - 0.05;
+      }
       if (!(hw > 0.4 && hl > 0.4)) continue;
       const y1 = placement.y + st.y0, y0 = y1 - 0.5;
+      const wx = placement.x + bcx * c + bcz * s, wz = placement.z - bcx * s + bcz * c;
       // obb: hw along right (cos yaw, −sin yaw), hl along forward (sin yaw, cos yaw): the body frame's x and z
       const ex = Math.abs(c) * hw + Math.abs(s) * hl, ez = Math.abs(s) * hw + Math.abs(c) * hl;
       const record = {
-        min: [placement.x - ex, y0, placement.z - ez], max: [placement.x + ex, y1, placement.z + ez],
-        shape2: { kind: 'obb', cx: placement.x, cz: placement.z, hw, hl, yaw: placement.yaw, y0, y1 },
+        min: [wx - ex, y0, wz - ez], max: [wx + ex, y1, wz + ez],
+        shape2: { kind: 'obb', cx: wx, cz: wz, hw, hl, yaw: placement.yaw, y0, y1 },
         kind: 'floor', structureIdx: seam.structureIdx,
       } as unknown as CollisionRecord;
       out.push({ storey: k, record });

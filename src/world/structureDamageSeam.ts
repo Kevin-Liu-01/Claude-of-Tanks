@@ -13,6 +13,7 @@
  * positions, the anatomy's placement and the presentation's pivots are all world points.
  */
 import { frameByName, keepRuinStanding, measureIntactParts } from './collapseRuin.ts';
+import { faceSetback, measureEnclosure } from './structureEnclosure.ts';
 import { BufferAttribute, type BufferGeometry, type Material, type Object3D } from 'three';
 import {
   damageSeed, kitPlanFor, structureDamageKitChain,
@@ -119,14 +120,25 @@ export function describeStructure(args: DescribeStructureArgs): StructureDamageA
     if (kit === DEFAULT_STRUCTURE_DAMAGE_KIT || !kit.describe) continue;
     try {
       const anatomy = kit.describe(input);
-      if (anatomy) { if (intact) anatomy.intact = intact; return anatomy; }
+      if (anatomy) { if (intact) anatomy.intact = intact; enclose(anatomy, args.parts); return anatomy; }
     } catch {
       // a kit that cannot describe this building leaves it to the default (never a build failure)
     }
   }
   const anatomy = describeDefault(input);
   if (intact) anatomy.intact = intact;
+  enclose(anatomy, args.parts);
   return anatomy;
+}
+
+/** What the building draws, once (structureEnclosure.ts: the only geometry its damage writers place against). */
+function enclose(anatomy: StructureDamageAnatomy, parts: DescribeStructureArgs['parts']): void {
+  try {
+    const enclosure = measureEnclosure(parts, anatomy);
+    if (enclosure) anatomy.enclosure = enclosure;
+  } catch {
+    // a structure whose parts cannot be read keeps the faces' reading (never a build failure)
+  }
 }
 
 type StageMember = 'damaged' | 'breach' | 'sectionDown' | 'storeyDown' | 'collapse';
@@ -184,12 +196,18 @@ function holeOnAnatomy(anatomy: StructureDamageAnatomy, x: number, y: number, z:
   const along = (bx - face.origin[0]) * face.u[0] + (bz - face.origin[2]) * face.u[2];
   const u = Math.max(-face.width / 2, Math.min(face.width / 2, along));
   const hy = Math.max(0, Math.min(storey.y1 - storey.y0, by - storey.y0));
+  // (destruction-slabs 227) the hole goes on the drawn wall behind the face (its setback there); where no wall stands
+  // behind that stretch of the face the round passed through an opening or a frame: no kit hole, its burst only (a
+  // section's fall, hole 255, still names its face: the section's parts come down wherever its centre stands)
+  const behind = faceSetback(anatomy, storey.index, storey.faces.indexOf(face), u);
+  if (!Number.isFinite(behind) && hole !== 255) return null;
+  const setback = Number.isFinite(behind) ? behind : 0;
   const length = Math.hypot(dirX, dirZ);
   const wx = length > 1e-9 ? dirX / length : -face.out[0] * c - face.out[2] * s;
   const wz = length > 1e-9 ? dirZ / length : face.out[0] * s - face.out[2] * c;
   return {
     section: face.section, storey: storey.index, face: face.name, hole, u, y: hy, radiusM,
-    dirX: wx * c - wz * s, dirZ: wx * s + wz * c, munition, cause, seed: damageSeed(anatomy.seed, face.section, hole),
+    dirX: wx * c - wz * s, dirZ: wx * s + wz * c, munition, cause, seed: damageSeed(anatomy.seed, face.section, hole), setback,
   };
 }
 

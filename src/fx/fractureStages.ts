@@ -75,13 +75,17 @@ export interface StageFracture {
   /** A stage event: 1 the collapse came down as bodies (the stages lay nothing more), 2 the breach broke the wall where
    *  it struck (the stages lay no kit hole), 0 neither. */
   stage(e: StructureStageEvent, seam: StructureDamageSeam | null): 0 | 1 | 2;
-  /** Sections on: a hole the sim opened (live): true when it broke the wall there (no kit rim then). */
-  hole(e: StructureBreachEvent, seam: StructureDamageSeam): boolean;
-  /** Sections on: a wall section fell: true when its cells come down as bodies (no kit fall, no clamp now). */
+  /** Sections on: a hole the sim opened: true when it broke the wall there (no kit rim then); settled (a late joiner's
+   *  log), its cells cut and drawn at once, nothing thrown. */
+  hole(e: StructureBreachEvent, seam: StructureDamageSeam, settled?: boolean): boolean;
+  /** Sections on: a wall section fell: true when its cells come down as bodies (no kit fall, no clamp now); settled, its
+   *  cells gone at once, nothing thrown. */
   fallPanel(e: StructureBreachEvent, seam: StructureDamageSeam, storey: DamageStorey, face: DamageFace, stubTop: number,
-    top: number): boolean;
+    top: number, settled?: boolean): boolean;
   /** Sections on: the roof's section fell: true when its slabs come down as bodies (the kit lays its hides only). */
   fallRoof(e: StructureBreachEvent, seam: StructureDamageSeam): boolean;
+  /** A storey dropped: the rooms behind its holes, and over it, go with it (`only`: its own alone — every wall of it fell). */
+  storeyDown(seam: StructureDamageSeam, storey: number, only?: boolean): void;
 }
 
 interface FractureStagesOptions {
@@ -413,16 +417,17 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
           bodies.dropFloor(idx, 0);
           return 0;
         }
-        // (the live breach, sections off: a round that breaks the wall where it struck, sized as the stage's blow)
-        if (e.stage === 'breached' && !sections && !settled) {
+        // (the breach, sections off: a round that breaks the wall where it struck, sized as the stage's blow; settled — a
+        // late joiner's log, destruction-slabs 227 — the same break cut and drawn at once, nothing thrown)
+        if (e.stage === 'breached' && !sections) {
           const blow = breachBlowFor(e);
           const faces = fracture.strike(seam, blow.x, blow.y, blow.z, e.dirX, e.dirZ, e.munition ?? 'he', 1, 0,
-            e.cause === 'ram' ? Math.max(blow.radiusM, 1.6) : blow.radiusM);
-          if (faces) { afterStrike(seam); return 2; }
+            e.cause === 'ram' ? Math.max(blow.radiusM, 1.6) : blow.radiusM, settled);
+          if (faces) { if (!settled) afterStrike(seam); else bump(idx); return 2; }
         }
         return 0;
       },
-      hole(e, seam) {
+      hole(e, seam, settled = false) {
         const idx = seam.structureIdx;
         seams.set(idx, seam);
         if (isLandmark(seam)) return false;
@@ -433,12 +438,12 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
         const nl = Math.hypot(e.nx, e.nz);
         if (!(nl > 0.2)) return false;
         // the round's travel into the face (against its outward normal)
-        const faces = fracture.strike(seam, e.x, e.y, e.z, -e.nx / nl, -e.nz / nl, e.munition ?? 'he', 1, 0, e.radiusM);
+        const faces = fracture.strike(seam, e.x, e.y, e.z, -e.nx / nl, -e.nz / nl, e.munition ?? 'he', 1, 0, e.radiusM, settled);
         if (!faces) return false;
-        afterStrike(seam);
+        if (!settled) afterStrike(seam);
         return true;
       },
-      fallPanel(e, seam, storey, face, stubTop, top) {
+      fallPanel(e, seam, storey, face, stubTop, top, settled = false) {
         const idx = seam.structureIdx;
         seams.set(idx, seam);
         if (isLandmark(seam)) return false;
@@ -447,8 +452,8 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
         bump(idx);
         const faceIndex = storey.faces.indexOf(face);
         if (faceIndex < 0) return false;
-        if (!fracture.dropFace(seam, storey.index, faceIndex, stubTop - face.origin[1], 0, 0)) return false;
-        afterStrike(seam);
+        if (!fracture.dropFace(seam, storey.index, faceIndex, stubTop - face.origin[1], 0, 0, settled)) return false;
+        if (!settled) afterStrike(seam);
         // (the last face of a storey drops it: the stages' fall moves the band from where it stood, so the face is taken
         // out of the buckets first, or the fall would carry it down beside its own cells)
         if ((e as StructureBreachEvent & { storeyDown?: boolean }).storeyDown === true) fracture.flush(idx);
@@ -457,6 +462,9 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
         if (fracture.idle(idx)) { if (host?.clampPanel(seam, face, stubTop, top)) seam.touchShadows(); }
         else clamps.push({ seam, storey: storey.index, faceIndex, face, stubTop, top });
         return true;
+      },
+      storeyDown(seam, storey, only = false) {
+        fracture.dropRooms(seam.structureIdx, storey, only);
       },
       fallRoof(e, seam) {
         const idx = seam.structureIdx;
