@@ -68,7 +68,7 @@ const expected = {
   railyard: [2529, 2948, 1337], // integ/227 (LOOKS fence records 555994745: every timber fence module a collider, its band the drawn silhouette; obstacles unchanged): was [2529, 2713, 1337]
   frontier: [7973, 8168, 8087], // integ/227 (LOOKS fence records 555994745: every timber fence module a collider, its band the drawn silhouette; obstacles unchanged): was [7973, 7934, 8087]
   fjord: [7166, 8009, 6814], // integ/227 (LOOKS fence records 555994745: every timber fence module a collider, its band the drawn silhouette; obstacles unchanged): was [7166, 7677, 6814]
-  delta: [8775, 8726, 10067], // integ/227 (LOOKS fence records 555994745: every timber fence module a collider, its band the drawn silhouette; obstacles unchanged): was [8775, 8558, 10067]
+  delta: [8785, 8769, 10067], // integ/227 recapture 5 (bengal 4bbaf3977 on top of fence-records); integ/227 (LOOKS fence records 555994745: every timber fence module a collider, its band the drawn silhouette; obstacles unchanged): was [8775, 8558, 10067]
   badlands: [2264, 2322, 213], // integ/227 (LOOKS fence records 555994745: every timber fence module a collider, its band the drawn silhouette; obstacles unchanged): was [2264, 2033, 213]
   // Native recapture with prior prop code also contains this additional wreck.
   monsoon: [9682, 10095, 11564], // integ/227 (LOOKS fence records 555994745: every timber fence module a collider, its band the drawn silhouette; obstacles unchanged): was [9682, 9778, 11564]
@@ -80,7 +80,7 @@ const expected = {
   blackglass: [3260, 5637, 1916], // integ/227 recapture 4 (fence-records colliders on top of shanghai); integ/227 (LOOKS fence records 555994745: every timber fence module a collider, its band the drawn silhouette; obstacles unchanged): was [3260, 4631, 1916]
   titan_gorge: [3119, 3222, 1226], // integ/227 (LOOKS fence records 555994745: every timber fence module a collider, its band the drawn silhouette; obstacles unchanged): was [3119, 2945, 1226]
   skybridge: [2608, 2844, 1003], // integ/227 (LOOKS fence records 555994745: every timber fence module a collider, its band the drawn silhouette; obstacles unchanged): was [2608, 2659, 1003]
-  polders: [4253, 4851, 3380], // integ/227 (LOOKS fence records 555994745: every timber fence module a collider, its band the drawn silhouette; obstacles unchanged): was [4253, 4510, 3380]
+  polders: [4230, 4919, 3380], // integ/227 recapture 5 (polders-defects 827267394 on top of fence-records); integ/227 (LOOKS fence records 555994745: every timber fence module a collider, its band the drawn silhouette; obstacles unchanged): was [4253, 4510, 3380]
   copper_mesa: [2054, 2757, 958], // integ/227 recapture 4 (fence-records colliders on top of copper item 69 + fix); integ/227 (LOOKS fence records 555994745: every timber fence module a collider, its band the drawn silhouette; obstacles unchanged): was [2056, 2564, 964]
   airfield: [4720, 5400, 3872], // integ/227 (LOOKS fence records 555994745: every timber fence module a collider, its band the drawn silhouette; obstacles unchanged): was [4720, 5203, 3872]
   oasis: [1622, 1884, 822], // integ/227 (LOOKS fence records 555994745: every timber fence module a collider, its band the drawn silhouette; obstacles unchanged): was [1622, 1764, 822]
