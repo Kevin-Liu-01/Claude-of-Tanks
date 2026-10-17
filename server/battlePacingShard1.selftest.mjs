@@ -3,4 +3,4 @@
 // which judges all 132 (server/battlePacingRun.test-support.mjs).
 import { runPacingShard } from './battlePacingRun.test-support.mjs';
 
-await runPacingShard(1, process.env.COT_SELFTEST_RUN_DIR);
+await runPacingShard(1, process.env.COT_SELFTEST_RUN_DIR, () => import('./battlePacingPlay.test-support.mjs'));

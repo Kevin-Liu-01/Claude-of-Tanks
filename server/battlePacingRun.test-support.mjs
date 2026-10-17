@@ -1,5 +1,5 @@
 // The battlePacing core run in shards (test-speed R9a, 2026-10-16): how the eight shard receipts hand their records to
-// the judge, server/battlePacing.selftest.mjs, inside one run. No simulation is imported until a shard plays.
+// the judge, server/battlePacing.selftest.mjs, inside one run. No simulation is imported here.
 //
 // The run's directory is COT_SELFTEST_RUN_DIR: tools/run-selftests.mjs makes a fresh one for each invocation, and a
 // gate that runs the receipts itself exports one fresh directory for its whole pool (docs/DEVELOPMENT.md, "The pacing
@@ -83,13 +83,15 @@ export async function collectPacingShardReports(dir, {
 
 /**
  * One shard receipt (server/battlePacingShard<n>.selftest.mjs): plays its maps' core matches on this thread, every
- * per-match assertion included, and with a run directory writes its records for the judge.
+ * per-match assertion included, and with a run directory writes its records for the judge. `loadPlay` imports
+ * server/battlePacingPlay.test-support.mjs; the shard passes it, so this module (and its fixture receipt) stays free of
+ * the simulation, and the shard is marked started before the simulation loads.
  */
-export async function runPacingShard(shard, dir) {
+export async function runPacingShard(shard, dir, loadPlay) {
   if (dir) markPacingShardStarted(dir, shard);
   const maps = pacingShardMaps(MAP_IDS, shard);
   const samples = PACING_SAMPLES.core;
-  const { playPacingMaps } = await import('./battlePacingPlay.test-support.mjs');
+  const { playPacingMaps } = await loadPlay();
   const { matches } = await playPacingMaps(maps, samples, (line) => console.log(line));
   if (dir) writePacingShardReport(dir, shard, { mode: 'core', shard, count: PACING_SHARDS, samples, maps, matches, root: PACING_ROOT });
   const stats = pacingStats(matches);
