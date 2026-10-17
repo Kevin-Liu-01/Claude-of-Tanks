@@ -139,7 +139,7 @@
     },
     "skybridge": {
       "bytes": 1735864,
-      "sha256": "9b24ba9e983aff3e1c7c5f49b816c2f9a531cb8bd6f118cf7f92501bb09f9c70",
+      "sha256": "e83c17e9aa610902a4cdbcc8ff13cdd1cc75e756ef25dbec39e9e5b917c5b3e8",
       "obstacles": 2611,
       "colliders": 2644,
       "concealers": 1003
@@ -373,7 +373,7 @@
       },
       "skybridge": {
         "bytes": 1768008,
-        "sha256": "8852d73e6cdbe6897b294c3cdd95f423c31f9527e96c88790f70087221967585",
+        "sha256": "3f18b35893733b7334f678a15f95f76498db1ee0a75928e6130a94ec1a0f4d99",
         "obstacles": 2675,
         "colliders": 2670,
         "concealers": 1003
