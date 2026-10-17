@@ -200,7 +200,7 @@
    "hostSweep": []
   },
   "bmp3": {
-   "inputHash": "e8ef3f0b8e783bc0",
+   "inputHash": "e71eb1a808e6bf7f",
    "runs": [
     {
      "index": 0,
@@ -220,7 +220,7 @@
       "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.932,
+      "exposure": 0.966,
       "host": "hull<buildBMP3@profiles/afvFamily.ts:957>"
      }
     }
@@ -930,7 +930,7 @@
    "hostSweep": []
   },
   "k1e1": {
-   "inputHash": "89b09c00048b3d1b",
+   "inputHash": "577ad3451c0003a1",
    "runs": [
     {
      "index": 0,
@@ -942,18 +942,17 @@
      "primary": "OK",
      "why": {},
      "notes": [
-      "clips <= 5 cm cosmetic",
       "carried on its rack"
      ],
      "measures": {
-      "support": 0.212,
-      "gap": 0.788,
+      "support": 0.209,
+      "gap": 0.791,
       "air": 0,
       "hidden": 0.007,
       "sunkMaxM": 0.026,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.989,
+      "exposure": 0.944,
       "host": "hull<buildK1A1Hull@modern3.ts:1227>"
      }
     }
@@ -1960,7 +1959,7 @@
    "hostSweep": []
   },
   "m3a3_bradley": {
-   "inputHash": "73baf585a92841e5",
+   "inputHash": "438d5fffe75677d8",
    "runs": [
     {
      "index": 0,
@@ -1982,7 +1981,7 @@
       "sunkMaxM": 0.014,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.967,
+      "exposure": 0.956,
       "host": "hullDetail<buildBradleyHullStage4@modern3.ts:2630>"
      }
     },
@@ -3146,7 +3145,7 @@
    "hostSweep": []
   },
   "t80": {
-   "inputHash": "264add872af9e4ff",
+   "inputHash": "082833a1275899e0",
    "runs": [
     {
      "index": 0,
@@ -3168,7 +3167,7 @@
       "sunkMaxM": 0.015,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.933,
+      "exposure": 0.967,
       "host": "hull<loftHull@profiles/russia.ts:487>"
      }
     }
@@ -3177,7 +3176,7 @@
    "hostSweep": []
   },
   "t80b": {
-   "inputHash": "dfe21a4960e78d7c",
+   "inputHash": "13860bd1b341cffb",
    "runs": [
     {
      "index": 0,
@@ -3192,14 +3191,14 @@
       "carried on its rack"
      ],
      "measures": {
-      "support": 0.199,
-      "gap": 0.801,
+      "support": 0.195,
+      "gap": 0.805,
       "air": 0,
       "hidden": 0,
       "sunkMaxM": 0.018,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.955,
+      "exposure": 0.978,
       "host": "hull<loftHull@profiles/russia.ts:487>"
      }
     }
@@ -3857,7 +3856,7 @@
    "hostSweep": []
   },
   "ua_m2a3_bradley": {
-   "inputHash": "05ce0039a4ac2d15",
+   "inputHash": "995839bb1a13a462",
    "runs": [
     {
      "index": 0,
@@ -3877,10 +3876,10 @@
       "gap": 0.804,
       "air": 0,
       "hidden": 0.003,
-      "sunkMaxM": 0.021,
+      "sunkMaxM": 0.018,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.989,
+      "exposure": 0.978,
       "host": "hull<buildBradleyHullStage3@modern3.ts:2459>"
      }
     }
@@ -3973,7 +3972,7 @@
    "hostSweep": []
   },
   "xk2_black_panther": {
-   "inputHash": "656c561e0a95ad07",
+   "inputHash": "5f94f06d5a4cd749",
    "runs": [
     {
      "index": 0,
@@ -3992,10 +3991,10 @@
       "gap": 0.848,
       "air": 0.001,
       "hidden": 0.002,
-      "sunkMaxM": 0.029,
+      "sunkMaxM": 0.023,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.955,
+      "exposure": 0.978,
       "host": "hull<buildK2HullBody@modern3.ts:244>"
      }
     }
