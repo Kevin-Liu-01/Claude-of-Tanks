@@ -1291,7 +1291,10 @@ export function createAuthoritativeMatch({
     if (crushableLoadedFromAbove(obstacle, spanBottom, (state._ride.groundV ?? 0) - state._ride.v, obstacleContactTop(),
         obstacleContactBottom())) return true;
     if (Math.abs(entity.state.speed) > (obstacle.crushMin ?? CRUSH_MIN_MPS)) return true;
-    if (Math.abs(entity.input.throttle || 0) <= 0.35) return false;
+    // (physics DST-02, 2026-10-17) a hull turning on the spot presses what it turns into as one driven into it does: its
+  // tracks run either way (a pivoting hull set down by a yard's bench and trough was pushed off them 1.6 m, never crushing
+  // them)
+  if (Math.abs(entity.input.throttle || 0) <= 0.35 && Math.abs(entity.input.steer || 0) <= 0.35) return false;
     if (timeS - (obstacle._pressT || -1e9) > CRUSH_PRESS_GAP_S) obstacle._pressS = 0;
     obstacle._pressT = timeS;
     obstacle._pressS = (obstacle._pressS || 0) + SIM_DT;
