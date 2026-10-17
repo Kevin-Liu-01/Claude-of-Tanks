@@ -165,6 +165,17 @@ bus.emit('player:reload', { total: 6, kind: 'magazine', caliberMm: 120, t: 0, pr
 names = logSince(since).map((e) => e.n);
 assert.equal(names.filter((n) => n === 'drum_load_round').length, 4, `a drum refill feeds its rounds in one by one (${names})`);
 assert.ok(names.includes('drum_rotate') && names.at(-1) === 'latch_ready', 'the drum indexes and the gun locks ready');
+// Owner 2026-10-17 (out of ammo): the post-shot cycle of an empty gun loads nothing — no cue, no latch, no call.
+{
+  const stowed = me.combat.ammo.slice();
+  me.combat.ammo.fill(0);
+  since = mark();
+  for (const progress of [0, 0.1, 0.5, 0.7, 0.8, 0.95]) { ctx.advance(0.6); bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: 125, t: 7 * (1 - progress), progress }); }
+  bus.emit('player:reload', { total: 7, kind: 'shell', caliberMm: 125, t: 0, progress: 1, done: true });
+  assert.deepEqual(logSince(since).filter((e) => e.b === 'interior').map((e) => e.n), [],
+    'a dry gun plays no loader machinery and no ready latch');
+  me.combat.ammo.splice(0, stowed.length, ...stowed);
+}
 
 // Being hit: exterior impact + interior response + a crew call in Russian.
 await probe.libraryIdle();

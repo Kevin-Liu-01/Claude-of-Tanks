@@ -227,6 +227,15 @@ function toEntity(value: RuntimeValue): AudioEntity | null {
   return value as AudioEntity;
 }
 
+/** The selected weapon holds no round, loaded or stowed (the simulation only leaves an empty slot selected once every
+ * channel is spent). A state without an inventory never reads spent. */
+function selectedWeaponSpent(combat: AudioEntity['combat'] | null | undefined): boolean {
+  const ammo = combat?.ammo;
+  const slot = combat?.shellSlot;
+  if (!ammo || slot == null || !Number.isInteger(slot) || slot < 0 || slot >= ammo.length) return false;
+  return !((ammo[slot] ?? 0) >= 1);
+}
+
 function moduleHealth(entity: AudioEntity, name: string): ModuleHealth {
   const s = entity.combat?.modules?.[name]?.state;
   return s === 'red' ? 'red' : s === 'yellow' ? 'yellow' : 'ok';
@@ -1479,6 +1488,13 @@ export function createAudio({
 
   function onReload(event: ReloadEvent): void {
     if (!ctx || phase !== 'battle' || battleOver) return;
+    // Owner 2026-10-17 (out of ammo): an empty gun still runs its post-shot cycle in the simulation, but the crew loads
+    // nothing — no loader cues, no latch, no "reloaded" call. Unlimited rounds refill at fire and never reach zero.
+    if (selectedWeaponSpent(latestPlayer?.combat)) {
+      reload.active = false;
+      reloadCalled = false;
+      return;
+    }
     const total = Math.max(0.05, Number(event.total) || 0.05);
     const kind = event.kind || 'shell';
     const caliber = Math.max(12, Number(event.caliberMm) || 100);
