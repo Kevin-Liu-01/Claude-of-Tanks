@@ -182,7 +182,10 @@ function shtoraHead(P:TankBuilderPort,shell:Stock,proud:Stock,side:number):numbe
   P.addEquipment('turretDetail',box(EYE_W+.02,EYE_H+.02,.025),x,y,front+.010);
   P.addEquipment('turretDark',cylZ(r,.030,32),x,y,front+.030);
   P.addEquipment('turretGlass',markVehicleNightLens(cylZ(glass,.014,32),'shtora'),x,y,front+.047);
-  for(const dy of [-.06,0,.06])P.addEquipment('turretDark',box(glass*1.8,.014,.014),x,y+dy,front+.060);
+  // The guard: three bars 1 mm clear of the lens face (release 227: they stood 1 mm into it, held by nothing else),
+  // their ends in two side straps standing on the armour frame outboard of the bezel.
+  for(const dy of [-.06,0,.06])P.addEquipment('turretDark',box(EYE_W-.03,.014,.014),x,y+dy,front+.062);
+  for(const dx of [-1,1])P.addEquipment('turretDark',box(.016,EYE_H,.066),x+dx*(EYE_W/2-.018),y,front+.037);
   // Rain hood over the aperture, its sides running back along the housing.
   P.addEquipment('turretDetail',box(EYE_W+.04,.020,.12),x,hi+.010,front-.030);
   // Two bracket arms: each is buried 30 mm in the cheek and runs 30 mm into the housing's back.

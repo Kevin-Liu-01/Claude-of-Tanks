@@ -66,17 +66,20 @@ export const NATIONAL_ROOF_LOADOUTS:Readonly<Record<string,NationalRoofLoadout>>
  // inner end stands at r .15) and the 99A2's own standard shield; its arc leaves out the commander's stabilised sight.
  t72b3_qilin:{name:'Qilin cupola QJC-88',caliber:12.7,mount:'pintle',feedSide:1,axisHeight:.304+QILIN_RISER_M,muzzleZ:1.321,
   emplacement:{cls:'qjc88',shield:true,ring:{r:.12,stubs:3},riserM:QILIN_RISER_M,crewServed:true},
-  // Measured (cn-work clear.mjs --table, 25 mm kept; tools/roof-station-arcs.mjs): the arc leaves out the commander's
-  // stabilised sight (blocked -79..-59.5 deg; 1 deg margin each side, 336 deg); the barrel depresses less over the split
-  // sensor's panels (yaw -53..-22 deg) and the left round lamp (yaw 9..29 deg).
+  // Measured 2026-10-17 after the M1-M4 geometry (cn-work r3/table2.mjs: the cnClearance pose, both ways with 12 mm
+  // samples at recoil 0 and 0.025 m, 28 mm kept; each degree the smallest of it and its neighbours): the arc leaves out
+  // the commander's stabilised sight (blocked -79..-58 deg; 336 deg allowed); the barrel depresses less over the
+  // split-panel sensor on its central seat (yaw -55..-20 deg: its two panels and head) and the left round lamp (yaw
+  // 8..29 deg).
   yawArc:[-.9948,4.8695],
-  depressionByYaw:[[-.925,.087],[-.9163,.041],[-.8988,.033],[-.8814,.028],[-.8639,.028],[-.8465,.033],[-.829,.04],[-.8116,.087],
-   [-.7592,.087],[-.7505,.054],[-.733,.036],[-.7156,.029],[-.6981,.025],[-.6807,.025],[-.6632,.029],[-.6458,.036],
-   [-.6283,.054],[-.6109,.087],[-.5498,.087],[-.5411,.047],[-.5236,.033],[-.5061,.026],[-.4887,.025],[-.4712,.025],
-   [-.4538,.025],[-.4363,.025],[-.4189,.03],[-.4014,.041],[-.3927,.087],[.1571,.087],[.1658,.082],[.1833,.075],
-   [.2007,.071],[.2182,.069],[.2356,.066],[.2531,.062],[.2705,.058],[.288,.055],[.3054,.054],[.3229,.052],
-   [.3403,.052],[.3578,.052],[.3752,.052],[.3927,.052],[.4102,.052],[.4276,.055],[.4451,.06],[.4625,.064],
-   [.48,.071],[.4974,.087]],
+  depressionByYaw:[[-.9599,.087],[-.9425,.072],[-.925,.047],[-.9076,.038],[-.8901,.032],[-.8727,.032],[-.8552,.032],
+   [-.8378,.039],[-.8203,.046],[-.8029,.055],[-.7854,.054],[-.7679,.046],[-.7505,.035],[-.733,.031],[-.7156,.029],
+   [-.6981,.029],[-.6807,.029],[-.6632,.029],[-.6458,.031],[-.6283,.035],[-.6109,.036],[-.5934,.035],[-.576,.033],
+   [-.5585,.032],[-.5411,.032],[-.5236,.031],[-.5061,.031],[-.4887,.031],[-.4712,.031],[-.4538,.031],[-.4363,.031],
+   [-.4189,.032],[-.4014,.04],[-.384,.057],[-.3665,.073],[-.3491,.087],[.1222,.087],[.1396,.069],[.1571,.059],
+   [.1745,.055],[.192,.055],[.2094,.055],[.2269,.055],[.2443,.055],[.2618,.055],[.2793,.055],[.2967,.055],[.3142,.055],
+   [.3316,.055],[.3491,.055],[.3665,.055],[.384,.055],[.4014,.055],[.4189,.055],[.4363,.058],[.4538,.062],[.4712,.067],
+   [.4887,.073],[.5061,.087]],
   eyes:'flat',eyeRadius:.10,roof:'split-panels',roofZ:-.12,lamp:'round'},
  t80u_bars_m:{name:'Bastion drum-fed gun',caliber:12.7,mount:'drum',feedSide:-1,axisHeight:.67,muzzleZ:1.09,eyes:'twin',eyeRadius:.17,roof:'radome',roofZ:-.16,lamp:'round'},
  t72b3m_bulat_m:{name:'Grom heavy cannon',caliber:30,mount:'shield',feedSide:-1,axisHeight:.79,muzzleZ:1.18,eyes:'twin',eyeRadius:.18,roof:'spine',roofZ:-.16,lamp:'square'},

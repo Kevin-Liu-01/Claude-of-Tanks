@@ -19,7 +19,8 @@ import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { NATIONAL_DONOR_TURRETS, QILIN_BUSTLE_CUT_M } from './nationalDonorTurrets.ts';
 import { bustleCutZ, ZTZ99A2_BUSTLE_CUT_FRONT_Z } from './donorBustleCut.ts';
-import { censusPart, seatingCensus, SurfaceGrid, sightField, sightFieldApproach, densePoints, meshTriangles } from './cnTurretGeometry.test-support.mjs';
+import { censusPart, seatingCensus, SurfaceGrid, sightField, sightFieldApproach, densePoints, meshTriangles, insideClosed } from './cnTurretGeometry.test-support.mjs';
+import { vehicleNightLightEmittersFor } from './vehicleNightLighting.ts';
 import { getSpec } from './specs.ts';
 
 // role -> [minimum parts, exact reactive cassettes (parts with ERA hit faces) or null]
@@ -311,6 +312,22 @@ for (const quality of ['high', 'low']) {
         const rays = apertureRays(id, tank, parts);
         assert.equal(rays.lenses, TURRET_LENSES[id], `${id}: every turret lens ray-tested`);
         assert.deepEqual(rays.problems, [], `${id}: turret lamp lenses shine out unobstructed`);
+        // every turret emitter aims along the gun line (within 3 degrees of the turret's +Z), and every lens laps into its
+        // housing (its back face's centre inside another part) while its front face stands proud
+        const turretRig2 = tank.root.getObjectByName('rig_turret'), tq = turretRig2.getWorldQuaternion(new THREE.Quaternion()).invert();
+        let aimed = 0;
+        turretRig2.traverse((o) => { for (const lamp of vehicleNightLightEmittersFor(o)) {
+          const d = new THREE.Vector3().fromArray(lamp.direction).transformDirection(o.matrixWorld).applyQuaternion(tq);
+          assert.ok(d.z >= Math.cos(3 * Math.PI / 180), `${id}: a ${lamp.kind} emitter aims along the gun line (${d.toArray().map((x) => x.toFixed(3))})`); aimed++;
+        } });
+        assert.equal(aimed, TURRET_LENSES[id], `${id}: every turret lens is a registered emitter`);
+        for (const lens of parts.filter((p) => p.lens && owner(p) === 'turret')) {
+          const c = lens.box.getCenter(new THREE.Vector3()), back = lens.box.min.z + .001, front = lens.box.max.z - .001;
+          const host = parts.filter((p) => p !== lens && owner(p) === 'turret' && p.box.containsPoint(new THREE.Vector3(c.x, c.y, back)) && insideClosed(p, c.x, c.y, back));
+          assert.ok(host.length, `${id}: the lens at ${c.toArray().map((x) => x.toFixed(3))} laps into its housing`);
+          assert.ok(!parts.some((p) => p !== lens && owner(p) === 'turret' && p.box.containsPoint(new THREE.Vector3(c.x, c.y, front)) && insideClosed(p, c.x, c.y, front)), `${id}: the lens at ${c.toArray().map((x) => x.toFixed(3))} stands proud of its housing`);
+        }
+
         // negative control: the 226 Kunlun lamps (|x| 0.55, z 0.86 on the wedge falling 16 degrees forward) stand in the
         // 96B gunner's sight's field
         if (id === 't72b3m_kunlun') {

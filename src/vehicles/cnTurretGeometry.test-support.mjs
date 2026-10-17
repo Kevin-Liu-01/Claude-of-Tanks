@@ -122,16 +122,27 @@ export function meshPoints(meshes, frameInv, keep = () => true) {
 
 // ---- Round 2 (2026-10-16): the seating, penetration and z-fight census, and the dense two-way sweeps.
 
-/** Dense surface samples of a triangle soup: every vertex plus a barycentric grid with spacing <= h. */
+/** Dense surface samples of a triangle soup: every vertex, and rows parallel to each triangle's longest edge stepping
+ * towards its apex, spaced <= h apart, each row sampled at <= h (so a long sliver costs its area, not its length squared;
+ * every point of every triangle lies within h of a sample). */
 export function densePoints(tri, h = .01) {
   const out = [];
   for (let t = 0; t < tri.length; t += 9) {
-    const ax = tri[t], ay = tri[t + 1], az = tri[t + 2], bx = tri[t + 3], by = tri[t + 4], bz = tri[t + 5], cx = tri[t + 6], cy = tri[t + 7], cz = tri[t + 8];
-    const l = Math.max(Math.hypot(bx - ax, by - ay, bz - az), Math.hypot(cx - ax, cy - ay, cz - az), Math.hypot(cx - bx, cy - by, cz - bz));
-    const n = Math.max(1, Math.ceil(l / h));
-    for (let i = 0; i <= n; i++) for (let j = 0; j <= n - i; j++) {
-      const u = i / n, v = j / n, w = 1 - u - v;
-      out.push(ax * w + bx * u + cx * v, ay * w + by * u + cy * v, az * w + bz * u + cz * v);
+    let best = -1, k = 0;
+    for (let e = 0; e < 3; e++) {
+      const i = t + e * 3, j = t + ((e + 1) % 3) * 3, l = Math.hypot(tri[j] - tri[i], tri[j + 1] - tri[i + 1], tri[j + 2] - tri[i + 2]);
+      if (l > best) { best = l; k = e; }
+    }
+    const ia = t + k * 3, ib = t + ((k + 1) % 3) * 3, ic = t + ((k + 2) % 3) * 3;
+    const ax = tri[ia], ay = tri[ia + 1], az = tri[ia + 2], bx = tri[ib], by = tri[ib + 1], bz = tri[ib + 2], cx = tri[ic], cy = tri[ic + 1], cz = tri[ic + 2];
+    const ux = bx - ax, uy = by - ay, uz = bz - az, wx = cx - ax, wy = cy - ay, wz = cz - az;
+    const area2 = Math.hypot(uy * wz - uz * wy, uz * wx - ux * wz, ux * wy - uy * wx), height = best > 1e-12 ? area2 / best : 0;
+    const ns = Math.max(1, Math.ceil(height / h));
+    for (let r = 0; r <= ns; r++) {
+      const s = r / ns, p0x = ax + s * (cx - ax), p0y = ay + s * (cy - ay), p0z = az + s * (cz - az);
+      const p1x = bx + s * (cx - bx), p1y = by + s * (cy - by), p1z = bz + s * (cz - bz);
+      const m = Math.max(1, Math.ceil((1 - s) * best / h));
+      for (let q = 0; q <= m; q++) { const f = q / m; out.push(p0x + f * (p1x - p0x), p0y + f * (p1y - p0y), p0z + f * (p1z - p0z)); }
     }
   }
   return new Float64Array(out);

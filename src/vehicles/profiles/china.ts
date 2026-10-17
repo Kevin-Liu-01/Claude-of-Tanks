@@ -1109,6 +1109,12 @@ export interface ZTZ99A2TurretOptions {
   /** false leaves out the rear flank fit (the rear side cassette, the rear stowage box, the dark side strip and the two
    * rail stanchions aft of the band's front) for a reusing vehicle that fits its own rear flank housings there. */
   rearFlank?: boolean;
+  /** Release 227 (CN track): the ring collar's centre z (turret-local) and its skirt's radius for a reusing hull. The
+   * fleet 99A2's collar (cylY 1.08/1.14) stands 0.12 m behind the turret's pivot, so on a reusing hull it orbits the
+   * axis as the turret turns and its 1.14 m skirt sweeps past a narrower hull's deck edge and fenders; { z: 0, radiusM }
+   * centres it on the pivot (the collar turns in place) with its skirt at radiusM and its top 0.02 m inside that.
+   * Default: the 99A2's own collar. */
+  ringCollar?: { readonly z: number; readonly radiusM: number };
 }
 
 /** The production ZTZ-99A2 turret in its own turret frame. It places P.turretG
@@ -1164,7 +1170,8 @@ export function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort, options: ZTZ99
     shell.computeVertexNormals();
   }
   addChineseThroatStock(P, shell);
-  P.add('turret', cylY(1.08, 1.14, 0.10, seg), 0, -0.03, -0.12);
+  if (options.ringCollar) P.add('turret', cylY(options.ringCollar.radiusM - .02, options.ringCollar.radiusM, 0.10, seg), 0, -0.03, options.ringCollar.z);
+  else P.add('turret', cylY(1.08, 1.14, 0.10, seg), 0, -0.03, -0.12);
 
   // Leopard-class chevrons are the production shell's primary frontal
   // armor. This is the same watertight upper/ridge/lower construction used

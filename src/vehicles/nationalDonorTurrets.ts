@@ -77,11 +77,20 @@ export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret
   // cupola emplacement and clear of the drone's dock on the right rear roof.
   t72b3_qilin: { donor: 'ztz99a2', pivot: ZTZ99A2_ON_T72B3, roofY: .83, station: ZTZ99A2_CUPOLA, heightM: 3.213,
     addedTurretEra: ['turret_era_L', 'turret_era_R'],
-    builderOptions: { bustleCutM: QILIN_BUSTLE_CUT_M, rearFlank: false, antennaSeats: [[-1.20, -1.25], [-1.14, -.96]] } },
-  // Release 227: the gun's depression over the rear deck stops at 5 degrees, so the barrel clears the engine-deck
-  // cooling panels' slats by 25 mm (it came within 15 mm at 6 degrees, yaw 165-195).
+    // Release 227: its ring collar turns in place on the pivot, its skirt at r 1.08 inside the B3 deck's edge (x 1.11)
+    // and 25 mm clear of the fenders' inner edge (the 99A2's own 1.14 m collar, 0.12 m behind the pivot, swept 11 mm
+    // into the fender tops at yaw 110-250).
+    builderOptions: { bustleCutM: QILIN_BUSTLE_CUT_M, rearFlank: false, antennaSeats: [[-1.20, -1.25], [-1.14, -.96]],
+      ringCollar: { z: 0, radiusM: 1.08 } } },
+  // Release 227 (cnClearance, 2026-10-17): the gun's depression by turret yaw, measured: at each degree the deepest pitch
+  // keeping 26 mm between the whole gun (boot, box sight, barrel at recoil 0 and 0.135 m) and every hull mesh, on both
+  // sides, then a conservative curve through each degree's shallowest neighbour. Over the front corners the barrel
+  // passes over the hull lamps' armoured brows (yaw 20-32 deg: 1.3 deg of depression left), over the side boxes at
+  // 111-115 deg, and over the rear fenders, shoulder covers and fuel drums aft of 133 deg (3.4-5.7 deg).
   t72b3m_kunlun: { donor: 'type96b', pivot: TYPE96B_ON_T72B3M, roofY: .70, station: TYPE96B_CUPOLA, heightM: 3.35,
-    gunPitchByYawDeg: [[0, -6], [150, -6], [158, -5], [180, -5]],
+    gunPitchByYawDeg: [[0, -6], [19, -6], [20, -4.8], [21, -2.4], [22, -1.5], [23, -1.3], [30, -1.3], [31, -1.7], [32, -3.1],
+      [33, -6], [110, -6], [111, -5.3], [114, -5.3], [116, -6], [133, -5.7], [139, -4.2], [145, -3.4], [148, -3.4], [153, -3.8],
+      [155, -4.9], [158, -4.8], [162, -3.8], [163, -3.7], [166, -3.7], [178, -4], [180, -4.5]],
     addedTurretEra: ['turret_era_L', 'turret_era_R'],
     // The Type 96B's 3 m rear whip would make the listed height (body and roof weapon: the sim's body height) 5.2 m.
     // Release 227: the boot's heel keeps the mantlet boot over the B3M driver's hatch at full elevation; the box sight
@@ -90,9 +99,12 @@ export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret
   // The Yun keeps its faceted station on its own left-roof seat beside the 96B commander's cupola, as on its cast turret
   // (the cupola's latch clevis and periscopes stand inside the station's bearing ring); the 96B's open side bins and
   // twelve cheek launchers give way to the Yun's armour housings and its own eight roof smoke tubes.
-  // Its depression over the transom stops at 5 degrees at yaw 159-166 (the slatted transom plate).
+  // Its depression by turret yaw is measured as the Kunlun's (26 mm from every hull mesh): over the front corners the
+  // barrel passes over the paired lamps' armoured brows (yaw 22-33 deg: 3.4-4.9 deg left), and aft of 158 deg over the
+  // engine deck's cooling panels, their leafy net and the slatted transom (3.4-5.1 deg).
   t80u_yun: { donor: 'type96b', pivot: TYPE96B_ON_T80U, roofY: .70, station: [.40, -.62], heightM: 3.222,
-    gunPitchByYawDeg: [[0, -6], [156, -6], [159, -5], [166, -5], [169, -6], [180, -6]],
+    gunPitchByYawDeg: [[0, -6], [21, -6], [23, -4], [24, -3.8], [28, -3.6], [30, -3.6], [32, -4], [33, -4.9], [34, -6], [157, -6],
+      [159, -5.1], [160, -4.9], [163, -4.5], [166, -4.5], [167, -4], [169, -3.5], [172, -3.4], [174, -3.4], [180, -3.6]],
     addedTurretEra: ['turret_era_L', 'turret_era_R'],
     builderOptions: { mastTopY: 3.20, bins: false, smoke: false, bootHeel: true, boxSightOnGun: true } },
   t72b3m_hetman: { donor: 't72b3m_2016', pivot: T72B3M_RING, roofY: .82, station: T72B3M_CUPOLA, heightM: 3.382 },
