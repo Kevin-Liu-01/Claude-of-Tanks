@@ -1874,10 +1874,11 @@ const RAIL_SLAB_OVERHANG_M = 0.35;
 /** The receipts read a track's parts by their boxes' sizes (BoxGeometry.parameters): a shaped part carries its box's. */
 const sized = <T extends THREE.BufferGeometry>(g: T, width: number, height: number, depth: number): T & { parameters: { width: number; height: number; depth: number } } =>
   Object.assign(g, { parameters: { width, height, depth } });
-/** A flat-bottom rail's section about its 9 x 17 cm box's centre (x across, y up): the foot, the web, the head. */
+/** A flat-bottom rail's section about its 9 x 17 cm box's centre (x across, y up): the foot, the web, the head (twelve
+ *  corners, no ends: the rails abut span to span; 24 triangles a rail where the box drew 12). */
 const RAIL_SECTION: ReadonlyArray<readonly [number, number]> = [
-  [0.065, -0.085], [0.065, -0.073], [0.012, -0.062], [0.01, 0.035], [0.033, 0.048], [0.033, 0.077], [0.022, 0.085],
-  [-0.022, 0.085], [-0.033, 0.077], [-0.033, 0.048], [-0.01, 0.035], [-0.012, -0.062], [-0.065, -0.073], [-0.065, -0.085],
+  [0.065, -0.085], [0.065, -0.073], [0.011, -0.06], [0.011, 0.045], [0.033, 0.052], [0.033, 0.085],
+  [-0.033, 0.085], [-0.033, 0.052], [-0.011, 0.045], [-0.011, -0.06], [-0.065, -0.073], [-0.065, -0.085],
 ];
 /**
  * The 'full' lay's ballast is a deep slab (the yards' is 0.16 m): its top stays at the yards' +0.15 m, so rails
@@ -1980,7 +1981,7 @@ function layRailSpan(
   {
     const run = 0.62, drop = 0.24, slopeLen = Math.hypot(run, drop), slopeAng = Math.atan2(drop, run);
     for (const sideSign of [-1, 1]) {
-      const shoulder = sized(bevelBox(slopeLen, 0.05, len + RAIL_SLAB_OVERHANG_M, 0.015, 0.55), slopeLen, 0.05, len + RAIL_SLAB_OVERHANG_M);
+      const shoulder = box(slopeLen, 0.05, len + RAIL_SLAB_OVERHANG_M, 0.55);
       const pos = shoulder.attributes.position, col = new Float32Array(pos.count * 3);
       for (let i = 0; i < pos.count; i++) {
         const foot = (pos.getX(i) * sideSign + slopeLen / 2) / slopeLen; // 0 at the bed's edge, 1 at the foot
@@ -2000,11 +2001,11 @@ function layRailSpan(
   const half = lay.gauge / 2;
   for (const side of [-half, half]) {
     // (227) the flat-bottom rail's section — its foot, its web, its head — where a 9 x 17 cm box stood
-    const rail = sized(sectionPrism(RAIL_SECTION, len + 0.06, 2.0), 0.09, 0.17, len + 0.06);
+    const rail = sized(sectionPrism(RAIL_SECTION, len + 0.06, 2.0, false), 0.09, 0.17, len + 0.06);
     place(rail, side, 0.24, 0);
     buckets.dark.push(rail);
     // ground lane: the head the wheels keep bright — worn steel over the rusted web (227: crowned, as a worn head is)
-    const head = sized(sectionPrism([[0.033, -0.008], [0.033, 0.004], [0.02, 0.008], [-0.02, 0.008], [-0.033, 0.004], [-0.033, -0.008]], len + 0.06, 2.0), 0.066, 0.016, len + 0.06);
+    const head = sized(sectionPrism([[0.033, -0.008], [0.033, 0.004], [0.02, 0.008], [-0.02, 0.008], [-0.033, 0.004], [-0.033, -0.008]], len + 0.06, 2.0, false), 0.066, 0.016, len + 0.06);
     const hp = head.attributes.position, hc = new Float32Array(hp.count * 3);
     for (let i = 0; i < hp.count; i++) { hc[i * 3] = 0.23; hc[i * 3 + 1] = 0.232; hc[i * 3 + 2] = 0.24; }
     head.setAttribute('color', new THREE.BufferAttribute(hc, 3));

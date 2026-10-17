@@ -64,9 +64,9 @@ export function bevelBox(w: number, h: number, d: number, c = 0.02, uvScale = 0.
  * A prism of the section `sec` (x across, y up; counter-clockwise seen from +z, convex or not) run `len` along z, centred
  * on the origin (the looks lane, 227; the r2 sweep: a rail's flat-bottom section, a ballast bed's crowned top, where a
  * box stood). Indexed, with position, normal and uv like bevelBox: `uvScale` repeats a metre along the run and round the
- * section, the section's plane on the ends.
+ * section, the section's plane on the ends (none with `caps` false).
  */
-export function sectionPrism(sec: ReadonlyArray<readonly [number, number]>, len: number, uvScale = 0.5): THREE.BufferGeometry {
+export function sectionPrism(sec: ReadonlyArray<readonly [number, number]>, len: number, uvScale = 0.5, caps = true): THREE.BufferGeometry {
   const hl = len / 2;
   const pos: number[] = [], nor: number[] = [], uv: number[] = [], idx: number[] = [];
   const push = (x: number, y: number, z: number, n: readonly [number, number, number], u: number, v: number): number => {
@@ -84,8 +84,9 @@ export function sectionPrism(sec: ReadonlyArray<readonly [number, number]>, len:
     idx.push(i0, i1, i2, i0, i2, i3);
     around += l;
   }
-  const tris = THREE.ShapeUtils.triangulateShape(sec.map(([x, y]) => new THREE.Vector2(x, y)), []);
-  for (const end of [1, -1]) {
+  // (`caps` false: a run whose ends always abut the next — a rail between its spans — draws no ends)
+  const tris = caps ? THREE.ShapeUtils.triangulateShape(sec.map(([x, y]) => new THREE.Vector2(x, y)), []) : [];
+  for (const end of caps ? [1, -1] : []) {
     const first = pos.length / 3;
     for (const [x, y] of sec) push(x, y, end * hl, [0, 0, end], x, y);
     for (const [a, b, c] of tris) {
