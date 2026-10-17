@@ -221,11 +221,32 @@ function bodyBoxOf(parts: StructureDescribeInput['parts'], eave: number): [numbe
   const band = probe?.bands[0];
   if (!probe || !band) return null;
   const grow = probe.cell * 1.5;
+  let box: [number, number, number, number] | null = null;
   if (band.interiorM2 >= 4 && Number.isFinite(band.interiorBox[0])) {
     const s = band.solidBox, ib = band.interiorBox;
-    return [Math.max(s[0], ib[0] - grow), Math.max(s[1], ib[1] - grow), Math.min(s[2], ib[2] + grow), Math.min(s[3], ib[3] + grow)];
+    box = [Math.max(s[0], ib[0] - grow), Math.max(s[1], ib[1] - grow), Math.min(s[2], ib[2] + grow), Math.min(s[3], ib[3] + grow)];
+  } else if (Number.isFinite(band.solidBox[0])) box = [band.solidBox[0], band.solidBox[1], band.solidBox[2], band.solidBox[3]];
+  if (!box) return null;
+  // a side the walls run out to (within a cell and a half of their own box: the parts a storey tall — 60 % of the eaves or
+  // 2.4 m — not a door's leaf or a sill proud of them) takes their exact extent there: the grid's cells are no measure for a house
+  // that is its box
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (const [bucket, list] of Object.entries(parts)) {
+    if (NOT_BODY.has(bucket)) continue;
+    for (const g of list ?? []) {
+      if (g.userData?.damagePiece || g.userData?.fine === true) continue;
+      if (!g.boundingBox) g.computeBoundingBox();
+      const bb = g.boundingBox;
+      if (!bb || bb.isEmpty() || bb.max.y - bb.min.y < Math.min(0.6 * eave, 2.4)) continue;
+      minX = Math.min(minX, bb.min.x); maxX = Math.max(maxX, bb.max.x); minZ = Math.min(minZ, bb.min.z); maxZ = Math.max(maxZ, bb.max.z);
+    }
   }
-  return Number.isFinite(band.solidBox[0]) ? [band.solidBox[0], band.solidBox[1], band.solidBox[2], band.solidBox[3]] : null;
+  const near = grow + probe.cell * 0.01;
+  if (Math.abs(box[0] - minX) <= near) box[0] = minX;
+  if (Math.abs(box[1] - minZ) <= near) box[1] = minZ;
+  if (Math.abs(box[2] - maxX) <= near) box[2] = maxX;
+  if (Math.abs(box[3] - maxZ) <= near) box[3] = maxZ;
+  return box;
 }
 
 export function describeDefault(input: StructureDescribeInput): StructureDamageAnatomy {

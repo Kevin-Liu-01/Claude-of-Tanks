@@ -128,6 +128,8 @@ export interface WallFracture {
    * it, so the field's upper storeys bear on their floor line too (a fall inside a storey still settles as it does).
    */
   floorsHold: boolean;
+  /** Each face's neighbour at its −u end and its +u end (the perpendicular face of its storey sharing that corner), or −1. */
+  readonly ends: Int32Array;
 }
 
 export type WallStrikeKind = 'blast' | 'kinetic' | 'shaped';
@@ -365,7 +367,43 @@ export function createWallFracture(anatomy: StructureDamageAnatomy): WallFractur
     faces.push(grid);
   }));
   for (const list of stacks.values()) list.sort((a, b) => faces[a].storey - faces[b].storey);
-  return { anatomy, faces, stacks, floorsHold: false };
+  // (destruction-slabs 227) the face sharing each corner: a corner bears only while that face's corner stands there
+  const ends = new Int32Array(faces.length * 2).fill(-1);
+  faces.forEach((g, i) => {
+    for (const side of [0, 1]) {
+      const sg = side ? 1 : -1;
+      const px = g.origin[0] + g.u[0] * sg * g.width / 2, pz = g.origin[2] + g.u[2] * sg * g.width / 2;
+      let best = -1, bd = Infinity;
+      faces.forEach((h, j) => {
+        if (j === i || h.storey !== g.storey || Math.abs(g.out[0] * h.out[0] + g.out[2] * h.out[2]) > 0.3) return;
+        for (const e of [-1, 1]) {
+          const d = Math.hypot(h.origin[0] + h.u[0] * e * h.width / 2 - px, h.origin[2] + h.u[2] * e * h.width / 2 - pz);
+          if (d < bd) { bd = d; best = j; }
+        }
+      });
+      if (best >= 0 && bd <= Math.max(g.thickness, faces[best].thickness) + 0.6) ends[i * 2 + side] = best;
+    }
+  });
+  return { anatomy, faces, stacks, floorsHold: false, ends };
+}
+
+/** Whether a face's end at row `r` bears (its corner): with no face sharing the corner, it does; else while that face's
+ *  cell at the corner at that height stands (or is void there). */
+function endBears(wall: WallFracture, fi: number, r: number, side: 0 | 1): boolean {
+  const n = wall.ends[fi * 2 + side];
+  if (n === undefined || n < 0) return true;
+  const g = wall.faces[fi], h = wall.faces[n];
+  const y = g.origin[1] + (g.rowY[r] + g.rowY[r + 1]) / 2 - h.origin[1];
+  if (y < 0 || y > h.height) return true;
+  let rr = 0;
+  while (rr + 1 < h.rowY.length - 1 && h.rowY[rr + 1] <= y) rr++;
+  // the neighbour's end nearest the corner
+  const sg = side ? 1 : -1;
+  const px = g.origin[0] + g.u[0] * sg * g.width / 2, pz = g.origin[2] + g.u[2] * sg * g.width / 2;
+  const dl = Math.hypot(h.origin[0] - h.u[0] * h.width / 2 - px, h.origin[2] - h.u[2] * h.width / 2 - pz);
+  const dr = Math.hypot(h.origin[0] + h.u[0] * h.width / 2 - px, h.origin[2] + h.u[2] * h.width / 2 - pz);
+  const c = dl <= dr ? h.rowStart[rr] : h.rowStart[rr + 1] - 1;
+  return h.absent[c] === 1 || h.state[c] === CELL_VOID || standing(h.state[c]) || h.state[c] === CELL_OPENING;
 }
 
 /** The face a body-frame point strikes: nearest plane within 1.2 m, inside its span (±0.3 m) and its storey. */
@@ -503,8 +541,8 @@ function settleLoads(wall: WallFracture, name: string, out: Pick<WallStrikeOutco
         let e = c;
         while (e + 1 < c1 && standing(grid.state[e + 1]) && !sup[e + 1]) e++;
         const length = grid.cellU[2 * e + 1] - grid.cellU[2 * c];
-        const leftEnd = c === c0 || (standing(grid.state[c - 1]) && sup[c - 1] === 1);
-        const rightEnd = e === c1 - 1 || (standing(grid.state[e + 1]) && sup[e + 1] === 1);
+        const leftEnd = c === c0 ? endBears(wall, stack[s], r, 0) : standing(grid.state[c - 1]) && sup[c - 1] === 1;
+        const rightEnd = e === c1 - 1 ? endBears(wall, stack[s], r, 1) : standing(grid.state[e + 1]) && sup[e + 1] === 1;
         if (length <= span + 1e-6 && leftEnd && rightEnd) for (let k = c; k <= e; k++) sup[k] = 1;
         c = e + 1;
       }

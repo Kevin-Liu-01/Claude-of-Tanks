@@ -162,7 +162,10 @@ const holeSpec = (anatomy, hole) => ({ section: 0, storey: 0, face: 'front', hol
   assert.ok(cut && cut.nz > 0.99, `the hole on the side toward the shooter (blow along -z): ${JSON.stringify(res.cuts)}`);
   assert.ok(runsOf(out, 'rim').some((r) => r.bucket === 'dark'), 'its dark inside');
   assert.ok(runsOf(out, 'rim').some((r) => r.bucket === 'structureMetal'), 'the torn petals');
-  assert.ok(runsOf(out, 'rubble').some((r) => r.bucket === 'dark' && maxY([r]) < 0.1), 'the fuel\'s burn on the ground');
+  // (2026-10-17, destruction-slabs 227: in the untextured 'dark' bucket — the world's window material — the burn read as a
+  // black plate on copper_mesa's tank farm) the fuel's burn: a stain on the ground's own stone, darkened
+  assert.ok(runsOf(out, 'rubble').some((r) => r.bucket === 'stone' && maxY([r]) < 0.1), 'the fuel\'s burn on the ground');
+  assert.ok(!runsOf(out, 'rubble').some((r) => r.bucket === 'dark'), 'never in the untextured dark bucket');
   assert.ok(!res.hides.some((h) => h.piece === 'tank-1'), 'a ruptured tank stands');
 }
 {

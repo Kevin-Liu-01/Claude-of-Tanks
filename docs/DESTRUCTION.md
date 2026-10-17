@@ -1056,3 +1056,56 @@ a breach in each face and the fallen covering's slabs leaning on the heap, until
 72 %. The kit writes with 200 boxes' room kept free for it. Seeded from the collapse's own seed (the same ruin on every
 peer and tier); a kit whose ruin already stands is left as it wrote it. Presentation only: the piers and stubs are drawn,
 not records (the simulation's heap and the swap are unchanged). Receipt: `world/collapseRuin.selftest.mjs`.
+
+## 19. One drawn enclosure: damage writers place against what the building draws (2026-10-17)
+
+The owner, after Verdant's church in battle (deploy 225): "for building destruction, these weird ugly boxes/surfaces still
+randomly come up. fix" — flat dark slabs at the eaves, far past the walls. The cause was one outline: the anatomy's four
+faces per storey are the house a kit describes, but for the default reading and the set pieces they were the bounding box
+of every part (a church's forecourt and towers, a station's canopy, a windmill's sails) about the body's origin, and every
+writer added since trusted them: the storey room (`structureStages layInterior`), the fracture's room and wall grids, the
+default kit's rims, stubs and heap, the ruin's piers and stubs (`collapseRuin`), the collapse's floors and floor records.
+Each was invisible on the regional house it was tried on and stood in the open on anything else.
+
+**The rule.** A damage writer places geometry only against `world/structureEnclosure.ts`, measured once per structure at
+describe (`StructureDamageAnatomy.enclosure`): per storey band a body-frame grid of its drawn WALL cells (the parts'
+near-vertical triangles covering at least 35 % of the band's height: a solid wall, a window wall, a post; not a frame's
+braces or a canopy's valance; named pieces, roofs and fine trim left out) and its INTERIOR (flooded from the border after
+gaps of 1.5 m or less close), the band's interior box and enclosed share, each face's SETBACK to the first drawn wall per
+u-bin (NaN where none stands behind it), and the drawn walls' top per cell. Its readers:
+
+- `storeyInterior(anatomy, storey, hintX, hintZ, capY)`: the room behind a hole — the enclosed component behind the hint,
+  under what covers it (no ceiling over a court), rectangles for its floor and ceiling and its boundary for its inward
+  walls, its ceiling at the band's drawn wall top; none where the band encloses under half its box (a frame, a trestle, a
+  pipe run, a tank farm) or the room would be under 2 m². `layInterior` and the fracture's `roomFor` both lay it, one room
+  per storey and component, gone with its storey (a storey drop, or every wall of it fallen).
+- `faceSetback(anatomy, storey, face, u)`: `holeAt` puts a hole on the drawn wall behind the face (`BreachSpec.setback`);
+  a NaN bin is no kit hole (the round passed an opening or a frame: its burst only); the default kit's rim, room and cut
+  and its stubs go there; the wall fracture's grid stands at the face's median setback, a cell over no drawn wall is void
+  (nothing breaks, falls or is drawn there; it bears what stands over it), a face with no wall lays no grid, and a corner
+  bears only while the face sharing it stands there.
+- `enclosedAt`, `wallAt`, `wallAlong`, `wallTopAt`, `wallClusters`, `bandEnclosure`: the kit's heap lies on what the
+  building drew (grown 1.5 m), the ruin's piers, stubs, fragments and posts stand on the ground storey's drawn walls no
+  taller than they are drawn there (an unnamed frame's stubs on its own drawn legs), and the collapse's floor pieces and
+  floor records span the band's interior.
+
+The default reading's faces now stand on the body's walls too (`describeDefault`: the enclosed plan up to the eaves, grown
+to the walls, about its own centre; without a roof bucket the eaves are the body's top — the highest half metre whose
+walls' box is still 45 % of the widest — so towers and domes are no storeys), and `anatomyCentre` is what a reach round
+the body measures from. A set piece's body is re-measured without its named pieces.
+
+**Roof slabs.** A fallen roof slab's body grows in its plane only (its normal extent held to the planned box, 0.35 m
+under and 0.6 m over); a slab takes only what lies on its plane (0.8 m, facing within 50 degrees); what stands over the
+eaves on no slab is the top storey's panel's when it lies by a face, else dropped with the collapse; a partial fall's slab
+at rest high and past the walls breaks into its sheets, and a sheet still high past them is laid on the ground.
+
+**Rejoin parity.** A late joiner's settled holes, panel falls and breach stages break the walls as the live ones did (cut
+and drawn at once, nothing thrown); a settled roof fall lays only the kit's roof rubble; a settled collapse drops the
+standing runs.
+
+**Receipts.** `world/structureEnclosure.selftest.mjs` (the enclosure's law on synthetic plans, and a source scan: the
+room, floor and ruin writers place through it, never off the anatomy's w x d); `tools/destruction-slab-check.mjs` (the
+stray-slab detector on the battle's own path: every damaged building's drawn meshes split into pieces and judged — a slab
+past the walls of its height band, floating, untextured or degenerate; a standing run off the walls; a remnant taller than
+the building as drawn at its spot; a fallen roof slab drawn off the body it rides in) and its selftest;
+`tools/destruction-slab-kinds.selftest.mjs` (the detector over every destructible kind of every map).

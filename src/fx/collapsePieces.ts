@@ -1061,6 +1061,8 @@ const PIECE_VERTEX_STRIDE = 11;
 export const STATIC_PIECE = -1;
 /** What the collapse drops (a roof chimney's attic part, under the covering before and nothing after). */
 const DROPPED_PIECE = -2;
+/** A probed corner over the eaves on no slab: the triangle takes the whole test (never a key of its own). */
+const OFF_ROOF_PROBE = -3;
 
 const MAX_SPLITS = 10;
 const _cent: [number, number, number] = [0, 0, 0];
@@ -1403,14 +1405,24 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
   // rule did not take) goes with that storey's panels; anything else (a tower's, a spire's, a cupola's) is dropped with the
   // collapse (a roof-only cut builds nothing of it: it stands in the world's buckets)
   const offRoof = (poly: Poly, depth: number, ny: number): void => {
+    // (a corner probed alone says only that the triangle needs the whole test: its centroid decides)
+    if (probing) { emit(OFF_ROOF_PROBE, poly); return; }
     const top = plan.storeys[plan.storeys.length - 1];
-    if (top && ny < 0.5) {
-      const c = centroid(poly);
+    const c0 = centroid(poly);
+    // (within a little of the eaves: a panel draws no more than that over its box)
+    if (top && ny < 0.5 && c0[1] <= plan.eaveY + 1.2) {
+      const c = c0;
       for (const fp of top.faces) {
         const f = fp.face;
-        const d = (c[0] - f.origin[0]) * f.out[0] + (c[2] - f.origin[2]) * f.out[2];
         const u = (c[0] - f.origin[0]) * f.u[0] + (c[2] - f.origin[2]) * f.u[2];
-        if (d <= 0.6 && d >= -fp.thickness - 1 && Math.abs(u) <= f.width / 2 + 0.3) { wallAssign(poly, depth); return; }
+        if (Math.abs(u) > f.width / 2 + 0.3) continue;
+        // every corner of it by the face's plane (a surface across the attic is no wall's)
+        let near = true;
+        for (const v of poly) {
+          const d = (v[0] - f.origin[0]) * f.out[0] + (v[2] - f.origin[2]) * f.out[2];
+          if (d > 0.6 || d < -fp.thickness - 0.6) { near = false; break; }
+        }
+        if (near) { wallAssign(poly, depth); return; }
       }
     }
     emit(DROPPED_PIECE, poly);
@@ -1450,7 +1462,7 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
   };
   for (let t = 0; t < triangles; t++) {
     const p0 = pieceOf(t, 0);
-    if (pieceOf(t, 1) === p0 && pieceOf(t, 2) === p0 && !(p0 === STATIC_PIECE && gaps.length && spansGap(t))) {
+    if (p0 !== OFF_ROOF_PROBE && pieceOf(t, 1) === p0 && pieceOf(t, 2) === p0 && !(p0 === STATIC_PIECE && gaps.length && spansGap(t))) {
       let list = out.get(p0);
       if (!list) { list = []; out.set(p0, list); }
       const o = t * 3 * stride;

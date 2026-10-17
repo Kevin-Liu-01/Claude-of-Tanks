@@ -964,7 +964,9 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     if (piece.kind === 'roof') {
       const whole = boundsOf(parts, false);
       if (whole) clampNormal(whole, piece.boxes);
-      if (whole && reachesPast(whole, piece.boxes)) {
+      // (and a covering drawn over its rafters' plane — over the planned box — gets its body there: a box under what it
+      // draws leaves the drawn slab hovering over whatever the box rests on)
+      if (whole && (reachesPast(whole, piece.boxes) || fallsShort(whole, piece.boxes))) {
         shape = boxShapeOf(whole, piece.massKg);
         half = [Math.max(Math.abs(whole[0]), Math.abs(whole[3])), Math.max(Math.abs(whole[1]), Math.abs(whole[4])), Math.max(Math.abs(whole[2]), Math.abs(whole[5]))];
       }
@@ -974,7 +976,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
         const b = boundsOf([pp], true);
         const own = [{ center: [0, 0, 0], half: spec.half }];
         if (b) clampNormal(b, own);
-        if (b && reachesPast(b, own)) pp.shape = boxShapeOf(b, spec.massKg);
+        if (b && (reachesPast(b, own) || fallsShort(b, own))) pp.shape = boxShapeOf(b, spec.massKg);
       });
     }
     // (destruction-slabs 227) each mesh names the body box it rides in (its own frame): receipts measure what it draws
@@ -1026,6 +1028,12 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     if (!(hi >= lo)) return;
     b[1] = Math.max(b[1], lo - 0.35); b[4] = Math.min(b[4], hi + 0.6);
     if (!(b[4] > b[1] + 0.06)) { b[1] = lo; b[4] = hi; }
+  }
+  /** Whether what is drawn stands more than 5 cm clear of the boxes' bottom along the frame's y (a slab's normal). */
+  function fallsShort(b: number[], boxes: ReadonlyArray<{ center: readonly number[]; half: readonly number[] }>): boolean {
+    let lo = Infinity;
+    for (const box of boxes) lo = Math.min(lo, box.center[1] - box.half[1]);
+    return b[1] > lo + 0.05;
   }
   /** Whether bounds reach more than 5 cm past every box's (in the same frame). */
   function reachesPast(b: number[], boxes: ReadonlyArray<{ center: readonly number[]; half: readonly number[] }>): boolean {

@@ -28,7 +28,8 @@ import type { DamageFace, StructureDamageAnatomy } from './destructionKit.ts';
 export interface EnclosureBand {
   readonly y0: number;
   readonly y1: number;
-  /** Per cell: 0 open, 1 a drawn wall, 2 enclosed. */
+  /** Per cell: 0 open, 1 a drawn wall, bit 2 enclosed, bit 4 (with 2) covered — something drawn over three quarters of
+   *  the band's height there (a roof, an upper floor; not a court under the sky). */
   readonly cells: Uint8Array;
   /** The enclosed cells' box [minX, minZ, maxX, maxZ] (body frame; NaN for none) and the walls' and theirs together. */
   readonly interiorBox: Float64Array;
@@ -52,9 +53,8 @@ export interface StructureEnclosure {
   readonly nx: number;
   readonly nz: number;
   readonly bands: EnclosureBand[];
-  /** Per cell: the drawn walls' top (cm over the body's floor; 0 none), and the highest drawn surface, roofs included. */
+  /** Per cell: the drawn walls' top (cm over the body's floor; 0 none). */
   readonly top: Uint16Array;
-  readonly over: Uint16Array;
 }
 
 /** Buckets that are no wall: the roofs and thatch (a window's glass and a curtain wall enclose as a wall does). */
@@ -230,9 +230,11 @@ export function measureEnclosure(parts: Readonly<Record<string, readonly BufferG
     for (let c = 0; c < N; c++) if (band.cover[c]! >= need) band.cells[c] = 1;
     const faces = storeys[s].faces;
     const segs = band.segs;
+    // (a hole goes on a wall that stands through the band: a garden wall or a parapet low in front of it is no face's)
+    const tall = cm(band.y0 + 0.7 * (band.y1 - band.y0));
     for (let q = 0; q + 3 < segs.length; q += 4) {
       walk(segs[q]!, segs[q + 1]!, 0, segs[q + 2]!, segs[q + 3]!, 0, (c, x, z) => {
-        if (band.cells[c] !== 1) return;
+        if (band.cells[c] !== 1 || top[c]! < tall) return;
         for (let f = 0; f < faces.length; f++) {
           const face = faces[f]!;
           const ox = x - face.origin[0], oz = z - face.origin[2];
@@ -249,6 +251,9 @@ export function measureEnclosure(parts: Readonly<Record<string, readonly BufferG
   let any = false;
   const out: EnclosureBand[] = bands.map((b) => {
     enclose(b.cells, nx, nz, r);
+    // covered: something drawn over the enclosed cell above three quarters of the band's height
+    const coverCm = Math.round((b.y0 + 0.75 * (b.y1 - b.y0)) * 100) + 1;
+    for (let c = 0; c < N; c++) if (b.cells[c] === 2 && over[c]! >= coverCm) b.cells[c] = 6;
     // the interior's box over its rooms, not its pockets (a few cells shut between a canopy's posts and the wall): the
     // components of at least 2 m² and a tenth of the largest
     const labels = labelComponents(b.cells, nx, nz);
@@ -265,8 +270,8 @@ export function measureEnclosure(parts: Readonly<Record<string, readonly BufferG
       const v = b.cells[c];
       if (!v) continue;
       if (v === 1) walls++; else inside++;
-      if (v === 2 && sizes[labels[c]!]! < minCells) continue;
-      if (v === 2) { ib[0] = Math.min(ib[0], x0 + i * cell); ib[1] = Math.min(ib[1], z0 + k * cell); ib[2] = Math.max(ib[2], x0 + (i + 1) * cell); ib[3] = Math.max(ib[3], z0 + (k + 1) * cell); }
+      if (v & 2 && sizes[labels[c]!]! < minCells) continue;
+      if (v & 2) { ib[0] = Math.min(ib[0], x0 + i * cell); ib[1] = Math.min(ib[1], z0 + k * cell); ib[2] = Math.max(ib[2], x0 + (i + 1) * cell); ib[3] = Math.max(ib[3], z0 + (k + 1) * cell); }
       si0 = Math.min(si0, i); si1 = Math.max(si1, i); sk0 = Math.min(sk0, k); sk1 = Math.max(sk1, k);
     }
     if (walls) any = true;
@@ -278,7 +283,7 @@ export function measureEnclosure(parts: Readonly<Record<string, readonly BufferG
       share: inside / Math.max(1, boxCells - walls), setback: b.setback, bin, labels: null };
   });
   if (!any) return null;
-  return { x0, z0, cell, nx, nz, bands: out, top, over };
+  return { x0, z0, cell, nx, nz, bands: out, top };
 }
 
 /** Close a band's wall cells' gaps of up to 2r cells, flood the outside from the border, give the outside back the cells
@@ -482,8 +487,10 @@ const HINT_REACH_M = 2.5;
 export function storeyInterior(anatomy: Pick<StructureDamageAnatomy, 'enclosure' | 'storeys'>, storey: number, hintX: number, hintZ: number,
   capY = Infinity): StoreyInterior | null {
   const enc = enclosureOf(anatomy);
-  const band = enc?.bands[storey];
-  if (!enc || !band || band.share < ROOM_MIN_SHARE || band.interiorM2 < ROOM_MIN_M2) return null;
+  // a structure measured without its parts (a kit's own reading handed over whole): its faces are its walls
+  if (!enc) return facesInterior(anatomy, storey, capY);
+  const band = enc.bands[storey];
+  if (!band || band.share < ROOM_MIN_SHARE || band.interiorM2 < ROOM_MIN_M2) return null;
   const { nx, nz, cell, x0, z0 } = enc;
   if (!band.labels) band.labels = labelComponents(band.cells, nx, nz);
   const labels = band.labels;
@@ -520,11 +527,17 @@ export function storeyInterior(anatomy: Pick<StructureDamageAnatomy, 'enclosure'
   const wallTop = tops.length ? tops[tops.length >> 1] : band.y1;
   const y1 = Math.min(capY, band.y1 - 0.06, Math.max(y0 + 1, wallTop - 0.06));
   if (!(y1 - y0 > 0.8)) return null;
-  // the room: the component's cells something covers over its ceiling (a roof, an upper floor: not a court under the sky)
-  const coverAt = Math.round((y1 - 0.25) * 100) + 1;
+  // the room: the component's cells something covers (a roof, an upper floor: not a court under the sky)
   const inRoom = new Uint8Array(nx * nz);
   let n = 0;
-  for (let c = 0; c < labels.length; c++) if (labels[c] === label && enc.over[c] >= coverAt) { inRoom[c] = 1; n++; }
+  for (let c = 0; c < labels.length; c++) {
+    if (labels[c] !== label || !(band.cells[c]! & 4)) continue;
+    // (a cell open to the outside on a side — a door's threshold, a gap's mouth — is no room's: it stays a cell back)
+    const i = c % nx, k = (c - i) / nx;
+    if ((i > 0 && band.cells[c - 1] === 0) || (i < nx - 1 && band.cells[c + 1] === 0) || (k > 0 && band.cells[c - nx] === 0)
+      || (k < nz - 1 && band.cells[c + nx] === 0)) continue;
+    inRoom[c] = 1; n++;
+  }
   if (n * cell * cell < ROOM_MIN_M2) return null;
   // rectangles: each row's runs, a run stacked on the same run of the row before extends its rectangle
   const rects: number[][] = [];
@@ -582,18 +595,39 @@ export function storeyInterior(anatomy: Pick<StructureDamageAnatomy, 'enclosure'
   return { rects, walls, y0, y1, key: `${storey}:${label}` };
 }
 
+/** The room inside a storey's faces' rectangle, behind their thickness (a structure without an enclosure). */
+function facesInterior(anatomy: Pick<StructureDamageAnatomy, 'storeys'>, storey: number, capY: number): StoreyInterior | null {
+  const st = anatomy.storeys[storey];
+  if (!st || !st.faces.length) return null;
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, thick = 0.2;
+  for (const f of st.faces) {
+    for (const k of [-1, 1]) {
+      const x = f.origin[0] + f.u[0] * f.width / 2 * k, z = f.origin[2] + f.u[2] * f.width / 2 * k;
+      x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z);
+    }
+    thick = Math.max(thick, f.layers.reduce((sum, l) => sum + l.thicknessM, 0));
+  }
+  const inset = Math.min(thick + 0.08, 0.9);
+  x0 += inset; x1 -= inset; z0 += inset; z1 -= inset;
+  if (!(x1 - x0 > 0.6 && z1 - z0 > 0.6)) return null;
+  const y0 = st.y0 + 0.03, y1 = Math.min(capY, Math.max(y0 + 1, st.y1 - 0.06));
+  if (!(y1 - y0 > 0.8)) return null;
+  return { rects: [[x0, z0, x1, z1]], walls: [[x0, z1, x1, z1, 0, -1], [x0, z0, x1, z0, 0, 1], [x1, z0, x1, z1, -1, 0], [x0, z0, x0, z1, 1, 0]],
+    y0, y1, key: `${storey}:faces` };
+}
+
 /** 4-connected components of a band's enclosed cells (labels from 1). */
 function labelComponents(cells: Uint8Array, nx: number, nz: number): Int32Array {
   const labels = new Int32Array(nx * nz);
   let next = 0;
   const stack: number[] = [];
   for (let c0 = 0; c0 < cells.length; c0++) {
-    if (cells[c0] !== 2 || labels[c0]) continue;
+    if (!(cells[c0]! & 2) || labels[c0]) continue;
     next++;
     stack.push(c0);
     while (stack.length) {
       const c = stack.pop()!;
-      if (labels[c] || cells[c] !== 2) continue;
+      if (labels[c] || !(cells[c]! & 2)) continue;
       labels[c] = next;
       const i = c % nx, k = (c - i) / nx;
       if (i > 0) stack.push(c - 1);

@@ -301,14 +301,23 @@ export function footprintOf(triLists, cell = 0.25, growM = SLAB.footprintGrowM) 
       mark(ax + (bx - ax) * u + (cx - ax) * v, az + (bz - az) * u + (cz - az) * v);
     }
   }
-  // close: every cell the outside cannot reach is inside (a court, a roofless room)
+  // close: every cell the outside cannot reach is inside (a court, a roofless room); (destruction-slabs 227) the walls'
+  // cells grown by one first, so a thin wall rasterised corner to corner leaks no flood through its diagonals
+  const barrier = new Uint8Array(nx * nz);
+  for (let k = 0; k < nz; k++) for (let i = 0; i < nx; i++) {
+    if (!grid[k * nx + i]) continue;
+    for (let dk = -1; dk <= 1; dk++) for (let di = -1; di <= 1; di++) {
+      const ii = i + di, kk = k + dk;
+      if (ii >= 0 && kk >= 0 && ii < nx && kk < nz) barrier[kk * nx + ii] = 1;
+    }
+  }
   const outside = new Uint8Array(nx * nz);
   const stack = [];
   for (let i = 0; i < nx; i++) { stack.push(i, (nz - 1) * nx + i); }
   for (let k = 0; k < nz; k++) { stack.push(k * nx, k * nx + nx - 1); }
   while (stack.length) {
     const c = stack.pop();
-    if (outside[c] || grid[c]) continue;
+    if (outside[c] || barrier[c]) continue;
     outside[c] = 1;
     const i = c % nx, k = (c - i) / nx;
     if (i > 0) stack.push(c - 1);
@@ -496,7 +505,11 @@ export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => fals
       if (flatHigh && outside >= 1 && outsideShare >= 0.05) {
         reasons.push(`on the wall heads: a fallen roof slab lying flat ${lift.toFixed(1)} m up (${(s.ext[0] * s.ext[1]).toFixed(1)} m², ${(outsideShare * 100).toFixed(0)} % past the walls' plan at height)`);
       }
-      if (elevated && !p.grounded && floatingShare >= SLAB.floatingShare) reasons.push(`floating: ${(floatingShare * 100).toFixed(0)} % of it unsupported, ${lift.toFixed(1)} m up`);
+      // (destruction-slabs 227) a redrawn wall is the building's own wall: an upper storey's stands on its floor while the
+      // simulation holds it (DESTRUCTION.md §3.4, sections on), as its intact parts do — judged off the walls, not floating
+      const ownWall = /^fx-fracture-face-/.test(p.d.name);
+      if (ownWall && elevated && floatingShare >= SLAB.floatingShare) attributes.push(`over a gap, held by its storey's floor (${(floatingShare * 100).toFixed(0)} % over nothing)`);
+      else if (elevated && !p.grounded && floatingShare >= SLAB.floatingShare) reasons.push(`floating: ${(floatingShare * 100).toFixed(0)} % of it unsupported, ${lift.toFixed(1)} m up`);
       // (destruction-slabs 227) a fallen roof slab at rest drawn well off the body it rides in (the body grown round
       // everything partitioned to it: the drawn slab hovers over what the body rests on)
       const bodyBoxes = p.d.mesh?.userData?.bodyBoxes;
