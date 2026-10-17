@@ -164,12 +164,12 @@
    "facePass": 0.75
   },
   "hostomel": {
-   "score": 11,
-   "silhouette": 4,
-   "mid": 3,
-   "fine": 2,
-   "trisPerWallM2": 12.24,
-   "fineShare": 0.56,
+   "score": 17,
+   "silhouette": 5,
+   "mid": 5,
+   "fine": 5,
+   "trisPerWallM2": 29.32,
+   "fineShare": 0.67,
    "facePass": 1
   },
   "kyushu": {
