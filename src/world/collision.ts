@@ -818,11 +818,67 @@ export function setCompoundShape(rec: CollisionRecord, parts: SimpleCollisionSha
   return rec;
 }
 
+/**
+ * Clearance bevels (bots lane 227, 2026-10-16). A convex footprint grown by a margin is read edge by edge: every edge
+ * moved out by the margin. At a corner of interior angle θ those offset edges meet margin / sin(θ/2) from the corner,
+ * so a sliver's sharp corner grows a needle far out along its bisector. Verdant's smock mill (226) carries three 0.15 m
+ * plinth slivers whose 2.6-degree corners grew 3.3 m of clearance into needles ~150 m long: the bots' corner router saw
+ * the mill block the lane from the north-east spawn to its first waypoint and drove 115 m the wrong way, and the hard
+ * T-90AM's approach to a gun solution went from 66 s to 110 s. A clearance query (the bots' lanes, corners and leg ends)
+ * caps each corner sharper than CLEARANCE_MITER_LIMIT with the bevel line the margin out along its bisector: that line
+ * is the corner's own support line of the footprint's true clearance (the footprint swept by a disc of the margin), so
+ * the bevelled region still holds every point within the margin of the footprint. Square and blunter corners
+ * (rectangles, octagons) keep the plain offset edges exactly; the world's own footprint tests (placement, ground cover,
+ * the layouts) are untouched.
+ */
+const CLEARANCE_MITER_LIMIT = 2;
+/** |n1 + n2| of two unit outward normals at a corner sharper than the limit (miter ratio 2 / |n1 + n2| > the limit). */
+const CLEARANCE_BEVEL_SUM = 2 / CLEARANCE_MITER_LIMIT;
+const _bevel = { x: 0, z: 0 };
+
+/**
+ * The outward bisector of the convex corner at `index` (a point's x offset in `points`) into _bevel when the corner is
+ * sharper than CLEARANCE_MITER_LIMIT; false for a blunter corner or a corner on a zero-length edge.
+ */
+function clearanceBevelAt(points: readonly number[], index: number, winding: number): boolean {
+  const count = points.length;
+  const previous = (index + count - 2) % count, next = (index + 2) % count;
+  const vx = points[index], vz = points[index + 1];
+  const ax = vx - points[previous], az = vz - points[previous + 1];
+  const bx = points[next] - vx, bz = points[next + 1] - vz;
+  const la = Math.hypot(ax, az), lb = Math.hypot(bx, bz);
+  if (la < EPS || lb < EPS) return false;
+  // outward unit normals of the edge into the corner and the edge out of it (the inside lies on the left of a
+  // counter-clockwise edge: winding * (-dz, dx) points in)
+  const sx = winding * (az / la + bz / lb), sz = -winding * (ax / la + bx / lb);
+  const sum = Math.hypot(sx, sz);
+  if (sum >= CLEARANCE_BEVEL_SUM) return false;
+  if (sum > 1e-9) { _bevel.x = sx / sum; _bevel.z = sz / sum; return true; }
+  // a corner folded back on itself: out from the footprint's middle
+  let cx = 0, cz = 0;
+  for (let k = 0; k < count; k += 2) { cx += points[k]; cz += points[k + 1]; }
+  cx = vx - cx * 2 / count; cz = vz - cz * 2 / count;
+  const length = Math.hypot(cx, cz);
+  if (length < EPS) return false;
+  _bevel.x = cx / length; _bevel.z = cz / length;
+  return true;
+}
+
+/** Does (x, z) lie beyond the margin past one of the convex footprint's bevelled corners (clearanceBevelAt)? */
+function beyondClearanceBevel(points: readonly number[], winding: number, x: number, z: number, margin: number): boolean {
+  for (let index = 0; index < points.length; index += 2) {
+    if (!clearanceBevelAt(points, index, winding)) continue;
+    if ((x - points[index]) * _bevel.x + (z - points[index + 1]) * _bevel.z > margin) return true;
+  }
+  return false;
+}
+
 function simpleFootprintContainsPoint(
   shape: SimpleCollisionShape,
   x: number,
   z: number,
   margin: number,
+  bevel = false,
 ) {
   if (shape.kind === 'circle') {
     const dx = x - shape.cx, dz = z - shape.cz;
@@ -845,7 +901,22 @@ function simpleFootprintContainsPoint(
       - edgeZ * (x - shape.points[index]));
     if (cross < -margin * Math.hypot(edgeX, edgeZ)) return false;
   }
-  return true;
+  return !(bevel && margin > 0 && beyondClearanceBevel(shape.points, winding, x, z, margin));
+}
+
+function footprintContainsPoint(record: CollisionRecord, x: number, z: number, margin: number, bevel: boolean) {
+  const shape = record.shape2;
+  if (!shape) {
+    return x >= record.min[0] - margin && x <= record.max[0] + margin
+      && z >= record.min[2] - margin && z <= record.max[2] + margin;
+  }
+  if (shape.kind !== 'compound') return simpleFootprintContainsPoint(shape, x, z, margin, bevel);
+  // (physics stream F2, 2026-10-14) a raised deck — a roof a hull stands on — is a floor only, no footprint: its eaves
+  // over a carriageway or a yard are no building standing there (the bots' parking and leg ends, the layout metrics)
+  for (const part of shape.parts) {
+    if (!collisionPartIsDeck(record, part) && simpleFootprintContainsPoint(part, x, z, margin, bevel)) return true;
+  }
+  return false;
 }
 
 /** Exact point/clearance query shared by navigation and runtime collision. */
@@ -855,15 +926,20 @@ export function collisionFootprintContainsPoint(
   z: number,
   margin = 0,
 ) {
-  const shape = record.shape2;
-  if (!shape) {
-    return x >= record.min[0] - margin && x <= record.max[0] + margin
-      && z >= record.min[2] - margin && z <= record.max[2] + margin;
-  }
-  if (shape.kind !== 'compound') return simpleFootprintContainsPoint(shape, x, z, margin);
-  // (physics stream F2, 2026-10-14) a raised deck — a roof a hull stands on — is a floor only, no footprint: its eaves
-  // over a carriageway or a yard are no building standing there (the bots' parking and leg ends, the layout metrics)
-  return shape.parts.some((part) => !collisionPartIsDeck(record, part) && simpleFootprintContainsPoint(part, x, z, margin));
+  return footprintContainsPoint(record, x, z, margin, false);
+}
+
+/**
+ * The bots' clearance query: collisionFootprintContainsPoint with each corner sharper than CLEARANCE_MITER_LIMIT
+ * bevelled at the margin (clearanceBevelAt), so a sliver grows no needle. Identical at margin 0.
+ */
+export function collisionClearanceContainsPoint(
+  record: CollisionRecord,
+  x: number,
+  z: number,
+  margin = 0,
+) {
+  return footprintContainsPoint(record, x, z, margin, true);
 }
 
 function rayCircleEntry2(
@@ -934,15 +1010,17 @@ function rayConvexEntry2(
   directionZ: number,
   maxDistance: number,
   margin: number,
+  bevel = false,
 ) {
-  const winding = convexWinding(shape.points);
+  const points = shape.points;
+  const winding = convexWinding(points);
   let entry = 0, exit = maxDistance;
-  for (let index = 0; index < shape.points.length; index += 2) {
-    const next = (index + 2) % shape.points.length;
-    const edgeX = shape.points[next] - shape.points[index];
-    const edgeZ = shape.points[next + 1] - shape.points[index + 1];
-    const offset = winding * (edgeX * (sourceZ - shape.points[index + 1])
-      - edgeZ * (sourceX - shape.points[index]))
+  for (let index = 0; index < points.length; index += 2) {
+    const next = (index + 2) % points.length;
+    const edgeX = points[next] - points[index];
+    const edgeZ = points[next + 1] - points[index + 1];
+    const offset = winding * (edgeX * (sourceZ - points[index + 1])
+      - edgeZ * (sourceX - points[index]))
       + margin * Math.hypot(edgeX, edgeZ);
     const velocity = winding * (edgeX * directionZ - edgeZ * directionX);
     if (Math.abs(velocity) < EPS) {
@@ -953,6 +1031,22 @@ function rayConvexEntry2(
     if (velocity > 0) entry = Math.max(entry, crossing);
     else exit = Math.min(exit, crossing);
     if (entry > exit) return null;
+  }
+  // a clearance ray: each sharp corner's bevel line (clearanceBevelAt) bounds the run too, read only for a ray
+  // the offset edges already let in
+  if (bevel && margin > 0) {
+    for (let index = 0; index < points.length; index += 2) {
+      if (!clearanceBevelAt(points, index, winding)) continue;
+      const room = margin - ((sourceX - points[index]) * _bevel.x + (sourceZ - points[index + 1]) * _bevel.z);
+      const velocity = directionX * _bevel.x + directionZ * _bevel.z;
+      if (Math.abs(velocity) < EPS) {
+        if (room < 0) return null;
+        continue;
+      }
+      if (velocity > 0) exit = Math.min(exit, room / velocity);
+      else entry = Math.max(entry, room / velocity);
+      if (entry > exit) return null;
+    }
   }
   return exit >= 0 && entry < maxDistance ? Math.max(0, entry) : null;
 }
@@ -965,6 +1059,7 @@ function raySimpleFootprintEntry2(
   directionZ: number,
   maxDistance: number,
   margin: number,
+  bevel = false,
 ) {
   if (shape.kind === 'circle') {
     return rayCircleEntry2(
@@ -977,7 +1072,7 @@ function raySimpleFootprintEntry2(
     );
   }
   return rayConvexEntry2(
-    shape, sourceX, sourceZ, directionX, directionZ, maxDistance, margin,
+    shape, sourceX, sourceZ, directionX, directionZ, maxDistance, margin, bevel,
   );
 }
 
@@ -990,6 +1085,35 @@ export function rayCollisionFootprintEntry2(
   directionZ: number,
   maxDistance: number,
   margin = 0,
+) {
+  return rayFootprintEntry2(record, sourceX, sourceZ, directionX, directionZ, maxDistance, margin, false);
+}
+
+/**
+ * The bots' clearance ray: rayCollisionFootprintEntry2 with each corner sharper than CLEARANCE_MITER_LIMIT bevelled
+ * at the margin (clearanceBevelAt), so a sliver grows no needle across the lane. Identical at margin 0.
+ */
+export function rayCollisionClearanceEntry2(
+  record: CollisionRecord,
+  sourceX: number,
+  sourceZ: number,
+  directionX: number,
+  directionZ: number,
+  maxDistance: number,
+  margin = 0,
+) {
+  return rayFootprintEntry2(record, sourceX, sourceZ, directionX, directionZ, maxDistance, margin, true);
+}
+
+function rayFootprintEntry2(
+  record: CollisionRecord,
+  sourceX: number,
+  sourceZ: number,
+  directionX: number,
+  directionZ: number,
+  maxDistance: number,
+  margin: number,
+  bevel: boolean,
 ) {
   const length = Math.hypot(directionX, directionZ);
   if (length < EPS || maxDistance <= 0) return null;
@@ -1010,13 +1134,13 @@ export function rayCollisionFootprintEntry2(
   }
   if (shape.kind !== 'compound') {
     return raySimpleFootprintEntry2(
-      shape, sourceX, sourceZ, directionX, directionZ, maxDistance, margin,
+      shape, sourceX, sourceZ, directionX, directionZ, maxDistance, margin, bevel,
     );
   }
   let best: number | null = null;
   for (const part of shape.parts) {
     const entry = raySimpleFootprintEntry2(
-      part, sourceX, sourceZ, directionX, directionZ, maxDistance, margin,
+      part, sourceX, sourceZ, directionX, directionZ, maxDistance, margin, bevel,
     );
     if (entry != null && (best == null || entry < best)) best = entry;
   }

@@ -19,7 +19,7 @@ import { streamFrom } from './geometry.ts';
 import { describeStructure, createStructureDamageSeam } from '../../structureDamageSeam.ts';
 import '../../destructionDefaultKit.ts';
 import { shaftOf } from './shaft.ts';
-import { latticeOf } from './latticeFall.ts';
+import { latticeBuckle, latticeOf } from './latticeFall.ts';
 
 const finite = (v, label) => assert.ok(Number.isFinite(v), `${label}: finite (${v})`);
 
@@ -147,12 +147,18 @@ for (const [styleId, id, dims] of FRAMES) {
     console.log(`lattice damage: ${label} — buckled at ${standTop.toFixed(1)} m of ${height.toFixed(1)}, folded ${far.toFixed(1)} m out`);
     continue;
   }
-  assert.ok(far > height * 0.6, `${label}: the frame lies along the ground (${far.toFixed(1)} m out of ${height.toFixed(1)})`);
-  assert.ok(top < foot + Math.max(3, height * 0.35), `${label}: nothing left standing high (${top.toFixed(1)})`);
-  // a stub at every leg's foot: some rubble within a metre of each foot, under a metre and a half
+  // (227, lane B; the anti-raft floor) every frame buckles over its standing bays (latticeFall.ts latticeBuckle): its lower
+  // bays stand to the buckle, the frame above folds out along the ground from there, nothing fallen lies higher
+  const buckle = latticeBuckle(lat);
+  let standTop = -Infinity;
+  for (const r of one.runs.filter((q) => q.role === 'remnant')) for (let i = 1; i < r.pos.length; i += 3) standTop = Math.max(standTop, r.pos[i]);
+  assert.ok(standTop > buckle - 1.0, `${label}: its lower bays stand to the buckle (${standTop.toFixed(1)}, buckle ${buckle.toFixed(1)})`);
+  assert.ok(far > (foot + height - buckle) * 0.6, `${label}: the frame above the buckle lies along the ground (${far.toFixed(1)} m out of ${height.toFixed(1)})`);
+  assert.ok(top < buckle + 0.6, `${label}: nothing fallen lies higher than the buckle (${top.toFixed(1)})`);
+  // a leg standing on every foot: the standing bays' members within a metre of each foot, under a metre and a half
   for (const l of lat.legs) {
     let stub = false;
-    for (const r of rubble) for (let i = 0; i < r.pos.length && !stub; i += 3) {
+    for (const r of one.runs.filter((q) => q.role === 'remnant')) for (let i = 0; i < r.pos.length && !stub; i += 3) {
       if (Math.hypot(r.pos[i] - l.foot[0], r.pos[i + 2] - l.foot[2]) < 1.0 && r.pos[i + 1] < l.foot[1] + 1.5) stub = true;
     }
     assert.ok(stub, `${label}: a stub at the foot (${l.foot.map((v) => v.toFixed(1)).join(', ')})`);

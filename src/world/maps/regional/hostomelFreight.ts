@@ -348,6 +348,15 @@ function sandbag(sink: PartSink, cx: number, y: number, cz: number, colour: Rgb)
   sink.polygon('structureMetal', [...rings[3]].reverse(), { colour: scale3(colour, 0.86) });
 }
 
+/** The dunnage a ground box stands on: a creosoted sleeper across each end under its castings, bedded in the ground. */
+const SLEEPER: Rgb = rgb(0x3a3128);
+function dunnage(sink: PartSink): void {
+  for (const end of [-1, 1]) {
+    const z = end * (L / 2 - 0.36);
+    sink.span('structureWood', -WB / 2 - 0.14, -0.34, z - 0.12, WB / 2 + 0.14, -0.002, z + 0.12, { colour: SLEEPER, decor: true });
+  }
+}
+
 // --- the row ---------------------------------------------------------------------------------------------------------
 
 /**
@@ -378,7 +387,9 @@ export const freightBoxes: RegionalBuilder = (ctx) => {
       hole = { z0: -u - w / 2, z1: -u + w / 2, y0: H * 0.55 - h / 2, y1: H * 0.55 + h / 2 };
     }
     const s = salt++;
-    sink.placed(yaw, x, y, z, () => container(sink, col, burnt, hole, mobile, look, s * 131 + 7));
+    // (the looks lane, 227; the census's world pass: a footprint corner 6 cm over the ground on Kestrel's slope) a box on
+    // the ground stands on its dunnage, bedded in (dressing, no draws: the row's collision and stream as they were)
+    sink.placed(yaw, x, y, z, () => { container(sink, col, burnt, hole, mobile, look, s * 131 + 7); if (y === 0) dunnage(sink); });
   };
   let burntLeft = 1 + (rng() < 0.5 ? 1 : 0);
   for (let k = 0; k < n; k++) {
@@ -391,6 +402,9 @@ export const freightBoxes: RegionalBuilder = (ctx) => {
   // the sandbag line along the row's front where it stood as a wall
   const zf = zc + L / 2 + 0.75;
   if (zf + 0.4 < bb.maxZ) {
+    // (227) the line's footing: a flattened course of bags bedded under it, so a bag over falling ground still sits on
+    // the course (dressing, no draws)
+    sink.span('structureMetal', bb.minX + 0.08, -0.26, zf - 0.17, bb.maxX - 0.08, 0.02, zf + 0.17, { colour: shade(rgb(0x8a7c5e), 0.78), decor: true });
     for (let x = bb.minX + 0.4; x < bb.maxX - 0.4; x += 0.62) {
       for (let row = 0; row < 3; row++) {
         const xx = x + (row % 2) * 0.31, y = row * 0.22;
