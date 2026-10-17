@@ -46,11 +46,14 @@ function inputFor(v, { objective = true, rosters = 7 } = {}) {
   if (earR) earR[3] = Math.min(earR[3], Math.max(v.earR[3], v.card[1] - v.earR[1] - 32));
   const obstacles = [v.score, ...(objective ? [v.obj] : []), earL, earR, v.map, v.dp, v.drive, v.sys, v.ammo, v.card, v.net].filter(Boolean).map(box);
   obstacles.push({ x: v.dp[0], y: v.dp[1] - 36, w: v.dp[2], h: 36 });
+  // a phone-width window keeps the network strip's corner of the right lane (battleHudLayout.ts)
+  const phone = width <= 519;
+  if (phone) obstacles.push({ x: width - 10 - 96, y: top + 8, w: 96, h: 30 });
   const side = Math.min(400, width / 2 - 24);
   const lane = (x, from, to) => to - from >= 26 ? { x, w: side, top: from, bottom: to } : null;
   return {
     width, height, top, obstacles,
-    lanes: [lane(0, v.lanes[0], v.lanes[1]), lane(width - side, v.lanes[2], v.lanes[3])],
+    lanes: [lane(0, v.lanes[0], v.lanes[1]), lane(width - side, phone ? Math.max(v.lanes[2], top + 46) : v.lanes[2], v.lanes[3])],
     smallAlert: height <= 550 || width <= 480, compactDetection: height <= 550,
     countdown: { w: v.cd[0], h: v.cd[1] }, revive: { w: Math.min(390, width - 32), h: 129 },
     medal: { w: Math.min(380, width - 32), h: width > 640 ? 85 : 76 },
@@ -145,7 +148,8 @@ const LOW_TIER = { '844x390': { revive: 1, medal: 1 }, '481x700': { countdown: 1
 // A lane gives up its last row only where every place clear of the reticle crosses it (and only while the element
 // shows): the plan prices that as its last resort before any reticle ink.
 const ROW_PX = [62, 26];
-const EMPTIED = ['768x600 alert l', '768x600 medal l', '768x600 detection+alert l', '768x600s revive l', '768x600s medal l'];
+const EMPTIED = ['768x600 alert l', '768x600 medal l', '768x600 detection+alert l', '768x600s revive l', '768x600s medal l',
+  '481x700 alert r', '481x700 detection+alert r'];
 const emptied = [];
 let plans = 0, slowest = 0, ms = 0, work = 0, mostWork = 0;
 for (const v of VIEWPORTS) {

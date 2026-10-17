@@ -72,7 +72,7 @@ const NOTICE_ALERTS = [
 const LONG_ALERTS = ['wave123','autoAimLong','flagDroppedEnemy','ammoEmpty'];
 // Where every place clear of the reticle crosses a side lane whole, that lane holds no row while the element shows
 // (mouseNoticePlan.selftest.mjs lists the same: its last resort before any reticle ink).
-const EMPTY_LANES_OK={'mouse-768x600':/alert|countdown|revive|medal/};
+const EMPTY_LANES_OK={'mouse-768x600':/alert|countdown|revive|medal/,'mouse-481x700':/alert/};
 // [key, fixture state, kill rows kept (null: as staged), rosters a side (null: 7), notice set ('' none), sight, Tab held]
 function noticeStages(){
   const out=[];
