@@ -73,10 +73,6 @@ function topOfWallIn(x: number, z: number, nx: number, nz: number, d: number): n
   const k = d + cell * 0.5;
   return wallTopAt(ruinOf, x + nx * k, z + nz * k, 0);
 }
-/** The highest a standing piece may reach at (x, z): the drawn wall's top there (Infinity without an enclosure). */
-function topAtSpot(x: number, z: number): number {
-  return ruinOf ? wallTopAt(ruinOf, x, z) : Infinity;
-}
 /** The lowest the drawn walls stand along a plan run (five spots, a tenth in from each end): a long stub on a ragged wall
  *  is no taller than its lowest stretch is drawn (destruction-slabs 227: a ruin's 7.8 m stub stood 1.8 m over its wall). */
 function topAlong(ax: number, az: number, bx: number, bz: number): number {
