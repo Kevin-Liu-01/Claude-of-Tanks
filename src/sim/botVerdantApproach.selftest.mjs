@@ -4,9 +4,9 @@
 // northern swell (226's Verdant v2 landmarks, structure 18 at (267, 288)): its plinth carries three 0.15 m slivers, and
 // the bots' clearance tests grew a sliver's 2.6-degree corner by the hull's lane margin into a needle ~150 m long, so the
 // corner router saw the mill across the lane to the first waypoint 120 m away. The bots' clearance queries now bevel a
-// sharp corner at the margin (world/collision.ts collisionClearanceContainsPoint, rayCollisionClearanceEntry2). Over 16
-// seeds the approach was 91 s on the 225 world, 103 s on 226 and is 84 s with the bevel (the receipt's centurion3
-// census: 98 s, 84 s over eight seeds).
+// sharp corner at the margin (world/collision.ts collisionClearanceContainsPoint, rayCollisionClearanceEntry2). Over eight
+// seeds (this setup) the approach averaged 98.2 s on the 225 world, 93.5 s on 226 and 84.0 s with the bevel; over the 33
+// maps 96.8 s, 110.0 s and 91.8 s (Monsoon, Titan Gorge and Whiteout had lost 40-116 s to the same needles).
 import assert from 'node:assert/strict';
 import '../vehicles/tankFactory.ts';
 import { createAuthoritativeMatch } from './authoritativeMatch.ts';
@@ -38,9 +38,10 @@ const BOT = 't90am', TARGET = 'centurion3';
 // 2. The approach: botDroneAttack's setup (a hard T-90AM against a passive Centurion Mk 3 in the drone mode), the time to
 // its first gun solution and the opening's heading, per seed
 const SEEDS = [
-  // seed 11 (botDroneAttack's): through the village; 97.6 s (73.3 s on the 225 world, 109.7 s on 226 unfixed)
+  // seed 11 (botDroneAttack's): its search leg runs through the village (the kolkhoz grain store, 226, closes the lane west
+  // of it) and circles a waypoint by the sandbag ring at (-26, -57); 97.6 s (73.3 s on the 225 world, 109.6 s on 226)
   { seed: 11, fireByS: 105 },
-  // seed 41: west of the village; 71.7 s (80.3 s on the 225 world)
+  // seed 41: 71.7 s (80.3 s on the 225 world, 85.4 s on 226)
   { seed: 41, fireByS: 80 },
 ];
 for (const { seed, fireByS } of SEEDS) {
