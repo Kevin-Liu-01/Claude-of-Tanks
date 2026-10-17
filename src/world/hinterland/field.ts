@@ -274,7 +274,12 @@ export function createHinterlandField(
     for (let i = 0; i < DATUM_N; i++) {
       const az = (i / DATUM_N) * 360, a = az * Math.PI / 180;
       let sum = 0, n = 0;
-      for (let d = 560; d <= 840; d += 70) {
+      // (a place's own datum, 2026-10-17: 'edge' reads the level at the edge itself — Skybridge's slickrock runs on at the
+      // rim's level where the square's old border raised the ring's plateau 560-840 m out; a number is the level outright)
+      const datumMode = spec.outland.datum ?? 'handover';
+      if (typeof datumMode === 'number') { raw[i] = datumMode; continue; }
+      const [d0, d1, dd] = datumMode === 'edge' ? [0, 80, 20] : [560, 840, 70];
+      for (let d = d0; d <= d1; d += dd) {
         const rr = HINTERLAND_EDGE_M + d;
         // (on the square's own frame: a bearing's ray meets the edge's square, then runs out d past it)
         const sx = Math.sin(a), sz = Math.cos(a), k = rr / Math.max(Math.abs(sx), Math.abs(sz));
@@ -301,12 +306,14 @@ export function createHinterlandField(
   const invL = 1 / Math.max(150, spec.outland.wavelengthM);
   const ridged = Math.max(0, Math.min(1, spec.geology.erosion));
   const reliefArcs = spec.outland.reliefArcs ?? [];
+  // term 2's hold and ease for this place (default HINTERLAND_NEAR_HOLD_M / HINTERLAND_NEAR_EASE_M)
+  const [nearHoldM, nearEaseM] = spec.outland.nearHold ?? [HINTERLAND_NEAR_HOLD_M, HINTERLAND_NEAR_EASE_M];
   function regionalRelief(x: number, z: number, edgeOut: number): number {
     const wx = x + 0.35 * spec.outland.wavelengthM * noise2(x * invL * 0.37 + wox, z * invL * 0.37 + woz);
     const wz = z + 0.35 * spec.outland.wavelengthM * noise2(x * invL * 0.37 - woz, z * invL * 0.37 + wox);
     const n0 = fbm2(wx * invL + rox, wz * invL + roz, 4);
     const shaped = n0 * (1 - ridged) + ((1 - Math.abs(n0)) * 2 - 1.1) * ridged;
-    let amp = riseLo + (riseHi - riseLo) * smoothstep(HINTERLAND_NEAR_HOLD_M, HINTERLAND_NEAR_EASE_M + 900, edgeOut);
+    let amp = riseLo + (riseHi - riseLo) * smoothstep(nearHoldM, nearEaseM + 900, edgeOut);
     // (a quiet arc: the relief scaled on its bearings, eased over 12°)
     if (reliefArcs.length) {
       const b = hinterlandBearing(x, z);
@@ -395,7 +402,7 @@ export function createHinterlandField(
       return addRelief(x, z, h, edgeOut, texelM);
     }
     // term 2's ease: the battlefield's outland near, the region's relief round the datum far
-    const ease = smoothstep(HINTERLAND_NEAR_HOLD_M, HINTERLAND_NEAR_EASE_M, edgeOut);
+    const ease = smoothstep(nearHoldM, nearEaseM, edgeOut);
     if (ease >= 1) h = datumAt(hinterlandBearing(x, z)) + regionalRelief(x, z, edgeOut);
     else {
       let near = outlandAt(x, z);
@@ -679,7 +686,7 @@ export function createHinterlandField(
   }
   // (a flat place keeps the battlefield's border woods only near the edge, where they continue its own; past that its
   // woodlots are the region's — small, so the eye runs out over the polder between them — HL-2b's long views)
-  const nearWoodsHold = flat ? [220, 320] : [HINTERLAND_NEAR_HOLD_M, HINTERLAND_NEAR_EASE_M];
+  const nearWoodsHold = flat ? [220, 320] : [nearHoldM, nearEaseM];
   function woodsAt(x: number, z: number, edgeOut: number): number {
     const near = ground.getBorderWoodsAt && edgeOut < nearWoodsHold[1] ? ground.getBorderWoodsAt(x, z) : 0;
     const ease = smoothstep(nearWoodsHold[0], nearWoodsHold[1], edgeOut);

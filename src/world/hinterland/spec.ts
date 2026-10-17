@@ -152,6 +152,15 @@ export interface HinterlandConfig {
     /** The outland's relief; `arcs` scale it on bearings (a quiet arc, scale < 1: Whiteout's plateau running smooth
      * to its fall over Davis Strait, so the eye reaches the pack ice; HOR-05). */
     relief?: { riseM?: readonly [number, number]; wavelengthM?: number; arcs?: readonly { azDeg: readonly [number, number]; scale: number }[] };
+    /** Term 2's hold and ease (m past the edge): the battlefield's own outland holds to the first, then eases into the
+     * region's relief by the second (default 700 / 1600). A draft whose square's old border stood walls or knolls past
+     * the edge shortens it so the region's own land comes in sooner (2026-10-17: Skybridge's 100-200 m mesa walls 0.6-1 km
+     * out, the old ring's, that hid its far country — HOR-06; DRAFTS-FOLLOWUP 9 and 21). */
+    nearHoldM?: readonly [number, number];
+    /** Where the region's relief sits (term 1 and 2's datum): 'handover' (default) the level the battlefield's outland
+     * holds 560-840 m past the edge; 'edge' the level at the edge itself (0-80 m past it) — for a square whose old border
+     * raised a plateau or walls out there that the place does not have; or a fixed level (m). */
+    datum?: 'handover' | 'edge' | number;
     settle?: {
       villages?: number; hamlets?: number; farms?: number; works?: number; town?: HinterlandTownConfig | null;
       /** Villages placed on the sightlines (each with its church: a landmark at middle distance for every eye view —
@@ -203,6 +212,10 @@ export interface HinterlandSpec {
   outland: {
     riseM: readonly [number, number]; wavelengthM: number; flat: boolean;
     reliefArcs: readonly { azDeg: readonly [number, number]; scale: number }[];
+    /** Term 2's hold and ease (m past the edge). */
+    nearHold: readonly [number, number];
+    /** Term 1 and 2's datum. */
+    datum: 'handover' | 'edge' | number;
     woods: number; hedges: number; fields: number; links: number;
     settle: HinterlandSettleSpec;
   };
@@ -263,6 +276,8 @@ export function resolveHinterlandSpec(cfg: HinterlandMapConfig | null | undefine
       wavelengthM: o.relief?.wavelengthM ?? region.outland.wavelengthM,
       flat: region.outland.flat,
       reliefArcs: o.relief?.arcs ?? [],
+      nearHold: o.nearHoldM ?? [700, 1600],
+      datum: o.datum ?? 'handover',
       woods: o.woods ?? region.vegetation.woods,
       hedges: o.hedges ?? region.vegetation.hedges,
       fields: o.fields ?? region.fields,
