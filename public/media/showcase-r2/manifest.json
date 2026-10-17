@@ -731,13 +731,13 @@
       "quality": {
         "passed": true,
         "metrics": {
-          "meanLuma": 136.5626,
-          "p05": 42.7212,
-          "p95": 204.2546,
+          "meanLuma": 106.6959,
+          "p05": 40.2098,
+          "p95": 192.0762,
           "clippedBlack": 0,
           "clippedWhite": 0,
-          "meanSaturation": 0.4729,
-          "edgeMean": 11.7533
+          "meanSaturation": 0.6768,
+          "edgeMean": 8.9032
         }
       }
     },

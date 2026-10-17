@@ -4,8 +4,8 @@
   "file": "dual-perspective.webp",
   "width": 2400,
   "height": 700,
-  "bytes": 469470,
-  "sha256": "321af491ad36a29ec49b1ff5ca6222bd28b6803efb2f4115d881d543a20b0460",
+  "bytes": 452732,
+  "sha256": "3195aa34c0e061c3106d8ce2585cd90dce02fa6793f5fbed3dde199f822161f1",
   "encoder": {
     "name": "cwebp",
     "version": "1.6.0",
@@ -22,8 +22,8 @@
       "none"
     ]
   },
-  "createdAt": "2026-10-16T02:30:25.431Z",
-  "capturedAt": "2026-10-16T02:29:39.522Z",
+  "createdAt": "2026-10-17T07:07:32.533Z",
+  "capturedAt": "2026-10-17T07:07:09.762Z",
   "subject": "Two real rendered player views of one live multiplayer v2 match, captured at the same instant, each from its own player camera with its own HUD",
   "multiplayer": {
     "version": 2,
@@ -62,19 +62,19 @@
     "hullAngleDeg": 20,
     "bearingDeg": 0,
     "center": [
-      46,
-      22
+      -10,
+      70
     ],
     "alpha": {
-      "x": 46,
-      "z": 12,
-      "y": 3,
+      "x": -10,
+      "z": 60,
+      "y": 2.33,
       "yaw": -0.3491
     },
     "bravo": {
-      "x": 46,
-      "z": 32,
-      "y": 3.1,
+      "x": -10,
+      "z": 80,
+      "y": 2.22,
       "yaw": 2.7925
     }
   },
@@ -83,50 +83,13 @@
       "slot": "player-one",
       "side": "alpha",
       "name": "Alpha Commander",
-      "playerId": "p_ab962a948e3548ce8cc9cf89",
+      "playerId": "p_8033a488a95f4cfd95708242",
       "vehicle": {
-        "specId": "m1a2",
+        "specId": "m1a1_abrams_hc",
         "name": "M1A1 Abrams HC"
       },
       "camo": "factory",
-      "turretErrorDeg": 0.17,
-      "view": {
-        "distanceM": 20,
-        "opponentVisible": true,
-        "opponentNdc": [
-          0.059,
-          0.057,
-          0.964
-        ],
-        "camera": {
-          "pos": [
-            43,
-            6.89,
-            4.4
-          ],
-          "fov": 42
-        },
-        "canvas": [
-          1280,
-          720
-        ],
-        "renderScale": "1.000",
-        "dynScale": "1.000",
-        "networkStrip": "16MSSEAT 02/28",
-        "timeOfDay": null
-      }
-    },
-    {
-      "slot": "player-two",
-      "side": "bravo",
-      "name": "Bravo Commander",
-      "playerId": "p_fe561a9ef23b476e8c750f01",
-      "vehicle": {
-        "specId": "t90m",
-        "name": "T-90AM"
-      },
-      "camo": "factory",
-      "turretErrorDeg": 0.11,
+      "turretErrorDeg": 0.16,
       "view": {
         "distanceM": 20,
         "opponentVisible": true,
@@ -137,9 +100,46 @@
         ],
         "camera": {
           "pos": [
-            49,
-            7.01,
-            39.6
+            -13,
+            6.25,
+            52.4
+          ],
+          "fov": 42
+        },
+        "canvas": [
+          1280,
+          720
+        ],
+        "renderScale": "1.000",
+        "dynScale": "1.000",
+        "networkStrip": "22MSSEAT 02/28",
+        "timeOfDay": null
+      }
+    },
+    {
+      "slot": "player-two",
+      "side": "bravo",
+      "name": "Bravo Commander",
+      "playerId": "p_4756c1b9c0924a149c7260ec",
+      "vehicle": {
+        "specId": "t90am",
+        "name": "T-90AM"
+      },
+      "camo": "factory",
+      "turretErrorDeg": 0.04,
+      "view": {
+        "distanceM": 20,
+        "opponentVisible": true,
+        "opponentNdc": [
+          0.059,
+          0.057,
+          0.964
+        ],
+        "camera": {
+          "pos": [
+            -7,
+            6.14,
+            87.6
           ],
           "fov": 42
         },
@@ -155,14 +155,14 @@
     }
   ],
   "capture": {
-    "serverTick": 6517,
-    "skewMs": 2472,
+    "serverTick": 4747,
+    "skewMs": 1742,
     "framingsCaptured": [
       "duel"
     ],
     "niceness": 10,
-    "lockWaitMs": 272910,
-    "lockHeldMs": 406118,
+    "lockWaitMs": 522367,
+    "lockHeldMs": 408212,
     "browserErrors": 0
   }
 }

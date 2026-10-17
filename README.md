@@ -238,7 +238,7 @@ interpolation, reliable fire edges, reconnectable room state, and separate contr
 7v7 battle responsive without giving the client authority.
 
 <p align="center">
-  <img src="public/media/multiplayer-r1/dual-perspective.webp" alt="Side-by-side live browser multiplayer screens showing an M1A2 Abrams and T-90M Proryv facing each other from opposing player perspectives">
+  <img src="public/media/multiplayer-r1/dual-perspective.webp" alt="Side-by-side live browser multiplayer screens showing an M1A1 Abrams HC and a T-90AM facing each other from opposing player perspectives">
 </p>
 <p align="center"><sub><b>Two screens, opposing sights:</b> paired live 1v1 captures preserve the real battle HUD, authoritative simulation, filtered snapshots, and each commander's view.</sub></p>
 
