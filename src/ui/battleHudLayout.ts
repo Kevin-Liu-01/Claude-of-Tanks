@@ -187,16 +187,13 @@ export function installBattleHudLayout(root: HTMLElement): void {
   // A window being resized (sizes arriving within RESIZE_SETTLE_MS of each other) replans once it settles, while nothing
   // planned is on screen; a single change (a keyboard, a rotation) replans at once.
   let settleTimer: ReturnType<typeof setTimeout> | 0 = 0, settled = false, lastSize = -1, lastSizeAt = -Infinity, inRun = false;
-  // The live readout hides for 30 frames on every sight change (hud.ts setMode): plan with its last place.
-  let readout: PlanRect | null = null, readoutSize = 0;
-  const rect = (box: DOMRect): PlanRect => ({ x: Math.round(box.left), y: Math.round(box.top), w: Math.round(box.width), h: Math.round(box.height) });
   // The rosters as they stand without Tab, for this window and these rosters: the plan sees them while Tab is held, so
   // holding it moves nothing (the held rosters stop short of what is shown instead).
   let restingEars: { size: number; left: DOMRect | null; right: DOMRect | null; counts: number } | null = null;
   /** Whether anything the plan places (or the Tab rosters it bounds) is on screen. */
   const planShown = () => root.classList.contains('rosters-expanded') || !!root.querySelector('.cot-sixth.on,.cot-alert.show,.cot-prebattle.on,.cot-revive.on')
     || !!document.querySelector('.cot-medal-toasts')?.childElementCount;
-  function mouseNoticePlan(width: number, height: number, top: number, seen: readonly (PlanBox | null)[], net: DOMRect | null,
+  function mouseNoticePlan(width: number, height: number, top: number, seen: readonly (PlanBox | null)[], net: DOMRect | null, map: DOMRect | null,
     rosters: readonly [DOMRect | null, number, DOMRect | null, number],
     systemsLeft: number, systemsTop: number, systemsWidth: number, systemsHeight: number, sideWidth: number,
     leftTop: number, leftBottom: number, rightTop: number, rightBottom: number,
@@ -235,9 +232,11 @@ export function installBattleHudLayout(root: HTMLElement): void {
     add(read('.cot-cons'));
     const host = read('.cot-si-cardhost');
     if (host && report.height > 0) box(host.left, report.top, host.width, report.height);
-    if (readoutSize !== size) { readout = null; readoutSize = size; }
-    if (net && net.width > 0 && net.height > 0) readout = rect(net);
-    if (readout) box(readout.x, readout.y, readout.w, readout.h);
+    // The fps/ping readout: below 768 px its place is fixed under the objective (battleHudLayout.css, 88 x 20 at
+    // --hud-network-left), kept whether it shows or not (it is opt-in, and hides for 30 frames on a sight change);
+    // wider, it sits in the top-right corner row, by the score
+    if (width < 768) box(width > height ? Math.max(122, (map?.right ?? 104) + 8) : (map?.right ?? 104) + 8, top + 8, 88, 20);
+    else add(net);
     add(read('.cot-spec.show'));
     // the drone's and the gunship's flight console while their view is up (a view change, like the spectator tray),
     // where keeping off it costs no reticle clearance (below)
@@ -452,7 +451,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         : Math.max(top, planRight ? (rosterTopRight ?? planRight.top) + planRight.height : 0, planNetworkBottom) + 8;
       // the left lane's floor without the vehicle-status strip, which comes and goes with damage
       const planLeftBottom = Math.min(leftFloor(height, touch, true), systemsHeight && systemsLeft < sideWidth + 12 ? systemsTop - 8 : height);
-      plan = mouseNoticePlan(width, height, top, [score, objective, map, ammo, phone ? stripLane : strip], telemetry,
+      plan = mouseNoticePlan(width, height, top, [score, objective, map, ammo, phone ? stripLane : strip], telemetry, map,
         [planLeft, planLeft ? battleRosterHeight(height, planLeftBottom - planLeft.top, root.querySelector('.cot-ear.l.icon-grid') ? 124 : 48, rosterCountLeft, true) : 0,
           planRight, planRight ? Math.min(battleRosterHeight(height, rightBottom - rosterStart, root.querySelector('.cot-ear.r.icon-grid') ? 124 : 48, rosterCount, true),
             Math.max(0, report.top - rosterStart - 32)) : 0],

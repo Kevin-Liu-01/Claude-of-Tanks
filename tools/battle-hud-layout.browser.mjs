@@ -72,7 +72,12 @@ const NOTICE_ALERTS = [
 const LONG_ALERTS = ['wave123','autoAimLong','flagDroppedEnemy','ammoEmpty'];
 // Where every place clear of the reticle crosses a side lane whole, that lane holds no row while the element shows
 // (mouseNoticePlan.selftest.mjs lists the same: its last resort before any reticle ink).
-const EMPTY_LANES_OK={'mouse-768x600':/alert|countdown|revive|medal/,'mouse-481x700':/alert/};
+// Matched against the stage key ('<context>|<set>|<sight>').
+const EMPTY_LANES_OK={'mouse-768x600':/alert|revive|medal/,'mouse-481x700':/alert/,
+  // three up at once (the revive count beside both notices) on a phone; the medal card and the revive count on a short
+  // window without an objective (its left lane is one row deep)
+  'phone-mouse':/alert:[^|]*\+revive/,'chinese-phone-mouse':/alert:[^|]*\+revive/,
+  'short-mouse':/^std\|[^|]*(medal|revive)/,'chinese-short-mouse':/^std\|[^|]*(medal|revive)/};
 // [key, fixture state, kill rows kept (null: as staged), rosters a side (null: 7), notice set ('' none), sight, Tab held]
 function noticeStages(){
   const out=[];
@@ -368,7 +373,7 @@ try {
           const mainRows=mainStage?._l?.[i]??-1;
           if(!set&&lane.shown<mainRows)failures.push(`the ${side==='l'?'left':'right'} lane shows ${lane.shown} kill rows with nothing up (main ${mainRows})`);
           // (the countdown runs before the first kill: its lanes hold none to keep)
-          if(set&&!set.includes('countdown')&&lane.shown<1&&(mainRows<0||mainRows>0)&&!EMPTY_LANES_OK[name]?.test(set))
+          if(set&&!set.includes('countdown')&&lane.shown<1&&(mainRows<0||mainRows>0)&&!EMPTY_LANES_OK[name]?.test(key))
             failures.push(`the ${side==='l'?'left':'right'} lane shows no kill row while ${set} is up`);
         }
         // a kill burst and Tab move nothing: the same set and sight in k0, k3, the burst and Tab share every box
