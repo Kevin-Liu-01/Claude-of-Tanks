@@ -475,6 +475,12 @@ export interface StoreyInterior {
 
 const ROOM_MIN_M2 = 2;
 const ROOM_MIN_SHARE = 0.5;
+/**
+ * A room is at least this deep across its plan both ways (m): a pocket the gap closing shuts (a porch under a portico's
+ * podium, a step's recess, the bay between two buttresses) is no room (blackglass's civic hall, 2026-10-17: a 1.5 m porch
+ * pocket got a room whose walls stood in its open entrance).
+ */
+const ROOM_MIN_SPAN_M = 1.9;
 /** How far round the hint a room's component is looked for (m). */
 const HINT_REACH_M = 2.5;
 
@@ -540,6 +546,18 @@ export function storeyInterior(anatomy: Pick<StructureDamageAnatomy, 'enclosure'
     inRoom[c] = 1; n++;
   }
   if (n * cell * cell < ROOM_MIN_M2) return null;
+  {
+    let i0 = nx, i1 = -1, k0 = nz, k1 = -1;
+    for (let c = 0; c < inRoom.length; c++) {
+      if (!inRoom[c]) continue;
+      const i = c % nx, k = (c - i) / nx;
+      if (i < i0) i0 = i;
+      if (i > i1) i1 = i;
+      if (k < k0) k0 = k;
+      if (k > k1) k1 = k;
+    }
+    if (Math.min(i1 - i0 + 1, k1 - k0 + 1) * cell < ROOM_MIN_SPAN_M) return null;
+  }
   // rectangles: each row's runs, a run stacked on the same run of the row before extends its rectangle
   const rects: number[][] = [];
   let open = new Map<string, number[]>();
