@@ -14336,6 +14336,10 @@ function buildLeo2A4M(P: TankBuilderPort) {
       st.position.set(0.58, 1.52, 2.86);
       P.hullG.add(st);
     }
+    // VEH-13 (2026-10-16): a closure web floors each nose slot. The slots run between the hull nose (|x| <= 0.88) and
+    // the front track wrap (|x| >= 0.99) at z 3.15-3.60, 6-10 cm wide and open to the ground from above. The B2
+    // contiguity scan read the right one as enclosed sky beside the re-seated glacis links.
+    for (const s of [-1, 1] as const) P.add('hull', box(0.125, 0.02, 0.49), s * 0.9225, 1.155, 3.375);
     P.add('hullDetail', box(0.30, 0.16, 0.015), 0.02, 1.32, -3.755);            // convoy plate
     for (const s of [-1, 1] as const) {
       P.add('hullDetail', box(0.09, 0.09, 0.12), s * 0.72, 1.28, 3.66);
