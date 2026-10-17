@@ -175,6 +175,14 @@ assert.equal(result.other.mode, 'none', 'the other step does not reach the helpe
 // A declaration pinned to other call sites does not cover a changed one.
 const declared = { ...config, declared: { 'tools/helper.mjs': { pin: '0000000000000000', reads: [] } } };
 assert.match(resolveChanged(state({ cfg: declared }), m0).sizes.reasons['*'].join(), /declaration pin stale for tools\/helper\.mjs/);
+// A file read at a computed path is a dynamic read too (a literal path is a named input); `world.spawn` is not.
+put('tools/helper.mjs', "import { readFileSync } from 'node:fs';\nexport const round = (file) => readFileSync(file).length;\n");
+assert.match(resolveChanged(state(), m0).sizes.reasons['*'].join(), /undeclared dynamic read in tools\/helper\.mjs/);
+put('tools/helper.mjs', "import { readFileSync } from 'node:fs';\nexport const round = () => readFileSync('tools/data.json').length;\nexport const go = (world) => world.spawn(1);\n");
+put('tools/data.json', '{"a":1}\n');
+const literal = state();
+assert.ok(literal.steps.sizes.decomposed, 'a literal read and a non-child-process spawn need no declaration');
+assert.ok(literal.steps.sizes.toolFiles.includes('tools/data.json'), 'a literal read is a named input of the step');
 put('tools/helper.mjs', 'export const round = (x) => Math.round(x);\n');
 put('src/vehicles/profiles/beta.ts', "export const BETA = { b1: 2 };\nexport const load = (name) => import(name);\n");
 result = resolveChanged(state(), m0);

@@ -5,9 +5,9 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { createGraph, dynamicSites, h16 } from './graph.mjs';
+import { accessorPin, createGraph, dynamicSites, h16 } from './graph.mjs';
 import { computeState, emptyManifest, parseGroupLoaders, recordStep, refreshComponents, resolveChanged } from './fingerprint.mjs';
-import { CPU_FIXPOINT_STEPS, DECLARED_DYNAMIC, GROUP_LOADERS_FILE, LOADER_FILES, STEPS } from './steps.mjs';
+import { CPU_FIXPOINT_STEPS, DECLARED_DYNAMIC, GROUP_LOADERS_FILE, LOADER_FILES, PER_ID_ACCESSORS, STEPS } from './steps.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
 
@@ -18,7 +18,15 @@ for (const [file, declaration] of Object.entries(DECLARED_DYNAMIC)) {
   assert.equal(pin, declaration.pin, `${file}: dynamic call sites changed; review them and set pin: '${pin}' in steps.mjs\n  ${sites.join('\n  ')}`);
 }
 
+for (const [file, accessor] of Object.entries(PER_ID_ACCESSORS)) {
+  const pin = accessorPin(readFileSync(join(root, file), 'utf8'), accessor.exportName);
+  assert.equal(pin, accessor.pin, `${file}: its ${accessor.exportName} reads changed; review that they stay per id and set pin: '${pin}'`);
+}
+
 const state = computeState({ root, steps: STEPS });
+// The accessors take effect: seats key the roof-gun inventory per id, not the whole table.
+assert.deepEqual(state.steps.seats.foreignTables, [], 'seats reach no table whole');
+assert.ok(state.steps.seats.rowTables.includes('auxiliaryInventory'), 'seats key the inventory per id');
 assert.deepEqual(state.globalReasons, [], 'the fleet decomposes');
 for (const step of STEPS) assert.ok(state.steps[step.name].decomposed, `${step.name}: ${state.steps[step.name].reasons.join('; ')}`);
 assert.ok(state.ids.length >= 200, 'the roster is read');
