@@ -9,7 +9,7 @@ export type SeatPlanEntry = number | readonly number[];
 export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<string, SeatPlanEntry>>>> = {
   "amx40_proto": {
     "amx40-rear-links@hull(1.19,1.22,-3.37)": [-1.716, -0.047, -4.06, 0.5, 0.5, 0.5, -0.5, 0],
-    "fitting@hull(-1.65,1.23,2.64)": -1,
+    "fitting@hull(-1.08,1.70,1.62)": -1,
   },
   "bmp2": {
     "fitting@hull(1.38,1.27,-2.60)": [0.755, 0.86963, -3.12336, 0.51656, -0.48287, 0.51656, -0.48287, 1],
@@ -110,21 +110,12 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   "m1a1ha": {
     "fitting@turret(0.30,0.35,-3.22)": [0.32703, 0.8165, -2.0625, 0, 0.70711, 0, 0.70711, 0],
   },
-  "m2a2_bradley": {
-    "fitting@hull(0.72,1.93,0.80)": -1,
-  },
   "m3a3_bradley": {
-    "fitting@hull(0.72,1.93,0.80)": -1,
+    "fitting@hull(0.50,1.67,2.21)": [0.5098, 1.56662, 2.64883, 0.03951, 0.706, 0.03951, 0.706, 1],
     "fitting@turret(-0.48,0.59,-1.04)": [0.27775, 0.69926, 0.20107, 0.01219, 0, 0, 0.99993, 1],
   },
   "m46_patton": {
     "fitting@turret(1.11,0.56,-0.01)": [-1.07252, 0.59945, -0.03196, 0.00016, 0.00011, 0.57109, 0.82089, 1],
-  },
-  "m6_linebacker": {
-    "fitting@hull(0.72,1.93,0.80)": -1,
-  },
-  "marder1a3": {
-    "fitting@hull(0.72,1.93,0.80)": [1.04978, 2.01759, 1.14, 0.05056, 0.7053, -0.05056, 0.7053, 1],
   },
   "merkava1b": {
     "merkava-bow-links@hull(0.00,1.29,2.74)": [1.70727, -0.96132, 1.42191, 0.15616, -0.68774, -0.17258, 0.68764, 1],
@@ -222,7 +213,7 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
     "ua-abrams-rear-deck-shoes@hull(0.00,1.76,-3.55)": [0.143, 4.907, -3.46558, 0.5, 0.5, 0.5, -0.5, 1],
   },
   "ua_m2a3_bradley": {
-    "fitting@hull(0.72,1.93,0.80)": -1,
+    "fitting@hull(0.50,1.67,2.21)": [0.55675, 1.72188, 2.20357, 0.05179, 0.70521, 0.05179, 0.70521, 1],
   },
   "xk2_black_panther": {
     "fitting@hull(-1.28,1.55,-3.30)": [-0.54488, 0.54764, 3.44111, 0.56755, 0.30925, 0.6359, 0.42176, 1],
