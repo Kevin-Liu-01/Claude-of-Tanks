@@ -24,6 +24,7 @@
 // a resolve-miss is a geometry/pipeline failure, never a failed save.
 
 import { Vector3 } from 'three';
+import { uniqueIds } from './id-list.mjs';
 import { writeFileSync } from 'node:fs';
 
 // Register the FULL roster (specs + modern1-3 + userdrops + variants) the
@@ -35,7 +36,7 @@ const { createCombatState, resolveShellHit } = await import('../src/sim/damage.t
 
 const args = process.argv.slice(2);
 const eq = args.find((a) => a.startsWith('--ids='));
-const requested = eq ? eq.slice(6).split(',').map((s) => s.trim()).filter(Boolean) : null;
+const requested = eq ? uniqueIds(eq.slice(6).split(',').map((s) => s.trim()).filter(Boolean), 'module-hit-probe --ids') : null;
 const verbose = args.includes('-v');
 const jsonIdx = args.indexOf('--json');
 const jsonOut = jsonIdx >= 0 ? args[jsonIdx + 1] : '';

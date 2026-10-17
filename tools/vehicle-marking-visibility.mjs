@@ -1,4 +1,5 @@
 import { writeFileSync } from 'node:fs';
+import { uniqueIds } from './id-list.mjs';
 import { resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
@@ -8,8 +9,8 @@ import { ALL_TANK_IDS } from '../src/vehicles/specs.ts';
 const outputArg = process.argv.find((arg) => arg.startsWith('--sheet='));
 const sheetPath = resolve(outputArg?.slice('--sheet='.length)
   || '/tmp/claude-of-tanks-vehicle-markings-fleet.png');
-const requestedIds = process.argv.find((arg) => arg.startsWith('--ids='))
-  ?.slice('--ids='.length).split(',').map((id) => id.trim()).filter(Boolean);
+const requestedIds = uniqueIds(process.argv.find((arg) => arg.startsWith('--ids='))
+  ?.slice('--ids='.length).split(',').map((id) => id.trim()).filter(Boolean), 'vehicle-marking-visibility --ids');
 const ids = requestedIds?.length ? requestedIds : ALL_TANK_IDS;
 const server = await createServer({
   server: { host: '127.0.0.1', port: 0 },

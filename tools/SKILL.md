@@ -46,6 +46,18 @@ avoid editing generated evidence manually. Combat-anatomy generation always
 uses `ALL_TANK_IDS`; donor/retired spec rows are not part of the playable gate.
 Receipts import `near`, `nearStrict` and `geometryHash` from
 `receipt-kit.test-support.mjs` instead of defining their own copies.
+Fleet tool defaults (2026-10-16, test-speed R4c/R4d): every `--ids` reader
+passes its list through `uniqueIds` (`id-list.mjs`), so a repeated id fails by
+name before any server, browser or capture hold (`id-list.selftest` scans
+`tools/*.mjs`). Browser tools take their Vite `server` from `toolServerOptions`
+(127.0.0.1, strictPort false), build URLs with `boundOrigin(server)` (never
+`localhost`), and load their first page with `loadReadyPage` (180 s navigation,
+one retry of a timeout; `COT_NAV_TIMEOUT_MS`, `COT_READY_TIMEOUT_MS`,
+`COT_NAV_RETRIES`) from `tool-page-load.mjs`. Release and regen chains run
+`gen-interior-fills.mjs --release` (= `--rounds=8 --min-fine=1`, the shipped
+records' flags; bare defaults warn). In `tank-release-plan.mjs` a step's `gpu`
+flag marks the browser tools a release slice runs in a capture hold; pure-Node
+steps such as `turret-barrel-circularity` are `cpu` and run beside the pool.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->

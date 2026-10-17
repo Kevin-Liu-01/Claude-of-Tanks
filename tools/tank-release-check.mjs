@@ -53,6 +53,8 @@ try {
   for(const stage of tankReleaseStages(ids,gate))await runStage(stage);
   console.log(`\n[tank-release] PASS ${ids} (${((performance.now()-started)/60000).toFixed(1)} min)`);
 } catch (error) {
+  // A plan error (a repeated or unknown id) has no step: print it, so the refusal is loud (2026-10-16, R4c)
+  if (!error.step) console.error(`[tank-release] ${error.message}`);
   console.error(`\n[tank-release] FAIL ${ids}`);
   process.exit(error.status || 2);
 }

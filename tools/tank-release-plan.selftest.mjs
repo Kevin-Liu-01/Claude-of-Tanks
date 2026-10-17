@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { tankReleaseSteps, tankReleaseStages } from './tank-release-plan.mjs';
 const steps=tankReleaseSteps('leo2a7v,t14_armata',true,'node-test');
 const byTool=tool=>steps.find(step=>step.args[0]===`tools/${tool}.mjs`);
@@ -85,3 +86,20 @@ for(const step of type100.filter(step=>step.args.some(arg=>arg.startsWith('--ids
 const allConcepts=tankReleaseSteps('type100,object695,ztz100_prototype,ztz100',true,'node-test');
 assert.deepEqual(allConcepts.find(step=>step.args[0]==='tools/procedural-fidelity.mjs').args,
   ['tools/procedural-fidelity.mjs','--ids=ztz100','--check','--board','--neutral-board']);
+
+// R4d (2026-10-16): `gpu` marks exactly the steps whose tool launches a browser (the GPU set a release slice runs in a
+// capture hold); turret-barrel-circularity builds with no renderer, so it is a CPU step. The flag is held to each
+// tool's own imports, so a step cannot sit in the wrong set.
+const launchesBrowser = (tool) => /^import [^\n]* from '(?:puppeteer|\.\/isolated-capture-browser\.mjs)';$/m.test(readFileSync(tool, 'utf8'));
+for (const step of steps) {
+  assert.equal(typeof step.gpu, 'boolean', `${step.args[0] ?? step.command}: every step declares its resource`);
+  if (step.command !== 'node-test') { assert.equal(step.gpu, false, 'npm steps are not GPU steps'); continue; }
+  assert.equal(step.gpu, launchesBrowser(step.args[0]), `${step.args[0]}: gpu ${step.gpu} must match whether the tool launches a browser`);
+}
+assert.deepEqual(steps.filter((step) => step.gpu).map((step) => step.args[0].slice(6, -4)), ['tank-standard-check', 'procedural-fidelity',
+  'presentation-centering', 'module-visual-align-probe', 'tank-assets-check', 'track-duplicate-audit', 'muzzle-bore-probe'],
+  'the GPU set: the seven browser tools');
+assert.equal(byTool('turret-barrel-circularity').gpu, false, 'turret-barrel-circularity is pure Node: out of the GPU set');
+assert.equal(byTool('turret-barrel-circularity').capture, true, 'it keeps the shared resource queue in tank:release:check, like every CPU fleet build');
+assert.equal(byTool('tank-standard-check').capture, false, 'the standard check still owns its phase locks');
+console.log('tank-release-plan: the GPU set is exactly the browser tools; turret-barrel-circularity runs as a CPU step');

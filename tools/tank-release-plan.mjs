@@ -1,21 +1,27 @@
 import {isPhotoReference} from './photo-reference-policy.mjs';
 import {FLEET_GROUP_BY_ID} from '../src/vehicles/fleetManifest.ts';
 import {validateSelectedIds,partitionConceptIds} from './first-party-concept-policy.mjs';
+import {uniqueIds} from './id-list.mjs';
 /** Declarative release composition, tested without launching browser children. */
 export function tankReleaseSteps(ids, gate, node = process.execPath) {
   if (!ids.split(',').every(id=>id.trim().length>0)) throw new Error('release requires nonempty tank IDs');
-  const selectedIds=validateSelectedIds(ids.split(','),Object.keys(FLEET_GROUP_BY_ID));
+  // a repeated id fails by name before any step (2026-10-16, test-speed R4c; tools/id-list.mjs)
+  const selectedIds=validateSelectedIds(uniqueIds(ids.split(','),'tank:release:check --ids'),Object.keys(FLEET_GROUP_BY_ID));
   const comparisons=partitionConceptIds(selectedIds).comparisons.filter(id=>!isPhotoReference(id));
   const selected=`--ids=${ids}`;
   // Fleet construction and builds share the resource queue with rendering.
   // Only children that already queue their own phases bypass this wrapper.
-  const cpu=(tool,...args)=>({command:node,args:[`tools/${tool}.mjs`,...args],capture:true});
-  const gpu=(tool,...args)=>({...cpu(tool,...args),capture:true});
+  // `gpu` (2026-10-16, test-speed R4d) marks the steps that launch a browser:
+  // the GPU set a release slice runs inside a capture hold. Pure-Node steps
+  // (gpu false) run beside the pool instead; tank-release-plan.selftest holds
+  // the flag to each tool's own imports.
+  const cpu=(tool,...args)=>({command:node,args:[`tools/${tool}.mjs`,...args],capture:true,gpu:false});
+  const gpu=(tool,...args)=>({...cpu(tool,...args),capture:true,gpu:true});
   return [
     // Reject fitting/outline/continuity defects before full-fleet anatomy and
     // the integrated test/build tail. Same assertions and fresh measurements;
     // only ordering changes. This child already queues its render phases.
-    {...cpu('tank-standard-check',selected,...(gate?['--gate']:[])),capture:false},
+    {...gpu('tank-standard-check',selected,...(gate?['--gate']:[])),capture:false},
     // Sealed hull (2026-09-13): no view may look into the tank through a culled
     // or missing face; each id is held to docs/geometry-gate/sealed.json.
     cpu('tank-sealed-check',selected,'--ledger=docs/geometry-gate/sealed.json',...(gate?['--gate']:[])),
@@ -33,9 +39,10 @@ export function tankReleaseSteps(ids, gate, node = process.execPath) {
     gpu('tank-assets-check',selected),
     gpu('track-duplicate-audit',selected),
     gpu('muzzle-bore-probe',selected),
-    gpu('turret-barrel-circularity',selected),
-    {command:'npm',args:['test'],capture:false},
-    {command:'npm',args:['run','build:private'],capture:true},
+    // R4d (2026-10-16): pure Node (createTank with no renderer), so out of the GPU set
+    cpu('turret-barrel-circularity',selected),
+    {command:'npm',args:['test'],capture:false,gpu:false},
+    {command:'npm',args:['run','build:private'],capture:true,gpu:false},
   ];
 }
 
