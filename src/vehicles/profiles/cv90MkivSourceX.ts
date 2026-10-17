@@ -8,7 +8,7 @@ import { KIT } from './kit.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-import { armorLoft, turretEquipment, openTube, optic, antenna, deckGrille, sideWall, chassisLoft } from './europeSourcePrimitives.ts';
+import { armorLoft, turretEquipment, openTube, opticFrame as optic, antenna, deckGrille, sideWall, chassisLoft } from './europeSourcePrimitives.ts';
 const {box,cylY,cylZ,cylX}=KIT;
 
 /** The asymmetric six-tube cheek arrays use source-measured mouth centers. */
