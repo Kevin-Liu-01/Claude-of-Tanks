@@ -73,6 +73,14 @@ interface TopPanel {
    */
   restOnProbeM?: number;
   /**
+   * Release 227 (round 2, 2026-10-16; the critic on the national frontal ERA: "net blades and leaf clumps sink into the new
+   * brick rows and stick out between them"): a laid net bridges a slot or a valley narrower than twice this reach (a gap
+   * between cassettes, the step between two glacis terraces): where the armour on both sides of a point, this far along x
+   * or along z, stands more than a centimetre over the armour under the point, the net rests at the lower of the two. On
+   * a plain slope the two sides straddle the point and nothing changes; at a single step the net still follows it.
+   */
+  bridgeSlotsM?: number;
+  /**
    * 2026-10-09 (the netting lane; the owner: "add a ton more netting ... all over"): the carrier's authored height is
    * read from the owner's armour where the probe finds it (the highest surface within 3.5 cm), so a net laid over a
    * whole roof or deck follows every step and slope of it; `yAt` holds only where no armour answers.
@@ -974,6 +982,20 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
         const under = hits.find((h) => !h.up && h.y < hits[0].y - 1e-4);
         if (!under || here === null || under.y < here + 0.06) standing = true;
       }
+    }
+    // release 227 (bridgeSlotsM): over a slot or a valley the net rests on the lower of its two rims
+    if (panel.bridgeSlotsM !== undefined && centre !== null && !standing) {
+      const b = panel.bridgeSlotsM, under = (sx: number, sz: number): number | null => {
+        if (sx < x0 || sx > x1 || sz < z0 || sz > z1) return null;
+        for (const h of probe?.surfacesAt?.(sx, sz) ?? []) if (h.up && h.y <= ceiling) return h.gear ? null : h.y;
+        return null;
+      };
+      let bridged: number | null = null;
+      for (const [ax, az] of [[b, 0], [0, b]] as const) {
+        const a = under(x + ax, z + az), c = under(x - ax, z - az);
+        if (a !== null && c !== null && a > centre + 0.01 && c > centre + 0.01) bridged = Math.max(bridged ?? -Infinity, Math.min(a, c));
+      }
+      if (bridged !== null) return { rest: bridged, standing };
     }
     // the armour under the point itself; its neighbours' only over a slot or a bolt head (their highest on a sloped plate
     // would hold the net off the slope)

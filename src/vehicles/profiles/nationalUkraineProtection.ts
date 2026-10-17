@@ -96,7 +96,9 @@ function camouflage(id:ProtectionId,index:number):GhillieConfig{
      // every yaw) comes down to within 3-7 cm of it from 1.5 m out and below it past 2.7 m, so no net or bough fits
      top:[
       laidNet({x0:-1.5,x1:1.5,z0:k.glacis[0],z1:k.glacis[1],nx:30,nz:Math.round((k.glacis[1]-k.glacis[0])/.1),
-       yAt:(_x:number,z:number)=>k.glacisTop-Math.max(0,z-k.glacis[0])*k.fall,garnishRiseM:.1,seed:137}),
+       yAt:(_x:number,z:number)=>k.glacisTop-Math.max(0,z-k.glacis[0])*k.fall,garnishRiseM:.1,seed:137,
+       // release 227 (round 2): over Hetman II's chevron bands the net bridges the steps between them (bridgeSlotsM)
+       ...(id==='t72b3m_hetman_ii'?{bridgeSlotsM:.05}:{})}),
      ],
      // (release 227, round 2: Hetman II's bow drape is tied over the faces of its hinged lower-plate aprons, under its
      // nose sill: the T-72B3M lower plate rises from (z 2.60, y .533) to (3.342, .955), the aprons' faces stand .07 off it)
