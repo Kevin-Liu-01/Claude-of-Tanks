@@ -1871,6 +1871,9 @@ const RAIL_FOOTPRINT_SAMPLES: ReadonlyArray<readonly [number, number]> = [
 const RAIL_SEAT_SINK_M = 0.05;
 /** Slab overhang past the span ends (the joints of consecutive tilted slabs stay closed). */
 const RAIL_SLAB_OVERHANG_M = 0.35;
+/** The receipts read a track's parts by their boxes' sizes (BoxGeometry.parameters): a shaped part carries its box's. */
+const sized = <T extends THREE.BufferGeometry>(g: T, width: number, height: number, depth: number): T & { parameters: { width: number; height: number; depth: number } } =>
+  Object.assign(g, { parameters: { width, height, depth } });
 /** A flat-bottom rail's section about its 9 x 17 cm box's centre (x across, y up): the foot, the web, the head. */
 const RAIL_SECTION: ReadonlyArray<readonly [number, number]> = [
   [0.065, -0.085], [0.065, -0.073], [0.012, -0.062], [0.01, 0.035], [0.033, 0.048], [0.033, 0.077], [0.022, 0.085],
@@ -1948,10 +1951,13 @@ function layRailSpan(
   // carries a worn bright head; and the sleepers lie every ~0.7 m. The seeded draws are exactly the old ones (24 slab
   // colours, one jitter per seeded sleeper): the infill sleepers and the new parts take none.
   const deep = lay.conform === 'full';
-  // (the looks lane, 227; the r2 sweep: the track all plain boxes) the bed's top crowned, its outer edges falling 4 cm
-  // to the shoulders; its stone's 24 colour draws spent as the box's 24 corners spent them, laid round its corners
-  const bh = (deep ? RAIL_SLAB_DEPTH_FULL_M : 0.16) / 2, bw = lay.ballast / 2, crown = Math.min(0.3, bw * 0.3);
-  const bal = sectionPrism([[bw, -bh], [bw, bh - 0.04], [bw - crown, bh], [-bw + crown, bh], [-bw, bh - 0.04], [-bw, -bh]], len + RAIL_SLAB_OVERHANG_M, 0.55);
+  // (the looks lane, 227; the r2 sweep: the track all plain boxes) the bed's top crowned a centimetre along the track's
+  // centre, its edges where the shoulders meet them; its stone's 24 colour draws spent as the box's 24 corners spent
+  // them, laid round its corners
+  const bh = (deep ? RAIL_SLAB_DEPTH_FULL_M : 0.16) / 2, bw = lay.ballast / 2;
+  const bal = sized(sectionPrism([[bw, -bh], [bw, bh], [0, bh + 0.01], [-bw, bh], [-bw, -bh]], len + RAIL_SLAB_OVERHANG_M, 0.55),
+    lay.ballast, 2 * bh, len + RAIL_SLAB_OVERHANG_M);
+  bal.userData.colourDraws = 24;
   {
     const tones = Array.from({ length: 24 }, () => 0.062 + rng() * 0.020);
     const n = bal.attributes.position.count;
@@ -1974,7 +1980,7 @@ function layRailSpan(
   {
     const run = 0.62, drop = 0.24, slopeLen = Math.hypot(run, drop), slopeAng = Math.atan2(drop, run);
     for (const sideSign of [-1, 1]) {
-      const shoulder = bevelBox(slopeLen, 0.05, len + RAIL_SLAB_OVERHANG_M, 0.015, 0.55);
+      const shoulder = sized(bevelBox(slopeLen, 0.05, len + RAIL_SLAB_OVERHANG_M, 0.015, 0.55), slopeLen, 0.05, len + RAIL_SLAB_OVERHANG_M);
       const pos = shoulder.attributes.position, col = new Float32Array(pos.count * 3);
       for (let i = 0; i < pos.count; i++) {
         const foot = (pos.getX(i) * sideSign + slopeLen / 2) / slopeLen; // 0 at the bed's edge, 1 at the foot
@@ -1994,11 +2000,11 @@ function layRailSpan(
   const half = lay.gauge / 2;
   for (const side of [-half, half]) {
     // (227) the flat-bottom rail's section — its foot, its web, its head — where a 9 x 17 cm box stood
-    const rail = sectionPrism(RAIL_SECTION, len + 0.06, 2.0);
+    const rail = sized(sectionPrism(RAIL_SECTION, len + 0.06, 2.0), 0.09, 0.17, len + 0.06);
     place(rail, side, 0.24, 0);
     buckets.dark.push(rail);
     // ground lane: the head the wheels keep bright — worn steel over the rusted web (227: crowned, as a worn head is)
-    const head = sectionPrism([[0.033, -0.008], [0.033, 0.004], [0.02, 0.008], [-0.02, 0.008], [-0.033, 0.004], [-0.033, -0.008]], len + 0.06, 2.0);
+    const head = sized(sectionPrism([[0.033, -0.008], [0.033, 0.004], [0.02, 0.008], [-0.02, 0.008], [-0.033, 0.004], [-0.033, -0.008]], len + 0.06, 2.0), 0.066, 0.016, len + 0.06);
     const hp = head.attributes.position, hc = new Float32Array(hp.count * 3);
     for (let i = 0; i < hp.count; i++) { hc[i * 3] = 0.23; hc[i * 3 + 1] = 0.232; hc[i * 3 + 2] = 0.24; }
     head.setAttribute('color', new THREE.BufferAttribute(hc, 3));
@@ -2021,7 +2027,7 @@ function layRailSpan(
   };
   for (let sI = 0; sI < nS; sI++) {
     const t = (sI + 0.5) / nS;
-    const sl = bevelBox(lay.gauge + 0.66, 0.09, 0.28, 0.018, 1.4);
+    const sl = sized(bevelBox(lay.gauge + 0.66, 0.09, 0.28, 0.018, 1.4), lay.gauge + 0.66, 0.09, 0.28);
     weather(sl, ax + dx * t, az + dz * t, false);
     const jitter = (rng() - 0.5) * 0.05;
     if (lay.conform === 'full') {
@@ -2033,7 +2039,7 @@ function layRailSpan(
     }
     buckets.wood.push(sl);
     const ti = sI / nS; // on the span's start for the first: the gap across the joint with the last span closes too
-    const infill = bevelBox(lay.gauge + 0.66, 0.09, 0.28, 0.018, 1.4);
+    const infill = sized(bevelBox(lay.gauge + 0.66, 0.09, 0.28, 0.018, 1.4), lay.gauge + 0.66, 0.09, 0.28);
     infill.userData.railInfill = true;
     weather(infill, ax + dx * ti, az + dz * ti, true);
     const hashJ = (((Math.imul(Math.round((ax + dx * ti) * 100) ^ Math.imul(Math.round((az + dz * ti) * 100), 0x27d4eb2d), 0x165667b1) >>> 8) & 0xffff) / 65535 - 0.5) * 0.05;
