@@ -35,6 +35,11 @@ and loading policy; those contracts extend beyond this directory.
   restoration. Reuse the shared responsive layout owner.
 - Keep media paths, manifest entries, alt text, recipes, and attribution aligned.
   Preserve self-hosted telemetry opt-out and locally packaged subresources.
+- GA4 (`src/googleAnalytics.ts`) reaches only the public non-game pages,
+  lazily after idle through `src/analytics.ts` and the 404 runtime; it never
+  reaches the game entry. It sends from the production host only, queues
+  Consent Mode first, and strips query strings. `analytics.selftest.mjs`
+  enforces all of this.
 
 ## Common tasks → first action
 <!-- agent-docs:fill:tasks -->
