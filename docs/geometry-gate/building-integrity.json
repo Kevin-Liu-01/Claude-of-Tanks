@@ -276,8 +276,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.157,
-   "gapM2": 2.373,
+   "insideM2": 0.086,
+   "gapM2": 0,
    "invertedM2": 0
   },
   "longleaf/rangerlodge": {
@@ -399,11 +399,11 @@
   },
   "bengal/cottage": {
    "floating": 0,
-   "sliver": 8,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 1.622,
+   "gapM2": 0,
    "invertedM2": 0
   },
   "generic/compound": {
@@ -1239,7 +1239,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.248,
+   "insideM2": 0.244,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -1968,8 +1968,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
-   "gapM2": 1.38,
+   "insideM2": 0.134,
+   "gapM2": 0,
    "invertedM2": 0
   },
   "bengal/market": {
@@ -4502,5 +4502,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-17T19:04:05.235Z"
+ "updatedAt": "2026-10-17T21:44:51.651Z"
 }
