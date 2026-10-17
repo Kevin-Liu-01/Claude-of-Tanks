@@ -21,6 +21,7 @@
 
 import * as THREE from 'three';
 import { box, jitterUV, pitchSkillionRoof, scaleUV } from '../propGeometry.ts';
+import { bevelBox, sectionPrism } from './bevelBox.ts';
 import { planGroundedObbPose, planGroundedSegment } from '../propPlacement.ts';
 import type { GroundedSegmentEndpoint } from '../propPlacement.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
@@ -36,7 +37,7 @@ import { mooredHullPhase } from './mooredHullMotion.ts';
 // #16 r2 (Lane C, 2026-10-14): the waterside family's kits, their forms keyed on the coast's boats
 import { dressReedClump, reedFormForBoat, type ReedForm } from './reedBeds.ts';
 import {
-  buildDriftLog, buildMooringBuoy, driftCoastForBoat, fordMarker, fordStyleForBoat, mooringStakeGeometry, type DriftCoast, type FordStyle,
+  buildDriftLog, buildMooringBuoy, driftCoastForBoat, fordMarker, fordStyleForBoat, mooringStakeGeometry, ropeGeometry, type DriftCoast, type FordStyle,
 } from './waterside.ts';
 import {
   buildGangway, buildJetty, buildRivaSteps, ironBollard, jettyFormForCoast, legacyJettyDraws, timberBollard, type JettyForm, type JettyFrame,
@@ -1109,19 +1110,9 @@ function mooringStake(buckets: DressingBuckets, heightField: DressingHeightField
   stake.translate(sx, ground + 0.2, sz);
   buckets.wood.push(stake);
   breakableSmallProp('prop-mooring-stake', [stake], sinks); // (PRP-02) a hull or a round breaks it
-  // the line in four runs, sagging 0.14 m at its middle
+  // the line, sagging 0.14 m at its middle: a round rope (227: it was four square runs)
   const from: [number, number, number] = [head[0], head[1] - 0.03, head[2]], to: [number, number, number] = [sx, ground + 0.5, sz];
-  const at = (t: number): [number, number, number] => [from[0] + (to[0] - from[0]) * t,
-    from[1] + (to[1] - from[1]) * t - 0.14 * 4 * t * (1 - t), from[2] + (to[2] - from[2]) * t];
-  for (let k = 0; k < 4; k++) {
-    const a = at(k / 4), b = at((k + 1) / 4);
-    const runX = b[0] - a[0], runY = b[1] - a[1], runZ = b[2] - a[2], run = Math.hypot(runX, runZ);
-    const line = box(Math.hypot(run, runY) + 0.02, 0.025, 0.025, 1);
-    line.rotateZ(Math.atan2(runY, run));
-    line.rotateY(-Math.atan2(runZ, runX));
-    line.translate((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
-    buckets.wood.push(line);
-  }
+  buckets.wood.push(ropeGeometry(from, to, 0.14, 0.0125));
 }
 
 function addCoastalBoats(
@@ -1420,11 +1411,8 @@ function jettyMoorings(buckets: DressingBuckets, rng: Rng, plan: ShoreJettyPlan,
     const hullAlong = plan.boat!.along + end * boat.L * 0.42;
     const hx = plan.x + dx * hullAlong + ax * nearGunwale, hz = plan.z + dz * hullAlong + az * nearGunwale;
     const fromY = top + (iron ? 0.33 : 0.52), toY = gunwale;
-    const runX = hx - px, runZ = hz - pz, run = Math.hypot(runX, runZ);
-    const line = box(Math.hypot(run, toY - fromY), 0.03, 0.03, 1);
-    line.rotateZ(Math.atan2(toY - fromY, run));
-    line.rotateY(-Math.atan2(runZ, runX));
-    line.translate((px + hx) / 2, (fromY + toY) / 2, (pz + hz) / 2);
+    // (227) a round rope sagging a hand between them, not a square box; its UV draws spent as the box's were
+    const line = ropeGeometry([px, fromY, pz], [hx, toY, hz], 0.08, 0.015);
     buckets.wood.push(jitterUV(line, rng)); // the kit's timber texture at 3 cm reads as a tarred line; no new bucket
   }
 }
@@ -1663,7 +1651,8 @@ function addWeirAndMill(links: readonly LayoutDisc[], crossing: Readonly<{ x: nu
   let nx = -tz, nz = tx; // the bank normal toward the town side (+z)
   if (nz < 0) { nx = -nx; nz = -nz; }
   const water = heightField.getHeightAt(link.x, link.z);
-  // (props census #22, Lane C 2026-10-15) the weir: a coursed sill of dressed limestone across the channel, its crest
+  // (props census #22, Lane C 2026-10-15; the looks lane, 227: every dressed stone with its arrises eased, the r2 sweep's
+  // box-only share 1.00) the weir: a coursed sill of dressed limestone across the channel, its crest
   // 0.5 m over the water, stepped down its downstream face, the sluice in its middle (regional/lorrainMill.ts vanne) and
   // a pier at each end under its coping. The map's stream draws what it drew (the sill's and the two piers' jitters);
   // every new piece draws a stream of its own.
@@ -1675,23 +1664,23 @@ function addWeirAndMill(links: readonly LayoutDisc[], crossing: Readonly<{ x: nu
   const gap = SLUICE_GATE_W / 2 + SLUICE_PIER_W, half = Math.max(1, sillLength / 2 - gap);
   for (const side of [-1, 1]) {
     const mid = side * (gap + half / 2);
-    const body = box(half, 0.62, 1.7, 0.8);
+    const body = bevelBox(half, 0.62, 1.7, 0.04, 0.8);
     jitterUV(body, side < 0 ? rng : local);
     buckets.stone.push(across(body, mid, water - 0.09, 0));
     // the crest course in blocks a little off the line, set to the upstream edge; the low step downstream
     const count = Math.max(1, Math.round(half / 1.15)), block = half / count;
     for (let k = 0; k < count; k++) {
       const h = 0.28 + (local() - 0.5) * 0.04;
-      const crest = jitterUV(box(block - 0.03, h, 1.25, 0.8), local);
+      const crest = jitterUV(bevelBox(block - 0.03, h, 1.25, 0.035, 0.8), local);
       buckets.stone.push(across(crest, mid - half / 2 + (k + 0.5) * block, water + 0.5 - h / 2, -down * 0.15 + (local() - 0.5) * 0.04));
     }
-    buckets.stone.push(across(jitterUV(box(half, 0.3, 0.5, 0.8), local), mid, water - 0.09, down * 1.1));
+    buckets.stone.push(across(jitterUV(bevelBox(half, 0.3, 0.5, 0.03, 0.8), local), mid, water - 0.09, down * 1.1));
   }
   for (const end of [-1, 1]) {
-    const pier = box(1.3, 1.9, 1.7, 0.8);
+    const pier = bevelBox(1.3, 1.9, 1.7, 0.05, 0.8);
     jitterUV(pier, rng);
     buckets.stone.push(across(pier, end * (sillLength / 2 + 0.7), water + 0.55, 0));
-    buckets.stone.push(across(jitterUV(box(1.45, 0.14, 1.85, 0.8), local), end * (sillLength / 2 + 0.7), water + 1.57, 0));
+    buckets.stone.push(across(jitterUV(bevelBox(1.45, 0.14, 1.85, 0.03, 0.8), local), end * (sillLength / 2 + 0.7), water + 1.57, 0));
   }
   const sluiceBase = water - 0.4, sluiceYaw = Math.atan2(-nz, nx);
   const sluicePlace = { x: link.x, y: sluiceBase, z: link.z, yaw: sluiceYaw, mapId: AMBERFORD, seed: Math.round(link.x * 31 + link.z * 17) };
@@ -1882,6 +1871,11 @@ const RAIL_FOOTPRINT_SAMPLES: ReadonlyArray<readonly [number, number]> = [
 const RAIL_SEAT_SINK_M = 0.05;
 /** Slab overhang past the span ends (the joints of consecutive tilted slabs stay closed). */
 const RAIL_SLAB_OVERHANG_M = 0.35;
+/** A flat-bottom rail's section about its 9 x 17 cm box's centre (x across, y up): the foot, the web, the head. */
+const RAIL_SECTION: ReadonlyArray<readonly [number, number]> = [
+  [0.065, -0.085], [0.065, -0.073], [0.012, -0.062], [0.01, 0.035], [0.033, 0.048], [0.033, 0.077], [0.022, 0.085],
+  [-0.022, 0.085], [-0.033, 0.077], [-0.033, 0.048], [-0.01, 0.035], [-0.012, -0.062], [-0.065, -0.073], [-0.065, -0.085],
+];
 /**
  * The 'full' lay's ballast is a deep slab (the yards' is 0.16 m): its top stays at the yards' +0.15 m, so rails
  * and sleepers sit where they always did, while its sides run 0.26 m below the fitted plane — deeper than the
@@ -1954,14 +1948,18 @@ function layRailSpan(
   // carries a worn bright head; and the sleepers lie every ~0.7 m. The seeded draws are exactly the old ones (24 slab
   // colours, one jitter per seeded sleeper): the infill sleepers and the new parts take none.
   const deep = lay.conform === 'full';
-  const bal = box(lay.ballast, deep ? RAIL_SLAB_DEPTH_FULL_M : 0.16, len + RAIL_SLAB_OVERHANG_M, 0.55);
+  // (the looks lane, 227; the r2 sweep: the track all plain boxes) the bed's top crowned, its outer edges falling 4 cm
+  // to the shoulders; its stone's 24 colour draws spent as the box's 24 corners spent them, laid round its corners
+  const bh = (deep ? RAIL_SLAB_DEPTH_FULL_M : 0.16) / 2, bw = lay.ballast / 2, crown = Math.min(0.3, bw * 0.3);
+  const bal = sectionPrism([[bw, -bh], [bw, bh - 0.04], [bw - crown, bh], [-bw + crown, bh], [-bw, bh - 0.04], [-bw, -bh]], len + RAIL_SLAB_OVERHANG_M, 0.55);
   {
+    const tones = Array.from({ length: 24 }, () => 0.062 + rng() * 0.020);
     const n = bal.attributes.position.count;
     const col = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
       // (wave 8, railyard establishing: the pale bed and bright heads read as "flat gray grid patches … solar-panel
       // arrays"): weathered, oil-dark crushed stone — between the old near-black and the first pale pass
-      const v = 0.062 + rng() * 0.020;
+      const v = tones[i % 24];
       col[i * 3] = v; col[i * 3 + 1] = v * 0.97; col[i * 3 + 2] = v * 0.92;
     }
     bal.setAttribute('color', new THREE.BufferAttribute(col, 3));
@@ -1976,7 +1974,7 @@ function layRailSpan(
   {
     const run = 0.62, drop = 0.24, slopeLen = Math.hypot(run, drop), slopeAng = Math.atan2(drop, run);
     for (const sideSign of [-1, 1]) {
-      const shoulder = box(slopeLen, 0.05, len + RAIL_SLAB_OVERHANG_M, 0.55);
+      const shoulder = bevelBox(slopeLen, 0.05, len + RAIL_SLAB_OVERHANG_M, 0.015, 0.55);
       const pos = shoulder.attributes.position, col = new Float32Array(pos.count * 3);
       for (let i = 0; i < pos.count; i++) {
         const foot = (pos.getX(i) * sideSign + slopeLen / 2) / slopeLen; // 0 at the bed's edge, 1 at the foot
@@ -1995,11 +1993,12 @@ function layRailSpan(
   // twin rails
   const half = lay.gauge / 2;
   for (const side of [-half, half]) {
-    const rail = box(0.09, 0.17, len + 0.06, 2.0);
+    // (227) the flat-bottom rail's section — its foot, its web, its head — where a 9 x 17 cm box stood
+    const rail = sectionPrism(RAIL_SECTION, len + 0.06, 2.0);
     place(rail, side, 0.24, 0);
     buckets.dark.push(rail);
-    // ground lane: the head the wheels keep bright — worn steel over the rusted web
-    const head = box(0.066, 0.016, len + 0.06, 2.0);
+    // ground lane: the head the wheels keep bright — worn steel over the rusted web (227: crowned, as a worn head is)
+    const head = sectionPrism([[0.033, -0.008], [0.033, 0.004], [0.02, 0.008], [-0.02, 0.008], [-0.033, 0.004], [-0.033, -0.008]], len + 0.06, 2.0);
     const hp = head.attributes.position, hc = new Float32Array(hp.count * 3);
     for (let i = 0; i < hp.count; i++) { hc[i * 3] = 0.23; hc[i * 3 + 1] = 0.232; hc[i * 3 + 2] = 0.24; }
     head.setAttribute('color', new THREE.BufferAttribute(hc, 3));
@@ -2022,7 +2021,7 @@ function layRailSpan(
   };
   for (let sI = 0; sI < nS; sI++) {
     const t = (sI + 0.5) / nS;
-    const sl = box(lay.gauge + 0.66, 0.09, 0.28, 1.4);
+    const sl = bevelBox(lay.gauge + 0.66, 0.09, 0.28, 0.018, 1.4);
     weather(sl, ax + dx * t, az + dz * t, false);
     const jitter = (rng() - 0.5) * 0.05;
     if (lay.conform === 'full') {
@@ -2034,7 +2033,7 @@ function layRailSpan(
     }
     buckets.wood.push(sl);
     const ti = sI / nS; // on the span's start for the first: the gap across the joint with the last span closes too
-    const infill = box(lay.gauge + 0.66, 0.09, 0.28, 1.4);
+    const infill = bevelBox(lay.gauge + 0.66, 0.09, 0.28, 0.018, 1.4);
     infill.userData.railInfill = true;
     weather(infill, ax + dx * ti, az + dz * ti, true);
     const hashJ = (((Math.imul(Math.round((ax + dx * ti) * 100) ^ Math.imul(Math.round((az + dz * ti) * 100), 0x27d4eb2d), 0x165667b1) >>> 8) & 0xffff) / 65535 - 0.5) * 0.05;
