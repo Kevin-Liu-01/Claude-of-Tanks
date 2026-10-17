@@ -18,6 +18,8 @@ const STUDIO_KEY_PREFIXES = Object.freeze([
   'studioPanel.plan.',
   // the Director's finder for every tank's own take (studioProductionPanel.ts, 2026-10-12)
   'studio.director.',
+  // shared scene links: copy and open (studioSceneLinkUi.ts, 2026-10-17)
+  'studio.sceneLink.',
 ]);
 // single keys it added beside older Studio families
 const STUDIO_KEYS = new Set([

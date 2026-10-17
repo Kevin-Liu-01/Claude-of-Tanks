@@ -27,6 +27,7 @@ import { createPlanView, type StudioPlanFeatures } from './studioPlanView.ts';
 import { getLocale, t } from './i18n.ts';
 import { STUDIO_FX_PARAMS } from '../game/studioFxSettings.ts';
 import { hrefForLocale } from './localeRouting.ts';
+import { browserSceneLinkEnv, copySceneLink } from './studioSceneLinkUi.ts';
 import { FILM_RESOLUTIONS, createFilmPlan, filmOutputSize, normalizeFilm } from '../game/studioFilmPlan.ts';
 
 const STUDIO_GUIDES = {
@@ -299,6 +300,8 @@ interface StudioPanelRuntime {
   show(): void;
   hide(): void;
   setBusy(text: string | null): void;
+  /** A sentence-length message (scene links): shown for a few seconds, dismissed on click; errors announce assertively. */
+  notice(text: string, tone?: 'info' | 'error'): void;
   setPlaceArmed(specId: string | null): void;
   setSelected(actor: StudioActor | null): void;
   setSelectedEffect(effect: StudioEffect | null): void;
@@ -329,6 +332,11 @@ const CSS = `
 .cot-studio .busy{position:absolute;top:16px;left:50%;transform:translateX(-50%);
   padding:8px 18px;background:rgba(6,9,12,.88);border:1px solid rgba(230,154,45,.5);
   color:#ffd27a;font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;display:none;}
+.cot-studio .notice{position:absolute;top:56px;left:50%;transform:translateX(-50%);z-index:2;pointer-events:auto;
+  width:max-content;max-width:min(520px,calc(100% - 32px));padding:10px 16px;background:rgba(6,9,12,.92);
+  border:1px solid rgba(230,154,45,.5);color:#f3e2bd;font-size:12px;font-weight:600;line-height:1.45;
+  text-align:center;overflow-wrap:anywhere;cursor:pointer;display:none;}
+.cot-studio .notice[data-tone=error]{border-color:rgba(255,128,104,.65);color:#ffc7b8;}
 .cot-studio .dock{position:absolute;top:0;right:0;bottom:0;width:390px;pointer-events:auto;
   background:rgba(5,8,11,.94);border-left:1px solid rgba(210,221,230,.17);
   box-shadow:-12px 0 28px rgba(0,0,0,.26);backdrop-filter:blur(12px) saturate(.85);
@@ -659,6 +667,11 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
 
   const busy = el('div', 'busy');
   root.appendChild(busy);
+  const notice = el('div', 'notice');
+  notice.dataset.studioNotice = '';
+  notice.addEventListener('click', () => { notice.style.display = 'none'; });
+  root.appendChild(notice);
+  let noticeTimer: ReturnType<typeof setTimeout> | null = null;
 
   // --- right dock --------------------------------------------------------------
   const dock = el('div', 'dock');
@@ -1662,7 +1675,17 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     flashBusy(t('studio.sceneJsonCopied'));
   });
   svRow.append(saveBtn, loadBtn, copyBtn);
-  secCap.append(svRow, fileIn);
+  // Copy scene link (studioSceneLinkUi.ts): the scene itself rides in the link's #fragment, capped and schema-checked.
+  const linkBtn = el('button', null, t('studio.sceneLink.copy'));
+  linkBtn.title = t('studio.sceneLink.copyTitle');
+  linkBtn.dataset.sceneLinkCopy = '';
+  linkBtn.style.width = '100%';
+  linkBtn.style.marginTop = '5px';
+  linkBtn.addEventListener('click', () => {
+    copySceneLink(S.state(), browserSceneLinkEnv())
+      .then((result) => api.notice(result.message, result.ok ? 'info' : 'error'));
+  });
+  secCap.append(svRow, linkBtn, fileIn);
   // localStorage slots
   const slotRow = el('div', 'grid3');
   slotRow.style.marginTop = '5px';
@@ -2016,6 +2039,15 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     setBusy(text) {
       busy.style.display = text ? 'block' : 'none';
       if (text) busy.textContent = text;
+    },
+    notice(text, tone = 'info') {
+      notice.textContent = text;
+      notice.dataset.tone = tone;
+      notice.setAttribute('role', tone === 'error' ? 'alert' : 'status');
+      notice.setAttribute('aria-live', tone === 'error' ? 'assertive' : 'polite');
+      notice.style.display = 'block';
+      if (noticeTimer !== null) clearTimeout(noticeTimer);
+      noticeTimer = setTimeout(() => { notice.style.display = 'none'; noticeTimer = null; }, tone === 'error' ? 12000 : 6000);
     },
     setPlaceArmed(specId) {
       placeBtn.classList.toggle('on', !!specId);

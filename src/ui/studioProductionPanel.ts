@@ -5,6 +5,7 @@ import type { StudioPanelApi } from './studioPanel.ts';
 import { getLocale, t } from './i18n.ts';
 import { LAST_TANK_STORAGE_KEY } from '../game/tankIdStorageMigration.ts';
 import { resolveTankId } from '../vehicles/tankIdAliases.ts';
+import { browserSceneLinkEnv, copySceneLink } from './studioSceneLinkUi.ts';
 
 /**
  * The site's takes (owner 2026-10-12: "show them as presets u can access in /studio"): the fifty takes filmed for the
@@ -121,6 +122,7 @@ body[data-studio-workspace] .cot-studio .dock{width:var(--studio-dock)}
 .cot-studio .production-exports{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .cot-studio .production-exports button{min-height:42px;font-size:10px;text-transform:none;letter-spacing:.03em}
 .cot-studio .production-exports button:last-child{color:#ffca83;border-color:#966e32}
+.cot-studio .director .production-link{width:100%;margin-top:8px;min-height:40px;font-size:10px;text-transform:none;letter-spacing:.03em}
 .cot-studio .studio-frame-guides{position:absolute;left:0;top:0;width:var(--studio-preview-width);height:var(--studio-preview-height);overflow:hidden;pointer-events:none;display:flex;align-items:center;justify-content:center}
 .cot-studio .studio-frame-guides[hidden]{display:none}
 .cot-studio .studio-frame-guide{position:relative;width:min(calc(var(--studio-preview-width) * .86),calc(var(--studio-preview-height) * .86 * var(--frame-aspect)));height:auto;aspect-ratio:var(--frame-aspect);border:1px solid #ffdf9a99;box-shadow:0 0 0 100vmax #0004}
@@ -417,7 +419,19 @@ export function mountStudioProductionPanel(S: StudioPanelApi, root: HTMLElement,
     refresh();
   });
   exportButtons.append(photo, video);
-  exports.append(exportButtons, node('p', 'production-note', productionLabel('photoHint')), node('p', 'production-note', productionLabel('videoHint')), node('p', 'production-note', productionLabel('nativeVideo')));
+  // Copy scene link (studioSceneLinkUi.ts): the staged scene itself rides in the link's #fragment, never a server.
+  const linkStatus = node('div', 'production-status');
+  linkStatus.setAttribute('role', 'status');
+  linkStatus.setAttribute('aria-live', 'polite');
+  const linkButton = button(t('studio.sceneLink.copy'), () => {
+    copySceneLink(S.state(), browserSceneLinkEnv()).then((result) => {
+      linkStatus.textContent = result.message;
+      linkStatus.dataset.error = String(!result.ok);
+    });
+  }, 'production-link');
+  linkButton.title = t('studio.sceneLink.copyTitle');
+  linkButton.dataset.sceneLinkCopy = '';
+  exports.append(exportButtons, linkButton, linkStatus, node('p', 'production-note', productionLabel('photoHint')), node('p', 'production-note', productionLabel('videoHint')), node('p', 'production-note', productionLabel('nativeVideo')));
   director.append(exports);
   dock.prepend(director);
 
