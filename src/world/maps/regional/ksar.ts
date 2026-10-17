@@ -396,8 +396,18 @@ const hammam: RegionalBuilder = (ctx) => {
       chimneys: [], gutters: null, verge: null, reveal: 0.35, core: 'adobe',
     }, quiet);
     const back: Face = { origin: [0, 0, -fd / 2], u: [-1, 0, 0], out: [0, 0, -1], width: fw };
-    // the soot up the wall over the stoke hole, the fuel (palm wood and brush) stacked beside it
-    faceBox(sink, 'plaster', back, -fw * 0.18, 1.55, 0.004, 0.9, 1.1, 0.008, { decor: true, tint: [0.32, 0.3, 0.28] });
+    // the soot up the wall over the stoke hole (the looks lane, 227; the r2 sweep: a dark plate 0.9 x 1.1 m on the wall):
+    // a plume from the hole's head narrowing as it climbs, black over the head and fading into the lime as it rises, laid
+    // in bands a hand's breadth apart in tone; the fuel (palm wood and brush) stacked beside it
+    const su = -fw * 0.18, sy0 = 0.94, sy1 = 2.12, bands = 24, half = (t: number) => 0.44 - 0.3 * t;
+    for (let b = 0; b < bands; b++) {
+      // (the 227 blind pair: a hairline of lime showed between the bands) each band overlapping the next by 2 mm, the bands
+      // standing alternately 4 and 6.5 mm off the wall so none shares an edge with the next; the black held longer
+      const t0 = b / bands, t1 = (b + 1) / bands, ya = sy0 + (sy1 - sy0) * t0 - 0.001, yb = sy0 + (sy1 - sy0) * t1 + 0.001, o = b % 2 ? 0.0065 : 0.004;
+      const k = 0.26 + 0.64 * Math.pow((t0 + t1) / 2, 1.3);
+      sink.polygon('plaster', [facePoint(back, su - half(t0), ya, o), facePoint(back, su + half(t0), ya, o), facePoint(back, su + half(t1), yb, o),
+        facePoint(back, su - half(t1), yb, o)], { decor: true, tint: [k, k * 0.96, k * 0.92] });
+    }
     for (let k = 0; k < 5; k++) {
       sink.cylinder('structureWood', [fw * 0.12 + k * 0.05, 0.08 + (k % 3) * 0.14, -fd / 2 - 0.25], 'x', 1.0, 0.07, 6, { colour: shade(TIMBER, 0.7 + look() * 0.3), decor: true });
     }

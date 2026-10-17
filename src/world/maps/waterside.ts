@@ -196,6 +196,23 @@ export function mooringStakeGeometry(): BG {
   return merged(parts);
 }
 
+/**
+ * A tarred line from `from` to `to`, sagging `sag` at its middle: one welded round rope (the looks lane, 227; the r2
+ * sweep: the moorings' lines were square boxes, the sites' surface all plain primitives).
+ */
+export function ropeGeometry(from: readonly [number, number, number], to: readonly [number, number, number], sag: number, radius = 0.014, segments = 8): BG {
+  const pts: THREE.Vector3[] = [];
+  for (let k = 0; k <= segments; k++) {
+    const t = k / segments;
+    pts.push(new THREE.Vector3(from[0] + (to[0] - from[0]) * t, from[1] + (to[1] - from[1]) * t - sag * 4 * t * (1 - t), from[2] + (to[2] - from[2]) * t));
+  }
+  const curve = new THREE.CatmullRomCurve3(pts), rope = new THREE.TubeGeometry(curve, segments, radius, 5, false);
+  // (the texture's metres along it and round it, as a box's UVs ran: a line's length, not one tile stretched over it)
+  const uv = rope.attributes.uv, len = curve.getLength(), round = 2 * Math.PI * radius;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * len, uv.getY(i) * round);
+  return rope;
+}
+
 // -------------------------------------------------------------------------------------------------- ford markers
 export type FordStyle = 'gauge' | 'bamboo';
 /** The ford marker of a river, by its boats (the Bengal nouka's chars: bamboo; every other river: a depth gauge). */
