@@ -457,7 +457,8 @@ export function makeContainerRow(
   // (flush under the load they carry no collision: a ground-contact solid stands to 6 cm)
   const dunnage = (cx: number, cz: number, yaw: number): void => {
     for (const dz of [-CL * 0.36, CL * 0.36]) {
-      const g = new THREE.BoxGeometry(CW + 0.3, 0.6, 0.22).toNonIndexed();
+      // (within the box's width: a kit that rebuilds the row reads the base row's bounds, which the sleepers must not widen)
+      const g = new THREE.BoxGeometry(CW - 0.02, 0.6, 0.22).toNonIndexed();
       g.translate(0, -0.29, dz); g.rotateY(yaw); g.translate(cx, 0, cz);
       g.userData.noCollision = true; g.userData.uvJitter = 'none';
       // (timber, not the boxes' steel: in the matte painted bucket, outside the boxes the steel parts keep to)
