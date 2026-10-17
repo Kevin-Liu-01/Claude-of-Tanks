@@ -127,7 +127,7 @@ function volume(g) {
   for (let i = 0; i < p.count; i++) assert.ok(Math.hypot(p.getX(i), p.getZ(i)) <= 2, 'unchanged concealment radius contains foliage');
 }
 function contract(g) {
-  assert.equal(g.index, null); assert.equal(g.attributes.position.count, 192);
+  assert.ok(g.index === null); assert.equal(g.attributes.position.count, 192);
   assert.deepEqual(Object.keys(g.attributes).sort(), ['aFlex', 'color', 'normal', 'position', 'uv']);
   assert.deepEqual(Object.fromEntries(Object.entries(g.attributes).map(([k, a]) => [k, a.itemSize])),
     { position: 3, normal: 3, uv: 2, color: 3, aFlex: 1 });

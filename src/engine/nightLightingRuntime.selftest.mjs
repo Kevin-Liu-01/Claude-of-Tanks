@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { createNightLightingRuntime, registerNightLightEmitters, HEADLIGHT_LOW_BEAM_DROP, HEADLIGHT_CONE_RAD } from './nightLightingRuntime.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 // (EF.11) a driving lamp's beam is its authored aim dropped to a low beam in its vehicle's frame
 const lowBeam = (d) => { const v = new THREE.Vector3(...d); v.y -= HEADLIGHT_LOW_BEAM_DROP * Math.hypot(v.x, v.z); return v.normalize(); };
 
@@ -54,7 +55,7 @@ try {
   runtime.prepare(roots, false); runtime.update(new THREE.Vector3());
   assert.equal(runtime.emitterCount, 0); assertAuthored();
   runtime.prepare(roots, true);
-  assert.equal(runtime.emitterCount, 5); assert.equal(runtime.group.parent, scene);
+  assert.equal(runtime.emitterCount, 5); assert.ok(runtime.group.parent === scene);
   let sceneAdds = 0; scene.addEventListener('childadded', () => sceneAdds++);
   const reference = new THREE.Vector3();
   runtime.update(reference);
@@ -81,8 +82,8 @@ try {
   // 1 m over the lamps reaches no closer than its last 0.5 m to the cone (the rest of the barrel, steeper, sits outside)
   assert.ok(lights[0].angle === HEADLIGHT_CONE_RAD && HEADLIGHT_CONE_RAD < .43, 'a narrower cone');
   { const up = Math.atan(-.08 - HEADLIGHT_LOW_BEAM_DROP) + HEADLIGHT_CONE_RAD; assert.ok(up < Math.atan(1 / 4.5), `the cone's upper edge ${(up * 180 / Math.PI).toFixed(1)} deg passes under the barrel`); }
-  assert.deepEqual(runtime.group.children, objects, 'constant night light/target object count');
-  assert.deepEqual(runtime.lights, lights);
+  assert.deepEqual(graphLabels(runtime.group.children), graphLabels(objects), 'constant night light/target object count');
+  assert.deepEqual(graphLabels(runtime.lights), graphLabels(lights));
   lights.forEach((light, index) => {
     assert.strictEqual(light.position, positions[index]); assert.strictEqual(light.color, lightColors[index]);
   });
@@ -102,15 +103,15 @@ try {
   building.visible = true;
   runtime.update(reference, false);
   assert.ok(lights.every(light => light.intensity === 0)); assertAuthored();
-  assert.equal(runtime.group.parent, scene, 'temporary inactive render does not re-key light count');
+  assert.ok(runtime.group.parent === scene, 'temporary inactive render does not re-key light count');
   runtime.update(reference); assert.equal(white.emissiveIntensity, 2);
-  runtime.reset(); assertAuthored(); assert.equal(runtime.group.parent, null);
+  runtime.reset(); assertAuthored(); assert.ok(runtime.group.parent === null);
   assert.equal(runtime.emitterCount, 0);
   for (let i = 0; i < 16; i++) {
     runtime.prepare(roots, true); runtime.update(reference); runtime.prepare(roots, false); assertAuthored();
   }
   runtime.prepare(roots, true); runtime.update(reference); runtime.dispose(); assertAuthored();
-  assert.equal(runtime.group.parent, null); assert.equal(runtime.group.children.length, 0);
+  assert.ok(runtime.group.parent === null); assert.equal(runtime.group.children.length, 0);
   runtime.dispose(); runtime.reset(); runtime.update(reference);
   assert.throws(() => runtime.prepare(roots, true), /disposed/);
 } finally { runtime.dispose(); }
@@ -123,7 +124,7 @@ registerNightLightEmitters(alias, [{ kind: 'marker', position: [0, 0, 0],
 { kind: 'marker', position: [1, 0, 0], emission: { material: white, color: 0x00ff00, intensity: 1 } }]);
 const limited = createNightLightingRuntime(scene, { spotLights: 1, pointLights: 1 });
 assert.throws(() => limited.prepare([{ root: alias }], true), /conflicting/);
-assert.equal(limited.emitterCount, 0); assert.equal(limited.group.parent, null); assertAuthored();
+assert.equal(limited.emitterCount, 0); assert.ok(limited.group.parent === null); assertAuthored();
 assert.equal(limited.lights.length, 2, 'immutable constrained constructor budget is supported');
 let lampIntact = true;
 const lateBuilding = new THREE.Group(); scene.add(lateBuilding);
@@ -139,7 +140,7 @@ assert.equal(limited.lights[1].intensity, 0, 'destroyed lamp retires independent
 assert.equal(warm.emissiveIntensity, authored[2].intensity);
 assert.throws(() => limited.appendRoot({ root: alias }), /conflicting/);
 assert.equal(limited.emitterCount, 1, 'invalid late registration cannot partially publish');
-assert.deepEqual(limited.lights, lateLights, 'late actor registration never adds lights');
+assert.deepEqual(graphLabels(limited.lights), graphLabels(lateLights), 'late actor registration never adds lights');
 limited.reset(); limited.appendRoot({ root: lateBuilding });
 assert.equal(limited.emitterCount, 0, 'day/Garage late construction cannot activate night lighting');
 limited.dispose();

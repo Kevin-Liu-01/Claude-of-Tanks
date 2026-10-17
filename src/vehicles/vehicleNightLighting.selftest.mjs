@@ -31,7 +31,7 @@ assert.equal(lamps.length, 2);
 close(new THREE.Vector3().fromArray(lamps[0].position), new THREE.Vector3(0, 0, .01).applyMatrix4(pose), 'emitter sits on transformed real lens aperture');
 close(new THREE.Vector3().fromArray(lamps[0].direction), new THREE.Vector3(0, 0, 1).applyNormalMatrix(new THREE.Matrix3().getNormalMatrix(pose)), 'direction follows actual transformed front normal');
 assert.deepEqual(lamps.map(lamp => lamp.kind), ['headlight', 'shtora']);
-assert.strictEqual(lamps[0].emission.material, lamps[1].emission.material, 'mixed lens colors share the existing draw/material');
+assert.ok(lamps[0].emission.material === lamps[1].emission.material, 'mixed lens colors share the existing draw/material');
 
 const scene = new THREE.Scene(), tank = new THREE.Group(), turret = new THREE.Group();
 scene.add(tank); tank.add(turret); turret.add(mesh);
@@ -133,7 +133,7 @@ for (const kind of ['headlight', 'shtora', 'marker']) for (const pitch of [-.12,
   assert.equal(emitter.range, kind === 'headlight' ? 75 : 0);
   for (const [key, original] of Object.entries(bytes)) assert.deepEqual(lens.getAttribute(key).array, original, `${key}: registration leaves every aperture/mask byte unchanged`);
   assert.deepEqual(lens.index?.array, indices);
-  assert.strictEqual(emitter.emission.material, lensMaterial);
+  assert.ok(emitter.emission.material === lensMaterial);
   lens.dispose(); lensMaterial.dispose();
 }
 console.log('vehicleNightLighting: authored aperture/clone/scale/roll/yaw, periscope exclusion, zero added owners, batch transport, destruction/garage restoration PASS');

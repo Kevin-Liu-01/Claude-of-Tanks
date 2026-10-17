@@ -25,6 +25,7 @@ import { TREE_ARCHETYPES } from './treeSpecies.ts';
 import { SHADOW_ONLY_LAYER } from '../engine/renderLayers.ts';
 import { getMapConfig } from './maps/index.ts';
 import { disposeObject3DResources } from '../engine/resourceLifetime.ts';
+import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 const savedDocument = globalThis.document, savedImageData = globalThis.ImageData;
 globalThis.ImageData = ImageData;
@@ -102,7 +103,7 @@ try {
       const cell = mesh.geometry.getAttribute('aImpCell');
       assert.equal(cell.getX(0), library.rowBase(species)); assert.equal(cell.getY(0), mirror ? 1 : 0); assert.equal(cell.getZ(0), library.variants);
       assert.equal(cell.getW(0), library.elevated ? library.groundRows + librarySpecies.indexOf(species) : -1, `${id}: the elevated row rides on the ring's quads too`);
-      assert.strictEqual(mesh.material, forest.userData.horizonForestImpostorMaterial);
+      assert.ok(mesh.material === forest.userData.horizonForestImpostorMaterial);
       assert.equal(mesh.castShadow, false); assert.equal(mesh.receiveShadow, false); assert.equal(mesh.frustumCulled, false); assert.equal(mesh.userData.aoExclude, true);
       const rows = mesh.geometry.getAttribute('aImpRow');
       for (let j = 0; j < mesh.count; j++) {
@@ -151,16 +152,16 @@ try {
     }
     assert.equal(forest.children.filter(child => child.userData.horizonForestPool && child.userData.horizonForestPool.detail !== 2).length, 0, `${id}: the band and range lobes are gone`);
     assert.equal(forest.children.length, proxies.length + impostorMeshes.length);
-    assert.deepEqual(released, [lobeMaterial]); assert.equal(lobeMaterialDisposed, 1, `${id}: the lobe material released and disposed`);
+    assert.deepEqual(graphLabels(released), graphLabels([lobeMaterial])); assert.equal(lobeMaterialDisposed, 1, `${id}: the lobe material released and disposed`);
     // the material: the far tier's atlases through the far tier's program text, the far tier's lighting law, the ring's haze
     const material = forest.userData.horizonForestImpostorMaterial;
-    assert.strictEqual(material.map, library.albedo.texture);
+    assert.ok(material.map === library.albedo.texture);
     assert.equal(material.customProgramCacheKey(), HORIZON_FOREST_IMPOSTOR_PROGRAM_KEY);
     assert.equal(material.alphaTest, TREE_IMPOSTOR_ALPHA_TEST); assert.equal(material.alphaToCoverage, true); assert.equal(material.side, THREE.DoubleSide);
     assert.equal(material.envMapIntensity, HORIZON_FOREST_IMPOSTOR_SKY_FILL); assert.equal(material.envMapIntensity, library.material.envMapIntensity, `${id}: the far tier's sky fill`);
     const ringShader = standard(), farShader = standard();
     hooks.get(material)(ringShader); hooks.get(library.material)(farShader);
-    assert.strictEqual(ringShader.uniforms.uImpNormal.value, library.normal.texture); assert.strictEqual(ringShader.uniforms.uImpRows.value, farShader.uniforms.uImpRows.value);
+    assert.ok(ringShader.uniforms.uImpNormal.value === library.normal.texture); assert.strictEqual(ringShader.uniforms.uImpRows.value, farShader.uniforms.uImpRows.value);
     const block = (source, from, to) => { const a = source.indexOf(from), b = source.indexOf(to, a); assert.ok(a >= 0 && b > a, from); return source.slice(a, b); };
     assert.equal(block(ringShader.vertexShader, 'float impRow = aImpCell.x', 'vImpFE = impView'), block(farShader.vertexShader, 'float impRow = aImpCell.x', 'vImpFE = impView'), `${id}: the same billboard text as the far tier`);
     assert.equal(block(ringShader.fragmentShader, 'vec4 impA = texture2D', 'diffuseColor *= impC;'), block(farShader.fragmentShader, 'vec4 impA = texture2D', 'diffuseColor *= impC;'));

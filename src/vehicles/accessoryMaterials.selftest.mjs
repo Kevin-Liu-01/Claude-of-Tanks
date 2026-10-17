@@ -61,7 +61,7 @@ function installCanvasFixture() {
   // `configure` runs before registration, on the clone only
   let seen = null;
   const configured = cloneVehicleMaterial(source, (clone) => { seen = clone; clone.alphaTest = 0.4; });
-  assert.equal(seen, configured, 'configure receives the clone that is returned');
+  assert.ok(seen === configured, 'configure receives the clone that is returned');
   assert.equal(configured.alphaTest, 0.4, 'configure edits the clone');
   assert.equal(source.alphaTest, 0, 'and never the source');
   source.dispose(); plain.dispose(); configured.dispose();

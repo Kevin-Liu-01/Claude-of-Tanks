@@ -74,7 +74,7 @@ for (const [form, geology, radius, height, capDesktop, capMobile, standing] of F
     assert.ok(a.geometry, `${label}: builds`);
     const g = a.geometry;
     for (const name of ['position', 'normal', 'color', 'aRockGround', 'uv']) assert.ok(g.attributes[name], `${label}: carries ${name}`);
-    assert.equal(g.index, null, `${label}: non-indexed (per-corner cleavage normals)`);
+    assert.ok(g.index === null, `${label}: non-indexed (per-corner cleavage normals)`);
     const p = g.attributes.position.array, n = g.attributes.normal.array, c = g.attributes.color.array;
     assert.ok(p.every(Number.isFinite) && n.every(Number.isFinite) && c.every(Number.isFinite), `${label}: finite`);
     for (let i = 0; i < n.length; i += 3) {
@@ -343,7 +343,7 @@ for (const kind of Object.keys(STONE_LANDMARKS)) assert.ok(isStoneLandmark(kind)
   assert.ok(phone.triangles < desk.triangles, `bedrock: the phones draw fewer (${phone.triangles} < ${desk.triangles})`);
   // a plain shows none
   const flat = buildBedrock(spec, { getHeightAt: () => 3 }, noise, mulberry32(91));
-  assert.equal(flat.geometry, null, 'a plain has no flank to show rock');
+  assert.ok(flat.geometry === null, 'a plain has no flank to show rock');
   // on a world with the terrain's bed law (terrain.ts terrainBedWobbleAt) the beds lie on its bedY surfaces: level beds
   // of the skin's own thicknesses, every bench top at its bed's level plus the wobble (a block set a little high or low,
   // ±0.08 m), and lifted with the wobble
@@ -546,7 +546,7 @@ function compose(scenery, solids = [], mobile = false) {
   assert.equal(inBarn, 0, 'no wall runs through a placed solid');
   fenced.geometry.dispose();
   const none = lay({ ...fields(3, false), _landUseAt: undefined }, { walls: true, banks: true });
-  assert.equal(none.geometry, null, 'no land use, no field works');
+  assert.ok(none.geometry === null, 'no land use, no field works');
   for (const b of [walls, again, phone, banks]) b.geometry.dispose();
 }
 

@@ -411,11 +411,9 @@ try {
   const barrelDiameterM = barrelFace(1) - barrelFace(-1);
   assert.ok(Math.abs(barrelDiameterM - 0.094) < 1e-3,
     `TTS 30 mm barrel keeps a lean remote-weapon silhouette (${barrelDiameterM} m)`);
-  assert.equal(remoteAutocannon.getObjectByName('m551a1TtsRemoteAutocannon_pitch_turretEquipment')?.material,
-    ttsTank.root.getObjectByName('turretEquipment')?.material,
+  assert.ok(remoteAutocannon.getObjectByName('m551a1TtsRemoteAutocannon_pitch_turretEquipment')?.material === ttsTank.root.getObjectByName('turretEquipment')?.material,
     'remote-station armor shares the vehicle-scale camouflage material');
-  assert.equal(remoteAutocannon.getObjectByName('m551a1TtsRemoteAutocannon_pitch_turretGlass')?.material,
-    ttsTank.root.getObjectByName('turretGlass')?.material,
+  assert.ok(remoteAutocannon.getObjectByName('m551a1TtsRemoteAutocannon_pitch_turretGlass')?.material === ttsTank.root.getObjectByName('turretGlass')?.material,
     'remote-station apertures share the canonical optics material');
   const insideAutocannon = (name) => {
     const found = ttsTank.root.getObjectByName(name);
@@ -425,7 +423,7 @@ try {
   assert.equal(insideAutocannon('sheridanCommanderM2AmmoBox'), false,
     'the M2 and its ammunition rack do not survive inside the 30 mm station');
   const loaderStation = ttsTank.root.getObjectByName('m551a1TtsRoofM2');
-  assert.equal(ttsTank.root.getObjectByName('m551a1TtsLoaderM2'), undefined, 'no M2 rides an arm off the loader\'s ring');
+  assert.ok(ttsTank.root.getObjectByName('m551a1TtsLoaderM2') === undefined, 'no M2 rides an arm off the loader\'s ring');
   assert.ok(loaderStation?.userData.remoteControlled && loaderStation.userData.caliberMm === 12.7
     && loaderStation.userData.fittingExact && loaderStation.parent?.name === 'rig_turret',
   'TTS roof M2 is one exact turret-mounted station');
@@ -475,7 +473,7 @@ try {
     assert.ok(lowest.y - 0.804 < 0.16, `the gun stands low on the roof (pintle base ${(lowest.y - 0.804).toFixed(3)} m above the roof plate)`);
     assert.ok(foot.x > 0.3, 'the gun stands on the right half of the roof');
   }
-  assert.equal(ttsTank.root.getObjectByName('m551a1TtsCommanderM2'), undefined,
+  assert.ok(ttsTank.root.getObjectByName('m551a1TtsCommanderM2') === undefined,
     'no gun stays on the commander\'s cupola under the 30 mm barrel');
   // the M2 clears the roof sight's window behind the hatch (it looks forward over the hatch) and stays off the 30 mm
   // station's sight head: every vertex of the gun inside the window's width stands above its top, none in the sight head's view

@@ -15,7 +15,7 @@ export function assertHollowMuzzle(root, expectedTipZ, tolerance = .003) {
       `native muzzle endpoint ${tip.z} differs from ${expectedTipZ}`);
     const evidence=verifyCarvedMuzzleBore(root,frame);
     assert.ok(evidence.measuredMinimumDepthM>=.01,'mouth has measurable depth');
-    assert.equal(frame.getObjectByName('muzzleBoreShadowFallbackDisc'),undefined,'no front black mask');
+    assert.ok(frame.getObjectByName('muzzleBoreShadowFallbackDisc') === undefined,'no front black mask');
     const meshes=[];root.traverseVisible(o=>{if(o.isMesh&&!o.userData.shadowOnly){
       const ms=Array.isArray(o.material)?o.material:[o.material];
       if(ms.some(m=>m.visible&&m.colorWrite&&(!m.transparent||m.opacity>.001)))meshes.push(o);

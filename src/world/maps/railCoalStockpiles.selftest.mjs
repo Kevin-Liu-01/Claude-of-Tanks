@@ -80,7 +80,7 @@ function coalStrip(field) {
     tracks: (x, z) => stages.map(spur => nearestOnPath(spur.path, x, z)) };
 }
 function validatePile(geometry, obstacle, collider, field, strip = legacyStrip, mapId = '') {
-  assert.equal(geometry.index, null);
+  assert.ok(geometry.index === null);
   const position = geometry.attributes.position, normal = geometry.attributes.normal;
   // (props census #3, lane B 2026-10-14: the heap's 72 facets and the 20 lumps and loose coal on them, 5 faces each)
   const vertices = HEAP_VERTICES[mapId] ?? 516;

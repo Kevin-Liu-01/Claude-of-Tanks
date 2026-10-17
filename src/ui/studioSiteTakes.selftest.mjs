@@ -28,6 +28,7 @@ const fleetVehicles = new Set();
 for (const take of fleetTakes) {
   assert.ok(typeof take.vehicle === 'string' && take.vehicle && !fleetVehicles.has(take.vehicle), `${take.id}: one fleet take per vehicle`);
   fleetVehicles.add(take.vehicle);
+  // object3d-assert-ok: take.scene is a Studio scene id string, not a THREE.Scene
   assert.equal(sceneLinkPath(take.scene), take.scene, `${take.id}: its scene is a scene link on this site`);
   const scene = JSON.parse(readFileSync(join(ROOT, 'public', take.scene), 'utf8'));
   assert.equal(scene.map, take.map, `${take.id}: the card names the scene's map`);
@@ -36,6 +37,7 @@ for (const take of fleetTakes) {
   assert.ok(take.title.en && take.title.zh && take.short.en && take.short.zh, `${take.id}: titled in both languages`);
 }
 for (const take of siteTakes) {
+  // object3d-assert-ok: take.scene is a Studio scene id string, not a THREE.Scene
   assert.equal(sceneLinkPath(take.scene), take.scene, `${take.id}: its scene is a scene link on this site`);
   const scene = JSON.parse(readFileSync(join(ROOT, 'public', take.scene), 'utf8'));
   assert.equal(scene.map, take.map, `${take.id}: the card names the scene's map`);

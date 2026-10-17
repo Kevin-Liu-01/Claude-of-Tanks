@@ -92,19 +92,19 @@ assert.equal(receipt.displayDrawCallsRemoved, 1);
 assert.equal(receipt.drawCallsRemoved, 3);
 const batch = root.getObjectByName('workshop_static_instances_1');
 assert.ok(batch?.isInstancedMesh, 'the optimized scene owns one repeated-prop batch');
-assert.equal(repeatedA.parent, null);
-assert.equal(repeatedB.parent, null);
-assert.equal(mergeA.parent, null);
-assert.equal(mergeB.parent, null);
+assert.ok(repeatedA.parent === null);
+assert.ok(repeatedB.parent === null);
+assert.ok(mergeA.parent === null);
+assert.ok(mergeB.parent === null);
 assert.ok(root.getObjectByName('workshop_static_merge_1'),
   'the optimized scene owns one transformed static merge');
-assert.equal(fleetA.parent, fleetRoot, 'fleet exhibit ownership remains intact');
-assert.equal(fleetB.parent, fleetRoot, 'fleet exhibit meshes are not flattened');
-assert.equal(variantA.parent, variantRoot, 'variant-controlled set pieces retain local ownership');
-assert.equal(variantB.parent, variantRoot, 'variant-controlled set pieces remain visibility-switchable');
+assert.ok(fleetA.parent === fleetRoot, 'fleet exhibit ownership remains intact');
+assert.ok(fleetB.parent === fleetRoot, 'fleet exhibit meshes are not flattened');
+assert.ok(variantA.parent === variantRoot, 'variant-controlled set pieces retain local ownership');
+assert.ok(variantB.parent === variantRoot, 'variant-controlled set pieces remain visibility-switchable');
 assert.ok(displayRoot.getObjectByName('workshop_display_merge_1'),
   'an explicitly immutable authored display shares one exact draw owner');
-assert.equal(displayRig.parent, null, 'empty decorative rig branches leave the live scene graph');
+assert.ok(displayRig.parent === null, 'empty decorative rig branches leave the live scene graph');
 assert.deepEqual(displayRoot.position.toArray(), [4, 0, 0],
   'the authored display owner remains movable after its leaf draws collapse');
 assert.equal(nested.matrixAutoUpdate, false);
@@ -153,7 +153,7 @@ displayMaterial.dispose();
   const bayMerges = bay.children.filter((child) => child.userData.workshopStaticDisplayMerge);
   assert.equal(sharedMerges.length, 1, 'the parent owner merges only its own leaves');
   assert.equal(bayMerges.length, 1, 'the nested owner merges its leaves under itself');
-  assert.equal(bay.parent, shared, 'the nested owner stays inside its parent owner');
+  assert.ok(bay.parent === shared, 'the nested owner stays inside its parent owner');
   const center = (mesh) => {
     mesh.geometry.computeBoundingBox();
     return mesh.geometry.boundingBox.getCenter(new THREE.Vector3());
@@ -193,8 +193,8 @@ displayMaterial.dispose();
   shared.add(crewA, crewB, propA, propB);
   const kept = optimizeGarageDressing(workshop, { staticDisplayOwners: [shared] });
   assert.equal(kept.displayMeshesMerged, 2, 'only the plain props merge');
-  assert.equal(crewA.parent, shared, 'a kept crew mesh stays its own draw');
-  assert.equal(crewB.parent, shared, 'every kept crew mesh stays its own draw');
+  assert.ok(crewA.parent === shared, 'a kept crew mesh stays its own draw');
+  assert.ok(crewB.parent === shared, 'every kept crew mesh stays its own draw');
   for (const geometry of workshop.userData.optimizationDisposables || []) geometry.dispose();
   crewA.geometry.dispose(); crewB.geometry.dispose(); paint.dispose();
 }

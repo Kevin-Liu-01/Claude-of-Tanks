@@ -46,14 +46,14 @@ function assertMaterial(material, baseline, gain) {
     'all other actual material properties and texture descriptors stay exact');
   assert.deepEqual(Object.keys(material), Object.keys(baseline), 'no added retained material field');
   for (const [slot, role] of Object.entries({ map: 'albedo', normalMap: 'normal', roughnessMap: 'surface', aoMap: 'surface' })) {
-    assert.equal(material[slot], roof[role], `${slot}: exact existing texture owner`);
+    assert.ok(material[slot] === roof[role], `${slot}: exact existing texture owner`);
   }
   assert.equal(new Set(Object.values(material).filter(value => value?.isTexture)).size, 3);
   assert.equal(material.customProgramCacheKey(), baseline.customProgramCacheKey(), 'same shader variant');
   const uniforms = THREE.UniformsUtils.clone(THREE.ShaderLib.standard.uniforms);
   refresh.refreshMaterialUniforms(uniforms, material, 1, 900);
   assert.equal(uniforms.roughness.value, gain, 'actual WebGL upload does not clamp the gain before map multiplication');
-  assert.equal(uniforms.roughnessMap.value, roof.surface, 'actual upload retains the shared surface');
+  assert.ok(uniforms.roughnessMap.value === roof.surface, 'actual upload retains the shared surface');
 }
 
 const baseline = new THREE.MeshStandardMaterial({ map: roof.albedo, normalMap: roof.normal,

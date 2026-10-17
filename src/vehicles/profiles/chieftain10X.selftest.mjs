@@ -158,8 +158,8 @@ for (const quality of ['high', 'low']) {
     near(point.y, 1.912199, 1e-6, 'actual straight bore Y');
     near(point.z, 1.550505, 1e-6, 'explicit inferred barrel-root pitch station');
     near(muzzle.getWorldPosition(new THREE.Vector3()).z, 7.093385, 1e-6, 'source muzzle');
-    assert.equal(get('gunMount').parent, pitch, 'actual mantlet pitches');
-    assert.equal(get('gun').parent, recoil, 'barrel and muzzle fixture recoil');
+    assert.ok(get('gunMount').parent === pitch, 'actual mantlet pitches');
+    assert.ok(get('gun').parent === recoil, 'barrel and muzzle fixture recoil');
     const gun = get('gun'), mount = get('gunMount');
     // Held-out scalar sections of source turret_barrel_0. These reject the
     // old misplaced 165 mm-radius evacuator without importing its geometry.
