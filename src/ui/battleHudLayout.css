@@ -127,6 +127,10 @@ body:is(.cot-kc-live,.cot-si-report) :is(.cot-room-chat,.cot-touch,.cot-touch-ai
 .cot-vehicle-controls>button[hidden],.cot-vehicle-controls[hidden]{display:none!important;}
 .cot-vehicle-controls>button.active{color:#ffdc94;border-color:#c89a50;background:none;box-shadow:inset 0 -2px #efb84e;}
 .cot-vehicle-controls>button:disabled{opacity:.64;}
+/* Owner 2026-10-17 (out of ammo): a spent launcher or magazine control is struck through in the danger ink, no text. */
+.cot-vehicle-controls>button.empty{color:var(--hud-muted);border-bottom-color:var(--hud-danger);background:none;box-shadow:none;}
+.cot-vehicle-controls>button.empty .si{position:relative;color:var(--hud-danger);opacity:1;filter:none;}
+.cot-vehicle-controls>button.empty .si::after{content:'';position:absolute;left:-2px;right:-2px;top:calc(50% - .75px);height:1.5px;border-radius:1px;background:var(--hud-danger);box-shadow:0 0 0 1px #05080bd9;transform:rotate(-45deg);}
 .cot-vehicle-controls>button:hover:not(:disabled){border-color:#d7b16b;}
 .cot-vehicle-controls>button:focus-visible{outline:2px solid #fff;outline-offset:-2px;}
 .cot-vehicle-controls>button .si{grid-column:1;grid-row:1;display:flex;align-items:center;justify-content:center;filter:none;}

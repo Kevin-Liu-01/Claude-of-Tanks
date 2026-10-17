@@ -7,7 +7,7 @@ import { createVehicleStatusStrip } from './vehicleStatus.ts';
 import { drawAerialMinimap } from './aerialMinimap.ts';
 import { createAerialHud } from './aerialHud.ts';
 import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
-import { createSpecialActionPresentationReader, depletedMissileLabel } from './vehicleSpecialAction.ts';
+import { createSpecialActionPresentationReader, depletedMissileLabel, magazineFeedEmpty } from './vehicleSpecialAction.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
 import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 // src/ui/hud.ts — battle HUD overlay: dispersion/reload reticle, shell
@@ -77,6 +77,8 @@ interface MagazineView {
   capacity?: number;
   /** A guided rack salvo group (sim/magazineIndicator): its group reload is the launcher's own 'shell' cycle. */
   launcher?: boolean;
+  /** Rounds of `capacity` that stowage can still load (aimController; absent = all of them). */
+  feed?: number;
 }
 
 interface AimWarningView {
@@ -120,11 +122,15 @@ interface AutoloaderHudState {
   rounds: number;
   visibleShells: number;
   readyShells: number;
+  /** Visible shells stowage can still fill; the rest draw as hollow, spent slots. */
+  feedShells: number;
   overflow: number;
   fullReload: boolean;
   loadProgress: number;
   intraClip: boolean;
   reloading: boolean;
+  /** The selected weapon holds no round at all: every shell hollow, struck, no fill. */
+  dry: boolean;
 }
 
 interface AutoloaderShellPose {
@@ -501,6 +507,8 @@ interface ReticlePaintState {
   magazineCapacity: number;
   magazineRounds: number;
   magazineLauncher: boolean;
+  magazineFeed: number;
+  dry: boolean;
   shellType: string;
   shellCount: number;
   shellUnlimited: boolean;
@@ -518,6 +526,8 @@ interface ReticleDrawState {
   limited: boolean;
   reloadFraction: number;
   reloading: boolean;
+  /** The selected weapon is out of rounds (reticleWeaponDry): no sweep, countdown or ready pulse. */
+  dry: boolean;
   gunColor: string;
   ringColor: string;
   zoomScale: number;
@@ -691,6 +701,9 @@ const PEN_NONE = 'rgba(236,242,248,0.95)';
 const CIRCLE_COL = 'rgba(208,233,211,0.85)';
 const SNIPER_COL = 'rgba(140,242,140,0.95)';      // sniper circle + furniture
 const RELOAD_ACCENT = 'rgba(240,160,48,0.95)';    // reload sweep + countdown
+// Owner 2026-10-17 (out of ammo): a spent weapon's ink. The DOM controls read the same danger as --hud-danger.
+const DRY_ACCENT = 'rgba(240,90,90,0.92)';
+const DRY_RING = 'rgba(214,120,112,0.62)';
 export const AUTOLOADER_HUD_SHELLS = 4;
 const AUTOLOADER_HUD_ARC_DEPTH = 2.25;
 const AUTOLOADER_HUD_OUTER_ROTATION = 0.14;
@@ -784,9 +797,10 @@ export function hitConfirmVisualState(
   return state;
 }
 
-/** Remaining reload fraction, or a full unavailable ring while selection is pending. */
-export function reloadHudFraction(reload: ReloadView | null | undefined, pending = false): number {
+/** Remaining reload fraction, or a full unavailable ring while selection is pending. A dry weapon loads nothing. */
+export function reloadHudFraction(reload: ReloadView | null | undefined, pending = false, dry = false): number {
   if (pending) return 1;
+  if (dry) return 0;
   const totalS = reload?.totalS ?? 0;
   const remainingS = reload?.t ?? 0;
   if (!(totalS > 0) || !(remainingS > 0.001)) return 0;
@@ -799,8 +813,21 @@ export function reloadHudCountdown(reload: ReloadView, pending = false): string 
   return reload.t >= 10 ? `${Math.ceil(reload.t)}` : reload.t.toFixed(1);
 }
 
-export function reloadHudReadyPulse(wasReloading: boolean, reloading: boolean, pending = false): boolean {
-  return !pending && wasReloading && !reloading;
+export function reloadHudReadyPulse(wasReloading: boolean, reloading: boolean, pending = false, dry = false): boolean {
+  return !pending && !dry && wasReloading && !reloading;
+}
+
+/**
+ * Owner 2026-10-17: "if you are out of ammo, the reload indicators should have a special edge case, including
+ * autoloader/missile indicators." The selected weapon is dry when its card holds no round, loaded or stowed, under a
+ * finite loadout. The simulation refuses to select an empty slot and falls back after the last round, so a dry
+ * selection means every channel is spent. The ruleset's unlimited-rounds mark on the card never runs dry; a pending
+ * host selection keeps its own read. Allocation-free (the reticle reads it every frame).
+ */
+export function reticleWeaponDry(shell: HudShellCard | null | undefined, pending = false): boolean {
+  if (pending || !shell || shell.unlimited === true || shell.count == null) return false;
+  const raw = Number(shell.count);
+  return (Number.isFinite(raw) ? Math.floor(raw) : 0) <= 0;
 }
 
 export function ammunitionSelectionLabel(name: string, count: number, selected: boolean, pending = false): string {
@@ -885,16 +912,21 @@ export function autoloaderHudState(
   magazine: MagazineView | null | undefined,
   reload: ReloadView | null | undefined,
   out: AutoloaderHudState | null = null,
+  dry = false,
 ): AutoloaderHudState | null {
   const capacity = Math.max(0, (magazine?.capacity ?? 0) | 0);
   if (capacity <= 1) return null;
-  const rounds = Math.max(0, Math.min(capacity, (magazine?.rounds ?? 0) | 0));
+  // Owner 2026-10-17 (out of ammo): only rounds stowage can still load ever fill; a dry weapon fills none.
+  const feedRaw = magazine?.feed;
+  const feedable = dry ? 0
+    : feedRaw == null || !(feedRaw < capacity) ? capacity : Math.max(0, Math.floor(feedRaw));
+  const rounds = Math.max(0, Math.min(feedable, (magazine?.rounds ?? 0) | 0));
   const reloadTotalS = reload?.totalS ?? 0;
   const reloadRemainingS = reload?.t ?? 0;
   // A cannon magazine reloads as a 'magazine' cycle; a guided rack salvo group (round 41) reloads through the
   // launcher's own 'shell' cycle — both fill the indicator's shells with the same progress read.
   const groupReload = reload?.kind === 'magazine' || (magazine?.launcher === true && reload?.kind === 'shell');
-  const fullReload = groupReload && reloadTotalS > 0 && reloadRemainingS > 0.001;
+  const fullReload = groupReload && feedable > 0 && reloadTotalS > 0 && reloadRemainingS > 0.001;
   const loadProgress = fullReload
     ? Math.max(0, Math.min(1, 1 - reloadRemainingS / reloadTotalS))
     : 0;
@@ -903,21 +935,25 @@ export function autoloaderHudState(
     rounds: 0,
     visibleShells: 0,
     readyShells: 0,
+    feedShells: 0,
     overflow: 0,
     fullReload: false,
     loadProgress: 0,
     intraClip: false,
     reloading: false,
+    dry: false,
   };
   state.capacity = capacity;
   state.rounds = rounds;
   state.visibleShells = Math.min(AUTOLOADER_HUD_SHELLS, capacity);
   state.readyShells = Math.min(state.visibleShells, rounds);
+  state.feedShells = Math.min(state.visibleShells, feedable);
   state.overflow = Math.max(0, rounds - state.visibleShells);
   state.fullReload = fullReload;
   state.loadProgress = loadProgress;
-  state.intraClip = reload?.kind === 'intraClip' && reloadRemainingS > 0.001;
-  state.reloading = reloadRemainingS > 0.001;
+  state.intraClip = !dry && reload?.kind === 'intraClip' && reloadRemainingS > 0.001;
+  state.reloading = !dry && reloadRemainingS > 0.001;
+  state.dry = dry;
   return state;
 }
 
@@ -1273,7 +1309,7 @@ function drawShellIcon(canvas: HTMLCanvasElement, type: string): void {
 const HUD_CSS = `
 .cot-hud{position:fixed;inset:0;pointer-events:none;z-index:40;font-family:${FONT_STACK};isolation:isolate;
   --hud-panel:rgba(7,11,15,.92);--hud-edge:rgba(181,199,212,.32);
-  --hud-muted:#93a3af;--hud-text:#e8f0f5;--hud-action:#f0a030;
+  --hud-muted:#93a3af;--hud-text:#e8f0f5;--hud-action:#f0a030;--hud-danger:#f05a5a;
   --hud-layer-world:6;--hud-layer-sight:8;--hud-layer-status:18;
   --hud-layer-controls:24;--hud-layer-score:30;
   -webkit-user-select:none;user-select:none;color:var(--hud-text);overflow:hidden;}
@@ -1634,7 +1670,7 @@ body.cot-spectating .cot-ret{display:none !important;}
 .cot-shell.sel{border-color:#f0a030;border-bottom-color:#f0a030;
   background:linear-gradient(180deg,rgba(34,26,12,.9),rgba(18,13,7,.92));
   box-shadow:0 0 14px rgba(240,160,48,.25);}
-.cot-shell.empty{color:#657079;border-color:rgba(105,115,123,.28);border-bottom-color:rgba(105,115,123,.28);
+.cot-shell.empty{color:#657079;border-color:rgba(105,115,123,.28);border-bottom-color:color-mix(in srgb,var(--hud-danger) 60%,transparent);
   background:linear-gradient(180deg,rgba(22,25,28,.91),rgba(10,12,14,.95));box-shadow:none;}
 .cot-shell.empty canvas,.cot-shell.empty .ty,.cot-shell.empty .clr{filter:grayscale(1);opacity:.34;}
 .cot-shell.empty .cnt,.cot-shell.empty .key{color:#66717a;border-color:rgba(105,115,123,.3);}
@@ -2348,6 +2384,8 @@ export function initHud(bus: EventBus): HudRuntime {
     const emptyMissileLabel=depletedMissileLabel(combat,extraMissileSlot,player?.spec?.gun?.shells[extraMissileSlot]);
     const missileEmpty=emptyMissileLabel!==null;
     missileButton.disabled=!canControl||missileEmpty;
+    // Owner 2026-10-17 (out of ammo): a spent launcher shows its struck icon in the danger ink; the count is spoken only.
+    missileButton.classList.toggle('empty',missileEmpty);
     const missileSelected=player?.combat?.shellSlot===extraMissileSlot;
     if(player?.combat&&!missileSelected)previousConventionalSlot=player.combat.shellSlot;
     missileButton.classList.toggle('active',missileSelected&&!missileEmpty);missileButton.setAttribute('aria-pressed',String(missileSelected));
@@ -2360,17 +2398,20 @@ export function initHud(bus: EventBus): HudRuntime {
       ? Number(action?.missileSlot) : -1;
     // Weapon channels keep the missile timer accurate even while the cannon is selected.
     const missileWait=extraMissileSlot>=0?Math.ceil(reloadForSlot(combat,extraMissileSlot,lastTimeS) || 0):0;
-    missileButton.querySelector('.sl')!.textContent=emptyMissileLabel ?? (missileWait>0?t('systems.cooldown',{seconds:missileWait}):'ATGM');
+    missileButton.querySelector('.sl')!.textContent=!missileEmpty&&missileWait>0?t('systems.cooldown',{seconds:missileWait}):'ATGM';
     missileButton.setAttribute('aria-label', emptyMissileLabel ? `ATGM ${emptyMissileLabel}` : 'ATGM');
-    const wait=specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE?Math.ceil(reloadForSlot(combat,missileSlot,lastTimeS)||0)
-      :specialKind===SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD?Math.ceil(combat?.gunReload?.t??combat?.reload.t??0):0;
     const specialMissileEmpty=specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE&&missileEmpty;
-    specialLabel.textContent=specialMissileEmpty ? emptyMissileLabel! : wait>0?t('systems.cooldown',{seconds:wait}):specialLabel.dataset.short||'';
+    // A magazine reload with nothing stowed to load is spent too: no countdown, no pointless reload.
+    const specialEmpty=specialMissileEmpty||(specialKind===SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD&&magazineFeedEmpty(combat,player?.spec));
+    const wait=specialEmpty?0:specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE?Math.ceil(reloadForSlot(combat,missileSlot,lastTimeS)||0)
+      :specialKind===SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD?Math.ceil(combat?.gunReload?.t??combat?.reload.t??0):0;
+    specialLabel.textContent=wait>0?t('systems.cooldown',{seconds:wait}):specialLabel.dataset.short||'';
     specialButton.setAttribute('aria-label', specialMissileEmpty ? `${specialButton.title} ${emptyMissileLabel}` : specialButton.title || t('hud.special.unavailable'));
     specialButton.querySelector('small')!.textContent='';
-    specialButton.classList.toggle('active', active&&!specialMissileEmpty);
+    specialButton.classList.toggle('empty', specialEmpty);
+    specialButton.classList.toggle('active', active&&!specialEmpty);
     specialButton.classList.remove('pending');
-    specialButton.disabled = !canControl || specialKind === SPECIAL_ACTION_KINDS.NONE || specialMissileEmpty;
+    specialButton.disabled = !canControl || specialKind === SPECIAL_ACTION_KINDS.NONE || specialEmpty;
     specialButton.setAttribute('aria-pressed', active ? 'true' : 'false');
   }
 
@@ -2578,14 +2619,14 @@ export function initHud(bus: EventBus): HudRuntime {
   let lastMagazineIndicatorY: number | null = null;
   let lastMagazineIndicatorState: AutoloaderHudState | null = null;
   const magazineHudScratch: AutoloaderHudState = {
-    capacity: 0, rounds: 0, visibleShells: 0, readyShells: 0, overflow: 0,
-    fullReload: false, loadProgress: 0, intraClip: false, reloading: false,
+    capacity: 0, rounds: 0, visibleShells: 0, readyShells: 0, feedShells: 0, overflow: 0,
+    fullReload: false, loadProgress: 0, intraClip: false, reloading: false, dry: false,
   };
   const magazineShellPoseScratch: AutoloaderShellPose = { y: 0, rotation: 0 };
   const reticleDrawScratch: ReticleDrawState = {
     cx: 0, cy: 0, radius: RET_FLOOR_PX, circleX: 0, circleY: 0,
     sniper: false, blocked: false, limited: false,
-    reloadFraction: 0, reloading: false,
+    reloadFraction: 0, reloading: false, dry: false,
     gunColor: PEN_NONE, ringColor: CIRCLE_COL,
     zoomScale: 1, markerLineWidth: 1.6, centerClearanceRadius: 14,
     single: false, magazine: null, magazineBottomY: 0,
@@ -3742,9 +3783,15 @@ export function initHud(bus: EventBus): HudRuntime {
     singleReticle: false, atGunLimit: false, gunLimitSpec: false,
     selfRightLabel: null,
     zoom: 1, reloadKind: '', ammoSelectionPending: false, magazineCapacity: 0, magazineRounds: 0,
-    magazineLauncher: false,
+    magazineLauncher: false, magazineFeed: -1, dry: false,
     shellType: '', shellCount: 0, shellUnlimited: false, drawnR: 0,
   };
+  /** The reticle's weapon is the selected card (renderShells runs before the canvas paints). */
+  function selectedWeaponDry(view: HudAimView): boolean {
+    return reticleWeaponDry((lastShells && lastShells[localSlot]) || DEFAULT_SHELLS[0], view.ammoSelectionPending);
+  }
+  const magazineFeedKey = (magazine: MagazineView | null): number =>
+    magazine?.feed == null || !Number.isFinite(magazine.feed) ? -1 : magazine.feed | 0;
   const nearPaint = (
     a: number | null,
     b: number | null,
@@ -3784,13 +3831,15 @@ export function initHud(bus: EventBus): HudRuntime {
       && reticlePaint.magazineCapacity === ((magazine?.capacity ?? 0) | 0)
       && reticlePaint.magazineRounds === ((magazine?.rounds ?? 0) | 0)
       && reticlePaint.magazineLauncher === (magazine?.launcher === true)
+      && reticlePaint.magazineFeed === magazineFeedKey(magazine)
+      && reticlePaint.dry === selectedWeaponDry(view)
       && reticlePaint.shellType === (shell.type || '')
       && reticlePaint.shellCount === shellCount(shell)
       && reticlePaint.shellUnlimited === (shell.unlimited === true);
   }
   function reticleCanReuse(view: HudAimView): boolean {
     if (!reticlePaint.valid || hitDirs.length || hitMark || readyPulseT >= 0 || scopeFadeMs >= 0) return false;
-    if (reloadHudFraction(view.reload) > 0) return false;
+    if (reloadHudFraction(view.reload, false, selectedWeaponDry(view)) > 0) return false;
     const targetR = clampRetR(reticleTargetR(view));
     if (Math.abs(targetR - smoothRadPx) > 0.01) return false;
     return reticleGeometryMatches(view)
@@ -3815,6 +3864,8 @@ export function initHud(bus: EventBus): HudRuntime {
     reticlePaint.magazineCapacity = (mag?.capacity ?? 0) | 0;
     reticlePaint.magazineRounds = (mag?.rounds ?? 0) | 0;
     reticlePaint.magazineLauncher = mag?.launcher === true;
+    reticlePaint.magazineFeed = magazineFeedKey(mag);
+    reticlePaint.dry = selectedWeaponDry(view);
     reticlePaint.shellType = shell.type || ''; reticlePaint.shellCount = shellCount(shell);
     reticlePaint.shellUnlimited = shell.unlimited === true;
     reticlePaint.drawnR = lastDrawnR;
@@ -3854,6 +3905,7 @@ export function initHud(bus: EventBus): HudRuntime {
   function reticleRingColor(draw: ReticleDrawState): string {
     if (draw.blocked) return PEN_RED;
     if (draw.limited) return 'rgba(160,170,180,0.95)';
+    if (draw.dry) return DRY_RING;
     return draw.sniper ? SNIPER_COL : CIRCLE_COL;
   }
 
@@ -3875,7 +3927,8 @@ export function initHud(bus: EventBus): HudRuntime {
     lastCircleY = state.circleY;
 
     state.sniper = mode === 'sniper';
-    state.reloadFraction = reloadHudFraction(view.reload, view.ammoSelectionPending);
+    state.dry = selectedWeaponDry(view);
+    state.reloadFraction = reloadHudFraction(view.reload, view.ammoSelectionPending, state.dry);
     state.reloading = state.reloadFraction > 0;
     state.blocked = view.blockedDistM != null;
     state.limited = !state.blocked && view.atGunLimit;
@@ -3894,7 +3947,7 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function paintAutoloaderMagazine(view: HudAimView, draw: ReticleDrawState): void {
     const magazine = view.ammoSelectionPending ? null
-      : autoloaderHudState(view.magazine, view.reload, magazineHudScratch);
+      : autoloaderHudState(view.magazine, view.reload, magazineHudScratch, draw.dry);
     draw.magazine = magazine;
     draw.magazineBottomY = 0;
     if (!magazine) {
@@ -3923,8 +3976,11 @@ export function initHud(bus: EventBus): HudRuntime {
       const shellCy = y0 + pose.y + shellH * 0.5;
       draw.magazineBottomY = Math.max(draw.magazineBottomY, y0 + pose.y + shellH);
       const ready = i < magazine.readyShells;
-      const loading = magazine.fullReload
-        ? Math.max(0, Math.min(1, magazine.loadProgress * visibleShells - i))
+      // Owner 2026-10-17 (out of ammo): a slot stowage can no longer fill is spent — hollow, in the danger ink, never
+      // loading; the reload fill spreads over the shells that will actually load.
+      const spent = i >= magazine.feedShells;
+      const loading = magazine.fullReload && !spent
+        ? Math.max(0, Math.min(1, magazine.loadProgress * magazine.feedShells - i))
         : 0;
       ctx.save();
       ctx.translate(shellCx, shellCy);
@@ -3938,6 +3994,14 @@ export function initHud(bus: EventBus): HudRuntime {
       magazineShellPath(ctx, x, y, shellW, shellH);
       ctx.fillStyle = 'rgba(7,11,14,0.52)';
       ctx.fill();
+      if (spent) {
+        magazineShellPath(ctx, x, y, shellW, shellH);
+        ctx.strokeStyle = DRY_ACCENT;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.restore();
+        continue;
+      }
       if (ready || loading > 0) {
         ctx.save();
         magazineShellPath(ctx, x, y, shellW, shellH);
@@ -3961,6 +4025,46 @@ export function initHud(bus: EventBus): HudRuntime {
       ctx.fillText(`+${magazine.overflow}`, draw.cx + totalW * 0.5 + 3, y0 + shellH);
       ctx.textAlign = 'center';
     }
+    if (magazine.dry) paintDrySlash(draw.cx, y0 + AUTOLOADER_HUD_ARC_DEPTH * 0.5 + shellH * 0.5, totalW * 0.5 + 3, shellH * 0.5 + 2);
+  }
+
+  /** The out-of-ammo strike: one diagonal through the spent rack or round, over a dark contour. */
+  function paintDrySlash(cx: number, cy: number, halfW: number, halfH: number): void {
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx - halfW, cy + halfH);
+    ctx.lineTo(cx + halfW, cy - halfH);
+    ctx.strokeStyle = 'rgba(5,8,11,0.88)';
+    ctx.lineWidth = 3.4;
+    ctx.stroke();
+    ctx.strokeStyle = DRY_ACCENT;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+  }
+
+  /**
+   * Owner 2026-10-17: a single-shot gun with no round left shows one hollow, struck round where the reload countdown
+   * would run — never a sweep, countdown or ready pulse that reads as a loaded gun.
+   */
+  function paintDryRound(draw: ReticleDrawState): void {
+    if (!draw.dry || draw.magazine) return;
+    const shellW = draw.sniper ? 8 : 7;
+    const shellH = draw.sniper ? 19 : 17;
+    const x = draw.cx - shellW * 0.5;
+    const y = draw.cy + draw.centerClearanceRadius + 6;
+    magazineShellPath(ctx, x, y, shellW, shellH);
+    ctx.strokeStyle = 'rgba(5,8,11,0.88)';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+    magazineShellPath(ctx, x, y, shellW, shellH);
+    ctx.fillStyle = 'rgba(7,11,14,0.52)';
+    ctx.fill();
+    ctx.strokeStyle = DRY_ACCENT;
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    paintDrySlash(draw.cx, y + shellH * 0.5, shellW * 0.5 + 4, shellH * 0.5 + 1);
+    draw.magazineBottomY = y + shellH;
   }
 
   function paintReadyPulse(draw: ReticleDrawState): void {
@@ -4042,7 +4146,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const x = draw.cx - (countW + typeW) / 2;
     ctx.textAlign = 'left';
     ctx.font = `700 13.5px ${FONT_COND}`;
-    ctx.fillStyle = 'rgba(226,236,244,0.92)';
+    ctx.fillStyle = draw.dry ? DRY_ACCENT : 'rgba(226,236,244,0.92)';
     ctx.fillText(`${count} `, x, y);
     ctx.font = `800 9px ${FONT_COND}`;
     ctx.fillStyle = SHELL_TYPE_COLOR[type] || 'rgba(159,176,191,0.9)';
@@ -4153,7 +4257,8 @@ export function initHud(bus: EventBus): HudRuntime {
     // 1.5 px stroke — fine-ruled instrument marks whose count stays stable
     // through bloom/shrink. The dark under-stroke survives (sunlit-road
     // legibility) but slims to a hairline halo.
-    const segN = sniper ? 40 : 32;
+    // Out of ammo (owner 2026-10-17) the ring stays an aiming mark but thins to sparse, muted danger dashes.
+    const segN = draw.dry ? (sniper ? 20 : 16) : sniper ? 40 : 32;
     const segPeriod = (2 * Math.PI * r) / segN;
     const dashLen = Math.max(2.5, segPeriod * 0.52);
     const dashGap = Math.max(1.5, segPeriod - dashLen);
@@ -4216,9 +4321,9 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.shadowBlur = 0;
     // The dotted sweep, countdown numeral and ready-pulse edge detector all
     // read the same canonical reload state.
-    if (view.ammoSelectionPending) readyPulseT = -1;
+    if (view.ammoSelectionPending || draw.dry) readyPulseT = -1;
     else if (reloadHudReadyPulse(wasReloading, isReloading)) readyPulseT = lastTimeS;
-    wasReloading = !view.ammoSelectionPending && isReloading;
+    wasReloading = !view.ammoSelectionPending && !draw.dry && isReloading;
     const markLw = draw.markerLineWidth;
     ctx.globalAlpha = 0.5;
     ctx.strokeStyle = 'rgba(6,9,12,0.9)';
@@ -4242,6 +4347,7 @@ export function initHud(bus: EventBus): HudRuntime {
     // A magazine larger than the four-shell visual window keeps an exact
     // +N overflow label instead of silently losing authoritative state.
     paintAutoloaderMagazine(view, draw);
+    paintDryRound(draw);
     // ready pulse (r7): the moment the reload-dot sweep clears, the center marker
     // flashes white for ~0.4 s — WoT's unmistakable "gun ready" beat.
     // r8 MAJOR: never in a forced still — with timeS frozen the flash held at
@@ -4297,7 +4403,7 @@ export function initHud(bus: EventBus): HudRuntime {
     for (let i = 0; i < 3; i++) {
       if (i === slot && pending) {
         slotPresentations[i].setCooldown('100%');
-      } else if (i === slot && reload && reload.totalS > 0 && reload.t > 0.001) {
+      } else if (i === slot && reload && reload.totalS > 0 && reload.t > 0.001 && !reticleWeaponDry(lastShells?.[i])) {
         slotPresentations[i].setCooldown(`${((reload.t / reload.totalS) * 100).toFixed(1)}%`);
       } else {
         slotPresentations[i].setCooldown('0');
