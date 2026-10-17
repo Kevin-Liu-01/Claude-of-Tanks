@@ -8,12 +8,19 @@
 // cassettes never crossing; no visible z-fighting; no thin slots between armour pieces), with two negative controls that
 // must fail it: the Yun's antenna lifted 50 mm off its foot, and its sight hood's top plate sunk 60 mm into the gunner's
 // sight. The moving-part clearances are cnClearance.selftest.mjs.
+// M1 (2026-10-17): the sight fields. Each donor sight aperture (the 96B gunner's sight, box sight and the commander's
+// forward periscope; the 99A2 gunner's sight and commander's sight head) looks out through its glass rectangle swept
+// 3 m forward, widening 8 degrees a side and covering -2..+8 degrees in elevation; no part the CN kit adds (a tagged
+// role) may enter it, and the 226 Kunlun lamp seat (|x| 0.55, z 0.86, ahead of the 96B gunner's sight) must fail it.
+// Every turret lamp's lens (driving lamps and Shtora) shines out unobstructed for 3 m with the gun at rest, fully
+// depressed and fully elevated (rays from its whole aperture), and each lamp pair is a mirror pair.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { NATIONAL_DONOR_TURRETS, QILIN_BUSTLE_CUT_M } from './nationalDonorTurrets.ts';
 import { bustleCutZ, ZTZ99A2_BUSTLE_CUT_FRONT_Z } from './donorBustleCut.ts';
-import { censusPart, seatingCensus, SurfaceGrid } from './cnTurretGeometry.test-support.mjs';
+import { censusPart, seatingCensus, SurfaceGrid, sightField, sightFieldApproach, densePoints, meshTriangles } from './cnTurretGeometry.test-support.mjs';
+import { getSpec } from './specs.ts';
 
 // role -> [minimum parts, exact reactive cassettes (parts with ERA hit faces) or null]
 const INVENTORY = {
@@ -33,6 +40,8 @@ const INVENTORY = {
   },
 };
 const LIGHTS = { t80u_yun: [6, 0], t72b3_qilin: [4, 0], t72b3m_kunlun: [6, 2] };
+// the lenses on the turret (its lamp pair, and the Kunlun's Shtora pair); the rest are the hull's driving lamps
+const TURRET_LENSES = { t80u_yun: 2, t72b3_qilin: 2, t72b3m_kunlun: 4 };
 
 // The welded rear cage and the dock's bearers are one item: their beams cross at every joint.
 const family = (role) => (/^(cage-|dock-)/.test(role) ? 'cage' : role);
@@ -56,7 +65,7 @@ function allowance(p) {
 function build(id, quality) {
   const parts = [];
   const tank = createTank(id, null, { proceduralOnly: true, quality, geometryReceipt: true, camoSeed: 4242,
-    partCensus(bucket, g) { parts.push({ ...censusPart(bucket, g), hit: (g.userData?.eraHitFaceVertexStarts?.length ?? 0) > 0 }); } });
+    partCensus(bucket, g) { parts.push({ ...censusPart(bucket, g), hit: (g.userData?.eraHitFaceVertexStarts?.length ?? 0) > 0, lens: Boolean(g.userData?.vehicleNightLens) }); } });
   tank.root.updateMatrixWorld(true);
   return { tank, parts };
 }
@@ -65,6 +74,114 @@ const owner = (p) => (p.bucket.startsWith('turret') ? 'turret' : p.bucket.starts
 function shifted(p, dy) {
   const tri = Float64Array.from(p.tri); for (let i = 1; i < tri.length; i += 3) tri[i] += dy;
   return { ...p, tri, box: p.box.clone().translate(new THREE.Vector3(0, dy, 0)), dense: undefined, samples: undefined };
+}
+
+
+// ---- M1: the donor's sight apertures (census parts, turret-local; a gun-borne glass is moved into the turret frame at
+// rest) and the parts the kit adds in front of them
+const width = (p) => p.box.max.x - p.box.min.x, midX = (p) => (p.box.min.x + p.box.max.x) / 2;
+function apertures(id, parts, gunToTurret) {
+  const atRest = (p) => (owner(p) === 'gun' ? { ...p, box: p.box.clone().applyMatrix4(gunToTurret) } : p);
+  const glass = parts.filter((p) => /Glass$/.test(p.bucket) && owner(p) !== 'hull' && !p.role && !p.lens).map(atRest);
+  const one = (list, what) => { assert.equal(list.length, 1, `${id}: exactly one ${what} (${list.length})`); return list[0]; };
+  if (id === 't72b3_qilin') return {
+    "99A2 gunner's sight": one(glass.filter((p) => width(p) > .15 && midX(p) > 0 && p.box.max.y < 1.1), "99A2 gunner's sight glass"),
+    "99A2 commander's sight head": one(glass.filter((p) => p.box.min.y > 1.1), "99A2 commander's sight head glass"),
+  };
+  const periscopes = glass.filter((p) => width(p) < .07 && p.box.min.y > .84 && p.box.max.y < .90);
+  assert.equal(periscopes.length, 8, `${id}: the 96B cupola's eight periscopes`);
+  return {
+    "96B gunner's sight": one(glass.filter((p) => width(p) > .2 && midX(p) > 0), "96B gunner's sight glass"),
+    '96B box sight': one(glass.filter((p) => Math.abs(midX(p)) < .01 && p.box.min.z > 1.5), '96B box sight glass'),
+    "96B commander's forward periscope": periscopes.reduce((a, b) => (b.box.max.z > a.box.max.z ? b : a)),
+  };
+}
+/** The worst approach of the kit's turret parts to each aperture's field: [name, margin m (< 0 clear), part]. */
+function sightFieldCensus(id, parts, gunToTurret) {
+  const kit = parts.filter((p) => p.role && owner(p) === 'turret');
+  return Object.entries(apertures(id, parts, gunToTurret)).map(([name, glass]) => {
+    const worst = sightFieldApproach(kit, sightField(glass)).reduce((a, b) => (b.m > a.m ? b : a), { m: -Infinity, part: null });
+    return [name, worst.m, worst.part];
+  });
+}
+/** A shifted copy of a census part in x, y and z. */
+function moved(p, dx, dy, dz) {
+  const tri = Float64Array.from(p.tri); for (let i = 0; i < tri.length; i += 3) { tri[i] += dx; tri[i + 1] += dy; tri[i + 2] += dz; }
+  return { ...p, tri, box: p.box.clone().translate(new THREE.Vector3(dx, dy, dz)), dense: undefined, samples: undefined };
+}
+/** Möller-Trumbore: the distance along the unit ray (o, d) to triangle T[t..t+8], or Infinity. */
+function rayTriangle(T, t, ox, oy, oz, dx, dy, dz) {
+  const e1x = T[t + 3] - T[t], e1y = T[t + 4] - T[t + 1], e1z = T[t + 5] - T[t + 2], e2x = T[t + 6] - T[t], e2y = T[t + 7] - T[t + 1], e2z = T[t + 8] - T[t + 2];
+  const px = dy * e2z - dz * e2y, py = dz * e2x - dx * e2z, pz = dx * e2y - dy * e2x, det = e1x * px + e1y * py + e1z * pz;
+  if (Math.abs(det) < 1e-14) return Infinity;
+  const inv = 1 / det, tx = ox - T[t], ty = oy - T[t + 1], tz = oz - T[t + 2], u = (tx * px + ty * py + tz * pz) * inv;
+  if (u < 0 || u > 1) return Infinity;
+  const qx = ty * e1z - tz * e1y, qy = tz * e1x - tx * e1z, qz = tx * e1y - ty * e1x, v = (dx * qx + dy * qy + dz * qz) * inv;
+  if (v < 0 || u + v > 1) return Infinity;
+  const d = (e2x * qx + e2y * qy + e2z * qz) * inv; return d > 0 ? d : Infinity;
+}
+/** Every turret lamp lens shines out for 3 m: rays from a 12 mm grid over each lens's marked aperture faces (the census
+ * lens parts, turret-local) along the face's normal, against every other census part of the vehicle and the roof
+ * station (turret frame), with the gun at rest, fully depressed and fully elevated. A lamp's own assembly (its role's
+ * parts within 0.25 m: the guard posts, the Shtora's guard bars and hood) is the lamp. Returns the obstructions. */
+function apertureRays(id, tank, parts) {
+  const spec = getSpec(id), turret = tank.root.getObjectByName('rig_turret'), gun = tank.root.getObjectByName('rig_gun');
+  const tInv = new THREE.Matrix4().copy(turret.matrixWorld).invert();
+  const hullToTurret = tInv.clone().multiply(turret.parent.matrixWorld);
+  let station = null; turret.traverse((o) => { if (!station && o.userData.remoteControlled && o.userData.firingAxis === '+Z') station = o; });
+  const stationMeshes = []; station?.traverse((o) => { if (o.isMesh && !/Shadow/.test(o.name)) stationMeshes.push(o); });
+  const stationTris = meshTriangles(stationMeshes, tInv);
+  const lenses = parts.filter((p) => p.lens && owner(p) === 'turret');
+  const problems = [];
+  const v = new THREE.Vector3();
+  const placed = (p, M) => { if (!M) return p.tri; const T = new Float64Array(p.tri.length); for (let i = 0; i < T.length; i += 3) { v.set(p.tri[i], p.tri[i + 1], p.tri[i + 2]).applyMatrix4(M); T[i] = v.x; T[i + 1] = v.y; T[i + 2] = v.z; } return T; };
+  for (const pitch of [0, -(spec.gunDepressionDeg ?? 6), spec.gunElevationDeg ?? 14]) {
+    const gunToTurret = new THREE.Matrix4().copy(tInv).multiply(gun.parent.matrixWorld)
+      .multiply(new THREE.Matrix4().compose(gun.position, new THREE.Quaternion().setFromEuler(new THREE.Euler(gun.rotation.x - pitch * Math.PI / 180, gun.rotation.y, gun.rotation.z)), gun.scale));
+    const world = parts.filter((p) => !p.lens || owner(p) !== 'turret').map((p) => ({ p, T: placed(p, owner(p) === 'turret' ? null : owner(p) === 'gun' ? gunToTurret : hullToTurret) }));
+    world.push({ p: { role: null, box: new THREE.Box3() }, T: stationTris });
+    for (const lens of lenses) {
+      const L = lens.tri, rays = [];
+      for (let t = 0; t < L.length; t += 9) {
+        const ux = L[t + 3] - L[t], uy = L[t + 4] - L[t + 1], uz = L[t + 5] - L[t + 2], vx = L[t + 6] - L[t], vy = L[t + 7] - L[t + 1], vz = L[t + 8] - L[t + 2];
+        let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx; const a = Math.hypot(nx, ny, nz); if (a < 1e-12) continue;
+        nx /= a; ny /= a; nz /= a; if (nz < .98) continue; // the forward aperture (markVehicleNightLens: +Z faces)
+        const S = densePoints(L.slice(t, t + 9), .012);
+        for (let i = 0; i < S.length; i += 3) rays.push([S[i] + nx * .002, S[i + 1] + ny * .002, S[i + 2] + nz * .002, nx, ny, nz]);
+      }
+      assert.ok(rays.length > 8, `${id}: lens [${lens.box.min.toArray().map((x) => x.toFixed(3))}] has a forward aperture`);
+      const b = lens.box, own = b.clone().expandByScalar(.25), near = [];
+      for (const { p, T } of world) {
+        if (lens.role && p.role === lens.role && own.intersectsBox(p.box)) continue;
+        for (let t = 0; t < T.length; t += 9) {
+          let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, z1 = -Infinity;
+          for (let k = 0; k < 9; k += 3) { x0 = Math.min(x0, T[t + k]); x1 = Math.max(x1, T[t + k]); y0 = Math.min(y0, T[t + k + 1]); y1 = Math.max(y1, T[t + k + 1]); z1 = Math.max(z1, T[t + k + 2]); }
+          if (x1 < b.min.x - .01 || x0 > b.max.x + .01 || y1 < b.min.y - .01 || y0 > b.max.y + .01 || z1 < b.max.z) continue;
+          for (let k = 0; k < 9; k++) near.push(T[t + k]);
+        }
+      }
+      let worst = null;
+      for (const [ox, oy, oz, dx, dy, dz] of rays) for (let t = 0; t < near.length; t += 9) {
+        const d = rayTriangle(near, t, ox, oy, oz, dx, dy, dz);
+        if (d <= 3 && (!worst || d < worst.d)) worst = { d, at: [ox, oy, oz] };
+      }
+      if (worst) problems.push(`lens [${b.min.toArray().map((x) => x.toFixed(3))}..${b.max.toArray().map((x) => x.toFixed(3))}] (gun ${pitch} deg): a ray from ${worst.at.map((x) => x.toFixed(3))} meets a surface ${(worst.d * 1000).toFixed(0)} mm out`);
+    }
+  }
+  return { problems, lenses: lenses.length };
+}
+/** Each lamp role's parts pair off with their mirror images across the turret's centre plane: in plan within 1.5 mm, in
+ * height within 15 mm (each foot follows its own roof; the 99A2's crown is not symmetric under the Qilin's lamps). */
+function asymmetricLamps(parts) {
+  const out = [];
+  for (const role of ['lamp', 'slit-lamp']) {
+    const list = parts.filter((p) => p.role === role && owner(p) === 'turret');
+    for (const p of list) if (!list.some((q) => Math.abs(q.box.min.x + p.box.max.x) < .0015 && Math.abs(q.box.max.x + p.box.min.x) < .0015
+      && Math.abs(q.box.min.z - p.box.min.z) < .0015 && Math.abs(q.box.max.z - p.box.max.z) < .0015
+      && Math.abs(q.box.min.y - p.box.min.y) < .015 && Math.abs(q.box.max.y - p.box.max.y) < .015))
+      out.push(`${role} [${p.box.min.toArray().map((v) => v.toFixed(3))}..${p.box.max.toArray().map((v) => v.toFixed(3))}] has no mirror image`);
+  }
+  return out;
 }
 
 for (const quality of ['high', 'low']) {
@@ -140,6 +257,25 @@ for (const quality of ['high', 'low']) {
       const lights = tank.root.userData.nightLightCoverage;
       assert.equal(lights.headlights, LIGHTS[id][0], `${id}: headlight lenses`);
       assert.equal(lights.shtora ?? 0, LIGHTS[id][1], `${id}: Shtora lenses`);
+      // ---- M1: the sight fields, the lamps' own beams, mirrored lamp pairs
+      const turretRig = tank.root.getObjectByName('rig_turret'), gunRig = tank.root.getObjectByName('rig_gun');
+      const gunToTurret = new THREE.Matrix4().copy(turretRig.matrixWorld).invert().multiply(gunRig.matrixWorld);
+      const fields = sightFieldCensus(id, parts, gunToTurret);
+      for (const [name, m, part] of fields) assert.ok(m < 0, `${id}/${quality}: ${part?.role} [${part?.box.min.toArray().map((v) => v.toFixed(3))}..${part?.box.max.toArray().map((v) => v.toFixed(3))}] stands ${(m * 1000).toFixed(1)} mm inside the ${name}'s field`);
+      console.log(`${id}/${quality}: sight fields clear: ${fields.map(([name, m]) => `${name} ${(-m * 1000).toFixed(0)} mm`).join(', ')}`);
+      assert.deepEqual(asymmetricLamps(parts), [], `${id}/${quality}: lamp pairs mirrored`);
+      if (quality === 'high') {
+        const rays = apertureRays(id, tank, parts);
+        assert.equal(rays.lenses, TURRET_LENSES[id], `${id}: every turret lens ray-tested`);
+        assert.deepEqual(rays.problems, [], `${id}: turret lamp lenses shine out unobstructed`);
+        // negative control: the 226 Kunlun lamps (|x| 0.55, z 0.86 on the wedge falling 16 degrees forward) stand in the
+        // 96B gunner's sight's field
+        if (id === 't72b3m_kunlun') {
+          const old = parts.map((p) => (p.role === 'lamp' ? moved(p, Math.sign(midX(p)) * .27, .19 * Math.tan(16 * Math.PI / 180), -.19) : p));
+          const control = sightFieldCensus(id, old, gunToTurret).find(([name]) => name === "96B gunner's sight");
+          assert.ok(control[1] >= 0 && control[2]?.role === 'lamp', `negative control: the 226 Kunlun lamp seat stands in the gunner's sight's field (${(control[1] * 1000).toFixed(1)} mm)`);
+        }
+      }
       console.log(`${id}/${quality}: add-ons ${want ? Object.keys(want).length : 0} roles present and seated PASS`);
     } finally { tank.dispose(); }
   }

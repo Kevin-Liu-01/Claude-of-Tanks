@@ -257,3 +257,49 @@ export function seatingCensus(parts, { allowance = () => .010, slotM = .015, era
   }
   return problems;
 }
+
+// ---- M1 (2026-10-17): the sight fields. An aperture's field is its glass rectangle swept `depth` metres along its
+// outward normal (+Z for every CN sight), its sides widening `azimuthDeg` each way, its bottom falling `downDeg` and its
+// top rising `upDeg`. Only the parts a kit adds are tested against it.
+const SIGHT_FIELD = { depth: 3.0, azimuthDeg: 8, downDeg: 2, upDeg: 8 };
+
+/** The field of a forward-facing glass part (census part or box): {x0, x1, y0, y1, z} at its front face. */
+export function sightField(glass, offset = [0, 0, 0]) {
+  const b = glass.box ?? glass;
+  return { x0: b.min.x + offset[0], x1: b.max.x + offset[0], y0: b.min.y + offset[1], y1: b.max.y + offset[1], z: b.max.z + offset[2] };
+}
+
+/** Is p inside the field f? */
+export function inSightField(f, x, y, z, field = SIGHT_FIELD) {
+  const d = z - f.z;
+  if (d < 0 || d > field.depth) return false;
+  const a = d * Math.tan(field.azimuthDeg * Math.PI / 180);
+  return x >= f.x0 - a && x <= f.x1 + a && y >= f.y0 - d * Math.tan(field.downDeg * Math.PI / 180) && y <= f.y1 + d * Math.tan(field.upDeg * Math.PI / 180);
+}
+
+/** Every part whose box reaches the field's bounding region, with its worst sample's margin m (dense surface samples at
+ * `h`): m >= 0 is an intrusion that deep inside the field's nearest side, bottom or top; m < 0 is a clearance of at least
+ * -m (the largest side-wise violation of its closest sample). */
+export function sightFieldApproach(parts, f, { h = .008, field = SIGHT_FIELD } = {}) {
+  const out = [], tA = Math.tan(field.azimuthDeg * Math.PI / 180), tD = Math.tan(field.downDeg * Math.PI / 180), tE = Math.tan(field.upDeg * Math.PI / 180);
+  const reach = field.depth * Math.max(tA, tE) + .05;
+  for (const p of parts) {
+    const b = p.box;
+    if (b.max.z < f.z || b.min.z > f.z + field.depth || b.max.x < f.x0 - reach || b.min.x > f.x1 + reach || b.max.y < f.y0 - reach || b.min.y > f.y1 + reach) continue;
+    const S = p.dense ??= densePoints(p.tri, h);
+    let worst = -Infinity;
+    for (let i = 0; i < S.length; i += 3) {
+      const x = S[i], y = S[i + 1], z = S[i + 2], d = z - f.z;
+      if (d < 0 || d > field.depth) continue;
+      const m = Math.min(x - (f.x0 - d * tA), f.x1 + d * tA - x, y - (f.y0 - d * tD), f.y1 + d * tE - y);
+      if (m > worst) worst = m;
+    }
+    if (Number.isFinite(worst)) out.push({ part: p, m: worst });
+  }
+  return out;
+}
+
+/** The parts with a point in the field, each with its worst intrusion (m). */
+export function sightFieldIntrusions(parts, f, options) {
+  return sightFieldApproach(parts, f, options).filter((a) => a.m >= 0).map((a) => ({ part: a.part, intrusion: a.m }));
+}

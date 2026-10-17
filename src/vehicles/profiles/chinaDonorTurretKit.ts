@@ -250,27 +250,44 @@ function whip(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:number,z
   P.addEquipment('turretDark',cylY(.007,.011,length,8),x,y+.08+length/2,z);
 }
 
-/** A guarded lamp (nationalRoofSystems.ts) on a shaped foot: the 96B's front roof falls 16 degrees under it. */
+/** A guarded lamp (nationalRoofSystems.ts) on a shaped foot: the 96B's front roof falls 16 degrees under it. Its base
+ * plate runs 10 mm past the guard posts at each end (no post face flush with the plate's end face). */
 function footedLamp(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:number,z:number,shape:Parameters<typeof nationalLamp>[4]):void {
-  nationalLamp(P,x,z,equipmentFoot(P,parts,x,z+.01,.27,.22),shape);
+  nationalLamp(P,x,z,equipmentFoot(P,parts,x,z+.01,.27,.22),shape,LAMP_GUARD_INSET_M);
 }
+const LAMP_GUARD_INSET_M=.010;
+/** Release 227 (M1): the lamp pairs on the Type 96B front wedge, ahead of the gunner's sight and the commander's
+ * forward periscope and behind the box sight and the mantlet boot's swept volume. Each seat was searched on a 2 cm grid
+ * near the plan's (0.30, 1.05) and mirrored, keeping its lamp at least 20 mm outside every sight's field (cnAddOns
+ * .selftest.mjs: the glass swept 3 m forward, widening 8 degrees a side, -2..+8 degrees in elevation) and the slit lens's
+ * inner edge 20 mm outboard of the box sight; the 226 seats ahead of the gunner's sight glass (|x| 0.55, z 0.86 and
+ * |x| 0.50, z 0.92) stood in its field. The nominal seat left the Kunlun's square lamp 3 mm clear and put the Yun's wider
+ * slit lamp 25 mm into the field. Measured margins: Kunlun 23 mm, Yun 20 mm (the gunner's sight's field, its inner
+ * side). [|x|, z], turret frame. */
+export const KUNLUN_LAMP_SEAT=[.28,1.05] as const;
+export const YUN_LAMP_SEAT=[.26,1.00] as const;
+
+/** The Kunlun's add-ons carry the model tag of its 226 Chinese package and their roles (the sight-field census and the
+ * moving-part clearances read them; the rear cage's beams carry their own). */
+const KUNLUN_MODEL=1;
 
 function kunlun(P:TankBuilderPort):void {
-  const l=NATIONAL_ROOF_LOADOUTS.t72b3m_kunlun;
-  kunlunEra(P);
-  kunlunEyes(P);
+  const l=NATIONAL_ROOF_LOADOUTS.t72b3m_kunlun,kit=(role:string)=>tagged(P,KUNLUN_MODEL,role);
+  kunlunEra(kit('chevron'));
+  kunlunEyes(kit('shtora'));
   const roof=permanentParts(P,['turret','turretDetail']);
-  // Square guarded lamps on the front roof between the gunner's sight and the central sight, ahead of both.
-  for(const side of [-1,1])footedLamp(P,roof,side*.55,.86,l.lamp);
+  // Square guarded lamps on the front wedge, either side of the gun and clear of every sight's field (KUNLUN_LAMP_SEAT).
+  for(const side of [-1,1])footedLamp(kit('lamp'),roof,side*KUNLUN_LAMP_SEAT[0],KUNLUN_LAMP_SEAT[1],l.lamp);
   // The scanner head between the cupola and the loader's hatch.
-  nationalRoofSensor(P,-.05,-.18,equipmentFoot(P,roof,-.05,-.18,.35,.33),l);
+  const scanner=kit('scanner');
+  nationalRoofSensor(scanner,-.05,-.18,equipmentFoot(scanner,roof,-.05,-.18,.35,.33),l);
   // Removable service cases on the bustle roof (the 96B's mast and whip stand on its left rear).
   const cases=permanentParts(P,['turret']);
-  serviceCase(P,cases,-.02,-1.56,.80,.15,.34);
-  serviceCase(P,cases,-1.03,-1.30,.28,.14,.32);
-  serviceCable(P,cases,[[-1.03,-1.12],[-1.05,-.98],[-1.07,-.80],[-1.08,-.62]]);
-  whip(P,cases,-.82,-1.80,.58);
-  kunlunRearCage(P);
+  serviceCase(kit('service-case'),cases,-.02,-1.56,.80,.15,.34);
+  serviceCase(kit('service-case'),cases,-1.03,-1.30,.28,.14,.32);
+  serviceCable(kit('cable'),cases,[[-1.03,-1.12],[-1.05,-.98],[-1.07,-.80],[-1.08,-.62]]);
+  whip(kit('antenna'),cases,-.82,-1.80,.58);
+  kunlunRearCage(kit('cage-console'));
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -377,9 +394,10 @@ function qilin(P:TankBuilderPort):void {
   // The side camera on the left crown edge and the flat eye mirroring it on the right.
   lowOptic(tagged(P,QILIN_MODEL,'camera'),roof,1.12,-.30,.20,.11,.19,true);
   qilinFlatEye(tagged(P,QILIN_MODEL,'flat-eye'),roof,-1.12,-.30);
-  // The split-panel sensor on the right front roof behind the chevron's upper root, between the right round lamp and
-  // the gun throat (x -0.40) and 45 mm behind the lamp; every part of it stands at least 1.36 m from the emplacement's
-  // axis, outside the QJC-88's 1.321 m muzzle circle, so the roof gun sweeps over nothing of it.
+  // The split-panel sensor back on the cast Qilin's own seat (nationalRoofSystems: x -0.06 on its roofZ -0.12), the
+  // crown's clear centre between the commander's sight and the gunner's sight block, behind the gun throat. M1
+  // (2026-10-17): its 226 seat (-0.66, 0.21) stood 58 mm ahead of the right round lamp's lens, in its beam; here it is
+  // clear of both lamps' beams and of both sights' fields, and the QJC-88's depression table steps over it.
   const sensor=tagged(P,QILIN_MODEL,'split-sensor');
   nationalRoofSensor(sensor,QILIN_SENSOR[0],QILIN_SENSOR[1],equipmentFoot(sensor,roof,QILIN_SENSOR[0],QILIN_SENSOR[1],.35,.33),{...l,roof:'split-panels'});
   // The field box (54 mm clear of the 99A2's left lift eye), the tool chest and the field-service carrier on the cut
@@ -405,8 +423,8 @@ function qilin(P:TankBuilderPort):void {
 
 /** The Qilin's flat tiles on each rear flank housing (turret-local z of their centres). */
 const QILIN_FLANK_TILE_Z=[-1.11,-1.36,-1.61] as const;
-/** The split-panel sensor's plan seat (turret frame). */
-const QILIN_SENSOR=[-.66,.21] as const;
+/** The split-panel sensor's plan seat (turret frame): the cast Qilin's own roof-sensor seat. */
+const QILIN_SENSOR=[-.06,-.12] as const;
 
 /** Two short posts a side carrying the 99A2's rail (y 0.76) on the rear flank housing's top, at the rail's mapped
  * stanchion stations. Each post's foot sits 4 mm into the housing's top; its head 4 mm into the rail. */
@@ -682,7 +700,8 @@ function yun(P:TankBuilderPort):void {
   yunMetHead(tagged(P,YUN_MODEL,'met-sensor'));
   const sensor=tagged(P,YUN_MODEL,'spine-sensor');
   nationalRoofSensor(sensor,-.04,-.20,equipmentFoot(sensor,roof,-.04,-.20,.35,.33),l);
-  for(const side of [-1,1])footedLamp(tagged(P,YUN_MODEL,'slit-lamp'),roof,side*.50,.92,l.lamp);
+  // the slit lamps on the 96B front wedge, clear of the gunner's sight and the forward periscope's fields (YUN_LAMP_SEAT)
+  for(const side of [-1,1])footedLamp(tagged(P,YUN_MODEL,'slit-lamp'),roof,side*YUN_LAMP_SEAT[0],YUN_LAMP_SEAT[1],l.lamp);
   // The monocle eye on the left housing shelf, outboard of the sight hood; the side electronics on both shelves.
   const eye=tagged(P,YUN_MODEL,'monocle-eye');
   nationalEye(eye,1.20,.45,equipmentFoot(eye,roof,1.20,.45,.20,.20),l);
