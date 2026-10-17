@@ -1114,11 +1114,11 @@
    "hostSweep": []
   },
   "kf51_u": {
-   "inputHash": "441ed0b43363beb3",
+   "inputHash": "a56af78aa036cec8",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildKF51OwnerExactHullStage1@profiles/leopard.ts:11524",
+     "site": "fitting:spareTrackLinks@buildKF51OwnerExactHullStage1@profiles/leopard.ts:11527",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
@@ -1127,8 +1127,8 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.993,
-      "gap": 0.007,
+      "support": 0.991,
+      "gap": 0.009,
       "air": 0,
       "hidden": 0,
       "sunkMaxM": 0,
@@ -2276,64 +2276,55 @@
    "hostSweep": []
   },
   "mbt70": {
-   "inputHash": "ffa60fdf2bfd688b",
+   "inputHash": "b2f8f83e726f7ba9",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildMBT70@modern2.ts:1781",
+     "site": "fitting:spareTrackLinks@buildMBT70@modern2.ts:1789",
      "source": "fitting",
      "frame": "turret",
      "registered": false,
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [
-      "carried on its rack",
-      "HOST_SWEEP: traverse 2.6 cm yaw 348 into hull<buildMBT70BareHull@modern2.ts:1563> [armor], the turret itself 2.4 cm into the same part"
-     ],
+     "notes": [],
      "measures": {
-      "support": 0.111,
-      "gap": 0.887,
-      "air": 0.002,
+      "support": 0.869,
+      "gap": 0.122,
+      "air": 0.009,
       "hidden": 0,
-      "sunkMaxM": 0.012,
+      "sunkMaxM": 0.007,
       "sweepM": 0,
-      "traverseM": 0.026,
+      "traverseM": 0,
       "exposure": 1,
-      "host": "turret<buildMBT70@modern2.ts:1630>"
+      "host": "turret<buildMBT70@modern2.ts:1656>"
      }
     },
     {
      "index": 1,
-     "site": "fitting:spareTrackLinks@buildMBT70@modern2.ts:1781",
+     "site": "fitting:spareTrackLinks@buildMBT70@modern2.ts:1789",
      "source": "fitting",
      "frame": "turret",
      "registered": false,
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [
-      "carried on its rack",
-      "HOST_SWEEP: traverse 2.6 cm yaw 54 into hull<buildMBT70BareHull@modern2.ts:1563> [armor], the turret itself 5.0 cm into the same part"
-     ],
+     "notes": [],
      "measures": {
-      "support": 0.104,
-      "gap": 0.894,
-      "air": 0.002,
+      "support": 0.865,
+      "gap": 0.123,
+      "air": 0.012,
       "hidden": 0,
-      "sunkMaxM": 0.016,
+      "sunkMaxM": 0.002,
       "sweepM": 0,
-      "traverseM": 0.026,
-      "exposure": 0.978,
-      "host": "turret<buildMBT70@modern2.ts:1630>"
+      "traverseM": 0,
+      "exposure": 1,
+      "host": "turret<buildMBT70@modern2.ts:1656>"
      }
     }
    ],
    "uncovered": [],
-   "hostSweep": [
-    "fitting:spareTrackLinks@buildMBT70@modern2.ts:1781",
-    "fitting:spareTrackLinks@buildMBT70@modern2.ts:1781"
-   ]
+   "hostSweep": []
   },
   "merkava1b": {
    "inputHash": "b5c5c0a97173fcb4",
