@@ -491,15 +491,22 @@ function damaged(anatomy: StructureDamageAnatomy, seed: number, out: DamageWrite
     const rendered = skin !== core;
     const radius = 0.3 + rng() * 0.2;
     let centre: [number, number] | null = null;
+    // (destruction-slabs 227, Polders' church: a patch on the nave's face plane stood out in the air past the narrower
+    // chancel) on the drawn wall behind the face, where it runs flat across the patch
+    const fi = ground!.faces.indexOf(face);
+    let back = 0;
     for (let attempt = 0; attempt < 6 && !centre; attempt++) {
       const u = (rng() - 0.5) * Math.max(0, face.width - 2 * radius - 0.6);
       const y = 0.45 + radius + rng() * Math.max(0, face.height - 2 * radius - 0.75);
       const clear = face.openings.every((o) => Math.abs(u - o.u) > o.w / 2 + radius + 0.25
         || y + radius + 0.25 < o.y0 || y - radius - 0.25 > o.y0 + o.h);
-      if (clear) centre = [u, y];
+      const b0 = faceSetback(anatomy, 0, fi, u - radius), b1 = faceSetback(anatomy, 0, fi, u), b2 = faceSetback(anatomy, 0, fi, u + radius);
+      const flat = Number.isFinite(b0) && Number.isFinite(b1) && Number.isFinite(b2) && Math.max(b0, b1, b2) - Math.min(b0, b1, b2) <= 0.15;
+      if (clear && flat) { centre = [u, y]; back = b1; }
     }
     if (!centre) continue;
-    const cx = face.origin[0] + face.u[0] * centre[0], cz = face.origin[2] + face.u[2] * centre[0], cy = ground!.y0 + centre[1];
+    const cx = face.origin[0] + face.u[0] * centre[0] - face.out[0] * back, cz = face.origin[2] + face.u[2] * centre[0] - face.out[2] * back;
+    const cy = ground!.y0 + centre[1];
     const unit = unitOf(core.material).size;
     const unitW = Math.max(unit, radius * 0.7), unitH = unitW * 0.5;
     const skinM = rendered ? skin.thicknessM : 0;

@@ -69,6 +69,17 @@ function inToWall(x: number, z: number, nx: number, nz: number): number {
 function topAtSpot(x: number, z: number): number {
   return ruinOf ? wallTopAt(ruinOf, x, z) : Infinity;
 }
+/** The lowest the drawn walls stand along a plan run (five spots, a tenth in from each end): a long stub on a ragged wall
+ *  is no taller than its lowest stretch is drawn (destruction-slabs 227: a ruin's 7.8 m stub stood 1.8 m over its wall). */
+function topAlong(ax: number, az: number, bx: number, bz: number): number {
+  if (!ruinOf) return Infinity;
+  let low = Infinity;
+  for (let k = 0; k < 5; k++) {
+    const t = 0.1 + 0.2 * k;
+    low = Math.min(low, wallTopAt(ruinOf, ax + (bx - ax) * t, az + (bz - az) * t));
+  }
+  return low;
+}
 
 function resetMeasure(top: number, halfW: number, halfD: number): void {
   bins.fill(0); cells.fill(0);
@@ -220,8 +231,9 @@ function cornerPiers(rng: () => number, slot: FractureSlot, cap: number, mesh: D
     // (destruction-slabs 227) each leg on the drawn wall in from the footprint's edge, no taller than that wall is drawn
     const inZ = inToWall(fcx + sx * (hw - legX / 2), fcz + sz * hd, 0, -sz), inX = inToWall(fcx + sx * hw, fcz + sz * (hd - legZ / 2), -sx, 0);
     const legs = [Number.isFinite(inZ), Number.isFinite(inX)];
-    const height = Math.min(height0, legs[0] ? topAtSpot(fcx + sx * (hw - legX / 2), fcz + sz * (hd - inZ)) : Infinity,
-      legs[1] ? topAtSpot(fcx + sx * (hw - inX), fcz + sz * (hd - legZ / 2)) : Infinity);
+    const height = Math.min(height0,
+      legs[0] ? topAlong(fcx + sx * hw, fcz + sz * (hd - inZ), fcx + sx * (hw - legX), fcz + sz * (hd - inZ)) : Infinity,
+      legs[1] ? topAlong(fcx + sx * (hw - inX), fcz + sz * hd, fcx + sx * (hw - inX), fcz + sz * (hd - legZ)) : Infinity);
     let h0 = -FOOT_M;
     for (let course = 0; course < 3; course++) {
       const top = height * (course === 0 ? 0.55 : course === 1 ? 0.82 : 1);
@@ -259,7 +271,7 @@ function wallStubs(rng: () => number, slot: FractureSlot, cap: number, mesh: Dam
       const d = inToWall(ex, ez, alongX ? 0 : -side, alongX ? -side : 0);
       if (!Number.isFinite(d)) continue;
       const x = alongX ? fcx + u : fcx + side * (off - d - t / 2), z = alongX ? fcz + side * (off - d - t / 2) : fcz + u;
-      const h = Math.min(h0, topAtSpot(x, z));
+      const h = Math.min(h0, alongX ? topAlong(x - hu, z, x + hu, z) : topAlong(x, z - hu, x, z + hu));
       if (h < 0.4) continue;
       const cy = (h - FOOT_M) / 2, hy = (h + FOOT_M) / 2;
       if (alongX) box(mesh, x, cy, z, hu, hy, t / 2, 0, slot.tint, shade);
@@ -288,7 +300,8 @@ function wallFragment(rng: () => number, slot: FractureSlot, cap: number, mesh: 
   const ex = alongX ? fcx + u : fcx + side * off, ez = alongX ? fcz + side * off : fcz + u;
   const d = inToWall(ex, ez, alongX ? 0 : -side, alongX ? -side : 0);
   const at = Number.isFinite(d) ? off - d - t / 2 : NaN;
-  const height = Number.isFinite(at) ? Math.min(height0, topAtSpot(alongX ? fcx + u : fcx + side * at, alongX ? fcz + side * at : fcz + u)) : 0;
+  const height = !Number.isFinite(at) ? 0 : Math.min(height0, alongX ? topAlong(fcx + u - run / 2, fcz + side * at, fcx + u + run / 2, fcz + side * at)
+    : topAlong(fcx + side * at, fcz + u - run / 2, fcx + side * at, fcz + u + run / 2));
   let y0 = -FOOT_M;
   for (let c = 0; c < courses; c++) {
     const y1 = height * ((c + 1) / courses) * (c === courses - 1 ? 1 : 0.9 + rng() * 0.1);
