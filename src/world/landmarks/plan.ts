@@ -321,8 +321,11 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   floodMast: { family: 'works', defaults: { height: 22 },
     footprint: (): [number, number] => [1.8, 1.8] },
   // (the airstrip: a draped strip, its markers the props' barrels, a windsock and a shack beside its middle)
-  airstrip: { family: 'works', drapes: true, roadMargin: 0, defaults: { length: 460, width: 26 },
+  // (the looks lane, 227: the strip is ground, no solid — its collapse laid a heap over its 17,500 m2 — and its windsock
+  // and radio shack stand as a set piece of their own beside its middle, stripShack, its child)
+  airstrip: { family: 'works', drapes: true, dressing: () => true, roadMargin: 0, defaults: { length: 460, width: 26 },
     footprint: (p) => [num(p, 'width') / 2 + 10, num(p, 'length') / 2 + 1.5] },
+  stripShack: { family: 'works', drapes: true, defaults: {}, footprint: (): [number, number] => [4.6, 4.2] },
   snowFence: { family: 'works', drapes: true, dressing: () => true, defaults: { length: 60 },
     footprint: (p) => [Math.max(2.5, Math.floor(num(p, 'length') / 2.5) * 1.25) + 0.2, 0.6] },
   // a mine's works (mineWorks.ts): the headframe stands over its shaft with its winding house behind (the piece centred on

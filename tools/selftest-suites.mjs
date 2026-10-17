@@ -325,6 +325,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/spareTrackAttachment.selftest.mjs',
     // 2026-10-15 (VEH-13): one seat solver for every spare-track run; the Strv 103 family builds clean; the fleet ledger
     'src/vehicles/spareTrackSeat.selftest.mjs',
+    // 2026-10-16 (VEH-13 outline rule): the receipt's PROUD class and its seeded break
+    'tools/spare-track-outline.selftest.mjs',
     'src/vehicles/turretBarrelCircularity.selftest.mjs',
     'src/vehicles/profiles/gunTopFixturePlacement.selftest.mjs',
     'src/vehicles/profiles/bradleyHullClosure.selftest.mjs',
@@ -1602,6 +1604,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // the scenery lane (after wave 57): the telegraph poles' weathered timber
     'src/world/poleTimber.selftest.mjs',
     'src/world/scenery.selftest.mjs',
+    'src/world/jebelSkin.selftest.mjs', // 2026-10-14 (maps lane, MA.12): a dome's jointed face — all round, normals out, proud, in budget, no mass
     'src/world/sceneryTierIdentity.selftest.mjs', // 2026-10-11 the hitbox lane: a phone builds the desktop's formation masses
     // the scenery lane (2026-10-03): the dry-stone field walls' own rubble print
     'src/world/fieldStoneSurface.selftest.mjs',

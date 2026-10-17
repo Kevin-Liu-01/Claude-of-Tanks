@@ -378,8 +378,11 @@ function buildAMX40(P: FranceBuilderPort): void {
       P.add('hullDetail', box(0.12, 0.055, 0.10), xc2, yc, zc);                // cable saddle/clip keeps the route visibly load-bearing
       P.add('hullDark', box(0.045, 0.075, 0.12), xc2, yc + 0.025, zc);
     }
-    const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.50, seed: 9, rotation: [0, 0, Math.PI / 2] });
-    links.position.set(-1.6505, 1.23, 2.64);
+    // VEH-13 outline rule (2026-10-16): held back. There is no seat inside the plan outline. The deck station is in the
+    // turret's traverse. A course on the hull side stands 3 cm past the hull's +-1.68 width, and the turret overhangs
+    // that width. The seat pass leaves the course unbuilt (seat plan -1) until an inside station is authored.
+    const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.50, seed: 9 });
+    links.position.set(-1.08, 1.699, 1.62);
     P.hullG.add(links);
   }
   for (const s of [-1, 1]) {
