@@ -646,6 +646,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/frame-budget-probe.selftest.mjs',
     'tools/capture-command.selftest.mjs',
     'tools/tank-release-plan.selftest.mjs',
+    // 2026-10-16 (227, owner: "no regenerating for tanks or anything else that didn't change"): the changed-only
+    // resolver on a fixture fleet, then the real fleet's partition, pinned dynamic reads and the chain order.
+    'tools/changed-only/resolver.selftest.mjs',
+    'tools/changed-only/fleet-partition.selftest.mjs',
     'src/app/checkedIntegrationPort.selftest.mjs',
     'src/app/lazyRuntimeOwner.selftest.mjs',
     'src/app/lazyImportRetry.selftest.mjs',
