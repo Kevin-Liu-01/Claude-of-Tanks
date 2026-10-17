@@ -66,7 +66,9 @@ export const AGGREGATES = Object.freeze([
  * every id until the declaration is reviewed and re-pinned (tools/changed-only/declarations.selftest.mjs prints the
  * new pin). `reads` globs are hashed into the reaching step's key. `modeOnly` names paths the file reads only in modes the
  * chain never runs (a --check audit): the edge to them is dropped. `covered` names paths the file reads that the fleet keys
- * already cover (with the reason beside it): the edge to them is dropped from the step's own key.
+ * already cover (with the reason beside it): the edge to them is dropped from the step's own key. `verdictOnly` globs
+ * name files the tool reads in the chain's mode whose contents reach only its verdicts (printed problems), never a
+ * written row: not keyed; the runtime read trace (tools/changed-only/trace-check.mjs) accepts them.
  */
 export const DECLARED_DYNAMIC = Object.freeze({
   'tools/vehicle-controls-inventory.mjs': {
@@ -117,6 +119,9 @@ export const DECLARED_DYNAMIC = Object.freeze({
     // the id's own build ran, so already in its builder key (core and its spec chain's groups). The lint reads
     // src/vehicles/profiles/*.ts and changes only --check/--gate verdicts, never an --update output.
     covered: ['src', 'src/vehicles', 'src/vehicles/profiles'],
+    // What the lint reads (every profile, sourceLint): its findings go to the problems list only, never to the ledger
+    // rows or the seat plan (tools/changed-only/trace-check.mjs accepts these reads as verdict-only).
+    verdictOnly: ['src/vehicles/profiles/*.ts'],
     note: 'imp(<literal>) imports repository modules (followed as edges); node_modules imports are covered by the lockfiles; src source-line reads are covered (see covered)',
   },
   'tools/gen-combat-anatomy.mjs': {
@@ -152,6 +157,48 @@ export const DECLARED_DYNAMIC = Object.freeze({
     reads: [],
     note: 'spawns itself (--worker) for --jobs shards; the shards run this same closure',
   },
+  // World steps (WORLD_STEPS).
+  'tools/capture-world-collision-manifests.mjs': {
+    pin: '5ab42aa148cd82b8',
+    reads: [],
+    note: 'agent-browser runs only in the session capture mode (the chain runs --node); the reads are its own outputs: the index (a variant run keeps the other maps\' entries) and committed shards (--check)',
+  },
+  'tools/worldCollisionManifestFiles.mjs': {
+    pin: '1ff7a5e33e9ec5ca',
+    reads: [],
+    note: 'reads its own outputs: the index and the sibling shards\' checksums before a partial capture rewrites the index',
+  },
+  'tools/headlessWorldCollision.mjs': {
+    pin: '583b288273f86e49',
+    reads: ['src/world/props-models.bin.gz'],
+    note: 'serves the file: URL the props model store fetches (src/world/props-models.bin.gz) from disk',
+  },
+  'src/world/propsModelStore.ts': {
+    pin: '02080ee9df202934',
+    reads: ['src/world/props-models.bin.gz'],
+    note: 'fetches new URL(\'./props-models.bin.gz\', import.meta.url)',
+  },
+  'tools/map-probe-runtime.mjs': {
+    pin: 'ae2caa4c871631f4',
+    reads: [],
+    // The world steps import it for isMainModule (wreck-bake-plan) and behind --headless (collision); neither runs its
+    // dev server, browser or git call.
+    modeOnly: ['index.html'],
+    note: 'the Vite server, Chrome and git rev-parse run only in withMapProbeSession (--headless captures); the chain runs --node',
+  },
+  'tools/wreck-bake-plan.mjs': {
+    pin: '8fbacf8b8059103e',
+    reads: [],
+    note: 'spawns itself (--record) per tier: the children run this same closure; reads its own output (the plan) to keep the other maps\' rows and for --check',
+  },
+});
+
+/** Environment variables that only bound a wait or a retry, never what a tool writes: left out of every key (any other
+ *  variable a closure file reads is keyed with its value). */
+export const SCHEDULING_ENV = Object.freeze({
+  COT_NAV_TIMEOUT_MS: 'presentation-centering: how long the icons page may take to navigate',
+  COT_READY_TIMEOUT_MS: 'presentation-centering: how long the icons page may take to report ready',
+  COT_NAV_RETRIES: 'presentation-centering: how often a page load that timed out is retried',
 });
 
 /**
@@ -289,7 +336,7 @@ export const POST_AGGREGATES = Object.freeze([
 const KEYED_FIELDS = ['name', 'device', 'tool', 'entries', 'flags', 'full', 'scoped', 'outputs', 'files', 'reads', 'excludeReads'];
 /** Keyed fields added after schema 1: part of the definition only when a step sets them (so adding one to the table does
  *  not move every step's key). */
-const LATE_KEYED_FIELDS = ['writes'];
+const LATE_KEYED_FIELDS = ['writes', 'universe', 'donors'];
 
 /** The step's definition as data (functions applied to a fixed probe), for its key: any edit marks the step's ids. */
 export function stepDefinition(step) {
@@ -298,3 +345,84 @@ export function stepDefinition(step) {
   return JSON.stringify(Object.fromEntries([...KEYED_FIELDS.map((field) => [field, data[field] ?? null]),
     ...LATE_KEYED_FIELDS.filter((field) => data[field] !== undefined).map((field) => [field, data[field]])]));
 }
+
+// ---------------------------------------------------------------- world (per map)
+
+/** The map registry: its CONFIGS object maps each map id to the config module it imports. Its imports of config modules
+ *  register maps (as the fleet's group loaders register groups); any other import of a config module pulls that module
+ *  into the world core, so an edit to it marks every map. */
+export const MAP_REGISTRY_FILE = 'src/world/maps/index.ts';
+
+/**
+ * Per-map world tables. A collision row is the map's index entry (bytes, sha256, counts) and its shard file's sha256; a
+ * wreck plan row is the map's desktop rows and its `<map>@<variant>` rows. Read by tools/changed-only/rows-child.mjs.
+ */
+export const WORLD_TABLES = Object.freeze({
+  collision: { kind: 'collision', file: 'server/world-collision-manifests/index.json', path: ['maps'], shard: '{map}.json' },
+  trenches: { kind: 'collision', file: 'server/world-collision-manifests/index.json', path: ['variants', 'assault-trenches'],
+    shard: '{map}@assault-trenches.json' },
+  wreckPlan: { kind: 'wreckPlan', file: 'src/world/maps/wreckBakePlan.ts', exportName: 'WRECK_BAKE_PLAN',
+    variantsExport: 'WRECK_BAKE_PLAN_VARIANTS' },
+});
+
+/** Everything the world steps write. None of it is an input of a world step's key: the tools read their own outputs
+ *  only to merge a partial run (the other maps' rows), to keep the index's variants and to --check. */
+export const WORLD_OUTPUTS = Object.freeze(['server/world-collision-manifests', 'src/world/maps/wreckBakePlan.ts']);
+
+/**
+ * World files that reach the fleet through its entry modules, pinned like dynamic reads (sha256/16 of their sorted
+ * trimmed lines naming a fleet entry or the per-id API: graph.mjs accessorPin over FLEET_API_TOKENS). The world keys
+ * stop at the fleet entries and take, per map, the fleet core and roster (every map) and the builder keys and build-read rows of
+ * the map's donors: the ids the wreck plan bakes and any roster id its config names. tools/changed-only/world-trace.mjs
+ * checks at run time that a map's build loads no builder group outside its donors' chains. A new or changed use breaks the
+ * pin and the world steps run on every map until it is reviewed.
+ */
+export const FLEET_API_TOKENS = Object.freeze(['fleetFactory', 'tankFactory', 'specs.ts', 'fleetRegistration',
+  'ensureTankBuilder', 'createTank', 'TANK_SPECS', 'PRODUCTION_TANK_IDS', 'ALL_TANK_IDS', 'SAVED_TANK_IDS', 'getSpec']);
+export const FLEET_API_USERS = Object.freeze({
+  'tools/headlessWorldCollision.mjs': {
+    pin: 'bebf312f124077f7', note: 'ensureTankBuilders(config.props.tankWrecks.ids): the authored donors, named by the map config',
+  },
+  'tools/wreck-bake-plan.mjs': {
+    pin: '0f155842c8103143', note: 'ensureTankBuilder(specId) for each bake the props build requests: the plan\'s own donors',
+  },
+  'src/world/props.ts': {
+    pin: '66cf7cb4dfa326ac', note: 'ensureTankBuilder for the wreck bakes it requests (the plan\'s donors, from resolveWreckRoster)',
+  },
+  'src/world/wrecks.ts': {
+    pin: 'ab764aa7907f5207', note: 'createTank(specId) for a requested wreck bake; resolveWreckRoster(era) is the era cast',
+  },
+  'src/world/wreckRoster.ts': {
+    pin: '73d4ac94e11adcd2', note: 'PRODUCTION_TANK_IDS filters the casts: spec data, in every map\'s key through the fleet core',
+  },
+});
+
+const maps = (list) => `--maps=${list.join(',')}`;
+
+/**
+ * The world steps, in chain order, run after the tank steps (a wreck donor's build reads the fleet's generated rows).
+ * The wreck plan comes first: its rows name the donors the collision builds bake. `donors` is the step's donor rule:
+ * 'plan' = the map's wreck plan rows (every variant) plus the roster ids its config names; a map that asks for wrecks but
+ * has no plan rows takes its whole wreck cast (resolveWreckRoster).
+ */
+export const WORLD_STEPS = Object.freeze([
+  {
+    name: 'wreckPlan', universe: 'maps', device: 'cpu', tool: 'tools/wreck-bake-plan.mjs',
+    flags: ['--write', '--workers=4'], full: ['--maps=all'], scoped: (list) => [maps(list)],
+    check: ['--check', '--maps=all'], checkScoped: (list) => ['--check', maps(list)], checkFlags: ['--workers=4'],
+    outputs: ['wreckPlan'], files: ['src/world/maps/wreckBakePlan.ts'], donors: 'plan', gb: 10, timeoutS: 1800, perIdS: 240,
+  },
+  {
+    name: 'collision', universe: 'maps', device: 'cpu', tool: 'tools/capture-world-collision-manifests.mjs',
+    flags: ['--node'], full: [], scoped: (list) => [maps(list)],
+    check: ['--check'], checkScoped: (list) => ['--check', maps(list)], checkFlags: [],
+    outputs: ['collision'], files: ['server/world-collision-manifests/index.json'], donors: 'plan', gb: 8, timeoutS: 1800, perIdS: 180,
+  },
+  {
+    name: 'trenches', universe: 'maps', device: 'cpu', tool: 'tools/capture-world-collision-manifests.mjs',
+    flags: ['--node', '--variant=assault-trenches'], full: [], scoped: (list) => [maps(list)],
+    check: ['--check'], checkScoped: (list) => ['--check', maps(list)], checkFlags: ['--variant=assault-trenches'],
+    outputs: ['trenches'], files: ['server/world-collision-manifests/index.json'], donors: 'plan', gb: 8, timeoutS: 1800, perIdS: 180,
+  },
+]);
+export const worldStepByName = (name) => WORLD_STEPS.find((step) => step.name === name);

@@ -20,9 +20,10 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { dirname, join, relative, resolve } from 'node:path';
 import ts from 'typescript-compiler-api';
 import { accessorPin, createGraph, h16, sha256 } from './graph.mjs';
-import { AGGREGATES, DECLARED_DYNAMIC, FLEET_ENTRIES, GROUP_LOADERS_FILE, LOADER_FILES, PER_ID_ACCESSORS, STEPS, TABLES,
-  stepDefinition } from './steps.mjs';
+import { AGGREGATES, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, FLEET_ENTRIES, GROUP_LOADERS_FILE, LOADER_FILES,
+  MAP_REGISTRY_FILE, PER_ID_ACCESSORS, SCHEDULING_ENV, STEPS, TABLES, WORLD_OUTPUTS, WORLD_STEPS, stepDefinition } from './steps.mjs';
 import { expandGlobs } from './globs.mjs';
+import { computeWorldState } from './world.mjs';
 
 export const SCHEMA = 1;
 const MENTION_ONLY_DATA = /(?:\.(?:md|txt|pdf|glb|gltf|obj|fbx|blend|png|jpe?g|webp|svg)$)|^public\/models\//;
@@ -89,9 +90,11 @@ export function normalizedNodeOptions(value = '') {
 export const DEFAULT_CONFIG = Object.freeze({
   tables: TABLES, aggregates: AGGREGATES, fleetEntries: FLEET_ENTRIES, loaderFiles: LOADER_FILES,
   groupLoadersFile: GROUP_LOADERS_FILE, declared: DECLARED_DYNAMIC, accessors: PER_ID_ACCESSORS,
+  world: Object.freeze({ registryFile: MAP_REGISTRY_FILE, outputs: WORLD_OUTPUTS, fleetApiUsers: FLEET_API_USERS,
+    fleetApiTokens: FLEET_API_TOKENS }),
 });
 
-export function computeState({ root, steps = STEPS, env = process.env, rows = null, graph = null, cacheDir,
+export function computeState({ root, steps = STEPS, worldSteps = WORLD_STEPS, env = process.env, rows = null, graph = null, cacheDir,
   config = DEFAULT_CONFIG, tableModule = null, toolchainOverride = null } = {}) {
   root = resolve(root);
   const { tables: TABLES, aggregates: AGGREGATES, fleetEntries: FLEET_ENTRIES, loaderFiles: LOADER_FILES,
@@ -181,7 +184,7 @@ export function computeState({ root, steps = STEPS, env = process.env, rows = nu
     return null;
   };
   const environmentOf = (files) => [...new Set([...files].flatMap((file) => graph.edges(file).flags.environment))].sort();
-  const envRows = (names) => names.map((name) => `env:${name}=${env[name] ?? '<unset>'}`);
+  const envRows = (names) => names.filter((name) => !Object.hasOwn(SCHEDULING_ENV, name)).map((name) => `env:${name}=${env[name] ?? '<unset>'}`);
 
   for (const file of executed) {
     const problem = dynamicProblem(file);
@@ -298,8 +301,18 @@ export function computeState({ root, steps = STEPS, env = process.env, rows = nu
   const outKey = (name, id) => H(...stepStates[name].step.outputs.map((table) => `${table}:${rowOf(table, id)}`));
   const fileHash = (file) => graph.hashFile(abs(file)).slice(0, 16);
 
+  // The world steps' per-map keys (tools/changed-only/world.mjs): null for a tree or fixture without world rows.
+  const worldConfig = { ...DEFAULT_CONFIG.world, ...(config.world ?? {}) };
+  const world = computeWorldState({
+    root, graph, world: data.world, steps: worldSteps, toolchain, schema: SCHEMA, fleetEntries: [...FLEET_ENTRIES.map(abs)],
+    fleetKey: H(`core:${core}`, `roster:${roster}`), builderKey, chainOf, rowOf, buildReadTables, dynamicProblem,
+    environmentOf, envRows,
+    config: { ...worldConfig, declared: DECLARED_DYNAMIC, expandGlobs, stepDefinition },
+  });
+
   graph.persist();
   return {
+    world,
     root, schema: SCHEMA, toolchain, toolchainParts, roster, core, groups, groupChain, chainOf, buildReadTables,
     tableNames: Object.keys(TABLES),
     steps: stepStates, ids, groupById: groupOf, rows: data.rows, fileIds: data.fileIds, errors: data.errors, globalReasons,
@@ -314,7 +327,7 @@ export function computeState({ root, steps = STEPS, env = process.env, rows = nu
 // ---------------------------------------------------------------- manifest
 
 export function emptyManifest() {
-  return { schema: SCHEMA, toolchain: null, roster: null, core: null, groups: {}, tools: {}, rows: {}, keys: {}, files: {} };
+  return { schema: SCHEMA, toolchain: null, roster: null, core: null, groups: {}, tools: {}, rows: {}, keys: {}, files: {}, comps: {} };
 }
 
 export function parseManifest(text) {
@@ -331,6 +344,7 @@ export function parseManifest(text) {
     else if (kind === 'row') (manifest.rows[fields[0]] ??= {})[fields[1]] = fields[2];
     else if (kind === 'key') (manifest.keys[fields[0]] ??= {})[fields[1]] = { in: fields[2], out: fields[3] };
     else if (kind === 'file') (manifest.files[fields[0]] ??= {})[fields[1]] = fields[2];
+    else if (kind === 'comp') manifest.comps[fields[0]] = fields[1];
     else return null;
   }
   return manifest;
@@ -346,6 +360,7 @@ export function serializeManifest(manifest) {
   for (const [table, rows] of Object.entries(manifest.rows)) for (const [id, hash] of Object.entries(rows)) lines.push(`row\t${table}\t${id}\t${hash}`);
   for (const [step, keys] of Object.entries(manifest.keys)) for (const [id, key] of Object.entries(keys)) lines.push(`key\t${step}\t${id}\t${key.in}\t${key.out}`);
   for (const [step, files] of Object.entries(manifest.files)) for (const [file, hash] of Object.entries(files)) lines.push(`file\t${step}\t${file}\t${hash}`);
+  for (const [name, hash] of Object.entries(manifest.comps ?? {})) lines.push(`comp\t${name}\t${hash}`);
   return `#schema ${SCHEMA}\n${lines.sort().join('\n')}\n`;
 }
 
@@ -384,6 +399,8 @@ export function refreshComponents(manifest, state) {
     const rows = state.rows[table] ?? {};
     if (Object.keys(rows).length) manifest.rows[table] = Object.fromEntries(Object.keys(rows).sort().map((id) => [id, rows[id]]));
   }
+  // The world's component lines (what --explain compares a map against); a tree without world rows keeps them.
+  if (state.world) manifest.comps = { ...state.world.comps };
   return manifest;
 }
 
@@ -426,7 +443,8 @@ export function resolveChanged(state, manifest, { steps = Object.keys(state.step
     const reasons = {};
     const all = (why, mode = 'all') => { result[name] = { mode, ids: [...state.ids], reasons: { '*': why } }; };
     if (!manifest) { all(['no manifest'], 'full'); continue; }
-    if (manifest.roster !== state.roster) { all(['roster'], 'full'); continue; }
+    const recordedRoster = state.rosterOf ? state.rosterOf(manifest) : manifest.roster;
+    if (recordedRoster !== state.roster) { all([recordedRoster == null ? 'never recorded' : 'roster'], 'full'); continue; }
     if (!step.decomposed) { all(step.reasons); continue; }
     const keys = manifest.keys[name] ?? {};
     const changed = [];
@@ -434,7 +452,7 @@ export function resolveChanged(state, manifest, { steps = Object.keys(state.step
       const recorded = keys[id];
       if (!recorded) { changed.push(id); reasons[id] = ['no row']; continue; }
       const why = [];
-      if (recorded.in !== state.inKey(name, id)) why.push(...reasonsFor(manifest, state, name, id));
+      if (recorded.in !== state.inKey(name, id)) why.push(...(state.reasonsFor ? state.reasonsFor(manifest, name, id) : reasonsFor(manifest, state, name, id)));
       if (recorded.out !== state.outKey(name, id)) why.push('output edited outside chain');
       if (why.length) { changed.push(id); reasons[id] = why; }
     }

@@ -7,14 +7,18 @@
 //   npm run tank:regen:changed -- --all             # every step on the whole fleet first (bootstrap, explicit full)
 //   npm run tank:regen:changed -- --check --all     # nightly: every step's whole-fleet --check; writes nothing
 //   npm run tank:regen:changed -- --verify          # then each step's --check on the ids it ran (whole fleet if it ran full)
-//   options: --steps=controls,fills  --no-gpu  --jobs=4 (parallel fill parts)  --max-passes=3  --root=<tree>
+//   options: --steps=controls,fills  --no-gpu  --no-world  --jobs=4 (parallel fill parts)  --max-passes=3  --root=<tree>
 //            --table=<module> (a fixture step table: tools/changed-only/chain.selftest.mjs)
+//   npm run tank:regen:changed -- --steps=wreckPlan,collision,trenches    # the world steps alone (maps whose keys moved)
 //
 // Order: aggregates that feed the shared core (paint catalog, legacy specs); then the CPU fixpoint, at most
 // --max-passes passes over controls, fills, seats, spare-track, anatomy, marking (seats read the fills and roof guns,
 // missionDockSeats feeds the spare-track dock keep-out); the geometry ledger; the manual reference; then centering and
 // icons under the capture lock in holds of at most 20 minutes. Centering moves the presentation anchors every build
 // reads, so the CPU fixpoint (and the ledger) runs again for any id they moved, and the GPU steps repeat until stable.
+// Then the world steps, per map (tools/changed-only/world.mjs): the wreck bake plan, the collision shards and the
+// assault-trench shards, on the maps whose config, world core or wreck donors moved (a donor's build reads the fleet's
+// settled rows, so they run last), repeated until a pass moves nothing (a plan's new donors re-key its map).
 // Each step's keys are written to release/fingerprints.tsv as soon as it finishes (inKeys taken before the run, outKeys
 // after), so the chain resumes after a crash. The final resolve must report 0 changed for every step; otherwise the chain fails and names the ids.
 //
@@ -31,13 +35,16 @@ import { loadTable } from './changed-only/table.mjs';
 const args = process.argv.slice(2);
 const value = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
 const ALL = args.includes('--all'), CHECK = args.includes('--check'), DRY = args.includes('--dry-run');
-const NO_GPU = args.includes('--no-gpu'), VERIFY = args.includes('--verify');
+const NO_GPU = args.includes('--no-gpu'), VERIFY = args.includes('--verify'), NO_WORLD = args.includes('--no-world');
 const JOBS = Math.max(1, Number(value('jobs') ?? 4) | 0);
 const MAX_PASSES = Math.max(1, Number(value('max-passes') ?? 3) | 0);
 const ONLY = value('steps')?.split(',').filter(Boolean) ?? null;
 const root = resolve(value('root') ?? process.cwd());
 const table = await loadTable(value('table') ?? null);
-const { STEPS, CPU_FIXPOINT_STEPS, PRE_AGGREGATES, POST_AGGREGATES, stepByName } = table;
+const { STEPS, CPU_FIXPOINT_STEPS, PRE_AGGREGATES, POST_AGGREGATES, WORLD_STEPS, stepByName } = table;
+const WORLD_NAMES = WORLD_STEPS.map((entry) => entry.name);
+/** A world step's resolver view is the state's per-map half; a tank step's is the state itself. */
+const viewOf = (definition, state) => (definition.universe === 'maps' ? state.world : state);
 const qaDir = join(root, '.qa-dev/changed-only');
 mkdirSync(qaDir, { recursive: true });
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -50,7 +57,7 @@ const saveSummary = () => writeFileSync(join(qaDir, `${stamp}.json`), `${JSON.st
 const selected = (name) => !ONLY || ONLY.includes(name);
 for (const name of ONLY ?? []) if (!stepByName(name)) throw new Error(`unknown step ${name}`);
 // Flags that make a tool read a file the step key cannot see (a git revision, a hints file) are refused.
-for (const step of STEPS) if (step.flags.some((flag) => /^--(?:uniform-from|hints)\b/.test(flag))) {
+for (const step of [...STEPS, ...WORLD_STEPS]) if (step.flags.some((flag) => /^--(?:uniform-from|hints)\b/.test(flag))) {
   throw new Error(`${step.name}: ${step.flags.join(' ')} reads an unkeyed input; the chain never passes it`);
 }
 
@@ -181,7 +188,7 @@ let manifest = readManifest(root) ?? emptyManifest();
 const persist = (state) => { refreshComponents(manifest, state); writeManifest(root, manifest); };
 const fresh = () => {
   const started = Date.now();
-  const state = computeState({ root, steps: STEPS, env: childEnv, config: table.config, tableModule: table.path });
+  const state = computeState({ root, steps: STEPS, worldSteps: WORLD_STEPS, env: childEnv, config: table.config, tableModule: table.path });
   summary.resolveSeconds.push(Math.round((Date.now() - started) / 100) / 10);
   return state;
 };
@@ -189,7 +196,9 @@ const fresh = () => {
 /** Resolve and run one step; returns true when it ran (its keys may have moved others). */
 async function step(name, { forceFull = false } = {}) {
   const definition = stepByName(name);
-  const state = fresh();
+  const fullState = fresh();
+  const state = viewOf(definition, fullState);
+  if (!state) throw new Error(`${name}: this tree has no world rows (${fullState.errors.join('; ') || 'no map registry'})`);
   const resolved = forceFull ? { mode: 'full', ids: [...state.ids], reasons: { '*': ['--all'] } }
     : resolveChanged(state, readManifest(root), { steps: [name] })[name];
   if (resolved.mode === 'none') { log(`[regen] ${name}: 0 changed`); return false; }
@@ -207,7 +216,9 @@ async function step(name, { forceFull = false } = {}) {
   if (run.code !== 0) throw new Error(`${name} failed (exit ${run.code}); output in ${run.out ?? qaDir}`);
   const after = fresh();
   manifest = readManifest(root) ?? manifest;
-  recordStep(manifest, name, scoped, inKeys, after);
+  const afterView = viewOf(definition, after);
+  if (!afterView) throw new Error(`${name}: the world rows no longer read after the run (${after.errors.join('; ')})`);
+  recordStep(manifest, name, scoped, inKeys, afterView);
   persist(after);
   log(`[regen] ${name}: done in ${seconds} s`);
   return true;
@@ -252,12 +263,12 @@ async function runCheck(definition, ids) {
     finally { clearInterval(refresh); lock.release(); }
   }
   await gate(definition.gb);
-  return runChild(runArgs, { niced: true, timeoutS: timeoutFor(definition, ids?.length ?? 220), label });
+  return runChild(runArgs, { niced: true, timeoutS: timeoutFor(definition, ids?.length ?? (definition.universe === 'maps' ? 40 : 220)), label });
 }
 
 /** --verify: each step's check on exactly the ids this chain ran it on (the whole fleet when it ran full). */
 async function verifyRuns() {
-  for (const definition of STEPS) {
+  for (const definition of [...STEPS, ...WORLD_STEPS]) {
     const runs = summary.runs.filter((run) => run.step === definition.name && run.code === 0 && !run.dryRun);
     if (!runs.length) continue;
     const whole = runs.some((run) => run.ids.includes('*'));
@@ -278,7 +289,7 @@ async function verifyRuns() {
 async function checkAll() {
   // Nightly: each step's whole-fleet --check (no writes). Steps without a check form are listed, not skipped silently.
   await aggregates(PRE_AGGREGATES, 'pre');
-  for (const definition of STEPS.filter((entry) => selected(entry.name) && (!NO_GPU || entry.device !== 'gpu'))) {
+  for (const definition of [...STEPS, ...(NO_WORLD ? [] : WORLD_STEPS)].filter((entry) => selected(entry.name) && (!NO_GPU || entry.device !== 'gpu'))) {
     if (!definition.check) { log(`[regen] ${definition.name}: no --check form (compare with a scratch --all run)`); summary.runs.push({ step: definition.name, check: 'none' }); continue; }
     const run = await runCheck(definition, null);
     summary.runs.push({ step: definition.name, check: run.code === 0 ? 'pass' : 'fail', code: run.code });
@@ -286,7 +297,8 @@ async function checkAll() {
   }
   await aggregates(POST_AGGREGATES, 'post');
   const state = fresh();
-  summary.final = resolveChanged(state, readManifest(root));
+  summary.final = { ...resolveChanged(state, readManifest(root)),
+    ...(state.world && !NO_WORLD ? resolveChanged(state.world, readManifest(root), { steps: WORLD_NAMES.filter(selected) }) : {}) };
   const failed = summary.runs.filter((run) => run.check === 'fail');
   if (failed.length) throw new Error(`--check failed: ${failed.map((run) => run.step).join(', ')}`);
 }
@@ -319,15 +331,27 @@ try {
       }
       if (!ran || DRY) break;
     }
+    // The world steps last: a wreck donor's build reads the fleet's settled rows. A pass that moves nothing ends it (a
+    // wreck plan whose donors changed re-keys its own map and its collision shards once more).
+    if (!NO_WORLD && WORLD_NAMES.some(selected)) for (let pass = 1; pass <= MAX_PASSES; pass++) {
+      let moved = false;
+      for (const name of WORLD_NAMES.filter(selected)) if (await step(name, { forceFull: ALL && pass === 1 })) moved = true;
+      if (!moved || DRY) break;
+    }
     const state = fresh();
     const names = STEPS.filter((entry) => selected(entry.name) && (!NO_GPU || entry.device !== 'gpu')).map((entry) => entry.name);
-    summary.final = resolveChanged(state, readManifest(root), { steps: names });
+    const worldNames = NO_WORLD ? [] : WORLD_NAMES.filter(selected);
+    if (worldNames.length && !state.world) throw new Error(`this tree has no world rows (${state.errors.join('; ') || 'no map registry'})`);
+    summary.final = { ...resolveChanged(state, readManifest(root), { steps: names }),
+      ...(worldNames.length ? resolveChanged(state.world, readManifest(root), { steps: worldNames }) : {}) };
     const open = Object.entries(summary.final).filter(([, entry]) => entry.mode !== 'none');
     for (const [name, entry] of Object.entries(summary.final)) log(`[regen] final ${name}: ${entry.mode} ${entry.ids.length}`);
     if (open.length && !DRY) throw new Error(`final resolve not empty: ${open.map(([name, entry]) => `${name}=${entry.ids.length}`).join(' ')}`);
     if (VERIFY && !DRY) await verifyRuns();
-    // The release check takes the union of the ids this chain regenerated (every id when a step ran whole-fleet).
-    const ran = summary.runs.filter((run) => run.code === 0 || run.dryRun);
+    // The release check takes the union of the tank ids this chain regenerated (every id when a step ran whole-fleet).
+    const ran = summary.runs.filter((run) => (run.code === 0 || run.dryRun) && !WORLD_NAMES.includes(run.step));
+    summary.changedMaps = [...new Set(summary.runs.filter((run) => WORLD_NAMES.includes(run.step) && (run.code === 0 || run.dryRun))
+      .flatMap((run) => run.ids))].sort();
     summary.changedIds = ran.some((run) => run.ids.includes('*')) ? ['*'] : [...new Set(ran.flatMap((run) => run.ids))].sort();
     if (summary.changedIds.length && !summary.changedIds.includes('*')) {
       log(`[regen] release check for the regenerated ids: npm run tank:release:check -- --ids=${summary.changedIds.join(',')} --gate`);

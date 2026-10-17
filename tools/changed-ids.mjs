@@ -5,6 +5,7 @@
 //   node tools/changed-ids.mjs --step=fills --json   # one step, machine-readable
 //   node tools/changed-ids.mjs --explain=t72b3m_hetman_ii
 //   node tools/changed-ids.mjs --base=origin/integ/226   # against a release's committed manifest (a report)
+//   node tools/changed-ids.mjs --maps                # the world steps only (per map: wreck plan, collision, trenches)
 //
 // No tank is built: the resolver reads the import graph, the data modules and the manifest
 // (tools/changed-only/fingerprint.mjs). Modes: none, ids (a subset), all (every id), full (every id in whole-fleet mode:
@@ -19,21 +20,35 @@ const value = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(
 const root = resolve(value('root') ?? process.cwd());
 const json = args.includes('--json');
 const explain = value('explain') ?? (args.includes('--explain') ? '*' : null);
-const { STEPS, config, path: tableModule } = await loadTable(value('table') ?? null);
-const names = value('step')?.split(',').filter(Boolean) ?? STEPS.map((step) => step.name);
-for (const name of names) if (!STEPS.some((step) => step.name === name)) throw new Error(`unknown step ${name}`);
+const { STEPS, WORLD_STEPS, config, path: tableModule } = await loadTable(value('table') ?? null);
+const worldNames = WORLD_STEPS.map((step) => step.name);
+const names = value('step')?.split(',').filter(Boolean)
+  ?? (args.includes('--maps') ? worldNames : [...STEPS.map((step) => step.name), ...worldNames]);
+for (const name of names) if (![...STEPS, ...WORLD_STEPS].some((step) => step.name === name)) throw new Error(`unknown step ${name}`);
 
 const started = Date.now();
-const state = computeState({ root, steps: STEPS, config, tableModule });
+const state = computeState({ root, steps: STEPS, worldSteps: WORLD_STEPS, config, tableModule });
 const manifest = loadBase(root, value('base'));
-const result = resolveChanged(state, manifest, { steps: names });
+const tankNames = names.filter((name) => !worldNames.includes(name)), mapNames = names.filter((name) => worldNames.includes(name));
+if (mapNames.length && !state.world) throw new Error(`no world rows in ${root}`);
+const result = { ...resolveChanged(state, manifest, { steps: tankNames }),
+  ...(mapNames.length ? resolveChanged(state.world, manifest, { steps: mapNames }) : {}) };
+// A map whose wreck plan is due may bake other donors: until the chain re-runs the plan, its shards count as due too.
+const plan = result.wreckPlan;
+if (plan && plan.mode !== 'none') for (const name of mapNames.filter((entry) => entry !== 'wreckPlan')) {
+  const entry = result[name];
+  if (entry.mode === 'all' || entry.mode === 'full') continue;
+  for (const map of plan.ids) if (!entry.ids.includes(map)) { entry.ids.push(map); entry.reasons[map] = ['wreck plan due (its donors may move)']; }
+  entry.ids = state.world.ids.filter((map) => entry.ids.includes(map));
+  entry.mode = entry.ids.length === 0 ? 'none' : entry.ids.length === state.world.ids.length ? 'all' : 'ids';
+}
 const seconds = ((Date.now() - started) / 1000).toFixed(1);
 
 if (json) {
   process.stdout.write(`${JSON.stringify({ seconds: Number(seconds), manifest: manifest ? 'present' : 'missing', steps: result,
-    errors: state.errors }, null, 1)}\n`);
+    errors: [...state.errors, ...(state.world?.globalReasons ?? [])] }, null, 1)}\n`);
 } else {
-  console.log(`[changed-ids] ${manifest ? 'manifest present' : 'no manifest'}; ${state.ids.length} ids, ${Object.keys(state.groups).length} groups, core ${state.partition.core.length} files (${seconds} s)`);
+  console.log(`[changed-ids] ${manifest ? 'manifest present' : 'no manifest'}; ${state.ids.length} ids, ${Object.keys(state.groups).length} groups, core ${state.partition.core.length} files${state.world ? `; ${state.world.ids.length} maps` : ''} (${seconds} s)`);
   for (const name of names) {
     const entry = result[name];
     const head = entry.ids.slice(0, 12).join(',');
