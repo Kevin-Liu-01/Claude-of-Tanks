@@ -56,3 +56,7 @@ deployment law or its slot ground moves the world's spawn clearings: recapture t
 collision shards and run `node src/sim/deployment.selftest.mjs` and
 `node src/game/deploymentParity.selftest.mjs`. Bot route
 changes must also pass `node server/authoritativeBots.selftest.mjs` on all maps.
+Vehicle and decor code never imports `matchRuleset.ts`: a rule a vehicle build
+also reads (the drone dock's launch height) lives in a leaf the ruleset reads and
+re-exports (`droneDockRules.ts`), so a ruleset edit does not re-run some 600
+vehicle receipts (`node src/sim/droneDockRules.selftest.mjs`).
