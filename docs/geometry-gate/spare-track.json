@@ -422,11 +422,11 @@
    "hostSweep": []
   },
   "c1_ariete_proto_serie1": {
-   "inputHash": "f680e97ca07cf944",
+   "inputHash": "7909f0978ac91799",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildArieteMkHullStage2@profiles/italy.ts:340",
+     "site": "fitting:spareTrackLinks@buildArieteMkHullStage2@profiles/italy.ts:342",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
@@ -435,14 +435,14 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.879,
-      "gap": 0.121,
+      "support": 0.839,
+      "gap": 0.161,
       "air": 0,
       "hidden": 0,
       "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.955,
+      "exposure": 0.966,
       "host": "hull<buildArieteMkHullStage2@profiles/italy.ts:291>"
      }
     }
@@ -457,11 +457,11 @@
    "hostSweep": []
   },
   "c2_ariete_proto": {
-   "inputHash": "8cf3e866f661d4d5",
+   "inputHash": "68cec67256c9c6f4",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildArieteMkHullStage2@profiles/italy.ts:340",
+     "site": "fitting:spareTrackLinks@buildArieteMkHullStage2@profiles/italy.ts:342",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
@@ -470,14 +470,14 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.879,
-      "gap": 0.121,
+      "support": 0.839,
+      "gap": 0.161,
       "air": 0,
-      "hidden": 0.005,
-      "sunkMaxM": 0.01,
+      "hidden": 0,
+      "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.944,
+      "exposure": 0.966,
       "host": "hull<buildArieteMkHullStage2@profiles/italy.ts:291>"
      }
     }
@@ -1597,7 +1597,7 @@
    "hostSweep": []
   },
   "leo2a4m_can": {
-   "inputHash": "617f8cd016385912",
+   "inputHash": "405e7b37de198176",
    "runs": [
     {
      "index": 0,
@@ -1623,7 +1623,7 @@
     },
     {
      "index": 1,
-     "site": "strip:strip@buildLeo2A4MMarkingsStage1@profiles/leopard.ts:14574",
+     "site": "strip:strip@buildLeo2A4MMarkingsStage1@profiles/leopard.ts:14576",
      "source": "strip",
      "frame": "turret",
      "registered": true,
@@ -1642,7 +1642,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.989,
-      "host": "turret<buildLeo2A4MTurretStage1@profiles/leopard.ts:14411>"
+      "host": "turret<buildLeo2A4MTurretStage1@profiles/leopard.ts:14413>"
      }
     }
    ],
