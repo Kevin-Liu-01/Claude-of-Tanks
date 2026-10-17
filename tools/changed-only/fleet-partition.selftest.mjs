@@ -7,7 +7,9 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { accessorPin, createGraph, dynamicSites, h16 } from './graph.mjs';
 import { computeState, emptyManifest, parseGroupLoaders, recordStep, refreshComponents, resolveChanged } from './fingerprint.mjs';
-import { CPU_FIXPOINT_STEPS, DECLARED_DYNAMIC, GROUP_LOADERS_FILE, LOADER_FILES, PER_ID_ACCESSORS, STEPS } from './steps.mjs';
+import { CPU_FIXPOINT_STEPS, DECLARED_DYNAMIC, FLEET_API_TOKENS, FLEET_API_USERS, GROUP_LOADERS_FILE, LOADER_FILES, PER_ID_ACCESSORS,
+  STEPS, WORLD_STEPS } from './steps.mjs';
+import { tokenPin } from './world.mjs';
 
 const root = resolve(import.meta.dirname, '../..');
 
@@ -21,6 +23,12 @@ for (const [file, declaration] of Object.entries(DECLARED_DYNAMIC)) {
 for (const [file, accessor] of Object.entries(PER_ID_ACCESSORS)) {
   const pin = accessorPin(readFileSync(join(root, file), 'utf8'), accessor.exportName);
   assert.equal(pin, accessor.pin, `${file}: its ${accessor.exportName} reads changed; review that they stay per id and set pin: '${pin}'`);
+}
+
+// Every world file that reaches the fleet is a reviewed user of the per-id API.
+for (const [file, declaration] of Object.entries(FLEET_API_USERS)) {
+  const pin = tokenPin(readFileSync(join(root, file), 'utf8'), FLEET_API_TOKENS);
+  assert.equal(pin, declaration.pin, `${file}: its fleet uses changed; review that it builds only the map's donors and set pin: '${pin}'`);
 }
 
 const state = computeState({ root, steps: STEPS });
@@ -62,6 +70,26 @@ assert.ok(national.length >= 13 && national.includes('t72b3m_hetman_ii'), `natio
 for (const id of national) assert.ok(marked.ids.includes(id), `${id} is marked by the kit`);
 assert.ok(marked.ids.length < state.ids.length, 'a group kit does not mark the whole fleet');
 
+// The world decomposes per map: every map has a config, every world step is keyed per map, and a donor's builder marks
+// only the maps whose wreck plan bakes it (coastal bakes t90am).
+assert.ok(state.world, 'the world rows read');
+assert.deepEqual(state.world.globalReasons, [], 'the world decomposes');
+for (const step of WORLD_STEPS) assert.ok(state.world.steps[step.name].decomposed, `${step.name}: ${state.world.steps[step.name].reasons.join('; ')}`);
+assert.ok(state.world.ids.length >= 30, 'the map roster is read');
+assert.ok(state.world.donorsOf('collision', 'coastal').includes('t90am'), 'coastal bakes t90am');
+const worldManifest = emptyManifest();
+for (const step of WORLD_STEPS) {
+  recordStep(worldManifest, step.name, null, Object.fromEntries(state.world.ids.map((map) => [map, state.world.inKey(step.name, map)])), state.world);
+}
+refreshComponents(worldManifest, state);
+assert.equal(resolveChanged(state.world, worldManifest, { steps: ['collision'] }).collision.mode, 'none');
+const t90Group = state.groupById.t90am;
+state.groups[t90Group] = `${state.groups[t90Group]}-edited`;
+const bakers = state.world.ids.filter((map) => state.world.donorsOf('collision', map).some((id) => state.groupChain(id).includes(t90Group)));
+const remarked = resolveChanged(state.world, worldManifest, { steps: ['collision'] }).collision;
+assert.deepEqual(remarked.ids, bakers, `a ${t90Group} builder edit marks exactly the maps that bake one of its ids`);
+assert.ok(remarked.ids.includes('coastal') && remarked.ids.length < state.world.ids.length, `maps marked: ${remarked.ids}`);
+
 // Chain order: seats read the fills and the roof guns, spare-track reads the dock seats.
 const at = (name) => CPU_FIXPOINT_STEPS.indexOf(name);
 assert.ok(at('controls') >= 0 && at('fills') > at('controls') && at('seats') > at('fills') && at('spareTrack') > at('seats'),
@@ -70,4 +98,4 @@ assert.ok(at('anatomy') > at('controls'), 'anatomy reads the roof guns');
 const chain = readFileSync(join(root, 'tools/tank-regen-changed.mjs'), 'utf8');
 assert.match(chain, /for \(const name of CPU_FIXPOINT_STEPS\.filter\(selected\)\)/, 'the chain runs the CPU steps in table order');
 
-console.log(`changed-only fleet-partition.selftest: PASS (${state.ids.length} ids, ${Object.keys(state.groups).length} groups, core ${state.partition.core.length} files; kit marks ${marked.ids.length})`);
+console.log(`changed-only fleet-partition.selftest: PASS (${state.ids.length} ids, ${Object.keys(state.groups).length} groups, core ${state.partition.core.length} files; kit marks ${marked.ids.length}; ${state.world.ids.length} maps, a ${t90Group} edit marks ${remarked.ids.length})`);

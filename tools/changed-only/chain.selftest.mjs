@@ -5,13 +5,18 @@
 //   - after a shared-kit edit the changed-only chain runs only the ids built on the kit, in order (controls, then fills,
 //     then seats), and leaves every output and the manifest byte-identical to a whole-fleet regen of the same edit;
 //   - --verify checks exactly the ids each step ran;
-//   - an output row edited by hand is found and regenerated.
+//   - an output row edited by hand is found and regenerated;
+//   - the world step (per map, after the tank steps) re-runs only the maps whose wreck donors or config moved, and its
+//     shards and index match the whole-world regen byte for byte.
 // First-party tooling: Kevin B. Liu.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
+import { dynamicSites, h16 } from './graph.mjs';
+import { FLEET_API_TOKENS } from './steps.mjs';
+import { tokenPin } from './world.mjs';
 
 const repo = resolve(import.meta.dirname, '../..');
 const base = mkdtempSync(join(tmpdir(), 'cot-changed-only-chain-'));
@@ -74,6 +79,43 @@ for (const [table, exportName] of [['controls', 'CONTROLS'], ['fills', 'FILLS'],
   put(B, `src/vehicles/${table}.generated.ts`, `export const ${exportName} = {};\n`);
 }
 
+// The world: two maps whose configs name their wreck donors (alpha bakes a1, beta bakes b1); a collision-style generator
+// writes one shard per map and the index of their checksums (kept for the maps it does not rebuild), as
+// tools/capture-world-collision-manifests.mjs does.
+put(B, 'src/world/maps/shared.ts', 'export const GROUND = 5;\n');
+put(B, 'src/world/maps/alphaMap.ts', "import { GROUND } from './shared.ts';\nexport default { base: GROUND + 1, props: { tankWrecks: { ids: ['a1'] } } };\n");
+put(B, 'src/world/maps/betaMap.ts', "export default { base: 7, props: { tankWrecks: { ids: ['b1'] } } };\n");
+put(B, 'src/world/maps/index.ts', [
+  "import alpha from './alphaMap.ts';",
+  "import beta from './betaMap.ts';",
+  'const CONFIGS = { alpha, beta };',
+  "export const MAP_IDS = ['alpha', 'beta'];",
+  'export const getMapConfig = (id) => CONFIGS[id];', ''].join('\n'));
+const worldTool = [
+  "import { createHash } from 'node:crypto';",
+  "import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';",
+  "import { MAP_IDS, getMapConfig } from '../src/world/maps/index.ts';",
+  "import { createTank } from '../src/vehicles/tankFactory.ts';",
+  'const args = process.argv.slice(2);',
+  "const mapsArg = args.find((arg) => arg.startsWith('--maps='))?.slice(7);",
+  "const maps = mapsArg ? mapsArg.split(',') : MAP_IDS;",
+  "const dir = 'server/world-collision-manifests';",
+  'mkdirSync(dir, { recursive: true });',
+  "const previous = existsSync(`${dir}/index.json`) ? JSON.parse(readFileSync(`${dir}/index.json`, 'utf8')).maps : {};",
+  'const entries = {};',
+  'let stale = 0;',
+  'for (const map of MAP_IDS) {',
+  '  if (!maps.includes(map)) { entries[map] = previous[map]; continue; }',
+  '  const config = getMapConfig(map);',
+  '  const text = JSON.stringify({ value: config.base + config.props.tankWrecks.ids.reduce((sum, id) => sum + createTank(id).base, 0) });',
+  "  entries[map] = { bytes: text.length, sha256: createHash('sha256').update(text).digest('hex') };",
+  "  if (args.includes('--check')) { if (previous[map]?.sha256 !== entries[map].sha256) stale++; }",
+  '  else writeFileSync(`${dir}/${map}.json`, text);',
+  '}',
+  "if (args.includes('--check')) process.exitCode = stale ? 1 : 0;",
+  "else writeFileSync(`${dir}/index.json`, `${JSON.stringify({ version: 2, maps: entries }, null, 1)}\\n`);", ''].join('\n');
+put(B, 'tools/gen-world.mjs', worldTool);
+
 // The fixture step table (tools/changed-only/table.mjs), kept outside every closure the resolver walks.
 const tableModule = join(base, 'table.mjs');
 writeFileSync(tableModule, [
@@ -85,7 +127,15 @@ writeFileSync(tableModule, [
   'export const CONFIG = { tables: TABLES, aggregates: [],',
   "  fleetEntries: ['src/vehicles/tankFactory.ts', 'src/vehicles/fleetFactory.ts', 'src/vehicles/specs.ts', 'src/vehicles/fleetRegistration.ts'],",
   "  loaderFiles: ['src/vehicles/tankFactory.ts', 'src/vehicles/fleetFactory.ts', 'src/vehicles/profiledProcedurals.ts'],",
-  "  groupLoadersFile: 'src/vehicles/fleetFactory.ts', declared: {}, accessors: {} };",
+  // The world tool reads its own outputs at computed paths (the index, to keep the maps it does not rebuild): declared.
+  `  groupLoadersFile: 'src/vehicles/fleetFactory.ts', declared: { 'tools/gen-world.mjs': { pin: '${h16(dynamicSites(worldTool, 'gen-world.mjs').join('\n'))}', reads: [] } }, accessors: {},`,
+  "  world: { registryFile: 'src/world/maps/index.ts', outputs: ['server/world-collision-manifests'],",
+  `    fleetApiUsers: { 'tools/gen-world.mjs': { pin: '${tokenPin(worldTool, FLEET_API_TOKENS)}' } }, fleetApiTokens: ${JSON.stringify(FLEET_API_TOKENS)} } };`,
+  "export const MAP_REGISTRY_FILE = 'src/world/maps/index.ts';",
+  "export const WORLD_TABLES = { collision: { kind: 'collision', file: 'server/world-collision-manifests/index.json', path: ['maps'], shard: '{map}.json' } };",
+  "export const WORLD_STEPS = [{ name: 'collision', universe: 'maps', device: 'cpu', tool: 'tools/gen-world.mjs', flags: [], full: [],",
+  "  scoped: (list) => [`--maps=${list.join(',')}`], check: ['--check'], checkScoped: (list) => ['--check', `--maps=${list.join(',')}`],",
+  "  outputs: ['collision'], files: ['server/world-collision-manifests/index.json'], donors: 'plan', gb: 0.1, timeoutS: 120, perIdS: 1 }];",
   "const ids = (list) => `--ids=${list.join(',')}`;",
   'const step = (name) => ({ name, device: \'cpu\', tool: `tools/gen-${name}.mjs`, flags: [], full: [], scoped: (list) => [ids(list)],',
   "  check: ['--check'], checkScoped: (list) => ['--check', ids(list)], outputs: [name], files: [], gb: 0.1, timeoutS: 120, perIdS: 1 });",
@@ -111,7 +161,8 @@ function chain(root, ...flags) {
   return JSON.parse(readFileSync(join(root, '.qa-dev/changed-only', written[0]), 'utf8'));
 }
 const OUTPUTS = ['src/vehicles/controls.generated.ts', 'src/vehicles/fills.generated.ts', 'src/vehicles/seats.generated.ts',
-  'release/fingerprints.tsv'];
+  'server/world-collision-manifests/index.json', 'server/world-collision-manifests/alpha.json',
+  'server/world-collision-manifests/beta.json', 'release/fingerprints.tsv'];
 const snapshot = (root) => Object.fromEntries(OUTPUTS.map((rel) => [rel, read(root, rel)]));
 const ranIds = (summary, name) => summary.runs.filter((run) => run.step === name).flatMap((run) => run.ids);
 
@@ -119,7 +170,8 @@ const ranIds = (summary, name) => summary.runs.filter((run) => run.step === name
 const boot = chain(B, '--all', '--verify');
 assert.equal(boot.ok, true);
 for (const [name, entry] of Object.entries(boot.final)) assert.equal(entry.mode, 'none', `bootstrap leaves ${name} resolved`);
-assert.deepEqual(boot.verify.map((entry) => `${entry.step}:${entry.check}`), ['controls:pass', 'fills:pass', 'seats:pass']);
+assert.deepEqual(boot.verify.map((entry) => `${entry.step}:${entry.check}`), ['controls:pass', 'fills:pass', 'seats:pass', 'collision:pass']);
+assert.equal(boot.final.collision.mode, 'none', 'the world step is recorded too');
 assert.ok(boot.passes >= 2, 'controls re-keyed after the fills it reads moved (a second pass)');
 assert.match(read(B, 'src/vehicles/seats.generated.ts'), /"a1":\{"seat":/);
 
@@ -147,8 +199,11 @@ assert.ok(ranIds(fullRun, 'controls').includes('*'), 'the whole-fleet run is the
 const order = changedRun.runs.map((run) => run.step);
 assert.ok(order.indexOf('controls') < order.indexOf('fills') && order.indexOf('fills') < order.indexOf('seats'),
   `seats run after fills and controls: ${order}`);
+assert.deepEqual(ranIds(changedRun, 'collision'), ['alpha'], 'only the map whose donor (a1) is built on the kit is rebuilt');
+assert.ok(order.indexOf('collision') > order.indexOf('seats'), 'the world step runs after the tank steps');
+assert.ok(ranIds(fullRun, 'collision').includes('*'), 'the whole-world run is the oracle');
 assert.deepEqual(changedRun.verify.map((entry) => `${entry.step}:${entry.check}:${entry.ids.join(',')}`),
-  ['controls:pass:a1,a2,b2', 'fills:pass:a1,a2,b2', 'seats:pass:a1,a2,b2'], '--verify checks exactly the ids each step ran');
+  ['controls:pass:a1,a2,b2', 'fills:pass:a1,a2,b2', 'seats:pass:a1,a2,b2', 'collision:pass:alpha'], '--verify checks exactly the ids each step ran');
 
 // 4. An output row edited by hand is found and regenerated; the tree returns to the full regen's bytes.
 const seats = read(C, 'src/vehicles/seats.generated.ts');
@@ -156,6 +211,13 @@ put(C, 'src/vehicles/seats.generated.ts', seats.replace(/"b1":\{"seat":\d+\}/, '
 const repair = chain(C);
 assert.deepEqual(ranIds(repair, 'seats'), ['b1'], 'the hand-edited row is the only one regenerated');
 assert.deepEqual(snapshot(C), snapshot(F), 'the repair restores the full regen bytes');
+
+// 5. A map config edit rebuilds that map alone (no tank step runs); the whole-world regen agrees byte for byte.
+for (const root of [C, F]) put(root, 'src/world/maps/betaMap.ts', "export default { base: 8, props: { tankWrecks: { ids: ['b1'] } } };\n");
+const mapRun = chain(C);
+assert.deepEqual(mapRun.runs.map((run) => `${run.step}[${run.ids.join(',')}]`), ['collision[beta]'], 'a map config edit runs that map only');
+chain(F, '--all', '--steps=collision');
+assert.deepEqual(snapshot(C), snapshot(F), 'the map edit leaves the changed-only tree equal to the whole-world regen');
 
 const runsOf = (summary) => summary.runs.map((run) => `${run.step}[${run.ids.join(',')}]`).join(' ');
 console.log(`changed-only chain.selftest: PASS (bootstrap ${boot.passes} passes; kit edit: ${runsOf(changedRun)}; fixture ${base})`);
