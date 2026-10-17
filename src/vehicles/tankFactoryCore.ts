@@ -969,6 +969,10 @@ export interface TankBuilderPort extends GeometryAddPort, GunBuilderPort, Cupola
    * declaration still draws only the added ring + disc (never a carve), is clamped inside the
    * measured face, and cannot be combined with a physical bore. */
   muzzleMouth?: DeclaredMuzzleMouth;
+  /** 2026-10-17 (VEHICLES, TANK-OPT W-5): the recoil-frame height of a single centred tube that is authored off the
+   * gun's local axis (the T-80 line seats its 125 mm tube 54 mm below it). The fire anchor (rig_muzzle) sits on that
+   * axis, so the flash and the round leave the bore, and the measured mouth seats from it. */
+  muzzleAxisY?: number;
   /** Measured permanent armor that extends the profile's primary shell. */
   additionalShadowSources?: {
     hull?: readonly ('hullExternalArmor' | 'hullHatch' | 'hullCupola')[];
@@ -8518,14 +8522,21 @@ function* createTankOwnedSteps(
   // ---- anchors ----
   const muzzle = new THREE.Object3D();
   muzzle.name = 'rig_muzzle';
-  muzzle.position.set(0, 0, P.muzzleZ);
+  const muzzleAxisY = P.muzzleAxisY ?? 0;
+  if (!Number.isFinite(muzzleAxisY) || Math.abs(muzzleAxisY) > 0.25) {
+    throw new RangeError('muzzleAxisY must be a finite recoil-frame height within 0.25 m of the gun axis');
+  }
+  if (muzzleAxisY !== 0 && (P.physicalMuzzleBore || authoredMuzzles.length)) {
+    throw new Error('muzzleAxisY seats one centred tube: it cannot be combined with a physical bore or twin muzzles');
+  }
+  muzzle.position.set(0, muzzleAxisY, P.muzzleZ);
   recoilG.add(muzzle);
   // Fleet physical bores preserve verified authored interiors. Legacy solid
   // tips are opened at their measured terminal face, with an inward wall and
   // recessed backstop. Old rim/disc helpers provide seating datums only:
   // retaining their front masks would cap the aperture or cause z-fighting.
   root.updateMatrixWorld(true);
-  const muzzleWorld = recoilG.localToWorld(new THREE.Vector3(0, 0, P.muzzleZ));
+  const muzzleWorld = recoilG.localToWorld(new THREE.Vector3(0, muzzleAxisY, P.muzzleZ));
   const authoredRims: THREE.Object3D[] = [];
   const authoredDiscs: THREE.Object3D[] = [];
   const legacyTipDots: THREE.Object3D[] = [];
@@ -8655,7 +8666,9 @@ function* createTankOwnedSteps(
       recoilZ: null,
       supportSource: null,
     };
-    const axisWorld = recoilG.localToWorld(new THREE.Vector3(boreX, boreY, P.muzzleZ));
+    // boreX/boreY are offsets from the fire anchor; an independent barrel's own axis is its group's
+    const axisWorld = recoilG.localToWorld(new THREE.Vector3(boreX,
+      boreY + (independentBarrel ? 0 : muzzleAxisY), P.muzzleZ));
     const isMouthSurface = (surface: THREE.Object3D): surface is VehicleMesh =>
       isVehicleMesh(surface)
       && surface.visible

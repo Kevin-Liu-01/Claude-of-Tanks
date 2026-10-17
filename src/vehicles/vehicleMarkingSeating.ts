@@ -250,6 +250,37 @@ function markingSearchOffsets(): Array<[number, number]> {
 
 const MARKING_SEARCH_OFFSETS = markingSearchOffsets();
 
+/** How far the armour may lie off a fully supported decal's plane at any of its edge samples. */
+const MARKING_FULL_SUPPORT_M = 0.03;
+/**
+ * 2026-10-17 (VEHICLES; merkava4b's designation stood 8 cm past the turret's rear edge): the visibility grid samples
+ * only the inner 0.56 of a decal, so a seat could hang its outer fifth off an edge into air and still read 6 of 9
+ * clear. A seat solved from an explicit station must have armour under its edges and corners as well.
+ */
+function markingFullySupported(
+  owner: THREE.Object3D,
+  meshes: VehicleMesh[],
+  position: THREE.Vector3,
+  quaternion: THREE.Quaternion,
+  size: number,
+): boolean {
+  const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(quaternion).normalize();
+  const tangent = new THREE.Vector3(1, 0, 0).applyQuaternion(quaternion).normalize();
+  const bitangent = new THREE.Vector3(0, 1, 0).applyQuaternion(quaternion).normalize();
+  const reach = 0.12;
+  for (const u of [-0.46, 0, 0.46]) {
+    for (const v of [-0.46, 0, 0.46]) {
+      const origin = position.clone().addScaledVector(tangent, u * size).addScaledVector(bitangent, v * size)
+        .addScaledVector(normal, reach);
+      const hit = raySeatMarking(owner, meshes, origin, normal.clone().negate(), reach + MARKING_FULL_SUPPORT_M + 0.02);
+      if (!hit) return false;
+      const offset = hit.pointLocal.clone().sub(position).dot(normal) + SURFACE_MARKING_STYLE.surfaceLiftM;
+      if (Math.abs(offset) > MARKING_FULL_SUPPORT_M) return false;
+    }
+  }
+  return true;
+}
+
 function solveProfileMarkingSeat(
   profile: VehicleMarkingAnchor,
   owner: THREE.Object3D,
@@ -292,6 +323,7 @@ function solveProfileMarkingSeat(
     const floor = Math.max(best ? best.visibilityClearSamples : -1, mustExceedClear);
     const receipt = boundedMarkingVisibilityReceipt(owner, position, quaternion, size, occluders, floor);
     if (!receipt) continue;
+    if (profile.fullSupport && !markingFullySupported(owner, meshes, position, quaternion, size)) continue;
     const candidate = {
       ...hit,
       position,
@@ -636,11 +668,14 @@ export function finalizeVehicleMarkingSeats(
       'insignia', profile.longitudinal, profile.sizeM, priorProfileSeat('insignia'));
   }
   if (!decals.some((decal) => decal.kind === 'designation')) {
-    const textZ = THREE.MathUtils.clamp(
+    // an explicit designation station is solved from that station every time (its own vertical), not kept from the
+    // last verified seat, so a seat that hung off the armour cannot stand on its centre ray alone
+    const station = profile.designationStation;
+    const textZ = station ? station.longitudinal : THREE.MathUtils.clamp(
       profile.longitudinal + profile.designationDirection * 0.11, 0.10, 0.90);
     addProfileVehicleDecal(
-      spec, marking, decals, profile, owners, surfaces, occluders,
-      'designation', textZ, profile.sizeM, priorProfileSeat('designation'));
+      spec, marking, decals, station ? { ...profile, vertical: station.vertical, fullSupport: true } : profile, owners, surfaces, occluders,
+      'designation', textZ, profile.sizeM, station ? null : priorProfileSeat('designation'));
   }
   } finally {
     restoreMaterialSides();
