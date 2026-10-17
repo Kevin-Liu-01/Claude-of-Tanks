@@ -409,6 +409,17 @@ no sun state or vehicle tag for the aerial pass. Clone through `cloneVehicleMate
 re-registers the clone exactly as its source and keeps its shader switches (`COT_WHEEL_PAINT_READABILITY`);
 `vehicleMaterialClone.selftest.mjs` pins the running-gear clones (shoes, isolated gear roles, band finishes). About
 forty profile-pack clones still re-hook by hand (`rehook`, `'veh-ambient-floor-v2'`) and predate it.
+2026-10-17 (the wheel-band lane; the owner: "in garage, on all tanks, i can see this weird shadow on wheels"): the
+Garage's dormant energy skin (`juggernautVisual.ts`, on every pedestal tank since 16f624704; the battle's Juggernaut,
+flag-carrier and Infected skins too) made raw clones, so every skinned pixel lost the vehicle tag, and since 045cdbed4
+the ground occlusion took the untagged road wheels for ground under the hull: a dark band under the belly line on every
+wheel. A material registered outside `createTankMaterials` goes through `registerVehicleMaterial(engineCtx, m, key)`
+(the decorations' kit), so its clones keep the registration; a clone of an unregistered cascade material says so in a
+dev build. A clone that draws in its source's place (the skin) compiles the source's whole hook chain over its own
+registration with `runVehicleHookChain(source, clone, …)` — the burn mask, the weapon wear and a profile's lift stay —
+and is released with `releaseVehicleMaterial(clone)` before it is disposed. `vehicleMaterialRawClone.selftest.mjs`
+keeps raw clones to a reviewed list (the profiles' set-member clones may only fall);
+`tools/garage-wheel-band.browser.mjs` measures the band and the tag share in the Garage.
 The field camouflages (`catalogCamoPainter.ts` paintField) and the digital patterns paint production's 2 m tile
 (fix/camo-defaults, 2026-10-09: the v2/v3 patch fields, 4 m wide tiles, digital clusters, per-triangle box projection,
 bore-wrapped gun UVs and camouflage panels are retired with the rest of PR #9's camouflage system).

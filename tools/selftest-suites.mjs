@@ -974,6 +974,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/vehicleReadability.selftest.mjs',
     // 2026-10-04 (the vehicle-look lane): a cloned vehicle material (the track shoes) joins its source's cascade registration
     'src/vehicles/vehicleMaterialClone.selftest.mjs',
+    // 2026-10-17 (the wheel-band lane): no new raw Material.clone() of a vehicle material (the Garage skin's road-wheel band)
+    'src/vehicles/vehicleMaterialRawClone.selftest.mjs',
     'src/vehicles/fleetRoundOneSurfaces.selftest.mjs',
     'src/engine/skyCloudBake.selftest.mjs',
     'src/engine/skyHorizonCache.selftest.mjs',

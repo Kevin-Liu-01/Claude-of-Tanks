@@ -77,4 +77,111 @@ clearJuggernautVisual(root);
 assert.equal(root._listeners.childadded.length,0,'effect cleanup releases hierarchy observers');
 
 geometry.dispose();batch.dispose();source.dispose();wreck.dispose();glassMaterial.dispose();
-console.log('juggernautVisual: exact surfaces, instancing/batching, shared paint isolation, original hooks, articulation, hit pulse, thermal, death, removal and reuse passed');
+
+// ---- 2026-10-17 (the wheel-band lane; the owner: "in garage, on all tanks, i can see this weird shadow on wheels"): the
+// skin's clones keep the vehicle's cascade registration. A raw clone() reset the defines (USE_CSM, CSM_*, COT_CLOUD_SHADE
+// and the vehicle's COT_* switches) and ran the source's CSM hook, which keeps the compiled shader under the SOURCE in
+// the cascade registry: every Garage tank pixel (the dormant skin is on every pedestal tank) lit with all four cascade
+// suns unshadowed and wrote neither the sun state nor the vehicle tag, and the ground occlusion
+// (vehicleGroundOcclusion.ts) took the untagged road wheels for ground under the hull: a dark band below the belly line.
+// Real cascade rig (lighting.ts), vehicle registrations (materials.ts) and their later wrappers (the burn mask, the
+// weapon wear); the Garage's dormant skin and the battle's live one.
+{
+  globalThis.window??={localStorage:{getItem:()=>null,setItem(){},removeItem(){}},location:{search:''}};
+  const {createLighting}=await import('../engine/lighting.ts');
+  const {registerVehicleMaterial,cloneVehicleMaterial,applyBurnHook,makeBurnUniforms,vehicleAmbientFloorHook}=await import('../vehicles/materials.ts');
+  const {installWeaponEdgeWear,WEAPON_STEEL_WEAR}=await import('../vehicles/weaponFinish.ts');
+  const {prepareGarageTankEnergyVisual,syncTankEnergyVisual}=await import('./juggernautVisual.ts');
+  const camera=new T.PerspectiveCamera(60,16/9,.5,4000);camera.position.set(0,3,-8);camera.lookAt(0,1,0);camera.updateMatrixWorld();
+  const rig=createLighting(new T.Scene(),camera,new T.Vector3(1,.7,.4).normalize());rig.updateFrustums();
+  const csm=rig.csm,engineCtx={setupShadowMaterial:(m,hook)=>rig.setupShadowMaterial(m,hook),releaseShadowMaterial:m=>rig.releaseShadowMaterial(m)};
+  const errors=[],consoleError=console.error;console.error=(...a)=>{errors.push(a.join(' '));};
+  try{
+    const compiled=()=>({uniforms:T.UniformsUtils.clone(T.ShaderLib.standard.uniforms),vertexShader:T.ShaderLib.standard.vertexShader,fragmentShader:T.ShaderLib.standard.fragmentShader});
+    const register=(defines={},envMapIntensity=.5)=>{
+      const m=new T.MeshStandardMaterial({color:0x4b5a36});m.envMapIntensity=envMapIntensity;m.defines={...m.defines,...defines};
+      return registerVehicleMaterial(engineCtx,m,'veh-ambient-floor-v5');
+    };
+    const burnU=makeBurnUniforms(7);
+    const sources={
+      paint:register(),
+      wheel:register({COT_WHEEL_PAINT_READABILITY:1},.25),
+      cavity:register({COT_GEAR_CAVITY:1},.25),
+      burning:register(),
+      steel:register({},.45),
+    };
+    assert.equal(applyBurnHook(sources.burning,burnU),true);
+    installWeaponEdgeWear(sources.steel,{...WEAPON_STEEL_WEAR,wornColor:[...WEAPON_STEEL_WEAR.wornColor],dustColor:[...WEAPON_STEEL_WEAR.dustColor]});
+    // a profile's hook-only material (no cascade registration of its own): its clone keeps its hook, and nothing reports
+    const hookOnly=new T.MeshStandardMaterial();hookOnly.onBeforeCompile=vehicleAmbientFloorHook;hookOnly.customProgramCacheKey=()=>'veh-ambient-floor-v2';
+    const sourceShaders=new Map();
+    for(const m of Object.values(sources)){
+      assert.equal(m.defines.USE_CSM,1,'a registered vehicle material compiles the cascade branch');
+      const shader=compiled();m.onBeforeCompile(shader,{});sourceShaders.set(m,shader);
+      assert.equal(csm.shaders.get(m),shader,'the cascade refreshes the source\'s own compile');
+    }
+    const box=new T.BoxGeometry(),dims={widthM:3,hullLengthM:7,heightM:2.6};
+    const build=()=>{
+      const r=new T.Group(),meshes=new Map();
+      for(const [k,m] of [...Object.entries(sources),['hookOnly',hookOnly]]){const mesh=new T.Mesh(box,m);r.add(mesh);meshes.set(k,mesh);}
+      return {root:r,meshes};
+    };
+    const check=(label,{meshes},keySuffix)=>{
+      const clones=[];
+      for(const [k,src] of Object.entries(sources)){
+        const clone=meshes.get(k).material,at=`${label}/${k}`;
+        assert.notEqual(clone,src,`${at}: the skin draws a clone`);clones.push([src,clone]);
+        assert.equal(clone.defines.USE_CSM,1,`${at}: the clone compiles the cascade branch (the sun state and the vehicle tag live there)`);
+        assert.equal(clone.defines.CSM_CASCADES,src.defines.CSM_CASCADES,`${at}: with the source's cascade count`);
+        assert.equal('CSM_FADE' in clone.defines,'CSM_FADE' in src.defines,`${at}: and its cascade fade`);
+        assert.equal('COT_CLOUD_SHADE' in clone.defines,'COT_CLOUD_SHADE' in src.defines,`${at}: and its cloud shade`);
+        for(const key of ['COT_WHEEL_PAINT_READABILITY','COT_GEAR_CAVITY'])assert.equal(clone.defines[key],src.defines[key],`${at}: the source's ${key}`);
+        assert.ok(csm.shaders.has(clone),`${at}: in the cascade registry under its own entry`);
+        assert.equal(clone.color,src.color,`${at}: live paint binding kept`);
+        const shader=compiled();clone.onBeforeCompile(shader,{});
+        assert.equal(csm.shaders.get(clone),shader,`${at}: the cascade refreshes the clone's compile, under the clone`);
+        assert.equal(csm.shaders.get(src),sourceShaders.get(src),`${at}: and leaves the source's entry as it was`);
+        assert.ok(shader.fragmentShader.includes('gl_FragColor.a += 2.0;'),`${at}: the vehicle tag write`);
+        assert.ok(shader.fragmentShader.includes('juggernautStrength'),`${at}: under the skin's rim term`);
+        assert.ok(shader.uniforms.CSM_cascades&&shader.uniforms.shadowFar,`${at}: the cascade uniforms bind`);
+        assert.equal(clone.customProgramCacheKey(),src.customProgramCacheKey()+keySuffix,`${at}: the source's program key, the skin's suffix`);
+        if(k==='burning'){
+          assert.equal(shader.uniforms.uBurnT,burnU.uBurnT,`${at}: the source's burn mask still wraps it (its live driver)`);
+          assert.match(clone.customProgramCacheKey(),/\|burn-r7\|/);
+        }
+        if(k==='steel'){
+          assert.ok(shader.fragmentShader.includes('uWeaponWornColor'),`${at}: the source's weapon wear still wraps it`);
+          assert.match(clone.customProgramCacheKey(),/\|weapon-wear-v3\|/);
+        }
+      }
+      const kept=meshes.get('hookOnly').material;
+      assert.ok(!kept.defines?.USE_CSM&&!csm.shaders.has(kept),`${label}: a hook-only source's clone stays as its source`);
+      return clones;
+    };
+    const garage=build();
+    prepareGarageTankEnergyVisual(garage.root,dims);
+    const garageClones=check('garage dormant skin',garage,'|tank-mode-energy-preview-v1');
+    const battle=build();
+    syncTankEnergyVisual(battle.root,dims,1.12,100,100,0,false,(await import('./juggernautVisual.ts')).TANK_ENERGY.juggernaut,false);
+    const battleClones=check('battle live skin',battle,'|tank-mode-energy-v6');
+    // the cascade's refresh reaches the clone's program (its far plane, its splits), not only the source's
+    camera.far=3000;camera.updateProjectionMatrix();rig.updateFrustums();
+    for(const [,clone] of garageClones)assert.equal(csm.shaders.get(clone).uniforms.shadowFar.value,Math.min(3000,csm.maxFar),'the cascade refresh reaches each clone');
+    clearJuggernautVisual(garage.root,true);clearJuggernautVisual(battle.root);
+    for(const [src,clone] of [...garageClones,...battleClones]){
+      assert.ok(!csm.shaders.has(clone),'a released skin leaves no cascade entry behind');
+      assert.equal(csm.shaders.get(src),sourceShaders.get(src),'and the source keeps its own');
+    }
+    for(const mesh of [...garage.meshes.values(),...battle.meshes.values()])assert.ok(Object.values(sources).includes(mesh.material)||mesh.material===hookOnly,'the paint is restored');
+    assert.deepEqual(errors,[],'every skinned source carries a vehicle registration');
+    // fail loudly: a cascade material registered outside the vehicle registration cannot pass its registration to a clone
+    const stray=new T.MeshStandardMaterial();rig.setupShadowMaterial(stray,vehicleAmbientFloorHook);
+    const strayClone=cloneVehicleMaterial(stray);
+    assert.equal(errors.length,1,'a clone of an unregistered cascade material is reported');
+    assert.match(errors[0],/\[vehicle material\].*registerVehicleMaterial/);
+    assert.equal(strayClone.defines.USE_CSM,undefined,'(it lost USE_CSM)');
+    cloneVehicleMaterial(stray);assert.equal(errors.length,1,'once per source');
+    box.dispose();for(const m of [...Object.values(sources),hookOnly,stray,strayClone])m.dispose();
+  }finally{console.error=consoleError;}
+}
+console.log('juggernautVisual: exact surfaces, instancing/batching, shared paint isolation, original hooks, articulation, hit pulse, thermal, death, removal and reuse passed; the skins keep the cascade registration');

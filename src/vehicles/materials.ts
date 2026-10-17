@@ -130,10 +130,10 @@ interface CamoApplyOptions {
 
 interface ShadowEngineContext {
   anisotropy?: number;
-  setupShadowMaterial?: <T extends THREE.Material>(
-    material: T,
+  setupShadowMaterial?: (
+    material: THREE.Material,
     extraHook?: typeof vehicleAmbientFloorHook,
-  ) => T;
+  ) => unknown;
   releaseShadowMaterial?: (material: THREE.Material) => boolean;
 }
 
@@ -2666,8 +2666,9 @@ function supportsShadowHook(engineCtx: ShadowEngineContext | null | undefined): 
 }
 
 /**
- * The registration each vehicle material was built with (createTankMaterials' `setup`): the cascade setup with the
- * readability hook through the engine context, or the hook alone in a renderer stub, and the shared program key.
+ * The registration each vehicle material was built with (vehicleMaterialSetup: createTankMaterials', the decorations'):
+ * the cascade setup with the readability hook through the engine context, or the hook alone in a renderer stub, and the
+ * shared program key.
  * 2026-10-04 (the vehicle-look lane): Material.clone() keeps none of it — three's MeshStandardMaterial.copy resets
  * `defines` to { STANDARD } (USE_CSM, CSM_CASCADES and CSM_FADE go) and Material.copy never copies onBeforeCompile or
  * customProgramCacheKey — so a cloned vehicle material (the track shoes, the thrown track, a profile's band finish, an
@@ -2675,8 +2676,95 @@ function supportsShadowHook(engineCtx: ShadowEngineContext | null | undefined): 
  * unshadowed outside its own cascade (about four times the sun on a lit face), with neither the sun state nor the
  * vehicle tag the aerial pass reads (lighting.ts, vehicleOcclusion.ts). cloneVehicleMaterial joins a clone to exactly
  * the registration its source has; the clone is disposed and released like any vehicle material.
+ * 2026-10-17 (the wheel-band lane; the owner: "in garage, on all tanks, i can see this weird shadow on wheels"): the
+ * Garage's dormant energy skin (juggernautVisual.ts, on every pedestal tank since 16f624704) still made raw clones, so
+ * every Garage tank pixel lost the vehicle tag, and since 045cdbed4 the ground occlusion (vehicleGroundOcclusion.ts)
+ * took the untagged road wheels for ground under the hull: a dark band below the belly line on every wheel. The skin
+ * now clones through here, and releases its clones through releaseVehicleMaterial.
  */
-const VEHICLE_MATERIAL_SETUP = new WeakMap<THREE.Material, <T extends THREE.Material>(material: T) => T>();
+type VehicleMaterialSetup = <T extends THREE.Material>(material: T) => T;
+type MaterialCompileHook = THREE.Material['onBeforeCompile'];
+const VEHICLE_MATERIAL_SETUP = new WeakMap<THREE.Material, VehicleMaterialSetup>();
+/** Each registered material's own registration hook (the cascade hook with the readability hook chained after it). */
+const VEHICLE_REGISTRATION = new WeakMap<THREE.Material, MaterialCompileHook>();
+/** The engine context's cascade release for each registered material (releaseVehicleMaterial). */
+const VEHICLE_MATERIAL_RELEASE = new WeakMap<THREE.Material, (material: THREE.Material) => boolean>();
+/** The registered material a hook chain is compiling for, while runVehicleHookChain runs another material's chain. */
+let vehicleCompileTarget: THREE.Material | null = null;
+
+/**
+ * One registration for a family of vehicle materials: the readability hook each material compiles with (`hookFor`
+ * makes it per material) and the program key they share. Each material's registration hook compiles for the material
+ * it is compiling: inside runVehicleHookChain, a registered clone compiles through its own registration — its own
+ * cascade entry (three's CSM keys the shader it refreshes by the material in its hook's closure), its own sky-light
+ * scale — under the source's later wrappers (the burn mask, the weapon wear, a profile's lift), which it keeps.
+ */
+function vehicleMaterialSetup(
+  engineCtx: ShadowEngineContext | null | undefined,
+  programKey: string,
+  hookFor: (material: THREE.Material) => (shader: MaterialShader) => void,
+  cascaded: boolean = supportsShadowHook(engineCtx),
+): VehicleMaterialSetup {
+  const release = cascaded && typeof engineCtx?.releaseShadowMaterial === 'function'
+    ? (material: THREE.Material): boolean => engineCtx.releaseShadowMaterial?.(material) ?? false
+    : null;
+  const setup = <T extends THREE.Material>(material: T): T => {
+    const hook = hookFor(material);
+    if (cascaded && typeof engineCtx?.setupShadowMaterial === 'function') engineCtx.setupShadowMaterial(material, hook);
+    else material.onBeforeCompile = hook;
+    const registration = material.onBeforeCompile;
+    VEHICLE_REGISTRATION.set(material, registration);
+    material.onBeforeCompile = function (this: THREE.Material, shader, renderer) {
+      const target = vehicleCompileTarget;
+      const own = target && target !== material ? VEHICLE_REGISTRATION.get(target) : undefined;
+      if (own) own.call(target, shader, renderer);
+      else registration.call(this, shader, renderer);
+    };
+    material.customProgramCacheKey = () => programKey;
+    VEHICLE_MATERIAL_SETUP.set(material, setup); // cloneVehicleMaterial re-registers its clones the same way
+    if (release) VEHICLE_MATERIAL_RELEASE.set(material, release);
+    return material;
+  };
+  return setup;
+}
+
+/**
+ * Register a vehicle material built outside createTankMaterials (the decorations' kit materials) with the bare
+ * readability hook and its program key, so its clones (cloneVehicleMaterial) keep the cascade registration too.
+ * `cascaded`: the caller's own verdict on the context (the decorations probe it once themselves), else probed here.
+ */
+export function registerVehicleMaterial<T extends THREE.Material>(
+  engineCtx: ShadowEngineContext | null | undefined,
+  material: T,
+  programKey: string,
+  cascaded: boolean = supportsShadowHook(engineCtx),
+): T {
+  return vehicleMaterialSetup(engineCtx, programKey, () => vehicleAmbientFloorHook, cascaded)(material);
+}
+
+/** Take a registered vehicle material (a clone a visual owns) out of the cascade registry before it is disposed. */
+export function releaseVehicleMaterial(material: THREE.Material): boolean {
+  const release = VEHICLE_MATERIAL_RELEASE.get(material);
+  VEHICLE_MATERIAL_RELEASE.delete(material);
+  VEHICLE_REGISTRATION.delete(material);
+  return release ? release(material) : false;
+}
+
+/**
+ * Run `source`'s whole compile hook chain for `target`, a clone drawing in its place (cloneVehicleMaterial): the
+ * source's wrappers apply, and the registration at the chain's root is the target's own (vehicleMaterialSetup).
+ */
+export function runVehicleHookChain(
+  source: THREE.Material,
+  target: THREE.Material,
+  shader: MaterialShader,
+  renderer: THREE.WebGLRenderer,
+): void {
+  const outer = vehicleCompileTarget;
+  vehicleCompileTarget = target;
+  try { source.onBeforeCompile.call(target, shader, renderer); }
+  finally { vehicleCompileTarget = outer; }
+}
 
 /**
  * The vehicle's own shader switches, which three's copy drops with the rest of the defines and a clone keeps (the wheel
@@ -2684,6 +2772,16 @@ const VEHICLE_MATERIAL_SETUP = new WeakMap<THREE.Material, <T extends THREE.Mate
  * with it.
  */
 const VEHICLE_SHADER_SWITCHES = ['COT_WHEEL_PAINT_READABILITY', 'COT_GEAR_CAVITY'] as const;
+
+/** A dev build and the node receipts say so; the public build stays quiet. */
+const UNREGISTERED_CASCADE_CLONES = new WeakSet<THREE.Material>();
+function reportUnregisteredCascadeClone(source: THREE.Material): void {
+  if (UNREGISTERED_CASCADE_CLONES.has(source)) return;
+  UNREGISTERED_CASCADE_CLONES.add(source);
+  if (import.meta.env?.DEV === false) return;
+  console.error('[vehicle material] a clone of a cascade-registered material outside vehicleMaterialSetup loses '
+    + 'USE_CSM: its pixels lose the sun state and the vehicle tag (register it with registerVehicleMaterial)', source.name || source.type);
+}
 
 /**
  * Clone a vehicle material into its source's cascade registration, readability hook, program key and switches.
@@ -2702,7 +2800,9 @@ export function cloneVehicleMaterial<T extends THREE.Material>(source: T, config
   configure?.(clone);
   const setup = VEHICLE_MATERIAL_SETUP.get(source);
   if (setup) return setup(clone);
-  // a material from outside createTankMaterials (a stub's, a receipt's): it keeps its hooks, which a plain clone drops
+  // a material from outside vehicleMaterialSetup (a stub's, a receipt's, a profile's hook-only material): it keeps its
+  // hooks, which a plain clone drops; a cascade registration cannot follow it there
+  if (sourceDefines && 'USE_CSM' in sourceDefines) reportUnregisteredCascadeClone(source);
   clone.onBeforeCompile = source.onBeforeCompile;
   clone.customProgramCacheKey = source.customProgramCacheKey;
   return clone;
@@ -2723,22 +2823,15 @@ export function createTankMaterials(
   quality: string = 'high',
   camoPattern: string | null = null,
 ) {
-  const shadowSetup = engineCtx?.setupShadowMaterial;
-  const shadowHookSupported = supportsShadowHook(engineCtx);
-  const setup = <T extends THREE.Material>(material: T): T => {
+  const setup = vehicleMaterialSetup(engineCtx, 'veh-ambient-floor-v5', (material) => {
     // each material (and each clone cloneVehicleMaterial registers here) scales the sky light by its own authored
     // envMapIntensity, read live (vehicleEnvScaleUniform)
     const envScale = vehicleEnvScaleUniform(material);
-    const hook = (shader: MaterialShader): void => {
+    return (shader: MaterialShader): void => {
       vehicleAmbientFloorHook(shader);
       shader.uniforms.uVehEnvScale = envScale;
     };
-    if (shadowHookSupported && shadowSetup) shadowSetup(material, hook);
-    else material.onBeforeCompile = hook;
-    material.customProgramCacheKey = () => 'veh-ambient-floor-v5';
-    VEHICLE_MATERIAL_SETUP.set(material, setup); // cloneVehicleMaterial re-registers its clones the same way
-    return material;
-  };
+  });
   const aniso = engineCtx?.anisotropy || 8;
 
   const disposables: Array<THREE.Material | THREE.Texture> = [];
