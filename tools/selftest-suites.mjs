@@ -273,6 +273,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/track-clip-result.selftest.mjs',
     'tools/track-clip-options.selftest.mjs',
     'tools/standard-continuity-policy.selftest.mjs',
+    // 2026-10-16 (test-speed R4b part 1): tank-standard-check --stages runs and reports every stage after a red one
+    'tools/standard-check-stages.selftest.mjs',
     'tools/concept-fixture-runner.selftest.mjs',
     'tools/source-equipment-policy.selftest.mjs',
     'tools/photo-reference-policy.selftest.mjs',

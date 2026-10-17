@@ -1100,6 +1100,7 @@
     "tools/source-opening-rays.selftest.mjs": 100,
     "tools/source-world-registration.selftest.mjs": 100,
     "tools/sourced-texture-readiness.selftest.mjs": 100,
+    "tools/standard-check-stages.selftest.mjs": 800,
     "tools/standard-continuity-policy.selftest.mjs": 1900,
     "tools/studio-example-scenarios.selftest.mjs": 1800,
     "tools/tank-release-plan.selftest.mjs": 100,
