@@ -142,8 +142,10 @@ worktree and never stage generated tank work wholesale.
 - Any playable tank addition or geometry/profile change regenerates with
   `npm run tank:regen:changed`: every fleet generator (controls, fills, seats,
   spare-track, anatomy, marking, ledger, centering, icons) runs only on the ids
-  whose inputs or outputs moved, in dependency order, until the final resolve is
-  empty (`npm run tank:changed -- --explain` says why an id is marked). Then
+  whose inputs or outputs moved, in dependency order, then the world steps
+  (wreck plan, collision and trench shards) only on the maps whose config,
+  world core or wreck donors moved, until the final resolve is empty
+  (`npm run tank:changed -- --explain` says why an id or map is marked). Then
   `npm run tank:anatomy:check` and the targeted
   `npm run tank:release:check -- --ids=<ids> --gate`. `--all` (and
   `npm run tank:anatomy:update`) stay the whole-fleet forms; see

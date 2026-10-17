@@ -737,6 +737,26 @@ The independent tripwires keep full keys: `fleetPassHigh`, `fleetPassLow` (ledge
 `fleetLazy`, `fleetFloorClearance` and the nightly `--check --all` never use the resolver, so a resolver miss still
 turns the gate red.
 
+World steps (2026-10-17). After the tank steps the chain runs the wreck bake plan (`tools/wreck-bake-plan.mjs --write`),
+the collision shards (`tools/capture-world-collision-manifests.mjs --node`) and the assault-trench shards
+(`--variant=assault-trenches`) per map, on the maps whose keys moved (`--no-world` skips them;
+`--steps=wreckPlan,collision,trenches` runs them alone; `npm run tank:changed -- --maps` reports them). A map's key
+(`tools/changed-only/world.mjs`) holds the step's world core (the tool's closure stopped at the fleet entry modules, with
+the map registry's config imports dropped: about 500 files, so a world-core edit marks every map), the map's own config
+closure (one to five files; a config another config imports marks both), the fleet core and roster (every map reads
+spec data), and per wreck donor (the wreck plan's rows, plus any roster id the config names) its builder key and
+build-read rows. A tank edit therefore recaptures only the maps that bake that tank (a t90am builder edit: coastal).
+World files that reach the fleet are pinned in `FLEET_API_USERS`; the world outputs are never inputs. A frame edit of
+the index or the plan file, a map roster change or a missing record runs the step on every map.
+
+Runtime proofs (scratch trees, niced): `node tools/changed-only/trace-check.mjs --root=<tree> --ids=<ids>` runs each CPU
+step under the read trace (`trace-reads.mjs`) and fails on any repository read outside the step's key (module loads of
+other groups' builders, which the eager factory registers without running, are reported apart; spare-track's profile
+lint is declared verdict-only). `node tools/changed-only/world-trace.mjs --steps=collision` builds every map through
+the step's own `--check` (writes nothing) and fails when a map loads a builder group outside its donors' chains or reads
+a file its key does not hold. `world.selftest.mjs` covers the world keys on a fixture world, and `chain.selftest.mjs` runs
+a world step end to end (a kit edit rebuilds only the map whose donor is built on it).
+
 Run a targeted release check:
 
     npm run tank:release:check -- --ids=<tank-id>
