@@ -91,6 +91,11 @@ take("  // (2026-10-15) a map with paddies builds the sheet for their water even
   "  if (cfg?.splat?.seaLake && !heightField._layout.terrain.frozenMarshes) {\n    const waterSteps");
 source = source.split('marshLiquid').join('liquidWater');
 take("    // (the map-revival lane, 2026-10-07) a canal's water drives as a soft lake's\n    if (compiledCanals !== null && canalWetness(compiledCanals, x, z) > 0.5) return T.softLakes ? 'soft' : 'hard';\n");
+// (2026-10-17, the ground lane) the sheet holds a canal's own level (the Polders ditch)
+take("import { canalLevelAt } from './canals.ts'; // (the ground lane, 2026-10-17: the sheet holds a canal's level)\n");
+take("    ...(liquidWater ? { _waterWetnessAt: waterWetnessAt, getOutlandWaterAt: outlandWaterAt,\n"
+  + "      getWaterBodySurfaceAt: (x: number, z: number): number => (compiledCanals !== null ? canalLevelAt(compiledCanals, x, z) : Number.NaN) } : {}),\n",
+  "    ...(liquidWater ? { _waterWetnessAt: waterWetnessAt, getOutlandWaterAt: outlandWaterAt } : {}),\n");
 assert.ok(!source.includes('compiledCanals') && !source.includes("from './canals.ts'") && !source.includes('compiledPaddies')
   && !source.includes("from './paddies.ts'"), 'the reconstruction holds no canal or paddy line');
 const beforeURL = new URL('./terrain.ts?before-canals', import.meta.url).href;

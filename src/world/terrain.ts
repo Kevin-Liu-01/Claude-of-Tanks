@@ -64,6 +64,7 @@ import { createBorderLandform, resolveBorderLandform, type BorderLandformSetting
 import type { FarmsteadStyle } from './borderFarmsteads.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
 import { canalWetness, carveCanals, compileCanals, inCanal, type CanalConfig } from './canals.ts';
+import { canalLevelAt } from './canals.ts'; // (the ground lane, 2026-10-17: the sheet holds a canal's level)
 import { compilePaddies, inPaddy, inPaddyClearing, levelPaddies, paddyCanals, paddyRiceAt, paddyWaterLevelAt, paddyWaterQuads,
   resolvePaddyFloors, PADDY_DEPTH_M, type PaddyConfig, type PaddyRiceSeat, type PaddyWaterQuad } from './paddies.ts';
 import { createShallowWaterSurface, shallowWaterGeometrySteps } from './shallowWater.ts';
@@ -663,6 +664,10 @@ export interface HeightField {
   /** Round 47 (2026-09-23): the map's bay contours evaluated anywhere, the square included — wetness 0..1 and the bay's
    * water level — so the horizon ring, the terrain material and the sheet apron continue the coast past the red line. */
   getOutlandWaterAt?(x: number, z: number): { wetness: number; level: number } | null;
+  /** (ground lane, 2026-10-17; MASTER #14, the Polders ditch) a canal's water level where its water reaches (x, z), which
+   * the sheet holds instead of following the canal's shelf up its banks; NaN elsewhere (a lake's or a marsh's water keeps
+   * the sheet's bed-plus-depth law). */
+  getWaterBodySurfaceAt?(x: number, z: number): number;
   /** Water pass 8: one splash into the reactive field (shell impacts); absent without the field. */
   addWaterImpulse?(x: number, z: number, radiusM: number, amplitudeM: number, foam?: number): void;
   /** Water pass 8: true when the reactive field carries the wakes (the FX layer then skips its ring prints). */
@@ -3253,7 +3258,8 @@ function* heightFieldBuildSteps(
       return yield* heightFieldBuildSteps(seed,originalRoadPlacementConfig(cfg),true);
     }} : {}),
     _mesaW: mesaWeight,
-    ...(liquidWater ? { _waterWetnessAt: waterWetnessAt, getOutlandWaterAt: outlandWaterAt } : {}),
+    ...(liquidWater ? { _waterWetnessAt: waterWetnessAt, getOutlandWaterAt: outlandWaterAt,
+      getWaterBodySurfaceAt: (x: number, z: number): number => (compiledCanals !== null ? canalLevelAt(compiledCanals, x, z) : Number.NaN) } : {}),
     ...(_sorStations ? { _sorWetnessAt: sorWetnessAt } : {}),
   };
 }

@@ -1538,6 +1538,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/workedGroundMask.selftest.mjs',
     'src/world/mangroveWaterPalette.selftest.mjs',
     'src/world/shallowWater.selftest.mjs',
+    // 2026-10-17 (ground lane, MASTER #14/#15): the sheet holds a canal's level; Monsoon's channel at 0.5
+    'src/world/waterSheetLevels.selftest.mjs',
     'src/world/waterRipples.selftest.mjs',
     'src/world/oceanFft.selftest.mjs',
     'src/world/roadMaskProfile.selftest.mjs',

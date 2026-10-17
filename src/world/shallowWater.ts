@@ -26,6 +26,8 @@ export const PADDY_MUD_RGB = [0.17, 0.15, 0.09] as const;
  * the wall and the wall hides it. A shore's dry corners, within this of the water, keep their bed-plus-depth height.
  */
 const WALL_RISE_M = 1.0;
+/** (2026-10-17) How far under its ground a canal's dry shore corner tucks where that ground stands lower than the water. */
+const SHORE_TUCK_M = 0.1;
 
 interface ShallowWaterGeometry {
   geometry: THREE.BufferGeometry;
@@ -165,7 +167,8 @@ export function shoreDistanceTexture(mask: THREE.Texture, size: number, wetFrom:
 }
 
 export function* shallowWaterGeometrySteps(
-  field: Pick<HeightField, 'size' | 'getHeightAt' | 'getWaterMaskAt' | 'getWaterDepthAt' | 'getPaddyWaterLevelAt' | 'getPaddyWaterQuads'>,
+  field: Pick<HeightField, 'size' | 'getHeightAt' | 'getWaterMaskAt' | 'getWaterDepthAt' | 'getPaddyWaterLevelAt' | 'getPaddyWaterQuads'
+    | 'getWaterBodySurfaceAt'>,
 ): Generator<void, ShallowWaterGeometry | null, void> {
   const segments = Math.ceil(field.size / GRID_STEP_M);
   const count = segments + 1, step = field.size / segments, half = field.size / 2;
@@ -185,6 +188,11 @@ export function* shallowWaterGeometrySteps(
     const wx = x * step - half, wz = z * step - half;
     return field.getHeightAt(wx, wz) + (field.getWaterDepthAt?.(wx, wz) ?? 0);
   };
+  // (ground lane, 2026-10-17; MASTER #14, the Polders ditch) a canal's wet corner holds the canal's level (HeightField
+  // getWaterBodySurfaceAt) instead of its bed plus a depth that, over the canal's shelf, rose up its banks; every other
+  // wet corner keeps its bed plus depth
+  const bodySurfaceAt = field.getWaterBodySurfaceAt;
+  const bodyY = (x: number, z: number): number => (bodySurfaceAt ? bodySurfaceAt(x * step - half, z * step - half) : Number.NaN);
   function vertex(x: number, z: number): number {
     const key = z * count + x;
     if (slots[key] >= 0) return slots[key];
@@ -192,14 +200,22 @@ export function* shallowWaterGeometrySteps(
     const index = positions.length / 3;
     slots[key] = index;
     let y = surfaceY(x, z);
-    if (wet[key] <= MIN_COVERAGE) {
-      // a wall's corner: the highest wet corner round it, when the corner stands more than WALL_RISE_M over it
-      let water = -Infinity;
+    if (wet[key] > MIN_COVERAGE) {
+      const body = bodyY(x, z);
+      if (body === body) y = body;
+    } else {
+      // a wall's corner: the highest wet corner round it, when the corner stands more than WALL_RISE_M over it; a canal's
+      // shore corner never stands over the canal's water beside it, and tucks under ground lower than that water
+      let water = -Infinity, canal = false;
       for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
         const nx = x + dx, nz = z + dz;
-        if ((dx || dz) && nx >= 0 && nz >= 0 && nx < count && nz < count && wet[nz * count + nx] > MIN_COVERAGE) water = Math.max(water, surfaceY(nx, nz));
+        if (!((dx || dz) && nx >= 0 && nz >= 0 && nx < count && nz < count && wet[nz * count + nx] > MIN_COVERAGE)) continue;
+        const body = bodyY(nx, nz);
+        const surface = body === body ? body : surfaceY(nx, nz);
+        if (surface > water) { water = surface; canal = body === body; }
       }
-      if (water > -Infinity && y > water + WALL_RISE_M) y = water;
+      if (water > -Infinity && canal) y = Math.min(water, y - SHORE_TUCK_M);
+      else if (water > -Infinity && y > water + WALL_RISE_M) y = water;
     }
     positions.push(wx, y, wz);
     normals.push(0, 1, 0);
