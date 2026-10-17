@@ -652,6 +652,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/changed-only/fleet-partition.selftest.mjs',
     // The real chain end to end on a fixture fleet: changed-only == whole-fleet regen byte for byte, order, --verify.
     'tools/changed-only/chain.selftest.mjs',
+    // Generator freshness at resolver cost (R8d): committed fleet outputs current for release/fingerprints.tsv.
+    'tools/changed-only/fresh.selftest.mjs',
     'src/app/checkedIntegrationPort.selftest.mjs',
     'src/app/lazyRuntimeOwner.selftest.mjs',
     'src/app/lazyImportRetry.selftest.mjs',

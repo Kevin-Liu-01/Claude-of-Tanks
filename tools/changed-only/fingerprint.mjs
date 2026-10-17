@@ -92,7 +92,7 @@ export const DEFAULT_CONFIG = Object.freeze({
 });
 
 export function computeState({ root, steps = STEPS, env = process.env, rows = null, graph = null, cacheDir,
-  config = DEFAULT_CONFIG, tableModule = null } = {}) {
+  config = DEFAULT_CONFIG, tableModule = null, toolchainOverride = null } = {}) {
   root = resolve(root);
   const { tables: TABLES, aggregates: AGGREGATES, fleetEntries: FLEET_ENTRIES, loaderFiles: LOADER_FILES,
     groupLoadersFile: GROUP_LOADERS_FILE, declared: DECLARED_DYNAMIC, accessors: ACCESSORS } = { ...DEFAULT_CONFIG, ...config };
@@ -113,7 +113,9 @@ export function computeState({ root, steps = STEPS, env = process.env, rows = nu
   const toolchainParts = [`schema:${SCHEMA}`, `node:${process.version}`, `platform:${process.platform}/${process.arch}`,
     `package-lock:${lockHash('package-lock.json')}`, `installed:${lockHash('node_modules/.package-lock.json')}`,
     `node-options:${normalizedNodeOptions(env.NODE_OPTIONS)}`];
-  const toolchain = H(...toolchainParts);
+  // toolchainOverride (the freshness receipt only): judge the tree as though it ran on the manifest's toolchain, so a
+  // Node or lockfile change on this machine is reported apart instead of marking every id.
+  const toolchain = toolchainOverride ?? H(...toolchainParts);
 
   // Roster: ids, their order, groups, renames. A change runs every step in whole-fleet mode.
   const roster = H(JSON.stringify(data.roster));
