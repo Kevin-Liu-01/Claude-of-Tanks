@@ -285,8 +285,9 @@ function plankRun(sink: PartSink, d: StallDress, x0: number, x1: number, z0: num
     sink.quad('structureWood', [a, top, z1], [b, top, z1], [b, top, z0], [a, top, z0], tone(k));
     if (next) {
       const m = (b + next[0]) / 2;
-      sink.quad('structureWood', [b, top, z1], [m, bed, z1], [m, bed, z0], [b, top, z0], tone(k, 0.62));
-      sink.quad('structureWood', [m, bed, z1], [next[0], top, z1], [next[0], top, z0], [m, bed, z0], tone(next[2], 0.62));
+      // (the 227 blind pair: dark joints a pace apart read as a moire on the far deck) the joints a shade, not a line
+      sink.quad('structureWood', [b, top, z1], [m, bed, z1], [m, bed, z0], [b, top, z0], tone(k, 0.82));
+      sink.quad('structureWood', [m, bed, z1], [next[0], top, z1], [next[0], top, z0], [m, bed, z0], tone(next[2], 0.82));
     } else sink.quad('structureWood', [b, foot, z1], [b, foot, z0], [b, top, z0], [b, top, z1], tone(k, 0.8));
   }
 }
