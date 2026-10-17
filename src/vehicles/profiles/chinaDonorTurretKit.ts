@@ -519,16 +519,22 @@ function qilinRearBasket(P:TankBuilderPort):void {
 // be wrapped around the type 96b turret base"): the Type 96B turret on the T-80U hull (its bins and cheek launchers
 // left out, its boot heeled), wearing every add-on of the cast Yun, each altered to wrap round the 96B: one welded armour
 // housing a side round the 96B wall carrying the chevron bank and three flat tiles, the bustle module with its roof
-// plate and marks, the rear band and its seams, the slat cage, eight roof smoke tubes, the three service cases, the spine
-// frame, the low flat optic, the service cable and its antenna, the sight hood round the 96B gunner's sight, the spine
-// sensor, the slit lamps, the monocle eye, the two side electronics, the faceted station on its own left-roof seat, and
+// plate and marks, the rear band and its seams, the slat cage, eight roof smoke tubes on two cradles, the three service
+// cases, the spine frame, the low flat optic, the service cable and its antenna, the sight hood round the 96B gunner's
+// sight, the spine sensor, the slit lamps, the monocle eye, the two side electronics, the faceted station on its own left-roof seat, and
 // the gun's thermal-sleeve bands and muzzle-reference strip on the 96B barrel. The 96B's shell, ring collar, cupola,
 // secondary hatch, roof fittings, sights, mast and whip are the Yun's own now. Every part is turret-local and tagged.
 const YUN_MODEL=0;
 // [z, inner, outer, bottom, top]: inner edges buried >= 20 mm in the 96B wall, top shelves 20-40 mm under its roof edge,
-// the front rows >= 80 mm outboard of the boot.
-const YUN_WRAP:readonly FlankRow[]=[[-1.86,.98,1.24,.34,.58],[-1.42,1.15,1.58,.32,.64],[-.25,1.14,1.64,.30,.66],
-  [.55,.97,1.62,.22,.64],[.95,.78,1.50,.22,.58],[1.45,.48,1.16,.18,.44],[1.90,.34,.66,.18,.38]];
+// the front rows >= 80 mm outboard of the boot. Release 227 (M3): a horseshoe round the bustle. The corner row (z -2.03)
+// carries the housing round the bustle module's side: its inner edge 85-90 mm inside the module (half-width 0.948
+// there), its rear end 30 mm ahead of the module's rear face (-2.06), its top (0.61; 0.62 at -1.86) at least 20 mm over
+// the module's top (0.58) so no top or rear faces share a plane; the outer line runs from the 1.64 flank through one
+// 38-degree chamfer into the module's side.
+const YUN_WRAP:readonly FlankRow[]=[[-2.03,.86,1.10,.31,.61],[-1.86,.98,1.24,.32,.62],[-1.42,1.15,1.58,.32,.64],
+  [-.25,1.14,1.64,.30,.66],[.55,.97,1.62,.22,.64],[.95,.78,1.50,.22,.58],[1.45,.48,1.16,.18,.44],[1.90,.34,.66,.18,.38]];
+/** The wrap's front walls (its last four rows): the chevron bank's three facets. */
+const YUN_FRONT=YUN_WRAP.slice(4);
 // The Type 96B barrel's outer stations in its gun frame (type96bX.ts buildType96Turret): [z, radius].
 const TYPE96_BARREL:readonly (readonly [number,number])[]=[[.25,.154],[.65,.154],[.68,.1375],[2.04,.1205],[2.90,.1105],
   [4.67,.1105],[4.92211,.099]];
@@ -622,7 +628,7 @@ export const YUN_DOCK_LANDING=[0,.772,-2.26,.40,.34] as const;
 
 /** The Yun's chevron bank: two broad single-piece cassettes on each of the housing's three front facets. */
 function yunChevrons(P:TankBuilderPort,side:number):void {
-  const rows=YUN_WRAP.slice(3),bevel=(r:FlankRow)=>Math.min(.035,(r[4]-r[3])*.25,(r[2]-r[1])*.25);
+  const rows=YUN_FRONT,bevel=(r:FlankRow)=>Math.min(.035,(r[4]-r[3])*.25,(r[2]-r[1])*.25);
   for(let i=1;i<rows.length;i++){
     const a=rows[i-1],b=rows[i];
     const low=Math.max(a[3]+bevel(a),b[3]+bevel(b))+.012,top=Math.min(a[4]-bevel(a),b[4]-bevel(b))-.012;
@@ -630,15 +636,21 @@ function yunChevrons(P:TankBuilderPort,side:number):void {
   }
 }
 
-/** Four roof smoke tubes a side behind the cheeks on shaped feet, firing out over the housing shelf. */
+/** Four roof smoke tubes a side behind the cheeks, firing out over the housing shelf, on one roof cradle a side
+ * (release 227, M3: the eight separate feet merged): a four-station section over x 1.02-1.14 (mirrored) and
+ * z -1.297..-0.843, its underside following the roof under both its edges 6 mm in, its top flat 35 mm over the highest
+ * roof sample under it. */
+const YUN_SMOKE_Z=[-1.25,-1.13,-1.01,-.89] as const;
 function yunSmoke(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[]):void {
-  for(const side of [-1,1])for(const z of [-1.25,-1.13,-1.01,-.89]){
+  const cradle=tagged(P,YUN_MODEL,'smoke-cradle'),tube=tagged(P,YUN_MODEL,'smoke-tube');
+  const z0=YUN_SMOKE_Z[0]-.047,z1=YUN_SMOKE_Z[YUN_SMOKE_Z.length-1]+.047;
+  for(const side of [-1,1]){
     const x=side*1.08;
-    const seats=[z-.047,z+.047].map(zz=>({z:zz,left:roofAt(parts,x-.060,zz),right:roofAt(parts,x+.060,zz)}));
+    const seats=[0,1,2,3].map(k=>{const z=z0+(z1-z0)*k/3;return {z,left:roofAt(parts,x-.060,z),right:roofAt(parts,x+.060,z)};});
     const top=Math.max(...seats.flatMap(s=>[s.left,s.right]))+.035;
-    P.addEquipment('turretDetail',sectionSolid(seats.map(s=>({z:s.z,
+    cradle.addEquipment('turretDetail',sectionSolid(seats.map(s=>({z:s.z,
       ring:[[x-.060,s.left-.006],[x+.060,s.right-.006],[x+.060,top],[x-.060,top]] as SectionPoint[]}))));
-    P.addEquipment('turretDark',markSmokeTube(blindTube(.038,.027,.21,.13,P.q?12:8),[0,0,1],true),
+    for(const z of YUN_SMOKE_Z)tube.addEquipment('turretDark',markSmokeTube(blindTube(.038,.027,.21,.13,P.q?12:8),[0,0,1],true),
       x,top+.072,z+.025,-.66,side*.57);
   }
 }
@@ -679,7 +691,7 @@ function yun(P:TankBuilderPort):void {
   yunMarkingBoards(tagged(P,YUN_MODEL,'marking-board'),armour);
   yunCage(P);
   const roof=permanentParts(P,['turret','turretExternalArmor']);
-  yunSmoke(tagged(P,YUN_MODEL,'smoke-tube'),roof);
+  yunSmoke(P,roof);
   serviceCase(tagged(P,YUN_MODEL,'service-case'),roof,-.68,-1.62,.26,.14,.28);
   serviceCase(tagged(P,YUN_MODEL,'service-case'),roof,.68,-1.62,.26,.14,.28);
   serviceCase(tagged(P,YUN_MODEL,'service-case'),roof,0,-1.43,.77,.16,.23);

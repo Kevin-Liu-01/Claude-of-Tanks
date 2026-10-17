@@ -27,7 +27,7 @@ const INVENTORY = {
   t80u_yun: {
     'wrap-housing': [2, 0], chevron: [24, 12], 'flank-tile': [12, 6], 'bustle-module': [4, 0], 'rear-band': [3, 0],
     'cage-root': [2, 0], 'cage-front-post': [2, 0], 'cage-side-rail': [2, 0], 'cage-post': [2, 0], 'cage-rear-rail': [4, 0], 'cage-floor': [3, 0],
-    'smoke-tube': [16, 0], 'service-case': [3, 0], 'spine-frame': [7, 0], 'low-optic': [3, 0], cable: [2, 0], antenna: [3, 0],
+    'smoke-tube': [8, 0], 'smoke-cradle': [2, 0], 'service-case': [3, 0], 'spine-frame': [7, 0], 'low-optic': [3, 0], cable: [2, 0], antenna: [3, 0],
     'sight-hood': [3, 0], 'spine-sensor': [3, 0], 'slit-lamp': [2, 0], 'monocle-eye': [4, 0], 'side-electronics': [6, 0],
     'gun-band': [5, 0], 'muzzle-strip': [1, 0], 'ring-race': [1, 0], 'marking-board': [2, 0], 'met-sensor': [2, 0],
     'dock-bearer': [2, 0], 'dock-landing': [1, 0],
@@ -222,6 +222,24 @@ for (const quality of ['high', 'low']) {
         const plate = turretParts.filter((p) => p.role === 'sight-hood').sort((a, b) => (b.box.max.x - b.box.min.x) - (a.box.max.x - a.box.min.x))[0];
         const sunk = around([plate]).map((p) => (p === plate ? shifted(p, -.06) : p));
         assert.ok(seatingCensus(sunk, { allowance, family }).some((s) => s.startsWith('CROSS') && s.includes('sight-hood')), 'negative control: a sight-hood plate sunk 60 mm is buried');
+      }
+      // ---- M3: the Yun's horseshoe corner round the bustle module: its rear end 30 mm ahead of the module's rear face, its
+      // top at least 20 mm over the module's, its inner edge 85-90 mm inside the module's side; one cradle a side under
+      // four tubes
+      if (id === 't80u_yun') {
+        const module = parts.find((p) => p.role === 'bustle-module' && p.bucket === 'turretExternalArmor');
+        for (const wrap of parts.filter((p) => p.role === 'wrap-housing')) {
+          assert.ok(Math.abs(wrap.box.min.z - (module.box.min.z + .03)) < .001, `Yun: the wrap's corner ends 30 mm ahead of the bustle module's rear face (${wrap.box.min.z.toFixed(4)})`);
+          let cornerTop = -Infinity, inner = Infinity;
+          for (let i = 0; i < wrap.tri.length; i += 3) if (wrap.tri[i + 2] < -1.99) { cornerTop = Math.max(cornerTop, wrap.tri[i + 1]); inner = Math.min(inner, Math.abs(wrap.tri[i])); }
+          assert.ok(cornerTop >= module.box.max.y + .02 - 1e-6, `Yun: the corner's top ${cornerTop.toFixed(3)} stands 20 mm over the module's ${module.box.max.y.toFixed(3)}`);
+          const moduleHalf = .94 + .06 * (-2.03 + 2.06) / .22;
+          assert.ok(moduleHalf - inner >= .085 - 1e-6 && moduleHalf - inner <= .090 + 1e-6, `Yun: the corner's inner edge ${((moduleHalf - inner) * 1000).toFixed(1)} mm inside the module`);
+        }
+        const cradles = parts.filter((p) => p.role === 'smoke-cradle'), tubes = parts.filter((p) => p.role === 'smoke-tube');
+        assert.equal(cradles.length, 2, 'Yun: one smoke cradle a side'); assert.equal(tubes.length, 8, 'Yun: its own eight smoke tubes');
+        for (const c of cradles) assert.equal(tubes.filter((t) => Math.sign(t.box.min.x + t.box.max.x) === Math.sign(c.box.min.x + c.box.max.x)
+          && t.box.min.z > c.box.min.z - .05 && t.box.max.z < c.box.max.z + .25).length, 4, 'Yun: four tubes on each cradle');
       }
       // ---- the Qilin: 10 % shorter, nothing ahead of the band moved, height kept
       if (id === 't72b3_qilin') {
