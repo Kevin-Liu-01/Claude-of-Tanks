@@ -332,8 +332,13 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     }
     stowage(P, 'hullCloth', rng, [[-1.25, 1.53, -2.62, 0.42, 0.10, 0.72]]);
     {
-      const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.44, seed: 7 });
-      links.position.set(0.98, 1.525 + BODY_RIDE_LIFT, -2.62);
+      // VEH-13 (2026-10-16): the rear deck station sits under the bustle's traverse, so the seat solver racked the course
+      // 14 cm proud of the rear plate, which left an enclosed slot between the two (B2 contiguity, 17 cells). The
+      // course now hangs flush on the rear plate's flat field (z -4.026, x 0.15-0.95, y 1.10-1.50), clear of the
+      // centre box and the right lamp housing, with its length across the plate. Builder frame: the finished vehicle is
+      // this frame times 1.10, so the world plate at z -4.026 is -3.66 here.
+      const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.44, seed: 7, rotation: [-Math.PI / 2, -Math.PI / 2, 0] });
+      links.position.set(0.50, 1.191, -3.7005);
       P.hullG.add(links);
     }
   };
