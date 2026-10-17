@@ -47,7 +47,8 @@ const reports=[];const errors=[];
 // - overlap no other HUD part (rosters, held Tab rosters too, score, objective, kill lanes, damage toasts, chat, minimap,
 //   damage panel, drive, systems, ammunition, consumables, report, network readouts) and no other element it is shown
 //   with (only an element its plan marks as sharing a notice's place, tier 's', may meet that notice);
-// and the side lanes keep every kill row main shows while nothing is up, and at least one while anything is.
+// and the side lanes keep every kill row main shows while nothing is up, and at least one while anything is (but where
+// every place clear of the reticle crosses a lane whole: EMPTY_LANES_OK).
 const recordMain = arg('record-main','');
 const MAIN_NOTICES = recordMain ? null : JSON.parse(await readFile(new URL('./fixtures/battle-hud-layout.main-notices.json', import.meta.url),'utf8'));
 const mainRecord = {};

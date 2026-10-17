@@ -17,7 +17,8 @@
  * consumables, report dock, network readouts) and the side lanes' bands, never from the kill rows, toasts, chat or the
  * notices' own text, so nothing moves while kills arrive. A place that crosses a side lane carries that lane's band
  * while the element shows (`giveWay`: the lane's rows start below it or end above it); the lanes keep all their rows
- * while nothing is up, and a lane is never emptied. The detection and the alert take the cheapest of
+ * while nothing is up, and a lane gives up its last row only where every place clear of the reticle crosses it whole
+ * (a 768 px wide window). The detection and the alert take the cheapest of
  * - stack: detection over the alert, sharing a centre (main's arrangement, centred where it fits);
  * - flank: detection left of the scope's centre-line arm and the alert right of it, on one line (the band above the
  *   ring is tall enough for one notice but the arm splits it: 1000 to 1366 px wide at 600 to 768 px tall);
@@ -184,8 +185,8 @@ const ALERT_WIDTHS_9 = [340, 200, 159] as const;
 const UP_COST = .5, SHIFT_COST = 1.5;
 const FLANK_COST = 24, SPLIT_COST = 60;
 /** What a lane yielding to an element costs while it shows: each kill row it gives up (of its rows clear of the battle
- *  sight), each px its rows move down, and the yield itself; a lane is never emptied. The countdown runs before the
- *  first kill, while the lanes are empty. */
+ *  sight), each px its rows move down, and the yield itself. The countdown runs before the first kill, while the lanes
+ *  are empty. */
 interface LanePrice { readonly row: number; readonly px: number; readonly fixed: number }
 const BATTLE_LANES: LanePrice = { row: 30, px: .25, fixed: 40 };
 const PREBATTLE_LANES: LanePrice = { row: 2, px: .25, fixed: 0 };
