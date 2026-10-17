@@ -186,14 +186,14 @@ const UP_COST = .5, SHIFT_COST = 1.5;
 const FLANK_COST = 24, SPLIT_COST = 60;
 /** What a lane yielding to an element costs while it shows: each kill row it gives up (of its rows clear of the battle
  *  sight), each px its rows move down, and the yield itself. The countdown runs before the first kill, while the lanes
- *  are empty. */
-interface LanePrice { readonly row: number; readonly px: number; readonly fixed: number }
-const BATTLE_LANES: LanePrice = { row: 30, px: .25, fixed: 40 };
-const PREBATTLE_LANES: LanePrice = { row: 2, px: .25, fixed: 0 };
-/** A lane left without a kill row while elements show (the last resort before any reticle ink). */
-const EMPTY_LANE_COST = 900;
-/** The band a lane needs for one kill row: the left lane's damage toasts take up to 45 % of it (battleHudLayout.ts). */
-const LANE_ROW_PX = [62, 26] as const;
+ *  are empty (only chat can be up): it pays less. */
+interface LanePrice { readonly row: number; readonly px: number; readonly fixed: number; readonly empty: number }
+/** In battle a lane left without a kill row while elements show is the last resort before any reticle ink. */
+const BATTLE_LANES: LanePrice = { row: 30, px: .25, fixed: 40, empty: 900 };
+const PREBATTLE_LANES: LanePrice = { row: 15, px: .25, fixed: 20, empty: 300 };
+/** The band a lane needs to show one kill row: 26 px, or 62 beside the left lane's damage toasts (they take up to
+ *  45 % of it, battleHudLayout.ts) where the lane is that tall at all. */
+const laneRowPx = (side: number, lane: PlanLane) => side === 0 && lane.bottom - lane.top >= 62 ? 62 : 26;
 /** The flank's inner edges sit this far either side of the centre line (the scope arm and its margin). */
 const HUG_PX = MOUSE_RETICLE.armHalfWidthPx + MOUSE_RETICLE_MARGIN_PX;
 /** The search's vertical step; the cheapest place is then refined to the px within a step of it. */
@@ -205,6 +205,8 @@ const SCALE_COSTS = [0, 80, 160, 240, 320, 1200] as const;
 /** The compact card costs as much as moving 200 px down; sharing the alert's place (waiting out its 2.4 s) is kept for
  *  where nothing else clears the reticle. */
 const MEDAL_COMPACT_COST = 200, MEDAL_SHARE_ALERT_COST = 600;
+/** Sharing the alert's place where the detection's would do (the countdown and the revive count). */
+const SHARE_ALERT_COST = 400;
 
 const rowsIn = (h: number) => Math.min(8, Math.max(0, Math.floor((h + 3) / 29)));
 const overlapsAny = (r: PlanRect, list: readonly PlanRect[]) => list.some((o) => r.x < o.x + o.w && r.x + r.w > o.x && r.y < o.y + o.h && r.y + r.h > o.y);
@@ -233,19 +235,26 @@ interface Env {
   generation: number;
   arena: Float64Array;
   used: number;
+  /** Ink of the full keep-out this space's keep-out leaves out (reduced tiers): placing over it costs SOFT_INK_COST a px²,
+   *  so a place that must reach into the reticle takes as little of it as it can. */
+  soft: PlanRect[];
 }
+const SOFT_INK_COST = .5;
 const TABLE_BITS = 14, TABLE_MASK = (1 << TABLE_BITS) - 1;
 const pool: Env[] = [];
 /** The plan whose spaces the pool holds (a later plan's lazy places rebuild theirs). */
 let poolPlan = 0, plansMade = 0;
 const itemScratch: number[] = [];
-function makeEnv(slot: number, input: MouseNoticeInput, keep: readonly PlanKeepOut[], lanes: LaneMode): Env {
+function makeEnv(slot: number, input: MouseNoticeInput, keep: readonly PlanKeepOut[], lanes: LaneMode,
+  soft: readonly PlanKeepOut[] = []): Env {
   const env = pool[slot] ??= {
     input, lanes, items: new Float64Array(256), itemCount: 0, discs: new Float64Array(12), discCount: 0,
     keys: new Int32Array(1 << TABLE_BITS), codes: new Int32Array(1 << TABLE_BITS), stamps: new Int32Array(1 << TABLE_BITS),
-    generation: 0, arena: new Float64Array(8192), used: 0,
+    generation: 0, arena: new Float64Array(8192), used: 0, soft: [],
   };
   env.input = input; env.lanes = lanes; env.used = 0;
+  env.soft.length = 0;
+  for (const k of soft) if (!('r' in k)) env.soft.push(k);
   env.generation = env.generation >= 0x7ffffff0 ? 1 : env.generation + 1;
   if (env.generation === 1) env.stamps.fill(0);
   const g = MOUSE_NOTICE_GAP_PX, m = MOUSE_RETICLE_MARGIN_PX;
@@ -331,6 +340,17 @@ function band(env: Env, y0: number, h: number): number {
   return code;
 }
 
+/** What placing a `w` x `h` box at (x, y) over the space's soft ink costs (its overlap in px², margin included). */
+function softCost(env: Env, x: number, y: number, w: number, h: number): number {
+  let area = 0;
+  const m = MOUSE_RETICLE_MARGIN_PX;
+  for (const k of env.soft) {
+    const ox = Math.min(x + w, k.x + k.w + m) - Math.max(x, k.x - m), oy = Math.min(y + h, k.y + k.h + m) - Math.max(y, k.y - m);
+    if (ox > 0 && oy > 0) area += ox * oy;
+  }
+  return area * SOFT_INK_COST;
+}
+
 /** Append [x0 - gap, x1 + gap] for each rect that reaches the band [y0, y1] (gap included). */
 function blockRects(out: number[], y0: number, y1: number, rects: readonly PlanRect[]): void {
   const g = MOUSE_NOTICE_GAP_PX;
@@ -410,7 +430,7 @@ const laneClear: [number, number] = [NaN, NaN];
 /**
  * The band each lane keeps while `box` shows (`out[o .. o + 4)`, NaN: its own): its rows start below the box or end
  * above it, whichever keeps more of its rows clear of the battle sight (ending above moves nothing). Returns the cost
- * at `price`, EMPTY_LANE_COST more for a lane left without a row.
+ * at `price`, `price.empty` more for a lane left without a row.
  */
 function yieldLanes(input: MouseNoticeInput, x: number, y: number, w: number, h: number, out: number[], o: number,
   price: LanePrice = BATTLE_LANES): number {
@@ -423,9 +443,9 @@ function yieldLanes(input: MouseNoticeInput, x: number, y: number, w: number, h:
     const clear = Number.isNaN(laneClear[side]) ? lane.bottom : laneClear[side];
     const before = rowsIn(clear - lane.top);
     const below = Math.ceil(y + h + g), above = Math.floor(y - g);
-    const need = LANE_ROW_PX[side];
+    const need = laneRowPx(side, lane);
     const keptBelow = lane.bottom - below >= need ? rowsIn(lane.bottom - below) : 0, keptAbove = above - lane.top >= need ? rowsIn(above - lane.top) : 0;
-    if (!keptBelow && !keptAbove && lane.bottom - lane.top >= need) cost += EMPTY_LANE_COST;
+    if (!keptBelow && !keptAbove && lane.bottom - lane.top >= need) cost += price.empty;
     const clearBelow = keptBelow ? rowsIn(clear - below) : -1, clearAbove = keptAbove ? rowsIn(Math.min(clear, above) - lane.top) : -1;
     if (clearAbove >= clearBelow) {
       out[o + side * 2 + 1] = above;
@@ -441,14 +461,15 @@ const NO_YIELD: PlanGiveWay = Object.freeze([NaN, NaN, NaN, NaN]);
 const giveWayOf = (s: readonly number[], o: number): PlanGiveWay =>
   Number.isNaN(s[o]) && Number.isNaN(s[o + 1]) && Number.isNaN(s[o + 2]) && Number.isNaN(s[o + 3]) ? NO_YIELD : [s[o], s[o + 1], s[o + 2], s[o + 3]];
 /** What the lanes left without a kill row cost while both bands `gw[0..4)` and `gw[4..8)` apply. */
-function jointRows(input: MouseNoticeInput, gw: readonly number[]): number {
+function jointRows(input: MouseNoticeInput, gw: readonly number[], price: LanePrice = BATTLE_LANES): number {
   let cost = 0;
   for (let side = 0; side < 2; side++) {
     const lane = input.lanes[side];
     if (!lane) continue;
     const t = Math.max(lane.top, Number.isNaN(gw[side * 2]) ? -Infinity : gw[side * 2], Number.isNaN(gw[4 + side * 2]) ? -Infinity : gw[4 + side * 2]);
     const b = Math.min(lane.bottom, Number.isNaN(gw[side * 2 + 1]) ? Infinity : gw[side * 2 + 1], Number.isNaN(gw[5 + side * 2]) ? Infinity : gw[5 + side * 2]);
-    if (b - t < LANE_ROW_PX[side] && lane.bottom - lane.top >= LANE_ROW_PX[side]) cost += EMPTY_LANE_COST;
+    const need = laneRowPx(side, lane);
+    if (b - t < need && lane.bottom - lane.top >= need) cost += price.empty;
   }
   return cost;
 }
@@ -512,9 +533,9 @@ function singleBest(env: Env, w: number, h: number, yPref: number, base: number,
     // shown with `partner` (a placed box's lane bands): a lane the two leave without a row
     if (partner) {
       for (let i = 0; i < 4; i++) { jointScratch[i] = partner[i]; jointScratch[4 + i] = yieldScratch[i]; }
-      lane += jointRows(input, jointScratch);
+      lane += jointRows(input, jointScratch, price);
     }
-    const cost = base + yCost + SHIFT_COST * Math.abs(m - cx) + lane;
+    const cost = base + yCost + SHIFT_COST * Math.abs(m - cx) + lane + (env.soft.length ? softCost(env, m - w / 2, y, w, h) : 0);
     if (cost < out.cost) {
       out.cost = cost; out.x = m; out.y = y; out.lane = lane;
       for (let i = 0; i < 4; i++) out.giveWay[i] = env.lanes === 'yield' ? yieldScratch[i] : NaN;
@@ -599,11 +620,10 @@ function searchPair(input: MouseNoticeInput, envs: readonly Env[]): PairResult |
   for (const env of envs) {
     const yielding = env.lanes === 'yield';
     /** Both boxes' lane bands (gw[0..4) the detection's, gw[4..8) the alert's) and their cost, a lane the two shown
-     *  together would leave without a row included. */
-    const laneCost = (dx: number, dy: number, dw: number, dh: number, ax: number, ay: number, aw: number, ah: number) => {
-      if (!yielding) return 0;
-      return yieldLanes(input, dx, dy, dw, dh, gw, 0) + yieldLanes(input, ax, ay, aw, ah, gw, 4) + jointRows(input, gw);
-    };
+     *  together would leave without a row included, and the soft ink they cover. */
+    const laneCost = (dx: number, dy: number, dw: number, dh: number, ax: number, ay: number, aw: number, ah: number) =>
+      (env.soft.length ? softCost(env, dx, dy, dw, dh) + softCost(env, ax, ay, aw, ah) : 0)
+      + (yielding ? yieldLanes(input, dx, dy, dw, dh, gw, 0) + yieldLanes(input, ax, ay, aw, ah, gw, 4) + jointRows(input, gw) : 0);
     const offer = (cost: number, arrangement: PairResult['arrangement'], det: Omit<PlannedNotice, 'giveWay'>,
       alert: Omit<PlannedAlert, 'giveWay'>) => {
       if (!(cost < bestCost())) return;
@@ -697,14 +717,14 @@ const placeScratch = single();
 /** A candidate box for placeOne: its size, base cost and the notice places it keeps off. */
 type Option = readonly [w: number, h: number, base: number, avoid: readonly PlanRect[]];
 /** The cheapest place for any of `options` from `yPref` in `env` (its keep-out; the lanes blocking or yielding). */
-function placeOne(env: Env, options: readonly Option[], yPref: number, price: LanePrice,
+function placeOne(env: Env, options: readonly Option[], yPref: number, price: LanePrice, partner: readonly number[] | null,
   out: { cost: number; option: number; s: Single }): boolean {
   const one = placeScratch;
   out.cost = Infinity;
   for (let i = 0; i < options.length; i++) {
     const [w, h, base, avoid] = options[i];
     if (base >= out.cost) continue;
-    singleBest(env, w, h, yPref, base, out.cost, one, avoid, price);
+    singleBest(env, w, h, yPref, base, out.cost, one, avoid, price, partner);
     if (one.cost < out.cost) {
       out.cost = one.cost; out.option = i;
       out.s.x = one.x; out.s.y = one.y; out.s.cost = one.cost; out.s.lane = one.lane;
@@ -750,8 +770,10 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
     laneClear[0] = clear[0]; laneClear[1] = clear[1];
     if (poolPlan !== id) { spaces.length = 0; poolPlan = id; }
   };
+  // (a reduced keep-out still prices the rest of the full one as soft ink)
   const envsAt = (i: number): Env[] => spaces[i] ??= hasLanes
-    ? [makeEnv(i * 2, input, keeps[i], 'block'), makeEnv(i * 2 + 1, input, keeps[i], 'yield')] : [makeEnv(i * 2, input, keeps[i], 'block')];
+    ? [makeEnv(i * 2, input, keeps[i], 'block', i ? keeps[0] : []), makeEnv(i * 2 + 1, input, keeps[i], 'yield', i ? keeps[0] : [])]
+    : [makeEnv(i * 2, input, keeps[i], 'block', i ? keeps[0] : [])];
   own();
   for (let i = 0; i < TIERS.length && !pair; i++) {
     pair = searchPair(input, envsAt(i));
@@ -760,23 +782,34 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
   if (!pair) pair = fallbackPair(input);
   const a = pair.alert;
   const det = pair.det, alert: PlanRect = { x: a.anchor === 'centre' ? a.x - a.w / 2 : a.anchor === 'start' ? a.x : a.x - a.w, y: a.y, w: a.w, h: a.h };
-  const notices: PlanRect[] = [det, alert];
+  const notices: PlanRect[] = [det, alert], alertOnly = [alert];
   const found = { cost: Infinity, option: 0, s: single() };
   let chosen: readonly Option[] = [];
+  // The lanes' bands while both notices show: a later element shown beside them keeps every lane a row too, if it can.
+  const both: number[] = [];
+  for (let i = 0; i < 4; i++) {
+    const d = det.giveWay[i], al = pair.alert.giveWay[i];
+    both.push(Number.isNaN(d) ? al : Number.isNaN(al) ? d : i % 2 ? Math.min(d, al) : Math.max(d, al));
+  }
   /** The first step of STEPS where one of `options(share)` has a place (its lanes yield where there are lanes); the
    *  place is left in `found`, its option in `chosen[found.option]`. */
   const place = (options: (share: boolean) => readonly Option[], yPref: number, price: LanePrice) => {
     for (const [tier, share] of STEPS) {
       const envs = envsAt(TIERS.indexOf(tier));
       chosen = options(share);
-      if (placeOne(envs[envs.length - 1], chosen, yPref, price, found)) return tier;
+      if (placeOne(envs[envs.length - 1], chosen, yPref, price, hasLanes ? both : null, found)) return tier;
     }
     return -1;
   };
   const scaled = (size: PlanSize | null, yFrac: number, price: LanePrice): PlannedScaled | null => {
     if (!size || size.w <= 0 || size.h <= 0) return null;
     const yPref = Math.max(Math.ceil(input.top + MOUSE_NOTICE_GAP_PX), Math.ceil(input.height * yFrac));
-    const tier = place((share) => SCALES.map((s, i) => [size.w * s, size.h * s, SCALE_COSTS[i], share ? NONE : notices] as const), yPref, price);
+    // sharing, the detection's place first: no enemy is in sight before the roll-out or while dead, and an alert (2.4 s)
+    // comes with keys pressed and modes' events
+    const tier = place((share) => share
+      ? [...SCALES.map((s, i) => [size.w * s, size.h * s, SCALE_COSTS[i], alertOnly] as const),
+        ...SCALES.map((s, i) => [size.w * s, size.h * s, SCALE_COSTS[i] + SHARE_ALERT_COST, NONE] as const)]
+      : SCALES.map((s, i) => [size.w * s, size.h * s, SCALE_COSTS[i], notices] as const), yPref, price);
     if (tier < 0) return null;
     const s = SCALES[found.option % SCALES.length], w = size.w * s, h = size.h * s, x = found.s.x - w / 2, y = found.s.y;
     return { x, y, w, h, scale: s, clearance: tier as 2 | 1 | 0, sharesNotices: overlapsAny({ x, y, w, h }, notices), giveWay: giveWayOf(found.s.giveWay, 0) };

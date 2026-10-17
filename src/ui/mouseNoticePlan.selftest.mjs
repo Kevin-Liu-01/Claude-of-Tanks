@@ -145,8 +145,7 @@ const LOW_TIER = { '844x390': { revive: 1, medal: 1 }, '481x700': { countdown: 1
 // A lane gives up its last row only where every place clear of the reticle crosses it (and only while the element
 // shows): the plan prices that as its last resort before any reticle ink.
 const ROW_PX = [62, 26];
-const EMPTIED = ['768x600 alert l', '768x600 countdown l', '768x600 revive l', '768x600 medal l', '768x600 detection+alert l',
-  '768x600s countdown l', '768x600s revive l', '768x600s medal l'];
+const EMPTIED = ['768x600 alert l', '768x600 medal l', '768x600 detection+alert l', '768x600s revive l', '768x600s medal l'];
 const emptied = [];
 let plans = 0, slowest = 0, ms = 0, work = 0, mostWork = 0;
 for (const v of VIEWPORTS) {
@@ -196,7 +195,8 @@ for (const v of VIEWPORTS) {
         const top = Number.isNaN(t) ? lane.top : t, bottom = Number.isNaN(b) ? lane.bottom : b;
         assert.ok(top >= lane.top && bottom <= lane.bottom, `${name}: the ${label}'s band lies in the lane`);
         // a row needs 26 px; beside the left lane's damage toasts 62
-        if (bottom - top < ROW_PX[side] && lane.bottom - lane.top >= ROW_PX[side]) emptied.push(`${vp}${objective ? '' : 's'} ${label} ${side ? 'r' : 'l'}`);
+        // (the countdown runs before the first kill: its lanes hold none to keep)
+        if (label !== 'countdown' && bottom - top < ROW_PX[side] && lane.bottom - lane.top >= ROW_PX[side]) emptied.push(`${vp}${objective ? '' : 's'} ${label} ${side ? 'r' : 'l'}`);
         else assert.ok(!overlap(r, { x: lane.x, y: top, w: lane.w, h: bottom - top }, MOUSE_NOTICE_GAP_PX - .01), `${name}: the ${label} keeps off the ${side ? 'right' : 'left'} lane`);
       }
     }
@@ -258,7 +258,7 @@ for (const [w, h] of [[1024, 600], [1000, 600], [1024, 768], [1152, 648], [1280,
 // 6. The layout owner calls the plan on the mouse path only, and every rule it drives is keyed to the mouse layout.
 const layout = readFileSync(new URL('./battleHudLayout.ts', import.meta.url), 'utf8');
 const css = readFileSync(new URL('./battleHudLayout.css', import.meta.url), 'utf8');
-assert.match(layout, /let plan: MouseNoticePlan \| null = null;\s+if \(!touch\) \{[^}]*?\n[\s\S]*?plan = mouseNoticePlan\(/, 'touch never plans');
+assert.match(layout, /let plan: MouseNoticePlan \| null = null;\s+if \(!touch && !planInputs && planned\) plan = planned;\s+else if \(!touch\) \{[\s\S]*?plan = mouseNoticePlan\(/, 'touch never plans');
 assert.equal(layout.match(/= mouseNoticePlan\(/g)?.length, 1, 'one call site');
 assert.match(layout, /document\.body\.toggleAttribute\('data-hud-notices', !touch\)/);
 for (const rule of css.split('\n').filter((line) => line.includes('[data-hud-notices]'))) {

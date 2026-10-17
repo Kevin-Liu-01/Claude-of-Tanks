@@ -55,7 +55,16 @@ export function installBattleHudLayout(root: HTMLElement): void {
   let frame = 0;
   const observed = new Set<Element>();
   const attributes = new WeakMap<Element, Map<string, string | null>>();
-  const resize = new ResizeObserver(schedule);
+  // Relayouts caused only by kill rows, toasts, chat, the shot log and report, the medal card or the notices themselves
+  // leave the mouse notice plan's inputs as they were: those reuse the plan without measuring its inputs again.
+  let planInputs = true;
+  const transientParts = ['cot-kill-lane', 'cot-si-toasthost', 'cot-room-chat', 'cot-si-log', 'cot-si-cardhost', 'cot-medal-toasts', 'cot-sixth', 'cot-alert'];
+  const planInput = (target: Element) => { if (!transientParts.some((part) => target.classList?.contains(part))) planInputs = true; };
+  const resize = new ResizeObserver((entries) => {
+    if (entries?.length) for (const entry of entries) planInput(entry.target);
+    else planInputs = true;
+    schedule();
+  });
   // DOMTokenList.remove() still emits an attribute record when the class was
   // already absent (the special-action HUD clears `pending` every frame).
   // A pulse can also remove then re-add the same class within one task. Compare
@@ -64,13 +73,13 @@ export function installBattleHudLayout(root: HTMLElement): void {
   const changes = new MutationObserver(records => {
     let changed = false;
     for (const record of records) {
-      if (record.type === 'childList') { changed = true; continue; }
+      if (record.type === 'childList') { changed = true; planInput(record.target as Element); continue; }
       const name = record.attributeName;
       if (name === null) continue;
       const target = record.target as Element;
       const previous = attributes.get(target);
       const value = target.getAttribute(name);
-      if (previous?.get(name) !== value) changed = true;
+      if (previous?.get(name) !== value) { changed = true; planInput(target); }
       previous?.set(name, value);
     }
     // Process every record, even after finding a real change, so another
@@ -85,7 +94,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       attributeFilter: names, childList });
   };
   // Mouse relayouts read each fixed instrument once: nothing a relayout writes moves these before it reads them again.
-  const steadyReads = new Set(['.cot-dp', '.cot-drive', '.cot-spec.show', '.cot-cons', '.cot-shells', '.cot-minimap',
+  const steadyReads = new Set(['.cot-dp', '.cot-drive', '.cot-spec.show', '.cot-cons', '.cot-shells', '.cot-minimap', '.cot-si-cardhost',
     '.cot-vehicle-controls', '.cot-vehicle-status:not([hidden])', '.cot-flight-hud:not([hidden]) .flight-console']);
   const readsThisPass = new Map<string, DOMRect | null>();
   let reuseReads = false;
@@ -170,7 +179,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
   const recentPlans: { key: number[]; size: number; plan: MouseNoticePlan }[] = [];
   // A window being resized (sizes arriving within RESIZE_SETTLE_MS of each other) replans once it settles, while nothing
   // planned is on screen; a single change (a keyboard, a rotation) replans at once.
-  let settleTimer: ReturnType<typeof setTimeout> | 0 = 0, settled = false, lastSize = -1, lastSizeAt = -Infinity;
+  let settleTimer: ReturnType<typeof setTimeout> | 0 = 0, settled = false, lastSize = -1, lastSizeAt = -Infinity, inRun = false;
   // The live readout hides for 30 frames on every sight change (hud.ts setMode): plan with its last place.
   let readout: PlanRect | null = null, readoutSize = 0;
   const rect = (box: DOMRect): PlanRect => ({ x: Math.round(box.left), y: Math.round(box.top), w: Math.round(box.width), h: Math.round(box.height) });
@@ -187,8 +196,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     report: { top: number; height: number }): MouseNoticePlan {
     const size = width * 65536 + height;
     const now = performance.now();
-    const resizing = size !== lastSize && now - lastSizeAt < RESIZE_SETTLE_MS;
-    if (size !== lastSize) { lastSize = size; lastSizeAt = now; }
+    // a size that came hard on the last one starts (or continues) a run; the run lasts until sizes stop coming
+    if (size !== lastSize) { inRun = now - lastSizeAt < RESIZE_SETTLE_MS; lastSize = size; lastSizeAt = now; }
+    const resizing = inRun && now - lastSizeAt < RESIZE_SETTLE_MS;
     // The key: the size, the countdown's and revive count's boxes, then each fixed box (x, y, w, h), then the lanes. A
     // relayout whose key matches the last plan's builds nothing more.
     nextKey.length = 0;
@@ -241,7 +251,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       // Mid-resize, with nothing planned on screen, the last plan stands until the window settles.
       if (planned && plannedSize !== size && resizing && !settled && !planShown()) {
         if (settleTimer) clearTimeout(settleTimer);
-        settleTimer = setTimeout(() => { settleTimer = 0; settled = true; schedule(); }, RESIZE_SETTLE_MS);
+        settleTimer = setTimeout(() => { settleTimer = 0; settled = true; planInputs = true; schedule(); }, RESIZE_SETTLE_MS);
         return planned;
       }
       const obstacles: PlanRect[] = [];
@@ -307,6 +317,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     if (!visible) return;
     observe('.cot-vehicle-status,.cot-net,.cot-aim-warning,.cot-sixth,.cot-alert,.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-mode-status,.cot-prebattle,.cot-touch .mobile-chrome,.cot-shells,.cot-touch .autoaim,.cot-touch .joy,.cot-touch .fire.alt');
+    // the revive count is placed (mouse) as it shows
+    if (!document.body.classList.contains('cot-touch-layout')) observe('.cot-revive');
     observe('.cot-si-toasthost,.cot-room-chat,.cot-kill-lane,.cot-medal-toasts,.cot-si-cardhost,.cot-si-log', true);
     // The multiplayer v2 network strip (src/ui/multiplayerStatus.ts) lives outside the HUD root; it
     // asks for a relayout when it mounts, and the lanes seat it in the corner row (networkCornerRight).
@@ -317,6 +329,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const touch = document.body.classList.contains('cot-touch-layout');
     readsThisPass.clear();
     reuseReads = !touch;
+    // a new window size (a resize, a keyboard, a toolbar) is a new plan input
+    if (width * 65536 + height !== lastSize) planInputs = true;
     const tray = width < 1000 ? 'stacked' : 'inline';
     if (document.body.dataset.hudTray !== tray) document.body.dataset.hudTray = tray;
     // The mouse layout's centre notices are planned off the reticle (mouseNoticePlan.ts); touch keeps its own rules.
@@ -407,7 +421,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const banner = document.querySelector<HTMLElement>('.cot-medal-toasts');
     const expanded = root.classList.contains('rosters-expanded');
     let plan: MouseNoticePlan | null = null;
-    if (!touch) {
+    if (!touch && !planInputs && planned) plan = planned;
+    else if (!touch) {
+      planInputs = false;
       const rosterCountLeft = Number(root.querySelector<HTMLElement>('.cot-ear.l')?.dataset.count) || 0;
       const size = width * 65536 + height, counts = rosterCountLeft * 4096 + rosterCount;
       if (!expanded) restingEars = { size, left: earLeft, right: earRight, counts };
@@ -587,13 +603,16 @@ export function installBattleHudLayout(root: HTMLElement): void {
   watchAttributes(document.body, ['class'], true);
   watchAttributes(root, ['style', 'class'], true);
   window.addEventListener('resize', schedule, { passive: true });
+  // (a relayout request may come from anything, the network strip mounting outside the HUD root among them: it is a new
+  // plan input too)
+  window.addEventListener('cot-hud-relayout', () => { planInputs = true; });
   window.addEventListener('cot-hud-relayout', schedule);
   // Keyboard and toolbar changes of the visible height arrive here once responsiveLayout.ts has resized the root.
   window.addEventListener('cot:layoutchange', schedule);
   // Transforms (notably the spectator tray's entrance) do not resize the
   // border box. Measure the settled position without polling its animation.
   const transitionFinished = (event: Event) => {
-    if (observed.has(event.target as Element)) schedule();
+    if (observed.has(event.target as Element)) { planInput(event.target as Element); schedule(); }
   };
   window.addEventListener('transitionend', transitionFinished);
   window.addEventListener('transitioncancel', transitionFinished);
