@@ -251,7 +251,8 @@ function homestead(sink: PartSink, hf: HouseFrame, front: Face, h: Homestead): v
   if (f() < (h.big ? 0.8 : 0.35)) {
     const z = -h.D / 2 + 0.9 + f() * 0.6;
     handPump(sink, h.W / 2 + 0.62, h.plinth, z, Math.PI / 2, pick(f, PUMP_IRON));
-    if (f() < 0.6) clayPot(sink, h.W / 2 + 0.7, h.plinth + 0.1, z - 0.7, 0.18, pick(f, TERRACOTTA));
+    // (kitConnectivity: a pot set down beside the platform stood a hand over the bhiti) the pot on the platform's floor
+    if (f() < 0.6) clayPot(sink, h.W / 2 + 0.87, h.plinth + 0.1, z + 0.22, 0.17, pick(f, TERRACOTTA));
   }
   // a bicycle leaned against a side wall on the bhiti, clear of its windows
   if (f() < (h.big ? 0.7 : 0.45)) {
