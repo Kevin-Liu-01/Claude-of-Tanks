@@ -25,7 +25,7 @@ const BEFORE = {
   monsoon: '84b5ee48c992bafc', // 2026-10-16 re-pinned, was ee7f16856debcd25: MAPS Monsoon Ridge Kohima (integ/226 d8a514543, item/maps-monsoon efaafd74c; merged before the port, which was cut from d4b0d0fcb); the port's own side 074713b3a^2 still hashes to the old pin
   alpine: 'ad1861235bf42d36', // 2026-10-16 re-pinned, was 02f111788b73aad4: the Glacier Hinterland back in 226 (integ/226 1ad81a403, the integrator's re-revert: alpine rimH 52 -> 30); the port's merge 074713b3a left it at its pin
   caldera: '8242b97c1c879b54',
-  foundry: '9d91c513ba3f7e1c',
+  foundry: '82760ac67681631c', // 2026-10-17 re-pinned, was 9d91c513ba3f7e1c: MAPS Lane A's Ironworks re-landing (item/maps-ironworks-227, round d4b718bd6): the furnace line's floor, a level apron cut into the ore berm at (-74, -29), 48 x 22 m, level 2.4, bank 14 m (without it the old hash holds)
   ruinspires: 'f8fb31019a15a8f3',
   blackglass: '05d5d86640658a70',
   titan_gorge: '485e822b044f058f',

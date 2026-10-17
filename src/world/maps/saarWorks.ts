@@ -5,7 +5,7 @@
 // Hochbahn) that runs over them, each furnace's skip rising from its bunkers to the throat. Ironworks' recorded works
 // (TOWN_PLANS.foundry) had one casting house, the blast furnace block at (-74, -29); the line puts two more furnaces
 // beside it, the three side by side along the block's own width, so the bunkers line up into one front:
-//   - foundry.ts adds the two (props.townPlanAdditions, FURNACE_LINE_ADDITIONS below): each replayed like the recorded
+//   - foundry.ts adds the two (props.townPlanAdditions, FURNACE_LINE_ADDITIONS in saarWorksPlan.ts): each replayed like the recorded
 //     block, from the block's own stream at its pose, so its base, its footprint and its saar-kit build are the block's
 //     kind and no recorded building moves;
 //   - this kit lays the high-line over the bunkers, level along the whole front and out past both ends on steel
@@ -18,6 +18,7 @@ import { PartSink, hashSeed, rgb, shade, streamFrom, type Rgb, type Vec3 } from 
 import { getDeviceTier } from '../../engine/quality.ts';
 import { sampleObbGround } from '../propPlacement.ts';
 import { cloneCollisionRecord, collisionFootprintContainsPoint, convexHull2, setConvexShape, type CollisionRecord } from '../collision.ts';
+import { BLOCK, SPACING, at } from './saarWorksPlan.ts';
 
 interface WorksContext {
   L: { roads?: ReadonlyArray<ReadonlyArray<readonly [number, number]>> };
@@ -26,21 +27,6 @@ interface WorksContext {
   obstacles?: CollisionRecord[];
   colliders?: CollisionRecord[];
 }
-
-/** The recorded blast furnace block (TOWN_PLANS.foundry: factory, plan index 0): its centre, yaw and base stream. */
-const BLOCK = { x: -74, z: -29, rot: 0.436332313, rng: 1831567815 } as const;
-/** The furnaces' spacing along the block's width (its base is 11.9 m wide: 3.1 m between the plots). */
-const SPACING = 15;
-/** The block's local axes in the world: across the plot (its width, the line) and along it (the bunkers at +z). */
-const UX: readonly [number, number] = [Math.cos(BLOCK.rot), -Math.sin(BLOCK.rot)];
-const UZ: readonly [number, number] = [Math.sin(BLOCK.rot), Math.cos(BLOCK.rot)];
-const at = (u: number, v: number): [number, number] => [BLOCK.x + UX[0] * u + UZ[0] * v, BLOCK.z + UX[1] * u + UZ[1] * v];
-
-/** The two furnaces the line adds, one each side of the block (props.townPlanAdditions). */
-export const FURNACE_LINE_ADDITIONS = Object.freeze([-1, 1].map((side) => {
-  const [x, z] = at(side * SPACING, 0);
-  return Object.freeze({ structure: 'factory', planIndex: 0, wall: 'stone', rng: BLOCK.rng, x: +x.toFixed(4), z: +z.toFixed(4), rot: BLOCK.rot });
-}));
 
 /**
  * The saar kit's furnace unit on the block's base (maps/regional/saar.ts blastFurnace on an 11.9 x 19.4 m plot, filled
