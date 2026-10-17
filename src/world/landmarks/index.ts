@@ -12,7 +12,7 @@ import { harbour, lighthouse, mole, quay, slipway } from './harbour.ts';
 import { houseRow, khan, lavoir } from './village.ts';
 import { bandstand, churchyard, fountain, garden, outfall, parkGate, parkSquare, path, piazza, stairway } from './parks.ts';
 import { aircraftWreck } from './wrecks.ts';
-import { airstrip, drumCache, guyedMast, jamesway, moduleTrain, radomeTower, snowFence, troposcatter } from './stations.ts';
+import { airstrip, drumCache, guyedMast, jamesway, moduleTrain, radomeTower, snowFence, stripShack, troposcatter } from './stations.ts';
 import { fuelTankFarm } from './tankFarm.ts';
 import { floodMast } from './airfieldWorks.ts';
 import { oreCars } from './mining.ts';
@@ -77,6 +77,7 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   stabbur,
   stationHall,
   stoneArchBridge,
+  stripShack,
   tennisCourt,
   torii,
   townGate,

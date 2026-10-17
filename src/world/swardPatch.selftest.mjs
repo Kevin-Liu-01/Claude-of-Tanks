@@ -47,7 +47,7 @@ const veg = readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8');
 assert.ok(/import \{[^}]*\bswardPatchAt\b[^}]*\} from '\.\/swardPatch\.ts';/.test(tall) && tall.includes('swardPatchAt(x, z, b.kind, _patch)'), 'the blades');
 assert.ok(/import \{[^}]*\bswardPatchAt\b[^}]*\} from '\.\/swardPatch\.ts';/.test(veg) && veg.includes('swardPatchAt(x, z, swardKind, _swardPatch)'), 'the tufts');
 // the sward's depth: one uniform both tiers' materials share (the tufts' card contrast, the blades' root and tip)
-assert.ok(SWARD_TONE.value === 1, 'on by default');
+assert.ok(SWARD_TONE.value === 0, 'off by default (227, the JUDGE\'s j1c: grass r2 lost to the flat sward)');
 assert.ok(tall.includes('shader.uniforms.uSwardTone = SWARD_TONE;') && tall.includes('uGrassBase * (1.0 - 0.22 * uSwardTone), uGrassTip * (1.0 + 0.06 * uSwardTone)'), 'the blades: a darker root, a brighter tip');
 assert.ok(veg.includes('shader.uniforms.uSwardTone = SWARD_TONE;') && veg.includes('diffuseColor.rgb *= max(0.0, 0.28 + (cardL - 0.28) * (1.0 + 0.35 * uSwardTone)) / max(cardL, 1e-4);'), 'the tufts: the card\'s contrast about its mean');
 assert.ok(!/function swardNoise|function cellSeed/.test(tall), 'one copy of the field');
