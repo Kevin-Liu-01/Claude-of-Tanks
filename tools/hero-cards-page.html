@@ -1,0 +1,273 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>tank hero layer renderer</title></head>
+<body>
+<script type="module">
+// Offscreen studio for tools/genHeroCards.mjs: renders each vehicle's hero tank
+// layer (transparent, front three-quarter, bow toward the policy's facing) from
+// the shipped procedural build under one studio light rig, then places it on the
+// master layer by the dense-core framing rule. The flag and the card are composed
+// on the CPU (tools/hero-cards-compose.mjs); nothing here draws type or flags.
+// First-party tooling: Kevin B. Liu (NOTICE.md).
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { createTank } from '/src/vehicles/tankFactory.ts';
+import { ensureInteriorFills } from '/src/vehicles/interiorFills.ts';
+import { getSpec } from '/src/vehicles/specs.ts';
+import { geometryFingerprint } from '/src/vehicles/tankAssets.ts';
+import { measurePortraitCoreBounds } from '/src/ui/portraitFraming.ts';
+import { HERO_CAMERA, HERO_FRAME, HERO_LIGHTS, HERO_POLICY_VERSION } from '/tools/hero-card-policy.mjs';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.setClearColor(0x000000, 0);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+const roomEnvironment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const lights = new THREE.Group();
+scene.add(lights);
+const hemi = new THREE.HemisphereLight();
+const key = new THREE.DirectionalLight();
+const fill = new THREE.DirectionalLight();
+const rim = new THREE.DirectionalLight();
+const kicker = new THREE.DirectionalLight();
+lights.add(hemi, key, fill, rim, kicker, key.target, fill.target, rim.target, kicker.target);
+key.castShadow = true;
+key.shadow.mapSize.set(4096, 4096);
+key.shadow.bias = -0.00025;
+key.shadow.normalBias = 0.02;
+key.shadow.radius = 3;
+
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.ShadowMaterial({ opacity: 0.4 }));
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const deg = (value) => value * Math.PI / 180;
+
+function configureLights(rig, center, mirror, radius) {
+  renderer.toneMappingExposure = rig.exposure;
+  scene.environment = rig.environmentIntensity > 0 ? roomEnvironment : null;
+  scene.environmentIntensity = rig.environmentIntensity;
+  hemi.color.set(rig.hemisphere.sky);
+  hemi.groundColor.set(rig.hemisphere.ground);
+  hemi.intensity = rig.hemisphere.intensity;
+  for (const [light, def] of [[key, rig.key], [fill, rig.fill], [rim, rig.rim], [kicker, rig.kicker]]) {
+    light.color.set(def.color);
+    light.intensity = def.intensity;
+    light.position.set(center.x + def.position[0] * mirror, center.y + def.position[1], center.z + def.position[2]);
+    light.target.position.copy(center);
+    light.target.updateMatrixWorld();
+  }
+  const cam = key.shadow.camera;
+  const half = radius * 1.25;
+  cam.left = -half; cam.right = half; cam.top = half; cam.bottom = -half;
+  cam.near = 0.5; cam.far = radius * 8 + 30;
+  cam.updateProjectionMatrix();
+  ground.material.opacity = rig.groundShadowOpacity;
+}
+
+function paintFingerprint(root) {
+  // Paint inputs the geometry hash cannot see: material colours, roughness/metalness and
+  // texture identities (size + a sparse pixel sample of canvas-backed camo textures).
+  const parts = [];
+  const sampled = new Map();
+  root.traverse((object) => {
+    if (!object.isMesh || !object.visible) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    for (const m of materials) {
+      if (!m) continue;
+      let entry = `${m.type}:${m.color ? m.color.getHexString() : '-'}:${(m.roughness ?? -1).toFixed(3)}:${(m.metalness ?? -1).toFixed(3)}`;
+      const map = m.map;
+      if (map && map.image) {
+        const img = map.image;
+        let tag = sampled.get(img);
+        if (!tag) {
+          tag = `${img.width || 0}x${img.height || 0}`;
+          try {
+            if (img.getContext) {
+              const ctx = img.getContext('2d');
+              const step = Math.max(1, Math.floor(img.width / 16));
+              let acc = 0x811c9dc5;
+              for (let y = 0; y < img.height; y += step) {
+                const row = ctx.getImageData(0, y, img.width, 1).data;
+                for (let x = 0; x < row.length; x += step * 4) acc = Math.imul(acc ^ row[x] ^ (row[x + 1] << 8) ^ (row[x + 2] << 16), 16777619) >>> 0;
+              }
+              tag += `:${acc.toString(16)}`;
+            }
+          } catch { /* non-canvas image: size only */ }
+          sampled.set(img, tag);
+        }
+        entry += `:map=${tag}`;
+      }
+      parts.push(entry);
+    }
+  });
+  parts.sort();
+  let hash = 0x811c9dc5;
+  for (const part of parts) for (let i = 0; i < part.length; i++) hash = Math.imul(hash ^ part.charCodeAt(i), 16777619) >>> 0;
+  return hash.toString(16).padStart(8, '0');
+}
+
+function fullBounds(pixels, width, height, threshold = 8) {
+  let x0 = width, y0 = height, x1 = -1, y1 = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (pixels[(y * width + x) * 4 + 3] <= threshold) continue;
+      if (x < x0) x0 = x; if (x > x1) x1 = x;
+      if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+  }
+  return x1 >= x0 ? { x0, y0, x1, y1 } : null;
+}
+
+/**
+ * Render one vehicle's hero layer. `overrides` replaces fields of HERO_CAMERA / HERO_LIGHTS
+ * (sample boards only; the shipped renderer passes none).
+ */
+function renderHero(id, overrides = {}) {
+  const camera = { ...HERO_CAMERA, ...(overrides.camera || {}) };
+  const rig = { ...HERO_LIGHTS, ...(overrides.lights || {}) };
+  const frame = { ...HERO_FRAME, ...(overrides.frame || {}) };
+  const shadows = overrides.shadows !== false;
+  const spec = getSpec(id);
+  const visual = createTank(id, null, { camoSeed: 4100, quality: 'high' });
+  const root = visual.root;
+  scene.add(root);
+  try {
+    root.updateMatrixWorld(true);
+    const geometryHash = geometryFingerprint(root);
+    const gun = root.getObjectByName('rig_gun');
+    const elevationLimit = Math.abs(Number(spec.gunElevationDeg ?? camera.gunElevationDeg));
+    const gunElevationDeg = Math.min(camera.gunElevationDeg, elevationLimit);
+    if (gun && gunElevationDeg) gun.rotation.x = -deg(gunElevationDeg);
+    root.traverse((object) => {
+      if (object.isMesh) { object.castShadow = shadows; object.receiveShadow = shadows; }
+    });
+    root.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(root);
+    const anchor = visual.assetPresentationAnchor || visual.presentationAnchor;
+    const center = box.getCenter(new THREE.Vector3());
+    center.x = anchor.xM;
+    center.z = anchor.zM;
+    const radius = Math.hypot(
+      Math.max(center.x - box.min.x, box.max.x - center.x),
+      Math.max(center.y - box.min.y, box.max.y - center.y),
+      Math.max(center.z - box.min.z, box.max.z - center.z),
+    );
+    ground.position.y = box.min.y + 0.002;
+    ground.visible = shadows;
+    const mirror = camera.facing === 'right' ? -1 : 1;
+    configureLights(rig, center, mirror, radius);
+    key.castShadow = shadows;
+
+    const az = deg(camera.azimuthDeg);
+    const el = deg(camera.elevationDeg);
+    const dir = new THREE.Vector3(Math.sin(az) * mirror * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el));
+    const aspect = frame.width / frame.height;
+    const vHalf = deg(camera.fovDeg) / 2;
+    const hHalf = Math.atan(Math.tan(vHalf) * aspect);
+    const dist = (radius * camera.margin) / Math.sin(Math.min(vHalf, hHalf));
+    const cam = new THREE.PerspectiveCamera(camera.fovDeg, aspect, 0.1, dist * 4);
+    cam.position.copy(center).addScaledVector(dir, dist);
+    cam.lookAt(center);
+    cam.updateMatrixWorld(true);
+
+    const sw = frame.width * frame.supersample;
+    const sh = frame.height * frame.supersample;
+    renderer.setSize(sw, sh, false);
+    renderer.render(scene, cam);
+    const src = document.createElement('canvas');
+    src.width = sw; src.height = sh;
+    const sc = src.getContext('2d', { willReadFrequently: true });
+    sc.drawImage(renderer.domElement, 0, 0);
+    const pixels = sc.getImageData(0, 0, sw, sh).data;
+    // Measure the vehicle alone (the shadow catcher writes alpha too): re-render without it.
+    let vehiclePixels = pixels;
+    if (shadows) {
+      ground.visible = false;
+      renderer.render(scene, cam);
+      const tmp = document.createElement('canvas');
+      tmp.width = sw; tmp.height = sh;
+      const tc = tmp.getContext('2d', { willReadFrequently: true });
+      tc.drawImage(renderer.domElement, 0, 0);
+      vehiclePixels = tc.getImageData(0, 0, sw, sh).data;
+      ground.visible = true;
+    }
+    const core = measurePortraitCoreBounds(vehiclePixels, sw, sh);
+    const full = fullBounds(vehiclePixels, sw, sh);
+    if (!core || !full) throw new Error(`${id}: empty hero render`);
+    // The dense core fills its share unless the complete silhouette (gun, whips, stowage) would
+    // leave the layer: every card crops from this master, so the master never loses a pixel.
+    const clearPx = frame.edgeClearPx;
+    const coreScale = Math.min(frame.width * frame.coreWidthRatio / core.width, frame.height * frame.coreHeightRatio / core.height);
+    const fullScale = Math.min(
+      (frame.width - 2 * clearPx) / (full.x1 + 1 - full.x0),
+      (frame.height * frame.baselineRatio - clearPx) / Math.max(1, core.bottom - full.y0),
+    );
+    const scale = Math.min(coreScale, fullScale);
+    const centerX = camera.facing === 'right' ? 1 - frame.centerXRatio : frame.centerXRatio;
+    let dx = frame.width * centerX - core.centerX * scale;
+    // Slide (never scale) the silhouette back inside the layer when the gun or the rear overhangs an edge.
+    dx = Math.min(dx, frame.width - clearPx - (full.x1 + 1) * scale);
+    dx = Math.max(dx, clearPx - full.x0 * scale);
+    const dy = frame.height * frame.baselineRatio - core.bottom * scale;
+    const out = document.createElement('canvas');
+    out.width = frame.width; out.height = frame.height;
+    const oc = out.getContext('2d');
+    oc.imageSmoothingEnabled = true;
+    oc.imageSmoothingQuality = 'high';
+    oc.drawImage(src, dx, dy, sw * scale, sh * scale);
+    const placed = {
+      x0: full.x0 * scale + dx, x1: (full.x1 + 1) * scale + dx,
+      y0: full.y0 * scale + dy, y1: (full.y1 + 1) * scale + dy,
+    };
+    const clear = frame.edgeClearPx;
+    const clipped = placed.x0 < clear || placed.y0 < clear
+      || placed.x1 > frame.width - clear || placed.y1 > frame.height - clear;
+    return {
+      dataUrl: out.toDataURL('image/png'),
+      meta: {
+        id,
+        policyVersion: HERO_POLICY_VERSION,
+        geometryHash,
+        paintHash: paintFingerprint(root),
+        facing: camera.facing,
+        camera: { azimuthDeg: camera.azimuthDeg, elevationDeg: camera.elevationDeg, fovDeg: camera.fovDeg, gunElevationDeg },
+        coreBounds: { x0: core.x0 * scale + dx, x1: (core.x1 + 1) * scale + dx, y0: core.y0 * scale + dy, bottom: core.bottom * scale + dy },
+        coreFill: Number((scale / coreScale).toFixed(4)), // 1 = the core fills its share; < 1 = the silhouette limited it
+        fullBounds: placed,
+        clipped,
+        scale,
+      },
+    };
+  } finally {
+    scene.remove(root);
+    visual.dispose();
+  }
+}
+
+window.__HERO_WARM = async (ids) => {
+  await ensureInteriorFills(ids);
+  for (const id of ids) createTank(id, null, { camoSeed: 4100, quality: 'high', staticPreview: true }).dispose();
+  return true;
+};
+
+window.__HERO_RENDER = (jobs) => {
+  const results = [];
+  for (const job of jobs) {
+    try { results.push({ name: job.name, ...renderHero(job.id, job.overrides || {}) }); }
+    catch (error) { results.push({ name: job.name, error: String(error && error.stack || error) }); }
+  }
+  return results;
+};
+
+window.__HERO_READY = true;
+</script>
+</body>
+</html>
