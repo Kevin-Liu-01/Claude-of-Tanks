@@ -340,6 +340,19 @@ export default {
       { kind: 'strawstack' as const, x: 214, z: side * -350, yawDeg: 64, name: 'the second stack on the east tableland' },
       { kind: 'strawstack' as const, x: -200, z: side * -350, yawDeg: -15, name: 'the straw stack below the swell' },
     ]),
+    // (the maps lane, 2026-10-17, Aegis r6: a new approach after r4-5's -0.80; the blind critics: "the gorge reads as one
+    // smooth stretched ochre wall with a sawtooth crest and no strata or ledges", "a smeared swirly cliff texture") the
+    // Tajo's walls as the skins Glen Canyon's arm wears (canyonWall.ts, caprockRim.ts), in Ronda's rock: the Miocene
+    // calcarenite, a pale grey-buff sandstone laid in thick level beds, its faces buttressed and fluted where the seeps
+    // and the rain cut it, the beds standing proud by turns, dark streaks down from the lips; and over the walls the
+    // lips' hard beds in blocks, leaning out over the void. Decor: the gorge's landform stays the battlefield's rock.
+    canyonWalls: [
+      { x: 0, z: 0, length: 540, width: 96, yawDeg: 0, span: 0.9, tone: [0.1, 0.16, 0.6], name: "the Tajo's walls" },
+    ],
+    caprock: [
+      { x: 0, z: 0, length: 540, width: 96, yawDeg: 0, trench: true, span: 0.9, tone: [0.11, 0.14, 0.68],
+        thickness: [1.2, 2.2], blockM: [6, 14], name: "the Tajo's lips" },
+    ],
   },
   // the mountains lane (2026-10-03, gauntlet wave 15): wooded uplands round the gorge (not Verdant's plain)
   horizon:{...verdant.horizon,amp:1.1,baseHex:0x456a38,rockHex:0x777c70,treeline:.95,haze:.7,panorama:{regional:'upland'}},
