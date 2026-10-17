@@ -574,6 +574,49 @@ function endCap(m: Mesh, c: V3, out: V3, r: number, spin: number, col: Rgb): voi
 
 /** The colour between a pile's billets (their bark and their shadow). */
 const between = (f: WoodpileForm): Rgb => mix(hexLin(0x2a2119), f.bark, 0.16);
+/** A long pile's body: the gaps between its billet ends (the bark of the billets behind, in their shadow). */
+const faceBody = (f: WoodpileForm): Rgb => mix(between(f), f.bark, 0.45);
+/** A long pile's billet-end cell by make (row height, width; m): the birch polennitsa's splits the largest, the ricks' the
+ *  smallest (a long pile's face spends 4 triangles a cell over its two faces: rick 140, lean-to 112, polennitsa 80). */
+const faceCell = (f: WoodpileForm): readonly [number, number] => (f.kind === 'polennitsa' ? [0.23, 0.25] : f.kind === 'leanto' ? [0.2, 0.21] : [0.185, 0.21]);
+/**
+ * A long pile's face of billet ends (the Polders village blind, 2026-10-17: "the foreground woodpile is a crude box with
+ * a low-res triangle texture" — each end had been one small triangle on the near-black body, a polka of triangles): the
+ * courses from the ground to under the crown, each course's billets of uneven width so the courses never line up, each
+ * end an irregular split end (a quad, two triangles) nearly filling its cell with a finger's gap of the body showing
+ * between — some quartered to a wedge, a few showing their bark edge — 6 to 16 mm proud of the body.
+ */
+function billetFace(m: Mesh, xEnd: number, H: number, z: number, sz: number, f: WoodpileForm, rng: Rng): void {
+  const [rowH, colW] = faceCell(f), top = H * 0.92, x0 = -xEnd + 0.03, span = 2 * xEnd - 0.06;
+  const rows = Math.max(3, Math.round(top / rowH)), cols = Math.max(3, Math.round(span / colW)), h = top / rows;
+  const out: V3 = [0, 0, sz];
+  for (let i = 0; i < rows; i++) {
+    const widths = Array.from({ length: cols }, () => 0.72 + rng() * 0.56), sum = widths.reduce((a, b) => a + b, 0);
+    let xa = x0;
+    for (let j = 0; j < cols; j++) {
+      const w = (widths[j] / sum) * span, cx = xa + w / 2, cy = i * h + h / 2;
+      xa += w;
+      const gap = 0.006 + rng() * 0.006, hx = w / 2 - gap, hy = h / 2 - gap;
+      // a split end: its bark side broad, its heart side narrow (a quartered billet's wedge, k small) or broad (a halved
+      // or a round billet's), the heart turned any way the billet was laid (a quarter turn and a little off it), drawn
+      // in to fill its cell
+      const k = rng() < 0.5 ? 0.14 + rng() * 0.3 : 0.6 + rng() * 0.35, turn = ((rng() * 4) | 0) * Math.PI / 2 + (rng() - 0.5) * 0.4;
+      const local = [[-1, -1], [1, -1], [k, 1], [-k, 1]].map(([u, v]) => [u + (rng() - 0.5) * 0.24 * (v > 0 ? k : 1), v + (rng() - 0.5) * 0.2]);
+      const ct = Math.cos(turn), st = Math.sin(turn), rot = local.map(([u, v]) => [u * ct - v * st, u * st + v * ct]);
+      const ex = Math.max(...rot.map(([u]) => Math.abs(u))), ey = Math.max(...rot.map(([, v]) => Math.abs(v)));
+      const zz = z + sz * (0.006 + rng() * 0.01);
+      const q: V3[] = rot.map(([u, v]) => [cx + (u / ex) * hx, cy + (v / ey) * hy, zz]);
+      const r = rng();
+      const col = r < 0.62 ? tone(f.end, rng, 0.28) : r < 0.88 ? tone(mix(f.end, f.split, 0.55), rng, 0.2) : tone(mix(f.end, f.bark, 0.4), rng, 0.2);
+      // (convex: the narrow side's corners keep their order) split on its shorter diagonal
+      const d02 = Math.hypot(q[0][0] - q[2][0], q[0][1] - q[2][1]), d13 = Math.hypot(q[1][0] - q[3][0], q[1][1] - q[3][1]);
+      const a = d02 <= d13 ? 0 : 1;
+      const [A, B, C, D] = [q[a], q[(a + 1) % 4], q[(a + 2) % 4], q[(a + 3) % 4]];
+      faceTri(m, A, B, C, out, col);
+      faceTri(m, A, C, D, out, col);
+    }
+  }
+}
 /** A round pile's profile: a holzhausen's wall and its bark crown, a dung stack's dome of cakes. */
 function roundProfile(f: WoodpileForm, R: number, H: number): Array<[number, number]> {
   return f.kind === 'dung'
@@ -586,7 +629,7 @@ function roundProfile(f: WoodpileForm, R: number, H: number): Array<[number, num
  * lean-to stack under its boarded roof, the Norwegian round holzhausen with its bark crown, the brushwood and tamarisk
  * bundles of the Saharan villages, the dung-cake stacks of the Bengal chars. A long pile is two billet lengths deep:
  * its body one shape (its top uneven, the colour between the billets), each face the billets' end grain, a course of
- * billets across its top. Near ≤ 290 triangles, far ≤ 24.
+ * billets across its top. Near ≤ 300 triangles (a polennitsa 292, a lean-to 288, a rick 244), far ≤ 30.
  */
 export function woodpileNear(f: WoodpileForm, rng: Rng): THREE.BufferGeometry {
   const m = newMesh();
@@ -631,12 +674,8 @@ export function woodpileNear(f: WoodpileForm, rng: Rng): THREE.BufferGeometry {
   // the long piles
   const xEnd = L / 2 - (f.kind === 'polennitsa' ? 0.15 : 0.02);
   const sec: Array<[number, number]> = [[-D / 2, 0], [D / 2, 0], [D / 2, H * 0.95], [D * 0.18, H], [-D * 0.22, H * 0.97], [-D / 2, H * 0.93]];
-  prismX(m, sec, -xEnd, xEnd, between(f), mul(f.bark, 0.8));
-  const rows = Math.max(3, Math.round(H / 0.16)), cols = Math.max(4, Math.round((2 * xEnd) / 0.21));
-  for (const sz of [-1, 1]) for (let i = 0; i < rows; i++) for (let j = 0; j < cols; j++) {
-    const x = -xEnd + (j + 0.5 + ((i % 2) - 0.5) * 0.35) * (2 * xEnd) / cols, y = (i + 0.5) * H * 0.92 / rows;
-    endCap(m, [Math.max(-xEnd + 0.07, Math.min(xEnd - 0.07, x)), y, sz * D / 2], [0, 0, sz], 0.085 + rng() * 0.02, rng() * 6, tone(f.end, rng, 0.25));
-  }
+  prismX(m, sec, -xEnd, xEnd, faceBody(f), mul(f.bark, 0.8));
+  for (const sz of [-1, 1]) billetFace(m, xEnd, H, sz * D / 2, sz, f, rng);
   for (let k = 0; k < (f.kind === 'leanto' ? 0 : 4); k++) {
     const x = -xEnd * 0.75 + k * xEnd * 0.5 + (rng() - 0.5) * 0.08;
     billet(m, [x, H * 0.96, (rng() - 0.5) * 0.1], [0, 0, 1], D * (0.55 + rng() * 0.15), 0.07, rng() * 2, f, rng);
@@ -681,7 +720,8 @@ export function woodpileFar(f: WoodpileForm): THREE.BufferGeometry {
     lathe(m, [[D / 2, 0], [D / 2, H * 0.6], [0.04, H]], 6, (_k, b) => (f.kind === 'dung' ? mul(f.split, 0.92) : b ? f.bark : mix(f.end, between(f), 0.62)),
       { faceted: true, capTop: true });
   } else {
-    const c = f.kind === 'bundles' ? f.bark : mix(f.end, between(f), 0.74);
+    // (a long pile's faces seen from afar: its billet ends over half of each face, the body in the gaps between)
+    const c = f.kind === 'bundles' ? f.bark : mix(f.end, faceBody(f), 0.5);
     prismX(m, [[-D / 2, 0], [D / 2, 0], [D / 2, H * 0.95], [0, H], [-D / 2, H * 0.95]], -L / 2, L / 2, c, mul(f.bark, 0.8));
   }
   return finish(m);
