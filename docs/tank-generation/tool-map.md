@@ -253,15 +253,16 @@ private build. It stops at the first failure. Public build and attribution
 above are additional checks; never describe later skipped stages as passed.
 
 Lane mode (`--lane`, 2026-10-16) is the same composition without the embedded
-full `npm test` and private build, with the anatomy freshness check scoped to
-the selected ids (`gen-combat-anatomy --check --ids=<ids>`). Every remaining
-step keeps its flags and its `--ids` scope. A tank lane runs it before READY;
-the integrator runs the default mode, and the release gate runs the whole suite
-and both builds once per release. A lane PASS prints `PASS (lane mode)` and
-says the suite and the build were NOT RUN: record them as not run, never as
-passed. If the change reaches beyond the selected tanks' own files (a shared
-builder, material, generator or table), select every affected id or drop
-`--lane`. `--dry-run` prints the plan. See
+full `npm test` and private build. Every remaining step keeps its flags and its
+`--ids` scope, and the anatomy freshness check stays fleet-wide (a shared
+builder can stale other tanks' rows). A tank lane runs it before READY; the
+integrator runs the default mode, and the release gate runs every receipt and
+`npm run build` (build:private's vite build plus the public strip) once per
+release. A lane PASS prints `PASS (lane mode)` and says the suite and the build
+were NOT RUN: record them as not run, never as passed. If the change reaches
+beyond the selected tanks' own files (a shared builder, material, generator or
+table), select every affected id or drop `--lane`. `--dry-run` prints the plan.
+Id-scoped regeneration is `npm run tank:regen:changed`, not lane mode. See
 [DEVELOPMENT.md "Fast checks"](../DEVELOPMENT.md#fast-checks).
 
 Generated ownership is explicit: anatomy/marking-seat `*.generated.ts` groups,

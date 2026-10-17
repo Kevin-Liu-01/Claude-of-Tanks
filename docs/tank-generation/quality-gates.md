@@ -26,7 +26,7 @@ owners. Use the [tool map](tool-map.md) to check actual current coverage.
 | Weapon assemblies | Mantlet seated, barrel/coax/receiver frames coherent, circular or source-correct sections, real muzzle bore and correctly directed taper. Roof weapon is an actual weapon, not a marker-only census escape. |
 | Damage and combat anatomy | Live/spent/reset ERA, permanent backing, fitted main and auxiliary armor, gun-owner armor, real plate-edge/gap shot tests, modules/crew and regenerated anatomy freshness. |
 | Presentation and preservation | Exact lazy ID, no external mesh load, correct asset images/centering, markings/paint ownership, originals' high/low hashes and unrelated records unchanged. |
-| Release | Composed release stages pass, plus typecheck, public build and attribution. Record all commands, exits, tree identity and artifacts; do not collapse partial runs into a clean full test claim. A lane-mode run (`--lane`) has NOT RUN `npm test` or the private build; the release gate runs them. |
+| Release | Composed release stages pass, plus typecheck, public build and attribution. Record all commands, exits, tree identity and artifacts; do not collapse partial runs into a clean full test claim. A lane-mode run (`--lane`) has NOT RUN `npm test` or the private build; the integrator mode runs both, and the release gate runs every receipt and `npm run build`. |
 
 Historical preservation is a separate contract. The allowlisted Revolution
 Proto comparison requires **99** per component/view against its hash-pinned

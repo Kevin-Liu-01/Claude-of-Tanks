@@ -407,26 +407,50 @@ other probes four at a time. It has two modes (2026-10-16, test-speed R8e):
 
 | Mode | Command | Runs | Who runs it |
 |---|---|---|---|
-| Integrator (the default) | `tank:release:check -- --ids=<ids> --gate` | Every step: the per-id probes, the fleet-wide combat-anatomy freshness check, the whole `npm test` and `npm run build:private` | The integrator; anyone certifying a tree on their own |
-| Lane | `tank:release:check -- --ids=<ids> --gate --lane` | Only the per-id steps: the scoring stage and every probe with `--ids=<ids>`. The anatomy check is `gen-combat-anatomy --check --ids=<ids>`: the selected tanks are re-measured and every other row is compared as committed | A tank lane before READY |
+| Integrator (the default) | `tank:release:check -- --ids=<ids> --gate` | Every step: the per-id probes, the fleet-wide combat-anatomy freshness check (`gen-combat-anatomy --check`), the whole `npm test` and `npm run build:private` | The integrator; anyone certifying a tree on their own |
+| Lane | `tank:release:check -- --ids=<ids> --gate --lane` | The same steps, flags and id scopes, without the embedded `npm test` and `npm run build:private`. The anatomy check stays fleet-wide | A tank lane before READY |
 
-- **What lane mode saves:** the embedded `npm test` (1.7-5.5 receipt-h per tank landing in
-  223/224) and `build:private`, 13-41+ min per landing. The scoped anatomy check took 8 s for one
-  id, against 106 s for the fleet (2026-10-16, load about 85). Every other step, flag and id scope
-  is the integrator mode's, byte for byte.
-- **Where the dropped work still runs:** the release gate runs the whole suite (`tools/gate.mjs`,
-  receipts) and both builds (Release checklist) once per release. The fleet-wide anatomy
-  re-measurement stays in the integrator mode and in `npm run tank:anatomy:check`, which the
-  combat-anatomy procedure in `AGENTS.md` still runs. The suite checks the calibrations' coverage
-  and structure (`fleetPassDefault`), but it does not re-measure them.
-- **What a lane PASS means:** it reads `PASS (lane mode)` and states that `npm test` and
-  `build:private` were NOT RUN. Never report it as a suite or build pass.
+- **What lane mode saves:** the embedded `npm test` and `npm run build:private`. The PLAN estimates
+  13-41+ min per tank lane landing for the two together; in 223/224 the embedded `npm test` alone
+  was 1.7-5.5 receipt-h. Two logged release checks show the scale: `npm test` took 999 s in one
+  (2026-09-26, 8 ids) and `build:private` 278 s in another (2026-09-24).
+- **Why the anatomy check is not scoped:** `gen-combat-anatomy --check --ids=<ids>` re-measures only
+  those tanks and compares every other row with itself. A shared builder can stale rows of tanks the
+  lane did not select: in 226 the shared Ukrainian cage staled the spare-track rows of bmp2,
+  m46_patton, bmp3_rok and t72b3m_hetman_ii, and a cage, barrel or kit builder reaches anatomy rows
+  the same way. Nothing proves the other rows' inputs unchanged, so scoping it would break the
+  COVERAGE RULE. It costs about 106 s per run (2026-10-16, load about 85). It can become
+  changed-only once it is an exact-key gate receipt (the PLAN R8d pattern) or the changed-only
+  pipeline's per-id input fingerprints (`tank:regen:changed`, "Changed-only regeneration" below)
+  prove the other rows' inputs unchanged.
+- **Where the dropped work still runs:** the integrator mode runs both. The release gate
+  (`tools/gate.mjs`) runs every receipt (`run-selftests.mjs all`, the same run as `npm test`) and
+  `npm run build`. `npm run build` runs build:private's commands (`vite build` and the localized
+  pages) with the same `prebuild`, then the public asset strip and the provenance file. The two
+  builds differ only by `VITE_PUBLIC_BUILD=1`. On 2026-10-16 no source read that key; the only
+  whole-object `import.meta.env` read (`src/vehicles/rosterPolicy.ts`) carries it into the bundle
+  and reads only `DEV` and the dev-fleet key. So the gate's build compiles the same modules that
+  build:private does. The Release checklist (step 6) also lists build:private itself;
+  `tools/gate.mjs` does not run it.
+- **What a lane PASS means:** it reads `PASS (lane mode)` and, before the run and after the PASS,
+  states that `npm test` and `npm run build:private` were NOT RUN. Never report it as a suite or
+  build pass.
 - **When lane mode is not enough:** a change outside the selected tanks' own files (a shared
-  builder, material, generator or table) can move tanks the lane did not select. Select those ids
-  too, or run the integrator mode.
+  builder, material, generator or table) can move tanks the lane did not select. The fleet-wide
+  anatomy check still sees their anatomy rows; select the other ids for the per-id probes too, or run
+  the integrator mode.
+- **Regeneration is separate:** id-scoped regeneration (PLAN R8e's "`tank:anatomy:update` becomes
+  id-scoped") is `npm run tank:regen:changed` from the changed-only pipeline (R8a/R8b); lane mode
+  only changes what the release check runs. `npm run tank:anatomy:update` stays the whole-fleet form.
+- **Exit status:** 0 for a PASS or `--dry-run`, 1 for usage, otherwise the earliest failed step's
+  status (2 when it has none). An unknown or repeated id prints `[tank-release] FAIL (<mode> mode)
+  <ids>: <reason>` and exits 2, with no stack trace.
 - `--dry-run` prints either plan and runs nothing. `tools/tank-release-plan.selftest.mjs` pins the
-  lane plan as the integrator plan minus exactly the two npm steps, with every lane step scoped to
-  the ids. It also pins the command-line wiring.
+  lane plan as the integrator plan minus exactly the two npm steps, the fleet-wide anatomy check in
+  both modes, and the claims above (gate steps, `npm test`, the two builds). It drives the whole
+  run (`runTankRelease`) with fake children: output order, stage order and concurrency, every
+  failure reported in plan order, and the exit status. `tools/tank-release-check.mjs` is pinned to
+  the statements that call it.
 
 ### Test gate and result reuse (2026-09-28)
 
@@ -761,9 +785,10 @@ Run a targeted release check:
 
 The target check covers generated assets, muzzle bore, geometry standards,
 the fleet geometry ledger and mission-seat receipts for the selected ids,
-tests, and private build. A tank lane adds `--lane` to run only the per-id
-steps; the suite and the private build then run at the release gate ("Fast
-checks" above). See TANK-ASSET-PIPELINE.md and BUILD-STANDARD.md for
+tests, and private build. A tank lane adds `--lane`: the same steps without
+the embedded suite and private build, which the integrator mode and the release
+gate (every receipt and `npm run build`) run ("Fast checks" above). See
+TANK-ASSET-PIPELINE.md and BUILD-STANDARD.md for
 the complete vehicle-authoring contract.
 
 ## Performance verification

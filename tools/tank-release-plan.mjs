@@ -3,8 +3,8 @@ import {FLEET_GROUP_BY_ID} from '../src/vehicles/fleetManifest.ts';
 import {validateSelectedIds,partitionConceptIds} from './first-party-concept-policy.mjs';
 /**
  * The command line of tools/tank-release-check.mjs, parsed here so the selftest exercises it.
- * `--lane` (lane mode, 2026-10-16, test-speed R8e) runs only the steps scoped to the selected ids; the
- * default integrator mode is unchanged. `--dry-run` prints the plan and runs nothing.
+ * `--lane` (lane mode, 2026-10-16, test-speed R8e) skips the embedded `npm test` and
+ * `npm run build:private`; the default integrator mode is unchanged. `--dry-run` prints the plan and runs nothing.
  */
 export function tankReleaseArgs(argv) {
   const idArg = argv.find((arg) => arg.startsWith('--ids=')) || argv.find((arg) => arg.startsWith('--tanks='));
@@ -19,12 +19,12 @@ export function tankReleaseArgs(argv) {
 /**
  * Declarative release composition, tested without launching browser children.
  *
- * Lane mode (`{lane:true}`, 2026-10-16, test-speed R8e): a lane landing runs only the per-id steps.
- * It drops the embedded `npm test` and `npm run build:private` (the release gate runs the whole
- * suite and both builds once per release, docs/DEVELOPMENT.md "Fast checks") and scopes the
- * combat-anatomy freshness check to the selected ids (`gen-combat-anatomy --check --ids`: those
- * tanks re-measured, every other row as committed). Every other step, flag and id scope is the
- * integrator mode's, byte for byte. The integrator mode (the default) keeps all of it.
+ * Lane mode (`{lane:true}`, 2026-10-16, test-speed R8e) drops exactly the embedded `npm test` and
+ * `npm run build:private`: the release gate runs every receipt and `npm run build` (build:private's
+ * commands plus the public strip) once per release, docs/DEVELOPMENT.md "Fast checks". Every other
+ * step, flag and id scope is the integrator mode's, byte for byte. That includes the fleet-wide
+ * combat-anatomy freshness check: a shared-builder edit can stale rows of tanks the lane did not
+ * select, and nothing proves their inputs unchanged (the COVERAGE RULE), so it is never scoped here.
  */
 export function tankReleaseSteps(ids, gate, node = process.execPath, {lane = false} = {}) {
   if (!ids.split(',').every(id=>id.trim().length>0)) throw new Error('release requires nonempty tank IDs');
@@ -44,9 +44,9 @@ export function tankReleaseSteps(ids, gate, node = process.execPath, {lane = fal
     // or missing face; each id is held to docs/geometry-gate/sealed.json.
     cpu('tank-sealed-check',selected,'--ledger=docs/geometry-gate/sealed.json',...(gate?['--gate']:[])),
     ...(gate && comparisons.length ? [gpu('procedural-fidelity',`--ids=${comparisons.join(',')}`,'--check','--board','--neutral-board')] : []),
-    // Fleet-wide in the integrator mode; the selected ids only in lane mode (the integrator mode and
-    // `npm run tank:anatomy:check` re-measure the fleet).
-    cpu('gen-combat-anatomy','--check',...(lane?[selected]:[])),
+    // Fleet-wide in both modes: gen-combat-anatomy --check --ids would compare every unselected row
+    // with itself, so a shared cage or barrel builder could leave other tanks' rows stale unseen.
+    cpu('gen-combat-anatomy','--check'),
     // 2026-10-11 (217's closure; 211's TTS before it): a geometry change could pass this check and then
     // fail the closure's ledger and mission-seat checks. Both receipts now gate here, scoped to the ids.
     cpu('fleet-geometry-ledger','--check',selected),
@@ -60,7 +60,7 @@ export function tankReleaseSteps(ids, gate, node = process.execPath, {lane = fal
     gpu('track-duplicate-audit',selected),
     gpu('muzzle-bore-probe',selected),
     gpu('turret-barrel-circularity',selected),
-    // Integrator mode only: lane mode leaves the whole suite and the private build to the release gate.
+    // Integrator mode only: lane mode leaves the whole suite and the build to the release gate.
     ...(lane ? [] : [
       {command:'npm',args:['test'],capture:false},
       {command:'npm',args:['run','build:private'],capture:true},
@@ -75,7 +75,7 @@ export function tankReleaseSteps(ids, gate, node = process.execPath, {lane = fal
  * node probes side by side with the receipt suite and the production build: they read the same
  * tree, never write to it, and the GPU children still serialise through the capture queue.
  * A stage stops at its first failure; a later stage never starts after a failed one.
- * Lane mode has the same two stages; the second holds only the per-id probes.
+ * Lane mode has the same two stages; the second holds the same probes without the suite and the build.
  */
 export function tankReleaseStages(ids, gate, node = process.execPath, {lane = false} = {}) {
   const steps = tankReleaseSteps(ids, gate, node, {lane});
@@ -85,15 +85,13 @@ export function tankReleaseStages(ids, gate, node = process.execPath, {lane = fa
   const parallel = steps.filter((step) => !serialTools.has(tool(step)));
   return [
     { name: 'scoring', concurrency: 1, steps: serial },
-    { name: lane ? 'per-id probes' : 'fleet probes, receipts and build', concurrency: 4, steps: parallel },
+    { name: lane ? 'fleet probes' : 'fleet probes, receipts and build', concurrency: 4, steps: parallel },
   ];
 }
 
 /**
- * Everything tools/tank-release-check.mjs decides before it runs a step, as data, so the selftest
- * covers the command line in process (the CLI only prints this and runs `stages`).
- * Lane mode never stands in for the suite, the build or a fleet-wide anatomy check: `notes` say so
- * before the run and after a PASS. gen-combat-anatomy's own PASS line counts every row, re-measured or not.
+ * Everything tools/tank-release-check.mjs decides before it runs a step, as data.
+ * Lane mode never stands in for the suite or the build: `notes` say so before the run and after a PASS.
  */
 export function tankReleaseInvocation(argv, node = process.execPath) {
   const { ids, gate, lane, dryRun } = tankReleaseArgs(argv);
@@ -102,13 +100,14 @@ export function tankReleaseInvocation(argv, node = process.execPath) {
   return {
     ids, gate, lane, dryRun, mode,
     header: `${mode} mode${gate ? ' --gate' : ''}: ${ids}`,
-    notes: lane ? [
-      'npm test and npm run build:private NOT RUN (lane mode; the release gate runs both)',
-      `combat anatomy re-measured for ${ids} only; every other row is compared as committed (the integrator mode re-measures the fleet)`,
-    ] : [],
+    notes: lane ? [TANK_RELEASE_LANE_NOTE] : [],
     stages: tankReleaseStages(ids, gate, node, { lane }),
   };
 }
+
+/** What a lane run skipped, and where each skipped command still runs. */
+export const TANK_RELEASE_LANE_NOTE = 'npm test and npm run build:private NOT RUN (lane mode): the integrator mode runs both; '
+  + 'the release gate runs every receipt and npm run build (the same vite build and localized pages, plus the public strip)';
 
 export const tankReleaseLabel = ({ command, args }) => `${command} ${args.join(' ')}`;
 
@@ -118,4 +117,74 @@ export function tankReleasePlanLines({ stages }) {
     `[tank-release] stage "${stage.name}": ${stage.steps.length} step(s), ${Math.min(stage.concurrency, stage.steps.length)} at a time`,
     ...stage.steps.map((step) => `  ${tankReleaseLabel(step)}`),
   ]);
+}
+
+/**
+ * tools/tank-release-check.mjs after its imports, with the child runners injected so the selftest drives
+ * the real control flow (output order, stages, failure reporting, exit status) with fake children; the CLI
+ * passes the spawning runners from capture-command.mjs and exits with the returned status.
+ * Returns 0 for a PASS or a dry run, 1 for usage, otherwise the earliest failed step's status (2 without one).
+ * An unknown, repeated or empty id prints a FAIL line and returns 2 like a failed step, never a stack trace.
+ */
+export async function runTankRelease(argv, { runCommand, runCapturedCommand, node = process.execPath,
+  log = console.log, error = console.error, now = () => performance.now() }) {
+  let release;
+  try { release = tankReleaseInvocation(argv, node); }
+  catch (failure) {
+    const { ids, lane } = tankReleaseArgs(argv);
+    error(`\n[tank-release] FAIL (${lane ? 'lane' : 'integrator'} mode) ${ids}: ${failure.message}`);
+    return failure.status || 2;
+  }
+  if (release.usage) { error(release.usage); return 1; }
+  const printNotes = () => { for (const note of release.notes) log(`[tank-release] ${note}`); };
+  log(`[tank-release] ${release.header}`);
+  printNotes();
+  if (release.dryRun) {
+    for (const line of tankReleasePlanLines(release)) log(line);
+    return 0;
+  }
+
+  const label = tankReleaseLabel;
+  async function run(step) {
+    log(`\n[tank-release] ${label(step)}`);
+    // Standard checking manages its own render phases. Wrapping that entire
+    // child would deadlock its queue; wrap only otherwise-unlocked probes.
+    const execute = step.capture ? runCapturedCommand : runCommand;
+    const started = now();
+    try { await execute(step.command, step.args); }
+    catch (failure) { failure.step = label(step); throw failure; }
+    log(`\n[tank-release] done ${label(step)} (${((now() - started) / 1000).toFixed(0)} s)`);
+  }
+
+  // Fast checks (2026-09-15): stages run in order; the steps of a stage run concurrently
+  // (bounded), every failure of a stage is reported, and the earliest failed step's status wins.
+  async function runStage({ name, concurrency, steps }) {
+    log(`\n[tank-release] stage "${name}": ${steps.length} step(s), ${Math.min(concurrency, steps.length)} at a time`);
+    const failures = [];
+    let next = 0;
+    const worker = async () => {
+      while (next < steps.length) {
+        const index = next++;
+        try { await run(steps[index]); }
+        catch (failure) { failures.push({ index, failure }); }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(concurrency, steps.length) }, worker));
+    if (failures.length) {
+      failures.sort((a, b) => a.index - b.index);
+      for (const { failure } of failures) error(`[tank-release] FAILED step: ${failure.step} (${failure.message})`);
+      throw failures[0].failure;
+    }
+  }
+
+  const started = now();
+  try {
+    for (const stage of release.stages) await runStage(stage);
+  } catch (failure) {
+    error(`\n[tank-release] FAIL (${release.mode} mode) ${release.ids}`);
+    return failure.status || 2;
+  }
+  log(`\n[tank-release] PASS (${release.mode} mode) ${release.ids} (${((now() - started) / 60000).toFixed(1)} min)`);
+  printNotes();
+  return 0;
 }

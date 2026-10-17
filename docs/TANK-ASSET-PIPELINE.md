@@ -82,10 +82,11 @@ generator spelling. `tank:release:check` fails before commit/push when:
 
 `--gate` forwards to the existing fresh geometry-gate phase when that tank is
 eligible for it. The do-not-gate list in `docs/BUILD-STANDARD.md` still applies.
-`--lane` (a tank lane before READY) runs only the per-id steps: no embedded
-`npm test` or private build, which the release gate runs once per release, and
-the anatomy freshness check scoped to the ids. See `docs/DEVELOPMENT.md`
-"Fast checks".
+`--lane` (a tank lane before READY) runs the same steps without the embedded
+`npm test` and private build: the integrator mode runs both, and the release
+gate runs every receipt and `npm run build` (the same vite build) once per
+release. The anatomy freshness check stays fleet-wide in both modes. See
+`docs/DEVELOPMENT.md` "Fast checks".
 
 ## Fleet bootstrap and audit
 

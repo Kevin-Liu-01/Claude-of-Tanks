@@ -327,8 +327,9 @@ For every added or changed playable tank, run this required sequence:
 2. `npm run tank:anatomy:check` — fail on stale receipts or visual drift.
 3. `npm run tank:release:check -- --ids=<changed ids> --gate` — assets,
    tracks, muzzle, geometry, full tests and private build. A lane adds
-   `--lane`: only the per-id steps, with the full tests and the private build
-   left to the release gate (`docs/DEVELOPMENT.md` "Fast checks").
+   `--lane`: the same steps without the full tests and the private build,
+   which the integrator mode and the release gate (every receipt and
+   `npm run build`) run (`docs/DEVELOPMENT.md` "Fast checks").
 
 Never hand-edit `combatAnatomyCalibrations.ts` or the generated technical PNGs.
 The authored receipt boundaries are `combatAnatomyCalibrationRegistry.ts`,
