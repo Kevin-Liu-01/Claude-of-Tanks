@@ -103,6 +103,13 @@ const INDUSTRIAL_BASIN: Readonly<WaterContactProfile> = Object.freeze({
   ...LAKE, color: 0x2c3a3c, opacity: 0.78, roughness: 0.30, shallowColor: 0x56706c, foam: 0.15,
   shoreColor: 0x646a66, waveScale: 0.050, waveStrength: 0.5,
 });
+// the map-revival lane (2026-10-06, Ruinspires' valley rebuild): the Miljacka through Sarajevo, a shallow mountain river
+// between its stone quays — green-grey over its limestone gravel, clear enough at the edge to show the bed, flowing west
+// down the valley; the lake's wading depth (the river is the ford the bots cross), its surface a little livelier
+const MILJACKA: Readonly<WaterContactProfile> = Object.freeze({
+  ...LAKE, color: 0x2d4540, opacity: 0.70, roughness: 0.30, shallowColor: 0x6d8a77, foam: 0.3,
+  shoreColor: 0x6e6f66, flowX: -0.014, flowZ: 0.002, waveScale: 0.060, waveStrength: 0.75,
+});
 const CALDERA_LAKE: Readonly<WaterContactProfile> = Object.freeze({
   ...LAKE, color: 0x3a3d39, opacity: 0.80, roughness: 0.28, shallowColor: 0x6f7168, foam: 0.1,
   shoreColor: 0x5d5b54, waveScale: 0.044, waveStrength: 0.4,
@@ -148,7 +155,8 @@ export function waterContactProfile(mapId: string): Readonly<WaterContactProfile
     case 'alpine': return GLACIAL_LAKE;
     case 'winter': case 'whiteout': return WINTER_LAKE;
     case 'verdant': case 'orchard': case 'longleaf': case 'frontier': return TEMPERATE_POND;
-    case 'urban': case 'railyard': case 'foundry': case 'ruinspires': case 'airfield': return INDUSTRIAL_BASIN;
+    case 'urban': case 'railyard': case 'foundry': case 'airfield': return INDUSTRIAL_BASIN;
+    case 'ruinspires': return MILJACKA;
     case 'caldera': return CALDERA_LAKE;
     case 'blackglass': return SUZHOU_CREEK;
     case 'skybridge': case 'titan_gorge': return MOUNTAIN_LAKE;

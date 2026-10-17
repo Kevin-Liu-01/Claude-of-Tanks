@@ -37,6 +37,7 @@ import { SARAJEVO_CIVIC_BUILDERS } from './sarajevoCivic.ts';
 import { SARAJEVO_TOWER_BUILDERS } from './sarajevoTowers.ts';
 import { ahDormer } from './sarajevoDormer.ts';
 import { atticOculus, doksatBay, mansardDormer } from './sarajevoRoofs.ts';
+import { SARAJEVO_LIGHT_VARIANTS } from './sarajevoLight.ts';
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
@@ -433,8 +434,24 @@ function yuBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
   }
   openings.push({ face: 'right', storey: 0, kind: 'door', u: 0, w: 1.1, y0: 0, h: 2.3 });
   for (let i = 1; i < n; i++) for (const o of windowRhythm('right', i, W, { w: 1.1, h: 1.2, sill: 1.0, spacing: 2.4, margin: 0.9 })) openings.push(o);
+  // the end walls (wave 162: "a windowless grey slab"): the stair core's small windows up one end, a bathroom column up
+  // the other on some blocks, the rest blank concrete for the siege to mark (below)
+  const endCols: Array<{ face: 'front' | 'back'; u: number }> = [{ face: 'front', u: (look() - 0.5) * D * 0.3 }];
+  if (look() < 0.55) endCols.push({ face: 'back', u: (look() < 0.5 ? -1 : 1) * D * 0.22 });
+  for (const c of endCols) for (let i = 1; i < n; i++) openings.push({ face: c.face, storey: i, kind: 'window', u: c.u, w: 0.8, y0: 1.1, h: 1.0 });
   if (look() < 0.15) for (const o of openings) if (o.storey === n - 2 && o.face === 'left' && o.kind === 'window') o.state = 'burnt';
-  const breaches = streetBreach(openings, n, W, look, 0.28, 1.3, 0.4, 0.35);
+  const breaches: Array<NonNullable<HouseSpec['breaches']>[number]> = [...streetBreach(openings, n, W, look, 0.28, 1.3, 0.4, 0.35)];
+  // (the valley round) a breach or two through an end wall, cut as the street front's are, clear of that end's openings
+  for (const end of ['front', 'back'] as const) {
+    for (let k = n >= 2 && look() < 0.45 ? 1 + Math.floor(look() * 2) : 0; k > 0; k--) {
+      const storey = 1 + Math.floor(look() * (n - 1)), y = 1.0 + look() * 0.8, u = (look() - 0.5) * D * 0.7, r = 0.45 + look() * 0.4;
+      const seed = Math.floor(look() * 1e9);
+      const clear = openings.filter((o) => o.face === end && o.storey === storey)
+        .every((o) => u < o.u - o.w / 2 - 0.75 || u > o.u + o.w / 2 + 0.75 || y < o.y0 - 0.7 || y > o.y0 + o.h + 0.95)
+        && breaches.every((b) => b.face !== end || b.storey !== storey || Math.abs(b.u - u) > b.r + r + 0.6);
+      if (clear) breaches.push({ face: end, storey, u, y, r, seed, spall: 'stone' });
+    }
+  }
   sink.placed(0, f.cx, 0, f.cz, () => sink.placed(Math.PI / 2, 0, 0, 0, () => {
     const frame = buildHouse(sink, {
       w: D, d: W, plinth: { h: 0.25, out: 0.04, bucket: 'plaster3' }, storeys,
@@ -470,6 +487,17 @@ function yuBlock(ctx: RegionalBuildContext, n: number): RegionalParts {
     const pocks = 10 + look() * 26;
     shellPocks(sink, street, { u0: -W / 2 + 0.3, u1: W / 2 - 0.3, y0: 0.6, y1: frame.eaveY - 0.4 }, Math.round(pocks), keeps, look, 'stone',
       Math.round((mobile ? 0.4 : 1) * pocks));
+    // (the valley round, wave 162's "a windowless grey slab") the end walls take the siege too: the pocks of four winters
+    // and the soot of a burnt flat (their breaches cut before the house is built, above)
+    for (const end of ['front', 'back'] as const) {
+      const face = frame.faces[end], ends = keepsOf(openings, end, frame);
+      shellPocks(sink, face, { u0: -face.width / 2 + 0.3, u1: face.width / 2 - 0.3, y0: 0.8, y1: frame.eaveY - 0.4 },
+        Math.round((mobile ? 0.4 : 1) * (8 + look() * 22)), ends, look, 'stone');
+      if (look() < 0.3) {
+        const fl = 1 + Math.floor(look() * (n - 1)), y0 = frame.floors[fl] + 0.4;
+        sootBand(sink, 'plaster3', face, -face.width / 2 + 0.2, face.width / 2 - 0.2, y0, Math.min(frame.eaveY - 0.2, y0 + upperH * 1.6));
+      }
+    }
   }));
   return sink.finish();
 }
@@ -764,4 +792,7 @@ export const SARAJEVO_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle
   },
   // the shelling: half the city's houses show it at their windows and roofs
   wear: 0.5,
+  // the light buildings in the city's own forms (sarajevoLight.ts): the kiosk, the transformer kiosk, the checkpoint,
+  // the garage, the corner shop and the lock-ups for the generic guard post, sheds, office, garage and Nissen hut
+  lightVariants: SARAJEVO_LIGHT_VARIANTS,
 });

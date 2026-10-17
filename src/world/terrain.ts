@@ -75,7 +75,7 @@ import { buildOutlandWaterGeometry, resolveSeaOpenings, seaOpeningUniforms, seaB
 // Round 73 (2026-09-25): the ground redux profile — transitions, folds, snow, glint and the shoreline clock (no sampler)
 import { cinderYardWeedsAt, groundReduxUniformValues, resolveGroundReduxProfile } from './groundRedux.ts';
 import { ROAD_CARRIAGEWAY_GLSL, ROAD_PAVING_GLSL } from './roadSurfaceShader.ts';
-import { LAND_BAKE_LAYERS, LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, withLevelPaddies, type LandFieldSample, type LandUseProfile } from './landUse.ts';
+import { LAND_BAKE_LAYERS, LAND_USE_GLSL, applyUrbanParcelWear, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, withLevelPaddies, type LandFieldSample, type LandUseProfile } from './landUse.ts';
 import { drawIceCracks } from './iceCracks.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
@@ -7920,6 +7920,9 @@ function* createSplatMaterialSteps(
   const offLiteTerrain = onPresetChange(() => { liteTerrain.value = resolvePresetName().endsWith('ultralow') ? 1 : 0; });
   const landBake = landUse.landA[0] > 0 ? new Uint8Array(landBakeN * landBakeN * 4 * LAND_BAKE_LAYERS) : null;
   if (landBake) yield* bakeLandUseSteps(landUseProfile, landBakeN, MAP_SIZE, landBake, 64);
+  // ground lane (2026-10-07, Ruinspires' Miljacka valley): an urban land use's parcels set the town's wear (landUse.ts
+  // applyUrbanParcelWear) — the gardens, cemeteries and parks green under their own paths, the hardstanding worn
+  if (landBake && landUseProfile?.urban) applyUrbanParcelWear(mask.image.data as Uint8Array, landBake, landBakeN);
   const groundClock = { value: 0 };
   // the live uniform objects (a probe zeroes a term to isolate its cost or its look)
   const reduxUniforms = {

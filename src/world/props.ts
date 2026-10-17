@@ -163,6 +163,7 @@ import {
 import { placeCropFieldsOf } from './maps/cropKit.ts';
 import {
   DESTRUCTIBLE_BUILDING_TYPES, MAP_DESTRUCTIBLE_TYPES, REGIONAL_DESTRUCTIBLE_TYPES, STRUCTURE_BUILDERS, makeTimberBathhouse,
+  regionalLightVariant,
 } from './maps/structureKit.ts';
 import {
   addCatalogExterior, addConnectedExterior, carryExteriorChimneyTops, exteriorChimneyTops,
@@ -588,6 +589,11 @@ interface PropsSettings {
    * ({ x0, z0, x1, z1 }: say, gardens along one side of a street). Default none. */
   streetRowKeepouts?: readonly (
     { x: number; z: number; r: number } | { x0: number; z0: number; x1: number; z1: number })[];
+  /** The street rows' whole footprints clear every road's carriageway core and the water (the map-revival lane,
+   * 2026-10-06, Ruinspires' valley: the plot test reads the centre only, so a house at an acute junction reached the
+   * other street and a bridge street's row stood in the river), and no lamppost stands in the water. A refused plot
+   * moves on 6 m as a blocked one does and draws nothing. Opt-in: a map without it keeps every row and lamp. */
+  streetRowClearance?: boolean;
   ruinChance?: number;
   /** Authored ground-cover holes ({ x, z, r }): no grass, tall grass or litter grows there (a spring's pool, Oasis). */
   groundCoverHoles?: readonly { x: number; z: number; r: number }[];
@@ -4480,6 +4486,9 @@ ${snowCap ? `
     // regional-buildings lane: a kit's own versions of the light families (the Bengal tin homestead for the longhouse,
     // the Angami house, ...): same key, footprint, class and debris, the region's build (structureKit)
     ...(regionalArchitecture ? REGIONAL_DESTRUCTIBLE_TYPES[regionalArchitecture.id] ?? {} : {}),
+    // (mr1, valley round 2) and the kit's own light variants, built by the kit in its render (regional types.ts LightVariant)
+    ...(regionalArchitecture?.lightVariants ? Object.fromEntries(Object.entries(regionalArchitecture.lightVariants).map(([key, variant]) =>
+      [key, regionalLightVariant(key, variant.pal, (rng) => variant.parts(rng, regionalArchitecture), variant.mat)])) : {}),
     // (the r2 sweep, 2026-10-16) a map with no kit its own (Mars's stations): structureKit MAP_DESTRUCTIBLE_TYPES
     ...(MAP_DESTRUCTIBLE_TYPES[mapId] ?? {}),
     // the map-vehicles lane (2026-10-05): the eight vehicle roles as the map's fleet builds them (same records)
@@ -4622,7 +4631,10 @@ ${snowCap ? `
       const meta = resolveDestructibleMeta(destructibleContext, kind);
       // (the fortifications lane: a pillbox's seat is its whole work's ground, the bank round the destructible body)
       const geometry = meta.footprintBuild ? meta.footprintBuild() : meta.build(mulberry32(0x0f0f7));
-      const band = deriveRuntimeStructureContactBand({ baked: [geometry] });
+      // (a kit's light variant: its family's collision source, structureKit regionalLightVariant)
+      const source = geometry.userData.collisionSource as THREE.BufferGeometry | undefined;
+      const band = deriveRuntimeStructureContactBand({ baked: [source ?? geometry] });
+      source?.dispose();
       geometry.dispose();
       const bounds = setCompoundShape({ min: [0, 0, 0], max: [0, 0, 0] }, band.parts);
       extents = band.parts.length
@@ -5537,6 +5549,16 @@ ${snowCap ? `
         return 'r' in keep ? Math.hypot(x - keep.x, z - keep.z) < keep.r + reach
           : x > keep.x0 - reach && x < keep.x1 + reach && z > keep.z0 - reach && z < keep.z1 + reach;
       }) ?? false);
+    // (P.streetRowClearance) the plot's rotated box keeps the carriageway core off every road and stands dry: its corners,
+    // edge midpoints and centre 2 m out from the box read no water
+    const streetRowPlotClear = (x: number, z: number, rot: number, width: number, depth: number): boolean => {
+      if (!buildingFootprintClearsRoads({ x, z, rot }, width, depth, roads, CARRIAGEWAY_CORE)) return false;
+      const c = Math.cos(rot), sn = Math.sin(rot), hw = width / 2 + 2, hd = depth / 2 + 2;
+      for (const [lx, lz] of [[0, 0], [-hw, -hd], [hw, -hd], [hw, hd], [-hw, hd], [0, -hd], [0, hd], [-hw, 0], [hw, 0]]) {
+        if ((heightField.getWaterMaskAt?.(x + lx * c + lz * sn, z - lx * sn + lz * c) ?? 0) > 0.05) return false;
+      }
+      return true;
+    };
     const conflictsFrontage = (x: number, z: number, width: number, depth: number): boolean =>
       frontageReservations.some((site) =>
         Math.hypot(x - site.x, z - site.z) < site.rr + Math.hypot(width, depth) * 0.34);
@@ -5577,6 +5599,7 @@ ${snowCap ? `
       const x = rx + nx * offset, z = rz + nz * offset;
       if (blockedStreetRowSite(x, z, roadIndex, width, depth)) return distance + 6;
       if (conflictsFrontage(x, z, width, depth)) return distance + width;
+      if (P.streetRowClearance && !streetRowPlotClear(x, z, Math.atan2(-nx, -nz), width, depth)) return distance + 6;
       const roll = srng();
       if (roll < 0.14) return distance + 4 + srng() * 7;
       const rot = Math.atan2(-nx, -nz);
@@ -7759,6 +7782,8 @@ ${snowCap ? `
       const outsideTown = lx < town.x0 - 12 || lx > town.x1 + 12
         || lz < town.z0 - 12 || lz > town.z1 + 12;
       if (outsideTown || heightField._roadDist(lx, lz) < 4.6) return false;
+      // (P.streetRowClearance) a lamppost never stands in the river: a bridge street's lamp stood on the bed beside the deck
+      if (P.streetRowClearance && (heightField.getWaterMaskAt?.(lx, lz) ?? 0) > 0.05) return false;
       const blocked = placedB.some((building) =>
         Math.hypot(lx - building.x, lz - building.z) < building.rr + 1.2);
       if (blocked) return false;
@@ -10673,6 +10698,13 @@ ${snowCap ? `
     pool: DestructiblePool,
     kind: string,
   ): GroundCoverSolidProfile | null {
+    // (mr1, valley round 2) a kit's light variant hands on its family's own build as its collision source
+    // (structureKit regionalLightVariant): the obstacles refit to the family's solids, the variant only draws
+    const collisionSource = geometry.userData.collisionSource as THREE.BufferGeometry | undefined;
+    if (collisionSource) {
+      delete geometry.userData.collisionSource;
+      try { return refitDestructibleColliders(collisionSource, pool, kind); } finally { collisionSource.dispose(); }
+    }
     const positions = geometry.getAttribute('position');
     if (!positions || !pool.records.length) return null;
     geometry = pool.meta.collisionSolid?.() ?? geometry; // (physics: a kind's tier-independent solid, so every tier refits the same records)

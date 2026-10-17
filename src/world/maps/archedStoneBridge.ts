@@ -408,6 +408,10 @@ const BRIDGE_VAULT_BAND_M = 0.15;
 export function addArchedStoneBridge(
   deck: DressingBridgeDeck, heightField: DressingHeightField, rng: Rng, buckets: DressingBuckets,
   ctx: FocusedDressingContext, style: BridgeMasonry = 'plain',
+  /** The deck slab's collision ends where the deck plane does (the drawn body still reaches a metre into each bank): a
+   * hump deck's approach ramps fall away from its ends, so the slab's last metre stood a few centimetres over the ramp
+   * and stopped a hull whose nose came up it (Ruinspires' Miljacka bridges, the crossing sweep). */
+  opts: { slabInsideDeck?: boolean } = {},
 ): void {
   const { x: cx, z: cz, ux, uz, halfLength, halfWidth, deckY, bedY, waterY } = deck;
   const vx = -uz, vz = ux; // across the road = along the river (the extrusion's local +z)
@@ -518,7 +522,7 @@ export function addArchedStoneBridge(
   // band's middle height, so the opening a shell or a low hull sees is the arc to within a band. Below the spring
   // line the openings are clear from pier to pier.
   const yaw = Math.atan2(ux, uz); // an OBB's forward axis is (sin yaw, cos yaw), like a hull's
-  const parts: SimpleCollisionShape[] = [{ kind: 'obb', cx, cz, hw: halfWidth, hl: bodyHalf, yaw, y0: crownY, y1: deckY }];
+  const parts: SimpleCollisionShape[] = [{ kind: 'obb', cx, cz, hw: halfWidth, hl: opts.slabInsideDeck ? halfLength : bodyHalf, yaw, y0: crownY, y1: deckY }];
   const solid = (from: number, to: number, y0: number, y1: number): void => {
     // one solid slice of the body between two stations along the road, through the full deck width
     const at = (from + to) / 2;

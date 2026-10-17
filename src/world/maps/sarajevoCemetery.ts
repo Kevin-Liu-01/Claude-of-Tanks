@@ -34,10 +34,17 @@ interface CemeteryContext {
   clutter?: (clutter: CrushableClutter) => void;
 }
 
-/** The cemeteries' plots on Ruinspires' slopes below the ridges (a rotation pair about the Square): centre, half sizes. */
+/** The cemeteries' plots up Ruinspires' flanks below the bench street, between the western and the central terrace
+ * streets (Kovači above the old town, the Lion cemetery; a rotation pair about the valley's centre): centre, half sizes.
+ * (the Miljacka valley round, 2026-10-07, landed 2026-10-17: the plots moved with the valley's layout; landUse.ts lays
+ * their mown grass on the same ground) */
 const CEMETERIES: ReadonlyArray<{ x: number; z: number; hx: number; hz: number }> = [
-  { x: -170, z: -262, hx: 30, hz: 22 }, { x: 170, z: 262, hx: 30, hz: 22 },
+  { x: -50, z: 244, hx: 30, hz: 18 }, { x: 50, z: -244, hx: 30, hz: 18 },
 ];
+
+/** The props scattered before the cemeteries were laid that a grave's tomb can stand over (wave 162: "a dark cube" among
+ * the stones, the camp scatter's crate). */
+const LOOSE_KINDS = new Set(['crate', 'barrel', 'drum', 'ammobox', 'pallet', 'firewood', 'handcart']);
 
 const ROW_PITCH = 2.5, GRAVE_PITCH = 1.3, RUN_M = 4.5, PATH_EVERY = 15, PATH_HALF = 0.85, ROAD_CLEAR = 4.2;
 
@@ -222,6 +229,21 @@ function dressCemeteries(ctx: CemeteryContext): void {
     const yaw = Math.atan2(-N[0], -N[1]);
     const pathPhase = look() * PATH_EVERY;
     const sink = new PartSink([TEXEL.uv[0], TEXEL.uv[1]]);
+    // (the Miljacka valley round, wave 162) a loose prop left on the plot stands inside a tomb: a white stone chest on its
+    // footing under a gabled lid (dressing round the prop, whose record stays the solid)
+    for (const r of ctx.obstacles ?? []) {
+      if (r.dead || !LOOSE_KINDS.has(r.kind ?? '')) continue;
+      const rx = (r.min[0] + r.max[0]) / 2, rz = (r.min[2] + r.max[2]) / 2;
+      if (Math.abs(rx - c.x) > c.hx || Math.abs(rz - c.z) > c.hz) continue;
+      const hx = Math.max(0.65, (r.max[0] - r.min[0]) / 2 + 0.25), hz = Math.max(1.05, (r.max[2] - r.min[2]) / 2 + 0.25);
+      const y0 = Math.min(hf.getHeightAt(rx - hx, rz - hz), hf.getHeightAt(rx + hx, rz + hz), r.min[1]) - 0.15;
+      const h = Math.max(r.max[1] + 0.12, y0 + 1.15) - y0, tc = weather(MARBLE, Math.round(rx * 13 + rz * 7), 0.04);
+      sink.placed(0, rx, y0, rz, () => {
+        block(sink, -hx - 0.08, 0, -hz - 0.08, hx + 0.08, 0.32, hz + 0.08, tc);
+        block(sink, -hx, 0.32, -hz, hx, h, hz, tc);
+        slabXY(sink, [[-hx - 0.06, h], [hx + 0.06, h], [0, h + 0.28]], -hz - 0.06, hz + 0.06, tc);
+      });
+    }
     for (let s = -S + 1.4; s <= S - 1.2; s += ROW_PITCH) {
       // the graves of the row, the row's own lot: its share of the siege's šehid stones, of the old stones, the
       // Christian and the partisans' graves

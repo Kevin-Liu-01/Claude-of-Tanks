@@ -4,8 +4,8 @@
 //     curtain wall of dark bronze glass on a shared lobby, gutted by fire, most of their glass gone to the dark floors;
 //   - megatower on the boulevard → the parliament's tower: a slab behind a grid of concrete fins, its burnt floors
 //     black, in front of the low assembly wing; up the slope → an estate tower;
-//   - needletower → the Holiday Inn: a mustard-yellow cube on a brown-glazed podium, its window bands brown, the
-//     front-line face shelled, the hotel's sign frame on the roof;
+//   - needletower → the Holiday Inn: an ochre cube on a brown-glazed podium, its window bands brown-framed, many rooms
+//     dark, the front-line face shelled, the hotel's sign frame on the roof;
 //   - terracetower → the estates' towers (Alipašino Polje, Mojmilo): a cross-plan tower of concrete panels, the
 //     loggias' coloured parapets stacked up its arms, burnt flats, shell holes;
 //   - parkingdeck → a Grbavica slab block: a long slab of concrete with its loggias in a grid along the front, the
@@ -205,13 +205,14 @@ const unisTowers: RegionalBuilder = (ctx) => {
       recordBody(sink, cx, 0, T, 2 * hz, top + 3.4, slab, false, true);
       planPrism(sink, slab, chamferedSquare(cx, 0, T / 2 + 0.15, hz + 0.15, c), top, top + 0.45);
       planPrism(sink, slab, chamferedSquare(cx, 0, T * 0.32, hz * 0.64, c * 0.6), top + 0.45, top + 3.4);
-      // the fire's floors: a run of gutted floors per tower, a few burnt, the rest glass (lit very rarely)
-      const gutFrom = Math.floor(rng() * floors * 0.4), gutTo = Math.min(floors, gutFrom + Math.floor(floors * (0.45 + rng() * 0.4)));
+      // the fire's floors: the fire of 1992 gutted most of each tower (waves 186/187 read "intact glass towers" in a run of
+      // half the floors); the floors below it a few burnt, the rest glass (lit very rarely)
+      const gutFrom = Math.floor(rng() * floors * 0.15), gutTo = Math.min(floors, gutFrom + Math.floor(floors * (0.72 + rng() * 0.28)));
       // (props census #9) the floors: spandrels round the plan, the glazing set back on each floor's core, the gutted
       // floors a bay deep with their columns (curtainFloors)
       const state = (f: number): PaneState => {
         const r = look();
-        if (f >= gutFrom && f < gutTo) return r < 0.22 ? 'burnt' : r < 0.9 ? 'gone' : 'glass';
+        if (f >= gutFrom && f < gutTo) return r < 0.5 ? 'burnt' : r < 0.92 ? 'gone' : 'glass';
         return r < 0.12 ? 'gone' : r < 0.16 ? 'sheet' : r < 0.18 ? 'lit' : 'glass';
       };
       // (the slab edges clad in the bronze: the concrete's white bands read as another building, the stills of 08:00)
@@ -323,14 +324,17 @@ function estateTower(ctx: RegionalBuildContext): RegionalParts {
 
 // ------------------------------------------------------------------------------------------------ Holiday Inn
 
-/** The Holiday Inn: the yellow cube on its brown-glazed podium, the window bands, the crown storey and the sign. */
+/** The Holiday Inn: the ochre cube on its brown-glazed podium, its window bands set back behind the ochre spandrels
+ * with their brown mullions, many rooms dark, the crown storey and the sign. */
 const holidayInn: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const f = fillOf(ctx.bounds, 0.1);
   sink.placed(0, f.cx, 0, f.cz, () => {
     const rng = ctx.rng, look = ctx.variant, mobile = ctx.tier === 'mobile';
     const W = clampTo(f.w, 7, 60), D = clampTo(f.d, 7, 60);
-    const yellow = rgb(0xd2a63a), brown = rgb(0x4a3326);
+    // (waves 186/187: the first draft's saturated yellow sheet in bands round ribbons of glass read as "a candy-striped
+    // skyscraper"; the hotel's panels are an ochre render)
+    const yellow = rgb(0xb59a5c), brown = rgb(0x4a3326);
     const podH = 7.0, T = clampTo(Math.min(W, D) - 1.6, 4, 18), fh = 3.1;
     const floors = Math.max(3, Math.min(10, Math.round(T * 0.58)));
     const top = podH + floors * fh;
@@ -363,7 +367,9 @@ const holidayInn: RegionalBuilder = (ctx) => {
     const state = (_f: number, fi: number): PaneState => {
       const roll = look();
       const shelled = fi === 4 || fi === 6;
-      return shelled ? (roll < 0.35 ? 'gone' : roll < 0.5 ? 'sheet' : 'glass') : roll < 0.08 ? 'gone' : roll < 0.12 ? 'lit' : 'glass';
+      // (waves 186/187) the hotel stood on the front line: many rooms dark on every face, some under UNHCR sheeting, the
+      // south-west faces shelled hardest
+      return shelled ? (roll < 0.5 ? 'gone' : roll < 0.62 ? 'sheet' : 'glass') : roll < 0.3 ? 'gone' : roll < 0.38 ? 'sheet' : roll < 0.4 ? 'lit' : 'glass';
     };
     curtainFloors(sink, cube, podH, floors, fh, yellow, 'plaster3', state, look, { mobile, step: 1.5, finColour: brown });
     for (const fi of [4, 6]) {
