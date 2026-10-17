@@ -1,38 +1,47 @@
 # vs04-railyard-leclerc-t14-r6: the night tracer duel down the rails
 
-Leclerc SXXI v T-14 Armata on Cinder Junction (railyard), at night. The lens stands low (1.3 m) in the gap between the
-two main-line tracks at the yard's west throat and looks east down the line, turned 6° off the rails so that their
-vanishing point falls on the T-14 rather than behind the Leclerc's nose. The G 10 vans frame the right edge, and the
-tank wagons and coal wagons recede on either side.
+Leclerc SXXI v T-14 Armata on Cinder Junction (railyard), at night, re-staged for the owner's 2026-10-16 direction: "i
+think i want to see tank fronts more in the other versus, and tanks should be more % of frame" and "and more
+interesting camera rotation and angles".
 
-**The tanks.** The Leclerc fills the left foreground at 15 m and 46% of the frame width. It is rolling across the
-corridor at 4 m/s, raising track dust, and shows its hull's front-right three-quarter (55° off its nose). Its turret is
-swung over its left side, the gun laid down the line, and it has fired 0.05 s before the still. The T-14 stands 52 m
-deep in the yard between the sidings, front three-quarter (30° off its nose). Its coax stream (four tracers, 8 ms old)
-comes back up the line and passes just over the Leclerc's roof (gun +2°), and the Leclerc's round strikes sparks and hot
-spall off its front.
+**The frame.** The lens stands 5 m up over the gap between the main-line tracks at the yard's west throat, rolled +13°
+for a Dutch tilt. It looks east straight down the rails to their vanishing point, where the tank wagons burn.
 
-**The backdrop.** Behind the T-14, the tank wagons on the +9 siding burn (fire field, embers, burning fragments
-falling). Two white illumination flares hang over the yard at y 0.78 and 0.60. The nearer, brighter one is the scene's
-flare light.
+**The tanks.** Both hulls face the lens.
+- **The Leclerc** fills the left foreground at 14 m and 48% of the frame width, 20° off its nose. It charges down the
+  corridor at 11 m/s, throwing FX-RECIPES track dust. Its turret is swung right onto the T-14, about 94° from the lens,
+  so the turret shows side-on with the gun across the frame, not its rear. It fires a live `muzzle_flash` 42 ms before
+  the still, with a recoiled barrel. The bore lies 80-90° across the view, so the blast reads as a big orange fireball.
+- **The T-14** stands across the corridor at 25 m, in front of the G 10 vans, 25° off its nose and 26% of the width.
+  Its turret is laid on the Leclerc, 34° from the lens, so it shows its front. The Leclerc's round glanced off its left
+  cheek 0.3 s before the still. The spark fan is laid level toward the Leclerc with a small upward part, so it flies
+  into the gap, not up over the T-14's face as the 85 ms spike-star did in the GO render.
 
-**Why it is new.** There is no left-front/right-back pair converging on a burst. The depth runs along the rails, with
-the hero large in the foreground and the foe tiny at the vanishing point. It also shares nothing with the other nine
-ideas: no head-on charge, kill shot, street corner, wide-angle low hero, water, drone view, crest or broadside.
+**The backdrop.** The burning wagons throw embers and falling fragments at the vanishing point. Two illumination flares
+hang in the strip of night sky above the horizon (y 0.70 and 0.81). Their intensities are 0.7 and 0.4; at 2.4 and 1.2
+they rendered as two full moons. A low moon behind the lens keys both fronts.
+
+**Why it is new.** The old template had the hero driving across and the foe small and far behind. Here both tanks face
+the camera from a raised, tilted lens down the rails, the hero big and charging, the foe's turret front-on, with no
+burst between them.
 
 **Lens and light.**
-- Lens 'a': fov 36, eye (-192, 3.4 m above ground, -13.1).
-- A low moon (15°, bearing 286) behind the lens keys the hull fronts.
-- Firelight backlights the T-14, and the flare tops the scene.
-- Grade: `CLEAN` + `LIT`, exposure +0.35. The battle wind carries the smoke away from the lens.
+- Lens 'a': fov 48, 5 m up, roll +13°.
+- The moon is at 15°, bearing 286.
+- Grade: `CLEAN` + `LIT`, exposure +0.35, gamma 1.12.
+- Still exposure: 4 ms (`meta.stillExposureMs`).
 
-**Final check.** Clean, with no `!` lines:
+**The coax is dropped this round.** The two hulls stand 20 m apart, so their muzzles are 8 m apart on one line, and
+the Leclerc's fireball fills the first 4.6 m of it. Any coax round would fly into the fireball, or land as an orb over
+the Leclerc (film 1 QA). Holding the 24 m spacing the coax needs fails the owner's sizes; no such layout exists. The QA
+lessons allow dropping it.
+
+**Final check on the GO dumps** (`rerender-226/features-go`). Clean, with no `!`, FRONT, SIZE or TERRAIN lines:
 
 ```
-lens a (eye -192.0,3.4,-13.1, fov 36)
-  hero leclerc_xlr 55° off its nose (its right) at 15 m, box x -0.86..0.05 y -0.32..0.37
-  foe0 t14_x 30° off its nose (its left) at 52 m, box x 0.20..0.46 y -0.12..0.08
+lens a (eye -192.0,7.1,-13.1, fov 48)
+  hero leclerc_xlr 20° off its nose (its left) at 14 m, box x -0.93..0.03 y -0.39..0.41
+  foe0 t14_x 25° off its nose (its left) at 25 m, box x 0.42..0.94 y -0.35..0.13
 ```
 
-No wires were flagged: the telephone line is 150 m or more away, and the 220 kV line is out of frame. My own census also
-found no tree, record or shrub over either hull, and the bottom-left corner is free.
+No wires are flagged, and the bottom-left corner is free. Every effect is timed at T-8 or earlier.

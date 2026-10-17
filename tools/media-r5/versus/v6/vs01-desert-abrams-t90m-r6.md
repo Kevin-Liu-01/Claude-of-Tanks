@@ -1,33 +1,41 @@
-# vs01-desert-abrams-t90m-r6: the head-on charge
+# vs01-desert-abrams-t90m-r6: the head-on charge (rev 6)
 
-**Composition.** The M1A2 SEPv3 charges at 10 m/s straight at a low lens on the flat of the western wadi. The lens is
-15° off its nose, and the hull is large in the left-centre, 47 % of the frame's width. Behind it, a rooster tail of sand
-rises from five dust bursts left along its 26 m track, with the Studio's track dust on top. Its gun is laid 20° past the
-lens's right shoulder, frozen 0.05 s after the shot, so the muzzle flash sits right of the turret and clear of the hull's
-front. The T-90M stands far back on the right, 63 m out, on the berm's crest about 8 m above the flat. It is turned 30°
-toward the SEPv3 and shows its front three-quarter, gun laid on the SEPv3; sparks and hot spall fly off its front plate.
-Three cook-off columns rise behind the crest: one in the gap between the two tanks, one behind the T-90M and one far
-left behind the dust. An HE burst beyond the crest sends falling debris into the gap, and embers rise behind the T-90M.
+**Composition.** A very low lens (0.7 m), looking up 6° and rolled +12°, on open sand in the north at (14, 302), clear of
+the wadi scrub belts, over a long flat horizon. The M1A2
+SEPv3 charges at 12 m/s, 15° off its nose, 18 m out and 47 % of the frame's width, on the left. Sand fans back and
+outward off both rear track ends (FX-RECIPES.md 1). Its turret is swung 72° toward the T-90M, so the bore lies across the
+view (about 105° off the ray to the lens). The shot is a `muzzle_flash` 44-56 ms old with no round, the barrel recoiled,
+and the orange fireball rolls out sideways into the gap between the hulls, stopping about 0.1 short of the T-90M.
 
-**Why it is new.** The old layout put one tank front-left, driving across toward the middle, and the other holding
-behind on the right. Here the hero comes nose-on at the viewer, the enemy sits up on high ground, and nothing bursts
-between them. None of the other nine ideas is a frontal charge.
+The T-90M stands behind on the right on slightly higher sand (0.5 m up), 32 m out and 24 % of the frame's width. It is 25° off its nose, its
+front toward the SEPv3 and the lens, gun laid on the SEPv3, and a few hot fragments spark low on its glacis. A doubled
+cook-off column rises directly behind the fireball, so the orange blast stands on its dark smoke. An HE burst behind the
+T-90M drops debris, and embers drift.
 
-**A note on the brief.** A gun that passes the lens's shoulder cannot also point at a T-90M standing in front of the
-lens. I kept the charge's gun past the shoulder. The T-90M's plate takes the hit from the SEPv3's side.
+**Why it is new.** This is not the old template. The hero is nose-on, both fronts face the lens, the blast is the
+hero's own gun, and the lens is a low Dutch angle.
 
-**Lens and light.** Lens a: 1.1 m lift, fov 38°, pitched up 3°, looking east (bearing 90) up the long rise toward the
-town. Lens b: a 0.9 m, 42° variant. Golden hour: the sun at azimuth 220, elevation 11, 130° from the view, low behind
-the lens's left. It lights both hulls' fronts and rakes across the dust. The grade is LIT with CLEAN (deep focus, no
-chromatic aberration).
+**Rev 5:** the owner asked for fronts, bigger tanks and more interesting angles.
+- Both hulls are now within 35° of their noses.
+- Widths: the SEPv3 is 47 % (was 41 %) and the T-90M 24 % (was 15.5 %).
+- The lens is lower (0.7 m instead of 1.3 m), looks up, and is rolled +9°.
+- The ground wave under the muzzle is dropped, because that ground lies in front of the T-90M from this lens.
 
-**Check.** Clean, with no `!` lines:
+**Rev 6 (GO QA):**
+- The T-90M had sunk behind a dune crest, so the lens moved to a spot where all five low ground rays to each hull are
+  clear (the TERRAIN check).
+- There are no shrubs within 18 m of the SEPv3 or 12 m of the lens, which stands in for the grass belts.
+- The roll went from +9° to +12°, so the long flat horizon and the column's vertical carry the tilt.
+- The column now stands behind the fireball.
+
+**Lens and light.** Lens a: 0.7 m lift, fov 34°, pitch +6°, roll +12°, looking at bearing 75. Lens b: 0.55 m, pitch +7°,
+roll +16°. The time is `day`: the sun at azimuth 210, elevation 34, 135° off the view behind the lens's left. The grade
+is LIT with temperature +6 and light halation.
+
+**Check.** On the GO dumps (`rerender-226/features-go`), clean with no `!` lines and no TERRAIN flag:
 
 ```
-lens a  hero 15° off its nose (its right) at 12 m, box x -0.64..0.30 y -0.55..0.65
-        foe0 30° off its nose (its left) at 63 m, box x 0.60..0.80 y 0.25..0.45
-lens b  hero 13° off its nose at 14 m, box x -0.56..0.15; foe0 31° at 64 m, box x 0.53..0.71
+lens a  hero 15° off its nose at 18 m, box x -0.94..0.00 y -0.35..0.59
+        foe0 25° off its nose at 32 m, box x 0.44..0.92 y -0.68..-0.22
+lens b  hero 15° at 18 m, x -0.94..-0.00; foe0 25° at 32 m, x 0.42..0.90
 ```
-
-There are no wires in either lens, and no shrubs or records near the lens or on either sightline. The bottom-left
-lockup corner is just touched: the hero's lowest point is at y -0.55, right on the corner's edge.

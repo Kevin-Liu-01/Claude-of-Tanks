@@ -1,18 +1,28 @@
-# vs05-oasis-merkava-t72b3-r6: the crest
+# vs05-oasis-merkava-t72b3-r6: the crest (owner pass, 2026-10-16; GO-render fix)
 
-The Merkava Mk 4 climbs the last of the east dune arm's west face, at (253, -51) on ground 9.9 m up. The face falls 8.3 m
-to the village's eastern edge. The tank fills the left 48 % of the frame, 36° off its nose, nose pitched up about 5° by
-the rise, with sand spraying off its tracks. Its turret is swung over its far side (107°) and its gun depressed onto the
-T-72B3 below, 60 m out at the foot of the face against the mud-brick compounds. The Merkava is caught 0.05 s after its
-shot. The T-72B3 shows its front three-quarter (28° off its nose), and the round has struck its turret front: a
-penetration's white-hot pop, two spark showers and hot spall, with its engine deck starting to smoke. Its own earlier
-shot burst on the face behind the Merkava, so clods fall there. Two cook-off columns, a fire with embers and a burning
-wrecked-burnt T-72 stand in the town beyond, all behind the T-72B3. The old layout drove the left tank in toward a
-holding right tank on level ground with a burst between them. Here the tanks stand at two heights: a looming hero on the
-rise and a target below, the gun laid down the slope, and nothing between them but air. None of the nine other ideas
-uses height this way. Lens a is low, 1.35 m beside the crest line at (267, -55), looking west (bearing 272) at fov 37,
-pitched 5° down. The T-72B3 keeps 0.54 m of terrain clearance over the face's edge. Lens b is 2 m back and 1.75 m up at
-fov 40. The light is the owner's bright, punchy oasis day: the sun at 120°/42° behind the lens's right shoulder lights
-the Merkava's front (0.68) and the T-72B3's lens-side flank (0.70), graded `CLEAN` + `LIT`. One preference is not met:
-the Merkava's box reaches the lockup corner (x -0.91, y -0.75). Check: no `!` lines. Lens a: hero box x -0.91..0.05,
-y -0.75..0.60. Foe box x 0.30..0.49, y -0.37..-0.11.
+This pass answers the owner's notes: "i want to see tank fronts more in the other versus, and tanks should be more % of
+frame" and "more interesting camera rotation and angles". It was checked on the GO dump (rerender-226/features-go).
+
+The scene sits on the west dune arm's north reach, above the palm-ringed spring. A lens stands at the crest's edge at
+(-404, 164), 1 m up, with a +9° Dutch roll. It looks down the face (bearing 123) at fov 42, pitched 7.8° down.
+
+The Merkava Mk 4 claws up the last of the face straight at the lens, 11 m out, nose pitched up. Its front is 29° off the
+lens and it fills 51 % of the frame's width. A rooster tail of dust bursts at its rear track ends is thrown back down the
+slope. Its turret is swung over its far side onto the T-72B3, which climbs after it at the foot of the face. The T-72B3
+is about 2 m lower and 24 m out, front-on (24° off its nose), and spans 25 % of the width.
+
+The Merkava has just fired, at the 175 mm blast-size cap: a live `muzzle_flash` 42 ms old, with the barrel recoiled,
+over a 0.3 s-old blast whose smoke ring and haze read. The blast stands clear of the T-72's outline. The T-72's lower
+front plate shows a 0.25 s-old ricochet, its fan thrown up-right out of the hull, and its engine deck begins to smoke.
+
+Beyond them, the spring fills the right of the background at 200-350 m, under palms. A doubled cook-off column, a fire
+with embers and a burning wrecked-burnt T-72 stand by the water. The sun stands just behind the lens and lights both
+fronts. The grade is `CLEAN` + `LIT`.
+
+GO-render QA found dune reeds crossing both hulls; the reeds are not in the dumps. The T-72 therefore moved about 4.5 m
+right of the two reeds' lines of sight, the Merkava moved 0.6 m clear of the reed at its rear track, and the aim turned
+4° right to hold the frame. The boxes no longer overlap.
+
+This is still the only height duel in the set, now close-quarters and front-on.
+
+Check (GO dump): no `!` lines. Hero box x -0.71..0.32, y -0.77..0.86. Foe box x 0.39..0.89, y -0.60..0.05.

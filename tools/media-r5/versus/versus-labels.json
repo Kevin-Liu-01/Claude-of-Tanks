@@ -13,7 +13,18 @@
   "vs07-autumn-ariete-t62": "Amberford, golden hour: C2 Ariete v T-62MV-1",
   "vs08-winter-cv90-bmp3": "Frosthollow, snow: CV90 Mk 4 v BMP-3",
   "vs09-alpine-strv122-t80bv": "Glacier Pass, snowy morning: Stridsvagn 122 v T-80BV",
-  "vs10-steppe-chieftain-t64": "Tarkhan Steppe, night: Chieftain Mk 10 v T-64BV1"
+  "vs10-steppe-chieftain-t64": "Tarkhan Steppe, night: Chieftain Mk 10 v T-64BV1",
+  "f6-leo2a6-steinburg-r6": "Steinburg, day: Leopard 2A6 (Urban Block) v T-90M (digital)",
+  "vs01-desert-abrams-t90m-r6": "Sirocco Wadi, day: M1A2 SEPv3 v T-90M",
+  "vs02-verdant-challenger-t80u-r6": "Verdant Fields, day: Challenger 3 v T-80U",
+  "vs03-reservoir-k2-ztz99-r6": "Highland Reservoir, golden hour: K2 Black Panther v ZTZ-99",
+  "vs04-railyard-leclerc-t14-r6": "Cinder Junction, night: Leclerc SXXI v T-14 Armata",
+  "vs05-oasis-merkava-t72b3-r6": "Sunscar Oasis, day: Merkava Mk 4 v T-72B3",
+  "vs06-coastal-type10-ztz99a2-r6": "Saltmere Bay, day: Type 10 v ZTZ-99A2",
+  "vs07-autumn-ariete-t62-r6": "Amberford, golden hour: C2 Ariete v T-62MV-1",
+  "vs08-winter-cv90-bmp3-r6": "Frosthollow, snow: CV90 Mk 4 v BMP-3",
+  "vs09-alpine-strv122-t80bv-r6": "Glacier Pass, day: Stridsvagn 122 v T-80BV",
+  "vs10-steppe-chieftain-t64-r6": "Tarkhan Steppe, night: Chieftain Mk 10 v T-64BV1"
  },
  "lenses": {
   "a": "lens a (2.2 m up, 37°)",

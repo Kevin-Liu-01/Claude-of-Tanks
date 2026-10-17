@@ -1,60 +1,81 @@
-// Round 6, vs01: the head-on charge. The M1A2 SEPv3 charges almost straight at a low lens on the flat of the western wadi,
-// a rooster tail of sand rising behind it, its gun laid past the lens's right shoulder and firing; the T-90M stands far
-// back on the right on the berm's crest, 8 m above the flat, front three-quarter toward the SEPv3, sparks and hot spall
-// off its front plate. Burning columns stand behind and between them and debris falls; the golden-hour sun sits low
-// behind the lens's left, so it lights both hulls' fronts and rakes across the dust.
-import { SCENES, fx, moment, hitFx, inFrame, bearingOf, axes, wrap, r2, lensAt, ground, MOVE_MS, CLEAN, LIT, SUN_UP, DEG } from '../versus.mjs';
+// Round 6, vs01: the head-on charge. The M1A2 SEPv3 charges almost nose-on at a very low lens tilted into a Dutch angle,
+// a fan of sand thrown back and up off both tracks behind it, its turret swung toward the frame's right and its shot an
+// orange fireball beside the hull with the dust blown off the ground under it; the T-90M on the rise behind on the right,
+// 3 m up, its front toward the SEPv3 and the lens, a few hot fragments sparking low on its glacis. Burning columns stand
+// behind, in the gap between them, and debris falls. Day, the sun high behind the lens's left.
+// (rev 5, the owner 2026-10-16, through the coordinator: "i think i want to see tank fronts more in the other versus, and
+// tanks should be more % of frame" and "and more interesting camera rotation and angles": both hulls within 35° of their
+// noses, the SEPv3 at least 45 % of the frame's width and the T-90M 22 %; a lens 0.7 m up looking up, rolled +9°. Takes
+// 1-4's lessons stand: no firing moment (its bolt), the bore across the view, the dust off the track ends, nothing at T.)
+import { SCENES, fx, plate, inFrame, bearingOf, axes, wrap, r2, lensAt, ground, dimsOf, MOVE_MS, CLEAN, LIT, DEG } from '../versus.mjs';
 
 const ID = 'vs01-desert-abrams-t90m-r6', MAP = 'desert', T = 7000;
-// the lens frame: on the wadi flat west of the town, looking east up the long rise toward the town
-const EYE = [-298, 102], YAW = 90, SPEED = 10;
+// the lens frame (GO dumps): open sand in the north, clear of the wadi scrub belts, looking east-north-east over a long
+// flat horizon
+const EYE = [14, 302], YAW = 75, SPEED = 12, ROLL = 12;
 
 SCENES[ID] = () => {
   const at = (side, ahead) => inFrame(EYE, YAW, side, ahead);
-  const A = at(-2.0, 12), B = at(25, 58);
-  // the lens 15° off the SEPv3's nose, on its right (its nose turned toward the frame's right)
+  const A = at(-5.6, 17.5), B = at(12.2, 30);
+  // the lens 15° off the SEPv3's nose, on its right (its nose turned toward the frame's right); its turret swung 72° to
+  // the hull's left, laid toward the T-90M: the bore lies across the view (about 105° off the ray to the lens), so the
+  // blast rolls out sideways into the gap between the two hulls, short of the T-90M
   const hH = (bearingOf(A, EYE) + 15 + 360) % 360;
-  // the T-90M: the lens 30° off its nose, on its left (its nose turned in toward the frame's middle), gun on the SEPv3
-  const fH = (bearingOf(B, EYE) - 30 + 360) % 360;
-  const hero = { id: 'm1a2_sepv3_x', name: 'hero', pos: A.map(r2), facingDeg: r2(hH), turretDeg: 5, gunDeg: -1.5,
+  // the T-90M: the lens 25° off its nose, on its left (its nose turned in toward the frame's middle), gun on the SEPv3
+  const fH = (bearingOf(B, EYE) - 25 + 360) % 360;
+  const hero = { id: 'm1a2_sepv3_x', name: 'hero', pos: A.map(r2), facingDeg: r2(hH), turretDeg: 72, gunDeg: 4, recoilAgeS: 0.045,
     camo: 'service_usa_desert', camoSeed: 7101 };
   const foe = { id: 't90m_x', name: 'foe0', pos: B.map(r2), facingDeg: r2(fH), turretDeg: r2(wrap(bearingOf(B, A) - fH)), gunDeg: -1,
     camo: 'service_t90m', camoSeed: 7102 };
-  // the charge: 10 m/s over the MOVE_MS before the still and 0.4 s past it (the Studio lays its track dust along it)
-  const { f } = axes(hH), back = SPEED * MOVE_MS / 1000, on = SPEED * 0.4;
+  // the charge: 12 m/s over the MOVE_MS before the still and 0.4 s past it (the Studio lays its track dust along it)
+  const { f, r } = axes(hH), d = dimsOf('m1a2_sepv3_x');
+  const hullAt = (ago) => [A[0] - f[0] * SPEED * ago / 1000, A[1] - f[1] * SPEED * ago / 1000];
   const key = (k, tMs, p) => ({ id: `hero-${k}`, tMs, pos: p.map(r2), facingDeg: hero.facingDeg, turretDeg: hero.turretDeg, gunDeg: hero.gunDeg, transition: 'linear' });
-  const track = { actor: 'hero', keys: [key(0, T - MOVE_MS, [A[0] - f[0] * back, A[1] - f[1] * back]), key(1, T + 400, [A[0] + f[0] * on, A[1] + f[1] * on])] };
-  const tail = (hH + 180) % 360;
+  const track = { actor: 'hero', keys: [key(0, T - MOVE_MS, hullAt(MOVE_MS)), key(1, T + 400, hullAt(-400))] };
   const up = (p, h) => [r2(p[0]), r2(ground(MAP, ...p) + h), r2(p[1])];
+  // the fans off the tracks (FX-RECIPES.md 1): bursts at both rear track ends where the hull was 0.09-1.5 s before the
+  // still, each turned 20° so its churn goes back and outward (a burst's dirDeg is the direction of travel)
+  const tail = [];
+  for (const [ago, count] of [[1500, 27], [1100, 27], [750, 27], [450, 24], [220, 21], [90, 15]]) {
+    const p = hullAt(ago);
+    for (const s of [-1, 1]) {
+      const q = [p[0] - f[0] * d[0] * 0.9 + r[0] * s * d[1] * 0.85, p[1] - f[1] * d[0] * 0.9 + r[1] * s * d[1] * 0.85];
+      tail.push(fx('dust', q.map(r2), T - ago, { count, intensity: 1.3, dirDeg: r2((hH + (s > 0 ? 20 : -20) + 360) % 360) }));
+    }
+  }
+  // the hit on the T-90M: a few hot fragments off the low glacis, 70 ms old, the pop gone
+  const hit = plate(MAP, foe, A, 0.26);
   const effects = [
-    // the rooster tail: sand thrown back off the tracks at each stretch of the run, oldest (highest, widest) first
-    ...[[1900, 10, 1.1], [1450, 12, 1.2], [1050, 13, 1.3], [700, 14, 1.3], [420, 13, 1.2]]
-      .map(([ago, count, intensity]) => fx('dust', 'hero', T - ago, { count, intensity, dirDeg: r2(tail) })),
-    // the shot: the SEPv3's gun 0.05 s after firing; the T-90M's front plate takes the round 30 ms later
-    moment('hero', T, 0.05),
-    ...hitFx(MAP, foe, A, T - 30, 'ricochet'),
-    fx('debris', up(B, 1.6), T - 20, { count: 22, speedMps: 11, hot: 0.85, scale: 0.6 }),
-    // falling debris: an HE round just over the crest, between them, 0.75 s before the still
-    fx('explosion', at(17, 78).map(r2), T - 760, { size: 'small', munition: 'he', cause: 'shot' }),
-    fx('debris', up(at(17, 78), 1.4), T - 735, { count: 44, speedMps: 15, hot: 0.45, scale: 1.35 }),
-    // burning columns behind: one between them, one beyond the T-90M's crest, one far left behind the dust
-    fx('explosion', at(44, 165).map(r2), 0, { size: 'huge' }),
-    fx('explosion', at(88, 215).map(r2), 1200, { size: 'huge' }),
-    fx('explosion', at(-62, 150).map(r2), 600, { size: 'huge' }),
-    fx('embers', at(22, 70).map(r2), 0, { radiusM: 4, rate: 50, durationS: 20, rise: 3 }),
+    ...tail,
+    // the shot, 44-56 ms old across the exposure: the fire cooled to orange (FX-RECIPES.md 3), no round drawn, the barrel
+    // recoiled (recoilAgeS). No ground wave this time: the gun's ground lies in front of the T-90M from this lens
+    fx('muzzle_flash', 'hero', T - 50, { caliberMm: 120 }),
+    fx('impact', hit.at, T - 70, { kind: 'nonpen', caliberMm: 25, normal: hit.normal }),
+    fx('debris', hit.at, T - 70, { count: 9, speedMps: 6, hot: 1, scale: 0.35 }),
+    // falling debris: an HE round on the rise behind and right of the T-90M, 0.75 s before the still
+    fx('explosion', at(25, 50).map(r2), T - 760, { size: 'small', munition: 'he', cause: 'shot' }),
+    fx('debris', up(at(25, 50), 1.4), T - 735, { count: 44, speedMps: 15, hot: 0.45, scale: 1.35 }),
+    // a burning column right behind the fireball, so the orange blast stands on its dark smoke (doubled a second later to
+    // fill its top; its vertical, with the long flat horizon, carries the Dutch tilt); embers drifting behind the T-90M
+    fx('explosion', at(17, 170).map(r2), 0, { size: 'huge' }),
+    fx('explosion', at(17.6, 170.6).map(r2), 1000, { size: 'huge' }),
+    fx('embers', at(14, 40).map(r2), 0, { radiusM: 4, rate: 50, durationS: 20, rise: 3 }),
   ];
-  const sun = [(YAW + 130) % 360, SUN_UP.golden];
-  // a level-to-rising lens: lift 1.1 m, pitched up 3° over a look point 30 m out
-  const lens = (name, side, ahead, lift, fov, dYaw = 0, pitch = 3) => {
+  // day: the sun high behind the lens's left (135° off the view), so both hulls' fronts take bright clear light
+  const sun = [(YAW + 135) % 360, 34];
+  const lens = (name, side, ahead, lift, fov, roll, dYaw = 0, pitch = 6) => {
     const eye = at(side, ahead), look = inFrame(eye, YAW + dYaw, 0, 30);
     const lookH = ground(MAP, ...eye) + lift + 30 * Math.tan(pitch * DEG) - ground(MAP, ...look);
-    return lensAt(name, eye, lift, look, r2(lookH), fov);
+    return { ...lensAt(name, eye, lift, look, r2(lookH), fov), rollDeg: roll };
   };
-  return { map: MAP, timeOfDay: 'golden', seed: 9601, light: { sunAzimuthDeg: r2(sun[0]), sunElevationDeg: sun[1] },
+  // the LIT grade with a mild warmth and a faint orange halation round the blast
+  const picture = { ...CLEAN, ...LIT, temperature: 6, warms: { hue: 0, saturation: 1.08, lightness: 0 },
+    halation: { amount: 0.2, threshold: 1.6, radius: 1, tint: [1, 0.36, 0.12] } };
+  return { map: MAP, timeOfDay: 'day', seed: 9601, light: { sunAzimuthDeg: r2(sun[0]), sunElevationDeg: sun[1] },
     actors: [hero, foe], effects, fxTime: T, timeScale: 0,
     storyboard: { version: 1, durationMs: T + 1500, shots: [], actorTracks: [track] },
-    picture: { ...CLEAN, ...LIT }, fx: { quality: 'cinematic', trackDust: true }, autoPlace: false,
-    lenses: [lens('a', 0, 0, 1.1, 38), lens('b', 0.8, -1.5, 0.9, 42, 1, 4)],
-    meta: { id: ID, kind: 'versus-still', pair: 'm1a2_sepv3_x v t90m_x', round: 6,
-      idea: 'the head-on charge: the SEPv3 at a low lens, sand rooster tail, gun past the lens firing; the T-90M hit on the crest far right' } };
+    picture, fx: { quality: 'cinematic', trackDust: true }, autoPlace: false,
+    lenses: [lens('a', 0, 0, 0.7, 34, ROLL), lens('b', 0, 0, 0.55, 34, ROLL + 4, 0, 7)],
+    meta: { id: ID, kind: 'versus-still', pair: 'm1a2_sepv3_x v t90m_x', round: 6, rev: 5,
+      idea: 'the head-on charge: the SEPv3 nose-on over a low Dutch lens, sand fanned off its tracks, its gun swung right and firing; the T-90M front-on on the rise' } };
 };

@@ -1,18 +1,29 @@
-# vs06-coastal-type10-ztz99a2-r6: the broadside exchange
+# vs06-coastal-type10-ztz99a2-r6: the beach charge (owner pass, 2026-10-16; GO-render fix)
 
-On Saltmere Bay's southern strand, the dry, level sand at sea level 40 m in front of the water (x ≈ 310, z ≈ -210), the
-Type 10 and the ZTZ-99A2 roll toward each other across the frame's left and right thirds, 25 m apart. Each is near
-profile but angled a little toward the lens (64° and 62° off its nose), so both fronts still read, and each turret is
-laid back onto the other. Both fire at the same instant (firing moments at 0.05 s), so two muzzle blasts face each other
-across an 11 m gap. Each takes the other's round on its turret front as a ricochet, with two spark showers and spall.
-Behind them on the strand, all further than the hulls, stand an HE burst throwing clods into the gap, a cook-off column
-by the water, a second behind the ZTZ, a beach fire with embers and a burning wrecked-burnt Type 10. The bay fills the
-band behind both hulls up to the horizon. The old layout used a wide-angle front three-quarter with one tank driving
-in, and the other ideas are close, low or high lenses. This is the only long-lens, side-on, simultaneous exchange.
-Lens a stands on the grass bank at (246, -212), 2 m up and 63-67 m off the pair, looking east out to sea (bearing 88)
-at fov 21, pitched 3.6° down. Lens b stands 14 m further back on higher ground at fov 18. The light is golden hour: the
-sun at 54°/9° is low over the bay behind the pair and off the frame's right. The Type 10's front takes a raking key
-(0.32), the ZTZ is rim-lit against the bright water, and the backlit track dust glows. The grade is `CLEAN` + `LIT` at
-exposure 0.38. This backlight follows the scene idea ("the sea and the low golden sun sit behind them") rather than the
-general front-light rule. Putting the sun at the lens's back, about 268°, would light both lens-side flanks (0.97) instead. Check: no `!` lines. Lens a:
-hero box x -0.81..-0.33, y -0.15..0.18. Foe box x 0.25..0.77, y -0.12..0.14. The lockup corner is clear.
+This pass answers the owner's notes ("tank fronts more", "more % of frame", "more interesting camera rotation and
+angles"). It was checked on the GO dump.
+
+A lens stands on Saltmere Bay's pale strand at (320, -154), 6 m from the water, 1.5 m up, with a -10° Dutch roll (vs05
+is +9°). It looks along the shore (bearing 114) with the bay behind the far tank, at fov 34, pitched 2.1° up. The
+frame's foot is on the strand too.
+
+The Type 10 charges up the sand straight at the lens, 16 m out, with its front 28° off the lens, and fills 51 % of the
+width. Its turret faces the lens: the gun is laid 32° off it, to the frame's left, at a target out of frame past the
+lens. Its 175 mm live blast, 42 ms old, sits over a 0.3 s-old blast whose ring and haze read; both stand at the frame's
+left, clear of the ZTZ. The ZTZ-99A2 comes up out of the surf on the right, 23 m out and 2 m from the water, front-on
+at 14°, and spans 37 %. It fires back at the Type 10: a 120 mm blast 65 ms old, its fire turned orange, in the gap
+between the hulls. The Type 10's cheek facing the ZTZ takes its round as a 0.25 s-old ricochet, its fan thrown sideways
+and down. Sand bursts trail from both tracks, with `dirDeg` set to each heading. There is no mg_burst, no
+`firing_moment` bolt and no effect at T.
+
+The sun at 294°/35° stands behind the lens and lights both fronts. The grade is `CLEAN` + `LIT`, labelled honestly as
+day.
+
+GO-render QA found three problems, now fixed. The Type 10 had aimed at the ZTZ 17 m deeper, so its turret showed its
+right rear; its gun is now laid off-frame, so the turret face reads. The far water column did not read against the pale
+sky, so it is dropped. The lens rose to 1.5 m for more surf and moved onto the pale strand.
+
+This is the only head-on beach landing in the set.
+
+Check (GO dump): no `!` lines. Hero box x -0.90..0.11, y -0.59..0.39. Foe box x 0.16..0.90, y -0.22..0.38. The boxes do
+not overlap, and the logo corner is nearly clear.

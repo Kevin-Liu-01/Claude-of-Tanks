@@ -141,13 +141,17 @@ function column(v) {
   const C = v.eye, beta = v.beta, T = 9000, map = v.map, heading = beta + 98;
   // (round 5, the owner 2026-10-15: "use the actual t-90m instead of the tank u switched with": the hero by id, the
   // original's cage-armoured T-90M, t90m_x)
-  const hero = { id: v.heroId ?? 't90sm', name: 'hero', pos: polar(C, beta - 12, v.heroDist).map(r2), facingDeg: r2(heading % 360), turretDeg: v.turret, gunDeg: 2, camo: 'digital', camoSeed: 5701 };
-  const ally = { id: 't90a_x', name: 'ally1', pos: polar(C, beta + 24, 17).map(r2), facingDeg: r2(heading % 360), turretDeg: -74, gunDeg: 2, camo: 'service_t90m', camoSeed: 5702 };
+  // (2026-10-16, the 226 re-render) v.flash: a live muzzle_flash 45-50 ms before the still with the barrels recoiled,
+  // in place of the firing moments at exactly T (remake/v6/FX-RECIPES.md: their bolt, and half strength at T)
+  const recoil = (s) => (v.flash ? { recoilAgeS: s } : {});
+  const hero = { id: v.heroId ?? 't90sm', name: 'hero', pos: polar(C, beta - 12, v.heroDist).map(r2), facingDeg: r2(heading % 360), turretDeg: v.turret, gunDeg: 2, camo: 'digital', camoSeed: 5701, ...recoil(0.045) };
+  const ally = { id: 't90a_x', name: 'ally1', pos: polar(C, beta + 24, 17).map(r2), facingDeg: r2(heading % 360), turretDeg: -74, gunDeg: 2, camo: 'service_t90m', camoSeed: 5702, ...recoil(0.05) };
   const wreckAt = [[beta + 6, 110, 'leo2a6_x'], [beta - 13, 95, 'm1a2_sepv3_x'], [beta - 23, 74, 'leo2a7v_x']];
-  const wrecks = wreckAt.map(([b, d, id], i) => ({ id, name: `wreck${i}`, pos: polar(C, b, d).map(r2), facingDeg: r2((beta + 150 + i * 37) % 360), turretDeg: 25 - i * 30,
+  // (226) v.wreckPos / v.foeAt: world spots that replace a wreck's or the target's polar one (the field follows the target)
+  const wrecks = wreckAt.map(([b, d, id], i) => ({ id, name: `wreck${i}`, pos: (v.wreckPos?.[i] ?? polar(C, b, d)).map(r2), facingDeg: r2((beta + 150 + i * 37) % 360), turretDeg: 25 - i * 30,
     gunDeg: 0, state: 'wrecked-burnt', stateAgeS: 40 + i * 25, camo: 'service_leo2a6m', camoSeed: 6100 + i }));
-  const target = { id: 'leo2a6_x', name: 'foe0', pos: polar(C, beta - 2, 72).map(r2), facingDeg: r2((beta + 160) % 360), turretDeg: 10, gunDeg: 0, camo: 'service_leo2a6m', camoSeed: 6200 };
-  const field = polar(C, beta - 2, 72);
+  const target = { id: 'leo2a6_x', name: 'foe0', pos: (v.foeAt ?? polar(C, beta - 2, 72)).map(r2), facingDeg: r2((beta + 160) % 360), turretDeg: 10, gunDeg: 0, camo: 'service_leo2a6m', camoSeed: 6200 };
+  const field = v.foeAt ?? polar(C, beta - 2, 72);
   const effects = [
     ...wrecks.map((w, i) => fx(i === 0 ? 'engine_smoke' : 'burning', w.name, 0)),
     fx('tank_kill', 'foe0', T - 550, { cause: 'ammorack', pop: true }),
@@ -158,12 +162,13 @@ function column(v) {
     fx('explosion', polar(C, beta + 9, 58).map(r2), T - 780, { size: 'small', munition: 'he', cause: 'shot' }),
     fx('debris', (() => { const p = polar(C, beta + 9, 58); return [r2(p[0]), r2(ground(map, ...p) + 1.4), r2(p[1])]; })(), T - 760, { count: 40, speedMps: 15, hot: 0.4, scale: 1.3 }),
     ...hitFx(map, hero, field, T - 120),
-    moment('ally1', T, 0.05), moment('hero', T, 0.06),
+    ...(v.flash ? [fx('muzzle_flash', 'ally1', T - 50), fx('muzzle_flash', 'hero', T - 45)] : [moment('ally1', T, 0.05), moment('hero', T, 0.06)]),
     fx('dust', 'hero', T - 300, { count: 8, intensity: 0.6 }),
   ];
   const lenses = v.lenses.map(([name, lift, fov, pan]) => lensAt(name, C, lift, polar(C, beta + pan, 14), lift - 14 * Math.tan(9 * DEG), fov));
   return { map, timeOfDay: 'day', seed: 707, light: { sunAzimuthDeg: (beta + 150) % 360, sunElevationDeg: v.sunUp ?? 55 },
-    actors: [hero, ally, ...wrecks, target], effects, fxTime: T, timeScale: 0, picture: { ...CLEAN, exposure: 0.15, temperature: 10, ...(v.picture ?? {}) },
+    // (226) v.pairFoe: the hero and its target first, so the check reads the duel (the target's sightline and framing)
+    actors: v.pairFoe ? [hero, target, ally, ...wrecks] : [hero, ally, ...wrecks, target], effects, fxTime: T, timeScale: 0, picture: { ...CLEAN, exposure: 0.15, temperature: 10, ...(v.picture ?? {}) },
     fx: { quality: 'cinematic', trackDust: true }, autoPlace: false, lenses,
     meta: { id: v.id, kind: 'remake-still', source: 'f7_studio_t90_column_fire', round: 3 } };
 }
@@ -191,8 +196,14 @@ vs({ id: 'f6-leo2a6-steinburg-r5', map: 'urban', time: 'day', eye: [-36.9, 24.7]
   sun: [(255 + 140) % 360, 32], picture: LIT,
   left: L('leo2a6_x', 'paint_m1a1'), right: R('t90m_x', 'digital'),
   backdrop: [COLUMN(-16, 70), COLUMN(18, 85, 1200), FIRE(10, 24), EMBERS(10, 24)] });
+// (2026-10-16, the 226 re-render: the schema-3 id rename moved a map tank-wreck to (55.1, -244.9), on the line from the
+// lens to the Leopard; rerender-226/restage/still-f7-t90m-column-r5.md) the Leopard 7.5 m on, at (75.2, -277.07), clear of
+// it, still 6° left of the frame's middle; the two wrecks on slopes over 0.3 moved to flats (wreck0 on its round-5 bearing,
+// 97 m out, wreck2 3.4 m); both guns a live
+// muzzle_flash with the barrels recoiled; the hero and the Leopard read as the pair
 SCENES['f7-t90m-column-r5'] = () => column({ id: 'f7-t90m-column-r5', map: 'frontier', eye: [37.4, -207], beta: 154, heroDist: 12.2, turret: -69,
-  heroId: 't90m_x', sunUp: 38, picture: { ...LIT, exposure: 0.42, temperature: 10 }, lenses: [['a', 4.0, 32, -8]] });
+  heroId: 't90m_x', sunUp: 38, picture: { ...LIT, exposure: 0.42, temperature: 10 }, lenses: [['a', 4.0, 32, -8]],
+  foeAt: [75.2, -277.07], wreckPos: { 0: [70.52, -298.37], 2: [94.75, -258.55] }, flash: true, pairFoe: true });
 // --- round 6 (the owner 2026-10-15 17:45, on round 5: "wow im really impressed. just make the leopard 2a6 use the urban
 // block camo instead."): round 5's Steinburg as it was, the Leopard in the catalog's Urban Block (camoPattern.urbanblock)
 vs({ id: 'f6-leo2a6-steinburg-r6', map: 'urban', time: 'day', eye: [-36.9, 24.7], yaw: 255, seed: 811, fov: 33, dYaw: 3, lookH: 2.8,
@@ -235,8 +246,12 @@ function frameOf(model, c) {
   const eye = [c.pos[0], model.heightAt(c.pos[0], c.pos[2]) + c.pos[1], c.pos[2]];
   const look = [c.lookAt[0], model.heightAt(c.lookAt[0], c.lookAt[2]) + c.lookAt[1], c.lookAt[2]];
   const fw = look.map((x, k) => x - eye[k]), fl = Math.hypot(...fw), w = fw.map((x) => x / fl);
-  const right = [-w[2], 0, w[0]].map((x) => x / Math.hypot(w[2], w[0]));
-  const up = [right[1] * w[2] - right[2] * w[1], right[2] * w[0] - right[0] * w[2], right[0] * w[1] - right[1] * w[0]];
+  const right0 = [-w[2], 0, w[0]].map((x) => x / Math.hypot(w[2], w[0]));
+  const up0 = [right0[1] * w[2] - right0[2] * w[1], right0[2] * w[0] - right0[0] * w[2], right0[0] * w[1] - right0[1] * w[0]];
+  // (2026-10-16) the lens's roll, as the Studio applies it (camera.rotation.set(pitch, yaw, roll): a turn about the view
+  // axis), so a Dutch angle's tilted frame is what the boxes are measured in
+  const rr = (c.rollDeg ?? 0) * DEG, cr = Math.cos(rr), sr = Math.sin(rr);
+  const right = right0.map((x, k) => x * cr + up0[k] * sr), up = up0.map((x, k) => x * cr - right0[k] * sr);
   const tanV = Math.tan(c.fov * DEG / 2), tanH = tanV * 16 / 9;
   const project = (p) => { const d = p.map((x, k) => x - eye[k]), z = d[0] * w[0] + d[1] * w[1] + d[2] * w[2];
     return z <= 0.1 ? null : [(d[0] * right[0] + d[1] * right[1] + d[2] * right[2]) / z / tanH, (d[0] * up[0] + d[1] * up[1] + d[2] * up[2]) / z / tanV, z]; };
@@ -272,6 +287,25 @@ function check(id) {
       const off = wrap(bearingOf(a.pos, [F.eye[0], F.eye[2]]) - a.facingDeg);
       const cut = b.x0 < -0.97 || b.x1 > 0.97 || b.y0 < -0.97 || b.y1 > 0.97;
       const sight = [...new Set(sightBlockers(model, F.eye, [a.pos[0], model.supportAt(a.pos[0], a.pos[1]) + 1.3, a.pos[1]]).map((r) => r.kind))];
+      // (2026-10-16, GO QA: vs01's T-90M sank behind a dune crest the box check never saw) terrain between the lens and the
+      // hull: rays to its four lower corners (0.3 m up) and its centre, sampled every metre against the ground; the hull is
+      // hidden when three or more of the five are cut
+      {
+        const d = dimsOf(a.id) ?? [3.5, 1.9, 6.5, 2.6], gy0 = model.supportAt(a.pos[0], a.pos[1]), ax = axes(a.facingDeg);
+        const pts = [[0, 0], [1, 1], [1, -1], [-1, 1], [-1, -1]].map(([l, w2]) => [a.pos[0] + ax.f[0] * d[0] * l + ax.r[0] * d[1] * w2,
+          gy0 + (l || w2 ? 0.3 : 1.0), a.pos[1] + ax.f[1] * d[0] * l + ax.r[1] * d[1] * w2]);
+        let cut = 0;
+        for (const q of pts) {
+          const dx = q[0] - F.eye[0], dy = q[1] - F.eye[1], dz = q[2] - F.eye[2], n = Math.max(2, Math.ceil(Math.hypot(dx, dz)));
+          for (let k = 1; k < n - 1; k++) { const t = k / n; if (model.heightAt(F.eye[0] + dx * t, F.eye[2] + dz * t) > F.eye[1] + dy * t + 0.05) { cut++; break; } }
+        }
+        if (cut >= 3) notes.push(`! TERRAIN hides ${a.name}: ${cut} of its 5 low sightlines cross the ground`);
+      }
+      // (2026-10-16, the owner: "i want to see tank fronts more in the other versus, and tanks should be more % of frame")
+      // the ten vs scenes: each duellist within 35° of its nose; the hero at least 45 % of the frame's width, the foe 22 %
+      if (id.startsWith('vs') && Math.abs(off) > 35) notes.push(`! FRONT: ${a.name} ${Math.abs(off).toFixed(0)}° off its nose (owner: fronts, ≤ 35°)`);
+      const minW = a.name === 'hero' ? 0.9 : 0.44;
+      if (id.startsWith('vs') && b.x1 - b.x0 < minW) notes.push(`! SIZE: ${a.name} ${(50 * (b.x1 - b.x0)).toFixed(0)} % of the frame's width (owner: bigger; hero ≥ 45 %, foe ≥ 22 %)`);
       notes.push(`${cut || sight.length || Math.abs(off) > 75 ? '! ' : ''}${a.name} ${a.id} ${Math.abs(off).toFixed(0)}° off its nose (${off > 0 ? 'its left' : 'its right'}) at ${b.z.toFixed(0)} m, box x ${b.x0.toFixed(2)}..${b.x1.toFixed(2)} y ${b.y0.toFixed(2)}..${b.y1.toFixed(2)}${cut ? ' CUT BY THE FRAME' : ''}${sight.length ? ` SIGHT ${sight.join('+')}` : ''}${Math.abs(off) > 75 ? ' NOT FRONT/3-4' : ''}`);
     }
     if (boxes[0][1] && boxes[1][1]) { const [A, B] = [boxes[0][1], boxes[1][1]]; if (A.x1 > B.x0 && A.x0 < B.x1 && A.y1 > B.y0 && A.y0 < B.y1) notes.push(`overlap: the two boxes share x ${Math.max(A.x0, B.x0).toFixed(2)}..${Math.min(A.x1, B.x1).toFixed(2)}`); }
@@ -324,12 +358,13 @@ if (mode === 'scenes') {
     writeFileSync(join(dir, `${id}.json`), JSON.stringify(scene, null, 1)); console.log(`[versus] finals-v/${id}.json (${name})`);
   }
 } else if (mode === 'jobs') {
-  // one cinema run per still, so every page boots straight onto its own map (three's isReady race on a map switch)
+  // one cinema run per still, so every page boots straight onto its own map (three's isReady race on a map switch); a
+  // scene's meta.stillExposureMs (round 6, 2026-10-15: vs04's coax tracers smeared into one beam at 12 ms) sets its exposure
   const dir = join(REMAKE, 'finals-v');
   for (const f of readdirSync(dir).filter((x) => x.endsWith('.json') && !x.startsWith('jobs-'))) {
     const id = f.replace(/\.json$/, ''), s = JSON.parse(readFileSync(join(dir, f), 'utf8'));
     writeFileSync(join(dir, `jobs-${id}.json`), JSON.stringify([{ scene: `shots/media-r5/remake/finals-v/${f}`, out: `shots/media-r5/remake/renders-v/${id}`,
-      stills: String(s.fxTime), 'still-samples': 16, 'still-exposure-ms': 12, resolution: 1440, supersample: 1.5, film: 'false', master: 'none',
+      stills: String(s.fxTime), 'still-samples': 16, 'still-exposure-ms': s.meta?.stillExposureMs ?? 12, resolution: 1440, supersample: 1.5, film: 'false', master: 'none',
       // resumes only where a receipt already stands (a re-run keeps a finished still and redoes a failed one)
       resume: 'true' }], null, 1));
     console.log(`[versus] finals-v/jobs-${id}.json`);

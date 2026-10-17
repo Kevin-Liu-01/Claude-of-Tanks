@@ -1,78 +1,86 @@
-// Round 6, vs06: the broadside exchange (Saltmere Bay, golden hour). Below the southern downs the strand lies flat and
-// dry for 40 m in front of the bay. A long lens stands on the grass above the beach, 60-odd metres inland, and looks out
-// to sea. The Type 10 and the ZTZ-99A2 roll along the sand toward each other across the frame's left and right thirds.
-// Each is near profile, 62-64° off its nose, its hull angled a little toward the lens so the front still reads, and its
-// turret laid back onto the other. Both fire at the same instant: two muzzle blasts face each other across the gap. Each
-// takes the other's round on the turret front in a spray of sparks. Behind them a beached wreck and the shoreline burn,
-// a cook-off column climbs and clods fall. The bay and the low gold sun sit behind them. The sun stands off the frame's
-// right, so the Type 10's front takes a raking key, and the backlit sand dust glows around both hulls.
-import { SCENES, fx, moment, hitFx, plate, inFrame, bearingOf, axes, wrap, r2, lensAt, ground, polar, CLEAN, LIT, MOVE_MS } from '../versus.mjs';
+// Round 6, vs06: the beach charge (Saltmere Bay, bright day). Owner pass, 2026-10-16: "i want to see tank fronts more in
+// the other versus, and tanks should be more % of frame" and "more interesting camera rotation and angles".
+// A lens stands on the pale strand, 1.5 m up and 6 m from the water, tilted -10° (a Dutch angle against vs05's +9°), and
+// looks along the shore with the bay behind the far tank. The Type 10 charges up the sand straight at it, 16 m out, its
+// front 28° off the lens, filling half the frame. Its turret faces the lens (its gun 32° off it), and it fires past the
+// lens's left at a target out of frame. The ZTZ-99A2 comes up out of the surf on the right, 23 m out, front-on at 14°, firing back at the
+// Type 10, and the Type 10's left cheek takes its round as a short, low spark fan. Sand sprays from both tracks. The sun
+// stands behind the lens and lights both fronts.
+// (GO-render QA, 2026-10-17: the Type 10 had aimed at the ZTZ 17 m deeper, so its turret showed its right rear and
+// stowage basket. Its gun is now laid 26° off the lens, so the turret face reads. The far water column did not read
+// against the pale sky and is gone. The lens came up to 1.5 m for more surf, and moved onto the pale strand within 8 m
+// of the water. Kept from earlier QA: every lens-to-hull line clear of records and shrub crowns; live muzzle_flash
+// blasts, the barrels recoiled, no firing_moment bolt and no effect at T; ricochet fans thrown sideways and down;
+// honestly day. Placement from the GO dump, rerender-226/features-go.)
+import { SCENES, fx, plate, inFrame, bearingOf, axes, wrap, r2, lensAt, ground, polar, dimsOf, CLEAN, LIT, MOVE_MS } from '../versus.mjs';
 
 const ID = 'vs06-coastal-type10-ztz99a2-r6';
 const MAP = 'coastal';
 const DEG = Math.PI / 180;
-// the lens's ground point on the grass above the strand, and its bearing (east, out to sea)
-const EYE = [246, -212];
-const YAW = 88;
+// the lens's ground point on the pale strand (6 m from the water), its bearing along the shore, the aim's turn and pitch,
+// and the roll
+const EYE = [320, -154];
+const YAW = 114, AIM_DY = -0.1, PITCH = 2.1, LIFT = 1.5, FOV = 34, ROLL = -10;
 
 SCENES[ID] = () => {
   const T = 7000, g = (p) => ground(MAP, p[0], p[1]);
   const at = (side, ahead) => inFrame(EYE, YAW, side, ahead);
-  const A = at(-12.5, 62), B = at(12.5, 66);
-  // each hull faces the other, turned `turn` degrees toward the lens; its turret laid back onto the other
-  const face = (me, other, turn) => {
-    const to = bearingOf(me, other), side = Math.sign(wrap(bearingOf(me, EYE) - to)), hdg = (to + side * turn + 360) % 360;
-    return { facingDeg: r2(hdg), turretDeg: r2(wrap(to - hdg)) };
-  };
-  const elev = (me, other) => r2(Math.atan2(g(other) - g(me), Math.hypot(other[0] - me[0], other[1] - me[1])) / DEG + 0.6);
-  const hero = { id: 'type10_x', name: 'hero', pos: A.map(r2), ...face(A, B, 24), gunDeg: elev(A, B), camo: 'factory', camoSeed: 7106 };
-  const foe = { id: 'ztz99a2', name: 'foe0', pos: B.map(r2), ...face(B, A, 8), gunDeg: elev(B, A), camo: 'factory', camoSeed: 7107 };
+  // the Type 10 16 m out, the lens 28° off its nose on its right, its gun laid 32° off the lens direction toward the
+  // frame's outer (left) side, at a target out of frame past the lens, so its turret face reads and its blast stands at
+  // the frame's left, clear of the ZTZ; the ZTZ 22 m out at the water's edge, the lens 14° off its nose on its left,
+  // its gun laid on the Type 10
+  const A = at(-3, 16), B = at(8, 22);
+  const hA = (bearingOf(A, EYE) + 28 + 360) % 360, hB = (bearingOf(B, EYE) - 14 + 360) % 360;
+  const hero = { id: 'type10_x', name: 'hero', pos: A.map(r2), facingDeg: r2(hA), turretDeg: r2(wrap(bearingOf(A, EYE) - 32 - hA)), gunDeg: 1,
+    camo: 'factory', camoSeed: 7106, recoilAgeS: 0.04 };
+  const foe = { id: 'ztz99a2', name: 'foe0', pos: B.map(r2), facingDeg: r2(hB), turretDeg: r2(wrap(bearingOf(B, A) - hB)),
+    gunDeg: r2(Math.atan2(g(A) - g(B), Math.hypot(A[0] - B[0], A[1] - B[1])) / DEG + 0.6), camo: 'factory', camoSeed: 7107, recoilAgeS: 0.04 };
 
-  // both roll at 3 m/s along their hulls over the 2.6 s before the still and on past it
-  const track = (a, speed) => {
-    const { f } = axes(a.facingDeg), back = speed * MOVE_MS / 1000, on = speed * 0.6;
+  // the charge: the Type 10 at 5 m/s, the ZTZ at 4 m/s up out of the surf, over the 2.6 s before the still and on past it
+  const drive = (a, speed) => {
+    const { f } = axes(a.facingDeg), hullAt = (ago) => [a.pos[0] - f[0] * speed * ago / 1000, a.pos[1] - f[1] * speed * ago / 1000];
     const key = (k, tMs, p) => ({ id: `${a.name}-${k}`, tMs, pos: p.map(r2), facingDeg: a.facingDeg, turretDeg: a.turretDeg, gunDeg: a.gunDeg, transition: 'linear' });
-    return { actor: a.name, keys: [key(0, T - MOVE_MS, [a.pos[0] - f[0] * back, a.pos[1] - f[1] * back]), key(1, T + 600, [a.pos[0] + f[0] * on, a.pos[1] + f[1] * on])] };
+    return { track: { actor: a.name, keys: [key(0, T - MOVE_MS, hullAt(MOVE_MS)), key(1, T + 400, hullAt(-400))] }, hullAt };
   };
-  const tracks = [track(hero, 3.2), track(foe, 2.6)];
-
-  // a beached wreck burning on the strand behind the Type 10, left of it
-  const wreckPos = at(-22, 92);
-  const wreck = { id: 'type10_x', name: 'wreck0', pos: wreckPos.map(r2), facingDeg: r2((YAW + 70) % 360), turretDeg: -30, gunDeg: 0,
-    state: 'wrecked-burnt', stateAgeS: 50, camo: 'factory', camoSeed: 7306 };
-  const fall = at(1.5, 80);
-  const sparkAgain = (me, from, tMs) => { const p = plate(MAP, me, from); return fx('sparks', p.at, tMs, { caliberMm: 120, normal: p.normal }); };
+  const dh = drive(hero, 5), df = drive(foe, 4);
+  // sand off both tracks: bursts at both rear track ends where each hull was before the still, thrown back (dirDeg the heading)
+  const tail = (a, hullAt, bursts) => {
+    const { f, r } = axes(a.facingDeg), d = dimsOf(a.id), out = [];
+    for (const [ago, count] of bursts) {
+      const p = hullAt(ago);
+      for (const s of [-1, 1]) {
+        const q = [p[0] - f[0] * d[0] * 0.9 + r[0] * s * d[1] * 0.8, p[1] - f[1] * d[0] * 0.9 + r[1] * s * d[1] * 0.8];
+        out.push(fx('dust', q.map(r2), T - ago, { count, intensity: 1.2, dirDeg: r2(a.facingDeg) }));
+      }
+    }
+    return out;
+  };
+  // the ZTZ's round on the Type 10's plate facing it, 0.25 s old: a small ricochet whose short fan is thrown sideways
+  // toward the ZTZ and down onto the sand, never up into the sky
+  const strike = (me, from, tMs) => {
+    const p = plate(MAP, me, from), u = polar([0, 0], bearingOf(me.pos, from), 1), n = [r2(u[0] * 0.95), -0.25, r2(u[1] * 0.95)];
+    return [fx('impact', p.at, tMs, { kind: 'ricochet', caliberMm: 60, normal: n }), fx('sparks', p.at, tMs + 20, { caliberMm: 40, normal: n }),
+      fx('debris', p.at, tMs + 10, { count: 8, speedMps: 6, hot: 0.6, scale: 0.4 })];
+  };
   const effects = [
-    // the backlit sand off both hulls' tracks
-    fx('dust', 'hero', T - 240, { count: 12, intensity: 1 }),
-    fx('dust', 'foe0', T - 200, { count: 10, intensity: 0.9 }),
-    // the same instant: both guns, both strikes (and a second spark shower off each plate, the owner's "more sparks")
-    moment('hero', T, 0.05), moment('foe0', T, 0.05),
-    ...hitFx(MAP, hero, foe.pos, T - 130, 'ricochet'), ...hitFx(MAP, foe, hero.pos, T - 120, 'ricochet'),
-    sparkAgain(hero, foe.pos, T - 70), sparkAgain(foe, hero.pos, T - 60),
-    // an HE round's burst on the sand behind the gap, its clods coming down
-    fx('explosion', fall.map(r2), T - 760, { size: 'small', munition: 'he', cause: 'shot' }),
-    fx('debris', [r2(fall[0]), r2(g(fall) + 1.4), r2(fall[1])], T - 735, { count: 44, speedMps: 15, hot: 0.45, scale: 1.35 }),
-    // behind them on the strand: a cook-off column by the water, a second behind the ZTZ, the wreck and a beach fire
-    fx('explosion', at(-6, 100).map(r2), 0, { size: 'huge' }),
-    fx('explosion', at(26, 104).map(r2), 1200, { size: 'huge' }),
-    fx('burning', 'wreck0', 0),
-    fx('fire_field', at(-15, 84).map(r2), 0, { radiusM: 4, durationS: 40, intensity: 1, smoke: true }),
-    fx('embers', at(-15, 84).map(r2), 0, { radiusM: 4, rate: 50, durationS: 20, rise: 3 }),
+    ...tail(hero, dh.hullAt, [[1200, 21], [800, 21], [450, 18], [200, 15], [90, 12]]),
+    ...tail(foe, df.hullAt, [[700, 16], [400, 14], [180, 12]]),
+    // the Type 10's shot at the 175 mm blast-size cap, its gun turned toward the lens: a live blast 42 ms old over a
+    // 0.3 s-old one whose smoke ring and haze read; the ZTZ's answering shot, 120 mm and 65 ms old, its fire turned orange
+    fx('muzzle_flash', 'hero', T - 300, { caliberMm: 175 }), fx('muzzle_flash', 'hero', T - 42, { caliberMm: 175 }),
+    fx('muzzle_flash', 'foe0', T - 65, { caliberMm: 120 }),
+    ...strike(hero, foe.pos, T - 250),
   ];
 
-  // the long lens: aimed by bearing and pitch from the grass bank
-  const aim = (name, eye, lift, yaw, pitchDeg, fov) => {
-    const look = polar(eye, yaw, 40), eyeY = g(eye) + lift;
-    return lensAt(name, eye, lift, look, r2(eyeY + 40 * Math.tan(pitchDeg * DEG) - g(look)), fov);
-  };
-  return { map: MAP, timeOfDay: 'golden', seed: 1906,
-    // the low gold sun out over the bay, behind the pair and off the frame's right
-    light: { sunAzimuthDeg: r2((YAW - 34 + 360) % 360), sunElevationDeg: 9 },
-    actors: [hero, foe, wreck], effects, fxTime: T, timeScale: 0,
-    storyboard: { version: 1, durationMs: T + 1500, shots: [], actorTracks: tracks },
-    picture: { ...CLEAN, ...LIT, exposure: 0.38 }, fx: { quality: 'cinematic', trackDust: true }, autoPlace: false,
-    lenses: [aim('a', EYE, 2.0, YAW, -3.6, 21), aim('b', inFrame(EYE, YAW, 0, -14), 2.6, YAW, -3.4, 18)],
+  const look = polar(EYE, YAW + AIM_DY, 30), eyeY = g(EYE) + LIFT;
+  const lens = { ...lensAt('a', EYE, LIFT, look, r2(eyeY + 30 * Math.tan(PITCH * DEG) - g(look)), FOV), rollDeg: ROLL };
+  return { map: MAP, timeOfDay: 'day', seed: 1906,
+    // bright coastal day: the sun behind the lens, on both fronts
+    light: { sunAzimuthDeg: r2((YAW + AIM_DY + 180) % 360), sunElevationDeg: 35 },
+    actors: [hero, foe], effects, fxTime: T, timeScale: 0,
+    storyboard: { version: 1, durationMs: T + 1500, shots: [], actorTracks: [dh.track, df.track] },
+    picture: { ...CLEAN, ...LIT }, fx: { quality: 'cinematic', trackDust: true }, autoPlace: false,
+    lenses: [lens],
     meta: { id: ID, kind: 'versus-still', pair: 'type10_x v ztz99a2', round: 6,
-      idea: 'the broadside exchange: a long lens off the line, both tanks firing across the strand at once, the bay and the gold sun behind' } };
+      idea: 'the beach charge: the Type 10 charges up the strand at a tilted lens, its turret facing it, the ZTZ-99A2 firing back out of the surf' } };
 };
