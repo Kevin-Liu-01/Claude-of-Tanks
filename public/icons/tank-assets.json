@@ -82338,25 +82338,23 @@
           }
         ]
       },
-      "geometryHash": "8b46096e",
+      "geometryHash": "36823200",
       "metadataHash": "9d889d02",
       "presentationAnchor": {
-        "xM": 0.0014,
-        "zM": -0.0837
+        "xM": -0.001,
+        "zM": -0.0829
       },
-      "presentationHash": "1b73f61d",
+      "presentationHash": "07f8815f",
       "presentationProjection": {
         "centerYM": 2.0243,
-        "topHalfM": 7.7122,
-        "sideHalfM": 3.8561
+        "topHalfM": 7.7114,
+        "sideHalfM": 3.8557
       },
       "appearance": {
         "version": 1,
         "issues": [],
         "roles": {
           "gunmetal": 11,
-          "fittingPaint": 3,
-          "trackSteel": 1,
           "wheelTire": 2,
           "wheelDish": 8,
           "suspensionLink": 1,
@@ -82370,6 +82368,8 @@
           "tireRubber": 1,
           "unclassified": 19,
           "gearShadow": 2,
+          "fittingPaint": 3,
+          "trackSteel": 1,
           "canvas": 1,
           "wood": 1,
           "machineGun": 4
@@ -82401,15 +82401,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24200,
-          "sha256": "98f5c830159ff02bb55cffd1cb775f4e60fbdc250a5e22b2220234690b95c30f",
+          "bytes": 24340,
+          "sha256": "f3831e5c82d6de1aeb666bd650b123fa4f783ecd9a3602d351a555a1e8bc508b",
           "thumbnail": {
             "file": "thumbs/carro45t_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10636,
-            "sha256": "e180f6ea6ad267ac22514b878d0027edf4fb6465c4c452c10d71c7cbe478addd"
+            "bytes": 10550,
+            "sha256": "cba03ac18e678139f925ba8a23f8ca1c0b54a616fee1a2387319ac24f1458ba8"
           }
         },
         "top": {
@@ -82417,56 +82417,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 8080,
-          "sha256": "bdf5aa5878ebd7376789ef8a6db2df210b6e47f83b0ebd506057f9a8db7e8daf"
+          "bytes": 8042,
+          "sha256": "b9d5587b001605aae8ed2726b7cf95fed2fa2520b8fb39baeb6cd6510d74941b"
         },
         "side": {
           "file": "carro45t_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 7028,
-          "sha256": "2f0d6fa1815cd0a2f376f6f908894936f8b6003bda36bf8fb3b08f97f085290f"
+          "bytes": 7022,
+          "sha256": "14260b67ed5a35066785b838f2b53c29df0605a44782826d9cea5e88927335d7"
         },
         "topSilhouette": {
           "file": "carro45t_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1174,
-          "sha256": "21687c490ae25d524043d4c1209e39078817783ff1501f62242bee47e214cd63"
+          "bytes": 1135,
+          "sha256": "23c83a3265ca3867555ec9ea124eaf46c323bd172de4e832fa36cdbee8aa6627"
         },
         "sideSilhouette": {
           "file": "carro45t_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 3642,
-          "sha256": "c2279db75a5ba70afc47b7e4a2e69f48e193ea2a803ee2d9e782edc53c5fb733"
+          "bytes": 3645,
+          "sha256": "547eccf30812bcc83ea231cc21d077a765652466d9fb1ed46d5a0a7f7b308ae8"
         },
         "armorSide": {
           "file": "carro45t_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77091,
-          "sha256": "125ecbeb5ebdc539779b1fe6cf327f7bc260dc0653203c3dfa9b4c18fa6cc324"
+          "bytes": 76871,
+          "sha256": "44b2b37c3fcf65145aabd097334eeaff7cf359bcdb32dbc50dfd7a1fbe4ac243"
         },
         "modulesSide": {
           "file": "carro45t_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 80666,
-          "sha256": "590065d6a7fc00a8726861805cf4ee5195f7fdfd5285014fcc6ab1e33411f335"
+          "bytes": 81007,
+          "sha256": "ebe4f84e9d4df2783553d72bae30421e3576c7b8aa93565baab2235ef94a30cd"
         },
         "crewSide": {
           "file": "carro45t_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 66866,
-          "sha256": "1066b1d9e61493720308ad968e5293d840a54fc6cde4d184832b29c81f25c83c"
+          "bytes": 67229,
+          "sha256": "618db53913340f78c49cb8cf102e373db91b0d7ea7600458af983cfd1d20d204"
         },
         "markings": {
           "file": "carro45t_markings.png",

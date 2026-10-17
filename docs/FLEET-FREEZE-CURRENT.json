@@ -187,9 +187,9 @@
       "vertices": 140625
     },
     "carro45t": {
-      "freezeHash": "ed2773c8",
-      "instanceFreezeHash": "6a3538a5",
-      "assetGeometryHash": "8b46096e",
+      "freezeHash": "93f746a8",
+      "instanceFreezeHash": "f168ad52",
+      "assetGeometryHash": "36823200",
       "meshes": 56,
       "vertices": 70236
     },
@@ -425,9 +425,9 @@
       "vertices": 62092
     },
     "kf51_u": {
-      "freezeHash": "1106fe2c",
-      "instanceFreezeHash": "628fb712",
-      "assetGeometryHash": "3ae24b31",
+      "freezeHash": "d958dd0a",
+      "instanceFreezeHash": "6a4837c7",
+      "assetGeometryHash": "6078b880",
       "meshes": 62,
       "vertices": 132169
     },
@@ -607,46 +607,46 @@
       "vertices": 62459
     },
     "m1a1": {
-      "freezeHash": "415dda60",
-      "instanceFreezeHash": "32df4fb8",
-      "assetGeometryHash": "62c78c99",
+      "freezeHash": "d3d99268",
+      "instanceFreezeHash": "b32e43b5",
+      "assetGeometryHash": "6f55482c",
       "meshes": 55,
-      "vertices": 113240
+      "vertices": 113276
     },
     "m1a1_abrams_aim": {
-      "freezeHash": "5c71bc58",
-      "instanceFreezeHash": "a4e680d4",
-      "assetGeometryHash": "86a2fb8d",
+      "freezeHash": "c1d2c700",
+      "instanceFreezeHash": "e651554d",
+      "assetGeometryHash": "f486b86c",
       "meshes": 71,
-      "vertices": 163040
+      "vertices": 163076
     },
     "m1a1_abrams_fep": {
-      "freezeHash": "7be97b09",
-      "instanceFreezeHash": "f509e491",
-      "assetGeometryHash": "ed7b32df",
+      "freezeHash": "0b364979",
+      "instanceFreezeHash": "3e9dc4ec",
+      "assetGeometryHash": "760031ea",
       "meshes": 70,
-      "vertices": 182522
+      "vertices": 182558
     },
     "m1a1_abrams_hc": {
-      "freezeHash": "9a462b98",
-      "instanceFreezeHash": "ca9c4c29",
-      "assetGeometryHash": "db58fc0d",
+      "freezeHash": "099bd874",
+      "instanceFreezeHash": "9afae5f7",
+      "assetGeometryHash": "419d7317",
       "meshes": 70,
-      "vertices": 159218
+      "vertices": 159254
     },
     "m1a1_abrams_sa": {
-      "freezeHash": "132409ca",
-      "instanceFreezeHash": "eee2f291",
-      "assetGeometryHash": "957f4f60",
+      "freezeHash": "b3d4c7b2",
+      "instanceFreezeHash": "d369ff2d",
+      "assetGeometryHash": "1d8a5cf8",
       "meshes": 77,
-      "vertices": 180326
+      "vertices": 180362
     },
     "m1a1ha": {
-      "freezeHash": "0f52748a",
-      "instanceFreezeHash": "696bea37",
-      "assetGeometryHash": "14123eb0",
+      "freezeHash": "67ecf148",
+      "instanceFreezeHash": "fa821b30",
+      "assetGeometryHash": "4474e6df",
       "meshes": 59,
-      "vertices": 147986
+      "vertices": 148022
     },
     "m1a2_abrams": {
       "freezeHash": "60588498",
@@ -775,11 +775,11 @@
       "vertices": 81412
     },
     "mbt70": {
-      "freezeHash": "ccd056fc",
-      "instanceFreezeHash": "235886a5",
-      "assetGeometryHash": "dacd24b2",
-      "meshes": 75,
-      "vertices": 103375
+      "freezeHash": "6aa8af10",
+      "instanceFreezeHash": "c9083053",
+      "assetGeometryHash": "3ef3af04",
+      "meshes": 73,
+      "vertices": 101695
     },
     "merkava1b": {
       "freezeHash": "88c25db8",
@@ -1279,11 +1279,11 @@
       "vertices": 87180
     },
     "t90am": {
-      "freezeHash": "e37d5ef7",
-      "instanceFreezeHash": "5e60dfd5",
-      "assetGeometryHash": "2492fbf9",
-      "meshes": 69,
-      "vertices": 171580
+      "freezeHash": "905eb398",
+      "instanceFreezeHash": "113b71eb",
+      "assetGeometryHash": "ce34214f",
+      "meshes": 71,
+      "vertices": 171040
     },
     "t90m": {
       "freezeHash": "ccd4139e",
@@ -1293,11 +1293,11 @@
       "vertices": 103291
     },
     "t90m_proryv": {
-      "freezeHash": "a41d6174",
-      "instanceFreezeHash": "2caf6cf9",
-      "assetGeometryHash": "21129fcf",
-      "meshes": 65,
-      "vertices": 144223
+      "freezeHash": "0713e6c8",
+      "instanceFreezeHash": "9c2af8a7",
+      "assetGeometryHash": "68de09ad",
+      "meshes": 67,
+      "vertices": 143683
     },
     "t90ms_2011": {
       "freezeHash": "747f48b8",
@@ -1440,11 +1440,11 @@
       "vertices": 197508
     },
     "ua_m1a1": {
-      "freezeHash": "f6faef68",
-      "instanceFreezeHash": "531cf325",
-      "assetGeometryHash": "531cf325",
+      "freezeHash": "81da7224",
+      "instanceFreezeHash": "881d7996",
+      "assetGeometryHash": "881d7996",
       "meshes": 73,
-      "vertices": 202472
+      "vertices": 202508
     },
     "ua_m1a2_abrams": {
       "freezeHash": "7e142de0",
