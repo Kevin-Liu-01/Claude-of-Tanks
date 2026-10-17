@@ -45,6 +45,8 @@ const logPath = join(qaDir, `${stamp}.log`);
 const summary = { stamp, root, mode: CHECK ? 'check' : ALL ? 'all' : 'changed', dryRun: DRY, runs: [], passes: 0, final: null,
   verify: [], resolveSeconds: [] };
 const log = (line) => { console.log(line); appendFileSync(logPath, `${line}\n`); };
+// The summary is rewritten after every step, so a chain stopped part-way still records what it ran.
+const saveSummary = () => writeFileSync(join(qaDir, `${stamp}.json`), `${JSON.stringify(summary, null, 1)}\n`);
 const selected = (name) => !ONLY || ONLY.includes(name);
 for (const name of ONLY ?? []) if (!stepByName(name)) throw new Error(`unknown step ${name}`);
 // Flags that make a tool read a file the step key cannot see (a git revision, a hints file) are refused.
@@ -198,6 +200,7 @@ async function step(name, { forceFull = false } = {}) {
   const run = definition.device === 'gpu' ? await runGpuStep(definition, scoped, state) : await runCpuStep(definition, scoped, state);
   const seconds = Math.round((Date.now() - started) / 1000);
   summary.runs.push({ step: name, mode: resolved.mode, count: (scoped ?? state.ids).length, ids: scoped ?? ['*'], seconds, code: run.code });
+  saveSummary();
   if (run.code !== 0) throw new Error(`${name} failed (exit ${run.code}); output in ${run.out ?? qaDir}`);
   const after = fresh();
   manifest = readManifest(root) ?? manifest;
@@ -336,5 +339,5 @@ try {
   log(`[regen] FAILED: ${summary.error}`);
   process.exitCode = 1;
 } finally {
-  writeFileSync(join(qaDir, `${stamp}.json`), `${JSON.stringify(summary, null, 1)}\n`);
+  saveSummary();
 }
