@@ -1014,6 +1014,7 @@
     "src/world/worldNightFixtureInstances.selftest.mjs": 400,
     "src/world/worldNightLighting.selftest.mjs": 200,
     "src/world/wreckBakeClient.selftest.mjs": 200,
+    "src/world/wreckBakePlanDrift.selftest.mjs": 507300,
     "src/world/wreckFleet.selftest.mjs": 5900,
     "src/world/wreckPaintDedup.selftest.mjs": 1900,
     "src/world/wreckRoster.selftest.mjs": 1100,

@@ -134,9 +134,9 @@ async function recordTier(tier, ids) {
       const variant = assault ? (tier === 'mobile' ? 'assault-mobile' : 'assault') : tier;
       console.log(`PLAN ${JSON.stringify({ mapId, variant, rows, ms: Date.now() - t0 })}`);
       // Yield to the event loop between worlds (test-speed R9a, 2026-10-16). The whole build chains promises, so without
-      // a turn of the loop the dead worlds' buffers were not released: a child's RSS grew by about 130 MB a world (3.9
-      // GB after 27 of a tier's 66, four children past the gate pool's 12 GB cap twice in 226). With the turn it holds
-      // near 1.2 GB however many maps the child records. The recorded rows are the same.
+      // a turn of the loop the dead worlds' buffers were not released: a child's RSS grew by about 130 MB a world (4.3 GB
+      // after 33 worlds; four children past the gate pool's 12 GB cap twice in 226). With the turn a child recording
+      // all 66 of a tier's worlds stays under 1.6 GB. The recorded rows are the same.
       await new Promise((resolve) => { setImmediate(resolve); });
     }
   }

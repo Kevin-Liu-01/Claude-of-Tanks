@@ -6,8 +6,10 @@
 // build in Node, a child process per tier and share of the maps) and each of the four keys a map resolves must match the
 // committed plan. On a failure, regenerate the named maps: node tools/wreck-bake-plan.mjs --write --maps=<ids>.
 // Two children (test-speed R9a, 2026-10-16): one a tier, every map each. Four children counted as one slot by every
-// pool; with each child yielding between worlds (tools/wreck-bake-plan.mjs) two hold the receipt near 3 GB, where four
-// unyielding children went past the gate pool's 12 GB cap twice in the 226 cycle.
+// pool, and without a yield between worlds (tools/wreck-bake-plan.mjs) they grew past the gate pool's 12 GB cap, twice
+// in the 226 cycle. Measured side by side on one host (2026-10-17): four unyielding children peaked at 12.9 GB (4.3 GB
+// in one child) on 1,010 CPU-s; two yielding children peak at 3.0 GB (1.5 GB) on 902 CPU-s. The largest child's CPU,
+// the receipt's floor on a quiet core, goes from 309 s to 507 s.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
