@@ -1,9 +1,12 @@
 // Owner 2026-10-15 (VEH-22): the T-72B3 Zubr and Zubr II carry the T-72B3M (2016) turret itself
-// (nationalDonorTurret.ts) on their T-72B3 hulls, up-armoured with the Polish field fit: the modern remote autocannon
-// on the commander's cupola, ERAWA courses, slat screens and nets with leaves, lamps, sensors and stowage.
+// (nationalDonorTurret.ts) on their T-72B3 hulls, up-armoured with the Polish field fit: a remote weapon on the
+// commander's cupola, ERAWA courses, slat screens and nets with leaves, lamps, sensors and stowage.
 //   "make the t72b3 zubr turret properly based off the t72 b3m 2016, except obvioulsy up armored annnd using modern
 //    autocannon and cages and the leaves and lights and ERa and other emplacements"
-// The hulls keep their Polish packages unchanged (nationalPoland.ts hullEquipment, zubrII.ts).
+// Release 227 (owner 2026-10-16: "brand new era packages ... innovate for the hetman 2 and zubr 2 and also the zubr.
+// also make thhe zubr 2 and zubr autocannons into proper machine gun emplacements that are aut ocontrolled"): the
+// stations are 12.7 mm WKM-B emplacements (profiles/nationalRoofWeapon.ts 'cradle', 'casemate'), the turret fronts
+// carry the Krata / Krata-2 boxes and roof tiles and the hulls their frontal fields and grids (polandFrontEra.ts).
 //
 // The donor turret is never reshaped: every added part is seated against its real surfaces. Coordinates are
 // turret-local (origin on the ring centre, +Z forward, +X the vehicle's left, +Y up). Measured donor datums used here
