@@ -689,6 +689,8 @@ export class VolumetricCloudLayer {
   private readonly streetsBase = new THREE.Vector4();
   /** The stack's weather warp (m): the cost lab's CLOUD_WARP scales it a frame. */
   private warpM = 0;
+  /** (227) the stack's base turbulence (m), scaled each frame by the QA lever CLOUD_TURBULENCE */
+  private turbM = 0;
   /** How far the main lane is a closing deck (CloudStack.closing): the share of the ground's light law it takes. */
   private deckClosing = 0;
   /** The band a cascade refreshes (reused: no allocation per frame). */
@@ -934,7 +936,8 @@ export class VolumetricCloudLayer {
         this.streetsBase.copy(this.medium.uLayerStreets.value as THREE.Vector4);
         this.warpM = stack.weatherWarpM;
         this.deckClosing = stack.closing;
-        // QA: the turbulence's displacement scaled (0 draws the medium without it)
+        // QA: the turbulence's displacement scaled (0 draws the medium without it; read each frame since 227)
+        this.turbM = stack.turbulenceM;
         this.medium.uTurbulence.value = stack.turbulenceM * lightTune('CLOUD_TURBULENCE', 1);
         // QA: a convective lane's extinction, footprint ramp, core and cover scaled (the decks keep theirs)
         const cuKnobs: Array<[string, string]> = [['CLOUD_CU_DENSITY', 'uLayerDensity'], ['CLOUD_CU_FILTER', 'uLayerFilter'], ['CLOUD_CU_CORE', 'uLayerCore'], ['CLOUD_CU_COVER', 'uLayerCover'], ['CLOUD_CU_SHAPE', 'uLayerShape'], ['CLOUD_CU_DETAIL', 'uLayerDetail']];
@@ -1448,6 +1451,7 @@ export class VolumetricCloudLayer {
     t.uDetailRange.value = budget.detailRange * lightTune('CLOUD_DETAIL_RANGE', 1);
     t.uStepGrowth.value = budget.growth * lightTune('CLOUD_STEP_GROWTH', 1);
     m.uWeatherWarp.value = this.warpM * lightTune('CLOUD_WARP', 1);
+    m.uTurbulence.value = this.turbM * lightTune('CLOUD_TURBULENCE', 1);
     t.uDeckLobe.value = lightTune('CLOUD_DECK_SUN_LOBE', CLOUD_DECK_SUN_LOBE);
     // (2026-10-15, the C2 diagnosis critic: the Beer map's share under a low sun made the shade muddy brown on every
     // sunset map, and its single-front texel stacks a 5-degree ray's cumulus into strata) none at the horizon, all of it
