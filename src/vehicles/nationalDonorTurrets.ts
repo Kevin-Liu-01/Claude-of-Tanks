@@ -72,8 +72,8 @@ export const QILIN_BUSTLE_CUT_M = .395;
 export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret>> = {
   // Release 227 (owner 2026-10-16: "also make the qqilin turret 10% shorter ... and redesign the qilin turret around this
   // principle"): the 99A2 bustle loses 0.395 m (donorBustleCut.ts: the body 3.954 -> 3.559 m, the rear armour assembly
-  // moved forward as one piece, nothing ahead of z -1.27 moved); its rear flank fit gives way to the Qilin's own rear
-  // flank housings (chinaDonorTurretKit.ts), and both whips stand on the right rear roof edge, at least 1.6 m from the
+  // moved forward as one piece, nothing ahead of z -1.27 moved); its rear flank fit gives way to the Qilin's own flank
+  // sleeves (chinaDonorTurretKit.ts), and both whips stand on the right rear roof edge, at least 1.6 m from the
   // cupola emplacement and clear of the drone's dock on the right rear roof.
   t72b3_qilin: { donor: 'ztz99a2', pivot: ZTZ99A2_ON_T72B3, roofY: .83, station: ZTZ99A2_CUPOLA, heightM: 3.213,
     addedTurretEra: ['turret_era_L', 'turret_era_R'],
@@ -84,8 +84,9 @@ export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret
     gunPitchByYawDeg: [[0, -6], [150, -6], [158, -5], [180, -5]],
     addedTurretEra: ['turret_era_L', 'turret_era_R'],
     // The Type 96B's 3 m rear whip would make the listed height (body and roof weapon: the sim's body height) 5.2 m.
-    // Release 227: the boot's heel keeps the mantlet boot over the B3M driver's hatch at full elevation.
-    builderOptions: { mastTopY: 3.40, bootHeel: true } },
+    // Release 227: the boot's heel keeps the mantlet boot over the B3M driver's hatch at full elevation; the box sight
+    // rides the boot on the gun's pitch group (the fleet 96B's turret-fixed one stands inside the pitching boot).
+    builderOptions: { mastTopY: 3.40, bootHeel: true, boxSightOnGun: true } },
   // The Yun keeps its faceted station on its own left-roof seat beside the 96B commander's cupola, as on its cast turret
   // (the cupola's latch clevis and periscopes stand inside the station's bearing ring); the 96B's open side bins and
   // twelve cheek launchers give way to the Yun's armour housings and its own eight roof smoke tubes.
@@ -93,7 +94,7 @@ export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret
   t80u_yun: { donor: 'type96b', pivot: TYPE96B_ON_T80U, roofY: .70, station: [.40, -.62], heightM: 3.222,
     gunPitchByYawDeg: [[0, -6], [156, -6], [159, -5], [166, -5], [169, -6], [180, -6]],
     addedTurretEra: ['turret_era_L', 'turret_era_R'],
-    builderOptions: { mastTopY: 3.20, bins: false, smoke: false, bootHeel: true } },
+    builderOptions: { mastTopY: 3.20, bins: false, smoke: false, bootHeel: true, boxSightOnGun: true } },
   t72b3m_hetman: { donor: 't72b3m_2016', pivot: T72B3M_RING, roofY: .82, station: T72B3M_CUPOLA, heightM: 3.382 },
   // Release 227 (owner 2026-10-16: "brand new era packages ... donnt make it just copy the t90ms"): Hetman II and both
   // Zubrs fit their own frontal ERA (ukraineFrontEra.ts, polandFrontEra.ts), so the donor's Relikt cells, their beams
