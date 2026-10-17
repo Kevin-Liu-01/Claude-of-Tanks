@@ -68,7 +68,8 @@ const expect = {
   statue: ['figure'], columnMonument: ['figure'], equestrianStatue: ['rider'], obelisk: ['finial'], fountain: ['bowl', 'finial'],
   campanile: ['pinnacle-0', 'pinnacle-1', 'pinnacle-2', 'pinnacle-3', 'cross'], valveTower: ['finial'],
   fireLookout: ['frame', 'cab', 'cab-roof'], radomeTower: ['radome-shell', 'radome', 'whip-0', 'whip-1'], troposcatter: ['face', 'truss', 'feed'],
-  headframe: ['winding-house', 'deck-rail', 'sheave-l', 'sheave-r', 'ropes', 'frame', 'bin-legs', 'ore-bin'],
+  // (227, the maps lane: Copper Mesa's R6 on lane B's pieces) the shaft yard, a piece of its own that stays where it lies
+  headframe: ['winding-house', 'deck-rail', 'sheave-l', 'sheave-r', 'shaft-yard', 'ropes', 'frame', 'bin-legs', 'ore-bin'],
 };
 for (const [kind, want] of Object.entries(expect)) assert.deepEqual(names(kind), want, `${kind}'s pieces`);
 assert.deepEqual(names('fountain', { style: 'markt' }), ['figure'], 'the Marktbrunnen\'s saint');
