@@ -1312,7 +1312,10 @@ function addSheridanM81Gun(P: SheridanBuilderPort): void {
     0, 0.0072, 0.8470);
   P.addGunExtra(cylZ(0.1258, 0.6120, P.q ? 28 : 16, 0.1290),
     0, 0.0072, 1.4034);
-  P.addGunExtra(cylZ(0.0906, 0.4502, P.q ? 28 : 16, 0.1258),
+  // CDX-62 (2026-10-17): the terminal tube carries the mouth, so it is the gun's own stock (recoil frame), not the
+  // pitching mount: the muzzle-bore probe read its rim as gunMount, owned apart from the bore it frames. Same matte
+  // scheme paint; at 0.45 m it is still too short to stroke (recoilHasTube needs 0.5 m), so nothing slides.
+  P.add('gun', cylZ(0.0906, 0.4502, P.q ? 28 : 16, 0.1258),
     0, 0.0072, 1.8622);
   // Painted relief rings preserve the measured sleeve breaks without
   // drawing high-contrast black bands across the M81 barrel.

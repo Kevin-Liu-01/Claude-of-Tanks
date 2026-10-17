@@ -96,7 +96,7 @@ function buildToucan(P: TankBuilderPort): void {
   P.addGunExtraDark(cylZ(.018,.43,12),-.16,-.05,.17);
   P.add('gun',cylZ(.034,1.58,24),0,0,1.06);
   P.add('gun',cylZ(.065,.40,20),0,0,.27);
-  openTube(P,.043,1.85,2.37,.01);
+  openTube(P,.043,1.85,2.37,.01,{shadowedBore:true});
   for (const side of [-1,1]) {
     // smokeBank mirrors about the hull origin. The Toucan sits 280 mm left
     // of that origin, so convert its cheek spacing into each hull-side offset.
