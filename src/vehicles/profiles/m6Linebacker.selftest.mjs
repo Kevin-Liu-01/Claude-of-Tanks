@@ -60,8 +60,13 @@ for(const quality of ['high','low']){
       'a lowered gun/pod is rejected by the same finite hull clearance test');
     createEraGameplayRegistrationAudit().check(spec.id,tank);
     assert.equal(censusEquipment(root).mg,1,'one real remote M2, no inherited/random roof gun');
-    const bounds=new Box3().setFromObject(root).getSize(new Vector3());
-    near(bounds.x,4.178,.02,'complete cage width');near(bounds.z,6.59,.03,'retained Bradley hull length');
+    // 2026-10-16 (integ/226): VEH-13's seat solver racks the spare links the Bradley stage authors on the roof (their
+    // seat there fails) on the right flank kit, 7 cm proud of the cage (spareTrackSeatPlan.ts; the spare-track ledger
+    // reads it OK, carried on its rack): the cage and the hull length are measured without that one fitting
+    const bounds=new Box3(),part=new Box3();
+    root.traverse(o=>{if(!o.isMesh||/^fitting_spareTrackLinks/.test(o.name))return;part.setFromObject(o);if(!part.isEmpty())bounds.union(part);});
+    const size=bounds.getSize(new Vector3());
+    near(size.x,4.178,.02,'complete cage width');near(size.z,6.59,.03,'retained Bradley hull length');
     let triangles=0;root.traverse(o=>{if(o.geometry)triangles+=(o.geometry.index?.count??o.geometry.attributes.position.count)/3*(o.count??1);});
     assert.ok(triangles<110000,`${quality}: detailed Bradley budget, ${triangles} triangles`);
     const mesh=root.getObjectByName('turret');

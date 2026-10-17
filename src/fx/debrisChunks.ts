@@ -28,7 +28,8 @@ export interface ChunkPiece {
   ax: number; ay: number; az: number; spin: number;
   /** size (m, longest axis), the ground the piece stops on (m), drag (1/s) */
   scale: number; groundY: number; drag: number;
-  /** linear albedo, heat at birth (0..1: an ember-hot piece glows and cools) */
+  /** linear albedo, heat at birth (0..1: an ember-hot piece glows and cools; below 0: a dust coat — a landed piece
+   *  darkens by that share, lying in the heap's shade under its grit, so a chip never reads as a lit dot) */
   r: number; g: number; b: number; heat: number;
   seed: number;
 }
@@ -110,8 +111,11 @@ void main() {
   // card; a cold piece (a wall's bricks, a field's clods) keeps its own material's colour
   float dCore = length( center - aPB.xyz );
   float sootK = smoothstep( 1.5, 7.0, dCore ) * clamp( aCH.w * 2.0, 0.0, 1.0 );
-  vAlbedo = aCH.rgb * ( 0.85 + 0.3 * h2 ) * ( 1.0 - 0.55 * sootK );
-  vHeat = aCH.w * exp( -age * 1.6 ) * ( 1.0 - grounded * 0.6 ) * ( 1.0 - 0.9 * smoothstep( 2.0, 6.5, dCore ) );
+  // (dcore 2026-10-11, waves 385/388a: "glowing orange-yellow dots" over a ruin for 8 s — unshadowed chips lit as if in
+  // full sun inside the heap's shade) a negative heat is a dust coat: a landed piece darkens by that share
+  float coat = max( -aCH.w, 0.0 );
+  vAlbedo = aCH.rgb * ( 0.85 + 0.3 * h2 ) * ( 1.0 - 0.55 * sootK ) * ( 1.0 - coat * grounded );
+  vHeat = max( aCH.w, 0.0 ) * exp( -age * 1.6 ) * ( 1.0 - grounded * 0.6 ) * ( 1.0 - 0.9 * smoothstep( 2.0, 6.5, dCore ) );
   vWorldPos = wpos;
   vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
   #ifdef USE_FOG

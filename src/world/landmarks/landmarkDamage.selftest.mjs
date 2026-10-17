@@ -66,7 +66,7 @@ const names = (kind, params) => (landmarkPiecesOf(build(kind, params)) ?? []).ma
 const expect = {
   statue: ['figure'], columnMonument: ['figure'], equestrianStatue: ['rider'], obelisk: ['finial'], fountain: ['bowl', 'finial'],
   campanile: ['pinnacle-0', 'pinnacle-1', 'pinnacle-2', 'pinnacle-3', 'cross'], valveTower: ['finial'],
-  fireLookout: ['frame', 'cab', 'cab-roof'], radomeTower: ['radome', 'whip-0', 'whip-1'], troposcatter: ['face', 'truss', 'feed'],
+  fireLookout: ['frame', 'cab', 'cab-roof'], radomeTower: ['radome-shell', 'radome', 'whip-0', 'whip-1'], troposcatter: ['face', 'truss', 'feed'],
   headframe: ['deck-rail', 'sheave-l', 'sheave-r'],
 };
 for (const [kind, want] of Object.entries(expect)) assert.deepEqual(names(kind), want, `${kind}'s pieces`);
@@ -78,7 +78,7 @@ for (const style of ['post', 'smock', 'tower']) {
   assert.deepEqual(n.filter((x) => x.startsWith('sail-')), ['sail-0', 'sail-1', 'sail-2', 'sail-3'], `the ${style} mill's sails`);
   assert.equal(n.includes('cap'), style !== 'post', `the ${style} mill's cap`);
 }
-assert.deepEqual(names('guyedMast'), ['mast', 'guys-0', 'guys-1', 'guys-2', 'dish-0', 'dish-2', 'crown']);
+assert.deepEqual(names('guyedMast'), ['mast', 'mast-head', 'guys-0', 'guys-1', 'guys-2', 'dish-0', 'dish-2', 'crown']);
 assert.ok(names('fuelTankFarm', { tanks: 3 }).every((n) => n.startsWith('tank-')) && names('fuelTankFarm', { tanks: 3 }).length === 3);
 
 // ---------------------------------------------------------------------------------------------------------- 3. the kit's claim
@@ -180,7 +180,7 @@ const holeSpec = (anatomy, hole) => ({ section: 0, storey: 0, face: 'front', hol
   const out = writers();
   out.fallAxis = [1, 0];
   const c = kit.collapse(a, damageSeed(a.seed, 3), out);
-  assert.ok(['mast', 'guys-0', 'guys-1', 'guys-2'].every((n) => c.hides.some((h) => h.piece === n)), 'the frame laid down');
+  assert.ok(['mast', 'mast-head', 'guys-0', 'guys-1', 'guys-2'].every((n) => c.hides.some((h) => h.piece === n)), 'the frame laid down');
   const lying = out.runs.filter((r) => r.role === 'rubble');
   const xs = lying.flatMap((r) => r.v.filter((_, i) => i % 11 === 0));
   assert.ok(Math.max(...xs) > 18, `it lies along its line, out past its foot (${Math.max(...xs).toFixed(1)} m)`);

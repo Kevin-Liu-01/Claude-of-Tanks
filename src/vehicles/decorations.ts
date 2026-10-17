@@ -3663,10 +3663,17 @@ const SIDE_PUSH_MAX_M = 0.32;
  * at local z = `wallZ` and the piece's foot at y = 0. The side slot pressed bags and rolls against the wall with
  * nothing under or around them, so they read as stuck on. Each load now sits on two welded L-arms that run from the
  * wall out under its far edge, held by a webbing strap from a wall cleat over its top to the arm tip.
+ *
+ * 2026-10-16 (integ/226 triage, accessoryContact): the strap's wall cleat had fallen back on the arm foot's plane where
+ * the wall probe found nothing at the strap's height, so after VH.14 (the Twardy's working NSVT) and the Leopard 2A4's
+ * moved dock seat the PT-91 Twardy's cleat crossed another piece and two Leopard 2A4 cleats stood clear of the wall. The
+ * cleat now goes down the wall to where it is, or onto the arm's foot plate where only the foot has the wall; an arm
+ * with no wall behind it at all makes no ledge (null), and the side slot tries its next station.
  */
 function sideLedgeParts(bb: THREE.Box3, wallZ: number, detail: 0 | 1, webbingRgb: RGB, load: THREE.Mesh[] = [],
-  wallAt?: (x: number, y: number) => { p: THREE.Vector3; n: THREE.Vector3 } | null): DecorPart[] {
+  wallAt?: (x: number, y: number) => { p: THREE.Vector3; n: THREE.Vector3 } | null): DecorPart[] | null {
   const parts: DecorPart[] = [];
+  let seated = true;
   // round 4 (wave 217: racks of "flat pure-black square bars with no brackets, bolts or shading"): angle-stock arms in
   // shaded steel, the wall plates bolted, and the strap laid over the load's own surfaces (tiePath) where they answer
   const steel = (geo: THREE.BufferGeometry) => parts.push({ mat: 'steel', geo: bakeShade(geo, RACK_STEEL_TONE) });
@@ -3686,20 +3693,36 @@ function sideLedgeParts(bb: THREE.Box3, wallZ: number, detail: 0 | 1, webbingRgb
     if (detail) steel(roundBar([x, -0.075, z0 + 0.008], [x, -0.012, z0 + reach * 0.7], 0.009, 6)); // gusset strut
     const band = (geo: THREE.BufferGeometry) => parts.push({ mat: 'cans', geo: bakeTint(geo, webbingRgb[0], webbingRgb[1], webbingRgb[2], 0.25) });
     const path = load.length ? tiePath(load, 'z', x, Math.max(z0, bb.min.z), bb.max.z, top) : null;
-    // the wall cleat on the wall at the strap's height; the strap runs from it to the load's back edge and over
-    const cleatY = (path ? path[2].y : top) + 0.012;
-    const cleatWall = wallAt?.(x, cleatY) ?? null;
+    // the wall cleat on the wall at the strap's height; the strap runs from it to the load's back edge and over. Where
+    // the wall is not there at that height (the roof edge falls away above a tall load, a fitting stands out of it) the
+    // cleat goes down the wall to where it is, and the strap runs up from it
+    const strapY = (path ? path[2].y : top) + 0.012;
+    let cleatY = strapY, cleatWall = wallAt?.(x, cleatY) ?? null;
+    for (let y = strapY - 0.03; wallAt && !cleatWall && y >= 0.03; y -= 0.03) {
+      cleatWall = wallAt(x, y);
+      if (cleatWall) cleatY = y;
+    }
+    // no wall anywhere above the arm's foot: the strap is made off at the foot plate where the foot is on the wall; an
+    // arm with no wall behind it at all makes no ledge
+    if (wallAt && !cleatWall) {
+      if (wall) cleatY = -0.045;
+      else seated = false;
+    }
     const cleatZ = (cleatWall ? cleatWall.p.z : z0) + 0.01;
+    const lowered = cleatY < strapY;
     if (path) {
-      if (path[2].a - cleatZ > 0.03) path.splice(0, 2, { a: cleatZ + 0.008, y: cleatY, na: 0, ny: 1 });
+      if (lowered || path[2].a - cleatZ > 0.03) path.splice(0, 2, { a: cleatZ + 0.008, y: cleatY, na: 0, ny: 1 });
       band(withBoxUV(tieBand(path, 'z', x, 0.035)));
     } else {
+      if (lowered) band(place(block(0.035, strapY - cleatY, 0.006), x, (strapY + cleatY) / 2, cleatZ + 0.003)); // up from the cleat
       band(place(block(0.035, 0.006, bb.max.z - cleatZ), x, top + 0.003, (cleatZ + bb.max.z) / 2));   // over the top
       band(place(block(0.035, top, 0.006), x, top / 2, bb.max.z + 0.003));                           // down the outer face
     }
     steel(place(block(0.05, 0.03, 0.02), x, cleatY, cleatZ));                           // wall cleat
   }
-  return parts;
+  if (seated) return parts;
+  for (const part of parts) part.geo.dispose();
+  return null;
 }
 
 // Round 3 (2026-10-07). The 5-point seat above seats a piece at the MAX height under a probe pattern capped at 0.42 m
@@ -6149,17 +6172,18 @@ export function* attachTankDecorationsSteps(
                 // between a hand behind the probed wall and the load's own back (a bin or a cover stands out of it)
                 return p.z > wallZ - 0.12 && p.z < bb.min.z + 0.01 ? { p, n: hit.n.clone().applyQuaternion(qi).normalize() } : null;
               };
-              const carry = (list: DecorPartList, detail: 0 | 1) => {
+              const carry = (list: DecorPartList, detail: 0 | 1): boolean => {
                 for (let i = list.length - 1; i >= 0; i--) {
                   if (list[i].role === 'pad') { list[i].geo.dispose(); list.splice(i, 1); }
                 }
                 const solid = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
                 // the strap rides the load's own surfaces, not the deck lashings a ledge drops (tieKept)
                 const load = list.filter((p) => p.role !== 'pad' && p.role !== 'lash').map((p) => new THREE.Mesh(p.geo, solid));
-                list.push(...sideLedgeParts(bb, wallZ, detail, webbingRgb, load, wallAt));
+                const ledge = sideLedgeParts(bb, wallZ, detail, webbingRgb, load, wallAt);
+                if (ledge) list.push(...ledge);
+                return !!ledge;
               };
-              carry(candidate, 1);
-              if (candidate.coarse) carry(candidate.coarse, 0);
+              if (!carry(candidate, 1) || (candidate.coarse && !carry(candidate.coarse, 0))) { disposePartList(candidate); continue; }
             }
             if (commit(name, candidate, 'turret', pos, rot, placedTurret)) {
               disposePartList(parts);

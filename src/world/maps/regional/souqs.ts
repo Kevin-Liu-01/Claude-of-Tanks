@@ -8,7 +8,9 @@ import { buildHouse, holedFace, holedPolygon, recordBody, windowRhythm, type Hou
 import { doorUnit, rollerDoor, windowUnit, type WindowStyle } from './openings.ts';
 import { archHead } from './sarajevoParts.ts';
 import { recordLattice } from './lattice.ts';
+import { recordShed } from './shedFall.ts';
 import type { RegionalBuildContext } from './types.ts';
+import { board, rod } from './r2Members.ts';
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
 const uvOffset = (ctx: RegionalBuildContext): [number, number] => [ctx.rng() * 7.31, ctx.rng() * 5.17];
@@ -53,6 +55,58 @@ function shopCell(sink: PartSink, bucket: RegionalBucket, face: Face, u0: number
 }
 
 // ------------------------------------------------------------------------------------------------ Wadi Rum
+
+/**
+ * An air-conditioner's outdoor unit on a wall (`face`, centred at u, y; the looks lane's r2 sub-stream 2026-10-16, the
+ * sweep: "a dark grille plate stuck on its front"): its casing (0.8 x 0.55 m, 0.4 m deep) open round the fan, the fan's
+ * chamber a reveal deep behind its guard (the bars fine), the fan's hub and blades in the dark, the coil's louvres down
+ * its side, its two brackets under it into the wall. Dressing.
+ */
+function acUnit(sink: PartSink, f: Face, u: number, y: number): void {
+  const w = 0.8, h = 0.55, d = 0.4, uc = u + 0.13, r = 0.2, back = d - 0.17;
+  const P = (uu: number, yy: number, o: number): Vec3 => facePoint(f, uu, yy, o);
+  const q = (a: Vec3, b: Vec3, c: Vec3, e: Vec3, out: Vec3, opts: EmitOptions): void => {
+    const n = [(b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1]), (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]),
+      (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])];
+    if (n[0] * out[0] + n[1] * out[1] + n[2] * out[2] < 0) sink.quad('structureMetal', e, c, b, a, opts); else sink.quad('structureMetal', a, b, c, e, opts);
+  };
+  const casing = { colour: rgb(0xd8d6ce), decor: true }, inner = { colour: rgb(0x2c2c2a), decor: true };
+  const U = f.u, O = f.out, nU: Vec3 = [-U[0], 0, -U[2]], up: Vec3 = [0, 1, 0], dn: Vec3 = [0, -1, 0];
+  const u0 = u - w / 2, u1 = u + w / 2, y0 = y - h / 2, y1 = y + h / 2, a0 = uc - r, a1 = uc + r, b0 = y - r, b1 = y + r;
+  // the casing: its top, bottom and ends, its front round the fan's opening (one welded sheet)
+  q(P(u0, y1, 0), P(u1, y1, 0), P(u1, y1, d), P(u0, y1, d), up, casing);
+  q(P(u0, y0, 0), P(u1, y0, 0), P(u1, y0, d), P(u0, y0, d), dn, casing);
+  q(P(u0, y0, 0), P(u0, y0, d), P(u0, y1, d), P(u0, y1, 0), nU, casing);
+  q(P(u1, y0, 0), P(u1, y0, d), P(u1, y1, d), P(u1, y1, 0), U, casing);
+  q(P(u0, y0, d), P(a0, y0, d), P(a0, y1, d), P(u0, y1, d), O, casing);
+  q(P(a1, y0, d), P(u1, y0, d), P(u1, y1, d), P(a1, y1, d), O, casing);
+  q(P(a0, y0, d), P(a1, y0, d), P(a1, b0, d), P(a0, b0, d), O, casing);
+  q(P(a0, b1, d), P(a1, b1, d), P(a1, y1, d), P(a0, y1, d), O, casing);
+  // the fan's chamber: its four sides in from the opening, its back (the coil) in the dark
+  q(P(a0, b0, d), P(a0, b0, back), P(a0, b1, back), P(a0, b1, d), U, inner);
+  q(P(a1, b0, d), P(a1, b0, back), P(a1, b1, back), P(a1, b1, d), nU, inner);
+  q(P(a0, b0, d), P(a1, b0, d), P(a1, b0, back), P(a0, b0, back), up, inner);
+  q(P(a0, b1, d), P(a1, b1, d), P(a1, b1, back), P(a0, b1, back), dn, inner);
+  q(P(a0, b0, back), P(a1, b0, back), P(a1, b1, back), P(a0, b1, back), O, { colour: rgb(0x161616), decor: true });
+  // the fan: its hub and three blades, its guard's bars across the opening
+  faceBox(sink, 'structureMetal', f, uc, y, back + 0.035, 0.07, 0.07, 0.07, { colour: rgb(0x3a3a38), decor: true });
+  for (let k = 0; k < 3; k++) {
+    const t = k * Math.PI * 2 / 3, c = Math.cos(t), s = Math.sin(t), c2 = Math.cos(t + 0.7), s2 = Math.sin(t + 0.7);
+    q(P(uc + c * 0.04, y + s * 0.04, back + 0.05), P(uc + c * 0.17, y + s * 0.17, back + 0.06), P(uc + c2 * 0.17, y + s2 * 0.17, back + 0.07),
+      P(uc + c2 * 0.04, y + s2 * 0.04, back + 0.05), O, { colour: rgb(0x3a3a38), decor: true, fine: true });
+  }
+  for (let k = 1; k < 6; k++) {
+    const t = a0 + (a1 - a0) * k / 6, v = b0 + (b1 - b0) * k / 6;
+    faceBox(sink, 'structureMetal', f, t, y, d + 0.006, 0.008, 2 * r, 0.008, { colour: rgb(0x4a4a48), decor: true, fine: true });
+    faceBox(sink, 'structureMetal', f, uc, v, d + 0.014, 2 * r, 0.008, 0.008, { colour: rgb(0x4a4a48), decor: true, fine: true });
+  }
+  // the coil's louvres down the casing's left of the fan, the brackets under it
+  for (let k = 0; k < 6; k++) faceBox(sink, 'structureMetal', f, u0 + 0.12, y0 + 0.08 + k * 0.075, d + 0.006, 0.16, 0.012, 0.012, { colour: rgb(0xb4b2aa), decor: true, fine: true });
+  for (const du of [-0.28, 0.28]) {
+    sink.member('structureMetal', P(u + du, y0 - 0.02, 0), P(u + du, y0 - 0.02, d - 0.04), 0.04, 0.03, dn, { colour: rgb(0x5a5a58), decor: true, exposed: true }, 0);
+    sink.member('structureMetal', P(u + du, y0 - 0.25, 0.01), P(u + du, y0 - 0.03, d - 0.06), 0.03, 0.03, nU, { colour: rgb(0x5a5a58), decor: true, exposed: true }, 0);
+  }
+}
 
 /** What the Wadi Rum souq takes from its kit: its roof furniture, its sheets, doors and goods. */
 export interface RumKit {
@@ -172,8 +226,7 @@ export function wadirumSouq(sink: PartSink, ctx: RegionalBuildContext, plot: { t
       // the air-conditioners on the end wall and the back, their cable runs up to the roof
       for (const [fn, u] of [['front', W * 0.2], ['left', D * 0.1]] as const) {
         const af = frame.faces[fn];
-        faceBox(sink, 'structureMetal', af, u, y0 + 2.45, 0.2, 0.8, 0.55, 0.4, { colour: rgb(0xd8d6ce), decor: true });
-        faceBox(sink, 'structureMetal', af, u, y0 + 2.45, 0.41, 0.42, 0.42, 0.01, { colour: rgb(0x3a3a3a), decor: true, fine: true });
+        acUnit(sink, af, u, y0 + 2.45);
         faceBox(sink, 'structureMetal', af, u + 0.5, (y0 + 2.45 + top) / 2, 0.02, 0.025, top - y0 - 2.45, 0.025, { colour: rgb(0x2a2a2a), decor: true, fine: true });
       }
       // the render fallen away in patches to the block on the end walls and the back
@@ -335,8 +388,13 @@ export interface StallKit { mud: RegionalBucket }
 export function souqStall(sink: PartSink, look: () => number, W: number, D: number, top: number, kit: StallKit): void {
   const MUD = kit.mud, floor = 0.18, wallZ = -D / 2 + 0.4, wt = 0.4, wallTop = top + 0.45;
   const palm = rgb(0x6a5a46), postZ = D / 2 - 0.2;
-  // the platform of beaten earth, skimmed with mud; its lip worn and a step down to the lane
-  sink.span(MUD, -W / 2 - 0.2, -0.3, -D / 2 - 0.2, W / 2 + 0.2, floor, D / 2 + 0.2);
+  // the platform of beaten earth, skimmed with mud; its corners worn round, its lip worn and a step down to the lane (the
+  // r2 sweep, 2026-10-16: "box share 0.66": the platform was one plain box)
+  {
+    const a = W / 2 + 0.2, b = D / 2 + 0.2, c = 0.22;
+    const plan: Array<[number, number]> = [[a - c, -b], [a, -b + c], [a, b - c], [a - c, b], [-a + c, b], [-a, b - c], [-a, -b + c], [-a + c, -b]];
+    sink.prism(MUD, plan.map(([x, z]) => [x, -0.3, z] as Vec3).reverse(), [0, 1, 0], floor + 0.3, {});
+  }
   for (let x = -W / 2 - 0.2; x < W / 2 + 0.1; x += 0.7) {
     const len = Math.min(0.7, W / 2 + 0.2 - x), drop = 0.03 + look() * 0.06;
     sink.span(MUD, x + 0.01, floor - 0.2, D / 2 + 0.2, x + len - 0.01, floor - drop, D / 2 + 0.32, { decor: true, tint: [0.94, 0.92, 0.88] });
@@ -411,11 +469,15 @@ export function souqStall(sink: PartSink, look: () => number, W: number, D: numb
     let y = y0;
     for (let b = 0; b < bands; b++) {
       const colour = b % 2 ? pick(look, accents) : ground, h = unit * (b % 2 ? 0.55 : 1.45);
-      faceBox(sink, 'structureWood', wall, u, y + h / 2, 0.016, rw, h, 0.012, { colour, decor: true });
+      // (the r2 sweep, 2026-10-16: a kilim laid flat on the plaster read as a painted plate) hung free off the wall from
+      // its rod on the pegs, a hand off the plaster
+      faceBox(sink, 'structureWood', wall, u, y + h / 2, 0.09, rw, h, 0.012, { colour, decor: true });
       y += h;
     }
-    for (const pu of [u - rw / 2 + 0.08, u + rw / 2 - 0.08]) faceBox(sink, 'structureWood', wall, pu, y + 0.05, 0.05, 0.04, 0.04, 0.1, { colour: palm, decor: true, fine: true });
-    for (let j = 0, m = Math.round(rw / 0.07); j < m; j++) faceBox(sink, 'structureWood', wall, u - rw / 2 + 0.035 + j * 0.07, y0 - 0.05, 0.017, 0.02, 0.1, 0.006, { colour: [0.82, 0.76, 0.62], decor: true, fine: true });
+    for (const pu of [u - rw / 2 + 0.08, u + rw / 2 - 0.08]) faceBox(sink, 'structureWood', wall, pu, y + 0.02, 0.05, 0.04, 0.04, 0.1, { colour: palm, decor: true, fine: true });
+    const rod = facePoint(wall, u - rw / 2 - 0.04, y + 0.02, 0.09);
+    sink.cylinder('structureWood', rod, 'x', rw + 0.08, 0.02, 6, { colour: palm, decor: true });
+    for (let j = 0, m = Math.round(rw / 0.07); j < m; j++) faceBox(sink, 'structureWood', wall, u - rw / 2 + 0.035 + j * 0.07, y0 - 0.05, 0.09, 0.02, 0.1, 0.006, { colour: [0.82, 0.76, 0.62], decor: true, fine: true });
   }
   // flat baskets of dates, chillies, turmeric and chickpeas on the counter; clay jars by the posts
   const basket = rgb(0xa08a5a), goods: readonly Rgb[] = [0x5a3020, 0xa83a1e, 0xc89a2a, 0xc8b080].map(rgb);
@@ -467,7 +529,10 @@ export interface StandsKit { pole: (sink: PartSink, a: Vec3, b: Vec3, r: number,
  * edges and their screws on a frame of 2x4 studs and rails; ply roofs sloping to the road on pole rafters under bundles
  * of juniper and willow brush; plank tables on trestles laid with the jewellers' boards of silver and turquoise; a rug on
  * the back; the painted signs on their posts lettered JEWELRY, FRY BREAD, RUGS; a cooler by a stand. Laid in the kit's
- * own sink and frame (its bounds' centre); its posts recorded as an open frame with the brush its crown.
+ * own sink and frame (its bounds' centre); its posts recorded as an open frame with the brush its crown. (The r2 sweep,
+ * 2026-10-16: box share 0.98, every sheet, stud, rafter, bundle and board a plain box) the ply sheets with their edges
+ * eased, the 2x4s, the table, the trestles, the signs and their posts sawn boards with their arrises; the rafters poles,
+ * the brush bundles round; the screw heads their heads alone.
  */
 export function navajoStands(sink: PartSink, ctx: RegionalBuildContext, kit: StandsKit): void {
   const look = ctx.variant, mobile = ctx.tier === 'mobile';
@@ -492,25 +557,29 @@ export function navajoStands(sink: PartSink, ctx: RegionalBuildContext, kit: Sta
     const len = a1 - a0, m = Math.max(1, Math.round(len / 1.22));
     for (let j = 0; j < m; j++) {
       const s0 = a0 + len * j / m + 0.006, s1 = a0 + len * (j + 1) / m - 0.006, c = shade(pick(look, ply), 0.9 + look() * 0.18);
-      if (along === 'x') sink.span('structureWood', s0, 0.0, at - 0.012, s1, y1, at + 0.012, { colour: c });
-      else sink.span('structureWood', at - 0.012, 0.0, s0, at + 0.012, y1, s1, { colour: c });
+      if (along === 'x') board(sink, 'structureWood', [s0, y1 / 2, at], [s1, y1 / 2, at], [0, 1, 0], y1, 0.024, 0.006, { colour: c });
+      else board(sink, 'structureWood', [at, y1 / 2, s0], [at, y1 / 2, s1], [0, 1, 0], y1, 0.024, 0.006, { colour: c });
       if (mobile) continue;
       // the bleached edge along the sheet's top, the screw heads down its sides
       if (along === 'x') sink.span('structureWood', s0, y1 - 0.12, at + 0.012, s1, y1 - 0.02, at + 0.016, { colour: shade(c, 1.18), decor: true, fine: true });
       for (let y = 0.3; y < y1 - 0.2; y += 0.5) for (const e of [s0 + 0.04, s1 - 0.04]) {
-        if (along === 'x') sink.span('structureMetal', e - 0.008, y - 0.008, at + 0.012, e + 0.008, y + 0.008, at + 0.018, { colour: [0.3, 0.3, 0.3], decor: true, fine: true });
+        // (a head 3 mm proud of the sheet: its face alone, its edges below a pixel)
+        const zf = at + 0.015;
+        if (along === 'x') sink.quad('structureMetal', [e - 0.008, y - 0.008, zf], [e + 0.008, y - 0.008, zf], [e + 0.008, y + 0.008, zf], [e - 0.008, y + 0.008, zf], { colour: [0.3, 0.3, 0.3], decor: true, fine: true });
       }
     }
     sink.dressing(mobile, () => {
-      // the 2x4s: a rail at the foot, one at the head, studs every sheet's edge, on the sheets' back
+      // the 2x4s: a rail at the foot, one at the head, studs every sheet's edge, on the sheets' back (fine joinery: 9 cm
+      // behind the ply, under a pixel past the fine cut)
+      const back = at + inward * 0.056;
       for (const y of [0.08, y1 - 0.06]) {
-        if (along === 'x') sink.span('structureWood', a0, y - 0.045, at + inward * 0.012, a1, y + 0.045, at + inward * 0.1, { colour: shade(kit.plank, 1.15), decor: true });
-        else sink.span('structureWood', at + inward * 0.012, y - 0.045, a0, at + inward * 0.1, y + 0.045, a1, { colour: shade(kit.plank, 1.15), decor: true });
+        if (along === 'x') board(sink, 'structureWood', [a0, y, back], [a1, y, back], [0, 1, 0], 0.09, 0.088, 0.008, { colour: shade(kit.plank, 1.15), decor: true, fine: true });
+        else board(sink, 'structureWood', [back, y, a0], [back, y, a1], [0, 1, 0], 0.09, 0.088, 0.008, { colour: shade(kit.plank, 1.15), decor: true, fine: true });
       }
       for (let j = 0; j <= m; j++) {
         const s = a0 + len * j / m;
-        if (along === 'x') sink.span('structureWood', s - 0.045, 0.08, at + inward * 0.012, s + 0.045, y1 - 0.06, at + inward * 0.1, { colour: shade(kit.plank, 1.1), decor: true });
-        else sink.span('structureWood', at + inward * 0.012, 0.08, s - 0.045, at + inward * 0.1, y1 - 0.06, s + 0.045, { colour: shade(kit.plank, 1.1), decor: true });
+        if (along === 'x') board(sink, 'structureWood', [s, 0.125, back], [s, y1 - 0.105, back], [1, 0, 0], 0.09, 0.088, 0.008, { colour: shade(kit.plank, 1.1), decor: true, fine: true });
+        else board(sink, 'structureWood', [back, 0.125, s], [back, y1 - 0.105, s], [0, 0, 1], 0.09, 0.088, 0.008, { colour: shade(kit.plank, 1.1), decor: true, fine: true });
       }
     });
   };
@@ -522,26 +591,34 @@ export function navajoStands(sink: PartSink, ctx: RegionalBuildContext, kit: Sta
   for (let k = 0; k < n; k++) {
     const x = -W / 2 + (k + 0.5) * bw, c = pick(look, ply);
     // the ply roof sloping to the road on its two pole rafters (on the posts' heads), the brush laid over it in bundles
-    const dz = D + 0.4, dy = -0.3, sl = Math.hypot(dz, dy);
-    for (const s of [-1, 1]) kit.pole(sink, [x + s * (bw / 2 - 0.1), H + 0.3, -D / 2 - 0.15], [x + s * (bw / 2 - 0.1), H, D / 2 + 0.25], 0.05, pick(look, kit.juniper), true);
-    sink.member('structureWood', [x, H + 0.37, -D / 2 - 0.15], [x, H + 0.07, D / 2 + 0.25], bw - 0.06, 0.03, [0, dz / sl, -dy / sl], { colour: c, decor: true, exposed: true, shadow: true }, 0);
+    const dz = D + 0.4, dy = -0.3, sl = Math.hypot(dz, dy), nY = dz / sl, nZ = -dy / sl;
+    for (const s of [-1, 1]) rod(sink, 'structureWood', [x + s * (bw / 2 - 0.1), H + 0.3, -D / 2 - 0.15], [x + s * (bw / 2 - 0.1), H, D / 2 + 0.25], 0.05, 6, { colour: pick(look, kit.juniper), decor: true });
+    // the ply on the rafters' tops, its underside on them (the slope's normal n: the sheet 3 cm thick along it)
+    board(sink, 'structureWood', [x, H + 0.37 + nY * 0.015, -D / 2 - 0.15 + nZ * 0.015], [x, H + 0.07 + nY * 0.015, D / 2 + 0.25 + nZ * 0.015], [1, 0, 0], bw - 0.06, 0.03, 0.008,
+      { colour: c, decor: true, shadow: true });
     sink.dressing(mobile, () => {
       for (let b = 0, m = Math.round((bw - 0.3) / 0.32); b < m; b++) {
         const bx = x - bw / 2 + 0.25 + b * (bw - 0.5) / Math.max(1, m - 1), tone = shade(look() < 0.5 ? rgb(0x7a6a4a) : rgb(0x6a7448), 0.85 + look() * 0.25);
-        for (const dzb of [-0.04, 0.04]) sink.member('structureWood', [bx + dzb, H + 0.4 + look() * 0.015, -D / 2 - 0.25], [bx - dzb, H + 0.1 + look() * 0.015, D / 2 + 0.35], 0.09, 0.07, [0, dz / sl, -dy / sl],
-          { colour: tone, decor: true, exposed: true }, 0);
+        // a bundle of brush, round, bedded a centimetre in the ply (its stems lie along the slope)
+        for (const dzb of [-0.04, 0.04]) {
+          const ya = H + 0.4 + look() * 0.015 + nY * 0.025, yb = H + 0.1 + look() * 0.015 + nY * 0.025;
+          rod(sink, 'structureWood', [bx + dzb, ya, -D / 2 - 0.25 + nZ * 0.025], [bx - dzb, yb, D / 2 + 0.35 + nZ * 0.025], 0.042, 5, { colour: tone, decor: true });
+        }
       }
     });
     // the table on its trestles laid with the jewellers' boards
     const t0 = x - bw / 2 + 0.3, t1 = x + bw / 2 - 0.3, tz0 = D / 2 - 0.85, tz1 = D / 2 - 0.3, ty = 0.82;
-    sink.span('structureWood', t0, ty, tz0, t1, ty + 0.05, tz1, { colour: shade(kit.plank, 1.1) });
+    const tzc = (tz0 + tz1) / 2;
+    board(sink, 'structureWood', [t0, ty + 0.025, tzc], [t1, ty + 0.025, tzc], [0, 0, 1], tz1 - tz0, 0.05, 0.01, { colour: shade(kit.plank, 1.1) });
     for (const tx of [t0 + 0.25, t1 - 0.25]) for (const s of [-1, 1]) {
-      sink.member('structureWood', [tx + s * 0.22, 0, (tz0 + tz1) / 2], [tx, ty, (tz0 + tz1) / 2], 0.06, 0.05, [0, 0, 1], { colour: shade(kit.plank, 0.9), exposed: true }, 0);
+      board(sink, 'structureWood', [tx + s * 0.22, 0, tzc + 0.025], [tx, ty, tzc + 0.025], [0, 0, 1], 0.05, 0.06, 0.008, { colour: shade(kit.plank, 0.9) });
     }
-    sink.span('structureWood', t0 + 0.05, ty + 0.05, tz0 + 0.03, t1 - 0.05, ty + 0.07, tz1 - 0.03, { colour: rgb(0xe9e4da), decor: true });
+    board(sink, 'structureWood', [t0 + 0.05, ty + 0.06, tzc], [t1 - 0.05, ty + 0.06, tzc], [0, 0, 1], tz1 - tz0 - 0.06, 0.02, 0.008, { colour: rgb(0xe9e4da), decor: true });
     for (let b = 0; b < 3; b++) {
       const bx = t0 + 0.3 + b * (t1 - t0 - 0.6) / 2;
-      sink.span('structureWood', bx - 0.28, ty + 0.07, tz0 + 0.1, bx + 0.28, ty + 0.1, tz1 - 0.1, { colour: pick(look, [rgb(0x1f2a44), rgb(0x3a1f2a), rgb(0x1e1e22)]), decor: true, fine: true });
+      // the jeweller's board, its velvet over a padded edge
+      board(sink, 'structureWood', [bx - 0.28, ty + 0.085, tzc], [bx + 0.28, ty + 0.085, tzc], [0, 0, 1], tz1 - tz0 - 0.2, 0.03, 0.01,
+        { colour: pick(look, [rgb(0x1f2a44), rgb(0x3a1f2a), rgb(0x1e1e22)]), decor: true, fine: true });
       for (let j = 0; j < 4; j++) {
         const jx = bx - 0.2 + j * 0.13;
         sink.span('structureWood', jx - 0.035, ty + 0.1, tz0 + 0.2 + (j % 2) * 0.12, jx + 0.035, ty + 0.125, tz0 + 0.27 + (j % 2) * 0.12, { colour: j % 2 ? rgb(0x3fb3a8) : rgb(0xc9cdd1), decor: true, fine: true });
@@ -549,21 +626,34 @@ export function navajoStands(sink: PartSink, ctx: RegionalBuildContext, kit: Sta
     }
     // a rug on the back, the sign over the front on its posts, lettered
     const rug = pick(look, [rgb(0x8e2f24), rgb(0x2f3a5e), rgb(0xd8ccb0)]);
-    sink.span('structureWood', x - 0.6, 1.0, -D / 2 + 0.07, x + 0.6, 2.0, -D / 2 + 0.1, { colour: rug, decor: true });
+    board(sink, 'structureWood', [x - 0.6, 1.5, -D / 2 + 0.085], [x + 0.6, 1.5, -D / 2 + 0.085], [0, 1, 0], 1.0, 0.03, 0.01, { colour: rug, decor: true });
+    // the pole it hangs from, nailed to the sheets
+    rod(sink, 'structureWood', [x - 0.68, 2.02, -D / 2 + 0.1], [x + 0.68, 2.02, -D / 2 + 0.1], 0.025, 6, { colour: shade(kit.plank, 0.9), decor: true });
     sink.span('structureWood', x - 0.6, 1.3, -D / 2 + 0.1, x + 0.6, 1.4, -D / 2 + 0.115, { colour: rgb(0x1e1e22), decor: true, fine: true });
     const sign: Face = { origin: [x, 0, D / 2 - 0.08], u: [1, 0, 0], out: [0, 0, 1], width: bw };
-    freeBox(sink, 'structureWood', [x, H + 0.6, D / 2 - 0.08], [bw - 0.4, 0.55, 0.04], { colour: rgb(0xe8e1d0), decor: true });
+    board(sink, 'structureWood', [x - (bw - 0.4) / 2, H + 0.6, D / 2 - 0.08], [x + (bw - 0.4) / 2, H + 0.6, D / 2 - 0.08], [0, 1, 0], 0.55, 0.04, 0.008, { colour: rgb(0xe8e1d0), decor: true });
     const word = words[k % words.length];
     lettering(sink, sign, word, 0, H + 0.6, 0.022, Math.min(0.07, (bw - 0.6) / (word.length * 4)), pick(look, paint));
-    for (const s of [-1, 1]) sink.span('structureWood', x + s * (bw / 2 - 0.35) - 0.04, H, D / 2 - 0.12, x + s * (bw / 2 - 0.35) + 0.04, H + 0.88, D / 2 - 0.05, { colour: kit.plank, decor: true });
+    for (const s of [-1, 1]) board(sink, 'structureWood', [x + s * (bw / 2 - 0.35), H, D / 2 - 0.085], [x + s * (bw / 2 - 0.35), H + 0.88, D / 2 - 0.085], [1, 0, 0], 0.08, 0.07, 0.01, { colour: kit.plank, decor: true });
     if (k === n - 1) sink.dressing(mobile, () => {
       // the cooler beside the last stand
       const cx = x + bw / 2 - 0.5, cz = D / 2 + 0.1;
-      sink.span('structureWood', cx - 0.32, 0, cz - 0.22, cx + 0.32, 0.4, cz + 0.22, { colour: rgb(0xd8d4c8), decor: true });
-      sink.span('structureWood', cx - 0.33, 0.4, cz - 0.23, cx + 0.33, 0.46, cz + 0.23, { colour: rgb(0x9a2e24), decor: true });
+      board(sink, 'structureWood', [cx - 0.32, 0.2, cz], [cx + 0.32, 0.2, cz], [0, 1, 0], 0.4, 0.44, 0.035, { colour: rgb(0xd8d4c8), decor: true });
+      board(sink, 'structureWood', [cx - 0.33, 0.43, cz], [cx + 0.33, 0.43, cz], [0, 1, 0], 0.06, 0.46, 0.02, { colour: rgb(0x9a2e24), decor: true });
     });
   }
-  recordLattice(sink, legs, [H], 0.14, 'structureWood', kit.juniper[0], { x0: -1.0, x1: 1.0, y0: H, y1: H + 1.0, z0: -0.8, z1: 0.8, bucket: 'structureWood', tint: [0.4, 0.36, 0.26] });
+  // (the r2 sweep fix b-west 2026-10-16: as an open frame it folded its posts flat to one side and covered a quarter of
+  // its plan) recorded as an open shed (shedFall.ts recordShed, the ramada's): its posts snap over their feet, its ply
+  // back and partitions and its ply-and-brush roofs come down over them in their lengths. The shed's frame: x from the
+  // back to the road (the stands' z), z along the row
+  sink.placed(-Math.PI / 2, 0, 0, 0, () => {
+    const posts = legs.map((l): [number, number, number, number] => [l.foot[2], -l.foot[0], -0.3, l.head[1]]);
+    recordShed(sink, posts.map(([x, z, f, h]) => ({ foot: [x, f, z] as Vec3, head: [x, h, z] as Vec3 })), {
+      W: D, D: W, pitchDeg: Math.atan2(0.3, D + 0.4) * 180 / Math.PI, eaveY: H + 0.07, eave: 0.25, verge: 0.1, deck: 0.1, post: 0.14, posts, pad: null,
+      timber: kit.juniper[0], boards: ply[0], boardW: 1.22, back: true, ends: true,
+      roof: { bucket: 'structureWood', colour: [0.42, 0.39, 0.26], shape: 'splinter', lattice: true }, stone: null, pile: 0,
+    });
+  });
 }
 
 // ------------------------------------------------------------------------------------------------ the Chouf
@@ -574,7 +664,7 @@ export function navajoStands(sink: PartSink, ctx: RegionalBuildContext, kit: Sta
  * its floor, its back wall (the arch's own shape), its sides to the springing and its vault, all facing in.
  */
 function archCell(sink: PartSink, bucket: RegionalBucket, face: Face, u: number, w: number, y0: number, spring: number, t: number, deep: number,
-  inner: EmitOptions = {}): void {
+  inner: EmitOptions = {}, widen = 0.2): void {
   const r = w / 2, n = r < 0.8 ? 4 : r < 1.3 ? 6 : 8, P = (a: number, y: number, o: number) => facePoint(face, a, y, o);
   const at = (j: number, rr = r): [number, number] => [u + Math.cos(Math.PI * j / n) * rr, spring + Math.sin(Math.PI * j / n) * rr];
   sink.quad(bucket, P(u - r, y0, 0), P(u - r, y0, -t), P(u - r, spring, -t), P(u - r, spring, 0), { ...inner, shade: 0.72 });
@@ -585,7 +675,7 @@ function archCell(sink: PartSink, bucket: RegionalBucket, face: Face, u: number,
   }
   sink.quad(bucket, P(u - r, y0, 0), P(u + r, y0, 0), P(u + r, y0, -t), P(u - r, y0, -t), { ...inner, shade: 0.88 });
   // the cell behind, a hand wider than its arch: its vault springing from its sides
-  const R = r + 0.2, a = -t, b = -t - deep;
+  const R = r + widen, a = -t, b = -t - deep;
   const atR = (j: number): [number, number] => [u + Math.cos(Math.PI * j / n) * R, spring + Math.sin(Math.PI * j / n) * R];
   sink.quad(bucket, P(u - R, y0 + 0.002, a), P(u + R, y0 + 0.002, a), P(u + R, y0 + 0.002, b), P(u - R, y0 + 0.002, b), { ...inner, shade: 0.6, decor: true });
   sink.quad(bucket, P(u - R, y0, a), P(u - R, y0, b), P(u - R, spring, b), P(u - R, spring, a), { ...inner, shade: 0.45, decor: true });
@@ -636,9 +726,11 @@ export function choufSouk<S extends { rng: () => number; look: () => number; shu
   const us = Array.from({ length: nb }, (_, k) => -L / 2 + (k + 0.5) * bay);
   const openings: Opening[] = [
     { face: 'left', storey: 0, kind: 'door', u: L * 0.18, w: 0.95, y0: 0, h: 2.1 },
-    { face: 'left', storey: 0, kind: 'window', u: -L * 0.22, w: 0.8, y0: 1.2, h: 1.1 },
-    { face: 'front', storey: 0, kind: 'window', u: 0, w: 0.8, y0: 1.2, h: 1.1 },
-    { face: 'back', storey: 0, kind: 'window', u: 0, w: 0.8, y0: 1.2, h: 1.1 },
+    // (props census r2 sweep, Lane C 2026-10-16) the round-headed lights cut with their arches: the chouf dialect's
+    // fanlight then stands in the reveal (it lay on the uncut stone over the light, a painted plate)
+    { face: 'left', storey: 0, kind: 'window', u: -L * 0.22, w: 0.8, y0: 1.2, h: 1.1, arch: {} },
+    { face: 'front', storey: 0, kind: 'window', u: 0, w: 0.8, y0: 1.2, h: 1.1, arch: {} },
+    { face: 'back', storey: 0, kind: 'window', u: 0, w: 0.8, y0: 1.2, h: 1.1, arch: {} },
   ];
   const lay = () => {
     const frame = buildHouse(sink, {
@@ -651,7 +743,9 @@ export function choufSouk<S extends { rng: () => number; look: () => number; shu
     holedFace(sink, 'stone', f, { u0: -L / 2, u1: L / 2, y0, y1: top }, us.map((u) => ({ u0: u - aw / 2, u1: u + aw / 2, y0, y1: spring + aw / 2, spring, bare: true })), 0);
     const leafC = shade(st.shutter, 0.85);
     us.forEach((u, k) => {
-      archCell(sink, 'stone', f, u, aw, y0, spring, t, cellD, { tint: [0.9, 0.88, 0.84] });
+      // (the integrity check, 2026-10-16: an end bay's cell ran through the end wall into its window's reveal, seen there
+      // from behind) each cell a hand wider than its arch, but kept inside the end walls
+      archCell(sink, 'stone', f, u, aw, y0, spring, t, cellD, { tint: [0.9, 0.88, 0.84] }, clamp(L / 2 - t - 0.06 - Math.abs(u) - aw / 2, 0.02, 0.2));
       archHead(sink, f, u, spring, aw / 2, 'stone', 0.22, 9);
       faceBox(sink, 'stone', f, u, spring + aw / 2 + 0.13, 0.05, 0.3, 0.38, 0.1, { decor: true, tint: [1.06, 1.04, 1.0] });
       // the plank doors on their pintles, folded back against the wall either side, their battens and straps

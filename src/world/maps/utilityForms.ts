@@ -45,9 +45,12 @@ function standing(m: M, plan: ReadonlyArray<readonly [number, number]>, y0: numb
 }
 /** The warning sign (white with its yellow triangle and the black bolt), on a face at z facing +z, centred (x, y). */
 function warning(m: M, x: number, y: number, z: number, s = 1): void {
-  const uv: [number, number] = [0.5, 0.5];
-  m.quad([x - 0.08 * s, y - 0.07 * s, z], [x + 0.08 * s, y - 0.07 * s, z], [x + 0.08 * s, y + 0.07 * s, z], [x - 0.08 * s, y + 0.07 * s, z], Z, () => uv, () => SIGN, false);
-  faceTri(m, [x - 0.06 * s, y - 0.05 * s, z + 0.002], [x + 0.06 * s, y - 0.05 * s, z + 0.002], [x, y + 0.055 * s, z + 0.002], Z, SIGN_Y);
+  // (the r2 sweep, 2026-10-16: the yellow triangle was a second plate laid on the white one) one enamel plate, its
+  // triangle printed in its face: the white ring round the triangle and the triangle share their corners
+  const r0: V3 = [x - 0.08 * s, y - 0.07 * s, z], r1: V3 = [x + 0.08 * s, y - 0.07 * s, z], r2: V3 = [x + 0.08 * s, y + 0.07 * s, z], r3: V3 = [x - 0.08 * s, y + 0.07 * s, z];
+  const t0: V3 = [x - 0.06 * s, y - 0.05 * s, z], t1: V3 = [x + 0.06 * s, y - 0.05 * s, z], t2: V3 = [x, y + 0.055 * s, z];
+  for (const [a, b, c] of [[r0, r1, t1], [r0, t1, t0], [r1, r2, t2], [r1, t2, t1], [r2, r3, t2], [r3, r0, t0], [r3, t0, t2]] as const) faceTri(m, a, b, c, Z, SIGN);
+  faceTri(m, t0, t1, t2, Z, SIGN_Y);
   faceTri(m, [x - 0.012 * s, y + 0.025 * s, z + 0.004], [x + 0.008 * s, y - 0.005 * s, z + 0.004], [x - 0.004 * s, y - 0.005 * s, z + 0.004], Z, DARK);
   faceTri(m, [x - 0.004 * s, y, z + 0.004], [x + 0.012 * s, y - 0.035 * s, z + 0.004], [x - 0.008 * s, y, z + 0.004], Z, DARK);
 }

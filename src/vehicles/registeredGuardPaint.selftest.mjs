@@ -67,9 +67,19 @@ function paint(tank,prior){const o=tank.root.getObjectByName('hullPaintedDetail'
  const uv=o.geometry.attributes.uv,p=o.geometry.attributes.position,n=o.geometry.attributes.normal;
  assert.ok(uv&&Array.from(uv.array).every(Number.isFinite));
  const scale=CAMO_UV_REPEATS_PER_M,us=new Set(),vs=new Set(); // round 35 (2026-09-21): fleet camo density, not the hull's authored scale
- for(let i=0;i<p.count;i++){const nx=Math.abs(n.getX(i)),ny=Math.abs(n.getY(i)),nz=Math.abs(n.getZ(i));
+ // 2026-10-16 (226 gate): since VEHICLES r4c (29fd96006, factoryGeometry.ts faceBoxUV) a camouflaged non-indexed merge
+ // projects per triangle, the axis from the triangle's face normal (an indexed one keeps the per-vertex normal)
+ const fa=new T.Vector3(),fb=new T.Vector3(),fc=new T.Vector3();
+ const axisNormal=(i)=>{if(o.geometry.index)return[Math.abs(n.getX(i)),Math.abs(n.getY(i)),Math.abs(n.getZ(i))];
+  const f=i-i%3;fa.fromBufferAttribute(p,f);fb.fromBufferAttribute(p,f+1).sub(fa);fc.fromBufferAttribute(p,f+2).sub(fa);
+  const fn=fb.cross(fc);return[Math.abs(fn.x),Math.abs(fn.y),Math.abs(fn.z)];};
+ for(let i=0;i<p.count;i++){const[nx,ny,nz]=axisNormal(i);
   const u=ny>=nx&&ny>=nz?p.getX(i):nx>=nz?p.getZ(i):p.getX(i),v=ny>=nx&&ny>=nz?p.getZ(i):p.getY(i);
-  assert.equal(uv.getX(i),Math.fround(u*scale),'exact spatial camouflage U');assert.equal(uv.getY(i),Math.fround(v*scale),'exact spatial camouflage V');
+  // 2026-10-16 (226 gate): the rendered-build surface finish (a8e69a599, merged in 26bca0d25: relaxFlatFans) slides a
+  // vertex inside a flat fan up to 0.15 mm along the surface after the projection, so a vertex's UV reads its
+  // pre-slide position: exact to that slide (0.15 mm x the camo density), never more
+  const slide=.00015*scale+1e-6;
+  assert.ok(Math.abs(uv.getX(i)-Math.fround(u*scale))<=slide,'exact spatial camouflage U');assert.ok(Math.abs(uv.getY(i)-Math.fround(v*scale))<=slide,'exact spatial camouflage V');
   us.add(uv.getX(i));vs.add(uv.getY(i));}
  assert.ok(us.size>1&&vs.size>1,'both texture axes vary over the actual stock; a box need not have >8 unique scalar values');return o;}
 const restore=installCanvasFixture(),rows=[];let rays=0,emissions=0;

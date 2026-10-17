@@ -217,7 +217,9 @@ for (const id of ids) {
   if (id === 't84') {
     const net=tank.root.getObjectByName('t84_ghillie_turret_net'),hard=[];
     turretRig.traverse(o=>{if(o.isMesh&&!/ghillie|Fill|Shadow|Decal/i.test(o.name))hard.push(o)});
-    for(const [x,z] of [[0,-.9],[0,-1.73],[.74,.62]]){
+    // 2026-10-16 (integ/226 triage; VH.14 76ef67d65): the KT-12.7 is a working station, so its swept floor opens the
+    // centre and right bustle packs' net round the gun; the bustle probe reads the left pack (x -0.68), which keeps cloth
+    for(const [x,z] of [[0,-.9],[-.68,-1.73],[.74,.62]]){
       const origin=turretRig.localToWorld(new THREE.Vector3(x,2,z));
       const probe=new THREE.Raycaster(origin,new THREE.Vector3(0,-1,0),0,3);
       const cloth=probe.intersectObject(net)[0],seat=probe.intersectObjects(hard)[0];
@@ -386,7 +388,11 @@ for (const id of ['leo2a2', 't72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72
   P.postAssemble = (rig) => { before?.(rig); calls.push('field kit'); };
   const rig = { root, hullG, turretG, gunG, recoilG: gunG };
   P.postAssemble(rig);
-  for (const step of P.afterAssemble) step(rig);
+  // 2026-10-16: an assembly step returns its work as checkpoints (the factory runs them after the core); drain them here
+  for (const step of P.afterAssemble) {
+    const work = step(rig);
+    if (work) for (let next = work.next(); !next.done; next = work.next()) { /* every checkpoint */ }
+  }
   assert.deepEqual(calls, ['profile', 'field kit'], 'both profile postAssemble steps still run around the suit');
   assert.ok(turretG.getObjectByName('receipt_port_ghillie_turret_net')?.isMesh, 'the suit builds after assembly');
 }

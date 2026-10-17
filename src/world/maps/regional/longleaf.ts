@@ -785,9 +785,12 @@ const woodshed: RegionalBuilder = (ctx) => {
   const sheet = pick(rng, TIN);
   sink.placed(0, fp.cx, 0, fp.cz, () => {
     const sill = 0.22;
+    // (props census r2 sweep, Lane C 2026-10-16: over a 1.85 m door the batten broke off a hand above its head casing, a
+    // dark 6 x 29 cm stub lying on the boards) the door framed up close under the wall plate, as a shed door is: no stub
+    // of batten over its head
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: sill, out: 0.02, bucket: 'stone', course: false }, storeys: [{ h, wall: 'wood' }], roof: tin('shed', 10, 0.2, 0.15), roofColour: sheet,
-      openings: [{ face: 'front', storey: 0, kind: 'door', u: (rng() - 0.5) * Math.max(0, W - 1.2), w: 0.8, y0: 0, h: 1.85 },
+      openings: [{ face: 'front', storey: 0, kind: 'door', u: (rng() - 0.5) * Math.max(0, W - 1.2), w: 0.8, y0: 0, h: h - 0.25 },
         { face: 'right', storey: 0, kind: 'loft', u: 0, w: Math.min(0.5, D - 0.6), y0: h - 0.42, h: 0.14 }],
       chimneys: [], gutters: null, verge: null, reveal: 0.1, spall: null,
     }, {
@@ -840,8 +843,13 @@ const burnt: RegionalBuilder = (ctx) => {
     // through its face to the hearth's dark
     const ch = 5.6 + rng();
     sink.span('stone', -0.35, -0.5, -0.35, 0.35, ch, -0.05);
+    // (Lane C 2026-10-16, mapLayoutBrief: the holed face's collision outline came out a 0.7 m sliver of a triangle, whose
+    // margin-grown footprint reached 30 m across Longleaf's zone 2 apron and moved the zone) the cut face is the stack's
+    // look only (decor); its solid is two boxes inside it, under and over the hearth, 2 cm behind its face
     holedPolygon(sink, 'stone', { origin: [0, 0, 0.35], u: [1, 0, 0], out: [0, 0, 1], width: 0.7 }, [[-0.35, -0.5], [0.35, -0.5], [0.35, ch], [-0.35, ch]],
-      [{ u0: -0.2, u1: 0.2, y0: 0.62, y1: 1.2 }], 0.4, 0.34);
+      [{ u0: -0.2, u1: 0.2, y0: 0.62, y1: 1.2 }], 0.4, 0.34, { decor: true });
+    sink.span('stone', -0.34, -0.5, -0.05, 0.34, 0.6, 0.33);
+    sink.span('stone', -0.34, 1.22, -0.05, 0.34, ch - 0.02, 0.33);
     sink.member('structureWood', [-W / 2 + 0.15, 0.85, D / 2 - 0.15], [-W / 2 + 0.15, 2.4 + rng() * 0.8, D / 2 - 0.15], 0.12, 0.12, [0, 0, 1], { colour: CHAR, decor: true, exposed: true }, 0);
     // (the buildings stream, 2026-10-12, the integrity check: the sheet hung over the burnt-out floor on nothing) the
     // fallen sheet lying across the front corner from the side sill to the front one, clear of the stack

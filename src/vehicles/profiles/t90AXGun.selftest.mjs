@@ -46,7 +46,8 @@ for(const quality of['high','low']){
     recoil.position.z=-.20;tank.root.updateMatrixWorld(true);
     near(new T.Vector3(0,0,4.7).applyMatrix4(gun.matrixWorld).z-before.z,-.20,1e-8,`${quality} real recoil ownership`);
     recoil.position.z=0;tank.root.updateMatrixWorld(true);
-    assertHollowMuzzle(tank.root,6.24420,.000003);
+    // VH.04 (0ae791172): the jacket runs to the measured muzzle face, the datum's 6.2642 (it ended 20 mm short)
+    assertHollowMuzzle(tank.root,6.26420,.000003);
     const seat=tank.root.getObjectByName('muzzleBoreShadowFallback').userData.muzzleSeatReceipt;
     near(seat.supportOuterRadiusM,.0866358,.006,'source-sized visible muzzle stock');
   }finally{tank.dispose();}

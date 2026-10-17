@@ -362,16 +362,21 @@ function addUtilityApertures(
     const wall = -d / 2, z = wall - 0.02, frameZ = wall - 0.15;
     author.add(`aperture-pane-${side}`, 'dark',
       box(apertureW, apertureH, 0.04).translate(x, apertureY, z));
-    author.add(`aperture-left-${side}`, material,
+    // (the coordinator's ruling, 2026-10-16: an opening's surround is no tank-movement contact) the deep surround and its
+    // sill are dressing: out of the collision solid, the placed movement-contact records exactly what they were
+    const dressing = (partId: string, geometry: THREE.BufferGeometry): void => {
+      author.add(partId, material, geometry).userData.noCollision = true;
+    };
+    dressing(`aperture-left-${side}`,
       box(0.11, apertureH + 0.24, 0.30)
         .translate(x - apertureW / 2 - 0.065, apertureY, frameZ));
-    author.add(`aperture-right-${side}`, material,
+    dressing(`aperture-right-${side}`,
       box(0.11, apertureH + 0.24, 0.30)
         .translate(x + apertureW / 2 + 0.065, apertureY, frameZ));
-    author.add(`aperture-head-${side}`, material,
+    dressing(`aperture-head-${side}`,
       box(apertureW + 0.32, 0.12, 0.31)
         .translate(x, apertureY + apertureH / 2 + 0.08, wall - 0.155));
-    author.add(`aperture-sill-${side}`, material,
+    dressing(`aperture-sill-${side}`,
       box(apertureW + 0.34, 0.12, 0.36)
         .translate(x, apertureY - apertureH / 2 - 0.08, wall - 0.18));
     if (profile === 'industrial') {

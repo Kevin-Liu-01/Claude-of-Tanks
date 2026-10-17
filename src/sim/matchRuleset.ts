@@ -22,8 +22,12 @@ export const GUN_GAME_WEAPONS = Object.freeze([
 export const AERIAL_RULES = Object.freeze({
   // `cooldownS` follows an airframe lost or spent (an impact, the battery, the link's range); a recall has its own below.
   // hitsToDown (VH.15 counter-drone): the strikes a drone's airframe takes before it falls (the roof stations' rounds
-  // land shares of a strike by range: vehicles/auxiliaryWeapons.ts droneHitAt100)
-  drone: Object.freeze({ launchS: 2.4, responseHz: 4.5, spotRangeM: 350, speedMps: 42, turnRadS: 2.8, climbMps: 20, batteryS: 40, cooldownS: 25, rangeM: 850, launchHeightM: 12, hitsToDown: 1,
+  // land shares of a strike by range: vehicles/auxiliaryWeapons.ts droneHitAt100). 1.1, not 1 (owner 2026-10-16 on the
+  // 226 preview: "machine guns targeting drones is a lil too punishinng"): one capped 12.7 burst (5 x .2 = 1.0) or 30 mm
+  // burst (3 x .35 = 1.05) no longer downs a drone alone, a 7.62's (8 x .15 = 1.2) still does, and shares from several
+  // stations still add, so a lone gun downs a quarter to a third fewer drones and two or three stations nearly as many.
+  // Kept clear of every exact burst sum.
+  drone: Object.freeze({ launchS: 2.4, responseHz: 4.5, spotRangeM: 350, speedMps: 42, turnRadS: 2.8, climbMps: 20, batteryS: 40, cooldownS: 25, rangeM: 850, launchHeightM: 12, hitsToDown: 1.1,
     /**
      * The recall (owner 2026-10-14: "dont be able to instantly call it back, only be able to call back once weve entered
      * screen, and if we do, show the landing animation and we should be able to launch it again after a shorter
@@ -39,10 +43,13 @@ export const AERIAL_RULES = Object.freeze({
        *  not cover it inside `maxTransitS`, so a recall from the link's edge, high above or far below the tank is home
        *  as quickly (verifier 2026-10-14: an unbounded climb or sink made a recall from 835 m up wait 81 s). */
       transitS: 5, minMps: 20, maxMps: 60, climbMps: 8, sinkMps: 12, cruiseAboveDockM: 15, maxTransitS: 7,
-      /** The flight home's fixed beats: the hold for an impact in flight, the approach to the dock's column and its descent. */
-      approachS: 4.4,
-      /** The landing on the dock: the descent onto the pads and the rotor spin-down (fx/droneArrival.ts fits inside). */
-      landingS: 4.6,
+      /** The flight home's fixed beats: the hold for an impact in flight, the approach to the dock's column and its descent
+       *  (4.1 s since round 5's descent keeps at least the landing's hand-over speed down the column: a recall from over the
+       *  dock at cruise height is at the landing's first pose 1.4 s inside it, fx/droneRecallReturn.selftest.mjs). */
+      approachS: 4.1,
+      /** The landing on the dock: the descent onto the pads, the rotor spin-down and the pause before the clamps close
+       *  (fx/droneArrival.ts descentS + spoolS + pauseS = 4.85 s, drawn to the frame, fits inside). */
+      landingS: 4.9,
       /** The relaunch wait after a recalled airframe is parked on its dock (`cooldownS` above follows a loss). From
        *  anywhere, a recall relaunches within maxTransitS + approachS + landingS + cooldownS = 19.8 s of the press,
        *  over 5 s sooner than the 25 s after a loss (sim/droneRecall.selftest.mjs sweeps the reachable envelope). */

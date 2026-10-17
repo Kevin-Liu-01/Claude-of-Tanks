@@ -24,15 +24,15 @@
     },
     "gallery": {
       "requests": 78,
-      "raw": 2421583,
-      "gzip": 711977,
-      "brotli": 599998
+      "raw": 2550511,
+      "gzip": 749819,
+      "brotli": 630253
     },
     "notFound": {
       "requests": 6,
       "raw": 18513,
-      "gzip": 7017,
-      "brotli": 6156
+      "gzip": 7259,
+      "brotli": 6369
     },
     "cn": {
       "requests": 129,

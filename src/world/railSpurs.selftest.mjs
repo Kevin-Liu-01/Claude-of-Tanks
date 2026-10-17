@@ -150,7 +150,11 @@ try {
   assert.equal(sleeper.length, spurSpans.reduce((n, s) => n + Math.round(railRunLength(s.bx - s.ax, s.bz - s.az) / 1.4), 0) + 0,
     'one sleeper every ~1.4 m of every span (the fitted rise of a 4 m span never changes the count)');
   assert.equal(approach.slab.length, RAIL_OPEN_KIT_M / RAIL_SPUR_LAY_M, 'the open line past the edge, 60 spans'); assert.equal(approach.rail.length, 2 * RAIL_OPEN_KIT_M / RAIL_SPUR_LAY_M);
-  assert.equal(built.obstacles.length, 0); assert.equal(built.colliders.length, 0, 'no record: the track is soft dressing');
+  // (Lane C 2026-10-16: PRP-02 made the buffer stops breakable small props, a record each) the track is soft dressing:
+  // no record but the stops' own
+  const soft = (list) => list.filter((r) => r.kind !== 'prop-buffer-stop');
+  assert.equal(soft(built.obstacles).length, 0); assert.equal(soft(built.colliders).length, 0, 'no record: the track is soft dressing');
+  assert.ok(built.obstacles.length <= stop.length, 'at most a breakable record a stop');
   assert.equal(built.buckets.stone.length, 0, 'no masonry');
   assert.equal(built.calls, 24 * (slab.length + approach.slab.length) + sleeper.length + approach.sleeper.length + 4 * stop.length,
     'every seeded draw: 24 slab colours, one sleeper jitter, four beam UV jitters');
@@ -258,7 +262,10 @@ let junctionSummary = '';
     const stock = built.obstacles.filter((record) => record.kind === 'rolling-stock');
     assert.equal(stock.length, authored.reduce((n, spur) => n + (spur.stock ?? []).reduce((m, cut) => m + cut.kinds.length, 0), 0),
       'one record for each standing vehicle');
-    assert.equal(built.obstacles.length, coal.length + stock.length, 'nothing else on the line publishes collision');
+    // (Lane C 2026-10-16: PRP-02's breakable buffer stops publish a record each, at the spurs' ends)
+    const stops = built.obstacles.filter((record) => record.kind === 'prop-buffer-stop');
+    assert.equal(built.obstacles.length, coal.length + stock.length + stops.length, 'nothing else on the line publishes collision');
+    assert.ok(stops.length <= built.parts.stop.length, 'at most a breakable record a stop');
     junctionSummary = `Cinder Junction ${authored.length} spurs / ${built.parts.slab.length} slabs / ${coal.length} coal heaps`;
   } finally { dispose(built); dispose(again); }
 }

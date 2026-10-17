@@ -5,9 +5,10 @@
 // takes a donor: the court's six donors keep their plan builds whatever the kit (props.ts regionalDonor). The plan's
 // warehouse, depot, shed, factory and fire station are fallbacks: each must either never be placed, or be one of the
 // builders rebuilt to the standard (REBUILT, each pinned to a marker of its rebuild in its source: the plan factory's and
-// warehouse's cut halls and the shed's frame). The allowlist names the kitless maps whose own kits land in 225 (goral on
-// winter, tselina on steppe, nordland on fjord) for the fallbacks not rebuilt (the plan depot). It fails both ways: a map
-// outside it placing a flat fallback, and a map on it that no longer needs its exception (prune it then).
+// warehouse's cut halls and the shed's frame, in maps/railYardR2.ts since the looks lane's r2 sweep). The allowlist named
+// the kitless maps whose own kits landed in 225 (goral on winter, tselina on steppe, nordland on fjord) for the fallbacks
+// not rebuilt (the plan depot); it is empty since those kits take the depot plots. It fails both ways: a map outside it
+// placing a flat fallback, and a map on it that no longer needs its exception (prune it then).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { MAP_IDS } from './mapIds.ts';
@@ -19,7 +20,8 @@ const FALLBACKS = new Set(['warehouse', 'depot', 'shed', 'factory', 'firestation
 const REBUILT = new Map([
   ['factory', ['urbanKit.ts', "tagCutHall(buckets, { w, d, h: wallH, t, holes: cut.holes, pieces: shell, bucket: 'stone', paint: null, units: cut.units });"]],
   ['warehouse', ['railKit.ts', "tagCutHall(buckets, { w, d, h: wallH, t, holes, pieces, bucket: steelClad ? 'structureMetal' : 'stone', paint: steelClad ? cladHex : null, units });"]],
-  ['shed', ['railKit.ts', 'const under = (z: number): number => roofCenterY + Math.tan(roofAngle) * z - roofBottomOffset;']],
+  // (the plan shed's rebuild moved to its own file, maps/railYardR2.ts: the looks lane's r2 sweep, 2026-10-16)
+  ['shed', ['railYardR2.ts', 'const under = (z: number): number => roofCenterY + Math.tan(roofAngle) * z - roofBottomOffset;']],
 ]);
 for (const [kind, [file, marker]] of REBUILT) {
   const source = readFileSync(new URL(`./${file}`, import.meta.url), 'utf8');
@@ -29,11 +31,9 @@ for (const [kind, [file, marker]] of REBUILT) {
 const props = readFileSync(new URL('../props.ts', import.meta.url), 'utf8');
 assert.equal(props.split('    settleCatalogCuts(tmp);\n').length, 3, 'props.ts settles the catalog cuts after both catalog passes (generated and replayed)');
 /** map -> why it may still place a flat plan fallback (each entry is removed when its kit lands) */
-const ALLOW = new Map([
-  ['winter', 'looks-goral (225): the tartak takes the depot plots'],
-  ['steppe', 'looks-tselina (225): the machine shed takes the depot plots'],
-  ['fjord', 'looks-nordland (225): the lager takes the depot plots'],
-]);
+// (integ/226: the 225 kits landed — goral's tartak on winter, tselina's machine shed on steppe, nordland's lager on fjord —
+// so no map needs an exception now; a new one needs a ruling)
+const ALLOW = new Map([]);
 
 const placing = new Map(), donors = new Map();
 for (const id of MAP_IDS) {

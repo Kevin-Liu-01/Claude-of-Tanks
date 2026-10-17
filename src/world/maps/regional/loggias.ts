@@ -49,7 +49,7 @@ function column(sink: PartSink, x: number, z: number, y0: number, ys: number, r:
     for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) {
       const a = ab - 0.13, b = ab - 0.02;
       sink.span('stone', Math.min(x + sx * a, x + sx * b), ys - 0.25, Math.min(z + sz * a, z + sz * b), Math.max(x + sx * a, x + sx * b), ys - 0.12,
-        Math.max(z + sz * a, z + sz * b), { decor: true, tint: shade(tint, 1.04) });
+        Math.max(z + sz * a, z + sz * b), { decor: true, fine: true, tint: shade(tint, 1.04) });
     }
   });
   return { foot: [x, y0, z], head: [x, ys, z] };
@@ -239,7 +239,10 @@ export function dalmatianLoggia(ctx: RegionalBuildContext): RegionalParts {
     for (const sz of [-1, 1]) {
       const end: Face = sz > 0 ? { origin: [0, 0, zc + t / 2], u: [1, 0, 0], out: [0, 0, 1], width: xc - xbi } : { origin: [0, 0, -zc - t / 2], u: [-1, 0, 0], out: [0, 0, -1], width: xc - xbi };
       const bay: Bay = sz > 0 ? { a: xr + hw, b: xc - hw } : { a: -(xc - hw), b: -(xr + hw) };
+      // (the integrity check, 2026-10-16: the open ends let the sky through two arches at once) the ends walled up to their
+      // arches' crowns, each arch a blind one in its wall over the bench's ends; the arcade open to the square alone
       arcadeWall(sink, end, sz > 0 ? xbi - 0.02 : -(xc - t / 2), sz > 0 ? xc - t / 2 : -(xbi - 0.02), [bay], ys, yt, t, stone, [false, false], mobile);
+      sink.span('stone', xbi - 0.02, floor - 0.02, sz * zc - t / 2 + 0.04, xc - t / 2, ys + (xc - xr) / 2 - hw - 0.02, sz * zc + t / 2 - 0.04, { tint: shade(stone, 0.97) });
     }
     // ---- the back wall, the architrave and cornice round the top
     const zo = zc + hw;
@@ -267,7 +270,8 @@ export function dalmatianLoggia(ctx: RegionalBuildContext): RegionalParts {
     }
     sink.dressing(mobile, () => {
       // the Lion of St Mark in its frame: the field sunk a little, the lion passant with his wings, his halo and the open book
-      const ry = floor + 2.0, k = shade(stone, 0.9), relief = { decor: true, tint: shade(stone, 1.04) };
+      // (the lion's carving is fine work, read from inside the hall: its frame is not)
+      const ry = floor + 2.0, k = shade(stone, 0.9), relief = { decor: true, fine: true, tint: shade(stone, 1.04) };
       faceBox(sink, 'stone', inside, 0, ry, 0.01, 1.5, 0.95, 0.02, { decor: true, tint: k });
       for (const [u, y, w, h] of [[0, ry + 0.52, 1.66, 0.1], [0, ry - 0.52, 1.66, 0.1], [0.78, ry, 0.1, 1.14], [-0.78, ry, 0.1, 1.14]] as const) {
         faceBox(sink, 'stone', inside, u, y, 0.04, w, h, 0.08, { decor: true, tint: shade(stone, 1.06) });
@@ -275,12 +279,12 @@ export function dalmatianLoggia(ctx: RegionalBuildContext): RegionalParts {
       faceBox(sink, 'stone', inside, 0.05, ry - 0.05, 0.05, 0.62, 0.24, 0.06, relief);
       faceBox(sink, 'stone', inside, -0.32, ry + 0.06, 0.06, 0.24, 0.3, 0.07, relief);
       faceBox(sink, 'stone', inside, -0.43, ry + 0.07, 0.07, 0.16, 0.16, 0.06, relief);
-      sink.cylinder('stone', facePoint(inside, -0.43, ry + 0.12, 0.02), 'x', 0.03, 0.15, 10, { decor: true, tint: shade(stone, 1.08) });
+      sink.cylinder('stone', facePoint(inside, -0.43, ry + 0.12, 0.02), 'x', 0.03, 0.15, 10, { decor: true, fine: true, tint: shade(stone, 1.08) });
       for (const u of [-0.24, -0.08, 0.18, 0.32]) faceBox(sink, 'stone', inside, u, ry - 0.3, 0.045, 0.06, 0.26, 0.05, relief);
       const wingAt = (u: number, y: number): Vec3 => facePoint(inside, u, y, 0.02);
       sink.prism('stone', [wingAt(-0.2, ry + 0.05), wingAt(0.12, ry + 0.06), wingAt(0.25, ry + 0.38)], [1, 0, 0], 0.045, relief);
       sink.member('stone', facePoint(inside, 0.36, ry - 0.08, 0.05), facePoint(inside, 0.58, ry + 0.2, 0.05), 0.04, 0.03, [1, 0, 0], { ...relief, exposed: true }, 0.01);
-      for (const [u, tilt] of [[-0.6, 0.25], [-0.48, -0.25]] as const) faceBox(sink, 'stone', inside, u, ry - 0.14 + tilt * 0.05, 0.05, 0.13, 0.18, 0.025, { decor: true, tint: [1.12, 1.11, 1.08] });
+      for (const [u, tilt] of [[-0.6, 0.25], [-0.48, -0.25]] as const) faceBox(sink, 'stone', inside, u, ry - 0.14 + tilt * 0.05, 0.05, 0.13, 0.18, 0.025, { decor: true, fine: true, tint: [1.12, 1.11, 1.08] });
       // the tablet under it, its inscription in lines of cut letters
       const ty = floor + 1.15;
       faceBox(sink, 'stone', inside, 0, ty, 0.03, 1.3, 0.42, 0.06, { decor: true, tint: shade(stone, 1.05) });
@@ -366,12 +370,16 @@ export function dalmatianRibarnica(ctx: RegionalBuildContext): RegionalParts {
     slabJoints(sink, plat.x0 + 0.02, plat.x1 - 0.02, plat.z0 + 0.02, -drainW / 2 - 0.01, floor + 0.003, look);
     slabJoints(sink, plat.x0 + 0.02, plat.x1 - 0.02, drainW / 2 + 0.01, plat.z1 - 0.02, floor + 0.003, look);
   });
-  // ---- the fish tables: a slab on three slab legs each side of the drain, the lip round it, its spout at the low end
-  const L = Math.max(2.4, 2 * px - 0.9), tz = Math.min(0.95, pz - 0.75), top = floor + 0.86, catches: readonly Rgb[] = [0x9aa4a8, 0xb4babc, 0x7e8a90, 0xa88a7a].map(rgb);
+  // ---- the fish tables: a low display slab on its base each side of the drain, the lip round it, its spout at the low end
+  // (the integrity check, 2026-10-16: the aisle between them a pace wider and the slabs low, so the hall reads open)
+  const L = Math.max(2.4, 2 * px - 0.9), tz = pz - 0.7, top = floor + 0.62, catches: readonly Rgb[] = [0x9aa4a8, 0xb4babc, 0x7e8a90, 0xa88a7a].map(rgb);
   const crateC: readonly Rgb[] = [0x8a7458, 0x9a8466, 0x7a6448].map(rgb);
   for (const sz of [-1, 1]) {
     const z = sz * tz;
-    for (const x of [-L / 2 + 0.3, 0, L / 2 - 0.3]) sink.span('stone', x - 0.07, floor, z - 0.3, x + 0.07, top - 0.12, z + 0.3, { tint: shade(stone, 0.96) });
+    // (the integrity check, 2026-10-16: the space under a slab on legs read as the inside of the stall) each table's slab
+    // on its masonry base, the slab overhanging it a hand all round, a plinth course at its foot
+    sink.span('stone', -L / 2 + 0.12, floor, z - 0.3, L / 2 - 0.12, top - 0.12, z + 0.3, { tint: shade(stone, 0.96) });
+    sink.span('stone', -L / 2 + 0.08, floor, z - 0.34, L / 2 - 0.08, floor + 0.12, z + 0.34, { tint: shade(stone, 0.9) });
     sink.span('stone', -L / 2, top - 0.12, z - 0.4, L / 2, top, z + 0.4, { tint: shade(stone, 1.02) });
     // the lip down both long sides and round the high end; the low end open to its spout over the drain side
     for (const s of [-1, 1]) sink.span('stone', -L / 2, top, z + s * 0.4 - (s > 0 ? 0.05 : 0), L / 2, top + 0.05, z + s * 0.4 + (s < 0 ? 0.05 : 0), { decor: true, tint: shade(stone, 1.05) });
@@ -392,10 +400,10 @@ export function dalmatianRibarnica(ctx: RegionalBuildContext): RegionalParts {
   }
   sink.dressing(mobile, () => {
     // the crates stacked by the columns, the standpipe and its basin at the far end
-    for (const [x, z, n] of [[-px + 0.15, pz - 0.55, 3], [px - 0.6, -pz + 0.55, 2]] as const) {
+    for (const [x, z, n] of [[-px + 0.15, pz - 0.55, 3], [px - 0.15, -pz + 0.55, 2]] as const) {
       for (let k = 0; k < n; k++) crate(sink, [x + (look() - 0.5) * 0.06, floor + k * 0.255, z + (look() - 0.5) * 0.06], (look() - 0.5) * 0.2, pick(look, crateC), look, k === n - 1 ? pick(look, catches) : null);
     }
-    const bx = -px + 0.55, bz = -pz + 0.35;
+    const bx = -px, bz = 0;
     sink.span('stone', bx - 0.3, floor, bz - 0.22, bx + 0.3, floor + 0.42, bz + 0.22, { decor: true, tint: shade(stone, 0.96) });
     sink.span('dark', bx - 0.24, floor + 0.36, bz - 0.16, bx + 0.24, floor + 0.425, bz + 0.16, { decor: true });
     sink.cylinder('structureMetal', [bx, floor + 0.42, bz - 0.2], 'y', 0.75, 0.035, 8, { colour: rgb(0x3a4446), decor: true });

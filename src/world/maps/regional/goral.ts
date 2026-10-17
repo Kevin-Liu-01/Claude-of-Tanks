@@ -8,7 +8,7 @@
 // the sawmill's open shed and its board store; the shepherds' huts (bacówki) on the meadows; the houses burnt in the
 // January fighting, their stacks standing in the snow.
 import {
-  PartSink, faceBox, facePoint, hashSeed, pick, rgb, shade, streamFrom,
+  PartSink, faceBox, facePoint, hashSeed, pick, rgb, shade, streamFrom, UV_MEMBER,
   type Face, type Rgb, type Vec3,
 } from './geometry.ts';
 import {
@@ -17,7 +17,7 @@ import {
 } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { woodpile } from './dressing.ts';
-import { coveringRise, openShed } from './outbuildings.ts';
+import { openShed } from './outbuildings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 const LOG = rgb(0x5a4330), LOG_DARK = rgb(0x3b2c20), PALE = rgb(0xc9ad7f), WHITE = rgb(0xe4e2dc), IRON = rgb(0x26282a);
@@ -528,7 +528,16 @@ const kosciol: RegionalBuilder = (ctx) => {
   }
   // the door into the tower and the boarded chamber oversailing the shaft
   const tf: Face = { origin: [0, 0, tz + h0 - 0.06], u: [1, 0, 0], out: [0, 0, 1], width: 2 * h0 };
-  doorUnit(sink, tf, 0, 0.45, 1.2, 2.3, { leaf: LOG_DARK, frame: { bucket: 'structureWood', width: 0.14, out: 0.06, colour: PALE }, steps: null, leafKind: 'plank' });
+  // (the r2 sweep: the leaf lay on the shaft's boards, a dark plate) the door hung deep in a heavy timber case standing
+  // out of the shaft, under a little shingle hood on two brackets
+  doorUnit(sink, tf, 0, 0.45, 1.2, 2.3, { leaf: LOG_DARK, frame: { bucket: 'structureWood', width: 0.18, out: 0.17, colour: PALE }, steps: null, leafKind: 'plank' });
+  {
+    const hy = 0.45 + 2.3 + 0.22, hood: RoofSpec = { kind: 'gable', pitchDeg: 40, eave: 0.08, verge: 0.04, thickness: 0.08, bucket: 'roof', ridge: 'saddle', decor: true };
+    sink.placed(0, 0, 0, tz + h0 + 0.24, () => emitRoof(sink, roofGeometry(1.7, 0.6, hy, hood), hood));
+    for (const sx of [-1, 1]) sink.member('structureWood', [sx * 0.72, hy - 0.55, tz + h0 - 0.04], [sx * 0.72, hy - 0.02, tz + h0 + 0.5], 0.09, 0.09, [sx, 0, 0],
+      { colour: LOG_DARK, decor: true, exposed: true }, 0);
+    sink.span('structureWood', -0.85, hy - 0.1, tz + h0 - 0.06, 0.85, hy, tz + h0 + 0.54, { colour: LOG_DARK, decor: true, uv: UV_MEMBER });
+  }
   const cw = h1 + 0.35, cy0 = shaft, cy1 = shaft + 2.4;
   // (props census #15, Lane C 2026-10-16: the sound holes were dark plates on the boards) cut through the chamber's
   // boarded walls with their reveals, the louvre boards across each
@@ -594,12 +603,11 @@ const drewutnia: RegionalBuilder = (ctx) => {
   const mobile = ctx.tier === 'mobile';
   sink.placed(0, fit.cx, 0, fit.cz, () => {
     const pile = 1.5 + look() * 0.4;
-    const shed = openShed(sink, { W, D, hLo: 2.2, pitchDeg: 24, back: true, ends: true, pile, block: true, mobile }, {
+    openShed(sink, { W, D, hLo: 2.2, pitchDeg: 24, back: true, ends: true, pile, block: true, mobile, snow: ctx.snowCap ? { t: 0.26, bucket: 'plaster' } : null }, {
       timber: LOG, post: 0.16, pad: { bucket: 'stone', size: 0.34, top: 0.18 },
       cladding: 'gapped', boards: [LOG_AGED, shade(LOG_AGED, 1.12), shade(LOG, 1.05)], boardW: 0.19, gap: 0.03, trim: LOG_DARK,
       covering: 'shingle', roofBucket: 'roof', eave: 0.25, verge: 0.18,
     }, look);
-    if (ctx.snowCap) roofSnowOn(sink, W, D, shed.roof.eaveY + coveringRise('shingle'), shed.roof.spec);
   });
   return sink.finish();
 };

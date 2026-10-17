@@ -12,6 +12,7 @@
 import * as THREE from 'three';
 import { MARKET_BUILDERS } from './mapKits.ts';
 import { RAIL_BUILDERS, catalogHoles, cutHall, envelopeMarker, tagCutHall } from './railKit.ts'; // maps r1: railyard + coastal kits
+import { hallPlinth, hallSlab } from './railYardR2.ts'; // the factory's r2 plinth and roof slabs (the looks lane, 2026-10-16)
 import { gableAttic, gablePrism as createGablePrism, gableSlabSeat, pitchRoofPlane } from '../propGeometry.ts';
 import {
   addConnectedExterior,
@@ -175,7 +176,7 @@ export function makeFactory(rng: () => number, buckets: GeometryBuckets): Struct
   const pane = parts.glass || parts.dark;
   const w = 11.5, d = 19.0, wallH = 6.2, roofH = 2.0, t = 0.38;
   const none = <T extends THREE.BufferGeometry>(g: T): T => { g.userData.uvJitter = 'none'; return g; };
-  parts.stone.push(box(w + 0.4, 1.2, d + 0.4).translate(0, -0.1, 0));
+  parts.stone.push(hallPlinth(w + 0.4, 1.2, d + 0.4, -0.7));
   // the catalog exterior first (its parts are pushed last, as before): its entry door and its back apertures are cut
   // through the walls, their plates at the back of the cuts
   const cat: BuildingParts = { plaster: [], stone: [], roof: [], wood: [], dark: [], ...(parts.glass ? { glass: [] } : {}) };
@@ -208,7 +209,7 @@ export function makeFactory(rng: () => number, buckets: GeometryBuckets): Struct
   const seat = gableSlabSeat(w / 2, roofH, 0.4, 0.14);
   parts.stone.push(gableAttic(w, roofH, d).translate(0, wallH, 0));
   for (const side of [-1, 1]) {
-    const slab = box(seat.length, 0.14, d + 0.7, 0.35);
+    const slab = hallSlab(seat.length, 0.14, d + 0.7, 0.35);
     pitchRoofPlane(slab, 'x', -side as -1 | 1, seat.pitch, 'gable');
     slab.translate(-side * seat.out, wallH + seat.up, 0);
     parts.roof.push(slab);

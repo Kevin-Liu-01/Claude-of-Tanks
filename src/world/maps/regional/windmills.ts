@@ -102,8 +102,10 @@ export function buildPostMill(ctx: RegionalBuildContext, p: PostMillPalette): Re
     const y = lt[1] + (lb[1] - lt[1]) * t, z = lt[2] + (lb[2] - lt[2]) * t;
     sink.member('structureWood', [-0.44, y, z], [0.5, y, z], 0.06, 0.05, [0, 1, 0], { colour: dark, exposed: true, decor: true, fine: true }, 0.025);
   }
-  const slope = (lt[1] - lb[1]) / run, poleEnd = (lift - 0.25 - 0.32) / slope;
-  beam(sink, 'structureWood', [0, lift - 0.25, -bd / 2 + 0.1], [0, lift - 0.25 - slope * (poleEnd + 0.1), -bd / 2 - poleEnd], 0.2, { colour: dark, decor: true });
+  // (kitConnectivity: its head hung 15 cm under the floor) the pole's head let into the last joist (its raked top edge
+  // 3 cm into the joist), its foot on its stone
+  const slope = (lt[1] - lb[1]) / run, headZ = -bd / 2 + 0.3, headY = lift - 0.16 - 0.05, poleEnd = (headY - 0.32) / slope - (headZ + bd / 2);
+  beam(sink, 'structureWood', [0, headY, headZ], [0, headY - slope * (poleEnd + headZ + bd / 2), -bd / 2 - poleEnd], 0.2, { colour: dark, decor: true });
   sink.span('stone', -0.3, -0.3, -bd / 2 - poleEnd - 0.3, 0.3, 0.32, -bd / 2 - poleEnd + 0.3, { decor: true });
   return sink.finish();
 }

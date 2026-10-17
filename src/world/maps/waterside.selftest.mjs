@@ -108,7 +108,10 @@ for (const form of ['estacade', 'stage', 'brygge', 'riva', 'stilts']) {
   }
 }
 // bounded: about two thousand triangles for a 15 m timber jetty, five for a riva or a crib pier
-for (const [key, t] of Object.entries(tris)) assert.ok(t <= (key.startsWith('riva') || key.startsWith('brygge') ? 6000 : 3500), `${key}: ${t} triangles`);
+if (process.env.COT_JETTY_TRIS) console.log(JSON.stringify(tris));
+// (r2 sweep, Lane C 2026-10-16: the members' long arrises eased, bevelBox's 28 triangles where a box had 12) 3,500 -> 5,000
+// for a timber jetty, 6,000 -> 10,000 for a riva or a crib pier (an 8-bay riva's dressed courses 9,400)
+for (const [key, t] of Object.entries(tris)) assert.ok(t <= (key.startsWith('riva') || key.startsWith('brygge') ? 10000 : 5000), `${key}: ${t} triangles`);
 // the same seat builds the same jetty (its own stream keyed on the seat)
 {
   const a = { wood: [], stone: [], baked: [] }, b = { wood: [], stone: [], baked: [] };

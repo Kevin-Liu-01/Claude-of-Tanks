@@ -118,7 +118,10 @@ assert.match(sky, /atmosphereState\.fogDensity = preset\.fogDensity;/, 'the sky 
 assert.match(sky, /\* \(atmosphereState\.active \? lightTune\('AERIAL_MATERIAL_FOG_SHARE', HAZE_MATERIAL_FOG_SHARE\) : 1\)\);/, 'the materials\' fog thins only over the physically based sky');
 // the target's two terms under the light model's overcast, shared by the aerial pass and the cloud trace (2026-10-03, the
 // gauntlet's wave 17 on Frosthollow: the deck's far rows paled to the clear horizon over ranges on the dim overcast haze)
-assert.match(post, /const terms = hazeTargetTerms\(overcast, atmosphere\.fogMix, hazeTermsScratch\);\s*law\.set\(hazeSigma\(atmosphere\.fogDensity\), hazeLayerInverseScale\(\), terms\.x, terms\.y\);\s*hazeExtinctionChroma\(u\.uHazeChroma\.value as THREE\.Vector3\);/,
+// (2026-10-09, the skies lane's night level: the air's level under the sky behind it eases to HAZE_NIGHT_LEVEL with the
+// night — post.ts reads it between the terms and the law)
+assert.match(post, /const HAZE_NIGHT_LEVEL = 1\.0;/, 'the night level at 1 (the day\'s law) unless tuned');
+assert.match(post, /const terms = hazeTargetTerms\(overcast, atmosphere\.fogMix, hazeTermsScratch\);[\s\S]{0,400}?const nightLevel = 1 \+ \(lightTune\('HAZE_NIGHT_LEVEL', HAZE_NIGHT_LEVEL\) - 1\) \* night;\s*law\.set\(hazeSigma\(atmosphere\.fogDensity\), hazeLayerInverseScale\(\), terms\.x, terms\.y \* nightLevel\);\s*hazeExtinctionChroma\(u\.uHazeChroma\.value as THREE\.Vector3\);/,
   'the light model\'s overcast and the map\'s fogMix set the target; the extinction\'s chroma per frame (QA-tunable)');
 // the pass draws the hue by the terms' whole weight (2026-10-04: fogMix × the share under an open sky, the whole tint under
 // a closed deck — the mountains lane's trace of Whiteout's beige band over its far ice sheet)

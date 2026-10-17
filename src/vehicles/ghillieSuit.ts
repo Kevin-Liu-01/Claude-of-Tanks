@@ -229,8 +229,11 @@ interface GhillieBuilderPort {
   /** The cloth the suit clones, and the scheme wheel paint its theatre is read from (round 5). */
   mats: { canvasCloth: THREE.MeshStandardMaterial; wheels?: THREE.MeshStandardMaterial };
   disposables: DisposableResource[];
-  /** Steps run once the tank is assembled, after its profile's postAssemble (TankBuilderPort.afterAssemble). */
-  afterAssemble?: Array<(rig: never) => void>;
+  /**
+   * Steps run once the tank is assembled, after its profile's postAssemble (TankBuilderPort.afterAssemble). A step may
+   * return its work as checkpoints; the factory runs it after the core build, one checkpoint per slice.
+   */
+  afterAssemble?: Array<(rig: never) => void | Generator<void, void, void>>;
 }
 
 // Shared physical-ghillie authoring process.
@@ -3927,21 +3930,32 @@ function roofWeaponFloor(turret: THREE.Object3D, vehicleId: string): RoofWeaponF
     }
     return low;
   };
+  const swept = sweeps.map((sweep) => (x: number, z: number): number => {
+    let low = Infinity;
+    const bin = Math.floor(Math.hypot(x - sweep.x, z - sweep.z) / BIN);
+    for (let k = Math.max(0, bin - 1); k <= Math.min(sweep.floor.length - 1, bin + 1); k++) low = Math.min(low, sweep.floor[k]);
+    return low;
+  });
   return Object.assign((x: number, z: number): number => {
     let low = standing(x, z);
-    for (const sweep of sweeps) {
-      const bin = Math.floor(Math.hypot(x - sweep.x, z - sweep.z) / BIN);
-      for (let k = Math.max(0, bin - 1); k <= Math.min(sweep.floor.length - 1, bin + 1); k++) low = Math.min(low, sweep.floor[k]);
-    }
+    for (const floor of swept) low = Math.min(low, floor(x, z));
     return low;
-  }, { standing });
+  }, {
+    standing,
+    parts: swept.length > 1 ? swept.map((floor) => (x: number, z: number): number => Math.min(standing(x, z), floor(x, z))) : [],
+  });
 }
 
 /**
  * The lowest any roof weapon passes over (x, z): swept stations and standing guns (see roofWeaponFloor). `standing` is
- * the floor of what stands still alone: the crew guns and the stations' bases, as they are built.
+ * the floor of what stands still alone: the crew guns and the stations' bases, as they are built. `parts`, on a roof with
+ * more than one station, are the floors the net is cut round one by one (weaponOpenings): each station's sweep, with
+ * what stands still.
  */
-type RoofWeaponFloor = ((x: number, z: number) => number) & { readonly standing: (x: number, z: number) => number };
+type RoofWeaponFloor = ((x: number, z: number) => number) & {
+  readonly standing: (x: number, z: number) => number;
+  readonly parts: ReadonlyArray<(x: number, z: number) => number>;
+};
 
 /** The roof guns' fittings (crew pintles and stations) whose standing parts the turret's nets are cut round. */
 const ROOF_GUN_FITTINGS = /^(pintleMG|americanM2|americanRws|openYokeRws|weaponStationMount|auxiliaryWeapon)$/;
@@ -3995,8 +4009,24 @@ function openingsRound(blocked: ReadonlyArray<readonly [number, number]>, step: 
  * Openings a turret roof net is cut round under a roof gun: where the net, its rolled edges and its garnish cannot pass
  * under the gun's swept floor (round 5, 2026-10-08: the Leopard 2A6 UA's draped roof net ran over the aft station's
  * pedestal, 13 cm into its traverse at full depression).
+ *
+ * 2026-10-16 (integ/226 triage; VH.14 made the Leopard 2A4's loader MG3 a working station): on a roof with more than
+ * one station the net is cut round each station's sweep (with what stands still) one by one. One cut round all of them
+ * took the box round their joined sweeps, and the MG3's beside the FLW 200's bared the whole crown (leopard2A4Ghillie).
+ * A scrap the separate cuts would leave inside the joined cut, cut free of the rest of the net between two openings and
+ * the panel's edge, goes with the cut: it hangs on nothing (ghillieSuit: the M1A2 UA's cage-top net between the
+ * commander's and the loader's sweeps).
  */
 function weaponOpenings(panel: TopPanel, probe: SurfaceProbe | null, gunFloor: (x: number, z: number) => number): Point2[][] {
+  const whole = sweptOpenings(panel, probe, gunFloor);
+  const parts = (gunFloor as Partial<RoofWeaponFloor>).parts;
+  if (!whole.length || !parts || parts.length < 2) return whole;
+  const each = parts.flatMap((part) => sweptOpenings(panel, probe, part));
+  return [...each, ...openingScraps(panel, whole, each)];
+}
+
+/** The cells of a panel where the roof weapons' floor (or one part of it) stands too low over it, opened round. */
+function sweptOpenings(panel: TopPanel, probe: SurfaceProbe | null, gunFloor: (x: number, z: number) => number): Point2[][] {
   const step = 0.04;
   const blocked: Array<[number, number]> = [];
   for (let x = panel.x0; x <= panel.x1 + 1e-9; x += step) {
@@ -4008,6 +4038,41 @@ function weaponOpenings(panel: TopPanel, probe: SurfaceProbe | null, gunFloor: (
     }
   }
   return openingsRound(blocked, step);
+}
+
+/**
+ * The cloth the separate openings `each` leave inside the joined openings `whole` that no longer joins the panel's
+ * cloth outside them (on a `step` raster, through edge-sharing cells, inside the panel's outline and round its own
+ * holes), opened round as weaponOpenings's scraps.
+ */
+function openingScraps(panel: TopPanel, whole: readonly Point2[][], each: readonly Point2[][]): Point2[][] {
+  const step = 0.04;
+  const nx = Math.floor((panel.x1 - panel.x0) / step + 1e-9) + 1, nz = Math.floor((panel.z1 - panel.z0) / step + 1e-9) + 1;
+  const cloth = new Uint8Array(nx * nz), joined = new Uint8Array(nx * nz);
+  const stack: number[] = [];
+  for (let i = 0; i < nx; i++) {
+    for (let k = 0; k < nz; k++) {
+      const x = panel.x0 + i * step, z = panel.z0 + k * step;
+      if (panel.outline && !insidePoly(x, z, panel.outline)) continue;
+      if (panel.holes?.some((hole) => insidePoly(x, z, hole)) || each.some((hole) => insidePoly(x, z, hole))) continue;
+      const c = i * nz + k;
+      cloth[c] = 1;
+      if (!whole.some((hole) => insidePoly(x, z, hole))) { joined[c] = 1; stack.push(c); }
+    }
+  }
+  while (stack.length) {
+    const c = stack.pop()!, i = Math.floor(c / nz), k = c - i * nz;
+    for (const [a, b] of [[i - 1, k], [i + 1, k], [i, k - 1], [i, k + 1]]) {
+      if (a < 0 || a >= nx || b < 0 || b >= nz) continue;
+      const n = a * nz + b;
+      if (cloth[n] && !joined[n]) { joined[n] = 1; stack.push(n); }
+    }
+  }
+  const scraps: Array<[number, number]> = [];
+  for (let c = 0; c < cloth.length; c++) {
+    if (cloth[c] && !joined[c]) scraps.push([panel.x0 + Math.floor(c / nz) * step, panel.z0 + (c % nz) * step]);
+  }
+  return openingsRound(scraps, step);
 }
 
 /**
@@ -5010,7 +5075,7 @@ function fieldSpecies(cfg: GhillieConfig, theatre: SuitTheatre): readonly [Spray
   return [own ?? 'spruce', 'beech'];
 }
 
-function addGhillieOwner(
+function* addGhillieOwner(
   P: GhillieBuilderPort,
   cfg: GhillieConfig,
   owner: GhillieOwner,
@@ -5021,7 +5086,7 @@ function addGhillieOwner(
   cover: CoverPalette,
   clearance: FieldClearance | null = null,
   cap: SuitCap | null = null,
-): void {
+): Generator<void, void, void> {
   const leafy = cfg.style === 'leafy';
   // push 3b's field roof cage: its tubes hold up nothing laid on the turret, and (on a draped net suit) each of its
   // wings carries a net of its own
@@ -5133,10 +5198,16 @@ function addGhillieOwner(
         },
       });
     } else tops.push(laid);
+    // a checkpoint between the suit's stages (2026-10-16): the factory runs the suit in its own slices after the core
+    yield;
   }
   const surfaces: ClothSurface[] = [...tops];
-  for (const panel of panels.side ?? []) surfaces.push(sideCloth(panel, cfg, support, uvk, gunFloor?.standing ?? null));
+  for (const panel of panels.side ?? []) {
+    surfaces.push(sideCloth(panel, cfg, support, uvk, gunFloor?.standing ?? null));
+    yield;
+  }
   for (const panel of panels.face ?? []) surfaces.push(faceCloth(panel, cfg, support, uvk));
+  yield;
   if (leafy && cage.length && gunFloor) cage.forEach((wing, i) => surfaces.push(...cageWingCloths(wing, i, cfg, probe, uvk, gunFloor, dock)));
   if (gunFloor || dock) {
     const inColumn = (p: readonly number[]): boolean => !!dock && p[1] > dock.min.y - 0.05
@@ -5204,10 +5275,11 @@ function addGhillieOwner(
         : (card) => foliageCardPoints(card).every((p) => clearance.netOk(owner, p))
           && denseCardPoints(card).every((p) => clearance.linesOk(owner, p)) : undefined,
     };
-    surfaces.forEach((surface, k) => {
-      (field ? addFieldTufts : addTufts)(foliage, surface, ctx, cfg.seed + k * 1000 + (owner === 'turret' ? 37 : owner === 'gun' ? 71 : 0));
+    for (let k = 0; k < surfaces.length; k++) {
+      (field ? addFieldTufts : addTufts)(foliage, surfaces[k], ctx, cfg.seed + k * 1000 + (owner === 'turret' ? 37 : owner === 'gun' ? 71 : 0));
       if (k < tops.length) topCards = foliage.cardCount;
-    });
+      yield;
+    }
   }
   const suitMats = suitMaterialsOf(P), netGeos = surfaces.map((s) => s.geometry);
   // the suit's parts share one net material (an empty part still builds and disposes its own throwaway, as before)
@@ -5349,7 +5421,12 @@ function suitCapOf(P: GhillieBuilderPort): SuitCap | null {
     top: box.max.y + FIELD_CAP_M };
 }
 
-function buildGhillieSuit(P: GhillieBuilderPort, cfg: GhillieConfig): void {
+/**
+ * The suit's build, as checkpoints (2026-10-16, PERF: the garage's default tank wears a suit and its build was one long
+ * task). The factory runs it after the core build, before the decorations that read it, and the vehicle it reads is the
+ * one the assembly left (tankFactoryCore.ts runDeferredAssembly); nothing it draws or decides depends on where it pauses.
+ */
+function* buildGhillieSuit(P: GhillieBuilderPort, cfg: GhillieConfig): Generator<void, void, void> {
   const theatre = buildTheatre(P);
   const cover = buildCoverPalette(P, theatre);
   const owners: readonly [GhillieOwner, THREE.Group, readonly THREE.Object3D[]][] = [
@@ -5361,11 +5438,12 @@ function buildGhillieSuit(P: GhillieBuilderPort, cfg: GhillieConfig): void {
   // before the turret's suit, so that suit also clears the hull's)
   const clearance = cfg.fieldClearanceM !== undefined ? fieldClearance(P, cfg.fieldClearanceM, cfg.conservativeGunEnvelope === true) : null;
   const cap = isFieldNet(cfg) ? suitCapOf(P) : null;
+  yield;
   for (const [owner, parent, others] of owners) {
     const panels = cfg[owner];
     if (!panels) continue;
     if (owner === 'turret') clearance?.addHullSuit();
-    addGhillieOwner(P, cfg, owner, parent, panels, others, theatre, cover, clearance, cap);
+    yield* addGhillieOwner(P, cfg, owner, parent, panels, others, theatre, cover, clearance, cap);
   }
 }
 
@@ -5416,6 +5494,10 @@ export function addVehicleGhillieSuit(P: GhillieBuilderPort, config?: GhillieCon
   // laid against the finished armour: after the profile's own postAssemble chain, which it never wraps (a port without
   // that stage builds at once)
   if (P.afterAssemble) P.afterAssemble.push(() => buildGhillieSuit(P, cfg));
-  else buildGhillieSuit(P, cfg);
+  else {
+    // a port without that stage builds at once
+    const steps = buildGhillieSuit(P, cfg);
+    for (let step = steps.next(); !step.done; step = steps.next()) { /* every checkpoint at once */ }
+  }
   return true;
 }

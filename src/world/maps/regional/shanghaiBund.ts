@@ -15,14 +15,16 @@
 //     October 1937 in the wall that faced the attack; some of them brick-faced godowns of the same build.
 // Collision: every landmark's structure is a few prisms (its podium, its tiers, its tower); the facades are dressing.
 import { PartSink, faceBox, facePanel, facePoint, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
-import { DAMP_EDGE_BREAKS, emitRoof, holedBox, holedPolygon, recordBody, roofGeometry, type HoleRect, type RoofSpec } from './house.ts';
+import { DAMP_EDGE_BREAKS, holedBox, holedPolygon, recordBody, type HoleRect } from './house.ts';
 import { windowUnit } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
   BRONZE, BUND_WINDOW, CHAR, COPPER_GREEN, GILT, IRON, WHITE_TRIM, bankOf, choose, clampTo, fillOf, planFaces, pocks, pyramid, rect,
   sandbags, uvOffset,
 } from './shanghaiParts.ts';
-import { decoTower, stationHall } from './skyline.ts';
+import { stationHall } from './skyline.ts';
+import { decoTower } from './skylineDeco.ts'; // (looks r2 b-east, 2026-10-16: the Bund towers' own deco tower)
+import { bankOfChina } from './shanghaiBank.ts'; // (looks r2 b-east, 2026-10-16: extracted, rebuilt there)
 
 const DEC = { decor: true } as const;
 const SHADOWED = { decor: true, shadow: true } as const;
@@ -75,19 +77,6 @@ function deco(sink: PartSink, face: Face, y0: number, y1: number, fh: number, st
 
 /** The faces of a tier x0..x1, z0..z1 (front +z, right, back, left). */
 const tierFaces = (x0: number, x1: number, z0: number, z1: number): Face[] => planFaces(rect(x0, z0, x1, z1));
-
-/** The ground storey's shopfronts and doors along a podium face (dressing). */
-function podiumFront(sink: PartSink, face: Face, h: number, look: () => number, pierBucket: RegionalBucket, pierShade = 1): void {
-  // (props census #9) each shopfront set back between its piers under its bronze fascia, the piers and the fascia 0.22 m
-  // proud of the glass (they were 16 and 9 cm: the glass read laid on the wall)
-  const w = face.width - 0.8, n = Math.max(1, Math.round(w / 3.2)), pitch = w / n;
-  for (let k = 0; k < n; k++) {
-    const u = -w / 2 + pitch * (k + 0.5), gh = Math.min(h - 1.0, 3.6);
-    facePanel(sink, look() < 0.25 ? 'curtain' : 'glass', face, u, 0.3 + gh / 2, 0.012, pitch - 0.9, gh, { decor: true, window: face.out });
-    faceBox(sink, 'structureMetal', face, u, 0.3 + gh + 0.2, 0.11, pitch - 0.7, 0.3, 0.22, { colour: BRONZE, decor: true, fine: true });
-  }
-  for (let k = 0; k <= n; k++) faceBox(sink, pierBucket, face, -w / 2 + pitch * k, h / 2, 0.12, 0.7, h, 0.24, { decor: true, fineSides: true, shade: pierShade });
-}
 
 /**
  * A face's war: shell pocks over its lower storeys, a breach, sandbags along its foot (dressing: a phone draws it as the
@@ -150,46 +139,6 @@ const northStation = heldToDepth(stationHall({ damage: 2, nameBoard: true }));
 
 // ------------------------------------------------------------------------------------------------ the Bank of China
 
-/** The Bank of China: golden granite wings, the tower over them, the lattice band, the green-tiled pyramid roof. */
-const bankOfChina: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const f = fillOf(ctx.bounds, 0.1);
-  sink.placed(0, f.cx, 0, f.cz, () => {
-    const look = ctx.variant, mobile = ctx.tier === 'mobile';
-    const W = clampTo(f.w, 5, 60), D = clampTo(f.d, 5, 60), H = clampTo(ctx.info.h, 8, 90);
-    const fh = 3.4, wingTop = Math.max(fh * 2, H * 0.36), towerTop = Math.max(wingTop + fh, H * 0.84);
-    const gold: FacadeStyle = { pitch: 1.6, pier: 0.55, pierBucket: 'plaster2', pierOut: 0.26, spandrel: rgb(0x6b5a3e), lit: 0.06, dark: 0.08 };
-    sink.span('plaster2', -W / 2, -0.4, -D / 2, W / 2, wingTop, D / 2);
-    sink.span('plaster2', -W / 2 - 0.1, wingTop - 0.45, -D / 2 - 0.1, W / 2 + 0.1, wingTop, D / 2 + 0.1, SHADOWED);
-    const faces = tierFaces(-W / 2, W / 2, -D / 2, D / 2);
-    for (const face of faces) {
-      podiumFront(sink, face, 5.2, look, 'plaster2');
-      deco(sink, face, 5.6, wingTop - 0.5, fh, gold, look, 0.5);
-    }
-    const tx = W * 0.3, tz = D * 0.4;
-    sink.span('plaster2', -tx, wingTop, -tz, tx, towerTop, tz);
-    // (props census #9, E13) the wings and the tower (in its storey bands) as bodies for the damage reading
-    recordBody(sink, 0, 0, W, D, wingTop, 'plaster2', false, true);
-    recordBody(sink, 0, 0, 2 * tx, 2 * tz, towerTop + 2, 'plaster2', false, true);
-    const tfaces = tierFaces(-tx, tx, -tz, tz);
-    for (const face of tfaces) {
-      deco(sink, face, wingTop + 0.3, towerTop - 2.4, fh, gold, look, 0.4);
-      // the band of Chinese lattice under the roof (props census #9: a frieze 14 cm proud, its lattice on it; it was a
-      // panel laid on the wall)
-      faceBox(sink, 'structureMetal', face, 0, towerTop - 1.2, 0.07, face.width - 0.6, 1.6, 0.14, { colour: rgb(0x5a4a33), decor: true });
-      if (!mobile) for (let k = 0; k < Math.round(face.width / 0.9); k++) {
-        faceBox(sink, 'plaster2', face, -face.width / 2 + 0.45 + k * 0.9, towerTop - 1.2, 0.17, 0.1, 1.5, 0.06, { decor: true, fine: true });
-      }
-    }
-    // the roof: a pyramid of green glazed tile on its eaves, the finial
-    const roof: RoofSpec = { kind: 'hip', pitchDeg: 27, eave: 0.9, verge: 0.9, thickness: 0.28, bucket: 'structureMetal', ridge: null };
-    const rg = roofGeometry(2 * tx, 2 * tz, towerTop, roof);
-    emitRoof(sink, rg, roof, rgb(0x3e6a60));
-    sink.cylinder('structureMetal', [0, rg.ridgeTopY - 0.1, 0], 'y', 1.6, 0.18, 6, { colour: GILT, decor: true, shadow: true }, 0.06);
-    scars(sink, faces[0], 5, look, mobile);
-  });
-  return sink.finish();
-};
 
 // ------------------------------------------------------------------------------------------------ the Customs House
 

@@ -6,6 +6,7 @@ import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { pinchRestoresPage } from '../ui/pinchZoomGuard.ts';
 import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { linkTankId, stampTankIdLink } from '../game/tankIdBoundaries.ts';
 import { migrateStoredTankIds } from '../game/tankIdStorageMigration.ts';
@@ -198,6 +199,12 @@ const galleryFog = new THREE.Fog(0x0a0d10, 18, 45);
 scene.fog = galleryFog;
 const camera = new THREE.PerspectiveCamera(34, 1, 0.05, 180);
 camera.position.set(-8, 4.6, 8.5);
+// A pinch over the viewer is the orbit's dolly (OrbitControls cancels the ctrl+wheel). Once the page itself is
+// pinch-zoomed in, the zoom-out half of a pinch is the page's (2026-10-16): this capture listener, registered before
+// OrbitControls' own, keeps that wheel from the controls so the browser un-zooms over the canvas too.
+renderer.domElement.addEventListener('wheel', (event) => {
+  if (pinchRestoresPage(event)) event.stopImmediatePropagation();
+}, { capture: true, passive: true });
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.075;

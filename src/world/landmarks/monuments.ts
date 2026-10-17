@@ -2,7 +2,7 @@
 // ball, the column carrying a figure, the memorial wall, the standing figure and the equestrian statue on their
 // plinths. The sculpture is stylised but proportioned from life (a figure ~7.5 heads tall, a horse's barrel about its
 // height at the withers); the architecture — the steps, the dies, the cornices, the railings — carries the read.
-import { PartSink, facePoint, rgb, shade, type Face, type Rgb } from '../maps/regional/geometry.ts';
+import { PartSink, facePoint, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type Rgb } from '../maps/regional/geometry.ts';
 import { railing, revolve, smoothRender, star, steppedBase, cross, moulding, LIMEWASH_UV } from './kit.ts';
 import type { Vec3 } from '../maps/regional/geometry.ts';
 import { letterText, measureText } from './lettering.ts';
@@ -15,6 +15,23 @@ const BRONZE = rgb(0x4f5a45), BRONZE_DARK = rgb(0x3a4134), SILVER = rgb(0xb9bcba
 const uvOffset = (rng: () => number): [number, number] => [rng() * 7.31, rng() * 5.17];
 
 /**
+ * A dressed stone (or a board) from lo to hi with its four arrises along `axis` cut back by `c`: an octagonal section
+ * extruded (the looks lane, 2026-10-16, the r2 sweep: the steps, dies and boards were plain boxes).
+ */
+export function chamferedBox(sink: PartSink, bucket: RegionalBucket, lo: Vec3, hi: Vec3, axis: 0 | 1 | 2, c: number, opts: EmitOptions = {}): void {
+  const [a, b] = axis === 0 ? [1, 2] : axis === 1 ? [0, 2] : [0, 1];
+  const cc = Math.min(c, (hi[a] - lo[a]) * 0.3, (hi[b] - lo[b]) * 0.3);
+  const sec: Array<[number, number]> = [[lo[a] + cc, lo[b]], [hi[a] - cc, lo[b]], [hi[a], lo[b] + cc], [hi[a], hi[b] - cc],
+    [hi[a] - cc, hi[b]], [lo[a] + cc, hi[b]], [lo[a], hi[b] - cc], [lo[a], lo[b] + cc]];
+  const pts = sec.map(([u, v]): Vec3 => { const p: [number, number, number] = [0, 0, 0]; p[axis] = lo[axis]; p[a] = u; p[b] = v; return p; });
+  const dir: [number, number, number] = [0, 0, 0]; dir[axis] = 1;
+  // counter-clockwise seen from +dir
+  const e1 = [pts[1][0] - pts[0][0], pts[1][1] - pts[0][1], pts[1][2] - pts[0][2]], e2 = [pts[2][0] - pts[0][0], pts[2][1] - pts[0][1], pts[2][2] - pts[0][2]];
+  const n = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+  sink.prism(bucket, n[0] * dir[0] + n[1] * dir[1] + n[2] * dir[2] >= 0 ? pts : [...pts].reverse(), dir, hi[axis] - lo[axis], opts);
+}
+
+/**
  * The obelisk (the 1920s-30s memorials to the Civil War's fallen in every Soviet village, a city's victory column in
  * stone): three steps, a die with a dark plaque under a cornice, a tapering four-sided shaft and its pyramidion, and a
  * finial — a red sheet-iron star on a short mast, an Orthodox or Latin cross, a gilt ball — inside a low iron railing.
@@ -25,17 +42,30 @@ export const obelisk: LandmarkBuilder = (ctx) => {
   const finial = String(ctx.params.finial);
   // the masonry: render over brick in a village (plaster), dressed stone in a town (the map's stone)
   const body = ctx.brick ? 'plaster' : 'stone';
-  const steps = steppedBase(sink, 'stone', 1.5 + H * 0.12, 1.5 + H * 0.12, 3, 0.2, 0.32, 0.6 + ctx.groundFall);
-  const dieW = 1.0 + H * 0.08, dieH = 1.1 + H * 0.06;
-  sink.span(body, -dieW / 2, steps, -dieW / 2, dieW / 2, steps + dieH, dieW / 2);
+  // (the looks lane, 2026-10-16, the r2 sweep: the steps and the die were plain boxes, the plaques dark plates on the
+  // die's faces) the steps dressed stones with their arrises cut; the die's plaques set 14 cm back in their frames
+  const sw = 1.5 + H * 0.12, sunkBy = 0.6 + ctx.groundFall;
+  for (let k = 0; k < 3; k++) {
+    const grow = (2 - k) * 0.32, yb = k === 0 ? -sunkBy : k * 0.2;
+    chamferedBox(sink, 'stone', [-sw / 2 - grow, yb, -sw / 2 - grow], [sw / 2 + grow, (k + 1) * 0.2, sw / 2 + grow], 1, 0.035);
+  }
+  const steps = 3 * 0.2;
+  const dieW = 1.0 + H * 0.08, dieH = 1.1 + H * 0.06, NICHE = 0.14;
+  chamferedBox(sink, body, [-dieW / 2, steps, -dieW / 2 + NICHE], [dieW / 2, steps + dieH, dieW / 2 - NICHE], 1, 0.02);
   moulding(sink, body, dieW, dieW, steps + dieH, 0.16, 0.1);
   moulding(sink, body, dieW, dieW, steps, 0.12, 0.06);
   // the plaque on the front and back faces, and its inscription in gilt capitals (`inscription`, lines split by '|';
   // gauntlet wave 154: "the memorial obelisk has no inscription"), set as large as the plaque allows
   const lines = String(ctx.params.inscription ?? '').split('|').map((line) => line.trim()).filter(Boolean);
   for (const side of [1, -1]) {
-    const face: Face = { origin: [0, 0, side * dieW / 2], u: [side, 0, 0], out: [0, 0, side], width: dieW };
     const pw = dieW * (lines.length ? 0.84 : 0.62), ph = dieH * (lines.length ? 0.72 : 0.5), py = steps + dieH * 0.5;
+    // the frame round the plaque's niche: the stiles, the rails under and over it, NICHE deep
+    const zi = side * (dieW / 2 - NICHE), zo = side * dieW / 2, z0 = Math.min(zi, zo), z1 = Math.max(zi, zo);
+    for (const [x0, x1, y0, y1] of [[-dieW / 2, -pw / 2, steps, steps + dieH], [pw / 2, dieW / 2, steps, steps + dieH],
+      [-pw / 2, pw / 2, steps, py - ph / 2], [-pw / 2, pw / 2, py + ph / 2, steps + dieH]] as const) {
+      sink.span(body, x0, y0, z0, x1, y1, z1);
+    }
+    const face: Face = { origin: [0, 0, zi], u: [side, 0, 0], out: [0, 0, side], width: dieW };
     sink.quad('structureMetal', facePoint(face, -pw / 2, py - ph / 2, 0.012), facePoint(face, pw / 2, py - ph / 2, 0.012),
       facePoint(face, pw / 2, py + ph / 2, 0.012), facePoint(face, -pw / 2, py + ph / 2, 0.012), { colour: PLAQUE, decor: true });
     if (!lines.length) continue;

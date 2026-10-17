@@ -85,6 +85,9 @@ const thirdPartyCoverage = [
   'public/fonts/',
   'public/models/',
   'public/brand/',
+  // the site-root icons are exports of public/brand/favicon.svg (Claude Code mascot row in docs/ATTRIBUTION.md)
+  'public/favicon.ico',
+  'public/apple-touch-icon.png',
   'public/textures/',
   'src/engine/post.ts',
   'src/vehicles/materials.ts',

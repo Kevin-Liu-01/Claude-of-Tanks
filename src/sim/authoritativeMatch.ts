@@ -930,7 +930,9 @@ export function createAuthoritativeMatch({
   const trenchLines = (heightField as { assaultTrenchLines?: { sectors?: RuntimeValue; lines?: RuntimeValue } }).assaultTrenchLines;
   const placement = createMatchPlacement({
     mapId,
-    heightField, obstacles: staticObstacles, queryObstacles: worldCollision?.queryObstacles,
+    // the map's own ground, as the solo step places on it (state.ts): the match's pre-placed craters (world/mapCraters.ts)
+    // must not move a deployment slot (deploymentParity)
+    heightField: baseHeightField, obstacles: staticObstacles, queryObstacles: worldCollision?.queryObstacles,
     anchors: matchPlacementAnchors(layout.spawns), mode: normalizedGameMode,
     // index-aligned carved sectors (null where the terrain dropped a line), exactly as the solo path passes them
     assaultLines: (trenchLines?.sectors ?? trenchLines?.lines ?? null) as never,

@@ -21,6 +21,8 @@ import {
 } from './exteriorDetailKit.ts';
 // (the container rows' own kit: maps/containerRowKit.ts; the row stays in this kit's table and is re-exported)
 import { makeContainerRow } from './containerRowKit.ts';
+// (the gantry and the shed are rebuilt in their own file: maps/railYardR2.ts; the looks lane's r2 sweep, 2026-10-16)
+import { hallPlinth, hallSlab, makeGantry, makeShed } from './railYardR2.ts';
 import { terraceLayout, terraceUnits } from './terraceLayout.ts';
 
 const gablePrism = (width: number, height: number, depth: number): THREE.BufferGeometry => (
@@ -304,9 +306,24 @@ export function settleCatalogCuts(tmp: GeometryBuckets): void {
   // the builder's units to the back of their cuts
   const liftOf = (b: THREE.Box3, side: HallSide, off: number): number => (side === 'pz' ? b.min.z - (d / 2 - t + off) : side === 'nz' ? (-d / 2 + t - off) - b.max.z
     : side === 'px' ? b.min.x - (w / 2 - t + off) : (-w / 2 + t - off) - b.max.x);
+  // (the looks lane, 2026-10-16: a louvre stood a decimetre before its pane, 6 cm clear of the cut's sides, in the air)
+  // a louvre blade spans its cut from jamb to jamb, bearing on the reveals
+  const spanCut = (g: THREE.BufferGeometry, side: HallSide, hole: WallHole): void => {
+    const b = boxOf(g), alongX = side === 'pz' || side === 'nz';
+    const lo = alongX ? b.min.x : b.min.z, hi = alongX ? b.max.x : b.max.z, c = (lo + hi) / 2, k = hole.w / Math.max(1e-3, hi - lo);
+    g.translate(alongX ? -c : 0, 0, alongX ? 0 : -c);
+    g.scale(alongX ? k : 1, 1, alongX ? 1 : k);
+    g.translate(alongX ? hole.at : 0, 0, alongX ? 0 : hole.at);
+  };
+  const holeAt = (g: THREE.BufferGeometry, side: HallSide): WallHole | undefined => {
+    const b = boxOf(g), alongX = side === 'pz' || side === 'nz', c = alongX ? (b.min.x + b.max.x) / 2 : (b.min.z + b.max.z) / 2;
+    return holes[side].find((h) => Math.abs(c - h.at) < h.w / 2 && b.max.y > h.y0 && b.min.y < h.y1);
+  };
   for (const u of spec.units) {
     const lift = liftOf(boxOf(u.g), u.side, u.offset), n = u.side === 'pz' ? [0, 0, -1] : u.side === 'nz' ? [0, 0, 1] : u.side === 'px' ? [-1, 0, 0] : [1, 0, 0];
     u.g.translate(n[0] * lift, 0, n[2] * lift);
+    const hole = u.g.userData?.structureSupport?.support ? holeAt(u.g, u.side) : undefined;
+    if (hole) spanCut(u.g, u.side, hole);
   }
   // the cut openings' plates to the back of their cuts, their louvres a decimetre before them
   const lifts = new Map<string, { side: HallSide; lift: number }>();
@@ -316,12 +333,17 @@ export function settleCatalogCuts(tmp: GeometryBuckets): void {
     const b = boxOf(g), side = SIDE_OF(b, w, d)!;
     lifts.set(n, { side, lift: liftOf(b, side, 0.01) });
   }
+  const spans = new Map<string, WallHole>();
+  for (const g of plates) { const o = cut.has(named(g)) ? holeOf(g) : null; if (o) spans.set(named(g), o.hole); }
   for (const g of cat) {
-    const own = lifts.get(named(g)), carrier = lifts.get(String(g.userData?.structureSupport?.support ?? ''));
+    const sup = String(g.userData?.structureSupport?.support ?? '');
+    const own = lifts.get(named(g)), carrier = lifts.get(sup);
     const m = own ?? (carrier ? { side: carrier.side, lift: carrier.lift - 0.1 } : null);
     if (!m || hidden.has(g)) continue;
     const n = m.side === 'pz' ? [0, 0, -1] : m.side === 'nz' ? [0, 0, 1] : m.side === 'px' ? [-1, 0, 0] : [1, 0, 0];
     g.translate(n[0] * m.lift, 0, n[2] * m.lift);
+    const span = !own && carrier ? spans.get(sup) : undefined;
+    if (span) spanCut(g, m.side, span);
   }
   // the parts left out: each folded to a 2 cm stand-in sealed in the plinth under the core, on the core's foot (its draws
   // kept)
@@ -377,7 +399,7 @@ export function makeWarehouse(
   // maps lane B (2026-10-03): an authored plot sets the footprint (Kestrel Airfield's cargo-hangar plot); the draws stay
   const w = context?.plot?.w ?? drawnW, d = context?.plot?.d ?? drawnD;
   const local = forkRng((drawnW - 13.5) / 3 * 0.61 + (drawnD - 21) / 5 * 0.29 + (wallH - 5.4) / 0.8 * 0.07);
-  parts.stone.push(box(w + 0.4, 1.1, d + 0.4).translate(0, -0.1, 0));
+  parts.stone.push(hallPlinth(w + 0.4, 1.1, d + 0.4, -0.65));
   const wallBucket = steelClad ? parts.structureMetal! : parts.stone;
   const cladHex = snowClad ? WAREHOUSE_CLADDING_HEX_SNOW : WAREHOUSE_CLADDING_HEX;
   // (props census #4/#13, lane B 2026-10-15; the Ironworks court's donor) the walls stand round the hall's core with the
@@ -399,7 +421,7 @@ export function makeWarehouse(
   const seat = gableSlabSeat(w / 2, roofH, 0.4, 0.13), ang = seat.pitch;
   parts.dark.push(gableAttic(w, roofH, d).translate(0, wallH, 0));
   for (const side of [-1, 1]) {
-    const slab = box(seat.length, 0.13, d + 0.7, 0.35);
+    const slab = hallSlab(seat.length, 0.13, d + 0.7, 0.35);
     pitchRoofPlane(slab, 'x', -side as -1 | 1, ang, 'gable');
     slab.translate(-side * seat.out, wallH + seat.up, 0);
     parts.roof.push(slab);
@@ -536,110 +558,6 @@ const _livery = new THREE.Color();
 function paintHex(geo: THREE.BufferGeometry, rng: () => number, hex: number, scale = 1, jitter = 0.06): THREE.BufferGeometry {
   _livery.set(hex);
   return paintGeo(geo, rng, _livery.r * scale, _livery.g * scale, _livery.b * scale, jitter);
-}
-
-/**
- * Rail-served gantry crane: two braced leg towers, a deep bridge girder
- * spanning them, trolley + hook block and a cabin — the yard's skyline
- * landmark (~12.5 m).
- */
-export function makeGantry(
-  rng: () => number,
-  buckets: GeometryBuckets,
-): StructureDimensions {
-  const span = 15 + rng() * 2, legH = 9.5 + rng() * 1.2, girderH = 1.35;
-  const mk = (geometry: THREE.BufferGeometry): void => { buckets.dark.push(geometry); };
-  for (const s of [-1, 1]) { // A-frame leg towers
-    const lx = s * span / 2;
-    for (const dz of [-1.7, 1.7]) {
-      const leg = box(0.42, legH, 0.42, 1.0);
-      leg.translate(lx, legH / 2, dz);
-      mk(leg);
-    }
-    // cross braces (X read from a distance is carried by two diagonals)
-    for (const dir of [-1, 1]) {
-      const br = box(0.16, Math.hypot(legH * 0.55, 3.4), 0.16, 1.0);
-      br.rotateX(dir * Math.atan2(3.4, legH * 0.55));
-      br.translate(lx, legH * 0.45, 0);
-      mk(br);
-    }
-    const foot = box(1.4, 0.5, 4.6, 0.8);
-    foot.translate(lx, 0.22, 0);
-    buckets.stone.push(jitterUV(foot, rng));
-    // Cap beam joins both A-frame legs to the central bridge. Previously the
-    // girder visually hovered between the two z-offset towers.
-    const cap = box(0.62, 0.42, 4.0, 0.8);
-    cap.translate(lx, legH + 0.14, 0);
-    mk(cap);
-  }
-  // bridge girder + rail, overhanging one side
-  const gird = box(span + 4.5, girderH, 1.5, 0.7);
-  gird.translate(0.8, legH + girderH / 2, 0);
-  mk(gird);
-  const rail = box(span + 4.5, 0.14, 0.2, 1.0);
-  rail.translate(0.8, legH - 0.07, 0);
-  mk(rail);
-  // trolley + cable + hook block
-  const tx = (rng() - 0.5) * span * 0.6;
-  const trolley = box(1.5, 0.7, 1.9, 1.0);
-  trolley.translate(tx, legH + girderH + 0.3, 0);
-  mk(trolley);
-  const drop = 2.2 + rng() * 2.6;
-  const cable = box(0.05, drop, 0.05, 2.0);
-  cable.translate(tx, legH - drop / 2, 0);
-  mk(cable);
-  const hook = box(0.55, 0.75, 0.4, 1.0);
-  hook.translate(tx, legH - drop - 0.35, 0);
-  mk(hook);
-  // operator cabin under the girder
-  const cab = box(1.6, 1.5, 1.6, 0.8);
-  cab.translate(-span / 2 + 1.4, legH - 0.9, 1.3);
-  mk(cab);
-  // Twin hangers physically seat the operator cabin under the girder.
-  for (const x of [-span / 2 + 0.95, -span / 2 + 1.85]) {
-    const hanger = box(0.12, 0.54, 0.12, 1.0);
-    hanger.translate(x, legH + 0.08, 0.62);
-    mk(hanger);
-  }
-  if (buckets.glass) {
-    const gl = box(1.4, 0.7, 0.06);
-    gl.translate(-span / 2 + 1.4, legH - 0.65, 2.11);
-    buckets.glass.push(gl);
-  }
-  // (props census #3, lane B 2026-10-14; the judges: "no lattice, no sill beams, bogies or rails, no walkway, ladder or
-  // handrails") the parts below are new to the stream (dressing: no draws), the crane's members and access: the girts
-  // across each A-frame, the sill beams on their bogies and wheels on the rails along the runway feet, the girder's
-  // web stiffeners, the walkway along it with its toe board and two-rail handrail, the ladder up a leg to it, the
-  // cabin's side lights and roof, the hook block's sheave cheeks and the second fall of rope
-  for (const s of [-1, 1]) {
-    const lx = s * span / 2;
-    for (const t of [0.33, 0.66]) mk(boxAt(0.14, 0.14, 3.4, lx, legH * t, 0));
-    mk(boxAt(0.5, 0.55, 4.3, lx, 0.47 + 0.12 + 0.3 + 0.27, 0));
-    for (const dz of [-1.7, 1.7]) {
-      const wheel = new THREE.CylinderGeometry(0.3, 0.3, 0.18, 10);
-      wheel.rotateZ(Math.PI / 2);
-      wheel.translate(lx, 0.47 + 0.12 + 0.3, dz);
-      mk(dressing(wheel));
-    }
-    mk(boxAt(0.1, 0.12, 4.6, lx, 0.47 + 0.06, 0));
-  }
-  for (let x = -span / 2 + 0.6; x < span / 2 + 2.9; x += 1.4) for (const sz of [-1, 1]) mk(boxAt(0.06, girderH - 0.1, 0.06, x, legH + girderH / 2, sz * 0.78));
-  const wx0 = -span / 2 - 0.2, wx1 = span / 2 + 2.8, wz0 = 0.74, wz1 = 1.5;
-  mk(boxAt(wx1 - wx0, 0.05, wz1 - wz0, (wx0 + wx1) / 2, legH + girderH - 0.05, (wz0 + wz1) / 2));
-  mk(boxAt(wx1 - wx0, 0.1, 0.02, (wx0 + wx1) / 2, legH + girderH + 0.05, wz1 - 0.01));
-  for (let x = wx0 + 0.05; x <= wx1; x += 1.5) mk(boxAt(0.05, 1.0, 0.05, x, legH + girderH + 0.5, wz1 - 0.03));
-  for (const h of [0.5, 1.0]) mk(boxAt(wx1 - wx0, 0.04, 0.04, (wx0 + wx1) / 2, legH + girderH + h, wz1 - 0.03));
-  for (const g of ladderGeos(-span / 2 - 0.235, -1.7, 0.47, legH + 0.2, 'z', 0.42)) mk(g);
-  if (buckets.glass) for (const sx of [-1, 1]) buckets.glass.push(boxAt(0.06, 0.7, 1.2, -span / 2 + 1.4 + sx * 0.81, legH - 0.65, 1.3));
-  mk(boxAt(1.9, 0.08, 1.9, -span / 2 + 1.4, legH - 0.12, 1.3));
-  mk(boxAt(0.05, drop, 0.05, tx + 0.3, legH - drop / 2, 0));
-  for (const sx of [-1, 1]) mk(boxAt(0.06, 0.5, 0.42, tx + sx * 0.3, legH - drop - 0.2, 0));
-  const crook = new THREE.TorusGeometry(0.18, 0.05, 6, 10, Math.PI * 1.4);
-  crook.rotateZ(Math.PI * 0.8);
-  // (its eye up in the block's cheeks: the integrity gate found it 9 cm clear of them)
-  crook.translate(tx, legH - drop - 0.84, 0);
-  mk(dressing(crook));
-  return { w: span + 5, d: 5.4, h: legH + girderH + 0.8 };
 }
 
 /** Riveted water tower: cylindrical tank on four braced legs + conical cap. */
@@ -788,69 +706,6 @@ export function makeStack(
   buckets.dark.push(memberGeo([-(rAt(1.6) * 0.95 + 0.015), 1.6, 0], [-(rAt(top) * 0.95 + 0.015), top, 0], 0.025));
   buckets.dark.push(memberGeo([-(rAt(top) * 0.95 + 0.015), top, 0], [-(rAt(top) * 1.1), top + 1.6, 0], 0.025));
   return { w: 3.4, d: 3.4, h: stackH + 2.6 };
-}
-
-/** Open-sided loading shed: platform, posts, mono-pitch roof, crate stacks. */
-export function makeShed(
-  rng: () => number,
-  buckets: GeometryBuckets,
-): StructureDimensions {
-  const w = 9 + rng() * 2, d = 6.4, ph = 3.4 + rng() * 0.4;
-  const roofAngle = 0.09;
-  const roofCenterY = 0.55 + ph + 0.06;
-  const roofBottomOffset = 0.07;
-  const plat = box(w, 0.55, d, 0.6);
-  plat.translate(0, 0.27, 0);
-  buckets.stone.push(jitterUV(plat, rng));
-  for (const [sx, sz] of [[-1, -1], [0, -1], [1, -1], [-1, 1], [0, 1], [1, 1]]) {
-    const z = sz * (d / 2 - 0.5);
-    // Follow the actual mono-pitch underside. Equal-height posts left the
-    // uphill row visibly short and drove the downhill row through the roof.
-    const roofUndersideY = roofCenterY + Math.tan(roofAngle) * z - roofBottomOffset;
-    const postH = roofUndersideY - 0.55;
-    const post = box(0.22, postH, 0.22, 1.2);
-    post.translate(sx * (w / 2 - 0.5), 0.55 + postH / 2, z);
-    buckets.wood.push(jitterUV(post, rng));
-  }
-  const roof = box(w + 0.8, 0.12, d + 0.8, 0.35);
-  pitchRoofPlane(roof, 'z', -1, roofAngle, 'skillion');
-  roof.translate(0, roofCenterY, 0);
-  buckets.roof.push(jitterUV(roof, rng));
-  // (props census #4/#13, lane B 2026-10-15; the Ironworks court's donor: "a slab on six sticks") the frame under the
-  // roof: an eave beam along each row of posts, rafters down the slope over the posts and purlins across them, knee
-  // braces from the end posts, the posts' base plates; the sheet's ribs down the slope, the gutter along the low eave
-  // and its downpipe; all new to the stream, none on the platform's band (the court's support)
-  const under = (z: number): number => roofCenterY + Math.tan(roofAngle) * z - roofBottomOffset;
-  const frame = buckets.wood, steel = buckets.dark;
-  const xs = [-(w / 2 - 0.5), 0, w / 2 - 0.5];
-  for (const sz of [-1, 1]) {
-    const z = sz * (d / 2 - 0.5), y = under(z);
-    frame.push(memberGeo([-(w / 2 - 0.3), y - 0.11, z], [w / 2 - 0.3, y - 0.11, z], 0.18, 0.22));
-    for (const sx of [-1, 1]) {
-      const x = sx * (w / 2 - 0.5);
-      frame.push(memberGeo([x, y - 0.95, z], [x - sx * 0.8, y - 0.2, z], 0.09, 0.09));
-      frame.push(memberGeo([x, y - 0.95, z], [x, y - 0.2, z - sz * 0.75], 0.09, 0.09));
-    }
-    for (const x of xs) steel.push(boxAt(0.36, 0.05, 0.36, x, 0.575, z));
-  }
-  const za = -(d / 2 - 0.2), zb = d / 2 - 0.2;
-  for (const x of xs) frame.push(memberGeo([x, under(za) - 0.07, za], [x, under(zb) - 0.07, zb], 0.14, 0.12));
-  for (const z of [-d / 6, d / 6]) frame.push(memberGeo([-(w / 2 - 0.3), under(z) - 0.05, z], [w / 2 - 0.3, under(z) - 0.05, z], 0.08, 0.1));
-  const top = (z: number): number => roofCenterY + Math.tan(roofAngle) * z + 0.06;
-  for (let x = -(w / 2 + 0.1); x <= w / 2 + 0.1; x += 0.6) {
-    buckets.roof.push(memberGeo([x, top(-(d / 2 + 0.35)), -(d / 2 + 0.35)], [x, top(d / 2 + 0.35), d / 2 + 0.35], 0.05, 0.04));
-  }
-  const low = -(d / 2 + 0.45), gy = top(low) - 0.12;
-  steel.push(dressing(new THREE.CylinderGeometry(0.07, 0.07, w + 0.8, 7, 1).rotateZ(Math.PI / 2).translate(0, gy, low)));
-  steel.push(dressing(new THREE.CylinderGeometry(0.05, 0.05, gy - 0.55, 6, 1).translate(w / 2 + 0.3, (gy + 0.55) / 2, low)));
-  for (let k = 0, n = 3 + ((rng() * 4) | 0); k < n; k++) {
-    const cs = 0.55 + rng() * 0.5;
-    const crate = box(cs, cs, cs, 1.0);
-    crate.rotateY(rng() * Math.PI * 0.5);
-    crate.translate((rng() - 0.5) * (w - 2.2), 0.55 + cs / 2, (rng() - 0.5) * (d - 2.2));
-    buckets.wood.push(jitterUV(crate, rng));
-  }
-  return { w: w + 0.8, d: d + 0.8, h: ph + 1.0 };
 }
 
 // =============================================================================
@@ -1058,4 +913,4 @@ export const RAIL_BUILDERS: Record<string, StructureBuilder> = {
   netyard: makeNetYard,
 };
 
-export { makeContainerRow };
+export { makeContainerRow, makeGantry, makeShed };

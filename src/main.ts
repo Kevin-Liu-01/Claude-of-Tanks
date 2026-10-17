@@ -181,7 +181,7 @@ import { createPlayerFrameInput } from './game/playerFrameInput.ts';
 import { createBattleFrameRuntime } from './game/battleFrameRuntime.ts';
 import { createBattlePresentationRuntime, loadMissionAttachmentVisual } from './game/battlePresentationRuntime.ts';
 import { createBattleHudFrameRuntime } from './game/battleHudFrameRuntime.ts';
-import { createMatchModeWorldPresentation } from './game/matchModeWorldPresentation.ts';
+import { createLazyMatchModeWorldPresentation } from './game/matchModeWorldLazy.ts';
 import { createBattleResultPresentationRuntime } from './game/battleResultPresentationRuntime.ts';
 import { createBattleEndingCamera } from './game/battleEndingCamera.ts';
 import { createSoloBattleDeploymentAccess } from './game/soloBattleDeploymentAccess.ts';
@@ -358,8 +358,8 @@ onPaintStall(({ phase, waitedMs }) => entryTelemetry.send({
 // before HUD/garage construction so their first visible frame already has the
 // correct width, height, orientation and interaction-mode attributes.
 installResponsiveLayout();
-// Browser pinch-zoom is never a page zoom here (2026-09-20): every surface is pinned to the visual viewport,
-// so a zoomed browser folded the UI into a corner; the guard used to exist only inside the touch controls.
+// Browser pinch-zoom is never a page zoom here (2026-09-20; the guard used to exist only inside the touch
+// controls). index.html's inline copy guards the splash from first paint; this hands over from it (2026-10-15).
 installPinchZoomGuard();
 // Apply static i18n attributes to the boot screen so the credits button,
 // gate prompt, and retry button respect the active locale from first paint.
@@ -432,7 +432,9 @@ entryTelemetry.send({
 });
 const scene = new THREE.Scene();
 // campaign slice 3 (2026-09-12): trench works follow the live ground under each sector.
-const matchModeWorld = createMatchModeWorldPresentation(scene, {
+// (2026-10-16, the perf lane: 226's bundle budget) the presentation's module is its own chunk, fetched when the boot is
+// idle (matchModeWorldLazy.ts): the Garage draws no objective
+const matchModeWorld = createLazyMatchModeWorldPresentation(scene, {
   groundHeight: (x, z) => groundSampler(x, z),
   // tactical map 2026-09-15: objective icons fade near the camera and hold their screen size far away
   viewerPosition: () => camera.position,
@@ -1167,7 +1169,10 @@ battleHudRuntime = createMainBattleHudRuntime({
 });
 async function ensureBattleHud() {
   if (!battleHudRuntime) throw new Error('battle HUD runtime is not initialized');
-  return battleHudRuntime.preload();
+  // (2026-10-16, the perf lane) the mode objectives' presentation is its own chunk (matchModeWorldLazy.ts): every battle's
+  // interface load (solo, network, debug) waits for it here, so its markers are in from the battle's first frame
+  const [hud] = await Promise.all([battleHudRuntime.preload(), matchModeWorld.ready()]);
+  return hud;
 }
 // Preserve the staged progress contract without transferring battle-only UI
 // into a garage first visit. Battle intent/entry joins ensureBattleHud().
@@ -3618,6 +3623,10 @@ if (pendingRoomInvitePromise) {
   });
 }
 window.__GAME_READY = true;
+// 2026-10-12 (the perf stream): the pending battlefield's loading art, in idle time (onMapSelect does it for a new pick)
+if (worldRuntime.pendingMapId && worldRuntime.pendingMapId !== 'random') preloadImageWhenIdle(battleBackdrop(worldRuntime.pendingMapId));
+// 2026-10-13: the loading screen's blurred per-map placeholders (a ~15 kB lazy chunk), so its first frame is the map's own
+primeMapLqipWhenIdle();
 // 2026-10-15 (the MP stream, the §7 side-by-side's rejoin row): a tab opened on a room invite is on its way into a room
 // and, on a return, straight into a running match. The Garage's idle work (the neighbouring heroes, the dressing set
 // pieces) would share the main thread with the room's join and the battle entry, so it waits: a return to the Garage
@@ -3633,10 +3642,6 @@ if (pendingRoomInvitePromise) {
     setTimeout(() => { if (game.phase === 'garage' && !battleEntryLifecycle.pending) runGarageIdleWork(); }, INVITE_GARAGE_IDLE_DELAY_MS);
   }, () => runGarageIdleWork());
 } else runGarageIdleWork();
-// 2026-10-12 (the perf stream): the pending battlefield's loading art, in idle time (onMapSelect does it for a new pick)
-if (worldRuntime.pendingMapId && worldRuntime.pendingMapId !== 'random') preloadImageWhenIdle(battleBackdrop(worldRuntime.pendingMapId));
-// 2026-10-13: the loading screen's blurred per-map placeholders (a ~15 kB lazy chunk), so its first frame is the map's own
-primeMapLqipWhenIdle();
 window.__BOOT_TIMINGS = BOOT_TIMINGS;
 window.__BOOT_MS = Math.round(performance.now() - BOOT_T0);
 entryTelemetry.send({

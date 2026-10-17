@@ -1,4 +1,5 @@
 import { HUD_PARTS, hudCenter, hudProfile, readHudPreferences } from './hudPreferences.ts';
+import { layoutViewportSize } from './responsiveLayout.ts';
 /** Event-driven overrides layered on the normal layout owner; no frame-loop work. */
 export function installHudCustomization():()=>void {
   let preferences=readHudPreferences(),frame=0;
@@ -6,7 +7,8 @@ export function installHudCustomization():()=>void {
   const resize=new ResizeObserver(schedule);
   function refresh(){
     frame=0;
-    const w=window.visualViewport?.width||innerWidth,h=window.visualViewport?.height||innerHeight;
+    // the same viewport the HUD root is sized to (a pinch changes neither); positions are layout coordinates
+    const {width:w,height:h}=layoutViewportSize(window);
     const profile=hudProfile(w,h,document.body.classList.contains('cot-touch-layout'));
     for(const part of HUD_PARTS)for(const node of document.querySelectorAll<HTMLElement>(part.selector)){
       if(node.closest('.cot-hud-editor'))continue;
@@ -33,7 +35,6 @@ export function installHudCustomization():()=>void {
   window.addEventListener('storage',reload);
   window.addEventListener('resize',schedule);
   window.addEventListener('cot:layoutchange',schedule);
-  window.visualViewport?.addEventListener('resize',schedule);
   schedule();
-  return ()=>{changes.disconnect();resize.disconnect();cancelAnimationFrame(frame);window.removeEventListener('cot:hud-preferences',reload);window.removeEventListener('storage',reload);window.removeEventListener('resize',schedule);window.removeEventListener('cot:layoutchange',schedule);window.visualViewport?.removeEventListener('resize',schedule);};
+  return ()=>{changes.disconnect();resize.disconnect();cancelAnimationFrame(frame);window.removeEventListener('cot:hud-preferences',reload);window.removeEventListener('storage',reload);window.removeEventListener('resize',schedule);window.removeEventListener('cot:layoutchange',schedule);};
 }

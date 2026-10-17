@@ -75,6 +75,12 @@ function fresco(sink: PartSink, f: Face, y: number, w: number, h: number): void 
   faceBox(sink, 'plaster2', f, 0, y, 0.012, w + 0.3, h + 0.28, 0.02, { decor: true });
   faceBox(sink, 'structureMetal', f, 0, y, 0.024, w, h, 0.01, { decor: true, colour: FRESCO });
   faceBox(sink, 'structureMetal', f, 0, y + h * 0.08, 0.03, w * 0.34, h * 0.62, 0.004, { decor: true, colour: shade(FRESCO, 0.82) });
+  // (props census r2 sweep, Lane C 2026-10-16: the fresco read as a plate painted flat on the render) its moulded frame,
+  // an aedicule's jambs, sill and head standing 14 cm proud round it, the head a little deeper (its drip)
+  const fo = { decor: true, shade: 0.94 };
+  faceBox(sink, 'plaster2', f, 0, y - h / 2 - 0.06, 0.07, w + 0.24, 0.12, 0.14, fo);
+  faceBox(sink, 'plaster2', f, 0, y + h / 2 + 0.07, 0.08, w + 0.32, 0.14, 0.16, fo);
+  for (const s of [-1, 1]) faceBox(sink, 'plaster2', f, s * (w / 2 + 0.06), y, 0.07, 0.12, h, 0.14, fo);
 }
 
 function dialect(st: SavoyardState): HouseDialect {
@@ -570,7 +576,8 @@ const hospiceGrand: RegionalBuilder = (ctx) => {
     // the swept flags before the door, the inscribed panel over it
     faceBox(sink, 'stone', fa, 0, -0.12, 1.9, 3.8, 0.3, 3.4, { decor: true });
     faceBox(sink, 'stone', fa, 0, frame.floors[0] + 3.2, 0.05, 2.4, 0.46, 0.1, { decor: true, shadow: true });
-    faceBox(sink, 'dark', fa, 0, frame.floors[0] + 3.2, 0.105, 2.1, 0.18, 0.01, { decor: true });
+    // (the r2 sweep: a black strip painted on the tablet) the inscription cut into it, its letters' shadowed grooves
+    faceBox(sink, 'stone', fa, 0, frame.floors[0] + 3.2, 0.103, 2.1, 0.18, 0.008, { decor: true, shade: 0.74 });
     const b0 = frame.bodies[0];
     for (const [cx, cz] of [[b0.x0, b0.z0], [b0.x1, b0.z0], [b0.x0, b0.z1], [b0.x1, b0.z1]] as const) {
       const sx = cx > 0 ? 1 : -1, sz = cz > 0 ? 1 : -1;
@@ -594,8 +601,8 @@ const hospiceGrand: RegionalBuilder = (ctx) => {
     }, y0 + o.y0) });
     if (ctx.snowCap) drifts(sink, frame, frame.spec.openings, ctx.variant);
     const f = frame.faces.front;
-    faceBox(sink, 'plaster2', f, 0, 3.6, 0.012, 1.4, 0.9, 0.02, { decor: true });
-    faceBox(sink, 'dark', f, 0, 3.6, 0.024, 1.1, 0.64, 0.01, { decor: true });
+    // (the r2 sweep: the panel over the door was a dark plate on the render) the saint's fresco in its frame
+    fresco(sink, f, 3.6, 1.1, 0.64);
     // the bell turret on the front gable's apex
     const ridge = frame.roof.ridgeY, tz = (chapelD + 0.3) / 2 - 0.7, b = 0.55;
     sink.span('stone', -b - 0.1, ridge - 0.6, tz - b - 0.1, b + 0.1, ridge + 0.25, tz + b + 0.1);

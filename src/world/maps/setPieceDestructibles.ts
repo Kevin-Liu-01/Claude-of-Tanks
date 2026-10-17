@@ -116,15 +116,16 @@ export function rollingStockDestructibleTypes(mobile = false): Record<string, De
 // their break swaps to the collapsed build, drawn with the baked material.
 
 /** The destructible kind a tram registers as: Sarajevo's K2 or Blackglass's Shanghai car (tramShanghai.ts). */
-export type TramKind = 'xk2_black_panther' | 'shanghai';
+export type TramKind = 'k2' | 'shanghai'; // the Sarajevo K2 tram's kind, not a tank id (tank-ids:keep)
 export function tramDestructibleKind(kind: TramKind): string { return `tram_${kind}`; }
 
 export function tramDestructibleTypes(mobile = false): Record<string, DestructiblePropType> {
-  const xk2_black_panther = SET_PIECE_SIZE.k2tram, sh = SHANGHAI_TRAM_SIZE;
+  const k2 = SET_PIECE_SIZE.k2tram, sh = SHANGHAI_TRAM_SIZE; // tank-ids:keep
   return {
-    [tramDestructibleKind('xk2_black_panther')]: {
+    [tramDestructibleKind('k2')]: { // tank-ids:keep
       cls: 'break', mat: 'baked', contact: 'ob', collider: true,
-      r: Math.hypot(xk2_black_panther.hw, xk2_black_panther.hl), h: xk2_black_panther.h, hw: xk2_black_panther.hw, hl: xk2_black_panther.hl, keep: 0.35, crushMin: 5.5, groundPose: true, castShadow: true,
+      r: Math.hypot(k2.hw, k2.hl), h: k2.h, hw: k2.hw, hl: k2.hl, // tank-ids:keep
+      keep: 0.35, crushMin: 5.5, groundPose: true, castShadow: true,
       build: () => buildSetPiece('k2tram', { wrecked: true, coarse: mobile }),
       broken: () => buildSetPiece('k2tram', { wrecked: true, collapsed: true, coarse: mobile }),
       collisionSolid: () => buildSetPiece('k2tram', { wrecked: true, coarse: true }), // (physics: every tier the same records)

@@ -1320,18 +1320,18 @@ const HUD_CSS = `
   font:800 8px ${FONT_COND};letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;}
 .cot-mode-status.show{display:flex}.cot-mode-status .mi,.cot-mode-status .mi svg{display:block;width:15px;height:15px}
 .cot-mode-status .mi{color:#f0a030}.cot-mode-status .mv{color:#fff1d6;font-variant-numeric:tabular-nums}
-/* Compact player telemetry. The engineering dashboard folds this strip into
-   its richer top-right panel instead of allowing two readouts to overlap. */
+/* Compact player telemetry: bare HUD text (no box, no border), as the
+   multiplayer network strip beside it in the same corner row. The
+   engineering dashboard folds this strip into its richer top-right panel
+   instead of allowing two readouts to overlap. */
 .cot-net{position:absolute;z-index:var(--hud-layer-controls);top:8px;right:10px;display:flex;align-items:center;
-  min-height:28px;padding:4px 8px;font-family:${FONT_COND};font-variant-numeric:tabular-nums;
-  background:linear-gradient(180deg,rgba(14,20,25,.82),rgba(5,9,12,.74));
-  border:1px solid rgba(174,193,207,.22);box-shadow:0 5px 14px rgba(0,0,0,.22);
-  text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,.85);}
+  min-height:28px;padding:4px 0;font-family:${FONT_COND};font-variant-numeric:tabular-nums;
+  text-transform:uppercase;text-shadow:0 1px 3px #000,0 0 5px #000;}
 .cot-net-unit{min-width:42px;display:grid;grid-template-columns:auto auto;align-items:baseline;
   justify-content:center;column-gap:4px;color:#dce6ed;}
-.cot-net-unit+.cot-net-unit{margin-left:7px;padding-left:8px;border-left:1px solid rgba(171,190,204,.2);}
+.cot-net-unit+.cot-net-unit{margin-left:7px;padding-left:8px;}
 .cot-net .metric{font-size:11px;font-weight:800;line-height:1;letter-spacing:.02em;}
-.cot-net .label{font-size:6.5px;font-weight:800;line-height:1;letter-spacing:.13em;color:#8494a0;}
+.cot-net .label{font-size:6.5px;font-weight:800;line-height:1;letter-spacing:.13em;color:#b4c2cc;}
 .cot-net-unit.good .metric{color:#b9e7c0}.cot-net-unit.warn .metric{color:#ffd27a}
 .cot-net-unit.bad .metric{color:#ff8c82}.cot-net-unit.local .metric{color:#b9c7d1;font-size:8px;letter-spacing:.08em}
 body.cot-debug-hud .cot-net{display:none!important;}

@@ -662,6 +662,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/dev/shotViews.selftest.mjs',
     'src/dev/shotRuntime.selftest.mjs',
     'src/engine/csmShaderRelease.selftest.mjs',
+    // 2026-10-16 (the perf lane): one material per program variant — live prototype twins, one uniform map
+    'src/engine/programVariants.selftest.mjs',
     'src/engine/renderLayers.selftest.mjs',
     'src/engine/shadowCasterProfiles.selftest.mjs',
     'src/engine/nearVehicleShadowDetail.selftest.mjs',
@@ -775,6 +777,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/imagePreload.selftest.mjs',
     'src/ui/responsiveLayout.selftest.mjs',
     'src/ui/pinchZoomGuard.selftest.mjs',
+    'tools/pinch-zoom-probe.selftest.mjs',
+    'src/ui/hudEditorPreview.selftest.mjs',
     'src/ui/runtimeStyles.selftest.mjs',
     'src/ui/topAccentBorders.selftest.mjs',
     'src/vehicles/camoPolicy.selftest.mjs',
@@ -915,6 +919,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/structureStages.selftest.mjs',
     'src/fx/structureDebris.selftest.mjs', // 2026-10-12: thrown pieces lie where their flight meets the ground; still pieces belong to their building
     'src/fx/rubbleBodies.selftest.mjs', // 2026-10-12: a building's larger falling pieces are bodies of the one physics engine
+    // 2026-10-15 (the fracture package on integ/226): walls break where struck as cells, a section's fall keeps its stub and
+    // gaps its doors; a building cut into its own pieces (doors gapped in the stubs), brought down as bodies; the stages
+    // driving both, sections on and off, every piece at rest on what is under it, a lift bridge's named pieces as bodies
+    'src/fx/wallFracture.selftest.mjs',
+    'src/fx/structureFracture.selftest.mjs',
+    'src/fx/collapsePieces.selftest.mjs',
+    'src/fx/collapseBodies.selftest.mjs',
+    'src/fx/fractureStages.selftest.mjs',
     'tools/destruction-check.selftest.mjs', // 2026-10-12: Steinburg's buildings destroyed and judged (textured, nothing hanging, rubble at rest on the ground)
     'src/fx/structureMask.selftest.mjs', // 2026-10-13: nothing hangs from a falling building (straddling triangles come down with the front)
     'src/fx/latticeGround.selftest.mjs', // 2026-10-13: the landing solves read the ground as drawn from its lattice's vertices, once each
@@ -1000,8 +1012,6 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-14 (the engine-cs lane; media wave f1 "hulls hover" on snow): the Studio support seats the snow takes' heroes on
     // the rendered ground, and the ground occlusion grounds them there (the snow cap, the crease's core; ordinary ground unchanged)
     'tools/studio-snow-contact.selftest.mjs',
-    // 2026-10-03 (the skies-and-atmosphere lane): the cumulus fields and the flat condensation base
-    'src/engine/cumulusFields.selftest.mjs',
     // 2026-10-03 (the shade-fill lane): shade on dark materials kept off black — the photographic toe, the dim's facing rule
     'src/engine/shadeFill.selftest.mjs',
     'src/engine/toneR1.selftest.mjs',
@@ -1172,6 +1182,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/collisionManifestCodec.selftest.mjs',
     // 2026-10-14 (physics stream): every base and variant shard matches its index.json entry (the loaders' check)
     'server/collisionManifestIndex.selftest.mjs',
+    'server/collisionManifestRoutes.selftest.mjs', // 2026-10-16 physics: v2 serves 226's manifests (256 parts); /mp-collision holds production 224's byte for byte
     'server/dedicatedWorldCollisionMemory.selftest.mjs',
     'server/match/loop.selftest.mjs',
     'server/match/inputBuffer.selftest.mjs',
@@ -1261,6 +1272,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/groundCoverCraters.selftest.mjs',
     // 2026-10-08 (destruction core lane, P2; wave 277): the collapse comes down storey by storey before its swap
     'src/sim/collapseCascade.selftest.mjs',
+    // 2026-10-16 (destruction lane): a collapse leaves a ruin, never a raft (the r2 sweep's anti-raft floors), every kit
+    'src/world/collapseRuin.selftest.mjs',
     // the kit seam's world side: the default kit, the aDamage tags, spans, depth materials and shadow touch (§16.4)
     'src/world/destructionKit.selftest.mjs',
     'src/world/fractureAnatomy.selftest.mjs',
@@ -1336,6 +1349,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/battleFrameRuntime.selftest.mjs',
     'src/game/battleHudFrameRuntime.selftest.mjs',
     'src/game/matchModeWorldPresentation.selftest.mjs',
+    // 2026-10-16 (the perf lane): the presentation behind its own chunk (226's game entry budget)
+    'src/game/matchModeWorldLazy.selftest.mjs',
     'src/game/preBattleCountdown.selftest.mjs',
     'src/ui/preBattleOverlay.selftest.mjs',
     'src/game/aimController.selftest.mjs',
@@ -1598,12 +1613,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/fieldWallCollision.selftest.mjs', // 2026-10-15 physics PH.15: the field walls' crushable spans and their press
     // the scenery lane (b15, wave 106): the regions' field stacks and the straw props' hay print
     'src/world/haystacks.selftest.mjs',
+    'src/world/maps/sceneryR2.selftest.mjs', // 2026-10-16 props lane A, the r2 sweep: the scenery and field-stack kinds to the bunker r2 standard
     'src/world/maps/periodClutter.selftest.mjs',
     'src/world/maps/recordClearance.selftest.mjs', // 2026-10-13 (the perf stream): the street kits' clearance from a grid, as the walk
     // the scenery lane (b16, wave 121): the ksar gate post in place of the steel checkpoint hut on Desert and Redrock
     'src/world/maps/regional/ksarGate.selftest.mjs',
     // the fortifications lane (2026-10-09, R259; wave 315): the field works' pillbox rebuilt, its bank an earthwork
     'src/world/maps/fortKit.selftest.mjs',
+    'src/world/bunkerShells.selftest.mjs', // 2026-10-16 physics: rounds go in through a concrete pillbox's drawn embrasures and to its door's leaf
     // props census #10 (2026-10-14): the field works' period forms, draws, records and wrecks (maps/fieldworksKit.ts)
     'src/world/maps/fieldworksKit.selftest.mjs',
     'src/world/maps/lightWreck.selftest.mjs',
@@ -1889,6 +1906,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageOrder.selftest.mjs',
     'src/ui/garageAuxiliarySummary.selftest.mjs',
     'src/vehicles/auxiliaryRoofGuns.selftest.mjs',
+    // 2026-10-16 (the perf lane): the roof-gun table's compact form
+    'src/vehicles/auxiliaryRoofGunsCodec.selftest.mjs',
     'src/ui/randomPreviews.selftest.mjs',
     'src/ui/touchControls.selftest.mjs',
     'src/ui/mobileLayout.selftest.mjs',
@@ -1925,6 +1944,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/leopardHullClosure.selftest.mjs',
     'src/vehicles/tankFactoryCore.selftest.mjs',
     'src/vehicles/tankFactoryStaging.selftest.mjs',
+    'src/vehicles/tankFactoryDeferredAssembly.selftest.mjs',
     'src/vehicles/plateDistanceScratch.selftest.mjs',
     'src/vehicles/profileBuilderAdapter.selftest.mjs',
     'src/vehicles/fleetSpecRegistry.selftest.mjs',

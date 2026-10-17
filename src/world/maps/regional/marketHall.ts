@@ -8,7 +8,7 @@
 // season's produce, baskets, crates and sacks, a beam scale hung from a tie beam. The post frame is recorded as an open
 // frame with the roof its crown (lattice.ts recordLattice), so a shot hall comes down as its posts and its roof (damage.ts
 // describeLattice), never as the default kit's box spalls.
-import { PartSink, faceBox, shade, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
+import { PartSink, faceBox, pick, shade, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import { emitRoof, roofGeometry, type RoofGeometry, type RoofSpec } from './house.ts';
 import { recordLattice } from './lattice.ts';
 
@@ -212,6 +212,8 @@ export function hallStalls(sink: PartSink, spec: HalleSpec, opts: { tables?: num
         const bz = zc + (look() < 0.5 ? -1 : 1) * (L / 2 + 0.35);
         sink.cylinder('structureWood', [x, FLOOR, bz], 'y', 0.34, 0.24, 9, { colour: shade(willow, 0.9 + look() * 0.2), decor: true }, 0.28, false);
         sink.cylinder('structureWood', [x, FLOOR, bz], 'y', 0.02, 0.2, 9, { colour: shade(willow, 0.7), decor: true }, 0.2, true);
+        // (the integrity check, 2026-10-16: the open basket's inside showed its wall's back from above) heaped to its rim
+        sink.cylinder('structureWood', [x, FLOOR + 0.335, bz], 'y', 0.07, 0.28, 9, { colour: pick(look, spec.produce), decor: true }, 0.16, true);
         const cx = x - sx * 0.62;
         for (let s = 0; s < 3; s++) sink.span('structureWood', cx - 0.26, FLOOR + 0.02 + s * 0.11, bz - 0.2, cx + 0.26, FLOOR + 0.09 + s * 0.11, bz + 0.2, { colour: shade(board, 0.78 + s * 0.06), decor: true });
         for (const dx of [-1, 1]) sink.span('structureWood', cx + dx * 0.25 - 0.02, FLOOR, bz - 0.2, cx + dx * 0.25 + 0.02, FLOOR + 0.34, bz + 0.2, { colour: shade(board, 0.7), decor: true });

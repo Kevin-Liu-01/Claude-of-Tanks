@@ -14,6 +14,7 @@ import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { sheetHall } from './hall.ts';
 import { latticeFrame } from './lattice.ts';
+import { yardPad } from './glencanyonPads.ts';
 
 /** Poured concrete (the plaster2 canvas under a concrete tone), painted concrete, block (the stone painter's CMU). */
 const CONCRETE: RegionalBucket = 'plaster2', PAINTED: RegionalBucket = 'plaster3', BLOCK: RegionalBucket = 'stone', STUCCO: RegionalBucket = 'plaster';
@@ -419,15 +420,17 @@ const switchyard: RegionalBuilder = (ctx) => {
   const R = reach(ctx), W = Math.max(6, R.W - 0.3), D = Math.max(6, R.D - 0.3);
   sink.placed(0, R.cx, 0, R.cz, () => {
     // the pad: crushed rock over the yard (round 2: "a gravel pad"), the kerb round it
-    sink.span('structureMetal', -W / 2, -0.4, -D / 2, W / 2, 0.08, D / 2, { colour: rgb(0x8e877a), decor: true });
+    yardPad(sink, 'structureMetal', W, D, { colour: rgb(0x8e877a), decor: true }); // (looks r2 b-east: glencanyonPads.ts)
     const steel = GALV, h = 20 + rng() * 4;
     for (const sx of [-1, 1]) latticeTower(sink, sx * W * 0.28, -D / 2 + 2.6, 1.6, 0.6, h, steel);
     // the cross-arm between the towers and the line's insulator strings
     sink.member('structureMetal', [-W * 0.28, h - 0.4, -D / 2 + 2.6], [W * 0.28, h - 0.4, -D / 2 + 2.6], 0.5, 0.7, [0, 1, 0], { colour: steel, decor: true, exposed: true }, 0);
+    // (kitConnectivity: the strings hung 10 cm under the arm, whose depth stands up from h - 0.4, and the outer two dropped
+    // half a metre off their bus frames: each string now hangs from the arm over its frame and drops onto its beam's top chord)
     for (let k = 0; k < 3; k++) {
-      const x = (k - 1) * W * 0.2;
-      insulatorString(sink, [x, h - 0.5, -D / 2 + 2.6], 2.1);
-      sink.member('structureMetal', [x, h - 2.6, -D / 2 + 2.6], [x, 9.4, -D / 2 + 7.6], 0.05, 0.05, [1, 0, 0], { colour: IRON, decor: true, exposed: true, fine: true }, 0);
+      const x = (k - 1) * W * 0.22;
+      insulatorString(sink, [x, h - 0.38, -D / 2 + 2.6], 2.1);
+      sink.member('structureMetal', [x, h - 2.48, -D / 2 + 2.6], [x, 9.47, -D / 2 + 7.6], 0.05, 0.05, [1, 0, 0], { colour: IRON, decor: true, exposed: true, fine: true }, 0);
     }
     for (const x of [-W * 0.22, 0, W * 0.22]) busFrame(sink, x, -D / 2 + 6.8, -D / 2 + 8.4, 9.6, steel);
     const tc = pick(rng, TRANSFORMER);
@@ -453,7 +456,7 @@ const transformerYard: RegionalBuilder = (ctx) => {
   // the yard fills the old deck's reach (its bounds), walled round its edge
   const R = reach(ctx), W = Math.max(6, R.W - 0.3), D = Math.max(6, R.D - 0.3);
   sink.placed(0, R.cx, 0, R.cz, () => {
-    sink.span(CONCRETE, -W / 2, -0.4, -D / 2, W / 2, 0.08, D / 2, { decor: true });
+    yardPad(sink, CONCRETE, W, D, { decor: true }); // (looks r2 b-east: glencanyonPads.ts)
     const tc = pick(rng, TRANSFORMER);
     const cols = 3;
     for (let r = 0; r < 2; r++) for (let c = 0; c < cols; c++) {
