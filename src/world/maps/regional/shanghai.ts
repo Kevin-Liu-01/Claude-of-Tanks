@@ -43,6 +43,12 @@ import { shikumenRow, shophouseRow } from './shanghaiLanes.ts';
 import { hoistTackle } from './shanghaiHoist.ts';
 
 const DEC = { decor: true } as const;
+/**
+ * (looks 227, the census world pass: the godowns, the mill and the fire station stood on the ground at y = 0 with nothing
+ * sunk, so a slope opened under their downhill feet) a footing under the walls, the ground storey's own masonry carried
+ * 0.6 m down (house.ts plinth), its top 2 cm over the ground: it shows only where the ground falls away. Collision-bearing.
+ */
+const footing = (bucket: RegionalBucket): NonNullable<HouseSpec['plinth']> => ({ h: 0.02, out: 0, bucket, course: false });
 const SHADOWED = { decor: true, shadow: true } as const;
 
 // ------------------------------------------------------------------------------------------------ the Settlement's blocks
@@ -343,7 +349,7 @@ const godown: RegionalBuilder = (ctx) => {
       openings.push(...windowRhythm('back', st, W, { w: 1.0, h: 1.4, sill: 1.0, spacing: 3.6, margin: 1.2 }));
     }
     const spec: HouseSpec = {
-      w: W, d: D, plinth: null, storeys: Array.from({ length: floors }, () => ({ h: sh, wall: 'stone' as RegionalBucket })),
+      w: W, d: D, plinth: footing('stone'), skirt: null, storeys: Array.from({ length: floors }, () => ({ h: sh, wall: 'stone' as RegionalBucket })),
       roof: { kind: 'flat', pitchDeg: 0, eave: 0, verge: 0, thickness: 0.3, bucket: 'plaster3', parapet: 1.1 }, openings, chimneys: [],
       reveal: 0.22, rafters: null, spall: null,
     };
@@ -391,7 +397,7 @@ const cottonMill: RegionalBuilder = (ctx) => {
       openings.push(...windowRhythm('back', st, W, { w: 1.5, h: 2.0, sill: 0.9, spacing: 3.2, margin: 0.9 }));
     }
     const spec: HouseSpec = {
-      w: W, d: D, plinth: null, storeys: Array.from({ length: floors }, () => ({ h: sh, wall: 'stone' as RegionalBucket })),
+      w: W, d: D, plinth: footing('stone'), skirt: null, storeys: Array.from({ length: floors }, () => ({ h: sh, wall: 'stone' as RegionalBucket })),
       roof: { kind: 'flat', pitchDeg: 0, eave: 0, verge: 0, thickness: 0.3, bucket: 'plaster3', parapet: 0.9 }, openings, chimneys: [],
       reveal: 0.2, rafters: null, spall: null,
     };
@@ -415,7 +421,7 @@ const cottonMill: RegionalBuilder = (ctx) => {
       door: () => undefined,
     };
     sink.placed(0, (tx0 + W / 2 + tp) / 2, 0, (-D / 2 - 0.06 + tz1) / 2, () => buildHouse(sink, {
-      w: tw + tp, d: tw + 0.06, plinth: null, storeys: tStoreys.map((h) => ({ h, wall: 'stone' as RegionalBucket })),
+      w: tw + tp, d: tw + 0.06, plinth: footing('stone'), skirt: null, storeys: tStoreys.map((h) => ({ h, wall: 'stone' as RegionalBucket })),
       roof: { kind: 'flat', pitchDeg: 0, eave: 0.08, verge: 0.08, thickness: 0.35, bucket: 'plaster3' },
       openings: tStoreys.map((_, k): Opening => ({ face: 'right', storey: k, kind: 'window', u: 0, w: 0.7, y0: 1.2, h: 1.4 })), chimneys: [],
       reveal: 0.2, rafters: null, spall: null, gutters: null, verge: null,
@@ -467,7 +473,7 @@ const fireStation: RegionalBuilder = (ctx) => {
     }
     for (const face of ['right', 'left', 'back'] as const) openings.push(...windowRhythm(face, 0, face === 'back' ? W : D, { w: 1.0, h: 1.6, sill: 1.1, spacing: 3.0, margin: 1.2 }));
     const spec: HouseSpec = {
-      w: W, d: D, plinth: null,
+      w: W, d: D, plinth: footing('plaster3'), skirt: null,
       storeys: [{ h: 4.4, wall: 'plaster3' }, ...Array.from({ length: storeys - 1 }, () => ({ h: 3.4, wall: 'stone' as RegionalBucket }))],
       roof: { kind: 'flat', pitchDeg: 0, eave: 0, verge: 0, thickness: 0.3, bucket: 'plaster3', parapet: 0.9 }, openings, chimneys: [],
       reveal: 0.18, rafters: null, spall: 'stone',
@@ -503,7 +509,7 @@ const fireStation: RegionalBuilder = (ctx) => {
       door: () => undefined,
     };
     sink.placed(0, (x0 + x1) / 2, 0, (z0 + z1) / 2, () => buildHouse(sink, {
-      w: x1 - x0, d: z1 - z0, plinth: null, storeys: tStoreys.map((h) => ({ h, wall: 'stone' as RegionalBucket })),
+      w: x1 - x0, d: z1 - z0, plinth: footing('stone'), skirt: null, storeys: tStoreys.map((h) => ({ h, wall: 'stone' as RegionalBucket })),
       roof: { kind: 'flat', pitchDeg: 0, eave: 0.45, verge: 0.45, thickness: 0.22, bucket: 'plaster3' }, openings: tOpenings, chimneys: [],
       reveal: 0.2, rafters: null, spall: null, gutters: null, verge: null,
     }, lights));
