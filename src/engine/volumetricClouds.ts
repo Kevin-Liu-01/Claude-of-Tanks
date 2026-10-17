@@ -656,7 +656,7 @@ function createMediumUniforms(): Record<string, THREE.IUniform> {
     tLocal: { value: null }, tStreetField: { value: null }, tShape: { value: null }, tDetail: { value: null }, tTurb: { value: null },
     uLocalShift: { value: new THREE.Vector2() }, uStreetShift2: { value: new THREE.Vector2() }, uWindDir2: { value: new THREE.Vector2(1, 0) },
     uShapeShift: { value: new THREE.Vector3() }, uDetailShift: { value: new THREE.Vector3() }, uClear2: { value: new THREE.Vector3() },
-    uTurbulence: { value: 0 }, uFragMin: { value: 0 }, uWeatherWarp: { value: 0 }, uCellPeriod: { value: 96000 }, uShapePeriod: { value: 3200 },
+    uTurbulence: { value: 0 }, uFragMin: { value: 0 }, uBaseErode: { value: 6 }, uWeatherWarp: { value: 0 }, uCellPeriod: { value: 96000 }, uShapePeriod: { value: 3200 },
   };
 }
 
@@ -1439,6 +1439,8 @@ export class VolumetricCloudLayer {
       (m.uLayerStreets.value as THREE.Vector4).set(base.x * k, base.y * k, base.z * k, base.w * k);
     }
     m.uFragMin.value = lightTune('CLOUD_FRAG_MIN', 0);
+    // (227, QA: __LIGHT_TUNE.CLOUD_BASE_ERODE) the detail's erosion exponent at a convective base (6: round 1's cores only)
+    m.uBaseErode.value = Math.max(1, lightTune('CLOUD_BASE_ERODE', 6));
     // QA: the march's light budget (cloudShaders.ts uLightBudget; the defaults the tier's law) and the towers' warp, the
     // detail's reach and the stride's growth as scales — the cost lab's knobs
     (t.uLightBudget.value as THREE.Vector4).set(Math.max(1, Math.round(lightTune('CLOUD_LIGHT_EVERY', budget.lightEvery))), lightTune('CLOUD_LIGHT_T', 0.15),
