@@ -64,6 +64,18 @@ const judge = (meshes) => judgeSlabs(meshes, { footprint, groundAt, supportAt })
   assert.equal(r.findings.length, 1, 'a plate in the air is flagged');
   assert.ok(r.findings[0].reasons.some((s) => s.startsWith('floating')), r.findings[0].reasons.join('; '));
 }
+// the fracture port's storey room (one closed six-quad mesh, structureFracture.ts roomFor): inside the walls it passes; laid over
+// a box 4 m wider than the drawn plan, its sheets are judged and the wall and ceiling past the walls are flagged (judged as one
+// closed 13.5 x 5 x 2.6 m box it was never a slab: the blind spot the allstages census found round the Polders mill)
+{
+  const inside = judge([mesh('fx-fracture-room-0', box(0.5, 0, 0.5, 9.5, 2.6, 5.5), { color: [0.2, 0.2, 0.2] })]);
+  assert.equal(inside.findings.length, 0, `a fracture room inside the walls passes (${JSON.stringify(inside.findings.map((f) => f.reasons))})`);
+  const past = judge([mesh('fx-fracture-room-0', box(0.5, 0, 0.5, 14, 2.6, 5.5), { color: [0.2, 0.2, 0.2] })]);
+  assert.ok(past.findings.length >= 1 && past.findings.every((f) => f.sheet) && past.findings.some((f) => f.reasons.some((s) => s.startsWith('outside'))),
+    `a fracture room past the walls is flagged by its sheets (${JSON.stringify(past.findings.map((f) => [f.orientation, f.reasons]))})`);
+  const block = judge([mesh('fx-collapse-baked-0', box(0.5, 0, 0.5, 14, 2.6, 5.5))]);
+  assert.equal(block.findings.length, 0, 'any other closed box keeps its thickness');
+}
 // a closed block is no slab; a thin long box is
 assert.ok(!isSlab(shapeOf(Float32Array.from(box(0, 0, 0, 2, 2, 2)))), 'a 2 m block is no slab');
 assert.ok(isSlab(shapeOf(Float32Array.from(box(0, 0, 0, 28, 0.22, 16.8)))), 'a 28 x 16.8 x 0.22 m floor is a slab');
@@ -95,4 +107,4 @@ if (process.argv.includes('--church')) {
   assert.ok(ceilings.length >= 1, `a room ceiling past the church's walls (${JSON.stringify(row.worst.map((f) => [f.mesh, f.orientation, f.reasons]))})`);
   console.log(`destruction-slab-check selftest --church: #9 church flagged (${row.snapshots.filter((p) => p.findings.length).length} snapshots; worst ${row.worst[0].mesh} ${row.worst[0].extentsM.join(' x ')} m) — ok`);
 }
-console.log('destruction-slab-check selftest: inside ceiling passes; outside ceiling, standing panel, floating plate, degenerate matrix flagged; lying debris and blocks pass — ok');
+console.log('destruction-slab-check selftest: inside ceiling and fracture room pass; outside ceiling, standing panel, floating plate, fracture room past the walls, degenerate matrix flagged; lying debris and blocks pass — ok');
