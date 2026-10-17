@@ -70,9 +70,6 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   "k2b": {
     "fitting@hull(-1.28,1.55,-3.30)": [-0.787, 0.98788, -3.59994, 0.56752, -0.42181, 0.56752, -0.42181, 1],
   },
-  "kf51_u": {
-    "fitting@hull(-0.55,1.50,2.30)": 104,
-  },
   "kv2": {
     "fitting@hull(1.32,1.72,1.10)": [1.4205, 1.72585, 1.56847, 0.04289, 0, 0, 0.99908, 1],
   },
@@ -137,10 +134,6 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   },
   "marder1a3": {
     "fitting@hull(0.72,1.93,0.80)": [1.04978, 2.01759, 1.14, 0.05056, 0.7053, -0.05056, 0.7053, 1],
-  },
-  "mbt70": {
-    "fitting@turret(-1.64,0.47,-2.44)": [-1.641, 0.47, -2.44, 0, 0, 0.70711, 0.70711, 1],
-    "fitting@turret(1.64,0.47,-2.44)": [1.641, 0.47, -2.44, 0, 0, -0.70711, 0.70711, 1],
   },
   "merkava1b": {
     "merkava-bow-links@hull(0.00,1.29,2.74)": [1.70727, -0.96132, 1.42191, 0.15616, -0.68774, -0.17258, 0.68764, 1],

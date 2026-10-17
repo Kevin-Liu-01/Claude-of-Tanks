@@ -1595,7 +1595,15 @@ function buildMBT70(P: Modern2BuilderPort) {
   // than placing the fitting origin on that face and burying the links inside
   // the turret shell.
   const SPARE_TRACK_MOUNT_X_M = 1.641;
-  const SPARE_TRACK_MOUNT_Z_M = -2.44;
+  // VEH-13 (2026-10-16): the aft cheek is flat at x=+/-1.600 only over z -2.95..-2.35 and y 0.28..0.64. Forward of that
+  // it turns onto the angled quarter facet; below, the lower chamfer flares out. The old course was four links, 0.46 m
+  // wide, centred at z -2.44, y 0.47. It ran its forward links over the facet and the chamfer (cut 8.8 cm), so the seat
+  // solver carried it 6.8 cm outboard on a rack. Three links at the same pitch, 0.40 m wide, centred in the field lie
+  // flush on it, clear of the chamfer (seat support 100 %, cut 0; L2 receipt support 87 %, deepest 7 mm).
+  const SPARE_TRACK_MOUNT_Y_M = 0.50;
+  const SPARE_TRACK_MOUNT_Z_M = -2.68;
+  const SPARE_TRACK_LINKS = 3;
+  const SPARE_TRACK_WIDTH_M = 0.40;
   const TURRET_HALF_WIDTH_M = 1.74;
   const TURRET_WIDTH_SCALE = TURRET_HALF_WIDTH_M / 1.45;
   const turretPlan = [
@@ -1779,11 +1787,11 @@ function buildMBT70(P: Modern2BuilderPort) {
     P.addEquipment('turret', box(0.22, 0.16, 0.34), side * 1.44, 0.52, -1.72, 0, side * 0.04, 0);
     P.addEquipment('turretDetail', box(0.055, 0.055, 0.64), side * 1.18, TH + 0.04, -1.52);
     const links = FITTINGS.spareTrackLinks({
-      mats: P.mats, links: 4, width: 0.46, pitch: 0.165, seed: 77 + side,
+      mats: P.mats, links: SPARE_TRACK_LINKS, width: SPARE_TRACK_WIDTH_M, pitch: 0.165, seed: 77 + side,
       rotation: [0, 0, -side * Math.PI / 2],
     });
     links.name = `mbt70_bustle_spare_links_${side < 0 ? 'left' : 'right'}`;
-    links.position.set(side * SPARE_TRACK_MOUNT_X_M, 0.47, SPARE_TRACK_MOUNT_Z_M);
+    links.position.set(side * SPARE_TRACK_MOUNT_X_M, SPARE_TRACK_MOUNT_Y_M, SPARE_TRACK_MOUNT_Z_M);
     P.turretG.add(links);
   }
   P.addEquipment('turret', box(0.28, 0.20, 0.32), -1.02, TH + 0.12, -0.88);
@@ -1909,7 +1917,7 @@ function buildMBT70(P: Modern2BuilderPort) {
     roofSightBaseYM: GUNNER_SIGHT_BASE_Y_M,
     roofSightGapM: 0,
     spareTrackLinkRacks: 2,
-    spareTrackLinksPerRack: 4,
+    spareTrackLinksPerRack: SPARE_TRACK_LINKS,
     spareTrackMountXM: SPARE_TRACK_MOUNT_X_M,
     spareTrackMountZM: SPARE_TRACK_MOUNT_Z_M,
     bustleStowageRacks: 2,
