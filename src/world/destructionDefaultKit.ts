@@ -217,7 +217,8 @@ function bodyTopOf(parts: StructureDescribeInput['parts'], top: number): number 
  */
 function bodyBoxOf(parts: StructureDescribeInput['parts'], eave: number): [number, number, number, number] | null {
   const lo = Math.min(0.5, eave * 0.2);
-  const probe = measureEnclosure(parts, { storeys: [{ index: 0, y0: lo, y1: Math.max(lo + 0.5, eave), jetty: [0, 0, 0, 0], framed: false, faces: [], floor: null }] });
+  const probe = measureEnclosure(parts, { storeys: [{ index: 0, y0: lo, y1: Math.max(lo + 0.5, eave), jetty: [0, 0, 0, 0], framed: false, faces: [], floor: null }] },
+    { cover: false });
   const band = probe?.bands[0];
   if (!probe || !band) return null;
   const grow = probe.cell * 1.5;

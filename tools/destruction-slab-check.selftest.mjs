@@ -5,11 +5,13 @@
 // dark by design) passes; the same ceiling grown 4 m past one wall, 3 m up, is flagged outside; a wall panel standing in
 // the open past the walls is flagged; a fallen panel lying flat on the ground past them is debris, not flagged; a plate in
 // the air with nothing under it is flagged floating; a closed 2 x 2 x 2 block is no slab; a flattened instance matrix is
-// degenerate. With `--church` it also runs the real check on Verdant's church (structure 9) and asserts the owner's case:
-// the storey interiors laid from the default kit's 16.8 x 28 m box stand past the church's walls.
+// degenerate. (destruction-slabs 227) A room past the walls of its own height band, a remnant taller than the building
+// is drawn at its spot and a fallen roof slab drawn off its body are flagged; debris at rest on the pile, a fallen object's
+// sides and a held storey's redrawn wall pass. `--church` runs the real check on Verdant's church (structure 9: the owner's
+// case, flagged before the fix in 17 of 18 snapshots) and asserts it passes; `--named` the cases the fix was made on.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { footprintOf, judgeSlabs, matrixTrouble, shapeOf, isSlab } from './destruction-slab-check.mjs';
+import { bandFootprintOf, drawnTopOf, footprintOf, judgeSlabs, matrixTrouble, shapeOf, isSlab } from './destruction-slab-check.mjs';
 
 /** Two triangles of a quad (corners in order). */
 const quad = (a, b, c, d) => [...a, ...b, ...c, ...a, ...c, ...d];
@@ -111,14 +113,79 @@ assert.match(matrixTrouble(new THREE.Matrix4().set(NaN, 0, 0, 0, 0, 1, 0, 0, 0, 
   assert.ok(r.findings.length === 1 && r.findings[0].reasons.some((x) => x.includes('plan at height')), `the plan at height flags it (${JSON.stringify(r.findings.map((f) => f.reasons))})`);
 }
 
+// (destruction-slabs 227) a room judged against the walls of its own height band: a room wall standing on a forecourt
+// slab (in the whole plan) is past the walls all the same; inside them it passes
+{
+  const forecourt = Float32Array.from(quad([-4, 0.05, -4], [14, 0.05, -4], [14, 0.05, 12], [-4, 0.05, 12]));
+  const lists = [...intact, forecourt];
+  const whole = footprintOf(lists);
+  const bandFootprint = (y0, y1) => bandFootprintOf(lists, y0, y1);
+  const wallOut = [mesh('fx-structure-room-plaster', quad([12, 0.1, 0.5], [12, 0.1, 5.5], [12, 2.9, 5.5], [12, 2.9, 0.5]))];
+  assert.equal(judgeSlabs(wallOut, { footprint: whole, groundAt, supportAt }).findings.length, 0, 'over the forecourt the whole plan holds it');
+  const r = judgeSlabs(wallOut, { footprint: whole, groundAt, supportAt, bandFootprint });
+  assert.ok(r.findings.length === 1 && r.findings[0].reasons[0].includes('height band'), `its band's walls flag it (${JSON.stringify(r.findings.map((f) => f.reasons))})`);
+  const wallIn = [mesh('fx-structure-room-plaster', quad([9.4, 0.1, 0.5], [9.4, 0.1, 5.5], [9.4, 2.9, 5.5], [9.4, 2.9, 0.5]))];
+  assert.equal(judgeSlabs(wallIn, { footprint: whole, groundAt, supportAt, bandFootprint }).findings.length, 0, 'a room wall inside passes');
+}
+// a remnant pier taller than the building is drawn at its spot (a 16 m pier on a 6 m wall) is flagged; one under it passes
+{
+  const drawnTopAt = drawnTopOf(intact);
+  const pier = (h) => [mesh('fx-structure-remnant-stone', box(0, 0, 0, 0.6, h, 0.6))];
+  const tall = judgeSlabs(pier(16), { footprint, groundAt, supportAt, drawnTopAt });
+  assert.ok(tall.findings.length === 1 && tall.findings[0].reasons[0].startsWith('too tall'), 'a pier over the drawn top is flagged');
+  assert.equal(judgeSlabs(pier(4), { footprint, groundAt, supportAt, drawnTopAt }).findings.length, 0, 'a pier under it passes');
+}
+// a fallen roof slab drawn well off the body it rides in hovers; one drawn on its body passes
+{
+  const slabMesh = (bodyOffset) => {
+    const m = mesh('fx-collapse-roof-0-1.0', box(2, 0.6, 1, 8, 0.78, 5));
+    m.mesh = { matrixWorld: new THREE.Matrix4(), userData: { bodyBoxes: [{ c: [5, 0.69 - bodyOffset, 3], h: [3, 0.09, 2] }] } };
+    return [m];
+  };
+  const hover = judgeSlabs(slabMesh(0.6), { footprint, groundAt, supportAt, settled: true });
+  assert.ok(hover.findings.some((f) => f.reasons.some((x) => x.startsWith('hover'))), `a slab drawn 0.6 m over its body hovers (${JSON.stringify(hover.findings.map((f) => f.reasons))})`);
+  assert.ok(!judgeSlabs(slabMesh(0), { footprint, groundAt, supportAt, settled: true }).findings.some((f) => f.reasons.some((x) => x.startsWith('hover'))),
+    'one on its body does not');
+}
+// debris at rest on the pile past the walls (1.5 m up) is debris; 3 m up it is flagged; a fallen cap's side on the ground passes
+{
+  const onPile = judgeSlabs([mesh('fx-collapse-baked-0', box(11, 1.5, 0, 15, 1.7, 3))], { footprint, groundAt, supportAt: () => true, settled: true });
+  assert.equal(onPile.findings.length, 0, `a baked slab on the pile past the walls passes (${JSON.stringify(onPile.findings.map((f) => f.reasons))})`);
+  const high = judgeSlabs([mesh('fx-collapse-baked-0', box(11, 3, 0, 15, 3.2, 3))], { footprint, groundAt, supportAt: () => true, settled: true });
+  assert.equal(high.findings.length, 1, 'one 3 m up past the walls is flagged');
+  // an open shell (a windmill's cap: five sides of a 4 x 2.5 x 3 box) lying on the ground past the walls: its sides are its own
+  const cap = box(12, 0, 0, 16, 2.5, 3).slice(0, 5 * 18);
+  assert.equal(judgeSlabs([mesh('fx-structure-rubble-wood', cap)], { footprint, groundAt, supportAt }).findings.length, 0, 'a fallen cap\'s sides pass');
+}
+// a redrawn wall over a gap (its storey held by its floor, sections on) is the building's own wall: not floating
+{
+  const held = judgeSlabs([mesh('fx-fracture-face-0', box(1, 3.2, 0, 9, 5.8, 0.3))], { footprint, groundAt, supportAt: () => false });
+  assert.equal(held.findings.length, 0, `a held storey's redrawn wall passes (${JSON.stringify(held.findings.map((f) => f.reasons))})`);
+}
+
+if (process.argv.includes('--named')) {
+  // (destruction-slabs 227) the cases the fix was made on: Verdant's church, station hall and windmills, Polders' mound
+  // windmill, the reservoir tavern's roof, Steinburg's fire station, Lane B's dark-box set (copper_mesa's headframe,
+  // skybridge's penstock)
+  const { runSlabCheck } = await import('./destruction-slab-check.mjs');
+  const named = [['verdant', [9, 11, 17, 18]], ['polders', [46]], ['reservoir', [7]], ['urban', [190]], ['copper_mesa', [39]], ['skybridge', [2]]];
+  const fails = [];
+  for (const [mapId, ids] of named) {
+    const report = await runSlabCheck({ mapId, ids, rounds: 60, storeys: [0, 1, 2, 3] });
+    for (const row of report.rows) if (!row.pass) fails.push(`${mapId} #${row.id} ${row.builder}: ${row.worst[0]?.mesh} ${row.worst[0]?.reasons?.join('; ')}`);
+    console.log(`destruction-slab-check selftest --named: ${mapId} ${report.rows.map((r) => `#${r.id} ${r.builder} ${r.pass ? 'PASS' : 'FAIL'}`).join(', ')}`);
+  }
+  assert.deepEqual(fails, [], `the named cases pass:\n${fails.join('\n')}`);
+}
+
 if (process.argv.includes('--church')) {
+  // (2026-10-17, destruction-slabs 227: before the fix 17 of 18 snapshots flagged the storey rooms laid from the default
+  // kit's 16.8 x 28 m box past the church's walls) the owner's case passes: its rooms are its drawn enclosure
   const { runSlabCheck } = await import('./destruction-slab-check.mjs');
   const report = await runSlabCheck({ mapId: 'verdant', ids: [9], rounds: 40, storeys: [0, 1] });
   const row = report.rows[0];
   assert.equal(row?.builder, 'church', 'structure 9 is Verdant\'s church');
-  assert.ok(!row.pass, 'the church\'s damage is flagged');
-  const ceilings = row.worst.filter((f) => /^fx-structure-room-/.test(f.mesh) && f.orientation === 'horizontal' && f.reasons.some((s) => s.startsWith('outside')));
-  assert.ok(ceilings.length >= 1, `a room ceiling past the church's walls (${JSON.stringify(row.worst.map((f) => [f.mesh, f.orientation, f.reasons]))})`);
-  console.log(`destruction-slab-check selftest --church: #9 church flagged (${row.snapshots.filter((p) => p.findings.length).length} snapshots; worst ${row.worst[0].mesh} ${row.worst[0].extentsM.join(' x ')} m) — ok`);
+  assert.ok(row.pass, `the church's damage lays no stray slab (${JSON.stringify(row.worst.slice(0, 3).map((f) => [f.mesh, f.reasons]))})`);
+  console.log(`destruction-slab-check selftest --church: #9 church passes (${row.snapshots.length} snapshots) — ok`);
 }
-console.log('destruction-slab-check selftest: inside ceiling passes; outside ceiling, standing panel, floating plate, degenerate matrix flagged; lying debris and blocks pass; roof slab on the wall heads flagged at rest, inside the walls passes; plan at height past a plinth — ok');
+console.log('destruction-slab-check selftest: inside ceiling passes; outside ceiling, standing panel, floating plate, degenerate matrix flagged; lying debris and blocks pass; roof slab on the wall heads flagged at rest, inside the walls passes; plan at height past a plinth; a room past its band\'s walls, a too-tall pier, a hovering roof slab flagged; debris on the pile, a fallen cap\'s sides and a held storey\'s wall pass — ok');

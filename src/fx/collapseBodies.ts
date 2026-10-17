@@ -220,6 +220,8 @@ interface LivePart {
   tipped: boolean;
   /** Its own body's shape once it breaks off when what it draws reaches past its planned box (a roof's eave boards). */
   shape: RigidShape | null;
+  /** That shape's box [x0, y0, z0, x1, y1, z1] in its own frame (receipts read it). */
+  box: number[] | null;
 }
 
 interface LivePiece {
@@ -950,7 +952,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       for (const m of meshes) m.castShadow = big;
       const offset = new THREE.Vector3(off[0], off[1], off[2]);
       parts.push({ meshes, offset, offsetM: offset.lengthSq() > 0 ? new THREE.Matrix4().makeTranslation(off[0], off[1], off[2]) : null,
-        handle: -1, pose: new Float64Array(7).fill(NaN), dusts: 0, tipped: false, shape: null });
+        handle: -1, pose: new Float64Array(7).fill(NaN), dusts: 0, tipped: false, shape: null, box: null });
     }
     if (!parts.some((pp) => pp.meshes.length)) return;
     // (2026-10-15, the port's receipt: a hip roof's slab, its eave boards and verges past its banded boxes, lay a metre
@@ -961,6 +963,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     // its thickness
     let shape: RigidShape | null = null;
     let half: [number, number, number] | null = null;
+    let shapeBox: number[] | null = null;
     if (piece.kind === 'roof') {
       const whole = boundsOf(parts, false);
       if (whole) clampNormal(whole, piece.boxes);
@@ -968,6 +971,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       // draws leaves the drawn slab hovering over whatever the box rests on)
       if (whole && (reachesPast(whole, piece.boxes) || fallsShort(whole, piece.boxes))) {
         shape = boxShapeOf(whole, piece.massKg);
+        shapeBox = whole;
         half = [Math.max(Math.abs(whole[0]), Math.abs(whole[3])), Math.max(Math.abs(whole[1]), Math.abs(whole[4])), Math.max(Math.abs(whole[2]), Math.abs(whole[5]))];
       }
       parts.forEach((pp, k) => {
@@ -976,12 +980,12 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
         const b = boundsOf([pp], true);
         const own = [{ center: [0, 0, 0], half: spec.half }];
         if (b) clampNormal(b, own);
-        if (b && (reachesPast(b, own) || fallsShort(b, own))) pp.shape = boxShapeOf(b, spec.massKg);
+        if (b && (reachesPast(b, own) || fallsShort(b, own))) { pp.shape = boxShapeOf(b, spec.massKg); pp.box = b; }
       });
     }
     // (destruction-slabs 227) each mesh names the body box it rides in (its own frame): receipts measure what it draws
     // against what it rests on (a slab drawn metres off its body hovers)
-    const whole0 = shape ? boundsOf(parts, false) : null;
+    const whole0 = shapeBox;
     for (const pp of parts) {
       const boxes = whole0
         ? [{ c: [(whole0[0] + whole0[3]) / 2 - pp.offset.x, (whole0[1] + whole0[4]) / 2 - pp.offset.y, (whole0[2] + whole0[5]) / 2 - pp.offset.z],
@@ -1343,7 +1347,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       });
       {
         // (its body's box, read before the buckle reshapes what it draws: the grown box was read from the flat sheet)
-        const own = part.shape ? boundsOf([part], true) : null;
+        const own = part.shape ? part.box : null;
         const boxes = own ? [{ c: [(own[0] + own[3]) / 2, (own[1] + own[4]) / 2, (own[2] + own[5]) / 2], h: [(own[3] - own[0]) / 2, (own[4] - own[1]) / 2, (own[5] - own[2]) / 2] }]
           : [{ c: [0, 0, 0], h: [...spec.half] }];
         for (const m of part.meshes) m.userData.bodyBoxes = boxes;

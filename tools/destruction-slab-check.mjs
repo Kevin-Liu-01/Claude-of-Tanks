@@ -71,7 +71,7 @@ const _still = new THREE.Vector3();
 /** The thresholds of a stray slab (exported for the receipt). */
 export const SLAB = {
   thickMaxM: 0.6, thickShare: 0.12, sideMinM: 2.0, areaMinM2: 8,
-  elevatedM: 1.0, upperLiftM: 2.0, restedS: 1.5, stillS: 0.75, hoverM: 0.5, tallerM: 0.5, outsideShare: 0.1, outsideAreaM2: 3, floatingShare: 0.4, supportBandM: 0.8, darkLuma: 0.16, footprintGrowM: 0.3,
+  elevatedM: 1.0, upperLiftM: 2.0, restedS: 1.5, stillS: 0.75, hoverM: 0.5, tallerM: 1.0, debrisLiftM: 2.5, roomSupportM: 3.6, outsideShare: 0.1, outsideAreaM2: 3, floatingShare: 0.4, supportBandM: 0.8, darkLuma: 0.16, footprintGrowM: 0.3,
 };
 
 /** Eigen-decomposition of a symmetric 3×3 (Jacobi): the eigenvectors as columns, by eigenvalue descending. */
@@ -431,7 +431,7 @@ export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => fals
       // shell) is that object's side, not a plate standing in the open
       const grounded = !ROOM_RUN.test(d.name) && !STANDING_RUN.test(d.name) && shape.min[1] - groundAt(shape.centre[0], shape.centre[2]) < 0.4
         && shape.ext[2] > SLAB.thickMaxM;
-      for (const sheet of planarFacets(tris)) { const sh = shapeOf(sheet); if (isSlab(sh)) pieces.push({ d, tris: sheet, shape: sh, sheet: true, gid, grounded }); }
+      for (const sheet of planarFacets(tris)) { const sh = shapeOf(sheet); if (isSlab(sh)) pieces.push({ d, tris: sheet, shape: sh, sheet: true, gid, grounded, parent: shape }); }
       pieces.push({ d, tris, shape, gid });
     } else pieces.push({ d, tris, shape, gid });
   }
@@ -463,6 +463,7 @@ export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => fals
       plan = bandFootprint(y0, y1);
       planNote = ' (walls of its height band)';
     }
+    const roomFlat = ROOM_RUN.test(p.d.name) && Math.abs(s.axes[2][1]) > 0.8;
     surfaceSamples(p.tris, samples);
     const ns = samples.length / 4;
     let total = 0, outside = 0, unsupported = 0, weighed = 0;
@@ -472,8 +473,9 @@ export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => fals
       if (!plan.has(x, z)) outside += w;
       if (!elevated) continue;
       weighed += w;
-      // under it: the ground, a live record, another drawn piece's box top within the band
-      const below = y - SLAB.supportBandM;
+      // under it: the ground, a live record, another drawn piece's box top within the band (a room's ceiling: within its
+      // storey's height — its floor, or the ground floor's — it stands on the room's own walls)
+      const below = y - (roomFlat ? SLAB.roomSupportM : SLAB.supportBandM);
       if (groundAt(x, z) >= below) continue;
       if (supportAt(x, z, y)) continue;
       let held = false;
@@ -492,8 +494,13 @@ export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => fals
     const attributes = [];
     if (slab) {
       // a plate past the walls in the air, or a panel standing in the open past them (one lying on the ground is debris)
+      // (destruction-slabs 227) fallen debris at rest (a collapse's piece, its baked heap, a wall's cell) lies on the pile
+      // past the walls by nature: past them it is judged only well up (2.5 m) or floating; a run stands where it was laid
+      const debrisRest = IN_FLIGHT.test(p.d.name) || /^fx-(collapse-baked|fracture-heap)-/.test(p.d.name);
+      const highEnough = debrisRest ? lift >= SLAB.debrisLiftM || vertical : elevated || vertical;
       if (p.grounded) attributes.push('a side of a fallen object lying on the ground');
-      else if ((elevated || vertical) && outsideShare >= SLAB.outsideShare && outside >= SLAB.outsideAreaM2) {
+      else if (debrisRest && elevated && !highEnough && outsideShare >= SLAB.outsideShare) attributes.push(`on the pile past the walls, ${lift.toFixed(1)} m up`);
+      else if (highEnough && outsideShare >= SLAB.outsideShare && outside >= SLAB.outsideAreaM2) {
         reasons.push(`outside: ${outside.toFixed(1)} m² (${(outsideShare * 100).toFixed(0)} %) past the intact walls${planNote}, ${lift.toFixed(1)} m up`);
       }
       if (restedRoof) attributes.push('a fallen roof slab at rest');
@@ -507,19 +514,33 @@ export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => fals
       }
       // (destruction-slabs 227) a redrawn wall is the building's own wall: an upper storey's stands on its floor while the
       // simulation holds it (DESTRUCTION.md §3.4, sections on), as its intact parts do — judged off the walls, not floating
-      const ownWall = /^fx-fracture-face-/.test(p.d.name);
+      // (and a fallen roof's slab lying flat inside the walls lies on the storey's floor the simulation holds: §3.4)
+      const onFloor = /^fx-collapse-roof-/.test(p.d.name) && (settled || restedRoof) && Math.abs(s.axes[2][1]) > 0.8 && lift >= SLAB.upperLiftM
+        && !(outside >= 1 && outsideShare >= 0.05);
+      const ownWall = /^fx-fracture-face-/.test(p.d.name) || onFloor;
       if (ownWall && elevated && floatingShare >= SLAB.floatingShare) attributes.push(`over a gap, held by its storey's floor (${(floatingShare * 100).toFixed(0)} % over nothing)`);
       else if (elevated && !p.grounded && floatingShare >= SLAB.floatingShare) reasons.push(`floating: ${(floatingShare * 100).toFixed(0)} % of it unsupported, ${lift.toFixed(1)} m up`);
       // (destruction-slabs 227) a fallen roof slab at rest drawn well off the body it rides in (the body grown round
       // everything partitioned to it: the drawn slab hovers over what the body rests on)
       const bodyBoxes = p.d.mesh?.userData?.bodyBoxes;
       if (/^fx-collapse-roof-/.test(p.d.name) && (settled || restedRoof) && Array.isArray(bodyBoxes) && p.d.mesh.matrixWorld) {
-        let boxLow = Infinity;
-        for (const b of bodyBoxes) for (let k = 0; k < 8; k++) {
-          _still.set(b.c[0] + (k & 1 ? b.h[0] : -b.h[0]), b.c[1] + (k & 2 ? b.h[1] : -b.h[1]), b.c[2] + (k & 4 ? b.h[2] : -b.h[2])).applyMatrix4(p.d.mesh.matrixWorld);
-          boxLow = Math.min(boxLow, _still.y);
+        // along the body box's thin axis, the gap between the box's face that looks down and what is drawn (a slab
+        // lying tilted on the heap reads its gap under itself, not over the box's lowest corner)
+        const M = p.d.mesh.matrixWorld, inv = new THREE.Matrix4().copy(M).invert(), e = M.elements;
+        let gap = -Infinity;
+        for (const b of bodyBoxes) {
+          const k = b.h[0] <= b.h[1] && b.h[0] <= b.h[2] ? 0 : b.h[1] <= b.h[2] ? 1 : 2;
+          const ay = e[k * 4 + 1] / (Math.hypot(e[k * 4], e[k * 4 + 1], e[k * 4 + 2]) || 1);
+          if (Math.abs(ay) < 0.5) continue;
+          let lo = Infinity, hi = -Infinity;
+          for (let o = 0; o < p.tris.length; o += 3) {
+            _still.set(p.tris[o], p.tris[o + 1], p.tris[o + 2]).applyMatrix4(inv);
+            const v = k === 0 ? _still.x : k === 1 ? _still.y : _still.z;
+            lo = Math.min(lo, v); hi = Math.max(hi, v);
+          }
+          gap = Math.max(gap, ay > 0 ? lo - (b.c[k] - b.h[k]) : (b.c[k] + b.h[k]) - hi);
         }
-        if (s.min[1] - boxLow >= SLAB.hoverM) reasons.push(`hover: drawn ${(s.min[1] - boxLow).toFixed(2)} m over its body's lowest point`);
+        if (gap >= SLAB.hoverM) reasons.push(`hover: drawn ${gap.toFixed(2)} m off its body's face below it`);
       }
       // (census9b) a piece drawn in one of the intact building's own materials is no stranger to it, mapped or not (a
       // glazed or painted bucket without a texture): listed, not flagged

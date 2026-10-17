@@ -1641,7 +1641,8 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       if (!live) return null;
       // the same burst's breach stage a moment after its round's own strike (or the reverse): that round, once
       const t = o.now();
-      if (t - live.lastAt < 1 && Math.hypot(live.lastX - x, live.lastY - y, live.lastZ - z) < 0.5) return null;
+      // (a late joiner's settled log lays every hole at one instant: each its own)
+      if (!settled && t - live.lastAt < 1 && Math.hypot(live.lastX - x, live.lastY - y, live.lastZ - z) < 0.5) return null;
       // the round in the body frame
       const { x: px, y: py, z: pz, yaw } = a.placement;
       const c = Math.cos(yaw), s = Math.sin(yaw);

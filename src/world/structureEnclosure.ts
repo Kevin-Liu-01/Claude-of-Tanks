@@ -95,7 +95,7 @@ function clipY(src: Float64Array, n: number, at: number, sign: 1 | -1, dst: Floa
  * no wall. Built once at describe (structureDamageSeam.ts).
  */
 export function measureEnclosure(parts: Readonly<Record<string, readonly BufferGeometry[]>> | null | undefined,
-  anatomy: Pick<StructureDamageAnatomy, 'storeys'>): StructureEnclosure | null {
+  anatomy: Pick<StructureDamageAnatomy, 'storeys'>, { cover = true }: { cover?: boolean } = {}): StructureEnclosure | null {
   if (!parts || !anatomy.storeys.length) return null;
   const keep = (bucket: string, g: BufferGeometry): boolean => !SKIP_BUCKETS.has(bucket) && !g.userData?.damagePiece && g.userData?.fine !== true;
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
@@ -151,8 +151,8 @@ export function measureEnclosure(parts: Readonly<Record<string, readonly BufferG
   };
   for (const [bucket, list] of Object.entries(parts)) for (const g of list ?? []) {
     const wall = keep(bucket, g);
-    const cover = COVER_BUCKETS.has(bucket) && !g.userData?.damagePiece;
-    if (!wall && !cover) continue;
+    const covers = cover && COVER_BUCKETS.has(bucket) && !g.userData?.damagePiece;
+    if (!wall && !covers) continue;
     const pos = g.getAttribute('position');
     if (!pos) continue;
     const index = g.getIndex();
@@ -169,9 +169,10 @@ export function measureEnclosure(parts: Readonly<Record<string, readonly BufferG
       if (!(fl > 1e-9)) continue;
       const vertical = Math.abs(fy) <= VERTICAL_NY * fl;
       if (!vertical) {
-        // a slope, a deck, a roof: what covers the plan under it (its area sampled at half a cell)
+        // a slope, a deck, a roof: what covers the plan under it (its area sampled at a cell; none for a probe)
+        if (!cover) continue;
         const reach = Math.max(Math.hypot(ux, uz), Math.hypot(wx, wz), Math.hypot(parts3[6] - parts3[3], parts3[8] - parts3[5]));
-        const m = Math.max(1, Math.min(96, Math.ceil(reach / step)));
+        const m = Math.max(1, Math.min(64, Math.ceil(reach / cell)));
         for (let i = 0; i <= m; i++) for (let j = 0; j <= m - i; j++) {
           const a = i / m, b = j / m;
           const c = cellOf(parts3[0] + ux * a + wx * b, parts3[2] + uz * a + wz * b);
@@ -180,7 +181,7 @@ export function measureEnclosure(parts: Readonly<Record<string, readonly BufferG
         continue;
       }
       // a wall: its top over the plan along its edges, and what covers there
-      for (let e = 0; e < 3; e++) {
+      if (cover) for (let e = 0; e < 3; e++) {
         const a = e * 3, b = ((e + 1) % 3) * 3;
         walk(parts3[a], parts3[a + 2], parts3[a + 1], parts3[b], parts3[b + 2], parts3[b + 1], (c, _x, _z, y) => {
           const q = cm(y);
