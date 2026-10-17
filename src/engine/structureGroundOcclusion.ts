@@ -73,9 +73,13 @@ export const AUREOLE_GATE_SOFT_M = 2;
  * times (at most AUREOLE_SHARE_MAX of the hemisphere's light): a soft shadow that reads, never a sunny-day one.
  * QA: __LIGHT_TUNE.SGO_DECK_BROAD (1 = off) and DECK_AUREOLE (the gain; 0 = off).
  */
-export const SGO_DECK_BROAD = 2.5;
+export const SGO_DECK_BROAD = 2;
 /** (227 v2) Directions the near hulls' aureole shadow tests (the block's ray-box tests a ground pixel by a hull). */
-export const AUREOLE_HULL_DIRS = 8;
+export const AUREOLE_HULL_DIRS = 16;
+/** (227 v3) The deepest the block darkens a ground pixel (occlusion and aureole together): never a black pocket. */
+export const SGO_DARK_MAX = 0.6;
+/** (227 v3) The hull test's soft edge (m): each direction's hit is the mean of the hull grown and shrunk by half of it. */
+export const AUREOLE_HULL_SOFT_M = 0.5;
 export const DECK_AUREOLE_GAIN = 2.5;
 export const AUREOLE_SHARE_MAX = 0.6;
 /** (227) A sun moved further than this from the aureole's baked one re-bakes it (the cosine of 1°). */
@@ -493,6 +497,8 @@ export const STRUCTURE_GROUND_OCCLUSION_GLSL = /* glsl */ `
     }
     float cotHullAureole( vec3 P ) {
       int hidden = 0;
+      float soft[ ${AUREOLE_HULL_DIRS} ];
+      for ( int k = 0; k < ${AUREOLE_HULL_DIRS}; k++ ) soft[ k ] = 0.0;
       for ( int i = 0; i < ${GROUND_AO_MAX_HULLS}; i++ ) {
         if ( float( i ) >= uVehGround ) break;
         vec4 m0 = uVehGroundM[ i * 3 ], m1 = uVehGroundM[ i * 3 + 1 ], m2 = uVehGroundM[ i * 3 + 2 ];
@@ -507,17 +513,20 @@ export const STRUCTURE_GROUND_OCCLUSION_GLSL = /* glsl */ `
         float ext = length( vec2( b0.x, 0.5 * ( b1.y - b1.x ) ) );
         float along = dot( rel, away );
         if ( along < -ext || along > ext + H * uAurHullReach || abs( dot( rel, vec2( -away.y, away.x ) ) ) > ext + 0.3 * ( along + ext ) ) continue;
+        // (v3) the body over the belly only (under the belly the hull's own ground term rules), grown and shrunk by half
+        // the soft edge: a direction's hit is their mean, so no direction draws a hard-edged copy of the hull
+        vec3 g = vec3( ${f(AUREOLE_HULL_SOFT_M / 2)} );
+        vec3 lo = vec3( -b0.x, b0.y, b1.x ), hi = vec3( b0.x, b0.z, b1.y );
         for ( int k = 0; k < ${AUREOLE_HULL_DIRS}; k++ ) {
           if ( ( hidden & ( 1 << k ) ) != 0 ) continue;
           vec3 d = vec3( dot( m0.xyz, uAurDir[ k ] ), dot( m1.xyz, uAurDir[ k ] ), dot( m2.xyz, uAurDir[ k ] ) );
-          if ( cotAurRayBox( q, d, vec3( -b0.x, b0.y, b1.x ), vec3( b0.x, b0.z, b1.y ) )
-            || cotAurRayBox( q, d, vec3( b2.z, b0.w, b1.x ), vec3( b2.w, b0.y, b1.y ) )
-            || cotAurRayBox( q, d, vec3( -b2.w, b0.w, b1.x ), vec3( -b2.z, b0.y, b1.y ) ) ) hidden |= 1 << k;
+          if ( cotAurRayBox( q, d, lo + g, hi - g ) ) hidden |= 1 << k;
+          else if ( cotAurRayBox( q, d, lo - g, hi + g ) ) soft[ k ] = 0.5;
         }
       }
-      int n = 0;
-      for ( int k = 0; k < ${AUREOLE_HULL_DIRS}; k++ ) n += ( hidden >> k ) & 1;
-      return float( n ) * ${f(1 / AUREOLE_HULL_DIRS)};
+      float n = 0.0;
+      for ( int k = 0; k < ${AUREOLE_HULL_DIRS}; k++ ) n += ( ( hidden >> k ) & 1 ) == 1 ? 1.0 : soft[ k ];
+      return n * ${f(1 / AUREOLE_HULL_DIRS)};
     }
     // the aureole raster's gate, as the occlusion's below: its texel's base (stored modulo ${SGO_BASE_WRAP_M} m, the one nearest
     // the pixel's own height) against the pixel's height; inside a standing solid's footprint only the ground at its base
@@ -577,7 +586,8 @@ export const STRUCTURE_GROUND_OCCLUSION_GLSL = /* glsl */ `
         // the face turned to its shadow is the face the aureole does not light)
         aurDark = uAur.x * aur * aGate / max( T + A, 1e-4 );
       }
-      return max( 1.0 - uSgo * occ * ${f(1 - SGO_RETURN)} * gate * ambShare - aurDark, 0.0 );
+      // (v3) never deeper than SGO_DARK_MAX together: a pocket under a reel or a deck stays shade, not a hole
+      return 1.0 - min( uSgo * occ * ${f(1 - SGO_RETURN)} * gate * ambShare + aurDark, ${f(SGO_DARK_MAX)} );
     }
 `;
 

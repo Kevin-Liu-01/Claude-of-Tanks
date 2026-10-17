@@ -14,7 +14,7 @@ import {
   bakeStructureAureole,
 } from './structureAureoleBake.ts';
 import {
-  AUREOLE_GATE_M, AUREOLE_HULL_DIRS, AUREOLE_SHARE_MAX, DECK_AUREOLE_GAIN, SGO_DECK_BROAD, STRUCTURE_GROUND_OCCLUSION_GLSL,
+  AUREOLE_GATE_M, AUREOLE_HULL_DIRS, AUREOLE_SHARE_MAX, DECK_AUREOLE_GAIN, SGO_DARK_MAX, SGO_DECK_BROAD, STRUCTURE_GROUND_OCCLUSION_GLSL,
   createStructureGroundOcclusion, createStructureGroundUniforms, updateStructureGroundUniforms,
 } from './structureGroundOcclusion.ts';
 import { sunDirectionOf, skyPresetToAtmosphere } from './atmosphere.ts';
@@ -164,7 +164,8 @@ handle.dispose();
 assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, /uniform vec2 uAur;\s*uniform sampler2D tAur;/);
 assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, /aurDark = uAur\.x \* aur \* aGate \/ max\( T \+ A, 1e-4 \);/, 'the hidden aureole over all the pixel\'s light');
 assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, new RegExp(`cotAurGate\\( texelFetch\\( tAur, ti, 0 \\)\\.rg, P\\.y, ${AUREOLE_GATE_M.toFixed(5)}`), 'its receivers near the shading solid\'s base');
-assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, /return max\( 1\.0 - uSgo \* occ/, 'never below black');
+assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, new RegExp(`return 1\\.0 - min\\( uSgo \\* occ .*, ${SGO_DARK_MAX.toFixed(5)} \\);`), 'never deeper than the cap: shade, not a hole');
+assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, /else if \( cotAurRayBox\( q, d, lo - g, hi \+ g \) \) soft\[ k \] = 0\.5;/, 'the hull test\'s soft edge');
 assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, /occ = 1\.0 - pow\( 1\.0 - min\( occ, 1\.0 \), uSgoBroad \);/, 'the broadened occlusion');
 assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, /float hullAur = uAur\.x > 0\.0 && uVehGround > 0\.5 \? cotHullAureole\( P \) : 0\.0;/, 'the near hulls in the aureole');
 assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, /aur = 1\.0 - \( 1\.0 - aur \* aGate \) \* \( 1\.0 - hullAur \);/, 'united with the solids\'');
