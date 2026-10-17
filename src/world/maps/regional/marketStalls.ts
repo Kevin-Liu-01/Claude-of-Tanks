@@ -13,6 +13,7 @@
 import { LocalFrame, PartSink, faceBox, shade, type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import { emitRoof, roofGeometry, type RoofGeometry, type RoofSpec } from './house.ts';
 import { recordLattice } from './lattice.ts';
+import { bevelMember, bevelSpan } from './millWorks.ts';
 
 export type StallPost = 'bamboo' | 'timber' | 'concrete';
 export type StallCover = 'sheet' | 'nipa' | 'canvas';
@@ -53,6 +54,9 @@ export interface StallDress {
   goods: StallGoods;
   mobile: boolean;
   look: () => number;
+  /** the sawn timbers and boards with their arrises eased and the deck's planks laid with their joints sunk between them
+   *  (the looks lane, 227; the r2 sweep: Kohima's booth row 94 % plain boxes) — the dress's choice, on every tier */
+  eased?: boolean;
 }
 
 const LASH: Rgb = [0.42, 0.33, 0.2];
@@ -62,6 +66,19 @@ const ex = { decor: true, exposed: true } as const;
 function freeBox(sink: PartSink, bucket: RegionalBucket, c: Vec3, size: Vec3, opts: EmitOptions, ax: Vec3 = [1, 0, 0]): void {
   const az: Vec3 = [-ax[2], 0, ax[0]];
   sink.box(bucket, c, [size[0] / 2, size[1] / 2, size[2] / 2], { ...opts, uv: opts.uv ?? { kind: 'world' } }, new LocalFrame(ax, [0, 1, 0], az, [0, 0, 0]));
+}
+
+/** A board or a timber standing free, as freeBox lays it: under an eased dress its long arrises eased (a sawn board). */
+function board(sink: PartSink, d: StallDress, bucket: RegionalBucket, c: Vec3, size: Vec3, opts: EmitOptions, ax: Vec3 = [1, 0, 0]): void {
+  if (!d.eased) { freeBox(sink, bucket, c, size, opts, ax); return; }
+  const az: Vec3 = [-ax[2], 0, ax[0]];
+  bevelMember(sink, bucket, [c[0], c[1] - size[1] / 2, c[2]], [c[0], c[1] + size[1] / 2, c[2]], size[0], size[2], az, { ...opts, uv: opts.uv ?? { kind: 'world' } }, size[2] / 2);
+}
+
+/** An axis-aligned timber, plank or block (PartSink.span): under an eased dress its long arrises eased by `c`. */
+function timber(sink: PartSink, d: StallDress, bucket: RegionalBucket, x0: number, y0: number, z0: number, x1: number, y1: number, z1: number, opts: EmitOptions, c = 0.012): void {
+  if (d.eased) bevelSpan(sink, bucket, x0, y0, z0, x1, y1, z1, c, opts);
+  else sink.span(bucket, x0, y0, z0, x1, y1, z1, opts);
 }
 
 /** A post from y0 to y1 at (x, z) in the dress's kind; its lashings or its chamfer. Structure. Returns its radius. */
@@ -107,7 +124,9 @@ function cover(sink: PartSink, d: StallDress, w: number, len: number, eaveY: num
       const t = Math.tan(roof.pitchDeg * Math.PI / 180);
       for (let x = -w / 2 - roof.verge + 0.45; x < w / 2 + roof.verge - 0.2; x += 0.9) {
         const za = len / 2 + roof.eave, zb = -len / 2 - 0.05, ya = eaveY + roof.thickness - roof.eave * t + 0.02, yb = eaveY + roof.thickness + (len / 2 - zb) * t + 0.02;
-        sink.member('structureMetal', [x, ya, za], [x, yb, zb], 0.05, 0.025, [0, 1, 0], { colour: shade(d.coverColour ?? [0.55, 0.55, 0.55], 0.82), decor: true }, 0);
+        const lap = { colour: shade(d.coverColour ?? [0.55, 0.55, 0.55], 0.82), decor: true };
+        if (d.eased) bevelMember(sink, 'structureMetal', [x, ya, za], [x, yb, zb], 0.05, 0.025, [0, 1, 0], lap, 0);
+        else sink.member('structureMetal', [x, ya, za], [x, yb, zb], 0.05, 0.025, [0, 1, 0], lap, 0);
       }
     });
     return rg;
@@ -176,7 +195,7 @@ function screen(sink: PartSink, d: StallDress, x0: number, z0: number, x1: numbe
   const len = Math.hypot(x1 - x0, z1 - z0), ax: Vec3 = [(x1 - x0) / len, 0, (z1 - z0) / len];
   if (d.back === 'boards') {
     for (let t = 0.13; t < len - 0.1; t += 0.25) {
-      freeBox(sink, 'structureWood', [x0 + ax[0] * t, (y0 + y1) / 2, z0 + ax[2] * t], [0.225, y1 - y0, 0.025], { colour: shade(d.backColour, 0.84 + d.look() * 0.26) }, ax);
+      board(sink, d, 'structureWood', [x0 + ax[0] * t, (y0 + y1) / 2, z0 + ax[2] * t], [0.225, y1 - y0, 0.025], { colour: shade(d.backColour, 0.84 + d.look() * 0.26) }, ax);
     }
     return;
   }
@@ -230,17 +249,40 @@ function counter(sink: PartSink, d: StallDress, x0: number, x1: number, z: numbe
     sink.span('plaster', x0 - 0.03, top - 0.04, z - deep - 0.03, x1 + 0.03, top, z + 0.03, { tint: [1.12, 1.12, 1.1] });
   } else {
     // the top: slats (machan) or a plank, on its legs and rails (structure: it is cover to a crouching man)
-    sink.span('structureWood', x0, top - 0.05, z - deep, x1, top, z, { colour: shade(d.timber, 1.15) });
+    timber(sink, d, 'structureWood', x0, top - 0.05, z - deep, x1, top, z, { colour: shade(d.timber, 1.15) });
     for (const lx of [x0 + 0.06, x1 - 0.06]) for (const lz of [z - deep + 0.06, z - 0.06]) {
       if (d.post === 'bamboo') sink.cylinder('structureWood', [lx, floorY, lz], 'y', top - 0.05 - floorY, 0.035, 6, { colour: d.timber });
-      else sink.span('structureWood', lx - 0.035, floorY, lz - 0.035, lx + 0.035, top - 0.05, lz + 0.035, { colour: shade(d.timber, 0.85) });
+      else timber(sink, d, 'structureWood', lx - 0.035, floorY, lz - 0.035, lx + 0.035, top - 0.05, lz + 0.035, { colour: shade(d.timber, 0.85) }, 0.01);
     }
     sink.dressing(d.mobile, () => {
       if (d.counter === 'machan') for (let x = x0 + 0.08; x < x1 - 0.05; x += 0.16) sink.span('structureWood', x - 0.04, top, z - deep, x + 0.04, top + 0.012, z, { colour: shade(d.timber, 1.05 + d.look() * 0.15), decor: true, fine: true });
-      sink.span('structureWood', x0, floorY + 0.15, z - 0.04, x1, floorY + 0.21, z, { colour: shade(d.timber, 0.8), decor: true });
+      timber(sink, d, 'structureWood', x0, floorY + 0.15, z - 0.04, x1, floorY + 0.21, z, { colour: shade(d.timber, 0.8), decor: true }, 0.01);
     });
   }
   sink.dressing(d.mobile, () => goods(sink, d, cx, top, cz, w, deep));
+}
+
+/**
+ * An eased dress's deck planks across (x0..x1) over z0..z1 on a deck whose top is at y: every plank's top a little
+ * proud of the deck, the joint between two sunk in a V, the run's ends turned down to the deck — one welded run (the
+ * plain deck's loose plank quads, a stream draw a plank as they drew). Dressing.
+ */
+function plankRun(sink: PartSink, d: StallDress, x0: number, x1: number, z0: number, z1: number, y: number): void {
+  const planks: Array<[number, number, number]> = [];
+  for (let x = x0 + 0.01; x < x1 - 0.1; x += 0.22) planks.push([x, Math.min(x + 0.2, x1 - 0.01), 0.95 + d.look() * 0.2]);
+  if (!planks.length) return;
+  const top = y + 0.012, bed = y + 0.003, foot = y + 0.002, base = d.floorColour ?? d.timber;
+  const tone = (k: number, dk = 1) => ({ colour: shade(base, k * dk), decor: true });
+  sink.quad('structureWood', [planks[0][0], foot, z0], [planks[0][0], foot, z1], [planks[0][0], top, z1], [planks[0][0], top, z0], tone(planks[0][2], 0.8));
+  for (let i = 0; i < planks.length; i++) {
+    const [a, b, k] = planks[i], next = planks[i + 1];
+    sink.quad('structureWood', [a, top, z1], [b, top, z1], [b, top, z0], [a, top, z0], tone(k));
+    if (next) {
+      const m = (b + next[0]) / 2;
+      sink.quad('structureWood', [b, top, z1], [m, bed, z1], [m, bed, z0], [b, top, z0], tone(k, 0.62));
+      sink.quad('structureWood', [m, bed, z1], [next[0], top, z1], [next[0], top, z0], [m, bed, z0], tone(next[2], 0.62));
+    } else sink.quad('structureWood', [b, foot, z1], [b, foot, z0], [b, top, z0], [b, top, z1], tone(k, 0.8));
+  }
 }
 
 /** The floor of a stall or a row from (x0, z0) to (x1, z1), its top at y: an earthen plinth, a plank deck on stilts, or
@@ -249,11 +291,12 @@ function floorOf(sink: PartSink, d: StallDress, x0: number, z0: number, x1: numb
   if (d.floor === 'deck') {
     // the deck on bearers and stilts over the mud, a step down at its front
     for (const x of [x0 + 0.12, (x0 + x1) / 2, x1 - 0.12]) for (const z of [z0 + 0.12, z1 - 0.12]) sink.cylinder('structureWood', [x, -0.4, z], 'y', y - 0.06 + 0.4, 0.06, 6, { colour: shade(d.timber, 0.8) });
-    sink.span('structureWood', x0, y - 0.1, z0, x1, y, z1, { colour: shade(d.floorColour ?? d.timber, 1.1) });
+    timber(sink, d, 'structureWood', x0, y - 0.1, z0, x1, y, z1, { colour: shade(d.floorColour ?? d.timber, 1.1) }, 0.02);
     sink.dressing(d.mobile, () => {
-      for (let x = x0 + 0.01; x < x1 - 0.1; x += 0.22) sink.quad('structureWood', [x, y + 0.004, z1], [x + 0.2, y + 0.004, z1], [x + 0.2, y + 0.004, z0], [x, y + 0.004, z0], { colour: shade(d.floorColour ?? d.timber, 0.95 + d.look() * 0.2), decor: true });
-      sink.span('structureWood', (x0 + x1) / 2 - 0.5, y / 2 - 0.04, z1, (x0 + x1) / 2 + 0.5, y / 2, z1 + 0.32, { colour: shade(d.timber, 0.9), decor: true });
-      for (const sx of [-1, 1]) sink.span('structureWood', (x0 + x1) / 2 + sx * 0.48 - 0.03, -0.1, z1 + 0.25, (x0 + x1) / 2 + sx * 0.48 + 0.03, y / 2, z1 + 0.31, { colour: shade(d.timber, 0.8), decor: true });
+      if (d.eased) plankRun(sink, d, x0, x1, z0, z1, y);
+      else for (let x = x0 + 0.01; x < x1 - 0.1; x += 0.22) sink.quad('structureWood', [x, y + 0.004, z1], [x + 0.2, y + 0.004, z1], [x + 0.2, y + 0.004, z0], [x, y + 0.004, z0], { colour: shade(d.floorColour ?? d.timber, 0.95 + d.look() * 0.2), decor: true });
+      timber(sink, d, 'structureWood', (x0 + x1) / 2 - 0.5, y / 2 - 0.04, z1, (x0 + x1) / 2 + 0.5, y / 2, z1 + 0.32, { colour: shade(d.timber, 0.9), decor: true }, 0.01);
+      for (const sx of [-1, 1]) timber(sink, d, 'structureWood', (x0 + x1) / 2 + sx * 0.48 - 0.03, -0.1, z1 + 0.25, (x0 + x1) / 2 + sx * 0.48 + 0.03, y / 2, z1 + 0.31, { colour: shade(d.timber, 0.8), decor: true }, 0.01);
     });
     return y;
   }
@@ -324,7 +367,7 @@ export function openStall(sink: PartSink, d: StallDress, W: number, D: number, o
   // the plates round the head, lashed at the posts
   for (const sz of [-1, 1]) {
     const h = sz > 0 ? front : backH;
-    sink.span('structureWood', -px - 0.1, h, sz * pz - 0.05, px + 0.1, h + 0.1, sz * pz + 0.05, { colour: shade(d.timber, 0.9) });
+    timber(sink, d, 'structureWood', -px - 0.1, h, sz * pz - 0.05, px + 0.1, h + 0.1, sz * pz + 0.05, { colour: shade(d.timber, 0.9) });
     for (const sx of [-1, 1]) lash(sink, d, [sx * px, h + 0.05, sz * pz]);
   }
   for (const sx of [-1, 1]) sink.member('structureWood', [sx * px, front + 0.05, pz], [sx * px, backH + 0.05, -pz], 0.08, 0.08, [1, 0, 0], { colour: shade(d.timber, 0.85), ...ex }, 0.04);
@@ -386,10 +429,10 @@ export function openStall(sink: PartSink, d: StallDress, W: number, D: number, o
     const n = Math.max(2, Math.round((z1 - z0) / 0.25)), pitch = (z1 - z0) / n;
     for (const sx of [-1, 1]) {
       const x = sx * px, xi = x - sx * 0.0125;
-      sink.span('structureWood', Math.min(xi, xi - sx * 0.06), yr - 0.08, -pz, Math.max(xi, xi - sx * 0.06), yr, pz, { colour: shade(d.timber, 0.85) });
+      timber(sink, d, 'structureWood', Math.min(xi, xi - sx * 0.06), yr - 0.08, -pz, Math.max(xi, xi - sx * 0.06), yr, pz, { colour: shade(d.timber, 0.85) }, 0.01);
       for (let k = 0; k < n; k++) {
         const zc = z0 + pitch * (k + 0.5), top = under(zc), bot = yr - 0.08;
-        freeBox(sink, 'structureWood', [x, (bot + top) / 2, zc], [pitch - 0.02, top - bot, 0.025], { colour: shade(d.backColour ?? d.timber, 0.84 + d.look() * 0.26) }, [0, 0, 1]);
+        board(sink, d, 'structureWood', [x, (bot + top) / 2, zc], [pitch - 0.02, top - bot, 0.025], { colour: shade(d.backColour ?? d.timber, 0.84 + d.look() * 0.26) }, [0, 0, 1]);
       }
     }
   }
@@ -415,8 +458,8 @@ export function boothRow(sink: PartSink, d: StallDress, L: number, D: number, n:
     legs.push({ foot: [x, y, pz], head: [x, front, pz] }, { foot: [x, y, -pz], head: [x, backH, -pz] });
     sink.member('structureWood', [x, front + 0.05, pz], [x, backH + 0.05, -pz], 0.08, 0.1, [1, 0, 0], { colour: shade(d.timber, 0.85), ...ex }, 0.05);
   }
-  sink.span('structureWood', xs[0] - 0.1, front, pz - 0.06, xs[n] + 0.1, front + 0.12, pz + 0.06, { colour: shade(d.timber, 0.9) });
-  sink.span('structureWood', xs[0] - 0.1, backH, -pz - 0.06, xs[n] + 0.1, backH + 0.12, -pz + 0.06, { colour: shade(d.timber, 0.9) });
+  timber(sink, d, 'structureWood', xs[0] - 0.1, front, pz - 0.06, xs[n] + 0.1, front + 0.12, pz + 0.06, { colour: shade(d.timber, 0.9) });
+  timber(sink, d, 'structureWood', xs[0] - 0.1, backH, -pz - 0.06, xs[n] + 0.1, backH + 0.12, -pz + 0.06, { colour: shade(d.timber, 0.9) });
   cover(sink, d, L + 0.1, 2 * pz, front + 0.12, { shed: { hi: backH + 0.12 } });
   // the back, the partitions between the booths, the shelves on the back
   screen(sink, d, xs[0], -pz + 0.04, xs[n], -pz + 0.04, y - 0.005, backH + 0.005);
@@ -427,20 +470,20 @@ export function boothRow(sink: PartSink, d: StallDress, L: number, D: number, n:
     shutterAwning(sink, d, x0, x1, pz + 0.07, front, y + (d.counter === 'machan' ? 0.62 : 0.82));
     sink.dressing(d.mobile, () => {
       for (const sy of [y + 0.95, y + 1.55]) {
-        sink.span('structureWood', x0, sy - 0.03, -pz + 0.07, x1, sy, -pz + 0.42, { colour: shade(d.timber, 1.05), decor: true });
+        timber(sink, d, 'structureWood', x0, sy - 0.03, -pz + 0.07, x1, sy, -pz + 0.42, { colour: shade(d.timber, 1.05), decor: true }, 0.008);
         goods(sink, d, cx, sy, -pz + 0.25, x1 - x0, 0.3);
       }
       // the signboard over the booth's front, its lettering a pale band
       // (the board stands on the plate over the front, its lettering on its face)
       const sc = signs[k % Math.max(1, signs.length)] ?? d.timber;
       const f: Face = { origin: [cx, 0, pz + 0.1], u: [1, 0, 0], out: [0, 0, 1], width: x1 - x0 };
-      freeBox(sink, 'structureWood', [cx, front + 0.27, pz], [(x1 - x0) * 0.8, 0.3, 0.03], { colour: sc, decor: true });
+      board(sink, d, 'structureWood', [cx, front + 0.27, pz], [(x1 - x0) * 0.8, 0.3, 0.03], { colour: sc, decor: true });
       faceBox(sink, 'structureWood', f, 0, front + 0.27, -0.08, (x1 - x0) * 0.55, 0.09, 0.01, { colour: [0.86, 0.82, 0.7], decor: true, fine: true });
     });
   }
   // the fascia along the front's eave and the gutter under it
   sink.dressing(d.mobile, () => {
-    freeBox(sink, 'structureWood', [0, front + 0.05, pz + 0.4], [L + 0.2, 0.16, 0.03], { colour: shade(d.timber, 0.8), decor: true });
+    board(sink, d, 'structureWood', [0, front + 0.05, pz + 0.4], [L + 0.2, 0.16, 0.03], { colour: shade(d.timber, 0.8), decor: true });
     sink.span('structureMetal', -L / 2 - 0.1, front - 0.12, pz + 0.42, L / 2 + 0.1, front - 0.02, pz + 0.52, { colour: [0.4, 0.4, 0.38], decor: true });
   });
   recordLattice(sink, legs, [front], 0.12, 'structureWood', d.timber, {
