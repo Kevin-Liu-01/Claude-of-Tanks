@@ -270,7 +270,7 @@ function buildLynxCannon(P: TankBuilderPort): void {
   // The 35 mm backstop is the bore's shadow floor (CDX-62: in weapon steel it caught the light inside the dark brake).
   const backstop=new THREE.Mesh(new THREE.CircleGeometry(.0175,P.q?28:14),P.mats.shadow);
   backstop.name='openTubeBoreBackstop';backstop.position.set(0,0,3.83);
-  backstop.castShadow=false;backstop.receiveShadow=true;
+  backstop.castShadow=false;backstop.receiveShadow=true;backstop.userData.carvedBoreStock=true; // bore stock (openTube)
   P.recoilG.add(backstop);P.disposables.push(backstop.geometry);
   // The circular firing mouth is recessed inside the outer brake extremum.
   P.muzzleZ=3.94;

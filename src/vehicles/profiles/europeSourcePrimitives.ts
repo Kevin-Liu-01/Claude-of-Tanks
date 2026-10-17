@@ -56,6 +56,9 @@ export function openTube(P: TankBuilderPort, radius: number, start: number, end:
       mesh.position.set(0, 0, z);
       mesh.castShadow = false;
       mesh.receiveShadow = true;
+      // bore stock exactly as the carved bores' wall and backstop: barrel stock to the bore inventory, never a
+      // small part on a wreck, never a carving surface (carvedMuzzleBore.ts, wrecks.ts, muzzle-bore-inventory.mjs)
+      mesh.userData.carvedBoreStock = true;
       P.recoilG.add(mesh);
       P.disposables.push(geometry);
     }
