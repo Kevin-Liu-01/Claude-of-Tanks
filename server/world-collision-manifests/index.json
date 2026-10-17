@@ -110,8 +110,8 @@
       "concealers": 1035
     },
     "foundry": {
-      "bytes": 2055584,
-      "sha256": "203da3889bc39342349db6fed1587f39b7746961db7af17d0b4519156d42032d",
+      "bytes": 2055550,
+      "sha256": "ba9a9fbcb185567397a6a0ae97b10844096111cddfb52e9aecd57097a297c1eb",
       "obstacles": 4110,
       "colliders": 4765,
       "concealers": 2730
@@ -344,8 +344,8 @@
         "concealers": 1035
       },
       "foundry": {
-        "bytes": 2055584,
-        "sha256": "203da3889bc39342349db6fed1587f39b7746961db7af17d0b4519156d42032d",
+        "bytes": 2055550,
+        "sha256": "ba9a9fbcb185567397a6a0ae97b10844096111cddfb52e9aecd57097a297c1eb",
         "obstacles": 4110,
         "colliders": 4765,
         "concealers": 2730
