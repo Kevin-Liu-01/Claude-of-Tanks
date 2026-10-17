@@ -156,6 +156,10 @@ interface SceneryCaprock {
   blockM?: readonly [number, number];
   /** (Skybridge round 6) the landform's path: the brows follow its curve (landformPath.ts). */
   path?: ReadonlyArray<readonly [number, number]>;
+  /** (Aegis r6) a trench's bench-stepped wall: caprockRim.ts benchM. */
+  benchM?: number;
+  /** (Aegis r7) the bed broken into its own blocks: caprockRim.ts broken. */
+  broken?: { overhang?: readonly [number, number]; lift?: readonly [number, number]; jointM?: number; gaps?: number };
   name?: string;
 }
 
@@ -175,6 +179,12 @@ interface SceneryCanyonWall {
   tone?: readonly [number, number, number];
   /** (Skybridge round 6) the trench's path: the skin follows its curve (landformPath.ts). */
   path?: ReadonlyArray<readonly [number, number]>;
+  /** (Aegis r6) a bench-stepped wall, and a dry gorge's want of a bathtub ring: canyonWall.ts benchM, ring. */
+  benchM?: number;
+  ring?: boolean;
+  /** (Aegis r7) the wall as a bedded freestone: canyonWall.ts beds (CanyonWallBeds). */
+  beds?: { thickness?: readonly [number, number]; talus?: readonly [number, number]; capTuck?: number;
+    keepClear?: ReadonlyArray<readonly [number, number]>; capGaps?: number };
   name?: string;
 }
 
