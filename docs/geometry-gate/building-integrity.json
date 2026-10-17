@@ -660,11 +660,11 @@
   },
   "glencanyon/needletower": {
    "floating": 0,
-   "sliver": 12,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0,
+   "gapM2": 5.731,
    "invertedM2": 0
   },
   "queenstown/warehouse": {
@@ -2653,7 +2653,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0,
+   "gapM2": 5.451,
    "invertedM2": 0
   },
   "glencanyon/gantry": {
@@ -4473,7 +4473,34 @@
    "insideM2": 0.231,
    "gapM2": 0,
    "invertedM2": 0
+  },
+  "glencanyon/fieldHeadquarters": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.768,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "glencanyon/church": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0.183,
+   "invertedM2": 0
+  },
+  "glencanyon/shoppingCentre": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-17T21:15:30.356Z"
+ "updatedAt": "2026-10-17T21:18:57.301Z"
 }
