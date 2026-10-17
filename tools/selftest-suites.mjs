@@ -928,6 +928,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/collapseBodies.selftest.mjs',
     'src/fx/fractureStages.selftest.mjs',
     'tools/destruction-check.selftest.mjs', // 2026-10-12: Steinburg's buildings destroyed and judged (textured, nothing hanging, rubble at rest on the ground)
+    'tools/destruction-slab-check.selftest.mjs', // 2026-10-17: the stray-slab detector's judgement (a room past the walls, a floating plate, a flattened matrix)
     'src/fx/structureMask.selftest.mjs', // 2026-10-13: nothing hangs from a falling building (straddling triangles come down with the front)
     'src/fx/latticeGround.selftest.mjs', // 2026-10-13: the landing solves read the ground as drawn from its lattice's vertices, once each
     'src/ui/hitEventFormat.selftest.mjs',
