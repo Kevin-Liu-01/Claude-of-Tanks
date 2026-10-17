@@ -64,6 +64,24 @@ const judge = (meshes) => judgeSlabs(meshes, { footprint, groundAt, supportAt })
   assert.equal(r.findings.length, 1, 'a plate in the air is flagged');
   assert.ok(r.findings[0].reasons.some((s) => s.startsWith('floating')), r.findings[0].reasons.join('; '));
 }
+// (census lane, 2026-10-17) a room laid 3 m up inside the walls, with no live record under it: an open shell (its floor and
+// four walls) whose floor rests on a block; each wall stands on the floor (a sibling sheet), its upper part asking for
+// nothing under it — no finding (before, every elevated upright wall read as floating by its upper samples)
+{
+  const none = () => false;
+  const [x0, x1, z0, z1, y0, y1] = [1.5, 8.5, 1, 5, 3, 5.9];
+  const shell = [
+    ...quad([x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1]),
+    ...quad([x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0]), ...quad([x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]),
+    ...quad([x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]), ...quad([x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [x1, y1, z0]),
+  ];
+  const r = judgeSlabs([mesh('fx-structure-room-wood', shell), mesh('fx-collapse-block-0', box(2, 0, 1.5, 8, 3, 4.5))], { footprint, groundAt, supportAt: none });
+  assert.equal(r.findings.length, 0, `a room's walls standing on its floor pass (${JSON.stringify(r.findings.map((f) => [f.orientation, f.reasons]))})`);
+  // the same room's walls with no floor and nothing under them, 3 m up: floating
+  const walls = shell.slice(18);
+  const w = judgeSlabs([mesh('fx-structure-room-wood', walls)], { footprint, groundAt, supportAt: none });
+  assert.ok(w.findings.length >= 1 && w.findings.every((f) => f.reasons.some((s) => s.startsWith('floating'))), 'walls in the air are floating');
+}
 // a closed block is no slab; a thin long box is
 assert.ok(!isSlab(shapeOf(Float32Array.from(box(0, 0, 0, 2, 2, 2)))), 'a 2 m block is no slab');
 assert.ok(isSlab(shapeOf(Float32Array.from(box(0, 0, 0, 28, 0.22, 16.8)))), 'a 28 x 16.8 x 0.22 m floor is a slab');

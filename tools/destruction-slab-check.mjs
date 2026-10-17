@@ -418,6 +418,10 @@ export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => fals
     const groundC = groundAt(s.centre[0], s.centre[2]);
     const lift = s.min[1] - groundC;
     const elevated = lift >= SLAB.elevatedM;
+    // (census lane, 2026-10-17) an upright panel stands on its foot: only its lowest band asks for something under it (its
+    // upper samples have nothing under them by construction — every elevated wall read as floating); and a sheet of an open
+    // shell (a room's wall) may stand on a sibling sheet (the room's floor), never on the shell's own box
+    const upright = Math.abs(s.axes[2][1]) < 0.3;
     surfaceSamples(p.tris, samples);
     const ns = samples.length / 4;
     let total = 0, outside = 0, unsupported = 0, weighed = 0;
@@ -426,6 +430,7 @@ export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => fals
       total += w;
       if (!footprint.has(x, z)) outside += w;
       if (!elevated) continue;
+      if (upright && y > s.min[1] + SLAB.supportBandM) continue;
       weighed += w;
       // under it: the ground, a live record, another drawn piece's box top within the band
       const below = y - SLAB.supportBandM;
@@ -433,7 +438,7 @@ export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => fals
       if (supportAt(x, z, y)) continue;
       let held = false;
       for (let k = 0; k < boxes.length && !held; k++) {
-        if (k === idx || pieces[k].gid === p.gid) continue;
+        if (k === idx || (pieces[k].gid === p.gid && !(p.sheet && pieces[k].sheet))) continue;
         const b = boxes[k];
         if (x >= b.min[0] && x <= b.max[0] && z >= b.min[2] && z <= b.max[2] && b.max[1] >= below && b.min[1] <= y - 0.02) held = true;
       }
