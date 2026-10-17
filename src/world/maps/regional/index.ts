@@ -51,7 +51,7 @@ import { CHOUF_STYLE } from './chouf.ts';
 import { LORRAIN_STYLE } from './lorrain.ts';
 import { TSELINA_STYLE } from './tselina.ts';
 import { OLYMPUS_STYLE } from './olympus.ts';
-import type { ArchitectureStyle, BaseBounds, RegionalBuildContext, RegionalGround } from './types.ts';
+import type { ArchitectureStyle, BaseBounds, RegionalBuildContext, RegionalBuilder, RegionalGround } from './types.ts';
 
 export type { ArchitectureStyle } from './types.ts';
 
@@ -175,13 +175,19 @@ export function regionalKitPlanOf(parts: object): RegionalKitPlan | undefined {
   return KIT_PLANS.get(parts);
 }
 
+/** The kit's builder for a structure on a map: the map's own reading of the kit first (ArchitectureStyle.mapBuilders). */
+function kitBuilder(style: ArchitectureStyle, mapId: string, structureId: string): RegionalBuilder | undefined {
+  const named = style.mapBuilders?.[mapId]?.[structureId];
+  return style.builders[named ?? structureId];
+}
+
 /**
  * A kit's whole build of one structure: the builder's parts, then the building's own tint and weathering
  * (weather.ts) drawn from `weatherRng` (never the build stream). Receipts build through this too.
  */
 export function buildRegionalParts(style: ArchitectureStyle, ctx: RegionalBuildContext, weatherRng: () => number): RegionalParts {
   const palette = style.weather ?? DEFAULT_WEATHER;
-  const builder = style.builders[ctx.structureId];
+  const builder = kitBuilder(style, ctx.mapId, ctx.structureId);
   if (!builder) throw new Error(`${style.id} has no ${ctx.structureId}`);
   // war wear (burnt and boarded windows, stripped roof patches) draws from its own fork of the weather stream
   const wearSeed = Math.floor(weatherRng() * 4294967296);
@@ -249,8 +255,7 @@ export function rebuildRegionalStructure(
   style: ArchitectureStyle, structureId: string, base: Buckets, info: { w: number; d: number; h: number },
   wallBucket: string, context: RebuildContext, x: number, z: number, yaw: number,
 ): PropsLikeBuckets | null {
-  const builder = style.builders[structureId];
-  if (!builder) return null;
+  if (!kitBuilder(style, context.mapId, structureId)) return null;
   const bounds = measure(base);
   const ctx: RegionalBuildContext = {
     structureId, info, bounds, wallBucket,
