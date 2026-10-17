@@ -329,7 +329,8 @@ function dachaDressing(sink: PartSink, frame: HouseFrame, craft: DachaCraft,
     doorCanopy(sink, frame.faces.front, door.u, frame.floors[0] + door.y0 + door.h, door.w,
       { kind: 'gable', bucket: h.sheet ? 'structureMetal' : 'roof', ...(h.sheet ? { colour: h.livery } : {}), timber: h.paint, depth: 0.9 });
   }
-  if (craft.dormer && !h.sheet && frame.roof.kind === 'gable') {
+  // (a dormer's front stands 2.15 m over the eave: only under a ridge well above that, never its cheeks over the ridge)
+  if (craft.dormer && !h.sheet && frame.roof.kind === 'gable' && frame.roof.ridgeTopY - frame.eaveY >= 2.45) {
     const dormerWindow: WindowStyle = { frame: DACHA_TRIM, frameWidth: 0.05, frameOut: 0.03, bars: 'two',
       surround: { bucket: 'structureWood', width: 0.08, out: 0.03, lintel: 0.12, colour: h.trim }, sill: { bucket: 'structureWood', out: 0.05, colour: DACHA_TRIM }, shutters: null };
     roofDormers(sink, frame.roof, [h.side > 0 ? 1 : -1], [h.D * 0.14], {
