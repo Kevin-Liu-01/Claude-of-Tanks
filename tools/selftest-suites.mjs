@@ -1983,5 +1983,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // FSP-01: real Garage, warm switches gated on main-thread blocking and
     // first painted frame; cold switches reported only.
     'tools/garage-switch-probe.selftest.mjs',
+    // destruction-slabs 227 (2026-10-17, the owner's church slabs): the stray-slab detector over every destructible kind of
+    // every map, one props build per map in a worker pool (no plate, wall or run standing past the walls, none floating)
+    'tools/destruction-slab-kinds.selftest.mjs',
   ]),
 });

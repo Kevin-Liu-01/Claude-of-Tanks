@@ -26,7 +26,7 @@ import {
   bodyMoundHeightAt, damageRng, damageSeed,
   type DamageMeshWriter, type DamageRole, type DamageWriters, type FractureSlot, type Rgb, type StructureDamageAnatomy,
 } from './destructionKit.ts';
-import { bandEnclosure, enclosedAt, openBandShare, wallAlong, wallClusters, wallTopAt } from './structureEnclosure.ts';
+import { bandEnclosure, enclosedAt, openBandShare, tallestDrawn, wallAlong, wallClusters, wallTopAt } from './structureEnclosure.ts';
 
 /** The ruin's floors (the sweep's: 25 % and 60 %, with margin). */
 export const RUIN_HEIGHT_SHARE = 0.3;
@@ -382,6 +382,13 @@ function frameStubs(anatomy: StructureDamageAnatomy, rng: () => number, cap: num
   const drawn = !lattice && !named && anatomy.enclosure
     ? wallClusters(anatomy, 0, 6).filter((c) => c.top > 0.6).map((c) => ({ foot: [c.x, 0, c.z], head: [c.x, c.top, c.z] })) : null;
   if (drawn && !drawn.length) return;
+  // (destruction-slabs 227) a named frame without a reading (a guyed mast on its pad beside its hut) stands its stump where
+  // it is drawn tallest, no wider than it is drawn there (about the footprint's middle it stood a 2.8 m lattice beside the
+  // 0.6 m mast, where nothing was drawn), and none where its body draws nothing near the frame's height (a set piece whose
+  // mast is its own falling piece: the body left is its pad and hut)
+  const tall = !lattice && !drawn && anatomy.enclosure ? tallestDrawn(anatomy) : null;
+  const stumpTop = Math.max(2, ruinScale);
+  if (!lattice && !drawn && anatomy.enclosure && (!tall || tall.top < 0.5 * stumpTop)) return;
   const bucket = lattice ? lattice.bucket : fallback?.bucket;
   if (!bucket || !roomFor(mesh, 16) || !mesh.begin(bucket, 'remnant')) return;
   const tint: Rgb = lattice?.colour ?? fallback?.tint ?? [0.42, 0.42, 0.44];
@@ -389,10 +396,12 @@ function frameStubs(anatomy: StructureDamageAnatomy, rng: () => number, cap: num
   _stubTop.length = 0; _stubX.length = 0; _stubZ.length = 0;
   const legs = lattice ? lattice.legs : drawn;
   const n = legs ? legs.length : 4;
-  const r = Math.max(0.5, Math.min(1.4, 0.18 * Math.min(fhw, fhd)));
+  const sx = tall ? tall.x : fcx, sz = tall ? tall.z : fcz;
+  const r = tall ? Math.max(0.12, Math.min(1.4, Math.min(tall.halfW, tall.halfD) - t / 2))
+    : Math.max(0.5, Math.min(1.4, 0.18 * Math.min(fhw, fhd)));
   for (let k = 0; k < n && roomFor(mesh, 3); k++) {
-    const foot = legs ? legs[k]!.foot : [fcx + (k & 1 ? r : -r), 0, fcz + (k & 2 ? r : -r)];
-    const head = legs ? legs[k]!.head : [foot[0]!, Math.max(2, ruinScale), foot[2]!];
+    const foot = legs ? legs[k]!.foot : [sx + (k & 1 ? r : -r), 0, sz + (k & 2 ? r : -r)];
+    const head = legs ? legs[k]!.head : [foot[0]!, tall ? Math.min(stumpTop, tall.top) : stumpTop, foot[2]!];
     const rise = Math.max(0.5, head[1]! - foot[1]!);
     const top = Math.min(cap, foot[1]! + rise * share * (0.85 + rng() * 0.3));
     const u = (top - foot[1]!) / rise;
@@ -446,14 +455,21 @@ function frameTier(rng: () => number, cap: number, mesh: DamageMeshWriter, tier:
   if (!roomFor(mesh, n * 2) || !mesh.begin(bucket, 'remnant')) return;
   const tint: Rgb = lattice?.colour ?? fallback.tint;
   const t = Math.max(0.12, Math.min(0.5, lattice ? lattice.size : 0.2));
+  // the frame's middle: its stubs' (a named stump stands where its frame is drawn, not about the footprint's middle)
+  let mx = 0, mz = 0;
+  for (let k = 0; k < n; k++) { mx += _stubX[k]! / n; mz += _stubZ[k]! / n; }
   for (let k = 0; k < n && roomFor(mesh, 2); k++) {
     const x = _stubX[k]!, z = _stubZ[k]!, top = _stubTop[k]!;
     if (tier === 1) {
       // out from the frame's middle, up to 1.45 times the buckle (never past the cap)
-      const ox = x - fcx, oz = z - fcz, ol = Math.hypot(ox, oz) || 1;
+      const ox = x - mx, oz = z - mz, ol = Math.hypot(ox, oz) || 1;
       const reach = 0.8 + rng() * 1.4;
-      const y1 = Math.min(cap, top * (1.3 + rng() * 0.15));
-      strut(mesh, x, top, z, x + (ox / ol) * reach, y1, z + (oz / ol) * reach, t * 0.9, tint, 0.8 + rng() * 0.15);
+      const tx = x + (ox / ol) * reach, tz = z + (oz / ol) * reach;
+      // (destruction-slabs 227) no higher than the frame is drawn over its tip (a tapering tower's legs splay out low:
+      // bent out and up, a leg stood over the drawn tower's envelope); over nothing drawn it droops to the ground
+      const drawnTip = topAtSpot(tx, tz);
+      const y1 = Math.min(cap, top * (1.3 + rng() * 0.15), Number.isFinite(drawnTip) ? Math.max(0.4, drawnTip + 0.4) : Infinity);
+      strut(mesh, x, top, z, tx, y1, tz, t * 0.9, tint, 0.8 + rng() * 0.15);
     } else {
       const j = (k + (n >> 1)) % n;
       if (j === k) continue;

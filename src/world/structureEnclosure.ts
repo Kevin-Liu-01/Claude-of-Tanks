@@ -55,6 +55,8 @@ export interface StructureEnclosure {
   readonly bands: EnclosureBand[];
   /** Per cell: the drawn walls' top (cm over the body's floor; 0 none). */
   readonly top: Uint16Array;
+  /** Per cell: the highest thing drawn over it, a wall's top or a covering (the same cm; 0 none; absent for a probe). */
+  readonly over?: Uint16Array;
 }
 
 /** Buckets that are no wall: the roofs and thatch (a window's glass and a curtain wall enclose as a wall does). */
@@ -284,7 +286,7 @@ export function measureEnclosure(parts: Readonly<Record<string, readonly BufferG
       share: inside / Math.max(1, boxCells - walls), setback: b.setback, bin, labels: null };
   });
   if (!any) return null;
-  return { x0, z0, cell, nx, nz, bands: out, top };
+  return { x0, z0, cell, nx, nz, bands: out, top, ...(cover ? { over } : {}) };
 }
 
 /** Close a band's wall cells' gaps of up to 2r cells, flood the outside from the border, give the outside back the cells
@@ -491,11 +493,13 @@ const HINT_REACH_M = 2.5;
  * (a frame, a trestle, a pipe run, a tank farm), the component is under 2 m², or no enclosed cell is near the hint; and
  * for a structure without an enclosure (null too: lay none).
  */
-export function storeyInterior(anatomy: Pick<StructureDamageAnatomy, 'enclosure' | 'storeys'>, storey: number, hintX: number, hintZ: number,
-  capY = Infinity): StoreyInterior | null {
+export function storeyInterior(anatomy: Pick<StructureDamageAnatomy, 'enclosure' | 'storeys' | 'intact'>, storey: number, hintX: number,
+  hintZ: number, capY = Infinity): StoreyInterior | null {
   const enc = enclosureOf(anatomy);
-  // a structure measured without its parts (a kit's own reading handed over whole): its faces are its walls
-  if (!enc) return facesInterior(anatomy, storey, capY);
+  // a structure measured without its parts (a kit's own reading handed over whole): its faces are its walls; one measured
+  // from its parts that encloses nothing it draws has no room (Saltwind's house row, every house a named piece of the set
+  // piece: the faces' box over the whole row stood as three storeys of room boxes once the houses slumped)
+  if (!enc) return anatomy.intact ? null : facesInterior(anatomy, storey, capY);
   const band = enc.bands[storey];
   if (!band || band.share < ROOM_MIN_SHARE || band.interiorM2 < ROOM_MIN_M2) return null;
   const { nx, nz, cell, x0, z0 } = enc;
@@ -537,8 +541,12 @@ export function storeyInterior(anatomy: Pick<StructureDamageAnatomy, 'enclosure'
   // the room: the component's cells something covers (a roof, an upper floor: not a court under the sky)
   const inRoom = new Uint8Array(nx * nz);
   let n = 0;
+  // (destruction-slabs 227, Saltwind's house row stepping down its slope: one ceiling over the band stood through the lower
+  // houses' roofs) a cell whose covering is drawn under the ceiling is no room's
+  const overCm = enc.over ? Math.round((y1 - 0.1) * 100) + 1 : 0;
   for (let c = 0; c < labels.length; c++) {
     if (labels[c] !== label || !(band.cells[c]! & 4)) continue;
+    if (enc.over && enc.over[c]! < overCm) continue;
     // (a cell open to the outside on a side — a door's threshold, a gap's mouth — is no room's: it stays a cell back)
     const i = c % nx, k = (c - i) / nx;
     if ((i > 0 && band.cells[c - 1] === 0) || (i < nx - 1 && band.cells[c + 1] === 0) || (k > 0 && band.cells[c - nx] === 0)
@@ -701,4 +709,32 @@ export function wallClusters(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>,
   }
   out.sort((p, q) => q.cells - p.cells || p.x - q.x || p.z - q.z);
   return out.slice(0, max);
+}
+
+/**
+ * Where a structure is drawn tallest (body frame): the plan cell its drawn walls reach highest over, and the extent of the
+ * cells round it (within 3 m) drawn to at least 0.6 of that height, as a half width and depth (a mast's lattice on its
+ * pad beside its hut: the mast). Null without an enclosure or anything drawn upright.
+ */
+export function tallestDrawn(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>): { x: number; z: number; top: number; halfW: number; halfD: number } | null {
+  const enc = enclosureOf(anatomy);
+  if (!enc) return null;
+  const { nx, nz, cell, x0, z0, top } = enc;
+  let best = -1, bestTop = 0;
+  for (let c = 0; c < top.length; c++) if (top[c]! > bestTop) { bestTop = top[c]!; best = c; }
+  if (best < 0) return null;
+  const hi = (bestTop - 1) / 100;
+  if (!(hi > 0.5)) return null;
+  const bi = best % nx, bk = (best - bi) / nx, r = Math.ceil(3 / cell), need = 1 + Math.round(hi * 0.6 * 100);
+  let i0 = bi, i1 = bi, k0 = bk, k1 = bk;
+  for (let dk = -r; dk <= r; dk++) for (let di = -r; di <= r; di++) {
+    const i = bi + di, k = bk + dk;
+    if (i < 0 || k < 0 || i >= nx || k >= nz || top[k * nx + i]! < need) continue;
+    if (i < i0) i0 = i;
+    if (i > i1) i1 = i;
+    if (k < k0) k0 = k;
+    if (k > k1) k1 = k;
+  }
+  return { x: x0 + ((i0 + i1 + 1) / 2) * cell, z: z0 + ((k0 + k1 + 1) / 2) * cell, top: hi,
+    halfW: ((i1 - i0 + 1) * cell) / 2, halfD: ((k1 - k0 + 1) * cell) / 2 };
 }

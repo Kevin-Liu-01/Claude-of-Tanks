@@ -527,14 +527,18 @@ export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => fals
         // along the body box's thin axis, the gap between the box's face that looks down and what is drawn (a slab
         // lying tilted on the heap reads its gap under itself, not over the box's lowest corner)
         const M = p.d.mesh.matrixWorld, inv = new THREE.Matrix4().copy(M).invert(), e = M.elements;
+        // what the body draws as a whole (every part and bucket of the piece: the covering with its rafters, eave boards and
+        // gable under it): a slab propped on its own drawn rafters rests on them, it does not hover
+        const prefix = p.d.name.replace(/\.\d+$/, '.');
+        const bodyTris = meshes.filter((d) => d.name === p.d.name || d.name.startsWith(prefix)).map((d) => d.tris);
         let gap = -Infinity;
         for (const b of bodyBoxes) {
           const k = b.h[0] <= b.h[1] && b.h[0] <= b.h[2] ? 0 : b.h[1] <= b.h[2] ? 1 : 2;
           const ay = e[k * 4 + 1] / (Math.hypot(e[k * 4], e[k * 4 + 1], e[k * 4 + 2]) || 1);
           if (Math.abs(ay) < 0.5) continue;
           let lo = Infinity, hi = -Infinity;
-          for (let o = 0; o < p.tris.length; o += 3) {
-            _still.set(p.tris[o], p.tris[o + 1], p.tris[o + 2]).applyMatrix4(inv);
+          for (const tris of bodyTris) for (let o = 0; o < tris.length; o += 3) {
+            _still.set(tris[o], tris[o + 1], tris[o + 2]).applyMatrix4(inv);
             const v = k === 0 ? _still.x : k === 1 ? _still.y : _still.z;
             lo = Math.min(lo, v); hi = Math.max(hi, v);
           }

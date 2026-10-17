@@ -1077,8 +1077,12 @@ u-bin (NaN where none stands behind it), and the drawn walls' top per cell. Its 
 - `storeyInterior(anatomy, storey, hintX, hintZ, capY)`: the room behind a hole — the enclosed component behind the hint,
   under what covers it (no ceiling over a court), rectangles for its floor and ceiling and its boundary for its inward
   walls, its ceiling at the band's drawn wall top; none where the band encloses under half its box (a frame, a trestle, a
-  pipe run, a tank farm) or the room would be under 2 m². `layInterior` and the fracture's `roomFor` both lay it, one room
-  per storey and component, gone with its storey (a storey drop, or every wall of it fallen).
+  pipe run, a tank farm), the room would be under 2 m² or under 1.9 m across either way (a porch pocket under a portico),
+  and no cell of it where what covers the cell is drawn under the ceiling (a house row stepping down its slope). A
+  structure measured from its parts that encloses nothing it draws (a set piece whose every house is a named piece) has
+  no room; only a kit's anatomy handed over without parts uses its faces as walls. `layInterior` and the fracture's
+  `roomFor` both lay it, one room per storey and component, gone with its storey (a storey drop, or every wall of it
+  fallen).
 - `faceSetback(anatomy, storey, face, u)`: `holeAt` puts a hole on the drawn wall behind the face (`BreachSpec.setback`);
   a NaN bin is no kit hole (the round passed an opening or a frame: its burst only); the default kit's rim, room and cut
   and its stubs go there; the wall fracture's grid stands at the face's median setback, a cell over no drawn wall is void
@@ -1086,8 +1090,10 @@ u-bin (NaN where none stands behind it), and the drawn walls' top per cell. Its 
   bears only while the face sharing it stands there.
 - `enclosedAt`, `wallAt`, `wallAlong`, `wallTopAt`, `wallClusters`, `bandEnclosure`: the kit's heap lies on what the
   building drew (grown 1.5 m), the ruin's piers, stubs, fragments and posts stand on the ground storey's drawn walls no
-  taller than they are drawn there (an unnamed frame's stubs on its own drawn legs), and the collapse's floor pieces and
-  floor records span the band's interior.
+  taller than they are drawn there (an unnamed frame's stubs on its own drawn legs; a named frame without a lattice
+  reading stands its stump where it is drawn tallest, `tallestDrawn`, and none where its body draws nothing near the
+  frame's height — a guyed mast whose mast is its own falling piece; a buckled leg bends out no higher than the frame is
+  drawn over its tip), and the collapse's floor pieces and floor records span the band's interior.
 
 The default reading's faces now stand on the body's walls too (`describeDefault`: the enclosed plan up to the eaves, grown
 to the walls, about its own centre; without a roof bucket the eaves are the body's top — the highest half metre whose
