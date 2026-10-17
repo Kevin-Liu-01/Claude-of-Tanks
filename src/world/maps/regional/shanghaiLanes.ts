@@ -113,10 +113,13 @@ function shikumenGate(sink: PartSink, face: Face, u: number, gw: number, gh: num
   faceBox(sink, 'structureMetal', face, u, py + 0.26, 0.17, gw * 0.55, 0.26, 0.015, { colour: rgb(0x6b5f52), decor: true, fine: true });
 }
 
-/** The shikumen's joinery: the casements, the hall's lattice doors (geshan) over its granite step, the back doors. */
-function shikumenDialect(look: () => number, win: WindowStyle, hall: WindowStyle, back: DoorStyle): HouseDialect {
+/**
+ * The shikumen's joinery: the court side's casements dressed (`win`), the back lane's and the end walls' plainer
+ * (`plain`), the hall's lattice doors (geshan) over its granite step, the back doors.
+ */
+function shikumenDialect(look: () => number, win: WindowStyle, plain: WindowStyle, hall: WindowStyle, back: DoorStyle): HouseDialect {
   return {
-    window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, win, look, 0.3),
+    window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, o.face === 'left' ? win : plain, look, 0.3),
     door: (s, face, o, y0, frame) => {
       if (o.face === 'left') {
         // the hall open to the tianjing: its lattice screen across the opening, the step down to the court
@@ -166,6 +169,8 @@ export function shikumenRow(ctx: RegionalBuildContext, bank: Bank | null): Regio
       sill: { bucket: GRANITE, out: 0.09 },
       shutters: shuttered ? { colour: shutterPaint, kind: 'louvred', closed: 0.18 } : null, head,
     };
+    // (the lanes dressed the court side; the back lane's and the end walls' windows plainer: a stucco surround, a granite sill)
+    const plain: WindowStyle = { ...CASEMENT, surround: mobile ? null : { bucket: GRANITE, width: 0.09, out: 0.03, lintel: 0.13 }, sill: { bucket: GRANITE, out: 0.09 } };
     const hall: WindowStyle = { ...CASEMENT, frame: shade(TEAK, 0.6), bars: 'six', sill: null, surround: null, shutters: null };
     const backDoor: DoorStyle = { leaf: LACQUER, frame: { bucket: GRANITE, width: 0.12, out: 0.05 }, transom: false, steps: { bucket: GRANITE }, leafKind: 'plank' };
     // the openings: the hall's lattice front and the casements over it to the court, the end houses' side windows (the
@@ -202,7 +207,7 @@ export function shikumenRow(ctx: RegionalBuildContext, bank: Bank | null): Regio
       // (the rows stand wall to wall: a drip strip round each would lie over its neighbour's)
       skirt: null,
     };
-    const dialect = shikumenDialect(look, win, hall, backDoor);
+    const dialect = shikumenDialect(look, win, plain, hall, backDoor);
     const frame: HouseFrame = along(sink, 0, zc, () => { const fr = buildHouse(sink, houseSpec, dialect); plinthWash(sink, houseSpec); return fr; });
     // the back wing: the kitchen (its stove's stack up through the drying terrace by the party wall), the pavilion room
     // over it, the terrace's cement roof

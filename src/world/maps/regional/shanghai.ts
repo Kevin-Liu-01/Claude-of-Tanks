@@ -149,7 +149,10 @@ function settlementBlock(ctx: RegionalBuildContext): RegionalParts {
       }
       if (look() < 0.3) sandbags(sink, front, u, 0, aw, 1.25, look);
     }
-    sink.dressing(mobile, () => pocks(sink, front, -W / 2 + 0.3, W / 2 - 0.3, frame.floors[1] + 0.2, eaveY - 0.3, 3 + Math.floor(look() * 8), look, [], 'plaster'));
+    // (looks 227, the integrity check: a pock fell over a window and hung in its reveal) clear of the front's openings
+    const keepOpen = frame.spec.openings.filter((o) => o.face === 'front').map((o) => ({ u0: o.u - o.w / 2 - 0.25, u1: o.u + o.w / 2 + 0.25,
+      y0: frame.floors[o.storey] + o.y0 - 0.3, y1: frame.floors[o.storey] + o.y0 + o.h + 0.45 }));
+    sink.dressing(mobile, () => pocks(sink, front, -W / 2 + 0.3, W / 2 - 0.3, frame.floors[1] + 0.2, eaveY - 0.3, 3 + Math.floor(look() * 8), look, keepOpen, 'plaster'));
     // (looks 227: the white course ran across the top storey's windows at eaveY - 0.75) the sill course under them
     if (brick && !mobile) brickBands(sink, front, -W / 2, W / 2, [frame.floors[floors - 1] + 0.62], WHITE_TRIM);
   });
