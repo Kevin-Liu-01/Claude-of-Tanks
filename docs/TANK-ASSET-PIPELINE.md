@@ -78,10 +78,14 @@ generator spelling. `tank:release:check` fails before commit/push when:
 - the cannon has no machine-verifiable recessed muzzle bore;
 - the straight-on visual/raycast probe cannot see a dark muzzle opening;
 - the existing geometry/track/contiguity/fittings standard fails;
-- `npm test` or the private production build fails.
+- `npm test` or the private production build fails (integrator mode only).
 
 `--gate` forwards to the existing fresh geometry-gate phase when that tank is
 eligible for it. The do-not-gate list in `docs/BUILD-STANDARD.md` still applies.
+`--lane` (a tank lane before READY) runs only the per-id steps: no embedded
+`npm test` or private build, which the release gate runs once per release, and
+the anatomy freshness check scoped to the ids. See `docs/DEVELOPMENT.md`
+"Fast checks".
 
 ## Fleet bootstrap and audit
 

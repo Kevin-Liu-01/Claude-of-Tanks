@@ -144,6 +144,9 @@ worktree and never stage generated tank work wholesale.
   `npm run tank:anatomy:check`, then the targeted
   `npm run tank:release:check -- --ids=<ids> --gate`. The update deliberately
   refreshes armor/module/crew receipts and all fleet technical diagrams.
+  A tank lane adds `--lane` (per-id steps only; its PASS is not a suite or
+  build pass); the integrator's run and the release gate keep `npm test` and
+  `build:private` (`docs/DEVELOPMENT.md` "Fast checks").
 
 ## Gotchas / never-do-X
 <!-- agent-docs:fill:gotchas -->

@@ -2,20 +2,31 @@
 // One pre-landing command for tank work: generated-asset freshness + muzzle
 // bore/barrel circularity, existing geometry/track/contiguity/fittings
 // standard, tests and build.
+//
+//   node tools/tank-release-check.mjs --ids=a,b --gate            # integrator mode: every step, npm test and build:private
+//   node tools/tank-release-check.mjs --ids=a,b --gate --lane     # lane mode: only the per-id steps (no suite, no build)
+//   node tools/tank-release-check.mjs --ids=a,b --lane --dry-run  # print the plan, run nothing
+//
+// Every decision lives in tankReleaseInvocation (tools/tank-release-plan.mjs, covered by its selftest);
+// this file prints it and runs its stages.
 
 import { runCommand, runCapturedCommand } from './capture-command.mjs';
-import { tankReleaseStages } from './tank-release-plan.mjs';
+import { tankReleaseInvocation, tankReleaseLabel as label, tankReleasePlanLines } from './tank-release-plan.mjs';
 
-const idArg = process.argv.find((arg) => arg.startsWith('--ids='))
-  || process.argv.find((arg) => arg.startsWith('--tanks='));
-if (!idArg) {
-  console.error('usage: node tools/tank-release-check.mjs --ids=a,b [--gate]');
+const release = tankReleaseInvocation(process.argv.slice(2));
+if (release.usage) {
+  console.error(release.usage);
   process.exit(1);
 }
-const ids = idArg.slice(idArg.indexOf('=') + 1);
-const gate = process.argv.includes('--gate');
+const { ids, mode } = release;
+const printNotes = () => { for (const note of release.notes) console.log(`[tank-release] ${note}`); };
+console.log(`[tank-release] ${release.header}`);
+printNotes();
+if (release.dryRun) {
+  for (const line of tankReleasePlanLines(release)) console.log(line);
+  process.exit(0);
+}
 
-const label=({command,args})=>`${command} ${args.join(' ')}`;
 async function run(step) {
   console.log(`\n[tank-release] ${label(step)}`);
   // Standard checking manages its own render phases. Wrapping that entire
@@ -50,9 +61,10 @@ async function runStage({name,concurrency,steps}) {
 
 try {
   const started=performance.now();
-  for(const stage of tankReleaseStages(ids,gate))await runStage(stage);
-  console.log(`\n[tank-release] PASS ${ids} (${((performance.now()-started)/60000).toFixed(1)} min)`);
+  for(const stage of release.stages)await runStage(stage);
+  console.log(`\n[tank-release] PASS (${mode} mode) ${ids} (${((performance.now()-started)/60000).toFixed(1)} min)`);
+  printNotes();
 } catch (error) {
-  console.error(`\n[tank-release] FAIL ${ids}`);
+  console.error(`\n[tank-release] FAIL (${mode} mode) ${ids}`);
   process.exit(error.status || 2);
 }
