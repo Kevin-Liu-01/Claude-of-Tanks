@@ -125,7 +125,8 @@ function cover(sink: PartSink, d: StallDress, w: number, len: number, eaveY: num
       for (let x = -w / 2 - roof.verge + 0.45; x < w / 2 + roof.verge - 0.2; x += 0.9) {
         const za = len / 2 + roof.eave, zb = -len / 2 - 0.05, ya = eaveY + roof.thickness - roof.eave * t + 0.02, yb = eaveY + roof.thickness + (len / 2 - zb) * t + 0.02;
         const lap = { colour: shade(d.coverColour ?? [0.55, 0.55, 0.55], 0.82), decor: true };
-        if (d.eased) bevelMember(sink, 'structureMetal', [x, ya, za], [x, yb, zb], 0.05, 0.025, [0, 1, 0], lap, 0);
+        // (an eased lap's rounded edges are fine joinery: the long view reads the plain sheet)
+        if (d.eased) bevelMember(sink, 'structureMetal', [x, ya, za], [x, yb, zb], 0.05, 0.025, [0, 1, 0], { ...lap, fine: true }, 0);
         else sink.member('structureMetal', [x, ya, za], [x, yb, zb], 0.05, 0.025, [0, 1, 0], lap, 0);
       }
     });
@@ -272,7 +273,8 @@ function plankRun(sink: PartSink, d: StallDress, x0: number, x1: number, z0: num
   for (let x = x0 + 0.01; x < x1 - 0.1; x += 0.22) planks.push([x, Math.min(x + 0.2, x1 - 0.01), 0.95 + d.look() * 0.2]);
   if (!planks.length) return;
   const top = y + 0.012, bed = y + 0.003, foot = y + 0.002, base = d.floorColour ?? d.timber;
-  const tone = (k: number, dk = 1) => ({ colour: shade(base, k * dk), decor: true });
+  // (fine joinery: the joints a long view cannot resolve, as the plain deck's plank lines were dressing)
+  const tone = (k: number, dk = 1) => ({ colour: shade(base, k * dk), decor: true, fine: true });
   sink.quad('structureWood', [planks[0][0], foot, z0], [planks[0][0], foot, z1], [planks[0][0], top, z1], [planks[0][0], top, z0], tone(planks[0][2], 0.8));
   for (let i = 0; i < planks.length; i++) {
     const [a, b, k] = planks[i], next = planks[i + 1];
