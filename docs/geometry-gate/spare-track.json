@@ -128,33 +128,11 @@
    "hostSweep": []
   },
   "amx40_proto": {
-   "inputHash": "2402817f5db33185",
+   "inputHash": "7a2113d5b1133c46",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildHullFurniture@france.ts:381",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.938,
-      "gap": 0.06,
-      "air": 0.002,
-      "hidden": 0,
-      "sunkMaxM": 0,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.922,
-      "host": "hull<buildSkirts@france.ts:290>"
-     }
-    },
-    {
-     "index": 1,
-     "site": "adhoc:amx40-rear-links@<anon>@france.ts:452",
+     "site": "adhoc:amx40-rear-links@<anon>@france.ts:455",
      "source": "adhoc",
      "frame": "hull",
      "registered": true,
@@ -170,8 +148,8 @@
       "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 1,
-      "host": "hull<buildHullBody@france.ts:255>"
+      "exposure": 0.59,
+      "host": "hull<buildSkirts@france.ts:286>"
      }
     }
    ],
@@ -222,7 +200,7 @@
    "hostSweep": []
   },
   "bmp3": {
-   "inputHash": "b7785e5650d0001a",
+   "inputHash": "e71eb1a808e6bf7f",
    "runs": [
     {
      "index": 0,
@@ -235,15 +213,15 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.788,
-      "gap": 0.212,
+      "support": 0.977,
+      "gap": 0.023,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0.013,
+      "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.956,
-      "host": "hull<buildBMP3@profiles/afvFamily.ts:1084>"
+      "exposure": 0.966,
+      "host": "hull<buildBMP3@profiles/afvFamily.ts:957>"
      }
     }
    ],
@@ -444,11 +422,11 @@
    "hostSweep": []
   },
   "c1_ariete_proto_serie1": {
-   "inputHash": "f680e97ca07cf944",
+   "inputHash": "7909f0978ac91799",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildArieteMkHullStage2@profiles/italy.ts:340",
+     "site": "fitting:spareTrackLinks@buildArieteMkHullStage2@profiles/italy.ts:342",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
@@ -457,14 +435,14 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.879,
-      "gap": 0.121,
+      "support": 0.839,
+      "gap": 0.161,
       "air": 0,
       "hidden": 0,
       "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.955,
+      "exposure": 0.966,
       "host": "hull<buildArieteMkHullStage2@profiles/italy.ts:291>"
      }
     }
@@ -473,40 +451,17 @@
    "hostSweep": []
   },
   "c2_ariete": {
-   "inputHash": "c68859147b5305b5",
-   "runs": [
-    {
-     "index": 0,
-     "site": "adhoc:ariete-forward-carry@<anon>@profiles/arieteXSuppliedHullEquipment.ts:18",
-     "source": "adhoc",
-     "frame": "hull",
-     "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.918,
-      "gap": 0,
-      "air": 0.082,
-      "hidden": 0,
-      "sunkMaxM": 0,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.978,
-      "host": "hullExternalArmor<heavySkirts@profiles/arieteXSuppliedHull.ts:109>"
-     }
-    }
-   ],
+   "inputHash": "7ad72bb9491fc35b",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "c2_ariete_proto": {
-   "inputHash": "61d9514f8668792d",
+   "inputHash": "68cec67256c9c6f4",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildArieteMkHullStage2@profiles/italy.ts:340",
+     "site": "fitting:spareTrackLinks@buildArieteMkHullStage2@profiles/italy.ts:342",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
@@ -515,14 +470,14 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.879,
-      "gap": 0.121,
+      "support": 0.839,
+      "gap": 0.161,
       "air": 0,
       "hidden": 0,
       "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.955,
+      "exposure": 0.966,
       "host": "hull<buildArieteMkHullStage2@profiles/italy.ts:291>"
      }
     }
@@ -787,31 +742,8 @@
    "hostSweep": []
   },
   "chieftain_mk9": {
-   "inputHash": "db9064a28bb36fd5",
-   "runs": [
-    {
-     "index": 0,
-     "site": "fitting:spareTrackLinks@chieftainMk10Build@profiles/uk.ts:1655",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 1,
-      "gap": 0,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.921,
-      "host": "hull<loftBand@profiles/uk.ts:351>"
-     }
-    }
-   ],
+   "inputHash": "354385bca440ae49",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
@@ -998,7 +930,7 @@
    "hostSweep": []
   },
   "k1e1": {
-   "inputHash": "2fb0f70acc986394",
+   "inputHash": "577ad3451c0003a1",
    "runs": [
     {
      "index": 0,
@@ -1009,17 +941,19 @@
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [],
+     "notes": [
+      "carried on its rack"
+     ],
      "measures": {
-      "support": 0.887,
-      "gap": 0.059,
-      "air": 0.054,
-      "hidden": 0,
-      "sunkMaxM": 0.01,
+      "support": 0.209,
+      "gap": 0.791,
+      "air": 0,
+      "hidden": 0.007,
+      "sunkMaxM": 0.026,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.956,
-      "host": "hull<finishK1A1Hull@modern3.ts:1332>"
+      "exposure": 0.944,
+      "host": "hull<buildK1A1Hull@modern3.ts:1227>"
      }
     }
    ],
@@ -1039,33 +973,8 @@
    "hostSweep": []
   },
   "k2b": {
-   "inputHash": "718c8536108afc75",
-   "runs": [
-    {
-     "index": 0,
-     "site": "fitting:spareTrackLinks@buildK2HullFurniture@modern3.ts:447",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [
-      "carried on its rack"
-     ],
-     "measures": {
-      "support": 0.154,
-      "gap": 0.845,
-      "air": 0.001,
-      "hidden": 0.002,
-      "sunkMaxM": 0.017,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.978,
-      "host": "hull<buildK2HullBody@modern3.ts:227>"
-     }
-    }
-   ],
+   "inputHash": "7198793c08ba0a23",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
@@ -1687,7 +1596,7 @@
    "hostSweep": []
   },
   "leo2a4m_can": {
-   "inputHash": "617f8cd016385912",
+   "inputHash": "405e7b37de198176",
    "runs": [
     {
      "index": 0,
@@ -1713,7 +1622,7 @@
     },
     {
      "index": 1,
-     "site": "strip:strip@buildLeo2A4MMarkingsStage1@profiles/leopard.ts:14574",
+     "site": "strip:strip@buildLeo2A4MMarkingsStage1@profiles/leopard.ts:14576",
      "source": "strip",
      "frame": "turret",
      "registered": true,
@@ -1732,7 +1641,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.989,
-      "host": "turret<buildLeo2A4MTurretStage1@profiles/leopard.ts:14411>"
+      "host": "turret<buildLeo2A4MTurretStage1@profiles/leopard.ts:14413>"
      }
     }
    ],
@@ -2021,30 +1930,28 @@
    "hostSweep": []
   },
   "m2a2_bradley": {
-   "inputHash": "fb2af84b27df4e21",
+   "inputHash": "fb1a31fee92bfa8a",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildBradleyRunningGearStage1@modern3.ts:3039",
+     "site": "fitting:spareTrackLinks@buildBradleyRunningGearStage1@modern3.ts:3052",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [
-      "carried on its rack"
-     ],
+     "notes": [],
      "measures": {
-      "support": 0.162,
-      "gap": 0.838,
+      "support": 0.978,
+      "gap": 0.022,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0.011,
+      "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.967,
-      "host": "hull<addBradleySkirtPanels@modern3.ts:3607>"
+      "exposure": 0.921,
+      "host": "hull<buildBradleyHullStage3@modern3.ts:2459>"
      }
     }
    ],
@@ -2052,11 +1959,11 @@
    "hostSweep": []
   },
   "m3a3_bradley": {
-   "inputHash": "ee4f20881a07ed46",
+   "inputHash": "438d5fffe75677d8",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildBradleyRunningGearStage1@modern3.ts:3039",
+     "site": "fitting:spareTrackLinks@buildBradleyRunningGearStage1@modern3.ts:3052",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
@@ -2067,15 +1974,15 @@
       "carried on its rack"
      ],
      "measures": {
-      "support": 0.36,
-      "gap": 0.558,
-      "air": 0.081,
+      "support": 0.321,
+      "gap": 0.676,
+      "air": 0.004,
       "hidden": 0,
-      "sunkMaxM": 0.012,
+      "sunkMaxM": 0.014,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.966,
-      "host": "hull<buildBradleyHullStage3@modern3.ts:2548>"
+      "exposure": 0.956,
+      "host": "hullDetail<buildBradleyHullStage4@modern3.ts:2630>"
      }
     },
     {
@@ -2180,31 +2087,28 @@
    "hostSweep": []
   },
   "m6_linebacker": {
-   "inputHash": "d8af66d88baf48aa",
+   "inputHash": "3cf2768eabc60ee5",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildBradleyRunningGearStage1@modern3.ts:3039",
+     "site": "fitting:spareTrackLinks@buildBradleyRunningGearStage1@modern3.ts:3052",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [
-      "clips <= 5 cm cosmetic",
-      "carried on its rack"
-     ],
+     "notes": [],
      "measures": {
-      "support": 0.275,
-      "gap": 0.725,
+      "support": 0.978,
+      "gap": 0.022,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0.014,
+      "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.978,
-      "host": "hullExternalArmor<flankKit@profiles/m6Linebacker.ts:34>"
+      "exposure": 0.921,
+      "host": "hull<buildBradleyHullStage3@modern3.ts:2459>"
      }
     }
    ],
@@ -2212,31 +2116,28 @@
    "hostSweep": []
   },
   "marder1a3": {
-   "inputHash": "a2fb2cb8c7130270",
+   "inputHash": "a13125f1e4b84f9a",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildBradleyRunningGearStage1@modern3.ts:3039",
+     "site": "fitting:spareTrackLinks@buildBradleyRunningGearStage1@modern3.ts:3052",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [
-      "clips <= 5 cm cosmetic",
-      "carried on its rack"
-     ],
+     "notes": [],
      "measures": {
-      "support": 0.341,
-      "gap": 0.659,
+      "support": 0.978,
+      "gap": 0.022,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0.012,
-      "sweepM": 0.003,
+      "sunkMaxM": 0,
+      "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.978,
-      "host": "hull<buildBradleyHullStage3@modern3.ts:2429>"
+      "exposure": 0.921,
+      "host": "hull<buildBradleyHullStage3@modern3.ts:2459>"
      }
     }
    ],
@@ -2695,31 +2596,8 @@
    "hostSweep": []
   },
   "stb1": {
-   "inputHash": "e92952ca1c34167e",
-   "runs": [
-    {
-     "index": 0,
-     "site": "decor:tracks#25",
-     "source": "decor",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.857,
-      "gap": 0.099,
-      "air": 0.044,
-      "hidden": 0,
-      "sunkMaxM": 0.012,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.955,
-      "host": "hull<addSTB1HullBody@profiles/japan.ts:316>"
-     }
-    }
-   ],
+   "inputHash": "bda1ab1be2eff699",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
@@ -3267,7 +3145,7 @@
    "hostSweep": []
   },
   "t80": {
-   "inputHash": "f53316fb38ffd745",
+   "inputHash": "082833a1275899e0",
    "runs": [
     {
      "index": 0,
@@ -3278,17 +3156,19 @@
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [],
+     "notes": [
+      "carried on its rack"
+     ],
      "measures": {
-      "support": 0.523,
-      "gap": 0.354,
-      "air": 0.123,
+      "support": 0.248,
+      "gap": 0.752,
+      "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0.01,
+      "sunkMaxM": 0.015,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.966,
-      "host": "hull<addRuSkirtPanel@profiles/russia.ts:1017>"
+      "exposure": 0.967,
+      "host": "hull<loftHull@profiles/russia.ts:487>"
      }
     }
    ],
@@ -3296,7 +3176,7 @@
    "hostSweep": []
   },
   "t80b": {
-   "inputHash": "620422290f3b6449",
+   "inputHash": "13860bd1b341cffb",
    "runs": [
     {
      "index": 0,
@@ -3307,17 +3187,19 @@
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [],
+     "notes": [
+      "carried on its rack"
+     ],
      "measures": {
-      "support": 0.521,
-      "gap": 0.353,
-      "air": 0.126,
+      "support": 0.195,
+      "gap": 0.805,
+      "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0.01,
+      "sunkMaxM": 0.018,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.967,
-      "host": "hull<addRuSkirtPanel@profiles/russia.ts:1017>"
+      "exposure": 0.978,
+      "host": "hull<loftHull@profiles/russia.ts:487>"
      }
     }
    ],
@@ -3572,31 +3454,28 @@
    "hostSweep": []
   },
   "t90ms_2011": {
-   "inputHash": "f60db91ad34ddf09",
+   "inputHash": "fca71bf5e1142197",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildT90MS@profiles/t90.ts:5819",
+     "site": "fitting:spareTrackLinks@rebuildT90MSTurretExact@profiles/t90.ts:6333",
      "source": "fitting",
-     "frame": "hull",
+     "frame": "turret",
      "registered": false,
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [
-      "clips <= 5 cm cosmetic",
-      "carried on its rack"
-     ],
+     "notes": [],
      "measures": {
-      "support": 0.322,
-      "gap": 0.678,
+      "support": 0.978,
+      "gap": 0.022,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0.014,
+      "sunkMaxM": 0.006,
       "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.978,
-      "host": "hullDark<Proxy.add<-<anon>@profiles/t90.ts:5887>"
+      "traverseM": 0,
+      "exposure": 0.956,
+      "host": "turret<Proxy.add<-rebuildT90MSTurretExact@profiles/t90.ts:6529>"
      }
     }
    ],
@@ -3616,28 +3495,28 @@
    "hostSweep": []
   },
   "t90sm_2013": {
-   "inputHash": "947fa8cd7f4b0769",
+   "inputHash": "59984d4351d45138",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@addT90SMLegacyHullDeckAndGear@profiles/t90.ts:3638",
+     "site": "fitting:spareTrackLinks@addT90SMLegacyHullDeckAndGear@profiles/t90.ts:3642",
      "source": "fitting",
-     "frame": "hull",
+     "frame": "turret",
      "registered": false,
      "classes": [],
      "primary": "OK",
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.566,
-      "gap": 0.434,
+      "support": 0.755,
+      "gap": 0.245,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0.01,
+      "sunkMaxM": 0.006,
       "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.966,
-      "host": "hull<Proxy.add<-addRuSkirtPanel@profiles/russia.ts:1017>"
+      "traverseM": 0,
+      "exposure": 0.989,
+      "host": "turretDetail<Proxy.add<-addT90SMLegacyBustleCageAndSystems@profiles/t90.ts:4141>"
      }
     }
    ],
@@ -3752,11 +3631,11 @@
    "hostSweep": []
   },
   "type10_tk_x": {
-   "inputHash": "d3d8661c71526a86",
+   "inputHash": "ef3769591c712b3c",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildType10Native2026HullStage1@modern3.ts:1845",
+     "site": "fitting:spareTrackLinks@buildType10Native2026HullStage1@modern3.ts:1849",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
@@ -3773,12 +3652,12 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.944,
-      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1707>"
+      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1711>"
      }
     },
     {
      "index": 1,
-     "site": "adhoc:type10-rear-links@<anon>@modern3.ts:1927",
+     "site": "adhoc:type10-rear-links@<anon>@modern3.ts:1931",
      "source": "adhoc",
      "frame": "hull",
      "registered": true,
@@ -3787,15 +3666,15 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.242,
-      "gap": 0.551,
-      "air": 0.207,
+      "support": 1,
+      "gap": 0,
+      "air": 0,
       "hidden": 0,
       "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hullDark<buildType10Native2026MarkingsStage1@modern3.ts:1914>"
+      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1687>"
      }
     }
    ],
@@ -3803,11 +3682,11 @@
    "hostSweep": []
   },
   "type10b": {
-   "inputHash": "d2b24d5983190d8c",
+   "inputHash": "78b2589f66580ad4",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildType10Native2026HullStage1@modern3.ts:1845",
+     "site": "fitting:spareTrackLinks@buildType10Native2026HullStage1@modern3.ts:1849",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
@@ -3824,12 +3703,12 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.944,
-      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1707>"
+      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1711>"
      }
     },
     {
      "index": 1,
-     "site": "adhoc:type10-rear-links@<anon>@modern3.ts:1927",
+     "site": "adhoc:type10-rear-links@<anon>@modern3.ts:1931",
      "source": "adhoc",
      "frame": "hull",
      "registered": true,
@@ -3838,15 +3717,15 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.242,
-      "gap": 0.551,
-      "air": 0.207,
+      "support": 1,
+      "gap": 0,
+      "air": 0,
       "hidden": 0,
       "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hullDark<buildType10Native2026MarkingsStage1@modern3.ts:1914>"
+      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1687>"
      }
     }
    ],
@@ -3854,34 +3733,10 @@
    "hostSweep": []
   },
   "type59": {
-   "inputHash": "62b258a64992996a",
+   "inputHash": "cf8b4011d1f83061",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildT62Obr1975Chassis@profiles/russia.ts:1267",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [
-      "clips <= 5 cm cosmetic"
-     ],
-     "measures": {
-      "support": 0.738,
-      "gap": 0.262,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0.021,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.944,
-      "host": "hullExternalArmor<buildType59HullEquipment@profiles/china.ts:1404>"
-     }
-    },
-    {
-     "index": 1,
      "site": "adhoc:t62-aft-links-L@<anon>@profiles/russia.ts:1251",
      "source": "adhoc",
      "frame": "hull",
@@ -3903,7 +3758,7 @@
      }
     },
     {
-     "index": 2,
+     "index": 1,
      "site": "adhoc:t62-aft-links-R@<anon>@profiles/russia.ts:1251",
      "source": "adhoc",
      "frame": "hull",
@@ -3922,28 +3777,6 @@
       "traverseM": null,
       "exposure": 1,
       "host": "hull<loftHull@profiles/russia.ts:482>"
-     }
-    },
-    {
-     "index": 3,
-     "site": "strip:strip@buildType59HullEquipment@profiles/china.ts:1415",
-     "source": "strip",
-     "frame": "hull",
-     "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.616,
-      "gap": 0.327,
-      "air": 0.056,
-      "hidden": 0,
-      "sunkMaxM": 0,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 1,
-      "host": "hullExternalArmor<buildType59HullEquipment@profiles/china.ts:1404>"
      }
     }
    ],
@@ -4069,28 +3902,31 @@
    "hostSweep": []
   },
   "ua_m2a3_bradley": {
-   "inputHash": "010b6633210a1979",
+   "inputHash": "995839bb1a13a462",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildBradleyRunningGearStage1@modern3.ts:3039",
+     "site": "fitting:spareTrackLinks@buildBradleyRunningGearStage1@modern3.ts:3052",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [],
+     "notes": [
+      "clips <= 5 cm cosmetic",
+      "carried on its rack"
+     ],
      "measures": {
-      "support": 0.792,
-      "gap": 0.208,
+      "support": 0.196,
+      "gap": 0.804,
       "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0.01,
+      "hidden": 0.003,
+      "sunkMaxM": 0.018,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.955,
-      "host": "hull<armorTile@profiles/afvFamily.ts:73>"
+      "exposure": 0.978,
+      "host": "hull<buildBradleyHullStage3@modern3.ts:2459>"
      }
     }
    ],
@@ -4182,7 +4018,7 @@
    "hostSweep": []
   },
   "xk2_black_panther": {
-   "inputHash": "f7e74b1dc746fc2e",
+   "inputHash": "5f94f06d5a4cd749",
    "runs": [
     {
      "index": 0,
@@ -4197,15 +4033,15 @@
       "carried on its rack"
      ],
      "measures": {
-      "support": 0.16,
-      "gap": 0.84,
-      "air": 0,
-      "hidden": 0.007,
-      "sunkMaxM": 0.018,
+      "support": 0.151,
+      "gap": 0.848,
+      "air": 0.001,
+      "hidden": 0.002,
+      "sunkMaxM": 0.023,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.989,
-      "host": "hull<buildK2HullBody@modern3.ts:227>"
+      "exposure": 0.978,
+      "host": "hull<buildK2HullBody@modern3.ts:244>"
      }
     }
    ],

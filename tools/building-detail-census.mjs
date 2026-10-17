@@ -332,7 +332,11 @@ export async function censusWorld(mapId) {
     return { idx, builder, style, x: p.x, z: p.z, y: p.y, corners: foot?.length ? foot : corners, bottom: bottom.get(idx) ?? p.y, signature };
   });
   const floating = [];
+  // (the looks lane, 227: a bridge's parapets and balustrades stand over the valley or the water they span, carried by the
+  // deck, never on the ground under their footprint: not floating buildings)
+  const SPANS = new Set(['bridge-parapet', 'bridge-balustrade']);
   for (const r of records) {
+    if (SPANS.has(r.builder)) continue;
     const low = Math.min(...r.corners.map(([x, z]) => field.getHeightAt(x, z)));
     if (Number.isFinite(low) && low < r.bottom - 0.05) floating.push({ builder: r.builder, gap: +(r.bottom - low).toFixed(2), x: +r.x.toFixed(1), z: +r.z.toFixed(1) });
   }
