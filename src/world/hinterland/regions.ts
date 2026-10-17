@@ -16,16 +16,16 @@
 import type { LandRegion } from '../landUse.ts';
 import type { TreeSpecies } from '../treeSpecies.ts';
 
-/** The 26 regions of B-architecture §4.0, for the 33 maps. */
+/** The regions of B-architecture §4.0 for the 33 maps (26, and Sary-Arka's tselina of 2026-10-17, BLD-03). */
 export type HinterlandRegionId =
-  | 'forestSteppe' | 'bocage' | 'centralUplands' | 'coalfield' | 'karstCoast' | 'fjord' | 'tatraValley' | 'alpineCol'
+  | 'forestSteppe' | 'saryArka' | 'bocage' | 'centralUplands' | 'coalfield' | 'karstCoast' | 'fjord' | 'tatraValley' | 'alpineCol'
   | 'saharaOasis' | 'wadiRum' | 'coloradoPlateau' | 'volcanicCaldera' | 'nagaHills' | 'bengalDelta' | 'mekongMangrove'
   | 'zeelandPolder' | 'yangtzeCity' | 'bosnianValley' | 'kyivPinelands' | 'tasmanianMine' | 'andalusianRonda'
   | 'longleafFlatwoods' | 'levantOrchard' | 'polarStation' | 'mars' | 'moon';
 
 /** How the place lives on its land (B-architecture §4.0's settlement column). */
 export type HinterlandSettlementPattern =
-  | 'streetVillage' | 'nucleated' | 'dispersedHamlets' | 'colony' | 'shoreFarms' | 'dykeVillage' | 'ksar' | 'stiltVillage'
+  | 'streetVillage' | 'sovkhoz' | 'nucleated' | 'dispersedHamlets' | 'colony' | 'shoreFarms' | 'dykeVillage' | 'ksar' | 'stiltVillage'
   | 'hillVillage' | 'cityEdge' | 'mineCamp' | 'ranch' | 'whiteTown' | 'station' | 'none';
 
 /** The vertical landmarks a region raises on its skyline (landmarks/*, regional/skyline.ts). */
@@ -154,6 +154,19 @@ export const HINTERLAND_REGIONS: Readonly<Record<HinterlandRegionId, HinterlandR
     outland: { riseM: r([18, 45]), wavelengthM: 900, flat: false },
     geology: { rock: 'chalk', rockHex: 0xd8d2c0, strata: { bedM: 6, dipDeg: 1, contrast: 0.08 }, scree: 0.1, snow: NO_SNOW, gullies: 0.5, erosion: 0.2, rockSlopeDeg: 34, forestBandM: r([-40, 400]), sand: 0, varnish: 0 },
     far: { form: 'plain', reliefM: 70, distKm: r([4, 15]), layers: 0, treesM: 18 },
+  }),
+  // (2026-10-17, BLD-03: Tarkhan's own region, the Virgin Lands' tselina — the sovkhoz settlements of 1954-58 in
+  // whitewashed saman and prefab boards with the vagonchiki of the brigade camps, an elevator and a Rozhnovsky water tower
+  // to a settlement, no church, no onion dome; until now the draft took Kursk's forest-steppe and its kolkhoz domes)
+  saryArka: region({
+    id: 'saryArka', place: 'Sary-Arka virgin-lands steppe: wheat to the horizon, sovkhoz settlements with an elevator and a water tower each, brigade camps of vagonchiki, Barayev shelterbelts, bald melkosopochnik hills',
+    land: 'steppe', fields: 0.92, settlement: 'sovkhoz',
+    density: { villages: r([0, 2]), hamlets: r([2, 5]), farms: r([1, 4]), works: r([1, 2]), perVillage: r([24, 60]) },
+    kit: 'tselina', verticals: ['waterTower', 'elevator', 'mast', 'pylonLine'],
+    vegetation: { habit: 'shelterbelt', woods: 0.04, hedges: 0.4, species: [['poplar', 0.5], ['birch', 0.3], ['willow', 0.2]], canopyM: 12 },
+    outland: { riseM: r([2, 12]), wavelengthM: 1500, flat: false },
+    geology: { rock: 'granite', rockHex: 0x8c8274, strata: { bedM: 0, dipDeg: 0, contrast: 0 }, scree: 0.15, snow: NO_SNOW, gullies: 0.3, erosion: 0.35, rockSlopeDeg: 32, forestBandM: r([-40, 200]), sand: 0, varnish: 0 },
+    far: { form: 'plain', reliefM: 40, distKm: r([4, 15]), layers: 0, treesM: 12 },
   }),
   bocage: region({
     id: 'bocage', place: 'Pays de Léon, Finistère: hedged bocage on granite moors, spired villages, a wind-scoured coast',
@@ -427,7 +440,7 @@ export const HINTERLAND_REGION_IDS: readonly HinterlandRegionId[] = Object.freez
  * block keeps it only as the default a lab draft starts from. 33 maps, 26 regions.
  */
 export const HINTERLAND_MAP_REGIONS: Readonly<Record<string, HinterlandRegionId>> = Object.freeze({
-  verdant: 'forestSteppe', steppe: 'forestSteppe',
+  verdant: 'forestSteppe', steppe: 'saryArka',
   coastal: 'bocage',
   frontier: 'centralUplands', reservoir: 'centralUplands', urban: 'centralUplands', autumn: 'centralUplands',
   railyard: 'coalfield', foundry: 'coalfield',

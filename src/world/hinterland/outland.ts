@@ -310,7 +310,7 @@ export function planHinterlandOutland(spec: HinterlandSpec, seed: number, inputs
       vertical: spec.region.verticals[0] ?? null, name: settle.town.name });
   }
   const per = spec.region.density.perVillage;
-  const villageRadius = pattern === 'streetVillage' || pattern === 'dykeVillage' ? 170 : 130;
+  const villageRadius = pattern === 'streetVillage' || pattern === 'sovkhoz' || pattern === 'dykeVillage' ? 170 : 130;
   // the sightlines' villages first (authored): each on its bearing, moved along it off water and out of woods, its
   // street on the nearest road; laid out as a near village out to 2.7 km, a far one's houses beyond
   let anchored = 0;
@@ -377,7 +377,8 @@ export function planHinterlandOutland(spec: HinterlandSpec, seed: number, inputs
 
   // ---- the far band: distant villages and towns whose towers stand on the skyline (1.6–12 km), at the pattern's spacing
   const farSpacing = pattern === 'dykeVillage' || pattern === 'nucleated' ? 2800 : pattern === 'streetVillage' ? 3400
-    : pattern === 'dispersedHamlets' ? 2400 : pattern === 'none' || pattern === 'station' ? 0 : 4200;
+    // (a sovkhoz steppe has no ring of old villages: its centres stand 20-30 km apart, authored as landmarks — 2026-10-17)
+    : pattern === 'dispersedHamlets' ? 2400 : pattern === 'none' || pattern === 'station' || pattern === 'sovkhoz' ? 0 : 4200;
   if (farSpacing > 0) {
     for (let d = 2100; d <= 12000; d += farSpacing * 0.9) {
       const count = Math.max(3, Math.round((2 * Math.PI * d) / farSpacing));
@@ -475,7 +476,7 @@ export function planHinterlandOutland(spec: HinterlandSpec, seed: number, inputs
     if (!s.near) continue;
     const kinds = buildingKinds(spec, s.kind);
     const cos = Math.cos(s.yaw), sin = Math.sin(s.yaw);
-    const linear = pattern === 'streetVillage' || pattern === 'dykeVillage' || pattern === 'colony';
+    const linear = pattern === 'streetVillage' || pattern === 'sovkhoz' || pattern === 'dykeVillage' || pattern === 'colony';
     for (let b = 0; b < s.buildings; b++) {
       const kind = kinds[b % kinds.length];
       const big = kind === 'barn' || kind === 'depot' || kind === 'granary';

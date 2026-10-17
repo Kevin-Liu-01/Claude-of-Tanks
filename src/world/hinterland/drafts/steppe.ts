@@ -23,7 +23,9 @@ const DRAFT: HinterlandConfig = {
   place: 'The Sary-Arka grain steppe at the 1958 Virgin Lands harvest: wheat and stubble to a flat horizon, a dry braided '
     + 'wadi, the low plateau edge with its kurgans to the north and the bald melkosopochnik hills far beyond it, sovkhoz '
     + 'elevators and Rozhnovsky water towers on the skyline, the rail spur east, a salt lake west, Barayev shelterbelts',
-  region: 'forestSteppe',
+  // (2026-10-17, BLD-03: Sary-Arka's own tselina region — whitewashed saman and prefab boards, vagonchiki, an elevator and
+  // a water tower to a settlement, no church; it had taken Kursk's forest-steppe, whose villages raised onion domes)
+  region: 'saryArka',
   lab: true,
   outland: {
     // (the plain: a few metres of swell over kilometres, the frame left to the north's swell and the verticals)

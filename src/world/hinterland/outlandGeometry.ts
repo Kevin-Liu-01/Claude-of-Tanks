@@ -58,6 +58,16 @@ const KIT_PALETTES: Readonly<Record<string, Readonly<Record<string, KitStyle>>>>
     granary: { wall: [176, 168, 150], roof: [128, 120, 100], wallH: 5, roofH: 4 },
     depot: { wall: [168, 160, 146], roof: [96, 92, 88], wallH: 6, roofH: 2 },
   },
+  // Sary-Arka's tselina (2026-10-17, BLD-03): whitewashed saman houses under low tarred-felt roofs, the long corrugated
+  // machine sheds and grain stores of the sovkhoz yard, the brigade camps' vagonchiki (small boarded huts painted pale)
+  tselina: {
+    default: { wall: [226, 220, 204], roof: [92, 88, 82], wallH: 2.8, roofH: 1.6, roofAlt: [132, 128, 120] },
+    cottage: { wall: [190, 206, 196], roof: [104, 102, 98], wallH: 2.6, roofH: 1.0 },
+    barn: { wall: [156, 152, 144], roof: [126, 124, 120], wallH: 5, roofH: 1.6 },
+    granary: { wall: [182, 172, 150], roof: [116, 110, 100], wallH: 4.5, roofH: 1.4 },
+    depot: { wall: [168, 162, 150], roof: [100, 98, 94], wallH: 6, roofH: 1.2 },
+    woodshed: { wall: [150, 128, 100], roof: [96, 92, 86], wallH: 2.6, roofH: 0.8 },
+  },
   // Savoy: rubble stone under big low roofs of slate or lauze
   savoyard: {
     default: { wall: [130, 124, 116], roof: [86, 84, 82], wallH: 6, roofH: 4 },

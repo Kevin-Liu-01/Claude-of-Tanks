@@ -17,8 +17,9 @@ const { createHinterlandField, createHinterlandCover, createHinterlandWater, HL_
 const { MAP_IDS, getMapConfig } = await import('../maps/index.ts');
 const { createHeightField } = await import('../terrain.ts');
 
-// ---- the region library: 26 regions, every map placed, every field present
-assert.equal(HINTERLAND_REGION_IDS.length, 26, 'B-architecture §4.0: 26 regions');
+// ---- the region library: 27 regions (B-architecture §4.0's 26 and Sary-Arka's tselina, BLD-03), every map placed,
+// every field present
+assert.equal(HINTERLAND_REGION_IDS.length, 27, 'B-architecture §4.0: 26 regions, and saryArka (2026-10-17)');
 for (const id of MAP_IDS) assert.ok(HINTERLAND_MAP_REGIONS[id], `map ${id} has a region`);
 for (const id of HINTERLAND_REGION_IDS) {
   const spec = resolveHinterlandSpec({ id: `probe-${id}`, hinterland: { place: 'probe', region: id } });
