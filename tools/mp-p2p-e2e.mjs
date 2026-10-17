@@ -1349,3 +1349,7 @@ else {
   console.log(report.pass ? 'mp p2p e2e: PASS' : 'mp p2p e2e: FAIL');
 }
 process.exitCode = report.pass ? 0 : 1;
+// (2026-10-17) a browser, preview server or rooms double that ignored close() keeps the event loop alive until the caller's
+// alarm (a failed run held the capture lock 15 minutes past its report): once the report is out, exit. Unref'd, so a clean
+// teardown still ends the process at once.
+setTimeout(() => process.exit(process.exitCode), 3000).unref();
