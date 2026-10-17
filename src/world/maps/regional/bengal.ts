@@ -1,8 +1,8 @@
 // src/world/maps/regional/bengal.ts — the Bengal kit (Jade River Delta: a market village on a char of the braided
 // Jamuna). Homesteads raised on earthen plinths (bhiti) above the flood line: houses walled and roofed with corrugated
 // iron sheet — galvanised, rust-streaked or painted — under four-slope (char-chala) or two-slope roofs, a third of the
-// small ones walled in woven bamboo mat (bera) under rice-straw thatch; a veranda (dawa) on bamboo posts closed at its
-// ends by mat screens, its mud steps down to the yard, the doors in carved frames under their lintel boards, the windows
+// small ones walled in bamboo and jute stick plastered with mud under a four-slope rice-straw thatch; a veranda (dawa) on
+// bamboo posts closed at its ends by sheet or woven bamboo mat screens, its mud steps down to the yard, the doors in carved frames under their lintel boards, the windows
 // in timber casings with iron grilles and plank shutters; the bari's yards fenced in bamboo round the rice granary and
 // the kitchen garden, the hand pump on its platform, the cow-dung cakes drying on a wall, the clay water pots, a bicycle;
 // the bazaar's long tin sheds on posts with shuttered stalls; brick shops with a flat roof, a corbelled cornice over
@@ -23,7 +23,7 @@ const SHUTTERS: readonly Rgb[] = [0x3f6f9a, 0x4f8a62, 0x8a4a3a, 0x6a5a46].map(rg
 /** the bamboo of the posts, the rafters and the screens' poles, and the woven mat (bera) */
 const BAMBOO = rgb(0x9a8a62), MAT_TONE = BAMBOO_MAT;
 /** terracotta: the water pots */
-const TERRACOTTA: readonly Rgb[] = [0x9a4a2e, 0x8a4430, 0xa85a3a].map(rgb);
+const TERRACOTTA: readonly Rgb[] = [0x8a5a44, 0x7a4e3a, 0x946650].map(rgb);
 /** the hand pumps' paint: a municipal green, a rust-brown, a dull grey */
 const PUMP_IRON: readonly Rgb[] = [0x2f5a3e, 0x5a3a2a, 0x4a4e52].map(rgb);
 /** the bicycles' enamel: black, a bottle green, a maroon */
@@ -60,9 +60,9 @@ function tinHouse(ctx: RegionalBuildContext, opts: { big?: boolean } = {}): Regi
 
 function tinHouseBody(sink: PartSink, ctx: RegionalBuildContext, rng: () => number, turned: boolean, W: number, D: number, plinth: number, big: boolean): void {
   const mobile = ctx.tier === 'mobile', look = ctx.variant;
-  // (the looks lane, 2026-10-17, the Bengal lift) a third of the small houses are the poorer bari's: walls of woven
-  // bamboo mat (bera) under a rice-straw thatch; the big homestead is always sheet. A look choice: the build stream's
-  // draws stay as they were
+  // (the looks lane, 2026-10-17, the Bengal lift) a third of the small houses are the poorer bari's: walls of bamboo and
+  // jute stick plastered with mud (the round-1 pair: woven mat on the timber tile read as plank cabins) under a four-slope
+  // rice-straw thatch; the big homestead is always sheet. A look choice: the build stream's draws stay as they were
   const thatched = !big && look() > 0.67;
   // the bhiti: a raised earth platform a step wider than the house (rendered in mud plaster), under the veranda too. (Lane
   // C 2026-10-16, the building-detail ratchet: drawn beside a plinthless house spec the census and the damage plan never
@@ -107,9 +107,11 @@ function tinHouseBody(sink: PartSink, ctx: RegionalBuildContext, rng: () => numb
     { face: 'left', storey: 0, kind: 'window', u: turned ? -D * 0.22 : 0, w: 0.7, y0: 0.95, h: 0.7 },
   ].filter((o, _i, all) => !(o.kind === 'window' && all.some((q) => q !== o && q.kind === 'door' && q.face === o.face && Math.abs(q.u - o.u) < 1.0))) as Opening[];
   // (the lift) deep eaves on bamboo rafters: the sheet's 0.7 m, the thatch's 0.75 m and a hand thick, its ridge rolled
-  const kind: RoofSpec['kind'] = rng() < 0.6 ? 'hip' : 'gable', pitch = rng();
+  // (a thatch is always the char-chala's four slopes; its eave one thick course, no course lips up the slope: lips a metre
+  // apart read as shingles in the round-1 pair)
+  const kind: RoofSpec['kind'] = rng() < 0.6 || thatched ? 'hip' : 'gable', pitch = rng();
   const roof: RoofSpec = thatched
-    ? { kind, pitchDeg: 34 + pitch * 6, eave: 0.75, verge: 0.6, thickness: 0.3, bucket: 'straw', ridge: 'round', thatch: 'rows' }
+    ? { kind, pitchDeg: 34 + pitch * 6, eave: 0.75, verge: 0.6, thickness: 0.3, bucket: 'straw', ridge: 'round', thatch: 'nipa' }
     : { kind, pitchDeg: 24 + pitch * 6, eave: 0.7, verge: 0.6, thickness: 0.06, bucket: 'structureMetal', ridge: 'saddle' };
   const roofLivery = sheetColour(rng);
   const deck = plinth + 0.16;
@@ -139,22 +141,20 @@ function tinHouseBody(sink: PartSink, ctx: RegionalBuildContext, rng: () => numb
     // (the storey's wall behind the cladding, a shade under its sheets or mats: the joints read dark, and no sheet stands
     // darker than the wall it is nailed to)
     const prior = sink.paint;
-    sink.paint = shade(thatched ? MAT_TONE : walls, thatched ? 0.55 : 0.5);
+    sink.paint = shade(walls, 0.5);
     try {
       hf = buildHouse(sink, {
-        w: W, d: D, plinth: { h: plinth, out: bOut, bucket: 'plaster3', course: false }, storeys: [{ h: wallH, wall: thatched ? 'structureWood' : 'structureMetal' }],
-        roof, ...(thatched ? {} : { roofColour: roofLivery }), gableBucket: thatched ? 'structureWood' : 'structureMetal',
+        w: W, d: D, plinth: { h: plinth, out: bOut, bucket: 'plaster3', course: false }, storeys: [{ h: wallH, wall: thatched ? 'plaster2' : 'structureMetal' }],
+        roof, ...(thatched ? { core: 'adobe' as const } : { roofColour: roofLivery }), gableBucket: thatched ? 'plaster2' : 'structureMetal',
         openings, chimneys: [], gutters: null, reveal: 0.1, spall: null, skirt: null,
         // (the lift) the rafter feet of bamboo under the eaves; a sheet gable's barge boards
         rafters: shade(BAMBOO, 0.8), verge: !thatched && kind === 'gable' ? { colour: shade(frame, 0.88), bucket: 'structureWood' } : null,
       }, dialect);
-      // (Lane C 2026-10-16, houseDamage: a framed storey takes its infill from the wall's second layer, which a sheet wall has not, so the damage path threw at damage.ts:325; as the LOOKS fishery fix 182dca492) the storey is unframed and its sheets or mats laid over the walls after the house is built, face by face round each face's openings (the window units' own casings round the cuts)
+      // (Lane C 2026-10-16, houseDamage: a framed storey takes its infill from the wall's second layer, which a sheet wall has not, so the damage path threw at damage.ts:325; as the LOOKS fishery fix 182dca492) the storey is unframed and its sheets laid over the walls after the house is built, face by face round each face's openings (the window units' own casings round the cuts); a mud wall is its own render
       const faces = storeyFaces(hf, 0), body = hf.bodies[0];
-      for (const name of ['front', 'right', 'back', 'left'] as const) {
+      if (!thatched) for (const name of ['front', 'right', 'back', 'left'] as const) {
         const face = faces[name], rect = { u0: -face.width / 2, u1: face.width / 2, y0: body.y0, y1: body.y1 };
-        const own = openings.filter((o) => o.face === name && o.storey === 0);
-        if (thatched) matCladding(sink, face, rect, own, (k) => shade(MAT_TONE, 0.86 + hash01(k, D, 1.7) * 0.22), shade(BAMBOO, 0.9), { mobile, casings: false });
-        else corrugatedCladding(sink, face, rect, own, livery, frame, { mobile, casings: false });
+        corrugatedCladding(sink, face, rect, openings.filter((o) => o.face === name && o.storey === 0), livery, frame, { mobile, casings: false });
       }
     } finally { sink.paint = prior; }
   }
@@ -173,19 +173,21 @@ function tinHouseBody(sink: PartSink, ctx: RegionalBuildContext, rng: () => numb
   const verandaRoof = sheetColour(rng);
   // (the lift) the veranda on round bamboo posts under a lean-to of the house's own covering, passing under its eave
   const lean = veranda(sink, frontFace, plinth, plinth + wallH - 0.1, width, VERANDA_D, BAMBOO,
-    thatched ? { bucket: 'straw', thatch: 'rows' } : { bucket: 'structureMetal', colour: verandaRoof }, false,
+    thatched ? { bucket: 'straw', thatch: 'nipa' } : { bucket: 'structureMetal', colour: verandaRoof }, false,
     { eaveY: hf!.eaveY, eave: roof.eave, tanP: hf!.roof.tanP }, { round: true });
-  verandaScreens(sink, frontFace, width, deck, lean.highY, lean.plateTop, lean.postTop, mobile);
+  verandaScreens(sink, frontFace, width, deck, lean.highY, lean.plateTop, lean.postTop, mobile, thatched ? null : { livery, frame });
   if (facadeOn()) homestead(sink, hf!, frontFace, { W, D, plinth, deck, bOut, width, big, thatched, door: openings[0] });
 }
 
 /**
- * The veranda's ends closed by screens of woven bamboo mat (the lift; the integrity census read the open raised veranda
- * as sky through the house, bengal/farmhouse gap 0 -> 1.38 m² on 226): a mat panel in its poles from the deck to the
- * post heads between the wall and the end post, seen from outside and from the veranda, and over it the triangle of mat
- * up to the lean-to's underside. Its draws are none; a phone builds the panels without their weave.
+ * The veranda's ends closed by screens (the lift; the integrity census read the open raised veranda as sky through the
+ * house, bengal/farmhouse gap 0 -> 1.38 m² on 226): on a sheet house the house's own corrugated sheets on their posts
+ * and plate, on a mud house woven bamboo mat in its poles; from the deck to the post heads between the wall and the end
+ * post, seen from outside and from the veranda, and over it the piece up to the lean-to's underside. Its draws are none;
+ * a phone builds the panels without their ribs or weave.
  */
-function verandaScreens(sink: PartSink, front: Face, width: number, deck: number, highY: number, plateTop: number, postTop: number, mobile: boolean): void {
+function verandaScreens(sink: PartSink, front: Face, width: number, deck: number, highY: number, plateTop: number, postTop: number, mobile: boolean,
+  tin: { livery: (k: number) => Rgb; frame: Rgb } | null): void {
   const L = VERANDA_D - 0.1 - 0.07;
   for (const s of [-1, 1] as const) {
     const uEnd = s * (width / 2 - 0.12);
@@ -198,13 +200,14 @@ function verandaScreens(sink: PartSink, front: Face, width: number, deck: number
       // the face's u of a depth t out from the wall
       const fu = (t: number): number => (t - L / 2) * (u[0] * front.out[0] + u[2] * front.out[2]);
       const panelTop = postTop - 0.02;
-      matCladding(sink, face, { u0: -L / 2, u1: L / 2, y0: deck, y1: panelTop }, [], (k) => shade(MAT_TONE, 0.84 + hash01(k, uEnd, side, 2.9) * 0.2), shade(BAMBOO, 0.88),
+      if (tin) corrugatedCladding(sink, face, { u0: -L / 2, u1: L / 2, y0: deck, y1: panelTop }, [], tin.livery, tin.frame, { mobile, casings: false });
+      else matCladding(sink, face, { u0: -L / 2, u1: L / 2, y0: deck, y1: panelTop }, [], (k) => shade(MAT_TONE, 0.84 + hash01(k, uEnd, side, 2.9) * 0.2), shade(BAMBOO, 0.88),
         { mobile, bay: 0.8 });
       // the mat over it, up to the lean-to's underside (from highY at the wall down to the plate over the post line)
       const atL = highY + (plateTop - 0.01 - highY) * L / (VERANDA_D - 0.1);
       if (highY - 0.03 - panelTop > 0.04) {
-        faceSlab(sink, 'structureWood', face, [[fu(0), panelTop], [fu(L), panelTop], [fu(L), Math.max(panelTop + 0.01, atL - 0.02)], [fu(0), highY - 0.03]], 0.002, 0.016,
-          { colour: shade(MAT_TONE, 0.9) });
+        faceSlab(sink, tin ? 'structureMetal' : 'structureWood', face, [[fu(0), panelTop], [fu(L), panelTop], [fu(L), Math.max(panelTop + 0.01, atL - 0.02)], [fu(0), highY - 0.03]], 0.002, tin ? 0.012 : 0.016,
+          { colour: tin ? tin.livery(-1) : shade(MAT_TONE, 0.9) });
       }
     }
   }
@@ -245,7 +248,7 @@ function homestead(sink: PartSink, hf: HouseFrame, front: Face, h: Homestead): v
   if (f() < 0.6) {
     const back = faces.back;
     const span = back.width / 2 - 0.4, a = -span + f() * span * 0.6, b = a + span * (0.9 + f() * 0.5);
-    dungCakes(sink, back, a, Math.min(span, b), h.plinth + 0.3, h.plinth + 0.3 + 0.81 + (f() < 0.5 ? 0.27 : 0), h.thatched ? 0.02 : 0.032);
+    dungCakes(sink, back, a, Math.min(span, b), h.plinth + 0.3, h.plinth + 0.3 + 0.81 + (f() < 0.5 ? 0.27 : 0), h.thatched ? 0.006 : 0.032);
   }
   // the hand pump of the bari's tube well on its platform on the bhiti, by a back corner (one house of a bari has it)
   if (f() < (h.big ? 0.8 : 0.35)) {

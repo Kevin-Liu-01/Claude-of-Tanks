@@ -96,8 +96,8 @@
    "silhouette": 4,
    "mid": 6,
    "fine": 6,
-   "trisPerWallM2": 31.39,
-   "fineShare": 0.579,
+   "trisPerWallM2": 29.98,
+   "fineShare": 0.581,
    "facePass": 0.75
   },
   "franconian": {
@@ -505,8 +505,8 @@
   "nordland/woodshed": "a80b3bd4b8513212",
   "nordland/barn": "7e1e46189e3275cd",
   "nordland/lighthouse": "81038ee312d9b8da",
-  "bengal/cottage": "f8cea2d5dbbef2a9",
-  "bengal/farmhouse": "126ad6e2252f6462",
+  "bengal/cottage": "64e4c91482ec3751",
+  "bengal/farmhouse": "7117ca6e70de0908",
   "bengal/marketRow": "c8a84f05437410f9",
   "bengal/fishery": "660e08653f0c9180",
   "bengal/market": "ee6606db89203e3d",
