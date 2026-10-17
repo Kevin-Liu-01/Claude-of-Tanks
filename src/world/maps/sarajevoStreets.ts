@@ -792,6 +792,17 @@ const AVLIJA_RUNS: ReadonlyArray<readonly [number, number, number, number?]> = [
   [-394, 306, 336], [-274, 312, 340], [-214, 306, 336], [-148, 312, 340], [-88, 306, 336], [-42, 304, 330],
   [102, 312, 330],
   [282, 312, 340], [342, 306, 336], [402, 312, 340],
+  // (item 58, 2026-10-17) the walled gardens of the terraces down the slopes in the valley's waist, between the avenue's
+  // back lots and the bench's lip, and two more back lots: the layout brief's hull-down cover in the middle third (its
+  // coverMidShare had fallen to 0.26, the street rubble back at main's count and its records built from their chunks)
+  [34, 100, 132, 12], [16, 100, 132, 12],
+  [-92, 60, 92, 12], [64, 78, 110, 12], [-26, 54, 86, 12], [82, 96, 128, 12], [-116, 72, 104, 12], [-74, 54, 86, 12],
+  [-74, 96, 128, 12],
+  [76, 136, 158], [52, 136, 158], [94, 136, 158], [-20, 136, 158], [-98, 144, 166], [-80, 144, 166],
+  [16, 168, 190], [-56, 168, 190], [-26, 168, 190], [82, 168, 190],
+  [34, 176, 198], [-74, 176, 198], [124, 176, 198], [-104, 176, 198], [100, 176, 198],
+  [16, 208, 230], [64, 208, 230], [-104, 208, 230], [-56, 208, 230], [-26, 208, 230], [34, 208, 230], [106, 208, 230],
+  [-86, 216, 238], [136, 216, 238], [-2, 232, 254], [34, 240, 262], [70, 240, 262], [106, 248, 270],
 ];
 
 function dressAvlijaWalls(ctx: TramContext, keep: YardKeepOut | null): void {
