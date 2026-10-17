@@ -230,8 +230,12 @@ function merkava3HullDetails(P: TankBuilderPort): void {
     P.addEquipment('hullDetail',torus(.068,.021,12,6),side*.69,.97,-3.38-MK3.center);
     // The forward towing eyes, not an extended armored nose, set this
     // source's hull exterior length. Preserve their open side-view aperture.
-    const eye=torus(.079,.0205,16,8);eye.scale(1.15,1,1);
-    P.addEquipment('hullDetail',eye,side*.6768,1.0131+MK3.ground,3.6452-MK3.center,0,Math.PI/2);
+    // KIT.torus is authored flat (axis +Y); the former yaw kept the ring flat,
+    // so its aperture faced the sky (a top-down hole inside each eye). Stand
+    // the ring upright in the YZ plane (axis X) with the same 1.15 forward
+    // stretch: the nose reach (z 3.756) and the lug bite stay unchanged.
+    const eye=torus(.079,.0205,16,8);eye.scale(1,1,1.15);
+    P.addEquipment('hullDetail',eye,side*.6768,1.0131+MK3.ground,3.6452-MK3.center,0,0,Math.PI/2);
     P.addEquipment('hullDetail',box(.1038,.101,.099),side*.6768,1.024+MK3.ground,3.566-MK3.center);
   }
   merkava3FrontDeck(P);
