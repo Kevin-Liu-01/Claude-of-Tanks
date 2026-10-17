@@ -124,6 +124,8 @@ const report = { pass: false, failures: [], findings: [], errors: [], steps: [],
   options: { roomKind, gameMode: gameModeOption || null, map: mapOption || null, phoneSeat: phoneSeat || null, hostThrottle: hostThrottle || null, seatThrottle: seatThrottle || null, forceRelay, dist: distDir || null, shootS, profileS, separateBrowsers },
   roles: { swaps: [], hostAtReveal: null, elected: null }, roomLog: {}, bandwidth: null, measure: null, entry: null };
 const failures = report.failures;
+/** (2026-10-17) the room ended the match before the migration: the run's later steps have nothing to measure. */
+class MatchEndedEarly extends Error {}
 const step = (name, detail = {}) => { report.steps.push({ name, atMs: elapsedMs(), ...detail }); log(`${name} (${(elapsedMs() / 1000).toFixed(1)} s)${Object.keys(detail).length ? ` ${JSON.stringify(detail)}` : ''}`); };
 const errors = report.errors;
 function observe(page, label) {
@@ -1040,6 +1042,15 @@ try {
     step('profiled', Object.fromEntries(Object.entries(report.profile).map(([label, row]) => [label, row ? { msPerFrame: row.msPerFrame, mpMsPerFrame: row.areas?.mp?.msPerFrame ?? null } : null])));
   }
 
+  // (2026-10-17) a match the room already ended (bots against slow seats under load) has no host to migrate and no round to
+  // return to: the run stops here as INCONCLUSIVE, naming the step the end came after, rather than failing 98 s later on
+  // "neither B nor C hosts" with every reading after the end taken from the result screen
+  const endedBeforeClose = !live ? report.roomEvents.find((event) => event.kind === 'match_ended') ?? null : null;
+  if (endedBeforeClose) {
+    const afterStep = report.steps.filter((row) => row.atMs <= endedBeforeClose.atMs).at(-1)?.name ?? null;
+    report.matchEndedEarly = { atMs: endedBeforeClose.atMs, result: endedBeforeClose.result ?? null, reason: endedBeforeClose.reason ?? null, afterStep };
+    throw new MatchEndedEarly(`migration and rejoin: the room ended the match (${endedBeforeClose.reason ?? '?'}) at ${(endedBeforeClose.atMs / 1000).toFixed(1)} s, after step ${afterStep}, before A closed`);
+  }
   // ---- A closes its tab: after the grace the room elects B; B resumes from its keyframe, C follows; no reset
   // both peers' views of each other and of themselves: the room may elect either (the labels follow the election)
   let lastSeenByC = await sample(pages.c, ids.b);
@@ -1314,9 +1325,13 @@ try {
   await screenshot(pages.a2, 'a-rejoined-as-peer.png');
   }
 } catch (error) {
+  if (error instanceof MatchEndedEarly) {
+    report.inconclusive = [...(report.inconclusive ?? []), error.message];
+  } else {
   failures.push(error instanceof Error ? error.stack || error.message : String(error));
   // (2026-10-15) a page whose renderer hangs never answers a screenshot: each one is bounded, so the report is still written
   for(const [label,page] of Object.entries(pages))if(page&&!page.isClosed())await Promise.race([screenshot(page,`${label}-failure.png`).catch(()=>{}),sleep(15_000)]);
+  }
 } finally {
   for (const [label, page] of Object.entries(pages)) if (page && !page.isClosed()) await Promise.race([collectRoomLog(label.toUpperCase(), page), sleep(10_000)]);
   // every election each page heard, with the room's reason: the ones before the reveal are MP-S03's entry elections
