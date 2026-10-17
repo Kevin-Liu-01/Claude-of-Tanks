@@ -535,52 +535,30 @@
    "hostSweep": []
   },
   "carro45t": {
-   "inputHash": "022db84b4753435f",
+   "inputHash": "1d7078e9962c1b8a",
    "runs": [
     {
      "index": 0,
-     "site": "decor:tracks#23",
-     "source": "decor",
+     "site": "fitting:spareTrackLinks@buildCarro45THullCourse1@profiles/italy.ts:1063",
+     "source": "fitting",
      "frame": "turret",
      "registered": false,
      "classes": [],
      "primary": "OK",
      "why": {},
      "notes": [
-      "decor carrier standoff"
+      "clips <= 5 cm cosmetic"
      ],
      "measures": {
-      "support": 0.26,
-      "gap": 0.74,
+      "support": 0.992,
+      "gap": 0.008,
       "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0.003,
+      "hidden": 0.02,
+      "sunkMaxM": 0.013,
       "sweepM": 0,
       "traverseM": 0,
-      "exposure": 0.966,
-      "host": "turret<buildCarro45TTurretStage1@profiles/italy.ts:1118>"
-     }
-    },
-    {
-     "index": 1,
-     "site": "fitting:spareTrackLinks@buildCarro45THullCourse1@profiles/italy.ts:1058",
-     "source": "fitting",
-     "frame": "hull",
-     "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [],
-     "measures": {
-      "support": 0.921,
-      "gap": 0.057,
-      "air": 0.021,
-      "hidden": 0,
-      "sunkMaxM": 0,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 0.989,
-      "host": "hull<buildCarro45THullCourse1@profiles/italy.ts:1038>"
+      "exposure": 0.856,
+      "host": "turret<buildCarro45TTurretStage1@profiles/italy.ts:1124>"
      }
     }
    ],

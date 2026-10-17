@@ -39,9 +39,6 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   "c2_ariete_proto": {
     "fitting@hull(1.08,1.79,-2.88)": [0.4868, 1.3273, -4.07055, 0.5, -0.5, 0.5, -0.5, 1],
   },
-  "carro45t": {
-    "fitting@hull(1.05,1.56,-2.45)": [1.7555, 1.173, -2.49, 0, 0, -0.70711, 0.70711, 0],
-  },
   "centurion3": {
     "strip@hull(-0.55,1.41,3.05)": 1,
     "strip@hull(-1.26,1.38,-3.58)": [0.7005, -2.92869, 4.59834, 0.89522, 0, 0, 0.44562, 1],
