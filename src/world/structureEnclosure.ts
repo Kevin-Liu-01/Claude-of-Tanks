@@ -737,9 +737,11 @@ export function wallClusters(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>,
  * Where a structure is drawn tallest from the ground (body frame): of the ground band's drawn wall cells, the one its
  * walls reach highest over, and the extent of the ground band's wall cells joined to it (within 3 m) drawn to at least
  * 0.6 of that height, as a half width and depth (a mast's lattice on its pad beside its hut: the mast; a flood mast's pole,
- * not its lamp head; a gantry's leg, not the beam over the span). Null without an enclosure or anything drawn upright.
+ * not its lamp head; a gantry's leg, not the beam over the span), and its cells' middles as [x, z, x, z, ...] (a stump's
+ * legs stand on them, never in a hollow tower's void). Null without an enclosure or anything drawn upright.
  */
-export function tallestDrawn(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>): { x: number; z: number; top: number; halfW: number; halfD: number } | null {
+export function tallestDrawn(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>): { x: number; z: number; top: number; halfW: number; halfD: number;
+  spots: number[] } | null {
   const enc = enclosureOf(anatomy);
   const ground = enc?.bands[0]?.cells;
   if (!enc || !ground) return null;
@@ -776,6 +778,7 @@ export function tallestDrawn(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>)
   if (bestPeak < 0) return null;
   const bi = bestPeak % nx, bk = (bestPeak - bi) / nx;
   let i0 = bi, i1 = bi, k0 = bk, k1 = bk;
+  const spots: number[] = [];
   for (const c of bestCells) {
     const i = c % nx, k = (c - i) / nx;
     if (Math.abs(i - bi) > r || Math.abs(k - bk) > r) continue;
@@ -783,7 +786,8 @@ export function tallestDrawn(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>)
     if (i > i1) i1 = i;
     if (k < k0) k0 = k;
     if (k > k1) k1 = k;
+    spots.push(x0 + (i + 0.5) * cell, z0 + (k + 0.5) * cell);
   }
   return { x: x0 + ((i0 + i1 + 1) / 2) * cell, z: z0 + ((k0 + k1 + 1) / 2) * cell, top: (top[bestPeak]! - 1) / 100,
-    halfW: ((i1 - i0 + 1) * cell) / 2, halfD: ((k1 - k0 + 1) * cell) / 2 };
+    halfW: ((i1 - i0 + 1) * cell) / 2, halfD: ((k1 - k0 + 1) * cell) / 2, spots };
 }

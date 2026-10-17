@@ -18,8 +18,45 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const { MAP_IDS } = await import('../src/world/maps/index.ts');
 
-/** Judged exceptions, `map #id`: the reason each still flags (none: every kind passes). */
-const KNOWN = Object.freeze({});
+/**
+ * Judged exceptions, `map #id`: the reason each still flags (destruction-slabs 227 round 1, each looked at in the
+ * detector's renders; none is a room, floor or plate standing in the open past the walls).
+ */
+const KNOWN = Object.freeze({
+  // fallen objects lying on the ground: a face of the object, not a plate in the open
+  'longleaf #16': "the fire lookout's cab on its side at the fallen frame's end (its floor stands on edge)",
+  'orchard #4': "the bell tower's fallen drum beyond the walls (its broken end)",
+  'polders #46': "the tower mill's upper tower on the mound's flank (its broken end, 1.7 m over the slope)",
+  'whiteout #21': "the hut's chunks lying on the fallen reflector, 12 m up on it (unchanged from main)",
+  // low remnants over the collapse heap, where the drawn wall there stands lower (the regional kits' ruin and remnant
+  // walls over the sim's mound; the detector reads the intact top in a 1.5 m window)
+  'airfield #25': 'a timber remnant 1.2 m over the drawn wall, banked by the heap',
+  'badlands #54': "the ruin's collapse stub over the banked heap in a gap of its drawn wall (1.8 m)",
+  'blackglass #9': 'a remnant pier 1.2 m over the drawn wall head, on the heap',
+  'blackglass #14': 'a remnant pier 1.1 m over the drawn wall head, on the heap',
+  'caldera #34': "the stack's stump 1.3 m over the drawn top at its spot (its heap banked round it)",
+  'fjord #0': 'a remnant wall 1.4 m over the drawn wall, banked by the heap',
+  'fjord #9': "the ruin's collapse stub over the banked heap (1.7 m)",
+  'polders #13': "the ruin's collapse stub over the banked heap (1.2 m)",
+  'skybridge #24': 'a remnant wall on the slope, 16 % of it past the plan below the ground on the downhill side',
+  'steppe #10': "the stack's steel stub 1.8 m over the drawn base at its spot",
+  'titan_gorge #3': "the ruin's collapse stub over the banked heap (1.5 m)",
+  'whiteout #40': "the airstrip's steel stub 1.5 m over its drawn base",
+  'airfield #12': "a skin wall's post within one enclosure cell (0.9 m on a 56 m hall) of its drawn wall",
+  // held storeys (DESTRUCTION.md §3.4): what stands with a storey the simulation holds over a destroyed one
+  'oasis #2': "the room of a storey the simulation holds over a destroyed storey, inside the walls drawn round it",
+  'oasis #14': "the room of the central tower's held storey, inside the tower's drawn walls",
+  'ruinspires #1': "a held upper storey's joist end at the top of the megatower, 2.5 m proud",
+  'ruinspires #36': "a held upper storey's joist end at the row house's wall head, 1.4 m proud",
+  // fallen roofs and bodies at rest on what holds them
+  'ruinspires #7': "the collapse's baked rest lying on the heap's records 1.3 m up",
+  'ruinspires #10': "the collapse's baked rest lying on the heap's records 2.2 m up",
+  'saltwind #4': 'a partial roof fall at rest on the wall heads, 22 % of it over the eaves',
+  'winter #2': "the onion dome's fallen roof slab at rest on the drum, 2.7 m up",
+  // rims at holes in curved or open walls
+  'reservoir #17': "a breach rim on the valve tower's round wall, 27 % of it off the drawn curve",
+  'skybridge #7': "breach rims in the needle tower's open steel frame, past its thin members",
+});
 
 const maps = process.env.COT_SLAB_KINDS_MAPS ? process.env.COT_SLAB_KINDS_MAPS.split(',') : [...MAP_IDS];
 const workers = Math.max(1, Number(process.env.COT_SLAB_KINDS_WORKERS ?? Math.min(6, Math.max(1, Math.floor(os.availableParallelism() / 3)))));

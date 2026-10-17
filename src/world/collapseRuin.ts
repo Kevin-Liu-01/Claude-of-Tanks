@@ -417,7 +417,16 @@ function frameStubs(anatomy: StructureDamageAnatomy, rng: () => number, cap: num
   const r = tall ? Math.max(0.12, Math.min(1.4, Math.min(tall.halfW, tall.halfD) - t / 2))
     : Math.max(0.5, Math.min(1.4, 0.18 * Math.min(fhw, fhd)));
   for (let k = 0; k < n && roomFor(mesh, 3); k++) {
-    const foot = legs ? legs[k]!.foot : [sx + (k & 1 ? r : -r), 0, sz + (k & 2 ? r : -r)];
+    let foot = legs ? legs[k]!.foot : [sx + (k & 1 ? r : -r), 0, sz + (k & 2 ? r : -r)];
+    // (a named stump's leg on the tall cluster's nearest drawn cell: a hollow tower's ring left its legs in the void)
+    if (!legs && tall && tall.spots.length) {
+      let best = 0, bd = Infinity;
+      for (let q = 0; q < tall.spots.length; q += 2) {
+        const d2 = (tall.spots[q]! - foot[0]!) ** 2 + (tall.spots[q + 1]! - foot[2]!) ** 2;
+        if (d2 < bd) { bd = d2; best = q; }
+      }
+      foot = [tall.spots[best]!, 0, tall.spots[best + 1]!];
+    }
     const head = legs ? legs[k]!.head : [foot[0]!, tall ? Math.min(stumpTop, tall.top) : stumpTop, foot[2]!];
     const rise = Math.max(0.5, head[1]! - foot[1]!);
     const top = Math.min(cap, foot[1]! + rise * share * (0.85 + rng() * 0.3));
@@ -434,7 +443,8 @@ function frameStubs(anatomy: StructureDamageAnatomy, rng: () => number, cap: num
   // the girt ring under the lowest buckle (not between a drawn frame's clusters: they need not be a frame's bays)
   let low = Infinity;
   for (const y of _stubTop) low = Math.min(low, y);
-  stubsDrawn = !!drawn;
+  // (a named stump where its frame is drawn tallest takes no bent legs or struts out from it either)
+  stubsDrawn = !!drawn || !!tall;
   if (drawn) low = NaN;
   if (Number.isFinite(low)) {
     // girts up the standing panels (their bracing reads as the frame's own, and stands)
