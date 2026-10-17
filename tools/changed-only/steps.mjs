@@ -104,14 +104,14 @@ export const DECLARED_DYNAMIC = Object.freeze({
     note: 'both computed imports load the URL a document names in its cot-i18n-catalog meta; tools/icons-page.html has none and Node has no document, so neither runs in a fleet step',
   },
   'tools/presentation-centering.mjs': {
-    pin: 'b99630f0bbd21fbd',
+    pin: '542d67ec9cf0c14e',
     reads: [],
-    note: 'a Vite dev server (configFile false) over the repository root serves tools/icons-page.html to Chrome; what the page can fetch is the step\'s declared reads (public/**)',
+    note: 'a Vite dev server (configFile false) over the repository root serves tools/icons-page.html to Chrome; what the page can fetch is the step\'s declared reads (public/**). Re-pinned 2026-10-16 (test-speed R4c): only the server\'s port policy moved (toolServerOptions: 127.0.0.1, strictPort false); root, config and reads are unchanged',
   },
   'tools/genIcons.mjs': {
-    pin: 'b2a9f6af43262305',
+    pin: '08970c21427424cd',
     reads: [],
-    note: 'a Vite dev server (configFile false) over the repository root serves tools/icons-page.html to Chrome; what the page can fetch is the step\'s declared reads (public/**)',
+    note: 'a Vite dev server (configFile false) over the repository root serves tools/icons-page.html to Chrome; what the page can fetch is the step\'s declared reads (public/**). Re-pinned 2026-10-16 (test-speed R4c): only the server\'s port policy moved (toolServerOptions: 127.0.0.1, strictPort false); root, config and reads are unchanged',
   },
   'tools/fleet-geometry-ledger.mjs': {
     pin: '1c72be85b54a8dbf',

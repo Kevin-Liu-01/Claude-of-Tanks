@@ -55,7 +55,7 @@ await withIsolatedCaptureBrowser({
 
   // 180 s for the first navigation, 120 s for the game, one retry of a load that timed out (R4c)
   await loadReadyPage(page, `${boundOrigin(server)}/?nosplash`, {
-    label: 'mod-align', ready: 'window.__GAME_READY === true', budget: pageLoadBudget(process.env, { readyTimeoutMs: 120000 }),
+    label: 'mod-align', ready: 'window.__GAME_READY === true', budget: pageLoadBudget({ readyTimeoutMs: 120000 }),
   });
 
   const manifest = await page.evaluate(async () => {

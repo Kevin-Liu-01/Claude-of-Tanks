@@ -14,8 +14,15 @@ export const NAV_RETRIES = 1;
 
 const positive = (value) => (Number(value) > 0 ? Number(value) : null);
 
-/** The navigation and ready budgets, from the environment over the defaults. */
-export function pageLoadBudget(env = process.env, { readyTimeoutMs = READY_TIMEOUT_MS } = {}) {
+/** The three overrides, read by name: a whole-environment read would make every receipt that imports this module
+ * uncacheable (tools/selftest-inputs.mjs opaqueEnvironment). */
+function budgetEnvironment() {
+  const { COT_NAV_TIMEOUT_MS, COT_READY_TIMEOUT_MS, COT_NAV_RETRIES } = process.env;
+  return { COT_NAV_TIMEOUT_MS, COT_READY_TIMEOUT_MS, COT_NAV_RETRIES };
+}
+
+/** The navigation and ready budgets: the overrides over the defaults (`readyTimeoutMs` is the tool's own default). */
+export function pageLoadBudget({ readyTimeoutMs = READY_TIMEOUT_MS, env = budgetEnvironment() } = {}) {
   const retries = env.COT_NAV_RETRIES;
   return {
     navTimeoutMs: positive(env.COT_NAV_TIMEOUT_MS) ?? NAV_TIMEOUT_MS,

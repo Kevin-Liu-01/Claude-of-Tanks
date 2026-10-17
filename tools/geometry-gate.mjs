@@ -96,7 +96,7 @@ const registryUrl = `${origin}/tools/procedural-fidelity.html?id=m1a1_abrams_hc&
   // not depend on any one source asset being present.
   // 180 s for the first navigation, 150 s for the registry, one retry of a load that timed out (R4c)
   await loadReadyPage(page, registryUrl, { label: 'geo', ready: 'Array.isArray(window.__REFERENCE_IDS)',
-    budget: pageLoadBudget(process.env, { readyTimeoutMs: 150000 }) });
+    budget: pageLoadBudget({ readyTimeoutMs: 150000 }) });
   const referenceIds = await page.evaluate('window.__REFERENCE_IDS');
   if(requested)validateSelectedIds(requested,await page.evaluate('window.__PLAYABLE_IDS'));
   const referenceSources = await page.evaluate('window.__REFERENCE_SOURCES');

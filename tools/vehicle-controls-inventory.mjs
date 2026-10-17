@@ -7,13 +7,14 @@ import { smokeSocketsFor } from '../src/vehicles/vehicleAuxiliaryGeometry.ts';
 import { fanSmokeMounts } from '../src/vehicles/smokeFan.ts';
 // VH.14 (2026-10-15): stations whose full circle met the drone stand traverse inside a measured arc
 import { ROOF_STATION_ARCS } from '../src/vehicles/roofStationArcs.ts';
+import { uniqueIds } from './id-list.mjs';
 const check=process.argv.includes('--check');
 // --ids=a,b (2026-10-16, changed-only regen): rebuild only those vehicles and keep every other row exactly as generated.
 // Rows stay in ALL_TANK_IDS order, ids without a row are always built, and the roof-gun table and the garage summary are
 // derived from the merged rows, so a scoped run writes the bytes a whole-fleet run would (tools/changed-only/parity).
 // --ids=all and no --ids are the whole fleet; --check --ids=a,b verifies those vehicles' rows.
 const idsArg=process.argv.find(a=>a.startsWith('--ids='))?.slice(6)??'';
-const scoped=idsArg&&idsArg!=='all'?new Set(idsArg.split(',').filter(Boolean)):null;
+const scoped=idsArg&&idsArg!=='all'?new Set(uniqueIds(idsArg.split(',').filter(Boolean),'vehicle-controls-inventory --ids')):null;
 if(scoped)for(const id of scoped)if(!ALL_TANK_IDS.includes(id))throw new Error(`[controls] unknown id ${id}`);
 // Functional smoke pins (2026-10-07, coordinator ruling on the tank-accessories lane): a decor rebuild must not change
 // a vehicle's gameplay counts. Round 2 moved the decor smoke banks into the functional decor group, so the M2A2

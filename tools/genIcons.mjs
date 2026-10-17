@@ -120,7 +120,7 @@ const server = await createServer({
   root: process.cwd(), configFile: false, cacheDir: viteCacheDir,
   logLevel: 'error',
   optimizeDeps: { noDiscovery: true },
-  // R4c (2026-10-16): strictPort false, and the URL from the port really bound (tools/tool-page-load.mjs)
+  // R4c (2026-10-16): strictPort false, and the URL from the address really bound (tools/tool-page-load.mjs)
   server: toolServerOptions(7400),
 });
 await server.listen();

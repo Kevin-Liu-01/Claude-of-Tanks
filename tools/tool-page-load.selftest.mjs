@@ -15,13 +15,13 @@ import { boundOrigin, isTimeoutError, loadReadyPage, NAV_RETRIES, NAV_TIMEOUT_MS
 
 // (1) budgets
 assert.deepEqual([NAV_TIMEOUT_MS, READY_TIMEOUT_MS, NAV_RETRIES], [180_000, 60_000, 1]);
-assert.deepEqual(pageLoadBudget({}), { navTimeoutMs: 180_000, readyTimeoutMs: 60_000, retries: 1 });
-assert.deepEqual(pageLoadBudget({}, { readyTimeoutMs: 120_000 }), { navTimeoutMs: 180_000, readyTimeoutMs: 120_000, retries: 1 });
-assert.deepEqual(pageLoadBudget({ COT_NAV_TIMEOUT_MS: '240000', COT_READY_TIMEOUT_MS: '90000', COT_NAV_RETRIES: '3' }),
+assert.deepEqual(pageLoadBudget({ env: {} }), { navTimeoutMs: 180_000, readyTimeoutMs: 60_000, retries: 1 });
+assert.deepEqual(pageLoadBudget({ env: {}, readyTimeoutMs: 120_000 }), { navTimeoutMs: 180_000, readyTimeoutMs: 120_000, retries: 1 });
+assert.deepEqual(pageLoadBudget({ env: { COT_NAV_TIMEOUT_MS: '240000', COT_READY_TIMEOUT_MS: '90000', COT_NAV_RETRIES: '3' } }),
   { navTimeoutMs: 240_000, readyTimeoutMs: 90_000, retries: 3 });
-assert.equal(pageLoadBudget({ COT_NAV_RETRIES: '0' }).retries, 0, 'COT_NAV_RETRIES=0 disables the retry');
-assert.equal(pageLoadBudget({ COT_NAV_RETRIES: 'x' }).retries, 1);
-assert.equal(pageLoadBudget({ COT_NAV_TIMEOUT_MS: '0' }).navTimeoutMs, 180_000, 'a non-positive timeout keeps the default');
+assert.equal(pageLoadBudget({ env: { COT_NAV_RETRIES: '0' } }).retries, 0, 'COT_NAV_RETRIES=0 disables the retry');
+assert.equal(pageLoadBudget({ env: { COT_NAV_RETRIES: 'x' } }).retries, 1);
+assert.equal(pageLoadBudget({ env: { COT_NAV_TIMEOUT_MS: '0' } }).navTimeoutMs, 180_000, 'a non-positive timeout keeps the default');
 
 // (2) retry policy, against a scripted page
 const timeout = () => Object.assign(new Error('Navigation timeout of 180000 ms exceeded'), { name: 'TimeoutError' });
@@ -59,7 +59,7 @@ const warn = (line) => quiet.push(line);
 }
 {
   const page = scriptedPage([{ goto: timeout() }]);
-  await assert.rejects(loadReadyPage(page, 'u', { ready: 'R', warn, budget: pageLoadBudget({ COT_NAV_RETRIES: '0' }) }), /timeout/);
+  await assert.rejects(loadReadyPage(page, 'u', { ready: 'R', warn, budget: pageLoadBudget({ env: { COT_NAV_RETRIES: '0' } }) }), /timeout/);
   assert.equal(page.calls.length, 1, 'retries 0 makes one attempt');
 }
 await assert.rejects(loadReadyPage(scriptedPage([]), 'u', {}), /ready expression/);
@@ -96,6 +96,15 @@ try {
 }
 assert.throws(() => boundOrigin({ httpServer: { address: () => null } }), /did not expose a TCP port/);
 assert.equal(boundOrigin({ httpServer: { address: () => ({ address: '::1', family: 'IPv6', port: 9 }) } }), 'http://[::1]:9');
+
+// the overrides are read by name (process.env is never passed whole), so receipts that import the helper stay cacheable
+assert.match(readFileSync('tools/tool-page-load.mjs', 'utf8'), /const \{ COT_NAV_TIMEOUT_MS, COT_READY_TIMEOUT_MS, COT_NAV_RETRIES \} = process\.env;/);
+{
+  const { collectSelftestInputs } = await import('./selftest-inputs.mjs');
+  for (const file of ['tools/tool-page-load.mjs', 'tools/id-list.mjs', 'tools/module-visual-align-probe.mjs', 'tools/geometry-gate.mjs']) {
+    assert.equal(collectSelftestInputs(readFileSync(file, 'utf8'), file).opaqueEnvironment, false, `${file}: no whole-environment read`);
+  }
+}
 
 // (4) wiring in the release and regen browser tools
 const ICONS_LOADERS = ['genIcons', 'tank-assets-check', 'presentation-centering', 'muzzle-bore-probe'];
