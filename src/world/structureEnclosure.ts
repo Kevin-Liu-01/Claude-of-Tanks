@@ -419,14 +419,14 @@ export function wallAt(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>, band:
   return false;
 }
 
-/** The drawn walls' top over a plan point (body y, the highest within a cell); +Infinity where nothing restricts, −1 for
- *  none drawn there. */
-export function wallTopAt(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>, x: number, z: number): number {
+/** The drawn walls' top over a plan point (body y, the highest within `reach` cells: one by default, none for the point's
+ *  own cell); +Infinity where nothing restricts, −1 for none drawn there. */
+export function wallTopAt(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>, x: number, z: number, reach = 1): number {
   const enc = enclosureOf(anatomy);
   if (!enc) return Infinity;
   const ci = Math.floor((x - enc.x0) / enc.cell), ck = Math.floor((z - enc.z0) / enc.cell);
   let best = 0;
-  for (let dk = -1; dk <= 1; dk++) for (let di = -1; di <= 1; di++) {
+  for (let dk = -reach; dk <= reach; dk++) for (let di = -reach; di <= reach; di++) {
     const i = ci + di, k = ck + dk;
     if (i >= 0 && k >= 0 && i < enc.nx && k < enc.nz) best = Math.max(best, enc.top[k * enc.nx + i]);
   }
@@ -734,29 +734,56 @@ export function wallClusters(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>,
 }
 
 /**
- * Where a structure is drawn tallest (body frame): the plan cell its drawn walls reach highest over, and the extent of the
- * cells round it (within 3 m) drawn to at least 0.6 of that height, as a half width and depth (a mast's lattice on its
- * pad beside its hut: the mast). Null without an enclosure or anything drawn upright.
+ * Where a structure is drawn tallest from the ground (body frame): of the ground band's drawn wall cells, the one its
+ * walls reach highest over, and the extent of the ground band's wall cells joined to it (within 3 m) drawn to at least
+ * 0.6 of that height, as a half width and depth (a mast's lattice on its pad beside its hut: the mast; a flood mast's pole,
+ * not its lamp head; a gantry's leg, not the beam over the span). Null without an enclosure or anything drawn upright.
  */
 export function tallestDrawn(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>): { x: number; z: number; top: number; halfW: number; halfD: number } | null {
   const enc = enclosureOf(anatomy);
-  if (!enc) return null;
+  const ground = enc?.bands[0]?.cells;
+  if (!enc || !ground) return null;
   const { nx, nz, cell, x0, z0, top } = enc;
-  let best = -1, bestTop = 0;
-  for (let c = 0; c < top.length; c++) if (top[c]! > bestTop) { bestTop = top[c]!; best = c; }
-  if (best < 0) return null;
-  const hi = (bestTop - 1) / 100;
+  let maxTop = 0;
+  for (let c = 0; c < top.length; c++) if (ground[c] === 1 && top[c]! > maxTop) maxTop = top[c]!;
+  const hi = (maxTop - 1) / 100;
   if (!(hi > 0.5)) return null;
-  const bi = best % nx, bk = (best - bi) / nx, r = Math.ceil(3 / cell), need = 1 + Math.round(hi * 0.6 * 100);
+  const need = 1 + Math.round(hi * 0.6 * 100), peak = 1 + Math.round(hi * 0.95 * 100), r = Math.ceil(3 / cell);
+  // the clusters of tall ground wall cells (8-neighbours); of those reaching the peak, the biggest (a pole over the lone
+  // tall cells of its stays), its extent within 3 m of its highest cell
+  const label = new Int32Array(top.length);
+  let bestCells: number[] = [], bestPeak = -1;
+  for (let c0 = 0; c0 < top.length; c0++) {
+    if (label[c0] || ground[c0] !== 1 || top[c0]! < need) continue;
+    const cells: number[] = [];
+    const stack = [c0];
+    label[c0] = 1;
+    let pk = c0;
+    while (stack.length) {
+      const c = stack.pop()!;
+      cells.push(c);
+      if (top[c]! > top[pk]!) pk = c;
+      const ci = c % nx, ck = (c - ci) / nx;
+      for (let dk = -1; dk <= 1; dk++) for (let di = -1; di <= 1; di++) {
+        const i = ci + di, k = ck + dk, cc = k * nx + i;
+        if (i < 0 || k < 0 || i >= nx || k >= nz || label[cc] || ground[cc] !== 1 || top[cc]! < need) continue;
+        label[cc] = 1;
+        stack.push(cc);
+      }
+    }
+    if (top[pk]! >= peak && cells.length > bestCells.length) { bestCells = cells; bestPeak = pk; }
+  }
+  if (bestPeak < 0) return null;
+  const bi = bestPeak % nx, bk = (bestPeak - bi) / nx;
   let i0 = bi, i1 = bi, k0 = bk, k1 = bk;
-  for (let dk = -r; dk <= r; dk++) for (let di = -r; di <= r; di++) {
-    const i = bi + di, k = bk + dk;
-    if (i < 0 || k < 0 || i >= nx || k >= nz || top[k * nx + i]! < need) continue;
+  for (const c of bestCells) {
+    const i = c % nx, k = (c - i) / nx;
+    if (Math.abs(i - bi) > r || Math.abs(k - bk) > r) continue;
     if (i < i0) i0 = i;
     if (i > i1) i1 = i;
     if (k < k0) k0 = k;
     if (k > k1) k1 = k;
   }
-  return { x: x0 + ((i0 + i1 + 1) / 2) * cell, z: z0 + ((k0 + k1 + 1) / 2) * cell, top: hi,
+  return { x: x0 + ((i0 + i1 + 1) / 2) * cell, z: z0 + ((k0 + k1 + 1) / 2) * cell, top: (top[bestPeak]! - 1) / 100,
     halfW: ((i1 - i0 + 1) * cell) / 2, halfD: ((k1 - k0 + 1) * cell) / 2 };
 }

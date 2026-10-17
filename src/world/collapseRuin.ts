@@ -65,6 +65,14 @@ function inToWall(x: number, z: number, nx: number, nz: number): number {
   if (!ruinOf) return 0;
   return wallAlong(ruinOf, 0, x, z, nx, nz, Math.max(fhw, fhd));
 }
+/** The drawn top of the wall cell `d` in from (x, z) along (nx, nz) (inToWall's find): that cell's own, no neighbour's
+ *  (a skin wall's post under a gable end's eave stood at the gable's peak height). */
+function topOfWallIn(x: number, z: number, nx: number, nz: number, d: number): number {
+  const cell = ruinOf?.enclosure?.cell;
+  if (!ruinOf || !cell) return Infinity;
+  const k = d + cell * 0.5;
+  return wallTopAt(ruinOf, x + nx * k, z + nz * k, 0);
+}
 /** The highest a standing piece may reach at (x, z): the drawn wall's top there (Infinity without an enclosure). */
 function topAtSpot(x: number, z: number): number {
   return ruinOf ? wallTopAt(ruinOf, x, z) : Infinity;
@@ -480,7 +488,7 @@ function frameTier(rng: () => number, cap: number, mesh: DamageMeshWriter, tier:
       const tx = x + (ox / ol) * reach, tz = z + (oz / ol) * reach;
       // (destruction-slabs 227) no higher than the frame is drawn over its tip (a tapering tower's legs splay out low:
       // bent out and up, a leg stood over the drawn tower's envelope); over nothing drawn it droops to the ground
-      const drawnTip = topAtSpot(tx, tz);
+      const drawnTip = ruinOf ? wallTopAt(ruinOf, tx, tz, 0) : Infinity;
       const y1 = Math.min(cap, top * (1.3 + rng() * 0.15), Number.isFinite(drawnTip) ? Math.max(0.4, drawnTip + 0.4) : Infinity);
       strut(mesh, x, top, z, tx, y1, tz, t * 0.9, tint, 0.8 + rng() * 0.15);
     } else {
@@ -512,10 +520,11 @@ function framePosts(rng: () => number, slot: FractureSlot, cap: number, mesh: Da
       const lean = rng() < 0.4 ? (rng() - 0.5) * 0.6 : 0;
       const shade = 0.8 + rng() * 0.18;
       // (destruction-slabs 227) on the drawn wall in from the edge, no taller than it is drawn there
-      const d = inToWall(alongX ? fcx + u : fcx + side * off, alongX ? fcz + side * off : fcz + u, alongX ? 0 : -side, alongX ? -side : 0);
+      const px = alongX ? fcx + u : fcx + side * off, pz = alongX ? fcz + side * off : fcz + u, pnx = alongX ? 0 : -side, pnz = alongX ? -side : 0;
+      const d = inToWall(px, pz, pnx, pnz);
       if (!Number.isFinite(d)) continue;
       const x = alongX ? fcx + u : fcx + side * (off - d - t / 2), z = alongX ? fcz + side * (off - d - t / 2) : fcz + u;
-      const h = Math.min(h0, topAtSpot(x, z));
+      const h = Math.min(h0, topOfWallIn(px, pz, pnx, pnz, d));
       if (h < 0.5) continue;
       const h1 = h * 0.55;
       box(mesh, x, (h1 - FOOT_M) / 2, z, t / 2, (h1 + FOOT_M) / 2, t / 2, 0, slot.tint, shade);
@@ -526,11 +535,12 @@ function framePosts(rng: () => number, slot: FractureSlot, cap: number, mesh: Da
       const pl = Math.min(len * 0.45, 1.6 + rng() * 1.6), ph0 = Math.min(cap, ruinScale * share * (0.6 + rng() * 0.35));
       const u = (rng() - 0.5) * (len - pl);
       const shade = 0.75 + rng() * 0.2;
-      const d = inToWall(alongX ? fcx + u : fcx + side * off, alongX ? fcz + side * off : fcz + u, alongX ? 0 : -side, alongX ? -side : 0);
+      const px = alongX ? fcx + u : fcx + side * off, pz = alongX ? fcz + side * off : fcz + u, pnx = alongX ? 0 : -side, pnz = alongX ? -side : 0;
+      const d = inToWall(px, pz, pnx, pnz);
       if (!Number.isFinite(d)) continue;
       const inset = off - d - t - 0.12;
       const x = alongX ? fcx + u : fcx + side * inset, z = alongX ? fcz + side * inset : fcz + u;
-      const ph = Math.min(ph0, topAtSpot(x, z));
+      const ph = Math.min(ph0, topOfWallIn(px, pz, pnx, pnz, d));
       if (!(ph > 0.3)) continue;
       box(mesh, x, ph / 2 - 0.1, z, alongX ? pl / 2 : 0.05, ph / 2, alongX ? 0.05 : pl / 2, 0, slot.tint, shade);
     }

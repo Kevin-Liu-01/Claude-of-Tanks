@@ -1093,9 +1093,12 @@ u-bin (NaN where none stands behind it), and the drawn walls' top per cell. Its 
 - `enclosedAt`, `wallAt`, `wallAlong`, `wallTopAt`, `wallClusters`, `bandEnclosure`: the kit's heap lies on what the
   building drew (grown 1.5 m), the ruin's piers, stubs, fragments and posts stand on the ground storey's drawn walls no
   taller than they are drawn there (an unnamed frame's stubs on its own drawn legs; a named frame without a lattice
-  reading stands its stump where it is drawn tallest, `tallestDrawn`, and none where its body draws nothing near the
-  frame's height — a guyed mast whose mast is its own falling piece; a buckled leg bends out no higher than the frame is
-  drawn over its tip), and the collapse's floor pieces and floor records span the band's interior.
+  reading stands its stump where it is drawn tallest from the ground, `tallestDrawn` — the biggest cluster of the ground
+  band's wall cells reaching the peak, a flood mast's pole, not its stays or its lamp head — and none where its body
+  draws nothing near the frame's height — a guyed mast whose mast is its own falling piece; a buckled leg bends out no
+  higher than the frame is drawn in its tip's own cell; a long stub, pier or fragment is no taller than the lowest
+  stretch of wall it stands on, a skin wall's post than its own wall cell), the default kit's spalled patches sit on the
+  drawn wall where it runs flat across them, and the collapse's floor pieces and floor records span the band's interior.
 
 The default reading's faces now stand on the body's walls too (`describeDefault`: the enclosed plan up to the eaves, grown
 to the walls, about its own centre; without a roof bucket the eaves are the body's top — the highest half metre whose
