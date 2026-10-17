@@ -664,3 +664,145 @@ export function buildSetPiece(kind: SetPieceKind, opts: { wrecked?: boolean; coa
   return g;
 }
 
+
+// ---------------------------------------------------------------------------------------------------- running gear
+
+/**
+ * The works vehicles a map seats on their own running gear (the map-content lane's R6; gauntlet wave 358a: the Sno-Cat
+ * "hovers above the snow on spindly wheels", the haul truck "hovers on the slope with no contact shadow or seated wheels").
+ * The other kinds keep the plane through their footprint's corners (mapKits.ts dressVehicleSetPieces).
+ */
+export const RUNNING_GEAR_SEATED: ReadonlySet<SetPieceKind> = new Set<SetPieceKind>(['bv206', 'snocat', 'd8h', 'haulpak']);
+
+/** A plan rectangle where a set piece's solids meet the ground (a tyre or a pair of duals, a track, a pontoon), local. */
+export interface GearContact { readonly x0: number; readonly x1: number; readonly z0: number; readonly z1: number }
+/** A set piece's running gear: its ground contacts, and its floor points (local x, y, z triples: the solids' vertices within
+ * 6 cm of its lowest, and points every 0.4 m down each contact's middle, at most a few hundred). */
+export interface RunningGear { readonly contacts: readonly GearContact[]; readonly floor: Float32Array }
+
+/** The floor's band over the piece's lowest point; the gap two floor faces may leave and still be one contact. */
+const FLOOR_BAND_M = 0.06, GEAR_JOIN_M = 0.1;
+
+/**
+ * A built piece's running gear (pure: no stream draws). Its floor faces (the solids' triangles lying wholly within 6 cm of
+ * its lowest point: a track's flat run under its wheels, a tyre's bottom, a pontoon's belt) in plan, joined where they
+ * touch into contacts; its floor points for the seat.
+ */
+export function runningGearOf(geometry: THREE.BufferGeometry): RunningGear {
+  const p = geometry.getAttribute('position'), index = geometry.getIndex();
+  const skip = geometry.userData.noCollisionVertices as Uint8Array | undefined;
+  let low = Infinity;
+  for (let i = 0; i < p.count; i++) if (!(skip && skip[i])) low = Math.min(low, p.getY(i));
+  const band = low + FLOOR_BAND_M;
+  const boxes: Array<{ x0: number; x1: number; z0: number; z1: number }> = [];
+  const tris = index ? index.count / 3 : p.count / 3;
+  for (let t = 0; t < tris; t++) {
+    const a = index ? index.getX(t * 3) : t * 3, b = index ? index.getX(t * 3 + 1) : t * 3 + 1, c = index ? index.getX(t * 3 + 2) : t * 3 + 2;
+    if (skip && (skip[a] || skip[b] || skip[c])) continue;
+    if (p.getY(a) > band || p.getY(b) > band || p.getY(c) > band) continue;
+    boxes.push({
+      x0: Math.min(p.getX(a), p.getX(b), p.getX(c)), x1: Math.max(p.getX(a), p.getX(b), p.getX(c)),
+      z0: Math.min(p.getZ(a), p.getZ(b), p.getZ(c)), z1: Math.max(p.getZ(a), p.getZ(b), p.getZ(c)),
+    });
+  }
+  // the faces joined where their boxes touch (within 10 cm), until no two contacts touch
+  let contacts = boxes;
+  for (let merged = true; merged;) {
+    merged = false;
+    const out: typeof boxes = [];
+    for (const box of contacts) {
+      const hit = out.find((o) => box.x0 <= o.x1 + GEAR_JOIN_M && box.x1 >= o.x0 - GEAR_JOIN_M && box.z0 <= o.z1 + GEAR_JOIN_M && box.z1 >= o.z0 - GEAR_JOIN_M);
+      if (!hit) { out.push({ ...box }); continue; }
+      hit.x0 = Math.min(hit.x0, box.x0); hit.x1 = Math.max(hit.x1, box.x1); hit.z0 = Math.min(hit.z0, box.z0); hit.z1 = Math.max(hit.z1, box.z1);
+      merged = true;
+    }
+    contacts = out;
+  }
+  contacts.sort((a, b) => a.x0 - b.x0 || a.z0 - b.z0);
+  const floor: number[] = [];
+  const near: number[] = [];
+  for (let i = 0; i < p.count; i++) if (!(skip && skip[i]) && p.getY(i) <= band) near.push(i);
+  const step = Math.max(1, Math.ceil(near.length / 160));
+  for (let k = 0; k < near.length; k += step) floor.push(p.getX(near[k]), p.getY(near[k]) - low, p.getZ(near[k]));
+  for (const c of contacts) {
+    const x = (c.x0 + c.x1) / 2, n = Math.max(1, Math.ceil((c.z1 - c.z0) / 0.4));
+    for (let k = 0; k <= n; k++) floor.push(x, 0, c.z0 + ((c.z1 - c.z0) * k) / n);
+  }
+  return { contacts, floor: new Float32Array(floor) };
+}
+
+const GEAR_CACHE = new Map<string, RunningGear>();
+/** A kind's running gear, whole or wrecked (built once and kept). */
+export function setPieceRunningGear(kind: SetPieceKind, wrecked = false): RunningGear {
+  const key = `${kind}${wrecked ? '/w' : ''}`;
+  let gear = GEAR_CACHE.get(key);
+  if (!gear) {
+    const g = buildSetPiece(kind, { wrecked });
+    gear = runningGearOf(g);
+    g.dispose();
+    GEAR_CACHE.set(key, gear);
+  }
+  return gear;
+}
+
+/** A seat on the ground: the piece's height over the map's datum at its centre, its pitch (nose up) and roll (right side
+ * up), and how far its floor points stand clear of the ground (most, least: negative is into it). */
+export interface GearSeat { readonly y: number; readonly pitch: number; readonly roll: number; readonly maxGap: number; readonly minGap: number }
+
+/** How far a seated floor point may stand clear of the ground. */
+export const GEAR_SEAT_CLEARANCE_M = 0.02;
+
+/**
+ * A piece seated on its running gear: the plane through the ground under each side's foremost and rearmost contact (a
+ * truck's axles, a tractor's and a Sno-Cat's track and pontoon ends), then let down until no floor point stands more than
+ * 2 cm clear of the ground (the gear then rests on the ground's highs, sunk a little into its lows, as a heavy vehicle does
+ * on snow and spoil). Null when a side has no contact (the corner plane then seats it).
+ */
+export function seatOnRunningGear(piece: Pick<VehicleSetPiece, 'x' | 'z' | 'yawDeg'>, gear: RunningGear,
+  ground: (x: number, z: number) => number): GearSeat | null {
+  const left = gear.contacts.filter((c) => c.x0 + c.x1 < 0), right = gear.contacts.filter((c) => c.x0 + c.x1 > 0);
+  if (!left.length || !right.length) return null;
+  const yaw = (piece.yawDeg * Math.PI) / 180, cy = Math.cos(yaw), sy = Math.sin(yaw);
+  const at = (lx: number, lz: number) => ground(piece.x + lx * cy + lz * sy, piece.z - lx * sy + lz * cy);
+  const side = (list: readonly GearContact[]) => ({
+    x: list.reduce((a, c) => a + (c.x0 + c.x1) / 2, 0) / list.length,
+    zf: Math.max(...list.map((c) => c.z1)), zr: Math.min(...list.map((c) => c.z0)),
+  });
+  const L = side(left), R = side(right);
+  const hLF = at(L.x, L.zf), hLR = at(L.x, L.zr), hRF = at(R.x, R.zf), hRR = at(R.x, R.zr);
+  const pitch = Math.atan2((hLF + hRF - hLR - hRR) / 2, (L.zf + R.zf - L.zr - R.zr) / 2);
+  const roll = Math.atan2((hRF + hRR - hLF - hLR) / 2, R.x - L.x);
+  const tp = Math.tan(pitch), tr = Math.tan(roll);
+  let y = (hLF + hLR + hRF + hRR) / 4 - tp * (L.zf + L.zr + R.zf + R.zr) / 4 - tr * (L.x + R.x) / 2;
+  // the floor points as the kit turns them (three's rotateZ(roll), rotateX(-pitch), rotateY(yaw)), their clearance
+  const cr = Math.cos(roll), sr = Math.sin(roll), cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const gaps = (base: number) => {
+    let most = -Infinity, least = Infinity;
+    for (let k = 0; k < gear.floor.length; k += 3) {
+      const x = gear.floor[k], h = gear.floor[k + 1], z = gear.floor[k + 2];
+      const x0 = x * cr - h * sr, y0 = x * sr + h * cr;
+      const x1 = x0, y1 = y0 * cp + z * sp, z1 = -y0 * sp + z * cp;
+      const gap = base + y1 - ground(piece.x + x1 * cy + z1 * sy, piece.z - x1 * sy + z1 * cy);
+      most = Math.max(most, gap); least = Math.min(least, gap);
+    }
+    return { most, least };
+  };
+  const first = gaps(y);
+  if (first.most > GEAR_SEAT_CLEARANCE_M) y -= first.most - GEAR_SEAT_CLEARANCE_M;
+  const settled = gaps(y);
+  return { y, pitch, roll, maxGap: settled.most, minGap: settled.least };
+}
+
+/** The prints a works vehicle left behind it (props.ts: one strip under each side's line of gear, from its foremost
+ * contact out 14 m behind its rearmost), from its running gear; null for a kind seated otherwise. */
+export function setPiecePrints(kind: SetPieceKind): { xs: number[]; z0: number; z1: number; width: number } | null {
+  if (!RUNNING_GEAR_SEATED.has(kind)) return null;
+  const gear = setPieceRunningGear(kind);
+  const left = gear.contacts.filter((c) => c.x0 + c.x1 < 0), right = gear.contacts.filter((c) => c.x0 + c.x1 > 0);
+  if (!left.length || !right.length) return null;
+  const mid = (list: readonly GearContact[]) => list.reduce((a, c) => a + (c.x0 + c.x1) / 2, 0) / list.length;
+  // (the sides' gear only: a dozer's blade and ripper rest on the ground too, but leave no print as it drives)
+  const sides = [...left, ...right];
+  const width = Math.min(1.3, Math.max(...sides.map((c) => c.x1 - c.x0)) + 0.04);
+  return { xs: [mid(left), mid(right)], z0: Math.min(...sides.map((c) => c.z0)) - 14, z1: Math.max(...sides.map((c) => c.z1)), width };
+}

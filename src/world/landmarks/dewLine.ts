@@ -8,6 +8,7 @@ import { bar, revolve } from './kit.ts';
 import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
 import { finishLandmark, piece } from './pieces.ts';
 import { angleMember, pier, shellBody, tubeMember, type ShellHole } from '../maps/regional/steelMembers.ts';
+import { snowBank } from './polarStations.ts';
 
 const PANEL = rgb(0xd9d8d0), PANEL_CREAM = rgb(0xd3ccb8), TRIM_RED = rgb(0x8a3026);
 const STEEL = rgb(0x7f868b), STEEL_DARK = rgb(0x4b5157), IRON = rgb(0x2c2e30), RADOME = rgb(0xeeeeea);
@@ -63,15 +64,29 @@ function ladder(sink: PartSink, x: number, z: number, y0: number, y1: number, al
  */
 export const radomeTower: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
-  const S = num(ctx, 'side', 7), H = num(ctx, 'height', 6), R = num(ctx, 'radius', 3.5);
-  const h = S / 2, base = 0.5;
-  footing(sink, ctx, 0, 0, h + 0.3, h + 0.3, base);
+  // (the map-content lane's R6, gauntlet wave 358a: "a radome module that sits directly on the flat snow without piles,
+  // drift or contact shading", "put the modules on piles per DEW practice") on a snow map the block stands on steel piles,
+  // its floor 1.4 m over the snow, the drifts banked in under it and along its sides
+  const lift = ctx.snowCap ? 1.4 : 0;
+  const S = num(ctx, 'side', 7), H = num(ctx, 'height', 6) + lift, R = num(ctx, 'radius', 3.5);
+  const h = S / 2, base = 0.5 + lift;
+  if (!lift) footing(sink, ctx, 0, 0, h + 0.3, h + 0.3, base);
+  else {
+    const step = S / Math.max(1, Math.round(S / 3));
+    for (let x = -h + 0.3; x <= h - 0.29; x += step - 0.6 / Math.max(1, Math.round(S / 3))) for (const z of [-h + 0.3, h - 0.3]) {
+      sink.span('structureMetal', x - 0.15, -0.6 - ctx.groundFall, z - 0.15, x + 0.15, base - 0.3, z + 0.15, { colour: STEEL_DARK });
+    }
+    for (const z of [-h + 0.3, h - 0.3]) sink.span('structureMetal', -h, base - 0.32, z - 0.18, h, base, z + 0.18, { colour: STEEL });
+    for (const x of [-h + 0.3, h - 0.3]) sink.span('structureMetal', x - 0.18, base - 0.32, -h, x + 0.18, base, h, { colour: STEEL });
+    snowBank(sink, ctx, -h - 0.4, -h + 0.6, h + 0.4, -h + 0.6, 0, -1, 1.1, 2.2);
+    snowBank(sink, ctx, -h + 0.6, h + 0.4, -h + 0.6, -h - 0.4, -1, 0, 0.9, 1.6);
+  }
   // the block, its trim band under the parapet and the rust at its foot
   // (in the regional buckets the arctic kit paints: its white panels, its safety-orange band — maps/regional/arctic.ts)
   // (the looks lane's r2 sweep, 2026-10-16: nineteen dark panes and a door plate stuck on a solid block) the block's
   // insulated skin with its window bands and its door cut through, each cut lined with its reveal, the pane or the
   // steel leaf set back in it, a steel frame round it
-  const winY = [2.1, H - 2.2], winU = [-1, 0, 1].map((k) => k * S * 0.28);
+  const winY = [base + 1.6, H - 2.2], winU = [-1, 0, 1].map((k) => k * S * 0.28);
   const holes: ShellHole[] = [{ face: 's', u0: -0.55, u1: 0.55, y0: base + 0.01, y1: base + 2.1, fill: 'leaf', leaf: DOOR }];
   for (const face of ['s', 'n', 'w'] as const) for (const y of winY) for (const u of winU) {
     if (face === 's' && y < base + 2.2 && Math.abs(u) < 1.3) continue;
@@ -107,7 +122,14 @@ export const radomeTower: LandmarkBuilder = (ctx) => {
   });
   // the door's canopy on the front, the steps up to it
   sink.span('structureMetal', -1.1, base + 2.3, h, 1.1, base + 2.45, h + 1.3, { colour: shade(PANEL, 0.7), decor: true });
-  for (let k = 0; k < 2; k++) sink.span('stone', -0.9, 0, h + 0.3 + k * 0.32, 0.9, base - k * 0.22, h + 0.62 + k * 0.32, { decor: true });
+  if (!lift) for (let k = 0; k < 2; k++) sink.span('stone', -0.9, 0, h + 0.3 + k * 0.32, 0.9, base - k * 0.22, h + 0.62 + k * 0.32, { decor: true });
+  else {
+    // (R6) the landing at the door and the steel flight down to the snow
+    sink.span('structureMetal', -0.9, base - 0.08, h, 0.9, base, h + 1.0, { colour: STEEL });
+    const treads = Math.ceil(base / 0.22);
+    for (let k = 1; k <= treads; k++) sink.span('structureMetal', -0.75, base - k * (base / treads) - 0.05, h + 1.0 + k * 0.26 - 0.13, 0.75, base - k * (base / treads), h + 1.0 + k * 0.26 + 0.13, { colour: STEEL, decor: true });
+    for (const sx of [-0.8, 0.8]) bar(sink, 'structureMetal', [sx, -0.2, h + 1.1 + treads * 0.26], [sx, base, h + 1.0], 0.07, { colour: STEEL_DARK, decor: true });
+  }
   // the outside stair to the roof on the right face (+x): a ladder in its cage
   ladder(sink, h + 0.3, -h * 0.4, base, H + 0.45, false, STEEL_DARK);
   // (the cage's side bars from the wall itself: the connectivity sweep, 217, found them 3 cm off it)
@@ -296,6 +318,9 @@ export const troposcatter: LandmarkBuilder = (ctx) => {
     pier(sink, 'stone', x, rearZ - 2.6, 0.48, g - 0.4, g + 0.25, g, { decor: true }, 6);
   }
   });
+  // (the map-content lane's R6, wave 358a: "drift tails behind the screens", "nothing at their bases") the drift the
+  // screen throws in its lee, banked up the raking legs' footings and tailing out behind them
+  snowBank(sink, ctx, -bw / 2 - 0.5, rearZ - 2.4, bw / 2 + 0.5, rearZ - 2.4, 0, -1, 1.3, 2.4);
   // the feed horn at the focus on its own tower: four tapering legs braced in X, a platform, the horn turned to the face
   piece(sink, { name: 'feed', kind: 'lattice', at: 'breached', fall: 'topple', outward: false }, (sink) => {
   const tw = 0.85, tz = fz + 0.9, legTop = fy - 0.7;
