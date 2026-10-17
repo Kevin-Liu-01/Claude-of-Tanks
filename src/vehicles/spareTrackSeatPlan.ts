@@ -29,9 +29,6 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   "c1_ariete_preserie": {
     "fitting@hull(-0.70,1.48,-2.98)": [-0.9, 1.478, -3.28, 0, 0, 0, 1, 1],
   },
-  "c1_ariete_proto_serie1": {
-    "fitting@hull(1.08,1.79,-2.88)": [1.89255, 1.3273, -2.739, 0, 0, -0.70711, 0.70711, 0],
-  },
   "c2_ariete": {
     "ariete-forward-carry@hull(0.00,1.40,3.91)": [-0.87094, -1.54361, 2.51099, 0.5, 0.5, 0.5, -0.5, 0],
   },

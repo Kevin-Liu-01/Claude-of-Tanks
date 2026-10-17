@@ -444,11 +444,11 @@
    "hostSweep": []
   },
   "c1_ariete_proto_serie1": {
-   "inputHash": "3b4d662d78c0616a",
+   "inputHash": "f680e97ca07cf944",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildArieteMkHullStage2@profiles/italy.ts:335",
+     "site": "fitting:spareTrackLinks@buildArieteMkHullStage2@profiles/italy.ts:340",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
@@ -457,15 +457,15 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.958,
-      "gap": 0.042,
+      "support": 0.879,
+      "gap": 0.121,
       "air": 0,
       "hidden": 0,
       "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.978,
-      "host": "hullTrackGuardR<buildArieteMkHullCourse1@profiles/italy.ts:362>"
+      "exposure": 0.955,
+      "host": "hull<buildArieteMkHullStage2@profiles/italy.ts:291>"
      }
     }
    ],
