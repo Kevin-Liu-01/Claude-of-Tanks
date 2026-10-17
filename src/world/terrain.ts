@@ -30,7 +30,7 @@ import { onPresetChange, resolvePresetName, texSize } from '../engine/quality.ts
 import { terrainWallSkyLift } from '../engine/groundBounce.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { shorelineDistance, shorelineRadiusAt, shorelineWetness, shorelineWetnessFromDistance, sampleShorelineMask } from './shoreline.ts';
-import { WATER_BANK_REACH_M, waterBedAt, waterCoverage, waterShoreFloor, waterlineDistance } from './waterBank.ts';
+import { WATER_BANK_LIP_M, WATER_BANK_REACH_M, waterBedAt, waterCoverage, waterShoreFloor, waterlineDistance } from './waterBank.ts';
 import { alignLiquidLakeLevels, buildLiquidLakeBanks, buildLiquidMarshSurfaces, LIQUID_MARSH_CORE, LIQUID_MARSH_STRIDE } from './liquidMarshSurface.ts';
 import { composeLakeHeight, type LakeBankLaw, type LakeHeightResult } from './lakeHeightComposition.ts';
 import { buildLakeCandidateIndex, lakeCandidatesAt, type LakeCandidateIndex } from './lakeCandidateIndex.ts';
@@ -64,7 +64,7 @@ import { sampleRedrockCanyon } from './redrockCanyon.ts';
 import { createBorderLandform, resolveBorderLandform, type BorderLandformSettings } from './borderLandform.ts';
 import type { FarmsteadStyle } from './borderFarmsteads.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
-import { canalWetness, carveCanals, compileCanals, inCanal, type CanalConfig } from './canals.ts';
+import { canalWetness, carveCanals, compileCanals, inCanal, type CanalConfig, canalLevelAt } from './canals.ts';
 import { compilePaddies, inPaddy, inPaddyClearing, levelPaddies, paddyCanals, paddyRiceAt, paddyWaterLevelAt, paddyWaterQuads,
   resolvePaddyFloors, PADDY_DEPTH_M, type PaddyConfig, type PaddyRiceSeat, type PaddyWaterQuad } from './paddies.ts';
 import { createShallowWaterSurface, shallowWaterGeometrySteps } from './shallowWater.ts';
@@ -1755,6 +1755,10 @@ function* heightFieldBuildSteps(
   // every legacy lake retains the original sequential arithmetic below.
   const continuousLakeAprons = _LAKES.some(lake => lake.radii !== undefined);
   const lakeHeightResult: LakeHeightResult = { height: 0, wetness: 0 };
+  // (the ground lane, 2026-10-17; waterBank.ts) the liquid marshes' report for the height query in flight: the most
+  // covering marsh's level and coverage, and the dry shores' floor past their waterlines; heightAt fills it,
+  // applyHeightConstraints merges the lakes' and sets the bed by the water's true mask
+  const marshBank = { level: 0, coverage: 0, floor: -Infinity };
   // (2026-10-08, lakeCandidateIndex.ts) the discs that can reach a point, so a map whose water is a chain of many discs
   // (Skybridge's meander) does not walk them all at every sample; rebuilt once the liquid banks fix each disc's band;
   // null under nine discs (the plain loops), and every result bit-identical either way
@@ -1897,6 +1901,25 @@ function* heightFieldBuildSteps(
     return h + unionTop + carve;
   }
 
+  /**
+   * (the ground lane, 2026-10-17; MASTER #14 / GW.14; waterBank.ts) level water held in its banks: under the water (the
+   * true mask: getWaterMaskAt's, so a ford's or a pad's dried water is dry ground) the bed holds the water's top at the most
+   * covering body's level; a body's water dried by a road or a pad stands at least a lip over that level; past every
+   * waterline the dry shore stands at least the lip, falling away within a few metres.
+   */
+  function holdWaterInBanks(x: number, z: number, h: number, lakesOn: boolean): number {
+    let level = marshBank.level, coverage = marshBank.coverage, floor = marshBank.floor;
+    if (lakesOn && lakeBankLaw !== null) {
+      if ((lakeHeightResult.bedCoverage ?? 0) > coverage) { coverage = lakeHeightResult.bedCoverage!; level = lakeHeightResult.bedLevel!; }
+      floor = Math.max(floor, lakeHeightResult.shoreFloor ?? -Infinity);
+    }
+    if (coverage > 0) {
+      const mask = smoothstep(waterRampStart, waterRampEnd, waterWetnessAt(x, z));
+      return mask > 0 ? waterBedAt(level, liquidDepthM, mask) : Math.max(h, level + WATER_BANK_LIP_M);
+    }
+    return floor > h ? floor : h;
+  }
+
   function applyHeightConstraints(
     x: number,
     z: number,
@@ -1925,10 +1948,11 @@ function* heightFieldBuildSteps(
     let lakeWetness = 0;
     if (lakesOn) {
       composeLakeHeight(_LAKES, lakeLevels, liquidLakeBanks, continuousLakeAprons,
-        x, z, h, settlementWeight, lakeHeightResult, lakesNear(x, z), lakeBankLaw, marshWeight < 1);
+        x, z, h, settlementWeight, lakeHeightResult, lakesNear(x, z), lakeBankLaw);
       h = lakeHeightResult.height;
       lakeWetness = lakeHeightResult.wetness;
     }
+    if (liquidDepthM > 0 && (lakeBankLaw !== null || liquidSurfaces !== null)) h = holdWaterInBanks(x, z, h, lakesOn);
     let padWetness = 1;
     if (padsOn) {
       const padRadiusSquared = lakeWetness > 0 ? 26 * 26 : 22 * 22;
@@ -2290,9 +2314,8 @@ function* heightFieldBuildSteps(
     let marshW = 0;
     let waterWeight = 0, waterLevelSum = 0, waterWeightSum = 0;
     let waterCoreSum = 0, waterCoreCount = 0;
-    // (2026-10-17, waterBank.ts) under a liquid marsh's water the bed that holds its top at its level (the most covering
-    // marsh's), past every waterline the dry shore's floor
-    let bankFloor = -Infinity, bedCoverage = 0, bed = 0;
+    // (2026-10-17, waterBank.ts) the most covering liquid marsh and the dry shores' floor (holdWaterInBanks sets the bed)
+    marshBank.level = 0; marshBank.coverage = 0; marshBank.floor = -Infinity;
     for (let mi = 0; mi < _MARSHES.length; mi++) {
       if (index) {
         while (!bits && ++word < liquidIndexWords) bits = index[bucket + word];
@@ -2335,10 +2358,10 @@ function* heightFieldBuildSteps(
         if (md <= LIQUID_MARSH_CORE) { waterCoreSum += level; waterCoreCount++; }
         if (m.sorFlat === undefined && liquidDepthM > 0) {
           const coverage = waterCoverage(shorelineWetnessFromDistance(md, false), waterRampStart, waterRampEnd);
-          if (coverage > bedCoverage) { bedCoverage = coverage; bed = waterBedAt(level, liquidDepthM, coverage); }
+          if (coverage > marshBank.coverage) { marshBank.coverage = coverage; marshBank.level = level; }
           else if (coverage === 0) {
             const beyondM = (md - marshWaterline) * shorelineRadiusAt(m, Math.atan2(z - m.z, x - m.x));
-            if (beyondM <= WATER_BANK_REACH_M) bankFloor = Math.max(bankFloor, waterShoreFloor(level, beyondM));
+            if (beyondM <= WATER_BANK_REACH_M) marshBank.floor = Math.max(marshBank.floor, waterShoreFloor(level, beyondM));
           }
         }
       }
@@ -2347,7 +2370,7 @@ function* heightFieldBuildSteps(
       // All base/micro/macro relief is overwritten by a fully flat core.
       // Keep the canonical lake, pad and road constraints, without spending
       // thirteen simplex evaluations on a value that cannot reach the mesh.
-      return applyHeightConstraints(x, z, bedCoverage > 0 ? bed : Math.max(waterCoreSum / waterCoreCount, bankFloor), 1, vm,
+      return applyHeightConstraints(x, z, waterCoreSum / waterCoreCount, 1, vm,
         lakesOn, padsOn, roadsOn, gridIndex, fx, fz, 0, rd);
     }
     if (surfaces) h = baseTerrainHeight(x, z, cw, vm) - liquidDip;
@@ -2432,7 +2455,6 @@ function* heightFieldBuildSteps(
       h += (target - h) * waterWeight;
       marshW = Math.max(marshW, waterWeight); // road berm noise cannot ripple liquid cores
     }
-    if (bankFloor > h) h = bankFloor; // (2026-10-17, waterBank.ts) level water held in its banks
     // frozen/ice lakes: pull the terrain to a flat sheet at the lake level.
     // The flat sheet runs almost to the shore (0.94 r), and the grade toward
     // the surrounding terrain extends well OUTSIDE the sheet (1.32 r): the
@@ -2747,7 +2769,7 @@ function* heightFieldBuildSteps(
     // Activate after road/pad heights are fixed. Sample the same pre-sheet
     // terrain as the marsh policy; tiny connected drainage cells must not
     // cram a multi-metre bank into the fixed ice lake's 0.38-radius apron.
-    if (liquidDepthM > 0) lakeBankLaw = { depthM: liquidDepthM, rampStart: waterRampStart, rampEnd: waterRampEnd };
+    if (liquidDepthM > 0) lakeBankLaw = { rampStart: waterRampStart, rampEnd: waterRampEnd };
     liquidLakeBanks = buildLiquidLakeBanks(liquidLakes,
       (x, z) => heightAt(x, z, false, false, false));
     lakeIndex = buildLakeCandidateIndex(_LAKES, liquidLakeBanks);
@@ -3277,6 +3299,9 @@ function* heightFieldBuildSteps(
     _mesaW: mesaWeight,
     ...(liquidWater ? { _waterWetnessAt: waterWetnessAt, getOutlandWaterAt: outlandWaterAt,
       getWaterBodySurfaceAt: (x: number, z: number): number => {
+        // a canal's water at its own level first (the Polders ditch; a canal meeting a basin takes the basin's level)
+        const canal = compiledCanals !== null ? canalLevelAt(compiledCanals, x, z) : Number.NaN;
+        if (canal === canal) return canal;
         const body = outlandWaterAt(x, z);
         return body ? body.level : Number.NaN;
       } } : {}),

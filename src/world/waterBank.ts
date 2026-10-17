@@ -9,7 +9,8 @@
  * round it (Mangrove's flats lie at the level), and fell to the bed down the shore's band — the tilted wedge. Now:
  * - under the water (coverage > 0) the bed is the level less the depth its coverage holds (so the bed plus that depth,
  *   the simulation's water top, is the level), raised by a lip's share toward the waterline;
- * - past the waterline the dry shore stands at least a lip over the level, that floor falling away within a few metres.
+ * - past the waterline the dry shore stands at least a lip over the level across one sheet cell (a low bank, where the
+ *   native ground lies under the water's level, is raised to it: the levee that holds the water), then falls away.
  * Every map without liquid water, and all ground farther than the lip's fall from a waterline, is untouched.
  */
 import { shallowWaterDepth } from './waterContact.ts';
@@ -18,8 +19,11 @@ import { shallowWaterDepth } from './waterContact.ts';
 export const WATER_BANK_LIP_M = 0.12;
 /** The lip's fall past the waterline (m of height per m out): it meets the native ground within a few metres. */
 export const WATER_BANK_FALL = 0.3;
+/** How far past the waterline the dry shore holds the lip's height before it falls (m): just over the water sheet's 8 m
+ *  lattice cell, so every dry corner of a shore cell stands over the water and the sheet runs level under it. */
+export const WATER_BANK_PLATEAU_M = 9;
 /** How far past the waterline the floor reaches (m): past it the native bank stands as authored. */
-export const WATER_BANK_REACH_M = 4;
+export const WATER_BANK_REACH_M = 16;
 
 function smoothstep(a: number, b: number, x: number): number {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
@@ -50,7 +54,7 @@ export function waterBedAt(level: number, depthM: number, mask: number): number 
  * floor's reach. */
 export function waterShoreFloor(level: number, beyondM: number): number {
   if (beyondM > WATER_BANK_REACH_M) return -Infinity;
-  return level + WATER_BANK_LIP_M - WATER_BANK_FALL * Math.max(0, beyondM);
+  return level + WATER_BANK_LIP_M - WATER_BANK_FALL * Math.max(0, beyondM - WATER_BANK_PLATEAU_M);
 }
 
 /** A body's water coverage (HeightField getWaterMaskAt's law) from its shoreline wetness and the map's water ramp. */

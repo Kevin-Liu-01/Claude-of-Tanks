@@ -17,6 +17,9 @@ import { createMarshChannel } from './marshChannel.ts';
 
 // Rainwater follows the lower saddle into the eastern floodplain; the
 // original western/eastern bowls remain anchors along one continuous run.
+// (the ground lane, 2026-10-17; MASTER #15, the critics: "a decal pasted on the valley" — at the default 1.15 spacing its
+// cells read as a string of discs, the bank scalloped 0.21 of a radius deep between them) laid at 0.5, Amberford's law:
+// a bank 0.03 of a radius deep, the closer cells proportionally shallower so the summed bed keeps its depth
 const floodChannel = createMarshChannel([
   { x: -354, z: -250, r: 30, dip: 0.70 },
   { x: -236, z: -124, r: 58, dip: 2.0 },
@@ -26,7 +29,7 @@ const floodChannel = createMarshChannel([
   { x: 152, z: 124, r: 32, dip: 0.75 },
   { x: 210, z: 184, r: 52, dip: 2.2 },
   { x: 318, z: 278, r: 30, dip: 0.70 },
-]);
+], 0.5);
 
 // Kohima's town (the maps lane, 2026-10-14; the owner: Monsoon Ridge among the maps to bring up, built the way Verdant
 // was). The hill town stood as 16 buildings over a 290 m saddle. Kohima in 1944 is a town of terraces: the bazaar's shops
