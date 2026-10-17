@@ -74,6 +74,8 @@ const hashGeometry = (g) => {
   return h.digest('hex');
 };
 const part = (g) => {
+  // #24 r2 (Lane C, 2026-10-14): the buffer stop is one painted piece (railYardStores.ts), its beam and posts recorded
+  if (g.userData.bufferStop) return 'stop';
   const p = g.parameters; if (!p) return null;
   if (p.width === RAIL_SPUR_BALLAST_M && (p.height === 0.16 || p.height === 0.36)) return 'slab';
   if (p.width === 0.09 && p.height === 0.17) return 'rail';
@@ -88,7 +90,7 @@ function build(mapId, field, seed) {
   let calls = 0;
   dressMapExtras({ mapId, extraKits: cfg.props?.extraKits, riverLandings: cfg.props?.riverLandings, L: field._layout,
     heightField: field, rng: () => { calls++; return random(); }, buckets, obstacles, colliders });
-  const parts = { slab: [], rail: [], sleeper: [], strut: [], beam: [] };
+  const parts = { slab: [], rail: [], sleeper: [], strut: [], beam: [], stop: [] };
   const digest = createHash('sha256');
   for (const n of names) for (const g of buckets[n]) { const kind = part(g); if (kind) { parts[kind].push(g); digest.update(n).update(hashGeometry(g)); } }
   return { buckets, parts, obstacles, colliders, calls, next: random(), digest: digest.digest('hex') };
@@ -143,14 +145,18 @@ try {
   const infillAll = built.parts.sleeper.filter((g) => g.userData.railInfill);
   assert.equal(infillAll.length, seededOnly(built.parts.sleeper).length, 'one infill sleeper for every seeded one');
   approach.sleeper = seededOnly(approach.sleeper);
-  const slab = inSquare(built.parts.slab), rail = inSquare(built.parts.rail), sleeper = seededOnly(inSquare(built.parts.sleeper)), { strut, beam } = built.parts;
-  assert.equal(slab.length, 92); assert.equal(rail.length, 184); assert.equal(strut.length, 2); assert.equal(beam.length, 1, 'one stop: the west stub');
+  const slab = inSquare(built.parts.slab), rail = inSquare(built.parts.rail), sleeper = seededOnly(inSquare(built.parts.sleeper)), { stop } = built.parts;
+  assert.equal(slab.length, 92); assert.equal(rail.length, 184); assert.equal(stop.length, 1, 'one stop: the west stub');
   assert.equal(sleeper.length, spurSpans.reduce((n, s) => n + Math.round(railRunLength(s.bx - s.ax, s.bz - s.az) / 1.4), 0) + 0,
     'one sleeper every ~1.4 m of every span (the fitted rise of a 4 m span never changes the count)');
   assert.equal(approach.slab.length, RAIL_OPEN_KIT_M / RAIL_SPUR_LAY_M, 'the open line past the edge, 60 spans'); assert.equal(approach.rail.length, 2 * RAIL_OPEN_KIT_M / RAIL_SPUR_LAY_M);
-  assert.equal(built.obstacles.length, 0); assert.equal(built.colliders.length, 0, 'no record: the track is soft dressing');
+  // (Lane C 2026-10-16: PRP-02 made the buffer stops breakable small props, a record each) the track is soft dressing:
+  // no record but the stops' own
+  const soft = (list) => list.filter((r) => r.kind !== 'prop-buffer-stop');
+  assert.equal(soft(built.obstacles).length, 0); assert.equal(soft(built.colliders).length, 0, 'no record: the track is soft dressing');
+  assert.ok(built.obstacles.length <= stop.length, 'at most a breakable record a stop');
   assert.equal(built.buckets.stone.length, 0, 'no masonry');
-  assert.equal(built.calls, 24 * (slab.length + approach.slab.length) + sleeper.length + approach.sleeper.length + 4 * beam.length,
+  assert.equal(built.calls, 24 * (slab.length + approach.slab.length) + sleeper.length + approach.sleeper.length + 4 * stop.length,
     'every seeded draw: 24 slab colours, one sleeper jitter, four beam UV jitters');
   const rebuilt = build('steppe', steppe, 1337);
   try { assert.equal(rebuilt.digest, built.digest, 'the siding rebuilds byte-identically from the same seed'); }
@@ -193,11 +199,17 @@ try {
   for (const s of approach.sleeper) { const sc = centre(s), rise = sc.y - steppe.getOutlandHeightAt(sc.x, sc.z); assert.ok(rise > 0.03 && rise < 0.25, `round 67: an approach sleeper lies on the valley floor the ring seats on (${rise.toFixed(3)} m)`); }
   for (const r of rail) { const rc = centre(r); const rise = rc.y - steppe.getHeightAt(rc.x, rc.z); assert.ok(rise > 0.08 && rise < 0.32, `a rail rides the sleepers (${rise.toFixed(3)} m over the ground)`); }
   // the stop: 0.8 m past the west stub, the beam across the track, the struts astride the gauge; the east end is open
-  const beamCentres = beam.map(centre).sort((a, b) => a.x - b.x);
-  assert.ok(Math.abs(beamCentres[0].x - (144 - 0.8 + 0.05)) < 0.02, 'a beam 0.8 m past the stub, faced to the track');
+  const beamCentres = stop.map((g) => { const [x, y, z] = g.userData.bufferStop.beam; return { x, y, z }; }).sort((a, b) => a.x - b.x);
+  assert.ok(Math.abs(beamCentres[0].x - (144 - 0.8)) < 0.02, 'a beam 0.8 m past the stub, faced to the track');
   for (const b of beamCentres) { assert.ok(Math.abs(b.z + 181) < 0.01); assert.ok(b.y - steppe.getHeightAt(b.x, b.z) > 0.9, 'the beam at buffer height'); }
-  const strutZ = strut.map((g) => centre(g).z).sort((a, b) => a - b);
-  assert.deepEqual(strutZ.map((z) => Math.round((z + 181) * 100) / 100), [-0.72, 0.72], 'struts astride the gauge, the stop turned to the track');
+  const postZ = stop[0].userData.bufferStop.posts.map(([, z]) => z).sort((a, b) => a - b);
+  assert.deepEqual(postZ.map((z) => Math.round((z + 181) * 100) / 100), [-0.72, 0.72], 'posts astride the gauge, the stop turned to the track');
+  // the stop's geometry: the beam at buffer height, its spring buffers out toward the stub (east), its frame behind it
+  stop[0].computeBoundingBox();
+  const sb = stop[0].boundingBox;
+  assert.ok(sb.max.y - steppe.getHeightAt(144 - 0.8, -181) > 1.1, 'the beam and posts over buffer height');
+  assert.ok(sb.max.x > 144 - 0.8 + 0.5 && sb.max.x < 144, 'the buffers reach toward the track, short of its end');
+  assert.ok(sb.min.x < 144 - 0.8 - 1.5, 'the raking struts behind the beam');
   const lastSlab = slab.map(centre).sort((a, b) => a.x - b.x)[slab.length - 1];
   assert.ok(lastSlab.x > 509.5 && lastSlab.x < 510.5, 'the last 4 m slab in the square is centred 2 m short of the edge (the line leaves the square)');
 } finally { dispose(built); }
@@ -226,7 +238,7 @@ let junctionSummary = '';
     assert.equal(again.calls, built.calls, 'Cinder Junction: the rebuild draws the same seeded stream');
     const spans = authored.reduce((n, spur) => n + resampleRailPath(spur.path, RAIL_SPUR_LAY_M, true).length, 0);
     assert.ok(built.parts.slab.length >= spans, `a slab for every span in the square (${built.parts.slab.length} for ${spans})`);
-    assert.equal(built.parts.beam.length, authored.filter((spur) => spur.bufferStop).length, 'one stop beam closes each stub');
+    assert.equal(built.parts.stop.length, authored.filter((spur) => spur.bufferStop).length, 'one buffer stop closes each stub');
     const stages = authored.filter((spur) => spur.coalStage);
     assert.equal(stages.length, 2, 'a coal stage beside each loading stub');
     const coal = built.obstacles.filter((record) => record.kind === 'coal-heap');
@@ -250,16 +262,28 @@ let junctionSummary = '';
     const stock = built.obstacles.filter((record) => record.kind === 'rolling-stock');
     assert.equal(stock.length, authored.reduce((n, spur) => n + (spur.stock ?? []).reduce((m, cut) => m + cut.kinds.length, 0), 0),
       'one record for each standing vehicle');
-    assert.equal(built.obstacles.length, coal.length + stock.length, 'nothing else on the line publishes collision');
+    // (Lane C 2026-10-16: PRP-02's breakable buffer stops publish a record each, at the spurs' ends)
+    const stops = built.obstacles.filter((record) => record.kind === 'prop-buffer-stop');
+    assert.equal(built.obstacles.length, coal.length + stock.length + stops.length, 'nothing else on the line publishes collision');
+    assert.ok(stops.length <= built.parts.stop.length, 'at most a breakable record a stop');
     junctionSummary = `Cinder Junction ${authored.length} spurs / ${built.parts.slab.length} slabs / ${coal.length} coal heaps`;
   } finally { dispose(built); dispose(again); }
 }
 
 // ------------------------------------------------------------------ every other map: no spur, the exclusion it had
+// (a map whose spurs all keep a 'clearance' berth — Verdant's station line — takes no noVeg exclusion: its berth and its
+// streams are railSpurBerth.selftest's)
+let clearanceMaps = 0;
 for (const mapId of MAP_IDS) {
   if (mapId === 'steppe' || mapId === 'railyard') continue;
   const cfg = getMapConfig(mapId);
+  const spurs = cfg.terrain?.railSpurs;
+  if (spurs?.length && spurs.every((spur) => spur.berth === 'clearance')) {
+    assert.equal(createRailSpurExclusion(spurs), null, `${mapId}: a clearance spur joins no exclusion`);
+    clearanceMaps++;
+    continue;
+  }
   assert.equal(cfg.terrain?.railSpurs, undefined, `${mapId}: no authored spur`);
   assert.equal(createLayout(cfg).railSpurs, undefined, `${mapId}: no layout key`);
 }
-console.log(`railSpurs.selftest: resampler (yard rule + even split), berth, dry-span reduction; two yards deterministic with their 0.16 m slab; Tarkhan siding 92 spans / 184 rails / 276 sleepers / 1 stop bedded with no gap to the map edge, then ${RAIL_OPEN_KIT_M / RAIL_SPUR_LAY_M} spans on the open line past the edge (no record); ${junctionSummary}; ${MAP_IDS.length - 2} other layouts carry no spur`);
+console.log(`railSpurs.selftest: resampler (yard rule + even split), berth, dry-span reduction; two yards deterministic with their 0.16 m slab; Tarkhan siding 92 spans / 184 rails / 276 sleepers / 1 stop bedded with no gap to the map edge, then ${RAIL_OPEN_KIT_M / RAIL_SPUR_LAY_M} spans on the open line past the edge (no record); ${junctionSummary}; ${MAP_IDS.length - 2 - clearanceMaps} other layouts carry no spur, ${clearanceMaps} a clearance-berth line`);

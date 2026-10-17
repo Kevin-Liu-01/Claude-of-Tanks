@@ -1,14 +1,16 @@
 // Round 75 (2026-09-26): the yard clutter kit — one merged, instance-ready geometry per dressing family for the
-// planner's placements (world/yardDressing.ts). Pallets, crates and cable drums ride the wood atlas; drums, fuel
-// tanks and skips the painted-steel atlas (white vertex paint, so an instance colour is the livery; hoops, saddles
-// and lugs darker); tyre stacks the matte vertex-coloured bucket. Every piece stands on y = 0 in its own frame and
-// keeps inside the planner's family radius. First-party generated geometry; no model is loaded.
+// planner's placements (world/yardDressing.ts). Since props lane A's #2 (2026-10-14) every family is built from the
+// map's own clutter forms (its pallets, crates and cable drums; drums, tanks and skips painted pale, so the instance
+// colour is the livery) on the vertex-colour material. Every piece stands on y = 0 in its own frame and keeps inside
+// the planner's family radius. First-party generated geometry; no model is loaded.
 
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { box } from '../propGeometry.ts';
-import { BOX_FACE, STEEL_STRIP_V, mapBoxFaceUv, mapSheetUv, stripSpanU } from '../propsSteelAtlas.ts';
+import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { YardFamily } from '../yardDressing.ts';
+import { hexLin, mul, type Mesh as CraftMesh, type Rgb, type V3 } from './craftMesh.ts';
+import { bar, crateNear, drumNear, extrude, finish, lathe, newMesh, palletNear, place, tip, type PalletForm } from './clutterForms.ts';
+import { spoolNear } from './clutterLooseForms.ts';
+import { crateFormOf, palletFormOf, spoolFormOf } from './clutterKit.ts';
 
 export type YardMaterial = 'steel' | 'wood' | 'baked';
 
@@ -38,38 +40,6 @@ export const YARD_LIVERIES: Readonly<Record<'brownfield' | 'polar' | 'martian', 
   },
 });
 
-const _color = new THREE.Color();
-
-function paintFlat(geo: THREE.BufferGeometry, value: number): THREE.BufferGeometry {
-  const n = geo.attributes.position.count;
-  const colors = new Float32Array(n * 3).fill(value);
-  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  return geo;
-}
-
-function paintHex(geo: THREE.BufferGeometry, hex: number): THREE.BufferGeometry {
-  _color.set(hex);
-  const n = geo.attributes.position.count;
-  const colors = new Float32Array(n * 3);
-  for (let i = 0; i < n; i++) { colors[i * 3] = _color.r; colors[i * 3 + 1] = _color.g; colors[i * 3 + 2] = _color.b; }
-  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  return geo;
-}
-
-/** A box on the plain sheet strip, every face at 84 px/m from an atlas position (metres) of its own. */
-function sheetBox(w: number, h: number, d: number, atU = 0.5): THREE.BoxGeometry {
-  const geo = new THREE.BoxGeometry(w, h, d);
-  const plain = STEEL_STRIP_V.plain;
-  const spanV = (m: number): readonly [number, number] => [plain[0], plain[0] + (plain[1] - plain[0]) * Math.min(1, m / 2.6)];
-  mapBoxFaceUv(geo, BOX_FACE.px, stripSpanU(atU, d), spanV(h));
-  mapBoxFaceUv(geo, BOX_FACE.nx, stripSpanU(atU, d), spanV(h));
-  mapBoxFaceUv(geo, BOX_FACE.pz, stripSpanU(atU, w), spanV(h));
-  mapBoxFaceUv(geo, BOX_FACE.nz, stripSpanU(atU, w), spanV(h));
-  mapBoxFaceUv(geo, BOX_FACE.py, stripSpanU(atU, d), spanV(w), true);
-  mapBoxFaceUv(geo, BOX_FACE.ny, stripSpanU(atU, d), spanV(w), true);
-  return geo;
-}
-
 function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
   const expanded = parts.map((geo) => (geo.index ? geo.toNonIndexed() : geo));
   const merged = mergeGeometries(expanded, false);
@@ -80,207 +50,220 @@ function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
   return merged;
 }
 
-// ---------------------------------------------------------------------------------------------- wood
+// ---------------------------------------------------------------------------------------------- the map's own forms
+// (props lane A, family #2, 2026-10-14; WORKLIST.md #2: "tyres as tori with shoulders and tread; skips with ribs,
+// lifting lugs and chains; fuel tanks on saddles with bands and fittings") — each family built from the clutter kinds'
+// forms in the map's make (its pallets, its crates, its cable drums: clutterKit.ts), on the vertex-colour material; the
+// steel families painted pale so the instance livery is their paint.
 
-/** One pallet in its frame: deck, three stringers, two bottom boards; 1.2 x 0.144 x 1.0 m. */
-function pallet(dx: number, dz: number, yaw: number, y: number): THREE.BufferGeometry[] {
-  const parts: THREE.BufferGeometry[] = [];
-  const place = (g: THREE.BufferGeometry, ox: number, oy: number, oz: number): void => {
-    g.translate(ox, oy, oz);
-    g.rotateY(yaw);
-    g.translate(dx, y, dz);
-    parts.push(g);
-  };
-  place(box(1.2, 0.022, 1.0, 0.9), 0, 0.133, 0);
-  for (const sx of [-0.55, 0, 0.55]) place(box(0.1, 0.1, 1.0, 0.9), sx, 0.072, 0);
-  for (const sz of [-0.42, 0.42]) place(box(1.2, 0.022, 0.12, 0.9), 0, 0.011, sz);
-  return parts;
+const WHITE = hexLin(0xd8d8d4), HOOP = hexLin(0x8a8a86), HEAD = hexLin(0xc8c8c4);
+const YARD_DRUM = { shell: WHITE, hoop: HOOP, head: HEAD, rust: 0.12 };
+const RUBBER = hexLin(0x1e1f20);
+
+function at(g: THREE.BufferGeometry, yaw: number, x: number, y: number, z: number, s = 1): THREE.BufferGeometry {
+  if (s !== 1) g.scale(s, s, s);
+  g.rotateY(yaw);
+  g.translate(x, y, z);
+  return g;
 }
 
-function palletStack(count: number): THREE.BufferGeometry {
-  const parts: THREE.BufferGeometry[] = [];
-  for (let k = 0; k < count; k++) {
-    const wobble = Math.sin(k * 2.7) * 0.04, drift = Math.cos(k * 1.9) * 0.03;
-    parts.push(...pallet(wobble, drift, Math.sin(k * 3.1) * 0.06, k * 0.144));
+/** A stacked pallet below the top one: its deck's edge and its blocks or stringers, its bottom boards (the deck's face
+ *  is under the next). `ease` the arrises of its deck and bottom boards (0: the legacy stack's plain slabs). */
+function palletLayer(m: CraftMesh, f: PalletForm, y: number, yaw: number, dx: number, dz: number, ease = 0): void {
+  const from = m.mark, W = f.kind === 'gma' ? 1.22 : 1.2, D = f.kind === 'gma' ? 1.02 : 0.8;
+  bar(m, [-W / 2, y + 0.133, 0], [W / 2, y + 0.133, 0], D, 0.022, [0, 0, 1], f.wood, ease * 0.6, false);
+  // (above the lowest, a pallet's bottom boards lie on the deck under it: its blocks reach down to that deck)
+  const foot = y === 0 ? 0.022 : 0;
+  for (const z of [-D / 2, D / 2]) for (const x of [-W / 2 + 0.07, 0, W / 2 - 0.07]) bar(m, [x, y + foot, z], [x, y + 0.122, z], 0.13, 0.1, [1, 0, 0], f.dark, 0, true);
+  if (y === 0) bar(m, [-W / 2, 0.011, 0], [W / 2, 0.011, 0], D * 0.9, 0.022, [0, 0, 1], mul(f.wood, 0.92), ease * 0.6, false);
+  place(m, from, yaw, dx, 0, dz);
+}
+function palletStack(f: PalletForm, count: number, ease: number): THREE.BufferGeometry {
+  const m = newMesh();
+  for (let k = 0; k + 1 < count; k++) palletLayer(m, f, k * 0.144, Math.sin(k * 3.1) * 0.06, Math.sin(k * 2.7) * 0.04, Math.cos(k * 1.9) * 0.03, ease);
+  const k = count - 1;
+  return merge([finish(m), at(palletNear(f, mulberry(0x9a11e7 + count)), Math.sin(k * 3.1) * 0.06, Math.sin(k * 2.7) * 0.04, k * 0.144, Math.cos(k * 1.9) * 0.03)]);
+}
+/**
+ * (the r2 sweep, 2026-10-16: the stacks graded box share 0.90, their lower pallets' decks, blocks and bottom boards plain
+ * boxes) The stack drawn with its lower pallets' decks and bottom boards eased (6 mm arrises: the slabs were the stack's
+ * area), its record the legacy stack's: Lane C's break path (smallPropBreak.ts breakableSmallProp, PRP-02) makes the
+ * piece's record from every `max(1, floor(n / 400))`-th entry of its position attribute — the hull, the heights and the
+ * centre of those samples — so the drawn stack is indexed over a pool of the legacy stack's length whose sampled entries
+ * keep the legacy positions (the record, the clutter's centre and reach byte for byte); a drawn vertex standing on a
+ * sample takes that entry, the rest take the others.
+ */
+function palletStackOf(mapId: string | undefined, count: number): THREE.BufferGeometry {
+  const f = (mapId && palletFormOf(mapId)) || palletFormOf('railyard')!;
+  const legacy = palletStack(f, count, 0), eased = palletStack(f, count, 0.01), drawn = mergeVertices(eased);
+  const pooled = withRecordOf(legacy, drawn);
+  legacy.dispose(); eased.dispose(); drawn.dispose();
+  return pooled;
+}
+
+/** `drawn` (indexed, its shared corners welded) indexed over a pool of `legacy`'s length whose record samples (every
+ *  stride-th entry) keep `legacy`'s positions. */
+function withRecordOf(legacy: THREE.BufferGeometry, drawn: THREE.BufferGeometry): THREE.BufferGeometry {
+  const lp = legacy.getAttribute('position'), size = lp.count, s = Math.max(1, Math.floor(size / 400));
+  const names = Object.keys(drawn.attributes), dp = drawn.getAttribute('position'), verts = dp.count;
+  const key = (x: number, y: number, z: number) => `${Math.fround(x)},${Math.fround(y)},${Math.fround(z)}`;
+  // the samples by position (the unassigned ones a drawn vertex standing there may take)
+  const open = new Map<string, number[]>();
+  for (let slot = 0; slot < size; slot += s) {
+    const k = key(lp.getX(slot), lp.getY(slot), lp.getZ(slot));
+    const list = open.get(k);
+    if (list) list.push(slot); else open.set(k, [slot]);
   }
-  return merge(parts);
-}
-
-function crates(): THREE.BufferGeometry {
-  const parts: THREE.BufferGeometry[] = [];
-  const crate = (s: number, h: number, dx: number, dy: number, dz: number, yaw: number): void => {
-    const body = box(s, h, s, 1.0);
-    const pieces = [body];
-    for (const [cx, cz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
-      pieces.push(box(0.07, h + 0.02, 0.07, 1.0).translate(cx * (s / 2 - 0.02), 0, cz * (s / 2 - 0.02)));
-    }
-    for (const g of pieces) { g.translate(0, h / 2, 0); g.rotateY(yaw); g.translate(dx, dy, dz); parts.push(g); }
-  };
-  crate(0.95, 0.85, 0, 0, 0, 0);
-  crate(0.8, 0.7, 0.12, 0.85, -0.06, 0.22);
-  crate(0.6, 0.6, 0.74, 0, 0.12, 0); // a third beside the stack, inside the 1.1 m planning radius
-  return merge(parts);
-}
-
-function cableDrum(): THREE.BufferGeometry {
-  const parts: THREE.BufferGeometry[] = [];
-  for (const sx of [-0.45, 0.45]) {
-    const flange = new THREE.CylinderGeometry(0.76, 0.76, 0.07, 14, 1);
-    scaleCylinderUv(flange, 2.4, 0.07);
-    flange.rotateZ(Math.PI / 2);
-    flange.translate(sx, 0.76, 0);
-    parts.push(flange);
+  const slotOf = new Int32Array(verts).fill(-1), taken = new Uint8Array(size);
+  for (let v = 0; v < verts; v++) {
+    const list = open.get(key(dp.getX(v), dp.getY(v), dp.getZ(v)));
+    const slot = list?.pop();
+    if (slot !== undefined) { slotOf[v] = slot; taken[slot] = 1; }
   }
-  const core = new THREE.CylinderGeometry(0.38, 0.38, 0.86, 10, 1);
-  scaleCylinderUv(core, 2.4, 0.86);
-  core.rotateZ(Math.PI / 2);
-  core.translate(0, 0.76, 0);
-  parts.push(core);
-  for (const sx of [-0.45, 0.45]) { // the two battens the drum's flanges stand on
-    parts.push(box(0.2, 0.12, 1.7, 1.0).translate(sx, 0.06, 0));
+  let free = 0;
+  for (let v = 0; v < verts; v++) {
+    if (slotOf[v] >= 0) continue;
+    while (free < size && (free % s === 0 || taken[free])) free++;
+    if (free >= size) throw new Error(`yard clutter: the record pool of ${size} cannot hold the stack's ${verts} vertices`);
+    slotOf[v] = free; taken[free] = 1;
   }
-  return merge(parts);
-}
-
-/** World-metre UVs for the wood atlas on a cylinder (u around, v along), the props 0.5 uv/m convention. */
-function scaleCylinderUv(geo: THREE.CylinderGeometry, circumferenceM: number, lengthM: number): void {
-  const uv = geo.attributes.uv;
-  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * circumferenceM * 0.5, uv.getY(i) * lengthM * 0.5);
-}
-
-// ---------------------------------------------------------------------------------------------- steel
-
-/** A 200-litre drum: shell and two rolling hoops on the plain sheet strip; white paint takes the instance livery. */
-function drum(dx: number, dz: number, yaw: number, shade: number): THREE.BufferGeometry[] {
-  const parts: THREE.BufferGeometry[] = [];
-  const shell = new THREE.CylinderGeometry(0.29, 0.29, 0.88, 12, 1);
-  mapSheetUv(shell, 1.82, 0.88);
-  paintFlat(shell, shade);
-  shell.translate(0, 0.44, 0);
-  parts.push(shell);
-  for (const hy of [0.24, 0.64]) {
-    const hoop = new THREE.CylinderGeometry(0.305, 0.305, 0.05, 12, 1, true);
-    mapSheetUv(hoop, 1.9, 0.05);
-    paintFlat(hoop, shade * 0.62);
-    hoop.translate(0, hy, 0);
-    parts.push(hoop);
+  const out = new THREE.BufferGeometry();
+  for (const name of names) {
+    const a = drawn.getAttribute(name), k = a.itemSize, data = new Float32Array(size * k);
+    // (an entry no drawn vertex takes: a sample keeps its legacy position, every other attribute the first vertex's)
+    for (let slot = 0; slot < size; slot++) for (let c = 0; c < k; c++) data[slot * k + c] = a.array[c];
+    for (let v = 0; v < verts; v++) for (let c = 0; c < k; c++) data[slotOf[v] * k + c] = a.array[v * k + c];
+    if (name === 'position') for (let slot = 0; slot < size; slot += s) { data[slot * 3] = lp.getX(slot); data[slot * 3 + 1] = lp.getY(slot); data[slot * 3 + 2] = lp.getZ(slot); }
+    out.setAttribute(name, new THREE.BufferAttribute(data, k));
   }
-  for (const g of parts) { g.rotateY(yaw); g.translate(dx, 0, dz); }
-  return parts;
+  const di = drawn.getIndex()!, index = new Uint32Array(di.count);
+  for (let i = 0; i < di.count; i++) index[i] = slotOf[di.getX(i)];
+  out.setIndex(new THREE.BufferAttribute(index, 1));
+  out.computeBoundingBox();
+  out.computeBoundingSphere();
+  return out;
 }
 
-function drumRank(): THREE.BufferGeometry {
-  return merge([...drum(-0.66, 0, 0.2, 1), ...drum(0, 0.04, 1.1, 0.86), ...drum(0.66, -0.02, 2.3, 0.72)]);
+function cratesOf(mapId: string | undefined): THREE.BufferGeometry {
+  const f = (mapId && crateFormOf(mapId)) || crateFormOf('railyard')!;
+  const rng = mulberry(0xc7a7e5);
+  return merge([
+    crateNear(f, rng),
+    at(crateNear(f, rng), 0.22, 0.08, f.h, -0.04, 0.82),
+    at(crateNear(f, rng), 0, 0.76, 0, 0.12, 0.62),
+  ]);
 }
 
-function tyres(): THREE.BufferGeometry {
-  const parts: THREE.BufferGeometry[] = [];
+function cableDrumOf(mapId: string | undefined): THREE.BufferGeometry {
+  // (the kind's cable drum a tenth larger: the yard's 1.5 m drum, inside the family's 0.9 m reach)
+  return at(spoolNear(spoolFormOf(mapId ?? 'railyard'), mulberry(0x5b001)), 0, 0, 0, 0, 1.1);
+}
+
+function drumOf(): THREE.BufferGeometry {
+  return drumNear(YARD_DRUM, mulberry(0xd2a1));
+}
+function drumRankOf(): THREE.BufferGeometry {
+  const shade = (k: number) => ({ shell: mul(WHITE, k), hoop: mul(HOOP, k), head: mul(HEAD, k), rust: 0.12 });
+  return merge([at(drumNear(shade(1), mulberry(1), true), 0.2, -0.66, 0, 0), at(drumNear(shade(0.86), mulberry(2), true), 1.1, 0, 0, 0.04),
+    at(drumNear(shade(0.72), mulberry(3), true), 2.3, 0.66, 0, -0.02)]);
+}
+
+/** Four tyres stacked flat, each its own wear: their treads and shoulders, the top one's sidewall and bead, the bead
+ *  wall down the stack's hole. */
+function tyresOf(): THREE.BufferGeometry {
+  const m = newMesh();
   for (let k = 0; k < 4; k++) {
-    const y = k * 0.26 + 0.13, dx = Math.sin(k * 2.1) * 0.05, dz = Math.cos(k * 1.7) * 0.05;
-    const outer = new THREE.CylinderGeometry(0.5, 0.5, 0.26, 12, 1, true);
-    const inner = new THREE.CylinderGeometry(0.29, 0.29, 0.26, 10, 1, true);
-    // the inner ring faces inward so the hole reads from above; the top annulus stays open
-    const flipped = inner.toNonIndexed();
-    const index = new Uint16Array(flipped.attributes.position.count);
-    for (let i = 0; i < index.length; i += 3) { index[i] = i; index[i + 1] = i + 2; index[i + 2] = i + 1; }
-    flipped.setIndex(new THREE.BufferAttribute(index, 1));
-    flipped.computeVertexNormals();
-    for (const g of [outer, flipped]) { paintHex(g, 0x141516); g.rotateY(k * 0.9); g.translate(dx, y, dz); parts.push(g); }
+    const y = k * 0.26, top = k === 3;
+    const prof: Array<[number, number]> = [[0.48, y], [0.5, y + 0.06], [0.5, y + 0.2], [0.48, y + 0.26]];
+    if (top) prof.push([0.31, y + 0.25], [0.29, y + 0.2]);
+    lathe(m, prof, 9, (j, b) => mul(RUBBER, (b === 1 ? (j % 2 ? 0.8 : 1.1) : 0.95) * (0.92 + k * 0.04)), { phase: k * 0.9 });
   }
-  return merge(parts);
+  lathe(m, [[0.29, 0.98], [0.3, 0.0]], 9, () => mul(RUBBER, 0.6), { phase: 3 * 0.9 });
+  return finish(m);
 }
 
-function fuelTank(): THREE.BufferGeometry {
-  const parts: THREE.BufferGeometry[] = [];
-  const shell = new THREE.CylinderGeometry(0.9, 0.9, 4.4, 14, 1);
-  mapSheetUv(shell, 5.65, 4.4);
-  paintFlat(shell, 1);
-  shell.rotateX(Math.PI / 2);
-  shell.translate(0, 1.25, 0);
-  parts.push(shell);
-  for (const sz of [-1.45, 1.45]) {
-    const saddle = sheetBox(2.0, 0.5, 0.42, 1.2);
-    paintFlat(saddle, 0.42);
-    saddle.translate(0, 0.25, sz);
-    parts.push(saddle);
-    const cradle = sheetBox(0.16, 0.65, 0.42, 1.3);
-    paintFlat(cradle, 0.42);
-    cradle.translate(0, 0.62, sz);
-    parts.push(cradle);
+/** The fuel tank on its two saddles: the shell with its dished ends and two bands, the manway and the filler neck on top. */
+function fuelTankOf(): THREE.BufferGeometry {
+  const m = newMesh();
+  const R = 0.9, L = 2.15;
+  const from = m.mark;
+  lathe(m, [[0, -L - 0.2], [0.55, -L - 0.15], [0.85, -L - 0.05], [R, -L], [R, L], [0.85, L + 0.05], [0.55, L + 0.15], [0, L + 0.2]], 12,
+    (_k, b) => (b === 3 ? WHITE : mul(WHITE, 0.94)), {});
+  for (const z of [-1.45, 1.45]) lathe(m, [[R + 0.012, z - 0.05], [R + 0.012, z + 0.05]], 12, () => HOOP, {});
+  tip(m, from, [0, 0, 0], [1, 0, 0], Math.PI / 2);
+  place(m, from, 0, 0, 1.25, 0);
+  for (const z of [-1.45, 1.45]) {
+    extrude(m, [0, 0, z - 0.2], [0, 0, z + 0.2], [[-0.95, 0], [0.95, 0], [0.95, 0.1], [0.6, 0.62], [-0.6, 0.62], [-0.95, 0.1]], [1, 0, 0], [0, 1, 0], mul(HOOP, 0.8), mul(HOOP, 0.7));
   }
-  const neck = new THREE.CylinderGeometry(0.14, 0.14, 0.34, 8, 1);
-  mapSheetUv(neck, 0.9, 0.34);
-  paintFlat(neck, 0.5);
-  neck.translate(0, 2.2, 0.9);
-  parts.push(neck);
-  const manway = new THREE.CylinderGeometry(0.3, 0.3, 0.1, 10, 1);
-  mapSheetUv(manway, 1.9, 0.1);
-  paintFlat(manway, 0.55);
-  manway.translate(0, 2.15, -0.7);
-  parts.push(manway);
-  return merge(parts);
+  lathe(m, [[0.3, 2.13], [0.3, 2.2], [0.26, 2.23], [0, 2.24]], 8, () => HOOP, { z: -0.7 });
+  lathe(m, [[0.08, 2.1], [0.08, 2.35], [0.11, 2.35], [0.11, 2.4], [0, 2.41]], 6, () => mul(HOOP, 0.9), { z: 0.9 });
+  return finish(m);
 }
 
-function skip(): THREE.BufferGeometry {
-  const parts: THREE.BufferGeometry[] = [];
-  const body = sheetBox(3.2, 1.35, 1.6, 0.2);
-  const position = body.attributes.position;
-  for (let i = 0; i < position.count; i++) {
-    if (position.getY(i) > 0) position.setXYZ(i, position.getX(i) * 1.07, position.getY(i), position.getZ(i) * 1.08);
+/** The skip: its sloped-end steel body open at the top with its contents in it, the ribs down its sides, the lifting
+ *  lugs at its ends, the skid runners. */
+function skipOf(): THREE.BufferGeometry {
+  const m = newMesh();
+  const uv: [number, number] = [0.5, 0.5];
+  const B = 1.3, T = 1.72, H = 1.35, D = 0.82, y0 = 0.12, t = 0.04;
+  const q = (a: V3, b: V3, c: V3, d: V3, n: V3, col: Rgb) => m.quad(a, b, c, d, n, () => uv, () => col, false);
+  const body = WHITE, inner = mul(WHITE, 0.45);
+  for (const sz of [-1, 1]) {
+    q([-B, y0, sz * D], [B, y0, sz * D], [T, y0 + H, sz * D], [-T, y0 + H, sz * D], [0, 0, sz], body);
+    q([-B + t, y0 + t, sz * (D - t)], [B - t, y0 + t, sz * (D - t)], [T - t, y0 + H, sz * (D - t)], [-T + t, y0 + H, sz * (D - t)], [0, 0, -sz], inner);
+    q([-T, y0 + H, sz * D], [T, y0 + H, sz * D], [T - t, y0 + H, sz * (D - t)], [-T + t, y0 + H, sz * (D - t)], [0, 1, 0], mul(body, 0.9));
+    for (const x of [-0.75, 0, 0.75]) bar(m, [x, y0 + 0.05, sz * (D + 0.02)], [x * (T / B), y0 + H - 0.05, sz * (D + 0.02)], 0.06, 0.04, [1, 0, 0], mul(body, 0.82), 0, true);
   }
-  body.computeVertexNormals();
-  paintFlat(body, 1);
-  body.translate(0, 0.675 + 0.12, 0);
-  parts.push(body);
-  for (const [w, d, dx, dz] of [[3.5, 0.1, 0, 0.9], [3.5, 0.1, 0, -0.9], [0.1, 1.85, 1.75, 0], [0.1, 1.85, -1.75, 0]] as const) {
-    const lip = sheetBox(w, 0.08, d, 2.0);
-    paintFlat(lip, 0.5);
-    lip.translate(dx, 1.5, dz);
-    parts.push(lip);
+  const slope = Math.atan2(T - B, H);
+  for (const sx of [-1, 1]) {
+    q([sx * B, y0, -D], [sx * B, y0, D], [sx * T, y0 + H, D], [sx * T, y0 + H, -D], [sx * Math.cos(slope), -Math.sin(slope), 0], body);
+    q([sx * (B - t), y0 + t, -D + t], [sx * (B - t), y0 + t, D - t], [sx * (T - t), y0 + H, D - t], [sx * (T - t), y0 + H, -D + t], [-sx * Math.cos(slope), Math.sin(slope), 0], inner);
+    q([sx * T, y0 + H, -D], [sx * T, y0 + H, D], [sx * (T - t), y0 + H, D - t], [sx * (T - t), y0 + H, -D + t], [0, 1, 0], mul(body, 0.9));
+    // the lifting lug on the end, and the runner under it
+    bar(m, [sx * (T * 0.82 + 0.05), y0 + H * 0.55, -0.18], [sx * (T * 0.82 + 0.05), y0 + H * 0.55, 0.18], 0.08, 0.3, [1, 0, 0], mul(body, 0.75));
+    bar(m, [sx * (B - 0.15), 0.06, -0.75], [sx * (B - 0.15), 0.06, 0.75], 0.22, 0.12, [1, 0, 0], mul(body, 0.6));
   }
-  for (const sx of [-1.35, 1.35]) { // skid runners
-    const runner = sheetBox(0.25, 0.12, 1.5, 2.2);
-    paintFlat(runner, 0.35);
-    runner.translate(sx, 0.06, 0);
-    parts.push(runner);
+  q([-B + t, y0 + t, -D + t], [B - t, y0 + t, -D + t], [B - t, y0 + t, D - t], [-B + t, y0 + t, D - t], [0, 1, 0], inner);
+  // what it holds: a heap of rubble and scrap to two thirds of its height
+  for (const x of [-0.55, 0.5]) {
+    lathe(m, [[0.74, y0 + t], [0.6, y0 + H * 0.45], [0.3, y0 + H * 0.64], [0, y0 + H * 0.68 + x * 0.05]], 6, (k) => hexLin(k % 2 ? 0x6a645a : 0x575048), { x, phase: x });
   }
-  for (const sx of [-1.68, 1.68]) { // lifting lugs
-    const lug = sheetBox(0.06, 0.32, 0.36, 2.4);
-    paintFlat(lug, 0.45);
-    lug.translate(sx, 1.05, 0);
-    parts.push(lug);
-  }
-  return merge(parts);
+  return finish(m);
 }
+
+const mulberry = (a: number) => () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 
 // ---------------------------------------------------------------------------------------------- catalog
 
-const BUILDERS: Readonly<Record<YardFamily, () => THREE.BufferGeometry>> = Object.freeze({
-  pallets: () => palletStack(3),
-  palletsTall: () => palletStack(6),
-  crates,
-  drum: () => merge(drum(0, 0, 0, 1)),
-  drumRank,
-  cableDrum,
-  tyres,
-  fuelTank,
-  skip,
+const BUILDERS: Readonly<Record<YardFamily, (mapId?: string) => THREE.BufferGeometry>> = Object.freeze({
+  pallets: (mapId) => palletStackOf(mapId, 3),
+  palletsTall: (mapId) => palletStackOf(mapId, 6),
+  crates: cratesOf,
+  drum: drumOf,
+  drumRank: drumRankOf,
+  cableDrum: cableDrumOf,
+  tyres: tyresOf,
+  fuelTank: fuelTankOf,
+  skip: skipOf,
 });
 
+/** Every family on the vertex-colour material (props lane A #2: the forms carry their own tones; the steel families
+ *  paint pale for the livery). */
 export const YARD_FAMILY_MATERIAL: Readonly<Record<YardFamily, YardMaterial>> = Object.freeze({
-  pallets: 'wood', palletsTall: 'wood', crates: 'wood', cableDrum: 'wood',
-  drum: 'steel', drumRank: 'steel', fuelTank: 'steel', skip: 'steel',
+  pallets: 'baked', palletsTall: 'baked', crates: 'baked', cableDrum: 'baked',
+  drum: 'baked', drumRank: 'baked', fuelTank: 'baked', skip: 'baked',
   tyres: 'baked',
 });
 
-/** Triangle caps the receipt holds each family to (a stack of six pallets is the largest wooden piece). */
+/** Triangle caps the receipt holds each family to (a stack of six pallets is the largest wooden piece; the r2 sweep's
+ *  eased decks, 2026-10-16, +48 a stack of three, +96 of six). */
 export const YARD_FAMILY_TRIANGLE_CAP: Readonly<Record<YardFamily, number>> = Object.freeze({
-  pallets: 240, palletsTall: 480, crates: 200, drum: 110, drumRank: 320, cableDrum: 200, tyres: 220, fuelTank: 200, skip: 140,
+  pallets: 420, palletsTall: 650, crates: 620, drum: 210, drumRank: 340, cableDrum: 300, tyres: 300, fuelTank: 320, skip: 220,
 });
 
-/** Build one family's geometry (the caller owns and disposes it; one per family per battlefield). */
-export function buildYardFamily(family: YardFamily): YardFamilyGeometry {
-  const geometry = BUILDERS[family]();
+/** Build one family's geometry in the map's forms (the caller owns and disposes it; one per family per battlefield). */
+export function buildYardFamily(family: YardFamily, mapId?: string): YardFamilyGeometry {
+  const geometry = BUILDERS[family](mapId);
   const position = geometry.getAttribute('position');
   return { family, material: YARD_FAMILY_MATERIAL[family], geometry, triangles: Math.floor((geometry.index?.count ?? position.count) / 3) };
 }

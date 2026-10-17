@@ -13,7 +13,7 @@ import { GAME_MODE_IDS } from '../../sim/matchModes.ts';
 import { assaultTrenchCarveDepth } from '../../sim/assaultLines.ts';
 import { createHeightField } from '../../world/terrain.ts';
 import { getMapConfig } from '../../world/maps/index.ts';
-import { loadCollisionWorld, collisionManifestFileName } from './worldCollision.ts';
+import { COLLISION_MANIFEST_ROUTE, loadCollisionWorld, collisionManifestFileName } from './worldCollision.ts';
 import { createAuthorityObstacles } from '../presentation/authorityObstacles.ts';
 
 const MAP = 'verdant';
@@ -52,8 +52,8 @@ assert.ok((variantKinds.barbedwire ?? 0) > (baseKinds.barbedwire ?? 0) && (varia
 // ---- the authority on it: the sectors on the carved lines (the plan lays its lines at the axis fractions, so the base
 // world's fallback stands at the same points: what it lacked was the dug ground and the works round them)
 const players = [
-  { id: 'a', specId: 'm1a2', team: 'alpha' },
-  { id: 'b', specId: 't90m', team: 'bravo' },
+  { id: 'a', specId: 'm1a1_abrams_hc', team: 'alpha' },
+  { id: 'b', specId: 't90am', team: 'bravo' },
 ];
 const sectors = (world) => {
   const match = createAuthoritativeMatch({ mapId: MAP, seed: 4, countdownS: 0, gameMode: 'frontline_assault', worldCollision: world, players });
@@ -77,8 +77,8 @@ const index = JSON.parse(readFileSync(new URL('index.json', directory), 'utf8'))
 const entry = index.variants?.[VARIANT]?.[MAP];
 assert.ok(entry, 'the index lists the variant');
 const served = new Map([
-  ['/mp-collision/index.json', readFileSync(new URL('index.json', directory))],
-  [`/mp-collision/${collisionManifestFileName(MAP, entry.sha256, VARIANT)}`, readFileSync(new URL(`${MAP}@${VARIANT}.json`, directory))],
+  [`${COLLISION_MANIFEST_ROUTE}/index.json`, readFileSync(new URL('index.json', directory))],
+  [`${COLLISION_MANIFEST_ROUTE}/${collisionManifestFileName(MAP, entry.sha256, VARIANT)}`, readFileSync(new URL(`${MAP}@${VARIANT}.json`, directory))],
 ]);
 assert.equal(collisionManifestFileName(MAP, entry.sha256, VARIANT), `${MAP}@${VARIANT}.${entry.sha256.slice(0, 12)}.json`);
 const fetchImpl = async (url) => {
@@ -86,7 +86,7 @@ const fetchImpl = async (url) => {
   return { ok: !!bytes, status: bytes ? 200 : 404, arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength),
     json: async () => JSON.parse(bytes.toString('utf8')) };
 };
-const hosted = await loadCollisionWorld(MAP, '/mp-collision', { fetchImpl, variant: VARIANT });
+const hosted = await loadCollisionWorld(MAP, COLLISION_MANIFEST_ROUTE, { fetchImpl, variant: VARIANT });
 assert.equal(hosted.getObstacles().length, trenches.getObstacles().length, 'the browser host plays the same records');
 assert.ok(hosted.getObstacles().every((r, i) => r.kind === trenches.getObstacles()[i].kind
   && r.min.every((v, k) => v === trenches.getObstacles()[i].min[k])));

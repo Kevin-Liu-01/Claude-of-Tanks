@@ -15,8 +15,9 @@ const loader = registerHooks({ load(url, context, nextLoad) {
   if (url !== target) return loaded;
   const source = loaded.source.toString();
   const gate = 'if (!geometryOnly && CAMO_BUCKETS.has(bucket)) {';
-  // round 35 (2026-09-21): the bucket painter projects at the fleet constant (camoWorldScale.ts)
-  const paint = '      boxUV(merged, CAMO_UV_REPEATS_PER_M);';
+  // round 35 (2026-09-21): the bucket painter projects at the fleet constant (camoWorldScale.ts); camo r4c
+  // (bacd46c57) paints each face by its own box projection (faceBoxUV)
+  const paint = '      faceBoxUV(merged, CAMO_UV_REPEATS_PER_M);';
   assert.equal(source.split(gate).length, 2, 'one production non-rendering paint gate');
   assert.equal(source.split(paint).length, 2, 'observe the actual bucket painter');
   hooks++;
@@ -35,10 +36,10 @@ try {
   const { bakeTankWreck } = await import('./wrecks.ts');
   assert.equal(hooks, 1);
   const fixtures = [
-    { specId: 't90m', seed: 2526, pop: false },
-    { specId: 'k2', seed: 2002, pop: true },
+    { specId: 't90am', seed: 2526, pop: false },
+    { specId: 'xk2_black_panther', seed: 2002, pop: true },
     { specId: 'm1a1', seed: 2002, pop: true },
-    { specId: 'type10', seed: 2133, pop: true },
+    { specId: 'type10_tk_x', seed: 2133, pop: true },
   ];
   const receipts = [];
   for (const fixture of fixtures) {
@@ -68,7 +69,7 @@ try {
   // Geometry-receipt inspection deliberately avoids Canvas but retains the
   // default rendered mode. Its UV/dirt behavior must remain default-on.
   reset(false);
-  const inspection = createTank('t90m', null, {
+  const inspection = createTank('t90am', null, {
     quality: 'low', geometryQuality: 'low', geometryReceipt: true,
     proceduralOnly: true, eraVisualBindingReceipt: false,
   });
@@ -143,15 +144,15 @@ try {
     assert.ok(geometries.length > 0 && materials.length > 0, 'actual Garage donor has transferable content');
     return { hierarchy, geometries, materials };
   };
-  await ensureTankBuilder('m1a2');
+  await ensureTankBuilder('m1a1_abrams_hc');
   let oldGarage, newGarage;
   try {
     reset(true);
-    oldGarage = createTank('m1a2', {}, garageOptions);
+    oldGarage = createTank('m1a1_abrams_hc', {}, garageOptions);
     const expectedGarage = garageSnapshot(oldGarage.root);
     assert.ok(state.bucketCalls > 0 && state.paintedRows > 1000, 'old Garage worker path performs bucket paint');
     reset(false);
-    newGarage = createTank('m1a2', {}, garageOptions);
+    newGarage = createTank('m1a1_abrams_hc', {}, garageOptions);
     assert.equal(state.bucketCalls, 0, 'new Garage worker path skips discarded bucket paint');
     assert.equal(state.paintedRows, 0);
     assert.deepEqual(garageSnapshot(newGarage.root), expectedGarage,

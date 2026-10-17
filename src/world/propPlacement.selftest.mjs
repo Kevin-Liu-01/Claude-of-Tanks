@@ -44,12 +44,13 @@ assert.equal(cropRowSegmentIsSupported({ ...cropField,
 
 // Run the actual construction function without a renderer/DOM: clipping may
 // remove indices but must not change seeded variation or add replacement rows.
-const propsSource = await readFile(new URL('./props.ts', import.meta.url), 'utf8');
-const cropRowStart = propsSource.indexOf('  function appendCropRowGeometry(');
-const cropRowEnd = propsSource.indexOf('  function appendCropRows(', cropRowStart);
+// (props lane A, #18b, 2026-10-14: the crop rows' owner is maps/cropKit.ts, extracted from props.ts unchanged)
+const cropSource = await readFile(new URL('./maps/cropKit.ts', import.meta.url), 'utf8');
+const cropRowStart = cropSource.indexOf('  function appendCropRowGeometry(');
+const cropRowEnd = cropSource.indexOf('  function appendCropRows(', cropRowStart);
 assert.ok(cropRowStart > 0 && cropRowEnd > cropRowStart, 'actual crop row builder is covered');
 const makeCropRow = new Function('THREE', 'heightField', 'cropRowSegmentIsSupported',
-  `${stripTypeScriptTypes(propsSource.slice(cropRowStart, cropRowEnd))}\nreturn appendCropRowGeometry;`);
+  `${stripTypeScriptTypes(cropSource.slice(cropRowStart, cropRowEnd))}\nreturn appendCropRowGeometry;`);
 function buildTestCropRow(field) {
   const geos = [];
   let draws = 0;

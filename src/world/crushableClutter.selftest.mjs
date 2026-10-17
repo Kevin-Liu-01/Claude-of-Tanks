@@ -62,6 +62,23 @@ assert.deepEqual(mesh.instanceMatrix.array.slice(0,16),matrices.slice(0,16),'nei
 assert.ok(Math.abs(mesh.instanceMatrix.array[29]-10.02)<1e-5);
 rock.setCrushed(false);assert.deepEqual(mesh.instanceMatrix.array,matrices);
 assert.equal(soloShell([rockShell]),rockShell,'solo: a rematch stands the stone and its cover again');
+// (the hitbox lane, 2026-10-10) a stone's pressed pose and its crush hooks: crushedStones.ts lays the pose (the stone split
+// and pressed into its ground) and the hooks lay its flakes, chips and scuff, and take them back on a rematch
+{
+  const pressed=new CrushableClutter('small-rock',3,10,4,1.5,2,[obstacle('small-rock')],[obstacle('small-rock')]);
+  const slot=new InstancedMesh(new BoxGeometry(),new MeshBasicMaterial(),1);
+  const home=new Matrix4().makeTranslation(3,9.7,4);
+  slot.setMatrixAt(0,home);pressed.bindInstance(slot,0);
+  const pose=new Matrix4().makeTranslation(3,9.5,4).scale(new Vector3(.8,.4,.8));
+  const near=(a,b)=>a.length===b.length&&a.every((v,i)=>Math.abs(v-b[i])<1e-5);
+  pressed.pressedPose=(standing,out)=>{assert.ok(near(Array.from(standing.elements),home.elements),'the pose reads the standing instance');out.copy(pose);};
+  const heard=[];pressed.crushHooks.push((crushed)=>heard.push(crushed));
+  pressed.setCrushed(true);
+  assert.ok(near(Array.from(slot.instanceMatrix.array),pose.elements),'a crushed stone takes its pressed pose, not the flattening');
+  pressed.setCrushed(false);
+  assert.ok(near(Array.from(slot.instanceMatrix.array),home.elements),'a rematch stands it again');
+  assert.deepEqual(heard,[true,false],'the hooks hear the crush and the rematch');
+}
 
 // Drive real captured compound/convex/circle records through the authoritative
 // movement + damage + replication path, on level ground to isolate the impact.
@@ -73,12 +90,12 @@ for(const kind of ['rubble','hedgehog','small-rock']) {
   assert.ok(picked,`native map includes ${kind}`);
   const packet={obstacles:manifest.obstacles.filter(r=>r.p===picked.p),colliders:manifest.colliders.filter(r=>r.p===picked.p)};
   const x=(picked.b[0]+picked.b[3])/2,z=(picked.b[2]+picked.b[5])/2;
-  for(const specId of ['m1a2','m551_sheridan']) for(const direction of [1,-1]) for(const throttle of [.15,1]) {
+  for(const specId of ['m1a1_abrams_hc','m551_sheridan']) for(const direction of [1,-1]) for(const throttle of [.15,1]) {
     const ground={getHeightAt:()=>picked.b[1],getGroundType:()=> 'hard',getNormalAt:()=>new Vector3(0,1,0)};
     const world=createHeadlessCollisionWorld({mapId:'verdant',heightField:ground,manifest:packet});
     const match=createAuthoritativeMatch({mapId:'verdant',countdownS:0,worldCollision:world,players:[
       {id:'driver',specId,team:'alpha',spawn:{x,z:z-12*direction,yaw:0}},
-      {id:'other',specId:'m1a2',team:'bravo',spawn:{x:x+80,z:z+80,yaw:0}},
+      {id:'other',specId:'m1a1_abrams_hc',team:'bravo',spawn:{x:x+80,z:z+80,yaw:0}},
     ]});
     match.onMatchReady();
     const tank=match.entityById.get('driver');

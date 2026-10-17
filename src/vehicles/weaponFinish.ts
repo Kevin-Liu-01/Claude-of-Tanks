@@ -44,6 +44,12 @@ export interface WeaponWearParams {
   chipLo: number;
   chipHi: number;
   reachWeight: number;
+  /** Settled dust (linear colour) on the upward faces, broken up by the phosphate's patch field (round 4). */
+  dustColor: [number, number, number];
+  /** The dust's strength on a level, upward face (0..1). */
+  dust: number;
+  /** Grime darkening the downward faces and undersides (0..1). */
+  grime: number;
 }
 const linearRgb = (hex: number): [number, number, number] => { const c = new THREE.Color(hex); return [c.r, c.g, c.b]; };
 /** Two faces meeting at more than this angle make a crease edge (a 16-sided tube's facets meet at 22.5 degrees). */
@@ -227,6 +233,8 @@ uniform float uWeaponWornMetalness;
 uniform float uWeaponWearCore;
 uniform float uWeaponWearReach;
 uniform vec3 uWeaponChip;
+uniform vec4 uWeaponDust;
+uniform float uWeaponGrime;
 varying vec3 vWeaponEdgeBary;
 varying vec3 vWeaponEdgeInvH;
 float weaponEdgeDistance() {
@@ -254,7 +262,23 @@ float weaponWear = 0.0;
 		float resolve = clamp( ( uWeaponWearCore / px - 0.6 ) / 1.2, 0.0, 1.0 );
 		weaponWear = max( core, chipped * reach ) * resolve;
 	}
-}`;
+}
+// round 4 (2026-10-11; the critics: "no edge wear, dust or grime anywhere"; the coordinator: on guns, mounts and
+// ammunition only): settled dust on the upward faces, broken up by the albedo's patch field and rubbed off the worn
+// edges, and grime darkening the downward faces and undersides
+float weaponDust = 0.0, weaponGrime = 0.0;
+#ifndef FLAT_SHADED
+{
+	vec3 weaponUpView = normalize( ( viewMatrix * vec4( 0.0, 1.0, 0.0, 0.0 ) ).xyz );
+	float weaponUp = dot( normalize( vNormal ), weaponUpView );
+	float weaponMottle = 0.9;
+	#ifdef USE_MAP
+	weaponMottle = texture2D( map, vMapUv * 0.37 ).g;
+	#endif
+	weaponDust = uWeaponDust.w * smoothstep( 0.25, 0.9, weaponUp ) * clamp( 0.4 + ( 1.0 - weaponMottle ) * 4.0, 0.0, 1.0 ) * ( 1.0 - weaponWear );
+	weaponGrime = uWeaponGrime * smoothstep( 0.1, -0.8, weaponUp );
+}
+#endif`;
 
 /** Install the crease-edge wear on a weapon-finish material (wraps its existing compile hook, like applyBurnHook). */
 export function installWeaponEdgeWear(material: THREE.MeshStandardMaterial, params: WeaponWearParams): void {
@@ -266,6 +290,7 @@ export function installWeaponEdgeWear(material: THREE.MeshStandardMaterial, para
   const live = (): WeaponWearParams => material.userData.weaponWear as WeaponWearParams;
   const wornColor = new THREE.Color();
   const chip = new THREE.Vector3();
+  const dust = new THREE.Vector4();
   material.onBeforeCompile = function (shader, renderer) {
     if (prevHook) prevHook.call(this, shader, renderer);
     // getters: three reads a uniform's value at every upload, so the live parameters apply without a recompile
@@ -275,6 +300,8 @@ export function installWeaponEdgeWear(material: THREE.MeshStandardMaterial, para
     shader.uniforms.uWeaponWearCore = { get value() { return live().core; } };
     shader.uniforms.uWeaponWearReach = { get value() { return live().reach; } };
     shader.uniforms.uWeaponChip = { get value() { const p = live(); return chip.set(p.chipLo, p.chipHi, p.reachWeight); } };
+    shader.uniforms.uWeaponDust = { get value() { const p = live(), c = p.dustColor ?? [0, 0, 0]; return dust.set(c[0], c[1], c[2], p.dust ?? 0); } };
+    shader.uniforms.uWeaponGrime = { get value() { return live().grime ?? 0; } };
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>${WEAR_VERTEX_HEAD}`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>
@@ -283,13 +310,14 @@ export function installWeaponEdgeWear(material: THREE.MeshStandardMaterial, para
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>${WEAR_FRAGMENT_HEAD}`)
       .replace('#include <map_fragment>', `#include <map_fragment>${WEAR_FRAGMENT_AMOUNT}
-	diffuseColor.rgb = mix( diffuseColor.rgb, uWeaponWornColor, weaponWear );`)
+	diffuseColor.rgb = mix( diffuseColor.rgb, uWeaponWornColor, weaponWear );
+	diffuseColor.rgb = mix( diffuseColor.rgb, uWeaponDust.rgb, weaponDust ) * ( 1.0 - 0.35 * weaponGrime );`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-	roughnessFactor = mix( roughnessFactor, uWeaponWornRoughness, weaponWear );`)
+	roughnessFactor = mix( mix( roughnessFactor, uWeaponWornRoughness, weaponWear ), 0.92, weaponDust );`)
       .replace('#include <metalnessmap_fragment>', `#include <metalnessmap_fragment>
 	metalnessFactor = mix( metalnessFactor, uWeaponWornMetalness, weaponWear );`);
   };
-  const tag = '|weapon-wear-v2';
+  const tag = '|weapon-wear-v3';
   material.customProgramCacheKey = function () {
     return (typeof prevKey === 'function' ? prevKey.call(this) : '') + tag;
   };
@@ -329,11 +357,13 @@ type CloneVehicleMaterial = <T extends THREE.Material>(source: T, configure?: (c
 export const WEAPON_STEEL_COLOR = 0x1b1c1a;
 export const WEAPON_STEEL_WEAR: Readonly<WeaponWearParams> = Object.freeze({
   wornColor: linearRgb(0x56544e), wornRoughness: 0.45, wornMetalness: 0.75,
-  core: 0.0025, reach: 0.009, chipLo: 0.64, chipHi: 0.72, reachWeight: 0.40,
+  core: 0.0025, reach: 0.009, chipLo: 0.60, chipHi: 0.70, reachWeight: 0.45,
+  dustColor: linearRgb(0x6f6656), dust: 0.32, grime: 0.25,
 });
 export const AMMO_DRAB_WEAR: Readonly<WeaponWearParams> = Object.freeze({
   wornColor: linearRgb(0x66635b), wornRoughness: 0.6, wornMetalness: 0.5,
-  core: 0.002, reach: 0.008, chipLo: 0.68, chipHi: 0.76, reachWeight: 0.35,
+  core: 0.002, reach: 0.008, chipLo: 0.64, chipHi: 0.74, reachWeight: 0.40,
+  dustColor: linearRgb(0x6f6656), dust: 0.26, grime: 0.15,
 });
 export function createWeaponFinishMaterials(
   dark: THREE.MeshStandardMaterial,
@@ -420,7 +450,7 @@ export function prepareWeaponFinishGeometry(geometry: THREE.BufferGeometry,
 // of dark steel"): a vehicle whose main weapon is a machine gun carries a bare steel barrel too (the Ares APC's L111A1
 // 12.7 mm). A main-gun thermal sleeve stays painted.
 const WEAPON_STEEL_MAIN_BARRELS: ReadonlySet<string> = new Set(['m2a2_bradley', 'm3a3_bradley', 'ua_m2a3_bradley', 'm6_linebacker',
-  'ares_apc_x']);
+  'ares_apc']);
 export function mainBarrelIsWeaponSteel(specId: string): boolean { return WEAPON_STEEL_MAIN_BARRELS.has(specId); }
 
 // ---- exact-weapon link -----------------------------------------------------------------------------------------------

@@ -1271,7 +1271,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
      *   movementX straight through therefore panned the camera and slewed the
      *   turret the wrong way on every mouse move (user report: "turning right
      *   with mouse actually turns tank left"; measured before this fix as a
-     *   -0.64 NDC-x bore swing for a +240 px movementX on m1a2, -0.40 on
+     *   -0.64 NDC-x bore swing for a +240 px movementX on m1a1_abrams_hc, -0.40 on
      *   tiger1 — see the direction-aware assertions in tools/controls-probe.mjs).
      *   Hence the negation below: physical mouse-right (movementX > 0) becomes
      *   a yaw DECREASE, which is a screen-RIGHT swing.

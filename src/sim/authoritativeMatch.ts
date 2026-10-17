@@ -1,8 +1,8 @@
 import type { ModeCheckpoint } from './matchModes.ts';
-import { initializeAerial, stepAerial, isGunship, captureAerial, restoreAerial, droneTankAlong, type AerialCheckpoint, type AerialView, type AerialWorldQuery } from './aerialCombat.ts';
+import { initializeAerial, stepAerial, isGunship, captureAerial, restoreAerial, droneTankAlong, strikeDrone, type AerialCheckpoint, type AerialView, type AerialWorldQuery } from './aerialCombat.ts';
 import { setModeWeapon } from './modeLoadout.ts';
 import { packSmokeScreen } from './smokeReceipt.ts';
-import { requestAuxiliary, stepRoofGun, auxiliaryShot, smokeBlocks, type SmokeScreen } from './auxiliarySystems.ts';
+import { requestAuxiliary, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, type SmokeScreen } from './auxiliarySystems.ts';
 import { bridgeBallFloor } from './bridgeBallSupport.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from './launcherPolicy.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
@@ -93,7 +93,7 @@ import type {
 import {
   pushHullFromHull, createHullFootprint, crushableLoadedFromAbove, hullFootprint, obstacleContactBottom, obstacleContactTop,
   hullPassesRecordTop, hullUndersideOver, pushHullFromObstacle,
-  shellPassesThroughCollisionRecord,
+  shellPassesThroughCollisionRecord, shellSparesStoppedRecord,
 } from '../world/collision.ts';
 import type { CollisionRecord } from '../world/collision.ts';
 import { pushHullInsidePlayableBounds } from '../world/battlefieldBounds.ts';
@@ -139,7 +139,9 @@ import type {
 import { shellHitsWater } from './shellSurface.ts';
 import { architectureStyleOf, wallMaterialForStyle } from './structureMaterial.ts';
 import { PROP_FELL_PER_BLAST, PROP_FELL_PER_TICK, munitionChargeKg, munitionClassForShell, propFellRadiusM } from './munitionBlast.ts';
-import { createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, rubbleHeightFor } from './terrainDeformation.ts';
+import { createDeformedHeightField, createTerrainDeformation, rubbleFalloffM, type TerrainDeformation } from './terrainDeformation.ts';
+import { structureRubbleHeightM } from './structureDamage.ts';
+import { mapCraterStampsOf, stampMapCraters, type MapCraterStamp } from '../world/mapCraters.ts';
 import { fellConcealersAt } from './spotting.ts';
 
 type Team = typeof TEAM_ALPHA | typeof TEAM_BRAVO;
@@ -283,6 +285,10 @@ export interface AuthoritativeWorldCollision {
     direction: SpottingVector3,
     maxDistance: number,
   ): AuthoritativeWorldRayHit | null;
+  /** The match's ground overlay (docs/DESTRUCTION.md §6, §7): the world's ray march reads it (match-local worlds only). */
+  bindGroundOverlay?(overlay: TerrainDeformation | null): void;
+  /** The map's pre-placed craters from the world's shard (world/mapCraters.ts), laid into the match's ground first. */
+  getMapCraters?(): readonly MapCraterStamp[];
   crushObstacle?(
     obstacle: AuthoritativeObstacle,
     directionX: number,
@@ -753,6 +759,60 @@ function segmentWorldHit(
  * Player records are `{id,specId,team}` with optional test/tooling `spawn`.
  * IDs are match identities and may never be inferred from `specId`.
  */
+/**
+ * A standby host's prepared match ground (2026-10-14, the MP stream; docs/MULTIPLAYER-V2.md §13.21). The bot navigation
+ * grid is the dearest part of an authority's creation (1.2 s of a 1.8 s creation on Verdant: the edge steepness and hull
+ * edge passes, 39 ms on 2026-09-30) and depends only on the world: a seat that may host builds it — with the match's
+ * deformation overlay and deformed field, which its refresh reads — on the pristine world it prepared, and the first
+ * authority created on that world takes it, once, instead of building the same grid while every seat waits for the
+ * elected host. Only for the world object it was built from, with the same obstacles and query; never shared.
+ */
+interface PreparedMatchGround {
+  base: HeightField;
+  obstacles: readonly AuthoritativeObstacle[];
+  query: AuthoritativeWorldCollision['queryObstacles'] | null;
+  ground: ReturnType<typeof createTerrainDeformation>;
+  heightField: HeightField;
+  navigation: ReturnType<typeof createBotNavigationGrid>;
+}
+const preparedMatchGround = new WeakMap<AuthoritativeWorldCollision, PreparedMatchGround>();
+
+/** Build the bot navigation grid (and its ground) for the next authority on `worldCollision` (§13.21). */
+export function prepareAuthorityGround(worldCollision: AuthoritativeWorldCollision): void {
+  const base = worldCollision.heightField;
+  if (!base || preparedMatchGround.has(worldCollision)) return;
+  const obstacles = typeof worldCollision.getObstacles === 'function' ? worldCollision.getObstacles() : [];
+  const ground = freshMatchGround(worldCollision);
+  const heightField = createDeformedHeightField(base, ground);
+  const navigation = createBotNavigationGrid({
+    heightField, queryObstacles: worldCollision.queryObstacles || null, getObstacles: () => obstacles as AuthoritativeObstacle[],
+  });
+  preparedMatchGround.set(worldCollision, { base, obstacles, query: worldCollision.queryObstacles || null, ground, heightField, navigation });
+}
+
+/** A match's ground overlay with its map's pre-placed craters laid first (DST-04; world/mapCraters.ts): the bowls every
+ *  seat lays on its own world, so the navigation grid, the hulls and the rays meet them from the first tick. */
+function freshMatchGround(worldCollision: AuthoritativeWorldCollision | null): TerrainDeformation {
+  const ground = createTerrainDeformation();
+  stampMapCraters(ground, mapCraterStampsOf(worldCollision));
+  return ground;
+}
+
+/** Whether a prepared ground waits for the next authority on this world (the receipt's probe). */
+export function hasPreparedAuthorityGround(worldCollision: AuthoritativeWorldCollision): boolean {
+  return preparedMatchGround.has(worldCollision);
+}
+
+/** The prepared ground for this world, taken once, when it still matches what the authority reads; else null. */
+function takePreparedGround(worldCollision: AuthoritativeWorldCollision | null, obstacles: readonly AuthoritativeObstacle[]): PreparedMatchGround | null {
+  if (!worldCollision) return null;
+  const prepared = preparedMatchGround.get(worldCollision) ?? null;
+  if (!prepared) return null;
+  preparedMatchGround.delete(worldCollision);
+  const query = worldCollision.queryObstacles || null;
+  return prepared.base === worldCollision.heightField && prepared.obstacles === obstacles && prepared.query === query ? prepared : null;
+}
+
 export function createAuthoritativeMatch({
   players = [],
   mapId = 'verdant',
@@ -779,9 +839,15 @@ export function createAuthoritativeMatch({
   const shared = suppliedHeightField ? null : sharedTerrain(mapId, normalizedGameMode === 'frontline_assault');
   // destruction (docs/DESTRUCTION.md §7): the match's ground is the shared field plus this match's overlay (rubble
   // mounds, craters); the base is never touched, so a shared terrain carries no stamp into another match
-  const ground = createTerrainDeformation();
   const baseHeightField = suppliedHeightField || shared!.heightField;
-  const heightField = createDeformedHeightField(baseHeightField, ground);
+  // §13.21: a standby host's ground and navigation grid, built on this very world before the election (null otherwise)
+  const preparedGround = suppliedHeightField
+    ? takePreparedGround(worldCollision, worldCollision && typeof worldCollision.getObstacles === 'function' ? worldCollision.getObstacles() : [])
+    : null;
+  const ground = preparedGround?.ground ?? freshMatchGround(worldCollision);
+  const heightField = preparedGround?.heightField ?? createDeformedHeightField(baseHeightField, ground);
+  // the world's shells, sight lines and drones march this match's ground (a crater's bowl, a heap), as the solo world's do
+  worldCollision?.bindGroundOverlay?.(ground);
   const layout = heightField._layout || shared?.layout || createLayout(getMapConfig(mapId));
   const rng = mulberry32(seed);
   const entities: AuthoritativeEntity[] = [];
@@ -790,6 +856,9 @@ export function createAuthoritativeMatch({
   const teamIndex: Record<Team, number> = { [TEAM_ALPHA]: 0, [TEAM_BRAVO]: 0 };
   const pendingEvents: AuthoritativeEvent[] = [];
   const destroyedObstacleIndices: number[] = [];
+  // (physics stream, 2026-10-16) the same indices as a set: a restore of thousands (a keyframe, a migration, a late
+  // join over Saltwind's crushed walls) asks it, not the list, whether an index is in (the list keeps its order)
+  const destroyedObstacleSet = new Set<number>();
   let destructibleRevision = 0;
   const shells: DamageShell[] = [];
   const destroyedBeforeBurst = new Map<string, boolean>();
@@ -834,7 +903,7 @@ export function createAuthoritativeMatch({
     ground,
     // the bots' grid re-reads the ground round the heap (botRoutePlanner refreshArea), as the solo step's does
     onCollapse: (structure) => {
-      const reach = rubbleFalloffM(structure.hw, structure.hd, rubbleHeightFor(structure.topY - structure.baseY));
+      const reach = rubbleFalloffM(structure.hw, structure.hd, structureRubbleHeightM(structure));
       const ex = Math.abs(Math.sin(structure.yaw)) * structure.hd + Math.abs(Math.cos(structure.yaw)) * structure.hw + reach;
       const ez = Math.abs(Math.cos(structure.yaw)) * structure.hd + Math.abs(Math.sin(structure.yaw)) * structure.hw + reach;
       botNavigation?.refreshArea?.(structure.cx - ex, structure.cz - ez, structure.cx + ex, structure.cz + ez);
@@ -861,7 +930,9 @@ export function createAuthoritativeMatch({
   const trenchLines = (heightField as { assaultTrenchLines?: { sectors?: RuntimeValue; lines?: RuntimeValue } }).assaultTrenchLines;
   const placement = createMatchPlacement({
     mapId,
-    heightField, obstacles: staticObstacles, queryObstacles: worldCollision?.queryObstacles,
+    // the map's own ground, as the solo step places on it (state.ts): the match's pre-placed craters (world/mapCraters.ts)
+    // must not move a deployment slot (deploymentParity)
+    heightField: baseHeightField, obstacles: staticObstacles, queryObstacles: worldCollision?.queryObstacles,
     anchors: matchPlacementAnchors(layout.spawns), mode: normalizedGameMode,
     // index-aligned carved sectors (null where the terrain dropped a line), exactly as the solo path passes them
     assaultLines: (trenchLines?.sectors ?? trenchLines?.lines ?? null) as never,
@@ -979,7 +1050,7 @@ export function createAuthoritativeMatch({
     teams: [TEAM_ALPHA, TEAM_BRAVO],
   });
   const botNavigation = placement.navigation ?? (entities.some((entity) => entity.bot)
-    ? createBotNavigationGrid({
+    ? preparedGround?.navigation ?? createBotNavigationGrid({
       heightField,
       queryObstacles: worldCollision?.queryObstacles || null,
       getObstacles: () => staticObstacles,
@@ -1465,6 +1536,7 @@ export function createAuthoritativeMatch({
     const destroyedIndex = obstacleIndex.get(obstacle);
     if (typeof destroyedIndex === 'number' && Number.isSafeInteger(destroyedIndex)) {
       destroyedObstacleIndices.push(destroyedIndex);
+      destroyedObstacleSet.add(destroyedIndex);
       destructibleRevision++;
     }
     if (entity?.state) entity.state.speed *= obstacle.crushKeep ?? CRUSH_SPEED_KEEP;
@@ -1539,7 +1611,7 @@ export function createAuthoritativeMatch({
         if (worldCollision && typeof worldCollision.crushObstacle === 'function') worldCollision.crushObstacle(obstacle, 0, 1, 0);
         obstacle.crushed = true;
       }
-      if (!destroyedObstacleIndices.includes(index)) destroyedObstacleIndices.push(index);
+      if (!destroyedObstacleSet.has(index)) { destroyedObstacleIndices.push(index); destroyedObstacleSet.add(index); }
       restored++;
     }
     destructibleRevision = Math.max(destructibleRevision, Math.floor(finite(revision, 0)), destroyedObstacleIndices.length);
@@ -1987,6 +2059,8 @@ export function createAuthoritativeMatch({
     if (!obstacle?.crushable) return;
     // a pillbox stops the round and falls only to accumulated heavy damage (sim/fortifiedCover.ts), as the solo step's
     if (isFortifiedCoverRecord(obstacle) && !fortified.shellHit(obstacle, shell.spec)) return;
+    // (Lane C, item 7) heavy plant: a machine-gun bullet stops on it and leaves it standing; a gun round wrecks it
+    if (shellSparesStoppedRecord(obstacle, shell.spec.caliberMm)) return;
     const shotX = shell.pos.x - shell.prevPos.x;
     const shotZ = shell.pos.z - shell.prevPos.z;
     const shotLength = Math.hypot(shotX, shotZ) || 1;
@@ -2454,18 +2528,28 @@ export function createAuthoritativeMatch({
       auxRay.copy(b).sub(a); const distance=auxRay.length(); auxRay.normalize();
       const hit=spottingRaycast(a,auxRay,distance); return !hit || hit.dist>=distance-.5;
     },
+    // VH.15 counter-drone: the mode's rule, and the airframe's strikes kept by the authority's drone flight
+    counterDrone: ruleset.counterDrone === true,
+    droneHit: (carrier: AuthoritativeEntity, chance: number, shooter: AuthoritativeEntity) => {
+      if (strikeDrone(carrier, chance)) emit('drone_down', { id: carrier.id, killerId: shooter.id });
+    },
   };
+  /** The shell a roof station just fired (auxiliaryShot). */
+  function fireAuxiliaryShot(entity: AuthoritativeEntity): void {
+    const shell=createShell(auxiliaryShot.shell,entity.id,!entity.bot,auxiliaryShot.origin,auxiliaryShot.direction,nextShellId++);
+    shell.gravityMps2*=entity.modeGravityScale??1;shells.push(shell);
+    spotting.notifyFired(entity.id,timeS,auxiliaryShot.shell.caliberMm);
+  }
   function advanceWeapons(dt: number): void {
     for(let i=auxiliarySmokeScreens.length-1;i>=0;i--)if(timeS-auxiliarySmokeScreens[i]!.born>18)auxiliarySmokeScreens.splice(i,1);
     for (const entity of entities) {
       if (entity.modeActive === false || entity.combat.destroyed) continue;
       tickReload(entity.combat, dt);
       tryFire(entity);
-      if (!result && stepRoofGun(entity,timeS,dt,auxContext)) {
-        const shell=createShell(auxiliaryShot.shell,entity.id,!entity.bot,auxiliaryShot.origin,auxiliaryShot.direction,nextShellId++);
-        shell.gravityMps2*=entity.modeGravityScale??1;shells.push(shell);
-        spotting.notifyFired(entity.id,timeS,auxiliaryShot.shell.caliberMm);
-      }
+      if (!result && stepRoofGun(entity,timeS,dt,auxContext)) fireAuxiliaryShot(entity);
+      // VH.02: a multi-station vehicle's later roof stations (the M551A1 TTS's M2 beside its 30 mm), in station order
+      if (!result) for (let station=1,stations=roofStationCount(entity.spec);station<stations;station++)
+        if (stepRoofStation(entity,station,timeS,dt,auxContext)) fireAuxiliaryShot(entity);
     }
     stepShells(dt);
   }

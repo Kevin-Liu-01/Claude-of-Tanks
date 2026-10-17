@@ -7,9 +7,9 @@ import {buildLeopard2A7VX,buildLeopard2A6MX,buildLeopard2A4MX} from './leopardX.
 import {buildLeopardRevolution} from './leopardRevolution.ts';
 
 const cases=[
-  ['leo2a7v_x',buildLeopard2A7VX,.043,.22,.034,12,-.48,1],
-  ['leo2a6m_x',buildLeopard2A6MX,.043,.22,.034,12,-.48,1],
-  ['leo2a4m_x',buildLeopard2A4MX,.043,.22,.034,12,-.48,1],
+  ['leo2a7v',buildLeopard2A7VX,.043,.22,.034,12,-.48,1],
+  ['leo2a6m',buildLeopard2A6MX,.043,.22,.034,12,-.48,1],
+  ['leo2a5m',buildLeopard2A4MX,.043,.22,.034,12,-.48,1],
   ['leo2_revolution',buildLeopardRevolution,.034,.17,.025,10,-.32,.4],
 ];
 const stats={builds:0,launchers:0,posedPairs:0,oldAxisFailures:0,negativeControls:0,

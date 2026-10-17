@@ -24,7 +24,7 @@ function cheekModule(P:TankBuilderPort,side:number,rows:readonly CheekRow[]):voi
   const g=weldedFlankHousing(rows,side,.035);
   // Permanent armor wedge remains in place beneath the small ERA face tiles.
   P.addExternalArmor('turret',g);
-  addChineseChevronBank(P,side,rows,P.spec.id==='cn_t72b3m_modern'?.115:P.spec.id==='cn_t80u_modern'?.10:.09);
+  addChineseChevronBank(P,side,rows,P.spec.id==='t72b3m_kunlun'?.115:P.spec.id==='t80u_yun'?.10:.09);
 }
 
 function bustle(P:TankBuilderPort,back:number,half:number,bottom:number,top:number):void {
@@ -119,7 +119,7 @@ function qilin(P:TankBuilderPort,c:NationalModernizationConfig):void {
   frontTiles(P,2.06,2,.57,.38);
 }
 
-function permanentParts(P:TankBuilderPort,names:string[]):THREE.BufferGeometry[] {
+export function permanentParts(P:TankBuilderPort,names:string[]):THREE.BufferGeometry[] {
   const parts:THREE.BufferGeometry[]=[];
   P.forEachBucketPart(names,g=>{if(!Array.isArray(g.userData.eraHitFaceVertexStarts))parts.push(g);});
   return parts;
@@ -294,7 +294,7 @@ function stockRoof(parts:readonly THREE.BufferGeometry[],x:number,z:number):numb
 
 /** The receiver is sampled at all four feet and through the centre; this is
  * a shaped adapter on the real casting/housing, not a floating accessory. */
-function equipmentFoot(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:number,z:number,w:number,d:number):number {
+export function equipmentFoot(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:number,z:number,w:number,d:number):number {
   const rows=[z-d/2,z+d/2].map(zz=>({z:zz,left:stockRoof(parts,x-w/2,zz),right:stockRoof(parts,x+w/2,zz)}));
   let high=-Infinity;
   for(const dx of [-w/2,0,w/2])for(const dz of [-d/2,0,d/2])high=Math.max(high,stockRoof(parts,x+dx,z+dz));
@@ -306,7 +306,7 @@ function equipmentFoot(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x
   return top;
 }
 
-function serviceCase(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:number,z:number,w:number,h:number,d:number):number {
+export function serviceCase(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:number,z:number,w:number,h:number,d:number):number {
   const base=equipmentFoot(P,parts,x,z,w*.92,d*.92)-.003;
   const ring:SectionPoint[]=[[x-w/2,base+.025],[x-w/2+.03,base],[x+w/2-.03,base],
     [x+w/2,base+.025],[x+w/2,base+h-.025],[x+w/2-.03,base+h],[x-w/2+.03,base+h],[x-w/2,base+h-.025]];
@@ -322,7 +322,7 @@ function serviceCase(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:n
   return base+h;
 }
 
-function lowOptic(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:number,z:number,w:number,h:number,d:number,round:boolean):void {
+export function lowOptic(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:number,z:number,w:number,h:number,d:number,round:boolean):void {
   const base=equipmentFoot(P,parts,x,z,w*.88,d*.88)-.003;
   P.addEquipment('turretDetail',box(w,h,d),x,base+h/2,z);
   if(round){
@@ -333,7 +333,7 @@ function lowOptic(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:numb
   for(const dx of [-w/2-.01,w/2+.01])P.addEquipment('turretDetail',box(.018,h+.010,.035),x+dx,base+h/2,z+d/2+.013);
 }
 
-function serviceCable(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],points:readonly (readonly[number,number])[]):void {
+export function serviceCable(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],points:readonly (readonly[number,number])[]):void {
   const path=points.map(([x,z])=>[x,stockRoof(parts,x,z)+.013,z] as const);
   for(let i=1;i<path.length;i++)P.addEquipment('turretDark',beamBetween(path[i-1],path[i],.010,8));
   for(const [x,y,z]of path)P.addEquipment('turretDetail',box(.045,.034,.032),x,y+.002,z);
@@ -396,6 +396,12 @@ function nationalRoofEquipment(P:TankBuilderPort,c:NationalModernizationConfig):
 }
 
 function equipment(P:TankBuilderPort,c:NationalModernizationConfig):void {
+  chinaHullEquipment(P,c);
+  turretEquipment(P,c);
+}
+
+/** Driver's hatch, periscopes and the armoured front lamps on the native glacis. */
+function chinaHullEquipment(P:TankBuilderPort,c:NationalModernizationConfig):void {
   const driverZ=c.model===1?1.72:1.61,driverY=receivingRoof(P,'hull',0,driverZ);
   P.addHatch('hullHatch',cylY(.28,.28,.032,24),0,driverY+.012,driverZ);
   for(const x of [-.17,0,.17]){
@@ -423,6 +429,9 @@ function equipment(P:TankBuilderPort,c:NationalModernizationConfig):void {
     for(const dx of [-.12,.12])P.addEquipment('hullDetail',beamBetween([x+dx,y-.005,front],[x+dx,y+.175,front],.012));
     P.addEquipment('hullDetail',box(.265,.020,.16),x,y+.18,front);
   }
+}
+
+function turretEquipment(P:TankBuilderPort,c:NationalModernizationConfig):void {
   // The central sight is retained in a low armored housing beneath the RWS
   // depression envelope; its new finite adapter is fitted to the cast crown.
   lowOptic(P,permanentParts(P,['turret','turretExternalArmor']),0,-.08,.28,.11,.24,false);
@@ -500,7 +509,9 @@ function addConceptFuelDrums(P:TankBuilderPort,c:NationalModernizationConfig):vo
   const radius=c.model===0?.235:c.model===1?.285:.245,length=c.model===1?.97:.85,center=c.model===1?.70:.65;
   // Low rear cradles keep every fitting below the main gun's complete
   // depressed/recoiling sweep, including intermediate rearward turret yaw.
-  const y=c.model===0?.90:c.model===1?.86:.82;
+  // Kunlun .85 (was .86): its Type 96B donor gun's legal depression/recoil sweep over the rear needs the drums 1 cm lower
+  // for the 25 mm fitting clearance (chineseFuelDrum receipt).
+  const y=c.model===0?.90:c.model===1?.85:.82;
   const roots:THREE.Vector3[]=[];
   for(const side of [-1,1])for(const offset of [-length*.30,length*.30]){
     const x=side*center+offset;
@@ -523,6 +534,24 @@ function addConceptFuelDrums(P:TankBuilderPort,c:NationalModernizationConfig):vo
     P.addEquipment('hullDark',upright,root.x,foot.y+.010,foot.z);
   }
   P.hullG.userData.chineseConceptFuelDrums={centers:[[-center,y,z],[center,y,z]],radius,length,roots:roots.map(r=>r.toArray())};
+}
+
+/** The hull half of the Kunlun and Qilin packages, unchanged beneath their donor
+ * turrets (nationalDonorTurret.ts): engine-deck cooling panels, heavy skirts,
+ * glacis cassettes, the driver's station, armoured lamps and rear fuel drums. */
+export function chinaDonorHull(P:TankBuilderPort,c:NationalModernizationConfig):void {
+  if(c.model===1){
+    for(const side of [-1,1])coolingPanel(P,side*.52,-2.49,.85,.88,9);
+    skirts(P,c,7,-2.65,3.08,1.98,.74);
+    frontTiles(P,2.19,3,.68,.29);
+  }else if(c.model===2){
+    coolingPanel(P,-.46,-2.49,.73,.83,7);
+    coolingPanel(P,.46,-2.38,.73,1.00,8);
+    skirts(P,c,5,-2.35,2.67,1.93,.85);
+    frontTiles(P,2.06,2,.57,.38);
+  }else throw new Error(`${c.id}: no donor-turret hull package`);
+  chinaHullEquipment(P,c);
+  addConceptFuelDrums(P,c);
 }
 
 export function buildNationalChina(P:TankBuilderPort,c:NationalModernizationConfig):void {

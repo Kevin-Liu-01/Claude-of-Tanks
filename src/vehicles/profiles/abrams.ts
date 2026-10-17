@@ -1,3 +1,4 @@
+import { tankSeedId } from '../tankIdAliases.ts';
 import { addModernFieldCage } from './modernFieldCage.ts';
 import {addRearFieldStowage} from './rearFieldStowage.ts';
 import {buildM1A1GunMount} from './m1a1GunMount.ts';
@@ -7,6 +8,7 @@ import {pushConvexQuad} from '../factoryGeometry.ts';
 import { beginAuxiliaryStation } from './auxiliaryStation.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { sweptTube } from '../accessoryPrimitives.ts';
+import { ammoCanParts, fieldChestParts } from './fieldChest.ts';
 // Strict TypeScript Abrams family procedural profiles — gate-v6 rebuild (2026-07-31).
 // Authored against TRUE-AXIS ortho mask traces (docs/references/profiles/*
 // re-extracted after the v6 camera fix, plus scratch probe curves decoded to
@@ -378,7 +380,7 @@ function configuredAbramsProfile(
 ) {
   return {
     ...options,
-    build: (builder: RuntimeValue): void => { const P=requireAbramsBuilder(builder); build(P, options); if(P.spec.id==='m1a2')addRearFieldStowage(P); },
+    build: (builder: RuntimeValue): void => { const P=requireAbramsBuilder(builder); build(P, options); if(P.spec.id==='m1a1_abrams_hc')addRearFieldStowage(P); },
   };
 }
 
@@ -402,7 +404,7 @@ const xform: typeof KIT.xform = (...args) => KIT.xform(...args);
 const mergeAll: typeof KIT.mergeAll = (...args) => KIT.mergeAll(...args);
 
 const M1_RETURN_COURSE_IDS = new Set([
-  'm1a1', 'm1a1ha', 'ua_m1a1', 'm1a2', 'm1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3',
+  'm1a1', 'm1a1ha', 'ua_m1a1', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1_abrams_aim', 'm1a1_abrams_fep',
 ]);
 
 // Deck and belly stations need not have the same longitudinal slope. Their
@@ -577,7 +579,7 @@ function abramsEraOwner(bucket: string): ArmorOwner {
   return bucket.startsWith('hull') ? 'hull' : 'turret';
 }
 
-const ABRAMS_REACTIVE_VARIANTS = new Set(['m1a2', 'm1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3']);
+const ABRAMS_REACTIVE_VARIANTS = new Set(['m1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1_abrams_aim', 'm1a1_abrams_fep']);
 
 function addAbramsEraLayer(P: AbramsBuilderPort, bucket: string, fill: () => void): void {
   // The same surface helpers also author passive applique, sensor housings,
@@ -964,7 +966,7 @@ function cheekSideEraPatch(
 
 const deckAt = (g: { readonly deck: readonly Vec2Tuple[] }, z: number): number => lineAt(g.deck, z);
 
-// §B3.1 MUZZLE BORE hole disc (kf51 r6 #3a boreDark class, banked in
+// §B3.1 MUZZLE BORE hole disc (kf51_evo r6 #3a boreDark class, banked in
 // BUILD-STANDARD §C: mats.dark's ambient floor + a dead-frontal key render
 // a camera-facing muzzle face ~L22 olive — "a solid camo cap" read; the ref
 // hole reads ~11. A light-immune basic material renders the flat hole value
@@ -1389,7 +1391,7 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
   // diagonal lead cut, dark joints, bolts, rubber wear lip, sponson seam.
   // WIDTH GUARD: sk.x is the committed width plane — every fitting below is
   // seated flush INSIDE it (outer faces <= sk.x).
-  // g.noSkirt (m1a2 post-warp, opt-in): the sepv3 oracle's skirt is FOUR
+  // g.noSkirt (m1a1_abrams_hc post-warp, opt-in): the sepv3 oracle's skirt is FOUR
   // separate runs with real gaps (station slabs i3/i6/i8 read the gaps) —
   // buildSepv3 hand-rolls them; every other family build keeps this block
   // byte-identical.
@@ -1623,7 +1625,7 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
     // Soot planes are render meshes — keep them INSIDE the rear-face silhouette
     // (a 1.05 m plane at mid-face poked 0.17 above the deck and 0.05 past the
     // tail, extending measured hullLength and the front-view top line).
-    // g.noSoot (m1a2 post-warp, opt-in): the default soot pair spans
+    // g.noSoot (m1a1_abrams_hc post-warp, opt-in): the default soot pair spans
     // (rearTop-rearBot)*0.9 — on the sepv3 tail plate that painted the -4.0
     // side column 0.26 below the 1.25 plate lip. buildSepv3 places its own
     // plate-sized soot decals.
@@ -1870,7 +1872,7 @@ function addAbramsShellRoofCap(
   const { tw, inset, zMain } = layout;
   // Roof cap: thin inset plate so the roof reads as a fitted panel.
   // t.roofCapW narrows it (tejas: the 1.9 cap painted the ±1.34-1.43 front
-  // bins at 2.37 where the ref's tumblehome reads 2.31). t.noRoofCap (m1a2
+  // bins at 2.37 where the ref's tumblehome reads 2.31). t.noRoofCap (m1a1_abrams_hc
   // post-warp, opt-in): on a steep-sloped rear roof the flat cap rode 0.10
   // over the ref's saddle dip — the sepv3 authors its own roof furniture.
   if (!t.noRoofCap) {
@@ -1924,7 +1926,7 @@ function abramsBustleRack(
     } else {
       P.add('turretDetail', box(rw * 2, 0.045, 0.045), 0, rkTr + rly, zRear);
     }
-    // t.rackBotRailZOff (m1a2 post-warp, opt-in): pulls the LOW rear rail
+    // t.rackBotRailZOff (m1a1_abrams_hc post-warp, opt-in): pulls the LOW rear rail
     // forward — the sepv3 ref's last rack column carries only the dropped top
     // rail (bottom 1.88), and the low rail at zRear painted it 1.74.
     P.add('turretDetail', box(rw * 2, 0.045, 0.045), 0, rkB, zRear + (t.rackBotRailZOff ?? 0));
@@ -1961,9 +1963,9 @@ function abramsBustleRack(
   // recess/void/strap below rides the mid-shade channel (turretTrack ->
   // post-merge midShade clone at the ref band's own ~49/255 floor), NOT the
   // x0.26 deep-shade dark bucket. Non-dress keeps turretDark byte-identical.
-  // t.rackDarkBucket (m1a2 r3, opt-in): the non-dress rack's dark sheet
+  // t.rackDarkBucket (m1a1_abrams_hc r3, opt-in): the non-dress rack's dark sheet
   // family (mesh floor + rear closure + straps) in a caller-chosen channel —
-  // the m1a2 true-black closure read as SEE-THROUGH DAYLIGHT under the blue
+  // the m1a1_abrams_hc true-black closure read as SEE-THROUGH DAYLIGHT under the blue
   // hemi (critic r2 "full-width bumper crack": the #0e0f0c rear sheet
   // classified as background across 356 px of the rear pair). Geometry
   // byte-identical; every other family leaves it unset -> turretDark.
@@ -2095,7 +2097,7 @@ function abramsBustleRack(
 }
 
 // ---------------------------------------------------------------------------
-// Tejas-oracle family (m1a2 / m1a1 / m1a1ha / m1a2_tusk — all FULL
+// Tejas-oracle family (m1a1_abrams_hc / m1a1 / m1a1ha / m1a1_abrams_sa — all FULL
 // scale now; the v5 0.727 tusk clamp-matching is retired, the tusk oracle is
 // a certified chimera). Curves: v6 re-extraction + probe decode.
 // ---------------------------------------------------------------------------
@@ -2342,7 +2344,12 @@ function addAbramsBrowning(P: AbramsBuilderPort, {
   installationVariant, yaw = 0, elevation = 0.035, barrelLength = 0.68,
   ring = false,
 }: BrowningOptions): THREE.Group {
+  // VH.14 (coordinator ruling 2026-10-14; the owner's field-equipment standard, roof weapons calibre-true and working):
+  // every Abrams loader's crew-served gun is the 7.62 mm M240 on its skate, LGS or LAGS mount (the M2HB is the
+  // commander's), and it is a working station the roof-gun control drives.
   const gun = FITTINGS.americanM2({
+    cls: 'mag',
+    working: true,
     mats: P.mats,
     scale,
     shield,
@@ -2350,14 +2357,16 @@ function addAbramsBrowning(P: AbramsBuilderPort, {
     elev: elevation,
     barrelLength,
     ring: ring ? { r: 0.235, stubs: 4 } : false,
-    seed: P.spec.id === 'm1a2_sepv3' ? 153
-      : P.spec.id === 'm1a2_sepv2' ? 152
-        : P.spec.id === 'm1a2_tusk' ? 151 : 150,
+    // round 3b (wave 348 on the M1A1: the ring "does not match the tan hull"): the loader's race is painted with the turret
+    ringSlot: ring ? 'detail' : undefined,
+    seed: P.spec.id === 'm1a1_abrams_fep' ? 153
+      : P.spec.id === 'm1a1_abrams_aim' ? 152
+        : P.spec.id === 'm1a1_abrams_sa' ? 151 : 150,
     installationVariant,
   });
   gun.position.set(x, y, z);
   gun.rotation.y = yaw;
-  gun.name = `fitting_abramsM2HB_${installationVariant}`;
+  gun.name = `fitting_abramsLoaderM240_${installationVariant}`;
   gun.userData.hostVariant = P.spec.id;
   gun.userData.sourceVehicle = 'm551_sheridan';
   P.turretG.add(gun);
@@ -2371,7 +2380,7 @@ function addAbramsBrowning(P: AbramsBuilderPort, {
       y,
       z,
       scale,
-      americanWeaponStandard: 'sheridan-m2hb-v2',
+      americanWeaponStandard: gun.userData.americanWeaponStandard,
     }),
   ]);
   return gun;
@@ -2389,11 +2398,11 @@ function addAbramsXStyleRws(P: AbramsBuilderPort, {
     ammoSide,
     sensorSide,
     elev: variant === 'tusk-urban' ? 0.065 : 0.045,
-    seed: P.spec.id === 'm1a2_tusk' ? 191 : 193,
+    seed: P.spec.id === 'm1a1_abrams_sa' ? 191 : 193,
   });
   const roleName = weaponRole === 'auxiliary'
     ? 'Aux' : weaponRole.startsWith('loader') ? 'Loader' : 'Commander';
-  station.name = `${P.spec.id}${roleName}OpenYokeRws`;
+  station.name = `${tankSeedId(P.spec.id)}${roleName}OpenYokeRws`; // schema-1 name (tankIdAliases.ts)
   station.position.set(x, y, z);
   station.rotation.y = yaw;
   station.userData.hostVariant = P.spec.id;
@@ -2446,7 +2455,7 @@ function tejasRoofKit(
   abramsKit: string | null = null,
 ): void {
   const roof = t.roofMain;                    // 0.79 local = 2.36 world
-  const reactiveLeftWeapons = ['m1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3'].includes(P.spec.id);
+  const reactiveLeftWeapons = ['m1a1_abrams_sa', 'm1a1_abrams_aim', 'm1a1_abrams_fep'].includes(P.spec.id);
   const ttsDerivedVariant = ({
     ttsStandard: 'standard',
     ttsCompact: 'compact',
@@ -2605,7 +2614,7 @@ function tejasRoofKit(
       const opticX = -0.84;
       const opticZ = 0.70;
       const opticSeatY = carrierTopAt(opticZ) - 0.008;
-      const compactRelocatedOptic = P.spec.id === 'm1a2' || P.spec.id === 'm1a2_sepv2';
+      const compactRelocatedOptic = P.spec.id === 'm1a1_abrams_hc' || P.spec.id === 'm1a1_abrams_aim';
       const opticScale = compactRelocatedOptic ? 0.80 : 1.00;
       const retainedHeadW = (lowProfileStation ? 0.46 : 0.36) * opticScale;
       const retainedHeadH = (lowProfileStation ? 0.22 : 0.28) * opticScale;
@@ -2739,8 +2748,8 @@ function tejasRoofKit(
             : (2 / 3);
         const carrierMountTopY = carrierTopAt(0.2565);
         crowsBaseY = carrierMountTopY - 0.010;
-        const fullCommanderTowerVariant = P.spec.id === 'm1a2_sepv3'
-          ? 'sepv3-armored' : P.spec.id === 'm1a2_tusk' ? 'tusk-urban' : null;
+        const fullCommanderTowerVariant = P.spec.id === 'm1a1_abrams_fep'
+          ? 'sepv3-armored' : P.spec.id === 'm1a1_abrams_sa' ? 'tusk-urban' : null;
         if (fullCommanderTowerVariant) {
           const rws = addAbramsXStyleRws(P, {
             x: -0.70,
@@ -2770,7 +2779,7 @@ function tejasRoofKit(
             mats: P.mats,
             variant: ttsDerivedVariant,
             scale: rwsScale,
-            seed: P.spec.id === 'm1a2' ? 119 : P.spec.id === 'm1a2_sepv2' ? 122 : 123,
+            seed: P.spec.id === 'm1a1_abrams_hc' ? 119 : P.spec.id === 'm1a1_abrams_aim' ? 122 : 123,
           });
           rws.position.set(-0.70, crowsBaseY, 0.2565);
           rws.userData.hostVariant = P.spec.id;
@@ -2814,7 +2823,7 @@ function tejasRoofKit(
       // powered risers are compact roof pedestals rather than observation
       // towers. The head, receiver and gun translate down as one connected
       // assembly; their plan envelope and combat ownership remain unchanged.
-      // - 'crowslp' (m1a2_sepv3): the CROWS-LP — shorter riser, wide-flat
+      // - 'crowslp' (m1a1_abrams_fep): the CROWS-LP — shorter riser, wide-flat
       //   low-profile head (0.26 x 0.145 vs the II's 0.20 x 0.195), gun
       //   group nested lower. FALSE-0 id (never gates); knee/window
       //   discipline kept anyway for §B8.1 datum sanity.
@@ -2827,7 +2836,7 @@ function tejasRoofKit(
       // treatment. The CWS keeps its authored weapon proportions while its
       // carrier and complete station are independently roof-seated above.
       const tejasRoofKitModulesCourse2 = (): void => {
-        const tusk = P.spec.id === 'm1a2_tusk';
+        const tusk = P.spec.id === 'm1a1_abrams_sa';
         const lp = lowProfileStation;
         const A = 0;
         // TUSK GRID SHIFT (gate run 1 this round): the tusk chimera oracle's
@@ -3048,7 +3057,7 @@ function tejasRoofKit(
   // separate Browning at this vehicle-right hatch, aimed down +z rather than
   // laid transversely across the roof.
   const tejasRoofKitTurretStage6 = (): void => {
-    if (reactiveLeftWeapons && P.spec.id !== 'm1a2_tusk') {
+    if (reactiveLeftWeapons && P.spec.id !== 'm1a1_abrams_sa') {
       const tejasRoofKitAssemblyCourse2 = (): void => {
         const loaderX = loaderMountX;
         const scale = tallStation ? 0.68 : 0.64;
@@ -3072,7 +3081,7 @@ function tejasRoofKit(
         const receiverY = baseY + datum.receiverY;
         if (lowProfileStation) sepv3LoaderReceiverY = receiverY;
         loaderWeaponReceipt = {
-          station: tallStation ? 'sepv2-loader-m2hb' : 'sepv3-loader-m2hb',
+          station: tallStation ? 'sepv2-loader-m240' : 'sepv3-loader-m240',
           x: loaderX,
           pintleZ: baseZ,
           pintleBottomY: baseY,
@@ -3081,7 +3090,7 @@ function tejasRoofKit(
           cradleTopY: baseY + datum.cradleTopY,
           receiverBottomY: baseY + datum.receiverBottomY,
           receiverY,
-          americanWeaponStandard: 'sheridan-m2hb-v2',
+          americanWeaponStandard: loaderGun.userData.americanWeaponStandard,
           shieldVariant: tallStation ? 'armored' : 'low',
         };
       };
@@ -3107,7 +3116,7 @@ function tejasRoofKit(
       // M1A1 is open, HA is fully shielded, and base M1A2 uses a split shield.
       const tejasRoofKitAssemblyCourse3 = (): void => {
         const ha = P.spec.id === 'm1a1ha';
-        const standardM1A2 = P.spec.id === 'm1a2';
+        const standardM1A2 = P.spec.id === 'm1a1_abrams_hc';
         const loaderX = standardM1A2 ? loaderMountX : 0.98;
         const scale = standardM1A2 ? 0.65 : ha ? 0.64 : 0.61;
         const receiverY = plat2 + (ha ? 0.045 : 0.025);
@@ -3134,7 +3143,7 @@ function tejasRoofKit(
           // round 5: measured on the built gun (the shared Browning construction at true scale)
           const datum = loaderGun.userData.mountDatum;
           loaderWeaponReceipt = {
-            station: 'm1a2-loader-m2hb',
+            station: 'm1a2-loader-m240',
             x: loaderX,
             pintleZ,
             pintleBottomY,
@@ -3143,7 +3152,7 @@ function tejasRoofKit(
             cradleTopY: pintleBottomY + datum.cradleTopY,
             receiverBottomY: pintleBottomY + datum.receiverBottomY,
             receiverY: pintleBottomY + datum.receiverY,
-            americanWeaponStandard: 'sheridan-m2hb-v2',
+            americanWeaponStandard: loaderGun.userData.americanWeaponStandard,
             shieldVariant: 'split',
           };
         }
@@ -3540,11 +3549,11 @@ function tejasRoofKit(
     // shell scan.  The plates are recessed beneath the existing skirt and
     // ARAT surfaces, so they complete the load path without changing the
     // certified exterior silhouette.
-    if (P.spec.id === 'm1a2_tusk') {
+    if (P.spec.id === 'm1a1_abrams_sa') {
       for (const side of [-1, 1]) {
         P.add('hull', box(0.22, 0.025, 0.22), side * 1.86, 1.28, 2.43);
       }
-    } else if (P.spec.id === 'm1a2_sepv3') {
+    } else if (P.spec.id === 'm1a1_abrams_fep') {
       for (const side of [-1, 1]) {
         P.add('hull', box(0.20, 0.025, 2.10), side * 1.89, 1.27, 0.05);
       }
@@ -3574,7 +3583,7 @@ function abramsArmorHardware(
   variant: string,
   t: AbramsTurretConfig,
 ): void {
-  const reactive = ['m1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3'].includes(variant);
+  const reactive = ['m1a1_abrams_sa', 'm1a1_abrams_aim', 'm1a1_abrams_fep'].includes(variant);
   // The base M1A1 is the bare family anchor. Do not leave the former dark
   // skirt-grid or turret-retainer pass behind after moving its add-on armor
   // language to M1A2 and the reactive variants.
@@ -3627,10 +3636,10 @@ function abramsArmorHardware(
   // smaller faces sit directly on those bodies.  Natural gaps do the panel
   // separation; no black grid strips are used.
   const abramsArmorHardwareTurretStage1 = (): void => {
-    if (!reactive && ['m1a1ha', 'm1a2'].includes(variant)) {
+    if (!reactive && ['m1a1ha', 'm1a1_abrams_hc'].includes(variant)) {
       const abramsArmorHardwareTurretCourse1 = (): void => {
         const heavy = variant === 'm1a1ha';
-        const modern = variant === 'm1a2';
+        const modern = variant === 'm1a1_abrams_hc';
         // Owner escalation: these packages must read as fitted armor volumes at
         // the hero-camera scale, not thin applique decals.  The backs remain
         // buried into their carriers; only the outward shoulder grows.
@@ -3958,7 +3967,7 @@ function tejasSuspensionDress(P: AbramsBuilderPort, g: AbramsHullConfig): void {
   }
 }
 
-// Rear-plate kit (visual r2 item 3, leo2a6 tilted-slat law): the shared
+// Rear-plate kit (visual r2 item 3, leo2a4 tilted-slat law): the shared
 // rear-face fittings sat at rearZ+0.02..0.06 = INSIDE the tail loft (the
 // tejas loft runs to the exact -3.937 plane) and never rendered — the
 // critic read a blank camo wall. This kit mounts everything ON the visible
@@ -4224,9 +4233,9 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
   // the certified rack envelope (rails/posts/floor byte-identical).
   const vid = P.spec.id || '';
   const dufMul = (vid === 'm1a1' || vid === 'm1a1ha') ? [1, 0, 0]
-    : (vid === 'm1a2' || vid === 'm1a2_tusk') ? [0.7, 0, 1]
-    : vid === 'm1a2_sepv2' ? [0.7, 0, 1]      // center freed for the rigid ammo crate (§H.4)
-    : vid === 'm1a2_sepv3' ? [0.7, 1, 0]      // right freed for the stowed-loadout slot
+    : (vid === 'm1a1_abrams_hc' || vid === 'm1a1_abrams_sa') ? [0.7, 0, 1]
+    : vid === 'm1a1_abrams_aim' ? [0.7, 0, 1]      // center freed for the rigid ammo crate (§H.4)
+    : vid === 'm1a1_abrams_fep' ? [0.7, 1, 0]      // right freed for the stowed-loadout slot
     : null;
   const t = {
     ...TEJAS_TURRET,
@@ -4983,7 +4992,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
   // ==== SEP REBUILD-ON-BASE (§5.19 + §5.19a owner orders, 2026-08-07) ======
   // "for sepv2s and sepv3, we need to rebuild them to use the M1A2 abrams
   // base model and then start slapping on extra stuff and decorations" +
-  // "i meant the m1a2 abrams (ex tejas) is the correct base, the base m1a2
+  // "i meant the m1a1_abrams_hc abrams (ex tejas) is the correct base, the base m1a1_abrams_hc
   // platform is WRONG." The SEP variants now ride THIS build — the
   // tejas-grade platform (hull loft + fender/corner/taillight furniture,
   // swept-cheek §B1 shell + raked left-bulge, bustle basket, roof kit,
@@ -5519,7 +5528,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
   // the wall cable tangent-inside the certified -1.695 flank plane. Roof
   // pintles stay the certified flat-silhouette guns — a proud fitting MG is
   // structurally unpayable on this family (p95 budget = whip pair + head
-  // exactly; §I hand-authored clause, m1a2 r3 precedent) — so the census
+  // exactly; §I hand-authored clause, m1a1_abrams_hc r3 precedent) — so the census
   // MGs are REAL stowed guns in the rackDufMul-freed floor slots.
   const buildTejasFamilyTurretStage2 = (): void => {
     if (dufMul) {
@@ -5529,12 +5538,21 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
           fit.position.set(x, y, z);
           P.turretG.add(fit);
         };
+        // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle and every drawn gun works): the
+        // floor slots that held a stowed crew gun for the old "every vehicle shows a roof MG" census hold a row of M2A1
+        // ammunition cans (profiles/fieldChest.ts) across the rack; the loader's M240 on its mount is the working gun.
+        const rackCans = (xs: readonly number[], y: number, z: number): void => {
+          for (const x of xs) {
+            const can = ammoCanParts(!!P.q);
+            for (const g of can.paint) P.addEquipment('turret', g, x, y, z);
+            for (const g of can.dark) P.addEquipment('turretDark', g, x, y, z);
+          }
+        };
         if (vid === 'm1a1') {
           // M1A1: stowed M2 across the rack (muzzle to x 0.878, grazing the
           // 0.60 crate top) + a tow-cable run mounted along the left wall band.
           const buildTejasFamilyHullCourse19 = (): void => {
-            seat(FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'dark', seed: 11,
-              elev: 0.08, ammo: false, rotation: [0, 1.51, 0] }), -0.05, rkY, -3.14);
+            rackCans([-0.37, -0.05, 0.27], rkY, -3.14);
             // re-cert order 1 DELIVERED (r5 graduate-change loop): the F1 cable now
             // rides the LEFT SKIRT TOP LEDGE in the HULL frame. The deferred
             // failure is understood — the r4 attempt kept the verdict's hull-frame
@@ -5565,8 +5583,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
           // M1A1HA: stowed M2 WITH SHIELD + a spare-link strip flat on the
           // freed floor (tops 2.00 — under the stowed barrel line).
           const buildTejasFamilyHullCourse20 = (): void => {
-            seat(FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'dark', seed: 12,
-              elev: 0.08, ammo: false, shield: true, rotation: [0, 1.51, 0] }), -0.05, rkY, -3.14);
+            rackCans([-0.40, -0.08], rkY, -3.14);
             seat(FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.40, seed: 5,
               rotation: [0, Math.PI / 2, 0] }), 0.30, rkY + 0.035, -3.22);
             // §B3.2 (2026-08-06) — RIGHT skirt-ledge tow cable: the m1a1 LEFT
@@ -5587,15 +5604,14 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
             }
           };
           buildTejasFamilyHullCourse20();
-        } else if (vid === 'm1a2' || vid === 'm1a2_tusk') {
+        } else if (vid === 'm1a1_abrams_hc' || vid === 'm1a1_abrams_sa') {
           // TEJAS/TUSK: CROWS identity + stowed loader's M240 (muzzle resting
           // at the right duffel edge) + an antenna base pot by the rear post.
           const buildTejasFamilyTurretCourse12 = (): void => {
-            seat(FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', seed: 13,
-              elev: 0.06, rotation: [0, 1.45, 0] }), -0.21, rkY, -3.14);
+            rackCans([-0.37, -0.05], rkY, -3.14);
             seat(FITTINGS.antennaWhip({ mats: P.mats, h: 0.20, r: 0.010, slot: 'dark',
               seed: 9 }), -1.00, rkY, -3.40);
-            if (vid === 'm1a2') {
+            if (vid === 'm1a1_abrams_hc') {
               // §B3.2 (2026-08-06) — RIGHT skirt-ledge spare-link strip: the
               // SAME certified ledge envelope as the m1a1/HA cable class (tops
               // <= 1.458 in the 1.37-1.48 skirt-zone front class, outer faces
@@ -5622,7 +5638,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
             }
           };
           buildTejasFamilyTurretCourse12();
-        } else if (vid === 'm1a2_sepv2') {
+        } else if (vid === 'm1a1_abrams_aim') {
           // SEPV2 (§5.19a rebuild): stowed M240 in the left floor gap (the
           // tejas seat class — muzzle grazing the crate flank) + the §H.4
           // RIGID AMMO CRATE in the freed center slot: lid slats + cinch
@@ -5630,8 +5646,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
           // 0.727 <= the 0.73 fill class; bedroll crown 0.823 under the
           // 0.8475 rail line.
           const buildTejasFamilyTurretCourse13 = (): void => {
-            seat(FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', seed: 14,
-              elev: 0.06, rotation: [0, 1.45, 0] }), -0.21, rkY, -3.14);
+            rackCans([-0.53, -0.21], rkY, -3.14);
             P.add('turret', box(0.46, 0.41, 0.30), 0.38, 0.522, -3.14);          // rigid ammo crate
             P.add('turretDetail', box(0.42, 0.012, 0.115), 0.38, 0.732, -3.215); // lid slats
             P.add('turretDetail', box(0.42, 0.012, 0.115), 0.38, 0.732, -3.075);
@@ -5640,14 +5655,13 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
             P.add('turretTrack', cylX(0.050, 0.020, 10), 0.28, 0.775, -3.10);
           };
           buildTejasFamilyTurretCourse13();    // bedroll strap
-        } else if (vid === 'm1a2_sepv3') {
+        } else if (vid === 'm1a1_abrams_fep') {
           // SEPV3 (§5.19a rebuild): stowed M240 mirrored into the freed RIGHT
           // slot (muzzle toward the center duffel) + an antenna base pot at
           // the right rear post — the M1A2C loadout keeps the loader M240 on
           // the skate (station branch) and the §H.4 systems kit above.
           const buildTejasFamilyAssemblyCourse1 = (): void => {
-            seat(FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', seed: 17,
-              elev: 0.06, rotation: [0, -1.45, 0] }), 0.72, rkY, -3.14);
+            rackCans([0.48, 0.80], rkY, -3.14);
             seat(FITTINGS.antennaWhip({ mats: P.mats, h: 0.20, r: 0.010, slot: 'dark',
               seed: 15 }), 0.95, rkY, -3.38);
           };
@@ -5659,7 +5673,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
         //   = 2.30 world, under the proven 2.31 fill line / 2.318 rail cap;
         //   x/z inside the rack rails). Per-variant items keep §H.4 variety.
         // - DECK TIE-DOWN RINGS half-sunk at deck+0.006, flat torus tops
-        //   +14 mm — inside the certified deck-bin slack (the m1a2 deck-cable
+        //   +14 mm — inside the certified deck-bin slack (the m1a1_abrams_hc deck-cable
         //   round measured +17 mm as the free class on the same 1024 raster).
         //   Stations clear of the grille beds (z >= -2.20) and splash board.
         if (vid === 'm1a1') {
@@ -5677,14 +5691,14 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
             P.add('turretTrack', cylX(0.058, 0.022, 10), -0.68, 0.672, -3.12);
           };
           buildTejasFamilyTurretCourse15();
-        } else if (vid === 'm1a2' || vid === 'm1a2_tusk') {
+        } else if (vid === 'm1a1_abrams_hc' || vid === 'm1a1_abrams_sa') {
           // helmet bag on the right duffel crown (duf3 crown 0.582 local).
           const buildTejasFamilyTurretCourse16 = (): void => {
             P.add('turretCloth', box(0.20, 0.075, 0.18), 0.749, 0.622, -3.14);
             P.add('turretTrack', box(0.21, 0.018, 0.05), 0.749, 0.646, -3.14);
           };
           buildTejasFamilyTurretCourse16();
-        } else if (vid === 'm1a2_sepv2') {
+        } else if (vid === 'm1a1_abrams_aim') {
           // helmet bag on the LEFT (0.7) duffel crown — mirrors the tejas
           // right-bag read so the pair splits at a glance (§H.4).
           const buildTejasFamilyTurretCourse17 = (): void => {
@@ -5692,7 +5706,7 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
             P.add('turretTrack', box(0.21, 0.018, 0.05), -0.663, 0.714, -3.14);
           };
           buildTejasFamilyTurretCourse17();
-        } else if (vid === 'm1a2_sepv3') {
+        } else if (vid === 'm1a1_abrams_fep') {
           // canvas satchel + strap on the left duffel crown (top 0.7295 <=
           // the 0.73 fill class).
           const buildTejasFamilyTurretCourse18 = (): void => {
@@ -5797,7 +5811,7 @@ const AX_HULL: AbramsHullConfig = {
   // annulus on the stock tire cylinder, tinted via the tireHex OWN-BUCKET
   // clone (wheels/detail slots are repaint-registered = retint-dead, §C
   // tone-slot law). contactZF/contactZR PIN the ground-run patch + ramp
-  // tangents at the r-0.38-derived certified values (m1a2 precedent);
+  // tangents at the r-0.38-derived certified values (m1a1_abrams_hc precedent);
   // deadSag 0.03 = live-track taut top run (the 0.085 dead-track dip ate
   // the daylight window). beltCoreTop 0.47 splits the old 0.41..1.02 solid
   // belly core into the real BELLY PAN (0.41 front-row floor certified,
@@ -6187,7 +6201,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
       // (AXDED-R1: x 1.78 -> 1.76 — the shelf corner poked the ±1.827 front
       // bin the ref keeps at its 0.81 rub-strip line.)
       P.add('hull', box(0.70, 0.05, 0.30), sx * 1.41, 1.4525, -3.35);
-      // BAY BULKHEAD (the m1a2 sprocket-bay closure-wall precedent): with
+      // BAY BULKHEAD (the m1a1_abrams_hc sprocket-bay closure-wall precedent): with
       // the shelf roofing the slot, the open sponson tunnel above the track
       // read through from dead-rear as two enclosed sky slivers (x ±1.32,
       // y 0.65..1.05 — §B2 flood witnesses). A dark transverse wall at the
@@ -6223,11 +6237,13 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     // angles. Sunk into a lashed stowage tray (frame rails + strap licks =
     // the §B3 connected read); stack tops now ~1.81 vs the 1.775 louver
     // line (+0.03 class).
+    // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle and every drawn gun works): the AbramsX's
+    // weapon is its remote station; the tray holds a flat steel tool chest (profiles/fieldChest.ts) under the lashings
+    // instead of a stowed M240 kept for the old roof-MG census.
     {
-      const mag = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', seed: 47,
-        elev: 0.02, ammo: false, rotation: [0, 1.55, 0] });
-      mag.position.set(-1.02, 1.585, -3.02);
-      P.hullG.add(mag);
+      const chest = fieldChestParts(0.50, 0.058, 0.20, { high: !!P.q, front: -1, handles: false });
+      for (const g of chest.paint) P.addEquipment('hull', g, -1.02, 1.745, -3.02);
+      for (const g of chest.dark) P.addEquipment('hullDark', g, -1.02, 1.745, -3.02);
       P.add('hullDetail', box(0.56, 0.035, 0.022), -1.02, 1.758, -3.135);  // tray rail
       P.add('hullDetail', box(0.56, 0.035, 0.022), -1.02, 1.758, -2.905);  // tray rail
       P.add('hullDetail', box(0.022, 0.035, 0.25), -1.30, 1.758, -3.02);   // tray end
@@ -6796,7 +6812,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
   // the REAL AbramsX carries these whips on the TURRET bustle corners —
   // but the ORACLE bakes them into its HULL mask at (±1.15, -1.98) and the
   // certified hull rows match them there (ORACLE-REGISTRATION-PINNED
-  // class, the m1a2 works-field precedent). A proc-only re-parent regresses
+  // class, the m1a1_abrams_hc works-field precedent). A proc-only re-parent regresses
   // the certified hull row (the two matched whip columns go only-ref), so
   // the fix is COUPLED: land a turretFollowers extension on the abramsx
   // MODEL_SOURCE registration (abramsConceptSpecs.ts — outside this single-owner
@@ -7102,7 +7118,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
   // loft (noRearFace now set) and the old pintle at -3.915/-3.925 was
   // equally invisible — the AbramsX stern rendered as one blank camo wall.
   // Authored ON the visible -3.97 plate, <=12 mm proud (faces >= -3.982,
-  // the m1a2 8mm-class + the banked -4.05 hullLengthM lesson), |x| <= 0.83
+  // the m1a1_abrams_hc 8mm-class + the banked -4.05 hullLengthM lesson), |x| <= 0.83
   // inside the ±0.85 center band. Grammar: the hybrid-drive full-width
   // horizontal vent field dominating the plate, taillight clusters in
   // guards at the corners, tow shackles low + center pintle.
@@ -7840,7 +7856,7 @@ function buildAbramsX(P: AbramsBuilderPort): void {
         P.add('hullDetail', torus(0.028, 0.008, 10), dx, deckAt(AX_HULL, dz) + 0.006, dz, Math.PI / 2, 0, 0);
       }
     }
-    // §C proxy-size law (leclerc stale-proxy class): without an explicit
+    // §C proxy-size law (leclerc_s2 stale-proxy class): without an explicit
     // muzzleZ the gun shadow proxy runs to the spec's cloned 5.28 m barrel
     // (world z +7.48, 1.7 m past the real XM360 tip) — pin it to the real
     // gun-local muzzle (tube cap 3.58 + bore rim).
@@ -8443,19 +8459,19 @@ function buildM1A3(P: AbramsBuilderPort): void {
 // Profile table
 // ---------------------------------------------------------------------------
 export const ABRAMS_PROFILES = {
-  m1a2: configuredAbramsProfile(buildTejasFamily, { station: 'ttsStandard' }),
+  m1a1_abrams_hc: configuredAbramsProfile(buildTejasFamily, { station: 'ttsStandard' }),
   m1a1: configuredAbramsProfile(buildTejasFamily, { station: 'cws' }),
   m1a1ha: configuredAbramsProfile(buildTejasFamily, { station: 'cws' }),
   // TUSK: published-true full-scale body + real-scale ARAT/slat/TIP kit.
   // The tusk oracle is the tejas GLB height-clamped small PLUS a real-scale
   // runtime kit (certified chimera — see the packet); dims/floaters are the
   // achievable components and the build no longer chases the 0.727 body.
-  m1a2_tusk: configuredAbramsProfile(buildTejasFamily, {
+  m1a1_abrams_sa: configuredAbramsProfile(buildTejasFamily, {
     abramsKit: 'tusk', station: 'ttsCompact',
   }),
   // SEP REBUILD-ON-BASE (§5.19 + §5.19a owner orders 2026-08-07: "rebuild
-  // them to use the M1A2 abrams base model ... i meant the m1a2 abrams
-  // (ex tejas) is the correct base, the base m1a2 platform is WRONG"):
+  // them to use the M1A2 abrams base model ... i meant the m1a1_abrams_hc abrams
+  // (ex tejas) is the correct base, the base m1a1_abrams_hc platform is WRONG"):
   // both SEP variants now ride the TEJAS-GRADE platform (buildTejasFamily)
   // as §H param deltas — station variant + abramsKit layer on top.
   // SEPv2: armored TTS-derived tower + shielded loader Browning + relocated
@@ -8464,7 +8480,7 @@ export const ABRAMS_PROFILES = {
   // recovered-print registration is retired for this id, and the
   // works-field parity echo that served its REF-HULL mask is DELETED
   // (§5.34 echo-deletion round 2026-08-08; see the packet).
-  m1a2_sepv2: configuredAbramsProfile(buildTejasFamily, {
+  m1a1_abrams_aim: configuredAbramsProfile(buildTejasFamily, {
     station: 'ttsArmored', abramsKit: 'sepv2',
   }),
   // SEPv3/M1A2C: low TTS-derived tower + retained CROWS-LP optics + Trophy
@@ -8472,7 +8488,7 @@ export const ABRAMS_PROFILES = {
   // IFLIR-scale CITV/sight, ADL boxes, split IFF panels and low-shield M2. NO oracle
   // registration (FALSE-0 law — never gate this id); measures are the
   // §B8.1 four-box + self-shots.
-  m1a2_sepv3: configuredAbramsProfile(buildTejasFamily, {
+  m1a1_abrams_fep: configuredAbramsProfile(buildTejasFamily, {
     station: 'ttsLowProfile', abramsKit: 'sepv3',
   }),
   m1a3: abramsProfile(buildM1A3),

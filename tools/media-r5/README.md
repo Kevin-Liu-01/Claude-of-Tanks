@@ -93,6 +93,16 @@ sets their children's priority. `site-loops.mjs` builds every format's seamless 
 a second seeked read of the master, so an encode holds about 18 frames of 4K, not the whole take. The single read
 held 6.5–7.6 GB an encode and helped fill the machine's swap on 2026-10-10.
 
+**Master filter** (`master-filter.mjs`, optional): when `COT_MASTER_FILTER` names an executable (or
+`shots/media-r5/master-filter` exists), `site-loops.mjs` and `site-media.mjs` pass each still and film master
+through it once (`<filter> still <in.png> <out.png> <id>`, `<filter> film <in> <out.mov> <id>`) and encode the
+deliveries from its output. Unset, the masters are used as rendered and the deliveries are unchanged; a filter that
+fails stops the run. The picture publishers use the same filter: `bake-minimap-assets.mjs`,
+`field-guide-capture.mjs` and `marketing-shots/generate-og-images.mjs` hand their own encode to
+`filterPublishedImage` (kept as is unless the filter changes the picture), and `media-production/publish.mjs` and the
+`marketing-shots/publish-*` gallery publishers filter each source picture before cwebp. `master-filter.selftest.mjs`
+holds the contract.
+
 Review helpers: `peek.mjs`, `film-sheet.mjs`, `finals-sheet.mjs`, `mosaic.mjs`,
 `plate.mjs`, `strip.mjs`. UI capture scripts for `studio-ui.mjs` live in `ui/`.
 

@@ -21,7 +21,7 @@ function collarVertices(gun) {
   return new THREE.Box3().setFromPoints(points);
 }
 for(const quality of ['high','low']) {
-  const tank=createTank('kf51_x',null,{proceduralOnly:true,geometryReceipt:true,quality,batchStatic:false});
+  const tank=createTank('kf51_panther',null,{proceduralOnly:true,geometryReceipt:true,quality,batchStatic:false});
   try {
     tank.root.updateMatrixWorld(true);
     const gun=tank.root.getObjectByName('gun'),recoil=tank.root.getObjectByName('rig_recoil');
@@ -39,14 +39,16 @@ for(const quality of ['high','low']) {
     near(top(gun,6.86),1.944111335,.000002,`${quality}: retained reduced neck radius`);
 
     const bore=tank.root.getObjectByName('muzzleBoreShadowFallback');
-    assertHollowMuzzle(tank.root,6.87969993);
+    // 2026-10-11: the tube reaches the measured source muzzle (Z6.89975 within 0.05 mm). It stopped 20 mm short for
+    // the factory's old seated bore lip, which the carved cannon bores (a28e4d8e6) no longer add.
+    assertHollowMuzzle(tank.root,6.89969993);
     const rim=bore.getObjectByName('muzzleBoreInnerWallAndBackstop');
     assert.equal(rim.parent,bore,'recess stays recoil-owned');
     const seat=bore.userData.muzzleSeatReceipt;
     near(seat.supportOuterRadiusM,.0892,.000002,'native neck radius');
     const tubeEnd=new THREE.Box3().setFromObject(gun).max.z;
     const rimBox=new THREE.Box3().setFromObject(rim);
-    near(tubeEnd,6.87969993,.000002,'native barrel endpoint');
+    near(tubeEnd,6.89969993,.000002,'native barrel endpoint');
     near(rimBox.max.z,tubeEnd,.000002,'recess wall joins the native face');
     near(bore.getWorldPosition(new THREE.Vector3()).y,1.85491175,.000001,'centered bore');
     recoil.position.z-=.10;tank.root.updateMatrixWorld(true);

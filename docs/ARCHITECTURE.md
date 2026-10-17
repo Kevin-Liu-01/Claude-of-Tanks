@@ -248,7 +248,7 @@ CrewVolume   = { crew: CrewName, min:[x,y,z], max:[x,y,z],
                  turretLocal:boolean, shapes:SmoothShape[] }
 ModuleName = 'engine'|'fuelTank'|'ammoRack'|'gun'|'turretRing'|'radio'|'optics'|'trackL'|'trackR'
 CrewName   = 'commander'|'gunner'|'driver'|'loader'   // 3-crew tanks (t34_85 pre-85? no —
-             // t90m has no loader; omit absent crew members from the array entirely
+             // t90am has no loader; omit absent crew members from the array entirely
 ```
 The generated shell is sliced only along vehicle-local Z and convex-hulled from
 clipped source triangles, so adjacent components share closed boundaries while the
@@ -520,6 +520,27 @@ The owner's cloud bar (2026-10-13): Verdant's fair-weather cumulus is the refere
 ("no more of the cloud type depicted in fjord") is retired from the regime vocabulary, Fjord, Polders and Copper Mesa
 carry fair-weather cumulus tuned to their place, and `engine/cloudsBan.selftest.mjs` keeps the deck out of every map,
 time of day, weather variant, Studio plan, Garage sky and phone deck.
+Clouds 2.0 (2026-10-06, after the clouds package of Takram's three-geospatial; MIT, the port recorded in
+docs/ATTRIBUTION.md): the slab is a layered medium. `engine/cloudLayers.ts` turns the map's resolved preset into up to
+four altitude lanes (the regime's main layer and the layer aloft the meteorology puts over it), each a coverage of the
+local weather (`cloudNoise.ts` `bakeCloudLocalWeather`: cumulus fields with clearings, the elements aloft, the decks'
+stratiform field and cells, equalised, on a 48 km tile) shaped by a height function (a dome over a flat base, a deck
+flat on both faces, an anvil) into a shell that a 3.2 km Perlin–Worley shape volume and a detail volume
+(`cloudVolumeNoise.ts`, baked on the GPU at load) carve under a density profile (`cloudShaders.ts`). The shells curve
+with a parabolic Earth so the field converges at the horizon; the march (36 km on High) strides by the footprint and
+refines on entering a cloud. Each sample's optical depth to the sun is a short secondary march plus a Beer shadow map —
+two toroidal, world-anchored cascades (12 km about the camera and 40 km about the camera's point at the stack's
+middle height carried down the sun) of the same medium marched along the sun by lanes and altitude slices, a band a
+frame, read as the four texels' depths blended as transmittances —
+under the multiple-scattering octaves, a dual-lobe phase, the powder term, the sky and ground light and a deck's
+diffusion (by the vertical depth over the point — in a deck, the column over it in its own cell, so a thick core is dark
+beside a thin seam); the trace writes its depth, and the resolve reprojects by it and clips to its neighbourhood's
+variance. The clouds' sun is the light model's colour (`scene.userData.lightModel`) times the air between the ground and
+the cloud, and under a closing deck the ground light the bases see is what the deck passes down (`cloudGroundLight`). The
+near cascade's column depth is the cloud shade the lit materials read (`cloudShadeMap.ts`, the contract unchanged), and
+its mean over the battlefield is published as `scene.userData.cloudSunMean` for the light model. The dome composite,
+the history the lens flare / sun shafts / horizon panorama read and the sky beyond the medium (rain, fog bank, cirrus,
+contrails, lightning) are unchanged; the far band is gone (the curved shells carry the field to the horizon).
 
 Horizon ring — vista pass (round 24, 2026-09-19; owner: "the stuff around the map like mountains needs to
 be so much better … consider this a triple AAA pass"). `world/maps/horizon.ts` now builds a 431-column
@@ -671,8 +692,8 @@ Locked stat values (transcribe the rest from tank-roster.md; these resolve ambig
 
 | id | hp | hullTraverseDegS | turretTraverseDegS | baseAccuracy | aimTimeS | terrainResistance | pivotStyle | reloadS |
 |---|---|---|---|---|---|---|---|---|
-| m1a2     | 2600 | 44 | 40 | 0.30 | 1.8 | 0.7/0.8/1.5 | neutral | 6.0 |
-| t90m     | 2000 | 42 | 38 | 0.35 | 2.2 | 0.7/0.8/1.5 | neutral | 7.5 |
+| m1a1_abrams_hc     | 2600 | 44 | 40 | 0.30 | 1.8 | 0.7/0.8/1.5 | neutral | 6.0 |
+| t90am     | 2000 | 42 | 38 | 0.35 | 2.2 | 0.7/0.8/1.5 | neutral | 7.5 |
 
 (The m4a3e8, tiger1, t34_85, is2, panther_g and leo2a7 rows retired with the
 hidden fleet on 2026-09-23; the Leopard 2A7 row lives on as the unregistered
@@ -682,7 +703,7 @@ donor template in `src/vehicles/donorSpecs.ts`.)
 `{move:0.20, hullRot:0.20, turret:0.12, afterShot:4}`, modern (stabilized)
 `{move:0.06, hullRot:0.08, turret:0.06, afterShot:3}`. Elevation/depression, weights,
 engine hp, speeds, shell pens/dmg: from the roster tables verbatim. Shell velocities
-(m/s, locked): m1a2 1670/1400/1000; t90m 1750/905/850. (slots:
+(m/s, locked): m1a1_abrams_hc 1670/1400/1000; t90am 1750/905/850. (slots:
 standard/special/HE.)
 
 #### 3.3.2 `fleetFactory.ts` / `factoryGeometry.ts` / `tankFactoryCore.ts`
@@ -703,7 +724,7 @@ TankVisual = {
   turretTopWorld(out: Vector3) => out,   // for camera pivot / HP bar anchor
   recoilKick(ageS=0, impulseScale=1),    // barrel slide-back anim (visual only, self-timed
                                          //   via dt accumulated in syncFromState)
-  stripEra(plateName),                   // remove ERA brick cluster visual (t90m)
+  stripEra(plateName),                   // remove ERA brick cluster visual (t90am)
   setDestroyed(),                        // burnt: dark material, drooped gun, decapitated
                                          //   turret optional; idempotent
   setVisible(v), dispose(),
@@ -1151,7 +1172,7 @@ angles from plate normal):
    88 < 3×45=135).
 4. IS-2 BR-471 (122 mm) vs 25 mm roof at 80° ⇒ NO ricochet (122 ≥ 3×25), normalization
    5×1.4×122/25 = 34.2°, effAngle 45.8°, eff = 25/cos(45.8°)^1.4 ≈ 41.5 ⇒ pen.
-5. HEAT (m1a2 M830A1, pen 600 CE) through a 10 mm spaced skirt then 0.5 m air gap ⇒
+5. HEAT (m1a1_abrams_hc M830A1, pen 600 CE) through a 10 mm spaced skirt then 0.5 m air gap ⇒
    remaining pen = (600−10/cos)·(1−0.05·5) = 0.75×… assert per §7 formula, penetrates
    a 300 mm CE side but not an 800 mm CE turret.
 6. ERA: 3BM60 (KE) on Relikt tile {keReduction 0.25} ⇒ pen ×0.75, tile in eraSpent,
@@ -1356,7 +1377,7 @@ export function createGarage(opts) => Garage
 // opts = { specs, bus, onSelect, onBattle, garageVariants,
 //          selectedGarageVariantId, onGarageVariantSelect }
 Garage = {
-  show(selectedId = 'm1a2'), hide(), isOpen: boolean,
+  show(selectedId = 'm1a1_abrams_hc'), hide(), isOpen: boolean,
   setSelected(specId),                   // drives carousel highlight; calls onSelect
   getSelectedGarageVariant(),
   setSelectedGarageVariant(variantId),   // persisted workshop; never changes battle map
@@ -1816,7 +1837,7 @@ Startup order:
 ```
 createRenderer → createSky (sunDir) → bakeEnvironment → createLighting(CSM FIRST,
 before any material compiles) → EngineCtx → createMap → spawn TankEntities
-(createTankState + createCombatState + createTank visual; player = 'm1a2' at
+(createTankState + createCombatState + createTank visual; player = 'm1a1_abrams_hc' at
 spawnPoints.player; 7 enemies = the other 7 specs at enemies[0..6]) → createFx →
 createParticleSystem → initHud + createDamagePanel + createGarage → createAudio →
 createCameraRig → sky.applyFog → renderer.compile / compileAsync → render 2 warm
@@ -1865,11 +1886,11 @@ zero tank inputs, then camera placement, `camera.updateProjectionMatrix()`,
 | `battlefield` | `rig.setExternalPose` — elevated ~35 m above SW village edge looking NE across map | all 8 tanks at spawns, hud hidden | engine, world, vehicles |
 | `player_view` | `rig.snapArcade(step=2, yaw=player.yaw, pitch=-12°)` | hud `setMode('battle')` + `forceAimDisplay({distM:240, penRatio:1.3, reload:{t:0,totalS:6}, shellSlot:0})` | engine, hud, world, vehicles |
 | `sniper_view` | `rig.snapSniper(zoom=8, aim at nearest enemy bearing)` | hud `setMode('sniper')` + forceAimDisplay penRatio 0.95 (orange) | engine, hud |
-| `tank_closeup_modern` | `rig.setExternalPose` orbit: dist 9 m, azimuth 35°, elev 12° around the m1a2 entity | hud hidden | vehicles, engine |
+| `tank_closeup_modern` | `rig.setExternalPose` orbit: dist 9 m, azimuth 35°, elev 12° around the m1a1_abrams_hc entity | hud hidden | vehicles, engine |
 | `tank_closeup_ww2` | same recipe around the kv2 entity | hud hidden | vehicles, engine |
 | `combat_firing` | `setExternalPose` 3/4 front-side of player, 12 m | `fx.composeFiringMoment({muzzlePos: player.visual.gunMuzzleWorld(), dir, caliberMm:120, tracerType:'APFSDS', ageS:0.05})`; hud hidden | fx, vehicles, engine |
 | `explosion` | `setExternalPose` 25 m from enemy[2] | `fx.composeExplosionMoment({pos, ageS:0.4})` + `enemy[2].visual.setDestroyed()` | fx, vehicles, engine |
-| `garage` | `garagePresentationPose.ts` applies one immutable Verdant-style front three-quarter pose (glacis toward the viewer, bow/gun screen-left) at the isolated **(-1500, 0, -1500)** Garage stage; the tank rear points toward the shared field-record display and all ten bounded scene packs change only environment identity | `garage.show('m1a2')` | hud (garage), vehicles, engine |
+| `garage` | `garagePresentationPose.ts` applies one immutable Verdant-style front three-quarter pose (glacis toward the viewer, bow/gun screen-left) at the isolated **(-1500, 0, -1500)** Garage stage; the tank rear points toward the shared field-record display and all ten bounded scene packs change only environment identity | `garage.show('m1a1_abrams_hc')` | hud (garage), vehicles, engine |
 
 `window.__SHOTS.views` lists exactly these 8 (more may be appended). `__GAME_READY`
 only after the §4 startup sequence completes. Determinism: everything seeded (§1.4),

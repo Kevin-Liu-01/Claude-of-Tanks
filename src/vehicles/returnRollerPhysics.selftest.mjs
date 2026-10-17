@@ -9,7 +9,7 @@ for(const mode of['default','hydraulic','override']){
   ['hull','detail','dark','shadow','trackLink','spareTrack','burnt','trackL','trackR','wheels','rubber'].map(k=>[k,material]));
  Object.assign(mats,{trackTexL:new T.Texture(),trackTexR:new T.Texture()});
  const hullG=new T.Group();hullG.position.y=.19;hullG.scale.y=1.1;
- const P={spec:{id:'m1a2',...(mode!=='default'?{hydropneumaticAim:{compressionM:.36,droopM:.17}}:{})},
+ const P={spec:{id:'m1a1_abrams_hc',...(mode!=='default'?{hydropneumaticAim:{compressionM:.36,droopM:.17}}:{})},
   disposables:[],mats,hullG,geometryReceipt:true,q:false,batchStatic:false,add(){}};
  const cfg={wheelR:.4,wheelW:.3,wheelZs:[-1,0,1],wheelY:.5,xc:1.3,
   sprocket:{z:-2,y:.7,r:.3},idler:{z:2,y:.7,r:.3},trackW:.5,trackTh:.06,topY:1,

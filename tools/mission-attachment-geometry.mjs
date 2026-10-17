@@ -14,11 +14,17 @@ const KUNLUN_WELDED_SUPPORT={minX:-1.59,maxX:-1.18,minZ:-.75,maxZ:-.15,minY:.69,
 // These finite atlas patches are permanent welded housing roofs. Separate
 // removable ERA, crates, cloth and lamps continue to collide with the dock.
 const WELDED_SUPPORT_PATCHES={
- cn_t72b3m_modern:{region:KUNLUN_WELDED_SUPPORT,plane:()=>.72,tolerance:.03},
- pl_t72b3m_modern:{region:{minX:-1.69,maxX:-1.28,minZ:-.22,maxZ:.28},plane:()=>.740,tolerance:.000002},
- ru_t80u_modern:{region:{minX:-1.22,maxX:-1.09,minZ:-.86,maxZ:-.54},plane:p=>.71-(.01/1.05)*(p.z+1.02),tolerance:.000002},
- ru_t72b3m_modern:{region:{minX:-1.615,maxX:-1.28,minZ:.28,maxZ:.62},plane:p=>.77-(.07/.74)*(p.z-.14),tolerance:.000002},
- ru_t72b3_modern:{region:{minX:-1.22,maxX:-1.085,minZ:-.77,maxZ:-.44},plane:p=>.67-(.02/.98)*(p.z+.79),tolerance:.000002},
+ t72b3m_kunlun:{region:KUNLUN_WELDED_SUPPORT,plane:()=>.72,tolerance:.03},
+ t72b3m_wilk:{region:{minX:-1.69,maxX:-1.28,minZ:-.22,maxZ:.28},plane:()=>.740,tolerance:.000002},
+ t80u_bars_m:{region:{minX:-1.22,maxX:-1.09,minZ:-.86,maxZ:-.54},plane:p=>.71-(.01/1.05)*(p.z+1.02),tolerance:.000002},
+ t72b3m_bulat_m:{region:{minX:-1.615,maxX:-1.28,minZ:.28,maxZ:.62},plane:p=>.77-(.07/.74)*(p.z-.14),tolerance:.000002},
+ t72b3_bastion_m:{region:{minX:-1.22,maxX:-1.085,minZ:-.77,maxZ:-.44},plane:p=>.67-(.02/.98)*(p.z+.79),tolerance:.000002},
+ // Owner 2026-10-15 (VEH-21): the Ukrainian donor-turret concepts' drone landings (ukraineDonorTurretKit.ts
+ // UKRAINE_DOCK_LANDINGS): flat steel plates behind the Hetman's cage wing, raised over the Hetman II's command basket
+ // and on the Sich's rear case.
+ t72b3m_hetman:{region:{minX:.60,maxX:1.00,minZ:-1.60,maxZ:-1.24},plane:()=>.80,tolerance:.000002},
+ t72b3m_hetman_ii:{region:{minX:-.20,maxX:.20,minZ:-2.45,maxZ:-2.11},plane:()=>.72,tolerance:.000002},
+ t72b3_sich:{region:{minX:.23,maxX:.57,minZ:-1.66,maxZ:-1.34},plane:()=>.74,tolerance:.000002},
 };
 function weldedSupportRegion(output,mesh,tri){
  if(output.frame!=='turret'||tri.getNormal(vector).y<.9)return null;

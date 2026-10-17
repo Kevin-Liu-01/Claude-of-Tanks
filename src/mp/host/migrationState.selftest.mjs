@@ -34,10 +34,10 @@ await assert.rejects(deriveMigrationKey('short'), /at least 16/);
 
 // ---- two actors on the same roster: capture from A after some play, restore B, compare
 const seats = [
-  { seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 'm1a2' },
-  { seat: 1, playerId: 'p2', name: 'Two', team: 'bravo', specId: 't90m' },
+  { seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 'm1a1_abrams_hc' },
+  { seat: 1, playerId: 'p2', name: 'Two', team: 'bravo', specId: 't90am' },
 ];
-const bots = [{ playerId: 'bot-a', name: 'Bot A', team: 'alpha', specId: 'leo2a7v' }, { playerId: 'bot-b', name: 'Bot B', team: 'bravo', specId: 'leo2a7v' }];
+const bots = [{ playerId: 'bot-a', name: 'Bot A', team: 'alpha', specId: 'leo2_improved' }, { playerId: 'bot-b', name: 'Bot B', team: 'bravo', specId: 'leo2_improved' }];
 let nowMs = 1000;
 const now = () => nowMs;
 const schedule = () => () => {};
@@ -217,7 +217,7 @@ assert.equal(store.config, null);
 assert.throws(() => chunkMigrationBlob(MIGRATION_EVENT_KIND.KEYFRAME, 1, 0, new Uint8Array(MIGRATION_CHUNK_BYTES * 65)), /too large/);
 
 // ---- the boot config blob carries no secret
-const config = { roomId: 'R', matchId: 'm1', generation: 2, mapId: 'verdant', mode: 'standard', seed: 3, seats, bots, countdownS: 5, battleLimitS: null, hostSecret: SECRET, manifestBase: '/mp-collision', resume: null };
+const config = { roomId: 'R', matchId: 'm1', generation: 2, mapId: 'verdant', mode: 'standard', seed: 3, seats, bots, countdownS: 5, battleLimitS: null, hostSecret: SECRET, manifestBase: '/mp-collision/v2', resume: null };
 const configBytes = encodeBootConfig(config);
 assert.doesNotMatch(new TextDecoder().decode(configBytes), /hostSecret|mp-collision/);
 const configBack = decodeBootConfig(configBytes);

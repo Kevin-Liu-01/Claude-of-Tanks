@@ -48,18 +48,51 @@ export function packCollisionRecord(record) {
   const packExtent = (value) => (value.y0 !== undefined && value.y1 !== undefined
     && (Math.abs(value.y0 - record.min[1]) > 0.001 || Math.abs(value.y1 - record.max[1]) > 0.001)
     ? [n(value.y0), n(value.y1)] : []);
+  // (physics, 2026-10-16; convexOutlines on the 226 base: 136 parts on 12 maps — Verdant's and Steppe's hay cocks, the
+  // yards' cable drums, Saltwind's dry-stone modules, structure bands) the 0.1 mm rounding can bring a corner within
+  // a millimetre of its chord, and the decoder's reading (world/collision.ts convexOutlineInPlace, setConvexShape)
+  // drops it: the shard publishes the corners the decoder keeps. The same law, here in full: the capture page
+  // evaluates this function's source (collisionCaptureScript) and it imports nothing.
+  const outline = (values) => {
+    const out = Array.from(values, n), CORNER = 1e-3;
+    let m = out.length >> 1;
+    if (m < 3) return out;
+    let area2 = 0;
+    for (let i = 0; i < m; i++) { const j = i + 1 < m ? i + 1 : 0; area2 += out[2 * i] * out[2 * j + 1] - out[2 * j] * out[2 * i + 1]; }
+    if (!(Math.abs(area2) > 1e-9)) return out;
+    const winding = area2 < 0 ? -1 : 1, count = m;
+    m = 0;
+    for (let i = 0; i < count; i++) {
+      const x = out[2 * i], z = out[2 * i + 1];
+      if (m && out[2 * (m - 1)] === x && out[2 * (m - 1) + 1] === z) continue;
+      out[2 * m] = x; out[2 * m + 1] = z; m++;
+    }
+    while (m > 1 && out[0] === out[2 * (m - 1)] && out[1] === out[2 * (m - 1) + 1]) m--;
+    for (let dropped = true; dropped && m > 3;) {
+      dropped = false;
+      for (let i = 0; i < m && m > 3; i++) {
+        const a = i > 0 ? i - 1 : m - 1, b = i + 1 < m ? i + 1 : 0;
+        const turn = (out[2 * i] - out[2 * a]) * (out[2 * b + 1] - out[2 * i + 1]) - (out[2 * i + 1] - out[2 * a + 1]) * (out[2 * b] - out[2 * i]);
+        if (turn * winding > CORNER * Math.hypot(out[2 * b] - out[2 * a], out[2 * b + 1] - out[2 * a + 1])) continue;
+        for (let k = i; k < m - 1; k++) { out[2 * k] = out[2 * k + 2]; out[2 * k + 1] = out[2 * k + 3]; }
+        m--; i--; dropped = true;
+      }
+    }
+    out.length = 2 * m;
+    return out;
+  };
   // a convex part with a drawn top (physics stream, 2026-10-13: world/collision.ts collisionPartTopAt) is tagged 'p': its
   // extent, the planes' origin, their count, each plane's three numbers, then its corners
   const packShape = (value) => value.kind === 'convex' && value.tp
     ? ['p', n(value.y0 ?? record.min[1]), n(value.y1 ?? record.max[1]), n(value.tp[0]), n(value.tp[1]), (value.tp.length - 2) / 3,
-      ...value.tp.slice(2).map(n), ...value.points.map(n)]
+      ...value.tp.slice(2).map(n), ...outline(value.points)]
     : value.kind === 'obb'
     ? ['o', n(value.cx), n(value.cz), n(value.hw), n(value.hl), n(value.yaw), ...packExtent(value)]
     : value.kind === 'circle'
       ? ['c', n(value.cx), n(value.cz), n(value.r), ...packExtent(value)]
       : packExtent(value).length
-        ? ['w', ...packExtent(value), ...value.points.map(n)]
-        : ['v', ...value.points.map(n)];
+        ? ['w', ...packExtent(value), ...outline(value.points)]
+        : ['v', ...outline(value.points)];
   if (shape?.kind === 'compound') out.s = ['m', ...shape.parts.map(packShape)];
   else if (shape) out.s = packShape(shape);
   if (record.crushable) out.q = 1;
@@ -78,12 +111,14 @@ export function packCollisionRecord(record) {
 }
 
 /** Pack a world's three record lists (the capture page's shape: tree colliders are stored once, in obstacles). */
-export function packWorldCollision({ obstacles, colliders, concealers }) {
+export function packWorldCollision({ obstacles, colliders, concealers, craters = null }) {
   const n = (value) => Math.round(value * 10000) / 10000;
   return {
     obstacles: obstacles.map(packCollisionRecord),
     colliders: colliders.filter((record) => record.treeIdx == null).map(packCollisionRecord),
     concealers: concealers.map((entry) => [n(entry.x), n(entry.z), n(entry.r), n(entry.add)]),
+    // DST-04: the map's pre-placed craters (world/mapCraters.ts), as the browser capture packs them
+    ...(craters ? { craters: craters.map((s) => [s.x, s.z, s.radiusM, s.depthM, s.rimM, s.deforms ? 1 : 0]) } : {}),
   };
 }
 
@@ -100,7 +135,8 @@ async function worldBuilders() {
     import('../src/world/propsModelStore.ts'),
   ]);
   await models.preloadPropModels();
-  builders = { maps, terrain, vegetation, props, fleet };
+  const mapCraters = await import('../src/world/mapCraters.ts');
+  builders = { maps, terrain, vegetation, props, fleet, mapCraters };
   return builders;
 }
 
@@ -111,7 +147,7 @@ async function worldBuilders() {
  * is packed (the drift receipt's drawn-geometry shape check); it must not change it.
  */
 export async function buildWorldCollisionData(mapId, { terrainSeed = 1337, vegetationSeed = 2001, propsSeed = 2002, variant = null, inspect } = {}) {
-  const { maps, terrain, vegetation, props, fleet } = await worldBuilders();
+  const { maps, terrain, vegetation, props, fleet, mapCraters } = await worldBuilders();
   if (variant !== null && variant !== 'assault-trenches') throw new Error(`unknown battlefield variant ${variant}`);
   const config = variant ? { ...maps.getMapConfig(mapId), assaultTrenches: true } : maps.getMapConfig(mapId);
   // the wreck cast bakes real hull geometry: its demand-loaded builders must be resident first
@@ -122,9 +158,12 @@ export async function buildWorldCollisionData(mapId, { terrainSeed = 1337, veget
   const flora = vegetation.createVegetation(field, engine, vegetationSeed, config);
   const dressing = props.createProps(field, engine, propsSeed, config, flora);
   inspect?.({ mapId, flora, dressing });
+  const obstacles = [...dressing.obstacles, ...flora.treeObstacles];
   return packWorldCollision({
-    obstacles: [...dressing.obstacles, ...flora.treeObstacles],
+    obstacles,
     colliders: [...dressing.colliders, ...flora.treeObstacles],
     concealers: flora.concealers || [],
+    // DST-04: decided on the built records, as world/map.ts decides them
+    craters: mapCraters.mapCraterStamps(dressing.mapCraterSites, obstacles, field),
   });
 }

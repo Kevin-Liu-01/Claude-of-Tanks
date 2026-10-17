@@ -37,6 +37,7 @@ import { createTank } from '../vehicles/fleetFactory.ts';
 import { resolveWreckRoster } from './wreckRoster.ts';
 import { collectWreckShellSolids, collectWreckSolids } from './wreckCollision.ts';
 import { crumpleWreckGeometry, planWreckCrumple, refineForCrumple, type WreckCrumplePlan } from './wreckCrumple.ts';
+import { buildWreckDebris, seatWreckDebris } from './wreckDebris.ts';
 
 export interface WreckOptions {
   seed?: number;
@@ -65,6 +66,10 @@ export interface WreckBake {
    * has always taken. hx/hz/h are the visible geometry's own envelope. */
   placeHx?: number;
   placeHz?: number;
+  /** (Lane C, #8 r2) The hulk's ground contact in its frame, [minX, maxX, minZ, maxZ]: the plan of everything within
+   *  12 cm of its base (its track runs on the ground). The seat samples the terrain over it alone (seatHulk), not over
+   *  the envelope of a tossed turret or a gun run out past the hull. */
+  contact?: [number, number, number, number];
 }
 
 type TankWreckVisual = ReturnType<typeof createTank>;
@@ -78,7 +83,6 @@ interface WreckBakeOwner {
   geometries: Set<THREE.BufferGeometry>;
 }
 
-type DebrisFamily = 'char' | 'rust' | 'rubber';
 
 interface WreckGeometrySet {
   geos: THREE.BufferGeometry[];
@@ -493,9 +497,19 @@ function wreckBakeResult(
       new THREE.Vector3(burnt.max.x, Math.fround(burnt.max.y - baseY), burnt.max.z),
     ));
   }
+  // the ground contact: the plan of the vertices within 12 cm of the base (the track runs), for the seat (seatHulk)
+  const pos = merged.attributes.position.array;
+  let cx0 = Infinity, cx1 = -Infinity, cz0 = Infinity, cz1 = -Infinity;
+  for (let i = 0; i < pos.length; i += 3) {
+    if (pos[i + 1] > 0.12) continue;
+    if (pos[i] < cx0) cx0 = pos[i]; if (pos[i] > cx1) cx1 = pos[i];
+    if (pos[i + 2] < cz0) cz0 = pos[i + 2]; if (pos[i + 2] > cz1) cz1 = pos[i + 2];
+  }
+  const contact: [number, number, number, number] | null = cx1 - cx0 > 0.5 && cz1 - cz0 > 0.5 ? [cx0, cx1, cz0, cz1] : null;
   return {
     solids,
     ...(shellSolids ? { shellSolids } : {}),
+    ...(contact ? { contact } : {}),
     geo: merged,
     shadowGeo,
     hx: (bounds.max.x - bounds.min.x) / 2,
@@ -513,7 +527,7 @@ function wreckBakeResult(
  * hull origin, facing local +z like the live tank).
  *
  * @param {object} engineCtx EngineCtx (ARCHITECTURE §2.8)
- * @param {string} specId roster vehicle id ('kv2', 'm1a2', ...)
+ * @param {string} specId roster vehicle id ('kv2', 'm1a1_abrams_hc', ...)
  * @param {{seed?: number, pop?: boolean}} [opts] pop=true = ammo-rack wreck
  *   (turret tossed beside the ring), else unseated-askew turret
  * @returns {?{geo: THREE.BufferGeometry, hx: number, hz: number, h: number,
@@ -656,140 +670,79 @@ export function wreckRemnantPaint(mapId: string): number {
   }
 }
 
-function debrisBaseColor(
-  family: DebrisFamily,
-  rust: boolean,
-): readonly [number, number, number] {
-  if (rust) return [0.16, 0.072, 0.034];
-  if (family === 'rubber') return [0.028, 0.026, 0.024];
-  return [0.064, 0.057, 0.051];
-}
-
-function appendColoredDebris(
-  geometry: THREE.BufferGeometry,
-  family: DebrisFamily,
-  rng: () => number,
-  parts: THREE.BufferGeometry[],
-): void {
-  const normalized = normalizeGeometry(geometry, true);
-  const colors = new Float32Array(normalized.attributes.position.count * 3);
-  for (let i = 0; i < normalized.attributes.position.count; i++) {
-    const grain = 0.78 + rng() * 0.38;
-    const rust = family === 'rust' || (family === 'char' && rng() < 0.12);
-    const base = debrisBaseColor(family, rust);
-    colors[i * 3] = base[0] * grain;
-    colors[i * 3 + 1] = base[1] * grain;
-    colors[i * 3 + 2] = base[2] * grain;
-  }
-  normalized.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  parts.push(normalized);
-}
-
-function appendTornTrackRun(
-  side: number,
-  modern: boolean,
-  rng: () => number,
-  parts: THREE.BufferGeometry[],
-): void {
-  const count = (modern ? 10 : 8) + ((rng() * 5) | 0);
-  const startX = side * (modern ? 2.05 : 1.65);
-  const startZ = (rng() - 0.5) * 2.2;
-  const direction = (side > 0 ? 0.45 : Math.PI + 0.45) + (rng() - 0.5) * 1.2;
-  for (let i = 0; i < count; i++) {
-    if (i > 2 && rng() < 0.16) continue;
-    const distance = i * (modern ? 0.48 : 0.42);
-    const x = startX + Math.sin(direction) * distance + Math.sin(i * 0.8) * 0.16;
-    const z = startZ + Math.cos(direction) * distance + Math.cos(i * 0.63) * 0.14;
-    const pad = new THREE.BoxGeometry(modern ? 0.50 : 0.43, 0.09, modern ? 0.31 : 0.27);
-    pad.rotateY(direction + (rng() - 0.5) * 0.36);
-    pad.rotateX((rng() - 0.5) * 0.22);
-    pad.rotateZ((rng() - 0.5) * 0.18);
-    pad.translate(x, 0.07 + rng() * 0.05, z);
-    appendColoredDebris(pad, i % 5 === 0 ? 'rust' : 'char', rng, parts);
-  }
-}
-
-function appendDetachedWheel(
-  modern: boolean,
-  rng: () => number,
-  parts: THREE.BufferGeometry[],
-): void {
-  const radius = (modern ? 0.34 : 0.29) + rng() * 0.12;
-  const wheel = new THREE.CylinderGeometry(radius, radius, 0.18 + rng() * 0.10, 10, 1);
-  const upright = rng() < 0.45;
-  wheel.rotateZ(upright ? Math.PI / 2 + (rng() - 0.5) * 0.35 : (rng() - 0.5) * 0.22);
-  wheel.rotateY(rng() * Math.PI);
-  const angle = rng() * Math.PI * 2;
-  const distance = 2.7 + rng() * 3.2;
-  const x = Math.sin(angle) * distance;
-  const z = Math.cos(angle) * distance;
-  wheel.translate(x, upright ? radius : 0.12, z);
-  appendColoredDebris(wheel, 'rubber', rng, parts);
-
-  const hub = new THREE.CylinderGeometry(radius * 0.36, radius * 0.36, 0.205, 9, 1);
-  hub.rotateZ(upright ? Math.PI / 2 + (rng() - 0.5) * 0.35 : 0);
-  hub.rotateY(rng() * Math.PI);
-  hub.translate(x, upright ? radius : 0.13, z);
-  appendColoredDebris(hub, 'rust', rng, parts);
-}
-
-function appendArmorPanel(rng: () => number, parts: THREE.BufferGeometry[]): void {
-  const width = 0.45 + rng() * 0.75;
-  const depth = 0.28 + rng() * 0.58;
-  const panel = new THREE.BoxGeometry(width, 0.045 + rng() * 0.045, depth);
-  panel.rotateX((rng() - 0.5) * 0.45);
-  panel.rotateY(rng() * Math.PI);
-  panel.rotateZ((rng() - 0.5) * 0.32);
-  const angle = rng() * Math.PI * 2;
-  const distance = 2.0 + rng() * 4.0;
-  panel.translate(
-    Math.sin(angle) * distance,
-    0.08 + rng() * 0.12,
-    Math.cos(angle) * distance,
-  );
-  appendColoredDebris(panel, rng() < 0.35 ? 'rust' : 'char', rng, parts);
-}
-
 /**
- * Build lightweight local-space battlefield debris for a baked tank wreck:
- * torn track-pad runs, detached road wheels, armor panels and tow-cable scrap.
- * All pieces merge into the wreck mesh (zero extra draw calls / idle work).
- * The exact vehicle silhouette and any popped turret still come from
- * bakeTankWreck; these are the missing secondary destruction cues around it.
- *
- * @param {number} seed
- * @param {{modern?:boolean}} [opts]
- * @returns {{geo:THREE.BufferGeometry,tris:number}}
+ * A hulk's battlefield debris laid on flat ground in its frame and merged (the receipts' view of it; the props place
+ * the pieces one by one on the terrain: wreckDebris.ts seatWreckDebris). Lane C, #8 r2: built from a tank's own kinds of
+ * parts (linked track shoes, road wheels, torn plates, a skirt, a bin, a hatch lid, a drum, a roof gun), not boxes.
  */
 export function bakeWreckDebris(
   seed: number,
-  opts: { modern?: boolean } = {},
+  opts: { modern?: boolean; contact?: readonly [number, number, number, number] } = {},
 ): { geo: THREE.BufferGeometry; tris: number } {
-  const rng = mulberry32((seed ^ 0x71ac5eed) >>> 0);
-  const modern = opts.modern !== false;
-  const parts: THREE.BufferGeometry[] = [];
-
-  // Two visibly torn track runs: irregular pads snake away from opposite hull
-  // corners, with gaps and flipped shoes instead of intact ribbon geometry.
-  for (const side of [-1, 1]) {
-    appendTornTrackRun(side, modern, rng, parts);
-  }
-
-  // Detached road wheels: a mix of flat, leaning and nearly upright discs.
-  const wheelCount = (modern ? 4 : 3) + ((rng() * 3) | 0);
-  for (let i = 0; i < wheelCount; i++) {
-    appendDetachedWheel(modern, rng, parts);
-  }
-
-  // Armor skirts, grilles and stowage panels thrown beyond the burn scar.
-  const panelCount = 4 + ((rng() * 4) | 0);
-  for (let i = 0; i < panelCount; i++) {
-    appendArmorPanel(rng, parts);
-  }
-
+  const debris = buildWreckDebris(seed, opts);
+  const parts = seatWreckDebris(debris, null, 0, 0, 0);
   const merged = mergeGeometries(parts, false);
   if (!merged) throw new Error('wreck debris merge failed');
-  const tris = (merged.attributes.position.count / 3) | 0;
   for (const g of parts) g.dispose();
-  return { geo: merged, tris };
+  return { geo: merged, tris: debris.tris };
+}
+
+/** How far the hulk's plane may stand over the deepest dip under its tracks (m): a third of the ground's relief under the
+ *  contact, 4 to 9 cm; the rest of the run settles into the ground, deepest only where a bump rises under it. */
+const HULK_SEAT_GAP_M = [0.04, 0.09] as const;
+
+/**
+ * (Lane C, #8 r2; the census judge: "every hulk is sunk along its whole running gear ... 0.42 to 0.70 m under the
+ * terrain ... Cause: planGroundedObbPose drops the plane to the lowest of nine samples, then sinks a further 0.14 m")
+ * Seat a hulk on its track runs: the terrain sampled over its ground contact alone (wrecks.ts WreckBake.contact, 5 x 7
+ * points), the plane fitted to them by least squares, then set so it stands 4-9 cm over the deepest dip (a third of
+ * the relief); the tracks settle into the ground elsewhere, deepest only at a bump. Returns the planGroundedObbPose fields the placement reads.
+ */
+export function seatHulk(
+  heightField: { getHeightAt(x: number, z: number): number },
+  x: number,
+  z: number,
+  yaw: number,
+  contact: readonly [number, number, number, number],
+) {
+  const [x0, x1, z0, z1] = contact, c = Math.cos(yaw), s = Math.sin(yaw);
+  const lx: number[] = [], lz: number[] = [], hy: number[] = [];
+  for (let i = 0; i <= 4; i++) for (let j = 0; j <= 6; j++) {
+    const ax = x0 + (x1 - x0) * (i / 4), az = z0 + (z1 - z0) * (j / 6);
+    lx.push(ax); lz.push(az); hy.push(heightField.getHeightAt(x + ax * c + az * s, z - ax * s + az * c));
+  }
+  // least squares h = a + b x + d z over the samples (the local axes)
+  const n = hy.length;
+  let sx = 0, sz = 0, sh = 0, sxx = 0, szz = 0, sxz = 0, sxh = 0, szh = 0;
+  for (let k = 0; k < n; k++) {
+    sx += lx[k]; sz += lz[k]; sh += hy[k]; sxx += lx[k] * lx[k]; szz += lz[k] * lz[k]; sxz += lx[k] * lz[k];
+    sxh += lx[k] * hy[k]; szh += lz[k] * hy[k];
+  }
+  const mx = sx / n, mz = sz / n, mh = sh / n;
+  const cxx = sxx / n - mx * mx, czz = szz / n - mz * mz, cxz = sxz / n - mx * mz, cxh = sxh / n - mx * mh, czh = szh / n - mz * mh;
+  const det = cxx * czz - cxz * cxz;
+  const b = Math.abs(det) > 1e-9 ? (cxh * czz - czh * cxz) / det : 0;
+  const d = Math.abs(det) > 1e-9 ? (czh * cxx - cxh * cxz) / det : 0;
+  const a = mh - b * mx - d * mz;
+  let minR = Infinity, maxR = -Infinity, min = Infinity, max = -Infinity;
+  for (let k = 0; k < n; k++) {
+    const r = hy[k] - (a + b * lx[k] + d * lz[k]);
+    if (r < minR) minR = r; if (r > maxR) maxR = r;
+    if (hy[k] < min) min = hy[k]; if (hy[k] > max) max = hy[k];
+  }
+  const offset = minR + Math.min(HULK_SEAT_GAP_M[1], Math.max(HULK_SEAT_GAP_M[0], (maxR - minR) / 3));
+  const y = a + offset; // the plane at the hulk's origin (local 0, 0)
+  // the normal of h = y + b x + d z in local axes, turned to the world by the yaw
+  const nl = Math.hypot(b, d, 1) || 1, nxl = -b / nl, nzl = -d / nl, ny = 1 / nl;
+  return {
+    y,
+    normalX: nxl * c + nzl * s,
+    normalY: ny,
+    normalZ: -nxl * s + nzl * c,
+    min,
+    max,
+    spread: max - min,
+    maxEmbed: Math.max(0, maxR - offset),
+    maxFloat: Math.max(0, offset - minR),
+  };
 }

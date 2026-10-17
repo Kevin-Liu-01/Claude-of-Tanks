@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import { addArieteXLaunchers, addArieteXRearStowage } from './arieteXEquipment.ts';
 import { addArieteXOpticalHead, addArieteXRoofFurniture } from './arieteXPhotoDetails.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -17,7 +18,7 @@ type Point = readonly [number, number, number];
 type Row = readonly [z: number, halfWidth: number, bottom: number, shoulder: number, roof: number];
 
 export const ARIETE_X_DATUMS = Object.freeze({
-  ariete_c1_x: {
+  c1_ariete: {
     dims: { hullLengthM: 7.99, overallLengthM: 9.87, widthM: 3.61, heightM: 2.50 },
     structuralRoofY: 2.50, fixedOpticHeightM: 2.86, highestFittingM: 3.92,
     // Photo-estimated mechanical stations, not extracted AI object origins.
@@ -26,7 +27,7 @@ export const ARIETE_X_DATUMS = Object.freeze({
     muzzleZ: 5.875,
   },
 });
-const D = ARIETE_X_DATUMS.ariete_c1_x;
+const D = ARIETE_X_DATUMS.c1_ariete;
 
 function local(geometry: THREE.BufferGeometry, point: Point): THREE.BufferGeometry {
   return geometry.translate(-point[0], -point[1], -point[2]);
@@ -205,7 +206,8 @@ function machineGun(P: TankBuilderPort): void {
   mg.add('turretDark', cylZ(.024, .54, 16), x, 2.813, z + .49);
   mg.add('turretDetail', box(.11, .13, .16), x - .10, 2.78, z + .06);
   mg.add('turretDark', box(.09, .07, .16), x, 2.775, z - .16);
-  mg.finish();
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+  stationFromDrawnGun(mg.finish(), { name: 'arieteXRoofMg', caliberMm: 7.62 });
 }
 
 function gun(P: TankBuilderPort): void {
@@ -250,4 +252,4 @@ export function buildArieteX(P: TankBuilderPort): void {
   gun(P);
 }
 
-export const ARIETE_X_PROFILES = Object.freeze({ ariete_c1_x: { build: buildArieteX } });
+export const ARIETE_X_PROFILES = Object.freeze({ c1_ariete: { build: buildArieteX } });

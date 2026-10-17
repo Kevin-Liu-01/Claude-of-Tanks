@@ -20,6 +20,9 @@ The repository is MIT-licensed by default, with the exceptions defined in
 
 The path-level map in `LICENSE-POLICY.md` determines which first-party license applies.
 An individual file does not need to repeat this notice for that map to apply.
+Files that this repository's own tools generate — renders, screenshots, video,
+map plates, collision manifests, ledgers, receipts and other derived data — are
+original first-party files under this notice, as are the masters they come from.
 
 Every selectable vehicle model is original procedural geometry authored for
 this project by Kevin B. Liu. External vehicle models are comparison or

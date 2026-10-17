@@ -23,11 +23,11 @@ export const SCENE_WIND: Readonly<Record<MapId, { readonly dirDeg: number; reado
   verdant: { dirDeg: 37, speed: 3.6 }, // ground
   desert: { dirDeg: 180, speed: 3 }, // legacy
   winter: { dirDeg: 18, speed: 3.6 }, // ground
-  urban: { dirDeg: 45, speed: 4.2 }, // ground
+  urban: { dirDeg: 45, speed: 3.6 }, // ground (2026-10-16: the cumulus aloft at 6 m/s since the 10-13 ruling's enforcement; was the altocumulus' 7)
   coastal: { dirDeg: 190, speed: 5.2 }, // ocean
   autumn: { dirDeg: 100, speed: 2.6 }, // ocean
   steppe: { dirDeg: 22, speed: 5.4 }, // ground
-  railyard: { dirDeg: 45, speed: 3 }, // ground
+  railyard: { dirDeg: 45, speed: 3.6 }, // ground (2026-10-16: Cinder Junction's cumulus aloft at 6 m/s; was the industrial deck's 5)
   frontier: { dirDeg: 53, speed: 5.4 }, // ground
   fjord: { dirDeg: 250, speed: 3.2 }, // ocean
   delta: { dirDeg: 110, speed: 2.4 }, // ocean

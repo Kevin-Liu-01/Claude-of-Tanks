@@ -119,7 +119,7 @@ const configuredSource = fn('configureSkyUniforms');
 // every radiance formula and injected shader byte, so any sky redesign failed here. The lunar Earth uniform's wiring is
 // still checked on the current source, and the bake owner below executes the real configureSkyUniforms.
 for (const wiring of ['  u.uEarth ??= { value: 0 };\n  u.uEarth.value = preset.earth;\n', '    shader.uniforms.uEarth = u.uEarth;\n',
-  'uPlanetR, uPlanetTint, uEarth ) * uNight;']) {
+  'uPlanetR, uPlanetTint, uEarth, 1.0 ) * uNight;']) {
   assert.equal(configuredSource.split(wiring).length, 2, `configureSkyUniforms wires the lunar Earth uniform exactly once: ${wiring.trim()}`);
 }
 const keySource = ['horizonColorKey', 'environmentKey', 'withEnvironmentRenderState', 'disposeEnvironmentSky'].map(fn).join('\n');

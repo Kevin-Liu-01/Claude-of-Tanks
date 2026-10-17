@@ -283,7 +283,8 @@ function pantherRoof(P: TankBuilderPort): void {
   ),0,0,0);
   fitting(P,'turretDark',box(.17,.20,.018),.3337,2.79,-2.077);
   fitting(P,'turretGlass',box(.12,.13,.009),.3337,2.805,-2.063);
-  const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mg3',scale:.84,tone:'two-tone',ammo:false,shield:false,ring:false,seed:51051});
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the remote roof MG)
+  const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mg3',scale:.84,tone:'two-tone',ammo:false,shield:false,ring:false,seed:51051,remoteControlled:true});
   mg.position.set(.10,2.712-RING_Y,-2.54-RING_Z);P.turretG.add(mg);
   // Source rear service plates sit on the tapered bustle, not at maximum
   // cheek width. Their actual footprints do not widen the aft turret.
@@ -359,7 +360,9 @@ export function buildKF51X(P: TankBuilderPort): void {
   // The 130 mm source tube has a constant-diameter fore section, not the
   // generic gun helper's 25% base-to-muzzle taper or bore evacuator.
   P.add('gun',cylZ(.1294,3.2091,28),0,0,1.4973);
-  P.add('gun',cylZ(.0892,2.43005,28),0,0,4.316875);
+  // The fore tube runs to the measured muzzle face (muzzleZ). It stopped 20 mm short for the factory's old seated
+  // bore lip, which the carved cannon bores (a28e4d8e6) no longer add (westXGeometry: 6.880 vs the source 6.900).
+  P.add('gun',cylZ(.0892,2.45005,28),0,0,4.326875);
   // Actual exposed tube jacket is 204 mm diameter through Z 6.527. Only
   // the final muzzle neck reduces to 178.4 mm; terminal radius is not a
   // valid measurement for the entire fore tube.
@@ -377,7 +380,7 @@ export function buildKF51X(P: TankBuilderPort): void {
   ));
   P.addEquipment('gunDark',cylZ(.025,.73,12),-.28,.13,1.34);
   P.muzzleZ=KF51_X_DATUMS.muzzleZ-GUN_Z;P.topY=3.10-RING_Y;
-  P.hullG.userData.xRebuild={candidate:'kf51_x',independent:true,datumVersion:1,sourceLocalOnly:true};
+  P.hullG.userData.xRebuild={candidate:'kf51_panther',independent:true,datumVersion:1,sourceLocalOnly:true};
 }
 
-export const KF51_X_PROFILES = { kf51_x: { build: buildKF51X } } as const;
+export const KF51_X_PROFILES = { kf51_panther: { build: buildKF51X } } as const;

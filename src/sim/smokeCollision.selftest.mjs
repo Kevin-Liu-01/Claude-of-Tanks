@@ -69,7 +69,7 @@ const flight = (shot) => Array.from({ length: Math.ceil(shot[6] / 0.005) + 1 }, 
 }
 
 // ---- 3. a salvo fired at a house from close in ------------------------------------------------------------------------
-const tank = (specId = 'leo2a6') => ({ id: specId, team: 'player', spec: { id: specId, dims: { heightM: 2.6 }, armor: { turretPivot: [0, 1.5, 0] } },
+const tank = (specId = 'leo2a4') => ({ id: specId, team: 'player', spec: { id: specId, dims: { heightM: 2.6 }, armor: { turretPivot: [0, 1.5, 0] } },
   state: { pos: { x: 2, y: 0, z: 0 }, yaw: Math.PI / 2, turretYaw: 0, visualPitch: 0, visualRoll: 0 }, combat: {} });
 const shooter = tank();
 assert.ok(requestAuxiliary(shooter, 'smoke', 0, ground, world), 'the salvo launches');
@@ -186,7 +186,10 @@ assert.equal(smokeBlocks([screen], { x: 0, y: 1.8, z: 0 }, { x: 30, y: 1.8, z: 0
     }
     return box;
   };
-  const records = real.getObstacles().filter((r) => r.structureIdx != null).map((r) => footprint(r))
+  // (the maps lane, 2026-10-14: Verdant's set pieces — the station hall, the arch, the water towers on their trestles, the
+  // mills — are no house: the canister passes the station's open end doorway and between a trestle's legs as it should;
+  // a set piece's records carry structureRole 'setpiece', shard gr 1)
+  const records = real.getObstacles().filter((r) => r.structureIdx != null && r.structureRole !== 'setpiece').map((r) => footprint(r))
     .filter((b) => b.x1 - b.x0 > 4 && b.z1 - b.z0 > 4);
   let tried = 0, struck = 0, entered = 0;
   const started = performance.now();

@@ -111,6 +111,9 @@ import {
   GROUND_AO_DEFAULT_ALBEDO, GROUND_AO_RANGE_M, VEHICLE_GROUND_OCCLUSION_GLSL, createVehicleGroundOcclusionUniforms, updateVehicleGroundOcclusionUniforms,
   type VehicleGroundOcclusionUniforms,
 } from './vehicleGroundOcclusion.ts';
+import {
+  SGO_RANGE_M, STRUCTURE_GROUND_ALPHA_MAX, STRUCTURE_GROUND_OCCLUSION_GLSL, createStructureGroundUniforms, updateStructureGroundUniforms,
+} from './structureGroundOcclusion.ts';
 import { beginStaticDrawRangeFrame, endStaticDrawRangeFrame } from './staticDrawRange.ts';
 import type { GpuFrameTimer } from './gpuFrameTimer.ts';
 /** The haze law's target terms, written in place every frame (hazeTargetTerms). */
@@ -1020,6 +1023,8 @@ const AerialShader = {
     ...createVehicleOcclusionUniforms(),
     // 2026-10-03: the ground's sky under and beside the near hulls (vehicleGroundOcclusion.ts) — uVehGround 0 skips it
     ...createVehicleGroundOcclusionUniforms(),
+    // 2026-10-09: the ground's sky beside the world's solids (structureGroundOcclusion.ts) — uSgo 0 skips it
+    ...createStructureGroundUniforms(),
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -1068,6 +1073,7 @@ const AerialShader = {
     ${CONTACT_SHADOW_GLSL}
     ${VEHICLE_OCCLUSION_GLSL}
     ${VEHICLE_GROUND_OCCLUSION_GLSL}
+    ${STRUCTURE_GROUND_OCCLUSION_GLSL}
     ${HAZE_LAW_GLSL}
     // 2026-10-05 (AERIAL_MID_*, the law by default): the middle distances' optical depth × w(d), whole again by
     // uHazeMid.y; with uHazeMid.z the lighter veil's luminance at the full law's chromaticity (its hue shift kept)
@@ -1203,9 +1209,34 @@ const AerialShader = {
         if ( uVehOcc > 0.5 && texel.a >= ${VEHICLE_ALPHA_MIN.toFixed(1)} && -viewZ < ${VEHICLE_OCCLUSION_RANGE_M.toFixed(1)} ) {
           texel.rgb *= cotVehicleOcclusionShade( vUv, uCamPos + ray * rayT, -viewZ, texel.a );
         }
-        // 2026-10-03: the ground's sky under and beside the near hulls (vehicleGroundOcclusion.ts): its ambient share
-        if ( uVehGround > 0.5 && texel.a < ${VEHICLE_ALPHA_MIN.toFixed(1)} && -viewZ < ${GROUND_AO_RANGE_M.toFixed(1)} ) {
-          texel.rgb *= cotVehicleGroundShade( vUv, uCamPos + ray * rayT, texel.a, -viewZ );
+        // 2026-10-03: the ground's sky under and beside the near hulls (vehicleGroundOcclusion.ts): its ambient share (round 5:
+        // the snow's cool cast). On the near hulls' own pixels: (contact round 4) the dirt a run carries toward its foot
+        // (cotVehicleGrime; none on snow) and (round 5) the run's foot taking the colour of the ground beside it (set into turf,
+        // packed snow) — that ground shaded by the same one call (2026-10-14, the r5 port's cost cut: one copy of the shade)
+        // (2026-10-09: the colour before the hulls' term, so the structures' term below can read what it took)
+        float cotGroundPre = max( texel.r, max( texel.g, texel.b ) );
+        if ( uVehGround > 0.5 && -viewZ < ${GROUND_AO_RANGE_M.toFixed(1)} ) {
+          vec3 vgP = uCamPos + ray * rayT;
+          bool vgVehicle = texel.a >= ${VEHICLE_ALPHA_MIN.toFixed(1)};
+          vec4 vgAt = vec4( vUv, -viewZ, texel.a );
+          vec3 vgQ = vgP, vgRgb = texel.rgb;
+          float vgW = 1.0;
+          if ( vgVehicle ) {
+            texel.rgb *= cotVehicleGrime( vgP );
+            vgW = cotVehicleContactSample( vgP, vgAt, vgQ, vgRgb );
+          }
+          if ( vgW > 0.0 ) {
+            vec3 vgShade = cotVehicleGroundShadeRgb( vgAt.xy, vgQ, vgAt.w, vgAt.z );
+            texel.rgb = vgVehicle ? mix( texel.rgb, vgRgb * vgShade, vgW ) : texel.rgb * vgShade;
+          }
+        }
+        // 2026-10-09: the ground's sky beside the world's walls, fences, houses and stones (structureGroundOcclusion.ts):
+        // its ambient share, never a solid's own faces. Where a hull's ground term already dims the pixel the stronger of
+        // the two stands, never their product: under and beside a hull the belly hides most of what a wall would, and the
+        // two never compound into the near-black the hull's own term owns (the contact-shadow lane's pixels)
+        if ( uSgo > 0.001 && texel.a < ${STRUCTURE_GROUND_ALPHA_MAX.toFixed(1)} && -viewZ < ${SGO_RANGE_M.toFixed(1)} ) {
+          float cotHullGround = cotGroundPre > 1e-6 ? clamp( max( texel.r, max( texel.g, texel.b ) ) / cotGroundPre, 0.0, 1.0 ) : 1.0;
+          texel.rgb *= min( 1.0, cotStructureGroundShade( vUv, uCamPos + ray * rayT, texel.a, -viewZ ) / max( cotHullGround, 1e-3 ) );
         }
         // height-aware atmosphere (see AERIAL_HEIGHT_* const block): pixels
         // high above the battlefield datum sit in thinner air — scatter-in
@@ -1383,6 +1414,22 @@ const GRADE_SAT_LINEAR_LEGACY = 1.4;
 const GRADE_CONTRAST = 1.28;
 const GRADE_BLACK_POINT = 0.012;
 const GRADE_SATURATION = 1.0;
+/** 2026-10-09: the aerial in-scatter's level at full night, over the day's (1 = the day's law; see updateAerialFogColors). */
+const HAZE_NIGHT_LEVEL = 1.0;
+/**
+ * 2026-10-09 (the skies lane; the gauntlet's wave 295 on six maps' night frames: "the land below keeps a saturated daytime
+ * green instead of desaturating under moonlight", "the foreground stubble field stays a saturated daytime straw-yellow at
+ * night", "the night sea ... a saturated, almost daylight cyan-blue", "the near sand floor stays a bright, saturated dusk
+ * tan"): the night's scotopic shift drained only 28 % of a moonlit field's colour (0.55 at luma 0.06, gone by 0.55, and a
+ * saturated blue sea or straw field read bright enough on luma alone to keep most of it). The shift is now keyed on the
+ * pixel's light — its luma or, for a saturated lamp, its brightest channel weighted (a red lens or a sodium lamp holds
+ * its colour, the receipt's lit lens included) — and takes most of a moonlit midtone's colour toward a cool grey with a
+ * milder blue than before (a night is not "a blue-tinted copy of the day"): [amount, key from, key to, the brightest
+ * channel's weight in the key].
+ */
+export const GRADE_NIGHT_SCOTOPIC: readonly [number, number, number, number] = Object.freeze([0.78, 0.10, 0.80, 0.80]);
+/** The scotopic shift's target: the pixel's luma times this cool grey. */
+export const GRADE_NIGHT_SCOTOPIC_TINT: readonly [number, number, number] = Object.freeze([0.86, 0.97, 1.14]);
 /**
  * 2026-10-03 (the shade-fill lane; the gauntlet's waves 29, 34 and 36: a tank's shadow on Verdant's grass at about RGB
  * (12, 40, 8), a shaded village wall "a flat, textureless matte-black mass", Saltmere's tor "crushed to near-black"):
@@ -1409,12 +1456,75 @@ const GRADE_SATURATION = 1.0;
  */
 const GRADE_TOE_SLOPE = 0.7;
 const GRADE_TOE_STOPS = 2.5;
+/**
+ * 2026-10-15 (the SKY lane, tone r1; the coordinator's global look item: grass luma contrast halved from deploy 205 to main
+ * on every map — Autumn 42 -> 20, Verdant 35 -> 20, Steppe 25 -> 19 — the likeliest root of the owner's "where did grass
+ * go" and the older "washed out, not crisp camo"). The 2026-10-01 chain (0e034511c / 341defc43: AgX with a 1.4 linear
+ * saturation and a 1.28 log slope round the card, chosen in a nine-map A/B of four looks) keeps about 65 % of the ACES
+ * chain's local contrast at the card (13.2 display levels per +25 % radiance against 20.8) and caps a sunlit green's
+ * display saturation near 0.6: AgX compresses the gamut before its curve, so the scene-referred saturation cannot give the
+ * colour back (1.4 -> 1.68 moved it 0.612 -> 0.614). Tone r1:
+ * - a steeper log-space slope round the card (1.28 -> 1.45; mid-grey stays put) whose photographic toe eases sooner
+ *   (to 0.8 over 1.5 stops: deep shade lands where it did), with the luminance shoulder on from 0.6 stops over the card
+ *   (easing to 0.5 over 2.5 stops), so a sunlit white wall and the sky sit at or under the old levels with their detail;
+ * - a saturation step inside AgX's encoded space after its sigmoid, where Blender's AgX looks put theirs (1.25), easing
+ *   to none from 0.75 of the way to white, so foliage and camo regain colour and highlights stay neutral.
+ * Modelled on the CPU (toneR1.selftest.mjs ports the chain): local contrast +13 % at the card and +21 % on sunlit grass,
+ * a sunlit green's display saturation 0.69 -> 0.94, green camo 0.45 -> 0.63, tan 0.32 -> 0.41; the card holds its level,
+ * a white wall 212 -> 210, a blue sky 204 -> 206 (its brightest channel 244, no clip), deep shade 28 -> 25.
+ * The lever TONE_R1 (QA: 0 = the 2026-10-01 look, every knob at its old default) A/Bs the whole look on one page, and
+ * GRADE_CONTRAST, GRADE_SHOULDER_*, TONE_LOOK_SAT and TONE_LOOK_SAT_WHITE still tune on top of either.
+ */
+const TONE_R1: ToneLook = Object.freeze({
+  contrast: 1.45, toeSlope: 0.8, toeStops: 1.5, shoulderSlope: 0.5, shoulderStops: 2.5, shoulderStart: 0.6, lookSat: 1.25, lookSatWhite: 0.75,
+});
+/** The look by the light: tone r1 by day (QA: TONE_R1 0 = the 2026-10-01 look), easing to the 2026-10-01 look with the night. */
+interface ToneLook {
+  readonly contrast: number; readonly toeSlope: number; readonly toeStops: number; readonly shoulderSlope: number;
+  readonly shoulderStops: number; readonly shoulderStart: number; readonly lookSat: number; readonly lookSatWhite: number;
+}
+function toneFor(night: number): ToneLook {
+  const r1 = lightTune('TONE_R1', 1) > 0 ? TONE_R1 : TONE_R0;
+  const n = Math.min(1, Math.max(0, night));
+  if (n <= 0 || r1 === TONE_R0) return r1;
+  const out = { ...r1 } as Record<keyof ToneLook, number>;
+  for (const k of Object.keys(TONE_R0) as (keyof ToneLook)[]) out[k] = r1[k] + (TONE_R0[k] - r1[k]) * n;
+  return out as ToneLook;
+}
+const TONE_R0: ToneLook = Object.freeze({
+  contrast: GRADE_CONTRAST, toeSlope: GRADE_TOE_SLOPE, toeStops: GRADE_TOE_STOPS, shoulderSlope: 0.6, shoulderStops: 0, shoulderStart: 2,
+  lookSat: 1.0, lookSatWhite: 0.8,
+});
+/**
+ * three's AgX (tonemapping_pars_fragment), renamed, with tone r1's look after its sigmoid: the colour around the
+ * encoded luminance scaled by uLook.x, easing to none from uLook.y of the way to white (a highlight stays neutral).
+ */
+const COT_AGX_GLSL = (() => {
+  const chunk = THREE.ShaderChunk.tonemapping_pars_fragment;
+  const start = chunk.indexOf('vec3 AgXToneMapping( vec3 color ) {');
+  const sigmoid = 'color = agxDefaultContrastApprox( color );';
+  if (start < 0 || chunk.indexOf(sigmoid, start) < 0) throw new Error('post.ts: three\'s AgX anchors not found');
+  let depth = 0, end = -1;
+  for (let i = chunk.indexOf('{', start); i < chunk.length; i++) {
+    if (chunk[i] === '{') depth++;
+    else if (chunk[i] === '}' && --depth === 0) { end = i + 1; break; }
+  }
+  if (end < 0) throw new Error('post.ts: three\'s AgX body not closed');
+  return chunk.slice(start, end).replace('vec3 AgXToneMapping( vec3 color ) {', 'vec3 cotAgXToneMapping( vec3 color ) {')
+    .replace(sigmoid, `${sigmoid}
+	{
+		// (tone r1) the look in AgX's encoded space
+		float cotLookL = dot( color, vec3( 0.2126, 0.7152, 0.0722 ) );
+		float cotLookK = mix( uLook.x, 1.0, smoothstep( uLook.y, 1.0, cotLookL ) );
+		color = max( vec3( cotLookL ) + ( color - vec3( cotLookL ) ) * cotLookK, vec3( 0.0 ) );
+	}`);
+})();
 const GRADE_TOE_CHANNEL_FROM = 1.0;
 const GRADE_TOE_CHANNEL_TO = 2.5;
 // The enclosed Garage (2026-10-04, the vehicle-look lane; gauntlet wave 49: the desert-camo hull "washed to near-white" on
 // the turntable). The showroom keeps its authored rig (lighting.ts, an enclosed presentation) under the legacy exposure;
 // the 2026-10-02 display shoulder that restored its frame percentiles under AgX (GARAGE_HIGHLIGHT_LIFT 0.95) pushed the
-// hull's lit paint up with them. Measured on one pose (m1a2, the camo-difference mask of its paint, display luma median /
+// hull's lit paint up with them. Measured on one pose (m1a1_abrams_hc, the camo-difference mask of its paint, display luma median /
 // p95 / saturation): main's ACES grade 158 / 211 / 0.49, the shoulder 185 / 223 / 0.37, without it 152 / 207 / 0.37 — the
 // shoulder put about 32 levels on every lit plate and the light camos lost their pattern to white; the shared bloom
 // changed 0.7 % of the frame on main and on the PR alike (not the halo). The shoulder is retired and the Garage takes the
@@ -1494,6 +1604,8 @@ const GradeShader = {
     uToe: { value: new THREE.Vector4(0, 0, 0, 0) },
     // 2026-10-04: a luminance shoulder (QA: GRADE_SHOULDER_SLOPE / _STOPS / _START; off at stops 0)
     uShoulder: { value: new THREE.Vector4(0, 0, 0, 0) },
+    // 2026-10-15 (tone r1): the saturation inside AgX's encoded space, and where it eases off toward white
+    uLook: { value: new THREE.Vector2(1, 0.8) },
     uBlackPoint: { value: GRADE_BLACK_POINT },
     uThermal: { value: 0 },
     uThermalPixel: { value: new THREE.Vector2(1/1280,1/720) },
@@ -1505,6 +1617,9 @@ const GradeShader = {
     uWhiteBalance: { value: new THREE.Vector3(1, 1, 1) },
     // 2026-10-01: 0..1 night (lightModel.ts) — the scotopic shift of low light toward a desaturated blue
     uNight: { value: 0 },
+    // 2026-10-09: the scotopic shift's law and target (GRADE_NIGHT_SCOTOPIC, _TINT)
+    uScot: { value: new THREE.Vector4(...GRADE_NIGHT_SCOTOPIC) },
+    uScotTint: { value: new THREE.Vector3(...GRADE_NIGHT_SCOTOPIC_TINT) },
     uScope: { value: 0 }, // 0 = arcade, 1 = sniper (eased by render())
     // r4: zoom-scaled center unsharp while scoped — the x8 picture magnifies
     // terrain/horizon texels far past their mip frequency and the far field
@@ -1532,6 +1647,8 @@ const GradeShader = {
     uniform float uBlackPoint;
     uniform float uVignette;
     uniform float uNight;
+    uniform vec4 uScot;
+    uniform vec3 uScotTint;
     uniform float uScope;
     uniform float uSharp;
     uniform float uAspect;
@@ -1587,8 +1704,9 @@ const GradeShader = {
       // night (2026-10-01): low light reads through the rods — colour drains from the shadows and dim midtones
       // toward a cool blue (the Purkinje shift); highlights (lamps, the moon, muzzle flashes) keep their colour
       if ( uNight > 0.001 ) {
-        float scot = uNight * 0.55 * ( 1.0 - smoothstep( 0.06, 0.55, luma ) );
-        col = mix( col, luma * vec3( 0.82, 0.96, 1.22 ), scot );
+        float scotKey = max( luma, max( col.r, max( col.g, col.b ) ) * uScot.w );
+        float scot = uNight * uScot.x * ( 1.0 - smoothstep( uScot.y, uScot.z, scotKey ) );
+        col = mix( col, luma * uScotTint, scot );
       }
       // vignette (radial, corners only) — luma-adaptive: bright sky/haze
       // corners keep most of their level so sunny establishing shots read
@@ -1659,7 +1777,9 @@ function createOutputGradePass(): OutputGradePass {
     uniform float uContrast;
     uniform vec4 uToe;
     uniform vec4 uShoulder;
+    uniform vec2 uLook;
     #include <tonemapping_pars_fragment>
+    ${COT_AGX_GLSL}
     #include <colorspace_pars_fragment>
 
     float thermalHeat(vec2 sampleUv) {
@@ -1708,7 +1828,7 @@ function createOutputGradePass(): OutputGradePass {
       #elif defined( ACES_FILMIC_TONE_MAPPING )
         outputColor.rgb = ACESFilmicToneMapping( outputColor.rgb );
       #elif defined( AGX_TONE_MAPPING )
-        outputColor.rgb = AgXToneMapping( outputColor.rgb );
+        outputColor.rgb = cotAgXToneMapping( outputColor.rgb );
       #elif defined( NEUTRAL_TONE_MAPPING )
         outputColor.rgb = NeutralToneMapping( outputColor.rgb );
       #elif defined( CUSTOM_TONE_MAPPING )
@@ -2622,11 +2742,14 @@ export function createPost(
       return;
     }
     if (action === 'tier-down') {
-      reportSustainedOverload();
+      // the policy measures only a cut that was applied (an explicit preset or the floor tier refuses it)
+      if (reportSustainedOverload()) qualityPolicy.beginTierTrial();
+      renderer.domElement.dataset.tierTrial = String(qualityPolicy.tierTrialActive);
       return;
     }
     if (action === 'tier-up') {
       reportSustainedRecovery();
+      renderer.domElement.dataset.tierTrial = String(qualityPolicy.tierTrialActive);
       return;
     }
     if (action !== 'resolution-down' && action !== 'resolution-up') return;
@@ -2763,13 +2886,19 @@ export function createPost(
   function updateOutputGrade(): void {
     const model = scene.userData.lightModel as LightModel | undefined;
     const u = grade.uniforms;
-    const contrast = lightTune('GRADE_CONTRAST', GRADE_CONTRAST);
+    // (2026-10-15) tone r1, or the 2026-10-01 look under the lever (QA: TONE_R1 0); each knob still tunes on top. The
+    // night keeps the 2026-10-01 look (its lens programs hold their display level through it: nightEmissionMaterial.ts)
+    const tone = toneFor(model?.night ?? 0);
+    const contrast = lightTune('GRADE_CONTRAST', tone.contrast);
+    (u.uLook.value as THREE.Vector2).set(lightTune('TONE_LOOK_SAT', tone.lookSat), lightTune('TONE_LOOK_SAT_WHITE', tone.lookSatWhite));
     const satLinear = model?.mode === 'physical'
       ? lightTune('GRADE_SAT_LINEAR', GRADE_SAT_LINEAR) : lightTune('GRADE_SAT_LINEAR_LEGACY', GRADE_SAT_LINEAR_LEGACY);
     u.uSaturation.value = lightTune('GRADE_SATURATION', GRADE_SATURATION);
     u.uBlackPoint.value = lightTune('GRADE_BLACK_POINT', GRADE_BLACK_POINT);
     u.uVignette.value = lightTune('GRADE_VIGNETTE', GRADE_VIGNETTE);
     u.uNight.value = model?.night ?? 0;
+    (u.uScot.value as THREE.Vector4).set(lightTune('GRADE_SCOT_AMOUNT', GRADE_NIGHT_SCOTOPIC[0]), lightTune('GRADE_SCOT_FROM', GRADE_NIGHT_SCOTOPIC[1]),
+      lightTune('GRADE_SCOT_TO', GRADE_NIGHT_SCOTOPIC[2]), lightTune('GRADE_SCOT_MAXC', GRADE_NIGHT_SCOTOPIC[3]));
     if (model) {
       u.uExposure.value = model.exposure;
       u.uWhiteBalance.value.set(model.whiteBalance[0], model.whiteBalance[1], model.whiteBalance[2]);
@@ -2778,9 +2907,9 @@ export function createPost(
       // the photographic toe on the grounded rig by day (GRADE_TOE_SLOPE): its slope returns to the constant one with the
       // night (off at full night), the legacy rig keeps the constant slope; the toe's slope follows the map's contrast
       const toeOn = model.mode === 'physical' && model.night < 0.999;
-      const toeSlope = THREE.MathUtils.lerp(lightTune('GRADE_TOE_SLOPE', GRADE_TOE_SLOPE) * model.contrast, u.uContrast.value as number,
+      const toeSlope = THREE.MathUtils.lerp(lightTune('GRADE_TOE_SLOPE', tone.toeSlope) * model.contrast, u.uContrast.value as number,
         THREE.MathUtils.clamp(model.night, 0, 1));
-      u.uToe.value.set(toeSlope, toeOn ? lightTune('GRADE_TOE_STOPS', GRADE_TOE_STOPS) : 0,
+      u.uToe.value.set(toeSlope, toeOn ? lightTune('GRADE_TOE_STOPS', tone.toeStops) : 0,
         lightTune('GRADE_TOE_CHANNEL_FROM', GRADE_TOE_CHANNEL_FROM), lightTune('GRADE_TOE_CHANNEL_TO', GRADE_TOE_CHANNEL_TO));
     } else {
       u.uToe.value.set(0, 0, 0, 0);
@@ -2808,8 +2937,10 @@ export function createPost(
     bloom.strength = lightTune('BLOOM_STRENGTH', BLOOM_STRENGTH) * (1 - 0.5 * scopeWeight);
     bloom.threshold = lightTune('BLOOM_THRESHOLD', BLOOM_THRESHOLD);
     bloom.radius = lightTune('BLOOM_RADIUS', BLOOM_RADIUS);
-    (grade.uniforms.uShoulder.value as THREE.Vector4).set(lightTune('GRADE_SHOULDER_SLOPE', 0.6), lightTune('GRADE_SHOULDER_STOPS', 0),
-      lightTune('GRADE_SHOULDER_START', 2), 0);
+    // (2026-10-15) the shoulder's defaults follow the look (tone r1 turns it on; TONE_R1 0 = off, as before)
+    const shoulderTone = toneFor((scene.userData.lightModel as LightModel | undefined)?.night ?? 0);
+    (grade.uniforms.uShoulder.value as THREE.Vector4).set(lightTune('GRADE_SHOULDER_SLOPE', shoulderTone.shoulderSlope),
+      lightTune('GRADE_SHOULDER_STOPS', shoulderTone.shoulderStops), lightTune('GRADE_SHOULDER_START', shoulderTone.shoulderStart), 0);
     aerial.uniforms.uDensity.value *= 1 - 0.22 * scopeWeight;
     aerial.uniforms.uHazeDensity.value *= 1 - 0.30 * scopeWeight;
     aerial.uniforms.uHazeZoom.value *= 1 - 0.30 * scopeWeight;
@@ -2856,7 +2987,11 @@ export function createPost(
       const law = u.uHazeLaw.value as THREE.Vector4;
       // (the target's tint share and level: hazeLaw.ts hazeTargetTerms, the cloud trace's deck rows read the same)
       const terms = hazeTargetTerms(overcast, atmosphere.fogMix, hazeTermsScratch);
-      law.set(hazeSigma(atmosphere.fogDensity), hazeLayerInverseScale(), terms.x, terms.y);
+      // 2026-10-09 (the skies lane, owner R264 "on sunsets and nights, the far skybox is still like glowing"): at night the
+      // air's level under the sky behind it (HAZE_NIGHT_LEVEL at full night; 1 = the day's law)
+      const night = (scene.userData.lightModel as LightModel | undefined)?.night ?? 0;
+      const nightLevel = 1 + (lightTune('HAZE_NIGHT_LEVEL', HAZE_NIGHT_LEVEL) - 1) * night;
+      law.set(hazeSigma(atmosphere.fogDensity), hazeLayerInverseScale(), terms.x, terms.y * nightLevel);
       hazeExtinctionChroma(u.uHazeChroma.value as THREE.Vector3);
       (u.uHazeMid.value as THREE.Vector3).set(lightTune('AERIAL_MID_W0', AERIAL_MID_W0),
         Math.max(1, lightTune('AERIAL_MID_FAR_M', AERIAL_MID_FAR_M)), lightTune('AERIAL_MID_HUE', AERIAL_MID_HUE));
@@ -2897,8 +3032,14 @@ export function createPost(
     updateVehicleGroundOcclusionUniforms(aerial.uniforms as unknown as VehicleGroundOcclusionUniforms,
       scene.userData.nearVehicles as readonly { root: THREE.Object3D }[] | undefined, lightFx.vehicleOcclusion && lightTune('VEHICLE_GROUND_AO', 1) > 0,
       groundRho * lightTune('GROUND_AO_MULTIBOUNCE', 1));
+    // contact round 5 (2026-10-11): the contact blend sets a track's foot into soft ground — the battle maps' grounded rig;
+    // the Garage's turntable (the legacy rig) is a hard floor a track stands on, never sinks into
+    if (groundModel?.mode !== 'physical') (aerial.uniforms as unknown as VehicleGroundOcclusionUniforms).uVehGroundR6.value.w = 0;
     updateContactShadowUniforms(aerial.uniforms, camera, scene, lightFx.contactShadows,
       lightFx.contactShadows || lightFx.vehicleOcclusion);
+    // (2026-10-09) the structures' ground occlusion rides the contact-shadow lever (the desktop light effects) and reads the
+    // same rig uniforms, which the line above refreshes whenever the lever is on
+    updateStructureGroundUniforms(aerial.uniforms, scene, renderer, lightFx.contactShadows);
     aerial.uniforms.uVehOcc.value = lightFx.vehicleOcclusion ? 1 : 0;
     sunShafts.update(lightFx.sunShafts);
     lensFlare.update(lightFx.lensFlare);
@@ -3161,6 +3302,8 @@ export function createPost(
     /** New scene workload = fresh crisp baseline; no low-resolution state may
      * leak from a battle into the garage (or vice versa). */
     resetAdaptiveResolution() {
+      // a new workload: the open tier trial's evidence no longer compares (the tier it cut stays)
+      qualityPolicy.abandonTierTrial();
       resetGovernorState();
     },
 

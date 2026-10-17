@@ -113,6 +113,8 @@ export default {
     tuftTone: (h: number, s: number, l: number) => [h + 0.015, s * 0.7, l * 0.85],
     species: ['willow', 'palm', 'eucalyptus'], clusterMix: [['willow', 0.6], ['palm', 0.24], ['eucalyptus', 0.16]],
     loneMix: [['palm', 0.44], ['willow', 0.42], ['eucalyptus', 0.14]], rimMix: [['willow', 0.62], ['eucalyptus', 0.24], ['palm', 0.14]],
+    // GND (2026-10-15): the ring's trees at each species' own rim stature (vegetation.ts `ringStature`): eucalyptus x1.29 of the one mean
+    ringStature: 'species',
     clusterCount: 58, loneCount: 78, rimCount: 84, grassDensity: 1.06, bushCount: 1.14, bushSpecies: 'willow', clusterScrub: 2.0,
     belts: [{ x0: -382, z0: -40, x1: -330, z1: 258, gap: 22, jitter: 5, species: 'willow' }, { x0: 40, z0: -278, x1: 46, z1: 48, gap: 23, jitter: 5, species: 'willow' }],
     authoredTrees: [
@@ -158,7 +160,7 @@ export default {
     haystacks: 8, rocks: 114, outcrops: 12, craters: 48, rubblePiles: 10, cropFields: 4, sandbagLines: 14, hedgehogs: 6,
     // the map-vehicles lane (2026-10-06, the period ruling): Vietnam: the People's Army's T-55s (the Type 59 copy),
     // BMPs and T-62s, a captured M48
-    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['type59', 'bmp2', 't62mv1', 'm48'] },
+    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['type59', 'bmp2', 't62_1975', 'm48a5_patton'] },
     inhabit: { stalls: 4, benches: 3, coreClutter: 20, pots: 8, laundry: 4, handcarts: 4, carts: 3, trucks: 4, jeeps: 3, drumClusters: 4, camps: 3, modernClutter: 18, looseClutter: 20, roadFence: 'fencewattle', yardFence: 'fencewattle' },
   },
   // The scenery lane (2026-10-03, world/scenery.ts; docs/MAP-LAYOUT-BRIEF.md "Scenery"): the Mekong delta's family
@@ -180,7 +182,10 @@ export default {
   horizon: { baseHex: 0x56735c, amp: 0.18, style: 'rolling', treeline: 0.82, panorama: { regional: 'plain', trees: 14 }, forestHex: 0x2d533b, rockHex: 0x7a8370, haze: 0.94, grain: 0.54 },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'towering-cumulus', coverage: 0.34, windDirDeg: 80, towers: 0.6 },
-  sky: { ...delta.sky, sunElevationDeg: 32, sunAzimuthDeg: 94, turbidity: 5.7, fogDensity: 0.00064, fogTintHex: 0x95b0b0, fogMix: 0.52, sunIntensity: 4.0, /* lighting 2026-09-13: was 3.7 */ cloudOpacity: 1.05, cloudOpacity2: 0.72 },
+  sky: { ...delta.sky, sunElevationDeg: 32, sunAzimuthDeg: 94, turbidity: 5.7, fogDensity: 0.00064, fogTintHex: 0x95b0b0, fogMix: 0.52, sunIntensity: 4.0, /* lighting 2026-09-13: was 3.7 */ cloudOpacity: 1.05, cloudOpacity2: 0.72,
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a tropical coast's humid white band
+    atmosphere: { horizonTintHex: 0xdde4de, horizonTintAmount: 0.45, horizonBandDeg: 12, zenithTintHex: 0x6e9ac6, zenithTintAmount: 0.25 },
+  },
   minimap: { ...delta.minimap, base: [66, 101, 63], hard: [104, 102, 77], soft: [46, 80, 67] },
   shot: { pos: [-260, 49, -260], look: [52, -1, 90] },
   // round 66 (2026-09-24, the FFT ocean): the tidal creeks under a warm air — a slow ripple on tannin-dark water,

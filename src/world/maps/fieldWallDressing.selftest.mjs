@@ -21,7 +21,8 @@
 import assert from 'node:assert/strict';
 import { DESTRUCTIBLE_TYPES } from './inhabitKit.ts';
 import { readFileSync } from 'node:fs';
-import { WALL_TURF_OUT, WALL_TURF_SINK_M, buildMudApron, buildSnowLoad, buildWallDrift, buildWallFootStones, buildWallTumble, buildWallTurf, createWallDressing } from './fieldWallDressing.ts';
+import { WALL_TURF_OUT, WALL_TURF_SINK_M, buildMudApron, buildSnowLoad, buildWallDrift, buildWallFootStones, buildWallTumble, buildWallTurf, createWallDressing, placeSeed } from './fieldWallDressing.ts';
+const placeSeedOf = (x, z) => placeSeed(x, z, 0xad0a);
 import { FIELD_STONE_FACE_V } from '../fieldStoneSurface.ts';
 
 function mulberry32(seed) {
@@ -76,8 +77,9 @@ const attrs = (g) => Object.keys(g.attributes).sort().join(',');
   assert.equal(attrs(stones), 'normal,position,uv');
   const again = buildWallFootStones(slope, 0, 0, 0, 12, half, 0xf007);
   assert.deepEqual(Array.from(again.attributes.position.array), Array.from(stones.attributes.position.array), 'the same place lays the same stones');
-  // each stone is a run of 10 triangles (a box's five faces kept): sunk and standing out, off the face, near it
-  const p = stones.attributes.position, per = 10 * 3;
+  // each stone is a run of 12 triangles (a box's five faces kept, its top crowned: r2 2026-10-16): sunk and standing out,
+  // off the face, near it
+  const p = stones.attributes.position, per = 12 * 3;
   assert.equal(p.count % per, 0, 'whole stones');
   let count = 0, sides = new Set();
   for (let s = 0; s < p.count; s += per) {
@@ -139,7 +141,7 @@ const attrs = (g) => Object.keys(g.attributes).sort().join(',');
   const fallen = buildWallTumble(slope, 0, 0, 0, 1, 0.23, 0x7b1e);
   const again = buildWallTumble(slope, 0, 0, 0, 1, 0.23, 0x7b1e);
   assert.deepEqual(Array.from(again.attributes.position.array), Array.from(fallen.attributes.position.array), 'the same end tumbles the same');
-  const p = fallen.attributes.position, per = 10 * 3;
+  const p = fallen.attributes.position, per = 12 * 3; // (crowned: r2 2026-10-16)
   let stones = 0, out = 0;
   for (let s = 0; s < p.count; s += per) {
     let below = false, above = false, z = 0;
@@ -264,4 +266,95 @@ const attrs = (g) => Object.keys(g.attributes).sort().join(',');
     'a cell\'s bed and its turf one geometry');
 }
 
-console.log('fieldWallDressing self-test passed: the snow load on the module\'s top (lumpy, seamless, looking up), the foot stones sunk on both faces, the lee and windward drifts with wandering toes, the mud apron on its plain band, the tumbled ends, the run\'s owner, the turf at the dry-stone feet');
+// 8. the coarse apron (the map-revival lane, 2026-10-07, Tarkhan's cost trim): a map that opts in dresses its mud walls at
+//    the mobile tier's density on every tier — the same apron the mobile tier builds, about half the triangles; every
+//    map that does not set it builds the apron to the byte as before, and Tarkhan is the only map that sets it
+{
+  const tris = (g) => (g.index ? g.index.count : g.attributes.position.count) / 3;
+  const bytes = (g) => [g.attributes.position.array, g.attributes.uv.array, g.index?.array ?? []].map((a) => Array.from(a));
+  const desktop = buildMudApron(slope, 0, 0, 0, 9, 0.26, placeSeedOf(0, 0), { mobile: false, uvPerM: 1 / 3, plainV: [0.89, 0.99] });
+  const mobile = buildMudApron(slope, 0, 0, 0, 9, 0.26, placeSeedOf(0, 0), { mobile: true, uvPerM: 1 / 3, plainV: [0.89, 0.99] });
+  const base = { ground: slope, snow: false, mobile: false, adobeBucket: 'fieldMud', mudUv: 1 / 3, plainV: [0.89, 0.99] };
+  for (const unset of [base, { ...base, adobeApronCoarse: false }]) {
+    const apron = createWallDressing(unset).island(true, 0, 0, 0, 9, 0.26).wall[0];
+    assert.deepEqual(bytes(apron), bytes(desktop), 'unset (or false), the apron is the desktop apron to the byte');
+  }
+  const coarse = createWallDressing({ ...base, adobeApronCoarse: true }).island(true, 0, 0, 0, 9, 0.26).wall[0];
+  assert.deepEqual(bytes(coarse), bytes(mobile), 'opted in, the apron is the mobile tier\'s on every tier');
+  // (2026-10-10, the Tarkhan landing's trim) opted in, the foot's dressing receives shadows but casts none: tagged for
+  // the bucket's non-casting mesh (props.ts mergeMaterialBuckets); unset, nothing is tagged
+  assert.equal(coarse.userData.receiveOnly, true, 'opted in, the apron is receive-only');
+  for (const unset of [base, { ...base, adobeApronCoarse: false }]) {
+    assert.ok(createWallDressing(unset).island(true, 0, 0, 0, 9, 0.26).wall.every((g) => g.userData.receiveOnly === undefined), 'unset, nothing tagged');
+  }
+  const propsSource = readFileSync(new URL('../props.ts', import.meta.url), 'utf8');
+  assert.match(propsSource, /const groundOnly = \(g: THREE\.BufferGeometry\) => g\.userData\.receiveOnly === true;\n\s*const cast = receiveOnly \? all\.filter\(\(g\) => !castsNoShadow\(g\)\) : all\.filter\(\(g\) => !culled\(g, key\) && !groundOnly\(g\)\);\n\s*const coarse = receiveOnly \? all\.filter\(\(g\) => castsNoShadow\(g\) && !culled\(g, key\)\) : all\.filter\(groundOnly\);/,
+    'a tagged piece merges into its bucket\'s non-casting mesh');
+  assert.ok(tris(coarse) < tris(desktop) * 0.6, `about half the triangles (${tris(coarse)} of ${tris(desktop)})`);
+  const { MAP_IDS, getMapConfig } = await import('./index.ts');
+  const setting = MAP_IDS.filter((id) => getMapConfig(id).props?.adobeApronCoarse !== undefined);
+  assert.deepEqual(setting, ['steppe'], 'Tarkhan is the only map that sets it');
+}
+
+// (props lane A #6, 2026-10-15) a breach's remnants in the wall's own section: stepped toward the lip they stand by,
+// their feet sunk, the field walls' attributes, deterministic at their place, under their caps; the spilled units
+{
+  const flatGround = { getHeightAt: () => 0 };
+  // (r2 sweep, 2026-10-16: the stones crowned, the brick courses dressed)
+  const caps = { drystone: 300, adobe: 30, brick: 40 };
+  for (const snow of [false, true]) {
+    const d = createWallDressing({ ground: flatGround, snow, mobile: false, adobeBucket: 'fieldMud', mudUv: 0.33 });
+    for (const kind of ['drystone', 'adobe', 'brick']) {
+      for (const toward of [-1, 1]) {
+        const g = d.breach(kind, 4, -0.15, 7, 0, 0.48, 0.45, toward), p = g.attributes.position, n = (g.index ? g.index.count : p.count) / 3;
+        assert.deepEqual(Object.keys(g.attributes).sort(), ['normal', 'position', 'uv'], `${kind}: the field walls' attributes`);
+        if (!(kind === 'drystone' && snow)) assert.ok(n <= caps[kind], `${kind}: ${n} triangles (cap ${caps[kind]})`);
+        let lo = Infinity, hiNear = -Infinity, hiFar = -Infinity;
+        for (let i = 0; i < p.count; i++) {
+          const y = p.getY(i), along = (p.getZ(i) - 7) * toward;
+          lo = Math.min(lo, y);
+          if (along > 0.15) hiNear = Math.max(hiNear, y); else if (along < -0.15) hiFar = Math.max(hiFar, y);
+        }
+        assert.ok(lo <= -0.14, `${kind}: its foot sunk (${lo.toFixed(2)})`);
+        assert.ok(hiNear > hiFar + 0.08, `${kind}: stepped down from the lip (${hiNear.toFixed(2)} over ${hiFar.toFixed(2)})`);
+        assert.ok(hiNear < (snow ? 0.66 : 0.5), `${kind}: a remnant, not a wall (${hiNear.toFixed(2)} m${snow ? ', its snow load on it' : ''})`);
+        assert.deepEqual(d.breach(kind, 4, -0.15, 7, 0, 0.48, 0.45, toward).attributes.position.array, p.array, `${kind}: deterministic`);
+      }
+    }
+    const spill = d.breachTumble(false, 4, 7, 1, 0, 0.24);
+    if (snow) assert.equal(spill, null, 'no stones strewn on the snow');
+    else assert.ok(spill && spill.attributes.position.count / 3 <= 90, 'the breach spills a few of its stones');
+    assert.ok(d.breachTumble(true, 4, 7, 1, 0, 0.26), 'a mud wall spills its lumps');
+  }
+  const propsSource = readFileSync(new URL('../props.ts', import.meta.url), 'utf8');
+  const breach = propsSource.slice(propsSource.indexOf('function addBrokenBreach('), propsSource.indexOf('function isGapModule('));
+  assert.ok(breach.includes('buckets[wallB].push(wallDressing.breach(breachKind,') && breach.includes('stub.dispose();'), 'props.ts draws the remnants, the boxes its seat proxies');
+}
+
+// (props lane A #6) a brick-print wall's piers by region: plinth, shaft, string course and its region's coping, every face
+// wound out, standing where the old post and slab stood
+{
+  const { brickPierCapFor } = await import('./fieldWallDressing.ts');
+  assert.equal(brickPierCapFor('ruhr'), 'rollschicht'); assert.equal(brickPierCapFor('franconian'), 'saddleback');
+  assert.equal(brickPierCapFor('shanghai'), 'hipped'); assert.equal(brickPierCapFor(null), 'slab');
+  for (const pierCap of ['rollschicht', 'saddleback', 'hipped', 'block', 'slab']) {
+    const d = createWallDressing({ ground: { getHeightAt: () => 0 }, snow: false, mobile: false, adobeBucket: 'plaster', mudUv: 0.33, pierCap });
+    const g = d.pier(2, -0.15, 3, 0.4, 0.46, 1.5), p = g.attributes.position, n = g.attributes.normal, tri = p.count / 3;
+    assert.deepEqual(Object.keys(g.attributes).sort(), ['normal', 'position', 'uv'], `${pierCap}: the wall bucket's attributes`);
+    assert.ok(tri <= 100, `${pierCap}: ${tri} triangles`);
+    let top = -Infinity;
+    for (let t = 0; t < p.count; t += 3) {
+      const c = [0, 1, 2].map((k) => (p.getComponent(t, k) + p.getComponent(t + 1, k) + p.getComponent(t + 2, k)) / 3);
+      const out = [c[0] - 2, 0, c[2] - 3], up = c[1] > 1.2 ? 1 : 0;
+      const nn = [n.getX(t), n.getY(t), n.getZ(t)];
+      assert.ok(nn[0] * out[0] + nn[2] * out[2] + nn[1] * up > -1e-3 || Math.abs(nn[1]) > 0.9, `${pierCap}: a face wound in`);
+      for (let k = 0; k < 3; k++) top = Math.max(top, p.getY(t + k));
+    }
+    assert.ok(top > 1.3 && top < 1.65, `${pierCap}: stands ${top.toFixed(2)} m`);
+  }
+  const propsSource = readFileSync(new URL('../props.ts', import.meta.url), 'utf8');
+  assert.ok(propsSource.includes('buckets[wallB].push(wallDressing.pier(px, py, pz, yaw, thick, ph + 0.11));')
+    && propsSource.includes('pierCap: brickPierCapFor(regionalArchitecture?.id),'), 'props.ts raises the piers by region');
+}
+
+console.log('fieldWallDressing self-test passed: the breaches stepped in their own section, the brick piers by region, the snow load on the module\'s top (lumpy, seamless, looking up), the foot stones sunk on both faces, the lee and windward drifts with wandering toes, the mud apron on its plain band, the tumbled ends, the run\'s owner, the turf at the dry-stone feet, the coarse apron opt-in');

@@ -181,8 +181,14 @@ function scorePerformance(
   const { architecture, isVerdant } = input;
   return ledger.award(isVerdant || number(architecture.drawCalls) <= 25,
     3, 'environment exceeds 25 draw calls')
-    + ledger.award(isVerdant || number(architecture.triangles) <= 50_000,
-      2, 'environment exceeds 50k triangles')
+    // 64k since garage round 7 (GA.04, 2026-10-14): the regional buildings at the props standard (real members, openings
+    // cut through) need the room; triangles at this scale cost the GPU nothing measurable, and the switch gates below
+    // (80 ms gap, 100 ms build) still hold the CPU side. 72k since 2026-10-16 (deploy 226, coordinator ruling Option A):
+    // the garages' place-truth facilities and r8 detail with the props lanes' container (LOOKS) and tower (Lane B)
+    // rebuilds put railyard_overhaul at 74,795 (70,907 with its yard rails trimmed) and alpine_service_cavern at 70,509;
+    // the Garage frame time is measured in the final pass
+    + ledger.award(isVerdant || number(architecture.triangles) <= 72_000,
+      2, 'environment exceeds 72k triangles')
     + ledger.award(input.transitionMaxGapMs <= 80,
       3, 'normal-speed switch stalls longer than 80 ms')
     + ledger.award(isVerdant || number(architecture.lastBuildMs) <= 100,

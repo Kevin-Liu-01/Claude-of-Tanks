@@ -97,6 +97,10 @@ function turretEra(P:TankBuilderPort):void {
   material.dispose();for(const g of stock)g.dispose();
 }
 
+/** Hetman II's hull package (heavy fitted skirts, joint caps, Ukrainian skirt
+ * ERA and camouflage carriers), unchanged beneath its donor turret. */
+export function hetmanIIHullPackage(P:TankBuilderPort):void { hullPackage(P); }
+
 function hullPackage(P:TankBuilderPort):void {
   const span=5.04,count=6,step=span/count;
   for(const side of [-1,1]){
@@ -224,6 +228,6 @@ export function buildHetmanII(P:TankBuilderPort):void {
   weldedTurret(P);turretEra(P);hullPackage(P);equipment(P);fieldCamouflage(P);
   addNationalUkraineProtection(P,D.id);addVehicleGhillieSuit(P,NATIONAL_UKRAINE_GHILLIE[D.id]);
   P.topY=D.roofY;
-  P.hullG.userData.familyRebuild={donor:'t72b3m_x',turret:'hetman-ii-custom-welded',revision:1,concept:true,
+  P.hullG.userData.familyRebuild={donor:'t72b3m_2016',turret:'hetman-ii-custom-welded',revision:1,concept:true,
     lineage:'original-hetman-t90sm-era-command-modernization'};
 }

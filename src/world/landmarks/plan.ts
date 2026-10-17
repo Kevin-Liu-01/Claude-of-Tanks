@@ -94,7 +94,9 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
       const balances = span / 2 + 0.75 + Math.max(3.6, span * 0.42);
       const grade = Math.min(0.25, Math.max(0.05, num(p, 'grade')));
       const long = approach > 0 || rise > 0 ? span / 2 + (approach > 0 ? 2.6 : 0) + approach + 3.2 + (rise > 0 ? (rise + 0.5) / grade : 0) + 0.3 : 0;
-      return [num(p, 'width') / 2 + 1.1, Math.max(balances, long)];
+      // (#27, Lane C 2026-10-16) across: the bridge-keeper's hut on the bank beside the roadway (bridges.ts liftKeeper: its
+      // centre 2.9 m past the roadway's edge, 1.3 m to its wall and its eave's 0.3 m)
+      return [num(p, 'width') / 2 + 4.3, Math.max(balances, long)];
     } },
   viaduct: { family: 'bridge', defaults: { arches: 7, archSpan: 12, height: 22, width: 8 },
     footprint: (p) => [num(p, 'width') / 2 + 0.8, (num(p, 'arches') * (num(p, 'archSpan') + 3) + 3) / 2] },
@@ -260,7 +262,7 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [Math.max(num(p, 'length'), num(p, 'canopy')) / 2 + 2.2, num(p, 'depth') / 2 + 5.4] },
   marketHall: { family: 'civic', defaults: { length: 26, width: 13, bays: 6 },
     footprint: (p) => [num(p, 'width') / 2 + 0.8, num(p, 'length') / 2 + 0.8] },
-  grainElevator: { family: 'civic', defaults: { rows: 2, cols: 4, radius: 3.2, height: 28, head: 38 },
+  grainElevator: { family: 'civic', defaults: { rows: 2, cols: 4, radius: 3.2, height: 28, head: 38, style: 'soviet' },
     // the silos along x, the head house at their +x end
     footprint: (p) => [num(p, 'cols') * num(p, 'radius') + 9.0, num(p, 'rows') * num(p, 'radius') + 1.4] },
   // ------------------------------------------------------------------------------------------------ colonial
@@ -313,6 +315,9 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [num(p, 'width') / 2 + 0.4, num(p, 'length') / 2 + 1.7] },
   drumCache: { family: 'works', drapes: true, dressing: () => true, defaults: { rows: 3, columns: 8 },
     footprint: (p) => [(Math.round(num(p, 'columns')) - 1) * 0.37 + 2.4, Math.max(2.2, (Math.round(num(p, 'rows')) - 1) * 0.37 + 0.6)] },
+  // (the maps lane's Kestrel rebuild, 2026-10-15: an apron's floodlight mast, airfieldWorks.ts)
+  floodMast: { family: 'works', defaults: { height: 22 },
+    footprint: (): [number, number] => [1.8, 1.8] },
   // (the airstrip: a draped strip, its markers the props' barrels, a windsock and a shack beside its middle)
   airstrip: { family: 'works', drapes: true, roadMargin: 0, defaults: { length: 460, width: 26 },
     footprint: (p) => [num(p, 'width') / 2 + 10, num(p, 'length') / 2 + 1.5] },
@@ -328,6 +333,15 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [Math.max(2.6, num(p, 'width') / 2 + 0.9), num(p, 'length') / 2 + 0.3] },
   oreCars: { family: 'works', drapes: true, defaults: { cars: 6, gauge: 1.067 },
     footprint: (p) => [1.3, (Math.round(num(p, 'cars')) * 3 + 4.6) / 2 + 1.6] },
+  // ------------------------------------------------------------------------------------------------ a fjord farm's works
+  // (fjordWorks.ts, the map-content lane, 2026-10-10): the hay rack is all dressing (low, a hull drives through it); the
+  // stockfish rack's frames are solid; the stabbur stands on its stilts
+  hayRack: { family: 'civic', drapes: true, dressing: () => true, defaults: { length: 24 },
+    footprint: (p) => [num(p, 'length') / 2 + 1.3, 0.6] },
+  fishRack: { family: 'harbour', drapes: true, defaults: { length: 15, height: 4 },
+    footprint: (p) => [num(p, 'length') / 2 + 0.4, num(p, 'height') * 0.42 + 0.3] },
+  stabbur: { family: 'civic', defaults: { width: 3.6, depth: 3.6 },
+    footprint: (p) => [num(p, 'width') / 2 + 1.0, num(p, 'depth') / 2 + 2.0] },
 });
 
 /** A placement's parameters over its kind's defaults. An unknown kind fails closed. */

@@ -71,7 +71,7 @@ function leftWeaponYoke(P:TankBuilderPort):void {
   beam(P,[-.645,2.25,.468],[-.405,2.486,.706],.068,.067);
   add(P,KIT.box(.111,.050,.117),-.635,2.253,.479);
   add(P,KIT.cylY(.052,.052,.158,20),-.3867,2.590,.6952);
-  const finishYoke=P.spec.id==='k1a1_x'?captureAuxiliaryStock(P,'k1a1XPhotoRoofMachineGun'):()=>{};
+  const finishYoke=P.spec.id==='k1a1'?captureAuxiliaryStock(P,'k1a1XPhotoRoofMachineGun'):()=>{};
   const tray=sectionSolid([[.49194,2.61276],[.596,2.64696],[.85534,2.64696]]
     .map(([z,y])=>({z,ring:[[-.4385,y],[-.3359,y],[-.3359,y+.0108],[-.4385,y+.0108]]})));
   add(P,tray,0,0,0);

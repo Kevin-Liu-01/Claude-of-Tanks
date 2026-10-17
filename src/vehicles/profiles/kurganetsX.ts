@@ -7,6 +7,7 @@ import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import type { RunningGearConfig, TankBuilderPort } from '../tankFactoryCore.ts';
 import { buildEpokhaTurret } from './epokhaTurret.ts';
+import { reserveDecorVolume } from './fieldChest.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 const { box, cylX, cylY, cylZ, torus } = KIT;
 function hullSection(z: number, lowerHalf: number, shoulderHalf: number, roofHalf: number, floor: number, shoulder: number, roof: number): SolidSection {
@@ -189,7 +190,10 @@ function addKurganetsDeckFittings(P: TankBuilderPort): void {
         P.addEquipment('hullDetail', cylZ(.062, .4043, P.q ? 16 : 9), x, y, z, 0, Math.atan2(ax, az));
     }
     for (const side of [-1, 1]) {
-        P.addEquipment('hullDetail', box(.29, .12, .69), side * 1.044, 2.33, -.461);
+        // Owner markup 2026-10-14 on these blank deck blocks (critic panel 10-15: a low chest on the same footprint still
+        // read as the same block): they are gone, and the deck beside the turret ring is clear; the decor keeps out of
+        // where they stood, so its loads keep their seats (fieldChest.ts reserveDecorVolume)
+        reserveDecorVolume(P.hullG, [side * 1.044 - .15, 2.27, -.81], [side * 1.044 + .15, 2.45, -.11]);
         for (const [x, y, z] of [[.79, 2.355, -2.80], [.70, 2.355, -3.33], [1.30, 2.085, 2.014]]) {
             P.addEquipment('hullDetail', box(.23, .09, .32), side * x, y, z);
             P.addEquipment('hullDark', box(.15, .026, .014), side * x, y + .013, z + .167);
@@ -368,9 +372,9 @@ export function buildKurganets25X(P: TankBuilderPort): void {
     P.topY = 4.02 - P.turretG.position.y;
     preserveSourceStudyGunMountAppearance(P);
     P.hullG.userData.xRebuild = {
-        candidate: 'kurganets25_x', independent: true, sourceLocalOnly: true, datumVersion: 1,
+        candidate: 'kurganets25', independent: true, sourceLocalOnly: true, datumVersion: 1,
     };
 }
 export const KURGANETS_X_PROFILES = {
-    kurganets25_x: { build: buildKurganets25X },
+    kurganets25: { build: buildKurganets25X },
 } as const;

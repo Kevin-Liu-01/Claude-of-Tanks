@@ -16,6 +16,7 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { ARCHITECTURE_STYLES, ARCHITECTURE_STYLE_IDS, buildRegionalParts, rebuildRegionalStructure, resolveRegionalArchitecture } from './index.ts';
+import { paintRatio } from './weather.ts';
 import { streamFrom } from './geometry.ts';
 import { auditStructureAssembly } from '../structureAssemblyAudit.ts';
 import { deriveRuntimeStructureCollisionProfile, appendStructureCollisionBand } from '../../structureCollision.ts';
@@ -34,6 +35,7 @@ import { createHeightField } from '../../terrain.ts';
 import { MAP_IDS, getMapConfig } from '../index.ts';
 import { bindStructureSpans, describeStructure, tagStructureVertices } from '../../structureDamageSeam.ts';
 import { createStructureDamage } from '../../../sim/structureDamage.ts';
+import { settleCatalogCuts } from '../railKit.ts'; // (integ/226: props.ts settles the catalog's cut halls after the catalog pass)
 import { registerHooks } from 'node:module';
 
 const STYLES = ARCHITECTURE_STYLES;
@@ -52,11 +54,16 @@ const INFO = {
   cornershop: [9.0, 9.0, 7.3], barn: [8.4, 12.3, 6.2], granary: [4.2, 6.4, 4.7], woodshed: [4.3, 5.4, 3.1],
   depot: [11, 20, 6], ruin: [6.8, 9.0, 3.0], church: [9.6, 23.1, 20.4], chapel: [5.8, 8.6, 8.0], mill: [6.6, 6.6, 9.9],
   boatshed: [9.0, 12.0, 5.0], tower: [3.8, 3.8, 9.4], foundryoffice: [13.5, 14.4, 9.8], warehouse: [16, 24, 7.5],
+  // (the tselina kit's elevator, its own builder since 2026-10-10: built on the warehouse lot it stood on before)
+  elevator: [16, 24, 7.5],
   rangerlodge: [12.8, 16.4, 10.7], marketRow: [12, 5.2, 3.2], fishery: [18, 20, 7], rowhouse: [9.6, 10.2, 11],
+  netyard: [8.5, 6.5, 2.4],
   adobe: [6.6, 7.6, 4.2], caravanserai: [21.4, 19.4, 7.4], compound: [23, 14.5, 5.6], compoundSouk: [22, 16, 6],
   minaret: [4, 4, 13], bathhouse: [11, 10, 7], factory: [16, 26, 15], watertower: [5.6, 5.6, 14],
   shed: [8, 14, 6], stack: [3.4, 3.4, 26], market: [6.6, 5.2, 3.0], containerRow: [15, 6.4, 3.4], gantry: [21, 5.4, 12],
   firestation: [11.8, 15.4, 14.1],
+  // the plan's light (railKit makeLighthouse): the breton phare and the nordland fyr on their keepers' houses
+  lighthouse: [5.6, 5.6, 15],
   // the colony terrace's unauthored plot (terraceLayout.ts TERRACE_DEFAULT_PLOT: four houses)
   terrace: [22, 9.6, 9],
   // the megacity landmarks the city kits (Sarajevo, Shanghai) rebuild (structureKit.ts footprints)
@@ -214,7 +221,7 @@ console.log(`regional coverage: every builder of a new kit reaches its bounds to
 
 // Surfaces: deterministic, in range, cached.
 for (const [target, kind] of [['roof', 'beavertail'], ['roof', 'canal'], ['roof', 'slate'], ['stone', 'sandstone'], ['stone', 'limestone'], ['stone', 'granite'],
-  ['concrete', 'boardFormed']]) {
+  ['concrete', 'boardFormed'], ['concrete', 'poured']]) {
   const paint = () => { const g = paintRegionalSurfaceBuffers(target, kind, [0.5, 0.4, 0.3], 7); let s = g.next(); while (!s.done) s = g.next(); return s.value; };
   const a = paint(), b = paint();
   assert.deepEqual(Buffer.from(a.px.buffer), Buffer.from(b.px.buffer), `${kind}: deterministic pixels`);
@@ -282,7 +289,7 @@ const dependencies = { roadSettlementJunction, buildingRoadStationIndices, THREE
   sampleObbGround, deriveRuntimeStructureCollisionProfile, appendStructureCollisionBand,
   rebuildRegionalStructure: recordingRebuild, resolveRegionalArchitecture,
   // destruction (2026-10-07): a placed structure is described and tagged where it is built (props.ts describeStructureAt)
-  bindStructureSpans, describeStructure, tagStructureVertices, createStructureDamage,
+  bindStructureSpans, describeStructure, tagStructureVertices, createStructureDamage, settleCatalogCuts,
   buildingFootprintClearsRoads, roadBuildingFrontage, roadBuildingDoorAxis, roadBuildingClearanceCandidates, roadParcelAddsNoExclusion,
   ...Object.fromEntries(['mulberry32', 'makeCottage', 'makeBarn', 'makeTower', 'makeRuin', 'makeAdobe', 'makeRowhouse'].map((key) => [key, originals[key]])),
 };
@@ -360,6 +367,31 @@ for (const [kit, table] of Object.entries(REGIONAL_DESTRUCTIBLE_TYPES)) {
     assert.ok(bb.max.y <= base.h + 0.05 && bb.min.y >= -0.05, `${kit}/${key}: the build leaves the family's height band`);
     assert.ok(meta.broken(streamFrom(9)).getAttribute('position').count > 0, `${kit}/${key}: no broken state`);
     console.log(`${kit} ${key}: a ${base.family} variant, ${(g.index ? g.index.count : g.getAttribute('position').count) / 3} triangles`);
+  }
+}
+// (the map-revival lane, 2026-10-07, Amberford's cost trim) a kit that folds its third plaster paint into its second's
+// bucket (ArchitectureStyle.foldThirdPlaster; weather.ts plaster3Fold, the ratio paintRatio takes from the kit's own two
+// paints): its plaster3 walls draw from regionalPlaster2, each vertex the unfolded colour times the ratio, and
+// regionalPlaster3 stays empty; the same kit unfolded builds as before. Lorraine is the only kit that folds.
+{
+  assert.deepEqual(STYLES.filter((s) => s.foldThirdPlaster).map((s) => s.id), ['lorrain'], 'Lorraine is the only kit that folds');
+  const lorrain = resolveRegionalArchitecture('lorrain');
+  const unfoldedKit = { ...lorrain, foldThirdPlaster: false };
+  const ctx = () => ({ structureId: 'cottage', info: { w: 7, d: 9, h: 6 }, bounds: { minX: -3.5, maxX: 3.5, minZ: -4.5, maxZ: 4.5, maxY: 6 },
+    wallBucket: 'plaster3', rng: streamFrom(29), variant: streamFrom(29 * 7 + 3), mapId: 'selftest', snowCap: false, tier: 'desktop' });
+  const ratio = paintRatio(lorrain.surfaces.tones.plaster2, lorrain.surfaces.tones.plaster3);
+  assert.ok(ratio.every((v) => v > 0.5 && v < 2) && Math.abs(ratio[2] - ratio[0]) > 0.2, `the grey lime over the rose-beige: ${ratio.map((v) => v.toFixed(3))}`);
+  const plain = buildRegionalParts(unfoldedKit, ctx(), streamFrom(29 * 3 + 5));
+  const folded = buildRegionalParts(lorrain, ctx(), streamFrom(29 * 3 + 5));
+  const flat = (parts, bucket, attr) => parts[bucket].flatMap((g) => Array.from(g.getAttribute(attr).array));
+  assert.ok(plain.regionalPlaster3.length > 0, 'a plaster3 house unfolded draws from regionalPlaster3');
+  assert.equal(folded.regionalPlaster3.length, 0, 'folded, regionalPlaster3 stays empty');
+  const before = flat(plain, 'regionalPlaster3', 'position'), moved = flat(folded, 'regionalPlaster2', 'position').slice(-before.length);
+  assert.deepEqual(moved, before, 'the plaster3 walls are the last of regionalPlaster2, as built');
+  const c0 = flat(plain, 'regionalPlaster3', 'color'), c1 = flat(folded, 'regionalPlaster2', 'color').slice(-c0.length);
+  for (let i = 0; i < c0.length; i++) assert.ok(Math.abs(c1[i] - Math.fround(c0[i] * ratio[i % 3])) < 1e-6, 'each colour times the ratio');
+  for (const bucket of ['regionalPlaster', 'regionalStone', 'regionalRoof']) {
+    assert.deepEqual(flat(folded, bucket, 'color'), flat(plain, bucket, 'color'), `${bucket}: untouched by the fold`);
   }
 }
 console.log('regional architecture: kits sound, placements preserved');

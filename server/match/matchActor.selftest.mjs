@@ -62,7 +62,7 @@ function createHeadlessClient(actor, seat, playerId, { ackDelayMs = 0 } = {}) {
   });
   link.client.onClose((reason, detail) => { client.closed ??= { reason, detail }; });
   const hello = { type: MESSAGE_TYPE.HELLO, protocolVersion: PROTOCOL_VERSION, capabilities: 1, token: 'issued-elsewhere', clientBuild: 'selftest' };
-  const claims = { v: 1, roomId: actor.roomId, seat, playerId, name: playerId, team: 'alpha', specId: 'm1a2', iat: 0, exp: 1 };
+  const claims = { v: 1, roomId: actor.roomId, seat, playerId, name: playerId, team: 'alpha', specId: 'm1a1_abrams_hc', iat: 0, exp: 1 };
   client.attached = actor.attach(link.server, hello, claims);
   return client;
 }
@@ -91,15 +91,15 @@ const actor = createMatchActor({
   roomId: 'room-actor-test', mapId: 'verdant', seed: 4242, countdownS: 0.5, world: 'terrain', now, schedule, snapshotHz: 30,
   entryBackpressureGraceMs: 0,
   seats: [
-    { seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 'm1a2' },
-    { seat: 1, playerId: 'p2', name: 'Two', team: 'alpha', specId: 'm1a2' },
-    { seat: 2, playerId: 'p3', name: 'Three', team: 'bravo', specId: 't90m' },
-    { seat: 3, playerId: 'p4', name: 'Four', team: 'bravo', specId: 't90m' },
+    { seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 'm1a1_abrams_hc' },
+    { seat: 1, playerId: 'p2', name: 'Two', team: 'alpha', specId: 'm1a1_abrams_hc' },
+    { seat: 2, playerId: 'p3', name: 'Three', team: 'bravo', specId: 't90am' },
+    { seat: 3, playerId: 'p4', name: 'Four', team: 'bravo', specId: 't90am' },
     { seat: 9, playerId: 's1', name: 'Watcher', team: 'spectator', specId: '' },
   ],
   bots: [
-    { playerId: 'bot-a', name: 'Bot A', team: 'alpha', specId: 'leo2a7v' },
-    { playerId: 'bot-b', name: 'Bot B', team: 'bravo', specId: 'leo2a7v' },
+    { playerId: 'bot-a', name: 'Bot A', team: 'alpha', specId: 'leo2_improved' },
+    { playerId: 'bot-b', name: 'Bot B', team: 'bravo', specId: 'leo2_improved' },
   ],
   onVerdict: (verdict) => verdicts.push(verdict),
 });
@@ -320,10 +320,10 @@ assert.ok(p1.closed && p1.closed.reason === CLOSE_REASON.ROOM_CLOSED, 'stop clos
   assert.equal(ENTRY_BACKPRESSURE_SUSTAINED_MS, 60_000, 'where only 60 s of continuous pressure closes it');
   const base = { roomId: 'room-entry-grace', mapId: 'verdant', seed: 11, countdownS: 0, world: 'terrain', now, schedule, snapshotHz: 30,
     seats: [
-      { seat: 0, playerId: 'g1', name: 'G1', team: 'alpha', specId: 'm1a2' },
-      { seat: 1, playerId: 'g2', name: 'G2', team: 'alpha', specId: 'm1a2' },
-      { seat: 2, playerId: 'g3', name: 'G3', team: 'bravo', specId: 't90m' },
-      { seat: 3, playerId: 'g4', name: 'G4', team: 'bravo', specId: 't90m' },
+      { seat: 0, playerId: 'g1', name: 'G1', team: 'alpha', specId: 'm1a1_abrams_hc' },
+      { seat: 1, playerId: 'g2', name: 'G2', team: 'alpha', specId: 'm1a1_abrams_hc' },
+      { seat: 2, playerId: 'g3', name: 'G3', team: 'bravo', specId: 't90am' },
+      { seat: 3, playerId: 'g4', name: 'G4', team: 'bravo', specId: 't90am' },
     ] };
   assert.throws(() => createMatchActor({ ...base, entryBackpressureSustainedMs: 1000 }), /entry backpressure/,
     'the entry limit is never shorter than the steady one');
@@ -369,8 +369,8 @@ assert.ok(p1.closed && p1.closed.reason === CLOSE_REASON.ROOM_CLOSED, 'stop clos
   const verdictActor = createMatchActor({
     roomId: 'room-verdict', mapId: 'verdant', seed: 7, countdownS: 0, battleLimitS: 1, world: 'terrain', now, schedule,
     endedLingerTicks: 30,
-    seats: [{ seat: 0, playerId: 'v1', name: 'V', team: 'alpha', specId: 'm1a2' }],
-    bots: [{ playerId: 'vb', name: 'VB', team: 'bravo', specId: 't90m' }],
+    seats: [{ seat: 0, playerId: 'v1', name: 'V', team: 'alpha', specId: 'm1a1_abrams_hc' }],
+    bots: [{ playerId: 'vb', name: 'VB', team: 'bravo', specId: 't90am' }],
     onVerdict: (verdict) => verdicts.push(verdict),
   });
   const v1 = createHeadlessClient(verdictActor, 0, 'v1');

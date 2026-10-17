@@ -21,9 +21,15 @@ export function tankReleaseSteps(ids, gate, node = process.execPath) {
     cpu('tank-sealed-check',selected,'--ledger=docs/geometry-gate/sealed.json',...(gate?['--gate']:[])),
     ...(gate && comparisons.length ? [gpu('procedural-fidelity',`--ids=${comparisons.join(',')}`,'--check','--board','--neutral-board')] : []),
     cpu('gen-combat-anatomy','--check'),
+    // 2026-10-11 (217's closure; 211's TTS before it): a geometry change could pass this check and then
+    // fail the closure's ledger and mission-seat checks. Both receipts now gate here, scoped to the ids.
+    cpu('fleet-geometry-ledger','--check',selected),
+    cpu('gen-mission-attachment-seats','--check',selected),
     gpu('presentation-centering','--check',selected),
     gpu('module-visual-align-probe',selected,'--gate'),
     cpu('module-hit-probe',selected),
+    // VEH-13 (2026-10-15): every spare-track run measured afresh, equal to its ledger row and clean
+    cpu('spare-track-placement-check',selected,'--ledger=docs/geometry-gate/spare-track.json',...(gate?['--gate']:[])),
     gpu('tank-assets-check',selected),
     gpu('track-duplicate-audit',selected),
     gpu('muzzle-bore-probe',selected),

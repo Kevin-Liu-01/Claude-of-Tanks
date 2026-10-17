@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
 
 const options = { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true };
-const first = createTank('t72b3m', null, options);
-const sibling = createTank('t72b3m', null, options);
-// 2026-10-01: the owner's obr. 2022 rebuild (cdbfe54dc: t72b3m_x hull with the T-90SM X turret) retired the legacy
+const first = createTank('t72b3m_2022', null, options);
+const sibling = createTank('t72b3m_2022', null, options);
+// 2026-10-01: the owner's obr. 2022 rebuild (cdbfe54dc: t72b3m_2016 hull with the T-90SM X turret) retired the legacy
 // builder's private ring-gap band and dark gun finishes. The lifetime law is the factory's and is held on the
 // rebuild's own independent finishes: soft-case canvas, turret dark stock and the pitching gun mount.
 function capture(tank) {

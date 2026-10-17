@@ -165,7 +165,7 @@ function addRunningGearSide(P: LightTigerBuilderPort, side: number): void {
     P.addExternalArmor('hull', KIT.box(0.072, 0.095, 5.76),
       side * 1.895, y, -0.34);
   }
-  P.add('hullRubber', KIT.box(0.034, 0.18, 5.78), side * 1.930, 0.80, -0.33);
+  // Owner markup 2026-10-14: the 5.78 m rubber strip hung along each skirt hem read as a loose black band and is gone.
   // Broad structural shoulders overlap the troop cell, fender and skirt
   // carrier. From every review angle they read as one body over the tread,
   // rather than three parallel strips with sky between them.
@@ -323,7 +323,7 @@ function addTurret(P: LightTigerBuilderPort): void {
     seed: 899,
   });
   tigerRoofOptics.name = 'type89K2bStyleRoofOptics';
-  tigerRoofOptics.userData.hostVariant = 'type89_light_tiger';
+  tigerRoofOptics.userData.hostVariant = 'raiju_ifv';
   tigerRoofOptics.userData.sensorRole = 'commander-panoramic';
   mount(P, 'turret', tigerRoofOptics, -0.36, 0.76, -0.56, [0, 0.04, 0]);
   P.turretG.userData.type89RoofOpticsReceipt = Object.freeze({
@@ -357,7 +357,7 @@ function addTurret(P: LightTigerBuilderPort): void {
     seed: 900,
   });
   tigerRoofRws.name = 'type89LightTigerCompactRoofRws';
-  tigerRoofRws.userData.hostVariant = 'type89_light_tiger';
+  tigerRoofRws.userData.hostVariant = 'raiju_ifv';
   mount(P, 'turret', tigerRoofRws, 0.42, 0.76, -0.94, [0, 0.04, 0]);
   P.turretG.userData.type89RoofRwsReceipt = Object.freeze({
     designFamily: tigerRoofRws.userData.designFamily,
@@ -459,5 +459,5 @@ function buildType89LightTiger(P: LightTigerBuilderPort): void {
 }
 
 export const TYPE89_LIGHT_TIGER_PROFILES = Object.freeze({
-  type89_light_tiger: Object.freeze({ build: buildType89LightTiger }),
+  raiju_ifv: Object.freeze({ build: buildType89LightTiger }),
 }) satisfies VehicleProfileRecord;

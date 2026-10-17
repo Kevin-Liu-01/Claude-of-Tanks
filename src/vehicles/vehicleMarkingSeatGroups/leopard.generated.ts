@@ -148,7 +148,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "leo2a4": {
+  "leo2a2": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -189,7 +189,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6414088
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "leo2a4",
+        "anchorProfile": "leo2a2",
         "visibilitySamples": 9,
         "visibilityClearSamples": 6,
         "visibilityRatio": 0.6666667,
@@ -197,7 +197,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "leo2a4m": {
+  "leo2a4m_can": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -216,7 +216,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7070781
         ],
         "surfaceMesh": "hull",
-        "anchorProfile": "leo2a4m",
+        "anchorProfile": "leo2a4m_can",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -238,7 +238,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7070781
         ],
         "surfaceMesh": "hull",
-        "anchorProfile": "leo2a4m",
+        "anchorProfile": "leo2a4m_can",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -246,7 +246,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "leo2a5": {
+  "leo2a4_v": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -265,7 +265,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "leo2a5",
+        "anchorProfile": "leo2a4_v",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -287,7 +287,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "leo2a5",
+        "anchorProfile": "leo2a4_v",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -295,7 +295,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "leo2a5_a5nl": {
+  "leo2a4m": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -314,7 +314,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "leo2a5_a5nl",
+        "anchorProfile": "leo2a4m",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -336,7 +336,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7071068
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "leo2a5_a5nl",
+        "anchorProfile": "leo2a4m",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -344,7 +344,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "leo2a6": {
+  "leo2a4": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -363,7 +363,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6511808
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "leo2a6",
+        "anchorProfile": "leo2a4",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -385,7 +385,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6511808
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "leo2a6",
+        "anchorProfile": "leo2a4",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -393,7 +393,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "leo2a6m": {
+  "leo2a4_otco": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -412,7 +412,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6619246
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "leo2a6m",
+        "anchorProfile": "leo2a4_otco",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -434,7 +434,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6619246
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "leo2a6m",
+        "anchorProfile": "leo2a4_otco",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -540,7 +540,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "leo2a7v": {
+  "leo2_improved": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -603,7 +603,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6511808
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "leo2a7v",
+        "anchorProfile": "leo2_improved",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -611,7 +611,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "kf51": {
+  "kf51_evo": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -630,7 +630,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.7018088
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "kf51",
+        "anchorProfile": "kf51_evo",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -652,7 +652,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6976709
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "kf51",
+        "anchorProfile": "kf51_evo",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -660,7 +660,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
       }
     ]
   },
-  "kf51b": {
+  "kf51_u": {
     "schemaVersion": 1,
     "seats": [
       {
@@ -679,7 +679,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6743471
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "kf51b",
+        "anchorProfile": "kf51_u",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
@@ -701,7 +701,7 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
           0.6671663
         ],
         "surfaceMesh": "turret",
-        "anchorProfile": "kf51b",
+        "anchorProfile": "kf51_u",
         "visibilitySamples": 9,
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,

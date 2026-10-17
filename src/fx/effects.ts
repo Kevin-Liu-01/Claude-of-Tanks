@@ -1,9 +1,14 @@
 import { createAuxiliaryPresentation, type AuxiliaryVisualEntity } from './auxiliaryPresentation.ts';
 // atmospherics lane: rounds in flight (tracers); the old ribbon block below stays for the gunship and the composer
 import { createProjectileTracers } from './projectileTracers.ts';
-import { firedIsMissile, missileFlicker, missileLookFor, missileSpin, missileWobble, MISSILE_LOOKS, type MissileLook } from './missileLooks.ts';
-import { createSmokeRibbons, type RibbonLook } from './smokeRibbons.ts';
-import { missileIgnition, missileLaunch, missileTrailPuff } from './missileRecipes.ts';
+import { firedIsMissile, missileFlicker, missileLookFor, missileSpin, missileTrailOf, missileWobble, MISSILE_LOOKS, type MissileLook,
+  type MissileTrail } from './missileLooks.ts';
+import { createMissileTrails, TRAIL_STEP_M } from './missileTrails.ts';
+import { missileIgnition, missileLaunch } from './missileRecipes.ts';
+import { createMissileWires, WIRE_SLOTS } from './missileWires.ts';
+import { createSceneLightUniforms, readSceneLight, type SceneLightData } from './sceneLight.ts';
+import { MISSILE_AIRFRAMES, createMissileBodies, missileBodyDims } from './missileBodies.ts';
+import { usesLauncherMuzzles } from '../sim/launcherPolicy.ts';
 import { puffRandom } from './atmosRecipes.ts';
 import {SMOKE_WIND_X, SMOKE_WIND_Z} from '../sim/smokeScreen.ts';
 import type { SmokeScreen } from '../sim/auxiliarySystems.ts';
@@ -21,6 +26,7 @@ import type { SmokeScreen } from '../sim/auxiliarySystems.ts';
  */
 import * as THREE from 'three';
 import type { TrackSurface } from '../world/trackSurface.ts';
+import { streetGritShare } from '../world/roadPave.ts';
 import { createDronePresentation, droneHiddenFromCamera } from './dronePresentation.ts';
 import { configureDroneMaterials } from './droneModel.ts';
 import {missionAttachmentVisualFrame} from '../game/missionAttachmentVisual.ts';
@@ -54,17 +60,20 @@ import {
   type BlastContext,
 } from './blastRecipes.ts';
 import { createTrailCadence } from './trailCadence.ts';
-import { craterWobblePhases } from '../sim/terrainDeformation.ts';
+import { craterWobblePhases, type TerrainDeformation } from '../sim/terrainDeformation.ts';
+import { mapCratersOn } from '../world/mapCraters.ts';
+import { registerGroundKeyLight } from '../engine/groundKeyLights.ts';
 import { resolveGroundReduxProfile } from '../world/groundRedux.ts';
 import { classifyTerrain } from './surfaceLooks.ts';
 import { createCraterMarks, markKindFor, type CraterClimate, type CraterMarks } from './craterMarks.ts';
-import { lookForStruckKind, lookFromAnatomy, propBreakFx, sectionFallFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
+import { breakShardsFx, landingSpillFx, lookForStruckKind, lookFromAnatomy, pieceLandingFx, propBreakFx, sectionFallFx, structureStageFx, wallStrike, type StructureLook } from './structureFx.ts';
 import { createStructureMask, type StructureMask } from './structureMask.ts';
 import { createLatticeGround } from './latticeGround.ts';
 import { bucketAliases, createStructureStages, structureTopple, type StructureStages } from './structureStages.ts';
 import { createStructureScars, type StructureScars } from './structureScars.ts';
 import { createStructureDebris, type StructureDebris } from './structureDebris.ts';
 import { createRubbleBodies, RUBBLE_BODY_CAPACITY, type RubbleBodies } from './rubbleBodies.ts';
+import { createFractureStages, type FractureStages } from './fractureStages.ts';
 import type { RigidEnvironment } from '../sim/rigidBody.ts';
 import type { CollisionRecord } from '../world/collision.ts';
 import type { StructureDamageSeam, StructureMaterialInfo } from '../world/structureDamageSeam.ts';
@@ -93,6 +102,8 @@ interface FxHeightField {
   getHeightAt?(x: number, z: number): number;
   /** The contact surface on the 1.333 m lattice the drawn LOD0 shares (terrainContactSurface.ts). */
   getContactHeightAt?(x: number, z: number): number;
+  /** That surface's steep-cell split (terrainContactSurface.ts terrainCellFlipped), which the overlay rides. */
+  getContactCellFlippedAt?(x: number, z: number): boolean;
   getWaterMaskAt?(x: number, z: number): number;
   getWaterDepthAt?(x: number, z: number): number;
   getWaterSurfaceHeightAt?(x: number, z: number): number;
@@ -101,6 +112,8 @@ interface FxHeightField {
   waterRipplesActive?(): boolean;
   getGroundType?(x: number, z: number): string;
   getTrackSurfaceAt?(x: number, z: number): TrackSurface;
+  /** The paved share of a carriageway (world/roadPave.ts): a sett or concrete street throws grit, not an earth wake. */
+  getRoadPaveAt?(x: number, z: number): number;
 }
 
 /** The world seam the structure looks read (world/map.ts; DESTRUCTION.md §16.4). */
@@ -111,7 +124,7 @@ export interface FxWorldSeam {
   raycast?(origin: { x: number; y: number; z: number }, direction: { x: number; y: number; z: number }, maxDist: number):
     { dist: number; normal?: { x: number; y: number; z: number } | null } | null;
   /** the battle's ground overlay (craters, rubble heaps) the drawn ground follows; null between battles */
-  groundOverlay?(): { offsetAt(x: number, z: number): number; contactOffsetAt?(x: number, z: number): number; readonly revision?: number } | null;
+  groundOverlay?(): { offsetAt(x: number, z: number): number; contactOffsetAt?(x: number, z: number, flipped?: boolean): number; readonly revision?: number } | null;
   /** the static records the presentation's rigid bodies meet (world/map.ts bodyRecordQuery: shell bands and solid records) */
   bodyRecordQuery?(): (minX: number, minZ: number, maxX: number, maxZ: number, out: CollisionRecord[]) => CollisionRecord[];
   /** ground lane: a crater's cover cleared (its tall grass, flowers and scatter inside the radius) for the rest of the
@@ -190,6 +203,8 @@ interface JetScratch {
 
 interface FxVisual {
   root: THREE.Object3D;
+  /** the gun's or a launcher tube's mouth in the world now (a wire-guided missile's wire is fixed there) */
+  gunMuzzleWorld?(out: THREE.Vector3, muzzleIndex?: number, guided?: boolean): unknown;
   setDestroyed(options?: { pop?: boolean; ageS?: number }): void;
   /** Wreck visuals report true; a revived/reset visual reports false (wreck r1 reads this). */
   isDestroyed?(): boolean;
@@ -270,17 +285,19 @@ interface GuidedTrail {
   count: number;
   age: number;
   seen: boolean;
-  /** (fx 9a) the round's look, seed, launch point, the distance flown last frame and of the next trail puff; (EF.04)
-   *  its smoke ribbon's slot and the distance of the ribbon's next point */
-  ribbon?: number;
-  nextRibbonD?: number;
+  /** (fx 9a) the round's look, seed, launch point and the distance flown last frame; (FX lane 10-14) its smoke trail's
+   *  slot and the distance of the trail's next point */
   look?: MissileLook;
   seed?: number;
   launch?: [number, number, number] | null;
   lastD?: number;
+  smokeSlot?: number;
   nextSmokeD?: number;
-  puffIndex?: number;
   fallbackD?: number;
+  /** (FX lane 10-15) the round's calibre (mm; 0: its family's), its airframe's size, and its tail's distance behind the
+   *  nose (m): where its wire leaves, its beacon burns and its trail is born */
+  calMm?: number;
+  tailM?: number;
 }
 
 interface TracerTrail {
@@ -338,6 +355,7 @@ interface LiveShell {
     name?: string;
     soundProfile?: string;
     type?: string;
+    caliberMm?: number;
   };
 }
 
@@ -374,6 +392,9 @@ interface PredictedWeaponEvent {
 interface ShellFiredEvent extends PredictedWeaponEvent {
   shellType: string;
   shellId: ShellId;
+  /** the firing vehicle and the tube or muzzle the round left (the launcher a wire-guided round's wire stays fixed to) */
+  shooterId?: ShellId | null;
+  muzzleIndex?: number | null;
   feedbackPredicted?: boolean;
   shellName?: string;
   /** the destruction catalog's class and charge (sim/munitionBlast.ts), when the shooter's step publishes them */
@@ -623,7 +644,8 @@ const TRAIL_S = 0.28;
 const ATGM_TRAIL_S = 0.48;
 const ATGM_TRAIL_POINTS = 24;
 const ATGM_TRAIL_SPACING_M = 0.55;
-const MAX_ATGM_BODIES = 12;
+/** (FX lane 10-14) missile bodies drawn at once: a TOS-1A's 24 rockets and a 12-tube volley in the air together */
+const MAX_ATGM_BODIES = 48;
 
 // Nominal muzzle velocities used ONLY by composeFiringMoment (m/s)
 const COMPOSE_VELOCITY = { AP: 800, APCR: 1050, HEAT: 780, HE: 750, HESH: 780, APFSDS: 1700 };
@@ -1186,7 +1208,7 @@ function* createFxSteps(
     if (overlay !== groundOverlayRef || heightField !== groundFieldRef) { groundOverlayRef = overlay; groundFieldRef = heightField; groundEpoch++; }
     return groundEpoch * 1e6 + (overlay?.revision ?? 0);
   };
-  const landingGround = createLatticeGround((x, z) => deformedGroundY(x, z), groundRevision);
+  const landingGround = createLatticeGround((x, z) => deformedGroundY(x, z), groundRevision, (x, z) => baseCellFlipped(x, z));
   const vol: VolumeMedia | null = mediaTier
     ? createVolumeMedia({ soft: particles.softParticles, now: () => particles.getTime(), scene: engineCtx.scene ?? null })
     : null;
@@ -1198,6 +1220,10 @@ function* createFxSteps(
   // once) and what its stage builders write (rims, rooms, remnants, the pile) in its own materials. A phone that kept
   // a collapsed building standing would show a wall its hull drives through. Only the falling pieces scale by tier.
   const craters: CraterMarks | null = createCraterMarks();
+  // DST-04 (2026-10-15): the map's pre-placed craters' surfaces (world/mapCraters.ts) in slots of their own, so a
+  // battle's craters never recycle them: laid once the world's bound ground holds them, again after every reset
+  const mapCraterMarks: CraterMarks | null = createCraterMarks();
+  let mapCratersLaidEpoch = -1;
   // a mark that dug nothing clears the cover it blew away, through the world's presentation-only seam (a dug crater's
   // cover is the overlay's own law, on every peer: the core, 2026-10-08)
   const clearCover = (x: number, z: number, radiusM: number): void => {
@@ -1264,10 +1290,31 @@ function* createFxSteps(
   // the phone tier cuts no holes: it draws each cut on the wall's face (a breach still reads as damage)
   const scars: StructureScars | null = mediaTier ? null : createStructureScars();
   if (scars) group.add(scars.mesh);
+  // (2026-10-15, the fracture package: the owner's "make their collapses much more natural, not slow down the game so
+  // much") a building's walls break where they are struck and what falls — its cells, its panels, its roof — comes down
+  // as bodies of the one engine in a pool of its own (fx/fractureStages.ts); desktop tiers, the phone keeps the kit's holes
+  const pieceLanding = (x: number, y: number, z: number, speed: number, mass: number, id: number): void => {
+    if (!blast) return;
+    const look = lookOf(id);
+    pieceLandingFx(blast, x, y, z, speed, mass, look);
+    landingSpillFx(blast, x, y, z, speed, mass, look);
+  };
+  const fractureStages: FractureStages | null = mediaTier ? createFractureStages({
+    group, now: () => particles.getTime(), environment: bodyEnvironment, groundAt: landingGround,
+    materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null,
+    onLanding: pieceLanding,
+    onShards: (x, y, z, vx, vy, vz, mass, id) => { if (blast) breakShardsFx(blast, x, y, z, vx, vy, vz, mass, lookOf(id)); },
+    hulls: auxiliaryEntities ? () => auxiliaryEntities() as Iterable<unknown> : undefined,
+  }) : null;
   const stages: StructureStages | null = structMask && structDebris
     ? createStructureStages({ mask: structMask, debris: structDebris, now: () => particles.getTime(),
-      materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null, scars, crumble: mediaTier ? 1 : 0.15 })
+      materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null, scars, crumble: mediaTier ? 1 : 0.15,
+      fracture: fractureStages ? fractureStages.attach : null })
     : null;
+  /** Each struck building's last burst (fx seconds), the dust load in the air round it then (the bursts' scales, each
+   *  fading over 1.5 s) and the largest burst in that load (also fading): a burst's own dust thins by the load against its
+   *  own size, unless it is far bigger than what raised the load (dcore 2026-10-11, waves 397/401). */
+  const strikeDust = new Map<number, [number, number, number]>();
   /** The last detonation on a structure (munition:blast), for the shell event that follows it. */
   const lastBlast = { x: 0, y: 0, z: 0, structureId: -1 };
   let patchedWorld: FxWorldSeam | null = null;
@@ -1286,11 +1333,16 @@ function* createFxSteps(
     });
   }
   if (vol) group.add(vol.group);
-  // (EF.04) a missile's smoke trail as one continuous ribbon, lit by the media's own light (desktop tiers, with the media)
-  const ribbons = vol ? createSmokeRibbons(vol.shading) : null;
-  if (ribbons) group.add(ribbons.mesh);
+  // (FX lane 10-14) a missile's smoke trail, a soft tube born at its nozzle (missileTrails.ts), and a wire-guided missile's
+  // command wire, fixed to its launcher's tube: every tier (one draw each), in the time of day's light
+  const missileLight = createSceneLightUniforms();
+  const smokeTrails = createMissileTrails(missileLight, particles.softParticles);
+  group.add(smokeTrails.mesh);
+  const wires = createMissileWires(missileLight);
+  group.add(wires.mesh);
   if (chunks) group.add(chunks.group);
   if (craters) group.add(craters.mesh);
+  if (mapCraterMarks) group.add(mapCraterMarks.mesh);
 
   let rng = mulberry32(seed);
   let frozen = false;
@@ -1315,6 +1367,9 @@ function* createFxSteps(
   muzzleLight.castShadow = false;
   explosionLight.castShadow = false;
   group.add(muzzleLight, explosionLight);
+  // (2026-10-14, contact r2) unshadowed, so the near hulls shadow them on the ground in the aerial pass (groundKeyLights.ts)
+  registerGroundKeyLight(muzzleLight);
+  registerGroundKeyLight(explosionLight);
   // pow: temporal decay exponent — explosion uses 3 (front-loaded punch that
   // collapses fast, see EXPLOSION_LIGHT_PEAK note), muzzle keeps 2.
   // r1 CLOCK-BASED AGING: lights (and rings below) age against the SHARED
@@ -1455,20 +1510,13 @@ function* createFxSteps(
   // ---- atmospherics lane (end)
 
   // Guided missiles need a readable projectile, not only the same short
-  // ribbon used by supersonic shells. These two instanced pools draw a pale
-  // missile body and its hot yellow exhaust point without allocating meshes
-  // during flight. Geometry faces local +Z, matching projectile velocity.
-  const atgmBodyGeo = new THREE.CylinderGeometry(0.15, 0.18, 1.25, 8, 1, false);
-  atgmBodyGeo.rotateX(Math.PI / 2);
-  // (fx 9a) the body in its own paint (instance colours per look: a missile is a dark olive or grey airframe, its motor
-  // the bright part), the flare its motor's hot core in the look's colour
-  const atgmBodyMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  const atgmBodies = new THREE.InstancedMesh(atgmBodyGeo, atgmBodyMat, MAX_ATGM_BODIES);
-  atgmBodies.count = 0;
-  atgmBodies.frustumCulled = false;
-  atgmBodies.renderOrder = 25;
-  atgmBodies.layers.set(LATE_FX_LAYER);
-  atgmBodies.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  // ribbon used by supersonic shells. Instanced pools draw the missile's
+  // airframe and its hot exhaust point without allocating meshes during
+  // flight. Geometry faces local +Z, matching projectile velocity.
+  // (FX lane 10-15) each family's own airframe at the round's calibre (missileBodies.ts: the TOW's probe, wings and tail
+  // fins, the Kornet's canards and folding wings, the Spike's seeker dome...), lit by the time of day's rig; the flare
+  // is its tracking beacon or motor's hot core at the tail, in the look's colour
+  const bodies = createMissileBodies(missileLight, MAX_ATGM_BODIES);
   const atgmFlareGeo = new THREE.SphereGeometry(0.25, 8, 6);
   const atgmFlareMat = new THREE.MeshBasicMaterial({
     color: 0xffffff,
@@ -1486,9 +1534,9 @@ function* createFxSteps(
   // (fx 9a) instance colours from the start: one program variant for every missile, warmed with the pools
   {
     const white = new THREE.Color(1, 1, 1);
-    for (let i = 0; i < MAX_ATGM_BODIES; i++) { atgmBodies.setColorAt(i, white); atgmFlares.setColorAt(i, white); }
+    for (let i = 0; i < MAX_ATGM_BODIES; i++) atgmFlares.setColorAt(i, white);
   }
-  group.add(atgmBodies, atgmFlares);
+  group.add(bodies.group, atgmFlares);
 
   // Static tracers (screenshot composers) survive per-frame rebuilds:
   // [ax,ay,az, bx,by,bz, width, bright, coreR,G,B, glowR,G,B, bornAtS] × N
@@ -1506,7 +1554,6 @@ function* createFxSteps(
   const _trailGlow: MutableVec3 = [0, 0, 0];
   const _atgmCore: MutableVec3 = [1, 0.64, 0.015];
   const _atgmGlow: MutableVec3 = [1, 0.36, 0];
-  const _atgmObject = new THREE.Object3D();
   const _atgmFlareObject = new THREE.Object3D();
   let renderedAtgmBodies = 0;
   let renderedAtgmTrailSegments = 0;
@@ -1696,7 +1743,11 @@ function* createFxSteps(
       || (vol ? vol.isActive() : false)
       || tracerGeo.instanceCount > 0
       || tracers.active() // atmospherics lane
-      || atgmBodies.count > 0
+      || bodies.count > 0
+      // (FX lane 10-14) a parted wire settling after its missile has gone, and a trail hanging after its missile has
+      // struck, still draw in the late pass (the old ribbon vanished when the strike's media ended)
+      || wires.mesh.visible
+      || smokeTrails.mesh.visible
       || shockRings.some(isRingVisible)
       || muzzleRings.some(isRingVisible)
       || (extraLateFxActive !== null && extraLateFxActive()),
@@ -2079,7 +2130,39 @@ function* createFxSteps(
     const overlay = world?.()?.groundOverlay?.() ?? null;
     const base = heightField?.getContactHeightAt ? heightField.getContactHeightAt(x, z) : groundY(x, z);
     if (!overlay) return base;
-    return base + (overlay.contactOffsetAt ? overlay.contactOffsetAt(x, z) : overlay.offsetAt(x, z));
+    return base + (overlay.contactOffsetAt ? overlay.contactOffsetAt(x, z, baseCellFlipped(x, z)) : overlay.offsetAt(x, z));
+  }
+  /** (ground lane, 2026-10-15) the base surface's steep-cell split, the one the drawn mesh and the sim's overlay take. */
+  function baseCellFlipped(x: number, z: number): boolean {
+    return heightField?.getContactCellFlippedAt ? heightField.getContactCellFlippedAt(x, z) : false;
+  }
+  /** An old crater's age at its laying (s): weathered (craterMarks fades the fresh look by 300 s). */
+  const MAP_CRATER_AGE_S = 3600;
+  /** DST-04: lay the map's pre-placed craters' surfaces once the world's bound ground holds them (world/mapCraters.ts):
+   *  a bowl's surface draped on the dug ground, a mark on the undug; again whenever they are laid anew. */
+  function layMapCraters(): void {
+    if (!mapCraterMarks) return;
+    const laid = mapCratersOn((world?.()?.groundOverlay?.() ?? null) as TerrainDeformation | null);
+    if (!laid) {
+      if (mapCratersLaidEpoch !== -1) { mapCraterMarks.reset(); mapCratersLaidEpoch = -1; }
+      return;
+    }
+    if (laid.epoch === mapCratersLaidEpoch) return;
+    mapCraterMarks.reset();
+    mapCratersLaidEpoch = laid.epoch;
+    const birth = particles.getTime() - MAP_CRATER_AGE_S, climate = groundClimate();
+    for (let i = 0; i < laid.stamps.length; i++) {
+      const s = laid.stamps[i]!;
+      const surface = classifyTerrain(heightField, s.x, s.z);
+      const seed = (s.seed % 65536) / 65536;
+      if (laid.dug[i]) {
+        const [p1, p2, p3] = craterWobblePhases(s.seed);
+        mapCraterMarks.crater({ x: s.x, z: s.z, radiusM: s.radiusM, p1, p2, p3, surface, climate, explosive: true, kind: 'he',
+          seed, birth }, deformedGroundY);
+      } else {
+        mapCraterMarks.stamp(s.x, s.z, s.radiusM, surface, 'he', seed, birth, deformedGroundY, climate);
+      }
+    }
   }
   /** The map's ground climate for a mark's soil (world/groundRedux.ts; the caldera's ash). */
   function groundClimate(): CraterClimate {
@@ -2283,7 +2366,7 @@ function* createFxSteps(
           const kind = markKindFor(info.munition, true);
           craters.stamp(pos.x, pos.z, _crater.radiusM, surface, kind, rng(), particles.getTime() + birthOffset, deformedGroundY,
             groundClimate());
-          clearCover(pos.x, pos.z, _crater.radiusM * (kind === 'scar' ? 0.55 : 0.9));
+          clearCover(pos.x, pos.z, _crater.radiusM * (kind === 'scar' || kind === 'drone' ? 0.55 : 0.9));
         }
       }
     } else {
@@ -4430,23 +4513,17 @@ function* createFxSteps(
   }
 
   let liveAtgmCount = 0;
-  const _bodyColor = new THREE.Color();
+  const _bodyDims = [0, 0];
   const _flareColor = new THREE.Color();
 
-  /** One missile's body and its motor's hot core: the body centred 0.65 m behind the nose (scaled about its centre by
-   *  the look), the core 1.35 m back; an unlit motor (a soft launch's coast) shows no core. */
+  /** One missile's airframe and its motor's hot core: the nose at the round, the body its calibre and its family's
+   *  length behind (missileBodies.ts), rolled; the core at the tail; an unlit motor (a soft launch's coast) shows none. */
   function writeGuidedBody(shellPos: THREE.Vector3, direction: THREE.Vector3, look: MissileLook = MISSILE_LOOKS.konkurs,
-    lit = true, flareK = 1): void {
+    lit = true, flareK = 1, calMm = 0, roll = Math.PI / 4): void {
     if (liveAtgmCount < MAX_ATGM_BODIES) {
-      _atgmObject.position.copy(shellPos).addScaledVector(direction, -0.65);
-      _atgmObject.quaternion.setFromUnitVectors(_Z, direction);
-      _atgmObject.scale.set(look.bodyRad * 2, look.bodyRad * 2, look.bodyLen);
-      _atgmObject.updateMatrix();
-      atgmBodies.setMatrixAt(liveAtgmCount, _atgmObject.matrix);
-      // unlit paint a shade over its sRGB (the late pass's unlit body would read near-black in sun)
-      _bodyColor.setHex(look.bodyHex).multiplyScalar(1.6);
-      atgmBodies.setColorAt(liveAtgmCount, _bodyColor);
-      _atgmFlareObject.position.copy(shellPos).addScaledVector(direction, -1.35);
+      missileBodyDims(look.id, calMm, _bodyDims);
+      bodies.write(look.id, shellPos, direction, roll, _bodyDims[0], _bodyDims[1], look.bodyHex);
+      _atgmFlareObject.position.copy(shellPos).addScaledVector(direction, -(_bodyDims[1] + 0.04));
       _atgmFlareObject.quaternion.identity();
       _atgmFlareObject.scale.setScalar(lit ? 0.32 + 0.12 * look.flarePx : 1e-4);
       _atgmFlareObject.updateMatrix();
@@ -4482,16 +4559,29 @@ function* createFxSteps(
 
   // ---- (fx 9a) missiles: each round its own look (missileLooks.ts) ----------------------------------------------------
   /** launch points by shell id (shell:fired), for the command wires */
-  const missileLaunchAt = new Map<ShellId, [number, number, number]>();
+  const missileLaunchAt = new Map<ShellId, [number, number, number, number]>();
   /** the shooter's gun resolves a networked round that carries only its type and guidance */
   const missileByShooter = new Map<string, MissileLook>();
+  /** (FX lane 10-15) the calibre of the round the shooter's look came from (a networked round's spec names none) */
+  const calibreByShooter = new Map<string, number>();
   const _wob = [0, 0];
   const _mSide = new THREE.Vector3();
   const _mUp = new THREE.Vector3();
   const _mPos = new THREE.Vector3();
   const _mHead = new THREE.Vector3();
-  const WIRE_RGB: readonly number[] = [0.82, 0.82, 0.78];
+  /** the covered warm's motor glow colour */
+  const WARM_GLOW_RGB: readonly number[] = [0.82, 0.82, 0.78];
   let liveMissiles = 0;
+  // (FX lane 10-14) each wire's launcher: the firing vehicle, the tube the round left (-1 the gun's own muzzle, -2 none
+  // resolved: the wire keeps the point it was fired from), whether that is a launcher tube, and the fired muzzle's offset
+  // from the visual's own at the shot (so the wire's end sits exactly where the round left)
+  const wireShooter: (ShellId | null)[] = new Array(WIRE_SLOTS).fill(null);
+  const wireTube = new Int16Array(WIRE_SLOTS).fill(-2);
+  const wireLauncher = new Uint8Array(WIRE_SLOTS);
+  const wireOff = new Float64Array(WIRE_SLOTS * 3);
+  const _wireA = new THREE.Vector3();
+  /** the covered warm's wire */
+  const WARM_WIRE_KEY = -9;
 
   function idSeed(id: ShellId): number {
     let h = 2166136261;
@@ -4514,8 +4604,9 @@ function* createFxSteps(
     const shells = owner?.spec?.gun?.shells ?? [];
     const round = shells.find((r) => r?.guided === true && (!spec?.type || r.type === spec.type)) ?? shells.find((r) => r?.guided === true);
     const look = missileLookFor(round?.name, round?.soundProfile, false);
-    if (missileByShooter.size > 64) missileByShooter.clear();
+    if (missileByShooter.size > 64) { missileByShooter.clear(); calibreByShooter.clear(); }
     missileByShooter.set(key, look);
+    calibreByShooter.set(key, (round as { caliberMm?: number } | undefined)?.caliberMm ?? 0);
     return look;
   }
 
@@ -4531,9 +4622,11 @@ function* createFxSteps(
       const at = missileLaunchAt.get(shell.id);
       trail.launch = at ? [at[0], at[1], at[2]]
         : shell.prevPos ? [shell.prevPos.x, shell.prevPos.y, shell.prevPos.z] : [shell.pos.x, shell.pos.y, shell.pos.z];
+      trail.calMm = shell.spec?.caliberMm || (at ? at[3] ?? 0 : 0) || calibreByShooter.get(`${String(shell.shooterId)}|${shell.spec?.type ?? ''}`) || 0;
+      trail.tailM = missileBodyDims(trail.look.id, trail.calMm, _bodyDims)[1];
       trail.lastD = -1;
+      trail.smokeSlot = -1;
       trail.nextSmokeD = trail.look.igniteM;
-      trail.puffIndex = 0;
       // a round first seen mid-flight with no distance record counts as lit
       trail.fallbackD = trail.look.igniteM;
     }
@@ -4571,9 +4664,13 @@ function* createFxSteps(
     _mPos.copy(shell.pos).addScaledVector(_mSide, _wob[0]).addScaledVector(_mUp, _wob[1]);
     const lit = d >= look.igniteM;
     const flick = missileFlicker(look, t, seedU);
-    writeGuidedBody(_mPos, dir, look, lit, flick);
+    // (FX lane 10-15) a roll-stabilised round rolls at its roll rate (its fins with its tracer's helix); the others fly
+    // with their fins in an X
+    const roll = look.spinHz ? Math.PI * 2 * look.spinHz * (timed ? t : 0) + seedU * 6.2831853 : Math.PI / 4;
+    writeGuidedBody(_mPos, dir, look, lit, flick, trail.calMm ?? 0, roll);
     // the motor at the body's tail; (EF.04) a roll-stabilised round's tracer rides its helix about the axis
-    _mHead.copy(_mPos).addScaledVector(dir, -(0.65 + 0.625 * look.bodyLen));
+    const tailM = trail.tailM ?? 1.3;
+    _mHead.copy(_mPos).addScaledVector(dir, -tailM);
     if (look.spinM) {
       missileSpin(look, timed ? t : 0, seedU, _wob);
       _mHead.addScaledVector(_mSide, _wob[0]).addScaledVector(_mUp, _wob[1]);
@@ -4595,11 +4692,82 @@ function* createFxSteps(
         look.flarePx * (1 + 0.25 * (1 - dark)), look.haloPx * (0.55 + 0.45 * dark), look.flareCore, fk,
         look.flareHalo, fk * (0.05 + 0.12 * dark), 1.4);
       renderedAtgmTrailSegments++;
-      if (blast && look.smoke) emitMissileTrail(trail, look, shell, d, t, speed, seed, seedU);
+      layTrail(trail, look, shell, d, t, speed, seedU, dir);
     }
-    if (look.wires > 0 && trail.launch) tracerIndex = drawMissileWires(trail, look, t, seedU, tracerIndex);
+    if (look.wires > 0) payOutWire(trail, shell, look, dir);
     trail.lastD = d;
     return tracerIndex;
+  }
+
+  /** the live presentation entity a shooter id names (the Studio's actors first, else the battle's) */
+  function subjectFor(id: ShellId): FxEntity | null {
+    return (tracerSubject ? tracerSubject(String(id)) : null) ?? decalEntityFor(id);
+  }
+
+  /**
+   * (FX lane 10-14) A wire-guided round's wire from its launcher: the tube it left on the firing vehicle, resolved once
+   * at the shot (the event's tube, else the vehicle's tube nearest where the round left; none within 1.5 m: the wire
+   * keeps the point it was fired from).
+   */
+  function beginWire(e: ShellFiredEvent, look: MissileLook): void {
+    const slot = wires.begin(idSeed(e.shellId), look.wires, e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2], particles.getTime());
+    wireShooter[slot] = e.shooterId ?? null;
+    wireTube[slot] = -2;
+    if (e.shooterId == null) return;
+    const vis = subjectFor(e.shooterId)?.visual;
+    if (!vis?.gunMuzzleWorld) return;
+    const ent = subjectFor(e.shooterId) as (FxEntity & {
+      spec?: { gun?: Parameters<typeof usesLauncherMuzzles>[0] & { shells?: readonly ({ name?: string; guided?: boolean } | null)[] } };
+    }) | null;
+    const gun = ent?.spec?.gun ?? null;
+    const round = gun?.shells?.find((r) => r?.name === e.shellName) ?? gun?.shells?.find((r) => r?.guided === true) ?? null;
+    const launcher = usesLauncherMuzzles(gun, round);
+    const tubes = launcher ? gun?.launcherMuzzles?.length ?? 0 : 0;
+    const [mx, my, mz] = e.muzzlePos;
+    let best = -2, bestD = 1.5 * 1.5;
+    const tryTube = (i: number): void => {
+      vis.gunMuzzleWorld!(_wireA, i >= 0 ? i : undefined, launcher);
+      const dd = (_wireA.x - mx) ** 2 + (_wireA.y - my) ** 2 + (_wireA.z - mz) ** 2;
+      if (dd < bestD) {
+        bestD = dd; best = i;
+        wireOff[slot * 3] = mx - _wireA.x; wireOff[slot * 3 + 1] = my - _wireA.y; wireOff[slot * 3 + 2] = mz - _wireA.z;
+      }
+    };
+    if (typeof e.muzzleIndex === 'number' && e.muzzleIndex >= 0) tryTube(e.muzzleIndex);
+    if (best === -2) { if (tubes > 0) for (let i = 0; i < tubes; i++) tryTube(i); else tryTube(-1); }
+    wireTube[slot] = best;
+    wireLauncher[slot] = launcher ? 1 : 0;
+  }
+
+  /** Each frame a wire-guided round flies: its wire's fixed end on the launcher's tube now, its free end at the round's
+   *  tail (on its axis: the spools sit in the tail), laid where the tail passed. */
+  function payOutWire(trail: GuidedTrail, shell: LiveShell, look: MissileLook, dir: THREE.Vector3): void {
+    const key = trail.seed as number;
+    let slot = wires.slotOf(key);
+    if (slot < 0) {
+      // first seen in flight (no shot event here): its wire from where it was first seen
+      const L0 = trail.launch ?? [shell.pos.x, shell.pos.y, shell.pos.z];
+      slot = wires.begin(key, look.wires, L0[0], L0[1], L0[2], particles.getTime());
+      wireShooter[slot] = shell.shooterId ?? null;
+      wireTube[slot] = -2;
+    }
+    const sid = wireShooter[slot];
+    if (wireTube[slot] > -2 && sid != null) {
+      const vis = subjectFor(sid)?.visual;
+      if (vis?.gunMuzzleWorld) {
+        vis.gunMuzzleWorld(_wireA, wireTube[slot] >= 0 ? wireTube[slot] : undefined, wireLauncher[slot] === 1);
+        wires.anchor(slot, _wireA.x + wireOff[slot * 3], _wireA.y + wireOff[slot * 3 + 1], _wireA.z + wireOff[slot * 3 + 2]);
+      }
+    }
+    const back = trail.tailM ?? 1.3;
+    wires.tail(slot, _mPos.x - dir.x * back, _mPos.y - dir.y * back, _mPos.z - dir.z * back, particles.getTime());
+  }
+
+  /** the round is gone (struck, burst, self-destructed): its wire parts at the missile */
+  function partWire(id: ShellId | null | undefined): void {
+    if (id == null) return;
+    const slot = wires.slotOf(idSeed(id));
+    if (slot >= 0) wires.cut(slot, particles.getTime());
   }
 
   /** A missile's or rocket's launch: a gun-launched round keeps the gun's own muzzle blast, a rack's rockets their
@@ -4616,128 +4784,57 @@ function* createFxSteps(
     }
   }
 
-  /** The trail's puffs since the last frame, one per spacing of flight (wider when many missiles fly at once). */
-  /** (EF.04) the ribbon each look draws (once per look): thin at the motor, swelling to the trail's width, its edges
-   *  torn as much as the motor puffs (a pulsing sustainer tears more than a steady one) */
-  const ribbonLooks = new Map<string, RibbonLook>();
-  function ribbonLookOf(look: MissileLook): RibbonLook | null {
-    const sm = look.smoke;
-    if (!sm) return null;
-    let r = ribbonLooks.get(look.id);
-    if (!r) {
-      // (filmed: the ribbon alone carries the trail; it lasts as long as the media puffs it replaced lingered, a dense
-      // motor's wider and thicker)
-      const dense = ribbonDense(look);
-      r = Object.freeze({ width0: Math.max(0.12, sm.size0 * 0.45), width1: sm.size1 * (dense ? 0.9 : 0.7),
-        life: sm.life * 1.3, density: Math.min(0.9, sm.density * (dense ? 1.2 : 1.05)), c0: sm.c0, c1: sm.c1,
-        rise: sm.rise, windK: sm.windK, tear: Math.min(1, 0.35 + 0.6 * sm.pulse) });
-      ribbonLooks.set(look.id, r);
-    }
-    return r;
-  }
-  /** the covered warm's ribbon (warmProjectilePresentation) */
-  const WARM_RIBBON_KEY = -7;
-  const WARM_RIBBON: RibbonLook = Object.freeze({ width0: 0.3, width1: 1.5, life: 1, density: 0.4,
-    c0: [0.5, 0.5, 0.5] as const, c1: [0.55, 0.55, 0.55] as const, rise: 0, windK: 0, tear: 0.5 });
-  /** a ribbon point every RIBBON_STEP_M of flight */
-  const RIBBON_STEP_M = 2.5;
-  /** a dense motor's trail (rail, rocket, MANPADS, MCLOS, gun IR, old SACLOS): a wider, thicker ribbon */
-  function ribbonDense(look: MissileLook): boolean {
-    const f = look.family;
-    return f === 'rail_dense' || f === 'rocket' || f === 'manpads' || f === 'mclos' || f === 'gun_ir' || f === 'saclos_old';
-  }
+  /** the covered warm's trail (warmProjectilePresentation) */
+  const WARM_TRAIL_KEY = -7;
 
-  /** (EF.04) the ribbon's points since the last frame, where the motor passed and when */
-  function layRibbon(trail: GuidedTrail, look: MissileLook, shell: LiveShell, d: number, t: number, speed: number,
-    seedU: number): void {
-    const rl = ribbonLookOf(look);
-    if (!ribbons || !rl) return;
+  /**
+   * (FX lane 10-14) A missile's smoke trail this frame: the points its nozzle passed since the last frame (on this frame's
+   * path, each where the steering had it and when it passed), then the nozzle itself, so the smoke is born at the
+   * nozzle with no gap. A round first seen in flight starts its trail up to 60 m back. The trail outlives the round:
+   * it ends where the round struck (or was last seen) and dissolves there.
+   */
+  function layTrail(trail: GuidedTrail, look: MissileLook, shell: LiveShell, d: number, t: number, speed: number,
+    seedU: number, dir: THREE.Vector3): void {
+    const tl: MissileTrail | null = missileTrailOf(look);
+    if (!tl) return;
     const key = trail.seed as number;
-    let slot = trail.ribbon ?? -1;
-    if (slot < 0 || ribbons.slotOf(key) !== slot) {
-      slot = ribbons.begin(key, rl, seedU);
-      trail.ribbon = slot;
-      trail.nextRibbonD = Math.max(look.igniteM, d - 60);
+    let slot = trail.smokeSlot ?? -1;
+    if (slot < 0 || smokeTrails.slotOf(key) !== slot) {
+      slot = smokeTrails.begin(key, smokeTrails.lookIndex(tl), seedU);
+      trail.smokeSlot = slot;
+      trail.nextSmokeD = Math.max(look.igniteM, d - 60);
     }
-    const dir = _v1;
     const seg = shell.prevPos ? shell.pos.distanceTo(shell.prevPos) : 0;
-    const motorBack = 0.65 + 0.625 * look.bodyLen;
+    const motorBack = trail.tailM ?? 1.3;
     const timed = Number.isFinite(shell.ageS) || Number.isFinite(shell.distM);
     const now = particles.getTime();
-    let next = Math.max(trail.nextRibbonD as number, look.igniteM, d - 60);
-    let n = 0;
-    while (next <= d && n < 48) {
-      const back = d - next;
-      if (shell.prevPos && seg > 1e-3 && back <= seg) _v6.copy(shell.pos).lerp(shell.prevPos, back / seg);
-      else _v6.copy(shell.pos).addScaledVector(dir, -back);
-      missileWobble(look, timed ? Math.max(0, t - back / speed) : 0, seedU, _wob);
-      _v6.addScaledVector(_mSide, _wob[0]).addScaledVector(_mUp, _wob[1]).addScaledVector(dir, -motorBack);
-      ribbons.point(slot, _v6.x, _v6.y, _v6.z, now - back / speed, timed ? Math.max(0, t - back / speed) : 99);
-      next += RIBBON_STEP_M;
-      n++;
-    }
-    trail.nextRibbonD = next;
-  }
-
-  function emitMissileTrail(trail: GuidedTrail, look: MissileLook, shell: LiveShell, d: number, t: number, speed: number,
-    seed: number, seedU: number): void {
-    const sm = look.smoke;
-    if (!sm || !blast) return;
-    // a crowded sky (a rocket salvo, a 12-tube volley): wider spacing, bigger puffs (missileTrailPuff's `coarse`)
-    // (EF.04, filmed in battle: puffs left along the ribbon outlived it as a string of beads) where the ribbons draw,
-    // the ribbon alone is the trail; the media keep the launch, the motor's ignition and the strike
-    if (ribbons) { layRibbon(trail, look, shell, d, t, speed, seedU); return; }
-    const coarse = Math.max(1, liveMissiles / 4);
-    const spacing = sm.spacingM * coarse;
+    // seconds since the flight motor lit (its boost phase) at a point the nozzle passed `back` metres ago
+    const igniteS = look.igniteM / speed;
+    const stepM = Math.max(smokeTrails.stepOf(slot), TRAIL_STEP_M, speed / 90);
     let next = Math.max(trail.nextSmokeD as number, look.igniteM, d - 60);
-    const dir = _v1;
-    const seg = shell.prevPos ? shell.pos.distanceTo(shell.prevPos) : 0;
     let n = 0;
-    while (next <= d && n < 24) {
+    while (next <= d && n < 64) {
       const back = d - next;
       // along this frame's path (its curve) where it reaches, straight back along the line beyond
       if (shell.prevPos && seg > 1e-3 && back <= seg) _v6.copy(shell.pos).lerp(shell.prevPos, back / seg);
       else _v6.copy(shell.pos).addScaledVector(dir, -back);
-      missileWobble(look, Number.isFinite(shell.ageS) || Number.isFinite(shell.distM) ? Math.max(0, t - back / speed) : 0, seedU, _wob);
-      _v6.addScaledVector(_mSide, _wob[0]).addScaledVector(_mUp, _wob[1]);
-      const motorBack = 0.65 + 0.625 * look.bodyLen;
-      _v6.addScaledVector(dir, -motorBack);
-      const i = trail.puffIndex as number;
-      const beat = Math.sin(i * 1.7 + seedU * 6.2832);
-      missileTrailPuff(blast, puffRandom(seed + Math.imul(i + 1, 0x9e3779b1)), look, _v6.x, _v6.y, _v6.z,
-        dir.x, dir.y, dir.z, beat, -back / speed, coarse);
-      trail.puffIndex = i + 1;
-      next += spacing;
+      missileWobble(look, timed ? Math.max(0, t - back / speed) : 0, seedU, _wob);
+      _v6.addScaledVector(_mSide, _wob[0]).addScaledVector(_mUp, _wob[1]).addScaledVector(dir, -motorBack);
+      smokeTrails.point(slot, _v6.x, _v6.y, _v6.z, now - back / speed, timed ? Math.max(0, t - back / speed - igniteS) : 99);
+      next += stepM;
       n++;
     }
     trail.nextSmokeD = next;
+    // the nozzle now, on the drawn body's axis
+    smokeTrails.head(slot, _mPos.x - dir.x * motorBack, _mPos.y - dir.y * motorBack, _mPos.z - dir.z * motorBack, now,
+      timed ? Math.max(0, t - igniteS) : 99);
   }
 
-  /** A wire-guided round's command wires: faint lines from the launcher to its tail, sagging a little between, glinting
-   *  where the light catches a stretch of them (untapered capsules). */
-  function drawMissileWires(trail: GuidedTrail, look: MissileLook, t: number, seedU: number, tracerIndex: number): number {
-    const L0 = trail.launch as [number, number, number];
-    const dark = tracers.darkLevel();
-    const len = Math.hypot(_mHead.x - L0[0], _mHead.y - L0[1], _mHead.z - L0[2]);
-    if (len < 1) return tracerIndex;
-    const SEGS = 6;
-    const sag = Math.min(2.5, 0.0025 * len);
-    for (let w = 0; w < look.wires; w++) {
-      const off = look.wires > 1 ? (w === 0 ? -0.06 : 0.06) : 0;
-      let px = L0[0] + _mSide.x * off, py = L0[1], pz = L0[2] + _mSide.z * off;
-      for (let k = 1; k <= SEGS; k++) {
-        const f = k / SEGS;
-        const x = L0[0] + (_mHead.x - L0[0]) * f + _mSide.x * off;
-        const y = L0[1] + (_mHead.y - L0[1]) * f - sag * 4 * f * (1 - f);
-        const z = L0[2] + (_mHead.z - L0[2]) * f + _mSide.z * off;
-        const g = Math.sin((k * 12.9898 + w * 4.1 + seedU * 78.233) * 43758.5453 + t * 2.3);
-        const glint = Math.max(0, g) ** 6;
-        const k0 = (0.1 + 0.55 * glint) * (1 - 0.7 * dark);
-        tracers.glow(x, y, z, px, py, pz, 0.32, 0, WIRE_RGB, k0, WIRE_RGB, 0, -1);
-        px = x; py = y; pz = z;
-      }
-    }
-    return tracerIndex;
+  /** the round is gone: its trail ends where it struck (or where its nozzle was last) and dissolves there */
+  function endTrail(id: ShellId | null | undefined, pos?: WireVec3 | null): void {
+    if (id == null) return;
+    const slot = smokeTrails.slotOf(idSeed(id));
+    if (slot >= 0) smokeTrails.end(slot, particles.getTime(), pos?.[0], pos?.[1], pos?.[2]);
   }
 
   function writeShellBolt(
@@ -4817,6 +4914,7 @@ function* createFxSteps(
     tracers.begin(); // atmospherics lane
     let tracerCount = 0;
     liveAtgmCount = 0;
+    bodies.begin();
     renderedAtgmTrailSegments = 0;
     for (const trail of guidedTrails.values()) trail.seen = false;
     // Every live drone, outside the tracer cap: a drone missing from a frame reads as a flight that ended (it flies home).
@@ -4868,28 +4966,29 @@ function* createFxSteps(
   }
 
   function commitAtgmInstances(): void {
-    atgmBodies.count = liveAtgmCount;
+    bodies.end();
     atgmFlares.count = liveAtgmCount;
     renderedAtgmBodies = liveAtgmCount;
-    if (liveAtgmCount > 0 || atgmBodies.userData.lastCount > 0) {
-      atgmBodies.instanceMatrix.needsUpdate = true;
+    if (liveAtgmCount > 0 || atgmFlares.userData.lastCount > 0) {
       atgmFlares.instanceMatrix.needsUpdate = true;
-      if (atgmBodies.instanceColor) atgmBodies.instanceColor.needsUpdate = true;
       if (atgmFlares.instanceColor) atgmFlares.instanceColor.needsUpdate = true;
     }
-    atgmBodies.userData.lastCount = liveAtgmCount;
+    atgmFlares.userData.lastCount = liveAtgmCount;
   }
 
   function writeGuidedTrailAfterglow(tracerCount: number, tickDt: number): number {
     for (const [id, trail] of guidedTrails) {
       if (trail.seen) continue;
+      // (FX lane 10-14) a wire-guided round gone with no event here (a networked round that left the snapshot): its
+      // wire parts where it was last seen
+      if (trail.age === 0 && trail.look) { if (trail.look.wires > 0) partWire(id); endTrail(id); }
       trail.age += tickDt;
       if (trail.age >= ATGM_TRAIL_S) {
         guidedTrails.delete(id);
         continue;
       }
       const fade = 1 - trail.age / ATGM_TRAIL_S;
-      // (fx 9a) a missile's own look leaves its smoke on the media layer, not a ribbon
+      // (fx 9a) a missile's own look draws its own trail (missileTrails.ts)
       if (trail.look) continue;
       tracerCount = writeGuidedTrail(trail, tracerCount, fade * fade);
     }
@@ -5195,6 +5294,32 @@ function* createFxSteps(
     particles.emit('dust', _puffO);
   }
 
+  /**
+   * A paved street's track grit (the s92 note): grit and old dust ground out of the joints at the track's contact — low,
+   * small and short, grey in the street's own dust colour, settling at once — so a column on the setts trails a faint
+   * continuous haze at its tracks instead of the earth wake. Same dust pool, no allocation.
+   */
+  function emitStreetGrit(pos: THREE.Vector3, dir: THREE.Vector3, intensity: number, gy: number): void {
+    updateDryDustColors('hard');
+    _puffO.pos[0] = pos.x + (rng() - 0.5) * 0.5;
+    _puffO.pos[1] = gy + 0.15 + rng() * 0.1;
+    _puffO.pos[2] = pos.z + (rng() - 0.5) * 0.5;
+    _puffO.vel[0] = -dir.x * (1.0 + intensity * 1.6) + (rng() - 0.5) * 0.7 + COLUMN_WIND_X * 0.4;
+    _puffO.vel[1] = 0.18 + intensity * 0.45 + rng() * 0.15;
+    _puffO.vel[2] = -dir.z * (1.0 + intensity * 1.6) + (rng() - 0.5) * 0.7 + COLUMN_WIND_Z * 0.4;
+    _puffO.life = 0.5 + rng() * 0.4;
+    _puffO.size0 = (0.18 + intensity * 0.12) * dustSizeCap;
+    _puffO.size1 = (0.7 + intensity * 0.6 + rng() * 0.25) * dustSizeCap;
+    _puffO.rot = rng() * Math.PI * 2;
+    _puffO.rotVel = (rng() - 0.5) * 1.2;
+    col3(dustColor0, _puffO.col0);
+    col3(dustColor1, _puffO.col1);
+    _puffO.alpha = (0.07 + intensity * 0.09) * dustAlphaCap;
+    _puffO.grav = -1.4;
+    _puffO.birthOffset = 0;
+    particles.emit('dust', _puffO);
+  }
+
   /** One low contact puff replaces the large earth wake; same dust pool. */
   function emitTrackPowder(
     pos: THREE.Vector3,
@@ -5253,13 +5378,16 @@ function* createFxSteps(
     if (exact ? delta === 0 : Math.abs(delta) <= 20) return;
     particles.shiftTime(delta);
     vol?.shiftTime(delta);
-    ribbons?.shiftTime(delta);
+    smokeTrails.shiftTime(delta);
+    wires.shiftTime(delta);
     chunks?.shiftTime(delta);
     craters?.shiftTime(delta);
+    mapCraterMarks?.shiftTime(delta);
     structMask?.shiftTime(delta);
     structDebris?.shiftTime(delta);
     rubble?.shiftTime(delta);
     stages?.shiftTime(delta);
+    fractureStages?.shiftTime(delta);
     for (const tracer of staticTracers) if (tracer.length > 14) tracer[14] += delta;
     for (const state of lightStates) state.bornAt += delta;
     for (const ring of shockRings) ring.bornAt += delta;
@@ -5896,23 +6024,33 @@ function* createFxSteps(
      */
     warmProjectilePresentation(pos: THREE.Vector3, dir: THREE.Vector3): void {
       liveAtgmCount = 0;
-      writeGuidedBody(pos, dir);
+      bodies.begin();
+      for (const id of Object.keys(MISSILE_AIRFRAMES)) writeGuidedBody(pos, dir, MISSILE_LOOKS[id] ?? MISSILE_LOOKS.konkurs);
       commitAtgmInstances();
       // (EF.04, the Kornet probe 10-13: the first launch still compiled one program in its frame — the projectile
       // tracers' own: the solo warm's update ran with no shells, so the tracer mesh drew nothing in the covered render)
       // one motor glow, as a launch draws it, so the tracers' program compiles with the others; the next update clears it
       tracers.begin();
-      tracers.glow(pos.x + dir.x * 2, pos.y + dir.y * 2, pos.z + dir.z * 2, pos.x, pos.y, pos.z, 0.6, 2, WIRE_RGB, 0.5, WIRE_RGB, 0.2, 1);
+      tracers.glow(pos.x + dir.x * 2, pos.y + dir.y * 2, pos.z + dir.z * 2, pos.x, pos.y, pos.z, 0.6, 2, WARM_GLOW_RGB, 0.5, WARM_GLOW_RGB, 0.2, 1);
       tracers.end();
-      // (EF.04, filmed: a 100-200 ms hitch at a battle's first missile launch, the ribbon program's first compile) one
-      // short ribbon in the covered warm, so its program compiles with the others; resetAll clears it
-      if (ribbons && vol) {
-        vol.refreshShading();
+      // (FX lane 10-14) and a short wire, so the wire's program compiles with them; resetAll clears it
+      {
         const now = particles.getTime();
-        const slot = ribbons.begin(WARM_RIBBON_KEY, WARM_RIBBON, 0.5);
-        ribbons.point(slot, pos.x, pos.y, pos.z, now - 0.1, 0.1);
-        ribbons.point(slot, pos.x + dir.x * 2, pos.y + dir.y * 2, pos.z + dir.z * 2, now - 0.05, 0.15);
-        ribbons.update(now);
+        const slot = wires.begin(WARM_WIRE_KEY, 1, pos.x, pos.y, pos.z, now);
+        wireTube[slot] = -2;
+        wires.tail(slot, pos.x + dir.x * 6, pos.y + dir.y * 6, pos.z + dir.z * 6, now);
+        wires.update(now, groundY);
+      }
+      // (EF.04, filmed: a 100-200 ms hitch at a battle's first missile launch, the trail program's first compile) one
+      // short trail in the covered warm, so its program compiles with the others; resetAll clears it
+      {
+        const now = particles.getTime();
+        const look = missileTrailOf(MISSILE_LOOKS.konkurs) as MissileTrail;
+        const slot = smokeTrails.begin(WARM_TRAIL_KEY, smokeTrails.lookIndex(look), 0.5);
+        smokeTrails.point(slot, pos.x, pos.y, pos.z, now - 0.1, 0.1);
+        smokeTrails.head(slot, pos.x + dir.x * 2, pos.y + dir.y * 2, pos.z + dir.z * 2, now, 0.15);
+        smokeTrails.update(now, worldWind.x, worldWind.z);
+        readSceneLight((engineCtx.scene?.userData ?? null) as SceneLightData | null, missileLight);
       }
     },
 
@@ -5945,22 +6083,19 @@ function* createFxSteps(
         const tint = particles.sharing.uLightTint.value;
         printUniforms.uTint.value.copy(tint);
         impactDecals.material.color.copy(tint);
-        atgmBodyMat.color.copy(tint);
       }
       particles.update(dt);
       structMask?.setClock(particles.getTime());
       stages?.update();
+      fractureStages?.update();
       if (scars && scars.count > 0) scars.light(engineCtx.scene ?? null);
       structDebris?.update();
       rubble?.update();
       vol?.update(camera ?? engineCtx.camera ?? null);
-      if (ribbons && vol) {
-        ribbons.update(particles.getTime());
-        // the ribbons share the media's light: keep it current while ribbons fly with no media alive
-        if (ribbons.mesh.visible && !vol.isActive()) vol.refreshShading();
-      }
       chunks?.update();
       craters?.update(particles.getTime(), engineCtx.scene ?? null);
+      layMapCraters();
+      mapCraterMarks?.update(particles.getTime(), engineCtx.scene ?? null);
       if (!frozen) auxiliary?.update();
       printUniforms.uTime.value = particles.getTime();
       const tickDt = advanceFxClock();
@@ -5974,6 +6109,13 @@ function* createFxSteps(
       sweepShellsThroughProps(shells);
       let tracerCount = writeLiveShellTracers(shells, camera);
       commitAtgmInstances();
+      // (FX lane 10-14) the trails and wires after their rounds (the clock, the wind; a wire's sag, its launcher's pull, its
+      // fall once parted), lit by the scene now
+      smokeTrails.update(particles.getTime(), worldWind.x, worldWind.z);
+      wires.update(particles.getTime(), groundY);
+      if (wires.mesh.visible || smokeTrails.mesh.visible || bodies.count > 0) {
+        readSceneLight((engineCtx.scene?.userData ?? null) as SceneLightData | null, missileLight);
+      }
       tracerCount = writeGuidedTrailAfterglow(tracerCount, tickDt);
       tracerCount = writeShellTrailAfterglow(tracerCount, tickDt);
       tracerCount = writeStaticTracerAfterglow(tracerCount);
@@ -5996,14 +6138,17 @@ function* createFxSteps(
         const eaveM = anat?.roof ? anat.placement.y + anat.roof.eaveY - e.baseY : null;
         if (blast) {
           // a shaft goes over in the blow's direction (structureStages structureTopple): its dust falls along that line
-          const topple = e.stage === 'collapsed' ? structureTopple(anat, e) : null;
-          structureStageFx(blast, e, lookOf(e.structureId), !!stages && !!stageSeam, eaveM, topple);
+          // (one that came down as bodies falls where its drums fall: its dust is a collapse's of bodies, from the landings)
+          const asBodies = e.stage === 'collapsed' && !!fractureStages?.took(e.structureId);
+          const topple = e.stage === 'collapsed' && !asBodies ? structureTopple(anat, e) : null;
+          structureStageFx(blast, e, lookOf(e.structureId), !!stages && !!stageSeam, eaveM, topple, asBodies);
         }
         else phoneStageBeat(e);
       });
       bus.on(DESTRUCTION_BUS_EVENTS.breach, (payload) => {
         const e = payload as StructureBreachEvent;
         stages?.breach(e, seamOf(e.structureId));
+        fractureStages?.breach(e);
         // a section's fall (P2): its dust in the building's own colour
         if (e.sectionDown && !e.settled && blast) sectionFallFx(blast, e, lookOf(e.structureId));
       });
@@ -6043,8 +6188,11 @@ function* createFxSteps(
         // (fx 9a) a missile's or rocket's launch is its own (missileRecipes.ts); its launch point anchors the wires
         if (firedIsMissile(e.weaponSound, e.rocket)) {
           if (missileLaunchAt.size > 96) missileLaunchAt.clear();
-          missileLaunchAt.set(e.shellId, [e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]]);
+          missileLaunchAt.set(e.shellId, [e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2], e.caliberMm || 0]);
           if (!e.feedbackPredicted) missileLaunchFx(e, idSeed(e.shellId));
+          // (FX lane 10-14) a wire-guided round pays out its wire from the launcher's tube
+          const wired = missileLookFor(e.shellName, e.weaponSound, e.rocket === true);
+          if (wired.wires > 0) beginWire(e, wired);
         } else if (!e.feedbackPredicted) fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket);
         if (e.shellType === 'APFSDS') spawnSabotPetals(_v3, _v4);
         // world-dressing r1: remember the shell's type so its world impact
@@ -6068,7 +6216,7 @@ function* createFxSteps(
       onFxEvent(bus, 'shell:hit', (e) => {
         if (e.shellId != null) drones.markImpact(e.shellId); // a drone that struck a tank never flies home
         // atmospherics lane: a round that ends on the hull strikes there (a ricochet flies on, its tracer tumbling)
-        if (e.kind !== 'ricochet') tracers.strike(e.shellId, e.pos);
+        if (e.kind !== 'ricochet') { tracers.strike(e.shellId, e.pos); partWire(e.shellId); endTrail(e.shellId, e.pos); }
         _v3.set(e.pos[0], e.pos[1], e.pos[2]);
         _v4.set(e.normal[0], e.normal[1], e.normal[2]);
         if (e.targetId) lastKnownPos.set(e.targetId, [e.pos[0], e.pos[1], e.pos[2]]);
@@ -6126,6 +6274,8 @@ function* createFxSteps(
       onFxEvent(bus, 'shell:expired', (e) => {
         if (e.hitTerrain || e.hitKind) drones.markImpact(e.shellId); // struck the world: no flight home (an air expiry has neither)
         tracers.strike(e.shellId, e.pos, !!e.hitWater); // atmospherics lane: the tracer's last dash and its strike
+        partWire(e.shellId); // (FX lane 10-14) a wire-guided round's wire parts where it burst; its trail ends there
+        endTrail(e.shellId, e.pos);
         // world-dressing r1: close out the shell's destructible-prop story —
         // (1) sweep the UNSWEPT remainder of its flight (tail -> expiry
         // point; a fast shell can live for fewer sim ticks than one render
@@ -6170,8 +6320,22 @@ function* createFxSteps(
                 ? lastBlast.structureId : -1;
             const named = struckId >= 0 ? lookOf(struckId) : null;
             lastBlast.structureId = -1;
-            wallStrike(blast, _v3.x, _v3.y, _v3.z, _v4.x, _v4.y, _v4.z, explosive,
-              explosive ? blastScale(m.chargeKg) : (m.caliberMm || 90) / 120, named ?? lookForStruckKind(e.surfaceKind));
+            // (dcore 2026-10-11, wave 397: "the actual fall happens inside an opaque dust ball") a building struck again and
+            // again within a couple of seconds throws less new dust each time: the air round it is full already; by the
+            // load against the burst's own size (wave 401: a 152 mm after five 76 mm still raises its full burst)
+            const scale = explosive ? blastScale(m.chargeKg) : (m.caliberMm || 90) / 120;
+            let dustK = 1;
+            if (struckId >= 0) {
+              const nowS = particles.getTime();
+              const last = strikeDust.get(struckId);
+              const fade = last ? Math.exp(-Math.max(0, nowS - last[0]) / 1.5) : 0;
+              const load = last ? last[1] * fade : 0, biggest = last ? last[2] * fade : 0;
+              dustK = 1 / (1 + 0.45 * load / Math.max(0.3, scale));
+              if (scale > 1.5 * biggest) dustK = Math.max(dustK, 0.9);
+              if (last) { last[0] = nowS; last[1] = load + scale; last[2] = Math.max(biggest, scale); }
+              else strikeDust.set(struckId, [nowS, scale, scale]);
+            }
+            wallStrike(blast, _v3.x, _v3.y, _v3.z, _v4.x, _v4.y, _v4.z, explosive, scale, named ?? lookForStruckKind(e.surfaceKind), 0, dustK);
             // (dcore 2026-10-09, waves 294a/b: a hit read as a light on an intact wall) the burst punches its hole there,
             // in the building's own courses (structureStages.strike: P1's presentation, as its breach stage's hole); and
             // (2026-10-10, the owner: "shooting buildings should cause destruction too") so does an armour-piercing round,
@@ -6639,6 +6803,15 @@ function* createFxSteps(
       if (rng() > intensity * 0.85 * surfaceMultiplier) return;
       const gy = groundY(pos.x, pos.z);
       updateDustCameraCaps(pos);
+      // (the engine lane's s92 note, 2026-10-15: "orange glow puffs either side of the lead tank") a sett, concrete or
+      // stone street has no loose earth: its tracks throw a low grit haze, never the earth wake's climbing tan billows,
+      // which stood as glowing columns at every hull's rear corners on Steinburg's Hauptstrasse. An unpaved road keeps
+      // its continuous trail (world/roadPave.ts: the carriageway's paved share, the one the terrain paints)
+      const pave = groundType === 'hard' ? heightField?.getRoadPaveAt?.(pos.x, pos.z) ?? 0 : 0;
+      if (pave > 0 && rng() < streetGritShare(pave)) {
+        if (!frozen) emitStreetGrit(pos, dir, intensity, gy);
+        return;
+      }
       // destruction-fx (wave 265's weathering critics: no dust behind moving tanks at battle distance): on the media tier
       // a hull on sand trails a skirt of its own dust over the contact powder.
       // EF.01 (the owner, 2026-10-12: the dust "used to look more uniform ... continuous. like how it was before"): on
@@ -6829,7 +7002,10 @@ function* createFxSteps(
       const bodies = rubble && !first.done
         ? rubble.throw(first.value, 'block', pos.x, pos.y + 0.6, pos.z, 0, 0, 0, 1, 0.5, 0.5, 0.5, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0) ? 1 : 0
         : 0;
-      return laid + bodies;
+      // (2026-10-15) the fracture's own draw (a bucket's material casting through the default depth program: its faces,
+      // its bodies, its heaps) compiles with the warm too, not at the first broken wall
+      const fractured = fractureStages && !first.done ? fractureStages.warm(pos, bucketMaterials.get(first.value)?.material ?? null) : 0;
+      return laid + bodies + fractured;
     },
     propCrush(pos: THREE.Vector3, dir: THREE.Vector3, heightM = 6): void {
       const gy = groundY(pos.x, pos.z);
@@ -6996,13 +7172,17 @@ function* createFxSteps(
       auxiliary?.reset(); drones.reset();
       particles.resetAll();
       vol?.reset();
-      ribbons?.reset();
+      smokeTrails.reset();
+      wires.reset();
       chunks?.reset();
       craters?.reset();
+      mapCraterMarks?.reset(); mapCratersLaidEpoch = -1;
       structMask?.reset();
       structDebris?.reset();
       rubble?.reset();
       stages?.reset();
+      fractureStages?.reset();
+      strikeDust.clear();
       landingGround.clear();
       skirtHead = 0; skirtCount = 0;
       fxTrails.reset();
@@ -7021,10 +7201,11 @@ function* createFxSteps(
       guidedTrails.clear();
       missileLaunchAt.clear();
       missileByShooter.clear();
+      calibreByShooter.clear();
       tracerGeo.instanceCount = 0;
       tracers.reset(); // atmospherics lane
       liveAtgmCount = 0;
-      atgmBodies.count = 0;
+      bodies.reset();
       atgmFlares.count = 0;
       renderedAtgmBodies = 0;
       renderedAtgmTrailSegments = 0;

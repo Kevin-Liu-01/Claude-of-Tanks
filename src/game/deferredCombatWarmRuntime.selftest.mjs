@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createDeferredCombatWarmRuntime } from './deferredCombatWarmRuntime.ts';
+import { ProgramUniformPreparationError } from '../engine/programWarm.ts';
 
 let clock = 0;
 let generation = 3;
@@ -25,7 +26,7 @@ const owner = createDeferredCombatWarmRuntime({
       await yieldForBudget(true);
     },
   }),
-  *warmVisionSteps() { events.push('vision'); yield; },
+  *warmVisionSteps() { events.push(pending ? 'vision-held' : 'vision'); yield; events.push('vision-step-2'); },
   combatWarm: {
     cancelRare() { events.push('cancel-rare'); },
     async warmOpeningChunked(_budget, yieldForBudget) {
@@ -33,7 +34,7 @@ const owner = createDeferredCombatWarmRuntime({
       await yieldForBudget(true);
     },
     async warmRareChunked(_budget, yieldForBudget) {
-      events.push('rare');
+      events.push(pending ? 'rare-held' : 'rare');
       await yieldForBudget(true);
     },
   },
@@ -50,12 +51,12 @@ const owner = createDeferredCombatWarmRuntime({
   getGeneration: () => generation,
   setPending(value) { pending = value; },
   prepareNextOpeningRoute() {
-    events.push('route');
+    events.push(pending ? 'route-held' : 'route');
     return routeJobs-- > 0;
   },
   now: () => ++clock,
   yieldFrame: async () => { events.push('first-frame'); },
-  createYielder: () => async () => { events.push('yield'); },
+  createYielder: () => async (force) => { events.push(force ? 'yield-forced' : 'yield'); },
 });
 
 const first = owner.schedule(3);
@@ -63,7 +64,13 @@ assert.equal(owner.schedule(3), first, 'one battle generation owns one warm prom
 await first;
 assert.equal(pending, false, 'completed deployment warm releases rollout gate');
 assert.equal(owner.isActive(), false, 'completed queue releases its ownership slot');
-assert.deepEqual(events.slice(0, 6), ['first-frame', 'enemy-visuals', 'yield', 'vision', 'yield', 'opening']);
+assert.deepEqual(events.slice(0, 4), ['first-frame', 'enemy-visuals', 'yield-forced', 'opening']);
+assert.ok(!events.includes('route-held') && !events.includes('rare-held') && !events.includes('vision-held'),
+  'the routes, the terrain, the rare effects and the sights all warm after the countdown\'s hold is released');
+const order = ['route', 'terrain-grid', 'rare', 'terrain-lookahead', 'vision'].map((event) => events.indexOf(event));
+assert.deepEqual(order, [...order].sort((a, b) => a - b), 'in the order a battle needs them: routes, tiles, rare effects, lookahead, sights');
+assert.deepEqual(events.slice(events.indexOf('vision')), ['vision', 'yield-forced', 'vision-step-2'], 'the sights one real frame a step');
+assert.equal(globalThis.__BATTLE_DEFERRED_WARM.releasedBeforeRollout, true, 'the hold was released before the count ran out');
 assert.equal(events.filter((event) => event === 'route').length, 3,
   'route preparation drains until the first empty job');
 assert.equal(events.filter((event) => event === 'terrain-lookahead').length, 3,
@@ -253,6 +260,88 @@ for (const cancelAt of [null, 'initial', 'batch']) {
   });
 }
 
+// (2026-10-16, the perf lane) enemy programs still linking when their five-second window closes leave the rest of the
+// warm running: vision, the opening effects, the routes, the terrain and the rare effects all still warm, and the trace
+// says how many links were unfinished; a stale battle still stops the warm
+for (const staleDuringEnemies of [false, true]) {
+  const steps = [];
+  let current = 60, tick = 0;
+  const KHR = { COMPLETION_STATUS_KHR: 0x91b1 };
+  const linkingGl = { getExtension: (name) => (name === 'KHR_parallel_shader_compile' ? KHR : null),
+    getProgramParameter: () => false, isContextLost: () => false };
+  const linking = { info: { programs: [] }, getContext: () => linkingGl };
+  const runtime = createDeferredCombatWarmRuntime({
+    game, renderer: linking, camera: { position: {} },
+    getBattleVisuals: () => ({ async stream() {
+      for (let k = 0; k < 3; k++) linking.info.programs.push({ id: 900 + k, program: {}, getUniforms: () => ({}), getAttributes: () => ({}) });
+      steps.push('enemy-visuals');
+    } }),
+    *warmVisionSteps() { steps.push('vision'); },
+    combatWarm: {
+      cancelRare() {},
+      async warmOpeningChunked() { steps.push('opening'); },
+      async warmRareChunked() { steps.push('rare'); },
+    },
+    async warmBattleTerrainTiles() { steps.push('terrain-grid'); },
+    getWorld: () => null,
+    getGeneration: () => current,
+    setPending() {},
+    prepareNextOpeningRoute: () => { steps.push('route'); return false; },
+    now: () => (tick += 250),
+    yieldFrame: async () => {},
+    createYielder: () => async () => { if (staleDuringEnemies && steps.length === 1) current++; },
+  });
+  const warned = [];
+  const warn = console.warn;
+  console.warn = (...args) => { warned.push(args.join(' ')); };
+  try { await runtime.schedule(current); } finally { console.warn = warn; }
+  const trace = globalThis.__BATTLE_DEFERRED_WARM;
+  if (staleDuringEnemies) {
+    assert.deepEqual(steps, ['enemy-visuals'], 'a battle gone stale while its enemies link stops the warm');
+  } else {
+    assert.deepEqual(steps, ['enemy-visuals', 'opening', 'route', 'terrain-grid', 'rare', 'vision'],
+      'unfinished enemy links leave every later stage warming');
+    assert.equal(trace.error, undefined, 'no failed-warm warning');
+    assert.deepEqual(warned, []);
+    assert.equal(trace.unfinishedLinks.enemyVisuals.reason, 'budget');
+    assert.equal(trace.unfinishedLinks.enemyVisuals.pending, 3, 'the trace counts the unfinished links');
+    assert.equal(trace.done, true);
+  }
+}
+
+// the vision programs (the thermal variants' strict drain) unfinished: the opening, routes, terrain and rare go on;
+// another error still fails the warm
+for (const thrown of ['budget', 'other']) {
+  const steps = [];
+  const runtime = createDeferredCombatWarmRuntime({
+    game, renderer, camera: { position: {} },
+    getBattleVisuals: () => ({ async stream() { steps.push('enemy-visuals'); } }),
+    *warmVisionSteps() {
+      steps.push('vision');
+      yield;
+      if (thrown === 'budget') throw new ProgramUniformPreparationError({ status: 'incomplete', reason: 'budget', pending: 4 });
+      throw new Error('vision broke');
+    },
+    combatWarm: { cancelRare() {}, async warmOpeningChunked() { steps.push('opening'); }, async warmRareChunked() { steps.push('rare'); } },
+    async warmBattleTerrainTiles() { steps.push('terrain-grid'); },
+    getWorld: () => null, getGeneration: () => 70, setPending() {},
+    prepareNextOpeningRoute: () => false, now: () => ++clock,
+    yieldFrame: async () => {}, createYielder: () => async () => {},
+  });
+  const warn = console.warn;
+  console.warn = () => {};
+  try { await runtime.schedule(70); } finally { console.warn = warn; }
+  const trace = globalThis.__BATTLE_DEFERRED_WARM;
+  if (thrown === 'budget') {
+    assert.deepEqual(steps, ['enemy-visuals', 'opening', 'terrain-grid', 'rare', 'vision'], 'unfinished vision links end the warm cleanly');
+    assert.deepEqual(trace.unfinishedLinks.visionPrograms, { reason: 'budget', pending: 4 });
+    assert.equal(trace.error, undefined);
+  } else {
+    assert.deepEqual(steps, ['enemy-visuals', 'opening', 'terrain-grid', 'rare', 'vision'], 'any other failure still fails the warm');
+    assert.match(trace.error, /vision broke/);
+  }
+}
+
 delete globalThis.__COMBAT_RARE_WARM;
 delete globalThis.__BATTLE_DEFERRED_WARM;
-console.log('deferredCombatWarmRuntime.selftest: staged work, cancellation, and revision ownership passed');
+console.log('deferredCombatWarmRuntime.selftest: staged work, cancellation, revision ownership, and warming on past a stage\'s unfinished links (enemy uniforms, vision) passed');

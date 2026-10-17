@@ -122,6 +122,8 @@ export default {
   vegetation: {
     species: ['cedar', 'acacia', 'pine'], clusterMix: [['cedar', 0.46], ['acacia', 0.38], ['pine', 0.16]],
     loneMix: [['acacia', 0.50], ['cedar', 0.32], ['pine', 0.18]], rimMix: [['cedar', 0.5], ['pine', 0.3], ['acacia', 0.2]],
+    // GND (2026-10-15): the ring's trees at each species' own rim stature (vegetation.ts `ringStature`): acacia x0.80, pine x1.19 of the one mean
+    ringStature: 'species',
     // map pass 2026-09-12: limestone-terrace identity — scrub, pale rock and
     // outcrops instead of a green pasture (establishing shot read as generic);
     // tree and rock counts stay at the environmentExpansion first-pass ceilings.
@@ -241,7 +243,10 @@ export default {
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'sea-streets', coverage: 0.30, windDirDeg: 200, farBand: 0.55, fogBank: 0.35, fogBankTopM: 100 },
-  sky: { ...coastal.sky, sunElevationDeg: 30, sunAzimuthDeg: 112, turbidity: 3.9, fogDensity: 0.00052, fogTintHex: 0x9cb8c5, fogMix: 0.48, cloudOpacity: 0.86, cloudOpacity2: 0.5, sunIntensity: 3.95, hemiIntensity: 0.42 },
+  sky: { ...coastal.sky, sunElevationDeg: 30, sunAzimuthDeg: 112, turbidity: 3.9, fogDensity: 0.00052, fogTintHex: 0x9cb8c5, fogMix: 0.48, cloudOpacity: 0.86, cloudOpacity2: 0.5, sunIntensity: 3.95, hemiIntensity: 0.42,
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a sea strait's salt air — a silver band, a clean blue
+    atmosphere: { horizonTintHex: 0xdbe6ec, horizonTintAmount: 0.35, horizonBandDeg: 8, zenithTintHex: 0x4e86c8, zenithTintAmount: 0.2 },
+  },
   minimap: { ...coastal.minimap, base: [117, 123, 91], hard: [142, 137, 114], soft: [63, 88, 84] },
   // over the southern terraces to the harbour village, the bay and the northern flight
   shot: { pos: [-60, 52, -300], look: [-150, 2, 80] },

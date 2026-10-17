@@ -23,7 +23,7 @@ const near = (actual, expected, message) => {
     `${message}: expected ${expected}, received ${actual}`);
 };
 
-for (const id of ['type10', 'type10b']) {
+for (const id of ['type10_tk_x', 'type10b']) {
   const tank = createTank(id, null, {
     proceduralOnly: true,
     quality: 'high',

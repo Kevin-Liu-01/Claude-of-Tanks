@@ -17,17 +17,18 @@ import { matchRulesetFor } from '../../sim/matchRuleset.ts';
 import { isHeClass } from '../../sim/damage.ts';
 import { getSpec } from '../../vehicles/specs.ts';
 import { createDedicatedWorldCollision } from '../../../server/dedicatedWorldCollision.ts';
+import { mapCratersOn } from '../../world/mapCraters.ts';
 import { createDestructionMirror } from './destructionMirror.ts';
 
 const MAP = 'verdant';
 const standard = matchRulesetFor('standard');
 const ruleset = { ...standard, destruction: { ...standard.destruction, craters: true } };
-const heSlot = getSpec('t90m').gun.shells.findIndex((shell) => isHeClass(shell.type));
+const heSlot = getSpec('t90am').gun.shells.findIndex((shell) => isHeClass(shell.type));
 assert.ok(heSlot >= 0, 'the T-90M carries an HE round');
 
 // ---- the authority: h2 fires its HE round into the ground in front of it, turning a little between shots
 const world = createDedicatedWorldCollision(MAP);
-const match = createAuthoritativeMatch({ players: [{ id: 'h1', specId: 'm1a2', team: 'alpha' }, { id: 'h2', specId: 't90m', team: 'bravo' }],
+const match = createAuthoritativeMatch({ players: [{ id: 'h1', specId: 'm1a1_abrams_hc', team: 'alpha' }, { id: 'h2', specId: 't90am', team: 'bravo' }],
   mapId: MAP, seed: 11, countdownS: 0, gameMode: 'standard', worldCollision: world, ruleset });
 match.onMatchReady();
 const deliveries = []; // { tick, events: [...], log: entries | null } in arrival order
@@ -45,8 +46,10 @@ for (let tick = 1; tick <= 3000; tick++) {
 const finalLog = match.snapshot({ tick: 3001, serverTimeMs: 0, viewerId: 'h1', ackInputSeq: null }).meta.destructionLog;
 const dug = finalLog.filter((entry) => entry.kind === 'crater');
 assert.ok(dug.length >= 5, `the authority dug craters to judge (${dug.length})`);
+// (DST-04, 2026-10-15: every ground starts with the map's pre-placed craters, the same on every peer: the battle's are after)
+const battleStamps = (ground) => ground.stamps.slice(mapCratersOn(ground)?.dug.reduce((n, d) => n + d, 0) ?? 0);
 const sameStamps = (ground, label) => {
-  const stamps = ground.stamps.filter((stamp) => stamp.kind === 'crater');
+  const stamps = battleStamps(ground).filter((stamp) => stamp.kind === 'crater');
   assert.equal(stamps.length, dug.length, `${label}: one stamp per crater (${stamps.length} of ${dug.length})`);
   const key = (s) => `${s.x}|${s.z}|${s.radiusM}|${s.depthM}|${s.rimM}|${s.seed}`;
   assert.deepEqual(stamps.map(key).sort(), dug.map(key).sort(), `${label}: stamped as the authority quantized them`);

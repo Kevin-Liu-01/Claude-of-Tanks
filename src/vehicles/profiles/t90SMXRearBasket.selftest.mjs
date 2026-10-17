@@ -16,7 +16,7 @@ function near(h,axis,source,tolerance,label) {
 }
 
 for(const quality of ['high','low']) {
-  const tank=createTank('t90sm_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const tank=createTank('t90sm',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try {
     tank.root.updateMatrixWorld(true);
     for(const [y,z]of [[1.93831,-2.922269],[1.99279,-2.920161],[2.05251,-2.922269],

@@ -4,11 +4,14 @@
 // veranda and plank shutters; the bazaar's long tin sheds on posts with shuttered stalls; brick shops with a flat roof
 // and a signboard; a whitewashed mosque with small domes and a slender minaret; round clay-and-bamboo rice granaries
 // (gola) under conical thatch; the river ghat's boat sheds.
-import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, type Face, type RegionalBucket, type RegionalParts, type Rgb } from './geometry.ts';
-import { buildHouse, closeGables, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { PartSink, alongPlot, faceBox, pick, plotAxes, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { bevelSpan, orientedPrism } from './millWorks.ts';
+import { buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, type HouseDialect, type Opening, type RoofSpec } from './house.ts';
+import { corrugatedCladding } from './villageCraft.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
-import { BAMBOO_MAT, GALVANISED, PAINTED_SHEET, RUSTED, WEATHERED_PLANK, sheetWall, veranda } from './vernacular.ts';
+import { BAMBOO_MAT, GALVANISED, PAINTED_SHEET, RUSTED, WEATHERED_PLANK, veranda } from './vernacular.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { bengalBazaar } from './marketKits.ts'; // props #23: the char bazaar
 
 const SHUTTERS: readonly Rgb[] = [0x3f6f9a, 0x4f8a62, 0x8a4a3a, 0x6a5a46].map(rgb);
 
@@ -39,45 +42,83 @@ function tinHouse(ctx: RegionalBuildContext, opts: { big?: boolean } = {}): Regi
 }
 
 function tinHouseBody(sink: PartSink, ctx: RegionalBuildContext, rng: () => number, turned: boolean, W: number, D: number, plinth: number): void {
-  // the bhiti: a raised earth platform a step wider than the house (rendered in mud plaster), under the veranda too
-  sink.span('plaster3', -W / 2 - (turned ? 1.6 : 1.2), -0.4, -D / 2 - 1.2, W / 2 + 1.2, plinth, D / 2 + 1.2);
+  // the bhiti: a raised earth platform a step wider than the house (rendered in mud plaster), under the veranda too. (Lane
+  // C 2026-10-16, the building-detail ratchet: drawn beside a plinthless house spec the census and the damage plan never
+  // saw it, and the kit's mid detail read 2 -> 1) it is the house's own plinth, 1.2 m out all round with no dressed course,
+  // and a turned house's veranda side 0.4 m wider again
+  const bOut = 1.2, bx0 = -W / 2 - (turned ? 1.6 : 1.2), bx1 = W / 2 + 1.2, bz0 = -D / 2 - 1.2, bz1 = D / 2 + 1.2;
+  if (turned) sink.span('plaster3', bx0, -0.6, bz0, -W / 2 - bOut, plinth, bz1);
   const wallH = 2.5, walls = sheetColour(rng), frame = pick(rng, WEATHERED_PLANK);
-  sink.placed(0, 0, plinth, 0, () => {
-    // the structural shell is the sheet wall itself (corrugated tile under the livery)
-    sink.span('structureMetal', -W / 2, 0, -D / 2, W / 2, wallH, D / 2, { colour: walls });
-    const faces: Face[] = [
-      { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W }, { origin: [W / 2, 0, 0], u: [0, 0, -1], out: [1, 0, 0], width: D },
-      { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W }, { origin: [-W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D },
-    ];
-    // timber frame strips at the corners and wall plate, patched sheets of other liveries
-    for (const f of faces) {
-      for (const u of [-f.width / 2 + 0.06, f.width / 2 - 0.06]) faceBox(sink, 'structureWood', f, u, wallH / 2, 0.03, 0.1, wallH, 0.05, { colour: frame, decor: true });
-      faceBox(sink, 'structureWood', f, 0, wallH - 0.06, 0.03, f.width, 0.12, 0.05, { colour: frame, decor: true });
-      if (rng() < 0.5) {
-        // drawn on every tier so the phones' roof and veranda match the desktop ones
-        const pu = (rng() - 0.5) * (f.width - 1.4), pw = 0.9 + rng() * 0.6, ph = 1.1 + rng() * 0.9, livery = sheetColour(rng);
-        if (ctx.tier !== 'mobile') sheetWall(sink, f, pu - pw / 2, pu + pw / 2, 0.1, 0.1 + ph, livery, true);
+  const mobile = ctx.tier === 'mobile', look = ctx.variant;
+  // (the looks lane, 2026-10-15; WORKLIST #15: "bengal tinHouse rebuilt on buildHouse (framed board or mat panels, cut
+  // openings)"; the r2 probe: its windows were dark plates on a sheet box) the house on the house grammar: a framed
+  // storey whose sheet wall is cut by its door and its shuttered windows, the corrugated sheets laid on it each in its
+  // own livery round the cuts (a patched one in five), the frame's corner posts and plate; the plank shutters opening
+  // out of the cuts on their hinges, the grilles' bars in them; the bhiti's edges slumped and its mud steps up to the
+  // veranda
+  const patches: Rgb[] = [];
+  for (let k = 0; k < 4; k++) patches.push(sheetColour(rng));
+  const livery = (k: number): Rgb => {
+    if (k < 0) return shade(walls, 0.97);
+    const r = ((k * 2654435761) >>> 0) / 4294967296;
+    return r < 0.2 ? patches[k % patches.length] : shade(walls, 0.9 + ((k * 40503) % 17) / 17 * 0.2);
+  };
+  const shutter = pick(rng, SHUTTERS);
+  const style: WindowStyle = { frame, frameWidth: 0.06, frameOut: 0.04, bars: 'two', surround: null, sill: { bucket: 'structureWood', out: 0.06, colour: frame },
+    shutters: { colour: shutter, kind: 'plank', closed: 0.25 } };
+  const front = turned ? 'left' : 'front';
+  const openings: Opening[] = [
+    { face: front, storey: 0, kind: 'door', u: (turned ? D : W) * 0.15, w: 0.9, y0: 0, h: 1.95 },
+    { face: 'front', storey: 0, kind: 'window', u: -W * 0.25, w: 0.7, y0: 0.95, h: 0.7 },
+    { face: 'right', storey: 0, kind: 'window', u: -D * 0.2, w: 0.7, y0: 0.95, h: 0.7 },
+    { face: 'right', storey: 0, kind: 'window', u: D * 0.2, w: 0.7, y0: 0.95, h: 0.7 },
+    { face: 'left', storey: 0, kind: 'window', u: turned ? -D * 0.22 : 0, w: 0.7, y0: 0.95, h: 0.7 },
+  ].filter((o, _i, all) => !(o.kind === 'window' && all.some((q) => q !== o && q.kind === 'door' && q.face === o.face && Math.abs(q.u - o.u) < 1.0))) as Opening[];
+  const roof: RoofSpec = { kind: rng() < 0.6 ? 'hip' : 'gable', pitchDeg: 24 + rng() * 6, eave: 0.55, verge: 0.55, thickness: 0.06, bucket: 'structureMetal', ridge: 'saddle' };
+  const roofLivery = sheetColour(rng);
+  const dialect: HouseDialect = {
+    window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, style, rng, 0.3),
+    door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shutter, frame: { bucket: 'structureWood', width: 0.09, out: 0.05, colour: frame }, steps: null, leafKind: 'plank' }, y0),
+  };
+  {
+    // (the frame's sheet wall behind the cladding, a shade under its sheets: the joints read dark, and no sheet stands
+    // darker than the wall it is nailed to)
+    const prior = sink.paint;
+    sink.paint = shade(walls, 0.5);
+    try {
+      const hf = buildHouse(sink, {
+        w: W, d: D, plinth: { h: plinth, out: bOut, bucket: 'plaster3', course: false }, storeys: [{ h: wallH, wall: 'structureMetal' }],
+        roof, roofColour: roofLivery, gableBucket: 'structureMetal',
+        openings, chimneys: [], gutters: null, verge: null, reveal: 0.1, spall: null, skirt: null, rafters: null,
+      }, dialect);
+      // (Lane C 2026-10-16, houseDamage: a framed storey takes its infill from the wall's second layer, which a sheet wall has not, so the damage path threw at damage.ts:325; as the LOOKS fishery fix 182dca492) the storey is unframed and its sheets laid over the walls after the house is built, face by face round each face's openings
+      const faces = storeyFaces(hf, 0), body = hf.bodies[0];
+      for (const name of ['front', 'right', 'back', 'left'] as const) {
+        const face = faces[name];
+        corrugatedCladding(sink, face, { u0: -face.width / 2, u1: face.width / 2, y0: body.y0, y1: body.y1 },
+          openings.filter((o) => o.face === name && o.storey === 0), livery, frame, { mobile });
       }
-    }
-    const shutter = pick(rng, SHUTTERS);
-    doorUnit(sink, faces[turned ? 3 : 0], (turned ? D : W) * 0.15, 0, 0.9, 1.95, { leaf: shutter, frame: { bucket: 'structureWood', width: 0.09, out: 0.05, colour: frame }, steps: null, leafKind: 'plank' }, 0);
-    for (const [f, us] of [[faces[0], [-W * 0.25]], [faces[1], [-D * 0.2, D * 0.2]], [faces[3], [0]]] as const) {
-      for (const u of us) {
-        faceBox(sink, 'dark', f, u, 1.3, 0.005, 0.7, 0.7, 0.02, { decor: true });
-        faceBox(sink, 'structureWood', f, u - 0.36, 1.3, 0.04, 0.34, 0.74, 0.04, { colour: shutter, decor: true });
-        faceBox(sink, 'structureWood', f, u + 0.36, 1.3, 0.04, 0.34, 0.74, 0.04, { colour: shutter, decor: true });
-      }
+    } finally { sink.paint = prior; }
+  }
+  // the bhiti's edge slumped: a skirt of mud from its top edge out and down to the ground round it, and its steps
+  sink.dressing(mobile, () => {
+    // (Lane C 2026-10-16, regionalArchitecture's ray audit: the skirt's quads were wound inward) each wound to face out and up
+    const slump = 0.45;
+    const P = (x: number, y: number, z: number): [number, number, number] => [x, y, z];
+    sink.quad('plaster3', P(bx0 - slump, -0.05, bz1 + slump), P(bx1 + slump, -0.05, bz1 + slump), P(bx1, plinth, bz1), P(bx0, plinth, bz1), { decor: true, shade: 0.92 });
+    sink.quad('plaster3', P(bx1 + slump, -0.05, bz0 - slump), P(bx0 - slump, -0.05, bz0 - slump), P(bx0, plinth, bz0), P(bx1, plinth, bz0), { decor: true, shade: 0.92 });
+    sink.quad('plaster3', P(bx1 + slump, -0.05, bz1 + slump), P(bx1 + slump, -0.05, bz0 - slump), P(bx1, plinth, bz0), P(bx1, plinth, bz1), { decor: true, shade: 0.92 });
+    sink.quad('plaster3', P(bx0 - slump, -0.05, bz0 - slump), P(bx0 - slump, -0.05, bz1 + slump), P(bx0, plinth, bz1), P(bx0, plinth, bz0), { decor: true, shade: 0.92 });
+    // the mud steps up to the veranda from its middle, a tread a rise
+    const n = Math.max(2, Math.round(plinth / 0.26)), r = plinth / n, sz = turned ? 0 : 1;
+    for (let k = 0; k < n; k++) {
+      const out = 0.32 * (n - k), top = r * (k + 1), w = 1.3 + look() * 0.2;
+      if (sz) sink.span('plaster3', -w / 2, -0.3, bz1 + slump * 0.2, w / 2, top, bz1 + slump * 0.2 + out, { decor: true, shade: 0.95 });
+      else sink.span('plaster3', bx0 - slump * 0.2 - out, -0.3, -w / 2, bx0 - slump * 0.2, top, w / 2, { decor: true, shade: 0.95 });
     }
   });
-  // the roof: four-slope char-chala (or two-slope), sheet with its own livery
-  const roof: RoofSpec = { kind: rng() < 0.6 ? 'hip' : 'gable', pitchDeg: 24 + rng() * 6, eave: 0.55, verge: 0.55, thickness: 0.06, bucket: 'structureMetal', ridge: 'saddle' };
-  const rg = roofGeometry(W, D, plinth + wallH, roof);
-  emitRoof(sink, rg, roof, sheetColour(rng));
-  // (the buildings stream, 2026-10-12, the integrity check: sky through a two-slope roof's open ends over the walls) the
-  // gables sheeted in the walls' livery
-  closeGables(sink, rg, 'structureMetal', { colour: walls });
-  const front: Face = turned ? { origin: [-W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D } : { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
-  veranda(sink, front, plinth, plinth + wallH - 0.1, turned ? D : W, 1.5, rgb(0x9a8a62), { bucket: 'structureMetal', colour: sheetColour(rng) }, false);
+  const frontFace: Face = turned ? { origin: [-W / 2, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D } : { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W };
+  veranda(sink, frontFace, plinth, plinth + wallH - 0.1, turned ? D : W, 1.5, rgb(0x9a8a62), { bucket: 'structureMetal', colour: sheetColour(rng) }, false);
 }
 
 /**
@@ -161,9 +202,12 @@ const mosque: RegionalBuilder = (ctx) => {
     for (let k = 0; k + 1 < prof.length; k++) { sink.cylinder('plaster', [x, y, 0], 'y', r * 0.26, r * prof[k], 12, {}, r * prof[k + 1], k === prof.length - 2); y += r * 0.26; }
     sink.cylinder('structureMetal', [x, y, 0], 'y', 0.5, 0.05, 6, { colour: rgb(0xb8933e), decor: true }, 0.02);
   }
-  // the minaret at the front corner
-  const mx = W / 2 + 0.2, mz = D / 2 + 0.2;
-  sink.cylinder('plaster', [mx, 0, mz], 'y', 11.5, 0.75, 10, {}, 0.55);
+  // the minaret at a rear corner, engaged in the walls (the 225 gate, 2026-10-15: standing clear of the front corner it
+  // reached 1.1 m past the chapel's 5.7 m plot, and the front's doors leave it no room there): its shaft reaches at most
+  // 0.3 m past the plot's side and back
+  const mr = 0.75;
+  const mx = Math.min(W / 2 + 0.2, ctx.info.w / 2 + 0.3 - mr), mz = -Math.min(D / 2 + 0.2, ctx.info.d / 2 + 0.3 - mr);
+  sink.cylinder('plaster', [mx, 0, mz], 'y', 11.5, mr, 10, {}, 0.55);
   sink.cylinder('plaster', [mx, 8.6, mz], 'y', 0.3, 1.05, 10, { decor: true });
   sink.cylinder('plaster', [mx, 11.5, mz], 'y', 1.3, 0.55, 10, {}, 0.05);
   return sink.finish();
@@ -221,25 +265,52 @@ const wrecked: RegionalBuilder = (ctx) => {
  * lane, a tin back wall, a plank counter with sacks of rice and lentils and baskets of produce.
  */
 const bazaarStall: RegionalBuilder = (ctx) => {
+  // (props census r2 sweep, Lane C 2026-10-16: the stall's box-only share 99 %) its parts in their own forms: the mud
+  // plinth's corners worn round, the bamboo posts round, the back wall of corrugated tin, the counter's plank eased, the
+  // tin roof's front edge turned down into a drip, the jute sacks round; the draws as before
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
   const W = Math.max(4.5, Math.min(6.4, ctx.info.w - 0.4)), D = Math.max(3.6, Math.min(5.0, ctx.info.d - 0.4));
   const floor = 0.35, back = 2.95, front = 2.4;
-  sink.span('plaster3', -W / 2 - 0.25, -0.3, -D / 2 - 0.25, W / 2 + 0.25, floor, D / 2 + 0.25);
+  const px = W / 2 + 0.25, pz = D / 2 + 0.25, wear = 0.35;
+  const plinth: Vec3[] = [[px, -0.3, -pz + wear], [px, -0.3, pz - wear], [px - wear, -0.3, pz], [-px + wear, -0.3, pz], [-px, -0.3, pz - wear],
+    [-px, -0.3, -pz + wear], [-px + wear, -0.3, -pz], [px - wear, -0.3, -pz]];
+  orientedPrism(sink, 'plaster3', plinth, [0, 1, 0], floor + 0.3, {});
   for (const [x, z, h] of [[-1, -1, back], [1, -1, back], [-1, 1, front], [1, 1, front]] as const) {
-    sink.span('structureWood', x * (W / 2 - 0.15) - 0.07, floor, z * (D / 2 - 0.15) - 0.07, x * (W / 2 - 0.15) + 0.07, h, z * (D / 2 - 0.15) + 0.07, { colour: BAMBOO_MAT });
+    sink.cylinder('structureWood', [x * (W / 2 - 0.15), floor, z * (D / 2 - 0.15)], 'y', h - floor, 0.07, 8, { colour: BAMBOO_MAT });
   }
-  sink.span('structureMetal', -W / 2 + 0.08, floor, -D / 2 + 0.08, W / 2 - 0.08, back - 0.12, -D / 2 + 0.16, { colour: sheetColour(rng) });
-  // the tin roof falls from the back wall to the lane: a shed laid along the stall's depth (local +x low = world +z)
+  // the back wall: corrugated tin, its facets welded into one sheet, its outer face a sheet's thickness behind the inner
+  // (regionalArchitecture's ray audit: the two faces laid on one plane read as inverted from either side)
+  const tin = sheetColour(rng), zb = -D / 2 + 0.12, ribs = Math.max(8, Math.round((W - 0.16) / 0.15)), xa = -W / 2 + 0.08, xb = W / 2 - 0.08;
+  const t = 0.012;
+  for (let i = 0; i < ribs; i++) {
+    const u0 = xa + (xb - xa) * i / ribs, u1 = xa + (xb - xa) * (i + 1) / ribs, z0 = zb + (i % 2 ? 0.03 : 0), z1 = zb + (i % 2 ? 0 : 0.03);
+    sink.quad('structureMetal', [u0, floor, z0], [u1, floor, z1], [u1, back - 0.12, z1], [u0, back - 0.12, z0], { colour: tin });
+    sink.quad('structureMetal', [u1, floor, z1 - t], [u0, floor, z0 - t], [u0, back - 0.12, z0 - t], [u1, back - 0.12, z1 - t], { colour: shade(tin, 0.8) });
+  }
+  // the sheet's top edge and its two ends closed
+  for (let i = 0; i < ribs; i++) {
+    const u0 = xa + (xb - xa) * i / ribs, u1 = xa + (xb - xa) * (i + 1) / ribs, z0 = zb + (i % 2 ? 0.03 : 0), z1 = zb + (i % 2 ? 0 : 0.03), y = back - 0.12;
+    sink.quad('structureMetal', [u0, y, z0], [u1, y, z1], [u1, y, z1 - t], [u0, y, z0 - t], { colour: shade(tin, 0.9) });
+  }
+  sink.quad('structureMetal', [xa, floor, zb - t], [xa, floor, zb], [xa, back - 0.12, zb], [xa, back - 0.12, zb - t], { colour: shade(tin, 0.85) });
+  const zEnd = zb + (ribs % 2 ? 0.03 : 0);
+  sink.quad('structureMetal', [xb, floor, zEnd], [xb, floor, zEnd - t], [xb, back - 0.12, zEnd - t], [xb, back - 0.12, zEnd], { colour: shade(tin, 0.85) });
+  // the tin roof falls from the back wall to the lane: a shed laid along the stall's depth (local +x low = world +z), its
+  // front edge turned down in a drip welded to the sheet
+  const roofColour = sheetColour(rng);
   const roof: RoofSpec = { kind: 'shed', pitchDeg: Math.atan2(back - front, D) * 180 / Math.PI, eave: 0.35, verge: 0.3, thickness: 0.05, bucket: 'structureMetal', ridge: null };
-  sink.placed(-Math.PI / 2, 0, 0, 0, () => emitRoof(sink, roofGeometry(D, W, front, roof), roof, sheetColour(rng)));
-  sink.span('structureWood', -W / 2 + 0.35, floor, D / 2 - 1.0, W / 2 - 0.35, floor + 0.8, D / 2 - 0.45, { colour: pick(rng, WEATHERED_PLANK) });
+  sink.placed(-Math.PI / 2, 0, 0, 0, () => emitRoof(sink, roofGeometry(D, W, front, roof), roof, roofColour));
+  const tan = (back - front) / D, ze = D / 2 + 0.35, ye = front - 0.35 * tan;
+  sink.quad('structureMetal', [-W / 2 - 0.3, ye - 0.12, ze], [W / 2 + 0.3, ye - 0.12, ze], [W / 2 + 0.3, ye + 0.01, ze], [-W / 2 - 0.3, ye + 0.01, ze], { colour: shade(roofColour, 0.85), decor: true });
+  sink.quad('structureMetal', [W / 2 + 0.3, ye - 0.12, ze - 0.01], [-W / 2 - 0.3, ye - 0.12, ze - 0.01], [-W / 2 - 0.3, ye + 0.01, ze - 0.01], [W / 2 + 0.3, ye + 0.01, ze - 0.01], { colour: shade(roofColour, 0.7), decor: true });
+  bevelSpan(sink, 'structureWood', -W / 2 + 0.35, floor, D / 2 - 1.0, W / 2 - 0.35, floor + 0.8, D / 2 - 0.45, 0.04, { colour: pick(rng, WEATHERED_PLANK) });
   // the goods: jute sacks on the counter and the floor, flat baskets of produce
   const jute = rgb(0xa08a62), produce: readonly Rgb[] = [0x8a3a2a, 0xc0902a, 0x5a7a3a, 0xb8b0a0].map(rgb);
   for (let k = 0, n = 3 + Math.floor(rng() * 3); k < n; k++) {
     const x = -W / 2 + 0.7 + rng() * (W - 1.4), onCounter = rng() < 0.5;
-    const y0 = onCounter ? floor + 0.8 : floor, z = onCounter ? D / 2 - 0.72 : -D / 2 + 0.7 + rng() * 0.8;
-    sink.span('structureWood', x - 0.22, y0, z - 0.16, x + 0.22, y0 + 0.42 + rng() * 0.16, z + 0.16, { colour: jute, decor: true });
+    const y0 = onCounter ? floor + 0.8 : floor, z = onCounter ? D / 2 - 0.72 : -D / 2 + 0.7 + rng() * 0.8, h = 0.42 + rng() * 0.16;
+    sink.cylinder('structureWood', [x, y0, z], 'y', h, 0.2, 8, { colour: jute, decor: true }, 0.16);
   }
   for (let k = 0; k < 3; k++) {
     const x = -W / 2 + 0.8 + k * (W - 1.6) / 2;
@@ -251,7 +322,7 @@ const bazaarStall: RegionalBuilder = (ctx) => {
 export const BENGAL_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => tinHouse(ctx),
   farmhouse: (ctx) => tinHouse(ctx, { big: true }),
-  marketRow: bazaar,
+  marketRow: bengalBazaar,
   fishery: bazaar,
   // the base market plot: a tin bazaar stall (gauntlet wave 15: the delta's streets still showed the generic stall)
   market: bazaarStall,
@@ -269,8 +340,14 @@ export const BENGAL_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
   region: 'Jamuna chars (Sirajganj, Bogura): homesteads of corrugated iron on earthen plinths, a tin bazaar, a village mosque',
   surfaces: {
     roof: { kind: 'sheet', tint: [0.60, 0.62, 0.63] },
-    stone: { kind: 'brick', tint: [0.62, 0.32, 0.24] },
+    // (round 11; waves 319/320: "clean, saturated, uniformly tiled brick with no soot") an industrial town's brick, soiled
+    stone: { kind: 'brick', tint: [0.62, 0.32, 0.24], weathered: true },
     sourced: { plaster: false, wood: true },
+    // (the facades lane, round 11; waves 319/320: the walls' procedural canvas read as "speckle", "sponge", "cork",
+    // "camouflage noise": its 6 cm bumps shade as dots from the street, as Steinburg's did before round 8) the walls
+    // painted as the region renders them (regionalSurfaces.ts paintLimewash), every family under the kit's and the map's
+    // tones
+    render: { kind: 'limewash', seed: 0x6b4e },
     tones: {
       plaster: (_h, s, l) => [0.12, Math.min(1, s * 0.25), Math.min(1, l * 1.25 + 0.1)],
       plaster2: (_h, s, l) => [0.1, Math.min(1, s * 0.4 + 0.08), Math.min(1, l * 1.1 + 0.05)],

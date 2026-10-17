@@ -15,6 +15,7 @@
 // on the char and a rice-drying yard on each bank carry the zone-control discs.
 
 import { createMarshChannel } from './marshChannel.ts';
+import { CHAR_VILLAGE } from './deltaVillage.ts'; // the maps lane, 2026-10-14: the char's market village
 
 // The braided river: a stem from each map edge splits round the char the market village stands on, and the pattern
 // turns through 180 degrees about the char's centre (-4, 14).
@@ -28,6 +29,28 @@ const river = [
   [[-137.4, -121.3, 28], [-59, -100.2, 27], [0.8, -75, 27], [49.4, -38.6, 27], [85.1, 10.4, 27], [109.4, 70.6, 27],
     [129.4, 149.3, 28]],
 ].flatMap((reach) => createMarshChannel(reach.map(station)));
+
+// The flooded paddies (2026-10-12, item 4; the owner: "we need real water"): level basins of water held by their bunds
+// (terrain.paddies, paddies.ts), in terraced rows on the open floodplain, turned with the bunds (yaw -11) and off the roads,
+// the river, the village, both deployments and the homestead mounds. On alpha's bank a pair a hundred metres in front of
+// the deployment and one more on the way to the char, and their rotations about the char on bravo's. (Found by a site probe over
+// the finished ground: each paddy's floor varies under 3.6 m before it is levelled, its twin as well.)
+const PADDY_W = 30, PADDY_L = 44, PADDY_YAW = -11, PADDY_STEP = PADDY_W + 3.2;
+const paddyRow = (x: number, z: number, count: number) => {
+  const yaw = PADDY_YAW * Math.PI / 180;
+  return Array.from({ length: count }, (_, k) => {
+    const off = (k - (count - 1) / 2) * PADDY_STEP;
+    return { x: x + Math.cos(yaw) * off, z: z - Math.sin(yaw) * off };
+  });
+};
+// (2026-10-16, the 226 gate: scenery's "the straw stacks at the north homestead stand (water)") the second row's centre and
+// east paddies stood on homestead mounds — the levee homestead's on alpha's bank, the north homestead's after the turn
+// about the char — and levelled their basins into the mounds' flanks, flooding the stacks at their feet. The homesteads
+// stand on their mounds above the flood line (the brief), so that row keeps only its west paddy (clear of every mound on
+// both banks); no site within 200 m holds the other two clear of the mounds on both banks.
+const paddies = [...paddyRow(-45, -310, 2), ...paddyRow(-10, -215, 3).slice(0, 1)]
+  .flatMap(({ x, z }) => [[x, z], [-8 - x, 28 - z]])
+  .map(([x, z]) => ({ x, z, widthM: PADDY_W, lengthM: PADDY_L, yawDeg: PADDY_YAW }));
 
 export default {
   id: 'delta',
@@ -44,6 +67,7 @@ export default {
       [[-396, 72], [-286, 52], [-144, 34], [8, 54], [162, 38], [302, 8]],
     ] },
     marshes: river,
+    paddies,
     // The market square on the char and a rice-drying yard on each bank: level aprons the zone-control discs seat on.
     hardstands: [
       { x: -4, z: 14, width: 50, length: 50, yawDeg: 45, grade: 0 },
@@ -109,6 +133,8 @@ export default {
   vegetation: {
     species: ['palm', 'willow', 'eucalyptus', 'oak'], clusterMix: [['willow', 0.35], ['palm', 0.28], ['eucalyptus', 0.22], ['oak', 0.15]],
     loneMix: [['palm', 0.30], ['willow', 0.30], ['eucalyptus', 0.25], ['oak', 0.15]], rimMix: [['willow', 0.38], ['eucalyptus', 0.28], ['palm', 0.20], ['oak', 0.14]],
+    // GND (2026-10-15): the ring's trees at each species' own rim stature (vegetation.ts `ringStature`): eucalyptus x1.30 of the one mean
+    ringStature: 'species',
     clusterCount: 96, loneCount: 214, rimCount: 112, grassDensity: 1.22,
     clusterScrub: 2.2, bushCount: 1.45, bushSpecies: 'oak',
   },
@@ -127,10 +153,10 @@ export default {
       { kind: 'path', x: -44, z: -6, yawDeg: 45, name: "the temple's brick court", params: { length: 18, width: 18, surface: 'stone' } },
       { kind: 'bengalTemple', x: -44, z: -6, yawDeg: 45, name: 'the aat-chala temple by the market', params: { side: 9 } },
     ],
-    plan: ['marketRow', 'farmhouse', 'fishery', 'market', 'chapel', 'granary',
-      'farmhouse', 'cornershop', 'ruin', 'boatshed', 'farmhouse', 'depot', 'marketRow', 'woodshed',
-      'boatshed', 'market', 'cottage', 'farmhouse', 'granary', 'marketRow', 'depot', 'ruin',
-      'boatshed', 'cornershop', 'farmhouse', 'woodshed'],
+    // (the maps lane, 2026-10-14: the plan is the char's own, CHAR_VILLAGE above; was the roadside plan's 26 entries
+    // ['marketRow', 'farmhouse', 'fishery', ...], most of which found no dry lot on the char)
+    plan: [],
+    plannedSites: CHAR_VILLAGE,
     destructibleBuildings: ['stilthouse', 'longhouse', 'fishershack', 'fieldhospital'],
     tacticalBeats: [
       { id: 'western-levee-fort', role: 'brawl', x: -286, z: -72, yawDeg: -34,
@@ -200,6 +226,8 @@ export default {
     sunIntensity: 4.1, sunColorHex: 0xfbeed6, hemiIntensity: 0.34, postExposure: 0.95, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 3.55 / 0xffe7c5 / 0.42); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0x61694b },
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a humid river delta — a milky jade-white haze band, a washed pale blue overhead
+    atmosphere: { horizonTintHex: 0xdfe4d8, horizonTintAmount: 0.5, horizonBandDeg: 12, zenithTintHex: 0x84a4c6, zenithTintAmount: 0.3 },
   },
   minimap: {
     base: [63, 100, 55], hard: [105, 98, 74], soft: [48, 77, 62],

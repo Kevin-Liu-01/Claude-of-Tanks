@@ -1,0 +1,73 @@
+// Owner 2026-10-15 (VEH-19..VEH-22): seven national T-72-family concepts carry a
+// real fleet turret, built by that turret's own builder, with their national
+// equipment fitted on top. Data only: the spec registry reads it without
+// loading a geometry pack.
+//   "for the t72nn3 qilin, adopt its turret to actually use the ztz-99a2 turret and make the kunlun usee the type 96b
+//    turret except with the special era, autocannon, shtora eyes"
+//   "make the t72 b3m hetman and t72 b3 sich use turrets properly based off the t72 b3m 2016, t72 b3, exceept obviously
+//    up armored annnd using modern autocannon and cages and the leaves and lights and ERa and other emplacements"
+//   "make the t72b3 zubr turret properly based off the t72 b3m 2016, except obvioulsy up armored annnd using modern
+//    autocannon and cages and the leaves and lights and ERa and other emplacements"
+
+export type NationalTurretDonorId = 't72b3' | 't72b3m_2016' | 'ztz99a2' | 'type96b';
+type Point3 = readonly [number, number, number];
+
+export interface NationalDonorTurret {
+  /** The fleet vehicle whose turret builder, turret armour, turret modules and crew this concept reuses. */
+  donor: NationalTurretDonorId;
+  /** The turret ring's centre on this vehicle's hull (hull frame, metres). */
+  pivot: Point3;
+  /** The turret's structural roof in its own frame (P.topY). */
+  roofY: number;
+  /** Plan seat of the fitted remote weapon station in the turret frame: the commander's cupola, whose own gun it replaces. */
+  station: readonly [number, number];
+  /** National turret ERA sectors the kit adds where the donor turret has no ERA plate of that name. */
+  addedTurretEra?: readonly string[];
+  /** A machined adapter collar between the cupola's top and the station's pedestal (metres), where the station's barrel
+   * at full depression must clear a tall donor sight beside the cupola. */
+  stationRiserM?: number;
+  /** Listed overall height (ground to the tallest fitting, the roof weapon included), measured on the built concept. */
+  heightM?: number;
+  /** Extra options for the donor's own turret builder; each defaults to the donor's own output (e.g. antennaSeats for the
+   * ZTZ-99A2: whips moved out of the concept station's sweep). */
+  builderOptions?: Readonly<Record<string, unknown>>;
+}
+
+// The T-72B3 and T-72B3M rings sit exactly where their own hulls carry them. A T-72B3M turret on the T-72B3 hull keeps
+// its casting's lower edge where the T-72B3's own casting meets that roof (1.446 m); the Type 96B shell's floor meets
+// the T-72B3M roof (1.5295 m) as it meets its own hull's; the 99A2 shell's lower course lands on the T-72B3 roof.
+const T72B3_RING: Point3 = [.0000002374, 1.457100315, .065591405];
+const T72B3M_RING: Point3 = [.0000072471277, 1.52948397398, .1143146502203];
+const T72B3M_ON_T72B3: Point3 = [0, 1.446 + (1.52948397398 - 1.5153), .065591405];
+// CN lane 2026-10-15: the Type 96B ring rides 20 mm above the B3M roof so the 96B mantlet chin clears the driver's
+// hatch, the shoulder covers and the engine-deck louvres at the gun's full 6 degree depression at every yaw (it cut the
+// louvres by 5 mm at yaw 165); the 99A2 ring rides 54 mm above the B3 roof so the chevrons' lower returns (turret-local
+// y -0.04) clear the B3 roof by 12 mm at every yaw instead of sitting 42 mm inside it. The rings' own collars bridge
+// the running gap.
+const TYPE96B_ON_T72B3M: Point3 = [0, 1.52948397398 + .020, .1143146502203];
+const ZTZ99A2_ON_T72B3: Point3 = [0, 1.457100315 + .054, .065591405];
+
+// Commander's cupolas in each donor's turret frame (their builders' own datums).
+// The T-72B3 cupola's raised hatch ring (t72b3X.ts roofEquipment: r .358 at -.61355, -.363), its seat 70 mm aft of the
+// ring's centre so the station's 260 mm yaw base clears the commander's sight block on the ring's front edge.
+const T72B3_CUPOLA_RING = [-.61355 - .0000002374, -.363 - .065591405 - .07] as const;
+const T72B3M_CUPOLA = [-.62689 - .0000072471277, -.24424 - .1143146502203] as const;
+const ZTZ99A2_CUPOLA = [.52, -.88] as const;
+const TYPE96B_CUPOLA = [-.592, -.045 + .15] as const;
+
+export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret>> = {
+  // The 99A2's right-rear whip stood inside the Qilin station's sweep from the cupola: it moves to the bustle corner.
+  t72b3_qilin: { donor: 'ztz99a2', pivot: ZTZ99A2_ON_T72B3, roofY: .83, station: ZTZ99A2_CUPOLA, stationRiserM: .055, heightM: 3.3286,
+    builderOptions: { antennaSeats: [[-1.06, -1.58], [1.06, -2.00]] } },
+  t72b3m_kunlun: { donor: 'type96b', pivot: TYPE96B_ON_T72B3M, roofY: .70, station: TYPE96B_CUPOLA, heightM: 3.48048,
+    addedTurretEra: ['turret_era_L', 'turret_era_R'],
+    // The Type 96B's 3 m rear whip would make the listed height (body and roof weapon: the sim's body height) 5.2 m.
+    builderOptions: { mastTopY: 3.40 } },
+  t72b3m_hetman: { donor: 't72b3m_2016', pivot: T72B3M_RING, roofY: .82, station: T72B3M_CUPOLA, heightM: 3.382 },
+  t72b3m_hetman_ii: { donor: 't72b3m_2016', pivot: T72B3M_RING, roofY: .82, station: T72B3M_CUPOLA, heightM: 3.402 },
+  t72b3_sich: { donor: 't72b3', pivot: T72B3_RING, roofY: .82, station: T72B3_CUPOLA_RING, heightM: 3.305 },
+  t72b3_zubr: { donor: 't72b3m_2016', pivot: T72B3M_ON_T72B3, roofY: .82, station: T72B3M_CUPOLA, heightM: 3.2627 },
+  t72b3_zubr_ii: { donor: 't72b3m_2016', pivot: T72B3M_ON_T72B3, roofY: .82, station: T72B3M_CUPOLA, heightM: 3.3227 },
+};
+
+export const NATIONAL_DONOR_TURRET_IDS = Object.freeze(Object.keys(NATIONAL_DONOR_TURRETS));

@@ -78,6 +78,7 @@ assert.deepEqual(SELFTEST_EXCLUSIVE_CPU_FILES, [
   'server/match/tickCost.selftest.mjs',
   'tools/mp-soak.selftest.mjs',
   'server/match/loop.selftest.mjs',
+  'server/match/service.selftest.mjs',
 ]);
 for(const file of SELFTEST_EXCLUSIVE_CPU_FILES)for(const concurrency of [2,4,8])for(const status of [0,7]){
   const isolated=fixture(concurrency);

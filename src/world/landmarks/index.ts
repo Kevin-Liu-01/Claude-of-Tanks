@@ -4,16 +4,22 @@
 import { baileyBridge, liftBridge, stoneArchBridge, trestleBridge, trussBridge, viaduct } from './bridges.ts';
 import { colonialBungalow, tennisCourt } from './colonial.ts';
 import { bengalTemple } from './temples.ts';
-import { church, grainElevator, granary, marketHall, stationHall, townHall } from './civic.ts';
+import { church, granary, marketHall, stationHall, townHall } from './civic.ts';
+import { grainElevator } from './grainElevator.ts';
 import { kolkhozArch, torii, townGate, triumphalArch } from './gates.ts';
 import { columnMonument, equestrianStatue, memorialWall, obelisk, statue } from './monuments.ts';
 import { harbour, lighthouse, mole, quay, slipway } from './harbour.ts';
 import { houseRow, khan, lavoir } from './village.ts';
 import { bandstand, churchyard, fountain, garden, outfall, parkGate, parkSquare, path, piazza, stairway } from './parks.ts';
 import { aircraftWreck } from './wrecks.ts';
-import { airstrip, drumCache, fuelTankFarm, guyedMast, jamesway, moduleTrain, radomeTower, snowFence, troposcatter } from './stations.ts';
-import { conveyor, headframe, oreBin, oreCars } from './mining.ts';
-import { belfry, campanile, fireLookout, valveTower, waterTower, windmill } from './towers.ts';
+import { airstrip, drumCache, guyedMast, jamesway, moduleTrain, radomeTower, snowFence, troposcatter } from './stations.ts';
+import { fuelTankFarm } from './tankFarm.ts';
+import { floodMast } from './airfieldWorks.ts';
+import { oreCars } from './mining.ts';
+import { conveyor, headframe, oreBin } from './mineWorks.ts';
+import { fishRack, hayRack, stabbur } from './fjordWorks.ts';
+import { belfry, campanile, fireLookout, windmill } from './towers.ts';
+import { valveTower, waterTower } from './waterWorks.ts';
 import type { LandmarkBuilder, LandmarkKind } from './types.ts';
 
 export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBuilder>>> = Object.freeze({
@@ -32,7 +38,9 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   drumCache,
   equestrianStatue,
   fireLookout,
+  floodMast,
   fuelTankFarm,
+  fishRack,
   fountain,
   garden,
   grainElevator,
@@ -41,6 +49,7 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   jamesway,
   granary,
   houseRow,
+  hayRack,
   khan,
   kolkhozArch,
   lavoir,
@@ -65,6 +74,7 @@ export const LANDMARK_BUILDERS: Readonly<Partial<Record<LandmarkKind, LandmarkBu
   slipway,
   snowFence,
   stairway,
+  stabbur,
   stationHall,
   stoneArchBridge,
   tennisCourt,

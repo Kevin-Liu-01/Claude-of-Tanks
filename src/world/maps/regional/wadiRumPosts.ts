@@ -145,15 +145,72 @@ function renderFace(parts: THREE.BufferGeometry[], axis: 'x' | 'z', sign: number
   }
 }
 
-/** A door or window in a face: the opening dark on the core, a steel leaf (a door) or bars (a window), a timber lintel
- * proud of the render over it. */
+type V3 = [number, number, number];
+/** The depth of a cut opening's reveal through the stone core, and of the dark room behind it. */
+const REVEAL = 0.3, ROOM = 0.14;
+
+/**
+ * The stone core of a building (w x h x d about the origin, its base at y = 0) with its openings cut through it: each side
+ * face laid round its holes, each hole's reveal through the stone to the dark of the room behind (its back and the
+ * room's walls a hand further in). `holes` per face as renderFace's: u along the other horizontal axis, y up. (The r2
+ * sweep, 2026-10-16: "the openings dark plates on the core" — the core was one box.)
+ */
+function holedCore(w: number, h: number, d: number, holes: ReadonlyArray<{ axis: 'x' | 'z'; sign: number; hole: Hole }>, rng: Rng): THREE.BufferGeometry {
+  const pos: number[] = [], col: number[] = [];
+  const k = 1 + (rng() - 0.5) * 0.06, stone: Rgb = [STONE[0] * k, STONE[1] * k, STONE[2] * k], deep: Rgb = [STONE[0] * k * 0.72, STONE[1] * k * 0.72, STONE[2] * k * 0.72];
+  const quad = (a: V3, b: V3, c: V3, e: V3, colour: Rgb, want: V3) => {
+    const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = e[0] - a[0], vy = e[1] - a[1], vz = e[2] - a[2];
+    const n = [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx];
+    const q = n[0] * want[0] + n[1] * want[1] + n[2] * want[2] >= 0 ? [a, b, c, a, c, e] : [e, c, b, e, b, a];
+    for (const v of q) { pos.push(v[0], v[1], v[2]); col.push(colour[0], colour[1], colour[2]); }
+  };
+  for (const axis of ['x', 'z'] as const) for (const sign of [-1, 1]) {
+    const half = axis === 'x' ? w / 2 : d / 2, len = axis === 'x' ? d : w, n: V3 = axis === 'x' ? [sign, 0, 0] : [0, 0, sign];
+    const P = (u: number, y: number, o = 0): V3 => (axis === 'x' ? [sign * (half - o), y, u] : [u, y, sign * (half - o)]);
+    const own = holes.filter((x) => x.axis === axis && x.sign === sign).map((x) => x.hole);
+    const ys = [...new Set([0, h, ...own.flatMap((x) => [x[2], x[3]])])].sort((a, b) => a - b);
+    for (let r = 0; r + 1 < ys.length; r++) {
+      const y0 = ys[r], y1 = ys[r + 1], my = (y0 + y1) / 2;
+      let a = -len / 2;
+      for (const x of [...own.filter((o) => o[2] <= my && o[3] >= my).sort((p, q) => p[0] - q[0]), [len / 2, len / 2, 0, 0] as const]) {
+        if (x[0] - a > 0.002) quad(P(a, y0), P(x[0], y0), P(x[0], y1), P(a, y1), stone, n);
+        a = x[1];
+      }
+    }
+    for (const [u0, u1, lo, hi] of own) {
+      const o: V3[] = [P(u0, lo), P(u1, lo), P(u1, hi), P(u0, hi)], q: V3[] = [P(u0, lo, REVEAL), P(u1, lo, REVEAL), P(u1, hi, REVEAL), P(u0, hi, REVEAL)];
+      const r: V3[] = [P(u0, lo, REVEAL + ROOM), P(u1, lo, REVEAL + ROOM), P(u1, hi, REVEAL + ROOM), P(u0, hi, REVEAL + ROOM)];
+      const c = P((u0 + u1) / 2, (lo + hi) / 2, REVEAL);
+      for (let e = 0; e < 4; e++) {
+        const f = (e + 1) % 4, m: V3 = [(o[e][0] + o[f][0]) / 2, (o[e][1] + o[f][1]) / 2, (o[e][2] + o[f][2]) / 2], want: V3 = [c[0] - m[0], c[1] - m[1], c[2] - m[2]];
+        quad(o[e], o[f], q[f], q[e], e === 0 ? stone : deep, want);
+        quad(q[e], q[f], r[f], r[e], OPENING, want);
+      }
+      quad(r[0], r[1], r[2], r[3], OPENING, n);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+  g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(col), 3));
+  g.computeVertexNormals();
+  const nr = g.attributes.normal as THREE.BufferAttribute, uv = new Float32Array((pos.length / 3) * 2);
+  for (let i = 0; i < pos.length / 3; i++) {
+    const ax = Math.abs(nr.getX(i)), ay = Math.abs(nr.getY(i)), x = pos[i * 3], y = pos[i * 3 + 1], z = pos[i * 3 + 2];
+    const [a, b] = ay > 0.5 ? [x, z] : ax > 0.5 ? [z, y] : [x, y];
+    uv[i * 2] = a * PLASTER_UV + 0.37 * x; uv[i * 2 + 1] = b * PLASTER_UV + 0.29 * z;
+  }
+  g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+  return g;
+}
+
+/** A door or window in a face: cut through the core (holedCore), a steel leaf (a door) or bars (a window) set back in the
+ * reveal, a timber lintel proud of the render over it. */
 function opening(parts: THREE.BufferGeometry[], axis: 'x' | 'z', sign: number, at: number, hole: Hole, door: Rgb | null, rng: Rng): void {
   const [a, b, lo, hi] = hole, w = b - a, h = hi - lo, u = (a + b) / 2;
   const put = (along: number, up: number, out: number, depth: number, y0: number, colour: Rgb, uc = u) => parts.push(axis === 'x'
     ? block(depth, up, along, at + sign * out, y0, uc, colour, rng, 0.03) : block(along, up, depth, uc, y0, at + sign * out, colour, rng, 0.03));
-  put(w, h, 0.01, 0.02, lo, OPENING);
-  if (door) put(w - 0.08, h - 0.06, 0.025, 0.02, lo, door);
-  else for (const f of [-0.3, 0, 0.3]) put(0.03, h - 0.04, 0.035, 0.03, lo + 0.02, BARS, u + f * w);
+  if (door) put(w - 0.02, h - 0.02, -0.12, 0.04, lo, door);
+  else for (const f of [-0.3, 0, 0.3]) put(0.03, h - 0.02, -0.08, 0.03, lo + 0.01, BARS, u + f * w);
   put(w + 0.36, 0.14, 0.08, 0.16, hi + 0.04, TIMBER);
 }
 
@@ -177,13 +234,13 @@ export function buildRumBarrack(rng: Rng): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
   const door = DOORS[Math.floor(rng() * DOORS.length)];
   parts.push(block(BW + 0.24, 0.85, BD + 0.24, 0, -0.3, 0, STONE, rng, 0.05));
-  parts.push(block(BW, BH, BD, 0, 0, 0, STONE, rng, 0.03));
-  // the front's doors and windows (along z), the back's high windows
+  // the front's doors and windows (along z), the back's high windows, cut through the stone core
   const front: Hole[] = [], back: Hole[] = [];
   for (const [z, isDoor] of [[-3.8, true], [-2.0, false], [0, true], [2.0, false], [3.8, true]] as const) {
     front.push(isDoor ? [z - 0.5, z + 0.5, 0.0, 2.05] : [z - 0.45, z + 0.45, 1.2, 2.0]);
   }
   for (const z of [-3, 0, 3]) back.push([z - 0.35, z + 0.35, 1.95, 2.45]);
+  parts.push(holedCore(BW, BH, BD, [...front.map((hole) => ({ axis: 'x' as const, sign: 1, hole })), ...back.map((hole) => ({ axis: 'x' as const, sign: -1, hole }))], rng));
   // (the side faces' render runs past the corners over the ends' edges)
   renderFace(parts, 'x', 1, BW / 2, -BD / 2 - 0.05, BD / 2 + 0.05, 0.55, BH - 0.18, front, 3, rng);
   renderFace(parts, 'x', -1, -BW / 2, -BD / 2 - 0.05, BD / 2 + 0.05, 0.55, BH - 0.18, back, 3, rng);
@@ -227,9 +284,9 @@ export function buildRumPost(rng: Rng): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
   const door = DOORS[Math.floor(rng() * DOORS.length)];
   parts.push(block(PW + 0.2, 0.8, PD + 0.2, 0, -0.3, 0, STONE, rng, 0.05));
-  parts.push(block(PW, PH, PD, 0, 0, 0, STONE, rng, 0.03));
   const front: Hole[] = [[-1.08, -0.12, 0, 1.95], [0.5, 1.15, 1.35, 1.95]];
   const side: Hole[] = [[-0.98, -0.42, 1.45, 1.95]];
+  parts.push(holedCore(PW, PH, PD, [...front.map((hole) => ({ axis: 'z' as const, sign: 1, hole })), { axis: 'x', sign: 1, hole: side[0] }, { axis: 'x', sign: -1, hole: side[0] }], rng));
   renderFace(parts, 'z', 1, PD / 2, -PW / 2, PW / 2, 0.5, PH - 0.16, front, 1, rng);
   renderFace(parts, 'z', -1, -PD / 2, -PW / 2, PW / 2, 0.5, PH - 0.16, [], 2, rng);
   // (the side faces' render runs past the corners over the ends' edges; a window in each, at the same z)
@@ -283,11 +340,14 @@ export function buildRumShed(rng: Rng): THREE.BufferGeometry {
     r.rotateZ(fall);
     parts.push(r.translate(0.05, frontH + 0.47, z));
   }
-  // the palm-rib roof: ribs laid front to back over the rafters, a hand apart, each a shade of its own
+  // the purlins across the rafters (the r2 standard found the ribs riding the air between rafters running their way)
+  const rafterTop = (x: number) => frontH + 0.54 + (x - 0.05) * Math.tan(fall);
+  for (const x of [-SW / 2 + 1.0, 0, SW / 2 - 0.9]) parts.push(block(0.12, 0.1, SD - 0.2, x, rafterTop(x), 0, TIMBER, rng, 0.06));
+  // the palm-rib roof: ribs laid front to back over the purlins, a hand apart, each a shade of its own
   for (let z = -SD / 2 + 0.1; z <= SD / 2 - 0.1; z += 0.16) {
     const rib = block(SW - 0.2, 0.05, 0.1, 0, -0.025, 0, PALM_RIB, rng, 0.12);
     rib.rotateZ(fall);
-    parts.push(rib.translate(0.1, frontH + 0.6, z));
+    parts.push(rib.translate(0.1, rafterTop(0.1) + 0.125, z));
   }
   // the pool's drums under the roof and its timber box by the back wall
   for (const [x, z, c] of [[-1.6, -3.7, [0.36, 0.44, 0.28]], [-1.0, -3.9, [0.56, 0.3, 0.22]], [-1.5, 3.6, [0.36, 0.44, 0.28]]] as const) {
@@ -297,12 +357,32 @@ export function buildRumShed(rng: Rng): THREE.BufferGeometry {
   return merge(parts.map((g) => dampFoot(g, 0.8)));
 }
 
-/** The shade shelled: the back wall's stumps and its footing, the roof's ribs and timber strewn, the drums down. */
+/**
+ * The shade shelled: the back wall's stumps and its footing, the side walls' stubs, the front beam and its posts down
+ * across the floor, the roof come down in mats of ribs lying over the drums and the box (its whole plan, a heap, not a
+ * raft: the r2 standard), loose ribs and timber strewn, the drums down.
+ */
 export function buildRumShedBroken(rng: Rng): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [block(0.7, 0.5, SD + 0.2, -SW / 2 + 0.25, -0.3, 0, STONE, rng, 0.05)];
   for (let z = -SD / 2 + 0.8; z < SD / 2 - 0.8; z += 2.0) {
     if (rng() < 0.35) continue;
     parts.push(block(0.5, 0.5 + rng() * 1.8, 1.8, -SW / 2 + 0.25, 0, z, rng() < 0.5 ? RENDER : STONE, rng, 0.05));
+  }
+  for (const s of [-1, 1]) parts.push(block(SW * 0.3, 0.6 + rng() * 0.4, 0.4, -SW / 2 + SW * 0.15, 0, s * (SD / 2 - 0.2), STONE, rng, 0.04));
+  // the front beam down along the front, its posts lying out from it
+  const beam = block(0.24, 0.22, SD - 0.6, 0, 0, 0, TIMBER, rng, 0.06);
+  beam.rotateY((rng() - 0.5) * 0.12);
+  parts.push(beam.translate(SW / 2 - 0.9, 0.0, 0));
+  for (let k = 0; k < 4; k++) {
+    const post = block(0.2, 0.2, SH - 0.6, 0, 0, 0, TIMBER, rng, 0.08);
+    post.rotateY(0.3 + rng() * 0.6);
+    parts.push(post.translate(SW / 2 - 1.4 - rng() * 0.4, 0.0, -SD / 2 + 1.2 + k * (SD - 2.4) / 3));
+  }
+  // the roof's mats: the ribs still bound in sheets, lying tipped over what is under them
+  for (let k = 0; k < 5; k++) {
+    const mat = block(SW * (0.36 + rng() * 0.08), 0.06, SD * 0.18, 0, 0, 0, PALM_RIB, rng, 0.12);
+    mat.rotateZ((rng() - 0.5) * 0.5); mat.rotateX((rng() - 0.5) * 0.3); mat.rotateY((rng() - 0.5) * 0.25);
+    parts.push(mat.translate(-SW * 0.16 + (k % 2) * SW * 0.3, 0.5 + rng() * 0.6, -SD / 2 + SD * 0.13 + k * SD * 0.185));
   }
   for (let i = 0; i < 14; i++) {
     const b = block(2 + rng() * 3, 0.08, 0.14, 0, 0, 0, rng() < 0.6 ? PALM_RIB : TIMBER, rng, 0.1);
@@ -310,6 +390,7 @@ export function buildRumShedBroken(rng: Rng): THREE.BufferGeometry {
     parts.push(b.translate((rng() - 0.5) * (SW - 3), 0.05 + rng() * 0.25, (rng() - 0.5) * (SD - 3)));
   }
   parts.push(drum(1.0, 0, -2.0, [0.36, 0.44, 0.28], rng, true), drum(-0.8, 0, 2.6, [0.56, 0.3, 0.22], rng, true));
+  parts.push(drum(-1.6, 0, -3.7, [0.36, 0.44, 0.28], rng), block(2.4, 0.9, 0.7, -SW / 2 + 1.2, 0, 0.8, TIMBER, rng, 0.08));
   return merge(parts.map((g) => dampFoot(g, 0.8)));
 }
 
@@ -445,12 +526,17 @@ function buildBedouinTentBroken(plan: TentPlan, rng: Rng): THREE.BufferGeometry 
   const { w, l } = plan;
   const parts: THREE.BufferGeometry[] = [];
   const bumps = Array.from({ length: 5 }, () => [(rng() - 0.5) * w * 0.7, (rng() - 0.5) * l * 0.7, 0.15 + rng() * 0.35] as const);
+  // (one ridge pole still standing, leaning, the roof hanging from it in a fold: a heap, not a raft — the r2 standard)
+  const pz = (rng() < 0.5 ? -1 : 1) * l * (0.15 + rng() * 0.15), ph = plan.ridge * (0.6 + rng() * 0.1);
   parts.push(sheet((i, j) => {
     const x = -w / 2 + w * i / 6, z = -l / 2 + l * j / 8;
     let y = 0.04;
     for (const [bx, bz, bh] of bumps) y += bh * Math.exp(-((x - bx) ** 2 + (z - bz) ** 2) / 0.9);
-    return [x, Math.min(y, 0.9), z];
+    y = Math.min(y, 0.9);
+    y = Math.max(y, ph * Math.exp(-(x * x) / (0.35 * w) - ((z - pz) ** 2) / (0.25 * l)));
+    return [x, y, z];
   }, 6, 8, (i) => GOAT[i % GOAT.length], rng));
+  parts.push(member([0.05, 0, pz - 0.1], [0, ph - 0.03, pz], 0.08, POLE, rng));
   for (let k = 0; k < plan.poles + 2; k++) {
     const z = (rng() - 0.5) * l * 0.8, x = (rng() - 0.5) * w * 0.6, a = rng() * Math.PI;
     const r = Math.min(0.9 + rng() * 0.5, (w / 2 - Math.abs(x) - 0.08) / Math.max(0.2, Math.abs(Math.cos(a))));

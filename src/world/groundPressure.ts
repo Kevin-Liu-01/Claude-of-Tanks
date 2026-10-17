@@ -17,6 +17,13 @@ import { getDeviceTier } from '../engine/quality.ts';
  */
 export const GROUND_PRESSURE_WINDOW_M = 96;
 export const GROUND_PRESSURE_TEXELS = 256;
+/**
+ * 2026-10-11 (contact round 5, the costland lane; wave 372b, both critics: "no flattened blades at the track edge"): the field
+ * above is 0.375 m a texel, coarser than its own feather (GROUND_PRESSURE_FEATHER_M), so a track's crushed edge blurred away.
+ * The tall grass also keeps a fine near field round the focus — this window over the same GROUND_PRESSURE_TEXELS (9.4 cm a
+ * texel), the same stamps — and reads it inside its window (tallGrass.ts): crisp pressed and splayed blades along the tracks.
+ */
+export const GROUND_PRESSURE_FINE_WINDOW_M = 24;
 /** Spring-back time constant (s): a flattened lane keeps 37 % of its press after this long, 5 % after three. */
 export const GROUND_PRESSURE_RECOVER_S = 20;
 /** The bruise memory (s): crushed blades keep a darker tone about a minute. */

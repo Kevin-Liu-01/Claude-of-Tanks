@@ -7,6 +7,7 @@ import { armorLoft, chassisLoft, sideWall, openTube, turretEquipment, optic, ant
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { weaponAssembly } from './weaponStock.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { hatchParts } from './fieldChest.ts';
 const { box, cylX, cylY, cylZ } = KIT;
 
 function hull(P: TankBuilderPort): void {
@@ -47,8 +48,13 @@ function hull(P: TankBuilderPort): void {
   // Engine left of the driver's tandem access covers (vehicle +X is right).
   deckGrille(P,-.78,1.724,1.01,.71,.78);
   deckGrille(P,-1.23,1.68,.64,.28,1.28);
+  // Owner markup 2026-10-14: the two access covers were bare discs. Each is now a real closed hatch (coaming, lid
+  // with centre plate and stiffeners, hinge to the rear, grab handle, locking lever, seal) seated where the disc's
+  // underside sat; the periscopes ahead of each are unchanged.
   for(const [z,y] of [[1.32,1.74],[2.11,1.55]]) {
-    P.addHatch('hull',cylY(.31,.33,.055,16),.70,y,z);
+    const hatch=hatchParts(.31,!!P.q,-1);
+    for(const g of hatch.lid)P.addHatch('hull',g,.70,y-.0275,z);
+    for(const g of hatch.dark)P.addEquipment('hullDark',g,.70,y-.0275,z);
     for(const dx of [-.18,0,.18]) KIT.periscope(P,'hullDetail',.70+dx,y+.055,z+.26);
   }
   for(const x of [-.63,.65]) {
@@ -89,7 +95,7 @@ function launchers(P: TankBuilderPort): void {
       for(const dx of [-.155,.155])turretEquipment(P,'turretDetail',box(.035,.33,1.19),x+dx,2.43,-1.055);
       for(const dy of [-.17,.17])turretEquipment(P,'turretDetail',box(.345,.032,1.19),x,2.43+dy,-1.055);
       turretEquipment(P,'turretDetail',box(.34,.35,.035),x,2.43,-1.667);
-      // Fleet lane 2026-10-08 (sealed gate: type89_x open px 93 > ledger 15, inverted turretDark px at the canister
+      // Fleet lane 2026-10-08 (sealed gate: type89 open px 93 > ledger 15, inverted turretDark px at the canister
       // mouths): the open canister showed its own back faces between the mouth ring and the recessed cap, and its tube
       // stopped 15 mm short of the ring and the frame, so the mouth read as a hole through the tube wall. The tube now
       // meets the ring (z -0.46), and the mouth's inner wall at the opening's radius faces inward (its winding reversed,

@@ -450,7 +450,8 @@ const KIT_ALBEDO: Readonly<Record<string, RGB>> = {
   dark: [0.10, 0.11, 0.12], glass: [0.16, 0.19, 0.22], straw: [0.70, 0.60, 0.38], structureMetal: [0.40, 0.41, 0.42],
 };
 /** Decor a hamlet past the edge does without (sub-pixel there): gutters and metalwork, curtains, panes, sills and plinth
- * dressing. Its windows (the dark openings) stay, and within KIT_DETAIL_M of the edge its timber framing and brick bands. */
+ * dressing. Its windows (the dark openings) stay, and its timber framing and brick bands: within KIT_DETAIL_M of the
+ * edge whole, past it their coarse faces (the fine joinery dropped). */
 const KIT_DECOR_DROPPED = new Set(['structureMetal', 'curtain', 'glass', 'regionalStone', 'stone']);
 const KIT_DETAIL_M = 170;
 /** The plots the kit builders read (their base builders' footprints, m): [across, along, height]. */
@@ -490,7 +491,11 @@ function addKitBuilding(s: Soup, options: BorderFarmsteadOptions, arch: BorderAr
     for (const geometry of list) {
       const decor = !!geometry.userData.noCollision;
       const base = bucket.replace(/^regional(.)/, (_, c: string) => c.toLowerCase());
-      if (decor && (KIT_DECOR_DROPPED.has(bucket) || KIT_DECOR_DROPPED.has(base) || (!detailed && base !== 'dark'))) { geometry.dispose(); continue; }
+      // (props census #15, Lane C 2026-10-16: past KIT_DETAIL_M "the Fachwerk framing is gone, leaving a blank cream gable")
+      // the far band keeps the decor a long view reads, the parts' coarse faces (a framing member's outward face, a
+      // shutter's, a band's), and leaves the fine joinery
+      const far = !detailed && base !== 'dark' && (geometry.userData.fine === true || geometry.userData.fineNear === true);
+      if (decor && (KIT_DECOR_DROPPED.has(bucket) || KIT_DECOR_DROPPED.has(base) || far)) { geometry.dispose(); continue; }
       kept.push({ bucket: base, geometry });
       if (decor) continue;
       geometry.computeBoundingBox();

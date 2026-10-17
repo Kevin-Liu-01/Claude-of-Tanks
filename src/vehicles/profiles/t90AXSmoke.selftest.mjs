@@ -12,7 +12,7 @@ function hits(root,origin,direction,far) {
 }
 
 for(const quality of ['high','low']) {
-  const tank=createTank('t90a_x',null,{proceduralOnly:true,geometryReceipt:true,quality});
+  const tank=createTank('t90a',null,{proceduralOnly:true,geometryReceipt:true,quality});
   try {
     tank.root.updateMatrixWorld(true);
     const turret=tank.root.getObjectByName('rig_turret');

@@ -1,0 +1,59 @@
+// Owner 2026-10-15 (VEH-19..VEH-22): "adopt its turret to actually use the ztz-99a2 turret", "make the kunlun usee the
+// type 96b turret", "turrets properly based off the t72 b3m 2016, t72 b3". Each listed concept's turret is the donor
+// fleet turret itself, emitted by the donor's own builder: every vertex of the donor's turret casting and of its main
+// gun appears in the concept at the same turret-frame position, the turret rides the listed ring seat, and the combat
+// spec carries the donor turret's own trunnion, barrel, turret plates and turret modules.
+import assert from 'node:assert/strict';
+import { createTank } from './tankFactory.ts';
+import { getSpec } from './specs.ts';
+import { NATIONAL_DONOR_TURRETS } from './nationalDonorTurrets.ts';
+
+const key = (x, y, z) => [x, y, z].map((v) => Math.round(v * 1e4)).join(',');
+function vertexSet(mesh) {
+  const set = new Set(), p = mesh.geometry.attributes.position;
+  for (let i = 0; i < p.count; i++) set.add(key(p.getX(i), p.getY(i), p.getZ(i)));
+  return set;
+}
+function owned(tank, rigName, meshName) {
+  const rig = tank.root.getObjectByName(rigName), mesh = rig?.getObjectByName(meshName);
+  assert(mesh?.isMesh, `${rigName}/${meshName} mesh`);
+  return mesh;
+}
+
+const donors = new Map();
+for (const [id, d] of Object.entries(NATIONAL_DONOR_TURRETS)) {
+  if (!donors.has(d.donor)) {
+    const donor = createTank(d.donor, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 });
+    donors.set(d.donor, { turret: vertexSet(owned(donor, 'rig_turret', 'turret')), gun: vertexSet(owned(donor, 'rig_gun', 'gun')) });
+    donor.dispose();
+  }
+  const { turret, gun } = donors.get(d.donor);
+  const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242 });
+  try {
+    const rig = tank.root.getObjectByName('rig_turret');
+    rig.position.toArray().forEach((v, i) => assert(Math.abs(v - d.pivot[i]) < 1e-6, `${id}: turret rides its listed ring seat`));
+    assert.equal(rig.userData.nationalDonorTurret?.donor, d.donor, `${id}: donor turret receipt`);
+    const concept = vertexSet(owned(tank, 'rig_turret', 'turret'));
+    const missing = [...turret].filter((v) => !concept.has(v));
+    assert.equal(missing.length, 0, `${id}: ${missing.length} of the ${d.donor} turret casting's vertices are missing`);
+    const barrel = vertexSet(owned(tank, 'rig_gun', 'gun'));
+    const lost = [...gun].filter((v) => !barrel.has(v));
+    assert.equal(lost.length, 0, `${id}: ${lost.length} of the ${d.donor} main gun's vertices are missing`);
+    const spec = getSpec(id), donorSpec = getSpec(d.donor);
+    assert.deepEqual(spec.armor.turretPivot, [...d.pivot], `${id}: combat pivot on the ring seat`);
+    assert.deepEqual(spec.armor.gunPivot, donorSpec.armor.gunPivot, `${id}: the donor's trunnion`);
+    assert.deepEqual(spec.armor.gunBarrel, donorSpec.armor.gunBarrel, `${id}: the donor's barrel`);
+    // Authored plates only: the anatomy calibration appends each vehicle's own measured roof structures (cupolas,
+    // hatches: <frame>_<kind>_<nn>_<face>) from its own geometry.
+    const structure = /^turret_[a-z_]+_\d{2}_(front|rear|left|right|top)$/;
+    const names = (plates) => [...new Set(plates.filter((p) => p.kind !== 'era' && !structure.test(p.name)).map((p) => p.name))].sort();
+    assert.deepEqual(names(spec.armor.turretPlates), names(donorSpec.armor.turretPlates), `${id}: the donor turret's plates`);
+    const turretModules = (s) => s.armor.modules.filter((m) => m.turretLocal).map((m) => m.module).sort();
+    assert.deepEqual(turretModules(spec).filter((m) => m !== 'roofGun'), turretModules(donorSpec).filter((m) => m !== 'roofGun'),
+      `${id}: the donor turret's modules`);
+    let stations = 0; tank.root.traverse((o) => { if (o.userData.remoteControlled) stations++; });
+    assert.equal(stations, 1, `${id}: one working roof gun (the donor's commander gun gives way to the concept's station)`);
+  } finally { tank.dispose(); }
+  console.log(`${id}: the ${d.donor} turret and gun, on its ring seat, with the donor's combat turret`);
+}
+console.log('nationalDonorTurrets: seven concepts carry their donor turrets PASS');

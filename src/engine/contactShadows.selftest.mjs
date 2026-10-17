@@ -5,7 +5,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
-  CONTACT_SHADOW_ALPHA_OPAQUE, CONTACT_SHADOW_FADE_M, CONTACT_SHADOW_FAR_M, CONTACT_SHADOW_GLSL, CONTACT_SHADOW_NEAR_M,
+  CONTACT_SHADOW_ALPHA_OPAQUE, CONTACT_SHADOW_FADE_M, CONTACT_SHADOW_GLSL, CONTACT_SHADOW_SEAM_M, CONTACT_SHADOW_MIN_PX,
+  CONTACT_SHADOW_SOFT_RISE, CONTACT_SHADOW_SOFT_FALL, CONTACT_SHADOW_PENUMBRA, CONTACT_SHADOW_CLOUD_MIN, contactShadowSoftHit,
+  contactShadowMarch, contactShadowPenumbraFade,
   CONTACT_SHADOW_RANGE_M, CONTACT_SHADOW_MAX_SCREEN_PX, contactShadowBoundedLength, contactShadowProjectedStep,
   CONTACT_SHADOW_STEPS, CONTACT_SHADOW_STRENGTH, CONTACT_SHADOW_TAIL_FADE, CONTACT_SHADOW_WIDTH_M,
   CONTACT_SHADOW_WIDTH_PER_M, CONTACT_SHADOW_WIDTH_PX, contactShadowMarchLength,
@@ -31,14 +33,12 @@ assert.ok(contactShadowStepParameter(CONTACT_SHADOW_STEPS - 1, 0.999) > 0.999, '
 assert.ok(near(contactShadowStepParameter(0, 0.5), (0.5 / 12) * (0.3 + 0.7 * (0.5 / 12))), 'u = s · (0.3 + 0.7 s)');
 console.log('contactShadows.selftest: step table (jitter 0.5)', contactShadowStepTable(0.5).map((u) => u.toFixed(3)).join(' '));
 
-// 2. march length: 0.55 m near, 1.4 m from 40 m, monotone between
-assert.equal(contactShadowMarchLength(0), CONTACT_SHADOW_NEAR_M);
-assert.equal(contactShadowMarchLength(4), CONTACT_SHADOW_NEAR_M);
-assert.equal(contactShadowMarchLength(40), CONTACT_SHADOW_FAR_M);
-assert.equal(contactShadowMarchLength(80), CONTACT_SHADOW_FAR_M);
-let previous = 0;
-for (let d = 0; d <= 60; d += 1) { const l = contactShadowMarchLength(d); assert.ok(l >= previous); previous = l; }
-assert.ok(near(contactShadowMarchLength(22), (CONTACT_SHADOW_NEAR_M + CONTACT_SHADOW_FAR_M) / 2, 1e-9), 'midpoint of the ramp');
+// 2. march length (contact r6, 2026-10-14; the shadow-quality plan's C5): the cascades' residual seam in metres at every
+// distance (the shadow pass publishes it; High's estimate until then), never the old 0.55-1.4 m screen-space shadow
+for (const d of [0, 4, 22, 40, 80]) assert.equal(contactShadowMarchLength(d), CONTACT_SHADOW_SEAM_M, `the seam at ${d} m`);
+assert.equal(contactShadowMarchLength(10, 0.11), 0.11, 'the published seam');
+assert.ok(CONTACT_SHADOW_SEAM_M >= 0.08 && CONTACT_SHADOW_SEAM_M <= 0.25, 'about a bias and a cascade-0 texel');
+assert.ok(CONTACT_SHADOW_MIN_PX >= 1 && CONTACT_SHADOW_MIN_PX < CONTACT_SHADOW_MAX_SCREEN_PX, 'a pixel floor under the cap');
 
 // Project actual 3D rays independently of the cap equation. Scope FOV, near-plane
 // crossings and sun directions toward/away from the camera must preserve the
@@ -65,9 +65,15 @@ for (const [width, height] of [[640, 360], [1920, 1080], [3840, 2160], [800, 120
           (delta.y - clip.y * delta.w / clip.w) * height / 2);
         const original = contactShadowMarchLength(-start.z);
         const length = contactShadowBoundedLength(original, clip.w, delta.w, slope, camera.near);
-        assert.ok(length >= 0 && length <= original, 'cap cannot extend the authored world ray');
+        const floorDen = slope - CONTACT_SHADOW_MIN_PX * delta.w;
+        const floor = floorDen > 0 ? CONTACT_SHADOW_MIN_PX * clip.w / floorDen : 0;
+        assert.ok(length >= 0 && length <= Math.max(original, floor) + 1e-12, 'only the pixel floor extends the seam');
         const origin = screenAt(0), end = screenAt(length);
         assert.ok(end.distanceTo(origin) <= 8 + 1e-8, 'exact perspective endpoint <= eight pixels');
+        const nearBound = delta.w < 0 ? (clip.w - camera.near) / -delta.w : Infinity;
+        if (floorDen > 0 && nearBound > floor) {
+          assert.ok(end.distanceTo(origin) >= Math.min(CONTACT_SHADOW_MIN_PX, 8) - 1e-6, 'at least the pixel floor on screen');
+        }
         let last = origin, previousDistance = 0;
         for (const u of [...contactShadowStepTable(), 1]) {
           const distance = contactShadowProjectedStep(u, length, clip.w, delta.w);
@@ -88,6 +94,7 @@ assert.equal(contactShadowBoundedLength(1, .05, -1, 100, .1), 0, 'receiver behin
   const project = t => 100 * t / (1 + t);
   assert.ok(project(8 / project(1)) > 8, 'old linear ratio demonstrably overshoots under perspective');
   assert.ok(near(project(contactShadowBoundedLength(1, 1, 1, 100, .1)), 8), 'exact cap reaches eight pixels');
+  assert.ok(near(project(contactShadowBoundedLength(0.001, 1, 1, 100, .1)), CONTACT_SHADOW_MIN_PX), 'a sub-pixel seam reaches the floor');
 }
 
 // 3. range fade: full to 65 m, gone at 90 m
@@ -103,6 +110,40 @@ assert.equal(contactShadowOcclusion(0.2), 1);
 assert.equal(contactShadowOcclusion(CONTACT_SHADOW_TAIL_FADE), 1);
 assert.equal(contactShadowOcclusion(1), 0);
 assert.ok(contactShadowOcclusion(0.8) > 0 && contactShadowOcclusion(0.8) < 1);
+
+// 4b. (contact r6) the soft hit: a rung weighs by how far behind the depth surface it lies in its window — faint where it
+// only grazes (gravel, cobbles: the crawl), whole in the window's body, gone at the thickness (no hard rim at either end)
+{
+  const bias = 0.045, thick = 0.25, span = thick - bias;
+  assert.equal(contactShadowSoftHit(bias, bias, thick), 0, 'at the bias: none');
+  assert.equal(contactShadowSoftHit(thick, bias, thick), 0, 'at the thickness: none');
+  assert.equal(contactShadowSoftHit(bias + 0.5 * span, bias, thick), 1, 'in the body: whole');
+  assert.ok(contactShadowSoftHit(bias + 0.1 * CONTACT_SHADOW_SOFT_RISE * span, bias, thick) < 0.05, 'a graze is faint');
+  let worst = 0, prev = 0;
+  for (let d = bias - 0.01; d <= thick + 0.01; d += span / 400) {
+    const v = contactShadowSoftHit(d, bias, thick); worst = Math.max(worst, Math.abs(v - prev)); prev = v;
+  }
+  assert.ok(worst < 0.03, `continuous across the window (worst step ${worst.toFixed(4)})`);
+  assert.ok(CONTACT_SHADOW_SOFT_RISE + CONTACT_SHADOW_SOFT_FALL < 1, 'a body between the ramps');
+  // the march keeps the strongest rung (its tail fade on it) and stops at a whole one
+  near(contactShadowMarch([[0.1, 0.2], [0.2, 1], [0.3, 0.5]], 0.8), 0.8, 1e-12);
+  assert.equal(contactShadowMarch([[0.1, 0.2], [0.2, 1], [0.3, 0.5]], 0.8), contactShadowMarch([[0.1, 0.2], [0.2, 1]], 0.8), 'stops at a whole rung');
+  near(contactShadowMarch([[0.1, 0.3], [0.9, 0.6]], 1), Math.max(0.3, 0.6 * contactShadowOcclusion(0.9)), 1e-12, 'the tail fades a late rung');
+  assert.equal(contactShadowMarch([], 1), 0);
+}
+
+// 4c. (contact r6) the cascades' penumbra: the term fades inside it only, the cloud's share divided out of the alpha's
+// visibility first (a cloud-shaded pixel the cascades light whole keeps the whole term); main's law under a deep cloud
+{
+  const [p0, p1] = CONTACT_SHADOW_PENUMBRA;
+  assert.equal(contactShadowPenumbraFade(1, 1), 1, 'lit by the cascades, no cloud: whole');
+  assert.equal(contactShadowPenumbraFade(0.4, 0.4), 1, 'under a cloud (0.4), lit by the cascades: whole (main 0.4 read as penumbra)');
+  assert.equal(contactShadowPenumbraFade(p1, 1), 1); assert.equal(contactShadowPenumbraFade(p0, 1), 0);
+  assert.ok(contactShadowPenumbraFade(0.5, 1) > 0.4 && contactShadowPenumbraFade(0.5, 1) < 0.6, 'half in the penumbra: about half');
+  near(contactShadowPenumbraFade(0.25, 0.5), contactShadowPenumbraFade(0.5, 1), 1e-12, 'the cloud divided out');
+  assert.equal(contactShadowPenumbraFade(0.05, CONTACT_SHADOW_CLOUD_MIN - 0.01), 1, 'under a deep cloud: main\'s law');
+  assert.equal(contactShadowPenumbraFade(0.9, 0.5), 1, 'v / cloud clamped at one');
+}
 
 // A shallow triangulated valley must not acquire hard diagonal shadows. Real
 // contacts still work: vertical hull/wall faces, undersides and an elevated roof.
@@ -153,6 +194,26 @@ assert.equal(contactShadowSunShare(0.8, 1, 0, amb, 0.9, 0), 0, 'no sun, no share
   scene.environmentIntensity = 0.3;
   updateContactShadowUniforms(u, camera, scene, true);
   assert.equal(u.uContact.value, 1);
+  // (contact r6) the seam: High's estimate until the shadow pass publishes one; the cloud share off without the map
+  assert.equal(u.uContactSeam.value, CONTACT_SHADOW_SEAM_M);
+  assert.equal(u.uCotCloudShade.value.w, 0, 'no cloud map: the share is one');
+  scene.userData.lightRig.contactSeamM = 0.12;
+  const cloud = { tCotCloudShade: { value: new THREE.Texture() }, uCotCloudShade: { value: new THREE.Vector4(10, 20, 1 / 12000, 1) },
+    uCotCloudSun: { value: new THREE.Vector4(0.3, 0.8, 0.1, 1500) } };
+  scene.userData.cloudShadeUniforms = cloud;
+  updateContactShadowUniforms(u, camera, scene, true);
+  assert.equal(u.uContactSeam.value, 0.12, 'the published seam');
+  assert.equal(u.tCotCloudShade.value, cloud.tCotCloudShade.value, 'the lit materials\' cloud map');
+  assert.deepEqual(u.uCotCloudShade.value.toArray(), [10, 20, 1 / 12000, 1]);
+  assert.deepEqual(u.uCotCloudSun.value.toArray(), cloud.uCotCloudSun.value.toArray());
+  // the QA lever: main's march for an A/B frame (its ramp, the binary hit, no fade)
+  globalThis.__LIGHT_TUNE = { CONTACT_R6: 0 };
+  updateContactShadowUniforms(u, camera, scene, true);
+  assert.ok(u.uContactSeam.value < 0 && u.uContactR6.value === 0, 'the lever restores main\'s march');
+  delete globalThis.__LIGHT_TUNE;
+  delete scene.userData.cloudShadeUniforms; delete scene.userData.lightRig.contactSeamM;
+  updateContactShadowUniforms(u, camera, scene, true);
+  assert.equal(u.uContactR6.value, 1, 'shipped on');
   const c = new THREE.Color(0xfff1dc);
   assert.ok(near(u.uContactSunLum.value, 4.2 * (0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b), 1e-6), 'sun luminance = intensity × colour luma');
   assert.ok(near(u.uContactFillDir.value.length(), 1, 1e-6), 'the fill direction is unit');
@@ -169,8 +230,29 @@ assert.ok(CONTACT_SHADOW_GLSL.includes('float u = s * ( 0.3 + 0.7 * s );'), 'the
 assert.match(CONTACT_SHADOW_GLSL, /float s = \( float\( i \) \+ 0\.5 \) \/ 12\.0000;/, 'stable half-step phase');
 assert.doesNotMatch(CONTACT_SHADOW_GLSL, /gl_FragCoord|float jitter/, 'no screen-space dither streaks');
 assert.match(CONTACT_SHADOW_GLSL, /vec4 c = rayStart \+ rayDir \* rayDistance;/, 'clip vectors reused at every step');
-assert.ok(CONTACT_SHADOW_GLSL.includes(`mix( ${CONTACT_SHADOW_NEAR_M.toFixed(4)}, ${CONTACT_SHADOW_FAR_M.toFixed(4)},`), 'the same length ramp');
-assert.ok(CONTACT_SHADOW_GLSL.includes(`smoothstep( ${CONTACT_SHADOW_TAIL_FADE.toFixed(4)}, 1.0, hit )`), 'the same tail fade');
+// (contact r6) the seam's length with the pixel floor under the cap, the soft hit, the strongest rung, the penumbra fade
+assert.ok(CONTACT_SHADOW_GLSL.includes('uniform float uContactSeam;')
+  && CONTACT_SHADOW_GLSL.includes('float len = uContactSeam >= 0.0 ? uContactSeam : mix( 0.5500, 1.4000, smoothstep( 4.0000, 40.0000, dist ) );'),
+  'the seam (a negative one: main\'s ramp, the QA lever)');
+assert.ok(CONTACT_SHADOW_GLSL.includes('float soft = uContactR6 < 0.5 ? 1.0 :') && CONTACT_SHADOW_GLSL.includes('|| uContactR6 < 0.5 ? 1.0'),
+  'the lever restores the binary hit and drops the fade');
+assert.ok(CONTACT_SHADOW_GLSL.includes(`if ( floorDenominator > 0.0 && uContactSeam >= 0.0 ) len = max( len, ${CONTACT_SHADOW_MIN_PX.toFixed(4)} * rayStart.w / floorDenominator );`)
+  && CONTACT_SHADOW_GLSL.indexOf('len = max( len,') < CONTACT_SHADOW_GLSL.indexOf('len = min( len, ( rayStart.w - uNear )')
+  && CONTACT_SHADOW_GLSL.indexOf('len = min( len, ( rayStart.w - uNear )') < CONTACT_SHADOW_GLSL.indexOf(`len = min( len, ${CONTACT_SHADOW_MAX_SCREEN_PX.toFixed(4)} * rayStart.w / capDenominator );`),
+  'the floor, then the near plane, then the cap');
+assert.equal((CONTACT_SHADOW_GLSL.match(/mix\( 0\.5500, 1\.4000,/g) ?? []).length, 1, 'main\'s metre ramp only behind the lever');
+assert.ok(CONTACT_SHADOW_GLSL.includes(`: smoothstep( bias, bias + ${CONTACT_SHADOW_SOFT_RISE.toFixed(4)} * span, diff )`)
+  && CONTACT_SHADOW_GLSL.includes(`* ( 1.0 - smoothstep( thick - ${CONTACT_SHADOW_SOFT_FALL.toFixed(4)} * span, thick, diff ) );`), 'the soft hit');
+assert.ok(CONTACT_SHADOW_GLSL.includes(`best = max( best, support * soft * ( 1.0 - smoothstep( ${CONTACT_SHADOW_TAIL_FADE.toFixed(4)}, 1.0, u ) ) );`)
+  && CONTACT_SHADOW_GLSL.includes('if ( soft >= 0.99 ) break;') && CONTACT_SHADOW_GLSL.includes('return best;'), 'the strongest rung, the tail fade');
+assert.equal((CONTACT_SHADOW_GLSL.match(/cotNormalAt\( quv, Q \)/g) ?? []).length, 1, 'the occluder confirmed once (cost neutral)');
+assert.ok(CONTACT_SHADOW_GLSL.includes('if ( support < 0.0 ) {'), 'only until one rung confirms');
+assert.ok(CONTACT_SHADOW_GLSL.includes('float cloud = cotCloudSun( P );')
+  && CONTACT_SHADOW_GLSL.includes(`float penumbra = cloud < ${CONTACT_SHADOW_CLOUD_MIN.toFixed(4)} || uContactR6 < 0.5 ? 1.0`)
+  && CONTACT_SHADOW_GLSL.includes(`: smoothstep( ${CONTACT_SHADOW_PENUMBRA[0].toFixed(4)}, ${CONTACT_SHADOW_PENUMBRA[1].toFixed(4)}, clamp( sunVis / cloud, 0.0, 1.0 ) );`)
+  && CONTACT_SHADOW_GLSL.includes('float occ = cotContactOcclusion( P, N, dist ) * penumbra'), 'the penumbra fade, the cloud divided out');
+assert.ok(CONTACT_SHADOW_GLSL.includes('uniform sampler2D tCotCloudShade;') && CONTACT_SHADOW_GLSL.includes('float cotCloudSun( vec3 wp ) {'),
+  'the lit materials\' own cloud lookup (cloudShadeMap.ts)');
 assert.ok(CONTACT_SHADOW_GLSL.includes(`${(CONTACT_SHADOW_RANGE_M - CONTACT_SHADOW_FADE_M).toFixed(4)}, ${CONTACT_SHADOW_RANGE_M.toFixed(4)}, dist`), 'the same range fade');
 assert.ok(CONTACT_SHADOW_GLSL.includes(`occ * share * ${CONTACT_SHADOW_STRENGTH.toFixed(4)}`), 'the strength');
 assert.match(CONTACT_SHADOW_GLSL, /float share = T \/ \( T \+ amb \);/, 'T / (T + A)');
@@ -204,8 +286,12 @@ assert.match(post, /updateContactShadowUniforms\(aerial\.uniforms, camera, scene
 
 const lighting = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
 assert.match(lighting, /#define COT_SUN_VIS_CAPTURED 1\nfloat cotSunVis = 1\.0;/, 'the capture marks itself for the alpha write');
-assert.match(lighting, /#if defined\( COT_SUN_VIS_CAPTURED \) && defined\( OPAQUE \) && defined\( USE_CSM \)\ngl_FragColor\.a = 2\.0 \+ cotSunVis;\n#endif/,
+// (2026-10-14, contact r2) the terrain alone (COT_SNOW_COVER) writes a snowy pixel's visibility in the snow band between the lit
+// band and the vehicles' (sceneAlpha.ts, pinned by sceneAlpha.selftest); every other material writes 2 + v as before
+assert.match(lighting, /#if defined\( COT_SUN_VIS_CAPTURED \) && defined\( OPAQUE \) && defined\( USE_CSM \)\n#ifdef COT_SNOW_COVER\n[\s\S]*?\n#else\ngl_FragColor\.a = 2\.0 \+ cotSunVis;\n#endif\n#endif/,
   'opaque CSM pixels write two plus their sun visibility into alpha (cards, water and glass stay below 1.5)');
+assert.ok(near(contactShadowSunVisibility(3.05 + 2 * 0.15 + 0.4 * 0.14), 0.4) && contactShadowSunVisibility(3.05) === 0,
+  'decode: a snowy terrain pixel\'s visibility in the snow band');
 assert.equal(contactShadowSunVisibility(2.0), 0, 'decode: an opaque pixel in cascade shadow');
 assert.equal(contactShadowSunVisibility(3.0), 1, 'decode: a sunlit opaque pixel');
 assert.ok(near(contactShadowSunVisibility(2.4), 0.4), 'decode: a penumbra pixel');
@@ -223,4 +309,4 @@ assert.doesNotMatch(renderer, /alpha:\s*true/, 'the canvas stays opaque: the alp
 const chunk = readFileSync(new URL('../../node_modules/three/src/renderers/shaders/ShaderChunk/opaque_fragment.glsl.js', import.meta.url), 'utf8');
 assert.ok(chunk.includes('gl_FragColor = vec4( outgoingLight, diffuseColor.a );'), 'the pinned Three chunk still writes alpha here');
 
-console.log('contactShadows.selftest: step table, length ramp, range fade, occlusion, sun share, uniforms, GLSL contract and the alpha carrier pinned');
+console.log('contactShadows.selftest: step table, the seam length with its pixel floor (contact r6), range fade, occlusion, the soft hit and the strongest rung, the penumbra fade with the cloud divided out, sun share, uniforms, GLSL contract and the alpha carrier pinned');

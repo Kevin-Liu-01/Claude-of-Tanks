@@ -4,17 +4,17 @@ import type { FleetTankSpec } from './specContracts.ts';
 import { fitArmorToDims } from './specs.ts';
 
 export const VEHICLE_SIZE_FACTORS: Readonly<Record<string, number>> = Object.freeze({
-  object695_x: .90, bmp3m_dragun125_x: .90, kurganets25_x: .90,
-  t90a_vladimir: 1.05, t90m: 1.05, t90sm: 1.05, bmpt_t90: 1.05,
-  t90: 1.05, t90a_burlak: 1.05, t90m_proryv: 1.05, t90ms: 1.05,
-  k21_x: .90, kf41_lynx_x: .90, type100: .90, lrmv_lynx: .90,
-  borsuk: .90, ajax_x: .90, ares_apc_x: .90, griffin50_x: .90,
-  griffin_viper: .90, challenger1_x: 1.10, upior: 1.10,
+  object695: .90, bmp3m_dragun125: .90, kurganets25: .90,
+  t90a_2006: 1.05, t90am: 1.05, t90sm_2013: 1.05, bmpt_t90: 1.05,
+  t90_1992: 1.05, t90a_burlak_proto: 1.05, t90m_proryv: 1.05, t90ms_2011: 1.05,
+  k21: .90, kf41_lynx: .90, type100: .90, lrmv_lynx: .90,
+  borsuk: .90, ajax: .90, ares_apc: .90, griffin50mm: .90,
+  griffin_viper: .90, challenger1_mk3: 1.10, upior: 1.10,
 });
 /** Additional longitudinal chassis change, before the uniform installed scale.
  * Turret-local armor, weapon stations and ring position retain their dimensions. */
 export const VEHICLE_HULL_LENGTH_FACTORS: Readonly<Record<string, number>> = Object.freeze({
-  t90m: 1.10, t90m_proryv: 1.10,
+  t90am: 1.10, t90m_proryv: 1.10,
 });
 function extendHullMetadata(spec: FleetTankSpec, factor: number): void {
   const oldLength = spec.dims.hullLengthM;

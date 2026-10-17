@@ -62,7 +62,8 @@ export function buildOplotModern(P:TankBuilderPort):void {
   // barrel with its conical flash hider and gas tube, and the box and belt on the outboard side. The mount's drive
   // housing stands on the ring's inboard rim and carries the remote sight's window (the optics module).
   const ringTopY=.8735;
-  const kt=FITTINGS.pintleMG({mats:P.mats,cls:'nsvt',tone:'dark',scale:1,ammo:true,shield:false,remoteWeapon:true,
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the KT-12.7 is the working remote station
+  const kt=FITTINGS.pintleMG({mats:P.mats,cls:'nsvt',tone:'dark',scale:1,ammo:true,shield:false,remoteControlled:true,
     feed:'left',datumBarrel:false,seed:8484});
   kt.name='t84CommanderKt127';
   kt.position.set(.52,ringTopY-.004,-.80);
@@ -78,5 +79,5 @@ export function buildOplotModern(P:TankBuilderPort):void {
   addVehicleGhillieSuit(P);
   P.decal('turret','number','084',.24,[1.49,.34,-.94],Math.PI/2);
   P.topY=1.62;
-  P.turretG.userData.oplotRebuild={donorHull:'t72b3m_x',revision:'angular-20261002',gunOpeningM:.80};
+  P.turretG.userData.oplotRebuild={donorHull:'t72b3m_2016',revision:'angular-20261002',gunOpeningM:.80};
 }

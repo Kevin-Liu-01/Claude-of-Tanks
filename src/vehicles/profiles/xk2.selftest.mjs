@@ -26,8 +26,8 @@ function receivingClearance(tank,yaw){
   } finally {hull.material.side=original[0];shell.material.side=original[1];}
 }
 for(const quality of ['high','low']){
-  const tank=createTank('k2',null,{...options,quality});
-  const donor=createTank('k1a1_x',null,{...options,quality});
+  const tank=createTank('xk2_black_panther',null,{...options,quality});
+  const donor=createTank('k1a1',null,{...options,quality});
   try {
     tank.root.updateMatrixWorld(true);donor.root.updateMatrixWorld(true);
     assert.deepEqual(turretStock(tank),turretStock(donor),`${quality}: complete donor turret, gun and fittings preserved`);
@@ -35,7 +35,11 @@ for(const quality of ['high','low']){
     assert.deepEqual(turret.position.toArray(),D.turretPivot);
     assert.deepEqual(gun.position.toArray(),D.gunPivot);
     assert.equal(tank.root.getObjectByName('gearRoadWheelDiscs').count,12,'retain six original road wheels per side');
-    const bounds=new T.Box3().setFromObject(tank.root);
+    // 2026-10-16 (226 gate): VEH-13's seat solver racks the rear spare links on the rear plate (TRACK-DECOR 01c0c9b1c,
+    // spareTrackSeatPlan.ts; the spare-track ledger reads it OK, carried on its rack), 16 cm proud of the hull: the
+    // envelope is the hull's, measured without that one fitting
+    const bounds=new T.Box3(),part=new T.Box3();
+    tank.root.traverse(o=>{if(!o.isMesh||/^fitting_spareTrackLinks/.test(o.name))return;part.setFromObject(o);if(!part.isEmpty())bounds.union(part);});
     assert(Math.abs(bounds.min.z+3.769)<1e-5,'original rear hull envelope');
     assert(Math.abs(bounds.max.y-D.tallestM)<1e-5,'complete donor roof equipment');
     for(const yaw of [0,Math.PI/2,Math.PI,3*Math.PI/2])receivingClearance(tank,yaw);
@@ -48,15 +52,15 @@ for(const quality of ['high','low']){
   } finally {tank.dispose();donor.dispose();}
 }
 const productionFrame=()=>{
-  const spec=getSpec('k2_x');
+  const spec=getSpec('k2_black_panther');
   return structuredClone({dims:spec.dims,ring:spec.armor.turretPivot,
     gun:spec.armor.gunPivot,barrel:spec.armor.gunBarrel,weapon:spec.gun,
     traverse:spec.turretTraverseDegS,pitchSpeed:spec.gunPitchDegS});
 };
-assert.deepEqual(getSpec('k2').gun,{...structuredClone(getSpec('k1a1_x').gun),reloadS:6.5},
+assert.deepEqual(getSpec('xk2_black_panther').gun,{...structuredClone(getSpec('k1a1').gun),reloadS:6.5},
   'the hybrid carries the K1A1 gun/ammunition with its prototype loading cycle');
-assert.equal(getSpec('k2_x').gun.reloadS,5.7,'production K2 keeps its original loading cycle');
-assert.equal(getSpec('k2_x').gun.shells[0].name,'K279 APFSDS','production K2 keeps its ammunition');
+assert.equal(getSpec('k2_black_panther').gun.reloadS,5.7,'production K2 keeps its original loading cycle');
+assert.equal(getSpec('k2_black_panther').gun.shells[0].name,'K279 APFSDS','production K2 keeps its ammunition');
 const production=productionFrame();
 await import('../fleetFactory.ts');
 synchronizeSourceXCombatMetadata();

@@ -323,7 +323,10 @@ const constraintFactory = new Function('fixture', `
     // 0e5fc79e2: a dry viaduct (T.bridges, Aegis Crossing) cuts shoulder noise flush with its deck; none authored here
     T = {}, bridgeDeckOver = () => null,
     // (2026-10-07, the map-revival lane: a styled path's crowned bank, RoadPathStyle.crownLiftM) this fixture lifts none
-    gRoadLift = null, gRoadCrest = null } = fixture;
+    gRoadLift = null, gRoadCrest = null,
+    // the map-revival lane (2026-10-08, Skybridge round 6): the lakes a point can reach (lakeCandidateIndex.ts); no lakes
+    // are authored here, so every point reads the plain loop (null)
+    lakesNear = () => null } = fixture;
   ${stripTypeScriptTypes(constraintSource)}
   return applyHeightConstraints;
 `);

@@ -103,7 +103,7 @@ for (const id of SOURCE_X_IDS) for (const quality of ['high','low']) {
       assert.ok(mark.userData.maximumSurfaceErrorM <= SURFACE_MARKING_STYLE.visibilityToleranceM,
         `${label}: no decal bridging across absent or bent armor`);
     }
-    if (id === 't90sm_x') {
+    if (id === 't90sm') {
       const box = tank.root.getObjectByName('turretPermanentMarkingSurface');
       assert.ok(box?.isMesh, 'fixed ammunition bustle provides paint surface');
       const size = new THREE.Box3().setFromObject(box).getSize(new THREE.Vector3());
@@ -111,7 +111,7 @@ for (const id of SOURCE_X_IDS) for (const quality of ['high','low']) {
         'actual source-sized existing equipment, not an invented marking patch');
       if(quality==='high')assert.ok(marks.some(mark => mark.userData.surfaceMesh === box.name), 'paint actually seated on fixed bustle');
     }
-    if (id === 't90m_x') {
+    if (id === 't90m') {
       const box=tank.root.getObjectByName('turretPermanentMarkingSurface');
       assert.ok(box?.isMesh,'existing fixed left stowage box is a permanent paint surface');
       const size=new THREE.Box3().setFromObject(box).getSize(new THREE.Vector3());
@@ -122,9 +122,9 @@ for (const id of SOURCE_X_IDS) for (const quality of ['high','low']) {
     }
     assertPhysicalSupport(tank,footprints,label,'before damage');
     const supports=assertSpentSupport(tank, footprints, label);
-    if(id==='t90m_x'||id==='t90sm_x')assert.ok(supports.has('turretPermanentMarkingSurface'),
+    if(id==='t90m'||id==='t90sm')assert.ok(supports.has('turretPermanentMarkingSurface'),
       `${label}: actual high/low paint buffers remain supported by the existing fixed box`);
-    const permanent={t14_x:'turret',kf51_x:'turret',leo2a6m_x:'hull'}[id];
+    const permanent={t14_armata:'turret',kf51_panther:'turret',leo2a6m:'hull'}[id];
     if(permanent)assert.deepEqual([...supports],[permanent],
       `${label}: both complete footprints stay on the intended permanent source armor`);
   } finally { tank.dispose(); }

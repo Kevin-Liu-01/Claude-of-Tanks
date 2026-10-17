@@ -10,6 +10,7 @@ import {markFixedPaintedPanel} from './fixedPaintedPanel.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube} from './measuredPrimitives.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import {T72BU_X_SOURCE_DATUMS} from '../t72buXArmor.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
@@ -219,7 +220,9 @@ function machineGun(P:TankBuilderPort):void{
   mg.add('turretDetail',box(.07286,.14285,1.19466),-.6096,2.67241,.86528);
   mg.add('turretDark',cylZ(.0199,.65654,20),-.60653,2.68942,1.85594);
   mg.add('turretDetail',box(.10463,.02406,.31138),-.60938,2.74389,.66017);
-  mg.add('turretDark',box(.02651,.03249,.15),-.60615,2.64089,1.59225);mg.finish();
+  mg.add('turretDark',box(.02651,.03249,.15),-.60615,2.64089,1.59225);
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+  stationFromDrawnGun(mg.finish(),{name:'t72buXRoofNsvt',caliberMm:12.7});
 }
 function mainGun(P:TankBuilderPort):void{
   const muzzle=T72BU_X_DATUMS.muzzleZ,floor=T72BU_X_DATUMS.boreFloorZ;
@@ -253,4 +256,4 @@ export function buildT72BUX(P:TankBuilderPort):void{buildT72BURecipe(P,true);}
 /** Owner-selected donor for Pendekar: exact tub, crown fenders, complete
  * running gear, deck/rear furniture, cast turret and articulated main gun. */
 export function buildT72BUXCore(P:TankBuilderPort):void{buildT72BURecipe(P,false);}
-export const T72BU_X_PROFILES={t72bu_x:{build:buildT72BUX}} as const;
+export const T72BU_X_PROFILES={t72bu:{build:buildT72BUX}} as const;

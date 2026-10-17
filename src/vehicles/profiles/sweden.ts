@@ -13,6 +13,7 @@ import { buildLeo2A5 } from './leopard.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mount } from './fittingMount.ts';
+import { withSeatRole } from '../spareTrackSeat.ts';
 
 type Vec3Tuple = [number, number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';
@@ -144,9 +145,10 @@ function addStrv103BOraclePackage(P: SwedishBuilderPort): void {
   // supplied 103B roof without creating a fake articulating turret.
   P.add('hull', cylY(0.24, 0.26, 0.075, 16), 0.38, 1.96, -0.26);
   P.add('hullDark', KIT.torus(0.235, 0.014, 16), 0.38, 2.01, -0.26);
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the commander's Ksp 58, hull-owned)
   mount(P, 'hull', FITTINGS.pintleMG({
     mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.78,
-    elev: 0.07, shield: true, ammo: true, seed: 10320,
+    elev: 0.07, shield: true, ammo: true, seed: 10320, working: true,
   }), 0.38, 1.98, -0.26, [0, 0.04, 0]);
   P.add('hull', box(0.32, 0.25, 0.28), -0.45, 1.96, -0.22);
   P.add('hullGlass', box(0.18, 0.095, 0.022), -0.45, 1.98, -0.06);
@@ -210,9 +212,10 @@ function addStrv81Package(P: SwedishBuilderPort): void {
   P.add('turretDark', KIT.torus(0.26, 0.014, 18), -0.47, 0.98, -0.52);
   // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the cupola and its vision blocks
   // (feed-side collision census).
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the commander's Ksp 58)
   mount(P, 'turret', FITTINGS.pintleMG({
     mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.80,
-    elev: 0.08, shield: true, ammo: true, seed: 8120, feed: 'right',
+    elev: 0.08, shield: true, ammo: true, seed: 8120, feed: 'right', working: true,
   }), -0.47, 0.94, -0.52, [0, -0.05, 0]);
   P.add('turret', box(0.34, 0.09, 0.32), 0.47, 0.91, -0.36);
   P.add('turretDetail', cylY(0.12, 0.14, 0.25, 14), 0.47, 1.06, -0.36);
@@ -266,7 +269,7 @@ function addStrv81Package(P: SwedishBuilderPort): void {
 
 function buildStrv81(P: SwedishBuilderPort): void {
   // one roof gun: the package's cupola Ksp 58, not the Mk.3's low-stowed MAG as well (the owner's field standard)
-  centurionBuild(P, 3, { stowedLoaderMag: false });
+  centurionBuild(P, 3);
   addStrv81Package(P);
   // The oracle has a squat cast fighting compartment. Scale the complete
   // turret-owned assembly about its ring, then cancel that scale on the gun
@@ -348,15 +351,12 @@ function addStrv122Package(P: SwedishBuilderPort): void {
     P.add('turretDark', box(0.025, 0.025, 0.22), side * 1.02, 0.81, -0.24);
   }
 
-  // Commander panorama and forward shielded Ksp 58 on broad roof shoes.
+  // Commander panorama on its broad roof shoe. VH.14 (coordinator ruling 2026-10-14: roof weapons match the real
+  // vehicle and every drawn gun works): the Strv 121's one roof gun is the loader's Ksp on his hatch ring, a working
+  // station; the second shielded Ksp 58 here is gone.
   P.add('turret', box(0.38, 0.08, 0.38), -0.58, 0.96, -0.62);
   P.add('turretDetail', cylY(0.14, 0.17, 0.32, 16), -0.58, 1.15, -0.62);
   P.add('turretGlass', box(0.21, 0.10, 0.024), -0.58, 1.16, -0.43);
-  mount(P, 'turret', FITTINGS.pintleMG({
-    mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.84,
-    elev: 0.10, shield: true, ammo: true,
-    ring: { r: 0.17, stubs: 3 }, seed: 12220,
-  }), 0.52, 0.96, -0.50, [0, 0.06, 0]);
   addSwedishRadioPair(P, 'turret', 0.73, -2.18, 12230);
 
   // Connected rear basket/slat complex. Every rail meets a post, and the
@@ -433,7 +433,8 @@ function loftRows(
   }
 }
 
-// Fixed hull-bucket gun run, sections muzzle->rear ({ z0, z1, r, r2?, dark? }).
+// Fixed hull-frame gun run, sections muzzle->rear ({ z0, z1, r, r2?, dark? }). VEH-13: its own `hullGun` buckets
+// (same materials and armour role as `hull`), so the spare-link seat solver reads it as the gun.
 function fixedGunRun(
   P: SwedishBuilderPort,
   axisY: number,
@@ -441,7 +442,7 @@ function fixedGunRun(
 ): void {
   for (const s of sections) {
     const len = s.z0 - s.z1;
-    P.add(s.dark ? 'hullDark' : 'hull', KIT.cylZ(s.r, len, P.q ? 18 : 12, s.r2),
+    P.add(s.dark ? 'hullGunDark' : 'hullGun', KIT.cylZ(s.r, len, P.q ? 18 : 12, s.r2),
       0, axisY + (s.dy || 0), s.z1 + len / 2);
   }
 }
@@ -521,8 +522,8 @@ function buildUdes03(P: SwedishBuilderPort): void {
     { z0: 3.02, z1: 1.92, r: 0.090 },
     { z0: 1.92, z1: 0.72, r: 0.104, r2: 0.130 },
   ]);
-  P.add('hull', KIT.xform(cylZ(0.132, 0.52, 18, 0.16), 0, 0, 0, -0.13), 0, 1.43, 0.88);
-  P.add('hullDark', KIT.xform(torus(0.145, 0.024, 16), 0, 0, 0, Math.PI / 2, 0, 0),
+  P.add('hullGun', KIT.xform(cylZ(0.132, 0.52, 18, 0.16), 0, 0, 0, -0.13), 0, 1.43, 0.88);
+  P.add('hullGunDark', KIT.xform(torus(0.145, 0.024, 16), 0, 0, 0, Math.PI / 2, 0, 0),
     0, 1.43, 1.16, -0.13, 0, 0);
   P.add('hullDark', box(0.48, 0.050, 0.16), 0, 1.38, 1.48, -0.13, 0, 0);
   P.turretG.position.set(0, 1.43, 0.40);
@@ -532,14 +533,16 @@ function buildUdes03(P: SwedishBuilderPort): void {
   // Glacis louvres and splash rail follow the actual roof slope. Alternating
   // ribs stay in merged buckets, preserving one draw call per material.
   const glY = (z: number): number => 1.52 - (z - 1.30) * 0.22;
-  for (const side of [-1, 1]) {
-    P.add('hullDark', box(0.62, 0.022, 0.86), side * 0.52, glY(1.82), 1.82, -0.22, 0, 0);
-    for (let i = 0; i < 7; i++) {
-      const z = 1.48 + i * 0.145;
-      P.add('hullDetail', box(0.59, 0.030, 0.042), side * 0.52, glY(z) + 0.026, z,
-        -0.22, 0, 0);
+  withSeatRole(P, 'grille', (P) => {
+    for (const side of [-1, 1]) {
+      P.add('hullDark', box(0.62, 0.022, 0.86), side * 0.52, glY(1.82), 1.82, -0.22, 0, 0);
+      for (let i = 0; i < 7; i++) {
+        const z = 1.48 + i * 0.145;
+        P.add('hullDetail', box(0.59, 0.030, 0.042), side * 0.52, glY(z) + 0.026, z,
+          -0.22, 0, 0);
+      }
     }
-  }
+  });
   P.add('hullDetail', box(1.90, 0.045, 0.05), 0, glY(2.42) + 0.02, 2.42, -0.22, 0, 0);
 
   // Weld seams break up the large facets without turning the glacis into ERA.
@@ -554,20 +557,23 @@ function buildUdes03(P: SwedishBuilderPort): void {
   P.add('hullDark', torus(0.31, 0.016, 18), -0.63, 1.69, -0.10);
   P.add('hull', box(0.60, 0.08, 0.46), 0.35, 1.65, -0.24, 0, -0.08, 0);
   P.add('hullDark', box(0.50, 0.018, 0.36), 0.35, 1.70, -0.24, 0, -0.08, 0);
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (hull-owned)
   mount(P, 'hull', FITTINGS.pintleMG({
     mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.64,
-    elev: 0.05, shield: false, ammo: true, seed: 302,
+    elev: 0.05, shield: false, ammo: true, seed: 302, working: true,
   }), 0.38, 1.70, -0.28, [0, -0.05, 0]);
   P.addEquipment('hull', box(0.24, 0.18, 0.27), 0.64, 1.72, -0.54);
   P.add('hullGlass', box(0.14, 0.07, 0.018), 0.64, 1.75, -0.39);
   periscope(P, 'hullDetail', -0.20, 1.62, 0.36);
   periscope(P, 'hullDetail', 0.18, 1.62, 0.30);
   for (const side of [-1, 1]) {
-    P.add('hullDark', box(0.94, 0.025, 0.74), side * 0.49, 1.63, -1.74);
-    for (let i = 0; i < 7; i++) {
-      P.add('hullDetail', box(0.86, 0.028, 0.035), side * 0.49, 1.65,
-        -2.02 + i * 0.105);
-    }
+    withSeatRole(P, 'grille', (P) => {
+      P.add('hullDark', box(0.94, 0.025, 0.74), side * 0.49, 1.63, -1.74);
+      for (let i = 0; i < 7; i++) {
+        P.add('hullDetail', box(0.86, 0.028, 0.035), side * 0.49, 1.65,
+          -2.02 + i * 0.105);
+      }
+    });
     mount(P, 'hull', FITTINGS.lightCluster({ nightKind: 'headlight',
       mats: P.mats, pods: 1, spacing: 0.12, r: 0.050,
       shield: true, seed: 300 + (side > 0 ? 1 : 0),
@@ -637,7 +643,11 @@ function buildUdes03(P: SwedishBuilderPort): void {
  * and angled blades fill the opening, each leaning forward over the next so the bank reads as slatted, not flat.
  * The plane passes through (x, y, z) and descends toward +z at `pitch` radians; everything is placed in its frame.
  */
-function addStrv103ALouvreBank(P: SwedishBuilderPort, o: { x: number; y: number; z: number; pitch: number; width: number;
+function addStrv103ALouvreBank(P0: SwedishBuilderPort, o: { x: number; y: number; z: number; pitch: number; width: number;
+  length: number; blades: number }): void {
+  withSeatRole(P0, 'grille', (P) => addStrv103ALouvreParts(P, o));
+}
+function addStrv103ALouvreParts(P: SwedishBuilderPort, o: { x: number; y: number; z: number; pitch: number; width: number;
   length: number; blades: number }): void {
   const { box } = KIT;
   const c = Math.cos(o.pitch), sn = Math.sin(o.pitch);
@@ -761,7 +771,7 @@ function buildStrv103A(P: SwedishBuilderPort): void {
     { z0: 3.55, z1: 2.30, r: 0.098 },                        // mid step
     { z0: 2.30, z1: 1.10, r: 0.106, r2: 0.125 },             // rear taper to the glacis
   ]);
-  P.add('hull', KIT.xform(cylZ(0.115, 0.46, 12, 0.135), 0, 0, 0, -0.34), 0, 1.55, 1.18); // glacis exit sleeve
+  P.add('hullGun', KIT.xform(cylZ(0.115, 0.46, 12, 0.135), 0, 0, 0, -0.34), 0, 1.55, 1.18); // glacis exit sleeve
   // travel clamp on the beak: two planted cheek posts + top yoke band
   for (const s of [-1, 1]) P.add('hullDetail', box(0.05, 0.24, 0.06), s * 0.13, 1.50, 2.96);
   P.add('hullDetail', box(0.34, 0.05, 0.08), 0, 1.65, 2.96);
@@ -820,9 +830,10 @@ function buildStrv103A(P: SwedishBuilderPort): void {
   // 2026-10-08 (tank-accessories round 5; wave 256 on the Strv 103A: "a plain dark rod through a box between two slotted
   // plates, with no receiver detail, feed tray, belt, ammunition box or muzzle device"): the shield's leaves stand
   // 0.14 m (the low shield), so the receiver's feed cover, the can on the gun's left and its belt read over them.
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (hull-owned)
   mount(P, 'hull', FITTINGS.pintleMG({
     mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 1.0,
-    elev: 0.04, shield: 'low', ammo: true, seed: 10430,
+    elev: 0.04, shield: 'low', ammo: true, seed: 10430, working: true,
   }), 0.40, 1.999, -0.24, [0, 0.05, 0]);                                      // commander Ksp 58 on the cupola race
   P.add('hull', sph(0.155, 14, Math.PI / 2), -0.52, 1.87, -0.30);             // fixed observation dome (left)
   P.add('hullDark', torus(0.14, 0.012, 12), -0.52, 1.925, -0.30);
@@ -918,8 +929,8 @@ function buildStrv103A(P: SwedishBuilderPort): void {
 
 export const SWEDEN_PROFILES = {
   udes03: { build: buildUdes03 },
-  strv103: { build: buildStrv103B },
+  strv103b: { build: buildStrv103B },
   strv103a: { build: buildStrv103A },
   strv81: { build: buildStrv81 },
-  strv122: { build: buildStrv122 },
+  strv121: { build: buildStrv122 },
 } satisfies VehicleProfileRecord;

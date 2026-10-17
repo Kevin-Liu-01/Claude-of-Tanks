@@ -31,6 +31,12 @@ const EXTREME = ['ruinspires', 'blackglass', 'titan_gorge', 'skybridge'];
 const LEGACY = ['verdant', 'desert', 'winter', 'urban',
   'coastal', 'autumn', 'steppe', 'railyard'];
 const CLUTTER_FAMILIES = ['barrier', 'roadsign', 'cone', 'transformer', 'cablespool'];
+// (2026-10-07, the map-revival lane; the coordinator after gauntlet waves 184 and 204): a map set in its period leaves out
+// the families that period never saw — Tarkhan Steppe is a Virgin Lands sovkhoz of the 1950s (its mix is Glacier Pass's
+// and Nordhavn's: cable reels and direction signs)
+const PERIOD_FREE_CLUTTER = Object.freeze({
+  steppe: ['barrier', 'cone', 'transformer'],
+});
 const LAYERED_TREELINES = new Map([
   ['cliffbridge', 2], ['verdant', 2], ['coastal', 2], ['autumn', 2],
   ['frontier', 3], ['delta', 3], ['monsoon', 3],
@@ -222,7 +228,7 @@ for (const mapId of MAP_IDS) {
 assert.deepEqual(getMapConfig('frontier').props.tankWrecks.ids, ['m60a3', 'm1a1', 'leo1a5', 'marder1a3', 't80b', 'bmp2'],
   'the Fulda Gap in the 1980s: NATO and Soviet armour of the decade');
 assert.deepEqual(getMapConfig('ruinspires').props.tankWrecks.ids, ['t72m1_jaguar', 'type59', 'bmp2'], 'Sarajevo, 1992-96');
-assert.deepEqual(getMapConfig('airfield').props.tankWrecks.ids, ['t72b3_x', 't80bv', 'bmp2', 'ua_t64bv'], 'Hostomel, 2022');
+assert.deepEqual(getMapConfig('airfield').props.tankWrecks.ids, ['t72b3', 't80bv', 'bmp2', 't64bv_donbas'], 'Hostomel, 2022');
 assert.deepEqual(getMapConfig('verdant').props.tankWrecks.ids, ['kv2'], 'Kursk, 1943: the KV-2');
 assert.ok(battlefieldWrecks.size >= 20, `the period casts still bring a broad variety of hulks (${battlefieldWrecks.size} types)`);
 
@@ -458,6 +464,10 @@ for (const mapId of LEGACY) {
   const clutter = config.props.inhabit.modernClutter;
   assert.equal(typeof clutter, 'object', `${mapId}: authored modern-clutter mix`);
   for (const kind of CLUTTER_FAMILIES) {
+    if (PERIOD_FREE_CLUTTER[mapId]?.includes(kind)) {
+      assert.equal(clutter[kind] ?? 0, 0, `${mapId}: no ${kind} in its period`);
+      continue;
+    }
     assert.ok(clutter[kind] >= 3, `${mapId}: ${kind} family backported`);
   }
 }

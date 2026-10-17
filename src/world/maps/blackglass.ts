@@ -47,6 +47,29 @@ const CREEK = createMarshChannel(CREEK_STATIONS, 0.5).map((station) => ({ ...sta
   return r === station.r ? station : { ...station, r };
 });
 
+/**
+ * The lilong lanes on the district's empty lots (round 2, wave 149: "a thin scatter of towers and red-brick, red-tile
+ * European houses on bare dirt lots" where the bar is "dense grey-brick lilong"): blocks of three shikumen terraces,
+ * each a row of gate houses 4.9 m apiece behind its court wall, 12 m deep, the rows 4 m apart along their lanes, each
+ * row's gates facing the next row's back. The blocks stand on lots a search found clear (every plot dry, 6 m off any
+ * road's core, no record inside, gentle; 72 m off the zones, 90 m off the spawns), turned to the nearest road; the
+ * rows replay after the recorded rows from streams of their own (props.townRowPlanAdditions), so no recorded building
+ * moves. On Zhabei's bank (north of the creek) one row in five stands burnt out.
+ */
+const LILONG_BLOCKS: ReadonlyArray<{ x: number; z: number; yawDeg: number; n: number }> = [
+  { x: -36, z: -68, yawDeg: 95.3, n: 6 }, { x: -120, z: 94, yawDeg: 48.7, n: 6 }, { x: 6, z: -140, yawDeg: 95.3, n: 6 },
+  { x: -60, z: -134, yawDeg: 95.3, n: 6 }, { x: 72, z: -134, yawDeg: 83.3, n: 6 }, { x: 6, z: 184, yawDeg: 190.3, n: 6 },
+  { x: -60, z: 196, yawDeg: 190.3, n: 6 }, { x: 84, z: 196, yawDeg: 78.7, n: 6 }, { x: 168, z: 130, yawDeg: 98.8, n: 6 },
+  { x: -180, z: 106, yawDeg: -8.9, n: 6 }, { x: -24, z: -194, yawDeg: 95.3, n: 6 }, { x: 42, z: -194, yawDeg: 173.3, n: 8 },
+];
+const LILONG_ROWS = LILONG_BLOCKS.flatMap((block, b) => [-1, 0, 1].map((k) => {
+  const rot = block.yawDeg * Math.PI / 180, off = k * (12 + 4);
+  const x = +(block.x + Math.sin(rot) * off).toFixed(3), z = +(block.z + Math.cos(rot) * off).toFixed(3);
+  const rng = (Math.imul(b * 3 + k + 2, 0x9e3779b1) ^ Math.imul(Math.round(x * 10), 0x85ebca6b) ^ Math.imul(Math.round(z * 10), 0xc2b2ae35)) | 0;
+  const zhabei = z > 100 && ((rng >>> 8) % 5 === 0);
+  return { x, z, rot, w: block.n * 4.9, d: 12, ruined: zhabei, wall: 'stone', rng };
+}));
+
 export default {
   id: 'blackglass',
   // Suzhou Creek (the map-revival lane, 2026-10-05): Shanghai in the autumn of 1937, the creek between the
@@ -54,6 +77,8 @@ export default {
   name: 'Suzhou Creek',
   blurb: 'Shanghai, autumn 1937: Art Deco towers and stone-gate lanes across four bridges from burning Zhabei',
   terrain: {
+    // (the rim and the far country, round 2's rimH 14 and panorama ampM 24 / farRise 0 for wave 149's "conifer-covered
+    // mountain ridges stand in for the flat Yangtze delta", are the horizons lane's: they go into Suzhou's hinterland draft)
     hillScale: 0.62, microScale: 0.72, rimH: 36,
     // the creek (was the flooded quarter's two marshes on its course)
     marshes: CREEK,
@@ -132,6 +157,7 @@ export default {
     // the district stands as PR #9's head seated it (the owner's town-plan ruling), its street rows too, so the creek moves
     // only what its water reaches whatever it does to the ground under the rest
     townPlan: TOWN_PLANS.blackglass, townLightPlan: TOWN_LIGHT_PLANS.blackglass, townRowPlan: TOWN_ROW_PLANS.blackglass,
+    townRowPlanAdditions: LILONG_ROWS,
     // Shanghai in 1937 (maps/regional/shanghai*.ts): the Settlement's lanes, blocks and godowns, Zhabei's shophouses, the
     // Bund's banks and the Art Deco towers in the landmarks' footprints
     architecture: 'shanghai',
@@ -145,9 +171,14 @@ export default {
     // side, 59 m north, it stands on that line again, off every carriageway, and the south wins 22.
     roadClearanceTargets: [{ from: [-101.8, -85.7], to: [-111.9, -27.8] }],
     streetRowRoadStride: 2, ruinChance: 0.54, curbs: true, lampposts: true,
-    tones: makeRealisticCityBuildingTones({
-      value: 0.73, saturation: 0.82, soot: 0.035, roofValue: 0.72, coolAccent: 0.015,
-    }),
+    // the city's palette (the realistic city tones) with the Shanghai kit's granite carried over it (round 2, wave 149: the
+    // Customs House read "dark olive" with "a crude checkerboard" of windows — the preset's third render is a weathered
+    // green-grey, hue 0.2, and a map's tones override its kit's, props.ts): the Bund's granite and the deco towers'
+    // dressings stand in the kit's warm grey (maps/regional/shanghai.ts surfaces.tones.plaster3)
+    tones: {
+      ...makeRealisticCityBuildingTones({ value: 0.73, saturation: 0.82, soot: 0.035, roofValue: 0.72, coolAccent: 0.015 }),
+      plaster3: (_h: number, s: number, l: number) => [0.09, clamp01(s * 0.12 + 0.03), clamp01(l * 0.9 + 0.05)],
+    },
     wallStyle: 'brick', wallStoneChance: 0.82, buildingLat: [15, 7],
     sideSkip: 0.06, spacingPad: 4.0, maxSpread: 4.6,
     wallRuns: [
@@ -158,6 +189,10 @@ export default {
     ],
     well: false, hayCrates: false, fences: true, telegraph: true, carts: false, logs: false,
     rocks: 124, outcrops: 18, craters: 116, rubblePiles: 164,
+    // (the hitbox lane, round 3, 2026-10-12: once a pile's records follow its chunks, the piles leaning to the south of
+    // the fight zone leaned the swap test, 51 -> 40 % north over 80 paired games; the street rubble balances band by
+    // band, 75 m bands along the deployments' axis, about their midpoint: map revival's banded halves)
+    rubbleHalvesAbout: { x: -117.9, z: 2.4 },
     hedgehogs: 34, sandbagLines: 28, townCraters: true,
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
@@ -178,7 +213,12 @@ export default {
     outlandRocks: 0.1, forestHex: 0x33473a, rockHex: 0x6d7068, haze: 0.98, grain: 0.5,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'ash-veil', nightGlow: 0.7, nightGlowHex: 0xffc890 },
+  // (2026-10-09, the shadows lane: deckBeam — the veil's cells took 90 % of the sun over half the creek while the camera
+  // metered open sun; a smoke veil is thin and passes part of the beam)
+  // 2026-10-15 (the SKY lane; the owner's 10-13 ruling enforced on every map): the ash veil drew a low lumpy cell deck at
+  // 800 m with breaks (0.88 of the sky) — the banned broken stratocumulus — over the canal town: Verdant's fair-weather
+  // cumulus in the river delta's humid haze instead (no deck, so no deck beam)
+  clouds: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 1250, tintHex: 0xf2efe8, nightGlow: 0.7, nightGlowHex: 0xffc890 },
   sky: {
     sunElevationDeg: 18, sunAzimuthDeg: 242, turbidity: 8.4, rayleigh: 1.3,
     mieCoefficient: 0.013, mieDirectionalG: 0.88, fogDensity: 0.00082,
@@ -186,11 +226,17 @@ export default {
     // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the overcast deck authored explicitly (it took
     // the auto branch's 340 m / 0.00015 / 2400 m) — a 330 m deck of 2300 m masses with a thinner slant haze
     // (0.00013) so the low sky between the arcologies keeps modeled cloud; diffuse light patchiness (cloudShadowAmp 0.12)
-    cloudOpacity: 1.34, cloudOpacity2: 1.12, cloudTintHex: 0xaeb8c1,
-    cloudAltM: 330, cloudHazeK: 0.00013, cloudUvM: 2300, cloudShadowAmp: 0.12,
+    // (2026-10-15, the 10-13 ruling: the deck went with the ash veil — the phones' baked deck takes Verdant-scale cumulus:
+    // the classic deck altitude, a white tint, the cirrus veil at 0.55)
+    cloudOpacity: 1.0, cloudOpacity2: 0.55, cloudTintHex: 0xeceff2,
     sunIntensity: 3.9, sunColorHex: 0xffc697, hemiIntensity: 0.32, postExposure: 0.91, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 3.5 / 0xffb77e / 0.38); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0x4b4845 },
+    // 2026-10-09 (the skies lane; owner R139 "skybox ... too bland"): Suzhou's own sky — the humid, milky haze of the lower
+    // Yangtze: more aerosol, nearly white and a little warm, a pale warm-grey band to 12 degrees and a washed blue overhead
+    // (atmosphere.ts sky grade: the dome, the fog's colour and the sky light all follow it)
+    atmosphere: { mieScale: 11, mieG: 0.86, mieTintHex: 0xf4ece0,
+      horizonTintHex: 0xd6d0c4, horizonTintAmount: 0.6, horizonBandDeg: 12, zenithTintHex: 0xa6b6c6, zenithTintAmount: 0.35 },
   },
   minimap: {
     base: [58, 68, 73], hard: [74, 81, 86], soft: [48, 57, 61],

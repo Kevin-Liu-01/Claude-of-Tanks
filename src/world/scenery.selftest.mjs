@@ -23,10 +23,10 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { buildBedrock, buildRockFormation } from './sceneryRocks.ts';
+import { SCENERY_DESTRUCTIBLE_TYPES, buildConductor, buildPylon } from './maps/sceneryKit.ts';
 import {
-  SANDBAG_WEAVE_UV, SCENERY_DESTRUCTIBLE_TYPES, buildConductor, buildPylon, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap,
-  sandbagBag,
-} from './maps/sceneryKit.ts';
+  SANDBAG_WEAVE_UV, buildSandbagBedding, buildSandbagHeap, buildSandbagStack, paintBurlap, sandbagBag,
+} from './maps/fieldworksKit.ts';
 import {
   BEDROCK_TREE_CLEAR, LANDMARK_RADIUS, STONE_LANDMARKS, isDestructibleLandmark, isStoneLandmark, pylonLegHalf, rockReach,
   sceneryClearances, withGroundCoverHoles,
@@ -59,7 +59,8 @@ const FORMS = [
   ['scree', 'slate', 10, 0, 3500, 1500, false],
   ['menhir', 'granite', 1.2, 4.5, 1200, 500, true],
   ['cairn', 'limestone', 4.2, 2.6, 6000, 1400, true],
-  ['calvary', 'granite', 1.6, 5.6, 1200, 400, true],
+  // (props census #11, 2026-10-15: the calvary laid stone by stone — its steps' slabs, socle, écots, cross and figures)
+  ['calvary', 'granite', 1.6, 5.6, 1600, 500, true],
   ['hoodoo', 'sandstone', 3.2, 6, 3000, 1500, true],
   // (the hitbox lane, round 2: a field of fractured blocks, the cover a map places on open ground)
   ['blocks', 'breccia', 6, 2.6, 4500, 2000, true],
@@ -673,6 +674,7 @@ for (const mapId of maps.MAP_IDS) {
   }
   const authored = (config.scenery.rocks?.length ?? 0) + (config.scenery.landmarks?.length ?? 0)
     + (config.scenery.rockFields?.length ?? 0) + (config.scenery.bedrock?.length ?? 0)
+    + (config.scenery.castles?.length ?? 0) + (config.scenery.caprock?.length ?? 0) + (config.scenery.canyonWalls?.length ?? 0)
     + (config.scenery.powerLines ?? []).reduce((n, line) => n + line.towers.length, 0);
   for (const feature of receipt.features.filter((f) => f.family === 'rockField')) {
     assert.ok(feature.placedOf[0] >= Math.ceil(feature.placedOf[1] * 0.75), `${mapId}: ${feature.name} lays most of its count (${feature.placedOf.join('/')})`);
@@ -712,19 +714,22 @@ const yard = propsSource.indexOf('  yield* placeYardDressing();'), pass = propsS
 const merge = propsSource.indexOf('  yield* mergeMaterialBuckets();');
 assert.ok(yard > 0 && pass > yard && merge > pass, 'the pass runs after every placement and before the bucket merge');
 assert.match(propsSource, /new THREE\.Mesh\(merged, mats\.rock\)/, 'the rock forms draw on the props rock material (its cascade setup and hook)');
-const pools = propsSource.indexOf('  yield* finalizeDestructiblePools();'), works = propsSource.indexOf('  yield* placeFieldBoundaryWorks();');
+const pools = propsSource.indexOf('  yield* finalizeDestructiblePools();'), works = propsSource.indexOf('  yield* placeFieldBoundaryWorks({');
 assert.ok(pools > merge && works > pools, 'the field works build once the pools\' refit has made every solid final (the placement they keep off reads those)');
 assert.match(propsSource, /mats\.fieldStone\.color\.setRGB\(masonryTint\[0\], masonryTint\[1\], masonryTint\[2\]\)/, 'a map\'s masonry tint reaches the field walls\' print');
 assert.doesNotMatch(propsSource, /mats\.stone\.color\.setRGB\(masonryTint/, 'the masonry tint never multiplies the house masonry (a regional kit\'s print under it burns out)');
 // the dry-stone walls draw the field print, never the house masonry (a regional kit's brick, block or dressed stone)
 assert.match(propsSource, /const fieldWallBucket = P\.wallStyle === 'adobe' \|\| sourcedStoneIsBrick\(mapId\) \? 'stone' : 'fieldStone';/, 'the field print is the dry-stone walls\'');
-assert.match(propsSource, /wallstone: \{ \.\.\.DESTRUCTIBLE_TYPES\.wallstone, mat: fieldWallBucket[,} ]/, 'the wall pool draws the field print');
+assert.match(propsSource, /wallstone: (?:dryStoneWallType\()?\{ \.\.\.DESTRUCTIBLE_TYPES\.wallstone, mat: fieldWallBucket[,} ]/,
+  'the wall pool draws the field print (in the dry-stone build since the r2 sweep: dryStoneWallType)');
 assert.match(propsSource, /const wallB = style === 'adobe' \? wallDressing\.adobeBucket : fieldWallBucket;/, 'the run posts, breach stubs and tumbled blocks draw the field print (or the mud print)');
 assert.match(propsSource, /fieldStone: new THREE\.MeshStandardMaterial\(\{ map: fieldStone\.albedo,/, 'the field print has its own material');
 // wave 20: the mud walls' own worn render; the walls' feet, drifts and snow loads; the modules turned round by place
-assert.match(propsSource, /walladobe: \{ \.\.\.DESTRUCTIBLE_TYPES\.walladobe, mat: adobeWallBucket \}/, 'the mud wall pool draws the mud print');
+assert.match(propsSource, /walladobe: (?:adobeWallType\(regionalArchitecture\?\.id, )?\{ \.\.\.DESTRUCTIBLE_TYPES\.walladobe, mat: adobeWallBucket \}/,
+  'the mud wall pool draws the mud print (in its region\'s build: adobeWallKit.ts adobeWallType)');
 assert.match(propsSource, /fieldMud: new THREE\.MeshStandardMaterial\(\{ map: fieldMud\.albedo,/, 'the mud print has its own material');
-assert.match(propsSource, /\.\.\.\(snowCap \? \{ build: snowLoadedWallstone \} : \{\}\)/, 'a snow map\'s module carries its snow load');
+assert.match(propsSource, /\.\.\.\(snowCap \? \{ build: snowLoadedWallstone \} : \{\}\)|dryStoneWallType\(\{ \.\.\.DESTRUCTIBLE_TYPES\.wallstone, mat: fieldWallBucket \}, snowCap \? withSnowLoad : null,/,
+  'a snow map\'s module carries its snow load');
 assert.match(propsSource, /const wallDressing = createWallDressing\(\{/, 'the wall runs dress their islands through one owner');
 assert.match(propsSource, /mesh\.name = 'props-snow-drifts';/, 'the snow drifts draw as one mesh of their own (the frame-budget probe\'s field-walls toggle hides them)');
 assert.match(propsSource, /if \(prevBuilt\) \{ endPost\(x1, z1, 1\); dressIsland\(islandFrom, along\); \}/, 'a run\'s last island is dressed');
@@ -732,9 +737,12 @@ assert.match(propsSource, /const fallen = wallDressing\.tumble\(style === 'adobe
 assert.match(propsSource, /if \(wallB === 'fieldStone'\) wallDressing\.stoneUv\(head, rng\); else jitterUV\(head, rng\);/, 'a head\'s print window stays in the field print\'s face band');
 assert.match(propsSource, /mesh\.name = 'props-sandbag-beds';/, 'the nests\' bedding draws as one mesh of its own');
 assert.equal((propsSource.match(/cls: 'break', mat: 'burlap', contact: 'ob'/g) ?? []).length, 3, 'the three stacks draw the hessian (wave 52)');
-assert.match(propsSource, /materialKind === 'burlap' \? 'structureCanvas'/, 'the hessian shares the canvas program');
-assert.match(propsSource, /materialKind === 'fieldStone' \? fieldStoneHook : materialKind === 'pole' \? poleHook\s*(?:: materialKind === 'ballast' \? ballastHook\s*)?: materialKind === 'fieldMud' \? mudHook : grimeHook/,
-  'the field print has its own hook (wave 48), the telegraph poles theirs (after wave 57), the rail kit\'s ballast its own (the ground lane, wave 234) and the mud print its own (b14)');
+// (2026-10-15, the perf lane) a props program is keyed by the family of the hook its material wears (props.ts
+// propsProgramFamily): the hessian and the canvas both wear the grime hook, so they share one program
+assert.match(propsSource, /const propsProgramFamily = \(kind: string\): string => \(tileBiased\(kind\) \? 'tile' : isKitWall\(kind\) \? 'wall'\n\s*: kind === 'dark' \|\| kind === 'glass' \? 'plain'\n\s*: kind === 'rock' \|\| kind === 'fieldStone' \|\| kind === 'pole' \|\| kind === 'ballast' \|\| kind === 'fieldMud' \? kind\n\s*: 'grime'\);/,
+  'the hessian shares the canvas program (one hook, one family)');
+assert.match(propsSource, /materialKind === 'fieldStone' \? fieldStoneHook : materialKind === 'pole' \? poleHook\s*(?:: materialKind === 'ballast' \? ballastHook\s*)?: materialKind === 'fieldMud' \? mudHook\s*(?:: clutterLod \? \(shader\) => \{ grimeHook\(shader\); clutterLodHook\(shader\); \}\s*)?: grimeHook/,
+  'the field print has its own hook (wave 48), the telegraph poles theirs (after wave 57), the rail kit\'s ballast its own (the ground lane, wave 234) and the mud print its own (b14); the baked clutter pools fold their near and far forms over the grime (props lane A #2)');
 assert.match(propsSource, /vMapUv \+= cotStoneShift;/, 'each wall module shifts its print window along the wall (wave 48: "the coursing visibly repeats")');
 assert.match(propsSource, /bedSandbagNest\(kind, sx, sz, yaw \+ sideIndex \* 0\.12, 1\.18, \[fwdX, fwdZ\]\);/, 'a redoubt\'s stacks are bedded, their spoil thrown forward');
 assert.match(propsSource, /bedSandbagNest\(kind, bx, bz, moduleYaw, moduleScale, \[fx, fz\]\);/, 'a breastwork\'s modules are bedded toward the threat');

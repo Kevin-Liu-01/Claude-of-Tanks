@@ -52,7 +52,8 @@ function localRay(owner,origin,direction,objects){
 function weaponStock(mg){
  const pitch=mg.children.find(o=>o.name==='auxiliaryWeaponPitch');
  if(!pitch)return mg.getObjectByName('browningDerivedMachineGunBody');
- const stock=pitch.children.find(o=>o.name==='fitting_auxiliaryWeapon_dark');
+ // VH.14 (2026-10-15): a working crew-served MAG pitches the same receiver/barrel stock under its body name
+ const stock=pitch.children.find(o=>o.name==='fitting_auxiliaryWeapon_dark'||o.name==='browningDerivedMachineGunBody');
  assert.ok(stock?.isMesh,'remote MAG receiver/barrel pitches inside its own fitting');return stock;
 }
 function barrelContinuous(mg,scale){
@@ -86,7 +87,7 @@ function verifySeats(tank,id){
  const parts=components(detail);let owner=detail.parent;
  while(owner&&!/^rig_(turret|hull|gun)$/.test(owner.name))owner=owner.parent;
  assert.ok(owner===rig,'attachment follows turret yaw through its LOD owner, never gun pitch');
- if(id==='merkava3d_x'){
+ if(id==='merkava3d'){
   for(const [x,y]of[[-1.03,.553],[1.03,.766]]){
    const eye=select(parts,[x,y,1.1899975],[.092,.087499,.020923],'forward lifting eye');
    assertContact(eye,turret,'forward lifting eye');
@@ -109,8 +110,10 @@ function verifySeats(tank,id){
    assert.throws(()=>assertContact(arm,turret,'detached radar arm',new T.Vector3(side*.20,0,0)),/finite receiving/);
   }
  }
- const mgs=[];rig.traverse(o=>{if(o.name==='fitting_browningDerived_mag')mgs.push(o)});
- assert.equal(mgs.length,id==='merkava3d_x'?2:1,'all original MAG assemblies retained');
+ // VH.14 (2026-10-15): the Mk 3 X's two MAGs are named stations (merkava3dXCommanderMag/LoaderMag), so the MAG
+ // fittings are found by their class, not their default name
+ const mgs=[];rig.traverse(o=>{if(o.userData.fittingRoot&&o.userData.weaponClass==='mag'&&o.userData.browningDerivedStandard)mgs.push(o)});
+ assert.equal(mgs.length,id==='merkava3d'?2:1,'all original MAG assemblies retained');
  for(const mg of mgs){
   assert.ok(mg.parent===rig,'roof weapons yaw with their receiving stock');
   // 2026-10-07 (round 3): the Trophy commander's remote MAG is drawn at true scale (1.0, was 1.48: a 115 % GPMG)
@@ -135,8 +138,8 @@ function verifySeats(tank,id){
   finally{body.geometry.dispose();body.geometry=original;}
  }
 }
-await ensureInteriorFills(['merkava3d_x','merkava4_trophy']);
-for(const quality of['high','low'])for(const id of['merkava3d_x','merkava4_trophy']){
+await ensureInteriorFills(['merkava3d','merkava4_trophy']);
+for(const quality of['high','low'])for(const id of['merkava3d','merkava4_trophy']){
  const tank=createTank(id,null,{quality,proceduralOnly:true,geometryReceipt:true,camoSeed:4242,batchStatic:false});
  try{
   const rig=tank.root.getObjectByName('rig_turret'),gun=tank.root.getObjectByName('rig_gun'),spec=getSpec(id);

@@ -92,7 +92,7 @@ import { createBootLifecycle } from './engine/bootLifecycle.ts';
 import { createViewportRuntime } from './engine/viewportRuntime.ts';
 import { createFrameLoopScheduler, PRESENTATION_MAX_FRAME_RATE } from './engine/frameLoopScheduler.ts';
 import { createGarageFramePacer } from './engine/garageFramePacer.ts';
-import { createForwardProgramWarmOwner, type ForwardProgramCompileTiming } from './engine/programWarm.ts';
+import { STRICT_DRAIN_STALL_MS, createForwardProgramWarmOwner, type ForwardProgramCompileTiming } from './engine/programWarm.ts';
 import { renderCoveredComposerWarm, type CoveredComposerWarmTiming } from './engine/coveredComposerWarm.ts';
 import { LATE_FX_LAYER } from './fx/layers.ts';
 import {
@@ -111,9 +111,10 @@ import {
 import type { MapCompositionConfig } from './world/maps/contracts.ts';
 import { t } from './ui/i18n.ts';
 import { getGarageSkyPreset } from './game/garageSkyPresets.ts';
+import { withGarageWeather } from './game/garageWeather.ts';
 import { createWorldActivationRuntime } from './world/worldActivationRuntime.ts';
 import { createWorldFramePresentationRuntime } from './world/worldFramePresentationRuntime.ts';
-import { createLiveHeightFieldProxy } from './world/liveHeightFieldProxy.ts';
+import { createDugHeightFieldProxy, createLiveHeightFieldProxy } from './world/liveHeightFieldProxy.ts';
 import type { WaterDisturbance } from './world/shallowWater.ts';
 import { waterContactMaskAt } from './world/waterContactMask.ts';
 import { sceneWindOf } from './world/sceneWind.ts';
@@ -180,7 +181,7 @@ import { createPlayerFrameInput } from './game/playerFrameInput.ts';
 import { createBattleFrameRuntime } from './game/battleFrameRuntime.ts';
 import { createBattlePresentationRuntime, loadMissionAttachmentVisual } from './game/battlePresentationRuntime.ts';
 import { createBattleHudFrameRuntime } from './game/battleHudFrameRuntime.ts';
-import { createMatchModeWorldPresentation } from './game/matchModeWorldPresentation.ts';
+import { createLazyMatchModeWorldPresentation } from './game/matchModeWorldLazy.ts';
 import { createBattleResultPresentationRuntime } from './game/battleResultPresentationRuntime.ts';
 import { createBattleEndingCamera } from './game/battleEndingCamera.ts';
 import { createSoloBattleDeploymentAccess } from './game/soloBattleDeploymentAccess.ts';
@@ -237,7 +238,7 @@ import { clearMatchSession, createBus, createGameState } from './game/stateCore.
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
-import { matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
+import { deathsAreFinal, matchRulesetFor, terrainVariantFor } from './sim/matchRuleset.ts';
 import { normalizeGameMode } from './sim/matchModes.ts';
 import { SHOT_VIEWS, type ShotViewName } from './dev/shotContract.ts';
 import { createSoloBattleRuntimeAccess } from './game/soloBattleAccess.ts';
@@ -289,6 +290,8 @@ const SIM_DT = 1 / 60;
 const VERDANT_GARAGE_POS = Object.freeze({ x: -1500, z: -1500 });
 const GARAGE_POS = new THREE.Vector3(VERDANT_GARAGE_POS.x, 0, VERDANT_GARAGE_POS.z);
 const pendingRoomInvitePromise = startupIntent.pendingRoomInvite;
+/** A tab the room invite leaves in the Garage gets its idle work (neighbour heroes, dressing) this long after ready. */
+const INVITE_GARAGE_IDLE_DELAY_MS = 12_000;
 // FE-P13: battle loading art follows the viewport (a 1280 card on small and medium screens, else the 4K hero).
 const battleBackdrop = (mapId: string): string => mapBackdropFor(mapId, currentViewport());
 const minimapAssetUrl = (mapId: string): string => (
@@ -355,8 +358,8 @@ onPaintStall(({ phase, waitedMs }) => entryTelemetry.send({
 // before HUD/garage construction so their first visible frame already has the
 // correct width, height, orientation and interaction-mode attributes.
 installResponsiveLayout();
-// Browser pinch-zoom is never a page zoom here (2026-09-20): every surface is pinned to the visual viewport,
-// so a zoomed browser folded the UI into a corner; the guard used to exist only inside the touch controls.
+// Browser pinch-zoom is never a page zoom here (2026-09-20; the guard used to exist only inside the touch
+// controls). index.html's inline copy guards the splash from first paint; this hands over from it (2026-10-15).
 installPinchZoomGuard();
 // Apply static i18n attributes to the boot screen so the credits button,
 // gate prompt, and retry button respect the active locale from first paint.
@@ -429,12 +432,16 @@ entryTelemetry.send({
 });
 const scene = new THREE.Scene();
 // campaign slice 3 (2026-09-12): trench works follow the live ground under each sector.
-const matchModeWorld = createMatchModeWorldPresentation(scene, {
+// (2026-10-16, the perf lane: 226's bundle budget) the presentation's module is its own chunk, fetched when the boot is
+// idle (matchModeWorldLazy.ts): the Garage draws no objective
+const matchModeWorld = createLazyMatchModeWorldPresentation(scene, {
   groundHeight: (x, z) => groundSampler(x, z),
   // tactical map 2026-09-15: objective icons fade near the camera and hold their screen size far away
   viewerPosition: () => camera.position,
   setupMaterial: (material) => engineCtx.setupShadowMaterial(material),
   releaseMaterial: (material) => engineCtx.releaseShadowMaterial(material),
+  // (props lane A #28) a capture zone's post takes the battlefield's form
+  mapId: () => game.mapId,
 });
 // The scene root is permanently identity. Leaving matrixAutoUpdate enabled
 // marks it dirty every render and propagates `force=true` through every world
@@ -474,6 +481,9 @@ const lighting: MainLightingRuntime = await bootStage(
 // before honoring it because all PCF samplers remain active in the shader.
 // Subsequent garage frames skip the invisible 100-700 m shadow redraws.
 if (!STUDIO_BOOT_INTENT) lighting.setFarCascadeDormant(true);
+// (2026-10-16, the engine-cs lane) every flip out of the Garage's sealed bay lights the open ground with the grounded
+// model's environment, never the bay's full-dome bake (sky.ts syncEnvironmentEnclosure)
+lighting.onEnclosureChange((enclosed) => { if (!enclosed) sky.syncEnvironmentEnclosure(); });
 mountDiagOverlay({ tier: resolveDeviceTier(renderer), diag: _diag, rescue: _diagRescue, renderer });
 
 const engineCtx = {
@@ -576,8 +586,10 @@ worldRuntime = createWorldActivationRuntime<
   buildMinimap: (next, textured) => {
     const hud = currentHud();
     if (!hud) return;
-    hud.buildMinimap(next.heightField, next.getMinimapFeatures(), next.config.minimap,
-      textured ? minimapSnapCtx() : null);
+    // the plate's water is the world's visible-water raster (visibleWater.ts), handed over beside the features: never
+    // inside getMinimapFeatures, which the battle's audio reads mid-fight
+    hud.buildMinimap(next.heightField, { ...next.getMinimapFeatures(), visibleWater: next.getVisibleWaterRaster() },
+      next.config.minimap, textured ? minimapSnapCtx() : null);
   },
   loadMinimapAsset: (next, url) => (
     currentHud()?.buildMinimapFromAsset(next.heightField, url) ?? false
@@ -740,7 +752,10 @@ function requireFxRuntime() {
 // The wheels and track debris also stand on the standable collision tops the
 // movement solve stands hulls on (bridge decks, roofs, slabs): see
 // world/vehicleGroundSampler.ts (the vehicle-contact lane, 2026-10-09).
-const groundSampler = createVehicleGroundSampler((x, z) => hfProxy.getContactHeightAt(x, z), currentWorld);
+// The ground the battle dug (DST-04): the running gear stands on the craters' bowls and the heaps the simulation's hulls
+// ride (the world's bound overlay as drawn, world/liveHeightFieldProxy.ts createDugHeightFieldProxy).
+const hfDug = createDugHeightFieldProxy(hfProxy, () => currentWorld()?.groundOverlay?.() ?? null);
+const groundSampler = createVehicleGroundSampler((x, z) => hfDug.getContactHeightAt(x, z), currentWorld);
 // PERF (performance_budget r4): pool visuals are lazy — remember the sampler
 // on the game state so ensureTankVisual applies it to visuals built later.
 game._groundSampler = groundSampler;
@@ -830,7 +845,7 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   sunDirection: sky.sunDir,
   getGarageSkyConfig: () => {
     const variant = getGarageVariant(selectedGarageVariantId);
-    return getGarageSkyPreset(variant.mapId);
+    return withGarageWeather(variant.mapId, getGarageSkyPreset(variant.mapId));
   },
   getBattleSkyConfig: () => withWorldCloudscape(currentWorld()?.config.sky ?? null),
   getGroundHeight: () => 0,
@@ -886,7 +901,8 @@ garageEnvironmentPresentation = createGarageEnvironmentPresentationRuntime({
     nightLighting.reset();
     frontline.reset();
     const variant = getGarageVariant(selectedGarageVariantId);
-    sky.applyPresentationPreset(getGarageSkyPreset(variant.mapId), scene);
+    // (2026-10-15, the SKY lane) the overcast battlefields' yards under the Garage's fair weather (garageWeather.ts)
+    sky.applyPresentationPreset(withGarageWeather(variant.mapId, getGarageSkyPreset(variant.mapId)), scene);
     worldRuntime.invalidateSkyPresentation();
     baseFogDensity = scene.fog instanceof THREE.FogExp2 ? scene.fog.density : 0;
   },
@@ -1024,6 +1040,41 @@ for (const type of ['pointerdown', 'wheel', 'keydown', 'touchstart', 'resize']) 
 // boot task (or, when deferred, an equally disruptive post-ready stall).
 // Gallery inspection and battle-player paths still request their own authored
 // quality tiers; this changes only the garage presentation cache.
+// Sniper close-quarters fill (gameplay_feel r1): with the camera at the gun
+// trunnion, aiming into nearby shadowed/backfacing geometry (a bush wall, a
+// building 5-10 m out) rendered a 100% black scope — zero feedback about the
+// blockage. A small camera-riding point light, active only in SNIPER and only
+// when the server-aim hit is CLOSE, keeps the obstacle readable exactly like
+// WoT's scope does. Range-limited (18 m, quadratic decay) so it can never
+// relight the midfield; intensity eases in below ~20 m aim distance.
+// (2026-10-15, the perf lane) Created here, before the hero's build, so the garage's light set is complete when its
+// programs are submitted below; the camera rig is declared further down and read only in frames (update()).
+const sniperFill = createSniperFillRuntime(scene, camera, {
+  get mode() { return rig.mode; },
+  get aimDist() { return rig.aimDist; },
+});
+// 2026-10-15 (the perf lane): the garage scene's programs go to the driver's parallel compile before the hero's build,
+// so they link while it runs. The 10-15 boot profile (Verdant, load ~165): the first live garage frame waited 1.2 s in
+// getUniforms for links (0.49 s on Sept 30), right after a 1.6 s hero build (the m1a3's suit). A plain render target
+// gives the post target's program keys (linear output, no tone mapping); the light set is final here (the garage stage,
+// its phase spots, the sniper fill above). The post stage's warm then finds them in three's cache and compiles the
+// hero's own. Boot r9's compileAsync overlap targeted the canvas after the hero's build (the canvas keys, no overlap);
+// this one has neither problem. ?bootprecompile=0 keeps the old order for the A/B; the receipt records both light sets.
+const bootLightCount = (): number => { let n = 0; scene.traverseVisible((object) => { if ((object as THREE.Light).isLight) n++; }); return n; };
+if (!STUDIO_BOOT_INTENT && !/[?&]bootprecompile=0(&|$)/.test(location.search)) {
+  const probeTarget = new THREE.WebGLRenderTarget(1, 1);
+  const previousTarget = renderer.getRenderTarget();
+  const startedAt = performance.now();
+  try {
+    renderer.setRenderTarget(probeTarget);
+    renderer.compile(scene, camera);
+  } catch { /* the post stage's warm compiles them */ } finally {
+    renderer.setRenderTarget(previousTarget);
+    probeTarget.dispose();
+  }
+  BOOT_TIMINGS.earlyCompile = Math.round(performance.now() - startedAt);
+  BOOT_TIMINGS.earlyCompileLights = bootLightCount();
+}
 await bootStage('vehicle', async () => {
   if (STUDIO_BOOT_INTENT) return;
   // The branded boot screen is opaque. Keep its animation painting at a
@@ -1118,7 +1169,10 @@ battleHudRuntime = createMainBattleHudRuntime({
 });
 async function ensureBattleHud() {
   if (!battleHudRuntime) throw new Error('battle HUD runtime is not initialized');
-  return battleHudRuntime.preload();
+  // (2026-10-16, the perf lane) the mode objectives' presentation is its own chunk (matchModeWorldLazy.ts): every battle's
+  // interface load (solo, network, debug) waits for it here, so its markers are in from the battle's first frame
+  const [hud] = await Promise.all([battleHudRuntime.preload(), matchModeWorld.ready()]);
+  return hud;
 }
 // Preserve the staged progress contract without transferring battle-only UI
 // into a garage first visit. Battle intent/entry joins ensureBattleHud().
@@ -1411,7 +1465,16 @@ const audio = await bootStage('audio', () => {
   // Surface under each hull (track sounds), water depth and terrain occlusion.
   getTerrain: () => (currentWorld() ? hfProxy : null),
   // The world: the churches, belfries and campanile the bells ring from, and what each structure is built of.
-  getWorld: currentWorld });
+  getWorld: currentWorld,
+  // The crew's side counts in a network battle (last tank, last enemy, outnumbered): the lobby roster with the
+  // authority's deaths, where a death is final; never the spotted list (2026-10-14). Solo: none (its list is the field).
+  getTeamRoster: () => {
+    if (!game.rosterTanks) return null;
+    const mode = normalizeGameMode(game.gameMode);
+    return deathsAreFinal(game.ruleset?.mode === mode ? game.ruleset : matchRulesetFor(mode)) ? game.rosterTanks : null;
+  },
+  // Each warmed hull's powertrain from its whole spec, as its rig will resolve it (an IFV's diesel turns on its role).
+  getVehicleSpec: getSpec });
   a.bindBus(bus);
   return a;
 });
@@ -1478,14 +1541,7 @@ const showroom = createGarageShowroomRuntime({
 });
 resetGarageShowroom = () => showroom.reset();
 
-// Sniper close-quarters fill (gameplay_feel r1): with the camera at the gun
-// trunnion, aiming into nearby shadowed/backfacing geometry (a bush wall, a
-// building 5-10 m out) rendered a 100% black scope — zero feedback about the
-// blockage. A small camera-riding point light, active only in SNIPER and only
-// when the server-aim hit is CLOSE, keeps the obstacle readable exactly like
-// WoT's scope does. Range-limited (18 m, quadratic decay) so it can never
-// relight the midfield; intensity eases in below ~20 m aim distance.
-const sniperFill = createSniperFillRuntime(scene, camera, rig);
+// (the sniper close-quarters fill is created before the hero's build, with the boot's early program submission)
 
 // --- KILL-CAM (src/game/killcam.ts) -----------------------------------------
 // End-of-battle cinematic: slow-mo tracer replay of the killing shell + x-ray
@@ -1950,7 +2006,6 @@ const battlePresentation = createBattlePresentationRuntime({
 // terrain, FX and first-frame warm order plus cancellation/fallback policy.
 const soloBattleDeployment = createSoloBattleDeploymentAccess({
   options: () => ({
-    warmVisionSteps: combatWarmComposition.warmVisionSteps,
     game,
     renderer,
     scene,
@@ -2285,7 +2340,9 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
     import('./mp/host/browserHostPort.ts'),
     import('./mp/host/worldCollision.ts'),
     import('./mp/transport/iceConfig.ts'),
-  ]).then(([{ createBrowserComposition }, { createActivationRuntime }, { createBrowserHostPort }, { COLLISION_MANIFEST_ROUTE, loadObstacleIdentities }, { createRoomIceResolver }]) => {
+    // already in this chunk's graph (the composition paints its rounds with it): the roster prewarm below
+    import('./mp/presentation/battlePresentation.ts'),
+  ]).then(([{ createBrowserComposition }, { createActivationRuntime }, { createBrowserHostPort }, { COLLISION_MANIFEST_ROUTE, loadObstacleIdentities }, { createRoomIceResolver }, { prewarmRosterVisuals }]) => {
     // The launch runs on the app's ports: the loader, the world, the warm owners, the activation.
     const options = multiplayerAppPorts();
     const activation = createActivationRuntime(options.activation);
@@ -2294,7 +2351,9 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
       ports: {
         lifecycle: battleEntryLifecycle,
         // a world laid out otherwise than the host's manifest reads the destroyed list through the manifest's identities
-        load: { ...options.load, loadAuthorityObstacles: (mapId, signal, variant) => loadObstacleIdentities(mapId, COLLISION_MANIFEST_ROUTE, { signal, variant }) },
+        load: { ...options.load, loadAuthorityObstacles: (mapId, signal, variant) => loadObstacleIdentities(mapId, COLLISION_MANIFEST_ROUTE, { signal, variant }),
+          // 2026-10-15 (the MP stream): the named seats' builders and textures beside the world load (the rejoin row)
+          prewarmRoster: (seats, signal) => prewarmRosterVisuals(seats, { anisotropy: engineCtx.anisotropy ?? 4, signal }) },
         roster: options.roster,
         scene: {
           engineCtx,
@@ -2549,6 +2608,22 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
                 totalMs: casterBatchMs.reduce((total, ms) => total + ms, 0),
                 maxMs: Math.max(0, ...casterBatchMs) } };
           },
+          // 2026-10-15 (the MP stream, after the perf lane's link census): the scene's programs, on the strict compile's own
+          // passes (so the keys match), submitted to the driver once the battle's light signature is final at the WELCOME;
+          // they link while the roster is painted, and the strict compile below answers them from three's cache
+          submitPrograms: async (signal?: AbortSignal) => {
+            const timing: ForwardProgramCompileTiming = {};
+            const lateMask = 1 << LATE_FX_LAYER;
+            const passes = post?.composer ? [
+              { layerMask: camera.layers.mask & ~lateMask, target: post.sceneAA.sceneTarget },
+              { layerMask: lateMask, target: post.lateFx.target },
+            ] : undefined;
+            for (const _ of forwardProgramWarm.compileSceneSteps({ signal, timing, passes, sliceMs: 8 })) {
+              signal?.throwIfAborted();
+              await nextPaintFrame();
+            }
+            return { ...timing };
+          },
           compile: async (signal?: AbortSignal) => {
             battlePresentation.prepareModeVisuals();
             const timing: ForwardProgramCompileTiming = {};
@@ -2561,7 +2636,8 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             ] : undefined;
             // Strict preparation admits bounded groups and returns an explicit
             // first-use result. Covered entry checks it before any real draw.
-            const steps = forwardProgramWarm.prepareSceneSteps({ signal, timing, passes, strict: true });
+            // (2026-10-14) the covered network entry alone stops a stalled window 2 s after its last link (programWarm)
+            const steps = forwardProgramWarm.prepareSceneSteps({ signal, timing, passes, strict: true, stallMs: STRICT_DRAIN_STALL_MS });
             try {
               while (true) {
                 const step = steps.next();
@@ -2932,7 +3008,9 @@ const groundSources: GroundDisturbance[] = [];
 const worldFramePresentation = {
   update(dtSeconds: number, inBattle: boolean, killcamActive: boolean): void {
     baseWorldFramePresentation.update(dtSeconds, inBattle, killcamActive);
-    if (inBattle && !worldRuntime.dormant && !pauseInfo.paused) {
+    if (inBattle && !worldRuntime.dormant) {
+      // contact round 4 (2026-10-10): the wakes and the front run with live play; the sward's press runs paused too
+      const live = !pauseInfo.paused;
       // Water pass 6 (2026-09-14): vehicles standing or driving in water push
       // wake rings and churn into the surface — the water reacts to the battle.
       const wakeWorld = currentWorld();
@@ -2954,7 +3032,7 @@ const worldFramePresentation = {
               halfLength: rect?.halfLength, halfWidth: rect?.halfWidth,
             });
           }
-          if (!field.getWaterMaskAt || wakeSources.length >= 8) continue;
+          if (!live || !field.getWaterMaskAt || wakeSources.length >= 8) continue;
           const mask = waterContactMaskAt(field, p.x, p.y + (ent.contactGeom?.bottomYM ?? 0), p.z);
           if (!(mask > 0.05)) continue;
           // Water pass 7 (2026-09-20): the hull's footprint, heading and direction of travel
@@ -2966,15 +3044,20 @@ const worldFramePresentation = {
             halfLength: rect?.halfLength, halfWidth: rect?.halfWidth,
           });
         }
-        wakeWorld.setWaterDisturbances(wakeSources);
+        if (live) wakeWorld.setWaterDisturbances(wakeSources);
+        // contact round 4 (2026-10-10; the critics on wave 340: "no crushed blades or sinkage under the tracks"): the
+        // sward's press is presentation only — the tall grass reads it, the simulation and the wire never do — so a paused
+        // battle, and the Studio's and the shots' staged frames, keep the hulls' footprints pressed into the grass as play does
         wakeWorld.setGroundDisturbances?.(groundSources);
       }
-      // Frontline Assault brings the front closer with every sector taken.
-      const line = game.matchModeState?.line;
-      // 2026-09-14 campaign flavour: the front runs hotter — every battle at 1.15, Frontline
-      // Assault from 1.25 and climbing with every sector taken (setScale clamps at 2).
-      frontline.current?.setScale(line ? 1.25 + 0.35 * (line.index ?? 0) : 1.15);
-      frontline.update(dtSeconds);
+      if (live) {
+        // Frontline Assault brings the front closer with every sector taken.
+        const line = game.matchModeState?.line;
+        // 2026-09-14 campaign flavour: the front runs hotter — every battle at 1.15, Frontline
+        // Assault from 1.25 and climbing with every sector taken (setScale clamps at 2).
+        frontline.current?.setScale(line ? 1.25 + 0.35 * (line.index ?? 0) : 1.15);
+        frontline.update(dtSeconds);
+      }
     }
   },
 };
@@ -3002,7 +3085,10 @@ const battleFrame = createBattleFrameRuntime({
         missionBrief.show({ operationId: pendingCampaignOperationId, mapId: game.mapId, durationS: seconds + 14 });
       }
     },
-    rollout: () => bus.emit('battle:rollout', {}),
+    // once a battle, solo and network alike; a network battle joined after its count rolls out late (no cues)
+    rollout: (late = false) => bus.emit('battle:rollout', late ? { late: true } : {}),
+    // the running count's whole seconds (the audio ticks 3, 2, 1)
+    second: (seconds: number) => bus.emit('battle:countdown', { seconds }),
   },
   presentation: {
     captureSoloPose: battlePresentation.captureSoloPoses,
@@ -3148,7 +3234,7 @@ window.__SHOTS = {
     const [{ setShotView }] = await Promise.all([import('./dev/shotRuntime.ts'), loadGroundedLightModel(), loadCloudscapeLayers()]);
     // (the staged map's open sky takes the grounded light model and its cloudscape, as a battle's does: the boot weight)
     type ShotRuntimeContext = Parameters<typeof setShotView>[1];
-    return setShotView(name, checkedIntegrationPort<ShotRuntimeContext>({
+    const staged = await setShotView(name, checkedIntegrationPort<ShotRuntimeContext>({
       preloadSoloBattleRuntime,
       preloadBattleClientRuntime,
       ensureBattleHud,
@@ -3220,6 +3306,14 @@ window.__SHOTS = {
       'ensureFullFleet', 'ensureFxRuntime', 'ensureKillcamRuntime',
       'switchMap', 'setupBattle', 'getWorld', 'getHud', 'getFx', 'getKillcam',
     ]));
+    // (2026-10-09, the shadows lane) a staged map's ground occlusion (structureGroundOcclusion.ts) lands before any frame
+    // is taken, at full strength: the worker's bake is what the capture waits for, never a fade
+    const groundOcclusion = currentWorld()?.groundOcclusion ?? null;
+    if (groundOcclusion) {
+      groundOcclusion.setInstant(true);
+      await Promise.race([groundOcclusion.whenReady(), new Promise((resolve) => { setTimeout(resolve, 30000); })]);
+    }
+    return staged;
   },
   /** (2026-10-12, effects by time of day) a battle's own sunset or night preset over the staged view, as a battle at
    *  that hour applies it, so captures can judge the effects and the light together ('day' restores the day). */
@@ -3258,6 +3352,7 @@ await bootStage('post', async () => {
   // Direct Studio boot has no garage hero or dressing to present. Its own
   // covered entry renders the real world/camera before the boot veil lifts.
   if (STUDIO_BOOT_INTENT) return;
+  BOOT_TIMINGS.postCompileLights = bootLightCount(); // (the early submission's light set must equal this one)
   await warmGarageGpuPipeline({
     renderer,
     scene,
@@ -3483,8 +3578,8 @@ if (diagnosticsRequested) {
         await awaitMapCaptureReadiness(next, currentWorld);
         const hud = currentHud();
         if (!hud) throw new Error('capture HUD is unavailable');
-        hud.buildMinimap(next.heightField, next.getMinimapFeatures(), next.config.minimap,
-          { ...minimapSnapCtx(), requireTextured: true });
+        hud.buildMinimap(next.heightField, { ...next.getMinimapFeatures(), visibleWater: next.getVisibleWaterRaster() },
+          next.config.minimap, { ...minimapSnapCtx(), requireTextured: true });
         return hud.exportMinimapBackground('image/webp', 0.92, true) || '';
       },
       beginBattleEntry,
@@ -3528,12 +3623,25 @@ if (pendingRoomInvitePromise) {
   });
 }
 window.__GAME_READY = true;
-pedestal.queueNeighbors();
 // 2026-10-12 (the perf stream): the pending battlefield's loading art, in idle time (onMapSelect does it for a new pick)
 if (worldRuntime.pendingMapId && worldRuntime.pendingMapId !== 'random') preloadImageWhenIdle(battleBackdrop(worldRuntime.pendingMapId));
 // 2026-10-13: the loading screen's blurred per-map placeholders (a ~15 kB lazy chunk), so its first frame is the map's own
 primeMapLqipWhenIdle();
-if (!STUDIO_BOOT_INTENT) scheduleGarageDressingBuild();
+// 2026-10-15 (the MP stream, the §7 side-by-side's rejoin row): a tab opened on a room invite is on its way into a room
+// and, on a return, straight into a running match. The Garage's idle work (the neighbouring heroes, the dressing set
+// pieces) would share the main thread with the room's join and the battle entry, so it waits: a return to the Garage
+// schedules the dressing itself (garageReturnRuntime), and a tab the invite leaves in the Garage gets both after
+// INVITE_GARAGE_IDLE_DELAY_MS unless a battle entry holds the lifecycle then.
+const runGarageIdleWork = () => {
+  pedestal.queueNeighbors();
+  if (!STUDIO_BOOT_INTENT) scheduleGarageDressingBuild();
+};
+if (pendingRoomInvitePromise) {
+  void pendingRoomInvitePromise.then((invite) => {
+    if (!invite) { runGarageIdleWork(); return; }
+    setTimeout(() => { if (game.phase === 'garage' && !battleEntryLifecycle.pending) runGarageIdleWork(); }, INVITE_GARAGE_IDLE_DELAY_MS);
+  }, () => runGarageIdleWork());
+} else runGarageIdleWork();
 window.__BOOT_TIMINGS = BOOT_TIMINGS;
 window.__BOOT_MS = Math.round(performance.now() - BOOT_T0);
 entryTelemetry.send({

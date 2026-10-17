@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
 
-const tank = createTank('m1a2_sepv3', null, {
+const tank = createTank('m1a1_abrams_fep', null, {
   proceduralOnly: true,
   quality: 'high',
   camoSeed: 4242,
@@ -60,11 +60,12 @@ assert.equal(crows.lowerArmorCollar, true,
 assert.equal(crows.equipmentOwnedShielding, true,
 'commander shielding remains equipment-owned for combat anatomy');
 
-assert.equal(loader.americanWeaponStandard, 'sheridan-m2hb-v2',
-  'loader retains the detailed Browning M2HB family');
+// VH.14 (coordinator ruling 2026-10-14: roof weapons calibre-true and working): the loader's gun is the M240
+assert.equal(loader.americanWeaponStandard, 'american-m240-v1',
+  'loader carries the calibre-true M240 on the American installation');
 assert.equal(loader.shieldVariant, 'low',
-  'loader Browning retains its low SEPv3 guard');
-assert.equal(loader.station, 'sepv3-loader-m2hb',
+  'loader gun retains its low SEPv3 guard');
+assert.equal(loader.station, 'sepv3-loader-m240',
   'roof receipt identifies the restored loader installation');
 assert.ok(loader.x > 0,
   'loader Browning sits on the right in a head-on view');

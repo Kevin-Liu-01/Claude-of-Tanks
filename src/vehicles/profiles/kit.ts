@@ -11,6 +11,7 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import * as THREE from 'three';
 import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { KIT } from '../tankFactoryCore.ts';
+import { emitSpareLink } from '../spareLinkGeometry.ts';
 import { ownFittingGeometry } from '../ownedFittingGeometry.ts';
 import {
   addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, addPintleRing, addPintleShield,
@@ -202,6 +203,13 @@ interface MuzzleTipOptions {
 
 interface FittingOptions {
   remoteControlled?: boolean;
+  /**
+   * VH.14 (coordinator ruling 2026-10-14, "roof weapons match the real vehicle and every drawn gun works"): a crew-served
+   * roof gun the auxiliary roof-gun control drives. It keeps its crew construction (grips, sights, the class's feed side
+   * and crew barrel) and gains the working station's rig: the mount and shield turn on the pintle, the gun, its feed and
+   * can pitch on the trunnion (`auxiliaryWeaponPitch`), and the station publishes its pivot and muzzle.
+   */
+  working?: boolean;
   mats?: RuntimeValue;
   shadows?: boolean;
   rotation?: Vec3Tuple;
@@ -214,6 +222,8 @@ interface FittingOptions {
   // the complete weapon/trunnion assembly, never on barrel vertices alone.
   elev?: number;
   ring?: boolean | { r?: number; stubs?: number };
+  /** The American M2's mount ring and its brackets: 'detail' paints them with the vehicle (default 'dark'). */
+  ringSlot?: 'dark' | 'detail';
   ammo?: boolean;
   ammoSlot?: string;
   ammoSide?: number;
@@ -529,7 +539,7 @@ function addWesternHullShell(P: ProfileBuilderPort, d: HullBuildDimensions): voi
 function addHullShell(P: ProfileBuilderPort, p: ProfileConfig, d: HullBuildDimensions): void {
   if (d.style === 'merkava') addMerkavaHullShell(P,d);
   else if (d.style === 'soviet') addSovietHullShell(P,p,d);
-  else if (d.style === 'type90') addType90HullShell(P,d);
+  else if (d.style === 'type90_kyumaru') addType90HullShell(P,d);
   else if (d.style === 'warrior') addWarriorHullShell(P,d);
   else if (d.style === 'ifv') addIfvHullShell(P,d);
   else if (d.style === 'classic') addClassicHullShell(P,d);
@@ -611,7 +621,7 @@ function addClassicDeckFurniture(P: ProfileBuilderPort, d: HullBuildDimensions):
 function addHullDeckFurniture(P: ProfileBuilderPort, d: HullBuildDimensions): void {
   if (d.style === 'merkava') addMerkavaDeckFurniture(P,d);
   else if (d.style === 'soviet') addSovietDeckFurniture(P,d);
-  else if (d.style === 'type90') addType90DeckFurniture(P,d);
+  else if (d.style === 'type90_kyumaru') addType90DeckFurniture(P,d);
   else if (d.style === 'warrior') addWarriorDeckFurniture(P,d);
   else if (d.style === 'western' || d.style === 'ifv') addWesternDeckFurniture(P,d);
   else addClassicDeckFurniture(P,d);
@@ -833,14 +843,14 @@ function addTurretShell(P: ProfileBuilderPort, p: ProfileConfig): void {
   else if (p.turret === 'merkava') merkavaTurret(P,p);
   else if (p.turret === 'cast') castTurret(P,p);
   else if (p.turret === 'ifv') ifvTurret(P,p);
-  else if (p.turret === 'type90') type90Turret(P,p);
+  else if (p.turret === 'type90_kyumaru') type90Turret(P,p);
   else westernWedge(P,p);
 }
 
 function addTurretCrewStations(P: ProfileBuilderPort, p: ProfileConfig): void {
   const { cylY,cupola,periscope }=KIT;
   const h=p.turretHeight;
-  if (p.turret !== 'ifv' && p.turret !== 'casemate' && p.turret !== 'type90') {
+  if (p.turret !== 'ifv' && p.turret !== 'casemate' && p.turret !== 'type90_kyumaru') {
     cupola(P,'turret',p.commanderX ?? p.turretWidth*0.20,h,p.commanderZ ?? -p.turretDepth*0.22,
       p.cupolaR ?? Math.min(0.24,p.turretWidth*0.09),p.cupolaH ?? 0.10,p.cupolaPeriscopes ?? 6);
     P.add('turret',cylY(0.19,0.19,0.035,14),p.loaderX ?? -p.turretWidth*0.20,h+0.02,-p.turretDepth*0.18);
@@ -917,12 +927,12 @@ function buildTurretAndGun(P: ProfileBuilderPort, p: ProfileConfig): void {
 }
 
 // §B3.1 addendum MUZZLE BORE (owner 2026-08-06, banked 32a6946; MANDATORY
-// MECHANISM per the leclerc landing, banked 3fca39b): no gun ends in a solid
+// MECHANISM per the leclerc_s2 landing, banked 3fca39b): no gun ends in a solid
 // capped tip — every muzzle face carries an annular rim + a near-black bore
 // disc recessed inside the rim mouth. MECHANISM = SHADOW-NAMED RENDER
 // FURNITURE (§C), the misc.ts muzzleBore() reference pattern: bucket-based
 // rims grow the gun AABB ~3cm and RE-FRAME the turret-row cameras (-6.2
-// measured on leclerc; also re-binned gate z-columns here — m46/m47 hull
+// measured on leclerc_s2; also re-binned gate z-columns here — m46/m47 hull
 // -0.5/-0.3 measured before the rework). /shadow/i-named meshes render in
 // every game/critic view but are excluded from every measurement mask AND
 // the visible-box framing recipes — mask/frame-neutral BY CONSTRUCTION, and
@@ -1317,7 +1327,7 @@ function isMaterial(value: RuntimeValue): value is THREE.Material {
 /** The material slots a fitting part may name: the vehicle material keys plus the machine gun's ammunition slots. */
 const FITTING_MATERIAL_SLOTS: ReadonlySet<string> = new Set([
   'hull', 'barrel', 'detail', 'dark', 'shadow', 'glass', 'rubber', 'rubberCavity', 'wheels', 'wheelsRecessed',
-  'trackLink', 'spareTrack', 'canvasCloth', 'canvasPale', 'wood', 'bark', 'burnt',
+  'trackLink', 'spareTrack', 'spareLink', 'canvasCloth', 'canvasPale', 'wood', 'bark', 'burnt',
   'gunmetalAmmo', MG_AMMO_CAN_SLOT, MG_CARTRIDGE_SLOT,
 ]);
 
@@ -1338,6 +1348,8 @@ function fitMat(mats: Record<string, RuntimeValue>, slot: string, type = ''): TH
   if (type === 'jerryCans' && (slot === 'canvasCloth' || slot === 'canvasPale' || slot === 'detail')
       && isMaterial(mats.ammoDrab)) return mats.ammoDrab;
   if (slot === 'gunmetalAmmo' && isMaterial(mats.dark)) return mats.dark;
+  // VEH-13: a material set without the spare links' weathered steel (older providers) keeps the track steel
+  if (slot === 'spareLink' && !isMaterial(mats.spareLink)) return fitMat(mats, 'spareTrack', type);
   // 2026-10-06 (round 2): the shared machine gun's ammunition can and its belt's rounds must read against the gunmetal
   // (the vehicle canvas renders near-black on several hulls), and neither ever takes the host camouflage.
   // 2026-10-07 (round 3): they take the solid fitting paint, the FSP-06 role for small painted steel accessories. The
@@ -1510,15 +1522,25 @@ function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
   // get the powered yaw/pitch rig used by the auxiliary auto-gun control.
   const context = createPintleMgBuildContext(opts);
   addPintleMgMount(context);
-  if (opts.remoteControlled) {
+  if (opts.remoteControlled || opts.working) {
     const weapon=fitParts(), weaponContext={...context,parts:weapon};
     addPintleMgReceiver(weaponContext);addPintleMgBarrel(weaponContext);addPintleMgAmmo(weaponContext);
     addPintleMgShield(context);addPintleMgRing(context);
     const fitting=assemblePintleMg(context);
     fitting.userData.remoteControlled=true;
     fitting.userData.barrelAxisLocalY=context.trunY;
-    fitting.userData.muzzleLocalZ=context.trunZ+(.10+context.cls.barrelL+context.cls.flashL)*context.s+.011;
+    // the muzzle device's front plus its 11 mm marker (machineGunGeometry.ts addPintleBarrel / muzzleMarker) on the drawn
+    // barrel: a remote station's datum barrel (its published expression, unchanged to the last bit), a crew-served gun's
+    // crew barrel, or a remote station drawing the crew barrel (datumBarrel false)
+    const datumBarrel=opts.remoteControlled&&opts.datumBarrel!==false;
+    fitting.userData.muzzleLocalZ=datumBarrel
+      ? context.trunZ+(.10+context.cls.barrelL+context.cls.flashL)*context.s+.011
+      : context.trunZ+.10*context.s+context.barrelLength+context.cls.flashL*context.s+.011;
     attachAuxiliaryWeapon(fitting,weapon,opts,context.recY,0,context.recZ);
+    if (!opts.remoteControlled) {
+      fitting.userData.crewServed=true;
+      nameWorkingStation(fitting,'browningDerivedMachineGunBody','browningDerivedMachineGunMount');
+    }
     return fitting;
   }
   addPintleMgReceiver(context);
@@ -1564,11 +1586,15 @@ function addAmericanM2Ring(context: AmericanM2BuildContext): void {
   const ring = fittingRing(opts);
   if (ring) {
     const rr = (ring.r || 0.235) * s;
+    // 2026-10-11 (fleet-weapons lane, round 3b; wave 348's critics on the M1A1: "a flat dark grey ring that does not
+    // match the tan hull", "the roof gun's toothed ring and cradle ... share none of the hull's paint"): a host can paint
+    // the race and its brackets with the vehicle, as a mount is painted; the gun stays weapon steel.
+    const ringSlot = opts.ringSlot === 'detail' ? 'detail' : 'dark';
     // 2026-10-07 (round 4): a flat machined race on its brackets, not a round dark tube (the critics' "rubber hose")
-    parts.add('dark', machinedRing(rr - 0.015 * s, rr + 0.015 * s, 0.018 * s, 0.005 * s, 28), 0, 0.023 * s, 0);
+    parts.add(ringSlot, machinedRing(rr - 0.015 * s, rr + 0.015 * s, 0.018 * s, 0.005 * s, 28), 0, 0.023 * s, 0);
     for (let index = 0; index < (ring.stubs || 4); index++) {
       const a = 0.55 + index * Math.PI * 2 / (ring.stubs || 4);
-      parts.add('dark', box(0.030 * s, 0.045 * s, 0.030 * s),
+      parts.add(ringSlot, box(0.030 * s, 0.045 * s, 0.030 * s),
         Math.cos(a) * rr, 0.020 * s, Math.sin(a) * rr);
       }
   }
@@ -1672,22 +1698,23 @@ function assembleAmericanM2(context: AmericanM2BuildContext, layout: PintleLayou
   // The named stock stays the rigid fitting stock it is (battleGeometrySharing reads `fitting_` names): the can folds
   // with its belt's rounds into one draw as every shared gun's does.
   const ammoMesh = fitting.children.find((child) => child.userData.fittingSlot === MG_AMMO_CAN_SLOT);
+  const m2 = layout.classKey === 'm2';
   if (ammoMesh) {
-    ammoMesh.name = 'sheridanCommanderM2AmmoBox';
+    ammoMesh.name = m2 ? 'sheridanCommanderM2AmmoBox' : 'americanM240AmmoBox';
     ammoMesh.userData.appearanceRole = 'ammoBox';
     ammoMesh.userData.staticMergeShareable = true;
   }
   const bodyMesh = fitting.children.find((child) => child.userData.fittingSlot === 'dark');
   if (bodyMesh) {
-    bodyMesh.name = 'americanM2HBBody';
+    bodyMesh.name = m2 ? 'americanM2HBBody' : 'americanM240Body';
     bodyMesh.userData.appearanceRole = 'machineGun';
     bodyMesh.userData.staticMergeShareable = true;
   }
-  fitting.userData.americanWeaponStandard = 'sheridan-m2hb-v2';
+  fitting.userData.americanWeaponStandard = m2 ? 'sheridan-m2hb-v2' : 'american-m240-v1';
   fitting.userData.browningDerivedStandard = 'cot-browning-family-v2';
   fitting.userData.weaponClass = layout.classKey;
-  fitting.userData.weaponName = 'Browning M2HB';
-  fitting.userData.caliberMm = 12.7;
+  fitting.userData.weaponName = m2 ? 'Browning M2HB' : 'M240 GPMG';
+  fitting.userData.caliberMm = layout.cls.caliber;
   fitting.userData.weaponScale = layout.s;
   fitting.userData.ammoSide = ammoSide;
   fitting.userData.shieldVariant = shieldVariant || 'open';
@@ -1708,7 +1735,9 @@ function assembleAmericanM2(context: AmericanM2BuildContext, layout: PintleLayou
   // into the cradle floor; the floor's top is the receiver's underside), measured on the built M1A2 loader gun.
   const cradleTopY = Math.max(layout.colTop + 0.04 * layout.s, layout.bodyBottom - 0.005 * layout.s) + 0.005 * layout.s;
   fitting.userData.mountDatum = Object.freeze({
-    pintleTopY: layout.colTop + 0.045 * layout.s,
+    // the yoke head's top: drawn up into the cradle floor where the receiver rides high (fittingAmericanM2, the M240)
+    pintleTopY: layout.classKey !== 'm2' ? Math.max(layout.colTop + 0.045 * layout.s, cradleTopY - 0.003 * layout.s)
+      : layout.colTop + 0.045 * layout.s,
     cradleBottomY: cradleTopY - 0.010 * layout.s,
     cradleTopY,
     receiverBottomY: layout.bodyBottom, receiverY: layout.recY, boreY: layout.trunY,
@@ -1720,22 +1749,69 @@ function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
   const ammoSide = Math.sign(opts.ammoSide || -1);
   const parts = fitParts();
   // the callers' 0.58-0.72 scales draw at the crew guns' true-scale floor (machineGunGeometry.ts MG_CREW_TRUE_SHARE)
+  // VH.14 (calibre-true roof weapons): the installation also carries the 7.62 mm M240 ('mag') where the real crew
+  // station does (the Abrams loader's skate, LGS and LAGS mounts); its shield and ring keep the M2 installation's size
+  const cls = opts.cls === 'mag' ? 'mag' : 'm2';
   const layout = createPintleLayout({
-    cls: 'm2', scale: opts.scale || 1, tone: opts.tone || 'dark', ammo: opts.ammo !== false,
+    cls, scale: opts.scale || 1, tone: opts.tone || 'dark', ammo: opts.ammo !== false,
     // the can and belt on the ammo side (+1: the gunner's left, +X)
     feed: ammoSide > 0 ? 'left' : 'right',
   }, parts);
+  const installationS = cls === 'm2' ? layout.s : createPintleLayout({ cls: 'm2', scale: opts.scale || 1 }, { add() {} }).s;
   addPintleMount(layout);
-  addPintleReceiver(layout);
-  addPintleBarrel(layout);
-  addPintleAmmo(layout);
+  // VH.14: a working M2 carries its receiver, barrel and can on the trunnion's pitch rig; the cradle, ring and shield
+  // turn with the pintle (fittingPintleMG's working station)
+  const weapon = opts.working ? fitParts() : parts;
+  const weaponLayout = opts.working ? { ...layout, parts: weapon } : layout;
+  addPintleReceiver(weaponLayout);
+  addPintleBarrel(weaponLayout);
+  addPintleAmmo(weaponLayout);
   const context: AmericanM2BuildContext = {
-    opts, s: layout.s, ammoSide, parts, recY: layout.recY, recZ: layout.recZ, trunZ: layout.trunZ,
+    opts, s: installationS, ammoSide, parts, recY: layout.recY, recZ: layout.recZ, trunZ: layout.trunZ,
     shieldVariant: opts.shield === true ? 'standard' : opts.shield, aim: placeMachineGunBarrelGeometry,
   };
   addAmericanM2Ring(context);
   addAmericanM2Shield(context);
-  return assembleAmericanM2(context, layout);
+  // 2026-10-16 (226 gate, abramsRoofSeating): the 7.62 mm M240 (VH.14's calibre-true Abrams loader gun) carries its
+  // receiver higher over the pintle than the M2 does, so the cradle floor rode 6 mm clear of the yoke head and the
+  // receiver hung on the cheeks alone. The yoke head is drawn up 7/10 into the 10-unit cradle floor (as the M2's
+  // reaches into it): spindle -> yoke head -> cradle floor -> receiver is one load path again.
+  const yokeTop = layout.colTop + 0.045 * layout.s;
+  const cradleBottom = Math.max(layout.colTop + 0.04 * layout.s, layout.bodyBottom - 0.005 * layout.s) - 0.005 * layout.s;
+  const riseTop = cradleBottom + 0.007 * layout.s;
+  if (layout.classKey !== 'm2' && riseTop > yokeTop) {
+    // from 4 units inside the yoke head, so the two read as one forged block
+    parts.add(layout.weaponSlot, KIT.box(0.115 * layout.s, riseTop - yokeTop + 0.004 * layout.s, 0.15 * layout.s),
+      0, (riseTop + yokeTop - 0.004 * layout.s) / 2, 0.01);
+  }
+  const fitting = assembleAmericanM2(context, layout);
+  if (opts.working) {
+    fitting.userData.remoteControlled = true;
+    fitting.userData.crewServed = true;
+    fitting.userData.barrelAxisLocalY = layout.trunY;
+    fitting.userData.muzzleLocalZ = layout.trunZ + .10 * layout.s + layout.barrelLength + layout.cls.flashL * layout.s + .011;
+    attachAuxiliaryWeapon(fitting, weapon, opts, layout.recY, 0, layout.recZ);
+    const m2 = layout.classKey === 'm2';
+    nameWorkingStation(fitting, m2 ? 'americanM2HBBody' : 'americanM240Body', m2 ? 'americanM2HBMount' : 'americanM240Mount',
+      m2 ? 'sheridanCommanderM2AmmoBox' : 'americanM240AmmoBox');
+  }
+  return fitting;
+}
+
+/**
+ * VH.14: a working crew station's names follow its parts. The gun body is the pitching weapon's steel (its receiver and
+ * barrel), the mount's steel keeps a mount name, and the can (when the construction names it) rides the gun; the
+ * fixed construction's receipts read these names (americanModernization, awSecondWaveGeometry).
+ */
+function nameWorkingStation(fitting: THREE.Group, body: string, mount: string, ammo?: string): void {
+  for (const child of fitting.children) if (child.userData.fittingSlot === 'dark') child.name = mount;
+  const pitch = fitting.getObjectByName('auxiliaryWeaponPitch');
+  for (const child of pitch?.children ?? []) {
+    if (child.userData.fittingSlot === 'dark') { child.name = body; child.userData.appearanceRole = 'machineGun'; }
+    else if (ammo && child.userData.fittingSlot === MG_AMMO_CAN_SLOT) {
+      child.name = ammo; child.userData.appearanceRole = 'ammoBox'; child.userData.staticMergeShareable = true;
+    }
+  }
 }
 
 /**
@@ -1848,13 +1924,26 @@ function addAmericanRwsSensorHead(context: AmericanRwsBuildContext): void {
 }
 
 function addAmericanRwsWeaponSystem(context: AmericanRwsBuildContext): void {
-  const { box, cylZ } = KIT;
-  const { body, headY, parts, recY, s } = context;
-  // M2 receiver is nested into the head roof; side coffin and feed are one
-  // connected protected assembly rather than a floating generic gun.
-  parts.add('dark', box(0.235 * s, 0.145 * s, 0.46 * s), 0, recY, 0.16 * s);
-  parts.add('dark', box(0.215 * s, 0.018 * s, 0.41 * s),
-    0, recY + 0.080 * s, 0.16 * s);
+  const { box } = KIT;
+  const { body, headY, headH, parts, recY, s } = context;
+  // 2026-10-11 (fleet-weapons lane, round 3b; wave 348b's critics on the SEPv3's station: "flat untextured grey boxes
+  // with a plain rod barrel"): the M2 is the fleet's Browning construction in its remote form (receiver with feed cover
+  // and feedway, solenoid at the back plate, perforated barrel support, heavy barrel, flash hider), its receiver centred
+  // where the receiver block stood (z 0.16 s) on the station's bore line, its muzzle at the published 1.223 s, carried by
+  // a cradle saddle on the head's roof; it was a receiver box, a cover plate and two plain tubes.
+  const probe = createPintleLayout({cls:'m2',scale:s,remote:true,ammo:false,mount:'external-cradle',feed:'left'},{add(){}});
+  const dz = 0.16 * s - probe.recZ, dy = recY - probe.trunY;
+  const barrelLength = 1.223 * s - dz - probe.trunZ - 0.10 * probe.s - MG_CLASSES.m2.flashL * probe.s - 0.011;
+  const gun = createPintleLayout({cls:'m2',scale:s,remote:true,ammo:false,mount:'external-cradle',feed:'left',barrelLength},{
+    add(slot:string,geometry:THREE.BufferGeometry,x=0,y=0,z=0,rx=0,ry=0,rz=0){
+      parts.add(slot === 'shadow' ? 'shadow' : 'dark',KIT.xform(geometry,x,y,z,rx,ry,rz),0,dy,dz);
+    },
+  });
+  addPintleReceiver(gun);
+  addPintleBarrel(gun);
+  const headTop = headY + headH / 2, receiverBottom = dy + gun.bodyBottom;
+  parts.add('dark', box(0.16 * s, receiverBottom - headTop + 0.004, 0.40 * s),
+    0, (receiverBottom + headTop) / 2, 0.16 * s);
   parts.add(body, box(0.25 * s, 0.28 * s, 0.34 * s),
     -0.29 * s, headY + 0.02 * s, -0.01 * s);
   parts.add('dark', box(0.10 * s, 0.10 * s, 0.18 * s),
@@ -1890,12 +1979,6 @@ function addAmericanRwsWeaponSystem(context: AmericanRwsBuildContext): void {
     0.205 * s, serviceY + 0.113 * s, -0.065 * s);
   parts.add('glass', box(0.095 * s, 0.070 * s, 0.018 * s),
     0.205 * s, serviceY + 0.025 * s, 0.027 * s);
-  parts.add('dark', cylZ(0.030 * s, 0.72 * s, 14),
-    0, recY, 0.74 * s);
-  parts.add('dark', cylZ(0.050 * s, 0.105 * s, 14),
-    0, recY, 1.1525 * s);
-  parts.add('dark', cylZ(0.017 * s, 0.018 * s, 10),
-    0, recY, 1.214 * s);
 }
 
 function addAmericanRwsVariantArmor(context: AmericanRwsBuildContext): void {
@@ -2074,7 +2157,12 @@ function addOpenYokeBase(context: OpenYokeBuildContext): void {
       side * 0.090 * s,yokeCenterY - 0.045 * s,0.145 * s);
   }
   if (context.hasWeapon) parts.add('dark',cylX(0.050 * s,0.41 * s,14),0,yokeCenterY,0.025 * s);
-  else parts.add('dark',cylX(0.024 * s,0.36 * s,12),0,yokeCenterY,-0.015 * s);
+  else {
+    // round 4 (2026-10-11; wave 386's critics on the Puma S1 and Type 89 sight towers: "a black tube skewered through its
+    // column"): the sensor head's pitch shaft stays inside the head; only its trunnion caps show, on the fork arms'
+    // outer faces (round 3's slim spindle ran visibly across the whole fork).
+    for (const side of [-1,1]) parts.add('dark',cylX(0.034 * s,0.022 * s,12),side * 0.208 * s,yokeCenterY,-0.015 * s);
+  }
 }
 
 function addOpenYokeWeapon(context: OpenYokeBuildContext): void {
@@ -2845,7 +2933,7 @@ function fittingJerryCans(opts: FittingOptions = {}): THREE.Group {
  *   shadows, rotation=[rx,ry,rz]
  */
 function fittingSpareTrackLinks(opts: FittingOptions = {}): THREE.Group {
-  const { box, cylX, cylY } = KIT;
+  const { box, cylY } = KIT;
   const links = Math.max(1, opts.links || 4);
   const width = opts.width || 0.5;
   const pitch = opts.pitch || 0.165;
@@ -2877,24 +2965,21 @@ function fittingSpareTrackLinks(opts: FittingOptions = {}): THREE.Group {
       parts.add('detail', cylY(0.009, 0.009, 0.008, 6), x, 0.062, end * (clampZ - 0.012)); // clamp bolt head
     }
   }
-  const connectorX = width / 2 - Math.min(0.016, width * 0.16);
-  const connectorW = Math.min(0.032, width * 0.3);
   // fleet lane 2026-10-08 (circular-cap audit, the BMP-2's course): below a 0.156 m pitch two neighbours' hinge barrels
   // overlapped, their end discs one coplanar overlap; there the neighbours share one barrel on the joint between them,
-  // as a track's links share their pin, and only the course's two ends keep a barrel of their own
-  const barrelR = 0.0215, barrelZ = 0.0565;
-  const sharedHinge = pitch < 2 * (barrelZ + barrelR);
+  // as a track's links share their pin, and only the course's two ends keep a barrel of their own.
+  // VEH-13 (2026-10-15): the link itself is the fleet's one spare link (spareLinkGeometry.ts), in the spare links' own
+  // weathered steel (`spareLink`).
+  const sharedHinge = pitch < 2 * (0.0565 + 0.0215);
   for (let k = 0; k < links; k++) {
     const z = (k - (links - 1) / 2) * pitch;
-    parts.add('spareTrack', box(width * 0.94, 0.026, 0.118), 0, -0.0095, z);               // shoe plate
-    for (const side of [-1, 1]) {
+    const barrels: Array<-1 | 1 | 'shared'> = [];
+    for (const side of [-1, 1] as const) {
       const inner = side > 0 ? k < links - 1 : k > 0;
-      if (!sharedHinge || !inner) parts.add('spareTrack', cylX(barrelR, width * 0.9, 8), 0, 0, z + side * barrelZ); // hinge barrels
-      else if (side > 0) parts.add('spareTrack', cylX(barrelR, width * 0.9, 8), 0, 0, z + pitch / 2);                // the shared joint
-      parts.add('spareTrack', box(connectorW, 0.05, 0.14), side * connectorX, 0, z);       // end connector
-      parts.add('spareTrack', cylY(0.011, 0.011, 0.01, 6), side * connectorX, 0.03, z);    // wedge-bolt head
+      if (!sharedHinge || !inner) barrels.push(side);
+      else if (side > 0) barrels.push('shared');
     }
-    parts.add('spareTrack', box(width * 0.82, 0.0465, 0.036), 0, 0.02675, z);              // grouser
+    emitSpareLink((geo, x, y, zz) => parts.add('spareLink', geo, x, y, zz), width, z, { barrels, pitch });
   }
   const fitting = fitAssemble('spareTrackLinks', parts, opts);
   fitting.userData.designFamily = 'cot-spare-track-carrier-v2';

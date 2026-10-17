@@ -429,7 +429,7 @@ const peer = {
   timeline: (since = 0) => timeline.slice(since),
   async create(options: { mode?: 'lan' | 'private'; specId?: string; settings?: RoomCreateSettings; team?: RoomTeam }) {
     if (!headless) throw new Error('not booted');
-    const snapshot = await headless.room.create({ mode: options.mode ?? 'lan', selection: { specId: options.specId ?? 'm1a2' }, settings: options.settings ?? null });
+    const snapshot = await headless.room.create({ mode: options.mode ?? 'lan', selection: { specId: options.specId ?? 'm1a1_abrams_hc' }, settings: options.settings ?? null });
     const team = teamOf(options.team);
     if (team) await headless.room.setTeam(team);
     record('room:created', { code: snapshot.roomCode, team });
@@ -437,7 +437,7 @@ const peer = {
   },
   async join(options: { code: string; specId?: string; team?: RoomTeam }) {
     if (!headless) throw new Error('not booted');
-    const snapshot = await headless.room.join({ roomCode: options.code, selection: { specId: options.specId ?? 't90m' }, team: teamOf(options.team) });
+    const snapshot = await headless.room.join({ roomCode: options.code, selection: { specId: options.specId ?? 't90am' }, team: teamOf(options.team) });
     record('room:joined', { code: snapshot.roomCode, players: snapshot.players.length, team: headless.room.me?.team ?? null });
     return { code: snapshot.roomCode, playerId, team: headless.room.me?.team ?? null, players: snapshot.players.length };
   },

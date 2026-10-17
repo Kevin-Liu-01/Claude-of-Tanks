@@ -26,7 +26,7 @@ function articulatedGunDirection(entity) {
   const before = authoritativeTerrainCacheStats();
   const supplied = createAuthoritativeMatch({
     mapId: 'coastal', worldCollision: { mapId: 'coastal', heightField },
-    players: [{ id: 'supplied-field', specId: 'm1a2', team: 'alpha' }],
+    players: [{ id: 'supplied-field', specId: 'm1a1_abrams_hc', team: 'alpha' }],
   });
   assert.strictEqual(supplied.heightField, heightField,
     'authority uses the exact supplied collision terrain and layout');
@@ -39,8 +39,8 @@ const match = createAuthoritativeMatch({
   seed: 9,
   countdownS: 0,
   players: [
-    { id: 'alpha-1', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
-    { id: 'bravo-1', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
+    { id: 'alpha-1', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
+    { id: 'bravo-1', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
   ],
 });
 match.onMatchReady();
@@ -53,8 +53,8 @@ function weatherFixture(seed) {
   return createAuthoritativeMatch({
     mapId: 'verdant', seed, countdownS: 0,
     players: [
-      { id: 'weather-a', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
-      { id: 'weather-b', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
+      { id: 'weather-a', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
+      { id: 'weather-b', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
     ],
   });
 }
@@ -120,7 +120,7 @@ const casemateMatch = createAuthoritativeMatch({
   mapId: 'verdant', countdownS: 0,
   players: [
     { id: 'mount-a', specId: 'udes03', team: 'alpha', spawn: { x: 0, z: -100, yaw: 0 } },
-    { id: 'mount-b', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 100, yaw: Math.PI } },
+    { id: 'mount-b', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 0, z: 100, yaw: Math.PI } },
   ],
 });
 casemateMatch.onMatchReady();
@@ -150,8 +150,8 @@ assert.ok(casemateMatch.snapshot({
 const boundaryMatch = createAuthoritativeMatch({
   mapId: 'verdant', countdownS: 0,
   players: [
-    { id: 'edge-a', specId: 'm1a2', team: 'alpha', spawn: { x: 468, z: 0, yaw: Math.PI / 2 } },
-    { id: 'edge-b', specId: 'm1a2', team: 'bravo', spawn: { x: -300, z: 300, yaw: 0 } },
+    { id: 'edge-a', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 468, z: 0, yaw: Math.PI / 2 } },
+    { id: 'edge-b', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: -300, z: 300, yaw: 0 } },
   ],
 });
 boundaryMatch.onMatchReady();
@@ -204,8 +204,8 @@ const collisionMatch = createAuthoritativeMatch({
   countdownS: 0,
   worldCollision: collisionWorld,
   players: [
-    { id: 'wall-a', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
-    { id: 'wall-b', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
+    { id: 'wall-a', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
+    { id: 'wall-b', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
   ],
 });
 collisionMatch.onMatchReady();
@@ -263,8 +263,8 @@ const treeWorld = {
 const treeMatch = createAuthoritativeMatch({
   mapId: 'verdant', countdownS: 0, worldCollision: treeWorld,
   players: [
-    { id: 'tree-a', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
-    { id: 'tree-b', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
+    { id: 'tree-a', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
+    { id: 'tree-b', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
   ],
 });
 treeMatch.onMatchReady();
@@ -316,8 +316,8 @@ const carWorld = {
 const carMatch = createAuthoritativeMatch({
   mapId: 'verdant', countdownS: 0, worldCollision: carWorld,
   players: [
-    { id: 'car-a', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
-    { id: 'car-b', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
+    { id: 'car-a', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
+    { id: 'car-b', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
   ],
 });
 carMatch.onMatchReady();
@@ -355,8 +355,8 @@ const crushWorld = {
 const crushMatch = createAuthoritativeMatch({
   mapId: 'verdant', countdownS: 0, worldCollision: crushWorld,
   players: [
-    { id: 'crush-a', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
-    { id: 'crush-b', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
+    { id: 'crush-a', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
+    { id: 'crush-b', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
   ],
 });
 crushMatch.onMatchReady();
@@ -393,8 +393,8 @@ const restoreWorld = {
 const restoreMatch = createAuthoritativeMatch({
   mapId: 'verdant', countdownS: 0, worldCollision: restoreWorld,
   players: [
-    { id: 'crush-a', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
-    { id: 'crush-b', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
+    { id: 'crush-a', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
+    { id: 'crush-b', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
   ],
 });
 assert.deepEqual(restoreMatch.restoreDestroyedObstacles([0, 7, -1], 12), { restored: 1, unknown: 2 },
@@ -412,8 +412,8 @@ assert.ok(!restoreSnapshot.events.some((event) => event.type === 'world_prop_des
 const botMatch = createAuthoritativeMatch({
   mapId: 'verdant', countdownS: 0, seed: 123,
   players: [
-    { id: 'human-a', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -120, yaw: 0 } },
-    { id: 'bot-b', specId: 't90m', team: 'bravo', bot: true,
+    { id: 'human-a', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -120, yaw: 0 } },
+    { id: 'bot-b', specId: 't90am', team: 'bravo', bot: true,
       spawn: { x: 0, z: 120, yaw: Math.PI } },
   ],
 });
@@ -427,8 +427,8 @@ assert.ok(botMatch.entityById.get('bot-b').state.pos.distanceTo(botStart) > 5,
 const hiddenMatch = createAuthoritativeMatch({
   countdownS: 0,
   players: [
-    { id: 'near-a', specId: 'm1a2', team: 'alpha', spawn: { x: -400, z: -400, yaw: 0 } },
-    { id: 'far-b', specId: 'm1a2', team: 'bravo', spawn: { x: 400, z: 400, yaw: Math.PI } },
+    { id: 'near-a', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: -400, z: -400, yaw: 0 } },
+    { id: 'far-b', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 400, z: 400, yaw: Math.PI } },
   ],
 });
 hiddenMatch.onMatchReady();
@@ -459,8 +459,8 @@ const timedMatch = createAuthoritativeMatch({
   countdownS: 0,
   battleLimitS: 1,
   players: [
-    { id: 'time-a', specId: 'm1a2', team: 'alpha', spawn: { x: -400, z: -400, yaw: 0 } },
-    { id: 'time-b', specId: 'm1a2', team: 'bravo', spawn: { x: 400, z: 400, yaw: Math.PI } },
+    { id: 'time-a', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: -400, z: -400, yaw: 0 } },
+    { id: 'time-b', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 400, z: 400, yaw: Math.PI } },
   ],
 });
 timedMatch.onMatchReady();
@@ -476,8 +476,8 @@ assert.equal(timedMatch.snapshot({ tick: 60, serverTimeMs: 1000,
   const assaultMatch = createAuthoritativeMatch({
     mapId: 'verdant', countdownS: 0, gameMode: 'frontline_assault',
     players: [
-      { id: 'fa-a', specId: 'm1a2', team: 'alpha' },
-      { id: 'fa-b', specId: 't90m', team: 'bravo' },
+      { id: 'fa-a', specId: 'm1a1_abrams_hc', team: 'alpha' },
+      { id: 'fa-b', specId: 't90am', team: 'bravo' },
     ],
   });
   assaultMatch.onMatchReady();
@@ -502,8 +502,8 @@ assert.equal(timedMatch.snapshot({ tick: 60, serverTimeMs: 1000,
 const eliminatedMatch = createAuthoritativeMatch({
   countdownS: 0,
   players: [
-    { id: 'elim-a', specId: 'm1a2', team: 'alpha' },
-    { id: 'elim-b', specId: 'm1a2', team: 'bravo' },
+    { id: 'elim-a', specId: 'm1a1_abrams_hc', team: 'alpha' },
+    { id: 'elim-b', specId: 'm1a1_abrams_hc', team: 'bravo' },
   ],
 });
 eliminatedMatch.onMatchReady();
@@ -541,7 +541,7 @@ const guidedMatch = createAuthoritativeMatch({
   players: [
     { id: 'guided-a', specId: 'spz_puma', team: 'alpha',
       spawn: { x: 0, z: -100, yaw: 0 } },
-    { id: 'guided-b', specId: 'm1a2', team: 'bravo',
+    { id: 'guided-b', specId: 'm1a1_abrams_hc', team: 'bravo',
       spawn: { x: 0, z: 100, yaw: Math.PI } },
   ],
 });
@@ -659,8 +659,8 @@ assert.ok(match.entityById.get('bravo-1').combat.hp < hp0,
 const consumableMatch = createAuthoritativeMatch({
   countdownS: 0,
   players: [
-    { id: 'kit-a', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
-    { id: 'kit-b', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
+    { id: 'kit-a', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
+    { id: 'kit-b', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
   ],
 });
 consumableMatch.onMatchReady();
@@ -703,9 +703,9 @@ assert.ok(consumableMatch.snapshot({
 const botSupportMatch = createAuthoritativeMatch({
   countdownS: 0,
   players: [
-    { id: 'support-a', specId: 'm1a2', team: 'alpha', bot: true,
+    { id: 'support-a', specId: 'm1a1_abrams_hc', team: 'alpha', bot: true,
       spawn: { x: -100, z: -350, yaw: 0 } },
-    { id: 'support-b', specId: 'm1a2', team: 'bravo', bot: true,
+    { id: 'support-b', specId: 'm1a1_abrams_hc', team: 'bravo', bot: true,
       spawn: { x: 100, z: 350, yaw: Math.PI } },
   ],
 });
@@ -737,7 +737,7 @@ const autoloaderMatch = createAuthoritativeMatch({
   countdownS: 0,
   players: [
     { id: 'auto-a', specId: 'pl01_105', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
-    { id: 'auto-b', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
+    { id: 'auto-b', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
   ],
 });
 autoloaderMatch.onMatchReady();
@@ -772,8 +772,8 @@ assert.ok(autoloaderMatch.snapshot({ tick: 133, serverTimeMs: 2217,
 const ramMatch = createAuthoritativeMatch({
   countdownS: 0,
   players: [
-    { id: 'ram-a', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -10, yaw: 0 } },
-    { id: 'ram-b', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 10, yaw: Math.PI } },
+    { id: 'ram-a', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -10, yaw: 0 } },
+    { id: 'ram-b', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 0, z: 10, yaw: Math.PI } },
   ],
 });
 ramMatch.onMatchReady();
@@ -798,8 +798,8 @@ assert.ok(ramMatch.snapshot({ tick: 240, serverTimeMs: 4000,
 const stackMatch = createAuthoritativeMatch({
   mapId: 'verdant', countdownS: 0,
   players: [
-    { id: 'stack-base', specId: 'm1a2', team: 'alpha', spawn: { x: -20, z: -20, yaw: 0 } },
-    { id: 'stack-top', specId: 'm1a2', team: 'bravo', spawn: { x: 20, z: 20, yaw: 0 } },
+    { id: 'stack-base', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: -20, z: -20, yaw: 0 } },
+    { id: 'stack-top', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 20, z: 20, yaw: 0 } },
   ],
 });
 stackMatch.onMatchReady();
@@ -848,8 +848,8 @@ const heMatch = createAuthoritativeMatch({
   countdownS: 0,
   seed: 19,
   players: [
-    { id: 'he-a', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -25, yaw: 0 } },
-    { id: 'he-direct', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 0, yaw: Math.PI } },
+    { id: 'he-a', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -25, yaw: 0 } },
+    { id: 'he-direct', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 0, z: 0, yaw: Math.PI } },
     { id: 'he-splash', specId: 'm551_sheridan', team: 'bravo', spawn: { x: 3.2, z: 0, yaw: Math.PI } },
   ],
 });
@@ -895,8 +895,8 @@ for (const mapId of MAP_IDS) {
   const deployment = createAuthoritativeMatch({
     mapId,
     players: [
-      { id: `${mapId}-a`, specId: 'm1a2', team: 'alpha' },
-      { id: `${mapId}-b`, specId: 'm1a2', team: 'bravo' },
+      { id: `${mapId}-a`, specId: 'm1a1_abrams_hc', team: 'alpha' },
+      { id: `${mapId}-b`, specId: 'm1a1_abrams_hc', team: 'bravo' },
     ],
   });
   const alpha = deployment.entities[0].state;
@@ -947,7 +947,7 @@ console.log('authoritativeMatch.selftest: identity, deployment, movement, world,
   const flat={getHeightAt:()=>0,getGroundType:()=> 'hard',getNormalAt:()=>new Vector3(0,1,0)};
   const battle=createAuthoritativeMatch({gameMode:'zone_control',mapId:'verdant',countdownS:0,seed:1,
     worldCollision:{mapId:'verdant',heightField:flat,obstacles:[]},players:[
-      {id:'scorer',specId:'m1a2',team:'alpha',spawn:{x:0,z:-25,yaw:0}},
+      {id:'scorer',specId:'m1a1_abrams_hc',team:'alpha',spawn:{x:0,z:-25,yaw:0}},
       {id:'victim',specId:'bwp1',team:'bravo',spawn:{x:0,z:25,yaw:Math.PI/2}},
     ]});
   battle.onMatchReady();battle.entityById.get('victim').combat.hp=1;

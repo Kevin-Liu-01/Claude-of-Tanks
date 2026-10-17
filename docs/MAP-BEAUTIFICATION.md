@@ -107,9 +107,9 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Longleaf Crossing | Logging spur, cut blocks, timber yard and regrowth; visible forest-age variation |
 | Highland Reservoir | Pine catchments, exposed reservoir margin, waterworks and service roads; the valve tower standing in the lake and its arched footbridge from the bank (the landmarks lane, 2026-10-05) |
 | Olympus Basin | Rust regolith and mesas under a galaxy sky, a research station of domes, modules, masts and pads (Mars mode, 2026-09-18) |
-| Frosthollow | Carpathian winter valley (round 48): a beaded frozen river down a kotlina floor, a linear timber street village on the west terrace with a sawmill yard, a two-armed ridge and saddle pass on the west flank, rolling moraine on the east; fieldstone walls, spruce blocks with cut clearings |
+| Frosthollow | Carpathian winter valley (round 48): a beaded frozen river down a kotlina floor, a linear timber street village on the west terrace with a sawmill yard, a two-armed ridge and saddle pass on the west flank, rolling moraine on the east; fieldstone walls, spruce blocks with cut clearings. Map revival lane 2 (2026-10-05): the Podhale in January 1945 — the goral kit (log houses under steep shingle, the Zakopane gables, the wooden church, hay barns, the sawmill, burnt houses, bacówki). Round 2 (wave 110b): snow on every roof, the logs silvered and darker, the church in hewn logs (its shingle walls read as brick) and the border hamlets' churches the same, the strongpoint's refuge a goral log house, board fences, no round bales, the spruce massed (96 stands, 36 lone trees) and belts behind the street village, the strips under snow at under half the strength. Round 3 (wave 110b, "a chain of ponds"): the Biały Dunajec one frozen ribbon down the valley (a marsh chain under frozenMarshes through the old pools' centres: pools r 21, runs r 15, the bed 0.6 m under its banks), the roads crossing dry on their causeways, the riverside aspens on the new banks; pacing 182/243/374/178 s (median 243 s, p10 178 s). Round 3 (wave 128): a third of a metre of snow on every roof run out past the shingles' eaves and verges, white in its own colour (the slope mask only half whitens a 45–55° roof: "a thin beige dusting"), no land use under the snow (its strips showed a trace at most and cost the chase view 1.0–1.5 ms), the log village's wood without its cavity map (~2 ms) |
 | Glacier Pass | Frozen lake, rocky alpine catchment, sheltered village; exposed crags and drifting snow. Map revival lane 2 (2026-10-05): the Col du Mont-Cenis in April 1945 — the Savoyard kit (rubble and lauze, larch galleries, mazots, the hospice, the frontier barracks, the Vallo Alpino's works) and the Grande Croix. Round 2 (wave 109b): grey gneiss rubble and blue-grey lauzes 0.34 m thick, the roughcast greyer and the ochre duller, snow banked against every wall, the hospice in rubble with whitewashed reveals and a swept apron, the bulb in larch shingle, the shelled house's stepped breaks, heaps, fallen lauzes and burnt frame, larch-board yard fences, the lake drifted over, the col nearly treeless (34 stands, 40 lone trees); pacing 184/210/226/185 s (median 210 s). Round 3 (wave 109b, "spread far apart along straight roads"): the village two tight Maurienne hamlets — Le Planay round its parish church (13 buildings) and Les Tavernettes round the crossroads (11), eaves under a metre apart, the solid fronts 5.5 m from the carriageway (terrace sites) — with the open col between them (the Vallo Alpino blockhouse and one field barn), the plateau above the larches treeless (12 stands, 10 lone trees, 30 rim trees); pacing 208/232/167/155 s (median 208 s, p10 155 s). Round 3, wave 127's items: no shrub layer on the col, the roadsides of April 1945 (cable reels and direction signs, no cones, Jersey barriers, pad transformers or market stalls), the Savoyard stone a cool grey rubble print, the shelled houses broken from their corners to a breach (not battlements) with snow along every broken head and the walls' own stones out on the heaps |
-| Nordhavn Fjord | Steep harbor settlement, fishing quays, dark water and coastal rock; layered mountain valleys |
+| Nordhavn Fjord | Steep harbor settlement, fishing quays, dark water and coastal rock; layered mountain valleys. Map revival lane 2 (2026-10-05): the Ofotfjord's arms and Bjerkvik in 1940 — the nordland kit (painted board houses under slate, glassed verandas, red sjøhus on granite quays, the fish plant, naust, hjell, the white chapel, houses burnt in 1940, a red rorbu). Round 2 (wave 111b): the board houses' paint a smooth skin over the boards (surfaces.relief: the render's stucco grain all but gone), a prayer house (bedehus) beside the chapel instead of its twin, Ofoten's birch woods (birch-led stands, Scots pine, the planted spruce; May's leafing haze), last year's straw-brown grass over a thin sward, no market stall, traffic cones or concrete barriers; pacing 221 s median, p10 172 s. Round 3 (wave 129): the sward in the steppe's withered-grass photo under the fjord's own tints (matted straw with an olive cast, Grass004 read as one lime carpet), the peninsulas' cliffs with the gneiss's sheeting, joint blocks and varnish drawn on the steep rock (strata 0.18), no park benches or pad transformers, the burnt town's rubble heaps in the kit's stone weathered to a mid grey (it read as white cubes); round 2's tree mix kept (fewer pines cut the woods' concealment: 168 s); pacing 221/155/184/175 s (median 184 s) |
 | Whiteout Station | Sparse polar service compound, fuel storage and wind-shaped snow corridors; expansive low backdrop |
 | Saltmere Bay | Dune-backed fishing coast, sheltered harbor and inland pasture; no inland sand marbling |
 | Saltwind Narrows | Dry limestone terraces, scrub and narrow sheltered water; pale stone with restrained green; the free-standing Venetian campanile on the bay's axis (the landmarks lane, 2026-10-05) |
@@ -1321,7 +1321,7 @@ capture at a time under the probe mutex, niced:
   round-51 keyframe PNGs plus a `studio_winter_breakthrough.resolved.json` from the recorder run) re-encoded all 60
   renditions — the 46 unchanged came back byte-identical, so only the fourteen renditions, the four contact sheets that
   carry them (`action / foreground-review-01 / -03`), the two manifests and `capture-recipes-r1.json` moved. The
-  showcase manifest's studio shots now list the storyboard's cast (`strv122`, `leclerc`; the Aug-19 resolved state had
+  showcase manifest's studio shots now list the storyboard's cast (`strv121`, `leclerc_s2`; the Aug-19 resolved state had
   carried the 83 ice-breaker cast).
 - **Studio film.** `record-studio-action-loop.mjs` loads the checked-in `scenes-studio-r1/studio_winter_breakthrough.json`
   (scene, actor tracks, camera shots) instead of an inline stage — one source for the film, the presentation-r1
@@ -1809,7 +1809,7 @@ records what the designs cost.
 
 **The probe.** `tools/tmp-r59-map-perf-probe.mjs` (a throwaway over `tools/map-probe-runtime.mjs`, the round-48
 convention): one private vite server and one headless browser per tree, one page per map, the desktop tier at seed
-1337 in a `t90m_x`, a solo battle through `__DEBUG.beginSoloBattle`; the activation trace (`window.__WORLD_LOAD`: build,
+1337 in a `t90m`, a solo battle through `__DEBUG.beginSoloBattle`; the activation trace (`window.__WORLD_LOAD`: build,
 its height-field / terrain / vegetation / props stages, the vegetation slice timings), long tasks from document start
 (`PerformanceObserver`), the sourced textures awaited, every bot frozen (`aiCtl = null`); then four poses — chase and
 bird relative to the hull (`HULL_RELATIVE_POSES`), `edge-e-low` and `centre-far` from the view table — with 90 rendered
@@ -4777,6 +4777,7 @@ map's props build (140–260 ms) whether or not the map places steel; Foundry's 
 | 48 | Frosthollow redesign (owner: the Verdant clone maps): a Carpathian valley — ten-pond frozen river, terrace street village with a sawmill yard, two-armed ridge and saddle pass with a switchback, moraine flank, seven authored roads, new strongpoints, walls, belts, clearings, pads; the round-44 snow albedo / exposure re-grade | wall-probe A/B (six brief views + village-street, river-crossing, pass-switchback): skyline sky-w 0.94 → 0.88, sky-s 0.92 → 0.84, snow median 208 → 198; layout scan (pads, beats, candidates, pole stations, pond lips); mapQuality + road + winterLakeGeometry receipts, recaptured collision shard |
 | 48 | Amberford redesign: a Norman / English river-ford market town replaces the Verdant clone — SW→NE river in a sculpted valley (hillScale 0.8, eleven cut/fill landforms under one graded water plane), a stone bridge and a ford as the only crossings (avoid-liquid bots), five authored lanes, the walled town on the north-bank rise, orchards and hedgerows, the escarpment woods, the manor park and lake, weir and water mill in the river kit, re-baked tactical plate | wall-probe A/B on bird/centre/sky views plus five authored gameplay-height views (bridge, ford, square, mill, valley) and two close bridge views; constraint check (0 wet gaps, banks ≤ 1.44 m, both crossings dry, pads minNy 0.85–0.97); skyline metric unchanged (sky-w 0.84 → 0.90, bird-n 0.98 → 0.98); liquidMarshSurface worst bank 0.42; matchPlacement dry routes in all modes |
 | 48 | Tarkhan Steppe redesign: a new battlefield under the kept palette — takyr-floored braided wadi across the middle, 12 m escarpment with two ramps and a kurgan line on its crest, grain station (SE), kolkhoz and corrals (W), salt pan (NW), caravanserai rise, five authored roads, shelterbelts instead of groves, three graded aprons for the objective placement, recaptured collision shard | headless layout probe (bed −4.3 m, crest 16–18 m, mounds +5..8 m, pads relief ≤ 5.8 m, both-team reach on every row); wall-probe A/B (centre-far skyline 0.99 → 0.92, kurgan-line band 181 → 164 luma, plateau-south 161 → 134; sky-w unchanged 0.87 → 0.89); 38 receipts green, two shared digests moved for the integrator |
+| map revival (2026-10-05) | Tarkhan Steppe as a Virgin Lands grain sovkhoz (the owner: "make sure all maps look completely new and revitalized like verdant"): the tselina kit (`maps/regional/tselina.ts`) rebuilds the grain station's 19 buildings in place — the slip-formed elevator and its working tower by the siding, the conveyor gallery, the MTS garages and implement sheds, grain stores, settlers' and two-family houses with glazed verandas, the club's portico and star, the Rozhnovsky tower, the boiler stack, the fuel store or brigade wagons, the sheep barns — each body filling its base's measured bounds (every side within 0.06 m), the yards' fenced kitchen gardens and sheds; Barayev's strip fields (`landUse.ts` region `tselina`: wheat, stubble and black fallow in 620 × 104 m blocks along the shelterbelts; the ten other rows' digests unchanged); stone idols on the kurgans, a wind pump, straw ricks and the 110 kV line to the station (scenery); the pine slot grows as birch | regionalArchitecture (19 buildings in place, stream exact, settlement triangles 17632 → 19978), typecheck, 90 selected receipts green (server/match/service red on the PR head too: a load-timing assert), collision drift current, census [1830, 1543, 703] → [1876, 1554, 703]; pacing 187/243/314/175 s, identical to the PR head; gauntlet pair 10 views; cost B − C (load 140–195, provisional) establishing 0.89 ± 0.58 ms, chase 0.42 ± 0.77 ms, the land use's own shading by an on/off toggle 0.07 ± 0.46 ms |
 | 48 | Landing (2026-09-24): Amberford's and Tarkhan's dedicated collision shards recaptured on the combined tree (the lane left the round-1 Amberford shard; census receipts pin counts only), bot relocation cells on holdable ground + flank rings scored for reach + a closed penetration gate held against a stationary target starts the flank, the three redesigned player pads moved 60 / 60 / 120 m down their approaches onto flat-scanned cells | battlePacing 14/124 (from 18; ledger 17 → 16 → 17 → 16 → 14 across the five fixes), dedicatedWorldCollision census, collisionManifestCodec, terrainStreaming spawn windows, garage:terrain:check, spawnClearance / mapQuality / matchPlacement / minimapObjectives, 11 AI receipts, typecheck; chain 70 |
 | 50 | The redesigned maps' tactical-map plates (Frosthollow, Tarkhan) and Garage cards (all three: 4K hero + picker thumb) re-rendered from the new battlefields — they still showed the Verdant clones; the round-48 pacing trace committed as `tools/pacing-trace.mjs` | map-art-guards, minimapAssetRuntime / CapturePolicy / Orientation, loadingScreens, landing-media, public-repo-hygiene, attribution; eye check of the 1280 px reductions; chain 71 |
 | 51 | Home showcase frames of the redesigned maps: the eight orphaned `public/media/home` frames, thirteen `presentation-r1` frames (five owner picks on the home rail / maps section / featured gallery / docs page, eight archive frames) and the five Frosthollow studio-loop keyframes re-rendered from the round-48 battlefields; every recipe on the three maps re-staged in its generator (ponds, terrace village street and crossroads, orchard rows, the coach road under the town, stone bridge, ford, open steppe, highway belts, kurgan crest); `publish-presentation-r1.mjs --match` subset mode | eye check of 1280 px reductions after seven preview rounds against the review's lens rule (nothing within ~8 m of the glass but a deliberate hull); campaign image metrics 26 / 26; landing-media, feature-evidence, hero-rails, loadingScreens, socialProof, showcase-library, public-repo-hygiene, attribution — no digest moved |
@@ -4846,8 +4847,8 @@ different `--root` (the baseline checkout, e.g. a clean clone of `origin/main`) 
 | `tools/terrain-layer-flag-probe.mjs` | which splat layer paints a surface: the terrain material recompiled with G yellow, D cyan, R magenta, M blue (round 45 found Monsoon's mound and Fjord's cliffs were the steep-slope layer; round 47 the desert / Oasis contour bands as the D mask) | 45, 47 | `--maps=monsoon,fjord --views=sw-corner-close,canyon-in`; the receipt counts the flagged materials (0 fails) |
 | `tools/terrain-uniform-iso-probe.mjs` | which terrain uniform carries an artefact: one zeroed at a time (`-no-<uniform>.png`), `--flat-normals` swaps the layer normal maps for a flat texel (round 47: the desert's black squiggles survived every uniform and vanished with flat normals) | 47 | `--maps=desert --views=sw-corner-close --iso-uniforms=uRipple --flat-normals`; a uniform matching no material fails |
 | `tools/world-layer-isolation-probe.mjs` | which world layer draws a step at the water edge: the sea apron, the ring forest, the ring mesh and the shallow-water sheets hidden one at a time (`-no-apron.png` …), with a census of apron / horizon / shallow-water / ring meshes | 40 | `--maps=coastal,saltwind --views=bird-e-edge,over-e-560 [--hide="no-apron=shallowWaterSeaApron;…"]`; a pattern hiding nothing is recorded, never silent |
-| `tools/salvo-indicator-probe.mjs` | the guided salvo rack drives the HUD magazine indicator through the real desktop input path: reticle crops of rest / after the first launch / during the held group reload / refilled, with the combat state per phase; a cannon autoloader and a single-shot gun as controls | 41 | default `--ids=ztz100_prototype:salvo,leclerc_x:autoloader,t72b3m:single`; pairs with `src/sim/magazineIndicator.selftest.mjs` |
-| `tools/water-drive-probe.mjs` | the wake and churn trail of a hull fording a lake at a governed 7 m/s: chase / bird / side poses 1.5–6 s after entering and 1.5–4.5 s after stopping, then a fixed shore camera (the trail must lie where the water was churned) | 46 | `--maps=reservoir,coastal [--spec=t90m_x] [--speed=7]`; entry points for reservoir, coastal, fjord, oasis, skybridge, alpine |
+| `tools/salvo-indicator-probe.mjs` | the guided salvo rack drives the HUD magazine indicator through the real desktop input path: reticle crops of rest / after the first launch / during the held group reload / refilled, with the combat state per phase; a cannon autoloader and a single-shot gun as controls | 41 | default `--ids=ztz100_prototype:salvo,leclerc_xlr:autoloader,t72b3m_2022:single`; pairs with `src/sim/magazineIndicator.selftest.mjs` |
+| `tools/water-drive-probe.mjs` | the wake and churn trail of a hull fording a lake at a governed 7 m/s: chase / bird / side poses 1.5–6 s after entering and 1.5–4.5 s after stopping, then a fixed shore camera (the trail must lie where the water was churned) | 46 | `--maps=reservoir,coastal [--spec=t90m] [--speed=7]`; entry points for reservoir, coastal, fjord, oasis, skybridge, alpine |
 | `tools/map-metrics.mjs skyline` | check 5: median ground/sky display-luma ratio at the detected skyline (> 1 = range paler than the sky) | 37, 39, 47 | `skyline <dir> <tag> <maps> [sky-w,sky-s,centre-far]` |
 | `tools/map-metrics.mjs stripe` | check 8: windowed 2-D FFT of a region's detrended luminance — peak share, wavelength, heading, top-1 % share, anisotropy, std | 43 | `stripe <image> x0,y0,x1,y1 …` (round 43 regions: desert w-wall-mid 900,480,1500,700; bird-w 200,560,1300,700; Oasis w-wall-mid 200,520,1300,800) |
 | `tools/map-metrics.mjs boxes` | checks 3, 4, 11: shaded / lit box means, ground 5th percentile and mean, wall rgb / hue / sat / luma, A → B with % deltas | 42, 45, 47 | `boxes <capdir> boxes.json <maps> a b [views]` with the round-47a boxes below |
@@ -5977,7 +5978,7 @@ proxy draws per hull per cascade → one; fleet bytes untouched). Measured and N
 | lever | what the attribution says | why it is proposed, not applied |
 |---|---|---|
 | (a′) near-detail shells: the ~18 static detail parts of a near hull merged per articulation node into one position-only shadow geometry (the five instanced wheel draws stay) | −12…−15 shadow draws per near hull in the first cascade (−48…−60 a frame at chase); the shells cost 1.19–3.49 MB of positions per spec (25.8 MB for the fourteen specs, 753 k triangles) — a per-tank BatchedMesh keeps per-part visibility, a plain merge does not | new retained GPU bytes on every hull (the acceptance list asks for equal-or-lower buffer bytes); `stripEra` removes ERA plates at runtime and `setTrackState` changes the running gear — a merged shell would keep casting them; the shells would have to be built in battle only (never in node) to keep the icon / anatomy digests byte-identical |
-| (b) same-material sub-meshes merged per node at build time | 27.4 draws per hull on average (365 static + 19 instanced of 840 across the fourteen specs; 60 forward draws per hull headless): `hull+hullDetail+hullExternalArmor+hullOpenLattice+hullHatch` share one paint material, `turret+turretDetail+turretExternalArmor+turretCupola` another, `gearRoadWheelTires+gearRoadWheelInsets` one rubber, `gearTrackPads+gearTrackPadsSimplified`; the outliers are the source-X hulls whose small parts are meshes of their own — `ua_m1a1_x` 172 forward draws of which 144 merge, `leo2a5` 97 / 41, `k2b` 75 / 41 | every merge changes the mesh list the icon studio, the anatomy diagrams, the module-visual-align probes and the near-detail vocabulary (`NEAR_SHADOW_DETAIL_NAMES`) walk by name, so the icon / anatomy digests cannot stay byte-identical; ERA plates (`stripEra`), hatches and cupolas toggle at runtime by mesh; the frame cost of a forward draw with the shared paint program is the smallest kind (same program, same textures), so the win is ~90 setups a frame at chase, not a GPU change — worth a round of its own with the digests re-pinned, not a knob |
+| (b) same-material sub-meshes merged per node at build time | 27.4 draws per hull on average (365 static + 19 instanced of 840 across the fourteen specs; 60 forward draws per hull headless): `hull+hullDetail+hullExternalArmor+hullOpenLattice+hullHatch` share one paint material, `turret+turretDetail+turretExternalArmor+turretCupola` another, `gearRoadWheelTires+gearRoadWheelInsets` one rubber, `gearTrackPads+gearTrackPadsSimplified`; the outliers are the source-X hulls whose small parts are meshes of their own — `ua_m1a2_abrams` 172 forward draws of which 144 merge, `leo2a4_v` 97 / 41, `k2b` 75 / 41 | every merge changes the mesh list the icon studio, the anatomy diagrams, the module-visual-align probes and the near-detail vocabulary (`NEAR_SHADOW_DETAIL_NAMES`) walk by name, so the icon / anatomy digests cannot stay byte-identical; ERA plates (`stripEra`), hatches and cupolas toggle at runtime by mesh; the frame cost of a forward draw with the shared paint program is the smallest kind (same program, same textures), so the win is ~90 setups a frame at chase, not a GPU change — worth a round of its own with the digests re-pinned, not a knob |
 
 
 **Measured — the census (base 8fb54bac3 vs the finished tree dde3a0928, seven maps, both poses; draws per frame, far cascade at half rate).**
@@ -6065,7 +6066,7 @@ the far cascades and the reach / footprint laws matter most, railyard and desert
   self-shadow policy at work, and the only knob-sized cut (fewer detail parts) is visible; the shells (a′ above) are a
   memory trade the owner has to want.
 - The forward tank draws: ~52 per visible hull, and 172 for a source-X hull whose small parts are meshes of their
-  own (`ua_m1a1_x`); the same-material merge (b) is a digest re-pin round, not a knob.
+  own (`ua_m1a2_abrams`); the same-material merge (b) is a digest re-pin round, not a knob.
 - The props' shadow triangles: the merged buckets are drawn into every cascade whose box holds any of their cells,
   and on a village or yard map every cascade does — 1.0–1.5 M shadow triangles a frame on every map; only a
   spatially split bucket (more forward draws) or a shadow-only chunked copy could cut them further.
@@ -7825,6 +7826,175 @@ shadow takes a little too much bounce (the CSM cannot tell the two shadows apart
   ACCEPT; the census identical (4,326,639 triangles, 414 draws). The first hold (GPU p25 +0.42 ± 1.04 ms, CPU p50
   −0.09 ± 0.17 ms; 4,664,349 triangles, 495 draws with the hulls shown) ran niced and is void.
 
+### 2026-10-06 — Clouds 2.0: a layered medium under a Beer shadow map (the clouds lane)
+
+**Why.** The owner wanted the clouds "improved a lot more", after takram three-geospatial's clouds (MIT). The critics'
+standing complaints on the old layer: flat hard-edged cartoon puffs at random heights, stamped repeated sprites, evenly
+spaced tufts at one altitude, a soft blurred mass beside crisp cumulus, box-cut edges, an overcast as one flat grey card.
+Branch `visual/clouds2`.
+
+**What it is.** `engine/cloudLayers.ts` resolves a map's preset into up to four altitude lanes; `cloudShaders.ts` holds
+the medium (a coverage of the 48 km local weather under a height profile, carved by a GPU-baked 3.2 km Perlin–Worley
+volume and a detail volume), the trace, the resolve and the Beer shadow map; `volumetricClouds.ts` drives them.
+- Cumulus stand on flat bases (full width a few percent over the condensation level, narrowing as 1 − h^(1/bias)) and
+  are carved into their billows (a low core under a long ramp: the shape volume makes the cloud, not just its rim).
+- Decks carry an optical depth of 10–25 (a closing deck 25), cells that always break the column and cores hanging under
+  the base; their coverage ramp and base wisps are soft (no pinhole stipple).
+- A front's towers are the cumuliform field gathered by the large-scale field as an envelope (bands of towers, never one
+  blob the size of the field's features), domed, softly carved, their footprint drifting with height; the elements aloft
+  read the large-scale field (patches of kilometres, not a confetti against the sun). A fair-weather sky carries no
+  layer aloft at all.
+- The sun reaches each sample through a short march plus the Beer shadow map: two toroidal, world-anchored cascades (12 km
+  about the camera; 40 km about its point at the stack's middle height carried down the sun) marched by lanes and
+  altitude slices, each texel's entry bisected, read as the four texels' depths blended as transmittances.
+- The ground's cloud shade is the near cascade's whole column along the sun (the contract unchanged), so a sun the trace
+  sees through a gap lights the ground under it (cloudBeerShadow.selftest: the skies lane's Frosthollow case).
+
+**Lessons.**
+- three's `readRenderTargetPixelsAsync` keeps its pack buffer bound across its await: on the hardware the atmosphere's
+  summary read fell into that window and the whole sky dropped to its Preetham fallback with the baked decks (the first
+  GPU pair was void for it). Reads go through `rgba8Readback.ts`.
+- A cascade's front depth filtered bilinearly draws facets (a 250 m far texel) and streaks along the sun (a flank beside a
+  column through the top); blend the texels' depths as transmittances, centre the far window where the cloud points'
+  projections fall, and bisect the entry.
+- Takram's semicircle profile draws a cumulus from below as a mushroom on a stem; a core of 0.56 under a ramp of 1 drew
+  smooth loaves under a bubbly fringe.
+- The SwiftShader sky-rig harness (`.qa-dev/harness`) judges structure, never tone or cost (no grade, no game post; its
+  frame times swing with the machine's load).
+
+**Measured.** SwiftShader sky rig, sky-w under a 40-frame pan at 0.12° a frame (the lab's cloud flicker meter): one-frame
+blips 0.0003 against the old layer's 0.00071 on Verdant and 0.00017 against 0.00039 on Frosthollow, no pixel of the sky
+changed by a one-pixel shift. The GPU pair (before / after frames, the hardware meters) and the rule-v3 cost holds are
+queued at the lane's stamp.
+
+### 2026-10-07 — Clouds 2.0 rounds 2–6: the scene's sun, decks lit by their own column (the clouds lane)
+
+**Why.** Wave 198 (pair B) passed the cumulus and the towers (sky +0.47, Monsoon's front the standout); wave 200 (pair
+A2) failed the decks ("airbrushed pillows and lens-shaped slabs", "flat painted sheets with scalloped, hard-edged cutout
+silhouettes"), and the coordinator's round asked for deck cells with internal structure, broken decks in bands with blue
+between, an overcast with structure, the clouds lit by the scene's own sun both ways and storms shading the field.
+
+**What changed.**
+- The clouds' sun is the light model's colour (the ground's transmittance tint, greyed by the overcast) times the air
+  between the ground and the cloud: warm or grey with the scene, never beige clouds over neutrally lit snow.
+- A broken deck is stratocumulus — lumpy domed cells on a flat base, carved whole by the shape and detail volumes, in
+  bands along the wind (1.7:1) with sky between — and reads the cumuliform field's six-kilometre cells as at least half
+  its weather (on the stratiform field's sixteen-kilometre features alone the fjord's sky-w view was clear to the
+  horizon). A closing deck stays the dense sheet.
+- A deck is lit by its own column: the diffusion and the sky through the deck take the vertical depth over the point in
+  its own cell (the sun ray's depth under a low sun averaged a kilometre of slant over several cells into one grey), so a
+  thick core sits dark beside a thin, bright seam and a hanging lump is darker than the base around it.
+- Under a closing deck the ground's light is what the deck passes down (`cloudLayers.ts` `cloudGroundLight`: the
+  diffuse share of its column raised by the ground's bounce) — the old law let the open sky's blue irradiance through a
+  closed deck untouched and lit its base blue. A broken deck and a convective sky keep the old law (over snow the new one
+  lit a broken deck's bases white).
+- A front keeps no clear zone over the camera: its towers stand over the field and shade it.
+- The cirrus is a trace of ice (0.7 of its cover, 0.6 of its depth) with a third, finer octave: not the sky's subject.
+- The low tier marches the near Beer-shadow cascade alone at 0.6 of the stack's slices and refreshes the shade every
+  four frames.
+
+**Lessons.**
+- Measure the overcast: Whiteout's sky luminance spread over the top of the sky-w frame was 2.9 of 255 on the old layer
+  and 2.5 on round 2 — one card; the local column took it to 9.8. A mottle from the point's own noise (round 5) barely
+  moved it (7.7 / 8.1 / 8.3 off, on, doubled) and was dropped rather than shipped as dead cost.
+- A physically right ground bounce is not always the brief: over snow it whitens a broken deck's bases, the look the
+  critics had already marked down.
+- Cost holds hide every bot vehicle (rule v3, amended): a bot in or out of the chase frame staged a different scene on
+  the twin page.
+
+**Measured.** Rounds 3–5 (1488dd861) passed both of their waves: wave 221 (Frosthollow, Fjord, Monsoon, Desert) sky
++0.19 (3.62 → 3.81), overall +0.05, no view down more than 0.5; wave 222 (the closed overcast, Whiteout and Titan
+Gorge) sky +0.75 (3.25 → 4.00), overall +0.38, all eight views up. Their after-frame defects drove round 6 (056edea78):
+a closing deck's lanes narrowed by its open share, a second lattice of cells against the even repetition, Whiteout's
+base at 180 m and the overcast's forward lobe at 0.45 for the sun's patch, a storm's base dark through its own column,
+the tower warp a lean rather than a twist, the cirrus dropped. The rule-v3 cost runs as four stagings (Monsoon high,
+Whiteout high, Verdant high and low), each cycle timing chase, sky-w and establishing.
+
+**Rounds 7–8 and the cost (2026-10-07, after the scratchpad wipe; priced against the PR head 72584099e).**
+- *Merged on the PR head* (424d324eb): B prices the clouds alone. The PR head had moved Titan Gorge to fair-weather
+  cumulus (Monument Valley), so the closed-deck receipt now derives its closed decks from the presets (Whiteout).
+- *Wave 235* (Monsoon, Desert, Whiteout, Titan Gorge on 424d324eb) passed: sky +1.25 (4.00 → 5.25), mean +0.20, the four
+  Whiteout views AMATEUR → PLAUSIBLE.
+- *Round 7*: rain under a storm takes the storm's grey light (no blue streak composited in front of a tower).
+- *Round 8 — a broken deck covers the sky its map authors.* A twin of the medium (`cloudDeckCover.selftest`: cl2Weather,
+  cl2Cell, cl2Shell and cl2Media without the detail over the real weather bake and a port of the GPU shape bake) measures
+  the share of the sky dome whose optical depth passes 1 from the ground. The broken decks covered about half their
+  coverage (Frosthollow 0.40 of 0.86, the fjord 0.21 of 0.62, Railyard 0.78 of 0.92): the shell's core 0.5 under the full
+  shape erosion kept half of what the cover admitted. Their shell is now near the closed deck's (core 0.8, ramp 0.45,
+  erosion 0.85) under a cover law calibrated on the dome: Frosthollow 0.85, the fjord 0.63, Railyard 0.95.
+- *The cost (rule v3, H1: 424d324eb, high, bots hidden).* Monsoon's towers +1.7 / +3.3 / +3.1 ms GPU (chase /
+  establishing / sky-w), Whiteout's GPU at or under the old layer's; the main thread +0.3 to +0.6 ms a frame on both. The
+  first answer (c4b958ed0): one auxiliary pass a frame at most (the cascades' bands of twice the rows every 4 and 8 frames,
+  the shade every 4, each on its own phase: 0.66 a frame against about 2), the far cascade read only where it counts, the
+  clear prefix of a run skipped by the pre-test (to 28 km). The march's light budget is exposed as QA knobs (93dc3157a) for
+  the hardware to price before any becomes the law.
+- *Round 9 (409c3c780), priced on the hardware.* O1a (nice 0): the main thread passes on Monsoon (+0.12 / +0.30 / −0.16
+  ms), the GPU does not. A front's towers solid (core 0.74: wave 235's blue holes through them), its lanes aloft shed (the
+  smear over the sun and the confetti), the light on every third lit step, the march out at 0.05, the high tier's stride
+  growth 0.0125. O2 (1080p): chase +1.05, establishing +2.10, sky-w +2.12 ms of the GPU, the CPU under the line.
+- *The storm exception* (the coordinator's ruling, 2026-10-07; `$SP/cost-rule-20261006.md`): on the high tier the clouds'
+  increment at most +1.0 ms on the chase view and +2.0 ms on the sky views, the CPU under 0.38 at 8 cycles at load 150 or
+  below, the medium tier under the normal line, phones unchanged (the layer and its noise bakes never start on the mobile
+  tier), the non-storm stagings under the normal rule.
+- *Round 10 (096844ea9).* Exact: the detail's remap saturates every lane at d >= 0.5 for any modifier, so where no lane
+  lies strictly between 0 and 0.5 the step stands in for it and the detail volume is not read. The march's other cost
+  knobs (step cap, entry refinement, far-cascade bilinear read, the streets' share) are QA knobs for the screen. The
+  unwarped clear-air pre-test was dropped before it was built: the warp moves Monsoon's weather by up to 0.41
+  (`.qa-dev/warp-margin.mjs`), so a conservative margin would admit nearly every tap. P1: Monsoon medium −0.73 / +0.05 /
+  +0.15 ms GPU, CPU +0.13 / −0.08 / +0.13 (4 cycles, load under 150).
+
+- *P2 (round 10 against 72584099e, Monsoon high, 1080p, load 106–131).* chase +0.34 ± 0.28, establishing +1.13 ± 0.13,
+  sky-w +1.51 ± 0.26 ms of the GPU, the CPU −0.15 / −0.10 / −0.01 ms: inside the storm exception's caps at 4 cycles. The
+  cloud layer's own GPU timer at the same views: the old layer 1.62 ms a frame, round 10 3.26 / 3.40 ms; round 10's exact
+  detail skip cost 0.18 ms on the establishing view (its per-sample test against a cached 32³ fetch) and was dropped
+  (384119d26). The finals run on the PR head 7fa8749ca merged (af8ac770e): 8 cycles each of Monsoon high and medium,
+  Whiteout high, Verdant high and low.
+
+- *F1, the final Monsoon high* (384119d26 against the PR head 7fa8749ca, 8 cycles, 1080p, load 67–90): chase +0.84 ± 0.27,
+  establishing +0.55 ± 0.39, sky-w +1.32 ± 0.53 ms of the GPU, the CPU −0.01 / +0.09 / +0.05 ms — the storm exception's
+  caps (+1.0 / +2.0 / +2.0) held, the CPU under the normal line: ACCEPT.
+
+- *F2, the final Monsoon medium* (same arms, 8 cycles, load 48–90): chase +0.15 ± 0.44, establishing +0.56 ± 0.52, sky-w
+  +1.07 ± 0.32 ms of the GPU (the ± a standard error), the CPU −0.01 / −0.04 / −0.03 — sky-w over the normal line the
+  exception keeps for medium. A top-up to 16 would have needed its 8 new cycles under 0.13 ms, so the medium law changed
+  instead. *Round 11 (0051c45ce):* the march's light budget is per tier in `CLOUD_TIERS`: medium and low light every 4th
+  lit step, leave the march at 0.08 of the light and refine a cloud's entry with two samples at half a step (the layer's
+  timer priced the three on Monsoon's towers at high: −0.77 ms on establishing and sky-w); high and ultra keep the law the
+  waves passed and F1 measured, their path unchanged. The arms moved to the PR head e65122a84 (push 3b; the merge
+  ed0619982) for the remaining finals: F2c (Monsoon medium, a fresh 8 cycles), Whiteout high, Verdant high and low, and
+  the broken decks' frames, whose Monsoon variants are the look check on the cheaper budget.
+
+- *F2c, void twice, then the guards (2026-10-08).* The first run (one-frame census) voided 21 of 24 cycles: under the
+  live lighting the outermost cascade redraws every second frame, so one frame's draws flipped by ±62 calls on every page,
+  the twins included — the census became the mean of 24 whole frames. The re-run read B 35–45 % under A in draws, a
+  "saving" of 2–3 ms; the draw diagnostic (D1 / D2: per frame the game's own census, the shadow telemetry with the static
+  cache's counters, every draw by render target and kind, a dirty-caster diff of the frozen world roots and the perf
+  lane's probe) found the three pages drawing the same scene when it ran — B one cloud pass over A, the cache reusing on
+  every page with no content change, the cache off drawing the same — and B's deficit in the re-run equal to the four
+  cascades' draws, without the outer cascade's alternation: B's page had drawn no shadow map for a whole run. The cause
+  is lighting's static-presentation dormancy latch: the Garage's GPU warm sets it in a `finally`, a live battle frame
+  clears it, the shot runtime never does, and shot mode's forced update passes it by — the cost hook's unforced update
+  obeys it, so whichever page latched at staging froze its cascades. The lab now clears the latch at the hook's install
+  and before every pose, refuses a page without shadow maps, and guards B against A (±5 calls, 1 % of the triangles) as
+  well as A against C on the whole frame and on the scene pass (the draws into the scene pass's own target). The finals
+  re-run on the PR head 590f51aaf (push 4; the merge 307b44235) as one-cycle jobs gated by the shared v3 check.
+
+**Lessons (the cost work).**
+- A whole-frame knob screen on a loaded machine is noise (the same variant read 16 and 23 ms in one palindrome); screen
+  knobs by the cloud layer's own GPU timer (its passes alone) and decide by the pooled ABCCBA.
+- A QA knob read when the preset is packed (the cumulus core, the lanes aloft) does not take effect when a variant only
+  changes `__LIGHT_TUNE`: the preset's key is unchanged. Knobs for a screen must be read every frame.
+- A top-up is arithmetic before it is a hold: at 8 cycles of mean m, 16 pass only if the next 8 average under
+  2 × 0.6 − m; when that sits several standard errors below m, change the law instead of buying the cycles.
+- A guard that compares only the two pages of one build cannot see the candidate's page in another state: a page that
+  drew no shadow map for a whole run read as a saving of 2–3 ms. Compare the candidate's scene with the baseline's too,
+  and when a saving looks too good, census the draws by render target before believing it.
+- A state latched outside the measured path (the Garage's shadow dormancy, cleared only by the live frame) survives into
+  a staged capture; any hook that turns a forced update into a live one must restore what the live frame restores.
+- A shader-compile check needs no game boot: build the layer's materials in Node and compile them in a blank page with
+  three's renderer on SwiftShader (`.qa-dev/glsl-check.mjs`); three checks a program's status on its first use, so touch
+  each program's uniforms after `compile()`, and prove the checker on a deliberately broken program.
+
 ### 2026-10-09 — the clouds' grain: per-pixel jitter, a longer memory that follows the wind, stills settled to the rest (the clouds lane)
 
 **Why.** The owner: "clouds will look terrible and look super grainy instead of proper". The gauntlet never saw it: every
@@ -7857,6 +8027,253 @@ steady rest −6 to −14 % on Monsoon, Verdant, Redrock and Frosthollow, no blu
 - RMSE does not see structure: the per-pixel jitter left the error unchanged and removed the hatching the eye locks onto.
 - A smoother composite filter (a B-spline in place of Catmull-Rom) cuts Monsoon's speckle 11 % and blurs crisp cumulus
   (Verdant +15 %, Redrock +14 % against the sharp reference): reconstruction is not where to buy smoothness on this sky.
+
+### 2026-10-14 — Obsidian Caldera round 6 on main: the floor eased into the wall, a weathered andesite rise, paler yards (the maps lane)
+
+**Waves 412/414 on round 5: "long, straight, full-width banks where the floor meets the wall", the rise's faces "near-
+black featureless soil", the yards "the same dark olive lawn", "bright green blurred blotches" by the farmyards.**
+Round 6 (4a8fc2388, never landed) re-applied on main: the floor's flattening box eased over 110 m (flatten 0.72 -> 0.5,
+relief 0.24 -> 0.32), so the wall's foot is the ground's own line; the steep ground a weathered andesite grey-brown
+lifted off near-black (sourcedTextures R: tint 0.52/0.50/0.46, desat 0.6, lift 0.025); the worn yards' soil paler
+(soilTint); a crop's colour held to the calibrated sward's luminance (0.09), so the rice at a yard's feathered edge no
+longer glows lime. The paddy water's mute stays with the paddies item (GW.01). The outer slopes' tree stream re-seats on
+the eased ground (198 out, 152 in, 178-295 m past the village box); census [2519, 2394, 1080] -> [2476, 2351, 1035].
+
+- (Clouds 2.0 carries the same three changes: `cloudShaders.ts` keys the trace's blue noise on the history pixel and
+  carries the resolve's reprojection by `uWindStep`; `volumetricClouds.ts` holds the floor and the capture settle.)
+
+### 2026-10-15 — Sunscar Oasis: Siwa round 3 landed, and its critic fixes (the maps lane)
+
+**Round 3 of the map-revival lane (575f2cb29, 2026-10-07; gauntlet wave 135), stranded off main, landed on current
+main:** Siwa authored lot by lot (`oasis.ts` SIWA_TOWN; the roadside plan retired): old Shali heaped north of the
+caravan street, the new town and the souk on the cross road, the two springs, and the walled palm gardens; the siwa
+kershef's rounded, battered blocks with palm-trunk beam ends (`regional/ksar.ts`).
+- *The blind critics* (2026-10-15, WEAK +0.10; Opus 3/1, Sonnet 3/1): from the open ground north of the souk its rows'
+  backs read as "long blank grey-lavender concrete noise barriers" and the town as isolated buildings on bare sand. The
+  fixes: the siwa kershef a warm tan (its old walls a shade browner); the souk rows' back wall battered mud buttresses
+  at the party walls and ends, each stall's plank back door under a palm-trunk lintel or a shuttered hatch, a worn
+  crest; two heaped kershef clusters backing onto the souk across its back lane, fronts north (34 m and more off every
+  zone; the town stays within its 32-lot ceiling). Census [1587, 1660, 822] -> [1586, 1721, 822]; the brief holds
+  (orphan 0.125, symmetry 1.012).
+
+### 2026-10-14 — Redrock Divide: Rum village, built the way Verdant was (the maps lane)
+
+**The owner, 10-09: Redrock "looks really bad"; MAP-01: every map built the way Verdant was — its real place, its
+kit, a town plan with plots and yards, lived-in clutter.** The outpost stood as the roadside plan's 24 buildings, 17 of
+them placed, scattered over a 200 m sand lot: "a handful of boxes over an open lot" in every establishing frame.
+- *The place:* Rum village at the foot of Jebel Rum: one-storey and two-storey block houses with their rooftop tanks and
+  standing rebar, each in its yard behind a block wall and a steel gate (the wadirum kit's yards), in rows along the
+  valley track and the sandy lanes behind it; the Desert Patrol's fort on the square and the patrol's store yard across
+  it; the souq's shop rows and the minaret on the track north of the square.
+- *The plan* (`badlands.ts` RUM_VILLAGE, `plannedSites`; the roadside plan and its block fill retired) is authored in
+  the track's own frame, every site with its rotation twin about the outpost (8, 0), as the floor's landforms turn, so
+  the halves keep the same cover. Each compound a metre or two off its row and a few degrees off square, one in twelve
+  an abandoned ruin, one in fourteen an open lot, keyed per site so twins match.
+- *A village floor, not a field-works range* (MA.39): hedgehogs 22 -> 8, sandbag lines 24 -> 10; the village's life
+  raised (pickups and lorries, drums, pots, core clutter).
+- *Measured* (map-layout-metrics on the recaptured shard; every band holds): orphan buildings 0.031, the middle third's
+  cover 0.444 -> 0.482, the weakest sector 0.179 -> 0.208, the sightline median 114 -> 106 m, long sightlines 0.096 ->
+  0.076, rotational symmetry 1.045. Census [1726, 1431, 248] -> [2295, 1941, 248].
+- *The blind critics* (2026-10-15, FAIL -0.74: the wide view won, the close views lost) and the fixes
+  (`regional/wadirum.ts`, `badlands.ts`, a 2-line co-held `props.ts` switch): the block houses' and souq rows' render at
+  the limewash UV scale (one coat, the weathering showing, where the print read as camouflage noise); every house's dish
+  on its mast, split air conditioners with their drains, a downpipe and an electricity meter (the "blank box walls"); the
+  souq's open fronts the shop's back wall in shade with display racks of goods under the half-drawn shutter (the "flat
+  black cut-outs"); the fort's twin a souq row and the back row's store a house (no corrugated steel stores in the
+  village); no firewood stacks or woodpiles in a treeless desert (inhabit `firewood: 0`, `woodpiles: 0`). Census
+  [2295, 1941, 248] -> [2239, 1936, 248]; the brief holds (orphan 0.031, symmetry 1.018).
+
+### 2026-10-14 — Nordhavn Fjord: the valley floor farmed (the map-content fill on the nordland kit; the maps lane)
+
+**The owner, 10-10: "the nordhavn one is very bare."** The map-content lane's fill (76dc2a52f, held for an owner
+preview) on the nordland kit: twelve farm tuns on the valley floor round Bjerkvik — each a farmhouse to the road, its
+barn behind, a stabbur on its stilts beside the yard and a hay rack out in the infield — stockfish racks by the shore,
+and the valley road's 1940 traffic (trucks 8, jeeps 5, carts 4, handcarts 2), keeping the nordland rounds' choices (no
+stalls or benches, cable reels and road signs, split-rail yards). The establishing pose stands on the valley floor
+south-west of the harbour town, looking north-east over the farms and the town to the lighthouse. Lands after the
+nordland kit (looks lane, 225). Census [6793, 6797, 6837] -> [6971, 7387, 6814].
+
+### 2026-10-06 — Suzhou Creek round 2: the lilong lanes, the walled creek, the delta's flat horizon (the map-revival lane, mr1)
+
+**Wave 149 passed (+0.42). Its critics agree on "a thin scatter of towers and red-brick, red-tile European houses on
+bare dirt lots", "clean blue water between bare slopes" and "conifer-covered mountain ridges" for a flat delta.**
+- *The lilong lanes* (`props.townRowPlanAdditions`, blackglass.ts `LILONG_BLOCKS`): twelve blocks of three shikumen
+  terraces stand on the district's empty lots. Each row is a run of gate houses, 4.9 m apiece behind its court wall
+  and 12 m deep; the rows are 4 m apart along their lanes, each row's gates facing the next row's back. A search
+  found the lots: every plot dry, 6 m off any road's core, no record inside it, gentle, 72 m off the zones and 90 m
+  off the spawns. The rows replay after the recorded rows, from streams of their own, so no recorded building moves.
+  A plot is judged against the records' own footprints (a turned box would refuse a block's middle row). 34 of the
+  36 rows stand. On Zhabei's bank one row in five is burnt out. A plot of four or more gate houses always builds as
+  shikumen (the kit's `rowhouse`).
+- *The creek:* the silt water is brown, opaque and duller (waterContact `SUZHOU_CREEK`: the body 0x4a3e2a, roughness
+  0.52). Its banks through the city are a granite revetment laid on the bank's own slope, with a coping, mooring posts
+  and landing steps (dressing; the slope stays the ground a hull drives). The sampans crowd it: four in five stretches
+  hold a raft of up to four.
+- *The horizon:* the rim falls from 36 m to a levee's 14 m, and the far country is the plain's least relief (`ampM`
+  24, no far rise). The flat, hazy, built-up delta skyline past it is the skies lane's. (Landing on main, 2026-10-14,
+  the maps lane: these two keys stay out of the map file; they go into Suzhou's hinterland draft, the horizons lane's.)
+- *The granite:* the realistic city tones' third render is a weathered green-grey (hue 0.2), and a map's tones
+  override its kit's, so the Customs House read "dark olive". The kit's warm grey now stands on the map. The Bund
+  buildings' lit windows (22 % and 18 %, which read by day as "a crude checkerboard of flat white window rectangles")
+  are 5 % and 6 %.
+- *The tram avenue:* the catenary is held up (a wire runs only between two standing supports one bay apart, and a
+  lone pole carries a bracket arm). Three burnt trams stand derailed toward the kerbs, inside the avenue but clear of
+  the middle a hull drives (on their tracks one stopped the road crossing sweep's driver short of road 2's causeway);
+  the avenue is no rotation of itself, so each takes its own seat. The layout brief counts a wreck a roadblock.
+- *The warehouse view* was taken inside the Joint Trust warehouse (the head's parking deck, which the kit already
+  builds as the Sihang warehouse). It is re-posed across the creek. The "leopard posts" were its interior columns
+  seen from inside.
+- *Census* [2747, 3362, 1492]. *Pacing* (20 seeds, 38000–38019): median 338 s, p10 254 s, minimum 162 s, none under
+  120 s, no timeouts (round 1: 246 / 185 / 95 s); the lanes' cover lengthens the fights, inside the 3–8 minute band.
+
+### 2026-10-15 — Jade River Delta: the Jamuna char's market village (the maps lane)
+
+**The owner, 10-09: Jade River Delta among the fourteen to bring up; MAP-01: built the way Verdant was.** The char's
+village stood as a handful of roadside-plan buildings round the square.
+- *The place:* a Jamuna char's market village in Bangladesh: the haat round its square (the bazaar's long tin sheds and
+  the brick shops facing it, the mosque across the square from the temple), and round it the homesteads (bari), tin
+  houses on raised plinths round a swept courtyard with the rice granary beside them.
+- *The plan* (`maps/deltaVillage.ts` CHAR_VILLAGE, its own module so the paddies' and fabric rounds merge beside it;
+  `plannedSites`, the roadside plan retired), authored in the char's frame (u along it from the split toward the rejoin,
+  v across), every site with its rotation twin about the char's centre (-4, 14), as the river, the deployments and the
+  objectives are: the haat's shop rows and the corner shop on the square, the temple and the mosque, the homesteads in
+  two rows facing the lane down the char's spine while it is wide and one row as it narrows to its tip.
+- *Measured* (every band holds): no solid in a road (the corner shop stood 1.5 m nearer the square's road, its corner in
+  the core), orphan 0.05, objective symmetry 1.167, separation 836 m, sightline median 122 m; census [8515, 8209, 10071]
+  -> [8682, 8454, 10071].
+- *The blind critics* (2026-10-15, PASS +0.62; Opus 5/0 +1.20, Sonnet 5/0 +0.62).
+
+### 2026-10-14 — Monsoon Ridge: Kohima's town on its terraces, the Deputy Commissioner's bungalow and tennis court (the maps lane)
+
+**The owner, 10-09: Monsoon Ridge among the fourteen to bring up; MAP-01: built the way Verdant was.** The hill town
+stood as the roadside plan's 26 buildings, 16 of them placed, over a 290 m saddle.
+- *The place:* Kohima in April 1944, a town of terraces on the Imphal road (the Kohima kit: bungalows under painted tin
+  with deep verandas, the bazaar's timber shops, the mission church, Angami thatched houses with their crossed gable horns
+  and their granaries, and the siege's shelled ruins).
+- *The plan* (`monsoon.ts` KOHIMA_TOWN, `plannedSites`; the roadside plan retired), authored in the road's own frame:
+  the bazaar's shop rows along the road north of its crossing with the valley road (south of it the road crosses the
+  flood channel's bottoms), the lane behind it on the east short of the channel, the bungalows in their gardens on the
+  terraces west, the Angami village on the north-west spur, the church framing the town's square from the north; one in
+  five of the town's buildings shelled to a ruin. The square's zone ring (46 m) stays free of buildings and yards.
+- *The hero:* the Deputy Commissioner's bungalow on the terrace above the square and its tennis court below it, the
+  front line the garrison held for a fortnight (`landmarks/colonial.ts`, built by the landmarks lane for this map and
+  placed nowhere until now).
+- *The terrace road* climbs from the bazaar past the bungalows and the Angami village to the north road
+  (`roadEndpoints.ts` join(1, 4)), so the upper terraces front a road (the brief's orphan band).
+- *Measured* (every band holds): orphan 0.147, the zone on its hint (398 m from alpha, 412 from bravo; symmetry 1.053),
+  the middle third's cover 0.424 -> 0.473, the weakest sector 0.267 -> 0.400, the sightline median 88 -> 80 m, long
+  sightlines 0.055 -> 0.036. 72 buildings where 16 stood; census [9351, 9146, 11650] -> [9619, 9671, 11564].
+- *The blind critics* (2026-10-15, PASS +0.58, Opus 5/1, Sonnet 5/1): the one after-defect both named, a flat black
+  rectangle on a plank shed's wall, was the Kohima bazaar shop's open front (one 'dark' panel). It opens now onto the
+  shop's back wall in shade, a framed opening, two shelves of tins and sacks and a counter across the front
+  (`regional/kohima.ts` shop; decor, no collision change; the goods from the shop's own stream).
+
+### 2026-10-15 — Titan Gorge: the paved highways and the valley's homesites (the maps lane)
+
+**The owner, 10-09: Titan Gorge among the fourteen to bring up (new-style buildings, paved roads).** The Oljato chapter's
+town stood alone in the middle of an empty valley on sand tracks.
+- *The roads:* the three valley roads are the paved highways through the valley, as US-163 runs through Monument Valley:
+  two lanes of asphalt, 8 m (`terrain.roads.pathStyles`); the two cross roads stay the chapter's graded dirt.
+- *The homesites* (`maps/titanHomesites.ts`, the maps lane's homesite planner; `plannedSites` after the recorded town):
+  a Navajo valley is lived in far past its trading posts, so eight rotation pairs of homesites stand along the roads
+  across the floor: hogans, family camps, an abandoned camp. Each site and its twin about the centre are within 48 m of
+  a road, the brief's orphan law; a first pass at 58 m offsets read 0.176 against 0.15.
+- *Measured* (every brief band holds): objective symmetry 1.038, orphan 0.054, no solid in a road; census
+  [2814, 2645, 1226] -> [2971, 2798, 1226]; roadCrossingSweep (titan_gorge) green.
+
+### 2026-10-15 — Steinburg as a Franconian hill town: closed street walls, the Stadtkirche, the castle (the maps lane)
+
+**The blind critics on the empty-lot fill (WEAK +0.09): blank windowless gables and frame-filling stained walls,
+oversized brick plinths, a town sitting flat on a plain with detached houses and grass between them, no hill, castle or
+church mass, brown roofs, lanes opening onto empty lots.** The town is planned again the way Verdant was:
+- *The street walls* (`maps/steinburgRows.ts`, generated by `tools/plan-street-rows.mjs urban --keep=-34.3,11.5,32
+  --lanes=z,0,-260,90;x,-50,-125,125 --laneClear=4.2`; `props.townRowPlan`): the street pass's skips and dropped slots
+  had left 95 of its 120 row houses free-standing. The plan lays 159 houses wall to wall along both sides of every street
+  in the town at one building line (6.3 m from the carriageway's line), a gap only where a lane, a planned building, a
+  set piece, the square, the town wall or the ground stops a row; one house in twelve a shelled ruin. Two rules keep the
+  battle in the town: the houses along the Hauptstrasse and the trade road stand back from the bot planner's 25 m lattice
+  lines z = 0 and x = -50 (4.2 m), the lines the planner and the objective access reach the town by (the first closed
+  rows sealed it: every street node unreachable, the square's zone seated outside the north wall, objective symmetry
+  1.97); and the square's zone disc stays open whole (the plaza's sandbag nest pushes its seat north-east).
+- *Fewer ruins*: the street-front collapse rate 0.38 -> 0.1 (`ruinChance`), the block plan's ruins one plot in nine.
+- *The Franconian kit* (`regional/franconian.ts`): orange-red beavertail tiles under a warm patina (tint [0.54, 0.32,
+  0.21], the blue-grey weathering dropped), the pale yellow-grey Burgsandstein for the dressed stone (the orange ashlar
+  read as brick), the ashlar ground storey on a third of the houses (was three in five), sandstone quoins on two rendered
+  fronts in five, the render's damp stains lighter and its lime mottling at a little over half its contrast
+  (`regionalSurfaces.ts paintLimeRender`).
+- *The church mass* (`regional/franconianCivic.ts stadtkirche`, the kit's 'church'): the sandstone hall nave between
+  buttresses under its steep roof and the west tower over the square, five stages to a closed parapet with four corner
+  turrets and an octagonal slated spire, 40 m.
+- *The castle* (houseRow set pieces of the kit's new `bergfried` and `palas`): the keep on the Burgberg's crown, 31 m of
+  sandstone to its corbel course and steep hipped cap, and the palace range along the court's south side with its stair
+  tower; the wall tower that stood for the keep gone.
+- *Measured* (every brief band holds): objective symmetry 1.029, no solid in a road, orphan 0.04, separation 803 m,
+  sightline median 102 m; census [2783, 5724, 2473] -> [2801, 7951, 2472]; the building-integrity ledger rows for the
+  church, the keep, the palace range and the two castle pieces.
+
+### 2026-10-15 — Tidegate Polders: the dyke village and its church (the maps lane)
+
+**The owner, 10-09: Tidegate Polders among the fourteen to bring up, built the way Verdant was.** The farm court stood
+alone on its paved yard with a handful of buildings round it and the polder empty to the dykes.
+- *The place:* a Walcheren village in the autumn of 1944: the lintdorp, a street of brick houses behind their front
+  gardens along the roads out of the farm court, a farm and an inn among them, and the village church, a brick hall
+  church with its west tower and needle spire over the flat land.
+- *The plan* (`maps/poldersVillage.ts`, generated by `tools/plan-street-rows.mjs polders --sites=cottage:6,farmhouse:2,
+  tavern:1,granary:1 --gap=3,9 --setback=8`, the zone discs kept open; `plannedSites` after the recorded farm court):
+  31 houses turned to their street, 3-9 m apart, each on a stream of its own (`terrace`), clear by 3 m of every
+  structure the farm court stands and by 12 m of its houses' yards (`--built=3 --yards=12`, 2026-10-16: the first plan's
+  cottage stood on a yard shed's seat and its draws turned the court's yards — the 226 gate's townPlans); the church a set piece east of the court, its front to the court.
+- *Measured* (every brief band holds): objective symmetry 1.031, no solid in a road, orphan 0.053; census
+  [4011, 3942, 3381] -> [4253, 4510, 3380]; the building-integrity row for the church.
+
+### 2026-10-14 — Verdant Fields: Prokhorovka's set pieces (landmarks L2 on main; the maps lane)
+
+The landmarks lane's L2 Verdant subset (visual/landmarks-l2, held for the owner's group preview) on main: the village
+church (domed, its churchyard, graves and the path from the road), Prokhorovka station on its line (the clearance berth:
+the line keeps clear of every solid without moving a placement stream; trees, grass, litter and field stacks keep off
+it), the station water tower, the kolkhoz grain store, its trestle water tower and its lettered arch with wings, the
+Civil War memorial square, the post mill on the southern swell and the smock mill on the northern. Nine of nine
+Verdant houses stand where they stood. Census [6797, 6465, 7364] -> [6816, 6679, 7332].
+
+### 2026-10-15 — Kestrel Airfield: the revival round Hostomel's airport (the maps lane)
+
+**The owner, 10-09: Kestrel Airfield among the fourteen to bring up; 10-05: every map revitalized like Verdant.** Kestrel
+was an airfield on an empty lawn. The map-revival lane's rounds of 10-05..07 (MA.17) and the map-content lane's round 3
+(10-09) were never landed; the maps lane re-made them on integ/226 with the horizons lane's border forest (d9c1ca643).
+The airport's buildings, runway, aprons, roads, pads and objectives stand where they stood.
+- *The kit* (`maps/regional/hostomelDacha.ts`): the dachas of the garden cooperatives round the airport (the sadovi
+  tovarystva of Hostomel and Bucha): a cottage of one storey in planks or rendered block on a brick plinth under a steep
+  sheet or asbestos gable, the attic light cut through the boarded gable, a glazed veranda under its lean-to; the garden
+  shed boarded up to its lean-to; the yards' picket fences, gates and beds. The border hamlets past the edge are these
+  dachas now. The maintenance hangars carry their numbers on the long wall by the apron (`airfieldPaint.ts`).
+- *The plan:* two cooperatives (a rotation pair of eight dachas each) on the valley shoulders beside the access roads,
+  each on its concrete lane (roads 5 and 6, rejoining the access road on its own line), a field cross at the lane's mouth.
+- *The woods and the land:* the Polissia's pine and birch round the plateau (clusters 34, lone trees 30, rim 108), four
+  ruled Scots pine plantations past the runway's ends (9 x 9 m belts; `vegetation.standKeepOut` keeps the woodlots out of
+  their blocks); the valleys' bogs a peaty tan; `landUse.ts airfield`: hay meadow, pasture, small fields of rye and
+  potatoes outside the perimeter.
+- *The airport worked:* the taxiway centrelines, the stands' lead-ins, stop bars and numbers in worn paint
+  (`world/groundMarkings.ts`, one receive-only decal mesh, 3 call-site lines in props.ts); eight apron floodlight masts
+  (`landmarks/airfieldWorks.ts`); the An-26s in the dispersal pens, two burnt; more trucks and jeeps.
+- *Ruling (MA.37):* Kestrel keeps its growing season (no February pass); its horizon keys stay with the horizons lane.
+- *Measured* (every brief band holds): orphan 0.016, objective symmetry 1, separation 841 m, sightline median 120 m, no
+  solid in a road; census [2974, 3015, 2435] (with the border forest [3110, 3155, 2572]) -> [4445, 4929, 3647];
+  building integrity clean for the dacha and the shed (new ledger rows), the mast's open frame its only finding; kit
+  connectivity clean for the dacha, the shed and the mast.
+- *The An-225* (its own commit, revertible on its own): the Mriya as Hostomel's hangar left it in February 2022, seated on
+  the map-revival lane's round-5 plot (105 x 97 m behind the cargo apron, its slab at the apron's own 5.92 m; the kit's
+  cargo hangar on the terminal side only; the access road behind the hangar, 17 m off its back wall; the hangar line's
+  wall ending 4 m short of the slab; the cargo apron's south-east mast 9 m off the slab's corner). The airframe is the
+  landmarks lane's round 4 (fbd53b3eb, from the Hostomel photographs after wave 246 failed round 3: the high wing on the
+  hull with six D-18T nacelles on pylons, intakes forward, the glazed flight deck, burnt aluminium as one smooth gradient,
+  the torn skin curling at the break) merged over the 217 connectivity sweep's hangar (the ribs' end posts, the purlins
+  on the ribs as drawn, the fallen lengths braced, the heaps' sheets on each other's folds); round 4's sheets hang from
+  the purlins where the purlins are, its skin flaps root on the ragged rims, the floor's burnt frames rest on the slab
+  and the back wall's cladding stands on the wall: kit connectivity 0 floating, 0 free ends (the baseline 0 / 1).
+- *Measured with the An-225* (every brief band holds): objective symmetry 1.015 (the near apron zones and the far ones as
+  round 5 measured them), orphan 0.07, separation 841 m, sightline median 118 m; census [4445, 4929, 3647] ->
+  [4614, 5107, 3872] (on integ/226 f26e05d8c, merged in: [4720, 5213, 3872]); airfield's shard current built alone and
+  after Verdant and Steinburg; 24 158 desktop triangles for the wreck (budget 26 000).
 
 ## Acceptance is visual and measured
 

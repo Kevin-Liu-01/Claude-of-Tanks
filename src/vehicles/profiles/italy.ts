@@ -4,8 +4,8 @@
 // (measure -> loft to measured lines -> close with real geometry -> prove in
 // pixels) from the two LOCAL-ONLY §5.248 batch-B prints:
 //   ariete_c1_arrafi.glb  (CC-BY-4.0 M. M. Arrafi; semantic material split
-//     Hull/Turret/Cannon/SideSkirts/Applique/Glass/Gear) — governs ariete_c1
-//     and serves as the ariete_c2 influence print.
+//     Hull/Turret/Cannon/SideSkirts/Applique/Glass/Gear) — governs c1_ariete_proto_serie1
+//     and serves as the c2_ariete_proto influence print.
 //   carro45t_hlebov.glb   (CC-BY-4.0 D. Hlebov; paper vehicle — the print IS
 //     the primary source; orientation heuristic misfire adjudicated: gun end
 //     carries the glacis+casemate, sprocket at the stern).
@@ -15,7 +15,7 @@
 // Object_2/6, so raw-extract splits are cited only where the gate agrees).
 // No source object, topology, texture, or converted vertex payload ships.
 //
-// FRAME LAW (packet-documented): every ariete_c1/_c2 coordinate below is the
+// FRAME LAW (packet-documented): every c1_ariete_proto_serie1/_c2 coordinate below is the
 // arrafi print's measured line with z normalized x1.08803 (published hull
 // 7.59 / print hull-mask 6.976 — the print is uniformly z-compressed; y/x
 // carried at width-anchored print scale, which reads height/width right).
@@ -25,11 +25,12 @@
 // Carro's chassis retains its source dimensions (6.98/10.60/3.43 m).
 // Its turret is the owner-approved continuous-roof redesign of 2026-09-29;
 // the dated concept packet governs that shape, not the historical print gate.
-// The base `ariete` (Preserie) stays its own graduated tank in misc.ts —
+// The base `c1_ariete_preserie` (Preserie) stays its own graduated tank in misc.ts —
 // UNTOUCHED donor, byte-held.
 
 import * as THREE from 'three';
 import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
+import { withSeatRole } from '../spareTrackSeat.ts';
 import { buildAriete } from './misc.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -420,7 +421,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
   const buildArieteMkRunningGearStage1 = (): void => {
     // owner 2026-09-23 (round 46 wheel follow-up, same defect as the round-40 hulls): r 0.38 on the
     // 0.71 gate-ref pitch put 2R/pitch at 1.07 — the seven tires overlapped by 5 cm. The Ariete's
-    // wheels are the ~650-710 mm Leopard-1 class (ariete_c1_x source r 0.29 x 1.232 rig), so the
+    // wheels are the ~650-710 mm Leopard-1 class (c1_ariete source r 0.29 x 1.232 rig), so the
     // seven wheels shrink to r 0.325 (2R/pitch 0.92, a 6 cm gap); stations, end wheels and the three
     // return rollers the real Ariete carries are unchanged.
     buildRunningGear(P, {
@@ -610,12 +611,8 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
     // sweeps measured −0.2 whole each under the documented dAlong 0.739
     // registration residual — receipts banked, this seat is the measured
     // dims-100 + curve-neutral exchange (§5.265/§5.290).
-    if (!c2) {
-      const commanderMg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone',
-        elev: 0, shield: false, scale: 0.62, seed: 44 });
-      commanderMg.name = 'arieteC1CommanderMg';
-      addFitting(P, 'turret', commanderMg, 0.68, 0.87, L(-0.24), [0, 0.35, 0]);
-    }
+    // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle and every drawn gun works): the Ariete's
+    // AA MG 42/59 is the loader's, worked from his hatch; the commander's cupola gun is gone.
     cupolaRing(P, -0.42, 0.86, L(-0.62), 0.23);                                  // loader hatch ring
     P.add('turret', box(0.34, 0.022, 0.30), -0.42, 0.925, L(-0.62), 0, 0.10, 0);
     for (let k = 0; k < 3; k++) periscope(P, 'turretDetail', 0.30 + k * 0.16, 0.90, L(-0.10), 0.1);
@@ -633,7 +630,7 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       P.add('turretDetail', box(w * 0.8, 0.016, 0.026), px, 0.888, L(pz + dd * 0.38));
     }
     P.addEquipment('turret', box(0.30, 0.145, 0.26), 0.10, 0.93, L(0.30));                // gunner's aux sight hood (front_whole 2.31 @ x +0.14)
-    // crosswind mast folded low on the rear roof (k2 height-law: no p95 spike)
+    // crosswind mast folded low on the rear roof (xk2_black_panther height-law: no p95 spike)
     P.addEquipment('turret', box(0.05, 0.09, 0.05), -0.30, 0.885, L(-1.12));              // mast pedestal
     P.add('turretDetail', cylZ(0.02, 0.55, 8), -0.30, 0.915, L(-1.38), 0.10, 0, 0);
     // s5322-B5 wind-sensor head at the folded mast tip — T-crossbar + vane
@@ -788,8 +785,9 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       buildArieteMkMarkingsCourse1();
     } else {
       const buildArieteMkMarkingsCourse2 = (): void => {
+        // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's AA MG 42/59)
         const loaderMg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mg3', tone: 'two-tone',
-          elev: 0, shield: false, scale: 0.62, seed: 45 });
+          elev: 0, shield: false, scale: 0.62, seed: 45, working: true });
         loaderMg.name = 'arieteC1LoaderMg';
         addFitting(P, 'turret', loaderMg, -0.42, 0.87, L(-0.60), [0, 2.9, 0]);
         P.decal('turret', 'number', 'C1 32', 0.24, [-1.29, 0.40, L(-0.55)], -Math.PI / 2, 0, -0.02);
@@ -828,8 +826,9 @@ function buildArieteMk(P: ItalyBuilderPort, mark: ArieteMark): void {
       rotatingShoulderModules: 4,
       rotatingApuAssembly: true,
     } : {
-      roofWeaponStations: 2,
-      manualPintles: 2,
+      // VH.14: the C1's one roof gun is the loader's AA MG 42/59 (the commander's cupola gun is gone)
+      roofWeaponStations: 1,
+      manualPintles: 1,
       remoteControlled: false,
       rotatingShoulderModules: 4,
       rotatingApuAssembly: false,
@@ -966,11 +965,13 @@ function buildCarro45T(P: ItalyBuilderPort): void {
     P.add('hull', box(2.80, 0.05, 0.19), 0, 1.518, -2.885);                      // step 1.543
     P.add('hull', box(2.80, 0.05, 0.28), 0, 1.484, -2.53);                       // step 1.509
     P.add('hull', box(2.80, 0.045, 0.14), 0, 1.474, -2.32);                      // step to the main deck
-    // engine deck dressing: grille fields + fuel caps (§B3.2 density)
-    P.add('hullDark', box(2.10, 0.012, 0.78), 0, 1.53, -2.72);
-    for (let k = 0; k < 6; k++) P.add('hullDetail', box(2.04, 0.014, 0.05), 0, 1.537, -2.44 - k * 0.115);
-    P.add('hullDark', box(1.90, 0.012, 0.62), 0, 1.505, -1.70);
-    for (let k = 0; k < 4; k++) P.add('hullDetail', box(1.84, 0.013, 0.05), 0, 1.512, -1.50 - k * 0.13);
+    // engine deck dressing: grille fields + fuel caps (§B3.2 density); VEH-13: the fields are no seat for spare links
+    withSeatRole(P, 'grille', (P) => {
+      P.add('hullDark', box(2.10, 0.012, 0.78), 0, 1.53, -2.72);
+      for (let k = 0; k < 6; k++) P.add('hullDetail', box(2.04, 0.014, 0.05), 0, 1.537, -2.44 - k * 0.115);
+      P.add('hullDark', box(1.90, 0.012, 0.62), 0, 1.505, -1.70);
+      for (let k = 0; k < 4; k++) P.add('hullDetail', box(1.84, 0.013, 0.05), 0, 1.512, -1.50 - k * 0.13);
+    });
     for (const s of [-1, 1]) P.add('hullDetail', cylY(0.09, 0.09, 0.025, 12), s * 1.05, 1.508, -1.32);
     // ---- stern (tail 1.42-1.45 @ -3.42..-3.48, raked plate; plan rear center
     // -3.42..-3.49) -------------------------------------------------------------
@@ -1031,7 +1032,7 @@ function buildCarro45T(P: ItalyBuilderPort): void {
         for (let k = 0; k < 14; k++) {                                             // fender plane + hem + apron in 0.46 m bays (edge-on prism law:
           const bz = -3.345 + 0.4596 * k + 0.2298;                                 // every 0.50 station slab contains a real end face); the run ENDS at
           const fy = k >= 13 ? 1.40 : k >= 12 ? 1.475                              // +3.09 like the print's fender line (plan front 3.005-3.093), TAPERING
-            : (k >= 2 && k <= 10) ? 1.464 : 1.512;                                 // toward the bow; bays inside the turret swing ride at 1.48 (k2 sweep law)
+            : (k >= 2 && k <= 10) ? 1.464 : 1.512;                                 // toward the bow; bays inside the turret swing ride at 1.48 (xk2_black_panther sweep law)
           P.add('hull', box(0.27, 0.032, 0.4476), s * 1.545, fy, bz);              // toward the bow (gate tops 1.38-1.42 over the nose)
           P.add('hull', box(0.035, 0.045, 0.4476), s * 1.6975, fy - 0.087, bz);    // outer hem DROOPED (gate 1.43-1.45 @ ±1.70)
           if (bz > -3.16 && bz < 2.88) P.add('hull', box(0.03, 0.56, 0.4476), s * 1.695, 1.19, bz);
@@ -1054,9 +1055,15 @@ function buildCarro45T(P: ItalyBuilderPort): void {
         if (s > 0) {
           P.add('hullDark', box(0.06, 0.03, 1.10), 1.50, 1.545, 2.62);             // crowbar on the bow fender (bare steel, FSP-06; outside the turret swing circle)
           P.add('hullDetail', box(0.09, 0.04, 0.60), 1.52, 1.545, -2.45);          // shovel aft of the swing circle, clear of the st0/st1 windows
+          // 2026-10-16 (226 gate, the coordinator: an add-on must not stretch the declared dimensions): the deck seat aft of
+          // the swing is an engine grille, and the seat solver's remount stood the links on the right apron, 10.5 cm
+          // outside the 3.43 m design width (concept check: width +3.2 %). No other hull station holds them inside the
+          // envelope, so they ride the turret's right wall, laid on its 34-degree slope under the bustle band, well
+          // inside the width (outer face x 1.46) and clear of the smoke bank and the gun's sweep (seats as authored).
           const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.40, seed: 77 });
-          links.position.set(1.05, 1.56, -2.45);                                   // spare links aft of the swing, clear of the st windows
-          P.hullG.add(links);
+          links.position.set(1.3068, 0.5108, -0.30);
+          links.rotation.set(0, 0, -0.995);
+          P.turretG.add(links);
         } else {
           P.add('hullDetail', box(0.07, 0.03, 0.90), -1.50, 1.545, 2.72);          // jack bar on the bow fender (outside the swing circle)
           P.add('hullDark', box(0.16, 0.05, 0.30), -1.52, 1.55, -2.45);            // jack block aft of the swing
@@ -1168,8 +1175,9 @@ function buildCarro45T(P: ItalyBuilderPort): void {
     addFitting(P, 'turret', FITTINGS.stowageRack({ mats: P.mats, w: 1.30, d: 0.14,
       h: 0.24, fill: 0.35, rails: 2, seed: 76 }), -0.05, 0.44, -1.86,
       [0, Math.PI, 0]);                                                          // rear rack: embedded feet, open face points outboard (-Z)
+    // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
     addFitting(P, 'turret', FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone',
-      elev: 0, shield: false, scale: 0.50, seed: 72 }), 0.30, roofY(0.30, L(-0.62)) - 0.015, L(-0.62), [0, 2.85, 0]); // commander's Breda, with its pedestal embedded in the roof
+      elev: 0, shield: false, scale: 0.50, seed: 72, working: true }), 0.30, roofY(0.30, L(-0.62)) - 0.015, L(-0.62), [0, 2.85, 0]); // commander's Breda, with its pedestal embedded in the roof
     // Canted corner launchers retain broad shoes seated on each roof shoulder.
     for (const s of [-1, 1]) addFitting(P, 'turret', FITTINGS.smokeBank({
       mats: P.mats, count: 5, r: 0.040, len: 0.24, splay: s * 0.95,
@@ -1235,8 +1243,8 @@ function buildCarro45T(P: ItalyBuilderPort): void {
 }
 
 export const ITALY_PROFILES = {
-  ariete: { build: buildAriete },
-  ariete_c1: { build: buildArieteC1 },
-  ariete_c2: { build: buildArieteC2 },
+  c1_ariete_preserie: { build: buildAriete },
+  c1_ariete_proto_serie1: { build: buildArieteC1 },
+  c2_ariete_proto: { build: buildArieteC2 },
   carro45t: { build: buildCarro45T },
 } satisfies VehicleProfileRecord;

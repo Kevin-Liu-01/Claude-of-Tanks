@@ -174,7 +174,9 @@ export function pocks(sink: PartSink, face: Face, u0: number, u1: number, y0: nu
       const a = (j / 6) * Math.PI * 2, rr = r * (0.7 + look() * 0.5);
       pts.push(facePoint(face, u + Math.cos(a) * rr, y + Math.sin(a) * rr, 0.012));
     }
-    sink.polygon('dark', pts, { decor: true });
+    // (props census #7, lane B 2026-10-14: a pock is the facing knocked off and the brick bruised under it, not a hole:
+    // the brick a shade darker than the facing, never the dark of a room)
+    sink.polygon(rim, pts, { decor: true, shade: 0.7 });
     if (look() < 0.5) faceBox(sink, rim, face, u + r * 0.2, y - r * 0.9, 0.01, r * 1.6, r * 0.5, 0.02, { decor: true, fine: true });
   }
 }

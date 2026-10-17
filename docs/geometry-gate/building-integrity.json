@@ -52,7 +52,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 18.695,
+   "gapM2": 23.723,
    "invertedM2": 0
   },
   "longleaf/granary": {
@@ -60,8 +60,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
-   "gapM2": 16.177,
+   "insideM2": 0.517,
+   "gapM2": 12.934,
    "invertedM2": 0
   },
   "sarajevo/terracetower": {
@@ -141,7 +141,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 12.867,
+   "insideM2": 14.431,
    "gapM2": 2.452,
    "invertedM2": 0
   },
@@ -150,7 +150,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 12.867,
+   "insideM2": 14.431,
    "gapM2": 2.452,
    "invertedM2": 0
   },
@@ -169,7 +169,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 4.698,
+   "gapM2": 7.2,
    "invertedM2": 0
   },
   "queenstown/foundryoffice": {
@@ -192,11 +192,11 @@
   },
   "arctic/foundryoffice": {
    "floating": 0,
-   "sliver": 2,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.456,
-   "gapM2": 3.283,
+   "gapM2": 4.529,
    "invertedM2": 0
   },
   "glencanyon/arcology": {
@@ -246,20 +246,20 @@
   },
   "queenstown/factory": {
    "floating": 0,
-   "sliver": 408,
+   "sliver": 300,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 6.876,
-   "gapM2": 1.842,
+   "insideM2": 9.892,
+   "gapM2": 2.145,
    "invertedM2": 0
   },
   "sarajevo/firestation": {
    "floating": 0,
    "sliver": 12,
    "floatingM2": 0,
-   "holeM2": 0.317,
-   "insideM2": 0.238,
-   "gapM2": 3.332,
+   "holeM2": 0.483,
+   "insideM2": 2.092,
+   "gapM2": 1.932,
    "invertedM2": 0
   },
   "chouf/woodshed": {
@@ -302,9 +302,9 @@
    "floating": 0,
    "sliver": 0,
    "floatingM2": 0,
-   "holeM2": 4.236,
-   "insideM2": 0,
-   "gapM2": 56.779,
+   "holeM2": 3.727,
+   "insideM2": 0.877,
+   "gapM2": 55.573,
    "invertedM2": 0
   },
   "hessian/woodshed": {
@@ -329,9 +329,9 @@
    "floating": 0,
    "sliver": 0,
    "floatingM2": 0,
-   "holeM2": 3.93,
-   "insideM2": 0,
-   "gapM2": 77.871,
+   "holeM2": 3.882,
+   "insideM2": 1.04,
+   "gapM2": 81.868,
    "invertedM2": 0
   },
   "landmark/copper_mesa:headframe#14": {
@@ -357,8 +357,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.997,
-   "gapM2": 1.403,
+   "insideM2": 6.956,
+   "gapM2": 3.281,
    "invertedM2": 0
   },
   "savoyard/alpine": {
@@ -452,12 +452,12 @@
    "invertedM2": 3.691
   },
   "sarajevo/factory": {
-   "floating": 6,
+   "floating": 0,
    "sliver": 2,
-   "floatingM2": 2.52,
+   "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0,
+   "gapM2": 2.415,
    "invertedM2": 0
   },
   "siwa/compound": {
@@ -492,8 +492,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.426,
-   "gapM2": 0.684,
+   "insideM2": 0,
+   "gapM2": 0,
    "invertedM2": 0
   },
   "mekong/farmhouse": {
@@ -536,9 +536,9 @@
    "floating": 0,
    "sliver": 0,
    "floatingM2": 0,
-   "holeM2": 1.818,
-   "insideM2": 0,
-   "gapM2": 2.351,
+   "holeM2": 0,
+   "insideM2": 0.22,
+   "gapM2": 2.508,
    "invertedM2": 0
   },
   "ksar/caravanserai": {
@@ -561,7 +561,7 @@
   },
   "landmark/saltwind:houseRow#2": {
    "floating": 0,
-   "sliver": 1,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 2.178,
@@ -583,7 +583,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 3.105,
-   "gapM2": 0,
+   "gapM2": 0.828,
    "invertedM2": 0
   },
   "savoyard/tavern": {
@@ -623,10 +623,10 @@
    "invertedM2": 0
   },
   "arctic/containerRow": {
-   "floating": 1,
+   "floating": 0,
    "sliver": 0,
-   "floatingM2": 1.219,
-   "holeM2": 0.11,
+   "floatingM2": 0,
+   "holeM2": 0.208,
    "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
@@ -654,7 +654,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 2.493,
+   "insideM2": 2.748,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -700,7 +700,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0.572,
+   "gapM2": 1,
    "invertedM2": 0
   },
   "generic/alpine": {
@@ -752,8 +752,8 @@
    "floating": 0,
    "sliver": 0,
    "floatingM2": 0,
-   "holeM2": 1.075,
-   "insideM2": 0,
+   "holeM2": 0,
+   "insideM2": 1.928,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -771,8 +771,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.794,
-   "gapM2": 0,
+   "insideM2": 0.401,
+   "gapM2": 0.315,
    "invertedM2": 0
   },
   "mekong/marketRow": {
@@ -780,8 +780,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.986,
-   "gapM2": 0,
+   "insideM2": 0,
+   "gapM2": 0.374,
    "invertedM2": 0
   },
   "dalmatian/bathhouse": {
@@ -806,16 +806,16 @@
    "floating": 0,
    "sliver": 0,
    "floatingM2": 0,
-   "holeM2": 0.072,
-   "insideM2": 0.921,
-   "gapM2": 0.202,
+   "holeM2": 0,
+   "insideM2": 0.243,
+   "gapM2": 0.972,
    "invertedM2": 0
   },
   "landmark/delta:bengalTemple#1": {
    "floating": 0,
    "sliver": 0,
    "floatingM2": 0,
-   "holeM2": 0.918,
+   "holeM2": 0,
    "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
@@ -879,7 +879,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.43,
+   "insideM2": 3.036,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -933,7 +933,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.32,
+   "insideM2": 0.401,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -978,7 +978,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.071,
+   "insideM2": 4.268,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -1032,7 +1032,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.227,
+   "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -1041,7 +1041,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.849,
+   "insideM2": 1.092,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -1068,7 +1068,7 @@
    "sliver": 0,
    "floatingM2": 0.388,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 0.269,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -1141,7 +1141,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0.524,
-   "gapM2": 0,
+   "gapM2": 3.383,
    "invertedM2": 0
   },
   "dalmatian/cornershop": {
@@ -1263,11 +1263,11 @@
   },
   "longleaf/tavern": {
    "floating": 0,
-   "sliver": 12,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.168,
-   "gapM2": 0,
+   "insideM2": 0.294,
+   "gapM2": 1.07,
    "invertedM2": 0
   },
   "ksar/bathhouse": {
@@ -1275,7 +1275,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.116,
+   "insideM2": 0.216,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -1401,8 +1401,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.058,
-   "gapM2": 0.247,
+   "insideM2": 0.39,
+   "gapM2": 0,
    "invertedM2": 0
   },
   "hessian/church": {
@@ -1518,8 +1518,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 6.448,
-   "gapM2": 0.187,
+   "insideM2": 0.087,
+   "gapM2": 0.766,
    "invertedM2": 0
   },
   "dalmatian/woodshed": {
@@ -1617,8 +1617,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 6.069,
-   "gapM2": 0,
+   "insideM2": 0.301,
+   "gapM2": 0.187,
    "invertedM2": 0
   },
   "breton/tower": {
@@ -1632,7 +1632,7 @@
   },
   "breton/boatshed": {
    "floating": 0,
-   "sliver": 2,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1644,7 +1644,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 2.343,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -1680,7 +1680,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 0.696,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -1689,8 +1689,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
-   "gapM2": 12.757,
+   "insideM2": 0.223,
+   "gapM2": 14.038,
    "invertedM2": 0
   },
   "kolkhoz/tavern": {
@@ -1761,8 +1761,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.321,
-   "gapM2": 5.211,
+   "insideM2": 0.448,
+   "gapM2": 11.835,
    "invertedM2": 0
   },
   "polder/depot": {
@@ -1797,8 +1797,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
-   "gapM2": 0,
+   "insideM2": 0.245,
+   "gapM2": 0.893,
    "invertedM2": 0
   },
   "polder/fishery": {
@@ -1869,13 +1869,13 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.058,
-   "gapM2": 0.247,
+   "insideM2": 0.39,
+   "gapM2": 0,
    "invertedM2": 0
   },
   "eifel/church": {
    "floating": 0,
-   "sliver": 2,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -1923,7 +1923,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 0.23,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -1950,7 +1950,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 0.281,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -1965,11 +1965,11 @@
   },
   "bengal/farmhouse": {
    "floating": 0,
-   "sliver": 8,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0,
+   "gapM2": 1.38,
    "invertedM2": 0
   },
   "bengal/market": {
@@ -2076,13 +2076,13 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.058,
-   "gapM2": 0.247,
+   "insideM2": 0.39,
+   "gapM2": 0,
    "invertedM2": 0
   },
   "franconian/church": {
    "floating": 0,
-   "sliver": 2,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2139,8 +2139,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
-   "gapM2": 0,
+   "insideM2": 0.287,
+   "gapM2": 1.005,
    "invertedM2": 0
   },
   "ksar/tower": {
@@ -2176,12 +2176,12 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 34.833,
+   "gapM2": 32.329,
    "invertedM2": 0
   },
   "arctic/warehouse": {
    "floating": 0,
-   "sliver": 12,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2194,7 +2194,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 3.697,
+   "gapM2": 3.727,
    "invertedM2": 0
   },
   "arctic/woodshed": {
@@ -2238,7 +2238,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 0.232,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2265,7 +2265,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 2.819,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2325,7 +2325,7 @@
   },
   "ruhr/terrace": {
    "floating": 0,
-   "sliver": 12,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2334,7 +2334,7 @@
   },
   "ruhr/warehouse": {
    "floating": 0,
-   "sliver": 4,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -2364,8 +2364,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.083,
-   "gapM2": 0.924,
+   "insideM2": 0.46,
+   "gapM2": 2.405,
    "invertedM2": 0
   },
   "ruhr/shed": {
@@ -2436,7 +2436,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 1.468,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2454,7 +2454,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 0.086,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2463,7 +2463,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 0.171,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2472,7 +2472,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 0.168,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2481,8 +2481,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
-   "gapM2": 0,
+   "insideM2": 0.568,
+   "gapM2": 0.568,
    "invertedM2": 0
   },
   "hostomel/ruin": {
@@ -2490,8 +2490,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.211,
-   "gapM2": 0.346,
+   "insideM2": 0.215,
+   "gapM2": 1.66,
    "invertedM2": 0
   },
   "kyushu/depot": {
@@ -2517,7 +2517,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 8.876,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2535,8 +2535,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.144,
-   "gapM2": 16.776,
+   "insideM2": 0,
+   "gapM2": 29.449,
    "invertedM2": 0
   },
   "kyushu/watertower": {
@@ -2544,8 +2544,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.549,
-   "gapM2": 1.503,
+   "insideM2": 1.521,
+   "gapM2": 1.721,
    "invertedM2": 0
   },
   "kyushu/foundryoffice": {
@@ -2562,7 +2562,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 0.232,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2661,7 +2661,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 0.794,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2733,8 +2733,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.144,
-   "gapM2": 8.445,
+   "insideM2": 1.125,
+   "gapM2": 8.544,
    "invertedM2": 0
   },
   "navajo/factory": {
@@ -2751,7 +2751,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 2.72,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2778,7 +2778,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
+   "insideM2": 1.756,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2850,8 +2850,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.083,
-   "gapM2": 0.924,
+   "insideM2": 0.46,
+   "gapM2": 2.405,
    "invertedM2": 0
   },
   "saar/stack": {
@@ -2868,8 +2868,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
-   "gapM2": 4.466,
+   "insideM2": 3.934,
+   "gapM2": 5.072,
    "invertedM2": 0
   },
   "saar/gantry": {
@@ -2877,8 +2877,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0.254,
-   "gapM2": 2.098,
+   "insideM2": 0.429,
+   "gapM2": 4.607,
    "invertedM2": 0
   },
   "saar/firestation": {
@@ -3013,7 +3013,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0,
+   "gapM2": 148.056,
    "invertedM2": 0
   },
   "sarajevo/parkingdeck": {
@@ -3031,7 +3031,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0,
+   "gapM2": 3.445,
    "invertedM2": 0
   },
   "sarajevo/warehouse": {
@@ -3193,7 +3193,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 21.765,
+   "gapM2": 25.559,
    "invertedM2": 0
   },
   "generic/watertower": {
@@ -3201,8 +3201,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 0,
-   "gapM2": 12.269,
+   "insideM2": 1.286,
+   "gapM2": 13.53,
    "invertedM2": 0
   },
   "generic/stack": {
@@ -3373,7 +3373,16 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 1.161,
+   "gapM2": 1.296,
+   "invertedM2": 0
+  },
+  "landmark/verdant:kolkhozArch#7": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 1.3,
    "invertedM2": 0
   },
   "landmark/delta:path#0": {
@@ -3418,7 +3427,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 1.224,
-   "gapM2": 5.628,
+   "gapM2": 8.173,
    "invertedM2": 0
   },
   "landmark/polders:outfall#6": {
@@ -3445,7 +3454,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 0,
+   "gapM2": 13.408,
    "invertedM2": 0
   },
   "landmark/copper_mesa:guyedMast#12": {
@@ -3481,7 +3490,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 23.459,
+   "gapM2": 30.214,
    "invertedM2": 0
   },
   "landmark/whiteout:guyedMast#11": {
@@ -3630,7 +3639,7 @@
   },
   "franconian/factory": {
    "floating": 0,
-   "sliver": 4,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 2.065,
@@ -3647,9 +3656,9 @@
    "invertedM2": 0
   },
   "franconian/tower": {
-   "floating": 1,
+   "floating": 0,
    "sliver": 0,
-   "floatingM2": 0.022,
+   "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
    "gapM2": 0,
@@ -3666,7 +3675,7 @@
   },
   "ruhr/factory": {
    "floating": 0,
-   "sliver": 4,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 1.673,
@@ -3677,8 +3686,8 @@
    "floating": 0,
    "sliver": 0,
    "floatingM2": 0,
-   "holeM2": 0.515,
-   "insideM2": 0.086,
+   "holeM2": 0,
+   "insideM2": 0.144,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -3689,7 +3698,7 @@
    "holeM2": 0,
    "insideM2": 0,
    "gapM2": 0,
-   "invertedM2": 0.392
+   "invertedM2": 0
   },
   "hostomel/containerRow": {
    "floating": 0,
@@ -3699,7 +3708,754 @@
    "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
+  },
+  "nordland/netyard": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 7.713,
+   "invertedM2": 0
+  },
+  "tselina/depot": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 10.126,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "nordland/depot": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 4.84,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "lorrain/schoolhouse": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0.97,
+   "invertedM2": 0
+  },
+  "nordland/fishery": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.933,
+   "gapM2": 0.389,
+   "invertedM2": 0
+  },
+  "lorrain/chapel": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0.547,
+   "invertedM2": 0
+  },
+  "goral/chapel": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0.491,
+   "invertedM2": 0
+  },
+  "lorrain/market": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.428,
+   "gapM2": 0.828,
+   "invertedM2": 0
+  },
+  "lorrain/marketRow": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0.745,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "lorrain/granary": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0.608,
+   "insideM2": 0,
+   "gapM2": 0.058,
+   "invertedM2": 0
+  },
+  "goral/cottage": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.434,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "lorrain/woodshed": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0.058,
+   "invertedM2": 0
+  },
+  "goral/depot": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.153,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "goral/logcabin": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "goral/alpine": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "goral/rangerlodge": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "goral/schoolhouse": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "goral/onionchurch": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "goral/barn": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "goral/woodshed": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "goral/warehouse": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "goral/ruin": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "nordland/cottage": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "nordland/logcabin": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "nordland/alpine": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "nordland/cornershop": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "nordland/warehouse": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "nordland/boatshed": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "nordland/chapel": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "nordland/ruin": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.2,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "nordland/woodshed": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "lorrain/cottage": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "lorrain/farmhouse": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "lorrain/tavern": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "lorrain/cornershop": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "lorrain/barn": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "lorrain/church": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "lorrain/tower": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "lorrain/ruin": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "tselina/cottage": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "tselina/farmhouse": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "tselina/cornershop": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "tselina/warehouse": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "tselina/elevator": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "tselina/gantry": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 9.616,
+   "invertedM2": 0
+  },
+  "tselina/shed": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "tselina/watertower": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "tselina/stack": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "tselina/containerRow": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "tselina/barn": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "tselina/granary": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "tselina/ruin": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "franconian/bergfried": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "franconian/palas": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/urban:houseRow#4": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.312,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/urban:houseRow#3": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/polders:church#7": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "franconian/warehouse": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.163,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/airfield:aircraftWreck#8": {
+   "floating": 0,
+   "sliver": 2,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 122.997,
+   "gapM2": 757.26,
+   "invertedM2": 0
+  },
+  "landmark/airfield:floodMast#0": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.504,
+   "gapM2": 3.923,
+   "invertedM2": 0
+  },
+  "lorrain/rowhouse": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/verdant:church#0": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 7.17,
+   "invertedM2": 0
+  },
+  "landmark/verdant:granary#5": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.837,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/monsoon:tennisCourt#1": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/verdant:windmill#9": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0.588,
+   "gapM2": 1.874,
+   "invertedM2": 0
+  },
+  "landmark/verdant:windmill#10": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 1.171,
+   "gapM2": 4.173,
+   "invertedM2": 0
+  },
+  "nordland/lighthouse": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 1.836,
+   "invertedM2": 0
+  },
+  "breton/lighthouse": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "nordland/barn": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "hostomel/cottage": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "hostomel/woodshed": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/verdant:churchyard#1": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/verdant:path#2": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/verdant:stationHall#3": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/verdant:waterTower#4": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/verdant:parkSquare#8": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/fjord:stabbur#0": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/fjord:hayRack#1": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/polders:garden#1": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/longleaf:garden#0": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
+  },
+  "landmark/verdant:waterTower#6": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 24.236,
+   "invertedM2": 0
+  },
+  "landmark/fjord:fishRack#22": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 21.005,
+   "invertedM2": 0
+  },
+  "landmark/monsoon:colonialBungalow#0": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 5.844,
+   "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-14T14:19:00.339Z"
+ "updatedAt": "2026-10-16T16:32:28.171Z"
 }

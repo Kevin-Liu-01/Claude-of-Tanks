@@ -126,6 +126,8 @@ export default {
   vegetation: {
     species: ['oak', 'cedar', 'pine'], clusterMix: [['cedar', 0.46], ['pine', 0.34], ['oak', 0.2]],
     loneMix: [['oak', 0.64], ['cedar', 0.26], ['pine', 0.1]], rimMix: [['cedar', 0.54], ['pine', 0.36], ['oak', 0.1]],
+    // GND (2026-10-15): the ring's trees at each species' own rim stature (vegetation.ts `ringStature`): oak x0.70 of the one mean
+    ringStature: 'species',
     clusterCount: 42, loneCount: 38, rimCount: 88, grassDensity: 0.95, bushCount: 1.0, bushSpecies: 'oak',
     // (round 5, wave 252: "lawn green") the tufts cured toward straw, a little paler, their own variation kept
     tuftTone: (h: number, s: number, l: number) => [h - 0.055, s * 0.8, Math.min(1, l * 0.95 + 0.04)],
@@ -266,7 +268,7 @@ export default {
     haystacks: 0, rocks: 138, outcrops: 20, craters: 48, rubblePiles: 10, cropFields: 7, sandbagLines: 12, hedgehogs: 8,
     // the map-vehicles lane (2026-10-06, the period ruling): Lebanon, 1982: the Merkava Mk 1, Magach (M60A1) and
     // Sho't (Centurion), Syria's T-62s and T-72M
-    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['merkava1b', 'm60a1', 'centurion5', 't62mv1', 't72m1_jaguar'] },
+    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['merkava1b', 'm60a1', 'centurion5_2', 't62_1975', 't72m1_jaguar'] },
     // (round 2, wave 123: "picket and rail fencing"): dry stone walls along the lanes and round the yards; (round 3, wave
     // 208) no camps — no modern tarps in Deir el Qamar
     inhabit: { stalls: 4, benches: 4, coreClutter: 22, bales: 0, stooks: 0, pots: 8, laundry: 4, troughs: 2, handcarts: 4, carts: 4, trucks: 4, jeeps: 3, drumClusters: 3, camps: 0, modernClutter: 18, looseClutter: 20, roadFence: 'wallstone', yardFence: 'wallstone' },
@@ -300,7 +302,10 @@ export default {
   horizon: { baseHex: 0x5c7154, amp: 0.9, style: 'rolling', ringStyle: 'rolling', treeline: 0.8, snowline: 2, panorama: { regional: 'upland', ampM: 450, treeline: 0.75, rockSlope: 0.35 }, forestHex: 0x2e513c, rockHex: 0x9c9a8a, haze: 0.9, grain: 0.55 },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   clouds: { regime: 'fair-weather-cumulus', coverage: 0.28, streets: 0.4, contrails: 0.3 },
-  sky: { ...verdant.sky, sunElevationDeg: 28, sunAzimuthDeg: 132, turbidity: 4.5, fogDensity: 0.00058, fogTintHex: 0x99aaac, fogMix: 0.5, cloudOpacity: 0.95, cloudOpacity2: 0.62, sunIntensity: 3.9, hemiIntensity: 0.42 },
-  minimap: { ...verdant.minimap, base: [89, 110, 67], hard: [116, 107, 85], soft: [55, 79, 56] },
+  sky: { ...verdant.sky, sunElevationDeg: 28, sunAzimuthDeg: 132, turbidity: 4.5, fogDensity: 0.00058, fogTintHex: 0x99aaac, fogMix: 0.5, cloudOpacity: 0.95, cloudOpacity2: 0.62, sunIntensity: 3.9, hemiIntensity: 0.42,
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a fruit valley's soft pastoral haze
+    atmosphere: { horizonTintHex: 0xe0e0d0, horizonTintAmount: 0.3, horizonBandDeg: 8, zenithTintHex: 0x6290c8, zenithTintAmount: 0.15 },
+  },
+  minimap: { ...verdant.minimap, base: [89, 110, 67], hard: [116, 107, 85], soft: [55, 79, 56], bog: 'rgba(99,88,51,.71)', bogStroke: 'rgba(54,49,27,.66)' },
   shot: { pos: [-244, 56, -256], look: [60, 1, 98] },
 } satisfies import('./contracts.ts').MapCompositionConfig;

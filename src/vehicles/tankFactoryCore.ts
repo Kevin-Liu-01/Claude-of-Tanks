@@ -31,7 +31,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
 import { getSpec, TANK_SPECS, attachTrackShapes } from './specs.ts';
 import {
-  box, boxUV, cylX, cylY, cylZ, frustum, lathe, mergeAll, mulberry32,
+  box, boxUV, cylX, cylY, cylZ, faceBoxUV, frustum, lathe, mergeAll, mulberry32,
   polyLoft, polyMultiLoft, polyTurret, slab, sph, straightRidgeGunMask,
   torus, xform,
 } from './factoryGeometry.ts';
@@ -124,6 +124,10 @@ export type { TrackGuideProfile, TrackOutsoleDimensions } from './profiles/abram
 import type { SuspensionPatternId, SuspensionPattern } from './suspensionPatterns.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createWeaponFinishMaterials, linkWeaponFinish, mainBarrelIsWeaponSteel, paintAmmoVertexColours, prepareWeaponFinishGeometry } from './weaponFinish.ts';
+import { ditherPaintTone, relaxFlatFans } from './surfaceFinish.ts';
+import { seatAuthoredSpareTracks } from './spareTrackSeatPass.ts';
+import { spareLinkBlock } from './spareLinkGeometry.ts';
+import { resetSpareTrackRunSerial, seatRoleForBucket, seatRoleForPart, spareTrackRunTag, type SeatRole } from './spareTrackSeat.ts';
 
 /** A rig group's identity-placed child: its plates are authored in the group's frame (planLiveCrumple). */
 const _identity4 = new THREE.Matrix4();
@@ -150,6 +154,8 @@ interface TankMaterials {
   shadow: THREE.MeshStandardMaterial;
   trackLink: THREE.MeshStandardMaterial;
   spareTrack: THREE.MeshStandardMaterial;
+  /** VEH-13: the stowed spare links' weathered steel (materials.ts); absent sets fall back to `spareTrack`. */
+  spareLink?: THREE.MeshStandardMaterial;
   glass: THREE.MeshStandardMaterial;
   barrel: THREE.MeshStandardMaterial;
   canvasCloth: THREE.MeshStandardMaterial;
@@ -558,6 +564,10 @@ interface GunBuildConfig {
   collar?: boolean;
   baseR?: number;
   evacR?: number;
+  /** Metres a plain tube stops short of the muzzle plane, for a gun whose own tip collar caps that plane (default 0).
+   * 2026-10-16: the 20-pdr's tube ran to its collar's cap plane after VH.04, the bore carver merged the two coplanar
+   * caps into one ring at the tube's radius, and the collar's outer annulus went missing (strv81 open 0 -> 14 px). */
+  tubeInset?: number;
 }
 
 type StowageSpot = readonly [number, number, number, number, number, number];
@@ -1282,7 +1292,7 @@ interface AuthoredRange {
 
 type RigGroupKey = 'hullG' | 'turretG' | 'recoilG' | 'gunG' | 'barrel0G' | 'barrel1G';
 type TankMaterialKey = 'hull' | 'rubber' | 'detail' | 'dark' | 'wood' | 'bark' | 'canvasCloth' | 'canvasPale'
-  | 'glass' | 'barrel' | 'spareTrack' | 'shadow' | 'wheels' | 'weaponSteel';
+  | 'glass' | 'barrel' | 'spareTrack' | 'spareLink' | 'shadow' | 'wheels' | 'weaponSteel';
 type BucketDefinition = readonly [RigGroupKey, TankMaterialKey];
 type OriginalMaterialRecord = [VehicleMesh, THREE.Material | THREE.Material[], boolean];
 
@@ -4175,7 +4185,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     buildRunningGearAssemblyStage7();
     // Fleet lane round 1 (2026-10-07): paired bogies (Horstmann, Chieftain) hang two arms from one hull pivot. Each
     // arm used to draw its own pivot boss at the same spot, two coincident forgings whose end caps fought in depth
-    // (the circularCapOverlap finding on chieftain5 / chieftain_mk10). The second arm's pivot boss now collapses.
+    // (the circularCapOverlap finding on chieftain3 / chieftain_mk9). The second arm's pivot boss now collapses.
     for (let i = 0; i < suspensionEntries.length; i++) {
       const link = suspensionEntries[i];
       for (let j = 0; j < i; j++) {
@@ -4255,7 +4265,7 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
     }
     return { anchor, axle: jointCount++ };
   });
-  // 2026-10-10 (the inherited joint reds, chieftain5 18 vs 24): the receipt counts the bosses this unit draws. A shared
+  // 2026-10-10 (the inherited joint reds, chieftain3 18 vs 24): the receipt counts the bosses this unit draws. A shared
   // fixed bearing is one physical boss (a28e4d8e6 stopped drawing it twice), recorded apart so the wheel audit still
   // reconciles two joints per arm.
   if (runningGearReceipt) {
@@ -4413,11 +4423,11 @@ function buildRunningGear(P: RunningGearBuilderPort, cfg: RunningGearConfig): Ru
   // see-through slot between rim plates on the modern rigs.
   // r7b: the toothed carrier rings ride the BAND edges (ringSpan = trackW) so
   // the drive end reads toothed from the side; teeth spaced at the link pitch.
-  // cfg.endRingSpan opt-in (m48 r8, §F.2 — default byte-identical): the
+  // cfg.endRingSpan opt-in (m48a5_patton r8, §F.2 — default byte-identical): the
   // toothed carrier rings ride ringSpan = trackW (the r7b band-edge law),
-  // whose cluster reaches xc + ~0.553·trackW — on the m48's wide-track
+  // whose cluster reaches xc + ~0.553·trackW — on the m48a5_patton's wide-track
   // gear that authored past the committed W/2 and silently width-rescaled
-  // the whole build ×0.9921 (probe-frame law receipt in the m48 packet).
+  // the whole build ×0.9921 (probe-frame law receipt in the m48a5_patton packet).
   // Radial tooth reach is untouched; the rings pull inboard only.
   const resolveEndWheelGeometry = () => {
     const sprocketEngagementR = (sprocket.trackR ?? sprocket.r) + sprocketWrap;
@@ -6060,12 +6070,15 @@ function addMuzzleBrake(
 function buildGunStrict(builder: object, cfg: GunBuildConfig): void {
   const P = requireGeometryAddPort(builder);
   const { len, r, brake = null, sleeve = false, evac = null, collar = false,
-    baseR = r * 1.9, evacR = 1.62, paintSleeveBands = false } = cfg;
+    baseR = r * 1.9, evacR = 1.62, paintSleeveBands = false, tubeInset = 0 } = cfg;
   const seg = P.q ? 28 : 12;
   const g: THREE.BufferGeometry[] = [];
   const gd: THREE.BufferGeometry[] = [];                                     // dark fittings on the tube
   g.push(xform(cylZ(baseR, 0.55, seg, baseR * 1.15), 0, 0, 0.2));           // mantlet root / breech collar
-  const bLen = brake === 'double' ? len - 0.66 : brake ? len - 0.42 : len - 0.02;
+  // VH.04 (2026-10-14): a plain tube runs to the muzzle face. It stopped 20 mm short for the factory's old seated bore
+  // lip; since the carved cannon bores (a28e4d8e6) cut the aperture into the tube's own face and add no lip, every plain
+  // buildGun tube ended 20 mm short of its muzzle marker (the fleet census found 92 ids short by 3-25 mm).
+  const bLen = brake === 'double' ? len - 0.66 : brake ? len - 0.42 : len - tubeInset;
   g.push(xform(cylZ(r, bLen - 0.4, seg, r * 1.25), 0, 0, 0.4 + (bLen - 0.4) / 2));
   if (sleeve) addThermalSleeve(g, gd, len, r, seg, paintSleeveBands);
   if (evac !== null) addBoreEvacuator(g, len, r, seg, evac, evacR);
@@ -6551,19 +6564,26 @@ function spareTrackStrip(
   const steel = bucket.startsWith('turret') ? 'turretTrack' : 'hullTrack';
   const detail = bucket.startsWith('turret') ? 'turretDetail' : 'hullDetail';
   const runDepth = (links - 1) * 0.165 + 0.15;
+  // VEH-13 (2026-10-15): the strip is one registered rigid run; the seat pass (spareTrackSeatPass.ts) measures it on
+  // the finished armour and re-seats or drops it there.
+  const run = spareTrackRunTag({ site: 'strip', source: 'strip', rotation: [rx, ry, 0] });
+  const tagged = (geometry: THREE.BufferGeometry): THREE.BufferGeometry => {
+    geometry.userData.spareTrackRun = run;
+    return geometry;
+  };
   for (const localX of [-0.16, 0.16]) {
-    P.addEquipment(detail, xform(box(0.03, 0.018, runDepth), localX, -0.0315, 0),
+    P.addEquipment(detail, tagged(xform(box(0.03, 0.018, runDepth), localX, -0.0315, 0)),
       x, y, z, rx, ry, 0);
     for (const localZ of [-runDepth * 0.4, runDepth * 0.4]) {
-      P.addEquipment(detail, xform(box(0.105, 0.019, 0.045), localX, -0.031, localZ),
+      P.addEquipment(detail, tagged(xform(box(0.105, 0.019, 0.045), localX, -0.031, localZ)),
         x, y, z, rx, ry, 0);
     }
   }
+  // VEH-13 (2026-10-15): each link is the fleet's one spare link (spareLinkGeometry.ts) over the old slab's envelope
+  // (y -0.0225..0.05), not a slab and a bar
   for (let k = 0; k < links; k++) {
     const localZ = (k - (links - 1) / 2) * 0.165;
-    P.addEquipment(steel, xform(box(0.5, 0.045, 0.15), 0, 0, localZ),
-      x, y, z, rx, ry, 0);
-    P.addEquipment(steel, xform(box(0.44, 0.06, 0.05), 0, 0.02, localZ),
+    P.addEquipment(steel, tagged(xform(spareLinkBlock(0.5, 0.0725, 0.156), 0, 0.01375, localZ)),
       x, y, z, rx, ry, 0);
   }
 }
@@ -6623,7 +6643,7 @@ export const KIT = {
 // ===========================================================================
 
 // Round 46 (docs/CLEANUP-2026-09-22.md §4.2) removed the five shadowed core
-// builders (m4a3e8, tiger1, t34_85, m1a2_legacy, t90m); their archived hulls
+// builders (m4a3e8, tiger1, t34_85, m1a2_legacy, t90am); their archived hulls
 // and the profiles/ww2.ts pack left on 2026-09-25 with is2 and panther_g
 // (owner: delete the archived WWII / casemate tanks that are not in
 // production). The last one, leo2a7 (a donor row, never playable), left on
@@ -6815,6 +6835,10 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   // grey primer beside every camouflaged plate on the X studies. The buckets
   // keep their detail LOD, non-armor hit role and disposal ownership.
   hullDetail: ['hullG', 'hull'], hullDark: ['hullG', 'dark'],
+  // VEH-13 (2026-10-15): a main gun fixed in the hull (the Strv 103 family's printed L74) draws into its own buckets,
+  // same materials, armour role and LOD as `hull`/`hullDark` had: the spare-link seat solver and its receipt read it as
+  // the gun (the Strv 103A's decor run had seated on its barrel's crown facet as if on armour).
+  hullGun: ['hullG', 'hull'], hullGunDark: ['hullG', 'dark'],
   // Fixed painted hull fittings retain their detail LOD and non-armor role.
   hullPaintedDetail: ['hullG', 'hull'],
   // Fixed painted fender skins retain silhouette coverage, not detail LOD.
@@ -6859,8 +6883,10 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   gunBarrel1: ['barrel1G', 'barrel'], gunBarrel1Dark: ['barrel1G', 'weaponSteel'],
   // spare track links (dark oily track steel, r6) + baked-shadow AO panels
   hullTrack: ['hullG', 'spareTrack'], turretTrack: ['turretG', 'spareTrack'],
+  // VEH-13: every built spare-link run's links (the seat pass moves them here from hull/turretTrack), weathered steel
+  hullTrackLinks: ['hullG', 'spareLink'], turretTrackLinks: ['turretG', 'spareLink'],
   hullShadow: ['hullG', 'shadow'],
-  // Per-SIDE in-lane track trim (russia §B4 t72b3m round, opt-in — no other
+  // Per-SIDE in-lane track trim (russia §B4 t72b3m_2022 round, opt-in — no other
   // caller): gear-fade strips / wrap chord fans / ramp joint fills are
   // running-gear dressing living INSIDE the track x-band. Merged into the
   // center-spanning hullDark bucket they defeat track-clip-audit's designed
@@ -6905,7 +6931,7 @@ const CAMO_BUCKETS = new Set([
   'hullPaintedDetail', 'turretPaintedDetail',
   'hullOpenLattice', 'turretOpenLattice',
   'hullFixedPaintedBodywork',
-  'hull', 'hullCupola', 'hullHatch', 'hullExternalArmor', 'hullEquipment',
+  'hull', 'hullCupola', 'hullHatch', 'hullExternalArmor', 'hullEquipment', 'hullGun',
   'hullTrackGuardL', 'hullTrackGuardR',
   'turret', 'turretCupola', 'turretHatch', 'turretExternalArmor',
   'turretEquipment', 'gun', 'gunMount',
@@ -6927,7 +6953,7 @@ export function bucketMaterialKey(bucket: string): TankMaterialKey | null {
 // Buckets that survive past LOD1 — everything else is greeble-class and
 // disappears at range behind the silhouette shells.
 const LOD0_KEEP = new Set([
-  'hull', 'hullCupola', 'hullTrackGuardL', 'hullTrackGuardR',
+  'hull', 'hullCupola', 'hullTrackGuardL', 'hullTrackGuardR', 'hullGun',
   'hullFixedPaintedBodywork',
   'turret', 'turretCupola', 'gun', 'gunDark', 'gunMount', 'hullRubber',
   'gunMountCanvasSkin',
@@ -6944,8 +6970,8 @@ const LOD0_KEEP = new Set([
 // the official critic pairs (round record in the packet):
 //  - HEM/DUST equalization (cap 0.85->0.8, *1.12->*1.05, tint -> ref) ships
 //    GLOBAL: held windows m47 A1 66.6/70.5, N1 r/g 1.005, t84 letterbox
-//    67.8, leo2a5 hull-side 71.4 all inside +-1.5L, graduate spot meds
-//    inside the 1.5L bar. It carries the t84 2b pale-reach and the leo2a5
+//    67.8, leo2a4_v hull-side 71.4 all inside +-1.5L, graduate spot meds
+//    inside the 1.5L bar. It carries the t84 2b pale-reach and the leo2a4_v
 //    1c BASE-class hem share (G 0.66 -> 0.696 at ground).
 //  - UP-FACE deck equalization (drop the *0.84) is OPT-IN per spec
 //    (visual.bakeDirtDeckEq): global removal moved graduate TOP-view medians
@@ -6953,7 +6979,7 @@ const LOD0_KEEP = new Set([
 //    OVERSHOOT their refs, which never took the proc deck penalty ONLY
 //    shared-canvas refs did). Knob-on closes the m47 B3 top census
 //    2189 -> 1561 vs ref 1160 with A1/N1 held exact — consumers (m46 R1
-//    re-baseline, m47 top view, leo2a5) flip it in their own lanes with
+//    re-baseline, m47 top view, leo2a4_v) flip it in their own lanes with
 //    re-cert bundled.
 // Down-face AO 0.28 (ref 0.26) and jitter 0.09 (ref 0.08) intentionally
 // kept — cited by no window.
@@ -7081,6 +7107,7 @@ function createNonRenderingTankMaterials(camoUvScale = CAMO_UV_REPEATS_PER_M): T
     shadow: make(0x181a17),
     trackLink: make(0x2d302b),
     spareTrack: make(0x292c27),
+    spareLink: make(0x292c27),
     glass: make(0x243e49, { transparent: true, opacity: 0.7 }),
     barrel: make(0x555d49),
     canvasCloth: make(0x41452f),
@@ -7410,6 +7437,9 @@ function* createTankOwnedSteps(
       // armour and equipment-role buckets keep their tubes (hit roles and equipment damage are unchanged). The tube
       // stays in its authored bucket until the profile is done (smokeTubesForFittingPaint, moved after the builder):
       // a rebuild that clears, offsets or scales that bucket by name must still find it there.
+      // VEH-13: explosive cassettes are no seat for spare links (spareTrackSeat.ts); cages and slat screens are not ERA
+      if (eraOwner && !part.userData.seatRole
+          && !(activeVisualEraCluster && /cage|slat|screen|net/i.test(activeVisualEraCluster.name))) part.userData.seatRole = 'era';
       const smokeTube = !eraOwner && (part.userData.smokeAperture || part.userData.openSmokeAperture);
       const targetBucket = eraOwner ? `${eraOwner}ExternalArmor` : bucket;
       (buckets[targetBucket] || (buckets[targetBucket] = [])).push(part);
@@ -7509,6 +7539,8 @@ function* createTankOwnedSteps(
         : bucket === 'turret' ? 'turretEquipment' : bucket;
       const glassSurround = armouredGlassSurround(bucket, geo);
       const part = xform(geo, x, y, z, rx, ry, rz, s);
+      // VEH-13: an optical station is no seat for spare links (spareTrackSeat.ts)
+      if (module === 'optics' && !part.userData.seatRole) part.userData.seatRole = 'sight';
       (buckets[visualBucket] || (buckets[visualBucket] = [])).push(part);
       moduleVisualParts.set(part, module);
       partCensus?.(visualBucket, part, 'moduleVisual');
@@ -7683,6 +7715,7 @@ function* createTankOwnedSteps(
   };
 
   const builder = resolveBuilder(specId, spec);
+  resetSpareTrackRunSerial();
   const coreAuthoredStartedAt = performance.now();
   const sizeFactor = VEHICLE_SIZE_FACTORS[specId] ?? 1;
   if (sizeFactor !== 1) {
@@ -7713,6 +7746,29 @@ function* createTankOwnedSteps(
       (buckets[target] || (buckets[target] = [])).push(...tubes);
     }
     smokeTubesForFittingPaint.clear();
+  }
+  // VEH-13 (2026-10-15): every authored spare-link run (fittings, strips, registered hand-drawn courses) is measured on
+  // the finished, unmerged armour (spareTrackSeatPass.ts): a passing run stays exactly as built, a failing one is
+  // re-seated from outside nearby or removed, and both are recorded.
+  const rigByKey: Record<string, THREE.Object3D | undefined> = {
+    hullG, turretG, recoilG, gunG, barrel0G: barrelGs[0], barrel1G: barrelGs[1],
+  };
+  const visualEraSet = new Set(visualEraParts.filter(({ sector }) => !/cage|slat|screen|net/i.test(sector))
+    .map(({ part }) => part));
+  const isEraPart = (part: THREE.BufferGeometry): boolean => destructiblePartCluster.has(part) || visualEraSet.has(part);
+  const spareTrackStartedAt = performance.now();
+  try {
+    const spareTrackSeats = seatAuthoredSpareTracks({
+      spec, buckets, root, hullG, turretG, gunG, fixedMount: P.fixedMount, isEra: isEraPart, markings: decals,
+      bucketParent: (bucket) => rigByKey[BUCKET_DEF[bucket]?.[0] ?? ''] ?? null,
+    });
+    root.userData.spareTrack = spareTrackSeats.runs;
+    root.userData.spareTrackRejected = spareTrackSeats.rejected;
+    root.userData.spareTrackMs = performance.now() - spareTrackStartedAt;
+  } catch (error) {
+    // a solver fault never costs the vehicle its build: the runs stay as authored and the receipt carries the fault
+    root.userData.spareTrackError = error instanceof Error ? error.message : String(error);
+    console.warn(`[tankFactory] ${specId}: spare-track seat pass failed — ${root.userData.spareTrackError}`);
   }
   const coreAuthoredFinishedAt = performance.now();
 
@@ -8080,8 +8136,22 @@ function* createTankOwnedSteps(
       });
     }
   };
+  // VEH-13: the merged mesh keeps the vertex spans of parts whose seat role differs from their bucket's (grilles, ERA,
+  // launchers, registered spare links), so the decor's spare-link seats read them after the merge (decorations.ts).
+  const seatRoleRangesFor = (bucket: string, list: THREE.BufferGeometry[]): Array<{ start: number; count: number; role: SeatRole }> => {
+    const ranges: Array<{ start: number; count: number; role: SeatRole }> = [];
+    const base = seatRoleForBucket(bucket);
+    let vertexOffset = 0;
+    for (const part of list) {
+      const count = part.index ? part.index.count : (part.getAttribute('position')?.count || 0);
+      const role = seatRoleForPart(bucket, part, isEraPart(part));
+      if (role !== base && count) ranges.push({ start: vertexOffset, count, role });
+      vertexOffset += count;
+    }
+    return ranges;
+  };
   const combatHitboxRoleForBucket = (bucket: string): string => {
-    if (bucket === 'hull' || bucket === 'turret'
+    if (bucket === 'hull' || bucket === 'turret' || bucket === 'hullGun'
         || bucket === 'hullCupola' || bucket === 'turretCupola'
         || bucket === 'hullHatch' || bucket === 'turretHatch') return 'armor';
     if (bucket === 'hullExternalArmor' || bucket === 'turretExternalArmor') return 'externalArmor';
@@ -8146,12 +8216,18 @@ function* createTankOwnedSteps(
       // Round 35 (owner 2026-09-21: "the look of identical camos looks completely different if you switch between
       // tanks"): every hull projects the shared camo tile at ONE density, so a pattern's blotches cover the same
       // world metres on every vehicle; the recipe's camoScale only shapes the paint (camoWorldScale.ts).
-      boxUV(merged, CAMO_UV_REPEATS_PER_M);
+      // 2026-10-11 (r4c): the axis per triangle from its face normal (faceBoxUV). Rounded boxes' bevel normals are
+      // blended, so a per-vertex axis landed one triangle's corners on different projections and the mips smeared the
+      // pattern to one flat darker tone on 165 hulls (the T-90AM's "second hull"); camo now stays crisp to every edge.
+      faceBoxUV(merged, CAMO_UV_REPEATS_PER_M);
       shiftPartCamouflage(list, merged);
-      bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' ? 1 : 0.5,
+      bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' || bucket === 'hullGun' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);
+      if (usesSharedMaterialTextures) ditherPaintTone(merged);
     }
+    if (usesSharedMaterialTextures) relaxFlatFans(merged);
     recordAuthoredRanges(merged, authoredRanges);
+    const seatRanges = seatRoleRangesFor(bucket, list);
     weaponDamage.bind(list, merged);
     const station=list[0]?.userData.auxiliaryStation as {name:string;stage:string}|undefined;
     equipmentDamage.bindMerged(list, merged, parentKey === 'hullG' ? 'hull' : parentKey === 'turretG' ? 'turret' : '',
@@ -8168,8 +8244,10 @@ function* createTankOwnedSteps(
       prepareWeaponFinishGeometry(merged, boxUV);
       paintAmmoVertexColours(merged, issueDrab, false);
     }
-    const mesh = new THREE.Mesh(merged, issueDrab ?? weaponSteel ?? (matKey === 'weaponSteel' ? mats.dark : mats[matKey]));
+    const mesh = new THREE.Mesh(merged, issueDrab ?? weaponSteel ?? (matKey === 'weaponSteel' ? mats.dark
+      : matKey === 'spareLink' ? mats.spareLink ?? mats.spareTrack : mats[matKey]));
     tagMergedBucket(bucket, mesh);
+    if (seatRanges.length) mesh.userData.seatRoleRanges = seatRanges;
     // A merged material bucket can contain live equipment mixed with trim.
     // Retain its exact stock without splitting/rebuilding damage-bound ranges.
     if (authoredRanges.length || /OpenLattice/.test(bucket) || list.some(part =>
@@ -8229,7 +8307,7 @@ function* createTankOwnedSteps(
   }
   const coreBindMergeFinishedAt = performance.now();
 
-  // ---- ERA bricks (t90m) ----
+  // ---- ERA bricks (t90am) ----
   let eraMesh: THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material> | null = null;
   const eraLocal: Array<THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material>> = [];
   try {
@@ -8375,7 +8453,9 @@ function* createTankOwnedSteps(
     root.userData.markingSeatPath = 'generated';
   } else {
     root.updateMatrixWorld(true);
-    finalizeVehicleMarkingSeats(spec, marking, decals, root, hullG, turretG);
+    // a re-solve (the generator) keeps the seats that still read as recorded (netting-225 seat stability)
+    finalizeVehicleMarkingSeats(spec, marking, decals, root, hullG, turretG,
+      solveMarkingSeats ? vehicleMarkingSeats(spec.id) : null);
     root.userData.markingSeatPath = 'surface-solver';
   }
   const decalGeo = new THREE.PlaneGeometry(1, 1);
@@ -8819,7 +8899,7 @@ function* createTankOwnedSteps(
     // Floor selection: the gear's analytic flat-run underside is the
     // load-bearing surface and the anchor. The scan's ABSOLUTE min only
     // overrides when a real surface sits well below the gear line (> 2.5 cm —
-    // the m1a2_sepv2 hull keel renders 4.5 cm under its print-raised tracks;
+    // the m1a1_abrams_aim hull keel renders 4.5 cm under its print-raised tracks;
     // capped at 12 cm so one mis-seated greeble cannot hover the tank).
     // Small sub-gear protrusions (tilted approach-ramp pad corners graze
     // ~1.6 cm under the flat run) stay IGNORED: seating them would float the
@@ -9038,7 +9118,7 @@ function* createTankOwnedSteps(
   let popTrailAcc = 0;               // trail emission cursor along the arc
   // Pre-wreck turret seat, captured at setDestroyed time. The spec's
   // armor.turretPivot is only where the PROCEDURAL turret sits — a GLB swap
-  // re-seats turretG on the model's real ring (t90m: y 1.607 z -1.042 vs
+  // re-seats turretG on the model's real ring (t90am: y 1.607 z -1.042 vs
   // spec 1.4/0.15). The pop arc, settle pose and resetDestroyed all key off
   // this captured seat so GLB turrets launch from and restore to their true
   // mount (killcam r3 made the old spec-pivot restage visibly ~1.2 m off).
@@ -10094,7 +10174,7 @@ function* createTankOwnedSteps(
         for (const d of decalMeshes) d.visible = true;
         // restore the CAPTURED pre-wreck seat, never spec.armor.turretPivot —
         // the spec pivot is only where the procedural turret sits; a GLB
-        // swap seats turretG on the model's real ring (t90m restaged 1.21 m
+        // swap seats turretG on the model's real ring (t90am restaged 1.21 m
         // off before this, clearly visible in the killcam r3 intact beat).
         turretG.position.copy(wreckSeat);
         turretG.rotation.set(0, 0, 0);

@@ -29,8 +29,8 @@ function scriptedTransport() {
   return transport;
 }
 
-const room = createRoom({ roomCode: 'ABC123', mode: 'lan', creator: { id: 'alice', name: 'Alice' }, selection: { specId: 'm1a2' }, settings: { teamSize: 2 }, now: 1000 });
-joinRoom(room, { player: { id: 'bob', name: 'Bob' }, selection: { specId: 't90m' }, team: null, now: 1001 });
+const room = createRoom({ roomCode: 'ABC123', mode: 'lan', creator: { id: 'alice', name: 'Alice' }, selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize: 2 }, now: 1000 });
+joinRoom(room, { player: { id: 'bob', name: 'Bob' }, selection: { specId: 't90am' }, team: null, now: 1001 });
 let transport = null;
 let transportOptions = null;
 const client = new RoomClient({
@@ -50,7 +50,7 @@ assert.equal(client.generation, 0);
 assert.equal(client.isHost, false);
 
 // ---- join through the scripted room
-const joining = client.join({ roomCode: 'ABC123', selection: { specId: 't90m' } });
+const joining = client.join({ roomCode: 'ABC123', selection: { specId: 't90am' } });
 await new Promise((resolve) => setTimeout(resolve, 0));
 const joinRequest = transport.outbound.find((envelope) => envelope.type === 'room_join');
 assert.ok(joinRequest, 'the join request left');

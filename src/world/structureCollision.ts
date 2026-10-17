@@ -6,7 +6,7 @@
 
 import type { BufferAttribute, BufferGeometry, InterleavedBufferAttribute } from 'three';
 import {
-  convexHull2, setCompoundShape,
+  convexHull2, convexOutlineInPlace, setCompoundShape,
   type CollisionRecord, type SimpleCollisionShape,
 } from './collision.ts';
 
@@ -756,6 +756,23 @@ function rangeRectangles(rectangles: number[][], source: RangedPolygon[]): Range
   });
 }
 
+/** A band part narrower than this (m) is a sliver, not a solid's footprint (makeRuntimeBand). */
+const SLIVER_WIDTH_M = 0.006;
+
+/** A polygon's least width: over its edges, the farthest of its corners from the edge's line, the least of those. */
+function polygonWidth(points: number[]): number {
+  const n = points.length / 2;
+  let least = Infinity;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n, ex = points[2 * j] - points[2 * i], ez = points[2 * j + 1] - points[2 * i + 1], len = Math.hypot(ex, ez);
+    if (len < 1e-9) continue;
+    let far = 0;
+    for (let k = 0; k < n; k++) far = Math.max(far, Math.abs((points[2 * k] - points[2 * i]) * ez - (points[2 * k + 1] - points[2 * i + 1]) * ex) / len);
+    least = Math.min(least, far);
+  }
+  return least;
+}
+
 function rangedShape(item: RangedPolygon): SimpleCollisionShape {
   const shape = { ...polygonShape(item.points), y0: item.y0, y1: item.y1 } as Extract<SimpleCollisionShape, { kind: 'convex' }>;
   if (item.tp) shape.tp = item.tp;
@@ -1114,6 +1131,30 @@ function shedTrim(source: RangedPolygon[]): RangedPolygon[] {
   return kept.length <= PART_LIMIT ? kept : source;
 }
 
+/**
+ * (the 225 gate, 2026-10-15; Cliffbridge's yard walls) A part the decoder would cut — a corner within a millimetre of its
+ * chord, dropped by collision.ts convexOutlineInPlace, so the read part loses up to half its outline: a dry-stone face
+ * stone's projection 1.5-2 cm across, standing a hair out of the hearting's — that lies inside another part (to 3 mm in
+ * plan, within its height) adds nothing to the band, and goes. Every other part is kept as it is.
+ */
+function dropCutCovered(items: RangedPolygon[]): RangedPolygon[] {
+  if (items.length < 2) return items;
+  const within = (outer: number[], x: number, z: number): boolean => {
+    let sign = 0;
+    for (let i = 0; i < outer.length; i += 2) {
+      const j = (i + 2) % outer.length, ex = outer[j] - outer[i], ez = outer[j + 1] - outer[i + 1];
+      const d = (ex * (z - outer[i + 1]) - ez * (x - outer[i])) / (Math.hypot(ex, ez) || 1);
+      if (Math.abs(d) <= 0.003) continue;
+      if (!sign) sign = Math.sign(d); else if (Math.sign(d) !== sign) return false;
+    }
+    return true;
+  };
+  const cut = (item: RangedPolygon): boolean => convexOutlineInPlace(item.points.slice()).length < item.points.length;
+  return items.filter((item, i) => !cut(item) || !items.some((other, j) => j !== i && !cut(other)
+    && other.y0 <= item.y0 + 1e-6 && other.y1 >= item.y1 - 1e-6
+    && item.points.every((_, k) => k % 2 === 1 || within(other.points, item.points[k], item.points[k + 1]))));
+}
+
 function makeRuntimeBand(
   solids: LocalSolid[], minY: number, maxY: number, groundContact = false,
   projectedCache?: Map<LocalSolid, number[][]>,
@@ -1125,7 +1166,11 @@ function makeRuntimeBand(
   // (the landmarks lane, 2026-10-05: a raw dense loop over the packed corner limit — a turned tank's section — collapses
   // too; every band the manifests already carried was within both limits and publishes as it was)
   if (source.length <= PART_LIMIT && source.every((item) => item.points.length <= 2 * PACKED_POLYGON_VERTICES)) {
-    return { minY, maxY, parts: source.map(rangedShape) };
+    // (the 225 gate, 2026-10-15) a sliver — a projected face a millimetre or two across (Orchard's dry-stone wall: its
+    // stones' near-upright faces, 45 cm long) — holds nothing, and the decoder's convex reading (collision.ts
+    // convexOutlineInPlace, a corner within a millimetre of its chord dropped) halves it: the band goes without it
+    const kept = source.length > 1 ? source.filter((item) => polygonWidth(item.points) >= SLIVER_WIDTH_M) : source;
+    return { minY, maxY, parts: dropCutCovered(kept.length ? kept : source).map(rangedShape) };
   }
   const collision = collapseRuntimeFootprint(source.map((item) => item.points));
   return { minY, maxY, parts: rangeRectangles(collision, source).map(rangedShape) };
@@ -1196,16 +1241,67 @@ function collapseRuntimeFootprint(source: number[][]): number[][] {
  * as a separate noCollision geometry's would be; any other geometry as it is.
  */
 function withoutDressing(geometry: BufferGeometry): BufferGeometry {
-  const flags = geometry.userData?.noCollisionVertices as Uint8Array | undefined;
+  const dressing = geometry.userData?.noCollisionVertices as Uint8Array | undefined;
+  const ranges = geometry.userData?.collisionHullRanges as ArrayLike<number> | undefined;
   const index = geometry.getIndex();
-  if (!flags || !index) return geometry;
+  if (!dressing && !ranges?.length) return geometry;
+  // (the hull ranges' vertices stand in their hulls, collectSolids: left out here as the dressing is)
+  let flags = dressing;
+  if (ranges?.length) {
+    flags = dressing ? dressing.slice() : new Uint8Array(geometry.getAttribute('position')?.count ?? 0);
+    for (let r = 0; r + 1 < ranges.length; r += 2) flags.fill(1, ranges[r], ranges[r + 1]);
+  }
+  // (physics, 2026-10-16) a merged light kind's geometry is unindexed (structureKit.ts merge): its triangles' corners
+  // are its vertices in order
+  const corners = index ? index.count : geometry.getAttribute('position')?.count ?? 0;
+  const corner = (i: number) => (index ? index.getX(i) : i);
   const kept: number[] = [];
-  for (let t = 0; t + 2 < index.count; t += 3) {
-    const a = index.getX(t), b = index.getX(t + 1), c = index.getX(t + 2);
-    if (!(flags[a] && flags[b] && flags[c])) kept.push(a, b, c);
+  for (let t = 0; t + 2 < corners; t += 3) {
+    const a = corner(t), b = corner(t + 1), c = corner(t + 2);
+    if (!(flags![a] && flags![b] && flags![c])) kept.push(a, b, c);
   }
   const keptIndex = { count: kept.length, getX: (i: number) => kept[i] };
   return { getAttribute: (name: string) => geometry.getAttribute(name), getIndex: () => keptIndex, userData: {} } as unknown as BufferGeometry;
+}
+
+const EMPTY_GEOMETRY = { getAttribute: () => undefined, getIndex: () => null, userData: {} } as unknown as BufferGeometry;
+
+/**
+ * A geometry a kit flags `userData.collisionHull` stands as its plan hull from its lowest point to its highest, its
+ * dressing (noCollisionVertices) left out: a turned jar, a slumped sack, a crate on its battens (maps/courtyardKit.ts;
+ * physics, 2026-10-16). A lathe's hundreds of facets and a crate's dozen battens, each its own solid, pushed a desert
+ * compound's bands over the dense and part limits (DENSE_SOURCE_LIMIT, PART_LIMIT), and its walls were rastered with
+ * them (the certification 82-86 of 100); the hull is the solid the old cylinder, sphere or box stood as. The worker's
+ * wire carries the flag (structureShellWire.ts).
+ */
+/** (A merged light kind's parts flagged so — the rover garage's wheels and tapered posts — are vertex ranges of its
+ *  merge, `userData.collisionHullRanges` [start, end, ...]: structureKit.ts merge. Each range stands as its own hull.) */
+function hullPrism(geometry: BufferGeometry, start = 0, end = geometry.getAttribute('position')?.count ?? 0): BufferGeometry {
+  const position = geometry.getAttribute('position');
+  const flags = geometry.userData?.noCollisionVertices as Uint8Array | undefined;
+  const plan: Array<[number, number]> = [];
+  let minY = Infinity, maxY = -Infinity;
+  for (let i = start; i < end; i++) {
+    if (flags?.[i]) continue;
+    plan.push([position.getX(i), position.getZ(i)]);
+    const y = position.getY(i);
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  const hull = capConvexCorners(convexHull2(plan));
+  const n = hull.length / 2;
+  if (n < 3 || !(maxY > minY)) return EMPTY_GEOMETRY;
+  const xyz = new Float64Array(6 * n);
+  for (let i = 0; i < n; i++) {
+    xyz[3 * i] = hull[2 * i]; xyz[3 * i + 1] = minY; xyz[3 * i + 2] = hull[2 * i + 1];
+    xyz[3 * (n + i)] = hull[2 * i]; xyz[3 * (n + i) + 1] = maxY; xyz[3 * (n + i) + 2] = hull[2 * i + 1];
+  }
+  const triangles: number[] = [];
+  for (let i = 1; i + 1 < n; i++) triangles.push(0, i + 1, i, n, n + i, n + i + 1);
+  for (let i = 0; i < n; i++) { const j = (i + 1) % n; triangles.push(i, j, n + j, i, n + j, n + i); }
+  const prism = { count: 2 * n, getX: (i: number) => xyz[3 * i], getY: (i: number) => xyz[3 * i + 1], getZ: (i: number) => xyz[3 * i + 2] };
+  const index = { count: triangles.length, getX: (i: number) => triangles[i] };
+  return { getAttribute: (name: string) => (name === 'position' ? prism : undefined), getIndex: () => index, userData: {} } as unknown as BufferGeometry;
 }
 
 function collectSolids(buckets: StructureGeometryBuckets) {
@@ -1216,6 +1312,11 @@ function collectSolids(buckets: StructureGeometryBuckets) {
       // regional kits (maps/regional/geometry.ts) finish their surface dressing — framing, joinery, shutters, gutters —
       // as separate geometries flagged noCollision: a member 3 cm proud of a wall is not a collision part
       if (geometry.userData?.noCollision) continue;
+      if (geometry.userData?.collisionHull) { solids.push(...geometrySolids(hullPrism(geometry), bucket)); continue; }
+      const ranges = geometry.userData?.collisionHullRanges as ArrayLike<number> | undefined;
+      for (let r = 0; ranges && r + 1 < ranges.length; r += 2) {
+        solids.push(...geometrySolids(hullPrism(geometry, ranges[r], ranges[r + 1]), bucket));
+      }
       solids.push(...geometrySolids(withoutDressing(geometry), bucket));
     }
   }

@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import { installBatchedColorTextureAlias } from './batchedColorAlias.ts';
 import { CSM } from 'three/examples/jsm/csm/CSM.js';
 import { CSMFrustum } from 'three/examples/jsm/csm/CSMFrustum.js';
-import { PRESETS, getDeviceTier, getPreset, onPresetChange } from './quality.ts';
+import { PRESETS, getDeviceTier, getPreset, onPresetChange, resolvePresetName } from './quality.ts';
 import {
   canDormantShadowCascades,
   createShadowRefreshScheduler,
@@ -19,10 +19,7 @@ import {
 } from './shadowRefresh.ts';
 import { debugModeRequested } from '../dev/debugIntent.ts';
 import {
-  SHADOW_OPACITY,
-  SHADOW_RECEIVER_ONLY_BIAS_M,
-  shadowDepthBiasForTexel,
-  shadowNormalBiasForTexel,
+  SHADOW_DOUBLE_SIDED_OFFSET, SHADOW_OPACITY, SHADOW_RECEIVER_ONLY_BIAS_M, shadowDepthBiasBackFace, shadowDepthBiasForTexel, shadowNormalBiasForTexel,
   snapShadowCoordinate,
 } from './shadowStability.ts';
 import { createShadowFitCache } from './shadowFitCache.ts';
@@ -30,7 +27,14 @@ import { registerShadowCascadeCamera, setShadowCascadeCache, setShadowCascadePol
 import type { CascadePoseHold, ShadowStaticCache } from './shadowStaticCache.ts';
 import { csmSampledFromM, evaluateShadowCasterProfiles, type ShadowCascadeSample } from './shadowCasterProfiles.ts';
 import {
-  cascadeRangesFromBreaks, createNearVehicleShadowPolicy, type CascadeRange, type NearVehicleShadowPolicy,
+  CONTACT_SEAM_FALLBACK_M, CSM_FADE_MARGIN_GLSL, CSM_FADE_MARGIN_THREE, contactSeamFor, csmBoxFadeMarginM, pushCustomCascadeBreaks,
+} from './renderLayers.ts';
+import {
+  SHADOW_TENT_DEFAULT, SHADOW_TENT_GLSL, THREE_PCF_GET_SHADOW, THREE_PCF_GET_SHADOW_RENAMED, shadowTentBiasRadius, shadowTentRadius,
+  type ShadowTentTable,
+} from './shadowTent.ts';
+import {
+  cascadeRangesFromBreaks, createNearVehicleShadowPolicy, nearVehicleShadowMaxFor, type CascadeRange, type NearVehicleShadowPolicy,
 } from './nearVehicleShadowDetail.ts';
 import { primeShadowCascades, type ShadowPrimeOptions } from './shadowPrime.ts';
 import {
@@ -43,6 +47,7 @@ import {
   programTextureUnits,
 } from './cloudShadeMap.ts';
 import type { PublishedLightRig } from './contactShadows.ts';
+import { SCENE_ALPHA_SNOW_WRITE_GLSL } from './sceneAlpha.ts';
 import { authoredSunOf, lightTune, resolveLightModel, type LightModel, type LightModelPreset } from './lightModelCore.ts';
 import type { AtmosphereParams } from './atmosphere.ts';
 import { bindMaterialEnvIntensity } from './materialEnvIntensity.ts';
@@ -69,6 +74,12 @@ interface ShadowDebugOptions {
   /** 2026-10-04: every cascade on the old single depth bias, 0.40 m along the sun ray (A/B probes for the per-cascade
    *  bias); read where the biases are applied, so a probe sets it and calls updateFrustums(). */
   legacyBias?: boolean;
+  /** 2026-10-14 (SKY shadows r2a, P1b): the front-face depth-bias law and no double-sided guard, for A/B probes. */
+  frontFaceBias?: boolean;
+  /** 2026-10-15 (SKY shadows r2b, C9): nets and garnish cast through their 0.5 alpha test again, for A/B probes. */
+  netAlphaTest?: boolean;
+  /** 2026-10-15 (SKY shadows r3): contact hardening off — its cascade on the 5 tent — for A/B probes (set before the rig). */
+  noPcss?: boolean;
   /** 2026-10-13: every cascade re-centred on its slice every frame, no held poses (A/B probes for shadowStaticCache.ts
    *  createCascadePoseHold). */
   noPoseHold?: boolean;
@@ -182,6 +193,7 @@ const SHADOW_BIAS = -0.0002;
 // The receiver-only materials' share of their own shadow terms (RECEIVER_ONLY_SHADOW_NOTE): 1, the 2 cm bias and no
 // normal offset; 0 under __SHADOW_DEBUG.legacyBias, the cascade's terms as every material had them.
 const receiverOnlyShadowUniform = { value: 1 };
+
 // r4 penumbra: r185's PCF getShadow() is a 5-tap Vogel disk rotated per-pixel
 // by interleaved gradient noise, and its disk radius comes straight from
 // `shadow.radius` (in shadow-map texels). The default 1.0 produced razor-hard
@@ -234,7 +246,8 @@ const receiverOnlyShadowUniform = { value: 1 };
 // box size) and SHADOW_AMBIENT_DIM deepens below so the shadow body holds a
 // clear step against lit road after ACES. Cascade 1 follows (2.6 → 2.3) to
 // keep the softness ladder monotonic without a band-to-band jump.
-const SHADOW_RADII = [1.6, 2.3, 2.6, 2.8];
+// 2026-10-14 (SKY shadows r2a, P1): the radii ladder above went with the Vogel disk. Each cascade now takes a tent kernel
+// (shadowTent.ts; quality.ts shadowTent per preset): a footprint widening only by its texel, the same coherent law.
 // Sun occlusion also removes part of the open-sky and bounce contribution.
 // Keep that older cool shadow response: it grounds tanks, trees and buildings
 // at gameplay distance without lowering the scene's ambient light globally.
@@ -266,7 +279,7 @@ const SHADOW_DIM_OVERCAST = 1;
 // mobile maps.
 // This removes three blocker probes and their divergent radius too: cleaner
 // edges for fewer texture reads on every device tier.
-const MIN_FILTER_RADIUS_TEXELS = 1.25;
+// (2026-10-14: the 1.25-texel floor went with the disk: the smallest tent covers 3 texels)
 // The radii above are tuned in TEXELS of these reference map sizes (ultra's
 // ladder). When a quality preset allocates a smaller map for a cascade, the
 // texel is proportionally larger — an uncompensated radius would widen the
@@ -275,7 +288,7 @@ const MIN_FILTER_RADIUS_TEXELS = 1.25;
 // penumbra width is identical on every preset; only texture resolution drops.
 // (At ultra, size == reference on every cascade — the compensation is a no-op
 // and the screenshot-contract dpr-1 captures are bit-identical.)
-const SHADOW_RADII_REF_SIZES = [4096, 4096, 4096, 2048];
+// (2026-10-14: the tent's footprint is in texels of each cascade's own map: no reference sizes)
 // Key-to-fill ratio is THE readability lever: the warm sun must dominate the
 // cool sky ambient ~7-8:1 so cast shadows and form shading actually register
 // after ACES. Pixel-measured on the battlefield shot: at 3.2/0.26/0.45 the
@@ -538,6 +551,49 @@ function requestDepthKinds(): void {
   import('./shadowDepthKinds.ts').then((module) => { settleDepthKind = module.settleShadowDepthKind; },
     () => { /* three's own derivation for the session */ });
 }
+/**
+ * 2026-10-14 (SKY shadows r2a, P1b): a DoubleSide or alpha-tested caster's front faces are in the map, so its depth draw
+ * takes the caster-side polygon offset the closed casters' back-face bias no longer gives it (shadowStability.ts
+ * SHADOW_DOUBLE_SIDED_OFFSET); every other draw of a shared depth material takes none. three copies the caster's side and
+ * alpha test onto the depth material before the shadow hook runs.
+ */
+export function guardDoubleSidedDepth(depthMaterial: THREE.Material): void {
+  const legacy = typeof window !== 'undefined' && !!(window.__SHADOW_DEBUG?.legacyBias || window.__SHADOW_DEBUG?.frontFaceBias);
+  const guard = !legacy && (depthMaterial.side === THREE.DoubleSide || depthMaterial.alphaTest > 0 || depthMaterial.alphaHash);
+  if (depthMaterial.polygonOffset !== guard) depthMaterial.polygonOffset = guard;
+  if (guard) {
+    depthMaterial.polygonOffsetFactor = SHADOW_DOUBLE_SIDED_OFFSET.factor;
+    depthMaterial.polygonOffsetUnits = SHADOW_DOUBLE_SIDED_OFFSET.units;
+  }
+}
+
+/**
+ * 2026-10-15 (SKY shadows r2b, the shadow-quality plan's C9): an alpha-tested open lattice — a camouflage net, a
+ * garnish (ghillieSuit.ts marks them continuityRole 'open-lattice') — casts through a hashed alpha test instead of its
+ * 0.5 cut. Its net cells are smaller than a shadow texel, so the map's alpha there is the cells' coverage (the canvas
+ * texture's mip at the shadow raster's footprint); against 0.5 that coverage cast all or nothing in clumps that re-rolled
+ * as the hull moved. Against three's hashed threshold (Wyman & McGuire 2017: a hash on the caster's object-space
+ * position at the footprint's scale) a share of the texels equal to the coverage casts, the pattern sticks to the net
+ * as the hull moves, and the cascade's tent filters it into a partial shade. The depth clone three keeps per net material
+ * takes alphaHash and drops the alpha-test cut from its program once (three re-copies the caster's 0.5 alpha test onto
+ * it every draw: zeroing it per draw would flip its program version twice a draw); the visible net keeps its own test.
+ * A/B: __SHADOW_DEBUG.netAlphaTest, set before the battle's nets first cast.
+ */
+const HASHED_SHADOW_ALPHA_KEY = 'cotHashedShadowAlpha';
+const dropAlphaTestCut: NonNullable<MaterialCompileHook> = (shader) => {
+  // the cut first, then the hash (depth.glsl: alphatest_fragment, alphahash_fragment): the hash alone decides
+  shader.fragmentShader = shader.fragmentShader.replace('#include <alphatest_fragment>', '');
+};
+export function hashOpenLatticeShadow(object: THREE.Object3D, depthMaterial: THREE.Material): void {
+  if (depthMaterial.userData[HASHED_SHADOW_ALPHA_KEY] || object.userData.continuityRole !== 'open-lattice' || !(depthMaterial.alphaTest > 0)) return;
+  if (typeof window !== 'undefined' && window.__SHADOW_DEBUG?.netAlphaTest) return;
+  depthMaterial.userData[HASHED_SHADOW_ALPHA_KEY] = true;
+  depthMaterial.alphaHash = true;
+  depthMaterial.onBeforeCompile = dropAlphaTestCut;
+  depthMaterial.customProgramCacheKey = () => HASHED_SHADOW_ALPHA_KEY;
+  depthMaterial.needsUpdate = true;
+}
+
 function patchShadowDepthPacking(): void {
   const hook: THREE.Mesh['onBeforeShadow'] = function (
     renderer,
@@ -552,6 +608,8 @@ function patchShadowDepthPacking(): void {
       depthMaterial.depthPacking = THREE.RGBADepthPacking;
       depthMaterial.needsUpdate = true;
     }
+    hashOpenLatticeShadow(object, depthMaterial);
+    guardDoubleSidedDepth(depthMaterial);
     // the perf stream (2026-10-12): one depth material per caster kind from the next draw on (shadowDepthKinds.ts), so
     // three stops re-deriving the shared depth program at every instanced / batched / plain switch
     if (settleDepthKind) settleDepthKind(object, depthMaterial, renderer.localClippingEnabled);
@@ -571,6 +629,7 @@ function patchShadowDepthPacking(): void {
     batchedBefore.call(this, renderer, object, camera, shadowCamera, geometry, depthMaterial, group);
     if (settleDepthKind) settleDepthKind(object, depthMaterial, renderer.localClippingEnabled);
     else if (!depthKindsRequested) requestDepthKinds();
+    guardDoubleSidedDepth(depthMaterial);
   };
   THREE.Mesh.prototype.onAfterShadow = afterHook;
   THREE.SkinnedMesh.prototype.onAfterShadow = afterHook;
@@ -601,6 +660,10 @@ function patchStableShadowSampling() {
     'if(linearDepth >= CSM_cascades[UNROLLED_LOOP_INDEX].x && linearDepth < CSM_cascades[UNROLLED_LOOP_INDEX].y) directLight.color *= ( directLight.visible && receiveShadow ) ? getShadow( directionalShadowMap[ i ], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowIntensity, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[ i ] ) : 1.0;';
 
   let frag = THREE.ShaderChunk.lights_fragment_begin;
+  // 2026-10-14 (SKY shadows r2a, C6): the cascades' fade band is linear in the break's distance (shadowCascadeFade.ts),
+  // the one law the shadow boxes, the caster profiles and the held poses read too
+  if (frag.split(CSM_FADE_MARGIN_THREE).length !== 2) throw new Error('lighting.ts: fade margin anchor not found in lights_fragment_begin');
+  frag = frag.replace(CSM_FADE_MARGIN_THREE, CSM_FADE_MARGIN_GLSL);
   if (!frag.includes(declAnchor) || !frag.includes(fadeAnchor) ||
       !frag.includes(fadeBlendAnchor) || !frag.includes(fadeEndAnchor) ||
       !frag.includes(noFadeAnchor)) {
@@ -728,6 +791,14 @@ varying float vCotCloudSun;
 #if defined( COT_SHADOW_RECEIVER_ONLY ) && defined( USE_SHADOWMAP )
 uniform float uCotReceiverOnlyV;
 #endif`;
+  // 2026-10-14 (SKY shadows r2a, P1): the cascades' tent (shadowTent.ts): three's PCF getShadow renamed, and a getShadow
+  // over it that takes the tent for a tent-coded radius (the cascades') — every call site stays three's own
+  {
+    const pars = THREE.ShaderChunk.shadowmap_pars_fragment;
+    if (pars.split(THREE_PCF_GET_SHADOW).length !== 2) throw new Error('lighting.ts: three\'s PCF getShadow not found in shadowmap_pars_fragment');
+    THREE.ShaderChunk.shadowmap_pars_fragment = `${pars.replace(THREE_PCF_GET_SHADOW, THREE_PCF_GET_SHADOW_RENAMED)}
+${SHADOW_TENT_GLSL}`;
+  }
   THREE.ShaderChunk.shadowmap_pars_fragment = `${THREE.ShaderChunk.shadowmap_pars_fragment}
 #if defined( COT_SHADOW_RECEIVER_ONLY ) && defined( USE_SHADOWMAP )
 uniform float uCotReceiverOnly;
@@ -753,9 +824,17 @@ uniform float uCotReceiverOnly;
   if (!opaque.includes(opaqueAnchor)) {
     throw new Error('lighting.ts: alpha anchor not found in opaque_fragment');
   }
+  // (2026-10-14, the engine-cs lane: the ground occlusion's snow law reads each receiver's own snow) the terrain — the one
+  // material that defines COT_SNOW_COVER and sets cotSnowCover (terrain.ts) — writes a snowy pixel's visibility in the
+  // snow band between the lit band and the vehicles' (sceneAlpha.ts); every other material writes 2 + v as before
   THREE.ShaderChunk.opaque_fragment = opaque.replace(opaqueAnchor, `${opaqueAnchor}
 #if defined( COT_SUN_VIS_CAPTURED ) && defined( OPAQUE ) && defined( USE_CSM )
+#ifdef COT_SNOW_COVER
+{${SCENE_ALPHA_SNOW_WRITE_GLSL}
+}
+#else
 gl_FragColor.a = 2.0 + cotSunVis;
+#endif
 #endif`);
 }
 
@@ -854,17 +933,44 @@ export function createLighting(
   // desktop split while removing one full CSM sampler and allocation.
   const mobileTier = getDeviceTier() === 'mobile';
   const cascadeCount = mobileTier ? 3 : CASCADES;
+  /** The live preset's cascade breaks in metres (null: the practical split). */
+  let cascadeSplitsM: readonly number[] | null = preset.shadowSplitsM ?? null;
   const csm = new CSM({
     camera,
     parent: scene,
     cascades: cascadeCount,
     maxFar: preset.shadowMaxFar,
-    mode: 'practical',
+    // 2026-10-14 (SKY shadows r2a): a preset's own breaks (quality.ts shadowSplitsM, High's 30 / 89 / 320 m), else three's
+    // practical split
+    mode: preset.shadowSplitsM ? 'custom' : 'practical',
+    customSplitsCallback: (amount: number, _near: number, far: number, target: number[]) => {
+      pushCustomCascadeBreaks(cascadeSplitsM, amount, far, target);
+    },
     shadowMapSize: preset.shadowMapSizes[0],
     shadowBias: SHADOW_BIAS,
     lightDirection: sunDir.clone().negate().normalize(), // CSM wants FROM-sun direction
     lightIntensity: SUN_INTENSITY,
   }) as ExtendedCsm;
+  // 2026-10-14 (SKY shadows r2a, C6): each cascade's box widens by its slice's whole fade band at the far edge
+  // (shadowCascadeFade.ts) — three widened it against the camera's 4 km far plane while the shader blends over the 700 m
+  // shadow range, so fragments inside the band fell outside the box and read lit
+  csm._updateShadowBounds = function updateShadowBoundsWithFade(this: ExtendedCsm): void {
+    for (let i = 0; i < this.frustums.length; i++) {
+      const shadowCam = this.lights[i].shadow.camera;
+      const frustum = this.frustums[i];
+      const nearVerts = frustum.vertices.near;
+      const farVerts = frustum.vertices.far;
+      const point1 = farVerts[0];
+      const point2 = point1.distanceTo(farVerts[2]) > point1.distanceTo(nearVerts[2]) ? farVerts[2] : nearVerts[2];
+      let width = point1.distanceTo(point2);
+      if (this.fade) width += csmBoxFadeMarginM(farVerts[0].z);
+      shadowCam.left = -width / 2;
+      shadowCam.right = width / 2;
+      shadowCam.top = width / 2;
+      shadowCam.bottom = -width / 2;
+      shadowCam.updateProjectionMatrix();
+    }
+  };
   csm.fade = true;
   csm.updateFrustums(); // required after changing fade
   loadCasterProxies(csm.lights);
@@ -873,6 +979,8 @@ export function createLighting(
   // into the cascade that covers them instead of their convex proxies (nearVehicleShadowDetail.ts). Desktop
   // tiers only — the phone presets keep the nine-draw proxy budget — and off under __SHADOW_DEBUG.noVehicleDetail.
   let nearVehicleDetailAllowed = nearVehicleDetailAllowedFor(preset);
+  // 2026-10-15 (SKY shadows r2b): six near hulls on Ultra and High, four on Medium and Low
+  let nearVehicleMax = nearVehicleShadowMaxFor(resolvePresetName());
   const cascadeRangeScratch: CascadeRange[] = [];
   const nearVehiclePolicy: NearVehicleShadowPolicy = createNearVehicleShadowPolicy({
     camera, scene,
@@ -883,7 +991,13 @@ export function createLighting(
       for (const r of ranges) cascadeRangeScratch.push(r);
       return cascadeRangeScratch;
     },
-    enabled: () => nearVehicleDetailAllowed && !(typeof window !== 'undefined' && window.__SHADOW_DEBUG?.noVehicleDetail),
+    // (2026-10-15, SKY shadows r2b P2b) the tiers without a near-detail budget (Ultra Low, every phone preset) take the
+    // reduced tier: the nearest hull — the player's own — casts its silhouette and running gear into cascade 0
+    enabled: () => !(typeof window !== 'undefined' && window.__SHADOW_DEBUG?.noVehicleDetail),
+    reduced: () => !nearVehicleDetailAllowed,
+    max: () => nearVehicleMax,
+    // 2026-10-14 (SKY shadows r2a): the detail covers every cascade the hull's shadow lands in (its reach down-sun)
+    sunDirection: () => csm.lightDirection,
   });
   setShadowCascadePolicy(nearVehiclePolicy);
   // 2026-10-03: the same near hulls carry the ground's occlusion in the aerial pass (vehicleGroundOcclusion.ts); the
@@ -935,6 +1049,8 @@ export function createLighting(
   // vehicle cast shadows that the broken Basic-packing path was dropping.
   patchShadowDepthPacking();
 
+  /** Cascade 0's residual seam at a contact (m): its depth bias along the sun plus one texel (lightRig.contactSeamM). */
+  const contactSeam = { value: CONTACT_SEAM_FALLBACK_M };
   /**
    * Keep receiver separation proportional to each physical shadow texel: the normal offset, and the depth bias the
    * cascade's PCF reach needs on a caster face 70 degrees from the sun (2026-10-04; shadowStability.ts
@@ -948,24 +1064,64 @@ export function createLighting(
     const legacy = typeof window !== 'undefined' && !!window.__SHADOW_DEBUG?.legacyBias;
     const depthRange = Math.max(1e-3, shadow.camera.far - shadow.camera.near);
     // (never more than the old normalised bias: a cascade at the 0.40 m ceiling keeps it exactly)
-    shadow.bias = legacy ? SHADOW_BIAS
-      : Math.max(SHADOW_BIAS, -shadowDepthBiasForTexel(worldUnitsPerTexel, shadow.radius, shadow.normalBias) / depthRange);
+    // 2026-10-14 (SKY shadows r2a, P1b): the closed casters' back faces are in the map — their law is 1.5 texels along the
+    // sun (shadowDepthBiasBackFace); __SHADOW_DEBUG.frontFaceBias restores the front-face law for A/B probes
+    const frontFace = typeof window !== 'undefined' && !!window.__SHADOW_DEBUG?.frontFaceBias;
+    const biasM = frontFace ? shadowDepthBiasForTexel(worldUnitsPerTexel, shadowTentBiasRadius(tentFor(i)), shadow.normalBias)
+      : shadowDepthBiasBackFace(worldUnitsPerTexel);
+    shadow.bias = legacy ? SHADOW_BIAS : Math.max(SHADOW_BIAS, -biasM / depthRange);
     receiverOnlyShadowUniform.value = legacy ? 0 : 1;
+    // (r3) contact hardening's depth-to-texel scale follows the cascade's fit
+    if (tentFor(i) >= 9) shadow.radius = tentRadius(i);
+    // 2026-10-14 (SKY shadows r2a; contact r6's contract): cascade 0's residual seam, its bias along the sun and a texel
+    if (i === 0) contactSeam.value = contactSeamFor(-shadow.bias * depthRange, worldUnitsPerTexel);
   }
 
   function applyShadowNormalBiases(): void {
     for (let i = 0; i < csm.lights.length; i++) applyShadowNormalBias(i);
   }
 
+  // 2026-10-14 (SKY shadows r2a, P1): each cascade's tent kernel (shadowTent.ts) from the preset's tables; a closed deck
+  // (the deck's uniform share of the cut at half or more) takes the wider deck table — r1's widened Vogel radius
+  // (deckPenumbraRadius) went with the disk. The kernel rides on each cascade's shadow radius (shadowTentRadius): a
+  // preset or a deck changes it without a recompile.
+  let tentTable: ShadowTentTable = preset.shadowTent ?? SHADOW_TENT_DEFAULT;
+  let tentDeckTable: ShadowTentTable = preset.shadowTentDeck ?? tentTable;
+  let deckShare = 0;
+  const tentFor = (i: number): number => {
+    const k = (deckShare >= 0.5 ? tentDeckTable : tentTable)[Math.min(i, 3)];
+    // (2026-10-15, SKY shadows r3) __SHADOW_DEBUG.noPcss: contact hardening's cascade on the 5 tent, for A/B probes
+    return k >= 9 && typeof window !== 'undefined' && window.__SHADOW_DEBUG?.noPcss ? 5 : k;
+  };
+  /** The cascade's radius code: its tent, and for contact hardening its depth range over its texel (shadowTent.ts). */
+  const tentRadius = (i: number): number => {
+    const k = tentFor(i);
+    if (k < 9) return shadowTentRadius(k);
+    const shadow = csm.lights[i].shadow, cam = shadow.camera;
+    const texel = Math.max(1e-6, (cam.right - cam.left) / Math.max(1, shadow.mapSize.x));
+    return shadowTentRadius(k, Math.max(1e-3, cam.far - cam.near) / texel);
+  };
+  /** Each cascade's tent onto its shadow radius, and its bias re-derived. */
+  function applyShadowTents(): void {
+    for (let i = 0; i < csm.lights.length; i++) {
+      csm.lights[i].shadow.radius = tentRadius(i);
+      applyShadowNormalBias(i);
+    }
+  }
+  /** A closed deck widens the cascades' tents, and back when the deck opens. */
+  function applyDeckPenumbra(model: LightModel | null): void {
+    const share = model?.mode === 'physical' ? Math.min(1, Math.max(0, model.overcast * model.deckClosure)) : 0;
+    if (Math.abs(share - deckShare) < 1e-3) return;
+    const crossed = (share >= 0.5) !== (deckShare >= 0.5);
+    deckShare = share;
+    if (crossed) applyShadowTents();
+  }
+
   /** Resize one cascade, retaining every other live map until its own turn. */
   function applyShadowSize(i: number, size: number): void {
     const shadow = csm.lights[i].shadow;
-    // physical-penumbra-preserving PCF radius (see SHADOW_RADII_REF_SIZES)
-    const ref = SHADOW_RADII_REF_SIZES[Math.min(i, SHADOW_RADII_REF_SIZES.length - 1)];
-    shadow.radius = Math.max(
-      MIN_FILTER_RADIUS_TEXELS,
-      SHADOW_RADII[Math.min(i, SHADOW_RADII.length - 1)] * (size / ref),
-    );
+    // the cascade's tent, coded on its radius (the kernel is in its own map's texels)
+    shadow.radius = tentRadius(i);
     if (shadow.mapSize.x !== size) {
       shadow.mapSize.set(size, size);
       shadowFitCache.invalidate();
@@ -989,7 +1145,7 @@ export function createLighting(
   }
 
   for (let i = 0; i < csm.lights.length; i++) {
-    csm.lights[i].shadow.radius = SHADOW_RADII[Math.min(i, SHADOW_RADII.length - 1)];
+    csm.lights[i].shadow.radius = tentRadius(i);
     csm.lights[i].shadow.intensity = SHADOW_OPACITY;
     csm.lights[i].color.setHex(SUN_COLOR);
     // Every cascade is driven explicitly by the coherent scheduler. This keeps
@@ -1000,6 +1156,7 @@ export function createLighting(
   }
   // PERF: per-cascade map size (before the first render allocates the RTs)
   applyShadowSizes(preset.shadowMapSizes);
+  applyShadowTents();
   let pendingShadowSizes: number[] | null = null;
   let pendingShadowMask = 0;
   let pendingShadowCursor = 0;
@@ -1007,6 +1164,7 @@ export function createLighting(
   onPresetChange((p) => {
     poseHoldTier = p !== PRESETS.ultra;
     nearVehicleDetailAllowed = nearVehicleDetailAllowedFor(p);
+    nearVehicleMax = nearVehicleShadowMaxFor(resolvePresetName());
     lightFx.flags = resolvePostLightFx(p, getDeviceTier(), currentPostLightFxQuery());
     applyGroundBounce();
     // Desktop presets deliberately share one shadow layout, so ordinary
@@ -1023,12 +1181,16 @@ export function createLighting(
     if (!pendingShadowMask) pendingShadowSizes = null;
     pendingShadowCursor = 0;
     csm.shadowMapSize = p.shadowMapSizes[0];
-    if (csm.maxFar !== p.shadowMaxFar) {
-      csm.maxFar = p.shadowMaxFar;
-      csm.updateFrustums();
-      shadowFitCache.invalidate();
-      applyShadowNormalBiases();
-    }
+    // 2026-10-14 (SKY shadows r2a): the breaks are the preset's own now (High and Ultra share the 700 m range but not
+    // their splits), so every switch re-derives the frustums, the fits and the biases
+    cascadeSplitsM = p.shadowSplitsM ?? null;
+    csm.mode = cascadeSplitsM ? 'custom' : 'practical';
+    csm.maxFar = p.shadowMaxFar;
+    csm.updateFrustums();
+    shadowFitCache.invalidate();
+    tentTable = p.shadowTent ?? SHADOW_TENT_DEFAULT;
+    tentDeckTable = p.shadowTentDeck ?? tentTable;
+    applyShadowTents();
     // A new projection cannot sample the previous static Garage depth maps.
     // Wake the cache even when this choice keeps identical map dimensions.
     staticPresentationDormant = false;
@@ -1110,12 +1272,14 @@ export function createLighting(
   const cloudShadeUniforms = createCloudShadeUniforms();
   scene.userData.cloudShadeUniforms = cloudShadeUniforms;
   const lightFx = { flags: resolvePostLightFx(preset, getDeviceTier(), currentPostLightFxQuery()) };
+  // (contactSeamM reads cascade 0's live seam: applyShadowNormalBias keeps contactSeam current)
   const lightRig: PublishedLightRig = {
     sunIntensity: SUN_INTENSITY, sunColor: new THREE.Color(SUN_COLOR),
     hemiIntensity: hemi.intensity, hemiSky: hemi.color, hemiGround: hemi.groundColor,
     fillIntensity: FILL_INTENSITY, fillColor: new THREE.Color(FILL_COLOR), fillDir: new THREE.Vector3(0, 1, 0),
     envDiffuseGain: 1, envDiscFill: LEGACY_ENV_DISC_FILL,
   };
+  Object.defineProperty(lightRig, 'contactSeamM', { enumerable: true, get: () => contactSeam.value });
   scene.userData.lightRig = lightRig;
   const sunDirWorld = new THREE.Vector3();
   // 2026-10-01: the grounded model's ground (its albedo) and the ground pole the sky light already gives a face
@@ -1140,7 +1304,9 @@ export function createLighting(
       // (2026-10-04, the light under a closed deck: the dims fade with the overcast — groundBounce.ts uCotShadowDepth)
       // (2026-10-05: by the deck's closure — in a broken deck's gaps the circumsolar sky is out, and its cells' shade comes
       // through the cloud shade map like a cumulus's)
-      groundBounceUniforms.uCotShadowDepth.value = 1 - Math.min(1, Math.max(0, model.overcast * model.deckClosure)) * lightTune('SHADOW_DIM_OVERCAST', SHADOW_DIM_OVERCAST);
+      // (2026-10-09, the shadows lane: a thin deck — model.deckBeam — keeps the sun's glow an occluder hides, by its beam)
+      groundBounceUniforms.uCotShadowDepth.value = 1 - Math.min(1, Math.max(0, model.overcast * model.deckClosure * (1 - (model.deckBeam ?? 0))))
+        * lightTune('SHADOW_DIM_OVERCAST', SHADOW_DIM_OVERCAST);
       groundBounceUniforms.uCotShadowFacing.value = lightTune('SHADOW_DIM_FACING', SHADOW_DIM_FACING);
       // (2026-10-04: the environment lights a steep face's open sky here: no wall sky lift — groundBounce.ts)
       terrainWallSkyLift.value = lightTune('WALL_SKY_LIFT_GROUNDED', 0);
@@ -1315,6 +1481,11 @@ export function createLighting(
    * scene.environmentIntensity from here (sky.ts sets the same value when it installs an environment).
    */
   let lastSunPreset: SunPreset | null = null;
+  // (2026-10-16, the engine-cs lane: Verdant's white chalk boulders and the washed-out ground) who hears the enclosure
+  // flip (the first rig included: a Studio boot opens on the sky): the sky re-bakes the grounded model's environment
+  // when a battle leaves the Garage with a full-dome bake installed
+  const enclosureListeners = new Set<(enclosed: boolean) => void>();
+  let publishedEnclosed: boolean | null = null;
   function applyRig(opts: SunPreset): void {
     const atmo = scene.userData.atmosphere as AtmosphereLightInputs | undefined;
     const irr = atmo?.irradianceRaw;
@@ -1324,9 +1495,14 @@ export function createLighting(
     const model = resolveLightModel(opts, physical ? atmo!.params! : null,
       physical ? { irradianceRaw: [irr!.r, irr!.g, irr!.b] } : null, authoredSun, cloudShadeOn && !!scene.userData.volumetricClouds);
     rigModel = model;
+    applyDeckPenumbra(model); // (the Whiteout round: a closed deck's diffuse shadows)
     scene.userData.lightModel = model;
     scene.userData.lightEnclosed = farCascadeDormant;
     scene.environmentIntensity = model.envIntensity;
+    if (publishedEnclosed !== farCascadeDormant) {
+      publishedEnclosed = farCascadeDormant;
+      for (const listener of enclosureListeners) listener(farCascadeDormant);
+    }
     const intensity = model.mode === 'physical' ? model.sunIntensity : (opts.sunIntensity ?? SUN_INTENSITY);
     const colorHex = opts.sunColorHex ?? SUN_COLOR;
     fill.intensity = model.mode === 'physical' ? 0 : (opts.fillIntensity ?? FILL_INTENSITY);
@@ -1419,6 +1595,17 @@ export function createLighting(
       forceAllCascades();
       setAllCascadeUpdates(true);
       lastScheduledMask = allCascadeMask;
+    },
+
+    /**
+     * 2026-10-16 (the engine-cs lane): hear every flip of scene.userData.lightEnclosed, the first rig's included — the Garage's
+     * sealed bay (true) and the open sky (false). main.ts hands the sky's syncEnvironmentEnclosure the open flip, so the
+     * environment a battle lights with is the grounded model's bake, never the one the Garage left installed. Returns
+     * the unsubscribe.
+     */
+    onEnclosureChange(listener: (enclosed: boolean) => void): () => void {
+      enclosureListeners.add(listener);
+      return () => { enclosureListeners.delete(listener); };
     },
 
     /**

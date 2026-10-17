@@ -17,6 +17,7 @@
 import type { AtmosphereSkyPresetInput } from './atmosphere.ts';
 import { CLOUDSCAPE_REGIMES, type CloudscapeConfig, type CloudscapeRegime } from './cloudscapes.ts';
 import { CLOUD_CONTRAIL_MAX } from './cloudWeatherLayers.ts';
+import { lightTune } from './lightModelCore.ts';
 
 export type CloudLayerRegime = 'scattered' | 'broken' | 'overcast' | 'storm' | CloudscapeRegime;
 
@@ -53,6 +54,8 @@ export interface CloudLayerPreset {
    * stratiform deck by its gaps (1 at a coverage under CLOUD_LAYER_RULES.deckClosedCoverage[0], 0 over [1]), none at night.
    */
   shadowPattern: number;
+  /** 2026-10-09 (the shadows lane): the share of the clear beam a deck's thickest cell passes (CloudscapeConfig.deckBeam). */
+  deckBeam?: number;
   /** Alpha test on the equalised coverage field for the shadow footprint (the cloud's dense core). */
   shadowThreshold: number;
   /** Round 71: the cloud type range the weather's vigour channel maps between (0 stratus, 0.5 cumulus, 1 cumulonimbus). */
@@ -138,6 +141,8 @@ export interface CloudLayerSkyInput extends AtmosphereSkyPresetInput {
    * own windDirDeg (the table keeps an authored one's wind as the surface wind it came from)
    */
   sceneWind?: { cloudDirDeg: number } | null;
+  /** A forced night sky (sky.ts; the galaxy domes): its key is daylight, never the night's (2026-10-07: the night key). */
+  nightSky?: number | null;
 }
 
 /**
@@ -229,6 +234,17 @@ const CLOUD_WEATHER_RULES = Object.freeze({
   nightGlowHex: 0xff9a52,
   /** the night albedo: a moonlit cloud is a grey-white diffuser — the night preset's dark blue deck tint is a dome colour */
   nightTintHex: 0xe9edf2,
+  /**
+   * 2026-10-07 (night-key 84d0ef10e; taken by the SKY lane 2026-10-14 as the night's moonlit clouds, settled conflict 3;
+   * the gauntlet's wave 250 on Highland Reservoir at night, both critics: "the cumulus across the top third is lit like
+   * daytime clouds"): the night's key on the clouds. The night preset puts the moon where the sun was, and the cloud layer
+   * lit it as the sun, with only the dome's dimming between them, so the clouds stood over the night sky at the day's
+   * contrast: a blue-tinted day. A moonlit cloud is a dim grey mass lit by the moon and the sky, its edges silver toward
+   * the moon. At full night the moon's share of the layer's light is nightKey of the sun's (the forward lobe keeps its
+   * shape), and the sky's is nightAmbient. QA: __LIGHT_TUNE.NIGHT_CLOUD_KEY, NIGHT_CLOUD_AMBIENT.
+   */
+  nightKey: 0.3,
+  nightAmbient: 0.8,
 });
 
 function hexToLinear(hex: number): [number, number, number] {
@@ -349,19 +365,33 @@ export function deriveCloudLayerPreset(sky: CloudLayerSkyInput): CloudLayerPrese
     ? { ...sky.cloudscape, windDirDeg: sky.sceneWind.cloudDirDeg } : sky.cloudscape;
   const derived = scape && cloudscape ? cloudscape(legacy, sky, scape) : legacy;
   const authored = sky.cloudLayer;
-  if (!authored) return derived;
+  if (!authored) return nightKeyed(derived, sky);
   const merged = { ...derived };
   for (const key of Object.keys(authored) as (keyof CloudLayerPreset)[]) {
     const value = authored[key];
     if (value !== undefined && value !== null) (merged as Record<string, unknown>)[key] = value;
   }
-  return merged;
+  return nightKeyed(merged, sky);
+}
+
+/**
+ * 2026-10-07: the night's key on the layer (CLOUD_WEATHER_RULES.nightKey): the moon's and the sky's shares of its light by
+ * the night amount, over whatever the map authored. A day or a sunset sky is untouched, and so is a constant sky
+ * (`diurnal: false`, Mars' dimmed galaxy dome) and a forced night sky (the galaxy domes: their key is daylight).
+ */
+function nightKeyed(p: CloudLayerPreset, sky: CloudLayerSkyInput): CloudLayerPreset {
+  const night = sky.cloudscape?.diurnal === false || (sky.nightSky ?? 0) > 0.5 ? 0 : cloudNightAmount(sky.skyIntensity);
+  if (!(night > 0)) return p;
+  const W = CLOUD_WEATHER_RULES;
+  const key = 1 - night * (1 - Math.max(0, lightTune('NIGHT_CLOUD_KEY', W.nightKey)));
+  const ambient = 1 - night * (1 - Math.max(0, lightTune('NIGHT_CLOUD_AMBIENT', W.nightAmbient)));
+  return { ...p, sunGain: p.sunGain * key, ambientScale: p.ambientScale * ambient };
 }
 
 /** A stable key of everything the layer's uniforms and shadow caster read (a preset change re-keys the history). */
 export function cloudLayerKey(p: CloudLayerPreset): string {
   return [p.regime, p.coverage, p.baseM, p.thicknessM, p.towers, p.stratiform, p.fieldMix, p.density, ...p.tint,
-    p.windDirRad, p.windSpeed, ...p.offset, p.clearRadiusM, p.shadow ? 1 : 0, p.shadowPattern ?? 0, p.shadowThreshold,
+    p.windDirRad, p.windSpeed, ...p.offset, p.clearRadiusM, p.shadow ? 1 : 0, p.shadowPattern ?? 0, p.deckBeam ?? 0, p.shadowThreshold,
     ...p.typeRange, p.anvil, p.wispiness, p.shearM, p.streets, p.cirrus, p.cirrusAngleRad, p.cirrusAltM, p.cirrusDensity,
     p.sunGain, p.ambientScale, p.farBand, p.farBandAltM, p.scud, p.cells, p.cellM, p.deckLight, p.undulatus, p.interior, p.lumps ?? 0, p.baseFlat ?? 0, p.cluster ?? 0, p.deckDetail ?? 0,
     p.timeOfDay, p.contrails, p.contrailAge, p.rain, p.virga, p.fogBank, p.fogBankTopM, ...p.groundGlow, ...p.keyTint,

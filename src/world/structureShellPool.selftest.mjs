@@ -86,16 +86,49 @@ assert.equal(pooledAnatomy, inlineAnatomy, 'every structure anatomy (its mass cl
 
 // ---- 3. the wiring
 const props = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
-const joinAt = props.indexOf("if (shellPool && pendingShells.length) yield { stage: 'structure-shells', structureShells: shellPool.settled(STRUCTURE_SHELL_WAIT_MS) };\n  joinStructureShells();\n  dressMapExtras({");
+const joinAt = props.indexOf("yield { stage: 'structure-shells', structureShells: shellPool.settled(STRUCTURE_SHELL_WAIT_MS), stealStructureShell };\n  }\n  joinStructureShells();\n  dressMapExtras({");
 assert.ok(joinAt > 0, 'the join stands right before the map kits (the first passes that scan every record)');
 for (const reader of ['composeLoggingYard(', 'composeReservoirWaterworks(', 'composeMangroveFisheryWharf(', 'composeFoundryServiceCourt(', 'separateParkedVehicles(']) {
   assert.ok(props.indexOf(reader) > joinAt, `${reader} runs after the join`);
 }
 assert.equal(props.match(/addStructureCollision\([^;]*, packetNow\);/g)?.length, 2, 'the packet-bearing placements derive inline');
 assert.match(props, /if \(step\?\.structureShells\) \{/, 'the async driver waits at the join');
+assert.match(props, /if \(step\.stealStructureShell\?\.\(\)\) \{/, 'and derives the newest unanswered structures meanwhile (2026-10-15)');
 assert.match(props, /joinStructureShells\(\); \/\/ \(Plan W\) no pooled structure outlives the build/);
 assert.match(props, /throw new Error\(`\$\{id\}: structure shell record read \(\$\{key\}\) before the build joined the pool`\);/);
 assert.match(props, /const shellPool = structureShellPoolFor\(sourceApplication\.worker === true\);/, 'workers only in the async build');
+// ---- 4. work stealing (2026-10-15, the perf lane): the main thread takes the newest unanswered job, its bands stand as
+// the answer, a worker's late reply for it is dropped, and the join's wait settles once every job is answered
+{
+  const posts = [];
+  const realWorker = globalThis.Worker;
+  globalThis.Worker = class { constructor() { this.onmessage = null; } postMessage(message) { posts.push([this, message]); } terminate() {} };
+  try {
+    const { structureShellPoolFor } = await import('./structureShellPool.ts');
+    const workerPool = structureShellPoolFor(true);
+    const jobs = [1, 2, 3].map(() => workerPool.post(buckets));
+    assert.equal(posts.length, 3, 'three jobs posted to the workers');
+    let settled = false;
+    void workerPool.settled(60000).then(() => { settled = true; });
+    const stolen = workerPool.steal();
+    assert.equal(stolen.job, jobs[2], 'the newest job is stolen first');
+    const bands = deriveRuntimeStructureShellBands(unpackStructureShellWire(stolen.wire));
+    workerPool.complete(stolen.job, bands);
+    assert.equal(workerPool.take(jobs[2]), bands, 'the stolen derivation is the job\'s answer');
+    assert.equal(workerPool.steal().job, jobs[1], 'then the next newest');
+    for (const [worker, message] of posts) worker.onmessage({ data: { id: message.id, ok: true, bands: [{ worker: message.id }] } });
+    await Promise.resolve(); await Promise.resolve();
+    assert.equal(settled, true, 'the wait settles once every job is answered');
+    assert.equal(workerPool.take(jobs[2]), bands, 'a worker\'s late reply for a stolen job is dropped');
+    assert.deepEqual(workerPool.take(jobs[0]), [{ worker: jobs[0] }]);
+    assert.equal(workerPool.steal(), null, 'nothing is left to steal');
+    assert.deepEqual({ answered: workerPool.stats.answered, stolen: workerPool.stats.stolen }, { answered: 3, stolen: 1 });
+    workerPool.dispose();
+  } finally {
+    if (realWorker) globalThis.Worker = realWorker; else delete globalThis.Worker;
+  }
+  assert.equal(inline.shell.length > 0 && createDeferredStructureShellPool().steal(), null, 'the receipts\' deferred pool steals nothing');
+}
 const pool = readFileSync(new URL('./structureShellPool.ts', import.meta.url), 'utf8');
 assert.match(pool, /new Worker\(new URL\('\.\/structureShellWorker\.ts', import\.meta\.url\)/);
 const { staticImportClosure } = await import('../../tools/static-import-closure.mjs');

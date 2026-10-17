@@ -95,6 +95,12 @@ export interface SettleOptions {
   /** How a laid body is dusted: its colours times dust * (1 ± spread/2), hashed by place. */
   dust?: number;
   dustSpread?: number;
+  /**
+   * (props #1, the huts' r2 round) A body of several members (a wall's boards and battens, a frame's plates) is laid
+   * whole, then each of its members that does not rest on what is under it comes down onto it: nothing of a fallen
+   * piece hangs in the air (the r2 standard's floating check). Off by default (the pillbox lays its own).
+   */
+  restMembers?: boolean;
 }
 
 export interface FallOptions {
@@ -179,6 +185,7 @@ export class FractureSettle {
   private readonly ground: (x: number, z: number) => number;
   private readonly dust: number;
   private readonly dustSpread: number;
+  private readonly restMembers: boolean;
   private salt = 0;
   /** While bodies fall together: their samples, raised into the heap when the last of them has come to rest. */
   private deferred: Float64Array[] | null = null;
@@ -197,6 +204,7 @@ export class FractureSettle {
     this.ground = opts.ground ?? (() => 0);
     this.dust = opts.dust ?? 0.82;
     this.dustSpread = opts.dustSpread ?? 0.16;
+    this.restMembers = opts.restMembers ?? false;
     // the grid over every piece's box, out by the margin
     let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
     for (const p of this.pieces) {
@@ -400,6 +408,7 @@ export class FractureSettle {
       done = a;
     }
     this.transform(b.tris, rotAxis(axis, done), pivot, pivot);
+    turnAxes(b, rotAxis(axis, done));
     if (o.hinged) { b.centre = centreOf(b.tris); this.write(b.tris, o.dust ?? this.dust); return; }
     this.settle(b, o);
   }
@@ -408,6 +417,7 @@ export class FractureSettle {
   drop(b: SettleBody, yaw = 0, shift: V3 = [0, 0, 0], o: FallOptions = {}): void {
     const R = rotAxis(UP, yaw);
     this.transform(b.tris, R, b.centre, add(b.centre, [shift[0], 0.0, shift[2]]));
+    turnAxes(b, R);
     this.settle(b, o);
   }
 
@@ -445,6 +455,7 @@ export class FractureSettle {
     const Rr = rotAxis(bL, roll);
     const R: Rot = [rotApply(Rr, R0[0]), rotApply(Rr, R0[1]), rotApply(Rr, R0[2])];
     this.transform(b.tris, R, b.centre, add(b.centre, [shift[0], 0, shift[2]]));
+    turnAxes(b, R);
     this.settle(b, o);
   }
 
@@ -529,14 +540,43 @@ export class FractureSettle {
       const c = centreOf(b.tris), out = nrm([c[0] - mid[0] + 1e-3, 0, c[2] - mid[2]]);
       for (let attempt = 1; attempt < 4 && topOf(pts, xf) > o.ceiling; attempt++) {
         // (out from the middle, farther each time; the last time laid flat, clear of the heap, on the ground)
-        const reach = attempt < 3 ? 0.55 * attempt : 1.7;
-        const to: V3 = [c[0] + out[0] * reach, c[1], c[2] + out[2] * reach];
-        xf = this.rest(pts, attempt < 3 ? o : { ...o, maxTilt: 0.3 }, about(attempt < 3 ? IDENTITY.R : flatTurn(b), c, to));
+        if (attempt < 3) {
+          const reach = 0.55 * attempt;
+          xf = this.rest(pts, o, about(IDENTITY.R, c, [c[0] + out[0] * reach, c[1], c[2] + out[2] * reach]));
+          continue;
+        }
+        // (the looks lane, 2026-10-15: a big piece — a greenhouse's film, a garage's arch — laid 1.7 m out still lay on the
+        // heap over the ceiling, and the next came down on it: the space stations' wrecks stood higher than the stations.
+        // Out farther until it lies under the ceiling, or where it lies lowest.)
+        let best = xf, bestTop = Infinity;
+        for (const reach of [1.7, 2.6, 3.8, 5.4, 7.5]) {
+          const laid = this.rest(pts, { ...o, maxTilt: 0.3 }, about(flatTurn(b), c, [c[0] + out[0] * reach, c[1], c[2] + out[2] * reach]));
+          const top = topOf(pts, laid);
+          if (top < bestTop) { best = laid; bestTop = top; }
+          if (top <= o.ceiling) break;
+        }
+        // (2026-10-16: a sheet as wide as the station — the rover garage's canopy, a greenhouse's arched rib — tipped even
+        // 0.3 onto the heap still stood a metre over the station on a quarter of the seeds: laid level on what is under
+        // it instead, where it lies lowest)
+        if (bestTop > o.ceiling) {
+          for (const reach of [0, 1.7, 3.8, 7.5]) {
+            const level = this.rest(pts, { ...o, maxTilt: 0 }, about(flatTurn(b), c, [c[0] + out[0] * reach, c[1], c[2] + out[2] * reach]));
+            const top = topOf(pts, level);
+            if (top < bestTop) { best = level; bestTop = top; }
+            if (top <= o.ceiling) break;
+          }
+        }
+        xf = best;
       }
     }
     const sink = o.sink ?? 0.012;
     xf = { R: xf.R, t: [xf.t[0], xf.t[1] - sink, xf.t[2]] };
     xfTris(b.tris, xf);
+    if (this.restMembers && this.restEachMember(b.tris, sink)) {
+      b.centre = centreOf(b.tris);
+      this.write(b.tris, o.dust ?? this.dust);
+      return;
+    }
     b.centre = centreOf(b.tris);
     // (the samples moved with it raise the heap: no second sampling)
     const moved = new Float64Array(pts.length);
@@ -547,6 +587,54 @@ export class FractureSettle {
       moved[k + 2] = c0[2] * pts[k] + c1[2] * pts[k + 1] + c2[2] * pts[k + 2] + xf.t[2];
     }
     this.write(b.tris, o.dust ?? this.dust, moved);
+  }
+
+  /**
+   * Each member of a laid body (its welded components), lowest first, brought down onto what is under it when it does
+   * not rest there already: the heap as it was, or the body's members already placed (a batten stays on its boards, a
+   * board left over air comes down onto the heap), kept level; true when any moved.
+   */
+  private restEachMember(t: SettleTris, sink: number): boolean {
+    const comps = components(t);
+    if (comps.length < 2) return false;
+    const { cell, x0, z0, nx, nz } = this;
+    const local = new Map<number, number>();
+    const supportAt = (x: number, z: number): number => {
+      const i = Math.floor((x - x0) / cell), j = Math.floor((z - z0) / cell);
+      const own = i >= 0 && j >= 0 && i < nx && j < nz ? local.get(j * nx + i) : undefined;
+      const heap = this.heapAt(x, z);
+      return own !== undefined && own > heap ? own : heap;
+    };
+    const members = comps.map((tris) => {
+      const sub: SettleTris = { p: [], n: [], t: [], c: [] };
+      for (const tri of tris) for (let k = 0; k < 9; k++) sub.p.push(t.p[tri * 9 + k]);
+      const pts = samplesOf(sub);
+      let low = Infinity;
+      for (let k = 1; k < pts.length; k += 3) low = Math.min(low, pts[k]);
+      return { tris, pts, low };
+    }).sort((a, b) => a.low - b.low);
+    let moved = false;
+    for (const { tris, pts } of members) {
+      let gap = Infinity;
+      for (let k = 0; k < pts.length; k += 3) gap = Math.min(gap, pts[k + 1] - supportAt(pts[k], pts[k + 2]));
+      let dy = 0;
+      if (gap > 0.015 && Number.isFinite(gap)) {
+        dy = gap + sink;
+        for (const tri of tris) for (let k = 1; k < 9; k += 3) t.p[tri * 9 + k] -= dy;
+        moved = true;
+      }
+      // (it is under what comes after it: its samples over their cells and the eight round them, as the heap is raised)
+      for (let k = 0; k < pts.length; k += 3) {
+        const i = Math.floor((pts[k] - x0) / cell), j = Math.floor((pts[k + 2] - z0) / cell), y = pts[k + 1] - dy;
+        for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+          const ii = i + di, jj = j + dj;
+          if (ii < 0 || jj < 0 || ii >= nx || jj >= nz) continue;
+          const c = jj * nx + ii, was = local.get(c);
+          if (was === undefined || y > was) local.set(c, y);
+        }
+      }
+    }
+    return moved;
   }
 
   /** The pose (from `start`) a body's samples come to rest in: dropped and tipped, a few times over. */
@@ -668,6 +756,13 @@ function breakOff(t: SettleTris, cutY: (x: number, z: number) => number): Settle
 }
 
 /** The turn that lays a body flat: its thinnest box axis upright, its longest level along where it points now. */
+/** A body's box axes turned with it (2026-10-16: they stayed as built, so a body laid, dropped or toppled and then
+ *  relayed by the ceiling was turned flat about its old axes — a greenhouse's arched rib came to rest on its edge, 8 m
+ *  tall, wherever it was relayed). */
+function turnAxes(b: SettleBody, R: Rot): void {
+  b.axes = [rotApply(R, b.axes[0]), rotApply(R, b.axes[1]), rotApply(R, b.axes[2])];
+}
+
 function flatTurn(b: SettleBody): Rot {
   const c = centreOf(b.tris);
   const ext = b.axes.map((a) => {
@@ -710,6 +805,25 @@ function topOf(pts: Float64Array, x: Xf): number {
  */
 const SAMPLE_M = 0.16;
 const SAMPLE_CAP = 3000;
+/** A run's triangles gathered into its welded members (triangles sharing a corner within a millimetre). */
+function components(t: SettleTris): number[][] {
+  const n = t.p.length / 9, parent = Array.from({ length: n }, (_, i) => i);
+  const find = (i: number): number => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  const seen = new Map<string, number>();
+  for (let tri = 0; tri < n; tri++) {
+    for (let k = 0; k < 3; k++) {
+      const o = tri * 9 + k * 3;
+      const key = `${Math.round(t.p[o] * 1000)},${Math.round(t.p[o + 1] * 1000)},${Math.round(t.p[o + 2] * 1000)}`;
+      const other = seen.get(key);
+      if (other === undefined) seen.set(key, tri);
+      else { const a = find(tri), b = find(other); if (a !== b) parent[a] = b; }
+    }
+  }
+  const groups = new Map<number, number[]>();
+  for (let tri = 0; tri < n; tri++) { const r = find(tri); const g = groups.get(r) ?? []; g.push(tri); groups.set(r, g); }
+  return [...groups.values()];
+}
+
 function samplesOf(t: SettleTris): Float64Array {
   const out: number[] = [];
   const put = (x: number, y: number, z: number): void => { out.push(x, y, z); };

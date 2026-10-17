@@ -7,7 +7,7 @@ import {getSpec,TANK_SPECS} from './specs.ts';
 import {applyVehicleSizePolicy,VEHICLE_SIZE_FACTORS} from './vehicleSizePolicy.ts';
 import {synchronizeSuppliedSourceCombatMetadata} from './suppliedSourceFleetSpecs.ts';
 import {synchronizeSecondWaveXCombatMetadata} from './sourceXSecondWaveSpecs.ts';
-for(const [id,name] of Object.entries({k21_x:'K21',cv90105_tml_x:'CV90105 TML',cv90_x:'CV9040C',cv90_mkiv_x:'CV90 Mk 4',sabra_mk2_x:'Sabra Mk 2',kf41_lynx_x:'KF41 Lynx',spz_puma_s1_x:'Puma S1',ajax_x:'Ajax',griffin50_x:'Griffin 50 mm',spz_puma_s1:'SPz Wotan',marder2:'Marder 2'}))assert.equal(tankDisplayName(getSpec(id)),name,`${id}: owner-selected roster identity`);
+for(const [id,name] of Object.entries({k21:'K21',cv90105_tml:'CV90105 TML',cv9040c:'CV9040C',cv90_mk4:'CV90 Mk 4',sabra_mk2:'Sabra Mk 2',kf41_lynx:'KF41 Lynx',puma_s1:'Puma S1',ajax:'Ajax',griffin50mm:'Griffin 50 mm',spz_wotan:'SPz Wotan',marder2:'Marder 2'}))assert.equal(tankDisplayName(getSpec(id)),name,`${id}: owner-selected roster identity`);
 const before=JSON.parse(readFileSync(new URL('./vehicleSizeBaseline.fixture.json',import.meta.url)));
 const near=(a,b,label,tolerance=.00002)=>assert.ok(Math.abs(a-b)<tolerance,`${label}: ${a} != ${b}`);
 // f88172442 measurements, taken before the owner's 2026-09-29 size request.
@@ -16,6 +16,8 @@ const near=(a,b,label,tolerance=.00002)=>assert.ok(Math.abs(a-b)<tolerance,`${la
 // enlargement, measured with the current shared factory and no size override.
 // 2026-10-08: c6b60311c (main) rebuilt the KF41 Lynx X turret front after these
 // measurements; its turret max z is re-measured as the current build / factor.
+// 2026-10-16: r4b (f38db33a0) rebuilt the Ares L111A1 as the fleet M2HB receiver (gunMountDark) with a feed chute
+// and a flash hider; its gunMount min z and gun x/y extents are re-measured as the current build / factor.
 for(const [id,b] of Object.entries(before)){
  if(id==='upior')continue; // rebuilt turret/course covered by escortModernization.selftest
  const factor=VEHICLE_SIZE_FACTORS[id];

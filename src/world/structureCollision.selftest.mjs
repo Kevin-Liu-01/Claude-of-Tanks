@@ -4,13 +4,15 @@ import * as THREE from 'three';
 import { VILLAGE_BUILDERS } from './maps/villageKit.ts';
 import { URBAN_BUILDERS } from './maps/urbanKit.ts';
 import {
-  DESTRUCTIBLE_BUILDING_TYPES, STRUCTURE_BUILDERS,
+  DESTRUCTIBLE_BUILDING_TYPES, MAP_DESTRUCTIBLE_TYPES, REGIONAL_DESTRUCTIBLE_TYPES, STRUCTURE_BUILDERS,
 } from './maps/structureKit.ts';
 import { DESTRUCTIBLE_TYPES } from './maps/inhabitKit.ts';
 import { SOURCED_STRUCTURE_TYPES } from './sourcedStructureTypes.ts';
 import {
-  certifyStructureCollisionProfile, deriveRuntimeStructureCollisionProfile,
+  certifyStructureCollisionProfile, deriveRuntimeStructureCollisionProfile, deriveRuntimeStructureShellBands,
 } from './structureCollision.ts';
+import { packStructureShellWire, unpackStructureShellWire } from './structureShellWire.ts';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 
 const BUCKET_NAMES = [
   'plaster', 'plaster2', 'plaster3', 'stone', 'roof', 'wood', 'dark',
@@ -124,13 +126,39 @@ for (const seed of [0x51a7c7, 0xa1139e]) {
   }
 }
 
+// (the triage round, 2026-10-16; the coordinator: the hut kit's motor pools certified 0, so they had no real
+// collision) every kit's and map's own light-family form — the hut kit's huts, the tents in their armies' canvas, the
+// offices, relay huts and Quonsets in their kits' walls, Mars's stations — is certified as the generic families are:
+// each band's collision answers its source triangles above STRICT_SCORE on both variants
+const regionalForms = [];
+for (const seed of [0x51a7c7, 0xa1139e]) {
+  const forms = [
+    ...Object.entries(REGIONAL_DESTRUCTIBLE_TYPES).flatMap(([kit, table]) => Object.entries(table).map(([id, meta]) => [`${kit}/${id}`, meta])),
+    ...Object.entries(MAP_DESTRUCTIBLE_TYPES).flatMap(([map, table]) => Object.entries(table).map(([id, meta]) => [`map:${map}/${id}`, meta])),
+  ];
+  for (const [id, meta] of forms) {
+    const buckets = { baked: [meta.build(seeded(seed))] };
+    const profile = deriveRuntimeStructureCollisionProfile(buckets);
+    const certification = certifyStructureCollisionProfile(buckets, profile);
+    maximumParts = Math.max(
+      maximumParts, profile.contact.parts.length, ...profile.shell.map((band) => band.parts.length),
+    );
+    assert.ok(certification.minimumScore > STRICT_SCORE,
+      `${id}: kit light-form source-triangle certification scores above ${STRICT_SCORE}/100 (${certification.minimumScore.toFixed(1)})`);
+    minimumScore = Math.min(minimumScore, certification.minimumScore);
+    regionalForms.push(id);
+  }
+}
+assert.ok(new Set(regionalForms).size >= 150, `the kits' and maps' light forms are audited (${new Set(regionalForms).size})`);
+
 // 2026-09-17: 111 → 113 with the fortification destructibles (barbedwire, bunker)
 // 2026-09-19: 113 → 119 with the Mars station's six orbital destructibles
 // 2026-09-24: four detailed Olympus colony facilities join the existing 119 families.
 // 2026-10-11: the colliery colony terrace (railKit.ts makeTerrace; terraceLayout.ts) joins: 124.
 // 2026-10-13: the village well and the square's monument become destructible blocking items (destruction stream): 126.
-assert.equal(new Set(families).size, 126,
-  'all 126 heavyweight, site, small-building, blocking-item and sourced families are audited');
+// 2026-10-14: a set piece's wrought-iron ground railing as a fence module (props lane A, E12; inhabitKit fenceiron): 127.
+assert.equal(new Set(families).size, 127,
+  'all 127 heavyweight, site, small-building, blocking-item and sourced families are audited');
 assert.ok(concaveFamilies >= 60,
   'open, stepped and recessed structures/items retain compound contact footprints across both variants');
 assert.ok(maximumParts <= 64, 'compound shell bands stay bounded for runtime narrow-phase work');
@@ -201,4 +229,29 @@ function openCutHouse() {
   assert.ok(walls >= 1, 'the open-cut house has wall bands');
 }
 
-console.log(`structureCollision.selftest: 111 families x 2 variants; minimum ${minimumScore.toFixed(1)}/100; max ${maximumParts} parts`);
+console.log(`structureCollision.selftest: 111 families + ${new Set(regionalForms).size} kit light forms x 2 variants; minimum ${minimumScore.toFixed(1)}/100; max ${maximumParts} parts`);
+
+// (physics, 2026-10-16; the 226 base's certification reds: the courtyard's turned jars and the rover garage's wheels)
+// A part a kit flags userData.collisionHull stands as its plan hull from its foot to its top: a whole bucket geometry
+// (courtyardKit.ts) or a merged light kind's part, kept as its vertex range (structureKit.ts merge:
+// collisionHullRanges). A lathe's facets do not reach the bands; the worker's wire carries both flags.
+{
+  const lathe = () => new THREE.LatheGeometry([[0.001, 0], [0.3, 0], [0.42, 0.25], [0.45, 0.4], [0.32, 0.62], [0.2, 0.7], [0.24, 0.75]]
+    .map(([r, y]) => new THREE.Vector2(r, y)), 10);
+  const jar = lathe();
+  jar.userData.collisionHull = true;
+  const whole = deriveRuntimeStructureCollisionProfile({ stone: [jar] });
+  assert.equal(whole.contact.parts.length, 1, 'a hulled jar stands as one part');
+  assert.ok(whole.shell.every((band) => band.parts.length === 1), 'one part a band, its hull');
+  const second = lathe().translate(3, 0, 0), first = lathe().toNonIndexed(), other = second.toNonIndexed();
+  const merged = mergeGeometries([first, other], false);
+  merged.userData.collisionHullRanges = Uint32Array.from([0, first.getAttribute('position').count]);
+  const ranged = deriveRuntimeStructureCollisionProfile({ baked: [merged] });
+  const unflagged = deriveRuntimeStructureCollisionProfile({ baked: [mergeGeometries([lathe().toNonIndexed(), lathe().translate(3, 0, 0).toNonIndexed()], false)] });
+  const partsOf = (profile) => profile.shell.reduce((n, band) => n + band.parts.length, 0);
+  assert.ok(partsOf(ranged) < partsOf(unflagged), `the ranged part stands as its hull (${partsOf(ranged)} parts against ${partsOf(unflagged)})`);
+  for (const buckets of [{ stone: [jar] }, { baked: [merged] }]) {
+    assert.deepEqual(deriveRuntimeStructureShellBands(unpackStructureShellWire(packStructureShellWire(buckets).wire)),
+      deriveRuntimeStructureCollisionProfile(buckets).shell, 'the wire carries the hull flags: the worker derives the same bands');
+  }
+}

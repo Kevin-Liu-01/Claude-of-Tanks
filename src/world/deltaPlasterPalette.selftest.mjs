@@ -59,8 +59,9 @@ function recordProps(props) {
     materials.add(object.material);
     for (const value of Object.values(object.material)) if (value?.isTexture) textures.add(value);
   });
-  const facadeKeys = ['world-props-plaster2-v7', 'world-props-plaster3-v7'];
-  const facades = facadeKeys.flatMap(key => meshes.filter(mesh => mesh.material.customProgramCacheKey() === key));
+  // (2026-10-15: a props program key names the material's hook family; the kind is userData.propsKind)
+  const facadeKeys = ['plaster2', 'plaster3'];
+  const facades = facadeKeys.flatMap(key => meshes.filter(mesh => mesh.material.userData.propsKind === key));
   // (The rebuilt Delta's village may place no second- or third-tone facade; the fold is then a no-op.)
   assert.ok(facades.every(mesh => mesh.geometry.index === null));
   const facadeAttributes = facades.length ? Object.fromEntries(Object.keys(facades[0].geometry.attributes).map(key =>
@@ -69,7 +70,7 @@ function recordProps(props) {
     'tankWreckSpots', 'utilityNetwork', 'utilityPolePlacements', 'decorationGroundingReceipts', 'features'];
   return {
     materials: materials.size, textures: textures.size,
-    facadeKeys: facades.map(mesh => mesh.material.customProgramCacheKey()),
+    facadeKeys: facades.map(mesh => mesh.material.userData.propsKind),
     facadeTextures: Object.fromEntries(['map', 'normalMap', 'roughnessMap'].map(slot =>
       [slot, new Set(facades.map(mesh => mesh.material[slot])).size])),
     facadeAttributes, facadeVertexColors: facades.map(mesh => mesh.material.vertexColors),
@@ -131,8 +132,10 @@ if (process.argv[2] === '--fixture') {
       `${mapId}: palette fold does not replace geometry or bucket identities`));
   }
   const build = control => {
+    // (2026-10-16, the triage's flake class) each child builds Delta's props: about 16-18 s of CPU, which a loaded host
+    // stretched past the old 60 s and failed for time, not for a wrong answer. The timeout only guards a hung child.
     const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--fixture', control],
-      { encoding: 'utf8', timeout: 60000, maxBuffer: 8 * 1024 * 1024 });
+      { encoding: 'utf8', timeout: 180_000, maxBuffer: 8 * 1024 * 1024 });
     assert.equal(child.status, 0, child.stderr || String(child.error));
     return JSON.parse(child.stdout);
   };
@@ -140,12 +143,12 @@ if (process.argv[2] === '--fixture') {
   // 2026-10-02: Jade River Delta was rebuilt to docs/MAP-LAYOUT-BRIEF.md. Whether its village draws a third-tone facade
   // depends on the placement, so the fold's contract is conditional: with a third tone it folds that tone into the
   // second exactly as before; without one it is an exact no-op. Either way Delta never uploads a third plaster atlas.
-  assert.ok(control.facadeKeys.every((key) => key === 'world-props-plaster2-v7' || key === 'world-props-plaster3-v7'));
-  if (!control.facadeKeys.includes('world-props-plaster3-v7')) {
+  assert.ok(control.facadeKeys.every((key) => key === 'plaster2' || key === 'plaster3'));
+  if (!control.facadeKeys.includes('plaster3')) {
     assert.deepEqual(folded, control, 'with no third-tone facade the fold changes nothing');
   } else {
-    assert.deepEqual(control.facadeKeys, ['world-props-plaster2-v7', 'world-props-plaster3-v7']);
-    assert.deepEqual(folded.facadeKeys, ['world-props-plaster2-v7'], 'Delta uses its two original plaster families');
+    assert.deepEqual(control.facadeKeys, ['plaster2', 'plaster3']);
+    assert.deepEqual(folded.facadeKeys, ['plaster2'], 'Delta uses its two original plaster families');
     assert.deepEqual(control.facadeVertexColors, [false, false]);
     assert.deepEqual(folded.facadeVertexColors, [false], 'no new color attribute or shader variant');
     assert.deepEqual(folded.facadeAttributes, control.facadeAttributes,

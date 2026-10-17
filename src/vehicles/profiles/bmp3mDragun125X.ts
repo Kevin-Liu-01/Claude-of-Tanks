@@ -367,7 +367,8 @@ function buildDragunRoofWeapon(P: TankBuilderPort): void {
     const t = P.turretG.position;
     const [sx, sy, sz] = DRAGUN_ROOF_GPMG_SOCKET;
     equipment(P, 'turret', 'Dark', cylY(.034, .040, .03, P.q ? 14 : 10), sx, sy - .015, sz);
-    const group = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', remoteWeapon: true, ammo: true, tone: 'two-tone', seed: 1253 });
+    // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the module's remote GPMG)
+    const group = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', remoteControlled: true, ammo: true, tone: 'two-tone', seed: 1253 });
     group.position.set(sx, sy - t.y, sz - t.z);
     group.name = 'dragunSourceRoofWeapon';
     group.userData.sourceOwner = 'Object_14';
@@ -696,7 +697,7 @@ export function buildBmp3mDragun125X(P: TankBuilderPort): void {
     P.additionalShadowSources = {
         hull: ['hullExternalArmor'],
     };
-    const frame = EASTERN_SOURCE_STUDIES.bmp3m_dragun125_x.frame;
+    const frame = EASTERN_SOURCE_STUDIES.bmp3m_dragun125.frame;
     P.hullG.position.set(0, 0, 0);
     P.turretG.position.set(...frame.turret);
     P.gunG.position.set(0, frame.gun[1] - frame.turret[1], frame.gun[2] - frame.turret[2]);
@@ -705,5 +706,5 @@ export function buildBmp3mDragun125X(P: TankBuilderPort): void {
     buildDragunTurret(P);
     P.topY = 3.31 - frame.turret[1];
     preserveSourceStudyGunMountAppearance(P);
-    P.hullG.userData.xRebuild = { candidate: 'bmp3m_dragun125_x', independent: true, sourceLocalOnly: true };
+    P.hullG.userData.xRebuild = { candidate: 'bmp3m_dragun125', independent: true, sourceLocalOnly: true };
 }

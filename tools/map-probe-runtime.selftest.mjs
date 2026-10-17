@@ -34,7 +34,7 @@ const parsed = parseProbeArgs(['--root=/tmp/wt', '--maps=badlands, desert', '--v
 assert.equal(parsed.root, path.resolve('/tmp/wt'));
 assert.equal(parsed.out, path.resolve('/tmp/wt/.qa-dev/reports/x-probe'), 'default out sits under <root>/.qa-dev/reports/<tool>');
 assert.deepEqual(parsed.maps, ['badlands', 'desert']); assert.deepEqual(parsed.views, ['sky-w', 'sky-s']);
-assert.equal(parsed.tag, 'b2'); assert.equal(parsed.spec, 't90m_x'); assert.equal(parsed.speed, 6.5);
+assert.equal(parsed.tag, 'b2'); assert.equal(parsed.spec, 't90m'); assert.equal(parsed.speed, 6.5);
 assert.deepEqual(parsed.isoUniforms, ['uRipple', 'uMacro']); assert.equal(parsed.flatNormals, true);
 assert.deepEqual(parsed.hide, [{ suffix: 'no-apron', pattern: 'shallowWaterSeaApron' }, { suffix: 'no-sheet', pattern: '^shallow_water_' }]);
 assert.deepEqual(parsed.ids, ['a_b:salvo', 'c']); assert.equal(parsed.cacheDir, null); assert.equal(parsed.executablePath, null);
@@ -85,11 +85,11 @@ assert.equal(parseLayerIsolationArgs(['--maps=coastal']).options.hide, DEFAULT_H
 assert.deepEqual(DEFAULT_HIDDEN_LAYERS.map((h) => h.suffix), ['no-apron', 'no-forest', 'no-ringmesh', 'no-sheet'], 'round 40 layers');
 assert.deepEqual(parseLayerIsolationArgs(['--maps=coastal', '--hide=only=^horizon-ring$']).options.hide, [{ suffix: 'only', pattern: '^horizon-ring$' }]);
 assert.deepEqual(parseSalvoCases([...SALVO_PROBE_DEFAULT_CASES]), [
-  { id: 'ztz100_prototype', label: 'salvo' }, { id: 'leclerc_x', label: 'autoloader' }, { id: 't72b3m', label: 'single' }]);
-assert.deepEqual(parseSalvoCases(['t90m_x']), [{ id: 't90m_x', label: 't90m_x' }], 'label defaults to the id');
-assert.throws(() => parseSalvoCases(['T90:x']), /specId\[:label\]/); assert.throws(() => parseSalvoCases(['t90m_x:a b']), /file-name token/);
+  { id: 'ztz100_prototype', label: 'salvo' }, { id: 'leclerc_xlr', label: 'autoloader' }, { id: 't72b3m_2022', label: 'single' }]);
+assert.deepEqual(parseSalvoCases(['t90m']), [{ id: 't90m', label: 't90m' }], 'label defaults to the id');
+assert.throws(() => parseSalvoCases(['T90:x']), /specId\[:label\]/); assert.throws(() => parseSalvoCases(['t90m:a b']), /file-name token/);
 const salvo = parseSalvoIndicatorArgs(['--out=/tmp/o']).options;
-assert.deepEqual(salvo.cases.map((c) => c.id), ['ztz100_prototype', 'leclerc_x', 't72b3m']); assert.equal(salvo.tag, 'salvo');
+assert.deepEqual(salvo.cases.map((c) => c.id), ['ztz100_prototype', 'leclerc_xlr', 't72b3m_2022']); assert.equal(salvo.tag, 'salvo');
 assert.ok(salvo.executablePath === null || salvo.executablePath.endsWith('Google Chrome'), 'system Chrome when present, else puppeteer');
 assert.equal(parseSalvoIndicatorArgs(['--executable-path=/x/chrome']).options.executablePath, '/x/chrome');
 assert.throws(() => parseSalvoIndicatorArgs(['--maps=a']), /Unknown argument --maps/, 'the salvo probe takes ids, not maps');

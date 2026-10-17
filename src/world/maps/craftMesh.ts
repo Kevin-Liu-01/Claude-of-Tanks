@@ -179,9 +179,9 @@ export function member(m: Mesh, a: V3, b: V3, w: number, h: number, side: V3, co
   const printed = uvMode.kind !== 'flat';
   const N = sec.length;
   for (let k = 0; k < N; k++) {
-    const k2 = (k + 1) % N;
-    const mid = scl(add(add(scl(s, sec[k][0]), scl(t, sec[k][1])), add(scl(s, sec[k2][0]), scl(t, sec[k2][1]))), 0.5);
-    m.quad(at(a, k), at(b, k), at(b, k2), at(a, k2), mid, uvOf, shade, printed);
+    const xk2_black_panther = (k + 1) % N;
+    const mid = scl(add(add(scl(s, sec[k][0]), scl(t, sec[k][1])), add(scl(s, sec[xk2_black_panther][0]), scl(t, sec[xk2_black_panther][1]))), 0.5);
+    m.quad(at(a, k), at(b, k), at(b, xk2_black_panther), at(a, xk2_black_panther), mid, uvOf, shade, printed);
   }
   if (!opts.skipEnds) {
     const cap = (o: V3, out: V3) => {

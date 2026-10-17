@@ -50,8 +50,9 @@ import { resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
 import {
   insideClearPolygon, plannedSiteClearances, redistributeAuthoredTrees, type AuthoredTreeFeature,
 } from './authoredTreePlacement.ts';
-import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeRiparian, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
+import { SWARD_TONE, swardPatchAt, type SwardPatch } from './swardPatch.ts';
 import { createCraterFollower, createStaticCoverPatcher, followCraters, reseatCraterTrees, restoreCraterTrees, type GroundCoverCraters } from './groundCoverCraters.ts';
 import { bendMangroveRoot, shapeMangroveFarStem, relocateTidalMangroves, type TidalMangroveFeature } from './tidalMangrove.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
@@ -61,7 +62,7 @@ import { getDeviceTier, presetLightWorld, texSize } from '../engine/quality.ts';
 import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
 // trees round 2 (2026-10-03): the grown crowns' dappled shadow
 import { applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, crownDappleTags } from './crownShadowDapple.ts';
-import { markShadowOnly, setShadowCasterCascades, setShadowCasterProfile, type ShadowCasterProfile } from '../engine/renderLayers.ts';
+import { markShadowOnly, setShadowCasterCascades, setShadowCasterDynamicMask, setShadowCasterProfile, shadowCasterCascadesOf, shadowCasterDynamicMaskOf, shadowCasterProfileOf, type ShadowCasterProfile } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
 import { advanceGrassChunkWork, createGrassChunkWork,
   type GrassChunkWork, type GrassChunkBuffer, type GrassChunkWorkState } from './grassChunkWork.ts';
@@ -161,6 +162,12 @@ interface VegetationBelt {
   jitter?: number;
   skip?: number;
   species?: Species;
+  /**
+   * The map-revival lane (2026-10-11, the steppe's field-protective belts: the coordinator's ruling on the layout brief's
+   * lanes band): the belt's stations are the map's shrubs, not trees — a shelterbelt's edge row of yellow acacia. Planted
+   * whole: no density draw or thicket gate thins them (the site's own rules still refuse a seat); their own stream.
+   */
+  shrub?: boolean;
 }
 
 interface GrassStubblePatch {
@@ -179,6 +186,22 @@ interface VegetationConfig {
   clusterMix: SpeciesMix;
   loneMix: SpeciesMix;
   rimMix: SpeciesMix;
+  /** GND (2026-10-15; the blind critics' Longleaf backdrop "a broadleaf band that doesn't match the longleaf pines"):
+   * the species mix of the forest over the red line — the horizon ring's trees (maps/horizon.ts coniferShare,
+   * horizonForestImpostors.ts), the ones the battlefield's tiers adopt and the Hinterland's — where it differs from the
+   * battlefield's own rim (Longleaf's rim keeps the creek bottom's oaks; the flatwoods past the line are longleaf alone).
+   * Absent: the rim mix. */
+  ringMix?: SpeciesMix;
+  /** GND (2026-10-15; the coordinator's ruling: "birch and poplar shouldn't stand at pine height"): `'species'` stands
+   * each of the ring's trees at its own species' stature on the battlefield's rim (the mean of that species' rim trees;
+   * a species the rim does not grow, at the rim's mean instance scale × its own near height) instead of every species
+   * at the rim trees' one mean height. Absent: the one mean, as the ring always stood (Verdant's owner-approved forests
+   * stay bit for bit; ringSpeciesStature.selftest). */
+  ringStature?: 'species';
+  /** GND (2026-10-16; the critics past Kestrel's border: "a continuous forest mass and no understorey"): that share of
+   * the ring's stand placements gets a young tree of its parent's species beside it at stature[0]–stature[1] of the
+   * parent's height (horizonForestImpostors.ts resolveHorizonForestTrees). Absent: none. */
+  ringUnderstory?: { share: number; stature: readonly [number, number] };
   clusterCount: number;
   loneCount: number;
   rimCount: number;
@@ -200,6 +223,12 @@ interface VegetationConfig {
   palettes: Partial<Record<Species, VegetationPalette>>;
   avoid: VegetationDisc[] | null;
   belts?: VegetationBelt[];
+  /**
+   * The maps lane (Kestrel's pine plantations; the map-revival lane's 780c8a82e, 2026-10-06): rects only the belts plant
+   * in — the woodlots, the lone trees, the hedges and the saplings take no site inside one, so a plantation block holds
+   * its rows alone. Opt-in: a map that sets none draws and seats exactly as before.
+   */
+  standKeepOut?: readonly { x0: number; x1: number; z0: number; z1: number }[];
   /**
    * Trees round 2b: where the map's palms grow (a spring, a wadi bed, an oasis): a palm drawn anywhere else grows as
    * `palmFallback` (default: the map's first other species), so no draw moves.
@@ -370,6 +399,59 @@ interface TreeRecord {
   craterBase?: THREE.Matrix4;
   /** Trees round 5: one of the field trees (placeLoneTrees), the field law's (addFieldTree). */
   field?: boolean;
+  /** GND (2026-10-14): a tree over the red line the battlefield's tiers adopted (adoptOutlandTrees) — visual only, drawn
+   * in its batch's own pools; never in `trees` (no collider, crush, concealer, decal or interaction). */
+  outland?: OutlandTreePools;
+}
+
+/**
+ * GND (2026-10-14; the owner's Kestrel border trees "breaking into floating blobs"): the horizon ring's trees (and the
+ * Hinterland's) were flat atlas quads at every range, magnified past their texels at the chase and through the sight.
+ * Near the playable square the battlefield's own tiers draw them (adoptOutlandTrees): the same near and far geometry,
+ * materials and atlas in a batch's own pools, so the build's pools, their instance buffers and their shadow
+ * registrations are never touched.
+ */
+interface OutlandTreePools {
+  /** The batch's species, in its pools' order (the per-frame loops walk this, not the maps' iterators). */
+  species: Species[];
+  near: Map<Species, TreeMesh[][]>;
+  far: Map<Species, TreeMesh[][]>;
+  nearSlots: Map<Species, TreeRecord[][]>;
+  farSlots: Map<Species, TreeRecord[][]>;
+  trees: TreeRecord[];
+  /** The nearest tree's Chebyshev radius |x|, |z| (the repartition skips the batch while the camera is far from it). */
+  minRadiusM: number;
+}
+
+/** One tree over the red line for the battlefield's tiers (horizonForestImpostors.ts HorizonForestTree's subset). */
+export interface OutlandTreeSpec {
+  x: number; y: number; z: number;
+  yaw: number;
+  species: string;
+  /** The near variant (the impostor row). */
+  variant: number;
+  /** The far quad's mirror. */
+  mirror: boolean;
+  /** The instance scale on the species' near geometry. */
+  scale: number;
+  tint: readonly [number, number, number];
+}
+
+/** GND (2026-10-14): an adopted tree's full-detail reach as a share of the battlefield's (A5's cost lever; 1 = the
+ * battlefield's own law, 0.75 = near only inside ~150 m). */
+export const OUTLAND_NEAR_SCALE = 1;
+/** GND (2026-10-14): how far over the red line (the square's Chebyshev edge, PLAYABLE_HALF_EXTENT_M) the client adopts
+ * trees: the scope promotion's reach (TREE_NEAR_IN × 3.4 at x8, setSniperFade) from a camera at the line, so no tree a
+ * sight can promote stays a quad. */
+export const OUTLAND_ADOPT_M = 680;
+/** GND: whether the client adopts the trees over the line (`?outlandTrees=0` keeps every quad: the same-build A/B). */
+export function outlandTreesEnabled(): boolean {
+  return !(typeof location !== 'undefined' && /[?&]outlandTrees=0(&|$)/.test(location.search ?? ''));
+}
+/** GND: a tree over the line within the adoption reach (the Chebyshev distance beyond the square's edge). */
+export function outlandAdoptable(x: number, z: number, reachM = OUTLAND_ADOPT_M): boolean {
+  const beyond = Math.max(Math.abs(x), Math.abs(z)) - PLAYABLE_HALF_EXTENT_M;
+  return beyond > 0 && beyond <= reachM;
 }
 
 export interface TreeObstacle extends CollisionRecord {
@@ -430,7 +512,14 @@ export interface VegetationRuntime {
    * geometry's height, metres; 0 without an impostor library) — the ring forest's impostors take both
    * (horizonForestImpostors.ts). */
   _rimMix: SpeciesMix;
+  /** GND (2026-10-15): the forest over the red line's species mix (VegetationConfig `ringMix`, else the rim's). */
+  _ringMix: SpeciesMix;
   _rimTreeHeightM: number;
+  /** GND (2026-10-15): with VegetationConfig `ringStature: 'species'`, each ring species' height in metres (its rim
+   * trees' mean, else the rim's mean instance scale × its near rows' mean height); null otherwise (the one mean). */
+  _ringSpeciesHeightM: Readonly<Record<string, number>> | null;
+  /** GND (2026-10-16): VegetationConfig `ringUnderstory`, else null. */
+  _ringUnderstory: { share: number; stature: readonly [number, number] } | null;
   /** Round 77c: the rim trees' mean instance tint (linear r, g, b) — the ring's impostors take it, so the forest over
    * the red line is as dark as the rim (the ring's own tones average 0.99; the battlefield's value jitter and stand
    * shade average well under 1). */
@@ -451,6 +540,17 @@ export interface VegetationRuntime {
    * the same law, standing trees root into the bowl's wall (map.ts calls this once a frame after the terrain's sync).
    */
   followCraters(law: GroundCoverCraters): void;
+  /**
+   * GND (2026-10-14): adopt trees over the red line into the battlefield's tiers — visual only, in a batch of their own
+   * pools (near, far and their shadow proxies), partitioned, cross-faded and scope-promoted under the battlefield's
+   * law. All or nothing: returns how many it took (0 without an impostor atlas, after dispose, or when a tree's species
+   * has no pools). Call after the build (the client world's assembly); every call is its own batch.
+   */
+  adoptOutlandTrees(trees: readonly OutlandTreeSpec[]): number;
+  /** GND (2026-10-14): the forest-form law a wood's tree takes (assignTreeForms): the near variant it draws. */
+  _treeFormVariant(species: string, variant: number, x: number, z: number): number;
+  /** GND: the adopted batches' records and pools, read-only, for the receipts. */
+  _outland: ReadonlyArray<Readonly<OutlandTreePools>>;
 }
 
 interface GarageTreeKit {
@@ -3232,7 +3332,7 @@ function buildOakFarGeometry(
     // 20-face silhouette is indistinguishable from the 80-face one at that
     // size, and the far-canopy pool was 1.9 M tris/frame of the 8.6 M total
     // (r7 forested-hills planting multiplied the far-tree count). Measured on
-    // the m1a2/verdant probe battle: far-canopy pool 1.92 M -> 0.53 M.
+    // the m1a1_abrams_hc/verdant probe battle: far-canopy pool 1.92 M -> 0.53 M.
     addCanopyLobe(b);
   }
   return { trunk: mergeParts(trunkParts), canopy: mergeParts(canopyParts) };
@@ -4001,6 +4101,10 @@ function* vegetationBuildSteps(
   let groundCoverBlocked: GroundCoverBlocked | null = null;
   // trees round 2 (2026-10-03): a snowbound map's classic tufts are dead winter grass (applySnowGrassLaw)
   applySnowGrassLaw(veg, cfg?.id ?? null);
+  // grass r2: the map's sward kind for the shared patch field (none on a map without a sward, or under snow)
+  const swardKindOf = resolveGroundReduxProfile(cfg?.id ?? null).grass?.kind ?? null;
+  const swardKind = swardKindOf === 'tundra' ? null : swardKindOf; // (a snow map's tufts are dead winter grass: no fresh patch)
+  const _swardPatch: SwardPatch = { r: 1, g: 1, b: 1, cured: 0, value: 1 };
   const grassPerChunk = Math.round(GRASS_PER_CHUNK * veg.grassDensity
     * (mobileTier ? 0.62 : lightDesk ? LIGHT_WORLD_VEG.grassScale : 1));
   const carpetPerCell = Math.round(CARPET_PER_CELL * veg.grassDensity
@@ -4112,7 +4216,13 @@ function* vegetationBuildSteps(
     // ground lane (2026-10-03): a crop tuft carries its crop's albedo negated in the instance colour (makeTuft) — the
     // card's own luminance (its dark roots, its lit tips) over the crop's colour, normalised by the card's mean green
     // blade (≈ 0.22/0.32/0.05 linear, luminance 0.28); every other tuft multiplies its tint as before
+    // grass r2 (2026-10-15, the sward's depth: swardPatch.ts SWARD_TONE): the card's own root-to-tip contrast steepened
+    // about its mean luminance (0.28), so its feet and the gaps between its blades read darker and its tips brighter
+    shader.uniforms.uSwardTone = SWARD_TONE;
+    shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>', '#include <common>\nuniform float uSwardTone;');
     shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <color_fragment>', /* glsl */`
+      { float cardL = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+        diffuseColor.rgb *= max(0.0, 0.28 + (cardL - 0.28) * (1.0 + 0.35 * uSwardTone)) / max(cardL, 1e-4); }
       #if defined( USE_COLOR ) || defined( USE_COLOR_ALPHA )
         if (vColor.r < 0.0) diffuseColor.rgb = -vColor.rgb * (dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722)) / 0.28);
         else diffuseColor *= vColor;
@@ -4230,6 +4340,11 @@ function* vegetationBuildSteps(
   // candidate away from them pays four comparisons
   const avoidBounds = veg.avoid?.length ? veg.avoid.reduce((b, av) => [Math.min(b[0], av.x - av.r), Math.max(b[1], av.x + av.r),
     Math.min(b[2], av.z - av.r), Math.max(b[3], av.z + av.r)], [Infinity, -Infinity, Infinity, -Infinity]) : null;
+  // (2026-10-15, the paddies' look pass; the coordinator: "cleared banks, no tree in the water") a paddy's water, bund,
+  // bank and a working strip round it grow no tree or shrub (terrain _treeClearAt, paddies.ts inPaddyClearing); the
+  // grass keeps the banks
+  const treeClearAt = heightField._treeClearAt ?? null;
+  const inTreeClear = (x: number, z: number): boolean => treeClearAt !== null && treeClearAt(x, z);
   function inAvoid(x: number, z: number): boolean {
     if (!veg.avoid) return false;
     if (avoidBounds && (x < avoidBounds[0] || x > avoidBounds[1] || z < avoidBounds[2] || z > avoidBounds[3])) return false;
@@ -4270,7 +4385,7 @@ function* vegetationBuildSteps(
     roll: number,
     carpet: boolean,
   ): number {
-    if (noVeg(x, z) && !batterAdmits(x, z)) return -1;
+    if ((noVeg(x, z) || heightField._railBerth?.(x, z)) && !batterAdmits(x, z)) return -1; // + a clearance rail berth
     const groundType = heightField.getGroundType(x, z);
     // ground lane (2026-10-03): the turf's edge along a road dissolves over a metre and a half (a position hash, inline:
     // the grass harnesses compile this filter without the module's helpers), not one ruled line at 4.2 m from the
@@ -4428,7 +4543,10 @@ function* vegetationBuildSteps(
             // pasture's straw is its own — a grazed field paler and yellower, a shut-up one lush, by the field's draw
             // (terrain.ts: its tone by the same draw, at the bake's six bits) — not the meadow's round dry patches
             const jq = Math.round(f.jitter * 63) / 63;
-            pastureDry = 0.55 * ((jq * 7.31 + 0.13) % 1);
+            // (grass r2, 2026-10-15: Verdant's pastures read pale and washed beside 205's meadow — a grazed field is
+            // drier, most stand lush: the share skewed toward the shut-up green, to 0.32 at most)
+            const pq = (jq * 7.31 + 0.13) % 1;
+            pastureDry = 0.32 * pq * pq;
           }
         }
       }
@@ -4461,7 +4579,8 @@ function* vegetationBuildSteps(
     // (wave 71: Verdant's "flat, oversaturated neon" — the carpet's tips at HSV saturation 0.8 under the grade's boost)
     // the tint a third less saturated and a little yellower: a summer sward, not a lime lawn (was 0.225 / 0.30)
     let th = 0.21 + (hueJ - 0.5) * 0.05 - dry * 0.08;
-    let ts = 0.19 - dry * 0.07;
+    // (grass r2: the sward's saturation floor a fifth up — wave 71's neon was 0.30; the tone curve caps the rest)
+    let ts = 0.23 - dry * 0.08;
     let tl = 0.44 + (lumJ - 0.5) * 0.12 + (sn.n2 - 0.5) * 0.10 + dry * 0.04;
     // r6 terrain_environment: MEADOW PATCHWORK on the blades themselves. The
     // splat shader stamps 50-200 m dry-straw fields (meadowA -> uTintA), but
@@ -4473,9 +4592,14 @@ function* vegetationBuildSteps(
     th -= dryPatch * 0.075;
     ts *= 1 - dryPatch * 0.30;
     tl += dryPatch * 0.05;
+    // grass r2 (2026-10-15, the blind critics: "one species and one colour"): the sward's own 5–11 m patches, the field
+    // the tall-grass tier's blades read (swardPatch.ts), so a patch of straw or fresh regrowth is one stand in both
+    const patch = swardKind !== null ? swardPatchAt(x, z, swardKind, _swardPatch) : null;
+    if (patch) { th -= patch.cured * 0.055; ts *= 1 - patch.cured * 0.22; tl += patch.cured * 0.035; }
     if (veg.tuftTone) [th, ts, tl] = veg.tuftTone(th, ts, tl);
     let cropHeight = 1;
     _c.setHSL(((th % 1) + 1) % 1, clamp(ts, 0, 1), clamp(tl, 0, 1));
+    if (patch) _c.setRGB(_c.r * patch.r * patch.value, _c.g * patch.g * patch.value, _c.b * patch.b * patch.value);
     // a crop's tuft: the crop's measured albedo (landUse.ts LAND_CROP_ALBEDO, on the sample: ripe wheat
     // 0.30/0.22/0.075, barley 0.33/0.28/0.12, a young crop 0.075/0.19/0.04, stubble 0.30/0.25/0.13, rice green
     // 0.10/0.23/0.045 …) carried NEGATED in the instance colour: the grass shader then keeps only the card's luminance
@@ -4797,6 +4921,10 @@ function* vegetationBuildSteps(
     fullFade = false,
     matteCanopy = false,
     thin = 0, // round 77: leaf translucency (canopyLighting.ts), 0 for bark
+    // GND (2026-10-15): where the crown's needle share comes from (canopyLighting.ts NEEDLE_TRANSMIT_*): 'uniform' — a
+    // near card material's own uCotNeedle (0 here, 1 on a needle species' material); 'impostor' — the far tier's
+    // per-species varying (treeImpostors.ts aImpNeedle); null — none (bark, the far lobes, the phones)
+    needle: 'uniform' | 'impostor' | null = null,
   ): MaterialShaderHook => (shader: MaterialShader): void => {
     shader.uniforms.uWindTime = uWindTime;
     shader.uniforms.uWindDir = uWindDir; // round 77
@@ -4971,13 +5099,23 @@ function* vegetationBuildSteps(
         `#include <color_fragment>\n\tdiffuseColor.rgb *= 1.0 + vWindLift * ${TREE_WIND_LEAF_FLASH.toFixed(3)};`);
     }
     // p2 trees lane: the canopy hooks transmit light through the leaves under the grounded light (desktop tiers)
-    applyCanopyDiffuseWrap(shader, wrap, matteCanopy, thin, thin > 0 && !mobileTier ? uLeafTransmission : null);
+    // GND (2026-10-15; Kestrel chase-s: back-lit pines "a saturated lime green"): a needle crown transmits its needles'
+    // dulled green (canopyLighting.ts cotCanopyTransmit; desktop tiers, the phones keep their fragment)
+    const needleOn = needle !== null && thin > 0 && !mobileTier;
+    if (needleOn && needle === 'uniform') {
+      shader.uniforms.uCotNeedle = { value: 0 }; // a needle species' material sets its own (needleFoliageHook)
+      shader.fragmentShader = _mustReplace(shader.fragmentShader, '#include <common>', '#include <common>\nuniform float uCotNeedle;');
+    }
+    applyCanopyDiffuseWrap(shader, wrap, matteCanopy, thin, thin > 0 && !mobileTier ? uLeafTransmission : null,
+      needleOn ? (needle === 'uniform' ? 'uCotNeedle' : 'vCotNeedle') : null);
   };
   const treeWindHook = makeTreeWindHook(BARK_NEAR_DISSOLVE[0], BARK_NEAR_DISSOLVE[1], 0.30); // trunks/bark
   // Leaves 2026-09-12: 0.50 -> 0.38 wrap so lit and shaded crown sides separate again.
   // Round 77: the near cards transmit 45 % of the (shadowed) direct light when back-lit, the far lobes 18 %.
-  const canopyWindHook = makeTreeWindHook(CANOPY_NEAR_DISSOLVE[0], CANOPY_NEAR_DISSOLVE[1], 0.38, true, true, 0.45); // matte canopy cards
+  const canopyWindHook = makeTreeWindHook(CANOPY_NEAR_DISSOLVE[0], CANOPY_NEAR_DISSOLVE[1], 0.38, true, true, 0.45, 'uniform'); // matte canopy cards
   const farCanopyWindHook = makeTreeWindHook(2.5, 8.0, 0.38, true, true, 0.18); // matte far lobes
+  // GND (2026-10-15): the far tier's impostors — the far lobes' law, the needle share per species from the quad
+  const impostorCanopyWindHook = makeTreeWindHook(2.5, 8.0, 0.38, true, true, 0.18, 'impostor');
   // Round 77: moss on the shaded side of the trunk bases, by the map's climate (uMoss, treeClimate.ts). Grows in the
   // bark's fissures (the sheet's darker texels), thickest at the ground and gone by 3 m, on the side turned from the
   // sun; a faint lichen dusting on the temperate maps, a full collar on the wet ones, none on the arid and frozen.
@@ -5627,6 +5765,13 @@ function* vegetationBuildSteps(
     return veg.palettes.oak || {};
   };
 
+  /** GND (2026-10-15): a needle crown — its leaf-scale detail is needles (the grown form's family: a holm oak on a cedar
+   * slot is leaves, a longleaf pine on a pine slot needles) — transmits its needles' dulled green when back-lit. */
+  const needleCrown = (sp: Species): boolean => leafDetail.classOf(SPECIES[sp].detailSpecies ?? sp, palOf(sp)) === 'conifer';
+  const needleFoliageHook = (shader: MaterialShader): void => {
+    foliageWindHook(shader);
+    if (shader.uniforms.uCotNeedle) shader.uniforms.uCotNeedle = { value: 1 };
+  };
   const foliageTex = {} as Record<Species, THREE.Texture>;
   const foliageMats = {} as Record<Species, THREE.MeshStandardMaterial>;
   const foliageDepthMats = {} as Record<Species, THREE.MeshDepthMaterial>;
@@ -5649,7 +5794,8 @@ function* vegetationBuildSteps(
         fm.defines = { ...(fm.defines ?? {}), COT_CARD_EDGE_FADE: '', COT_GROWN_CROWN: GROWN_CROWN_TRANSMISSION.toFixed(2),
           COT_LEAF_BILLBOARD: GROWN_LEAF_BILLBOARD.toFixed(2) };
       }
-      engineCtx.setupShadowMaterial(fm, foliageWindHook);
+      // GND (2026-10-15): a needle species' cards transmit the needles' dulled green (a uniform: the one program)
+      engineCtx.setupShadowMaterial(fm, needleCrown(sp) ? needleFoliageHook : foliageWindHook);
       // Species vary textures/uniforms, not this shared shader hook. Three
       // already keys material/geometry defines; a species suffix needlessly
       // recompiles identical programs when the last world using it is evicted.
@@ -5729,7 +5875,7 @@ function* vegetationBuildSteps(
   // never average toward black.
   const treeImpostors: TreeImpostorLibrary | null = bakeRenderer ? createTreeImpostorLibrary({
     rows: speciesList.filter(sp => (sp as string) !== 'snag').flatMap(sp => treeGeo[sp].map((pair, variant) => ({
-      species: sp, variant, trunk: pair.trunk, cards: pair.cards, foliage: foliageTex[sp],
+      species: sp, variant, trunk: pair.trunk, cards: pair.cards, foliage: foliageTex[sp], needle: needleCrown(sp),
     }))),
     bark: barkTex.albedo,
     flood: (() => {
@@ -5747,7 +5893,7 @@ function* vegetationBuildSteps(
       return n > 0 ? new THREE.Color().setRGB(r / n / 255, g / n / 255, b / n / 255, THREE.SRGBColorSpace)
         : new THREE.Color(0.06, 0.077, 0.021);
     })(),
-    hook: farCanopyWindHook,
+    hook: impostorCanopyWindHook,
     setupMaterial: (material, hook) => engineCtx.setupShadowMaterial(material, hook),
     renderer: bakeRenderer,
   }) : null;
@@ -5897,9 +6043,11 @@ function* vegetationBuildSteps(
     _evenSeat[0] = turn ? 2 * halvesAbout!.x - x : x; _evenSeat[1] = turn ? 2 * halvesAbout!.z - z : z;
     return _evenSeat;
   }
+  let placingBelts = false; // standKeepOut: the belts plant inside the kept-out rects
   function siteOk(x: number, z: number, margin: number, settled = false): boolean {
     if (Math.max(Math.abs(x), Math.abs(z)) > 455) return false;
-    if (inAvoid(x, z) || overTreeCeiling(x, z)) return false;
+    if (inAvoid(x, z) || inTreeClear(x, z) || overTreeCeiling(x, z)) return false;
+    if (!placingBelts && veg.standKeepOut?.some((r) => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1)) return false;
     if (!settled && x > v.x0 - 24 && x < v.x1 + 24 && z > v.z0 - 24 && z < v.z1 + 24) return false;
     if (admission()._roadDist(x, z) < 9 + margin) return false;
     if (admission().getGroundType(x, z) === 'soft' || noVeg(x, z)) return false;
@@ -6027,7 +6175,32 @@ function* vegetationBuildSteps(
     heights.sort((a, b) => a - b);
     return uplandBandOf(heights);
   })() : null;
+  // the trees lane (2026-10-06, the map-revival lane's Skybridge round 4: Glen Canyon's Fremont cottonwoods by the water):
+  // a place's riparian slot (treeBiomes.ts riparian) seats only within its reach of a lake's shore and no higher over the
+  // shore than its rise, or in the low ground (the lowest share of the square's heights, a fifth unless it names one);
+  // every other slot stands anywhere. A test on a seat, no draw (every placement's zone test, uplandZoneOk, reads it).
+  const riparian = treeBiomeRiparian(cfg?.id);
+  const riparianLow: number | null = riparian ? (() => {
+    const heights: number[] = [];
+    for (let z = -430; z <= 430; z += 24) for (let x = -430; x <= 430; x += 24) heights.push(heightField.getHeightAt(x, z));
+    heights.sort((a, b) => a - b);
+    return heights[Math.min(heights.length - 1, Math.floor(heights.length * (riparian.lowShare ?? 0.2)))];
+  })() : null;
+  function riparianZoneOk(x: number, z: number, sp: Species): boolean {
+    if (!riparian || sp !== riparian.slot) return true;
+    const h = heightField.getHeightAt(x, z);
+    if (h <= riparianLow!) return true;
+    for (const lake of heightField._layout?.lakes ?? []) {
+      const d = Math.hypot(x - lake.x, z - lake.z);
+      if (d - lake.r > riparian.reachM) continue;
+      // the shore: the lake's edge on the line from its centre to the seat
+      const f = lake.r / Math.max(1e-3, d);
+      if (h - heightField.getHeightAt(lake.x + (x - lake.x) * f, lake.z + (z - lake.z) * f) <= (riparian.riseM ?? Infinity)) return true;
+    }
+    return false;
+  }
   function uplandZoneOk(x: number, z: number, sp: Species): boolean {
+    if (!riparianZoneOk(x, z, sp)) return false;
     if (!uplandBand) return true;
     const form = formOf(sp)?.form ?? sp;
     return uplandZoneAllows(uplandBand, TREE_GROWTH_PROFILES[form as GrowthSpecies]?.family === 'conifer', heightField.getHeightAt(x, z));
@@ -6644,6 +6817,7 @@ function* vegetationBuildSteps(
         const gap = b.gap ?? 8;
         const jit = b.jitter ?? 2.5;
         const nB = Math.max(2, Math.round(len / gap));
+        if (b.shrub) continue; // (a shrub row's stations are the bushes': placeBeltShrubs)
         for (let i = 0; i <= nB; i++) {
           const t = i / nB;
           const bx = b.x0 + (b.x1 - b.x0) * t + (rng() - 0.5) * jit;
@@ -6654,7 +6828,8 @@ function* vegetationBuildSteps(
       }
     }
   }
-  placeTreeBelts();
+  placingBelts = true;
+  try { placeTreeBelts(); } finally { placingBelts = false; }
   rememberAuthoredDonors(authoredLoneStart, trees.length - authoredLoneStart);
 
   // horizon rim forest: dense clustered blocks on the raised map border so
@@ -7571,17 +7746,17 @@ function* vegetationBuildSteps(
       : [buildBushCards(mulberry32(seed + 31), bushPal), buildBushCards(mulberry32(seed + 32), bushPal)];
     const bushPlacements: [THREE.Matrix4[], THREE.Matrix4[]] = [[], []];
     const bushKeep: [boolean[],boolean[]]=[[],[]];
-    function addBush(x: number, z: number, hedge = false, br: RandomSource = rng): void {
+    function addBush(x: number, z: number, hedge = false, br: RandomSource = rng, planted = false): void {
       if (Math.max(Math.abs(x), Math.abs(z)) > 470) return;
-      if (inAvoid(x, z)) return;
-      if (br() > veg.bushCount) return; // per-map density scale
+      if (inAvoid(x, z) || inTreeClear(x, z)) return;
+      if (!planted && br() > veg.bushCount) return; // per-map density scale (a planted row keeps every station)
       // (the Redrock lane: no shrub on a dome's cap or a jebel's top either; veg.treeCeilingY, absent on every other map)
       if (overTreeCeiling(x, z)) return;
       if (admission()._roadDist(x, z) < 6) return;
       if (admission().getGroundType(x, z) === 'soft' || (noVeg(x, z) && !batterAdmits(x, z))) return;
       if (!steepSeedOk(admission().getNormalAt(x, z).y, x, z)) return;
       let clump = 1;
-      if (veg.bushCount < 1) {
+      if (veg.bushCount < 1 && !planted) {
         // r6 two-scale clustering (matches makeTuft): biome moisture belts x
         // thicket cores — shrubs knot into dense washes/hollow thickets with
         // clean ground between, instead of the r5 near-uniform pepper noise
@@ -7613,7 +7788,7 @@ function* vegetationBuildSteps(
             const bx = tx + (x - tx) / dl * out, bz = tz + (z - tz) / dl * out;
             if (admission()._roadDist(bx, bz) >= 6 && admission().getGroundType(bx, bz) !== 'soft' && !noVeg(bx, bz)
               && steepSeedOk(admission().getNormalAt(bx, bz).y, bx, bz) && Math.max(Math.abs(bx), Math.abs(bz)) <= 470
-              && !inAvoid(bx, bz)) {
+              && !inAvoid(bx, bz) && !inTreeClear(bx, bz)) {
               x = bx; z = bz;
             }
           }
@@ -7799,7 +7974,7 @@ function* vegetationBuildSteps(
       };
       /** The bush admission (roads, soft ground, water, slopes, spawns, the village, structures) inside the bound. */
       const admitted = (x: number, z: number, sc: number, bound: number): boolean => {
-        if (Math.max(Math.abs(x), Math.abs(z)) > bound || inAvoid(x, z)) return false;
+        if (Math.max(Math.abs(x), Math.abs(z)) > bound || inAvoid(x, z) || inTreeClear(x, z)) return false;
         // the map-borders lane: past the playable edge a block's undergrowth keeps to the border's woods
         if (borderWoodsAt && Math.max(Math.abs(x), Math.abs(z)) > PLAYABLE_HALF_EXTENT_M && borderWoodsAt(x, z) < 0.5) return false;
         if (heightField._roadDist(x, z) < 6 || admission()._roadDist(x, z) < 6) return false;
@@ -7882,7 +8057,24 @@ function* vegetationBuildSteps(
         addBush(seat[0], seat[1], true, br);
       }
     }
+    // the map-revival lane (VegetationBelt.shrub): the shelterbelts' shrub rows, every station planted, their own stream
+    function placeBeltShrubs(): void {
+      if (!veg.belts) return;
+      veg.belts.forEach((b, index) => {
+        if (!b.shrub) return;
+        const sr = mulberry32((seed ^ 0x5b17e) + index * 977);
+        const len = Math.hypot(b.x1 - b.x0, b.z1 - b.z0), gap = b.gap ?? 4, jit = b.jitter ?? 1.2;
+        const nB = Math.max(2, Math.round(len / gap));
+        for (let i = 0; i <= nB; i++) {
+          const t = i / nB;
+          const bx = b.x0 + (b.x1 - b.x0) * t + (sr() - 0.5) * jit, bz = b.z0 + (b.z1 - b.z0) * t + (sr() - 0.5) * jit;
+          if (sr() < (b.skip ?? 0.08)) continue;
+          addBush(bx, bz, false, sr, true);
+        }
+      });
+    }
     placeBushFringes();
+    placeBeltShrubs();
     placeFieldBushes();
     placeBushClumps();
     evenBushHalves();
@@ -8069,6 +8261,12 @@ function* vegetationBuildSteps(
     }
   }
   createPartitionSlots();
+  // GND (2026-10-14): a record's pools and slots — its outland batch's, else the build's
+  function nearPoolOf(t: TreeRecord): TreeMesh[] { return t.outland ? t.outland.near.get(t.species)![t.variant] : nearMeshes[t.species][t.variant]; }
+  function farPoolOf(t: TreeRecord): TreeMesh[] { return t.outland ? t.outland.far.get(t.species)![t.fv] : farMeshes[t.species][t.fv]; }
+  function nearSlotsOf(t: TreeRecord): TreeRecord[] { return t.outland ? t.outland.nearSlots.get(t.species)![t.variant] : nearSlots[t.species][t.variant]; }
+  function farSlotsOf(t: TreeRecord): TreeRecord[] { return t.outland ? t.outland.farSlots.get(t.species)![t.fv] : farSlots[t.species][t.fv]; }
+  const outlandBatches: OutlandTreePools[] = [];
   /** Flag one instance slot's matrix/color/fade for a ranged GPU upload. */
   function markSlotDirty(m: TreeMesh, slot: number): void {
     m.instanceMatrix.addUpdateRange(slot * 16, 16);
@@ -8166,7 +8364,7 @@ function* vegetationBuildSteps(
   const lodTransitions: LodTransition[] = []; // { t, dir: +1 near-fades-out | -1 near-fades-in }
   function writeLodFade(t: TreeRecord): void {
     if (t.slot < 0) return;
-    for (const m of nearMeshes[t.species][t.variant]) {
+    for (const m of nearPoolOf(t)) {
       const lf = attribute(m.geometry, 'aLodF');
       lf.array[t.slot] = t.lodF;
       lf.addUpdateRange(t.slot, 1);
@@ -8187,36 +8385,49 @@ function* vegetationBuildSteps(
       }
       if (tr.dir > 0) { // near faded out — retire the near representation
         t.lodF = 0;
-        removeFromGroup(nearMeshes[t.species][t.variant], nearSlots[t.species][t.variant], t, 'slot', true);
+        removeFromGroup(nearPoolOf(t), nearSlotsOf(t), t, 'slot', true);
       } else {          // near fully in — drop the far stand-in beneath it
         writeLodFade(t);
-        removeFromGroup(farMeshes[t.species][t.fv], farSlots[t.species][t.fv], t, 'fslot', false);
+        removeFromGroup(farPoolOf(t), farSlotsOf(t), t, 'fslot', false);
       }
       t.lodT = false;
       lodTransitions.splice(i, 1);
     }
   }
+  function repartitionTree(t: TreeRecord, camPos: THREE.Vector3): void {
+    if (t.lodT) return; // mid cross-fade — settle before re-deciding
+    const d = Math.hypot(t.x - camPos.x, t.z - camPos.z), reach = t.nearScale ?? 1;
+    const promo = scopePromoted(t, camPos); // scope corridor mesh promotion
+    if (t.near) {
+      if (d > treeNearOut * reach && !promo) {
+        t.near = false;
+        t.lodT = true;
+        t.lodF = 0; // near side starts solid, dissolves out
+        addToGroup(farPoolOf(t), farSlotsOf(t), t, 'fslot', false);
+        lodTransitions.push({ t, dir: 1 });
+      }
+    } else if (d < treeNearIn * reach || promo) {
+      t.near = true;
+      t.lodT = true;
+      t.lodF = 1; // near side arrives fully dissolved, fades in
+      addToGroup(nearPoolOf(t), nearSlotsOf(t), t, 'slot', true);
+      lodTransitions.push({ t, dir: -1 });
+    }
+  }
+  /** GND (A5): an outland batch is re-decided only while it can hold a near tree — scoped, a tree of it near or mid
+   * cross-fade, or the camera within the near reach (+ a 6 m step) of its nearest tree's Chebyshev radius. */
+  function outlandBatchLive(batch: OutlandTreePools, camPos: THREE.Vector3): boolean {
+    if (scopeZoomR > 0) return true;
+    for (const sp of batch.species) for (const slots of batch.nearSlots.get(sp)!) if (slots.length) return true;
+    const gap = batch.minRadiusM - Math.max(Math.abs(camPos.x), Math.abs(camPos.z));
+    return gap < treeNearOut * OUTLAND_NEAR_SCALE + 6;
+  }
   function repartitionTrees(camPos: THREE.Vector3): void {
     if (!_partitionBuilt) { rebuildPartitionFull(camPos); return; }
-    for (const t of trees) {
-      if (t.lodT) continue; // mid cross-fade — settle before re-deciding
-      const d = Math.hypot(t.x - camPos.x, t.z - camPos.z), reach = t.nearScale ?? 1;
-      const promo = scopePromoted(t, camPos); // scope corridor mesh promotion
-      if (t.near) {
-        if (d > treeNearOut * reach && !promo) {
-          t.near = false;
-          t.lodT = true;
-          t.lodF = 0; // near side starts solid, dissolves out
-          addToGroup(farMeshes[t.species][t.fv], farSlots[t.species][t.fv], t, 'fslot', false);
-          lodTransitions.push({ t, dir: 1 });
-        }
-      } else if (d < treeNearIn * reach || promo) {
-        t.near = true;
-        t.lodT = true;
-        t.lodF = 1; // near side arrives fully dissolved, fades in
-        addToGroup(nearMeshes[t.species][t.variant], nearSlots[t.species][t.variant], t, 'slot', true);
-        lodTransitions.push({ t, dir: -1 });
-      }
+    for (const t of trees) repartitionTree(t, camPos);
+    for (const batch of outlandBatches) {
+      if (!outlandBatchLive(batch, camPos)) continue;
+      for (const t of batch.trees) repartitionTree(t, camPos);
     }
   }
   /** One-time full partition build (map load / world rebuild): plain full
@@ -8227,6 +8438,10 @@ function* vegetationBuildSteps(
       for (const slots of nearSlots[species]) slots.length = 0;
       for (const slots of farSlots[species]) slots.length = 0;
     }
+    for (const batch of outlandBatches) {
+      for (const all of batch.nearSlots.values()) for (const slots of all) slots.length = 0;
+      for (const all of batch.farSlots.values()) for (const slots of all) slots.length = 0;
+    }
   }
   function seedTreePartition(tree: TreeRecord, camPos: THREE.Vector3): void {
     tree.lodT = false;
@@ -8236,11 +8451,11 @@ function* vegetationBuildSteps(
       || scopePromoted(tree, camPos);
     if (tree.near) {
       nearTierHeightVersion++;
-      const slots = nearSlots[tree.species][tree.variant];
+      const slots = nearSlotsOf(tree);
       tree.slot = slots.length;
       tree.fslot = -1;
       slots.push(tree);
-      for (const mesh of nearMeshes[tree.species][tree.variant]) {
+      for (const mesh of nearPoolOf(tree)) {
         mesh.setMatrixAt(tree.slot, tree.mat);
         mesh.setColorAt(tree.slot, tree.tint);
         attribute(mesh.geometry, 'aFadeI').array[tree.slot] = tree.fade;
@@ -8249,11 +8464,11 @@ function* vegetationBuildSteps(
       }
       return;
     }
-    const slots = farSlots[tree.species][tree.fv];
+    const slots = farSlotsOf(tree);
     tree.fslot = slots.length;
     tree.slot = -1;
     slots.push(tree);
-    for (const mesh of farMeshes[tree.species][tree.fv]) {
+    for (const mesh of farPoolOf(tree)) {
       mesh.setMatrixAt(tree.fslot, tree.mat);
       mesh.setColorAt(tree.fslot, tree.tint);
       const fade = mesh.geometry.getAttribute('aFadeI') as THREE.BufferAttribute | undefined;
@@ -8265,8 +8480,11 @@ function* vegetationBuildSteps(
     }
   }
   function uploadNearPartition(species: Species, variant: number): void {
-    for (const mesh of nearMeshes[species][variant]) {
-      mesh.count = nearSlots[species][variant].length;
+    uploadNearPool(nearMeshes[species][variant], nearSlots[species][variant]);
+  }
+  function uploadNearPool(meshes: TreeMesh[], slots: TreeRecord[]): void {
+    for (const mesh of meshes) {
+      mesh.count = slots.length;
       mesh.instanceMatrix.clearUpdateRanges();
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) {
@@ -8285,8 +8503,11 @@ function* vegetationBuildSteps(
     }
   }
   function uploadFarPartition(species: Species, variant: number): void {
-    for (const mesh of farMeshes[species][variant]) {
-      mesh.count = farSlots[species][variant].length;
+    uploadFarPool(farMeshes[species][variant], farSlots[species][variant]);
+  }
+  function uploadFarPool(meshes: TreeMesh[], slots: TreeRecord[]): void {
+    for (const mesh of meshes) {
+      mesh.count = slots.length;
       mesh.instanceMatrix.clearUpdateRanges();
       mesh.instanceMatrix.needsUpdate = true;
       if (mesh.instanceColor) {
@@ -8315,6 +8536,11 @@ function* vegetationBuildSteps(
         uploadFarPartition(species, variant);
       }
     }
+    for (const batch of outlandBatches) uploadOutlandBatch(batch);
+  }
+  function uploadOutlandBatch(batch: OutlandTreePools): void {
+    for (const [species, pools] of batch.near) pools.forEach((meshes, variant) => uploadNearPool(meshes, batch.nearSlots.get(species)![variant]));
+    for (const [species, pools] of batch.far) pools.forEach((meshes, fv) => uploadFarPool(meshes, batch.farSlots.get(species)![fv]));
   }
   function rebuildPartitionFull(camPos: THREE.Vector3): void {
     _partitionBuilt = true;
@@ -8327,6 +8553,7 @@ function* vegetationBuildSteps(
       // refresh even though its visible representation is already settled.
       seedTreePartition(t, camPos);
     }
+    for (const batch of outlandBatches) for (const t of batch.trees) seedTreePartition(t, camPos);
     uploadPartition();
   }
 
@@ -8560,6 +8787,24 @@ function* vegetationBuildSteps(
         }
       }
     }
+    // GND (2026-10-14): the adopted trees' near slots share the near tier's caster profile (one registration law)
+    for (const batch of outlandBatches) {
+      for (let k = 0; k < batch.species.length; k++) {
+        const sp = batch.species[k];
+        const speciesHeight = speciesHeightM[sp] ?? 0;
+        for (const slots of batch.nearSlots.get(sp)!) {
+          for (const t of slots) {
+            const dx = t.x - camPos.x, dz = t.z - camPos.z;
+            const d2 = dx * dx + dz * dz;
+            if (d2 > reach2) reach2 = d2;
+            if (!heightStale) continue;
+            const e = t.mat.elements;
+            const h = speciesHeight * Math.hypot(e[4], e[5], e[6]);
+            if (h > height) height = h;
+          }
+        }
+      }
+    }
     if (heightStale) {
       nearTierHeight = height;
       nearTierHeightAt = nearTierHeightVersion;
@@ -8680,9 +8925,13 @@ function* vegetationBuildSteps(
   // (horizonForestImpostors.ts); 0 where no atlas exists (the receipts, the mobile tier: the ring keeps its lobes).
   let rimTreeHeightM = 0;
   const rimTreeTint: [number, number, number] = [1, 1, 1];
+  // GND (2026-10-15): and per species, for a map whose ring stands each species at its own stature (`ringStature`)
+  let ringSpeciesHeightM: Record<string, number> | null = null;
   if (treeImpostors && rimTrees.length > 0) {
     let sum = 0, r = 0, g = 0, b = 0;
     let living = 0;
+    const bySpecies = new Map<string, { height: number; count: number }>();
+    let scaleSum = 0;
     for (const tree of rimTrees) {
       if ((tree.species as string) === 'snag') continue;
       living++;
@@ -8690,10 +8939,31 @@ function* vegetationBuildSteps(
       const e = tree.mat.elements;
       sum += Math.hypot(e[4], e[5], e[6]) * row.heightM;
       r += tree.tint.r; g += tree.tint.g; b += tree.tint.b;
+      if (veg.ringStature === 'species') {
+        const entry = bySpecies.get(tree.species) ?? { height: 0, count: 0 };
+        entry.height += Math.hypot(e[4], e[5], e[6]) * row.heightM;
+        entry.count++;
+        bySpecies.set(tree.species, entry);
+        scaleSum += Math.hypot(e[4], e[5], e[6]);
+      }
     }
     if (living > 0) {
       rimTreeHeightM = sum / living;
       rimTreeTint[0] = r / living; rimTreeTint[1] = g / living; rimTreeTint[2] = b / living;
+      if (veg.ringStature === 'species') {
+        ringSpeciesHeightM = {};
+        for (const [species, entry] of bySpecies) ringSpeciesHeightM[species] = entry.height / entry.count;
+        // a ring species the rim does not grow: the rim's mean instance scale × its own near rows' mean height
+        const scaleMean = scaleSum / living;
+        for (const [species] of veg.ringMix ?? veg.rimMix) {
+          if (ringSpeciesHeightM[species] !== undefined || (species as string) === 'snag') continue;
+          if (!treeImpostors.rows.some(row => row.species === species)) continue; // (the ring drops it too)
+          const base = treeImpostors.rowBase(species);
+          let rowHeight = 0;
+          for (let v = 0; v < treeImpostors.variants; v++) rowHeight += treeImpostors.rows[base + v].heightM;
+          ringSpeciesHeightM[species] = scaleMean * rowHeight / treeImpostors.variants;
+        }
+      }
     }
   }
   rimTrees.length = 0;
@@ -8726,9 +8996,100 @@ function* vegetationBuildSteps(
       }
     });
   }
+  // ---- GND (2026-10-14; the owner's Kestrel border trees): the trees over the red line, adopted ----
+  // The horizon ring (and the Hinterland) drew its trees as flat atlas quads at every range, magnified up to 7x at the
+  // chase and 6-9 px a texel through the sight, its alpha cut breaking the crowns into islands. The client world hands
+  // the ones near the square to these tiers (map.ts, hinterland/trees.ts): visual records only, never in `trees` (no
+  // collider, crush, concealer, decal or interaction: the multiplayer indices and the authority are the build's), drawn
+  // in a batch of their own pools — the build's geometry, materials and atlas, their own instance buffers and the near
+  // tier's shadow profile — partitioned, cross-faded and scope-promoted by the same law as the battlefield's trees.
+  /** A pool mesh's twin for an outland batch: the source's vertex data and materials, its own instance attributes. */
+  function outlandMeshLike(src: TreeMesh, sp: Species, capacity: number): TreeMesh {
+    const source = src.geometry;
+    const geometry = new THREE.BufferGeometry();
+    for (const name of Object.keys(source.attributes)) {
+      const attr = source.getAttribute(name);
+      if ((attr as THREE.InstancedBufferAttribute).isInstancedBufferAttribute) continue; // aFadeI, aLodF, aImpRow: the pool's own
+      geometry.setAttribute(name, attr);
+    }
+    if (source.index) geometry.setIndex(source.index);
+    for (const g of source.groups) geometry.addGroup(g.start, g.count, g.materialIndex);
+    geometry.boundingSphere = source.boundingSphere ? source.boundingSphere.clone() : null;
+    geometry.boundingBox = source.boundingBox ? source.boundingBox.clone() : null;
+    geometry.userData = { ...source.userData };
+    if (source.getAttribute('aImpRow')) {
+      const row = new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1);
+      row.setUsage(THREE.DynamicDrawUsage);
+      geometry.setAttribute('aImpRow', row);
+    }
+    const mesh = makeTreeMesh(geometry, src.material, sp, src.userData.treeFoliage === true, capacity);
+    mesh.castShadow = src.castShadow;
+    mesh.receiveShadow = src.receiveShadow;
+    mesh.customDepthMaterial = src.customDepthMaterial;
+    mesh.customDistanceMaterial = src.customDistanceMaterial;
+    mesh.layers.mask = src.layers.mask;
+    Object.assign(mesh.userData, src.userData, { outlandTree: true });
+    delete mesh.userData.formAlt;
+    mesh.name = `${src.name || 'tree'}-outland`;
+    const profile = shadowCasterProfileOf(src);
+    if (profile) setShadowCasterProfile(mesh, profile);
+    const cascades = shadowCasterCascadesOf(src);
+    if (cascades !== null) setShadowCasterCascades(mesh, cascades);
+    const dynamic = shadowCasterDynamicMaskOf(src);
+    if (dynamic !== null) setShadowCasterDynamicMask(mesh, dynamic);
+    return mesh;
+  }
+  function treeFormVariant(species: string, variant: number, x: number, z: number): number {
+    // assignTreeForms for a wood's tree: a forest-form species draws one of its two forest-grown variants
+    if (!forestSpecies.has(species as Species)) return variant;
+    return variant >= FOREST_NEAR_VARIANTS ? (treePositionNoise(x, z, 97) < 0.5 ? 0 : 1) : variant;
+  }
+  function adoptOutlandTrees(specs: readonly OutlandTreeSpec[]): number {
+    if (disposed || !treeImpostors || specs.length === 0) return 0;
+    const counts = new Map<Species, number>();
+    for (const spec of specs) {
+      const sp = spec.species as Species;
+      // all or nothing: a species without its pools (not this map's, the snag) keeps the whole batch on its quads
+      if ((sp as string) === 'snag' || !nearMeshes[sp] || !farMeshes[sp]) return 0;
+      if (!(spec.variant >= 0 && spec.variant < nearMeshes[sp].length)) return 0;
+      if (!(spec.scale > 0) || !Number.isFinite(spec.x + spec.y + spec.z + spec.yaw)) return 0;
+      counts.set(sp, (counts.get(sp) ?? 0) + 1);
+    }
+    const batch: OutlandTreePools = {
+      species: [...counts.keys()], near: new Map(), far: new Map(), nearSlots: new Map(), farSlots: new Map(), trees: [], minRadiusM: Infinity,
+    };
+    for (const [sp, n] of counts) {
+      batch.near.set(sp, nearMeshes[sp].map((pool) => pool.map((src) => outlandMeshLike(src, sp, n))));
+      batch.far.set(sp, farMeshes[sp].map((pool) => pool.map((src) => outlandMeshLike(src, sp, n))));
+      batch.nearSlots.set(sp, Array.from({ length: nearMeshes[sp].length }, () => []));
+      batch.farSlots.set(sp, Array.from({ length: farMeshes[sp].length }, () => []));
+    }
+    const position = new THREE.Vector3(), quaternion = new THREE.Quaternion(), scale = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
+    for (const spec of specs) {
+      const sp = spec.species as Species;
+      const mat = new THREE.Matrix4().compose(position.set(spec.x, spec.y, spec.z), quaternion.setFromAxisAngle(up, spec.yaw), scale.setScalar(spec.scale));
+      const heightM = (speciesHeightM[sp] ?? 10) * spec.scale;
+      batch.trees.push({
+        x: spec.x, z: spec.z, species: sp, variant: spec.variant, fv: spec.mirror && farMeshes[sp].length > 1 ? 1 : 0,
+        mat, tint: new THREE.Color(spec.tint[0], spec.tint[1], spec.tint[2]), near: false,
+        cy: spec.y + heightM * 0.62, cr: heightM * 0.22, fade: 0, slot: -1, fslot: -1, dr: 0, lodF: 0, lodT: false,
+        nearScale: OUTLAND_NEAR_SCALE, wood: true, outland: batch,
+      });
+      batch.minRadiusM = Math.min(batch.minRadiusM, Math.max(Math.abs(spec.x), Math.abs(spec.z)));
+    }
+    outlandBatches.push(batch);
+    // a world already partitioned seeds the batch at the last camera; else the first full partition takes it
+    if (_partitionBuilt) {
+      for (const t of batch.trees) seedTreePartition(t, _lastCam);
+      uploadOutlandBatch(batch);
+    }
+    group.userData.outlandTrees = (group.userData.outlandTrees ?? 0) + batch.trees.length;
+    return batch.trees.length;
+  }
   return { group, update, dispose, getGrassWorkState, followCraters: followCraterLaw, setWindTime, setSniperFade, setGroundCoverClearance, treeObstacles, concealers,
     crushTree, resetToppled, advanceToppled: (dt: number) => { if (treeCrushAnims.length) updateTreeCrush(dt); }, _clusters: clusters, _standOutline: standOutlineFraction, _rimBlocks: rimBlocks, _treeImpostors: treeImpostors, _trees: trees,
     _woodsMask: woodsMask,
-    _rimMix: veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _rimTreeTint: rimTreeTint,
-    warmImpostors: () => (treeImpostors ? treeImpostors.ensureBaked() : false) };
+    _rimMix: veg.rimMix, _ringMix: veg.ringMix ?? veg.rimMix, _rimTreeHeightM: rimTreeHeightM, _ringSpeciesHeightM: ringSpeciesHeightM, _ringUnderstory: veg.ringUnderstory ?? null, _rimTreeTint: rimTreeTint,
+    warmImpostors: () => (treeImpostors ? treeImpostors.ensureBaked() : false),
+    adoptOutlandTrees, _treeFormVariant: treeFormVariant, _outland: outlandBatches };
 }

@@ -4,7 +4,9 @@ import { fileURLToPath } from 'node:url';
 
 if (!globalThis.gc) {
   const child = spawnSync(process.execPath, ['--expose-gc', fileURLToPath(import.meta.url)], {
-    stdio: 'inherit', timeout: 120_000,
+    // (2026-10-16, the triage's flake class) the GC worker runs 99-112 s on a loaded host against the old 120 s: the
+    // timeout only guards a hung worker, never the measurement
+    stdio: 'inherit', timeout: 360_000,
   });
   if (child.error) throw child.error;
   assert.equal(child.status, 0, 'GC-isolated map lifecycle worker passed');
@@ -14,8 +16,8 @@ if (!globalThis.gc) {
   } = await import('./dedicatedWorldCollision.ts');
   const { createAuthoritativeMatch, authoritativeTerrainCacheStats } = await import('../src/sim/authoritativeMatch.ts');
   const players = [
-    { id: 'memory-alpha', specId: 'm1a2', team: 'alpha' },
-    { id: 'memory-bravo', specId: 'm1a2', team: 'bravo' },
+    { id: 'memory-alpha', specId: 'm1a1_abrams_hc', team: 'alpha' },
+    { id: 'memory-bravo', specId: 'm1a1_abrams_hc', team: 'bravo' },
   ];
   const settle = async () => {
     await new Promise(setImmediate);

@@ -25,7 +25,7 @@ assert.equal(isFortifiedCoverRecord(pillboxRecord), true);
 assert.equal(isFortifiedCoverRecord({ ...pillboxRecord, crushable: false }), false, 'a non-crushable record is the world, not a pillbox');
 
 // ---- the law over real rounds ----------------------------------------------------------------------------------------
-const t90 = getSpec('t90m'), m1 = getSpec('m1a2');
+const t90_1992 = getSpec('t90am'), m1 = getSpec('m1a1_abrams_hc');
 const round = (spec, type) => spec.gun.shells.find((shell) => shell.type === type);
 const hitsToBreak = (spec, limit = 60) => {
   const ledger = createFortifiedCoverLedger();
@@ -34,13 +34,13 @@ const hitsToBreak = (spec, limit = 60) => {
   return Infinity;
 };
 assert.ok(Math.abs(FORTIFIED_HP_SP - 30.625) < 1e-9, 'two and a half contact bursts of the nominal 3.5 kg tank HE round');
-assert.equal(hitsToBreak(round(t90, 'HE')), 3, '125 mm HE: the third hit');
+assert.equal(hitsToBreak(round(t90_1992, 'HE')), 3, '125 mm HE: the third hit');
 assert.equal(hitsToBreak(round(m1, 'HE')), 3, '120 mm HE: the third hit');
 assert.equal(hitsToBreak(round(m1, 'HEAT')), 4, '120 mm HEAT: the fourth');
 assert.equal(hitsToBreak({ type: 'HE', caliberMm: 152, name: 'OF-540' }), 2, '152 mm howitzer HE: the second');
 assert.equal(hitsToBreak({ type: 'HE', caliberMm: 120, name: 'L31 HESH' }), 2, '120 mm HESH: the second');
 assert.equal(hitsToBreak({ type: 'HE', caliberMm: 105 }), 5, '105 mm HE: the fifth');
-for (const [label, spec] of [['M829A4 APFSDS', round(m1, 'APFSDS')], ['3BM60 APFSDS', round(t90, 'APFSDS')],
+for (const [label, spec] of [['M829A4 APFSDS', round(m1, 'APFSDS')], ['3BM60 APFSDS', round(t90_1992, 'APFSDS')],
   ['30 mm AP', { type: 'AP', caliberMm: 30 }], ['30 mm HEI', { type: 'HE', caliberMm: 30, name: 'HEI-T' }],
   ['12.7 mm', { type: 'AP', caliberMm: 12.7 }], ['76 mm HE', { type: 'HE', caliberMm: 76 }]]) {
   assert.equal(fortifiedShellPoints(spec), 0, `${label} leaves no mark`);
@@ -66,8 +66,8 @@ assert.ok(fortifiedRamPoints(20, 12) < FORTIFIED_HP_SP / 3, 'a 20 t hull at 12 m
   assert.equal(ledger.ram(contact, 40, 10, 5.0), false, 'a pillbox comes down once');
   // the shells' collider and the hull's contact record are one prop: their blows add up
   const shared = createFortifiedCoverLedger();
-  assert.equal(shared.shellHit({ propIdx: 3, kind: 'bunker' }, round(t90, 'HE')), false);
-  assert.equal(shared.shellHit({ propIdx: 3, kind: 'bunker' }, round(t90, 'HE')), false);
+  assert.equal(shared.shellHit({ propIdx: 3, kind: 'bunker' }, round(t90_1992, 'HE')), false);
+  assert.equal(shared.shellHit({ propIdx: 3, kind: 'bunker' }, round(t90_1992, 'HE')), false);
   assert.equal(shared.ram({ propIdx: 3 }, 40, 9, 1), true, 'two HE hits and a 40 t ram at 9 m/s: down');
 }
 
@@ -96,7 +96,7 @@ assert.match(ai, /if \(hullYieldingRecord\(o\)\) \{\s*if \(input\.throttle > 0\.
 // A pillbox 6 × 5.4 m across the line between two hulls on verdant (the authoritativeMatch receipt's tree line), its
 // contact record from the ground line up 2.45 m, as the build seats one.
 const probe = createAuthoritativeMatch({ mapId: 'verdant', seed: 1, countdownS: 0,
-  players: [{ id: 'probe', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -140, yaw: 0 } }] });
+  players: [{ id: 'probe', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -140, yaw: 0 } }] });
 let base = Infinity;
 for (let x = -3; x <= 3; x += 1) for (let z = -38; z <= -32; z += 1) base = Math.min(base, probe.heightField.getHeightAt(x, z));
 function pillboxWorld() {
@@ -132,7 +132,7 @@ function duel(shooterSpec, slot, steps) {
     mapId: 'verdant', seed: 3, countdownS: 0, worldCollision: world,
     players: [
       { id: 'gun', specId: shooterSpec, team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
-      { id: 'behind', specId: 'm1a2', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
+      { id: 'behind', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
     ],
   });
   match.onMatchReady();
@@ -155,7 +155,7 @@ function duel(shooterSpec, slot, steps) {
   return { record, crushes, impacts, hitsBehind, brokeAt, destroyed };
 }
 {
-  const he = duel('t90m', 2, 60 * 40);
+  const he = duel('t90am', 2, 60 * 40);
   assert.ok(he.impacts.length >= 3, `rounds stop on the pillbox (${he.impacts.length} impacts)`);
   assert.equal(he.hitsBehind.length, 0, 'the tank behind takes no hit while the pillbox stands');
   assert.equal(he.record.crushed, true, 'the 125 mm HE rounds bring it down');
@@ -166,7 +166,7 @@ function duel(shooterSpec, slot, steps) {
   assert.ok(he.crushes[0].directionZ > 0, 'along the round');
 }
 {
-  const ap = duel('m1a2', 0, 60 * 40);
+  const ap = duel('m1a1_abrams_hc', 0, 60 * 40);
   assert.ok(ap.impacts.length >= 5, `APFSDS rounds stop on the pillbox (${ap.impacts.length})`);
   assert.ok(ap.impacts.every((event) => event.shellType === 'APFSDS'));
   assert.equal(ap.record.crushed, false, 'and never bring it down');
@@ -179,7 +179,7 @@ function ram(specId, startZ, steps) {
     mapId: 'verdant', seed: 5, countdownS: 0, worldCollision: world,
     players: [
       { id: 'hull', specId, team: 'alpha', spawn: { x: 0, z: startZ, yaw: 0 } },
-      { id: 'far', specId: 'm1a2', team: 'bravo', spawn: { x: 60, z: 120, yaw: Math.PI } },
+      { id: 'far', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 60, z: 120, yaw: Math.PI } },
     ],
   });
   match.onMatchReady();
@@ -192,10 +192,10 @@ function ram(specId, startZ, steps) {
   return { record, crushes, hull: match.entityById.get('hull'), peak };
 }
 {
-  const heavy = ram('m1a2', -140, 60 * 20);
+  const heavy = ram('m1a1_abrams_hc', -140, 60 * 20);
   assert.equal(heavy.record.crushed, true, `a 66.8 t hull at ${heavy.peak.toFixed(1)} m/s brings it down`);
   assert.ok(fortifiedRamPoints(66.8, heavy.peak) >= FORTIFIED_HP_SP, 'as the ram law prices it');
-  const press = ram('m1a2', -44, 60 * 12);
+  const press = ram('m1a1_abrams_hc', -44, 60 * 12);
   assert.ok(press.peak < 6.4, `the press run meets the wall slowly (${press.peak.toFixed(2)} m/s)`);
   assert.equal(press.record.crushed, false, 'twelve seconds of full throttle against the wall: it holds');
   assert.ok(press.hull.state.pos.z < -37.7 - 2, 'and the hull stays outside it');

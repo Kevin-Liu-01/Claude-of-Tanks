@@ -32,7 +32,7 @@ assert.deepEqual(defaulted, [], 'no playable tank runs the synthetic default sup
 
 // 2. The published receipt is the drawn model's, validated the same way solo play validates it (game/state.ts).
 const { createTank } = await import('../vehicles/tankFactory.ts');
-for (const id of ['t90m', 'challenger_3x', 'udes03']) {
+for (const id of ['t90am', 'challenger3', 'udes03']) {
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'low', batchStatic: false, decor: false });
   try {
     const drawn = validatedContactGeometry(tank.contactGeom, TANK_SPECS[id].dims);
@@ -52,7 +52,7 @@ for (const id of ['t90m', 'challenger_3x', 'udes03']) {
 // the published receipt governs both, so over rolling ground at speed they agree step for step. Before, the host ran
 // 0.9 x the hull's length on its root.
 {
-  const id = 't90m';
+  const id = 't90am';
   const spec = TANK_SPECS[id];
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'low', batchStatic: false, decor: false });
   const drawn = validatedContactGeometry(tank.contactGeom, spec.dims);

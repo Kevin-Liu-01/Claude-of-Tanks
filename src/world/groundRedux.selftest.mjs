@@ -5,12 +5,12 @@
 // quality knob's mapping, and the shader contract — the new terms exist, the material still declares ten samplers,
 // the program key moved, the fold attribute rides the chunk vertices and the swash clock is the water sheet's.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import {
   GROUND_REDUX_BUDGET, groundReduxProfileIds, groundReduxUniformValues, resolveGroundReduxProfile, tallGrassQualityScale,
 } from './groundRedux.ts';
 import { MAP_IDS } from './maps/catalog.ts';
 import { PRESETS } from '../engine/quality.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // 1. Every battlefield has a row and every row names a battlefield; the unknown id runs the temperate defaults.
 const ids = groundReduxProfileIds();
@@ -90,6 +90,7 @@ assert.equal(resolveGroundReduxProfile('verdant').grass.reedMargin, 0);
 assert.deepEqual(resolveGroundReduxProfile('monsoon').rimTint, resolveGroundReduxProfile('mangrove').rimTint, 'moss on the wet maps\' outcrops');
 assert.ok(resolveGroundReduxProfile('desert').lip < resolveGroundReduxProfile('verdant').lip, 'the arid lip stays low');
 assert.equal(resolveGroundReduxProfile('mars').foldMoist, 0, 'no moisture in the folds of Mars');
+for (const id of SNOW) assert.equal(resolveGroundReduxProfile(id).foldMoist, 0, `${id}: a snow-filled hollow is not damp ground (no fold moisture, no green tint)`);
 
 // 3. The uniform packing the material reads: four packed vectors, the rate is 2π / period, clamped bands.
 const u = groundReduxUniformValues(resolveGroundReduxProfile('coastal'));
@@ -120,7 +121,7 @@ for (const name of ['mobile-low', 'mobile', 'mobile-high']) assert.equal(tallGra
 assert.equal(tallGrassQualityScale(null), 0); assert.equal(tallGrassQualityScale({ tallGrass: 4 }), 1.5); assert.equal(tallGrassQualityScale({ tallGrass: -1 }), 0);
 
 // 5. The terrain material's contract.
-const terrain = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const terrain = terrainSourceText();
 const material = terrain.slice(terrain.indexOf('const SPLAT_COMMON_FRAG'), terrain.indexOf('const SPLAT_NORMAL_FRAG'));
 const declared = [...material.matchAll(/uniform sampler2D ([^;]+);/g)].flatMap((m) => m[1].split(',').map((s) => s.trim()));
 assert.equal(declared.length, GROUND_REDUX_BUDGET.terrainDeclaredSamplers, `the material still declares ten samplers (${declared.join(' ')})`);

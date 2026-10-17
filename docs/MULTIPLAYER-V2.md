@@ -503,14 +503,20 @@ room reconnects, drops, the last drop, the milliseconds spent below `good`.
 
 ### 12.2 The surface (`src/ui/multiplayerStatus.ts`)
 
-- **The strip** (health glyph · ping · `SEAT n` · seated/28) mounts with every activated v2 round,
-  top-right under the fps/ping plate, and follows the touch lanes `.cot-net` uses through the
-  responsive body attributes (no width media queries; `body.cot-touch-layout` gives it a 44 px
-  target). Its ping is the window-minimum round trip; the HUD's own ping cell reads the same number
-  through a new HUD-frame port. The strip lives outside the HUD root and asks the HUD's measured
-  lanes (`battleHudLayout.ts`) for a relayout when it mounts: while it sits in the right roster's
-  column the enemies roster takes the lane below it (`--hud-roster-top-right`) and the side lane
-  under the roster follows — no fixed offset was added to either component.
+- **The strip** (health glyph · ping · `SEAT n` · seated/28) mounts with every activated v2 round
+  as bare HUD text (no box, no border; the HUD's text shadow) in the top-right corner row, level
+  with the fps/ping plate and left of it when the plate is on, so the enemies roster keeps its own
+  lane, level with the allies roster (owner review, 2026-10-16). It follows the touch lanes
+  `.cot-net` uses through the responsive body attributes (no width media queries;
+  `body.cot-touch-layout` gives it a 44 px target beside the map; a phone-width mouse window folds
+  it into the right lane under the objective). Its ping is the window-minimum round trip; the HUD's
+  own ping cell reads the same number through a new HUD-frame port. The strip lives outside the HUD
+  root and asks the HUD's measured lanes (`battleHudLayout.ts`) for a relayout when it mounts: they
+  set its right edge (`--hud-network-corner-right`) and fold it to its ping (`data-compact`) when
+  the row between the score and the plate is too narrow for every cell. Only its open details panel
+  reaches the roster's lane, and then the enemies roster takes the lane below the panel
+  (`--hud-roster-top-right`) and the side lane under the roster follows — no fixed offset was
+  added to either component.
 - **The panel** opens on a tap of the strip or the new rebindable `networkPanel` action (F3, v1's
   diagnostics key): link, round trip (floor, median, spread), updates (measured of 30 Hz), last
   update, buffer, loss, corrections, traffic, reconnects, room (phase and round trip), region,
@@ -1069,7 +1075,7 @@ Every run: verdant, standard rules, no bots, every hull driving and firing on th
 | Migration: tick timeline continuous, every seat live, no reset | PASS (resume tick 4120 ≥ old host's 3603) | PASS | PASS (resume tick ≥ 10900) |
 | Migration: own-hull jump on the presented pose (0.0 m) — allies of the new host / enemies / the new host itself | 3.5 / 28.4 / 4.9 m — FAIL | 5.8 and 4.8 / 28.0 and 6.4 / 0.8 and 0.3 m — FAIL | 5.5 / 5.0 / 0.5 m — FAIL; on the authority rows alone 1.0 / 6.1 / 0.07 m; the prediction's lead at the loss up to 4.0 m |
 | Old host back as a peer of the new one | 709 ms | 763 / 763 ms | 762 ms |
-| Peer desync at the end: the own predicted hull against the authority's newest row for it (≤ 0.5 m) | 0.026 m — PASS (run max free 1.0 m, contact 1.6 m) | 0.013 m — PASS (run max free 3.3 m; 9 of 13 predicting: the harness's `getSpec` lacked `leo2a7v`, fixed for the later runs) | 0.088 m — PASS (27 of 27 predicting; run max free 4.0 m, contact 6.2 m, 51 hard snaps over 6 min) |
+| Peer desync at the end: the own predicted hull against the authority's newest row for it (≤ 0.5 m) | 0.026 m — PASS (run max free 1.0 m, contact 1.6 m) | 0.013 m — PASS (run max free 3.3 m; 9 of 13 predicting: the harness's `getSpec` lacked `leo2_improved`, fixed for the later runs) | 0.088 m — PASS (27 of 27 predicting; run max free 4.0 m, contact 6.2 m, 51 hard snaps over 6 min) |
 | Peer tab RSS (≤ 150 MB) | 248 MB — FAIL in this harness (JS heap 31–48 MB) | 238 MB (median 185; heap 30–68 MB) — FAIL | 290 MB (median 228; heap ≤ 70 MB); the host's renderer 939 MB — FAIL |
 | Console errors (0) | 1 (the harness page's missing favicon; fixed) | 0 — PASS | 0 — PASS |
 | Room messages per match, client→room + room→client | 106 + 166 (start 21 + 37) | 672 + 1,235 (start 81 + 137) | 1,206 + 3,018 (start 165 + 277) |
@@ -2133,19 +2139,23 @@ socket: the decline and its withdrawal, none in a match, none from the mobile ti
 2026-10-13 the room heard `host_absent` 10 s after the close and the new host reported 13.75 s after it (MU.07, MP-S08).
 
 **What.** `main.ts` listens for `pagehide`; the composition's `handOffHosting` asks the session. A seat hosting a running
-match, with another seat willing to host (connected, a commander, not declined), sends `host_decline { declined: true }`
+match, with another commander connected (any seat the room's ladder can elect), sends `host_decline { declined: true }`
 on the room socket inside the event (synchronous, nothing awaited), once, and steps down at once: its actor stops and the
-seat is a peer. The room elects the willing seat at once (its declined path); a preference decline that finds no
-candidate after all leaves this seat hosting, and its lease runs as before (roomActor.selftest: "every commander has
-stepped down … it keeps hosting"). With no willing successor (a solo room with bots, every other seat declined, unable or
-gone) nothing is sent: the lease and the resume hold run as on main, so the same player can come back. A page entering
+seat is a peer. The room elects the next seat at once (its declined path: willing first, a declined commander as the last
+resort); a preference decline that finds no candidate after all leaves this seat hosting, and its lease runs as before
+(roomActor.selftest: "every commander has stepped down … it keeps hosting"). With no other connected commander (a solo
+room with bots, the others gone or spectating) nothing is sent: the lease and the resume hold run as on main, so the same
+player can come back. *(2026-10-14)* A commander that declined hosting is a successor too: the first cut waited for a
+willing one, but the lease elects the same declined seat 8 s later, and under load every seat declines in the lobby for
+headroom (§13.18), so the hand-off never ran where it mattered most (the §7 side-by-side). A page entering
 the back-forward cache (`pagehide` with `persisted`) is handled the same way; restored, it is a peer of whoever the room
 elected and never hosts on its own. Leaving the match afterwards does not decline twice; the hand-off is per round.
 
 Receipt: `matchSessionHandOff.selftest` (the real session hosting through the in-process host against a scripted room
 socket; cases "hands on and steps down" (the decline leaves before anything is awaited, once; the back-forward-cache
-restore follows the new host), "sole host keeps the lease" (the other seat declined, gone or spectating, or a solo room:
-nothing sent, still hosting), per round, none from a peer or the lobby, no actor outlives its core).
+restore follows the new host), "a declined commander is a successor" (hands on and steps down), "sole host keeps the
+lease" (the other seat gone or spectating, or a solo room: nothing sent, still hosting), per round, none from a peer or the
+lobby, no actor outlives its core).
 
 ### 13.20 A stalled seat wakes where the authority left it (MP stream, plan step 9, 2026-10-13)
 
@@ -2164,6 +2174,169 @@ in the seat's own controls (`controlAt` answers the newest earlier control). The
 Receipt: `predictionStall.selftest` (the real sampler, the real authority input buffer and the real predictor on one
 movement model; a seat driving and turning stalls 0.3 / 0.6 / 1 / 2 s: the largest correction after it wakes is 0.2-5 cm,
 against 2.1 m and 1.5 m for the two old behaviours).
+
+### 13.26 The scene's programs link while the roster is painted (MP stream, 2026-10-15)
+
+**Why.** The perf lane's link census (urban solo entry): 187 programs on main against 149 on Sept 30. Props programs
+grew to 40 from 22 (4.4 MB of fragment source), the terrain splat fragment to 374 K characters from 205 K, and nine
+thermal programs now compile at entry. A link batch drains about four times slower. Every program reached the driver in
+one late submission (the strict compile after the roster), and the first covered draw waited in `getUniforms` for the
+whole queue; the black watchdog linked the rest. In the MP entry that was compile 0.9 → 1.3 s and the black watchdog
+0.1 → 0.8 s.
+
+**What.** With a `warm.submitPrograms` port, the first WELCOME sets the battle's lights up: garage lights off, the
+authority's weather (the WELCOME's seed) and the night pool. That makes the light signature final, so the scene's
+programs are submitted to the driver's parallel compile on the strict compile's own passes (matching keys). They link
+while the roster is painted. Activation skips the lights it already set up and keeps its `atmosphere` stage; the strict
+compile answers the linked programs from three's cache. The solo deployment's twin is `item/perf-entry-early-programs`.
+
+Receipt: `browserComposition.selftest`. The WELCOME runs garage lights off, weather, night pool and submission in that
+order, activation does not repeat them, and a submission that never settles holds nothing.
+
+### 13.25 The returning tab's entry overlaps what it can (MP stream, 2026-10-15)
+
+**Why.** In the §7 side-by-side (Verdant, built sites, n=3), the rejoin took 24.1 s on Sept 30 and 32.2 s on main
+(tab opened to back in battle). By stage:
+
+- Garage: +2.2 s (+0.9 s with mp-garage-freeze);
+- world and modules: +2.9 s;
+- shader stages: +1.0 s;
+- Garage-to-entry gap: +1.2 s;
+- roster and panel: about equal (main's roster painting, 6-7 s after the WELCOME, replaced Sept 30's 5.4 s panel mask
+  link).
+
+The world and shader growth went to their lanes. Two things are the MP path's own.
+
+**What.**
+- `prewarmRosterVisuals` (battlePresentation) warms the builders and texture bakes of the seats the room names while
+  the world loads. The bakes run in a worker where the browser has one. Previously this all queued behind the
+  WELCOME, after the world. It is never awaited by the entry: `prepareRoster` joins what is still in flight (the bakes
+  coalesce). The bots arrive with the WELCOME and are painted then. The trace records `rosterPrewarmed`.
+- A tab opened on a room invite holds the Garage's idle work (the neighbouring heroes, the dressing set pieces) while it
+  joins and enters, instead of sharing the main thread with the room's join and the entry. A return to the Garage
+  schedules the dressing itself (garageReturnRuntime). A tab the invite leaves in the Garage gets both after 12 s,
+  unless a battle entry holds the lifecycle then.
+
+Receipts:
+- `battlePresentation.selftest`: one warm per vehicle, paint and quality; the viewer's vehicle at its own quality; a
+  failing bake does not escape; an aborted round stops.
+- `browserComposition.selftest`: the warm starts with the world load and a warm that never settles holds nothing.
+- `garageDressingLifecycle.selftest`: the invite boot defers the work and a plain boot runs it at ready.
+- The timing is measured in the final pass (the rejoin trace).
+
+### 13.24 A busy seat is not a dead host (MP stream, 2026-10-15)
+
+**Why.** Every main rejoin in the §7 side-by-side opened a second peer link about 7 s after the first. The first link
+was answered in 0.2 s and the seat was welcomed, so the entry trace marked `roster` twice (`item/mp-rejoin-trace`). The
+returning tab paints its roster for 6-7 s after the WELCOME. Its loading yielders use `scheduler.yield`, whose
+continuations run ahead of ordinary tasks, so the data channel's message tasks waited while the tab kept rendering
+frames. After 5 s without an accepted snapshot, `ConnectionRecovery` read the silence as a dead host and asked for a
+fresh socket. On Sept 30 the roster took 1.2 s, under the 5 s window.
+
+**What.** `MatchClient` keeps one ordinary task in flight (`taskProbe`; the browser composition posts it with
+`setTimeout 0`). A task still waiting past 250 ms means this tab could not have read the channel either. The
+recovery's stall clock restarts at the last frame the tab was seen starved (`RecoveryInput.starvedAtMs`). A host that
+stays silent for 5 s after the tab runs again still stalls the link as before. `stats().taskStarvations` counts the
+episodes. Without a probe (Node, the receipts' virtual clocks) nothing changes.
+
+Receipts:
+- `recovery.selftest`: a seat starved for 6.5 s requests no socket and stalls 5 s after it wakes. The control stalls at
+  5 s.
+- `matchClient.selftest`: a seat whose probe tasks and host frames are held together for 6.5 s keeps its link. A host
+  that stays silent while the tab runs still requests a fresh socket.
+- Ablating the stall-clock restart fails both.
+
+### 13.23 The seat's movement checkpoint as a changed-value mask (MP stream, wire 7, 2026-10-15)
+
+**Why.** The §7 side-by-side (Sept 30 against main, built sites, Verdant, two peers) read the host's uplink at 112 against
+135 kbit/s. A peer's downlink by message (the in-process P2P set-up, `$SP/mp/uplink-probe.mjs`) shows where: snapshot
+deltas averaged 329 bytes on Sept 30 and 380 on main, events and keyframes alike. The viewer section carries the
+seat's movement checkpoint whole on every snapshot. Physics versions 3-8 grew it from 45 to 63 `f32` values, which is
++72 bytes a snapshot to every seat.
+
+**What.** On a delta whose baseline holds a viewer on the same checkpoint version and length, the checkpoint is a mask
+of the values that changed since the baseline's (compared as `f32`) and those values (`src/mp/wire/README.md`). A
+driving hull changes ~36 of the 63 between 20 Hz snapshots, a stopped one ~20. Keyframes and every baseline the mask
+cannot follow write the full form. WIRE_VERSION 6 -> 7: a seat and a host on different layouts meet the same-wire build
+check's "refresh" refusal (`matchBuildGate`). The PROTOCOL_VERSION bump is the coordinator's: it rides 225's ids-bulk
+bump to 8, or takes the next one.
+
+Receipts: `viewerMask.selftest` checks exact `f32` round trips (the sign of zero kept), the full form wherever the
+baseline cannot follow, a typed `missing_baseline`, and on the real movement model the viewer at 174 bytes a snapshot
+driving and 114 stopped, against 274 whole. The probe's snapshot downlink for two peers reads Sept 30 108, main 125,
+masked 95 kbit/s (deltas 329 / 380 / 282 bytes).
+
+**The browser's wake order (2026-10-15, the §7 side-by-side).** The receipt's seat read the authority only after its
+waking frame, and dropped what reached it while stalled. A browser queues those rows as message tasks, and they run
+before the waking frame or after it. On the e2e's seat-pause probe (built site, B's main thread blocked while it drives)
+the hull was still corrected by 2.8 m after a 0.3 s stall and by 7.8 m, with a hard snap, after 0.7 s. That matches the
+side-by-side's own-prediction outliers on main (6.6-8.2 m), which came with 300-700 ms page stalls. There were two
+causes:
+
+- **Rows first.** The newest queued row is newer than anything the stalled seat sampled, so its reconcile is a tick jump
+  that seats the hull on the authority's pose at that tick. `skipTicks` then stepped the whole skipped range again from
+  there, and the hull ran ahead by the overlap.
+- **Frame first.** Every queued row is older than the replay window (`maxReplayTicks`, 24). Each one rewound the hull and
+  replayed only the window's newest ticks, leaving the hull behind by the rest.
+
+`skipTicks` now steps only the ticks after the hull's current one. `MatchClient` holds the newest own row and reconciles
+it once, at the next frame before its sampler (`reconcilePending`); the rows it supersedes carry nothing the newest does
+not. The receipt now queues the stalled seat's rows and runs both wake orders: the largest correction after a
+0.3-2 s stall is 0.2-5 cm. Its control, every row reconciled as it arrives after the waking frame, corrects 2.86 m after
+0.6 s. Ablating either half fails the receipt: rows first reads 1.71 m after 0.3 s; frame first, with per-row reconcile,
+reads 2.86 m after 0.6 s.
+
+### 13.21 The elected seat's host thread is ready before the election (MP stream, 2026-10-14)
+
+**Why.** An election's freeze is the room's detection (the pagehide hand-off of §13.19, else the socket lease), then the
+elected seat's boot: it spawned its host Worker, loaded the module graph, fetched and built the battlefield's collision
+world and loaded the roster's combat anatomy (ed655f9de) while every seat waited for it — about 2 s on the honest e2e of
+2026-10-13 at load ~50 (`host_changed` → the host's role event), on top of the peers' re-offers.
+
+**What.** A seat that may host (a host thread, not the mobile tier, not "never host") prepares a standby host thread
+`STANDBY_HOST_DELAY_MS` (20 s) after it is welcomed as a peer of a p2p match — past its own covered entry: the session
+spawns the port and posts `prepare { mapId, mode, manifestBase, specIds }`; the core builds the world (`buildWorld`) and
+loads the fleet (`ensureAuthorityFleet`) and, when the match fields bots, the authority's ground and bot navigation grid
+on that world (`prepareAuthorityGround`: the grid was 1.2 s of a 1.8 s authority creation on Verdant, 39 ms on 09-30 —
+the edge steepness and hull edge passes), answers `prepared { ok, ms }`, and starts no actor. When the room elects this
+seat, `createHost` takes that port, and the core's `boot` takes the prepared world when it is the same battlefield,
+variant and manifests (one in flight is awaited, not rebuilt); the first authority on that world takes the prepared
+ground once (only its own world object, with the same obstacles and query); a failed preparation or another battlefield
+builds afresh, as before. Measured in Node on Verdant with 3 seats and 3 bots (cold, load ~100): the boot from 'boot' to
+'ready' 3.4-4.3 s on main, 0.46 s prepared (09-30: 1.25-1.97 s). Once per match; leaving the match (or the session) closes it; a seat that hosted and stepped down prepares a new
+one after its next welcome. `p2p.standbyHost: false` turns it off; `{ delayMs }` sets the delay. The cost is one idle
+Worker holding the battlefield's collision world on each host-capable peer for the match's length.
+
+Receipts: `preparedAuthorityGround.selftest` (two Verdant worlds, one prepared: six bots play 30 s digest for digest the
+same; taken once, by its own world only; a world whose obstacles changed builds its own), `hostStandby.selftest` (the
+core through its port: one world build when the boot follows a preparation,
+a preparation in flight awaited, a different battlefield or a failed preparation built afresh, nothing prepared after a
+boot or a stop), `mp-p2p-headless.selftest` (the elected peer hosts on the one thread it prepared: `p2Cores` 1,
+`bootedPrepared`).
+
+### 13.22 A crashed host's peers vouch for its loss (MP stream, 2026-10-14)
+
+**Why.** The pagehide hand-off (§13.19) covers a host that closes, reloads or navigates; a host whose tab crashes, whose
+browser is killed or whose machine sleeps sends nothing, and the room waited out the 8 s socket lease
+(`ROOM_HOST_DISCONNECT_GRACE_MS`) before electing — 223's production window measured 8.4 s, the headless crash 8.0 s.
+The lease exists for a room-socket blip: a host whose page lives keeps feeding its peers over WebRTC while its room
+socket reconnects, and electing then would move a healthy match.
+
+**What.** The peers tell the two cases apart. A peer welcomed by the current host that has accepted no snapshot for
+`ROOM_HOST_UNREACHABLE_AFTER_MS` (1.5 s) sends `host_unreachable { generation, silentMs }`, again every
+`ROOM_HOST_UNREACHABLE_REPEAT_MS` while the silence lasts (a page that itself stalled, a frame gap over 500 ms, restarts
+its count). The room keeps each claim for `ROOM_HOST_UNREACHABLE_TTL_MS` (3 s), and when the running host's room socket is
+gone (the lease armed) and a commander other than the host claims within that window — before or after the drop — it
+elects at once: `host_changed { reason: 'timeout', detail: 'socket_lease' }`, the election the lease would have held,
+logged as `host lost` with its witnesses. A claim with the host's socket alive (a busy host page) and a socket gone
+with no claim (a blip) change nothing; the host's own claim, another generation, a spectator, a silence under 1.5 s are
+acknowledged and ignored. Additive: a room that predates the command refuses it (the client ignores the refusal), and the
+`host_changed` it sends is one every tab already reads. The room double (`tools/mp-p2p-room-double.ts`) mirrors the rule.
+
+Receipts: `roomActor.selftest` (the rule's cases on the real actor), `mp-p2p-headless-crash.selftest` (the headless flow
+with the production lease: the host's socket and links drop at once, both peers claim, elected 2.1 s after the crash
+against 8.0 s), `mp-p2p-headless.selftest`, `mp-room-lifecycle.selftest`, `roomWorkerProgram.selftest` (the Worker
+program typechecks). Ships with the rooms Worker (a planned Worker release) and the client; either alone is inert.
 
 ## 10. Decisions for the owner
 

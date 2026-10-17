@@ -3,39 +3,39 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 
 const modernProfiles = new Map([
-  ['leo2a5', 'leopard-2a5'],
-  ['leo2a5_a5nl', 'leopard-2a5'],
-  ['leo2a6', 'leopard-2a6'],
-  ['leo2a6m', 'leopard-2a6m'],
+  ['leo2a4_v', 'leopard-2a5'],
+  ['leo2a4m', 'leopard-2a5'],
+  ['leo2a4', 'leopard-2a6'],
+  ['leo2a4_otco', 'leopard-2a6m'],
   ['leo2a6_ua', 'leopard-2a6m'],
-  ['leo2a7v', 'leopard-2a7v'],
-  ['strv122', 'leopard-2a5'],
+  ['leo2_improved', 'leopard-2a7v'],
+  ['strv121', 'leopard-2a5'],
 ]);
 const verticalTerminalIds = new Set([
-  'leo2a5', 'leo2a5_a5nl', 'strv122', 'leo2a6', 'leo2a6m', 'leo2a6_ua', 'leo2a7v',
+  'leo2a4_v', 'leo2a4m', 'strv121', 'leo2a4', 'leo2a4_otco', 'leo2a6_ua', 'leo2_improved',
 ]);
 const compoundTerminalIds = new Set([
-  'leo2a5', 'leo2a5_a5nl', 'strv122', 'leo2a6', 'leo2a6m', 'leo2a6_ua', 'leo2a7v',
+  'leo2a4_v', 'leo2a4m', 'strv121', 'leo2a4', 'leo2a4_otco', 'leo2a6_ua', 'leo2_improved',
 ]);
 const compoundTerminalExpectations = new Map([
-  ['leo2a5', { upper: [1.06, 0.76], ridge: [1.44, 0.25], lower: [1.38, 0.02] }],
-  ['leo2a5_a5nl', { upper: [1.06, 0.76], ridge: [1.44, 0.25], lower: [1.38, 0.02] }],
-  ['strv122', { upper: [1.06, 0.76], ridge: [1.44, 0.25], lower: [1.38, 0.02] }],
-  ['leo2a6', { upper: [1.05, 0.62], ridge: [1.435, 0.22], lower: [1.38, 0.02] }],
-  ['leo2a6m', { upper: [1.02, 0.66], ridge: [1.435, 0.22], lower: [1.30, 0.02] }],
+  ['leo2a4_v', { upper: [1.06, 0.76], ridge: [1.44, 0.25], lower: [1.38, 0.02] }],
+  ['leo2a4m', { upper: [1.06, 0.76], ridge: [1.44, 0.25], lower: [1.38, 0.02] }],
+  ['strv121', { upper: [1.06, 0.76], ridge: [1.44, 0.25], lower: [1.38, 0.02] }],
+  ['leo2a4', { upper: [1.05, 0.62], ridge: [1.435, 0.22], lower: [1.38, 0.02] }],
+  ['leo2a4_otco', { upper: [1.02, 0.66], ridge: [1.435, 0.22], lower: [1.30, 0.02] }],
   ['leo2a6_ua', { upper: [1.02, 0.66], ridge: [1.435, 0.22], lower: [1.30, 0.02] }],
-  ['leo2a7v', { upper: [1.05, 0.62], ridge: [1.41, 0.22], lower: [1.38, 0.02] }],
+  ['leo2_improved', { upper: [1.05, 0.62], ridge: [1.41, 0.22], lower: [1.38, 0.02] }],
 ]);
 const receiptsById = new Map();
 
-for (const id of ['leo2a5', 'leo2a5_a5nl']) {
+for (const id of ['leo2a4_v', 'leo2a4m']) {
   const turretPlates = getSpec(id).armor.turretPlates;
   assert.equal(turretPlates.some((plate) => /^turret_wedge_[LR]$/.test(plate.name)), false,
     `${id} retires the obsolete one-piece sloping spaced-armor hitbox`);
   const chevrons = turretPlates.filter((plate) => plate.name.startsWith('turret_chevron_'));
   assert.equal(chevrons.length, 8,
     `${id} traces two upper/lower chevron courses on both cheeks`);
-  const expectedProtection = id === 'leo2a5_a5nl' ? [275, 936] : [220, 750];
+  const expectedProtection = id === 'leo2a4m' ? [275, 936] : [220, 750];
   assert.ok(chevrons.every((plate) => plate.kind === 'spaced'
       && plate.physicalMm === 90
       && plate.keMm === expectedProtection[0] && plate.ceMm === expectedProtection[1]),
@@ -120,18 +120,21 @@ for (const [id, expectedProfile] of modernProfiles) {
   assert.equal(receipt.internalCourseCaps, false,
     `${id} has no coincident internal caps that can render as stacked layers`);
   assert.equal(receipt.faceLayersPerSide, 1, `${id} exposes one upper/lower assembly per side`);
-  assert.equal(receipt.surfacePanelLayerCount, 1,
+  // r4b: the field-ERA 2A6M carries its ERA field as the cheek's outer layer instead of the cassettes
+  // (cassettes that bend with the cheek stood through the flat tiles' edges)
+  const eraFieldCheek = id === 'leo2a4_otco';
+  assert.equal(receipt.surfacePanelLayerCount, eraFieldCheek ? 0 : 1,
     `${id} uses one shallow cassette layer instead of stacked cheek courses`);
-  assert.equal(receipt.surfacePanelCount, 8, `${id} carries four broad surface panels on each cheek`);
+  assert.equal(receipt.surfacePanelCount, eraFieldCheek ? 0 : 8, `${id} carries four broad surface panels on each cheek`);
   assert.equal(receipt.surfacePanelsStructuralReplacement, false,
     `${id} keeps its continuous armor cheek underneath the surface cassettes`);
-  assert.equal(receipt.exposedPanelSeams, true, `${id} leaves intentional seams between cheek panels`);
+  assert.equal(receipt.exposedPanelSeams, !eraFieldCheek, `${id} leaves intentional seams between cheek panels`);
   assert.equal(receipt.roofSightlineClosed, true,
     `${id} closes the daylight channel between the cheek roots and core turret roof`);
   assert.equal(receipt.roofBridgeVolumes, 2, `${id} uses one continuous roof bridge per cheek`);
   assert.equal(receipt.roofBridgeStructural, true,
     `${id} owns its roof closures in the rotating armor bucket`);
-  const closesCenterRoofGap = id === 'leo2a7v';
+  const closesCenterRoofGap = id === 'leo2_improved';
   assert.equal(receipt.roofCenterGapClosed, closesCenterRoofGap,
     `${id} records whether its two cheek-root bridges join across the centerline`);
   assert.equal(receipt.roofCenterClosureVolumes, closesCenterRoofGap ? 1 : 0,
@@ -165,19 +168,19 @@ for (const [id, expectedProfile] of modernProfiles) {
     assert.ok(smokeReceipt.sides.every(({ mountX }) => Math.abs(mountX) >= 1.25),
       `${id} smoke banks sit externally on the turret side/chamfer`);
   }
-  if (['leo2a5', 'leo2a5_a5nl', 'strv122'].includes(id)) {
+  if (['leo2a4_v', 'leo2a4m', 'strv121'].includes(id)) {
     assert.equal(rootVertexOccurrences(tank.root, [0.2, 0.802, 1.73]), 0,
       `${id} removes the structural plateau-tail roof tab`);
     assert.equal(rootVertexOccurrences(tank.root, [0.205, 0.8039, 1.732]), 0,
       `${id} removes the selected plateau-tail tone skin`);
   }
-  if (['leo2a5', 'leo2a5_a5nl', 'leo2a6', 'leo2a6m', 'leo2a6_ua', 'leo2a7v', 'strv122'].includes(id)) {
+  if (['leo2a4_v', 'leo2a4m', 'leo2a4', 'leo2a4_otco', 'leo2a6_ua', 'leo2_improved', 'strv121'].includes(id)) {
     assert.equal(receipt.lowerArmorPanArchitecture, 'cheek-return-owned',
       `${id} removes the separate underride blocker beneath its extended lower cheeks`);
     assert.equal(receipt.separateUnderrideFront, false,
       `${id} does not retain a flat front behind the structural lower return`);
   }
-  if (id === 'leo2a5' || id === 'leo2a5_a5nl' || id === 'strv122') {
+  if (id === 'leo2a4_v' || id === 'leo2a4m' || id === 'strv121') {
     const covered = receipt.sides[0].stations.filter((station) => station.x <= 1.011 + 1e-6);
     assert.ok(covered.length >= 2, `${id} samples the complete owner-marked inner cheek span`);
     assert.ok(covered.every((station) => station.lowerY <= -0.066 + 1e-6),
@@ -185,7 +188,7 @@ for (const [id, expectedProfile] of modernProfiles) {
     assert.ok(covered.every((station) => station.lowerZ <= 1.91 + 1e-6),
       `${id} lower cheek returns behind the old z=1.91 underride face`);
   }
-  if (id === 'leo2a6' || id === 'leo2a6m' || id === 'leo2a6_ua') {
+  if (id === 'leo2a4' || id === 'leo2a4_otco' || id === 'leo2a6_ua') {
     const covered = receipt.sides[0].stations.filter((station) => station.x <= 1.011 + 1e-6);
     assert.ok(covered.length >= 3, `${id} samples the complete owner-marked A6 inner cheek span`);
     assert.ok(covered.every((station) => station.lowerY <= -0.066 + 1e-6),
@@ -193,34 +196,34 @@ for (const [id, expectedProfile] of modernProfiles) {
     assert.ok(covered.every((station) => station.lowerZ <= 1.90 + 1e-6),
       `${id} lower cheek returns behind the old z=1.90 underride face`);
   }
-  if (id === 'leo2a6m' || id === 'leo2a6_ua') {
+  if (id === 'leo2a4_otco' || id === 'leo2a6_ua') {
     assert.equal(receipt.tipPads.filter((pad) => pad.s < 0).length, 0,
       `${id} removes both owner-marked left-side tip plates`);
     assert.ok(receipt.tipPads.every((pad) => Math.abs(pad.x - 1.44) > 1e-6
         && Math.abs(pad.x - 1.53) > 1e-6),
     `${id} has no residual plate at either marked blocker plane`);
   }
-  if (id === 'leo2a7v') {
+  if (id === 'leo2_improved') {
     assert.ok(receipt.maximumCheekHalfWidthM <= receipt.bodyFrontHalfWidthM + 0.04,
-      'leo2a7v cheek terminal uses only the narrow A6-family armor overhang');
+      'leo2_improved cheek terminal uses only the narrow A6-family armor overhang');
     assert.ok(receipt.ridgeControlLine.length >= 6,
-      'leo2a7v distributes its arrowhead sweep across the complete turret front');
+      'leo2_improved distributes its arrowhead sweep across the complete turret front');
     for (let index = 1; index < receipt.ridgeControlLine.length; index++) {
       const previous = receipt.ridgeControlLine[index - 1];
       const current = receipt.ridgeControlLine[index];
-      assert.ok(current[0] > previous[0], `leo2a7v ridge station ${index} advances outboard`);
+      assert.ok(current[0] > previous[0], `leo2_improved ridge station ${index} advances outboard`);
       assert.ok(current[1] < previous[1] - 0.075,
-        `leo2a7v ridge station ${index} sweeps rearward instead of forming a square brow`);
+        `leo2_improved ridge station ${index} sweeps rearward instead of forming a square brow`);
     }
     assert.ok(receipt.ridgeControlLine[0][1] - receipt.ridgeControlLine.at(-1)[1] >= 1.25,
-      'leo2a7v carries a deep gun-root-to-outboard plan chevron');
+      'leo2_improved carries a deep gun-root-to-outboard plan chevron');
     for (const sideReceipt of receipt.sides) {
       assert.equal(sideReceipt.terminalSideClosure.architecture,
         'compound-sloped-terminal-return',
-      'leo2a7v lower cheek closes into the turret side instead of ending at a detached wall');
+      'leo2_improved lower cheek closes into the turret side instead of ending at a detached wall');
       for (const station of sideReceipt.stations) {
         assert.ok(station.upperDominanceRatio >= 1.45,
-          'leo2a7v keeps the A6-family dominant upper cheek and shorter lower return');
+          'leo2_improved keeps the A6-family dominant upper cheek and shorter lower return');
       }
     }
     assert.deepEqual(turretRig.userData.leopard2A7VLineageReceipt, {
@@ -232,17 +235,17 @@ for (const [id, expectedProfile] of modernProfiles) {
       dominantUpperChevron: true,
       a7vSpecificProtectionRetained: true,
       a7vSpecificRoofEquipmentRetained: true,
-    }, 'leo2a7v records an A6-family shell with its A7V protection and equipment retained');
+    }, 'leo2_improved records an A6-family shell with its A7V protection and equipment retained');
     const centerClosure = receipt.roofCenterClosure;
     assert.equal(centerClosure.architecture, 'single-watertight-center-roof-span');
     assert.equal(centerClosure.triangleCount, 12,
-      'leo2a7v closes the complete center gap with one six-sided structural span');
+      'leo2_improved closes the complete center gap with one six-sided structural span');
     assert.ok(Math.abs(centerClosure.gapWidthM - 0.52) <= 1e-9,
-      'leo2a7v closes the marked 520 mm gap between its cheek-root bridges');
+      'leo2_improved closes the marked 520 mm gap between its cheek-root bridges');
     assert.equal(centerClosure.leftX, -0.26);
     assert.equal(centerClosure.rightX, 0.26);
     assert.equal(centerClosure.sideBridgeInnerCapsRetained, false,
-      'leo2a7v removes the old opposing caps instead of stacking the closure over them');
+      'leo2_improved removes the old opposing caps instead of stacking the closure over them');
     assert.deepEqual(turretRig.userData.leopard2A7VRoofAttachmentReceipt, {
       roofCenterGapClosed: true,
       roofCenterGapWidthM: 0.52,
@@ -250,7 +253,7 @@ for (const [id, expectedProfile] of modernProfiles) {
       emesSupportingRoofY: 0.62,
       emesPedestalRoofOverlapM: 0.01,
       emesPedestalTopY: 0.88,
-    }, 'leo2a7v records the closed center roof and the seated EMES pedestal');
+    }, 'leo2_improved records the closed center roof and the seated EMES pedestal');
   }
 
   const turret = findMergedMesh(turretRig, 'turret');
@@ -270,7 +273,7 @@ for (const [id, expectedProfile] of modernProfiles) {
       `${id} ${sideReceipt.side} roof bridge follows every cheek plan station`);
     assert.ok(sideReceipt.roofBridge.thicknessM >= 0.08,
       `${id} ${sideReceipt.side} roof bridge is structural rather than a zero-thickness cover`);
-    assert.equal(sideReceipt.surfacePanels.length, 4,
+    assert.equal(sideReceipt.surfacePanels.length, id === 'leo2a4_otco' ? 0 : 4,
       `${id} ${sideReceipt.side} divides the broad cheek into four readable cassettes`);
     if (verticalTerminalIds.has(id)) {
       const closure = sideReceipt.terminalSideClosure;
@@ -350,7 +353,9 @@ for (const [id, expectedProfile] of modernProfiles) {
         `${id} ${sideReceipt.side} panel ${panelIndex} stays within the parent cheek`);
       assert.ok(panel.thicknessM >= 0.015 && panel.thicknessM <= 0.03,
         `${id} ${sideReceipt.side} panel ${panelIndex} remains a shallow armor cassette`);
-      assert.equal(panel.triangleCount, 12,
+      // a flat cassette is one 12-triangle slab; a band that spans a cheek station
+      // bends with the parent: one closed loft, eight triangles per course plus two caps
+      assert.ok(panel.triangleCount >= 12 && (panel.triangleCount - 4) % 8 === 0,
         `${id} ${sideReceipt.side} panel ${panelIndex} is a closed shallow solid`);
       assert.ok(panel.normal[1] > 0.65 && panel.normal[2] > 0,
         `${id} ${sideReceipt.side} panel ${panelIndex} follows the upper forward slope`);
@@ -395,7 +400,7 @@ for (const [id, expectedProfile] of modernProfiles) {
     }
   }
 
-  if (id === 'leo2a7v') {
+  if (id === 'leo2_improved') {
     const closure = receipt.roofCenterClosure;
     for (const point of [
       closure.left.frontTop,
@@ -408,22 +413,22 @@ for (const [id, expectedProfile] of modernProfiles) {
       closure.right.rearBottom,
     ]) {
       assert.ok(hasVertex(position, point),
-        `leo2a7v center roof closure owns boundary point ${point.join(',')}`);
+        `leo2_improved center roof closure owns boundary point ${point.join(',')}`);
     }
     assert.ok(hasVertex(position, [-1.12, 0.61, 0.45]),
-      'leo2a7v EMES pedestal reaches down into the supporting turret roof');
+      'leo2_improved EMES pedestal reaches down into the supporting turret roof');
     assert.equal(rootVertexOccurrences(turretRig, [-1.12, 0.74, 0.45]), 0,
-      'leo2a7v removes the former floating EMES pedestal underside');
+      'leo2_improved removes the former floating EMES pedestal underside');
   }
 
-  if (id === 'leo2a5') {
+  if (id === 'leo2a4_v') {
     assert.deepEqual(turretRig.userData.leopardA6MantletRoofBridge, {
       frontZ: 2.20,
       rearZ: 0.50,
       frontHalfWidth: 0.30,
       rearHalfWidth: 0.28,
       ribZ: [],
-    }, 'leo2a5 seals its central cheek-root channel with one clean ribless bridge');
+    }, 'leo2a4_v seals its central cheek-root channel with one clean ribless bridge');
     for (const point of [
       [-0.94, 0.772475, 0.9699167],
       [-0.21, 0.816275, 1.0185833],
@@ -431,10 +436,10 @@ for (const [id, expectedProfile] of modernProfiles) {
       [0.94, 0.772475, 0.9699167],
     ]) {
       assert.equal(rootVertexOccurrences(turretRig, point), 0,
-        `leo2a5 removes the owner-marked duplicate crown face at ${point.join(',')}`);
+        `leo2a4_v removes the owner-marked duplicate crown face at ${point.join(',')}`);
     }
   }
-  if (id === 'leo2a6') {
+  if (id === 'leo2a4') {
     for (const point of [
       [0.9894, 0.29, 1.7533333],
       [1.2804, 0.29, 1.40],
@@ -442,7 +447,7 @@ for (const [id, expectedProfile] of modernProfiles) {
       [-1.261, 0.51, -0.46],
     ]) {
       assert.equal(rootVertexOccurrences(turretRig, point), 0,
-        `leo2a6 removes the owner-marked buried shadow wall at ${point.join(',')}`);
+        `leo2a4 removes the owner-marked buried shadow wall at ${point.join(',')}`);
     }
   }
 
@@ -450,8 +455,8 @@ for (const [id, expectedProfile] of modernProfiles) {
 }
 
 {
-  const a6 = receiptsById.get('leo2a6');
-  const a7v = receiptsById.get('leo2a7v');
+  const a6 = receiptsById.get('leo2a4');
+  const a7v = receiptsById.get('leo2_improved');
   assert.ok(a6 && a7v, 'A6 and A7V lineage receipts are available');
   assert.ok(Math.abs(a7v.bodyFrontHalfWidthM - a6.bodyFrontHalfWidthM) <= 0.01,
     'A7V keeps the A6 fighting-compartment width');
@@ -467,7 +472,7 @@ for (const [id, expectedProfile] of modernProfiles) {
   }
 }
 
-const otco = createTank('leo2a4_otco', null, {
+const otco = createTank('leo2a3', null, {
   proceduralOnly: true,
   geometryReceipt: true,
   quality: 'high',

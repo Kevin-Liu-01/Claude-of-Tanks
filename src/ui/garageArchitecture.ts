@@ -47,6 +47,8 @@ export interface GarageArchitectureStats {
   backdropLayers: number;
   horizonStyle: 'flat' | 'rolling' | 'urban' | 'coastal' | 'alpine' | 'mesa' | 'dune' | 'none';
   horizonMaxHeightM: number;
+  builtHorizonMassTopM: number;
+  builtHorizonAccentTopM: number;
   groundCover: number;
   structures: number;
   wrecks: number;
@@ -201,6 +203,8 @@ function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
     backdropLayers: 0,
     horizonStyle: 'none',
     horizonMaxHeightM: 0,
+    builtHorizonMassTopM: 0,
+    builtHorizonAccentTopM: 0,
     groundCover: 0,
     structures: 1,
     facilityProps: 0,
@@ -403,6 +407,8 @@ export function createGarageArchitectureController(
       backdropLayers: numericStat(data.backdropLayers),
       horizonStyle: horizonStyleStat(data.horizonStyle),
       horizonMaxHeightM: numericStat(data.horizonMaxHeightM),
+      builtHorizonMassTopM: numericStat(data.builtHorizonMassTopM),
+      builtHorizonAccentTopM: numericStat(data.builtHorizonAccentTopM),
       groundCover: numericStat(data.groundCover),
       structures: numericStat(data.structures),
       wrecks: numericStat(data.wrecks),

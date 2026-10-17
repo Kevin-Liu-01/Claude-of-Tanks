@@ -53,6 +53,11 @@ function recordGapToPath(record, path) {
     if (part[0] === 'o') {
       const [, cx, cz, hw, hl, yaw] = part, c = Math.cos(yaw), s = Math.sin(yaw);
       poly = [[-hw, -hl], [hw, -hl], [hw, hl], [-hw, hl]].map(([lx, lz]) => [cx + lx * c + lz * s, cz - lx * s + lz * c]);
+    } else if (part[0] === 'p') {
+      // (the maps lane, 2026-10-14) a convex part with a drawn top (physics F3, tools/headlessWorldCollision.mjs packShape):
+      // its extent, the planes' origin, their count, three numbers a plane, then its corners — the corners are its outline
+      const numbers = part.slice(6 + part[5] * 3);
+      poly = []; for (let i = 0; i < numbers.length; i += 2) poly.push([numbers[i], numbers[i + 1]]);
     } else {
       const numbers = part[0] === 'w' ? part.slice(3) : part.slice(1);
       poly = []; for (let i = 0; i < numbers.length; i += 2) poly.push([numbers[i], numbers[i + 1]]);
@@ -84,17 +89,19 @@ const KINDS = Object.keys(LANDMARK_KINDS);
 assert.deepEqual(Object.keys(LANDMARK_BUILDERS).sort(), [...KINDS].sort(), 'every planned kind has a builder, and every builder is planned');
 
 /** Desktop triangle budgets by kind (the phones build the coarse share of the same). */
+// (the looks lane, 2026-10-15, WORKLIST #11 r2: a piazza's slabs and liste laid as units, their sides fine joinery)
 const BUDGET = {
   church: 16000, stationHall: 13000, townHall: 10000, marketHall: 8000, grainElevator: 9000, granary: 2500,
   waterTower: 6000, windmill: 8000, belfry: 4000, campanile: 4000, fireLookout: 5000, valveTower: 4000,
   obelisk: 4500, statue: 1500, columnMonument: 1500, memorialWall: 2000, equestrianStatue: 1500,
   fountain: 3000, bandstand: 5000, parkGate: 4000, parkSquare: 12000, churchyard: 4500, path: 1500, garden: 2500, stairway: 9000, outfall: 900,
-  townGate: 4000, triumphalArch: 7000, kolkhozArch: 2500, torii: 1000,
+  townGate: 5500, triumphalArch: 7000, kolkhozArch: 2500, torii: 1000,
   stoneArchBridge: 4000, trussBridge: 4000, trestleBridge: 4000, baileyBridge: 4000, viaduct: 4000, liftBridge: 6000,
   aircraftWreck: 26000, colonialBungalow: 14000, tennisCourt: 5000, bengalTemple: 9000, lighthouse: 3500, mole: 5000,
-  lavoir: 5000, khan: 14000, quay: 4000, slipway: 1500, harbour: 16000, piazza: 3000, houseRow: 30000,
+  lavoir: 5000, khan: 14000, quay: 4000, slipway: 1500, harbour: 16000, piazza: 9000, houseRow: 30000,
   radomeTower: 9000, troposcatter: 9000, guyedMast: 9000, moduleTrain: 9000, fuelTankFarm: 9000,
-  headframe: 9000, oreBin: 9000, conveyor: 9000, oreCars: 9000, jamesway: 9000, drumCache: 9000, snowFence: 9000, airstrip: 9000,
+  headframe: 9000, oreBin: 9000, conveyor: 9000, oreCars: 9000, jamesway: 9000, drumCache: 9000, snowFence: 9000, airstrip: 9000, floodMast: 9000,
+  hayRack: 3000, fishRack: 9000, stabbur: 3000,
 };
 assert.deepEqual(Object.keys(BUDGET).sort(), [...KINDS].sort(), 'a budget for every kind');
 /** The authored variants each kind is built in besides its defaults. */
@@ -745,8 +752,15 @@ for (const id of MAP_IDS) {
   // the shard holds — the berth's half-width to each side of the centreline, shape by shape
   for (const spur of (config.terrain?.railSpurs ?? []).filter((candidate) => candidate.berth === 'clearance')) check(`${id}/rail berth`, () => {
     let nearest = Infinity, at = null;
+    // (the maps lane, 2026-10-16; Lane C PRP-02b made the line's buffer stops breakable small props) the line's own
+    // buffer stops stand on its closed ends: those records (within 4 m of an end the spur closes) are the track's, not a
+    // solid on its berth
+    const ends = spur.bufferStop === 'both' ? [spur.path[0], spur.path[spur.path.length - 1]]
+      : spur.bufferStop === 'start' ? [spur.path[0]] : spur.bufferStop === 'end' ? [spur.path[spur.path.length - 1]] : [];
+    const ownStop = (record) => record.k === 'prop-buffer-stop'
+      && ends.some(([ex, ez]) => Math.hypot((record.b[0] + record.b[3]) / 2 - ex, (record.b[2] + record.b[5]) / 2 - ez) <= 4);
     for (const record of [...shard.obstacles, ...shard.colliders]) {
-      if (record.k === 'tree' || record.t != null) continue;
+      if (record.k === 'tree' || record.t != null || ownStop(record)) continue;
       if (record.b[3] < -480 || record.b[0] > 480) continue;
       const gap = recordGapToPath(record, spur.path);
       if (gap < nearest) { nearest = gap; at = `${record.k ?? 'solid'} at (${((record.b[0] + record.b[3]) / 2).toFixed(1)}, ${((record.b[2] + record.b[5]) / 2).toFixed(1)})`; }

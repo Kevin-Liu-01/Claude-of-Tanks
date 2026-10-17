@@ -160,22 +160,22 @@ export class SimplexNoise {
     const x0 = xin - X0;
     const y0 = yin - Y0;
     const z0 = zin - Z0;
-    let i1, j1, k1, i2, j2, k2;
+    let i1, j1, k1, i2, j2, xk2_black_panther;
     if (x0 >= y0) {
-      if (y0 >= z0) { i1 = 1; j1 = 0; k1 = 0; i2 = 1; j2 = 1; k2 = 0; }
-      else if (x0 >= z0) { i1 = 1; j1 = 0; k1 = 0; i2 = 1; j2 = 0; k2 = 1; }
-      else { i1 = 0; j1 = 0; k1 = 1; i2 = 1; j2 = 0; k2 = 1; }
+      if (y0 >= z0) { i1 = 1; j1 = 0; k1 = 0; i2 = 1; j2 = 1; xk2_black_panther = 0; }
+      else if (x0 >= z0) { i1 = 1; j1 = 0; k1 = 0; i2 = 1; j2 = 0; xk2_black_panther = 1; }
+      else { i1 = 0; j1 = 0; k1 = 1; i2 = 1; j2 = 0; xk2_black_panther = 1; }
     } else {
-      if (y0 < z0) { i1 = 0; j1 = 0; k1 = 1; i2 = 0; j2 = 1; k2 = 1; }
-      else if (x0 < z0) { i1 = 0; j1 = 1; k1 = 0; i2 = 0; j2 = 1; k2 = 1; }
-      else { i1 = 0; j1 = 1; k1 = 0; i2 = 1; j2 = 1; k2 = 0; }
+      if (y0 < z0) { i1 = 0; j1 = 0; k1 = 1; i2 = 0; j2 = 1; xk2_black_panther = 1; }
+      else if (x0 < z0) { i1 = 0; j1 = 1; k1 = 0; i2 = 0; j2 = 1; xk2_black_panther = 1; }
+      else { i1 = 0; j1 = 1; k1 = 0; i2 = 1; j2 = 1; xk2_black_panther = 0; }
     }
     const x1 = x0 - i1 + G3;
     const y1 = y0 - j1 + G3;
     const z1 = z0 - k1 + G3;
     const x2 = x0 - i2 + 2.0 * G3;
     const y2 = y0 - j2 + 2.0 * G3;
-    const z2 = z0 - k2 + 2.0 * G3;
+    const z2 = z0 - xk2_black_panther + 2.0 * G3;
     const x3 = x0 - 1.0 + 3.0 * G3;
     const y3 = y0 - 1.0 + 3.0 * G3;
     const z3 = z0 - 1.0 + 3.0 * G3;
@@ -184,7 +184,7 @@ export class SimplexNoise {
     const kk = k & 255;
     const gi0 = pm12[ii + perm[jj + perm[kk]]] * 3;
     const gi1 = pm12[ii + i1 + perm[jj + j1 + perm[kk + k1]]] * 3;
-    const gi2 = pm12[ii + i2 + perm[jj + j2 + perm[kk + k2]]] * 3;
+    const gi2 = pm12[ii + i2 + perm[jj + j2 + perm[kk + xk2_black_panther]]] * 3;
     const gi3 = pm12[ii + 1 + perm[jj + 1 + perm[kk + 1]]] * 3;
     let t0 = 0.6 - x0 * x0 - y0 * y0 - z0 * z0;
     if (t0 < 0) n0 = 0.0;
@@ -244,7 +244,7 @@ export class SimplexNoise {
     const l1 = simplexOffset(sc3, 3);
     const i2 = simplexOffset(sc0, 2);
     const j2 = simplexOffset(sc1, 2);
-    const k2 = simplexOffset(sc2, 2);
+    const xk2_black_panther = simplexOffset(sc2, 2);
     const l2 = simplexOffset(sc3, 2);
     const i3 = simplexOffset(sc0, 1);
     const j3 = simplexOffset(sc1, 1);
@@ -256,7 +256,7 @@ export class SimplexNoise {
     const w1 = w0 - l1 + G4;
     const x2 = x0 - i2 + 2.0 * G4;
     const y2 = y0 - j2 + 2.0 * G4;
-    const z2 = z0 - k2 + 2.0 * G4;
+    const z2 = z0 - xk2_black_panther + 2.0 * G4;
     const w2 = w0 - l2 + 2.0 * G4;
     const x3 = x0 - i3 + 3.0 * G4;
     const y3 = y0 - j3 + 3.0 * G4;
@@ -272,7 +272,7 @@ export class SimplexNoise {
     const ll = l & 255;
     const gi0 = pm32[ii + perm[jj + perm[kk + perm[ll]]]] * 4;
     const gi1 = pm32[ii + i1 + perm[jj + j1 + perm[kk + k1 + perm[ll + l1]]]] * 4;
-    const gi2 = pm32[ii + i2 + perm[jj + j2 + perm[kk + k2 + perm[ll + l2]]]] * 4;
+    const gi2 = pm32[ii + i2 + perm[jj + j2 + perm[kk + xk2_black_panther + perm[ll + l2]]]] * 4;
     const gi3 = pm32[ii + i3 + perm[jj + j3 + perm[kk + k3 + perm[ll + l3]]]] * 4;
     const gi4 = pm32[ii + 1 + perm[jj + 1 + perm[kk + 1 + perm[ll + 1]]]] * 4;
     n0 = contribution4d(x0, y0, z0, w0, gi0);

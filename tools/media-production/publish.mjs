@@ -1,15 +1,16 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync, mkdirSync, copyFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
-import { join, resolve, dirname } from 'node:path';
+import { readFileSync, writeFileSync, mkdirSync, copyFileSync, mkdtempSync, rmSync, existsSync, statSync } from 'node:fs';
+import { basename, join, resolve, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { requireReview, sourceDigest, digest } from './pipeline.mjs';
 import { requireNative4kPng } from '../map-art-guards.mjs';
 import { mergePublication } from './mergePublication.mjs';
+import { filteredStill, masterFilter } from '../media-r5/master-filter.mjs';
 
 const args=Object.fromEntries(process.argv.slice(2).map(value=>{
-  const match=/^--(receipt|review)=(.+)$/.exec(value);
-  if(!match)throw Error('npm run media:publish -- --receipt=shots/production-current/all-receipt.json --review=shots/production-current/review.json');
+  const match=/^--(receipt|review|min-quality)=(.+)$/.exec(value);
+  if(!match)throw Error('npm run media:publish -- --receipt=shots/production-current/all-receipt.json --review=shots/production-current/review.json [--min-quality=76]');
   return [match[1],match[2]];
 }));
 const receipt=JSON.parse(readFileSync(resolve(args.receipt??'shots/production-current/all-receipt.json'),'utf8'));
@@ -23,7 +24,25 @@ for(const {file} of mapStills)requireNative4kPng(file.path);
 const stage=mkdtempSync(join(tmpdir(),'cot-media-publish-'));
 const paths=[];
 const target=path=>{const file=join(stage,path);mkdirSync(dirname(file),{recursive:true});paths.push(path);return file;};
-const webp=(file,path,w,h)=>execFileSync('cwebp',['-quiet','-m','6','-sharp_yuv','-q','88','-resize',String(w),String(h),file,'-o',target(path)]);
+// (the owner's light-media rule, 2026-10-14; the coordinator: a published picture no larger than the file it replaces) a
+// derivative that would outweigh the public file at its path steps its quality down from 88 until it does not; under
+// 76 the batch stops for a person to decide, and nothing is published. --min-quality is that decision for a reviewed
+// batch (2026-10-14: Copper Mesa's new master, busier with its mine works, fits its old bytes at 73 for the hero, 67
+// for the card and 70 for the thumb, and 67 matched 76 at 1:1)
+const minQuality=Number(args['min-quality']??76);
+if(!(minQuality>=50&&minQuality<=88))throw Error(`--min-quality=${args['min-quality']}: 50-88`);
+const QUALITIES=[88,85,82,79,76,73,70,67,64,61,58,55,52].filter(q=>q>=minQuality);
+const FILTER=masterFilter(); // optional local pass over the 4K masters (media-r5/master-filter.mjs)
+const webp=(master,path,w,h)=>{
+  const file=filteredStill(master,join(stage,'masters'),`map-${basename(master).replace(/\.png$/i,'')}`,FILTER);
+  const out=target(path),old=join(process.cwd(),'public',path),limit=existsSync(old)?statSync(old).size:Infinity;
+  for(const q of QUALITIES){
+    execFileSync('cwebp',['-quiet','-m','6','-sharp_yuv','-q',String(q),'-resize',String(w),String(h),file,'-o',out]);
+    const bytes=statSync(out).size;
+    if(bytes<=limit){if(q!==QUALITIES[0])console.log(`[media] ${path}: q ${q}, ${bytes} bytes (the file it replaces ${limit})`);return;}
+  }
+  throw Error(`${path}: ${statSync(out).size} bytes at q ${QUALITIES.at(-1)}, over the ${limit} bytes of the file it replaces`);
+};
 const prefix='/media/production-r1';
 const manifest={version:1,created:new Date().toISOString(),sourceDigest:receipt.sourceDigest,revision:receipt.revision,shots:[],films:[],media:{},recipes:{},assets:[],review:{reviewedAt:review.reviewedAt,notes:review.notes,maps:review.maps}};
 function recipe(id,scene,uris){manifest.recipes[id]=scene;for(const uri of uris)manifest.media[uri]=id;}

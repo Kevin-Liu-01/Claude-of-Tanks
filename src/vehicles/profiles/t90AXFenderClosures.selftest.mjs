@@ -12,7 +12,7 @@ const ray=(objects,x,y,z,side)=>new T.Raycaster(new T.Vector3(side*x,y,z),
   new T.Vector3(-side,0,0),0,4).intersectObjects(objects,false)[0];
 
 try{for(const quality of ['high','low']){
-  const tank=createTank('t90a_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
+  const tank=createTank('t90a',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try{
     const root=tank.root;root.updateMatrixWorld(true);
     const hull=root.getObjectByName('hull'),skin=root.getObjectByName('hullFixedPaintedBodywork');

@@ -96,8 +96,8 @@ export function createProductionScene(options: ProductionOptions, height: Produc
   const actor = (id: string, name: string, x: number, z: number, facingDeg = 0): ProductionActor => ({
     id, name, pos: [x, z], facingDeg, turretDeg: 0, camo: combat ? 'desert' : 'summer', camoSeed: 29101,
   });
-  const actors = [actor(options.vehicleId || (coast ? 'leo2a7v' : 'm1a2_sepv3'), 'lead', ...start),
-    actor(combat ? 't90m' : 'k2', 'wing', start[0] + (combat ? 22 : 0), start[1] + (combat ? 43 : -17), combat ? 180 : 0)];
+  const actors = [actor(options.vehicleId || (coast ? 'leo2_improved' : 'm1a1_abrams_fep'), 'lead', ...start),
+    actor(combat ? 't90am' : 'xk2_black_panther', 'wing', start[0] + (combat ? 22 : 0), start[1] + (combat ? 43 : -17), combat ? 180 : 0)];
   const leadAt = (t: number): Vec3 => {
     const z = start[1] + travel * t / 8000;
     return [start[0], height(start[0], z) + 1.7, z];

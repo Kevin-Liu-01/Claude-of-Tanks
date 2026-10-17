@@ -32,7 +32,13 @@ const outPath = resolve('src/vehicles/combatAnatomyCalibrations.ts');
 const groupOutputDir = resolve('src/vehicles/combatAnatomyGroups');
 const loaderOutputPath = resolve('src/vehicles/combatAnatomyLoaders.generated.ts');
 const check = process.argv.includes('--check');
-const COMBAT_ANATOMY_CALIBRATIONS = check
+// --ids=a,b re-measures only those tanks and keeps every other row as generated (a targeted lane update; the full
+// regen and the gate's --check stay fleet-wide).
+const onlyIds = (() => {
+  const arg = process.argv.find((a) => a.startsWith('--ids='));
+  return arg ? new Set(arg.slice(6).split(',').filter(Boolean)) : null;
+})();
+const COMBAT_ANATOMY_CALIBRATIONS = check || onlyIds
   ? (await import('../src/vehicles/combatAnatomyCalibrations.ts')).COMBAT_ANATOMY_CALIBRATIONS
   : Object.freeze({});
 const round = (value) => Number(value.toFixed(4));
@@ -279,12 +285,16 @@ function addPolygonToSlices(polygon, pointsBySlice, z0, z1, step) {
  * adjacent cells share an identical closed cross-section instead of relying
  * on loose AABBs or leaving the old quad seams between zones.
  */
+// VEH-13 (2026-10-15): a main gun fixed in the hull (the Strv 103 family) draws into `hullGun`, its own bucket for the
+// spare-link seat solver; it stays part of the hull's structural shell exactly as it was inside `hull`.
+const PRIMARY_BUCKETS = { hull: ['hull', 'hullGun'], turret: ['turret'] };
+
 function collisionCells(root, owner, bucket, envelope, targetSliceM, maxSlices) {
   if (!envelope) return [];
   root.updateMatrixWorld(true);
   owner.updateMatrixWorld(true);
   const invOwner = owner.matrixWorld.clone().invert();
-  const objects = selectedObjects(root, new Set([bucket]), 'armor');
+  const objects = selectedObjects(root, new Set(PRIMARY_BUCKETS[bucket] ?? [bucket]), 'armor');
   if (!objects.length) return [];
 
   const z0 = envelope.min[2];
@@ -348,9 +358,10 @@ function receiptBoxes(root, owner, buckets, predicate = null) {
 }
 
 function primaryEnvelope(root, owner, bucket) {
-  const exact = localEnvelope(root, owner, new Set([bucket]), 'armor');
+  const names = new Set(PRIMARY_BUCKETS[bucket] ?? [bucket]);
+  const exact = localEnvelope(root, owner, names, 'armor');
   if (!exact) return null;
-  const parts = receiptBoxes(root, owner, new Set([bucket]));
+  const parts = receiptBoxes(root, owner, names);
   if (parts.length < 2) return exact;
   let maxVolume = 0;
   for (const part of parts) {
@@ -536,15 +547,15 @@ function eraPlateReceipts(root) {
 
 function receiptFor(id) {
   const create = () => createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
-  const stockCapture = id === 'chieftain_mk10_x' ? captureChieftain10Collision(create)
+  const stockCapture = id === 'chieftain_mk10' ? captureChieftain10Collision(create)
     : id === 'tos1a_tagil' ? captureTos1aTagilCollision(create)
-      : id === 'ariete_c2_x' ? captureArieteC2Collision(create) : null;
+      : id === 'c2_ariete' ? captureArieteC2Collision(create) : null;
   const tank = stockCapture?.tank ?? create();
   try {
     const hullRig = tank.root.getObjectByName('rig_hull');
     const turretRig = tank.root.getObjectByName('rig_turret');
     if (!hullRig || !turretRig) throw new Error(`${id}: articulation rigs missing`);
-    if (id === 'leo2a7v') {
+    if (id === 'leo2_improved') {
       // The Improved's owner-requested narrowing lives on the hull rig so
       // suspension also samples the narrower lane. Combat coordinates have
       // no scale, so measure its children in a rigid metre frame. Preserve
@@ -611,7 +622,9 @@ function receiptFor(id) {
 }
 
 const rows = {};
+for (const id of onlyIds ?? []) if (!ALL_TANK_IDS.includes(id)) throw new Error(`[combat-anatomy] unknown id ${id}`);
 for (const id of ALL_TANK_IDS) {
+  if (onlyIds && !onlyIds.has(id) && COMBAT_ANATOMY_CALIBRATIONS[id]) { rows[id] = COMBAT_ANATOMY_CALIBRATIONS[id]; continue; }
   rows[id] = receiptFor(id);
   console.log(`[combat-anatomy] measured ${id}`);
 }

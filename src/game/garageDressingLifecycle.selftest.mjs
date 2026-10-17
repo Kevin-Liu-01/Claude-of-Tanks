@@ -126,6 +126,11 @@ assert(readyAt >= 0 && bootReportAt > readyAt, 'the post-ready block ends at the
 const armAt = main.indexOf('scheduleGarageDressingBuild()', readyAt);
 assert(armAt > readyAt && armAt < bootReportAt,
   'the post-ready garage path must arm the dressing scheduler');
+// 2026-10-15 (the MP stream): a tab opened on a room invite holds the Garage's idle work (neighbour heroes, dressing)
+// while it joins and enters; the invite that leaves it in the Garage runs both after the delay, a plain boot at once
+assert.match(main.slice(readyAt, bootReportAt),
+  /if \(pendingRoomInvitePromise\) \{[\s\S]{0,400}INVITE_GARAGE_IDLE_DELAY_MS[\s\S]{0,200}\} else runGarageIdleWork\(\);/,
+  'an invite boot defers the Garage idle work; a plain boot runs it at ready');
 
 assert.match(garageReturn,
   /work\.noteActivity\(\);[\s\S]{0,180}work\.scheduleDressing\(\);/,
@@ -355,11 +360,11 @@ for (let bay = 1; bay <= 5; bay++) {
   await f.runtime.pump(); // first builder
   const scheduled = f.runtime.pump(() => true);
   await Promise.resolve();
-  assert.equal(requests.get('t90a_burlak'), 1);
+  assert.equal(requests.get('t90a_burlak_proto'), 1);
   const captureA = f.runtime.ensureBuilt(), captureB = f.runtime.ensureBuilt();
   assert.equal(f.runtime.pump(), scheduled);
   await Promise.resolve();
-  assert.equal(requests.get('t90a_burlak'), 1, 'capture overlap cannot duplicate a transfer');
+  assert.equal(requests.get('t90a_burlak_proto'), 1, 'capture overlap cannot duplicate a transfer');
   firstTransfer.resolve();
   await Promise.all([scheduled, captureA, captureB]);
   assert.equal(f.runtime.isBuilt(), true);

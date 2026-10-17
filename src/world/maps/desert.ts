@@ -456,7 +456,7 @@ export default {
     // tanks), convoy dressing + defended-crossroads clutter
     // the map-vehicles lane (2026-10-06, the period ruling): the Maghreb: Tunisia's M60A3s and M48s, the T-55s and
     // T-62s over the Libyan border
-    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['m60a3', 'type59', 'm48', 't62mv1'] },
+    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['m60a3', 'type59', 'm48a5_patton', 't62_1975'] },
     sandbagLines: 12,
     hedgehogs: 8,
     // world-dressing r1: adobe boundary walls + souk inhabitants — stall
@@ -576,12 +576,14 @@ export default {
     postExposure: 0.90, // lighting_post r4: keep the raised sun from re-blowing the sand top end
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0xad9b7c },
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a North African wadi under the sirocco — a buff dust band low on the horizon, a deep dry blue overhead
+    atmosphere: { horizonTintHex: 0xe4c8a2, horizonTintAmount: 0.45, horizonBandDeg: 8, zenithTintHex: 0x4f80c2, zenithTintAmount: 0.2 },
   },
 
   minimap: {
     base: [146, 122, 82], hard: [160, 140, 104], soft: [122, 104, 70],
     forest: 'rgba(88,104,44,0.85)', forestStroke: 'rgba(52,64,26,0.9)',
-    water: 'rgba(140,118,80,0.6)', waterStroke: 'rgba(90,76,52,0.7)',
+    bog: 'rgba(140,118,80,0.6)', bogStroke: 'rgba(90,76,52,0.7)', // the takyr flats: clay, not water
     roadCasing: 'rgba(88,72,48,0.9)', roadFill: 'rgba(214,192,150,0.95)',
     buildingFill: '#e0cba4',
   },

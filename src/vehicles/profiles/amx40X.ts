@@ -10,6 +10,7 @@ import {beamBetween,blindTube} from './measuredPrimitives.ts';
 import {addAmx40CastNose,addAmx40Cupola,addAmx40LauncherGuard,addAmx40SideStowage,
   addAmx40RearInsulator,addAmx40FrontInsulator} from './amx40XTurretEquipment.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import {addAmx40RightRoofGrip,addAmx40ObliqueRoofSight,addAmx40WeaponSideMechanism} from './amx40XRoofFixtures.ts';
 import {addAmx40RearStowage} from './amx40XRearStowage.ts';
 import {addAmx40Mantlet} from './amx40XMantlet.ts';
@@ -174,7 +175,8 @@ function roofWeapon(P:TankBuilderPort):void {
   mg.add('turretDetail',cylZ(.118,.013,24),-1.070,2.659,.350);
   addAmx40WeaponSideMechanism(mg);
   for(const z of[-.230,-.060])mg.add('turretDark',box(.167,.015,.014),-1.172,2.671,z);
-  mg.finish();
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+  stationFromDrawnGun(mg.finish(),{name:'amx40XRoofGpmg',caliberMm:7.62});
 }
 
 function recess(P:TankBuilderPort,slot:string,x:number,y:number,z:number,w:number,h:number,d:number):void {
@@ -262,7 +264,7 @@ function buildAmx40X(P:TankBuilderPort):void {
     topY:1.151,botY,arms:true,paintedEnds:true,coveredTop:true,
   });
   P.topY=AMX40_X_DATUMS.highestFittingM-YAW[1];
-  P.hullG.userData.xRebuild={candidate:'amx40_x',independent:true,datumVersion:1,sourceLocalOnly:true};
+  P.hullG.userData.xRebuild={candidate:'amx40',independent:true,datumVersion:1,sourceLocalOnly:true};
 }
 
-export const AMX40_X_PROFILES={amx40_x:{build:buildAmx40X}} as const;
+export const AMX40_X_PROFILES={amx40:{build:buildAmx40X}} as const;

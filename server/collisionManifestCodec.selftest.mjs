@@ -21,7 +21,7 @@ const manifest = {
   obstacles: [record, { ...record, s: ['m', shape, ['c', 2, 3, 0.9]] }],
   colliders: [record], concealers: [[2, 3, 4, 0.75]],
 };
-const packed = encodeCollisionManifest(manifest);
+const packed = encodeCollisionManifest(manifest, 'primitive-kind-dict-v3');
 // A fixed mixed geometry corpus tests dictionary efficiency independently of
 // evolving map layouts. Real manifests still have exact byte ceilings below.
 const footprint = ['v', -4.125, -7.875, 3.625, -7.875, 4.125, -6.625,
@@ -80,10 +80,14 @@ for (const args of [['--headless', 'owned-session'], ['--headless', '--headless'
   ['--headless', '--cache-dir='], ['--headless', '--cache-dir=/a', '--cache-dir=/b']]) {
   assert.throws(() => collisionCaptureOptions(args), /headless|cache-dir/);
 }
-assert.equal(packed.encoding, 'primitive-kind-dict-v2');
+assert.equal(packed.encoding, 'primitive-kind-dict-v3');
+assert.equal(encodeCollisionManifest(manifest).encoding, 'primitive-kind-dict-v4', 'the writer\'s default is v4');
 assert.deepEqual(packed.kinds, ['crate']);
 assert.equal(packed.obstacles[0].k, 0, 'kind reference zero is valid');
-assert.deepEqual(packed.shapes, [shape], 'only repeated exact primitives are interned');
+// (v3: the interned primitive in integers of 1/10000 m, its corners as steps from the one before)
+assert.deepEqual(packed.shapes, [['V', 1234, 0, 30016, 0, -31250, 45678]], 'only repeated exact primitives are interned');
+assert.deepEqual(packed.obstacles[0].B, [0, 0, 0, 40000, 20000, 50000], 'exact bounds in integers of 1/10000 m');
+assert.equal(Object.hasOwn(packed.obstacles[0], 'b'), false);
 assert.equal(packed.obstacles[0].s, 0, 'reference zero is valid');
 assert.equal(packed.obstacles[1].s[1], 0, 'compound children use the same primitive table');
 const restored = decodeCollisionManifest(packed);
@@ -115,11 +119,99 @@ const metadataFixture = {
 const metadataEncoded = encodeCollisionManifest(metadataFixture);
 assert.deepEqual(metadataEncoded.kinds, ['frequent', 'first', '', 'second'],
   'frequent kinds receive short IDs and equal-count ties retain first-seen order');
-for (const encoding of ['primitive-dict-v1', 'primitive-kind-dict-v2']) {
+for (const encoding of ['primitive-dict-v1', 'primitive-kind-dict-v2', 'primitive-kind-dict-v3', 'primitive-kind-dict-v4']) {
   const encoded = encodeCollisionManifest(metadataFixture, encoding);
   assert.deepEqual(decodeCollisionManifest(JSON.parse(JSON.stringify(encoded))),
     { ...metadataFixture, concealers: undefined },
     `${encoding} preserves missing/null/empty kinds, shapeless records and every metadata value`);
+}
+
+// (2026-10-14, the shards' storage budget) v3 is exact or it is v2: every primitive kind and its corners round-trip bit
+// for bit through integers of 1/10000 m; a number with more decimals, or bounds with one, stays as v2 wrote it; an
+// existing v2 shard stays readable and re-encodes byte-stable as v2
+const v3Fixture = {
+  obstacles: [
+    { b: [-12.5, 0.25, -3.0001, 12.5, 6.4416, 3], k: 'structure', q: 1,
+      s: ['m', ['w', 0.3416, 60.8416, -161.45, -47.95, -138.55, -47.95, -138.55, -34.769, -161.45, -34.769],
+        ['p', 60.8416, 61.4416, -150, -41.3595, 2, 0.0302, -0.2421, 61.4436, 0, 0, 3.25, -161.65, -48.15, -138.35, -48.15, -138.35, -34.569],
+        ['c', 2.5, -3.75, 0.9, 0, 1.2], ['o', 1, 2, 0.5, 0.25, 0.7854, -0.5, 2]] },
+    { b: [0, 0, 0, 1, 1, 1], s: ['v', 0.1, 0.2, 1.000001, 0.2, 1, 1] },
+    { b: [0.123456, 0, 0, 1, 1, 1], s: ['c', 0, 0, 1] },
+  ],
+  colliders: [{ b: [-1, -2, -3, 1, 2, 3], s: ['v', -1, -3, 1, -3, 1, 3, -1, 3] }],
+  concealers: [[1.125, 2.375, 3.625, 0.75]],
+};
+const v3 = encodeCollisionManifest(v3Fixture, 'primitive-kind-dict-v3');
+assert.equal(v3.encoding, 'primitive-kind-dict-v3');
+assert.deepEqual(v3.obstacles[0].s.slice(1).map((part) => part[0]), ['W', 'P', 'C', 'O'], 'every primitive kind compacts');
+assert.equal(v3.obstacles[1].s[0], 'v', 'a primitive with a number of more than four decimals stays as v2 wrote it');
+assert.ok(Object.hasOwn(v3.obstacles[2], 'b') && !Object.hasOwn(v3.obstacles[2], 'B'), 'and so do such bounds');
+assert.deepEqual(Object.keys(v3.obstacles[0]), ['B', 'k', 'q', 's'], 'the compact bounds take the key\'s place');
+const v3Back = decodeCollisionManifest(JSON.parse(JSON.stringify(v3)));
+assert.deepEqual(v3Back, v3Fixture, 'v3 decodes bit for bit');
+assert.deepEqual(Object.keys(v3Back.obstacles[0]), Object.keys(v3Fixture.obstacles[0]), 'in the record\'s key order');
+assert.deepEqual(encodeCollisionManifest(v3Back, 'primitive-kind-dict-v3'), v3, 'v3 re-encodes byte-stable');
+const v2 = encodeCollisionManifest(v3Fixture, 'primitive-kind-dict-v2');
+assert.deepEqual(decodeCollisionManifest(JSON.parse(JSON.stringify(v2))), v3Fixture, 'v2 shards remain readable');
+assert.deepEqual(encodeCollisionManifest(decodeCollisionManifest(v2), 'primitive-kind-dict-v2'), v2, 'and re-encode byte-stable as v2');
+
+// (the perf lane, 2026-10-16: the shards' storage budget) v4 is v3 with a record's bounds as steps from its shape's own
+// reference box ('D') and a concealer on a tree's exact circle centre as [tree index, radius, add]; exact both ways
+{
+  const tree = (t, x, z, b) => ({ b, s: ['c', x, z, 0.35], q: 1, k: 'tree', t });
+  const v4Fixture = {
+    obstacles: [...v3Fixture.obstacles, tree(0, 12.5, -3.25, [12.15, 0.5, -3.6, 12.8499, 9.25, -2.9]),
+      tree(1, 40.0625, 7, [39.7125, 0, 6.65, 40.4125, 8, 7.35]), tree(2, 40.0625, 7, [39.7125, 0, 6.65, 40.4125, 8, 7.35]),
+      { b: [1, 0, 1, 2, 3, 2], s: ['o', 1.5, 1.5, 0.5, 0.5, 0.7853981633974483, 0, 3], k: 'crate' },
+      { b: [0, 0, 0, 1, 1, 1], s: ['p', 0, 1, 0.5, 0.5, 1, 0.1, 0.123456789, 1, 0, 0, 1, 0, 1, 1], k: 'deck' }],
+    colliders: v3Fixture.colliders,
+    concealers: [[12.5, -3.25, 1.68, 0.08], [40.0625, 7, 2, 0.08], [5, 5, 1, 0.1], [12.5, -3.2500001, 1, 0.08]],
+  };
+  const v4 = encodeCollisionManifest(v4Fixture);
+  assert.equal(v4.encoding, 'primitive-kind-dict-v4');
+  const record = v4.obstacles[0];
+  assert.deepEqual(Object.keys(record), ['D', 'k', 'q', 's'], 'the steps take the bounds\' place');
+  assert.ok(record.D.every((n) => Number.isSafeInteger(n)), 'integer steps from the shape\'s box');
+  assert.deepEqual(v4.obstacles[3].D, [0, 5000, 0, -1, 92500, 0], 'a tree: the circle\'s extents (one step short on one side), its vertical span');
+  assert.ok(Object.hasOwn(v4.obstacles[1], 'B') && !Object.hasOwn(v4.obstacles[1], 'D'), 'an inexact shape keeps v3\'s bounds');
+  assert.ok(Object.hasOwn(v4.obstacles[2], 'b'), 'inexact bounds stay as v2 wrote them');
+  assert.ok(Object.hasOwn(v4.obstacles[6], 'D'), 'a box\'s yaw is not read: its centre and its vertical extent are');
+  assert.ok(Object.hasOwn(v4.obstacles[7], 'D'), 'nor a drawn top\'s planes');
+  assert.deepEqual(v4.concealers[0], [0, 1.68, 0.08], 'a concealer on a tree\'s centre names the tree');
+  assert.deepEqual(v4.concealers[1], [40.0625, 7, 2, 0.08], 'a centre two trees share stays as it is');
+  assert.deepEqual(v4.concealers.slice(2), v4Fixture.concealers.slice(2), 'and so does any concealer off a centre');
+  const back = decodeCollisionManifest(JSON.parse(JSON.stringify(v4)));
+  assert.deepEqual(back, v4Fixture, 'v4 decodes bit for bit');
+  for (let i = 0; i < back.obstacles.length; i++) {
+    assert.deepEqual(Object.keys(back.obstacles[i]), Object.keys(v4Fixture.obstacles[i]), `record ${i} in its key order`);
+    back.obstacles[i].b.forEach((n, j) => assert.ok(Object.is(n, v4Fixture.obstacles[i].b[j]), `record ${i} bound ${j} exact`));
+  }
+  assert.deepEqual(encodeCollisionManifest(back), v4, 'v4 re-encodes byte-stable');
+  assert.deepEqual(decodeCollisionManifest(JSON.parse(JSON.stringify(v3))), v3Fixture, 'v3 shards remain readable');
+  for (const corrupt of [
+    (value) => { value.obstacles[0].D = [0, 0, 0, 1, 1]; },
+    (value) => { value.obstacles[0].D[1] = 0.5; },
+    (value) => { value.obstacles[0].B = [0, 0, 0, 1, 1, 1]; },
+    (value) => { delete value.obstacles[0].s; },
+    (value) => { value.concealers[0] = [99, 1, 0.08]; },
+    (value) => { value.concealers[0] = ['a', 1, 0.08]; },
+  ]) {
+    const value = structuredClone(v4);
+    corrupt(value);
+    assert.throws(() => decodeCollisionManifest(value), /invalid/, 'reject a corrupt v4 record or concealer');
+  }
+}
+for (const corrupt of [
+  (value) => { value.obstacles[0].b = [0, 0, 0, 1, 1, 1]; },
+  (value) => { value.obstacles[0].B = [0, 0, 0, 1, 1]; },
+  (value) => { value.obstacles[0].B[2] = 0.5; },
+  (value) => { value.obstacles[0].s[1][3] = 1.5; },
+  (value) => { value.obstacles[0].s[1] = ['W', 1, 2, 3]; },
+  (value) => { value.colliders[0].s = ['V', 0, 0, 1]; },
+]) {
+  const value = structuredClone(v3);
+  corrupt(value);
+  assert.throws(() => decodeCollisionManifest(value), /invalid/, 'reject a corrupt compact record or primitive');
 }
 
 // No terrain bake is needed to prove mutable match inflation is independent.
@@ -144,7 +236,12 @@ for (const invalid of [null, {}, [null], [0], [['m', shape]], [['v', 0, 0]], new
   const value = fresh(); value.shapes = invalid;
   assert.throws(() => decodeCollisionManifest(value), /invalid/, 'reject invalid primitive table');
 }
-for (const invalid of [['m'], ['m', -1], ['m', ['m', shape]], ['m', ...Array(65).fill(0)]]) {
+// (physics stream, 2026-10-16) a compound carries at most 256 parts (collisionManifestFormat.ts COLLISION_COMPOUND_MAX_PARTS)
+for (const valid of [['m', ...Array(65).fill(0)], ['m', ...Array(256).fill(0)]]) {
+  const value = fresh(); value.obstacles[0].s = valid;
+  assert.doesNotThrow(() => decodeCollisionManifest(value), `a compound of ${valid.length - 1} parts decodes`);
+}
+for (const invalid of [['m'], ['m', -1], ['m', ['m', shape]], ['m', ...Array(257).fill(0)]]) {
   const value = fresh(); value.obstacles[0].s = invalid;
   assert.throws(() => decodeCollisionManifest(value), /invalid/, 'reject invalid compound/ref nesting');
 }
@@ -240,6 +337,11 @@ assert.equal(encodedBytes, publishedBytes, 'published shards are the canonical e
 // 60268739: F3 stones under drawn tops +2825679, F2 roof decks and wreck tops +1685869, the builders +445114, the
 // bunkers +381381, the gates +90858, Steinburg +23790, bld-integrity-r2 -325595, the wells -4919. A 225 shard diet
 // (compact stone planes and deck encodings) aims back under 63.4 MB.
+// 2026-10-16 integ/226 (the perf lane, v4): 73536197 bytes over the budget (DST-04's craters, PH.15's Saltwind spans, the
+// crushables, the new props, the bunker shells); v4's bounds as steps from each shape's own box and the tree concealers
+// by tree index bring the same records to 66736390, bit for bit (tools/transcode-collision-manifests.mjs). The budget
+// stays. What it protects is the deployed corpus (base + variants 138.7 MB at /mp-collision/v2/, beside the frozen 224
+// set's 129 MB); a host fetches one shard, the largest Ruinspires at 6.35 MB raw, 1.50 MB gzip, 1.10 MB brotli.
 assert.ok(publishedBytes <= 68660462, 'complete roster storage cannot exceed the frozen published budget');
 
 // Hash-valid corruptions must still be rejected by the loader's schema/census.
@@ -267,8 +369,9 @@ try {
   assert.throws(() => readCollisionCaptureEntries(['whiteout'], fixture), /complete canonical/);
   writeCollisionManifestShard('verdant', manifest, fixture);
   const generated = JSON.parse(readFileSync(new URL('verdant.json', fixture), 'utf8'));
-  assert.equal(generated.encoding, packed.encoding, 'future browser captures use the exact dictionary writer');
-  assert.deepEqual(generated.shapes, packed.shapes);
+  const newest = encodeCollisionManifest(manifest);
+  assert.equal(generated.encoding, newest.encoding, 'future browser captures use the exact dictionary writer (v4)');
+  assert.deepEqual(generated.shapes, newest.shapes);
   assert.deepEqual(decodeCollisionManifest(generated), manifest);
   const install = (data, census = collisionManifestCounts(manifest)) => {
     const text = JSON.stringify(data);

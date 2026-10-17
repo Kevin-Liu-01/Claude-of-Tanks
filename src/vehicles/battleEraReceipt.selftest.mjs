@@ -13,11 +13,12 @@ import { vehicleNightLightEmittersFor } from './vehicleNightLighting.ts';
 // These are real browser-facade builds, not replacement builders or a reduced
 // geometry/material fixture. This is CPU structural/material evidence, not GPU
 // rendering, pixel presentation, frame-time or browser performance evidence.
-const IDS = ['t64bv1', 't80u', 't80bv', 't90m', 'ua_m1a1_x', 'merkava1b'];
+const IDS = ['t64bv1', 't80uk', 't80bv', 't90am', 'ua_m1a2_abrams', 'merkava1b'];
 const ROOT_EXCLUSIONS = new Set([
   'eraVisualBindingReceipt', // The one intentionally omitted diagnostic payload.
   'coreBuildTiming', 'decorBuildMs', 'decorYieldMs', // Measured elapsed time only.
   'tailBuildTiming', // FSP-01 (2026-09-25): the finisher stage timestamps — measured time only, never structure.
+  'spareTrackMs', // VEH-13 (TRACK-DECOR, 2026-10-15): the spare-track seat pass's elapsed time — measured time only.
 ]);
 // Three.js allocation identity, event listeners and upload counters are not
 // visual content. These exclusions apply ONLY to resource objects, not metadata
@@ -239,7 +240,7 @@ try {
     assert.equal(isTankBuilderReady(id), true, `${id}: typed demand facade loaded the exact family and receipts`);
     for (const role of ['desktop-bot', 'desktop-hero', 'garage']) {
       const options = { camoSeed: 4242, camoPattern: 'factory', batchStatic: true,
-        quality: role !== 'garage' && (role === 'desktop-hero' || id === 't90m') ? 'preview' : 'ai',
+        quality: role !== 'garage' && (role === 'desktop-hero' || id === 't90am') ? 'preview' : 'ai',
         geometryQuality: role === 'desktop-bot' ? 'low' : 'high',
         staticPreview: role === 'garage',
         battleDetailLod: role === 'desktop-bot' };

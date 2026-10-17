@@ -19,6 +19,7 @@ import { createAuthorityObstacles } from '../mp/presentation/authorityObstacles.
 import { createPropCrushPresentation } from './propCrushPresentation.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { isFortifiedCoverRecord } from '../sim/fortifiedCover.ts';
+import { shellSparesStoppedRecord } from './collision.ts';
 
 const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 const start = source.indexOf('  const D_CELL = 8;');
@@ -101,6 +102,8 @@ function fixture(specs = [['crate', 0, 0], ['wallstone', 0, 0], ['barrel', 0, 0]
     updatePoleLod() {},
     // and so are the boulders: their near/far repartition (the scenery lane's cascade trim) is inert here too
     updateRockLod() {},
+    // and the field walls' near and far forms (PH.15: fieldBoundaryWorks.ts createFieldWallLod), none here
+    createFieldWallLod: () => () => {},
     _quat: new THREE.Quaternion(), _upAxis: new THREE.Vector3(0, 1, 0),
     _mat4: new THREE.Matrix4(), _posv: new THREE.Vector3(), _zeroScale: new THREE.Vector3(),
     // settlement pass 2 (2026-09-12): the runtime reads chimney tops for hearth smoke; none here.
@@ -207,8 +210,8 @@ function exerciseAuthority(mode, f) {
   const bus = { emit() {} };
   if (mode === 'solo') {
     // (2026-10-09: the solo caller asks the pillbox ledger first, sim/fortifiedCover.ts; none of these is a pillbox)
-    const call = compileFunction(`${soloCaller};return crushWorldPropFromShell;`, ['_seg', 'isFortifiedCoverRecord'])({ x: 1, z: 0 },
-      isFortifiedCoverRecord);
+    const call = compileFunction(`${soloCaller};return crushWorldPropFromShell;`, ['_seg', 'isFortifiedCoverRecord', 'shellSparesStoppedRecord'])({ x: 1, z: 0 },
+      isFortifiedCoverRecord, shellSparesStoppedRecord);
     for (const record of f.records.filter((r) => r.ob)) {
       call(world, bus, { spec: { velocityMps: 900 } }, { record: record.col || record.ob });
     }

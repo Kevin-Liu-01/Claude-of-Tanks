@@ -27,7 +27,13 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // southern deployment, the ford green on the line of equal drives and the fair green near the northern arc; the
   // kickoff on the north-bank meadow between the bridge and the ford (2026-10-03: 8 m north, where the bounded search
   // seats it beside the meandering river).
-  autumn: { kickoff: { x: 119, z: 42 }, zones: [{ x: 22, z: -192 }, { x: 154, z: 54 }, { x: 0, z: 102 }] },
+  // (2026-10-11, the map-revival lane; the coordinator's fairness ruling, try f3: zone 2 up onto the north meadow behind
+  // its hedge-bank, (154, 54) -> (128, 96): the river knoll under it commanded the old seat — autumn.ts)
+  // (2026-10-16, Lane C, the mapLayoutBrief red the Longleaf red had hidden) the f3 seat never held: its 30 m disc takes a
+  // 3 m bank at x 108 and the meadow's north slope (normals to 0.78 against 0.94), so every build since 0133ecade placed
+  // zone 2 at (140.2, 66.4), on the old green's north half, where the fairness ruling's 23-17 was played. The hint
+  // follows the played seat to (144, 60), the nearest point that keeps 4 m of slack from the steep cells
+  autumn: { kickoff: { x: 119, z: 42 }, zones: [{ x: 22, z: -192 }, { x: 144, z: 60 }, { x: 0, z: 102 }] },
   // Frosthollow (layout brief, 2026-10-03): three zones across the valley's waist — the terrace hay meadow behind the
   // sawmill, the Bystra crossing's east-bank landing and the moraine crossroads (the last two graded aprons in the map
   // file); the kickoff on the Bystra crossing itself.
@@ -35,7 +41,11 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // Nordhavn Fjord (layout brief, 2026-10-03): three zones on the line of equal drives from the upper town under the
   // western cliff, through the harbour road in the lower town (also the turbo-ball kickoff), to the curing yards above
   // the harbour; each team's nearest, middle and farthest zone lie within 1 % of the other's.
-  fjord: { kickoff: { x: 40, z: -65 }, zones: [{ x: -200, z: 35 }, { x: 40, z: -65 }, { x: 150, z: -110 }] },
+  // (2026-10-16, Lane C, the mapLayoutBrief red the Longleaf red had hidden) the Fjord fill (e3f7b6db3: the planned
+  // farms after the roadside plan) re-rolled the town, whose west edge put a depot and the chapel inside zone 3's disc,
+  // so every build since has placed zone 3 at (144.3, -115.7). The hint follows the played seat to (142, -115), 4 m
+  // clear of the chapel's reach
+  fjord: { kickoff: { x: 40, z: -65 }, zones: [{ x: -200, z: 35 }, { x: 40, z: -65 }, { x: 142, z: -115 }] },
   // Sunscar Oasis (layout brief, 2026-10-03): three zones across the spring's waist — the palm grove on the spring's
   // east shore, the palm belt west of the town (also the turbo-ball kickoff) and the souk; the bounded search's seats,
   // each team's nearest, middle and farthest zone within 2 % of the other's.

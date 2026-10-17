@@ -12,7 +12,7 @@
 // (the legacy builder files import it too), so no facade can register the
 // legacy files' live objects: those alias plate vertices, and in-place armor
 // fitting scaled an aliased vertex of a derived clone twice (the host's Type
-// 96B X and the three Type 96 concepts, cloned from type99a, carried different
+// 96B X and the three Type 96 concepts, cloned from ztz99_longwei, carried different
 // turret plates, modules, crew boxes and hit shells than the player's).
 // src/vehicles/fleetParity.selftest.mjs digests every spec as each facade
 // finalizes it on its own and asserts equality.

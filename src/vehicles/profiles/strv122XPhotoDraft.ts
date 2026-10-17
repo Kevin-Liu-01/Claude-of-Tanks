@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import { roundedTrackContact } from './roundedTrackContact.ts';
 import { addStrv122XGalix } from './strv122XGalix.ts';
 import { addStrv122XBustle } from './strv122XBustle.ts';
@@ -18,7 +19,7 @@ type Point = readonly [number, number, number];
 type Row = readonly [z: number, width: number, bottom: number, shoulder: number, top: number];
 
 export const STRV122_X_DATUMS = Object.freeze({
-  strv122_x: {
+  strv122: {
     // FMV gives overall length/width. Hull length and armor roof are explicitly
     // photo-estimated; its 3.00 m reported equipment height is NOT armor roof.
     dims: { hullLengthM: 7.70, overallLengthM: 9.97, widthM: 3.78, heightM: 2.533 },
@@ -29,7 +30,7 @@ export const STRV122_X_DATUMS = Object.freeze({
     muzzleZ: 6.12,
   },
 });
-const D = STRV122_X_DATUMS.strv122_x;
+const D = STRV122_X_DATUMS.strv122;
 
 function local(geometry: THREE.BufferGeometry, p: Point): THREE.BufferGeometry {
   return geometry.translate(-p[0], -p[1], -p[2]);
@@ -248,7 +249,8 @@ function machineGun(P: TankBuilderPort): void {
   mg.add('turretDark', cylZ(.022, .50, 16), x, 2.870, z + .44);
   mg.add('turretDark', box(.094, .073, .14), x, 2.84, z - .13);
   mg.add('turretDetail', box(.13, .13, .15), x - .12, 2.86, z + .035);
-  mg.finish();
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+  stationFromDrawnGun(mg.finish(), { name: 'strv122XDraftMg', caliberMm: 7.62 });
 }
 
 function gun(P: TankBuilderPort): void {
@@ -298,4 +300,4 @@ export function buildStrv122X(P: TankBuilderPort): void {
   gun(P);
 }
 
-export const STRV122_X_PROFILES = Object.freeze({ strv122_x: { build: buildStrv122X } });
+export const STRV122_X_PROFILES = Object.freeze({ strv122: { build: buildStrv122X } });

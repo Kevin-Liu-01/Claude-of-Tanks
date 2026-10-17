@@ -7,6 +7,8 @@ import {
 } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
+import { filteredStill, masterFilter } from '../media-r5/master-filter.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../..');
@@ -56,8 +58,10 @@ const run = (command, commandArgs, label) => {
   const result = spawnSync(command, commandArgs, { cwd: ROOT, stdio: 'inherit' });
   if (result.status !== 0) throw new Error(`${label} failed`);
 };
-const encodeWebp = (input, output, width, height, quality = 84) => {
-  if (!existsSync(input)) throw new Error(`Missing source image: ${input}`);
+const FILTER = masterFilter(); // optional local pass over the source pictures (media-r5/master-filter.mjs)
+const encodeWebp = (source, output, width, height, quality = 84) => {
+  if (!existsSync(source)) throw new Error(`Missing source image: ${source}`);
+  const input = filteredStill(source, join(tmpdir(), 'cot-master-filter', 'showcase'), `showcase-${basename(source).replace(/\.[^.]+$/, '')}`, FILTER);
   run('cwebp', [
     '-quiet', '-mt', '-m', '6', '-q', String(quality), '-sharp_yuv',
     '-resize', String(width), String(height), input, '-o', output,

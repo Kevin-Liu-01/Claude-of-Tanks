@@ -142,13 +142,13 @@ export async function runRoomsE2E({
     // ---- create and join
     const creator = createHeadlessSession({ endpoint: roomsUrl, player: { id: 'p1', name: 'Creator' }, createSocket, room: roomOptions, controls: scriptedControls(0), storage: memoryStorage() });
     sessions.push({ id: 'p1', headless: creator, disposed: false, storage: null });
-    const room = await creator.room.create({ mode: 'lan', selection: { specId: 'm1a2' }, settings: { teamSize, mapId, botsFill: false } });
+    const room = await creator.room.create({ mode: 'lan', selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize, mapId, botsFill: false } });
     log(`room ${room.roomCode} created (team size ${teamSize})`);
     for (let index = 2; index <= clientCount; index++) {
       const storage = memoryStorage();
       const headless = createHeadlessSession({ endpoint: roomsUrl, player: { id: `p${index}`, name: `Player ${index}` }, createSocket, room: roomOptions, controls: scriptedControls(index - 1), storage });
       sessions.push({ id: `p${index}`, headless, disposed: false, storage });
-      await headless.room.join({ roomCode: room.roomCode, selection: { specId: index % 2 ? 't90m' : 'm1a2' } });
+      await headless.room.join({ roomCode: room.roomCode, selection: { specId: index % 2 ? 't90am' : 'm1a1_abrams_hc' } });
     }
     await until(() => creator.room.room?.players.length === clientCount, 'every seat visible to the creator', 10_000);
     const alpha = creator.room.room.players.filter((player) => player.team === 'alpha').length;

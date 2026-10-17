@@ -85,13 +85,13 @@ export function buildHorizonBoulder(variant: number, seed: number, rock: THREE.C
   for (let i = 0; i < position.count; i++) {
     v.fromBufferAttribute(position, i);
     const k = hash3(v.x, v.y, v.z, seed);
-    const k2 = hash3(v.z, v.x, v.y, (seed ^ 0x5bd1e995) >>> 0);
-    v.multiplyScalar(0.78 + k * 0.42 + (k2 - 0.5) * 0.16);
+    const xk2_black_panther = hash3(v.z, v.x, v.y, (seed ^ 0x5bd1e995) >>> 0);
+    v.multiplyScalar(0.78 + k * 0.42 + (xk2_black_panther - 0.5) * 0.16);
     v.x *= stretch[0]; v.y *= stretch[1]; v.z *= stretch[2];
     // seat: a flattened underside so the boulder rests on the ground rather than balancing on a point
     if (v.y < -0.35) v.y = -0.35 - (v.y + 0.35) * 0.35;
     position.setXYZ(i, v.x, v.y, v.z);
-    const lift = 0.80 + 0.32 * THREE.MathUtils.clamp((v.y + 0.4) / 1.2, 0, 1) + (k2 - 0.5) * 0.10;
+    const lift = 0.80 + 0.32 * THREE.MathUtils.clamp((v.y + 0.4) / 1.2, 0, 1) + (xk2_black_panther - 0.5) * 0.10;
     colours[i * 3] = rock.r * lift; colours[i * 3 + 1] = rock.g * lift; colours[i * 3 + 2] = rock.b * lift;
   }
   geometry.setAttribute('color', new THREE.BufferAttribute(colours, 3));

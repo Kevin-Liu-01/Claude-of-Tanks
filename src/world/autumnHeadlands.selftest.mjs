@@ -22,7 +22,22 @@ function one(predicate, label) {
   visit(tree); assert.equal(found.length, 1, `one actual ${label}`); return found[0].getText(tree);
 }
 const declaration = name => one(n => ts.isFunctionDeclaration(n) && n.name?.text === name, name);
+// (props lane A, #18b, 2026-10-14: the crop fields' owner is maps/cropKit.ts, extracted from props.ts unchanged; its
+// functions join the stage as props.ts's own did, with the names the props build no longer imports)
+const cropSource = readFileSync(new URL('./maps/cropKit.ts', import.meta.url), 'utf8');
+const cropTree = ts.createSourceFile('cropKit.ts', cropSource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+function cropDeclaration(name) {
+  const found = [];
+  function visit(node) { if (ts.isFunctionDeclaration(node) && node.name?.text === name) found.push(node); ts.forEachChild(node, visit); }
+  visit(cropTree); assert.equal(found.length, 1, `one actual ${name}`); return found[0].getText(cropTree);
+}
 const variable = name => one(n => ts.isVariableDeclaration(n) && n.name.getText(tree) === name, name);
+/** A variable declared in the crop fields' owner (maps/cropKit.ts: the land-use sample moved there with its fields). */
+function cropVariable(name) {
+  const found = [];
+  function visit(node) { if (ts.isVariableDeclaration(node) && node.name.getText(cropTree) === name) found.push(node); ts.forEachChild(node, visit); }
+  visit(cropTree); assert.equal(found.length, 1, `one actual ${name}`); return found[0].getText(cropTree);
+}
 const composition = one(n => ts.isIfStatement(n) && n.expression.getText(tree) === 'autumnCropRows && autumnFieldContext', 'composition/release');
 const callAt = source.indexOf(composition);
 assert.ok(callAt > source.indexOf('  composeAuthoredFisheryWharf();') && callAt < source.indexOf('  yield* mergeMaterialBuckets();'),
@@ -34,12 +49,12 @@ assert.match(composition, /autumnCropRows\.length = 0;\s+autumnFieldContext = nu
 // now a second, uncomposed build of the CURRENT stage: composition may move only the first twelve bale/stook donors of
 // each kind, onto supported ground clear of the field entrance, and must leave every other record, the crop resources,
 // the pool families and the RNG stream exactly as the uncomposed build has them.
-const nested = ['placeCropFields', 'paintWetCropLeaves', 'paintCropPanicle', 'biomeCropHeight',
+const nested = [...['placeCropFields', 'paintWetCropLeaves', 'paintCropPanicle', 'biomeCropHeight',
   'biomeCropLean', 'paintCropStalk', 'finishStandingCrop', 'finishBrokenCrop', 'paintGrainStalk', 'paintBiomeCrop',
   'createCropTexture', 'cropPlotAvoidsSpawns', 'cropPlotCornersAreLevel', 'appendCropRowGeometry',
-  'tryPlaceCropPlot', 'refitDestructibleColliders', 'animateBrokenRecord', 'breakRecord',
-  'restoreDestructibleRecord'].map(declaration).join('\n');
-const finalizer = declaration('finalizeCropFields').replace('function finalizeCropFields(', 'function realFinalize(');
+  'tryPlaceCropPlot', 'cropAttributeNormal'].map(cropDeclaration), ...['refitDestructibleColliders', 'animateBrokenRecord', 'breakRecord',
+  'restoreDestructibleRecord'].map(declaration)].join('\n');
+const finalizer = cropDeclaration('finalizeCropFields').replace('function finalizeCropFields(', 'function realFinalize(');
 const sources = new Map();
 const hook = registerHooks({ load(name, context, next) {
   if (!sources.has(name)) return next(name, context);
@@ -59,7 +74,9 @@ async function fixtureModule(mode = 'current') {
     text = text.replace(original, original.replace(anchor, '/* deliberate stale obstacle footprint */'));
   }
   const fixtureUrl = `${url}?headland-test=${serial++}`;
-  sources.set(fixtureUrl, `${text}\nconst headlandTestRng = mulberry32;
+  sources.set(fixtureUrl, `${text}\nimport { cropRowSegmentIsSupported } from './propPlacement.ts';
+  import { captureAutumnCropRow } from './autumnHeadlands.ts';
+  const headlandTestRng = mulberry32;
   export function headlandTestStage(config, heightField, document, seed = 2002) {
     const P = config.props, mapId = config.id, inh = P.inhabit || {}, aniso = 4;
     const L = heightField._layout, v = L.village, noVeg = heightField._noVeg;
@@ -85,8 +102,11 @@ async function fixtureModule(mode = 'current') {
     const ${variable('autumnCropRows')};
     let ${variable('autumnFieldContext')}, ${variable('autumnFieldStart')}, ${variable('autumnFieldEnd')};
     const ${variable('placeFieldObjects')};
+    // the crop plots' land-use sample (maps/cropKit.ts, moved with the fields from props.ts: a map with fields seats its
+    // standing grain in a wheat or barley field)
+    const ${cropVariable('cropLandSample')};
     ${nested}
-    ${declaration('appendCropRows')}
+    ${cropDeclaration('appendCropRows')}
     ${finalizer}
     function finalizeCropFields(texture, geometries) { inputRows.push(...geometries); realFinalize(texture, geometries); }
     const _zeroScale = new THREE.Vector3(1e-4, 1e-4, 1e-4), _structureTint = new THREE.Color();

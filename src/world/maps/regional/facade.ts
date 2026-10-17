@@ -102,6 +102,11 @@ const DECOR: EmitOptions = Object.freeze({ decor: true });
 export function faceSlab(sink: PartSink, bucket: RegionalBucket, face: Face, poly: ReadonlyArray<readonly [number, number]>,
   o0: number, depth: number, opts: EmitOptions = {}, coarseEdges = false): void {
   if (poly.length < 3) return;
+  // (Lane C 2026-10-16, regionalArchitecture's ray audit on the ambar's carved verges: a clockwise outline built the
+  // slab inside out) wound counter-clockwise seen from outside, whichever way the caller ran its corners
+  let area = 0;
+  for (let i = 0; i < poly.length; i++) { const [ua, ya] = poly[i], [ub, yb] = poly[(i + 1) % poly.length]; area += ua * yb - ub * ya; }
+  if (area < 0) poly = [...poly].reverse();
   const o1 = o0 + depth;
   const base = { ...DECOR, ...opts };
   sink.polygon(bucket, poly.map(([u, y]) => facePoint(face, u, y, o1)), base);
@@ -634,10 +639,23 @@ export function roofDormers(sink: PartSink, roof: { s: number; halfD: number; ta
       const xb = Math.max(0.15, (roof.ridgeTopY - yt) / roof.tanP);
       if (xb >= xf - 0.2) continue;
       const face: Face = { origin: [side * xf, 0, zc], u: [0, 0, -side], out: [side, 0, 0], width: dw };
-      // the front wall and its window
-      sink.quad(style.wall, facePoint(face, -dw / 2, yb, 0), facePoint(face, dw / 2, yb, 0), facePoint(face, dw / 2, yt, 0), facePoint(face, -dw / 2, yt, 0),
-        { ...DECOR, ...(style.colour ? { colour: style.colour } : {}) });
-      sink.near(() => style.window(face, 0, yb + 0.32, 0.72, fh - 0.5));
+      // the front wall round its window's opening, cut through with its reveal and the dark of the dormer behind (props
+      // census E2, lane B 2026-10-14: the window was glass laid on the dormer's front), the unit set back in it
+      const wo = { ...DECOR, ...(style.colour ? { colour: style.colour } : {}) };
+      const hu = 0.36, h0 = yb + 0.32, h1 = h0 + fh - 0.5, rv = 0.12;
+      const P = (u: number, y: number, o = 0) => facePoint(face, u, y, o);
+      sink.quad(style.wall, P(-dw / 2, yb), P(-hu, yb), P(-hu, yt), P(-dw / 2, yt), wo);
+      sink.quad(style.wall, P(hu, yb), P(dw / 2, yb), P(dw / 2, yt), P(hu, yt), wo);
+      sink.quad(style.wall, P(-hu, yb), P(hu, yb), P(hu, h0), P(-hu, h0), wo);
+      sink.quad(style.wall, P(-hu, h1), P(hu, h1), P(hu, yt), P(-hu, yt), wo);
+      sink.quad(style.wall, P(-hu, h0), P(-hu, h0, -rv), P(-hu, h1, -rv), P(-hu, h1), { ...wo, shade: 0.74 });
+      sink.quad(style.wall, P(hu, h0), P(hu, h1), P(hu, h1, -rv), P(hu, h0, -rv), { ...wo, shade: 0.74 });
+      sink.quad(style.wall, P(-hu, h1), P(-hu, h1, -rv), P(hu, h1, -rv), P(hu, h1), { ...wo, shade: 0.66 });
+      sink.quad(style.wall, P(-hu, h0), P(hu, h0), P(hu, h0, -rv), P(-hu, h0, -rv), { ...wo, shade: 0.9 });
+      sink.quad('dark', P(-hu, h0, -rv - 0.004), P(hu, h0, -rv - 0.004), P(hu, h1, -rv - 0.004), P(-hu, h1, -rv - 0.004), DECOR);
+      const recess = sink.recess;
+      sink.recess = rv;
+      try { sink.near(() => style.window(face, 0, h0, 0.72, fh - 0.5)); } finally { sink.recess = recess; }
       // the cheeks: triangles from the front back to the slope
       for (const end of [-1, 1]) {
         const z = zc + end * dw / 2;

@@ -18,6 +18,7 @@ import { certifyGroundedStructureParts, measureBoundsJoint } from './structureCo
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { NIGHT_EMISSION_ATTRIBUTE } from '../engine/nightEmissionMaterial.ts';
 import { rebuildRegionalStructure, resolveRegionalArchitecture } from './maps/regional/index.ts';
+import { settleCatalogCuts } from './maps/railKit.ts'; // (integ/226: props.ts settles the catalog's cut halls after the catalog pass)
 import { bindStructureSpans, describeStructure, tagStructureVertices } from './structureDamageSeam.ts';
 import { createStructureDamage } from '../sim/structureDamage.ts';
 
@@ -51,17 +52,20 @@ function hashGeometry(hash, geometry) {
 function bucketStats(geometries) {
   return geometries.reduce((sum, g) => {
     sum.parts++;
+    // (the garage fixes, 2026-10-15) the civic hall's own new parts (its flank windows, cornice, parapet and drums) are
+    // fresh to the stream (uvJitter 'none'): they draw nothing, so the timber hall's drop-in contract counts the drawing parts
+    if (g.userData?.uvJitter !== 'none') sum.draws++;
     sum.vertices += g.attributes.position.count;
     sum.indices += g.index?.count ?? g.attributes.position.count;
     sum.bytes += Object.entries(g.attributes).reduce((n, [name, a]) => n + (name === NIGHT_EMISSION_ATTRIBUTE ? 0 : a.array.byteLength), 0)
       + (g.index?.array.byteLength ?? 0);
     return sum;
-  }, { parts: 0, vertices: 0, indices: 0, bytes: 0 });
+  }, { parts: 0, draws: 0, vertices: 0, indices: 0, bytes: 0 });
 }
 
 function assertBudget(before, after) {
   const oldTotal = bucketStats(Object.values(before).flat()), nextTotal = bucketStats(Object.values(after).flat());
-  assert.equal(nextTotal.parts, oldTotal.parts, 'same total UV-jitter draws and primitive allocations');
+  assert.equal(nextTotal.draws, oldTotal.draws, 'same total UV-jitter draws and primitive allocations');
   const savedBytes = oldTotal.bytes - nextTotal.bytes, savedFinalBytes = (oldTotal.indices - nextTotal.indices) * 32;
   assert.ok(savedBytes > 9000 && savedFinalBytes > 40000,
     'the actual constructor and final nonindexed merge both get smaller');
@@ -74,7 +78,7 @@ function geometryDigest(geometry) {
 
 function assertPlacedBudget(before, after) {
   const totals = bucketStats(Object.values(after).flat());
-  assert.equal(bucketStats(Object.values(before).flat()).parts, totals.parts,
+  assert.equal(bucketStats(Object.values(before).flat()).draws, totals.draws,
     'the placed timber variant emits the same part allocation as the civic bathhouse');
 }
 
@@ -349,6 +353,7 @@ const dependencies = { roadBuildingDoorAxis, roadSettlementJunction, buildingRoa
   rebuildRegionalStructure, resolveRegionalArchitecture,
   // destruction (2026-10-07): a placed structure is described and tagged where it is built (props.ts describeStructureAt)
   bindStructureSpans, describeStructure, tagStructureVertices, createStructureDamage,
+  settleCatalogCuts,
 };
 // The map-revival lane (2026-10-05): Orchard Valley adopts the Chouf kit (maps/regional/chouf.ts), which rebuilds the
 // placed bathhouse as the hammam over the same seat, filling the base's measured bounds (the timber variant's 2 cm entry

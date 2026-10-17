@@ -51,12 +51,15 @@ let tower = null;
 for (let i = 0; i < fp.count; i++) {
   const x = fp.getX(i), y = fp.getY(i), z = fp.getZ(i);
   if (z < 512 || Math.abs(Math.atan2(x, z - 442)) > 44 * Math.PI / 180) continue;
-  // a spire's apex: a vertex 25 m or more over the lowest vertex near it
+  // a tower's apex: a vertex 12 m or more over the lowest vertex near it
+  // (map revival lane 2, 2026-10-05: the hamlets past Frosthollow's edge are built in its goral kit, so the church is the
+  // Podhale's wooden one — an 8.5 m shingled tower, the boarded belfry chamber, the bulb and the cross, 14.3 m in all;
+  // the generic set's stone spire rose 25 m and more)
   let low = Infinity;
   for (let j = 0; j < fp.count; j += 3) if (Math.abs(fp.getX(j) - x) < 6 && Math.abs(fp.getZ(j) - z) < 6) low = Math.min(low, fp.getY(j));
-  if (y - low > 25 && (!tower || y - low > tower.rise)) tower = { x, z, rise: y - low };
+  if (y - low > 12 && (!tower || y - low > tower.rise)) tower = { x, z, rise: y - low };
 }
-assert.ok(tower, 'a church spire stands in Frosthollow\'s north view');
+assert.ok(tower, 'a church tower stands in Frosthollow\'s north view');
 assert.ok(tower.z - 512 < 420, `before the ranges' foot (${(tower.z - 512).toFixed(0)} m out)`);
 
 // gauntlet wave 30, Ironworks' edge-e-up ("the new hamlets read as American red barns"): a map with a regional building
@@ -65,18 +68,24 @@ assert.ok(tower.z - 512 < 420, `before the ranges' foot (${(tower.z - 512).toFix
 assert.equal(resolveBorderArchitecture('foundry', undefined, false)?.style.id, 'ruhr', 'Ironworks: the coalfield workers\' houses');
 assert.equal(resolveBorderArchitecture('frontier', 'hessian', false)?.style.id, 'hessian', 'a square\'s own kit');
 assert.equal(resolveBorderArchitecture('winter', undefined, true), null, 'no kit: the generic farm set');
-// ... and a kit that builds no dwelling (Kestrel Airfield's Hostomel hangars) leaves the generic set, its church in the
-// generic stone
+// ... and Kestrel Airfield's Hostomel kit — hangars and a terminal until the maps lane's Kestrel rebuild (2026-10-15, the
+// map-revival lane's 723489f3b) gave it the garden cooperatives' dacha and shed — builds its hamlets from that dacha: a
+// house to a yard (the kit has no barn), never a hangar, and none of the generic set's barns
 {
   const airfield = getMapConfig('airfield');
   const arch = resolveBorderArchitecture('airfield', airfield.props?.architecture, false);
   assert.equal(arch?.style.id, 'hostomel', 'Kestrel Airfield resolves its hangar kit');
   const plain = buildBorderFarmsteads({ ...options, sites });
-  const hangars = buildBorderFarmsteads({ ...options, sites, architecture: arch });
-  assert.deepEqual(Array.from(hangars.geometry.getAttribute('position').array), Array.from(plain.geometry.getAttribute('position').array),
-    'the hangar kit builds the generic yards');
-  assert.deepEqual(Array.from(hangars.geometry.getAttribute('color').array), Array.from(plain.geometry.getAttribute('color').array),
-    'in the generic colours');
+  const dachas = buildBorderFarmsteads({ ...options, sites, architecture: arch });
+  assert.notDeepEqual(Array.from(dachas.geometry.getAttribute('position').array), Array.from(plain.geometry.getAttribute('position').array),
+    'the dacha builds the yards');
+  const barnWall = [[0.46, 0.20, 0.15], [0.37, 0.30, 0.23], [0.62, 0.55, 0.45]].map((c) => c.map((v) => Math.pow(v * 0.8, 2.2) * 0.9));
+  const dc = dachas.geometry.getAttribute('color');
+  let barns = 0;
+  for (let i = 0; i < dc.count; i++) {
+    if (barnWall.some((c) => Math.abs(dc.getX(i) - c[0]) < 2e-3 && Math.abs(dc.getY(i) - c[1]) < 2e-3 && Math.abs(dc.getZ(i) - c[2]) < 2e-3)) barns++;
+  }
+  assert.equal(barns, 0, 'no generic barn in the dacha yards');
 }
 const foundry = getMapConfig('foundry');
 const foundryFarms = buildHorizonRing(null, foundry, 1337, createHeightField(1337, foundry)).getObjectByName('border-farmsteads');

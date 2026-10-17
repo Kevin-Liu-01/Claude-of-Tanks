@@ -97,7 +97,7 @@ the records alone, identically in the solo world (the rendered build) and on the
 | footprint | minimum-area oriented rectangle around the contact record's parts (rotating calipers over their convex hull): centre `cx, cz`, half extents `hw, hd`, `yaw` |
 | `baseY`, `topY` | contact record's `min[1]`; highest shell band's `max[1]` |
 | built volume `V` | Σ over shell bands of (part area × band height), m³ |
-| mass class | `fixed` role → indestructible; `setpiece` role or `V ≥ 20,000 m³` → `landmark`; `V < 200` → `shed`; `V < 2,500` → `house`; else `large` |
+| mass class | `fixed` role → indestructible; `setpiece` role with `V ≥ 200 m³`, or `V ≥ 20,000 m³` → `landmark`; a `setpiece` under 200 m³ → `shed` (a light set piece, below); `V < 200` → `shed`; `V < 2,500` → `house`; else `large` |
 | hit points | `HP = 0.72·V^0.72` structure points (SP), floor 10: shed 60 m³ → 13.7, house 600 m³ → 72, warehouse 7,200 m³ → 431, landmark 50,000 m³ → 1,742 (tuned to the feel targets in §5) |
 | records | indices of its contact/movement records (obstacles) and shell bands (colliders) |
 
@@ -111,6 +111,24 @@ reaches `breached` and stops there: its integrity floors at 5 %, it never collap
 P2 lets its sections fall (a spire's upper floor, a roof) without removing the whole. Reason: a landmark is a map's
 anchor and its routes' reference; flattening one changes the map, and its collapse would be the largest single sim
 and render spike in the game.
+
+**Light set pieces come down** (props lane A, E12, 2026-10-14; the owner: "make sure all props below a certain size are
+destructible whether from ramming or shooting"). A set piece under 200 m³ of built volume (`LIGHT_SETPIECE_MAX_M3`: a
+statue, a stele, a fountain, a guyed mast, a fire lookout's frame, a troposcatter frame, an arch over a track) takes
+damage as a shed and collapses like a house: its records swap, the bots' grid refreshes round it. Its material is no
+softer than masonry (`lightSetPieceMaterial`: stone, bronze, iron, never a timber shed's 30 kJ scuff), it takes no
+slender tower's factor, and its heap is its volume spread over its plan (`structureRubbleHeightM`: a third of `V / plan`,
+0.3 m at least, at most the height law's), so a felled mast leaves a low spread of steel, not a 2.6 m mound. On the 33
+shards (2026-10-14) 15 of 63 set pieces are light: six guyed masts, four troposcatter frames, the fire lookout, two
+fountains, the kolkhoz arch and an airstrip piece. Every other set piece stays breach-only.
+
+**Set pieces break by their own pieces** (E12; `src/world/landmarks/pieces.ts`, `damage.ts`). A builder names the pieces
+that come off (a figure, a finial, merlons, sails, a cap, a crest and banner, dishes, a crown, sheaves) and the vessels
+that rupture (tanks, a radome); the landmark kit takes them at their stage — `damaged`, the breach stage's hole (slot 0),
+or the collapse — hiding each by name (`DamageHide.piece`) and laying its own triangles where it rests on the ground the
+composer sampled round it. An open frame (a guyed mast, a fire lookout, a headframe, a troposcatter, a conveyor) takes no
+spall and no round hole, and a light one goes over whole along the shaft topple's line. A set piece with neither keeps the
+reading it had. Strikes between stages take nothing off, so a late joiner's settled stages lay the same.
 
 ### 3.3 Stages
 
@@ -126,7 +144,7 @@ Stages only advance. A blow that crosses two thresholds emits one event per stag
 ### 3.4 Sections (P2)
 
 Landed off on `feature/destruction-sections` (2026-10-08) behind the ruleset's `sections` flag (§9:
-`SECTIONS_SWITCH`, off in every mode until its gates pass). `sim/structureSections.ts` derives a structure's sections
+`SECTIONS_SWITCH`); on in every mode that plays destruction since DST-04 (2026-10-15). `sim/structureSections.ts` derives a structure's sections
 from its collision records alone (a host has no rendered kit), on its first blow:
 
 - **The eaves**: the top of the highest half metre whose shell bands' plan area is at least ¾ of the widest (a pitched
@@ -436,12 +454,32 @@ the same ground; a peer stamps each crater once, from its event or, settled, fro
 from taking it), and its prediction rides the bowl. No route-grid refresh: a bowl 1.6–6 m wide under a 25 m cell's
 sample point changes nothing a route reads. Receipt: `sim/destructionCraters.selftest.mjs`.
 
-Every mode's ruleset keeps `craters: false` until the drawn terrain follows the overlay (the render below): a bowl the
-simulation digs under a flat drawn ground would sink hulls into it. A tool or a test passes its own rules to try them.
+Every mode that plays destruction digs craters since DST-04 (2026-10-15; `CRATERS_SWITCH` on, §9): the drawn terrain
+follows the overlay (the render below) and so does every ray. A tool or a test passes its own rules to try others.
 
-**Not yet (P3):** the world raycasts (shells and sight lines) march the base terrain, not the overlay: a heap stops
-nothing a ray passes over and a crater's bowl is read at the old ground. Heaps are at most 2.6 m and sight lines run at
-hull height, so P1 lives with it; P3 hands the deformed field to the world's terrain march.
+**The world's rays read the dug ground (DST-04, 2026-10-15).** Both worlds' ray marches — `world/map.ts` (solo, a
+network seat, the Studio) and `world/headlessCollisionWorld.ts` (the authority) — sample the base's fast height plus the
+bound overlay as drawn (`contactOffsetAt`, the lattice the terrain mesh follows); the march's upward ceiling counts the
+overlay's raise and a terrain hit takes the dug ground's normal. Shells, spotting's `hardLos`, the bots' looks and gun
+lanes, the drones' avoidance, the roof gun's check and the aim all read it: a heap stops what passes into it, a gun in
+a bowl fires out of it, a hull in a bowl is seen and struck over the rim, never through phantom ground. The authority
+binds its match's ground on its own (match-local) world; the solo smoke reads the match's ground as the authority's
+does. The presentation's running gear and the Studio's hulls stand on the same dug ground
+(`world/liveHeightFieldProxy.ts createDugHeightFieldProxy`). Receipt: `world/groundOverlayRaycast.selftest.mjs`.
+The drawn bowl is the lattice's: its deepest point reaches 78 % of the law's depth for a 125 mm crater (R 1.67 m), 89 %
+for a 152 mm shell and 95 % for the gunship's howitzer (R 3.44 m), the rim all of its height.
+
+**A map's pre-placed craters are real bowls (DST-04, 2026-10-15).** The battlefield's old shell scars (props.ts
+`tryPlaceBattleScar`, the props stream as before) are recorded as sites, not drawn as flat discs. `world/mapCraters.ts`
+decides each site once on the built world's own records: a bowl (rim crest 0.7 r of the scar's disc, a weathered
+0.28 R deep, the scar's own rim) or a mark — where the bowl would reach under any record but a tree (nothing that stands
+on the ground hangs over a hole), on hard ground or water, under the dig radius, or past 160 bowls. The collision shards
+carry the decided stamps (`craters`), so the authority lays exactly what every seat built (layout identity; the drift
+receipt keeps the shards equal to the build). Every match lays them into its ground before anything else: the solo step
+each battle, the authority (fresh, and a standby host's prepared ground, before the bot navigation grid reads it), a
+seat's mirror and the Studio's every scene; they take overlay bucket slots but not the match's 160 dug craters. The
+presentation lays their surfaces from the bound ground (`fx/effects.ts layMapCraters`: craterMarks in a slot set of its
+own, an hour old). Receipt: `world/mapCraters.selftest.mjs`.
 
 **Render (P3).** The ground mesh is updated in place: the lattice vertices inside a stamp's influence, on every
 terrain LOD level that covers them, take `offsetAt(vertex)`, their normals are recomputed locally, and the position
@@ -593,7 +631,8 @@ P2 (2026-10-08): the audit logs `structure_breach` keyed by what it names (`brea
 fall's hole 255) and judges it as it judges a stage: missing, duplicate, late, a breach older than the view animated, a
 breach the host never sent, and one the new host re-sends after the migration. With the switch flipped (sections on),
 the scripted ram's breaches presented on 3 views, 3 of 3, none re-sent by the new host; its stages 18 of 18 as before.
-With sections off (every mode today) the host sends none and the earlier judgments are unchanged.
+With sections off (every mode before DST-04, 2026-10-15; a ruleset may still turn them off) the host sends none and the
+earlier judgments are unchanged.
 
 ## 9. Per-mode rules
 
@@ -609,12 +648,14 @@ readonly destruction: {
 };
 ```
 
-Craters stay off in every mode behind one switch, `CRATERS_SWITCH` in `sim/matchRuleset.ts`, until the switch-on gates
-pass. The column says what each mode takes once they ship. **Sections**
-(`readonly sections: boolean`, P2 §3.4) follow `structures` in every mode behind `SECTIONS_SWITCH`, off until their
-gates pass (the receipts below, paired pacing and fairness, the determinism and world-events audits with sections on,
-the cost of the openings-aware rays, and the motion strips of a wall panel coming down from a metre up, storeys dropping
-and a round through a hole).
+Craters follow one switch, `CRATERS_SWITCH` in `sim/matchRuleset.ts`: on since DST-04 (2026-10-15), after the switch-on
+gates below. The column says what each mode takes. **Sections**
+(`readonly sections: boolean`, P2 §3.4) follow `structures` in every mode behind `SECTIONS_SWITCH`: on since DST-04
+(2026-10-15; the owner's "explosions that should be destructive and leave holes"), so a battle's HE holes the wall it
+strikes, a section at zero falls and a collapse comes down storey by storey, as the Studio's films have shown since
+2026-10-08. The receipts and both audits ran with sections on in P2; the paired pacing and fairness, the cost of the
+openings-aware rays and the motion strips (a wall panel coming down from a metre up, storeys dropping, a round through a
+hole) run in the 225/226 final pass.
 
 **The switch-on gates (crater-render-spec §F), on feature/destruction-craters (2026-10-08).** This branch is the core plus
 the drawn terrain and ground cover (the ground lane, §B/§C) and the crater surface (the FX lane, §D). The surface drapes on
@@ -626,8 +667,8 @@ the contact surface plus the overlay's `contactOffsetAt`, which is what the draw
 | World-events audit (live, rejoin, reconnect, migration, return), terrain_crater judged like a stage | 4 dug, presented 12/12 on 4 views; 6 laid down settled for later views; none re-sent by the new host |
 | battlePacing, paired against craters off on the same seeds | 127 of 132 matches identical; 5 change duration only, no winner; median 199.2 s and p10 154.6 s unchanged |
 | Fairness, paired, 40 games a side on the three maps with the most HE ground bursts | Whiteout +5.0 points (2 winners changed), Polders 0 (0), Saltwind −2.5 (1); 26–31 craters per map |
-| Barrage cost (ABCCBA off/on, live lighting, scene-pass guard) | queued |
-| Motion strips (125 mm, the gunship's 152 mm and its walk, FPV, ATGM, a settled field at 30 and 80 m, snow, sand) | queued |
+| Barrage cost (ABCCBA off/on, live lighting, scene-pass guard) | the 225/226 final pass (switched on 2026-10-15 under the owner's build-first rule) |
+| Motion strips (125 mm, the gunship's 152 mm and its walk, FPV, ATGM, a settled field at 30 and 80 m, snow, sand) | the 225/226 final pass (scenes: the destruction lane's `scenes/craters.mjs`) |
 
 All-bot standard play digs few craters: bots fire HE at the ground rarely (0.1–0.8 craters a game). The AC-130's
 howitzer and players' HE are where craters come from. A shaped charge (an ATGM, an FPV drone) leaves a mark and no bowl:
@@ -999,3 +1040,19 @@ stuff falling around and pieces of buildings and destruction use the same kind o
   late in its fall (the crumble's law on every triangle of its spans), no still piece in the air, every thrown piece on
   the ground where it lands, every body at rest on the ground, a body or a record, the budgets. Its selftest runs four
   Steinburg kinds; main before this section failed every one.
+
+## 18. A ruin, never a raft (2026-10-16)
+
+The owner ruled flat rafts out, and the LOOKS r2 sweep's anti-raft check found 145 placed structure kinds whose collapse
+stood under 25 % of their intact height (the destroyed state's area-weighted 90th percentile of its triangles' heights
+against the intact's; its plan at least 60 % of the intact's cells). `world/collapseRuin.ts keepRuinStanding` runs every
+kit's collapse (the default kit and every regional one) from the world seam: it measures what the kit writes as it is
+written (64 height bins, a 48 × 48 plan grid, no sort and no allocation) against the intact form as drawn (its p90
+height, top and plan box, measured once from the parts at describe: `StructureDamageAnatomy.intact`), and adds in the
+building's own buckets and tints only what the ruin lacks — the storey interior heaped (a fill draped on the
+simulation's heap, ragged at its edge, no deeper than tracks sink), an L pier standing at each corner in the ground
+storey's structural layer (stepped and ragged, 42–60 % of the intact's p90 over its share), then ragged wall stubs with
+a breach in each face and the fallen covering's slabs leaning on the heap, until the ruin stands at 30 % and covers
+72 %. The kit writes with 200 boxes' room kept free for it. Seeded from the collapse's own seed (the same ruin on every
+peer and tier); a kit whose ruin already stands is left as it wrote it. Presentation only: the piers and stubs are drawn,
+not records (the simulation's heap and the swap are unchanged). Receipt: `world/collapseRuin.selftest.mjs`.

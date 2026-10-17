@@ -72,4 +72,29 @@ assert.equal(custom.update({ nowMs: 1_000, transportState: 'open', welcomed: tru
 assert.equal(custom.update({ nowMs: 3_999, transportState: 'open', welcomed: true, lastAuthorityAtMs: 0, openedAtMs: 0 }).phase, 'stalled');
 assert.equal(custom.update({ nowMs: 4_000, transportState: 'open', welcomed: true, lastAuthorityAtMs: 0, openedAtMs: 0 }).phase, 'failed');
 
+
+// ---- 2026-10-15 (the MP stream): a starved tab's own stall never reads as a dead host. The stall clock restarts at the
+// last frame this tab's tasks were seen starved (starvedAtMs): authority missing while the tab could not read it is
+// not a stall; five seconds of it after the tab runs again are.
+{
+  const starved = new ConnectionRecovery();
+  const at = (nowMs, lastAuthorityAtMs, starvedAtMs = null) => starved.update({ nowMs, transportState: 'open', welcomed: true, lastAuthorityAtMs, openedAtMs: 0, starvedAtMs });
+  assert.equal(at(100, 100).phase, 'live');
+  // the tab is starved for 6.5 s (a roster being painted under the loader): no stall, no reconnect
+  for (let t = 200; t <= 6_600; t += 50) {
+    const step = at(t, 100, t);
+    assert.equal(step.requestReconnect, false, `starved at ${t} ms: no reconnect`);
+    assert.notEqual(step.phase, 'stalled');
+  }
+  // the tab runs again and authority stays missing: the stall comes 5 s after the starvation ended, not before
+  assert.notEqual(at(11_599, 100, 6_600).phase, 'stalled');
+  const late = at(11_600, 100, 6_600);
+  assert.deepEqual([late.phase, late.requestReconnect], ['stalled', true], 'a host still silent 5 s after the tab woke is stalled');
+  // the control: the same silence without starvation stalls at 5 s
+  const plain = new ConnectionRecovery();
+  plain.update({ nowMs: 100, transportState: 'open', welcomed: true, lastAuthorityAtMs: 100, openedAtMs: 0 });
+  const control = plain.update({ nowMs: 5_100, transportState: 'open', welcomed: true, lastAuthorityAtMs: 100, openedAtMs: 0 });
+  assert.deepEqual([control.phase, control.requestReconnect], ['stalled', true], 'control: 5 s of silence while the tab ran');
+}
+
 console.log('mp recovery: live → stalled after 5 s (one reconnect request) → reconnecting → live, 60 s grace → failed, left/closed terminal pass');

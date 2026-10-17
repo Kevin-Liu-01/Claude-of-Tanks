@@ -34,6 +34,7 @@ import { SimplexNoise } from '../../engine/simplexFast.ts';
 // MOBILE r1: central tier texture scale (desktop returns sizes unchanged)
 import { getDeviceTier, texSize } from '../../engine/quality.ts';
 import { CLOUDSCAPE_REGIMES } from '../../engine/cloudscapes.ts';
+import { CLOUD_BASE_NO_CAP_M, resolveCloudBase } from '../../engine/cloudBase.ts';
 import { OVERCAST_DIRECT_CUT_SHARED, resolveDeckClosure, resolveOvercast, type LightModelPreset } from '../../engine/lightModelCore.ts';
 import { registerRetainedObject3DResources } from '../../engine/resourceLifetime.ts';
 import { HORIZON_MESA_SURFACE_FRAGMENT } from '../horizonMesaSurface.ts';
@@ -52,7 +53,6 @@ import { continuedGroundAt, continuedGroundSampler } from '../horizonSurface.ts'
 import { resolveBorderLandform, type BorderLandformSettings } from '../borderLandform.ts';
 import { buildBorderFarmsteads, farmsteadTreesAt, resolveBorderArchitecture, ringSurfaceSampler, selectFarmsteadSites, type BorderFarmsteadOptions } from '../borderFarmsteads.ts';
 import { buildBorderHedgerows } from '../borderHedgerows.ts';
-import { type HorizonDamSettings, buildHorizonDam, carveHorizonDamCanyon, floodHorizonDamReservoir } from '../horizonDam.ts';
 import { type HorizonSummitCapSettings, capHorizonSummits } from '../horizonTablelands.ts';
 import { installHorizonRing } from '../horizonRingHook.ts';
 import { type SeaOpening, SEA_APRON_OUTER_RADIUS_M, dominantSeaOpening, resolveSeaOpenings, seaHeadlandWeight, seaOpeningWeight, seaSectorWeightAt, seaSectorBlend, seaCoastDistanceAt, mergeSeaWetness } from '../edgeWater.ts';
@@ -115,9 +115,6 @@ interface HorizonConfig {
    * runs into a massif right behind the edge, the pass is a trench as deep as the massif is high, and its end a wall
    * (gauntlet wave 6, Frosthollow's edge-n: "a smooth near-vertical curtain"). */
   roadPasses?: boolean;
-  /** The map-revival lane (2026-10-06): a dam across a canyon cut through the ring (horizonDam.ts) — Skybridge's Glen
-   * Canyon Dam, the gorge's axis run on through the north ring to an arch under the plateau's rim. */
-  dam?: HorizonDamSettings;
   /** The map-revival lane (2026-10-06): the tableland ring's outer ranges capped into flat-topped mesas past a radius
    * (horizonTablelands.ts) — the mesa stack's saddle, summits and shoulder otherwise stand as domes and spires. */
   summitCap?: HorizonSummitCapSettings;
@@ -2208,7 +2205,6 @@ export function sampleHorizonGeometry(
   if (canyonOutland) drainSteps(carveHorizonEscarpmentsSteps(ring, horizon, mapId, style, seed));
   if (horizon.roadPasses !== false) openRoadPasses(ring, ground);
   if (horizon.summitCap) capHorizonSummits(ring, horizon.summitCap, ((seed ^ 0x5C4D) ^ idHash(mapId)) >>> 0, HORIZON_SEGMENTS);
-  if (horizon.dam) carveHorizonDamCanyon(ring, horizon.dam, HORIZON_SEGMENTS);
   openHorizonToSea(ring, openings, ground);
   return ring;
 }
@@ -3700,12 +3696,9 @@ export function* horizonRingGeometrySteps(
   continueHorizonGround(ring, ground, canyonOutland);
   if (canyonOutland) yield* carveHorizonEscarpmentsSteps(ring, H, mapId, style, seed);
   if (H.roadPasses !== false) openRoadPasses(ring, ground);
-  // the map-revival lane (2026-10-06): the outer ranges capped into mesas (horizonTablelands.ts), then the dam's canyon
-  // and its reservoir as the ring's water (horizonDam.ts)
+  // the map-revival lane (2026-10-06): the outer ranges capped into mesas (horizonTablelands.ts)
   if (H.summitCap) capHorizonSummits(ring, H.summitCap, ((seed ^ 0x5C4D) ^ idHash(mapId)) >>> 0, HORIZON_SEGMENTS);
-  if (H.dam) carveHorizonDamCanyon(ring, H.dam, HORIZON_SEGMENTS);
   const sea = openHorizonToSea(ring, seaOpenings, ground);
-  if (H.dam) floodHorizonDamReservoir(ring, sea, H.dam);
   const { rows, positions: pos, heights: hs, maxHeight: maxH } = ring;
   const uvA = buildHorizonUvs(hs, maxH, sea);
   yield;
@@ -3892,11 +3885,12 @@ export function* buildHorizonRingSteps(
   // Round 72: the far range — the peaks behind the ring (1.9–3.3 km, inside the cloud dome and the camera's far
   // plane), one unlit vertex-shaded draw with its own aerial perspective; capped under a map's low cloud deck
   if (vista && H.farRange !== false && reliefSettings.far) {
-    // the lower of the baked deck's altitude and the volumetric cloudscape's authored base (whichever layer is on, the
-    // peaks stay under it); a map that authors neither takes the default deck
-    const deckBaseM = Math.min(
-      (cfg as { clouds?: { baseM?: number } } | null | undefined)?.clouds?.baseM ?? Infinity, cfg?.sky?.cloudAltM ?? Infinity,
-      ...((cfg as { clouds?: { baseM?: number } } | null | undefined)?.clouds?.baseM === undefined && cfg?.sky?.cloudAltM === undefined ? [1400] : []));
+    // 2026-10-15 (the SKY lane, HZ.14; engine/cloudBase.ts): Clouds 2.0 draws a deck at its height with its breaks, so the
+    // far peaks stand into it and the cloud covers them where it is — capped only under a closed deck, at half its depth
+    // (resolveFarRangeAmp keeps 0.82 of the deck it is handed). The legacy cap (0.82 of the lowest authored altitude:
+    // Frosthollow's far country under 574 m, Cinder Junction's under 656 m) is gone.
+    const cloudBase = resolveCloudBase(cfg as Parameters<typeof resolveCloudBase>[0]);
+    const deckBaseM = cloudBase.closed ? cloudBase.capM / 0.82 : CLOUD_BASE_NO_CAP_M;
     const farRange = buildHorizonFarRange({
       seed: ((seed ^ 0x4A72) ^ idHash(mapId)) >>> 0, settings: reliefSettings.far, character: reliefCharacter,
       deckBaseM, sun: [lx, ly, lz], base, rock: rockC, snow: snowC, forest: forestC, fog: fogC, gains: resolveHorizonLightingGains(farLighting),
@@ -3947,16 +3941,21 @@ export function* buildHorizonRingSteps(
   }
   // The species mix and crown palettes follow the map's own rim forest (vegetation.ts rimMix / palettes), so the
   // trees over the edge are the same trees as the ones inside it.
+  // GND (2026-10-15; the blind critics' Longleaf backdrop "a broadleaf band"): the ring's conifer share follows the
+  // forest over the line's own mix where the map names one (vegetation.ts `ringMix`: Longleaf's flatwoods are longleaf
+  // alone past the line, its rim keeps the creek bottom's oaks); the crown palettes and the hedges keep the rim's leads.
   const vegetation = (cfg as {
     vegetation?: {
       rimMix?: ReadonlyArray<readonly [string, number]>;
+      ringMix?: ReadonlyArray<readonly [string, number]>;
       palettes?: Partial<Record<string, { canopy?: Partial<HorizonForestSpeciesPalette> }>>;
     };
   } | null | undefined)?.vegetation;
   const rimMix = vegetation?.rimMix ?? [];
-  const rimTotal = rimMix.reduce((sum, [, weight]) => sum + weight, 0);
+  const ringMix = vegetation?.ringMix ?? rimMix;
+  const rimTotal = ringMix.reduce((sum, [, weight]) => sum + weight, 0);
   const isConifer = (species: string): boolean => HORIZON_CONIFER_SPECIES.has(species);
-  const rimConifers = rimMix.filter(([species]) => isConifer(species)).reduce((sum, [, weight]) => sum + weight, 0);
+  const rimConifers = ringMix.filter(([species]) => isConifer(species)).reduce((sum, [, weight]) => sum + weight, 0);
   const leadOf = (conifer: boolean): string | undefined =>
     rimMix.filter(([species]) => isConifer(species) === conifer).slice().sort((a, b) => b[1] - a[1])[0]?.[0];
   const rimConiferLead = leadOf(true), rimBroadleaf = leadOf(false);
@@ -4072,17 +4071,6 @@ export function* buildHorizonRingSteps(
       const setup = (_engineCtx as { setupShadowMaterial?: (material: THREE.Material, extraHook?: null) => THREE.Material } | null)?.setupShadowMaterial;
       if (setup) setup.call(_engineCtx, farms.material as THREE.Material, null);
       mesh.add(farms);
-    }
-  }
-  // The map-revival lane (2026-10-06, Skybridge's Glen Canyon Dam): the arch across the canyon cut above, seated on the
-  // finished ring (horizonDam.ts) — lit and joined to the cascades like the farmsteads, its shadow in the far cascade.
-  // It stands on the seated ring's fine rows: the receipts' bare backdrop (no ground) keeps the canyon and no dam
-  if (H.dam && ground) {
-    const dam = buildHorizonDam(H.dam, ringSurfaceSampler(HORIZON_SEGMENTS, pos, hs));
-    if (dam) {
-      const setup = (_engineCtx as { setupShadowMaterial?: (material: THREE.Material, extraHook?: null) => THREE.Material } | null)?.setupShadowMaterial;
-      if (setup) setup.call(_engineCtx, dam.material as THREE.Material, null);
-      mesh.add(dam);
     }
   }
   // Round 32 (owner 2026-09-21, "redrock still has the noticeable texture/shadow/quality loss beyond the map

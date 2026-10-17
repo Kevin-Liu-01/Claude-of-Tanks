@@ -29,12 +29,24 @@ const maps = [polders, copperMesa, airfield, oasis, whiteout,
 // First-pass authoring ceilings: the lived-in revision redistributes these
 // populations instead of hiding a geometry/query-cost increase in new roads.
 const authoredBudgets = {
-  polders: { roadNodes: 157, wallM: 409, beltTrees: 41, trees: [42, 64, 72], grass: 1.02, rocks: 112, outcrops: 12, plan: 18 },
+  // (the maps lane's Tidegate Polders village, 2026-10-15, item/maps-polders-village 07f61a38d: the 48-house lintdorp
+  // along the dyke road and its church, maps/poldersVillage.ts, authored after the plan's 18 — 66 sites; the ceiling is
+  // the authoring budget, its frame cost the cost probe's, as Copper Mesa's)
+  polders: { roadNodes: 157, wallM: 409, beltTrees: 41, trees: [42, 64, 72], grass: 1.02, rocks: 112, outcrops: 12, plan: 18,
+    settlement: 66 },
   copper_mesa: { roadNodes: 166, wallM: 405, beltTrees: 0, trees: [22, 32, 40], grass: 0.36, rocks: 224, outcrops: 42, plan: 16 },
-  airfield: { roadNodes: 184, wallM: 403, beltTrees: 0, trees: [26, 42, 80], grass: 0.72, rocks: 98, outcrops: 12, plan: 16 },
+  // (the maps lane's Kestrel rebuild, 2026-10-15, landing the map-revival lane's 1724f06a6: the Polissia pine, trimmed by the
+  // coordinator on hold x9 to 9 x 9 m plantations of their rows alone, 34 woodlots and a 108 rim — 512 plantation seats
+  // before their skips; the dacha cooperatives' two lanes for the layout brief's orphan rule (7 roads) and their 16 plots
+  // (42 sites); its cost is the final pass's Kestrel cost check)
+  airfield: { roadNodes: 184, wallM: 403, beltTrees: 512, trees: [34, 42, 108], grass: 0.72, rocks: 98, outcrops: 12, plan: 16,
+    roads: 7, settlement: 42 },
   // (batch 4: maps-oasis round 2, c97a5723d: Siwa's palm groves at 32 clusters and its shore palms planted closer, 13-14 m
   // apart, 38 in the two rows; wave 125 passed and its cost accepted)
-  oasis: { roadNodes: 152, wallM: 421, beltTrees: 38, trees: [32, 28, 30], grass: 0.5, rocks: 144, outcrops: 24, plan: 18 },
+  // (2026-10-07, the map-revival lane's Oasis round 3, gauntlet wave 135: "no mud-walled garden plots and no palm groves";
+  // landed on main by the maps lane 2026-10-14) Siwa's walled palm gardens — their mud walls and rows of date palms; their
+  // frame cost is the cost probe's (was wallM 421, beltTrees 38)
+  oasis: { roadNodes: 152, wallM: 760, beltTrees: 90, trees: [32, 28, 30], grass: 0.5, rocks: 144, outcrops: 24, plan: 18 },
   // (2026-10-10, the map-content lane's round 1c, gauntlet wave 358a: the plateau's glacial erratics and frost-shattered
   // outcrops, 224 rocks and 38 outcrops where the snow plain stood empty, within the geological ceiling below)
   whiteout: { roadNodes: 150, wallM: 420, beltTrees: 0, trees: [8, 12, 20], grass: 0.2, rocks: 224, outcrops: 38, plan: 16 },
@@ -85,7 +97,7 @@ assert.equal(new Set(maps.map(({ terrain }) => JSON.stringify(terrain.roads))).s
   'every battlefield authors its own road graph');
 assert.equal(new Set(maps.map(({ terrain }) => JSON.stringify(terrain.landforms))).size, 10,
   'every battlefield authors its own macro relief instead of copying a palette');
-// (a settlement authored as planned sites — Kestrel Airfield's, Copper Mesa's since its round 3 — has its mix there)
+// (a settlement authored as planned sites — Kestrel Airfield's, Copper Mesa's and Sunscar Oasis's since their round 3 — has its mix there)
 assert.equal(new Set(maps.map(({ props }) => JSON.stringify([props.plan, (props.plannedSites ?? []).map((site) => site.structure)]))).size, 10,
   'each settlement has its own occupational building mix');
 
@@ -106,7 +118,7 @@ for (const config of maps) {
   assert.ok(Math.max(...sites.map(({ x }) => x)) - Math.min(...sites.map(({ x }) => x)) >= 70
     && Math.max(...sites.map(({ z }) => z)) - Math.min(...sites.map(({ z }) => z)) >= 100,
   `${label}: inhabited frontage occupies a two-dimensional court, not one remote ribbon`);
-  assert.ok(roads.length >= 5 && roads.length <= 6, `${label}: bounded multi-route layout`);
+  assert.ok(roads.length >= 5 && roads.length <= (budget.roads ?? 6), `${label}: bounded multi-route layout`);
   const points = roads.flat();
   const xs = points.map(([x]) => x), zs = points.map(([, z]) => z);
   if (label === 'reservoir') {
@@ -183,7 +195,8 @@ for (const config of maps) {
   // the hotel twice, two ruins and the works — within 40; its frame cost is the cost probe's, not this ceiling's)
   const plannedSites = config.props.plannedSites?.length ?? 0;
   const settlement = config.props.plan.length + plannedSites;
-  const settlementCeiling = label === 'copper_mesa' ? 40 : plannedSites ? 26 : 18;
+  // (and Sunscar Oasis's round 3, wave 135: "no dense heaped Shali core" — Siwa authored lot by lot, within 32)
+  const settlementCeiling = budget.settlement ?? (label === 'copper_mesa' ? 40 : label === 'oasis' ? 32 : plannedSites ? 26 : 18);
   assert.ok(settlement >= 16 && settlement <= settlementCeiling, `${label}: bounded settlement plan`);
   assert.ok(config.props.rocks <= 224 && config.props.outcrops <= 42, `${label}: bounded geological dressing`);
   // the map-vehicles lane (2026-10-06, the period ruling): five period hulks, or none on a 1944 front the public fleet
@@ -214,7 +227,8 @@ assert.ok(airfield.splat.pavedRoads && airfield.vegetation.avoid.length === 5,
 assert.ok(oasis.terrain.dunes && oasis.terrain.lakes.length === 1
   && oasis.terrain.lakes[0].radii.length === 16 && oasis.terrain.lakes[0].level === -1.2
   && !oasis.terrain.marshes.length
-  && oasis.vegetation.belts.length === 2,
+  // (Oasis round 3: the two shore rows and the walled gardens' nine rows of date palms)
+  && oasis.vegetation.belts.length === 11,
   'oasis combines dune arms, the published single authored spring contour and planted shore palms');
 assert.ok(whiteout.terrain.frozenMarshes && whiteout.props.snowCap && whiteout.vegetation.clusterCount <= 8,
   'polar station is exposed snow country rather than an alpine forest');

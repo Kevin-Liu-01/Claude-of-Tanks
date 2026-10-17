@@ -13,6 +13,7 @@ import * as THREE from 'three';
 import { VehicleMesh, linearHex, material, vehicleWeathering, type Vec3, type VehicleMaterial } from './vehicleMesh.ts';
 import { cabLoft, roundLamp, type CabFace } from './vehicleCoachwork.ts';
 import { bv206, dozer, haulpak, snocat } from './vehicleSetPiecesWorks.ts';
+import { keepStreams } from '../geometryStreams.ts';
 
 type Mat = VehicleMaterial;
 
@@ -168,37 +169,52 @@ function webbing(mesh: VehicleMesh, o: Vec3, du: Vec3, dv: Vec3, sag: Vec3, stra
  * frames, the control console and the T-handle controller between them, the battery covers forward, the umbrella
  * high-gain antenna, the helical low-gain antenna and the TV camera on the front, and the tool pallet astern.
  */
-function lrv(mesh: VehicleMesh, coarse: boolean): void {
+function lrv(mesh: VehicleMesh, coarse: boolean, wrecked = false): void {
   const R = 0.41, wheelZ = 1.145, wheelX = 0.915, frameY = 0.62;
+  // (Lane C, #8 r2: the census judge, "intact at the bar ... it fails only on the destroyed state", a recolour) the wreck:
+  // crushed under a hull or broken by a round, in vacuum (nothing burns): the chassis down on its splayed wheels, its
+  // forward section folded up at the hinge behind the battery covers, the front left wheel torn off and lying flat, the
+  // others squashed out of round and cambered out, the high-gain dish down on the regolith, the masts bent
+  const drop = wrecked ? frameY - 0.36 : 0;
   // the wheels: the mesh tyre, its chevrons, the hub drive inside
   for (const sx of [1, -1]) for (const sz of [1, -1]) {
-    mesh.push().translate(sx * wheelX, R, sz * wheelZ).scale(sx, 1, 1);
-    // (round 4, wave 260: "solid dark wheel discs… no wire-mesh wheels") the woven tyre: bright wire and the dark of
-    // its weave's gaps in a fine check round the tread, the shoulders and the side walls down to the hub (one grey on
-    // mobile); the hub a small spun disc inside it
-    const prof: readonly (readonly [number, number])[] = [[R * 0.42, -0.115], [R * 0.6, -0.115], [R * 0.78, -0.115], [R - 0.03, -0.115],
-      [R, -0.08], [R, -0.027], [R, 0.027], [R, 0.08], [R - 0.03, 0.115], [R * 0.78, 0.115], [R * 0.6, 0.115], [R * 0.42, 0.115]];
-    const tyreSegs = coarse ? 14 : 64;
-    mesh.grid(prof.length - 1, tyreSegs, (i, j, out) => {
-      const a = (j / tyreSegs) * Math.PI * 2;
-      out[0] = prof[i][1]; out[1] = Math.cos(a) * prof[i][0]; out[2] = Math.sin(a) * prof[i][0];
-    }, (i, j) => (coarse ? WIRE_MESH : (i + j) % 2 ? WIRE_BRIGHT : WIRE_GAP), { closeV: true, creaseI: [3, 4, 7, 8], flip: true });
-    if (!coarse) {
-      for (let k = 0; k < 18; k++) {
-        mesh.push().rotateX((k / 18) * Math.PI * 2);
-        mesh.dressing(() => {
-          mesh.box(0.04, R + 0.005, 0, 0.11, 0.01, 0.04, TITANIUM_BRIGHT, 0);
-          mesh.box(-0.04, R + 0.005, 0.02, 0.11, 0.01, 0.04, TITANIUM_BRIGHT, 0);
-        });
-        mesh.pop();
+    const torn = wrecked && sx > 0 && sz > 0;
+    if (torn) mesh.push().translate(sx * (wheelX + 0.85), 0.115, sz * wheelZ + 0.35).rotateY(0.6).rotateZ(-Math.PI / 2);
+    else if (wrecked) mesh.push().translate(sx * (wheelX + 0.06), R * 0.66, sz * wheelZ).rotateZ(-sx * 0.32).scale(sx, 0.66, 1.05);
+    else mesh.push().translate(sx * wheelX, R, sz * wheelZ).scale(sx, 1, 1);
+    // (the torn wheel lies on the regolith beside the wreck: dressing, outside the record and the collision)
+    const wheelParts = (): void => {
+      // (round 4, wave 260: "solid dark wheel discs… no wire-mesh wheels") the woven tyre: bright wire and the dark of
+      // its weave's gaps in a fine check round the tread, the shoulders and the side walls down to the hub (one grey on
+      // mobile); the hub a small spun disc inside it
+      const prof: readonly (readonly [number, number])[] = [[R * 0.42, -0.115], [R * 0.6, -0.115], [R * 0.78, -0.115], [R - 0.03, -0.115],
+        [R, -0.08], [R, -0.027], [R, 0.027], [R, 0.08], [R - 0.03, 0.115], [R * 0.78, 0.115], [R * 0.6, 0.115], [R * 0.42, 0.115]];
+      const tyreSegs = coarse ? 14 : 64;
+      mesh.grid(prof.length - 1, tyreSegs, (i, j, out) => {
+        const a = (j / tyreSegs) * Math.PI * 2;
+        out[0] = prof[i][1]; out[1] = Math.cos(a) * prof[i][0]; out[2] = Math.sin(a) * prof[i][0];
+      }, (i, j) => (coarse ? WIRE_MESH : (i + j) % 2 ? WIRE_BRIGHT : WIRE_GAP), { closeV: true, creaseI: [3, 4, 7, 8], flip: true });
+      if (!coarse) {
+        for (let k = 0; k < 18; k++) {
+          mesh.push().rotateX((k / 18) * Math.PI * 2);
+          mesh.dressing(() => {
+            mesh.box(0.04, R + 0.005, 0, 0.11, 0.01, 0.04, TITANIUM_BRIGHT, 0);
+            mesh.box(-0.04, R + 0.005, 0.02, 0.11, 0.01, 0.04, TITANIUM_BRIGHT, 0);
+          });
+          mesh.pop();
+        }
       }
-    }
-    // the spoke ring and the hub drive
-    mesh.lathe([[0.0001, 0.07], [R * 0.43, 0.05], [R * 0.43, 0.0], [0.0001, -0.02]], coarse ? 10 : 14, () => ALU, { flip: true });
-    mesh.lathe([[0.0001, -0.2], [0.09, -0.2], [0.11, -0.05], [0.0001, -0.05]], 10, () => ALU_DULL);
+      // the spoke ring and the hub drive
+      mesh.lathe([[0.0001, 0.07], [R * 0.43, 0.05], [R * 0.43, 0.0], [0.0001, -0.02]], coarse ? 10 : 14, () => ALU, { flip: true });
+      mesh.lathe([[0.0001, -0.2], [0.09, -0.2], [0.11, -0.05], [0.0001, -0.05]], 10, () => ALU_DULL);
+    };
+    if (torn) mesh.dressing(wheelParts); else wheelParts();
     mesh.pop();
-    // the double wishbone up to the chassis
-    for (const dy of [0.08, -0.06]) beam(mesh, [sx * (wheelX - 0.2), R + dy, sz * wheelZ], [sx * 0.55, frameY - 0.05 + dy * 0.5, sz * (wheelZ - 0.35)], 0.03, 0.03, ALU_DULL);
+    if (torn) continue; // its wishbones and fender went with it
+    // the double wishbone up to the chassis (wrecked: from the squashed hub up to the dropped frame)
+    const hubY = wrecked ? R * 0.66 : R, fy = frameY - drop;
+    for (const dy of [0.08, -0.06]) beam(mesh, [sx * (wheelX - 0.2), hubY + dy * (wrecked ? 0.5 : 1), sz * wheelZ], [sx * 0.55, fy - 0.05 + dy * 0.5, sz * (wheelZ - 0.35)], 0.03, 0.03, ALU_DULL);
+    if (wrecked) continue; // the fenders crushed flat with the chassis (below)
     // the fender over the wheel, its forward extension
     const arc: Vec3[] = [];
     for (let k = 0; k <= 8; k++) {
@@ -207,15 +223,41 @@ function lrv(mesh: VehicleMesh, coarse: boolean): void {
     }
     mesh.sweep(arc, [[-0.13, 0], [0.13, 0], [0.13, 0.008], [-0.13, 0.008]], () => FENDER, { closedSection: true, creases: [0, 1, 2, 3] });
   }
+  // the chassis and all it carries (wrecked: dropped onto the splayed wheels and rolled a little; its forward section,
+  // ahead of the hinge at z 0.75, folded up)
+  mesh.push();
+  if (wrecked) mesh.translate(0, -drop, 0).rotateZ(0.05);
+  const hingeZ = 0.75;
+  const forward = (emit: () => void): void => {
+    if (!wrecked) { emit(); return; }
+    mesh.push().translate(0, frameY, hingeZ).rotateX(-0.42).rotateY(0.08).translate(0, -frameY, -hingeZ);
+    emit();
+    mesh.pop();
+  };
   // the chassis: the outer frame, the cross members, the floor panels
-  for (const sx of [1, -1]) tubeRod(mesh, [sx * 0.55, frameY, -1.5], [sx * 0.55, frameY, 1.5], 0.025, ALU);
-  for (const z of [-1.5, -0.75, 0, 0.75, 1.5]) tubeRod(mesh, [-0.55, frameY, z], [0.55, frameY, z], 0.022, ALU);
-  mesh.box(0, frameY - 0.03, 0, 1.08, 0.015, 2.9, ALU_DULL, 0);
-  // the battery covers forward (dust covers with their radiator mirrors on top)
   for (const sx of [1, -1]) {
-    mesh.box(sx * 0.27, frameY + 0.12, 1.15, 0.48, 0.22, 0.6, WHITE_PAINT, coarse ? 0 : 0.02);
-    mesh.box(sx * 0.27, frameY + 0.235, 1.15, 0.42, 0.01, 0.5, ALU, 0);
+    tubeRod(mesh, [sx * 0.55, frameY, -1.5], [sx * 0.55, frameY, hingeZ], 0.025, ALU);
+    forward(() => tubeRod(mesh, [sx * 0.55, frameY, hingeZ], [sx * 0.55, frameY, 1.5], 0.025, ALU));
   }
+  for (const z of [-1.5, -0.75, 0, 0.75, 1.5]) {
+    if (z > hingeZ) forward(() => tubeRod(mesh, [-0.55, frameY, z], [0.55, frameY, z], 0.022, ALU));
+    else tubeRod(mesh, [-0.55, frameY, z], [0.55, frameY, z], 0.022, ALU);
+  }
+  mesh.box(0, frameY - 0.03, (-1.45 + hingeZ) / 2, 1.08, 0.015, hingeZ + 1.45, ALU_DULL, 0);
+  forward(() => mesh.box(0, frameY - 0.03, (hingeZ + 1.45) / 2, 1.08, 0.015, 1.45 - hingeZ, ALU_DULL, 0));
+  // wrecked: the fenders crushed flat on the frame's corners
+  if (wrecked) for (const sx of [1, -1]) for (const sz of [1, -1]) {
+    if (sx > 0 && sz > 0) continue;
+    const emit = () => mesh.box(sx * (wheelX - 0.05), frameY + 0.02, sz * wheelZ, 0.26, 0.012, 0.7, FENDER, 0);
+    if (sz > 0) forward(emit); else emit();
+  }
+  // the battery covers forward (dust covers with their radiator mirrors on top)
+  forward(() => {
+    for (const sx of [1, -1]) {
+      mesh.box(sx * 0.27, frameY + 0.12, 1.15, 0.48, 0.22, 0.6, WHITE_PAINT, coarse ? 0 : 0.02);
+      mesh.box(sx * 0.27, frameY + 0.235, 1.15, 0.42, 0.01, 0.5, ALU, 0);
+    }
+  });
   // the seats: tube frames, webbing pans and backs, a little reclined (round 4, wave 260: "plate seats": the straps
   // slung between the frame's rails, sagging; the frames' rails round them)
   for (const sx of [1, -1]) {
@@ -240,36 +282,52 @@ function lrv(mesh: VehicleMesh, coarse: boolean): void {
   tubeRod(mesh, [0, frameY + 0.34, 0.32], [0, frameY + 0.52, 0.34], 0.022, DARK);
   tubeRod(mesh, [-0.08, frameY + 0.53, 0.345], [0.08, frameY + 0.53, 0.345], 0.018, DARK);
   // the communications relay unit forward of the console, under the camera's mast, in its gold foil blanket
-  foilBox(mesh, 0, frameY + 0.17, 1.27, 0.4, 0.3, 0.3, 17);
-  // the TV camera on its mast at the front, the high-gain dish and the low-gain helix either side
-  tubeRod(mesh, [0, frameY, 1.45], [0, frameY + 0.72, 1.45], 0.02, ALU);
-  mesh.box(0, frameY + 0.8, 1.45, 0.16, 0.14, 0.26, WHITE_PAINT, coarse ? 0 : 0.015);
-  tubeRod(mesh, [-0.35, frameY, 1.38], [-0.35, frameY + 0.95, 1.38], 0.018, ALU);
-  mesh.push().translate(-0.35, frameY + 1.0, 1.4).rotateX(-0.6);
-  const dish: [number, number][] = [];
-  // (round 4, wave 260: "a dark flat dish") the umbrella's silvered mesh pale and deeper, its eight ribs and the rim
-  for (let k = 0; k <= 5; k++) { const r = 0.45 * (k / 5); dish.push([Math.max(0.0001, r), 0.21 * (r / 0.45) ** 2]); }
-  mesh.push().rotateZ(Math.PI / 2);
-  mesh.lathe(dish.map(([r, x]) => [r, x] as [number, number]), coarse ? 10 : 16, () => DISH_MESH);
-  // (round 5, wave 278: "an opaque brown disc for its dish") the umbrella's back as pale as its face: it is the same
-  // silvered mesh, and the shadowed underside read brown
-  mesh.lathe(dish.map(([r, x]) => [r, x - 0.006] as [number, number]), coarse ? 10 : 16, () => DISH_MESH, { flip: true });
-  if (!coarse) mesh.dressing(() => {
-    for (let k = 0; k < 8; k++) {
-      const a = (k / 8) * Math.PI * 2, rib: Vec3[] = [];
-      for (const r of [0.04, 0.24, 0.45]) rib.push([0.21 * (r / 0.45) ** 2 + 0.006, Math.cos(a) * r, Math.sin(a) * r]);
-      mesh.tube(rib, 0.006, 3, ALU_DULL, { caps: false });
+  forward(() => foilBox(mesh, 0, frameY + 0.17, 1.27, 0.4, 0.3, 0.3, 17));
+  // the TV camera on its mast at the front (wrecked: bent over), the high-gain dish and the low-gain helix either side
+  forward(() => {
+    if (wrecked) {
+      tubeRod(mesh, [0, frameY, 1.45], [0.05, frameY + 0.4, 1.47], 0.02, ALU);
+      tubeRod(mesh, [0.05, frameY + 0.4, 1.47], [0.32, frameY + 0.58, 1.5], 0.02, ALU);
+      mesh.box(0.4, frameY + 0.62, 1.5, 0.16, 0.14, 0.26, WHITE_PAINT, 0);
+    } else {
+      tubeRod(mesh, [0, frameY, 1.45], [0, frameY + 0.72, 1.45], 0.02, ALU);
+      mesh.box(0, frameY + 0.8, 1.45, 0.16, 0.14, 0.26, WHITE_PAINT, coarse ? 0 : 0.015);
     }
+    tubeRod(mesh, [-0.35, frameY, 1.38], [-0.35, frameY + (wrecked ? 0.35 : 0.95), 1.38], 0.018, ALU);
   });
-  mesh.pop();
-  mesh.pop();
-  tubeRod(mesh, [0.35, frameY, 1.38], [0.35, frameY + 0.85, 1.38], 0.03, ALU_DULL, 8);
+  // the dish on its mast (wrecked: snapped off and lying face down on the regolith beside the rover, its rim on the
+  // ground; this frame is the chassis', dropped by drop and rolled, so the ground there stands at +drop + 0.06)
+  const dishParts = (): void => {
+    if (wrecked) mesh.push().translate(-1.15, drop + 0.06 + 0.38, 1.55).rotateZ(-0.05).rotateX(2.75);
+    else mesh.push().translate(-0.35, frameY + 1.0, 1.4).rotateX(-0.6);
+    const dish: [number, number][] = [];
+    // (round 4, wave 260: "a dark flat dish") the umbrella's silvered mesh pale and deeper, its eight ribs and the rim
+    for (let k = 0; k <= 5; k++) { const r = 0.45 * (k / 5); dish.push([Math.max(0.0001, r), 0.21 * (r / 0.45) ** 2]); }
+    mesh.push().rotateZ(Math.PI / 2);
+    mesh.lathe(dish.map(([r, x]) => [r, x] as [number, number]), coarse ? 10 : 16, () => DISH_MESH);
+    // (round 5, wave 278: "an opaque brown disc for its dish") the umbrella's back as pale as its face: it is the same
+    // silvered mesh, and the shadowed underside read brown
+    mesh.lathe(dish.map(([r, x]) => [r, x - 0.006] as [number, number]), coarse ? 10 : 16, () => DISH_MESH, { flip: true });
+    if (!coarse) mesh.dressing(() => {
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2, rib: Vec3[] = [];
+        for (const r of [0.04, 0.24, 0.45]) rib.push([0.21 * (r / 0.45) ** 2 + 0.006, Math.cos(a) * r, Math.sin(a) * r]);
+        mesh.tube(rib, 0.006, 3, ALU_DULL, { caps: false });
+      }
+    });
+    mesh.pop();
+    mesh.pop();
+  };
+  // (the dish down on the regolith is dressing, outside the record and the collision)
+  if (wrecked) mesh.dressing(dishParts); else dishParts();
+  forward(() => tubeRod(mesh, [0.35, frameY, 1.38], wrecked ? [0.55, frameY + 0.55, 1.2] : [0.35, frameY + 0.85, 1.38], 0.03, ALU_DULL, 8));
   // the tool pallet astern: the hand tool carrier's frame, the sample bags and the gnomon's case
   mesh.box(0, frameY + 0.12, -1.3, 0.9, 0.22, 0.4, ALU_DULL, coarse ? 0 : 0.01);
   for (const [x, z, w] of [[-0.25, -1.25, 0.22], [0.05, -1.3, 0.18], [0.3, -1.22, 0.2]] as const) {
     mesh.box(x, frameY + 0.36, z, w, 0.26, 0.2, x > 0.2 ? GOLD : WHITE_PAINT, coarse ? 0 : 0.02);
   }
-  tubeRod(mesh, [-0.4, frameY, -1.5], [-0.42, frameY + 0.85, -1.52], 0.012, ALU);
+  tubeRod(mesh, [-0.4, frameY, -1.5], wrecked ? [-0.75, frameY + 0.5, -1.6] : [-0.42, frameY + 0.85, -1.52], 0.012, ALU);
+  mesh.pop();
 }
 
 // ---------------------------------------------------------------------------------------------------- the K2 tram
@@ -285,8 +343,18 @@ const LAMP_LENS = material('lamp', [0.72, 0.72, 0.68], 0.07, 0.65, 0, 0.1);
  * plan with a wrap-round windscreen, a band of passenger windows between narrow pillars, folding doors on the right,
  * the pantograph on the front body's roof, in the city's red and cream.
  */
-function k2tram(mesh: VehicleMesh, coarse: boolean): void {
+function k2tram(mesh: VehicleMesh, coarse: boolean, state: 'intact' | 'burnt' | 'collapsed' = 'intact'): void {
   const y0 = 0.82, sill = 1.55, head = 2.6, eave = 2.95, roofR = 0.16;
+  // (Lane C, #24; the owner: "trams and wagons" break) a collapsed tram: its bodies crushed down onto the frame to half
+  // their height, slewed at the joint and rolled, its bogies driven down under it; a burnt one stands with its pantograph
+  // wrecked (the burn itself is the weathering's)
+  const collapsed = state === 'collapsed';
+  const bodyFrame = (half: 1 | -1, emit: () => void): void => {
+    if (!collapsed) { emit(); return; }
+    mesh.push().translate(0, y0 - 0.22, 0).rotateY(half * 0.05).rotateZ(0.09).scale(1.06, 0.5, 1).translate(0, -y0, 0);
+    emit();
+    mesh.pop();
+  };
   const body = (zF: number, zB: number, nose: 'front' | 'back' | 'none') => {
     const r = 0.85, hw = 1.25, tumble = 0.07;
     const flat = zF - zB - 2 * r, windows = 7;
@@ -306,12 +374,13 @@ function k2tram(mesh: VehicleMesh, coarse: boolean): void {
     });
     void flat;
   };
-  body(10.2, 0.38, 'front');
-  body(-0.38, -10.2, 'back');
-  // the joint: a bellows between the bodies, its turntable under them
-  mesh.box(0, (y0 + eave) / 2 + 0.05, 0, 2.3, eave - y0 - 0.2, 0.8, RUBBER_DARK, coarse ? 0 : 0.05);
+  bodyFrame(1, () => body(10.2, 0.38, 'front'));
+  bodyFrame(-1, () => body(-0.38, -10.2, 'back'));
+  // the joint: a bellows between the bodies, its turntable under them (burnt through on a wreck)
+  if (state === 'intact') mesh.box(0, (y0 + eave) / 2 + 0.05, 0, 2.3, eave - y0 - 0.2, 0.8, RUBBER_DARK, coarse ? 0 : 0.05);
   // the bogies: frames, wheels on their axles, the motors between
   for (const bz of [7.0, 0, -7.0]) {
+    if (collapsed) mesh.push().translate(0, -0.12, 0).rotateZ(0.05);
     mesh.box(0, 0.52, bz, 1.9, 0.32, 2.3, BLACK_STEEL, coarse ? 0 : 0.03);
     for (const az of [-0.95, 0.95]) for (const side of [1, -1]) {
       mesh.push().translate(side * 0.72, 0.35, bz + az).scale(side, 1, 1);
@@ -319,8 +388,10 @@ function k2tram(mesh: VehicleMesh, coarse: boolean): void {
       mesh.pop();
     }
     mesh.box(0, 0.62, bz, 1.1, 0.34, 0.5, BLACK_STEEL, 0);
+    if (collapsed) mesh.pop();
   }
   // the ends: the destination box over the windscreen, the headlamps and the tail lamps, the fenders
+  bodyFrame(1, () => {
   for (const end of [1, -1]) {
     const z = end * 10.2;
     mesh.box(0, 2.78, z - end * 0.12, 1.2, 0.24, 0.12, DARK, 0.02);
@@ -336,14 +407,16 @@ function k2tram(mesh: VehicleMesh, coarse: boolean): void {
       for (const dz of [-w / 4, w / 4]) mesh.box(1.27, 2.0, zc + dz, 0.01, 0.9, w / 2 - 0.08, GLASS, 0);
     });
   }
-  // the pantograph folded down on the front body, its base and the roof's resistor boxes
+  // the pantograph folded down on the front body (a wreck's wrenched up and over), its base and the resistor boxes
   mesh.box(0, eave + 0.12, 5.0, 1.0, 0.1, 1.2, BLACK_STEEL, 0.02);
+  const wreck = state !== 'intact';
   for (const sx of [1, -1]) {
-    beam(mesh, [sx * 0.4, eave + 0.18, 4.6], [sx * 0.35, eave + 0.45, 5.6], 0.04, 0.04, BLACK_STEEL);
-    beam(mesh, [sx * 0.35, eave + 0.45, 5.6], [sx * 0.35, eave + 0.3, 4.2], 0.035, 0.035, BLACK_STEEL);
+    beam(mesh, [sx * 0.4, eave + 0.18, 4.6], [sx * 0.35 + (wreck ? 0.25 : 0), eave + (wreck ? 1.0 : 0.45), wreck ? 5.0 : 5.6], 0.04, 0.04, BLACK_STEEL);
+    beam(mesh, [sx * 0.35 + (wreck ? 0.25 : 0), eave + (wreck ? 1.0 : 0.45), wreck ? 5.0 : 5.6], [sx * 0.35 + (wreck ? 0.6 : 0), eave + (wreck ? 0.75 : 0.3), wreck ? 3.9 : 4.2], 0.035, 0.035, BLACK_STEEL);
   }
-  beam(mesh, [-0.7, eave + 0.32, 4.2], [0.7, eave + 0.32, 4.2], 0.05, 0.05, ALU_DULL);
+  beam(mesh, wreck ? [0.25, eave + 0.78, 3.9] : [-0.7, eave + 0.32, 4.2], wreck ? [1.25, eave + 0.7, 4.0] : [0.7, eave + 0.32, 4.2], 0.05, 0.05, ALU_DULL);
   mesh.box(0, eave + 0.18, -3.0, 1.3, 0.22, 2.6, TRAM_ROOF, coarse ? 0 : 0.03);
+  });
 }
 
 // ---------------------------------------------------------------------------------------------------- the STZ-3
@@ -354,11 +427,27 @@ const STZ_GREY = material('paint', linearHex(0x4c5044), 0.62, 0.15, 0, 1);
  * The STZ-3 (STZ-NATI) crawler tractor of the kolkhozes, 1937-41: the engine under a narrow bonnet behind its radiator,
  * the starting crank, the exhaust stack, the driver's pan seat over the fuel tank with the steering levers before it,
  * the mudguards over the tracks, each track on four road wheels between the idler ahead and the sprocket astern.
+ * (PRP-05, Lane C 2026-10-15) Wrecked, its own wreck: the right track thrown and lying out flat beside it, the tractor
+ * down on its bare right wheels and rolled toward it, the bonnet blown off and lying on the ground on the left, the
+ * radiator knocked forward, the exhaust stack bent over, the seat gone, a lever snapped.
  */
-function stz3(mesh: VehicleMesh, coarse: boolean): void {
+function stz3(mesh: VehicleMesh, coarse: boolean, wrecked = false): void {
   const gauge = 0.715, tw = 0.39;
+  if (wrecked) {
+    // the thrown track: its belt laid out on the ground beside the right wheels, a little skewed, its grousers up (outboard:
+    // lying flat outside the body, it neither fits nor collides)
+    mesh.outboard(() => {
+      mesh.push().translate(gauge + 0.75, 0, 0.1).rotateY(0.12);
+      mesh.box(0, 0.035, 0, tw, 0.07, 3.3, BLACK_STEEL, 0);
+      if (!coarse) mesh.dressing(() => { for (let k = 0; k < 18; k++) mesh.box(0, 0.08, -1.55 + k * 0.18, tw, 0.03, 0.05, RUSTY, 0); });
+      mesh.pop();
+    });
+    // the tractor rolled toward it, down on its bare right wheels
+    mesh.push().rotateZ(-0.06).translate(0, -0.05, 0);
+  }
   for (const sx of [1, -1]) {
     const x = sx * gauge;
+    const thrown = wrecked && sx > 0;
     // the track: a belt round the sprocket (astern, high), the idler ahead and the ground run
     const path: Vec3[] = [];
     const sprocket = { z: -1.18, y: 0.47, r: 0.33 }, idler = { z: 1.15, y: 0.37, r: 0.3 };
@@ -366,11 +455,13 @@ function stz3(mesh: VehicleMesh, coarse: boolean): void {
     for (let k = 0; k <= n; k++) { const a = Math.PI / 2 + (k / n) * Math.PI; path.push([x, sprocket.y + Math.sin(a) * sprocket.r, sprocket.z + Math.cos(a) * sprocket.r]); }
     path.push([x, 0.04, -0.6], [x, 0.04, 0.6]);
     for (let k = 0; k <= n; k++) { const a = -Math.PI / 2 + (k / n) * Math.PI; path.push([x, idler.y + Math.sin(a) * idler.r, idler.z + Math.cos(a) * idler.r]); }
-    mesh.sweep(path, [[-tw / 2, -0.035], [tw / 2, -0.035], [tw / 2, 0.035], [-tw / 2, 0.035]], () => BLACK_STEEL,
-      { closedPath: true, closedSection: true, creases: [0, 1, 2, 3], up: [1, 0, 0] });
-    if (!coarse) mesh.dressing(() => {
-      for (let k = 0; k < 13; k++) mesh.box(x, 0.0, -0.95 + k * 0.17, tw, 0.03, 0.05, RUSTY, 0);
-    });
+    if (!thrown) {
+      mesh.sweep(path, [[-tw / 2, -0.035], [tw / 2, -0.035], [tw / 2, 0.035], [-tw / 2, 0.035]], () => BLACK_STEEL,
+        { closedPath: true, closedSection: true, creases: [0, 1, 2, 3], up: [1, 0, 0] });
+      if (!coarse) mesh.dressing(() => {
+        for (let k = 0; k < 13; k++) mesh.box(x, 0.0, -0.95 + k * 0.17, tw, 0.03, 0.05, RUSTY, 0);
+      });
+    }
     for (const w of [sprocket, idler]) {
       mesh.push().translate(x, w.y, w.z).scale(sx, 1, 1);
       mesh.lathe([[0.0001, -0.12], [w.r - 0.05, -0.12], [w.r - 0.05, 0.12], [0.0001, 0.12]], coarse ? 10 : 14, () => RUSTY);
@@ -387,22 +478,39 @@ function stz3(mesh: VehicleMesh, coarse: boolean): void {
   }
   // the hull: the engine and gearbox casing, the bonnet over the engine, the radiator ahead with its crank
   mesh.box(0, 0.62, 0.1, 1.0, 0.42, 2.3, BLACK_STEEL, 0.02);
-  mesh.box(0, 1.08, 0.55, 0.78, 0.52, 1.3, STZ_GREY, coarse ? 0 : 0.05);
+  if (!wrecked) mesh.box(0, 1.08, 0.55, 0.78, 0.52, 1.3, STZ_GREY, coarse ? 0 : 0.05);
+  else {
+    // the engine bare where the bonnet was, the bonnet itself blown off onto the ground on the left, upside down
+    mesh.box(0, 0.98, 0.55, 0.6, 0.32, 1.1, BLACK_STEEL, 0.02);
+    mesh.outboard(() => {
+      mesh.push().translate(-1.55, 0.2, 0.9).rotateZ(2.6).rotateY(0.5);
+      mesh.box(0, 0, 0, 0.78, 0.4, 1.3, STZ_GREY, 0);
+      mesh.pop();
+    });
+  }
+  mesh.push();
+  if (wrecked) mesh.translate(0, 0.62, 1.27).rotateX(0.32).translate(0, -0.62, -1.27);
   mesh.box(0, 1.08, 1.27, 0.86, 0.92, 0.16, STZ_GREY, coarse ? 0 : 0.03);
   if (!coarse) mesh.dressing(() => {
     for (let k = 0; k < 8; k++) mesh.box(-0.3 + k * 0.086, 1.1, 1.355, 0.02, 0.62, 0.01, DARK, 0);
   });
+  mesh.pop();
   beam(mesh, [0, 0.72, 1.36], [0, 0.72, 1.55], 0.03, 0.03, BLACK_STEEL);
   beam(mesh, [0, 0.72, 1.55], [0.12, 0.6, 1.55], 0.03, 0.03, BLACK_STEEL);
-  // the exhaust stack and the air intake
-  tubeRod(mesh, [0.22, 1.32, 0.9], [0.22, 2.15, 0.9], 0.045, BLACK_STEEL, 8);
-  tubeRod(mesh, [-0.22, 1.32, 0.95], [-0.22, 1.85, 0.95], 0.06, STZ_GREY, 8);
-  // the fuel tank, the driver's pan seat on its spring, the steering levers, the drawbar
+  // the exhaust stack (a wreck's bent over) and the air intake
+  if (!wrecked) tubeRod(mesh, [0.22, 1.32, 0.9], [0.22, 2.15, 0.9], 0.045, BLACK_STEEL, 8);
+  else { tubeRod(mesh, [0.22, 1.12, 0.9], [0.24, 1.55, 0.92], 0.045, BLACK_STEEL, 8); tubeRod(mesh, [0.24, 1.55, 0.92], [0.62, 1.72, 1.1], 0.045, BLACK_STEEL, 8); }
+  tubeRod(mesh, [-0.22, wrecked ? 1.12 : 1.32, 0.95], [-0.22, 1.85, 0.95], 0.06, STZ_GREY, 8);
+  // the fuel tank, the driver's pan seat on its spring (gone from a wreck), the steering levers, the drawbar
   mesh.box(0, 1.0, -0.75, 1.0, 0.36, 0.55, STZ_GREY, coarse ? 0 : 0.04);
   tubeRod(mesh, [0, 1.18, -0.85], [0, 1.36, -0.88], 0.03, BLACK_STEEL, 6);
-  mesh.box(0, 1.38, -0.9, 0.42, 0.06, 0.38, BLACK_STEEL, 0.02);
-  for (const sx of [1, -1]) tubeRod(mesh, [sx * 0.18, 0.9, -0.3], [sx * 0.2, 1.6, -0.5], 0.018, BLACK_STEEL, 6);
+  if (!wrecked) mesh.box(0, 1.38, -0.9, 0.42, 0.06, 0.38, BLACK_STEEL, 0.02);
+  for (const sx of [1, -1]) {
+    if (wrecked && sx > 0) tubeRod(mesh, [sx * 0.18, 0.9, -0.3], [sx * 0.42, 1.15, -0.2], 0.018, BLACK_STEEL, 6);
+    else tubeRod(mesh, [sx * 0.18, 0.9, -0.3], [sx * 0.2, 1.6, -0.5], 0.018, BLACK_STEEL, 6);
+  }
   beam(mesh, [0, 0.55, -1.2], [0, 0.55, -1.75], 0.12, 0.06, BLACK_STEEL);
+  if (wrecked) mesh.pop();
 }
 
 // ---------------------------------------------------------------------------------------------------- the An-26
@@ -459,7 +567,10 @@ function an26(mesh: VehicleMesh, coarse: boolean, wrecked: boolean): void {
   // forward fuselage: the nose to the break; the aft section slewed and dropped when wrecked
   fuselage(11.9, -3.6, coarse ? 14 : 26);
   mesh.push();
-  if (wrecked) mesh.translate(0.3, -0.25, -0.9).rotateY(0.22).rotateX(-0.06);
+  // (props r2, Lane C) the tail section slewed and canted about the break itself and down on its broken end, its skin
+  // torn open on one side and crushed into the forward section's on the other (it was swung about the nose's frame
+  // 0.9 m astern of the break and sunk 0.3 m under the apron, leaving the forward fuselage hanging over the ground)
+  if (wrecked) mesh.translate(0, -0.169, -3.6).rotateY(0.22).rotateX(-0.06).translate(0, 0, 3.6);
   fuselage(-3.6, -11.9, coarse ? 8 : 14);
   // the fin and the tailplane on the tail section
   const finBase = an26Section(-9.5);
@@ -478,7 +589,9 @@ function an26(mesh: VehicleMesh, coarse: boolean, wrecked: boolean): void {
   for (const sx of [1, -1]) mesh.dressing(() => {
     const broken = wrecked && sx < 0;
     mesh.push();
-    if (broken) mesh.translate(sx * 8.5, wingY, 0).rotateZ(0.38).translate(-sx * 8.5, -wingY, 0);
+    // (props r2, Lane C) snapped at its root joint and hanging from it, the tip down on the apron (it pivoted 4 m out,
+    // lifting its root off the centre section)
+    if (broken) mesh.translate(sx * 4.6, wingY, 0).rotateZ(-sx * 0.257).translate(-sx * 4.6, -wingY, 0);
     wingPanel(mesh, sx * 4.6, sx * 14.6, rootLead, rootChord, rootLead - 0.9, 1.45, wingY, wingY - 10 * Math.tan(0.035), 0.12, AN26_GREY, coarse);
     mesh.pop();
     // the nacelle under the wing, its spinner and four blades (bent in the wreck)
@@ -499,7 +612,8 @@ function an26(mesh: VehicleMesh, coarse: boolean, wrecked: boolean): void {
     mesh.pop();
     // the roundel under the outer wing (a flat disc: the lathe's axis turned upright)
     if (!coarse && !(wrecked && sx < 0)) {
-      mesh.push().translate(sx * 11.5, wingY - 0.42, rootLead - 1.6).rotateZ(Math.PI / 2);
+      // (props r2, Lane C) on the outer panel's lower skin (it hung 7 cm under it)
+      mesh.push().translate(sx * 11.5, wingY - 0.335, rootLead - 1.6).rotateZ(Math.PI / 2);
       mesh.lathe([[0.0001, -0.01], [0.55, -0.01], [0.55, 0.01], [0.0001, 0.01]], 12, () => ROUNDEL_YELLOW);
       mesh.lathe([[0.0001, -0.022], [0.32, -0.022], [0.32, 0.0], [0.0001, 0.0]], 12, () => ROUNDEL_BLUE);
       mesh.pop();
@@ -516,29 +630,32 @@ function an26(mesh: VehicleMesh, coarse: boolean, wrecked: boolean): void {
 // ---------------------------------------------------------------------------------------------------- dispatch
 
 /** Build one set piece, whole or wrecked, in the painted bucket's streams. */
-export function buildSetPiece(kind: SetPieceKind, opts: { wrecked?: boolean; coarse?: boolean; seed?: number } = {}): THREE.BufferGeometry {
+export function buildSetPiece(kind: SetPieceKind, opts: { wrecked?: boolean; coarse?: boolean; seed?: number; collapsed?: boolean } = {}): THREE.BufferGeometry {
   const mesh = new VehicleMesh();
   const coarse = !!opts.coarse;
   mesh.coarse = coarse;
   let wheels: { z: number; y: number; r: number }[] = [];
-  if (kind === 'lrv') { lrv(mesh, coarse); wheels = [{ z: 1.145, y: 0.41, r: 0.41 }, { z: -1.145, y: 0.41, r: 0.41 }]; }
-  else if (kind === 'k2tram') { k2tram(mesh, coarse); wheels = [7.95, 6.05, 0.95, -0.95, -6.05, -7.95].map((z) => ({ z, y: 0.35, r: 0.35 })); }
-  else if (kind === 'stz3') { stz3(mesh, coarse); wheels = [{ z: -1.18, y: 0.47, r: 0.33 }, { z: 0, y: 0.2, r: 0.5 }]; }
+  if (kind === 'lrv') { lrv(mesh, coarse, !!opts.wrecked); wheels = [{ z: 1.145, y: 0.41, r: 0.41 }, { z: -1.145, y: 0.41, r: 0.41 }]; }
+  else if (kind === 'k2tram') { k2tram(mesh, coarse, opts.collapsed ? 'collapsed' : opts.wrecked ? 'burnt' : 'intact'); wheels = [7.95, 6.05, 0.95, -0.95, -6.05, -7.95].map((z) => ({ z, y: 0.35, r: 0.35 })); }
+  else if (kind === 'stz3') { stz3(mesh, coarse, !!opts.wrecked); wheels = [{ z: -1.18, y: 0.47, r: 0.33 }, { z: 0, y: 0.2, r: 0.5 }]; }
   else if (kind === 'an26') { an26(mesh, coarse, !!opts.wrecked); }
-  else if (kind === 'bv206') bv206(mesh, coarse, 'orange');
-  else if (kind === 'snocat') snocat(mesh, coarse);
-  else if (kind === 'd8h') dozer(mesh, coarse);
-  else if (kind === 'haulpak') haulpak(mesh, coarse, !opts.wrecked);
+  else if (kind === 'bv206') bv206(mesh, coarse, 'orange', !!opts.wrecked);
+  else if (kind === 'snocat') snocat(mesh, coarse, !!opts.wrecked);
+  else if (kind === 'd8h') dozer(mesh, coarse, !!opts.wrecked);
+  else if (kind === 'haulpak') haulpak(mesh, coarse, true, !!opts.wrecked);
   else throw new Error(`buildSetPiece: ${kind} is not built yet`);
   const lunar = kind === 'lrv';
-  const g = mesh.build(vehicleWeathering({
+  const built = mesh.build(vehicleWeathering({
     // (round 4, wave 260: "no… dust coating") the regolith thrown up by the wheels lies grey over all of it below the
     // seats, thickest low
     dirtRgb: linearHex(lunar ? 0x5c5b58 : 0x3a3228), dirt: lunar ? 0.62 : 0.6, dirtTop: lunar ? 0.95 : 0.9,
     dustRgb: linearHex(lunar ? 0x8a8884 : 0x6a5e50), dust: lunar ? 0.72 : 0.15, rust: lunar ? 0 : 0.5,
-    burnt: !!opts.wrecked, wheels, seed: opts.seed ?? 3, voxelAo: !coarse,
+    // (Lane C, #8 r2) nothing burns in vacuum: the rover's wreck is crushed and broken, not charred
+    burnt: !!opts.wrecked && !lunar, wheels, seed: opts.seed ?? 3, voxelAo: !coarse,
   }));
-  g.deleteAttribute('surf');
+  // (225 gate: the pools draw this geometry, so it is built without the surface stream rather than trimmed of it —
+  // deleteAttribute leaves the attributes object in V8's dictionary mode; geometryStreams.ts)
+  const g = keepStreams(built, Object.keys(built.attributes).filter((name) => name !== 'surf'));
   g.computeBoundingBox();
   const lift = -g.boundingBox!.min.y;
   if (Math.abs(lift) > 1e-6) g.translate(0, lift, 0);

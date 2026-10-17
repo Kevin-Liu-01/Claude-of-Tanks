@@ -1,4 +1,4 @@
-// M1A2 Abrams UA field kit (owner 2026-09-15: "change it to m1a2 UA and make it have a bunch
+// M1A2 Abrams UA field kit (owner 2026-09-15: "change it to m1a1_abrams_hc UA and make it have a bunch
 // of add ons and attachments like source material online"). The Ukrainian Abrams in the
 // field carry Soviet Kontakt-1 reactive bricks on the turret cheeks, turret flanks and the
 // glacis, ARAT-style cassettes on the skirts, a welded anti-drone cage over the whole turret
@@ -13,6 +13,7 @@
 // bolted base plates, the frame follows the roof down toward the mantlet, mesh walls hang on
 // the flanks and the rear, and struts tie the cage to the bustle rack.
 import * as THREE from 'three';
+import { spareTrackPart, spareTrackRunTag } from '../spareTrackSeat.ts';
 import { UA_SOURCE_CAGE } from '../ukrainianDroneCage.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { KIT } from './kit.ts';
@@ -231,7 +232,9 @@ function stowage(P: TankBuilderPort): void {
     const roll = cylY(.10, .10, 1.10, 12).rotateX(Math.PI / 2);
     put(P, 'hull', 'hullRubber', 'tarp-roll', roll, [side * .82, 1.694 + .10, -3.15]);
   }
-  put(P, 'hull', 'hullDark', 'track-shoes', box(.56, .13, .34), [0, 1.694 + .065, -3.55]);
+  // VEH-13: one registered run (spareTrackSeat.ts); the gun crossed it at yaw 178
+  const shoes = spareTrackRunTag({ site: 'ua-abrams-rear-deck-shoes', source: 'adhoc', rotation: [0, 0, 0] });
+  put(P, 'hull', 'hullDark', 'track-shoes', spareTrackPart(shoes, box(.56, .13, .34)), [0, 1.694 + .065, -3.55]);
 }
 
 export function buildAbramsSourceXUkraineKit(P: TankBuilderPort): void {

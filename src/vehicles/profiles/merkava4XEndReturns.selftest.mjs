@@ -8,7 +8,7 @@ import {createTankState} from '../../sim/movement.ts';
 import {getSpec} from '../specs.ts';
 import { geometryHash } from '../../../tools/receipt-kit.test-support.mjs';
 
-const ID='merkava4_x';
+const ID='merkava4';
 const labels=new Set(['merkava4-x-front-side-return','merkava4-x-front-corner-return','merkava4-x-rear-side-return']);
 const hash=b=>crypto.createHash('sha256').update(b).digest('hex');
 const material=new T.MeshBasicMaterial({side:T.DoubleSide});

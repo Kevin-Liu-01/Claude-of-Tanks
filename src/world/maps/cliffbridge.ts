@@ -325,7 +325,7 @@ export default {
     haystacks: 14, rocks: 180, outcrops: 38, craters: 8, rubblePiles: 0, hedgehogs: 4, sandbagLines: 6, cropFields: 8,
     // the map-vehicles lane (2026-10-06, the period ruling): Andalusia in the 1970s: the Spanish Army's AMX-30E, M48
     // and M47
-    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['amx30_x', 'm48', 'm47_patton'] },
+    tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['amx30b', 'm48a5_patton', 'm47_patton'] },
     wallStyle: 'fieldstone',
     // round 3 (108c: "a white picket fence reads as American", "three blank coloured boards on posts like placeholder
     // swatches"): the yards fenced in cane (cañizo), the roads in post and rail where they are fenced at all, and no
@@ -344,7 +344,10 @@ export default {
   // the mountains lane (2026-10-03, gauntlet wave 15): wooded uplands round the gorge (not Verdant's plain)
   horizon:{...verdant.horizon,amp:1.1,baseHex:0x456a38,rockHex:0x777c70,treeline:.95,haze:.7,panorama:{regional:'upland'}},
   sky:{...verdant.sky,sunElevationDeg:34,sunAzimuthDeg:235,cloudOpacity:.56,cloudOpacity2:.2,cloudAltM:1250,
-    fogDensity:.00028,fogTintHex:0xb3c4b6,sunColorHex:0xfff0d9,sunIntensity:3.5,postExposure:.98},
+    fogDensity:.00028,fogTintHex:0xb3c4b6,sunColorHex:0xfff0d9,sunIntensity:3.5,postExposure:.98,
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): an Aegean crossing — a bright limestone-haze band, a deep Mediterranean blue
+    atmosphere: { horizonTintHex: 0xe4e2d6, horizonTintAmount: 0.35, horizonBandDeg: 7, zenithTintHex: 0x3e76c8, zenithTintAmount: 0.3 },
+  },
   clouds:{regime:'fair-weather-cumulus',baseM:1200,coverage:.28,contrails: 0.3, cirrus: 0.25},
   minimap:{...verdant.minimap},
   shot:{pos:[-170,45,-170],look:[20,-4,30]},

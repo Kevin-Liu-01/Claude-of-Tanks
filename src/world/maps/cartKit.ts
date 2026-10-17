@@ -222,14 +222,28 @@ function cartFit(model: CartModel, role: CartRole): CartFit {
   return fit;
 }
 
-/** Build a role's cart into a fresh mesh, centred on its footprint. */
+/** Build a role's cart into a fresh mesh, centred on its footprint. A wheeled wreck falls onto its lost wheel's side
+ *  only as far as its low corner allows (Lane C, #8 r2; the census judge: the wreck rolled a corner under the ground and
+ *  applyFit then lifted the whole wreck by it, the kept wheels, the lost wheel and the loose boards floating 0.10-0.32 m
+ *  on 30 of 33 maps): the fall is bisected so the lowest point rests within a centimetre of the ground. */
 function cartMesh(e: CartEntry, role: CartRole, coarse: boolean, wrecked: boolean, snow = false): VehicleMesh {
   const { cx, cz } = cartFit(e.model, role);
-  const mesh = new VehicleMesh();
-  mesh.coarse = coarse;
-  mesh.push().translate(-cx, 0, -cz);
-  buildCart(mesh, e.model, { coarse, wrecked, seed: CART_SEED, snow });
-  mesh.pop();
+  const make = (tilt: number): VehicleMesh => {
+    const mesh = new VehicleMesh();
+    mesh.coarse = coarse;
+    mesh.push().translate(-cx, 0, -cz);
+    buildCart(mesh, e.model, { coarse, wrecked, seed: CART_SEED, snow, tilt });
+    mesh.pop();
+    return mesh;
+  };
+  let mesh = make(1);
+  if (!wrecked || mesh.lowestY() >= -0.01) return mesh;
+  let lo = 0, hi = 1, best: VehicleMesh | null = null;
+  for (let k = 0; k < 7; k++) {
+    const mid = (lo + hi) / 2, trial = make(mid);
+    if (trial.lowestY() < -0.01) hi = mid; else { lo = mid; best = trial; }
+  }
+  mesh = best ?? make(0);
   return mesh;
 }
 

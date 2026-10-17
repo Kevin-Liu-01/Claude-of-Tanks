@@ -6,14 +6,17 @@
 // Orthodox church with green onion domes; and, after the fighting, burnt khatas of which only the stove and its
 // chimney stand.
 import {
-  PartSink, faceBox, pick, rgb, shade,
+  PartSink, faceBox, facePoint, normalize3, pick, rgb, shade,
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
-import { buildHouse, emitRoof, roofGeometry, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, holedBox, leanTo, recordShaft, roofCrown, roofGeometry, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { openBelfry } from './sarajevoParts.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { hollyhocks } from './dressing.ts';
 import { dentilCornice, facadeOn, facadeRng, faceSlab, paintSurround, pilaster, plinthPaint, ridgeRiders, trimRing, trimRun, windowHead } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder, SurfaceTone } from './types.ts';
+import { buildPostMill } from './windmills.ts';
+import { logWork } from './goral.ts';
 
 const PAINTS: readonly Rgb[] = [0x4a7aa8, 0x5a8fb8, 0x4f8a5a, 0x3f6f8f, 0x6b8a4a].map(rgb);
 const WHITE_FRAME = rgb(0xd0ccc0);
@@ -152,13 +155,14 @@ function khataBody(sink: PartSink, ctx: RegionalBuildContext, st0: KolkhozState,
     ...(craft ? { spall: wall, spallTint: CLAY, spallScale: 0.45, skirt: { bucket: 'plaster' as const, tint: TRODDEN } } : {}),
   }, dialect(st));
   if (craft) khataDressing(sink, frame, st, craft);
-  // the porch (ganok) over the door: two posts and a small lean-to
-  const f = frame.faces.left, u = D * 0.2, y = frame.eaveY - 0.1;
-  for (const du of [-0.75, 0.75]) faceBox(sink, 'structureWood', f, u + du, y / 2, 1.05, 0.12, y, 0.12, { colour: PLANK });
-  const porch: RoofSpec = { kind: 'shed', pitchDeg: 14, eave: 0.1, verge: 0.12, thickness: 0.08, bucket: 'roof' };
-  const pg = roofGeometry(1.15, 1.7, y, porch);
-  // a shed rises toward -x of its own frame: turned half round, its high side meets the wall
-  sink.placed(Math.PI, -W / 2 - 0.58, 0, f.u[2] * u, () => emitRoof(sink, pg, porch));
+  // the porch (ganok) over the door: a small lean-to falling from the wall under the thatch's eave to a plate on two
+  // posts (props census E4, lane B 2026-10-14: its high edge stood in the thatch, its posts unseated)
+  const f = frame.faces.left, u = D * 0.2;
+  leanTo(sink, { face: f, u0: u - 0.85, u1: u + 0.85, depth: 1.05, highY: frame.eaveY,
+    under: { eaveY: frame.eaveY, eave: frame.spec.roof.eave, tanP: frame.roof.tanP },
+    roof: { pitchDeg: 18, eave: 0.1, verge: 0.12, thickness: 0.08, bucket: 'roof' },
+    posts: { at: [u - 0.75, u + 0.75], size: 0.12, bucket: 'structureWood', colour: PLANK },
+    plate: { h: 0.11, w: 0.12, bucket: 'structureWood', colour: shade(PLANK, 0.85) } });
 }
 
 /**
@@ -240,7 +244,14 @@ function shedMasonry(sink: PartSink, frame: HouseFrame, wall: RegionalBucket): v
       hole.push([Math.cos(a) * 0.3, vy + Math.sin(a) * 0.3]);
     }
     faceSlab(sink, wall === 'stone' ? 'stone' : wall, face, ring, 0, 0.03, { fine: true });
-    faceSlab(sink, 'dark', face, hole, 0.03, 0.004);
+    // (props census E2, lane B 2026-10-14: the vent was a dark disc on the gable) the vent is cut through the gable
+    // (korovnik's gableOpenings) and its louvres stand in it, boards sloping down and out
+    void hole;
+    for (const dy of [-0.18, -0.06, 0.06, 0.18]) {
+      const half = Math.sqrt(Math.max(0, 0.3 * 0.3 - dy * dy)) + 0.04;
+      sink.member('structureWood', facePoint(face, -half, vy + dy + 0.04, -0.07), facePoint(face, half, vy + dy + 0.04, -0.07), 0.1, 0.025,
+        normalize3([face.out[0], 1.1, face.out[2]]), { colour: shade(PLANK, 0.7), decor: true, exposed: true }, 0);
+    }
     for (const o of frame.spec.openings) {
       if (o.face !== name || o.kind !== 'gate') continue;
       windowHead(sink, face, o.u, base + o.y0 + o.h + 0.12, o.w + 0.24, { kind: 'segment', bucket: wall, h: 0.12, out: 0.05, ext: 0.1, rise: 0.22 });
@@ -262,10 +273,15 @@ const korovnik: RegionalBuilder = (ctx) => {
   for (const face of ['left', 'right'] as const) {
     for (const o of windowRhythm(face, 0, D, { w: 0.7, h: 0.55, sill: 1.75, spacing: 1.9, margin: 1.0 })) openings.push({ ...o, kind: 'loft' });
   }
+  // the round vent in each gable (shedMasonry rings it), cut through the gable: its square hole under the ring
+  const ventHole = (poly: Array<[number, number]>): HoleRect[] => {
+    const base = poly[0][1], vy = base + (Math.max(...poly.map(([, y]) => y)) - base) * 0.52;
+    return [{ u0: -0.29, u1: 0.29, y0: vy - 0.29, y1: vy + 0.29 }];
+  };
   const frame = buildHouse(sink, {
     w: W, d: D, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [{ h: 3.0, wall }],
     roof: shifer(26), gableBucket: wall === 'stone' ? 'stone' : 'plaster', openings, chimneys: [], gutters: null, verge: null,
-  }, dialect({ ...st, litShare: 0 }));
+  }, { ...dialect({ ...st, litShare: 0 }), gableOpenings: (_face, poly) => ventHole(poly) });
   if (facadeOn()) shedMasonry(sink, frame, wall);
   // ventilation stacks on the ridge: boarded boxes with little gabled caps
   const rg = frame.roof;
@@ -278,77 +294,41 @@ const korovnik: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The ambar: a plank granary on stone pads, its gable roof carried forward over the door on two posts. */
+/**
+ * The ambar, the log granary of the kolkhoz yards (props census #22, Lane C 2026-10-16: "nothing is log"): hewn courses
+ * saddle-notched at the corners, their ends running past them (goral.ts logWork), on two sill logs over its stone pads,
+ * the gable boarded, the plank door in its frame cut through the courses, the gable roof carried forward over the door
+ * on two posts, the treads up to the sill.
+ */
 const ambar: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx);
   const W = Math.max(3.2, ctx.info.w - 0.6), D = Math.max(4.0, ctx.info.d - 2.0);
-  const raise = 0.55;
+  const raise = 0.55, sill = 0.26, lift = raise + sill;
   for (const sx of [-1, 1]) for (const sz of [-1, 0, 1]) sink.span('stone', sx * (W / 2 - 0.25) - 0.22, -0.3, sz * (D / 2 - 0.25) - 0.22, sx * (W / 2 - 0.25) + 0.22, raise, sz * (D / 2 - 0.25) + 0.22);
-  sink.placed(0, 0, raise, 0, () => {
-    buildHouse(sink, {
+  // the sill frame on the pads: four heavy sill logs under the wall lines, crossing past the corners as the courses over
+  // them do (they close the courses' ends from below: the ambar stands clear of the ground)
+  const sc = { colour: shade(PLANK, 0.72) } as const, past = 0.36, t2 = 0.14;
+  for (const sz of [-1, 1]) sink.span('structureWood', -W / 2 - past, raise, sz * D / 2 - t2, W / 2 + past, lift, sz * D / 2 + t2, sc);
+  for (const sx of [-1, 1]) sink.span('structureWood', sx * W / 2 - t2, raise, -D / 2 - past, sx * W / 2 + t2, lift - 0.01, D / 2 + past, sc);
+  sink.placed(0, 0, lift, 0, () => {
+    const frame = buildHouse(sink, {
       w: W, d: D, plinth: null, storeys: [{ h: 2.2, wall: 'wood' }],
       roof: { kind: 'gable', pitchDeg: 38, eave: 0.3, verge: 1.2, thickness: 0.1, bucket: 'roof', ridge: 'saddle' },
       gableBucket: 'wood', openings: [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.0, y0: 0, h: 1.8 }],
-      chimneys: [], gutters: null, verge: { colour: shade(PLANK, 0.85), bucket: 'structureWood', carved: shade(PLANK, 1.15) },
+      chimneys: [], gutters: null, verge: { colour: shade(PLANK, 0.85), bucket: 'structureWood', carved: shade(PLANK, 1.15) }, reveal: 0.2,
     }, dialect({ ...st, litShare: 0 }));
+    logWork(sink, frame, [0], ctx.variant, st.window, ctx.tier === 'mobile', 0.25);
   });
   // the posts under the projecting gable
-  for (const sx of [-1, 1]) sink.span('structureWood', sx * (W / 2 - 0.1) - 0.08, 0, D / 2 + 1.0 - 0.08, sx * (W / 2 - 0.1) + 0.08, raise + 2.2, D / 2 + 1.0 + 0.08, { colour: PLANK });
+  for (const sx of [-1, 1]) sink.span('structureWood', sx * (W / 2 - 0.1) - 0.08, 0, D / 2 + 1.0 - 0.08, sx * (W / 2 - 0.1) + 0.08, lift + 2.2, D / 2 + 1.0 + 0.08, { colour: PLANK });
   // three plank treads up to the door
-  for (let k = 0; k < 3; k++) sink.span('structureWood', -0.5, raise * (k / 3) - 0.05, D / 2 + 0.25 + (2 - k) * 0.28, 0.5, raise * ((k + 1) / 3), D / 2 + 0.25 + (3 - k) * 0.28, { colour: PLANK, decor: true });
+  for (let k = 0; k < 3; k++) sink.span('structureWood', -0.5, lift * (k / 3) - 0.05, D / 2 + 0.25 + (2 - k) * 0.28, 0.5, lift * ((k + 1) / 3), D / 2 + 0.25 + (3 - k) * 0.28, { colour: PLANK, decor: true });
   return sink.finish();
 };
 
-/** The wooden post mill: the body on its post and crosstrees, four lattice sails, the tail pole and the ladder. */
-const postMill: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const timber = rgb(0x6a5440), dark = rgb(0x4a3b2e);
-  const bw = 3.4, bd = 4.2, bh = 4.4, lift = 3.4;
-  // trestle: crosstrees on stone piers, quarterbars up to the post
-  for (const [x, z] of [[-2.2, 0], [2.2, 0], [0, -2.2], [0, 2.2]] as const) sink.span('stone', x - 0.35, -0.4, z - 0.35, x + 0.35, 0.45, z + 0.35);
-  sink.span('structureWood', -2.4, 0.45, -0.17, 2.4, 0.8, 0.17, { colour: dark });
-  sink.span('structureWood', -0.17, 0.45, -2.4, 0.17, 0.8, 2.4, { colour: dark });
-  sink.span('structureWood', -0.22, 0.45, -0.22, 0.22, lift, 0.22, { colour: dark });
-  for (const [x, z] of [[-2.0, 0], [2.0, 0], [0, -2.0], [0, 2.0]] as const) {
-    sink.member('structureWood', [x, 0.8, z], [x * 0.08, lift - 0.4, z * 0.08], 0.16, 0.16, [x !== 0 ? 0 : 1, 0, x !== 0 ? 1 : 0], { colour: dark, exposed: true });
-  }
-  // the body (buck): a boarded box with a gable roof, sails on its +z breast
-  sink.placed(0, 0, lift, 0, () => {
-    buildHouse(sink, {
-      w: bw, d: bd, plinth: null, storeys: [{ h: bh, wall: 'wood' }],
-      roof: { kind: 'gable', pitchDeg: 35, eave: 0.2, verge: 0.25, thickness: 0.1, bucket: 'roof', ridge: 'saddle' },
-      gableBucket: 'wood', openings: [{ face: 'back', storey: 0, kind: 'door', u: 0, w: 0.9, y0: 0, h: 1.8 }],
-      chimneys: [], gutters: null, verge: null,
-    }, { window: () => {}, door: (s, face, o, y0) => doorUnit(s, face, o.u, y0, o.w, o.h, { leaf: timber, frame: { bucket: 'structureWood', width: 0.1, out: 0.04, colour: dark }, steps: null, leafKind: 'plank' }) });
-  });
-  const hubY = lift + bh * 0.82, hubZ = bd / 2 + 0.55, sailL = 7.2;
-  sink.cylinder('structureWood', [0, hubY, bd / 2 - 0.3], 'z', 1.0, 0.18, 8, { colour: dark, decor: true });
-  for (let k = 0; k < 4; k++) {
-    const a = Math.PI / 4 + k * Math.PI / 2, ca = Math.cos(a), sa = Math.sin(a);
-    const tip: Vec3 = [ca * sailL, hubY + sa * sailL, hubZ];
-    sink.member('structureWood', [0, hubY, hubZ], tip, 0.2, 0.16, [0, 0, 1], { colour: timber, decor: true, exposed: true });
-    // the lattice: a sail frame beside the whip, bars across it
-    const px = -sa, py = ca;
-    const edgeA: Vec3 = [ca * 2.0 + px * 0.95, hubY + sa * 2.0 + py * 0.95, hubZ], edgeB: Vec3 = [ca * sailL + px * 0.95, hubY + sa * sailL + py * 0.95, hubZ];
-    sink.member('structureWood', edgeA, edgeB, 0.1, 0.08, [0, 0, 1], { colour: timber, decor: true, exposed: true });
-    for (let r = 2.2; r < sailL; r += 0.62) {
-      sink.member('structureWood', [ca * r, hubY + sa * r, hubZ], [ca * r + px * 0.95, hubY + sa * r + py * 0.95, hubZ], 0.07, 0.06, [0, 0, 1], { colour: timber, decor: true, exposed: true });
-    }
-  }
-  // the tail pole down to the ground and the ladder to the door
-  // (the connectivity sweep: the pole's foot hung a third of a metre over the ground and the ladder stopped short of the
-  // door, without rungs) the pole's foot on its stone, the ladder's stiles up to the door's sill and its rungs
-  sink.member('structureWood', [0, lift + 0.3, -bd / 2], [0, 0.4, -bd / 2 - 4.6], 0.2, 0.2, [1, 0, 0], { colour: dark, exposed: true, decor: true });
-  sink.span('stone', -0.3, -0.3, -bd / 2 - 4.85, 0.4, 0.34, -bd / 2 - 4.25, { decor: true });
-  const lt: Vec3 = [0, lift + 0.02, -bd / 2 - 0.02], lb: Vec3 = [0, 0.05, -bd / 2 - 2.6];
-  for (const sx of [-0.45, 0.45]) sink.member('structureWood', [sx, lt[1], lt[2]], [sx, lb[1], lb[2]], 0.12, 0.1, [1, 0, 0], { colour: dark, exposed: true, decor: true });
-  for (let t = 0.1; t < 0.96; t += 0.1) {
-    const y = lt[1] + (lb[1] - lt[1]) * t, z = lt[2] + (lb[2] - lt[2]) * t;
-    sink.member('structureWood', [-0.44, y, z], [0.5, y, z], 0.06, 0.05, [0, 1, 0], { colour: dark, exposed: true, decor: true, fine: true }, 0.025);
-  }
-  return sink.finish();
-};
+/** The wooden post mill (props census #22, Lane C 2026-10-16: windmills.ts buildPostMill, at the standard). */
+const postMill: RegionalBuilder = (ctx) => buildPostMill(ctx, { timber: rgb(0x6a5440), dark: rgb(0x4a3b2e) });
 
 /** An onion dome on a drum: stacked frustums swelling and narrowing to a gilt cross. */
 function onion(sink: PartSink, x: number, y: number, z: number, r: number, colour: Rgb): void {
@@ -398,26 +378,32 @@ const church: RegionalBuilder = (ctx) => {
   if (!tower) {
     // the belfry over the west gable: four posts on the ridge, open between them, a pyramid of sheet and a small onion
     const bz = D / 2 - 0.9, by = frame.roof.ridgeY - 0.6, bh = 1.7, b = 0.65;
-    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
-      sink.span('plaster', sx * b - 0.13, by, bz + sz * b - 0.13, sx * b + 0.13, by + bh + 0.6, bz + sz * b + 0.13);
-    }
-    sink.span('plaster', -b - 0.18, by + bh + 0.6, bz - b - 0.18, b + 0.18, by + bh + 0.85, bz + b + 0.18);
-    sink.span('structureMetal', -0.06, by + 0.95, bz - 0.06, 0.06, by + bh + 0.6, bz + 0.06, { colour: rgb(0x2e3032), decor: true });
-    sink.cylinder('structureMetal', [0, by + 0.75, bz], 'y', 0.42, 0.3, 8, { colour: rgb(0x6a5a3a), decor: true }, 0.15);
-    onion(sink, 0, by + bh + 0.85, bz, 0.55, DOME_GREEN);
+    // (props census #5: the belfry a crown of the roof in the house's plan: it falls with its roof section)
+    roofCrown(sink, frame, { kind: 'belfry', x0: -b - 0.18, x1: b + 0.18, z0: bz - b - 0.18, z1: bz + b + 0.18, y0: by, y1: by + bh + 2.4, bucket: 'plaster' }, () => {
+      for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
+        sink.span('plaster', sx * b - 0.13, by, bz + sz * b - 0.13, sx * b + 0.13, by + bh + 0.6, bz + sz * b + 0.13);
+      }
+      sink.span('plaster', -b - 0.18, by + bh + 0.6, bz - b - 0.18, b + 0.18, by + bh + 0.85, bz + b + 0.18);
+      sink.span('structureMetal', -0.06, by + 0.95, bz - 0.06, 0.06, by + bh + 0.6, bz + 0.06, { colour: rgb(0x2e3032), decor: true });
+      sink.cylinder('structureMetal', [0, by + 0.75, bz], 'y', 0.42, 0.3, 8, { colour: rgb(0x6a5a3a), decor: true }, 0.15);
+      onion(sink, 0, by + bh + 0.85, bz, 0.55, DOME_GREEN);
+    });
     return sink.finish();
   }
   // the bell tower at the west (+z) end: two square tiers and a small onion
   const tz = D / 2 + 1.6;
   sink.span('stone', -1.95, -0.4, tz - 1.95, 1.95, 0.4, tz + 1.95);
-  sink.span('plaster', -1.6, 0.4, tz - 1.6, 1.6, 7.0, tz + 1.6);
-  sink.span('plaster', -1.25, 7.0, tz - 1.25, 1.25, 9.6, tz + 1.25);
+  // (props census #5, lane B 2026-10-15) the lower tier's door cut through it (the leaf was laid on a solid span), the
+  // leaf at the back of its reveal; the belfry tier open on its four corner piers under its head, the bell hung in it
+  // (its openings were dark plates on a solid block); the tower recorded as a shaft body under its onion
+  holedBox(sink, 'plaster', -1.6, tz - 1.6, 1.6, tz + 1.6, 0.4, 7.0, { front: [{ u0: -0.65, u1: 0.65, y0: 0.4, y1: 3.0 }] }, 0.4, 0.34);
+  openBelfry(sink, 'plaster', 0, tz, 2.5, 7.0, 9.05, 9.6, 0.8, rgb(0x6a5a3a), rgb(0x4a3a2a));
+  recordShaft(sink, 0, tz, 3.2, 9.75 + 2.4, 'plaster');
   const towerFace: Face = { origin: [0, 0, tz + 1.6], u: [1, 0, 0], out: [0, 0, 1], width: 3.2 };
-  doorUnit(sink, towerFace, 0, 0.4, 1.3, 2.6, { leaf: rgb(0x6e5440), frame: { bucket: 'plaster', width: 0.24, out: 0.08, arch: true }, steps: { bucket: 'stone' }, leafKind: 'plank' }, 0.4);
-  for (const [o, u] of [[[0, 0, tz + 1.25], [1, 0, 0]], [[0, 0, tz - 1.25], [-1, 0, 0]], [[1.25, 0, tz], [0, 0, -1]], [[-1.25, 0, tz], [0, 0, 1]]] as const) {
-    const f: Face = { origin: o as Vec3, u: u as Vec3, out: [Math.sign(o[0]), 0, o[0] === 0 ? Math.sign(o[2] - tz) : 0], width: 2.5 };
-    faceBox(sink, 'dark', f, 0, 8.3, 0.005, 0.8, 1.5, 0.02, { decor: true });
-  }
+  sink.recess = 0.34;
+  try {
+    doorUnit(sink, towerFace, 0, 0.4, 1.3, 2.6, { leaf: rgb(0x6e5440), frame: { bucket: 'plaster', width: 0.24, out: 0.08, arch: true }, steps: { bucket: 'stone' }, leafKind: 'plank' }, 0.4);
+  } finally { sink.recess = 0; }
   sink.span('structureMetal', -1.35, 9.6, tz - 1.35, 1.35, 9.75, tz + 1.35, { colour: GREEN_ROOF });
   onion(sink, 0, 9.75, tz, 0.95, DOME_GREEN);
   if (facadeOn()) {
@@ -469,6 +455,13 @@ function churchMasonry(sink: PartSink, frame: HouseFrame, drum: Vec3, drumH: num
     const f: Face = { origin: [drum[0] + ca * r * 0.97, 0, drum[2] + sa * r * 0.97], u: [-sa, 0, ca], out: [ca, 0, sa], width: 1 };
     const wy = drum[1] + 1.2, wh = Math.max(0.5, drumH - 1.6);
     faceSlab(sink, 'dark', f, [[-0.2, wy], [0.2, wy], [0.2, wy + wh], [0, wy + wh + 0.18], [-0.2, wy + wh]], 0, 0.04);
+    // (props census #5, lane B 2026-10-15: the dark lay on the drum, a painted window) its deep plaster surround, the dark
+    // at the back of its reveal: the jambs, the sill and the head 22 cm proud of it
+    // (on a right-handed face: the drum face's u runs the other way, which turned the boxes inside out)
+    const fr: Face = { ...f, u: [sa, 0, -ca] };
+    for (const s2 of [-1, 1]) faceBox(sink, 'plaster', fr, s2 * 0.25, wy + (wh + 0.18) / 2, 0.11, 0.1, wh + 0.28, 0.22, { decor: true });
+    faceBox(sink, 'plaster', fr, 0, wy - 0.05, 0.11, 0.4, 0.1, 0.22, { decor: true }, 'ends');
+    faceBox(sink, 'plaster', fr, 0, wy + wh + 0.23, 0.11, 0.4, 0.1, 0.22, { decor: true }, 'ends');
   }
 }
 
@@ -558,8 +551,13 @@ export const KOLKHOZ_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Objec
 /** the yard's trodden black-earth clay round a khata (facade craft): sRGB 4a3e30 as it should read, over the lime's albedo */
 const TRODDEN: Rgb = shade(rgb(0x4a3e30), 1 / 0.54);
 
-/** whitewash: the khatas' lime render, cool and bright (the photo render set stays off) */
-const whitewash = (_h: number, s: number, l: number): readonly [number, number, number] => [0.12, Math.min(1, s * 0.25), Math.min(1, l * 1.28 + 0.12)];
+/** whitewash: the khatas' lime render, cool and bright (the photo render set stays off); (the maps lane, 2026-10-15; the
+ *  blind critics on Verdant v2: High bloom blew the white walls out to glowing blanks) its brightest lime eased in over a
+ *  knee at 0.6, so the wash keeps its brushwork and stops short of the bloom's threshold */
+const whitewash = (_h: number, s: number, l: number): readonly [number, number, number] => {
+  const x = l * 1.28 + 0.12;
+  return [0.12, Math.min(1, s * 0.25), Math.min(1, x < 0.6 ? x : 0.6 + (x - 0.6) * 0.35)];
+};
 /**
  * The render painted as lime-wash brushed over mud plaster, not the plain render's canvas (the facades lane,
  * 2026-10-05; wave 116: the khatas and the church read "a grey stone-chip texture instead of lime-wash"). The blue

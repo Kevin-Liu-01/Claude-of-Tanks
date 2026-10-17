@@ -9,6 +9,7 @@ import {sectionSolid} from './sectionSolid.ts';
 import {boxSections,roofSheet,beamBetween,blindTube,cappedTube,type Point3} from './measuredPrimitives.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import {T72B3_X_SOURCE_DATUMS} from '../t72b3XArmor.ts';
 import {addT72B3Stowage,addT72B3MgMount,addT72B3MgBracket,addT72B3Optics} from './t72b3XEquipment.ts';
 import {addT72B3RearDrums} from './t72b3XRearDrums.ts';
@@ -310,6 +311,8 @@ function machineGun(P:TankBuilderPort):void {
   // own frame truthful. Counter-rotation leaves every world-space solid fixed.
   for(const child of group.children)if(child instanceof THREE.Mesh)child.geometry.rotateY(Math.PI);
   group.rotation.y=Math.PI;
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+  stationFromDrawnGun(group,{name:'t72b3XRoofNsvt',caliberMm:12.7});
 }
 
 function mainGun(P:TankBuilderPort):void {
@@ -338,12 +341,27 @@ export function buildT72B3XHull(P:TankBuilderPort):void {
 
 export function buildT72B3X(P:TankBuilderPort):void {
   P.hullG.position.set(0,0,0);P.turretG.position.set(...YAW);
-  P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
-  P.muzzleZ=T72B3_X_DATUMS.muzzleZ-GUN[2];P.topY=T72B3_X_DATUMS.highestFittingM-YAW[1];
-  buildT72B3XHull(P);casting(P);cheekEra(P);roofEra(P);
-  roofEquipment(P);antennae(P);smoke(P);machineGun(P);mainGun(P);
+  P.topY=T72B3_X_DATUMS.highestFittingM-YAW[1];
+  buildT72B3XHull(P);buildT72B3XTurret(P);
 }
-export const T72B3_X_PROFILES={t72b3_x:{build:buildT72B3X}} as const;
+
+/** Options for reusing the T-72B3 turret on another hull. A vehicle whose own
+ * fitted remote station replaces the commander's machine gun omits that gun
+ * (one working roof gun, never a duplicate); one whose station's barrel sweeps
+ * the roof whips omits them and fits its own outside that sweep. */
+export interface T72B3XTurretOptions { commanderGun?:boolean; antennae?:boolean }
+
+/** The complete T-72B3 turret in its own turret frame (the turret ring centre
+ * is the origin): casting, Kontakt-5 cheek and roof cassettes, roof equipment,
+ * antennae, smoke, the commander's gun and the main gun with its trunnion.
+ * The caller places P.turretG on its hull's ring. */
+export function buildT72B3XTurret(P:TankBuilderPort,options:T72B3XTurretOptions={}):void {
+  P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
+  P.muzzleZ=T72B3_X_DATUMS.muzzleZ-GUN[2];
+  casting(P);cheekEra(P);roofEra(P);
+  roofEquipment(P);if(options.antennae!==false)antennae(P);smoke(P);if(options.commanderGun!==false)machineGun(P);mainGun(P);
+}
+export const T72B3_X_PROFILES={t72b3:{build:buildT72B3X}} as const;
 
 /** Native mechanical foundation for owner-authorized complete hull rebuilds. */
 export function buildT72B3XRunningGear(P:TankBuilderPort):void { runningGear(P); }

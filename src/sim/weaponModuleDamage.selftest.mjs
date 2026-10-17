@@ -20,7 +20,7 @@ combat.modules.gun.state='ok';combat.modules.feedSystem.state='red';
 assert.equal(selectedWeaponModuleState(combat,spec.gun,cannon),'red','autocannon cannot feed rounds when its feeder is destroyed');
 assert.equal(selectedWeaponModuleState(combat,spec.gun,missile),'ok');
 const round={name:'module probe',type:'APFSDS',caliberMm:120,pen100Mm:1200,pen1000Mm:1000,dmg:100,velocityMps:1000,moduleDmg:1000};
-for(const id of ['t14','t90m_proryv','challenger_3']){
+for(const id of ['object148_proto','t90m_proryv','challenger3_proto']){
  const spec=getSpec(id), combat=createCombatState(spec), state=createTankState(spec,new Vector3(12,3,7),.3);
  const target={id,team:'blue',spec,combat,state};
  const gun=auxiliaryCapabilities(spec).guns[0];

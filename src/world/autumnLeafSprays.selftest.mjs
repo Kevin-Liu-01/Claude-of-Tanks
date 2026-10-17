@@ -33,13 +33,14 @@ const observed = source.replace(rngSource, rngSource.replace('function mulberry3
   export function takeLeafStreams() { return leafStreams.splice(0).map(({seed,calls,next}) => ({seed,calls,tail:[next(),next(),next()]})); }
   export function leafLibrary(input) {
     const seed = 2001, cfg = {vegetation:input}, veg = ${variable('veg')};
+    // round 77b (2026-09-26): the leaf-detail library the stage reads (a null tile keeps the flat card program, as on
+    // the mobile tier); the tiles themselves are leafDetail.selftest's subject. (GND 2026-10-15: the registry's
+    // needleCrown reads its class too, so the stub stands at the registry's own scope)
+    const leafDetail = {texture: () => null, classOf: () => 'broadleaf'};
     ${source.slice(start, end)}
     function materials() {
       const foliageTex = {}, foliageMats = {}, foliageDepthMats = {}, foliageWindHook = () => {};
       const engineCtx = {setupShadowMaterial() {}};
-      // round 77b (2026-09-26): the leaf-detail library the stage reads (a null tile keeps the flat card program, as on
-      // the mobile tier); the tiles themselves are leafDetail.selftest's subject
-      const leafDetail = {texture: () => null, classOf: () => 'broadleaf'};
       ${fn('createFoliageMaterials')}
       for (const step of createFoliageMaterials()) void step;
       return {foliageTex, foliageMats, foliageDepthMats};
@@ -63,7 +64,8 @@ const autumn = getMapConfig('autumn'), optIns = [];
 for (const id of MAP_IDS) for (const [species, palette] of Object.entries(getMapConfig(id).vegetation.palettes ?? {})) {
   if (palette.birchLeaves !== undefined) { assert.equal(palette.birchLeaves, true); optIns.push(`${id}/${species}`); }
 }
-assert.deepEqual(optIns.sort(), ['autumn/aspen', 'autumn/birch'], 'exact map/species opt-in scope');
+// (map revival lane 2, Nordhavn round 2, 2026-10-05: Ofoten's downy birch in May, its leaves just breaking, opts in)
+assert.deepEqual(optIns.sort(), ['autumn/aspen', 'autumn/birch', 'fjord/birch'], 'exact map/species opt-in scope');
 const originalInput = {...autumn.vegetation, palettes: Object.fromEntries(Object.entries(autumn.vegetation.palettes)
   .map(([species, palette]) => [species, {...palette, birchLeaves: false}]))};
 // p2 trees lane (2026-10-01): the desktop tiers grow their trees and paint branch-spray atlases (treeSprayAtlas.ts —
@@ -154,6 +156,10 @@ try {
     const lib=api.leafLibrary(legacy(getMapConfig(id).vegetation));
     for (const species of ['birch','aspen']) {
       const palette=lib.palOf(species), seed=2001+lib.SPECIES[species].texSeed;
+      // (integ/225 with Nordhavn round 2) a birch-family species whose palette opts in paints its own leaves: fjord's birch,
+      // and its aspen, which reads the birch palette through palOf; only the rest must match the twig painter (failing
+      // here, the RGBA deepEqual's diff of two 256x256 textures ran the receipt past 12 GB)
+      if (palette.birchLeaves === true) continue;
       const a=paint((r,p)=>api.makeTwigTexture(r,p.texTone||null),seed,palette);
       const b=paint((r,p)=>lib.SPECIES[species].tex(r,p),seed,palette);
       try { identicalPaint(a,b); } finally {a.texture.dispose();b.texture.dispose();}

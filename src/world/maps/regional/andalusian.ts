@@ -12,15 +12,16 @@
 // two-storey house, the stable wing, the walled patio with its arched gateway and bell), the whitewashed barn with its
 // arched cart door, the dovecote, the bread oven in the yard, and prickly pear (chumbera) clumps by the walls.
 import {
-  LocalFrame, PartSink, faceBox, facePoint, normalize3, pick, rgb, shade, UV_MEMBER,
+  LocalFrame, PartSink, faceBox, facePanel, facePoint, normalize3, pick, rgb, shade, UV_MEMBER,
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
 import {
-  buildHouse, emitRoof, roofGeometry, storeyFaces, wallPolygon, windowRhythm,
+  buildHouse, emitRoof, holedBox, recordShaft, roofCrown, roofGeometry, storeyFaces, wallPolygon, windowRhythm,
   type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec, type StoreySpec,
 } from './house.ts';
 import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
-import { wallLantern, woodpile } from './dressing.ts';
+import { wallLantern } from './dressing.ts';
+import { coursedRound, openShed, recordMasonry } from './outbuildings.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 
 const IRON = rgb(0x1d1e20);
@@ -311,16 +312,55 @@ function persiana(sink: PartSink, face: Face, u: number, y: number, w: number, h
   const drop = h * (0.3 + look() * 0.55), top = y + h + 0.12, bottom = top - drop - 0.12;
   const colour = look() < 0.75 ? shade(ESPARTO, 0.86 + look() * 0.26) : shade(BLIND_GREEN, 0.9 + look() * 0.2);
   const opts = { colour, decor: true, shadow: true } as const;
-  faceBox(sink, 'structureWood', face, u, (top + bottom) / 2, 0.07, w + 0.16, top - bottom, 0.016, opts);
-  faceBox(sink, 'structureWood', face, u, bottom + 0.045, 0.085, w + 0.18, 0.09, 0.08, opts);
+  // (props census r2 sweep, Lane C 2026-10-16: the mat hung 7 cm off the wall on nothing — six floating blinds on a
+  // posada, a dark plate laid over the window's surround) it hangs as the real ones do, from an iron rod carried clear
+  // of the surround and the sill's nose on two brackets driven into the wall over the lintel, the mat let down from
+  // the rod and rolled at its foot
+  const off = 0.14, iron = { colour: IRON, decor: true } as const;
+  for (const s of [-1, 1]) faceBox(sink, 'structureMetal', face, u + s * (w / 2 + 0.05), top + 0.02, off / 2, 0.03, 0.03, off + 0.02, iron);
+  faceBox(sink, 'structureMetal', face, u, top + 0.02, off, w + 0.2, 0.025, 0.025, iron);
+  faceBox(sink, 'structureWood', face, u, (top + 0.02 + bottom) / 2, off, w + 0.16, top + 0.02 - bottom, 0.016, opts);
+  faceBox(sink, 'structureWood', face, u, bottom + 0.045, off + 0.015, w + 0.18, 0.09, 0.08, opts);
+}
+
+/**
+ * The plank shutters (postigos) of a window (u, y: its bottom-centre): two leaves, each three boards side by side with
+ * their joints open a centimetre and two ledges across them, folded back flat on the wall either side of the surround,
+ * or now and then closed across the opening. (Props census r2 sweep, Lane C 2026-10-16: openings.ts laid each leaf as
+ * one board, six of the school's read as dark plates painted on the white walls.) Its draws are windowUnit's for its
+ * shutters, in their order: the leaves' fade, then whether they stand closed.
+ */
+function postigos(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, style: WindowStyle, rng: () => number): void {
+  const sh = style.shutters!, leaf = w / 2 + 0.03, sideOff = style.surround ? style.surround.width : 0;
+  const fade = 0.88 + rng() * 0.2;
+  const closed = rng() < (sh.closed ?? 0);
+  const sc = { colour: [sh.colour[0] * fade, sh.colour[1] * fade, sh.colour[2] * fade] as Rgb, decor: true, uv: UV_MEMBER };
+  const T = 0.035, boards = 3, joint = 0.012, lh = h + 0.02;
+  const leafAt = (cu: number, o: number, ledges: boolean) => {
+    for (let k = 0; k < boards; k++) {
+      faceBox(sink, 'structureWood', face, cu - leaf / 2 + (k + 0.5) * leaf / boards, y + h / 2, o, leaf / boards - joint, lh, T, { ...sc, fineSides: true });
+    }
+    if (ledges) for (const t of [0.18, 0.82]) faceBox(sink, 'structureWood', face, cu, y + h * t, o + T / 2 + 0.008, leaf - 0.04, 0.07, 0.02, { ...sc, fine: true }, { back: true, ends: true });
+  };
+  if (closed) {
+    // both leaves across the opening, proud of the frame, their ledges inside
+    const shut = Math.max(0, style.frameOut - sink.recess);
+    leafAt(u - leaf / 2 + 0.015, shut + 0.025, false);
+    leafAt(u + leaf / 2 - 0.015, shut + 0.028, false);
+    return;
+  }
+  // folded back flat on the wall (their back faces then never show), the ledged inner faces out
+  for (const side of [-1, 1]) leafAt(u + side * (w / 2 + sideOff + leaf / 2 + 0.02), T / 2 + 0.001, true);
 }
 
 function dialect(st: AndalusianState, look: () => number): HouseDialect {
   return {
     window: (sink, face, o, y0) => {
       const loft = o.kind === 'loft';
-      windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, loft ? { ...st.window, shutters: null, bars: 'none', surround: null } : st.window,
+      // (the shutters' two draws are windowUnit's last on the stream: the leaves drawn after it draw them in its place)
+      windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, loft ? { ...st.window, shutters: null, bars: 'none', surround: null } : { ...st.window, shutters: null },
         st.rng, loft ? 0 : st.litShare);
+      if (!loft && st.window.shutters) postigos(sink, face, o.u, y0 + o.y0, o.w, o.h, st.window, st.rng);
       if (!loft && o.storey === 0 && st.reja) reja(sink, face, o.u, y0 + o.y0, o.w, o.h, st.reja === 'box');
       if (!loft && o.storey > 0 && look() < 0.45) persiana(sink, face, o.u, y0 + o.y0, o.w, o.h, look);
     },
@@ -568,9 +608,15 @@ const posada: RegionalBuilder = (ctx) => {
       const timber = rgb(0x6a5440), leaf = rgb(0x4f6a34);
       for (const s of [-1, 1]) faceBox(sink, 'structureWood', f, du + s * 1.1, frame.floors[0] + 1.25, 1.55, 0.1, 2.5, 0.1, { colour: timber, decor: true });
       for (const s of [-1, 1]) faceBox(sink, 'structureWood', f, du + s * 1.1, frame.floors[0] + 2.55, 0.8, 0.08, 0.08, 1.6, { colour: timber, decor: true });
+      // (props census r2 sweep, Lane C 2026-10-16: the leaves between the two poles hung in the air) the laths nailed
+      // across the poles that carry the vine, and every clump of leaves bedded on them (its draws as before, in order)
+      const lathTop = frame.floors[0] + 2.63;
+      for (let o = 0.12; o < 1.6; o += 0.29) faceBox(sink, 'structureWood', f, du, lathTop - 0.02, o, 2.36, 0.04, 0.05, { colour: shade(timber, 1.1), decor: true });
       for (let k = 0; k < 14; k++) {
-        faceBox(sink, 'structureWood', f, du + (look() - 0.5) * 2.4, frame.floors[0] + 2.6 + look() * 0.25, 0.2 + look() * 1.3,
-          0.4 + look() * 0.4, 0.22 + look() * 0.2, 0.35 + look() * 0.3, { colour: shade(leaf, 0.75 + look() * 0.45), decor: true, shadow: true });
+        const lu = look(), ly = look(), lo = look(), lw = look(), lh = look(), ld = look(), tone = look();
+        const sy = 0.22 + lh * 0.2;
+        faceBox(sink, 'structureWood', f, du + (lu - 0.5) * 2.4, lathTop - 0.03 + ly * 0.04 + sy / 2, 0.2 + lo * 1.3,
+          0.4 + lw * 0.4, sy, 0.35 + ld * 0.3, { colour: shade(leaf, 0.75 + tone * 0.45), decor: true, shadow: true });
       }
       // the trough on the street against the wall's foot (the connectivity sweep: it stood at the ground floor's level,
       // a third of a metre over the street)
@@ -725,7 +771,9 @@ const iglesia: RegionalBuilder = (ctx) => {
     for (const s of [-1, 1]) faceBox(sink, 'stone', f, s * 1.35, 2.0, 0.14, 0.34, 3.6, 0.28, { decor: true });
     faceBox(sink, 'stone', f, 0, 3.95, 0.18, 3.2, 0.4, 0.36, { decor: true, shadow: true });
     for (const s of [-1, 1]) sink.member('stone', facePoint(f, s * 1.6, 4.2, 0.18), facePoint(f, 0, 5.0, 0.18), 0.22, 0.3, f.out, { decor: true, exposed: true }, 0);
-    faceBox(sink, 'dark', f, 0, 4.55, 0.02, 0.5, 0.45, 0.02, { decor: true });
+    // (props census #5: the pediment's niche a dark plate on the wall) the niche's back in shadowed stone, its saint
+    faceBox(sink, 'stone', f, 0, 4.55, 0.02, 0.5, 0.45, 0.02, { decor: true, shade: 0.72 });
+    sink.cylinder('stone', facePoint(f, 0, 4.36, 0.1), 'y', 0.36, 0.07, 6, { decor: true }, 0.05);
   });
   // the chancel: lower, hipped, at least square; it runs back to the plot's end (0.35 m short of it: the solid within
   // half a metre of the base's reach, regionalArchitecture's footprint coverage)
@@ -740,10 +788,18 @@ const iglesia: RegionalBuilder = (ctx) => {
   // the tower over the west door
   const tz = zt0 + tower / 2, shaft = 13.4, stage = 4.0, half = tower / 2;
   sink.span('stone', -half - 0.12, -0.4, tz - half - 0.12, half + 0.12, 0.6, tz + half + 0.12);
-  sink.span('stone', -half, 0.6, tz - half, half, shaft, tz + half);
+  // (props census #5, lane B 2026-10-15) the west door and the window over it cut through the shaft (the leaf and a
+  // dark plate were laid on a solid span), the leaf at the back of the door's reveal, the window open to the stair's
+  // dark; the tower recorded as a shaft body (it topples in its courses)
+  const tRev = 0.34;
+  holedBox(sink, 'stone', -half, tz - half, half, tz + half, 0.6, shaft,
+    { front: [{ u0: -0.75, u1: 0.75, y0: 0.6, y1: 3.5 }, { u0: -0.31, u1: 0.31, y0: 4.85, y1: 5.95 }] }, 0.4, tRev);
+  recordShaft(sink, 0, tz, tower, shaft + 0.3 + stage + 2.5, 'stone');
   const tf: Face = { origin: [0, 0, tz + half], u: [1, 0, 0], out: [0, 0, 1], width: tower };
-  doorUnit(sink, tf, 0, 0.6, 1.5, 2.9, { leaf: rgb(0x4a3322), frame: { bucket: 'stone', width: 0.32, out: 0.14, arch: true }, steps: { bucket: 'stone' }, leafKind: 'plank' }, 0.6);
-  faceBox(sink, 'dark', tf, 0, 5.4, 0.01, 0.62, 1.1, 0.02, { decor: true });
+  sink.recess = tRev;
+  try {
+    doorUnit(sink, tf, 0, 0.6, 1.5, 2.9, { leaf: rgb(0x4a3322), frame: { bucket: 'stone', width: 0.32, out: 0.14, arch: true }, steps: { bucket: 'stone' }, leafKind: 'plank' }, 0.6);
+  } finally { sink.recess = 0; }
   faceBox(sink, 'stone', tf, 0, 6.05, 0.08, 0.95, 0.16, 0.16, { decor: true });
   faceBox(sink, 'stone', tf, 0, 4.75, 0.07, 0.95, 0.12, 0.14, { decor: true });
   // cornices at the shaft's head and the stage's
@@ -802,8 +858,12 @@ const torre: RegionalBuilder = (ctx) => {
   const H = 9.2 + rng() * 1.2;
   // the battered foot and the shaft
   sink.span('stone', -h - 0.35, -0.5, -h - 0.35, h + 0.35, 0.4, h + 0.35);
-  sink.span('stone', -h - 0.2, 0.4, -h - 0.2, h + 0.2, 2.2, h + 0.2);
-  sink.span('stone', -h, 2.2, -h, h, H, h);
+  // (props census #5) the door through the battered foot and the horseshoe window through the shaft (both were dark
+  // plates on solid spans), the dark of the stair behind them; the tower recorded as a shaft body
+  const wy = H * 0.6;
+  holedBox(sink, 'stone', -h - 0.2, -h - 0.2, h + 0.2, h + 0.2, 0.4, 2.2, { front: [{ u0: -0.45, u1: 0.45, y0: 0.4, y1: 1.95 }] }, 0.4, 0.34);
+  holedBox(sink, 'stone', -h, -h, h, h, 2.2, H, { front: [{ u0: -0.31, u1: 0.31, y0: wy - 0.575, y1: wy + 0.575 }] }, 0.4, 0.34);
+  recordShaft(sink, 0, 0, S, H + 0.85, 'stone');
   for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
     for (let y = 2.3, k = 0; y < H - 0.6; y += 0.5, k++) {
       const lx = k % 2 ? 0.55 : 0.3, lz = k % 2 ? 0.3 : 0.55;
@@ -811,11 +871,8 @@ const torre: RegionalBuilder = (ctx) => {
     }
   }
   const front: Face = { origin: [0, 0, h], u: [1, 0, 0], out: [0, 0, 1], width: S };
-  // the small door at the foot and the horseshoe window in its frame
-  faceBox(sink, 'dark', front, 0, 1.1, 0.21, 0.9, 1.7, 0.02, { decor: true });
+  // the small door's lintel at the foot and the horseshoe window's frame
   faceBox(sink, 'stone', front, 0, 2.05, 0.28, 1.25, 0.24, 0.16, { decor: true });
-  const wy = H * 0.6;
-  faceBox(sink, 'dark', front, 0, wy, 0.01, 0.62, 1.15, 0.02, { decor: true });
   for (let k = 0; k <= 8; k++) {
     const a = -0.35 + (Math.PI + 0.7) * k / 8;
     faceBox(sink, 'stone', front, Math.cos(a) * 0.38, wy + 0.45 + Math.sin(a) * 0.4, 0.03, 0.14, 0.14, 0.06, { decor: true });
@@ -862,20 +919,33 @@ const ermita: RegionalBuilder = (ctx) => {
         w: W, d: D, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [{ h: H, wall: 'plaster' }],
         roof: canal(24, 0.25, 0.08), gableBucket: 'plaster', openings, chimneys: [], gutters: null, verge: null, spall: null, reveal: 0.35,
       }, { ...dialect({ ...st, band: 'plaster2', reja: 'flat' }, look),
+        // (props census #5: a chapel's small lights unshuttered; open shutters laid on the render read as plates)
+        window: (s, face, o, y0) => {
+          windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { ...st.window, shutters: null }, st.rng, st.litShare);
+          reja(s, face, o.u, y0 + o.y0, o.w, o.h, false);
+        },
         door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
           leaf: rgb(0x4a3322), frame: { bucket: 'plaster2', width: 0.26, out: 0.02, arch: true }, steps: { bucket: 'stone' }, leafKind: 'plank',
-        }, y0 + o.y0) });
+        }, y0 + o.y0),
+        // the oculus over the door cut through the front gable (it was a dark disc on it)
+        gableOpenings: (face) => (face.out[2] > 0.5 ? [{ u0: -0.22, u1: 0.22, y0: H + 0.53, y1: H + 0.97 }] : []),
+      });
       alero(sink, frame);
       zocalo(sink, frame, 'plaster2', 0.7);
       const f = frame.faces.front;
-      // the round window over the door
-      sink.cylinder('plaster2', facePoint(f, 0, H + 0.75, 0.0), 'z', 0.012, 0.45, 12, { decor: true });
-      sink.cylinder('dark', facePoint(f, 0, H + 0.75, 0.0), 'z', 0.022, 0.31, 12, { decor: true });
+      // the round window over the door: its ring of dressed stones round the cut, the glass at the back
+      for (let k = 0; k < 12; k++) {
+        const a = k * Math.PI / 6;
+        faceBox(sink, 'plaster2', f, Math.cos(a) * 0.38, H + 0.75 + Math.sin(a) * 0.38, 0.03, 0.15, 0.15, 0.06, { decor: true });
+      }
+      facePanel(sink, 'glass', f, 0, H + 0.75, -0.26, 0.44, 0.44, { decor: true, window: f.out });
       // the bell gable on the front gable's apex. Round 3 (gauntlet wave 108c: "its bell gable has no bell opening"):
       // its opening stood level with the roof's ridge, so the tiles closed it from every side; the gable now rises
       // clear of the ridge, the bell hanging in the sky
       const ridge = frame.roof.ridgeTopY;
-      espadana(sink, { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: 2.2 }, ridge - 0.15, 2.2, 0.32, 0.27, st.mobile);
+      // (props census #5: the bell gable a crown of the roof in the house's plan: it falls with its roof section)
+      roofCrown(sink, frame, { kind: 'bellcote', x0: -1.1, x1: 1.1, z0: D / 2 - 0.32, z1: D / 2, y0: ridge - 0.15, y1: ridge + 3.6, bucket: 'plaster' },
+        () => espadana(sink, { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: 2.2 }, ridge - 0.15, 2.2, 0.32, 0.27, st.mobile));
     });
     // the porch: two white pillars and a lean-to of tiles from the front wall
     const fz = zc + D / 2, pz = fz + porch;
@@ -992,7 +1062,12 @@ const escuela: RegionalBuilder = (ctx) => {
     faceBox(sink, 'stone', f, 0, 3.75, 0.1, 2.5, 0.26, 0.2, { decor: true, shadow: true });
     for (const s of [-1, 1]) sink.member('stone', facePoint(f, s * 1.25, 3.88, 0.1), facePoint(f, 0, 4.45, 0.1), 0.2, 0.2, f.out, { decor: true, exposed: true }, 0);
     faceBox(sink, 'stone', f, 0, frame.floors[1] + 1.7, 0.03, 2.3, 0.62, 0.06, { decor: true, shadow: true });
-    faceBox(sink, 'dark', f, 0, frame.floors[1] + 1.7, 0.065, 1.95, 0.22, 0.01, { decor: true });
+    // (props census #15, Lane C 2026-10-16: the inscription was a dark plate on the plaque) its sunken field framed by a
+    // moulding, the field a shade darker in the shadow of its frame
+    const py = frame.floors[1] + 1.7;
+    for (const dy of [-0.2, 0.2]) faceBox(sink, 'stone', f, 0, py + dy, 0.075, 2.1, 0.05, 0.03, { decor: true, fine: true });
+    for (const du of [-1.03, 1.03]) faceBox(sink, 'stone', f, du, py, 0.075, 0.05, 0.45, 0.03, { decor: true, fine: true });
+    faceBox(sink, 'stone', f, 0, py, 0.062, 2.0, 0.36, 0.004, { decor: true, shade: 0.78 });
   });
   return sink.finish();
 };
@@ -1036,15 +1111,37 @@ const cortijo: RegionalBuilder = (ctx) => {
   });
   // the stable wing along the far side, under a lean-to falling outward: its walls a prism under the slope
   const sw = clamp((x1 - x0) * 0.24, 2.8, 3.6), sx0 = x1 - sw;
-  const pitch = 13, low = 2.3, rise = sw * Math.tan(pitch * Math.PI / 180);
-  const wingEnd: Face = { origin: [(sx0 + x1) / 2, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: sw };
-  wallPolygon(sink, 'plaster', wingEnd, [[-sw / 2, -0.3], [sw / 2, -0.3], [sw / 2, low], [-sw / 2, low + rise]], D);
-  const wingFace: Face = { origin: [sx0, 0, 0], u: [0, 0, 1], out: [-1, 0, 0], width: D };
-  for (const u of [-D * 0.28, D * 0.08, D * 0.36]) {
-    doorUnit(sink, wingFace, u, 0, 1.2, 1.9, { leaf: shade(st.door, 0.85), frame: { bucket: 'plaster2', width: 0.14, out: 0.015 }, steps: null, leafKind: 'plank' });
-  }
+  const pitch = 13, low = 2.3;
+  // (the looks lane, 2026-10-15; WORKLIST #15: "andalusian cuadras wing ... on buildHouse"; the r2 probe read its three
+  // stable doors as plank plates laid on a solid prism) the wing on the house grammar: its whitewashed rubble walls on a
+  // low plinth, the three stable doors cut through the patio wall in their deep reveals, each a pair of ledged plank leaves
+  // under a timber lintel, a hatch for the hay over the middle one, the walls' ends closed up under the lean-to of tiles
   const lean: RoofSpec = { kind: 'shed', pitchDeg: pitch, eave: 0.25, verge: 0.12, thickness: 0.12, bucket: 'roof' };
-  sink.placed(0, (sx0 + x1) / 2, 0, 0, () => emitRoof(sink, roofGeometry(sw, D, low, lean), lean));
+  const wingDoors = [-D * 0.28, D * 0.08, D * 0.36];
+  const stable: Opening[] = wingDoors.map((u): Opening => ({ face: 'left', storey: 0, kind: 'door', u, w: 1.2, y0: 0, h: 1.9 }));
+  stable.push({ face: 'left', storey: 0, kind: 'loft', u: (wingDoors[0] + wingDoors[1]) / 2, w: 0.6, y0: 1.55, h: 0.45 });
+  const wingDialect: HouseDialect = {
+    window: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(st.door, 0.78), frame: { bucket: 'structureWood', width: 0.08, out: 0.03, colour: shade(st.door, 0.6) }, steps: null, leafKind: 'plank' }),
+    door: (s, face, o, y0) => {
+      doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(st.door, 0.85), frame: { bucket: 'plaster2', width: 0.14, out: 0.015 }, steps: null, leafKind: 'plank' });
+      // the timber lintel over the door, its ends bedded in the wall a hand each side
+      faceBox(s, 'structureWood', face, o.u, y0 + o.y0 + o.h + 0.09, 0.025, o.w + 0.5, 0.16, 0.05, { colour: shade(st.door, 0.55), decor: true });
+    },
+  };
+  sink.placed(0, (sx0 + x1) / 2, 0, 0, () => {
+    const wf = buildHouse(sink, {
+      w: sw, d: D, plinth: { h: 0.2, out: 0.03, bucket: 'stone' }, storeys: [{ h: low - 0.2, wall: 'plaster' }], roof: lean, gableBucket: 'plaster',
+      openings: stable, chimneys: [], gutters: null, verge: null, spall: null, reveal: 0.24,
+    }, wingDialect);
+    // the walls' ends up under the lean-to's rise
+    const tanP = Math.tan(pitch * Math.PI / 180);
+    for (const zs of [1, -1] as const) {
+      const end: Face = { origin: [0, 0, zs * D / 2], u: [zs, 0, 0], out: [0, 0, zs], width: sw };
+      const hi = -zs * sw / 2;
+      wallPolygon(sink, 'plaster', end, [[-sw / 2, wf.eaveY], [sw / 2, wf.eaveY], [hi, wf.eaveY + sw * tanP]], 0.2);
+    }
+  });
+
   // the patio walls between the house and the wing, the arched gateway in the front wall under its bell gable
   const px0 = x0 + hwide, wallTop = 2.3, gateW = clamp(sx0 - px0 - 1.7, 2.0, 2.8), gc = (px0 + sx0) / 2;
   const pier = (gateW / 2 + 0.35);
@@ -1119,8 +1216,12 @@ const pajar: RegionalBuilder = (ctx) => {
 };
 
 /**
- * The dovecote (palomar): a square whitewashed tower under a lean-to of tiles, its pigeon holes in rows under the
- * eaves above a projecting ledge, a low store against its front with its own door.
+ * The dovecote (palomar): a square whitewashed tower under a low hipped cap of tiles, its pigeon holes in rows under the
+ * eaves above a projecting ledge, a low store against its front with its own door. (Props census #22, Lane C
+ * 2026-10-16: "destroyed by destructionDefaultKit ... not its own pieces"; the holes were 1 cm dark plates.) Both bodies
+ * are houses now (house.ts buildHouse): the tower's pigeon holes are cut through its rubble wall in their reveals, each
+ * row on its landing ledge, and the store's door is cut through its front; the damage reads the tower and the store as
+ * two bodies.
  */
 const palomar: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
@@ -1129,82 +1230,114 @@ const palomar: RegionalBuilder = (ctx) => {
   // the dovecote at the back of the base granary's measured box, its store reaching the box's front
   const bb = ctx.bounds;
   const S = clamp(Math.min(bb.maxX - bb.minX - 0.5, 3.8), 3.0, 3.8), half = S / 2;
-  const tz = bb.minZ + 0.25 + half, H = 5.8, xc = (bb.minX + bb.maxX) / 2;
-  sink.placed(0, xc, 0, 0, () => {
-  sink.span('stone', -half - 0.05, -0.4, tz - half - 0.05, half + 0.05, 0.4, tz + half + 0.05);
-  sink.span('plaster', -half, 0.4, tz - half, half, H, tz + half);
-  // the tower's low pyramid of tiles
+  const tz = bb.minZ + 0.25 + half, H = 5.8, xc = (bb.minX + bb.maxX) / 2, plinth = 0.4;
   const cap: RoofSpec = { kind: 'hip', pitchDeg: 24, eave: 0.25, verge: 0.25, thickness: 0.12, bucket: 'roof', ridge: 'round' };
-  sink.placed(0, 0, 0, tz, () => emitRoof(sink, roofGeometry(S, S, H, cap), cap));
-  const faces: Face[] = [
-    { origin: [0, 0, tz + half], u: [1, 0, 0], out: [0, 0, 1], width: S },
-    { origin: [half, 0, tz], u: [0, 0, -1], out: [1, 0, 0], width: S },
-    { origin: [-half, 0, tz], u: [0, 0, 1], out: [-1, 0, 0], width: S },
-  ];
-  for (const fc of faces) {
-    faceBox(sink, 'plaster', fc, 0, 4.25, 0.1, S + 0.1, 0.12, 0.2, { decor: true, shadow: true });
-    for (let r = 0; r < 3; r++) for (let k = 0; k < 5; k++) {
+  // the pigeon holes: three rows under the eaves on the three free faces, every other hole along a row
+  const rows = [4.55, 4.87, 5.19], holes: Opening[] = [];
+  for (const face of ['front', 'right', 'left'] as const) {
+    for (let r = 0; r < rows.length; r++) for (let k = 0; k < 5; k++) {
       if ((r + k) % 2) continue;
-      faceBox(sink, 'dark', fc, -S / 2 + 0.4 + k * (S - 0.8) / 4, 4.55 + r * 0.32, 0.005, 0.12, 0.14, 0.01, { decor: true });
+      holes.push({ face, storey: 0, kind: 'loft', u: -S / 2 + 0.4 + k * (S - 0.8) / 4, w: 0.13, h: 0.15, y0: rows[r] - plinth });
     }
   }
-  // the store in front, its own lean-to falling toward the plot's front
-  const s0 = tz + half, s1 = bb.maxZ - 0.22;
-  if (s1 - s0 > 1.2) {
-    // its walls a prism under the lean-to's slope, high against the tower
-    const L = s1 - s0 + 0.02, rise = (s1 - s0) * Math.tan(14 * Math.PI / 180);
-    const side: Face = { origin: [-half + 0.1, 0, (s0 - 0.02 + s1) / 2], u: [0, 0, 1], out: [-1, 0, 0], width: L };
-    wallPolygon(sink, 'plaster', side, [[-L / 2, -0.3], [L / 2, -0.3], [L / 2, 2.3], [-L / 2, 2.3 + rise]], S - 0.2);
-    const sl: RoofSpec = { kind: 'shed', pitchDeg: 14, eave: 0.2, verge: 0.1, thickness: 0.1, bucket: 'roof' };
-    sink.placed(-Math.PI / 2, 0, 0, (s0 + s1) / 2, () => emitRoof(sink, roofGeometry(s1 - s0, S - 0.2, 2.3, sl), sl));
-    const sf: Face = { origin: [0, 0, s1], u: [1, 0, 0], out: [0, 0, 1], width: S - 0.2 };
-    doorUnit(sink, sf, 0, 0, 0.95, 1.85, { leaf: st.door, frame: { bucket: 'plaster2', width: 0.12, out: 0.015 }, steps: null, leafKind: 'plank' });
-  }
-  if (look() < 0.5) sink.dressing(st.mobile, () => chumbera(sink, half + 0.6, tz, 0.9, look));
+  // a small light at the back for the loft
+  holes.push({ face: 'back', storey: 0, kind: 'window', u: 0, w: 0.45, h: 0.55, y0: 3.4 - plinth });
+  const quiet: HouseDialect = {
+    // a pigeon hole is left empty: its reveal and the dark of the loft behind it
+    window: (s, face, o, y0) => { if (o.kind !== 'loft') windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { ...st.window, shutters: null, bars: 'none' }, st.rng, 0); },
+    door: (s, face, o, y0, frame) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
+      leaf: st.door, frame: { bucket: st.band ?? 'plaster2', width: 0.12, out: 0.015 }, steps: null, leafKind: 'plank',
+    }, frame.floors[o.storey] + o.y0),
+  };
+  sink.placed(0, xc, 0, 0, () => {
+    sink.placed(0, 0, 0, tz, () => {
+      const frame = buildHouse(sink, {
+        w: S, d: S, plinth: { h: plinth, out: 0.05, bucket: 'stone' }, storeys: [{ h: H - plinth, wall: 'plaster' }], roof: cap,
+        openings: holes, chimneys: [], gutters: null, verge: null, reveal: 0.3, core: 'rubble',
+      }, quiet);
+      // the landing ledges: the broad one under the holes, a narrow one under each row
+      for (const name of ['front', 'right', 'left'] as const) {
+        const fc = frame.faces[name];
+        faceBox(sink, 'plaster', fc, 0, 4.25, 0.1, S + 0.1, 0.12, 0.2, { decor: true, shadow: true });
+        for (const y of rows.slice(1)) faceBox(sink, 'plaster', fc, 0, y - 0.035, 0.05, S - 0.3, 0.05, 0.1, { decor: true });
+      }
+    });
+    // the store in front, its lean-to falling toward the plot's front, its door cut through its front
+    const s0 = tz + half, s1 = bb.maxZ - 0.22;
+    if (s1 - s0 > 1.2) {
+      const L = s1 - s0, lean: RoofSpec = { kind: 'shed', pitchDeg: 14, eave: 0.2, verge: 0.1, thickness: 0.1, bucket: 'roof' };
+      // built a quarter turned: the house's +x (its low eave, its door) toward the plot's front
+      sink.placed(-Math.PI / 2, 0, 0, (s0 + s1) / 2, () => {
+        buildHouse(sink, {
+          w: L, d: S - 0.2, plinth: null, storeys: [{ h: 2.3, wall: 'plaster' }], roof: lean,
+          openings: [{ face: 'right', storey: 0, kind: 'door', u: 0, w: 0.95, y0: 0, h: 1.85 }],
+          chimneys: [], gutters: null, verge: null, reveal: 0.25, core: 'rubble',
+        }, quiet);
+      });
+    }
+    if (look() < 0.5) sink.dressing(st.mobile, () => chumbera(sink, half + 0.6, tz, 0.9, look));
   });
   return sink.finish();
 };
 
 /**
- * The bread oven in the yard (horno de leña): a whitewashed block under a whitewashed dome, its arched mouth with a
- * stone lip, a little flue; firewood stacked against its side under a lean-to of tiles on two posts (the yard's
- * outbuilding). The oven stands at the plot's -x end as deep as the plot; the firewood rack fills the rest.
+ * The bread oven (horno) of a cortijo's yard (the props census #17, 2026-10-15, the judges: "cut the oven mouth as an
+ * arch with brick or stone voussoirs and a dark chamber at least 0.4 m deep, with a hearth sill and a soot stain; lay the
+ * dome in lime-washed rubble or brick courses (stepped rings) with a capped flue; build the rack from round or hewn posts
+ * on stone bases with a beam and rafters under canal tile rows"): the oven's block on its stone footing at the plot's
+ * -x end, its mouth cut half a metre into it under a ring of brick voussoirs, the hearth's sill and the soot over the
+ * mouth; the dome laid ring by ring in limewashed brick (outbuildings.ts coursedRound) to its flue under a tile cap; the
+ * firewood rack on the plot's +x side, built member by member (openShed: posts on stone bases, the beam, the rafters,
+ * the canal tiles in rows), boarded against the oven, the wood stacked along it. It falls as its posts and
+ * tiles and the oven's own heap.
  */
 const horno: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const look = ctx.variant;
+  const look = ctx.variant, mobile = ctx.tier === 'mobile';
   const b = ctx.bounds, W = b.maxX - b.minX, D = b.maxZ - b.minZ, cz = (b.minZ + b.maxZ) / 2;
   const B = clamp(Math.min(D - 0.1, W - 0.65), 1.8, 2.6), h = B / 2;
   const ox = b.minX + 0.05 + h;
   sink.span('stone', ox - h - 0.04, -0.4, cz - h - 0.04, ox + h + 0.04, 0.3, cz + h + 0.04);
-  sink.span('plaster', ox - h, 0.3, cz - h, ox + h, 1.05, cz + h);
-  sink.cylinder('plaster', [ox, 1.05, cz], 'y', 0.2, h * 0.98, 12, {}, h * 0.95);
-  // the dome: stacked frustums swelling in and closing
-  let y = 1.25, r = h * 0.95;
-  for (const k of [0.92, 0.78, 0.56, 0.28]) {
-    const nr = h * k, dh = 0.24;
-    sink.cylinder('plaster', [ox, y, cz], 'y', dh, r, 12, {}, nr);
-    y += dh; r = nr;
+  // the block, cut for the mouth: a chamber 0.48 m deep, the walls round it, its floor the hearth's
+  const mw = 0.55, my0 = 0.51, my1 = 0.93, md = 0.48, fz = cz + h;
+  sink.span('plaster', ox - h, 0.3, cz - h, ox + h, my0, cz + h);
+  sink.span('plaster', ox - h, my1, cz - h, ox + h, 1.05, cz + h);
+  sink.span('plaster', ox - h, my0, cz - h, ox - mw / 2, my1, cz + h);
+  sink.span('plaster', ox + mw / 2, my0, cz - h, ox + h, my1, cz + h);
+  sink.span('plaster', ox - mw / 2, my0, cz - h, ox + mw / 2, my1, fz - md);
+  const f: Face = { origin: [ox, 0, fz], u: [1, 0, 0], out: [0, 0, 1], width: B };
+  // the chamber's back in the dark, and its fire-blackened sides (the soot inside the mouth)
+  sink.quad('dark', facePoint(f, -mw / 2, my0, -md + 0.005), facePoint(f, mw / 2, my0, -md + 0.005), facePoint(f, mw / 2, my1, -md + 0.005), facePoint(f, -mw / 2, my1, -md + 0.005), {});
+  // the hearth's sill out of the mouth, the ring of brick voussoirs round its segmental head, the soot over it
+  faceBox(sink, 'stone', f, 0, my0 - 0.04, 0.12, mw + 0.3, 0.08, 0.24, { decor: true });
+  for (let k = 0; k <= 6; k++) {
+    const a = Math.PI * (0.12 + 0.76 * k / 6), r = mw / 2 + 0.07;
+    const u = -Math.cos(a) * r, y = my1 - 0.08 + Math.sin(a) * r * 0.55;
+    faceBox(sink, 'stone', f, u, y, 0.02, 0.1, 0.16, 0.06, { decor: true, tint: [1.25, 0.82, 0.62], shade: 0.85 + look() * 0.2 });
   }
-  sink.span('plaster', ox - 0.16, y - 0.2, cz - 0.16, ox + 0.16, y + 0.35, cz + 0.16);
-  const f: Face = { origin: [ox, 0, cz + h], u: [1, 0, 0], out: [0, 0, 1], width: B };
-  faceBox(sink, 'dark', f, 0, 0.72, 0.006, 0.55, 0.42, 0.01, { decor: true });
-  faceBox(sink, 'stone', f, 0, 0.47, 0.12, 0.85, 0.08, 0.24, { decor: true });
-  // the firewood rack: two posts on the plot's +x side and a lean-to of tiles falling to them from the oven, as long as
-  // the plot is deep (0.3 m short of its ends: the solid within half a metre of the base's reach, regionalArchitecture's
-  // footprint coverage); past the oven's sides two more posts carry the lean-to's head
+  sink.quad('plaster', facePoint(f, -mw / 2 - 0.05, my1 + 0.02, 0.004), facePoint(f, mw / 2 + 0.05, my1 + 0.02, 0.004), facePoint(f, mw / 2 + 0.12, 1.04, 0.004),
+    facePoint(f, -mw / 2 - 0.12, 1.04, 0.004), { decor: true, shadeAt: (p: Vec3) => 0.3 + 0.6 * Math.max(0, Math.min(1, (p[1] - my1) / 0.14)) });
+  // the dome in limewashed brick, ring by ring on its drum, and the flue under its tile cap
+  const round = coursedRound(sink, { cx: ox, cz, R: h * 0.97, wallH: 0.2, T: 0.3, course: 0.2, stone: 0.42, base: 1.05,
+    cone: { rings: 5, rise: 0.95, cap: 0.18, dome: true }, bucket: 'plaster', door: null, mobile }, look);
+  sink.span('plaster', ox - 0.16, round.top - 0.25, cz - 0.16, ox + 0.16, round.top + 0.32, cz + 0.16);
+  sink.span('roof', ox - 0.22, round.top + 0.32, cz - 0.22, ox + 0.22, round.top + 0.4, cz + 0.22, { decor: true });
+  // the firewood rack: from the oven's side to the plot's +x edge, as long as the plot is deep less a hand (the solid
+  // within half a metre of the base's reach), its back posts close against the oven's side and boarded there, the wood
+  // stacked along the oven (the integrity check: a head plate resting on the block left the rack under a metre high,
+  // its front closed to the eye; a slot between the dome and the lean-to's head showed the stack as a pocket)
   const x0 = ox + h + 0.04, x1 = b.maxX - 0.02, sw = x1 - x0, rz = Math.max(h - 0.06, D / 2 - 0.3);
   if (sw > 0.35) {
-    for (const s of [-1, 1]) sink.span('wood', x1 - 0.1, 0, cz + s * rz - 0.05, x1, 1.2, cz + s * rz + 0.05);
-    if (rz > h + 0.1) for (const s of [-1, 1]) sink.span('wood', x0, 0, cz + s * rz - 0.05, x0 + 0.1, 1.2 + sw * Math.tan(14 * Math.PI / 180), cz + s * rz + 0.05);
-    const lean: RoofSpec = { kind: 'shed', pitchDeg: 14, eave: 0.1, verge: 0.1, thickness: 0.08, bucket: 'roof' };
-    sink.placed(0, (x0 + x1) / 2, 0, cz, () => emitRoof(sink, roofGeometry(sw, 2 * rz, 1.2, lean), lean));
-    sink.dressing(ctx.tier === 'mobile', () => {
-      // the stack against the oven's side only (it has no back where the rack runs on past the oven)
-      const side: Face = { origin: [x0, 0, cz], u: [0, 0, -1], out: [1, 0, 0], width: 2 * rz };
-      woodpile(sink, side, -(h - 0.06) + 0.1, h - 0.06 - 0.1, 0.9 + look() * 0.2, look);
+    const RW = sw, pitch = 14, rc = x1 - RW / 2;
+    sink.placed(0, rc, 0, cz, () => {
+      openShed(sink, { W: RW, D: 2 * rz, hLo: 1.2, pitchDeg: pitch, back: true, ends: false, pile: 0.9 + look() * 0.2, pileHalf: h - 0.16, braces: false, mobile,
+        masses: [{ x: ox - rc, z: 0, r: h, h: round.top, bucket: 'plaster' }] }, {
+        timber: rgb(0x6a5440), post: 0.13, round: true, pad: { bucket: 'stone', size: 0.28, top: 0.14 },
+        cladding: 'gapped', boards: [rgb(0x7a6450)], boardW: 0.2,
+        covering: 'canal', roofBucket: 'roof', eave: 0.15, verge: 0.12,
+      }, look);
     });
-  }
+  } else recordMasonry(sink, { x: ox, z: cz, r: h, h: round.top, bucket: 'plaster' }, null);
   return sink.finish();
 };
 
@@ -1241,6 +1374,11 @@ export const ANDALUSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
     // the gorge's golden calcarenite (the Puente Nuevo's stone)
     stone: { kind: 'sandstone', tint: [0.82, 0.73, 0.57] },
     sourced: { plaster: false, wood: true },
+    // (the facades lane, round 11; waves 319/320: the walls' procedural canvas read as "speckle", "sponge", "cork",
+    // "camouflage noise": its 6 cm bumps shade as dots from the street, as Steinburg's did before round 8) the walls
+    // painted as the region renders them (regionalSurfaces.ts paintLimewash), every family under the kit's and the map's
+    // tones
+    render: { kind: 'limewash', seed: 0x6c2a },
     tones: {
       plaster: cal,
       // albero ochre: the bands round the openings, the dados, a few washed fronts

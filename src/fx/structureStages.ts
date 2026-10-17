@@ -37,6 +37,7 @@ import {
 import type { StructureDebris } from './structureDebris.ts';
 import { bindMaterialEnvIntensity } from '../engine/materialEnvIntensity.ts';
 import type { StructureScars } from './structureScars.ts';
+import type { FractureHost, StageFracture } from './fractureStages.ts';
 
 export interface StructureStages {
   /** A stage event, with its structure's seam (null: the mask alone — a world without the seam). */
@@ -156,6 +157,8 @@ export interface StructureStagesOptions {
   scars?: StructureScars | null;
   /** The share of the collapse's crumble pieces this tier throws (1 desktop; the phone a few, its pools are small). */
   crumble?: number;
+  /** Walls broken where struck, falls and collapses as rigid bodies (fx/fractureStages.ts; the phone: none). */
+  fracture?: ((host: FractureHost) => StageFracture) | null;
 }
 
 /** The section and storey a run was laid for (-1: none — a roof's wreckage has no storey, a storey's heap no
@@ -436,6 +439,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   function punch(p: PendingStrike): void {
     const { structureId, seam, x, y, z } = p;
     if (realHoles.has(structureId) || sectionsSeen.has(structureId) || downed.has(structureId)) return;
+    if (fracture?.strike(seam, p)) { finishFalls(structureId); notePunched(structureId, x, y, z); return; }
     // (the battle strips, b3: a strike's hole healed over when later cuts — the damaged stage's spalls — took its slot in
     // the mask's ring) a strike never takes a slot another cut holds, and leaves one for the breach stage
     if (mask.holes(seam.structureIdx) >= MAX_HOLES - 1) return;
@@ -510,6 +514,11 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       changed = true;
     }
     for (const hide of result.hides ?? []) {
+      // a set piece's named piece (landmarks/pieces.ts: a figure, a merlon, a sail) goes by its own spans
+      if (hide.piece) {
+        for (const span of seam.spans) if (span.piece === hide.piece) { flattenSpan(span); changed = true; }
+        continue;
+      }
       // the whole structure (a collapse) is the mask's fall; a section's hide waits for sections on the spans (P2)
       if (hide.partClass === null || hide.section !== null) continue;
       for (const span of seam.spans) if (span.partClass === hide.partClass) { flattenSpan(span); changed = true; }
@@ -521,8 +530,11 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
 
   /** A roof drawn in another bucket (a sheet hall's in structureMetal, shingles in wood: their spans are 'wall' by
    *  bucket) goes with the roof's hide (facades 2026-10-08): every upward triangle of the structure (normal y > 0.3)
-   *  standing over the eaves (or the top storey's top where there is no roof) and inside the footprint plus 1.5 m
-   *  collapses to a point; a vertical gable stays, as a real one does. Non-indexed spans (the world's merged buckets). */
+   *  reaching over the eaves (or the top storey's top where there is no roof) and centred inside the footprint plus
+   *  1.5 m collapses to a point; a vertical gable stays, as a real one does. Non-indexed spans (the world's merged
+   *  buckets). (Props census E6, lane B 2026-10-14: the test was every corner over the eaves less 15 cm, so a slope
+   *  whose eave overhangs below that line — every pitched roof with an overhang — stood whole on roof-down; now its
+   *  highest corner over the eaves line and its centroid in the footprint.) */
   const _ta = new THREE.Vector3(), _tb = new THREE.Vector3(), _tc = new THREE.Vector3();
   const _e1 = new THREE.Vector3(), _e2 = new THREE.Vector3();
   function flattenRoofFaces(seam: StructureDamageSeam): boolean {
@@ -532,9 +544,11 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     const reachX = a.w / 2 + 1.5, reachZ = a.d / 2 + 1.5;
     const { x: px, y: py, z: pz, yaw } = a.placement;
     const c = Math.cos(yaw), sn = Math.sin(yaw);
-    const inBody = (v: THREE.Vector3): boolean => {
-      const wx = v.x - px, wz = v.z - pz;
-      return v.y - py >= eave && Math.abs(wx * c - wz * sn) <= reachX && Math.abs(wx * sn + wz * c) <= reachZ;
+    // the triangle reaches over the eaves line (its highest corner) and stands in the footprint (its centroid)
+    const inBody = (ta: THREE.Vector3, tb: THREE.Vector3, tc: THREE.Vector3): boolean => {
+      if (Math.max(ta.y, tb.y, tc.y) - py < eave) return false;
+      const wx = (ta.x + tb.x + tc.x) / 3 - px, wz = (ta.z + tb.z + tc.z) / 3 - pz;
+      return Math.abs(wx * c - wz * sn) <= reachX && Math.abs(wx * sn + wz * c) <= reachZ;
     };
     let changed = false;
     for (const span of seam.spans) {
@@ -553,7 +567,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         const n = _e1.cross(_e2);
         const len = n.length();
         if (!(len > 1e-9) || Math.abs(n.y) / len <= 0.3) continue;
-        if (!inBody(_ta) || !inBody(_tb) || !inBody(_tc)) continue;
+        if (!inBody(_ta, _tb, _tc)) continue;
         if (!touched) { keep(span); touched = true; }
         for (let k = 1; k < 3; k++) {
           arr[(i + k) * 3] = arr[i * 3]; arr[(i + k) * 3 + 1] = arr[i * 3 + 1]; arr[(i + k) * 3 + 2] = arr[i * 3 + 2];
@@ -1038,10 +1052,14 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     storeyFalls.length = k;
   }
 
+  const fracture = o.fracture?.({ o, keep, dropRuns, clampPanel, finishFalls, run, worldMaterial, spanMaterials, roomMaterialFor }) ?? null;
   return {
     stage(e, seam) {
       finishFalls(e.structureId);
       if ((e as StructureStageEvent & { sections?: boolean }).sections === true) sectionsSeen.add(e.structureId);
+      const took = fracture?.stage(e, seam) ?? 0;
+      if (took === 1) { downed.add(e.structureId); return; }
+      if (took === 2) notePunched(e.structureId, e.x, e.y, e.z);
       const settled = e.settled === true;
       if (e.stage === 'collapsed') {
         // the roof drops into it and the walls come down along the crumble front over COLLAPSE_S, then it is gone
@@ -1180,6 +1198,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       if (!e.sectionDown) {
         if (!(e.radiusM > 0)) return;
         realHoles.add(e.structureId);
+        if (!settled && fracture?.hole(e, seam)) return;
         const spec = seam.holeAt(e.x, e.y, e.z, e.radiusM, 0, 0, e.munition, cause, e.hole);
         if (spec) {
           bodiesNext = 5;
@@ -1202,8 +1221,9 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
             (owner) => owner.section === roof.section) || changed;
           o.scars?.clearWhere(e.structureId, (_x, y) => y >= a.placement.y + roof.eaveY - 0.25);
           bodiesNext = 8;
+          const slabs = !settled && !!fracture?.fallRoof(e, seam);
           run(seam, 0, settled, (out) => seam.sectionDown(roof.section, damageSeed(a.seed, roof.section, 255), out), true,
-            { section: roof.section, storey: -1 });
+            { section: roof.section, storey: -1 }, slabs, slabs);
         }
       } else {
         const spec = seam.holeAt(e.x, e.y, e.z, 0.01, 0, 0, e.munition, cause, 255);
@@ -1213,7 +1233,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
           // the panel above its stub (a metre over the base; an upper storey's falls to its floor line)
           const y0 = e.y0 - a.placement.y, y1 = e.y1 - a.placement.y;
           const stubTop = Math.max(y0, baseY + 1 - a.placement.y, storey.y0), top = Math.max(y1, storey.y1);
-          changed = clampPanel(seam, face, stubTop, top) || changed;
+          const cells = !settled && !!fracture?.fallPanel(e, seam, storey, face, stubTop, top);
+          if (!cells) changed = clampPanel(seam, face, stubTop, top) || changed;
           // the panel's own rims and the room behind its holes go with it (before the kit's fall: its own runs stand)
           const t = Math.max(0.12, face.layers.reduce((sum, layer) => sum + (layer.thicknessM || 0), 0));
           const onPanel = (bx: number, by: number, bz: number): boolean => {
@@ -1230,8 +1251,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
           });
           // falling with its storey (the core 2026-10-08: its stub and room were laid only to be hidden by the drop), the
           // panel throws its pieces only; the storey's own fall lays what is left
-          bodiesNext = 12;
-          run(seam, 0, settled, (out) => seam.sectionDown(spec.section, damageSeed(a.seed, spec.section, 255), out), true,
+          bodiesNext = cells ? 0 : 12;
+          if (!cells) run(seam, 0, settled, (out) => seam.sectionDown(spec.section, damageSeed(a.seed, spec.section, 255), out), true,
             { section: spec.section, storey: storey.index }, ev.storeyDown === true);
         }
         if (ev.storeyDown === true && storey) {

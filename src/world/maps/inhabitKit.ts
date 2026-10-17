@@ -25,9 +25,10 @@ import { setNightEmissionMask } from '../../engine/nightEmissionMaterial.ts';
 import { FIELD_STONE_FACE_V, FIELD_STONE_HEARTING_V } from '../fieldStoneSurface.ts';
 // (b15: the straw props wear the hay print's bands: hayPrint.ts; the stook is a teepee of bound sheaves: haystackKit.ts)
 import { HAY_FACE_V, HAY_PACKED_V } from '../hayPrint.ts';
-// (b45: a rebuilt kind spends its legacy builder's draws exactly)
+import { buildStook, buildStookWreck, mapToBand } from './haystackKit.ts';
 import { spentDraws } from './brokenDraws.ts';
-import { buildStook, mapToBand } from './haystackKit.ts';
+// (#10 fieldworks: the field works' builders live in their family's kit)
+import { bAmmobox, bAmmoboxBroken, bBarbedWire, bBarbedWireBroken, bTent, bTentBroken } from './fieldworksKit.ts';
 
 type Rng = () => number;
 type Palette = readonly [number, number, number];
@@ -70,6 +71,8 @@ export interface DestructiblePropType {
   footprintBuild?: () => THREE.BufferGeometry;
   /** A lighter stand-in that casts the pool's shadows in place of its full geometry (no stream draws). */
   shadowBuild?: () => THREE.BufferGeometry;
+  /** (physics, 2026-10-16) The tier-independent solid a kind's slab shells are read from (props.ts SLAB_SHELL_KINDS). */
+  collisionSolid?: () => THREE.BufferGeometry;
   /** The family's cascaded shadow, over the size rule (destructibleRenderPolicy.ts destructibleCastsShadow). */
   castShadow?: boolean;
   /** Round 3 (cartKit.ts): a sled's runner tracks on a snowbound map, in the placed copy's frame; the props press them
@@ -78,6 +81,9 @@ export interface DestructiblePropType {
   /** (the map-content lane, 2026-10-10) seated as the carts are, on the plane through the ground at its footprint's
    * corners (hw, hl), pitched and rolled to it (props.ts cartGroundPose): a polar station's drum works on a slope. */
   groundPose?: boolean;
+  /** (props lane A, #2; E1's contract) the kind's own broken builder stands: never the settled anatomy's heap nor
+   *  PROP_FRACTURE's break of the intact build (a clutter pool's intact build carries its far form too). */
+  ownBroken?: boolean;
 }
 
 export const FENCE_SEG = 2.4; // fence-kit module pitch, meters
@@ -456,6 +462,33 @@ function stallAwning(rng: Rng): THREE.BufferGeometry[] {
   };
   out.push(valance(0.004, false), valance(-0.004, true));
   return out;
+}
+/** (props lane A, r2 sweep 2026-10-16) the stall's last intact build, for its wreck (the pool builds the intact first). */
+let lastStall: THREE.BufferGeometry | null = null;
+function bStallKept(rng: Rng): THREE.BufferGeometry {
+  const g = bStall(rng);
+  lastStall?.dispose();
+  lastStall = g.clone();
+  return g;
+}
+/**
+ * The stall at the r2 bar (the sweep: PROP_FRACTURE's raft stood 11 % of its height in 2.2x its triangles): knocked over
+ * by a hull — its own build tipped forward onto its counter's front edge and a little turned, the awning down over it —
+ * in its own triangles. The legacy broken builder's draws are spent first.
+ */
+function bStallTipped(rng: Rng): THREE.BufferGeometry {
+  bStallBroken(rng).dispose();
+  const g = (lastStall ?? bStall(dryStoneRng(0x57a1))).clone();
+  g.translate(0, 0, -0.94);
+  g.rotateX(1.0);
+  g.translate(0, 0, 0.94);
+  g.rotateY(0.18);
+  const p = g.attributes.position;
+  let lo = Infinity;
+  for (let i = 0; i < p.count; i++) lo = Math.min(lo, p.getY(i));
+  g.translate(0, -lo - 0.02, 0);
+  g.computeVertexNormals();
+  return g;
 }
 function bStallBroken(rng: Rng): THREE.BufferGeometry {
   const parts = [];
@@ -891,6 +924,76 @@ function bFenceRailBroken(rng: Rng): THREE.BufferGeometry {
   return merge(parts);
 }
 
+/**
+ * A wrought-iron railing panel (props lane A, E12, 2026-10-14: a set piece's ground railing — a monument's, a square's,
+ * a park's — as a fence module a hull breaks; landmarks/kit.ts railing): its square post with a cast cap at the module's
+ * near end, the top and bottom rails, and the bars between them, each with its spear point. Baked iron, every member
+ * its own shade of the paint.
+ */
+const RAILING_BAR = 0.13;
+function ironBar(z: number, y0: number, y1: number, rng: Rng): THREE.BufferGeometry[] {
+  const bar = P(box(0.018, y1 - y0, 0.018).translate(0, (y0 + y1) / 2, z), IRON, 0.05, rng);
+  const tip = P(cyl(0, 0.024, 0.08, 4).rotateY(Math.PI / 4).translate(0, y1 + 0.04, z), IRON, 0.05, rng);
+  return [bar, tip];
+}
+function bFenceIron(rng: Rng): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  const z0 = -FENCE_SEG / 2;
+  parts.push(P(box(0.07, 1.2, 0.07).translate(0, 0.55, z0), IRON, 0.04, rng));
+  parts.push(P(cyl(0.025, 0.06, 0.1, 4).rotateY(Math.PI / 4).translate(0, 1.2, z0), IRON, 0.04, rng));
+  parts.push(P(cyl(0.035, 0.012, 0.09, 4).rotateY(Math.PI / 4).translate(0, 1.29, z0), IRON, 0.04, rng));
+  for (const y of [0.14, 0.95]) parts.push(P(box(0.024, 0.045, FENCE_SEG).translate(0, y, 0), IRON, 0.03, rng));
+  const n = Math.round(FENCE_SEG / RAILING_BAR);
+  for (let k = 1; k < n; k++) parts.push(...ironBar(z0 + (k * FENCE_SEG) / n, 0.11, 1.06, rng));
+  return merge(parts);
+}
+/**
+ * The railing at the r2 bar (props lane A, r2 sweep 2026-10-16: its post, rails and bars were bare boxes, boxShare 0.98):
+ * the post octagonal under its cast cap, the rails round, every bar square with its spear point welded on its own top.
+ * Its own stream (no draws from the pool's): fenceKit.ts ironRailingType still runs the legacy build first for its draws,
+ * its contact band and its footprint.
+ */
+export function bFenceIronR2(): THREE.BufferGeometry {
+  const rng = dryStoneRng(0x1e0f), parts: THREE.BufferGeometry[] = [];
+  const z0 = -FENCE_SEG / 2;
+  parts.push(P(new THREE.CylinderGeometry(0.04, 0.042, 1.2, 8).rotateY(Math.PI / 8).translate(0, 0.55, z0), IRON, 0.04, rng));
+  parts.push(P(cyl(0.025, 0.06, 0.1, 8).translate(0, 1.2, z0), IRON, 0.04, rng));
+  parts.push(P(cyl(0.035, 0.012, 0.09, 8).translate(0, 1.29, z0), IRON, 0.04, rng));
+  for (const y of [0.14, 0.95]) parts.push(P(new THREE.CylinderGeometry(0.016, 0.016, FENCE_SEG, 6).rotateX(Math.PI / 2).translate(0, y, 0), IRON, 0.03, rng));
+  const n = Math.round(FENCE_SEG / RAILING_BAR), hb = 0.009;
+  for (let k = 1; k < n; k++) {
+    const z = z0 + (k * FENCE_SEG) / n, y0 = 0.11, y1 = 1.06;
+    // the bar and its point as one welded piece: the point's foot the bar's own top corners
+    const bar = box(hb * 2, y1 - y0, hb * 2).translate(0, (y0 + y1) / 2, z);
+    const tip = new THREE.ConeGeometry(hb * Math.SQRT2, 0.07, 4, 1, true).rotateY(Math.PI / 4).translate(0, y1 + 0.035, z);
+    parts.push(P(merge([bar, tip]), IRON, 0.05, rng));
+  }
+  return merge(parts);
+}
+function bFenceIronBroken(rng: Rng): THREE.BufferGeometry {
+  // the panel torn off its post and laid over, its bars bent where the hull went over them; the post leaning
+  const parts: THREE.BufferGeometry[] = [];
+  const z0 = -FENCE_SEG / 2;
+  const post = P(box(0.07, 1.2, 0.07).translate(0, 0.6, 0), IRON, 0.04, rng);
+  post.rotateX(0.35 + rng() * 0.3);
+  parts.push(post.translate(0, -0.02, z0 + 0.1));
+  const panel: THREE.BufferGeometry[] = [];
+  for (const y of [0.14, 0.95]) panel.push(P(box(0.024, 0.045, FENCE_SEG * 0.92).translate(0, y, 0), IRON, 0.03, rng));
+  const n = Math.round(FENCE_SEG * 0.92 / RAILING_BAR);
+  for (let k = 1; k < n; k++) {
+    const z = -FENCE_SEG * 0.46 + (k * FENCE_SEG * 0.92) / n;
+    for (const g of ironBar(z, 0.11, 1.06, rng)) {
+      // a few bars bent back near their foot
+      if (k % 4 === 1) g.rotateZ((rng() - 0.5) * 0.5);
+      panel.push(g);
+    }
+  }
+  const lying = merge(panel);
+  lying.rotateZ(Math.PI / 2 - 0.12).translate(0.55, 0.04, (rng() - 0.5) * 0.3);
+  parts.push(lying);
+  return merge(parts);
+}
+
 function bGate(_rng: Rng): THREE.BufferGeometry { // wood-textured farm gate (hangs open ~30°)
   const parts = [];
   const frame = [];
@@ -932,8 +1035,6 @@ export const ADOBE_UV_PER_M = 1 / WALL_SEG;
 // review; military paint under this sun needs to start near-charcoal
 const OLIVE: Palette = [0.19, 0.20, 0.185];
 const OLIVE_D: Palette = [0.20, 0.22, 0.145];
-const TENTCANVAS: Palette = [0.10, 0.16, 0.295];
-const TENTCANVAS_D: Palette = [0.095, 0.14, 0.225];
 const CHAR: Palette = [0.07, 0.10, 0.055];
 const CHAR_RUST: Palette = [0.05, 0.42, 0.16];
 const REDDRUM: Palette = [0.015, 0.62, 0.34];
@@ -1040,6 +1141,49 @@ function keepFaces<T extends THREE.BufferGeometry>(g: T, keep: readonly number[]
   return g;
 }
 
+/**
+ * (props lane A, r2 sweep 2026-10-16: a knocked box is still a box — eight corners, ten faces) a stone's top crowned: its
+ * up face's two triangles replaced by four round a raised centre (`lift` m), so the stone weathered round reads as one
+ * and no longer as a bare primitive. Unindexed out; the stone's uvs averaged at the crown.
+ */
+export function crownStoneTop(g: THREE.BufferGeometry, lift: number): THREE.BufferGeometry {
+  const src = g.index ? g.toNonIndexed() : g;
+  const p = src.attributes.position, uv = src.attributes.uv;
+  const tris: number[] = [], top: number[] = [];
+  const ab = new THREE.Vector3(), ac = new THREE.Vector3(), nrm = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  for (let t = 0; t < p.count; t += 3) {
+    a.fromBufferAttribute(p, t); b.fromBufferAttribute(p, t + 1); c.fromBufferAttribute(p, t + 2);
+    nrm.crossVectors(ab.subVectors(b, a), ac.subVectors(c, a)).normalize();
+    (nrm.y > 0.7 ? top : tris).push(t);
+  }
+  if (top.length !== 2) { if (src !== g) g.dispose(); return src; }
+  // the up face's four corners (its two triangles share a diagonal) in turn round their centre
+  const corners: Array<{ x: number; y: number; z: number; u: number; v: number }> = [];
+  for (const t of top) for (let k = 0; k < 3; k++) {
+    const i = t + k, x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+    if (!corners.some((q) => Math.abs(q.x - x) < 1e-6 && Math.abs(q.y - y) < 1e-6 && Math.abs(q.z - z) < 1e-6)) corners.push({ x, y, z, u: uv.getX(i), v: uv.getY(i) });
+  }
+  const cx = corners.reduce((s2, q) => s2 + q.x, 0) / corners.length, cz = corners.reduce((s2, q) => s2 + q.z, 0) / corners.length;
+  const cy = corners.reduce((s2, q) => s2 + q.y, 0) / corners.length + lift;
+  const cu = corners.reduce((s2, q) => s2 + q.u, 0) / corners.length, cv = corners.reduce((s2, q) => s2 + q.v, 0) / corners.length;
+  corners.sort((q, w) => Math.atan2(q.z - cz, q.x - cx) - Math.atan2(w.z - cz, w.x - cx));
+  const pos: number[] = [], uvs: number[] = [];
+  for (const t of tris) for (let k = 0; k < 3; k++) { pos.push(p.getX(t + k), p.getY(t + k), p.getZ(t + k)); uvs.push(uv.getX(t + k), uv.getY(t + k)); }
+  for (let k = 0; k < corners.length; k++) {
+    const q = corners[k], w = corners[(k + 1) % corners.length];
+    // (wound up: the corners run counter-clockwise seen from above when sorted by angle about the centre in x, z — a
+    // left-handed turn in three's frame, so each fan triangle goes q, centre, w)
+    pos.push(q.x, q.y, q.z, cx, cy, cz, w.x, w.y, w.z); uvs.push(q.u, q.v, cu, cv, w.u, w.v);
+  }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  out.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  out.computeVertexNormals();
+  if (src !== g) src.dispose();
+  g.dispose();
+  return out;
+}
+
 /** The wall's texture density (tiles a metre): a face stone's window of the field print. */
 const DRY_UV = 1.2;
 
@@ -1066,7 +1210,7 @@ function tagStone<T extends THREE.BufferGeometry>(g: T, kind: number): T {
  * lies inside that band: u along the stone, v up its sides and across its top).
  */
 function roughStone(
-  w: number, h: number, d: number, r: Rng, keep: readonly number[], knockBack = 0.1, knockY = knockBack,
+  w: number, h: number, d: number, r: Rng, keep: readonly number[], knockBack = 0.1, knockY = knockBack, crown = 0,
 ): THREE.BufferGeometry {
   const g = new THREE.BoxGeometry(w, h, d);
   const p = g.attributes.position, n = g.attributes.normal, uv = g.attributes.uv;
@@ -1087,7 +1231,8 @@ function roughStone(
     uv.setXY(i, du + a * DRY_UV, v0 + b * DRY_UV * squash);
   }
   g.computeVertexNormals();
-  return keepFaces(g, keep);
+  const kept = keepFaces(g, keep);
+  return crown > 0 ? crownStoneTop(kept, crown) : kept;
 }
 
 /**
@@ -1096,7 +1241,7 @@ function roughStone(
  * in rough courses standing a little proud of it, and flattish top stones laid across. About 300 triangles: the faces
  * no one sees are left out.
  */
-function dryStoneModule(r: Rng, broken: boolean): THREE.BufferGeometry {
+function dryStoneModule(r: Rng, broken: boolean, crowned = false): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
   const L = WALL_SEG, H = broken ? 0.32 + r() * 0.16 : 0.92, bottom = 0.26, top = broken ? 0.22 : 0.18;
   const halfAt = (y: number) => bottom + (top - bottom) * Math.min(1, y / 0.92);
@@ -1227,22 +1372,24 @@ function dryStoneModule(r: Rng, broken: boolean): THREE.BufferGeometry {
     // a through-stone or two, long enough to show its ends on both faces, laid at a course line
     for (let k = 0, n = 1 + (r() < 0.5 ? 1 : 0); k < n; k++) {
       const y = lines[1 + Math.floor(r() * 2)] + 0.04, len = 0.18 + r() * 0.12, th = 0.09 + r() * 0.05;
-      const ts = roughStone(halfAt(y) * 2 + 0.12, th, len, r, [0, 1, 2, 4, 5]);
+      const ts = roughStone(halfAt(y) * 2 + 0.12, th, len, r, [0, 1, 2, 4, 5], 0.1, 0.1, 0);
       parts.push(tagStone(ts.translate((r() - 0.5) * 0.03, y, (r() - 0.5) * (L - 0.6)), DRY_STONE_KIND.through));
     }
     // the top (b14, wave 97: "a dead-level top"): a coping of stones set on edge across the wall, as a Dalmatian or a
     // Cotswold waller finishes one — each 6-15 cm thick along the wall, standing 12-20 cm on the rubble under it, its
     // own lean, the odd flat top stone among them — so the top is a ragged line of copes, not a course. The material
     // settles them and drops the odd one (props.ts), so a run's modules differ
-    let z = -L / 2 + 0.005;
+    let z = -L / 2 + 0.005, ci = 0;
     while (z < L / 2 - 0.04) {
       const flat = r() < 0.12;
+      // (r2 sweep: on the crowned module the flat copes and every other on-edge cope weathered round on top)
+      const round = crowned && (flat || ci++ % 2 === 0);
       const len = Math.min(L / 2 - z, flat ? 0.22 + r() * 0.2 : 0.06 + r() * 0.09);
       const ch = flat ? 0.08 + r() * 0.06 : 0.12 + r() * 0.08;
       const a = Math.max(0, Math.floor((z + L / 2) / CELL)), b = Math.min(cells, Math.ceil((z + len + L / 2) / CELL));
       let base = 0;
       for (const sky of skylines) for (let i = a; i <= b; i++) base = Math.max(base, sky[i]);
-      const cope = roughStone(top * 2 + 0.04 + r() * 0.08, ch, len * 0.96, r, [0, 1, 2, 4, 5], 0.3, 0.18);
+      const cope = roughStone(top * 2 + 0.04 + r() * 0.08, ch, len * 0.96, r, [0, 1, 2, 4, 5], 0.3, 0.18, round ? ch * 0.16 : 0);
       cope.rotateX((r() - 0.5) * (flat ? 0.08 : 0.3)); cope.rotateZ((r() - 0.5) * 0.1);
       parts.push(tagStone(cope.translate((r() - 0.5) * 0.04, base + ch * 0.42, z + len / 2), DRY_STONE_KIND.cope));
       z += len * (0.94 + r() * 0.05);
@@ -1301,7 +1448,8 @@ export function buildDryStoneWallHead(seed: number, thick: number, height: numbe
     // each lift two or three stones across, alternating, so the head is bonded like a quoin
     const n = r() < 0.5 ? 2 : 3;
     for (let k = 0; k < n; k++) {
-      const len = w / n * (0.9 + r() * 0.15), stone = roughStone(len, h * 0.96, w * (0.9 + r() * 0.12), r, [0, 1, 2, 4, 5], 0.22);
+      // (r2: each stone's top crowned — the head's stones weathered round, not boxes)
+      const len = w / n * (0.9 + r() * 0.15), stone = roughStone(len, h * 0.96, w * (0.9 + r() * 0.12), r, [0, 1, 2, 4, 5], 0.22, 0.22, h * 0.12);
       stone.rotateY((r() - 0.5) * 0.12); stone.rotateZ((r() - 0.5) * 0.08);
       parts.push(stone.translate(-w / 2 + (k + 0.5) * (w / n) + (r() - 0.5) * 0.03, y + h / 2, (r() - 0.5) * 0.04));
     }
@@ -1313,12 +1461,14 @@ export function buildDryStoneWallHead(seed: number, thick: number, height: numbe
 /**
  * The scenery lane (wave 16): where a mud wall ends or opens, an eroded pier — a little broader and taller than the
  * wall, its arrises rubbed round, its top slumped to a worn dome, a lean of its own; no cap slab. World-free, centred
- * on its foot, its own stream.
+ * on its foot, its own stream. (props lane A #6, 2026-10-16; WORKLIST #6 site:wall-head/adobe-pilaster: the pier on the
+ * rings its rounding needs, 3 x 4 x 3 for 4 x 6 x 4, 123 triangles for 224; and its region's crown on its top, as its
+ * walls carry theirs — adobeWallKit.ts AdobeCrown: the ksour's pinnacle, a ridged cap in the wet.)
  */
-export function buildAdobePilaster(seed: number, thick: number, height: number): THREE.BufferGeometry {
+export function buildAdobePilaster(seed: number, thick: number, height: number, crown: 'pinnacles' | 'ridge' | 'kershef' | 'brush' | 'worn' = 'worn'): THREE.BufferGeometry {
   const r = dryStoneRng(seed ^ 0xad01);
   const w = thick + 0.16 + r() * 0.08, h = height * (0.95 + r() * 0.12);
-  const g = new THREE.BoxGeometry(w, h, w, 4, 6, 4);
+  const g = new THREE.BoxGeometry(w, h, w, 3, 4, 3);
   const p = g.attributes.position;
   const lean = (r() - 0.5) * 0.06, phase = r() * 10;
   for (let i = 0; i < p.count; i++) {
@@ -1334,16 +1484,35 @@ export function buildAdobePilaster(seed: number, thick: number, height: number):
     p.setXYZ(i, sx * w / 2 + lean * y * h, y * h + slump * h, sz * w / 2);
   }
   g.computeVertexNormals();
-  return keepFaces(scaleUV(g, w * ADOBE_UV_PER_M, h * ADOBE_UV_PER_M), [0, 1, 2, 4, 5]); // the field-mud print's density
+  const pier = keepFaces(scaleUV(g, w * ADOBE_UV_PER_M, h * ADOBE_UV_PER_M), [0, 1, 2, 4, 5]); // the field-mud print's density
+  if (crown !== 'pinnacles' && crown !== 'ridge') return pier;
+  // the crown on the slumped dome's top (a little under it: the dome is 62 % of the pier wide up there)
+  let top = -Infinity, cx = 0, cz = 0, n = 0;
+  for (let i = 0; i < p.count; i++) top = Math.max(top, p.getY(i));
+  for (let i = 0; i < p.count; i++) if (p.getY(i) > top - 1e-4) { cx += p.getX(i); cz += p.getZ(i); n++; }
+  cx /= Math.max(1, n); cz /= Math.max(1, n);
+  const cap = crown === 'pinnacles'
+    ? new THREE.ConeGeometry(w * 0.26, 0.3, 4, 1, true).rotateY(Math.PI / 4).translate(cx, top + 0.12, cz)
+    : new THREE.ConeGeometry(w * 0.48, 0.18, 4, 1, true).rotateY(Math.PI / 4).translate(cx, top + 0.05, cz);
+  return merge([pier, scaleUV(cap, w * ADOBE_UV_PER_M, 0.3 * ADOBE_UV_PER_M)]);
 }
 
 function bWallStone(rng: Rng): THREE.BufferGeometry {
+  return wallStoneFor(wallStoneBox(rng), false);
+}
+/** The dry-stone module's envelope from the stream (the legacy course builder's draws: bWallStone's only ones). */
+export function wallStoneBox(rng: Rng): THREE.Box3 {
   const envelope = wallStoneEnvelope(rng);
   envelope.computeBoundingBox();
   const box3 = envelope.boundingBox!.clone();
   envelope.dispose();
+  return box3;
+}
+/** The dry-stone module fitted to its envelope (its own stream, named by the envelope); `crowned`: its top stones and
+ *  copes weathered round on top (r2 sweep 2026-10-16; the drawn module of coursedWallKit.ts dryStoneWallType). */
+export function wallStoneFor(box3: THREE.Box3, crowned: boolean): THREE.BufferGeometry {
   const seed = Math.round((box3.max.x - box3.min.x) * 1e6 + (box3.max.y - box3.min.y) * 1e4 + box3.max.z * 1e3);
-  return fitToEnvelope(dryStoneModule(dryStoneRng(seed), false), box3);
+  return fitToEnvelope(dryStoneModule(dryStoneRng(seed), false, crowned), box3);
 }
 
 function bWallStoneBroken(rng: Rng): THREE.BufferGeometry {
@@ -1447,296 +1616,6 @@ function bWallAdobeBroken(rng: Rng): THREE.BufferGeometry {
     blk.rotateY(rng() * Math.PI);
     parts.push(blk.translate((rng() - 0.5) * 1.5, bs * 0.28, (rng() - 0.5) * WALL_SEG * 0.9));
   }
-  return merge(parts);
-}
-
-// --- sandbag emplacement (broken state for the sourced baked intact) --------
-// The intact geometry is the licensed baked model (props.ts LOCAL kinds need
-// bakedGeometry, so the kind entries live there); this is the shared
-// driven-through state: bags burst, split and spilled.
-export function bSandbagBroken(rng: Rng): THREE.BufferGeometry {
-  const parts = [];
-  const HESS: Palette = [0.105, 0.22, 0.46];
-  for (let k = 0; k < 11; k++) { // spilled single bags
-    const a = rng() * Math.PI * 2, rr = Math.sqrt(rng()) * 1.9;
-    const bag = new THREE.SphereGeometry(0.26 + rng() * 0.08, 6, 5);
-    bag.scale(1.35, 0.42 + rng() * 0.12, 0.85);
-    bag.rotateY(rng() * Math.PI);
-    bag.translate(Math.cos(a) * rr, 0.10, Math.sin(a) * rr * 0.7);
-    parts.push(P(bag, HESS, 0.14, rng));
-  }
-  // low surviving bag course at one end
-  for (let k = 0; k < 3; k++) {
-    const bag = new THREE.SphereGeometry(0.28, 6, 5);
-    bag.scale(1.4, 0.5, 0.9);
-    bag.translate(-1.2 + k * 0.62, 0.13, -0.5 + (rng() - 0.5) * 0.2);
-    parts.push(P(bag, HESS, 0.12, rng));
-  }
-  return merge(parts);
-}
-
-// --- ammunition boxes (stacked pair + strewn broken state) ------------------
-// (b45) the legacy builds: retired, but their draws are spent exactly (brokenDraws.ts spentDraws) so every later
-// pool's geometry and every later placement read the map's props stream as before
-function bAmmoboxLegacy(rng: Rng): THREE.BufferGeometry {
-  const parts = [];
-  const spots = [[0, 0, 0, 0.14], [0.14, 0.36, -0.08, -0.3], [-0.5, 0, 0.32, 0.5]];
-  for (const [px, py, pz, ry] of spots) {
-    const bx = box(0.85, 0.36, 0.42);
-    bx.rotateY(ry);
-    parts.push(P(bx.translate(px, py + 0.18, pz), OLIVE_D, 0.10, rng));
-    const lid = box(0.87, 0.06, 0.44);
-    lid.rotateY(ry);
-    parts.push(P(lid.translate(px, py + 0.38, pz), [OLIVE_D[0], OLIVE_D[1], OLIVE_D[2] * 1.25], 0.08, rng));
-  }
-  return merge(parts);
-}
-function bAmmoboxBrokenLegacy(rng: Rng): THREE.BufferGeometry {
-  const parts = [];
-  for (let k = 0; k < 3; k++) { // burst boxes, lids blown
-    const bx = box(0.8, 0.14, 0.4);
-    bx.rotateY(rng() * Math.PI);
-    bx.rotateX((rng() - 0.5) * 0.3);
-    parts.push(P(bx.translate((rng() - 0.5) * 1.4, 0.08, (rng() - 0.5) * 1.2), OLIVE_D, 0.12, rng));
-  }
-  parts.push(...plankScatter(4, 0.5, 0.14, 0.8, rng, OLIVE_D));
-  return merge(parts);
-}
-
-// --- ammunition crates (b45; gauntlet wave 270 on Redrock: "plain cube ammo crates with hard edges, no wear, scale or
-// detail") ------------------------------------------------------------------------------------------------------------
-// Painted wooden ammunition crates as they are built: the body's boards on two skids, an end cleat framing each end
-// with a rope becket through it, a lid with two hasps on the front and hinge straps behind, the boards' seam, the
-// markings stencilled in faded yellow. The olive is worn through to the wood at the cleats, the skids and the lid's
-// edge, dusted toward the foot and darker where the crate meets what it sits on. Two side by side, a third across their
-// seam resting on their lids, a steel ammunition can beside them for scale. On the props' vehicle finish (props.ts
-// mats.vehicle: orange-peel, chips, panel grime under a vertex-colour livery), so it reads as painted wood and steel.
-// The wood smash and the 'ammo' blast stay the kind's (propSounds.ts, effects.ts); the record, footprint and draws do too.
-// (b45 round 2; wave 281 on the stack: "no stencilled markings, wear, dust or ground contact shadow", and at chase range
-// "a small grey block that does not read as an ammunition crate") the olive a step lighter so the cleats, the lettering
-// and the wear read in the sun; the worn wood paler against it
-const CRATE_PAINT: Palette = [0.20, 0.22, 0.19];
-const CRATE_LID: Palette = [0.20, 0.21, 0.21];
-const CRATE_WORN: Palette = [0.10, 0.18, 0.41];
-const CRATE_SCUFF: Palette = [0.10, 0.14, 0.52];
-const CRATE_GRIME: Palette = [0.09, 0.16, 0.10];
-const CRATE_SEAM: Palette = [0.20, 0.18, 0.07];
-const HEMP: Palette = [0.11, 0.28, 0.50];
-const STENCIL_YELLOW: Palette = [0.14, 0.50, 0.62];
-const HARDWARE: Palette = [0.58, 0.05, 0.19];
-const DUST_TINT: Palette = [0.09, 0.18, 0.54];
-/**
- * A stencil face for the crates' lettering: each glyph 3 cells wide and 5 tall, rows read top to bottom, a cell painted
- * where its bit is set (the stencil's bridges leave the cells apart). The digits and the few letters an ammunition
- * crate's markings use.
- */
-const STENCIL_GLYPHS: Readonly<Record<string, readonly number[]>> = Object.freeze({
-  '0': [7, 5, 5, 5, 7], '1': [2, 6, 2, 2, 7], '2': [7, 1, 7, 4, 7], '3': [7, 1, 3, 1, 7], '4': [5, 5, 7, 1, 1],
-  '5': [7, 4, 7, 1, 7], '6': [7, 4, 7, 5, 7], '7': [7, 1, 2, 2, 2], '8': [7, 5, 7, 5, 7], '9': [7, 5, 7, 1, 7],
-  A: [7, 5, 7, 5, 5], C: [7, 4, 4, 4, 7], D: [6, 5, 5, 5, 6], E: [7, 4, 6, 4, 7], G: [7, 4, 5, 5, 7], H: [5, 5, 7, 5, 5],
-  L: [4, 4, 4, 4, 7], M: [5, 7, 7, 5, 5], N: [5, 7, 7, 7, 5], O: [7, 5, 5, 5, 7], P: [7, 5, 7, 4, 4], R: [7, 5, 6, 5, 5],
-  S: [7, 4, 7, 1, 7], T: [7, 2, 2, 2, 2], X: [5, 5, 2, 5, 5], '-': [0, 0, 7, 0, 0], '.': [0, 0, 0, 0, 2], '/': [1, 1, 2, 4, 4],
-});
-/** A stencilled line of text on a face toward +z, its left end at (x, y), each cell `cell` metres: one quad a run of cells. */
-function stencilLine(text: string, x: number, y: number, cell: number, o: Rng): THREE.BufferGeometry[] {
-  const out: THREE.BufferGeometry[] = [];
-  let cx = x;
-  for (const ch of text) {
-    const rows = STENCIL_GLYPHS[ch];
-    if (rows) {
-      rows.forEach((bits, r) => {
-        for (let c = 0; c < 3; c++) {
-          if (!(bits & (4 >> c))) continue;
-          let run = 1;
-          while (c + run < 3 && bits & (4 >> (c + run))) run++;
-          out.push(P(facePlane(run * cell * 0.86, cell * 0.86), STENCIL_YELLOW, 0.05, o)
-            .translate(cx + (c + run / 2) * cell, y - (r + 0.5) * cell, 0));
-          c += run - 1;
-        }
-      });
-    }
-    cx += cell * 4;
-  }
-  return out;
-}
-/** A crate's length, width and height (its lid on, its skids under it), metres. */
-const AMMO_CRATE = Object.freeze({ L: 0.78, W: 0.30, H: 0.27 });
-
-/** A painted mark or a seam laid flat on a face: a quad facing +z, `w` by `h`. */
-function facePlane(w: number, h: number): THREE.BufferGeometry {
-  return new THREE.PlaneGeometry(w, h);
-}
-
-/** The crate's dust toward its foot and on its tops, and its contact: the paint darker where the crate sits. */
-function dustAndContact(geo: THREE.BufferGeometry, rng: Rng): THREE.BufferGeometry {
-  const pos = geo.getAttribute('position'), nrm = geo.getAttribute('normal'), col = geo.getAttribute('color');
-  _c.setHSL(DUST_TINT[0], DUST_TINT[1], DUST_TINT[2] + (rng() - 0.5) * 0.06, THREE.SRGBColorSpace);
-  const dr = _c.r, dg = _c.g, db = _c.b;
-  for (let i = 0; i < pos.count; i++) {
-    const y = pos.getY(i);
-    const foot = 1 - Math.min(1, Math.max(0, y / 0.15));
-    const top = Math.max(0, nrm.getY(i) - 0.8) * 5;
-    const t = 0.6 * foot * foot + 0.26 * top;
-    const shade = y < 0.012 ? 0.7 : 1;
-    col.setXYZ(i, (col.getX(i) + (dr - col.getX(i)) * t) * shade,
-      (col.getY(i) + (dg - col.getY(i)) * t) * shade, (col.getZ(i) + (db - col.getZ(i)) * t) * shade);
-  }
-  return geo;
-}
-
-/** One wooden ammunition crate, its skids on y = 0, its length along x, its front (hasps, markings) toward +z. */
-function ammoCrate(o: Rng): THREE.BufferGeometry {
-  const { L, W, H } = AMMO_CRATE, skid = 0.022, lidT = 0.024, body = H - skid - lidT, top = skid + body;
-  const parts: THREE.BufferGeometry[] = [];
-  for (const sx of [-1, 1]) parts.push(P(box(0.05, skid, W - 0.02), CRATE_WORN, 0.08, o).translate(sx * (L / 2 - 0.13), skid / 2, 0));
-  parts.push(P(box(L - 0.012, body, W - 0.012), CRATE_PAINT, 0.05, o).translate(0, skid + body / 2, 0));
-  // the boards' seam along both faces, and the lid's hinge line along the back
-  for (const sz of [-1, 1]) {
-    const seam = P(facePlane(L - 0.05, 0.006), CRATE_SEAM, 0.02, o);
-    if (sz < 0) seam.rotateY(Math.PI);
-    parts.push(seam.translate(0, skid + body * 0.5, sz * (W / 2 - 0.0045)));
-  }
-  parts.push(P(box(L, lidT, W + 0.004), CRATE_LID, 0.05, o).translate(0, top + lidT / 2, 0));
-  parts.push(P(box(L - 0.02, 0.006, 0.006), CRATE_WORN, 0.10, o).translate(0, top + lidT - 0.003, W / 2 + 0.002));
-  // the end cleats: a frame proud of each end, the rope becket hanging between its rails
-  for (const sx of [-1, 1]) {
-    const x = sx * (L / 2 + 0.006);
-    for (const sz of [-1, 1]) parts.push(P(box(0.018, body + 0.004, 0.032), CRATE_WORN, 0.10, o).translate(x, skid + body / 2, sz * (W / 2 - 0.016)));
-    for (const y of [skid + 0.019, top - 0.019]) parts.push(P(box(0.018, 0.03, W - 0.064), CRATE_WORN, 0.10, o).translate(x, y, 0));
-    const rx = sx * (L / 2 + 0.022), ry = skid + body * 0.6;
-    for (const sz of [-1, 1]) {
-      parts.push(P(box(0.012, 0.055, 0.012), HEMP, 0.08, o).translate(rx, ry - 0.0275, sz * 0.035));
-      parts.push(P(box(0.02, 0.02, 0.02), HEMP, 0.08, o).translate(rx, ry + 0.004, sz * 0.035));
-    }
-    parts.push(P(box(0.012, 0.012, 0.082), HEMP, 0.08, o).translate(rx, ry - 0.055, 0));
-  }
-  // the hasps and their staples on the front, the hinge straps behind
-  for (const sx of [-1, 1]) {
-    parts.push(P(box(0.032, 0.05, 0.006), HARDWARE, 0.05, o).translate(sx * L * 0.28, top - 0.008, W / 2 + 0.004));
-    parts.push(P(box(0.014, 0.014, 0.012), HARDWARE, 0.05, o).translate(sx * L * 0.28, top - 0.04, W / 2 + 0.006));
-    parts.push(P(box(0.05, 0.03, 0.005), HARDWARE, 0.05, o).translate(sx * L * 0.3, top - 0.004, -W / 2 - 0.003));
-  }
-  // the markings, stencilled in faded yellow: the round and its count in letters a hand high on the front, the lot below,
-  // a coloured band at one end, the lot again on the lid
-  const front = W / 2 + 0.0016;
-  const LINES = [['105MM HE', 'LOT 44-12'], ['CTG 7.62', 'LOT 12-08'], ['105MM AP', 'LOT 38-07']] as const;
-  const [line1, line2] = LINES[Math.floor(o() * LINES.length) % LINES.length];
-  for (const g of stencilLine(line1, -L / 2 + 0.06, skid + body * 0.8, 0.0115, o)) parts.push(g.translate(0, 0, front));
-  for (const g of stencilLine(line2, -L / 2 + 0.06, skid + body * 0.42, 0.0085, o)) parts.push(g.translate(0, 0, front));
-  parts.push(P(facePlane(0.05, body * 0.62), STENCIL_YELLOW, 0.04, o).translate(L * 0.37, skid + body * 0.52, front));
-  for (const g of stencilLine(line2, -0.2, 0, 0.0095, o)) {
-    g.rotateX(-Math.PI / 2);
-    parts.push(g.translate(0, top + lidT + 0.0016, 0.06));
-  }
-  // the wear: the paint scuffed through at the lid's front corners and along the foot, grime run down from the hasps
-  for (const sx of [-1, 1]) {
-    parts.push(P(facePlane(0.05 + o() * 0.04, 0.012 + o() * 0.01), CRATE_SCUFF, 0.08, o).translate(sx * (L / 2 - 0.05), top - 0.01, front + 0.0004));
-    parts.push(P(facePlane(0.006, 0.05 + o() * 0.04), CRATE_GRIME, 0.06, o).translate(sx * L * 0.28, top - 0.07, front + 0.0004));
-  }
-  parts.push(P(facePlane(L * (0.3 + o() * 0.3), 0.01), CRATE_SCUFF, 0.1, o).translate((o() - 0.5) * L * 0.3, skid + 0.008, front + 0.0004));
-  return dustAndContact(merge(parts), o);
-}
-
-/** A steel ammunition can (the belt box): body, lid, the latch at one end, the carry handle on the lid, a marking. */
-function ammoCan(o: Rng): THREE.BufferGeometry {
-  const parts: THREE.BufferGeometry[] = [];
-  parts.push(P(box(0.27, 0.165, 0.14), CRATE_PAINT, 0.05, o).translate(0, 0.0825, 0));
-  parts.push(P(box(0.28, 0.022, 0.15), CRATE_LID, 0.05, o).translate(0, 0.176, 0));
-  parts.push(P(box(0.012, 0.06, 0.04), HARDWARE, 0.05, o).translate(0.141, 0.15, 0));
-  for (const sx of [-1, 1]) parts.push(P(box(0.012, 0.02, 0.012), HARDWARE, 0.05, o).translate(sx * 0.05, 0.197, 0));
-  parts.push(P(box(0.11, 0.012, 0.014), HARDWARE, 0.05, o).translate(0, 0.21, 0));
-  for (const g of stencilLine('7.62', -0.11, 0.135, 0.009, o)) parts.push(g.translate(0, 0, 0.0716));
-  return dustAndContact(merge(parts), o);
-}
-
-/** (b45 round 2) how far the stack sits into the ground: its skids bedded in the sand or soil, no daylight under it. */
-const AMMO_BED_M = 0.008;
-function bAmmobox(rng: Rng): THREE.BufferGeometry {
-  const o = spentDraws(bAmmoboxLegacy, rng, 0xa770);
-  const { W, H } = AMMO_CRATE;
-  const parts: THREE.BufferGeometry[] = [];
-  for (const sz of [-1, 1]) {
-    const crate = ammoCrate(o);
-    crate.rotateY((o() - 0.5) * 0.04); // (within the 24 mm between their lids at the ends)
-    parts.push(crate.translate((o() - 0.5) * 0.06, -AMMO_BED_M, sz * (W / 2 + 0.012)));
-  }
-  // the third across their seam, resting on their lids
-  const upper = ammoCrate(o);
-  upper.rotateY((o() - 0.5) * 0.3);
-  parts.push(upper.translate((o() - 0.5) * 0.12, H - AMMO_BED_M, (o() - 0.5) * 0.06));
-  const can = ammoCan(o);
-  can.rotateY(0.4 + o() * 0.8);
-  parts.push(can.translate(0.62, -AMMO_BED_M, 0.16 + (o() - 0.5) * 0.1));
-  return merge(parts);
-}
-/** (b45) the retired builds, for the receipt: the new ones spend exactly their draws. */
-export const AMMOBOX_LEGACY = Object.freeze({ build: bAmmoboxLegacy, broken: bAmmoboxBrokenLegacy });
-function bAmmoboxBroken(rng: Rng): THREE.BufferGeometry {
-  const o = spentDraws(bAmmoboxBrokenLegacy, rng, 0xa771);
-  const { L, W } = AMMO_CRATE;
-  const parts: THREE.BufferGeometry[] = [];
-  // the upper crate knocked off whole onto its side, one shoved askew, the third burst into its boards and lid
-  const fallen = ammoCrate(o);
-  fallen.rotateX(Math.PI / 2);
-  fallen.rotateY(o() * Math.PI);
-  parts.push(fallen.translate(0.35, W / 2 + 0.013, 0.55)); // (on its front: it rests on the hasps' staples)
-  const askew = ammoCrate(o);
-  askew.rotateY(0.35 + o() * 0.4);
-  parts.push(askew.translate(-0.2, 0, -0.15));
-  parts.push(...plankScatter(5, 0.7, 0.13, 0.65, o, CRATE_PAINT));
-  const lid = P(box(L, 0.024, W), CRATE_LID, 0.05, o);
-  lid.rotateY(o() * Math.PI);
-  lid.rotateZ(0.12);
-  parts.push(lid.translate(0.1, 0.07, -0.5)); // (one end on the ground, one on a board)
-  const can = ammoCan(o);
-  can.rotateX(Math.PI / 2); // (on its side: its 15 cm width now its height)
-  parts.push(can.translate(0.78, 0.075, -0.05));
-  return merge(parts);
-}
-
-// --- field tent (canvas ridge tent) ------------------------------------------
-function bTent(rng: Rng): THREE.BufferGeometry {
-  const parts = [];
-  const W = 2.4, H = 1.5, L = 3.2;
-  for (const s of [-1, 1]) { // canvas slopes — weathered field canvas, not paper
-    const slope = Math.hypot(W / 2, H);
-    const panel = box(slope + 0.1, 0.05, L);
-    panel.rotateZ(s * Math.atan2(H, W / 2));
-    parts.push(P(panel.translate(-s * W / 4, H / 2 + 0.32, 0),
-      s < 0 ? TENTCANVAS : [TENTCANVAS[0], TENTCANVAS[1], TENTCANVAS[2] * 0.92], 0.13, rng));
-  }
-  // rear gable canvas closed (triangular panel under the slopes); the front
-  // stays open with one flap pulled aside
-  {
-    const tri = new THREE.Shape();
-    tri.moveTo(-W * 0.46, 0);
-    tri.lineTo(W * 0.46, 0);
-    tri.lineTo(0, H * 0.92);
-    tri.closePath();
-    const end = new THREE.ExtrudeGeometry(tri, { depth: 0.05, bevelEnabled: false });
-    parts.push(P(end.translate(0, 0.30, -(L / 2 - 0.03)), TENTCANVAS_D, 0.12, rng));
-  }
-  const flap = box(W * 0.4, H * 0.7, 0.05);
-  flap.rotateY(0.7);
-  parts.push(P(flap.translate(W * 0.28, H * 0.36 + 0.3, L / 2 + 0.14), TENTCANVAS, 0.12, rng));
-  for (const pz of [-L / 2 + 0.1, L / 2 - 0.1]) { // ridge poles
-    parts.push(P(box(0.07, H + 0.34, 0.07).translate(0, (H + 0.34) / 2, pz), WOOD, 0.10, rng));
-  }
-  parts.push(P(box(0.06, 0.06, L + 0.2).translate(0, H + 0.30, 0), WOOD, 0.08, rng)); // ridge beam
-  return merge(parts);
-}
-function bTentBroken(rng: Rng): THREE.BufferGeometry {
-  const parts = [];
-  // collapsed canvas: two crumpled sheets over a snapped ridge pole
-  for (let k = 0; k < 2; k++) {
-    const sheet = box(1.6 + rng() * 0.8, 0.10, 2.0 + rng() * 0.9);
-    sheet.rotateY(rng() * Math.PI);
-    sheet.rotateX((rng() - 0.5) * 0.16);
-    parts.push(P(sheet.translate((rng() - 0.5) * 1.2, 0.10 + k * 0.07, (rng() - 0.5) * 0.8), k ? TENTCANVAS : TENTCANVAS_D, 0.12, rng));
-  }
-  const pole = box(0.07, 0.07, 2.2);
-  pole.rotateY(rng());
-  parts.push(P(pole.translate(0.2, 0.22, 0), WOOD, 0.10, rng));
   return merge(parts);
 }
 
@@ -1870,53 +1749,6 @@ function bMonumentBroken(rng: Rng): THREE.BufferGeometry {
 }
 
 // --- fortifications (owner 2026-09-17: "more trenches/barbed wire/AA guns/bunkers on ALL maps") ---------
-
-/**
- * Barbed-wire module: two screw pickets carrying three taut strands and a tangle of short barbed
- * coils between them (2.6 m along +z). Shoot-through, crushable at a walking pace with a small bite.
- */
-function bBarbedWire(rng: Rng): THREE.BufferGeometry {
-  const parts = [];
-  for (const z of [-1.15, 1.15]) {
-    const picket = cyl(0.028, 0.034, 1.02, 5);
-    picket.rotateX((rng() - 0.5) * 0.16);
-    parts.push(P(picket.translate(0, 0.51, z), RUST, 0.10, rng));
-    // corkscrew foot of the picket
-    parts.push(P(cyl(0.07, 0.05, 0.10, 6).translate(0, 0.05, z), RUST, 0.08, rng));
-  }
-  for (const y of [0.34, 0.64, 0.94]) {
-    parts.push(P(box(0.018, 0.018, 2.62).translate(0, y, 0), IRON, 0.10, rng));
-  }
-  // diagonal bracing strands
-  for (const side of [-1, 1]) {
-    const brace = box(0.016, 0.016, 2.7);
-    brace.rotateX(side * 0.235);
-    parts.push(P(brace.translate(0, 0.64, 0), IRON, 0.10, rng));
-  }
-  // concertina barbs: short angled stubs along the run
-  for (let i = 0; i < 10; i++) {
-    const barb = box(0.02, 0.02, 0.26);
-    barb.rotateX((rng() - 0.5) * 2.4);
-    barb.rotateY((rng() - 0.5) * 1.2);
-    parts.push(P(barb.translate((rng() - 0.5) * 0.18, 0.46 + rng() * 0.48, -1.1 + (i + rng()) * 0.22), RUST, 0.12, rng));
-  }
-  return merge(parts);
-}
-function bBarbedWireBroken(rng: Rng): THREE.BufferGeometry {
-  const parts = [];
-  // one picket down, strands tangled on the ground
-  const picket = cyl(0.028, 0.034, 1.02, 5);
-  picket.rotateX(Math.PI / 2 - 0.2);
-  picket.rotateY(rng() * 0.6);
-  parts.push(P(picket.translate(0.1, 0.05, 0.6), RUST, 0.10, rng));
-  for (let i = 0; i < 7; i++) {
-    const strand = box(0.018, 0.018, 0.5 + rng() * 0.6);
-    strand.rotateY(rng() * Math.PI);
-    strand.rotateX((rng() - 0.5) * 0.5);
-    parts.push(P(strand.translate((rng() - 0.5) * 0.8, 0.03 + rng() * 0.12, (rng() - 0.5) * 2.4), IRON, 0.12, rng));
-  }
-  return merge(parts);
-}
 
 /**
  * Concrete pillbox (5.6 × 2.3 × 5.0 m): chamfered body under a roof slab, a wide firing embrasure
@@ -2185,12 +2017,13 @@ export const DESTRUCTIBLE_TYPES = {
   crate:       { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.62, h: 1.1,  hw: 0.51, hl: 0.51, build: bCrate, broken: bCrateBroken },
   pallet:      { cls: 'break',  mat: 'wood',  contact: 'loop', r: 0.62, h: 0.2,  build: bPallet,      broken: bPalletBroken },
   bale:        { cls: 'break',  mat: 'straw', contact: 'ob',   r: 0.78, h: 1.45, shape: 'circle', collisionR: 0.75, build: bBale, broken: bBaleBroken },
-  stook:       { cls: 'break',  mat: 'straw', contact: 'ob',   r: 0.55, h: 1.3,  shape: 'circle', collisionR: 0.48, build: bStook, broken: bStookBroken },
+  // (props lane A, the r2 sweep, 2026-10-16: the knocked stook's sheaves still lean, on the legacy's draws)
+  stook:       { cls: 'break',  mat: 'straw', contact: 'ob',   r: 0.55, h: 1.3,  shape: 'circle', collisionR: 0.48, build: bStook, broken: (rng: Rng) => buildStookWreck(spentDraws(bStookBroken, rng, 0x570905)) },
   firewood:    { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.85, h: 0.95, hw: 0.84, hl: 0.69, build: bFirewood, broken: bFirewoodBroken },
   trough:      { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.95, h: 0.68, hw: 0.36, hl: 1.0, build: bTrough, broken: bTroughBroken },
   // (2026-10-11: the stall wears the structures' canvas print — its awning real canvas; its counter, posts and goods take
   // their tones under the same weave)
-  stall:       { cls: 'break',  mat: 'structureCanvas', contact: 'ob',   r: 1.45, h: 2.3,  hw: 1.42, hl: 0.94, build: bStall, broken: bStallBroken },
+  stall:       { cls: 'break',  mat: 'structureCanvas', contact: 'ob',   r: 1.45, h: 2.3,  hw: 1.42, hl: 0.94, build: bStallKept, broken: bStallTipped, ownBroken: true },
   bench:       { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 0.85, h: 1.0,  hw: 0.88, hl: 0.28, build: bBench, broken: bBenchBroken },
   churn:       { cls: 'physics', mat: 'baked', contact: 'loop', r: 0.26, h: 0.82, build: bChurn,       broken: null, bodyR: 0.23, mass: 0.65, bounce: 0.38 },
   lamp:        { cls: 'topple', mat: 'baked', contact: 'ob',   r: 0.30, h: 4.7,  shape: 'circle', collisionR: 0.20, groundR: 0.22, build: bLamp, broken: null },
@@ -2211,6 +2044,8 @@ export const DESTRUCTIBLE_TYPES = {
   fencepicket: { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.25, h: 1.0,  hw: 0.10, hl: 1.25, build: bFencePicket, broken: bFencePicketBroken, fence: true },
   fencewattle: { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 1.25, h: 1.0,  hw: 0.10, hl: 1.25, build: bFenceWattle, broken: bFenceWattleBroken, fence: true },
   fencerail:   { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.25, h: 1.05, hw: 0.11, hl: 1.25, build: bFenceRail,   broken: bFenceRailBroken, fence: true },
+  // (props lane A, E12) a set piece's wrought-iron ground railing, a module a hull breaks
+  fenceiron:   { cls: 'break',  mat: 'baked', contact: 'ob',   r: 1.25, h: 1.3,  hw: 0.08, hl: 1.25, build: bFenceIron,   broken: bFenceIronBroken, fence: true },
   gate:        { cls: 'break',  mat: 'wood',  contact: 'ob',   r: 1.0,  h: 1.3,  hw: 0.46, hl: 0.97, build: bGate,        broken: bGateBroken },
   // --- DESTRUCTIBLES r1: heavier light cover + soft vehicles ---------------
   wallstone:   { cls: 'break',  mat: 'stone',   contact: 'ob', r: 1.6,  h: 1.15, hw: 0.30, hl: 1.54, build: bWallStone,  broken: bWallStoneBroken, wall: true, collider: true, keep: 0.82, crushMin: 2.2 },

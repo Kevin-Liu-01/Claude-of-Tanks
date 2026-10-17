@@ -17,6 +17,10 @@ import { ensureFonts } from './fonts.ts';
 const params = new URLSearchParams(location.search);
 const touch = params.get('profile') !== 'desktop';
 const focus=params.get('focus');
+// The preview frame loads only the base spec table (vehicles/specs.ts), not the fleet factory that registers the
+// rest of the roster: each id here must be in that table. 'leo2a4_v' was not (2026-10-16: createTankState threw
+// "malformed TankSpec", and the HUD editor reported cot:hud-preview-error); hudEditorPreview.selftest.mjs checks it.
+const PREVIEW_SPEC_IDS = ['m1a1_abrams_hc','strv103b','t90am'] as const;
 const nextFrame = () => new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
 
 async function imageAt(src: string): Promise<HTMLImageElement> {
@@ -29,7 +33,7 @@ async function healthPanel(parent: HTMLElement): Promise<void> {
   panel.innerHTML = '<div class="hprow"><span class="hplabel">HP</span><span class="hpnum">2,750 / 2,750</span></div><div class="hptrack"><div class="hpfill" style="background:#7ee87e"></div></div>';
   const canvas = document.createElement('canvas'); canvas.width = 284; canvas.height = 276;
   canvas.style.cssText = 'width:142px;height:138px'; panel.append(canvas); parent.append(panel);
-  const image = await imageAt('/icons/m1a2_top.webp');
+  const image = await imageAt('/icons/m1a1_abrams_hc_top.webp');
   const scale = Math.min(264 / image.width, 256 / image.height);
   canvas.getContext('2d')?.drawImage(image, (284-image.width*scale)/2, (276-image.height*scale)/2, image.width*scale, image.height*scale);
 }
@@ -54,7 +58,7 @@ async function prepare(): Promise<void> {
     isBattleActive:()=>true,isSniper:()=>false,onOpenSettings:()=>{},onToggleSound:()=>false});
   const names = ['Vanguard','LongStop','SteppeWolf','OldNikolai','TotTokkie','PakWagen','SteelFox'];
   const tanks = Array.from({length:14},(_,i)=>{
-    const spec = TANK_SPECS[['m1a2','leo2a5','t90m'][i%3]!]!;
+    const spec = TANK_SPECS[PREVIEW_SPEC_IDS[i%PREVIEW_SPEC_IDS.length]!]!;
     return {id:`preview-${i}`,isPlayer:i===0,team:i<7?'player':'enemy',displayName:names[i%7]!,spec,
       state:createTankState(spec,new Vector3((i%7-3)*24,0,i<7?90:-150),0),combat:createCombatState(spec)};
   });
@@ -67,12 +71,12 @@ async function prepare(): Promise<void> {
   await Promise.all([healthPanel(hud.root),hud.buildMinimapFromAsset({size:1200,minY:0,maxY:80,getHeightAt:()=>0,getGroundType:()=> 'grass'},'/minimaps/verdant.webp'),document.fonts.ready]);
   hud.setMode('battle'); for(let i=0;i<31;i++)hud.update(frame);
   bus.emit('tank:destroyed',{id:tanks[8]!.id,killerId:player.id,cause:'fire'});
-  bus.emit('shell:hit',{attackerId:player.id,targetId:tanks[8]!.id,attackerName:'Vanguard',targetName:'T-90M',targetSpecId:'t90m',attackerSpecId:'m1a2',
+  bus.emit('shell:hit',{attackerId:player.id,targetId:tanks[8]!.id,attackerName:'Vanguard',targetName:'T-90M',targetSpecId:'t90am',attackerSpecId:'m1a1_abrams_hc',
     kind:'pen',damage:420,dmgRoll:460,penRoll:560,effectiveArmor:350,baseArmor:220,impactAngleDeg:34,shellType:'APFSDS',zone:'hullFront',flightDistM:240,timeS:135,pos:[0,1,50],localPos:[0,1,2],localDir:[0,0,-1]});
   if(focus==='medals'){installMedalToasts(bus);bus.emit('service:medal',{id:MEDALS[0]!.id});}
   else if(focus==='alerts')bus.emit('ui:magazineReloadStarted',{});
   else bus.emit('player:spotted',{timeS:131});
-  if(focus==='damage')bus.emit('shell:hit',{attackerId:tanks[8]!.id,targetId:player.id,attackerName:'SteelFox',targetName:'Vanguard',targetSpecId:'m1a2',attackerSpecId:'t90m',kind:'pen',damage:320,shellType:'APFSDS',timeS:135});
+  if(focus==='damage')bus.emit('shell:hit',{attackerId:tanks[8]!.id,targetId:player.id,attackerName:'SteelFox',targetName:'Vanguard',targetSpecId:'m1a1_abrams_hc',attackerSpecId:'t90am',kind:'pen',damage:320,shellType:'APFSDS',timeS:135});
   if(focus==='killsRight')bus.emit('tank:destroyed',{id:tanks[1]!.id,killerId:tanks[9]!.id,cause:'fire'});
   hud.update(frame);
   await Promise.all([...document.images].map(image=>image.decode().catch(()=>{})));

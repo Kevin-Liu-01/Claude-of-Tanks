@@ -6,9 +6,26 @@ import type { HeightField } from './terrain.ts';
 import type { OceanField } from './oceanFft.ts';
 import { waterContactProfile } from './waterContact.ts';
 import type { WaterRippleField } from './waterRipples.ts';
+// the sheet's grid, its cell admission, the cells it leaves to the paddies and its fragment discard are the tactical
+// map's too (visibleWater.ts: the minimap paints exactly the water this sheet draws)
+import {
+  VISIBLE_WATER_MIN, WATER_SHEET_GRID_M as GRID_STEP_M, WATER_SHEET_MIN_COVERAGE as MIN_COVERAGE, glslFloat, paddySheetCell,
+} from './visibleWater.ts';
 
-const GRID_STEP_M = 8;
-const MIN_COVERAGE = 0.002;
+/** (2026-10-12, item 4) A paddy's own surface's cell (m); the lattice cells it owns are visibleWater.ts paddySheetCell. */
+const PADDY_SURFACE_CELL_M = 2;
+/** (2026-10-15, the paddies' look pass; the coordinator: "muddy water … about 25 cm depth") The paddies the sheet's
+ *  material knows by rectangle (a map plants ten), and their silt: a quarter metre of water over mud reads as a light
+ *  khaki sheet, not the river's deep body (linear albedo). */
+export const PADDY_WATER_MAX = 16;
+export const PADDY_MUD_RGB = [0.17, 0.15, 0.09] as const;
+/**
+ * (2026-10-07, the map-revival lane, Skybridge's canyon arm: the sheet's 8 m cells straddling a sheer wall drew their dry
+ * corners up the wall — a blue sawtooth climbing every wall of the arm) a dry corner standing more than this over the
+ * highest wet corner beside it is a wall's, not a shore's: it takes that water's height, so the sheet runs on flat under
+ * the wall and the wall hides it. A shore's dry corners, within this of the water, keep their bed-plus-depth height.
+ */
+const WALL_RISE_M = 1.0;
 
 interface ShallowWaterGeometry {
   geometry: THREE.BufferGeometry;
@@ -148,7 +165,7 @@ export function shoreDistanceTexture(mask: THREE.Texture, size: number, wetFrom:
 }
 
 export function* shallowWaterGeometrySteps(
-  field: Pick<HeightField, 'size' | 'getHeightAt' | 'getWaterMaskAt' | 'getWaterDepthAt'>,
+  field: Pick<HeightField, 'size' | 'getHeightAt' | 'getWaterMaskAt' | 'getWaterDepthAt' | 'getPaddyWaterLevelAt' | 'getPaddyWaterQuads'>,
 ): Generator<void, ShallowWaterGeometry | null, void> {
   const segments = Math.ceil(field.size / GRID_STEP_M);
   const count = segments + 1, step = field.size / segments, half = field.size / 2;
@@ -159,14 +176,32 @@ export function* shallowWaterGeometrySteps(
   }
   const slots = new Int32Array(count * count).fill(-1);
   const admitted = new Uint8Array(Math.ceil(segments * segments / 8));
+  const paddyQuads = field.getPaddyWaterQuads?.() ?? [];
+  const paddyLevelAt = (x: number, z: number): number => field.getPaddyWaterLevelAt?.(x, z) ?? NaN;
+  // a lattice cell any of whose corners or centre stands over a paddy's water or bund (null on a map without paddies)
+  const paddyCell = paddySheetCell(field);
   const positions: number[] = [], normals: number[] = [], indices: number[] = [];
+  const surfaceY = (x: number, z: number): number => {
+    const wx = x * step - half, wz = z * step - half;
+    return field.getHeightAt(wx, wz) + (field.getWaterDepthAt?.(wx, wz) ?? 0);
+  };
   function vertex(x: number, z: number): number {
     const key = z * count + x;
     if (slots[key] >= 0) return slots[key];
     const wx = x * step - half, wz = z * step - half;
     const index = positions.length / 3;
     slots[key] = index;
-    positions.push(wx, field.getHeightAt(wx, wz) + (field.getWaterDepthAt?.(wx, wz) ?? 0), wz);
+    let y = surfaceY(x, z);
+    if (wet[key] <= MIN_COVERAGE) {
+      // a wall's corner: the highest wet corner round it, when the corner stands more than WALL_RISE_M over it
+      let water = -Infinity;
+      for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
+        const nx = x + dx, nz = z + dz;
+        if ((dx || dz) && nx >= 0 && nz >= 0 && nx < count && nz < count && wet[nz * count + nx] > MIN_COVERAGE) water = Math.max(water, surfaceY(nx, nz));
+      }
+      if (water > -Infinity && y > water + WALL_RISE_M) y = water;
+    }
+    positions.push(wx, y, wz);
     normals.push(0, 1, 0);
     return index;
   }
@@ -176,10 +211,30 @@ export function* shallowWaterGeometrySteps(
       const corners = Math.max(wet[key], wet[key + 1], wet[key + count], wet[key + count + 1]);
       if (corners <= MIN_COVERAGE
         && field.getWaterMaskAt((x + 0.5) * step - half, (z + 0.5) * step - half) <= MIN_COVERAGE) continue;
+      // (2026-10-12, item 4) a paddy draws its own level surface below; the lattice keeps out of it (its nearest other
+      // water is fourteen metres off: the paddies stand clear of the river and the roads' culverts)
+      if (paddyCell?.(x * step - half, z * step - half, step)) continue;
       const a = vertex(x, z), b = vertex(x + 1, z), c = vertex(x, z + 1), d = vertex(x + 1, z + 1);
       indices.push(a, c, b, b, c, d);
       const cell = z * segments + x;
       admitted[cell >> 3] |= 1 << (cell & 7);
+    }
+    yield;
+  }
+  // (2026-10-12, item 4) each paddy's own surface: a level grid at its water's level over its rectangle, tucked under its
+  // bund (the bund clips it at the shoreline), two-metre cells for the ripples and wakes
+  for (const q of paddyQuads) {
+    const nx = Math.max(1, Math.round((2 * q.hw) / PADDY_SURFACE_CELL_M)), nz = Math.max(1, Math.round((2 * q.hl) / PADDY_SURFACE_CELL_M));
+    const base = positions.length / 3;
+    for (let j = 0; j <= nz; j++) for (let i = 0; i <= nx; i++) {
+      const b = -q.hw + (2 * q.hw * i) / nx, a = -q.hl + (2 * q.hl * j) / nz;
+      positions.push(q.x + q.s * a + q.c * b, q.level, q.z + q.c * a - q.s * b);
+      normals.push(0, 1, 0);
+    }
+    for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {
+      const a0 = base + j * (nx + 1) + i, b0 = a0 + 1, c0 = a0 + nx + 1, d0 = c0 + 1;
+      // the winding faces +Y whatever the paddy's yaw (the lattice's a, c, b order in the paddy's own axes)
+      indices.push(a0, c0, b0, b0, c0, d0);
     }
     yield;
   }
@@ -205,7 +260,13 @@ export function* shallowWaterGeometrySteps(
     }
     return (top - h0) / SEA_SHELF_RISE_M;
   };
-  return { geometry, heightAt: waterHeightSampler(wet, admitted, field, segments) };
+  // (the paddies' look pass) the material reads the paddies' rectangles from the geometry (createShallowWaterSurface)
+  if (paddyQuads.length) geometry.userData.paddyQuads = paddyQuads.slice(0, PADDY_WATER_MAX);
+  const latticeHeightAt = waterHeightSampler(wet, admitted, field, segments);
+  return { geometry, heightAt: paddyQuads.length ? (x, z) => {
+    const level = paddyLevelAt(x, z);
+    return level === level ? level : latticeHeightAt(x, z);
+  } : latticeHeightAt };
 }
 
 /**
@@ -333,6 +394,12 @@ export function createShallowWaterSurface(
   const wakeB = Array.from({ length: WATER_DISTURBANCE_CAP },
     () => new THREE.Vector4(0, 0, WAKE_DEFAULT_HALF_LENGTH_M, WAKE_DEFAULT_HALF_WIDTH_M));
   const wakeCount = { value: 0 };
+  // (the paddies' look pass) each paddy's rectangle: centre and axes (x, z, cos, sin), half extents (across, along)
+  const paddyQuads = (geometry.userData.paddyQuads ?? []) as ReadonlyArray<{ x: number; z: number; c: number; s: number; hw: number; hl: number }>;
+  const paddyA = Array.from({ length: PADDY_WATER_MAX }, (_, i) => paddyQuads[i]
+    ? new THREE.Vector4(paddyQuads[i].x, paddyQuads[i].z, paddyQuads[i].c, paddyQuads[i].s) : new THREE.Vector4());
+  const paddyB = Array.from({ length: PADDY_WATER_MAX }, (_, i) => paddyQuads[i]
+    ? new THREE.Vector2(paddyQuads[i].hw, paddyQuads[i].hl) : new THREE.Vector2());
   const material = new THREE.MeshStandardMaterial({
     color: profile.color, roughness: profile.roughness, metalness: 0,
     // Water 2026-09-12: 0.28 -> 0.55 — the surface mirrors more sky at grazing
@@ -384,6 +451,8 @@ export function createShallowWaterSurface(
       uOceanLook: { value: new THREE.Vector4(ocean?.state.foam ?? 0, ocean?.state.breakers ?? 0, ocean?.state.caustics ?? 0, ocean?.hs ?? 0) },
       uOceanDepth: { value: profile.depthM },
       uWaterQa: waterQa,
+      uPaddyA: { value: paddyA }, uPaddyB: { value: paddyB }, uPaddyCount: { value: Math.min(PADDY_WATER_MAX, paddyQuads.length) },
+      uPaddyMud: { value: new THREE.Vector3(...PADDY_MUD_RGB) },
       uShoreDist: { value: shoreDist }, uSeaShelf: seaShelf, uSeaTint: seaTint, uSwell: swell, uSeaLook: seaLook, uSeaRough: seaRough,
     });
     material.userData.waterShader = shader;
@@ -430,6 +499,7 @@ export function createShallowWaterSurface(
       '#include <worldpos_vertex>\nvWaterWorld = (modelMatrix * vec4(transformed, 1.0)).xyz;');
     shader.fragmentShader = shader.fragmentShader.replace('#include <common>', `#include <common>
       varying vec3 vWaterWorld;
+      ${paddyQuads.length ? `uniform vec4 uPaddyA[${PADDY_WATER_MAX}]; uniform vec2 uPaddyB[${PADDY_WATER_MAX}]; uniform float uPaddyCount; uniform vec3 uPaddyMud;` : ''}
       uniform sampler2D uWaterMask;
       uniform sampler2D uWaterWave;
       uniform float uWaterSize;
@@ -512,7 +582,18 @@ export function createShallowWaterSurface(
         float swashCrest = clamp(texture2D(uOceanDisp, oceanUv(vOceanLag, 0.0)).y / max(uOceanLook.w, 0.02) * 1.4, 0.0, 1.0);
         wet = max(wet, mix(wet, 0.09, swashCrest * uOceanLook.y * smoothstep(0.003, 0.025, wet) * (1.0 - smoothstep(0.0, 0.22, wet))));
       }
-      if (wet < 0.015) discard;
+      ${paddyQuads.length ? `// (the paddies' look pass) a paddy's own rectangle: its water whatever the mask carries there (a landform-gated
+      // map's mask channel is its landform, not its water: Caldera)
+      float paddyW = 0.0;
+      for (int i = 0; i < ${PADDY_WATER_MAX}; i++) {
+        if (float(i) >= uPaddyCount) break;
+        vec2 pd = vWaterWorld.xz - uPaddyA[i].xy;
+        float pAcross = abs(pd.x * uPaddyA[i].z - pd.y * uPaddyA[i].w) - uPaddyB[i].x;
+        float pAlong = abs(pd.x * uPaddyA[i].w + pd.y * uPaddyA[i].z) - uPaddyB[i].y;
+        paddyW = max(paddyW, 1.0 - smoothstep(-0.6, 0.0, max(pAcross, pAlong)));
+      }
+      wet = max(wet, paddyW);` : ''}
+      if (wet < ${glslFloat(VISIBLE_WATER_MIN)}) discard;
       vec3 eye = normalize(cameraPosition - vWaterWorld);
       float grazing = pow(1.0 - abs(eye.y), 3.0);
       waterGrazing = grazing;
@@ -525,6 +606,7 @@ export function createShallowWaterSurface(
       // (2026-10-05: the shelf's width follows the coast — a beach holds a wide one, a steep coast drops off in metres)
       seaShelfM = mix(uSeaShelf.y, max(seaShore.y * uSeaLook.z, 4.0), uSeaLook.y * step(0.5, seaShore.y));
       waterDeep = mix(waterDeep, 1.0 - exp(-seaShoreM / seaShelfM), uSeaShelf.x);
+      ${paddyQuads.length ? 'waterDeep *= 1.0 - 0.85 * paddyW; // (the paddies\' look pass: a quarter metre, no deep body)' : ''}
       // Water 2026-09-12: the bed shows through the shallows — the deep colour
       // rises out of a sunlit bank tint instead of one flat sheet.
       // Water pass 5 (2026-09-13): the bank colour reaches further into the body
@@ -533,6 +615,7 @@ export function createShallowWaterSurface(
       vec3 seaShallowCol = mix(uWaterShallow, vec3(0.028, 0.45, 0.42), uSeaTint.x * uSeaShelf.x);
       vec3 seaDeepCol = mix(diffuseColor.rgb, vec3(0.006, 0.065, 0.195), uSeaTint.y * uSeaShelf.x);
       diffuseColor.rgb = mix(seaShallowCol, seaDeepCol, smoothstep(0.02, 0.90, waterDeep));
+      ${paddyQuads.length ? 'diffuseColor.rgb = mix(diffuseColor.rgb, uPaddyMud, 0.75 * paddyW);' : ''}
       // Water pass 4 (2026-09-13, owner: "significantly better, more varied,
       // more like real life"): the deep body darkens harder and the surface
       // leans on what the SKY does — mirror-like at grazing angles, bed and
@@ -542,6 +625,7 @@ export function createShallowWaterSurface(
       // (2026-10-04: clear over the shelf — the bed shows through its first metres — opaque past it)
       float seaOpacity = mix(opacity, mix(uSeaShelf.w, opacity, 1.0 - exp(-seaShoreM / (uSeaShelf.z * seaShelfM / uSeaShelf.y))), uSeaShelf.x);
       diffuseColor.a = smoothstep(0.0, 0.55, wet) * mix(mix(seaOpacity, 0.86, grazing), 1.0, smoothstep(900.0, 1600.0, pastEdgeM));
+      ${paddyQuads.length ? 'diffuseColor.a = mix(diffuseColor.a, max(diffuseColor.a, 0.84), paddyW); // (silt over the dark wet mud)' : ''}
       // Blend the last ocean cells into their continuous ground receiver. The
       // finite carrier must never reveal its stair-stepped outer grid edge.
       if (uOutlandOpeningCount > 0.5) diffuseColor.a *= 1.0 - smoothstep(${SEA_APRON_OUTER_RADIUS_M - 192}.0, ${SEA_APRON_OUTER_RADIUS_M}.0, length(vWaterWorld.xz));
@@ -828,7 +912,7 @@ export function createShallowWaterSurface(
   };
   if (setup) setup(material, hook);
   else material.onBeforeCompile = hook;
-  material.customProgramCacheKey = () => `shallow-water-v23-${outlandWater?.openings?.length ? 'coast' : 'land'}`;
+  material.customProgramCacheKey = () => `shallow-water-v23-${outlandWater?.openings?.length ? 'coast' : 'land'}${paddyQuads.length ? '-paddy' : ''}`;
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = `shallow_water_${mapId}`;
   mesh.userData.ocean = ocean; // round 66: probes read the field's maps and spectrum through the sheet

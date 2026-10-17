@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { ROAD_FRONTAGE_CLEARANCE } from '../../roadBuildingFrontage.ts';
 import { gardenParts, planYard, yardKeepOut, YARD_SHED } from './yards.ts';
 import { streamFrom } from './geometry.ts';
+import { assertR2 } from '../../../../tools/r2-standard.mjs';
 
 const STYLE = { kinds: ['cottage'], fence: 'fencepicket', gate: 'gate', shed: 'woodshed', garden: true };
 // a level dry world with a road along the z axis (x = 0)
@@ -79,5 +80,35 @@ for (const list of Object.values(bed)) for (const g of list) {
 }
 assert.ok(tris > 20 && tris < 1200, `a bed is a few hundred triangles (${tris})`);
 assert.ok(minY <= -0.3, 'the raised bed reaches down to the ground on its low side');
+// (props lane A, #18b) each country's kitchen garden: dressing, inside its bed (a hand over its edge for the hedge or the
+// hurdle), within its budget, and its own (no two countries' gardens the same)
+const sizes = new Map();
+for (const mapId of ['verdant', 'frontier', 'polders', 'coastal', 'cliffbridge', 'monsoon', 'caldera', 'longleaf']) {
+  const g = gardenParts(4.2, 2.6, streamFrom(7), 0, mapId);
+  let n = 0;
+  for (const list of Object.values(g)) for (const geo of list) {
+    assert.equal(geo.userData.noCollision, true, `${mapId}: its garden is dressing`);
+    const p = geo.getAttribute('position');
+    for (let i = 0; i < p.count; i++) {
+      assert.ok(Math.abs(p.getX(i)) <= 2.1 + 0.25 && Math.abs(p.getZ(i)) <= 1.3 + 0.25, `${mapId}: inside its bed`);
+      assert.ok(p.getY(i) <= 2.6, `${mapId}: nothing over a sunflower's head`);
+    }
+    n += p.count / 3;
+  }
+  assert.ok(n > 300 && n < 1500, `${mapId}: its garden ${n} triangles`);
+  sizes.set(mapId, n);
+}
+assert.ok(new Set([...sizes.values()]).size >= 6, 'the countries keep their gardens their own ways');
+// (the r2 sweep, 2026-10-16: the kitchen garden graded 0 — its bed a plain box, the sunflowers' dark discs painted on
+// their heads, the gourds and tomatoes hung in the air) every country's garden to the bunker r2 standard, at the planner's
+// sizes (1.8-4.2 m by 1.4-3.2 m) level and raised on a slope; dressing, no destroyed state
+const GARDEN_MAPS = ['airfield', 'autumn', 'caldera', 'cliffbridge', 'coastal', 'fjord', 'frontier', 'longleaf', 'mangrove', 'monsoon',
+  'orchard', 'polders', 'railyard', 'reservoir', 'saltwind', 'steppe', 'urban', 'verdant'];
+const GARDEN_FORM = { verdant: 'slavic', steppe: 'slavic', polders: 'dutch', coastal: 'french', autumn: 'french', orchard: 'med',
+  saltwind: 'med', cliffbridge: 'med', monsoon: 'monsoon', mangrove: 'monsoon', caldera: 'japan', longleaf: 'american' };
+for (const [gw, gd, seed, drop] of [[4.2, 2.6, 7, 0], [3.6, 2.4, 1, 0.3], [4.2, 3.2, 11, 0.1], [2.0, 1.5, 3, 0]]) {
+  assertR2({ kind: `site:kitchen-garden ${gw}x${gd}`, maps: GARDEN_MAPS, route: 'crush', noBroken: true, caps: { near: 2400 },
+    resolve: (mapId) => ({ form: GARDEN_FORM[mapId] ?? 'german', build: () => gardenParts(gw, gd, streamFrom(seed), drop, mapId) }) });
+}
 console.log(`yards.selftest: ${plan.side} yard ${plan.depth} m deep, ${plan.modules.length} modules, gate, outbuilding and beds; `
-  + `spawn pad ${moved ? `moves it to ${moved.side}` : 'leaves no yard'}; crowded house without one; beds ${tris} triangles`);
+  + `spawn pad ${moved ? `moves it to ${moved.side}` : 'leaves no yard'}; crowded house without one; beds ${tris} triangles; 8 countries' gardens ${[...sizes.values()].join('/')}`);

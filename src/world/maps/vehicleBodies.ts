@@ -7,6 +7,12 @@
 
 import { ShapeUtils, Vector2 } from 'three';
 import { material, linearHex, type VehicleMesh, type VehicleMaterial, type Vec3 } from './vehicleMesh.ts';
+
+/** (sealed lane, round 2) A truck's wheels in dirty steel: a light grey hub read as an untextured part at range. */
+const TRUCK_RIM = material('steel', [0.14, 0.138, 0.132], 0.58, 0.4, 0, 1);
+/** (sealed lane, round 2) A truck's fuel tank: painted steel gone dull and dirty, not a bright metal drum (the dirty-steel
+ *  rim read light grey in the sun on the tanks). */
+const FUEL_TANK = material('steel', [0.045, 0.044, 0.042], 0.72, 0.12, 0, 1);
 import {
   PAINT, GLASS, CHROME, BRIGHT, TRIM, UNDER, INTERIOR, LAMP, LAMP_RED, LAMP_AMBER, STEEL, RIM_STEEL, WOOD, CANVAS, RUBBER,
   WOOD_GREY,
@@ -142,6 +148,10 @@ export function buildCar(mesh: VehicleMesh, m: CarModel, o: BuildOptions): void 
     const hw = (prof.ghBase(z0) * spec.roofTaper) - 0.06;
     for (const x of [-hw, hw]) mesh.box(x, y, (z0 + z1) / 2, 0.03, 0.03, z0 - z1, TRIM);
     for (let k = 0; k <= 3; k++) mesh.box(0, y, lerp(z0, z1, k / 3), hw * 2, 0.025, 0.025, TRIM);
+    // (props census r2 sweep, Lane C 2026-10-16: the rack floated 5 cm over the roof) its feet, four to a rail, down
+    // through the roof's skin
+    const foot = spec.roofH - 0.05;
+    for (const x of [-hw, hw]) for (let k = 0; k <= 3; k++) mesh.box(x, (foot + y) / 2, lerp(z0 + 0.04, z1 - 0.04, k / 3), 0.04, y - foot, 0.05, TRIM);
   }
   underbody(mesh, prof.zNose - 0.3, prof.zTail + 0.3, spec.track / 2 - spec.tyreW, spec.sill + 0.02, o.coarse);
 }
@@ -274,6 +284,15 @@ export function buildPickup(mesh: VehicleMesh, m: PickupModel, o: BuildOptions):
   }
   plate(mesh, 0, b.floor - 0.05, b.zB - 0.004, 0.36, 0.13, -1);
   underbody(mesh, m.cabZ + prof.zNose - 0.3, b.zB + 0.3, m.trackR / 2 - spec.tyreW, spec.sill + 0.02, o.coarse);
+  // (sealed lane, round 2) the live rear axle on its springs, the driveshaft forward to the cab's gearbox
+  mesh.dressing(() => {
+    const ay = spec.wheelR - drop, half = m.trackR / 2 - spec.tyreW;
+    mesh.tube([[-half, ay, m.rearAxle], [half, ay, m.rearAxle]], 0.045, o.coarse ? 6 : 8, UNDER);
+    if (!o.coarse) mesh.box(0, ay, m.rearAxle, 0.24, 0.22, 0.22, UNDER, 0.06);
+    const sx = Math.min(0.46, half - 0.12);
+    for (const x of [-sx, sx]) leafSpring(mesh, x, ay + 0.04, Math.max(spec.sill - 0.01, ay + 0.1), m.rearAxle, Math.min(1.2, spec.wheelR * 3.2), o.coarse);
+    driveshaft(mesh, spec.sill + 0.02, m.cabZ + prof.zTail + 0.3, ay + 0.05, m.rearAxle + 0.14, o.coarse);
+  });
 }
 
 // ---------------------------------------------------------------------------------------------------- open jeeps
@@ -446,15 +465,36 @@ export function buildOpenJeep(mesh: VehicleMesh, m: JeepModel, o: BuildOptions):
     mesh.push().translate(t.hw + m.tyreW * 0.5 + 0.03, (t.floor + t.top) / 2, t.zF - 0.45);
     wheel(mesh, 0, 0, 0, 1, ws);
     mesh.pop();
+    // (props census r2 sweep, Lane C 2026-10-16: the wheel stood 2 cm off the tub's side) its carrier, a stub from the
+    // side into the hub
+    mesh.dressing(() => mesh.box(t.hw + m.tyreW * 0.25 + 0.01, (t.floor + t.top) / 2, t.zF - 0.45, m.tyreW * 0.5 + 0.06, 0.08, 0.08, UNDER));
   } else if (m.spare === 'bonnet') {
     mesh.push().translate(0, m.bonnet.top + m.tyreW * 0.5, (bonnetZ0 + bonnetZ1) / 2).rotateZ(Math.PI / 2);
     wheel(mesh, 0, 0, 0, 1, ws);
     mesh.pop();
+    // (props census r2 sweep, Lane C 2026-10-16: the wheel lay flat over the sloping lid, touching it nowhere) its
+    // mount, a post from inside the lid at the wheel's centre up into the hub
+    const postFoot = m.bonnet.top - m.bonnet.slope * 0.5 - 0.03, hub = m.bonnet.top + m.tyreW * 0.5;
+    mesh.dressing(() => mesh.box(0, (postFoot + hub) / 2, (bonnetZ0 + bonnetZ1) / 2, 0.1, hub - postFoot, 0.1, UNDER));
   }
   const drop = o.burnt ? m.wheelR * (1 - m.wheel.rim * 1.04) : 0;
   for (const side of [1, -1] as const) for (const z of [m.frontAxle, m.rearAxle]) wheel(mesh, side * m.track / 2, m.wheelR - drop, z, side, ws);
-  // bumper, tail lamps, the frame under the tub
-  mesh.box(0, m.wheelR * 0.95, zNose - 0.02, m.track + m.tyreW * 0.6, 0.1, 0.08, STEEL, 0.015);
+  // bumper, tail lamps, the frame under the tub. Sealed lane, round 2 (wave 368: "a flat, light-grey plank sticking out
+  // from under the grille over a black void ... no brackets or frame horns"): the bumper in the body's paint on the
+  // frame's horns, the rails run forward to it, the axles on their springs and the driveshafts between them
+  mesh.box(0, m.wheelR * 0.95, zNose - 0.02, m.track + m.tyreW * 0.6, 0.1, 0.08, paint, 0.015);
+  mesh.dressing(() => {
+    const railX = Math.min(0.36, m.bonnet.hw - 0.04), railY = t.floor - 0.13, ay = m.wheelR - (o.burnt ? m.wheelR * (1 - m.wheel.rim * 1.04) : 0);
+    for (const x of [-railX, railX]) mesh.box(x, (railY + m.wheelR * 0.95) / 2, (t.zF + zNose) / 2, 0.06, Math.max(0.08, m.wheelR * 0.95 - railY + 0.08), zNose - t.zF - 0.06, UNDER);
+    const half = m.track / 2 - m.tyreW * 0.6;
+    for (const z of [m.frontAxle, m.rearAxle]) {
+      mesh.tube([[-half, ay, z], [half, ay, z]], 0.04, o.coarse ? 6 : 8, UNDER);
+      if (!o.coarse) mesh.box(z === m.frontAxle ? -0.12 : 0.1, ay, z, 0.2, 0.2, 0.2, UNDER, 0.05);
+      for (const x of [-railX, railX]) leafSpring(mesh, x, ay + 0.04, railY, z, Math.min(0.9, m.wheelR * 2.4), o.coarse);
+    }
+    driveshaft(mesh, ay + 0.04, m.frontAxle - 0.14, railY - 0.06, (m.frontAxle + m.rearAxle) / 2 + 0.25, o.coarse);
+    driveshaft(mesh, railY - 0.06, (m.frontAxle + m.rearAxle) / 2 - 0.05, ay + 0.04, m.rearAxle + 0.14, o.coarse);
+  });
   for (const side of [1, -1]) rectLamp(mesh, side * (t.hw - 0.12), t.floor + 0.12, zTail, 0.06, 0.08, LAMP_RED, TRIM, -1);
   underbody(mesh, zNose - 0.2, zTail + 0.2, m.track / 2 - m.tyreW, t.floor - 0.1, coarse);
 }
@@ -681,6 +721,38 @@ export interface TruckModel {
   spare?: 'side' | 'under' | 'none';
   fuelTank?: 'side' | 'none';
   mirrors?: boolean;
+  /** Side guards between the wheels (a European lorry since the 1990s, the East Asian medium trucks). */
+  guards?: boolean;
+}
+
+/**
+ * Sealed lane 2026-10-10, round 2 (wave 368's critics: undercarriages "still read as one thin black rail over disc
+ * wheels"): the running gear a body hides only from above. A leaf spring at each end of an axle under its rail (the main
+ * leaf arched, the pack shortening under it, a shackle at each eye up to the rail), the axle beam or tube between the
+ * springs and the differential, the driveshaft from the gearbox back to the axle. Dark and dirty (UNDER); dressing,
+ * so the collision solid the coarse build gives is unchanged.
+ */
+function leafSpring(mesh: VehicleMesh, x: number, axleY: number, railY: number, z: number, len: number, coarse: boolean): void {
+  const gap = railY - axleY;
+  if (gap < 0.06) return;
+  const packTop = axleY + Math.min(0.12, gap * 0.55);
+  if (coarse) {
+    mesh.box(x, (axleY + packTop) / 2, z, 0.07, packTop - axleY, len * 0.8, UNDER);
+    return;
+  }
+  // the pack: three leaves shortening down to the axle seat, the main leaf full length
+  for (let k = 0; k < 3; k++) {
+    const t = 0.03, y = packTop - t / 2 - k * t, l = len * (1 - k * 0.22);
+    mesh.box(x, y, z, 0.075, t, l, UNDER);
+  }
+  // the U-bolts round the axle and the shackles from the eyes up to the rail
+  mesh.box(x, (axleY + packTop) / 2, z, 0.1, packTop - axleY + 0.02, 0.1, UNDER);
+  for (const dz of [-len / 2, len / 2]) mesh.box(x, (packTop + railY) / 2, z + dz, 0.05, railY - packTop, 0.05, UNDER);
+}
+
+function driveshaft(mesh: VehicleMesh, y0: number, z0: number, y1: number, z1: number, coarse: boolean): void {
+  if (Math.abs(z0 - z1) < 0.2) return;
+  mesh.tube([[0, y0, z0], [0, y1, z1]], 0.045, coarse ? 5 : 8, UNDER);
 }
 
 /** A truck: chassis, wheels, the front (narrow, wide or forward control), the cab, the cargo body, the hardware. */
@@ -722,12 +794,31 @@ export function buildTruck(mesh: VehicleMesh, m: TruckModel, o: BuildOptions): v
   if (!coarse) for (const z of [m.frontAxle, ...m.rearAxles, railZ1 + 0.1]) mesh.box(0, m.frameY - 0.1, z, m.frameHW * 2, 0.1, 0.07, UNDER);
   const drop = o.burnt ? m.wheelR * 0.42 : 0;
   mesh.box(0, m.wheelR - 0.04 - drop, m.frontAxle, m.trackF - m.tyreW, 0.09, 0.09, UNDER);
+  // (props census r2 sweep, Lane C 2026-10-16) a single rear wheel's back disc stands 0.45 of the tyre in from its
+  // centre: the axle ran to a whole tyre width in and stopped 55 % of a tyre short of it (the WC-54's whole chassis
+  // floated over its wheels); it now reaches into the hub, a dual's inner twin as before
+  const axleX = m.trackR / 2 - (m.dualRear ? m.tyreW : m.tyreW * 0.4);
   for (const z of m.rearAxles) {
-    mesh.tube([[-(m.trackR / 2 - m.tyreW), m.wheelR - drop, z], [m.trackR / 2 - m.tyreW, m.wheelR - drop, z]], 0.06, 8, UNDER);
+    mesh.tube([[-axleX, m.wheelR - drop, z], [axleX, m.wheelR - drop, z]], 0.06, 8, UNDER);
     if (!coarse) mesh.box(0, m.wheelR - drop, z, 0.32, 0.3, 0.3, UNDER, 0.08);
   }
+  // (sealed lane, round 2) the springs under the rails at every axle and the driveshafts back to the axles
+  mesh.dressing(() => {
+    const railBottom = m.frameY - 0.18, springLen = Math.min(1.4, m.wheelR * 2.6);
+    for (const x of [-m.frameHW, m.frameHW]) {
+      leafSpring(mesh, x, m.wheelR - drop + 0.05, railBottom, m.frontAxle, springLen * 0.9, coarse);
+      for (const z of m.rearAxles) leafSpring(mesh, x, m.wheelR - drop + 0.07, railBottom, z, springLen, coarse);
+    }
+    // the gearbox behind the engine under the cab, its shaft back to the first rear axle, and on to the next ones
+    const gearZ = m.front === 'cabover' ? m.frontAxle - 0.55 : m.cab.zB + 0.1;
+    let z0 = gearZ, y0 = m.frameY - 0.22;
+    for (const z of m.rearAxles) {
+      driveshaft(mesh, y0, z0, m.wheelR - drop + 0.06, z + 0.17, coarse);
+      z0 = z - 0.17; y0 = m.wheelR - drop + 0.06;
+    }
+  });
   // ---- wheels
-  const ws: WheelSpec = { r: m.wheelR, w: m.tyreW, rim: 0.56, style: m.wheelStyle, coarse, bare: o.burnt };
+  const ws: WheelSpec = { r: m.wheelR, w: m.tyreW, rim: 0.56, style: m.wheelStyle, coarse, bare: o.burnt, rimMat: TRUCK_RIM };
   for (const side of [1, -1] as const) {
     wheel(mesh, side * m.trackF / 2, m.wheelR - drop, m.frontAxle, side, ws);
     for (const z of m.rearAxles) wheel(mesh, side * m.trackR / 2, m.wheelR - drop, z, side, { ...ws, dual: m.dualRear });
@@ -736,8 +827,14 @@ export function buildTruck(mesh: VehicleMesh, m: TruckModel, o: BuildOptions): v
   if (m.front === 'narrow') narrowFront(mesh, m, paint, coarse, zNose);
   else if (m.front === 'wide') wideFront(mesh, m, paint, coarse);
   else cabOverFront(mesh, m, paint, coarse, zNose);
-  // ---- the cab
+  // ---- the cab, on its mounts (props census r2 sweep, Lane C 2026-10-16: a wide-bonnet cab stood 2 cm over its rails)
   truckCab(mesh, m, paint, coarse);
+  if (!coarse && m.cab.y0 > m.frameY + 0.005) {
+    const h = m.cab.y0 - m.frameY + 0.03;
+    mesh.dressing(() => {
+      for (const x of [-m.frameHW, m.frameHW]) for (const z of [m.cab.zF - 0.2, m.cab.zB + 0.15]) mesh.box(x, m.frameY - 0.01 + h / 2, z, 0.1, h, 0.12, UNDER);
+    });
+  }
   // ---- the cargo body
   truckBody(mesh, m, paint, coarse, o.burnt);
   // ---- hardware: the front bumper, mirrors, tank, spare, rear lamps, mudflaps
@@ -745,35 +842,73 @@ export function buildTruck(mesh: VehicleMesh, m: TruckModel, o: BuildOptions): v
   if (fb) {
     const bm = fb.style === 'chrome' ? CHROME : fb.style === 'painted' ? paint : fb.style === 'black' ? TRIM : STEEL;
     mesh.box(0, fb.y, zNose - 0.06, m.width * 0.96, fb.h, 0.12, bm, 0.02);
+    // (props census r2 sweep, Lane C 2026-10-16: the bar stood 5-10 cm ahead of the rails' ends, floating) its
+    // brackets, a dumb iron on each rail's end forward into the bar
+    const y0 = Math.min(fb.y - fb.h / 2 + 0.02, m.frameY - 0.16), y1 = Math.max(fb.y + fb.h / 2 - 0.02, m.frameY - 0.04);
+    const z0 = railZ0 - 0.04, z1 = zNose - 0.08;
+    if (!coarse) mesh.dressing(() => {
+      for (const x of [-m.frameHW, m.frameHW]) mesh.box(x, (y0 + y1) / 2, (z0 + z1) / 2, 0.07, y1 - y0, z1 - z0, UNDER);
+    });
   }
   if (m.mirrors !== false) {
     mesh.mirrored(() => {
       const z = m.cab.zF - 0.08, y = m.cab.belt + 0.25, x = m.cab.hw;
+      // (props census r2 sweep, Lane C 2026-10-16) the arm's foot inside the cab's side where the plan's corner has
+      // rounded it in (a forward-control cab's big radius left the arm 9 cm off the panel)
+      const r = Math.min(m.cab.r, m.cab.hw * 0.9), dz = m.cab.zF - m.cab.rake * 0.05 - z;
+      const foot = (dz < r ? x - r + Math.sqrt(Math.max(0, r * r - (r - dz) * (r - dz))) : x) - 0.03;
       mesh.outboard(() => {
-        mesh.tube([[x - 0.02, m.cab.belt + 0.05, z], [x + 0.2, y + 0.05, z], [x + 0.22, y + 0.3, z]], 0.012, 5, TRIM);
+        mesh.tube([[foot, m.cab.belt + 0.05, z], [x + 0.2, y + 0.05, z], [x + 0.22, y + 0.3, z]], 0.012, 5, TRIM);
         mesh.box(x + 0.25, y + 0.18, z - 0.02, 0.05, 0.26, 0.15, TRIM, 0.01);
       });
     });
   }
   if (m.fuelTank === 'side') {
-    const z = m.cab.zB - 0.4;
-    mesh.push().translate(m.frameHW + 0.24, m.frameY - 0.22, z).rotateY(Math.PI / 2).rotateZ(Math.PI / 2);
-    mesh.lathe([[0.0001, -0.32], [0.17, -0.31], [0.2, -0.27], [0.2, 0.27], [0.17, 0.31], [0.0001, 0.32]], coarse ? 8 : 12, () => STEEL);
+    // Sealed lane 2026-10-10 (wave 368: "a vertical cylinder" behind the cab): the tank lies along the frame, its axis z
+    // (the lathe turns about x; the old extra rotateZ stood it on end), on two straps from the rail
+    const z = m.cab.zB - 0.5;
+    mesh.push().translate(m.frameHW + 0.26, m.frameY - 0.26, z).rotateY(Math.PI / 2);
+    mesh.lathe([[0.0001, -0.45], [0.19, -0.44], [0.23, -0.4], [0.23, 0.4], [0.19, 0.44], [0.0001, 0.45]], coarse ? 8 : 12, () => FUEL_TANK);
     mesh.pop();
+    if (!coarse) for (const dz of [-0.24, 0.24]) mesh.box(m.frameHW + 0.24, m.frameY - 0.2, z + dz, 0.5, 0.06, 0.05, UNDER);
   }
   if (m.spare === 'side') {
     mesh.push().translate(-(m.frameHW + 0.2), m.frameY - 0.05, m.cab.zB - 0.55).rotateZ(0.05);
     wheel(mesh, 0, 0, 0, -1, { ...ws, dual: false, bare: o.burnt });
     mesh.pop();
+    // Sealed lane 2026-10-10 (wave 368: "a wheel hangs at mid-length ... with no axle or carrier"): its carrier, an arm
+    // from the rail to the hub and a strap over the tyre to the rail's top, dark
+    mesh.dressing(() => {
+      const zc = m.cab.zB - 0.55, x0 = m.frameHW + 0.03, x1 = m.frameHW + 0.2 - m.tyreW / 2;
+      if (x1 > x0) mesh.box(-(x0 + x1) / 2, m.frameY - 0.05, zc, x1 - x0, 0.1, 0.12, UNDER);
+      mesh.box(-(m.frameHW + 0.2), m.frameY - 0.05 + m.wheelR + 0.015, zc, m.tyreW * 0.8, 0.03, 0.08, UNDER);
+      mesh.box(-(m.frameHW + 0.1), m.frameY + m.wheelR * 0.5 - 0.02, zc, 0.03, m.wheelR + 0.08, 0.08, UNDER);
+    });
   } else if (m.spare === 'under') {
     mesh.push().translate(0, m.frameY - 0.25, m.body.zB + 0.55).rotateZ(Math.PI / 2);
     wheel(mesh, 0, 0, 0, 1, { ...ws, dual: false, bare: o.burnt });
     mesh.pop();
+    // (props census r2 sweep, Lane C 2026-10-16: the wheel lay between the rails touching neither) its cradle, a bar
+    // under the tyre on a hanger from each rail
+    if (!coarse) mesh.dressing(() => {
+      const zc = m.body.zB + 0.55, under = m.frameY - 0.25 - m.tyreW * 0.5;
+      mesh.box(0, under, zc, m.frameHW * 2 + 0.06, 0.05, 0.06, UNDER);
+      for (const x of [-m.frameHW, m.frameHW]) mesh.box(x, (under + m.frameY - 0.1) / 2, zc, 0.05, m.frameY - 0.1 - under, 0.06, UNDER);
+    });
   }
   for (const l of m.rearLamps) {
     for (const side of [1, -1]) {
       if (l.shape === 'round') roundLamp(mesh, side * l.x, l.y, m.body.zB - 0.02, l.r ?? 0.06, lensMat(l), TRIM, -1, 0.04, coarse ? 8 : 10);
       else rectLamp(mesh, side * l.x, l.y, m.body.zB - 0.02, l.w ?? 0.16, l.h ?? 0.08, lensMat(l), TRIM, -1);
+    }
+    // (props census r2 sweep, Lane C 2026-10-16: a lamp hung 3-20 cm under the floor's tail, floating) a lamp below
+    // the floor stands on a strap from the floor's rear edge
+    const lampTop = l.y + (l.shape === 'round' ? (l.r ?? 0.06) * 1.15 : (l.h ?? 0.08) / 2 + 0.0125);
+    if (!coarse && lampTop < m.body.floorY - 0.05) {
+      const y0 = l.y, y1 = m.body.floorY - 0.02;
+      mesh.dressing(() => {
+        for (const side of [1, -1]) mesh.box(side * l.x, (y0 + y1) / 2, m.body.zB - 0.005, 0.04, y1 - y0, 0.05, UNDER);
+      });
     }
   }
   // the mudflaps behind the last axle, across the tyre (both twins of a dual) and never wider than it. Sealed lane
@@ -784,10 +919,79 @@ export function buildTruck(mesh: VehicleMesh, m: TruckModel, o: BuildOptions): v
       const z = m.rearAxles[m.rearAxles.length - 1] - m.wheelR - 0.12;
       const across = m.tyreW * (m.dualRear ? 2.0 : 0.96), mid = m.trackR / 2 - (m.dualRear ? m.tyreW * 0.52 : 0);
       mesh.box(side * mid, m.wheelR * 0.62, z, across, m.wheelR * 0.9, 0.012, RUBBER);
+      // (props census r2 sweep, Lane C 2026-10-16: the flap hung 11 cm from anything) its hanger: a bar along the flap's
+      // top, an arm up from its inner end and a tie in to the rail
+      const top = m.wheelR * 1.07, inner = mid - across / 2, tieY = m.frameY - 0.12;
+      if (!coarse) mesh.dressing(() => {
+        mesh.box(side * mid, top - 0.015, z, across + 0.02, 0.03, 0.03, UNDER);
+        if (tieY > top) {
+          mesh.box(side * (inner + 0.02), (top - 0.03 + tieY + 0.02) / 2, z, 0.04, tieY + 0.02 - (top - 0.03), 0.03, UNDER);
+          mesh.box(side * (m.frameHW + inner + 0.04) / 2, tieY, z, inner + 0.04 - m.frameHW, 0.04, 0.03, UNDER);
+        }
+      });
     }
   };
   if (coarse) mesh.dressing(mudflaps); else mudflaps();
+  wheelbaseKit(mesh, m, coarse);
   void zTail;
+}
+
+/**
+ * Sealed lane 2026-10-10, round 3 (wave 368's critics after the slot under the bed was closed: "daylight ... under its
+ * bed between the axles, with only a thin black rail and none of the side guards, fuel or air tanks"): the wheelbase
+ * carries what a truck carries there. On a post-war truck (bonneted wide or forward control) under the rails behind the
+ * cab: the fuel tank on the right when the model has none drawn, the battery box on the left (behind the side spare),
+ * the air tanks; on a model with `guards`, the side guards between the wheels. A period truck keeps its open frame (its
+ * tank sat in the cab). Dressing: drawn on both tiers, out of the collision solid.
+ */
+function wheelbaseKit(mesh: VehicleMesh, m: TruckModel, coarse: boolean): void {
+  if (m.front === 'narrow') return;
+  const zFront = m.cab.zB - 0.06, zRear = m.rearAxles[0] + m.wheelR + 0.14;
+  if (zFront - zRear < 0.6) return;
+  const railOut = m.frameHW + 0.035, top = m.frameY - 0.04, low = Math.max(0.34, m.wheelR * 0.62);
+  const h = Math.min(0.5, top - low);
+  if (h < 0.16) return;
+  mesh.dressing(() => {
+    let right = zFront, left = zFront;
+    // the right side: a box tank (when the model draws no cylinder), then a pair of air tanks
+    if (m.fuelTank !== 'side') {
+      const L = Math.min(1.0, (zFront - zRear) * 0.5), D = 0.46;
+      mesh.box(railOut + D / 2 + 0.01, top - h / 2, right - L / 2, D, h, L, FUEL_TANK, coarse ? 0 : 0.04);
+      if (!coarse) for (const dz of [-L * 0.3, L * 0.3]) mesh.box(railOut + D / 2 + 0.01, top - h / 2, right - L / 2 + dz, D + 0.016, h + 0.016, 0.04, UNDER);
+      right -= L + 0.1;
+    } else right = m.cab.zB - 1.1;
+    const airR = 0.12, airL = Math.min(0.75, right - zRear - 0.05);
+    if (airL > 0.35) {
+      for (const dy of [0, -0.27]) {
+        const y = top - airR - 0.02 + dy;
+        if (y - airR < low) continue;
+        // (props census r2 sweep, Lane C 2026-10-16: the tanks stood 4 cm off the rail, floating) on two straps
+        if (!coarse) for (const dz of [-airL * 0.3, airL * 0.3]) mesh.box(railOut + 0.02, (y + top) / 2, right - airL / 2 + dz, 0.06, top - y, 0.05, UNDER);
+        mesh.push().translate(railOut + airR + 0.04, y, right - airL / 2).rotateY(Math.PI / 2);
+        mesh.lathe([[0.0001, -airL / 2], [airR * 0.85, -airL / 2 + 0.01], [airR, -airL / 2 + 0.05], [airR, airL / 2 - 0.05], [airR * 0.85, airL / 2 - 0.01], [0.0001, airL / 2]],
+          coarse ? 6 : 10, () => UNDER);
+        mesh.pop();
+      }
+    }
+    // the left side: behind the side spare, the battery box
+    if (m.spare === 'side') left = m.cab.zB - 0.55 - m.wheelR - 0.1;
+    if (left - 0.56 > zRear) mesh.box(-(railOut + 0.21), top - Math.min(h, 0.42) / 2, left - 0.28, 0.4, Math.min(h, 0.42), 0.54, UNDER, coarse ? 0 : 0.02);
+    // the side guards: two rails between the wheels at the body's side, on their brackets to the frame
+    if (m.guards) {
+      const gF = m.frontAxle - m.wheelR - 0.16, gB = m.rearAxles[0] + m.wheelR + 0.16, x = m.body.hw - 0.05;
+      if (gF - gB > 0.5) {
+        mesh.mirrored(() => {
+          for (const y of [0.5, 0.82]) mesh.box(x, y, (gF + gB) / 2, 0.03, 0.1, gF - gB, STEEL);
+          const n = Math.max(2, Math.round((gF - gB) / 1.2));
+          for (let k = 0; k <= n; k++) {
+            const z = gF + (gB - gF) * (k / n);
+            mesh.box(x, 0.66, z, 0.03, 0.42, 0.05, UNDER);
+            mesh.box((x + railOut) / 2, 0.86, z, x - railOut, 0.05, 0.05, UNDER);
+          }
+        });
+      }
+    }
+  });
 }
 
 /** Catmull-Rom through control points (open), `per` samples per span. */
@@ -889,6 +1093,11 @@ function narrowFront(mesh: VehicleMesh, m: TruckModel, paint: VehicleMaterial, c
       const x = side * l.x;
       if (l.dz !== undefined && !coarse) mesh.box(x * 0.82, l.y - 0.1, (l.dz ?? 0) + zNose - 0.32, Math.abs(x) * 0.36, 0.03, 0.03, TRIM);
       roundLamp(mesh, x, l.y, zNose - 0.32 + (l.dz ?? 0), l.r ?? 0.1, lensMat(l), bezelMat(l, paint, 'body'), 1, 0.12, coarse ? 8 : 12);
+      // (props census r2 sweep, Lane C 2026-10-16: the lamps stood 2-7 cm off the shell and the wings, floating) the
+      // lamp bar from the bezel's back in to the radiator shell's side
+      const yb = l.y - (l.r ?? 0.1) * 0.3, ys = clamp(yb, rad.y - rad.h / 2 + 0.04, rad.y + rad.h / 2 - 0.04);
+      const xs = side * Math.max(0.02, Math.min(Math.abs(x), rad.w / 2 - 0.03));
+      if (!coarse) mesh.dressing(() => mesh.tube([[x, yb, zNose - 0.32 + (l.dz ?? 0) - 0.06], [xs, ys, shellZ]], 0.018, 6, TRIM));
     }
   }
 }
@@ -915,6 +1124,14 @@ function wideFront(mesh: VehicleMesh, m: TruckModel, paint: VehicleMaterial, coa
 /** Forward control: the cab stands over the front axle; below it the bumper, the steps and the wings round the wheels. */
 function cabOverFront(mesh: VehicleMesh, m: TruckModel, paint: VehicleMaterial, coarse: boolean, zNose: number): void {
   const R = m.wheelR + 0.08;
+  // Sealed lane 2026-10-10, round 2 (wave 368: "a featureless white box cab with no grille or lamps"): where the face's
+  // plane (the vehicle's nose) stands ahead of the cab's front (Renault D 0.20 m, Bedford TK 0.35 m, LP 1513 0.22 m),
+  // the grille and lamps floated in the air before a blank cab. The front panel below the windscreen fills that depth
+  // (dressing: the bumper already bounds the nose in the collision solid).
+  if (zNose - m.cab.zF > 0.012) {
+    const depth = zNose - 0.015 - (m.cab.zF - 0.03), hw = m.cab.hw - m.cab.r * 0.4, y0 = Math.min(m.cab.y0, m.frontFace.bumper ? m.frontFace.bumper.y + m.frontFace.bumper.h / 2 : m.cab.y0);
+    mesh.dressing(() => mesh.box(0, (y0 + m.cab.belt) / 2, m.cab.zF - 0.03 + depth / 2, hw * 2, m.cab.belt - y0, depth, paint, coarse ? 0 : 0.03));
+  }
   mesh.mirrored(() => {
     const n = coarse ? 5 : 9, path: [number, number, number][] = [];
     for (let k = 0; k <= n; k++) {
@@ -923,7 +1140,11 @@ function cabOverFront(mesh: VehicleMesh, m: TruckModel, paint: VehicleMaterial, 
     }
     mesh.sweep(path, [[-m.tyreW * 0.75, -0.015], [m.tyreW * 0.75, -0.015], [m.tyreW * 0.75, 0.015], [-m.tyreW * 0.75, 0.015]],
       () => TRIM, { closedSection: true, caps: true, up: [1, 0, 0] });
-    if (!coarse) mesh.box(m.cab.hw - 0.12, m.cab.y0 - 0.25, zNose - 0.2, 0.22, 0.03, 0.18, STEEL);
+    if (!coarse) {
+      mesh.box(m.cab.hw - 0.12, m.cab.y0 - 0.25, zNose - 0.2, 0.22, 0.03, 0.18, STEEL);
+      // (props census r2 sweep, Lane C 2026-10-16: the step floated 3 cm under the cab) its two hangers up to the floor
+      for (const dz of [-0.07, 0.07]) mesh.box(m.cab.hw - 0.2, m.cab.y0 - 0.115, zNose - 0.2 + dz, 0.03, 0.27, 0.03, UNDER);
+    }
   });
   face(mesh, zNose, 1, { ...m.frontFace, bumper: undefined }, paint, coarse);
 }

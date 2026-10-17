@@ -26,7 +26,18 @@ const hull = vertices('hull');
 const hullDetail = vertices('hullDetail');
 const turret = vertices('turret');
 const turretDark = vertices('turretDark');
-const turretEquipment = vertices('turretEquipment');
+// VH.14 (76ef67d65, the tower's GPMG works on every host): the receiver and its cheeks yaw with the station, so they
+// are read from the station's own equipment mesh in the turret rig's frame
+function rigVertices(name, rigName) {
+  const mesh = tank.root.getObjectByName(name);
+  assert.ok(mesh?.geometry?.attributes?.position, `missing ${name} geometry`);
+  tank.root.updateMatrixWorld(true);
+  const toRig = new THREE.Matrix4().copy(tank.root.getObjectByName(rigName).matrixWorld).invert().multiply(mesh.matrixWorld);
+  const position = mesh.geometry.attributes.position, v = new THREE.Vector3(), result = [];
+  for (let index = 0; index < position.count; index++) result.push(v.fromBufferAttribute(position, index).applyMatrix4(toRig).toArray());
+  return result;
+}
+const stationEquipment = rigVertices('challengerRemoteGPMG_yaw_turretEquipment', 'rig_turret');
 
 const fenderReceipt = tank.root.getObjectByName('rig_hull')?.userData.challenger2FenderReceipt;
 assert.equal(fenderReceipt?.legacyHydrogasGapAssembliesRemoved, true,
@@ -151,7 +162,7 @@ assert.ok(roofReceipt.station.verticalOverlapM >= 0.01,
   'weapon-station receiver cheeks must overlap the trunnion ring vertically');
 assert.ok(roofReceipt.station.receiverSupportFrontZ < roofReceipt.station.ringRearZ,
   'weapon-station support and ring must form one connected assembly');
-assert.ok(turretEquipment.some(([x, y, z]) => x > 0.58 && x < 0.63
+assert.ok(stationEquipment.some(([x, y, z]) => x > 0.58 && x < 0.63
   && y > 0.70 && y < 0.85 && z > 0.32 && z < 0.36),
 'extended receiver cheek must visibly overlap the trunnion envelope');
 

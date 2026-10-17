@@ -90,6 +90,23 @@ on post-ready environment texture warming, eager fleet/map artwork, frame-gap
 spikes, long-task bursts, or console errors. Environment-transition claims use
 `tools/garage-variants-probe.mjs`; exercise all ten destinations, rapid stale
 selection, cache eviction, persisted reload, iPad, and phone layouts.
+Pinch-zoom claims (a trackpad pinch only magnifies; 2026-10-16) use the manual
+`npm run qa:pinch -- --base=<served origin> --out=<report.json>`
+(`tools/pinch-zoom-probe.mjs`): a real CDP trackpad pinch to 2x, a pan and a
+pinch-out on home, docs, gallery, a dossier, 404, the HUD editor preview, the
+splash, garage, a live battle HUD and Studio (splash, garage and battle share one
+boot), each compared with two control snapshots (layout vars, bands, canvases,
+key and per-element layout boxes, scroll positions, cot:layoutchange,
+layout-shift entries), then a real resize that must relayout. Where a guard
+cancels the pinch (the game page, the HUD preview) the probe records that and
+lets a zoom through anyway (page scale on the game page, a touch pinch
+elsewhere). It runs on SwiftShader (no GPU lock): serve the checkout yourself
+and kill that PID, and on a loaded machine allow long waits (`--ready-timeout`,
+`--battle-timeout`; a game boot took up to 30 minutes at load 250, and a live
+battle can stall there, so leave `battle` out of `--surfaces` then). Run it
+against origin/main too: a build before the fix exits 1 (the negative control).
+Its pure rules are `pinch-zoom-probe.selftest.mjs` in npm test; the browser run
+is not.
 Static-screen and transition claims require `npm run perf:resources:gate`; it
 records task/script CPU, forced-GC heap, scene and renderer residency, cache
 ownership, actual paint cadence, and complete-frame draw/primitive totals
@@ -262,7 +279,7 @@ bad flag return before a server exists; every run writes
 | `terrain-layer-flag-probe.mjs` | which splat layer paints a surface (G yellow, D cyan, R magenta, M blue; rounds 45, 47) | `--maps=monsoon --views=canyon-in` |
 | `terrain-uniform-iso-probe.mjs` | which terrain uniform carries an artefact; `--flat-normals` (round 47) | `--maps=desert --views=sw-corner-close --iso-uniforms=uRipple --flat-normals` |
 | `world-layer-isolation-probe.mjs` | which world layer draws a step at the water edge (round 40) | `--maps=coastal --views=bird-e-edge,over-e-560` |
-| `salvo-indicator-probe.mjs` | the salvo rack drives the HUD magazine indicator through real input (round 41) | default `--ids=ztz100_prototype:salvo,leclerc_x:autoloader,t72b3m:single` |
+| `salvo-indicator-probe.mjs` | the salvo rack drives the HUD magazine indicator through real input (round 41) | default `--ids=ztz100_prototype:salvo,leclerc_xlr:autoloader,t72b3m_2022:single` |
 | `water-drive-probe.mjs` | the wake and churn trail of a fording hull (round 46) | `--maps=reservoir --speed=7` |
 | `suspension-strip-probe.mjs` | frame strips of the player hull for the visual gauntlet (physics lane, 2026-10-03): rough ground at speed, a hard stop, a landing in each gravity world, level drops onto flat ground (a case may name its hull), a rest on a slope and across one, a field trench and an assault sector line crossed at a held speed (round 7, watched from inside the trench); each frame stamped (root height, rendered pitch and roll, wheels in contact, each road wheel's travel) and checked against the sim state it was synced from, a landing's window anchored on its touchdown step | `--root=<checkout> --dist=<built dist> --out=<dir> --tag=after --ids=land-mars,hardstop` |
 | `map-metrics.mjs` | Node ports of the PIL metrics: `skyline` (check 5), `stripe` (check 8), `boxes` (checks 3, 4, 11); PIL-identical on the round-43/47 frames | `skyline <dir> a desert`, `stripe <png> 900,480,1500,700`, `boxes <dir> boxes.json titan_gorge a b` |

@@ -15,7 +15,7 @@ function frames(t){
   for(const[name,point]of [['rig_turret',SOURCE.yaw],['rig_gun',SOURCE.gun]]){
     const p=t.root.getObjectByName(name).getWorldPosition(new THREE.Vector3());point.forEach((v,i)=>near(p.getComponent(i),v,.000002,`${name} inferred source joint`));
   }
-  near(getSpec('t72bu_x').dims.heightM,2.16259918790,.000002,'casting roof remains distinct from highest mast');
+  near(getSpec('t72bu').dims.heightM,2.16259918790,.000002,'casting roof remains distinct from highest mast');
   assert.ok(t.root.getObjectByName('gunMount')?.isMesh,'actual pitching canvas and trunnion seat');
   const turret=t.root.getObjectByName('rig_turret'),gun=t.root.getObjectByName('rig_gun');
   for(const yaw of [0,-1.1,.79])for(const pitch of [0,-.07,.19]){
@@ -44,10 +44,14 @@ function sourceForms(t){
     near(hit?.point.y,1.765735,.000003,'source actual transverse rear drum crown');
   }
   assert.equal(new THREE.Raycaster(new THREE.Vector3(0,1.75,-3.4954),new THREE.Vector3(0,-1,0),0,.35).intersectObject(detail,false).length,0,'real air between drums');
-  const mg=t.root.getObjectByName('sourceMachineGun_turretDark');assert.equal(mg.parent.parent,t.root.getObjectByName('rig_turret'));
+  // 2026-10-16 (226 gate): VH.14 (76ef67d65, every drawn gun works) makes the AA gun a working roof station: the
+  // fitting rides its station's pitch node under the turret, so ownership is an ancestor test (a boolean: assert.equal on
+  // two scene graphs made node inspect both whole and ran the process past 40 GB)
+  const mg=t.root.getObjectByName('sourceMachineGun_turretDark');assert.ok(ridesUnder(mg,t.root.getObjectByName('rig_turret')),'the AA station rides the turret');
   const ray=new THREE.Raycaster(new THREE.Vector3(-.60653,2.68942,2.3),new THREE.Vector3(0,0,-1),0,.3);
   near(ray.intersectObject(mg,false)[0]?.point.z,2.18421,.000003,'coherent actual source AA terminal');
 }
+const ridesUnder=(o,a)=>{for(let p=o.parent;p;p=p.parent)if(p===a)return true;return false;};
 function gearAndEra(t){
   const wheel=t.root.getObjectByName('gearRoadWheelTires'),m=new THREE.Matrix4(),v=new THREE.Vector3();assert.equal(wheel.count,12);
   for(let i=0;i<wheel.count;i++){
@@ -72,7 +76,7 @@ function gearAndEra(t){
   }
 }
 for(const quality of ['high','low']){
-  const t=createTank('t72bu_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
+  const t=createTank('t72bu',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try{t.root.updateMatrixWorld(true);frames(t);bore(t);sourceForms(t);gearAndEra(t);}finally{t.dispose();}
 }
 console.log('t72buXGeometry: actual high/low source joints, physical opening and recessed floor, crowns/drum air, native wheels and reactive backing pass; full visual gates separate');

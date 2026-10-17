@@ -70,7 +70,7 @@ try{
   unchangedUpper(own[0].geometry);sourceRays(own,'helper');
   const ringVolume=closed(own[1].geometry);assert.ok(ringVolume>.097&&ringVolume<.100,'annular volume excludes its actual central aperture');
   for(const quality of['high','low']){
-    const t=createTank('t90_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+    const t=createTank('t90',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
     try{
       t.root.updateMatrixWorld(true);const original=t.root.getObjectByName('turret');assert.ok(original?.isMesh);
       const proxy=new THREE.Mesh(original.geometry,mat);proxy.matrixAutoUpdate=false;proxy.matrixWorld.copy(original.matrixWorld);

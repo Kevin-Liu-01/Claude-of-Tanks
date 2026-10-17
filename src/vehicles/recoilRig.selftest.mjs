@@ -42,7 +42,7 @@ function rig(id, options = {}) {
 
 // ---- stabilized bore: rendered suspension must not bend the shot line ----
 {
-  const { visual, state } = rig('leclerc');
+  const { visual, state } = rig('leclerc_s2');
   state.yaw = 0.3;
   state.visualPitch = 0.045;
   state.visualRoll = -0.03;
@@ -66,22 +66,22 @@ function rig(id, options = {}) {
   const actual = new THREE.Vector3();
   visual.gunDirWorld(actual);
   assert.ok(actual.angleTo(expected) < 1e-5,
-    `leclerc: stabilizer holds canonical shell line through rendered hull rock (${actual.angleTo(expected)} rad)`);
+    `leclerc_s2: stabilizer holds canonical shell line through rendered hull rock (${actual.angleTo(expected)} rad)`);
 }
 
 // ---- 120 mm-class cannon: scale-true throw + full recuperate cycle --------
 {
-  const { visual, state, recoilG } = rig('leclerc');
-  assert.equal(recoilG.position.z, 0, 'leclerc: in battery at rest');
+  const { visual, state, recoilG } = rig('leclerc_s2');
+  assert.equal(recoilG.position.z, 0, 'leclerc_s2: in battery at rest');
   visual.recoilKick(0, 1);
   visual.syncFromState(state, 0.12); // inside the out-of-battery hold
-  near(recoilG.position.z, -0.13, 1e-6, 'leclerc: 120 mm-class throw at hold');
+  near(recoilG.position.z, -0.13, 1e-6, 'leclerc_s2: 120 mm-class throw at hold');
   assert.ok(visual.root.getObjectByName('rig_gun').rotation.x < -0.013,
-    'leclerc: cradle rock rides the stroke');
-  assert.ok(state._flinch.pv !== 0, 'leclerc: hull-rock impulse routed to the sim mirror');
+    'leclerc_s2: cradle rock rides the stroke');
+  assert.ok(state._flinch.pv !== 0, 'leclerc_s2: hull-rock impulse routed to the sim mirror');
   visual.syncFromState(state, 0.70); // past back+hold+return (0.79 s)
   visual.syncFromState(state, 0.05);
-  near(recoilG.position.z, 0, 1e-9, 'leclerc: recuperated to battery');
+  near(recoilG.position.z, 0, 1e-9, 'leclerc_s2: recuperated to battery');
 }
 
 // ---- IFV autocannon: rapid shudder completes inside the belt cycle --------
@@ -183,7 +183,7 @@ for (const id of TWIN_PLANT) {
 }
 // Eight fixed missile canisters use separate launch origins, without the
 // barrel stroke of a cannon. The measured cradle remains the pitch pivot.
-const FIXED_LAUNCHERS = ['aft10_x'];
+const FIXED_LAUNCHERS = ['aft10'];
 for (const id of FIXED_LAUNCHERS) {
   const { visual, state, recoilG } = rig(id);
   const gunG = visual.root.getObjectByName('rig_gun');
@@ -243,7 +243,7 @@ for (const id of FIXED_LAUNCHERS) {
 }
 
 // ---- casemate law (fixedMount chain + tubeless stroke suppression): its last
-// playable subjects (t95, isu152) retired on 2026-09-23; jpz_e100_x carries a
+// playable subjects (t95, isu152) retired on 2026-09-23; jpz_e100 carries a
 // recoiling tube, so the tubeless hull-rock path has no fleet fixture today.
 
 // ---- shortest real tube in the fleet (m2a2 0.755 m Bushmaster) recoils ----
@@ -260,7 +260,7 @@ for (const id of FIXED_LAUNCHERS) {
 // stationary shroud is correctly assigned to the pitching cradle. Its native
 // physical bore supplies stronger evidence than the hidden ISU stub above.
 for (const quality of ['high', 'low']) {
-  const { visual, state, recoilG } = rig('kf41_lynx_x', { quality });
+  const { visual, state, recoilG } = rig('kf41_lynx', { quality });
   const tube = recoilG.getObjectByName('gun');
   tube.geometry.computeBoundingBox();
   const span = tube.geometry.boundingBox.max.z - tube.geometry.boundingBox.min.z;

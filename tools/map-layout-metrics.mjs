@@ -55,7 +55,9 @@ export const COVER_HULL_M = 1.1;
 /** The carriageway half-width a solid prop must stay out of (the road mask's edge sits at ~3.85 m). */
 export const ROAD_CORE_M = 3.5;
 /** Deliberate roadblocks: reported, but not counted as dressing that wandered into a road. */
-export const ROADBLOCK_KINDS = new Set(['hedgehog', 'barrier']);
+// (2026-10-06, the map-revival lane: a burnt tram on its track — Ruinspires' boulevard, maps/sarajevoStreets.ts — blocks a road
+// as a hedgehog does, deliberately)
+export const ROADBLOCK_KINDS = new Set(['hedgehog', 'barrier', 'tram-wreck']);
 export const ORPHAN_ROAD_M = 60;
 /** Lane points sit this far apart along each slice across the spawn axis. */
 export const LANE_POINT_M = 20;
@@ -806,6 +808,17 @@ export async function computeLayoutMetrics(mapId, { objectives = true } = {}) {
   // (a set-piece bridge's deck is a 'structure' record, not a 'bridge' one — compose.ts: the bots steer round it — but the
   // road it carries runs over it as over a map kit's bridge: its record is no prop standing in that road)
   const onSetPieceDeck = (x, z) => setPieces.some((p) => p.deck && inPiece(p, x, z));
+  // (Lane C 2026-10-16) a structure standing on a map kit's bridge deck (its parapet and balustrade runs, structures of
+  // their own: archedStoneBridge.ts addParapetRuns, suzhouBridges.ts) is the bridge's; a structure a map stands in its
+  // river by design (Amberford's weir sluice: mapKits.ts riverStructureSites) is the river's. Neither is a prop in water.
+  const decks = heightField.bridgeDecks ?? [];
+  const onKitDeck = (x, z) => decks.some((d) => {
+    const ox = x - d.x, oz = z - d.z;
+    return Math.abs(ox * d.ux + oz * d.uz) <= d.halfLength + 0.5 && Math.abs(-ox * d.uz + oz * d.ux) <= d.halfWidth + 0.6;
+  });
+  const { riverStructureSites } = await import('../src/world/maps/mapKits.ts');
+  const riverSites = riverStructureSites(mapId, layout ?? {}, decks);
+  const inRiverSite = (x, z) => riverSites.some((site) => Math.hypot(x - site.x, z - site.z) <= site.r);
   let buildings = 0, orphans = 0;
   const inRoad = {}, inWater = {}, roadblocks = {};
   for (const record of world.getObstacles()) {
@@ -832,7 +845,7 @@ export async function computeLayoutMetrics(mapId, { objectives = true } = {}) {
       if (ROADBLOCK_KINDS.has(kind)) roadblocks[kind] = (roadblocks[kind] ?? 0) + 1;
       else inRoad[kind] = (inRoad[kind] ?? 0) + 1;
     }
-    if (water && !MARINE_KINDS.has(kind)) inWater[kind] = (inWater[kind] ?? 0) + 1;
+    if (water && !MARINE_KINDS.has(kind) && !(kind === 'structure' && (onKitDeck(cx, cz) || inRiverSite(cx, cz)))) inWater[kind] = (inWater[kind] ?? 0) + 1;
   }
   const solidPropsInRoad = Object.values(inRoad).reduce((a, b) => a + b, 0);
   const solidPropsInWater = Object.values(inWater).reduce((a, b) => a + b, 0);

@@ -51,7 +51,7 @@ for (const quality of ['high', 'low']) {
   assert.ok(Math.abs(solids.tire.boundingBox.max.y - .3166805) < 1e-6);
   for (const geometry of [solids.tire, solids.disc]) geometry.dispose();
 
-  const tank = createTank('m1a2_sepv2_x', null,
+  const tank = createTank('m1a2_abrams_sepv2', null,
     { proceduralOnly: true, geometryReceipt: true, quality, batchStatic: false });
   try {
     const tires = tank.root.getObjectByName('gearRoadWheelTires');
@@ -80,7 +80,7 @@ for (const quality of ['high', 'low']) {
     const seatedAxleY = tank.root.getObjectByName('rig_hull')?.userData.runningGearReceipts?.at(-1)?.wheelY;
     for (const point of centers) assert.ok(Math.abs(point.y - seatedAxleY) < 1e-6, `wheel centre ${point.y} sits on the seated axle ${seatedAxleY}`);
     const before = Array.from(tires.instanceMatrix.array);
-    const state = createTankState(getSpec('m1a2_sepv2_x'), new THREE.Vector3(), 0);
+    const state = createTankState(getSpec('m1a2_abrams_sepv2'), new THREE.Vector3(), 0);
     tank.setGroundSampler((x, z) => Math.abs(z) < .3 ? -.05 : 0);
     state.trackScroll.l = .37; state.trackScroll.r = -.21;
     for (let k = 0; k < 8; k++) tank.syncFromState(state, 1 / 30, 20);

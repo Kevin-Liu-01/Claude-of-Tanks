@@ -12,10 +12,11 @@
 // Preview a subset with --only=game,home,docs-models before regenerating all.
 // Every labelled card is rendered twice: public/brand/og/<id>.jpg for the English page and public/brand/og/zh/<id>.jpg,
 // the same picture with the label in the zh-CN catalog's words, for its /cn twin (src/presentation/localizedHtml.ts).
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer';
+import { filterPublishedImage, masterFilter } from '../media-r5/master-filter.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const OUTPUT = join(ROOT, 'public/brand/og');
@@ -132,6 +133,10 @@ async function generateOgImages(cards = OG_IMAGE_CARDS) {
       const target = join(ROOT, ogCardPath(name, locale));
       const format = name === 'game' ? { type: 'png' } : { type: 'jpeg', quality: 88 };
       await page.screenshot({ path: target, ...format, captureBeyondViewport: false });
+      if (masterFilter()) {
+        writeFileSync(target, await filterPublishedImage(readFileSync(target), `og-${locale}-${name}`,
+          { type: format.type === 'png' ? 'image/png' : 'image/jpeg', quality: format.quality ?? 90 }));
+      }
       console.log(`wrote ${target}`);
     }
   } finally {

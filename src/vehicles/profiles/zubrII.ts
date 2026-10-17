@@ -247,6 +247,14 @@ function turretEquipment(P:TankBuilderPort,stock:readonly THREE.BufferGeometry[]
   }
 }
 
+/** Zubr II's native T-72B3 hull with its own deep ERAWA skirts and deck kit,
+ * unchanged beneath its donor turret. */
+export function buildZubrIIHull(P:TankBuilderPort):void {
+  P.hullG.position.set(0,0,0);
+  buildT72B3XHullCore(P);buildT72B3XRunningGear(P);buildT72B3XFenders(P);
+  hullEquipment(P);skirts(P);
+}
+
 /** Shared gun, cupola and independent RWS are added by the integrator. */
 export function buildZubrII(P:TankBuilderPort):void {
   P.hullG.position.set(0,0,0);

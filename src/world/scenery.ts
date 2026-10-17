@@ -26,6 +26,9 @@
 import * as THREE from 'three';
 import { SimplexNoise } from '../engine/simplexFast.ts';
 import { buildBedrock, buildRockFormation, type RockFormationSpec } from './sceneryRocks.ts';
+import { buildCastleRock } from './castleRock.ts';
+import { buildCaprockRim } from './caprockRim.ts';
+import { buildCanyonWall } from './canyonWall.ts';
 import { restsOnTalus, TALUS_DEG } from './landformGeology.ts';
 import { buildConductor, buildPylon, SCENERY_DESTRUCTIBLE_TYPES } from './maps/sceneryKit.ts';
 import { buildFieldWorks, type FieldWorksBuilt, type FieldWorksKeepOut, type FieldWorksReceipt, type FieldWorksRect } from './fieldWorks.ts';
@@ -100,7 +103,7 @@ interface SceneryBuildContext {
 }
 
 interface SceneryFeatureReceipt {
-  family: 'rock' | 'rockField' | 'bedrock' | 'landmark' | 'powerLine';
+  family: 'rock' | 'rockField' | 'bedrock' | 'castle' | 'caprock' | 'canyonWall' | 'landmark' | 'powerLine';
   kind: string;
   name: string | null;
   x: number;
@@ -407,6 +410,53 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
     yield { fine: true, progress: false, stage: 'scenery' };
   }
 
+  // ---- castle rocks: a tuff pinnacle's skin over its knoll, its rooms, dovecotes and passages (castleRock.ts); a
+  // gate's buttress is a mass, the rest a skin no hull reaches; one stream each
+  for (const [ci, rock] of (scenery.castles ?? []).entries()) {
+    const feature: SceneryFeatureReceipt = { family: 'castle', kind: 'tuff castle', name: rock.name ?? null, x: rock.x, z: rock.z, status: 'placed' };
+    if (Math.max(Math.abs(rock.x), Math.abs(rock.z)) > SQUARE) { skip(feature, 'outside the square'); continue; }
+    const built = buildCastleRock(rock, ground, noise, mulberry32(ctx.seed + 17301 + 131 * ci), { mobile: ctx.mobile });
+    if (!built.geometry) { skip(feature, 'no wall to skin'); yield { fine: true, progress: false, stage: 'scenery' }; continue; }
+    rockPieces.push(built.geometry);
+    // (a castle's masses are convex columns: one tier and one shell band each, from its foot to its top — the port onto
+    // the formation collision's profile, Skybridge round 5 on integ/226)
+    for (const mass of built.masses) {
+      const band = { points: mass.points, y0: mass.y0, y1: mass.y1 };
+      addMass({ y0: mass.y0, profile: { contact: [mass.points], tiers: [band], caps: null, bands: [band], top: mass.y1, low: mass.y0 } });
+    }
+    feature.triangles = built.triangles;
+    receipt.rockTriangles += built.triangles;
+    receipt.placed++;
+    receipt.features.push(feature);
+    yield { fine: true, progress: false, stage: 'scenery' };
+  }
+
+  // ---- caprock: a ridge's or a trench's hard bed along its brows (caprockRim.ts), a skin no hull reaches; one stream each
+  for (const [bi, bench] of (scenery.caprock ?? []).entries()) {
+    const feature: SceneryFeatureReceipt = { family: 'caprock', kind: 'tuff caprock', name: bench.name ?? null, x: bench.x, z: bench.z, status: 'placed' };
+    const built = buildCaprockRim(bench, ground, noise, mulberry32(ctx.seed + 17501 + 131 * bi), { mobile: ctx.mobile });
+    if (!built.geometry) { skip(feature, 'no rim'); yield { fine: true, progress: false, stage: 'scenery' }; continue; }
+    rockPieces.push(built.geometry);
+    feature.triangles = built.triangles;
+    receipt.rockTriangles += built.triangles;
+    receipt.placed++;
+    receipt.features.push(feature);
+    yield { fine: true, progress: false, stage: 'scenery' };
+  }
+
+  // ---- canyon walls: a trench's two walls' relief (canyonWall.ts), a skin no hull reaches; one stream each
+  for (const [wi, arm] of (scenery.canyonWalls ?? []).entries()) {
+    const feature: SceneryFeatureReceipt = { family: 'canyonWall', kind: 'canyon wall', name: arm.name ?? null, x: arm.x, z: arm.z, status: 'placed' };
+    const built = buildCanyonWall(arm, ground, noise, mulberry32(ctx.seed + 17701 + 131 * wi), { mobile: ctx.mobile });
+    if (!built.geometry) { skip(feature, 'no wall'); yield { fine: true, progress: false, stage: 'scenery' }; continue; }
+    rockPieces.push(built.geometry);
+    feature.triangles = built.triangles;
+    receipt.rockTriangles += built.triangles;
+    receipt.placed++;
+    receipt.features.push(feature);
+    yield { fine: true, progress: false, stage: 'scenery' };
+  }
+
   // ---- rock fields: formations scattered over a hillside, the steeper ground first, clear of each other and the trees
   const standingSites: Array<{ x: number; z: number; r: number }> = stoneJobs.map((job) => ({ x: job.spec.x, z: job.spec.z, r: rockReach(job.spec) }));
   // symmetric deployments (modes lane, 2026-10-08): both sides' deployment slots keep the pads' clearing (sim/matchPlacement.ts)
@@ -590,7 +640,8 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
 }
 
 /**
- * The field boundaries' works: walls and banks on the land use's own lines (decor, no collision; fieldWorks.ts). The
+ * The field boundaries' works: walls and banks on the land use's own lines (fieldWorks.ts; the walls' crushable spans:
+ * fieldWallCollision.ts, the banks decor with no collision). The
  * props owner runs this once every solid is final (after its pools' refit), so the keep-out's match placement reads the
  * same solids the battle's does. Null when the map asks for none or the world has no land use.
  */

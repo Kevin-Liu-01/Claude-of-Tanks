@@ -4,11 +4,11 @@ import { createTank } from '../tankFactory.ts';
 
 const materialsSource = readFileSync(new URL('../materials.ts', import.meta.url), 'utf8');
 assert.match(materialsSource,
-  /spec\.id === 't72b3m'[\s\S]*paintableRecs\.push\(\{ m: canvasCloth, kind: 'canvas' \}\)/,
+  /spec\.id === 't72b3m_2022'[\s\S]*paintableRecs\.push\(\{ m: canvasCloth, kind: 'canvas' \}\)/,
   'T-72B3M canvas participates in live scheme tinting without sharing the camo map');
 
 // 2026-10-01: the owner's renewal rebuilt both vehicles on detailed source studies (4c34b3e8b, cdbfe54dc):
-// t72b3m is the obr. 2022 on the t72b3m_x hull with the T-90SM X turret, bmpt_terminator2 the T-80U X hull with a
+// t72b3m_2022 is the obr. 2022 on the t72b3m_2016 hull with the T-90SM X turret, bmpt_terminator2 the T-80U X hull with a
 // reshaped turret. The retired legacy builder's t72b3mMaterialReceipt, painted deck panels (hullWood) and Relikt
 // turretTrack bucket left with it. The hierarchy itself is still the law, checked on the actual meshes: world-scaled
 // camouflage on armor, fittings and ERA (one material, one box projection), never on canvas or dedicated stock.
@@ -50,7 +50,7 @@ const assertMaterialHierarchy = (id) => {
   }
 };
 
-assertMaterialHierarchy('t72b3m');
+assertMaterialHierarchy('t72b3m_2022');
 assertMaterialHierarchy('bmpt_terminator2');
 
 console.log('t72CamoCoverage.selftest: T-72B3M/BMPT material hierarchy keeps camo off local-UV fittings');

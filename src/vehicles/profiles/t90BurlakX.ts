@@ -8,6 +8,7 @@ import {sectionSolid} from './sectionSolid.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube} from './measuredPrimitives.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import {T90_BURLAK_X_SOURCE_DATUMS} from '../t90BurlakXArmor.ts';
 import {addT90BurlakSkirtCassettes} from './t90BurlakXSkirts.ts';
 import {addT90BurlakRearFurniture} from './t90BurlakXRear.ts';
@@ -198,7 +199,9 @@ function machineGun(P:TankBuilderPort):void{
   mg.add('turretDark',cylZ(.0253,.2977,24),-1.3613,2.28392,-.18972);
   mg.add('turretDark',cylZ(.01945,.395,24),-1.36935,2.28332,.21863);
   mg.add('turretDark',blindTube(.020,.0064,.1543,.055,24),-1.3739,2.28332,.49128);
-  mg.add('turretDetail',box(.0442,.099,.0195),-1.37,2.30967,.22858);mg.finish();
+  mg.add('turretDetail',box(.0442,.099,.0195),-1.37,2.30967,.22858);
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+  stationFromDrawnGun(mg.finish(),{name:'t90BurlakXRoofNsvt',caliberMm:12.7});
 }
 function smoke(P:TankBuilderPort):void{
   // Eleven actual source stocks, with measured principal axes; the supplied
@@ -227,7 +230,7 @@ function mainGun(P:TankBuilderPort):void{
   // save on triangles"): the tube is closed at the source tip. Until then it turned into the measured
   // 125 mm bore (radius .0625) down to the source opaque floor 5.853999853134153, a 0.4063 m recess
   // that sat entirely behind the factory's dark mouth disc; the depth stays recorded here, in
-  // awSecondWaveGeometry.selftest.mjs (SOURCES.t90a_burlak_x.floor) and docs/references/tanks/t90a_burlak_x.source-measurements.json.
+  // awSecondWaveGeometry.selftest.mjs (SOURCES.t90a_burlak.floor) and docs/references/tanks/t90a_burlak_x.source-measurements.json.
   const rows=[[0,1.6078],[.1267,1.6078],[.10921,2.1699],[.10034,3.8774],[.11787,3.8774],[.120615,4.813],
     [.09160,4.813],[.093205,6.0181],[.086625,6.0181],[.086745,6.1470],[.093375,6.1626],[.093505,tip],[0,tip]];
   P.add('gun',new THREE.LatheGeometry(rows.map(([r,z])=>new THREE.Vector2(r,z)),32).rotateX(Math.PI/2),0,0,-GUN[2]);
@@ -241,4 +244,4 @@ export function buildT90BurlakX(P:TankBuilderPort):void{
   P.topY=T90_BURLAK_X_DATUMS.highestFittingM-YAW[1];
   hull(P);runningGear(P);hullEra(P);deck(P);rear(P);turret(P);frontCurtain(P);bustleAndCases(P);roofEquipment(P);machineGun(P);smoke(P);mainGun(P);
 }
-export const T90_BURLAK_X_PROFILES={t90a_burlak_x:{build:buildT90BurlakX}} as const;
+export const T90_BURLAK_X_PROFILES={t90a_burlak:{build:buildT90BurlakX}} as const;

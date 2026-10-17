@@ -42,7 +42,9 @@ export default {
   name: 'Glacier Pass',
   blurb: 'A frozen alpine lake divides a fortified mountain village and two high passes',
   terrain: {
-    hillScale: 1.25, microScale: 0.72, rimH: 52, frozenMarshes: true,
+    // (rimH 52 -> 30, the horizons stream's Glacier item, 2026-10-14: the Hinterland's cirque and spurs enclose the col
+    // now; the 52 m rim walled edge-w in and failed the envelope's C9, 22–42)
+    hillScale: 1.25, microScale: 0.72, rimH: 30, frozenMarshes: true,
     // The base hill noise is lower than before (1.46): the geological landforms carry the relief, and the roads keep
     // the brief's 18 % grade law at every terrain seed.
     roads: { paths: [
@@ -81,6 +83,13 @@ export default {
       { kind: 'ridge', x: 340, z: 20, length: 240, width: 40, height: 6, yawDeg: 92, geology: MORAINE },
       { kind: 'ridge', x: -120, z: -300, length: 240, width: 44, height: 6, yawDeg: -8, geology: MORAINE },
       { kind: 'ridge', x: 140, z: -320, length: 220, width: 44, height: 6, yawDeg: 12, geology: MORAINE },
+      // a till bank in the trough beside the north pass road's last leg (the horizons stream, 2026-10-15): on the 30 m
+      // rim the trough (x -12..12, z 446-472) lay 3-4 m under the road 12 m east of it, so the exit ran on a 26 m
+      // causeway out to the red line and a hull driven along it met the playable edge (roadCrossingSweep, 7 m/s at
+      // (-18.1, 466.6)); the 52 m rim had filled the trough's north end. The bank brings the ground up to the road's
+      // shoulder (bravo's spawn clearance holds it to a half to two-thirds of its height); the road's own grade does
+      // not move.
+      { kind: 'ridge', x: -4, z: 456, length: 40, width: 16, height: 6.5, yawDeg: 40, corridorScale: 1 },
       // roches moutonnées: rock knobs the ice ground smooth on top and plucked steep at their sides
       { kind: 'knoll', x: 320, z: 170, rx: 32, rz: 50, height: 9, geology: KNOB },
       { kind: 'knoll', x: -180, z: 290, rx: 30, rz: 44, height: 8, geology: KNOB },
@@ -192,7 +201,16 @@ export default {
   // map revival lane 2 (2026-10-05): the Grande Croix at the foot of the southern climb, beside its chapel
   scenery: {
     landmarks: [{ kind: 'waysidecross', x: -96, z: -224, yawDeg: 0, scale: 1.15, name: 'the Grande Croix' }],
+    // (the maps lane, 2026-10-16; integ/226's mapLayoutBrief: two approach lanes against the brief's three since Glacier
+    // 4c) a roche moutonnee on the valley floor — glacier-smoothed bedrock, its long axis down the valley along the ice's
+    // flow — at the 65 % slice's lateral +60 m, where the middle's broad field opens east of the valley road (33 m off it;
+    // west of there the road runs along the slice, 5-12 m away, and a rock would stand on its verge): it splits the field
+    // into a western and an eastern approach as the 35 % slice's ground does, 129 m clear of the middle zone
+    rocks: [{ form: 'outcrop', geology: 'granite', x: -8.9, z: 100.5, radius: 6.5, height: 4.6, yawDeg: 74, shed: 0.6, name: 'the roche moutonnee' }],
   },
+  // the horizons stream's Glacier item (2026-10-14): the Hinterland past the red line (hinterland/drafts/alpine.ts);
+  // delete this line for the old ring
+  hinterland: true,
   horizon: {
     baseHex: 0x708397, amp: 1.42, style: 'alpine', treeline: 0.80, snowline: 0.72,
     forestHex: 0x29434a, rockHex: 0x88929d, haze: 0.91, grain: 0.52,
@@ -201,17 +219,19 @@ export default {
   clouds: { regime: 'towering-cumulus', coverage: 0.26, baseM: 1900, thicknessM: 900, towers: 0.3, anvil: 0, shear: 0.1, streets: 0, fieldMix: 0.92, windSpeed: 4, cirrus: 0.3, farBand: 0.5, rain: 0.15 },
   sky: {
     sunElevationDeg: 16, sunAzimuthDeg: 132, turbidity: 4.2, rayleigh: 2.0,
-    mieCoefficient: 0.0052, mieDirectionalG: 0.78, fogDensity: 0.00076,
+    mieCoefficient: 0.0052, mieDirectionalG: 0.78, fogDensity: 0.00072, // (C7: under .00074; the brief's O6)
     fogTintHex: 0x9eb1c3, fogMix: 0.64, envIntensity: 0.31,
     cloudOpacity: 1.12, cloudOpacity2: 0.82, cloudTintHex: 0xe8eef3,
     sunIntensity: 4.2, sunColorHex: 0xf8eedb, hemiIntensity: 0.34, postExposure: 0.95, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 2.85 / 0xffddbe / 0.54); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0x9ea0a2, exposureEV: -0.25 },
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): thin high-alpine air — a narrow bright band, a deep dark blue overhead
+    atmosphere: { horizonTintHex: 0xdee6ee, horizonTintAmount: 0.3, horizonBandDeg: 6, zenithTintHex: 0x2f62b8, zenithTintAmount: 0.35 },
   },
   minimap: {
     base: [154, 169, 183], hard: [132, 144, 154], soft: [105, 127, 143],
     forest: 'rgba(37,67,71,.86)', forestStroke: 'rgba(22,42,46,.94)',
-    water: 'rgba(94,139,166,.84)', waterStroke: 'rgba(53,88,113,.95)',
+    ice: 'rgba(158,190,214,.85)', iceStroke: 'rgba(104,134,158,.9)', // the frozen lakes and marsh, in winter's ice-blue
     roadCasing: 'rgba(63,69,75,.94)', roadFill: 'rgba(187,194,199,.96)', buildingFill: '#d5d9dc',
   },
   shot: { pos: [-238, 54, -252], look: [62, -3, 54] },

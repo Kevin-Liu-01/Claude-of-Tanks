@@ -169,10 +169,10 @@ for (const id of ['m551_sheridan', 'm551a1_tts', 'm60a1', 'm60a2', 'm60a3']) {
 
 const abramsStations = new Map();
 for (const [id, expectedVariant, expectedLoader, expectedShield, expectedOptic] of [
-  ['m1a2', 'standard', 'm1a2-split-loader', 'split', [0.80, 0.288, 0.224, 0.336]],
-  ['m1a2_tusk', 'tusk-urban', 'tusk-lags-loader', 'open', [1.00, 0.36, 0.28, 0.42]],
-  ['m1a2_sepv2', 'armored', 'sepv2-armored-loader', 'armored', [0.80, 0.288, 0.224, 0.336]],
-  ['m1a2_sepv3', 'sepv3-armored', 'sepv3-low-loader', 'low', [1.00, 0.46, 0.22, 0.46]],
+  ['m1a1_abrams_hc', 'standard', 'm1a2-split-loader', 'split', [0.80, 0.288, 0.224, 0.336]],
+  ['m1a1_abrams_sa', 'tusk-urban', 'tusk-lags-loader', 'open', [1.00, 0.36, 0.28, 0.42]],
+  ['m1a1_abrams_aim', 'armored', 'sepv2-armored-loader', 'armored', [0.80, 0.288, 0.224, 0.336]],
+  ['m1a1_abrams_fep', 'sepv3-armored', 'sepv3-low-loader', 'low', [1.00, 0.46, 0.22, 0.46]],
 ]) {
   const tank = make(id);
   const turret = tank.root.getObjectByName('rig_turret');
@@ -187,7 +187,7 @@ for (const [id, expectedVariant, expectedLoader, expectedShield, expectedOptic] 
     `${id}: Abrams gun uses painted sleeve relief instead of black rings`);
   assert.equal(gunFinish?.muzzleBoresDark, true,
     `${id}: Abrams keeps only the true muzzle opening dark`);
-  const hasFullCommanderTower = id === 'm1a2_tusk' || id === 'm1a2_sepv3';
+  const hasFullCommanderTower = id === 'm1a1_abrams_sa' || id === 'm1a1_abrams_fep';
   const compactStation = fittings(tank.root,
     (object) => object.userData.americanRwsFamily === 'm551a1-tts-derived-v1');
   const fullStation = fittings(tank.root,
@@ -230,11 +230,15 @@ for (const [id, expectedVariant, expectedLoader, expectedShield, expectedOptic] 
     assert.equal(turret.userData.americanRwsReceipt?.buriedSeatM, 0.010,
       `${id}: command station is flush-seated into the existing roof carrier`);
   }
+  // VH.14 (coordinator ruling 2026-10-14: roof weapons calibre-true and working): the loader's crew gun is the 7.62 mm
+  // M240 on the American installation, a working station
   const loader = fittings(tank.root,
-    (object) => object.userData.americanWeaponStandard === 'sheridan-m2hb-v2');
-  assert.equal(loader.length, 1, `${id}: has one standardized crew-served Browning`);
+    (object) => object.userData.americanWeaponStandard === 'american-m240-v1');
+  assert.equal(loader.length, 1, `${id}: has one standardized crew-served loader's M240`);
   assert.equal(loader[0].userData.installationVariant, expectedLoader);
   assert.equal(loader[0].userData.shieldVariant, expectedShield);
+  assert.equal(loader[0].userData.caliberMm, 7.62, `${id}: the loader's gun is calibre-true`);
+  assert.ok(loader[0].userData.remoteControlled && loader[0].getObjectByName('auxiliaryWeaponPitch'), `${id}: the loader's gun works`);
   assert.ok(loader[0].position.x > 0,
     `${id}: Browning stays on the right in a head-on view`);
   const paintedShield = loader[0].children.find(
@@ -296,8 +300,8 @@ for (const [id, expectedLoader, expectedShield] of [
 ]) {
   const tank = make(id);
   const loader = fittings(tank.root,
-    (object) => object.userData.americanWeaponStandard === 'sheridan-m2hb-v2');
-  assert.equal(loader.length, 1, `${id}: has one standardized crew-served Browning`);
+    (object) => object.userData.americanWeaponStandard === 'american-m240-v1');
+  assert.equal(loader.length, 1, `${id}: has one standardized crew-served loader's M240`);
   assert.equal(loader[0].userData.installationVariant, expectedLoader);
   assert.equal(loader[0].userData.shieldVariant, expectedShield);
   assert.equal(loader[0].userData.machineGunFinish, 'gunmetal');
@@ -305,7 +309,7 @@ for (const [id, expectedLoader, expectedShield] of [
 }
 
 for (const id of [
-  'm1a1', 'm1a1ha', 'm1a2', 'm1a2_tusk', 'm1a2_sepv2', 'm1a2_sepv3',
+  'm1a1', 'm1a1ha', 'm1a1_abrams_hc', 'm1a1_abrams_sa', 'm1a1_abrams_aim', 'm1a1_abrams_fep',
 ]) {
   const tank = make(id);
   const turret = tank.root.getObjectByName('rig_turret');
@@ -343,4 +347,4 @@ for (const id of [
   tank.dispose();
 }
 
-console.log('americanModernization.selftest: full commander towers and right-side M2HB loaders verified');
+console.log('americanModernization.selftest: full commander towers and right-side working M240 loaders verified');

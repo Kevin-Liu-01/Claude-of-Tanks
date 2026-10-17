@@ -4,7 +4,7 @@ import {PHOTO_REFERENCE_IDS,photoTarget,photoReceiptPassed} from './photo-refere
 import {roofEquipmentVerdict} from './source-equipment-policy.mjs';
 import {tankReleaseSteps} from './tank-release-plan.mjs';
 import {sourceOpeningsVerdict} from './source-openings-policy.mjs';
-for(const id of ['unknown','spz_puma_s1_x','type89_x','__proto__'])assert.throws(()=>readPhotoReference(id));
+for(const id of ['unknown','puma_s1','type89','__proto__'])assert.throws(()=>readPhotoReference(id));
 for(const id of PHOTO_REFERENCE_IDS){
   const doc=readPhotoReference(id),{target,packet,packetSha256,packetPath}=doc;
   const dimensions=['high','low'].map(quality=>({quality,fillLoaded:true,
@@ -14,7 +14,7 @@ for(const id of PHOTO_REFERENCE_IDS){
     inputSha256Before:'a'.repeat(64),inputSha256After:'a'.repeat(64),dimensions};
   assert(photoReceiptPassed(id,report,packet,packetSha256,1000));
   for(const patch of [{score:95},{numerical3DComparison:'passed'},{passed:false},{packetSha256:'b'.repeat(64)},
-    {id:'type89_x'},{startedAt:new Date(0).toISOString()},{inputSha256After:'c'.repeat(64)},
+    {id:'type89'},{startedAt:new Date(0).toISOString()},{inputSha256After:'c'.repeat(64)},
     {test:{path:target.test,exitCode:1}},{dimensions:dimensions.slice(1)},
     {dimensions:[{...dimensions[0],fillLoaded:false},dimensions[1]]},
     {dimensions:[{...dimensions[0],bounds:{min:[0,0,0],max:[50,50,50]}},dimensions[1]]}])
@@ -30,9 +30,9 @@ for(const id of PHOTO_REFERENCE_IDS){
   assert.equal(roofEquipmentVerdict(id,{...census,mg:1},config,receipt).passed,false);
   assert.equal(sourceOpeningsVerdict({id,scan:{holeCells:1}}).passed,false,'photo targets cannot waive unexplained holes');
   const steps=tankReleaseSteps(id,true,'node');
-  assert.equal(steps.length,12,'all physical, anatomy, test and build steps retained');
+  assert.equal(steps.length,15,'all physical, anatomy, test and build steps retained'); // (integ/226: + the vehicles' ledger and mission-seat checks, + the spare-track ledger)
   assert.equal(steps.some(step=>step.args[0]==='tools/procedural-fidelity.mjs'),false,'do not fabricate 3D scores');
 }
-const mixed=tankReleaseSteps('cv90_x,spz_puma_s1_x,type89_x,borsuk',true,'node');
-assert(mixed.find(step=>step.args[0]==='tools/procedural-fidelity.mjs').args.includes('--ids=spz_puma_s1_x,type89_x'));
+const mixed=tankReleaseSteps('cv9040c,puma_s1,type89,borsuk',true,'node');
+assert(mixed.find(step=>step.args[0]==='tools/procedural-fidelity.mjs').args.includes('--ids=puma_s1,type89'));
 console.log('photo qualification: explicit membership, unchanged 3% dimensions, fresh physical proof, unverified 3D scores and negative controls PASS');

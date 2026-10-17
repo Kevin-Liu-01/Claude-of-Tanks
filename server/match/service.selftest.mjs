@@ -13,11 +13,11 @@ const rooms = createLocalRoomService({ service, seatSecret: secret });
 const room = rooms.createRoom({
   roomId: 'svc-room', mapId: 'verdant', seed: 11, countdownS: 0, world: 'terrain',
   seats: [
-    { playerId: 'alice', name: 'Alice', team: 'alpha', specId: 'm1a2' },
-    { playerId: 'bob', name: 'Bob', team: 'bravo', specId: 't90m' },
+    { playerId: 'alice', name: 'Alice', team: 'alpha', specId: 'm1a1_abrams_hc' },
+    { playerId: 'bob', name: 'Bob', team: 'bravo', specId: 't90am' },
     { playerId: 'eve', name: 'Eve', team: 'spectator', specId: '' },
   ],
-  bots: [{ playerId: 'bot-1', name: 'Bot', team: 'alpha', specId: 'leo2a7v' }],
+  bots: [{ playerId: 'bot-1', name: 'Bot', team: 'alpha', specId: 'leo2_improved' }],
 });
 assert.equal(service.actors.size, 1);
 
@@ -26,7 +26,7 @@ function connect({ origin = 'https://tanks.example', token, firstFrame = null, t
   return new Promise((resolve, reject) => {
     const socket = new WebSocket(service.url, { origin, headers: origin ? { origin } : {} });
     socket.binaryType = 'nodebuffer';
-    const result = { socket, messages: [], closeCode: null, closeReason: null, error: null, frames: [], history: new Map(), missing: 0, welcome: null };
+    const result = { socket, messages: [], closeCode: null, closeReason: null, error: null, frames: [], history: new Map(), missing: 0, welcome: null, firstFrameAtMs: null };
     socket.on('error', (error) => { result.error = error; resolve(result); });
     socket.on('open', () => {
       if (text != null) socket.send(text);
@@ -44,6 +44,7 @@ function connect({ origin = 'https://tanks.example', token, firstFrame = null, t
         try {
           const frame = applySnapshotPacket(decoded.message, decoded.message.keyframe ? null : result.history.get(decoded.message.baseTick) ?? null);
           result.frames.push(frame);
+          result.firstFrameAtMs ??= performance.now();
           result.history.set(frame.tick, frame);
           socket.send(encodeMessage({ type: MESSAGE_TYPE.SNAPSHOT_ACK, tick: frame.tick }));
         } catch (error) {
@@ -64,7 +65,17 @@ const eve = await connect({ token: room.tokens.get('eve') });
 await sleep(1100);
 assert.ok(alice.welcome && alice.welcome.entityId === 1 && alice.welcome.roomId === 'svc-room', 'alice is welcomed into her seat');
 assert.ok(eve.welcome && eve.welcome.entityId === 0, 'eve spectates');
-assert.ok(alice.frames.length >= SNAPSHOT_HZ * 0.85 && alice.frames.length <= SNAPSHOT_HZ * 1.2, `alice received ${alice.frames.length} snapshots in ~1 s at ${SNAPSHOT_HZ} Hz`);
+// (2026-10-16, the MP stream: integ/226 triage) the cadence is judged over the window that actually elapsed: under
+// contention the 1.1 s timer fires late and 25-27 snapshots arrive at a true 20 Hz. The first frame opens the window, so
+// it holds windowS * SNAPSHOT_HZ intervals plus that frame; the bounds keep v1's 0.85 floor and allow two of jitter above.
+{
+  const frames = alice.frames.length;
+  const windowS = alice.firstFrameAtMs === null ? 0 : (performance.now() - alice.firstFrameAtMs) / 1000;
+  const expected = SNAPSHOT_HZ * windowS + 1;
+  assert.ok(windowS > 0.5, `alice's snapshots began (window ${windowS.toFixed(2)} s)`);
+  assert.ok(frames >= Math.floor(expected * 0.85) && frames <= Math.ceil(expected) + 2,
+    `alice received ${frames} snapshots in ${windowS.toFixed(2)} s at ${SNAPSHOT_HZ} Hz (expected ~${expected.toFixed(1)})`);
+}
 assert.equal(alice.missing, 0);
 assert.ok(alice.messages.filter((m) => m.type === MESSAGE_TYPE.SNAPSHOT && !m.keyframe).length >= 20, 'acknowledged baselines turn snapshots into deltas');
 alice.socket.send(encodeMessage({ type: MESSAGE_TYPE.PING, clientTimeMs: 4321, snapshotAckTick: NO_TICK }));
@@ -140,8 +151,8 @@ console.log('service.selftest: seat replacement and leave over sockets; the matc
   const base = `http://127.0.0.1:${service.address.port}`;
   const auth = { authorization: `Bearer ${secret}`, 'content-type': 'application/json' };
   const body = JSON.stringify({ mapId: 'verdant', seed: 5, countdownS: 0, world: 'terrain', seats: [
-    { playerId: 'carol', name: 'Carol', team: 'alpha', specId: 'm1a2' }, { playerId: 'dan', name: 'Dan', team: 'bravo', specId: 't90m' },
-  ], bots: [{ playerId: 'bot-x', name: 'X', team: 'bravo', specId: 'leo2a7v' }] });
+    { playerId: 'carol', name: 'Carol', team: 'alpha', specId: 'm1a1_abrams_hc' }, { playerId: 'dan', name: 'Dan', team: 'bravo', specId: 't90am' },
+  ], bots: [{ playerId: 'bot-x', name: 'X', team: 'bravo', specId: 'leo2_improved' }] });
   assert.equal((await fetch(`${base}/rooms`, { method: 'POST', body, headers: { 'content-type': 'application/json' } })).status, 401, 'no bearer, no room');
   assert.equal((await fetch(`${base}/rooms`, { method: 'POST', body, headers: { ...auth, authorization: 'Bearer wrong-secret-0123456789' } })).status, 401);
   const bad = await fetch(`${base}/rooms`, { method: 'POST', body: JSON.stringify({ mapId: 'verdant', seats: [{ team: 'red' }] }), headers: auth });
@@ -169,11 +180,11 @@ console.log('service.selftest: seat replacement and leave over sockets; the matc
 }
 
 // Capacity and duplicate rooms are refused; drain closes every client with SERVER_DRAIN and stops the listeners.
-assert.throws(() => rooms.createRoom({ roomId: 'svc-room', mapId: 'verdant', seats: [{ playerId: 'x', name: 'x', team: 'alpha', specId: 'm1a2' }], world: 'terrain' }), /already has a match/);
+assert.throws(() => rooms.createRoom({ roomId: 'svc-room', mapId: 'verdant', seats: [{ playerId: 'x', name: 'x', team: 'alpha', specId: 'm1a1_abrams_hc' }], world: 'terrain' }), /already has a match/);
 for (let index = 0; index < 3; index++) {
-  rooms.createRoom({ roomId: `filler-${index}`, mapId: 'verdant', seats: [{ playerId: 'f', name: 'f', team: 'alpha', specId: 'm1a2' }], world: 'terrain' });
+  rooms.createRoom({ roomId: `filler-${index}`, mapId: 'verdant', seats: [{ playerId: 'f', name: 'f', team: 'alpha', specId: 'm1a1_abrams_hc' }], world: 'terrain' });
 }
-assert.throws(() => rooms.createRoom({ roomId: 'one-too-many', mapId: 'verdant', seats: [{ playerId: 'f', name: 'f', team: 'alpha', specId: 'm1a2' }], world: 'terrain' }), /full/);
+assert.throws(() => rooms.createRoom({ roomId: 'one-too-many', mapId: 'verdant', seats: [{ playerId: 'f', name: 'f', team: 'alpha', specId: 'm1a1_abrams_hc' }], world: 'terrain' }), /full/);
 await service.close();
 await sleep(200);
 assert.equal(closeOf(alice)?.reason, CLOSE_REASON.SERVER_DRAIN);

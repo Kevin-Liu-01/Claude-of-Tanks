@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import { roundedTrackContact } from './roundedTrackContact.ts';
 import { addChallenger1XRearEquipment } from './challenger1XRearEquipment.ts';
 import { addChallenger1XDeckFittings, addChallenger1XLouvreBanks } from './challenger1XDeckFittings.ts';
@@ -19,7 +20,7 @@ type Point = readonly [number, number, number];
 type Strip = readonly [z: number, left: number, right: number, low: number, high: number];
 
 export const CHALLENGER1_X_DATUMS = Object.freeze({
-  challenger1_x: {
+  challenger1_mk3: {
     // Handbook xiii fixes overall/width/hood. Hull and armor roof are inferred
     // separately; its 9.80 m "gun in crutch" is emphatically NOT hull length.
     dims: { hullLengthM: 8.39, overallLengthM: 11.56, widthM: 3.51, heightM: 2.50 },
@@ -29,7 +30,7 @@ export const CHALLENGER1_X_DATUMS = Object.freeze({
     muzzleZ: 7.365,
   },
 });
-const D = CHALLENGER1_X_DATUMS.challenger1_x;
+const D = CHALLENGER1_X_DATUMS.challenger1_mk3;
 
 function local(g: THREE.BufferGeometry, p: Point): THREE.BufferGeometry {
   return g.translate(-p[0], -p[1], -p[2]);
@@ -265,7 +266,8 @@ function machineGun(P: TankBuilderPort): void {
   mg.add('turretDark', cylZ(.023, .53, 16), x, 2.90, z + .46);
   mg.add('turretDark', box(.088, .076, .19), x, 2.87, z - .23);
   mg.add('turretDetail', box(.13, .17, .18), x + .12, 2.86, z + .04);
-  mg.finish();
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+  stationFromDrawnGun(mg.finish(), { name: 'challenger1XDraftGpmg', caliberMm: 7.62 });
 }
 
 function gun(P: TankBuilderPort): void {
@@ -309,4 +311,4 @@ export function buildChallenger1X(P: TankBuilderPort): void {
   gun(P);
 }
 
-export const CHALLENGER1_X_PROFILES = Object.freeze({ challenger1_x: { build: buildChallenger1X } });
+export const CHALLENGER1_X_PROFILES = Object.freeze({ challenger1_mk3: { build: buildChallenger1X } });

@@ -36,7 +36,7 @@
  *   --maps=all|<id,id>        battlefields (default all 33, src/world/maps/mapIds.ts)
  *   --times=day,sunset,night  solo times of day (default all three)
  *   --tier=desktop|mobile     adds ?tier=mobile for the phone tier (default desktop: no tier parameter)
- *   --tank=m1a2               the player's vehicle
+ *   --tank=m1a1_abrams_hc               the player's vehicle
  *   --viewport=1600x900       page size (CSS px), deviceScaleFactor 1
  *   --fresh=none|page|context|browser
  *                             none: one page for the whole sweep (a player switching maps in one session);
@@ -169,7 +169,7 @@ async function main() {
   if (times.some((t) => !['day', 'sunset', 'night'].includes(t))) { console.error('--times takes day, sunset, night'); process.exit(2); }
   const tier = opt('tier', 'desktop');
   if (!['desktop', 'mobile'].includes(tier)) { console.error('--tier takes desktop or mobile'); process.exit(2); }
-  const tank = opt('tank', 'm1a2');
+  const tank = opt('tank', 'm1a1_abrams_hc');
   const [vw, vh] = opt('viewport', '1600x900').split('x').map(Number);
   const fresh = opt('fresh', 'page');
   if (!['none', 'page', 'context', 'browser'].includes(fresh)) { console.error('--fresh takes none, page, context, browser'); process.exit(2); }

@@ -20,8 +20,36 @@
 //   - the roads are authored: the valley road (utility line), the pass road,
 //     the Bystra crossing, the moraine track, the sawmill lateral, a village
 //     back lane and the yard loop (roadEndpoints.ts owns their endpoints).
+//
+// Reference: the Podhale under the Tatra, the Biały Dunajec valley between Nowy Targ and Zakopane, January 1945. The
+// river runs down a broad kotlina floor from the High Tatra; the highland villages (Biały Dunajec, Poronin) string
+// their timber houses along the valley road on the terraces above it, each with its wooden church, the hay barns behind
+// the houses, a sawmill on the stream, the shepherds' huts (bacówki) up on the meadows under the spruce. The front came
+// through in the January offensive; a few houses burnt, their stacks standing in the snow.
+//
+// The village and the country (map revival lane 2, 2026-10-05; the owner: every map as new as Verdant): the goral kit
+// (maps/regional/goral.ts) builds every building as the highlanders' own — houses of hewn spruce logs on granite
+// footings under steep shingle roofs with the small hip at each gable's top and the Zakopane sunburst in the gable
+// boards, the wooden church with its shingled tower and bulb, the school, the forester's villa, the hay barns, the
+// sawmill shed and its board store, the woodsheds, the burnt houses; the strongpoints' sauna hut is a bacówka. The
+// yards are plank-fenced with their woodsheds. Every building stands where it stood.
 
 import { gully, talusFan } from './geology.ts';
+import { createMarshChannel } from './marshChannel.ts';
+
+// The Biały Dunajec frozen in its bed (map revival lane 2, round 3; gauntlet wave 110b: "a chain of ponds"): one ice
+// ribbon down the valley floor through the old pools' centres, a pool (r 21) at each and a run (r 15) between them,
+// the bed 0.6 m under its banks. Under frozenMarshes the marsh chain is the ice sheet; a road crosses dry (the water
+// mask is zeroed within 14 m of its line), so the Bystra crossing and the sawmill lateral keep their causeways, and
+// a hull may cross the ice anywhere else as it could the pools.
+const RIVER_STATIONS = [
+  { x: -40, z: -466 }, { x: -36, z: -434, r: 21 }, { x: -46, z: -387 }, { x: -44, z: -340, r: 21 }, { x: -32, z: -293 },
+  { x: -24, z: -246, r: 21 }, { x: -22, z: -198 }, { x: -16, z: -150, r: 21 }, { x: -17, z: -105 },
+  { x: -14, z: -60, r: 20 }, { x: 0, z: -18 }, { x: 18, z: 26 }, { x: 38, z: 70, r: 21 }, { x: 50, z: 110 },
+  { x: 54, z: 150, r: 21 }, { x: 50, z: 206 }, { x: 44, z: 262, r: 21 }, { x: 32, z: 310 }, { x: 18, z: 356, r: 21 },
+  { x: -6, z: 392 }, { x: -36, z: 424, r: 20 }, { x: -42, z: 458 },
+].map((m) => ({ r: 15, dip: 0.6, ...m }));
+const RIVER = createMarshChannel(RIVER_STATIONS, 0.5).map((station) => ({ ...station, radii: [0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96, 0.96] as const }));
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
@@ -35,30 +63,9 @@ export default {
     microScale: 0.9,
     rimH: 25,
     frozenMarshes: true,
-    // no soggy marsh bowls — everything frozen reads as a crisp ice sheet
-    marshes: [],
-    // The frozen river: a beaded chain of frozen ponds from the south edge to
-    // the north edge, each sheet just under its lowest bank (depth). Centres
-    // sit 92-112 m apart so no pond's bank band (1.32 r) reaches its
-    // neighbour's sheet: two ponds' auto levels can differ by metres between
-    // seeds and an overlap would turn that step into a ramp INSIDE the ice
-    // (the round-48 berm audit caught exactly that); the steps now fall in
-    // the short snow necks between ponds. Two wider necks carry the crossings
-    // (the Bystra crossing at z -30..32, the sawmill lateral at z 184..224).
-    lakes: [
-      { x: -36, z: -434, r: 34, depth: 0.5 },
-      { x: -44, z: -340, r: 38, depth: 0.5 },
-      { x: -24, z: -246, r: 40, depth: 0.55 },
-      { x: -16, z: -150, r: 38, depth: 0.5 },
-      { x: -14, z: -60, r: 30, depth: 0.45 },
-      // Bystra neck
-      { x: 38, z: 70, r: 40, depth: 0.55 },
-      { x: 54, z: 150, r: 36, depth: 0.5 },
-      // sawmill neck
-      { x: 44, z: 262, r: 40, depth: 0.55 },
-      { x: 18, z: 356, r: 42, depth: 0.55 },
-      { x: -36, z: 424, r: 30, depth: 0.45 },
-    ],
+    // the river is the marsh chain, frozen: one ice ribbon down the valley (round 3: it was ten separate pools)
+    marshes: RIVER,
+    lakes: [],
     // The linear terrace village: a Carpathian street village along the
     // valley road on the west bank, the sawmill yard at its north end. The
     // rect keeps clear of the river sheets (x1 -54) and of the ridge toe.
@@ -131,6 +138,16 @@ export default {
     ],
   },
 
+  // (the maps lane, 2026-10-16; integ/226's red triage: the brief's lanes band, red since 225) Frosthollow's middle crosses
+  // in two broad lanes at 35 % and 50 % of the axis (split at the valley's middle and at the village's west end; five at
+  // 65 %, over the village), where the brief asks three: the open snowfields between them are the map's play — every other
+  // band holds (separation 756 m, route 1.067, choke 910 m, sightline median 102 m, objective symmetry 1.072) — so the
+  // count is the map's, not a closed route
+  layoutBrief: { exceptions: {
+    lanes: 'two broad lanes across the snowfields at 35 % and 50 % of the axis (five at 65 %, over the village); every other '
+      + 'band holds: the open fields are the play, no route is closed',
+  } },
+
   spawns: {
     // The player deploys on the valley floor beside the valley road (round 48
     // pacing, 2026-09-24: the first pad sat on the 6.5 m rise in the south-west
@@ -171,7 +188,9 @@ export default {
     // content_breadth rounds — 0.20 keeps partial snow-drift patches while
     // the crack veins still read)
     iceLake: true,
-    iceDrift: 0.20,
+    // (round 4, wave 182 wbird: the ice "grey decal-like" sheets; the ground lane's numbers) the snow combed along the wind
+    // over the frozen river, streaks over the whole sheet and heavier toward its banks (was 0.20: a few white blots)
+    iceDrift: 0.5,
     // terrain_environment r3/r4: fresnel sky tint the clear-ice fields reflect
     // at grazing view angles (terrain.js uIceSky)
     iceSky: [0.76, 0.82, 0.92],
@@ -187,11 +206,13 @@ export default {
     species: ['birch', 'spruce', 'fir', 'aspen'],
     // round 48: spruce-led stands — the forest blocks on the ridge slopes are
     // Carpathian spruce with fir, birch and aspen on the lower ground
-    clusterMix: [['spruce', 0.40], ['fir', 0.24], ['birch', 0.24], ['aspen', 0.12]],
+    // map revival lane 2, round 2 (gauntlet wave 110b: "spruce stands as lone trees instead of massed forest"): the
+    // Carpathian spruce massed in its stands, the broadleaves a fringe
+    clusterMix: [['spruce', 0.56], ['fir', 0.26], ['birch', 0.12], ['aspen', 0.06]],
     loneMix: [['birch', 0.34], ['aspen', 0.28], ['spruce', 0.23], ['fir', 0.15]],
     rimMix: [['spruce', 0.48], ['fir', 0.27], ['birch', 0.15], ['aspen', 0.10]],
-    clusterCount: 74, // denser stands on the two ridge arms and the moraine (was 66)
-    loneCount: 92,
+    clusterCount: 96, // massed stands on the two ridge arms and the moraine (round 2: was 74, before it 66)
+    loneCount: 36, // (round 2: was 92, the lone trees salted over the snowfield)
     rimCount: 64,
     // round 48: the sawmill's cut blocks — no random stand lands in the four
     // clearings (three cuts on the ridge arms, the open saddle pass)
@@ -205,6 +226,16 @@ export default {
       { x0: -44, z0: -300, x1: -48, z1: -196, gap: 12, jitter: 4, skip: 0.2, species: 'birch' },
       { x0: 136, z0: -150, x1: 136, z1: -62, gap: 10, jitter: 3, skip: 0.18, species: 'birch' },
       { x0: 150, z0: 236, x1: 150, z1: 330, gap: 10, jitter: 3, skip: 0.18, species: 'birch' },
+      // map revival lane 2 (2026-10-05): the riverside trees of the Biały Dunajec (alder and willow on the real banks;
+      // aspen here, the set's nearest) along the south reach's east bank and the north reach's west bank, clear of the
+      // two crossings
+      { x0: -4, z0: -330, x1: 6, z1: -196, gap: 12, jitter: 3, skip: 0.2, species: 'aspen' },
+      { x0: -4, z0: 300, x1: -20, z1: 384, gap: 12, jitter: 3, skip: 0.2, species: 'aspen' },
+      // round 2 (wave 110b: "no trees around the settlement core"): the birches and spruces behind the houses on both
+      // sides of the street village, broken where the yards and the lanes reach them
+      { x0: -214, z0: -140, x1: -218, z1: 140, gap: 9, jitter: 4, skip: 0.32, species: 'birch' },
+      { x0: -44, z0: -140, x1: -40, z1: 140, gap: 9, jitter: 4, skip: 0.32, species: 'birch' },
+      { x0: -226, z0: -120, x1: -230, z1: 120, gap: 10, jitter: 4, skip: 0.4, species: 'spruce' },
     ],
     // sparser, FROSTED tufts: the old dark dense scatter read as uniform
     // speckle noise across the snowfield in wide shots (r5 -> r7 -> r8: 0.24
@@ -242,13 +273,40 @@ export default {
   },
 
   props: {
+    // map revival lane 2 (2026-10-05): the goral kit (maps/regional/goral.ts)
+    architecture: 'goral',
     // round 48: the timber-valley catalog — log cabins, steep-roof alpine
     // houses, the onion-dome church and open woodsheds make the terrace
     // village; depots, a warehouse and woodsheds make the sawmill yard at its
     // north end (buildings land on the road nodes inside the village rect)
-    plan: ['rangerlodge', 'alpine', 'schoolhouse', 'onionchurch', 'logcabin', 'woodshed', 'barn', 'alpine',
-      'logcabin', 'cottage', 'woodshed', 'depot', 'warehouse', 'woodshed', 'alpine', 'barn',
-      'logcabin', 'ruin', 'depot', 'woodshed'],
+    // (round 4, wave 190: "large open gaps between buildings, reading as scattered farmsteads rather than the continuous
+    // roadside frontage of a strung-out highland village"): the plan's twenty buildings laid as a street village along
+    // the valley road (each house's gable to the street, the eaves some 3.5 m apart, the core south of the pass road's
+    // junction, the barns and sheds between the junctions, the sawmill's depots and warehouse at the north end), every
+    // one a terrace site from a stream of its own (.qa-dev/frontplan-winter.mjs, the measured kit envelopes)
+    plan: [],
+    plannedSites: [
+      { structure: 'rangerlodge', x: -64.71, z: -112.31, yawDeg: -90, terrace: true },
+      { structure: 'cottage', x: -69.18, z: -97.91, yawDeg: -90, terrace: true },
+      { structure: 'onionchurch', x: -67.3, z: -86.16, yawDeg: -90, terrace: true },
+      { structure: 'alpine', x: -67.85, z: -73.04, yawDeg: -90, terrace: true },
+      { structure: 'schoolhouse', x: -95.15, z: -113.95, yawDeg: 90, terrace: true },
+      { structure: 'alpine', x: -91.86, z: -99.8, yawDeg: 90, terrace: true },
+      { structure: 'logcabin', x: -89.86, z: -87.15, yawDeg: 90, terrace: true },
+      { structure: 'logcabin', x: -89.82, z: -75.96, yawDeg: 90, terrace: true },
+      { structure: 'woodshed', x: -69.26, z: -14.02, yawDeg: -85.7, terrace: true },
+      { structure: 'barn', x: -64.22, z: -3.72, yawDeg: -85.7, terrace: true },
+      { structure: 'woodshed', x: -87.02, z: -12.79, yawDeg: 94.3, terrace: true },
+      { structure: 'warehouse', x: -56.95, z: 63.39, yawDeg: -96.3, terrace: true },
+      { structure: 'depot', x: -62.27, z: 82.59, yawDeg: -96.3, terrace: true },
+      { structure: 'woodshed', x: -71.17, z: 94.22, yawDeg: -96.3, terrace: true },
+      { structure: 'alpine', x: -177.2, z: -36.59, yawDeg: 20.3, terrace: true },
+      { structure: 'logcabin', x: -153.13, z: -41.8, yawDeg: 13.4, terrace: true },
+      { structure: 'barn', x: -141.61, z: -48.13, yawDeg: 13.4, terrace: true },
+      { structure: 'ruin', x: -171.29, z: -14.39, yawDeg: -159.7, terrace: true },
+      { structure: 'depot', x: -149.23, z: -16.1, yawDeg: -166.6, terrace: true },
+      { structure: 'woodshed', x: -137.75, z: -26.24, yawDeg: -166.6, terrace: true },
+    ],
     destructibleBuildings: ['saunahut', 'alpinerefuge', 'fieldhospital', 'huntingblind', 'leanto'],
     buildingLat: [12, 3], sideSkip: 0.10,
     // round 48: the three strongpoints follow the new lanes — the brawl in
@@ -282,7 +340,9 @@ export default {
       clearcut: [[-318, -250], [-286, -198], [-346, -100], [-372, -60]],
     },
     tones: {
-      plaster: (h: number, s: number, l: number) => [0.085, clamp01(s * 0.7), clamp01(l * 1.02 + 0.03)],
+      // (map revival lane 2, round 3, gauntlet wave 128: "only a thin beige dusting") no plaster tone of the map's own: this
+      // warm cream overrode the goral kit's, and the kit's plaster bucket draws the roofs' snow load and the stacks'
+      // whitewash (goral.ts roofSnow), which take the snowpack's tone from the kit
       roof: (h: number, s: number, l: number) => [0.58, clamp01(s * 0.25), clamp01(l * 1.35 + 0.18)], // snow-capped
       stone: (h: number, s: number, l: number) => [0.60, clamp01(s * 0.35), clamp01(l * 1.05 + 0.05)],
       wood: (h: number, s: number, l: number) => [h, clamp01(s * 0.7), clamp01(l * 0.95 + 0.02)],
@@ -332,9 +392,11 @@ export default {
     wallStyle: 'fieldstone',
     inhabit: {
       stalls: 1, benches: 1, coreClutter: 6,
-      sleds: 6, bales: 8,
+      // (round 2, wave 110b: "a modern round hay bale") the meadows' hay stands in its stacks (stogi), no round bales
+      sleds: 6, bales: 0,
       troughs: 1, handcarts: 1, carts: 2,
-      roadFence: 'fencerail', yardFence: 'fenceplank',
+      // (round 2, wave 110b: "saturated orange rail fences") the lanes fenced in split spruce boards, as the yards
+      roadFence: 'fenceplank', yardFence: 'fenceplank',
       // DESTRUCTIBLES r1: a frozen supply column + winter bivouacs
       trucks: 3, jeeps: 1, drumClusters: 3, camps: 2,
       modernClutter: { barrier: 4, roadsign: 4, cone: 6, transformer: 3, cablespool: 3 },
@@ -363,7 +425,11 @@ export default {
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'stratocumulus-deck', nightGlow: 0.3, nightGlowHex: 0xffc080 },
+  // 2026-10-09 (the shadows lane: the deck's cells took 90 % of the sun over 86 % of the valley — lit and shaded snow
+  // 1.13 : 1 under a cell): a broken stratocumulus passes part of the beam through its thinner cells (cloudscapes.ts deckBeam)
+  // 2026-10-15 (the SKY lane; the owner's 10-13 ruling enforced on every map: no broken stratocumulus): the flat overcast
+  // closed (0.86 left breaks: the banned deck), its relief from the deck tune's cells, lumps and rolls under the sheet
+  clouds: { regime: 'stratocumulus-deck', coverage: 0.92, nightGlow: 0.3, nightGlowHex: 0xffc080, deckBeam: 0.4 },
   sky: {
     // FLAT OVERCAST: higher-but-weak sun (no warm horizon glow), heavy grey
     // cloud deck, raised ambient/env fill so light reads diffuse
@@ -385,12 +451,14 @@ export default {
     sunIntensity: 1.35, sunColorHex: 0xdfe7f2, hemiIntensity: 0.74, postExposure: 0.86,
     // 2026-10-01: the grounded light model's map levers (lightModel.ts LightingConfig)
     lighting: { groundAlbedoHex: 0xe5e7ec, warmth: 0.25, exposureEV: -0.25 },
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a winter overcast — a cold pearl band, a pale cold blue in the deck's gaps
+    atmosphere: { horizonTintHex: 0xd5dde6, horizonTintAmount: 0.35, horizonBandDeg: 9, zenithTintHex: 0x8ea9c8, zenithTintAmount: 0.25 },
   },
 
   minimap: {
     base: [170, 178, 186], hard: [128, 122, 114], soft: [150, 168, 186],
     forest: 'rgba(64,80,72,0.85)', forestStroke: 'rgba(38,50,44,0.9)',
-    water: 'rgba(158,190,214,0.85)', waterStroke: 'rgba(104,134,158,0.9)',
+    ice: 'rgba(158,190,214,0.85)', iceStroke: 'rgba(104,134,158,0.9)',
     roadCasing: 'rgba(60,54,46,0.9)', roadFill: 'rgba(120,108,96,0.95)',
     buildingFill: '#e4e7ec',
   },

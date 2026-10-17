@@ -7,7 +7,7 @@ import {ARIETE_X_FAMILY_SCALE} from '../src/vehicles/profiles/arieteXFamilyFrame
 import {KIT} from '../src/vehicles/profiles/kit.ts';
 import {chieftain10StockCells,convexStockCell} from './chieftain10-collision.mjs';
 
-const ID='ariete_c2_x';
+const ID='c2_ariete';
 const STOCKS=[
   ['lower-tub','BufferGeometry'],['stern-fold','BufferGeometry'],
   ['bearing-deck','ExtrudeGeometry'],['bearing-ring','LatheGeometry'],

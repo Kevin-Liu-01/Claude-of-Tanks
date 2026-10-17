@@ -47,7 +47,9 @@ function packOnCast(P: TankBuilderPort, x: number, z: number, width: number, dep
   strappedPack(P, 'turret', [x, floor + .017 + height / 2, z], [width, height, depth]);
 }
 
-function hullEquipment(P: TankBuilderPort, c: NationalModernizationConfig): void {
+/** The Polish hull package: glacis ERAWA, driver's station, decks, lamps and
+ * layered skirts. Zubr keeps it unchanged beneath its donor turret. */
+export function hullEquipment(P: TankBuilderPort, c: NationalModernizationConfig): void {
   const m = c.model;
   // Small tiles follow the native low glacis and leave its folded guards clear.
   const zs = m === 0 ? [2.00, 2.28, 2.56, 2.83] : m === 1 ? [2.12, 2.45, 2.78, 3.09] : [2.15, 2.41, 2.67, 2.91];

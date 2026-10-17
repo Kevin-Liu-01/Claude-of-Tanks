@@ -11,6 +11,7 @@ import { near } from '../../../tools/receipt-kit.test-support.mjs';
 const SOURCE={yaw:[.0000002374,1.457100315,.065591405],gun:[.006050285,1.758750301,1.096549988],
   muzzle:5.798749804,floor:4.505949855,roof:2.274000205,
   wheels:[-1.70205,-.91970,-.12865,.67990,1.47690,2.28460]};
+const ridesUnder=(o,a)=>{for(let p=o.parent;p;p=p.parent)if(p===a)return true;return false;};
 function visibleMeshes(root){
   const meshes=[];
   root.traverseVisible(object=>{
@@ -24,7 +25,7 @@ function checkFrames(tank){
     const position=tank.root.getObjectByName(name).getWorldPosition(new THREE.Vector3());
     expected.forEach((v,i)=>near(position.getComponent(i),v,.000002,`${name} source datum`));
   }
-  near(getSpec('t72b3_x').dims.heightM,SOURCE.roof,.000002,'physical cast roof, not5.457m whip');
+  near(getSpec('t72b3').dims.heightM,SOURCE.roof,.000002,'physical cast roof, not5.457m whip');
   const turret=tank.root.getObjectByName('rig_turret'),gun=tank.root.getObjectByName('rig_gun');
   for(const yaw of [0,-1.3,.8])for(const pitch of [0,-.08,.18]){
     turret.rotation.y=yaw;gun.rotation.x=pitch;tank.root.updateMatrixWorld(true);
@@ -94,14 +95,17 @@ function checkGearAndMachineGun(tank){
     assert.ok(SOURCE.wheels.some(z=>Math.abs(z-point.z)<.000002),'actual source axle station');
   }
   const gunMesh=tank.root.getObjectByName('sourceMachineGun_turretDark'),group=gunMesh.parent;
-  assert.equal(group.parent,tank.root.getObjectByName('rig_turret'));
+  // 2026-10-16 (226 gate): VH.14 (76ef67d65, every drawn gun works) makes the AA gun a working roof station: the
+  // fitting rides its station's pitch node under the turret, so ownership is an ancestor test (a boolean: assert.equal on
+  // two scene graphs made node inspect both whole and ran the process past 40 GB)
+  assert.ok(ridesUnder(group,tank.root.getObjectByName('rig_turret')),'the AA station rides the turret');
   assert.deepEqual(group.userData.barrelAxisLocal,[0,0,1]);
   const axis=new THREE.Vector3(0,0,1).transformDirection(group.matrixWorld);
   near(axis.distanceTo(new THREE.Vector3(0,0,-1)),0,.000002,'authentic aft stock and declared fitting axis agree');
   near(new THREE.Box3().setFromObject(gunMesh).min.z,-2.2026498318,.00002,'independently measured source aft-pointing AA muzzle end');
 }
 for(const quality of ['high','low']){
-  const tank=createTank('t72b3_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
+  const tank=createTank('t72b3',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,camoSeed:4242});
   try{tank.root.updateMatrixWorld(true);checkFrames(tank);checkBore(tank);checkCassettePlanes(tank);checkGearAndMachineGun(tank);}
   finally{tank.dispose();}
 }

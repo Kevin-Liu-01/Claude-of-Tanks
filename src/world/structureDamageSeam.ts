@@ -12,6 +12,7 @@
  * Every bucket mesh and batch is in world space (identity matrices under the world root, never moved), so a span's
  * positions, the anatomy's placement and the presentation's pivots are all world points.
  */
+import { frameByName, keepRuinStanding, measureIntactParts } from './collapseRuin.ts';
 import { BufferAttribute, type BufferGeometry, type Material, type Object3D } from 'three';
 import {
   damageSeed, kitPlanFor, structureDamageKitChain,
@@ -38,6 +39,8 @@ export interface StructureSpan {
   partClass: DamagePartClass;
   first: number;
   count: number;
+  /** The named piece of a set piece this part is (geometry userData.damagePiece, landmarks/pieces.ts), or null. */
+  piece: string | null;
 }
 
 export interface StructureDamageSeam {
@@ -109,16 +112,21 @@ export interface DescribeStructureArgs {
 export function describeStructure(args: DescribeStructureArgs): StructureDamageAnatomy {
   const seed = damageSeed(mapDamageHash(args.mapId), Math.round(args.placement.x * 100), Math.round(args.placement.z * 100));
   const input: StructureDescribeInput = { ...args, seed, kitPlan: kitPlanFor(args.parts, args.style) };
+  // the intact form as drawn, once (collapseRuin.ts: what a collapse keeps a ruin standing against)
+  const intact = measureIntactParts(args.parts);
+  if (intact && frameByName(args.builder)) intact.frame = true;
   for (const kit of structureDamageKitChain(args.builder, args.style)) {
     if (kit === DEFAULT_STRUCTURE_DAMAGE_KIT || !kit.describe) continue;
     try {
       const anatomy = kit.describe(input);
-      if (anatomy) return anatomy;
+      if (anatomy) { if (intact) anatomy.intact = intact; return anatomy; }
     } catch {
       // a kit that cannot describe this building leaves it to the default (never a build failure)
     }
   }
-  return describeDefault(input);
+  const anatomy = describeDefault(input);
+  if (intact) anatomy.intact = intact;
+  return anatomy;
 }
 
 type StageMember = 'damaged' | 'breach' | 'sectionDown' | 'storeyDown' | 'collapse';
@@ -148,7 +156,9 @@ export function createStructureDamageSeam(structureIdx: number, builder: string,
       .call(sectionKit, anatomy, section, seed, out),
     storeyDown: (storey, seed, out) => (storeyKit.storeyDown ?? DEFAULT_STRUCTURE_DAMAGE_KIT.storeyDown!)
       .call(storeyKit, anatomy, storey, seed, out),
-    collapse: (seed, out) => (collapseKit.collapse ?? DEFAULT_STRUCTURE_DAMAGE_KIT.collapse!).call(collapseKit, anatomy, seed, out),
+    // a collapse leaves a ruin, never a raft (collapseRuin.ts): whatever the kit writes, measured, and what it lacks added
+    collapse: (seed, out) => keepRuinStanding(anatomy, seed, out,
+      (writers) => (collapseKit.collapse ?? DEFAULT_STRUCTURE_DAMAGE_KIT.collapse!).call(collapseKit, anatomy, seed, writers), builder),
   };
 }
 
@@ -198,7 +208,8 @@ export function bindStructureSpans(sources: readonly BufferGeometry[], position:
     if (typeof id === 'number' && Number.isSafeInteger(id)) {
       let list = spans.get(id);
       if (!list) { list = []; spans.set(id, list); }
-      list.push({ mesh, geometryId, instanceId, position, bucket, partClass: partClassOf(bucket, fine), first, count });
+      const piece = typeof source.userData.damagePiece === 'string' ? source.userData.damagePiece : null;
+      list.push({ mesh, geometryId, instanceId, position, bucket, partClass: partClassOf(bucket, fine), first, count, piece });
     }
     first += count;
   }

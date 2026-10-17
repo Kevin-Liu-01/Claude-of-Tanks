@@ -6,12 +6,11 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { TOS1A_TAGIL_LAYOUT as D, TOS1A_TAGIL_LAUNCHER_MUZZLES as MUZZLES, TOS1A_TAGIL_PACK_CONTOUR } from '../tos1aTagilLayout.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
-import { beamBetween, blindTube } from './measuredPrimitives.ts';
-import { sourceMachineGun } from './sourceMachineGun.ts';
+import { beamBetween } from './measuredPrimitives.ts';
 import { buildT90MSXChassis } from './t90msX.ts';
 
 const box = (x: number, y: number, z: number) => new THREE.BoxGeometry(x, y, z);
-const { cylX, cylY, cylZ } = KIT;
+const { cylX, cylY } = KIT;
 type Point = readonly [number, number, number];
 function stock(geometry: THREE.BufferGeometry, name: string): THREE.BufferGeometry {
   geometry.userData.tos1aTagil = name;
@@ -144,21 +143,6 @@ function sights(P: TankBuilderPort): void {
   }
 }
 
-function roofMachineGun(P: TankBuilderPort): void {
-  // A small game-equipment station remains outside the pack sweep. It shares
-  // the yaw platform and has a continuous pedestal/receiver/barrel assembly.
-  fitting(P, 'turret', 'mg-foot', box(.22, .075, .27), -1.64, .246, .43);
-  fitting(P, 'turretDark', 'mg-pedestal', cylY(.046, .064, .49, P.q ? 12 : 8), -1.64, .512, .43);
-  const mg = sourceMachineGun(P, [0, 0, 0]);
-  mg.add('turretDark', box(.094, .11, .24), -1.64, .805, .43);
-  mg.add('turretDark', blindTube(.019, .004, .63, .10, P.q ? 12 : 10), -1.64, .826, .835);
-  mg.add('turretDark', cylZ(.013, .30, 8), -1.64, .792, .67);
-  mg.add('turretDetail', box(.085, .14, .15), -1.723, .78, .42);
-  mg.add('turretDark', box(.086, .040, .10), -1.682, .806, .43);
-  mg.add('turretDark', box(.032, .14, .042), -1.64, .754, .304);
-  mg.finish();
-}
-
 function retainStructuralPresentation(P: TankBuilderPort): void {
   const previous = P.postAssemble;
   P.postAssemble = rig => {
@@ -198,7 +182,9 @@ export function buildTos1aTagil(P: TankBuilderPort): void {
   // The small lifting eyes are presentation hardware, not firing components.
   // Keep their simplified LOW torus facets out of the launcher damage stock.
   for (const side of [-1, 1]) packLiftingEyes(P, side);
-  sights(P); roofMachineGun(P);
+  // VH.14 (coordinator ruling 2026-10-14): the real TOS-1A carries no machine gun (roofWeaponPolicy.ts), so the small
+  // roof station the game had added is gone.
+  sights(P);
   retainStructuralPresentation(P);
   P.muzzleZ = D.mouthZ;
   P.topY = D.gunPivot[1] + .61;

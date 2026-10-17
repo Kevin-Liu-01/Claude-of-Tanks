@@ -7,7 +7,7 @@
 // prints carry silhouette/proportion truth only).  No donor build is called:
 // hulls are station lofts, turrets are connected welded polyMultiLoft
 // shells, and every fitting seats on real geometry per BUILD-STANDARD §B.
-// The type99a oracle package below is a RESIDENT of this module riding the
+// The ztz99_longwei oracle package below is a RESIDENT of this module riding the
 // frozen canonical Type-99A constructor — it is guard-held and unchanged.
 
 import {addChineseThroatStock,addChineseMovingMantlet} from './chineseGunOpening.ts';
@@ -510,11 +510,11 @@ function buildZTZ85III(P: ChinaBuilderPort): void {
   // W-85 12.7 mm at the commander ring (MG law).  The cluster is seated so
   // its columns land inside the print's own 2.5-2.75 roof-cluster band —
   // heightM keeps the published 2.30 crown while silhouetteHeightM carries
-  // the mounted-MG convention (t62mv1 precedent).
+  // the mounted-MG convention (t62_1975 precedent).
   // 2026-10-08 (round 5, the coordinator: the right gun per nation): the QJC-88 (the W85's vehicle form) at true scale.
   mount(P, 'turret', FITTINGS.pintleMG({
     mats: P.mats, cls: 'qjc88', scale: 1.0, tone: 'two-tone', elev: 0.06,
-    ammo: true, rotation: [0, 0.55, 0], seed: 8560,
+    ammo: true, rotation: [0, 0.55, 0], seed: 8560, working: true, // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
   }), 0.55, 0.845, -0.45);
 
   // smoke banks: 2x4 on the upper cheek flanks (Type 85 signature)
@@ -669,7 +669,7 @@ function crownRimTrim(
 // +1.7 nose, bustle roof 2.45 running to -2.7, forward-left sight head
 // (print 2.79), rear-right mast cluster (print 2.99), gun axis 1.95, twin
 // rear fuel drums hanging 1.5..2.1 behind the transom.  This tank is
-// DISTINCT from the resident type99a: longer/deeper cheek wedge, revised
+// DISTINCT from the resident ztz99_longwei: longer/deeper cheek wedge, revised
 // roof optics, drum rack — and its own frame throughout.
 export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   const { box, cylY, cylZ, torus, buildRunningGear, headlight, periscope, towCable, liftEye } = KIT;
@@ -941,11 +941,9 @@ function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
       [s * 0.20, 0.50, 1.68], [s * 0.56, 0.52, 1.50], [s * 0.44, 0.84, 0.84], [s * 0.16, 0.82, 0.92]));
     P.add('turretDark', box(0.030, 0.030, 0.62), s * 0.34, 0.60, 1.24, -0.36, 0, 0);
   }
-  // weld beads along the belt shoulder
-  for (const s of [-1, 1]) {
-    P.add('turretDark', box(0.030, 0.030, 1.40), s * 1.515, 0.340, -0.24, 0, -s * 0.04, 0);
-    P.add('turretDark', box(0.030, 0.030, 1.02), s * 1.20, 0.340, 1.30, 0, -s * 0.60, 0);
-  }
+  // Owner markup 2026-10-14 ("actual tank equipment ... in lieu of random thingies"): the two dark 3 cm bars laid along
+  // the belt shoulder and the cheek corner as "weld beads" read as loose sticks on the armour and are gone; the belt's
+  // own crease and the cheek cassettes carry that line.
 
   // ---- roof suite (print layout): forward-LEFT panoramic head, recessed
   // gunner box right of the gun channel, commander cupola + W-85 right,
@@ -968,7 +966,7 @@ function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
   // 2026-10-08 (round 5, the coordinator: the right gun per nation): the QJC-88 (the W85's vehicle form) at true scale.
   mount(P, 'turret', FITTINGS.pintleMG({
     mats: P.mats, cls: 'qjc88', scale: 1.0, tone: 'two-tone', elev: 0.12,
-    ammo: true, rotation: [0, 0.10, 0], seed: 9960,
+    ammo: true, rotation: [0, 0.10, 0], seed: 9960, working: true, // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
   }), 0.52, 1.00, -0.79);
   P.add('turret', cylY(0.24, 0.25, 0.045, seg), -0.50, 0.9125, -0.55);
   P.add('turretDark', torus(0.245, 0.013, seg), -0.50, 0.935, -0.55);
@@ -1058,7 +1056,21 @@ function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
   P.topY = 1.30;
 }
 
-function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
+/** Options for reusing the production ZTZ-99A2 turret on another hull: a
+ * vehicle with its own fitted remote station omits the commander's QJC-88 (one
+ * working roof gun, never a duplicate), and one with its own marking seats
+ * omits the 99A2's painted star and number. */
+export interface ZTZ99A2TurretOptions {
+  roofGun?: boolean;
+  decals?: boolean;
+  /** Turret-local plan seats of the two whip antennas (default: the 99A2's own pair at x ±1.06, z -1.58). A reusing
+   * vehicle whose remote station sweeps the right-rear roof moves that whip clear of the sweep. */
+  antennaSeats?: readonly (readonly [x: number, z: number])[];
+}
+
+/** The production ZTZ-99A2 turret in its own turret frame. It places P.turretG
+ * at the 99A2 hull's ring; a reusing caller moves the group onto its own ring. */
+export function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort, options: ZTZ99A2TurretOptions = {}): void {
   const { box, cylY, torus, periscope, liftEye } = KIT;
   const seg = P.q ? 20 : 14;
   P.gunG.position.set(0, .38, .78);
@@ -1168,18 +1180,20 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
   P.add('turretDark', torus(0.265, 0.014, seg), 0.52, 0.885, -0.88);
   periscope(P, 'turretDetail', 0.30, 0.90, -0.88);
   // 2026-10-08 (round 5, the coordinator: the right gun per nation): the QJC-88 (the W85's vehicle form) at true scale.
-  mount(P, 'turret', FITTINGS.pintleMG({
+  if (options.roofGun !== false) mount(P, 'turret', FITTINGS.pintleMG({
     mats: P.mats, cls: 'qjc88', scale: 1.0, tone: 'two-tone', elev: 0.08,
-    shield: true, ammo: true, ring: { r: 0.16, stubs: 3 }, seed: 9990,
+    shield: true, ammo: true, ring: { r: 0.16, stubs: 3 }, seed: 9990, working: true, // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
   }), 0.52, 0.89, -0.88);
+  const antennaSeats = options.antennaSeats ?? [[-1.06, -1.58], [1.06, -1.58]];
   for (const s of [-1, 1]) {
     P.addEquipment('turret', box(0.17, 0.08, 0.15), s * 0.96, 0.84, 0.10);
     P.add('turretGlass', box(0.10, 0.052, 0.018), s * 0.96, 0.85, 0.185);
-    P.add('turretDetail', cylY(0.034, 0.044, 0.060, 10), s * 1.06, 0.83, -1.58);
+    const [ax, az] = antennaSeats[s < 0 ? 0 : 1];
+    P.add('turretDetail', cylY(0.034, 0.044, 0.060, 10), ax, 0.83, az);
     mount(P, 'turret', FITTINGS.antennaWhip({
       mats: P.mats, h: s < 0 ? 0.72 : 0.62, r: 0.011,
       rake: -s * 0.04, seed: 9992 + (s > 0 ? 1 : 0),
-    }), s * 1.06, 0.86, -1.58);
+    }), ax, 0.86, az);
   }
   addSmokeBanks(P, 1.33, 0.48, 0.25, 5, 9996);
 
@@ -1193,8 +1207,10 @@ function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort): void {
   ], { rings: [[1.58, 0.108], [3.03, 0.121], [3.72, 0.121], [5.90, 0.094]], muzzle: 6.42 });
   muzzleBore(P, { r: 0.088 });
 
-  P.decal('turret', 'star', null, 0.23, [-1.48, 0.49, -0.10], -Math.PI / 2);
-  P.decal('turret', 'number', P.spec.visual.number || '99A2', 0.20, [1.54, 0.48, -1.00], Math.PI / 2);
+  if (options.decals !== false) {
+    P.decal('turret', 'star', null, 0.23, [-1.48, 0.49, -0.10], -Math.PI / 2);
+    P.decal('turret', 'number', P.spec.visual.number || '99A2', 0.20, [1.54, 0.48, -1.00], Math.PI / 2);
+  }
   P.turretG.userData.ztz99a2ProductionReceipt = Object.freeze({
     architecture: 'ztz99a2-production-arrow-r4',
     independentProductionTurret: true,
@@ -1447,7 +1463,7 @@ function buildType59(P: ChinaBuilderPort): void {
   {
     const dshk = FITTINGS.pintleMG({
       mats: P.mats, cls: 'dshk', scale: 1.08, tone: 'two-tone', elev: 0.08,
-      ammo: true, shield: true, barrelBridge: true,
+      ammo: true, shield: true, barrelBridge: true, working: true,
       rotation: [0, -0.04, 0], seed: 6,
     });
     dshk.name = 'type59RoofDShK';
@@ -1455,18 +1471,9 @@ function buildType59(P: ChinaBuilderPort): void {
     dshk.position.set(0.55, 1.021, 0.36);
     P.turretG.add(dshk);
   }
-  P.addEquipment('turretDetail', box(0.16, 0.035, 0.30), -0.605, 1.105, 0.02);
-  {
-    const commanderMG = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'mag', scale: 1.12, tone: 'two-tone', elev: 0.06,
-      ammo: true, shield: false, barrelBridge: true,
-      rotation: [0, 0.05, 0], seed: 59,
-    });
-    commanderMG.name = 'type59CommanderCupolaMG';
-    commanderMG.userData.cupolaSeat = 'commander';
-    commanderMG.position.set(-0.605, 1.111, 0.13);
-    P.turretG.add(commanderMG);
-  }
+  // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle and every drawn gun works): the Type 59's
+  // one roof gun is the loader's 12.7 mm Type 54 (DShK) AA gun; the commander's cupola carries none, so its GPMG and
+  // bridge plate are gone.
   // paired four-tube smoke banks on the dome shoulders (dark pads bridge
   // the bank bodies onto the casting skin).
   for (const s of [-1, 1]) {
@@ -1657,7 +1664,7 @@ export const CHINA_PROFILES = {
   ztz85_iii: { build: buildZTZ85III },
   // Type 99A is registered by chineseFrontline.ts so its certified hull can
   // receive the VT-derived rotating assembly from the same authored family.
-  ztz99a2_prototype: { build: buildZTZ99A2Prototype },
+  ztz99a: { build: buildZTZ99A2Prototype },
   ztz99a2: { build: buildZTZ99A2 },
   // §5.304 redesign: Type 59 on the widened obr-1975 chassis (owner order).
   type59: { build: buildType59 },

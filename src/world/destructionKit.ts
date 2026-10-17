@@ -246,6 +246,16 @@ export interface StructureDamageAnatomy {
    */
   mound?: RubbleMound;
   /**
+   * The intact form as drawn (destruction lane 2026-10-16, collapseRuin.ts): its area-weighted 90th percentile height,
+   * its top and its plan's box in the body frame, measured once from the parts at describe (structureDamageSeam.ts) —
+   * the reference a collapse keeps a ruin standing against. Absent where no parts were handed over.
+   */
+  intact?: { p90M: number; topM: number; minX: number; maxX: number; minZ: number; maxZ: number;
+    /** Its plan on a 32 × 32 grid over that box (1: drawn over), and the share drawn over. */
+    cells: Uint8Array; planFill: number;
+    /** An open frame by its builder's name (collapseRuin.ts ruinKind): a water tower, a windmill, a mast, a gantry. */
+    frame?: boolean };
+  /**
    * The kit's own plan of the building, opaque to the core (house.ts HouseSpec and HouseFrame, a landmark's plan): a
    * kit's builders read it back to fracture exactly what it built. Absent for the default kit.
    */
@@ -344,11 +354,13 @@ export type DamagePartClass = 'wall' | 'roof' | 'glass' | 'trim' | 'interior';
 
 /**
  * Intact parts to hide from a stage on: a whole section, a part class, a class within a section — or, with both null,
- * everything the structure has (a collapse).
+ * everything the structure has (a collapse). `piece` names one of a set piece's named pieces instead (a statue's figure,
+ * a gate's merlon, a windmill's sail: landmarks/pieces.ts): its own parts' spans go, whatever the other two say.
  */
 export interface DamageHide {
   section: number | null;
   partClass: DamagePartClass | null;
+  piece?: string;
 }
 
 /** What a stage returns beside what it wrote. */

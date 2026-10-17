@@ -41,6 +41,14 @@ const appVersion = resolveAppVersion(dirname(fileURLToPath(import.meta.url)));
 /** The match build line every page and host Worker of this build send in their HELLO (src/mp/wire/matchBuild.ts). */
 const matchBuild = resolveMatchBuild(dirname(fileURLToPath(import.meta.url)), appVersion);
 
+/**
+ * The page catalog plugin (tools/viteI18nPageCatalogs.ts). Its build scan also reads the game's whole graph and every
+ * worker's: the Studio catalog split of the page and of the worker builds serves the game's catalogs restricted to the
+ * keys that scan finds (2026-10-15, the perf lane), so both builds emit the same, smaller catalog files.
+ */
+const pageCatalogs = i18nPageCatalogs();
+const gameCatalogKeys = (): readonly string[] | null => pageCatalogs.api.gameCatalogKeys();
+
 /** The telemetry sink origin for the inline watchdog: an http(s) origin without a trailing slash, else empty (the Vercel fallback). */
 function telemetrySinkOrigin(value: string | undefined): string {
   const url = String(value ?? '').trim().replace(/\/+$/, '');
@@ -132,15 +140,22 @@ const rewriteRoutes = (documentRoot: string): Connect.NextHandleFunction => (req
  * `/assets/`: the immutable routes stay the bundle's). About 105 MB of JSON, fetched one map at a time and only when
  * hosting.
  */
-const COLLISION_MANIFEST_DIR = resolve(dirname(fileURLToPath(import.meta.url)), 'server/world-collision-manifests');
-const COLLISION_MANIFEST_ROUTE = '/mp-collision';
+// (physics stream, 2026-10-16; the coordinator's ruling with the MP lane) the manifests are served on two routes: this
+// build's at /mp-collision/v2/ (records of up to 256 parts: the pillboxes' embrasures), and production 224's own files, frozen
+// byte for byte (server/world-collision-manifests-224, 9c511dd48's: 225 deploys with 226), at /mp-collision/ through 227,
+// so a 224 tab that hosts or is elected after 226 deploys still decodes its own format and its own world
+// (collisionManifestRoutes.selftest)
+const COLLISION_MANIFEST_SOURCES: ReadonlyArray<{ route: string; dir: string }> = [
+  { route: '/mp-collision/v2', dir: resolve(dirname(fileURLToPath(import.meta.url)), 'server/world-collision-manifests') },
+  { route: '/mp-collision', dir: resolve(dirname(fileURLToPath(import.meta.url)), 'server/world-collision-manifests-224') },
+];
 
-function collisionManifestFiles(): Array<{ name: string; path: string }> {
-  if (!existsSync(COLLISION_MANIFEST_DIR)) return [];
+function collisionManifestFiles(dir: string): Array<{ name: string; path: string }> {
+  if (!existsSync(dir)) return [];
   const out: Array<{ name: string; path: string }> = [];
-  for (const file of readdirSync(COLLISION_MANIFEST_DIR)) {
+  for (const file of readdirSync(dir)) {
     if (!file.endsWith('.json')) continue;
-    const path = resolve(COLLISION_MANIFEST_DIR, file);
+    const path = resolve(dir, file);
     if (file === 'index.json') { out.push({ name: 'index.json', path }); continue; }
     const hash = createHash('sha256').update(readFileSync(path)).digest('hex').slice(0, 12);
     out.push({ name: `${file.slice(0, -5)}.${hash}.json`, path });
@@ -151,13 +166,15 @@ function collisionManifestFiles(): Array<{ name: string; path: string }> {
 const collisionManifestPlugin = () => ({
   name: 'cot-mp-collision-manifests',
   configureServer(server: { middlewares: { use(handler: Connect.NextHandleFunction): void } }) {
-    let files: Map<string, string> | null = null;
+    const files = new Map<string, Map<string, string>>();
     server.middlewares.use((req, res, next) => {
       const url = req.url || '';
-      if (!url.startsWith(`${COLLISION_MANIFEST_ROUTE}/`)) { next(); return; }
-      files ??= new Map(collisionManifestFiles().map((entry) => [entry.name, entry.path]));
-      const name = url.slice(COLLISION_MANIFEST_ROUTE.length + 1).split('?', 1)[0]!;
-      const path = files.get(name);
+      // (the v2 route first: it lies under the legacy one)
+      const source = COLLISION_MANIFEST_SOURCES.find((entry) => url.startsWith(`${entry.route}/`));
+      if (!source) { next(); return; }
+      if (!files.has(source.route)) files.set(source.route, new Map(collisionManifestFiles(source.dir).map((entry) => [entry.name, entry.path])));
+      const name = url.slice(source.route.length + 1).split('?', 1)[0]!;
+      const path = files.get(source.route)!.get(name);
       if (!path) { res.statusCode = 404; res.end(); return; }
       res.setHeader('content-type', 'application/json; charset=utf-8');
       res.setHeader('cache-control', name === 'index.json' ? 'no-cache' : 'public, max-age=31536000, immutable');
@@ -165,8 +182,10 @@ const collisionManifestPlugin = () => ({
     });
   },
   generateBundle(this: { emitFile(file: { type: 'asset'; fileName: string; source: Buffer }): void }) {
-    for (const entry of collisionManifestFiles()) {
-      this.emitFile({ type: 'asset', fileName: `${COLLISION_MANIFEST_ROUTE.slice(1)}/${entry.name}`, source: readFileSync(entry.path) });
+    for (const { route, dir } of COLLISION_MANIFEST_SOURCES) {
+      for (const entry of collisionManifestFiles(dir)) {
+        this.emitFile({ type: 'asset', fileName: `${route.slice(1)}/${entry.name}`, source: readFileSync(entry.path) });
+      }
     }
   },
 });
@@ -214,7 +233,7 @@ export default defineConfig({
   // hash alphabet so every /assets URL moved together (2026-09-25, docs/DEVELOPMENT.md "Asset caching").
   // The match host's catalog chunks split like the page's (tools/viteI18nStudioCatalog.ts), so both builds emit the same
   // catalog files.
-  worker: { format: 'es', plugins: () => [i18nStudioCatalog()], rollupOptions: { output: { hashCharacters: 'base36' } } },
+  worker: { format: 'es', plugins: () => [i18nStudioCatalog({ gameKeys: gameCatalogKeys })], rollupOptions: { output: { hashCharacters: 'base36' } } },
   plugins: [
     // 2026-10-02 (tools/viteSharedWorkers.ts): the wreck bake and Garage workshop workers are entries of the page
     // build and import the page's own chunks (dist/assets 954 files / 34.9 MB -> 682 / 27.7 MB; a worker never
@@ -270,9 +289,10 @@ export default defineConfig({
     // into a modulepreload on Chinese documents (build-time /cn/ pages and the middleware's request-time ones), so
     // English visitors never fetch Chinese and Chinese pages never flash English.
     // 2026-10-05 (tools/viteI18nStudioCatalog.ts): the game's catalogs leave the Scene Studio's strings out; each
-    // locale's Studio slice loads with the Studio's chunk.
-    i18nStudioCatalog(),
-    i18nPageCatalogs(),
+    // locale's Studio slice loads with the Studio's chunk. 2026-10-15 (the perf lane): in the build they also leave out
+    // every string the game's graph and its workers cannot show (the docs, home, gallery and media pages' strings).
+    i18nStudioCatalog({ gameKeys: gameCatalogKeys }),
+    pageCatalogs,
     {
       name: 'cot-site-entry-output',
       enforce: 'post',
@@ -387,6 +407,11 @@ export default defineConfig({
             // the gallery and main all import it, so on its own it became one more boot request on every page. The group takes
             // exactly these four modules, none of their dependencies.
             { name: 'fleetSpecRegistry', test: /[\\/]src[\\/](?:vehicles[\\/](?:fleetSpecRegistry|tankIdAliases)|game[\\/](?:tankIdBoundaries|tankIdStorageMigration))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-16 (the perf lane; 226's bundle budget: game requests 131 over 128): the fleet's leaf layout data — the
+            // supplied frames, skirt and hull layouts, upgrade datums and the national donor designs — are pure tables
+            // (no import but other tables) that the builders, the gallery and main all reach, so each split into a chunk of
+            // its own (14 boot requests of 0.1-10 KB). One group takes exactly these modules, none of their dependencies.
+            { name: 'fleetLayouts', test: /[\\/]src[\\/]vehicles[\\/](?:marder2Frame|abramsUpgradeDatums|amx10pSkirtLayout|griffinViperLayout|m6LinebackerLayout|abramsSourceXDatums|aresApcXFrame|tos1aTagilLayout|escortFieldKitLayout|national(?:DonorTurrets|UkraineDesign|PolandDesign|ChinaDesign|RussiaDesign|ModernizationDesign)|profiles[\\/](?:xk2Frame|strv122XSuppliedFrame|leopardRevolutionPrototypeFrame|leopardImprovedHull|challenger1XSuppliedFrame))\.ts$/, includeDependenciesRecursively: false },
             { name: 'groundBounce', test: /(?:[\\/]three[\\/]examples[\\/]jsm[\\/]postprocessing[\\/]Pass\.js|[\\/]src[\\/]engine[\\/](?:atmosphere|cloudscapes|lightModelCore|hazeLaw|groundBounce)\.ts)$/, includeDependenciesRecursively: false },
           ],
         },

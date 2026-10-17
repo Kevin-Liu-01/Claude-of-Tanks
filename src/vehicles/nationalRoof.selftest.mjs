@@ -3,6 +3,7 @@ import {createHash} from 'node:crypto';
 import {Box3,Vector3,Raycaster,Mesh,MeshBasicMaterial,DoubleSide} from 'three';
 import {createTank} from './tankFactory.ts';
 import {NATIONAL_ROOF_LOADOUTS} from './nationalRoofConfig.ts';
+import {NATIONAL_DONOR_TURRETS} from './nationalDonorTurrets.ts';
 import {auxiliaryWeaponProfile} from './auxiliaryWeapons.ts';
 
 import {topIndex} from './roofSweep.test-support.mjs';
@@ -49,7 +50,10 @@ for(const quality of ['high','low']){
    if(o.name.includes('Shadow'))return;fixed.push(o);
   });
   const floorY=station.getWorldPosition(new Vector3()).y;
-  const heightAt=topIndex(fixed,floorY+.10),local=[];
+  // A donor turret's station stands on its commander's cupola, the highest roof fitting under its sweep: the swept pitch
+  // stock is then checked against the whole roof below the seat (the pedestal is not pitch stock), which also keeps the
+  // lowered-station control meaningful.
+  const heightAt=topIndex(fixed,NATIONAL_DONOR_TURRETS[id]?floorY-.30:floorY+.10),local=[];
   const inverse=pitch.matrixWorld.clone().invert(),unique=new Map();
   for(const m of stock){const p=m.geometry.attributes.position;
    for(let i=0;i<p.count;i++){

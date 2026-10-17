@@ -9,6 +9,7 @@ import {sectionSolid} from './sectionSolid.ts';
 import {boxSections,castSections,roofSheet,beamBetween,blindTube,cappedTube,type Point3} from './measuredPrimitives.ts';
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
 const YAW:Point3=[0,1.55158,.0718698169];
@@ -217,7 +218,8 @@ function machineGun(P:TankBuilderPort):void {
   gun.add('turretDark',cylZ(.018,.769,20),-.955,2.432,1.1125);
   gun.add('turretDark',blindTube(.025,.012,.130,.110,20),-.955,2.432,1.552);
   gun.add('turretDetail',box(.022,.053,.017),-.955,2.458,1.14);
-  gun.finish();
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+  stationFromDrawnGun(gun.finish(),{name:'t80uXRoofNsvt',caliberMm:12.7});
 }
 
 function mainGun(P:TankBuilderPort):void {
@@ -248,7 +250,7 @@ export function buildT80UX(P:TankBuilderPort):void {
   P.muzzleZ=T80U_X_DATUMS.muzzleZ-GUN[2];P.topY=T80U_X_DATUMS.highestFittingM-YAW[1];
   buildT80UXHull(P);casting(P);turretEra(P);roofEquipment(P);smoke(P);machineGun(P);mainGun(P);
 }
-export const T80U_X_PROFILES={t80u_x:{build:buildT80UX}} as const;
+export const T80U_X_PROFILES={t80u:{build:buildT80UX}} as const;
 
 /** Native mechanical foundation for owner-authorized complete hull rebuilds. */
 export function buildT80UXRunningGear(P:TankBuilderPort):void { runningGear(P); }

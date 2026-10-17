@@ -83,8 +83,9 @@ try {
   const special=node({class:'cot-special deny'});
   const visibleNodes=[special];
   const viewport={height:768,width:1366,addEventListener:(type,fn)=>listeners.set(`viewport:${type}`,fn)};
-  globalThis.document={body,querySelector:()=>null,querySelectorAll:()=>visibleNodes};
-  globalThis.window={innerHeight:768,innerWidth:1366,visualViewport:viewport,
+  // documentElement.clientWidth is the layout viewport a pinch leaves alone
+  globalThis.document={body,documentElement:{clientWidth:1366},querySelector:()=>null,querySelectorAll:()=>visibleNodes};
+  globalThis.window={innerHeight:768,innerWidth:1366,visualViewport:viewport,document:globalThis.document,
     addEventListener:(type,fn)=>listeners.set(type,fn)};
   globalThis.getComputedStyle=()=>({visibility:'visible'});
   globalThis.requestAnimationFrame=fn=>{const id=nextFrame++;frames.set(id,fn);return id;};
@@ -128,8 +129,18 @@ try {
   assert.equal(body.hasAttribute('data-cot-battle-layout'),false,'hidden battle releases side lanes');
   root.visible=true;root.attrs.style='';change(root,'style','display:none');flush();
   assert.equal(body.hasAttribute('data-cot-battle-layout'),true);
+  // a trackpad pinch shrinks the visual viewport by its scale but not the layout the HUD root is sized to: the
+  // lanes keep their geometry and nothing is rewritten
+  const beforePinch=writes;
+  Object.assign(viewport,{scale:2,width:683,height:384});listeners.get('cot:layoutchange')();flush();
+  assert.equal(writes,beforePinch,'a 2x pinch leaves every HUD lane where it was');
+  // iOS page zoom rests at a scale above 1 with no pinch: the lanes use the visible size as it is
+  Object.assign(viewport,{scale:1.25,width:1366,height:768});listeners.get('cot:layoutchange')();flush();
+  assert.equal(writes,beforePinch,'a resting page scale is not a pinch either');
+  Object.assign(viewport,{scale:1,width:1366,height:768});
+  assert.equal(listeners.has('viewport:resize'),false,'no direct visual viewport listener: cot:layoutchange carries real changes');
   const before=properties.get('--hud-right-height');
-  viewport.height=420;listeners.get('viewport:resize')();flush();
+  viewport.height=420;listeners.get('cot:layoutchange')();flush();
   assert.notEqual(properties.get('--hud-right-height'),before,'virtual keyboard changes available space');
   const late=node({class:'cot-room-chat quiet'});visibleNodes.push(late);
   callbacks.mutation([{type:'childList',target:body}]);
@@ -145,24 +156,61 @@ try {
   listeners.get('transitionend')({target:special});
   assert.equal(frames.size,1,'settled panel transforms update lane position');flush();
   listeners.get('transitioncancel')({target:special});assert.equal(frames.size,1);flush();
-  // The multiplayer v2 network strip mounts outside the HUD root and asks for a relayout: while it sits in the
-  // right roster's column the roster takes the lane below it, and the side lane below the roster follows.
-  const rect=(top,bottom,left,right)=>({top,bottom,left,right});
-  const earRight=node({class:'cot-ear r'});earRight.getBoundingClientRect=()=>rect(52,120,900,1094);
-  const strip=node({class:'cot-mp-status battle'});strip.getBoundingClientRect=()=>rect(38,66,860,1014);
-  let stripMounted=true;
-  globalThis.document.querySelector=selector=>selector==='.cot-ear.r'?earRight:selector==='.cot-mp-status.battle'&&stripMounted?strip:null;
+  // The multiplayer v2 network strip mounts outside the HUD root and asks for a relayout. It is bare text in the
+  // top-right corner row (multiplayerStatus.ts: top 8px), above the enemies roster's own lane, so the roster stays
+  // level with the allies roster; only the strip's open details reader reaches into that lane and pushes it down.
+  const rect=(top,bottom,left,right)=>({top,bottom,left,right,width:right-left,height:bottom-top});
+  const earRight=node({class:'cot-ear r'});earRight.getBoundingClientRect=()=>rect(52,120,1172,1366);
+  const strip=node({class:'cot-mp-status battle'});strip.getBoundingClientRect=()=>rect(8,36,1210,1356);
+  const stripButton=node({class:'cot-mp-strip good'});stripButton.getBoundingClientRect=()=>rect(8,36,1210,1356);
+  const plate=node({class:'cot-net'});const score=node({class:'cot-top'});score.getBoundingClientRect=()=>rect(0,64,511,855);
+  let stripMounted=true;let plateShown=false;
+  const mounted={'.cot-ear.r':()=>earRight,'.cot-mp-status.battle':()=>stripMounted?strip:null,
+    '.cot-mp-status.battle .cot-mp-strip':()=>stripMounted?stripButton:null,'.cot-net':()=>plateShown?plate:null,'.cot-top':()=>score};
+  globalThis.document.querySelector=selector=>mounted[selector]?.()??null;
   assert.equal(properties.has('--hud-roster-top-right'),false,'no strip, no roster lane variable');
   listeners.get('cot-hud-relayout')();assert.equal(frames.size,1,'the strip\'s relayout request schedules one measurement');flush();
-  assert.equal(properties.get('--hud-roster-top-right'),'72px','the roster takes the lane 6 px below the strip');
-  assert.equal(properties.get('--hud-right-top'),'126px','network header reserves roster space above the anchored report');
+  assert.equal(properties.has('--hud-roster-top-right'),false,'the corner-row strip leaves the enemies roster on its own lane');
+  assert.equal(properties.get('--hud-right-top'),'106px','the report budget keeps the default roster start');
+  assert.equal(properties.get('--hud-network-corner-right'),'10px','without the fps/ping plate the strip takes the corner itself');
+  plateShown=true;plate.getBoundingClientRect=()=>rect(8,36,1248,1356);
+  callbacks.resize();flush();
+  assert.equal(properties.get('--hud-network-corner-right'),'134px','the strip sits 16 px left of a shown fps/ping plate, in the same row');
+  assert.equal(properties.has('--hud-roster-top-right'),false);
+  assert.equal(strip.hasAttribute('data-compact'),false,'room for every cell between the score and the plate');
+  score.getBoundingClientRect=()=>rect(0,64,300,1100);
+  callbacks.resize();flush();
+  assert.equal(strip.hasAttribute('data-compact'),true,'a row too narrow for every cell folds the strip to its ping');
+  stripButton.getBoundingClientRect=()=>rect(8,36,1258,1313);
+  callbacks.resize();flush();
+  assert.equal(strip.hasAttribute('data-compact'),true,'the folded strip keeps its full width as the measure: no fold/unfold flicker');
+  score.getBoundingClientRect=()=>rect(0,64,511,855);stripButton.getBoundingClientRect=()=>rect(8,36,1210,1356);
+  callbacks.resize();flush();
+  assert.equal(strip.hasAttribute('data-compact'),false,'a wide enough row unfolds it');
+  strip.getBoundingClientRect=()=>rect(8,360,1066,1356);
+  callbacks.resize();flush();
+  assert.equal(properties.get('--hud-roster-top-right'),'366px','the open details reader pushes the roster 6 px below itself');
+  plateShown=false;
   strip.getBoundingClientRect=()=>rect(140,168,20,180);
   listeners.get('cot-hud-relayout')();flush();
   assert.equal(properties.has('--hud-roster-top-right'),false,'a strip on the left lane (touch portrait) leaves the right roster alone');
   assert.equal(properties.get('--hud-right-top'),'106px','the report budget returns to the default roster start');
+  // A phone-width mouse window has no roster: the folded strip takes the right lane under the objective, and the
+  // right kill feed starts below it.
+  body.dataset.cotWidth='phone';mounted['.cot-ear.r']=()=>null;
+  viewport.width=390;globalThis.document.documentElement.clientWidth=390;
+  strip.getBoundingClientRect=()=>rect(72,100,325,380);
+  listeners.get('cot-hud-relayout')();flush();
+  assert.equal(properties.get('--hud-kill-right-top'),'108px','the right feed clears the strip under the 64 px objective');
+  assert.equal(properties.get('--hud-network-corner-right'),'10px','the phone lane is not the corner row');
   stripMounted=false;
   listeners.get('cot-hud-relayout')();flush();
+  assert.equal(properties.get('--hud-kill-right-top'),'72px','without the strip the feed returns under the objective');
+  delete body.dataset.cotWidth;mounted['.cot-ear.r']=()=>earRight;
+  viewport.width=1366;globalThis.document.documentElement.clientWidth=1366;
+  listeners.get('cot-hud-relayout')();flush();
   assert.equal(properties.has('--hud-roster-top-right'),false,'the strip\'s dispose removes the variable');
+  assert.equal(properties.get('--hud-network-corner-right'),'10px','and returns the corner offset');
   const map=node({class:'cot-minimap'});
   globalThis.document.querySelector=selector=>selector==='.cot-minimap'?map:null;
   for(const size of [160,220,300]){
@@ -180,7 +228,9 @@ try {
 const layout=readFileSync(new URL('./battleHudLayout.ts',import.meta.url),'utf8');
 const hud=readFileSync(new URL('./hud.ts',import.meta.url),'utf8');
 assert.match(layout,/new ResizeObserver\(schedule\)/,'map zoom and roster size changes relayout the lanes');
-assert.match(layout,/visualViewport\?\.addEventListener\('resize'/,'virtual keyboard/visual viewport changes reflow');
+assert.match(layout,/window\.addEventListener\('cot:layoutchange', schedule\)/,'virtual keyboard/visual viewport changes reflow through the shared layout event');
+assert.match(layout,/layoutViewportSize\(window\)/,'lanes measure the shared pinch-independent viewport');
+assert.doesNotMatch(layout,/visualViewport\?\.(width|height)/,'no raw visual viewport size (a pinch shrinks it)');
 assert.match(layout,/window\.addEventListener\('cot-hud-relayout', schedule\)/,'the network strip can request a relayout from outside the root');
 assert.match(hud,/\.cot-ear\.r\{right:0;top:var\(--hud-roster-top-right,52px\);\}/,'the right roster reads its lane from the layout, with its own lane as the fallback');
 assert.match(hud,/installBattleHudLayout\(root\)/);

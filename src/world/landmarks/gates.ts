@@ -14,8 +14,12 @@ import { fenceRun } from './grounds.ts';
 import { letterText, measureText } from './lettering.ts';
 import { gateStubs } from './plan.ts';
 import type { LandmarkBuilder } from './types.ts';
+import { finishLandmark, piece } from './pieces.ts';
+import { chamferedBox } from './monuments.ts';
 
-const BANNER_RED = rgb(0xa8261e), STAR_RED = rgb(0xb3221c), WHITE = rgb(0xece8de), TIMBER = rgb(0x6a5440), TIMBER_DARK = rgb(0x4a3b2e);
+// (the maps lane, 2026-10-15; the blind critics on Verdant v2: the gate's sign blew out under High bloom) the banner's
+// frame, its lettering and the crest in a painted white, not a lamp's
+const BANNER_RED = rgb(0xa8261e), STAR_RED = rgb(0xb3221c), WHITE = rgb(0xc9c5bb), TIMBER = rgb(0x6a5440), TIMBER_DARK = rgb(0x4a3b2e);
 const VERMILION = rgb(0xc4452c), LACQUER_BLACK = rgb(0x1e1c1b), FRAME_WHITE = rgb(0xe8e4da), GILT = rgb(0xb8933e);
 
 const uvOffset = (rng: () => number): [number, number] => [rng() * 7.31, rng() * 5.17];
@@ -64,51 +68,72 @@ export const kolkhozArch: LandmarkBuilder = (ctx) => {
   const base = -0.6 - ctx.groundFall, p = 0.8, px = span / 2 + p / 2, pillarTop = H - 1.6;
   for (const sx of [-1, 1]) {
     const x = sx * px;
-    sink.span('stone', x - p / 2 - 0.12, base, -p / 2 - 0.12, x + p / 2 + 0.12, 0.55, p / 2 + 0.12);
-    sink.span('plaster', x - p / 2, 0.55, -p / 2, x + p / 2, pillarTop, p / 2);
+    // (the looks lane, 2026-10-15; WORKLIST #11 r2: plinths stepped, panels sunk) the pillar's plinth in two courses,
+    // the lower proud of the upper; the shaft's front and back each a panel sunk 4 cm in its frame of stiles and rails,
+    // the red star in relief in the field
+    sink.span('stone', x - p / 2 - 0.16, base, -p / 2 - 0.16, x + p / 2 + 0.16, 0.3, p / 2 + 0.16);
+    sink.span('stone', x - p / 2 - 0.08, 0.3, -p / 2 - 0.08, x + p / 2 + 0.08, 0.55, p / 2 + 0.08, { shade: 0.95 });
+    const sunk = 0.04, st = 0.15, py0 = 1.62, py1 = pillarTop - 0.5;
+    sink.span('plaster', x - p / 2, 0.55, -p / 2 + sunk, x + p / 2, pillarTop, p / 2 - sunk);
+    for (const zs of [-1, 1]) {
+      const z0 = zs > 0 ? p / 2 - sunk : -p / 2, z1 = zs > 0 ? p / 2 : -p / 2 + sunk;
+      sink.span('plaster', x - p / 2, 0.55, z0, x - p / 2 + st, pillarTop, z1);
+      sink.span('plaster', x + p / 2 - st, 0.55, z0, x + p / 2, pillarTop, z1);
+      sink.span('plaster', x - p / 2 + st, 0.55, z0, x + p / 2 - st, py0, z1);
+      sink.span('plaster', x - p / 2 + st, py1, z0, x + p / 2 - st, pillarTop, z1);
+      if (py1 - py0 > 0.9) star(sink, 'structureMetal', x, py1 - 0.42, zs * (p / 2 - sunk + 0.016), 0.2, 0.03, { colour: STAR_RED, decor: true }, zs > 0 ? 0 : Math.PI);
+    }
     sink.placed(0, x, 0, 0, () => {
       moulding(sink, 'plaster', p, p, pillarTop - 0.02, 0.14, 0.1);
       moulding(sink, 'plaster', p, p, 1.4, 0.1, 0.04);
     });
     revolve(sink, 'plaster', x, 0, [[(p / 2 + 0.06) * Math.SQRT2, pillarTop + 0.12], [0.05, pillarTop + 0.75]], 4, {}, Math.PI / 4);
-    // the flag on its pole
-    sink.span('structureMetal', x - 0.025, pillarTop + 0.6, -0.025, x + 0.025, pillarTop + 3.0, 0.025, { colour: rgb(0x3a3a38), decor: true });
-    const fy = pillarTop + 2.05, fl = 1.15; // both flags stream the same way, with the wind
-    sink.quad('structureWood', [x, fy, 0.012], [x + fl * 0.5, fy - 0.06, 0.03], [x + fl * 0.5, fy + 0.84, 0.03], [x, fy + 0.9, 0.012], { colour: BANNER_RED, decor: true });
-    sink.quad('structureWood', [x + fl * 0.5, fy - 0.06, 0.03], [x + fl, fy + 0.02, 0.0], [x + fl, fy + 0.86, 0.0], [x + fl * 0.5, fy + 0.84, 0.03], { colour: shade(BANNER_RED, 0.9), decor: true });
-    sink.quad('structureWood', [x, fy + 0.9, -0.012], [x + fl * 0.5, fy + 0.84, -0.03], [x + fl * 0.5, fy - 0.06, -0.03], [x, fy, -0.012], { colour: shade(BANNER_RED, 0.8), decor: true });
-    sink.quad('structureWood', [x + fl * 0.5, fy + 0.84, -0.03], [x + fl, fy + 0.86, 0.0], [x + fl, fy + 0.02, 0.0], [x + fl * 0.5, fy - 0.06, -0.03], { colour: shade(BANNER_RED, 0.72), decor: true });
+    // the flag on its pole (it topples when the arch is breached: props lane A, E12, landmarks/pieces.ts)
+    piece(sink, { name: `flag-${sx < 0 ? 'l' : 'r'}`, kind: 'detach', at: 'breached', fall: 'topple' }, (s) => {
+      s.span('structureMetal', x - 0.025, pillarTop + 0.6, -0.025, x + 0.025, pillarTop + 3.0, 0.025, { colour: rgb(0x3a3a38), decor: true });
+      const fy = pillarTop + 2.05, fl = 1.15; // both flags stream the same way, with the wind
+      s.quad('structureWood', [x, fy, 0.012], [x + fl * 0.5, fy - 0.06, 0.03], [x + fl * 0.5, fy + 0.84, 0.03], [x, fy + 0.9, 0.012], { colour: BANNER_RED, decor: true });
+      s.quad('structureWood', [x + fl * 0.5, fy - 0.06, 0.03], [x + fl, fy + 0.02, 0.0], [x + fl, fy + 0.86, 0.0], [x + fl * 0.5, fy + 0.84, 0.03], { colour: shade(BANNER_RED, 0.9), decor: true });
+      s.quad('structureWood', [x, fy + 0.9, -0.012], [x + fl * 0.5, fy + 0.84, -0.03], [x + fl * 0.5, fy - 0.06, -0.03], [x, fy, -0.012], { colour: shade(BANNER_RED, 0.8), decor: true });
+      s.quad('structureWood', [x + fl * 0.5, fy + 0.84, -0.03], [x + fl, fy + 0.86, 0.0], [x + fl, fy + 0.02, 0.0], [x + fl * 0.5, fy - 0.06, -0.03], { colour: shade(BANNER_RED, 0.72), decor: true });
+    });
   }
   // the beam and the banner over the passage (a solid of their own, clear of the pillars' tops)
   const beamY = pillarTop - 1.35, inner = span / 2;
-  sink.span('structureWood', -inner - 0.02, beamY, -0.16, inner + 0.02, beamY + 0.3, 0.16, { colour: TIMBER_DARK });
+  // (the looks lane, 2026-10-16, the r2 sweep: the beam and the banner were plain boxes, most of the arch's surface)
+  chamferedBox(sink, 'structureWood', [-inner - 0.02, beamY, -0.16], [inner + 0.02, beamY + 0.3, 0.16], 0, 0.04, { colour: TIMBER_DARK });
   const by0 = beamY + 0.3 + ARCH_GAP_M, by1 = by0 + 1.2;
-  sink.span('structureWood', -inner + 0.25, by0, -0.07, inner - 0.25, by1, 0.07, { colour: BANNER_RED });
-  for (const [x0, x1, y0, y1] of [[-inner + 0.15, inner - 0.15, by0 - 0.06, by0 + 0.08], [-inner + 0.15, inner - 0.15, by1 - 0.08, by1 + 0.06],
-    [-inner + 0.15, -inner + 0.3, by0, by1], [inner - 0.3, inner - 0.15, by0, by1]] as const) {
-    sink.span('structureWood', x0, y0, -0.1, x1, y1, 0.1, { colour: WHITE, decor: true });
-  }
-  // the lettering: the farm's name in white sign-writer's capitals on both faces, each reading left to right from its
-  // own side (gauntlet wave 154: pseudo-glyph strokes at the same x on both faces read "garbled, mirror-reversed" from
-  // behind)
-  const sign = String(ctx.params.sign ?? '').trim();
-  if (sign) {
-    const style = { capHeight: 0.46, maxWidth: span - 1.3, colour: WHITE };
-    const { unit } = measureText(sign, style);
-    const baseline = (by0 + by1) / 2 - 3 * unit;
-    for (const face of [
-      { origin: [0, 0, 0.07], u: [1, 0, 0], out: [0, 0, 1], width: span },
-      { origin: [0, 0, -0.07], u: [-1, 0, 0], out: [0, 0, -1], width: span },
-    ] satisfies Face[]) letterText(sink, 'structureWood', face, sign, 0, baseline, style);
-  }
-  // the crest with the star
-  const cy = by1 + ARCH_GAP_M, cr = 0.95;
-  const crest: Vec3[] = [];
-  for (let i = 0; i <= 10; i++) { const a = i / 10 * Math.PI; crest.push([Math.cos(a) * cr, cy + Math.sin(a) * cr, 0]); }
-  // (the crest's half disc, counter-clockwise seen from the front, extruded back through the banner's plane)
-  sink.prism('structureWood', crest.map((p): Vec3 => [p[0], p[1], 0.06]).reverse(), [0, 0, -1], 0.12, { colour: WHITE });
-  star(sink, 'structureMetal', 0, cy + 0.45, 0.09, 0.38, 0.05, { colour: STAR_RED, decor: true });
-  star(sink, 'structureMetal', 0, cy + 0.45, -0.09, 0.38, 0.05, { colour: STAR_RED, decor: true }, Math.PI);
+  // the banner, its frame and its lettering (laid flat when the arch is breached: props lane A, E12)
+  piece(sink, { name: 'banner', kind: 'detach', at: 'breached', fall: 'flat' }, (s) => {
+    chamferedBox(s, 'structureWood', [-inner + 0.25, by0, -0.07], [inner - 0.25, by1, 0.07], 0, 0.03, { colour: BANNER_RED });
+    for (const [x0, x1, y0, y1] of [[-inner + 0.15, inner - 0.15, by0 - 0.06, by0 + 0.08], [-inner + 0.15, inner - 0.15, by1 - 0.08, by1 + 0.06],
+      [-inner + 0.15, -inner + 0.3, by0, by1], [inner - 0.3, inner - 0.15, by0, by1]] as const) {
+      s.span('structureWood', x0, y0, -0.1, x1, y1, 0.1, { colour: WHITE, decor: true });
+    }
+    // the lettering: the farm's name in white sign-writer's capitals on both faces, each reading left to right from its
+    // own side (gauntlet wave 154: pseudo-glyph strokes at the same x on both faces read "garbled, mirror-reversed" from
+    // behind)
+    const sign = String(ctx.params.sign ?? '').trim();
+    if (sign) {
+      const style = { capHeight: 0.46, maxWidth: span - 1.3, colour: WHITE };
+      const { unit } = measureText(sign, style);
+      const baseline = (by0 + by1) / 2 - 3 * unit;
+      for (const face of [
+        { origin: [0, 0, 0.07], u: [1, 0, 0], out: [0, 0, 1], width: span },
+        { origin: [0, 0, -0.07], u: [-1, 0, 0], out: [0, 0, -1], width: span },
+      ] satisfies Face[]) letterText(s, 'structureWood', face, sign, 0, baseline, style);
+    }
+  });
+  // the crest with the star (it topples at the first damage: props lane A, E12)
+  piece(sink, { name: 'crest', kind: 'detach', at: 'damaged', fall: 'topple' }, (s) => {
+    const cy = by1 + ARCH_GAP_M, cr = 0.95;
+    const crest: Vec3[] = [];
+    for (let i = 0; i <= 10; i++) { const a = i / 10 * Math.PI; crest.push([Math.cos(a) * cr, cy + Math.sin(a) * cr, 0]); }
+    // (the crest's half disc, counter-clockwise seen from the front, extruded back through the banner's plane)
+    s.prism('structureWood', crest.map((p): Vec3 => [p[0], p[1], 0.06]).reverse(), [0, 0, -1], 0.12, { colour: WHITE });
+    star(s, 'structureMetal', 0, cy + 0.45, 0.09, 0.38, 0.05, { colour: STAR_RED, decor: true });
+    star(s, 'structureMetal', 0, cy + 0.45, -0.09, 0.38, 0.05, { colour: STAR_RED, decor: true }, Math.PI);
+  });
   // the braces from the pillars to the beam
   for (const sx of [-1, 1]) {
     bar(sink, 'structureWood', [sx * inner, beamY - 1.2, 0], [sx * (inner - 1.2), beamY, 0], 0.14, { colour: TIMBER_DARK, decor: true });
@@ -121,7 +146,8 @@ export const kolkhozArch: LandmarkBuilder = (ctx) => {
     const kind = String(ctx.params.wingFence || 'fencepicket'), x0 = px + p / 2 + 0.25;
     for (const sx of [-1, 1]) fenceRun(destructibles, kind, [sx * x0, 0], [sx * (x0 + wings), 0]);
   }
-  return { parts: smoothRender(sink.finish(), LIMEWASH_UV), tints: { plaster: [1, 1, 0.98] }, destructibles };
+  // (2026-10-15: the pillars' lime-wash at about two thirds, as the church's, under High bloom)
+  return { parts: smoothRender(finishLandmark(sink), LIMEWASH_UV), tints: { plaster: [0.8, 0.8, 0.78] }, destructibles };
 };
 
 // ---------------------------------------------------------------------------------------------------------- town gate
@@ -189,12 +215,23 @@ function oriel(sink: PartSink, bucket: RegionalBucket, z: number, y0: number, fr
     const t = 0.32 - k * 0.1;
     sink.span(bucket, -w / 2 + k * 0.22, y0 - 0.3 * (k + 1), z - dep + k * 0.22 - t, w / 2 - k * 0.22, y0 - 0.3 * k, z, { decor: true });
   }
-  sink.span(bucket, -w / 2, y0, z - dep, w / 2, y0 + h, z, { decor: true });
+  // (the looks lane, 2026-10-16, the r2 sweep: the lights were glass plates on the bay's face) the bay's front cut by its
+  // two lights, each a reveal 14 cm deep with the glazing at its back and the casement's mullion in it
+  const R = 0.14;
+  sink.box(bucket, [0, y0 + h / 2, z - dep / 2], [w / 2, h / 2, dep / 2], { decor: true }, undefined, { nz: true });
   const face: Face = { origin: [0, 0, z - dep], u: [-1, 0, 0], out: [0, 0, -1], width: w };
+  const lights: ArchHole[] = [-0.5, 0.5].map((u) => ({ u, w: 0.6, y0: y0 + 0.75, spring: y0 + 1.85, form: 'flat' as const }));
+  archedFace(sink, bucket, face, { u0: -w / 2, u1: w / 2, y0, y1: y0 + h }, lights, R, { decor: true });
   for (const u of [-0.5, 0.5]) {
-    sink.quad('glass', facePoint(face, u - 0.3, y0 + 0.75, 0.01), facePoint(face, u + 0.3, y0 + 0.75, 0.01), facePoint(face, u + 0.3, y0 + 1.85, 0.01),
-      facePoint(face, u - 0.3, y0 + 1.85, 0.01), { decor: true });
-    sink.member('structureMetal', facePoint(face, u, y0 + 0.75, 0.02), facePoint(face, u, y0 + 1.85, 0.02), 0.05, 0.03, face.out, { colour: frame, decor: true }, 0);
+    // (the looks lane, 2026-10-15; WORKLIST #11 r2 "openings with depth") each light in a stone frame proud of the bay
+    // (its sill, jambs and head), the glazing set back in its reveal, the casement's mullion in it
+    sink.quad('glass', facePoint(face, u - 0.3, y0 + 0.75, -R + 0.012), facePoint(face, u + 0.3, y0 + 0.75, -R + 0.012), facePoint(face, u + 0.3, y0 + 1.85, -R + 0.012),
+      facePoint(face, u - 0.3, y0 + 1.85, -R + 0.012), { decor: true });
+    sink.member('structureMetal', facePoint(face, u, y0 + 0.75, -R + 0.03), facePoint(face, u, y0 + 1.85, -R + 0.03), 0.05, 0.03, face.out, { colour: frame, decor: true }, 0);
+    for (const [a, b, w] of [[[u - 0.38, y0 + 0.71], [u + 0.38, y0 + 0.71], 0.09], [[u - 0.38, y0 + 1.9], [u + 0.38, y0 + 1.9], 0.1],
+      [[u - 0.34, y0 + 0.75], [u - 0.34, y0 + 1.85], 0.08], [[u + 0.34, y0 + 0.75], [u + 0.34, y0 + 1.85], 0.08]] as const) {
+      sink.member(bucket, facePoint(face, a[0], a[1], 0.04), facePoint(face, b[0], b[1], 0.04), w, 0.08, face.out, { decor: true, exposed: true }, 0.04);
+    }
   }
   sink.span(bucket, -w / 2 - 0.08, y0 + h, z - dep - 0.08, w / 2 + 0.08, y0 + h + 0.14, z, { decor: true });
   const cap: RoofSpec = { kind: 'shed', pitchDeg: 38, eave: 0.12, verge: 0.1, thickness: 0.07, bucket: 'roof', decor: true };
@@ -249,15 +286,25 @@ export const townGate: LandmarkBuilder = (ctx) => {
   oriel(sink, DRESS_BUCKET, -D / 2, blockTop + 1.35, FRAME_WHITE);
   // the clock under the roof on the field side
   const cf = f.front, cy = top - 0.9;
-  const disc: Vec3[] = [], ring: Vec3[] = [];
+  // (the looks lane, 2026-10-16, the r2 sweep: the dial and its gilt ring were plates on the wall) the dial sits back in
+  // its moulded stone ring, 14 cm proud of the wall: the ring's outer and inner faces and its gilt front, the blue dial at
+  // its back with the gilt hour marks and the hands
+  const disc: Vec3[] = [], RO = 0.78, RI = 0.64, RD = 0.14;
   for (let i = 0; i < 16; i++) {
-    const a = i / 16 * Math.PI * 2;
-    ring.push(facePoint(cf, Math.cos(a) * 0.75, cy + Math.sin(a) * 0.75, 0.03));
-    disc.push(facePoint(cf, Math.cos(a) * 0.64, cy + Math.sin(a) * 0.64, 0.045));
+    const a0 = i / 16 * Math.PI * 2, a1 = (i + 1) / 16 * Math.PI * 2;
+    const p = (r: number, a: number, o: number) => facePoint(cf, Math.cos(a) * r, cy + Math.sin(a) * r, o);
+    sink.quad(DRESS_BUCKET, p(RO, a1, 0), p(RO, a0, 0), p(RO, a0, RD), p(RO, a1, RD), { decor: true });
+    sink.quad(DRESS_BUCKET, p(RI, a0, 0.01), p(RI, a1, 0.01), p(RI, a1, RD), p(RI, a0, RD), { decor: true, shade: 0.7 });
+    sink.quad('structureMetal', p(RI, a0, RD), p(RI, a1, RD), p(RO, a1, RD), p(RO, a0, RD), { colour: GILT, decor: true });
+    disc.push(p(RI + 0.005, a0, 0.012));
   }
-  sink.polygon('structureMetal', ring, { colour: GILT, decor: true });
   sink.polygon('structureMetal', disc, { colour: rgb(0x1f2d4a), decor: true });
-  for (const [dx, dy] of [[-0.3, 0.2], [0.42, 0.1]]) sink.member('structureMetal', facePoint(cf, 0, cy, 0.06), facePoint(cf, dx, cy + dy, 0.06), 0.06, 0.02, cf.out, { colour: GILT, decor: true }, 0);
+  for (let k = 0; k < 12; k++) {
+    const a = k / 12 * Math.PI * 2, r0 = RI - (k % 3 ? 0.09 : 0.14);
+    sink.member('structureMetal', facePoint(cf, Math.cos(a) * r0, cy + Math.sin(a) * r0, 0.02), facePoint(cf, Math.cos(a) * (RI - 0.03), cy + Math.sin(a) * (RI - 0.03), 0.02),
+      0.035, 0.012, cf.out, { colour: GILT, decor: true }, 0);
+  }
+  for (const [dx, dy] of [[-0.3, 0.2], [0.42, 0.1]]) sink.member('structureMetal', facePoint(cf, 0, cy, 0.035), facePoint(cf, dx, cy + dy, 0.035), 0.06, 0.02, cf.out, { colour: GILT, decor: true }, 0);
   // the steep hipped roof and two dormers
   const roof: RoofSpec = { kind: 'hip', pitchDeg: 62, eave: 0.45, verge: 0.45, thickness: 0.14, bucket: 'roof', ridge: 'saddle' };
   const rg = roofGeometry(W, D, top, roof);
@@ -265,30 +312,80 @@ export const townGate: LandmarkBuilder = (ctx) => {
   for (const zs of [1, -1]) {
     const dRoof: RoofSpec = { kind: 'gable', pitchDeg: 50, eave: 0.12, verge: 0.12, thickness: 0.08, bucket: 'roof', ridge: null };
     sink.placed(zs > 0 ? 0 : Math.PI, 0, 0, zs * (D / 2 - 0.9), () => {
-      sink.span('stone', -0.55, top + 0.6, -0.4, 0.55, top + 1.6, 0.9);
-      sink.quad('glass', [-0.35, top + 0.75, 0.91], [0.35, top + 0.75, 0.91], [0.35, top + 1.45, 0.91], [-0.35, top + 1.45, 0.91], { decor: true });
+      // (the looks lane, 2026-10-15; WORKLIST #11 r2 "openings with depth": the dormer's pane was a glass plate on a stone
+      // box) the dormer built round its window: two cheeks, the sill and the head across between them, the window cut
+      // 13 cm in behind them, its casement frame, mullion and transom
+      for (const sx of [-1, 1]) sink.span('stone', sx < 0 ? -0.55 : 0.38, top + 0.6, -0.4, sx < 0 ? -0.38 : 0.55, top + 1.6, 0.9);
+      sink.span('stone', -0.38, top + 0.6, -0.4, 0.38, top + 1.6, 0.77);
+      sink.span('stone', -0.38, top + 0.6, 0.77, 0.38, top + 0.74, 0.9, { decor: true });
+      sink.span('stone', -0.38, top + 1.46, 0.77, 0.38, top + 1.6, 0.9, { decor: true });
+      sink.quad('glass', [-0.38, top + 0.74, 0.775], [0.38, top + 0.74, 0.775], [0.38, top + 1.46, 0.775], [-0.38, top + 1.46, 0.775], { decor: true });
+      const frameOpts = { colour: FRAME_WHITE, decor: true, fine: true } as const;
+      for (const [a, b] of [[[-0.36, top + 0.76], [0.36, top + 0.76]], [[-0.36, top + 1.44], [0.36, top + 1.44]], [[-0.36, top + 0.76], [-0.36, top + 1.44]],
+        [[0.36, top + 0.76], [0.36, top + 1.44]], [[0, top + 0.76], [0, top + 1.44]], [[-0.36, top + 1.2], [0.36, top + 1.2]]] as const) {
+        sink.member('structureMetal', [a[0], a[1], 0.79], [b[0], b[1], 0.79], 0.04, 0.03, [0, 0, 1], frameOpts, 0);
+      }
       emitRoof(sink, roofGeometry(1.1, 1.3, top + 1.6, dRoof), dRoof);
     });
   }
-  // a finial on the roof's ridge
-  revolve(sink, 'structureMetal', 0, 0, [[0.05, rg.ridgeTopY - 0.1], [0.16, rg.ridgeTopY + 0.3], [0.05, rg.ridgeTopY + 0.5], [0.02, rg.ridgeTopY + 1.3]], 8, { colour: GILT, decor: true });
+  // (the looks lane, 2026-10-15) the gate's two leaves standing open in the passage, folded back against its walls from
+  // their hinges inside the field face: ledged and braced oak boards, the iron straps across them on their pintles.
+  // Dressing: the passage stays open to a hull.
+  const leafH = spring - 0.08, leafW = P / 2 - 0.05, hingeZ = D / 2 - 0.45;
+  for (const sx of [-1, 1]) {
+    const x = sx * (P / 2 - 0.07), boards = Math.max(4, Math.round(leafW / 0.32)), bw = leafW / boards;
+    for (let k = 0; k < boards; k++) {
+      const z0 = hingeZ - k * bw, tone = 0.88 + ((k * 7919) % 13) / 13 * 0.2;
+      // (the r2 sweep: plain boxes) each board with its arrises taken off
+      chamferedBox(sink, 'structureWood', [x - 0.04, 0.0, z0 - bw + 0.006], [x + 0.04, leafH - (k % 2) * 0.03, z0], 1, 0.012, { colour: shade(TIMBER, tone), decor: true });
+    }
+    // the ledges and the braces on the leaf's back (toward the passage's middle), the straps on its face
+    const inner = x - sx * 0.06;
+    for (const y of [0.45, leafH / 2, leafH - 0.45]) sink.span('structureWood', inner - 0.03, y - 0.1, hingeZ - leafW + 0.05, inner + 0.03, y + 0.1, hingeZ - 0.05, { colour: TIMBER_DARK, decor: true });
+    for (const [ya, yb] of [[0.55, leafH / 2 - 0.1], [leafH / 2 + 0.1, leafH - 0.55]] as const) {
+      sink.member('structureWood', [inner, ya, hingeZ - 0.15], [inner, yb, hingeZ - leafW + 0.2], 0.16, 0.06, [-sx, 0, 0], { colour: TIMBER_DARK, decor: true, exposed: true }, 0.02);
+    }
+    for (const y of [0.45, leafH / 2, leafH - 0.45]) {
+      sink.member('structureMetal', [inner - sx * 0.035, y, hingeZ + 0.02], [inner - sx * 0.035, y, hingeZ - leafW * 0.62], 0.07, 0.012, [-sx, 0, 0], { colour: rgb(0x2a2a28), decor: true, exposed: true }, 0);
+    }
+  }
+  // a finial on the roof's ridge (it comes off at the first damage: props lane A, E12)
+  piece(sink, { name: 'finial', kind: 'detach', at: 'damaged', fall: 'drop' }, (s) =>
+    revolve(s, 'structureMetal', 0, 0, [[0.05, rg.ridgeTopY - 0.1], [0.16, rg.ridgeTopY + 0.3], [0.05, rg.ridgeTopY + 0.5], [0.02, rg.ridgeTopY + 1.3]], 8, { colour: GILT, decor: true }));
   // the town wall either side (each stub its own length): rubble wall, crenellations, the wall-walk on corbels behind
   for (const sx of [-1, 1]) {
     const walls = sx < 0 ? wallsLeft : wallsRight;
     if (walls <= 0) continue;
     const x0 = sx * W / 2, x1 = sx * (W / 2 + walls), lo = Math.min(x0, x1), hi = Math.max(x0, x1), wh = Math.min(7.5, H * 0.42);
     sink.span(wall, lo, base, -0.6, hi, wh, 0.6);
+    // (the looks lane, 2026-10-15) the wall's battered foot: a plinth course proud of it on both faces, its top weathered
+    sink.span(wall, lo, base, -0.78, hi, 0.75, 0.78, { decor: true, shade: 0.92 });
     // (the looks lane) the parapet's coping, the merlons each under its own capstone, a loop through every other one
     sink.span(DRESS_BUCKET, lo, wh - 0.12, -0.68, hi, wh + 0.04, 0.68, { decor: true });
     for (let x = lo + 0.3, k = 0; x + 0.9 < hi; x += 1.8, k++) {
-      sink.span(wall, x, wh, 0.05, x + 0.9, wh + 0.9, 0.6);
-      sink.span(DRESS_BUCKET, x - 0.05, wh + 0.9, 0.0, x + 0.95, wh + 1.02, 0.65, { decor: true });
-      if (k % 2 === 0) sink.span('dark', x + 0.4, wh + 0.25, 0.6, x + 0.5, wh + 0.75, 0.62, { decor: true });
+      // (props lane A, E12: every third merlon falls off the wall's face at the first damage, the next of each three when
+      // the gate is breached, each under its own capstone; landmarks/pieces.ts)
+      const emit = (s: PartSink, xm: number, km: number) => {
+        // (the looks lane, 2026-10-15; WORKLIST #11 r2: the loop was a dark plate 2 cm proud of the merlon) every other
+        // merlon's loop cut through it: the merlon its two cheeks, the stone under the slit and the stone over it
+        if (km % 2 === 0) {
+          s.span(wall, xm, wh, 0.05, xm + 0.4, wh + 0.9, 0.6);
+          s.span(wall, xm + 0.5, wh, 0.05, xm + 0.9, wh + 0.9, 0.6);
+          s.span(wall, xm + 0.4, wh, 0.05, xm + 0.5, wh + 0.25, 0.6, { shade: 0.7 });
+          s.span(wall, xm + 0.4, wh + 0.75, 0.05, xm + 0.5, wh + 0.9, 0.6, { shade: 0.7 });
+        } else s.span(wall, xm, wh, 0.05, xm + 0.9, wh + 0.9, 0.6);
+        s.span(DRESS_BUCKET, xm - 0.05, wh + 0.9, 0.0, xm + 0.95, wh + 1.02, 0.65, { decor: true });
+      };
+      const xm = x, km = k;
+      if (k % 3 < 2) {
+        piece(sink, { name: `merlon-${sx < 0 ? 'l' : 'r'}-${k}`, kind: 'detach', at: k % 3 === 0 ? 'damaged' : 'breached', fall: 'drop', toward: [0, 1], clear: 1.0 },
+          (s) => emit(s, xm, km));
+      } else emit(sink, xm, km);
     }
     sink.span('structureWood', lo, wh - 0.9, -1.6, hi, wh - 0.75, -0.6, { colour: TIMBER, decor: true });
     for (let x = lo + 0.6; x < hi; x += 1.5) sink.span('structureWood', x - 0.08, wh - 1.6, -1.5, x + 0.08, wh - 0.9, -1.35, { colour: TIMBER_DARK, decor: true });
   }
-  return { parts: sink.finish(), tints: { plaster3: DRESS_TINT } };
+  return { parts: finishLandmark(sink), tints: { plaster3: DRESS_TINT } };
 };
 
 // ---------------------------------------------------------------------------------------------------------- triumphal arch

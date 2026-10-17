@@ -7,6 +7,7 @@ import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import { addLeopardA6XFittings } from './leopardA6XFittings.ts';
 import { leopardA6WheelSolids } from './leopardA6XWheels.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -16,7 +17,7 @@ type Point = readonly [number, number, number];
 type Row = readonly [z: number, left: number, right: number, floor: number, roof: number];
 
 export const LEOPARD_A6_X_DATUMS = Object.freeze({
-  leo2a6_x: {
+  leo2a6: {
     dims: { hullLengthM: 7.63049, overallLengthM: 10.9547999, widthM: 3.80991006, heightM: 2.43111 },
     structuralRoofY: 2.43111,
     fixedOpticHeightM: 2.89810,
@@ -28,7 +29,7 @@ export const LEOPARD_A6_X_DATUMS = Object.freeze({
     muzzleZ: 7.139555,
   },
 });
-const D = LEOPARD_A6_X_DATUMS.leo2a6_x;
+const D = LEOPARD_A6_X_DATUMS.leo2a6;
 
 function local(geometry: THREE.BufferGeometry, origin: Point): THREE.BufferGeometry {
   return geometry.translate(-origin[0], -origin[1], -origin[2]);
@@ -458,7 +459,8 @@ function weapons(P: TankBuilderPort): void {
   mg.add('turretDark', box(.08, .055, .18), .9349, 2.6331, -.155);
   mg.add('turretDark', cylZ(.01985, .31484, 20), .9349, 2.63313, -.007705);
   mg.add('turretDark', cylZ(.006, .007, 16), .9349, 2.63313, .150);
-  mg.finish();
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+  stationFromDrawnGun(mg.finish(), { name: 'leopardA6XLoaderMg', caliberMm: 7.62 });
 }
 
 function muzzleReference(P: TankBuilderPort): void {
@@ -520,4 +522,4 @@ export function buildLeopard2A6X(P: TankBuilderPort): void {
   weapons(P);
 }
 
-export const LEOPARD_A6_X_PROFILES = Object.freeze({ leo2a6_x: { build: buildLeopard2A6X } });
+export const LEOPARD_A6_X_PROFILES = Object.freeze({ leo2a6: { build: buildLeopard2A6X } });

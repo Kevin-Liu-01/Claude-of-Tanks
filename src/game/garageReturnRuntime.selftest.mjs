@@ -28,7 +28,7 @@ function createFixture({
 
   const runtime = createGarageReturnRuntime({
     game,
-    getSelectedSpecId: () => 'm1a2',
+    getSelectedSpecId: () => 'm1a1_abrams_hc',
     presentation: {
       setAdaptiveSuspended: (value) => calls.push(['adaptive', value]),
       clearBattle: () => {

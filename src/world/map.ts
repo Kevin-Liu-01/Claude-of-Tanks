@@ -24,8 +24,10 @@ import type { HeightField, TerrainMapConfig } from './terrain.ts';
 import {
   createVegetation,
   createVegetationAsync,
+  outlandAdoptable,
+  outlandTreesEnabled,
 } from './vegetation.ts';
-import type { TreeObstacle } from './vegetation.ts';
+import type { OutlandTreeSpec, TreeObstacle } from './vegetation.ts';
 import { bindHorizonForestImpostors } from './horizonForestImpostors.ts';
 import type { HorizonPanoramaHandle } from './horizonPanorama.ts';
 import {
@@ -42,15 +44,20 @@ import { withGroundCoverHoles, type GroundCoverHole } from './sceneryPlan.ts';
 import { clearShrubsFromSolids } from './shrubClearance.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier } from '../engine/quality.ts';
+import { splitProgramVariants } from '../engine/programVariants.ts';
+import { createStructureGroundOcclusion, type StructureGroundOcclusionHandle } from '../engine/structureGroundOcclusion.ts';
 import { startHorizonRingBuild } from './horizonRingPrefetch.ts';
 import { supplyHinterland, withdrawHinterland } from './hinterlandHook.ts';
 import { selectHinterland } from './hinterland/select.ts';
 import { startHinterlandBuild } from './hinterland/prefetch.ts';
 import { bindHinterlandTreeImpostors } from './hinterland/trees.ts';
+import { HINTERLAND_DEPTH_MARGIN_M } from './hinterland/project.ts';
 import { supplyHorizonRing, withdrawHorizonRing } from './horizonRingHook.ts';
 import { worldBuildConfig, type BuildMapConfig } from './worldBuildConfig.ts';
 import { startPlannedWreckBakes } from './wreckBakePrefetch.ts';
 import { startSurfacePaints } from './surfacePaintPrefetch.ts';
+import { splitMinimapWater } from './minimapWaterPatches.ts';
+import { buildVisibleWaterRaster, type VisibleWaterRaster } from './visibleWater.ts';
 import {
   createObstacleGrid,
   shellPassesThroughCollisionRecord,
@@ -63,8 +70,9 @@ import {
   createStructureDamageSeam, patchStructureMaterialEntries, type StructureDamageSeam, type StructureMaterialInfo,
 } from './structureDamageSeam.ts';
 import { createStructureDamage } from '../sim/structureDamage.ts';
-import { rubbleHeightFor, type TerrainDeformation } from '../sim/terrainDeformation.ts';
+import { createDeformedHeightField, rubbleHeightFor, type TerrainDeformation } from '../sim/terrainDeformation.ts';
 import { installTerrainCraterMesh } from './terrainCraterMesh.ts';
+import { mapCraterStamps, type MapCraterStamp } from './mapCraters.ts';
 import { createGroundCoverCraters, type GroundCoverStaticLift } from './groundCoverCraters.ts';
 
 type EngineContext = Parameters<typeof buildTerrainMeshes>[1] &
@@ -182,10 +190,14 @@ export interface WorldRuntime {
   heightField: WorldHeightField;
   minimapTextureState: SourcedTextureState;
   raycast(origin: THREE.Vector3, direction: THREE.Vector3, maxDistance: number): WorldRayHit | null;
+  /** 2026-10-09 (the shadows lane): the ground's sky beside the solids (structureGroundOcclusion.ts); null on the phones. */
+  groundOcclusion: StructureGroundOcclusionHandle | null;
   getObstacles(): CollisionRecord[];
   getColliders(): CollisionRecord[];
   queryObstacles: ObstacleQuery;
   getConcealment(): ConcealmentDisc[];
+  /** DST-04: the map's pre-placed craters (world/mapCraters.ts), laid into every match's ground first. */
+  getMapCraters(): readonly MapCraterStamp[];
   crushables: CrushableRecord[];
   crushProp(index: number, dx: number, dz: number, speedMetersPerSecond?: number): boolean;
   destructibles: RuntimeValue[];
@@ -263,8 +275,20 @@ export interface WorldRuntime {
     buildings: MapFeatureRecord[];
     tacticalBeats: MapFeatureRecord[];
     treeClusters: Array<{ x: number; z: number; r: number }>;
+    /** Every lake and marsh disc, wet or dry: the placement, media and audit tools' footprint (not what to paint). */
     waterOrSoft: LayoutDisc[];
+    /** The discs the world draws liquid water in (minimapWaterPatches.ts): the only ones a map paints as water. */
+    liquidPatches: LayoutDisc[];
+    /** The rest: bog, salt pan or takyr ground — ice where `iceLake` (the map's wet layer is ice, splat.iceLake). */
+    softPatches: LayoutDisc[];
+    iceLake: boolean;
   };
+  /**
+   * The water a player can see (visibleWater.ts: the water sheet's own cells, 2 m), built on the first call and kept;
+   * null on a map without a liquid sheet. The tactical map's plate paints its water from this. Kept out of
+   * getMinimapFeatures on purpose: the battle's audio reads those mid-fight, and this is tens of milliseconds.
+   */
+  getVisibleWaterRaster(): VisibleWaterRaster | null;
   update(
     deltaSeconds: number,
     cameraPosition: THREE.Vector3,
@@ -488,6 +512,15 @@ function assembleWorld(
   props: PropsRuntime,
 ): WorldRuntime {
   const layout = heightField._layout;
+  // The tactical map's water split (minimapWaterPatches.ts), sampled on the first getMinimapFeatures and kept: the
+  // authored discs and the liquid mask are fixed for the world's life.
+  let minimapWater: { readonly liquid: readonly LayoutDisc[]; readonly soft: readonly LayoutDisc[] } | null = null;
+  const minimapSplat: TerrainMapConfig['splat'] = config.splat;
+  const minimapIceLake = !!minimapSplat?.iceLake; // the world's wet layer is ice (terrain.ts createWetSplatLayer)
+  // The tactical map's water raster (visibleWater.ts), built on the first getVisibleWaterRaster and kept: the water sheet
+  // exists on the terrain's liquidWater maps only (a seaLake map without frozen marshes).
+  let visibleWater: VisibleWaterRaster | null | undefined;
+  const visibleWaterSheet = !!minimapSplat?.seaLake && !layout.terrain?.frozenMarshes;
   // ground lane (2026-10-03): the trees are placed — the terrain draws its forest floor under them and no field there,
   // and the ground tiers built below (the litter, the tall grass) read the same cover
   if (vegetation._woodsMask) terrain.userData.applyWoodsMask?.(vegetation._woodsMask);
@@ -501,12 +534,26 @@ function assembleWorld(
   // line draws from it — the same trees under the same law at the rim's stature (horizonForestImpostors.ts); the
   // mobile tier and the receipts keep the ring's lobes.
   const ringForest = terrain.getObjectByName('horizon-forest');
+  // GND (2026-10-14; the owner's Kestrel border trees breaking into blobs): near the square the battlefield's own tree
+  // tiers draw the ring's trees (vegetation.ts adoptOutlandTrees: near, far, cross-fade, scope promotion), the rest
+  // keep their quads. Only this client assembly adopts (an atlas means a renderer): Node, server and receipt worlds keep
+  // their records; `?outlandTrees=0` keeps every quad (the A/B).
+  const adoptOutland = !!vegetation._treeImpostors && outlandTreesEnabled();
   if (ringForest && vegetation._treeImpostors) {
     bindHorizonForestImpostors(ringForest, {
-      library: vegetation._treeImpostors, rimMix: vegetation._rimMix, rimTreeHeightM: vegetation._rimTreeHeightM,
+      // GND (2026-10-15): the forest over the line takes its own mix (VegetationConfig `ringMix`, else the rim's)
+      library: vegetation._treeImpostors, rimMix: vegetation._ringMix, rimTreeHeightM: vegetation._rimTreeHeightM,
+      // GND (2026-10-15): a map whose ring stands each species at its own stature (VegetationConfig `ringStature`)
+      speciesHeightM: vegetation._ringSpeciesHeightM,
+      understory: vegetation._ringUnderstory, // (GND 2026-10-16: the young trees under the stands, VegetationConfig `ringUnderstory`)
       rimTreeTint: vegetation._rimTreeTint,
       setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
       releaseMaterial: (material) => engineCtx.releaseShadowMaterial?.(material),
+      ...(adoptOutland ? {
+        formVariant: vegetation._treeFormVariant,
+        adoptWithin: (tree: { x: number; z: number }) => outlandAdoptable(tree.x, tree.z),
+        adopt: (trees: readonly OutlandTreeSpec[]) => vegetation.adoptOutlandTrees(trees),
+      } : {}),
     });
   }
   // the horizons stream (2026-10-13): the Hinterland's near trees draw from the same atlas (hinterland/trees.ts), now
@@ -514,8 +561,15 @@ function assembleWorld(
   const hinterlandRoot = terrain.getObjectByName('hinterland-root');
   if (hinterlandRoot && vegetation._treeImpostors) {
     bindHinterlandTreeImpostors(hinterlandRoot, {
-      library: vegetation._treeImpostors, rimMix: vegetation._rimMix, rimTreeTint: vegetation._rimTreeTint,
+      library: vegetation._treeImpostors, rimMix: vegetation._ringMix, rimTreeTint: vegetation._rimTreeTint,
       setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
+      ...(adoptOutland ? {
+        formVariant: vegetation._treeFormVariant,
+        // (HORIZONS review, integ/225: Glacier's depth remap draws the land past the square's exit + 60 m nearer, and
+        // adopted trees in the battlefield's pools don't take it, so remapped land hid them) adopt only within 40 m
+        adoptWithin: (tree: { x: number; z: number }) => outlandAdoptable(tree.x, tree.z, HINTERLAND_DEPTH_MARGIN_M - 20),
+        adopt: (trees: readonly OutlandTreeSpec[]) => vegetation.adoptOutlandTrees(trees),
+      } : {}),
     });
   }
   // the mountains lane (2026-10-03): the far horizon panorama bakes where the renderer is — under the loading cover with
@@ -553,6 +607,17 @@ function assembleWorld(
 
   const obstacles = [...props.obstacles, ...vegetation.treeObstacles];
   const colliders = [...props.colliders, ...vegetation.treeObstacles];
+  // DST-04 (2026-10-15): the map's pre-placed craters as bowls, decided once on this build's own records
+  // (world/mapCraters.ts); every match on this world lays them first, and the shards carry them for the authority
+  const mapCraters = mapCraterStamps(props.mapCraterSites, obstacles, heightField);
+  // 2026-10-09 (the shadows lane): the ground's sky beside the world's standing solids (structureGroundOcclusion.ts) —
+  // baked in a worker from the movement obstacles (the ground-bearing solids; trees stay out) while the battle entry
+  // warms, read by the aerial pass on the desktop tiers; a map's sky.lighting.groundOcclusion scales it (0: off)
+  const groundOcclusionScale = (config.sky as { lighting?: { groundOcclusion?: number } } | undefined)?.lighting?.groundOcclusion ?? 1;
+  const groundOcclusion: StructureGroundOcclusionHandle | null = getDeviceTier() !== 'mobile' && groundOcclusionScale > 0
+    && (engineCtx as { renderer?: THREE.WebGLRenderer }).renderer
+    ? createStructureGroundOcclusion(props.obstacles, { group, scale: groundOcclusionScale }) : null;
+  if (groundOcclusion) engineCtx.scene.userData.structureGroundOcclusion = groundOcclusion;
   // 2026-10-07 (the map-vehicles lane): the moored hulls stand in the water as a standing tank does, and lap it
   // through the same disturbance sources the vehicles feed (props.ts waterContacts); they follow the frame's own sources
   // (the vehicles keep the first slots), into one reused list, and stand from the first frame and after a reset
@@ -597,6 +662,14 @@ function assembleWorld(
   // the scenery lane (b12; Fjord, wave 74: foliage cards through a boulder): and no shrub stands inside a boulder or a
   // structure the props placed after it — cosmetic, its cover disc stays (shrubClearance.ts)
   group.userData.shrubsCleared = clearShrubsFromSolids(vegetation.group, groundCoverClearance());
+  // (sealed lane 2026-10-10, the owner's map vehicles) and no shrub's crown stands inside a parked vehicle or cart: the
+  // core rule above kept a bush whose centre stood beside a truck, its cards through the cab (props.ts
+  // parkedVehicleObstacles). Cosmetic, as the seal is.
+  const parkedVehicles = (props.group.userData.parkedVehicleObstacles as CollisionRecord[] | undefined) ?? [];
+  if (parkedVehicles.length) {
+    group.userData.shrubsClearedFromVehicles = clearShrubsFromSolids(vegetation.group,
+      createGroundCoverClearance(createObstacleGrid(parkedVehicles)), 1);
+  }
   group.userData.groundCoverSealMs = performance.now() - groundCoverSealStarted;
   // environment density pass (2026-09-12): the ground litter tier streams
   // stones, clods and splinters under the camera, kept out of the same sealed
@@ -664,6 +737,14 @@ function assembleWorld(
   // analytic, tighter than the rendered mesh itself) serves it. Spawn seating
   // above keeps the exact analytic query.
   const hAtF = heightField.getHeightAtFast || heightField.getHeightAt;
+  // destruction (docs/DESTRUCTION.md §6, §7; 2026-10-15): the march reads the battle's ground overlay as it is drawn
+  // (the contact lattice's offsets: a crater's bowl, a heap), so a round, a sight line and the aim meet the ground the
+  // eye sees and the hulls drive on; one bucket read where no stamp reaches. Bound with the overlay (bindGroundOverlay).
+  let rayOverlay: TerrainDeformation | null = null;
+  let rayNormalField: typeof heightField = heightField;
+  const rayHeightAt = (x: number, z: number): number => (
+    rayOverlay ? hAtF(x, z) + rayOverlay.contactOffsetAt(x, z) : hAtF(x, z)
+  );
 
   function nearestPropHit(
     origin: THREE.Vector3,
@@ -687,21 +768,21 @@ function assembleWorld(
       for (let index = 0; index < 6; index++) {
         const mid = (low + high) * 0.5;
         _bisA.copy(dir).multiplyScalar(mid).add(origin);
-        if (_bisA.y - hAtF(_bisA.x, _bisA.z) <= 0) high = mid;
+        if (_bisA.y - rayHeightAt(_bisA.x, _bisA.z) <= 0) high = mid;
         else low = mid;
       }
       return (low + high) * 0.5;
     };
     let distance = 0;
-    let clearance = origin.y - hAtF(origin.x, origin.z);
+    let clearance = origin.y - rayHeightAt(origin.x, origin.z);
     if (clearance <= 0) return 0;
     while (distance < maxDist) {
       const step = Math.min(Math.max(clearance * 0.5, 0.5), 2.0);
       const priorDistance = distance;
       distance = Math.min(distance + step, maxDist);
       _pt.copy(dir).multiplyScalar(distance).add(origin);
-      if (dir.y > 0 && _pt.y > heightField.maxY + 2) return -1;
-      clearance = _pt.y - hAtF(_pt.x, _pt.z);
+      if (dir.y > 0 && _pt.y > heightField.maxY + (rayOverlay ? rayOverlay.maxRaiseM : 0) + 2) return -1;
+      clearance = _pt.y - rayHeightAt(_pt.x, _pt.z);
       if (clearance <= 0) return refineHit(priorDistance, distance);
       if (distance >= maxDist) return -1;
     }
@@ -722,7 +803,7 @@ function assembleWorld(
     else return null;
     const point = new THREE.Vector3().copy(dir).multiplyScalar(hitT).add(origin);
     const normal = kind === 'terrain'
-      ? heightField.getNormalAt(point.x, point.z).clone()
+      ? rayNormalField.getNormalAt(point.x, point.z).clone()
       : _bestNrm.clone();
     return { point, normal, dist: hitT, kind, record: kind === 'prop' ? propHit.record : null };
   }
@@ -779,6 +860,11 @@ function assembleWorld(
     return bodyQuery;
   };
   const unregisterDestructibles = props.registerDestructibles();
+  // (2026-10-16, the perf lane) every further program variant of a shared props material its own live twin, so a merged
+  // bucket and an instanced pool of one material stop re-resolving its program twice a frame (engine/programVariants.ts;
+  // the props only: the terrain's and the water's hooks keep their compile's uniform map on the material)
+  const programVariants = splitProgramVariants(props.group);
+  group.userData.programVariants = programVariants;
   return {
     mapId: config.id,
     terrainVariant: config.assaultTrenches ? 'assault-trenches' : null,
@@ -786,6 +872,11 @@ function assembleWorld(
       terrain.userData.cancelSourcedTextures?.();
       unregisterDestructibles();
       vegetation.dispose();
+      // (2026-10-09, the shadows lane) the ground occlusion's worker and texture (structureGroundOcclusion.ts)
+      if (groundOcclusion) {
+        if (engineCtx.scene.userData.structureGroundOcclusion === groundOcclusion) delete engineCtx.scene.userData.structureGroundOcclusion;
+        groundOcclusion.dispose();
+      }
       litter.dispose();
       tallGrass.dispose(); // round 73: the sward, its materials and the pressure field's targets
       terrain.userData.disposeWater?.(); // water pass 8: the reactive field's render targets
@@ -801,6 +892,7 @@ function assembleWorld(
     /** Round 73: the tall-grass tier (diagnostics and the round's probes: state, meshes, the press field). */
     _tallGrass: tallGrass,
     raycast,
+    groundOcclusion,
     /** @returns {Array<{min:number[],max:number[]}>} static obstacle AABBs */
     getObstacles: () => obstacles,
     /** Shell/LOS cover records; exposed for deterministic server manifests. */
@@ -812,6 +904,7 @@ function assembleWorld(
      * @returns {Array<{x:number,z:number,r:number,add:number}>}
      */
     getConcealment: () => vegetation.concealers || [],
+    getMapCraters: () => mapCraters,
     // effects_combat r1: crushable props (telegraph poles + world-dressing r1
     // 'loop'-class small clutter) — hull overlap in main.ts triggers
     // crushProp (hinge-topple / debris swap) + fx.propCrush splinters.
@@ -819,7 +912,11 @@ function assembleWorld(
     patchStructureMaterials: (patch) => patchStructureMaterialEntries(props.structureMaterials, patch),
     touchStructureShadows: (structureIdx) => { getStructureDamage(structureIdx)?.touchShadows(); },
     bodyRecordQuery: getBodyRecordQuery,
-    bindGroundOverlay: (overlay) => { boundGroundOverlay = overlay; terrain.userData.groundOverlay = overlay; },
+    bindGroundOverlay: (overlay) => {
+      boundGroundOverlay = overlay; terrain.userData.groundOverlay = overlay;
+      rayOverlay = overlay;
+      rayNormalField = overlay ? createDeformedHeightField(heightField, overlay) : heightField;
+    },
     groundOverlay: () => boundGroundOverlay,
     crushables: props.crushables || [],
     crushProp: (i: number, dx: number, dz: number, speedMps = 0) => (
@@ -893,20 +990,30 @@ function assembleWorld(
     },
     advanceToppledVegetation: (dt: number) => { vegetation.advanceToppled?.(dt); },
     spawnPoints,
-    /** @returns {{roads:Array, buildings:Array, tacticalBeats:Array, treeClusters:Array, waterOrSoft:Array}} minimap features */
-    getMinimapFeatures: () => ({
-      roads: layout.roads.map((nodes: Array<readonly [number, number]>) => (
-        nodes.map(([x, z]: readonly [number, number]) => [x, z] as [number, number])
-      )),
-      buildings: props.features.buildings.map((building) => ({ ...building })),
-      tacticalBeats: props.features.tacticalBeats.map((beat) => ({ ...beat })),
-      treeClusters: vegetation._clusters.map((cluster: { x: number; z: number; r: number }) => ({
-        x: cluster.x, z: cluster.z, r: cluster.r,
-      })),
-      waterOrSoft: [...layout.marshes, ...layout.lakes].map((disc: LayoutDisc) => ({
-        ...disc,
-      })),
-    }),
+    /** @returns minimap features; the water split is sampled once per world (the battle's audio reads them mid-fight) */
+    getMinimapFeatures: () => {
+      minimapWater ??= splitMinimapWater([...layout.marshes, ...layout.lakes], heightField.getWaterMaskAt);
+      return {
+        roads: layout.roads.map((nodes: Array<readonly [number, number]>) => (
+          nodes.map(([x, z]: readonly [number, number]) => [x, z] as [number, number])
+        )),
+        buildings: props.features.buildings.map((building) => ({ ...building })),
+        tacticalBeats: props.features.tacticalBeats.map((beat) => ({ ...beat })),
+        treeClusters: vegetation._clusters.map((cluster: { x: number; z: number; r: number }) => ({
+          x: cluster.x, z: cluster.z, r: cluster.r,
+        })),
+        waterOrSoft: [...layout.marshes, ...layout.lakes].map((disc: LayoutDisc) => ({
+          ...disc,
+        })),
+        liquidPatches: minimapWater.liquid.map((disc: LayoutDisc) => ({ ...disc })),
+        softPatches: minimapWater.soft.map((disc: LayoutDisc) => ({ ...disc })),
+        iceLake: minimapIceLake,
+      };
+    },
+    getVisibleWaterRaster: () => {
+      if (visibleWater === undefined) visibleWater = visibleWaterSheet ? buildVisibleWaterRaster(heightField) : null;
+      return visibleWater;
+    },
     /**
      * Per-frame world update: terrain LOD swap + vegetation wind/density.
      * @param {number} dt seconds
@@ -936,6 +1043,11 @@ function assembleWorld(
       litter.update(cameraPos);
       tallGrass.update(dt, cameraPos, focusPos, cameraFwd); // round 73: the sward's ring, wind and press
       if (props.updateProps) props.updateProps(dt, cameraPos); // pole LOD + hinge-topple anims
+      if (groundOcclusion) {
+        // (2026-10-09) the world being updated is the one on screen: its ground occlusion is the pass's
+        engineCtx.scene.userData.structureGroundOcclusion = groundOcclusion;
+        groundOcclusion.update(dt);
+      }
     },
     /**
      * Build exact terrain lookahead meshes in an explicitly bounded batch.

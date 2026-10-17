@@ -108,16 +108,22 @@ never excuses missing it.
    brackets, contact shadows). Circular geometry reads circular in plan.
    NO TURRET HOLES: top-down and 55° tilt renders show filled decks — any
    sky/background reading through the hull or turret interior is a failure.
-3. DECORATION MINIMUM: roof MACHINE GUNS are MANDATORY (multiple allowed
-   and encouraged; add a tastefully-integrated pintle MG even where the ref
-   lacks one — critics must not penalize that as parity deviation). Dress
+3. DECORATION MINIMUM: ROOF WEAPONS MATCH THE REAL VEHICLE AND EVERY DRAWN GUN
+   WORKS (VH.14 ruling 2026-10-14, superseding "roof machine guns are
+   mandatory; add a pintle MG even where the ref lacks one"). A vehicle that
+   really carries a roof weapon shows it as a WORKING, calibre-true station
+   (a remote-control datum the auxiliary inventory picks up: the TTS 30 mm and
+   M2, the MBT-70 Rh 202); a vehicle whose real counterpart carries none shows
+   none and is listed with its reason in `src/vehicles/roofWeaponPolicy.ts`.
+   No decorative or duplicate gun: `roofWeaponPolicy.selftest` fails on any
+   drawn weapon fitting that is not a working station. Dress
    flat areas from: lights, ropes/tow cables, ladders, ERA/armor blocks,
    wooden trunks, canisters, bags, smoke launchers, railings/holders,
    crates, duffels, antennas. Use `KIT` fittings (kit.js) — don't hand-roll.
    NO MYSTERY BOXES (owner directive 2026-08-05: "there are just random
    boxes that are not ERAs around armor and especially guns and those
    need to be actual proper shapes or equipment instead of just
-   rectangles" — named on the merkavas, t-xx series, m1a2 sepv2): every
+   rectangles" — named on the merkavas, t-xx series, m1a1_abrams_hc sepv2): every
    box-primitive must read as IDENTIFIABLE equipment at 1×. ERA carries
    its own grammar (tile pitch, wedge/brick profile, mounting rails);
    everything else must be a named thing with its tell — a sight has a
@@ -176,13 +182,13 @@ never excuses missing it.
    Check: `node tools/turret-parent-audit.mjs --ids=<id>` — stranded and
    dangling must be 0; `abutting` is a REVIEW tier (adjudicate on the
    render: attached-to-casting ⇒ re-parent; deck gear ⇒ leave). Note the
-   audit is AABB-coarse: raised-deck hulls (kf51) false-flag deck plates
+   audit is AABB-coarse: raised-deck hulls (kf51_evo) false-flag deck plates
    as stranded, whole-bucket merged lofts flag on partial content, and
    below-deck ring tubs smear the casting envelope (the tool clamps the
    envelope floor to ringY−0.10) — adjudicate against source + renders,
    never blind-move. Instanced meshes are not audited; check them by eye
    at yaw. Two adjudicated classes: ORACLE-REGISTRATION-PINNED (the REF
-   keeps the furniture hull-side — m1a2 works field, merkava3b/3c tail
+   keeps the furniture hull-side — m1a1_abrams_hc works field, merkava3b/3c tail
    packs; fix is COUPLED: followers extension in the three maps + proc
    re-parent + full re-gate in one landing) and audit-artifact (document
    the negative). Graduates take the §10 graduate-change flow. RE-CERT
@@ -216,7 +222,7 @@ never excuses missing it.
    (contactZF/contactZR shape a generated loop's ground run where an end
    has no road-wheel wrap; the published track contact is read off the
    drawn band, never off these pins). A low-authored end
-   wheel (chieftain5's idler at wheel height) violates the law EVEN WHEN
+   wheel (chieftain3's idler at wheel height) violates the law EVEN WHEN
    the oracle print carries the same defect — owner law outranks oracle
    matching (M1-slope precedent): build the real ramp, measure the
    oracle delta, certify the residual in the packet.
@@ -302,11 +308,11 @@ never excuses missing it.
   from current renders before re-use.
 - REF-RENDER OUTRANKS ROW ANALYSIS; ref-silhouette permit; perspective-
   volume verified in hero views.
-- PROBE-FRAME LAW (ariete render-scale find, 6bf35b8): the fidelity
+- PROBE-FRAME LAW (c1_ariete_preserie render-scale find, 6bf35b8): the fidelity
   harness scales BOTH roots so visible-box width = spec widthM — every
   external probe/raycast must apply that factor (or decode via a
   gate-identical in-page instrument) or it reads authored coords ~1%
-  off the mask and "finds" phantom columns (the ariete ±1.72 class =
+  off the mask and "finds" phantom columns (the c1_ariete_preserie ±1.72 class =
   its own skirt at scaled x; the bradley procTop divergence = the same
   family). The widest authored |x| sets the factor — grid boundaries
   are shared-box-relative.
@@ -328,7 +334,7 @@ never excuses missing it.
   articulated content into every hull/whole mask (128 polluted side
   columns measured on revolution — the proc then mirrors the bake and
   the turret "fuses"). Audit any print carrying `_vlo`-suffixed nodes
-  before trusting its hull rows (t64bv1 / t72* / t90* class candidates).
+  before trusting its hull rows (t64bv1 / t72* / t90_1992* class candidates).
   When a proc build mirrored the bake, the LOD-delete repair is a COUPLED
   graduate-change: repair alone gates 0 — both halves land in ONE commit.
 - REQUEST-INTERCEPTION SIM: verify candidate oracle repairs against the
@@ -389,7 +395,7 @@ Tanks are built as RIGS, not bespoke mesh piles. Three layers:
 
 2. **FAMILY RIG** (one per family file): similar tanks SHARE one
    parameterized rig — abrams varieties (m1a1/m1a1ha/m1a2/tejas/tusk/
-   abramsx/sepv2), leopard varieties (leo2a4/a5/a6/a7/a7v/revolution/
+   abramsx/sepv2), leopard varieties (leo2a2/a5/a6/a7/a7v/revolution/
    proto), merkavas (1b/2b/2d/3b/3c/3d/4/4b), t-series lineages
    (t54/t62/t64/t72/t80/t84/t90 chains), pattons (m26/m45/m46/m47/m48/
    m60s), centurions, IS-line. A variant is a PARAM DELTA on its family
@@ -440,7 +446,8 @@ decorations need a packet justification.
   hull/turret AABB — fittings must never change the model AABB (§C).
 - Census (§B3 machine check): every fitting mesh carries
   `userData.fitting`; `node tools/tank-standard-check.mjs --ids=<id>`
-  requires mg ≥ 1 fitting instance and reports the dressing count, plus the
+  requires mg ≥ 1 fitting instance (mg 0 for a vehicle listed in
+  `src/vehicles/roofWeaponPolicy.ts`) and reports the dressing count, plus the
   §B2 top-down hole scan (0 enclosed cells). Hand-authored decoration
   censuses ZERO — migrate it or justify it in the packet.
 - Library self-test: `node tools/tank-standard-check.mjs --fixture`
@@ -475,7 +482,7 @@ decorations need a packet justification.
   slices; post-span-fix station drops are re-decode artifacts first.
 - DIMS RAZOR-BAND: a body column hovering at the 12% threshold coin-flips
   dims ±8 pts — pin end columns with hard cross-section faces.
-- BG-TOLERANCE DARK-TRACK BLINDNESS (§J addendum, m1a2 re-cert): mask
+- BG-TOLERANCE DARK-TRACK BLINDNESS (§J addendum, m1a1_abrams_hc re-cert): mask
   diffs with bg tolerance maxch<=13 cannot see the 0x171614 track tone —
   pale dressing added there reads as false "silhouette growth"; decompose
   render diffs against changed stations before pricing.
@@ -562,8 +569,8 @@ plane with stacked rectangles. Failing read: a correct right cheek and
 a boxy left cheek (or vice versa). Critics check BOTH cheeks in both
 front-quarter views on every tank.
 
-## §C addendum — MISSING-SIDE CLASS (owner report 2026-08-06: "ariete
-and leclerc are missing left side of turrets")
+## §C addendum — MISSING-SIDE CLASS (owner report 2026-08-06: "c1_ariete_preserie
+and leclerc_s2 are missing left side of turrets")
 Side masks image ONE side: a missing/reversed LEFT surface is invisible
 to every side row and can survive to high gate scores. Mandatory checks
 on every round: the §C winding audit + a LEFT-side render (or yaw-180
@@ -577,7 +584,7 @@ score is no defense.
   DoubleSide mask material. The gate structurally cannot see this class.
   Device: an orientedSlab wrapper (face-outwardness census, re-orients
   reversed rings) — bind slab through it in every profile that mirrors.
-  Known carriers still open: t80u (1), type90 (4+1), type74 (1+1).
+  Known carriers still open: t80uk (1), type90_kyumaru (4+1), type74 (1+1).
 - LOADER HEIGHT-CLAMP KEYING (§E, fv510 batch-44): modelLoader scales by
   min(len, width*1.08, height*1.30) — mast-heavy prints bind on HEIGHT
   and a pure z-warp is normalized away until a y-knee releases the
@@ -675,7 +682,7 @@ abrams with the extra armoring and ERA and urban survival kit").
   is NATIONAL grammar — US marks read American (M2HB jacket collar +
   spade grips + hung can, M240 gas tube, CROWS sensor cluster), Soviet
   marks read NSVT/Kord; critics flag cross-national silhouettes.
-- WIDTH-GUARD-BY-DRESSING (§D, leclerc front round): ONE proud fitting
+- WIDTH-GUARD-BY-DRESSING (§D, leclerc_s2 front round): ONE proud fitting
   past the width anchor rescales the whole build (a 4cm guard post cost
   dims 100->53.6) — every fitting respects the anchor. RNG-STREAM
   STABILITY: inserting stowage() entries re-jitters every later priced
@@ -774,7 +781,7 @@ family views change).
   items (headlights) may keep aim on a riser — per-item judgment.
   FRUSTUM-BOTTOM-STRIP: silhouette-preserving split at the ramp line
   clears side-band bottoms from wrap sweeps.
-- MUZZLE-BORE MECHANISM (§B3.1, leclerc round — MANDATORY for the fleet
+- MUZZLE-BORE MECHANISM (§B3.1, leclerc_s2 round — MANDATORY for the fleet
   sweep): bucket-based bore rims grow the gun AABB ~3cm and re-frame the
   turret-row cameras (-6.2 measured) — implement bores as SHADOW-NAMED
   gun-group furniture (the misc.ts muzzleBore() helper pattern: dark rim
@@ -785,7 +792,7 @@ family views change).
   FITTING-CAP TAIL (whatsat the fitting AABB per slot before seating);
   KIT.torus lies flat (rotate for vertical rings).
 
-## §C.1 RENDER-TRUTH CHECKER (owner order 2026-08-06, t72b3m screenshot:
+## §C.1 RENDER-TRUTH CHECKER (owner order 2026-08-06, t72b3m_2022 screenshot:
 ## "many parts of the turret that should be part of the turret are not
 ## there... we need checkers to make sure there arent erroneous stuf
 ## like this")
@@ -796,11 +803,11 @@ law: FrontSide-vs-DoubleSide comparison per tank across views (the
 tmp-misc-leftprobe pattern promoted to an official tool), reporting
 reversed/mixed slab counts + per-view pixel deficits, ranked worst-first
 — run at every round close like track-clip. Named carriers at order
-time: t72b3m (graduate! gate 91.8 while the game shows a bare turret),
+time: t72b3m_2022 (graduate! gate 91.8 while the game shows a bare turret),
 challenger-line. Every profile binds mirrored slabs through a winding
 guard (orientedSlab/sslab class) — this is now a standing §C check, not
 a per-incident fix.
-- §C.1 CORRECTION (owner, same day): the t72b3m case is §B5 YAW-STRANDING,
+- §C.1 CORRECTION (owner, same day): the t72b3m_2022 case is §B5 YAW-STRANDING,
   not winding — "i rotate my turret and a lot of stuff that should be
   moving with it especially in back doesnt." The turret-parent audit reads
   0/0/0 on it, so the strands live in the audit's BLIND SPOTS (instanced
@@ -837,8 +844,8 @@ views. A critic scores proportions as a GATING sub-verdict (proportion
 FAIL = round FAIL regardless of detail quality); (3) the acid question
 on every view is the owner's: "does it read as the real tank" — not
 "is it decorated." Applies retroactively: all 2026-08-06 photo-class
-landings (puma, type89, k2, type99a, ww2 trio, leo2a4, challenger2, t14,
-leo2a7v, fv510) are DELIVERED-PENDING-CRITIC until adjudicated.
+landings (puma, hayate_ifv, xk2_black_panther, ztz99_longwei, ww2 trio, leo2a2, challenger2, object148_proto,
+leo2_improved, fv510) are DELIVERED-PENDING-CRITIC until adjudicated.
 
 ## §B3.1 addendum — MANTLETS MANDATORY (owner 2026-08-06: "make sure all
 ## tanks including russian tanks have mantlets" + "type 90 needs a
@@ -846,7 +853,7 @@ leo2a7v, fv510) are DELIVERED-PENDING-CRITIC until adjudicated.
 Every gun run carries its REAL mantlet/gun-shield mass at the turret
 face — the cast collar, boot, or shield the actual vehicle mounts (§B3.1
 grammar; russian marks: the boot/collar classes from the prism sweep;
-japanese type90: its distinctive flat armored mantlet plate). A bare
+japanese type90_kyumaru: its distinctive flat armored mantlet plate). A bare
 tube exiting a turret face with no mantlet mass is a failing read
 fleet-wide. Critics: check every tank's gun root.
 
@@ -855,7 +862,7 @@ fleet-wide. Critics: check every tank's gun root.
 dims=100 only proves the build matches ITS SPEC — the spec itself can be
 wrong, and cross-tank scale reads in-game are the check the program
 lacked. Standing audit: per tank compare spec dims against published
-real-vehicle dims (type90 first: verify width/height/length vs the real
+real-vehicle dims (type90_kyumaru first: verify width/height/length vs the real
 3.43w x 2.34h x 9.76 overall) AND eyeball garage lineups for relative
 scale. Spec true-ups are orchestrator-lane, verify-first.
 
@@ -879,7 +886,7 @@ freeze decoration until these pass):
    Christie spacing), not the count.
 6. The four-box probe (overall/hull/turret/gun + rig_muzzle boxes vs
    targets) is a standing round-close check for photo-class builds.
-- REGISTRATION-ANCHOR LAW (§D, t90m round): body-span-extreme edits shift
+- REGISTRATION-ANCHOR LAW (§D, t90am round): body-span-extreme edits shift
   dAlong half a column and INVALIDATE every prior digest target — freeze
   the span extremes first, or re-derive all targets after any end edit.
   TEETER CO-LOCATION: teeter columns cluster at shared grid phases —
@@ -913,9 +920,9 @@ freeze decoration until these pass):
   FITTING-CAP heightM p95: wide-span roof fittings own the p95 across
   columns — whatsat the fitting AABB before seating roof weapons on
   published-height builds.
-- DETAIL-SLOT LOUD-CARRIER (§C, t90m adjudication): the mats.detail
+- DETAIL-SLOT LOUD-CARRIER (§C, t90am adjudication): the mats.detail
   default is wheelTone-coupled TAN — profiles hanging large equipment on
-  it must retint/re-bucket (t72b3m did; t90m's drums did not).
+  it must retint/re-bucket (t72b3m_2022 did; t90am's drums did not).
   INTERIOR-READ TRIAD: wheel exposure, hatch rings, and equipment tone
   are mask-invisible — §B8.1 wheel-countability applies to ORACLE-BACKED
   graduations too, judged vs the oracle render on every side pair.
@@ -928,18 +935,18 @@ freeze decoration until these pass):
   owner's <=35 zero-variance defect class; dark camo patches mimic the
   signature (organic fill + paint-edge context separate them). Bore
   crops are excluded from rectangle verdicts.
-- TONE-SLOT MECHANICS (§C, t90m r8): REPAINT-REGISTERED SLOTS
+- TONE-SLOT MECHANICS (§C, t90am r8): REPAINT-REGISTERED SLOTS
   (wheels/wheelsDark/detail) ignore retints — dead code; the AMBIENT
   FLOOR pins hooked vertical faces at ~52L (sub-40 targets need unhooked
   clones); small carriers re-bucketed to camo sample ONE PATCH (lottery
   — use cloth/steel slots); sample TOP views before accepting roof tones
   (warm-key flip). ORACLE-RENDER HEM SEMANTICS (§D): decode the ref's
   below-hem tone runs per column before authoring any curtain — the
-  t90m ref's "curtain" was its wheels' lit upper arcs.
+  t90am ref's "curtain" was its wheels' lit upper arcs.
 
 ## §K. QUALITY EXEMPLARS (owner ratification 2026-08-07 — the fleet bar)
 Owner verbatim: "our exact modelling-replicating/generating procedures
-are going pretty well. the leclerc turret is a triumph in this way, as
+are going pretty well. the leclerc_s2 turret is a triumph in this way, as
 are the merkava geometries. all tank designs have to aim for this
 level of quality."
 THE EXEMPLARS and what made them:

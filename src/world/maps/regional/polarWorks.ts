@@ -19,7 +19,8 @@
 // draws its own shape from a seed of its own. Pure geometry: no DOM, no materials.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { DESTRUCTIBLE_TYPES, bSandbagBroken } from '../inhabitKit.ts';
+import { DESTRUCTIBLE_TYPES } from '../inhabitKit.ts';
+import { bSandbagBroken } from '../fieldworksKit.ts';
 
 type Rng = () => number;
 /** A colour in HSL (sRGB), the world code's authoring space; stored linear. */
@@ -207,6 +208,35 @@ const FENCE_HALF = 1.32;
 const FENCE_TOP = 1.2;
 
 /**
+ * A drift fence's steel post (props census #12: "drift fences with T-section posts"): a rolled T, its flange 5 cm across
+ * the run, its stem toward the laths, `h` long from y0; non-indexed, as the kit's parts are.
+ */
+function tPost(h: number, y0: number): THREE.BufferGeometry {
+  const shape = new THREE.Shape([
+    new THREE.Vector2(-0.006, -0.025), new THREE.Vector2(0.006, -0.025), new THREE.Vector2(0.006, -0.003),
+    new THREE.Vector2(0.034, -0.003), new THREE.Vector2(0.034, 0.003), new THREE.Vector2(0.006, 0.003),
+    new THREE.Vector2(0.006, 0.025), new THREE.Vector2(-0.006, 0.025),
+  ]);
+  const g = new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false });
+  // (the section in x-y, its length along z: stood up, its flange across the run (z), its stem out along x)
+  g.rotateX(-Math.PI / 2);
+  g.rotateY(Math.PI / 2);
+  return (g.index ? g.toNonIndexed() : g).translate(0, y0, 0);
+}
+
+/**
+ * A lath of the drift fence on edge (the looks lane's r2 sweep, 2026-10-16: plain boxes carried 85 % of the fence): 14 mm
+ * thick across x, 40 mm wide along z, `h` tall from y = 0, its head sawn to a blunt point as snow-fence laths are.
+ */
+function lath(h: number): THREE.BufferGeometry {
+  const w = 0.02, t = 0.007, tip = 0.025;
+  const shape = new THREE.Shape([new THREE.Vector2(-w, 0), new THREE.Vector2(w, 0), new THREE.Vector2(w, h - tip), new THREE.Vector2(0, h), new THREE.Vector2(-w, h - tip)]);
+  const g = new THREE.ExtrudeGeometry(shape, { depth: 2 * t, bevelEnabled: false, steps: 1, curveSegments: 1 });
+  // the profile in x-y extruded along z, turned so its width runs along z and its thickness along x
+  return g.translate(0, 0, -t).rotateY(Math.PI / 2);
+}
+
+/**
  * A panel of slatted drift fence: grey laths on edge a hand's breadth apart (half the fence open, as a drift fence is),
  * clear of the ground at the foot, bound by twisted wire top and bottom to two steel posts driven at its ends.
  */
@@ -214,17 +244,17 @@ function driftFence(seed: number): THREE.BufferGeometry {
   const rng = mulberry32(seed);
   const parts: THREE.BufferGeometry[] = [];
   for (const z of [-FENCE_HALF + 0.05, FENCE_HALF - 0.05]) {
-    const post = new THREE.BoxGeometry(0.045, FENCE_TOP + 0.25, 0.045).translate(0, (FENCE_TOP - 0.25) / 2, 0);
+    const post = tPost(FENCE_TOP + 0.25, -0.25);
     post.rotateX((rng() - 0.5) * 0.05);
     parts.push(paint(post.translate(0, 0, z), POST, 0.05, rng));
   }
   const run = 2 * FENCE_HALF - 0.12, n = Math.round(run / 0.1), pitch = run / n;
   for (let k = 0; k < n; k++) {
     const h = 1.0 + (rng() - 0.5) * 0.06, foot = 0.1 + (rng() - 0.5) * 0.04;
-    const lath = new THREE.BoxGeometry(0.014, h, 0.04).translate(0, h / 2, 0);
-    lath.rotateX((rng() - 0.5) * 0.04);
-    lath.rotateZ((rng() - 0.5) * 0.03);
-    parts.push(paint(lath.translate(0.03, foot, -FENCE_HALF + 0.06 + (k + 0.5) * pitch), rng() < 0.15 ? LATH_DARK : LATH, 0.06, rng));
+    const lt = lath(h);
+    lt.rotateX((rng() - 0.5) * 0.04);
+    lt.rotateZ((rng() - 0.5) * 0.03);
+    parts.push(paint(lt.translate(0.03, foot, -FENCE_HALF + 0.06 + (k + 0.5) * pitch), rng() < 0.15 ? LATH_DARK : LATH, 0.06, rng));
   }
   for (const y of [0.3, 0.95]) parts.push(paint(new THREE.BoxGeometry(0.01, 0.012, 2 * FENCE_HALF - 0.04).translate(0.042, y, 0), WIRE, 0.03, rng));
   return merge(parts);
@@ -234,10 +264,10 @@ function driftFence(seed: number): THREE.BufferGeometry {
 function driftFenceBroken(seed: number): THREE.BufferGeometry {
   const rng = mulberry32(seed);
   const parts: THREE.BufferGeometry[] = [];
-  const lean = new THREE.BoxGeometry(0.045, FENCE_TOP + 0.25, 0.045).translate(0, (FENCE_TOP - 0.25) / 2, 0);
+  const lean = tPost(FENCE_TOP + 0.25, -0.25);
   lean.rotateX(0.45 + rng() * 0.3);
   parts.push(paint(lean.translate(0, 0, -FENCE_HALF + 0.05), POST, 0.05, rng));
-  const down = new THREE.BoxGeometry(0.045, 1.4, 0.045);
+  const down = tPost(1.4, -0.7);
   down.rotateZ(Math.PI / 2 - 0.05);
   down.rotateY(rng() * Math.PI);
   parts.push(paint(down.translate((rng() - 0.5) * 0.8, 0.03, FENCE_HALF * 0.6), POST, 0.05, rng));

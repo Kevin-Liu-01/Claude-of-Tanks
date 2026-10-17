@@ -10,6 +10,7 @@ import {
 import type { SprayKind } from '../world/treeSprayAtlas.ts';
 import { GHILLIE_FIELD_OK, GHILLIE_TOP_CARDS, GHILLIE_TOP_VERTICES } from './ghillieDrape.ts';
 import { auxiliaryWeaponProfile } from './auxiliaryWeapons.ts';
+import { tankSeedId } from './tankIdAliases.ts';
 import {
   FIELD_NET_PALETTES, garnishedNetTextures, NET_PALETTES, NET_TEXTURE_PX, NET_TILE_M, suitTheatreOf, theatreOfHex, type NetPalette,
   type SuitTheatre,
@@ -17,6 +18,7 @@ import {
 import { FLEET_GHILLIE_SUITS } from './ghillieFleetSuits.ts';
 import { minimumMechanicalGunPitch, type GunPitchByYawCurve } from '../sim/gunPitchLimits.ts';
 import { MISSION_DOCK_SEATS } from '../sim/missionDockSeats.generated.ts';
+import { vehicleMarkingSeats } from './vehicleMarkingSeatRegistry.ts';
 import { missionAirframeVolumes, missionCradleVolumes } from '../sim/missionDockVolumes.ts';
 
 type Point2 = readonly [number, number];
@@ -44,7 +46,11 @@ interface TopPanel {
   seed?: number;
   /** Garnish only within this distance of the panel's outer edge (a hull deck under the turret's sweep). */
   garnishEdgeBandM?: number;
-  /** The highest a spray's stem line may stand above this carrier (default 0.22 m; low under the turret and gun sweep). */
+  /**
+   * The highest a spray's stem line may stand above this carrier (default 0.22 m; low under the turret and gun sweep). On
+   * a field net (fieldClearanceM) the highest any point of a card may stand over the net, at most FIELD_TOP_LIFT_M
+   * (netting-proper, 2026-10-13: the fix round had raised it to 0.42 m on a hull, 0.55 m on a turret).
+   */
   garnishRiseM?: number;
   /** Scales the panel's garnish count (default 1). */
   garnishDensity?: number;
@@ -62,7 +68,7 @@ interface TopPanel {
   /**
    * 2026-10-09 (launch RC; ghillieSuit.selftest, "suit triangles pass into the cage"): an unseated net's floor over the
    * surface its probe reports, in metres. Where the net sags off its supports onto something under it, it rests on that
-   * at this loft instead of sinking into it. A cage wing's laid net sets it: at the edge of the cut round ua_t80u_modern's
+   * at this loft instead of sinking into it. A cage wing's laid net sets it: at the edge of the cut round t80u_zoria's
    * drone dock, the net sagging into the opening ran its edge through the row tube beneath it.
    */
   restOnProbeM?: number;
@@ -194,6 +200,15 @@ export interface GhillieConfig {
    * texture pair (camoNetTexture.ts caches by theatre and seed); each panel's own offset keeps them from matching.
    */
   netTextureSeed?: number;
+  /**
+   * 2026-10-13 (netting-pl; the coordinator on the owner's performance push: "thin the garnish's triangle cost (fewer
+   * cards per clump, LOD the far clumps) rather than raise ceilings"): a field suit's garnish budget. `clumpCards` keeps
+   * that share of each clump's boughs and strips (at least two), each kept card longer by its share's -0.4 power and
+   * wider by its -0.6 power, so a clump spreads over the same net with fewer, broader cuts; `lowShare` is the share of
+   * the cards a LOW build (the far tier: distant bots, LOW quality) keeps, chosen card by card from a hash of the seat
+   * and the card, every draw of a dropped card still made (HIGH and LOW lay the same clumps). Unset: every card.
+   */
+  garnishBudget?: { clumpCards?: number; lowShare?: number };
   hull?: GhilliePanels;
   turret?: GhilliePanels;
   gun?: GhilliePanels;
@@ -504,7 +519,7 @@ function probeGrid(tri: Float32Array, a0: number, a1: number): ProbeGrid {
   const count = tri.length / 9;
   if (!count) return { min0: 0, min1: 0, n0: 1, n1: 1, start: new Int32Array(2), items: new Int32Array(0), broad: new Int32Array(0) };
   // the netting lane (2026-10-10): one fixed window round the owner's origin, not the triangles' measured bounds. With
-  // the bounds pass, a build that followed others in the same process intermittently laid leclerc_xlr's deck nets
+  // the bounds pass, a build that followed others in the same process intermittently laid leclerc_sxxi's deck nets
   // without their left halves (never with node --single-threaded); a probe minimum forced to +0.35 m reproduces that
   // loss, as if the pass (a min/max over every corner, tens of thousands of iterations) had come out short. A fixed
   // window has no such pass; every vehicle's owner frame lies well inside it (a corner outside is clamped to the edge
@@ -863,11 +878,43 @@ function clothDistance(geometry: THREE.BufferGeometry): (p: readonly number[]) =
   };
 }
 
+/**
+ * netting-225: whether a point lies within `r` of a cloth (its triangles in cells of `r`, the point's own cell and the
+ * 26 round it searched).
+ */
+function clothWithin(geometry: THREE.BufferGeometry, r: number): (p: readonly number[]) => boolean {
+  const pos = geometry.attributes.position as THREE.BufferAttribute;
+  const grid = new Map<number, number[]>();
+  const tris: THREE.Triangle[] = [];
+  const key = (x: number, y: number, z: number): number => ((x + 512) * 1024 + (y + 512)) * 1024 + (z + 512);
+  for (let k = 0; k + 2 < pos.count; k += 3) {
+    const t = new THREE.Triangle(new THREE.Vector3().fromBufferAttribute(pos, k), new THREE.Vector3().fromBufferAttribute(pos, k + 1),
+      new THREE.Vector3().fromBufferAttribute(pos, k + 2));
+    const i = tris.push(t) - 1;
+    const box = new THREE.Box3().setFromPoints([t.a, t.b, t.c]);
+    for (let x = Math.floor(box.min.x / r); x <= Math.floor(box.max.x / r); x++)
+      for (let y = Math.floor(box.min.y / r); y <= Math.floor(box.max.y / r); y++)
+        for (let z = Math.floor(box.min.z / r); z <= Math.floor(box.max.z / r); z++) {
+          const list = grid.get(key(x, y, z));
+          if (list) list.push(i); else grid.set(key(x, y, z), [i]);
+        }
+  }
+  const q = new THREE.Vector3(), c = new THREE.Vector3();
+  return (p) => {
+    q.set(p[0], p[1], p[2]);
+    const cx = Math.floor(p[0] / r), cy = Math.floor(p[1] / r), cz = Math.floor(p[2] / r);
+    for (let x = cx - 1; x <= cx + 1; x++) for (let y = cy - 1; y <= cy + 1; y++) for (let z = cz - 1; z <= cz + 1; z++) {
+      for (const i of grid.get(key(x, y, z)) ?? []) if (tris[i].closestPointToPoint(q, c).distanceToSquared(q) <= r * r) return true;
+    }
+    return false;
+  };
+}
+
 // ---- roofs and decks: the draped membrane ----------------------------------------------------------------------
 
 interface TopCloth extends ClothSurface {
   heightAt(x: number, z: number): number | null;
-  /** The sticks and boughs pushed under the net (each tufted with a bough standing out of its hump). */
+  /** The sticks and boughs pushed under the net (each tufted with garnish over its hump). */
   readonly tents: ReadonlyArray<{ readonly x: number; readonly z: number; readonly h: number; readonly r: number }>;
   /** True where this net lies (inside its outline, outside its openings). */
   covers(x: number, z: number): boolean;
@@ -1004,7 +1051,10 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
         if (support.tentOk && !support.tentOk(tx, tz)) continue;
         if (support.flatAheadOfZ !== undefined && tz > support.flatAheadOfZ) continue;
         if (tents.some((t) => Math.hypot(t.x - tx, t.z - tz) < 0.55)) continue;
-        const th = field ? (lowDeck ? 0.05 + hash01(s, k, 0x35) * 0.05 : 0.07 + hash01(s, k, 0x35) * 0.08) : 0.07 + hash01(s, k, 0x35) * 0.08;
+        // netting-225 (the critics' "low mounds" on the flattened suits' roofs: each hump carried the biggest clump, its
+        // garnish laid over it, 15 to 23 cm over the roof): a field net's humps half as high (2.5 to 5 cm on a deck, 3.5
+        // to 7.5 cm on a roof), the cloth lifted off the plate by a bough, not tented over a stick
+        const th = field ? (lowDeck ? 0.025 + hash01(s, k, 0x35) * 0.025 : 0.035 + hash01(s, k, 0x35) * 0.04) : 0.07 + hash01(s, k, 0x35) * 0.08;
         tents.push({ x: tx, z: tz, h: th, r: (field ? 0.14 : 0.09) + hash01(s, k, 0x37) * (field ? 0.1 : 0.07) });
       }
     }
@@ -1659,7 +1709,7 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
   // from the edge, a column's cells reaching within 2 cm of the standing gun's floor are left out, so the net's top stops
   // under the gun instead of rolling over the roof through it.
   // 2026-10-08 (the lane lead, over push 5's regenerated drone-dock seats): a drape hung on a roof-cage wing that carries
-  // a mission dock is cut away over the dock's run, top to hem (missionAttachmentReceiver.selftest, ua_t80u_modern: Zoria's
+  // a mission dock is cut away over the dock's run, top to hem (missionAttachmentReceiver.selftest, t80u_zoria: Zoria's
   // bearers rest on the wing's outer tube, where the drape's roll came over it); the pieces either side hang on their own
   const dockSide = dock && Math.sign(dock.min.x + dock.max.x) === side ? dock : null;
   const runFloor = gunFloor ? (z: number): number => {
@@ -1739,7 +1789,10 @@ function sideCloth(panel: SidePanel, cfg: GhillieConfig, support: OwnerSupport, 
     },
     place: (z, out, up) => [side * out, up, z],
     keepPoint: support.clothOk,
-    ...(support.clothOk ? { orphan: (z: number) => roofEdge(z) === null, field: true } : {}),
+    // netting-proper round 2 (the Mk 4B's turret flanks: the roof net laid down the sloping side to the drape's hem, no
+    // wall under its edge, and the authored line 27 cm out in the air, hung with hessian): a field drape that is not tied
+    // under a rail hangs only from armour or free from its roof net's edge; a station with neither holds no cloth
+    ...(support.clothOk ? { orphan: (z: number) => !panel.tiedTop || roofEdge(z) === null, field: true } : {}),
     ...(runFloor || dockSide || cuts.length ? { keep: (z: number, up: number, za: number, zb: number): boolean =>
       (!runFloor || up < runFloor(z) - 0.02)
       && !(dockSide && Math.max(za, zb) > dockSide.min.z - DOCK_CLEAR_M && Math.min(za, zb) < dockSide.max.z + DOCK_CLEAR_M)
@@ -1820,14 +1873,10 @@ function faceCloth(panel: FacePanel, cfg: GhillieConfig, support: OwnerSupport, 
     },
     place: (x, out, up) => [x, up, facing * out],
     keepPoint: support.clothOk, field: !!support.clothOk,
-    // a hanging face net with no roof net's edge above it and no plate under it holds nothing (a tied one has its plate)
-    ...(support.clothOk && !tied ? { orphan: (x: number) => {
-      const zFace = facing * authoredZ(x, y1);
-      for (let o = zFace; o > zFace - 0.6; o -= 0.02) {
-        if (support.roof(x, facing * o) !== null) return rollMeetsLid(support.lids, x, x, facing * (o - 0.04), facing * zFace);
-      }
-      return true;
-    } } : {}),
+    // a hanging face net with no roof net's edge above it and no plate under it holds nothing (a tied one has its plate);
+    // netting-proper round 2: nor one under a roof net's edge with no plate under it and nothing to fall free (the roof net
+    // comes down to its hem): the authored plane there hangs in the air (sideCloth's orphan)
+    ...(support.clothOk && !tied ? { orphan: () => true } : {}),
     keep(x, up) {
       if (outline && !insidePoly(x, Math.min(up, y1 - 0.01), outline) && up <= y1) return false;
       return !holes.some((hole) => insidePoly(x, up, hole));
@@ -2032,6 +2081,8 @@ const norm3 = (v: readonly number[]): [number, number, number] => {
   const l = Math.hypot(v[0], v[1], v[2]) || 1;
   return [v[0] / l, v[1] / l, v[2] / l];
 };
+const cross3 = (a: readonly number[], b: readonly number[]): [number, number, number] =>
+  [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 
 interface TuftContext {
   readonly cfg: GhillieConfig;
@@ -2184,12 +2235,38 @@ function addTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: TuftContex
 // layer of flat pale slivers, like paper or wood shavings, pasted onto plates, plus a few flat lime leaf cards. No net,
 // no sag between supports, nothing breaking the outline, almost no colour variety, and almost no shadow cast"; the
 // coordinator: "solid clumps of cut branches with burlap and scrim tied into the net, in varied greens and browns,
-// casting shadow". A crew stuffs whole cut branches into a field net: each tuck point carries a clump of boughs standing
-// out of the net in every direction (a rosette on a roof or deck, a fan hanging and jutting from a drape, a bough or
-// two at a drape's top cord standing past the roof line), each a cut branch of its own green or brown, lit by its own
-// face, with a bunch or two of hessian and scrim knotted in at its foot and between the clumps. Every card is fitted to
-// the working vehicle as before (its clearances, the openings' margins, the certified half-width, the hem floor): a bough
-// that meets a clearance is laid lower and shortened before it is given up. Only suits with fieldClearanceM take it.
+// casting shadow". A crew stuffs whole cut branches into a field net: each tuck point carries a clump of boughs, each a
+// cut branch of its own green or brown, lit by its own face, with a bunch or two of hessian and scrim knotted in at its
+// foot and between the clumps. Every card is fitted to the working vehicle as before (its clearances, the openings'
+// margins, the certified half-width, the hem floor): a bough that meets a clearance is laid lower, turned and shortened
+// before it is given up. Only suits with fieldClearanceM take it.
+//
+// netting-proper (2026-10-13; the owner on the fix round's clumps: "make sure roof ghillie and leaves aren't as
+// ridiculously placed like peacock feathers, make them more proper"): the fix round stood each clump's boughs out of the
+// net in every direction, 17 to 62 degrees off it and up to 55 cm over a turret roof (a rosette on a roof or deck, a fan
+// jutting from a drape, boughs at a drape's top cord standing up past the roof line). Real field camouflage lies on the
+// vehicle: the crew lays its boughs along the net and tucks their stems under it. On a roof or deck a clump's boughs now
+// lie side by side, their stems staggered across the clump, all one way: along the hull's axis where the net is level,
+// down its fall line where it slopes (a glacis, a sloped turret face); each follows the net from stem to tip a few
+// centimetres over it, its face on the net's, no point more than FIELD_TOP_LIFT_M over the net (a panel's own
+// garnishRiseM where that is lower), and past the net's edge it droops over the edge. On a drape the boughs hang down the
+// net's fall line, a little off it, drooping at the tip. The clump counts and sizes are the fix round's.
+//
+// netting-proper round 2 (2026-10-13; three critics on the Merkava Mk 4B: "the plume is gone, but nothing replaced it ...
+// a low draped net with flat foliage is needed across the turret roof and bustle", and "a large dark fan of long blades
+// spreads out sideways from the turret's side"): laid flat, the fix round's clumps covered a third less of a roof than
+// they had standing (the Mk 4B's turret net 39 % -> 26 %, its full-length boughs mostly refused where they crossed a gap
+// in the net and only their half-length fallbacks laid). A crew laying boughs flat lays more of them, side by side, until
+// the roof is covered: a roof or deck takes FIELD_CLUMPS_TOP clumps a square metre, and a bough lies across a gap in its
+// net on the armour beneath (a torn cell, a step the net was not laid down) as it lies on the net; where the net under it
+// is lumpy (a basket's load) it is laid shorter or turned until its face lies on it. Nor are boughs bunched into one
+// point each turned its own way (a clump whose cards' own stems found no cloth stacked them all on its seat, and the
+// turned fallbacks fanned them out of it): one card at most takes a clump's bare seat, and no three cards whose stems
+// meet fan more than FIELD_FAN_SPREAD_DEG apart. The fan off the turret side was cloth hung
+// in the air: a drape column with no armour under its roof net's edge was hung on its authored line, here 27 cm out from
+// the sloping turret side, its hessian hanging off it; a field drape now hangs only from armour or free from its roof
+// net's edge, never from nothing. And a drape's garnish hangs where the drape falls: none on a drape's roll lying level
+// over a roof's edge, where it stood straight out sideways.
 // ---------------------------------------------------------------------------------------------------------------
 
 /** Per-bough tone multipliers (linear) and their shares, by theatre: deep, mid, sunlit, olive, a wilting cut, dark. */
@@ -2203,18 +2280,123 @@ const FIELD_BOUGH_TONES: Readonly<Record<SuitTheatre, ReadonlyArray<readonly [re
 /**
  * Clumps per square metre of garnished cloth (before the suit's density), and boughs per bough clump. 2026-10-12
  * (cam-netting; the owner: "a ton more netting and camo leaves all over", asked again on 10-12): a third more clumps
- * than the fix round's 1.45 / 1.6, which left the roofs reading as bare plate between sparse patches.
+ * than the fix round's 1.45 / 1.6, which left the roofs reading as bare plate between sparse patches. netting-proper
+ * round 2: a roof's or deck's 1.95 to 3.2, its clumps lying flat (the Mk 4B's turret net 26 % -> 37 % covered, main's
+ * standing clumps 39 %).
  */
-const FIELD_CLUMPS_TOP = 1.95;
+const FIELD_CLUMPS_TOP = 3.2;
 const FIELD_CLUMPS_DRAPE = 2.1;
 const FIELD_BOUGHS_PER_CLUMP = [3, 4, 4, 5, 5, 6, 6, 7] as const;
-/** The highest a field bough may stand over a roof or deck net (its owner's clearances decide below that). */
-const FIELD_RISE_M: Readonly<Record<GhillieOwner, number>> = Object.freeze({ hull: 0.42, turret: 0.55, gun: 0.1 });
+/**
+ * netting-proper: the highest any point of a roof or deck card may stand over its net there (a panel's own garnishRiseM
+ * where that is lower; its owner's clearances decide below that). The fix round's 0.42 m (hull) and 0.55 m (turret)
+ * stood boughs up off the roofs, and it overrode every panel's authored 8 to 16 cm. netting-225 (the critics on the
+ * flattened suits: "small bumps still break the eye-level roofline", low mounds on the Strv 103s, the Burlak, the
+ * Ariete, the ZTZ-99A2, the KF51, the M1A3's bustle): 12 cm -> 8 cm. The boughs' fold, droop and the clump's later
+ * boughs laid over its first had stacked a leaf layer up to the full 12 cm over the net across whole roofs (the roof
+ * cards' highest points 7 to 15 cm over the armour at the median to the tenth worst); the roofline census
+ * (.qa-dev/n225/roofline.mjs) read the garnish 5 cm or more over the vehicle's own skyline on 11 to 22 % of the
+ * silhouette of the worst hulls.
+ */
+const FIELD_TOP_LIFT_M: Readonly<Record<GhillieOwner, number>> = Object.freeze({ hull: 0.08, turret: 0.08, gun: 0.08 });
+/**
+ * netting-proper: past its net's edge (or over a gap in it) a roof card rises no more than this over its stem, and it
+ * spills no further than FIELD_OVERHANG_M past the net.
+ */
+const FIELD_EDGE_RISE_M = 0.04;
+const FIELD_OVERHANG_M = 0.12;
+/**
+ * netting-225: past its net's edge a roof card's point lies over its owner's own armour (the owner's surface under it,
+ * this far back toward the stem at most): a bough laid at a roof's edge droops onto the wall below it, never reaching out
+ * into the air past the turret's or hull's outline. Where a net itself ran out past the armour (a bustle's top, a roll
+ * at a wall) the fix rounds' 12 cm spill reached on: the KF51's bough 0.5 m off its bustle, its tip 34 cm over the
+ * hull's deck; the Type 10's 39 cm out from the turret's flank, level as a shelf; the Challenger 2 UA's 28 cm over its
+ * lower bustle net.
+ */
+const FIELD_SPILL_BACK_M = 0.04;
+/**
+ * netting-225: no point of a drape's card more than this off its cloth (the Hetman's turret-cage drapes and the M1A3's
+ * bustle drapes stood boughs 10 to 28 cm out sideways from the cloth, the Merkava 3C's rear drape one 0.7 m bough lying
+ * level 22 cm off it: sheaves out of the turret's flank at eye level).
+ */
+const FIELD_DRAPE_OFF_M = 0.08;
+/**
+ * netting-proper: the steepest a roof card's spine may fall (sine, about 37 degrees) or rise (30 degrees) from its stem.
+ * Where the net falls away more steeply (a roof's edge rolling down, the cloth hung over a gap) a card cannot follow it:
+ * it is laid the other way, shorter, or left out, never stood steeply on the roof.
+ */
+const FIELD_SPINE_FALL = 0.6;
+const FIELD_SPINE_RISE = 0.5;
+/** netting-proper: a net more than this under a roof card's stem is not the net it lies on (a deck below a roof's edge). */
+const FIELD_OWN_NET_M = 0.25;
+
+/**
+ * netting-proper: the highest point of these nets (owner-local, as laid: their clearances' cuts are gaps) under a plan
+ * point and at most 10 cm over y, else null; their triangles kept by 10 cm plan cells.
+ */
+function netHeightRaster(geometries: readonly THREE.BufferGeometry[]): (x: number, y: number, z: number) => number | null {
+  const C = 0.1, cells = new Map<number, number[]>(), tris: number[] = [];
+  const key = (i: number, j: number): number => (i + 4096) * 8192 + (j + 4096);
+  for (const g of geometries) {
+    const pos = g.attributes.position as THREE.BufferAttribute;
+    for (let t = 0; t + 2 < pos.count; t += 3) {
+      const at = tris.length / 9;
+      for (let k = 0; k < 3; k++) tris.push(pos.getX(t + k), pos.getY(t + k), pos.getZ(t + k));
+      const x0 = Math.min(pos.getX(t), pos.getX(t + 1), pos.getX(t + 2)), x1 = Math.max(pos.getX(t), pos.getX(t + 1), pos.getX(t + 2));
+      const z0 = Math.min(pos.getZ(t), pos.getZ(t + 1), pos.getZ(t + 2)), z1 = Math.max(pos.getZ(t), pos.getZ(t + 1), pos.getZ(t + 2));
+      for (let i = Math.floor(x0 / C); i <= Math.floor(x1 / C); i++) for (let j = Math.floor(z0 / C); j <= Math.floor(z1 / C); j++) {
+        const list = cells.get(key(i, j));
+        if (list) list.push(at); else cells.set(key(i, j), [at]);
+      }
+    }
+  }
+  return (x, y, z) => {
+    let best: number | null = null;
+    for (const t of cells.get(key(Math.floor(x / C), Math.floor(z / C))) ?? []) {
+      const o = t * 9;
+      const ax = tris[o], ay = tris[o + 1], az = tris[o + 2], bx = tris[o + 3], by = tris[o + 4], bz = tris[o + 5];
+      const cx = tris[o + 6], cy = tris[o + 7], cz = tris[o + 8];
+      const d = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz);
+      if (Math.abs(d) < 1e-12) continue;
+      const l1 = ((bz - cz) * (x - cx) + (cx - bx) * (z - cz)) / d, l2 = ((cz - az) * (x - cx) + (ax - cx) * (z - cz)) / d;
+      const l3 = 1 - l1 - l2;
+      if (l1 < -1e-6 || l2 < -1e-6 || l3 < -1e-6) continue;
+      const h = l1 * ay + l2 * by + l3 * cy;
+      if (h <= y + 0.1 && (best === null || h > best)) best = h;
+    }
+    return best;
+  };
+}
+/**
+ * netting-proper: the incline (sine of the net's slope at the seat) over which a roof clump turns from the hull's axis
+ * (level) to the net's fall line (about 10 to 20 degrees).
+ */
+const FIELD_FALL_SIN: readonly [number, number] = [0.17, 0.34];
 /** The height over the plate at which a field net probes for the main gun's depression path (a refusal there keeps the
  * net flat, at the round-5 laid net's 1.2 cm). */
 const FIELD_GUN_PROBE_M = 0.09;
 /** How far under its drape's hem a field card may hang. */
 const FIELD_HEM_DROP_M = 0.04;
+/**
+ * netting-proper round 2: a drape's cloth whose normal stands within about 53 degrees of vertical (its roll lying over a
+ * roof's edge, its top lying on a deck) carries none of the drape's garnish: there the drape's fall line runs out level,
+ * and its boughs stood straight out sideways off the vehicle (the Mk 4B's bustle drape, seven boughs 0.3 to 0.56 m long).
+ * The roof's own garnish covers what lies level.
+ */
+const FIELD_DRAPE_LEVEL_N = 0.6;
+/** netting-proper round 2: a drape's card never points up past this (the sine of its axis over level). */
+const FIELD_DRAPE_RISE = 0.05;
+/**
+ * netting-proper round 2: a roof card point over a gap in its net (net on both sides of it within FIELD_GAP_REACH_M) may
+ * lie on the armour there when that armour lies no more than FIELD_GAP_DIP_M under the net round the gap.
+ */
+const FIELD_GAP_REACH_M = 0.15;
+const FIELD_GAP_DIP_M = 0.05;
+/** netting-proper round 2: the most a roof card's face may tilt off the net under its footprint (degrees). */
+const FIELD_FACE_TILT_DEG = 24;
+/** netting-proper round 2: roof cards whose stems lie this close (m) never fan more than FIELD_FAN_SPREAD_DEG apart. */
+const FIELD_FAN_STEM_M = 0.035;
+const FIELD_FAN_SPREAD_DEG = 36;
 /** How far under its own net a field card may pass (its foot and edges tucked under the net's folds). */
 const FIELD_UNDER_NET_M = 0.08;
 
@@ -2235,6 +2417,26 @@ interface FieldTuftContext extends TuftContext {
   readonly columns?: ReadonlyArray<readonly [number, number, number, number]>;
   /** A field roof cage's tubes and hinge barrels (owner frame) no card face may pass through (ghillieSuit.selftest). */
   readonly tubes?: readonly CageMember[];
+  /**
+   * netting-proper: the owner's roof and deck nets as laid (netHeightRaster): the highest net point under owner-local
+   * (x, z) at most 10 cm over y, else null.
+   */
+  readonly roofUnder?: (x: number, y: number, z: number) => number | null;
+  /**
+   * netting-proper round 2: the owner's armour under a plan point (its probe): the height of the first surface at or
+   * below y + 5 mm when that surface faces up, else null (nothing under it, or the point inside a solid).
+   */
+  readonly armourUnder?: (x: number, y: number, z: number) => number | null;
+  /**
+   * netting-225: whether the owner's armour lies anywhere under a point (a surface at or below y + 5 mm, either way it
+   * faces: a builder's winding is no guide; its running gear aside).
+   */
+  readonly overArmour?: (x: number, y: number, z: number) => boolean;
+  /**
+   * netting-proper round 2: the owner's roof cards laid so far, over all its roof and deck nets (where two nets meet,
+   * either's clumps may reach the same point): each card's tuck point and plan heading.
+   */
+  readonly laidStems?: Array<readonly [number, number, number, number]>;
 }
 
 /** The closest distance between the segment u-v and a cage member's axis. */
@@ -2257,6 +2459,80 @@ function segmentGap(u: THREE.Vector3, v: THREE.Vector3, m: CageMember): number {
     }
   }
   return Math.hypot(u.x + d1x * s - (m.a[0] + d2x * t), u.y + d1y * s - (m.a[1] + d2y * t), u.z + d1z * s - (m.a[2] + d2z * t));
+}
+
+/**
+ * netting-proper (2026-10-13; the coordinator on the fleet pass: the CV9040C's designation 3/9 clear and the Type 96B X's
+ * 4/9 under the lying garnish): a field suit's garnish keeps the vehicle's national markings readable. The vehicle's own
+ * release-verified marking seats (vehicleMarkingSeatRegistry.ts, registered before the build: fleetFactory.ts in the
+ * browser, tankFactory.ts fleet-wide for the tools), each as the rays the marking receipts cast down its normal
+ * (vehicleMarkingSeating.ts markingVisibilityReceipt: 8 m out, at offsets of 0.28 of its size) on a 5 x 5 grid over the
+ * whole marking, brought into the suit owner's frame. A garnish card crossing one is laid another way or left out.
+ */
+const MARK_RAY_OFFSETS = [-0.5, -0.28, 0, 0.28, 0.5] as const;
+const MARK_RAY_LENGTH_M = 2.5;
+/** The net's cut round a marking: its footprint and this much more on every side (one net cell), out along its normal. */
+const MARK_CLOTH_MARGIN_M = 0.08;
+interface MarkingRays {
+  readonly rays: readonly THREE.Ray[];
+  readonly box: THREE.Box3;
+  /** Whether cloth at an owner-local point lies in a marking's sight (its footprint widened by MARK_CLOTH_MARGIN_M). */
+  clothHides(p: readonly number[]): boolean;
+}
+function markingRaysOf(P: GhillieBuilderPort, owner: THREE.Object3D): MarkingRays | null {
+  const seats = vehicleMarkingSeats(P.spec.id);
+  if (!seats?.length) return null;
+  owner.updateWorldMatrix(true, false);
+  const toOwner = new THREE.Matrix4().copy(owner.matrixWorld).invert();
+  const rays: THREE.Ray[] = [], box = new THREE.Box3();
+  const prisms: Array<{ c: THREE.Vector3; t: THREE.Vector3; b: THREE.Vector3; n: THREE.Vector3; ht: number; hb: number }> = [];
+  for (const seat of seats) {
+    const { kind, parent, pos, quaternion, size } = seat as { kind?: unknown; parent?: unknown; pos?: unknown; quaternion?: unknown; size?: unknown };
+    if ((kind !== 'insignia' && kind !== 'designation') || !Array.isArray(pos) || pos.length !== 3 || !Array.isArray(quaternion)
+      || quaternion.length !== 4 || typeof size !== 'number') continue;
+    const group = parent === 'turret' ? P.turretG : P.hullG;
+    group.updateWorldMatrix(true, false);
+    const m = new THREE.Matrix4().multiplyMatrices(toOwner, group.matrixWorld), lin = new THREE.Matrix3().setFromMatrix4(m);
+    const q = new THREE.Quaternion(quaternion[0], quaternion[1], quaternion[2], quaternion[3]);
+    const c = new THREE.Vector3(pos[0], pos[1], pos[2]).applyMatrix4(m);
+    const t = new THREE.Vector3(1, 0, 0).applyQuaternion(q).applyMatrix3(lin).multiplyScalar(size);
+    const b = new THREE.Vector3(0, 1, 0).applyQuaternion(q).applyMatrix3(lin).multiplyScalar(size);
+    const n = new THREE.Vector3(0, 0, 1).applyQuaternion(q).applyMatrix3(lin).normalize();
+    const tl = t.length(), bl = b.length();
+    prisms.push({ c, t: t.clone().divideScalar(tl), b: b.clone().divideScalar(bl), n, ht: tl / 2 + MARK_CLOTH_MARGIN_M, hb: bl / 2 + MARK_CLOTH_MARGIN_M });
+    for (const u of MARK_RAY_OFFSETS) for (const v of MARK_RAY_OFFSETS) {
+      const foot = c.clone().addScaledVector(t, u).addScaledVector(b, v);
+      const origin = foot.clone().addScaledVector(n, MARK_RAY_LENGTH_M);
+      rays.push(new THREE.Ray(origin, n.clone().negate()));
+      box.expandByPoint(foot).expandByPoint(origin);
+    }
+  }
+  if (!rays.length) return null;
+  return {
+    rays, box: box.expandByScalar(0.02),
+    clothHides: (p) => prisms.some(({ c, t, b, n, ht, hb }) => {
+      const dx = p[0] - c.x, dy = p[1] - c.y, dz = p[2] - c.z, w = dx * n.x + dy * n.y + dz * n.z;
+      return w > -0.01 && w < MARK_RAY_LENGTH_M && Math.abs(dx * t.x + dy * t.y + dz * t.z) <= ht && Math.abs(dx * b.x + dy * b.y + dz * b.z) <= hb;
+    }),
+  };
+}
+
+/** Whether a card's face (its eight triangles, folded or flat) crosses a marking's sight rays (above the paint). */
+function cardHidesMarking(card: FoliageCard, marks: MarkingRays): boolean {
+  const g = foliageCardPoints(card);
+  let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+  for (const p of g) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); z0 = Math.min(z0, p[2]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); z1 = Math.max(z1, p[2]); }
+  if (x1 < marks.box.min.x || x0 > marks.box.max.x || y1 < marks.box.min.y || y0 > marks.box.max.y || z1 < marks.box.min.z || z0 > marks.box.max.z) return false;
+  const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3(), hit = new THREE.Vector3();
+  for (let r = 0; r < 2; r++) for (let c = 0; c < 2; c++) {
+    const a = g[r * 3 + c], b = g[r * 3 + c + 1], d = g[(r + 1) * 3 + c], e = g[(r + 1) * 3 + c + 1];
+    for (const [p, q, w] of [[a, b, e], [a, e, d]] as const) {
+      A.set(p[0], p[1], p[2]); B.set(q[0], q[1], q[2]); C.set(w[0], w[1], w[2]);
+      // the ray runs from its origin down to 2 cm under the paint (a card tucked under the paint's own plate is no cover)
+      for (const ray of marks.rays) if (ray.intersectTriangle(A, B, C, false, hit) && hit.distanceTo(ray.origin) <= MARK_RAY_LENGTH_M + 0.02) return true;
+    }
+  }
+  return false;
 }
 
 /** Whether a card's face (its eight triangles, folded or flat) passes through a cage member (a tube of radius r). */
@@ -2292,9 +2568,15 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
   const [u0, u1, v0, v1] = surface.domain;
   const panel = surface.panel as TopPanel;
   const top = surface.kind === 'top';
+  const laidNet = top ? surface as TopCloth : null;
+  // netting-pl: the suit's garnish budget (GhillieConfig.garnishBudget): fewer, broader cards a clump; fewer at LOW
+  const thin = THREE.MathUtils.clamp(cfg.garnishBudget?.clumpCards ?? 1, 0.3, 1);
+  const lowKeep = ctx.q ? 1 : THREE.MathUtils.clamp(cfg.garnishBudget?.lowShare ?? 1, 0, 1);
+  const grow = Math.pow(thin, -0.4), widen = Math.pow(thin, -0.6);
   const margin = top ? (panel.garnishOpeningMarginM ?? 0.09) : 0.06;
   const band = top ? panel.garnishEdgeBandM : undefined;
-  const riseMax = top ? Math.max(panel.garnishRiseM ?? 0.16, FIELD_RISE_M[ctx.owner]) : Infinity;
+  // netting-proper: how high over its net any point of a roof or deck card may stand (the panel's own rise when lower)
+  const liftCap = top ? Math.min(panel.garnishRiseM ?? Infinity, FIELD_TOP_LIFT_M[ctx.owner]) : Infinity;
   const seatOk = (u: number, v: number): boolean => surface.allowed(u, v, margin)
     && (band === undefined || !surface.edge || surface.edge(u, v).d <= band);
   let area: number;
@@ -2308,6 +2590,8 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
   }
   const want = area * (top ? FIELD_CLUMPS_TOP : FIELD_CLUMPS_DRAPE) * cfg.density * (top ? (panel.garnishDensity ?? 1) : 1);
   const clothAt = clothDistance(surface.geometry);
+  // netting-225: a drape's card hugs its cloth (FIELD_DRAPE_OFF_M), its face's nine points measured to the cloth round them
+  const clothNear = top ? null : clothWithin(surface.geometry, FIELD_DRAPE_OFF_M);
   // tuck points: a seeded point process under the crew's stuffing field, 30-55 cm apart (no lattice)
   const fa = 0.7 + rng() * 1.3, fb = 0.7 + rng() * 1.3, fc = 1.1 + rng() * 1.6, fd = 0.9 + rng() * 1.4;
   const pa = rng() * Math.PI * 2, pb = rng() * Math.PI * 2;
@@ -2332,7 +2616,7 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
     if (!stands(u, v)) continue;
     seats.push({ u, v, r });
   }
-  // the sticks pushed under a roof net stand out of their humps as the biggest clumps
+  // the sticks pushed under a roof net hold up its humps: the biggest clumps are laid over them
   if (top) for (const t of (surface as TopCloth).tents ?? []) seats.push({ u: t.x, v: t.z, r: 0.3 });
   const boughShare = Math.max(cfg.boughShare ?? 0, pal.boughs);
   const down: [number, number, number] = [0, -1, 0];
@@ -2355,18 +2639,182 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
     }
     return p[1] - ceilNet[k] <= ceilRise[k] + 0.015;
   };
+  // netting-proper: the owner's roof and deck net as laid under a plan point, the highest at most 10 cm over `y` and no
+  // more than FIELD_OWN_NET_M under the card's stem (a deck far below a roof's edge is not the net a card lies on), else
+  // null; without the owner's raster (never for a field net), this carrier's own height
+  const netUnder = (x: number, y: number, z: number, stemY: number): number | null => {
+    const h = ctx.roofUnder ? ctx.roofUnder(x, y, z) : laidNet?.heightAt(x, z) ?? null;
+    return h !== null && stemY - h < FIELD_OWN_NET_M ? h : null;
+  };
+  // netting-proper round 2: a gap in the net at a plan point: the net on both sides of it along some line within
+  // FIELD_GAP_REACH_M (a roof's edge has net on one side only), and the lowest of the net found round it; else null
+  const netBeside = (x: number, y: number, z: number, stemY: number): number | null => {
+    let low: number | null = null, across = false;
+    for (const [dx, dz] of [[1, 0], [0.71, 0.71], [0, 1], [-0.71, 0.71]]) {
+      const r = FIELD_GAP_REACH_M;
+      const h1 = netUnder(x + dx * r, y + FIELD_OWN_NET_M, z + dz * r, stemY), h2 = netUnder(x - dx * r, y + FIELD_OWN_NET_M, z - dz * r, stemY);
+      for (const h of [h1, h2]) if (h !== null && (low === null || h < low)) low = h;
+      if (h1 !== null && h2 !== null) across = true;
+    }
+    return across ? low : null;
+  };
+  // a roof or deck card lies on its net: no point of it more than liftCap over the net under it (nor deeper under one than
+  // FIELD_UNDER_NET_M); over a gap in the net it lies on the armour there the same way (round 2); past the net's edge
+  // (nothing under it on the stem's level) none higher than FIELD_EDGE_RISE_M over its stem, and none further than
+  // FIELD_OVERHANG_M past the net back toward its stem (a bough's tip spills over a roof's edge; it never reaches out over
+  // the drape as a shelf)
+  const lyingOk = (pts: readonly (readonly number[])[], stem: readonly number[]): boolean => {
+    for (const p of pts) {
+      const h = netUnder(p[0], p[1], p[2], stem[1]);
+      if (h !== null) {
+        // and none deeper under a net than its folds take it
+        if (p[1] - h > liftCap || h - p[1] > FIELD_UNDER_NET_M) return false;
+        continue;
+      }
+      // netting-proper round 2: across a gap in its net (a torn cell, a step the net was not laid down, a cut) a bough
+      // lies on the armour beneath, never more than liftCap over it nor into it, where that armour carries on the net's
+      // surface round the gap (within FIELD_GAP_DIP_M under the net beside it: never down into a bin, a basket's load or
+      // a recess), and no higher over its stem than liftCap (it never climbs a glacis across the gap); the openings
+      // round lids and sights stay the dense check's (surface.holeAt) and the views the clearance's
+      const a = ctx.armourUnder?.(p[0], p[1], p[2]) ?? null;
+      if (a !== null && p[1] - a <= liftCap && p[1] - stem[1] <= liftCap) {
+        const beside = netBeside(p[0], p[1], p[2], stem[1]);
+        if (beside !== null && a >= beside - FIELD_GAP_DIP_M) continue;
+      }
+      if (p[1] - stem[1] > FIELD_EDGE_RISE_M) return false;
+      const dx = p[0] - stem[0], dz = p[2] - stem[2], d = Math.hypot(dx, dz);
+      const back = d > 1e-6 ? Math.min(d, FIELD_OVERHANG_M) / d : 0;
+      if (netUnder(p[0] - dx * back, p[1], p[2] - dz * back, stem[1]) === null) return false;
+      // netting-225: and it hangs over its owner's own armour (a few centimetres past a wall's top edge at most)
+      if (ctx.overArmour) {
+        const near = d > 1e-6 ? Math.min(d, FIELD_SPILL_BACK_M) / d : 0;
+        if (!ctx.overArmour(p[0], p[1], p[2]) && !ctx.overArmour(p[0] - dx * near, p[1], p[2] - dz * near)) return false;
+      }
+    }
+    return true;
+  };
+  // netting-proper: a roof card's spine laid along its net from its stem: the axis's rise and the tip's droop that put its
+  // middle and tip rows h1 and h2 over the net under them (vehicleFoliage.ts cardRows: the rows stand 0, 50 and 100 % of
+  // the length along the axis from the stem, the droop growing with the square of the share). Over no net the row droops
+  // instead (a bough laid off a roof's edge hangs over it).
+  const laySpine = (stem: readonly number[], hx: number, hz: number, len: number, h1: number, h2: number, rise0: number):
+    { axis: [number, number, number]; bend: number } => {
+    let s = THREE.MathUtils.clamp(rise0, -FIELD_SPINE_FALL, FIELD_SPINE_RISE), b = 0;
+    for (let it = 0; it < 3; it++) {
+      const c = Math.sqrt(1 - s * s);
+      const mid = netUnder(stem[0] + hx * c * 0.5 * len, stem[1] + FIELD_OWN_NET_M, stem[2] + hz * c * 0.5 * len, stem[1]);
+      const tip = netUnder(stem[0] + hx * c * len, stem[1] + FIELD_OWN_NET_M, stem[2] + hz * c * len, stem[1]);
+      const d1 = mid !== null ? mid + h1 - stem[1] : Math.min(h1, 0) - 0.08 * len;
+      const d2 = tip !== null ? tip + h2 - stem[1] : Math.min(d1, 0) - 0.2 * len;
+      s = THREE.MathUtils.clamp((4 * d1 - d2) / len, -FIELD_SPINE_FALL, FIELD_SPINE_RISE);
+      // the droop never takes the tip steeper than 1 in 1 down (45 degrees) or 1 in 2 up
+      b = THREE.MathUtils.clamp(s * len - d2, Math.max(-0.06, (s - FIELD_SPINE_RISE) / 2) * len, Math.min(0.3, (s + 1) / 2) * len);
+    }
+    const c = Math.sqrt(1 - s * s);
+    return { axis: [hx * c, s, hz * c], bend: b / len };
+  };
+  // netting-proper: a roof or deck net's broad slope at a seat: the least-squares plane through this net (its own cloth as
+  // laid) on a 5 x 5 raster 12 cm either side of the seat, fitted again without the points more than 3 cm off it (the
+  // cloth's own creases, the rolls at its openings and the dips a clearance pressed into it are narrower; past the net's
+  // edge the raster has no point). A card is laid on that, not rolled into a crease.
+  const BROAD_M = 0.12;
+  const ownUnder = laidNet ? netHeightRaster([surface.geometry]) : null;
+  const broadNormal = (p: readonly number[], fine: readonly number[]): [number, number, number] => {
+    const fallback = norm3(fine);
+    if (!ownUnder) return fallback;
+    const pts: Array<[number, number, number]> = [];
+    for (let i = -2; i <= 2; i++) for (let j = -2; j <= 2; j++) {
+      const x = i * BROAD_M / 2, z = j * BROAD_M / 2, h = ownUnder(p[0] + x, p[1] + FIELD_OWN_NET_M, p[2] + z);
+      if (h !== null && Math.abs(h - p[1]) < FIELD_OWN_NET_M) pts.push([x, h - p[1], z]);
+    }
+    // the plane y = a x + b z + c (the 3 x 3 normal equations by Cramer's rule)
+    const det3 = (a: readonly number[]): number => a[0] * (a[4] * a[8] - a[5] * a[7]) - a[1] * (a[3] * a[8] - a[5] * a[6])
+      + a[2] * (a[3] * a[7] - a[4] * a[6]);
+    let normal = fallback, use = pts;
+    for (let pass = 0; pass < 2 && use.length >= 6; pass++) {
+      let sxx = 0, sxz = 0, szz = 0, sx = 0, sz = 0, sxy = 0, szy = 0, sy = 0;
+      for (const [x, y, z] of use) { sxx += x * x; sxz += x * z; szz += z * z; sx += x; sz += z; sxy += x * y; szy += z * y; sy += y; }
+      const m = use.length, d = det3([sxx, sxz, sx, sxz, szz, sz, sx, sz, m]);
+      if (Math.abs(d) < 1e-9) break;
+      const ga = det3([sxy, sxz, sx, szy, szz, sz, sy, sz, m]) / d, gb = det3([sxx, sxy, sx, sxz, szy, sz, sx, sy, m]) / d;
+      const gc = det3([sxx, sxz, sxy, sxz, szz, szy, sx, sz, sy]) / d;
+      normal = norm3([-ga, 1, -gb]);
+      const kept = use.filter(([x, y, z]) => Math.abs(y - (ga * x + gb * z + gc)) < 0.03);
+      if (kept.length === use.length) break;
+      use = kept;
+    }
+    return normal;
+  };
+  // netting-proper round 2: a roof card's face lies on the net under its own footprint, within FIELD_FACE_TILT_DEG of the
+  // plane through the net's heights under its 5 x 5 face points (fitted again without those more than 3 cm off it: a
+  // roll at an opening, a strap), else round its stem (ghillieGarnishLie.selftest's measure). A bough laid over a lumpy
+  // load or across a slope's break no longer lies tipped on edge: it is laid shorter or turned until it lies flat.
+  const faceTiltCos = Math.cos(FIELD_FACE_TILT_DEG * Math.PI / 180);
+  const faceLies = (pts: readonly (readonly number[])[], stem: readonly number[]): boolean => {
+    const s0 = pts[1], s2 = pts[7], l = pts[3], r = pts[5];
+    const face = norm3(cross3([s2[0] - s0[0], s2[1] - s0[1], s2[2] - s0[2]], [r[0] - l[0], r[1] - l[1], r[2] - l[2]]));
+    const foot: Array<[number, number, number]> = [];
+    for (let i = 0; i <= 4; i++) for (let j = 0; j <= 4; j++) {
+      const fr = i / 2, fc = j / 2, r0 = Math.min(1, Math.floor(fr)), c0 = Math.min(1, Math.floor(fc)), u = fr - r0, w = fc - c0;
+      const g = (rr: number, cc: number, q: number): number => pts[rr * 3 + cc][q];
+      const at = [0, 1, 2].map((q) => (1 - u) * ((1 - w) * g(r0, c0, q) + w * g(r0, c0 + 1, q)) + u * ((1 - w) * g(r0 + 1, c0, q) + w * g(r0 + 1, c0 + 1, q)));
+      const h = netUnder(at[0], at[1], at[2], stem[1]);
+      if (h !== null) foot.push([at[0] - stem[0], h - stem[1], at[2] - stem[2]]);
+    }
+    const det3 = (a: readonly number[]): number => a[0] * (a[4] * a[8] - a[5] * a[7]) - a[1] * (a[3] * a[8] - a[5] * a[6])
+      + a[2] * (a[3] * a[7] - a[4] * a[6]);
+    let seat: [number, number, number] | null = null, use = foot;
+    for (let pass = 0; pass < 3 && use.length >= 5; pass++) {
+      let sxx = 0, sxz = 0, szz = 0, sx = 0, sz = 0, sxy = 0, szy = 0, sy = 0;
+      for (const [x, y, z] of use) { sxx += x * x; sxz += x * z; szz += z * z; sx += x; sz += z; sxy += x * y; szy += z * y; sy += y; }
+      const m = use.length, cxx = sxx / m - (sx / m) ** 2, czz = szz / m - (sz / m) ** 2, cxz = sxz / m - (sx / m) * (sz / m);
+      // a footprint spread less than 2 cm across (a line in plan) spans no plane
+      const tr = cxx + czz, minor = tr / 2 - Math.sqrt(Math.max(0, tr * tr / 4 - (cxx * czz - cxz * cxz)));
+      if (minor < 0.0004) break;
+      const d = det3([sxx, sxz, sx, sxz, szz, sz, sx, sz, m]);
+      if (Math.abs(d) < 1e-12) break;
+      const ga = det3([sxy, sxz, sx, szy, szz, sz, sy, sz, m]) / d, gb = det3([sxx, sxy, sx, sxz, szy, sz, sx, sy, m]) / d;
+      const gc = det3([sxx, sxz, sxy, sxz, szz, szy, sx, sz, sy]) / d;
+      seat = norm3([-ga, 1, -gb]);
+      const kept = use.filter(([x, y, z]) => Math.abs(y - (ga * x + gb * z + gc)) < 0.03);
+      if (kept.length === use.length || kept.length < 5) break;
+      use = kept;
+    }
+    const n = seat ?? broadNormal(stem, [0, 1, 0]);
+    return Math.abs(face[0] * n[0] + face[1] * n[1] + face[2] * n[2]) >= faceTiltCos;
+  };
+  // netting-proper round 2: the roof cards laid so far (their tuck points and plan headings, over all the owner's roof
+  // and deck nets): no three of them fan more than FIELD_FAN_SPREAD_DEG apart out of one point (stems within
+  // FIELD_FAN_STEM_M), as a crew never stuffs a bunch of boughs into one mesh hole each turned its own way
+  const laidStems = ctx.laidStems ?? [];
+  const fanSpread = FIELD_FAN_SPREAD_DEG * Math.PI / 180;
+  const fansOut = (pts: readonly (readonly number[])[]): boolean => {
+    const s0 = pts[1], s2 = pts[7];
+    const me = [s0[0], s0[1], s0[2], Math.atan2(s2[0] - s0[0], s2[2] - s0[2])] as const;
+    const close = (a: readonly number[], b: readonly number[]): boolean => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) < FIELD_FAN_STEM_M;
+    // every bunch this card would join: round itself and round each laid card it lies beside
+    for (const centre of [me, ...laidStems.filter((q) => close(q, me))]) {
+      const bunch = [me, ...laidStems.filter((q) => close(q, centre))];
+      if (bunch.length < 3) continue;
+      // the headings' range about the centre's (at least their spread round the circle)
+      let lo = 0, hi = 0;
+      for (const q of bunch) {
+        const d = Math.atan2(Math.sin(q[3] - centre[3]), Math.cos(q[3] - centre[3]));
+        lo = Math.min(lo, d); hi = Math.max(hi, d);
+      }
+      if (hi - lo > fanSpread) return true;
+    }
+    return false;
+  };
   let hemFloorHere = -Infinity;
-  const tryCard = (make: (scale: number, lift: number, turn: number) => FoliageCard | null, lifts: readonly number[]): FoliageCard | null => {
-    // the bough as cut, then shorter and lower; then turned aside, short and low (a bough the crew could not fit one way)
-    const tries: Array<readonly [number, number, number]> = [];
-    for (const scale of [1, 0.72, 0.52]) for (const lift of lifts) tries.push([scale, lift, 0]);
-    for (const turn of [0.9, -0.9]) for (const [scale, lift] of [[0.72, lifts[1] ?? 0], [0.52, lifts[2] ?? 0], [0.52, 0]] as const) tries.push([scale, lift, turn]);
-    for (const [scale, lift, turn] of tries) {
-      const card = make(scale, lift, turn);
+  const tryCard = (make: (scale: number, liftK: number, turn: number) => FoliageCard | null,
+    tries: ReadonlyArray<readonly [number, number, number]>, stem: readonly number[]): FoliageCard | null => {
+    for (const [scale, liftK, turn] of tries) {
+      const card = make(scale, liftK, turn);
       if (!card) continue;
       const pts = foliageCardPoints(card);
       // the tip row first: a card that fails mostly fails where it reaches farthest
-      let quick = true;
+      let quick = !top || (lyingOk(pts, stem) && faceLies(pts, stem) && !fansOut(pts));
       for (let q = pts.length - 1; q >= 0 && quick; q--) {
         const p = pts[q];
         quick = Math.abs(p[0]) <= ctx.maxHalfWidth && p[1] >= ctx.hemFloor - 0.04 && p[1] >= hemFloorHere
@@ -2382,94 +2830,192 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
       if (!quick) continue;
       // the face itself, sampled densely, crosses no opening of its net (a hatch lid, a sight head: 391's "hatches
       // open"; profiles/easternSourceContact's Type 96 secondary hatch)
+      const dense = top || surface.holeAt ? denseCardPoints(card) : null;
       const ok = pts.every((p) => surface.cardOk(p)) && (!ctx.cardClear || ctx.cardClear(card))
-        && (!surface.holeAt || !denseCardPoints(card).some((p) => surface.holeAt!(p[0], p[2])))
+        && (!surface.holeAt || !dense!.some((p) => surface.holeAt!(p[0], p[2])))
+        // netting-proper: and lies on its net between its rows too (a dip in the net under a long bough)
+        && (!top || lyingOk(dense!, stem))
+        && (!clothNear || pts.every((p) => clothNear(p)))
         && (!ctx.tubes?.length || !cardCrossesTube(card, ctx.tubes));
       if (ok) return card;
     }
     return null;
   };
-  for (const seatAt of seats) {
+  // the fallbacks: a roof bough as cut, then turned end for end (still along its line), shorter and closer to the net,
+  // then turned aside (on a cluttered roof a bough still lies flat, across its line if it must); a drape's lower off the
+  // net, shorter, then turned aside
+  const TOP_TRIES: ReadonlyArray<readonly [number, number, number]> = [[1, 1, 0], [1, 1, Math.PI], [0.72, 1, 0], [0.72, 1, Math.PI],
+    [0.72, 0.4, 0], [0.72, 0.4, Math.PI], [0.72, 1, 0.6], [0.72, 1, -0.6], [0.52, 1, 0], [0.52, 1, Math.PI], [0.52, 0.4, 0],
+    [0.52, 0.4, Math.PI], [0.52, 0.4, 0.6], [0.52, 0.4, -0.6], [0.52, 0.4, Math.PI + 0.6], [0.52, 0.4, Math.PI - 0.6],
+    [0.52, 0.4, 1.2], [0.52, 0.4, -1.2], [0.38, 0.4, 0], [0.38, 0.4, Math.PI], [0.38, 0.4, 1.2], [0.38, 0.4, -1.2]];
+  const DRAPE_TRIES: ReadonlyArray<readonly [number, number, number]> = [[1, 1, 0], [1, 0.5, 0], [1, 0, 0], [0.72, 1, 0],
+    [0.72, 0.5, 0], [0.72, 0, 0], [0.52, 1, 0], [0.52, 0.5, 0], [0.52, 0, 0], [0.72, 0.5, 0.6], [0.72, 0.5, -0.6], [0.52, 0, 0.6],
+    [0.52, 0, -0.6], [0.52, 0.5, 1.2], [0.52, 0.5, -1.2], [0.38, 0, 1.2], [0.38, 0, -1.2]];
+  // netting-proper: how far from straight down a drape's card may turn (along the drape at most: never up it)
+  const DRAPE_TURN_MAX = 1.4;
+  // a drape's outward direction in plan (its side, or the way its face looks): where it rolls level over a roof's edge,
+  // its garnish hangs out over that edge
+  const outward: [number, number, number] | null = surface.owner === 'side' ? [(surface.panel as SidePanel).side, 0, 0]
+    : surface.owner === 'face' ? [0, 0, (() => {
+      const f = surface.panel as FacePanel;
+      return f.z >= 0 || (f.zAt ? f.zAt((f.x0 + f.x1) / 2, (f.y0 + f.y1) / 2) >= 0 : false) ? 1 : -1;
+    })()] : null;
+  // the cloth's plane at a seat: t1 down-slope (or down a drape), t2 across it, and the slope's sine
+  const planeAt = (nn: readonly number[]): { t1: [number, number, number]; t2: [number, number, number]; slope: number } => {
+    const dn = down[0] * nn[0] + down[1] * nn[1] + down[2] * nn[2];
+    const sl = [down[0] - nn[0] * dn, down[1] - nn[1] * dn, down[2] - nn[2] * dn];
+    const slope = Math.hypot(sl[0], sl[1], sl[2]);
+    let level: number[] = [nn[1], -nn[0], 0];
+    if (outward) {
+      const on = outward[0] * nn[0] + outward[2] * nn[2];
+      level = [outward[0] - nn[0] * on, -nn[1] * on, outward[2] - nn[2] * on];
+    }
+    // a level deck has no down-slope: any direction in its plane will do (a drape's level shoulder: outward)
+    const t1 = slope < 0.15 ? norm3(level) : norm3(sl);
+    const t2 = norm3([nn[1] * t1[2] - nn[2] * t1[1], nn[2] * t1[0] - nn[0] * t1[2], nn[0] * t1[1] - nn[1] * t1[0]]);
+    return { t1, t2, slope };
+  };
+  for (const [seatIndex, seatAt] of seats.entries()) {
     const seat = surface.sample(seatAt.u, seatAt.v);
     if (!seat || clothAt(seat.p) > 0.006) continue;
     // a drape's garnish hangs no lower than 4 cm under its hem there (391a: "lime leaf clusters dangling over the road
     // wheels"); a top's has no hem
     hemFloorHere = top ? -Infinity : (surface.sample(seatAt.u, 0.02)?.p[1] ?? -Infinity) - FIELD_HEM_DROP_M;
-    const nn = seat.n;
-    const stem: [number, number, number] = [seat.p[0] - nn[0] * 0.003, seat.p[1] - nn[1] * 0.003, seat.p[2] - nn[2] * 0.003];
-    // the cloth's plane at the seat: t1 down-slope (or down a drape), t2 across it
-    const dn = down[0] * nn[0] + down[1] * nn[1] + down[2] * nn[2];
-    const slope = [down[0] - nn[0] * dn, down[1] - nn[1] * dn, down[2] - nn[2] * dn];
-    // a level deck has no down-slope: any direction in its plane will do
-    const t1 = Math.hypot(slope[0], slope[1], slope[2]) < 0.15 ? norm3([nn[1], -nn[0], 0]) : norm3(slope);
-    const t2 = norm3([nn[1] * t1[2] - nn[2] * t1[1], nn[2] * t1[0] - nn[0] * t1[2], nn[0] * t1[1] - nn[1] * t1[0]]);
-    const inPlane = (theta: number): [number, number, number] => [t1[0] * Math.cos(theta) + t2[0] * Math.sin(theta),
-      t1[1] * Math.cos(theta) + t2[1] * Math.sin(theta), t1[2] * Math.cos(theta) + t2[2] * Math.sin(theta)];
+    const nn = top ? broadNormal(seat.p, seat.n) : seat.n;
+    const { t1, t2, slope } = planeAt(nn);
+    // netting-proper: the clump's line. A roof or deck clump lies along the hull's axis (either way) where the net is
+    // level and down its fall line where it slopes; a drape's hangs down it
+    let line: [number, number, number] = t1;
+    // a drape's clump: hanging down it from high on the cloth; low on it (a short skirt drape) laid along it fore or aft,
+    // drooping, as a crew tucks boughs along a skirt
+    const lowOnDrape = !top && seatAt.v < v0 + 0.55 * spanV;
+    const yaw = (rng() - 0.5) * 0.5, flipK = rng();
+    const theta0 = top ? 0 : lowOnDrape ? (flipK < 0.5 ? 1 : -1) * (1.15 + yaw * 0.6) : yaw;
+    if (top) {
+      const ax = norm3([-nn[0] * nn[2], -nn[1] * nn[2], 1 - nn[2] * nn[2]]);
+      const w = THREE.MathUtils.smoothstep(slope, FIELD_FALL_SIN[0], FIELD_FALL_SIN[1]);
+      let sign = flipK < 0.5 ? 1 : -1;
+      if (w > 0 && sign * (ax[0] * t1[0] + ax[1] * t1[1] + ax[2] * t1[2]) < 0) sign = -sign;
+      const l = norm3([ax[0] * sign * (1 - w) + t1[0] * w, ax[1] * sign * (1 - w) + t1[1] * w, ax[2] * sign * (1 - w) + t1[2] * w]);
+      // a few degrees off the line, clump by clump (the boughs of a roof are not combed straight)
+      const across = norm3([nn[1] * l[2] - nn[2] * l[1], nn[2] * l[0] - nn[0] * l[2], nn[0] * l[1] - nn[1] * l[0]]);
+      line = norm3([l[0] * Math.cos(yaw) + across[0] * Math.sin(yaw), l[1] * Math.cos(yaw) + across[1] * Math.sin(yaw),
+        l[2] * Math.cos(yaw) + across[2] * Math.sin(yaw)]);
+    }
+    const lineAcross = top ? norm3([nn[1] * line[2] - nn[2] * line[1], nn[2] * line[0] - nn[0] * line[2], nn[0] * line[1] - nn[1] * line[0]]) : t2;
     const boughs = rng() < boughShare;
     const boughBase = clumpTint(cfg, rng);
     const clumpTone = pickWeighted(FIELD_BOUGH_TONES[theatre], rng);
     const stripTone = pickStripTone(pal, rng);
-    const theta0 = rng() * Math.PI * 2;
-    const atTop = !top && seatAt.v > v0 + 0.8 * spanV;
-    const n = boughs ? FIELD_BOUGHS_PER_CLUMP[Math.floor(rng() * FIELD_BOUGHS_PER_CLUMP.length)] : 3 + Math.floor(rng() * 3);
-    const strips = boughs ? (rng() < 0.75 ? 1 + Math.floor(rng() * 2) : 0) : n;
+    const drawn = boughs ? FIELD_BOUGHS_PER_CLUMP[Math.floor(rng() * FIELD_BOUGHS_PER_CLUMP.length)] : 3 + Math.floor(rng() * 3);
+    const strips = boughs ? Math.round((rng() < 0.75 ? 1 + Math.floor(rng() * 2) : 0) * thin) : drawn;
+    const n = thin < 1 ? Math.max(2, Math.round(drawn * thin)) : drawn;
     const cards = boughs ? n + strips : n;
+    // netting-proper round 2: one card at most is tucked at the clump's bare seat (where a card's own stem, staggered
+    // across the clump, finds no cloth): several there, each turned its own way to fit, fanned out of one point
+    let seatTaken = false;
     for (let k = 0; k < cards; k++) {
       const bough = boughs && k < n;
       // every draw of this card happens here, before any fit
-      const share = cards > 1 ? k / cards : 0;
+      const share = cards > 1 ? (k + 0.5) / cards - 0.5 : 0;
       const jt = (rng() - 0.5) * 0.7, je = rng(), jl = rng(), jv = rng(), jb = rng(), jf = rng(), jr = rng(), jw = rng();
+      const ja = rng(), jo = rng(), jh = rng();
       const ownTone = rng() < 0.3 ? pickWeighted(FIELD_BOUGH_TONES[theatre], rng) : clumpTone;
       const tileK = rng();
-      let theta: number, elev: number;
+      // netting-pl: the far tier's share of the cards (its draws made above, so the clumps after it lie as at HIGH)
+      if (lowKeep < 1 && hash01(seatIndex, k, seedBase) >= lowKeep) continue;
+      // netting-proper: the clump's stems staggered across its line (side by side, overlapping like shingles) and a little
+      // along it; a strip knotted in among them
+      const across = bough ? share * 1.8 * seatAt.r + (ja - 0.5) * 0.06 : (ja - 0.5) * 1.2 * seatAt.r;
+      const along = (jo - 0.5) * seatAt.r;
+      let su = seatAt.u, sv = seatAt.v;
       if (top) {
-        theta = bough ? theta0 + share * Math.PI * 2 + jt : theta0 + (rng() - 0.5) * 2.4;
-        elev = bough ? 0.3 + je * 0.78 : 0.04 + je * 0.2;
+        su += lineAcross[0] * across + line[0] * along;
+        sv += lineAcross[2] * across + line[2] * along;
       } else {
-        // a drape: boughs fan down and out of the net (a few at the top cord stand up past the roof line), strips hang
-        const up = bough && atTop && k % 3 === 0;
-        theta = up ? Math.PI + (rng() - 0.5) * 1.2 : (rng() - 0.5) * (bough ? 2.2 : 0.8);
-        elev = bough ? 0.28 + je * 0.6 : 0.04 + je * 0.14;
+        su += across;
+        sv += along * 0.3 / vScale;
       }
-      const dir = inPlane(theta);
+      let at: ClothPoint | null = su === seatAt.u && sv === seatAt.v ? seat : (seatOk(su, sv) ? surface.sample(su, sv) : null);
+      if (!at || clothAt(at.p) > 0.006) at = seat;
+      if (at === seat && seatTaken) continue;
+      // netting-proper round 2: a drape's card is never tucked where the drape lies level (its roll over a roof's edge):
+      // it moves to its clump's seat, and a clump seated there is left out (after its draws: the rest keep theirs)
+      if (!top && Math.abs(at.n[1]) > FIELD_DRAPE_LEVEL_N) at = seat;
+      if (!top && Math.abs(at.n[1]) > FIELD_DRAPE_LEVEL_N) continue;
+      const an = top ? broadNormal(at.p, at.n) : at.n;
+      const stem: [number, number, number] = [at.p[0] - an[0] * 0.003, at.p[1] - an[1] * 0.003, at.p[2] - an[2] * 0.003];
+      // the card's own line in the cloth's plane at its stem: the clump's, a few degrees off (a strip more)
+      const turn0 = bough ? jt * 0.6 : jt * 1.6;
+      const lp = planeAt(an);
+      const own = top ? line : lp.t1;
+      const ownAcross = top ? lineAcross : lp.t2;
+      const inPlane = (theta: number): [number, number, number] => {
+        const d = [own[0] * Math.cos(theta) + ownAcross[0] * Math.sin(theta), own[1] * Math.cos(theta) + ownAcross[1] * Math.sin(theta),
+          own[2] * Math.cos(theta) + ownAcross[2] * Math.sin(theta)];
+        const dn = d[0] * an[0] + d[1] * an[1] + d[2] * an[2];
+        return norm3([d[0] - an[0] * dn, d[1] - an[1] * dn, d[2] - an[2] * dn]);
+      };
       // 2026-10-12 (cam-netting): a sand hull's boughs a quarter longer (the holm oak and olive sprigs read as specks
       // on sand paint at hero distance; the woodland spruce and beech boughs are broad already)
       const base = (cfg.leafScale ?? 1) * (bough ? (theatre === 'desert' ? 0.75 : 0.6) : 0.4);
-      const length = base * (bough ? 0.78 + jl * 0.72 : 0.75 + jl * 0.6);
-      const width = length * (bough ? 0.58 : 0.5);
+      const length = base * (bough ? 0.78 + jl * 0.72 : 0.75 + jl * 0.6) * grow;
+      const width = length * (bough ? 0.58 : 0.5) * (widen / grow);
       const value = bough ? 0.76 + jv * 0.26 : 0.6 + jv * 0.32;
       const tint: [number, number, number] = bough
         ? [boughBase[0] * pal.boughTint[0] * ownTone[0] * value, boughBase[1] * pal.boughTint[1] * ownTone[1] * value,
           boughBase[2] * pal.boughTint[2] * ownTone[2] * value]
         : stripTint(stripTone, value);
       const tile = bough ? GARNISH_BOUGH_TILES[tileK < 0.5 ? 0 : 1] : GARNISH_STRIP_TILES[tileK < 0.5 ? 0 : 1];
-      const bend = bough ? 0.03 + jb * 0.07 : 0.22 + jb * 0.26;
-      const fold = bough ? 0.26 + jf * 0.22 : 0.06 + jf * 0.08;
-      const roll = (jr - 0.5) * 0.9;
-      // under the turret's sweep or a lens's field view a bough lies down on the net before it is given up
-      const lifts = bough ? [1, 0.55, 0.25, 0] : [1, 0.4, 0];
+      // a shallow V along the stem (a cut branch's leaves spread to both sides of it), a drape's hanging bough a deeper one
+      // netting-225: a roof bough's V shallower (0.08 to 0.2 rad: its edges 3 cm up at most), so a full-length bough lies
+      // under the 8 cm lift instead of being cut shorter to fit (FIELD_TOP_LIFT_M)
+      const fold = bough ? (top ? 0.08 + jf * 0.12 : 0.14 + jf * 0.18) : 0.05 + jf * 0.08;
+      // the card's face on the net's: rolled a few degrees about its stem at most
+      const roll = (jr - 0.5) * (top ? 0.3 : 0.5);
+      // a roof card: its middle and tip rows a few centimetres over the net (the clump's later boughs a little higher,
+      // laid over the first); a drape's: out of the net by a few degrees, drooping at the tip
+      // netting-225: 0.8 to 2.8 cm (was 1.2 to 4.4 cm): the clump's later boughs laid over its first by half a centimetre
+      const h1 = bough ? 0.008 + 0.006 * (k % 3) + jh * 0.01 : 0.006 + jh * 0.01;
+      const h2 = h1 * (0.7 + je * 0.6);
+      const elev = bough ? 0.05 + je * 0.17 : 0.03 + je * 0.1;
+      const bend = bough ? 0.1 + jb * 0.16 : 0.22 + jb * 0.26;
       const placed = tryCard((scale, liftK, turn) => {
-        const e = elev * liftK;
-        const dirT = turn ? inPlane(theta + turn) : dir;
-        let axis = norm3([dirT[0] * Math.cos(e) + nn[0] * Math.sin(e), dirT[1] * Math.cos(e) + nn[1] * Math.sin(e),
-          dirT[2] * Math.cos(e) + nn[2] * Math.sin(e)]);
         const len = length * scale;
-        if (top && axis[1] * len > riseMax) {
-          const lim = THREE.MathUtils.clamp(riseMax / len, 0.02, 1);
-          const h = Math.hypot(axis[0], axis[2]) || 1;
-          axis = norm3([axis[0] / h * Math.sqrt(1 - lim * lim), lim, axis[2] / h * Math.sqrt(1 - lim * lim)]);
+        const dirT = inPlane(top ? turn0 + turn : THREE.MathUtils.clamp(theta0 + turn0 + turn, -DRAPE_TURN_MAX, DRAPE_TURN_MAX));
+        let axis: [number, number, number], droop: number;
+        if (top) {
+          const hl = Math.hypot(dirT[0], dirT[2]);
+          if (hl < 0.2) return null;
+          const lay = laySpine(stem, dirT[0] / hl, dirT[2] / hl, len, h1 * liftK, h2 * liftK, dirT[1] / hl);
+          axis = norm3(lay.axis);
+          droop = lay.bend;
+        } else {
+          const e = elev * liftK;
+          axis = norm3([dirT[0] * Math.cos(e) + an[0] * Math.sin(e), dirT[1] * Math.cos(e) + an[1] * Math.sin(e),
+            dirT[2] * Math.cos(e) + an[2] * Math.sin(e)]);
+          // netting-proper round 2: a drape's card hangs or lies along it, never pointing up past level
+          if (axis[1] > FIELD_DRAPE_RISE) return null;
+          droop = liftK === 0 ? 0.03 : bend;
         }
-        const toward = [nn[0] * Math.cos(roll) + t2[0] * Math.sin(roll), nn[1] * Math.cos(roll) + t2[1] * Math.sin(roll),
-          nn[2] * Math.cos(roll) + t2[2] * Math.sin(roll)];
+        const side = norm3([an[1] * axis[2] - an[2] * axis[1], an[2] * axis[0] - an[0] * axis[2], an[0] * axis[1] - an[1] * axis[0]]);
+        const toward = [an[0] * Math.cos(roll) + side[0] * Math.sin(roll), an[1] * Math.cos(roll) + side[1] * Math.sin(roll),
+          an[2] * Math.cos(roll) + side[2] * Math.sin(roll)];
         const face = faceFor(axis, toward);
         const root: [number, number, number] = [stem[0] + axis[0] * 0.05 * len, stem[1] + axis[1] * 0.05 * len, stem[2] + axis[2] * 0.05 * len];
-        // lying flat (lift 0) a card loses its fold and droop: it lies along the net
-        return { stem: root, axis, face, out: nn, length: len, width: width * scale * (0.9 + jw * 0.2), tile,
+        // closest to the net (lift 0.4 on a roof, 0 on a drape) a card keeps less of its fold
+        const foldK = liftK >= 1 ? 1 : 0.5;
+        return { stem: root, axis, face, out: an, length: len, width: width * scale * (0.9 + jw * 0.2), tile,
           // LOW draws the flat four-triangle card: that card is the one checked (its edges reach out where a fold's lift)
-          bend: liftK === 0 ? 0.01 : bend, tint, fold: !ctx.q ? 0 : liftK === 0 ? 0.05 : fold,
+          bend: droop, tint, fold: !ctx.q ? 0 : fold * foldK,
           volumeMix: bough ? [0.72, 0.18, 0.12] : [0.5, 0.38, 0.14] };
-      }, lifts);
+      }, top ? TOP_TRIES : DRAPE_TRIES, stem);
       if (placed) out.push(placed);
+      if (placed && at === seat) seatTaken = true;
+      if (placed && top) {
+        const q = foliageCardPoints(placed);
+        laidStems.push([q[1][0], q[1][1], q[1][2], Math.atan2(q[7][0] - q[1][0], q[7][2] - q[1][2])]);
+      }
     }
   }
 }
@@ -2746,8 +3292,8 @@ const LEO2A4_TURRET_ROOF_HOLES: readonly (readonly Point2[])[] = [
 ];
 
 export const GHILLIE_SUIT_CONFIGS = Object.freeze({
-  leo2a4: {
-    id: 'leo2a4', seed: 2404, style: 'leafy', density: 0.9, leafScale: 0.96, foliageKind: 'beech', maxHalfWidth: 1.845, hemFloorM: 0.565,
+  leo2a2: {
+    id: 'leo2a2', seed: 2404, style: 'leafy', density: 0.9, leafScale: 0.96, foliageKind: 'beech', maxHalfWidth: 1.845, hemFloorM: 0.565,
     light: 0x64794a, dark: 0x34462d, netColor: 'rgba(34,48,27,0.72)',
     hull: {
       // the deck under the turret and gun sweep keeps its garnish to a low band along its edges (round 3)
@@ -2792,8 +3338,8 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
       ],
     },
   },
-  ua_t64bv: {
-    id: 'ua_t64bv', seed: 640, style: 'leafy', density: 0.92, leafScale: 1.04,
+  t64bv_donbas: {
+    id: 't64bv_donbas', seed: 640, style: 'leafy', density: 0.92, leafScale: 1.04,
     light: 0x6f7d48, dark: 0x33452d, netColor: 'rgba(38,54,29,0.76)',
     hull: {
       top: [{ x0: -1.50, x1: 1.50, z0: -3.12, z1: 3.18, nx: 24, nz: 48,
@@ -2819,8 +3365,8 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         holes: [rect(-0.42, 0.42, 0.04, 0.64), rect(-0.72, -0.20, 0.48, 0.76)], seed: 43 }],
     },
   },
-  pt91_twardy: {
-    id: 'pt91_twardy', seed: 911, style: 'leafy', density: 0.86, leafScale: 0.92, foliageKind: 'birch',
+  pt91a_twardy: {
+    id: 'pt91a_twardy', seed: 911, style: 'leafy', density: 0.86, leafScale: 0.92, foliageKind: 'birch',
     light: 0x71835a, dark: 0x374a35, netColor: 'rgba(43,58,35,0.76)',
     hull: {
       top: [{ x0: -1.55, x1: 1.55, z0: -3.15, z1: 3.22, nx: 24, nz: 48,
@@ -2874,8 +3420,8 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         outAt: (_z: number, t: number) => 1.84 + (1 - t) * 0.030, seed: 79 + side + k * 7 }))),
     },
   },
-  strv103: {
-    id: 'strv103', seed: 1032, style: 'leafy', density: 0.88, leafScale: 0.92, foliageKind: 'spruce',
+  strv103b: {
+    id: 'strv103b', seed: 1032, style: 'leafy', density: 0.88, leafScale: 0.92, foliageKind: 'spruce',
     light: 0x65783f, dark: 0x304329, netColor: 'rgba(37,53,29,0.80)',
     hull: {
       top: [{ x0: -1.66, x1: 1.66, z0: -3.76, z1: 3.24, nx: 26, nz: 54,
@@ -2889,8 +3435,8 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         outAt: (_z, t) => 1.87 + (1 - t) * 0.028, seed: 93 + side })),
     },
   },
-  strv122: {
-    id: 'strv122', seed: 1220, style: 'leafy', density: 0.78, leafScale: 0.92, foliageKind: 'spruce',
+  strv121: {
+    id: 'strv121', seed: 1220, style: 'leafy', density: 0.78, leafScale: 0.92, foliageKind: 'spruce',
     disabled: true,
     light: 0x657845, dark: 0x31422d, netColor: 'rgba(39,53,31,0.80)',
     hull: {
@@ -2949,8 +3495,8 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         seatGapM: 0.026, seat: 'bustle-cage', seed: 183 }],
     },
   },
-  ua_t84_oplot_m: {
-    id: 'ua_t84_oplot_m', seed: 8420, style: 'leafy', density: 0.90, leafScale: 0.96,
+  t84bm_oplot_m: {
+    id: 't84bm_oplot_m', seed: 8420, style: 'leafy', density: 0.90, leafScale: 0.96,
     disabled: true,
     light: 0x708055, dark: 0x354830, netColor: 'rgba(43,59,35,0.82)',
     hull: {
@@ -2975,8 +3521,8 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         holes: [rect(-0.50, 0.50, -0.04, 0.72)], seed: 213 }],
     },
   },
-  m1a2_sepv3: {
-    id: 'm1a2_sepv3', seed: 123, style: 'ulcans', density: 0.76, leafScale: 0.96,
+  m1a1_abrams_fep: {
+    id: 'm1a1_abrams_fep', seed: 123, style: 'ulcans', density: 0.76, leafScale: 0.96,
     light: 0x7a795b, dark: 0x3d4636, netColor: 'rgba(50,55,43,0.82)',
     hull: {
       // round 3: the cover rides the measured front deck (sepv3HullY), opens the driver's periscopes with his hatch, keeps
@@ -3381,21 +3927,32 @@ function roofWeaponFloor(turret: THREE.Object3D, vehicleId: string): RoofWeaponF
     }
     return low;
   };
+  const swept = sweeps.map((sweep) => (x: number, z: number): number => {
+    let low = Infinity;
+    const bin = Math.floor(Math.hypot(x - sweep.x, z - sweep.z) / BIN);
+    for (let k = Math.max(0, bin - 1); k <= Math.min(sweep.floor.length - 1, bin + 1); k++) low = Math.min(low, sweep.floor[k]);
+    return low;
+  });
   return Object.assign((x: number, z: number): number => {
     let low = standing(x, z);
-    for (const sweep of sweeps) {
-      const bin = Math.floor(Math.hypot(x - sweep.x, z - sweep.z) / BIN);
-      for (let k = Math.max(0, bin - 1); k <= Math.min(sweep.floor.length - 1, bin + 1); k++) low = Math.min(low, sweep.floor[k]);
-    }
+    for (const floor of swept) low = Math.min(low, floor(x, z));
     return low;
-  }, { standing });
+  }, {
+    standing,
+    parts: swept.length > 1 ? swept.map((floor) => (x: number, z: number): number => Math.min(standing(x, z), floor(x, z))) : [],
+  });
 }
 
 /**
  * The lowest any roof weapon passes over (x, z): swept stations and standing guns (see roofWeaponFloor). `standing` is
- * the floor of what stands still alone: the crew guns and the stations' bases, as they are built.
+ * the floor of what stands still alone: the crew guns and the stations' bases, as they are built. `parts`, on a roof with
+ * more than one station, are the floors the net is cut round one by one (weaponOpenings): each station's sweep, with
+ * what stands still.
  */
-type RoofWeaponFloor = ((x: number, z: number) => number) & { readonly standing: (x: number, z: number) => number };
+type RoofWeaponFloor = ((x: number, z: number) => number) & {
+  readonly standing: (x: number, z: number) => number;
+  readonly parts: ReadonlyArray<(x: number, z: number) => number>;
+};
 
 /** The roof guns' fittings (crew pintles and stations) whose standing parts the turret's nets are cut round. */
 const ROOF_GUN_FITTINGS = /^(pintleMG|americanM2|americanRws|openYokeRws|weaponStationMount|auxiliaryWeapon)$/;
@@ -3411,7 +3968,7 @@ function cageOpenings(wing: CageWing, armour: SurfaceProbe | null, gunFloor: (x:
   const step = 0.04, s = wing.flank;
   const blocked: Array<[number, number]> = [];
   // 2026-10-08 (the lane lead, over push 5's regenerated drone-dock seats): a mission dock seated on the wing holds no
-  // cloth; its receiver keeps clear of the wing's net (missionAttachmentReceiver.selftest, ua_t80u_modern)
+  // cloth; its receiver keeps clear of the wing's net (missionAttachmentReceiver.selftest, t80u_zoria)
   const onDock = (x: number, z: number): boolean => !!dock
     && x >= dock.min.x - 0.02 && x <= dock.max.x + 0.02 && z >= dock.min.z - 0.02 && z <= dock.max.z + 0.02;
   for (let a = wing.inner - 0.06; a <= wing.outer + 0.06; a += step) {
@@ -3449,8 +4006,24 @@ function openingsRound(blocked: ReadonlyArray<readonly [number, number]>, step: 
  * Openings a turret roof net is cut round under a roof gun: where the net, its rolled edges and its garnish cannot pass
  * under the gun's swept floor (round 5, 2026-10-08: the Leopard 2A6 UA's draped roof net ran over the aft station's
  * pedestal, 13 cm into its traverse at full depression).
+ *
+ * 2026-10-16 (integ/226 triage; VH.14 made the Leopard 2A4's loader MG3 a working station): on a roof with more than
+ * one station the net is cut round each station's sweep (with what stands still) one by one. One cut round all of them
+ * took the box round their joined sweeps, and the MG3's beside the FLW 200's bared the whole crown (leopard2A4Ghillie).
+ * A scrap the separate cuts would leave inside the joined cut, cut free of the rest of the net between two openings and
+ * the panel's edge, goes with the cut: it hangs on nothing (ghillieSuit: the M1A2 UA's cage-top net between the
+ * commander's and the loader's sweeps).
  */
 function weaponOpenings(panel: TopPanel, probe: SurfaceProbe | null, gunFloor: (x: number, z: number) => number): Point2[][] {
+  const whole = sweptOpenings(panel, probe, gunFloor);
+  const parts = (gunFloor as Partial<RoofWeaponFloor>).parts;
+  if (!whole.length || !parts || parts.length < 2) return whole;
+  const each = parts.flatMap((part) => sweptOpenings(panel, probe, part));
+  return [...each, ...openingScraps(panel, whole, each)];
+}
+
+/** The cells of a panel where the roof weapons' floor (or one part of it) stands too low over it, opened round. */
+function sweptOpenings(panel: TopPanel, probe: SurfaceProbe | null, gunFloor: (x: number, z: number) => number): Point2[][] {
   const step = 0.04;
   const blocked: Array<[number, number]> = [];
   for (let x = panel.x0; x <= panel.x1 + 1e-9; x += step) {
@@ -3462,6 +4035,41 @@ function weaponOpenings(panel: TopPanel, probe: SurfaceProbe | null, gunFloor: (
     }
   }
   return openingsRound(blocked, step);
+}
+
+/**
+ * The cloth the separate openings `each` leave inside the joined openings `whole` that no longer joins the panel's
+ * cloth outside them (on a `step` raster, through edge-sharing cells, inside the panel's outline and round its own
+ * holes), opened round as weaponOpenings's scraps.
+ */
+function openingScraps(panel: TopPanel, whole: readonly Point2[][], each: readonly Point2[][]): Point2[][] {
+  const step = 0.04;
+  const nx = Math.floor((panel.x1 - panel.x0) / step + 1e-9) + 1, nz = Math.floor((panel.z1 - panel.z0) / step + 1e-9) + 1;
+  const cloth = new Uint8Array(nx * nz), joined = new Uint8Array(nx * nz);
+  const stack: number[] = [];
+  for (let i = 0; i < nx; i++) {
+    for (let k = 0; k < nz; k++) {
+      const x = panel.x0 + i * step, z = panel.z0 + k * step;
+      if (panel.outline && !insidePoly(x, z, panel.outline)) continue;
+      if (panel.holes?.some((hole) => insidePoly(x, z, hole)) || each.some((hole) => insidePoly(x, z, hole))) continue;
+      const c = i * nz + k;
+      cloth[c] = 1;
+      if (!whole.some((hole) => insidePoly(x, z, hole))) { joined[c] = 1; stack.push(c); }
+    }
+  }
+  while (stack.length) {
+    const c = stack.pop()!, i = Math.floor(c / nz), k = c - i * nz;
+    for (const [a, b] of [[i - 1, k], [i + 1, k], [i, k - 1], [i, k + 1]]) {
+      if (a < 0 || a >= nx || b < 0 || b >= nz) continue;
+      const n = a * nz + b;
+      if (cloth[n] && !joined[n]) { joined[n] = 1; stack.push(n); }
+    }
+  }
+  const scraps: Array<[number, number]> = [];
+  for (let c = 0; c < cloth.length; c++) {
+    if (cloth[c] && !joined[c]) scraps.push([panel.x0 + Math.floor(c / nz) * step, panel.z0 + (c % nz) * step]);
+  }
+  return openingsRound(scraps, step);
 }
 
 /**
@@ -4073,16 +4681,27 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
   for (const e of extent.values()) deepest = Math.max(deepest, e[3]);
   const gunLowY = gunAt.y - Math.max(maxAlong * Math.sin(Math.max(0, -tMinFront) + 0.05), -minAlong * Math.sin(Math.max(0, tMax) + 0.05))
     - deepest - clearance - 0.05;
-  /** The gun's box [left, right, above, below] round a station (three bins), or null past its ends. */
-  const gunBox = (along: number): [number, number, number, number] | null => {
-    const k = Math.floor(along / SWEEP_BIN_M);
-    let out: [number, number, number, number] | null = null;
+  // The gun's box [left, right, above, below] round a station (three bins), none past its ends: one merged box per
+  // station bin, made once (2026-10-15, the perf lane: the sweep asked a Map and built a box on every call, 4.1 s of
+  // two profiled m1a3 builds in sweptBy's own time; min and max are exact, so every box is the one it built).
+  let binLo = Infinity, binHi = -Infinity;
+  for (const key of extent.keys()) { binLo = Math.min(binLo, key - 1); binHi = Math.max(binHi, key + 1); }
+  const binCount = Number.isFinite(binLo) ? binHi - binLo + 1 : 0;
+  const boxL = new Float64Array(binCount), boxR = new Float64Array(binCount), boxA = new Float64Array(binCount);
+  const boxB = new Float64Array(binCount), boxHas = new Uint8Array(binCount);
+  for (let slot = 0; slot < binCount; slot++) {
+    const k = binLo + slot;
     for (let i = k - 1; i <= k + 1; i++) {
       const e = extent.get(i);
-      if (e) out = out ? [Math.min(out[0], e[0]), Math.max(out[1], e[1]), Math.max(out[2], e[2]), Math.max(out[3], e[3])] : [e[0], e[1], e[2], e[3]];
+      if (!e) continue;
+      if (!boxHas[slot]) { boxL[slot] = e[0]; boxR[slot] = e[1]; boxA[slot] = e[2]; boxB[slot] = e[3]; boxHas[slot] = 1; }
+      else {
+        boxL[slot] = Math.min(boxL[slot], e[0]); boxR[slot] = Math.max(boxR[slot], e[1]);
+        boxA[slot] = Math.max(boxA[slot], e[2]); boxB[slot] = Math.max(boxB[slot], e[3]);
+      }
     }
-    return out;
-  };
+  }
+  const sweptThetas = new Float64Array(6);
   /**
    * Whether the gun through pitches lo..hi meets a point `lateral` across from its bore (gun frame x, signed) at
    * turret-frame height qy and reach qz, within `margin` across and `rise` above and below.
@@ -4097,15 +4716,21 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
     // the trunnion the turret's own roof lies between the breech and any cloth on it)
     const back = phi > 0 ? phi - Math.PI : phi + Math.PI;
     const nearest = THREE.MathUtils.clamp(phi, lo, hi);
-    const thetas = dy < 0 && dz < 0 ? [nearest, THREE.MathUtils.clamp(back, lo, hi)] : [nearest];
+    let count = 0;
+    sweptThetas[count++] = nearest;
+    if (dy < 0 && dz < 0) sweptThetas[count++] = THREE.MathUtils.clamp(back, lo, hi);
     // near the trunnion the gun's section changes fast (a mantlet's corners): its ends and middle pitches as well
-    if (d * Math.cos(phi - nearest) < 0.8) thetas.push(lo, (lo + hi) / 2, 0 > lo && 0 < hi ? 0 : hi, hi);
-    for (const theta of thetas) {
-      const e = gunBox(d * Math.cos(phi - theta));
-      if (!e) continue;
+    if (d * Math.cos(phi - nearest) < 0.8) {
+      sweptThetas[count++] = lo; sweptThetas[count++] = (lo + hi) / 2;
+      sweptThetas[count++] = 0 > lo && 0 < hi ? 0 : hi; sweptThetas[count++] = hi;
+    }
+    for (let t = 0; t < count; t++) {
+      const theta = sweptThetas[t];
+      const slot = Math.floor((d * Math.cos(phi - theta)) / SWEEP_BIN_M) - binLo;
+      if (!(slot >= 0 && slot < binCount) || !boxHas[slot]) continue;
       // the point's offset off the bore at that pitch: above (+) or below (-) it
       const off = d * Math.sin(phi - theta);
-      if (lateral > e[0] - margin && lateral < e[1] + margin && off < e[2] + rise && -off < e[3] + rise) return true;
+      if (lateral > boxL[slot] - margin && lateral < boxR[slot] + margin && off < boxA[slot] + rise && -off < boxB[slot] + rise) return true;
     }
     return false;
   };
@@ -4478,8 +5103,12 @@ function addGhillieOwner(
     for (const h of probe?.surfacesAt?.(p[0], p[2]) ?? []) if (h.up && h.y <= p[1] + 0.005) return p[1] - h.y < within;
     return false;
   };
+  // netting-proper: the vehicle's national markings stay readable through a field suit: its net is cut round each and its
+  // garnish keeps out of their sight
+  const markRays = isFieldNet(cfg) ? markingRaysOf(P, parent) : null;
   const coverOk = clearance
-    ? (p: readonly number[]): boolean => clearance.clothOk(owner, p) && (clearance.lensClear(owner, p) || lying(p)) : undefined;
+    ? (p: readonly number[]): boolean => clearance.clothOk(owner, p) && (clearance.lensClear(owner, p) || lying(p))
+      && (!markRays || !markRays.clothHides(p)) : undefined;
   const coverEdgesOk = clearance
     ? (a: readonly number[], b: readonly number[], c: readonly number[]): boolean => {
       for (const [p, q] of [[a, b], [b, c], [c, a]] as const) {
@@ -4609,6 +5238,7 @@ function addGhillieOwner(
   const foliage = new FoliageCardBuffer();
   let topCards = 0;
   const field = isFieldNet(cfg);
+  const surfacesAt = probe?.surfacesAt ? probe.surfacesAt.bind(probe) : null;
   if (cfg.foliage !== false) {
     const ctx: FieldTuftContext = {
       cfg, pal: (field ? FIELD_NET_PALETTES : NET_PALETTES)[theatre], q: P.q !== false, maxHalfWidth: cfg.maxHalfWidth ?? Infinity,
@@ -4616,9 +5246,23 @@ function addGhillieOwner(
       floorAt: owner === 'turret' && clearance ? (x, z) => clearance.turretHemFloor(x, z) - 0.02 : undefined,
       envOk, columns: clearance ? clearance.keepColumns(owner) : undefined,
       tubes: cage.flatMap((wing) => [...wing.tubes, ...wing.hinges]),
+      roofUnder: field ? netHeightRaster(surfaces.filter((s) => s.kind === 'top').map((s) => s.geometry)) : undefined,
+      laidStems: [],
+      // netting-proper round 2: the armour a bough lies on across a gap in its net: the first surface at or under the
+      // point, facing up, with nothing standing over the point within 30 cm (inside a box, under a hood or a lip: none)
+      armourUnder: field && surfacesAt ? (x, y, z) => {
+        for (const h of surfacesAt(x, z)) {
+          if (h.y > y + 0.3) continue;
+          return h.y > y + 0.005 || !h.up ? null : h.y;
+        }
+        return null;
+      } : undefined,
+      overArmour: field && surfacesAt
+        ? (x, y, z) => surfacesAt(x, z).some((h) => !h.gear && h.y <= y + 0.005) : undefined,
       // the card's own vertices keep the vehicle's clearances; its face, sampled densely, keeps the thin lens views
       // and smoke lines clear (a line can pass between a card's vertices)
       cardClear: clearance ? field ? (card) => denseCardPoints(card).every((p) => clearance.fieldLinesOk(owner, p))
+          && (!markRays || !cardHidesMarking(card, markRays))
         : (card) => foliageCardPoints(card).every((p) => clearance.netOk(owner, p))
           && denseCardPoints(card).every((p) => clearance.linesOk(owner, p)) : undefined,
     };
@@ -4631,7 +5275,8 @@ function addGhillieOwner(
   // the suit's parts share one net material (an empty part still builds and disposes its own throwaway, as before)
   const netShared = netGeos.length > 0 && suitMats.net !== undefined;
   const netMat = netShared ? suitMats.net! : makeNet(P, cfg, theatre, cover);
-  const netMesh = addMerged(P, parent, netGeos, netMat, `${cfg.id}_ghillie_${owner}_net`);
+  // Mesh names keep the schema-1 spelling (tankIdAliases.ts): geometry digests hash them.
+  const netMesh = addMerged(P, parent, netGeos, netMat, `${tankSeedId(cfg.id)}_ghillie_${owner}_net`);
   if (netMesh && !netShared) suitMats.net = netMat;
   // the netting lane: a suit with working clearances is marked for the decor's turret-load guard (decorations.ts), and
   // what the decor draws up over its loads is held to the same clearances (ghillieDrape.ts)
@@ -4660,7 +5305,7 @@ function addGhillieOwner(
     const mat = leavesShared ? suitMats.leaves.get(atlas)! : makeCloth(P, (m) => configureFoliageMaterial(m, atlas));
     if (!leavesShared) suitMats.leaves.set(atlas, mat);
     const mesh = new THREE.Mesh(leaves, mat);
-    mesh.name = `${cfg.id}_ghillie_${owner}_leaves`;
+    mesh.name = `${tankSeedId(cfg.id)}_ghillie_${owner}_leaves`;
     mesh.castShadow = mesh.receiveShadow = true;
     if (clearance) {
       mesh.userData.fieldSuit = true;
@@ -4738,7 +5383,7 @@ function suitCapOf(P: GhillieBuilderPort): SuitCap | null {
   const root = P.hullG.parent;
   if (!root) return null;
   root.updateMatrixWorld(true);
-  // 2026-10-12 (cam-netting; battleGeometrySharing.selftest, type90 and type90a: 20 -> 16 shared stocks): Box3
+  // 2026-10-12 (cam-netting; battleGeometrySharing.selftest, type90_kyumaru and type90a: 20 -> 16 shared stocks): Box3
   // expandByObject computes and keeps every geometry's bounding box, and the battle geometry share keys a stock by its
   // bounds too, so a suited build's gear stocks no longer matched its unsuited sibling's. The bounds are read here
   // without writing them back.

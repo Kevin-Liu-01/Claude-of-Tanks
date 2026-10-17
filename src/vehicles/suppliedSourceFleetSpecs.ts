@@ -14,7 +14,7 @@ import { applyFleetLauncherMuzzles } from './fleetLauncherMuzzles.ts';
 import { GRIFFIN_HULL_LENGTH_M, GRIFFIN_TURRET_PIVOT, GRIFFIN_TURRET_SCALE as GRIFFIN_T } from './profiles/griffinProportions.ts';
 
 const entries = [
-  ['kurganets25_x', 'spz_puma_s1', 'Kurganets-25', 'Russia', 'ifv'],
+  ['kurganets25', 'spz_wotan', 'Kurganets-25', 'Russia', 'ifv'],
   ...ADDITIONAL_SUPPLIED_SOURCE_STUDIES.map(({ id, donor, name, nation, role }) =>
     [id, donor, name, nation, role] as const),
 ] as const;
@@ -23,7 +23,7 @@ export const SUPPLIED_SOURCE_IDS = Object.freeze(entries.map(([id]) => id));
 
 const dimensions: Readonly<Record<string, FleetDimensions>> = Object.freeze({
   ...Object.fromEntries(ADDITIONAL_SUPPLIED_SOURCE_STUDIES.map(study => [study.id, study.dimensions])),
-  kurganets25_x: {
+  kurganets25: {
     hullLengthM: 7.4648,
     overallLengthM: 7.4883,
     widthM: 4.12977,
@@ -45,7 +45,7 @@ const sourceFrames: Readonly<Record<string, SourceFrame>> = Object.freeze({
   ...Object.fromEntries(ADDITIONAL_SUPPLIED_SOURCE_STUDIES.map(study => [study.id, {
     turret: study.turret, gun: study.gun, muzzleZ: study.muzzleZ,
   }])),
-  kurganets25_x: {
+  kurganets25: {
     turret: [0, 2.21, -1.27],
     gun: [-.004, 2.917, -.68],
     muzzleZ: 1.77,
@@ -53,7 +53,7 @@ const sourceFrames: Readonly<Record<string, SourceFrame>> = Object.freeze({
 });
 
 function applySourceFrame(spec: FleetTankSpec, id: string): void {
-  if (['type96b_x', 'aft10_x', 'sabra_mk2_x'].includes(id)) {
+  if (['type96b', 'aft10', 'sabra_mk2'].includes(id)) {
     // These source configurations author permanent shell/service panels, not
     // reactive cassettes (see their source packets). Their balance peers'
     // ERA zones have no removable native counterpart on these models.
@@ -62,7 +62,7 @@ function applySourceFrame(spec: FleetTankSpec, id: string): void {
     spec.armor.hullPlates = spec.armor.hullPlates.filter(plate => plate.kind !== 'era');
     spec.armor.turretPlates = spec.armor.turretPlates.filter(plate => plate.kind !== 'era');
   }
-  const frame = id === 'griffin50_x' ? {
+  const frame = id === 'griffin50mm' ? {
     turret: GRIFFIN_TURRET_PIVOT,
     gun: [0, 2.07 + .53 * GRIFFIN_T, GRIFFIN_TURRET_PIVOT[2] + 1.10 * GRIFFIN_T],
     muzzleZ: GRIFFIN_TURRET_PIVOT[2] + (1.10 + 2.93194) * GRIFFIN_T,
@@ -74,22 +74,24 @@ function applySourceFrame(spec: FleetTankSpec, id: string): void {
     frame.gun[2] - frame.turret[2],
   ];
   spec.armor.gunBarrel.lengthM = frame.muzzleZ - frame.gun[2];
-  if (id === 'kurganets25_x') spec.armor.gunBarrel.radiusM = .069;
+  // the Bumerang-BM's 2A42 barrel (coordinator ruling 2026-10-15: the turret is the Bumerang-BM, so its gun is the 30 mm
+  // 2A42, not a 57 mm)
+  if (id === 'kurganets25') spec.armor.gunBarrel.radiusM = .05;
 }
 
 /** Game tuning starts from established fleet peers; the weapon family still
  * follows the supplied vehicle. These are balance values, not real ballistics. */
 function applySourceArmament(spec: FleetTankSpec): void {
   const cannonPeers: Readonly<Record<string, string>> = {
-    bmp3m_dragun125_x: 'ztz99a2', cv90105_tml_x: 'leo1a5', sabra_mk2_x: 'merkava3d',
-    griffin50_x: 'cv90_mkiv', kf41_lynx_x: 'type89_light_tiger', cv90_mkiv_x: 'type89_light_tiger',
+    bmp3m_dragun125: 'ztz99a2', cv90105_tml: 'leo1a5', sabra_mk2: 'merkava3_baz',
+    griffin50mm: 'cv90_mk4_concept', kf41_lynx: 'raiju_ifv', cv90_mk4: 'raiju_ifv',
   };
   const peer = cannonPeers[spec.id];
   if (peer) {
     spec.gun = structuredClone(registries.tankSpecs[peer].gun);
     delete spec.balancePeerOf;
   }
-  if (spec.id === 'aft10_x') {
+  if (spec.id === 'aft10') {
     // Eight canisters use the existing guided-primary simulation path.
     // Keeping a cannon round from the hull donor would create a phantom gun.
     spec.gun = structuredClone(registries.tankSpecs.m551_sheridan.gun);
@@ -106,19 +108,19 @@ function applySourceArmament(spec: FleetTankSpec): void {
       [-.025, .45].map(y => ({ x, y })));
     delete spec.balancePeerOf;
   }
-  if (spec.id === 'k21_x') applyK21Launcher(spec);
-  if (spec.id === 'kurganets25_x') applyKurganetsLaunchers(spec);
+  if (spec.id === 'k21') applyK21Launcher(spec);
+  if (spec.id === 'kurganets25') applyKurganetsLaunchers(spec);
   applyAutocannonCaliber(spec);
-  if (spec.id === 'ajax_x') {
+  if (spec.id === 'ajax') {
     // Ajax has no guided anti-armor channel. Its Tier X peers with missiles
     // must not be judged against its 40 mm cannon alone (or vice versa).
     // This is audit metadata; retain every authored combat statistic.
     spec.balanceCohort = 'cannon-only';
   }
-  if (['griffin50_x', 'kf41_lynx_x'].includes(spec.id)) {
+  if (['griffin50mm', 'kf41_lynx'].includes(spec.id)) {
     spec.gun.shells = spec.gun.shells.filter(round => !round.guided);
   }
-  if (spec.id === 'bmp3m_dragun125_x') applyDragunAssaultBalance(spec);
+  if (spec.id === 'bmp3m_dragun125') applyDragunAssaultBalance(spec);
   if (spec.id === 'warrior_tes_h') applyWarriorTesBalance(spec);
   applyGuidedShellLabels(spec);
   // Balance donors own tuning, not physical launch exits. A cannon-only source
@@ -127,11 +129,12 @@ function applySourceArmament(spec: FleetTankSpec): void {
   applyFleetLauncherMuzzles(spec);
 }
 
-/** The supplied Epokha turret has four Kornet and eight visible Bulat tubes.
- * Keep the primary balance channel and expose both launchers in three slots.
- * Bulat's 70 mm nominal caliber is game tuning: the publisher gives no exact
- * caliber. Its soft-target effect reuses the peer HE round, with the existing
- * guided channel's motion, cycle and sound; this is not a thermobaric model. */
+/** The Kurganets-25 IFV's Bumerang-BM (B05Ya01 Epokha) module (coordinator ruling 2026-10-15: one real configuration,
+ * the 30 mm 2A42 as the primary balance channel, a coaxial 7.62 mm PKTM, drawn) with its two launchers in their own
+ * slots: four Kornet-M, two in each twin housing on the turret flanks, and the rear-roof launcher's eight Bulat (owner
+ * ruling 2026-10-15: "keep the missiles and kurganets launcher on it ... just make it properly attached"). Bulat's
+ * 70 mm nominal caliber is game tuning: the publisher gives no exact caliber. Its soft-target effect reuses the peer HE
+ * round, with the existing guided channel's motion, cycle and sound; this is not a thermobaric model. */
 function applyKurganetsLaunchers(spec: FleetTankSpec): void {
   const guided = spec.gun.shells.find(round => round.guided);
   const highExplosive = spec.gun.shells.find(round => round.type === 'HE' && !round.guided);
@@ -150,7 +153,7 @@ function applyKurganetsLaunchers(spec: FleetTankSpec): void {
  * claimed measurements of the source hardware. Keep the 40 mm APFSDS and HE
  * channels within the existing three-slot selector and carry two ready rounds. */
 function applyK21Launcher(spec: FleetTankSpec): void {
-  const peerMissile = registries.tankSpecs.type89.gun.shells.find(round => round.guided);
+  const peerMissile = registries.tankSpecs.hayate_ifv.gun.shells.find(round => round.guided);
   if (!peerMissile) throw new Error('K21 auxiliary launcher requires the Type 89 guided balance channel');
   const missile = structuredClone(peerMissile);
   missile.name = 'Guided missile';
@@ -165,7 +168,7 @@ function applyK21Launcher(spec: FleetTankSpec): void {
 /** Preserve native caliber and distinguish same-type loadout channels. */
 function applyAutocannonCaliber(spec: FleetTankSpec): void {
   const autocannonCalibers: Readonly<Record<string, number>> = {
-    kurganets25_x: 57, griffin50_x: 50, ajax_x: 40, k21_x: 40, kf41_lynx_x: 35, cv90_mkiv_x: 50,
+    kurganets25: 30, griffin50mm: 50, ajax: 40, k21: 40, kf41_lynx: 35, cv90_mk4: 50,
   };
   const caliber = autocannonCalibers[spec.id];
   if (caliber) {
@@ -233,7 +236,7 @@ function applyWarriorTesBalance(spec: FleetTankSpec): void {
 
 /** Preserve source weapon labels after peer and caliber adaptation. */
 function applyGuidedShellLabels(spec: FleetTankSpec): void {
-  if (spec.id !== 'warrior_tes_h' && spec.id !== 'cv90_mkiv_x') return;
+  if (spec.id !== 'warrior_tes_h' && spec.id !== 'cv90_mk4') return;
   const isMilan = spec.id === 'warrior_tes_h';
   for (const round of spec.gun.shells) {
     if (!round.guided) continue;
@@ -255,11 +258,11 @@ for (const [id, donorId, name, nation, role] of entries) {
   spec.balancePeerOf = donorId;
   stripSilhouetteDimensions(spec.dims);
   // The tier-X peer owns combat tuning, not the already fitted source armor frame.
-  const structure = registries.tankSpecs[id === 'kurganets25_x' ? 'spz_puma' : donorId];
+  const structure = registries.tankSpecs[id === 'kurganets25' ? 'spz_puma' : donorId];
   spec.armor = structuredClone(structure.armor);
   const donorDimensions = { ...structure.dims };
   Object.assign(spec.dims, dimensions[id]);
-  if (id === 'griffin50_x') Object.assign(spec.dims, {
+  if (id === 'griffin50mm') Object.assign(spec.dims, {
     hullLengthM: GRIFFIN_HULL_LENGTH_M, overallLengthM: GRIFFIN_HULL_LENGTH_M,
     heightM: 2.07 + (3.75 - 2.07) * GRIFFIN_T,
     silhouetteHullLengthM: GRIFFIN_HULL_LENGTH_M, silhouetteOverallLengthM: GRIFFIN_HULL_LENGTH_M,
@@ -269,15 +272,15 @@ for (const [id, donorId, name, nation, role] of entries) {
   applySourceFrame(spec, id);
   spec.visual = {
     ...spec.visual,
-    scheme: id === 'kurganets25_x' ? 'russian-digital' : 'pla-digital',
-    base: id === 'kurganets25_x' ? '#58634b' : '#506145',
-    weather: id === 'kurganets25_x' ? '#6a705d' : '#667357',
-    patches: id === 'kurganets25_x'
+    scheme: id === 'kurganets25' ? 'russian-digital' : 'pla-digital',
+    base: id === 'kurganets25' ? '#58634b' : '#506145',
+    weather: id === 'kurganets25' ? '#6a705d' : '#667357',
+    patches: id === 'kurganets25'
       ? ['#333c32', '#76725a', '#444b3d']
       : ['#2f3e31', '#788064', '#424b3c'],
-    marking: id === 'kurganets25_x' ? 'russian' : 'pla',
-    number: id === 'kurganets25_x' ? 'K-25' : 'OD-20',
-    trackWidthM: id === 'kurganets25_x' ? 0.44 : 0.56,
+    marking: id === 'kurganets25' ? 'russian' : 'pla',
+    number: id === 'kurganets25' ? 'K-25' : 'OD-20',
+    trackWidthM: id === 'kurganets25' ? 0.44 : 0.56,
   };
   const study = ADDITIONAL_SUPPLIED_SOURCE_STUDIES.find(study => study.id === id);
   if (study) {
@@ -304,7 +307,7 @@ export function synchronizeSuppliedSourceCombatMetadata(): void {
     const target = registries.tankSpecs[id], donor = registries.tankSpecs[donorId];
     for (const field of fields) Object.assign(target, { [field]: structuredClone(donor[field]) });
     target.balancePeerOf = donorId;
-    const structure = registries.tankSpecs[id === 'kurganets25_x' ? 'spz_puma' : donorId];
+    const structure = registries.tankSpecs[id === 'kurganets25' ? 'spz_puma' : donorId];
     target.armor = structuredClone(structure.armor);
     fitArmorToDims(target.armor, structure.dims, target.dims);
     applySourceFrame(target, id);

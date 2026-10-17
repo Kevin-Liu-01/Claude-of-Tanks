@@ -21,10 +21,10 @@ const now = () => nowMs;
 const schedule = () => () => {};
 const flush = () => new Promise((resolve) => setImmediate(resolve));
 const seats = [
-  { seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 'm1a2' },
-  { seat: 1, playerId: 'p2', name: 'Two', team: 'bravo', specId: 't90m' },
+  { seat: 0, playerId: 'p1', name: 'One', team: 'alpha', specId: 'm1a1_abrams_hc' },
+  { seat: 1, playerId: 'p2', name: 'Two', team: 'bravo', specId: 't90am' },
 ];
-const bots = [{ playerId: 'bot-a', name: 'Bot A', team: 'alpha', specId: 'leo2a7v' }];
+const bots = [{ playerId: 'bot-a', name: 'Bot A', team: 'alpha', specId: 'leo2_improved' }];
 
 function attachViewer(actor, seat, playerId, team = 'alpha') {
   const link = createLoopbackLink(playerId);
@@ -43,7 +43,7 @@ function attachViewer(actor, seat, playerId, team = 'alpha') {
     if (message.type === MESSAGE_TYPE.CLOSE) viewer.closed = message;
   });
   const hello = { type: MESSAGE_TYPE.HELLO, protocolVersion: PROTOCOL_VERSION, capabilities: 1, token: 'x', clientBuild: 'resume' };
-  actor.attach(link.server, hello, { v: 1, roomId: actor.roomId, seat, playerId, name: playerId, team, specId: 'm1a2', iat: 0, exp: 1 });
+  actor.attach(link.server, hello, { v: 1, roomId: actor.roomId, seat, playerId, name: playerId, team, specId: 'm1a1_abrams_hc', iat: 0, exp: 1 });
   return viewer;
 }
 

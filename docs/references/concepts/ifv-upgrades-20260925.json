@@ -131,7 +131,7 @@
         45
       ],
       "mainCaliberMm": 30,
-      "roofMachineGuns": 2,
+      "roofMachineGuns": 0,
       "hullLengthM": 6.924962759017944,
       "hullWidthM": 3.7151997089385986,
       "widthM": 3.7151997089385986,
@@ -151,5 +151,15 @@
     "date": "2026-09-29",
     "name": "SPz Wotan",
     "scope": "Original model and tuning preserved; Marder 2 added separately."
-  }
+  },
+  "amendments": [
+    {
+      "date": "2026-10-16",
+      "design": "spz_puma_s1",
+      "field": "roofMachineGuns",
+      "from": 2,
+      "to": 0,
+      "evidence": "VH.14 (76ef67d65, src/vehicles/roofWeaponPolicy.ts: the real vehicle carries no roof machine gun) and the owner's Puma S1 markup of 2026-10-14 (surface 5: the RWS removed, the PERI RTWL head); 226 gate re-pin by the VEHICLES lane."
+    }
+  ]
 }

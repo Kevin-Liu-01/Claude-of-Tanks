@@ -141,7 +141,7 @@ function buildType96Hull(P: TankBuilderPort): void {
 }
 function buildType96Gear(P: TankBuilderPort): void {
     // owner 2026-09-22 ("standardize our wheels across NATIONS"): the road-wheel face is the China MBT nation
-    // construction (ztz100_x, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
+    // construction (ztz100, nationWheelSets.ts), fitted by the running-gear builder into this hull's own wheel envelope.
     P.gear = KIT.buildRunningGear(P, {
         style: 'rubber', trackPattern: 'soviet-single-pin',
         wheelR: .3383, wheelW: .3994, wheelY: .4119,
@@ -228,7 +228,10 @@ function addType96Cupola(P: TankBuilderPort): void {
     equipment(P, 'turret', 'Detail', box(.418, .105, .304), -.592, 2.350, -.539);
     equipment(P, 'turret', 'Detail', cylX(.036, .34, P.q ? 20 : 12), -.592, 2.432, -.493);
 }
-export function buildType96Turret(P: TankBuilderPort): void {
+/** Options for reusing the Type 96B turret on another hull. mastTopY lowers the rear whip's tip (Type 96B frame,
+ * default its own 5.26855 m) for a concept whose listed height is its body and roof weapon, keeping the whip's rake. */
+export interface Type96TurretOptions { mastTopY?: number }
+export function buildType96Turret(P: TankBuilderPort, options: Type96TurretOptions = {}): void {
     P.add('turret', cylY(1.00, 1.04, .15, P.q ? 40 : 22), 0, .045, 0);
     P.add('turret', sectionSolid([
         turretStation(P, -2.04, .79, 1.17, .97, 1.75, 1.95, 2.20),
@@ -254,7 +257,8 @@ export function buildType96Turret(P: TankBuilderPort): void {
     equipment(P, 'turret', 'Detail', cylY(.02905, .02905, .185, 10), .76145, 2.33046, -1.32903);
     equipment(P, 'turret', 'Detail', box(.0903, .0371, .0898), .76195, 2.43911, -1.32903);
     equipment(P, 'turret', 'Detail', cylY(.026, .045, .557, 10), .761, 2.736, -1.329);
-    antenna(P, .95, 2.20, -1.78, 5.26855, -2.057);
+    if (options.mastTopY === undefined) antenna(P, .95, 2.20, -1.78, 5.26855, -2.057);
+    else antenna(P, .95, 2.20, -1.78, options.mastTopY, -1.78 - .277 * (options.mastTopY - 2.31) / (5.26855 - 2.31));
     // No roof weapon is present in this particular source configuration.
     // Rounded mantlet boot measured independently from Object_6. The rear
     // cover meets the turret; its front contracts into Object_11's barrel collar.
@@ -298,7 +302,7 @@ export function buildType96bX(P: TankBuilderPort): void {
     P.additionalShadowSources = {
         hull: ['hullExternalArmor'],
     };
-    const frame = EASTERN_SOURCE_STUDIES.type96b_x.frame;
+    const frame = EASTERN_SOURCE_STUDIES.type96b.frame;
     P.hullG.position.set(0, 0, 0);
     P.turretG.position.set(...frame.turret);
     P.gunG.position.set(0, frame.gun[1] - frame.turret[1], frame.gun[2] - frame.turret[2]);
@@ -308,5 +312,5 @@ export function buildType96bX(P: TankBuilderPort): void {
     preserveSourceStudyGunMountAppearance(P);
     addRearFieldStowage(P);
     P.topY = 3.016 - frame.turret[1];
-    P.hullG.userData.xRebuild = { candidate: 'type96b_x', independent: true, sourceLocalOnly: true };
+    P.hullG.userData.xRebuild = { candidate: 'type96b', independent: true, sourceLocalOnly: true };
 }

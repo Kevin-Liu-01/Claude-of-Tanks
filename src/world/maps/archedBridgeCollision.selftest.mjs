@@ -122,12 +122,36 @@ assert.equal(structureTopAt([record], 1, ...along(archX(1)), bedY + 0.2), -Infin
 const world = createDedicatedWorldCollision('autumn');
 const shard = world.getObstacles().filter((rec) => rec.kind === 'bridge');
 assert.equal(shard.length, 1, 'one bridge record in the committed shard');
-assert.equal(shard[0].shape2.parts.length, parts.length, 'the shard carries every part (recapture the shard on this tree if not)');
-for (let i = 0; i < parts.length; i++) for (const key of ['cx', 'cz', 'hw', 'hl', 'y0', 'y1']) near(shard[0].shape2.parts[i][key], parts[i][key], 1e-3, `shard part ${i} ${key}`);
+// (#27, d4b0d0fcb; Lane C 2026-10-16) the world build hands this Norman bridge's parapets to the props' structure sink
+// (archedStoneBridge.ts addParapetRuns): each side stands as coped runs of about six metres, every run its own structure
+// with its own record and damage path. The bridge record in the shard therefore carries every part except the two solid
+// parapets that this sink-less build keeps.
+const bodyParts = parts.slice(0, -2);
+assert.equal(shard[0].shape2.parts.length, bodyParts.length, 'the shard carries every part but the parapets (recapture the shard on this tree if not)');
+for (let i = 0; i < bodyParts.length; i++) for (const key of ['cx', 'cz', 'hw', 'hl', 'y0', 'y1']) near(shard[0].shape2.parts[i][key], bodyParts[i][key], 1e-3, `shard part ${i} ${key}`);
+// The parapets stand beside the bridge record as their runs. On each parapet's line, from the deck up to the parapet's
+// height, each run is a solid structure; together the runs fill the parapet's whole length, so a missing run fails here.
+const runCount = Math.max(2, Math.round((parapets[0].hl * 2) / 6)), runLength = (parapets[0].hl * 2) / runCount;
+const centreOf = (rec) => [(rec.min[0] + rec.max[0]) / 2 - cx, (rec.min[2] + rec.max[2]) / 2 - cz];
+const parapetRuns = [];
+for (const parapet of parapets) {
+  const across = (parapet.cx - cx) * vx + (parapet.cz - cz) * vz;
+  const runs = world.getObstacles().filter((rec) => {
+    if (rec.kind !== 'structure' || rec.crushable || !rec.shape2?.parts?.length) return false;
+    const [dx, dz] = centreOf(rec);
+    return Math.abs(dx * vx + dz * vz - across) < 0.5 && Math.abs(dx * ux + dz * uz) < parapet.hl && Math.abs(rec.min[1] - deckY) < 0.05;
+  }).map((rec) => { const [dx, dz] = centreOf(rec); return { rec, at: dx * ux + dz * uz }; }).sort((a, b) => a.at - b.at);
+  assert.equal(runs.length, runCount, `${runCount} coped parapet runs on the ${across < 0 ? 'one' : 'other'} side, each its own structure in the shard`);
+  for (const { rec } of runs) assert.ok(rec.max[1] - deckY >= parapet.y1 - parapet.y0 - 0.01, 'a run stands the parapet\'s height');
+  near(runs[0].at, -parapet.hl + runLength / 2, 0.5, 'the first run at the parapet\'s end');
+  near(runs[runs.length - 1].at, parapet.hl - runLength / 2, 0.5, 'the last run at its other end');
+  for (let k = 1; k < runs.length; k++) near(runs[k].at - runs[k - 1].at, runLength, 0.5, `parapet run ${k} follows the one before it with no gap`);
+  parapetRuns.push(...runs);
+}
 { const [ax, az] = along(archX(1));
   const low = world.raycast(new THREE.Vector3(ax - vx * 30, waterY + 0.5, az - vz * 30), new THREE.Vector3(vx, 0, vz), 60);
   assert.ok(!low || low.record?.kind !== 'bridge', 'the server: a shot through the middle arch is not stopped by the bridge');
   const high = world.raycast(new THREE.Vector3(ax - vx * 30, waterY + 2.0, az - vz * 30), new THREE.Vector3(vx, 0, vz), 60);
   assert.equal(high?.record?.kind, 'bridge', 'the server: the deck stops the high shot'); }
 world.release?.();
-console.log(`archedBridgeCollision.selftest (round 67 bands): ${parts.length} parts (deck ${(deckY - crownY).toFixed(2)} m from the crown line, 2 abutments, ${piers.length} piers, ${haunches.length} vault haunches in ${bands} bands, 2 parapets); shells pass every arch up to 1.3 m over the water and meet the haunches, piers, deck and parapets; a 1.5 m body passes under the middle arch, a 2.2 m body is stopped; the deck is the floor; the committed shard matches`);
+console.log(`archedBridgeCollision.selftest (round 67 bands): ${parts.length} parts (deck ${(deckY - crownY).toFixed(2)} m from the crown line, 2 abutments, ${piers.length} piers, ${haunches.length} vault haunches in ${bands} bands, 2 parapets); shells pass every arch up to 1.3 m over the water and meet the haunches, piers, deck and parapets; a 1.5 m body passes under the middle arch, a 2.2 m body is stopped; the deck is the floor; the committed shard matches (its parapets ${parapetRuns.length} runs of their own)`);

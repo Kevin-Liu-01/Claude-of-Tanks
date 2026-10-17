@@ -7,7 +7,7 @@ import { createTank } from '../src/vehicles/tankFactory.ts';
 
 const bytes = fs.readFileSync(new URL('../public/models/community-candidates/t14_x_source.glb', import.meta.url));
 const source = await new GLTFLoader().parseAsync(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), '');
-const tank = createTank('t14_x', null, { proceduralOnly: true, geometryReceipt: true });
+const tank = createTank('t14_armata', null, { proceduralOnly: true, geometryReceipt: true });
 const stations = Array.from({ length: 44 }, (_, i) => -4.3 + i * .2);
 
 function worldTriangles(root) {

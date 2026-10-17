@@ -8,13 +8,13 @@ import {createTankState} from '../../sim/movement.ts';
 import { near } from '../../../tools/receipt-kit.test-support.mjs';
 // Independent source scalar witnesses; never import builder datums as targets.
 const SOURCES={
-  t90_x:{yaw:[-.00094997882843,1.408079981803894,.115670447585103],gun:[-.0007899813354,1.726339995861054,1.271363670175725],
+  t90:{yaw:[-.00094997882843,1.408079981803894,.115670447585103],gun:[-.0007899813354,1.726339995861054,1.271363670175725],
     tip:6.370519876480101,floor:5.964219808578489,roof:2.27397990227,wheelY:.4620499908924103,
     axles:[-1.742,-.9013,-.0495,.8015,1.6534,2.4996],era:6},
-  t90a_burlak_x:{yaw:[-.001247544176495,1.544579982757568,.114670021536425],gun:[.001410018652678,1.784449994564055,1.283482024669646],
+  t90a_burlak:{yaw:[-.001247544176495,1.544579982757568,.114670021536425],gun:[.001410018652678,1.784449994564055,1.283482024669646],
     tip:6.260299921035765,floor:5.853999853134153,roof:2.26367998123,wheelY:.4620499908924103,
     axles:[-1.742,-.9013,-.0495,.8015,1.6534,2.4996],era:6},
-  t90ms_x:{yaw:[-.00094997882843,1.4433900117874146,.1200934632560673],gun:[-.0016399808228014,1.8143100142478943,1.3700721232514588],
+  t90ms_tagil:{yaw:[-.00094997882843,1.4433900117874146,.1200934632560673],gun:[-.0016399808228014,1.8143100142478943,1.3700721232514588],
     tip:6.294960021972652,floor:4.99215984344482,roof:2.1855900287628174,wheelY:.4564000070095062,
     axles:[-1.7806,-.9404,-.08855,.76255,1.6144,2.46025],
     left:[-1.81590002775,-.97714999318,-.12659997866,.72445000755,1.57635003328,2.42254996300],
@@ -31,7 +31,7 @@ for(const id of Object.keys(SOURCES)) {
   assert.equal(roofEquipmentVerdict(id,{mg:1,invalidWeaponMarkers:0},configurations[id]).passed,true,`${id}: physical MG satisfies unchanged >=1 rule`);
   assert.equal(roofEquipmentVerdict(id,{mg:1,invalidWeaponMarkers:1},configurations[id]).passed,false,`${id}: real MG cannot hide another nonphysical marker`);
 }
-const standardWeaponPass=({census},id='t90_x')=>roofEquipmentVerdict(id,census,configurations[id]).passed;
+const standardWeaponPass=({census},id='t90')=>roofEquipmentVerdict(id,census,configurations[id]).passed;
 // Exercise the live physical census as well as the verdict, rather than
 // extracting a stale implementation string from the browser entrypoint.
 {
@@ -84,7 +84,7 @@ function wheelMatrices(t,s){
   }return out;
 }
 function staggerMotion(t,id,s){
-  if(id!=='t90ms_x')return;
+  if(id!=='t90ms_tagil')return;
   const state=createTankState(getSpec(id),new THREE.Vector3(),0);t.setGroundSampler(()=>0);
   t.syncFromState(state,1/60,20);const before=wheelMatrices(t,s);
   const im=t.root.getObjectByName('gearRoadWheelTires'),version=im.instanceMatrix.version;
@@ -114,7 +114,7 @@ function reactive(t,s){
 }
 function roofWeapon(t,id){
   const mg=t.root.getObjectByName('sourceMachineGun_turretDark'),census=censusEquipment(t.root);
-  if(id==='t90_x'){
+  if(id==='t90'){
     assert.ok(mg === undefined,'source-empty T90 channel is not a fabricated named weapon');
     const added=t.root.getObjectByName('t90XMountedNsvt');
     const body=added?.getObjectByName('browningDerivedMachineGunBody');
@@ -148,7 +148,7 @@ function emptyT90Mount(t){
   }
 }
 function historicalEmptyT90Mount(t){
-  // Complete-source held-outs from t90_x.remaining-roof-heldouts.json:
+  // Complete-source held-outs from t90.remaining-roof-heldouts.json:
   // retain the interrupted lower web, flanking rim and real axial opening.
   // Only the named owner-added NSVT is detached; every source mesh remains.
   const census=censusEquipment(t.root);
@@ -161,29 +161,29 @@ function historicalEmptyT90Mount(t){
   assert.ok(hit([-.6,2.65,.42],[0,-1,0],.025) === undefined,'source lower-web slot stays genuinely open');
   assert.ok(hit([-.58615,2.66803,.8],[0,0,-1],.7) === undefined,'empty source weapon axis contains no fictitious barrel');
   assert.ok(hit([-.42,2.72,.40],[0,-1,0],.10) === undefined,'source guard and chute retain their open mouth');
-  assert.throws(()=>roofWeapon(t,'t90a_burlak_x'),/complete source weapon remains a real mesh/,
+  assert.throws(()=>roofWeapon(t,'t90a_burlak'),/complete source weapon remains a real mesh/,
     'negative control: absence cannot satisfy the armed-family requirement');
   const fake=new THREE.Group();fake.name='t90XMountedNsvt';fake.userData={fittingRoot:true,fitting:'pintleMG',weaponClass:'nsvt'};t.root.add(fake);
-  try{assert.throws(()=>roofWeapon(t,'t90_x'),/physical complete NSVT body/,
+  try{assert.throws(()=>roofWeapon(t,'t90'),/physical complete NSVT body/,
     'negative control: a marker-only weapon cannot certify this empty source mount');}
   finally{t.root.remove(fake);}
 }
 function equipment(t,id){
   const mg=roofWeapon(t,id);
-  if(id==='t90_x')emptyT90Mount(t);
-  if(id==='t90_x'||id==='t90a_burlak_x'){
+  if(id==='t90')emptyT90Mount(t);
+  if(id==='t90'||id==='t90a_burlak'){
     const details=t.root.getObjectByName('hullDetail');
     for(const x of [-.6,.6]){
       const air=new THREE.Raycaster(new THREE.Vector3(x,1.77,-3.53),new THREE.Vector3(0,-1,0),0,.35).intersectObject(details,false);
       assert.equal(air.length,0,'source genuinely empty rear drum cradles');
     }
   }
-  if(id==='t90a_burlak_x'){
+  if(id==='t90a_burlak'){
     const hit=new THREE.Raycaster(new THREE.Vector3(0,3,-2),new THREE.Vector3(0,-1,0)).intersectObject(t.root.getObjectByName('turret'),false)[0];
     near(hit.point.y,2.26367998123,.000002,'source welded bustle roof, independent of fittings');
     near(new THREE.Box3().setFromObject(mg).max.z,.56843,.000002,'actual complete forward-facing Object17 gun terminal');
   }
-  if(id==='t90ms_x'){
+  if(id==='t90ms_tagil'){
     const detail=t.root.getObjectByName('turretDetail');
     for(const y of [1.87,1.98,2.035,2.095]){
       const hit=new THREE.Raycaster(new THREE.Vector3(.12,y,-3.1),new THREE.Vector3(0,0,1),0,.35).intersectObject(detail,false);
@@ -196,7 +196,7 @@ function equipment(t,id){
   }
 }
 function antennas(t,id){
-  const poles={t90_x:[[-.27255,2.18015,-.89241],[1.05213,1.99952,.52246]],t90a_burlak_x:[[-.1912,2.33669,-.8695]],t90ms_x:[[.55525,2.45610,-1.42175]]};
+  const poles={t90:[[-.27255,2.18015,-.89241],[1.05213,1.99952,.52246]],t90a_burlak:[[-.1912,2.33669,-.8695]],t90ms_tagil:[[.55525,2.45610,-1.42175]]};
   for(const[x,y,z]of poles[id])for(const[dy,r]of [[.4,.0115+(.4-.1385)*.0005/.4604],[1.2,.0082-(1.2-1.0165)*.0004/.2124]]){
     const hit=new THREE.Raycaster(new THREE.Vector3(x+.08,y+dy,z+.00001),new THREE.Vector3(-1,0,0),0,.14).intersectObject(t.root.getObjectByName('turretDetail'),false)[0];
     near(hit?.point.x,x+r-.00001/Math.sqrt(3),.000003,'source stepped/tapered hexagonal whip, not uniform needle or pole');

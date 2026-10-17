@@ -99,7 +99,8 @@ const COAL = material('cargo', [0.022, 0.021, 0.02], 0.7, 0, 0, 0.3);
 // ---------------------------------------------------------------------------------------------------- the sink
 
 interface Ctx {
-  readonly mesh: VehicleMesh;
+  /** (writable: wreckSled measures the body in a scratch mesh before it tips it) */
+  mesh: VehicleMesh;
   readonly coarse: boolean;
   /** Per-model salt for the boards' shades and the loads' noise. */
   readonly seed: number;
@@ -582,7 +583,9 @@ function crate(c: Ctx, x: number, y: number, z: number, w: number, h: number, d:
     const a = hash01(salt + 7 * boardNo++, c.seed + 43);
     return a < 0.16 ? CRATE_PINE_GREY : a < 0.34 ? (m === CRATE_PINE ? CRATE_PINE_OLD : CRATE_PINE) : m;
   };
-  box(0, h / 2, 0, w - 0.024, h - 0.012, d - 0.024, CRATE_INSIDE);
+  // (props census r2 sweep, Lane C 2026-10-16: the trolley's box-only share 73 %, its crates' square boxes) the crate's
+  // dark inside and its corner posts eased, the slats square as before
+  c.mesh.box(0, h / 2, 0, w - 0.024, h - 0.012, d - 0.024, CRATE_INSIDE, 0.006);
   const rows = 3, sh = h / rows - 0.022;
   for (let k = 0; k < rows; k++) {
     const yy = (k + 0.5) * (h / rows);
@@ -590,7 +593,7 @@ function crate(c: Ctx, x: number, y: number, z: number, w: number, h: number, d:
     for (const sx of [-1, 1]) box(sx * (w / 2 - 0.006), yy, 0, 0.012, sh, d - 0.05, age());
   }
   for (let k = 0; k < 3; k++) box(0, h - 0.006, -d / 2 + (k + 0.5) * (d / 3), w - 0.02, 0.012, d / 3 - 0.018, age());
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(sx * (w / 2 - 0.018), h / 2, sz * (d / 2 - 0.018), 0.036, h, 0.036, m);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) c.mesh.box(sx * (w / 2 - 0.018), h / 2, sz * (d / 2 - 0.018), 0.036, h, 0.036, m, 0.005);
   // (round 3) the road's grime along each side's foot, the shipper's stencil on the middle board of one end
   c.mesh.dressing(() => {
     const g = 0.05 + 0.05 * hash01(salt, c.seed + 47), f = 0.004;
@@ -704,7 +707,7 @@ function emitWheel(c: Ctx, w: WheelPlace): void {
  * fallen onto that side about the far wheel's hub (a four-wheeler pitched onto its broken corner as well), the load
  * slumped toward the low side, two boards loose on the ground.
  */
-function assemble(c: Ctx, a: Assembly, wrecked: boolean): void {
+function assemble(c: Ctx, a: Assembly, wrecked: boolean, tilt = 1): void {
   const mesh = c.mesh;
   if (!wrecked) {
     for (const w of a.wheels) emitWheel(c, w);
@@ -722,7 +725,7 @@ function assemble(c: Ctx, a: Assembly, wrecked: boolean): void {
   const pivot = keep.find((w) => w.side > 0 && (!lost || Math.abs(w.z - lost.z) < 0.4)) ?? keep[0];
   const span = Math.max(0.3, pivot ? pivot.x - (lost?.x ?? -pivot.x) : 0.6);
   const drop = lost ? lost.y * 0.85 : 0.2;
-  const roll = Math.asin(Math.min(0.9, drop / span));
+  const roll = Math.asin(Math.min(0.9, drop / span)) * tilt;
   const four = a.wheels.length >= 4;
   for (const w of keep) {
     if (w === pivot || !four) emitWheel(c, w);
@@ -730,13 +733,15 @@ function assemble(c: Ctx, a: Assembly, wrecked: boolean): void {
   }
   if (lost) {
     // the lost wheel lies flat beside the bed, its outer face up
-    mesh.push().translate(lost.x - lost.r * 0.75, lost.halfWidth, lost.z + lost.r * 0.35).rotateZ(Math.PI / 2).rotateX(0.4);
+    // (Lane C, #8 r2) resting on its low rim edge: the tilt took that edge under the ground on the small wheels
+    const restY = lost.halfWidth * Math.cos(0.4) + lost.r * Math.sin(0.4);
+    mesh.push().translate(lost.x - lost.r * 0.75, restY, lost.z + lost.r * 0.35).rotateZ(Math.PI / 2).rotateX(0.4);
     lost.emit();
     mesh.pop();
   }
   mesh.push();
   if (pivot) mesh.translate(pivot.x, pivot.y, pivot.z).rotateZ(roll);
-  if (four && lost) mesh.rotateX(Math.asin(Math.min(0.5, drop * 0.5 / Math.max(0.5, Math.abs(lost.z - (keep.find((w) => w.side < 0)?.z ?? 0))))));
+  if (four && lost) mesh.rotateX(tilt * Math.asin(Math.min(0.5, drop * 0.5 / Math.max(0.5, Math.abs(lost.z - (keep.find((w) => w.side < 0)?.z ?? 0))))));
   if (pivot) mesh.translate(-pivot.x, -pivot.y, -pivot.z);
   if (a.rest) mesh.translate(0, a.rest.y, a.rest.z).rotateX(a.rest.pitch * 0.6).translate(0, -a.rest.y, -a.rest.z);
   a.body();
@@ -1689,7 +1694,11 @@ function cart2(c: Ctx, s: Cart2Spec): Assembly {
         // the shafts carry the frame forward and close in toward the beast's flanks (dressing, as a cart's handles)
         c.mesh.dressing(() => beam(c.mesh, [sx * (hw - 0.04), frameY, hl - 0.1], [sx * Math.min(hw - 0.04, 0.34), tipY, tipZ], 0.055, 0.07, woodOf(c, 2 + sx)));
       }
-      c.mesh.dressing(() => rod(c, [-Math.min(hw, 0.38), frameY + 0.01, hl + 0.25], [Math.min(hw, 0.38), frameY + 0.01, hl + 0.25], 0.025, woodOf(c, 5), true));
+      // the bar across the shafts (props census r2 sweep, Lane C 2026-10-16: it stopped 5-7 cm short of them, floating):
+      // its ends in the shafts where they pass its station
+      const t = Math.min(1, Math.max(0, 0.35 / Math.max(0.1, tipZ - (hl - 0.1))));
+      const bx = lerp(hw - 0.04, Math.min(hw - 0.04, 0.34), t), by = lerp(frameY, tipY, t);
+      c.mesh.dressing(() => rod(c, [-bx, by + 0.01, hl + 0.25], [bx, by + 0.01, hl + 0.25], 0.025, woodOf(c, 5), true));
     }
     // the floor across the frame
     const nb = Math.max(4, Math.round(s.bedL / 0.2));
@@ -1850,7 +1859,7 @@ function cart2(c: Ctx, s: Cart2Spec): Assembly {
   // round 4 (wave 260: "no ropes, stakes or spill"): what fell as the load was forked up, on the ground about the wheels
   const wrack = s.load === 'seaweed';
   const ground = wrack || s.load === 'hay' ? () => groundSpill(c, {
-    x0: -wx - 0.12, x1: wx + 0.12, z0: -hl - 0.05, z1: hl, reach: 0.65, groundY: 0.03,
+    x0: -wx - 0.12, x1: wx + 0.12, z0: -hl - 0.05, z1: hl, reach: 0.65, groundY: 0.006, // (the r2 sweep: on the ground, not 3 cm over it)
     wisps: wrack ? 30 : 18, len: wrack ? [0.25, 0.6] : [0.12, 0.32], width: wrack ? [0.035, 0.07] : [0.012, 0.026],
     tangles: wrack ? 5 : 4, spread: wrack ? 0.2 : 0.16,
     mats: wrack ? [KELP_B, SEAWEED_A, KELP_A] : [HAY_PALE, HAY_A, HAY_DARK], salt: c.seed + 5003,
@@ -1967,9 +1976,11 @@ function wagon4(c: Ctx, s: Wagon4Spec): Assembly {
       });
       if (s.seat) {
         // the spring seat across the box's front
-        for (const sx of [-1, 1]) beam(c.mesh, [sx * (hw - 0.05), floorY + s.sideH, hl - 0.45], [sx * (hw - 0.08), floorY + s.sideH + 0.18, hl - 0.48], 0.03, 0.05, IRON);
+        // (props census r2 sweep, Lane C 2026-10-16: the springs stood 3.5 cm inside the box's sides and the back board
+        // 2.5 cm over the seat, both floating) the springs' feet on the side boards' tops, the back board on the seat
+        for (const sx of [-1, 1]) beam(c.mesh, [sx * (hw + 0.008), floorY + s.sideH + 0.01, hl - 0.45], [sx * (hw - 0.08), floorY + s.sideH + 0.2, hl - 0.48], 0.03, 0.05, IRON);
         board(c, 0, floorY + s.sideH + 0.21, hl - 0.48, s.bedW - 0.06, 0.05, 0.36, woodOf(c, 34));
-        board(c, 0, floorY + s.sideH + 0.42, hl - 0.68, s.bedW - 0.06, 0.32, 0.04, woodOf(c, 35));
+        board(c, 0, floorY + s.sideH + 0.39, hl - 0.68, s.bedW - 0.06, 0.32, 0.04, woodOf(c, 35));
       }
     } else {
       // the dray's flat deck: low side rails and stake pockets
@@ -2050,7 +2061,11 @@ function trailer(c: Ctx, s: TrailerSpec): Assembly {
     // the ladder at the front (bale stacks), the lamps
     for (const sx of [-1, 1]) rod(c, [sx * (hw - 0.05), deckY, hl - 0.03], [sx * (hw - 0.05), deckY + 1.25, hl - 0.03], 0.022, chassis, true);
     for (let k = 1; k <= 3; k++) rod(c, [-hw + 0.05, deckY + k * 0.4, hl - 0.03], [hw - 0.05, deckY + k * 0.4, hl - 0.03], 0.016, chassis, true);
-    if (!c.coarse) for (const sx of [-1, 1]) c.mesh.box(sx * (hw - 0.12), deckY - 0.1, -hl - 0.02, 0.14, 0.07, 0.03, fixed(0x8a1a12, 0.3, 0, 'paint'), 0.006);
+    if (!c.coarse) for (const sx of [-1, 1]) {
+      c.mesh.box(sx * (hw - 0.12), deckY - 0.1, -hl - 0.02, 0.14, 0.07, 0.03, fixed(0x8a1a12, 0.3, 0, 'paint'), 0.006);
+      // (props census r2 sweep, Lane C 2026-10-16: the lamps hung 5 cm under the deck's end, floating) on their brackets
+      c.mesh.box(sx * (hw - 0.12), deckY - 0.05, -hl + 0.01, 0.04, 0.08, 0.04, chassis, 0);
+    }
   };
   const load = s.load === 'empty' ? undefined : () => bales(c, -hw + 0.02, hw - 0.02, -hl + 0.02, hl - 0.06, deckY + 0.018, 3);
   return { wheels, body, load, debris: { w: 0.16, l: s.deckL * 0.5 } };
@@ -2312,7 +2327,8 @@ function sled(c: Ctx, s: SledSpec): Assembly {
     runnerLips(c, [-rw, rw], 0.028, -hl, hl * 0.4);
     // round 4 (wave 260): straw dropped about it and along its track, clear of the snow its runners pushed up
     const ground = s.load === 'hay' ? () => groundSpill(c, {
-      x0: -rw - 0.15, x1: rw + 0.15, z0: -hl, z1: hl * 0.5, reach: 0.5, groundY: 0.03 + RUNNER_SNOW_SINK_M,
+      // (props census r2 sweep, Lane C 2026-10-16: the wisps lay 3 cm over the snow the runners sank into, floating) on it
+      x0: -rw - 0.15, x1: rw + 0.15, z0: -hl, z1: hl * 0.5, reach: 0.5, groundY: 0.01 + RUNNER_SNOW_SINK_M,
       wisps: 16, len: [0.12, 0.3], width: [0.012, 0.024], tangles: 4, spread: 0.14, mats: [HAY_PALE, HAY_A, HAY_DARK], salt: c.seed + 5011,
     }) : undefined;
     return { wheels: [], body, load, debris: { w: 0.08, l: 0.9 }, ground };
@@ -2402,7 +2418,16 @@ function sled(c: Ctx, s: SledSpec): Assembly {
 
 /** A sled smashed: heeled over onto one runner and slewed, its load spilled beside it. */
 function wreckSled(c: Ctx, a: Assembly, halfWidth: number, spill = 1.9): void {
-  c.mesh.push().translate(halfWidth, 0, 0).rotateZ(-0.55).rotateY(0.18).translate(-halfWidth, 0, 0);
+  // (Lane C, #8 r2; the census judge: a wreck's corner under the ground lifted the whole wreck by it) tipped onto its side
+  // about its own lowest outer edge (the runner's, measured from the body in a scratch mesh), not a line inside it, and
+  // turned on the ground after the tip, so no runner goes under it
+  const real = c.mesh, probe = new VehicleMesh();
+  probe.coarse = real.coarse;
+  c.mesh = probe;
+  a.body();
+  c.mesh = real;
+  const edge = Math.max(halfWidth, probe.maxXBelow(0.15));
+  c.mesh.push().translate(edge, 0, 0).rotateY(0.18).rotateZ(-0.55).translate(-edge, 0, 0);
   a.body();
   c.mesh.pop();
   if (a.load) {
@@ -2424,6 +2449,9 @@ interface CartBuildOptions {
   readonly wrecked: boolean;
   readonly seed: number;
   readonly snow?: boolean;
+  /** (Lane C, #8 r2) a wheeled wreck's fall, 0 (level) to 1 (the full fall onto the lost wheel's side): cartKit.ts
+   *  settles it at the most its low corner allows before it would go into the ground. */
+  readonly tilt?: number;
 }
 
 function assembly(c: Ctx, m: CartModel): Assembly {
@@ -2454,7 +2482,7 @@ function assembly(c: Ctx, m: CartModel): Assembly {
 export function buildCart(mesh: VehicleMesh, m: CartModel, o: CartBuildOptions): void {
   const c: Ctx = { mesh, coarse: o.coarse, seed: o.seed, woods: m.wood.map((hex) => woodMat(hex)), snow: o.snow };
   const a = assembly(c, m);
-  if (!o.wrecked || a.wheels.length) { assemble(c, a, o.wrecked); return; }
+  if (!o.wrecked || a.wheels.length) { assemble(c, a, o.wrecked, o.tilt ?? 1); return; }
   // the hay sledge's spill lies a little closer since its heap sits within the rack (the wave-161 pass)
   wreckSled(c, a, m.kind === 'sled' ? m.width / 2 : m.kind === 'sledge' ? m.bedW / 2 + 0.3 : 0.3, m.kind === 'sledge' ? 1.6 : 1.9);
 }

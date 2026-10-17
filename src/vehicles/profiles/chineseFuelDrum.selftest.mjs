@@ -6,9 +6,12 @@ import {fuelDrumHoop} from './chineseFuelDrum.ts';
 import {getSpec} from '../specs.ts';
 import {createTankState} from '../../sim/movement.ts';
 import {shellPart} from '../../../tools/base-shell-audit-math.mjs';
+import {tankSeedId} from '../tankIdAliases.ts';
+// The cn_ prefix is schema-1 vocabulary: the rename drops it (cn_t80u_modern -> t80u_yun), so test the schema-1 id.
+const chineseConcept=(id)=>tankSeedId(id).startsWith('cn_');
 import {shellEdgeTopology} from '../../../tools/base-shell-integrity.mjs';
 
-const ids=['vt4a1','ztz99a2_prototype','ztz99a2','cn_t80u_modern','cn_t72b3m_modern','cn_t72b3_modern'];
+const ids=['vt4a1','ztz99a','ztz99a2','t80u_yun','t72b3m_kunlun','t72b3_qilin'];
 const mat=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
 function mesh(g){const m=new THREE.Mesh(g,mat);m.updateMatrixWorld(true);return m;}
 function endFaces(meshes,center,radius,length,side){
@@ -126,7 +129,7 @@ for(const quality of ['high','low'])for(const id of ids){
   const bounds=duplicate.geometry.boundingBox;
   assert.equal(endFaces([...targets,duplicate],bounds.getCenter(new THREE.Vector3()),(bounds.max.y-bounds.min.y)/2,bounds.max.x-bounds.min.x,1).length,2,'duplicated emitted barrel is rejected');
   duplicate.geometry.dispose();
-  if(!id.startsWith('cn_')){
+  if(!chineseConcept(id)){
    const contains=(g,point)=>new THREE.Raycaster(point,new THREE.Vector3(0,1,0),0,3).intersectObject(mesh(g))[0]?.face.normal.y>0;
    // Four historic angle brackets enter the actual 120 mm transom plate and
    // the vertical barrel straps. Probes are inside their small real laps.
@@ -139,7 +142,7 @@ for(const quality of ['high','low'])for(const id of ids){
     assert(bodies.some(p=>contains(p.g,lap)),'angle bracket ends inside actual curved barrel wall');
    }
   }
-  if(id.startsWith('cn_')){
+  if(chineseConcept(id)){
    const native=parts.filter(p=>p.bucket==='hull').map(p=>mesh(p.g));
    const cradles=parts.filter(p=>p.cradle&&!p.cradle.role);assert.equal(cradles.length,4);
    for(const {g,cradle:{root,foot}} of cradles){
@@ -169,7 +172,10 @@ for(const quality of ['high','low'])for(const id of ids){
    const worldBefore=equipmentWorld(observations);
    const panels=parts.filter(p=>p.bucket==='hullExternalArmor'&&Array.isArray(p.g.userData.eraHitFaceVertexStarts));
    assert(panels.length>0,'physical removable hull panels remain present');
-   for(const sector of ['turret_era_L','turret_era_R','skirt_era_L','skirt_era_R'])assert(tank.stripEra(sector),`${id}: intended armor sector remains removable`);
+   // Owner 2026-10-15 (VEH-19): the Qilin's turret is the production ZTZ-99A2's, whose chevron face panels are its own
+   // turret_chevron_era sectors.
+   const turretSectors=id==='t72b3_qilin'?['turret_chevron_era_L','turret_chevron_era_R']:['turret_era_L','turret_era_R'];
+   for(const sector of [...turretSectors,'skirt_era_L','skirt_era_R'])assert(tank.stripEra(sector),`${id}: intended armor sector remains removable`);
    assert.deepEqual(equipmentWorld(observations),worldBefore,'actual rendered drums, rims, straps, caps and cradles survive ERA loss');
    assert(tank.resetEra());
    assert.deepEqual(equipmentWorld(observations),worldBefore,'ERA reset preserves actual permanent equipment');
@@ -189,7 +195,7 @@ for(const quality of ['high','low'])for(const id of ids){
    assert(clearance.gap>.025,`${id}/${quality}: complete legal pitch/recoil/yaw sweep clears every drum fitting: ${JSON.stringify(clearance)}`);
    // Restore precisely the reported former heights on the actual rendered
    // observation, without altering gun capability. This must fail the bound.
-   const oldRaise=id==='cn_t80u_modern'?.54:id==='cn_t72b3m_modern'?.62:.58;
+   const oldRaise=id==='t80u_yun'?.54:id==='t72b3m_kunlun'?.62:.58;
    assert(clearance.gap-oldRaise<0,'historical high drum location fails the same independent gun-envelope bound');
    console.log(`${id}/${quality}: continuous full-gun/drum separation ${clearance.gap.toFixed(6)} m; legal pitch ${clearance.pitch.join('..')} deg, recoil ${clearance.recoil.toFixed(6)} m`);
    const lattice=turret.getObjectByName('turretOpenLattice');assert(lattice,'rear cage belongs to rotating turret');

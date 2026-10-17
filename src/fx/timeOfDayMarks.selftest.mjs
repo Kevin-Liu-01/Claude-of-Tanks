@@ -15,7 +15,11 @@ assert.ok(frame.length > 0, 'the battle tint is measured every frame');
 const head = frame.slice(0, 1600);
 assert.match(head, /printUniforms\.uTint\.value\.copy\(tint\);/, 'every frame the prints take it');
 assert.match(head, /impactDecals\.material\.color\.copy\(tint\);/, 'the hull scars take it');
-assert.match(head, /atgmBodyMat\.color\.copy\(tint\);/, "a missile's body takes it");
+// (FX lane 10-15) a missile's airframe is lit by the time of day's rig itself (missileBodies.ts: sun, sky and ground,
+// the light its wire and trail take), refreshed while one flies
+assert.match(src, /const bodies = createMissileBodies\(missileLight, MAX_ATGM_BODIES\);/, "a missile's body takes the scene's light");
+assert.match(src, /if \(wires\.mesh\.visible \|\| smokeTrails\.mesh\.visible \|\| bodies\.count > 0\) \{\n\s+readSceneLight\(/,
+  'refreshed every frame a body flies');
 assert.doesNotMatch(head, /atgmFlareMat\.color\.copy/, "a motor's flare stays emissive");
 // the tint itself: white on a clear noon rig, dim at night (the snow print and the foam stop glowing)
 const lin = (h) => new THREE.Color(h); // hex is read as sRGB into the linear working space

@@ -19,6 +19,8 @@ import { getDeviceTier } from '../../engine/quality.ts';
 import { cloneCollisionRecord, setConvexShape, type CollisionRecord } from '../collision.ts';
 import { createRecordClearance } from './recordClearance.ts';
 import { yardKeepOut, type YardKeepOut } from './regional/yards.ts';
+// (props census #11: the hillside cemeteries live in sarajevoCemetery.ts)
+import { dressCemeteries } from './sarajevoCemetery.ts';
 
 interface TramContext {
   L: {
@@ -33,6 +35,10 @@ interface TramContext {
   buckets: Record<string, THREE.BufferGeometry[] | undefined>;
   obstacles?: CollisionRecord[];
   colliders?: CollisionRecord[];
+  /** (Lane C, #24) a burnt tram handed to the props as a breakable K2 wreck (setPieceDestructibles.ts tram_k2) at its
+   *  seat, heading along the track; omitted, the tram is drawn from its parts with its static record as before. */
+  tramDestructible?: (tram: { kind: 'k2' | 'shanghai'; // tank-ids:keep
+    x: number; z: number; yaw: number }) => void;
 }
 
 /** The track bed's half width, the track centres off the road's line, the rails off each track centre (standard gauge). */
@@ -162,6 +168,28 @@ function container(sink: PartSink, colour: Rgb, look: () => number, mobile: bool
     sink.span('structureMetal', x - 0.1, 0.12, s * W - 0.03, x + 0.1, H - 0.12, s * W + 0.03, { colour: shade(colour, 0.84 + look() * 0.1), decor: true, fine: true });
   }
   for (const s of [-1, 1]) sink.span('structureMetal', s * L - 0.05, 0.1, -W + 0.08, s * L + 0.05, H - 0.1, W - 0.08, { colour: shade(colour, 0.7), decor: true });
+  // (props census #10: the screen as the siege left it) its corner castings; the doors' locking rods; rust run down from
+  // the top rail; the street side pocked by small-arms fire (its own hash: the look stream draws as before)
+  const mark = streamFrom(hashSeed('sarajevo-screen-wear', Math.round(colour[0] * 255), Math.round(colour[1] * 255), Math.round(colour[2] * 255)));
+  const casting = { colour: shade(colour, 0.55), decor: true };
+  for (const sx of [-1, 1]) for (const sy of [0, 1]) for (const sz of [-1, 1]) {
+    const x = sx * (L - 0.09), y = sy ? H - 0.09 : 0.09, z = sz * (W - 0.09);
+    sink.span('structureMetal', x - 0.1, y - 0.1, z - 0.1, x + 0.1, y + 0.1, z + 0.1, casting);
+  }
+  for (const z of [-0.85, -0.3, 0.3, 0.85]) {
+    sink.span('structureMetal', L + 0.05, 0.25, z - 0.025, L + 0.1, H - 0.25, z + 0.025, { colour: shade(colour, 0.5), decor: true, fine: true });
+  }
+  const rust = rgb(0x6a3a22);
+  for (let k = 0; k < 7; k++) {
+    const x = -L + 0.4 + mark() * (2 * L - 0.8), s = mark() < 0.5 ? -1 : 1, len = 0.5 + mark() * 1.2;
+    const za = s * (W + 0.002), zb = s * (W + 0.006);
+    sink.span('structureMetal', x - 0.05, H - 0.15 - len, Math.min(za, zb), x + 0.05, H - 0.15, Math.max(za, zb), { colour: shade(rust, 0.8 + mark() * 0.4), decor: true, fine: true });
+  }
+  const pock = rgb(0x1a1816);
+  for (let k = 0; k < 16; k++) {
+    const x = -L + 0.3 + mark() * (2 * L - 0.6), y = 0.6 + mark() * 1.6, r = 0.025 + mark() * 0.02, z = W + 0.005;
+    sink.quad('structureMetal', [x - r, y - r, z], [x + r, y - r, z], [x + r, y + r, z], [x - r, y + r, z], { colour: pock, decor: true, fine: true });
+  }
 }
 
 /**
@@ -255,6 +283,14 @@ function dressTramBoulevard(ctx: TramContext, keep: YardKeepOut | null, road = 0
       if (!records.clears(cx, cz, 10.9, 1.3, s.tx, s.tz, 0.4) || !clearOfRoads(roads, cx, cz, 10.9, 1.25, s.tx, s.tz)
         || !clearOfKeepOut(keep, cx, cz, 10.9, 1.25, s.tx, s.tz)) continue;
       const y = hf.getHeightAt(cx, cz);
+      // (Lane C, #24) a breakable K2 wreck of the props: its footprint still holds the street's later dressing clear
+      if (ctx.tramDestructible) {
+        ctx.tramDestructible({ kind: 'k2', x: cx, z: cz, yaw: Math.atan2(s.tx, s.tz) }); // tank-ids:keep
+        const nx = -s.tz, nz = s.tx;
+        records.add(setConvexShape({ min: [0, y, 0], max: [0, y + 3.1, 0], kind: 'tram-wreck' },
+          [[1, 1], [1, -1], [-1, -1], [-1, 1]].flatMap(([a, b]) => [cx + s.tx * 10.9 * a + nx * 1.25 * b, cz + s.tz * 10.9 * a + nz * 1.25 * b])));
+        return;
+      }
       const sink = new PartSink([look() * 5, look() * 5]);
       sink.placed(Math.atan2(-s.tz, s.tx), cx, y + 0.02, cz, () => burntTram(sink, look));
       push(ctx, sink);
@@ -307,56 +343,6 @@ function dressTramBoulevard(ctx: TramContext, keep: YardKeepOut | null, road = 0
   }
 }
 
-
-/** The cemeteries' plots on Ruinspires' slopes below the ridges (a rotation pair about the Square): centre, half sizes. */
-const CEMETERIES: ReadonlyArray<{ x: number; z: number; hx: number; hz: number }> = [
-  { x: -170, z: -262, hx: 30, hz: 22 }, { x: 170, z: 262, hx: 30, hz: 22 },
-];
-
-/** A cross of white stone on its plinth. (x, z) its foot. */
-function cross(sink: PartSink, x: number, y: number, z: number, h: number, yaw: number): void {
-  sink.placed(yaw, x, y, z, () => {
-    sink.span('stone', -0.16, -0.2, -0.1, 0.16, 0.1, 0.1, { decor: true });
-    sink.span('stone', -0.05, 0.1, -0.04, 0.05, h, 0.04, { decor: true });
-    sink.span('stone', -0.24, h * 0.66, -0.04, 0.24, h * 0.66 + 0.1, 0.04, { decor: true });
-  });
-}
-
-/**
- * The cemeteries: rows of graves along the contour, each a white nišan (a turban on a man's, a pointed head on a
- * woman's, the plain rounded pillar of the siege's dead) or a cross, gaps where the rows break, clear of every record.
- */
-function dressCemeteries(ctx: TramContext): void {
-  const hf = ctx.heightField;
-  const mobile = getDeviceTier() === 'mobile';
-  const records = createRecordClearance([...(ctx.obstacles ?? []), ...(ctx.colliders ?? [])]);
-  for (const [k, c] of CEMETERIES.entries()) {
-    const look = streamFrom(hashSeed('sarajevo-cemetery', k, c.x, c.z));
-    const sink = new PartSink([look() * 5, look() * 5]);
-    const step = mobile ? 2.2 : 1.15, rowGap = 2.3;
-    for (let z = c.z - c.hz; z <= c.z + c.hz; z += rowGap) {
-      let x = c.x - c.hx + look() * step;
-      while (x <= c.x + c.hx) {
-        const gap = look();
-        if (gap < 0.22) { x += step * (1 + look() * 3); continue; }
-        const px = x + (look() - 0.5) * 0.25, pz = z + (look() - 0.5) * 0.3;
-        x += step * (0.85 + look() * 0.3);
-        if (!records.clears(px, pz, 0.3, 0.3, 1, 0, 0.25)) continue;
-        const y = hf.getHeightAt(px, pz), roll = look(), h = 0.7 + look() * 0.6, yaw = (look() - 0.5) * 0.25;
-        if (roll < 0.14) cross(sink, px, y, pz, h + 0.2, yaw);
-        else sink.placed(yaw, px, y, pz, () => {
-          // a nišan: plinth, shaft, head (turban / pointed / the šehid's rounded pillar)
-          sink.span('stone', -0.17, -0.25, -0.12, 0.17, 0.1, 0.12, { decor: true });
-          sink.span('stone', -0.12, 0.1, -0.09, 0.12, h, 0.09, { decor: true });
-          if (roll < 0.5) sink.cylinder('stone', [0, h - 0.02, 0], 'y', 0.24, 0.17, 6, { decor: true }, 0.13);
-          else if (roll < 0.75) sink.cylinder('stone', [0, h, 0], 'y', 0.2, 0.12, 4, { decor: true }, 0.01, true, Math.PI / 4);
-          else sink.cylinder('stone', [0, h, 0], 'y', 0.1, 0.12, 6, { decor: true }, 0.07);
-        });
-      }
-    }
-    push(ctx, sink);
-  }
-}
 
 /** Ruinspires as Sarajevo: the boulevard's tram line and its street works, the hillside cemeteries. */
 export function dressSarajevo(ctx: TramContext, mapId = 'ruinspires'): void {

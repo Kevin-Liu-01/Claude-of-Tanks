@@ -4,11 +4,12 @@ import type { TankBuilderPort } from './tankFactoryCore.ts';
 import { boxUV, paintedSurfaceShade } from './factoryGeometry.ts';
 import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
 
-type ReceiverId = 'pt91_twardy' | 'leo2a6_ua' | 'ua_m1a1' | 'ua_t80u_modern';
+type ReceiverId = 'pt91a_twardy' | 'leo2a6_ua' | 'ua_m1a1' | 't80u_zoria';
 type Vec3 = readonly [number, number, number];
 export interface MissionReceiverPart {
   readonly role: 'roof-post' | 'rail-post' | 'crossarm' | 'rail-socket' | 'lower-arm' | 'edge-return'
-    | 'bearer-plate' | 'bearer-spine' | 'bearer-web' | 'bearer-lip' | 'bolt' | 'corner-gusset';
+    | 'bearer-plate' | 'bearer-flange' | 'bearer-spine' | 'bearer-web' | 'bearer-lip' | 'bolt' | 'corner-gusset'
+    | 'side-rail-clamp' | 'cage-post' | 'cage-tie';
   readonly size: Vec3;
   readonly center: Vec3;
 }
@@ -26,13 +27,13 @@ interface ReceiverSeat {
  * The openings between the two beams remain empty; the native ray still has
  * to hit an actual upward triangle, never this rectangular search region. */
 export const MISSION_RECEIVER_SEATS: Readonly<Record<ReceiverId, ReceiverSeat>> = {
-  pt91_twardy: { x: -.72, z: -.28, topY: .885,
+  pt91a_twardy: { x: -.72, z: -.28, topY: .885,
     minX: -.895, maxX: -.545, minZ: -.426, maxZ: -.134 },
   leo2a6_ua: { x: -1.45, z: .46, topY: .985,
     minX: -1.625, maxX: -1.275, minZ: .314, maxZ: .606 },
   ua_m1a1: { x: -1.50, z: -1, topY: 1.535,
     minX: -1.675, maxX: -1.325, minZ: -1.146, maxZ: -.854 },
-  ua_t80u_modern: { x: -1.30, z: -.18, topY: 1.068,
+  t80u_zoria: { x: -1.30, z: -.18, topY: 1.068,
     minX: -1.475, maxX: -1.125, minZ: -.326, maxZ: -.034 },
 };
 
@@ -42,13 +43,27 @@ export const MISSION_RECEIVER_SEATS: Readonly<Record<ReceiverId, ReceiverSeat>> 
  * out-turned lips, and the clamp bolts through each web between the feet. Every member lies inside the solid bearer it
  * replaces, the envelope the native clearance audit certified, and nothing but the bar comes within 10 mm of a foot pad.
  */
-function bearerParts(size: Vec3, center: Vec3, footXs: readonly number[]): MissionReceiverPart[] {
+/** A welded bearer under one pair of dock feet. `open` (round 5, the M1A1 SA: critics read the full-width top plates as
+ * "plain grey planks ... a floating bench"): full-width top plates only where the feet bear, and between and beyond
+ * them two narrow top flanges over the webs and spine, so the bearer reads as an open steel channel. */
+function bearerParts(size: Vec3, center: Vec3, footXs: readonly number[], open = false): MissionReceiverPart[] {
   const [length, height, width] = size, [cx, cy, cz] = center, top = cy + height / 2, bottom = cy - height / 2;
   const bar = .014, web = .006, webZ = width / 2 - .018, channel = height - bar + .002;
-  const parts: MissionReceiverPart[] = [
-    { role: 'bearer-plate', size: [length, bar, width], center: [cx, top - bar / 2, cz] },
-    { role: 'bearer-spine', size: [length - .01, channel, .016], center: [cx, bottom + channel / 2, cz] },
-  ];
+  const parts: MissionReceiverPart[] = [];
+  if (!open) parts.push({ role: 'bearer-plate', size: [length, bar, width], center: [cx, top - bar / 2, cz] });
+  else {
+    // The pads (x +-.0475 round each foot) stand on full plates 13 cm long. Edge flanges run between and beyond them,
+    // each ending 5 mm inside a plate (welded to it) and short of the dock foot's own envelope, whose sides they would
+    // otherwise cut (the native dock clearance pads every foot by 6 mm).
+    const plateHalf = .065, flangeStop = .06, ends = [-length / 2, ...[...footXs].sort((m, n) => m - n).flatMap(fx => [fx - flangeStop, fx + flangeStop]), length / 2];
+    for (const fx of footXs) parts.push({ role: 'bearer-plate', size: [plateHalf * 2, bar, width], center: [cx + fx, top - bar / 2, cz] });
+    for (let k = 0; k + 1 < ends.length; k += 2) {
+      const x0 = ends[k]!, x1 = ends[k + 1]!;
+      if (x1 - x0 < .01) continue;
+      for (const side of [-1, 1]) parts.push({ role: 'bearer-flange', size: [x1 - x0, bar, .022], center: [cx + (x0 + x1) / 2, top - bar / 2, cz + side * (width / 2 - .011)] });
+    }
+  }
+  parts.push({ role: 'bearer-spine', size: [length - .01, channel, .016], center: [cx, bottom + channel / 2, cz] });
   for (const side of [-1, 1]) {
     const z = cz + side * webZ;
     parts.push({ role: 'bearer-web', size: [length - .004, channel, web], center: [cx, bottom + channel / 2, z] });
@@ -64,7 +79,7 @@ function bearerParts(size: Vec3, center: Vec3, footXs: readonly number[]): Missi
 export function missionReceiverParts(id: ReceiverId): MissionReceiverPart[] {
   const seat = MISSION_RECEIVER_SEATS[id], parts: MissionReceiverPart[] = [];
   const feet = [seat.x - .108, seat.x + .108];
-  if (id === 'pt91_twardy') {
+  if (id === 'pt91a_twardy') {
     // The cast dome changes by up to 5.2 mm with tessellation. Four finite
     // welded feet penetrate both native surfaces, giving the removable dock
     // one identical flat datum at either detail level. No broad armor slab.
@@ -82,7 +97,7 @@ export function missionReceiverParts(id: ReceiverId): MissionReceiverPart[] {
       parts.push({ role: 'rail-post', size: [.026, .041, .026],
         center: [-1.55, .9425, seat.z + z] });
     }
-  } else if (id === 'ua_t80u_modern') {
+  } else if (id === 't80u_zoria') {
     // The left roof-cage wing (fieldRoofCage.ts: rails at x -1.62 and -.98,
     // tie at -1.30, top 1.04) covers Zoria's only roof launch column; the
     // roof gun sweeps everything inboard of it. Two flat bearers lie across
@@ -101,7 +116,11 @@ export function missionReceiverParts(id: ReceiverId): MissionReceiverPart[] {
     // reach around its existing edge, keeping both the cloth and the launch
     // column intact. Only the short return reaches outside the cage; the
     // drone itself remains over the turret, inside the hull's width.
-    const sockets: MissionReceiverPart[] = [], members: MissionReceiverPart[] = [];
+    // Round 4 (critics, 2026-10-11: the dock read as a bench beside the cage): each arm also drops a post down the
+    // outside of the cage's side frame to a clamp on its two-thirds rail, and a tie welds the two posts together, so the
+    // bracket is visibly part of the cage. The posts stay outboard of the side lattice; the clamps grip the rail.
+    const sockets: MissionReceiverPart[] = [], clamps: MissionReceiverPart[] = [], members: MissionReceiverPart[] = [];
+    const postX = -2.066, tieY = 1.08;
     for (const dz of [-.09, .09]) {
       const z = seat.z + dz, railX = -2.01, outerX = -2.30;
       const slope = .04 / 1.56;
@@ -111,6 +130,13 @@ export function missionReceiverParts(id: ReceiverId): MissionReceiverPart[] {
       // the pitched 32 mm rail. A top-side clamp would pierce the cloth.
       sockets.push({ role: 'rail-socket', size: [.04, .074, .045],
         center: [railX, railTop - .061, z] });
+      // The side frame's two-thirds rail (ukraine.ts addAbramsCageSideFrames: a 22 mm bar in the frame plane x -2.01,
+      // lerp of base and roof at 0.66 between the stations at z .28 and -1.28), wrapped by a clamp block that reaches
+      // in from the post.
+      const t = (.28 - z) / 1.56, sideRailY = (.10 + .66 * 1.20) + t * ((.08 + .66 * 1.26) - (.10 + .66 * 1.20));
+      clamps.push({ role: 'side-rail-clamp', size: [.066, .04, .032], center: [-2.029, sideRailY, z] });
+      members.push({ role: 'cage-post', size: [.022, bottom - sideRailY - .004, .022],
+        center: [postX, (bottom - .009 + sideRailY + .013) / 2, z] });
       members.push({ role: 'lower-arm', size: [.31, .026, .045],
         center: [(railX + outerX) / 2, bottom, z] });
       members.push({ role: 'edge-return', size: [.028, seat.topY - bottom, .045],
@@ -119,9 +145,10 @@ export function missionReceiverParts(id: ReceiverId): MissionReceiverPart[] {
       members.push({ role: 'corner-gusset', size: [.04, .04, .012],
         center: [outerX + .031, bottom + .030, z] });
       const span = seat.x + .175 - outerX;
-      members.push(...bearerParts([span, .028, .116], [(seat.x + .175 + outerX) / 2, seat.topY - .014, z], feet.map(x => x - (seat.x + .175 + outerX) / 2)));
+      members.push(...bearerParts([span, .028, .116], [(seat.x + .175 + outerX) / 2, seat.topY - .014, z], feet.map(x => x - (seat.x + .175 + outerX) / 2), true));
     }
-    return [...sockets, ...members];
+    members.push({ role: 'cage-tie', size: [.018, .02, .18 + .022], center: [postX, tieY, seat.z] });
+    return [...sockets, ...clamps, ...members];
   }
   for (const z of [-.09, .09]) {
     parts.push(...bearerParts([.35, .028, .116], [seat.x, seat.topY - .014, seat.z + z], feet.map(x => x - seat.x)));
@@ -133,6 +160,16 @@ interface ReceiverBuilder {
   readonly mats: { readonly hull: THREE.Material; readonly dark?: THREE.Material };
   readonly disposables: { dispose(): void }[];
   postAssemble: TankBuilderPort['postAssemble'];
+}
+
+/** Darken the up-facing vertices' shade (vertex colour) by `factor`. */
+function grimeTopFaces(geometry: THREE.BufferGeometry, factor: number): void {
+  const normal = geometry.getAttribute('normal'), colour = geometry.getAttribute('color');
+  for (let index = 0; index < normal.count; index++) {
+    if (normal.getY(index) <= .5) continue;
+    colour.setXYZ(index, colour.getX(index) * factor, colour.getY(index) * factor, colour.getZ(index) * factor);
+  }
+  colour.needsUpdate = true;
 }
 
 /** Permanent equipment, separate from the armor shell and removable drone.
@@ -160,6 +197,9 @@ export function addMissionAttachmentReceiver(P: ReceiverBuilder, id: ReceiverId)
     boxUV(geometry, CAMO_UV_REPEATS_PER_M);
     paintedSurfaceShade(geometry);
     const onDarkCage = id === 'ua_m1a1' && !!P.mats.dark;
+    // Round 4 (critics: "pale planks or a bench"): the bearers' wide tops caught the overhead light far brighter than
+    // the cage's thin bars; they carry the cage's grime instead, so the bracket reads as one dark steel structure.
+    if (onDarkCage) grimeTopFaces(geometry, .62);
     const receiver = new THREE.Mesh(geometry, onDarkCage ? P.mats.dark! : P.mats.hull);
     receiver.name = 'turretMissionReceiver';
     receiver.castShadow = receiver.receiveShadow = true;

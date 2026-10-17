@@ -70,14 +70,14 @@ async function runDeclineScenario({ name, url, steppedDown }) {
   try {
     // ---- three able commanders: p1 hosts (the admin), p2 and p3 have declined
     const p1 = spawn('p1', 'Admin', 0);
-    const room = await p1.headless.room.create({ mode: 'lan', selection: { specId: 'm1a2' }, settings: { teamSize: 2, mapId: 'verdant', botsFill: false } });
+    const room = await p1.headless.room.create({ mode: 'lan', selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize: 2, mapId: 'verdant', botsFill: false } });
     const code = room.roomCode;
     facts.code = code;
     const p2 = spawn('p2', 'Two', 1);
     const p3 = spawn('p3', 'Three', 2);
     await p1.headless.room.setTeam('bravo');
-    await p2.headless.room.join({ roomCode: code, selection: { specId: 't90m' }, team: 'alpha' });
-    await p3.headless.room.join({ roomCode: code, selection: { specId: 'leo2a7v' }, team: 'alpha' });
+    await p2.headless.room.join({ roomCode: code, selection: { specId: 't90am' }, team: 'alpha' });
+    await p3.headless.room.join({ roomCode: code, selection: { specId: 'leo2_improved' }, team: 'alpha' });
     await p2.headless.room.declineHost(true);
     await p3.headless.room.declineHost(true);
     await until(() => p1.headless.room.room?.players.length === 3 && p1.headless.room.room.players.filter((player) => player.hostDeclined).length === 2, 'two declined seats in the room', 10_000,

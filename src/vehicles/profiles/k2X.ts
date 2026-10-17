@@ -446,9 +446,12 @@ function buildMeasuredGun(P: TankBuilderPort): void {
     radialSection(3.078,.1422,.009), radialSection(3.688,.1422,.009),
     radialSection(3.756,.1223), radialSection(3.767,.1145),
     radialSection(3.857,.1145), radialSection(3.864,.1089),
-    // As in buildGun, reserve the final 20 mm for the factory's seated
-    // bore lip. The muzzle/FX datum remains the measured Z6.91805.
-    radialSection(6.699,.1089), radialSection(6.89805,.0878),
+    // The tube runs to the measured muzzle face, Z6.91805 (the muzzle/FX
+    // datum). It used to stop 20 mm short for the factory's seated bore lip;
+    // since the carved cannon bores (a28e4d8e6) the factory seats the throat
+    // at the tube's own face and adds no lip, so the K2 read 2 cm short
+    // (westXGeometry: physical muzzle endpoint 6.898 vs the source 6.918).
+    radialSection(6.699,.1089), radialSection(6.91805,.0878),
   ]));
   // Raised, bevel-ended evacuator and the small muzzle-reference housing.
   P.add('gun', sectionSolid([
@@ -519,7 +522,7 @@ export function buildK2X(P: TankBuilderPort): void {
   buildMeasuredGun(P);
   P.muzzleZ = K2_X_DATUMS.muzzleZ - GUN_Z;
   P.topY = 3.05 - YAW_Y;
-  P.hullG.userData.xRebuild = { candidate: 'k2_x', independent: true, datumVersion: 1, sourceLocalOnly: true };
+  P.hullG.userData.xRebuild = { candidate: 'k2_black_panther', independent: true, datumVersion: 1, sourceLocalOnly: true };
 }
 
-export const K2_X_PROFILES = { k2_x: { build: buildK2X } } as const;
+export const K2_X_PROFILES = { k2_black_panther: { build: buildK2X } } as const;

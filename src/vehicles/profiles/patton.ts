@@ -603,6 +603,8 @@ interface M48RoofWeapon {
   readonly baseY: number;
   readonly scale: number;
   readonly elev?: number;
+  /** the gun's class (default the M2); the A5 loader's M60D is the 7.62 mm GPMG class */
+  readonly cls?: 'm2' | 'mag';
 }
 
 interface M48RadioStation extends Vec3Object {
@@ -860,11 +862,11 @@ function curveHull(P: PattonBuilderPort, H: PattonHullConfig): BuiltHull {
       let [z1, y1] = bandDeck[i + 1];
       if (z0 <= bandEnd) continue;
       if (z1 < bandEnd) { y1 = y0 + (y1 - y0) * ((bandEnd - z0) / (z1 - z0)); z1 = bandEnd; }
-      // H.flatDeck opt-in (m48 r3, station slice-paint parity): keep exactly
+      // H.flatDeck opt-in (m48a5_patton r3, station slice-paint parity): keep exactly
       // level deck pairs EXACTLY level — a nudged (+0.006) quad rasterizes a
       // 1-2 px top line in every station z-slab while a true-flat quad is
       // edge-on invisible, exactly like the reference prints' own flat decks
-      // (m48 ref st1/st2 read their fender fragments 1.56-1.60, not their
+      // (m48a5_patton ref st1/st2 read their fender fragments 1.56-1.60, not their
       // 1.82 deck; my nudged deck painted 1.828 -> topPct 8-10 on two
       // slices). Default byte-identical (the nudge stands for every sibling).
       if (Math.abs(y1 - y0) < 0.004) y1 = H.flatDeck ? y0 : y0 + 0.006;
@@ -1095,7 +1097,7 @@ function curveHull(P: PattonBuilderPort, H: PattonHullConfig): BuiltHull {
       // default 0.055 hangs link pads ~15 mm below y0 and the dims heightM
       // read (p95 top - min bot) pays it. Undefined = byte-identical.
       botY: G.botY,
-      // m48 r8 opt-in pass-through: sprocket carrier-ring span (see
+      // m48a5_patton r8 opt-in pass-through: sprocket carrier-ring span (see
       // tankFactory buildRunningGear). Undefined = byte-identical.
       endRingSpan: G.endRingSpan,
       // M48A5 oracle correction: retain the authored linked course and smart
@@ -1384,6 +1386,8 @@ function standardizedAmericanM2Station(
     ring: { r: variant === 'patton' ? 0.245 : 0.22, stubs: 4 },
     shield: Boolean(M.shield),
     seed: M.seed ?? 46,
+    // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
+    working: true,
   });
   mg.position.set(M.x, yl(M.baseY), zl(M.z));
   mg.userData.hostVariant = variant;
@@ -1724,16 +1728,8 @@ function t26Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
         paleMesh(box(gw, gh, gd), gx, yl(gy), zl(gz));
       }
     }
-    if (T.stowMG) {
-      // §B3 census fitting: stowed spare MG tucked inside the casting
-      // silhouette (the measured m2Station stays the gate-driven roof gun)
-      // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the casting it is tucked against (feed-side collision census).
-      // 2026-10-08 (round 5): the stowed spare keeps the envelope it was tucked to (the source scale and barrel), not
-      // the crew guns' true-size floor, which grew it 12 % into the casting and the roof gun beside it.
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.85, seed: 46, feed: 'right', sourceScale: true });
-      mg.position.set(T.stowMG[0], yl(T.stowMG[1]), zl(T.stowMG[2]));
-      P.turretG.add(mg);
-    }
+    // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle and every drawn gun works): the stowed
+    // spare MG the old census tucked against the casting is gone; the M2 station is the roof gun.
   };
   t26CastAssemblyStage3();
   // markings on the bustle flanks (decalSec overrides the anchor section —
@@ -2490,20 +2486,8 @@ function m47Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
       whip.position.set(T.whip.x, yl(T.whip.y), zl(T.whip.z));
       P.turretG.add(whip);
     }
-    // §B3 census fitting: loader's spare cal-.30 stowed beside the pedestal —
-    // whole envelope tucked UNDER the measured M2/pedestal side band (tops
-    // 3.32-3.38 over z -0.9..+0.44) and inside the dome plan: zero gate pixels
-    {
-      // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the pedestal side band it is tucked under (feed-side collision census).
-      // 2026-10-08 (round 5): the stowed spare keeps the envelope it was tucked to (the source scale and barrel); the
-      // crew guns' true-size floor grew it 12 % into the commander's M2 and its ring. It is stowed pointing aft on its
-      // pintle 16 cm further back, so its stock stops 5 cm short of the ring and its barrel lies over the dome's rear
-      // instead of alongside the M2 (was (0.30, ly 2.96, zl -0.62) facing forward).
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 0.85, seed: 47, feed: 'right', sourceScale: true });
-      mg.position.set(0.30, ly(2.96), zl(-0.78));
-      mg.rotation.y = Math.PI;
-      P.turretG.add(mg);
-    }
+    // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle and every drawn gun works): the loader's
+    // spare cal-.30 stowed aft beside the pedestal for the old census is gone; the commander's M2 is the roof gun.
     P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [B.w0 - 0.005, yl((B.top0 + B.floor0) / 2), zl(-1.58)], Math.PI / 2);
     P.decal('turret', 'number', P.spec.visual.number || '', 0.22, [-B.w0 + 0.005, yl((B.top0 + B.floor0) / 2), zl(-1.58)], -Math.PI / 2);
   };
@@ -2641,7 +2625,7 @@ function pattonGun(P: PattonBuilderPort, G: PattonGunConfig): void {
   };
   pattonGunGunStage2();
   // §B3.1 MUZZLE BORE (owner 2026-08-06; MANDATORY shadow-named mechanism
-  // per the leclerc landing 3fca39b — kit.js muzzleBore, mask/frame-excluded
+  // per the leclerc_s2 landing 3fca39b — kit.js muzzleBore, mask/frame-excluded
   // by construction): rim torus + recessed shadow disc on every device's
   // FRONT face — m3 exit collar (face len+0.01), m36 rounded exit
   // (len+0.01), m3a1 muzzle-face ellipse (len+0.003), howitzer collar
@@ -3064,7 +3048,7 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
       //      shadow clone + ambient rehook — clones drop onBeforeCompile,
       //      merkava gearFloor law): the shared 'detail' bucket ceilings ~67
       //      where the ref crests read the 84-96 class. The 32 identical
-      //      crowns emit as ONE InstancedMesh (the t90m ERA-brick pattern):
+      //      crowns emit as ONE InstancedMesh (the t90am ERA-brick pattern):
       //      deck furniture the casting merely OVERHANGS is correct hull
       //      parenting, but a separate merged mesh's AABB sits >=25% inside
       //      the turret-parent audit's casting envelope and reads stranded —
@@ -3146,7 +3130,7 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
       // B.x0 < 0 = one full-width bank; B.x0 >= 0 =
       // mirrored side pair. Pale = the sampled deck-lane dial (per-build
       // shadow clone + ambient rehook; clones drop onBeforeCompile), emitted
-      // as ONE InstancedMesh per bank (t90m ERA-brick pattern). Default
+      // as ONE InstancedMesh per bank (t90am ERA-brick pattern). Default
       // absent — every sibling (m45/m46/m47/m60s) byte-identical.
       const dAt = hull.deckAt;
       const rbPale = P.mats.shadow.clone();
@@ -4521,7 +4505,7 @@ function finishM60RoofEquipment(P: PattonBuilderPort, a3: boolean): void {
   const m2 = FITTINGS.americanM2({
     mats: P.mats, tone: 'dark', scale: a3 ? 0.58 : 0.62,
     seed: a3 ? 603 : 601, elev: a3 ? 0.035 : 0.02, ammo: true,
-    ammoSide: 1, shield: a3, ring: false,
+    ammoSide: 1, shield: a3, ring: false, working: true, // VH.14: the M60's cupola M2 is a working station
     rotation: [0, a3 ? -0.06 : 0.04, 0],
   });
   m2.position.set(-0.58, 1.34, 0.20);
@@ -6017,11 +6001,13 @@ function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
     // from the supplied reference's component envelopes only: no source
     // vertices, materials or mesh data enter the runtime build.
     for (const [i, M] of (cfg.turret.fittingMgs || []).entries()) {
+      // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station; names keep the two apart
       const mg = FITTINGS.pintleMG({
-        mats: P.mats, cls: 'm2', tone: 'dark', scale: M.scale,
+        mats: P.mats, cls: M.cls ?? 'm2', tone: 'dark', scale: M.scale,
         ammoSlot: 'dark', machineGunFinish: 'gunmetal',
-        seed: 48 + i, elev: M.elev ?? 0.04, ammo: true,
+        seed: 48 + i, elev: M.elev ?? 0.04, ammo: true, working: true,
       });
+      mg.name = i === 0 ? 'm48CommanderM2' : 'm48LoaderM60';
       mg.position.set(M.x, yl(M.baseY), zl(M.z));
       P.turretG.add(mg);
     }
@@ -7116,7 +7102,7 @@ export const PATTON_PROFILES = {
         rings: [[2.50, 0.121, 0.035], [2.72, 0.1205, 0.028], [2.94, 0.121, 0.035]] },
     }),
   },
-  m48: {
+  m48a5_patton: {
     // NEW BUILD r1 (§5.45 queue, 2026-08-08): M48A5 authored 1:1 from the
     // vertex extract in the z' = extract+1.413 frame (docs/references/
     // tanks/m48.md). Ring at the extract turretPivot (1.578, z' 0.679);
@@ -7169,7 +7155,8 @@ export const PATTON_PROFILES = {
         // participating in the mandatory decoration census.
         fittingMgs: [
           { x: 0.58, z: 0.12, baseY: 2.73, scale: 0.90, elev: 0.035 },
-          { x: -0.98, z: 0.135, baseY: 2.84, scale: 0.95, elev: 0.055 },
+          // VH.14 (calibre-true): the loader's gun is the 7.62 mm M60D, not a second M2
+          { x: -0.98, z: 0.135, baseY: 2.84, scale: 0.95, elev: 0.055, cls: 'mag' },
         ],
         radioStations: [
           { x: 0.691, y: 2.461, z: -0.467, h: 1.016 },

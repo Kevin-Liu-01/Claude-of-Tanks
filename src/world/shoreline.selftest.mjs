@@ -50,13 +50,17 @@ for (const id of MAP_IDS.filter(id => id !== 'polders')) {
   const terrain = getMapConfig(id).terrain;
   // Oasis explicitly migrated to one authored basin; preserve all of its
   // historical formula comparisons, not an exemption that deletes coverage.
+  // 2026-10-06 (the map-revival lane, Skybridge round 4): the canyon arm's discs are authored round (radii all 1) so the
+  // water meets the walls; like Amberford's cells, the plain-disc formula comparisons keep running on them as plain discs
   const lakes = id === 'oasis' ? originalOasisLakes : id === 'saltwind' ? originalSaltwindLakes
-    : id === 'coastal' ? originalCoastalLakes : id === 'fjord' ? originalFjordLakes : terrain.lakes ?? [];
+    : id === 'coastal' ? originalCoastalLakes : id === 'fjord' ? originalFjordLakes
+      : id === 'skybridge' ? (terrain.lakes ?? []).map(({ radii: _authored, ...disc }) => disc) : terrain.lakes ?? [];
   // 2026-10-03 (maps lane B, gauntlet wave 28): Amberford's river cells became authored circles (radii 0.96) so its bank
   // reads smooth; like the migrated bays, the plain-disc formula comparisons keep running on its cells as plain discs
   // 2026-10-05 (the map-revival lane): Suzhou Creek's cells (blackglass) are authored the same way
+  // 2026-10-15 (the looks lane, goral): Frosthollow's frozen Biały Dunajec (winter) is a marsh chain of authored circles too
   const marshes = id === 'coastal' ? originalCoastalMarshes
-    : id === 'autumn' || id === 'blackglass' ? (terrain.marshes ?? []).map(({ radii: _authored, ...disc }) => disc) : terrain.marshes ?? [];
+    : id === 'autumn' || id === 'blackglass' || id === 'winter' ? (terrain.marshes ?? []).map(({ radii: _authored, ...disc }) => disc) : terrain.marshes ?? [];
   for (const disc of [...lakes, ...marshes]) {
     assert.equal(disc.radii, undefined, `${id}: no implicit profile migration`);
     assert.equal(minimumShorelineRadius(disc), disc.r * 0.8);
@@ -68,7 +72,14 @@ for (const id of MAP_IDS.filter(id => id !== 'polders')) {
   }
 }
 assert.ok(legacyChecks > 10000);
-for (const disc of ['polders', 'oasis', 'saltwind', 'fjord'].flatMap(id => getMapConfig(id).terrain.lakes)) {
+// Skybridge's arm (round 6): every disc an ellipse long along the arm's curve — its opposite bearings alike, never wider
+// than its radius nor narrower than 1.6 times less — or round (the tailwater pocket's); and like every authored shore it
+// keeps its contour smooth (below)
+for (const disc of getMapConfig('skybridge').terrain.lakes) {
+  assert.ok(disc.radii.length === 16 && disc.radii.every((r, i) => Math.abs(r - disc.radii[(i + 8) & 15]) < 1e-9 && r <= 1 && r >= 1 / 1.6 - 1e-3),
+    'skybridge: the arm\'s discs are ellipses along it, or round');
+}
+for (const disc of ['polders', 'oasis', 'saltwind', 'fjord', 'skybridge'].flatMap(id => getMapConfig(id).terrain.lakes)) {
   assert.equal(disc.radii.length, 16);
   for (let i = 0; i < 16; i++) {
     const a = i * Math.PI / 8;

@@ -1,7 +1,7 @@
 // Tool-only acquisition contract. Do not let rosterState's legitimate random
 // top-up behavior turn a requested comparison into a different workload.
 export const REFERENCE_MIXED_ROSTER = Object.freeze([
-  'fv510_milan', 'bwp1', 'amx40', 'strv103a', 't80b', 't80bv', 'type90',
+  'fv510_milan', 'bwp1', 'amx40_proto', 'strv103a', 't80b', 't80bv', 'type90_kyumaru',
   'm60a2', 'type90a', 'm1a1ha', 'carro45t', 'ztz85_iii', 'm2a2_bradley',
 ]);
 
@@ -14,7 +14,7 @@ export function createPerfRosterRequest(option = REFERENCE_MIXED_ROSTER.join(','
     mode: random ? 'random-seeded' : 'pinned',
     label: random ? 'random-seeded' : option === REFERENCE_MIXED_ROSTER.join(',')
       ? 'reference-mixed-13-opponents' : 'custom-13-opponents',
-    playerId: 'm1a2', expectedCount: 14, requestedOpponents: opponents,
+    playerId: 'm1a1_abrams_hc', expectedCount: 14, requestedOpponents: opponents,
   };
 }
 

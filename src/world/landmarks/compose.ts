@@ -31,6 +31,9 @@ import { matchPlacementAnchors } from '../../sim/matchPlacement.ts';
 import { LANDMARK_KINDS, isDressingPiece, resolveLandmarkParams } from './plan.ts';
 import { LANDMARK_BUILDERS } from './index.ts';
 import type { LandmarkKind, LandmarkPlacement } from './types.ts';
+import { landmarkModulesOf, landmarkPiecesOf, markLandmarkParts, samplePieceGround } from './pieces.ts';
+// the set pieces' damage kit registers itself (props lane A, E12)
+import './damage.ts';
 
 /** The battlefield square's half size and the spawn pads' clear radius (scenery.ts keeps the same). */
 const SQUARE = 480;
@@ -348,16 +351,17 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
     if (ground.spread > MAX_FALL_M && spec.family !== 'bridge' && !spec.inWater && !spec.drapes) { skip(`ground falls ${ground.spread.toFixed(1)} m`); continue; }
     // the piece's own streams, forked from its identity: authoring one never re-rolls another
     const identity = [ctx.seed, placement.x, placement.z, placement.yawDeg ?? 0, placement.seed ?? 0];
+    const groundAt = (lx: number, lz: number) => {
+      const c = Math.cos(yaw), s = Math.sin(yaw);
+      return ctx.heightField.getHeightAt(placement.x + lx * c + lz * s, placement.z - lx * s + lz * c) - ground.y;
+    };
     const built = builder({
       kind: placement.kind, params,
       rng: streamFrom(hashSeed(`landmark:${ctx.mapId}:${placement.kind}`, ...identity)),
       variant: streamFrom(hashSeed(`landmark:variant:${ctx.mapId}:${placement.kind}`, ...identity)),
       age: streamFrom(hashSeed(`landmark:age:${ctx.mapId}:${placement.kind}`, ...identity)),
       tier: ctx.tier, groundFall: ground.spread, brick: ctx.architecture?.surfaces.stone.kind === 'brick',
-      ground: (lx: number, lz: number) => {
-        const c = Math.cos(yaw), s = Math.sin(yaw);
-        return ctx.heightField.getHeightAt(placement.x + lx * c + lz * s, placement.z - lx * s + lz * c) - ground.y;
-      },
+      ground: groundAt,
       water: (lx: number, lz: number) => {
         const c = Math.cos(yaw), s = Math.sin(yaw);
         return (ctx.heightField as HeightField).getWaterDepthAt?.(placement.x + lx * c + lz * s, placement.z - lx * s + lz * c) ?? 0;
@@ -365,6 +369,11 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
       snowCap: ctx.snowCap, mapId: ctx.mapId,
     });
     let parts = built.parts;
+    // (props lane A, E12) its named pieces (pieces.ts): the ground each may come down on, read now (numbers); the parts
+    // marked a set piece's for the damage kit (landmarks/damage.ts)
+    const namedPieces = landmarkPiecesOf(parts);
+    if (namedPieces) samplePieceGround(namedPieces, groundAt);
+    markLandmarkParts(parts);
     // a phone never builds the fine joinery (geometry.ts EmitOptions.fine): it is dressing, so the collision stays
     if (ctx.tier === 'mobile') {
       for (const name of REGIONAL_BUCKETS) {
@@ -484,6 +493,11 @@ export function* composeLandmarks(ctx: LandmarkComposeContext): Generator<Slice,
     for (const piece of built.destructibles ?? []) {
       const [x, z] = toWorld(piece.x, piece.z);
       ctx.addDestructible(piece.kind, x, ctx.heightField.getHeightAt(x, z), z, yaw + piece.yawDeg * Math.PI / 180, piece.scale ?? 1);
+    }
+    // its ground railings as the props' fence modules (kit.ts railing; pieces.ts), each on its dwarf wall's top
+    for (const module of landmarkModulesOf(built.parts)) {
+      const [x, z] = toWorld(module.x, module.z);
+      ctx.addDestructible(module.kind, x, ctx.heightField.getHeightAt(x, z) + (module.lift ?? 0), z, yaw + module.yawDeg * Math.PI / 180, module.scale ?? 1);
     }
     queue.unshift(...(built.children ?? []).map((child, k): LandmarkPlacement => {
       const [x, z] = toWorld(child.x, child.z);

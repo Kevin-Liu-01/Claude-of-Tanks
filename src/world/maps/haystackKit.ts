@@ -21,6 +21,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { HAY_FACE_V, HAY_PACKED_V, HAY_THATCH_V, HAY_WOOD_V } from '../hayPrint.ts';
 import type { DestructiblePropType } from './inhabitKit.ts';
+import { spentDraws } from './brokenDraws.ts';
 
 type Rng = () => number;
 
@@ -43,14 +44,14 @@ function sampleTable(t: Float32Array, n: number, a: number, b: number): number {
 }
 
 /** A point of a turned profile: its radius, its height, its v in the print, and how ragged the hay is there (m). */
-type ProfilePoint = readonly [r: number, y: number, v: number, rag: number];
+export type ProfilePoint = readonly [r: number, y: number, v: number, rag: number];
 
 /**
  * A turned stack: the profile round the vertical, `segs` round, its radius broken by a periodic noise of the angle and
  * the height (lumps at a metre's scale, locks and tufts at a hand's), u round it in tiles of about four metres. The seam
  * column's normals are the mean of its two sides' (no lighting seam where u wraps).
  */
-function turn(profile: readonly ProfilePoint[], segs: number, rng: Rng, tilesU: number): THREE.BufferGeometry {
+export function turn(profile: readonly ProfilePoint[], segs: number, rng: Rng, tilesU: number): THREE.BufferGeometry {
   const lumps = noiseTable(rng, 8), locks = noiseTable(rng, 24);
   const rows = profile.length, cols = segs + 1;
   const pos = new Float32Array(rows * cols * 3), uv = new Float32Array(rows * cols * 2), index: number[] = [];
@@ -84,7 +85,7 @@ function turn(profile: readonly ProfilePoint[], segs: number, rng: Rng, tilesU: 
 }
 
 /** A band's v at a share of its height (0 its start, 1 its end). */
-const bandV = (band: readonly [number, number], t: number) => band[0] + (band[1] - band[0]) * Math.min(1, Math.max(0, t));
+export const bandV = (band: readonly [number, number], t: number) => band[0] + (band[1] - band[0]) * Math.min(1, Math.max(0, t));
 
 /** Each triangle wound to face away from `centre` (a convex part's own inside), its normals recomputed. */
 function faceOutward(g: THREE.BufferGeometry, centre: THREE.Vector3): THREE.BufferGeometry {
@@ -115,7 +116,7 @@ export function mapToBand<T extends THREE.BufferGeometry>(g: T, band: readonly [
 }
 
 /** A timber pole (the wood band, its grain along it): from y0 to y1, leaning by (lx, lz) over its length. */
-function pole(r: number, y0: number, y1: number, lx: number, lz: number): THREE.BufferGeometry {
+export function pole(r: number, y0: number, y1: number, lx: number, lz: number): THREE.BufferGeometry {
   const len = y1 - y0;
   const g = new THREE.CylinderGeometry(r * 0.85, r, len, 6, 1, true);
   const uv = g.attributes.uv as THREE.BufferAttribute;
@@ -178,6 +179,7 @@ function rectSkirt(hx: number, hz: number, out: number, rng: Rng): THREE.BufferG
   return g;
 }
 
+export function hayMerge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry { return merge(parts); }
 function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
   const ready = parts.map((part) => {
     const g = part.index ? part.toNonIndexed() : part;
@@ -215,6 +217,39 @@ function stogBody(R: number, H: number, rng: Rng, segs: number): THREE.BufferGeo
   return turn(profile, segs, rng, tiles);
 }
 
+/**
+ * A stog's withy riders and props (props lane A #18, 2026-10-14; WORKLIST: "stogs with pole, base platform, props and
+ * withy riders"): pairs of withies bent over its crown to hold the hay down in the wind, two poles propped against its
+ * belly. Their own stream (a constant seed), so the stack's draws stay its legacy's.
+ */
+function stogRiders(R: number, H: number, sides: number): THREE.BufferGeometry[] {
+  let a = 0x570c ^ sides;
+  const o: Rng = () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const parts: THREE.BufferGeometry[] = [];
+  // (over the hay: the body's own radius at the shoulder and two thirds up its crown, a hand proud)
+  const crownR = R * 1.0 + 0.04, shoulder = H * 0.64, midR = R * 0.52 + 0.12;
+  for (let k = 0; k < sides; k++) {
+    // a withy over the crown: up from the shoulder on one side to the top and down to the shoulder opposite
+    const t = (k / sides) * Math.PI + o() * 0.2, c = Math.cos(t), s = Math.sin(t);
+    const pts: Array<[number, number, number]> = [[c * crownR, shoulder, s * crownR], [c * midR, H * 0.86, s * midR], [0, H + 0.04, 0],
+      [-c * midR, H * 0.86, -s * midR], [-c * crownR, shoulder, -s * crownR]];
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const [x0, y0, z0] = pts[i], [x1, y1, z1] = pts[i + 1];
+      const seg = pole(0.022, y0, y1, x1 - x0, z1 - z0);
+      seg.translate(x0, 0, z0);
+      parts.push(seg);
+    }
+  }
+  for (let k = 0; k < 2; k++) {
+    // a prop pole leaning on the belly from a stride out
+    const t = (k + 0.25 + o() * 0.3) * Math.PI, c = Math.cos(t), s = Math.sin(t), out = R + 0.5 + o() * 0.15;
+    const p = pole(0.045, 0, H * 0.4, -c * (out - R * 1.02), -s * (out - R * 1.02));
+    p.translate(c * out, -0.1, s * out);
+    parts.push(p);
+  }
+  return parts;
+}
+
 function bStog(rng: Rng): THREE.BufferGeometry {
   const R = 1.75 + rng() * 0.2, H = 4.3 + rng() * 0.5, segs = 18;
   const lean = 0.12;
@@ -222,6 +257,7 @@ function bStog(rng: Rng): THREE.BufferGeometry {
     stogBody(R, H, rng, segs),
     footSkirt(R, 0.32, segs, rng, Math.max(2, Math.round((Math.PI * 2 * R) / 4))),
     pole(0.06, -0.4, H + 0.9 + rng() * 0.4, (rng() - 0.5) * lean, (rng() - 0.5) * lean),
+    ...stogRiders(R, H, 2),
   ]);
 }
 
@@ -256,6 +292,57 @@ function hayMounds(rng: Rng, spread: number, withPole: boolean): THREE.BufferGeo
 
 function bStogBroken(rng: Rng): THREE.BufferGeometry { return hayMounds(rng, 1.15, true); }
 function bPlastBroken(rng: Rng): THREE.BufferGeometry { return hayMounds(rng, 0.85, true); }
+
+// ---------------------------------------------------------------------------------------------- the wrecks
+// (props lane A, the r2 sweep, 2026-10-16; the bunker r2 standard's anti-raft: a destroyed state stands at least a quarter
+// of the intact height) A stack a hull drives through is not flattened to a raft: its foot stands, torn off ragged and
+// leaning away from the blow, its crown thrown down beside it in mounds, its pole snapped. Each wreck spends the legacy
+// mounds' draws (brokenDraws.ts spentDraws: every later pool keeps its geometry) and draws from a stream of its own.
+
+/** The torn stump of a stack: its foot's radius `R`, standing `stump` m, the top dished in where it tore, leaning `lean`. */
+function hayStump(R: number, stump: number, segs: number, rng: Rng, lean: number): THREE.BufferGeometry {
+  const face = (y: number) => bandV(HAY_FACE_V, Math.min(0.6, y / (stump * 1.8)));
+  const g = turn([
+    [R * 0.98, -0.08, face(0), 0.04],
+    [R * 1.05, 0.3, face(0.3), 0.07],
+    [R * 1.03, stump * 0.45, face(stump * 0.45), 0.1],
+    [R * 0.9, stump * 0.75, face(stump * 0.75), 0.15],
+    [R * 0.6, stump * 0.95, face(stump * 0.95), 0.2],
+    [R * 0.28, stump, face(stump), 0.14],
+    [0.05, stump * 0.9, face(stump * 0.9), 0.02],
+  ], segs, rng, Math.max(2, Math.round((Math.PI * 2 * R) / 4)));
+  return g.rotateZ(lean);
+}
+
+/** A mound of thrown-down hay (the face band), `r` across its foot and `h` high. */
+function haySpill(r: number, h: number, rng: Rng): THREE.BufferGeometry {
+  return turn([
+    [r * 1.1, -0.06, bandV(HAY_FACE_V, 0), 0.08],
+    [r, h * 0.32, bandV(HAY_FACE_V, 0.15), 0.1],
+    [r * 0.6, h * 0.8, bandV(HAY_FACE_V, 0.35), 0.1],
+    [0.05, h, bandV(HAY_FACE_V, 0.45), 0.02],
+  ], 10, rng, 1);
+}
+
+/** A pole snapped in the wreck: its stub standing in the stump, its top laid down over the spill toward (dx, dz). */
+function snappedPole(r: number, stub: number, top: number, dx: number, dz: number, y: number): THREE.BufferGeometry[] {
+  const lay = pole(r * 0.9, 0, top, 0, 0);
+  // (laid from the stump's flank down to the ground: its far end at the ground)
+  lay.rotateZ(-(Math.PI / 2 + Math.asin(Math.min(0.9, y / top))));
+  lay.rotateY(-Math.atan2(dz, dx));
+  return [pole(r, -0.4, stub, 0.15, 0.05), lay.translate(dx * 0.35, y, dz * 0.35)];
+}
+
+/** A stog's or a plast's wreck: the stump, the crown thrown down in two mounds off its +x side, the pole snapped. */
+function stogWreck(R: number, stump: number, segs: number, skirt: number, poleR: number, rng: Rng): THREE.BufferGeometry {
+  return merge([
+    hayStump(R, stump, segs, rng, -0.06),
+    footSkirt(R, skirt, segs, rng, Math.max(2, Math.round((Math.PI * 2 * R) / 4))),
+    haySpill(R * 0.58, R * 0.38, rng).translate(R * 1.25, 0, R * 0.25),
+    haySpill(R * 0.45, R * 0.3, rng).translate(R * 0.35, 0, R * 1.2),
+    ...snappedPole(poleR, stump + 0.5, R * 1.7, 1, 0.35, stump * 0.45),
+  ]);
+}
 
 /**
  * The hooiberg: four tall poles at a square's corners, a thatched pyramid roof hung between them at the stack's height,
@@ -377,10 +464,36 @@ function bMeule(rng: Rng): THREE.BufferGeometry {
   const body = turn(profile, segs, rng, tiles);
   // the topknot: a twist of straw at the dome's tip
   const knot = turn([[0.16, H - 0.05, crown(0.9), 0.03], [0.1, H + 0.25, crown(0.95), 0.02], [0.02, H + 0.42, crown(1), 0]], 8, rng, 1);
-  return merge([body, footSkirt(R, 0.3, segs, rng, tiles), knot]);
+  // (props lane A #18) the straw ropes thrown over the dome against the wind, each hanging down the drum's side to a
+  // twisted end: a constant stream of their own, so the stack's draws stay its legacy's
+  const ropes: THREE.BufferGeometry[] = [];
+  for (let k = 0; k < 3; k++) {
+    const t = (k / 3) * Math.PI + 0.3, c = Math.cos(t), s = Math.sin(t);
+    const arc: Array<[number, number]> = [[R * 1.05, drum * 0.6], [R * 0.86, drum + (H - drum) * 0.4], [0, H + 0.02]];
+    const path = [...arc, ...arc.slice(0, -1).reverse().map(([r, y]) => [-r, y] as [number, number])];
+    for (let i = 0; i + 1 < path.length; i++) {
+      const [r0, y0] = path[i], [r1, y1] = path[i + 1];
+      const rope = pole(0.03, y0, y1, c * (r1 - r0), s * (r1 - r0));
+      rope.translate(c * r0, 0, s * r0);
+      ropes.push(mapToBand(rope, HAY_THATCH_V));
+    }
+  }
+  return merge([body, footSkirt(R, 0.3, segs, rng, tiles), knot, ...ropes]);
 }
 
 function bMeuleBroken(rng: Rng): THREE.BufferGeometry { return hayMounds(rng, 1.3, false); }
+
+/** The meule's wreck: its drum torn off low and leaning, the dome thrown down round it in three mounds, the skirt. */
+function meuleWreck(rng: Rng): THREE.BufferGeometry {
+  const R = 2.27, segs = 18;
+  return merge([
+    hayStump(R, 1.75, segs, rng, -0.05),
+    footSkirt(R, 0.3, segs, rng, Math.max(3, Math.round((Math.PI * 2 * R) / 4))),
+    haySpill(R * 0.55, 0.8, rng).translate(R * 1.3, 0, R * 0.2),
+    haySpill(R * 0.45, 0.65, rng).translate(R * 0.3, 0, R * 1.25),
+    haySpill(R * 0.35, 0.5, rng).translate(-R * 0.55, 0, -R * 1.15),
+  ]);
+}
 
 /**
  * The Diemen: a long rick — its walls drawn down, a rounded thatched ridge over them, its ends hipped round — swept
@@ -460,27 +573,72 @@ function bDiemenBroken(rng: Rng): THREE.BufferGeometry {
   return merge([a.translate(0, 0, -1.6), b.translate(0, 0, 1.6)]);
 }
 
+/** The Diemen's wreck: the rick broken through its middle, each half a torn stump drawn long, hay spilled in the breach. */
+function diemenWreck(rng: Rng): THREE.BufferGeometry {
+  const halfW = 1.78, halfL = 3.45;
+  const half = (z: number, lean: number) => {
+    const g = hayStump(halfW, 1.55, 12, rng, lean);
+    return g.scale(1, 1, 1.05).translate(0, 0, z);
+  };
+  return merge([
+    half(-halfL + halfW * 1.02, 0.05), half(halfL - halfW * 1.08, -0.06),
+    haySpill(1.0, 0.6, rng).translate(halfW * 0.9, 0, 0.1),
+    rectSkirt(halfW, halfL, 0.32, rng),
+  ]);
+}
+
 /**
  * The stook: a teepee of sheaves leaning on each other, each a bound sheaf (its straw the face band's, a darker band
  * where it is tied), its butts splayed on the ground (the packed band: cut ends), a head of ears at the top.
  */
+/** One sheaf (five-sided: a field of them stands in a harvest): butts splayed at its foot, bound a third of the way up,
+ * its ears in a head at the top; `len` up +Y from its butts. */
+function sheafOf(r: number, len: number, rng: Rng): THREE.BufferGeometry {
+  return turn([
+    [r * 1.35, 0, bandV(HAY_PACKED_V, 0.5), 0.015],
+    [r * 1.12, 0.12, bandV(HAY_FACE_V, 0.05), 0.015],
+    [r * 0.82, len * 0.36, bandV(HAY_THATCH_V, 0.02), 0.0],
+    [r * 1.15, len * 0.78, bandV(HAY_FACE_V, 0.8), 0.03],
+    [r * 1.3, len * 0.92, bandV(HAY_FACE_V, 0.95), 0.04],
+    [0.02, len, bandV(HAY_FACE_V, 1), 0.02],
+  ], 5, rng, 0.5);
+}
+
 export function buildStook(rng: Rng): THREE.BufferGeometry {
   const parts: THREE.BufferGeometry[] = [];
   const count = 6 + Math.floor(rng() * 2), lean = 0.3, len = 1.32;
   for (let i = 0; i < count; i++) {
     const a = (i / count) * Math.PI * 2 + (rng() - 0.5) * 0.25, r = 0.075 + rng() * 0.02;
-    // one sheaf (five-sided: a field of them stands in a harvest): butts splayed at its foot, bound a third of the way up,
-    // its ears in a head at the top
-    const sheaf = turn([
-      [r * 1.35, 0, bandV(HAY_PACKED_V, 0.5), 0.015],
-      [r * 1.12, 0.12, bandV(HAY_FACE_V, 0.05), 0.015],
-      [r * 0.82, len * 0.36, bandV(HAY_THATCH_V, 0.02), 0.0],
-      [r * 1.15, len * 0.78, bandV(HAY_FACE_V, 0.8), 0.03],
-      [r * 1.3, len * 0.92, bandV(HAY_FACE_V, 0.95), 0.04],
-      [0.02, len, bandV(HAY_FACE_V, 1), 0.02],
-    ], 5, rng, 0.5);
+    const sheaf = sheafOf(r, len, rng);
     sheaf.rotateZ(lean);
     sheaf.translate(len * Math.sin(lean) * 0.92, 0, 0);
+    sheaf.rotateY(a);
+    parts.push(sheaf);
+  }
+  return merge(parts);
+}
+
+/**
+ * A knocked stook's wreck (the r2 sweep): three sheaves the hull missed still leaning on each other, pushed over on a
+ * steeper lean, the rest knocked flat outward from its middle, each a whole bound sheaf. `rng` its own stream (the
+ * inhabiting kit spends the legacy's draws: inhabitKit.ts stook).
+ */
+export function buildStookWreck(rng: Rng): THREE.BufferGeometry {
+  const parts: THREE.BufferGeometry[] = [];
+  const len = 1.32;
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2 + (rng() - 0.5) * 0.4, r = 0.075 + rng() * 0.02, lean = 0.55 + rng() * 0.15;
+    const sheaf = sheafOf(r, len, rng);
+    sheaf.rotateZ(lean);
+    sheaf.translate(len * Math.sin(lean) * 0.92, 0, 0);
+    sheaf.rotateY(a);
+    parts.push(sheaf.translate(0.12, 0, 0.05));
+  }
+  for (let i = 0; i < 3; i++) {
+    const a = ((i + 0.5) / 3) * Math.PI * 2 + (rng() - 0.5) * 0.6, r = 0.075 + rng() * 0.02;
+    const sheaf = sheafOf(r, len, rng);
+    sheaf.rotateZ(-(Math.PI / 2 - 0.08));
+    sheaf.translate(0.25, r * 1.3, 0);
     sheaf.rotateY(a);
     parts.push(sheaf);
   }
@@ -495,11 +653,16 @@ export function buildStook(rng: Rng): THREE.BufferGeometry {
  * the ground: the stog's and the plast's foot, the hooiberg's stack, the meule's drum, the Diemen's walls.
  */
 export const HAYSTACK_DESTRUCTIBLE_TYPES = {
-  stog: { cls: 'break', mat: 'straw', contact: 'ob', r: 2.3, h: 6.1, shape: 'circle', collisionR: 1.7, build: bStog, broken: bStogBroken },
-  plast: { cls: 'break', mat: 'straw', contact: 'ob', r: 1.65, h: 4.25, shape: 'circle', collisionR: 1.2, build: bPlast, broken: bPlastBroken },
+  // (the r2 sweep, 2026-10-16: the stog's, the plast's, the meule's and the Diemen's wrecks stand, on the legacy's draws)
+  stog: { cls: 'break', mat: 'straw', contact: 'ob', r: 2.3, h: 6.1, shape: 'circle', collisionR: 1.7, build: bStog,
+    broken: (rng: Rng) => stogWreck(1.85, 2.0, 16, 0.32, 0.06, spentDraws(bStogBroken, rng, 0x570901)) },
+  plast: { cls: 'break', mat: 'straw', contact: 'ob', r: 1.65, h: 4.25, shape: 'circle', collisionR: 1.2, build: bPlast,
+    broken: (rng: Rng) => stogWreck(1.32, 1.45, 14, 0.24, 0.05, spentDraws(bPlastBroken, rng, 0x570902)) },
   hooiberg: { cls: 'break', mat: 'straw', contact: 'ob', r: 3.6, h: 7.45, hw: 2.15, hl: 2.15, build: bHooiberg, broken: bHooibergBroken },
-  meule: { cls: 'break', mat: 'straw', contact: 'ob', r: 2.7, h: 5.2, shape: 'circle', collisionR: 2.2, build: bMeule, broken: bMeuleBroken },
-  diemen: { cls: 'break', mat: 'straw', contact: 'ob', r: 3.9, h: 4.35, hw: 1.8, hl: 3.5, build: bDiemen, broken: bDiemenBroken },
+  meule: { cls: 'break', mat: 'straw', contact: 'ob', r: 2.7, h: 5.2, shape: 'circle', collisionR: 2.2, build: bMeule,
+    broken: (rng: Rng) => meuleWreck(spentDraws(bMeuleBroken, rng, 0x570903)) },
+  diemen: { cls: 'break', mat: 'straw', contact: 'ob', r: 3.9, h: 4.35, hw: 1.8, hl: 3.5, build: bDiemen,
+    broken: (rng: Rng) => diemenWreck(spentDraws(bDiemenBroken, rng, 0x570904)) },
 } satisfies Record<string, DestructiblePropType>;
 
 /** Each style's kind and the radius of its grounding disc (props.ts stackSpots) at scale 1. */

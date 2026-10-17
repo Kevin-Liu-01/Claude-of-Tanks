@@ -33,7 +33,7 @@ function countPreserieGlacisRearFaces(mesh, rearStationZM) {
 }
 
 {
-  const tank = createTank('ariete', null, { proceduralOnly: true, geometryReceipt: true });
+  const tank = createTank('c1_ariete_preserie', null, { proceduralOnly: true, geometryReceipt: true });
   const hullRig = tank.root.getObjectByName('rig_hull');
   const hull = hullRig.getObjectByName('hull');
   const glacis = hullRig.userData.arietePreserieGlacisSeatReceipt;
@@ -55,14 +55,14 @@ function countPreserieGlacisRearFaces(mesh, rearStationZM) {
   tank.dispose();
 }
 
-for (const id of ['ariete_c1', 'ariete_c2']) {
+for (const id of ['c1_ariete_proto_serie1', 'c2_ariete_proto']) {
   const tank = createTank(id, null, { proceduralOnly: true, geometryReceipt: true });
   const spec = getSpec(id);
   assert.deepEqual(spec.dims, {
     hullLengthM: 8.349,
     overallLengthM: 10.637,
     widthM: 3.96,
-    heightM: id === 'ariete_c1' ? 2.805 : 2.827,
+    heightM: id === 'c1_ariete_proto_serie1' ? 2.805 : 2.827,
   }, `${id}: registered dimensions are exactly ten percent larger`);
   assert.equal(spec.visual.trackWidthM, 0.66, `${id}: shoe course scales by ten percent`);
   assert(Math.abs(spec.armor.turretPivot[1] - 1.54) < 1e-12,
@@ -106,7 +106,7 @@ for (const id of ['ariete_c1', 'ariete_c2']) {
   assert.equal(skirtSeat.sides, 2, `${id}: both skirt runs receive fender bridges`);
   assert.equal(skirtSeat.fenderBridgeCoursesPerSide, 2,
     `${id}: each side has level aft and raked forward fender courses`);
-  assert.equal(skirtSeat.skirtPanelsPerSide, id === 'ariete_c1' ? 7 : 13,
+  assert.equal(skirtSeat.skirtPanelsPerSide, id === 'c1_ariete_proto_serie1' ? 7 : 13,
     `${id}: fender closure preserves the mark-specific panel count`);
   assert.equal(skirtSeat.lowerEdgesPreserved, true,
     `${id}: attaching the skirts does not lower their accepted hems`);
@@ -159,10 +159,12 @@ for (const id of ['ariete_c1', 'ariete_c2']) {
     `${id}: both panel inner faces exist on the recorded carrier plane`);
 
   const equipment = turret.userData.arieteEquipmentReceipt;
-  if (id === 'ariete_c1') {
-    assert.equal(equipment.manualPintles, 2, 'C1 carries two manual machine-gun stations');
-    assert.ok(turret.getObjectByName('arieteC1CommanderMg'), 'C1 commander MG is present');
-    assert.ok(turret.getObjectByName('arieteC1LoaderMg'), 'C1 loader MG is present');
+  if (id === 'c1_ariete_proto_serie1') {
+    // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle): the Ariete's AA MG 42/59 is the
+    // loader's, a working station; the commander's cupola carries none
+    assert.equal(equipment.manualPintles, 1, 'C1 carries the loader\'s manual machine-gun station');
+    assert.equal(turret.getObjectByName('arieteC1CommanderMg'), undefined, 'no C1 commander MG');
+    assert.ok(turret.getObjectByName('arieteC1LoaderMg')?.userData.remoteControlled, 'C1 loader MG is a working station');
     assert.equal(turret.getObjectByName('arieteC2RemoteRws'), undefined,
       'C1 does not inherit the C2 remote tower');
   } else {

@@ -105,6 +105,14 @@ export interface BrowserLoadTrace {
     /** At deferral (2026-10-13): the programs left pending, named (src/engine/programWarm.ts PendingProgramNote). */
     programs?: readonly BrowserPendingProgram[];
   };
+  /** Seats whose vehicles were warmed beside the world load (prewarmRoster, 2026-10-15). */
+  rosterPrewarmed?: number;
+  /**
+   * WELCOMEs after the first on this round (the link was replaced and the seat said hello again), and when each came (ms
+   * from the entry's start). The first alone marks `roster` (2026-10-15).
+   */
+  rewelcomes?: number;
+  rewelcomeAtMs?: number[];
 }
 
 /** One program the strict preparation left pending (programWarm's PendingProgramNote, structurally). */
@@ -134,7 +142,11 @@ export interface BrowserSlowEntry {
 
 export interface BrowserLoadPorts {
   battleLoad: BrowserLoadScreen;
-  audio: { resume(): RuntimeValue; loadingOn(active: boolean): RuntimeValue; ambientOn(active: boolean): RuntimeValue };
+  audio: {
+    resume(): RuntimeValue; loadingOn(active: boolean): RuntimeValue; ambientOn(active: boolean): RuntimeValue;
+    /** Decode the round's battle sounds, the roster's powertrains first, so its countdown is heard (never awaited). */
+    warmBattleEvents?(roster: readonly string[]): RuntimeValue;
+  };
   lighting: { setFarCascadeDormant(dormant: boolean): void };
   ensureBattleVisuals(): MaybePromise<RuntimeValue>;
   /** The battle-only modules a round needs before it presents (HUD, touch controls, FX, killcam, warm owners). */
@@ -146,6 +158,11 @@ export interface BrowserLoadPorts {
    */
   /** The authority's obstacle identities, from the manifest it plays (the mode's battlefield variant's when it has one). */
   loadAuthorityObstacles?(mapId: string, signal: AbortSignal, variant?: TerrainVariant): Promise<(index: number) => ObstacleIdentity | null>;
+  /**
+   * 2026-10-15: the builders and textures of the seats the room already names, warmed beside the world load (the
+   * WELCOME's bots are painted after it). Never refuses the round; the trace records how many it warmed.
+   */
+  prewarmRoster?(seats: readonly { specId: string; camo: string; isViewer: boolean }[], signal: AbortSignal): MaybePromise<RuntimeValue>;
   nextFrame(): MaybePromise<RuntimeValue>;
   setAdaptiveSuspended(suspended: boolean): void;
   now?(): number;
@@ -181,6 +198,12 @@ export interface BrowserWarmView {
 export interface BrowserWarmPorts {
   atmosphere?(initial: { meta: { weatherSeed?: RuntimeValue } | null }): MaybePromise<void>;
   nightLighting?(): MaybePromise<void>;
+  /**
+   * 2026-10-15 (the perf lane's finding, the MP entry): the scene's programs submitted to the driver's parallel compile
+   * once the battle's light signature is final (garage lights off, the authority's weather, the night pool), so they link
+   * while the roster is painted; the strict compile later answers them from three's cache.
+   */
+  submitPrograms?(signal?: AbortSignal): MaybePromise<RuntimeValue>;
   terrain?(view: BrowserWarmView): MaybePromise<RuntimeValue>;
   wrecks?(view: BrowserWarmView, signal?: AbortSignal): MaybePromise<RuntimeValue>;
   playerPanel?(view: BrowserWarmView, viewerId: string): MaybePromise<RuntimeValue>;
@@ -528,6 +551,10 @@ interface ActiveRound {
   controls: ControlSampler;
   welcome: WelcomeMessage | null;
   welcomed: boolean;
+  /** WELCOMEs this round has had (a replaced link welcomes the seat again). */
+  welcomes: number;
+  /** The battle's lights set up at the WELCOME (garage lights off, the weather, the night pool): activation skips them. */
+  lit: boolean;
   activating: boolean;
   activated: boolean;
   revealed: boolean;
@@ -950,6 +977,9 @@ export function createBrowserComposition({
       createPresentation: createRoundPresentation,
       clock,
       clientBuild,
+      // 2026-10-15 (the MP stream): an ordinary task as the probe of this tab's own task queue: the match client's stall
+      // clock rests while it is starved (a long entry job), so a busy seat never mistakes its own stall for a dead host
+      matchClient: { taskProbe: (callback: () => void) => { setTimeout(callback, 0); } },
       ...(p2pPorts ? {
         p2p: {
           ...p2pPorts,
@@ -1089,7 +1119,7 @@ export function createBrowserComposition({
       matchId: matchStart.matchId, round: matchStart.round, mapId: matchStart.mapId, mode: matchStart.mode,
       spectator: sessionRound.spectator, viewerId, ownSpecId: ownPlayer?.specId || (sessionRound.spectator ? 'spectator' : ''),
       presentation: null, controls: createControlSampler(() => active.presentation?.ownActor ?? null),
-      welcome: null, welcomed: false, activating: false, activated: false, revealed: false, failed: false, reported: false,
+      welcome: null, welcomed: false, welcomes: 0, lit: false, activating: false, activated: false, revealed: false, failed: false, reported: false,
       abort: new AbortController(), frames: 0, ownShots: 0, events: {}, shotsBy: {},
       trace: { version: 2, mode: modeLabelFor(sessionRound.room.mode, matchStart.round), map: matchStart.mapId, round: matchStart.round, stages: {}, startedAt, status: 'pending' },
       stageAt: startedAt,
@@ -1111,11 +1141,25 @@ export function createBrowserComposition({
       showRoundLoad(viewerId, lobbyPlayers(sessionRound.room.players), ownPlayer, active.mapId, sessionRound.room.mode, active.round, 'Battle', sessionRound.room.settings.gameMode);
       load.audio.resume();
       load.audio.loadingOn(true);
+      // the lobby's vehicles (ours first): their engines, with the map's beds and the running gear, decode ahead of the
+      // combat banks while the round loads, so its countdown sounds (2026-10-14)
+      const rosterSpecs = [...new Set([active.spectator ? '' : active.ownSpecId,
+        ...lobbyPlayers(sessionRound.room.players).filter((player) => player.team !== 'spectator').map((player) => player.specId)])].filter(Boolean);
+      void Promise.resolve().then(() => load.audio.warmBattleEvents?.(rosterSpecs)).catch(() => {});
       load.lighting.setFarCascadeDormant(false);
       load.battleLoad.progress(0.02, 'Securing match channel');
       await load.nextFrame();
       check('cover');
       load.battleLoad.progress(0.08, 'Loading battlefield');
+      // 2026-10-15 (the MP stream): the named seats' vehicles warm beside the world (prewarmRoster). Never awaited here: it
+      // must not lengthen the world's stage, and prepareRoster joins whatever is still in flight (the bakes coalesce).
+      const seats = sessionRound.room.players.flatMap((player) => (player.team !== 'spectator' && player.specId
+        ? [{ specId: player.specId, camo: player.camo || 'factory', isViewer: !active.spectator && player.id === viewerId }] : []));
+      if (load.prewarmRoster && seats.length) {
+        let warming: MaybePromise<RuntimeValue>;
+        try { warming = load.prewarmRoster(seats, active.abort.signal); } catch { warming = undefined; }
+        void Promise.resolve(warming).then(() => { active.trace.rosterPrewarmed = seats.length; }, () => { /* the roster paints them itself */ });
+      }
       await Promise.all([
         load.loadModules(),
         load.ensureBattleVisuals(),
@@ -1161,8 +1205,34 @@ export function createBrowserComposition({
         controls: active.spectator ? null : active.controls.sample,
         prediction: null,
         onWelcome: async (welcome) => {
+          // 2026-10-15 (the MP stream, the §7 side-by-side): a later WELCOME on this round (its link was replaced and the
+          // seat said hello again; every main rejoin opened a second link 7 s in) re-seats the presentation but never marks
+          // `roster` again. The second mark overwrote the first's value with the time since it, and 6.7-10 s of every
+          // rejoin's trace belonged to no stage. It is counted instead.
+          const first = active.welcomes === 0;
+          active.welcomes++;
+          if (!first) {
+            active.trace.rewelcomes = active.welcomes - 1;
+            (active.trace.rewelcomeAtMs ??= []).push(Math.round(now() - active.trace.startedAt));
+          }
           try {
             active.welcome = welcome;
+            // 2026-10-15 (the MP stream, after the perf lane's census: 187 programs on main against 149 on Sept 30, each
+            // reaching the driver in the strict compile after the roster, the first covered draw waiting in getUniforms for
+            // the whole queue): the light signature is final once the authority's weather and the night pool stand, so they
+            // are set up now and the scene's programs go to the driver while the roster is painted below.
+            if (!active.lit && warm.submitPrograms) {
+              active.lit = true;
+              activation.setGarageLighting(false);
+              await warm.atmosphere?.({ meta: { weatherSeed: welcome.seed } });
+              check('atmosphere');
+              await warm.nightLighting?.();
+              check('nightLighting');
+              const submitted = warm.submitPrograms(active.abort.signal);
+              void Promise.resolve(submitted).catch((error) => {
+                if (!active.abort.signal.aborted) reportWarning('multiplayer v2 entry', `early program submission: ${messageOf(error)}`);
+              });
+            }
             await battlePresentation.rosterReady();
             check('roster');
             for (const actor of battlePresentation.actors.values()) actor.visual.setGroundSampler?.(scene.groundSampler);
@@ -1172,7 +1242,7 @@ export function createBrowserComposition({
               const world = battlePresentation.predictionWorld();
               if (world) sessionPresentation.prediction = { world, specFor: (specId) => (specId === own.specId ? own.spec : getSpec(specId)) };
             }
-            markStage(active, 'roster');
+            if (first) markStage(active, 'roster');
             active.welcomed = true;
             load.battleLoad.progress(0.84, 'Synchronizing authority');
           } catch (error) {
@@ -1257,11 +1327,13 @@ export function createBrowserComposition({
       if (signal.aborted || round !== active || disposed) throw new RoundSupersededError(detail);
     };
     try {
-      activation.setGarageLighting(false);
-      await warm.atmosphere?.({ meta: { weatherSeed: active.welcome?.seed } });
-      check('atmosphere');
-      await warm.nightLighting?.();
-      check('nightLighting');
+      if (!active.lit) {
+        activation.setGarageLighting(false);
+        await warm.atmosphere?.({ meta: { weatherSeed: active.welcome?.seed } });
+        check('atmosphere');
+        await warm.nightLighting?.();
+        check('nightLighting');
+      }
       markStage(active, 'atmosphere');
       load.battleLoad.progress(0.845, 'Warming suspension terrain');
       await warm.terrain?.(view);

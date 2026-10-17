@@ -30,9 +30,13 @@ function boreAndAir(meshes){
     assert.equal(ray.intersectObjects(meshes,false).length,0,'actual open longitudinal slot between stock and lower gas tube');
   }
 }
+const ridesUnder=(o,a)=>{for(let p=o.parent;p;p=p.parent)if(p===a)return true;return false;};
 function ownerAndContact(tank){
   const mesh=tank.root.getObjectByName('sourceMachineGun_turretDark'),group=mesh.parent,yaw=tank.root.getObjectByName('rig_turret');
-  assert.equal(group.parent,yaw);assert.deepEqual(group.userData.barrelAxisLocal,[0,0,1]);
+  // 2026-10-16 (226 gate): VH.14 (76ef67d65, every drawn gun works) makes the AA gun a working roof station: the
+  // fitting rides its station's pitch node under the turret, so ownership is an ancestor test (a boolean: assert.equal on
+  // two scene graphs made node inspect both whole and ran the process past 40 GB)
+  assert.ok(ridesUnder(group,yaw),'the AA station rides the turret');assert.deepEqual(group.userData.barrelAxisLocal,[0,0,1]);
   near(new THREE.Vector3(0,0,1).transformDirection(group.matrixWorld).z,-1,.000001,'declared AA firing axis remains actual aft-facing axis');
   // Source side links overlap both the barrel and gas tube; pin their actual
   // visible central material rather than granting a bounds-only attachment.
@@ -47,7 +51,7 @@ function ownerAndContact(tank){
   assert.ok(before.distanceTo(local.clone().applyMatrix4(mesh.matrixWorld))>.4,'AA physical owner follows turret yaw');
 }
 for(const quality of ['high','low']){
-  const tank=createTank('t72b3_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const tank=createTank('t72b3',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{tank.root.updateMatrixWorld(true);const meshes=visible(tank.root);stockAndReceiver(meshes);boreAndAir(meshes);ownerAndContact(tank);}
   finally{tank.dispose();}
 }

@@ -6,11 +6,11 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // (§5.75 owner consistency order, 2026-08-08: one family per module; PURE
 // REFACTOR — every moved id hash-proven byte-identical across the split).
 // Residents:
-//   challenger1 — profiles-class build (CHALLENGER_PROFILES, merged by
+//   challenger1_mk2 — profiles-class build (CHALLENGER_PROFILES, merged by
 //     profiledProcedurals.ts like every ./profiles family map); moved from
 //     uk.ts. Its spec row still derives from challenger2's TANK_SPECS row
 //     via the additional fleet donor copy — unchanged mechanism.
-//   challenger2 / challenger_3 — canonical builders demand-registered from
+//   challenger2 / challenger3_proto — canonical builders demand-registered from
 //     CHALLENGER_BUILDERS. Their boot-light combat rows live separately in
 //     challengerSpecs.ts so an Abrams garage does not load this geometry.
 // Shared family and spec construction policy is imported, never duplicated.
@@ -1012,7 +1012,8 @@ function challenger1Build(P: ChallengerBuilderPort): void {
       // receiver, can and belt stand clear of the NBC pack (top 0.935) and the bore (~2.68 m world) rides over the
       // commander's sight hood (2.59 m): the gun breaks the turret's far skyline in the hero view instead of hiding
       // behind the hood.
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: 0.06, scale: 1.0, seed: 7, riser: 0.10 });
+      // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: 0.06, scale: 1.0, seed: 7, riser: 0.10, working: true });
       mg.name = 'challenger1LoaderL37';
       mg.position.set(-0.74, 0.876, -0.15);
       mg.rotation.y = -0.06;
@@ -1034,7 +1035,8 @@ function challenger1Build(P: ChallengerBuilderPort): void {
         P.add('turretDark', box(0.10, 0.06, 0.07), vx, 0.80, vz, 0, vry, 0);
         P.add('turretGlass', box(0.075, 0.034, 0.012), vx, 0.80, vz + 0.035, 0, vry, 0);
       }
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 1.0, seed: 8, riser: 0.10 });
+      // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 1.0, seed: 8, riser: 0.10, working: true });
       mg.name = 'challenger1CommanderL37';
       mg.position.set(0.70, 0.795, -0.40);
       mg.rotation.y = 0.05;
@@ -1521,7 +1523,7 @@ export const CHALLENGER_PROFILES = {
   // It is assembled exclusively from the procedural primitives and fittings
   // in this module plus the fleet-native linked course. No external mesh,
   // sampled vertex stream or converted model payload enters the playable.
-  challenger1: { build: challenger1Build },
+  challenger1_mk2: { build: challenger1Build },
 } satisfies VehicleProfileRecord;
 
 
@@ -1564,11 +1566,11 @@ function towHook2(P: ChallengerBuilderPort, x: number, y: number, z: number): vo
 
 // ---------------------------------------------------------------------------
 // CH1-BASE TONE KIT (uk round 2026-08-07 — owner order: "challenger 2 and 3
-// ... using the base of the challenger 1"). The challenger1 r8/r9 family
+// ... using the base of the challenger 1"). The challenger1_mk2 r8/r9 family
 // tone recipes (uk.ts ukToneKit + ukGearAirBackers) re-expressed for the
 // modern1 challenger builders: per-instance material work only — the gate
 // renders self-lit masks, so nothing here moves a curve or a mask (§C).
-// uk.ts is single-owner + hash-guarded (challenger1 dbe33204), so the
+// uk.ts is single-owner + hash-guarded (challenger1_mk2 dbe33204), so the
 // mechanism is PORTED, not imported; hex keys follow the tankFactory
 // buildRunningGear clone defaults (pads 0x171614 / chain 0x27251f) plus the
 // builders' own 0x565c50 tireHex clone (re-keyed to the dark ring tone —
@@ -1852,6 +1854,8 @@ function cr2MountedMg(
     // weapons read as one connected assembly instead of two floating parts.
     barrelBridge: cls === 'mag',
     rotation: [0, rotationY, 0],
+    // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the crew gun is a working station
+    working: true,
   });
   mg.position.set(x, y, z);
   mg.userData.mountSeatY = y;
@@ -2008,7 +2012,9 @@ function buildChallenger2WeaponTower(
   const stationX = (x: number): number => x + centerX - 0.7095;
   const stationY = (y: number): number => y + seatY - 0.690;
 
-  const automatic = P.spec.id==='challenger2e' || P.spec.id==='ua_challenger2';
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the tower's GPMG works on every host — the owner's
+  // activation on the 2E and the Ukrainian CR2 (2026-10-08) now reaches the base Challenger 2's tower too.
+  const automatic = true;
   const station = automatic ? beginAuxiliaryStation(P, {
     name:'challengerRemoteGPMG',caliberMm:7.62,
     yaw:[stationX(.77),stationY(.69),.20],
@@ -2180,16 +2186,16 @@ function buildChallenger2VariantPackage(
       P.add('turretDetail', box(0.10, 0.16, 0.10), 0.05, 0.58, -1.34);
       P.add('turretDetail', cylY(0.014, 0.018, 0.36, 8), 0.05, 0.80, -1.34);
       const loaderMgSeatY = loaderCupolaBaseY + 0.12 + 0.040 - 0.005;
-      const commanderMgSeatY = commanderCupolaBaseY + 0.14 + 0.040 - 0.005;
+      // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle and every drawn gun works): the
+      // Challenger 2's one roof gun is the loader's L37A2 GPMG, a working station; the commander carries none, so the
+      // M2 on his cupola is gone.
       cr2MountedMg(P, { x: -0.56, y: loaderMgSeatY, z: -0.72, cls: 'mag', seed: 41, rotationY: -0.12 });
-      cr2MountedMg(P, { x: 0.54, y: commanderMgSeatY, z: -0.62, cls: 'm2', seed: 42, rotationY: 0.16, scale: 0.92 });
       roofSeats.push(
         { label: 'fv4034-loader-machine-gun', carrierY: loaderMgSeatY + 0.005, bottomY: loaderMgSeatY },
-        { label: 'fv4034-commander-machine-gun', carrierY: commanderMgSeatY + 0.005, bottomY: commanderMgSeatY },
       );
-      receipt.mannedMachineGuns = 2;
+      receipt.mannedMachineGuns = 1;
       receipt.bridgedMachineGunBarrels = 1;
-      receipt.roofAttachmentCount = 8;
+      receipt.roofAttachmentCount = 7;
       for (const side of [-1, 1]) for (let k = 0; k < 4; k++) {
         const angle = side * (0.64 + k * 0.09);
         const tubeX = side * 1.02 + Math.cos(angle) * (k - 1.5) * 0.06;
@@ -2766,7 +2772,7 @@ function buildChallenger3XBustle(
 
 function buildChallenger3XPackage(P: ChallengerBuilderPort): void {
   const receipt: Challenger3XReceipt = {
-    variant: 'challenger_3x',
+    variant: 'challenger3',
     enhancedSkirtPanels: 0,
     skirtHangers: 0,
     glacisEraCassettes: 0,
@@ -5131,7 +5137,7 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
       for (const sx of [-1, 1]) P.add('hullDetail', box(0.025, 0.18, 0.025), s * 1.12 + sx * 0.10, 1.43, -3.84);
     }
     // ch1-base family tone kit + gear-air backers (r8/r9 recipes; family
-    // resemblance with challenger1 + challenger2). Backer wall spans the
+    // resemblance with challenger1_mk2 + challenger2). Backer wall spans the
     // SKIRTED bays only (the rear run is honestly naked per the print).
     ch1BaseToneKit(P, { cloth: 0x262b1d, clothEnv: 0.05, dark: 0x282c22 });
     ch1BaseGearBackers(P, [
@@ -5140,7 +5146,7 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
       [0.46, 0.42, 0.02, 0.75, 0.49, 1.185],
       [0.46, 0.42, 0.02, 0.75, 0.49, 0.275],
     ]);
-    if (P.spec.id === 'challenger_3x') buildChallenger3XPackage(P);
+    if (P.spec.id === 'challenger3') buildChallenger3XPackage(P);
     P.hullG.userData.challenger3HullClosureReceipt = {
       upperGlacisSeam: {
         innerX: 1.60,
@@ -5168,7 +5174,7 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
     // geometry — never floated mid-air)
     P.decal('hull', 'soot', null, 0.42, [-0.45, 1.10, -3.962], Math.PI);
     P.topY = 1.05;
-    if(P.spec.id==='challenger_3x')addModernFieldCage(P);
+    if(P.spec.id==='challenger3')addModernFieldCage(P);
     scaleChallenger3Family(P);
   };
   buildChallenger3MarkingsStage1();
@@ -5179,6 +5185,6 @@ export const CHALLENGER_BUILDERS = {
   challenger2: buildChallenger2,
   challenger2e: buildChallenger2,
   ua_challenger2: buildChallenger2,
-  challenger_3: buildChallenger3,
-  challenger_3x: buildChallenger3,
+  challenger3_proto: buildChallenger3,
+  challenger3: buildChallenger3,
 } satisfies Record<string, (builder: ChallengerBuilderPort) => void>;

@@ -127,4 +127,39 @@ const mean = Object.values(residuals).reduce((a, b) => a + b) / GOOD.length;
 assert.ok(mean < 0.5, `mean residual over the good maps ${mean.toFixed(3)} (0.435 at the pinned constants)`);
 assert.equal(calibrationDirections(verdant.sunDir).length, 30, 'the fit\'s 30 directions (31 minus the 35° direction 3° from the sun)');
 
-console.log(`atmosphere.selftest: paper constants in the GLSL, LUT round trip, physical invariants, calibration mapping (verdant rayleigh ${verdant.rayleighScale.toFixed(2)} / mie ${verdant.mieScale.toFixed(1)}), Mars overrides, keys, legacy twin, good-map residual mean ${mean.toFixed(3)} PASS`);
+// ---- 2026-10-09 (the skies lane, owner R139): the per-map sky grade — the hue of the horizon band and of the upper sky at
+// the sky's own luminance, graded into the sky-view LUT (so the dome, the aerial target, the summary and the environment
+// bake see one sky), mirrored by the twin, faded by a low sun and the night, absent (and out of the key) unless authored
+const plain = skyPresetToAtmosphere(getMapConfig('verdant').sky);
+assert.equal(plain.grade[3] + plain.grade[7], 0, 'a map without a grade keeps the physical sky');
+assert.ok(!atmosphereKey(plain).includes('|1,1,1,0'), 'an ungraded sky keeps its key');
+for (const line of ['uniform vec4 uAtmoGradeH;', 'float wh = exp( - max( ATMO_PI * 0.5 - vza, 0.0 ) / uAtmoGradeBand );',
+  'sky = mix( sky, uAtmoGradeZ.rgb * l, uAtmoGradeZ.w * ( 1.0 - wh ) );', 'sky = mix( sky, uAtmoGradeH.rgb * l, uAtmoGradeH.w * wh );']) {
+  assert.ok(source.includes(line), `the sky-view pass grades the LUT: ${line}`);
+}
+const R139 = ['caldera', 'blackglass', 'ruinspires', 'copper_mesa', 'polders', 'whiteout'];
+for (const id of R139) {
+  const sky = getMapConfig(id).sky;
+  const day = skyPresetToAtmosphere(sky);
+  assert.ok(day.grade[3] > 0.3 && day.grade[7] > 0.1, `${id} authors its own sky (horizon ${day.grade[3].toFixed(2)}, overhead ${day.grade[7].toFixed(2)})`);
+  assert.notEqual(atmosphereKey(day), atmosphereKey({ ...day, grade: plain.grade }), `${id}: the grade is in the LUT's key`);
+  const hue = day.grade.slice(0, 3);
+  near(0.2126 * hue[0] + 0.7152 * hue[1] + 0.0722 * hue[2], 1, 1e-9, `${id}: the horizon hue keeps the sky's luminance`);
+  const night = skyPresetToAtmosphere({ ...sky, skyIntensity: 0.08, sunElevationDeg: 35 });
+  near(night.grade[3] + night.grade[7], 0, 1e-9, `${id}: the night sky is never graded (no coloured glow on the night horizon)`);
+  const sunset = skyPresetToAtmosphere({ ...sky, sunElevationDeg: 4 });
+  near(sunset.grade[3] + sunset.grade[7], 0, 1e-9, `${id}: a sunset keeps its own warm band`);
+}
+{
+  // the twin's grade: Caldera's horizon goes to its ochre ash, its upper sky stays bluer than the band
+  const sky = getMapConfig('caldera').sky;
+  const graded = new CpuAtmosphere(skyPresetToAtmosphere(sky), { msDirs: 4, msSteps: 8 });
+  const ungraded = new CpuAtmosphere({ ...skyPresetToAtmosphere(sky), grade: plain.grade }, { msDirs: 4, msSteps: 8 });
+  const anti = sunDirectionOf(1.5, sky.sunAzimuthDeg + 180), high = sunDirectionOf(40, sky.sunAzimuthDeg + 180);
+  const warmth = (c) => c[0] / c[2];
+  assert.ok(warmth(graded.sky(anti)) > warmth(ungraded.sky(anti)) * 1.25, 'the graded horizon warms toward the map\'s hue');
+  near(luminance(graded.sky(anti)), luminance(ungraded.sky(anti)), 1e-6, 'at the sky\'s own luminance');
+  assert.ok(warmth(graded.sky(high)) < warmth(graded.sky(anti)), 'the upper sky stays bluer than the band');
+}
+
+console.log(`atmosphere.selftest: paper constants in the GLSL, LUT round trip, physical invariants, calibration mapping (verdant rayleigh ${verdant.rayleighScale.toFixed(2)} / mie ${verdant.mieScale.toFixed(1)}), Mars overrides, keys, legacy twin, good-map residual mean ${mean.toFixed(3)}, the R139 sky grades PASS`);

@@ -8,7 +8,7 @@ scene.add(new THREE.HemisphereLight(0xddeeff,0x75674e,3));
 const sun=new THREE.DirectionalLight(0xffeed4,4);sun.position.set(10,20,12);scene.add(sun);
 const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(1200,700);document.body.append(renderer.domElement);
 const camera=new THREE.PerspectiveCamera(42,1200/700,.1,2000),tanks=[],required=[],drawn=new Set();
-for(const [i,id] of ['m1a2','t90m','tos1a_tagil'].entries()){
+for(const [i,id] of ['m1a1_abrams_hc','t90am','tos1a_tagil'].entries()){
  const spec=getSpec(id),tank=createTank(id,null,{proceduralOnly:true,batchStatic:true,battleDetailLod:true,geometryReceipt:true});
  const state=createTankState(spec,new THREE.Vector3((i-1)*8,0,0),.25);state.turretYaw=-.25;
  scene.add(tank.root);tanks.push({tank,state});

@@ -28,7 +28,8 @@ import { withIsolatedCaptureBrowser } from './isolated-capture-browser.mjs';
 //       dressing. Hand-authored decoration carries no markers and censuses
 //       ZERO: migrate the profile to KIT.fittings (kit.js) or carry a packet
 //       justification for a real hand-authored weapon. Owner-approved source
-//       configurations pin exact counts by original hash; others need mg>=1.
+//       configurations pin exact counts by original hash; others need mg>=1, except a vehicle whose real counterpart
+//       carries no roof weapon (src/vehicles/roofWeaponPolicy.ts, VH.14 2026-10-14), which needs mg 0.
 // Usage:
 //   node tools/tank-standard-check.mjs --ids=a,b [--gate] [--no-render]
 //   node tools/tank-standard-check.mjs --fixture     # KIT.fittings self-test
@@ -304,7 +305,7 @@ if (ids.length) {
   if (!noRender) {
     console.log('[standard-check] decor censuses KIT.fittings markers only (§B3): hand-authored ' +
       'decoration predating the fittings library reads mg0+0d — migrate the profile to ' +
-      'KIT.fittings.<fn> or carry a packet justification for a real hand-authored weapon. Source-specific counts require the approved original hash; other vehicles retain mg>=1.');
+      'KIT.fittings.<fn> or carry a packet justification for a real hand-authored weapon. Source-specific counts require the approved original hash; other vehicles retain mg>=1, except those listed in src/vehicles/roofWeaponPolicy.ts (no roof weapon on the real vehicle: mg 0).');
   }
 }
 process.exit(fails || fixtureFailed ? 2 : 0);

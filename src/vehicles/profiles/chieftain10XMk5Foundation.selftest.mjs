@@ -15,8 +15,8 @@ const stable = v => Array.isArray(v) ? v.map(stable) : v && typeof v === 'object
 const semantic = v => hash(JSON.stringify(stable(v)));
 const point = xyz => new THREE.Vector3(...xyz);
 
-// Frozen pre-foundation scene/emission/metadata digests are retired: whole-tank change detection of chieftain5_x and
-// chieftain_mk10_x is the fleet geometry ledger's. This receipt keeps the live contracts: the geometry-only consumer
+// Frozen pre-foundation scene/emission/metadata digests are retired: whole-tank change detection of chieftain5 and
+// chieftain_mk10 is the fleet geometry ledger's. This receipt keeps the live contracts: the geometry-only consumer
 // differs from the rendered build only in paint, the Mk10 build cannot mutate Mk5 metadata, the markings are unit
 // quads seated on physical stock, and the Mk10 foundation follows its independent source rays and datums.
 const MARKING_NAMES = ['vehicleMarking_insignia', 'vehicleMarking_designation'];
@@ -174,11 +174,11 @@ function paintOmissionControls(renderedRows, optimizedRows) {
 }
 
 function checkMk5(quality, coldSpec) {
-  const tank = createTank('chieftain5_x', null, { quality, proceduralOnly: true,
+  const tank = createTank('chieftain5', null, { quality, proceduralOnly: true,
     camoSeed: 4242, materialMode: 'rendered', geometryReceipt: true });
   try {
     const rows = sceneRows(tank.root);
-    const optimized = createTank('chieftain5_x', null, { quality, proceduralOnly: true,
+    const optimized = createTank('chieftain5', null, { quality, proceduralOnly: true,
       camoSeed: 4242, materialMode: 'geometry-only', geometryReceipt: true });
     try {
       const optimizedRows = sceneRows(optimized.root);
@@ -190,7 +190,7 @@ function checkMk5(quality, coldSpec) {
     // then attaches the longstanding derived trackShapes. Admit exactly that
     // lifecycle addition, and fingerprint the complete warmed record (same
     // run) so the following Mk10 build cannot mutate ANY Mk5 metadata.
-    const warmed = stable(getSpec('chieftain5_x'));
+    const warmed = stable(getSpec('chieftain5'));
     assert.deepEqual(warmed.armor.trackShapes.map(s => s.module), ['trackL', 'trackR']);
     assert.deepEqual(warmed, { ...coldSpec, armor: { ...coldSpec.armor,
       trackShapes: warmed.armor.trackShapes } }, 'only its own derived trackShapes enrich the cold Mk5 record');
@@ -279,19 +279,19 @@ function collectEmission(stillbrew, casting, key, args) {
 
 function measuredMk10(quality) {
   const stillbrew = [], casting = [];
-  registerProfiledBuilders({ chieftain_mk10_x: p => buildChieftainMk10X(new Proxy(p, {
+  registerProfiledBuilders({ chieftain_mk10: p => buildChieftainMk10X(new Proxy(p, {
     get(target, key) {
       if (typeof target[key] !== 'function') return Reflect.get(target, key);
       return (...args) => { collectEmission(stillbrew, casting, key, args); return target[key](...args); };
     },
   })) });
   try {
-    const tank = createTank('chieftain_mk10_x', null, { quality, proceduralOnly: true,
+    const tank = createTank('chieftain_mk10', null, { quality, proceduralOnly: true,
       geometryReceipt: true, batchStatic: false, camoSeed: 4242 });
     tank.root.updateMatrixWorld(true); return { tank, stillbrew, casting };
   } catch (error) {
     stillbrew.forEach(s => s.geometry.dispose()); casting.forEach(g => g.dispose()); throw error;
-  } finally { registerProfiledBuilders({ chieftain_mk10_x: buildChieftainMk10X }); }
+  } finally { registerProfiledBuilders({ chieftain_mk10: buildChieftainMk10X }); }
 }
 
 function sourceCasting(root, geometries) {
@@ -335,7 +335,7 @@ function sharedWiring() {
 }
 
 function checkDatums(root) {
-  const d = CHIEFTAIN10_X_DATUMS.chieftain_mk10_x;
+  const d = CHIEFTAIN10_X_DATUMS.chieftain_mk10;
   assert.deepEqual(d.dims, { hullLengthM: 7.38869, overallLengthM: 10.803698,
     widthM: 3.678103, heightM: 2.453337 }, 'source-specific dimensions, not Mk5 scale targets');
   for (const [name, xyz] of [['rig_turret', [0, 1.512956, .595241]],
@@ -391,7 +391,7 @@ function posedEquipment(root) {
 }
 
 sharedWiring();
-const coldMk5Spec = stable(getSpec('chieftain5_x'));
+const coldMk5Spec = stable(getSpec('chieftain5'));
 const currentPaintMatrices = [];
 let warmedMk5Hash;
 for (const quality of ['high', 'low']) {
@@ -404,7 +404,7 @@ for (const quality of ['high', 'low']) {
     if (quality === 'low') preservationNegativeControls(tank.root, paint);
     assert.deepEqual(stillbrew.map(s => s.tag).sort(), ['port', 'spine', 'starboard']);
     checkDatums(tank.root); sourceCasting(tank.root, casting); posedEquipment(tank.root);
-    assert.equal(semantic(getSpec('chieftain5_x')), warmedMk5Hash,
+    assert.equal(semantic(getSpec('chieftain5')), warmedMk5Hash,
       'Mk10 construction and articulation cannot mutate any complete warmed Mk5 metadata');
     console.log(`chieftain10XMk5Foundation ${quality}: Mk5 paint-only geometry parity and unmutated metadata, Mk10 markings, source datums/variant air/ownership PASS`);
   } finally { tank.dispose(); stillbrew.forEach(s => s.geometry.dispose()); casting.forEach(g => g.dispose()); }

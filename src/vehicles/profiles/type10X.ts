@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import {KIT} from './kit.ts';
+import {fieldChestParts,reserveDecorVolume} from './fieldChest.ts';
 import {sectionSolid,type SolidSection} from './sectionSolid.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
 import {addType10CoaxSurround} from './type10XCoax.ts';
@@ -278,10 +279,35 @@ function rearRack(P:TankBuilderPort):void {
     frameBar(P,[left,2.125,z],[right,2.125,z]);
     for(const x of [left,right])frameBar(P,[x,1.622,z],[x,2.125,z]);
   }
-  turret(P,'turretCloth',box(.37,.40,.69),-.32,1.880,-2.43);
-  turret(P,'turretCloth',cylinder(.31,.52,20),.77,1.94,-2.388);
-  turret(P,'turretCloth',box(.55,.325,.49),-.388,1.844,-2.936);
-  turret(P,'turretCloth',cylinder(.31,.52,20),.233,1.933,-2.825);
+  rearBasketStowage(P);
+}
+
+// Owner markup 2026-10-14 ("actual tank equipment ... in lieu of random thingies"): the basket held two canvas blocks
+// and two upright canvas drums. The JGSDF calls the Type 10's external turret stowage its "basket": crew equipment in
+// closed steel chests (a 20 L can stands 0.49 m, taller than the basket's 0.48 m clear height). Rear row: three chests
+// across the basket; front row: three lower chests against the bustle. Every chest stands on the floor slats (y 1.622) inside the frame (x -1.268..1.12,
+// z -3.227..-2.065, top bar 2.125), clear of the bars by at least 3 cm.
+function rearBasketStowage(P:TankBuilderPort):void {
+  const floor=1.640;
+  const chest=(w:number,h:number,d:number,x:number,z:number,front:1|-1,handles=true)=>{
+    const {paint,dark}=fieldChestParts(w,h,d,{high:!!P.q,front,handles});
+    for(const g of paint)turret(P,'turret',g,x/EQUIPMENT_X_DATUM,floor,z);
+    for(const g of dark)turret(P,'turretDark',g,x/EQUIPMENT_X_DATUM,floor,z);
+  };
+  // rear row, latches facing out of the basket's rear mesh; the chests stand side by side and the front row against
+  // the rear row, so no narrow crevice runs down between them (a 5-14 cm slot between chests under the bustle read as
+  // an opening into the hull to the watertight check: tools/track-lane-boxes.selftest)
+  // (no end handles: each chest's end stands against its neighbour's)
+  chest(.86,.36,.46,-.76,-2.935,-1,false);
+  chest(.52,.36,.46,-.07,-2.935,-1,false);
+  chest(.74,.36,.46,.56,-2.935,-1,false);
+  // front row, latches facing aft over the rear row's lids
+  chest(.62,.30,.40,-.86,-2.505,-1,false);
+  chest(.50,.26,.40,-.30,-2.505,-1,false);
+  chest(.70,.30,.40,.30,-2.505,-1,false);
+  // critic panel 2026-10-15: the basket stays the chests' (the canvas loads stood here before), so the decor's loads
+  // keep the seats they had (fieldChest.ts reserveDecorVolume)
+  reserveDecorVolume(P.turretG,[-1.25-PIVOT[0],floor-PIVOT[1],-3.2-PIVOT[2]],[1.25-PIVOT[0],floor+.55-PIVOT[1],-2.18-PIVOT[2]]);
 }
 
 function sightCavity(P:TankBuilderPort,x:number,y:number,z:number,w:number,h:number,d:number,glassZ:number):void {
@@ -444,12 +470,15 @@ function rearAntennaMount(P:TankBuilderPort):void {
 }
 
 function mainGun(P:TankBuilderPort):void {
+  // The muzzle section runs to the measured muzzle face, the muzzle/FX datum (official 9.42 m overall). It stopped
+  // 20 mm short (5.60875) for the factory's seated bore lip, which the carved cannon bores (a28e4d8e6) no longer add
+  // (type10X: overall length 9.400 vs 9.42).
   gun(P,'gunMount',cylX(.216,.348,32),0,1.857,2.230);
   gun(P,'gunMount',box(.364,.385,.235),0,1.865,2.075);
   for(const [a,b,rr,rf]of[[2.216,2.424,.187,.154],[2.424,2.901,.154,.140],
     [2.901,3.16,.140,.125],[3.16,3.254,.125,.155],[3.254,3.784,.155,.155],
     [3.784,3.914,.155,.102],[3.914,5.186,.102,.102],
-    [5.186,5.456,.102,.092],[5.456,5.60875,.082,.082]])
+    [5.186,5.456,.102,.092],[5.456,TYPE10_X_DATUMS.muzzleZ,.082,.082]])
     gun(P,'gun',cylZ(rf,b-a,P.q?32:20,rr),0,1.851,(a+b)/2);
   for(const z of [2.90,3.0,3.10])gun(P,'gun',cylZ(.144,.017,28),0,1.851,z);
   for(const side of [-1,1]) {
@@ -477,7 +506,7 @@ export function buildType10X(P:TankBuilderPort):void {
   });
   turretArmor(P);rearRack(P);roofEquipment(P);mainGun(P);
   P.topY=2.989-PIVOT[1];
-  P.hullG.userData.xRebuild={candidate:'type10_x',independent:true,sourceLocalOnly:true,datumVersion:1};
+  P.hullG.userData.xRebuild={candidate:'type10',independent:true,sourceLocalOnly:true,datumVersion:1};
 }
 
-export const TYPE10_X_PROFILES={type10_x:{build:buildType10X}} as const;
+export const TYPE10_X_PROFILES={type10:{build:buildType10X}} as const;

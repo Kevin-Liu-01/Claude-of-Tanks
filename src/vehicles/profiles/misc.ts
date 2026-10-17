@@ -1,10 +1,12 @@
 import { buildT80UK } from './t80ukRenewal.ts';
+import { withSpareTrackRun } from '../spareTrackSeat.ts';
+import { spareLinkBlock } from '../spareLinkGeometry.ts';
 import { buildAmx30Casting } from './amx30X.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 // Euro/Asia-moderns family procedural profiles (fidelity oracles:
 // ariete-dustymojito, char_leclerc_andertan, t80u_javanilga, recovered
-// type90, type74-nullops). Owned by the misc/Euro-Asia family agent.
+// type90_kyumaru, type74-nullops). Owned by the misc/Euro-Asia family agent.
 //
 // Wave-2 rebuild (the archived visual-review receipt lessons applied in ONE
 // pass): every tank is a bespoke build measured against the width-normalized
@@ -12,15 +14,15 @@ import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 // docs/references/tanks/<id>.md. Original primitive reconstructions only —
 // no source mesh data, no vertex extraction (oracles are visual references).
 //
-// Baselines (2026-07-30): ariete 77.3 (T69 G40), leclerc 81.5 (T71 G65),
-// t80u 78.3 (T55), type90 78.9 (T62), type74 unscoreable (spec delisted).
+// Baselines (2026-07-30): c1_ariete_preserie 77.3 (T69 G40), leclerc_s2 81.5 (T71 G65),
+// t80uk 78.3 (T55), type90_kyumaru 78.9 (T62), type74 unscoreable (spec delisted).
 // The shared failure was the UPPER mask: canonical turrets far narrower /
 // lower / shorter than their oracles, guns seated at the wrong height with
 // wrong overhang. Hull envelopes stay at published dims (HANDOFF §4: real
 // dimensions win); oracle-frame caps are documented per packet.
 //
 // WIDTH GUARD: the lab width-normalizes both models. Committed max widths —
-// ariete/leclerc/t80u 3.60 (skirt planes ±1.80), type90 3.43 (±1.715),
+// c1_ariete_preserie/leclerc/t80u 3.60 (skirt planes ±1.80), type90_kyumaru 3.43 (±1.715),
 // type74 3.18 (SPROCKET TOOTH RING faces ±1.59 at xc 1.2835 — the kit's
 // ring spans the band edges +0.031 and the shoe pads ride +0.2985 off xc,
 // so the widest authored face is the ring, NOT the band; r5 probe find).
@@ -242,7 +244,7 @@ function trunnionRoll(
   if (o.ballR) P.addGunExtra(sph(o.ballR, 12), 0, 0, o.ballZ ?? rollR * 0.9);
 }
 
-// §C MISSING-SIDE fix (owner report 2026-08-06, "ariete and leclerc are
+// §C MISSING-SIDE fix (owner report 2026-08-06, "c1_ariete_preserie and leclerc_s2 are
 // missing left side of turrets"): KIT.slab builds its six faces for ONE
 // ring handedness — corners in plan order (-x,+z),(+x,+z),(+x,-z),(-x,-z),
 // bottom then top (tankFactory.ts:128). A mirrored call (x *= -1 without
@@ -253,9 +255,9 @@ function trunnionRoll(
 // DoubleSide maskMaterial (procedural-fidelity.html:315). That split is
 // exactly how the class survives to 82-85 gate scores (§C addendum:
 // MISSING-SIDE). Measured on this file 2026-08-06 (tools/
-// tmp-misc-leftprobe.mjs): ariete 12/22 slabs reversed (LEFT wedge-cheek
+// tmp-misc-leftprobe.mjs): c1_ariete_preserie 12/22 slabs reversed (LEFT wedge-cheek
 // pair, ALL THREE brow-loft planes, bow belly rise, all five RIGHT fseg
-// wrap fills, RIGHT 13th skirt course), leclerc 6/21 (LEFT forward-cheek
+// wrap fills, RIGHT 13th skirt course), leclerc_s2 6/21 (LEFT forward-cheek
 // complex 1.15 m^3 + outer sweep, LEFT roof-edge chamfer, LEFT armor-box
 // chamfer, RIGHT aft roof wedge, RIGHT mudguard strip). This wrapper
 // measures face outwardness about the corner centroid and re-orients
@@ -310,8 +312,8 @@ function orientedSlab(
 // law banked 32a6946): annular rim at tube radius + near-black bore disc
 // recessed ~2 cm inside the rim mouth. MECHANISM: the first (bucket-based)
 // implementation grew the gun AABB by the rim's 3 cm and RE-FRAMED the
-// turret-rows camera (t80u frame law) — leclerc turret 88.8 -> 82.6, t80u
-// -4.6, type90 -2.2, measured. The bore is therefore SHADOW-NAMED RENDER
+// turret-rows camera (t80uk frame law) — leclerc_s2 turret 88.8 -> 82.6, t80uk
+// -4.6, type90_kyumaru -2.2, measured. The bore is therefore SHADOW-NAMED RENDER
 // FURNITURE (§C): named meshes on the GUN group render in every game/critic
 // view but are excluded from every measurement mask AND the visible-box
 // framing recipes — mask/frame-neutral BY CONSTRUCTION, and the rim may sit
@@ -646,7 +648,9 @@ export function buildAriete(P: MiscBuilderPort): void {
   // loader MAG — SS B3 KIT fitting on the bustle roof front (foot sunk to
   // 0.55: the r4 0.63 seat printed the receiver 2.52 vs the ref 2.31 at
   // z_w -1.4 — the gate's own worst column)
-  const mag = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 5 });
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's AA MG 42/59)
+  const mag = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 5, working: true });
+  mag.name = 'arieteLoaderMg';
   const buildArieteTurretStage3 = (): void => {
     mag.position.set(-0.55, 0.69, -0.90);                                       // foot planted directly on the loader station
     P.turretG.add(mag);
@@ -814,14 +818,14 @@ export function buildAriete(P: MiscBuilderPort): void {
 // GALIX corners, rear hull rack.
 // ---------------------------------------------------------------------------
 
-function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'): void {
+function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' = 's2'): void {
   const { box, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
     fenders, headlight, liftEye, periscope, towCable, stowage, jerryCan, ammoCan,
     shovelTool } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
   const { rng } = P;
-  const tacticalNumber = variant === 'xlr' ? '104' : variant === 'amx56' ? '056' : '33';
-  const hullTacticalNumber = variant === 'xlr' ? 'XLR-104' : variant === 'amx56' ? 'AMX-56' : '6-33';
+  const tacticalNumber = variant === 'xlr' ? '104' : variant === 'leclerc_s1' ? '056' : '33';
+  const hullTacticalNumber = variant === 'xlr' ? 'XLR-104' : variant === 'leclerc_s1' ? 'AMX-56' : '6-33';
   // hull — R2 FULL RE-LAY from the post-warp workorder (2026-08-03):
   // the ref side deck line steps 1.549 (fore) / 1.577 (mid) / 1.632 (engine)
   // / 1.715 hump / 1.605 tail lip, the bow silhouette is the RAKED GLACIS
@@ -1401,7 +1405,7 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
     }
   };
   buildLeclercTurretStage2();
-  // ---- TURRET FRONT (re-authored 2026-08-06, owner close-up: "the leclerc
+  // ---- TURRET FRONT (re-authored 2026-08-06, owner close-up: "the leclerc_s2
   // turret front is more sloped, and slopes down to a small strip of
   // flatness i believe"). Print decode (tools/tmp-leclercfront-probe.mjs
   // depth/height maps + 96-col workorder): each cheek is ONE steeply raked
@@ -1660,7 +1664,7 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
   // seven front cols (x -0.34..-0.62) where the ref roof is 2.359/2.369;
   // now ring top 2.368 / bar 2.378. Flush periscope collar RINGS added
   // (photo read 7: clean roof w/ periscope rings; sub-centimeter, mask-free).
-  const centeredRoofStations = variant === 'xlr' || variant === 'amx56';
+  const centeredRoofStations = variant === 'xlr' || variant === 'leclerc_s1';
   const commanderStation = centeredRoofStations ? [-0.67, -0.33] : [-0.56, -0.55];
   const gunnerStation = centeredRoofStations ? [0.67, -0.33] : [0.58, -0.90];
   const addRoofCupola = centeredRoofStations ? P.addCupola.bind(P) : P.add.bind(P);
@@ -1708,7 +1712,9 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
       // 7.62 (remote, at the commander's hand) beside its 12.7 coax. The S2 keeps it here; on the S1 and the XLR the
       // owner's roof RWS takes its place (the XLR's RWS replaced the roof 7.62), so they carry no ANF1.
       if (!centeredRoofStations) {
-        const anf1 = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: -0.18, seed: 11, scale: 0.78, ammo: true, barrelBridge: true });
+        // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
+        const anf1 = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: -0.18, seed: 11, scale: 0.78, ammo: true, barrelBridge: true,
+          working: true });
         anf1.name = 'leclercRoofAnf1';
         anf1.position.set(-0.85, 0.610, 0.413);
         anf1.userData.roofContactY = 0.610;
@@ -1756,7 +1762,7 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
     // decor fan bank on each front cheek (a "loose grey slab" to the critics, launchers the real tank does not have)
     // for 12 of their 30 launch sockets. Those 12 now ride each GALIX wedge as an upper row of six in the bank's own
     // form, so the smoke salvo keeps its count and every launcher stands at the rear sides, where the GALIX are.
-    const galixTop = variant === 'amx56' ? 0 : 6;
+    const galixTop = variant === 'leclerc_s1' ? 0 : 6;
     // the left (+X) row sits two pitches aft: the side box ahead of that bank owns the turret side forward of z -1.30;
     // on the XLR it also rides above the side armour module (top 0.63) that runs along that flank
     galixBank(P, 1.24, 0.33, -1.38, 1, 5, 2, galixTop, -0.32, variant === 'xlr' ? 0.17 : 0);
@@ -1800,10 +1806,13 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'amx56' = 's2'
     // tops 1.915w UNDER the ref's 1.924 col line, outer face x -1.6035
     // inside the plan col -1.592 window whose 1.398 front edge they never
     // pass (z_w 0.22..0.88).
-    for (let k = 0; k < 4; k++) {
-      P.add('turretTrack', box(0.045, 0.15, 0.16), -1.5805, 0.29, 0.42 + k * 0.19);
-      P.add('turretTrack', box(0.05, 0.05, 0.06), -1.583, 0.35, 0.42 + k * 0.19);
-    }                                                                            // (90-ladder r1: tops 1.965/1.975 — the fresh -1.6 front col reads the ref line at 1.97, the old 1.915 seat undershot)
+    // VEH-13: the four flank links are one registered run (spareTrackSeat.ts; local +Y out of the -X flank)
+    withSpareTrackRun(P, { site: 'leclerc-flank-links', source: 'adhoc', rotation: [0, 0, Math.PI / 2] }, (P) => {
+      for (let k = 0; k < 4; k++) {
+        P.add('turretTrack', spareLinkBlock(0.045, 0.15, 0.16, -1), -1.5805, 0.29, 0.42 + k * 0.19); // VEH-13: the fleet's link
+        P.add('turretTrack', box(0.05, 0.05, 0.06), -1.583, 0.35, 0.42 + k * 0.19);
+      }
+    });                                                                            // (90-ladder r1: tops 1.965/1.975 — the fresh -1.6 front col reads the ref line at 1.97, the old 1.915 seat undershot)
     P.add('turret', box(0.24, 0.32, 0.44), -1.38, 0.35, -1.82);                  // LEFT corner bin (rear -2.14w at x 1.26-1.50)
     P.add('turretDark', box(0.242, 0.008, 0.442), -1.38, 0.435, -1.82);          // bin lid seam (photo read 7: bins carry §B3 lid grammar)
     P.add('turretDark', box(0.02, 0.05, 0.035), -1.503, 0.32, -1.70);            // lid latches (3 mm proud of the priced -1.50 face, z-interior)
@@ -2039,7 +2048,7 @@ function buildLeclercXLR(P: MiscBuilderPort): void {
 // mirrored by armor faces in modern2.ts; its new gun plant remains a single
 // pitchable gun-owned package.
 function buildAMX56(P: MiscBuilderPort): void {
-  buildLeclerc(P, 'amx56');
+  buildLeclerc(P, 'leclerc_s1');
   const { box, cylY, cylZ, torus, periscope } = KIT;
   const slab = orientedSlab;
 
@@ -2172,7 +2181,7 @@ function buildAMX56(P: MiscBuilderPort): void {
 // edges 3.66 / -3.36); stern boat-tail (bottoms 0.62@-3.3 -> 0.93@-3.74) +
 // thin tail lip to -3.87; rear mudflap pods at x 1.44-1.58 to -3.83 = the §A
 // rear dims anchor (ref 12%-band mid -0.105: pods 3.60/-3.80 are SYMMETRIC
-// about it at the ref's own band heights — the t80u r3 counterweight).
+// about it at the ref's own band heights — the t80uk r3 counterweight).
 // Turret: LOW long slab (roof 2.06 front / 2.00 hatch zone / 1.885 bustle,
 // walls ±1.26 to 1.77, chamfered roof edge ±0.91) + center-right SIGHT RIDGE
 // 2.19-2.26 (z 1.31..-0.17, x -0.10..0.47) peaking 2.32 at center (M2), rear
@@ -2430,9 +2439,9 @@ function buildType90Turret(P: MiscBuilderPort): void {
   // the print's furniture crown to the published line and squashed the real
   // roof under it). THE REAL VEHICLE GOVERNS this region (§B7): roof 2.34
   // (published, Wikipedia + weaponsystems.net), face 1.43->2.34 (~0.90 m vs
-  // the print's 0.47), bore 1.82 (three-source school constant: type10 build
-  // 1.82 [PASS 9.0, roof-bore 0.48], leo2a4 build 2.00 [roof-bore 0.48],
-  // pre-warp type90 artist bore at 43.8% of his own face -> 1.82 on the real
+  // the print's 0.47), bore 1.82 (three-source school constant: type10_tk_x build
+  // 1.82 [PASS 9.0, roof-bore 0.48], leo2a2 build 2.00 [roof-bore 0.48],
+  // pre-warp type90_kyumaru artist bore at 43.8% of his own face -> 1.82 on the real
   // face; the spec's inherited armor model already carries gunPivot bore
   // 1.82). Per-column caps: docs/references/tanks/type90.md (this round).
   // §5.73-1 P95-ENVELOPE DATUM (2026-08-08, owner law): spec heightM
@@ -2566,7 +2575,7 @@ function buildType90Turret(P: MiscBuilderPort): void {
   // inside the 1% grace band)
   P.add('turretDetail', box(0.14, 0.040, 0.12), -0.55, 0.932, 0.55);
   P.add('turretDetail', box(0.14, 0.040, 0.12), -0.68, 0.932, 0.25);
-  // M2 on a LOW RIGHT-SIDE SWING MOUNT beside the commander hatch (type10
+  // M2 on a LOW RIGHT-SIDE SWING MOUNT beside the commander hatch (type10_tk_x
   // family precedent — "receiver top 2.31 on a LOW right-side swing mount":
   // a roof-standing pintle on a 2.34-datum roof owns heightM p95 and zeroes
   // dims; the swing mount keeps the whole gun <= 2.32, mask-interior in
@@ -2575,10 +2584,12 @@ function buildType90Turret(P: MiscBuilderPort): void {
   P.add('turretDetail', box(0.14, 0.024, 0.20), 1.13, 0.608, 0.10);            // mount shelf (top 2.02)
   P.add('turretDark', box(0.12, 0.030, 0.14), 1.14, 0.585, 0.10);              // support arm into the wall top band
   P.add('turretDark', box(0.028, 0.20, 0.028), 1.155, 0.49, 0.10);             // diagonal brace to the wall face (§B2 no-air: the mount is connected structure)
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the Type 90's roof M2)
   const m2 = FITTINGS.pintleMG({
     mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.94,
-    shield: true, ammo: true, ring: { r: 0.17, stubs: 3 }, seed: 9,
+    shield: true, ammo: true, ring: { r: 0.17, stubs: 3 }, seed: 9, working: true,
   });
+  m2.name = 'type90RoofM2';
   m2.scale.y = 1.24;                                                          // counter the complete turret-height correction so the weapon keeps a readable receiver/shield silhouette
   m2.position.set(-0.18, 1.015, -0.46);                                        // source-visible roof weapon; the former low right-wall seat disappeared into the slab at garage distance
   P.turretG.add(m2);
@@ -2835,7 +2846,7 @@ function buildType90Gun(P: MiscBuilderPort): void {
   // §5.248 GROUND-UP RESTORE (japan wave): the 2026-08-12 0.80 local-Y
   // turret-section compression + its compressed-frame roof re-kit are
   // retired — the owner's §5.248 order ("completely redesign ... exact
-  // geometric comparison with the 3d models ... leclerc highest standards")
+  // geometric comparison with the 3d models ... leclerc_s2 highest standards")
   // selects the certified 49-v2 print lines (fcfeb38a; §5.39 owner verdict
   // "the REAL lines govern": roof 2.34 / ridge 2.44-2.53 / sight head 2.60)
   // and the §5.73-1 heightM 2.55 datum. Every crown above re-seats on the
@@ -3096,7 +3107,9 @@ function buildType74(P: MiscBuilderPort): void {
   // heightM p95 anchor; low oval loader hatch ring LEFT (ref left-shoulder
   // 2.10-2.13 front-view band)
   cupola(P, 'turret', 0.40, 0.46, -0.46, 0.20, 0.16, 6);                       // planted on the low cast crown
-  const m2 = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', seed: 7 });
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the Type 74's roof M2)
+  const m2 = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', seed: 7, working: true });
+  m2.name = 'type74RoofM2';
   m2.position.set(0.44, 0.61, -0.48);                                          // receiver+sight seated on the cupola lid
   P.turretG.add(m2);
   P.add('turret', cylY(0.19, 0.20, 0.05, 14), -0.44, 0.48, -0.30);             // loader ring on the left shoulder
@@ -3184,10 +3197,10 @@ function buildType74(P: MiscBuilderPort): void {
 //   * NO SIDE SKIRTS — the five-wheel gear reads fully at side/garage
 //     angles (§B9; sponson floor 1.26 sits 4.5 cm over the 1.215 shoe
 //     crown, §B4).
-//   * MUCH LESS SIDE-TURRET ARMOR — the amx40 flank cassettes/appliqué
+//   * MUCH LESS SIDE-TURRET ARMOR — the amx40_proto flank cassettes/appliqué
 //     rails are gone; the cast walls carry only lift lugs, grab rails and
 //     smoke banks.
-//   * A LIL MORE TURRET ROUNDING — the amx40 20-station welded shell plan
+//   * A LIL MORE TURRET ROUNDING — the amx40_proto 20-station welded shell plan
 //     (france.ts amx40ShellPlan) is re-derived at x*0.87 / z*0.78 fwd /
 //     *0.97 aft, Chaikin-smoothed to 40 stations, and lofted through FIVE
 //     rings + a domed cap (the welded 3-ring prism becomes a cast round
@@ -3212,7 +3225,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
   } = KIT;
   const slab = orientedSlab;                                                   // §C winding guard on every mirrored slab
   const { rng } = P;
-  // STATION-SLICE SEGMENTATION (amx40 segZ mirror — edge-on prism law,
+  // STATION-SLICE SEGMENTATION (amx40_proto segZ mirror — edge-on prism law,
   // GEOMETRY-GATE): long boxes butt at <=0.48 pitch so every 0.52 m station
   // slab holds a real cross-section face; 4 mm laps kill z-fights.
   const segZ = (
@@ -3230,12 +3243,12 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
       P.add(bucket, box(w, h, pitch + 0.004), xc2, yc2, zLo + (k + 0.5) * pitch);
     }
   };
-  // ---- hull core (amx40 tub grammar at the 6.59 body): belly 0.35, tub
+  // ---- hull core (amx40_proto tub grammar at the 6.59 body): belly 0.35, tub
   // between the shoe lanes (inner faces ±0.955 -> tub ±0.86, §B2 channel
   // clearance), sloped belly shoulders lifting the channel columns --------
   const buildAMX30HullStage1 = (): void => {
     segZ('hull', 1.72, 0.75, 0, 0.725, -2.90, 2.62);                             // narrow belly tub between the rising end courses
-    for (const s of [-1, 1]) {                                                   // sloped belly shoulder (amx40 course, 5-wheel span)
+    for (const s of [-1, 1]) {                                                   // sloped belly shoulder (amx40_proto course, 5-wheel span)
       const n = 11, z0 = -2.60, pitch = (2.58 - z0) / n;
       for (let k = 0; k < n; k++) {
         const za = z0 + k * pitch, zb = z0 + (k + 1) * pitch + 0.004;
@@ -3247,7 +3260,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
     // terminal tub courses lift the floor over the animated end wraps
     segZ('hull', 1.72, 0.42, 0, 1.05, -3.20, -2.90);
     segZ('hull', 1.72, 0.40, 0, 1.02, 2.62, 3.02);
-    // ---- SPONSON BAND (full width ±1.51, y 1.26..1.585): the amx40 sponson
+    // ---- SPONSON BAND (full width ±1.51, y 1.26..1.585): the amx40_proto sponson
     // body with NO skirt below it — the entire wheel train reads (§B9). The
     // 1.26 floor clears the 1.215 return-shoe crown (§B4). ------------------
     segZ('hull', 3.02, 0.325, 0, 1.4225, -3.20, 1.50);
@@ -3256,7 +3269,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
     segZ('hull', 1.89, 0.18, 0, 1.18, -2.90, 2.60);
     P.add('hull', frustum(1.51, 1.90, 1.46, 1.51, 1.88, 1.46, 1.26, 1.56));      // fore-body course closing the sponson flank under the glacis shoulder
     segZ('hull', 2.98, 0.045, 0, 1.5625, -1.16, 1.48);                           // FORE DECK 1.585, inset behind a chamfered ±1.51 shoulder
-    // ENGINE DECK (amx40 identity: REAR-RAISED, stepped): step 1.615, rear
+    // ENGINE DECK (amx40_proto identity: REAR-RAISED, stepped): step 1.615, rear
     // plateau 1.655, both chamfering to the 1.585 deck line at the flanks.
     segZ('hull', 2.86, 0.075, 0, 1.5775, -2.32, -1.16);                          // step course y 1.54..1.615 (flat to ±1.43)
     segZ('hull', 2.86, 0.10, 0, 1.605, -3.18, -2.32);                            // plateau course y 1.555..1.655
@@ -3273,7 +3286,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
       [-1.43, 1.585, -1.04], [1.43, 1.585, -1.04], [1.43, 1.615, -1.20], [-1.43, 1.615, -1.20]));
     // ---- bow (§B1 one-plane read, §B4 track containment): the AMX-30
     // one-piece raked glacis authored as TWO CO-PLANAR courses split at the
-    // idler-wrap line (the amx40/legacy §B4 device — a full-width plate
+    // idler-wrap line (the amx40_proto/legacy §B4 device — a full-width plate
     // through z 2.66+ would run the wrap lanes): full width to the y 1.19
     // wrap-safe line, then the ±0.90 center tongue rides the SAME plane to
     // the pointed prow. -----------------------------------------------------
@@ -3311,7 +3324,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
     }
     if (b2) {
       // ---- GIAT BS G2 Brénus ERA, hull fields (§5.328 order 4: "a ton of
-      // era") — native strippable instanced bricks (t90m mechanism, §B5
+      // era") — native strippable instanced bricks (t90am mechanism, §B5
       // hull-fixed). G2 brick = 0.30 x 0.16 x 0.09 via per-instance scale.
       // GLACIS: six staggered courses seated ON the one-plane §B1 glacis
       // (outward normal (0, 0.9484, 0.3174); rx -1.2479 puts brick +z on it;
@@ -3362,7 +3375,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
         P.add('hullDark', box(1.42, 0.030, 0.024), 0, s0.y + 0.9496 * 0.012, s0.z + 0.3137 * 0.012, NRX, 0, 0);
       }
     }
-    // ---- stern (amx40 §B3.2 service field at the AMX-30 raked tail) -------
+    // ---- stern (amx40_proto §B3.2 service field at the AMX-30 raked tail) -------
     P.add('hull', slab(                                                          // raked upper tail: plateau edge -> plate top lip
       [-1.43, 1.28, -3.26], [1.43, 1.28, -3.26], [1.43, 1.28, -3.10], [-1.43, 1.28, -3.10],
       [-1.43, 1.32, -3.28], [1.43, 1.32, -3.28], [1.43, 1.655, -3.18], [-1.43, 1.655, -3.18]));
@@ -3515,7 +3528,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
       contactZF: 2.10, contactZR: -2.15,
       deadSag: 0.028, paintedEnds: false, coveredTop: false, arms: true,
     });
-    // ---- turret: the amx40 shell RE-LOFTED AS A CAST ROUND ("a lil more
+    // ---- turret: the amx40_proto shell RE-LOFTED AS A CAST ROUND ("a lil more
     // turret rounding"). Plan = france.ts amx40ShellPlan at x*0.87 / z*0.78
     // fwd / *0.97 aft, then ONE Chaikin corner-cut pass (20 -> 40 stations);
     // five rings + domed cap replace the welded 3-ring prism. NO flank
@@ -3735,15 +3748,15 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
     P.addEquipment('turret',box(.37,.027,.37),-.46,.943,.30,0,.06,0);
     P.add('turretDark',box(.25,.11,.023),-.46,.83,.475);
     P.add('turretGlass',box(.17,.065,.014),-.46,.83,.491);
-    // Two complete, supported AA machine-gun fittings. No floating receiver,
-    // barrel or sight duplicate; these remain decorative roof weapons.
+    // VH.14 (coordinator ruling 2026-10-14: roof weapons match the real vehicle and every drawn gun works): the B2's one
+    // roof gun is the commander's cupola 7.62 mm AA machine gun, a working station; the loader's second gun is gone.
     for(const [name,x,y,z,scale] of [
-      ['commander',commanderX-.33,1.012,commanderZ+.03,.98], ['loader',loaderX+.30,.80,loaderZ-.16,.87],
+      ['commander',commanderX-.33,1.012,commanderZ+.03,.98],
     ] as const){
-      const base=name==='commander'?.79:.69;
+      const base=.79;
       P.addEquipment('turret',cylY(.075,.10,y-base,16),x,(y+base)/2,z);
       P.add('turretDark',box(.17,.045,.21),x,y,z);
-      const gun=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale,tone:'dark',elev:.03,ammo:true});
+      const gun=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale,tone:'dark',elev:.03,ammo:true,working:true});
       gun.name=`amx30b2_${name}_machine_gun`;gun.position.set(x,y+.015,z);P.turretG.add(gun);
     }
     for(const side of [-1,1]){
@@ -3805,7 +3818,9 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
       const mgX = cupX + Math.sin(mgA) * railR, mgZ = cupZ + Math.cos(mgA) * railR;
       P.add('turretDark', geometryXform(box(0.09, 0.055, 0.17), 0, 0.012, railR, 0, 0, 0), cupX, railY, cupZ, 0, mgA, 0); // carriage saddle
       P.add('turretDark', geometryXform(box(0.05, 0.05, 0.15), 0, -0.02, 0.36, 0.9, 0, 0), cupX, 0.97, cupZ, 0, mgA, 0);  // mount arm into the drum
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: -0.04, seed: b2 ? 302 : 301, scale: 1.0, ammo: false });
+      // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the commander's cupola 7.62 mm AA gun)
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: -0.04, seed: b2 ? 302 : 301, scale: 1.0, ammo: false, working: true });
+      mg.name = 'amx30CupolaMg';
       mg.position.set(mgX, 1.036, mgZ + 0.04);
       P.turretG.add(mg);
       // ammo drum on the carriage left + curved feed chute into the receiver.
@@ -3952,14 +3967,14 @@ function buildAMX30B2(P: MiscBuilderPort): void { buildAMX30(P, true); }
 // unchanged. Superseded unregistered rebuild experiments are not retained.
 // ---------------------------------------------------------------------------
 export const MISC_PROFILES = {
-  type90: { build: buildType90 },
+  type90_kyumaru: { build: buildType90 },
   // Runtime Ariete is the stronger earlier repository-authored construction.
   // The unregistered Native2026 experiment was removed; neither a source mesh
   // nor converted vertex payload is used at runtime.
-  leclerc: { build: buildLeclerc },
-  leclerc_xlr: { build: buildLeclercXLR },
-  amx56: { build: buildAMX56 },
-  t80u: { build: buildT80UK },
+  leclerc_s2: { build: buildLeclerc },
+  leclerc_sxxi: { build: buildLeclercXLR },
+  leclerc_s1: { build: buildAMX56 },
+  t80uk: { build: buildT80UK },
   type74: { build: buildType74 },
   // FRANCE ROUND: the AMX-30s render procedural (the ahab GLBs carry a
   // baked-in hull/turret 180 — see the buildAMX30 header note)

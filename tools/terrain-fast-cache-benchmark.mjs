@@ -70,6 +70,8 @@ export function createTerrainRayExperiment(THREE, heightField, sample) {
   const source = between(mapSource, '  function terrainHitDistance(', '  function raycast(');
   rayFactory ??= new Function('THREE', 'heightField', 'hAtF', `
       const _pt = new THREE.Vector3(), _bisA = new THREE.Vector3();
+      // (DST-04: the live march reads the battle's ground overlay; the benchmark marches the bare field)
+      const rayOverlay = null; const rayHeightAt = hAtF;
       ${stripTypeScriptTypes(source)}
       return terrainHitDistance;
     `);

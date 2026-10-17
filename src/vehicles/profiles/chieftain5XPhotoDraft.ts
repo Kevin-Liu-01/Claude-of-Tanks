@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
+import { stationFromDrawnGun } from './auxiliaryStation.ts';
 import { roundedTrackContact } from './roundedTrackContact.ts';
 import { chieftain5CastTurret, chieftain5CastMantlet } from './chieftain5XCast.ts';
 import { addChieftain5XAuxiliaryMounts } from './chieftain5XAuxiliaryMounts.ts';
@@ -18,7 +19,7 @@ type Point = readonly [number, number, number];
 type Band = readonly [z: number, left: number, right: number, low: number, high: number];
 
 export const CHIEFTAIN5_X_DATUMS = Object.freeze({
-  chieftain5_x: {
+  chieftain5: {
     // WEG printed 4-7 fixes chassis length/width/reported 2.90 m height.
     // The armor roof, complete gun length and rig are separate estimates.
     dims: { hullLengthM: 7.48, overallLengthM: 10.80, widthM: 3.51, heightM: 2.45 },
@@ -29,7 +30,7 @@ export const CHIEFTAIN5_X_DATUMS = Object.freeze({
     muzzleZ: 7.06,
   },
 });
-const D = CHIEFTAIN5_X_DATUMS.chieftain5_x;
+const D = CHIEFTAIN5_X_DATUMS.chieftain5;
 
 function local(g: THREE.BufferGeometry, p: Point): THREE.BufferGeometry {
   return g.translate(-p[0], -p[1], -p[2]);
@@ -287,7 +288,8 @@ function machineGun(P: TankBuilderPort): void {
   mg.add('turretDark', cylZ(.021, .520, 16), x, 2.808, z + .45);
   mg.add('turretDetail', box(.126, .17, .18), x + .118, 2.780, z - .035);
   mg.add('turretDark', box(.072, .068, .188), x, 2.783, z - .210);
-  mg.finish();
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the exact gun is a working station (auxiliaryStation.ts)
+  stationFromDrawnGun(mg.finish(), { name: 'chieftainXDraftGpmg', caliberMm: 7.62 });
 }
 
 function gun(P: TankBuilderPort): void {
@@ -333,5 +335,5 @@ export function buildChieftain5XPhotoDraft(P: TankBuilderPort): void {
 }
 
 export const CHIEFTAIN5_PHOTO_DRAFT_PROFILES = Object.freeze({
-  chieftain5_x: { build: buildChieftain5XPhotoDraft },
+  chieftain5: { build: buildChieftain5XPhotoDraft },
 });

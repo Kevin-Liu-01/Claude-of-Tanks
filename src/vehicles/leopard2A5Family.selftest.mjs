@@ -34,16 +34,16 @@ const donorChain = (id) => {
   for (let spec = TANK_SPECS[id]; spec?.variantOf && !chain.includes(spec.variantOf); spec = TANK_SPECS[spec.variantOf]) chain.push(spec.variantOf);
   return chain;
 };
-const family = Object.keys(TANK_SPECS).filter((id) => id === 'leo2a5' || donorChain(id).includes('leo2a5')).sort();
-for (const id of ['leo2a5', 'leo2a5_a5nl', 'leo2a5_x', 'strv122', 'strv122_x']) assert.ok(family.includes(id), `${id} is in the family`);
+const family = Object.keys(TANK_SPECS).filter((id) => id === 'leo2a4_v' || donorChain(id).includes('leo2a4_v')).sort();
+for (const id of ['leo2a4_v', 'leo2a4m', 'leo2a5', 'strv121', 'strv122']) assert.ok(family.includes(id), `${id} is in the family`);
 await ensureInteriorFills(family);
 let builds = 0;
 for (const id of family) for (const quality of ['high', 'low']) for (let k = 0; k < 8; k++) {
   const camoSeed = 4000 + k * 397;
   let tank;
   assert.doesNotThrow(() => { tank = createTank(id, null, { quality, camoSeed, proceduralOnly: true }); }, `${id} ${quality} seed ${camoSeed} builds`);
-  // A roof machine gun with visible geometry on every build: the certified exact loader gun (A5, Strv 122), the A5NL's
-  // working remote station, or the source-X variants' own roof weapons.
+  // A roof machine gun with visible geometry on every build: the working loader gun (A5, Strv 122; a crew MAG since
+  // VH.14), the A5NL's working remote station, or the source-X variants' own roof weapons.
   let guns = 0;
   tank.root.traverse((o) => {
     if (!o.userData?.fittingRoot || o.userData.fitting !== 'pintleMG') return;
@@ -52,16 +52,17 @@ for (const id of family) for (const quality of ['high', 'low']) for (let k = 0; 
     if (meshes > 0) guns++;
   });
   assert.ok(guns > 0, `${id} ${quality}: a roof machine gun is built with visible geometry`);
-  if (id === 'leo2a5' || id === 'strv122') assert.ok(tank.root.getObjectByName('leo2a5_loader_machine_gun'), `${id}: the exact loader gun`);
+  // VH.14 (2026-10-14): every A5 host's loader gun is a working station (the exact receiver could not turn)
+  if (id === 'leo2a4_v' || id === 'strv121') assert.ok(tank.root.getObjectByName('leo2a5_loader_machine_gun')?.userData.remoteControlled, `${id}: the working loader gun`);
   tank.dispose();
   builds++;
 }
 
 // 3. Fail-soft roster visuals: authored, then the other geometry tier, the donor, and the first participant's tank.
-assert.deepEqual(rosterVisualAttempts('leo2a5_x', { geometryQuality: 'low', camoSeed: 1 }, 'leo2a5', 'm1a2')
+assert.deepEqual(rosterVisualAttempts('leo2a5', { geometryQuality: 'low', camoSeed: 1 }, 'leo2a4_v', 'm1a1_abrams_hc')
   .map((a) => [a.specId, a.reason, a.options.geometryQuality]),
-[['leo2a5_x', 'authored', 'low'], ['leo2a5_x', 'other geometry tier', 'high'], ['leo2a5', 'donor', 'low'], ['m1a2', 'stand-in', 'low']]);
-assert.deepEqual(rosterVisualAttempts('m1a2', { geometryQuality: 'high' }, undefined, 'm1a2').map((a) => a.reason),
+[['leo2a5', 'authored', 'low'], ['leo2a5', 'other geometry tier', 'high'], ['leo2a4_v', 'donor', 'low'], ['m1a1_abrams_hc', 'stand-in', 'low']]);
+assert.deepEqual(rosterVisualAttempts('m1a1_abrams_hc', { geometryQuality: 'high' }, undefined, 'm1a1_abrams_hc').map((a) => a.reason),
   ['authored', 'other geometry tier'], 'no self or duplicate fallbacks');
 restoreCanvas();
 console.log(`leopard2A5Family: markExact duplicate-three and negative controls, ${family.length} family specs x 2 qualities x 8 seeds (${builds} builds), fail-soft attempt order passed`);

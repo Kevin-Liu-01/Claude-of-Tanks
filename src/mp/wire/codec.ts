@@ -138,7 +138,21 @@ function writeShell(writer: ByteWriter, shell: ShellRow): void {
   writer.u8(shell.flags);
 }
 
-function writeViewer(writer: ByteWriter, viewer: ViewerState): void {
+/**
+ * wire 7 (2026-10-15, the MP stream): a delta's movement checkpoint names only the values that changed since its baseline's.
+ * The checkpoint grew from 45 to 63 f32 values (physics lane versions 3-8) and rode every snapshot to the seat whole —
+ * 253 bytes, two thirds of a delta, the side-by-side's host uplink 112 -> 135 kbit/s. A driving hull changes ~36 of the 63
+ * between 20 Hz snapshots, a stopped one ~20: the masked form is a ceil(count / 8)-byte mask and those values (152 / 87
+ * bytes). The version byte's high bit marks it; a keyframe, a baseline without a viewer or on another checkpoint version or
+ * length, writes every value as before.
+ */
+const MOVEMENT_MASKED = 0x80;
+
+function maskedBase(viewer: ViewerState, base: ViewerState | null): ViewerState | null {
+  return base && base.movementVersion === viewer.movementVersion && base.movementValues.length === viewer.movementValues.length ? base : null;
+}
+
+function writeViewer(writer: ByteWriter, viewer: ViewerState, baseViewer: ViewerState | null = null): void {
   writer.u8(viewer.entityId);
   if (viewer.modules.length !== VIEWER_MODULES.length) throw new WireError('invalid_message', 'viewer modules length');
   let modules = 0;
@@ -153,12 +167,30 @@ function writeViewer(writer: ByteWriter, viewer: ViewerState): void {
   for (const value of viewer.equipment) writer.u16(value);
   writer.u16(viewer.modeSpeedMultiplier);
   writer.u16(viewer.modeGravityScale);
-  writer.u8(viewer.movementVersion);
+  if (viewer.movementVersion < 0 || viewer.movementVersion >= MOVEMENT_MASKED) throw new WireError('range', 'movement version out of range');
+  const base = viewer.movementVersion !== 0 ? maskedBase(viewer, baseViewer) : null;
+  writer.u8(viewer.movementVersion | (base ? MOVEMENT_MASKED : 0));
   if (viewer.movementVersion !== 0) {
-    if (viewer.movementValues.length > MAX_MOVEMENT_VALUES) throw new WireError('too_many', 'movement values');
+    const values = viewer.movementValues;
+    if (values.length > MAX_MOVEMENT_VALUES) throw new WireError('too_many', 'movement values');
     writer.u16(viewer.movementFlags);
-    writer.u8(viewer.movementValues.length);
-    for (const value of viewer.movementValues) writer.f32(value);
+    writer.u8(values.length);
+    if (!base) {
+      for (const value of values) writer.f32(value);
+    } else {
+      // the mask, eight values a byte (low bit first), then each value whose f32 differs from the baseline's
+      const prior = base.movementValues;
+      for (let byte = 0; byte < values.length; byte += 8) {
+        let bits = 0;
+        for (let bit = 0; bit < 8 && byte + bit < values.length; bit++) {
+          if (!Object.is(Math.fround(values[byte + bit]!), Math.fround(prior[byte + bit]!))) bits |= 1 << bit;
+        }
+        writer.u8(bits);
+      }
+      for (let index = 0; index < values.length; index++) {
+        if (!Object.is(Math.fround(values[index]!), Math.fround(prior[index]!))) writer.f32(values[index]!);
+      }
+    }
   }
 }
 
@@ -206,7 +238,7 @@ function writeSnapshot(writer: ByteWriter, packet: SnapshotPacket, baseline: Sna
   if (packet.shells.length > MAX_SHELLS) throw new WireError('too_many', 'snapshot shells');
   writer.u16(packet.shells.length);
   for (const shell of packet.shells) writeShell(writer, shell);
-  if (packet.viewer) writeViewer(writer, packet.viewer);
+  if (packet.viewer) writeViewer(writer, packet.viewer, packet.keyframe ? null : baseline?.viewer ?? null);
   if (packet.modeStateJson != null) writer.string(packet.modeStateJson, MAX_MODE_STATE_JSON_BYTES);
   if (destruction.length) {
     writer.u32(packet.keyframe ? 0 : packet.destructionBase);
@@ -387,7 +419,7 @@ function readShell(reader: ByteReader): ShellRow {
   return shell;
 }
 
-function readViewer(reader: ByteReader): ViewerState {
+function readViewer(reader: ByteReader, baseViewer: ViewerState | null = null): ViewerState {
   const entityId = reader.u8();
   if (entityId < 1 || entityId > MAX_ENTITIES) throw new WireError('range', 'viewer entity out of range');
   const packedModules = reader.u32();
@@ -404,15 +436,28 @@ function readViewer(reader: ByteReader): ViewerState {
   for (let index = 0; index < VIEWER_EQUIPMENT.length; index++) equipment.push(reader.u16());
   const modeSpeedMultiplier = reader.u16();
   const modeGravityScale = reader.u16();
-  const movementVersion = reader.u8();
+  const versionByte = reader.u8();
+  const masked = (versionByte & MOVEMENT_MASKED) !== 0;
+  const movementVersion = versionByte & ~MOVEMENT_MASKED;
   let movementFlags = 0;
   const movementValues: number[] = [];
   if (movementVersion !== 0) {
     movementFlags = reader.u16();
     const count = reader.u8();
     if (count > MAX_MOVEMENT_VALUES) throw new WireError('too_many', 'movement values');
-    for (let index = 0; index < count; index++) movementValues.push(reader.f32());
-  }
+    if (!masked) {
+      for (let index = 0; index < count; index++) movementValues.push(reader.f32());
+    } else {
+      const prior = baseViewer && baseViewer.movementVersion === movementVersion && baseViewer.movementValues.length === count
+        ? baseViewer.movementValues : null;
+      if (!prior) throw new WireError('missing_baseline', 'a masked movement checkpoint needs its baseline viewer');
+      const mask: number[] = [];
+      for (let byte = 0; byte < count; byte += 8) mask.push(reader.u8());
+      for (let index = 0; index < count; index++) {
+        movementValues.push((mask[index >> 3]! >> (index & 7)) & 1 ? reader.f32() : prior[index]!);
+      }
+    }
+  } else if (masked) throw new WireError('invalid_message', 'a masked viewer without a movement checkpoint');
   return { entityId, modules, crewBits, equipment, modeSpeedMultiplier, modeGravityScale, movementVersion, movementFlags, movementValues };
 }
 
@@ -470,7 +515,7 @@ function readSnapshot(reader: ByteReader, resolveBaseline: (tick: number) => Sna
   if (shellCount > MAX_SHELLS) throw new WireError('too_many', 'snapshot shells');
   const shells: ShellRow[] = [];
   for (let index = 0; index < shellCount; index++) shells.push(readShell(reader));
-  const viewer = flags & SNAPSHOT_FLAGS.HAS_VIEWER ? readViewer(reader) : null;
+  const viewer = flags & SNAPSHOT_FLAGS.HAS_VIEWER ? readViewer(reader, baseline?.viewer ?? null) : null;
   const modeStateJson = flags & SNAPSHOT_FLAGS.HAS_MODE_STATE ? reader.string(MAX_MODE_STATE_JSON_BYTES) : null;
   let destructionBase = 0;
   let destruction: SnapshotPacket['destruction'] = [];

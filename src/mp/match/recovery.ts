@@ -25,6 +25,12 @@ export interface RecoveryInput {
   lastAuthorityAtMs: number | null;
   /** Local time the current socket opened (the stall clock starts here before the first snapshot). */
   openedAtMs: number | null;
+  /**
+   * The last local time this tab's own tasks were seen starved (a long task, or a loop yielding with scheduler.yield,
+   * whose continuations run ahead of the data channel's message tasks): the stall clock restarts there. Null or absent:
+   * never starved.
+   */
+  starvedAtMs?: number | null;
 }
 
 export interface RecoveryStep {
@@ -82,7 +88,10 @@ export class ConnectionRecovery {
     } else {
       // WELCOME alone does not prove a stalled authority resumed: only an
       // accepted snapshot on this socket makes the match live again.
-      const progressMs = input.lastAuthorityAtMs ?? input.openedAtMs ?? input.nowMs;
+      // 2026-10-15 (the MP stream): a stall is authority missing while this tab could have read it. Every main rejoin of
+      // the §7 side-by-side opened a second link 7 s in: its roster painting (6-7 s, yielding with scheduler.yield)
+      // starved the channel's message tasks, the frames ran on, and 5 s without an accepted snapshot read as a dead host.
+      const progressMs = Math.max(input.lastAuthorityAtMs ?? input.openedAtMs ?? input.nowMs, input.starvedAtMs ?? -Infinity);
       if (input.nowMs - progressMs >= this.stallMs) {
         next = 'stalled';
         if (this.lostAtMs === null) {

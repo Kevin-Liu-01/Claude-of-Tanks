@@ -97,7 +97,7 @@ for (const relative of ['brand/nav/docs.svg', 'brand/nav/tank-gallery.svg', 'bra
   assert.ok(readmeSource.includes(`public/${relative}`), `README must show ${relative}`);
 }
 const docsMark = readFileSync(join(ROOT, 'public/brand/nav/docs.svg'), 'utf8');
-assert.match(docsMark, /data-vehicle="m1a2"/, 'Docs mark must use the shared M1A2 vehicle silhouette');
+assert.match(docsMark, /data-vehicle="m1a1_abrams_hc"/, 'Docs mark must use the shared M1A2 vehicle silhouette');
 assert.doesNotMatch(docsMark, /<image|data:image\//, 'Docs mark must use crisp native vector geometry');
 
 for (const film of ['trailer.webm', 'trailer.mp4', 'trailer.jpg', 'reel.mp4', 'reel.jpg']) {

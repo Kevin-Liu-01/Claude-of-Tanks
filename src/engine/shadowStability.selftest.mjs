@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
@@ -8,7 +9,7 @@ import {
   SHADOW_NORMAL_BIAS_MAX_M,
   SHADOW_NORMAL_BIAS_MIN_M,
   SHADOW_OPACITY,
-  shadowDepthBiasForTexel,
+  shadowDepthBiasForTexel, shadowDepthBiasBackFace,
   shadowNormalBiasForTexel,
   snapShadowCoordinate,
 } from './shadowStability.ts';
@@ -68,20 +69,22 @@ function checkPreset(name, expectedCascades) {
     assert.ok(normalBias <= SHADOW_NORMAL_BIAS_MAX_M, `${name} cascade ${index} normal bias stays below the detachment ceiling`);
     assert.ok(normalBias >= previousNormalBias, `${name} cascade ${index} does not lose receiver separation with distance`);
     previousNormalBias = normalBias;
-    // the depth bias: the PCF reach's acne bound for a face 70 degrees from the sun, in [2 cm, 0.40 m], written in the
-    // light's normalised depth
+    // the depth bias: (2026-10-14, SKY shadows r2a P1b) the closed casters' back faces are in the map — 1.5 texels along
+    // the sun in [2 cm, 0.40 m] (shadowDepthBiasBackFace), written in the light's normalised depth
     const range = shadow.camera.far - shadow.camera.near;
-    const bound = shadowDepthBiasForTexel(texel, cascade.radius, cascade.normalBias);
+    const bound = shadowDepthBiasBackFace(texel);
     const expected = Math.max(LEGACY_BIAS, -bound / range);
     assert.ok(Math.abs(cascade.bias - expected) <= 1e-15, `${name} cascade ${index} carries the acne-bound depth bias, never past the old one`);
     const depthBias = -cascade.bias * range;
     assert.ok(Math.abs(cascade.depthBiasM - depthBias) < 1e-4, `${name} cascade ${index} reports it in metres`);
     assert.ok(depthBias >= SHADOW_DEPTH_BIAS_MIN_M - 1e-12 && cascade.bias >= LEGACY_BIAS,
       `${name} cascade ${index} depth bias stays within [2 cm, the old 0.40 m]: no shadow stands further from its caster than before`);
-    const reach = (0.95 * cascade.radius + 1) * texel;
+    // (2026-10-14, SKY shadows r2a P1b: the front-face acne bound went with the back faces in the map — a lit face stands
+    // its caster's thickness in front of its stored depth; the DoubleSide and alpha-tested casters keep a caster-side
+    // polygon offset, pinned below)
     if (cascade.bias > LEGACY_BIAS) {
-      assert.ok(cascade.normalBias + depthBias * Math.cos(theta) >= reach * Math.sin(theta) - 1e-9,
-        `${name} cascade ${index}: no PCF tap self-shadows a caster face ${SHADOW_ACNE_FREE_INCIDENCE_DEG} degrees from the sun`);
+      assert.ok(Math.abs(depthBias - Math.max(SHADOW_DEPTH_BIAS_MIN_M, 1.5 * texel)) < 1e-6,
+        `${name} cascade ${index}: the back-face bias is 1.5 of its texels (${(depthBias / texel).toFixed(2)})`);
     }
     assert.ok(depthBias / texel <= 6, `${name} cascade ${index} depth bias stays within six of its texels (${(depthBias / texel).toFixed(2)})`);
     worstTexels = Math.max(worstTexels, depthBias / texel);
@@ -149,4 +152,65 @@ assert.equal(blendVisibility(0.95, 1, 0.95), 0.9975,
 assert.equal(blendVisibility(1, 0, 1), 0,
   'a fully owned shadow remains fully dark');
 
+// (2026-10-10, the shadows lane, the Whiteout round) a closed deck widens the cascades' filter: × (1 + k · overcast · closure),
+// never below the cascade's own radius, never past the five-tap disk's three texels; a deck with gaps or an open sky keep it
+{
+  const { DECK_PENUMBRA_K, DECK_PENUMBRA_MAX_TEXELS, deckPenumbraRadius } = await import('./shadowStability.ts');
+  assert.equal(deckPenumbraRadius(1.25, 0), 1.25, 'an open sky keeps the radius');
+  assert.equal(deckPenumbraRadius(1.25, 1), Math.min(1.25 * (1 + DECK_PENUMBRA_K), DECK_PENUMBRA_MAX_TEXELS), 'a closed deck widens it');
+  assert.equal(deckPenumbraRadius(1.6, 1), DECK_PENUMBRA_MAX_TEXELS, 'never past the disk\'s limit');
+  assert.equal(deckPenumbraRadius(3.4, 1), 3.4, 'never below the cascade\'s own radius');
+  assert.equal(deckPenumbraRadius(1.25, 1, 0), 1.25, 'the QA knob at 0 restores it');
+  assert.ok(deckPenumbraRadius(1.25, 0.5) > 1.25 && deckPenumbraRadius(1.25, 0.5) < deckPenumbraRadius(1.25, 1), 'by the deck\'s share');
+  const lightingSrc = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
+  assert.match(lightingSrc, /const share = model\?\.mode === 'physical' \? Math\.min\(1, Math\.max\(0, model\.overcast \* model\.deckClosure\)\) : 0;/,
+    'the share is the closed part of the deck (a deck with gaps casts its cells sharp)');
+  assert.match(lightingSrc, /rigModel = model;\s*applyDeckPenumbra\(model\);/, 'every rig re-applies it');
+  // (2026-10-14, SKY shadows r2a: the deck widens the cascades' tents instead — shadowTent.ts, quality.ts shadowTentDeck)
+  assert.match(lightingSrc, /shadow\.radius = tentRadius\(i\);/, 'a resized cascade keeps its tent (coded on its radius)');
+  assert.match(lightingSrc, /const k = \(deckShare >= 0\.5 \? tentDeckTable : tentTable\)\[Math\.min\(i, 3\)\];/,
+    'a closed deck (half the cut or more) takes the deck table');
+}
 console.log(`shadowStability.selftest: texel snapping, cascade-scaled biases on the live rig (worst ${worstTexels.toFixed(2)} texels), and weighted overlap pass\n  ${rows.join('\n  ')}`);
+// 2026-10-14 (SKY shadows r2a P1b): the DoubleSide / alpha-tested casters' depth draws take a caster-side polygon offset
+// (their front faces are in the map); a FrontSide closed caster's draw takes none (no slope-scaled offset on the shared
+// depth materials: it would push the stored back faces away and widen the seam)
+{
+  const src = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
+  assert.match(src, /const guard = !legacy && \(depthMaterial\.side === THREE\.DoubleSide \|\| depthMaterial\.alphaTest > 0 \|\| depthMaterial\.alphaHash\);/,
+    'the guard keys on the depth draw\'s side, alpha test and (r2b) hashed alpha');
+  assert.equal(src.split('guardDoubleSidedDepth(depthMaterial);').length - 1, 2, 'both shadow hooks (meshes and batched meshes) guard their draws');
+}
+// 2026-10-15 (SKY shadows r2b, C9): an alpha-tested open lattice (a net, a garnish) casts through three's hashed alpha
+// at the shadow raster's footprint instead of its 0.5 cut: its depth clone takes alphaHash and drops the cut from its
+// program once, with no per-draw version churn; every other caster's depth draw is left as three made it
+{
+  const { hashOpenLatticeShadow, guardDoubleSidedDepth } = await import('./lighting.ts');
+  const net = new THREE.Mesh(new THREE.PlaneGeometry(), new THREE.MeshStandardMaterial({ alphaTest: 0.5 }));
+  net.userData.continuityRole = 'open-lattice';
+  const depth = new THREE.MeshDepthMaterial({ alphaTest: 0.5, side: THREE.FrontSide });
+  hashOpenLatticeShadow(net, depth);
+  assert.equal(depth.alphaHash, true, 'the net\'s depth draw is hashed');
+  assert.equal(depth.alphaTest, 0.5, 'its alpha test value stays three\'s copy (no program version churn per draw)');
+  const version = depth.version;
+  depth.alphaTest = 0.5; hashOpenLatticeShadow(net, depth);
+  assert.equal(depth.version, version, 'once per depth clone');
+  const shader = { fragmentShader: THREE.ShaderLib.depth.fragmentShader, vertexShader: THREE.ShaderLib.depth.vertexShader, uniforms: {} };
+  depth.onBeforeCompile(shader, null);
+  assert.ok(!shader.fragmentShader.includes('#include <alphatest_fragment>') && shader.fragmentShader.includes('#include <alphahash_fragment>'),
+    'the program drops the 0.5 cut and keeps the hash');
+  assert.ok(THREE.ShaderLib.depth.vertexShader.includes('#include <begin_vertex>') && THREE.ShaderChunk.begin_vertex.includes('USE_ALPHAHASH'),
+    'three\'s depth program carries the hash\'s object-space position');
+  assert.equal(depth.customProgramCacheKey(), 'cotHashedShadowAlpha');
+  guardDoubleSidedDepth(depth);
+  assert.equal(depth.polygonOffset, true, 'a hashed lattice keeps the caster-side offset');
+  for (const [role, alphaTest, why] of [['armour', 0.5, 'a caster that is no open lattice'], ['open-lattice', 0, 'an opaque lattice (a slat cage)']]) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshStandardMaterial());
+    mesh.userData.continuityRole = role;
+    const dm = new THREE.MeshDepthMaterial({ alphaTest });
+    hashOpenLatticeShadow(mesh, dm);
+    assert.equal(dm.alphaHash, false, `${why} keeps three's depth draw`);
+  }
+  const src = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
+  assert.match(src, /hashOpenLatticeShadow\(object, depthMaterial\);\s*guardDoubleSidedDepth\(depthMaterial\);/, 'the mesh shadow hook hashes before it guards');
+}

@@ -201,7 +201,10 @@ function captureContext(seed) {
   assert.ok(fpv.log.sparks > 15, "a drone's warhead throws fragments");
   const tos = captureContext(6);
   groundBurst(tos.ctx, { x: 0, y: 0, z: 0, munition: 'rocket', chargeKg: 8, surface: 'soil' });
-  assert.ok(tos.log.media.filter((m) => m.heat > 1.4 && m.cool < 2).length >= 5, 'a thermobaric rocket rolls a long fireball');
+  // (HE look v2, re-pinned deliberately: "nothing peach or orange after ~0.3 s except embers") the thermobaric ball is the
+  // biggest, five lobes, but its orange heart is gone into soot by ~0.3 s like every burst's
+  const tosBall = tos.log.media.filter((m) => m.heat > 1.4);
+  assert.ok(tosBall.length >= 5 && tosBall.every((m) => m.heat * Math.exp(-m.cool * 0.3) < 0.3), 'a thermobaric rocket\'s fireball: five lobes, soot by 0.3 s');
   const maxSize = (log) => Math.max(...log.media.map((m) => m.size1));
   assert.ok(maxSize(big) > maxSize(a) * 1.4, 'the gunship howitzer throws a far bigger cloud than tank HE');
   assert.ok(a.flash > 0 && a.fire > 0 && a.pulses > 0, 'an explosive burst flashes, burns and lights the ground');
@@ -238,8 +241,12 @@ function captureContext(seed) {
   }
   // HE: a dense dark earth fountain in a cone, filled from the ground to its top by many small round puffs that arc
   // over and fall back; the heavy rounds' far taller and fuller
+  // (FX lane 10-15, FX-05, re-pinned deliberately) the gunship's 20 kg shell also throws its soil out in low radial rays
+  // beside the cone (blastRecipes plungeStarburst; strikeSignatures.selftest.mjs): those are not the fountain
+  const lowRay = (m) => Math.hypot(m.vx, m.vz) > 10 && m.vy < 0.5 * Math.hypot(m.vx, m.vz) + 2.5;
+  assert.equal(fountain(a).filter(lowRay).length, 0, 'tank HE throws no low rays');
   for (const [name, log, n, top] of [['125 mm', a, 20, 7.5], ['152 mm', big, 30, 16]]) {
-    const f = fountain(log);
+    const f = fountain(log).filter((m) => !lowRay(m));
     assert.ok(f.length >= n && f.every((m) => m.aspect === 1 && m.density >= 0.95), `${name}: a dense fountain of ${f.length} round puffs`);
     assert.ok(f.every((m) => Math.hypot(m.vx, m.vz) <= Math.tan(0.46) * m.vy + 1e-6), `${name}: in a cone`);
     // (round 7b, b8: still separate balls) its core: big puffs in a tight cone that overlap into one jet
@@ -816,8 +823,9 @@ function captureContext(seed) {
   assert.match(fragSrc, /float apronQ = min\( 2\.25,/, 'the apron reaches ~2.2 R, inside the disc');
   assert.match(fragSrc, /float turf = step\( 0\.74, th \)/, 'torn turf on a vegetated apron');
   assert.match(fragSrc, /if \( scar \) \{[\s\S]*float star = fbm\( vec2\( ang \* 9\.0, 1\.3 \) \+ so \);/, "a shaped charge's star of soot");
+  // (FX lane 10-15, FX-05, re-pinned deliberately) a drone warhead's pocked scorch and a heavy shell's rayed crater
   assert.deepEqual(['atgm', 'heat', 'drone_fpv', 'hesh', 'he', 'howitzer'].map((m) => markKindFor(m, true)),
-    ['scar', 'scar', 'scar', 'hesh', 'he', 'he'], 'the mark is the munition\'s');
+    ['scar', 'scar', 'drone', 'hesh', 'he', 'rayed'], 'the mark is the munition\'s');
   assert.equal(markKindFor('kinetic', false), 'gouge');
   assert.equal(craters.mesh.visible, false, 'no crater, no draw');
   for (let i = 0; i < 120; i++) craters.stamp(i, 0, 1.6, 'soil', true, (i % 7) / 7, 0, () => 0);

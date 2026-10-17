@@ -5,9 +5,8 @@ import { addRearFieldStowage } from './rearFieldStowage.ts';
 import { addFieldRoofWeapon } from './fieldRoofWeapon.ts';
 import { addLeclercFieldProtection } from './fieldProtectionPack.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
-import { KIT } from './kit.ts';
+import { KIT, FITTINGS } from './kit.ts';
 import { sectionSolid, type SolidSection } from './sectionSolid.ts';
-import { sourceMachineGun } from './sourceMachineGun.ts';
 import { roundedTrackContact } from './roundedTrackContact.ts';
 import { addLeclercXRearFittings } from './leclercXRearFittings.ts';
 import { leclercWheelSolids } from './leclercXWheels.ts';
@@ -26,7 +25,7 @@ type Point = readonly [number, number, number];
 type Row = readonly [z: number, left: number, right: number, floor: number, roof: number];
 
 const LECLERC_X_DATUMS = Object.freeze({
-  leclerc_x: {
+  leclerc_xlr: {
     dims: { hullLengthM: 7.1303053, overallLengthM: 9.8043880, widthM: 3.6, heightM: 2.36494 },
     structuralRoofY: 2.36494, fixedOpticHeightM: 2.764625, highestFittingM: 3.0665927,
     turretPivot: [-.00215336, 1.40294995, .72122934] as Point,
@@ -36,7 +35,7 @@ const LECLERC_X_DATUMS = Object.freeze({
     muzzleZ: 6.239235,
   },
 });
-const D = LECLERC_X_DATUMS.leclerc_x;
+const D = LECLERC_X_DATUMS.leclerc_xlr;
 
 function local(g: THREE.BufferGeometry, origin: Point): THREE.BufferGeometry {
   return g.translate(-origin[0], -origin[1], -origin[2]);
@@ -268,12 +267,16 @@ function roofEquipment(P: TankBuilderPort): void {
   equipment(P, 'turretDetail', cylY(.071, .071, .0337, 16), .03843, 2.252, -1.658);
   // Mandatory game roof weapon on the existing crew hatch. The supplied
   // neutral source omits it; this low supported assembly is documented.
-  const mg = sourceMachineGun(P, D.turretPivot);
-  mg.add('turretDetail', box(.09, .077, .12), .90, 2.410, .358);
-  mg.add('turretDark', box(.080, .072, .265), .90, 2.475, .460);
-  mg.add('turretDark', cylZ(.019, .48, 20), .90, 2.479, .8125);
-  mg.add('turretDark', cylZ(.006, .006, 16), .90, 2.479, 1.055);
-  mg.finish();
+  // 2026-10-11 (fleet-weapons lane, round 4; wave 386's critics: "a toy-like dark box with a rod", "a short plain stub"):
+  // the gun is the fleet's 7.62 mm GPMG (receiver with feed cover, gas tube, carrying handle, pistol grip, flash hider)
+  // lying in its external cradle on the same low base, its receiver centred over the base, its can on the feed side; the
+  // receiver block and plain tube go. One gun, one fitting.
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the fitting is a working crew station (working: true).
+  equipment(P, 'turretDetail', box(.09, .077, .12), .90, 2.410, .358);
+  const gun = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', mount: 'external-cradle', ammo: true, tone: 'two-tone', seed: 3301, working: true });
+  gun.position.set(.90 - D.turretPivot[0], 2.4485 + .0005 - D.turretPivot[1], .438 - D.turretPivot[2]);
+  gun.name = 'leclercXHatchMachineGun';
+  P.turretG.add(gun);
 }
 
 function rearRack(P: TankBuilderPort): void {
@@ -285,8 +288,12 @@ function weapons(P: TankBuilderPort): void {
   P.muzzleZ = D.muzzleZ - gz;
   P.add('gunMount', local(prism([[1.990, -.1597, .2009, 1.70837, 2.0713],
     [2.15, -.1597, .2009, 1.70837, 2.13213], [2.6442, -.1597, .2009, 1.70837, 2.13213]]), D.trunnion));
+  // 2026-10-11 (fleet-weapons lane, round 4; wave 386's critics: "a plain box mantlet with three open dark slots on its
+  // side", "a plain slotted crate"; the coordinator: close dark gaps with armour): the three ribs on each side of the
+  // mantlet are welded to its faces (x -0.1597 and 0.2009, a millimetre into each) instead of standing 12 mm off the
+  // left one, so no daylight slot shows behind them (the source stations were -0.184 and 0.210).
   for (const side of [-1, 1]) for (const z of [2.175, 2.363, 2.541]) {
-    P.add('gunMount', box(.025, .246, .052), side < 0 ? -.184 - gx : .210 - gx, 1.949 - gy, z - gz);
+    P.add('gunMount', box(.025, .246, .052), side < 0 ? -.1597 - .0115 - gx : .2009 + .0115 - gx, 1.949 - gy, z - gz);
   }
   const sleeve = sectionSolid([2.53294, 2.82, 5.90, 6.1405].map(z => {
     const t = Math.max(0, (z - 2.82) / 3.3205), bottom = 1.704 + .040 * t;
@@ -329,4 +336,4 @@ export function buildLeclercX(P: TankBuilderPort): void {
   addRearFieldStowage(P);
 }
 
-export const LECLERC_X_PROFILES = Object.freeze({ leclerc_x: { build: buildLeclercX } });
+export const LECLERC_X_PROFILES = Object.freeze({ leclerc_xlr: { build: buildLeclercX } });

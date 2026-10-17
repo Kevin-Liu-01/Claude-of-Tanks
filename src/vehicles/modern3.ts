@@ -1,4 +1,6 @@
 import { weaponAssembly } from './profiles/weaponStock.ts';
+import { withSeatRole, withSpareTrackRun } from './spareTrackSeat.ts';
+import { spareLinkBlock } from './spareLinkGeometry.ts';
 // src/vehicles/modern3.ts — HD procedural builder pack #3 (modern roster).
 // Vehicles (docs/history/research/modern-roster.md): Chieftain Mk 10 (§19), K2 Black
 // Panther (§23), Type 10 (§24), M2A2 Bradley (§6), BMP-2 (§17), C1 Ariete (§26),
@@ -87,7 +89,7 @@ const variablePolyLoft = KIT.polyLoft as (
 // ---------------------------------------------------------------------------
 
 // ================================ K2 Black Panther ==========================
-// §5.38 PRINT REBUILD (2026-08-08, owner priority: "fully model a custom k2
+// §5.38 PRINT REBUILD (2026-08-08, owner priority: "fully model a custom xk2_black_panther
 // black panther based on this model"): re-lofted to the measured lines of
 // public/models/community-candidates/k2_black_panther_armored_warfare.glb
 // (LOCAL-ONLY quarantine; receipt docs/references/vertex/k2.json). Frame map:
@@ -450,7 +452,7 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
     P.hullG.add(rack);
   }
   // deck: louvred engine field, fan rings, filler caps — ALL tops ≤1.69
-  // (the turret shell bottom rides at 1.69; sweep law, type10 precedent).
+  // (the turret shell bottom rides at 1.69; sweep law, type10_tk_x precedent).
   // Corner kit (bin, lift eyes, links) lives OUTSIDE the 2.62 swing radius.
   P.add('hullDark', box(2.40, 0.02, 1.20), 0, 1.663, -2.70);
   for (const k of KIT.grilleIndices(P.q, 5, 3)) {
@@ -754,7 +756,7 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
   // 100 -> 98.9); the broad band now sits AT the published sight-plane
   // datum so no body-population shift can lift the p95 off it. The ONLY
   // spikes stay the pano head (2 cols, 2.77) + crosswind mast (2.39 —
-  // off-budget). K6 rides a LOW right-wall swing mount (type90 height-law
+  // off-budget). K6 rides a LOW right-wall swing mount (type90_kyumaru height-law
   // precedent), FORWARD (§5.07 CROWS-FORWARD). Whips carried FOLDED (stub
   // bases) for the same datum.
   // KGPS gunner sight — a real HOODED housing (critic r1: mass, not flush
@@ -921,12 +923,8 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
     P.addEquipment('turret', cylY(0.052, 0.058, 0.055, 12), -0.740, 0.749, 1.108);      // rounded pivot over the receiver joint
     P.add('turretDark', box(0.115, 0.048, 0.025), -0.548, 0.748, 1.066);       // recessed receiver face
     P.add('turretGlass', box(0.052, 0.032, 0.014), -0.548, 0.750, 1.080);      // small forward sensor window
-    // Retain the standard fitting marker at sub-visible scale inside the
-    // measured receiver so mandatory equipment census remains machine-readable.
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'dark', scale: 0.12,
-      seed: 12, elev: 0, ammo: false, rotation: [0, 0, 0] });
-    mg.position.set(-0.548, 0.744, 1.0025);
-    P.turretG.add(mg);
+    // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the sub-visible census marker that sat inside this
+    // measured receiver is gone; the K2's roof gun is the loader's K6 on its working station.
     // antenna mounts FOLDED (heightM p95 law: the pano head + mast own the
     // whole spike budget) — base drums + rods CLIPPED FLAT to the roof
     // (critic r1: the pitched floating rods read as sail fins).
@@ -1186,7 +1184,7 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
 
 // ==================================== K1A1 ==================================
 // §5.38 KOREA round NEW BUILD (2026-08-08, owner priority: "fully model a
-// custom k1a1 based on this model"): the "baby Abrams" lofted to the
+// custom k1e1 based on this model"): the "baby Abrams" lofted to the
 // k1a1_kojf semantic print (LOCAL-ONLY quarantine; raw meters ×0.979 ≈ gate
 // frame — the print binds width 0% at its ±1.838 bow flares, hullLen −0.1%,
 // overall −1.9%). §5.49 NOTE: the print's turret cluster is under an
@@ -1200,8 +1198,8 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
 // datum includes the correctly cupola-mounted K6) with wrap-around
 // stowage baskets, gunner-sight doghouse right-front, K6 cupola right +
 // loader MG left, big protruding rotor/gunshield, bare KM256 with mid-tube
-// evacuator. §H.4 vs k2: shorter blunter turret, no KAPS cheek radars, no
-// pano tower, bare tube (k2 carries the sleeved L/55 + arrowhead wedge).
+// evacuator. §H.4 vs xk2_black_panther: shorter blunter turret, no KAPS cheek radars, no
+// pano tower, bare tube (xk2_black_panther carries the sleeved L/55 + arrowhead wedge).
 function buildK1A1Hull(P: Modern3BuilderPort) {
   const { box, buildRunningGear } = KIT;
   const slab = orientedSlab;                                                   // §C.1 winding guard on every mirrored slab
@@ -1371,10 +1369,13 @@ function finishK1A1Hull(P: Modern3BuilderPort) {
   // decks: louvred engine field on the raised deck (tops ≤1.64 under the
   // bustle sweep), tool bin on the left rear corner (outside the swing),
   // filler caps, lift eyes at the corners.
-  P.add('hullDark', box(2.30, 0.02, 1.30), 0, 1.613, -2.85);
-  for (const k of KIT.grilleIndices(P.q, 5, 3)) {
-    P.add('hullDetail', box(2.20, 0.02, 0.055), 0, 1.619, -3.32 + k * 0.235);
-  }
+  // VEH-13: the louvred engine field is a grille to the spare-link seat solver
+  withSeatRole(P, 'grille', (P) => {
+    P.add('hullDark', box(2.30, 0.02, 1.30), 0, 1.613, -2.85);
+    for (const k of KIT.grilleIndices(P.q, 5, 3)) {
+      P.add('hullDetail', box(2.20, 0.02, 0.055), 0, 1.619, -3.32 + k * 0.235);
+    }
+  });
   for (const s of [-1, 1]) {
     P.add('hullDark', torus(0.26, 0.013, P.q ? 22 : 14), s * 0.72, 1.614, -2.35); // fan rings
     P.add('hullDetail', cylY(0.08, 0.08, 0.018, 12), s * 1.30, 1.617, -2.10);     // filler caps
@@ -1462,15 +1463,18 @@ function buildK1A1Turret(P: Modern3BuilderPort) {
     // load path; no side-wall stilt or empty-air bridge remains.
     P.add('turret', cylY(0.255, 0.275, 0.045, 18), 0.58, 0.710, -0.62);
     P.add('turretDetail', torus(0.235, 0.014, 22), 0.58, 0.735, -0.62);
+    // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): both crew guns are working stations
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', seed: 14,
-      elev: 0.02, ammo: true, ring: { r: 0.23, stubs: 4 } });
+      elev: 0.02, ammo: true, ring: { r: 0.23, stubs: 4 }, working: true });
+    mg.name = 'k1CommanderK6';
     mg.position.set(0.58, 0.734, -0.62);
     P.turretG.add(mg);
     // The loader's 7.62 is seated on its hatch ring as well. Its smaller
     // receiver stays below the K6 datum and retains a visible three-stub base.
     P.add('turretDetail', torus(0.185, 0.011, 18), -0.52, 0.685, -0.55);
     const mg2 = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 15,
-      elev: 0.02, ammo: false, ring: { r: 0.17, stubs: 3 } });
+      elev: 0.02, ammo: false, ring: { r: 0.17, stubs: 3 }, working: true });
+    mg2.name = 'k1LoaderM60';
     mg2.position.set(-0.52, 0.690, -0.55);
     P.turretG.add(mg2);
     // the print's whip antenna (x +0.40, z_w −1.21, top 3.97 = §B7 cap)
@@ -1585,7 +1589,7 @@ function buildK1A1(P: Modern3BuilderPort) {
 // their tracks much better using our better track system and make their hulls
 // and turrets much mcuh beter" — GROUND-UP UPGRADE of the shared §5.248 base
 // at an OWNER-DECREED ×1.10 ENLARGEMENT (scale judged against the
-// owner-corrected type90 side-by-side in the live garage:
+// owner-corrected type90_kyumaru side-by-side in the live garage:
 // shots/type10-enlarge/scale-probe/pair-s11.png reads decisively larger with
 // a balanced stance; ×1.12 added no garage presence beyond it. §5.304-class
 // divergence: every §5.248 print-decoded station below is carried at ×1.10,
@@ -1607,9 +1611,9 @@ function buildK1A1(P: Modern3BuilderPort) {
 // with plan-swept cheek wedges meeting a narrow mantlet throat, JSW 120 L/44
 // (full thermal sleeve), pano sight center-LEFT-forward (JGSDF arrangement),
 // gunner sight box center-right-forward, slat-sided loaded bustle rack,
-// M2 12.7mm on a LOW right-side swing mount (type90 precedent).
+// M2 12.7mm on a LOW right-side swing mount (type90_kyumaru precedent).
 // TRACKS (§5.336 order 2): the old flattened-shoe covered course is replaced
-// by the fleet smart track/wheel system (§5.318 amx30 + §5.324 kf51b
+// by the fleet smart track/wheel system (§5.318 amx30 + §5.324 kf51_u
 // exemplar grammar): five big exposed rubber-tired wheels w/ visible torsion
 // arms, RAISED drive sprocket (rear) + RAISED idler (front) = the §B6
 // trapezoid, four return rollers, fine-pitch integrated detailed shoes with
@@ -1912,11 +1916,17 @@ function buildType10Native2026(
       P.add('hullDetail', box(0.099, 0.154, 0.0308), s * 0.682, 1.122, -3.7719);  // tow hooks
       P.add('hullDark', box(0.055, 0.088, 0.022), s * 0.682, 1.133, -3.7752);
     }
-    P.add('hullDark', box(1.012, 0.33, 0.022), -0.682, 1.386, -3.7708);           // cooling exhaust grille (left)
-    for (let k = 0; k < 4; k++) P.add('hullDetail', box(0.968, 0.0385, 0.0242), -0.682, 1.276 + k * 0.0792, -3.7719);
+    // VEH-13: the cooling exhaust grille is a grille to the spare-link seat solver
+    withSeatRole(P, 'grille', (P) => {
+      P.add('hullDark', box(1.012, 0.33, 0.022), -0.682, 1.386, -3.7708);         // cooling exhaust grille (left)
+      for (let k = 0; k < 4; k++) P.add('hullDetail', box(0.968, 0.0385, 0.0242), -0.682, 1.276 + k * 0.0792, -3.7719);
+    });
     P.add('hullWood', box(0.308, 0.143, 0.0286), 0.33, 1.056, -3.773);            // jack block
-    P.add('hullDetail', box(0.374, 0.055, 0.0264), 1.122, 1.10, -3.773);          // spare-link hanger rail
-    P.add('hullTrack', box(0.33, 0.176, 0.022), 1.122, 1.188, -3.7752);           // hung spare links
+    // VEH-13: the hanger rail and its links are one registered run on the rear plate (spareTrackSeat.ts)
+    withSpareTrackRun(P, { site: 'type10-rear-links', source: 'adhoc', rotation: [-Math.PI / 2, 0, 0] }, (P) => {
+      P.add('hullDetail', box(0.374, 0.055, 0.0264), 1.122, 1.10, -3.773);        // spare-link hanger rail
+      P.add('hullTrack', spareLinkBlock(0.33, 0.176, 0.022, -1), 1.122, 1.188, -3.7752); // the hung spare link (VEH-13: the fleet's link)
+    });
     P.add('hullDetail', box(0.20, 0.20, 0.020), 0.02, 1.50, -3.774);              // convoy plate
     P.add('hullDark', box(0.16, 0.16, 0.012), 0.02, 1.50, -3.782);
     P.decal('hull', 'soot', null, 0.605, [-0.682, 1.386, -3.7774], Math.PI);
@@ -2088,11 +2098,13 @@ function buildType10Native2026(
     periscope(P, 'turretDetail', 0.22, 0.55, -0.022);
     periscope(P, 'turretDetail', 0.792, 0.539, -0.66);
     // M2 12.7mm on the right cluster shelf (§B3 census; LOW swing mount —
-    // type90 precedent keeps the receiver under the roof-kit p95 band)
+    // type90_kyumaru precedent keeps the receiver under the roof-kit p95 band)
     P.add('turretDetail', box(0.055, 0.264, 0.242), 1.309, 0.594, -0.055);        // wall bracket
     P.add('turretDetail', box(0.242, 0.0385, 0.286), 1.276, 0.484, -0.055);       // swing platform
     {
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.99, seed: 12, elev: -0.02, ammo: false, rotation: [0, -0.28, 0] });
+      // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the Type 10's roof M2 is a working station
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.99, seed: 12, elev: -0.02, ammo: false, rotation: [0, -0.28, 0], working: true });
+      mg.name = 'type10RoofM2';
       mg.position.set(1.32, 0.5038, -0.055);
       P.turretG.add(mg);
       const smL = FITTINGS.smokeBank({ mats: P.mats, count: 4, r: 0.044, len: 0.242, splay: -0.75, pitch: -0.45, seed: 5 });
@@ -3431,18 +3443,8 @@ export function buildBradley(P: Modern3BuilderPort) {
                                                                                   //   (r4: east edge -1.175 -> -1.145
                                                                                   //   so the -1.16 col reads the 2.175
                                                                                   //   step, not a half-lit boundary)
-      // pintle M240 stowed on the bustle rail (§B3 MANDATORY MG — kept inside
-      // the print's own 2.9-band so the heightM p95 budget is untouched)
-      // 2026-10-07 (round 4): keeps the right-hand feed; the left-hand can would stand in the bustle stowage cloth (feed-side collision census).
-      const mg = FITTINGS.pintleMG({
-        mats: P.mats, cls: 'mag', scale: 0.85, tone: 'two-tone', elev: 0.03,
-        ammo: true, rotation: [0, -0.45, 0], seed: 12, feed: 'right',
-      });
-      mg.position.set(0.15, 0.31, -0.68);                                         // (90-ladder y 0.52 -> 0.31: the MG
-      P.turretG.add(mg);                                                          //   crown at 2.585 owned the front
-                                                                                  //   -0.02/-0.06 cols +0.13 over the
-                                                                                  //   ref's 2.456 left-roof line — §C
-                                                                                  //   pintle allowance is 0.4 pt)
+      // VH.14 (coordinator ruling 2026-10-14): the Bradley carries no roof machine gun (roofWeaponPolicy.ts); the M240
+      // stowed on the bustle rail for the old roof-MG census is gone.
       // 2x4 smoke launchers on the turret front corners (§6.5)
       for (const s of [-1, 1]) {
         const bank = FITTINGS.smokeBank({
@@ -3553,7 +3555,8 @@ export function buildBradley(P: Modern3BuilderPort) {
   };
   buildBradleyTurretStage2();                                                             // true muzzle anchor
   const buildBradleyMarkingsStage1 = (): void => {
-    P.add('gunDark', cylZ(0.044, 0.13, 8), 0, 0, 2.15);                           // flash suppressor, tip 2.37 world
+    // VH.04 (2026-10-15): the suppressor mouth is the muzzle anchor (2.23); it ended 14.5 mm short
+    P.add('gunDark', cylZ(0.044, 0.13, 8), 0, 0, 2.165);                         // flash suppressor, tip 2.385 world
                                                                                   //   (r3 r 0.052 -> 0.044: its 8-seg
                                                                                   //   facets paint st11/st12 tops —
                                                                                   //   ref 2.281, the 2.302 crown read
@@ -3742,7 +3745,7 @@ export function bradleyFlankDressing(P: Modern3BuilderPort) {
   });
   for (const s of [-1, 1]) {
     const m = (x: number) => s * x;
-    // §B2 DONOR BOW-CORNER CLOSURE (type89 §5.341 grammar): the bow
+    // §B2 DONOR BOW-CORNER CLOSURE (hayate_ifv §5.341 grammar): the bow
     // fender/sprocket bay read clean through at [y 0.65, z 2.99] 0.20x0.14
     // on all three ids (sweep receipts m2a2 205px / m3a3 199 / ua 203).
     // Side plate on the 1.40..1.44 plane (outboard of the 1.395 shoe reach
@@ -4344,18 +4347,8 @@ export function buildBMP2(P: Modern3BuilderPort) {
   // side apex 2.476 at z -0.07..+0.01) — raised seat, apex 2.47 < ref 2.476,
   // aligned with the ref's own spike columns (heightM p95 law).
   {
-    // r3: MG re-seated z +0.06 (apex on the +0.114-mapped spike band, proc
-    // 0.08..0.155) and re-aimed AFT (stowed) — the r2 forward-right yaw ran
-    // the barrel tip to proc z 0.19..0.31 / x -0.20 at 2.44-2.46, printing
-    // +0.06..+0.25 on three side cols AND the front x -0.226 col (the
-    // roof-stack saddle order's east face). Aft barrel hides inside the
-    // 2.39 Konkurs band.
-    const mg = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'mag', scale: 0.58, tone: 'two-tone', elev: 0.02,
-      ammo: true, rotation: [0, Math.PI, 0], seed: 6,
-    });
-    mg.position.set(-0.42, 0.68, 0.06);                                         // apex 2.47 on the mapped spike
-    P.turretG.add(mg);                                                          // columns; the sight housing below
+    // VH.14 (coordinator ruling 2026-10-14): the BMP-2 carries its 30 mm 2A42, a coaxial PKT and the Konkurs, and no
+    // roof machine gun (roofWeaponPolicy.ts); the stowed MG the old census added is gone.
     // gunner day-sight housing: carries the ref's tall LEFT stack west flank
     // (front 2.42-2.44 over x -0.56..-0.32; top dropped 2.4575 -> 2.4425 to
     // the ref's own 2.443 shoulder, z re-seated +0.08)
@@ -4391,7 +4384,8 @@ export function buildBMP2(P: Modern3BuilderPort) {
                                                                                 //   the print's fused read: its side
                                                                                 //   band is 1.875..2.0)
   P.muzzleZ = 2.785;                                                            // restore the true muzzle anchor
-  P.add('gunDark', cylZ(0.060, 0.15, 10, 0.050), 0, 0, 2.705);                  // conical flash hider, tip 3.36
+  // VH.04 (2026-10-15): the flash hider's mouth is the muzzle anchor (2.785); it ended 5 mm short
+  P.add('gunDark', cylZ(0.060, 0.155, 10, 0.050), 0, 0, 2.7075);                // conical flash hider, tip 3.36
                                                                                 //   (r3: the ref gun reads to 3.26
                                                                                 //   and the gate samples +0.114 —
                                                                                 //   the r2 3.275 tip left the gun
@@ -4625,11 +4619,13 @@ export function buildPuma(P: Modern3BuilderPort) {
   // engine intake louvres RIDE THE BOW PLANE right of the driver side
   // (§B8 order 2 "driver strip + louvers on it"; powerpack forward —
   // plane surface y(z) = 1.92 - (z - 1.77) * 0.2667)
-  P.add('hullDark', box(1.00, 0.02, 0.72), -0.42, 1.786, 2.35, 0.261, 0, 0);
-  for (let k = 0; k < 4; k++) {
-    P.add('hullDetail', box(0.92, 0.026, 0.06), -0.42, 1.721 + k * 0.0427, 2.62 - k * 0.16, 0.261, 0, 0);
-  }
-  P.add('hullDark', box(0.03, 0.30, 0.62), -1.415, 1.72, 1.95);                // exhaust grille on the left flank
+  withSeatRole(P, 'grille', (P) => {                                          // VEH-13: no seat for spare links
+    P.add('hullDark', box(1.00, 0.02, 0.72), -0.42, 1.786, 2.35, 0.261, 0, 0);
+    for (let k = 0; k < 4; k++) {
+      P.add('hullDetail', box(0.92, 0.026, 0.06), -0.42, 1.721 + k * 0.0427, 2.62 - k * 0.16, 0.261, 0, 0);
+    }
+    P.add('hullDark', box(0.03, 0.30, 0.62), -1.415, 1.72, 1.95);              // exhaust grille on the left flank
+  });
   for (let k = 0; k < 3; k++) P.add('hullDetail', box(0.045, 0.05, 0.56), -1.42, 1.60 + k * 0.12, 1.95);
   // troop roof hatch seams (flush — §B2-safe)
   P.add('hullDark', box(0.66, 0.015, 1.30), -0.55, 2.09, -2.10);
@@ -4999,10 +4995,13 @@ function buildType89Hull(P: Modern3BuilderPort) {
   P.add('hull', box(0.56, 0.06, 0.56), 0.78, 1.70, 1.95, 0.499, 0, 0);        // hatch plinth on the plane
   P.add('hullDark', box(0.50, 0.02, 0.48), 0.78, 1.74, 1.94, 0.499, 0, 0);
   for (let k = 0; k < 3; k++) periscope(P, 'hullDetail', 0.56 + k * 0.22, 1.87, 1.58, (1 - k) * 0.10);
+  // VEH-13: the engine louvres and their frame are a grille to the spare-link seat solver
+  withSeatRole(P, 'grille', (P) => {
   P.add('hull', box(1.10, 0.055, 1.05), -0.62, 1.505, 2.30, 0.499, 0, 0);     // louvre frame on the plane
   for (let k = 0; k < 5; k++) {
     P.add('hullDark', box(1.00, 0.02, 0.13), -0.62, 1.325 + k * 0.0927, 2.64 - k * 0.17, 0.499, 0, 0);
-  }
+  }  });
+
   P.add('hullDark', box(0.03, 0.26, 0.72), -1.44, 1.50, 0.10);                 // exhaust cowl LEFT flank
   for (let k = 0; k < 3; k++) P.add('hullDetail', box(0.045, 0.05, 0.64), -1.445, 1.40 + k * 0.10, 0.10);
   P.add('hullDetail', box(0.72, 0.025, 0.035), -0.35, 1.28, 2.72, 0.499, -0.20, 0); // splash rail V on the plane
@@ -5212,19 +5211,12 @@ function buildType89Turret(P: Modern3BuilderPort) {
   // the cone to the face; 35mm-class disc)
   muzzleBore(P, 3.45, 0.070, 0.025, 12, 0.0655);
   P.muzzleZ = 3.45;                                                            // true muzzle anchor (world 3.90)
-  // coax Type 74 7.62 LEFT of the main gun: dark port ring + a recessed
-  // FITTINGS 'mag' body behind it — the census MG (§B3 mg>=1; spz_puma
-  // unmanned-turret precedent — the real vehicle has NO roof pintle)
+  // coax Type 74 7.62 LEFT of the main gun: dark port ring and the barrel stub
+  // (the real vehicle has NO roof pintle)
   P.add('turretDark', cylZ(0.030, 0.02, 10), -0.32, 0.26, 0.705);
   P.add('turretDark', cylZ(0.013, 0.16, 8), -0.32, 0.26, 0.77);
-  {
-    const mg = FITTINGS.pintleMG({
-      mats: P.mats, cls: 'mag', scale: 0.5, tone: 'dark', elev: 0.0,
-      ammo: false, seed: 15,
-    });
-    mg.position.set(-0.32, 0.12, 0.42);                                        // buried at the face — barrel stub
-    P.turretG.add(mg);                                                         //   reads at the port only
-  }
+  // VH.14 (coordinator ruling 2026-10-14): the census gun buried behind the port is gone — the Type 89 carries no roof
+  // weapon (roofWeaponPolicy.ts) and its coaxial 7.62 reads at the port above.
 }
 
 function buildType89(P: Modern3BuilderPort) {
@@ -5237,12 +5229,12 @@ function buildType89(P: Modern3BuilderPort) {
 // ---------------------------------------------------------------------------
 export const MODERN3_BUILDERS = {
   // The Garage workshop worker builds its K2 exhibit from this table.
-  k2: buildK2,
-  type10: buildType10Native2026,
+  xk2_black_panther: buildK2,
+  type10_tk_x: buildType10Native2026,
   m2a2_bradley: buildM2A2Bradley,
   bmp2: buildBMP2,
   // AFV lane 2026-08-06 (owner order): rides the bradley recipe.
-  type89: buildType89,
+  hayate_ifv: buildType89,
   // KOREA round 2026-08-08 (§5.38): new build vs the k1a1_kojf print.
-  k1a1: buildK1A1,
+  k1e1: buildK1A1,
 };

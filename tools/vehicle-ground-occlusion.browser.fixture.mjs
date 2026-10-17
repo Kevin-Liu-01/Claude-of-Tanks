@@ -1,12 +1,12 @@
 // The in-page half of tools/vehicle-ground-occlusion.browser.selftest.mjs (and of the vehicle-ground lane's capture
 // lab): compile the ground-occlusion GLSL (src/engine/vehicleGroundOcclusion.ts) with stand-ins for the aerial pass's
 // contact block, evaluate cotVehicleGroundShade at each receiver into one row of a float target, and read back
-// 1 − shade per receiver. page.evaluate serializes this function: it must not reference anything outside itself.
+// 1 − shade per receiver (and, contact round 4, cotVehicleGrime at the same point in the second channel). page.evaluate serializes this function: it must not reference anything outside itself.
 
 /**
- * @param {{ glsl: string, hullCount: number, rows: number[], solids: number[], runs?: number[], light: number[], amb: number[],
+ * @param {{ glsl: string, snowGlsl?: string, hullCount: number, rows: number[], solids: number[], runs?: number[], light: number[], snow?: number, keyCount?: number, keyP?: number[], keyE?: number[], r4?: number[], r5?: number[], r6?: number[], amb: number[],
  *   sunLum: number, sunDir: number[], fillDir: number[], points: number[][], normals: number[][], alphas: number[] }} input
- * @returns {{ values: number[], renderer: string | null }}
+ * @returns {{ values: number[], grime: number[], renderer: string | null }}
  */
 export function evaluateVehicleGroundGlsl(input) {
   const n = input.points.length;
@@ -23,6 +23,8 @@ void main() { gl_Position = vec4( aPos, 0.0, 1.0 ); }`;
   const fs = `#version 300 es
 precision highp float;
 precision highp int;
+// (contact round 5) the block's contact blend samples the scene with three's GLSL 1 spelling (three defines it on WebGL 2)
+#define texture2D texture
 uniform vec4 uContactAmb;
 uniform float uContactSunLum;
 uniform vec3 uContactFillDir;
@@ -33,11 +35,22 @@ uniform float uAlpha[ ${n} ];
 // the aerial pass's reading of the scene target's alpha, by its sign: a card (no sun state) under 1.5, lit over it
 float cotSunVisOf( float alpha ) { return alpha < 1.5 ? -1.0 : 1.0; }
 vec3 cotNormalAt( vec2 uv, vec3 P ) { return uNrm[ int( uv.x ) ]; }
+${input.snowGlsl ?? 'float cotSnowOf( float a ) { return 0.0; }'}
+// (contact round 4) the gap normal's guard reads the depth neighbours; the receipt hands each receiver its normal
+vec3 cotNormalAtGuarded( vec2 uv, vec3 P, vec3 up, float dist ) { return uNrm[ int( uv.x ) ]; }
+// (contact round 5) the aerial pass's scene, depth and projection the contact blend samples: declared for the compile, never
+// sampled (the receipt evaluates the ground's shade and the grime)
+uniform sampler2D tDiffuse;
+uniform sampler2D tDepth;
+uniform float uNear;
+uniform mat4 uContactViewProj;
+float cotDepthToDist( float d ) { return d; }
+vec3 cotWorldAtDepth( vec2 uv, float dist ) { return vec3( uv, dist ); }
 ${input.glsl}
 out vec4 outColor;
 void main() {
   int i = int( gl_FragCoord.x );
-  outColor = vec4( 1.0 - cotVehicleGroundShade( vec2( float( i ) + 0.25, 0.5 ), uPts[ i ], uAlpha[ i ], 0.0 ), 0.0, 0.0, 1.0 );
+  outColor = vec4( 1.0 - cotVehicleGroundShade( vec2( float( i ) + 0.25, 0.5 ), uPts[ i ], uAlpha[ i ], 0.0 ), cotVehicleGrime( uPts[ i ] ), 0.0, 1.0 );
 }`;
   const compile = (type, source) => {
     const shader = gl.createShader(type);
@@ -57,6 +70,16 @@ void main() {
   // (2026-10-08) the runs as drawn, eight knots a side; zero (the rest pose) when the case packs none
   gl.uniform4fv(at('uVehGroundR'), new Float32Array(input.runs ?? new Array(input.solids.length).fill(0)));
   gl.uniform4fv(at('uVehGroundLight'), new Float32Array(input.light));
+  // (2026-10-14, contact r2) the snow law's switch: each receiver weighs it by its own cover (0 when the case packs none)
+  gl.uniform1f(at('uVehGroundSnow'), input.snow ?? 0);
+  // (contact r2) the FX lamps the hulls shadow (none when the case packs none)
+  gl.uniform1f(at('uVehKeyLight'), input.keyCount ?? 0);
+  gl.uniform4fv(at('uVehKeyLightP'), new Float32Array(input.keyP ?? [0, 0, 0, 0, 0, 0, 0, 0]));
+  gl.uniform4fv(at('uVehKeyLightE'), new Float32Array(input.keyE ?? [0, 0, 0, 0, 0, 0, 0, 0]));
+  // (contact round 4) the round's levers as the module packs them
+  gl.uniform4fv(at('uVehGroundR4'), new Float32Array(input.r4 ?? [1, 1, 0, 1]));
+  gl.uniform4fv(at('uVehGroundR5'), new Float32Array(input.r5 ?? [0.7, 1, 0.35, 0]));
+  gl.uniform4fv(at('uVehGroundR6'), new Float32Array(input.r6 ?? [1, 0, 0.75, 1]));
   gl.uniform4fv(at('uContactAmb'), new Float32Array(input.amb));
   gl.uniform1f(at('uContactSunLum'), input.sunLum);
   gl.uniform3fv(at('uSunDir'), new Float32Array(input.sunDir));
@@ -82,7 +105,8 @@ void main() {
   const out = new Float32Array(n * 4);
   gl.readPixels(0, 0, n, 1, gl.RGBA, gl.FLOAT, out);
   const values = Array.from({ length: n }, (_, i) => out[i * 4]);
+  const grime = Array.from({ length: n }, (_, i) => out[i * 4 + 1]);
   gl.deleteBuffer(buffer); gl.deleteFramebuffer(framebuffer); gl.deleteTexture(target); gl.deleteProgram(program);
   gl.getExtension('WEBGL_lose_context')?.loseContext();
-  return { values, renderer };
+  return { values, grime, renderer };
 }

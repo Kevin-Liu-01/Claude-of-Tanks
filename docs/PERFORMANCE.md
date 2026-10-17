@@ -571,8 +571,8 @@ distance-detail records, night lenses and smoke sockets move to the merged draw.
 Measured (node census, near-visible forward draws, the 217-hull fleet; on the 219-tank tree the rewritten
 national concepts and the two new hulls stay equal to the unmerged build draw for draw, and the new hulls fold
 nothing): bots 58.2 → 55.8 per hull, player builds
-58.8 → 56.4; the five Abrams source-X hulls (`m1a2_x`, `m1a2_tusk_x`, `m1a2_sepv2_x`, `m1a2_sepv3_x`,
-`ua_m1a1_x`) −88 each, 76 hulls −1 or −2, 135 unchanged. The round-79 estimate (27 per hull) counted same-material
+58.8 → 56.4; the five Abrams source-X hulls (`m1a2_abrams`, `m1a2_abrams_tusk`, `m1a2_abrams_sepv2`, `m1a2_abrams_sepv3`,
+`ua_m1a2_abrams`) −88 each, 76 hulls −1 or −2, 135 unchanged. The round-79 estimate (27 per hull) counted same-material
 meshes regardless of layer order, LOD switch, shadow or detail class; folding across a foreign layer is not
 pixel-exact. Same-build pairs (`?staticmerge=off`, one ABBA per map, a pinned 14v14 roster with one Abrams
 source-X bot, headless High, 1600×900): at chase only the player and one or two bots are on screen (the other
@@ -584,7 +584,7 @@ pairs read −0.5 to −1.6 ms at p25). `staticDrawMerge.selftest.mjs` and the f
 hold the merged scene equal draw for draw. Float-target captures (13 vehicles × bot and player builds × High and
 Low × six cameras, every capture of a pose in one task, so the renderer's own run-to-run noise is exactly 0 px
 and a 0.5 mm shift moves at least 31,962 px) were bit-identical in 302 of 312 pose captures; ten differed by one
-pixel (`ua_m1a1_x` and `m1a2_sepv3_x` chase, `challenger_3x` at 140 m), from the polygon-offset compression
+pixel (`ua_m1a2_abrams` and `m1a2_abrams_sepv3` chase, `challenger3` at 140 m), from the polygon-offset compression
 inside a run. The opt-in translation bake (`staticDrawMerge: 'translations'`, `?staticmerge=translations`) saves
 more draws but moved up to 1,615 px (float rounding of baked positions), so it is not the default.
 
@@ -616,7 +616,7 @@ Owner target: desktop High holds 60 fps (16.7 ms) on a mid-range laptop GPU; pho
 
 `tools/frame-budget-probe.mjs` measures production builds (`vite preview`, one headless Chrome on hardware ANGLE,
 the repo's capture flags) in A B B A slots. Each slot is a fresh page: the High preset pinned before boot, a solo
-battle with the 14 v 14 sides switch and a pinned roster (`t90m_x` for the player, 27 opponents taken from the
+battle with the 14 v 14 sides switch and a pinned roster (`t90m` for the player, 27 opponents taken from the
 sorted catalog, so every build of one catalog fields the same hulls), the sourced textures awaited, every bot frozen
 and the governor pinned at full scale. Per viewport (1600×900 and 1920×1080 at device pixel ratio 1) and view
 (`chase`, the hull-relative chase pose; `centre-far`, the battle overview) it settles, then samples whole frames and
@@ -948,6 +948,33 @@ consume its width, height, input, and panel-mode semantics rather than growing
 their own device-label breakpoints. Native display density and internal scene
 resolution remain independent: phones retain native DOM/canvas presentation,
 while the 3D renderer may scale within the output-pixel and quality budgets.
+
+A pinch is a magnifier, never a resize (2026-10-15, owner: "using both my
+fingers on track pad to like expand the screen in landing causes a bunch of
+weirdness and layout shifts"). Desktop trackpad pinch and phone pinch zoom the
+visual viewport, whose width and height shrink by the zoom while the layout
+viewport stays put. `layoutViewportSize()` measures the visible area
+unmagnified: visual size x `pinchZoomFactor()`, the root's `clientWidth` (the
+layout viewport, which no pinch changes) over `visualViewport.width`, exactly 1
+within a pixel. At rest that is exactly the visual viewport, which keeps the
+iOS third-party-browser and on-screen-keyboard cases; under any pinch it is the
+unchanged layout size. The factor is never `visualViewport.scale`: iOS rests at
+a page scale other than 1 with no pinch (Safari page zoom 125 % reports scale
+1.25 on a 322 px visual viewport; an iPad window narrower than Safari's
+minimum effective device width lays out 1024 px wide at scale 0.39), where
+visual size x scale oversized or shrank the whole app (2026-10-16 iOS 26.5
+simulator review). A pixel of change that comes with a pinch is held as
+rounding. The size variables, bands, panel
+policy, `cot:layoutchange` and so the renderer only move on a real window
+resize, browser zoom (cmd +/-, which changes the CSS-pixel viewport and fires
+a window resize) or an orientation change; a zoomed pan schedules nothing, and
+unchanged values are never rewritten. The index.html seed, the battle HUD
+lanes, HUD customisation and editor, and rich tooltips read the same helper.
+The public pages keep browser pinch-zoom for accessibility; the game page
+cancels it (`ui/pinchZoomGuard.ts`), and on a page already pinch-zoomed in the
+camera canvases (garage showroom, Studio, gallery orbit) leave the zoom-out
+half of a pinch to the browser (`pinchRestoresPage()`), so the page un-zooms
+over them too.
 
 Panel policy (2026-09-19, owner: "we're cutting it all off a lil too early, it's
 not mobile yet but we already lost all the side panel details"): a fine-pointer
@@ -1482,7 +1509,7 @@ you can also enter custom numbers of allies and enemies … go up to a number th
 total limit to how many tanks can be in a game before performance is unacceptable") needed a field
 ceiling. A scratch probe (`.qa-dev/field-perf-probe.mjs`, never staged: a private-cache vite server
 over the round-21 worktree, headless Chromium on the hardware ANGLE path, `tier=desktop`, a stored
-sides arrangement, a real Standard entry with `t90m_x` on `verdant`, then 15 s of driving and
+sides arrangement, a real Standard entry with `t90m` on `verdant`, then 15 s of driving and
 firing) recorded the dev flight recorder's live frame gaps for four field sizes on the M5 Max
 desktop. Two other release gates were running (1-minute load 37 → 143 across the runs), so the
 absolute numbers are pessimistic; the per-vehicle slope is the signal.
@@ -1506,7 +1533,7 @@ scales with the field for the same reason (`game/battleEntryLifecycle.ts` `revea
 
 The horizon vista pass (round 24: 431-column ring with a subdivided ridged ladder, the layered world-anchored
 vista material, terrain-material rim bands and an 8000-instance ring forest — ARCHITECTURE.md §3.1.3) was
-measured with the same field probe as the sides switch (`.qa-dev/field-perf-probe.mjs`, `m1a2` on `verdant`,
+measured with the same field probe as the sides switch (`.qa-dev/field-perf-probe.mjs`, `m1a1_abrams_hc` on `verdant`,
 6 v 7, 15 s live, headless Chromium on ANGLE, `tier=desktop`), the vista worktree against main at cc2b452dc, back
 to back on the M5 Max desktop under a 1-minute load of 35–40 from other sessions:
 

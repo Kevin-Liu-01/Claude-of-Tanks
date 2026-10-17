@@ -124,18 +124,18 @@ for (const id of Object.keys(FLEET_BALANCE_REVISION)) {
     `${id}: revised sustained output is measurable`);
 }
 
-const challenger1 = TANK_SPECS.challenger1;
-const challenger1Primary = challenger1.gun.shells[0];
-assert.equal(tankTier('challenger1'), 9, 'Challenger 1 occupies Tier IX');
+const challenger1_mk2 = TANK_SPECS.challenger1_mk2;
+const challenger1Primary = challenger1_mk2.gun.shells[0];
+assert.equal(tankTier('challenger1_mk2'), 9, 'Challenger 1 occupies Tier IX');
 assert.deepEqual({
-  hp: challenger1.hp,
-  speed: challenger1.topSpeedKmh,
-  reverse: challenger1.reverseSpeedKmh,
-  hullTraverse: challenger1.hullTraverseDegS,
-  turretTraverse: challenger1.turretTraverseDegS,
-  reload: challenger1.gun.reloadS,
-  accuracy: challenger1.gun.baseAccuracy,
-  aim: challenger1.gun.aimTimeS,
+  hp: challenger1_mk2.hp,
+  speed: challenger1_mk2.topSpeedKmh,
+  reverse: challenger1_mk2.reverseSpeedKmh,
+  hullTraverse: challenger1_mk2.hullTraverseDegS,
+  turretTraverse: challenger1_mk2.turretTraverseDegS,
+  reload: challenger1_mk2.gun.reloadS,
+  accuracy: challenger1_mk2.gun.baseAccuracy,
+  aim: challenger1_mk2.gun.aimTimeS,
   alpha: challenger1Primary.dmg,
   penetration: [
     challenger1Primary.pen100Mm,
@@ -156,7 +156,7 @@ assert.deepEqual({
 }, 'Challenger 1 owns a complete heavy Tier IX profile');
 assert.equal(challenger1Primary.name, 'L26A1 CHARM-1',
   'Challenger 1 uses its own late-Cold-War kinetic round instead of the Challenger 2 donor round');
-assert.equal(garageStatGroup(challenger1), '9/cold-war',
+assert.equal(garageStatGroup(challenger1_mk2), '9/cold-war',
   'garage compares Challenger 1 against its actual Tier IX peers');
 
 const kv2 = TANK_SPECS.kv2;
@@ -192,25 +192,25 @@ assert.equal(garageStatGroup(kv2), '7/ww2',
   'garage compares KV-2 against its Tier VII peers');
 
 const missileVelocityByVehicle = new Map([
-  ['m2a2_bradley', 195], ['bmp2', 162.5], ['spz_puma', 117], ['spz_puma_s1', 240],
-  ['type89', 130], ['type89_light_tiger', 210], ['cv90_mkiv', 240],
+  ['m2a2_bradley', 195], ['bmp2', 162.5], ['spz_puma', 117], ['spz_wotan', 240],
+  ['hayate_ifv', 130], ['raiju_ifv', 210], ['cv90_mk4_concept', 240],
   ['mbt70', 208], ['fv510_milan', 130], ['m60a2', 208], ['bmp3_rok', 240.5],
   ['ua_m2a3_bradley', 195], ['bmpt_terminator2', 357.5], ['bwp1', 117],
   ['marder1a3', 130], ['m3a3_bradley', 195], ['bmp3', 240.5], ['upior', 117],
   ['bmpt_t90', 357.5], ['m551_sheridan', 208], ['m551a1_tts', 240.5],
   ['m1a3', 2050],
   ['type100', 190], // 2026-09-17: Type 100 IFV HJ-10 guided HEAT
-  ['kurganets25_x', 240], ['warrior_tes_h', 130], ['aft10_x', 208], ['cv90_mkiv_x', 210], ['k21_x', 130],
-  ['object695_x', 380], ['griffin_viper', 400], ['ztz100_prototype', 320], // owner-authored missile concepts
+  ['kurganets25', 240], ['warrior_tes_h', 130], ['aft10', 208], ['cv90_mk4', 210], ['k21', 130],
+  ['object695', 380], ['griffin_viper', 400], ['ztz100_prototype', 320], // owner-authored missile concepts
   // 2026-09-25 IFV identity batch: MELLS and the Type 79 replica racks keep their originals' speeds; the
   // Borsuk's Spike LR is authored at 180 m/s in europePhotoIfvSpecs.ts.
-  ['spz_puma_s1_x', 240], ['type89_x', 210], ['borsuk', 180],
+  ['puma_s1', 240], ['type89', 210], ['borsuk', 180],
   ['m6_linebacker', 750], // 2026-10-04: the compact-pod M6 Linebacker's FIM-92 Stinger
 ]);
 const guided = [];
 const additionalMissileVelocityByWeapon = new Map([
-  ['kurganets25_x/Bulat guided missile', 240],
-  ['object695_x/9M-695 Blast', 380], ['ztz100_prototype/HJ-P9 Blast', 320],
+  ['kurganets25/Bulat guided missile', 240],
+  ['object695/9M-695 Blast', 380], ['ztz100_prototype/HJ-P9 Blast', 320],
 ]);
 for (const id of SAVED_TANK_IDS) {
   for (const round of TANK_SPECS[id].gun.shells) {
@@ -230,7 +230,7 @@ for (const { id, round } of guided) {
 const siegeLine = [
   ['udes03', 8, 1400, 430, 315, 90],
   ['strv103a', 9, 1850, 480, 345, 180],
-  ['strv103', 10, 2400, 520, 380, 220],
+  ['strv103b', 10, 2400, 520, 380, 220],
 ];
 let previousDpm = 0;
 for (const [id, tier, hp, alpha, penetration, frontalKe] of siegeLine) {
@@ -244,7 +244,8 @@ for (const [id, tier, hp, alpha, penetration, frontalKe] of siegeLine) {
     frontalKe, `${id}: dedicated wedge protection`);
   assert.equal(spec.armor.turretless, true, `${id}: fixed-gun hit model`);
   assert.equal(spec.armor.turretPlates.length, 0, `${id}: no phantom turret surface`);
-  assert.ok(spec.armor.modules.every((box) => box.turretLocal === false),
+  // VH.14 (2026-10-15): the UDES 03's hull MG is a working station; its roofGun module rides the gun (roofGunFollow)
+  assert.ok(spec.armor.modules.every((box) => box.roofGunFollow || box.turretLocal === false),
     `${id}: modules live in the hull frame`);
   assert.ok(spec.armor.crew.every((box) => box.turretLocal === false),
     `${id}: crew lives in the hull frame`);
@@ -269,7 +270,7 @@ for (const [id, tier, hp, alpha, penetration, frontalKe] of siegeLine) {
     `${id}: side shot meets an exact low-hull collision face instead of a donor box`);
 }
 
-const retainedT90M = TANK_SPECS.t90m;
+const retainedT90M = TANK_SPECS.t90am;
 const proryv = TANK_SPECS.t90m_proryv;
 assert.deepEqual({
   hp: proryv.hp,
@@ -302,9 +303,9 @@ assert.equal(garageStatGroup(TANK_SPECS.strv103a), '9/cold-war',
   'garage normalizes the 103A against its Cold War tier peers');
 
 const japaneseMbtProgression = [
-  ['type90', 9, 2250, 1550, 34, 52.8, 46.6, 30, 18.5, 3, 2.2, 500, 806, 660, 120, 600],
+  ['type90_kyumaru', 9, 2250, 1550, 34, 52.8, 46.6, 30, 18.5, 3, 2.2, 500, 806, 660, 120, 600],
   ['type90a', 9, 2400, 1500, 30, 50.6, 44.5, 34, 17.0, 3, 2.0, 510, 855, 700, 134, 672],
-  ['type10', 10, 2550, 1200, 35, 52.8, 48.8, 36, 5.2, 0, 0, 540, 891, 730, 134, 672],
+  ['type10_tk_x', 10, 2550, 1200, 35, 52.8, 48.8, 36, 5.2, 0, 0, 540, 891, 730, 134, 672],
   ['type10b', 10, 2700, 1200, 45, 55, 50.9, 40, 5.2, 0, 0, 540, 900, 740, 145, 726],
 ];
 for (const [
@@ -341,7 +342,7 @@ for (const [
 const merkavaProgression = [
   ['merkava2b', 8, 2200, 1000, 18, 30.4, 6.9, 525, 794, 650, 500, 650],
   ['merkava3c', 9, 2450, 1200, 20, 34.2, 6.2, 540, 830, 680, 540, 700],
-  ['merkava3d', 9, 2500, 1200, 20, 36.1, 6.2, 560, 830, 680, 600, 780],
+  ['merkava3_baz', 9, 2500, 1200, 20, 36.1, 6.2, 560, 830, 680, 600, 780],
   ['merkava4b', 9, 2550, 1500, 25, 38, 6.5, 520, 794, 650, 650, 850],
 ];
 let previousMerkavaDpm = 0;
@@ -381,7 +382,7 @@ for (const [
 
 const pattonProgression = [
   // id, tier, hp, speed, reload, alpha, pen100, pen1000, pen2000
-  ['m48', 8, 2050, 50, 7, 450, 580, 535, 490],
+  ['m48a5_patton', 8, 2050, 50, 7, 450, 580, 535, 490],
   ['m60a1', 8, 2100, 52, 6.8, 440, 570, 530, 480],
   ['m60a3', 8, 2200, 50, 6.4, 450, 610, 570, 520],
 ];
@@ -444,7 +445,7 @@ const authority = createAuthoritativeMatch({
   mapId: 'verdant', countdownS: 0,
   players: [
     { id: 'proryv-player', specId: 't90m_proryv', team: 'alpha' },
-    { id: 'strv-player', specId: 'strv103', team: 'bravo' },
+    { id: 'strv-player', specId: 'strv103b', team: 'bravo' },
   ],
 });
 assert.equal(authority.entityById.get('proryv-player').combat.maxHp, proryv.hp,

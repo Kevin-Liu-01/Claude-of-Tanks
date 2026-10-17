@@ -9,7 +9,7 @@ import { SHARED_CAMO_PRESETS, stockCamoPatternIdFor } from './camoPolicy.ts';
 import { camoSwatchRecipe } from '../ui/camoSwatchPainter.ts';
 Object.assign(globalThis, { Path2D, DOMMatrix, ImageData });
 const painter = createMaterialPainter(createCanvas), catalog = createCatalogCamoPainter(createCanvas);
-const spec = { id: 'm1a2', nation: 'USA', era: 'modern', visual: { scheme: 'nato', base: '#49543c',
+const spec = { id: 'm1a1_abrams_hc', nation: 'USA', era: 'modern', visual: { scheme: 'nato', base: '#49543c',
   weather: '#525f45', patches: ['#23261f', '#4a3a2c'] } };
 const pixels = c => c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
 const hash = data => createHash('sha256').update(data).digest('hex');
@@ -76,7 +76,7 @@ for (const preset of SHARED_CAMO_PRESETS) {
   assert.deepEqual(pixels(a), pixels(b), `${preset.id}: repeatable paint`);
   const px = pixels(a); for (let at = 3; at < px.length; at += 4) assert.equal(px[at], 255);
 }
-for (const tank of [spec, { ...spec, id: 'abramsx' }, { ...spec, id: 'm48' }, { ...spec, id: 'merkava3d_x', nation: 'Israel' }]) {
+for (const tank of [spec, { ...spec, id: 'abramsx' }, { ...spec, id: 'm48a5_patton' }, { ...spec, id: 'merkava3d', nation: 'Israel' }]) {
   const source = stockCamoPatternIdFor(tank.id, tank.nation, tank.era);
   const factory = camoSwatchRecipe(tank, 'factory'), named = camoSwatchRecipe(tank, source);
   assert.equal(factory.streamSeed, named.streamSeed, `${tank.id}: Factory uses the named colorway's exact pattern`);
@@ -98,8 +98,8 @@ console.log(`catalogCamoPainter: ${CATALOG_CAMO_ART_IDS.length} catalog and ${SH
 
 // Factory and the explicitly selected reusable finish must share the same
 // actual pigment coverage, including LOW-sized maps and cached rebakes.
-for (const [id,nation] of [['ariete_c1_x','Italy'],['ariete_c2_x','Italy'],['lrmv_lynx','Italy'],
-  ['type100','China'],['ztz100_x','China'],['ztz100_prototype','China']]) {
+for (const [id,nation] of [['c1_ariete','Italy'],['c2_ariete','Italy'],['lrmv_lynx','Italy'],
+  ['type100','China'],['ztz100','China'],['ztz100_prototype','China']]) {
   const tank={...spec,id,nation},visual=resolveCamoVisual(tank,'factory');
   const pattern=stockCamoPatternIdFor(id,nation),selected=resolveCamoVisual(tank,pattern);
   assert.deepEqual(visual.patches,selected.patches,`${id}: selected coat matches Factory`);

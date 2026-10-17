@@ -17,6 +17,7 @@ import * as THREE from 'three';
 import type { SimplexNoise } from '../engine/simplexFast.ts';
 import { normalTextureFromHeight, textureFromRgbaPixels, tileableTorusNoise } from './proceduralTexture.ts';
 import { yardStructureKinds } from './yardDressing.ts';
+import { YARD_FAMILY_MATERIAL } from './maps/yardClutterKit.ts';
 
 export const STEEL_ATLAS_SIZE = 512;
 /** Metres of sheet one atlas width covers (a 20' container side) and one strip covers up (its height). */
@@ -29,14 +30,19 @@ const STRIP_PX = STEEL_ATLAS_SIZE / STEEL_ATLAS_STRIP_COUNT;
 /** The mobile tier paints the atlas at half size: a quarter of the paint time and texture bytes, ribs still readable. */
 export const STEEL_ATLAS_SIZE_MOBILE = STEEL_ATLAS_SIZE / 2;
 
+/** Whether any yard family draws on the steel material (none since props lane A #2 put the yards' drums, tanks and skips on
+ *  the vertex-colour material: their forms carry their own paint). */
+const YARD_FAMILIES_STEEL = Object.values(YARD_FAMILY_MATERIAL).includes('steel');
+
 /**
- * Whether a battlefield's props build will draw the steel material at all: a container row, any yard structure
- * kind (every yard profile places a steel family) or corrugated cladding. A map without pays nothing for the atlas.
+ * Whether a battlefield's props build will draw the steel material at all: a container row, corrugated cladding, or a
+ * yard structure kind while a yard family draws steel (none now: a map whose only steel was its yards' clutter paints
+ * no atlas). A map without pays nothing for the atlas; a steel part on a map this did not foresee paints it then.
  */
 export function steelAtlasNeeded(plan: readonly string[] | undefined, cladding: string | undefined): boolean {
   if (cladding === 'steel') return true;
-  const yard = new Set(yardStructureKinds());
-  return (plan ?? []).some((kind) => kind === 'containerRow' || yard.has(kind));
+  const yard = YARD_FAMILIES_STEEL ? new Set(yardStructureKinds()) : null;
+  return (plan ?? []).some((kind) => kind === 'containerRow' || !!yard?.has(kind));
 }
 /** ISO container side corrugation: 209 mm pitch, trapezoidal, ~36 mm deep. */
 const CORRUGATION_PITCH_M = 0.209;

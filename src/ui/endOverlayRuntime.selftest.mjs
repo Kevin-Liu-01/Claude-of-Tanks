@@ -26,7 +26,7 @@ const ownerDocument = {
 const events = [];
 let returned = 0;
 const record = {
-  result: 'victory', kills: 2, damage: 4312, vehicleId: 'm1a2',
+  result: 'victory', kills: 2, damage: 4312, vehicleId: 'm1a1_abrams_hc',
   mapId: 'verdant', durationS: 92, completedAt: 42,
 };
 const overlay = createEndOverlayRuntime({

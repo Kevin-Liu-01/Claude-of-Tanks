@@ -7,13 +7,17 @@
 // souk's vaulted shops behind their arches; the sabil fountain under its dome; a stone church with its open bell arch;
 // the terraces' vaulted stone stores and stables; a shelled house.
 import {
-  PartSink, faceBox, facePoint, pick, rgb, shade,
+  PartSink, faceBox, facePoint, normalize3, pick, rgb, shade, UV_MEMBER,
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
-import { buildHouse, wallPolygon, windowRhythm, type FaceName, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, recordShaft, roofCrown, wallPolygon, windowRhythm, type FaceName, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { archGlazing, archHead, openBelfry } from './sarajevoParts.ts';
 import { doorUnit, paneBucket, windowUnit, type WindowStyle } from './openings.ts';
 import { pottedPlant, washingLine } from './dressing.ts';
+import { recordShed } from './shedFall.ts';
+import { bevelSpan, orientedPrism } from './millWorks.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { choufSouk } from './souqs.ts'; // props #23: the souk of Deir el-Qamar
 
 /** Shutters and doors: the Lebanese green, a blue-grey, a turquoise, a brown. */
 const SHUTTERS: readonly Rgb[] = [0x3f6a4a, 0x4f7a5a, 0x5a7488, 0x4a8a8a, 0x6a5040].map(rgb);
@@ -74,8 +78,11 @@ function stateFor(ctx: RegionalBuildContext): ChoufState {
  */
 function roundHead(sink: PartSink, face: Face, u: number, spring: number, w: number, fan: 'glass' | 'curtain' | 'dark', ring = 0.13): void {
   const r = w / 2, n = 8;
-  const pts: Vec3[] = [facePoint(face, u, spring, 0.012)];
-  for (let k = 0; k <= n; k++) { const a = Math.PI * k / n; pts.push(facePoint(face, u + Math.cos(a) * r, spring + Math.sin(a) * r, 0.012)); }
+  // (props census r2 sweep, Lane C 2026-10-16: the fanlight was a half disc laid on the uncut stone over the light, a
+  // painted plate) an opening cut with its arch takes the fanlight at the back of its reveal; elsewhere it stays on the face
+  const fo = sink.recess > 0 ? -sink.recess + 0.03 : 0.012;
+  const pts: Vec3[] = [facePoint(face, u, spring, fo)];
+  for (let k = 0; k <= n; k++) { const a = Math.PI * k / n; pts.push(facePoint(face, u + Math.cos(a) * r, spring + Math.sin(a) * r, fo)); }
   sink.polygon(fan, pts, { decor: true, ...(fan === 'curtain' ? { window: face.out } : {}) });
   for (let k = 0; k < n; k++) {
     const a0 = Math.PI * k / n, a1 = Math.PI * (k + 1) / n, R = r + ring;
@@ -109,20 +116,33 @@ function archHaunches(sink: PartSink, face: Face, u: number, ys: number, r: numb
   }
 }
 
+/** Run `body` with the sink's reveal depth set to `recess` (an uncut head reads as on the face). */
+function withRecess(sink: PartSink, recess: number, body: () => void): void {
+  const prior = sink.recess;
+  sink.recess = recess;
+  try { body(); } finally { sink.recess = prior; }
+}
+
 function dialect(st: ChoufState): HouseDialect {
   return {
     window: (sink, face, o, y0) => {
       if (o.kind === 'loft') { windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, { ...st.window, shutters: null, bars: 'none' }, st.rng, 0); return; }
       windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, st.window, st.rng, st.litShare);
-      // the round head over the rectangular light: the arched window of the mountain house
-      roundHead(sink, face, o.u, y0 + o.y0 + o.h + 0.02, o.w, paneBucket(st.rng, 0.3));
+      // the round head over the rectangular light: the arched window of the mountain house (cut with its arch where the
+      // builder gives the opening one, the fanlight then in the reveal)
+      const fan = paneBucket(st.rng, 0.3);
+      if (o.arch) withRecess(sink, sink.recess, () => roundHead(sink, face, o.u, y0 + o.y0 + (o.arch!.spring ?? o.h), o.w, fan));
+      else withRecess(sink, 0, () => roundHead(sink, face, o.u, y0 + o.y0 + o.h + 0.02, o.w, fan));
     },
     door: (sink, face, o, y0, frame) => {
       const big = o.w >= 1.3;
       doorUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, {
         leaf: shade(st.shutter, 0.8), frame: { bucket: 'stone', width: 0.2, out: 0.06 }, transom: false, steps: { bucket: 'stone' }, leafKind: 'panel',
       }, frame.floors[o.storey] + o.y0);
-      if (big || o.kind === 'gate') roundHead(sink, face, o.u, y0 + o.y0 + o.h + 0.02, o.w + 0.1, 'glass', 0.18);
+      if (big || o.kind === 'gate') {
+        if (o.arch) withRecess(sink, sink.recess, () => roundHead(sink, face, o.u, y0 + o.y0 + (o.arch!.spring ?? o.h), o.w, 'glass', 0.18));
+        else withRecess(sink, 0, () => roundHead(sink, face, o.u, y0 + o.y0 + o.h + 0.02, o.w + 0.1, 'glass', 0.18));
+      }
     },
   };
 }
@@ -176,9 +196,13 @@ function roller(sink: PartSink, frame: HouseFrame, look: () => number): void {
  * together, two slender marble columns between them, a balcony slab and its iron rail under them (dressing; the
  * three openings are the house's own, cut into the wall).
  */
-function qanatir(sink: PartSink, face: Face, u: number, floorY: number, rng: () => number): void {
+function qanatir(sink: PartSink, face: Face, u: number, floorY: number, rng: () => number, reveal = 0): void {
   const w = 0.82, h = 2.0, step = 0.98, sill = 0.35;
-  for (const k of [-1, 0, 1]) roundHead(sink, face, u + k * step, floorY + sill + h + 0.02, w, paneBucket(rng, 0.5), 0.1);
+  // (the r2 sweep: the lights are cut with their arches, `reveal` deep: the fanlights at the back of it)
+  for (const k of [-1, 0, 1]) {
+    const fan = paneBucket(rng, 0.5);
+    withRecess(sink, reveal, () => roundHead(sink, face, u + k * step, floorY + sill + h + (reveal > 0 ? 0 : 0.02), w, fan, 0.1));
+  }
   for (const k of [-0.5, 0.5]) {
     sink.cylinder('stone', facePoint(face, u + k * step, floorY + sill, 0.1), 'y', h + 0.05, 0.075, 8, { colour: MARBLE, decor: true });
     faceBox(sink, 'stone', face, u + k * step, floorY + sill + h + 0.08, 0.1, 0.24, 0.14, 0.2, { decor: true });
@@ -187,7 +211,8 @@ function qanatir(sink: PartSink, face: Face, u: number, floorY: number, rng: () 
   faceBox(sink, 'stone', face, u, floorY - 0.06, 0.45, step * 3 + 0.5, 0.16, 0.9, { decor: true });
   for (const k of [-1.5, 0, 1.5]) faceBox(sink, 'stone', face, u + k * step * 0.95, floorY - 0.3, 0.3, 0.2, 0.36, 0.6, { decor: true });
   faceBox(sink, 'structureMetal', face, u, floorY + 0.95, 0.86, step * 3 + 0.45, 0.04, 0.04, { colour: IRON, decor: true });
-  for (let k = 0; k <= 12; k++) faceBox(sink, 'structureMetal', face, u - (step * 3 + 0.4) / 2 + (step * 3 + 0.4) * k / 12, floorY + 0.5, 0.86, 0.025, 0.9, 0.025, { colour: IRON, decor: true, fine: true });
+  // (the r2 sweep: the balusters stood 3 cm over the slab, floating) on it
+  for (let k = 0; k <= 12; k++) faceBox(sink, 'structureMetal', face, u - (step * 3 + 0.4) / 2 + (step * 3 + 0.4) * k / 12, floorY + 0.49, 0.86, 0.025, 0.94, 0.025, { colour: IRON, decor: true, fine: true });
 }
 
 interface DarOpts { storeys: 1 | 2; roof: 'tile' | 'earth'; qanatir?: boolean; stair?: boolean }
@@ -228,6 +253,14 @@ function dar(ctx: RegionalBuildContext, opts: DarOpts): RegionalParts {
       for (const o of windowRhythm(rear, s, streetLen, { w: 0.8, h: 1.35, sill: 1.0, spacing: 2.8, margin: 1.2, max: 2 })) openings.push(o);
     }
     const triple = new Set(opts.qanatir ? [-0.98, 0, 0.98].map((k) => (doorU + k).toFixed(2)) : []);
+    // (props census r2 sweep, Lane C 2026-10-16) the arched lights and the big door cut with their arches (the round
+    // heads' fanlights were painted on the stone over them); the triple arch's lights keep the qanatir's own heads
+    for (let k = 0; k < openings.length; k++) {
+      const o = openings[k];
+      const tripled = o.storey === 1 && o.face === street && triple.has(o.u.toFixed(2));
+      if (o.kind === 'window' || (o.kind === 'door' && o.w >= 1.3)) openings[k] = { ...o, arch: {} };
+      void tripled;
+    }
     sink.placed(0, shift, 0, 0, () => {
       const frame = buildHouse(sink, {
         // (round 2, wave 123: "no plinths"): the mountain house's high base course, standing proud of the walls
@@ -246,7 +279,7 @@ function dar(ctx: RegionalBuildContext, opts: DarOpts): RegionalParts {
       });
       // a string course between the storeys and the cornice under the eaves
       if (opts.storeys > 1) sink.band('stone', -W / 2 - 0.05, frame.floors[1] - 0.12, -D / 2 - 0.05, W / 2 + 0.05, frame.floors[1] + 0.06, D / 2 + 0.05, { decor: true });
-      if (opts.qanatir && opts.storeys > 1) qanatir(sink, frame.faces[street], doorU, frame.floors[1], rng);
+      if (opts.qanatir && opts.storeys > 1) qanatir(sink, frame.faces[street], doorU, frame.floors[1], rng, 0.3);
       if (opts.roof === 'earth') { roller(sink, frame, look); spouts(sink, frame, ['left', 'back'], look); }
       // the outside stair up the +x side to the upper floor (or the roof), its parapet (structural wedge, dressed treads)
       if (stair) {
@@ -311,15 +344,44 @@ const hammam: RegionalBuilder = (ctx) => {
   const st = stateFor(ctx), rng = st.rng, look = st.look;
   const fp = footprint(ctx);
   const W = Math.max(6, fp.w - 0.1), D = Math.max(6, fp.d - 0.1), H = 4.4 + rng() * 0.4;
+  // (props census #15, Lane C 2026-10-16: "the 12.7 m front has only an arched door and one 0.6 m loft vent, and the
+  // other three faces are fully blank"; the door's fanlight a 1.6 x 0.8 glass plate on the stone) the arched door cut
+  // to its crown under its voussoirs, the vent and two grilled lights high on the front, the warm rooms' small lights
+  // down both sides, the stoke hole cut low in the back under the furnace's stack, its soot and its fuel
+  const doorU = -W * 0.18, spring = 2.15;
   const openings: Opening[] = [
-    { face: 'front', storey: 0, kind: 'door', u: -W * 0.18, w: 1.5, y0: 0, h: 2.5 },
+    { face: 'front', storey: 0, kind: 'door', u: doorU, w: 1.5, y0: 0, h: spring, arch: { spring } },
     { face: 'front', storey: 0, kind: 'loft', u: W * 0.22, w: 0.6, y0: 2.2, h: 0.8 },
+    ...[W * 0.05, W * 0.38].map((u): Opening => ({ face: 'front', storey: 0, kind: 'window', u, w: 0.5, y0: 2.9, h: 0.6 })),
+    { face: 'back', storey: 0, kind: 'door', u: W / 2 - 0.85, w: 0.8, y0: 0, h: 0.75, arch: { spring: 0.5 } },
   ];
+  for (const face of ['left', 'right'] as const) openings.push(...windowRhythm(face, 0, D, { w: 0.45, h: 0.55, sill: 2.9, spacing: 2.4, margin: 1.2, max: 3 }));
+  const grille: WindowStyle = { ...st.window, shutters: null, bars: 'cross' };
+  const base = dialect(st);
   sink.placed(0, fp.cx, 0, fp.cz, () => {
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.6, out: 0.1, bucket: 'stone' }, storeys: [{ h: H, wall: 'stone' }], roof: earthRoof(0.4), gableBucket: 'stone', openings,
-      chimneys: [], gutters: null, verge: null, reveal: 0.35, spall: null,
-    }, dialect(st));
+      chimneys: [], gutters: null, verge: null, reveal: 0.35, spall: null, core: 'stone',
+    }, {
+      ...base,
+      // the vent is left empty; the lights take their grilles and frames, no glass round head over them
+      window: (s, face, o, y0) => { if (o.kind !== 'loft') windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, grille, st.rng, 0.2); },
+      // the entrance's leaf under its arch's spring; the stoke hole left open on its dark
+      door: (s, face, o, y0) => {
+        if (o.w < 1) return;
+        doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: shade(st.shutter, 0.8), frame: { bucket: 'stone', width: 0.16, out: 0.05 }, transom: false, steps: { bucket: 'stone' }, leafKind: 'panel' }, y0 + o.y0);
+      },
+    });
+    archHead(sink, frame.faces.front, doorU, frame.floors[0] + spring, 0.75, 'stone', 0.22, 7);
+    const back = frame.faces.back;
+    // the soot over the stoke hole (the r2 sweep: a near-black patch read as a painted opening): a stain on the stone,
+    // darkest at the hole and fading up the wall
+    const sootY = frame.floors[0] + 1.45;
+    faceBox(sink, 'stone', back, -(W / 2 - 0.85), sootY, 0.004, 1.0, 1.3, 0.008,
+      { decor: true, tint: [0.72, 0.69, 0.66], shadeAt: (p: Vec3) => Math.min(1.1, 0.8 + 0.3 * (p[1] - (sootY - 0.65)) / 1.3) });
+    for (let k = 0; k < 4; k++) {
+      sink.cylinder('structureWood', [W / 2 - 1.9 - k * 0.04, 0.1 + (k % 2) * 0.13, -D / 2 - 0.3 - (k % 3) * 0.06], 'x', 0.9, 0.07, 6, { colour: shade(rgb(0x6a5440), 0.7 + look() * 0.3), decor: true });
+    }
     spouts(sink, frame, ['left', 'right'], look);
     const top = frame.eaveY + 0.3;
     // the hot room's dome over the back half on its octagonal drum, two smaller domes forward
@@ -337,42 +399,6 @@ const hammam: RegionalBuilder = (ctx) => {
     // the furnace stack at the back corner
     sink.span('stone', W / 2 - 1.3, 0, -D / 2 + 0.3, W / 2 - 0.4, top + 3.2, -D / 2 + 1.2);
   });
-  return sink.finish();
-};
-
-/** The souk's row: vaulted shops behind round arches on stone piers, plank doors and shutters, a flat roof. */
-const souk: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const st = stateFor(ctx), rng = st.rng, look = st.look;
-  const fp = footprint(ctx);
-  const H = 3.6;
-  onLot(sink, fp, (Wf, Df) => {
-    const W = Math.max(3.5, Wf - 0.1), L = Math.max(5, Df - 0.1);
-    const nb = Math.max(2, Math.round(L / 3.0)), bay = L / nb;
-    const openings: Opening[] = [];
-    for (let k = 0; k < nb; k++) openings.push({ face: 'right', storey: 0, kind: 'door', u: -L / 2 + (k + 0.5) * bay, w: Math.min(1.9, bay - 0.8), y0: 0, h: 2.3 });
-    const frame = buildHouse(sink, {
-      w: W, d: L, plinth: { h: 0.45, out: 0.08, bucket: 'stone' }, storeys: [{ h: H, wall: 'stone' }], roof: earthRoof(0.35), gableBucket: 'stone', openings,
-      chimneys: [], gutters: null, verge: null, reveal: 0.4, spall: null,
-    }, {
-      window: () => {},
-      door: (s, face, o, y0) => {
-        // the shop's plank doors folded open on the dark of the vault, the round arch over the opening
-        const r = s.recess, go = r > 0 ? -r + 0.03 : 0.015;
-        // (round 2, wave 123: "black voids"): the vault's back a deep brown of goods and shadow, not a black hole
-        faceBox(s, 'structureWood', face, o.u, y0 + o.y0 + o.h / 2, go, o.w, o.h, 0.04, { colour: rgb(0x3a2c22) });
-        for (const side of [-1, 1]) faceBox(s, 'structureWood', face, o.u + side * (o.w / 2 + 0.32), y0 + o.y0 + o.h / 2, 0.05, 0.6, o.h - 0.1, 0.05, { colour: shade(st.shutter, 0.85), decor: true });
-        roundHead(s, face, o.u, y0 + o.y0 + o.h + 0.02, o.w, 'glass', 0.2);
-      },
-    });
-    spouts(sink, frame, ['left', 'back'], look);
-    // the awnings of cloth over a few of the shops
-    for (let k = 0; k < nb; k++) {
-      if (rng() < 0.45) continue;
-      const u = -L / 2 + (k + 0.5) * bay, c = pick(rng, [rgb(0x9a3a2c), rgb(0x2f5a7a), rgb(0xc8b88a), rgb(0x4f6a3a)]);
-      faceBox(sink, 'structureWood', frame.faces.right, u, 3.05, 0.55, Math.min(2.2, bay - 0.3), 0.05, 1.1, { colour: c, decor: true });
-    }
-  }, 1);
   return sink.finish();
 };
 
@@ -429,19 +455,14 @@ function campanile(sink: PartSink, W: number, D: number, naveTop: number, look: 
   const T = Math.min(3.6, W * 0.42), x0 = W / 2 - T, x1 = W / 2, z0 = D / 2 - T, z1 = D / 2;
   const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
   const shaftTop = naveTop + 5.2 + look() * 1.4;
-  sink.span('stone', x0, 0, z0, x1, shaftTop, z1);
-  for (const y of [naveTop - 0.4, shaftTop - 3.7]) sink.band('stone', x0 - 0.08, y, z0 - 0.08, x1 + 0.08, y + 0.22, z1 + 0.08, { decor: true });
-  const faces: Face[] = [
-    { origin: [cx, 0, z1], u: [1, 0, 0], out: [0, 0, 1], width: T },
-    { origin: [x1, 0, cz], u: [0, 0, -1], out: [1, 0, 0], width: T },
-    { origin: [cx, 0, z0], u: [-1, 0, 0], out: [0, 0, -1], width: T },
-    { origin: [x0, 0, cz], u: [0, 0, 1], out: [-1, 0, 0], width: T },
-  ];
+  // (props census #5, lane B 2026-10-15) the belfry open through the shaft (its openings were dark plates on a solid
+  // span): the shaft to the openings' sill, the four corner piers and the head over them, the bell on its beam; the
+  // shaft recorded as a tower body (it topples in its courses)
   const ow = T * 0.42, oy = shaftTop - 3.2, oh = 1.9;
-  for (const f of faces) {
-    sink.quad('dark', facePoint(f, -ow / 2, oy, 0.02), facePoint(f, ow / 2, oy, 0.02), facePoint(f, ow / 2, oy + oh, 0.02), facePoint(f, -ow / 2, oy + oh, 0.02), { decor: true });
-    roundHead(sink, f, 0, oy + oh, ow, 'dark', 0.14);
-  }
+  sink.span('stone', x0, 0, z0, x1, oy, z1);
+  openBelfry(sink, 'stone', cx, cz, T, oy, oy + oh + ow / 2, shaftTop, ow, rgb(0x6a5a3a), rgb(0x4a3a2a));
+  recordShaft(sink, cx, cz, T, shaftTop + 0.3 + T * 0.95, 'stone');
+  for (const y of [naveTop - 0.4, shaftTop - 3.7]) sink.band('stone', x0 - 0.08, y, z0 - 0.08, x1 + 0.08, y + 0.22, z1 + 0.08, { decor: true });
   sink.span('stone', x0 - 0.15, shaftTop, z0 - 0.15, x1 + 0.15, shaftTop + 0.3, z1 + 0.15, { decor: true });
   const base = shaftTop + 0.3, apex: Vec3 = [cx, base + T * 0.95, cz];
   const corners: Array<[number, number]> = [[x0 - 0.1, z0 - 0.1], [x1 + 0.1, z0 - 0.1], [x1 + 0.1, z1 + 0.1], [x0 - 0.1, z1 + 0.1]];
@@ -465,9 +486,12 @@ const makeChurch = (withCampanile: boolean): RegionalBuilder => (ctx) => {
   onLot(sink, fp, (Wf, Df, turned) => {
     const W = Math.max(5, Wf - 0.1), D = Math.max(8, Df - 0.1);
     const doorFace: FaceName = turned ? 'left' : 'front';
-    const lights = (face: FaceName, avoid: Array<[number, number]>) => windowRhythm(face, 0, D, { w: 0.8, h: 1.9, sill: 2.0, spacing: 2.8, margin: 1.3, avoid });
+    // (props census #5) the round heads cut through the wall with the rest of the opening (they were glass fans laid on
+    // it over the cut light): the glazing in the head at the back of the reveal, the stone ring round it
+    const lights = (face: FaceName, avoid: Array<[number, number]>) => windowRhythm(face, 0, D, { w: 0.8, h: 1.9, sill: 2.0, spacing: 2.8, margin: 1.3, avoid })
+      .map((o): Opening => ({ ...o, arch: {} }));
     const openings: Opening[] = [
-      { face: doorFace, storey: 0, kind: 'door', u: 0, w: 1.5, y0: 0, h: 2.6 },
+      { face: doorFace, storey: 0, kind: 'door', u: 0, w: 1.5, y0: 0, h: 2.6, arch: {} },
       ...lights('left', turned ? [[-1.2, 1.2]] : []),
       ...lights('right', []),
     ];
@@ -475,35 +499,92 @@ const makeChurch = (withCampanile: boolean): RegionalBuilder => (ctx) => {
       w: W, d: D, plinth: { h: 0.7, out: 0.1, bucket: 'stone' }, storeys: [{ h: 5.6, wall: 'stone' }],
       roof: { kind: 'gable', pitchDeg: 28, eave: 0.35, verge: 0.25, thickness: 0.12, bucket: 'roof', ridge: 'saddle' }, gableBucket: 'stone', openings,
       chimneys: [], gutters: null, verge: null, reveal: 0.4, spall: null,
-    }, { ...dialect(st), window: (s, face, o, y0) => { windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { ...st.window, shutters: null, bars: 'six' }, rng, 0.3); roundHead(s, face, o.u, y0 + o.y0 + o.h + 0.02, o.w, 'glass'); } });
+    }, {
+      ...dialect(st),
+      window: (s, face, o, y0) => {
+        windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { ...st.window, shutters: null, bars: 'six' }, rng, 0.3);
+        archGlazing(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, st.window.frame);
+        archHead(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, 'stone', 0.13, 6);
+      },
+      door: (s, face, o, y0, fr) => {
+        doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
+          leaf: shade(st.shutter, 0.8), frame: { bucket: 'stone', width: 0.2, out: 0.06 }, transom: false, steps: { bucket: 'stone' }, leafKind: 'panel',
+        }, fr.floors[o.storey] + o.y0);
+        archGlazing(s, face, o.u, y0 + o.y0 + o.h, o.w / 2, st.window.frame);
+        archHead(s, face, o.u, y0 + o.y0 + o.h, o.w / 2 + 0.05, 'stone', 0.18, 7);
+      },
+    });
     if (withCampanile) { campanile(sink, W, D, frame.eaveY, st.look); return; }
     // the bell arch over the front gable: two piers and their arch, the bell, the cross
     const top = frame.roof.ridgeY, z = D / 2 - 0.3;
-    sink.span('stone', -1.1, top - 1.0, z - 0.3, -0.55, top + 2.0, z + 0.3);
-    sink.span('stone', 0.55, top - 1.0, z - 0.3, 1.1, top + 2.0, z + 0.3);
-    sink.span('stone', -1.2, top + 2.0, z - 0.34, 1.2, top + 2.5, z + 0.34);
-    archHaunches(sink, { origin: [0, 0, z + 0.3], u: [1, 0, 0], out: [0, 0, 1], width: 2.2 }, 0, top + 1.4, 0.55, 0.55, top + 2.0, 0.6);
-    sink.cylinder('structureMetal', [0, top + 0.75, z], 'y', 0.6, 0.3, 10, { colour: rgb(0x6a5a3a), decor: true }, 0.15);
-    // (the buildings stream, 2026-10-12, the integrity check: the bell hung between the piers on nothing) its yoke
-    sink.span('structureMetal', -0.6, top + 1.35, z - 0.04, 0.6, top + 1.43, z + 0.04, { colour: IRON, decor: true });
-    sink.span('structureMetal', -0.035, top + 2.5, z - 0.035, 0.035, top + 3.5, z + 0.035, { colour: IRON, decor: true });
-    sink.span('structureMetal', -0.25, top + 3.05, z - 0.03, 0.25, top + 3.13, z + 0.03, { colour: IRON, decor: true });
+    // (props census #5: the bell arch a crown of the roof in the house's plan: it falls with its roof section)
+    roofCrown(sink, frame, { kind: 'bellcote', x0: -1.2, x1: 1.2, z0: z - 0.34, z1: z + 0.34, y0: top - 1.0, y1: top + 3.5, bucket: 'stone' }, () => {
+      sink.span('stone', -1.1, top - 1.0, z - 0.3, -0.55, top + 2.0, z + 0.3);
+      sink.span('stone', 0.55, top - 1.0, z - 0.3, 1.1, top + 2.0, z + 0.3);
+      sink.span('stone', -1.2, top + 2.0, z - 0.34, 1.2, top + 2.5, z + 0.34);
+      archHaunches(sink, { origin: [0, 0, z + 0.3], u: [1, 0, 0], out: [0, 0, 1], width: 2.2 }, 0, top + 1.4, 0.55, 0.55, top + 2.0, 0.6);
+      sink.cylinder('structureMetal', [0, top + 0.75, z], 'y', 0.6, 0.3, 10, { colour: rgb(0x6a5a3a), decor: true }, 0.15);
+      // (the buildings stream, 2026-10-12, the integrity check: the bell hung between the piers on nothing) its yoke
+      sink.span('structureMetal', -0.6, top + 1.35, z - 0.04, 0.6, top + 1.43, z + 0.04, { colour: IRON, decor: true });
+      sink.span('structureMetal', -0.035, top + 2.5, z - 0.035, 0.035, top + 3.5, z + 0.035, { colour: IRON, decor: true });
+      sink.span('structureMetal', -0.25, top + 3.05, z - 0.03, 0.25, top + 3.13, z + 0.03, { colour: IRON, decor: true });
+    });
   }, -1);
   return sink.finish();
 };
 
-/** The terrace store (qabu): a vaulted stone room half into the slope, a flat roof, a low arched door. */
+/**
+ * The terrace store (qabu): a vaulted stone room half into the slope, a flat roof, a low arched door. (Props census #22,
+ * Lane C 2026-10-16: "three blank walls, no plinth, no lintel".) The terrace's rubble bank now rises against its back
+ * and sides to the roof's edge, held at the front corners by two dry-stone wing walls; the front carries the dressed
+ * quoins, the arched door cut through it under its ring of voussoirs and keystone, and two vents cut high either side.
+ */
 const store: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx), look = st.look;
   const fp = footprint(ctx);
   const W = Math.max(2.0, fp.w - 0.1), D = Math.max(2.0, fp.d - 0.1);
-  const small = Math.min(W, D) < 3.2;
+  const small = Math.min(W, D) < 3.2, h = small ? 2.3 : 2.8;
+  const spring = Math.min(1.45, h - 0.85), dw = 0.9;
+  const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: dw, y0: 0, h: spring, arch: { spring } }];
+  if (W >= 2.6) for (const s2 of [-1, 1]) openings.push({ face: 'front', storey: 0, kind: 'loft', u: s2 * (W / 2 - 0.6), w: 0.16, h: 0.42, y0: h - 0.95 });
+  const base = dialect({ ...st, litShare: 0 });
   sink.placed(0, fp.cx, 0, fp.cz, () => {
     const frame = buildHouse(sink, {
-      w: W, d: D, plinth: null, storeys: [{ h: small ? 2.3 : 2.8, wall: 'stone' }], roof: earthRoof(0.3), gableBucket: 'stone',
-      openings: [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 0.9, y0: 0, h: 1.8 }], chimneys: [], gutters: null, verge: null, reveal: 0.35, spall: null,
-    }, dialect({ ...st, litShare: 0 }));
+      w: W, d: D, plinth: null, storeys: [{ h, wall: 'stone' }], roof: earthRoof(0.3), gableBucket: 'stone',
+      openings, chimneys: [], gutters: null, verge: null, reveal: 0.35, spall: null, core: 'rubble',
+    }, {
+      ...base,
+      // a vent is left empty (its reveal and the store's dark); the door's leaf fills the rectangle under the arch
+      window: (s, face, o, y0, fr) => { if (o.kind !== 'loft') base.window(s, face, o, y0, fr); },
+      door: (s, face, o, y0) => doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, {
+        leaf: shade(st.shutter, 0.8), frame: { bucket: 'stone', width: 0.12, out: 0.04 }, transom: false, steps: { bucket: 'stone' }, leafKind: 'plank',
+      }, 0),
+    });
+    const f = frame.faces.front;
+    // the ring of voussoirs over the door's arch and its keystone; the dressed quoins up the front corners
+    archHead(sink, f, 0, spring, dw / 2, 'stone', 0.2, 7);
+    faceBox(sink, 'stone', f, 0, spring + dw / 2 + 0.12, 0.05, 0.24, 0.3, 0.1, { decor: true, fineSides: true });
+    for (const s2 of [-1, 1]) for (let y = 0, k = 0; y < h - 0.2; y += 0.38, k++) {
+      const long = k % 2 === 0;
+      faceBox(sink, 'stone', f, s2 * (W / 2 - (long ? 0.26 : 0.16)), y + 0.18, 0.025, long ? 0.52 : 0.32, 0.34, 0.05, { decor: true, fineSides: true, shade: 1.06 });
+    }
+    // the terrace: its rubble bank up the back and sides to the wall heads, the wing walls holding it at the front
+    const top = frame.eaveY, g = -0.25, o = 1.8, zf = D / 2 - 0.35;
+    const bank = (pts: Vec3[], want: Vec3) => {
+      const [p0, p1, p2] = pts;
+      const ux = p1[0] - p0[0], uy = p1[1] - p0[1], uz = p1[2] - p0[2], vx = p2[0] - p0[0], vy = p2[1] - p0[1], vz = p2[2] - p0[2];
+      const n = [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx];
+      sink.polygon('stone', n[0] * want[0] + n[1] * want[1] + n[2] * want[2] >= 0 ? pts : [...pts].reverse(), { decor: true, tint: [0.92, 0.88, 0.8] });
+    };
+    const T = (x: number, z: number): Vec3 => [x, top, z], B = (x: number, z: number): Vec3 => [x, g, z];
+    bank([T(-W / 2, -D / 2), T(W / 2, -D / 2), B(W / 2 + o, -D / 2 - o), B(-W / 2 - o, -D / 2 - o)], [0, 1, -1]);
+    for (const s2 of [-1, 1]) {
+      bank([T(s2 * W / 2, -D / 2), T(s2 * W / 2, zf), B(s2 * (W / 2 + o), zf), B(s2 * (W / 2 + o), -D / 2 - o)], [s2, 1, 0]);
+      sink.span('stone', s2 > 0 ? W / 2 : -W / 2 - 0.65, -0.3, zf - 0.02, s2 > 0 ? W / 2 + 0.65 : -W / 2, top, zf + 0.38);
+      // the bank's face over the wing wall's back, down to the ground at its end
+      bank([T(s2 * W / 2, zf), B(s2 * (W / 2 + 0.65), zf), B(s2 * (W / 2 + o), zf)], [0, 0, 1]);
+    }
     if (!small) roller(sink, frame, look);
     spouts(sink, frame, ['back'], look);
   });
@@ -532,22 +613,88 @@ const stable: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** A grape arbor (arisha): a frame of posts and rails over a stone terrace, the vine's leaves over it (open). */
+/**
+ * The grape arbour (arisha; the props census #17, 2026-10-15, the judges: "hewn or round posts on stone bases with
+ * notched beams and a lattice of rails; a vine with trunks climbing the posts and leaf clusters following the lattice;
+ * a dressed stone terrace edge; destroyed: the frame racks over into its own posts and beams, and the leaves scatter"):
+ * the terrace slab with its dressed edge, round posts on stone bases, the two beams laid in notches over their heads and
+ * run out past them, the rails across the beams and the battens along the rails (the lattice), the old vine's trunk
+ * twisting up a post and out along a beam, its leaves in clusters over the lattice and the grapes hanging under it.
+ * It falls as a shed does (shedFall.ts): the posts snapped, the lattice down in lengths, the leaves thrown.
+ */
 const arisha: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
-  const look = ctx.variant;
+  const look = ctx.variant, mobile = ctx.tier === 'mobile';
   const fp = footprint(ctx);
   const W = Math.max(2.4, fp.w - 0.05), D = Math.max(2.4, fp.d - 0.05), H = 2.5;
+  const LEAVES: readonly Rgb[] = [0x4f6a2e, 0x5f7a34, 0x3f5a26, 0x6a7a3a].map(rgb), GRAPE = rgb(0x3a2a40), BARK = rgb(0x4a3a2c);
+  // (props census r2 sweep, Lane C 2026-10-16: the arbour's box-only share 65 %) the terrace's corners and the post bases'
+  // arrises dressed, the beams and rails eased
+  const chamfered = (x0: number, z0: number, x1: number, z1: number, y: number, c: number): Vec3[] => [
+    [x1, y, z0 + c], [x1, y, z1 - c], [x1 - c, y, z1], [x0 + c, y, z1], [x0, y, z1 - c], [x0, y, z0 + c], [x0 + c, y, z0], [x1 - c, y, z0]];
   sink.placed(0, fp.cx, 0, fp.cz, () => {
-    sink.span('stone', -W / 2, -0.3, -D / 2, W / 2, 0.2, D / 2);
-    for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) sink.span('structureWood', sx * (W / 2 - 0.12) - 0.08, 0.2, sz * (D / 2 - 0.12) - 0.08, sx * (W / 2 - 0.12) + 0.08, H, sz * (D / 2 - 0.12) + 0.08, { colour: TIMBER });
-    for (const sz of [-1, 1]) sink.span('structureWood', -W / 2, H - 0.12, sz * (D / 2 - 0.12) - 0.06, W / 2, H, sz * (D / 2 - 0.12) + 0.06, { colour: TIMBER });
-    for (let x = -W / 2 + 0.4; x < W / 2 - 0.2; x += 0.6) sink.span('structureWood', x - 0.03, H, -D / 2, x + 0.03, H + 0.05, D / 2, { colour: TIMBER, decor: true, fine: true });
-    // the vine canopy in loose clumps
-    for (let k = 0; k < 9; k++) {
-      const x = (look() - 0.5) * (W - 0.6), z = (look() - 0.5) * (D - 0.6), s = 0.6 + look() * 0.7;
-      sink.span('structureWood', x - s / 2, H + 0.02, z - s / 2, x + s / 2, H + 0.18 + look() * 0.12, z + s / 2, { colour: shade(rgb(0x4f6a2e), 0.8 + look() * 0.4), decor: true });
+    orientedPrism(sink, 'stone', chamfered(-W / 2, -D / 2, W / 2, D / 2, -0.3, 0.12), [0, 1, 0], 0.5, {});
+    // the terrace's dressed edge: a coping course a hand proud all round its top
+    sink.band('stone', -W / 2 - 0.04, 0.08, -D / 2 - 0.04, W / 2 + 0.04, 0.22, D / 2 + 0.04, { decor: true, shade: 0.92 });
+    // the posts on their stone bases (the corners, and a middle one on a long side)
+    const xs = W > 3.4 ? [-1, 0, 1] : [-1, 1], legs: Array<{ foot: Vec3; head: Vec3 }> = [], posts: Array<[number, number, number, number]> = [];
+    for (const sz of [-1, 1]) for (const k of xs) {
+      const x = k * (W / 2 - 0.15), z = sz * (D / 2 - 0.15);
+      orientedPrism(sink, 'stone', chamfered(x - 0.15, z - 0.15, x + 0.15, z + 0.15, 0.2, 0.04), [0, 1, 0], 0.22, { shade: 0.88 });
+      sink.cylinder('structureWood', [x, 0.42, z], 'y', H - 0.42, 0.08, 8, { colour: TIMBER }, 0.075);
+      legs.push({ foot: [x, 0.42, z], head: [x, H, z] }); posts.push([x, z, 0.42, H]);
     }
+    // the two beams in their notches over the post heads, run out past them; the rails across; the battens along
+    for (const sz of [-1, 1]) bevelSpan(sink, 'structureWood', -W / 2 - 0.15, H - 0.14, sz * (D / 2 - 0.15) - 0.07, W / 2 + 0.15, H + 0.02, sz * (D / 2 - 0.15) + 0.07, 0.025, { colour: TIMBER, uv: UV_MEMBER });
+    for (let x = -W / 2 + 0.3; x < W / 2 - 0.15; x += 0.55) bevelSpan(sink, 'structureWood', x - 0.035, H + 0.02, -D / 2 - 0.1, x + 0.035, H + 0.09, D / 2 + 0.1, 0.012, { colour: shade(TIMBER, 1.08), decor: true, uv: UV_MEMBER });
+    sink.dressing(mobile, () => {
+      for (let z = -D / 2 + 0.3; z < D / 2 - 0.15; z += 0.6) sink.span('structureWood', -W / 2, H + 0.09, z - 0.02, W / 2, H + 0.13, z + 0.02, { colour: shade(TIMBER, 1.12), decor: true, fine: true });
+      // the vine: its trunk twisting up the corner post, out along the beam and over the rails
+      const px = -(W / 2 - 0.15), pz = -(D / 2 - 0.15), pts: Vec3[] = [];
+      for (let k = 0; k <= 5; k++) {
+        const t = k / 5, a = t * Math.PI * 1.6;
+        pts.push([px + Math.cos(a) * 0.13, 0.22 + t * (H - 0.3), pz + Math.sin(a) * 0.13]);
+      }
+      pts.push([px + W * 0.35, H + 0.16, pz + 0.1], [px + W * 0.7, H + 0.18, pz + D * 0.3], [px + W * 0.45, H + 0.17, pz + D * 0.75]);
+      for (let k = 0; k + 1 < pts.length; k++) {
+        const r = k < 6 ? 0.07 - k * 0.006 : 0.035;
+        sink.member('structureWood', pts[k], pts[k + 1], r, r, [0, 0, 1], { colour: shade(BARK, 0.9 + look() * 0.2), decor: true, exposed: true }, 0);
+      }
+      // the leaves in clusters over the lattice, each lying on a rail (kitConnectivity, the integrity check: clusters
+      // laid at random stood 6-8 cm over the battens on nothing): a few leaves at their own tilts through the rail's top,
+      // seen from above and below (the under side a few millimetres beneath the upper); the grapes hang from the rail
+      // a leaf: a five-lobed card and its underside, the same outline a few millimetres beneath it, wound the other way
+      const leaf = (c: Vec3, nrm: Vec3, r: number, twist: number, top: Rgb, under: Rgb): void => {
+        const up: Vec3 = Math.abs(nrm[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0];
+        const a = normalize3([up[1] * nrm[2] - up[2] * nrm[1], up[2] * nrm[0] - up[0] * nrm[2], up[0] * nrm[1] - up[1] * nrm[0]]);
+        const b: Vec3 = [nrm[1] * a[2] - nrm[2] * a[1], nrm[2] * a[0] - nrm[0] * a[2], nrm[0] * a[1] - nrm[1] * a[0]];
+        const pts = (o: number): Vec3[] => Array.from({ length: 5 }, (_, k) => {
+          const t = twist + k * 2 * Math.PI / 5, rr = r * (k % 2 ? 0.86 : 1);
+          return [c[0] + (a[0] * Math.cos(t) + b[0] * Math.sin(t)) * rr - nrm[0] * o, c[1] + (a[1] * Math.cos(t) + b[1] * Math.sin(t)) * rr - nrm[1] * o,
+            c[2] + (a[2] * Math.cos(t) + b[2] * Math.sin(t)) * rr - nrm[2] * o];
+        });
+        sink.polygon('structureWood', pts(0), { decor: true, colour: top });
+        sink.polygon('structureWood', pts(0.004).reverse(), { decor: true, colour: under });
+      };
+      const rails: number[] = [];
+      for (let x = -W / 2 + 0.3; x < W / 2 - 0.15; x += 0.55) rails.push(x);
+      const n = Math.round(W * D * 2.6);
+      for (let k = 0; k < n; k++) {
+        const rx = rails[Math.floor(look() * rails.length) % rails.length], cz = (look() - 0.5) * (D - 0.3), colour = LEAVES[Math.floor(look() * LEAVES.length) % LEAVES.length];
+        for (let j = 0; j < 3; j++) {
+          const tilt = (look() - 0.5) * 0.5, yaw = look() * Math.PI * 2, r = 0.2 + look() * 0.12;
+          const nrm = normalize3([Math.sin(tilt) * Math.cos(yaw), Math.cos(tilt), Math.sin(tilt) * Math.sin(yaw)]);
+          const c: Vec3 = [rx, H + 0.095 + look() * 0.01, cz + (look() - 0.5) * 0.35];
+          leaf(c, nrm, r, yaw, shade(colour, 0.85 + look() * 0.3), shade(colour, 0.7));
+        }
+        if (look() < 0.25) sink.cylinder('structureWood', [rx, H + 0.02 - 0.22, cz], 'y', 0.22, 0.05, 6, { colour: GRAPE, decor: true, fine: true }, 0.08);
+      }
+    });
+    recordShed(sink, legs, {
+      W: W + 0.3, D: D + 0.2, pitchDeg: 4, eaveY: H + 0.1, eave: 0.1, verge: 0.1, deck: 0.08, post: 0.16, posts,
+      pad: { size: 0.3, top: 0.42, bucket: 'stone', colour: null }, timber: TIMBER, boards: null, boardW: 0.2, back: false, ends: false,
+      roof: { bucket: 'structureWood', colour: LEAVES[0], shape: 'splinter', lattice: true }, stone: null, pile: 0,
+    });
   });
   return sink.finish();
 };
@@ -593,7 +740,7 @@ export const CHOUF_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.
   // under the flat earth roof, its back to the terrace wall, sharing its walls with its neighbours (no stair)
   adobe: (ctx) => dar(ctx, { storeys: 1, roof: 'earth' }),
   bathhouse: hammam,
-  marketRow: souk,
+  marketRow: (ctx) => choufSouk(ctx, { st: stateFor(ctx), dialect, roof: earthRoof(0.35), spouts }),
   market: sabil,
   tavern: makeChurch(false),
   // (round 2, gauntlet wave 123: the border villages' generic tower and spire read as a Western church): their church

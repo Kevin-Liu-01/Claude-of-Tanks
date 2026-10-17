@@ -11,10 +11,10 @@ import { createTankState, updateTank, SIM_DT } from '../sim/movement.ts';
 // exactly as the battle runtime does; in hull space no road wheel's tire may pass through the band's upper face
 // (cut) and no wheel in steady contact may float far above it (daylight — judged when the wheel's travel has settled,
 // since the gear cadence lets the band trail a fast-moving wheel for a frame), while the suspension must actually travel.
-const HIGH_LOW_IDS = ['k2', 'k2b', 'kurganets25_x', 'ztz100_x', 'warrior_tes_h', 'aft10_x',
-  'bmp3m_dragun125_x', 'griffin50_x', 'kf41_lynx_x', 'k21_x', 'cv90_mkiv_x',
-  'ajax_x', 'sabra_mk2_x', 'cv90105_tml_x', 'type96b_x', 'merkava4_barak'];
-const IDS = ['t90m', 'm1a2', 'leo2a6', 'kv2', 'mbt70', 'cv90_mkiv', 'kf51_x', 't72b3m_x', 'type100', ...HIGH_LOW_IDS];
+const HIGH_LOW_IDS = ['xk2_black_panther', 'k2b', 'kurganets25', 'ztz100', 'warrior_tes_h', 'aft10',
+  'bmp3m_dragun125', 'griffin50mm', 'kf41_lynx', 'k21', 'cv90_mk4',
+  'ajax', 'sabra_mk2', 'cv90105_tml', 'type96b', 'merkava4_barak'];
+const IDS = ['t90am', 'm1a1_abrams_hc', 'leo2a4', 'kv2', 'mbt70', 'cv90_mk4_concept', 'kf51_panther', 't72b3m_2016', 'type100', ...HIGH_LOW_IDS];
 await ensureInteriorFills(IDS);
 const MAX_CUT_M = 0.003, MAX_DAYLIGHT_M = 0.030, MIN_TRAVEL_M = 0.03, SECONDS = 6;
 const heightAt = (x, z) => 0.14 * Math.sin(0.55 * z + 0.3) * Math.cos(0.4 * x)

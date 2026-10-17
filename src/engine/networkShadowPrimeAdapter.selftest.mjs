@@ -5,7 +5,9 @@ import { stripTypeScriptTypes } from 'node:module';
 // Execute the exact repository-owned main adapter without booting the game.
 // No room, network or user source is evaluated.
 const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
-const body = main.match(/finalShadows: async \(signal\?: AbortSignal\) => \{([\s\S]*?)\n {10}\},\n {10}compile:/)?.[1];
+// (2026-10-16, integ/226 triage) the adapter's own closing brace ends it: the port that follows is not this receipt's
+// (the network entry's submitPrograms now sits between finalShadows and compile)
+const body = main.match(/finalShadows: async \(signal\?: AbortSignal\) => \{([\s\S]*?)\n {10}\},\n/)?.[1];
 assert.ok(body, 'the native network shadow adapter must remain testable');
 const source = stripTypeScriptTypes(`async function prime(signal?: AbortSignal) {${body}\n}`);
 const create = new Function('renderer', 'lighting', 'mainFrame', 'camera',

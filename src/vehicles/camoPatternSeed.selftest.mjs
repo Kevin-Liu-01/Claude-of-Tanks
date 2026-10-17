@@ -9,12 +9,12 @@ import { safeHullNumber } from './materialPainter.ts';
 // Round 32 (owner 2026-09-21): "when i switch tanks the camo seeding literally changes, which is wasteful". The noise
 // stream a pattern paints with is keyed by the visible recipe and the pattern id — never by the hull — so one shared
 // preset lays out identically on every vehicle and a re-bake of the same pattern is byte-comparable.
-const abrams = getSpec('m1a2'), t90m = getSpec('t90m'), leo = getSpec('leo2a6m');
+const abrams = getSpec('m1a1_abrams_hc'), t90am = getSpec('t90am'), leo = getSpec('leo2a4_otco');
 const patternHash = 0x51f15e;
 // shared presets resolve to one recipe on every hull, so they must paint from one stream; the hull-relative base
 // patterns (winter whitewash over the authored coat, etc.) differ by recipe and therefore by stream — by design
 for (const patternId of ['service_usa_desert', 'sig_abramsx', 'national_de', 'paint_chieftain5', 'service_soviet_ww2']) {
-  const seeds = [abrams, t90m, leo].map((spec) => camoPatternStreamSeed(resolveCamoVisual(spec, patternId), patternHash));
+  const seeds = [abrams, t90am, leo].map((spec) => camoPatternStreamSeed(resolveCamoVisual(spec, patternId), patternHash));
   assert.equal(new Set(seeds).size, 1, `${patternId}: the same pattern paints from the same stream on every hull (${seeds.join(', ')})`);
   assert.ok(Number.isInteger(seeds[0]) && seeds[0] >= 0 && seeds[0] <= 0xffffffff, `${patternId}: an unsigned 32-bit seed`);
 }

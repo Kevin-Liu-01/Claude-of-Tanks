@@ -84,7 +84,11 @@ for (const seed of [1337, 2049, 7719]) {
       }
       // Coal has its own all-map dry-footprint policy. This fixture continues
       // to isolate Skybridge's rail washout from every other dressing family.
-      const nonCoal = geometries => geometries.filter(geometry => geometry.name !== 'rail-coal-stockpile');
+      // (2026-10-16, Lane C: the coal family includes the regional bunker and bay drawn beside a heap. Since 4a07690e2
+      // (LOOKS r2 b-west, coalBays.ts COAL_FORMS) Railyard draws its sleeper bunker as 'rail-coal-bay' and Skybridge
+      // does not, so the bays are set aside with the heaps.)
+      const COAL = new Set(['rail-coal-stockpile', 'rail-coal-bay']);
+      const nonCoal = geometries => geometries.filter(geometry => !COAL.has(geometry.name));
       if (legacy) assert.deepEqual(nonCoal(legacy.buckets[name]).map(hashGeometry),
         nonCoal(original.buckets[name]).map(hashGeometry),
         `${name}: non-Skybridge rails ignore washout, even with the same wet height field`);

@@ -74,7 +74,9 @@ const trailer = files.get(`media/${picks.collection}/films/trailer.mp4`);
 assert.equal(`${trailer?.width}x${trailer?.height}`, '1600x900', 'the trailer at its light encode\'s size');
 assert.equal(trailer.audio, 'aac', 'the trailer keeps its score');
 const reel = files.get(`media/${picks.collection}/films/reel.mp4`);
-assert.equal(`${reel?.width}x${reel?.height}`, '1920x1080', 'the home reel at 1080p');
+// (2026-10-14, the light web encodes: the home reel re-encoded at 1600x900 under its 4.3 Mbit/s cap, site-media.mjs
+// WEB.reel / WEB.reelMp4; the trailer stays 1080p)
+assert.equal(`${reel?.width}x${reel?.height}`, '1600x900', 'the home reel at 1600x900 (the light encode)');
 assert.equal(reel.audio, null, 'the home reel is silent (it loops muted)');
 
 const sheets = media(/\/frames\/sheet-\d+\.webp$/);

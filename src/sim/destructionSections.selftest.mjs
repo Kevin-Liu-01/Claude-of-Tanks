@@ -22,11 +22,13 @@ import { getSpec } from '../vehicles/specs.ts';
 
 const standard = matchRulesetFor('standard');
 const sectionsOn = { ...standard, destruction: { ...standard.destruction, sections: true } };
+// (the battle switch is on since DST-04, 2026-10-15: the off arm turns them off itself)
+const sectionsOff = { ...standard, destruction: { ...standard.destruction, sections: false } };
 const SOUTH_Z = -38, NORTH_Z = -32;
 
 // verdant's ground where the parity receipt stands its house; the house seated on its lowest point
 const probe = createAuthoritativeMatch({ mapId: 'verdant', seed: 1, countdownS: 0,
-  players: [{ id: 'probe', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -140, yaw: 0 } }] });
+  players: [{ id: 'probe', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -140, yaw: 0 } }] });
 const field = probe.heightField;
 let base = Infinity;
 for (let x = -12; x <= 12; x += 2) for (let z = SOUTH_Z; z <= NORTH_Z; z += 1) base = Math.min(base, field.getHeightAt(x, z));
@@ -37,7 +39,7 @@ const band = setCompoundShape({ min: [0, base, 0], max: [0, base + 6, 0], kind: 
 const houseWorld = () => createHeadlessCollisionWorld({ mapId: 'verdant', heightField: field,
   manifest: { obstacles: [packCollisionRecord(contact)], colliders: [packCollisionRecord(band)], concealers: [] } });
 
-const m1 = getSpec('m1a2');
+const m1 = getSpec('m1a1_abrams_hc');
 const heSlot = m1.gun.shells.findIndex((round) => round.type === 'HE');
 const apSlot = m1.gun.shells.findIndex((round) => round.type === 'APFSDS');
 assert.ok(heSlot >= 0 && apSlot >= 0, 'the M1A2 carries HE and APFSDS');
@@ -46,8 +48,8 @@ assert.ok(heSlot >= 0 && apSlot >= 0, 'the M1A2 carries HE and APFSDS');
 function volley(ruleset) {
   const match = createAuthoritativeMatch({ mapId: 'verdant', seed: 3, countdownS: 0, worldCollision: houseWorld(), ruleset,
     players: [
-      { id: 'gun', specId: 'm1a2', team: 'alpha', spawn: { x: 0, z: -68, yaw: 0 } },
-      { id: 'far', specId: 'm1a2', team: 'bravo', spawn: { x: 60, z: 120, yaw: Math.PI } },
+      { id: 'gun', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -68, yaw: 0 } },
+      { id: 'far', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 60, z: 120, yaw: Math.PI } },
     ] });
   match.onMatchReady();
   const fired = [], impacts = [], breaches = [];
@@ -88,7 +90,7 @@ assert.ok(apHole && Math.abs(apHole.radiusM / heHole.radiusM
   `it punched its own hole there, a penetrator's (${apHole?.radiusM} m to the HE round's ${heHole.radiusM} m)`);
 assert.equal(on.breaches.filter((event) => Math.abs(event.z - SOUTH_Z) < 0.05).length, 1, 'and none in the south wall');
 
-const off = volley(standard);
+const off = volley(sectionsOff);
 assert.equal(off.breaches.length, 0, 'sections off: no breach events');
 assert.ok(off.impacts.length === 2 && off.impacts.every((event) => Math.abs(event.z - SOUTH_Z) < 0.05),
   'and the second round stops on the south wall like the first');

@@ -1,4 +1,6 @@
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
+import { spareTrackPart, spareTrackRunTag } from '../spareTrackSeat.ts';
+import { spareLinkBlock } from '../spareLinkGeometry.ts';
 // Independent first-party Merkava X constructions. Source archives are local
 // comparison inputs only; neither builder calls an earlier Merkava profile.
 import * as THREE from 'three';
@@ -283,9 +285,13 @@ function merkava3TurretDetails(P: TankBuilderPort): void {
     {z:-3.912-MK3.center-MK3.z,ring:[[-1.04,2.024+MK3.ground-MK3.y],[1.04,2.024+MK3.ground-MK3.y],[1.04,2.038+MK3.ground-MK3.y],[-1.04,2.038+MK3.ground-MK3.y]]},
     {z:-3.135-MK3.center-MK3.z,ring:[[-1.04,2.118+MK3.ground-MK3.y],[1.04,2.118+MK3.ground-MK3.y],[1.04,2.132+MK3.ground-MK3.y],[-1.04,2.132+MK3.ground-MK3.y]]},
   ]));
+  // VEH-13: each basket stack pair of links is one registered run (spareTrackSeat.ts)
+  const stackRuns=new Map<number,ReturnType<typeof spareTrackRunTag>>();
   for(const [x,y,z]of[[.354,2.14,-3.727],[.354,2.162,-3.576],[-.446,2.13,-3.805],[-.446,2.152,-3.655]]){
-    put('turretDetail',box(.64,.15,.18),x,y,z,.145);
-    for(const dx of[-.21,0,.21])put('turretDark',box(.065,.04,.188),x+dx,y+.036,z,.145);
+    const run=stackRuns.get(x)??spareTrackRunTag({site:'merkava3d-basket-links',source:'adhoc',rotation:[.145,0,0]});
+    stackRuns.set(x,run);
+    // VEH-13 (blind critics m1, "flat grey blocks"): three of the fleet's links stacked over the old block's envelope
+    for(const dy of[-.05,0,.05])put('turretTrack',spareTrackPart(run,KIT.xform(spareLinkBlock(.64,.05,.18),0,dy,0)),x,y,z,.145);
   }
   chainCurtain(P,MK3,-4.04,1.04,2.06,.10);
   // Measured mounting flange, lower neck and spring base seat the whip on
@@ -304,7 +310,9 @@ function merkava3TurretDetails(P: TankBuilderPort): void {
   put('turretDetail',box(.0581,.080,.091),1.12405,2.7567,-.7215);
   put('turretDetail',box(.0581,.052,.130),1.112,2.7758,-.6635);
   for(const [x,y,z,cls,scale]of[[-.87,2.528,-.91,'mag',.96],[1.12405,2.7498,-.61,'mag',.8667]] as const){
-    const mg=FITTINGS.pintleMG({mats:P.mats,cls,scale,seed:330+Math.round(x*10),tone:'two-tone',ammo:true,shield:false,ring:false,barrelBridge:true});
+    // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the commander's and loader's MAGs)
+    const mg=FITTINGS.pintleMG({mats:P.mats,cls,scale,seed:330+Math.round(x*10),tone:'two-tone',ammo:true,shield:false,ring:false,barrelBridge:true,working:true});
+    mg.name=x<0?'merkava3dXCommanderMag':'merkava3dXLoaderMag';
     mg.position.set(x,y+MK3.ground-MK3.y,z-MK3.center-MK3.z);P.turretG.add(mg);
   }
 }
@@ -387,7 +395,7 @@ export function buildMerkava3DX(P: TankBuilderPort): void {
     // Inferred supports occupy existing axle gaps at full suspension stroke.
     topY:1.230,botY:.0976,paintedEnds:true,arms:true,coveredTop:true},[-1.8821825,-.8756825,.9765675,1.8323175],1.075,.25,.0027));
   merkava3HullDetails(P);
-  addMerkavaXShoulderReturns(P, 'merkava3d_x');
+  addMerkavaXShoulderReturns(P, 'merkava3d');
   addMerkava3dXFrontReturns(P);
   P.add('turret',merkava3Shell());
   P.add('turret',cylY(1.07,.23,40),0,.09,0);
@@ -398,14 +406,16 @@ export function buildMerkava3DX(P: TankBuilderPort): void {
     {z:.18,ring:[[-.31,-.27],[.40,-.27],[.40,.51],[-.31,.51]]},
     {z:.43,ring:[[-.20,-.15],[.20,-.15],[.20,.20],[-.20,.20]]},
   ]));
+  // The tube runs to the measured muzzle face (westXGeometry: it ended 20 mm short, 4.836 vs the source 4.856, once the
+  // carved cannon bores stopped adding the factory's seated lip).
   KIT.buildGun(P,{len:3.4302,r:.08485,baseR:.14,sleeve:true,evac:.43,evacR:2.0,collar:true});
   const coax=FITTINGS.pintleMG({mats:P.mats,cls:'m2',scale:1.073,seed:333,tone:'two-tone',ammo:true,shield:false,ring:false});
   coax.position.set(.17,.2967,-.16);P.gunG.add(coax);
   P.muzzleZ=3.4302;P.topY=3.04-MK3.y;
-  P.hullG.userData.xRebuild={candidate:'merkava3d_x',independent:true,datumVersion:1,sourceLocalOnly:true};
+  P.hullG.userData.xRebuild={candidate:'merkava3d',independent:true,datumVersion:1,sourceLocalOnly:true};
 }
 
-function merkava4HullDetails(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trophy'|'merkava4_barak'|'namer_ifv'): void {
+function merkava4HullDetails(P: TankBuilderPort, candidate: 'merkava4'|'merkava4_trophy'|'merkava4_barak'|'namer_ifv'): void {
   for(const side of[-1,1]){
     for(let i=0;i<8;i++){
       const z=-2.98+i*.75,hem=.65+(i%2)*.018;
@@ -497,7 +507,7 @@ function merkava4BarakRoof(P: TankBuilderPort): void {
   addBarakCrewRoof(P);
 }
 
-function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trophy'|'merkava4_barak'): void {
+function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4'|'merkava4_trophy'|'merkava4_barak'): void {
   if(candidate==='merkava4_barak'){
     merkava4BarakRoof(P);
     return;
@@ -598,7 +608,7 @@ function merkava4Roof(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trop
   for(const x of[-.82038,.89347])put('turretDetail',box(.21,.29,.26),x,2.527,-3.015);
   merkava4Basket(P);
   const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:1.0,remoteControlled:true,seed:444,tone:'two-tone',ammo:true,shield:false,ring:false,barrelBridge:candidate==='merkava4_trophy'}); // true scale (round 3; was 1.48, a 115 % GPMG)
-  const mgSeatY={merkava4_x:2.577,merkava4_trophy:2.400}[candidate];
+  const mgSeatY={merkava4:2.577,merkava4_trophy:2.400}[candidate];
   mg.position.set(-.83,mgSeatY-MK4.y,-.752-MK4.z);P.turretG.add(mg);
 }
 
@@ -835,7 +845,8 @@ function addBarakRearMissionModule(P: TankBuilderPort): void {
   const bracketTop=ay-.02, bracketIn=footX-footHalfX+.013, bracketOut=ax-.045;
   topPart(P,MK4,'turretDetail',box(bracketIn-bracketOut,.045,.07),(bracketIn+bracketOut)/2,bracketTop-.0225,az);
   topPart(P,MK4,'turretDetail',cylY(.042,.02,P.q?16:12),ax,ay-.01,az);
-  const roofWeapon=FITTINGS.pintleMG({mats:P.mats,cls:'mag',ammo:true,tone:'two-tone',seed:4417});
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
+  const roofWeapon=FITTINGS.pintleMG({mats:P.mats,cls:'mag',ammo:true,tone:'two-tone',seed:4417,working:true});
   roofWeapon.position.set(ax,ay-MK4.y,az-MK4.z);
   roofWeapon.name='merkava4BarakArmWeapon';
   P.turretG.add(roofWeapon);
@@ -1074,7 +1085,7 @@ function trophyMerkava4Hull(): THREE.BufferGeometry {
   return merged;
 }
 
-function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkava4_trophy'|'merkava4_barak'): void {
+function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4'|'merkava4_trophy'|'merkava4_barak'): void {
   // The Trophy study's canonical ground recipe seats the complete assembly
   // 10 mm above the clean family datum; retain that measured registration.
   const sourceY=candidate==='merkava4_trophy'?.01:0;
@@ -1091,7 +1102,7 @@ function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkav
   P.gear=KIT.buildRunningGear(P,merkavaXReturnRollers(P,{style:'rubber',wheelR,wheelW:.34,wheelY,xc:1.444,
     // LOW keeps the family shoe envelope with coarser relief; HIGH and the
     // established Mk.4 X retain their original native shoe construction.
-    ...(!P.q && candidate!=='merkava4_x'?{trackShoeBuilder:buildFleetTrackShoe}:{}),
+    ...(!P.q && candidate!=='merkava4'?{trackShoeBuilder:buildFleetTrackShoe}:{}),
     ...barakEndStock(Boolean(P.q),barakGear),
     wheelZs,trackW:.548,trackTh:.064,
     sprocket:trophyGear?{z:3.267,y:.787,r:.359}:barakGear?{z:3.2069,y:.830,r:.353,trackR:.2575,axleOutsetM:.0183909,toothTipRadiusM:.347}:{z:3.285,y:.761,r:.336},
@@ -1101,7 +1112,7 @@ function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkav
     topY:trophyGear?1.125:barakGear?1.1325:1.105,botY:.0956,paintedEnds:true,arms:true,coveredTop:true},[-1.6645,-.733,.27,2.017],.945,.29,.0047,true));
   lineMerkavaXUpperBand(P,[-1.6645,-.733,.27,2.017],.0038);
   merkava4HullDetails(P,candidate);
-  addMerkavaXShoulderReturns(P, 'merkava4_x');
+  addMerkavaXShoulderReturns(P, 'merkava4');
   addMerkava4XEndReturns(P);
   P.add('turret',merkava4Shell());
   // The source has a raised asymmetric central roof, not one flat turtle
@@ -1123,7 +1134,9 @@ function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkav
     {z:.39,ring:[[-.15,-.14],[.15,-.14],[.15,.16],[-.15,.16]]},
   ]));
   P.add('gun',cylZ(.104,2.49,24),0,0,1.395);
-  P.add('gun',cylZ(.0811,.2155,24),0,0,2.74775);
+  // The muzzle segment runs to the muzzle face (muzzleZ 2.8755). It stopped 20 mm short for the factory's old seated
+  // bore lip, which the carved cannon bores (a28e4d8e6) no longer add (westXGeometry: 4.786 vs the source 4.806).
+  P.add('gun',cylZ(.0811,.2355,24),0,0,2.75775);
   P.add('gun',cylZ(.156,.632,24),0,.0262,.886);
   P.add('gun',cylZ(.1395,.052,20),0,.0262,.6151);
   // Source clamp centers, eccentric clamp shells and their real top clasps.
@@ -1170,10 +1183,10 @@ function buildMerkava4Family(P: TankBuilderPort, candidate: 'merkava4_x'|'merkav
     // Barak's visibly tighter side envelope.
     P.hullG.scale.x=.972;
   }
-  P.hullG.userData.xRebuild={candidate,independent:candidate==='merkava4_x',familyRecipe:'merkava4-first-party',datumVersion:1,sourceLocalOnly:true};
+  P.hullG.userData.xRebuild={candidate,independent:candidate==='merkava4',familyRecipe:'merkava4-first-party',datumVersion:1,sourceLocalOnly:true};
 }
 
-export function buildMerkava4X(P: TankBuilderPort): void { buildMerkava4Family(P,'merkava4_x'); }
+export function buildMerkava4X(P: TankBuilderPort): void { buildMerkava4Family(P,'merkava4'); }
 export function buildMerkava4Trophy(P: TankBuilderPort): void { buildMerkava4Family(P,'merkava4_trophy'); }
 export function buildMerkava4Barak(P: TankBuilderPort): void { buildMerkava4Family(P,'merkava4_barak'); }
 
@@ -1205,7 +1218,8 @@ export function buildNamerIfv(P: TankBuilderPort): void {
   P.add('gun',cylZ(.069,.22,18),0,0,2.40);
   P.add('gunDark',box(.16,.07,.18),0,.015,.54);
   addNamerSourceSupport(P);
-  const auxiliary=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:.72,seed:904,tone:'two-tone',ammo:true,shield:false,ring:false});
+  // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the commander's MAG)
+  const auxiliary=FITTINGS.pintleMG({mats:P.mats,cls:'mag',scale:.72,seed:904,tone:'two-tone',ammo:true,shield:false,ring:false,working:true});
   auxiliary.position.set(.46,2.76-NAMER.y,-1.17-NAMER.z);P.turretG.add(auxiliary);
   P.muzzleZ=2.51;P.topY=1.12;
   // The Namer source is a narrower/shorter Merkava-family chassis. Its turret
@@ -1217,7 +1231,7 @@ export function buildNamerIfv(P: TankBuilderPort): void {
 }
 
 export const MERKAVA_X_PROFILES = {
-  merkava4_x: { build: buildMerkava4X }, merkava3d_x: { build: buildMerkava3DX },
+  merkava4: { build: buildMerkava4X }, merkava3d: { build: buildMerkava3DX },
   merkava4_trophy: { build: buildMerkava4Trophy },
   merkava4_barak: { build: buildMerkava4Barak },
   namer_ifv: { build: buildNamerIfv },

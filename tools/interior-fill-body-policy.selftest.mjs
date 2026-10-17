@@ -6,9 +6,9 @@ import { voxelise, floodExterior, deepInterior } from './tank-voxel-body.mjs';
 import { insideBoreAir, physicalBoreAir } from './physical-bore-air.mjs';
 import { createTank } from '../src/vehicles/tankFactory.ts';
 
-const id = 'bmp3m_dragun125_x';
-const configuredIds = [id, 'merkava4_trophy', 'merkava4_barak', 'namer_ifv', 'amx10p_25', 'leclerc_classic_x', 't80u',
-  'k21_x', 'kurganets25_x', 'm6_linebacker', 'm3a3_bradley'];
+const id = 'bmp3m_dragun125';
+const configuredIds = [id, 'merkava4_trophy', 'merkava4_barak', 'namer_ifv', 'amx10p_25', 'amx56', 't80uk',
+  'k21', 'kurganets25', 'm6_linebacker', 'm3a3_bradley'];
 const names = ['hull', 'hullDetail', 'hullDark', 'turret', 'turretDetail', 'gun',
   'gunDark', 'gunMount', 'gunMountDark', 'muzzleBoreShadowFallbackDisc', 'track'];
 const triangles = names.map((name, mesh) => ({ mesh, identity: name }));
@@ -17,7 +17,7 @@ assert.deepEqual(selected.map(row => row.identity), names.filter(name =>
   !['hullDetail', 'hullDark', 'turretDetail'].includes(name)));
 assert.ok(selected.every(row => triangles.includes(row)), 'retain original triangle references and order');
 assert.equal(triangles.length, names.length, 'selection never mutates input');
-for (const legacy of ['abrams', 'challenger_3', 'cv90105_tml_x', 'object695_x_extra', 'constructor', '__proto__']) {
+for (const legacy of ['abrams', 'challenger3_proto', 'cv90105_tml', 'object695_x_extra', 'constructor', '__proto__']) {
   assert.equal(interiorFillBoundaryTriangles(legacy, triangles, names), triangles,
     'unconfigured families retain their exact historical boundary input');
 }
@@ -31,7 +31,7 @@ for (const configuredId of configuredIds) {
   }
 }
 
-const launcherIds = ['object695_x', 'type100'];
+const launcherIds = ['object695', 'type100'];
 const launcherBuckets = new Set(['gunMount', 'gunMountDark']);
 for (const launcherId of launcherIds) {
 const launcherSelected = interiorFillBoundaryTriangles(launcherId, triangles, names);
@@ -98,7 +98,7 @@ for (const configuredId of configuredIds) for (const quality of ['high', 'low'])
     if (configuredId === id) assert.ok(boreAir, `${id}: the verified 125 mm recess is recorded as declared bore air`);
     const withFittings = leaks(tris, meshes, .025, boreAir), primary = leaks(boundary, meshes, .025, boreAir);
     assert.ok(withFittings.count > 0, 'the former broad family span invents exterior cage/optic pockets');
-    if (configuredId === id || configuredId === 'amx10p_25' || configuredId === 't80u') assert.equal(primary.count, 0,
+    if (configuredId === id || configuredId === 'amx10p_25' || configuredId === 't80uk') assert.equal(primary.count, 0,
       `${configuredId}: actual authored primary bodies are closed at generator resolution`);
     const gun = rows => rows.filter(row => /^(gun|mantlet|muzzle)/i.test(meshes[row.mesh]));
     assert.deepEqual(gun(boundary), gun(tris), 'complete physical bore/mount stock remains in the body input');

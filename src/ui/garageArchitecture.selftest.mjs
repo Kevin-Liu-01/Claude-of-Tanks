@@ -74,6 +74,7 @@ assert.match(stageSource, /tree-alpha-instance[\s\S]{0,420}alphaTest: 0\.38[\s\S
 const scene = new THREE.Group();
 const controller = createGarageArchitectureController({}, scene);
 const signatures = new Set();
+const shelterKinds = new Map();
 let maxBuildMs = 0;
 let maxColdTransactionMs = 0;
 for (const variant of GARAGE_VARIANTS) {
@@ -139,7 +140,7 @@ for (const variant of GARAGE_VARIANTS) {
   assert.equal(stats.source, 'authentic-garage-scene-pack');
   assert.ok(stats.objects >= 8 && stats.drawCalls <= 26,
     `${variant.id} must merge its scene into a bounded draw-call graph`);
-  assert.ok(stats.triangles > 0 && stats.triangles <= 50_000,
+  assert.ok(stats.triangles > 0 && stats.triangles <= 72_000, // 72k since 2026-10-16 (deploy 226): see garageQualityRubric.ts
     `${variant.id} must stay inside the Garage environment geometry budget`);
   assert.equal(stats.terrainVertices, 41 * 37,
     `${variant.id} must use its compact battlefield-derived terrain excerpt`);
@@ -221,6 +222,11 @@ for (const variant of GARAGE_VARIANTS) {
     `${variant.id} must pair shared service hardware with signature machinery`);
   assert.ok(stats.servicePurposeTags.length >= 8,
     `${variant.id} must communicate a real maintenance workflow`);
+  // round 6 (waves 408, 419 and 424: "every yard repeats the same shelter frame ... with only colour swaps"): each Garage
+  // builds its bays its own way
+  const shelterTags = stats.servicePurposeTags.filter((tag) => tag.startsWith('shelter:'));
+  assert.equal(shelterTags.length, 1, `${variant.id} names one shelter kind`);
+  shelterKinds.set(variant.id, shelterTags[0]);
   assert.ok(stats.facilityMaterialClasses >= 4,
     `${variant.id} facility must retain steel, paint, equipment and masonry readings`);
   assert.equal(stats.openingSightlineIntrusions, 0,
@@ -239,8 +245,20 @@ for (const variant of GARAGE_VARIANTS) {
   }
   if (variant.architecture === 'brick_arsenal') {
     assert.equal(stats.horizonStyle, 'urban');
-    assert.ok(stats.horizonMaxHeightM >= 8 && stats.horizonMaxHeightM <= 10,
-      `${variant.id} must retain a readable but bounded city skyline`);
+    // round 5d-2 (waves 408 and 419: "one enormous flat, untextured grey-blue slab", "city fabric beyond the arsenal"):
+    // the town is real blocks, houses and a spire behind low land, not stepped slabs in a silhouette tint
+    assert.ok(stats.horizonMaxHeightM <= 10, `${variant.id} keeps its land low`);
+    assert.ok(stats.builtHorizonMassTopM >= 8 && stats.builtHorizonMassTopM <= 13.2,
+      `${variant.id} must retain a readable but bounded city skyline (${stats.builtHorizonMassTopM} m)`);
+  }
+  // the steelworks and the railway stand as building masses too; only slender accents rise past the biome ceiling
+  if (['brick_arsenal', 'rail_roundhouse', 'factory_line'].includes(variant.architecture)) {
+    assert.ok(stats.builtHorizonMassTopM > 6 && stats.builtHorizonMassTopM <= 13.2,
+      `${variant.id} built horizon masses stay under the biome ceiling (${stats.builtHorizonMassTopM} m)`);
+    assert.ok(stats.builtHorizonAccentTopM > stats.builtHorizonMassTopM && stats.builtHorizonAccentTopM <= 26,
+      `${variant.id} built horizon accents stay slender and bounded (${stats.builtHorizonAccentTopM} m)`);
+  } else {
+    assert.equal(stats.builtHorizonMassTopM, 0, `${variant.id} has no built horizon`);
   }
   if (['naval_drydock', 'rail_roundhouse'].includes(variant.architecture)) {
     assert.ok(stats.horizonMaxHeightM <= 6.5,
@@ -261,6 +279,9 @@ for (const variant of GARAGE_VARIANTS) {
 }
 assert.equal(signatures.size, GARAGE_VARIANTS.length,
   'every Garage choice must have a distinct environment signature');
+assert.equal(new Set(shelterKinds.values()).size, shelterKinds.size,
+  `every outdoor Garage builds its own kind of shelter: ${[...shelterKinds].map(([id, kind]) => `${id}=${kind}`).join(', ')}`);
+assert.equal(shelterKinds.size, GARAGE_VARIANTS.length - 1, 'the nine outdoor Garages each name a shelter kind');
 assert.equal(controller.stats().cached, 2);
 assert.ok(controller.stats().residentTextureSets <= 9,
   'PBR residency must remain bounded after visiting every environment');

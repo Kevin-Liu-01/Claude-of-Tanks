@@ -10,7 +10,7 @@ import {stripActivatedEra} from '../../game/eraActivation.ts';
 const packet=JSON.parse(fs.readFileSync(new URL('../../../docs/references/tanks/t90_x.cheek-heldouts.json',import.meta.url),'utf8'));
 function ray(ms,p,d,far=2){return new THREE.Raycaster(new THREE.Vector3(...p),new THREE.Vector3(...d),0,far).intersectObjects(ms,false)[0];}
 function fittedSpec(t){
-  const spec=getSpec('t90_x'),done=new Set(),rows=t.root.userData.eraVisualBindingReceipt.plates;
+  const spec=getSpec('t90'),done=new Set(),rows=t.root.userData.eraVisualBindingReceipt.plates;
   const turretPlates=spec.armor.turretPlates.flatMap(p=>{if(p.kind!=='era')return[p];if(done.has(p.name))return[];done.add(p.name);
     return rows.find(r=>r.owner==='turret'&&r.name===p.name).fittedSurfaces.map(verts=>({...p,verts}));});
   return {...spec,armor:{...spec.armor,turretPlates}};
@@ -45,7 +45,7 @@ function stripAndAir(t,ms){
 }
 assert.equal(packet.rays.length,87);
 for(const quality of ['high','low']){
-  const t=createTank('t90_x',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
+  const t=createTank('t90',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false});
   try{t.root.updateMatrixWorld(true);
     const ms=[];t.root.traverseVisible(m=>{if(m.isMesh&&!m.userData.shadowOnly)ms.push(m);});
     // The 87 held-out source leaf rays run on the actual current leaf and casting stock (formerly on a replay with

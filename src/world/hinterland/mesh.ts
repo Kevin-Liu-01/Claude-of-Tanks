@@ -16,7 +16,7 @@
 // adds the extinction of the distance the compression took away (the true distance less the drawn one).
 import * as THREE from 'three';
 import type { HinterlandAir } from './air.ts';
-import { HINTERLAND_PROJECT_GLSL } from './project.ts';
+import { HINTERLAND_DEPTH_GLSL, HINTERLAND_PROJECT_GLSL, HINTERLAND_REMAP_DEFINE, HINTERLAND_WRITE_DEPTH } from './project.ts';
 import { HINTERLAND_LOD_DESKTOP, HINTERLAND_PATCH_QUADS, selectHinterlandNodes, type HinterlandLodOptions } from './lod.ts';
 import type { HinterlandLevel, HinterlandPyramid } from './pyramid.ts';
 
@@ -86,7 +86,7 @@ export interface HinterlandMeshOptions {
   hazeSigma?: number;
   hazeColor?: THREE.Color;
   /** The land material's fragment patch (material.ts); absent: the debug albedo by slope and height. */
-  surface?: { uniforms: Record<string, THREE.IUniform>; fragmentPars: string; albedo: string; roughness?: string } | null;
+  surface?: { uniforms: Record<string, THREE.IUniform>; fragmentPars: string; albedo: string; roughness?: string; normal?: string } | null;
   /** The far haze's target: the dome's own sky (air.ts); absent, the fog colour. */
   air?: HinterlandAir | null;
 }
@@ -134,6 +134,8 @@ export function createHinterlandMesh(options: HinterlandMeshOptions): Hinterland
     uHlBlock: { value: atlas.blocks.map((b) => new THREE.Vector4(b.x0, b.y0, b.n, b.texelM)) },
     uHlHalf: { value: atlas.blocks.map((b) => b.halfM) },
     uHlCam: { value: new THREE.Vector3() },
+    uHlProj: { value: new THREE.Matrix4() },
+    uHlAir: { value: options.air?.clarity ?? 1 },
     uHlHazeSigma: { value: options.hazeSigma ?? 0.00026 },
     uHlHazeColor: { value: options.hazeColor ?? new THREE.Color(0.62, 0.7, 0.8) },
     ...(options.surface?.uniforms ?? {}),
@@ -152,7 +154,9 @@ attribute vec4 aHlNode;
 uniform vec3 uHlCam;
 varying vec3 vHlWorld;
 varying float vHlTrueD;
+varying float vHlDrawnR0;
 ${heightGlsl}
+${HINTERLAND_REMAP_DEFINE}
 ${HINTERLAND_PROJECT_GLSL}`)
       .replace('#include <beginnormal_vertex>', `
   // CDLOD: the patch vertex in its node, morphed toward the coarser grid near its range, at its pyramid height
@@ -171,16 +175,23 @@ ${HINTERLAND_PROJECT_GLSL}`)
   vec3 objectTangent = vec3( 1.0, 0.0, 0.0 );
   #endif`)
       .replace('#include <begin_vertex>', `
-  float hlTrueD;
-  vec3 transformed = hinterlandProject( vHlWorld, uHlCam, hlTrueD );
-  vHlTrueD = hlTrueD;`);
+  float hlTrueD, hlR0;
+  vec3 transformed = hinterlandProjectDrawn( vHlWorld, uHlCam, hlTrueD, hlR0 );
+  vHlTrueD = hlTrueD;
+  vHlDrawnR0 = hlR0;`);
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
 varying vec3 vHlWorld;
 varying float vHlTrueD;
+varying float vHlDrawnR0;
 uniform float uHlHazeSigma;
 uniform vec3 uHlHazeColor;
+uniform vec3 uHlCam;
+${HINTERLAND_REMAP_DEFINE}
 ${HINTERLAND_PROJECT_GLSL}
+${HINTERLAND_DEPTH_GLSL}
+float hlHazeD = 0.0, hlDrawnR = 0.0;
+uniform float uHlAir;
 ${air ? air.fragmentPars : 'vec3 hlHazeTarget( vec3 fallback ) { return fallback; }'}
 ${surface?.fragmentPars ?? ''}`)
       .replace('#include <color_fragment>', `#include <color_fragment>
@@ -193,11 +204,26 @@ ${surface?.fragmentPars ?? ''}`)
     diffuseColor.rgb = mix( hlGrass, hlRock, smoothstep( 0.18, 0.4, abs( hlSlope ) ) );
   }`}`)
       .replace('#include <roughnessmap_fragment>', surface?.roughness ?? '#include <roughnessmap_fragment>')
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+${surface?.normal ?? ''}`)
       .replace('#include <fog_fragment>', `#include <fog_fragment>
   // the haze for the distance the compression took away (the post pass hazes by the drawn depth)
   {
-    float hlLost = max( 0.0, vHlTrueD - hinterlandCompress( vHlTrueD ) );
-    float hlT = exp( -uHlHazeSigma * hlLost );
+    // the distance the post pass's depth haze does not cover: past the remapped depth it writes (project.ts)
+    // (drawn nearer by the remap, project.ts: the post pass hazes it to its drawn distance; this adds the rest up to
+    // the compressed distance, at that pass's own density and layer, scaled by the region's air)
+    hlHazeD = length( vViewPosition ); hlDrawnR = vHlDrawnR0;
+#ifdef HL_REMAP
+    float hlSeg = uHlAir * hinterlandSegmentDepth( hlHazeD, hlDrawnR );
+#else
+    float hlSeg = 0.0;
+#endif
+    float hlLost = max( 0.0, vHlTrueD - hlDrawnR );
+    // (the haze thins with height, as the post pass's layer does: a summit 1,500 m over the eye stands in clearer air
+    // than the valley floor at its foot — the Glacier frames' peaks washed out under a height-blind haze; the scale
+    // height the mean of the ray's from the eye to the point, ~1.2 km)
+    float hlLift = max( 0.0, 0.5 * ( vHlWorld.y - uHlCam.y ) );
+    float hlT = exp( -hlSeg - uHlHazeSigma * hlLost * exp( -hlLift / 1200.0 ) );
     // (the target: the dome's sky in this direction, so the land's limb meets the sky without a line; without a
     // published sky the scene's fog colour, else a fixed blue; nothing to do inside 2.5 km)
     if ( hlT < 0.999 ) {
@@ -211,7 +237,7 @@ ${surface?.fragmentPars ?? ''}`)
   };
   if (options.setupMaterial) options.setupMaterial(material, patch);
   else material.onBeforeCompile = patch;
-  material.customProgramCacheKey = () => `hinterland-land-${atlas.blocks.length}-${surface ? 'land' : 'debug'}`;
+  material.customProgramCacheKey = () => `hinterland-land-${atlas.blocks.length}-${surface ? 'land' : 'debug'}-${HINTERLAND_WRITE_DEPTH ? 'depth' : 'drawn'}`;
 
   const mesh = new THREE.Mesh(grid, material);
   mesh.name = 'hinterland-land';
@@ -267,6 +293,7 @@ ${surface?.fragmentPars ?? ''}`)
     nodeAttr.addUpdateRange(0, nodes * 4);
     nodeAttr.needsUpdate = true;
     (uniforms.uHlCam.value as THREE.Vector3).copy(cam);
+    (uniforms.uHlProj.value as THREE.Matrix4).copy(camera.projectionMatrix);
     selectMs = performance.now() - t0;
   };
 

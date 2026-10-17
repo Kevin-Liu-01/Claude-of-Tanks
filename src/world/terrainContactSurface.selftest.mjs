@@ -1,22 +1,26 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import * as THREE from 'three';
 import { createHeightField } from './terrain.ts';
 import { createTerrainContactSampler } from './terrainContactSurface.ts';
+import * as contactSurface from './terrainContactSurface.ts';
+// (2026-10-15) the chunk builder reads the steep-cell split's names (terrainContactSurface.ts) as terrain.ts imports them:
+// the whole module goes into the sandbox's scope, so a new name there needs no edit here
+const SPLIT_NAMES = Object.keys(contactSurface), SPLIT_VALUES = Object.values(contactSurface);
 import { getMapConfig, MAP_IDS } from './maps/index.ts';
 import { createStructureSupportField } from '../sim/structureSupport.ts';
 import { createLiveHeightFieldProxy } from './liveHeightFieldProxy.ts';
 import { createTankState, updateTank, SIM_DT } from '../sim/movement.ts';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // Build the production mesh buffers and raycast their real indexed triangles;
 // the oracle deliberately does not reimplement the contact interpolation.
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8');
+const source = terrainSourceText();
 const chunks = source.slice(source.indexOf('const CHUNKS = 8'));
-const api = new Function('THREE', stripTypeScriptTypes(`
+const api = new Function('THREE', ...SPLIT_NAMES, stripTypeScriptTypes(`
   const MAP_SIZE = 1024, HALF = 512;
   ${chunks.replace(/^export /gm, '')}
-`) + 'return { buildFineGridSteps, buildChunkGeometrySteps };')(THREE);
+`) + 'return { buildFineGridSteps, buildChunkGeometrySteps };')(THREE, ...SPLIT_VALUES);
 const drain = (steps) => { let r; do { r = steps.next(); } while (!r.done); return r.value; };
 const ray = new THREE.Raycaster(), origin = new THREE.Vector3(), down = new THREE.Vector3(0, -1, 0);
 const material = new THREE.MeshBasicMaterial();

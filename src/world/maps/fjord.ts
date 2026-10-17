@@ -1,5 +1,22 @@
 // fjord.js — cold-water harbor approaches with a clipped coastal road grid,
 // fishing yards, stone settlement, steep conifer shoulders and a deep bay.
+//
+// Reference: the arms of the Ofotfjord and Bjerkvik at the head of the Herjangsfjord, Nordland, May 1940. Three arms of
+// the fjord reach in from the sea between steep peninsulas of ice-ground gneiss; the harbour town stands on the strip
+// between the terraces and the quays at their heads, its painted board houses along the harbour road, its red quay
+// warehouses (sjøhus), the fish plant and the boathouses (naust) at the water, the stockfish racks (hjell) on the shore,
+// the white chapel; spruce and birch on the shoulders above. In May 1940 the Allied landings at Bjerkvik and the
+// fighting for Narvik burnt much of the village.
+//
+// The town and the harbour (map revival lane 2, 2026-10-05; the owner: every map as new as Verdant): the nordland kit
+// (maps/regional/nordland.ts) builds every building as Nordland's own — houses of boards painted white lead, falu red
+// or ochre on granite footings, white corner boards and window casings, slate roofs, the bislag porches, the
+// two-storey Nordland houses with their glassed verandas, the landhandel, the sjøhus with the loading doors stacked up
+// the gable under the hoist beam, the fish plant on its deck of piles, the storehouses with their loading platforms,
+// the naust of dry stone, the hjell, the chapel with its spire, the houses burnt in 1940; the yards white-fenced round
+// their potato beds; the fishermen's shack is a red rorbu. (The harbour faces of the two rock peninsulas and the south
+// headland already fall 25-28 m to the water at 60-70 degrees: the arms' bank law grades them over ~15 m, and a
+// landform's geology cannot steepen what that blend sets, so their ground stays the PR head's.)
 
 import { gully, talusFan } from './geology.ts';
 
@@ -93,18 +110,60 @@ export default {
     mudTone: (h: number, s: number, l: number) => [0.54, clamp01(s * 0.85), clamp01(l * 0.68)],
     seaLake: true, seaFoam: 0.54, seaRamp: [0.22, 0.58], iceDrift: 0.08,
     marshGloss: 0.94, iceSky: [0.24, 0.39, 0.50],
-    tintA: [0.86, 0.94, 0.92], tintB: [0.63, 0.72, 0.70], tintC: [0.98, 1.04, 1.02],
-    roadTint: [0.66, 0.68, 0.67], midRelief: 0.94,
+    // map revival lane 2, round 2 (gauntlet wave 111b: "uniform green felt ... a brown spring ground palette"): May 1940 in
+    // Ofoten, a fortnight after the snow: last year's grass straw-brown over the new shoots, the moss dark under it
+    tintA: [0.98, 0.95, 0.80], tintB: [0.72, 0.72, 0.60], tintC: [1.05, 1.0, 0.84],
+    // round 5 (wave 243: "a chocolate-mud road with glossy blue-black rut stripes"): the gravel road a dry grey-brown, a
+    // quarter of the rain standing in its ruts (roadPuddles; the default 1 lays a sheet of sky down each)
+    roadTint: [0.8, 0.81, 0.83], roadPuddles: 0.25, midRelief: 0.94,
+    // round 3 (wave 129: "one smooth lime-green grass carpet") took the steppe's withered grass under an olive cast;
+    // round 4 (wave 189: "a dead-flat, near-black bare-earth plane dotted with white pebbles ... scorched or unfinished
+    // ground"): a Nordland meadow in early summer — the fjord row's own grass, a shade brighter and toward green-yellow
+    // (under round 2's warm macro tints the sward's albedo ~0.096/0.141/0.018 linear; the PR head's ~0.075/0.119/0.022).
+    // (pair15: a blue lift, 1.0/0.92/1.5, read grey-blue in the street's light — the sky's fill already carries the blue)
+    sourcedTint: { G: [1.15, 1.2, 0.95] },
+    // the dirt on the tracks and the yards only: the noise-worn field patches grazed turf (was the default 0.84)
+    wornDirtStrength: 0.35,
+    // the gneiss breaks the sod in places: the outcrop patches take rock from ~15 degrees (the knolls' and roches
+    // moutonnées' flanks), the level fields stay turf
+    slopeGrassHold: -0.05,
+    // round 3 (wave 129: the peninsulas' cliffs "one smooth, uniformly grey vertical wall ... no ledges, joints or
+    // glacial rounding"): the gneiss's sheeting and joints drawn on the steep rock only (the material's beds, partings,
+    // joint blocks and varnish streaks, as Aegis's walls); a geology on the peninsula ridges themselves moved the
+    // props' stream (any height change re-seats every later rock and tree) onto zone 1's apron. At 0.1 (pair10) the wall
+    // still read smooth; at 0.18 the joint blocks and the varnish streaks are drawn in full (the material's law: from 0.16)
+    strata: 0.18,
   },
   vegetation: {
-    species: ['spruce', 'fir', 'birch'], clusterMix: [['spruce', 0.58], ['fir', 0.32], ['birch', 0.10]],
-    loneMix: [['spruce', 0.50], ['fir', 0.30], ['birch', 0.20]], rimMix: [['spruce', 0.66], ['fir', 0.29], ['birch', 0.05]],
+    // round 2 (wave 111b: "a monoculture of repeated conifers with no birch anywhere"): Ofoten's woods are downy birch on
+    // the lower slopes, a few Scots pine on the rock, spruce only in the planted stands; in May the birches are bare twigs
+    // just breaking into a pale green haze
+    // (round 3, wave 129: "palm- or umbrella-crowned trees on the ridges": the Scots pine's high crown on its bare red
+    // trunk read as a parasol pine on the headlands) the mix stays round 2's: with the pines cut to a few, the woods'
+    // concealment fell with them and the default bot match ran 168 s (median of four, under the 3-minute floor; with this
+    // mix and the rest of round 3, 184 s). The pine's crown is the trees lane's to reshape.
+    species: ['birch', 'pine', 'spruce'], clusterMix: [['birch', 0.62], ['pine', 0.24], ['spruce', 0.14]],
+    loneMix: [['birch', 0.66], ['pine', 0.26], ['spruce', 0.08]], rimMix: [['birch', 0.50], ['pine', 0.30], ['spruce', 0.20]],
+    palettes: {
+      birch: { birchLeaves: true, cardHue: 0.2, cardSat: 0.16, cardL0: 0.44,
+        texTone: (h: number, s: number, l: number): [number, number, number] => [clamp01(0.2 + (h - 0.25) * 0.2), clamp01(s * 0.42 + 0.06), clamp01(l * 0.96 + 0.1)],
+        canopy: { hue: 0.2, sat: 0.2, l0: 0.38, l1: 0.54 }, jitterHue: 0.5 },
+    },
     // map pass 2026-09-12: the harbour terraces read as smooth lawn; dwarf
     // spruce scrub and more coastal rock give the slopes a fjord texture.
-    clusterCount: 86, loneCount: 146, rimCount: 132, grassDensity: 0.78,
+    // (wave 111b: "evenly spaced identical lime-green grass billboards") the sward short and thin after the snow, last year's
+    // straw over the new blades; round 4 (wave 189: "a few yellow tufts" on bare ground): the early summer's sward, most
+    // of the ground covered (0.8, the PR head's 0.78), the blades green-yellow and each card keeping its own shades (the hue follows the
+    // texture's, a little yellower where it is pale)
+    clusterCount: 86, loneCount: 146, rimCount: 132, grassDensity: 0.8,
+    grassTexTone: (h: number, s: number, l: number): [number, number, number] => [clamp01(0.21 + (h - 0.25) * 0.35 - (l - 0.5) * 0.05), clamp01(s * 0.42 + 0.08), clamp01(l * 0.84 + 0.08)],
+    // (wave 189: "dotted with white pebbles") fewer field stones, and a lichened gneiss grey at the turf's value
+    litter: { density: 0.45, stones: 0.6, clods: 0.35, splinters: 0.45, stoneTint: [0.105, 0.11, 0.1] },
     bushCount: 1.15, bushSpecies: 'spruce',
   },
   props: {
+    // map revival lane 2 (2026-10-05): the nordland kit (maps/regional/nordland.ts)
+    architecture: 'nordland',
     plan: ['fishery', 'netyard', 'depot', 'logcabin', 'alpine',
       'warehouse', 'boatshed', 'chapel', 'cornershop', 'ruin', 'netyard', 'depot', 'logcabin',
       'warehouse', 'boatshed', 'netyard', 'logcabin', 'alpine', 'depot', 'woodshed', 'chapel',
@@ -128,7 +187,73 @@ export default {
     // sight lines and objectives keep their bands. The lighthouse stands on the south
     // headland's crest, 21 m over the water 20 m below it, where the roadside plan had put it 300 m inland.
     town: { x0: 170, x1: 254, z0: -236, z1: 166, cx: 214, cz: -40 },
-    plannedSites: [{ structure: 'lighthouse', x: 392, z: -32, yawDeg: 270 }],
+    // (the map-content lane, 2026-10-10; the owner: Nordhavn "very bare") the farms of the valley floor round Bjerkvik in
+    // May 1940: the graded meadow the town left when it moved onto the quay (e13c91de9) stood empty, the props' scatter and
+    // the trees keeping off all of it. Each farm's tun: the farmhouse with its front to the road, the barn behind it, the
+    // (the blind critics, 2026-10-15: the base kit's farmhouse stood as "a windowless whitewashed box, not Norwegian") each
+    // farmhouse plot is the nordland kit's two-storey house (its 'alpine' plot: the boarded våningshus with its windows and
+    // glassed veranda up the gable; the kit has no farmhouse of its own)
+    // stabbur beside the yard and a hay rack out in the infield (landmarks below), up to seven farms a side of the middle,
+    // every footprint clear of the roads' cores, the zone discs, the trees' trunks and the town. The sites stand after the
+    // roadside plan (the town places exactly as before) and each draws from its own stream (terrace), the lighthouse too.
+    plannedSitesAfterPlan: true,
+    plannedSites: [{ structure: 'lighthouse', x: 392, z: -32, yawDeg: 270, terrace: true },
+      { structure: 'alpine', x: -17.0, z: -29.0, yawDeg: 108, terrace: true },
+      { structure: 'barn', x: -42.2, z: -35.5, yawDeg: 108, terrace: true },
+      { structure: 'alpine', x: -83.0, z: -277.0, yawDeg: 104, terrace: true },
+      { structure: 'barn', x: -104.3, z: -271.7, yawDeg: 104, terrace: true },
+      { structure: 'alpine', x: 165.0, z: -159.0, yawDeg: 81, terrace: true },
+      { structure: 'barn', x: 145.5, z: -176.3, yawDeg: 81, terrace: true },
+      { structure: 'alpine', x: 133.0, z: -55.0, yawDeg: -161, terrace: true },
+      { structure: 'barn', x: 126.9, z: -29.6, yawDeg: -161, terrace: true },
+      { structure: 'alpine', x: -45.0, z: -213.0, yawDeg: -76, terrace: true },
+      { structure: 'barn', x: -23.7, z: -218.3, yawDeg: -76, terrace: true },
+      { structure: 'alpine', x: 17.0, z: 287.0, yawDeg: 76, terrace: true },
+      { structure: 'barn', x: -4.3, z: 281.7, yawDeg: 76, terrace: true },
+      { structure: 'alpine', x: 29.0, z: 25.0, yawDeg: -72, terrace: true },
+      { structure: 'barn', x: 49.9, z: 18.2, yawDeg: -72, terrace: true },
+      { structure: 'alpine', x: -217.0, z: 235.0, yawDeg: -170, terrace: true },
+      { structure: 'barn', x: -213.2, z: 256.7, yawDeg: -170, terrace: true },
+      { structure: 'alpine', x: 165.0, z: 145.0, yawDeg: 79, terrace: true },
+      { structure: 'barn', x: 143.4, z: 140.8, yawDeg: 79, terrace: true },
+      { structure: 'alpine', x: 163.0, z: 285.0, yawDeg: -12, terrace: true },
+      { structure: 'barn', x: 167.6, z: 263.5, yawDeg: -12, terrace: true },
+      { structure: 'alpine', x: -95.0, z: 223.0, yawDeg: 169, terrace: true },
+      { structure: 'barn', x: -99.2, z: 244.6, yawDeg: 169, terrace: true },
+      { structure: 'alpine', x: 57.0, z: 159.0, yawDeg: -76, terrace: true },
+      { structure: 'barn', x: 78.3, z: 153.7, yawDeg: -76, terrace: true },
+    ],
+    landmarks: [
+      { kind: 'stabbur', x: -28.6, z: -38.9, yawDeg: 108, ground: 'veto', name: 'a farm stabbur on its stilts' },
+      { kind: 'hayRack', x: -58.8, z: -15.4, yawDeg: 108, ground: 'veto', name: 'a hay rack in the infield' },
+      { kind: 'stabbur', x: -93.9, z: -287.7, yawDeg: 104, ground: 'veto', name: 'a farm stabbur on its stilts' },
+      { kind: 'hayRack', x: -125.7, z: -266.4, yawDeg: 104, ground: 'veto', name: 'a hay rack in the infield' },
+      { kind: 'stabbur', x: 159.1, z: -173.1, yawDeg: 81, ground: 'veto', name: 'a farm stabbur on its stilts' },
+      { kind: 'stabbur', x: 123.3, z: -43.2, yawDeg: -161, ground: 'veto', name: 'a farm stabbur on its stilts' },
+      { kind: 'hayRack', x: 147.3, z: -13.4, yawDeg: -161, ground: 'veto', name: 'a hay rack in the infield' },
+      { kind: 'stabbur', x: -34.1, z: -202.3, yawDeg: -76, ground: 'veto', name: 'a farm stabbur on its stilts' },
+      { kind: 'hayRack', x: -2.3, z: -223.6, yawDeg: -76, ground: 'veto', name: 'a hay rack in the infield' },
+      { kind: 'stabbur', x: 12.4, z: 272.5, yawDeg: 76, ground: 'veto', name: 'a farm stabbur on its stilts' },
+      { kind: 'hayRack', x: -25.7, z: 276.4, yawDeg: 76, ground: 'veto', name: 'a hay rack in the infield' },
+      { kind: 'stabbur', x: 40.6, z: 34.9, yawDeg: -72, ground: 'veto', name: 'a farm stabbur on its stilts' },
+      { kind: 'hayRack', x: 70.8, z: 11.4, yawDeg: -72, ground: 'veto', name: 'a hay rack in the infield' },
+      { kind: 'stabbur', x: -228.4, z: 245.1, yawDeg: -170, ground: 'veto', name: 'a farm stabbur on its stilts' },
+      { kind: 'hayRack', x: -209.4, z: 278.3, yawDeg: -170, ground: 'veto', name: 'a hay rack in the infield' },
+      { kind: 'stabbur', x: 159.6, z: 130.7, yawDeg: 79, ground: 'veto', name: 'a farm stabbur on its stilts' },
+      { kind: 'hayRack', x: 121.8, z: 136.6, yawDeg: 79, ground: 'veto', name: 'a hay rack in the infield' },
+      { kind: 'stabbur', x: 151.9, z: 274.5, yawDeg: -12, ground: 'veto', name: 'a farm stabbur on its stilts' },
+      { kind: 'stabbur', x: -109.3, z: 228.4, yawDeg: 169, ground: 'veto', name: 'a farm stabbur on its stilts' },
+      { kind: 'hayRack', x: -103.4, z: 266.2, yawDeg: 169, ground: 'veto', name: 'a hay rack in the infield' },
+      { kind: 'stabbur', x: 67.9, z: 169.7, yawDeg: -76, ground: 'veto', name: 'a farm stabbur on its stilts' },
+      { kind: 'hayRack', x: 99.7, z: 148.4, yawDeg: -76, ground: 'veto', name: 'a hay rack in the infield' },
+      // the stockfish racks on the harbour's slopes, the cod hung in pairs to dry (a sixth at (231, -43) stood inside the
+      // harbour store's footprint, so the composer never built it: dropped, the shard unchanged)
+      { kind: 'fishRack', x: 235, z: 77, yawDeg: -101, ground: 'veto', name: 'a stockfish rack by the harbour' },
+      { kind: 'fishRack', x: 233, z: 139, yawDeg: -101, ground: 'veto', name: 'a stockfish rack by the harbour' },
+      { kind: 'fishRack', x: 235, z: -181, yawDeg: -99, ground: 'veto', name: 'a stockfish rack by the harbour' },
+      { kind: 'fishRack', x: 269, z: 65, yawDeg: -94, ground: 'veto', name: 'a stockfish rack by the harbour' },
+      { kind: 'fishRack', x: 231, z: 241, yawDeg: -99, ground: 'veto', name: 'a stockfish rack by the harbour' },
+    ],
     blockFill: true,
     extraKits: ['coastal'], wallStyle: 'fieldstone', wallStoneChance: 0.72,
     wallRuns: [
@@ -142,19 +267,37 @@ export default {
     buildingLat: [12, 7], sideSkip: 0.12, maxSpread: 3.0, spacingPad: 8,
     roadBuildingKeepouts: [{ x: 3, z: -67, r: 12 }],
     well: false, hayCrates: false, fences: true, telegraph: true, carts: true, logs: true,
+    // (round 3, wave 129: "a heap of white cube-shaped rubble"): the heaps stay (they are the burnt town's cover: at a
+    // third of them the default bot match fell to a 168 s median, under the 3-minute floor); their stone is the kit's,
+    // now a weathered gneiss grey, not a pale granite (nordland.ts)
     rocks: 330, outcrops: 60, craters: 54, rubblePiles: 18, hedgehogs: 14,
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
     sandbagLines: 16, tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
     inhabit: {
-      stalls: 1, benches: 4, coreClutter: 22, trucks: 5, jeeps: 3,
-      drumClusters: 6, camps: 2, modernClutter: 20,
-      roadFence: 'fencerail', yardFence: 'fencepicket',
+      // (wave 111b: "a fairground-style market stall") no market stall: the quay's own fish trade has the fish plant
+      // (round 3, gauntlet wave 129: "a park bench (1940!)") no park benches either
+      // (map-content, the valley fill 2026-10-10) the farms' carts and the valley road's traffic of 1940 (the norway1940 fleet)
+      stalls: 0, benches: 0, coreClutter: 22, trucks: 8, jeeps: 5, carts: 4, handcarts: 2,
+      // map revival lane 2, round 2: Bjerkvik in 1940 had no traffic cones or concrete jersey barriers — the roadside
+      // vocabulary is the wharf's cable reels and the road signs
+      // (round 3, wave 129: "a flat-shaded green box with three green cylinders") nor a pad transformer's cabinet
+      // (round 5, wave 243: "an oversized cable drum" in the chase's foreground) four cable reels, not ten, and the rest of
+      // the period budget (mapQuality: 18 pieces) in the roads' direction signs
+      drumClusters: 6, camps: 2, modernClutter: { cablespool: 4, roadsign: 14 },
+      // round 4 (the coordinator, waves 182-184: no white picket fences off the American maps): the gardens' runs split
+      // rails, the nearest to a Norwegian skigard (no colliders, as the pickets)
+      roadFence: 'fencerail', yardFence: 'fencerail',
     },
   },
   horizon: {
-    baseHex: 0x42535a, amp: 1.34, style: 'alpine', treeline: 0.74, snowline: 0.78,
-    forestHex: 0x213b38, rockHex: 0x657077, haze: 0.9, grain: 0.58,
+    // round 5 (gauntlet wave 243, both critics: "smooth, rounded blue-green humps with no exposed rock, cliff bands, gullies
+    // or snow", "grassed green to every summit"): the Ofotfjord's walls bare, ice-ground gneiss above the birch line and
+    // May snow on their upper half — the treeline at four tenths of the peaks' height (was 0.74), the snowline at a half
+    // (was 0.78; the skies lane's panorama shell takes its snow and forest lines from these two), the gneiss a cooler,
+    // darker grey (was 0x657077)
+    baseHex: 0x42535a, amp: 1.34, style: 'alpine', treeline: 0.42, snowline: 0.52,
+    forestHex: 0x213b38, rockHex: 0x585f63, haze: 0.9, grain: 0.58,
     // round 49 (owner audit 2026-09-23, "smooth green cone hill on the rim with a darker cap"): the softened alpine domes
     // never reached the vista's slope-keyed rock, so a hill was one green tint with the altitude-banded summit rock as
     // its cap; above the treeline the turf now greys to heath with gneiss ribs, scree fans and a broken summit
@@ -181,7 +324,9 @@ export default {
     // (2026-10-13: the baked decks the phones show match the cumulus — the cirrus veil 0.9 -> 0.6 and the deck 1.15 -> 1.05,
     // Verdant's; the deck tint a near-white 0xf2f5f6 (was the grey 0xd9e1e2), which the layer's albedo reads by day too)
     cloudOpacity: 1.05, cloudOpacity2: 0.6, cloudTintHex: 0xf2f5f6,
-    sunIntensity: 4.2, sunColorHex: 0xf7ecd9, hemiIntensity: 0.36, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 3.35 / 0xffdfbe / 0.52); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses
+    sunIntensity: 4.2, sunColorHex: 0xf7ecd9, hemiIntensity: 0.36, // lighting 2026-09-13: key/fill back toward the 1049e4e ratio (was 3.35 / 0xffdfbe / 0.52); the dimmer, warmer key with a high hemisphere fill read flat next to the reference at identical poses,
+    // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a Norwegian fjord's crisp sea air — a cool silver band, a clean northern blue
+    atmosphere: { horizonTintHex: 0xd6e0e6, horizonTintAmount: 0.35, horizonBandDeg: 8, zenithTintHex: 0x5a86c4, zenithTintAmount: 0.2 },
   },
   minimap: {
     base: [68, 82, 76], hard: [92, 96, 94], soft: [42, 66, 68],
@@ -189,7 +334,11 @@ export default {
     water: 'rgba(43,81,99,.88)', waterStroke: 'rgba(21,46,61,.95)',
     roadCasing: 'rgba(37,41,43,.95)', roadFill: 'rgba(143,151,150,.96)', buildingFill: '#c2c8ca',
   },
-  shot: { pos: [-226, 42, -238], look: [218, -4, 38] },
+  // (the map-content lane, 2026-10-10; the research lane's request, the coordinator's approval: the old pose looked across
+  // the middle of the map at the old village site, an empty moor since the town moved onto the quays on 10-03) the
+  // establishing pose from the valley floor south-west of the harbour town, looking north-east along the harbour road over
+  // the farms, the town and the quays to the lighthouse on the south headland, the bay's arms and the massifs behind
+  shot: { pos: [96, 38, -300], look: [330, -6, 20] },
   // round 66 (2026-09-24, the FFT ocean): a sheltered fjord — a light air down the arms, a faint swell from the mouth;
   // the owner's approved look is kept (amplitude 0.45: centimetres, read as the same water from the chase camera)
   ocean: { windSpeed: 3.2, windDirDeg: 250, fetchKm: 6, swell: 0.1, amplitude: 0.45, choppiness: 0.7, foam: 0.15, breakers: 0.3, caustics: 0.4 },

@@ -48,14 +48,14 @@ assert.notEqual(casemate.root.getObjectByName('Hull').parent.name,'rig_turret');
 // no source certificate or real oracle on disk is altered by this test.
 const fixtureBytes=Buffer.from(JSON.stringify(gltf));
 const fixturePath='/models/community-candidates/synthetic-meter-test.glb';
-const certificate=SOURCE_WORLD_FRAMES.type10_x;
+const certificate=SOURCE_WORLD_FRAMES.type10;
 const oldHash=certificate.sha256,oldFetch=globalThis.fetch;
 try {
   certificate.sha256=createHash('sha256').update(fixtureBytes).digest('hex');
   globalThis.fetch=(url,...args)=>url===fixturePath
     ? Promise.resolve(new Response(fixtureBytes)):oldFetch(url,...args);
   const fusedCfg={path:fixturePath};
-  const fused=await loadReferenceGlb({source:'glb',glb:fusedCfg},'type10_x',{dims:{widthM:2.4}});
+  const fused=await loadReferenceGlb({source:'glb',glb:fusedCfg},'type10',{dims:{widthM:2.4}});
   assert.deepEqual(coordinates(fused.root),coordinates(legacy.root),
     'a published-width conflict may not shrink a measured source in the loader');
   assert.deepEqual(fused.root.scale.toArray(),[1,1,1]);
@@ -72,7 +72,7 @@ try {
     {reference:sourceFrame,procedural:nativeFrame}).passed,false,
     'fused oracle may not manufacture component owners');
   certificate.sha256='0'.repeat(64);
-  await assert.rejects(loadReferenceGlb({source:'glb',glb:fusedCfg},'type10_x',null),/hash/i);
-  await assert.rejects(loadReferenceGlb({source:'glb',glb:{path}},'type10_x',null),/private local/);
+  await assert.rejects(loadReferenceGlb({source:'glb',glb:fusedCfg},'type10',null),/hash/i);
+  await assert.rejects(loadReferenceGlb({source:'glb',glb:{path}},'type10',null),/private local/);
 } finally {certificate.sha256=oldHash;globalThis.fetch=oldFetch;}
 console.log('reference-gun-pivot: explicit trunnion fixes articulation without changing neutral source geometry');

@@ -2,6 +2,7 @@ import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
 import { usesLauncherMuzzles, isUnguidedRocket } from '../sim/launcherPolicy.ts';
 import { selectResultReplay, type DestroyedRecord, type ReplayResult } from './killcamSelection.ts';
 import { replayInCurrentTankIds } from './tankIdBoundaries.ts';
+import { killcamCameraFloor } from './killcamGround.ts';
 /**
  * killcam.ts — War Thunder-class kill camera (integration-owned module).
  *
@@ -763,6 +764,7 @@ const _s = new THREE.Vector3();
 const _a = new THREE.Vector3();
 const _b = new THREE.Vector3();
 const _camPos = new THREE.Vector3();
+const _floorPos = new THREE.Vector3(); // poseCamera's floored copy (engine-cs, 2026-10-15)
 const _camLook = new THREE.Vector3();
 const _proj = new THREE.Vector3();
 const _q = new THREE.Quaternion();
@@ -880,7 +882,7 @@ function sharedMats(): SharedMaterials {
       {
         vec3 kcV = normalize(cameraPosition - vKcW);
         // Degenerate-normal guard FIRST (r3): the performance-budget kit
-        // merge ships GLB hull meshes WITHOUT a normal attribute (m1a2/t90m
+        // merge ships GLB hull meshes WITHOUT a normal attribute (m1a1_abrams_hc/t90m
         // audit: 4 merged meshes each) — the attribute defaults to (0,0,0),
         // normalize() NaNs, and NaN alpha painted the whole live-Abrams
         // ghost as a solid black silhouette. Zero-length normals fall back
@@ -2916,7 +2918,7 @@ export function createKillCam(deps: KillcamDeps) {
       const minY = heightField.getHeightAt(_a.x, _a.z) + 0.9;
       if (_a.y < minY) _a.y = minY;
     }
-    rig.setExternalPose(_a, _b, w.fromFov + (50 - w.fromFov) * k);
+    poseCamera(_a, _b, w.fromFov + (50 - w.fromFov) * k);
     if (w.t >= WRECK_HOLD_S) endWreck();
   }
 
@@ -3009,6 +3011,19 @@ export function createKillCam(deps: KillcamDeps) {
     };
   }
 
+  /**
+   * Every replay camera write keeps above the ground (engine-cs, 2026-10-15): a handoff lerp between two clear poses
+   * can cross a hill and a steep slope can cut the near plane, so the written position never sits lower than
+   * killcamCameraFloor (the highest ground within 1.2 m, plus 0.9 m). The callers' vectors are left untouched.
+   */
+  function poseCamera(pos: THREE.Vector3, look: THREE.Vector3, fov: number): void {
+    if (heightField) {
+      const floor = killcamCameraFloor(heightField, pos.x, pos.z);
+      if (pos.y < floor) pos = _floorPos.set(pos.x, floor, pos.z);
+    }
+    rig.setExternalPose(pos, look, fov);
+  }
+
   /** Apply a replay camera target through the active continuous handoff. */
   function setReplayCamera(
     pos: THREE.Vector3,
@@ -3018,7 +3033,7 @@ export function createKillCam(deps: KillcamDeps) {
   ): void {
     const blend = pb && pb.cameraBlend;
     if (!blend) {
-      rig.setExternalPose(pos, look, fov);
+      poseCamera(pos, look, fov);
       return;
     }
     blend.t = Math.min(blend.dur, blend.t + Math.max(0, dt));
@@ -3026,7 +3041,7 @@ export function createKillCam(deps: KillcamDeps) {
     const k = u * u * u * (u * (u * 6 - 15) + 10);
     _camPos.lerpVectors(blend.fromPos, pos, k);
     _camLook.lerpVectors(blend.fromLook, look, k);
-    rig.setExternalPose(_camPos, _camLook, blend.fromFov + (fov - blend.fromFov) * k);
+    poseCamera(_camPos, _camLook, blend.fromFov + (fov - blend.fromFov) * k);
     if (u >= 1) pb.cameraBlend = null;
   }
 
@@ -3365,7 +3380,7 @@ export function createKillCam(deps: KillcamDeps) {
     }
     // muzzle glow swells as the camera arrives — the shot is about to re-fire
     if (pb.muzzleLight) pb.muzzleLight.intensity = 70 * THREE.MathUtils.smoothstep(u, 0.78, 1);
-    rig.setExternalPose(_a, _b, a.fromFov + (SHOT_TRACK_FOV - a.fromFov) * k);
+    poseCamera(_a, _b, a.fromFov + (SHOT_TRACK_FOV - a.fromFov) * k);
     if (u >= 1) {
       beginFiring();
     }
@@ -3667,7 +3682,7 @@ export function createKillCam(deps: KillcamDeps) {
       pb.tail.quaternion.setFromUnitVectors(_Y, _s.copy(pb.contactDir).negate());
     }
     if (pb.shellLight) pb.shellLight.position.set(_p.x, _p.y + 0.5, _p.z);
-    rig.setExternalPose(pb.xcam.pos, pb.xcam.look, 42);
+    poseCamera(pb.xcam.pos, pb.xcam.look, 42);
     if (f >= 1) {
       if (pb.finalePending) beginXray();
       else beginImpact();

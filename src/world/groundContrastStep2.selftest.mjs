@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
 // Ground lane (2026-10-05, the local-contrast program, step 2): the ground's mid-scale contrast (the skies lane's metric:
 // the std of log luminance against its 25 px mean, ground below the skyline) read 0.17–0.42 on the game's frames against
@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 // (b') the detail normal's gain from ~20 m to ~300 m, none beside the camera, on a field or where the steep-face
 // attenuation holds it; (b'') the dapple's gain on a vegetated map's sward only. No GPU or art claim.
 
-const source = readFileSync(new URL('./terrain.ts', import.meta.url), 'utf8').replace(/\s+/g, ' ');
+const source = terrainSourceText().replace(/\s+/g, ' ');
 const has = (line) => assert.ok(source.includes(line.replace(/\s+/g, ' ')), `the material: ${line}`);
 const num = (name) => { const m = new RegExp(`#define ${name} ([0-9.]+)`).exec(source); assert.ok(m, `${name} is defined`); return Number(m[1]); };
 

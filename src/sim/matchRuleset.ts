@@ -20,7 +20,42 @@ export const GUN_GAME_WEAPONS = Object.freeze([
   shell('Guided Missile', 'HEAT', 152, 1100, 1100, 1000, 350, { guided: true, reloadS: 5 }),
 ]);
 export const AERIAL_RULES = Object.freeze({
-  drone: Object.freeze({ launchS: 2.4, responseHz: 4.5, spotRangeM: 350, speedMps: 42, turnRadS: 2.8, climbMps: 20, batteryS: 40, cooldownS: 25, rangeM: 850, launchHeightM: 12 }),
+  // `cooldownS` follows an airframe lost or spent (an impact, the battery, the link's range); a recall has its own below.
+  // hitsToDown (VH.15 counter-drone): the strikes a drone's airframe takes before it falls (the roof stations' rounds
+  // land shares of a strike by range: vehicles/auxiliaryWeapons.ts droneHitAt100). 1.1, not 1 (owner 2026-10-16 on the
+  // 226 preview: "machine guns targeting drones is a lil too punishinng"): one capped 12.7 burst (5 x .2 = 1.0) or 30 mm
+  // burst (3 x .35 = 1.05) no longer downs a drone alone, a 7.62's (8 x .15 = 1.2) still does, and shares from several
+  // stations still add, so a lone gun downs a quarter to a third fewer drones and two or three stations nearly as many.
+  // Kept clear of every exact burst sum.
+  drone: Object.freeze({ launchS: 2.4, responseHz: 4.5, spotRangeM: 350, speedMps: 42, turnRadS: 2.8, climbMps: 20, batteryS: 40, cooldownS: 25, rangeM: 850, launchHeightM: 12, hitsToDown: 1.1,
+    /**
+     * The recall (owner 2026-10-14: "dont be able to instantly call it back, only be able to call back once weve entered
+     * screen, and if we do, show the landing animation and we should be able to launch it again after a shorter
+     * cooldown"). Both authorities (the solo step and the network authority) time it in sim/droneRecall.ts: a recall is
+     * accepted only once the pilot is in the drone's own feed (the launch climb, then the lens hand-over `feedS` that
+     * engine/aerialCamera.ts eases the chase view into the lens over); the recalled airframe flies home and lands on its
+     * dock (the presentation draws it on this same timing law), and the next launch is ready `cooldownS` after it is parked.
+     */
+    recall: Object.freeze({
+      feedS: .55,
+      /** The flight home: the horizontal distance over `transitS` at a ground speed inside [minMps, maxMps], climbing or
+       *  sinking to `cruiseAboveDockM` over the dock at `climbMps` / `sinkMps`; each leg flies faster where that pace would
+       *  not cover it inside `maxTransitS`, so a recall from the link's edge, high above or far below the tank is home
+       *  as quickly (verifier 2026-10-14: an unbounded climb or sink made a recall from 835 m up wait 81 s). */
+      transitS: 5, minMps: 20, maxMps: 60, climbMps: 8, sinkMps: 12, cruiseAboveDockM: 15, maxTransitS: 7,
+      /** The flight home's fixed beats: the hold for an impact in flight, the approach to the dock's column and its descent
+       *  (4.1 s since round 5's descent keeps at least the landing's hand-over speed down the column: a recall from over the
+       *  dock at cruise height is at the landing's first pose 1.4 s inside it, fx/droneRecallReturn.selftest.mjs). */
+      approachS: 4.1,
+      /** The landing on the dock: the descent onto the pads, the rotor spin-down and the pause before the clamps close
+       *  (fx/droneArrival.ts descentS + spoolS + pauseS = 4.85 s, drawn to the frame, fits inside). */
+      landingS: 4.9,
+      /** The relaunch wait after a recalled airframe is parked on its dock (`cooldownS` above follows a loss). From
+       *  anywhere, a recall relaunches within maxTransitS + approachS + landingS + cooldownS = 19.8 s of the press,
+       *  over 5 s sooner than the 25 s after a loss (sim/droneRecall.selftest.mjs sweeps the reachable envelope). */
+      cooldownS: 3.8,
+    }),
+  }),
   gunship: Object.freeze({ altitudeM: 240, radiusM: 90, orbitRadS: .09 }),
 });
 export const GUNSHIP_WEAPONS = Object.freeze([
@@ -235,6 +270,8 @@ export interface MatchRuleset {
   readonly infection?: { readonly infectedSpeed: number; readonly infectedRespawnS: number; readonly survivorHpScale: number; readonly infectedHpScale: number; readonly infectedReloadScale: number };
   readonly gunGame?: { readonly killsPerWeapon: number };
   readonly aerial?: 'drone' | 'gunship';
+  /** VH.15: the roof stations engage enemy drones in flight (sim/auxiliarySystems.ts; the drone mode). */
+  readonly counterDrone?: boolean;
   readonly scoreTarget?: number | null;
   readonly mode: GameModeId;
   /** Multiplies 9.81 m/s² for hulls in the air, shells in flight and the ball. */
@@ -331,13 +368,17 @@ const ENDING_HOLD_S = 8;
  * The crater switch (destruction core lane, 2026-10-08; docs/DESTRUCTION.md §7, crater-render-spec §F): on, the
  * simulation digs craters in every mode that plays destruction, and the drawn terrain (world/terrainCraterMesh.ts), the
  * ground cover (world/groundCoverCraters.ts) and the crater's own surface (fx/craterMarks.ts) follow the dug ground.
- * Off until the switch-on gates pass (pacing and fairness paired against craters off, both audits, cost with a
- * barrage, the network's stamp-once and late join).
+ * On since the destruction lane's DST-04 round (2026-10-15): pacing and fairness paired against craters off, both
+ * audits and the network's stamp-once and late join passed on 2026-10-08; the world's ray march now reads the dug ground
+ * (world/map.ts, world/headlessCollisionWorld.ts); the barrage's cost and the motion strips run in the 225/226 final pass.
  */
-const CRATERS_SWITCH = false;
-// sections (P2: holes, fallen walls, roofs and storeys that shells and sight lines pass) stay off until their gates pass
-// (docs/DESTRUCTION.md §3.4, §13): the receipts, the paired pacing and fairness, the cost runs and the motion strips
-const SECTIONS_SWITCH = false;
+const CRATERS_SWITCH = true;
+// sections (P2: holes, fallen walls, roofs and storeys that shells and sight lines pass; docs/DESTRUCTION.md §3.4, §13):
+// on since the destruction lane's DST-04 round (2026-10-15; the owner: "explosions that should be destructive and leave
+// holes"). A battle's HE now holes the wall it strikes, a section at zero falls, and a collapse comes down storey by
+// storey as the Studio's films have shown since 2026-10-08; the paired pacing, the cost runs and the motion strips run
+// in the 225/226 final pass
+const SECTIONS_SWITCH = true;
 const DESTRUCTION_ON: DestructionRules = Object.freeze({
   structures: true, craters: CRATERS_SWITCH, sections: SECTIONS_SWITCH, structureDamageScale: 1, craterScale: 1, maxCraters: 160,
 });
@@ -398,7 +439,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   realistic: Object.freeze({ ...STANDARD, mode: 'realistic', alwaysVisible: false, moduleOnlyDamage: true, consumables: false }),
   gun_game: Object.freeze({ ...STANDARD, mode: 'gun_game', respawnS: 4, ammo: 'unlimited', timeLimitS: 900,
     gunGame: Object.freeze({ killsPerWeapon: 2 }) }),
-  drone: Object.freeze({ ...STANDARD, mode: 'drone', aerial: 'drone', respawnS: 6, timeLimitS: 600, scoreTarget: 20 }),
+  drone: Object.freeze({ ...STANDARD, mode: 'drone', aerial: 'drone', counterDrone: true, respawnS: 6, timeLimitS: 600, scoreTarget: 20 }),
   ac130: Object.freeze({ ...STANDARD, mode: 'ac130', aerial: 'gunship', allies: 4, enemies: 12, alwaysVisible: true,
     ammo: 'unlimited', consumables: false, timeLimitS: 480, timeout: 'defeat',
     destruction: Object.freeze({ ...DESTRUCTION_ON, craterScale: 1.25 }) }),
@@ -448,6 +489,14 @@ export function endingHoldExpired(
 /** The wave modes: their enemy side is a pool drawn per wave (Horde) or per sector (Frontline). */
 export function isWaveMode(mode: GameModeId): mode is 'endless_horde' | 'frontline_assault' {
   return mode === 'endless_horde' || mode === 'frontline_assault';
+}
+
+/**
+ * A destroyed hull stays out of the battle: no respawn, and no wave that draws the pool back in. Only then can a network
+ * seat count a side from the roster and the deaths it is sent: a hull's return out of its sight is never sent to it.
+ */
+export function deathsAreFinal(ruleset: Pick<MatchRuleset, 'mode' | 'respawnS'>): boolean {
+  return ruleset.respawnS == null && !isWaveMode(ruleset.mode);
 }
 
 /** Every registered mode arranges its sides (owner 2026-09-18); an unknown id takes none. */

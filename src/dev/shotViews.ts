@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { TANK_IDS } from '../vehicles/tankIdAliases.ts';
+import { stageKillcamFlankShot, stageKillcamShooter } from '../game/killcamGround.ts';
 import type { InstancedMesh, Object3D, Scene, Vector3 } from 'three';
 import type {
   ArmorIntersection,
@@ -498,7 +499,7 @@ export function createShotViews({
     // lighting_post r4: elev 9 -> 15, dist 7 -> 8 — the extra elevation puts
     // the hull-adjacent contact shadow above the hull's own horizon so the
     // closeup actually shows the vehicle grounded (shadow-read fix).
-    const hero = game.tankById.get('m1a2');
+    const hero = game.tankById.get('m1a1_abrams_hc');
     // tank_models r6 (minor): a flat background bot ("312") parked right
     // behind the hero undercut the closeup — push any OTHER vehicle inside
     // 55 m a further 30 m out along its own bearing (deterministic, no rng;
@@ -532,12 +533,12 @@ export function createShotViews({
     hud.setMode('hidden');
     // tank_models r3: every core roster tank gets a judged closeup — the
     // T-90M shipped unauditable as a carousel thumb.
-    closeupStage(game.tankById.get('t90m'));
-    orbitPose(game.tankById.get('t90m'), 8, -38, 15, 45); // lighting_post r4: elev 10 -> 15 (contact shadow read)
+    closeupStage(game.tankById.get('t90am'));
+    orbitPose(game.tankById.get('t90am'), 8, -38, 15, 45); // lighting_post r4: elev 10 -> 15 (contact shadow read)
   },
   tank_closeup_leo2a7() {
     hud.setMode('hidden');
-    const leopard = game.tankById.get('leo2a7v');
+    const leopard = game.tankById.get('leo2_improved');
     closeupStage(leopard);
     orbitPose(leopard, 8, -35, 15, 45); // lighting_post r4: elev 10 -> 15 (contact shadow read)
   },
@@ -608,8 +609,8 @@ export function createShotViews({
   },
   async garage() {
     hud.setMode('hidden');
-    await setPedestalTank('m1a2');
-    garage.show('m1a2');
+    await setPedestalTank('m1a1_abrams_hc');
+    garage.show('m1a1_abrams_hc');
     if (garage.drainThumbs) garage.drainThumbs(); // portraits finished for the capture
     await garageDressing.ensureBuilt(); // deterministic capture: workshop fully dressed
     showroom.reset();
@@ -751,12 +752,11 @@ export function createShotViews({
     // Synthetic flank muzzle (staged frame): a front-right-quarter shot at
     // 440 m guarantees a penetration whose internal ray crosses track/engine/
     // fuel/ammo boxes — the frame must showcase module damage.
-    const flankAz = target.state.yaw + Math.PI / 2 + 0.35;
-    _v1.set(
-      target.state.pos.x + Math.sin(flankAz) * 440,
-      target.state.pos.y + 9,
-      target.state.pos.z + Math.cos(flankAz) * 440,
-    );
+    // (engine-cs, 2026-10-15) above the ground: the muzzle keeps a gun's height over its own ground and the flank
+    // turns or closes in until its line to the target clears the terrain (killcamGround.ts); the original 9 m over
+    // the target put the firing beat inside the Verdant hillside 440 m out
+    const staged = stageKillcamFlankShot(target.state.pos, target.state.yaw, world.heightField);
+    _v1.set(staged.muzzle.x, staged.muzzle.y, staged.muzzle.z);
     const pose = tankPoseFromState(target.state);
     // Deterministic candidate scan: fixed aim heights / lateral offsets /
     // seeds, resolved through the REAL pipeline against a throwaway combat
@@ -820,14 +820,9 @@ export function createShotViews({
     ).normalize();
     const shooterGroundOffset = shooter.state.pos.y
       - world.heightField.getHeightAt(shooter.state.pos.x, shooter.state.pos.z);
-    const shooterX = _v1.x - shotDir.x * 4.2;
-    const shooterZ = _v1.z - shotDir.z * 4.2;
+    const seat = stageKillcamShooter(_v1, shotDir, world.heightField, shooterGroundOffset);
     const attackerPose = {
-      pos: [
-        shooterX,
-        world.heightField.getHeightAt(shooterX, shooterZ) + shooterGroundOffset,
-        shooterZ,
-      ],
+      pos: [seat.x, seat.y, seat.z],
       yaw: Math.atan2(shotDir.x, shotDir.z), pitch: 0, roll: 0,
       turretYaw: 0,
       gunPitch: Math.atan2(shotDir.y, Math.hypot(shotDir.x, shotDir.z)),

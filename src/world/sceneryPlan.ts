@@ -36,7 +36,7 @@ interface SceneryRock {
 }
 
 /** The destructible landmark kinds (maps/sceneryKit.ts). */
-type SceneryDestructibleKind = 'bildstock' | 'waysidecross' | 'orthodoxcross' | 'windpump' | 'tomb' | 'strawstack' | 'lumberstack' | 'logdeck' | 'windmotor';
+type SceneryDestructibleKind = 'bildstock' | 'waysidecross' | 'orthodoxcross' | 'windpump' | 'tomb' | 'strawstack' | 'lumberstack' | 'logdeck' | 'strawrick' | 'windmotor';
 /** The landmark kinds: stone ones are rock forms, the rest the kit's destructibles. */
 type SceneryLandmarkKind = 'calvary' | 'menhir' | 'cairn' | SceneryDestructibleKind;
 
@@ -117,6 +117,68 @@ interface SceneryBedrock {
 }
 
 /**
+ * A castle rock (castleRock.ts buildCastleRock; the map-revival lane, Chimney Valley round 3): a tuff pinnacle's skin over
+ * a knoll landform of the same centre — lobes, clefts and flutes, rooms cut back into it, the dovecotes' bands, pinnacles
+ * over its brow and a passage through its foot at each `gates` bearing. The knoll stays the battlefield's rock (the
+ * skin hugs it where a hull reaches); a gate's buttress, proud of the wall at its foot, is the one mass it adds.
+ */
+interface SceneryCastle {
+  x: number;
+  z: number;
+  /** The knoll's radii. */
+  rx: number;
+  rz: number;
+  /** Bearings of the passages' mouths (radians from +x toward +z). */
+  gates?: readonly number[];
+  /** Pinnacles over the brow (default 2). */
+  towers?: number;
+  /** Rooms as a share of the default (1). */
+  rooms?: number;
+  tone?: readonly [number, number, number];
+  name?: string;
+}
+
+/**
+ * A caprock (caprockRim.ts buildCaprockRim; Chimney Valley round 3, Skybridge round 5): the hard bed lying on the
+ * brows of a ridge (or, `trench`, a canyon arm) landform of the same centre, length, width and bearing, its lip a little
+ * proud of the wall, split into blocks by its joints. Decor on the brow: the landform stays the rock.
+ */
+interface SceneryCaprock {
+  x: number;
+  z: number;
+  length: number;
+  width: number;
+  yawDeg: number;
+  trench?: boolean;
+  span?: number;
+  tone?: readonly [number, number, number];
+  thickness?: readonly [number, number];
+  blockM?: readonly [number, number];
+  /** (Skybridge round 6) the landform's path: the brows follow its curve (landformPath.ts). */
+  path?: ReadonlyArray<readonly [number, number]>;
+  name?: string;
+}
+
+/**
+ * A canyon arm's wall relief (canyonWall.ts buildCanyonWall; Skybridge round 5): the skin of a trench landform's two
+ * walls of the same centre, length, width and bearing — buttresses, flutes, the beds, the varnish's curtains and the
+ * lake's bathtub ring — from under the water to under the brow. Decor: the trench stays the rock.
+ */
+interface SceneryCanyonWall {
+  x: number;
+  z: number;
+  length: number;
+  width: number;
+  yawDeg: number;
+  waterLevel?: number;
+  span?: number;
+  tone?: readonly [number, number, number];
+  /** (Skybridge round 6) the trench's path: the skin follows its curve (landformPath.ts). */
+  path?: ReadonlyArray<readonly [number, number]>;
+  name?: string;
+}
+
+/**
  * The field boundaries' built works on the ground lane's land use (fieldWorks.ts): the dry stone walls of a karst's
  * wall boundaries, the earth banks under a bocage's hedge lines, on the very lines the terrain draws. Decor: no
  * collision. A world without the land-use hook (or a map without a field system) builds none.
@@ -136,6 +198,9 @@ export interface SceneryConfig {
   rocks?: readonly SceneryRock[];
   rockFields?: readonly SceneryRockField[];
   bedrock?: readonly SceneryBedrock[];
+  castles?: readonly SceneryCastle[];
+  caprock?: readonly SceneryCaprock[];
+  canyonWalls?: readonly SceneryCanyonWall[];
   landmarks?: readonly SceneryLandmark[];
   powerLines?: readonly SceneryPowerLine[];
   fieldWorks?: SceneryFieldWorks;
@@ -173,7 +238,8 @@ export const STONE_LANDMARKS: Readonly<Record<'calvary' | 'menhir' | 'cairn', { 
 
 /** The destructible landmarks' record radii at scale 1 (the kit's `r`). */
 export const LANDMARK_RADIUS: Readonly<Record<SceneryDestructibleKind, number>> = Object.freeze({
-  bildstock: 0.5, waysidecross: 0.75, orthodoxcross: 0.65, windpump: 2.4, tomb: 1.9, strawstack: 1.6, lumberstack: 2.7, logdeck: 4.1, windmotor: 3.2,
+  bildstock: 0.5, waysidecross: 0.75, orthodoxcross: 0.65, windpump: 2.4, tomb: 1.9, strawstack: 1.6, lumberstack: 2.7, logdeck: 4.1, strawrick: 4.8,
+  windmotor: 3.2,
 });
 
 /** A pylon's leg half-spread at its height (maps/sceneryKit.ts buildPylon: 4.2 m at 34 m). */
@@ -217,6 +283,8 @@ export function sceneryClearances(scenery: SceneryConfig | null | undefined): St
     for (const [x, z] of line.towers) disc(x, z, pylonLegHalf(line.heightM) * 1.1 + 1.5);
   }
   for (const hill of scenery.bedrock ?? []) disc(hill.x, hill.z, hill.radius * BEDROCK_TREE_CLEAR);
+  // (a castle rock's skin stands off its knoll's wall: the trees keep off its foot as well)
+  for (const rock of scenery.castles ?? []) disc(rock.x, rock.z, Math.max(rock.rx, rock.rz) * 1.05);
   return out;
 }
 

@@ -10,10 +10,10 @@ import type {FleetTankSpec} from './specContracts.ts';
 export const FLEET_RENEWAL_NEW_IDS=['type96_72_long','type96_80_feng','type96_72m_lei','t72_rys'] as const;
 const registry=bindFleetRegistries(TANK_SPECS,MODEL_SOURCE,ALL_TANK_IDS);
 const entries=[
-  ['type96_72_long','type96b_x','Type 96-72 Lóng (Concept)','China'],
-  ['type96_80_feng','type96b_x','Type 96-80 Fēng (Concept)','China'],
-  ['type96_72m_lei','type96b_x','Type 96-72M Léi (Concept)','China'],
-  ['t72_rys','t80u_x','T-72 Ryś (Concept)','Poland'],
+  ['type96_72_long','type96b','Type 96-72 Lóng (Concept)','China'],
+  ['type96_80_feng','type96b','Type 96-80 Fēng (Concept)','China'],
+  ['type96_72m_lei','type96b','Type 96-72M Léi (Concept)','China'],
+  ['t72_rys','t80u','T-72 Ryś (Concept)','Poland'],
 ] as const;
 const additions:Record<string,FleetTankSpec>={};
 for(const [id,donor,name,nation] of entries){
@@ -26,9 +26,9 @@ for(const [id,donor,name,nation] of entries){
 registerFleetSpecs(registry,FLEET_RENEWAL_NEW_IDS,additions);
 
 export const FLEET_RENEWAL_DONORS=Object.freeze({
-  t72b3m:'t72b3m_x',t72bu:'t72bu_x',t80u:'t80u_x',
-  t64bv1:'t72b3_x',ua_t64bv:'t72b3_x',t72m1_jaguar:'t72b3_x',
-  t62mv1_x:'t62mv1',t72_rys:'t80u_x',
+  t72b3m_2022:'t72b3m_2016',t72bu_1989:'t72bu',t80uk:'t80u',
+  t64bv1:'t72b3',t64bv_donbas:'t72b3',t72m1_jaguar:'t72b3',
+  t62mv1:'t62_1975',t72_rys:'t80u',
 });
 let synchronized=false;
 function copyPhysicalFrame(s:FleetTankSpec,donor:FleetTankSpec):void{
@@ -52,8 +52,8 @@ export function synchronizeFleetRenewalMetadata():void{
   // registrations originated from these older slots).
   const donors=structuredClone(TANK_SPECS);
   for(const [id,donor] of Object.entries(FLEET_RENEWAL_DONORS))copyPhysicalFrame(TANK_SPECS[id],donors[donor]);
-  TANK_SPECS.t72b3m.name='T-72B3M obr. 2022';
-  TANK_SPECS.t72b3m_x.name='T-72B3M obr. 2016';
+  TANK_SPECS.t72b3m_2022.name='T-72B3M obr. 2022';
+  TANK_SPECS.t72b3m_2016.name='T-72B3M obr. 2016';
   // Owner-directed turret transplants keep hull-local damage owners and use
   // the complete donor turret's plates, gun, crew and turret-local modules.
   const transplant=(id:string,upperId:string,pivot:[number,number,number])=>{
@@ -67,25 +67,25 @@ export function synchronizeFleetRenewalMetadata():void{
     target.dims.heightM=upper.dims.heightM-upper.armor.turretPivot[1]+pivot[1];
     target.dims.overallLengthM=lower.dims.hullLengthM/2+pivot[2]+target.armor.gunPivot[2]+target.armor.gunBarrel.lengthM;
   };
-  transplant('t72b3m','t90sm_x',[.008,1.545,.114315]);
-  transplant('t62mv1_x','t72b_1987_x',[0,1.4804,.676]);
+  transplant('t72b3m_2022','t90sm',[.008,1.545,.114315]);
+  transplant('t62mv1','t72b_1987',[0,1.4804,.676]);
   // The T-62 chassis now carries the complete 125 mm T-72B 1987 upper assembly.
   // It keeps its balance peer's fire control: the copied 1987 dispersion and aim
   // time (a modern-era floor, 0.62x its cold-war tier-7 peers) were a side effect
   // of copying the gun, not part of the transplant (fleetBalance.selftest).
-  Object.assign(TANK_SPECS.t62mv1_x.gun,{baseAccuracy:donors.t62mv1.gun.baseAccuracy,aimTimeS:donors.t62mv1.gun.aimTimeS});
-  TANK_SPECS.t62mv1_x.armor.turretPivot=[0,1.4804,.676];
+  Object.assign(TANK_SPECS.t62mv1.gun,{baseAccuracy:donors.t62_1975.gun.baseAccuracy,aimTimeS:donors.t62_1975.gun.aimTimeS});
+  TANK_SPECS.t62mv1.armor.turretPivot=[0,1.4804,.676];
   const t62Era=createT62MV1XArmorZones();
   // The 1975 chassis has an exposed five-wheel course: the donor record's
   // spaced rubber-skirt planes (x +-1.83, from the superseded MV-era model)
   // stand in open air beside the wheels, so the rebuild drops them.
-  TANK_SPECS.t62mv1_x.armor.hullPlates=TANK_SPECS.t62mv1_x.armor.hullPlates
+  TANK_SPECS.t62mv1.armor.hullPlates=TANK_SPECS.t62mv1.armor.hullPlates
     .filter(p=>!(p.kind==='spaced'&&!p.era&&/^skirt(?:_rubber)?_[LR]$/.test(p.name)));
-  TANK_SPECS.t62mv1_x.armor.hullPlates.push(...t62Era.hullPlates);
+  TANK_SPECS.t62mv1.armor.hullPlates.push(...t62Era.hullPlates);
   // The rebuilt MV-1 adds two independently removable side fields beyond
   // the former four-zone package; gameplay must cover those new cassettes.
   const sideEra={kind:'era',era:{...t62Era.hullPlates[0].era!}};
-  TANK_SPECS.t62mv1_x.armor.hullPlates.push(
+  TANK_SPECS.t62mv1.armor.hullPlates.push(
     leftSidePlate('skirt_era_L',15,1.67,.895,1.67,1.325,-2.215,1.915,sideEra),
     rightSidePlate('skirt_era_R',15,1.67,.895,1.67,1.325,-2.215,1.915,sideEra),
   );
@@ -94,8 +94,8 @@ export function synchronizeFleetRenewalMetadata():void{
     TANK_SPECS[id].armor.gunPivot=[0,.33,1.30];
     TANK_SPECS[id].armor.gunBarrel.lengthM=4.95;
   }
-  TANK_SPECS.t72b3m.dims.widthM=4.10;
-  const bmpt=TANK_SPECS.bmpt_terminator2, hull=donors.t80u_x;
+  TANK_SPECS.t72b3m_2022.dims.widthM=4.10;
+  const bmpt=TANK_SPECS.bmpt_terminator2, hull=donors.t80u;
   bmpt.dims={...hull.dims,overallLengthM:hull.dims.hullLengthM,heightM:3.33};stripSilhouetteDimensions(bmpt.dims);
   bmpt.armor.hullPlates=structuredClone(hull.armor.hullPlates);
   bmpt.armor.modules=hybridModules(hull,bmpt);
@@ -104,7 +104,7 @@ export function synchronizeFleetRenewalMetadata():void{
   bmpt.visual.trackWidthM=hull.visual.trackWidthM;
   // Owner-authorized Oplot hybrid: retain the original weapon and protection
   // ratings, replace the physical frame with the 2016 hull and welded turret.
-  const oplot=TANK_SPECS.t84, oldOplot=donors.t84, chassis=donors.t72b3m_x;
+  const oplot=TANK_SPECS.t84, oldOplot=donors.t84, chassis=donors.t72b3m_2016;
   const frame=modernArmor({hl:chassis.dims.hullLengthM/2,hw:1.86,inW:1.25,floor:.39,trkTop:1.22,roofY:1.529,
     turretPivot:[.008,1.535,.114315],gunPivot:[0,.35,1.02],barrelLenM:4.26,barrelRadM:.104,
     glacis:[80,300,450],lower:[80,180,230],side:[80,100,150],rear:45,roof:30,
@@ -136,9 +136,9 @@ export function synchronizeFleetRenewalMetadata():void{
   oplot.armor.crew=[...structuredClone(chassis.armor.crew.filter(c=>!c.turretLocal)),...frame.crew.filter(c=>c.turretLocal)];
   oplot.dims={...chassis.dims,overallLengthM:chassis.dims.hullLengthM/2+.114315+1.02+4.26,heightM:3.15};
   stripSilhouetteDimensions(oplot.dims);oplot.visual.trackWidthM=chassis.visual.trackWidthM;
-  const variants=[['type96_72_long','t72b3_x',1.475,.065591],['type96_80_feng','t80u_x',1.565,.07187],['type96_72m_lei','t72b3m_x',1.545,.114315]] as const;
+  const variants=[['type96_72_long','t72b3',1.475,.065591],['type96_80_feng','t80u',1.565,.07187],['type96_72m_lei','t72b3m_2016',1.545,.114315]] as const;
   for(const [id,donor,y,z] of variants){
-    const s=TANK_SPECS[id],base=donors[donor],turret=donors.type96b_x;
+    const s=TANK_SPECS[id],base=donors[donor],turret=donors.type96b;
     s.dims={...base.dims,overallLengthM:base.dims.hullLengthM/2+z+1.75+4.92211,heightM:3.016-1.6+y};stripSilhouetteDimensions(s.dims);
     s.armor=structuredClone(turret.armor);
     s.armor.hullPlates=structuredClone(base.armor.hullPlates);

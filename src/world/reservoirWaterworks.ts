@@ -1,15 +1,15 @@
 /** Reservoir-only construction: exchange accepted rubble for working waterworks. */
-import { BufferGeometry } from 'three';
+import { BufferGeometry, ExtrudeGeometry, Float32BufferAttribute, Matrix4, Shape, Vector2, Vector3 } from 'three';
+import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { setObbShape, type CollisionRecord } from './collision.ts';
 import { slabBox } from './propGeometry.ts';
 import { PartSink, hashSeed, newRegionalParts, streamFrom, type RegionalBucket, type Rgb, type Vec3 } from './maps/regional/geometry.ts';
 import { DEFAULT_WEATHER, pickWeatherTints, weatherRegionalParts, type WeatherPalette } from './maps/regional/weather.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from './maps/regional/house.ts';
-import { STEEL_STRIP_V } from './propsSteelAtlas.ts';
 
 type Point2 = readonly [number, number];
 type Point3 = readonly [number, number, number];
-type BucketName = 'stone' | 'wood' | 'dark' | 'regionalStone' | 'curtain' | 'glass' | 'regionalRoof' | 'structureWood' | 'steel';
+type BucketName = 'stone' | 'wood' | 'dark' | 'regionalStone' | 'curtain' | 'glass' | 'regionalRoof' | 'structureWood' | 'baked';
 export interface ReservoirWaterworksConfig {
   lakeIndex: number;
   kiosk: Point2;
@@ -36,7 +36,7 @@ interface Buckets {
   /** the regional kit's weathered stone and curtained panes (props.ts): the pump house draws in them when they exist */
   regionalStone?: BufferGeometry[]; curtain?: BufferGeometry[];
   /** (round 3c) the families of its roof, glazing, door and iron: each already standing on Reservoir, or no pump house */
-  glass?: BufferGeometry[]; regionalRoof?: BufferGeometry[]; structureWood?: BufferGeometry[]; steel?: BufferGeometry[];
+  glass?: BufferGeometry[]; regionalRoof?: BufferGeometry[]; structureWood?: BufferGeometry[]; baked?: BufferGeometry[];
 }
 interface Budget { triangles: number; sourceBytes: number; mergedBytes: number; geometries: number }
 interface Body {
@@ -206,11 +206,55 @@ function planWorks(config: ReservoirWaterworksConfig, field: WaterworksTerrain,
 }
 
 function piece(out: Piece[], bucket: BucketName, name: string,
-  width: number, height: number, depth: number, x: number, y: number, z: number): BufferGeometry {
+  width: number, height: number, depth: number, x: number, y: number, z: number, quoin = 0): BufferGeometry {
   const geometry = slabBox(width, height, depth, 0.65);
   geometry.name = `reservoir-${name}`;
   geometry.translate(x, y, z);
   out.push({ bucket, geometry });
+  if (quoin > 0) {
+    // (the r2 sweep, 2026-10-16: the bank and the intake were plain boxes) the dressed quoins up each corner of the
+    // masonry, `quoin` along each face and 3 cm proud of the hard plan (shallow trim, no collision slot: the body's OBB
+    // stays the record), their heads at the body's top under the cap's edge; each strip meets the body at its corner's
+    // head, so the body and its quoins are one piece of masonry. Its own geometry: the body keeps the exact plan.
+    const t = 0.03, w = width / 2, d = depth / 2, y0 = y - height / 2, y1 = y + height / 2;
+    const pos: number[] = [], uv: number[] = [];
+    const tri = (a: Vec3, b: Vec3, c: Vec3) => {
+      for (const p of [a, b, c]) pos.push(p[0], p[1], p[2]);
+      // the slabs' metric density on the face the triangle lies in
+      const ux = Math.abs(b[2] - a[2]) + Math.abs(c[2] - a[2]) > Math.abs(b[0] - a[0]) + Math.abs(c[0] - a[0]);
+      for (const p of [a, b, c]) uv.push((ux ? p[2] : p[0]) * 0.65, (a[1] === b[1] && b[1] === c[1] ? (ux ? p[0] : p[2]) : p[1]) * 0.65);
+    };
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      // the strip's section round the corner (outer corner, legs back to the faces), counter-clockwise seen from above
+      // when sx * sz > 0
+      const P: Array<[number, number]> = [[sx * w, sz * (d - quoin)], [sx * (w + t), sz * (d - quoin)], [sx * (w + t), sz * (d + t)],
+        [sx * (w - quoin), sz * (d + t)], [sx * (w - quoin), sz * d], [sx * w, sz * d]];
+      const at = (k: number, yy: number): Vec3 => [x + P[k][0], yy, z + P[k][1]];
+      const wind = (a: Vec3, b: Vec3, c: Vec3, out: Vec3) => {
+        const n = [(b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1]), (b[2] - a[2]) * (c[0] - a[0]) - (b[0] - a[0]) * (c[2] - a[2]),
+          (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])];
+        if (n[0] * out[0] + n[1] * out[1] + n[2] * out[2] >= 0) tri(a, b, c); else tri(a, c, b);
+      };
+      // the four faces that show (the leg ends and the two outer faces); the two on the body's faces are inside it
+      for (const [k, out] of [[0, [0, 0, -sz]], [1, [sx, 0, 0]], [2, [0, 0, sz]], [3, [-sx, 0, 0]]] as Array<[number, Vec3]>) {
+        wind(at(k, y0), at(k + 1, y0), at(k + 1, y1), out);
+        wind(at(k, y0), at(k + 1, y1), at(k, y1), out);
+      }
+      // its head: the L in two quads, the inner corner on the body's own corner
+      for (const q of [[0, 1, 2, 5], [5, 2, 3, 4]]) {
+        wind(at(q[0], y1), at(q[1], y1), at(q[2], y1), [0, 1, 0]);
+        wind(at(q[0], y1), at(q[2], y1), at(q[3], y1), [0, 1, 0]);
+      }
+    }
+    const strips = new BufferGeometry();
+    strips.setAttribute('position', new Float32BufferAttribute(pos, 3));
+    strips.setAttribute('uv', new Float32BufferAttribute(uv, 2));
+    strips.computeVertexNormals();
+    const quoins = mergeVertices(strips);
+    strips.dispose();
+    quoins.name = `reservoir-${name}-quoins`;
+    out.push({ bucket, geometry: quoins });
+  }
   return geometry;
 }
 
@@ -258,7 +302,7 @@ interface KioskFace { n: Vec3; r: Vec3; c: Vec3; half: number }
  * unlit at night) and a lantern by the door lit at night (the curtain family) with a faint warmth on the wall and the
  * step under it, a painted plank door on its frame with strap hinges, the vent a louvred opening in a reveal under a
  * stone hood, the gutters and the downpipe in painted iron, and the penstock cast iron with its flanges and its collar
- * at the wall (the steel family's plain sheet, rust in its mask).
+ * at the wall (the baked family's vertex colour, rust in its paint).
  */
 const KIOSK_ROOF: RoofSpec = { kind: 'hip', pitchDeg: 34, eave: 0.42, verge: 0.42, thickness: 0.08, bucket: 'roof', ridge: 'saddle' };
 /** The cornice under the eaves: its height and its projection at the top. */
@@ -534,11 +578,17 @@ function buildKitKiosk(kiosk: Body, field: WaterworksTerrain, palette: WeatherPa
     quad('dark', [at(south, dU0 + 0.06, thr, d + 0.01), at(south, dU1 - 0.06, thr, d + 0.01), at(south, dU1 - 0.06, head - 0.06, d + 0.01),
       at(south, dU0 + 0.06, head - 0.06, d + 0.01)], south.n, { decor: true });
     // two strap hinges from the hinge side (the door's +u jamb), their pintles in the frame, and the latch
+    // (the r2 sweep, 2026-10-16: each strap was a 7 cm dark plate laid on the planks) a forged strap 5 cm wide at its
+    // knuckle tapering to 3.5 cm at its tip, 6 mm proud of the planks with its edges, on a pintle plate 5 cm wide
     for (const y of [thr + 0.32, head - 0.4]) {
-      const u1 = dU1 - 0.07, u0 = u1 - 0.78, f = d - 0.012 - 0.035 - 0.012;
-      quad('dark', [at(south, u0, y - 0.03, f), at(south, u1, y - 0.035, f), at(south, u1, y + 0.035, f), at(south, u0, y + 0.03, f)], south.n, { decor: true });
-      quad('dark', [at(south, u1 - 0.02, y - 0.06, f - 0.005), at(south, u1 + 0.04, y - 0.06, f - 0.005), at(south, u1 + 0.04, y + 0.06, f - 0.005),
-        at(south, u1 - 0.02, y + 0.06, f - 0.005)], south.n, { decor: true });
+      const u1 = dU1 - 0.07, u0 = u1 - 0.78, f = d - 0.012 - 0.035, t = 0.006, iron = { decor: true };
+      const s0 = at(south, u0, y - 0.0175, f - t), s1 = at(south, u1, y - 0.025, f - t), s2 = at(south, u1, y + 0.025, f - t), s3 = at(south, u0, y + 0.0175, f - t);
+      quad('dark', [s0, s1, s2, s3], south.n, iron);
+      quad('dark', [at(south, u0, y - 0.0175, f), at(south, u1, y - 0.025, f), s1, s0], DOWN, iron);
+      quad('dark', [at(south, u0, y + 0.0175, f), s3, s2, at(south, u1, y + 0.025, f)], UP, iron);
+      quad('dark', [at(south, u0, y - 0.0175, f), s0, s3, at(south, u0, y + 0.0175, f)], [-south.r[0], 0, -south.r[2]], iron);
+      quad('dark', [at(south, u1 - 0.01, y - 0.06, f - 0.017), at(south, u1 + 0.04, y - 0.06, f - 0.017), at(south, u1 + 0.04, y + 0.06, f - 0.017),
+        at(south, u1 - 0.01, y + 0.06, f - 0.017)], south.n, iron);
     }
     const lu = dU0 + 0.16, ly = thr + 1.0, lf = d - 0.012 - 0.035 - 0.015;
     quad('dark', [at(south, lu, ly - 0.07, lf), at(south, lu + 0.05, ly - 0.07, lf), at(south, lu + 0.05, ly + 0.09, lf), at(south, lu, ly + 0.09, lf)], south.n, { decor: true });
@@ -654,7 +704,7 @@ function buildKitKiosk(kiosk: Body, field: WaterworksTerrain, palette: WeatherPa
   for (const g of parts.glass) named.push(['glass', g, 'kiosk-glazing']);
   for (const g of parts.curtain) named.push(['curtain', g, 'kiosk-lantern']);
   for (const g of parts.structureWood) named.push(['structureWood', g, 'kiosk-door']);
-  for (const g of parts.structureMetal) named.push(['steel', plainSheet(g), 'kiosk-gutters']);
+  for (const g of parts.structureMetal) named.push(['baked', g, 'kiosk-gutters']);
   for (const g of parts.dark) named.push(['dark', g, 'kiosk-ironwork']);
   for (const g of parts.wood) named.push(['wood', g, 'kiosk-timber']);
   for (const [bucket, geometry, name] of named) {
@@ -663,27 +713,19 @@ function buildKitKiosk(kiosk: Body, field: WaterworksTerrain, palette: WeatherPa
   }
 }
 
-/**
- * A painted iron part from the kit's metal (structureMetal: its colour per vertex) moved into the steel family's plain
- * sheet: its UVs folded into the atlas's plain strip (propsSteelAtlas.ts STEEL_STRIP_V.plain), the paint and the rust its
- * vertex colour and the mask's own. Same attributes as the steel family's merged mesh (position, normal, uv, color).
+/*
+ * (props lane A #2, 2026-10-15) The painted iron — the gutters, the downpipe and the penstock — draws in the baked family:
+ * its paint and rust are the kit metal's own vertex colour, on the vertex-colour material every map draws (the clutter
+ * pools, the yards' drums and tanks since #2, the r2 forms). It drew in the steel family's plain sheet while the yards'
+ * drums and tanks were steel; with them on the baked material the steel family no longer stands on Reservoir, and the
+ * pump house must not be the one to activate it.
  */
-function plainSheet(geometry: BufferGeometry): BufferGeometry {
-  const [v0, v1] = STEEL_STRIP_V.plain, uv = geometry.getAttribute('uv');
-  const pad = (v1 - v0) * 0.12;
-  for (let i = 0; i < uv.count; i++) {
-    const v = uv.getY(i), f = v - Math.floor(v);
-    uv.setXY(i, uv.getX(i) * 0.35, v0 + pad + (v1 - v0 - 2 * pad) * f);
-  }
-  uv.needsUpdate = true;
-  return geometry;
-}
 
 function buildBodies(plan: Plan, field: WaterworksTerrain, palette: WeatherPalette, out: Piece[]): void {
   for (const body of plan.bodies) {
     // (the pump house's walls are the kit's masonry, buildKitKiosk; the bank and the intake keep their stone bodies)
     if (body.name !== 'kiosk') piece(out, 'stone', `${body.name}-body`, body.width, body.top - body.bottom,
-      body.depth, body.x, (body.top + body.bottom) / 2, body.z);
+      body.depth, body.x, (body.top + body.bottom) / 2, body.z, 0.3);
     // The ordinary cap overlaps by6cm. The intake reuses that same geometry
     // for a taller full-footprint closed hood, still inside one exact hard OBB.
     const cap = piece(out, 'dark', `${body.name}-cap`, body.width, 0.12,
@@ -716,13 +758,49 @@ function buildBodies(plan: Plan, field: WaterworksTerrain, palette: WeatherPalet
     bank.x, bank.top + 0.06, bank.z + z);
   for (const z of [-4.7, 4.7]) piece(out, 'stone', 'bank-stop', 2.8, 0.22, 0.25,
     bank.x, bank.top + 0.06, bank.z + z);
+  // (props lane A, #21, 2026-10-14, lifted from Lane B's round 5 for wave 389, the bank "a roofless box") its parapets
+  // along both long edges and its landward end, their copings weathered to a fall, and the coping course a hand proud
+  // round its head: one geometry, every member chamfered
+  const parts: BufferGeometry[] = [];
+  for (const sz of [-1, 1]) parts.push(prism(parapetSection(0.32, 0.62), [bank.x - bank.width / 2, bank.top, bank.z + sz * (bank.depth / 2 - 0.16)], [1, 0, 0], bank.width));
+  parts.push(prism(parapetSection(0.32, 0.62), [bank.x - bank.width / 2 + 0.16, bank.top, bank.z - bank.depth / 2 + 0.32], [0, 0, 1], bank.depth - 0.64));
+  parts.push(prism(chamferedSection(bank.depth / 2 + 0.06, 0.14, 0.04), [bank.x - bank.width / 2 - 0.06, bank.top - 0.29, bank.z], [1, 0, 0], bank.width + 0.12));
+  // (indexed, as every piece of the works is: the shared corners welded)
+  const bankHead = mergeVertices(mergeGeometries(parts, false)!);
+  for (const g of parts) g.dispose();
+  bankHead.name = 'reservoir-bank-parapets';
+  out.push({ bucket: 'stone', geometry: bankHead });
+}
+
+/** A parapet's section across it: its wall `t` thick and `h` high, its coping weathered to a fall toward its outer face
+ *  and drip-proud of both faces. Centred on its line; its foot on y = 0. */
+function parapetSection(t: number, h: number): Array<[number, number]> {
+  return [[-t / 2, 0], [t / 2, 0], [t / 2, h - 0.12], [t / 2 + 0.03, h - 0.1], [t / 2 + 0.03, h - 0.04], [-t / 2 - 0.03, h], [-t / 2 - 0.03, h - 0.1], [-t / 2, h - 0.12]];
+}
+/** A slab's section `half` either side, `h` high, its upper edges cut by `c`. */
+function chamferedSection(half: number, h: number, c: number): Array<[number, number]> {
+  return [[-half, 0], [half, 0], [half, h - c], [half - c, h], [-half + c, h], [-half, h - c]];
+}
+/** A member of section `sec` (across, up) run from `start` along the horizontal `dir` (unit, x or z) for `length`,
+ *  its section's up along +y; its uv at the stone slabs' density. */
+function prism(sec: ReadonlyArray<readonly [number, number]>, start: readonly [number, number, number], dir: readonly [number, number, number], length: number): BufferGeometry {
+  const shape = new Shape(sec.map(([a, b]) => new Vector2(a, b)));
+  const g = new ExtrudeGeometry(shape, { depth: length, bevelEnabled: false, steps: 1, curveSegments: 1 });
+  // the shape's x across the run, its y up, the extrusion along the run: across = up x along keeps it right-handed
+  const along = new Vector3(dir[0], dir[1], dir[2]), up = new Vector3(0, 1, 0), across = new Vector3().crossVectors(up, along);
+  g.applyMatrix4(new Matrix4().makeBasis(across, up, along).setPosition(start[0], start[1], start[2]));
+  const uv = g.attributes.uv;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 0.65, uv.getY(i) * 0.65);
+  const indexed = mergeVertices(g);
+  g.dispose();
+  return indexed;
 }
 
 /**
  * The penstock in cast iron (round 3c, gauntlet wave 250: "glossy black plastic"): the tube through its eight rings from
  * inside the pump house's east wall to inside the bank (each ring's section upright across the route, as before), a
- * flanged joint at each inner ring, and its collar where it passes the pump house's wall — the steel family's plain
- * sheet in the cast iron's colour, rust gathered under it and at its joints (a kit part: under the kit's ceiling).
+ * flanged joint at each inner ring, and its collar where it passes the pump house's wall — on the baked family in the
+ * cast iron's colour, rust gathered under it and at its joints (a kit part: under the kit's ceiling).
  */
 function buildIronPenstock(plan: Plan, out: Piece[]): void {
   const points = plan.pipe, sink = new PartSink([0.7, 0.3]);
@@ -798,21 +876,33 @@ function buildIronPenstock(plan: Plan, out: Piece[]): void {
     const tt = t * 7, c: Point3 = [k0[0] + (k1[0] - k0[0]) * tt, k0[1] + (k1[1] - k0[1]) * tt, k0[2] + (k1[2] - k0[2]) * tt];
     flange(c, R - 0.04, R + 0.17, 0.12, 8);
   }
-  const geometry = plainSheet(sink.finish().structureMetal[0]);
+  const geometry = sink.finish().structureMetal[0];
   geometry.name = 'reservoir-connected-penstock';
-  out.push({ bucket: 'steel', geometry, kit: true });
+  out.push({ bucket: 'baked', geometry, kit: true });
 }
 
 function buildBraces(plan: Plan, field: WaterworksTerrain, out: Piece[]): void {
-  for (const index of [1, 3, 5, 6]) {
+  // (props lane A, #21, 2026-10-14, lifted from Lane B's round 5 for wave 389: "unsupported pipes") a pier under every
+  // inner ring, chamfered, a cap under the pipe; over each the iron saddle strap (the straps one geometry)
+  const straps: BufferGeometry[] = [];
+  for (const index of [1, 2, 3, 4, 5, 6]) {
     const [x, y, z] = plan.pipe[index];
     let ground = Infinity;
     for (const dx of [-0.42, 0.42]) for (const dz of [-0.42, 0.42]) {
       ground = Math.min(ground, field.getHeightAt(x + dx, z + dz));
     }
     const top = y - 0.26, bottom = ground - 0.10;
-    piece(out, 'stone', 'penstock-support', 0.84, top - bottom, 0.84, x, (top + bottom) / 2, z);
+    const pier = prism(chamferedSection(0.42, top - bottom, 0.05), [x, bottom, z - 0.42], [0, 0, 1], 0.84);
+    pier.name = 'reservoir-penstock-support';
+    out.push({ bucket: 'stone', geometry: pier });
+    const strap = slabBox(0.12, 0.62, 0.9, 0.65);
+    strap.translate(x, y, z);
+    straps.push(strap);
   }
+  const strapGeometry = mergeGeometries(straps, false)!;
+  for (const g of straps) g.dispose();
+  strapGeometry.name = 'reservoir-penstock-straps';
+  out.push({ bucket: 'dark', geometry: strapGeometry });
 }
 
 function replaceCollision(record: CollisionRecord, body: Body): void {
@@ -876,8 +966,8 @@ function commitWaterworks(plan: Plan, donors: readonly WaterworksRubblePacket[],
 
 /**
  * Atomic, construction-only replacement. No RNG, new material or new collider slot. `kit` is the map's regional
- * architecture (props.ts), whose weathering the pump house takes (weather.ts DEFAULT_WEATHER when the kit names none),
- * and whether the map draws the steel family (`steel`: its atlas painted), which the penstock's iron draws in.
+ * architecture (props.ts), whose weathering the pump house takes (weather.ts DEFAULT_WEATHER when the kit names none);
+ * (its `steel`, whether the map paints the steel atlas, no longer gates it: the iron draws in the baked family.)
  */
 export function composeReservoirWaterworks(mapId: string, config: ReservoirWaterworksConfig | undefined,
   field: WaterworksTerrain, donors: readonly WaterworksRubblePacket[], buckets: Buckets,
@@ -896,10 +986,10 @@ export function composeReservoirWaterworks(mapId: string, config: ReservoirWater
   // The pump house draws in the kit's weathered stone and curtained panes: only where the map's houses already draw both
   // (no family is activated by the waterworks).
   const palette = kit ? kit.weather ?? DEFAULT_WEATHER : null;
-  // (the steel family's own pieces, the yards' drums and tanks, are laid after the waterworks: props.ts says whether the
-  // map draws it — its steel atlas is painted — and the guard reads that)
+  // (the iron's baked family: every map draws it, its yards' drums and tanks laid after the waterworks; a caller without
+  // the bucket gets no pump house)
   if (!palette || !buckets.regionalStone?.length || !buckets.curtain?.length || !buckets.glass?.length || !buckets.regionalRoof?.length
-    || !buckets.structureWood?.length || !(buckets.steel?.length || kit?.steel)) return receipt;
+    || !buckets.structureWood?.length || !buckets.baked) return receipt;
   const plan = planWorks(config, field, blockers, selection.ignored);
   if (!plan) { receipt.status = 'unsafe'; return receipt; }
   const pieces = buildBudgetedWorks(plan, field, palette, before, after, kitBudget);

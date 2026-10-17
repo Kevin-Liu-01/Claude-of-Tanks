@@ -28,6 +28,7 @@ import { describeStructure, createStructureDamageSeam } from '../../structureDam
 import '../../destructionDefaultKit.ts';
 import { isSheetBody, isSheetFace } from './sheet.ts';
 import { shaftOf } from './shaft.ts';
+import { latticeOf } from './latticeFall.ts';
 import { cellsOf } from './cluster.ts';
 import { containersOf } from './container.ts';
 import { ruinPiecesOf } from './ruin.ts';
@@ -136,7 +137,10 @@ function exercise(label, a, seam) {
   const fo = a.storeys[0].faces.map((f) => f.origin);
   const mx = fo.reduce((s, o) => s + o[0], 0) / fo.length, mz = fo.reduce((s, o) => s + o[2], 0) / fo.length;
   // (a shaft topples: its drums lie along the ground as far as it stood tall)
-  const shaftH = shaftOf(a) ? a.storeys[a.storeys.length - 1].y1 - a.storeys[0].y0 : 0;
+  // (an open frame folds over along the ground as far as it stood tall, its crown beyond: latticeFall.ts)
+  const lat = latticeOf(a);
+  const shaftH = shaftOf(a) ? a.storeys[a.storeys.length - 1].y1 - a.storeys[0].y0
+    : lat ? Math.max(...lat.legs.map((l) => l.head[1] - l.foot[1])) + 4 : 0;
   const reach = Math.max(a.w, a.d) / 2 + 6 + shaftH * 1.15;
   const check = (name, run, cap) => {
     const one = writers(...cap), two = writers(...cap);
@@ -169,8 +173,8 @@ function validate(label, a, styleId) {
     assert.deepEqual(st.faces.map((f) => f.section), [0, 1, 2, 3].map((k) => st.index * 4 + k), `${label}: sections by storey and face`);
     for (const f of st.faces) {
       for (const v of [...f.origin, ...f.u, ...f.out, f.width, f.height]) finite(v, `${label} face`);
-      // (a ruin's box is round the walls it has left, which need not stand round its plot's middle)
-      if (!ruinPiecesOf(a)) assert.ok(Math.abs(Math.abs(f.origin[0]) - (Math.abs(f.out[0]) > 0.5 ? a.w / 2 : 0)) < a.w + 1, `${label}: a face on the box`);
+      // (a ruin's box is round the walls it has left, an open frame's round its legs: neither need stand round its plot's middle)
+      if (!ruinPiecesOf(a) && !latticeOf(a)) assert.ok(Math.abs(Math.abs(f.origin[0]) - (Math.abs(f.out[0]) > 0.5 ? a.w / 2 : 0)) < a.w + 1, `${label}: a face on the box`);
       assert.ok(f.layers.length >= 1 && f.layers.every((l) => l.thicknessM > 0), `${label}: a face's layers`);
       for (const o of f.openings) assert.ok(Math.abs(o.u) <= f.width / 2 + 0.05 && o.y0 >= -0.05 && o.y0 + o.h <= f.height + 0.05, `${label}: an opening inside its face`);
       if (f.masonry) {
@@ -294,10 +298,14 @@ function describeAndRun(label, builder, styleId, parts) {
     }
     let opened = 0;
     for (const f of a.storeys[0].faces) {
-      // aimed at the piece nearest the face (a ruin's walls are few: its face's middle may look through a gap)
-      const aim = pieces.map((p) => ({ u: (p.c[0] - f.origin[0]) * f.u[0] + (p.c[2] - f.origin[2]) * f.u[2], o: (f.origin[0] - p.c[0]) * f.out[0] + (f.origin[2] - p.c[2]) * f.out[2],
-        y: p.c[1] - a.storeys[0].y0 + Math.min(1.0, Math.min(...p.top) / 2) }))
-        .filter((q) => Math.abs(q.u) < f.width / 2).sort((x, y) => x.o - y.o)[0];
+      // aimed at the piece nearest the face (a ruin's walls are few: its face's middle may look through a gap), where it
+      // stands tallest (E11, lane B 2026-10-14: the corner pieces the ring split reads stand low at their middles)
+      const aim = pieces.map((p) => {
+        const k = p.top.indexOf(Math.max(...p.top)), t = -p.hl + (k + 0.5) * (2 * p.hl / p.top.length);
+        const x = p.c[0] + p.along[0] * t, z = p.c[2] + p.along[2] * t;
+        return { u: (x - f.origin[0]) * f.u[0] + (z - f.origin[2]) * f.u[2], o: (f.origin[0] - p.c[0]) * f.out[0] + (f.origin[2] - p.c[2]) * f.out[2],
+          y: p.c[1] - a.storeys[0].y0 + Math.min(1.0, p.top[k] / 2), top: p.top[k] };
+      }).filter((q) => Math.abs(q.u) < f.width / 2).sort((x, y) => (Math.abs(x.o - y.o) > 0.1 ? x.o - y.o : y.top - x.top))[0];
       const out = writers(...CAPS.breach);
       const res = seam.breach({ section: f.section, storey: 0, face: f.name, hole: 0, u: aim ? aim.u : 0, y: aim ? aim.y : 1.0, radiusM: 0.6, dirX: -f.out[0], dirZ: -f.out[2],
         munition: 'he', cause: 'blast', seed: 9 + f.section }, out);
@@ -376,9 +384,43 @@ for (const style of ARCHITECTURE_STYLES) {
     }
   }
 }
-for (const id of ['polder/barn', 'siwa/adobe', 'shanghai/rowhouse']) assert.ok(shellIds.has(id), `${id}: reads as a shell`);
+for (const id of ['siwa/adobe']) assert.ok(shellIds.has(id), `${id}: reads as a shell`);
+// the Zeeland schuur (props census #17, 7e65d8abf) and the Shanghai rowhouse (#29, c53405cdb) are built on buildHouse
+// now: each hands back a house plan, and the runtime's own describe takes the house kit's reading from it (the house
+// kits break it: houseDamage.selftest.mjs), never a shell read off its parts; its stages still run as a shell's are
+for (const id of ['polder/barn', 'shanghai/rowhouse']) {
+  const [sid, bid] = id.split('/'), style = ARCHITECTURE_STYLES.find((s) => s.id === sid);
+  assert.ok(!shellIds.has(id), `${id}: not read as a shell`);
+  for (const [w, d, h, seed] of [[10, 12, 7, 7], [14, 22, 9, 25]]) {
+    const label = `${id} (${w}x${d}, house plan)`;
+    const parts = buildRegionalParts(style, { structureId: bid, info: { w, d, h }, bounds: { minX: -w / 2, maxX: w / 2, minZ: -d / 2, maxZ: d / 2, maxY: h },
+      wallBucket: 'plaster', rng: streamFrom(seed), variant: streamFrom(seed * 7 + 3), mapId: 'shell', snowCap: false, tier: 'desktop' }, streamFrom(seed * 3 + 5));
+    const plan = regionalKitPlanOf(parts);
+    assert.ok(plan?.kind === 'regional-house' && plan.houses.length >= 1, `${label}: the build hands back a house plan`);
+    const a = describeStructure({ structureIdx: 2, mapId: 'shell', builder: bid, style: sid, parts, w, d, h,
+      placement: { x: 0, y: 0, z: 0, yaw: 0 }, massClass: 'house' });
+    assert.equal(a.kit, sid, `${label}: the regional kit describes it`);
+    assert.equal(a.kitPlan?.regional, plan, `${label}: described from its house plan, not read off its parts`);
+    assert.ok(!latticeOf(a) && !shaftOf(a) && !cellsOf(a) && !containersOf(a) && !ruinPiecesOf(a), `${label}: a house body`);
+    validate(label, a, sid);
+    exercise(label, a, createStructureDamageSeam(2, bid, sid, a, []));
+  }
+}
 // the sheet-clad halls read as shells and break by the sheet kit (sheet.ts: their sheet torn, their frame standing)
-for (const id of ['kyushu/warehouse', 'wadirum/warehouse', 'glencanyon/warehouse']) assert.ok(shellIds.has(id), `${id}: a sheet-clad hall reads as a shell`);
+// (props census #4, lane B 2026-10-14: the shared sheet hall, hall.ts, lays them as house plans — the house kits' — whose
+// sheet walls still route every stage to the sheet kit; the Bengal tin house too, on the house grammar since #15 village,
+// e32f23029: its corrugated walls on a house plan)
+for (const id of ['kyushu/warehouse', 'wadirum/warehouse', 'glencanyon/warehouse', 'hostomel/depot', 'navajo/warehouse', 'bengal/farmhouse']) {
+  const [sid, bid] = id.split('/'), style = ARCHITECTURE_STYLES.find((s) => s.id === sid);
+  const [w, d, h, seed] = [10, 12, 7, 7];
+  const parts = buildRegionalParts(style, { structureId: bid, info: { w, d, h }, bounds: { minX: -w / 2, maxX: w / 2, minZ: -d / 2, maxZ: d / 2, maxY: h },
+    wallBucket: 'plaster', rng: streamFrom(seed), variant: streamFrom(seed * 7 + 3), mapId: 'shell', snowCap: false, tier: 'desktop' }, streamFrom(seed * 3 + 5));
+  if (!regionalKitPlanOf(parts)?.houses?.length) { assert.ok(shellIds.has(id), `${id}: a sheet-clad hall reads as a shell`); continue; }
+  // (its stages run as a shell's are: validated, exercised, the sheet's breach checked — and it counts as a sheet hall)
+  const before = sheetShells;
+  describeAndRun(`${id} (sheet hall)`, bid, sid, parts);
+  assert.ok(sheetShells > before, `${id}: the sheet hall's house plan breaks by the sheet kit`);
+}
 assert.ok(sheetShells >= 8, `sheet-clad shells broken by the sheet kit (${sheetShells})`);
 // the shafts read as shafts and topple (shaft.ts)
 for (const id of ['saar/stack', 'ruhr/stack', 'saar/watertower']) assert.ok(shaftIds.has(id), `${id}: a shaft the kit reads (${[...shaftIds].join(', ')})`);
