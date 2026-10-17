@@ -13,7 +13,7 @@ import { bevelSpan, orientedPrism } from './millWorks.ts';
 import { buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { corrugatedCladding, matCladding } from './villageCraft.ts';
 import { doorUnit, rollerDoor, windowUnit, type WindowStyle } from './openings.ts';
-import { BAMBOO_MAT, GALVANISED, PAINTED_SHEET, RUSTED, WEATHERED_PLANK, veranda } from './vernacular.ts';
+import { BAMBOO_MAT, GALVANISED, PAINTED_SHEET, RUSTED, WEATHERED_PLANK, ladder, veranda } from './vernacular.ts';
 import { dentilCornice, facadeOn, facadeRng, faceSlab, hash01, pilaster, plinthPaint, trimRun, windowHead } from './facade.ts';
 import { bench, bicycle, clayPot, dungCakes, handPump, tvAerial, washingLine } from './dressing.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -78,8 +78,10 @@ function tinHouseBody(sink: PartSink, ctx: RegionalBuildContext, rng: () => numb
   // wall is cut by its door and its shuttered windows, the corrugated sheets laid on it each in its own livery round the
   // cuts (a patched one in five) or the mat panels in their frame of poles; the plank shutters opening out of the cuts on
   // their hinges, the grilles' rods in them
+  // (the lift: a patch in a painted sheet's livery read as a door down the wall) the patches galvanised or rusted, as
+  // many draws as before
   const patches: Rgb[] = [];
-  for (let k = 0; k < 4; k++) patches.push(sheetColour(rng));
+  for (let k = 0; k < 4; k++) patches.push(rng() < 0.5 ? pick(rng, GALVANISED) : pick(rng, RUSTED));
   const livery = (k: number): Rgb => {
     if (k < 0) return shade(walls, 0.97);
     const r = ((k * 2654435761) >>> 0) / 4294967296;
@@ -119,7 +121,17 @@ function tinHouseBody(sink: PartSink, ctx: RegionalBuildContext, rng: () => numb
       // board over the frame (the facade craft)
       doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: big ? shade(frame, 0.78) : shutter, frame: { bucket: 'structureWood', width: 0.12, out: 0.06, colour: casing },
         steps: { bucket: 'plaster3', start: VERANDA_D, rise: 0.24, tread: 0.3 }, leafKind: big ? 'panel' : 'plank' }, deck);
-      if (facadeOn()) windowHead(s, face, o.u, y0 + o.y0 + o.h + 0.12, o.w + 0.24, { kind: 'hood', bucket: 'structureWood', h: 0.18, out: 0.075, ext: 0.06, colour: shade(frame, 0.82) });
+      if (facadeOn()) {
+        const hy = y0 + o.y0 + o.h + 0.12;
+        windowHead(s, face, o.u, hy, o.w + 0.24, { kind: 'hood', bucket: 'structureWood', h: 0.18, out: 0.075, ext: 0.06, colour: shade(frame, 0.82) });
+        // the lintel's carving: a lozenge between two leaves cut on its frieze (near joinery)
+        const c = hy + 0.05, carve = { colour: shade(frame, 1.08), fine: 'near' as const };
+        faceSlab(s, 'structureWood', face, [[o.u, c - 0.038], [o.u + 0.09, c], [o.u, c + 0.038], [o.u - 0.09, c]], 0.045, 0.012, carve);
+        for (const side of [-1, 1]) {
+          const lu = o.u + side * 0.24;
+          faceSlab(s, 'structureWood', face, [[lu - side * 0.11, c], [lu, c - 0.03], [lu + side * 0.11, c], [lu, c + 0.03]], 0.045, 0.01, carve);
+        }
+      }
     },
   };
   let hf: HouseFrame;
@@ -313,7 +325,7 @@ const brickShop: RegionalBuilder = (ctx) => {
     window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, style, rng, 0.5),
     // the rolling shutter in the shop's cut (openings.ts rollerDoor): its drum over the head, its guides, the ribbed
     // curtain half raised, the shop's dark under it (the cut's own: a dark plate on the face read as painted)
-    door: (s, face, o, y0) => rollerDoor(s, face, o.u, y0 + o.y0, o.w, o.h, 0.45 + look() * 0.4, pick(rng, GALVANISED), rgb(0x3a3e42), mobile),
+    door: (s, face, o, y0) => rollerDoor(s, face, o.u, y0 + o.y0, o.w, o.h, 0.2 + look() * 0.45, pick(rng, GALVANISED), rgb(0x3a3e42), mobile),
   };
   const frame = buildHouse(sink, {
     w: W, d: D, plinth: { h: 0.4, out: 0.05, bucket: 'stone' }, storeys: [{ h: 3.2, wall }, { h: 3.0, wall }],
@@ -370,13 +382,29 @@ const mosque: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/** The gola: a round rice granary of clay-plastered bamboo on a plinth, under a conical thatch. */
+/**
+ * The gola: a round rice granary of clay-plastered bamboo on a plinth, under a conical thatch. (The lift: a gola stands in
+ * every bari's yard now) the bamboo hoops binding its body, the thatch's thick cut eave and its topknot, the plank hatch
+ * high under the eave and the bamboo ladder leaned up to it; dressing all (its collision as before), a phone builds none.
+ */
 const gola: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const R = Math.max(1.4, Math.min(2.1, Math.min(ctx.info.w, ctx.info.d) / 2 - 0.4));
   sink.cylinder('plaster3', [0, -0.3, 0], 'y', 0.9, R + 0.4, 12, {});
   sink.cylinder('plaster3', [0, 0.6, 0], 'y', 2.0, R, 12, {}, R * 1.08);
   sink.cylinder('straw', [0, 2.55, 0], 'y', 2.2, R * 1.35, 12, {}, 0.12);
+  sink.dressing(ctx.tier === 'mobile', () => {
+    const at = (y: number): number => R * (1 + 0.08 * (y - 0.6) / 2.0);
+    for (const y of [0.85, 1.55, 2.25]) sink.cylinder('structureWood', [0, y, 0], 'y', 0.06, at(y) + 0.022, 12, { decor: true, colour: shade(BAMBOO, 0.86) }, at(y + 0.06) + 0.022);
+    // the thatch's cut eave, thicker than its slope, and the straw bound into a topknot at the apex
+    sink.cylinder('straw', [0, 2.4, 0], 'y', 0.16, R * 1.37, 12, { decor: true }, R * 1.3);
+    sink.cylinder('straw', [0, 4.6, 0], 'y', 0.42, 0.17, 8, { decor: true }, 0.04);
+    // the hatch: a plank board in its frame high on the body's front, under the eave; the ladder up to it
+    const face: Face = { origin: [0, 0, at(2.05) + 0.015], u: [1, 0, 0], out: [0, 0, 1], width: 1 };
+    faceBox(sink, 'structureWood', face, 0, 2.05, 0.02, 0.56, 0.5, 0.04, { decor: true, colour: shade(WEATHERED_PLANK[1], 0.9) });
+    for (const y of [1.88, 2.22]) faceBox(sink, 'structureWood', face, 0, y, 0.05, 0.5, 0.06, 0.025, { decor: true, colour: shade(WEATHERED_PLANK[1], 0.75) }, 'ends');
+    if (ctx.variant() < 0.7) ladder(sink, { ...face, origin: [0, 0, at(1.75) + 0.02] }, 0, 0.06, 1.75, shade(BAMBOO, 0.8));
+  });
   return sink.finish();
 };
 

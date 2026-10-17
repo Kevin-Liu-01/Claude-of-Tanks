@@ -351,8 +351,8 @@ export function dungCakes(sink: PartSink, face: Face, u0: number, u1: number, y0
         const a = spin + k * 2 * Math.PI / sides, e = 0.82 + hash01(u, y, k, 9.3) * 0.3;
         poly.push([u + (r % 2 ? 0.01 : -0.01) + Math.cos(a) * rad * e, y + Math.sin(a) * rad * e * 0.92]);
       }
-      // fresh cakes a dark olive brown, dry ones a pale grey-buff
-      const dry = hash01(u, y, 13.1), tone: Rgb = [0.24 + dry * 0.22, 0.2 + dry * 0.19, 0.13 + dry * 0.16];
+      // fresh cakes a dark olive brown (sRGB 4a3f2a), dry ones a grey-brown (8a7a62), linear for the vertex colour
+      const dry = hash01(u, y, 13.1), tone: Rgb = [0.068 + dry * 0.18, 0.05 + dry * 0.145, 0.023 + dry * 0.1];
       faceSlab(sink, 'structureWood', face, poly, o0, 0.022, { colour: tone });
     }
   }
@@ -387,7 +387,7 @@ export function clayPot(sink: PartSink, x: number, y: number, z: number, size: n
  */
 export function handPump(sink: PartSink, x: number, y: number, z: number, yaw: number, iron: Rgb): void {
   sink.placed(yaw, x, y, z, () => {
-    const conc: Rgb = [0.6, 0.59, 0.56];
+    const conc: Rgb = [0.24, 0.235, 0.22]; // a weathered cement grey (sRGB 87857f)
     // the apron: a slab with a rim round its top, the drain lip out under the spout
     sink.span('structureWood', -0.5, -0.12, -0.5, 0.5, 0.1, 0.5, { ...DECOR, colour: conc });
     for (const [x0, z0, x1, z1] of [[-0.5, -0.5, 0.5, -0.42], [-0.5, 0.42, 0.5, 0.5], [-0.5, -0.42, -0.42, 0.42], [0.42, -0.42, 0.5, -0.1], [0.42, 0.1, 0.5, 0.42]]) {
