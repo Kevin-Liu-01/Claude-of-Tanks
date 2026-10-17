@@ -201,4 +201,22 @@ recordStep(manifest, 'sizes', ['b1'], { b1: 'newin' }, after);
 assert.equal(JSON.stringify(manifest.keys.sizes.a1), before);
 assert.equal(manifest.keys.sizes.b1.in, 'newin');
 
+// 12. Files a step writes beside its tables (`writes`: icon images) are not inputs of its own key, though its tool names
+// their directory; to every other step they stay inputs. Paths read only in modes the chain never runs (`modeOnly`) drop out.
+put('tools/gen-other.mjs', "import { createTank } from '../src/vehicles/tankFactory.ts';\nexport const OUT = 'public/out';\nexport default createTank;\n");
+put('public/out/a1.webp', 'image-1');
+const writer = () => { const steps = baseSteps(); steps[1].writes = ['public/out/**']; return steps; };
+const m3 = bootstrap(state({ steps: writer() }));
+put('public/out/a1.webp', 'image-2');
+assert.equal(resolveChanged(state({ steps: writer() }), m3).other.mode, 'none', 'rewriting its own images leaves the step resolved');
+assert.equal(resolveChanged(state(), bootstrap(state())).other.mode, 'none');
+const unwritten = bootstrap(state());
+put('public/out/a1.webp', 'image-3');
+assert.equal(resolveChanged(state(), unwritten).other.mode, 'all', 'without `writes` the named directory is an input');
+const modeOnly = { ...config, declared: { 'tools/gen-other.mjs': { pin: '', reads: [], modeOnly: ['public/out'] } } };
+const m4 = bootstrap(state({ cfg: modeOnly }));
+put('public/out/a1.webp', 'image-4');
+assert.equal(resolveChanged(state({ cfg: modeOnly }), m4).other.mode, 'none', 'a modeOnly path is not an input');
+put('tools/gen-other.mjs', "import { createTank } from '../src/vehicles/tankFactory.ts';\nexport default createTank;\n");
+
 console.log('changed-only resolver.selftest: PASS');

@@ -683,13 +683,15 @@ Re-pin it after an intended geometry change and review the diff:
 
     npm run tank:geometry:update -- --ids=<ids>
 
-The browser-era `npm run tank:freeze:check` ledger (`docs/FLEET-FREEZE-CURRENT.json`) is no longer maintained.
+The browser-era `npm run tank:freeze:check` ledger (`docs/FLEET-FREEZE-CURRENT.json`) is no longer maintained. It is
+not a release step: a nightly or explicit refresh may scope it with `--ids=<ids>` (other rows kept as recorded).
 
 ### Changed-only regeneration (2026-10-16)
 
 The owner's rule (226): "no regenerating for tanks or anything else that didn't change". After a tank change run
 
     npm run tank:regen:changed                 # changed ids only, then the final resolve must be empty
+    npm run tank:regen:changed -- --verify     # then each step's check on exactly the ids it ran
     npm run tank:changed -- --explain=<id>     # which steps would re-run an id, and why (no tank is built)
 
 The chain (`tools/tank-regen-changed.mjs`) regenerates the paint catalog and legacy specs, then runs controls, fills,
@@ -699,7 +701,9 @@ most 20 minutes; centering re-runs the CPU steps for any id whose anchors moved)
 `nice -n 10 node --max-old-space-size=4096` after `headroom can-start`; fills run as `--jobs` parallel parts merged by
 the tool itself (`gen-interior-fills --merge-from`). Options: `--dry-run`, `--steps=a,b`, `--no-gpu`, `--jobs=N`,
 `--all` (every step on the whole fleet first: bootstrap or explicit full) and `--check --all` (nightly: every step's
-whole-fleet `--check`, writes nothing).
+whole-fleet `--check`, writes nothing, exits 1 on a stale step). Fills have no check mode of their own:
+`tools/changed-only/fills-check.mjs` measures the ids into scratch with the generator's code and flags and compares
+each record and its moving-clearance cells (`--ids=<ids>` or `--all`, `--jobs=N`).
 
 How an id is chosen (`tools/changed-ids.mjs`, `tools/changed-only/`): each (step, id) has an input key and an output
 key in `release/fingerprints.tsv`, written as soon as the step finishes. The input key covers the step's tool (its
@@ -716,6 +720,15 @@ outside its rows runs the step whole-fleet. Dynamic reads are declared in `steps
 to their exact call sites: editing such a call turns `tools/changed-only/fleet-partition.selftest.mjs` red and the
 step runs on every id until the declaration is reviewed and re-pinned. A change to the shared core (for example
 `tankFactoryCore.ts` or `profiles/kit.ts`) marks every id: changed-only then means one ordered pass, not a skip.
+
+Proofs: `tools/changed-only/resolver.selftest.mjs` (fixture: skips, shared kits, tool/flag/toolchain/roster edits,
+undeclared reads, hand-edited rows), `fleet-partition.selftest.mjs` (the real fleet decomposes, pins hold, the demand
+loaders match the eager factory, the Ukrainian donor kit marks all of national modernization, seats after fills and
+controls) and `chain.selftest.mjs` (the real chain on a fixture fleet: changed-only outputs and manifest byte-identical
+to a whole-fleet regen). `node tools/changed-only/closure-trace.mjs` (about 40 child-minutes) loads each builder group
+alone and fails on any module outside its keyed closure; `node tools/changed-only/parity.mjs --changed=<C> --full=<F>
+--base=<B>` compares a changed-only tree with a whole-fleet regen of the same commit and proves the resolver's sets
+covered every row that moved.
 
 The independent tripwires keep full keys: `fleetPassHigh`, `fleetPassLow` (ledger rows), `fleetPassDefault`,
 `fleetLazy`, `fleetFloorClearance` and the nightly `--check --all` never use the resolver, so a resolver miss still

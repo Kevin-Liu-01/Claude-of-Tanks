@@ -320,6 +320,12 @@ try {
     for (const [name, entry] of Object.entries(summary.final)) log(`[regen] final ${name}: ${entry.mode} ${entry.ids.length}`);
     if (open.length && !DRY) throw new Error(`final resolve not empty: ${open.map(([name, entry]) => `${name}=${entry.ids.length}`).join(' ')}`);
     if (VERIFY && !DRY) await verifyRuns();
+    // The release check takes the union of the ids this chain regenerated (every id when a step ran whole-fleet).
+    const ran = summary.runs.filter((run) => run.code === 0 || run.dryRun);
+    summary.changedIds = ran.some((run) => run.ids.includes('*')) ? ['*'] : [...new Set(ran.flatMap((run) => run.ids))].sort();
+    if (summary.changedIds.length && !summary.changedIds.includes('*')) {
+      log(`[regen] release check for the regenerated ids: npm run tank:release:check -- --ids=${summary.changedIds.join(',')} --gate`);
+    }
   }
   summary.seconds = Math.round((Date.now() - started) / 1000);
   summary.ok = true;

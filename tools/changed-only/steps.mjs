@@ -64,7 +64,8 @@ export const AGGREGATES = Object.freeze([
  * static imports, and the pin (sha256/16 of the normalised call sites, tools/changed-only/graph.mjs dynamicSites) the
  * declaration was reviewed against. A changed call site breaks the pin, and every step that reaches the file runs on
  * every id until the declaration is reviewed and re-pinned (tools/changed-only/declarations.selftest.mjs prints the
- * new pin). `reads` globs are hashed into the reaching step's key. `covered` names paths the file reads that the fleet keys
+ * new pin). `reads` globs are hashed into the reaching step's key. `modeOnly` names paths the file reads only in modes the
+ * chain never runs (a --check audit): the edge to them is dropped. `covered` names paths the file reads that the fleet keys
  * already cover (with the reason beside it): the edge to them is dropped from the step's own key.
  */
 export const DECLARED_DYNAMIC = Object.freeze({
@@ -136,6 +137,9 @@ export const DECLARED_DYNAMIC = Object.freeze({
   'tools/presentation-centering.mjs': {
     pin: '6f742cbf596859e7',
     reads: [],
+    // public/icons is read only by --check (the exported-icon audit) and --sync-assets; the chain runs --update, which
+    // renders live builds and writes the anchors file alone.
+    modeOnly: ['public/icons'],
     note: 'a Vite dev server (configFile false) over the repository root serves tools/icons-page.html to Chrome; what the page can fetch is the step\'s declared reads (public/**); file reads are its own anchors file, and public/icons only under --check/--sync-assets (the chain runs --update)',
   },
   'tools/genIcons.mjs': {
@@ -259,6 +263,9 @@ export const STEPS = Object.freeze([
     flags: [], full: [], scoped: (list) => [ids(list)],
     check: null, checkScoped: null,
     outputs: ['tankAssets'],
+    // The images, silhouettes and side diagrams beside the manifest are this step's output too (genIcons writes them all
+    // into public/icons): not inputs of its own key.
+    writes: ['public/icons/**'],
     files: [], gb: 6, timeoutS: 1200, perIdS: 2.5, chunkS: 1100,
     reads: ['public/**'],
     // The manifest row is the keyed output: rendered image bytes are not deterministic across GPUs and drivers.
@@ -280,10 +287,14 @@ export const POST_AGGREGATES = Object.freeze([
 
 /** Fields of a step that decide what it writes. Scheduling fields (gb, timeouts, chunking, report paths) are not keyed. */
 const KEYED_FIELDS = ['name', 'device', 'tool', 'entries', 'flags', 'full', 'scoped', 'outputs', 'files', 'reads', 'excludeReads'];
+/** Keyed fields added after schema 1: part of the definition only when a step sets them (so adding one to the table does
+ *  not move every step's key). */
+const LATE_KEYED_FIELDS = ['writes'];
 
 /** The step's definition as data (functions applied to a fixed probe), for its key: any edit marks the step's ids. */
 export function stepDefinition(step) {
   const probe = ['<id>'];
   const data = { ...step, scoped: step.scoped?.(probe) ?? null };
-  return JSON.stringify(Object.fromEntries(KEYED_FIELDS.map((field) => [field, data[field] ?? null])));
+  return JSON.stringify(Object.fromEntries([...KEYED_FIELDS.map((field) => [field, data[field] ?? null]),
+    ...LATE_KEYED_FIELDS.filter((field) => data[field] !== undefined).map((field) => [field, data[field]])]));
 }

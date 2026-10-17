@@ -200,14 +200,18 @@ export function computeState({ root, steps = STEPS, env = process.env, rows = nu
   for (const step of steps) {
     const reasons = [...globalReasons];
     const ownTables = new Set(step.outputs);
-    const ownFiles = new Set([...step.files.map(abs),
+    // What the step writes: its tables' files, files written whole, and `writes` globs (the icon images beside the
+    // manifest). None of it is an input of the step's own key.
+    const recorded = new Set([...step.files.map(abs),
       ...[...tableFiles].filter(([, names]) => [...names].some((name) => ownTables.has(name))).map(([file]) => file)]);
+    const ownFiles = new Set([...recorded, ...expandGlobs(root, step.writes ?? []).map(abs)]);
     const entries = [step.tool, ...(step.entries ?? [])];
     // A declaration may name what a tool reads that the fleet keys already cover (see steps.mjs `covered`), and a
     // per-id accessor turns its table into per-id rows (steps.mjs PER_ID_ACCESSORS).
     const perIdTables = new Set();
     const skip = (from, to) => {
-      if ((DECLARED_DYNAMIC[rel(from)]?.covered ?? []).includes(rel(to))) return true;
+      const declaration = DECLARED_DYNAMIC[rel(from)];
+      if ([...(declaration?.covered ?? []), ...(declaration?.modeOnly ?? [])].includes(rel(to))) return true;
       const accessor = ACCESSORS[rel(from)];
       const names = [...(tableFiles.get(to) ?? [])];
       if (!accessor || !names.length || !names.every((name) => accessor.tables.includes(name))) return false;
@@ -249,7 +253,9 @@ export function computeState({ root, steps = STEPS, env = process.env, rows = nu
     const tool = H(`step:${stepDefinition(step)}`, ...graph.rowsOf(new Set([...toolFiles, ...foreignTables]), { exclude: ownFiles }),
       ...readFiles.map((file) => `read:${rel(file)}:${graph.hashFile(file)}`),
       ...envRows(environmentOf(toolExecuted)));
-    const outputFiles = [...ownFiles].filter((file) => !aggregateFiles.has(file) || step.files.includes(rel(file)));
+    // Recorded (frame-checked) outputs: the tables' files and files written whole. `writes` files are bound to the rows
+    // by the tool itself (the icon manifest holds each image's sha256), so they are not tracked file by file.
+    const outputFiles = [...recorded].filter((file) => !aggregateFiles.has(file) || step.files.includes(rel(file)));
     stepStates[step.name] = {
       step, tool, reasons, decomposed: reasons.length === 0,
       outputFiles: outputFiles.map(rel).sort(),
