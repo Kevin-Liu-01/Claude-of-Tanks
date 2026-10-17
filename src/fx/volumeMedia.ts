@@ -339,7 +339,7 @@ uniform vec3 uSunCol;     // sun irradiance / pi (gained)
 uniform vec3 uSkyCol;     // sky irradiance / pi, desaturated (gained)
 uniform vec3 uGroundCol;  // ground pole / pi
 uniform vec4 uGrade;      // alpha gain, emission gain, back-scatter gain, multiple-scatter lift
-uniform vec4 uGrade2;     // ground-bounce gain, (EF.11) the night level (0 day .. 1 night), unused...
+uniform vec4 uGrade2;     // ground-bounce gain, (EF.11) the night level (0 day .. 1 night), (FX 10-17) the night floor's share, unused
 uniform vec3 uSunDir;
 uniform sampler2D uSceneDepth;
 uniform vec2 uSoftViewport;
@@ -477,7 +477,7 @@ void main() {
   // (the coordinator on round 2's night cook-off: "pink-beige and too bright against the night sky ... real night smoke
   // over a fire is dark grey to near-black") a quarter of the sky's light, neutral grey (no hue from the sky term)
   if ( uGrade2.y > 0.0 ) {
-    float floorL = skyLum * uGrade2.y * 0.25 * ( 0.45 + 0.35 * U + 0.2 * front );
+    float floorL = skyLum * uGrade2.y * uGrade2.z * ( 0.35 + 0.5 * U + 0.15 * front );
     col = max( col, vec3( floorL ) );
   }
   // (the coordinator: at sunset the low sun front-lights the low dust "too bright and opaque") a low body's lit
@@ -550,8 +550,11 @@ interface SceneLightData {
 
 /** Diagnostic grade (live-tunable through group.userData.volumeTune; play values below). */
 // skySat 0.22 -> 0.12 (wave 273: thinning dust turned bluish)
+// night 0.25 -> 0.5 (FX lane 2026-10-17, the media critics' "flat black plume" on ~15 night takes: a night plume read as a
+// flat black cut-out against the sky; the coordinator's EF.11 ruling stands — dark grey, never beige — so the floor stays
+// neutral and under the sky's own level, now with the body's top lit over its heart)
 const DEFAULT_TUNE = Object.freeze({ sun: 1.0, sky: 1.0, skySat: 0.12, alpha: 1.0, glow: 1.0, back: 1.6, ms: 0.55, detail: 0.55,
-  warp: 0.16, ground: 1.0 });
+  warp: 0.16, ground: 1.0, night: 0.5 });
 
 interface VolumeMediaOptions {
   soft: SoftParticleUniforms;
@@ -690,7 +693,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
   const uSkyCol = { value: new THREE.Vector3(0.3, 0.32, 0.35) };
   const uGroundCol = { value: new THREE.Vector3(0.14, 0.13, 0.11) };
   const uGrade = { value: new THREE.Vector4(1, 1, DEFAULT_TUNE.back, DEFAULT_TUNE.ms) };
-  const uGrade2 = { value: new THREE.Vector4(DEFAULT_TUNE.ground, 0, 0, 0) };
+  const uGrade2 = { value: new THREE.Vector4(DEFAULT_TUNE.ground, 0, DEFAULT_TUNE.night, 0) };
   const totalRows = VOLUME_ATLAS.bands * VOLUME_ATLAS.rowsPerBand;
   const bandWarp: THREE.Vector4[] = [];
   for (let b = 0; b < VOLUME_ATLAS.bands; b++) bandWarp.push(new THREE.Vector4(1, 0, 0, 0));
@@ -870,6 +873,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     }
     uGrade.value.set(tune.alpha, tune.glow, tune.back, tune.ms);
     uGrade2.value.x = tune.ground;
+    uGrade2.value.z = tune.night;
     // (EF.11) the night level: the rig's sun (Verdant: day 4.5, sunset 2.8, night 0.6) under ~2.2 fades in the night floor
     { const sunI = rig ? (rig.sunIntensity ?? 4.5) : 4.5; const k = Math.min(1, Math.max(0, (sunI - 0.9) / 1.3));
       uGrade2.value.y = 1 - k * k * (3 - 2 * k); }
