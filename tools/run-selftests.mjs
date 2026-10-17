@@ -70,8 +70,8 @@ export const SELFTEST_FRESH_FILES = Object.freeze([
 ]);
 
 // Test-speed R9a (2026-10-16): a judge merges the records other receipts of the same run wrote
-// and plays whatever it has no records of. server/battlePacing.selftest.mjs judges the 132
-// matches its eight one-thread shards (server/battlePacingShard<n>.selftest.mjs) played. The
+// and plays whatever nobody else plays in the run. server/battlePacing.selftest.mjs judges the
+// 132 matches its eight one-thread shards (server/battlePacingShard<n>.selftest.mjs) played. The
 // pool admits a judge after every other receipt; the registry lists it after its shards for
 // the serial path.
 export const SELFTEST_LAST_FILES = Object.freeze(['server/battlePacing.selftest.mjs']);

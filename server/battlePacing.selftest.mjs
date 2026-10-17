@@ -3,18 +3,19 @@ import { writeFileSync } from 'node:fs';
 import { availableParallelism } from 'node:os';
 import { isMainThread, parentPort, workerData, Worker } from 'node:worker_threads';
 import { MAP_IDS } from '../src/world/maps/mapIds.ts';
-import { mergeShardReports, PACING_SAMPLES, PACING_SHARDS, pacingMapLine, pacingRunOrder, pacingShardMaps, pacingStats,
+import { mergeShardReports, PACING_SAMPLES, pacingMapLine, pacingRunOrder, pacingShardMaps, pacingStats,
   pacingVerdicts } from './battlePacing.test-support.mjs';
-import { collectPacingShardReports } from './battlePacingRun.test-support.mjs';
+import { gatherPacingShares, pacingRunDirectory, pacingShardReport } from './battlePacingRun.test-support.mjs';
 
 // Modes (docs/DEVELOPMENT.md, "The pacing tail"):
 // - core (npm test): the 132 matches, four per map, judged by the gate below; one match may end inside 90 s. Since
 //   2026-10-16 (test-speed R9a) the eight server/battlePacingShard<n>.selftest.mjs receipts play them, one thread
 //   each, and write their records into the run's directory (COT_SELFTEST_RUN_DIR, a fresh one per tools/run-selftests
-//   invocation or per gate pool); this receipt waits for any shard still running, merges the records (every map's
-//   samples exactly once, at their seeds, on this tree) and judges them. A share with no records from this run (a
-//   shard that failed or ran elsewhere, or no run directory at all, as in `node server/battlePacing.selftest.mjs`) is
-//   played here, so the gate always judges all 132 (server/battlePacingRun.test-support.mjs).
+//   invocation or per gate pool); this receipt waits for any share a live shard is playing, merges the records (every
+//   map's samples exactly once, at their seeds, on this tree) and judges them. A share nobody plays in this run (a
+//   shard that failed, was skipped or has not started) is claimed and played here, so the gate always judges all 132
+//   and each share is played once (server/battlePacingRun.test-support.mjs). Without a run directory, as in
+//   `node server/battlePacing.selftest.mjs`, this receipt plays all 132 itself.
 // - tail (COT_PACING_TAIL=1, `npm run test:pacing:tail`): the 264 matches, the 132 plus samples 4-7 on every map,
 //   judged by the same gate with the owner's floor as a rate: at most 0.5 % of them inside 90 s.
 // - COT_PACING_MAPS=a,b plays those maps' matches of the full run (the seeds are keyed to each map's index in MAP_IDS)
@@ -22,11 +23,12 @@ import { collectPacingShardReports } from './battlePacingRun.test-support.mjs';
 //   COT_PACING_REPORT=<file> writes the match records: tools/pacing-tail.mjs merges a run played in shards, judges it
 //   by the same gate and, given the PR head's records on the same matches, compares the share inside 90 s.
 // - COT_PACING_JOBS=<n> plays the maps on n worker threads of this file (default: a quarter of the cores, 1 to 4;
-//   COT_PACING_JOBS=1 plays them on the main thread). Every mode above takes it for what this receipt plays itself.
-//   The maps are dealt round-robin and each worker plays its share in MAPS order; the records and the log come back in
-//   MAPS order and sample order, so the report, the printed lines and the gate equal the one-thread run's. Each match is a function of its seed and
-//   map alone (the shards of tools/pacing-tail.mjs rely on it too); a record that moved with the job count would be
-//   a defect in the simulation, not in this receipt.
+//   COT_PACING_JOBS=1 plays them on the main thread). Every mode above takes it for what this receipt plays itself
+//   (the core run with a run directory plays up to n unclaimed shares at once, one worker each). The maps are dealt
+//   round-robin and each worker plays its share in MAPS order; the records and the log come back in MAPS order and
+//   sample order, so the report, the printed lines and the gate equal the one-thread run's. Each match is a function of
+//   its seed and map alone (the shards of tools/pacing-tail.mjs rely on it too); a record that moved with the job count
+//   would be a defect in the simulation, not in this receipt.
 const TAIL = process.env.COT_PACING_TAIL === '1';
 const SAMPLES = TAIL ? PACING_SAMPLES.tail : PACING_SAMPLES.core;
 const MAPS = process.env.COT_PACING_MAPS
@@ -57,9 +59,9 @@ function workerResult(worker) {
 }
 
 // Plays `maps` (a sublist of MAPS, in MAPS order) here: their records in that order, each map's line printed (as it
-// finishes on one thread; in map order after the workers) unless `print` is false.
-async function playHere(maps, { print = true } = {}) {
-  const say = print ? (line) => console.log(line) : () => {};
+// finishes on one thread; in map order after the workers).
+async function playHere(maps) {
+  const say = (line) => console.log(line);
   if (JOBS <= 1 || maps.length < 2) return (await playMaps(maps, SAMPLES, say)).matches;
   // maps[i] goes to share i % n as its floor(i / n)-th map.
   const shares = Array.from({ length: Math.min(JOBS, maps.length) }, () => []);
@@ -85,24 +87,33 @@ async function playHere(maps, { print = true } = {}) {
   return matches;
 }
 
-// The run's matches: the core run merges the shards' records from this run and plays only what they lack; the tail
-// and a subset of the maps play everything here, as before.
+// One share of the core run played here (on its own worker thread when JOBS > 1), as its shard would report it.
+async function playShare(shard) {
+  const maps = pacingShardMaps(MAP_IDS, shard);
+  if (JOBS <= 1) return pacingShardReport(shard, maps, (await playMaps(maps, SAMPLES)).matches, 'battlePacing');
+  const worker = new Worker(new URL(import.meta.url), {
+    workerData: { maps, samples: SAMPLES },
+    resourceLimits: { maxOldGenerationSizeMb: WORKER_HEAP_MB },
+  });
+  try {
+    return pacingShardReport(shard, maps, (await workerResult(worker)).matches, 'battlePacing');
+  } finally {
+    await worker.terminate();
+  }
+}
+
+// The run's matches: the core run merges the shards' records from this run and plays only the shares nobody else
+// plays (up to JOBS at a time); the tail and a subset of the maps play everything here, as before.
 async function playAll() {
   if (TAIL || PARTIAL || !RUN_DIR) return playHere(MAPS);
   const say = (message) => console.log(`battlePacing.selftest: ${message}`);
-  const reports = await collectPacingShardReports(RUN_DIR, { log: say });
-  if (!reports.size) {
-    say(`no shard records in ${RUN_DIR}; all ${PACING_SHARDS} shares play here`);
-    return playHere(MAPS);
-  }
-  const missing = Array.from({ length: PACING_SHARDS }, (_, index) => index + 1).filter((shard) => !reports.has(shard));
-  const missingMaps = MAPS.filter((mapId) => missing.some((shard) => pacingShardMaps(MAP_IDS, shard).includes(mapId)));
-  const played = missingMaps.length ? await playHere(missingMaps, { print: false }) : [];
-  const matches = pacingRunOrder(MAP_IDS,
-    mergeShardReports([...reports.values(), { samples: SAMPLES, matches: played }], MAP_IDS));
+  const { reports, playedHere } = await gatherPacingShares(RUN_DIR, { playShare, players: JOBS, log: say });
+  const matches = pacingRunOrder(MAP_IDS, mergeShardReports([...reports.values()], MAP_IDS));
   for (const mapId of MAPS) console.log(pacingMapLine(mapId, matches, SAMPLES));
-  say(`the records of ${reports.size} of ${PACING_SHARDS} shards from this run (${RUN_DIR})`
-    + (missing.length ? `; shard(s) ${missing.join(', ')} played here (${missingMaps.join(', ')})` : ''));
+  const shards = [...reports.keys()].sort((a, b) => a - b);
+  say(`the records of shard(s) ${shards.filter((shard) => !playedHere.includes(shard)).join(', ') || 'none'} from this run`
+    + (playedHere.length ? `; shard(s) ${[...playedHere].sort((a, b) => a - b).join(', ')} played here` : '')
+    + ` (${pacingRunDirectory(RUN_DIR)})`);
   return matches;
 }
 

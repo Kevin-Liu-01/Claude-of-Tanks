@@ -416,8 +416,8 @@ and removes it afterwards. A caller can export its own directory instead, and th
 runner keeps it. A judge receipt (`SELFTEST_LAST_FILES` in
 `tools/run-selftests.mjs`) merges records that other receipts of the same run
 wrote there. The pool admits a judge after everything else. The judge plays any
-share that has no records. The battlePacing shards are the first users; see "The
-pacing tail".
+share that nobody else plays in the run. The battlePacing shards are the first
+users; see "The pacing tail".
 
 Result reuse is based on source syntax and file contents:
 
@@ -625,15 +625,23 @@ exactly once, at their seeds, played on this tree. It judges the 132 by the same
 
 - **Who makes the directory.** `tools/run-selftests.mjs` makes a fresh directory for each invocation. A gate that runs
   the receipts with its own pool must export one fresh directory for that pool, for example
-  `export COT_SELFTEST_RUN_DIR=$G/selftest-run` before `pool.mjs`.
-- **Records do not outlive their run.** No run reuses another run's records, and every shard plays in every run.
-- **Ordering.** The runner admits the judge after every other receipt. The judge waits for a shard that is still
-  running, meaning its started mark names this tree and its pid is alive.
-- **Missing shares.** The judge plays any share it has no records of, such as a failed shard, a shard that ran in
-  another invocation, or `node server/battlePacing.selftest.mjs` with no directory. The gate therefore always judges
-  all 132.
-- **The protocol's receipt.** `server/battlePacingRun.selftest.mjs` covers the partition, the report check, the merge
-  and the hand-over, on fixtures.
+  `export COT_SELFTEST_RUN_DIR=$G/selftest-run` before `pool.mjs`. Without one, the judge cannot see the shards'
+  records and plays all 132 again on four threads. Separate `--shard=i/n` invocations are separate runs too: they
+  share records only through one exported directory.
+- **Records do not outlive their run.** No run reuses another run's records. Each tree writes into its own
+  subdirectory.
+- **Each share is played once.** A share is played by whichever process claims it first. A claim is created
+  atomically and names its pid. A shard whose share already has records from this run, or whose claim the live judge
+  holds, has nothing to play and passes; the judge plays and judges those matches. A dead holder's claim (a shard that
+  failed earlier in the run) is taken over.
+- **Ordering.** The runner admits the judge after every other receipt, so in `npm test` it only merges. A pool that
+  orders receipts some other way still plays each share once. The judge waits while a live process holds a share's
+  claim, gives an unclaimed share 10 s in case a shard is starting, and then claims and plays what is left, up to
+  `COT_PACING_JOBS` shares at a time.
+- **Missing shares.** The judge always judges all 132. Without a run directory, as in
+  `node server/battlePacing.selftest.mjs`, it plays them all itself.
+- **The protocol's receipt.** `server/battlePacingRun.selftest.mjs` covers the partition, the report check, the merge,
+  the claims and the hand-over, on fixtures.
 
 The tail takes a few hours in one process, so play it in shards. Every seed is keyed to its map's index in `MAP_IDS`,
 so a shard plays exactly the full run's matches (`COT_PACING_MAPS` used to key seeds to the filtered list and played
