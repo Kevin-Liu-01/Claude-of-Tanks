@@ -68,9 +68,13 @@ function freeBox(sink: PartSink, bucket: RegionalBucket, c: Vec3, size: Vec3, op
   sink.box(bucket, c, [size[0] / 2, size[1] / 2, size[2] / 2], { ...opts, uv: opts.uv ?? { kind: 'world' } }, new LocalFrame(ax, [0, 1, 0], az, [0, 0, 0]));
 }
 
-/** A board or a timber standing free, as freeBox lays it: under an eased dress its long arrises eased (a sawn board). */
+/**
+ * A board or a timber standing free, as freeBox lays it: under an eased dress a dressing board's long arrises eased (a
+ * sawn board). A screen's boards stay square: they are the stall's walls on every tier, and eased they doubled a phone's
+ * triangles for an arris a long view never reads.
+ */
 function board(sink: PartSink, d: StallDress, bucket: RegionalBucket, c: Vec3, size: Vec3, opts: EmitOptions, ax: Vec3 = [1, 0, 0]): void {
-  if (!d.eased) { freeBox(sink, bucket, c, size, opts, ax); return; }
+  if (!d.eased || !opts.decor) { freeBox(sink, bucket, c, size, opts, ax); return; }
   const az: Vec3 = [-ax[2], 0, ax[0]];
   bevelMember(sink, bucket, [c[0], c[1] - size[1] / 2, c[2]], [c[0], c[1] + size[1] / 2, c[2]], size[0], size[2], az, { ...opts, uv: opts.uv ?? { kind: 'world' } }, size[2] / 2);
 }
