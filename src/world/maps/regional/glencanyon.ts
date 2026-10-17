@@ -13,7 +13,7 @@ import { doorUnit, rollerDoor, windowUnit, type WindowStyle } from './openings.t
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { sheetHall } from './hall.ts';
-import { latticeFrame } from './lattice.ts';
+import { latticeFrame, recordLattice } from './lattice.ts';
 import { yardPad } from './glencanyonPads.ts';
 
 /** Poured concrete (the plaster2 canvas under a concrete tone), painted concrete, block (the stone painter's CMU). */
@@ -653,6 +653,22 @@ const penstockRun: RegionalBuilder = (ctx) => {
     // the ring girders on their piers: the ring, its two legs to the rocker plates, the pier under them
     const py = y - r - 0.3, girders: number[] = [];
     for (let x = xa + 1.4; x < xb - 1.0; x += 4.6) girders.push(x);
+    // (227, lane B; the anti-raft floor: the run fell as the default kit's heap) recorded as its own wreck (penstockFall.ts):
+    // the concrete standing, the pipe down off its girders in its lengths
+    {
+      const box = (x0: number, y0: number, z0: number, x1: number, y1: number, z1: number) => {
+        const p = sink.framePoint([x0, y0, z0]), q = sink.framePoint([x1, y1, z1]);
+        return { x0: Math.min(p[0], q[0]), y0: p[1], z0: Math.min(p[2], q[2]), x1: Math.max(p[0], q[0]), y1: q[1], z1: Math.max(p[2], q[2]) };
+      };
+      const corner = (sx: number, sz: number, yy: number): Vec3 => [sx * L / 2, yy, sz * (r + 0.6)];
+      recordLattice(sink, ([[-1, -1], [1, -1], [1, 1], [-1, 1]] as const).map(([sx, sz]) => ({ foot: corner(sx, sz, -0.4), head: corner(sx, sz, y + r + 0.8) })), [], 0.3,
+        'structureMetal', paint, null, undefined, { penstock: {
+          a: sink.framePoint([xa, y, 0]), b: sink.framePoint([xb, y, 0]), r,
+          piers: girders.map((x) => box(x - 0.6, -0.4, -r - 0.25, x + 0.6, py, r + 0.25)),
+          blocks: [box(-L / 2, -0.4, -r - 0.6, -L / 2 + 2.2, y + r + 0.8, r + 0.6), box(-L / 2 + 2.2, -0.4, -r - 0.5, xa, y + r * 0.35, r + 0.5), box(xb, -0.4, -r - 0.5, L / 2, y + r + 0.4, r + 0.5)],
+          concrete: { bucket: 'regionalPlaster2', tint: [0.7, 0.68, 0.64], tintKey: 'plaster2' }, paint, dark,
+        } });
+    }
     for (const x of girders) {
       sink.span(CONCRETE, x - 0.6, -0.4, -r - 0.25, x + 0.6, py, r + 0.25);
       pipe(sink, 'structureMetal', [x - 0.15, y, 0], [x + 0.15, y, 0], r + 0.2, 20, { colour: dark, decor: true });
