@@ -82,6 +82,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/smokeBallistics.selftest.mjs',
     'src/vehicles/smokeFan.selftest.mjs',
     'src/sim/smokeScreenCover.selftest.mjs',
+    'src/sim/smokeWind.selftest.mjs',
     'src/sim/smokeCollision.selftest.mjs', // 2026-10-09 the hitbox lane: canisters bounce off walls; screens stay out of houses
     'src/sim/smokeBlocksExact.selftest.mjs', // 2026-10-13 the MP stream: the footprint early-out answers exactly as before
     'src/sim/roofTargetOrder.selftest.mjs', // 2026-10-13 the MP stream: nearest-first roof-gun scan picks the same target

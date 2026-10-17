@@ -117,7 +117,7 @@ import { createTrackDustAdapters } from './studioTrackDust.ts';
 import { requestAuxiliary } from '../sim/auxiliarySystems.ts';
 import type { AuxiliaryEntity } from '../sim/auxiliarySystems.ts';
 import { createSmokeCanister, smokeCanisterPosition, smokeCanisterVelocity, SMOKE_GRAVITY_MPS2, type SmokeCanister } from '../sim/smokeBallistics.ts';
-import { smokeBankBase, smokeHoldInside, smokeWallRoom, SMOKE_WIND_X, SMOKE_WIND_Z, type SmokeScreen, type SmokeVolume } from '../sim/smokeScreen.ts';
+import { smokeBankBase, smokeHoldInside, smokeWallRoom, smokeWindForMap, type SmokeScreen, type SmokeVolume } from '../sim/smokeScreen.ts';
 import { createProductionScene, productionPreset, productionCamera, productionAspect, reframeProductionPoint, reframeProductionFov } from './studioProduction.ts';
 import type { ProductionOptions, ProductionRigId, ProductionFormat } from './studioProduction.ts';
 import { createStudioFilm } from './studioFilm.ts';
@@ -1800,7 +1800,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       id: a.uid, team: 'studio', spec: a.spec, state: a.state, combat: { destroyed: false },
     } as unknown as AuxiliaryEntity;
     // (2026-10-09) through the active world's collision, as the battle fires them: canisters bounce off walls
-    if (requestAuxiliary(entity, 'smoke', clockMs / 1000, ground, getWorld())) {
+    if (requestAuxiliary(entity, 'smoke', clockMs / 1000, ground, getWorld(), smokeWindForMap(getWorld()?.mapId))) {
       const screen = entity.combat.auxiliary?.smoke;
       if (screen?.canisters?.length) {
         salvoWalls = smokeWalls(screen.canisters, screen.clip);
@@ -1839,7 +1839,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const entity = {
       id: a.uid, team: 'studio', spec: a.spec, state: a.state, combat: { destroyed: false },
     } as unknown as AuxiliaryEntity;
-    if (!requestAuxiliary(entity, 'smoke', clockMs / 1000, ground)) return false;
+    if (!requestAuxiliary(entity, 'smoke', clockMs / 1000, ground, null, smokeWindForMap(getWorld()?.mapId))) return false;
     const screen = entity.combat.auxiliary?.smoke;
     if (!screen?.canisters?.length) return false;
     ensureFxBus();
@@ -1855,7 +1855,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (!cinematicFor(params) && battleSmokeScreen(actor)) return true;
     salvoWalls = null;
     const salvo = smokeSalvo(actor, Math.round(fxParam('smoke_screen', 'count', params.count)));
-    ensureCinematics().smokeScreen(id, salvo, SMOKE_GRAVITY_MPS2, SMOKE_WIND_X, SMOKE_WIND_Z,
+    // (FX lane 2026-10-17) the cinematic screen drifts on the map's wind too, as the battle's does
+    const drift = smokeWindForMap(getWorld()?.mapId);
+    ensureCinematics().smokeScreen(id, salvo, SMOKE_GRAVITY_MPS2, drift[0], drift[1],
       fxParam('smoke_screen', 'durationS', params.durationS), fxParam('smoke_screen', 'density', params.density), salvoWalls);
     return true;
   }

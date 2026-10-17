@@ -11,7 +11,7 @@ import type { SpottingTank } from './spotting.ts';
 export type AuxiliaryAction = 'smoke' | 'lights' | 'roofGun' | 'lightsOff';
 import type { SmokeScreen } from './smokeScreen.ts';
 export type { SmokeScreen } from './smokeScreen.ts';
-export { SMOKE_DURATION_S, smokeBlocks } from './smokeScreen.ts';
+export { SMOKE_DURATION_S, smokeBlocks, smokeWindForMap } from './smokeScreen.ts';
 /** One extra roof station's own aim and bursts (stations after the first; VH.02, the M551A1 TTS's roof M2). */
 export interface AuxiliaryStationState {
   gunYaw: number;

@@ -1,7 +1,7 @@
 import { initializeAerial, stepAerial, isGunship, droneTankAlong, strikeDrone, type AerialView, type AerialWorldQuery } from '../sim/aerialCombat.ts';
 import { mapCraterStampsOf, stampMapCraters, type MapCraterStamp } from '../world/mapCraters.ts';
 import { setModeWeapon } from '../sim/modeLoadout.ts';
-import { requestAuxiliary, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, type SmokeScreen } from '../sim/auxiliarySystems.ts';
+import { requestAuxiliary, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, smokeWindForMap, type SmokeScreen } from '../sim/auxiliarySystems.ts';
 import { bridgeBallFloor } from '../sim/bridgeBallSupport.ts';
 import { sweepLightCover } from '../sim/shellLightCover.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
@@ -2976,7 +2976,8 @@ function stepAuxiliarySystems(game: SoloGameState, world: SoloWorld, bus: EventB
     // (2026-10-09) the canisters fly through the world's own collision: they bounce off walls, and the clouds stay out
     // of the houses beside them
     // the canister lands on the match's ground (its craters and heaps), as the authority's does
-    if(bits&64 && requestAuxiliary(entity,'smoke',game.timeS,groundFor(world).field.getHeightAt,world)){
+    // (FX lane 2026-10-17) on its map's wind (smokeScreen.ts smokeWindForMap)
+    if(bits&64 && requestAuxiliary(entity,'smoke',game.timeS,groundFor(world).field.getHeightAt,world,smokeWindForMap(game.mapId))){
       const screens=game.auxiliarySmokeScreens??=[];screens.push(entity.combat.auxiliary!.smoke!);
       if(screens.length>84)screens.shift();
       bus.emit('auxiliary:smokeScreens',{screens});
