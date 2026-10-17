@@ -11,7 +11,9 @@
 // escarpments and buttes standing proud of the benches with sky between them:
 //   - north, past the dam's country (the dam stands on the square's road 5): Manson Mesa's low bench with Page's water
 //     tank and church, then the long table of the Kaiparowits Plateau — Fiftymile Mountain's straight rim — far north-west;
-//   - north-east: Tower Butte alone on the benches about 15 km out, Navajo Mountain's great dome 60 km beyond it;
+//   - north, through the gaps the square's own skyline leaves north and north-north-west of the spawn and mid-field (the
+//     in-map rim under 1.2° on 316-350° and 10-14°, ../hzwork/sky-rim-*.txt): Tower Butte alone on the benches about 15 km
+//     out, Navajo Mountain's great dome 60 km beyond, the Kaiparowits Plateau's rim north-west;
 //   - east and south-east: the Kaibito Plateau's rim low and level over the slickrock;
 //   - south: the Echo Cliffs' long red wall, its line running away south;
 //   - west: the Vermilion Cliffs, a sheer red escarpment along the whole west, with the Paria Plateau behind.
@@ -55,11 +57,11 @@ const DRAFT: HinterlandConfig = {
     { kind: 'mesa', at: { azDeg: 10, distM: 3500 }, heightM: 70, lengthM: 2600, widthM: 1500, strikeDeg: 75, name: 'Manson Mesa',
       geology: { rockHex: NAVAJO } },
     // north-east: Tower Butte alone on the benches, Navajo Mountain's dome far beyond
-    { kind: 'butte', at: { azDeg: 44, distM: 15000 }, heightM: 360, lengthM: 900, widthM: 650, strikeDeg: 30, name: 'Tower Butte' },
-    { kind: 'massif', at: { azDeg: 58, distM: 60000 }, heightM: 1650, lengthM: 16000, widthM: 13000, strikeDeg: 20, name: 'Navajo Mountain',
+    { kind: 'butte', at: { azDeg: 338, distM: 15000 }, heightM: 380, lengthM: 900, widthM: 650, strikeDeg: 30, name: 'Tower Butte' },
+    { kind: 'massif', at: { azDeg: 12, distM: 60000 }, heightM: 1650, lengthM: 16000, widthM: 13000, strikeDeg: 20, name: 'Navajo Mountain',
       peak: { along: 0.5, share: 0.3, asym: 1 }, geology: { rockHex: LACCOLITH, erosion: 0.2, gullies: 0.4 } },
     // north-west: the Kaiparowits Plateau's straight rim (Fiftymile Mountain) over the benches
-    { kind: 'escarpment', at: { azDeg: 322, distM: 34000 }, heightM: 700, lengthM: 42000, widthM: 3000, strikeDeg: 135, name: 'the Kaiparowits rim' },
+    { kind: 'escarpment', at: { azDeg: 316, distM: 30000 }, heightM: 950, lengthM: 42000, widthM: 3000, strikeDeg: 140, name: 'the Kaiparowits rim' },
     // west: the Vermilion Cliffs' sheer red wall along the whole west, the Paria Plateau behind it
     { kind: 'escarpment', at: { azDeg: 262, distM: 21000 }, heightM: 600, lengthM: 30000, widthM: 2400, strikeDeg: 165, name: 'the Vermilion Cliffs',
       geology: { rockHex: VERMILION } },

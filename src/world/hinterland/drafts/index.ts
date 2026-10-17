@@ -28,6 +28,7 @@ import railyard from './railyard.ts';
 import reservoir from './reservoir.ts';
 import ruinspires from './ruinspires.ts';
 import saltwind from './saltwind.ts';
+import skybridge from './skybridge.ts';
 import steppe from './steppe.ts';
 import titan_gorge from './titan_gorge.ts';
 import urban from './urban.ts';
@@ -35,4 +36,4 @@ import verdant from './verdant.ts';
 import whiteout from './whiteout.ts';
 import winter from './winter.ts';
 
-export const HINTERLAND_LAB_DRAFTS: Readonly<Record<string, HinterlandConfig>> = Object.freeze({ airfield, alpine, autumn, badlands, blackglass, caldera, cliffbridge, coastal, copper_mesa, delta, desert, fjord, foundry, frontier, longleaf, mangrove, mars, monsoon, moon, oasis, orchard, polders, railyard, reservoir, ruinspires, saltwind, steppe, titan_gorge, urban, verdant, whiteout, winter });
+export const HINTERLAND_LAB_DRAFTS: Readonly<Record<string, HinterlandConfig>> = Object.freeze({ airfield, alpine, autumn, badlands, blackglass, caldera, cliffbridge, coastal, copper_mesa, delta, desert, fjord, foundry, frontier, longleaf, mangrove, mars, monsoon, moon, oasis, orchard, polders, railyard, reservoir, ruinspires, saltwind, skybridge, steppe, titan_gorge, urban, verdant, whiteout, winter });
