@@ -810,11 +810,15 @@ const saarWaterTower: RegionalBuilder = (ctx) => {
     const r = R * (1 - 0.06 * (y - 0.5) / (H - 0.5)) + 0.05;
     sink.cylinder(YELLOW_BRICK, [0, y, 0], 'y', 0.3, r, SEG, { decor: true }, r, true, turn);
   }
-  // the corbel out to the drum, the drum, its sill band and cornice. The corbel starts 2 cm over the shaft's head, so
-  // the corbel and drum weld into a solid of their own: the tower's ground contact (structureCollision.ts, the solids
-  // that reach below 1.8 m) is the shaft on its plinth, as the Ruhr kit's tower stood, not the drum's wider round
-  // carried down to the ground
-  sink.cylinder('stone', [0, H + 0.02, 0], 'y', 1.18, R * 0.94, SEG, {}, T, true, turn);
+  // the corbel out to the drum, the drum, its sill band and cornice. The corbel is seated 10 cm down into the shaft's
+  // head, its flare carried on down the same line (so it leaves the shaft's rim at the rim's own radius, and its foot
+  // stands inside the brick): it bears on the shaft, yet shares no vertex with it, so the corbel and drum still weld
+  // into a solid of their own and the tower's ground contact (structureCollision.ts, the solids that reach below
+  // 1.8 m) stays the shaft on its plinth, as the Ruhr kit's tower stood, not the drum's wider round carried down to the
+  // ground. (2026-10-17, the Ironworks re-landing: the round's corbel started 2 cm over the shaft's head, a slit of sky
+  // under the drum the kit connectivity receipt read as 14 floating members, the whole tank house)
+  const head = R * 0.94, seat = 0.1, flare = (T - head) / 1.2;
+  sink.cylinder('stone', [0, H - seat, 0], 'y', 1.2 + seat, head - flare * seat, SEG, {}, T, true, turn);
   const d0 = H + 1.2, dh = 4.2;
   sink.cylinder('stone', [0, d0, 0], 'y', dh, T, SEG, {}, T, true, turn);
   sink.cylinder(YELLOW_BRICK, [0, d0 + 0.9, 0], 'y', 0.22, T + 0.04, SEG, { decor: true }, T + 0.04, true, turn);
