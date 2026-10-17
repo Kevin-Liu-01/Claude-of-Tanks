@@ -554,6 +554,15 @@ support went with it. Visual change detection lives in generated ledgers that on
 - `npm run fx:textures:bake` rewrites the committed particle atlases and `src/fx/particleAtlases.ledger.json`
   (`COT_UPDATE_LEDGER=1 node src/fx/particleTextureAssets.selftest.mjs` rewrites the ledger from the committed PNGs).
 - `npm run tank:anatomy:update` and `tank:anatomy:check` keep the combat anatomy ledger as before.
+- `docs/geometry-gate/sim-floors.json` (2026-10-17, after the 226 T-90M blade) — each tank's belly pan
+  (`trackContact.panYM`), track bottom and combat hull box, the authority inputs a visual accessory can move unnoticed.
+  `tools/gen-combat-anatomy.mjs` holds every tank it measures to its row in both modes: a move over 5 cm fails and
+  names the parts responsible with their builder call sites (the write mode writes its outputs, then exits 3, so a
+  regen chain stops there). `npm test` runs `tools/anatomy-floor-drift.selftest.mjs` on the committed calibration
+  (data only, ~0.3 s). Fix the geometry, or record an intended move with a reason:
+  `node tools/anatomy-floor-drift.mjs --accept=<ids>:<what moved and why>` after the regen, or
+  `--accept-floor=<ids>:<reason>` on gen-combat-anatomy (`COT_ACCEPT_FLOOR_DRIFT` through an npm chain). The row keeps
+  the old values, the reason, who and when. A new tank's row is seeded by its first regen; `--prune` drops retired ids.
 
 A new receipt asserts properties of the current build. When a change needs a reviewed before/after record, capture it
 (screenshots or a ledger diff) in the change itself rather than pinning bytes in a receipt.
