@@ -653,6 +653,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/i18n.selftest.mjs',
     'src/ui/i18nRuntime.selftest.mjs',
     'src/ui/i18nLazyCatalog.selftest.mjs',
+    // 2026-10-16 (test-speed): the registry's chunk import keeps the locale runtime's receipts reusable
+    'src/ui/i18nChunkImport.selftest.mjs',
     'tools/i18n-page-catalogs.selftest.mjs',
     'src/dev/mapCaptureReadiness.selftest.mjs',
     'src/dev/debugTelemetry.selftest.mjs',
@@ -795,6 +797,8 @@ export const SELFTEST_SUITES = Object.freeze({
   'src/vehicles/decorationsEquipment.selftest.mjs',
     'src/vehicles/decorationsStaging.selftest.mjs',
     'src/vehicles/decorDockKeepOut.selftest.mjs',
+    // 2026-10-16 (test-speed): the dock's launch column is the ruleset's value, read from a leaf by the decor path
+    'src/sim/droneDockRules.selftest.mjs',
     'src/sim/missionDockSeats.selftest.mjs',
     'src/vehicles/equipmentPrimitives.selftest.mjs',
     'src/vehicles/fleetBalance.selftest.mjs',
