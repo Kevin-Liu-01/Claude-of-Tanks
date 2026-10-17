@@ -15,11 +15,12 @@ import type { HinterlandConfig } from '../spec.ts';
 
 /** The stripped conglomerate: pink-mauve grey with ochre (sceneryRocks' breccia, the map's CONGLOMERATE). */
 const LYELL_ROCK = 0xb08f86;
-/** The wet ranges' faces under buttongrass, cutting grass and rainforest: a dark olive, not the stripped pink (the
- * region's rock stands bare past ~20°, so the ranges' steep faces take this tone; one long bed, no banding). */
-const RAINFOREST = { rockHex: 0x39432f, strata: { bedM: 2000 } };
-/** Sedgwick's and Tyndall's quartzite tops over their scrub: a darker grey-green. */
-const RANGE_TOPS = { rockHex: 0x55584a, strata: { bedM: 2000 } };
+/** The wet ranges under buttongrass, cutting grass and rainforest: the forest holds to 48° (2026-10-17: a landform's own
+ * rock slope is read now, DRAFTS-FOLLOWUP 10; the region's mine country bares at 22°), the few faces past it a dark
+ * olive-grey, not the stripped pink; one long bed, no banding. */
+const RAINFOREST = { rockHex: 0x39432f, rockSlopeDeg: 48, strata: { bedM: 2000 } };
+/** Sedgwick's and Tyndall's quartzite tops over their scrub: scrub to 40°, a darker grey-green rock past it. */
+const RANGE_TOPS = { rockHex: 0x55584a, rockSlopeDeg: 40, strata: { bedM: 2000 } };
 
 const DRAFT: HinterlandConfig = {
   place: 'Queenstown under Mount Lyell, west coast of Tasmania, 1976: the mining town in the Queen River valley, the hills '

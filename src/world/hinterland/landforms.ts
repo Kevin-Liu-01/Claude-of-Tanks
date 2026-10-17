@@ -549,9 +549,11 @@ export function createLandformRelief(spec: HinterlandSpec, seed: number): Hinter
       // the land's material on the faces past 50–56° — the atlas's 55 m bands of rock and ledge snow striped the
       // shoulders at its 24–96 m texels, "the uniform dashes read as contour lines"; the shoulders keep the region's
       // snow, scree and forest)
+      let faceRock = 0;
       if (best.cfg.kind === 'massif' || best.cfg.kind === 'ridge') {
         const H = Math.abs(best.cfg.heightM) || 1;
         const w = smoothstep(0.16 * H, 0.3 * H, bestA) * smoothstep(42, 50, slopeDeg);
+        faceRock = w;
         if (w > 0) {
           out.rock = Math.max(out.rock, w);
           out.snow *= 1 - w;
@@ -565,6 +567,9 @@ export function createLandformRelief(spec: HinterlandSpec, seed: number): Hinter
         out.rock *= 0.2;
       }
       const g = best.geology;
+      // (2026-10-17, DRAFTS-FOLLOWUP 10: a landform's own rock slope — Copper Mesa's rainforest ranges keep their forest to
+      // 48° where the region's mine country bares at 22° — read here, its steep upper faces still bare)
+      if (g?.rockSlopeDeg !== undefined) out.rock = Math.max(faceRock, smoothstep(g.rockSlopeDeg - 8, g.rockSlopeDeg + 6, slopeDeg));
       if (g?.rockHex !== undefined) out.rockHex = g.rockHex;
       if (g?.strata?.bedM) out.strata = (bestA + (g.strata.dipDeg ?? 0) * 0.01 * (x - best.cx)) / g.strata.bedM;
       if (best.bare) out.forest = 0;
