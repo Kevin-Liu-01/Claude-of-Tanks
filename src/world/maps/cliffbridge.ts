@@ -347,10 +347,11 @@ export default {
     // and the rain cut it, the beds standing proud by turns, dark streaks down from the lips; and over the walls the
     // lips' hard beds in blocks, leaning out over the void. Decor: the gorge's landform stays the battlefield's rock.
     canyonWalls: [
-      { x: 0, z: 0, length: 540, width: 96, yawDeg: 0, span: 0.9, tone: [0.1, 0.16, 0.6], name: "the Tajo's walls" },
+      // (the gorge is cut in three stages, its walls stepped by ledges a few metres wide: benchM reads them as one wall)
+      { x: 0, z: 0, length: 540, width: 192, yawDeg: 0, span: 0.9, tone: [0.1, 0.16, 0.6], benchM: 8, name: "the Tajo's walls" },
     ],
     caprock: [
-      { x: 0, z: 0, length: 540, width: 96, yawDeg: 0, trench: true, span: 0.9, tone: [0.11, 0.14, 0.68],
+      { x: 0, z: 0, length: 540, width: 192, yawDeg: 0, trench: true, span: 0.9, tone: [0.11, 0.14, 0.68],
         thickness: [1.2, 2.2], blockM: [6, 14], name: "the Tajo's lips" },
     ],
   },
