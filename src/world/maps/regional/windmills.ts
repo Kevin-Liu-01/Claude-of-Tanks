@@ -124,10 +124,6 @@ export function buildSmockMill(ctx: RegionalBuildContext, p: SmockMillPalette): 
   const R0 = 3.0, baseH = 2.6, bodyH = 8.2, R1 = 1.7, reveal = 0.3, sill = 0.35;
   // the plinth course round the base's foot
   sink.cylinder('stone', [0, -0.4, 0], 'y', sill + 0.4, R0 + 0.14, 8, {}, R0 + 0.1, true, Math.PI / 8);
-  // (the building census's world pass, 227: on a dyke's flank the base stood 0.84 m over the ground at its downhill side)
-  // its brick footing stepping out a little below the plinth course, down past any slope it stands on (dressing: the
-  // base's collision is as it was)
-  sink.cylinder('stone', [0, -1.6, 0], 'y', 1.2, R0 + 0.22, 8, { decor: true }, R0 + 0.14, true, Math.PI / 8);
   // the brick base: eight faces, the door on +z and a window either side cut through them with their reveals
   const ap = R0 * Math.cos(Math.PI / 8), side = 2 * R0 * Math.sin(Math.PI / 8);
   const pane: WindowStyle = {

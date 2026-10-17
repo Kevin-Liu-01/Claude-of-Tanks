@@ -137,13 +137,13 @@ export const jamesway: RegionalBuilder = (ctx) => {
   // (the looks lane's r2 sweep, 2026-10-16: plain boxes carried 65 % of the hut) the deck in its plywood sheets, the
   // sleepers and the joists sawn timbers with their arrises eased
   panelSlab(sink, 'wood', x0, 0.36, z0, x1, fl, zH, 1.22, () => [1, 1, 1], [1, 1, 1]);
+  // (the building census's world pass, 227: on a slope the hut's collision stood up to 0.14 m over the snow) the sleepers'
+  // ends and middles on timber cribbing bedded down into the snow, the hut's collision reaching it (built on the phone too)
+  for (let z = z0 + 0.25; z < zH - 0.1; z += 1.1) for (const x of [x0 - 0.02, (x0 + x1) / 2, x1 + 0.02]) {
+    sink.span('structureWood', x - 0.14, -0.7, z - 0.13, x + 0.14, -0.13, z + 0.13, { colour: shade(timber, 0.72) });
+  }
   sink.dressing(mobile, () => {
     for (let z = z0 + 0.25; z < zH - 0.1; z += 1.1) sectionMember(sink, 'structureWood', [x0 - 0.1, -0.005, z], [x1 + 0.1, -0.005, z], chamferedSection(0.2, 0.29, 0.03), { colour: shade(timber, 0.8), decor: true });
-    // (the building census's world pass, 227: on a slope the sleepers' downhill ends stood up to 0.14 m over the snow) each
-    // sleeper's ends and middle on timber cribbing bedded down into the snow
-    for (let z = z0 + 0.25; z < zH - 0.1; z += 1.1) for (const x of [x0 - 0.02, (x0 + x1) / 2, x1 + 0.02]) {
-      sink.span('structureWood', x - 0.14, -0.7, z - 0.13, x + 0.14, -0.13, z + 0.13, { colour: shade(timber, 0.72), decor: true });
-    }
     for (let x = x0 + 0.2; x < x1; x += 0.6) sectionMember(sink, 'structureWood', [x, 0.25, z0 + 0.05], [x, 0.25, zH - 0.05], chamferedSection(0.1, 0.22, 0.02), { colour: timber, decor: true });
     // (the deck's board joints as lines on its top, in board lengths of 3 m: the integrity gate reads a 4 mm line 15 m
     // long as a sliver)

@@ -9,7 +9,7 @@
 //          regional light kit (K9). The declared-bespoke manifest credits craft the instrumentation cannot see.
 //   maps   every battlefield's planned kinds against its kit (K1 coverage: the share built by the map's own kit).
 //   world  (--world; minutes a map) each battlefield built in Node as the dedicated host builds it (headlessWorldCollision):
-//          K12 — floating buildings (a footprint corner whose ground lies below the building's lowest part), identical
+//          K12 — floating buildings (a foot of its collision whose ground lies below the building's lowest part), identical
 //          houses (the share of distinct dwelling geometries) and the empty core (the densest cluster's buildings and
 //          the share of the plan it holds).
 //
@@ -256,6 +256,22 @@ export async function censusMaps({ maps = null } = {}) {
 // ------------------------------------------------------------------------------------------------------------- world
 
 let worldMods = null;
+
+/** How far over a building's lowest collision part another part's foot may stand and still be one it stands on. */
+const FOOT_BAND_M = 0.3;
+
+/** A collision part's footprint points (world x, z): a box's four corners, a circle's eight, a convex outline's own. */
+function footPoints(part) {
+  if (part.kind === 'circle') return Array.from({ length: 8 }, (_, k) => [part.cx + part.r * Math.cos(k * Math.PI / 4), part.cz + part.r * Math.sin(k * Math.PI / 4)]);
+  if (part.kind === 'obb') {
+    // (collision.ts: a box's forward axis is (sin yaw, cos yaw), its right (cos yaw, -sin yaw))
+    const c = Math.cos(part.yaw), s = Math.sin(part.yaw);
+    return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => [part.cx + a * part.hw * c + b * part.hl * s, part.cz - a * part.hw * s + b * part.hl * c]);
+  }
+  const out = [];
+  for (let i = 0; i + 1 < (part.points?.length ?? 0); i += 2) out.push([part.points[i], part.points[i + 1]]);
+  return out;
+}
 async function worldModules() {
   if (worldMods) return worldMods;
   const { installWorldBuildFixture } = await import('./headlessWorldCollision.mjs');
@@ -272,7 +288,7 @@ async function worldModules() {
 /**
  * K12 on one battlefield, built in Node with the shards' seeds as the dedicated host builds it (headlessWorldCollision):
  * every placed building's damage anatomy (its builder, pose, footprint, openings) and its lowest collision part.
- *   floating   a footprint corner whose ground lies more than 5 cm below the building's lowest part;
+ *   floating   a point of its ground-contact footprint whose ground lies more than 5 cm below the building's lowest part;
  *   identical  the share of dwellings whose anatomy (size, storeys, every face's openings, roof, chimneys) repeats another's;
  *   core       the largest cluster of buildings standing within 45 m of each other, and its share of the map's buildings.
  */
@@ -290,6 +306,19 @@ export async function censusWorld(mapId) {
     if (o.kind !== 'structure' || o.structureIdx === undefined) continue;
     bottom.set(o.structureIdx, Math.min(bottom.get(o.structureIdx) ?? Infinity, o.min[1]));
   }
+  // (the looks lane, 227) the footprint a building stands on is its collision's ground contact — the points of the parts
+  // whose foot is down at its lowest (within FOOT_BAND_M: not a deck, a stage or a part carried over another) — not its
+  // anatomy's box: a tower mill's anatomy is its sails' sweep, 24 m by 16 m, its corners out over the terp's batter where
+  // the 9 m brick base it stands on never reaches; a building with no such parts keeps its anatomy's corners
+  const feet = new Map();
+  for (const o of dressing.obstacles) {
+    if (o.kind !== 'structure' || o.structureIdx === undefined) continue;
+    const low = bottom.get(o.structureIdx);
+    const parts = o.shape2 ? (o.shape2.kind === 'compound' ? o.shape2.parts : [o.shape2]) : [];
+    let list = feet.get(o.structureIdx);
+    if (!list) feet.set(o.structureIdx, (list = []));
+    for (const part of parts) if ((part.y0 ?? o.min[1]) <= low + FOOT_BAND_M) list.push(...footPoints(part));
+  }
   const r2 = (v) => Math.round(v * 50) / 50;
   const records = [...dressing.structureDamage.entries()].map(([idx, { builder, style, anatomy: a }]) => {
     const p = a.placement ?? { x: 0, y: 0, z: 0, yaw: 0 }, c = Math.cos(p.yaw), s = Math.sin(p.yaw);
@@ -299,7 +328,8 @@ export async function censusWorld(mapId) {
     });
     const signature = JSON.stringify([builder, style, r2(a.w), r2(a.d), r2(a.h), a.plinth ? r2(a.plinth.h) : 0, a.roof?.kind ?? null, (a.chimneys ?? []).length,
       (a.storeys ?? []).map((st) => (st.faces ?? []).map((f) => [f.name, r2(f.width), r2(f.height), (f.openings ?? []).map((o) => [o.kind, r2(o.u), r2(o.w), r2(o.y0), r2(o.h)])]))]);
-    return { idx, builder, style, x: p.x, z: p.z, y: p.y, corners, bottom: bottom.get(idx) ?? p.y, signature };
+    const foot = feet.get(idx);
+    return { idx, builder, style, x: p.x, z: p.z, y: p.y, corners: foot?.length ? foot : corners, bottom: bottom.get(idx) ?? p.y, signature };
   });
   const floating = [];
   for (const r of records) {
@@ -405,7 +435,7 @@ export function formatMarkdown(run, date = new Date().toISOString().slice(0, 10)
   L.push('| Map | Kit | Planned | Kinds | From the kit | Coverage | Generic kinds |', '|---|---|---|---|---|---|---|');
   for (const m of run.maps) L.push(`| ${m.map} | ${m.kit ?? '—'} | ${m.planned} | ${m.kinds} | ${m.kitKinds} | ${m.coverage.toFixed(2)} | ${m.generic.join(', ')} |`);
   if (run.world?.length) {
-    L.push('', '**K12 (the world built in Node with the shards\' seeds):** floating = buildings with a footprint corner whose ground lies more');
+    L.push('', '**K12 (the world built in Node with the shards\' seeds):** floating = buildings with a point of their collision ground contact whose ground lies more');
     L.push('than 5 cm below their lowest part; identical = the share of dwellings whose anatomy repeats another\'s (largest: the biggest');
     L.push('group of one design); core = the largest cluster of buildings within 45 m of each other and its share of the map\'s buildings.', '');
     L.push('| Map | Kit | Buildings | Dwellings | Distinct | Identical | Largest | Floating | Core | Core share | Clusters |', '|---|---|---|---|---|---|---|---|---|---|---|');

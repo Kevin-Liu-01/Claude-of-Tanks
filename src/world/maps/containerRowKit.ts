@@ -453,12 +453,13 @@ export function makeContainerRow(
   const CL = CONTAINER_L, CW = CONTAINER_W, CH = CONTAINER_H;
   let x = -((n - 1) * (CW + 0.5)) / 2;
   // (the building census's world pass, 227: on a slope a box's downhill end stood up to 0.19 m over the ground) each
-  // ground-tier load on two timber dunnage sleepers bedded into the ground across its width: dressing, new to the stream
+  // ground-tier load on two timber dunnage sleepers bedded into the ground across its width, new to the stream (their
+  // collision under the load: no gap under a box on a slope)
   const dunnage = (cx: number, cz: number, yaw: number): void => {
     for (const dz of [-CL * 0.36, CL * 0.36]) {
       const g = new THREE.BoxGeometry(CW + 0.3, 0.6, 0.22).toNonIndexed();
       g.translate(0, -0.29, dz); g.rotateY(yaw); g.translate(cx, 0, cz);
-      g.userData.noCollision = true; g.userData.uvJitter = 'none';
+      g.userData.uvJitter = 'none';
       target.push(paintHex(g, () => 0.5, 0x5a4a3a, 1, 0));
     }
   };

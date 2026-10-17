@@ -245,8 +245,8 @@ const grange: RegionalBuilder = (ctx) => {
     ];
     if (!logs) openings.push({ face: 'front', storey: 0, kind: 'loft', u: 0, w: 0.8, h: 0.7, y0: 2.0 });
     // (the building census's world pass, 227: on a slope a corner stood 5 cm over the ground) the walls' rubble footing
-    // under them, down into the slope (dressing: the grange's collision is as it was)
-    sink.span('stone', -W / 2 - 0.04, -0.5, -D / 2 - 0.04, W / 2 + 0.04, 0.01, D / 2 + 0.04, { decor: true });
+    // under them, down into the slope, its collision with it
+    sink.span('stone', -W / 2 - 0.04, -0.5, -D / 2 - 0.04, W / 2 + 0.04, 0.01, D / 2 + 0.04);
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: null, storeys: logs ? [{ h: 2.1, wall: 'stone' }, { h: 1.7, wall: 'wood' }] : [{ h: 2.9, wall: 'stone' }],
       roof: lauze(25 + rng() * 4, 0.5, 0.7), gableBucket: 'wood', openings,

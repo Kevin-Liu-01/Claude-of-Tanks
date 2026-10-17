@@ -917,8 +917,8 @@ const waterTower: RegionalBuilder = (ctx) => {
     colour: shade(paint, 0.85), pad: { bucket: 'stone', size: 0.75, top: 0.4 }, mobile },
     { x0: -tankR - 0.5, x1: tankR + 0.5, y0: legH, y1: legH + 0.4 + tankH + 1.0, z0: -tankR - 0.5, z1: tankR + 0.5, bucket: 'structureMetal', tint: paint });
   // (the building census's world pass, 227: on a slope a pad stood 0.42 m over the ground) each anchor pier going on down
-  // under its pad past the slope (dressing: the frame's collision is as it was)
-  for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) sink.span('stone', sx * lb - 0.36, -1.2, sz * lb - 0.36, sx * lb + 0.36, -0.38, sz * lb + 0.36, { decor: true });
+  // under its pad past the slope, its collision with it
+  for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) sink.span('stone', sx * lb - 0.36, -1.2, sz * lb - 0.36, sx * lb + 0.36, -0.38, sz * lb + 0.36);
   sink.cylinder('structureMetal', [0, legH, 0], 'y', 0.4, tankR * 0.7, 16, { colour: shade(paint, 0.9) }, tankR);
   sink.cylinder('structureMetal', [0, legH + 0.4, 0], 'y', tankH, tankR, 20, { colour: paint });
   sink.cylinder('structureMetal', [0, legH + 0.4 + tankH, 0], 'y', 1.0, tankR + 0.1, 20, { colour: shade(paint, 0.92) }, 0.15);
