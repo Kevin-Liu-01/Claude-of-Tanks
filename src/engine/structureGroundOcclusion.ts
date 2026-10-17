@@ -31,7 +31,8 @@ import {
 } from './structureGroundOcclusionBake.ts';
 import { VEHICLE_ALPHA_MIN } from './vehicleOcclusion.ts';
 import { lightTune } from './lightModelCore.ts';
-import { AUREOLE_RADIUS_DEG, AUREOLE_REACH_M, bakeStructureAureole } from './structureAureoleBake.ts';
+import { AUREOLE_RADIUS_DEG, AUREOLE_REACH_M, aureoleDirections, bakeStructureAureole } from './structureAureoleBake.ts';
+import { GROUND_AO_MAX_HULLS } from './vehicleGroundOcclusion.ts';
 
 /** The pass applies the term out to this distance, fading over the last SGO_RANGE_FADE_M (m). */
 export const SGO_RANGE_M = 220;
@@ -62,6 +63,21 @@ export const SGO_POLL_S = 0.4;
  */
 export const AUREOLE_GATE_M = 2;
 export const AUREOLE_GATE_SOFT_M = 2;
+/**
+ * (227 v2; the blind pairs on Whiteout: r1 at the aureole's physical share was invisible — "a thin dark contact line
+ * only", "wall base lacks soft shade") On bright snow under a closed deck AgX's highlight shoulder leaves a tenth of
+ * darkening four display levels, so the uniform sky's ring and the aureole's quarter-strength shadow both vanish. Under a
+ * closed deck (the light model's overcast × closure) the occlusion is read broadened, occ' = 1 − (1 − occ)^k with k up to
+ * SGO_DECK_BROAD (a wall foot 0.5 → 0.82, a wall height out 0.15 → 0.33, two heights 0.05 → 0.13: a halo a height or two
+ * wide, as the snow round a hut reads in an overcast photograph), and the aureole's share is taken DECK_AUREOLE_GAIN
+ * times (at most AUREOLE_SHARE_MAX of the hemisphere's light): a soft shadow that reads, never a sunny-day one.
+ * QA: __LIGHT_TUNE.SGO_DECK_BROAD (1 = off) and DECK_AUREOLE (the gain; 0 = off).
+ */
+export const SGO_DECK_BROAD = 2.5;
+/** (227 v2) Directions the near hulls' aureole shadow tests (the block's ray-box tests a ground pixel by a hull). */
+export const AUREOLE_HULL_DIRS = 8;
+export const DECK_AUREOLE_GAIN = 2.5;
+export const AUREOLE_SHARE_MAX = 0.6;
 /** (227) A sun moved further than this from the aureole's baked one re-bakes it (the cosine of 1°). */
 export const AUREOLE_SUN_COS = Math.cos(Math.PI / 180);
 
@@ -386,6 +402,12 @@ export interface StructureGroundUniforms {
   /** (227) The aureole: x its light on up-facing ground in the rig's units, y its share of that ground's ambient. */
   uAur: THREE.IUniform<THREE.Vector2>;
   tAur: THREE.IUniform<THREE.Texture>;
+  /** (227 v2) The occlusion's broadening exponent under a closed deck (1 = the uniform sky's own law). */
+  uSgoBroad: THREE.IUniform<number>;
+  /** (227 v2) Eight directions over the aureole's disc (toward them): the near hulls' soft shadow. */
+  uAurDir: THREE.IUniform<THREE.Vector3[]>;
+  /** (227 v2) The hulls' shadow reach per metre of hull height (the disc's lowest direction). */
+  uAurHullReach: THREE.IUniform<number>;
 }
 
 const EMPTY = (() => {
@@ -396,7 +418,8 @@ const EMPTY = (() => {
 })();
 
 export function createStructureGroundUniforms(): StructureGroundUniforms {
-  return { uSgo: { value: 0 }, tSgo: { value: EMPTY }, uAur: { value: new THREE.Vector2() }, tAur: { value: EMPTY } };
+  return { uSgo: { value: 0 }, tSgo: { value: EMPTY }, uAur: { value: new THREE.Vector2() }, tAur: { value: EMPTY }, uSgoBroad: { value: 1 },
+    uAurDir: { value: Array.from({ length: AUREOLE_HULL_DIRS }, () => new THREE.Vector3(0, 1, 0)) }, uAurHullReach: { value: 0 } };
 }
 
 /** Per frame (post.ts): the active world's handle, when the lever is on and its bake has landed. */
@@ -407,9 +430,12 @@ export function updateStructureGroundUniforms(
   const handle = scene.userData.structureGroundOcclusion as StructureGroundOcclusionHandle | undefined;
   const on = !!(enabled && handle && handle.active());
   // (227) the deck's aureole (lightModel.ts deckAureole: its share of the hemisphere's light), baked for the pass's sun
-  // (QA: __LIGHT_TUNE.DECK_AUREOLE scales it live, 0 drops it)
-  const share = on ? Math.max(0, (scene.userData.lightModel as { deckAureole?: number } | undefined)?.deckAureole ?? 0)
-    * Math.max(0, lightTune('DECK_AUREOLE', 1)) : 0;
+  // (QA: __LIGHT_TUNE.DECK_AUREOLE is its gain, live; 0 drops it)
+  const model = scene.userData.lightModel as { deckAureole?: number; overcast?: number; deckClosure?: number; mode?: string } | undefined;
+  const share = on ? Math.min(AUREOLE_SHARE_MAX, Math.max(0, model?.deckAureole ?? 0) * Math.max(0, lightTune('DECK_AUREOLE', DECK_AUREOLE_GAIN))) : 0;
+  // (227 v2) the occlusion broadened under a closed deck
+  const deck = model?.mode === 'physical' ? Math.min(1, Math.max(0, (model.overcast ?? 0) * (model.deckClosure ?? 0))) : 0;
+  u.uSgoBroad.value = 1 + (Math.max(1, lightTune('SGO_DECK_BROAD', SGO_DECK_BROAD)) - 1) * deck;
   const sun = (uniforms as { uSunDir?: THREE.IUniform<THREE.Vector3> }).uSunDir?.value;
   if (share > 1e-3 && handle && sun) handle.requestAureole([sun.x, sun.y, sun.z]);
   const strength = on && handle ? handle.strength : 0;
@@ -425,6 +451,15 @@ export function updateStructureGroundUniforms(
   if (!(aurStrength > 0.001) || !aurTexture || !amb) { u.uAur.value.set(0, 0); u.tAur.value = EMPTY; return; }
   // the aureole is that share of the hemisphere's light on up-facing ground (the rig's sky pole, uContactAmb.x)
   const light = share * amb.x * aurStrength;
+  if (sun) {
+    const dirs = aureoleDirections([sun.x, sun.y, sun.z], lightTune('DECK_AUREOLE_RADIUS', AUREOLE_RADIUS_DEG), AUREOLE_HULL_DIRS);
+    let reach = 0;
+    for (let k = 0; k < AUREOLE_HULL_DIRS; k++) {
+      u.uAurDir.value[k].set(dirs[3 * k], dirs[3 * k + 1], dirs[3 * k + 2]);
+      reach = Math.max(reach, Math.hypot(dirs[3 * k], dirs[3 * k + 2]) / Math.max(dirs[3 * k + 1], 1e-3));
+    }
+    u.uAurHullReach.value = reach;
+  }
   const ambUp = amb.x + amb.z + amb.w * fillY;
   u.uAur.value.set(light, ambUp > 1e-6 ? light / ambUp : 0);
   u.tAur.value = aurTexture;
@@ -444,6 +479,46 @@ export const STRUCTURE_GROUND_OCCLUSION_GLSL = /* glsl */ `
     // rig's units, y its share of that ground's ambient (a card's)
     uniform vec2 uAur;
     uniform sampler2D tAur;
+    // (227 v2) the occlusion's broadening under a closed deck: occ' = 1 - (1 - occ)^k
+    uniform float uSgoBroad;
+    // (227 v2) the near hulls in the aureole: the share of ${AUREOLE_HULL_DIRS} directions over its disc that a hull (its body
+    // over the belly, its two runs under it; vehicleGroundOcclusion.ts's frames and measures) hides from a ground point
+    uniform vec3 uAurDir[ ${AUREOLE_HULL_DIRS} ];
+    uniform float uAurHullReach;
+    bool cotAurRayBox( vec3 o, vec3 d, vec3 lo, vec3 hi ) {
+      vec3 inv = 1.0 / d;
+      vec3 t0 = ( lo - o ) * inv, t1 = ( hi - o ) * inv;
+      vec3 tn = min( t0, t1 ), tf = max( t0, t1 );
+      return min( min( tf.x, tf.y ), tf.z ) >= max( max( max( tn.x, tn.y ), tn.z ), 0.0 );
+    }
+    float cotHullAureole( vec3 P ) {
+      int hidden = 0;
+      for ( int i = 0; i < ${GROUND_AO_MAX_HULLS}; i++ ) {
+        if ( float( i ) >= uVehGround ) break;
+        vec4 m0 = uVehGroundM[ i * 3 ], m1 = uVehGroundM[ i * 3 + 1 ], m2 = uVehGroundM[ i * 3 + 2 ];
+        vec3 q = vec3( dot( m0.xyz, P ) + m0.w, dot( m1.xyz, P ) + m1.w, dot( m2.xyz, P ) + m2.w );
+        vec4 b0 = uVehGroundB[ i * 4 ], b1 = uVehGroundB[ i * 4 + 1 ], b2 = uVehGroundB[ i * 4 + 2 ];
+        float H = b0.z - b0.w;
+        if ( q.y > b0.y ) continue;
+        // a receiver on the ground on the hull's shadow side, within its reach at the disc's lowest elevation
+        vec3 a0 = vec3( dot( m0.xyz, uAurDir[ 0 ] ), dot( m1.xyz, uAurDir[ 0 ] ), dot( m2.xyz, uAurDir[ 0 ] ) );
+        vec2 away = -normalize( a0.xz + vec2( 1e-6, 0.0 ) );
+        vec2 rel = vec2( q.x, q.z - 0.5 * ( b1.x + b1.y ) );
+        float ext = length( vec2( b0.x, 0.5 * ( b1.y - b1.x ) ) );
+        float along = dot( rel, away );
+        if ( along < -ext || along > ext + H * uAurHullReach || abs( dot( rel, vec2( -away.y, away.x ) ) ) > ext + 0.3 * ( along + ext ) ) continue;
+        for ( int k = 0; k < ${AUREOLE_HULL_DIRS}; k++ ) {
+          if ( ( hidden & ( 1 << k ) ) != 0 ) continue;
+          vec3 d = vec3( dot( m0.xyz, uAurDir[ k ] ), dot( m1.xyz, uAurDir[ k ] ), dot( m2.xyz, uAurDir[ k ] ) );
+          if ( cotAurRayBox( q, d, vec3( -b0.x, b0.y, b1.x ), vec3( b0.x, b0.z, b1.y ) )
+            || cotAurRayBox( q, d, vec3( b2.z, b0.w, b1.x ), vec3( b2.w, b0.y, b1.y ) )
+            || cotAurRayBox( q, d, vec3( -b2.w, b0.w, b1.x ), vec3( -b2.z, b0.y, b1.y ) ) ) hidden |= 1 << k;
+        }
+      }
+      int n = 0;
+      for ( int k = 0; k < ${AUREOLE_HULL_DIRS}; k++ ) n += ( hidden >> k ) & 1;
+      return float( n ) * ${f(1 / AUREOLE_HULL_DIRS)};
+    }
     // the aureole raster's gate, as the occlusion's below: its texel's base (stored modulo ${SGO_BASE_WRAP_M} m, the one nearest
     // the pixel's own height) against the pixel's height; inside a standing solid's footprint only the ground at its base
     float cotAurGate( vec2 near, float y, float gateM, float softM ) {
@@ -459,7 +534,10 @@ export const STRUCTURE_GROUND_OCCLUSION_GLSL = /* glsl */ `
       // the occlusion in R's upper seven bits (the covered flag's lowest bit is noise under 1/254 in the filtered read)
       float occ = texture2D( tSgo, t ).r * ${f(255 / 254)};
       float aur = uAur.x > 0.0 ? texture2D( tAur, t ).r * ${f(255 / 254)} : 0.0;
-      if ( occ < 0.008 && aur < 0.008 ) return 1.0;
+      // (227 v2) the near hulls' share of the disc, united with the solids' (independent occluders)
+      float hullAur = uAur.x > 0.0 && uVehGround > 0.5 ? cotHullAureole( P ) : 0.0;
+      if ( occ < 0.008 && aur < 0.008 && hullAur <= 0.0 ) return 1.0;
+      occ = 1.0 - pow( 1.0 - min( occ, 1.0 ), uSgoBroad );
       ivec2 ti = ivec2( min( t * ${f(SGO_SIZE)}, vec2( ${f(SGO_SIZE - 1)} ) ) );
       float gate = 0.0;
       if ( occ >= 0.008 ) {
@@ -475,6 +553,9 @@ export const STRUCTURE_GROUND_OCCLUSION_GLSL = /* glsl */ `
       }
       // the aureole's shade: its shading solid's base by its own texel, a wider gate for a shadow tens of metres long
       float aGate = aur >= 0.008 ? cotAurGate( texelFetch( tAur, ti, 0 ).rg, P.y, ${f(AUREOLE_GATE_M)}, ${f(AUREOLE_GATE_SOFT_M)} ) : 0.0;
+      // the solids' share where their gate holds, the hulls' wherever a hull's shadow reaches (it tests its own ground)
+      aur = 1.0 - ( 1.0 - aur * aGate ) * ( 1.0 - hullAur );
+      aGate = aur > 0.0 ? 1.0 : 0.0;
       if ( gate <= 0.0 && aGate <= 0.0 ) return 1.0;
       float range = 1.0 - smoothstep( ${f(SGO_RANGE_M - SGO_RANGE_FADE_M)}, ${f(SGO_RANGE_M)}, dist );
       gate *= range;

@@ -10,10 +10,12 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import { SGO_HALF_M, SGO_TEXEL_M, packOccluders } from './structureGroundOcclusionBake.ts';
 import {
-  AUREOLE_MIN_ELEVATION_DEG, AUREOLE_RADIUS_DEG, AUREOLE_REACH_M, AUREOLE_SAMPLES, aureoleOffsets, aureoleSunOf, bakeStructureAureole,
+  AUREOLE_MIN_ELEVATION_DEG, AUREOLE_RADIUS_DEG, AUREOLE_REACH_M, AUREOLE_SAMPLES, aureoleDirections, aureoleOffsets, aureoleSunOf,
+  bakeStructureAureole,
 } from './structureAureoleBake.ts';
 import {
-  AUREOLE_GATE_M, STRUCTURE_GROUND_OCCLUSION_GLSL, createStructureGroundOcclusion, createStructureGroundUniforms, updateStructureGroundUniforms,
+  AUREOLE_GATE_M, AUREOLE_HULL_DIRS, AUREOLE_SHARE_MAX, DECK_AUREOLE_GAIN, SGO_DECK_BROAD, STRUCTURE_GROUND_OCCLUSION_GLSL,
+  createStructureGroundOcclusion, createStructureGroundUniforms, updateStructureGroundUniforms,
 } from './structureGroundOcclusion.ts';
 import { sunDirectionOf, skyPresetToAtmosphere } from './atmosphere.ts';
 import { loadGroundedLightModel, resolveLightModel } from './lightModelCore.ts';
@@ -44,6 +46,14 @@ for (let k = 0; k < AUREOLE_SAMPLES; k++) {
 // the disc's directions spread round the sun's own shadow length (cot 13° = 4.33 per metre of height)
 near(off[0], -1 / Math.tan(13 * DEG), 0.6, 'the innermost direction near the sun');
 assert.ok(mx < -3.5 && mx > -8, `the mean shadow length per metre (${mx.toFixed(2)})`);
+// the hulls' directions: unit vectors within the disc, none under the floor
+const dirs = aureoleDirections(sunX, AUREOLE_RADIUS_DEG, AUREOLE_HULL_DIRS);
+for (let k = 0; k < AUREOLE_HULL_DIRS; k++) {
+  const d = [dirs[3 * k], dirs[3 * k + 1], dirs[3 * k + 2]];
+  near(Math.hypot(...d), 1, 1e-9, 'a unit direction');
+  assert.ok(Math.acos(Math.min(1, d[0] * sunX[0] + d[1] * sunX[1] + d[2] * sunX[2])) <= (AUREOLE_RADIUS_DEG + 0.01) * DEG, 'inside the disc');
+  assert.ok(d[1] >= Math.sin(AUREOLE_MIN_ELEVATION_DEG * DEG) - 1e-9, 'over the floor');
+}
 const point = aureoleOffsets(sunX, 0);
 for (let k = 0; k < AUREOLE_SAMPLES; k++) near(point[2 * k], -1 / Math.tan(13 * DEG), 1e-9, 'a zero radius is the sun alone');
 
@@ -130,19 +140,24 @@ assert.equal(handle.stats.aureoleBakes, 2, 'a sun moved re-bakes');
 const scene = new THREE.Scene();
 scene.add(group);
 scene.userData.structureGroundOcclusion = handle;
-scene.userData.lightModel = { deckAureole: 0.2 };
+scene.userData.lightModel = { deckAureole: 0.2, mode: 'physical', overcast: 1, deckClosure: 1 };
 const u = { ...createStructureGroundUniforms(), uSunDir: { value: new THREE.Vector3(...aureoleSunOf(13, 300)) },
   uContactAmb: { value: new THREE.Vector4(0.4, 0.3, 0.1, 0) }, uContactFillDir: { value: new THREE.Vector3(0, 1, 0) } };
 const renderer = { copyTextureToTexture() {} };
 updateStructureGroundUniforms(u, scene, renderer, true);
-near(u.uAur.value.x, 0.2 * 0.4, 1e-9, 'the aureole\'s light on up-facing ground');
-near(u.uAur.value.y, 0.2 * 0.4 / 0.5, 1e-9, 'its share of that ground\'s ambient');
+const share = Math.min(AUREOLE_SHARE_MAX, 0.2 * DECK_AUREOLE_GAIN);
+near(u.uAur.value.x, share * 0.4, 1e-9, 'the aureole\'s light on up-facing ground (its gain, its cap)');
+near(u.uAur.value.y, share * 0.4 / 0.5, 1e-9, 'its share of that ground\'s ambient');
+near(u.uSgoBroad.value, SGO_DECK_BROAD, 1e-9, 'the occlusion broadened under a closed deck');
+const d0 = aureoleDirections(aureoleSunOf(13, 300), AUREOLE_RADIUS_DEG, AUREOLE_HULL_DIRS);
+near(u.uAurDir.value[0].x, d0[0], 1e-6, 'the hulls\' directions for the pass\'s sun');
 assert.equal(u.tAur.value, handle.aureoleTexture);
 updateStructureGroundUniforms(u, scene, renderer, false);
 assert.equal(u.uAur.value.x, 0, 'off with the contact-shadow lever');
-scene.userData.lightModel = { deckAureole: 0 };
+scene.userData.lightModel = { deckAureole: 0, mode: 'physical', overcast: 1, deckClosure: 0 };
 updateStructureGroundUniforms(u, scene, renderer, true);
 assert.equal(u.uAur.value.x, 0, 'off without a thin deck');
+assert.equal(u.uSgoBroad.value, 1, 'the uniform sky\'s law under a deck with gaps');
 handle.dispose();
 
 // ---- 8. the wiring
@@ -150,12 +165,17 @@ assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, /uniform vec2 uAur;\s*uniform samp
 assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, /aurDark = uAur\.x \* aur \* aGate \/ max\( T \+ A, 1e-4 \);/, 'the hidden aureole over all the pixel\'s light');
 assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, new RegExp(`cotAurGate\\( texelFetch\\( tAur, ti, 0 \\)\\.rg, P\\.y, ${AUREOLE_GATE_M.toFixed(5)}`), 'its receivers near the shading solid\'s base');
 assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, /return max\( 1\.0 - uSgo \* occ/, 'never below black');
+assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, /occ = 1\.0 - pow\( 1\.0 - min\( occ, 1\.0 \), uSgoBroad \);/, 'the broadened occlusion');
+assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, /float hullAur = uAur\.x > 0\.0 && uVehGround > 0\.5 \? cotHullAureole\( P \) : 0\.0;/, 'the near hulls in the aureole');
+assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, /aur = 1\.0 - \( 1\.0 - aur \* aGate \) \* \( 1\.0 - hullAur \);/, 'united with the solids\'');
+const post = read('./post.ts');
+assert.ok(post.indexOf('${VEHICLE_GROUND_OCCLUSION_GLSL}') < post.indexOf('${STRUCTURE_GROUND_OCCLUSION_GLSL}'), 'the hull uniforms declared first');
 const worker = read('./structureGroundOcclusionWorker.ts');
 assert.match(worker, /if \(data\.kind === 'aureole' && data\.sun\) \{\s*const aureole = bakeStructureAureole\(data\.packed, data\.sun, data\.rect, data\.radius\);/, 'baked off the main thread');
 const map = read('../world/map.ts');
 assert.match(map, /aureoleSunOf\(mapSky\.sunElevationDeg, mapSky\.sunAzimuthDeg\)/, 'a thin deck\'s map starts the bake with its own sun');
 const runtime = read('./structureGroundOcclusion.ts');
-assert.match(runtime, /lightTune\('DECK_AUREOLE', 1\)/, 'the live lever');
+assert.match(runtime, /lightTune\('DECK_AUREOLE', DECK_AUREOLE_GAIN\)/, 'the live gain');
 assert.ok(AUREOLE_RADIUS_DEG >= 4 && AUREOLE_RADIUS_DEG <= 12, 'a disc of a few degrees');
 
 console.log(`structureAureole.selftest: ${AUREOLE_SAMPLES} directions over ${AUREOLE_RADIUS_DEG}° round the sun, a box's soft shadow (foot, penumbra, tip), the union, a region re-bake, a mast's smear, Whiteout's share (${wm.deckAureole.toFixed(3)}), the handle's lifecycle and the pass's wiring PASS`);
