@@ -203,6 +203,27 @@ function clearSpawn(world, x, z, records) {
   return true;
 }
 const yawToward = (dx, dz) => Math.atan2(dx, dz);
+/** Dense walls a hull is not set down across (crushable, but a press or a ram's, not a set-down's: collision.ts). */
+const DENSE_WALL_KINDS = new Set(['wallstone', 'walladobe', 'field-wall', 'sandbagwall', 'sandbagbig', 'sandbagsmall']);
+/** The largest census hull's contact rect (its half length and half width, m), for a set-down's clearance. */
+let censusHullRect = null;
+/** Is a hull set down at (x, z, yaw) clear of every solid and dense wall but `except` over its whole body? */
+function hullClearAt(world, records, x, z, yaw, except) {
+  censusHullRect ??= CENSUS_HULLS.map((id) => tankContactRect(getSpec(id))).reduce((a, b) => ({
+    halfLength: Math.max(a.halfLength, b.halfLength), halfWidth: Math.max(a.halfWidth, b.halfWidth) }));
+  const fx = Math.sin(yaw), fz = Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
+  for (let i = -2; i <= 2; i++) for (let j = -1; j <= 1; j++) {
+    const px = x + fx * (i / 2) * censusHullRect.halfLength + rx * j * censusHullRect.halfWidth;
+    const pz = z + fz * (i / 2) * censusHullRect.halfLength + rz * j * censusHullRect.halfWidth;
+    const y = world.contact(px, pz);
+    for (const r of records) {
+      if (r === except || r.crushed || r.dead || (r.crushable && !DENSE_WALL_KINDS.has(r.kind))) continue;
+      if (px < r.min[0] || px > r.max[0] || pz < r.min[2] || pz > r.max[2]) continue;
+      for (const part of partsOf(r)) if ((part?.y1 ?? r.max[1]) > y + 0.3 && pointInsideCollisionRecord(r, part, px, pz)) return false;
+    }
+  }
+  return true;
+}
 
 // ---- maneuvers ------------------------------------------------------------------------------------------------------
 // Each returns the case's timing, input and windows: { seconds, spawn, input(t), rest, mustMove, grounded, mayTip }.
@@ -443,8 +464,12 @@ function wallManeuvers(world, site, seed) {
       const spec = getSpec('t90am');
       const off = 0.5 * spec.dims.widthM + 0.5;
       const px = e.mx + e.nx * off, pz = e.mz + e.nz * off;
-      if (!solidAt(records, px, pz, world.contact(px, pz))) {
-        out.push(['pivot', pivotInPlace({ x: px, z: pz, yaw: yawToward(e.bx - e.ax, e.bz - e.az), steer: random() < 0.5 ? 1 : -1 })]);
+      const pyaw = yawToward(e.bx - e.ax, e.bz - e.az);
+      // (physics DST-02, 2026-10-17) the hull set down clear of every other solid and dense wall its body covers, as every
+      // other run starts clear: its middle alone was checked, and 227's yard walls round the houses had hulls set down
+      // across a mud wall, pushed 0.9 m a step two ways at once from the first step
+      if (!solidAt(records, px, pz, world.contact(px, pz)) && hullClearAt(world, records, px, pz, pyaw, record)) {
+        out.push(['pivot', pivotInPlace({ x: px, z: pz, yaw: pyaw, steer: random() < 0.5 ? 1 : -1 })]);
       }
     }
   }
