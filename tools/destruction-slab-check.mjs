@@ -927,14 +927,41 @@ export async function runSlabCheck({
     } };
     const sd = createStudioDestruction({ getObstacles: () => built.obstacles, getColliders: () => built.colliders }, bus,
       { rules: matchRulesetFor('standard').destruction, sections });
-    const st0 = a.storeys[0];
-    const face = [...st0.faces].sort((p, q) => q.width - p.width)[0];
-    // the struck storeys' faces on the same side (the round's height cycles through them)
-    const faceSide = st0.faces.indexOf(face);
-    const struckFaces = storeys.map((k) => a.storeys[Math.min(k, a.storeys.length - 1)]?.faces[faceSide] ?? face);
     const c = Math.cos(a.placement.yaw), s = Math.sin(a.placement.yaw);
     const toWorld = (bx, by, bz) => [a.placement.x + bx * c + bz * s, a.placement.y + by, a.placement.z - bx * s + bz * c];
+    // (destruction-slabs 227) the staging is the building's as drawn, never its anatomy's (the fix moves the anatomy;
+    // before and after strike alike): the intact plan's box in the body frame, its wider side struck, rounds cycling
+    // through 3 m bands up its drawn height (`storeys`: which bands), each round traced along its flight to the
+    // structure's own collision records (it strikes what a battle's round would)
+    let bx0 = Infinity, bx1 = -Infinity, bz0 = Infinity, bz1 = -Infinity, btop = 0;
+    for (const t of intactLists) for (let i = 0; i < t.length; i += 3) {
+      const dx = t[i] - a.placement.x, dz = t[i + 2] - a.placement.z;
+      const bx = dx * c - dz * s, bz = dx * s + dz * c;
+      bx0 = Math.min(bx0, bx); bx1 = Math.max(bx1, bx); bz0 = Math.min(bz0, bz); bz1 = Math.max(bz1, bz); btop = Math.max(btop, t[i + 1] - a.placement.y);
+    }
+    const alongX = bx1 - bx0 >= bz1 - bz0;
+    const face = alongX
+      ? { origin: [(bx0 + bx1) / 2, 0, bz1], u: [1, 0, 0], out: [0, 0, 1], width: bx1 - bx0, height: btop }
+      : { origin: [bx1, 0, (bz0 + bz1) / 2], u: [0, 0, -1], out: [1, 0, 0], width: bz1 - bz0, height: btop };
+    const bandsUp = storeys.map((k) => { const y0 = Math.min(k * 3, Math.max(0, btop - 3)); return [y0, Math.min(btop, y0 + 3)]; });
     const nx = face.out[0] * c + face.out[2] * s, nz = -face.out[0] * s + face.out[2] * c;
+    const ownRecords = [...built.colliders, ...built.obstacles].filter((r) => r.structureIdx === id);
+    /** The first of the structure's records a round from outside meets at (x, y, z) flying (dx, dz): [t, record] or null. */
+    const trace = (x, y, z, dx, dz) => {
+      let best = null;
+      for (const r of ownRecords) {
+        if (y < r.min[1] || y > r.max[1]) continue;
+        let t0 = 0, t1 = Infinity;
+        for (const [o, d, lo, hi] of [[x, dx, r.min[0], r.max[0]], [z, dz, r.min[2], r.max[2]]]) {
+          if (Math.abs(d) < 1e-9) { if (o < lo || o > hi) { t0 = Infinity; break; } continue; }
+          let ta = (lo - o) / d, tb = (hi - o) / d;
+          if (ta > tb) [ta, tb] = [tb, ta];
+          t0 = Math.max(t0, ta); t1 = Math.min(t1, tb);
+        }
+        if (t0 <= t1 && Number.isFinite(t0) && (!best || t0 < best[0])) best = [t0, r];
+      }
+      return best;
+    };
     const offs = [0, -0.42, 0.38, -0.18, 0.24, -0.33, 0.1, 0.45, -0.45, 0.05, 0.3, -0.25, 0.15, -0.1];
     const ys = [0.35, 0.6, 0.45, 0.75, 0.3, 0.65, 0.5, 0.85, 0.4, 0.55, 0.7, 0.35, 0.6, 0.5];
     const spec = { name: 'check', type: 'HE', caliberMm: 125, velocityMps: 850 };
@@ -958,8 +985,8 @@ export async function runSlabCheck({
       .some((rr) => !rr.crushed && !rr.dead && rr.max[1] >= y - SLAB.supportBandM && rr.min[1] <= y + 0.05
         && x >= rr.min[0] - 0.3 && x <= rr.max[0] + 0.3 && z >= rr.min[2] - 0.3 && z <= rr.max[2] + 0.3);
     // the camera: off the struck face, up and back, the building's middle in view
-    const mid = toWorld(0, Math.min(a.h * 0.35, 9), 0);
-    const reach = Math.max(a.w, a.d) * 1.25 + 10;
+    const mid = toWorld((bx0 + bx1) / 2, Math.min(btop * 0.35, 9), (bz0 + bz1) / 2);
+    const reach = Math.max(bx1 - bx0, bz1 - bz0) * 1.25 + 10;
     const eye = [mid[0] + nx * reach * 0.82 + nz * reach * 0.45, mid[1] + reach * 0.32, mid[2] + nz * reach * 0.82 - nx * reach * 0.45];
     const groundTris = groundPatch(ground0, mid[0], mid[2], reach * 1.2, 3);
     // a battle's eye: a tank commander's height over the ground, off the struck face's corner
@@ -1013,12 +1040,15 @@ export async function runSlabCheck({
     for (let tick = 0; tick * STEP <= lastS; tick++) {
       clock = tick * STEP;
       if (collapsedAt < 0 && fired < rounds && !(stopAfterRoof && roofDownAt >= 0) && clock >= 0.3 + fired * roundGapS) {
-        const sf = struckFaces[fired % struckFaces.length];
-        const uu = offs[fired % offs.length] * sf.width * 0.8;
-        const y = sf.origin[1] + Math.max(0.6, Math.min(sf.height - 0.6, ys[fired % ys.length] * sf.height));
-        const [hx, hy, hz] = toWorld(sf.origin[0] + sf.u[0] * uu, y, sf.origin[2] + sf.u[2] * uu);
+        const [b0, b1] = bandsUp[fired % bandsUp.length];
+        const uu = offs[fired % offs.length] * face.width * 0.8;
+        const y = b0 + Math.max(Math.min(0.6, (b1 - b0) / 2), Math.min(b1 - b0 - 0.6, ys[fired % ys.length] * (b1 - b0)));
+        let [hx, hy, hz] = toWorld(face.origin[0] + face.u[0] * uu + face.out[0] * 30, y, face.origin[2] + face.u[2] * uu + face.out[2] * 30);
+        const hit = trace(hx, hy, hz, -nx, -nz);
+        let rec = record;
+        if (hit) { hx += -nx * hit[0]; hz += -nz * hit[0]; rec = hit[1]; } else { hx -= nx * 30; hz -= nz * 30; }
         strikes.push([+hx.toFixed(2), +hy.toFixed(2), +hz.toFixed(2), +clock.toFixed(2)]);
-        sd.strike(spec, record, hx, hy, hz, -nx, -nz);
+        sd.strike(spec, rec, hx, hy, hz, -nx, -nz);
         stages.strike(id, seam, hx, hy, hz, -nx, -nz, munition, chargeKg, spec.caliberMm);
         fired++;
       }
