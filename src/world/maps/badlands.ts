@@ -193,7 +193,10 @@ export default {
     // (the Redrock lane: the walls are sheer now, so the beds, joints and varnish the material draws on cliffs show — at the
     // quiet wash's ceiling, 0.13, with the joints and varnish raised by wallWeather below)
     // (round 11, the gauntlet's wave 282: the tracks "crisp graded bands, not braided sand tracks" — nearer the sand's tone)
-    roadTint: [0.84, 0.66, 0.55], strata: 0.13, sandstoneMarkers: 0, sandMacro: 0.9,
+    // (MAPS 227, the blind critics on v2: "a smeared red road band", "dark smeared stripes painted on a flat red strip with
+    // no depth") the tracks are the wadi's own sand packed under the wheels (roadLayer 'ground': the carriageway packed
+    // from the base layer, where the dirt layer's redder clay made every track a darker red band), dusted a shade paler
+    roadTint: [1.0, 0.97, 0.92], roadLayer: 'ground', strata: 0.13, sandstoneMarkers: 0, sandMacro: 0.9,
     // (round 10, the gauntlet's wave 270: "swirly red blotches like painted decals", "a large dark-brown pasted stain" at
     // the outpost, "a featureless sand plane with no ripples", the road "a soft smear with no ruts") the worn sand
     // patches a third as strong and the outpost's wear a third, both in a sandier soil; the near ripples on the loose sand
@@ -201,7 +204,14 @@ export default {
     // and dark, gravel on their crowns
     // (r3, the critics on v2: "empty flat sand foregrounds with smeared painted ruts") the ruts lighter, the near ripples
     // stronger on the loose sand
-    wornDirtStrength: 0.3, townWear: 0.35, soilTint: [1.10, 1.03, 0.94], rippleNear: 0.34, roadRuts: [1.7, 0.12, 1.0],
+    // (MAPS 227, the same critics) dry sand does not darken under the wheels as a damp lane does: the shared law darkens the
+    // wheel lanes by a third (terrain.ts, rut * 0.34; laneTone keeps a share of it where the grooves draw), which drew
+    // the two dark smeared stripes down every track from 10 m on. Here the lanes' own term is signed, a compacted dry rut
+    // a shade paler (-0.24 offsets most of the shared darkening), the soft lanes' relief gentler (1.7 -> 1.1) and the
+    // grooves' near tone a fifth (laneTone); the ruts read as grooves with their lips, treads and washboard
+    // (roadSurfaceShader.ts), not paint
+    wornDirtStrength: 0.3, townWear: 0.35, soilTint: [1.10, 1.03, 0.94], rippleNear: 0.34, roadRuts: [1.1, -0.24, 1.0],
+    roadSurface: { laneTone: 0.2 },
     // Wadi Rum's two formations: the Umm Ishrin's red-brown cliffs, and over them the Ordovician Disi sandstone, pale cream,
     // weathered into the domes and beehives on the jebels' tops (the far jebels draw the same, horizonPanorama.ts v3b).
     // (The Redrock lane, 2026-10-07: the contact at y 98 — the east wall's highest beehives and the canyon heads' upper

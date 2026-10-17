@@ -4750,6 +4750,13 @@ vec2 wallCragTilt(vec2 q, float ph) {
 // of identical width and spacing"; "thin wavy lines drawn over a soft surface read as texture overlay"): Wadi Rum's faces
 // as relief in the normal. Hoskins' hash11 for the beds' and joints' draws.
 float jh1(float p) { p = fract(p * 0.1031); p *= p + 33.33; p *= p + p; return fract(p); }
+// (MAPS 227) a soft value field on jh1's lattice (smoothstep between its four corners), seeded by s: the honeycomb's patches
+float jvn(vec2 p, float s) {
+  vec2 i = floor(p), f = fract(p), w = f * f * (3.0 - 2.0 * f);
+  float a = jh1(i.x * 17.3 + i.y * 61.7 + s), b = jh1((i.x + 1.0) * 17.3 + i.y * 61.7 + s);
+  float c = jh1(i.x * 17.3 + (i.y + 1.0) * 61.7 + s), d = jh1((i.x + 1.0) * 17.3 + (i.y + 1.0) * 61.7 + s);
+  return mix(mix(a, b, w.x), mix(c, d, w.x), w.y);
+}
 // One wall projection of a jebel face: u along the wall and y the bed height (both metres), ph the cliff's slow phase;
 // returns (tilt along the wall, tilt up, albedo factor). The beds ~6.5 m (±35 %) parted by grooves (the upper lip facing
 // down, the floor up, faintly dark in the groove, some partings near gone), each bed a shade of its own and cross-bedded
@@ -4799,28 +4806,37 @@ vec3 jebelFaceV2(float u, float y, float ph, float nearW, float tafW, float foot
   tv += (jh1(j * 5.9 + 0.4) - 0.5) * 0.05;
   shade *= 0.95 + 0.10 * jh1(j * 2.9 + 6.1);
   // the honeycomb: pits in 1.3 m cells, in patches
+  // (round 11, the gauntlet's wave 282: "a stamped pattern of evenly sized, evenly spaced elliptical pits, like Swiss
+  // cheese", "pale decals" — each stretch of rock its own cell size, 1-2.2 m; a pit in two cells of five; most pits
+  // small, a few large; dark in their hollows; in patches)
+  // (MAPS 227, Redrock's blind critics on v2: "dark blotchy 'eye' holes" on the lane dome, "an artificial pockmark
+  // pattern": the pits stood apart, up to 2.3 m across and near black at their hearts (a fifth of the rock's light), and
+  // the patches were 7 x 5 m blocks, so a pit was cut off at a block's edge) tafoni are a honeycomb: hollows a hand to an
+  // arm across, packed side by side with thin walls of rock between them (the cells of a jittered lattice, a hollow's
+  // depth zero at the wall between it and its neighbour), each a little darker in its bowl (two thirds of the light at
+  // the deepest, the bowl's own tilt shading one side); the patches a soft field, the walls thickening toward a patch's
+  // edge so the comb thins out into a few separate pits; and a cell never under five pixels across
   if (tafW > 0.003) {
-    // (round 11, the gauntlet's wave 282: "a stamped pattern of evenly sized, evenly spaced elliptical pits, like Swiss
-    // cheese", "pale decals" — each stretch of rock its own cell size, 1-2.2 m; a pit in two cells of five; most pits
-    // small, a few large; dark in their hollows; in patches)
-    float cs = 1.0 + 1.2 * jh1(floor(u / 13.0) * 5.7 + floor(yb / 9.0) * 3.3 + 0.7);
-    vec2 p = vec2(u, yb) / cs, cell = floor(p);
+    float cs = 0.36 + 0.34 * jh1(floor(u / 11.0) * 5.7 + floor(yb / 7.0) * 3.3 + 0.7);
     // (not 'patch': a word GLSL ES 3.00 reserves for future use, so the program would not compile)
-    float pitPatch = smoothstep(0.45, 0.8, jh1(floor(u / 7.0) * 3.1 + floor(yb / 5.0) * 7.3 + 1.9));
-    for (int i = -1; i <= 1; i++) for (int m = -1; m <= 1; m++) {
-      vec2 c = cell + vec2(float(i), float(m));
-      float hc = jh1(c.x * 12.9 + c.y * 78.2);
-      if (hc < 0.6) continue;
-      vec2 ctr = c + 0.5 + 0.8 * (vec2(jh1(c.x * 3.9 + c.y * 1.7), jh1(c.x * 5.3 + c.y * 9.1)) - 0.5);
-      float rk = jh1(c.x * 7.1 + c.y * 2.3), R = 0.1 + 0.42 * rk * rk;
-      vec2 dpv = p - ctr;
-      float r = length(dpv) / R;
-      if (r < 1.0) {
-        float wpit = tafW * pitPatch;
-        tu -= dpv.x / R * 0.9 * wpit;
-        tv -= dpv.y / R * 0.9 * wpit;
-        shade *= 1.0 - wpit * 0.78 * (1.0 - r * r);
+    float pitPatch = smoothstep(0.54, 0.8, jvn(vec2(u / 5.5, yb / 3.2), 1.9) * 0.75 + jvn(vec2(u / 1.9, yb / 1.3), 4.1) * 0.25);
+    float wpit = tafW * pitPatch * smoothstep(2.5, 5.0, cs / max(footM, 0.001));
+    if (wpit > 0.003) {
+      vec2 p = vec2(u, yb) / cs, cell = floor(p), nd = vec2(0.0);
+      float f1 = 9.0, f2 = 9.0, nk = 0.0;
+      for (int i = -1; i <= 1; i++) for (int m = -1; m <= 1; m++) {
+        vec2 c = cell + vec2(float(i), float(m));
+        vec2 ctr = c + 0.5 + 0.75 * (vec2(jh1(c.x * 3.9 + c.y * 1.7), jh1(c.x * 5.3 + c.y * 9.1)) - 0.5);
+        vec2 dpv = p - ctr;
+        float d = length(dpv);
+        if (d < f1) { f2 = f1; f1 = d; nd = dpv; nk = jh1(c.x * 7.1 + c.y * 2.3); } else if (d < f2) { f2 = d; }
       }
+      float wallT = 0.10 + 0.32 * (1.0 - pitPatch);
+      float k = wpit * smoothstep(wallT, wallT + 0.28, f2 - f1) * (0.45 + 0.55 * nk);
+      vec2 dir = nd / max(f1, 0.001);
+      tu -= dir.x * 0.55 * k;
+      tv -= dir.y * 0.55 * k;
+      shade *= 1.0 - 0.34 * k;
     }
   }
   return vec3(tu, tv, shade);
