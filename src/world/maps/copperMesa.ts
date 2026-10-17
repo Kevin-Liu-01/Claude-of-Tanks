@@ -269,7 +269,9 @@ export default {
       // the town standing mostly in alpha's half — and its rotation twins on bravo's forward line open (0-8), where the
       // fairness probe's deaths put bravo dying; the cover alpha has there, turned about the point: the hills' own
       // conglomerate in blocks, as the hitbox lane's fields above)
-      { form: 'blocks', geology: 'breccia', x: -111, z: 61, radius: 7, height: 2.5, yawDeg: 15, tone: CONGLOMERATE, name: 'the conglomerate blocks north-west of the pit (bravo\'s forward line)' },
+      // (2026-10-17, MAPS Lane A; the Copper port on integ/227) 9 m west along the line: at (-111, 61) the pit road ran
+      // 6.2 m off its middle, inside the admission's 11 m (scenery.ts: road core 4 m + its 7 m radius), so it stood nowhere
+      { form: 'blocks', geology: 'breccia', x: -120, z: 61, radius: 7, height: 2.5, yawDeg: 15, tone: CONGLOMERATE, name: 'the conglomerate blocks north-west of the pit (bravo\'s forward line)' },
       { form: 'blocks', geology: 'breccia', x: 9, z: 61, radius: 7, height: 2.5, yawDeg: 95, tone: CONGLOMERATE, name: 'the conglomerate blocks north of the pit (bravo\'s forward line)' },
       { form: 'blocks', geology: 'breccia', x: -171, z: 60, radius: 7, height: 2.4, yawDeg: 50, tone: CONGLOMERATE, name: 'the conglomerate blocks on the west flat (bravo\'s forward line)' },
       { form: 'blocks', geology: 'breccia', x: -230, z: 59, radius: 7, height: 2.4, yawDeg: 130, tone: CONGLOMERATE, name: 'the conglomerate blocks under the west rim (bravo\'s forward line)' },
