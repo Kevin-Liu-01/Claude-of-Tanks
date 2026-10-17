@@ -169,7 +169,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 7.2,
+   "gapM2": 9.484,
    "invertedM2": 0
   },
   "queenstown/foundryoffice": {
@@ -1109,9 +1109,9 @@
    "invertedM2": 0
   },
   "shanghai/civichall": {
-   "floating": 2,
-   "sliver": 48,
-   "floatingM2": 0.086,
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
    "gapM2": 0,
@@ -1190,9 +1190,9 @@
    "invertedM2": 0
   },
   "shanghai/warehouse": {
-   "floating": 1,
-   "sliver": 8,
-   "floatingM2": 0.205,
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
    "gapM2": 0,
@@ -2913,7 +2913,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.148,
+   "insideM2": 0.603,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -2958,7 +2958,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 2.012,
+   "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -4475,5 +4475,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-17T12:42:29.993Z"
+ "updatedAt": "2026-10-17T21:15:30.356Z"
 }

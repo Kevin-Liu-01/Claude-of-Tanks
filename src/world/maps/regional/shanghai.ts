@@ -46,9 +46,10 @@ const DEC = { decor: true } as const;
 /**
  * (looks 227, the census world pass: the godowns, the mill and the fire station stood on the ground at y = 0 with nothing
  * sunk, so a slope opened under their downhill feet) a footing under the walls, the ground storey's own masonry carried
- * 0.6 m down (house.ts plinth), its top 2 cm over the ground: it shows only where the ground falls away. Collision-bearing.
+ * 0.6 m down (house.ts plinth) to the ground line: it shows only where the ground falls away, and every storey, opening
+ * and part over it stands where it stood. Collision-bearing.
  */
-const footing = (bucket: RegionalBucket): NonNullable<HouseSpec['plinth']> => ({ h: 0.02, out: 0, bucket, course: false });
+const footing = (bucket: RegionalBucket): NonNullable<HouseSpec['plinth']> => ({ h: 0, out: 0, bucket, course: false });
 const SHADOWED = { decor: true, shadow: true } as const;
 
 // ------------------------------------------------------------------------------------------------ the Settlement's blocks
