@@ -3010,6 +3010,9 @@ export function initHud(bus: EventBus): HudRuntime {
       });
     }
     const horde = modeState.horde;
+    // unlimited rounds (the ruleset): the line drops its ammunition count, which could only read full
+    const rules = (liveRuleset?.mode === modeState.id ? liveRuleset : null) ?? matchRulesetFor(normalizeGameMode(modeState.id));
+    if (rules.ammo === 'unlimited') return t('hud.modeStatus.hordeWave', { wave: String(horde?.wave || 1), alive: String(horde?.alive || 0) });
     return t('hud.modeStatus.horde', {
       wave: String(horde?.wave || 1),
       alive: String(horde?.alive || 0),

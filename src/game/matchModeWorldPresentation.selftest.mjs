@@ -4,6 +4,7 @@ import { DoubleSide, Matrix4, Object3D, Scene, Vector3 } from 'three';
 import { createMatchModeWorldPresentation, LINE_WORKS, planLineWorks } from './matchModeWorldPresentation.ts';
 
 import { createMatchModeController } from '../sim/matchModes.ts';
+import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import { objectiveMarkers } from '../ui/minimapObjectives.ts';
 
 const ALLY = 0x6fe887;
@@ -601,8 +602,9 @@ assert.equal([...disposedMaterials.values()].every((count) => count === 1), true
     combat: { hp: 50, maxHp: 100, destroyed: false, ammo: [0, 0, 0], ammoCapacity: [20, 20, 20] } };
   const enemy = { ...player, id: 'enemy', team: 'bravo', bot: true,
     state: { pos: { x: 0, y: 12, z: 150 }, yaw: 0, speed: 0 }, combat: { ...player.combat } };
+  // both cache models: Mars under spec rounds (the mode plays unlimited rounds, where every cache is a repair)
   const authority = createMatchModeController({ mode: 'mars', entities: [player, enemy], seed: 42,
-    terrainHeight: terrain, revive() {} });
+    terrainHeight: terrain, revive() {}, ruleset: { ...matchRulesetFor('mars'), ammo: 'spec' } });
   const scene = new Scene();
   const view = createMatchModeWorldPresentation(scene, { groundHeight: terrain, viewerPosition: () => player.state.pos });
   authority.step(1 / 60, 12);
