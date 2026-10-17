@@ -1824,7 +1824,7 @@
    "hostSweep": []
   },
   "leopard2_proto": {
-   "inputHash": "fecb53e0a2332489",
+   "inputHash": "0773dd01579b3ff3",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -1931,11 +1931,11 @@
    "hostSweep": []
   },
   "m1a1_abrams_sa": {
-   "inputHash": "6a384d6ca022dfcc",
+   "inputHash": "f2367b771320d8ac",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildTejasFamilyHullCourse1@profiles/abrams.ts:4806",
+     "site": "fitting:spareTrackLinks@buildTejasFamilyHullCourse1@profiles/abrams.ts:4809",
      "source": "fitting",
      "frame": "hull",
      "registered": false,
@@ -2250,11 +2250,11 @@
    "hostSweep": []
   },
   "mbt70": {
-   "inputHash": "b2f8f83e726f7ba9",
+   "inputHash": "56e4924051baf745",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildMBT70@modern2.ts:1789",
+     "site": "fitting:spareTrackLinks@buildMBT70@modern2.ts:1813",
      "source": "fitting",
      "frame": "turret",
      "registered": false,
@@ -2271,12 +2271,12 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 1,
-      "host": "turret<buildMBT70@modern2.ts:1656>"
+      "host": "turret<buildMBT70@modern2.ts:1680>"
      }
     },
     {
      "index": 1,
-     "site": "fitting:spareTrackLinks@buildMBT70@modern2.ts:1789",
+     "site": "fitting:spareTrackLinks@buildMBT70@modern2.ts:1813",
      "source": "fitting",
      "frame": "turret",
      "registered": false,
@@ -2293,7 +2293,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 1,
-      "host": "turret<buildMBT70@modern2.ts:1656>"
+      "host": "turret<buildMBT70@modern2.ts:1680>"
      }
     }
    ],
@@ -2452,7 +2452,7 @@
    "hostSweep": []
   },
   "merkava3d": {
-   "inputHash": "3a5a693786ebf773",
+   "inputHash": "22695b54e6e63eaf",
    "runs": [
     {
      "index": 0,
@@ -2473,7 +2473,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 1,
-      "host": "turretDetail<merkava3TurretDetails@profiles/merkavaX.ts:284>"
+      "host": "turretDetail<merkava3TurretDetails@profiles/merkavaX.ts:300>"
      }
     },
     {
@@ -2495,7 +2495,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 1,
-      "host": "turretDetail<merkava3TurretDetails@profiles/merkavaX.ts:284>"
+      "host": "turretDetail<merkava3TurretDetails@profiles/merkavaX.ts:300>"
      }
     }
    ],
