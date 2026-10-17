@@ -649,11 +649,13 @@ exactly once, at their seeds, played on this tree. It judges the 132 by the same
   a quarter of the cores, at most four).
 - **The protocol's receipt.** `server/battlePacingRun.selftest.mjs` covers the partition, the report check, the merge,
   the claims and the hand-over, on fixtures.
-- **Cost (measured 2026-10-16).** The eight shards and the old receipt played byte-identical records. CPU time is
-  unchanged (1,032 s for the shards against 973 s for the old receipt, beside each other on a loaded host). Each
-  shard runs one thread at 0.5-0.9 GB. Scaled from the old receipt's best of 318 s by simulated match time, the
-  longest shard takes about 185 s on a quiet core and the shortest about 96 s. Shard 2 is the longest because
-  Blackglass's matches run to the 900 s cap. The judge merges in 0.2 s.
+- **Cost (measured 2026-10-16 and 2026-10-17, beside each other on a loaded host).** The eight shards and the old
+  receipt played byte-identical records: the same 132 matches, per-map lines and median (212.2 s). CPU time is
+  unchanged: 1,032-1,053 s for the shards against 973-1,016 s for the old receipt. Each shard runs one thread at
+  0.47-0.88 GB; the old receipt ran four threads in one process at 2.45 GB. A one-thread receipt's wall on a quiet
+  core is its CPU time: shard 2 takes the longest, 196 CPU-s, because Blackglass's matches run to the 900 s cap, and
+  shard 8 the shortest, 89 CPU-s. The old receipt's best was 318 s on four threads. The judge merges in 0.9 s
+  (78 MB).
 
 The tail takes a few hours in one process, so play it in shards. Every seed is keyed to its map's index in `MAP_IDS`,
 so a shard plays exactly the full run's matches (`COT_PACING_MAPS` used to key seeds to the filtered list and played

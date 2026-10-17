@@ -415,6 +415,24 @@ try {
   const realLog = join(logFixture, 'speaks.log');
   assert.deepEqual(await runSelftestFile(script, { logFile: realLog }), { status: 3, error: undefined });
   assert.equal(readFileSync(realLog, 'utf8'), 'to stdout\nto stderr\n', 'a fresh child writes both streams to its log');
+  // test-speed R9a: the runner sets the run directory on its own environment after it built the cache, and every child
+  // it launches then reads it (a judge finds its shards' records there), with or without a preset compile cache
+  const runDirProbe = join(logFixture, 'run-dir-probe.mjs');
+  writeFileSync(runDirProbe, "process.exitCode = process.env.COT_SELFTEST_RUN_DIR === '/tmp/cot-selftest-run-probe' ? 0 : 7;\n");
+  const savedRunDir = process.env.COT_SELFTEST_RUN_DIR, savedCompileCache = process.env.NODE_COMPILE_CACHE;
+  try {
+    for (const compileCache of [undefined, join(logFixture, 'compile')]) {
+      if (compileCache === undefined) delete process.env.NODE_COMPILE_CACHE; else process.env.NODE_COMPILE_CACHE = compileCache;
+      delete process.env.COT_SELFTEST_RUN_DIR;
+      assert.equal((await runSelftestFile(runDirProbe, { logFile: join(logFixture, 'probe.log') })).status, 7);
+      process.env.COT_SELFTEST_RUN_DIR = '/tmp/cot-selftest-run-probe';
+      assert.equal((await runSelftestFile(runDirProbe, { logFile: join(logFixture, 'probe.log') })).status, 0,
+        `a child reads the run directory (compile cache ${compileCache ? 'preset' : 'the runner\'s'})`);
+    }
+  } finally {
+    if (savedRunDir === undefined) delete process.env.COT_SELFTEST_RUN_DIR; else process.env.COT_SELFTEST_RUN_DIR = savedRunDir;
+    if (savedCompileCache === undefined) delete process.env.NODE_COMPILE_CACHE; else process.env.NODE_COMPILE_CACHE = savedCompileCache;
+  }
   assert.equal(selftestCommand(['--logs=/tmp/receipt-logs']).logs, '/tmp/receipt-logs');
   assert.throws(() => selftestCommand(['--write-durations', '--logs=/tmp/x']), /records the whole registry/);
 } finally { rmSync(logFixture, { recursive: true, force: true }); }
