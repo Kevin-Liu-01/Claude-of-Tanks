@@ -8,7 +8,7 @@ const before=JSON.parse(readFileSync(new URL('./fleetResize20261002.fixture.json
 assert.equal(before.revision,'1e6b4b738179721483f647ef04fe6ee3b249849f');
 // 2026-10-08: c6b60311c (main) rebuilt the Dragun turret front and gun mount and the Kurganets gun after that
 // measurement; the fixture's repinned20261008 note lists the entries re-measured as the current build / factor.
-// 2026-10-16: the T-90M family's folded blade (hull box floor) and the BMPT's muzzle anchor likewise (repinned20261016).
+// 2026-10-16: the BMPT's muzzle anchor likewise (repinned20261016).
 const near=(a,b,label,tol=2e-5)=>assert(Math.abs(a-b)<tol,`${label}: ${a} != ${b}`);
 for(const [id,b] of Object.entries(before.rows)){
  const f=VEHICLE_SIZE_FACTORS[id],h=VEHICLE_HULL_LENGTH_FACTORS[id]??1,spec=getSpec(id);

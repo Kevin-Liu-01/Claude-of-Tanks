@@ -8,6 +8,7 @@ import { createAuthoritativeMatch } from './authoritativeMatch.ts';
 import { SIM_DT } from './movement.ts';
 import { botDroneAim, DRONE_BOT_ATTACK } from './aerialCombat.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
+import { carriesNoRoofWeapon } from '../vehicles/roofWeaponPolicy.ts';
 
 // 1. The aim law
 {
@@ -24,10 +25,17 @@ import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollis
 }
 
 // 2. In the shared authority on Verdant: a bot's drone closes high and arrives from above.
+// 2026-10-16 (226 gate, coordinator ruling): the passive target carries no roof station (the Centurion Mk 3, in the
+// roof-weapon policy's no-roof-gun list). Dive geometry is this receipt's subject; counter-drone balance is pinned by
+// its own receipts (VH.15 tuning item/vehicles-counter-drone-tune-226). With the M1A1 HC's 12.7 + 7.62 pair the
+// counter-drone's rolls decided it: on integ/226 71c50e2d2 they downed the drone 44 m out, before the dive radius.
+// Only the target changes; the bot, its spawn, its drone and the assertions are as before.
+const TARGET = 'centurion3';
+assert.ok(carriesNoRoofWeapon(TARGET), 'the passive target carries no roof station');
 function flight() {
   const world = createDedicatedWorldCollision('verdant', { retain: true });
   const match = createAuthoritativeMatch({ players: [
-    { id: 'h1', specId: 'm1a1_abrams_hc', team: 'alpha' },
+    { id: 'h1', specId: TARGET, team: 'alpha' },
     { id: 'b1', specId: 't90am', team: 'bravo', bot: true, difficulty: 'hard' },
   ], mapId: 'verdant', seed: 11, countdownS: 0, gameMode: 'drone', worldCollision: world });
   match.onMatchReady();

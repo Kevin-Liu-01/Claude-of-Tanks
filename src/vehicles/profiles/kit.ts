@@ -1735,7 +1735,9 @@ function assembleAmericanM2(context: AmericanM2BuildContext, layout: PintleLayou
   // into the cradle floor; the floor's top is the receiver's underside), measured on the built M1A2 loader gun.
   const cradleTopY = Math.max(layout.colTop + 0.04 * layout.s, layout.bodyBottom - 0.005 * layout.s) + 0.005 * layout.s;
   fitting.userData.mountDatum = Object.freeze({
-    pintleTopY: layout.colTop + 0.045 * layout.s,
+    // the yoke head's top: drawn up into the cradle floor where the receiver rides high (fittingAmericanM2, the M240)
+    pintleTopY: layout.classKey !== 'm2' ? Math.max(layout.colTop + 0.045 * layout.s, cradleTopY - 0.003 * layout.s)
+      : layout.colTop + 0.045 * layout.s,
     cradleBottomY: cradleTopY - 0.010 * layout.s,
     cradleTopY,
     receiverBottomY: layout.bodyBottom, receiverY: layout.recY, boreY: layout.trunY,
@@ -1770,6 +1772,18 @@ function fittingAmericanM2(opts: FittingOptions = {}): THREE.Group {
   };
   addAmericanM2Ring(context);
   addAmericanM2Shield(context);
+  // 2026-10-16 (226 gate, abramsRoofSeating): the 7.62 mm M240 (VH.14's calibre-true Abrams loader gun) carries its
+  // receiver higher over the pintle than the M2 does, so the cradle floor rode 6 mm clear of the yoke head and the
+  // receiver hung on the cheeks alone. The yoke head is drawn up 7/10 into the 10-unit cradle floor (as the M2's
+  // reaches into it): spindle -> yoke head -> cradle floor -> receiver is one load path again.
+  const yokeTop = layout.colTop + 0.045 * layout.s;
+  const cradleBottom = Math.max(layout.colTop + 0.04 * layout.s, layout.bodyBottom - 0.005 * layout.s) - 0.005 * layout.s;
+  const riseTop = cradleBottom + 0.007 * layout.s;
+  if (layout.classKey !== 'm2' && riseTop > yokeTop) {
+    // from 4 units inside the yoke head, so the two read as one forged block
+    parts.add(layout.weaponSlot, KIT.box(0.115 * layout.s, riseTop - yokeTop + 0.004 * layout.s, 0.15 * layout.s),
+      0, (riseTop + yokeTop - 0.004 * layout.s) / 2, 0.01);
+  }
   const fitting = assembleAmericanM2(context, layout);
   if (opts.working) {
     fitting.userData.remoteControlled = true;

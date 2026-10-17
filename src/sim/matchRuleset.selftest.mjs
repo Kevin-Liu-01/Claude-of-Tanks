@@ -8,7 +8,9 @@ import {
   FLAG_CARRIER_SPEED_SCALE, HORDE_WAVE_REPAIR, TEAM_ARRANGEMENT_LIMITS, normalizeTeamArrangement,
   acceptsTeamArrangement, hordeWaveSize, assaultWaveHealthScale, BATTLE_FIELD_LIMIT, SIDES_PRESETS, STANDARD_SIDES, isWaveMode, rulesetSides, sidesPresetOf,
   MARS_CACHE_IDS, MARS_DEFAULT_RULES, MARS_GRAVITY_IDS, ENDING_HOLD_LIMIT_S, endingHoldExpired, STANDARD_PHYSICS, rulesetPhysicsAt,
+  AERIAL_RULES,
 } from './matchRuleset.ts';
+import { auxiliaryWeaponProfile } from '../vehicles/auxiliaryWeapons.ts';
 
 for (const mode of GAME_MODE_IDS) {
   const a = matchRulesetFor(mode), b = matchRulesetFor(mode);
@@ -230,4 +232,29 @@ assert.equal(rulesetAllyCap(standard, 6), 6); assert.equal(rulesetAllyCap(horde,
   assert.equal(endingHoldExpired({ endingHoldS: Number.NaN }, 100, 100), true, 'a malformed hold reads as zero');
 }
 
-console.log('matchRuleset: per-mode values, determinism, campaign difficulty fold, team arrangement clamps, horde wave law, rule-card lines, spawn stamps, ammo/reload helpers and the post-verdict hold verified');
+// VH.15 counter-drone (owner 2026-10-16 on the 226 preview: "machine guns targeting drones is a lil too punishinng"): a
+// drone falls at AERIAL_RULES.drone.hitsToDown = 1.1 strikes. A capped burst (every round at the profile's droneHitMax,
+// the station within about 40 m) sums burstRounds x droneHitMax: the 12.7 (5 x .2 = 1.0) and the 30 mm (3 x .35 = 1.05)
+// no longer down a drone alone, the 7.62 (8 x .15 = 1.2) and the 20 mm Rh 202 (5 x .3 = 1.5) still do, and several
+// stations' shares still add. The value stays inside (1.07, 1.18) and at least .02 from every capped strike count, so a
+// later edit cannot land on a burst sum and turn one burst into a cliff. Measured at 1.1 against 1 (the counter-drone
+// harness on the real stepAerial / stepRoofStation / strikeDrone path, seeds 1-240 on flat open ground, non-dive runs):
+// lone-station downs 7.62 22.8 -> 14.6 %, 12.7 14.8 -> 10.2 %, 30 mm 17.2 -> 13.1 %; two stations 70-86 -> 62-80 %;
+// three 97-99 -> 94-98 %; steep dives unchanged; the 12-match drone field (verdant, steppe, urban) 33.9 -> 28.7 % downed.
+{
+  const { hitsToDown } = AERIAL_RULES.drone;
+  assert.equal(matchRulesetFor('drone').counterDrone, true, 'the drone mode keeps counter-drone fire');
+  assert.ok(hitsToDown > 1.07 && hitsToDown < 1.18, `hitsToDown ${hitsToDown} sits between the 30 mm (1.05) and 7.62 (1.2) burst sums`);
+  const stations = [['12.7 mm', auxiliaryWeaponProfile(12.7)], ['7.62 mm', auxiliaryWeaponProfile(7.62)],
+    ['30 mm', auxiliaryWeaponProfile(30)], ['20 mm Rh 202', auxiliaryWeaponProfile(20, 'mbt70')]];
+  const burst = Object.fromEntries(stations.map(([name, p]) => [name, p.burstRounds * p.droneHitMax]));
+  assert.ok(burst['12.7 mm'] < hitsToDown && burst['30 mm'] < hitsToDown, `one capped 12.7 (${burst['12.7 mm']}) or 30 mm (${burst['30 mm']}) burst no longer downs a drone`);
+  assert.ok(burst['7.62 mm'] >= hitsToDown && burst['20 mm Rh 202'] >= hitsToDown, `one capped 7.62 (${burst['7.62 mm']}) or 20 mm (${burst['20 mm Rh 202']}) burst still does`);
+  for (const [name, p] of stations) {
+    for (let k = 1; k * p.droneHitMax < hitsToDown + 1; k++) {
+      assert.ok(Math.abs(k * p.droneHitMax - hitsToDown) >= .02 - 1e-9, `${name}: ${k} capped rounds (${k * p.droneHitMax}) stay clear of hitsToDown ${hitsToDown}`);
+    }
+  }
+}
+
+console.log('matchRuleset: per-mode values, determinism, campaign difficulty fold, team arrangement clamps, horde wave law, rule-card lines, spawn stamps, ammo/reload helpers, the post-verdict hold and the counter-drone airframe threshold (hitsToDown 1.1, clear of every capped burst sum) verified');

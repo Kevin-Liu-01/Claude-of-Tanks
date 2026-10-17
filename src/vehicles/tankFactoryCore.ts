@@ -127,7 +127,7 @@ import { createWeaponFinishMaterials, linkWeaponFinish, mainBarrelIsWeaponSteel,
 import { ditherPaintTone, relaxFlatFans } from './surfaceFinish.ts';
 import { seatAuthoredSpareTracks } from './spareTrackSeatPass.ts';
 import { spareLinkBlock } from './spareLinkGeometry.ts';
-import { seatRoleForBucket, seatRoleForPart, spareTrackRunTag, type SeatRole } from './spareTrackSeat.ts';
+import { resetSpareTrackRunSerial, seatRoleForBucket, seatRoleForPart, spareTrackRunTag, type SeatRole } from './spareTrackSeat.ts';
 
 /** A rig group's identity-placed child: its plates are authored in the group's frame (planLiveCrumple). */
 const _identity4 = new THREE.Matrix4();
@@ -7715,6 +7715,7 @@ function* createTankOwnedSteps(
   };
 
   const builder = resolveBuilder(specId, spec);
+  resetSpareTrackRunSerial();
   const coreAuthoredStartedAt = performance.now();
   const sizeFactor = VEHICLE_SIZE_FACTORS[specId] ?? 1;
   if (sizeFactor !== 1) {

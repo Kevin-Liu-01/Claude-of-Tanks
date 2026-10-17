@@ -44,7 +44,9 @@ const leafyBushMaps = MAP_IDS.filter((id) => {
   const leaves = explicit ? veg.palettes?.[bush]?.birchLeaves === true : treeBiomeSlot(id, bush)?.leaves === true;
   return !(veg.shrubForm ?? treeBiomeShrub(id)) && leaves;
 });
-assert.deepEqual(leafyBushMaps.sort(), ['airfield', 'reservoir'], 'the maps whose bushes grow as their slot\'s leafy birch');
+// (MAPS' Kestrel revival, 9b850e2fc, gauntlet wave 113: Hostomel's field shrubs are young pines, "not the birch sprays read as
+// cactus" — its bush slot is the pine now, so the reservoir is the one map left whose bush grows as its slot's leafy birch)
+assert.deepEqual(leafyBushMaps.sort(), ['reservoir'], 'the maps whose bushes grow as their slot\'s leafy birch');
 
 /** A geometry's leaf cards' mean HSL hue from its vertex colours (the stems' warm-grey cards, low saturation, apart). */
 function leafHue(geometry, need = 50) {
@@ -81,4 +83,4 @@ try {
     } finally { veg.dispose(); disposeObject3DResources(veg.group); }
   }
 } finally { restore(); }
-console.log('leafyBush.selftest: a bush grown as its slot\'s leafy birch draws its leaves green as the slot\'s trees do (Hostomel, the reservoir) PASS');
+console.log('leafyBush.selftest: a bush grown as its slot\'s leafy birch draws its leaves green as the slot\'s trees do (the reservoir) PASS');

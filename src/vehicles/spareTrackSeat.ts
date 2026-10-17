@@ -143,6 +143,12 @@ export function withSpareTrackRun<P extends object>(P: P, tag: SpareTrackRunTag,
   fill(taggingPort(P, (geometry) => { geometry.userData.spareTrackRun = run; }));
 }
 let runSerial = 0;
+/**
+ * Start a build's run numbering at 1 (tankFactoryCore, before the profile builder runs): the ids are a build's own, so
+ * the same tank builds with the same run ids however many tanks the process built before (2026-10-16: the serial ran
+ * across builds and registeredGuardPaint's before/after builds disagreed on every run's id).
+ */
+export function resetSpareTrackRunSerial(): void { runSerial = 0; }
 /** A fresh run registration: every geometry carrying the same object is one rigid run. */
 export function spareTrackRunTag(tag: SpareTrackRunTag): SpareTrackRunTag & { readonly id: number } {
   return { ...tag, id: ++runSerial };
