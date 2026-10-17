@@ -22,7 +22,7 @@ const BEFORE = {
   fjord: '844ae8b1facb58b7',
   delta: 'caed446bb84fde07', // 2026-10-16 re-pinned, was 125801425dddc92c: GROUND Delta stacks (integ/226 91aebdbf2, item/ground-delta-stacks cf4abb8f5: the second paddy row keeps its west paddy); the port's merge 074713b3a left it at its pin
   badlands: '8a1498dd5c9b9eb1',
-  monsoon: '84b5ee48c992bafc', // 2026-10-16 re-pinned, was ee7f16856debcd25: MAPS Monsoon Ridge Kohima (integ/226 d8a514543, item/maps-monsoon efaafd74c; merged before the port, which was cut from d4b0d0fcb); the port's own side 074713b3a^2 still hashes to the old pin
+  monsoon: 'e83989c446974e12', // 2026-10-17 re-pinned, was 84b5ee48c992bafc: the ground lane's Monsoon flood channel at 0.5 spacing (MASTER #15, item/ground-water-227a); 2026-10-16 re-pinned, was ee7f16856debcd25: MAPS Monsoon Ridge Kohima (integ/226 d8a514543, item/maps-monsoon efaafd74c; merged before the port, which was cut from d4b0d0fcb); the port's own side 074713b3a^2 still hashes to the old pin
   alpine: 'ad1861235bf42d36', // 2026-10-16 re-pinned, was 02f111788b73aad4: the Glacier Hinterland back in 226 (integ/226 1ad81a403, the integrator's re-revert: alpine rimH 52 -> 30); the port's merge 074713b3a left it at its pin
   caldera: '8242b97c1c879b54',
   foundry: '9d91c513ba3f7e1c',
