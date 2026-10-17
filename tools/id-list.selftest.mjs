@@ -38,7 +38,8 @@ assert.throws(() => baseShellAuditScope(['a', 'b'], 'a,a'), /unique playable/);
 const READS_IDS = /startsWith\(\s*['"`]--ids=|\b(?:opt|option|arg|value)\(\s*['"](?:--)?ids['"]/;
 const DELEGATES = Object.freeze({
   'tools/gen-interior-fills.mjs': /interiorFillSelection\(FLEET_GROUP_BY_ID, requestedIds\)/,
-  'tools/tank-release-check.mjs': /tankReleaseStages\(ids,gate\)/, // tankReleaseSteps runs uniqueIds
+  // tankReleaseSteps runs uniqueIds; the lane-mode runner (item/tests-release-lane-mode-227) reaches it through tankReleaseInvocation
+  'tools/tank-release-check.mjs': /tankReleaseStages\(ids,gate\)|tankReleaseInvocation\(process\.argv\.slice\(2\)\)/,
   'tools/base-shell-surface-audit.mjs': /baseShellAuditScope\(ALL_TANK_IDS,opt\('ids',''\)/,
   'tools/first-party-concept-check.mjs': /validateSelectedIds\(ids,ALL_TANK_IDS\)/,
   'tools/photo-reference-check.mjs': /validateSelectedIds\(ids,ALL_TANK_IDS\)/,
