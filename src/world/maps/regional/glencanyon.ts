@@ -773,8 +773,11 @@ const church: RegionalBuilder = (ctx) => {
     sink.member('structureWood', [-0.95, cy + 0.9, z + 0.1], [0.95, cy + 0.9, z + 0.1], 0.16, 0.12, [0, 0, 1], { colour: rgb(0x3a2e26), decor: true, exposed: true }, 0);
   });
   // the fellowship hall: a flat-roofed wing beside the sanctuary, its back on the back edge
-  const hallW = R.x1 - 0.75 - (sx + W / 2 + eave + 0.4), hallD = Math.max(5, Math.min(D * 0.7, R.D - 4.2));
-  if (hallW >= 3.5) {
+  // (item/maps-skybridge-page-227, building integrity: a metre's walk between the sanctuary's eave and the hall, was
+  // 0.4 m — a slot narrower than the census's ~0.8 m closing read as a pocket of the body, the sanctuary's roof seen
+  // 1 m inside it from above (inside 4.4 m2); the hall stands from 3 m wide, was 3.5, so it keeps every plot)
+  const hallW = R.x1 - 0.75 - (sx + W / 2 + eave + 1.0), hallD = Math.max(5, Math.min(D * 0.7, R.D - 4.2));
+  if (hallW >= 3.0) {
     sink.placed(0, R.x1 - 0.75 - hallW / 2, 0, R.z0 + 0.75 + hallD / 2, () => {
       const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: -hallW * 0.2, w: 1.0, y0: 0, h: 2.1 }];
       for (const o of windowRhythm('front', 0, hallW, { w: 1.6, h: 1.1, sill: 1.0, spacing: 2.8, margin: 1.0, avoid: [[-hallW * 0.2 - 0.8, -hallW * 0.2 + 0.8]] })) openings.push(o);
