@@ -38,9 +38,11 @@ export interface NationalRoofLoadout {
   roofZ:number;
   lamp:'round'|'slit'|'square';
 }
-// The emplacements' pintle risers (m), measured with the moving gun's clearance sweep (tools/roof-station-arcs.mjs).
+// The emplacements' pintle risers (m), measured with the moving gun's clearance sweep (tools/roof-station-arcs.mjs; the
+// Qilin's 30 mm, release 227 M5, keeps the receiver's rear 25 mm over the 99A2 cupola's periscope head facing aft-left at
+// full elevation and in recoil, where 20 mm left 22.5 mm: cnClearance.selftest.mjs).
 const KUNLUN_RISER_M=.04;
-const QILIN_RISER_M=.02;
+const QILIN_RISER_M=.03;
 export const NATIONAL_ROOF_LOADOUTS:Readonly<Record<string,NationalRoofLoadout>>={
  t80u_zoria:{name:'Bureviy open cradle',caliber:12.7,mount:'fork',feedSide:1,axisHeight:.62,muzzleZ:1.04,eyes:'monocle-left',eyeRadius:.145,roof:'split-panels',roofZ:-.12,lamp:'round'},
  t72b3m_hetman:{name:'Hetman command cannon',caliber:30,mount:'shield',feedSide:1,axisHeight:.75,muzzleZ:1.13,eyes:'monocle-right',eyeRadius:.16,roof:'radome',roofZ:-.20,lamp:'square'},
@@ -50,8 +52,9 @@ export const NATIONAL_ROOF_LOADOUTS:Readonly<Record<string,NationalRoofLoadout>>
  t72b3m_wilk:{name:'Wilk enclosed cannon',caliber:30,mount:'wedge',feedSide:1,axisHeight:.77,muzzleZ:1.16,eyes:'monocle-left',eyeRadius:.17,roof:'split-panels',roofZ:-.12,lamp:'slit'},
  t72b3_zubr:{name:'Zubr low-shield cannon',caliber:30,mount:'shield',feedSide:1,axisHeight:.70,muzzleZ:1.06,eyes:'flat',eyeRadius:.115,roof:'radome',roofZ:-.10,lamp:'round'},
  // Release 227: the Yun's station on its own left-roof seat beside the Type 96B cupola; its arc leaves out the 96B mast
- // stem (blocked 143..152 deg, tools/roof-station-arcs.mjs; 1 deg margin each side, 347 deg).
- t80u_yun:{name:'Yun faceted station',caliber:12.7,mount:'wedge',feedSide:-1,axisHeight:.63,muzzleZ:1.07,yawArc:[-3.5954,2.4609],
+ // stem (2026-10-17, measured both ways with dense samples over the whole pitch range: under 25 mm at 140..154 deg; the
+ // arc stops 1 deg short each side, 344 deg).
+ t80u_yun:{name:'Yun faceted station',caliber:12.7,mount:'wedge',feedSide:-1,axisHeight:.63,muzzleZ:1.07,yawArc:[-3.5779,2.426],
   eyes:'monocle-right',eyeRadius:.15,roof:'spine',roofZ:-.16,lamp:'slit'},
  // Release 227 (owner 2026-10-16: "for the qilin and kunlun, make their machine guns much smalelr and make thhem into the
  // more classic machine gunn emplacement on the turrets"): the Kunlun's 30 mm station gives way to a QJC-88 12.7 mm on an
@@ -66,20 +69,20 @@ export const NATIONAL_ROOF_LOADOUTS:Readonly<Record<string,NationalRoofLoadout>>
  // inner end stands at r .15) and the 99A2's own standard shield; its arc leaves out the commander's stabilised sight.
  t72b3_qilin:{name:'Qilin cupola QJC-88',caliber:12.7,mount:'pintle',feedSide:1,axisHeight:.304+QILIN_RISER_M,muzzleZ:1.321,
   emplacement:{cls:'qjc88',shield:true,ring:{r:.12,stubs:3},riserM:QILIN_RISER_M,crewServed:true},
-  // Measured 2026-10-17 after the M1-M4 geometry (cn-work r3/table2.mjs: the cnClearance pose, both ways with 12 mm
-  // samples at recoil 0 and 0.025 m, 28 mm kept; each degree the smallest of it and its neighbours): the arc leaves out
-  // the commander's stabilised sight (blocked -79..-58 deg; 336 deg allowed); the barrel depresses less over the
-  // split-panel sensor on its central seat (yaw -55..-20 deg: its two panels and head) and the left round lamp (yaw
-  // 8..29 deg).
+  // Measured 2026-10-17 after the M1-M4 geometry with the 30 mm riser (cn-work r3/table2.mjs: the cnClearance pose, both
+  // ways with 12 mm samples at recoil 0 and 0.025 m, 28 mm kept; each degree the smallest of it and its neighbours): the
+  // arc leaves out the commander's stabilised sight (blocked -79..-58 deg; 336 deg allowed); the barrel depresses less
+  // over the split-panel sensor on its central seat (yaw -54..-21 deg: its two panels and head) and the left round lamp
+  // (yaw 8..28 deg).
   yawArc:[-.9948,4.8695],
-  depressionByYaw:[[-.9599,.087],[-.9425,.072],[-.925,.047],[-.9076,.038],[-.8901,.032],[-.8727,.032],[-.8552,.032],
-   [-.8378,.039],[-.8203,.046],[-.8029,.055],[-.7854,.054],[-.7679,.046],[-.7505,.035],[-.733,.031],[-.7156,.029],
-   [-.6981,.029],[-.6807,.029],[-.6632,.029],[-.6458,.031],[-.6283,.035],[-.6109,.036],[-.5934,.035],[-.576,.033],
-   [-.5585,.032],[-.5411,.032],[-.5236,.031],[-.5061,.031],[-.4887,.031],[-.4712,.031],[-.4538,.031],[-.4363,.031],
-   [-.4189,.032],[-.4014,.04],[-.384,.057],[-.3665,.073],[-.3491,.087],[.1222,.087],[.1396,.069],[.1571,.059],
-   [.1745,.055],[.192,.055],[.2094,.055],[.2269,.055],[.2443,.055],[.2618,.055],[.2793,.055],[.2967,.055],[.3142,.055],
-   [.3316,.055],[.3491,.055],[.3665,.055],[.384,.055],[.4014,.055],[.4189,.055],[.4363,.058],[.4538,.062],[.4712,.067],
-   [.4887,.073],[.5061,.087]],
+  depressionByYaw:[[-.9599,.087],[-.9425,.082],[-.925,.058],[-.9076,.05],[-.8901,.044],[-.8727,.044],[-.8552,.044],
+   [-.8378,.051],[-.8203,.058],[-.8029,.065],[-.7854,.062],[-.7679,.054],[-.7505,.044],[-.733,.039],[-.7156,.038],
+   [-.6981,.038],[-.6807,.038],[-.6632,.038],[-.6458,.039],[-.6283,.044],[-.6109,.05],[-.5934,.047],[-.576,.046],
+   [-.5585,.044],[-.5411,.044],[-.5236,.042],[-.5061,.042],[-.4887,.042],[-.4712,.042],[-.4538,.042],[-.4363,.042],
+   [-.4189,.043],[-.4014,.051],[-.384,.069],[-.3665,.082],[-.3491,.087],[.1222,.087],[.1396,.081],[.1571,.072],
+   [.1745,.067],[.192,.067],[.2094,.066],[.2269,.066],[.2443,.066],[.2618,.066],[.2793,.066],[.2967,.066],[.3142,.066],
+   [.3316,.066],[.3491,.066],[.3665,.066],[.384,.066],[.4014,.066],[.4189,.067],[.4363,.069],[.4538,.074],[.4712,.08],
+   [.4887,.085],[.5061,.087]],
   eyes:'flat',eyeRadius:.10,roof:'split-panels',roofZ:-.12,lamp:'round'},
  t80u_bars_m:{name:'Bastion drum-fed gun',caliber:12.7,mount:'drum',feedSide:-1,axisHeight:.67,muzzleZ:1.09,eyes:'twin',eyeRadius:.17,roof:'radome',roofZ:-.16,lamp:'round'},
  t72b3m_bulat_m:{name:'Grom heavy cannon',caliber:30,mount:'shield',feedSide:-1,axisHeight:.79,muzzleZ:1.18,eyes:'twin',eyeRadius:.18,roof:'spine',roofZ:-.16,lamp:'square'},

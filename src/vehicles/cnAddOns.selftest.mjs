@@ -190,8 +190,10 @@ for (const quality of ['high', 'low']) {
   const fleet = build('ztz99a2', quality);
   const key = (x, y, z) => [x, y, z].map((v) => Math.round(v * 1e4)).join(',');
   const fleetShell = new Set();
+  // (the 99A2's own ring collar aside: the Qilin's turns in place on its pivot, checked below)
+  const fleetCollar = (x, y, z) => y > -.0805 && y < .0205 && Math.hypot(x, z + .12) > 1.075 && Math.hypot(x, z + .12) < 1.145;
   for (const p of fleet.parts) if (p.bucket === 'turret') for (let i = 0; i < p.tri.length; i += 3)
-    if (p.tri[i + 2] >= ZTZ99A2_BUSTLE_CUT_FRONT_Z) fleetShell.add(key(p.tri[i], p.tri[i + 1], p.tri[i + 2]));
+    if (p.tri[i + 2] >= ZTZ99A2_BUSTLE_CUT_FRONT_Z && !fleetCollar(p.tri[i], p.tri[i + 1], p.tri[i + 2])) fleetShell.add(key(p.tri[i], p.tri[i + 1], p.tri[i + 2]));
   fleet.tank.dispose();
 
   for (const id of [...Object.keys(INVENTORY), 't72b3m_kunlun']) {

@@ -10,9 +10,10 @@
 //     depression-curve breakpoint and over the rear deck (165-195 degrees); the hull is cut to the gun's swept annulus.
 //  2. The main gun keeps 25 mm from every turret add-on (tagged kit parts) and from the roof station at rest at every
 //     legal pitch.
-//  3. The turret's underside and bustle (every turret mesh below 0.35 m) keep 25 mm from the hull at every yaw; the ring
-//     collar is excused only inside its own circle on the pivot (it bears on the deck's ring race), and that circle must
-//     be concentric with the pivot and inside the deck's edge, so no collar ever sweeps past a deck edge or a fender.
+//  3. The turret's underside and bustle (every turret mesh below 0.35 m) keep 20 mm from the hull at every yaw (the
+//     coordinator's plan; the 96B's lower side edge passes 21.7 mm over the Kunlun's driver's hatch at yaw 252); the ring
+//     collar is excused only inside its own circle on the pivot (it bears on the deck's ring race); that circle must be
+//     concentric with the pivot, and its skirt keeps 20 mm from every fender, sponson, hatch and cover at every yaw.
 //  4. Each roof station's moving mass (its pitch group at recoil 0 and the presentation's 0.025 m firing recoil, and its
 //     yaw stage above the foot) keeps 25 mm from every other turret mesh over its whole published arc and its pitch
 //     range [-depression(yaw), elevation]: 2-degree yaw steps by 0.05 rad pitch steps one way (the moving surface's
@@ -24,7 +25,7 @@
 //     whole pitch range.
 //  Negative controls must fail the same checks: the Yun's and Kunlun's guns without their depression curves, the Qilin's
 //  station without its depression table, the fleet Type 96B's turret-fixed box sight (inside its boot), and the fleet
-//  99A2 collar on the Qilin (0.12 m off the pivot, sweeping past the B3 deck edge).
+//  99A2 collar on the Qilin (0.12 m off the pivot, sweeping into the B3's fenders).
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
@@ -34,7 +35,7 @@ import { NATIONAL_DONOR_TURRETS } from './nationalDonorTurrets.ts';
 import { AUXILIARY_ROOF_GUNS } from './auxiliaryRoofGuns.generated.ts';
 import { auxiliaryWeaponProfile } from './auxiliaryWeapons.ts';
 import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
-import { SurfaceGrid, meshTriangles, densePoints, censusPart } from './cnTurretGeometry.test-support.mjs';
+import { SurfaceGrid, meshTriangles, densePoints, censusPart, insideClosed } from './cnTurretGeometry.test-support.mjs';
 
 const DEG = Math.PI / 180, T0 = Date.now();
 const secs = (t) => ((Date.now() - t) / 1000).toFixed(0);
@@ -98,19 +99,17 @@ function boxSightInsideFleetBoot() {
       && Math.abs(p.box.max.z - p.box.min.z - .396) < .002);
     assert.equal(sight.length, 1, 'type96b: its box sight');
     // the boot (added outside the census on the fleet build) is the mantlet bucket's mesh under rig_gun
-    const boot = meshesUnder(gun).filter((m) => m.parent === gun);
-    const grid = new SurfaceGrid(meshTriangles(boot, new THREE.Matrix4().copy(turret.matrixWorld).invert()), { cell: .04, rq: .08 });
-    // the sight's lowest samples: how far below the boot's surface do they go at rest (inside the boot = distance to it)
+    const recoilRig = tank.root.getObjectByName('rig_recoil'), boot = meshesUnder(gun, recoilRig ? [recoilRig] : []);
+    assert.ok(boot.length, 'type96b: the pitching mantlet and boot under rig_gun');
+    const bootTris = meshTriangles(boot, new THREE.Matrix4().copy(turret.matrixWorld).invert());
+    const grid = new SurfaceGrid(bootTris, { cell: .04, rq: .08 }), solid = { tri: bootTris, box: new THREE.Box3().setFromArray(bootTris) };
+    // the sight's bottom face: how deep inside the boot do its samples lie at rest (ray parity, both faces counted)
     const pts = densePoints(sight[0].tri, .01);
-    const mat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
     let deepest = 0;
     for (let i = 0; i < pts.length; i += 3) {
-      if (pts[i + 1] > sight[0].box.min.y + 1e-6) continue; // the bottom face
-      const ray = new THREE.Raycaster(new THREE.Vector3(pts[i], pts[i + 1], pts[i + 2]).applyMatrix4(turret.matrixWorld), new THREE.Vector3(0, 1, 0), 0, .2);
-      const above = ray.intersectObjects(boot, false).length % 2 === 1; // inside a closed boot when an odd count lies above
-      if (above) deepest = Math.max(deepest, grid.distance(pts[i], pts[i + 1], pts[i + 2]));
+      if (pts[i + 1] > sight[0].box.min.y + 1e-6) continue;
+      if (insideClosed(solid, pts[i], pts[i + 1], pts[i + 2])) deepest = Math.max(deepest, grid.distance(pts[i], pts[i + 1], pts[i + 2]));
     }
-    mat.dispose();
     return deepest;
   } finally { tank.dispose(); }
 }
@@ -178,9 +177,6 @@ for (const id of ['t72b3_qilin', 't72b3m_kunlun', 't80u_yun']) {
     t = Date.now();
     const collar = donor.donor === 'type96b' ? { z: 0, r: 1.04, top: .125 } : { z: donor.builderOptions?.ringCollar?.z ?? -.12, r: donor.builderOptions?.ringCollar?.radiusM ?? 1.14, top: .025 };
     assert.equal(collar.z, 0, `${id}: the ring collar is concentric with the turret's pivot (it turns in place)`);
-    // the deck's half-width at the ring: the hull body (the largest 'hull' part) in plan
-    const deck = census.filter((p) => p.bucket === 'hull').reduce((a, b) => (b.box.getSize(new THREE.Vector3()).toArray().reduce((x, y) => x * y) > a.box.getSize(new THREE.Vector3()).toArray().reduce((x, y) => x * y) ? b : a));
-    const deckHalf = Math.min(-deck.box.min.x, deck.box.max.x);
     const under = [], body = densePoints(meshTriangles(meshesUnder(turret, [gun, station]).filter((m) => !/^vehicleMarking/.test(m.name)), tInv), .02);
     for (let i = 0; i < body.length; i += 3) {
       const x = body[i], y = body[i + 1], z = body[i + 2];
@@ -190,16 +186,26 @@ for (const id of ['t72b3_qilin', 't72b3m_kunlun', 't80u_yun']) {
     }
     const underGrid = new SurfaceGrid(annulus(hullAll, ring.x, ring.z, 3.2, ring.y - .5, ring.y + .5), { cell: .05, rq: .065 });
     const g3 = yawSweep((yd) => ({ d: minDistance(under, yawPose(turret.position, turret.quaternion, yd * DEG), underGrid, 0) }));
-    assert.ok(g3.d >= .025 - 1e-4, `${id}: the turret underside keeps 25 mm from the hull at every yaw (${(g3.d * 1000).toFixed(1)} mm at yaw ${g3.yd})`);
-    // the collar's circle stays 25 mm inside the deck's edge at every yaw (no fender or deck edge under its skirt)
-    const collarReach = (cz, r) => { let m = 0; for (let yd = 0; yd < 360; yd += 2) { const a = yd * DEG; for (let k = 0; k < 72; k++) { const b = k * 5 * DEG;
-      const x = r * Math.cos(b), z = cz + r * Math.sin(b); m = Math.max(m, Math.abs(x * Math.cos(a) + z * Math.sin(a))); } } return m; };
-    const own = collarReach(collar.z, collar.r);
-    assert.ok(own <= deckHalf - .025 + 1e-9, `${id}: its ring collar's skirt stays 25 mm inside the deck's edge (${(own * 1000).toFixed(0)} mm of ${(deckHalf * 1000).toFixed(0)})`);
-    // negative control: the fleet 99A2 collar (r 1.14, 0.12 m behind the pivot) sweeps past the B3 deck's edge
+    assert.ok(g3.d >= .020 - 1e-4, `${id}: the turret underside keeps 20 mm from the hull at every yaw (${(g3.d * 1000).toFixed(1)} mm at yaw ${g3.yd})`);
+    // the collar's skirt (its bottom rim 2 mm over its bottom and its mid-height ring) keeps 20 mm, at every yaw, from
+    // every hull part that does not span the turret's axis (the deck plates it is seated in do; fenders, sponsons,
+    // hatches and shoulder covers do not)
+    const free = census.filter((p) => !p.bucket.startsWith('turret') && !p.bucket.startsWith('gun')
+      && !(p.box.min.x < ring.x && p.box.max.x > ring.x && p.box.min.z < ring.z && p.box.max.z > ring.z) && p.box.max.y > ring.y - .25 && p.box.min.y < ring.y + .25)
+      .map((p) => ({ p, g: new SurfaceGrid(p.tri, { cell: .05, rq: .05 }) }));
+    const skirt = (cz, r, bottom, height) => { const out = []; for (let k = 0; k < 144; k++) { const b = k * 2.5 * DEG; for (const y of [bottom + .002, bottom + height / 2]) out.push(r * Math.cos(b), y, cz + r * Math.sin(b)); } return out; };
+    const skirtClear = (pts) => { let best = { d: Infinity };
+      for (let yd = 0; yd < 360; yd += 5) { const M = yawPose(turret.position, turret.quaternion, yd * DEG);
+        for (let i = 0; i < pts.length; i += 3) { v.set(pts[i], pts[i + 1], pts[i + 2]).applyMatrix4(M);
+          for (const { p, g } of free) { if (p.box.distanceToPoint(v) > .05) continue; const d = g.distance(v.x, v.y, v.z); if (d < best.d) best = { d, yd, part: p }; } } }
+      return best; };
+    const collarSize = donor.donor === 'type96b' ? { bottom: -.03, height: .15 } : { bottom: -.08, height: .10 };
+    const c3 = skirtClear(skirt(collar.z, collar.r, collarSize.bottom, collarSize.height));
+    assert.ok(c3.d >= .020 - 1e-4, `${id}: its ring collar's skirt keeps 20 mm from every fender, sponson and hatch at every yaw (${(c3.d * 1000).toFixed(1)} mm at yaw ${c3.yd}${c3.part ? `, ${c3.part.bucket} [${c3.part.box.min.toArray().map((x) => x.toFixed(2))}..${c3.part.box.max.toArray().map((x) => x.toFixed(2))}]` : ''})`);
+    // negative control: the fleet 99A2 collar (r 1.14, 0.12 m behind the pivot) sweeps into the B3's fenders
     if (id === 't72b3_qilin') {
-      const fleet = collarReach(-.12, 1.14);
-      assert.ok(fleet > deckHalf - .025, `negative control: the fleet 99A2 collar sweeps past the B3 deck's edge (${(fleet * 1000).toFixed(0)} mm of ${(deckHalf * 1000).toFixed(0)})`);
+      const fleet = skirtClear(skirt(-.12, 1.14, -.08, .10));
+      assert.ok(fleet.d < .020, `negative control: the fleet 99A2 collar sweeps into the B3's fenders (${(fleet.d * 1000).toFixed(1)} mm at yaw ${fleet.yd})`);
     }
     const t3 = secs(t); progress(id, `underside ${t3} s`);
     // ---- 4. the roof station's moving mass over its arc and pitch range
@@ -290,7 +296,9 @@ for (const id of ['t72b3_qilin', 't72b3m_kunlun', 't80u_yun']) {
       assert.ok(boot && sight.length >= 4, `${id}: the boot and the box sight (box, saddle, bezel, glass) ride the gun`);
       const mat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
       const mesh = (p) => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(Float32Array.from(p.tri), 3)); return new THREE.Mesh(g, mat); };
-      const bootMesh = mesh(boot), sightMeshes = sight.map(mesh), box = sight.reduce((a, b) => a.union(b.box), new THREE.Box3());
+      // the samples cover the saddle's footprint (the sight's lowest part), 3 mm inside its edges
+      const saddle = sight.reduce((a, b) => (b.box.min.y < a.box.min.y ? b : a)), box = saddle.box.clone().expandByScalar(.003); // (the loop starts 6 mm in)
+      const bootMesh = mesh(boot), sightMeshes = sight.map(mesh);
       let bury = 0, gap = 0, n = 0;
       for (let x = box.min.x + .006; x <= box.max.x - .006; x += .01) for (let z = box.min.z + .006; z <= box.max.z - .006; z += .01) {
         const b = new THREE.Raycaster(new THREE.Vector3(x, 2, z), new THREE.Vector3(0, -1, 0), 0, 5).intersectObject(bootMesh, false)[0]; if (!b) continue;

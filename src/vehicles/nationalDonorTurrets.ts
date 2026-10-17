@@ -97,12 +97,14 @@ export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret
     // rides the boot on the gun's pitch group (the fleet 96B's turret-fixed one stands inside the pitching boot).
     builderOptions: { mastTopY: 3.40, bootHeel: true, boxSightOnGun: true } },
   // The Yun keeps its faceted station on its own left-roof seat beside the 96B commander's cupola, as on its cast turret
-  // (the cupola's latch clevis and periscopes stand inside the station's bearing ring); the 96B's open side bins and
-  // twelve cheek launchers give way to the Yun's armour housings and its own eight roof smoke tubes.
+  // (the cupola's latch clevis and periscopes stand inside the station's bearing ring; release 227: the seat 15 mm
+  // further from the 96B mast stem, so the station's side box keeps 25 mm from it facing right at 29 deg in recoil);
+  // the 96B's open side bins and twelve cheek launchers give way to the Yun's armour housings and its own eight roof
+  // smoke tubes.
   // Its depression by turret yaw is measured as the Kunlun's (26 mm from every hull mesh): over the front corners the
   // barrel passes over the paired lamps' armoured brows (yaw 22-33 deg: 3.4-4.9 deg left), and aft of 158 deg over the
   // engine deck's cooling panels, their leafy net and the slatted transom (3.4-5.1 deg).
-  t80u_yun: { donor: 'type96b', pivot: TYPE96B_ON_T80U, roofY: .70, station: [.40, -.62], heightM: 3.222,
+  t80u_yun: { donor: 'type96b', pivot: TYPE96B_ON_T80U, roofY: .70, station: [.392, -.607], heightM: 3.212,
     gunPitchByYawDeg: [[0, -6], [21, -6], [23, -4], [24, -3.8], [28, -3.6], [30, -3.6], [32, -4], [33, -4.9], [34, -6], [157, -6],
       [159, -5.1], [160, -4.9], [163, -4.5], [166, -4.5], [167, -4], [169, -3.5], [172, -3.4], [174, -3.4], [180, -3.6]],
     addedTurretEra: ['turret_era_L', 'turret_era_R'],
