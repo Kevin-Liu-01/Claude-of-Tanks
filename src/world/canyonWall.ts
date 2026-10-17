@@ -208,7 +208,7 @@ export function buildCanyonWall(spec: CanyonWallSpec, ground: CastleGround, nois
 
 type FrameAt = (s: number) => LandformPathStation;
 /** A bed of the freestone (world heights before the waver) and its make: how far it stands proud, its tone's shifts. */
-interface Bed { y0: number; y1: number; proud: number; dh: number; ds: number; dl: number }
+interface Bed { y0: number; y1: number; proud: number; dh: number; ds: number; dl: number; blind: boolean }
 /** A joint block of one bed on one wall: where it ends along the axis, its own stand and tone, its cut of the tile. */
 interface JointBlock { s1: number; jut: number; dl: number; hollow: boolean; u: number; v: number }
 /** A spur standing out of one wall: where it ends along the axis, how far it stands out, how high (a share of the wall). */
@@ -231,7 +231,7 @@ function buildBeddedWall(spec: CanyonWallSpec, beds: CanyonWallBeds, groundAt: (
   const capTuck = beds.capTuck ?? 1.0;
   const keepClear = beds.keepClear ?? [];
   // the clearances off the rendered ground: the face's least stand, horizontally and over the ground under it
-  const C0 = 0.75, CH = 0.7, CV = 0.6, P_TOP = 0.45;
+  const C0 = 0.85, CH = 0.85, CV = 0.6, P_TOP = 0.45;
   const salt = rng() * 100;
   const mesh = new SkinMesh();
   const uv: number[] = [], faceUv: number[] = [];
@@ -253,37 +253,43 @@ function buildBeddedWall(spec: CanyonWallSpec, beds: CanyonWallBeds, groundAt: (
   for (const { walls } of sides) for (const w of walls) if (w) { yMin = Math.min(yMin, w.footY); yMax = Math.max(yMax, w.browY - capTuck); }
   if (!Number.isFinite(yMin)) return { geometry: null, triangles: 0 };
 
-  // the beds, one sequence for both walls: thin partings, the common beds a metre or two, the odd massive one (a phone's
-  // half as many, each twice as thick)
+  // the beds, one sequence for both walls: the odd thin one, the common beds one to three metres, the odd massive one,
+  // and a quarter of the partings blind (a phone's half as many beds, each twice as thick)
   const bedList: Bed[] = [];
   for (let y = yMin - 1.5; y < yMax + 1.5;) {
     const roll = rng(), q = rng(), hard = rng();
     const t = (roll < 0.12 ? tMin + (tMax - tMin) * 0.12 * q : roll < 0.78 ? tMin + (tMax - tMin) * (0.2 + 0.4 * q) : tMax - (tMax - tMin) * 0.35 * q) * (mobile ? 1.8 : 1);
-    bedList.push({ y0: y, y1: y + t, proud: hard > 0.55 ? 0.3 + (hard - 0.55) / 0.45 : 0.15 * hard,
-      dh: (rng() - 0.5) * 0.018, ds: (rng() - 0.5) * 0.35, dl: (rng() - 0.45) * 0.14 });
+    const bed: Bed = { y0: y, y1: y + t, proud: hard > 0.55 ? 0.3 + (hard - 0.55) / 0.45 : 0.15 * hard,
+      dh: (rng() - 0.5) * 0.018, ds: (rng() - 0.5) * 0.35, dl: (rng() - 0.45) * 0.14, blind: rng() < 0.25 };
+    // (a blind parting: the bed runs on from the one under it, one massive bed with no line between)
+    const under = bedList[bedList.length - 1];
+    if (bed.blind && under) { bed.proud = under.proud; bed.dh = under.dh; bed.ds = under.ds; bed.dl = under.dl; }
+    bedList.push(bed);
     y += t;
   }
   const nb = bedList.length;
   // the rows: the talus's toe (under the floor, on it), then each bed's four (its foot's parting and face, its top's face
-  // and parting: the parting rows are the face rows' twins, dark, so a bed's edge is a crease and a line)
+  // and parting: the parting rows are the face rows' twins, so a bed's edge is a crease, a line where the beds stand
+  // flush, a ledge or an overhang where they do not), then the lid's three where the caprock has fallen away
   const R = 2 + nb * 4 + 3, LID = R - 3;
   const rowY = (j: number, wav: number): number => {
     const b = (j - 2) >> 2, e = (j - 2) & 3;
     return (e < 2 ? bedList[b].y0 + 0.05 : bedList[b].y1 - 0.05) + wav;
   };
   const inClear = (s: number) => keepClear.some(([a, b]) => s > Math.min(a, b) - 2 && s < Math.max(a, b) + 2);
-  const lerpTone = (h: number, sa: number, l: number) => hsl(h, sa, l);
 
   for (const { side, at, walls } of sides) {
-    // this wall's joint blocks (per bed), spurs and streaks
-    const blocks: JointBlock[][] = bedList.map(() => {
-      const list: JointBlock[] = [];
-      let s1 = -span / 2 - rng() * 8;
-      while (s1 < span / 2 + step) {
-        s1 += 3 + rng() * 11;
-        list.push({ s1, jut: (rng() - 0.5) * 0.9, dl: (rng() - 0.5) * 0.08, hollow: rng() < 0.07, u: rng() * 17, v: rng() * 13 });
-      }
-      return list;
+    // this wall's joints, each through a few beds (a fracture, not a mortar line), and the blocks they part in each bed;
+    // its spurs and streaks
+    const joints: Array<{ s: number; b0: number; b1: number }> = [];
+    for (let sJ = -span / 2 - rng() * 2; sJ < span / 2 + step; sJ += 0.6 + rng() * 2) {
+      const b0 = Math.floor(rng() * nb);
+      joints.push({ s: sJ, b0, b1: Math.min(nb - 1, b0 + Math.floor(rng() * rng() * 8)) });
+    }
+    const blocks: JointBlock[][] = bedList.map((_, b) => {
+      const ends = joints.filter((j) => b >= j.b0 && b <= j.b1).map((j) => j.s);
+      ends.push(span / 2 + 2 * step);
+      return ends.map((s1) => ({ s1, jut: (rng() - 0.5) * 0.5, dl: (rng() - 0.5) * 0.08, hollow: rng() < 0.05, u: rng() * 17, v: rng() * 13 }));
     });
     const spurs: Spur[] = [];
     for (let s1 = -span / 2 - rng() * 10; s1 < span / 2 + step;) {
@@ -351,7 +357,9 @@ function buildBeddedWall(spec: CanyonWallSpec, beds: CanyonWallBeds, groundAt: (
       /** The face's stand toward the void on bed b at height y. */
       const stand = (b: number, y: number): number => {
         const bed = bedList[b], blk = blockAt(b, s);
-        let p = C0 + 0.35 + butt + bed.proud + blk.jut - (blk.hollow ? 0.8 : 0) + (bed.y1 + wav <= spurTop ? spurOut : 0)
+        // (a bed's stand runs on for tens of metres, waxing and waning: a ledge's run, not a block's)
+        const run = 0.5 + 0.5 * smooth(-0.5, 0.5, noise.noise(s / 40 + b * 7.3, side * 3.3 + salt));
+        let p = C0 + 0.35 + butt + bed.proud * run + blk.jut - (blk.hollow ? 0.9 : 0) + (bed.y1 + wav <= spurTop ? spurOut : 0)
           - (cleft && y >= cleft.y + wav ? cleft.depth : 0) + 0.12 * noise.noise(s * 0.37 + b * 3.1, salt);
         p = Math.max(C0, p);
         // the wall's top eight metres: the beds stepping back under the caprock, each standing on its own (no spur, no
@@ -447,7 +455,7 @@ function buildBeddedWall(spec: CanyonWallSpec, beds: CanyonWallBeds, groundAt: (
           // a bed's lip bleached, its foot a shade darker; a hollow where a block fell out dark
           if (e === 2) l *= 1.04; else if (e === 1) l *= 0.96;
           if (blk.hollow) l *= 0.8;
-          if (cleft && y >= cleft.y + wav) { l *= 0.82; sa *= 0.85; }
+          if (cleft && y >= cleft.y + wav) { l *= 0.92; sa *= 0.9; }
           // the streaks down from under the beds: grey calcite runs and dark varnish, each its own length, at no rhythm
           for (const st of active) {
             const head = st.y + wav;
@@ -457,15 +465,16 @@ function buildBeddedWall(spec: CanyonWallSpec, beds: CanyonWallBeds, groundAt: (
           }
           // the parting between the beds: a dark line where they stand flush, the top of a ledge where the bed over it
           // recedes (its lip in the sun, its back in the shade of the next bed), dark under an overhang
-          if (e === 0 || e === 3) {
+          const blindEdge = (e === 0 && bed.blind) || (e === 3 && b + 1 < nb && bedList[b + 1].blind);
+          if ((e === 0 || e === 3) && !blindEdge) {
             const dr = e === 3 ? (j + 1 < R ? col.r[j + 1] - r : 0) : r - col.r[j - 1];
             if (dr > 0.25) l *= e === 3 ? 0.98 : 0.86;
             else if (dr < -0.25) { l *= e === 3 ? 0.8 : 0.78; sa *= 0.9; }
-            else { l *= 0.84; sa *= 0.85; }
+            else { l *= 0.9; sa *= 0.9; }
           }
           ground = lid ? groundAt(pt[0], pt[2]) : w.footY - 0.3;
         }
-        col.idx[j] = vert(pt, lerpTone(h, sa, l), ground, s * 0.11, y * 0.08);
+        col.idx[j] = vert(pt, hsl(h, sa, l), ground, s * 0.11, y * 0.08);
       }
       for (let b = 0; b < nb; b++) { const blk = blockAt(b, s + step / 2); col.faceU[b] = blk.u; col.faceV[b] = blk.v; }
       cols.push(col);
@@ -517,7 +526,7 @@ function buildBeddedWall(spec: CanyonWallSpec, beds: CanyonWallBeds, groundAt: (
       }
       const ids = corner.map((p) => {
         const mott = noise.noise3d(p[0] * 0.4 + salt, p[1] * 0.4, p[2] * 0.4);
-        return vert(p, lerpTone(tone[0] + 0.004, tone[1] * 0.8, tone[2] * (1.02 + dl + 0.06 * mott)), groundAt(p[0], p[2]), (p[0] + p[2]) * 0.2, p[1] * 0.2);
+        return vert(p, hsl(tone[0] + 0.004, tone[1] * 0.8, tone[2] * (1.02 + dl + 0.06 * mott)), groundAt(p[0], p[2]), (p[0] + p[2]) * 0.2, p[1] * 0.2);
       });
       for (const [q0, q1, q2, q3] of [[0, 2, 6, 4], [1, 3, 7, 5], [0, 1, 5, 4], [2, 3, 7, 6], [0, 1, 3, 2], [4, 5, 7, 6]]) {
         const m: V3 = [0, 0, 0];

@@ -356,8 +356,8 @@ export default {
       // their own heights, greyed in patches and streaked down from the ledges at no rhythm, a talus apron and its fallen
       // blocks at the foot (canyonWall.ts beds); the tone pulled from salmon toward the buff-ochre of the Tajo's stone. No
       // spur stands out under the viaduct, whose piers rise beside the walls
-      { x: 0, z: 0, length: 540, width: 192, yawDeg: 0, span: 0.9, tone: [0.105, 0.24, 0.56], benchM: 8, ring: false,
-        beds: { thickness: [0.7, 4.4], talus: [2.5, 7.5], capTuck: 1.0, keepClear: [[-16, 16]], capGaps: 0.58 }, name: "the Tajo's walls" },
+      { x: 0, z: 0, length: 540, width: 192, yawDeg: 0, span: 0.9, tone: [0.105, 0.27, 0.56], benchM: 8, ring: false,
+        beds: { thickness: [0.8, 4.6], talus: [2.5, 7.5], capTuck: 1.0, keepClear: [[-16, 16]], capGaps: 0.58 }, name: "the Tajo's walls" },
     ],
     caprock: [
       // (r6 first pair: the lips sat on the first ledge, a pale band low on the wall) up the benches to the walls' tops, and
