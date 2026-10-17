@@ -74,10 +74,15 @@ const favicon = metalMaster.replace(
 );
 syncFile('public/brand/favicon.svg', favicon);
 
-const bootStart = '      <svg class="cot-boot-mark" viewBox="0 0 256 256" aria-label="Claude of Tanks">\n';
+// (2026-10-16) the boot mark's opening tag carries whatever attributes the page gives it (78fd2819f added its
+// data-i18n-aria-label): the derived body starts after that tag, whichever attributes it has
+const indexSource = read('index.html');
+const bootTag = /^ {6}<svg class="cot-boot-mark" viewBox="0 0 256 256"[^>\n]*>\n/m.exec(indexSource);
+if (!bootTag) throw new Error('missing derived-brand marker: the cot-boot-mark <svg> opening tag in index.html');
+const bootStart = bootTag[0];
 const bootEnd = '\n</svg>\n\n      <div class="cot-boot-word">';
 const bootBody = `      <!-- GENERATED from public/brand/logo-mark.svg by tools/sync-brand-marks.mjs. -->\n${colorBody}`;
-const index = replaceBetween(read('index.html'), bootStart, bootEnd, bootBody);
+const index = replaceBetween(indexSource, bootStart, bootEnd, bootBody);
 syncFile('index.html', index);
 
 if (!process.exitCode) {
