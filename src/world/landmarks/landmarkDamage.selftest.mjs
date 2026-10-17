@@ -195,7 +195,10 @@ const holeSpec = (anatomy, hole) => ({ section: 0, storey: 0, face: 'front', hol
   assert.ok(['mast', 'mast-head', 'guys-0', 'guys-1', 'guys-2'].every((n) => c.hides.some((h) => h.piece === n)), 'the frame laid down');
   const lying = out.runs.filter((r) => r.role === 'rubble');
   const xs = lying.flatMap((r) => r.v.filter((_, i) => i % 11 === 0));
-  assert.ok(Math.max(...xs) > 18, `it lies along its line, out past its foot (${Math.max(...xs).toFixed(1)} m)`);
+  // (227, lane B: an open frame reads its members, so its height is the mast's own, and what lies is what stood over the
+  // hinge, world/toppleHinge.ts)
+  const over = a.h - toppleHingeM(a.h, true);
+  assert.ok(Math.max(...xs) > Math.max(4, 0.8 * over), `it lies along its line, out past its foot (${Math.max(...xs).toFixed(1)} m of ${over.toFixed(1)} over the hinge)`);
   // (227, lane B: a frame buckles over its standing bays, world/toppleHinge.ts) no higher than its buckle, the rest lies low
   assert.ok(maxY(lying) < toppleHingeM(24, true) + 1, `no higher than its buckle (${maxY(lying).toFixed(2)} m)`);
 }

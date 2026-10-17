@@ -79,7 +79,7 @@ function keepRuns(input: StructureDescribeInput, name: string): PieceRun[] {
 /** The body's reading: the parts without the named pieces, through the map's regional kit, else the default. */
 function describeBody(input: StructureDescribeInput): StructureDamageAnatomy {
   const parts: Record<string, BufferGeometry[]> = {};
-  for (const [bucket, list] of Object.entries(input.parts)) parts[bucket] = (list as readonly BufferGeometry[]).filter((g) => !g.userData.damagePiece);
+  for (const [bucket, list] of Object.entries(input.parts)) parts[bucket] = (list as readonly BufferGeometry[]).filter((g) => !g.userData.damagePiece || !!landmarkPiecesOf(input.parts)?.some((p) => p.kind === 'lattice')); // (227, lane B: an open frame's reading is its members' — its body kit never lays them — not the default's stone)
   const bodyInput: StructureDescribeInput = { ...input, parts };
   for (const kit of structureDamageKitChain('', input.style)) {
     if (kit === DEFAULT_STRUCTURE_DAMAGE_KIT || !kit.describe) continue;
