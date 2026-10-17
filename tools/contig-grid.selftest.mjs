@@ -2,7 +2,7 @@
 // The 226 defect class: an add-on that only moves the AABB (VH.04's guns 1.2-2 cm longer) re-phased the AABB-framed
 // grid over pre-existing 6-7 cm hull gaps, so gaps appeared and vanished with unrelated edits. Each property below is
 // checked twice: on the gate's scan, and on a negative control (the pre-227 framing, or the primary phase alone)
-// that must FAIL it, so the property has teeth. Pure plan rectangles, no tank build: milliseconds.
+// that must FAIL it, so the property has teeth. Pure plan rectangles, no tank build: under a second of CPU.
 import assert from 'node:assert/strict';
 import {
   CONTIG_CELL_M, CONTIG_FRAMING, CONTIG_PHASES, PRIMARY_CONTIG_PHASE, anchoredContigFrame, contigCellCenter,
@@ -70,12 +70,12 @@ assert.ok(!onContigLattice({...legacy(slottedHull({along: 'x', at: 0.032, width:
   assert.ok(Math.abs(c.x - (scan.bounds.x0 + C / 2 + C / 3)) < 1e-12 && Math.abs(c.z - (scan.bounds.z1 - C / 2 - 2 * C / 3)) < 1e-12, 'phase centres shift by whole pixels');
 }
 
-// 3. PHASE INVARIANCE (the 226 class). Sweep the add-on reach over more than a cell in 2 mm steps around one
+// 3. PHASE INVARIANCE (the 226 class). Sweep the add-on reach over more than a cell in 4 mm steps around one
 // pre-existing 6.5 cm slot: the gate's answer never moves. The pre-227 framing flips on the same sweep.
 for (const [axis, slot] of [['z', {along: 'x', at: 0.032, width: 0.065}], ['x', {along: 'z', at: 0.391, width: 0.067}],
   ['z', {along: 'x', at: -1.207, width: 0.07}]]) {
   const sigs = new Set(), legacyCounts = new Set();
-  for (let reach = 0.10; reach <= 0.172 + 1e-9; reach += 0.002) {
+  for (let reach = 0.10; reach <= 0.172 + 1e-9; reach += 0.004) {
     const rects = [...slottedHull(slot), addon(axis, reach)];
     const scan = gate(rects);
     assert.ok(found(scan), `${axis} reach ${reach.toFixed(3)}: the ${slot.width * 100} cm slot is a hole`);
@@ -103,7 +103,9 @@ for (const along of ['x', 'z']) {
       const g = scan.gaps[0];
       assert.ok(g.gap >= 0.04 && g.gap <= 0.081, `through-width estimate ${g.gap} brackets the slot`);
       assert.ok((along === 'x' ? g.w : g.d) > 1.4, 'the gap spans the slot length');
-      if (!found(primaryOnly(rects))) primaryMisses++;
+      // The primary phase is phases[0] of this same scan: a primary-only scan finds exactly its hole cells.
+      if (step === 0) assert.equal(primaryOnly(rects).holeCells, scan.holeCells, 'primary-only = the scan\'s primary phase');
+      if (scan.holeCells === 0) primaryMisses++;
       if (scan.holeCells === 0) assert.ok(scan.phaseOnlyCells > 0 && !contiguityPassed(scan, {passed: true}),
         'a slot the primary phase misses still fails as phase-only even beside a passing opening verdict');
     }

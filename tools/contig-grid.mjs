@@ -339,11 +339,18 @@ export function isLatticeCellCenter(x, z, cells) {
 export function rasterizePlanRects(frame, rects) {
   const hit = new Uint8Array(frame.pw * frame.ph);
   const px = (frame.x1 - frame.x0) / frame.pw, pz = (frame.z1 - frame.z0) / frame.ph;
-  for (let py = 0; py < frame.ph; py++) {
-    const z = frame.z1 - (py + .5) * pz;
-    for (let ix = 0; ix < frame.pw; ix++) {
-      const x = frame.x0 + (ix + .5) * px;
-      for (const r of rects) if (x >= r.x0 && x < r.x1 && z >= r.z0 && z < r.z1) { hit[py * frame.pw + ix] = 1; break; }
+  const clamp = (v, n) => Math.min(n - 1, Math.max(0, v));
+  for (const r of rects) {
+    // Visit only the pixels around the rectangle (one pixel of slack each side); the per-pixel test decides.
+    const ix0 = clamp(Math.floor((r.x0 - frame.x0) / px) - 1, frame.pw), ix1 = clamp(Math.ceil((r.x1 - frame.x0) / px) + 1, frame.pw);
+    const py0 = clamp(Math.floor((frame.z1 - r.z1) / pz) - 1, frame.ph), py1 = clamp(Math.ceil((frame.z1 - r.z0) / pz) + 1, frame.ph);
+    for (let py = py0; py <= py1; py++) {
+      const z = frame.z1 - (py + .5) * pz;
+      if (!(z >= r.z0 && z < r.z1)) continue;
+      for (let ix = ix0; ix <= ix1; ix++) {
+        const x = frame.x0 + (ix + .5) * px;
+        if (x >= r.x0 && x < r.x1) hit[py * frame.pw + ix] = 1;
+      }
     }
   }
   return hit;
