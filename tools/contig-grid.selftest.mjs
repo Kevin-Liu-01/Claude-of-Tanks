@@ -6,7 +6,8 @@
 import assert from 'node:assert/strict';
 import {
   CONTIG_CELL_M, CONTIG_FRAMING, CONTIG_PHASES, PRIMARY_CONTIG_PHASE, anchoredContigFrame, contigCellCenter,
-  contigLatticeCell, contigScan, contiguityPassed, legacyContigFrame, onContigLattice, planRectBounds, rasterizePlanRects,
+  contigLatticeCell, contigScan, contiguityPassed, isLatticeCellCenter, latticeCellScan, latticeSubpixelCenter,
+  legacyContigFrame, onContigLattice, planRectBounds, rasterizePlanRects, scanMatchesLatticeCells,
 } from './contig-grid.mjs';
 
 const C = CONTIG_CELL_M;
@@ -152,5 +153,33 @@ assert.equal(gate([{x0: -1.5, x1: 1.5, z0: -3, z1: 3}, addon('z', 0.13)]).gaps.l
   assert.ok(!contiguityPassed({...scan, phaseOnlyCells: undefined}, {passed: true}));
   assert.ok(!contiguityPassed({...scan, bounds: {...scan.bounds, z0: scan.bounds.z0 + .001}}, {passed: true}), 'off-lattice bounds cannot pass');
   assert.equal(CONTIG_PHASES.length, 9);
+}
+
+// 7. Approved-opening pins are hull-frame lattice cells (tools/ariete-source-openings.mjs, barak-source-openings.mjs):
+// the receipts' stand-in raster IS the page's raster for that AABB, and an AABB-only add-on never invalidates a pin.
+{
+  const hull = [{x0: -1.5, x1: 1.5, z0: 1.2, z1: 3}, {x0: -1.5, x1: 1.5, z0: -3, z1: 0.96},
+    {x0: -1.5, x1: -0.12, z0: 0.96, z1: 1.2}, {x0: 0.18, x1: 1.5, z0: 0.96, z1: 1.2}];
+  const scan = gate(hull), pin = scan.samples.map((s) => contigLatticeCell(s.x, s.z));
+  assert.ok(pin.length === 20 && pin.every(Boolean), 'the opening reads as 20 lattice cells');
+  const standIn = latticeCellScan(pin, {aabb: planRectBounds(hull)});
+  for (const key of ['framing', 'holeCells', 'bounds', 'gridW', 'gridH', 'cellM'])
+    assert.deepEqual(standIn[key], scan[key], `the stand-in raster has the page's ${key}`);
+  const at = (s) => `${s.gx},${s.gy},${s.x},${s.z}`;
+  assert.deepEqual(standIn.samples.map(at).sort(), scan.samples.map(at).sort(), 'and the page\'s exact samples');
+  assert.ok(scanMatchesLatticeCells(scan, pin) && scanMatchesLatticeCells(standIn, pin));
+  for (const reach of [0.004, 0.017, 0.031, 0.046, 0.097]) for (const axis of ['x', 'z']) {
+    const grown = gate([...hull, addon(axis, reach)]);
+    assert.ok(scanMatchesLatticeCells(grown, pin), `an add-on ${reach} m past ${axis} keeps the pinned opening`);
+  }
+  assert.ok(pin.every(([kx, kz]) => isLatticeCellCenter((kx + .5) * C, (kz + .5) * C, pin)));
+  assert.ok(!isLatticeCellCenter(0.03 + 0.001, 1.05, pin), 'only exact lattice centres are pinned cells');
+  const [sx, sz] = latticeSubpixelCenter(pin[0], 0, 0);
+  assert.ok(Math.abs(sx - (pin[0][0] + 1 / 6) * C) < 1e-12 && Math.abs(sz - (pin[0][1] + 5 / 6) * C) < 1e-12, 'sub-pixel 0 is the +z, -x pixel');
+  const legacyScan = legacy(hull);
+  assert.ok(!scanMatchesLatticeCells(legacyScan, pin), 'negative control: an AABB-framed raster never matches a pin');
+  assert.ok(!scanMatchesLatticeCells(gate([...hull.slice(0, 2), {x0: -1.5, x1: -0.06, z0: 0.96, z1: 1.2}, hull[3]]), pin),
+    'a narrower opening (one column closed) no longer matches');
+  assert.ok(!scanMatchesLatticeCells(latticeCellScan(pin.map(([kx, kz]) => [kx + 1, kz])), pin), 'nor does a shifted one');
 }
 console.log('contig-grid.selftest: hull-anchored lattice; AABB-only add-ons never move a hole; every >=6 cm gap found at some phase; legacy and primary-only controls fail');

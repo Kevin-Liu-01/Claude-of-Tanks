@@ -288,19 +288,24 @@ export function contiguityPassed(scan, opening) {
 }
 
 /** An anchored primary raster holding exactly these hull-frame lattice cells [[kx, kz], ...]: the receipts' stand-in
- * for a real scan of a pinned approved opening (tools/ariete-source-openings.mjs, tools/barak-source-openings.mjs). */
-export function latticeCellScan(cells, {pad = 4} = {}) {
+ * for a real scan of a pinned approved opening (tools/ariete-source-openings.mjs, tools/barak-source-openings.mjs).
+ * The frame is the page's frame for `aabb` (plan bounds of the rendered build, tank root at the origin) when given,
+ * else `pad` lattice cells around the cells. */
+export function latticeCellScan(cells, {pad = 4, aabb = null} = {}) {
   const C = CONTIG_CELL_M, kxs = cells.map(c => c[0]), kzs = cells.map(c => c[1]);
-  const kx0 = Math.min(...kxs) - pad, kz1 = Math.max(...kzs) + 1 + pad;
-  const gridW = Math.max(...kxs) + 1 + pad - kx0, gridH = kz1 - (Math.min(...kzs) - pad);
-  const frame = withPixels({framing: CONTIG_FRAMING, originX: 0, originZ: 0, kx0, kz1,
-    x0: kx0 * C, x1: (kx0 + gridW) * C, z0: (kz1 - gridH) * C, z1: kz1 * C, gridW, gridH});
+  const frame = aabb ? anchoredContigFrame(aabb) : (() => {
+    const kx0 = Math.min(...kxs) - pad, kz1 = Math.max(...kzs) + 1 + pad;
+    const gridW = Math.max(...kxs) + 1 + pad - kx0, gridH = kz1 - (Math.min(...kzs) - pad);
+    return withPixels({framing: CONTIG_FRAMING, originX: 0, originZ: 0, kx0, kz1,
+      x0: kx0 * C, x1: (kx0 + gridW) * C, z0: (kz1 - gridH) * C, z1: kz1 * C, gridW, gridH});
+  })();
   const samples = cells.map(([kx, kz]) => {
-    const gx = kx - kx0, gy = kz1 - kz - 1;
+    const gx = kx - frame.kx0, gy = frame.kz1 - kz - 1;
+    if (gx < 0 || gy < 0 || gx >= frame.gridW || gy >= frame.gridH) throw new Error(`Cell ${kx},${kz} lies outside the frame`);
     return {gx, gy, ...contigCellCenter(frame, gx, gy)};
   });
   return {framing: CONTIG_FRAMING, origin: {x: 0, z: 0}, holeCells: samples.length, samples,
-    bounds: {x0: frame.x0, x1: frame.x1, z0: frame.z0, z1: frame.z1}, gridW, gridH, cellM: C,
+    bounds: {x0: frame.x0, x1: frame.x1, z0: frame.z0, z1: frame.z1}, gridW: frame.gridW, gridH: frame.gridH, cellM: C,
     phases: CONTIG_PHASES.map(phase => ({phase, holeCells: samples.length})), phaseOnlyCells: 0};
 }
 

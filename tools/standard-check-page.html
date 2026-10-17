@@ -18,8 +18,8 @@
                       re-binned at every sub-cell phase, so an add-on that moves
                       the AABB cannot hide or reveal a gap); uncovered cells NOT
                       connected to the frame border are raw enclosed sky cells,
-                      and a hole at another phase sharing no pixel with a primary
-                      hole is a phase-only hole. Approved source openings are
+                      and a hole at another phase more than one cell from every
+                      primary hole is a phase-only hole. Approved source openings are
                       classified separately; unexpected holes must be zero. FrontSide
                       materials mean reversed-winding slabs read as holes —
                       the winding audit is built in. Explicitly separated

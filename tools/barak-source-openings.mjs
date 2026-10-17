@@ -1,6 +1,8 @@
-// Source-only scalar calipers and the actual 2026-09-19 corrected bow raster.
+// Source-only scalar calipers and the corrected bow opening (first pinned 2026-09-19; hull-frame lattice cells
+// since 227).
 // These finite witnesses protect real mounting stock as well as exterior air.
 // No source topology or runtime vehicle geometry is stored in this QA module.
+import {isLatticeCellCenter,scanMatchesLatticeCells} from './contig-grid.mjs';
 export const BARAK_SOURCE_CONFIGURATION = Object.freeze({
   "id": "merkava4_barak",
   "source": {
@@ -271,119 +273,16 @@ export const BARAK_OPENING_WITNESSES = Object.freeze([
     "tolerance": 0.002
   }
 ]);
-const raster = Object.freeze({
-  "gridW": 67,
-  "gridH": 153,
-  "bounds": {
-    "x0": -1.9813799629211424,
-    "x1": 1.9813799629211424,
-    "z0": -4.221280212402344,
-    "z1": 4.905499982833862
-  }
-});
-const rows = Object.freeze({
-  "12": [
-    24,
-    25,
-    26,
-    27,
-    28,
-    29,
-    30,
-    37,
-    41
-  ],
-  "13": [
-    24,
-    25,
-    26,
-    27,
-    28,
-    29,
-    30,
-    36,
-    37,
-    38,
-    39,
-    40,
-    41,
-    42
-  ],
-  "14": [
-    24,
-    25,
-    26,
-    27,
-    28,
-    29,
-    30,
-    36,
-    37,
-    38,
-    39,
-    40,
-    41,
-    42
-  ],
-  "15": [
-    24,
-    25,
-    26,
-    27,
-    28,
-    29,
-    30,
-    36,
-    37,
-    38,
-    39,
-    40,
-    41,
-    42
-  ],
-  "16": [
-    24,
-    25,
-    26,
-    27,
-    28,
-    29,
-    30,
-    36,
-    37,
-    38,
-    39,
-    40,
-    41,
-    42
-  ],
-  "17": [
-    24,
-    25,
-    26,
-    27,
-    28,
-    29,
-    30,
-    36,
-    37,
-    38,
-    39,
-    40,
-    41,
-    42
-  ]
-});
+// The corrected bow opening as hull-frame lattice cells [kx, kz] of the §B2 raster (tools/contig-grid.mjs).
+// Measured 2026-10-17 on main 16aeab482 from the page's own gate scan (high quality).
+// The pre-227 pin (gridW 67, gridH 153, AABB bounds, 79 cells in rows 12-17) broke on any AABB change: on
+// main 16aeab482 the AABB's bow end sits 2 cm further forward and the re-phased grid reads 71 cells there.
+export const BARAK_OPENING_CELLS = Object.freeze([[-9,69],[-5,69],[-3,69],[-9,68],[-8,68],[-7,68],[-6,68],[-5,68],[-4,68],[-3,68],[2,68],[3,68],[4,68],[5,68],[6,68],[7,68],[8,68],[-9,67],[-8,67],[-7,67],[-6,67],[-5,67],[-4,67],[-3,67],[2,67],[3,67],[4,67],[5,67],[6,67],[7,67],[8,67],[-9,66],[-8,66],[-7,66],[-6,66],[-5,66],[-4,66],[-3,66],[2,66],[3,66],[4,66],[5,66],[6,66],[7,66],[8,66],[-9,65],[-8,65],[-7,65],[-6,65],[-5,65],[-4,65],[-3,65],[2,65],[3,65],[4,65],[5,65],[6,65],[7,65],[8,65],[-9,64],[-8,64],[-7,64],[-6,64],[-5,64],[-4,64],[-3,64],[2,64],[3,64],[4,64],[5,64],[6,64],[7,64],[8,64]].map(cell=>Object.freeze(cell)));
 export function barakOpeningCell(x,z){
-  const gx=(x-raster.bounds.x0)/(raster.bounds.x1-raster.bounds.x0)*raster.gridW-.5;
-  const gy=(raster.bounds.z1-z)/(raster.bounds.z1-raster.bounds.z0)*raster.gridH-.5;
-  return Math.abs(gx-Math.round(gx))<1e-8 && Math.abs(gy-Math.round(gy))<1e-8
-    && (rows[Math.round(gy)]??[]).includes(Math.round(gx));
+  return isLatticeCellCenter(x,z,BARAK_OPENING_CELLS);
 }
 export function validBarakOpeningRaster(scan){
-  return scan?.holeCells===79 && scan.gridW===raster.gridW && scan.gridH===raster.gridH
-    && Object.entries(raster.bounds).every(([key,value])=>Math.abs(scan.bounds?.[key]-value)<1e-9)
-    && scan.samples?.length===79 && scan.samples.every(sample=>barakOpeningCell(sample.x,sample.z));
+  return scanMatchesLatticeCells(scan,BARAK_OPENING_CELLS);
 }
 export function validBarakSourceConfiguration(config){
   const expected=BARAK_SOURCE_CONFIGURATION;
