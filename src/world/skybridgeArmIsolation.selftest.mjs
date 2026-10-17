@@ -15,7 +15,7 @@ const BEFORE = {
   winter: '9726f7f88e679a00',
   urban: 'd55a1084385adf87',
   coastal: 'bd0869e3b6f74cbd',
-  autumn: '5647eccd5ae5f182',
+  autumn: '7729ce23aed0d036', // 2026-10-17 re-pinned, was 5647eccd5ae5f182: MAPS Lane A's autumn backlog (item/maps-backlog-227): the f3 hedge-bank ridge at (128, 59) retired (its 1.6 m faces were the steep cells inside zone 2's disc); the ford green stays at (154, 54)
   steppe: 'f39da59d3b8341be',
   railyard: '3fc793f5cfa28201',
   frontier: '6dd169127afbaa73',

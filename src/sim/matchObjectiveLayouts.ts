@@ -33,6 +33,7 @@ export const MATCH_OBJECTIVE_LAYOUTS: Readonly<Record<string, {
   // 3 m bank at x 108 and the meadow's north slope (normals to 0.78 against 0.94), so every build since 0133ecade placed
   // zone 2 at (140.2, 66.4), on the old green's north half, where the fairness ruling's 23-17 was played. The hint
   // follows the played seat to (144, 60), the nearest point that keeps 4 m of slack from the steep cells
+  // (2026-10-17, the maps lane) and the f3 hedge-bank whose faces were those steep cells is retired (autumn.ts)
   autumn: { kickoff: { x: 119, z: 42 }, zones: [{ x: 22, z: -192 }, { x: 144, z: 60 }, { x: 0, z: 102 }] },
   // Frosthollow (layout brief, 2026-10-03): three zones across the valley's waist — the terrace hay meadow behind the
   // sawmill, the Bystra crossing's east-bank landing and the moraine crossroads (the last two graded aprons in the map
