@@ -68,7 +68,7 @@ const expect = {
   statue: ['figure'], columnMonument: ['figure'], equestrianStatue: ['rider'], obelisk: ['finial'], fountain: ['bowl', 'finial'],
   campanile: ['pinnacle-0', 'pinnacle-1', 'pinnacle-2', 'pinnacle-3', 'cross'], valveTower: ['finial'],
   fireLookout: ['frame', 'cab', 'cab-roof'], radomeTower: ['radome-shell', 'radome', 'whip-0', 'whip-1'], troposcatter: ['face', 'truss', 'feed'],
-  headframe: ['deck-rail', 'sheave-l', 'sheave-r', 'ropes', 'frame', 'ore-bin'],
+  headframe: ['winding-house', 'deck-rail', 'sheave-l', 'sheave-r', 'ropes', 'frame', 'bin-legs', 'ore-bin'],
 };
 for (const [kind, want] of Object.entries(expect)) assert.deepEqual(names(kind), want, `${kind}'s pieces`);
 assert.deepEqual(names('fountain', { style: 'markt' }), ['figure'], 'the Marktbrunnen\'s saint');
@@ -83,12 +83,23 @@ assert.deepEqual(names('guyedMast'), ['mast', 'mast-head', 'guys-0', 'guys-1', '
 assert.ok(names('fuelTankFarm', { tanks: 3 }).every((n) => n.startsWith('tank-')) && names('fuelTankFarm', { tanks: 3 }).length === 3);
 
 // ---------------------------------------------------------------------------------------------------------- 3. the kit's claim
-function describe(kind, params = {}, style = null, massClass = 'landmark') {
+function describe(kind, params = {}, style = null, massClass = 'landmark', sized = false) {
   const parts = build(kind, params);
   markLandmarkParts(parts);
   const pieces = landmarkPiecesOf(parts);
   if (pieces) samplePieceGround(pieces, () => 0);
-  return describeStructure({ structureIdx: 7, mapId: 'selftest', builder: kind, style, parts, w: 8, d: 8, h: 10,
+  // (227, lane B: `sized`, the set piece's own plan and height, as a map's placement measures it — a headframe's works run
+  // 28 m from its winding house to its ore bin, and on the 8 m square its house and collar read as anchored far out)
+  let w = 8, d = 8, h = 10;
+  if (sized) {
+    let x = 0, z = 0; h = 0;
+    for (const g of Object.values(parts).flat()) {
+      const arr = g.getAttribute('position').array;
+      for (let i = 0; i < arr.length; i += 3) { x = Math.max(x, Math.abs(arr[i])); h = Math.max(h, arr[i + 1]); z = Math.max(z, Math.abs(arr[i + 2])); }
+    }
+    w = 2 * x; d = 2 * z;
+  }
+  return describeStructure({ structureIdx: 7, mapId: 'selftest', builder: kind, style, parts, w, d, h,
     placement: { x: 0, y: 0, z: 0, yaw: 0 }, massClass });
 }
 assert.equal(describe('statue').kit, 'statue', 'a set piece with pieces is the kit\'s');
@@ -197,7 +208,7 @@ const holeSpec = (anatomy, hole) => ({ section: 0, storey: 0, face: 'front', hol
   const THREE = await import('three');
   const r2 = await import('../../../tools/r2-standard.mjs');
   for (const [kind, params] of [['guyedMast', { height: 24 }], ['fireLookout', {}], ['troposcatter', {}], ['headframe', {}]]) {
-    const a = describe(kind, params, null, 'shed');
+    const a = describe(kind, params, null, 'shed', kind === 'headframe');
     const out = writers(60000, 1024);
     out.fallAxis = [0.8, 0.6];
     seam(a).collapse(a, damageSeed(a.seed, 3), out);

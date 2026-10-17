@@ -520,7 +520,7 @@ function collapseLandmark(a: StructureDamageAnatomy, seed: number, out: DamageWr
     return true;
   };
   for (const p of plan.pieces) {
-    if (!(plan.lattice && gl > 1e-3 && p.at === 'collapse' && p.max[1] > hinge)) continue;
+    if (!(plan.lattice && gl > 1e-3 && p.kind === 'lattice' && p.at === 'collapse')) continue; // (227, lane B: an open piece under the hinge stands; a detach piece comes off whole)
     let reach = false;
     for (const run of p.runs) for (let i = 0; i < run.pos.length && !reach; i += 3) {
       const x = run.pos[i], y = run.pos[i + 1], z = run.pos[i + 2];

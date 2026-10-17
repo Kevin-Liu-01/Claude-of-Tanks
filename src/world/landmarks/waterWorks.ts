@@ -48,11 +48,12 @@ export const waterTower: LandmarkBuilder = (ctx) => {
   }
   if (style === 'trestle') {
     const legH = H - 5, half = 2.2;
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) sink.span('stone', sx * half - 0.4, base, sz * half - 0.4, sx * half + 0.4, 0.5, sz * half + 0.4);
-    // (227, lane B; the anti-raft floor: the trestle fell as a heap at its feet, 16 % of its height) the legs, their braces
-    // and girts, the tank's deck and the tank one open frame (pieces.ts 'lattice'): it buckles over its lower bays
-    // (world/toppleHinge.ts) and goes over along the blow, the tank on it
+    // (227, lane B; the anti-raft floor: the trestle fell as a heap at its feet, 16 % of its height) the legs on their stone
+    // pads, their braces and girts, the tank's deck and the tank one open frame (pieces.ts 'lattice'): it buckles over its
+    // lower bays (world/toppleHinge.ts) and goes over along the blow, the tank on it (the pads in it: a leg stands in the
+    // fall where it rests on what stands, landmarks/damage.ts standingVertices)
     piece(sink, { name: 'frame', kind: 'lattice', at: 'collapse', fall: 'topple' }, (s) => {
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) s.span('stone', sx * half - 0.4, base, sz * half - 0.4, sx * half + 0.4, 0.5, sz * half + 0.4);
       for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
         bar(s, 'structureWood', [sx * half, 0.5, sz * half], [sx * half * 0.72, legH, sz * half * 0.72], 0.3, { colour: TIMBER_DARK });
       }
@@ -72,13 +73,14 @@ export const waterTower: LandmarkBuilder = (ctx) => {
   }
   // the railway tower
   const rShaft = 3.4, shaftTop = Math.max(7, H * 0.58), houseTop = shaftTop + Math.max(3.2, H * 0.22);
-  revolve(sink, 'plaster', 0, 0, [[(rShaft + 0.25) / Math.cos(OCT), base], [(rShaft + 0.25) / Math.cos(OCT), 0.7], [(rShaft) / Math.cos(OCT), 0.7]], 8, {}, OCT);
   // (227, lane B; the anti-raft floor: an open frame by its name, the tower fell as the default kit's heap, 16 % of its
   // height) the shaft and the tank house each a piece that goes over (pieces.ts 'lattice'): the brick shaft breaks over
   // its lower half and stands there in its own courses (world/toppleHinge.ts), the rest goes over along the blow, the
   // plinth standing
   const ring = (r: number) => r / Math.cos(OCT);
   piece(sink, { name: 'shaft', kind: 'lattice', at: 'collapse', fall: 'topple' }, (s) => {
+    // (its plinth in it: the shaft stands in the fall on what stands)
+    revolve(s, 'plaster', 0, 0, [[(rShaft + 0.25) / Math.cos(OCT), base], [(rShaft + 0.25) / Math.cos(OCT), 0.7], [(rShaft) / Math.cos(OCT), 0.7]], 8, {}, OCT);
     const door: ArchHole = { u: 0, w: 1.3, y0: 0.7, spring: 2.8, form: 'segmental', rise: 0.3 };
     const low = (): ArchHole => ({ u: 0, w: 0.8, y0: 2.9, spring: 4.4, form: 'segmental', rise: 0.2 });
     const high = (): ArchHole => ({ u: 0, w: 0.7, y0: shaftTop - 3.2, spring: shaftTop - 2.0, form: 'round' });

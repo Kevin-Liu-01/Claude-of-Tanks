@@ -79,16 +79,20 @@ export const windmill: LandmarkBuilder = (ctx) => {
   const cloth = ctx.variant() < 0.5 ? 0 : 0.35 + ctx.variant() * 0.5;
   if (style === 'post') {
     const bw = 3.8, bd = 4.6, bh = 5.0, lift = Math.max(3.2, H - bh - 1.8);
-    for (const [x, z] of [[-2.6, 0], [2.6, 0], [0, -2.6], [0, 2.6]] as const) sink.span('stone', x - 0.42, base, z - 0.42, x + 0.42, 0.55, z + 0.42);
-    // (227, lane B; the anti-raft floor: the mill fell as a heap at its feet, 13 % of its height) the trestle, the post, the
-    // body, the windshaft, the tail pole and the ladder one open frame (pieces.ts 'lattice'): it buckles over its trestle's
-    // standing bays (world/toppleHinge.ts) and goes over along the blow, the sails off it
+    // (227, lane B; the anti-raft floor: the mill fell as a heap at its feet, 13 % of its height) the trestle on its stone
+    // piers and the post one open frame (pieces.ts 'lattice'): the post runs up inside the body to its eaves, so the frame
+    // breaks over its standing trestle (world/toppleHinge.ts; the piers in it, what the crosstrees stand on); the body with
+    // its windshaft, tail pole and ladder comes off the post whole and goes over (the 227 films: one frame with the body,
+    // cut at the hinge, stood half a body on the trestle), the sails off it
     const hubY = lift + bh * 0.8, hubZ = bd / 2 + 0.7;
-    piece(sink, { name: 'frame', kind: 'lattice', at: 'collapse', fall: 'topple' }, (s) => {
+    piece(sink, { name: 'frame', kind: 'lattice', at: 'collapse', fall: 'slump' }, (s) => {
+      for (const [x, z] of [[-2.6, 0], [2.6, 0], [0, -2.6], [0, 2.6]] as const) s.span('stone', x - 0.42, base, z - 0.42, x + 0.42, 0.55, z + 0.42);
       s.span('structureWood', -2.8, 0.55, -0.2, 2.8, 0.95, 0.2, { colour: TIMBER_DARK });
       s.span('structureWood', -0.2, 0.55, -2.8, 0.2, 0.95, 2.8, { colour: TIMBER_DARK });
-      revolve(s, 'structureWood', 0, 0, [[0.3, 0.55], [0.26, lift]], 8, { colour: TIMBER_DARK });
+      revolve(s, 'structureWood', 0, 0, [[0.3, 0.55], [0.26, lift + bh]], 8, { colour: TIMBER_DARK });
       for (const [x, z] of [[-2.4, 0], [2.4, 0], [0, -2.4], [0, 2.4]] as const) bar(s, 'structureWood', [x, 0.95, z], [x * 0.07, lift - 0.6, z * 0.07], 0.2, { colour: TIMBER_DARK });
+    });
+    piece(sink, { name: 'body', kind: 'detach', at: 'collapse', fall: 'topple' }, (s) => {
       // the body: boards, a gable roof, the door at the back up the ladder
       const roof: RoofSpec = { kind: 'gable', pitchDeg: 38, eave: 0.25, verge: 0.3, thickness: 0.1, bucket: 'roof', ridge: 'saddle' };
       s.placed(0, 0, lift, 0, () => {
@@ -106,7 +110,10 @@ export const windmill: LandmarkBuilder = (ctx) => {
         }
       });
       s.member('structureWood', [0, hubY - 0.1, bd / 2 - 0.5], [0, hubY + 0.05, hubZ], 0.34, 0.34, [1, 0, 0], { colour: TIMBER_DARK, exposed: true }, 0.17);
-      // the tail pole to the ground and the ladder up to the door
+    });
+    // the tail pole to the ground and the ladder up to the door: they come down flat off the body's back (with it, they
+    // propped the fallen body in the air)
+    piece(sink, { name: 'tail', kind: 'detach', at: 'collapse', fall: 'flat' }, (s) => {
       bar(s, 'structureWood', [0, lift + 0.3, -bd / 2], [0, 0.5, -bd / 2 - 5.2], 0.22, { colour: TIMBER_DARK, decor: true });
       for (const sx of [-0.5, 0.5]) bar(s, 'structureWood', [sx, lift, -bd / 2 - 0.1], [sx, 0.1, -bd / 2 - 3.0], 0.12, { colour: TIMBER_DARK, decor: true });
       for (let k = 1; k < 9; k++) {
@@ -178,13 +185,14 @@ export const windmill: LandmarkBuilder = (ctx) => {
     faceBox(sink, 'stone', df, 0, 0.55, 0.3, 1.5, 0.14, 0.6, { decor: true });
     plankDoor(sink, df, 0, 0.62, 1.14, 2.08, IRON_GREEN, 0.03);
   } else {
-    revolve(sink, 'stone', 0, 0, [[r0 / Math.cos(OCT), base], [r0 / Math.cos(OCT), 1.6], [(r0 - 0.15) / Math.cos(OCT), 1.6]], 8, {}, OCT);
     const body = ctx.mapId === 'polders' ? 'straw' : 'structureWood';
     plankDoor(sink, { origin: [0, 0, r0 - 0.1], u: [1, 0, 0], out: [0, 0, 1], width: 1 }, 0, 0.3, 1.0, 1.25, TIMBER_DARK, 0.02);
     // (227, lane B; the anti-raft floor: the mill fell as a heap at its feet, 16 % of its height) the boarded smock over its
     // brick base one frame of posts and boards (pieces.ts 'lattice'): it buckles over its lower storeys (world/toppleHinge.ts)
     // and goes over along the blow
     piece(sink, { name: 'frame', kind: 'lattice', at: 'collapse', fall: 'topple' }, (s) => {
+      // (its brick base in it: the smock stands in the fall on what stands)
+      revolve(s, 'stone', 0, 0, [[r0 / Math.cos(OCT), base], [r0 / Math.cos(OCT), 1.6], [(r0 - 0.15) / Math.cos(OCT), 1.6]], 8, {}, OCT);
       revolve(s, body, 0, 0, [[(r0 - 0.15) / Math.cos(OCT), 1.6], [2.0 / Math.cos(OCT), capY]], 8, body === 'straw' ? {} : { colour: BOARD_GREY }, OCT);
       for (const a of [Math.PI / 4, Math.PI * 1.25]) {
         const rr = (r0 - 0.15) + (2.0 - (r0 - 0.15)) * 0.45;

@@ -128,29 +128,36 @@ export const headframe: LandmarkBuilder = (ctx) => {
   // the shaft collar: a concrete ring round the open shaft (props census #3, lane B 2026-10-14: was a block with the shaft
   // painted on its top), its timber sets lining the shaft's mouth, the dark of the shaft below them, the skip at the top
   const cb = Math.min(gLo - 0.8, -0.6);
-  sink.span('stone', -2.6, cb, zs - 2.6, 2.6, g0 + 1.2, zs - 1.5);
-  sink.span('stone', -2.6, cb, zs + 1.5, 2.6, g0 + 1.2, zs + 2.6);
-  sink.span('stone', -2.6, cb, zs - 1.5, -1.0, g0 + 1.2, zs + 1.5);
-  sink.span('stone', 1.0, cb, zs - 1.5, 2.6, g0 + 1.2, zs + 1.5);
-  sink.span('structureMetal', -1.0, g0 - 2.5, zs - 1.5, 1.0, g0 - 2.4, zs + 1.5, { colour: SHAFT, decor: true });
-  for (const [x, z, w2, d2] of [[0, zs - 1.45, 2.0, 0.12], [0, zs + 1.45, 2.0, 0.12], [-0.95, zs, 0.12, 2.9], [0.95, zs, 0.12, 2.9]] as const) {
-    sink.span('structureWood', x - w2 / 2, g0 - 1.2, z - d2 / 2, x + w2 / 2, g0 + 1.26, z + d2 / 2, { colour: rgb(0x4a3a2c), decor: true });
-  }
-  // the skip landed on its keps, the two beams across the shaft's mouth from collar to collar
-  for (const kz of [zs - 0.75, zs + 0.15]) sink.span('structureWood', -1.05, g0 + 1.2, kz - 0.08, 1.05, g0 + 1.3, kz + 0.08, { colour: rgb(0x4a3a2c), decor: true });
-  sink.span('structureMetal', -0.6, g0 + 1.3, zs - 0.9, 0.6, g0 + 3.2, zs + 0.3, { colour: shade(OXIDE, 1.2), decor: true });
+  // (the collar, its sets, the shaft's dark and the skip on its keps are the frame's footing: they go in the frame's piece
+  // below, where its legs stand on them)
+  const collar = (k: PartSink) => {
+    k.span('stone', -2.6, cb, zs - 2.6, 2.6, g0 + 1.2, zs - 1.5);
+    k.span('stone', -2.6, cb, zs + 1.5, 2.6, g0 + 1.2, zs + 2.6);
+    k.span('stone', -2.6, cb, zs - 1.5, -1.0, g0 + 1.2, zs + 1.5);
+    k.span('stone', 1.0, cb, zs - 1.5, 2.6, g0 + 1.2, zs + 1.5);
+    k.span('structureMetal', -1.0, g0 - 2.5, zs - 1.5, 1.0, g0 - 2.4, zs + 1.5, { colour: SHAFT, decor: true });
+    for (const [x, z, w2, d2] of [[0, zs - 1.45, 2.0, 0.12], [0, zs + 1.45, 2.0, 0.12], [-0.95, zs, 0.12, 2.9], [0.95, zs, 0.12, 2.9]] as const) {
+      k.span('structureWood', x - w2 / 2, g0 - 1.2, z - d2 / 2, x + w2 / 2, g0 + 1.26, z + d2 / 2, { colour: rgb(0x4a3a2c), decor: true });
+    }
+    // the skip landed on its keps, the two beams across the shaft's mouth from collar to collar
+    for (const kz of [zs - 0.75, zs + 0.15]) k.span('structureWood', -1.05, g0 + 1.2, kz - 0.08, 1.05, g0 + 1.3, kz + 0.08, { colour: rgb(0x4a3a2c), decor: true });
+    k.span('structureMetal', -0.6, g0 + 1.3, zs - 0.9, 0.6, g0 + 3.2, zs + 0.3, { colour: shade(OXIDE, 1.2), decor: true });
+  };
   // (227, lane B; the anti-raft floor: the frame fell as the default kit's heap at its collar, 15-21 % of its height) the
   // frame one open lattice (pieces.ts 'lattice'): its legs, struts, girts and bracing, the sheave deck and the sheaves'
   // bearers and the ladder (the ropes and the ore bin come down after it); it buckles over its lower bays
-  // (world/toppleHinge.ts) and goes over along the blow, the collar, the pads and the winding house standing. The pads first.
+  // (world/toppleHinge.ts) and goes over along the blow. The collar and the struts' pads go in the frame's piece: a member
+  // stands in the fall only where its foot rests on the ground or on what stands (landmarks/damage.ts standingVertices;
+  // the 227 films: on footings left out of it, the girts and braces fell and the legs stood bare). The winding house and
+  // the bin's legs are open pieces of their own under the hinge: they stand through the fall where they stood (left to the
+  // body, the fall's mask took the house down with nothing laid in its place)
   const az = zs - 0.5 * Hh;
   const padAt = (sx: number) => gl(sx * 2.4, az);
-  for (const sx of [-1, 1]) sink.span('stone', sx * 2.4 - 0.55, Math.min(padAt(sx) - 0.8, -0.6), az - 0.55, sx * 2.4 + 0.55, padAt(sx) + 0.4, az + 0.55);
   const binAt = (sx: number) => gl(sx * 1.6, zs + half + 2.4);
-  for (const sx of [-1, 1]) sink.span('stone', sx * 1.6 - 0.35, Math.min(binAt(sx) - 0.8, -0.6), zs + half + 2.05, sx * 1.6 + 0.35, binAt(sx) + 0.4, zs + half + 2.75);
   // the winding house behind the struts (its own footing)
   const hz1 = az - 3, hd = 10;
-  const hy = shed(sink, 0, hz1 - hd / 2, 9, hd, 6.0, 8.0, IRON_SHEET, ctx, [-0.9, 0.9]);
+  let hy = 0;
+  piece(sink, { name: 'winding-house', kind: 'lattice', at: 'collapse', fall: 'slump' }, (s) => { hy = shed(s, 0, hz1 - hd / 2, 9, hd, 6.0, 8.0, IRON_SHEET, ctx, [-0.9, 0.9]); });
   const rail = (s: PartSink, x0: number, z0: number, x1: number, z1: number) => {
     for (const [a, b] of [[[x0, z0], [x1, z0]], [[x1, z0], [x1, z1]], [[x1, z1], [x0, z1]], [[x0, z1], [x0, z0]]] as const) {
       bar(s, 'structureMetal', [a[0], H + 1.3, a[1]], [b[0], H + 1.3, b[1]], 0.05, { colour: IRON, decor: true });
@@ -166,13 +173,15 @@ export const headframe: LandmarkBuilder = (ctx) => {
     piece(sink, { name: `sheave-${sx < 0 ? 'l' : 'r'}`, kind: 'lattice', at: 'breached', fall: 'flat' }, (s) => sheave(s, c, R, 6, IRON, 0.12));
   }
   // the ropes down from the sheaves to the winding house's drums and to the cage: they come down slack with the frame
-  piece(sink, { name: 'ropes', kind: 'detach', at: 'collapse', fall: 'drop' }, (s) => {
+  piece(sink, { name: 'ropes', kind: 'lattice', at: 'collapse', fall: 'drop' }, (s) => {
     for (const sx of [-1, 1]) {
       bar(s, 'structureMetal', [sx * 0.9, hubY + R, zs - 0.2], [sx * 0.9, hy + 4.2, hz1 - 0.4], 0.05, { colour: IRON, decor: true });
       bar(s, 'structureMetal', [sx * 0.9, hubY - R * 0.2, zs + R * 0.9], [sx * 0.9, g0 + 1.3, zs + 0.6], 0.05, { colour: IRON, decor: true });
     }
   });
   piece(sink, { name: 'frame', kind: 'lattice', at: 'collapse', fall: 'topple' }, (sink) => {
+    collar(sink);
+    for (const sx of [-1, 1]) sink.span('stone', sx * 2.4 - 0.55, Math.min(padAt(sx) - 0.8, -0.6), az - 0.55, sx * 2.4 + 0.55, padAt(sx) + 0.4, az + 0.55);
     // the four legs and the raking struts
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) bar(sink, 'structureMetal', [sx * half, g0 + 1.2, zs + sz * half], [sx * half, H, zs + sz * half], 0.32, legOpts);
     for (const sx of [-1, 1]) {
@@ -197,9 +206,14 @@ export const headframe: LandmarkBuilder = (ctx) => {
     for (let y = g0 + 3.0; y < H - 0.6; y += 3.0) bar(sink, 'structureMetal', [lx, y, lz1], [half, y, lz1], 0.05, { colour: IRON, decor: true });
     for (let y = g0 + 1.6; y < H; y += 0.4) bar(sink, 'structureMetal', [lx, y, lz0], [lx, y, lz1], 0.03, { colour: IRON, decor: true, fine: true });
   });
-  // the ore bin on the legs' front, its chute and its two front legs footed on the ground: it comes down where it stood
-  piece(sink, { name: 'ore-bin', kind: 'detach', at: 'collapse', fall: 'drop' }, (s) => {
+  // the bin's two front legs on their pads: they stand (the bin comes off them)
+  piece(sink, { name: 'bin-legs', kind: 'lattice', at: 'collapse', fall: 'slump' }, (s) => {
+    for (const sx of [-1, 1]) s.span('stone', sx * 1.6 - 0.35, Math.min(binAt(sx) - 0.8, -0.6), zs + half + 2.05, sx * 1.6 + 0.35, binAt(sx) + 0.4, zs + half + 2.75);
     for (const sx of [-1, 1]) bar(s, 'structureMetal', [sx * 1.6, binAt(sx) + 0.4, zs + half + 2.4], [sx * 1.6, g0 + 5.5, zs + half + 2.4], 0.22, legOpts);
+  });
+  // the ore bin on the legs' front and its chute: it comes off its legs and down beside them (the 227 films: with its legs it
+  // lay tipped on one of them, propped in the air)
+  piece(sink, { name: 'ore-bin', kind: 'detach', at: 'collapse', fall: 'drop' }, (s) => {
     s.span('structureMetal', -1.8, g0 + 5.5, zs + half, 1.8, g0 + 9.0, zs + half + 2.6, { colourAt: rusting(STEEL, g0 + 5.5, g0 + 9.0, 0.45) });
     s.polygon('structureMetal', [[-1.8, g0 + 5.5, zs + half + 2.6], [1.8, g0 + 5.5, zs + half + 2.6], [0.8, g0 + 4.2, zs + half + 3.4], [-0.8, g0 + 4.2, zs + half + 3.4]], { colour: shade(STEEL, 0.8), decor: true });
   });

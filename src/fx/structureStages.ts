@@ -658,6 +658,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   /** A strike hole's bodies by the burst's charge (kg): a pierce two, a tank HE round three to five, a howitzer eight. */
   const strikeBodies = (kind: 'blast' | 'pierce', chargeKg: number): number => kind === 'pierce' ? 2
     : Math.max(2, Math.min(STRIKE_BODIES_MAX, Math.round(2 + 1.6 * Math.sqrt(Math.max(0, chargeKg)))));
+  /** A live run's named-piece hides, held to its wreck's birth (227, lane B co-hold: a piece laid after the run's delay stood till it shows). */
+  const heldHides: { seam: StructureDamageSeam; hides: DamageStageResult['hides']; at: number }[] = [];
   /** A stage's builder through the writers. `standing`: its runs belong to the standing building (a breach's rim and
    *  room, a spall's units) and fall with it; a collapse's own stubs and pile stay where they lie. */
   function run(seam: StructureDamageSeam, delayS: number, settled: boolean, build: (out: DamageWriters) => DamageStageResult,
@@ -689,7 +691,9 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     try { result = build(writers); } catch { result = null; }
     const made = debris.commit();
     if (owner) for (const mesh of made) mesh.userData.runOwner = owner;
-    apply(seam, result, holeSeed, holeKind, made);
+    const held = !settled && delayS > 0 && result?.hides?.some((h) => h.piece) ? result.hides.filter((h) => h.piece) : null;
+    if (held) heldHides.push({ seam, hides: held, at: o.now() + delayS });
+    apply(seam, held ? { ...result!, hides: result!.hides.filter((h) => !h.piece) } : result, holeSeed, holeKind, made);
     if (wantsRoom && standing && !piecesOnly) layInterior(seam, owner && owner.storey >= 0 ? owner.storey : 0, settled);
   }
 
@@ -1266,6 +1270,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       if (changed) seam.touchShadows();
     },
     update() {
+      if (heldHides.length) { let k = 0; for (const h of heldHides) if (o.now() >= h.at) apply(h.seam, { cuts: [], hides: h.hides }); else heldHides[k++] = h; heldHides.length = k; }
       if (pendingStrikes.length) {
         const t = o.now();
         let k = 0;
@@ -1295,6 +1300,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     },
     shiftTime(delta) {
       for (const p of pendingStrikes) p.at += delta;
+      for (const h of heldHides) h.at += delta;
       for (const f of falling) f.until += delta;
       for (const f of storeyFalls) f.t0 += delta;
     },
@@ -1313,6 +1319,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       downed.clear();
       sectionsSeen.clear();
       pendingStrikes.length = 0;
+      heldHides.length = 0;
       fallenSections.clear();
       flattened.length = 0;
       flattenedSpans = new WeakSet();
