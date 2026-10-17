@@ -293,25 +293,28 @@ function kunlun(P:TankBuilderPort):void {
 // ---------------------------------------------------------------------------------------------------------------
 // Qilin (release 227, owner 2026-10-16: "make the qqilin turret 10% shorter ... and redesign the qilin turret around
 // this principle"): the production ZTZ-99A2 turret, its bustle cut by 0.395 m (QILIN_BUSTLE_CUT_M, donorBustleCut.ts),
-// wearing the Qilin's own add-ons from its cast turret, each altered slightly to wrap round the 99A2: the triangular
-// flank brows (now welded onto the 99A2's forward side cassette, each carrying three chevron cassettes), the rear flank
-// housings (in place of the 99A2's rear cassette and stowage box, carrying its rail) with their three flat tiles a
-// side, the rear box seams, the bustle roof plate with its small rack and roll, the flat eye, the split-panel sensor,
-// and the 226 field fit (round lamps, side camera, field box, tool chest, carrier, cable, basket) moved onto the cut
-// bustle. The 99A2's chevrons, face ERA, smoke banks, cupola, sights and whips stay as emitted. Not re-added: the cast
+// wearing the Qilin's own add-ons from its cast turret, each altered slightly to wrap round the 99A2: one flank sleeve a
+// side (the cast turret's triangular brow, welded onto the 99A2's forward side cassette with four chevron cassettes,
+// and its rear flank housing in place of the 99A2's rear cassette and stowage box, carrying its rail and three flat
+// tiles, welded into one loft), the rear box seams, the bustle roof plate with its small rack and roll, the flat eye,
+// the split-panel sensor on its own central seat, and the 226 field fit (round lamps, side camera, field box, tool
+// chest, carrier, cable, basket) moved onto the cut bustle. The 99A2's chevrons, face ERA, smoke banks, cupola, sights and whips stay as emitted. Not re-added: the cast
 // bustle box, rear box, central sight, antenna and four-tube smoke (the 99A2's armoured bustle, rear box, sights, whips
 // and five-tube banks are the same equipment at full size).
 const QILIN_MODEL=2;
 type FlankRow=readonly [z:number,inner:number,outer:number,bottom:number,top:number];
-// The brow: a triangular wedge (0.40 m tall at its front, 0.24 m at its rear) welded on the forward side cassette's
-// outer face (x 1.574-1.606; the inner edge at x 1.545, 29 mm in, clear of the 99A2 rail's two forward stanchions that
-// stand in the cassette at x 1.50) and buried in the chevron's permanent outer root at its front; its rear end runs 50 mm into
-// the rear flank housing, so brow and housing read as one welded flank (no slot between two parallel end faces).
-const QILIN_BROW:readonly FlankRow[]=[[-.96,1.545,1.64,.30,.54],[-.52,1.545,1.67,.20,.58],[-.16,1.545,1.68,.16,.56]];
-// The rear flank housing: from the forward cassette's rear face (-0.93) round the cut bustle wall to the rear armour
-// box, wide enough at its rear to carry the 99A2's rail (x 1.51-1.55 there) on two short posts.
-const QILIN_REAR_FLANK:readonly FlankRow[]=[[-1.83,1.06,1.47,.43,.635],[-1.72,1.14,1.60,.37,.665],[-1.34,1.34,1.62,.26,.68],
-  [-.91,1.36,1.62,.22,.66]];
+// Release 227 (M2): the flank sleeve, one welded loft a side in place of the 226 brow and rear flank housing (two
+// parallel end faces 50 mm apart inside each other read as two parts). From the cut bustle's rear corner (50 mm into the
+// 99A2 rear armour box) it runs round the cut bustle wall, carries the 99A2 rail on two posts, and at z -0.90 reaches
+// 30 mm into the forward side cassette (whose rear face stands at z -0.93, yawed 0.04 rad), covering that face; inside the
+// cassette (z -0.90 to -0.89, a 10 mm step hidden in it) the sleeve narrows to the brow: the triangular wedge on the
+// cassette's outer face (x 1.574-1.606), its inner face stepped out to x 1.545, 28 mm clear of the rail's forward
+// stanchions (x 1.483-1.517 at z -0.16 and -0.82), its front buried in the chevron's permanent outer root. Its bottom
+// (0.16 at the front) stands about 0.21 m over the B3 roof. [z, inner x, outer x, bottom y, top y], turret frame.
+const QILIN_SLEEVE:readonly FlankRow[]=[[-1.83,1.06,1.47,.43,.635],[-1.72,1.14,1.60,.37,.665],[-1.34,1.34,1.62,.26,.68],
+  [-.90,1.36,1.62,.22,.66],[-.89,1.545,1.635,.28,.56],[-.52,1.545,1.67,.20,.58],[-.16,1.545,1.68,.16,.56]];
+/** The brow part of the sleeve (its three forward rows): the chevron facets. */
+const QILIN_BROW=QILIN_SLEEVE.slice(4);
 
 /** A builder port whose added parts carry the add-on's inventory role (userData.chineseModernization). */
 function tagged(P:TankBuilderPort,model:number,role:string):TankBuilderPort {
@@ -348,7 +351,8 @@ function roofAt(parts:readonly THREE.BufferGeometry[],x:number,z:number):number 
   return y;
 }
 
-/** The brow's four chevron cassettes (the cast Qilin's eight a turret): two on each facet, each on its seat pad. */
+/** The brow's four chevron cassettes a side (the cast Qilin's eight a turret): two on each of the sleeve's two forward
+ * facets, each on its seat pad. */
 function qilinBrowChevrons(P:TankBuilderPort,side:number):void {
   const bevel=(r:FlankRow)=>Math.min(.045,(r[4]-r[3])*.25,(r[2]-r[1])*.25);
   for(const [i,count] of [[1,2],[2,2]] as const){
@@ -369,17 +373,15 @@ function qilinFlatEye(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:
 
 function qilin(P:TankBuilderPort):void {
   const l=NATIONAL_ROOF_LOADOUTS.t72b3_qilin,bz=(z:number)=>bustleCutZ(z,QILIN_BUSTLE_CUT_M);
-  // Permanent armour first: the brows and the rear flank housings (their two rail posts under the 99A2 rail).
-  for(const side of [-1,1]){
-    tagged(P,QILIN_MODEL,'brow').addExternalArmor('turret',weldedFlankHousing(QILIN_BROW,side,.035));
-    tagged(P,QILIN_MODEL,'rear-flank-housing').addExternalArmor('turret',weldedFlankHousing(QILIN_REAR_FLANK,side,.045));
-  }
+  // Permanent armour first: one flank sleeve a side (its two rail posts under the 99A2 rail).
+  for(const side of [-1,1])tagged(P,QILIN_MODEL,'flank-sleeve').addExternalArmor('turret',weldedFlankHousing(QILIN_SLEEVE,side,.040));
   qilinRailPosts(tagged(P,QILIN_MODEL,'rail-post'),bz);
-  // Removable faces on the frozen permanent stock: three brow chevron cassettes and three flat tiles a side.
+  // Removable faces on the frozen permanent stock: four chevron cassettes on the brow's two facets and three flat tiles
+  // on the sleeve's rear wall a side.
   const armour=permanentParts(P,['turretExternalArmor']);
   for(const side of [-1,1]){
     qilinBrowChevrons(tagged(P,QILIN_MODEL,'brow-chevron'),side);
-    // 0.22 m tiles at a 0.25 m pitch behind the brow's rear end (z -0.96): 30-40 mm gaps, no shared faces, no overlap
+    // 0.22 m tiles at a 0.25 m pitch behind the forward cassette (z -0.93): 30-40 mm gaps, no shared faces, no overlap
     for(const z of QILIN_FLANK_TILE_Z)seatCheekTile(tagged(P,QILIN_MODEL,'flank-tile'),armour,side,z,.45,[.25,.07,.22]);
   }
   qilinRearBoxSeams(tagged(P,QILIN_MODEL,'rear-box-seam'));
@@ -421,12 +423,12 @@ function qilin(P:TankBuilderPort):void {
   qilinRearBasket(P);
 }
 
-/** The Qilin's flat tiles on each rear flank housing (turret-local z of their centres). */
+/** The Qilin's flat tiles on each flank sleeve's rear wall (turret-local z of their centres). */
 const QILIN_FLANK_TILE_Z=[-1.11,-1.36,-1.61] as const;
 /** The split-panel sensor's plan seat (turret frame): the cast Qilin's own roof-sensor seat. */
 const QILIN_SENSOR=[-.06,-.12] as const;
 
-/** Two short posts a side carrying the 99A2's rail (y 0.76) on the rear flank housing's top, at the rail's mapped
+/** Two short posts a side carrying the 99A2's rail (y 0.76) on the flank sleeve's top, at the rail's mapped
  * stanchion stations. Each post's foot sits 4 mm into the housing's top; its head 4 mm into the rail. */
 function qilinRailPosts(P:TankBuilderPort,bz:(z:number)=>number):void {
   const housing=permanentParts(P,['turretExternalArmor']),detail=new Stock(P,['turretDetail']);
@@ -434,7 +436,7 @@ function qilinRailPosts(P:TankBuilderPort,bz:(z:number)=>number):void {
     for(const side of [-1,1])for(const z of [bz(-1.48),bz(-2.06)]){
       // the rail's own position at this station (it yaws outboard towards the rear)
       const rail=detail.hit(new THREE.Vector3(side*3,.76,z),new THREE.Vector3(-side,0,0),2.2);
-      if(!rail)throw new Error(`${P.spec.id}: no 99A2 rail over the rear flank housing at ${z}`);
+      if(!rail)throw new Error(`${P.spec.id}: no 99A2 rail over the flank sleeve at ${z}`);
       const x=rail.point.x-side*.0175,top=roofAt(housing,x,z),railBottom=.76-.0175;
       P.addEquipment('turretDetail',box(.034,railBottom-top+.008,.034),x,(railBottom+top)/2,z);
     }

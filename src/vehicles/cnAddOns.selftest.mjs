@@ -33,7 +33,7 @@ const INVENTORY = {
     'dock-bearer': [2, 0], 'dock-landing': [1, 0],
   },
   t72b3_qilin: {
-    brow: [2, 0], 'brow-chevron': [16, 8], 'rear-flank-housing': [2, 0], 'flank-tile': [12, 6], 'rail-post': [4, 0],
+    'flank-sleeve': [2, 0], 'brow-chevron': [16, 8], 'flank-tile': [12, 6], 'rail-post': [4, 0],
     'rear-box-seam': [2, 0], 'rear-box-mark': [2, 0], 'bustle-plate': [1, 0], rack: [7, 0], 'flat-eye': [4, 0], 'split-sensor': [3, 0],
     lamp: [2, 0], camera: [3, 0], 'field-box': [1, 0], 'tool-chest': [1, 0], roll: [4, 0], carrier: [3, 0], cable: [2, 0],
     'cage-root': [2, 0], 'cage-front-post': [2, 0], 'cage-side-rail': [2, 0], 'cage-post': [2, 0], 'cage-rear-rail': [3, 0], 'cage-floor': [4, 0],
@@ -51,7 +51,7 @@ const family = (role) => (/^(cage-|dock-)/.test(role) ? 'cage' : role);
 // than its own half-thickness and a few millimetres (a gun band's bore is 2 mm inside the barrel's skin);
 // a shaped foot (6 mm into the roof at its corners) swallows the roof's camber under it up to 16 mm, 22 mm where the
 // split sensor's foot welds over the chevron's raised upper root.
-const HOUSINGS = new Set(['wrap-housing', 'rear-flank-housing', 'brow', 'bustle-module']);
+const HOUSINGS = new Set(['wrap-housing', 'flank-sleeve', 'bustle-module']);
 const THIN = new Set(['cable', 'rail-post', 'rear-band', 'rear-box-seam', 'rear-box-mark', 'marking-board', 'muzzle-strip', 'gun-band']);
 function allowance(p) {
   if (HOUSINGS.has(p.role)) return .40;
@@ -243,6 +243,31 @@ for (const quality of ['high', 'low']) {
         const surface = new SurfaceGrid(Float64Array.from(qilinTris), { cell: .05, rq: .002 });
         const moved = [...fleetShell].filter((k) => !qilinShell.has(k)).filter((k) => surface.distance(...k.split(',').map((n) => n / 1e4)) > 2e-4);
         assert.equal(moved.length, 0, `Qilin: ${moved.length} 99A2 shell points ahead of z ${ZTZ99A2_BUSTLE_CUT_FRONT_Z} moved off its surface: ${moved.slice(0, 8).join(' ; ')}`);
+        // M2: one flank sleeve a side; no face of it parallel to the 99A2 forward side cassette's rear face (z -0.93,
+        // yawed 0.04 rad) within 5 mm of that face's plane (the sleeve's 10 mm step stands 30-40 mm inside the cassette)
+        const sleeves = parts.filter((p) => p.role === 'flank-sleeve');
+        assert.equal(sleeves.length, 2, 'Qilin: one flank sleeve a side');
+        for (const side of [-1, 1]) {
+          const cassette = parts.find((p) => p.bucket === 'turretExternalArmor' && !p.role && !p.era && p.box.min.z > -.95 && p.box.min.z < -.91
+            && Math.sign(p.box.min.x + p.box.max.x) === side && Math.min(Math.abs(p.box.min.x), Math.abs(p.box.max.x)) > 1.3);
+          assert.ok(cassette, `Qilin: the 99A2 forward side cassette (side ${side})`);
+          let rear = null; const T = cassette.tri;
+          for (let t = 0; t < T.length; t += 9) {
+            const ux = T[t + 3] - T[t], uy = T[t + 4] - T[t + 1], uz = T[t + 5] - T[t + 2], vx = T[t + 6] - T[t], vy = T[t + 7] - T[t + 1], vz = T[t + 8] - T[t + 2];
+            const n = new THREE.Vector3(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx); if (n.length() < 1e-9) continue; n.normalize();
+            if (Math.abs(n.z) > .95 && (T[t + 2] + T[t + 5] + T[t + 8]) / 3 < cassette.box.min.z + .02) { rear = { n, d: n.x * T[t] + n.y * T[t + 1] + n.z * T[t + 2] }; break; }
+          }
+          assert.ok(rear, `Qilin: the cassette's rear face (side ${side})`);
+          const sleeve = sleeves.find((p) => Math.sign(p.box.min.x + p.box.max.x) === side), S = sleeve.tri;
+          let closest = Infinity;
+          for (let t = 0; t < S.length; t += 9) {
+            const ux = S[t + 3] - S[t], uy = S[t + 4] - S[t + 1], uz = S[t + 5] - S[t + 2], vx = S[t + 6] - S[t], vy = S[t + 7] - S[t + 1], vz = S[t + 8] - S[t + 2];
+            const n = new THREE.Vector3(uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx); if (n.length() < 1e-9) continue; n.normalize();
+            if (Math.abs(n.dot(rear.n)) < .95) continue;
+            for (let k = 0; k < 9; k += 3) closest = Math.min(closest, Math.abs(rear.n.x * S[t + k] + rear.n.y * S[t + k + 1] + rear.n.z * S[t + k + 2] - rear.d));
+          }
+          assert.ok(closest > .005, `Qilin: the sleeve's step faces stand ${(closest * 1000).toFixed(1)} mm from the cassette's rear face plane (side ${side})`);
+        }
         assert.equal(NATIONAL_DONOR_TURRETS.t72b3_qilin.builderOptions.bustleCutM, QILIN_BUSTLE_CUT_M);
         assert.ok(Math.abs(bustleCutZ(-2.265, QILIN_BUSTLE_CUT_M) - body.min.z) < .006, 'Qilin: the rear armour assembly moved forward by the cut');
         // the turret as drawn (the gun aside) is 10 % shorter than the 226 cast Qilin's 4.228 m too: the basket is 0.27 m deep
