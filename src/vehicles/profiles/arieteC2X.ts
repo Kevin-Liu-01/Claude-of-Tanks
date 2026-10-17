@@ -141,7 +141,7 @@ export function buildArieteC2X(P: TankBuilderPort): void {
   // between the outer and inner plates, which was open to the ground from above. The B2 contiguity scan read it as
   // enclosed sky once the re-seated forward link carry re-framed its grid. Set 2 mm under the lower plate and laid on
   // the plates' 0.4555 rad slope; hull frame, after the family enlargement.
-  for (const side of [-1, 1]) P.add('hull', KIT.box(0.07, 0.02, 0.165), side * 1.05, 1.3429, 3.915, 0.4555, 0, 0);
+  for (const side of [-1, 1]) P.add('hullDetail', KIT.box(0.07, 0.02, 0.165), side * 1.05, 1.3429, 3.915, 0.4555, 0, 0);
   addRearFieldStowage(P);
   P.hullG.userData.arieteC2Derivation = Object.freeze({ base: 'c1_ariete',
     originalPrimaryBodyRetained: false, unchangedPrimaryHullPieces: 9,
