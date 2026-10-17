@@ -993,11 +993,10 @@ const ruin: RegionalBuilder = (ctx) => {
 
 /**
  * (Skybridge round 7, the owner: "Page as a low township"; gauntlet wave 259: "the township reads as a generic industrial
- * lot of boxes, with no regional architecture") Page as the Bureau built it in 1957-66 on Manson Mesa: the dam's works
- * stand at the dam (reservoirDam.ts), and the town's plots hold the town — its churches (Page's Church Row: the A-frame
- * sanctuaries of the 1960s), its motor courts on the highway, its shopping centre, the Bureau's two-storey field
- * headquarters, the ranch houses — low, among the switchyard, the transformer yards, the relay tower and the water tower
- * that served it.
+ * lot of boxes, with no regional architecture") Page as the Bureau built it in 1957-66 on Manson Mesa: the town's plots
+ * hold the town — its churches (Page's Church Row: the A-frame sanctuaries of the 1960s), its shopping centre, the
+ * Bureau's two-storey field headquarters, the ranch houses — low, among the switchyard, the transformer yards, the relay
+ * tower, the water tower and the penstock runs that served it (Skybridge's reading of the kit, GLENCANYON_STYLE.mapBuilders).
  */
 const SIGN_FACE: readonly Rgb[] = [0xd8c27a, 0xc96a4a, 0x7fa8b8, 0xe4e2dc].map(rgb);
 
@@ -1067,52 +1066,6 @@ const church: RegionalBuilder = (ctx) => {
   const bx = R.x0 + 0.3 + Math.min(3, (gap[0] - R.x0) / 2);
   for (const d of [-0.9, 0.9]) sink.cylinder('structureMetal', [bx + d, 0, R.z1 - 1.3], 'y', 1.9, 0.05, 6, { colour: IRON, decor: true });
   sink.span('structureWood', bx - 1.1, 1.0, R.z1 - 1.36, bx + 1.1, 1.9, R.z1 - 1.24, { colour: pick(look, SIGN_FACE), decor: true });
-  return sink.finish();
-};
-
-/**
- * A motor court (a gantry plot, long and narrow): a single-storey row of rooms along the plot, each its door and window
- * under the walkway's canopy on steel posts, the office at the west end with its glazed front and the sign on its pylon
- * before it, the rooms' doors painted alike.
- */
-const motelRow: RegionalBuilder = (ctx) => {
-  const sink = new PartSink(uvOffset(ctx));
-  const rng = ctx.rng, look = ctx.variant;
-  const R = reach(ctx), eave = 0.45;
-  // (the rooms and the walkway's canopy share the plot's depth: on a shallow plot the canopy narrows to a metre first)
-  const avail = R.D - 0.3 - (0.3 + eave), canopy = Math.max(1.0, Math.min(1.8, avail - 3.0));
-  const W = Math.max(8, R.W - 2 * (0.3 + eave)), D = Math.max(2.6, Math.min(7.5, avail - canopy)), H = 2.9;
-  const office = 4.4, rooms = Math.max(1, Math.floor((W - office) / 3.6));
-  const door = pick(rng, DOOR_PAINT), wall: RegionalBucket = rng() < 0.6 ? STUCCO : BLOCK;
-  const z0 = R.z0 + 0.3 + eave + D / 2;
-  sink.placed(0, R.cx, 0, z0, () => {
-    const openings: Opening[] = [
-      { face: 'front', storey: 0, kind: 'door', u: -W / 2 + 1.3, w: 1.0, y0: 0, h: 2.1 },
-      { face: 'front', storey: 0, kind: 'window', u: -W / 2 + 3.0, w: 1.7, h: 1.5, y0: 0.7 },
-    ];
-    for (let k = 0; k < rooms; k++) {
-      const u0 = -W / 2 + office + k * 3.6;
-      openings.push({ face: 'front', storey: 0, kind: 'door', u: u0 + 0.85, w: 0.9, y0: 0, h: 2.05 });
-      openings.push({ face: 'front', storey: 0, kind: 'window', u: u0 + 2.45, w: 1.3, h: 1.0, y0: 1.0 });
-    }
-    for (const o of windowRhythm('back', 0, W, { w: 0.8, h: 0.45, sill: 1.65, spacing: 3.6, margin: 1.6 })) openings.push(o);
-    buildHouse(sink, {
-      w: W, d: D, plinth: { h: 0.25, out: 0.04, bucket: CONCRETE }, storeys: [{ h: H, wall }],
-      roof: { kind: 'flat', pitchDeg: 0, eave, verge: eave, thickness: 0.22, bucket: CONCRETE, parapet: 0.12 }, gableBucket: wall,
-      openings, chimneys: [], gutters: null, verge: null, reveal: 0.12,
-    }, dialectOf(rng, ALU, door, 0.5, 'panel', look));
-    // the walkway's canopy along the rooms' front on its posts, a fascia board along its edge (the office's front open)
-    const cx0 = -W / 2 + office - 0.2, cz = D / 2 + canopy;
-    sink.span(CONCRETE, -W / 2, 0.0, D / 2, W / 2, 0.12, cz, { decor: true });
-    for (let x = cx0 + 0.2; x <= W / 2 - 0.2; x += 3.6) sink.cylinder('structureMetal', [x, 0.12, cz - 0.2], 'y', H + 0.13, 0.06, 8, { colour: WHITE });
-    sink.span('structureMetal', cx0, H + 0.25, D / 2, W / 2, H + 0.37, cz, { colour: shade(pick(look, SIGN_FACE), 0.9), decor: true, shadow: true });
-    sink.span('structureWood', cx0, H + 0.05, cz - 0.04, W / 2, H + 0.45, cz + 0.02, { colour: WHITE, decor: true });
-    // the sign before the office: a steel pylon, its board up high
-    const px = -W / 2 + 1.0, pz = cz - 0.4;
-    sink.cylinder('structureMetal', [px, 0, pz], 'y', 6.4, 0.14, 8, { colour: STEEL_GREY, decor: true });
-    sink.span('structureWood', px - 0.12, 4.4, pz - 1.4, px + 0.12, 6.2, pz + 1.4, { colour: pick(look, SIGN_FACE), decor: true });
-    sink.span('structureWood', px - 0.16, 4.3, pz - 1.5, px + 0.16, 4.42, pz + 1.5, { colour: WHITE, decor: true });
-  });
   return sink.finish();
 };
 
@@ -1190,7 +1143,6 @@ export const GLENCANYON_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Ob
   // (227, the maps lane; the coordinator's ruling on Skybridge's Page township, b429918ad) Page's own buildings under their
   // own names: Skybridge's plots take them through GLENCANYON_STYLE.mapBuilders, the kit's plots keep the dam's works
   church,
-  motelRow,
   shoppingCentre,
   fieldHeadquarters,
 });
@@ -1225,10 +1177,11 @@ export const GLENCANYON_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
   builders: GLENCANYON_BUILDERS,
   // (227, the maps lane; the coordinator's ruling, the 226 Monsoon precedent) Skybridge round 7, the owner: "Page as a
   // low township". On Skybridge alone the town's plots hold the town: its churches on the needletower and factory plots,
-  // its motor courts on the gantry plots, its shopping centre on the arcology plot, the Bureau's two-storey field
-  // headquarters on the megatower plot. The kit keeps the powerhouse, surge tower, gate-hoist house and penstock run (and
-  // its wreck, penstockFall.ts) for every other map that builds it.
-  mapBuilders: { skybridge: { arcology: 'shoppingCentre', needletower: 'church', factory: 'church', gantry: 'motelRow', megatower: 'fieldHeadquarters' } },
+  // its shopping centre on the arcology plot, the Bureau's two-storey field headquarters on the megatower plot. The
+  // gantry plots keep their penstock runs on Skybridge too (the coordinator's ruling: Page sits beside the dam, and the
+  // run's wreck, penstockFall.ts, stays in play), so the round's motor courts are not built. The kit keeps the
+  // powerhouse, surge tower, gate-hoist house and penstock run for every other map that builds it.
+  mapBuilders: { skybridge: { arcology: 'shoppingCentre', needletower: 'church', factory: 'church', megatower: 'fieldHeadquarters' } },
   // the desert's dry air; the stucco houses each their own pale colour (peach, sky, sand, mint) and the concrete stained
   weather: {
     plaster: [[1, 1, 1], [1.08, 0.98, 0.9], [0.92, 0.98, 1.06], [1.04, 1.02, 0.9], [0.94, 1.04, 0.98]],
