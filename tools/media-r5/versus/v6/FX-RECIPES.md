@@ -180,3 +180,11 @@ fx('explosion', [r2(colAt[0] + 0.6), r2(colAt[1] + 0.6)], 1000, { size: 'huge' }
 
 - None of this was rendered. The ages, gaps and speeds are derived from the code.
 - Every v6 scene that fires a `moment(..., T, ...)` flashes at half strength until it moves to `T - 8` or earlier.
+
+## A muzzle flash over snow (2026-10-17, vs08's GO QA)
+
+The cinematic muzzle blast (blastRecipes.ts `muzzleBlast`, run when the effect's quality is cinematic) lifts a sheet of
+the surface's dust under and ahead of the muzzle. On snow that sheet is sunlit white and reads as a flat blown-out blob
+on the ground before the hull; cutting the calibre (it only scales the sheet, never below 0.35) or aging the flash does
+not remove it. Over snow, give the flash `quality: 'battle'`: the game's own flash (and the recoil) without the
+cinematic blast, its propellant cloud or its ground sheet.

@@ -19,7 +19,9 @@ const DEG = Math.PI / 180;
 // the lens's ground point at the crest's edge on the arm's north reach, its bearing (down the face toward the spring,
 // which fills the right of the background at 200-350 m), the aim's turn and pitch off that bearing, and its Dutch roll.
 // (A second reach, eye [-336, -84] at bearing 96, also passed, but its background rises to a ridge.)
-const PICK = { eye: [-404, 164], yaw: 120, aimDy: 3.3, pitch: -7.8, lift: 1.0, foe: [8.5, 22] };
+// (GO QA 2, 10-17, SHIP with a polish: the T-72B3 read about 21 % of the width against the owner's 22 %, a reed tip on
+// its track) the T-72B3 a metre nearer on the same bearing
+const PICK = { eye: [-404, 164], yaw: 120, aimDy: 3.3, pitch: -7.8, lift: 1.0, foe: [8.11, 21] };
 const EYE = PICK.eye, YAW = PICK.yaw, ROLL = 9, FOV = 42;
 
 SCENES[ID] = () => {

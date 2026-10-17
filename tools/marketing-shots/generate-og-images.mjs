@@ -23,26 +23,26 @@ const OUTPUT = join(ROOT, 'public/brand/og');
 const LOGO = join(ROOT, 'public/brand/logo-mark.svg');
 
 export const OG_IMAGE_CARDS = [
-  ['game', '', 'public/media/versus-r1/f6-leo2a6-steinburg-r6.webp', '50% 100%'],
-  ['home', 'HOME', 'public/media/versus-r1/vs02-verdant-challenger-t80u.webp', '50% 100%'],
+  ['game', '', 'public/media/versus-r1/f6-leo2a6-steinburg-r6.webp', '50% 50%'],
+  ['home', 'HOME', 'public/media/versus-r1/vs02-verdant-challenger-t80u-r6.webp', '50% 50%'],
   ['gallery', 'TANK GALLERY', 'public/media/showcase-r2/11_gallery_hero.webp', '50% 48%'],
   ['studio', 'SCENE STUDIO', 'public/media/showcase-r2/15_studio_workspace.webp', '50% 0%'],
-  ['private-room', 'PRIVATE BATTLE', 'public/media/versus-r1/vs01-desert-abrams-t90m.webp', '50% 100%'],
-  ['docs', 'TECHNICAL FIELD MANUAL', 'public/media/versus-r1/vs05-oasis-merkava-t72b3.webp', '50% 60%'],
+  ['private-room', 'PRIVATE BATTLE', 'public/media/versus-r1/vs01-desert-abrams-t90m-r6.webp', '50% 50%'],
+  ['docs', 'TECHNICAL FIELD MANUAL', 'public/media/versus-r1/vs05-oasis-merkava-t72b3-r6.webp', '50% 50%'],
   ['docs-build', 'HOW THE GAME WAS BUILT', 'public/media/showcase-r2/13_gallery_modules.webp', '50% 48%'],
   ['docs-models', 'PROCEDURAL MODEL PIPELINE', 'public/media/showcase-r2/12_gallery_armor.webp', '50% 48%'],
-  ['docs-simulation', 'SIMULATION AND COMBAT', 'public/media/versus-r1/f6-leo2a6-steinburg-r6.webp', '50% 0%'],
-  ['docs-vehicles', 'VEHICLES & RUNNING GEAR', 'public/media/versus-r1/f7-t90m-column-r5.webp', '50% 100%'],
-  ['docs-rendering', 'RENDERER AND GRAPHICS', 'public/media/versus-r1/vs01-desert-abrams-t90m.webp', '50% 0%'],
+  ['docs-simulation', 'SIMULATION AND COMBAT', 'public/media/versus-r1/vs04-railyard-leclerc-t14-r6.webp', '50% 50%'],
+  ['docs-vehicles', 'VEHICLES & RUNNING GEAR', 'public/media/versus-r1/vs07-autumn-ariete-t62-r6.webp', '50% 50%'],
+  ['docs-rendering', 'RENDERER AND GRAPHICS', 'public/media/versus-r1/vs09-alpine-strv122-t80bv-r6.webp', '50% 50%'],
   ['docs-performance', 'PERFORMANCE AND LOADING', 'public/media/versus-r1/f7-t90m-column-r5.webp', '50% 0%'],
-  ['docs-worlds', 'BATTLEFIELDS & DESTRUCTION', 'public/media/versus-r1/vs03-reservoir-k2-type99a.webp', '50% 0%'],
-  ['docs-ai', 'BOTS & TACTICAL AI', 'public/media/versus-r1/vs08-winter-cv90-bmp3.webp', '50% 0%'],
+  ['docs-worlds', 'BATTLEFIELDS & DESTRUCTION', 'public/media/versus-r1/vs03-reservoir-k2-ztz99-r6.webp', '50% 50%'],
+  ['docs-ai', 'BOTS & TACTICAL AI', 'public/media/versus-r1/vs08-winter-cv90-bmp3-r6.webp', '50% 50%'],
   ['docs-multiplayer', 'MULTIPLAYER ROOMS', 'public/media/multiplayer-r1/dual-perspective.webp', '50% 28%', 'contain'],
-  ['docs-audio', 'AUDIO & BATTLEFIELD FX', 'public/media/versus-r1/vs06-coastal-type10-ztz99a2.webp', '50% 30%'],
+  ['docs-audio', 'AUDIO & BATTLEFIELD FX', 'public/media/versus-r1/vs06-coastal-type10-ztz99a2-r6.webp', '50% 50%'],
   ['docs-interface', 'INTERFACE & CONTROLS', 'public/media/showcase-r2/17_live_player_hud.webp', '50% 50%', 'contain'],
   ['docs-studio', 'SCENE STUDIO & CAPTURE', 'public/media/showcase-r2/15_studio_workspace.webp', '50% 50%', 'contain'],
-  ['docs-filming', 'FILMING THE MEDIA', 'public/media/versus-r1/vs02-verdant-challenger-t80u.webp', '50% 0%'],
-  ['404', 'ROUTE NOT FOUND', 'public/media/versus-r1/vs08-winter-cv90-bmp3.webp', '50% 100%'],
+  ['docs-filming', 'FILMING THE MEDIA', 'public/media/versus-r1/vs10-steppe-chieftain-t64-r6.webp', '50% 50%'],
+  ['404', 'ROUTE NOT FOUND', 'public/media/versus-r1/vs08-winter-cv90-bmp3-r6.webp', '50% 40%'],
 ];
 
 // The /cn pages' labels: each page's own words in the zh-CN catalog (its heading, nav label or title), so a card never

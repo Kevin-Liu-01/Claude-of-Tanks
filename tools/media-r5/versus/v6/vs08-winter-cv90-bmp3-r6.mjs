@@ -19,8 +19,9 @@ export function build(p = {}) {
     // pass 3 (the owner 2026-10-16: "tank fronts more ... tanks should be more % of frame ... more interesting camera
     // rotation and angles"): the drone 9.1 m up on a long 24 deg lens, tilted 23 deg down and banked +10 deg, the pair
     // side by side 18-21 m off, both noses toward it
-    eye: [-196, 76], yaw: 268, lift: 9.1, fov: 24, lookAhead: 21.5, lookH: 0, roll: 10,
-    cv90: [3.5, 18], bmp: [-4.5, 21],
+    // (GO QA 3, 10-17: the CV90 read about 41 % of the width) the pair 0.4 m closer together and the lens a degree longer
+    eye: [-196, 76], yaw: 268, lift: 9.1, fov: 23, lookAhead: 21.5, lookH: 0, roll: 10,
+    cv90: [3.1, 18], bmp: [-4.1, 21],
     // the CV90: the lens `cvOff` degrees off its nose (+ on its left), its turret laid on the BMP-3; the BMP-3 skids:
     // the lens `bmpOff` off its nose, its slide along `slideDeg` (world bearing offset from its nose), at `slideMps`
     cvOff: 28, cvSpeed: 12, bmpOff: 26, bmpTurret: -12, slideDeg: -40, slideMps: 0,
@@ -73,7 +74,11 @@ export function build(p = {}) {
     // (pass 3) no tracer stream: the BMP-3 is 3 m past the muzzle at these sizes, inside the 10 m where no dash draws
     // (take 3) 85 ms old: its light pool no longer clips the CV90's nose; (take 4, QA) autocannon size, so its light and
     // glow no longer bloom white on the snow under the glacis
-    fx('muzzle_flash', 'hero', T - 85, { caliberMm: 45 }),
+    // (GO QA 3, 10-17, measured with two diagnostic renders: remake/versus-diag.mjs) the white pool before the glacis is
+    // the muzzle flash's point light on the snow: a flat peak whatever the calibre (src/fx/effects.ts), 15 % of it left
+    // at 85 ms, and no other part of the scene adds it (without the flash the snow there reads 209, the snow round it
+    // 210; track dust off changes nothing). So there is no muzzle flash: the shot reads from the recoiled barrel
+    // (recoilAgeS), the round on the BMP-3's flank and its fire
     // the rounds on the BMP-3's flank (take 4, QA: the 120 mm spark fans drew a spike-star of long rays across its
     // turret): an autocannon-size penetration, 0.25 s old, its spray thrown out low and level off the plate toward the
     // CV90 and away from the turret, and a short, slow spall of hot fragments; no separate spark fan

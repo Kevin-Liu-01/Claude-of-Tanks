@@ -57,8 +57,13 @@ SCENES[ID] = () => {
   };
   // the ZTZ's round on the Type 10's plate facing it, 0.25 s old: a small ricochet whose short fan is thrown sideways
   // toward the ZTZ and down onto the sand, never up into the sky
+  // (GO QA 2, 10-17: thrown level toward the ZTZ 12.5 m off, the fan's sparks drew thin orange needles across its glacis
+  // and turret face) the fan swung 75° off the line to the ZTZ, to the side away from the lens, and thrown down
   const strike = (me, from, tMs) => {
-    const p = plate(MAP, me, from), u = polar([0, 0], bearingOf(me.pos, from), 1), n = [r2(u[0] * 0.95), -0.25, r2(u[1] * 0.95)];
+    const p = plate(MAP, me, from), b = bearingOf(me.pos, from);
+    const toEye = [EYE[0] - me.pos[0], EYE[1] - me.pos[1]];
+    const away = [polar([0, 0], b + 75, 1), polar([0, 0], b - 75, 1)].sort((s, t) => (s[0] * toEye[0] + s[1] * toEye[1]) - (t[0] * toEye[0] + t[1] * toEye[1]))[0];
+    const n = [r2(away[0] * 0.7), -0.7, r2(away[1] * 0.7)];
     return [fx('impact', p.at, tMs, { kind: 'ricochet', caliberMm: 60, normal: n }), fx('sparks', p.at, tMs + 20, { caliberMm: 40, normal: n }),
       fx('debris', p.at, tMs + 10, { count: 8, speedMps: 6, hot: 0.6, scale: 0.4 })];
   };

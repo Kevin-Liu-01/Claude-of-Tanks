@@ -1,7 +1,7 @@
 {
  "libraryId": "claude-of-tanks-versus-r1",
  "schemaVersion": 1,
- "tankIdSchema": 2,
+ "tankIdSchema": 3,
  "author": "Kevin B. Liu",
  "copyright": "Copyright © 2026 Kevin B. Liu",
  "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
@@ -12,7 +12,7 @@
   "width": 1920,
   "height": 1080
  },
- "count": 8,
+ "count": 12,
  "items": [
   {
    "id": "f6-leo2a6-steinburg-r6",
@@ -26,21 +26,21 @@
    "tanks": [
     {
      "role": "hero",
-     "id": "leo2a6_x",
+     "id": "leo2a6",
      "displayName": "Leopard 2A6",
      "paint": "urbanblock"
     },
     {
      "role": "foe",
-     "id": "t90m_x",
+     "id": "t90m",
      "displayName": "T-90M",
      "paint": "digital"
     }
    ],
    "scene": "tools/media-r5/versus/scenes/f6-leo2a6-steinburg-r6.json",
    "path": "/media/versus-r1/f6-leo2a6-steinburg-r6.webp",
-   "bytes": 299434,
-   "sha256": "d1f944dbdbf1a36d5f9639b93e1aa52b8fab7a7707f540c4e32885f443401fd9",
+   "bytes": 423026,
+   "sha256": "0943756327043b76b73b1fa520dc8d46974666caf1ec4a4a24d766b22007cba1",
    "width": 1920,
    "height": 1080,
    "source": "f6-leo2a6-steinburg-r6-1920.webp"
@@ -57,83 +57,83 @@
    "tanks": [
     {
      "role": "hero",
-     "id": "t90m_x",
+     "id": "t90m",
      "displayName": "T-90M",
      "paint": "digital"
     },
     {
+     "role": "foe",
+     "id": "leo2a6",
+     "displayName": "Leopard 2A6",
+     "paint": "service_leo2a6m"
+    },
+    {
      "role": "ally",
-     "id": "t90a_x",
+     "id": "t90a",
      "displayName": "T-90A",
      "paint": "service_t90m"
     },
     {
      "role": "wreck",
-     "id": "leo2a6_x",
+     "id": "leo2a6",
      "displayName": "Leopard 2A6",
      "paint": "service_leo2a6m"
     },
     {
      "role": "wreck",
-     "id": "m1a2_sepv3_x",
+     "id": "m1a2_abrams_sepv3",
      "displayName": "M1A2 Abrams SEPv3",
      "paint": "service_leo2a6m"
     },
     {
      "role": "wreck",
-     "id": "leo2a7v_x",
+     "id": "leo2a7v",
      "displayName": "Leopard 2A7V",
-     "paint": "service_leo2a6m"
-    },
-    {
-     "role": "foe",
-     "id": "leo2a6_x",
-     "displayName": "Leopard 2A6",
      "paint": "service_leo2a6m"
     }
    ],
    "scene": "tools/media-r5/versus/scenes/f7-t90m-column-r5.json",
    "path": "/media/versus-r1/f7-t90m-column-r5.webp",
-   "bytes": 481862,
-   "sha256": "34a3180ff1458b305feba7277d97dcd5648df5ace23b525e8a5777ec44e5fb5c",
+   "bytes": 397820,
+   "sha256": "eeb55654174e21de725c6fde21892cfde34c062f38130bcdf566cbc5259b8019",
    "width": 1920,
    "height": 1080,
    "source": "f7-t90m-column-r5-1920.webp"
   },
   {
-   "id": "vs01-desert-abrams-t90m",
-   "round": 4,
+   "id": "vs01-desert-abrams-t90m-r6",
+   "round": 6,
    "map": "desert",
-   "hour": "golden",
+   "hour": "day",
    "title": {
-    "en": "Sirocco Wadi, golden hour: M1A2 Abrams SEPv3 v T-90M",
-    "zh": "西罗科旱谷，黄金时刻：M1A2 Abrams SEPv3 对 T-90M"
+    "en": "Sirocco Wadi, day: M1A2 Abrams SEPv3 v T-90M",
+    "zh": "西罗科旱谷，白天：M1A2 Abrams SEPv3 对 T-90M"
    },
    "tanks": [
     {
      "role": "hero",
-     "id": "m1a2_sepv3_x",
+     "id": "m1a2_abrams_sepv3",
      "displayName": "M1A2 Abrams SEPv3",
      "paint": "service_usa_desert"
     },
     {
      "role": "foe",
-     "id": "t90m_x",
+     "id": "t90m",
      "displayName": "T-90M",
      "paint": "service_t90m"
     }
    ],
-   "scene": "tools/media-r5/versus/scenes/vs01-desert-abrams-t90m.json",
-   "path": "/media/versus-r1/vs01-desert-abrams-t90m.webp",
-   "bytes": 341782,
-   "sha256": "6d8189ed1a5eb92540a98e514bf41c5880c04a8b2ff296ff8de5b2ab7cb22c11",
+   "scene": "tools/media-r5/versus/scenes/vs01-desert-abrams-t90m-r6.json",
+   "path": "/media/versus-r1/vs01-desert-abrams-t90m-r6.webp",
+   "bytes": 188922,
+   "sha256": "f10dd91a5a7bbc3f2e5a1ad34a9dc91a9758ef1b3c3608526da0634b8e951f98",
    "width": 1920,
    "height": 1080,
-   "source": "vs01-desert-abrams-t90m-1920.webp"
+   "source": "vs01-desert-abrams-t90m-r6-1920.webp"
   },
   {
-   "id": "vs02-verdant-challenger-t80u",
-   "round": 4,
+   "id": "vs02-verdant-challenger-t80u-r6",
+   "round": 6,
    "map": "verdant",
    "hour": "day",
    "title": {
@@ -143,59 +143,90 @@
    "tanks": [
     {
      "role": "hero",
-     "id": "challenger_3x",
+     "id": "challenger3",
      "displayName": "Challenger 3",
      "paint": "factory"
     },
     {
      "role": "foe",
-     "id": "t80u_x",
+     "id": "t80u",
      "displayName": "T-80U",
      "paint": "factory"
     }
    ],
-   "scene": "tools/media-r5/versus/scenes/vs02-verdant-challenger-t80u.json",
-   "path": "/media/versus-r1/vs02-verdant-challenger-t80u.webp",
-   "bytes": 349686,
-   "sha256": "250537d998b5e6b851549154ca19374c730450dd089a98b91c634df4dc041519",
+   "scene": "tools/media-r5/versus/scenes/vs02-verdant-challenger-t80u-r6.json",
+   "path": "/media/versus-r1/vs02-verdant-challenger-t80u-r6.webp",
+   "bytes": 230620,
+   "sha256": "e186dbe6c409965a48452d5014a3db9782d75c29ce2e1dbd8106f33b2beb7408",
    "width": 1920,
    "height": 1080,
-   "source": "vs02-verdant-challenger-t80u-1920.webp"
+   "source": "vs02-verdant-challenger-t80u-r6-1920.webp"
   },
   {
-   "id": "vs03-reservoir-k2-type99a",
-   "round": 4,
+   "id": "vs03-reservoir-k2-ztz99-r6",
+   "round": 6,
    "map": "reservoir",
-   "hour": "sunset",
+   "hour": "golden",
    "title": {
-    "en": "Highland Reservoir, sunset: K2 Black Panther v ZTZ-99 Longwei",
-    "zh": "高地水库，日落：K2 Black Panther 对 ZTZ-99 Longwei"
+    "en": "Highland Reservoir, golden hour: K2 Black Panther v ZTZ-99 Longwei",
+    "zh": "高地水库，黄金时刻：K2 Black Panther 对 ZTZ-99 Longwei"
    },
    "tanks": [
     {
      "role": "hero",
-     "id": "k2_x",
+     "id": "k2_black_panther",
      "displayName": "K2 Black Panther",
      "paint": "factory"
     },
     {
      "role": "foe",
-     "id": "type99a",
+     "id": "ztz99_longwei",
      "displayName": "ZTZ-99 Longwei",
      "paint": "factory"
     }
    ],
-   "scene": "tools/media-r5/versus/scenes/vs03-reservoir-k2-type99a.json",
-   "path": "/media/versus-r1/vs03-reservoir-k2-type99a.webp",
-   "bytes": 318636,
-   "sha256": "e00c030e0c04df39a120a39b49d2bf57b7edb6307139f8d99d45e90b6d36e71a",
+   "scene": "tools/media-r5/versus/scenes/vs03-reservoir-k2-ztz99-r6.json",
+   "path": "/media/versus-r1/vs03-reservoir-k2-ztz99-r6.webp",
+   "bytes": 296878,
+   "sha256": "0ae848427c6d8ec49fac283aa61d6a65416d78e8ed40b063d174a97505e3b8f7",
    "width": 1920,
    "height": 1080,
-   "source": "vs03-reservoir-k2-type99a-1920.webp"
+   "source": "vs03-reservoir-k2-ztz99-r6-1920.webp"
   },
   {
-   "id": "vs05-oasis-merkava-t72b3",
-   "round": 4,
+   "id": "vs04-railyard-leclerc-t14-r6",
+   "round": 6,
+   "map": "railyard",
+   "hour": "night",
+   "title": {
+    "en": "Cinder Junction, night: Leclerc SXXI v T-14 Armata",
+    "zh": "灰渣枢纽，夜晚：Leclerc SXXI 对 T-14 Armata"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "leclerc_sxxi",
+     "displayName": "Leclerc SXXI",
+     "paint": "factory"
+    },
+    {
+     "role": "foe",
+     "id": "t14_armata",
+     "displayName": "T-14 Armata",
+     "paint": "factory"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/vs04-railyard-leclerc-t14-r6.json",
+   "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r6.webp",
+   "bytes": 349234,
+   "sha256": "e05eec97561df393eab0c7651274541106c0c80fd2f608de8d03ad1e5b7d511f",
+   "width": 1920,
+   "height": 1080,
+   "source": "vs04-railyard-leclerc-t14-r6-1920.webp"
+  },
+  {
+   "id": "vs05-oasis-merkava-t72b3-r6",
+   "round": 6,
    "map": "oasis",
    "hour": "day",
    "title": {
@@ -205,38 +236,44 @@
    "tanks": [
     {
      "role": "hero",
-     "id": "merkava4_x",
+     "id": "merkava4",
      "displayName": "Merkava Mk 4",
      "paint": "factory"
     },
     {
      "role": "foe",
-     "id": "t72b3_x",
+     "id": "t72b3",
+     "displayName": "T-72B3",
+     "paint": "factory"
+    },
+    {
+     "role": "wreck",
+     "id": "t72b3",
      "displayName": "T-72B3",
      "paint": "factory"
     }
    ],
-   "scene": "tools/media-r5/versus/scenes/vs05-oasis-merkava-t72b3.json",
-   "path": "/media/versus-r1/vs05-oasis-merkava-t72b3.webp",
-   "bytes": 230920,
-   "sha256": "e5b1c81a1b864b4d0a7d2611bf450de7292373409a9a5e6018028addae1bfea1",
+   "scene": "tools/media-r5/versus/scenes/vs05-oasis-merkava-t72b3-r6.json",
+   "path": "/media/versus-r1/vs05-oasis-merkava-t72b3-r6.webp",
+   "bytes": 260770,
+   "sha256": "d0f04b41c28388b8532b1df3dd65848f448b46d5aab69940dff35a31d06f1e38",
    "width": 1920,
    "height": 1080,
-   "source": "vs05-oasis-merkava-t72b3-1920.webp"
+   "source": "vs05-oasis-merkava-t72b3-r6-1920.webp"
   },
   {
-   "id": "vs06-coastal-type10-ztz99a2",
-   "round": 4,
+   "id": "vs06-coastal-type10-ztz99a2-r6",
+   "round": 6,
    "map": "coastal",
-   "hour": "golden",
+   "hour": "day",
    "title": {
-    "en": "Saltmere Bay, golden hour: Type 10 v ZTZ-99A2",
-    "zh": "盐沼湾，黄金时刻：Type 10 对 ZTZ-99A2"
+    "en": "Saltmere Bay, day: Type 10 v ZTZ-99A2",
+    "zh": "盐沼湾，白天：Type 10 对 ZTZ-99A2"
    },
    "tanks": [
     {
      "role": "hero",
-     "id": "type10_x",
+     "id": "type10",
      "displayName": "Type 10",
      "paint": "factory"
     },
@@ -247,17 +284,48 @@
      "paint": "factory"
     }
    ],
-   "scene": "tools/media-r5/versus/scenes/vs06-coastal-type10-ztz99a2.json",
-   "path": "/media/versus-r1/vs06-coastal-type10-ztz99a2.webp",
-   "bytes": 317160,
-   "sha256": "f4daa494b0789c961fb6676b07300280a400abc491c9c40f14745fd4e3a159f9",
+   "scene": "tools/media-r5/versus/scenes/vs06-coastal-type10-ztz99a2-r6.json",
+   "path": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r6.webp",
+   "bytes": 215142,
+   "sha256": "b4d0f48766e2fc4f3110257cf0b1917a7bf233c04ce6dfdc23945c199fc61714",
    "width": 1920,
    "height": 1080,
-   "source": "vs06-coastal-type10-ztz99a2-1920.webp"
+   "source": "vs06-coastal-type10-ztz99a2-r6-1920.webp"
   },
   {
-   "id": "vs08-winter-cv90-bmp3",
-   "round": 4,
+   "id": "vs07-autumn-ariete-t62-r6",
+   "round": 6,
+   "map": "autumn",
+   "hour": "golden",
+   "title": {
+    "en": "Amberford, golden hour: C2 Ariete v T-62MV-1",
+    "zh": "安伯福，黄金时刻：C2 Ariete 对 T-62MV-1"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "c2_ariete",
+     "displayName": "C2 Ariete",
+     "paint": "factory"
+    },
+    {
+     "role": "foe",
+     "id": "t62mv1",
+     "displayName": "T-62MV-1",
+     "paint": "factory"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/vs07-autumn-ariete-t62-r6.json",
+   "path": "/media/versus-r1/vs07-autumn-ariete-t62-r6.webp",
+   "bytes": 426296,
+   "sha256": "7df2a115f89a7767edec143002d9cb87f21a4b4fa91654a0df1d51610d750429",
+   "width": 1920,
+   "height": 1080,
+   "source": "vs07-autumn-ariete-t62-r6-1920.webp"
+  },
+  {
+   "id": "vs08-winter-cv90-bmp3-r6",
+   "round": 6,
    "map": "winter",
    "hour": "day",
    "title": {
@@ -267,7 +335,7 @@
    "tanks": [
     {
      "role": "hero",
-     "id": "cv90_mkiv_x",
+     "id": "cv90_mk4",
      "displayName": "CV90 Mk 4",
      "paint": "winter"
     },
@@ -278,13 +346,75 @@
      "paint": "winter"
     }
    ],
-   "scene": "tools/media-r5/versus/scenes/vs08-winter-cv90-bmp3.json",
-   "path": "/media/versus-r1/vs08-winter-cv90-bmp3.webp",
-   "bytes": 172752,
-   "sha256": "b4f866a6abcb2e0be758d9be33560f57be071bf5e2346d59b4b6ea57f66e5680",
+   "scene": "tools/media-r5/versus/scenes/vs08-winter-cv90-bmp3-r6.json",
+   "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r6.webp",
+   "bytes": 181744,
+   "sha256": "14879cb17d4cdb8b9aaa5b60833c1b7d4c0cda6850325e39a958a2d87bfe0aef",
    "width": 1920,
    "height": 1080,
-   "source": "vs08-winter-cv90-bmp3-1920.webp"
+   "source": "vs08-winter-cv90-bmp3-r6-1920.webp"
+  },
+  {
+   "id": "vs09-alpine-strv122-t80bv-r6",
+   "round": 6,
+   "map": "alpine",
+   "hour": "morning",
+   "title": {
+    "en": "Glacier Pass, morning: Stridsvagn 122 v T-80BV",
+    "zh": "冰川关，上午：Stridsvagn 122 对 T-80BV"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "strv122",
+     "displayName": "Stridsvagn 122",
+     "paint": "winter"
+    },
+    {
+     "role": "foe",
+     "id": "t80bv",
+     "displayName": "T-80BV",
+     "paint": "winter"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/vs09-alpine-strv122-t80bv-r6.json",
+   "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r6.webp",
+   "bytes": 267102,
+   "sha256": "ca44e606fd08ae4a05e77ebf039dd522fd35997daa6bdf00fd781911021fcd1d",
+   "width": 1920,
+   "height": 1080,
+   "source": "vs09-alpine-strv122-t80bv-r6-1920.webp"
+  },
+  {
+   "id": "vs10-steppe-chieftain-t64-r6",
+   "round": 6,
+   "map": "steppe",
+   "hour": "night",
+   "title": {
+    "en": "Tarkhan Steppe, night: Chieftain Mk 10 v T-64BV1",
+    "zh": "塔尔罕草原，夜晚：Chieftain Mk 10 对 T-64BV1"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "chieftain_mk10",
+     "displayName": "Chieftain Mk 10",
+     "paint": "factory"
+    },
+    {
+     "role": "foe",
+     "id": "t64bv1",
+     "displayName": "T-64BV1",
+     "paint": "factory"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/vs10-steppe-chieftain-t64-r6.json",
+   "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r6.webp",
+   "bytes": 231906,
+   "sha256": "a2e4fd88cc4e0cef85822012c7f27ecd3bd4fbf2f070495c696fa28f9c2556c7",
+   "width": 1920,
+   "height": 1080,
+   "source": "vs10-steppe-chieftain-t64-r6-1920.webp"
   }
  ]
 }

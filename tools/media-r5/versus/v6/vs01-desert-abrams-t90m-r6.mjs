@@ -16,7 +16,9 @@ const EYE = [14, 302], YAW = 75, SPEED = 12, ROLL = 12;
 
 SCENES[ID] = () => {
   const at = (side, ahead) => inFrame(EYE, YAW, side, ahead);
-  const A = at(-5.6, 17.5), B = at(12.2, 30);
+  // (GO QA 3, 10-17: the SEPv3's swung bustle still ran off the left edge, the T-90M at 21.5 % of the width) the SEPv3
+  // 0.6 m to the frame's right and the T-90M a metre nearer on its bearing; the lens unchanged
+  const A = at(-5.0, 17.5), B = at(11.79, 29);
   // the lens 15° off the SEPv3's nose, on its right (its nose turned toward the frame's right); its turret swung 72° to
   // the hull's left, laid toward the T-90M: the bore lies across the view (about 105° off the ray to the lens), so the
   // blast rolls out sideways into the gap between the two hulls, short of the T-90M
@@ -43,15 +45,16 @@ SCENES[ID] = () => {
       tail.push(fx('dust', q.map(r2), T - ago, { count, intensity: 1.3, dirDeg: r2((hH + (s > 0 ? 20 : -20) + 360) % 360) }));
     }
   }
-  // the hit on the T-90M: a few hot fragments off the low glacis, 70 ms old, the pop gone
-  const hit = plate(MAP, foe, A, 0.26);
+  // the hit on the T-90M: a few hot fragments off the low glacis, 70 ms old, the pop gone. (rev 6, GO QA 10-17: the
+  // nonpen impact's spark spray read as a pale needle fan over the T-90M's gun and turret front; it goes, and the
+  // fragments fly short and slow, below the gun line: FX-RECIPES.md, short slow spall)
+  const hit = plate(MAP, foe, A, 0.2);
   const effects = [
     ...tail,
     // the shot, 44-56 ms old across the exposure: the fire cooled to orange (FX-RECIPES.md 3), no round drawn, the barrel
     // recoiled (recoilAgeS). No ground wave this time: the gun's ground lies in front of the T-90M from this lens
     fx('muzzle_flash', 'hero', T - 50, { caliberMm: 120 }),
-    fx('impact', hit.at, T - 70, { kind: 'nonpen', caliberMm: 25, normal: hit.normal }),
-    fx('debris', hit.at, T - 70, { count: 9, speedMps: 6, hot: 1, scale: 0.35 }),
+    fx('debris', hit.at, T - 70, { count: 6, speedMps: 2.5, hot: 1, scale: 0.3 }),
     // falling debris: an HE round on the rise behind and right of the T-90M, 0.75 s before the still
     fx('explosion', at(25, 50).map(r2), T - 760, { size: 'small', munition: 'he', cause: 'shot' }),
     fx('debris', up(at(25, 50), 1.4), T - 735, { count: 44, speedMps: 15, hot: 0.45, scale: 1.35 }),
@@ -75,7 +78,9 @@ SCENES[ID] = () => {
     actors: [hero, foe], effects, fxTime: T, timeScale: 0,
     storyboard: { version: 1, durationMs: T + 1500, shots: [], actorTracks: [track] },
     picture, fx: { quality: 'cinematic', trackDust: true }, autoPlace: false,
-    lenses: [lens('a', 0, 0, 0.7, 34, ROLL), lens('b', 0, 0, 0.55, 34, ROLL + 4, 0, 7)],
-    meta: { id: ID, kind: 'versus-still', pair: 'm1a2_sepv3_x v t90m_x', round: 6, rev: 5,
+    // (rev 6, GO QA 10-17: the SEPv3's swung bustle ran off the left edge while the T-90M's rear sat at 0.92) the lens
+    // a degree wider and turned 1° left (dYaw +1: the tanks move right in the frame), the tanks unmoved
+    lenses: [lens('a', 0, 0, 0.7, 35, ROLL, 1), lens('b', 0, 0, 0.55, 34.5, ROLL + 4, 1, 7)],
+    meta: { id: ID, kind: 'versus-still', pair: 'm1a2_sepv3_x v t90m_x', round: 6, rev: 7,
       idea: 'the head-on charge: the SEPv3 nose-on over a low Dutch lens, sand fanned off its tracks, its gun swung right and firing; the T-90M front-on on the rise' } };
 };

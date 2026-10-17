@@ -261,6 +261,10 @@ function tankBox(model, F, a) {
   const d = dimsOf(a.id) ?? [3.5, 1.9, 6.5, 2.6], gy = model.supportAt(a.pos[0], a.pos[1]), { f, r } = axes(a.facingDeg), t = axes(a.facingDeg + (a.turretDeg ?? 0)).f;
   const pts = [];
   for (const sl of [-d[0], d[0]]) for (const sw of [-d[1], d[1]]) for (const y of [0.1, d[3]]) pts.push([a.pos[0] + f[0] * sl + r[0] * sw, gy + y, a.pos[1] + f[1] * sl + r[1] * sw]);
+  // (2026-10-17, GO QA: vs01's SEPv3 bustle, swung out with its turret, ran off the frame's edge inside a clean box) the
+  // turret's rear corners, behind the ring on the turret's own axis
+  const tr = axes(a.facingDeg + (a.turretDeg ?? 0)).r;
+  for (const sw of [-1, 1]) pts.push([a.pos[0] - t[0] * d[0] * 0.8 + tr[0] * sw * d[1] * 0.55, gy + d[3] * 0.85, a.pos[1] - t[1] * d[0] * 0.8 + tr[1] * sw * d[1] * 0.55]);
   pts.push([a.pos[0] + t[0] * d[2], gy + d[3] * 0.72, a.pos[1] + t[1] * d[2]]);
   const pr = pts.map(F.project);
   if (pr.some((p) => !p)) return null;

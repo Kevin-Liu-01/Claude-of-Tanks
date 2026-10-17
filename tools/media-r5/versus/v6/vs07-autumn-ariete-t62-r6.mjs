@@ -56,7 +56,8 @@ SCENES[ID] = () => {
     // the frame holds no sky (the long lens fills it with the tanks and the trees), so golden hour reads in the light
     // itself: a low sun raking in from 100 degrees right and a warmed grade (QA lesson 2)
     picture: { ...CLEAN, ...LIT, temperature: 18 }, fx: { quality: 'cinematic', trackDust: true }, autoPlace: false,
-    lenses: [{ ...lensAt('a', eye, 12, look, 0.62, 10.4), rollDeg: -8 }],
+    // (GO QA 2, 10-17, SHIP with a polish: the T-62 read 42-44 % of the width against the owner's 45 %) fov 9.8
+    lenses: [{ ...lensAt('a', eye, 12, look, 0.62, 9.8), rollDeg: -8 }],
     // a 4 ms still exposure (versus.mjs jobs reads it): spark and debris smears cut to a third
     meta: { id: ID, kind: 'versus-still', pair: 'ariete_c2_x v t62mv1_x', round: 6, idea: 'the telephoto compression', stillExposureMs: 4 } };
 };

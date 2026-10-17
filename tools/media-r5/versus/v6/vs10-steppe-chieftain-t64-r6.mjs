@@ -65,7 +65,9 @@ SCENES[ID] = () => {
     actors: [hero, foe], effects, fxTime: T, timeScale: 0,
     storyboard: { version: 1, durationMs: T + 1500, shots: [], actorTracks: [] },
     picture: { ...CLEAN, ...LIT, exposure: 0.4, lift: [0.02, 0.022, 0.03] }, fx: { quality: 'cinematic', trackDust: true }, autoPlace: false,
-    lenses: [lens('a', 0, 4.5, 4.6, 40, ROLL, 0, -11.5), lens('b', 0, 4, 5.4, 40, ROLL - 3, 0, -13.5)],
+    // (GO QA 2, 10-17: the nearer lens put the Chieftain's turret-rear stowage onto the right edge; the pair spanned more
+    // than the frame) the lens 3.5° wider and turned 1.75° right (dYaw -1.75: the tanks move left in the frame)
+    lenses: [lens('a', 0, 4.5, 4.6, 43.5, ROLL, -1.75, -11.5), lens('b', 0, 4, 5.4, 43.5, ROLL - 3, -1.75, -13.5)],
     meta: { id: ID, kind: 'versus-still', pair: 'chieftain_mk10_x v t64bv1', round: 6, rev: 4,
       idea: 'the night kill shot from above: the Chieftain nose-on and big, its gun swung across onto the T-64BV burning on the left, a Dutch angle' } };
 };

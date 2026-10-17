@@ -7,7 +7,7 @@
 // degrees off the view, so the blast reads as a big orange fireball). The T-14 stands across the corridor in front of
 // the G 10 vans (25 degrees off its nose), its turret on the Leclerc (its gun's front toward the lens), the Leclerc's
 // round glancing off its left cheek in a spray of sparks thrown into the gap.
-// Two illumination flares hang in the strip of night sky; a low moon behind the lens keys the hull fronts.
+// A low moon behind the lens keys the hull fronts (the two illumination flares of the earlier passes are gone: GO QA 3).
 import { SCENES, fx, plate, inFrame, bearingOf, wrap, r2, lensAt, ground, polar, CLEAN, LIT, dimsOf, axes } from '../versus.mjs';
 
 const ID = 'vs04-railyard-leclerc-t14-r6';
@@ -49,20 +49,21 @@ SCENES[ID] = () => {
   // the burning tank wagons at the rails' vanishing point (the north +9 siding, x -121.5..-104.6), their cook-off's
   // fragments falling
   const wagons = [-113, lineZ(-113) + 9], gw = ground(MAP, ...wagons);
-  const flareA = at(-14, 150), flareB = at(34, 205);
   // the Leclerc's round glances off the T-14's left cheek, its spark fans thrown toward the Leclerc into the gap. (GO
   // render QA, 2026-10-16: an 85 ms ricochet thrown along the plate's own normal stood as a spike-star over the T-14's
   // face) the strike is 0.3 s old, as vs03's is: the pop has died and the sparks have flown. Their spray is laid
   // explicitly: level toward the Leclerc with a small upward part, as vs05's fan is
   const hit = plate(MAP, foe, hero.pos), toL = [hero.pos[0] - hit.at[0], hero.pos[1] - hit.at[2]], nL = Math.hypot(...toL);
-  const spray = [r2(toL[0] / nL * 0.92), 0.3, r2(toL[1] / nL * 0.92)];
+  // (GO QA 2: the fan's upward part sprayed needles across the sky to the frame's top) nearly level, low in the gap
+  // (GO QA 3: at up 0.08 the fan still threw sparks above the horizon) laid a little down, onto the ballast
+  const spray = [r2(toL[0] / nL * 0.98), -0.2, r2(toL[1] / nL * 0.98)];
   const effects = [
     // FX-RECIPES 3: a live muzzle flash 42 ms before the still (no firing_moment: its white bolt reads as a beam), the
     // bore 80-90 degrees across the view ray
     fx('muzzle_flash', 'hero', T - 42, { caliberMm: 140 }),
     ...tail,
     fx('impact', hit.at, T - 300, { kind: 'ricochet', caliberMm: 120, normal: spray }),
-    fx('sparks', hit.at, T - 275, { caliberMm: 120, normal: spray }),
+    fx('sparks', hit.at, T - 275, { caliberMm: 80, normal: spray }),
     fx('debris', hit.at, T - 290, { count: 10, speedMps: 8, hot: 0.9, scale: 0.4 }),
     // (no coax this round) the two hulls stand 20 m apart, their muzzles 8 m apart on one line, and the Leclerc's fireball
     // fills the first 4.6 m of it: any coax round would fly into the fireball, or land as an orb over the Leclerc (film 1
@@ -72,8 +73,8 @@ SCENES[ID] = () => {
     fx('embers', wagons.map(r2), 0, { radiusM: 5, rate: 70, durationS: 20, rise: 3.5 }),
     fx('debris', [r2(wagons[0]), r2(gw + 3.6), r2(wagons[1])], T - 1400, { count: 34, speedMps: 16, hot: 0.9, scale: 1.2 }),
     // (GO render QA) at 2.4 and 1.2 the two flares read as full moons (a 44 px flat white core): 0.7 and 0.4
-    fx('flare', flareA.map(r2), 0, { heightM: 36, burnS: 40, intensity: 0.7, driftMps: 1, fallMps: 1.4, color: 'white', launch: false }),
-    fx('flare', flareB.map(r2), 1500, { heightM: 44, burnS: 40, intensity: 0.4, driftMps: 1, fallMps: 1.6, color: 'white', launch: false }),
+    // (GO QA 3, 10-17: dimmed and twice as far, the flares still drew hard-edged discs, two small moons; the effect has
+    // no size of its own) no flares: the low moon behind the lens keys the fronts, the wagons burn at the vanishing point
   ];
   // the lens: straight down the rails, laid on the pair's depth, 5 m up and rolled 13 degrees
   const look = polar(eye, YAW, 17.5);
