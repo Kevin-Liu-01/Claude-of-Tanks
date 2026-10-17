@@ -31,7 +31,10 @@ assert.equal(wallStats.under1km, 0);
 
 // ---- H1's numbers (H1 §4, origin/main d9197a92b): the ring skyline median from the centre eye
 const world = await loadWorld();
-const H1 = { verdant: { c1: 1.72, c2: 18 }, titan_gorge: { c1: 12.25, c2: 40 }, polders: { c1: 0.71, c2: 6 } };
+// (2026-10-16, the horizons stream: Titan's ring re-pinned at 10.93° after HOR-06's summitCap, item/horizons-titan 8e9e7281c
+// in integ/226 847b69a88 — the ring's summits capped at level 280 m from 1.1 km, so its centre-eye median falls from H1's
+// 12.25°; still outside C1's 1.7-7.7°, still a wall)
+const H1 = { verdant: { c1: 1.72, c2: 18 }, titan_gorge: { c1: 10.93, c2: 40 }, polders: { c1: 0.71, c2: 6 } };
 for (const [id, want] of Object.entries(H1)) {
   const row = await measureRing(world, id, { eyes: 'centre' });
   assert.ok(Math.abs(row.centre.p50 - want.c1) < 0.02, `${id}: C1 ${row.centre.p50.toFixed(2)}° (H1 ${want.c1}°)`);
@@ -39,7 +42,7 @@ for (const [id, want] of Object.entries(H1)) {
   const verdict = judge(row);
   if (id === 'verdant') assert.deepEqual(verdict.failures, [], 'Verdant, the bar, sits inside the envelope');
   if (id === 'polders') for (const k of ['C1', 'C2', 'C4', 'C9']) assert.ok(verdict.failures.includes(k), `Polders is outside on ${k} (H1 §5.2)`);
-  if (id === 'titan_gorge') assert.ok(verdict.failures.includes('C1'), 'Titan is a wall (12.25°)');
+  if (id === 'titan_gorge') assert.ok(verdict.failures.includes('C1'), 'Titan is a wall (10.93° with HOR-06\'s summitCap; H1 measured 12.25°)');
   console.log(`horizon-envelope: ${id} C1 ${row.centre.p50.toFixed(2)}° C2 ${row.outlandRise.toFixed(1)} m summits ${row.centre.summits} outside [${verdict.failures.join(' ')}]`);
 }
 assert.deepEqual(ENVELOPE.C1, [1.7, 7.7]);

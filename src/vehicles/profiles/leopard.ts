@@ -11521,8 +11521,11 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     P.add('hullDark', KIT.xform(cylZ(0.035, 0.02, 10), 0, 0, 0.062), -1.05, 1.49, 2.60, -0.16, 0, 0);
     KIT.towCable(P, [[-0.90, 1.487, 2.55], [0, 1.645, 1.70], [0.90, 1.487, 2.55]], 0.024); // glacis tow cable V
     {
-      const st = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.10, pitch: 0.16, seed: 73, rotation: [0.16, 0, 0] });
-      st.position.set(-0.55, 1.495, 2.30);                                      // glacis spare links, bedded into the raked plate
+      // VEH-13 (2026-10-16): the glacis rakes 0.1553 rad (y 1.5595 at z 1.90 to 1.4030 at z 2.90 under x -0.55). At z 2.30
+      // the course's feet sat 8.4 cm deep in the plate (the seat solver re-seated it 30 cm forward). Keeping the 1.495
+      // seat height, the feet rest on the plate at z 2.574 (support 100 %, embed 0, cut 0).
+      const st = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.10, pitch: 0.16, seed: 73, rotation: [0.1553, 0, 0] });
+      st.position.set(-0.55, 1.495, 2.574);                                     // glacis spare links, flush on the raked plate
       P.hullG.add(st);
     }
     KIT.shovelTool(P, -1.45, 1.8325, -3.45, 0.60);                              // pioneer kit, aft shelf (§5.311 §B5 seat kept)

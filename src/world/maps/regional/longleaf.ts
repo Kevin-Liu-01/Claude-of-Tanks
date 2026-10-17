@@ -843,8 +843,13 @@ const burnt: RegionalBuilder = (ctx) => {
     // through its face to the hearth's dark
     const ch = 5.6 + rng();
     sink.span('stone', -0.35, -0.5, -0.35, 0.35, ch, -0.05);
+    // (Lane C 2026-10-16, mapLayoutBrief: the holed face's collision outline came out a 0.7 m sliver of a triangle, whose
+    // margin-grown footprint reached 30 m across Longleaf's zone 2 apron and moved the zone) the cut face is the stack's
+    // look only (decor); its solid is two boxes inside it, under and over the hearth, 2 cm behind its face
     holedPolygon(sink, 'stone', { origin: [0, 0, 0.35], u: [1, 0, 0], out: [0, 0, 1], width: 0.7 }, [[-0.35, -0.5], [0.35, -0.5], [0.35, ch], [-0.35, ch]],
-      [{ u0: -0.2, u1: 0.2, y0: 0.62, y1: 1.2 }], 0.4, 0.34);
+      [{ u0: -0.2, u1: 0.2, y0: 0.62, y1: 1.2 }], 0.4, 0.34, { decor: true });
+    sink.span('stone', -0.34, -0.5, -0.05, 0.34, 0.6, 0.33);
+    sink.span('stone', -0.34, 1.22, -0.05, 0.34, ch - 0.02, 0.33);
     sink.member('structureWood', [-W / 2 + 0.15, 0.85, D / 2 - 0.15], [-W / 2 + 0.15, 2.4 + rng() * 0.8, D / 2 - 0.15], 0.12, 0.12, [0, 0, 1], { colour: CHAR, decor: true, exposed: true }, 0);
     // (the buildings stream, 2026-10-12, the integrity check: the sheet hung over the burnt-out floor on nothing) the
     // fallen sheet lying across the front corner from the side sill to the front one, clear of the stack

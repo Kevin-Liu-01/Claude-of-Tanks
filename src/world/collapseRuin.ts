@@ -269,6 +269,190 @@ function wallFragment(rng: () => number, slot: FractureSlot, cap: number, mesh: 
   mesh.end();
 }
 
+/** A segment from (ax, az) to (bx, bz) in plan as a box `hy` half high at `cy`, `t` thick (the box's local x along it). */
+function member(mesh: DamageMeshWriter, ax: number, az: number, bx: number, bz: number, cy: number, hy: number, t: number,
+  tint: Rgb, shade: number): void {
+  const dx = bx - ax, dz = bz - az, len = Math.hypot(dx, dz);
+  if (!(len > 1e-3)) return;
+  box(mesh, (ax + bx) / 2, cy, (az + bz) / 2, len / 2, hy, t / 2, Math.atan2(-dz, dx), tint, shade);
+}
+
+/** A strut from A to B (any direction), `t` across: an oriented box written vertex by vertex (no allocation). */
+const _sa = new Float64Array(3), _sb = new Float64Array(3);
+function strut(mesh: DamageMeshWriter, ax: number, ay: number, az: number, bx: number, by: number, bz: number, t: number,
+  tint: Rgb, shade: number): void {
+  let dx = bx - ax, dy = by - ay, dz = bz - az;
+  const len = Math.hypot(dx, dy, dz);
+  if (!(len > 1e-3)) return;
+  dx /= len; dy /= len; dz /= len;
+  // two axes across the strut: against world up unless it runs nearly vertical
+  let ux = 0, uy = 1, uz = 0;
+  if (Math.abs(dy) > 0.9) { ux = 1; uy = 0; }
+  let px = dy * uz - dz * uy, py = dz * ux - dx * uz, pz = dx * uy - dy * ux;
+  const pl = Math.hypot(px, py, pz) || 1; px /= pl; py /= pl; pz /= pl;
+  const qx = dy * pz - dz * py, qy = dz * px - dx * pz, qz = dx * py - dy * px;
+  const h = t / 2, r = tint[0] * shade, g = tint[1] * shade, b = tint[2] * shade;
+  // the four long faces (±p, ±q), each a quad from A to B
+  for (let f = 0; f < 4; f++) {
+    const sgn = f & 1 ? -1 : 1, onP = f < 2;
+    const nx = onP ? px * sgn : qx * sgn, ny = onP ? py * sgn : qy * sgn, nz = onP ? pz * sgn : qz * sgn;
+    const ox = onP ? qx : px, oy = onP ? qy : py, oz = onP ? qz : pz;
+    _sa[0] = nx * h; _sa[1] = ny * h; _sa[2] = nz * h;
+    _sb[0] = ox * h; _sb[1] = oy * h; _sb[2] = oz * h;
+    const v0 = mesh.vertex(ax + _sa[0]! - _sb[0]!, ay + _sa[1]! - _sb[1]!, az + _sa[2]! - _sb[2]!, nx, ny, nz, 0, 0, r, g, b);
+    const v1 = mesh.vertex(bx + _sa[0]! - _sb[0]!, by + _sa[1]! - _sb[1]!, bz + _sa[2]! - _sb[2]!, nx, ny, nz, len, 0, r, g, b);
+    const v2 = mesh.vertex(bx + _sa[0]! + _sb[0]!, by + _sa[1]! + _sb[1]!, bz + _sa[2]! + _sb[2]!, nx, ny, nz, len, t, r, g, b);
+    const v3 = mesh.vertex(ax + _sa[0]! + _sb[0]!, ay + _sa[1]! + _sb[1]!, az + _sa[2]! + _sb[2]!, nx, ny, nz, 0, t, r, g, b);
+    // wound outward: (v1 - v0) × (v3 - v0) along the face normal, or the other way round
+    const e1x = dx * len, e1y = dy * len, e1z = dz * len, e2x = 2 * _sb[0]!, e2y = 2 * _sb[1]!, e2z = 2 * _sb[2]!;
+    const cx = e1y * e2z - e1z * e2y, cy = e1z * e2x - e1x * e2z, cz = e1x * e2y - e1y * e2x;
+    if (cx * nx + cy * ny + cz * nz > 0) { mesh.triangle(v0, v1, v2); mesh.triangle(v0, v2, v3); }
+    else { mesh.triangle(v0, v2, v1); mesh.triangle(v0, v3, v2); }
+  }
+}
+
+interface FrameLegs { legs: ReadonlyArray<{ foot: readonly number[]; head: readonly number[] }>; size: number; bucket: string; colour: Rgb | null }
+/** The frame's lattice reading (latticeFall.ts latticeOf), its own or its first body's. */
+function latticeLegs(anatomy: StructureDamageAnatomy): FrameLegs | null {
+  const plan = anatomy.kitPlan as { damage?: { lattice?: FrameLegs }; bodies?: StructureDamageAnatomy[] } | undefined;
+  if (plan?.damage?.lattice?.legs?.length) return plan.damage.lattice;
+  for (const body of plan?.bodies ?? []) {
+    const lattice = (body.kitPlan as { damage?: { lattice?: FrameLegs } } | undefined)?.damage?.lattice;
+    if (lattice?.legs?.length) return lattice;
+  }
+  return null;
+}
+/** A frame without a lattice reading stands in its own skin's material, else steel (never a masonry slot). */
+const STEEL: FractureSlot = Object.freeze({ material: 'metal', bucket: 'structureMetal', tint: [0.42, 0.42, 0.44] as Rgb, thicknessM: 0.2, share: 1 });
+function frameSlot(anatomy: StructureDamageAnatomy): FractureSlot {
+  const wall = wallSlot(anatomy);
+  return wall && !MASONRY.has(wall.material) ? wall : STEEL;
+}
+const _stubTop: number[] = [], _stubX: number[] = [], _stubZ: number[] = [];
+/**
+ * An open frame's buckled remnant (never masonry): every leg of its lattice standing to a buckle `share` of its height up
+ * (kinked at mid-height, seeded), a girt ring between the legs under the buckle, in the frame's own bucket and tint;
+ * a frame without a reading (a mast, a pylon, a flood mast by name) stands a four-legged stump about its footprint's
+ * middle.
+ */
+function frameStubs(anatomy: StructureDamageAnatomy, rng: () => number, cap: number, mesh: DamageMeshWriter, share: number,
+  fallback: FractureSlot | null): void {
+  const lattice = latticeLegs(anatomy);
+  const bucket = lattice ? lattice.bucket : fallback?.bucket;
+  if (!bucket || !roomFor(mesh, 16) || !mesh.begin(bucket, 'remnant')) return;
+  const tint: Rgb = lattice?.colour ?? fallback?.tint ?? [0.42, 0.42, 0.44];
+  const t = Math.max(0.12, Math.min(0.5, lattice ? lattice.size : 0.2));
+  _stubTop.length = 0; _stubX.length = 0; _stubZ.length = 0;
+  const legs = lattice ? lattice.legs : null;
+  const n = legs ? legs.length : 4;
+  const r = Math.max(0.5, Math.min(1.4, 0.18 * Math.min(fhw, fhd)));
+  for (let k = 0; k < n && roomFor(mesh, 3); k++) {
+    const foot = legs ? legs[k]!.foot : [fcx + (k & 1 ? r : -r), 0, fcz + (k & 2 ? r : -r)];
+    const head = legs ? legs[k]!.head : [foot[0]!, Math.max(2, ruinScale), foot[2]!];
+    const rise = Math.max(0.5, head[1]! - foot[1]!);
+    const top = Math.min(cap, foot[1]! + rise * share * (0.85 + rng() * 0.3));
+    const u = (top - foot[1]!) / rise;
+    const x = foot[0]! + (head[0]! - foot[0]!) * u, z = foot[2]! + (head[2]! - foot[2]!) * u;
+    const mid = (foot[1]! - FOOT_M + top) / 2;
+    const kx = (rng() - 0.5) * t * 2.5, kz = (rng() - 0.5) * t * 2.5;
+    const shade = 0.82 + rng() * 0.15;
+    // the leg to the kink, then the kinked upper length to the buckle
+    box(mesh, (foot[0]! + x) / 2, (foot[1]! - FOOT_M + mid) / 2, (foot[2]! + z) / 2, t / 2, (mid - foot[1]! + FOOT_M) / 2, t / 2, 0, tint, shade);
+    box(mesh, x + kx, (mid + top) / 2, z + kz, t / 2, (top - mid) / 2, t / 2, 0, tint, shade);
+    _stubTop.push(top); _stubX.push(x); _stubZ.push(z);
+  }
+  // the girt ring under the lowest buckle
+  let low = Infinity;
+  for (const y of _stubTop) low = Math.min(low, y);
+  if (Number.isFinite(low)) {
+    // girts up the standing panels (their bracing reads as the frame's own, and stands)
+    for (const f of [0.2, 0.36, 0.52, 0.68, 0.84, 0.97]) {
+      const gy = low * f;
+      for (let k = 0; k < _stubX.length && roomFor(mesh, 1); k++) {
+        const j = (k + 1) % _stubX.length;
+        member(mesh, _stubX[k]!, _stubZ[k]!, _stubX[j]!, _stubZ[j]!, gy, t * 0.35, t * 0.6, tint, 0.8 + rng() * 0.15);
+      }
+    }
+  }
+  // each bay's X bracing up the standing panels (the frame's own diagonals)
+  if (Number.isFinite(low)) {
+    for (let k = 0; k < _stubX.length && roomFor(mesh, 2); k++) {
+      const j = (k + 1) % _stubX.length;
+      for (const [y0, y1] of [[low * 0.2, low * 0.6], [low * 0.6, low * 0.97]]) {
+        strut(mesh, _stubX[k]!, y0, _stubZ[k]!, _stubX[j]!, y1, _stubZ[j]!, t * 0.55, tint, 0.78 + rng() * 0.15);
+        strut(mesh, _stubX[j]!, y0, _stubZ[j]!, _stubX[k]!, y1, _stubZ[k]!, t * 0.55, tint, 0.78 + rng() * 0.15);
+      }
+    }
+  }
+  mesh.end();
+}
+
+/**
+ * A frame's remnant beyond its standing panels (frameStubs' legs, in its scratch): tier 1 bends each leg's upper length
+ * out and up from its buckle; tier 2 lays struts across the frame between opposite legs, high. New members each tier.
+ */
+function frameTier(rng: () => number, cap: number, mesh: DamageMeshWriter, tier: number, fallback: FractureSlot,
+  anatomy: StructureDamageAnatomy): void {
+  const n = _stubX.length;
+  if (!n) return;
+  const lattice = latticeLegs(anatomy);
+  const bucket = lattice ? lattice.bucket : fallback.bucket;
+  if (!roomFor(mesh, n * 2) || !mesh.begin(bucket, 'remnant')) return;
+  const tint: Rgb = lattice?.colour ?? fallback.tint;
+  const t = Math.max(0.12, Math.min(0.5, lattice ? lattice.size : 0.2));
+  for (let k = 0; k < n && roomFor(mesh, 2); k++) {
+    const x = _stubX[k]!, z = _stubZ[k]!, top = _stubTop[k]!;
+    if (tier === 1) {
+      // out from the frame's middle, up to 1.45 times the buckle (never past the cap)
+      const ox = x - fcx, oz = z - fcz, ol = Math.hypot(ox, oz) || 1;
+      const reach = 0.8 + rng() * 1.4;
+      const y1 = Math.min(cap, top * (1.3 + rng() * 0.15));
+      strut(mesh, x, top, z, x + (ox / ol) * reach, y1, z + (oz / ol) * reach, t * 0.9, tint, 0.8 + rng() * 0.15);
+    } else {
+      const j = (k + (n >> 1)) % n;
+      if (j === k) continue;
+      const y = Math.min(_stubTop[k]!, _stubTop[j]!) * (0.78 + rng() * 0.15);
+      strut(mesh, x, y, z, _stubX[j]!, y * (0.92 + rng() * 0.1), _stubZ[j]!, t * 0.7, tint, 0.8 + rng() * 0.15);
+    }
+  }
+  mesh.end();
+}
+
+/**
+ * A skin wall's standing frame (timber, plank, sheet metal; never masonry): its posts at the corners and along each face
+ * (a gap left in each), `share` of the ruin's scale, some leaning (two courses offset), and a wall panel or two leant
+ * against them, in the wall's own bucket and tint.
+ */
+function framePosts(rng: () => number, slot: FractureSlot, cap: number, mesh: DamageMeshWriter, share: number): void {
+  if (!roomFor(mesh, 8) || !mesh.begin(slot.bucket, 'remnant')) return;
+  const t = Math.max(0.14, Math.min(0.32, slot.thicknessM > 0.05 ? slot.thicknessM : 0.2));
+  for (let face = 0; face < 4 && roomFor(mesh, 3); face++) {
+    const alongX = face < 2, len = alongX ? 2 * fhw : 2 * fhd, off = alongX ? fhd : fhw, side = face & 1 ? 1 : -1;
+    const posts = Math.max(2, Math.min(7, Math.round(len / 2.8) + 1));
+    const gap = 1 + Math.floor(rng() * Math.max(1, posts - 2));
+    for (let k = 0; k < posts && roomFor(mesh, 2); k++) {
+      if (k === gap) continue;
+      const u = -len / 2 + t / 2 + (k / (posts - 1)) * (len - t);
+      const x = alongX ? fcx + u : fcx + side * (off - t / 2), z = alongX ? fcz + side * (off - t / 2) : fcz + u;
+      const h = Math.min(cap, ruinScale * share * (0.6 + rng() * 0.5));
+      if (h < 0.5) continue;
+      const lean = rng() < 0.4 ? (rng() - 0.5) * 0.6 : 0;
+      const shade = 0.8 + rng() * 0.18;
+      const h1 = h * 0.55;
+      box(mesh, x, (h1 - FOOT_M) / 2, z, t / 2, (h1 + FOOT_M) / 2, t / 2, 0, slot.tint, shade);
+      box(mesh, x + (alongX ? lean : 0), (h1 + h) / 2, z + (alongX ? 0 : lean), t / 2, (h - h1) / 2, t / 2, 0, slot.tint, shade);
+    }
+    // panels of the wall leant against its posts
+    for (let p = 0; p < 2 && roomFor(mesh, 1); p++) {
+      const pl = Math.min(len * 0.45, 1.6 + rng() * 1.6), ph = Math.min(cap, ruinScale * share * (0.6 + rng() * 0.35));
+      const u = (rng() - 0.5) * (len - pl);
+      const x = alongX ? fcx + u : fcx + side * (off + 0.25), z = alongX ? fcz + side * (off + 0.25) : fcz + u;
+      box(mesh, x, ph / 2 - 0.1, z, alongX ? pl / 2 : 0.05, ph / 2, alongX ? 0.05 : pl / 2, 0, slot.tint, 0.75 + rng() * 0.2);
+    }
+  }
+  mesh.end();
+}
+
 /** The fallen roof's covering as slabs leaning on the heap, tipped from the eaves inward. */
 function roofSlabs(anatomy: StructureDamageAnatomy, rng: () => number, mesh: DamageMeshWriter, cap: number): void {
   const roof = anatomy.roof;
@@ -440,6 +624,36 @@ function footprintOf(anatomy: StructureDamageAnatomy): void {
 /** The body's reach about its walls' middle [minX, maxX, minZ, maxZ] (footprintOf). */
 const reachBox = new Float64Array(4);
 
+/** The wall materials a ruin's piers and stubs stand in: masonry (a wall of courses or a mass), never a frame or a skin. */
+const MASONRY: ReadonlySet<string> = new Set(['brick', 'stone', 'rubble', 'concrete', 'adobe', 'plaster', 'infill', 'earth']);
+/** The builders that are open frames, whatever their walls read as (they fall as their own lattice: latticeFall.ts). */
+const FRAME_BUILDER = /watertower|windmill|mill-wheel|mast|pylon|lattice|headframe|gantry|derrick|crane|radar|antenna|aerial/i;
+/** An open frame by its builder's name. */
+export function frameByName(builder: string | null | undefined): boolean {
+  return typeof builder === 'string' && FRAME_BUILDER.test(builder);
+}
+/** An open frame by its kit's plan (latticeFall.ts latticeOf), its own or a body's (damage.ts bodiesOf). */
+function framePlan(anatomy: StructureDamageAnatomy): boolean {
+  const plan = anatomy.kitPlan as { damage?: { lattice?: unknown }; bodies?: StructureDamageAnatomy[] } | undefined;
+  if (plan?.damage?.lattice) return true;
+  for (const body of plan?.bodies ?? []) {
+    if ((body.kitPlan as { damage?: { lattice?: unknown } } | undefined)?.damage?.lattice) return true;
+  }
+  return false;
+}
+/**
+ * How a collapse's ruin may stand (2026-10-16, the LOOKS gate: a 5.71 m masonry pier run stood on navajo's collapsed
+ * steel water tower): 'frame' — an open lattice (a water tower, a windmill, a mast, a pylon, a headframe: anything
+ * latticeFall.ts lays down) falls as its own buckled remnant and takes nothing from this pass; 'skin' — a timber, plank,
+ * sheet-metal, thatch or canvas wall takes the heap and the fallen covering but no masonry pier or stub; 'masonry' —
+ * the whole pass.
+ */
+export function ruinKind(anatomy: StructureDamageAnatomy, builder: string | null = null): 'frame' | 'skin' | 'masonry' {
+  if (framePlan(anatomy) || anatomy.intact?.frame || frameByName(builder)) return 'frame';
+  const wall = wallSlot(anatomy);
+  return wall && MASONRY.has(wall.material) ? 'masonry' : 'skin';
+}
+
 /** The structural slot of the ground storey's walls (its innermost layer: the masonry, the frame), else the pile's. */
 function wallSlot(anatomy: StructureDamageAnatomy): FractureSlot | null {
   const face = anatomy.storeys[0]?.faces[0];
@@ -458,7 +672,9 @@ function biggest(slots: readonly FractureSlot[]): FractureSlot {
  * writes go to `out` exactly as before; this only appends.
  */
 export function keepRuinStanding<R>(anatomy: StructureDamageAnatomy, seed: number, out: DamageWriters,
-  collapse: (writers: DamageWriters) => R): R {
+  collapse: (writers: DamageWriters) => R, builder: string | null = null): R {
+  // an open frame falls as its own lattice remnant (latticeFall.ts) and a skin wall as its own frame: never masonry
+  const kind = ruinKind(anatomy, builder);
   const intact = anatomy.intact;
   // the reference: the intact form's p90 height as drawn (measured at describe), else estimated from the anatomy
   const reference = intact ? intact.p90M : intactHeightP90(anatomy);
@@ -479,11 +695,28 @@ export function keepRuinStanding<R>(anatomy: StructureDamageAnatomy, seed: numbe
     kitPhase = false;
     const rng = damageRng(damageSeed(seed, 0x52554e));
     const pile = anatomy.rubble.length ? biggest(anatomy.rubble) : wallSlot(anatomy);
-    const wall = wallSlot(anatomy);
+    // only a masonry wall leaves piers and stubs standing (a timber, sheet or canvas wall leaves its heap and covering)
+    const wall = kind === 'masonry' ? wallSlot(anatomy) : null;
     const target = RUIN_HEIGHT_SHARE * reference;
     // nothing stands past the eaves (a stub never stands over the roof line it carried)
     const cap = Math.max(1.2, reference * 0.7, anatomy.roof ? Math.min(top, anatomy.roof.eaveY) : top);
     // the plan: the interior heaped over the body's footprint, then (a row, a frame wider than its walls) the intact's box
+    if (kind === 'frame') {
+      // an open shed's frame (lattice.ts `shed`) drops its roof and floor over its plan: the heap there
+      // (a roofed hall reads so by its roof, or by an intact plan its roof covers: not a tower, mast or gantry by name)
+      const covered = !!anatomy.roof || (intact ? intact.planFill >= 0.5 : false);
+      const shedFrame = !!(latticeLegs(anatomy) as { shed?: unknown } | null)?.shed || (covered && !frameByName(builder) && !intact?.frame);
+      if (shedFrame && pile && planShare() < RUIN_PLAN_SHARE) fillMound(anatomy, rng, pile, measuringWriter, fcx - fhw, fcx + fhw, fcz - fhd, fcz + fhd);
+      if (shedFrame && pile && intact && planShare() < RUIN_PLAN_SHARE) {
+        fillMound(anatomy, rng, pile, measuringWriter, Math.max(intact.minX, reachBox[0]!), Math.min(intact.maxX, reachBox[1]!),
+          Math.max(intact.minZ, reachBox[2]!), Math.min(intact.maxZ, reachBox[3]!));
+      }
+      // an open frame: its own legs buckled and standing, nothing heaped where it drew nothing, no masonry
+      if (heightP90() < target) frameStubs(anatomy, rng, cap, measuringWriter, 0.42, frameSlot(anatomy));
+      // still short: the bent upper legs leaning out from the buckle, then struts across the frame (each a new member)
+      for (let tier = 1; tier <= 2 && heightP90() < target; tier++) frameTier(rng, cap, measuringWriter, tier, frameSlot(anatomy), anatomy);
+      return result;
+    }
     if (pile && planShare() < RUIN_PLAN_SHARE) fillMound(anatomy, rng, pile, measuringWriter, fcx - fhw, fcx + fhw, fcz - fhd, fcz + fhd);
     if (pile && intact && planShare() < RUIN_PLAN_SHARE) {
       fillMound(anatomy, rng, pile, measuringWriter, Math.max(intact.minX, reachBox[0]!), Math.min(intact.maxX, reachBox[1]!),
@@ -495,6 +728,9 @@ export function keepRuinStanding<R>(anatomy: StructureDamageAnatomy, seed: numbe
     if (wall && heightP90() < target) wallStubs(rng, wall, cap, measuringWriter, 0.32);
     if (heightP90() < target) roofSlabs(anatomy, rng, measuringWriter, cap * 0.5);
     for (let k = 0; k < 120 && wall && heightP90() < target && roomFor(measuringWriter, 3); k++) wallFragment(rng, wall, cap, measuringWriter, k);
+    // a skin wall: its posts and leant panels until it stands
+    const skin = kind === 'skin' ? wallSlot(anatomy) : null;
+    for (let pass = 0; pass < 8 && skin && heightP90() < target; pass++) framePosts(rng, skin, cap, measuringWriter, 0.4 + pass * 0.05);
   } finally {
     kitPhase = false;
     measuring = false;

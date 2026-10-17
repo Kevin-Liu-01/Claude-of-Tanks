@@ -115,6 +115,19 @@ assert.equal(calls.pending.at(-1), false,
 await owner.scheduleDeferred(-1);
 assert.equal(calls.pending.at(-1), false,
   'stale generations cannot start a deferred renderer warm');
+// (2026-10-16, the perf lane: 226's game entry budget) the deferred warm's owner is its own chunk: a current battle's
+// schedule loads it and runs it (here a Garage phase, so it releases the hold at once), and the composition imports it
+// only lazily
+{
+  const before = calls.pending.length;
+  await owner.scheduleDeferred(7);
+  assert.deepEqual(calls.pending.slice(before), [false], 'a current schedule loads the owner and its warm releases the hold');
+  const { readFileSync } = await import('node:fs');
+  const source = readFileSync(new URL('./combatWarmComposition.ts', import.meta.url), 'utf8');
+  assert.doesNotMatch(source, /^import \{[^}]*\} from '\.\.\/game\/deferredCombatWarmRuntime\.ts';/m, 'only its type is imported statically');
+  assert.match(source, /import\('\.\.\/game\/deferredCombatWarmRuntime\.ts'\)/);
+  assert.match(source, /if \(generation === getGeneration\(\)\) setPending\(false\);/, 'a module that fails to load releases the countdown\'s hold');
+}
 owner.dispose();
 sourceMaterial.dispose(); hiddenMesh.geometry.dispose();
 

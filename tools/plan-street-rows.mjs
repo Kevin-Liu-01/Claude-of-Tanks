@@ -19,6 +19,12 @@
 // structure the mix picks (by a hash of its place), its plot the base builder's, a gap of 3-8 m to the next, written as
 // planned sites ({ structure, x, z, yawDeg }) for props.plannedSites (with plannedSitesAfterPlan on a recorded town).
 // A recorded town plan's buildings (props.townPlan) are kept out of, as the planned sites and set pieces are.
+// --built=2: every structure the map's own build stands (its plan, its yards' sheds, its set pieces), built in Node
+// without the sites being planned, is kept out of by this margin (m): a site on a yard shed's seat pushes the shed off
+// it (2026-10-16, the 226 gate's townPlans: a Polders cottage 1.4 m from a PR-head yard shed's seat read as two
+// buildings moved off a carriageway).
+// --yards=8.5: a recorded town's houses that take a yard (the kit's yard kinds) keep this much more ground round them
+// (yards.ts plans a house's yard up to 8 m deep off any clear side: a site in that ground turns the yard and its shed)
 import { writeFileSync } from 'node:fs';
 const T = process.cwd();
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
@@ -39,6 +45,7 @@ const L = field._layout, roads = L.roads, P = config.props;
 const town = P.town ? { ...L.village, ...P.town } : L.village;
 const junction = roadSettlementJunction(roads, { x: town.cx, z: town.cz });
 const rng = mulberry32(Number(opt.seed ?? 0x5e1b0));
+const SITES_MODE = !!opt.sites;
 const RUIN = Number(opt.ruin ?? 0.06), SETBACK = Number(opt.setback ?? 6.3);
 const [W0, W1] = (opt.width ?? '7.4,10.4').split(',').map(Number), [D0, D1] = (opt.depth ?? '9,11.5').split(',').map(Number);
 
@@ -77,7 +84,8 @@ const roadDist = (x, z, skip = -1) => {
 const INFO = { tavern: [9.7, 14.9], granary: [4.2, 6.4], woodshed: [4.3, 5.4], mill: [6.6, 6.6], fishery: [18, 20], church: [9.6, 23.1], chapel: [5.8, 8.6], tower: [3.8, 3.8], factory: [16, 26], rowhouse: [9.6, 10.2], cottage: [6, 8.4],
   depot: [11, 20], barn: [8.4, 12.3], farmhouse: [13.4, 9.9], ruin: [6.8, 9], warehouse: [16, 24], firestation: [11.8, 15.4] };
 const blocks = [];
-for (const s of P.plannedSites ?? []) {
+// (in the sites mode the map's planned sites are the plan being replaced: neither kept out of nor built)
+for (const s of SITES_MODE ? [] : P.plannedSites ?? []) {
   const [w, d] = INFO[s.structure] ?? [10, 12];
   blocks.push({ r: rect(s.x, s.z, w + 3, d + 3, (s.yawDeg ?? 0) * Math.PI / 180), why: `planned ${s.structure}` });
 }
@@ -87,9 +95,13 @@ for (const p of P.landmarks ?? []) {
   const [hx, hz] = kind.footprint(resolveLandmarkParams(p));
   blocks.push({ r: rect(p.x, p.z, 2 * hx + 2, 2 * hz + 2, (p.yawDeg ?? 0) * Math.PI / 180), why: `landmark ${p.kind}` });
 }
+const { resolveRegionalArchitecture } = await import(`${T}/src/world/maps/regional/index.ts`);
+const yardKinds = new Set(resolveRegionalArchitecture(P.architecture)?.yard?.kinds ?? []);
+const YARDS = Number(opt.yards ?? 0);
 for (const t of P.townPlan ?? []) {
   const [w, d] = INFO[t.structure] ?? [10, 12];
-  blocks.push({ r: rect(t.x, t.z, w + 3, d + 3, t.rot), why: `town ${t.structure}` });
+  const pad = yardKinds.has(t.structure) ? 2 * YARDS : 3;
+  blocks.push({ r: rect(t.x, t.z, w + pad, d + pad, t.rot), why: `town ${t.structure}` });
 }
 for (const b of P.tacticalBeats ?? []) blocks.push({ r: rect(b.x, b.z, 30, 30, 0), why: `beat ${b.id}` });
 for (const h of config.terrain.hardstands ?? []) blocks.push({ r: rect(h.x, h.z, h.width + 7, h.length + 7, (h.yawDeg ?? 0) * Math.PI / 180), why: 'hardstand' });
@@ -112,6 +124,22 @@ const laneDist = (r) => {
   for (const [x0, z0, x1, z1] of lanes) for (let t = 0; t <= 1; t += 0.01) { const x = x0 + (x1 - x0) * t, z = z0 + (z1 - z0) * t; const [[ux, uz], [vx, vz]] = axes(r); const dx = x - r.x, dz = z - r.z; if (Math.abs(dx * ux + dz * uz) <= r.hw && Math.abs(dx * vx + dz * vz) <= r.hd) return 0; }
   return best;
 };
+if (opt.built) {
+  const pad = Number(opt.built);
+  const [vegetation, props, fleet, models] = await Promise.all([import(`${T}/src/world/vegetation.ts`), import(`${T}/src/world/props.ts`),
+    import(`${T}/src/vehicles/fleetFactory.ts`), import(`${T}/src/world/propsModelStore.ts`)]);
+  await models.preloadPropModels();
+  const bare = { ...config, props: { ...config.props, ...(SITES_MODE ? { plannedSites: [] } : {}) } };
+  const ids = bare.props?.tankWrecks?.ids ?? []; if (ids.length) await fleet.ensureTankBuilders(ids);
+  const engine = { anisotropy: 4, setupShadowMaterial() {} };
+  const flora = vegetation.createVegetation(field, engine, 2001, bare);
+  const dressing = props.createProps(field, engine, 2002, bare, flora);
+  for (const o of dressing.obstacles) {
+    if (o.kind !== 'structure') continue;
+    const w = o.max[0] - o.min[0], d = o.max[2] - o.min[2];
+    blocks.push({ r: rect((o.min[0] + o.max[0]) / 2, (o.min[2] + o.max[2]) / 2, w + 2 * pad, d + 2 * pad, 0), why: 'built structure' });
+  }
+}
 const walls = (P.wallRuns ?? []).map(([x0, z0, x1, z1]) => [x0, z0, x1, z1]);
 const wallDist = (x, z) => walls.reduce((m, w) => Math.min(m, segD(x, z, ...w)), Infinity);
 
@@ -200,7 +228,10 @@ for (let ri = 0; ri < roads.length && !SITES.length; ri++) {
 
 // ---- out
 if (SITES.length) {
-  const siteLines = rows.map((h) => `  { structure: '${h.structure}', x: ${h.x.toFixed(2)}, z: ${h.z.toFixed(2)}, yawDeg: ${(h.rot * 180 / Math.PI).toFixed(1)} },`);
+  // (terrace: each site builds from a stream of its own — props.ts draws a terrace site's builder from seed + its index,
+  // not the props stream — and is seated without the roadside clearance test, the plan's own checks standing for it: a
+  // site on the props stream moves every later draw, the clutter with it, and the yards round the plan's houses turn)
+  const siteLines = rows.map((h) => `  { structure: '${h.structure}', x: ${h.x.toFixed(2)}, z: ${h.z.toFixed(2)}, yawDeg: ${(h.rot * 180 / Math.PI).toFixed(1)}, terrace: true },`);
   const flags = process.argv.slice(3).filter((a) => /^--(keep|seed|lanes|laneClear|sites|gap|setback)/.test(a)).join(' ');
   writeFileSync(outPath, `// Generated by tools/plan-street-rows.mjs ${mapId} ${flags} (the maps lane, the Verdant process): ${rows.length} houses
 // along the village's streets at one building line (setback ${SETBACK} m), each turned to its street (props.plannedSites).

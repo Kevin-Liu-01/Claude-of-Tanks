@@ -30,7 +30,7 @@ for(const id of PHOTO_REFERENCE_IDS){
   assert.equal(roofEquipmentVerdict(id,{...census,mg:1},config,receipt).passed,false);
   assert.equal(sourceOpeningsVerdict({id,scan:{holeCells:1}}).passed,false,'photo targets cannot waive unexplained holes');
   const steps=tankReleaseSteps(id,true,'node');
-  assert.equal(steps.length,12,'all physical, anatomy, test and build steps retained');
+  assert.equal(steps.length,15,'all physical, anatomy, test and build steps retained'); // (integ/226: + the vehicles' ledger and mission-seat checks, + the spare-track ledger)
   assert.equal(steps.some(step=>step.args[0]==='tools/procedural-fidelity.mjs'),false,'do not fabricate 3D scores');
 }
 const mixed=tankReleaseSteps('cv9040c,puma_s1,type89,borsuk',true,'node');

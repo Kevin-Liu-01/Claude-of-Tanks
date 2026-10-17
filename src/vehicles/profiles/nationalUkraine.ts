@@ -179,7 +179,9 @@ export function ukrainianDonorHull(P:TankBuilderPort,c:NationalModernizationConf
     glacisTiles(P,[2.15,2.59,3.04],.63,.55,.33);
   }else if(c.model===2){
     skirtPackage(P,c,6);
-    glacisTiles(P,[2.00,2.47,2.87],.61,.52,.30);
+    // The T-72B3 donor gun sits lower and further forward than the cast concept's: the glacis rows start past the
+    // roof break, clear of its full depression (the first row stood on the flat roof under the barrel).
+    glacisTiles(P,[2.15,2.55,2.92],.61,.52,.30);
     sichHullRails(P);
   }else throw new Error(`${c.id}: no donor-turret hull package`);
   hullEquipment(P,c);

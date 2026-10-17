@@ -8,7 +8,11 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { BoxGeometry } from 'three';
-import { RUIN_HEIGHT_SHARE, RUIN_PLAN_SHARE, keepRuinStanding, lastRuinMeasure, measureIntactParts } from './collapseRuin.ts';
+import { RUIN_HEIGHT_SHARE, RUIN_PLAN_SHARE, keepRuinStanding, lastRuinMeasure, measureIntactParts, ruinKind } from './collapseRuin.ts';
+import { ARCHITECTURE_STYLES, buildRegionalParts } from './maps/regional/index.ts';
+import { streamFrom } from './maps/regional/geometry.ts';
+import { describeStructure } from './structureDamageSeam.ts';
+import './destructionDefaultKit.ts';
 
 const slot = (bucket, share = 1) => ({ material: 'brick', bucket, tint: [0.6, 0.5, 0.4], thicknessM: 0.3, share });
 const face = (name, ox, oz, ux, uz, outx, outz, width) => ({ name, origin: [ox, 0, oz], u: [ux, 0, uz], out: [outx, 0, outz],
@@ -135,10 +139,86 @@ anatomy.intact = intact;
   assert.ok(writer.vertices <= 6000, 'and the ruin stays inside the real one');
 }
 
+// ---- an open frame falls as its own lattice, a skin wall stands no masonry (the LOOKS gate 2026-10-16: a 5.71 m pier
+// run stood on navajo's collapsed steel water tower)
+{
+  const raftWith = (anatomy, seed = 5, builder = null) => {
+    const writer = recorder();
+    keepRuinStanding(anatomy, seed, { mesh: writer, pieces }, (w) => raftKit(anatomy, w), builder);
+    return writer;
+  };
+  const kitAlone = (anatomy) => { const writer = recorder(); raftKit(anatomy, { mesh: writer, pieces }); return writer; };
+  // a frame by its kit's plan (latticeFall.ts latticeOf), by a body's, and by its builder: its own legs, never masonry
+  const legs = [[-2, -2], [2, -2], [2, 2], [-2, 2]].map(([x, z]) => ({ foot: [x, 0, z], head: [x * 0.6, 9, z * 0.6] }));
+  // (a tower: no roof of its own; a roofed open hall drops its roof over its plan, below)
+  const framed = { ...house(), roof: null, intact, kitPlan: { damage: { lattice: { legs, girts: [3, 6], size: 0.25, bucket: 'structureMetal', colour: [0.4, 0.4, 0.42], crown: null } } } };
+  assert.equal(ruinKind(framed), 'frame');
+  const masonryAdded = (writer, alone) => writer.runs.slice(alone.runs.length).filter((r) => r.role === 'remnant' && r.bucket !== 'structureMetal');
+  {
+    // (a tower by its builder: a dense intact plan would otherwise read as a roofed hall's)
+    const writer = raftWith(framed, 5, 'watertower'), alone = kitAlone(framed);
+    assert.equal(masonryAdded(writer, alone).length, 0, 'a lattice frame stands no masonry');
+    assert.ok(writer.runs.slice(alone.runs.length).every((r) => r.bucket === 'structureMetal' && r.role === 'remnant'), 'only its own legs');
+    const { p90 } = measure(writer.tris, 0.25, 5, 4);
+    assert.ok(p90 >= 0.25 * intact.p90M, `its buckled legs stand (${(p90 / intact.p90M).toFixed(2)} of the intact)`);
+    assert.ok(!writer.runs.some((r) => r.role === 'rubble' && r.bucket === 'regionalStone' && writer.runs.indexOf(r) >= alone.runs.length), 'no heap where it drew nothing');
+  }
+  {
+    const hall = { ...house(), intact, kitPlan: framed.kitPlan }; // (a market hall: its roof over its plan)
+    const writer = raftWith(hall), alone = kitAlone(hall);
+    assert.equal(masonryAdded(writer, alone).length, 0, 'a roofed open hall stands no masonry either');
+    assert.ok(writer.runs.slice(alone.runs.length).some((r) => r.role === 'rubble'), 'its fallen roof heaped over its plan');
+  }
+  const bodied = { ...house(), intact, kitPlan: { bodies: [{ ...house(), kitPlan: framed.kitPlan }] } };
+  assert.equal(ruinKind(bodied), 'frame', 'a frame among its bodies');
+  for (const builder of ['watertower', 'windmill', 'guyedMast', 'floodMast', 'pylon', 'headframe', 'gantry']) {
+    const a = { ...house(), intact };
+    assert.equal(ruinKind(a, builder), 'frame', `${builder}: an open frame`);
+    const writer = recorder();
+    keepRuinStanding(a, 5, { mesh: writer, pieces }, (w) => raftKit(a, w), builder);
+    assert.ok(!writer.runs.some((r) => r.role === 'remnant' && r.bucket !== 'structureMetal'), `${builder}: no masonry pier or stub`);
+  }
+  // a skin wall (timber, plank, sheet metal, thatch, canvas): its heap and covering, never a masonry pier or stub
+  for (const material of ['timber', 'plank', 'metal', 'thatch', 'canvas']) {
+    const skin = house();
+    for (const storey of skin.storeys) for (const face of storey.faces) face.layers = [{ ...face.layers[0], material, bucket: 'wood' }];
+    skin.intact = intact;
+    assert.equal(ruinKind(skin), 'skin', `${material}: a skin wall`);
+    const writer = raftWith(skin);
+    assert.ok(!writer.runs.some((r) => r.role === 'remnant' && r.bucket !== 'wood'), `${material}: no masonry pier or stub`);
+    const posts = writer.runs.filter((r) => r.role === 'remnant');
+    assert.ok(posts.length > 0, `${material}: it stands its own frame`);
+    // a post is slender: no remnant box wider than 0.35 m across both plan axes (a pier's L leg is metres long)
+    for (const run of posts) for (let i = 0; i < run.pos.length; i += 72) {
+      const xs = [], zs = [];
+      for (let v = i; v < Math.min(run.pos.length, i + 72); v += 3) { xs.push(run.pos[v]); zs.push(run.pos[v + 2]); }
+      const wx = Math.max(...xs) - Math.min(...xs), wz = Math.max(...zs) - Math.min(...zs);
+      assert.ok(Math.min(wx, wz) <= 0.35, `${material}: a post or a panel, never a pier (${wx.toFixed(2)} x ${wz.toFixed(2)} m)`);
+    }
+    const { p90 } = measure(writer.tris, 0.25, 5, 4);
+    assert.ok(p90 >= 0.25 * intact.p90M, `${material}: its frame stands (${(p90 / intact.p90M).toFixed(2)})`);
+  }
+  assert.equal(ruinKind({ ...house(), intact }), 'masonry', 'a brick house stands its piers');
+  // the real open frames the kits build (latticeDamage's set; navajo's plot is its windmill): a lattice plan reads as a frame
+  // by the plan itself, whatever its builder's name (the Kyushu stack plot lays a fire lookout on some seeds)
+  const style = (id) => ARCHITECTURE_STYLES.find((st) => st.id === id);
+  for (const [styleId, id, [w, d, h]] of [['queenstown', 'watertower', [5.6, 5.6, 14]], ['navajo', 'watertower', [5.6, 5.6, 14]],
+    ['glencanyon', 'watertower', [5.6, 5.6, 14]], ['kyushu', 'stack', [3.8, 3.8, 9.4]]]) {
+    const parts = buildRegionalParts(style(styleId), { structureId: id, info: { w, d, h }, bounds: { minX: -w / 2, maxX: w / 2, minZ: -d / 2, maxZ: d / 2, maxY: h },
+      wallBucket: 'plaster', rng: streamFrom(11), variant: streamFrom(80), mapId: 'lattice', snowCap: false, tier: 'desktop' }, streamFrom(38));
+    const a = describeStructure({ structureIdx: 3, mapId: 'lattice', builder: id, style: styleId, parts, w, d, h,
+      placement: { x: 0, y: 0, z: 0, yaw: 0 }, massClass: 'house' });
+    const lattice = (a.kitPlan?.damage?.lattice) || (a.kitPlan?.bodies ?? []).some((b) => b.kitPlan?.damage?.lattice);
+    if (lattice || id === 'watertower') assert.equal(ruinKind(a, id), 'frame', `${styleId}/${id}: falls as its own frame`);
+    if (lattice) assert.equal(ruinKind(a, null), 'frame', `${styleId}/${id}: a frame by its plan alone`);
+  }
+}
+
 // ---- the seam: every kit's collapse through it, every anatomy its intact form
 {
   const seam = readFileSync(new URL('./structureDamageSeam.ts', import.meta.url), 'utf8');
   assert.match(seam, /collapse: \(seed, out\) => keepRuinStanding\(anatomy, seed, out,/, 'every kit\'s collapse keeps its ruin');
+  assert.match(seam, /call\(collapseKit, anatomy, seed, writers\), builder\),/, 'and names its builder (an open frame by name)');
   assert.match(seam, /const intact = measureIntactParts\(args\.parts\);/, 'the intact form measured at describe');
 }
 

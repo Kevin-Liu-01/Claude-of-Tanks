@@ -270,7 +270,8 @@ const poolHeaders = [
 ];
 const preparationSteps = [
   'refitDestructibleColliders(geoI, pool, kind)',
-  'fitWallSpan(pool.mats4[record.slot], geoI, heightField, span, record, WALL_SEG)',
+  // (LANE A #6, 1c9c03bf7: a coursed wall fits on its own fit geometry where its kit names one)
+  'fitWallSpan(pool.mats4[record.slot], pool.meta.fitGeometry ?? geoI, heightField, span, record, WALL_SEG)',
   'transferred = true;',
   'return { geoI, groundCoverDetail };',
 ];

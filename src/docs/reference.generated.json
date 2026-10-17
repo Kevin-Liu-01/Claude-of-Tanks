@@ -17,7 +17,7 @@
       "view": 390,
       "smoke": 24,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -38,7 +38,7 @@
       "view": 395,
       "smoke": 20,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -185,7 +185,7 @@
       "view": 365,
       "smoke": 8,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -206,7 +206,7 @@
       "view": 375,
       "smoke": 20,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -248,7 +248,7 @@
       "view": 380,
       "smoke": 24,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -269,7 +269,7 @@
       "view": 405,
       "smoke": 20,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -290,7 +290,7 @@
       "view": 380,
       "smoke": 17,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -311,7 +311,7 @@
       "view": 385,
       "smoke": 16,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -332,7 +332,7 @@
       "view": 390,
       "smoke": 12,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -353,7 +353,7 @@
       "view": 405,
       "smoke": 16,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -374,7 +374,7 @@
       "view": 415,
       "smoke": 12,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -416,7 +416,7 @@
       "view": 395,
       "smoke": 12,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -437,7 +437,7 @@
       "view": 400,
       "smoke": 24,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -458,7 +458,7 @@
       "view": 405,
       "smoke": 19,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -479,7 +479,7 @@
       "view": 415,
       "smoke": 12,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -500,7 +500,7 @@
       "view": 420,
       "smoke": 12,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -563,7 +563,7 @@
       "view": 390,
       "smoke": 24,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -584,7 +584,7 @@
       "view": 430,
       "smoke": 0,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": true
     },
@@ -605,7 +605,7 @@
       "view": 415,
       "smoke": 0,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": true
     },
@@ -626,7 +626,7 @@
       "view": 425,
       "smoke": 0,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": true
     },
@@ -710,7 +710,7 @@
       "view": 410,
       "smoke": 40,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -794,7 +794,7 @@
       "view": 380,
       "smoke": 12,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -815,7 +815,7 @@
       "view": 390,
       "smoke": 12,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -836,7 +836,7 @@
       "view": 395,
       "smoke": 24,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -857,7 +857,7 @@
       "view": 390,
       "smoke": 16,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -878,7 +878,7 @@
       "view": 410,
       "smoke": 10,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -983,7 +983,7 @@
       "view": 420,
       "smoke": 12,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1004,7 +1004,7 @@
       "view": 395,
       "smoke": 24,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1025,7 +1025,7 @@
       "view": 390,
       "smoke": 18,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": true
     },
@@ -1046,7 +1046,7 @@
       "view": 395,
       "smoke": 18,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": true
     },
@@ -1067,7 +1067,7 @@
       "view": 400,
       "smoke": 16,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1088,7 +1088,7 @@
       "view": 410,
       "smoke": 26,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1109,7 +1109,7 @@
       "view": 420,
       "smoke": 8,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1130,7 +1130,7 @@
       "view": 435,
       "smoke": 20,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1214,7 +1214,7 @@
       "view": 460,
       "smoke": 24,
       "lights": true,
-      "roofGun": true,
+      "roofGun": false,
       "missile": true,
       "suspension": false
     },
@@ -1319,7 +1319,7 @@
       "view": 420,
       "smoke": 18,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1340,7 +1340,7 @@
       "view": 400,
       "smoke": 16,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1361,7 +1361,7 @@
       "view": 405,
       "smoke": 20,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1403,7 +1403,7 @@
       "view": 410,
       "smoke": 16,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1424,7 +1424,7 @@
       "view": 425,
       "smoke": 8,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1445,7 +1445,7 @@
       "view": 395,
       "smoke": 12,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1466,7 +1466,7 @@
       "view": 430,
       "smoke": 28,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1487,7 +1487,7 @@
       "view": 395,
       "smoke": 24,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1571,7 +1571,7 @@
       "view": 405,
       "smoke": 28,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1613,7 +1613,7 @@
       "view": 410,
       "smoke": 16,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1655,7 +1655,7 @@
       "view": 420,
       "smoke": 8,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1718,7 +1718,7 @@
       "view": 415,
       "smoke": 30,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1781,7 +1781,7 @@
       "view": 365,
       "smoke": 8,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1802,7 +1802,7 @@
       "view": 380,
       "smoke": 20,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1823,7 +1823,7 @@
       "view": 415,
       "smoke": 24,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1949,7 +1949,7 @@
       "view": 420,
       "smoke": 10,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -1970,7 +1970,7 @@
       "view": 425,
       "smoke": 22,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2075,7 +2075,7 @@
       "view": 425,
       "smoke": 16,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": true,
       "suspension": true
     },
@@ -2264,7 +2264,7 @@
       "view": 390,
       "smoke": 0,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2285,7 +2285,7 @@
       "view": 380,
       "smoke": 20,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2306,7 +2306,7 @@
       "view": 390,
       "smoke": 20,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2327,7 +2327,7 @@
       "view": 395,
       "smoke": 24,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2348,7 +2348,7 @@
       "view": 420,
       "smoke": 22,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2369,7 +2369,7 @@
       "view": 400,
       "smoke": 20,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2390,7 +2390,7 @@
       "view": 405,
       "smoke": 12,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2411,7 +2411,7 @@
       "view": 410,
       "smoke": 12,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2453,7 +2453,7 @@
       "view": 420,
       "smoke": 20,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2474,7 +2474,7 @@
       "view": 410,
       "smoke": 20,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2516,7 +2516,7 @@
       "view": 440,
       "smoke": 12,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2537,7 +2537,7 @@
       "view": 410,
       "smoke": 16,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2558,7 +2558,7 @@
       "view": 420,
       "smoke": 18,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2579,7 +2579,7 @@
       "view": 395,
       "smoke": 8,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2621,7 +2621,7 @@
       "view": 410,
       "smoke": 10,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2663,7 +2663,7 @@
       "view": 400,
       "smoke": 24,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2684,7 +2684,7 @@
       "view": 375,
       "smoke": 8,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2705,7 +2705,7 @@
       "view": 380,
       "smoke": 8,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2726,7 +2726,7 @@
       "view": 410,
       "smoke": 20,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2747,7 +2747,7 @@
       "view": 385,
       "smoke": 20,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2768,7 +2768,7 @@
       "view": 395,
       "smoke": 8,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2789,7 +2789,7 @@
       "view": 410,
       "smoke": 22,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2831,7 +2831,7 @@
       "view": 400,
       "smoke": 12,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2894,7 +2894,7 @@
       "view": 385,
       "smoke": 20,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2915,7 +2915,7 @@
       "view": 415,
       "smoke": 20,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2936,7 +2936,7 @@
       "view": 390,
       "smoke": 21,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -2957,7 +2957,7 @@
       "view": 450,
       "smoke": 20,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -3188,7 +3188,7 @@
       "view": 455,
       "smoke": 18,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -3293,7 +3293,7 @@
       "view": 480,
       "smoke": 14,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": true,
       "suspension": false
     },
@@ -3356,7 +3356,7 @@
       "view": 435,
       "smoke": 28,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -3440,7 +3440,7 @@
       "view": 440,
       "smoke": 8,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -3629,7 +3629,7 @@
       "view": 430,
       "smoke": 28,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -3671,7 +3671,7 @@
       "view": 415,
       "smoke": 8,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -3692,7 +3692,7 @@
       "view": 375,
       "smoke": 20,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -3713,7 +3713,7 @@
       "view": 370,
       "smoke": 24,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -3734,7 +3734,7 @@
       "view": 400,
       "smoke": 20,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -3776,7 +3776,7 @@
       "view": 410,
       "smoke": 12,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -3797,7 +3797,7 @@
       "view": 395,
       "smoke": 24,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -3818,7 +3818,7 @@
       "view": 390,
       "smoke": 16,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -3839,7 +3839,7 @@
       "view": 365,
       "smoke": 0,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -3881,7 +3881,7 @@
       "view": 405,
       "smoke": 16,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -3902,7 +3902,7 @@
       "view": 405,
       "smoke": 20,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -3944,7 +3944,7 @@
       "view": 405,
       "smoke": 14,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -3986,7 +3986,7 @@
       "view": 385,
       "smoke": 24,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -4007,7 +4007,7 @@
       "view": 385,
       "smoke": 28,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -4028,7 +4028,7 @@
       "view": 395,
       "smoke": 24,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -4049,7 +4049,7 @@
       "view": 410,
       "smoke": 23,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -4091,7 +4091,7 @@
       "view": 410,
       "smoke": 12,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -4175,7 +4175,7 @@
       "view": 415,
       "smoke": 12,
       "lights": true,
-      "roofGun": false,
+      "roofGun": true,
       "missile": false,
       "suspension": false
     },
@@ -4362,7 +4362,7 @@
       "reload": 6.4,
       "aim": 1.73,
       "view": 420,
-      "smoke": 8,
+      "smoke": 6,
       "lights": true,
       "roofGun": true,
       "missile": false,
@@ -4383,7 +4383,7 @@
       "reload": 6.4,
       "aim": 1.73,
       "view": 420,
-      "smoke": 8,
+      "smoke": 6,
       "lights": true,
       "roofGun": true,
       "missile": false,
@@ -4467,7 +4467,7 @@
       "reload": 6.4,
       "aim": 1.73,
       "view": 420,
-      "smoke": 8,
+      "smoke": 6,
       "lights": true,
       "roofGun": true,
       "missile": false,
@@ -4488,7 +4488,7 @@
       "reload": 6.4,
       "aim": 1.73,
       "view": 420,
-      "smoke": 8,
+      "smoke": 6,
       "lights": true,
       "roofGun": true,
       "missile": false,
@@ -4551,7 +4551,7 @@
       "reload": 6.4,
       "aim": 1.73,
       "view": 420,
-      "smoke": 8,
+      "smoke": 10,
       "lights": true,
       "roofGun": true,
       "missile": false,

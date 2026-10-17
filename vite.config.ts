@@ -407,6 +407,11 @@ export default defineConfig({
             // the gallery and main all import it, so on its own it became one more boot request on every page. The group takes
             // exactly these four modules, none of their dependencies.
             { name: 'fleetSpecRegistry', test: /[\\/]src[\\/](?:vehicles[\\/](?:fleetSpecRegistry|tankIdAliases)|game[\\/](?:tankIdBoundaries|tankIdStorageMigration))\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-16 (the perf lane; 226's bundle budget: game requests 131 over 128): the fleet's leaf layout data — the
+            // supplied frames, skirt and hull layouts, upgrade datums and the national donor designs — are pure tables
+            // (no import but other tables) that the builders, the gallery and main all reach, so each split into a chunk of
+            // its own (14 boot requests of 0.1-10 KB). One group takes exactly these modules, none of their dependencies.
+            { name: 'fleetLayouts', test: /[\\/]src[\\/]vehicles[\\/](?:marder2Frame|abramsUpgradeDatums|amx10pSkirtLayout|griffinViperLayout|m6LinebackerLayout|abramsSourceXDatums|aresApcXFrame|tos1aTagilLayout|escortFieldKitLayout|national(?:DonorTurrets|UkraineDesign|PolandDesign|ChinaDesign|RussiaDesign|ModernizationDesign)|profiles[\\/](?:xk2Frame|strv122XSuppliedFrame|leopardRevolutionPrototypeFrame|leopardImprovedHull|challenger1XSuppliedFrame))\.ts$/, includeDependenciesRecursively: false },
             { name: 'groundBounce', test: /(?:[\\/]three[\\/]examples[\\/]jsm[\\/]postprocessing[\\/]Pass\.js|[\\/]src[\\/]engine[\\/](?:atmosphere|cloudscapes|lightModelCore|hazeLaw|groundBounce)\.ts)$/, includeDependenciesRecursively: false },
           ],
         },

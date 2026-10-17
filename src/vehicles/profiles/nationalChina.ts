@@ -509,7 +509,9 @@ function addConceptFuelDrums(P:TankBuilderPort,c:NationalModernizationConfig):vo
   const radius=c.model===0?.235:c.model===1?.285:.245,length=c.model===1?.97:.85,center=c.model===1?.70:.65;
   // Low rear cradles keep every fitting below the main gun's complete
   // depressed/recoiling sweep, including intermediate rearward turret yaw.
-  const y=c.model===0?.90:c.model===1?.86:.82;
+  // Kunlun .85 (was .86): its Type 96B donor gun's legal depression/recoil sweep over the rear needs the drums 1 cm lower
+  // for the 25 mm fitting clearance (chineseFuelDrum receipt).
+  const y=c.model===0?.90:c.model===1?.85:.82;
   const roots:THREE.Vector3[]=[];
   for(const side of [-1,1])for(const offset of [-length*.30,length*.30]){
     const x=side*center+offset;
