@@ -42,8 +42,9 @@ const summary = { stamp, root, mode: CHECK ? 'check' : ALL ? 'all' : 'changed', 
 const log = (line) => { console.log(line); appendFileSync(logPath, `${line}\n`); };
 const selected = (name) => !ONLY || ONLY.includes(name);
 for (const name of ONLY ?? []) if (!stepByName(name)) throw new Error(`unknown step ${name}`);
-for (const step of STEPS) if (step.flags.some((flag) => flag.startsWith('--uniform-from'))) {
-  throw new Error(`${step.name}: --uniform-from reads a git revision; the chain never passes it`);
+// Flags that make a tool read a file the step key cannot see (a git revision, a hints file) are refused.
+for (const step of STEPS) if (step.flags.some((flag) => /^--(?:uniform-from|hints)\b/.test(flag))) {
+  throw new Error(`${step.name}: ${step.flags.join(' ')} reads an unkeyed input; the chain never passes it`);
 }
 
 // One chain per tree.

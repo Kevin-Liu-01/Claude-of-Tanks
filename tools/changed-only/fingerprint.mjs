@@ -168,7 +168,7 @@ export function computeState({ root, steps = STEPS, env = process.env, rows = nu
   const dynamicProblem = (file) => {
     const { flags } = graph.edges(file);
     const dynamic = flags.broad || flags.opaqueImport || flags.opaqueEnvironment || flags.unresolved || flags.git
-      || flags.browser || flags.helperComputed.length;
+      || flags.browser || flags.helperComputed.length || flags.sites.length;
     if (!dynamic) return null;
     const declaration = DECLARED_DYNAMIC[rel(file)];
     if (!declaration) return `undeclared dynamic read in ${rel(file)}`;

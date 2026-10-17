@@ -26,10 +26,16 @@ const SOURCE_EXTENSIONS = new Set(['.ts', '.mts', '.mjs', '.js', '.cjs', '.json'
 const MODULE_EXTENSIONS = new Set(['.ts', '.mts', '.mjs', '.js', '.cjs', '.tsx', '.jsx']);
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', '.vercel', '.qa-dev', '.qa-map-environment']);
 const LEAF_FILE = /(?:^|\/)(?:package-lock\.json|\.package-lock\.json|[^/]+\.lock)$|\/node_modules\//;
-const DYNAMIC_CALLS = new Set(['execFileSync', 'execSync', 'spawnSync', 'spawn', 'execFile', 'fork',
+const DYNAMIC_CALLS = new Set(['execFileSync', 'execSync', 'spawnSync',
   'readdirSync', 'readdir', 'glob', 'globSync', 'createServer', 'opendirSync', 'opendir']);
-// `exec` counts only as a bare (imported) child_process function: `re.exec(text)` is a regular expression.
-const BARE_DYNAMIC_CALLS = new Set(['exec']);
+// Names other objects share (`re.exec`, `world.spawn`): they count as a child process only when the call reaches
+// node:child_process (a named import, or a member of its default/namespace import).
+const CHILD_PROCESS_CALLS = new Set(['spawn', 'fork', 'execFile', 'exec']);
+// A file read whose path is not a string literal reads something the import graph cannot name (a literal path is a
+// named input already). fetch and XMLHttpRequest read whatever a page or server serves.
+const PATH_READS = new Set(['readFileSync', 'readFile', 'createReadStream', 'openSync', 'readlinkSync', 'statSync',
+  'lstatSync', 'existsSync', 'accessSync', 'readJsonSync']);
+const URL_READS = new Set(['fetch']);
 
 export const sha256 = (text) => createHash('sha256').update(text).digest('hex');
 export const h16 = (text) => sha256(text).slice(0, 16);
@@ -54,13 +60,30 @@ export function dynamicSites(text, filename) {
     filename.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
   const sites = [];
   const norm = (node) => node.getText(source).replace(/\s+/g, ' ');
+  const childNamed = new Set(), childModules = new Set();
+  for (const statement of source.statements) {
+    if (!ts.isImportDeclaration(statement) || !/^(?:node:)?child_process$/.test(statement.moduleSpecifier.text ?? '')) continue;
+    const clause = statement.importClause;
+    if (clause?.name) childModules.add(clause.name.text);
+    const bindings = clause?.namedBindings;
+    if (bindings && ts.isNamespaceImport(bindings)) childModules.add(bindings.name.text);
+    if (bindings && ts.isNamedImports(bindings)) for (const element of bindings.elements) childNamed.add(element.name.text);
+  }
+  const childProcessCall = (callee, name) => CHILD_PROCESS_CALLS.has(name) && (ts.isIdentifier(callee)
+    ? childNamed.has(name)
+    : ts.isPropertyAccessExpression(callee) && ts.isIdentifier(callee.expression) && childModules.has(callee.expression.text));
   const visit = (node) => {
     if (ts.isCallExpression(node)) {
       const callee = node.expression;
       const name = ts.isIdentifier(callee) ? callee.text : ts.isPropertyAccessExpression(callee) ? callee.name.text : '';
       if (callee.kind === ts.SyntaxKind.ImportKeyword) {
         if (!ts.isStringLiteralLike(node.arguments[0] ?? {})) sites.push(norm(node));
-      } else if (DYNAMIC_CALLS.has(name) || (ts.isIdentifier(callee) && BARE_DYNAMIC_CALLS.has(name))) sites.push(norm(node));
+      } else if (DYNAMIC_CALLS.has(name) || childProcessCall(callee, name)) sites.push(norm(node));
+      else if (PATH_READS.has(name) && node.arguments[0] && !ts.isStringLiteralLike(node.arguments[0])) sites.push(norm(node));
+      else if (ts.isIdentifier(callee) && URL_READS.has(name)) sites.push(norm(node));
+    }
+    if (ts.isNewExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'XMLHttpRequest') {
+      sites.push(norm(node));
     }
     if (ts.isSpreadAssignment(node) || ts.isSpreadElement(node)) {
       const text = norm(node.expression);
