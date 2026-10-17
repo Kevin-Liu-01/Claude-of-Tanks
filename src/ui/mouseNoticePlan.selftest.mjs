@@ -142,6 +142,8 @@ for (const v of VIEWPORTS) {
     const input = inputFor(v, { objective });
     const t1 = performance.now();
     const plan = planMouseNotices(input);
+    // the countdown, the revive count and the medal card are placed when first read
+    void plan.countdown, plan.revive, plan.medal;
     const spent = performance.now() - t1;
     ms += spent;
     slowest = Math.max(slowest, spent);
@@ -251,7 +253,7 @@ for (const rule of css.split('\n').filter((line) => line.includes('[data-hud-not
 assert.doesNotMatch(css, /:not\(\.cot-touch-layout\):is\(\[data-cot-width='phone'\],\[data-cot-width='compact'\]\) :is\(\.cot-sixth,\.cot-alert\)/,
   'the old side column next to the aim point is gone');
 // the lanes yield only to what is shown, and the held rosters stop short of it
-assert.match(layout, /const shown = \[read\('\.cot-sixth\.on'\) && plan\.detection, read\('\.cot-alert\.show'\) && plan\.alert, countdown && plan\.countdown,\s+read\('\.cot-revive\.on'\) && plan\.revive, medalReady && plan\.medal\];/);
+assert.match(layout, /const shown = \[root\.querySelector\('\.cot-sixth\.on'\) && plan\.detection, root\.querySelector\('\.cot-alert\.show'\) && plan\.alert,\s+countdown && plan\.countdown, root\.querySelector\('\.cot-revive\.on'\) && plan\.revive, medalReady && plan\.medal\];/);
 assert.match(css, /\.rosters-expanded \.cot-ear\.l\{width:min\(320px,calc\(50vw - 184px\),var\(--hud-roster-wide-left,320px\)\)\}/);
 assert.doesNotMatch(css, /data-hud-alert-type/, 'the alert never drops below main\'s type size');
 

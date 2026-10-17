@@ -202,6 +202,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     if (net && net.width > 0 && net.height > 0) readout = rect(net);
     if (readout) obstacles.push(readout);
     add(read('.cot-spec.show'));
+    // the drone's and the gunship's flight console while their view is up (a view change, like the spectator tray)
+    add(read('.cot-flight-hud:not([hidden]) .flight-console'));
     const lane = (x: number, from: number, to: number): PlanLane | null =>
       to - from >= 26 ? { x: Math.round(x), w: Math.round(sideWidth), top: Math.round(from), bottom: Math.round(to) } : null;
     const lanes: [PlanLane | null, PlanLane | null] = [lane(0, leftTop, leftBottom), lane(width - sideWidth, rightTop, rightBottom)];
@@ -251,19 +253,25 @@ export function installBattleHudLayout(root: HTMLElement): void {
   function setBodyVar(name: string, value: string) {
     if (document.body.style.getPropertyValue(name) !== value) document.body.style.setProperty(name, value);
   }
-  function writeMousePlan(plan: MouseNoticePlan) {
-    const { detection, alert, medal, countdown, revive } = plan;
+  /** Writes the plan; the countdown, the revive count and the medal card only while they are up (`up`), as the plan
+   *  places those when first read. */
+  function writeMousePlan(plan: MouseNoticePlan, up: { countdown: boolean; revive: boolean; medal: boolean }) {
+    const { detection, alert } = plan;
     setBodyVar('--hud-notice-x', `${Math.round(detection.x + detection.w / 2)}px`);
     setBodyVar('--hud-alert-x', `${Math.round(alert.x)}px`);
     setBodyVar('--hud-alert-width', `${Math.floor(alert.w)}px`);
     setBodyVar('--hud-alert-shift', alert.anchor === 'start' ? '0%' : alert.anchor === 'end' ? '-100%' : '-50%');
-    setBodyVar('--hud-banner-x', medal ? `${Math.round(medal.x + medal.w / 2)}px` : '50%');
+    const medal = up.medal ? plan.medal : null;
+    if (up.medal) setBodyVar('--hud-banner-x', medal ? `${Math.round(medal.x + medal.w / 2)}px` : '50%');
     // The keep-out each element clears (mouseNoticePlan.ts tiers: 2 everything the reticle draws, 1 the battle sight at
-    // full bloom, 0 the resting sight, - none; s: it shares a notice's place), for the browser receipt.
-    const tier = (place: { clearance: number; sharesNotices: boolean } | null) => place ? `${place.clearance}${place.sharesNotices ? 's' : ''}` : '-';
-    const tiers = `d${plan.clearance} a${plan.clearance} c${tier(countdown)} r${tier(revive)} m${tier(medal)}`;
+    // full bloom, 0 the resting sight, - none, ? not up; s: it shares a notice's place), for the browser receipt.
+    const tier = (shown: boolean, place: { clearance: number; sharesNotices: boolean } | null) =>
+      !shown ? '?' : place ? `${place.clearance}${place.sharesNotices ? 's' : ''}` : '-';
+    const tiers = `d${plan.clearance} a${plan.clearance} c${tier(up.countdown, up.countdown ? plan.countdown : null)} r${tier(up.revive, up.revive ? plan.revive : null)} m${tier(up.medal, medal)}`;
     if (document.body.dataset.hudNoticeTiers !== tiers) document.body.dataset.hudNoticeTiers = tiers;
-    for (const [name, place] of [['countdown', countdown], ['revive', revive]] as const) {
+    for (const name of ['countdown', 'revive'] as const) {
+      if (!up[name]) continue;
+      const place = plan[name];
       setBodyVar(`--hud-${name}-top`, place ? `${Math.round(place.y)}px` : name === 'countdown' ? '22%' : '30%');
       setBodyVar(`--hud-${name}-x`, place ? `${Math.round(place.x + place.w / 2)}px` : '50%');
       setBodyVar(`--hud-${name}-scale`, place ? String(place.scale) : '1');
@@ -409,8 +417,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     let leftEnd = leftBottom, rightEnd = Math.min(rightBottom, rightKillFloor);
     let wideLeft = Infinity, wideRight = Infinity;
     if (plan) {
-      const shown = [read('.cot-sixth.on') && plan.detection, read('.cot-alert.show') && plan.alert, countdown && plan.countdown,
-        read('.cot-revive.on') && plan.revive, medalReady && plan.medal];
+      const shown = [root.querySelector('.cot-sixth.on') && plan.detection, root.querySelector('.cot-alert.show') && plan.alert,
+        countdown && plan.countdown, root.querySelector('.cot-revive.on') && plan.revive, medalReady && plan.medal];
       for (const place of shown) {
         if (!place) continue;
         const [lt, lb, rt, rb] = place.giveWay;
@@ -471,8 +479,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     // Keep the card measurable while deferred; no per-frame polling is needed.
     let bannerTop = Math.ceil(top + 16);
     if (plan) {
-      // Mouse: the card has its own place off the reticle (medalReady above).
-      const slot = plan.medal;
+      // Mouse: the card has its own place off the reticle (medalReady above), placed once a card is queued.
+      const slot = banner?.childElementCount ? plan.medal : null;
       if (slot) bannerTop = slot.y;
       const size = slot?.compact ? 'compact' : '';
       if (banner && (banner.dataset.size ?? '') !== size) {
@@ -539,7 +547,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         document.body.style.setProperty(property, pixels);
       }
     }
-    if (plan) writeMousePlan(plan);
+    if (plan) writeMousePlan(plan, { countdown: !!countdown, revive: !!root.querySelector('.cot-revive.on'), medal: !!banner?.childElementCount });
     const rosterProperty = '--hud-roster-top-right';
     const rosterPixels = rosterTopRight === null ? '' : `${rosterTopRight}px`;
     if (document.body.style.getPropertyValue(rosterProperty) !== rosterPixels) {
