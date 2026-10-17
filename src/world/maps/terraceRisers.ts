@@ -171,7 +171,7 @@ export function* traceTerraceRisers(zones: readonly TerraceRiserZone[], o: Terra
             // (227) the shed stone rounded: a shoulder ring between its bed and its crown, turned a half step
             const shoulder = [0, 1, 2, 3, 4].map((q) => pt(((q + 0.5) / 5) * Math.PI * 2, r * (0.62 + hash(q, k, 0x7ea) * 0.2), y + h * 0.42));
             const apex: Vec3 = [fxp, y + h, fzp], col = tone(k, n, 0x7e9, 0.85);
-            const out = (tri: Vec3[]): Vec3[] => {
+            const outward = (tri: Vec3[]): Vec3[] => {
               const [p1, p2, p3] = tri, cx = (p1[0] + p2[0] + p3[0]) / 3 - fxp, cz = (p1[2] + p2[2] + p3[2]) / 3 - fzp, cy = (p1[1] + p2[1] + p3[1]) / 3 - y;
               const e1 = [p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]], e2 = [p3[0] - p1[0], p3[1] - p1[1], p3[2] - p1[2]];
               const nx = e1[1] * e2[2] - e1[2] * e2[1], ny = e1[2] * e2[0] - e1[0] * e2[2], nz = e1[0] * e2[1] - e1[1] * e2[0];
@@ -179,9 +179,9 @@ export function* traceTerraceRisers(zones: readonly TerraceRiserZone[], o: Terra
             };
             for (let q = 0; q < 5; q++) {
               const p1 = ring[q], p2 = ring[(q + 1) % 5], s1 = shoulder[q], s0 = shoulder[(q + 4) % 5];
-              sink.polygon('regionalStone', out([p1, p2, s1]), { colour: col, decor: true, fine: true });
-              sink.polygon('regionalStone', out([p1, s1, s0]), { colour: col, decor: true, fine: true });
-              sink.polygon('regionalStone', out([s1, shoulder[(q + 1) % 5], apex]), { colour: shade3(col, 1.06), decor: true, fine: true });
+              sink.polygon('regionalStone', outward([p1, p2, s1]), { colour: col, decor: true, fine: true });
+              sink.polygon('regionalStone', outward([p1, s1, s0]), { colour: col, decor: true, fine: true });
+              sink.polygon('regionalStone', outward([s1, shoulder[(q + 1) % 5], apex]), { colour: shade3(col, 1.06), decor: true, fine: true });
             }
             tumble++;
           }
