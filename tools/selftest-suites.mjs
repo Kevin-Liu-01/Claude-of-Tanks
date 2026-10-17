@@ -68,6 +68,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/earthriseCrossing.selftest.mjs',
     'src/sim/auxiliarySystems.selftest.mjs',
     'src/sim/roofStations.selftest.mjs',
+    // 2026-10-16 (227 guards): counter-drone on the authority, the owner's 226 band (hitsToDown 1.1), the 30 mm + 7.62 roofs
+    'src/sim/counterDroneEngagement.selftest.mjs',
     'src/vehicles/remoteGunFleet.selftest.mjs',
     'src/vehicles/profiles/mbt70Rh202.selftest.mjs',
     'src/vehicles/roofWeaponPolicy.selftest.mjs',
