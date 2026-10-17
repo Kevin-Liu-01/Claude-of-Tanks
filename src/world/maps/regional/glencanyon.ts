@@ -316,9 +316,10 @@ const powerhouse: RegionalBuilder = (ctx) => {
 /**
  * The control building (a megatower plot): four storeys of board-formed concrete with ribbon windows between deep
  * spandrels, concrete fins on the entrance front, the penthouse, the radio mast, an entrance canopy with the Bureau's
- * name, the flagpole.
+ * name, the flagpole. (227, the maps lane: Skybridge's Page township) with `storeys` 2 it is the Bureau's field
+ * headquarters of Page as a low town (Skybridge round 7: was four), its mast the shorter.
  */
-const controlBuilding: RegionalBuilder = (ctx) => {
+const controlBuildingOf = (storeys: 2 | 4): RegionalBuilder => (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng;
   // the building fills the old tower's reach (its bounds): its back on the back edge, its canopy to the front edge
@@ -326,13 +327,13 @@ const controlBuilding: RegionalBuilder = (ctx) => {
   const W = Math.max(6, R.W - 0.8), D = Math.max(5, R.D - 4.6);
   sink.placed(0, R.cx, 0, R.z0 + 0.3 + D / 2, () => {
     const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 2.4, y0: 0, h: 2.6 }];
-    for (let s = 0; s < 4; s++) for (const face of ['front', 'back', 'left', 'right'] as const) {
+    for (let s = 0; s < storeys; s++) for (const face of ['front', 'back', 'left', 'right'] as const) {
       const width = face === 'front' || face === 'back' ? W : D;
       for (const o of windowRhythm(face, s, width, { w: 2.0, h: s === 0 ? 2.2 : 1.6, sill: s === 0 ? 0.7 : 1.0, spacing: 2.4, margin: 1.2,
         avoid: s === 0 && face === 'front' ? [[-2.2, 2.2]] : [] })) openings.push(o);
     }
     const frame = buildHouse(sink, {
-      w: W, d: D, plinth: { h: 0.6, out: 0.1, bucket: CONCRETE }, storeys: [{ h: 4.2, wall: CONCRETE }, { h: 3.6, wall: CONCRETE }, { h: 3.6, wall: CONCRETE }, { h: 3.6, wall: CONCRETE }],
+      w: W, d: D, plinth: { h: 0.6, out: 0.1, bucket: CONCRETE }, storeys: [{ h: 4.2, wall: CONCRETE }, ...Array.from({ length: storeys - 1 }, () => ({ h: 3.6, wall: CONCRETE }))],
       roof: { kind: 'flat', pitchDeg: 0, eave: 0.3, verge: 0.3, thickness: 0.4, bucket: CONCRETE, parapet: 0.9 }, gableBucket: CONCRETE,
       openings, chimneys: [], gutters: null, verge: null, reveal: 0.35,
     }, dialectOf(rng, RIBBON, pick(rng, DOOR_PAINT), 0.15, 'glazed', ctx.variant));
@@ -340,7 +341,7 @@ const controlBuilding: RegionalBuilder = (ctx) => {
     // these buildings, and a dark plinth band under the board-formed walls)
     sink.band(PAINTED, -W / 2 - 0.14, -0.3, -D / 2 - 0.14, W / 2 + 0.14, 1.1, D / 2 + 0.14, { decor: true, shade: 0.7 });
     // the spandrel bands proud of the windows, and the fins on the entrance front
-    for (let s = 1; s < 4; s++) {
+    for (let s = 1; s < storeys; s++) {
       const y = frame.floors[s];
       sink.band(CONCRETE, -W / 2 - 0.12, y - 0.35, -D / 2 - 0.12, W / 2 + 0.12, y + 0.2, D / 2 + 0.12, { decor: true });
     }
@@ -350,8 +351,8 @@ const controlBuilding: RegionalBuilder = (ctx) => {
     const top = frame.eaveY + 0.4;
     sink.span(CONCRETE, -W * 0.2, top, -D * 0.25, W * 0.15, top + 3.4, D * 0.15);
     const mx = W * 0.3, mz = -D * 0.3;
-    for (const [dx, dz] of [[-0.35, -0.35], [0.35, -0.35], [-0.35, 0.35], [0.35, 0.35]] as const) sink.member('structureMetal', [mx + dx, top, mz + dz], [mx + dx * 0.3, top + 12, mz + dz * 0.3], 0.07, 0.07, [1, 0, 0], { colour: rgb(0xb8302a), decor: true, exposed: true }, 0);
-    for (const y of [top + 7, top + 10.5]) sink.cylinder('structureMetal', [mx, y, mz + 0.2], 'z', 0.3, 0.6, 10, { colour: WHITE, decor: true }, 0.3);
+    for (const [dx, dz] of [[-0.35, -0.35], [0.35, -0.35], [-0.35, 0.35], [0.35, 0.35]] as const) sink.member('structureMetal', [mx + dx, top, mz + dz], [mx + dx * 0.3, top + (storeys === 4 ? 12 : 8), mz + dz * 0.3], 0.07, 0.07, [1, 0, 0], { colour: rgb(0xb8302a), decor: true, exposed: true }, 0);
+    for (const y of storeys === 4 ? [top + 7, top + 10.5] : [top + 5, top + 7.2]) sink.cylinder('structureMetal', [mx, y, mz + 0.2], 'z', 0.3, 0.6, 10, { colour: WHITE, decor: true }, 0.3);
     // the entrance canopy on its two columns, the name board along its fascia
     for (const s of [-1, 1]) sink.cylinder(CONCRETE, [s * 2.6, 0, D / 2 + 3.6], 'y', 3.3, 0.22, 10, {});
     sink.span(CONCRETE, -3.6, 3.3, D / 2, 3.6, 3.75, D / 2 + 4.2);
@@ -360,6 +361,7 @@ const controlBuilding: RegionalBuilder = (ctx) => {
   });
   return sink.finish();
 };
+const controlBuilding = controlBuildingOf(4), fieldHeadquarters = controlBuildingOf(2);
 
 /** The surge tower (a needletower plot): a steel drum on a concrete base, its vent cap, the ladder cage, the penstock in. */
 const surgeTower: RegionalBuilder = (ctx) => {
@@ -989,6 +991,185 @@ const ruin: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
+/**
+ * (Skybridge round 7, the owner: "Page as a low township"; gauntlet wave 259: "the township reads as a generic industrial
+ * lot of boxes, with no regional architecture") Page as the Bureau built it in 1957-66 on Manson Mesa: the dam's works
+ * stand at the dam (reservoirDam.ts), and the town's plots hold the town — its churches (Page's Church Row: the A-frame
+ * sanctuaries of the 1960s), its motor courts on the highway, its shopping centre, the Bureau's two-storey field
+ * headquarters, the ranch houses — low, among the switchyard, the transformer yards, the relay tower and the water tower
+ * that served it.
+ */
+const SIGN_FACE: readonly Rgb[] = [0xd8c27a, 0xc96a4a, 0x7fa8b8, 0xe4e2dc].map(rgb);
+
+/**
+ * A Page church (a needletower or factory plot): the sanctuary an A-frame — its roof down to low side walls, its glazed
+ * gable to the street (+z) with the mullions and the cross on it — the fellowship hall's flat-roofed wing beside it at the
+ * back, the cross tower of two concrete blades at the front corner, the forecourt's planter wall and the notice board
+ * along the front edge.
+ */
+const church: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const rng = ctx.rng, look = ctx.variant;
+  const R = reach(ctx);
+  const W = Math.max(7, Math.min(12.5, R.W * 0.6)), D = Math.max(9, R.D - 6.5), eave = 0.6;
+  const wall: RegionalBucket = rng() < 0.5 ? STUCCO : PAINTED;
+  // (the roof's eave stands inside the plot: the side wall an eave in from the plot's edge)
+  const sx = R.x0 + 0.3 + eave + W / 2, sz = R.z0 + 0.3 + D / 2;
+  sink.placed(0, sx, 0, sz, () => {
+    const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: 0, w: 1.9, y0: 0, h: 2.3 }];
+    for (const face of ['left', 'right'] as const) for (const o of windowRhythm(face, 0, D, { w: 0.5, h: 1.2, sill: 0.8, spacing: 2.6, margin: 1.4 })) openings.push(o);
+    buildHouse(sink, {
+      w: W, d: D, plinth: { h: 0.4, out: 0.05, bucket: CONCRETE }, storeys: [{ h: 2.4, wall }],
+      roof: { kind: 'gable', pitchDeg: 60, eave, verge: 0.5, thickness: 0.16, bucket: 'roof', ridge: 'saddle' }, gableBucket: wall,
+      openings, chimneys: [], gutters: null, verge: { colour: WHITE, bucket: 'structureWood' }, reveal: 0.15, rafters: null,
+    }, dialectOf(rng, ALU, pick(rng, DOOR_PAINT), 0.6, 'panel', look));
+    // the glazed gable over the door, its mullions and the cross on them
+    const tan = Math.tan(60 * Math.PI / 180), eaveY = 0.4 + 2.4, y0 = eaveY + 0.35, yr = eaveY + (W / 2) * tan - 1.2;
+    const half = (W / 2 - 0.9) * (yr - y0) / ((W / 2) * tan), z = D / 2 + 0.03;
+    sink.prism('glass', [[-half, y0, z], [half, y0, z], [0, yr, z]], [0, 0, 1], 0.02, { decor: true });
+    for (const u of [-half * 0.5, 0, half * 0.5]) {
+      const top = yr - Math.abs(u) * (yr - y0) / half;
+      sink.member('structureWood', [u, y0, z + 0.04], [u, top, z + 0.04], 0.09, 0.09, [0, 0, 1], { colour: WHITE, decor: true, exposed: true }, 0);
+    }
+    const cy = y0 + (yr - y0) * 0.45;
+    sink.member('structureWood', [0, cy - 1.6, z + 0.1], [0, cy + 1.9, z + 0.1], 0.16, 0.12, [0, 0, 1], { colour: rgb(0x3a2e26), decor: true, exposed: true }, 0);
+    sink.member('structureWood', [-0.95, cy + 0.9, z + 0.1], [0.95, cy + 0.9, z + 0.1], 0.16, 0.12, [0, 0, 1], { colour: rgb(0x3a2e26), decor: true, exposed: true }, 0);
+  });
+  // the fellowship hall: a flat-roofed wing beside the sanctuary, its back on the back edge
+  // (item/maps-skybridge-page-227, building integrity: a metre's walk between the sanctuary's eave and the hall, was
+  // 0.4 m — a slot narrower than the census's ~0.8 m closing read as a pocket of the body, the sanctuary's roof seen
+  // 1 m inside it from above (inside 4.4 m2); the hall stands from 3 m wide, was 3.5, so it keeps every plot)
+  const hallW = R.x1 - 0.75 - (sx + W / 2 + eave + 1.0), hallD = Math.max(5, Math.min(D * 0.7, R.D - 4.2));
+  if (hallW >= 3.0) {
+    sink.placed(0, R.x1 - 0.75 - hallW / 2, 0, R.z0 + 0.75 + hallD / 2, () => {
+      const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: -hallW * 0.2, w: 1.0, y0: 0, h: 2.1 }];
+      for (const o of windowRhythm('front', 0, hallW, { w: 1.6, h: 1.1, sill: 1.0, spacing: 2.8, margin: 1.0, avoid: [[-hallW * 0.2 - 0.8, -hallW * 0.2 + 0.8]] })) openings.push(o);
+      buildHouse(sink, {
+        w: hallW, d: hallD, plinth: { h: 0.3, out: 0.04, bucket: CONCRETE }, storeys: [{ h: 3.0, wall: BLOCK }],
+        roof: { kind: 'flat', pitchDeg: 0, eave: 0.45, verge: 0.45, thickness: 0.22, bucket: CONCRETE, parapet: 0.15 }, gableBucket: BLOCK,
+        openings, chimneys: [], gutters: null, verge: null, reveal: 0.15,
+      }, dialectOf(rng, ALU, pick(rng, DOOR_PAINT), 0.4, 'glazed', look));
+    });
+  }
+  // the cross tower: two concrete blades at the front corner, the cross between their heads
+  const tx = Math.min(R.x1 - 1.2, sx + W / 2 + eave + 1.8), tz = R.z1 - 1.6, th = 11 + look() * 3;
+  for (const d of [-0.55, 0.55]) sink.span(CONCRETE, tx + d - 0.15, -0.3, tz - 0.6, tx + d + 0.15, th, tz + 0.6);
+  // (item/maps-skybridge-page-227, props census #9's damage reading: the tower's blades recorded as one shaft of their
+  // girth, in its storey bands — the sanctuary and the hall record themselves through the house grammar)
+  recordShaft(sink, tx, tz, 1.4, th, CONCRETE, true);
+  sink.member('structureMetal', [tx, th - 3.2, tz], [tx, th + 1.2, tz], 0.14, 0.14, [0, 0, 1], { colour: WHITE, decor: true, exposed: true }, 0);
+  sink.member('structureMetal', [tx - 0.8, th - 0.4, tz], [tx + 0.8, th - 0.4, tz], 0.14, 0.14, [0, 0, 1], { colour: WHITE, decor: true, exposed: true }, 0);
+  // the forecourt's planter wall along the front edge (its gap to the door) and the notice board
+  const gap = [sx - 1.6, sx + 1.6];
+  if (gap[0] - (R.x0 + 0.3) > 0.4) sink.span(CONCRETE, R.x0 + 0.3, -0.2, R.z1 - 0.8, gap[0], 0.65, R.z1 - 0.3);
+  if (tx - 1.2 - gap[1] > 0.4) sink.span(CONCRETE, gap[1], -0.2, R.z1 - 0.8, tx - 1.2, 0.65, R.z1 - 0.3);
+  if (R.x1 - 0.3 - (tx + 1.2) > 0.4) sink.span(CONCRETE, tx + 1.2, -0.2, R.z1 - 0.8, R.x1 - 0.3, 0.65, R.z1 - 0.3);
+  const bx = R.x0 + 0.3 + Math.min(3, (gap[0] - R.x0) / 2);
+  for (const d of [-0.9, 0.9]) sink.cylinder('structureMetal', [bx + d, 0, R.z1 - 1.3], 'y', 1.9, 0.05, 6, { colour: IRON, decor: true });
+  sink.span('structureWood', bx - 1.1, 1.0, R.z1 - 1.36, bx + 1.1, 1.9, R.z1 - 1.24, { colour: pick(look, SIGN_FACE), decor: true });
+  return sink.finish();
+};
+
+/**
+ * A motor court (a gantry plot, long and narrow): a single-storey row of rooms along the plot, each its door and window
+ * under the walkway's canopy on steel posts, the office at the west end with its glazed front and the sign on its pylon
+ * before it, the rooms' doors painted alike.
+ */
+const motelRow: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const rng = ctx.rng, look = ctx.variant;
+  const R = reach(ctx), eave = 0.45;
+  // (the rooms and the walkway's canopy share the plot's depth: on a shallow plot the canopy narrows to a metre first)
+  const avail = R.D - 0.3 - (0.3 + eave), canopy = Math.max(1.0, Math.min(1.8, avail - 3.0));
+  const W = Math.max(8, R.W - 2 * (0.3 + eave)), D = Math.max(2.6, Math.min(7.5, avail - canopy)), H = 2.9;
+  const office = 4.4, rooms = Math.max(1, Math.floor((W - office) / 3.6));
+  const door = pick(rng, DOOR_PAINT), wall: RegionalBucket = rng() < 0.6 ? STUCCO : BLOCK;
+  const z0 = R.z0 + 0.3 + eave + D / 2;
+  sink.placed(0, R.cx, 0, z0, () => {
+    const openings: Opening[] = [
+      { face: 'front', storey: 0, kind: 'door', u: -W / 2 + 1.3, w: 1.0, y0: 0, h: 2.1 },
+      { face: 'front', storey: 0, kind: 'window', u: -W / 2 + 3.0, w: 1.7, h: 1.5, y0: 0.7 },
+    ];
+    for (let k = 0; k < rooms; k++) {
+      const u0 = -W / 2 + office + k * 3.6;
+      openings.push({ face: 'front', storey: 0, kind: 'door', u: u0 + 0.85, w: 0.9, y0: 0, h: 2.05 });
+      openings.push({ face: 'front', storey: 0, kind: 'window', u: u0 + 2.45, w: 1.3, h: 1.0, y0: 1.0 });
+    }
+    for (const o of windowRhythm('back', 0, W, { w: 0.8, h: 0.45, sill: 1.65, spacing: 3.6, margin: 1.6 })) openings.push(o);
+    buildHouse(sink, {
+      w: W, d: D, plinth: { h: 0.25, out: 0.04, bucket: CONCRETE }, storeys: [{ h: H, wall }],
+      roof: { kind: 'flat', pitchDeg: 0, eave, verge: eave, thickness: 0.22, bucket: CONCRETE, parapet: 0.12 }, gableBucket: wall,
+      openings, chimneys: [], gutters: null, verge: null, reveal: 0.12,
+    }, dialectOf(rng, ALU, door, 0.5, 'panel', look));
+    // the walkway's canopy along the rooms' front on its posts, a fascia board along its edge (the office's front open)
+    const cx0 = -W / 2 + office - 0.2, cz = D / 2 + canopy;
+    sink.span(CONCRETE, -W / 2, 0.0, D / 2, W / 2, 0.12, cz, { decor: true });
+    for (let x = cx0 + 0.2; x <= W / 2 - 0.2; x += 3.6) sink.cylinder('structureMetal', [x, 0.12, cz - 0.2], 'y', H + 0.13, 0.06, 8, { colour: WHITE });
+    sink.span('structureMetal', cx0, H + 0.25, D / 2, W / 2, H + 0.37, cz, { colour: shade(pick(look, SIGN_FACE), 0.9), decor: true, shadow: true });
+    sink.span('structureWood', cx0, H + 0.05, cz - 0.04, W / 2, H + 0.45, cz + 0.02, { colour: WHITE, decor: true });
+    // the sign before the office: a steel pylon, its board up high
+    const px = -W / 2 + 1.0, pz = cz - 0.4;
+    sink.cylinder('structureMetal', [px, 0, pz], 'y', 6.4, 0.14, 8, { colour: STEEL_GREY, decor: true });
+    sink.span('structureWood', px - 0.12, 4.4, pz - 1.4, px + 0.12, 6.2, pz + 1.4, { colour: pick(look, SIGN_FACE), decor: true });
+    sink.span('structureWood', px - 0.16, 4.3, pz - 1.5, px + 0.16, 4.42, pz + 1.5, { colour: WHITE, decor: true });
+  });
+  return sink.finish();
+};
+
+/**
+ * Page's shopping centre (an arcology plot): a single-storey strip of shops along the back edge under one flat roof, a
+ * continuous canopy over the shopfronts on its columns, each shop its glazed front and door and its own coloured sign
+ * band along the fascia, the parking court in front, its planter wall along the front edge and the centre's sign on its
+ * pylon.
+ */
+const shoppingCentre: RegionalBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx));
+  const look = ctx.variant;
+  const R = reach(ctx);
+  const W = Math.max(10, R.W - 1.2), D = Math.max(8, Math.min(14, R.D - 9)), H = 4.6, canopy = 3.0;
+  const shops = Math.max(2, Math.round(W / 6.5)), shopW = W / shops;
+  const zc = R.z0 + 0.6 + D / 2;
+  sink.placed(0, R.cx, 0, zc, () => {
+    sink.span(CONCRETE, -W / 2, -0.4, -D / 2, W / 2, 0.3, D / 2);
+    // (item/maps-skybridge-page-227, on main's grammar — props census #9: openings cut through, never laid on a solid
+    // span) each shop's glazed front and its door cut through the block front, the glass, its sill bar and the leaf at
+    // the back of the reveals; the strip recorded as one body for the damage reading
+    const rev = 0.24, holes: { u0: number; u1: number; y0: number; y1: number }[] = [];
+    for (let k = 0; k < shops; k++) {
+      const u = -W / 2 + shopW * (k + 0.5);
+      holes.push({ u0: u - 0.8 - (shopW - 2.6) / 2, u1: u - 0.8 + (shopW - 2.6) / 2, y0: 0.6, y1: 2.7 });
+      holes.push({ u0: u + shopW / 2 - 1.6, u1: u + shopW / 2 - 0.5, y0: 0.3, y1: 2.4 });
+    }
+    const front = holedBox(sink, BLOCK, -W / 2, -D / 2, W / 2, D / 2 - 0.3, 0.3, H, { front: holes }, 0.3, rev).front;
+    recordBody(sink, 0, -0.15, W, D - 0.3, H + 0.45, BLOCK);
+    sink.span(CONCRETE, -W / 2 - 0.3, H, -D / 2 - 0.3, W / 2 + 0.3, H + 0.45, D / 2 + canopy);
+    for (let k = 0; k < shops; k++) {
+      const u = -W / 2 + shopW * (k + 0.5);
+      faceBox(sink, 'glass', front, u - 0.8, 1.65, -rev + 0.02, shopW - 2.6, 2.1, 0.02, { decor: true });
+      faceBox(sink, 'dark', front, u + shopW / 2 - 1.05, 1.35, -rev + 0.03, 1.1, 2.1, 0.03, { decor: true });
+      faceBox(sink, 'structureMetal', front, u - 0.8, 0.63, -rev + 0.05, shopW - 2.6, 0.06, 0.04, { colour: ALUMINIUM, decor: true, fine: true });
+      // its sign band on the canopy's fascia
+      faceBox(sink, 'structureWood', { origin: [0, 0, D / 2 + canopy], u: [1, 0, 0], out: [0, 0, 1], width: W }, u, H + 0.22, 0.02, shopW - 0.6, 0.38, 0.03,
+        { colour: shade(pick(look, SIGN_FACE), 0.85 + look() * 0.25), decor: true });
+      // the pilaster between the shops
+      if (k > 0) faceBox(sink, BLOCK, front, -W / 2 + shopW * k, H / 2, 0.15, 0.5, H, 0.3, { decor: true });
+    }
+    for (let x = -W / 2 + 0.4; x <= W / 2 - 0.3; x += shopW) sink.cylinder('structureMetal', [x, 0, D / 2 + canopy - 0.3], 'y', H, 0.1, 8, { colour: WHITE });
+    // the roof's plant behind the parapet line
+    for (let k = 0; k < 3; k++) sink.span('structureMetal', -W * 0.3 + k * W * 0.3 - 0.9, H + 0.45, -D * 0.2 - 0.7, -W * 0.3 + k * W * 0.3 + 0.9, H + 1.6, -D * 0.2 + 0.7, { colour: STEEL_GREY, decor: true });
+  });
+  // the parking court: its planter wall along the front edge, gaps for the two entrances; the bays' kerb stops; the sign
+  const zf = R.z1 - 0.3, ent = [R.cx - W * 0.25, R.cx + W * 0.25];
+  const runs: [number, number][] = [[R.x0 + 0.3, ent[0] - 3.2], [ent[0] + 3.2, ent[1] - 3.2], [ent[1] + 3.2, R.x1 - 0.3]];
+  for (const [a, b] of runs) if (b - a > 0.6) sink.span(CONCRETE, a, -0.2, zf - 0.7, b, 0.6, zf);
+  const bays = zc + D / 2 + canopy + 4.6;
+  if (bays < zf - 1.5) for (let x = R.x0 + 2.0; x < R.x1 - 1.5; x += 2.8) sink.span(CONCRETE, x - 0.8, 0, bays, x + 0.8, 0.15, bays + 0.25, { decor: true });
+  const px = R.x1 - 1.4, pz = zf - 1.6;
+  for (const d of [-0.5, 0.5]) sink.cylinder('structureMetal', [px + d, 0, pz], 'y', 7.2, 0.12, 8, { colour: STEEL_GREY });
+  sink.span('structureWood', px - 1.3, 4.6, pz - 0.18, px + 1.3, 7.0, pz + 0.18, { colour: pick(look, SIGN_FACE), decor: true });
+  return sink.finish();
+};
+
 export const GLENCANYON_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   arcology: powerhouse,
   megatower: controlBuilding,
@@ -1006,6 +1187,12 @@ export const GLENCANYON_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Ob
   firestation: fireStation,
   watertower: waterTower,
   ruin,
+  // (227, the maps lane; the coordinator's ruling on Skybridge's Page township, b429918ad) Page's own buildings under their
+  // own names: Skybridge's plots take them through GLENCANYON_STYLE.mapBuilders, the kit's plots keep the dam's works
+  church,
+  motelRow,
+  shoppingCentre,
+  fieldHeadquarters,
 });
 
 export const GLENCANYON_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>({
@@ -1036,6 +1223,12 @@ export const GLENCANYON_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
     concrete: 'poured',
   },
   builders: GLENCANYON_BUILDERS,
+  // (227, the maps lane; the coordinator's ruling, the 226 Monsoon precedent) Skybridge round 7, the owner: "Page as a
+  // low township". On Skybridge alone the town's plots hold the town: its churches on the needletower and factory plots,
+  // its motor courts on the gantry plots, its shopping centre on the arcology plot, the Bureau's two-storey field
+  // headquarters on the megatower plot. The kit keeps the powerhouse, surge tower, gate-hoist house and penstock run (and
+  // its wreck, penstockFall.ts) for every other map that builds it.
+  mapBuilders: { skybridge: { arcology: 'shoppingCentre', needletower: 'church', factory: 'church', gantry: 'motelRow', megatower: 'fieldHeadquarters' } },
   // the desert's dry air; the stucco houses each their own pale colour (peach, sky, sand, mint) and the concrete stained
   weather: {
     plaster: [[1, 1, 1], [1.08, 0.98, 0.9], [0.92, 0.98, 1.06], [1.04, 1.02, 0.9], [0.94, 1.04, 0.98]],
