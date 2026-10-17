@@ -121,7 +121,16 @@ assert.equal(gate([{x0: -1.5, x1: 1.5, z0: -3, z1: 3}, addon('z', 0.13)]).gaps.l
   const opening = [{x0: -1.5, x1: 1.5, z0: 1.2, z1: 3}, {x0: -1.5, x1: 1.5, z0: -3, z1: 1}, {x0: -1.5, x1: -0.1, z0: 1, z1: 1.2}, {x0: 0.1, x1: 1.5, z0: 1, z1: 1.2}];
   const clean = gate(opening);
   assert.ok(clean.holeCells > 0 && clean.phases.every(p => p.holeCells > 0), 'every phase sees the 20 cm opening');
-  assert.equal(clean.phaseOnlyCells, 0, 'the opening at other phases shares pixels with its primary cells');
+  assert.equal(clean.phaseOnlyCells, 0, 'the opening at other phases lies within a cell of its primary cells');
+  // A ragged edge: an 18 cm opening (lattice cells x 0..0.18, z 1.02..1.20) with an 8 x 6 cm lip below it at x 0.08..0.16
+  // that no primary cell resolves (each primary cell there keeps one stock pixel) but the one-pixel-shifted grid does.
+  // It shares no pixel with a primary hole cell, yet it is the same void, one cell away.
+  const ragged = gate([{x0: -1, x1: 1, z0: 1.2, z1: 2}, {x0: -1, x1: 1, z0: 0, z1: 0.96},
+    {x0: -1, x1: 0, z0: 1.02, z1: 1.2}, {x0: 0.18, x1: 1, z0: 1.02, z1: 1.2},
+    {x0: -1, x1: 0.08, z0: 0.96, z1: 1.02}, {x0: 0.16, x1: 1, z0: 0.96, z1: 1.02}]);
+  assert.equal(ragged.holeCells, 9, 'the primary raster sees the 3 x 3 cell opening');
+  assert.ok(ragged.phases.some((p, i) => i > 0 && p.holeCells > 0), 'shifted grids see the lip');
+  assert.equal(ragged.phaseOnlyCells, 0, 'an opening edge that another phase resolves is explained by the primary raster');
   assert.ok(contiguityPassed(clean, {passed: true}), 'an approved primary opening passes');
   // a 6.5 cm slot at z -0.988..-0.923: lattice samples k*6 + 1/3/5 cm never all fall inside at the primary phase
   const withSlot = gate([...opening.slice(0, 1), {x0: -1.5, x1: 1.5, z0: -3, z1: -0.988}, {x0: -1.5, x1: 1.5, z0: -0.923, z1: 1},

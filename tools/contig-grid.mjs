@@ -15,8 +15,8 @@
 // through-gap of width g only when a 4 cm sample span fell inside it: every gap >= 10 cm, gaps of 4-10 cm by luck of
 // alignment. Across the nine phases the sample spans start every 2 cm, so every enclosed gap at least 6 cm wide in
 // both plan directions is found wherever it sits. The primary phase (0,0) stays the raster the approved-opening
-// classifier reads (tools/source-openings-policy.mjs); a hole cell at another phase that shares no pixel with a
-// primary hole cell is a PHASE-ONLY hole and fails the gate like any unexpected hole.
+// classifier reads (tools/source-openings-policy.mjs); a hole cell at another phase that lies more than one cell from
+// every primary hole cell is a PHASE-ONLY hole and fails the gate like any unexpected hole.
 
 export const CONTIG_CELL_M = 0.06;
 const CONTIG_SUB = 3;
@@ -243,8 +243,14 @@ export function contigScan(hit, frame, {phases = frame.framing === CONTIG_FRAMIN
   if (phases[0]?.[0] !== 0 || phases[0]?.[1] !== 0) throw new Error('The primary phase (0,0) comes first');
   const scans = phases.map(phase => phaseHoles(hit, frame, phase));
   const primary = scans[0];
+  // A primary hole explains another phase's hole cell that lies within one cell of it: the same void seen through a
+  // shifted grid (an approved opening's ragged edge). Anything further from every primary hole is phase-only.
   const primaryPx = new Uint8Array(frame.pw * frame.ph);
-  for (const s of primary.samples) cellPixels(frame, primary.phase, s.gx, s.gy, i => { primaryPx[i] = 1; });
+  for (const s of primary.samples) {
+    const px0 = (s.gx - 1) * CONTIG_SUB, py0 = (s.gy - 1) * CONTIG_SUB;
+    for (let y = Math.max(0, py0); y < Math.min(frame.ph, py0 + 3 * CONTIG_SUB); y++)
+      for (let x = Math.max(0, px0); x < Math.min(frame.pw, px0 + 3 * CONTIG_SUB); x++) primaryPx[y * frame.pw + x] = 1;
+  }
   const phaseOnly = [];
   for (const scan of scans.slice(1)) {
     for (const s of scan.samples) {
