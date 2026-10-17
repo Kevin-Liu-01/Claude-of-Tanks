@@ -19,10 +19,14 @@ export interface BodyBox { x0: number; z0: number; x1: number; z1: number }
  */
 interface CornerPlane { axis: 0 | 2; c: number; lo: number; hi: number }
 
-/** The planes through a box's corner squares, `n` strips across each square (the z planes first: they part the bands). */
+/**
+ * The planes through a box's corner squares, `n` strips across each square (the z planes first: they part the bands).
+ * None on the box's own faces: a wall already has its corner there, and what stands out past it (a footing, its course)
+ * bends well enough from the strip inside.
+ */
 function cornerPlanes(box: BodyBox, rc: number, n: number): CornerPlane[] {
   const zs: CornerPlane[] = [], xs: CornerPlane[] = [];
-  for (let j = 0; j <= n; j++) {
+  for (let j = 0; j < n; j++) {
     const f = 1 - j / n;
     zs.push({ axis: 2, c: box.z0 + rc * f, lo: box.x0 + rc, hi: box.x1 - rc }, { axis: 2, c: box.z1 - rc * f, lo: box.x0 + rc, hi: box.x1 - rc });
     xs.push({ axis: 0, c: box.x0 + rc * f, lo: box.z0 + rc, hi: box.z1 - rc }, { axis: 0, c: box.x1 - rc * f, lo: box.z0 + rc, hi: box.z1 - rc });
@@ -34,22 +38,25 @@ const SNAP = 1e-6;
 
 /**
  * Round a body's corners in place: its parts cut through the corner squares (rc on a side, `n` strips a side), then
- * every point in them turned onto the quarter rounds (roundCorners). `uncut(y)` names the heights of the level faces
- * the cut may leave whole — the floors between storeys, a footing's buried base: hidden in the body, their corners turn
- * onto the arcs and their edges stay inside the walls. The parts must be non-indexed (PartSink's are).
+ * every point in them turned onto the quarter rounds (roundCorners). `uncut(y, ny)` names the level faces (at height y,
+ * facing up or down by ny) the cut may leave whole — the floors between storeys, the ground storey's underside on its
+ * footing, a footing's buried base: hidden in the body, their corners turn onto the arcs and their edges stay inside the
+ * walls. The parts must be non-indexed (PartSink's are).
  */
-export function roundBody(parts: RegionalParts, box: BodyBox, rc: number, opts: { n?: number; uncut?: (y: number) => boolean } = {}): void {
+export function roundBody(parts: RegionalParts, box: BodyBox, rc: number, opts: { n?: number; uncut?: (y: number, ny: number) => boolean } = {}): void {
   const planes = cornerPlanes(box, rc, opts.n ?? 2);
   for (const list of Object.values(parts)) for (const g of list) sliceGeometry(g, planes, opts.uncut);
   roundCorners(parts, box, rc);
 }
 
 /**
- * Split every triangle of a geometry along the planes (each a convex polygon cut in two where a plane crosses it, a
- * point within a micrometre of a plane counted on it), fanned back into triangles. Every vertex attribute is carried by
- * interpolation (an integer attribute rounded).
+ * Cut a geometry along the planes. Its triangles are first read back into the convex polygons PartSink fanned them from
+ * (consecutive triangles sharing the fan's first corner and its last edge, in one plane, the union still convex), so a
+ * quad cut by a plane is two pieces, not four; each polygon is cut in two where a plane crosses it (a point within a
+ * micrometre of a plane counted on it) and fanned back into triangles. Every vertex attribute is carried by
+ * interpolation (an integer attribute rounded). A geometry no plane cuts is left as it was.
  */
-function sliceGeometry(g: THREE.BufferGeometry, planes: readonly CornerPlane[], uncut?: (y: number) => boolean): void {
+function sliceGeometry(g: THREE.BufferGeometry, planes: readonly CornerPlane[], uncut?: (y: number, ny: number) => boolean): void {
   if (g.index) return;
   const names = Object.keys(g.attributes);
   const attrs = names.map((name) => g.getAttribute(name) as THREE.BufferAttribute);
@@ -59,7 +66,7 @@ function sliceGeometry(g: THREE.BufferGeometry, planes: readonly CornerPlane[], 
   for (const s of sizes) { offsets.push(stride); stride += s; }
   const pos = g.getAttribute('position') as THREE.BufferAttribute | undefined;
   if (!pos) return;
-  const po = offsets[names.indexOf('position')];
+  const po = offsets[names.indexOf('position')], no = names.includes('normal') ? offsets[names.indexOf('normal')] : -1;
   // planes that cross the geometry's extent at all
   g.computeBoundingBox();
   const bb = g.boundingBox!;
@@ -70,13 +77,36 @@ function sliceGeometry(g: THREE.BufferGeometry, planes: readonly CornerPlane[], 
     for (let a = 0; a < attrs.length; a++) for (let k = 0; k < sizes[a]; k++) r[offsets[a] + k] = attrs[a].getComponent(i, k);
     return r;
   };
+  const same = (p: readonly number[], q: readonly number[]): boolean => p.every((x, k) => x === q[k]);
+  // the turn p -> q -> r against the polygon's normal (positive: convex there)
+  const turn = (p: readonly number[], q: readonly number[], r: readonly number[], n: readonly number[]): number => {
+    const ux = q[po] - p[po], uy = q[po + 1] - p[po + 1], uz = q[po + 2] - p[po + 2], vx = r[po] - q[po], vy = r[po + 1] - q[po + 1], vz = r[po + 2] - q[po + 2];
+    return (uy * vz - uz * vy) * n[0] + (uz * vx - ux * vz) * n[1] + (ux * vy - uy * vx) * n[2];
+  };
+  const fans: number[][][] = [];
+  let cur: number[][] | null = null, curN: number[] = [0, 0, 0];
+  for (let t = 0; t + 2 < pos.count; t += 3) {
+    const a = record(t), b = record(t + 1), c = record(t + 2);
+    const ux = b[po] - a[po], uy = b[po + 1] - a[po + 1], uz = b[po + 2] - a[po + 2], vx = c[po] - a[po], vy = c[po + 1] - a[po + 1], vz = c[po + 2] - a[po + 2];
+    const n = [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx], l = Math.hypot(n[0], n[1], n[2]) || 1;
+    n[0] /= l; n[1] /= l; n[2] /= l;
+    if (cur && same(a, cur[0]) && same(b, cur[cur.length - 1]) && n[0] * curN[0] + n[1] * curN[1] + n[2] * curN[2] > 0.99999
+      && turn(cur[cur.length - 2], b, c, curN) > -1e-12 && turn(b, c, cur[0], curN) > -1e-12 && turn(c, cur[0], cur[1], curN) > -1e-12) {
+      cur.push(c);
+      continue;
+    }
+    if (cur) fans.push(cur);
+    cur = [a, b, c];
+    curN = n;
+  }
+  if (cur) fans.push(cur);
   const out: number[] = [];
   let cut = false;
-  for (let t = 0; t + 2 < pos.count; t += 3) {
-    let polys: number[][][] = [[record(t), record(t + 1), record(t + 2)]];
-    const y = polys[0][0][po + 1];
-    if (uncut && Math.abs(polys[0][1][po + 1] - y) < SNAP && Math.abs(polys[0][2][po + 1] - y) < SNAP && uncut(y)) {
-      for (const v of polys[0]) out.push(...v);
+  for (const fan of fans) {
+    let polys: number[][][] = [fan];
+    const y = fan[0][po + 1];
+    if (uncut && fan.every((v) => Math.abs(v[po + 1] - y) < SNAP) && uncut(y, no >= 0 ? fan[0][no + 1] : 0)) {
+      for (let k = 1; k + 1 < fan.length; k++) out.push(...fan[0], ...fan[k], ...fan[k + 1]);
       continue;
     }
     for (const { axis, c, lo: bandLo, hi: bandHi } of live) {

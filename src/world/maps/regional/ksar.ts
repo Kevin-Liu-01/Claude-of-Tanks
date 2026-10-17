@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, holedBox, holedPolygon, leanTo, recordShaft, windowRhythm, type HoleRect, type HouseDialect, type Opening } from './house.ts';
-import { paintBand } from './facade.ts';
+import { paintBand, plinthPaint } from './facade.ts';
 import { bench, pottedPlant } from './dressing.ts';
 import { roundBody, type BodyBox } from './roundedBody.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
@@ -691,7 +691,8 @@ function kershefWindow(wall: RegionalBucket, dress: number, tone: Rgb): WindowSt
     frame: shade(tone, 0.85), frameWidth: 0.05, frameOut: 0.04, bars: 'two',
     surround: { bucket: wall, width: 0.09, out: 0.04 },
     sill: { bucket: 'structureWood', out: 0.06, colour: shade(PALM, 0.75) },
-    shutters: dress < SHUTTERED ? { colour: tone, kind: 'plank', closed: 0.4 } : null,
+    // (closed, most of them, against the sun: the leaves inside the deep reveal)
+    shutters: dress < SHUTTERED ? { colour: tone, kind: 'plank', closed: 0.65 } : null,
     head: dress > 0.55 ? { kind: 'lintel', bucket: 'structureWood', h: 0.12, out: 0.1, ext: 0.12, colour: shade(PALM, 0.8) } : null,
   };
 }
@@ -740,7 +741,7 @@ function withParts(parts: RegionalParts, more: readonly RegionalParts[]): Region
  * built in sinks of its own and returned for the builder to add (withParts); its dressing on the lane goes to `sink`.
  */
 function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: number, y0: number, h: number, bucket: RegionalBucket,
-  rng: () => number, look: () => number, opts: { door?: boolean; faces?: ReadonlyArray<Side>; shade?: boolean } = {}): RegionalParts {
+  rng: () => number, look: () => number, opts: { door?: boolean; faces?: ReadonlyArray<Side>; shade?: boolean; packed?: boolean } = {}): RegionalParts {
   const ground = y0 === 0, top = y0 + h;
   const batter = Math.min(0.45, 0.08 * (top - (ground ? -0.3 : y0))) * (0.8 + look() * 0.4);
   const rc = Math.max(batter + 0.3, Math.min(1.7, Math.min(x1 - x0, z1 - z0) * 0.21));
@@ -750,6 +751,8 @@ function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: nu
   const faces = opts.faces ?? SIDES;
   // the footing course (E1, and its water table E2): the town's rock a hand over the lane under the ground storeys
   const foot = ground ? 0.24 + look() * 0.1 : 0;
+  // its floors 2.9 m or so apart, the windows in a row to each; the walls one lift of mud from the footing to the roof
+  // (the grammar's storey: the kershef was raised in courses, not floor by floor)
   const storeys = Math.max(1, Math.round((h - foot) / 2.9)), sh = (h - foot) / storeys;
   const door = opts.door && ground ? { u: (rng() - 0.5) * Math.max(0, run('front') - 2.4) * 0.6, w: 0.95, h: 1.95 } : null;
   const openings: Opening[] = door ? [{ face: 'front', storey: 0, kind: 'door', u: door.u, w: door.w, y0: 0, h: door.h }] : [];
@@ -761,16 +764,17 @@ function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: nu
     for (let st = 0; st < storeys; st++) {
       const low = st === 0 && ground, sill = low ? 1.3 - foot : 1.15;
       if (sill + 0.62 > sh - 0.35) continue;
-      const m = Math.max(1, Math.floor((width - 0.6) / (low ? 1.5 : 1.2)));
+      // (a block packed in old Shali's heap, its windows sparser: the heap's many faces carry the town's openings)
+      const m = Math.max(1, Math.floor((width - 0.6) / (low ? (opts.packed ? 2.1 : 1.5) : (opts.packed ? 1.8 : 1.2))));
       for (let k = 0; k < m; k++) {
-        if (rng() < (low ? 0.38 : 0.16)) continue;
+        if (rng() < (low ? (opts.packed ? 0.45 : 0.38) : (opts.packed ? 0.3 : 0.16))) continue;
         const u = -width / 2 + 0.3 + (k + 0.5) * (width - 0.6) / m + (rng() - 0.5) * 0.2;
         const w = 0.42 + look() * 0.14, hh = 0.48 + look() * 0.14, dress = look(), tone = look() < 0.5 ? PALM : PALM_GREY;
         // its reach along the wall: its lip, or the shutters folded back beside it; the corners' arcs stay clear
         const reach = w / 2 + (dress < SHUTTERED ? w / 2 + 0.06 : 0.14);
         if (Math.abs(u) + reach > width / 2) continue;
         if (name === 'front' && door && low && Math.abs(u - door.u) < door.w / 2 + 0.45 + reach) continue;
-        const o: Opening = { face: name, storey: st, kind: 'window', u, w, y0: sill, h: hh };
+        const o: Opening = { face: name, storey: 0, kind: 'window', u, w, y0: st * sh + sill, h: hh };
         openings.push(o);
         dressing.set(o, { dress, tone });
       }
@@ -793,14 +797,17 @@ function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: nu
   hs.placed(0, cx, y0, cz, () => {
     // (E15: its rain goods, the palm spouts this builder lays through the parapet with its own roof)
     const frame = buildHouse(hs, {
-      w: W, d: D, plinth: ground ? { h: foot, out: 0.07, bucket: 'stone' } : null,
-      storeys: Array.from({ length: storeys }, () => ({ h: sh, wall: bucket })),
+      // (the footing is rubble with no dressed course over it: the mud band at the wall's foot is its band)
+      w: W, d: D, plinth: ground ? { h: foot, out: 0.07, bucket: 'stone', course: false } : null,
+      storeys: [{ h: h - foot, wall: bucket }],
       roof: { kind: 'flat', pitchDeg: 0, eave: 0, verge: 0, thickness: 0.3, bucket, parapet: ph }, ownRoof: true,
       gableBucket: bucket, openings, chimneys: [], gutters: { colour: PALM }, verge: null, reveal: 0.34, core: 'adobe',
       // (no stone apron round a Siwan house: the lane's sand runs to its footing)
       skirt: null,
     }, dialect);
+    // (E2) a house's wall foot rendered in a darker mud over the footing, a band of it round the body, its top a ledge
     if (!door) return;
+    plinthPaint(hs, bucket, [W / 2, D / 2], 0.012, foot, foot + 0.42 + look() * 0.18, [0.8, 0.72, 0.63]);
     const f = frame.faces.front, fy = frame.floors[0];
     // the doorway limewashed round its frame on most houses (E16), its head over the lintel
     if (look() < 0.65) {
@@ -810,55 +817,54 @@ function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: nu
     }
     // the hood over the door (E13): palm trunks cantilevered out of the wall over its lintel, a mud slab laid on them, a
     // lean-to roof on the wall with no posts
-    const y = fy + door.h + 0.3, out = 0.6, n = 7;
+    const y = fy + door.h + 0.3, out = 0.6, n = 6;
     for (let k = 0; k < n; k++) {
       const u = door.u - 0.72 + 1.44 * (k + 0.5) / n;
-      hs.cylinder('structureWood', facePoint(f, u, y, -0.06), 'z', out + 0.06, 0.055, 6, { colour: shade(PALM, 0.85 + look() * 0.25), decor: true }, 0.05, true, look());
+      trunkEnd(hs, f, u, y, 0.06, out + 0.06, out, shade(PALM, 0.85 + look() * 0.25), look());
     }
     leanTo(hs, { face: f, u0: door.u - 0.8, u1: door.u + 0.8, depth: out, highY: y + 0.055, posts: null,
       roof: { pitchDeg: 5, eave: 0.03, verge: 0.03, thickness: 0.1, bucket, decor: true } });
   });
   const body = hs.finish(), box: BodyBox = { x0, z0, x1, z1 };
-  // (the floors between its storeys and its footing's buried base stay whole: hidden in the body)
-  roundBody(body, box, rc, { uncut: (y) => (y > y0 + foot + 1e-3 && y < top - 1e-3) || y < y0 - 0.05 });
+  // (the floors between its storeys, its underside and its footing's buried base stay whole: hidden in the body)
+  roundBody(body, box, rc, { uncut: (y, ny) => (y > y0 + foot + 1e-3 && y < top - 1e-3) || y < y0 - 0.05 || (ny < -0.5 && Math.abs(y - y0 - foot) < 1e-3) });
   if (ground) saltCrust(body[bucket], foot);
   // the crown and the region's craft on the rounded body, battered with it
   const ps = new PartSink(sink.uvOffset);
   kershefParapet(ps, bucket, x0, z0, x1, z1, rc, 0, top, ph, 0.32, horn, vents);
   const at = (name: Side, out = 0): Face => runFace(x0, z0, x1, z1, rc, name, out);
   const clear = (name: Side, u: number, y: number, r: number): boolean => !openings.some((o) => {
-    const oy = y0 + foot + o.storey * sh + o.y0;
+    const oy = y0 + foot + o.y0;
     return o.face === name && Math.abs(o.u - u) < o.w / 2 + r + (o.kind === 'door' ? 0.5 : 0.28) && y > oy - r - 0.15 && y < oy + o.h + r + 0.2;
   });
   for (const name of faces) {
     // (round 3, wave 358b) the palm beams' ends in a row under the parapet, a few missing; (wave 135: "neat rectangular
     // planks rather than round palm trunks") each a trunk's round end standing out of the wall
-    const fb = at(name), n = Math.max(2, Math.floor(fb.width / 0.75)), outward = fb.out[0] + fb.out[2] > 0;
+    const fb = at(name), n = Math.max(2, Math.floor(fb.width / (opts.packed ? 0.95 : 0.75)));
     for (let k = 0; k < n; k++) {
       if (look() < 0.18) continue;
       const u = -fb.width / 2 + (k + 0.5) * fb.width / n + (look() - 0.5) * 0.12, end = 0.07 + look() * 0.03;
-      ps.cylinder('structureWood', facePoint(fb, u, top - 0.25, outward ? -0.05 : 0.25), fb.out[0] !== 0 ? 'x' : 'z', 0.3, end, 7,
-        { colour: shade(PALM, 0.8 + look() * 0.3), decor: true }, end * 0.9, true);
+      trunkEnd(ps, fb, u, top - 0.25, end, 0.3, 0.25, shade(PALM, 0.8 + look() * 0.3));
     }
     // the kershef's lumps: the salt-rock in the mud standing proud of the render here and there
-    for (let k = 0, m = 2 + Math.floor(look() * 3); k < m; k++) {
+    for (let k = 0, m = (opts.packed ? 0 : 2) + Math.floor(look() * (opts.packed ? 2.5 : 3)); k < m; k++) {
       const yy = y0 + foot + 0.3 + look() * (h - foot - 0.9), u = (look() - 0.5) * (fb.width - 0.6), sz = 0.12 + look() * 0.12;
       if (clear(name, u, yy, sz)) faceBox(ps, bucket, fb, u, yy, 0.02, sz * 1.4, sz, 0.05, { decor: true, shade: 0.9 + look() * 0.15 });
     }
   }
   // the rain spouts (E15): palm-wood channels through the parapet at the roof, open along their tops (a sole board and
-  // two sides), on two of the dressed sides, never over the door
-  for (const name of faces.slice(0, 2)) {
-    const f = at(name), sp = { colour: PALM, decor: true, uv: UV_MEMBER } as const;
-    for (const u of f.width > 3 ? [-f.width * 0.28, f.width * 0.28] : [0]) {
-      if (look() < 0.3 || (name === 'front' && door && Math.abs(u - door.u) < 0.9)) continue;
+  // two sides), one or two to a roof on its first dressed side, never over the door
+  {
+    const name = faces[0], f = at(name), sp = { colour: PALM, decor: true, uv: UV_MEMBER } as const;
+    for (const u of f.width > 3.6 && look() < 0.5 ? [-f.width * 0.28, f.width * 0.28] : [(look() - 0.5) * f.width * 0.5]) {
+      if (name === 'front' && door && Math.abs(u - door.u) < 0.9) continue;
       faceBox(ps, 'structureWood', f, u, top - 0.015, 0.03, 0.16, 0.03, 0.9, sp);
       for (const s of [-1, 1]) faceBox(ps, 'structureWood', f, u + s * 0.08, top + 0.03, 0.03, 0.03, 0.09, 0.9, { ...sp, colour: shade(PALM, 0.85) });
     }
   }
   // (round 3) the clods fallen from the crest, heaped at the wall's foot past the footing (dressing on the ground)
   if (ground) for (const name of faces) {
-    const ff = at(name, 0.07), clods = 1 + Math.floor(look() * 3);
+    const ff = at(name, 0.07), clods = 1 + Math.floor(look() * (opts.packed ? 2 : 3));
     for (let k = 0; k < clods; k++) {
       const u = (look() - 0.5) * (ff.width - 0.8), r = 0.12 + look() * 0.12;
       const c = facePoint(ff, u, -0.06, r * 0.6);
@@ -899,6 +905,21 @@ function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: nu
   return body;
 }
 
+/**
+ * A palm trunk run out of a wall square to its face (`f`), its end `out` past the face and `len` long (the rest buried in
+ * the wall): five sides tapering a little to its end and the end's cap, no cap inside the wall. (u, y) its axis on the
+ * face, r its radius, `turn` its roll in a fifth of a turn.
+ */
+function trunkEnd(sink: PartSink, f: Face, u: number, y: number, r: number, len: number, out: number, colour: Rgb, turn = 0): void {
+  const ring = (o: number, rr: number): Vec3[] => Array.from({ length: 5 }, (_, k) => {
+    const a = (k + turn) * Math.PI * 2 / 5 + Math.PI / 2;
+    return facePoint(f, u + Math.cos(a) * rr, y + Math.sin(a) * rr, o);
+  });
+  const a0 = ring(out - len, r), a1 = ring(out, r * 0.9), opts = { colour, decor: true } as const;
+  for (let k = 0; k < 5; k++) sink.quad('structureWood', a0[k], a0[(k + 1) % 5], a1[(k + 1) % 5], a1[k], opts);
+  sink.polygon('structureWood', a1, opts);
+}
+
 /** A palm log lying along a face from u0 to u1 at y, bedded half into it (a lintel). */
 function palmLog(sink: PartSink, f: Face, u0: number, u1: number, y: number, r: number, colour: Rgb): void {
   const a = facePoint(f, u0, y, 0), b = facePoint(f, u1, y, 0), alongX = Math.abs(f.u[0]) > 0.5;
@@ -931,7 +952,8 @@ const shaliCluster: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng, look = ctx.variant;
   const R = reach(ctx);
-  const nx = R.W > 15 ? 3 : 2, nz = R.D > 13 ? 3 : 2;
+  // (looks 227: a cell about a house's size, 6-8 m: a compound's 14.5 m depth two of them)
+  const nx = R.W > 15 ? 3 : 2, nz = R.D > 16.5 ? 3 : 2;
   const cw = R.W / nx, cd = R.D / nz, blocks: RegionalParts[] = [];
   for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
     // each cell's block reaches 0.1 m past its inner boundaries (the neighbours' feet meet), 0.25 m in from the plot's edge
@@ -946,12 +968,12 @@ const shaliCluster: RegionalBuilder = (ctx) => {
     if (j === 0) outer.push('back');
     if (i === 0) outer.push('left');
     const bucket = rng() < 0.35 ? KERSHEF_OLD : MUD, room = storeys >= 2 && rng() < 0.45;
-    blocks.push(kershefBlock(sink, x0, z0, x1, z1, 0, h, bucket, rng, look, { door: j === nz - 1, faces: outer.length ? outer : ['front'], shade: !room && look() < 0.4 }));
+    blocks.push(kershefBlock(sink, x0, z0, x1, z1, 0, h, bucket, rng, look, { door: j === nz - 1, faces: outer.length ? outer : ['front'], shade: !room && look() < 0.4, packed: true }));
     // a room set back on the roof terrace of some blocks
     if (room) {
       const ux0 = x0 + (x1 - x0) * (0.18 + rng() * 0.12), uz0 = z0 + (z1 - z0) * (0.18 + rng() * 0.12);
       const ux1 = ux0 + (x1 - x0) * (0.4 + rng() * 0.15), uz1 = uz0 + (z1 - z0) * (0.4 + rng() * 0.15);
-      blocks.push(kershefBlock(sink, ux0, uz0, Math.min(x1 - 0.6, ux1), Math.min(z1 - 0.6, uz1), h, 2.4, MUD, rng, look, { faces: outer.length ? outer : ['front'] }));
+      blocks.push(kershefBlock(sink, ux0, uz0, Math.min(x1 - 0.6, ux1), Math.min(z1 - 0.6, uz1), h, 2.4, MUD, rng, look, { faces: outer.length ? outer : ['front'], packed: true }));
     }
   }
   return withParts(sink.finish(), blocks);
