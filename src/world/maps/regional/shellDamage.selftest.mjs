@@ -129,7 +129,8 @@ function assertFacing(runs, label) {
 
 // ---- 2 and 3. the base set on a regional map, and every regional builder that lays no house
 const CAPS = { breach: [3000, 96], damaged: [3000, 48], sectionDown: [6000, 160], storeyDown: [6000, 160], collapse: [16000, 240] };
-let shells = 0, defaults = 0, stages = 0, sheetShells = 0, shaftShells = 0, clusterShells = 0, containerRows = 0, ruins = 0;
+let shells = 0, defaults = 0, stages = 0, sheetShells = 0, shaftShells = 0, clusterShells = 0, containerRows = 0, ruins = 0, frames = 0;
+const frameIds = new Set();
 const ruinIds = new Set();
 const shellIds = new Set(), defaultIds = new Set(), shaftIds = new Set(), clusterIds = new Set();
 function exercise(label, a, seam) {
@@ -205,6 +206,14 @@ function describeAndRun(label, builder, styleId, parts) {
   const a = describeStructure({ structureIdx: 2, mapId: 'shell', builder, style: styleId, parts, w: mxx - mnx, d: mxz - mnz, h: mxy,
     placement: { x: 0, y: 0, z: 0, yaw: 0 }, massClass: 'house' });
   if (a.kit === 'default') { defaults++; defaultIds.add(label.split(' ')[0]); return; }
+  // (227, lane B: a catalogued open frame — the base gantry, its members read as a lattice, latticeFall.ts
+  // registerLatticeFrameKit — is its frame kit's on any map's style: it folds over its standing bays, never a shell's
+  // walls; its stages run as any reading's do)
+  if (a.kit === builder && latticeOf(a)) {
+    frames++; frameIds.add(label.split(' ')[0]);
+    exercise(label, a, createStructureDamageSeam(2, builder, styleId, a, []));
+    return;
+  }
   shells++; shellIds.add(label.split(' ')[0]);
   validate(label, a, styleId);
   const seam = createStructureDamageSeam(2, builder, styleId, a, []);
@@ -426,6 +435,7 @@ assert.ok(sheetShells >= 8, `sheet-clad shells broken by the sheet kit (${sheetS
 for (const id of ['saar/stack', 'ruhr/stack', 'saar/watertower']) assert.ok(shaftIds.has(id), `${id}: a shaft the kit reads (${[...shaftIds].join(', ')})`);
 assert.ok(shaftShells >= 6, `shafts the kit topples (${shaftShells})`);
 assert.ok(!shellIds.has('saar/gantry'), 'saar/gantry: left to the default (an open frame)');
+assert.ok(frameIds.has('base:gantry') && !shellIds.has('base:gantry'), `base:gantry: its frame kit's open frame on a regional map, no shell (${[...frameIds].join(', ')})`);
 // the compounds read as clusters of cells, broken cell by cell (cluster.ts); a courtyard that is one body stays the default's
 assert.ok(!shellIds.has('ksar/caravanserai') || clusterIds.has('ksar/caravanserai'), 'ksar/caravanserai: a cluster of cells or the default');
 assert.ok(clusterShells >= 2, `compounds the cluster kit breaks (${clusterShells}: ${[...clusterIds].join(', ')})`);
