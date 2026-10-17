@@ -625,8 +625,10 @@ exactly once, at their seeds, played on this tree. It judges the 132 by the same
 `MAP_IDS` order.
 
 - **Who makes the directory.** `tools/run-selftests.mjs` makes a fresh directory for each invocation. A gate that runs
-  the receipts with its own pool must export one fresh directory for that pool, for example
-  `export COT_SELFTEST_RUN_DIR=$G/selftest-run` before `pool.mjs`, and should admit the judges
+  the receipts with its own pool must export one fresh directory for each pool invocation, for example
+  `export COT_SELFTEST_RUN_DIR=$(mktemp -d $G/selftest-run.XXXX)` before `pool.mjs`. A directory reused by a later
+  invocation would hand it the records an earlier invocation played, on whatever the tree held then (records name
+  their tree's path, not its contents). The pool should also admit the judges
   (`SELFTEST_LAST_FILES` in `tools/run-selftests.mjs`) after the rest. Without a directory the judge cannot see the
   shards' records and plays all 132 again on four threads; it says so in its log. Separate `--shard=i/n` invocations
   are separate runs too: they share records only through one exported directory.
