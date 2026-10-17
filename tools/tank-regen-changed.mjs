@@ -179,14 +179,14 @@ async function step(name, { forceFull = false } = {}) {
   if (resolved.mode === 'none') { log(`[regen] ${name}: 0 changed`); return false; }
   const why = resolved.reasons['*'] ?? [...new Set(Object.values(resolved.reasons).flat())].slice(0, 6);
   log(`[regen] ${name}: ${resolved.mode} ${resolved.ids.length} id(s) (${why.join('; ')})`);
-  if (DRY) { summary.runs.push({ step: name, mode: resolved.mode, ids: resolved.ids.length, dryRun: true }); return false; }
+  if (DRY) { summary.runs.push({ step: name, mode: resolved.mode, count: resolved.ids.length, ids: resolved.ids, dryRun: true }); return false; }
   const scoped = resolved.mode === 'ids' ? resolved.ids : null;
   const inKeys = Object.fromEntries((scoped ?? state.ids).map((id) => [id, state.inKey(name, id)]));
   if (!state.steps[name].decomposed) log(`[regen] ${name}: not decomposable (${state.steps[name].reasons.join('; ')})`);
   const started = Date.now();
   const run = definition.device === 'gpu' ? await runGpuStep(definition, scoped, state) : await runCpuStep(definition, scoped, state);
   const seconds = Math.round((Date.now() - started) / 1000);
-  summary.runs.push({ step: name, mode: resolved.mode, ids: (scoped ?? state.ids).length, seconds, code: run.code });
+  summary.runs.push({ step: name, mode: resolved.mode, count: (scoped ?? state.ids).length, ids: scoped ?? ['*'], seconds, code: run.code });
   if (run.code !== 0) throw new Error(`${name} failed (exit ${run.code}); output in ${run.out ?? qaDir}`);
   const after = fresh();
   manifest = readManifest(root) ?? manifest;

@@ -685,6 +685,42 @@ Re-pin it after an intended geometry change and review the diff:
 
 The browser-era `npm run tank:freeze:check` ledger (`docs/FLEET-FREEZE-CURRENT.json`) is no longer maintained.
 
+### Changed-only regeneration (2026-10-16)
+
+The owner's rule (226): "no regenerating for tanks or anything else that didn't change". After a tank change run
+
+    npm run tank:regen:changed                 # changed ids only, then the final resolve must be empty
+    npm run tank:changed -- --explain=<id>     # which steps would re-run an id, and why (no tank is built)
+
+The chain (`tools/tank-regen-changed.mjs`) regenerates the paint catalog and legacy specs, then runs controls, fills,
+seats, spare-track, anatomy and marking to a fixpoint (seats read the fills and roof guns; the dock seats feed the
+spare-track keep-out), then the geometry ledger, the manual reference, centering and icons (capture lock, holds of at
+most 20 minutes; centering re-runs the CPU steps for any id whose anchors moved). Every CPU child runs
+`nice -n 10 node --max-old-space-size=4096` after `headroom can-start`; fills run as `--jobs` parallel parts merged by
+the tool itself (`gen-interior-fills --merge-from`). Options: `--dry-run`, `--steps=a,b`, `--no-gpu`, `--jobs=N`,
+`--all` (every step on the whole fleet first: bootstrap or explicit full) and `--check --all` (nightly: every step's
+whole-fleet `--check`, writes nothing).
+
+How an id is chosen (`tools/changed-ids.mjs`, `tools/changed-only/`): each (step, id) has an input key and an output
+key in `release/fingerprints.tsv`, written as soon as the step finishes. The input key covers the step's tool (its
+static import closure, canonical flags from `tools/changed-only/steps.mjs`, declared dynamic reads, the environment
+variables it reads), the toolchain (Node, platform, both lockfiles, NODE_OPTIONS minus heap flags), the shared fleet
+core (every file the fleet entries reach outside a group's builder registration: specs, factory, kits, materials,
+generated spec data, index/loader maps), the builder groups on the id's spec chain (visualBase, variantOf, donors) and
+the rows of every per-id table the fleet reads for those ids. The output key is the id's rows in the tables the step
+writes. An id re-runs when its row is missing or either key moved; a hand edit to one output row marks that id.
+
+It fails closed: an undeclared directory read, child process, computed import or whole-environment read in a step's
+closure runs that step on every id; a roster change, a missing manifest, an unreadable table or an output file edited
+outside its rows runs the step whole-fleet. Dynamic reads are declared in `steps.mjs` (`DECLARED_DYNAMIC`) and pinned
+to their exact call sites: editing such a call turns `tools/changed-only/fleet-partition.selftest.mjs` red and the
+step runs on every id until the declaration is reviewed and re-pinned. A change to the shared core (for example
+`tankFactoryCore.ts` or `profiles/kit.ts`) marks every id: changed-only then means one ordered pass, not a skip.
+
+The independent tripwires keep full keys: `fleetPassHigh`, `fleetPassLow` (ledger rows), `fleetPassDefault`,
+`fleetLazy`, `fleetFloorClearance` and the nightly `--check --all` never use the resolver, so a resolver miss still
+turns the gate red.
+
 Run a targeted release check:
 
     npm run tank:release:check -- --ids=<tank-id>

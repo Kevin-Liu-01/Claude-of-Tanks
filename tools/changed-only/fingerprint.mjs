@@ -85,11 +85,19 @@ export function normalizedNodeOptions(value = '') {
  * The fingerprint state of a tree: the fleet partition, the roster, every row, and per step either a decomposed tool key
  * or a fail-closed reason. `rows` may be injected (tests); otherwise one child process reads them.
  */
-export function computeState({ root, steps = STEPS, env = process.env, rows = null, graph = null } = {}) {
+export const DEFAULT_CONFIG = Object.freeze({
+  tables: TABLES, aggregates: AGGREGATES, fleetEntries: FLEET_ENTRIES, loaderFiles: LOADER_FILES,
+  groupLoadersFile: GROUP_LOADERS_FILE, declared: DECLARED_DYNAMIC,
+});
+
+export function computeState({ root, steps = STEPS, env = process.env, rows = null, graph = null, cacheDir,
+  config = DEFAULT_CONFIG } = {}) {
   root = resolve(root);
+  const { tables: TABLES, aggregates: AGGREGATES, fleetEntries: FLEET_ENTRIES, loaderFiles: LOADER_FILES,
+    groupLoadersFile: GROUP_LOADERS_FILE, declared: DECLARED_DYNAMIC } = { ...DEFAULT_CONFIG, ...config };
   const declaredHelpers = Object.fromEntries(Object.entries(DECLARED_DYNAMIC)
     .filter(([, declaration]) => declaration.importHelper).map(([file, declaration]) => [file, declaration.importHelper]));
-  graph ??= createGraph({ root, importHelpers: declaredHelpers });
+  graph ??= createGraph({ root, importHelpers: declaredHelpers, ...(cacheDir ? { cacheDir } : {}) });
   const abs = (rel) => resolve(root, rel), rel = (path) => relative(root, path);
   const data = rows ?? readRows(root, env);
   const globalReasons = data.errors.map((error) => `rows: ${error}`);
@@ -272,6 +280,7 @@ export function computeState({ root, steps = STEPS, env = process.env, rows = nu
   graph.persist();
   return {
     root, schema: SCHEMA, toolchain, toolchainParts, roster, core, groups, groupChain, chainOf, buildReadTables,
+    tableNames: Object.keys(TABLES),
     steps: stepStates, ids, groupById: groupOf, rows: data.rows, fileIds: data.fileIds, errors: data.errors, globalReasons,
     inKey, outKey, builderKey, rowsKey, fileHash,
     partition: {
@@ -350,7 +359,7 @@ export function refreshComponents(manifest, state) {
   manifest.groups = { ...state.groups };
   manifest.tools = Object.fromEntries(Object.entries(state.steps).map(([name, step]) => [name, step.tool]));
   manifest.rows = {};
-  for (const table of Object.keys(TABLES)) {
+  for (const table of state.tableNames) {
     const rows = state.rows[table] ?? {};
     if (Object.keys(rows).length) manifest.rows[table] = Object.fromEntries(Object.keys(rows).sort().map((id) => [id, rows[id]]));
   }
