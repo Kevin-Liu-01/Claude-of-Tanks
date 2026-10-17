@@ -14,6 +14,16 @@ export interface NightLightEmitter {
   readonly color?: number;
   readonly intensity?: number;
   readonly range?: number;
+  /**
+   * Release 227 (round 4; the critic on the Zubr II's station illuminator: "the warm ground pool has the same position
+   * and shape in all five station states"): a weapon searchlight, boresighted with the station that carries it. It
+   * keeps its authored aim (no low-beam drop), lights its own narrow cone (`coneRad`, the spot's half-angle), and on a
+   * pool wider than one vehicle's two sides (desktop's four spots) it ranks half a priority step ahead of its vehicle's
+   * driving lamps, so it holds a beam while their two sides keep theirs; a two-spot pool (mobile) keeps both spots on
+   * the driving lamps.
+   */
+  readonly searchlight?: boolean;
+  readonly coneRad?: number;
   /** Construction-time callback for a destructible lamp or emissive fitting. */
   readonly isActive?: () => boolean;
   readonly emission?: {
@@ -90,6 +100,10 @@ function validateEmitter(emitter: NightLightEmitter): void {
   requireBounded(emitter.intensity ?? 80, emitter.kind === 'headlight' ? 2000 : 300, 'intensity');
   requireBounded(emitter.range ?? 42, 100, 'range');
   requireBounded(emitter.color ?? 0xffe2ad, 0xffffff, 'color');
+  if (emitter.coneRad !== undefined && !(emitter.coneRad > 0 && emitter.coneRad <= HEADLIGHT_CONE_RAD)) {
+    throw new RangeError('Night light cone must be a positive half-angle no wider than a driving lamp\'s');
+  }
+  if (emitter.searchlight && emitter.kind !== 'headlight') throw new TypeError('Only a lamp casting a beam can be a searchlight');
   if (emitter.emission) {
     if (!emitter.emission.material?.isMeshStandardMaterial) throw new TypeError('Night light requires a dedicated emissive material');
     requireBounded(emitter.emission.intensity, 8, 'emission intensity');
@@ -171,8 +185,9 @@ function updateEmitter(
     if (state.emitter.direction) state.direction.fromArray(state.emitter.direction);
     else state.direction.set(0, -.08, 1);
     // (EF.11, DO-FX-08: "barrels glowing gold at night") a driving lamp is a low beam: dropped in its own vehicle's
-    // frame, so the cone's upper edge passes under the gun barrel above the lamps instead of flooding it gold
-    state.direction.y -= HEADLIGHT_LOW_BEAM_DROP * Math.hypot(state.direction.x, state.direction.z);
+    // frame, so the cone's upper edge passes under the gun barrel above the lamps instead of flooding it gold; a weapon
+    // searchlight looks where its station aims
+    if (!state.emitter.searchlight) state.direction.y -= HEADLIGHT_LOW_BEAM_DROP * Math.hypot(state.direction.x, state.direction.z);
     state.direction.normalize().transformDirection(state.anchor.matrixWorld);
   }
 }
@@ -211,7 +226,10 @@ function chooseEmitter<T extends THREE.SpotLight | THREE.PointLight>(
     if (candidate.distanceSquared > reach * reach) continue;
     // Mild retention prevents nearly equidistant lamps swapping every frame.
     const retained = slots[index].source === candidate ? .85 : 1;
-    const score = candidate.distanceSquared * retained - (candidate.source.priority ?? 0) * 1e8;
+    // (release 227) a searchlight ranks half a priority step ahead of its own vehicle's lamps on a pool with room for
+    // more than one vehicle's two sides
+    const lift = candidate.emitter.searchlight && slots.length > 2 ? .5 : 0;
+    const score = candidate.distanceSquared * retained - ((candidate.source.priority ?? 0) + lift) * 1e8;
     if (score < bestScore) { best = candidate; bestScore = score; }
   }
   return best;
@@ -232,6 +250,8 @@ function updateSpots(slots: LightSlot<THREE.SpotLight>[], emitters: EmitterState
     const slot = slots[index];
     applyLight(slot, source);
     if (!source) continue;
+    // a uniform, never a shader define: the cone changes with the lamp the slot holds
+    slot.light.angle = source.emitter.coneRad ?? HEADLIGHT_CONE_RAD;
     slot.light.target.position.copy(source.position).add(source.direction);
     slot.light.target.updateMatrixWorld();
   }

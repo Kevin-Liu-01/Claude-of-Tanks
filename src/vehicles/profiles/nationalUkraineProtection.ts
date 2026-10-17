@@ -55,7 +55,7 @@ const DECKS:Readonly<Record<ProtectionId,{glacis:readonly[number,number];fall:nu
   t80u_zoria:{glacis:[1.95,3.25],fall:.42,glacisTop:1.47,roof:.68,marks:[[-.92,-1.02],[-.53,-1.20]]},
   t72b3m_hetman:{glacis:[1.95,3.45],fall:.38,glacisTop:1.50,roof:.72,marks:[[-.79,-1.12],[.79,-1.12]]},
   t72b3_sich:{glacis:[1.95,3.30],fall:.38,glacisTop:1.45,roof:.68,marks:[[-.78,-1.12],[1.21,-.34]]},
-  t72b3m_hetman_ii:{glacis:[1.95,3.45],fall:.38,glacisTop:1.50,roof:.72,marks:[[-1.18,-2.30],[-1.24,-1.59]]},
+  t72b3m_hetman_ii:{glacis:[1.95,3.06],fall:.38,glacisTop:1.50,roof:.72,marks:[[-1.18,-2.30],[-1.24,-1.59]]},
 };
 /**
  * The trident and the hull number keep their places on the turret roof (marks: the turret-frame seats the marking
@@ -97,8 +97,11 @@ function camouflage(id:ProtectionId,index:number):GhillieConfig{
      top:[
       laidNet({x0:-1.5,x1:1.5,z0:k.glacis[0],z1:k.glacis[1],nx:30,nz:Math.round((k.glacis[1]-k.glacis[0])/.1),
        yAt:(_x:number,z:number)=>k.glacisTop-Math.max(0,z-k.glacis[0])*k.fall,garnishRiseM:.1,seed:137,
-       // release 227 (round 2): over Hetman II's chevron bands the net bridges the steps between them (bridgeSlotsM)
-       ...(id==='t72b3m_hetman_ii'?{bridgeSlotsM:.05}:{})}),
+       // release 227 (round 4): over Hetman II's chevron bands the net lies on the bands' tops (ghillieSuit.ts envelopeM),
+       // and it ends behind the nose sill (DECKS: z 3.06): the sill's LED bars, its hood and the hinge line under it stay
+       // clear of the net's edge and of the garnish that hung from it over them (the critic: "foliage strands cross the new
+       // LED light-bar housings")
+       ...(id==='t72b3m_hetman_ii'?{envelopeM:.09,envelopeZ:[1.98,3.06] as const}:{})}),
      ],
      // (release 227, round 2: Hetman II's bow drape is tied over the faces of its hinged lower-plate aprons, under its
      // nose sill: the T-72B3M lower plate rises from (z 2.60, y .533) to (3.342, .955), the aprons' faces stand .07 off it)

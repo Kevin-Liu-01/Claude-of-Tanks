@@ -73,13 +73,15 @@ interface TopPanel {
    */
   restOnProbeM?: number;
   /**
-   * Release 227 (round 2, 2026-10-16; the critic on the national frontal ERA: "net blades and leaf clumps sink into the new
-   * brick rows and stick out between them"): a laid net bridges a slot or a valley narrower than twice this reach (a gap
-   * between cassettes, the step between two glacis terraces): where the armour on both sides of a point, this far along x
-   * or along z, stands more than a centimetre over the armour under the point, the net rests at the lower of the two. On
-   * a plain slope the two sides straddle the point and nothing changes; at a single step the net still follows it.
+   * Release 227 (round 4, 2026-10-17; the critic on the Zubr II's terraced glacis: "the camouflage-suit net and foliage
+   * lie in the gaps between the new glacis ERA rows and pass under the module rows"): over a stepped ERA field (between
+   * `envelopeZ`, owner-local z) a laid net lies on the field's tops, as a net thrown over blocks does: each of its points
+   * rests on the highest armour within `envelopeM` of it (no higher than ENVELOPE_RISE_M over the armour under it: a
+   * taller fitting is cut round, as before). With the reach at least half a cell's diagonal no cloth triangle passes
+   * into a block between its corners, and the net spans every gap and step narrower than twice the reach.
    */
-  bridgeSlotsM?: number;
+  envelopeM?: number;
+  envelopeZ?: readonly [number, number];
   /**
    * 2026-10-09 (the netting lane; the owner: "add a ton more netting ... all over"): the carrier's authored height is
    * read from the owner's armour where the probe finds it (the highest surface within 3.5 cm), so a net laid over a
@@ -986,19 +988,23 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
         if (!under || here === null || under.y < here + 0.06) standing = true;
       }
     }
-    // release 227 (bridgeSlotsM): over a slot or a valley the net rests on the lower of its two rims
-    if (panel.bridgeSlotsM !== undefined && centre !== null && !standing) {
-      const b = panel.bridgeSlotsM, under = (sx: number, sz: number): number | null => {
-        if (sx < x0 || sx > x1 || sz < z0 || sz > z1) return null;
-        for (const h of probe?.surfacesAt?.(sx, sz) ?? []) if (h.up && h.y <= ceiling) return h.gear ? null : h.y;
-        return null;
-      };
-      let bridged: number | null = null;
-      for (const [ax, az] of [[b, 0], [0, b]] as const) {
-        const a = under(x + ax, z + az), c = under(x - ax, z - az);
-        if (a !== null && c !== null && a > centre + 0.01 && c > centre + 0.01) bridged = Math.max(bridged ?? -Infinity, Math.min(a, c));
+    // release 227 (envelopeM): over a stepped ERA field the net rests on the highest top within its reach
+    const env = panel.envelopeM, band = panel.envelopeZ;
+    // (a point just past the field's edge, over no armour, rests on the edge within its reach: the net's last cell
+    // there lies level off the edge instead of hanging down through the edge's top corner)
+    if (env !== undefined && !standing && (!band || (z >= band[0] && z <= band[1]))) {
+      const ref = centre ?? rest;
+      let top = ref === null ? null : rest !== null && rest - ref < ENVELOPE_RISE_M ? Math.max(rest, ref) : ref;
+      for (const [ux, uz] of ENVELOPE_RING) {
+        const sx = x + ux * env, sz = z + uz * env;
+        if (sx < x0 || sx > x1 || sz < z0 || sz > z1) continue;
+        for (const h of probe?.surfacesAt?.(sx, sz) ?? []) {
+          if (!h.up || h.y > ceiling) continue;
+          if (!h.gear && (top === null || h.y > top) && (ref === null || h.y - ref <= ENVELOPE_RISE_M)) top = h.y;
+          break;
+        }
       }
-      if (bridged !== null) return { rest: bridged, standing };
+      if (top !== null) return { rest: top, standing };
     }
     // the armour under the point itself; its neighbours' only over a slot or a bolt head (their highest on a sloped plate
     // would hold the net off the slope)
@@ -1444,6 +1450,14 @@ function foldAt(f: FoldField, u: number, below: number): number {
 
 /** The netting lane: how far under a laid net's level armour still holds it (m), and the step a laid cell never spans. */
 const LAID_DROP_M = 0.35;
+/** Release 227 (TopPanel.envelopeM): the most a net's envelope rises over the armour under a point (a stepped ERA
+ * field's tops stand at most 18 cm over the plate between its rows; a taller fitting is cut round), and the unit
+ * offsets it samples: sixteen directions at the reach and at half of it (an edge within 98 % of the reach is met). */
+const ENVELOPE_RISE_M = 0.2;
+const ENVELOPE_RING: ReadonlyArray<readonly [number, number]> = [1, 0.5].flatMap((r) =>
+  Array.from({ length: 16 }, (_, k) => [r * Math.cos(k * Math.PI / 8), r * Math.sin(k * Math.PI / 8)] as const));
+/** Release 227 round 4 (cardsClearOfArmour): how far over a roof or deck card armour counts as overhanging it. */
+const OVERHUNG_M = 0.25;
 const LAID_STEP_M = 0.25;
 /** The netting lane: how far off its authored plane a hanging face net still finds its face (m). */
 const FACE_REACH_M = 0.3;
@@ -2467,6 +2481,9 @@ interface FieldTuftContext extends TuftContext {
   readonly overArmour?: (x: number, y: number, z: number) => boolean;
   /** Release 227 (cardsClearOfArmour): whether a point lies inside the owner's armour (its nearest surface over it faces up). */
   readonly insideArmour?: (x: number, y: number, z: number) => boolean;
+  /** Release 227 round 4 (cardsClearOfArmour): whether the owner's armour overhangs a point within OVERHUNG_M (a roof or
+   * deck card tucked under a module's lip; drapes hang beside walls under rails and keep their cards). */
+  readonly underArmour?: (x: number, y: number, z: number) => boolean;
   /**
    * netting-proper round 2: the owner's roof cards laid so far, over all its roof and deck nets (where two nets meet,
    * either's clumps may reach the same point): each card's tuck point and plan heading.
@@ -2872,7 +2889,8 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
         && (!top || lyingOk(dense!, stem))
         && (!clothNear || pts.every((p) => clothNear(p)))
         && (!ctx.tubes?.length || !cardCrossesTube(card, ctx.tubes))
-        && (!ctx.insideArmour || !(dense ?? denseCardPoints(card)).some((p) => ctx.insideArmour!(p[0], p[1], p[2])));
+        && (!ctx.insideArmour || !(dense ?? denseCardPoints(card)).some((p) => ctx.insideArmour!(p[0], p[1], p[2])))
+        && (!top || !ctx.underArmour || !dense!.some((p) => ctx.underArmour!(p[0], p[1], p[2])));
       if (ok) return card;
     }
     return null;
@@ -5307,6 +5325,8 @@ function* addGhillieOwner(
         for (const h of surfacesAt(x, z)) { if (h.gear) continue; if (h.y > y + 0.001) above = h; else break; }
         return above !== null && above.up;
       } : undefined,
+      underArmour: cfg.cardsClearOfArmour && surfacesAt
+        ? (x, y, z) => surfacesAt(x, z).some((h) => !h.gear && h.y > y + 0.001 && h.y < y + OVERHUNG_M) : undefined,
       // the card's own vertices keep the vehicle's clearances; its face, sampled densely, keeps the thin lens views
       // and smoke lines clear (a line can pass between a card's vertices)
       cardClear: clearance ? field ? (card) => denseCardPoints(card).every((p) => clearance.fieldLinesOk(owner, p))

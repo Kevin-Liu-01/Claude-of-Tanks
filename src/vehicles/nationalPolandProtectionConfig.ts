@@ -106,10 +106,10 @@ function fieldSuit(d: Layout, m: number): GhillieConfig {
     hull: {
       top: [laid({x0: -2.12, x1: 2.12, z0: f.stern, z1: f.bow, nx: 42, nz: Math.round((f.bow - f.stern) / .1), yAt: deckAt,
         holes: [circle(f.pivot, f.ring)], garnishRiseM: .12, seed: 31,
-        // release 227 (round 2): over the Zubrs' framed glacis fields and terraces the net bridges the gaps between the
-        // cassettes and the steps between the terraces (ghillieSuit.ts bridgeSlotsM): its garnish lies on that, never
-        // down in a gap
-        ...(d.id === 't72b3_zubr' || d.id === 't72b3_zubr_ii' ? {bridgeSlotsM: .05} : {})})],
+        // release 227 (round 4): over the Zubrs' framed glacis fields and terraces the net lies on the cassettes' tops
+        // (ghillieSuit.ts envelopeM: 9 cm, over half its 10 cm cells' diagonal), spanning the gaps between them and the
+        // steps between the terraces: no cloth passes into a cassette, and its garnish lies on that, never down in a gap
+        ...(d.id === 't72b3_zubr' || d.id === 't72b3_zubr_ii' ? {envelopeM: .09, envelopeZ: [2.12, 3.25] as const} : {})})],
       // tied under each bay's top rail (tiedTop), hung over the slats to the bottom rail
       side: [-1, 1].flatMap((side) => d.hullPanels.map(([a, b], i) => ({
         side, z0: a + .055, z1: b - .055, nz: Math.max(10, Math.round((b - a) / .09)), ny: 7, seed: 37 + side + i * 17,
