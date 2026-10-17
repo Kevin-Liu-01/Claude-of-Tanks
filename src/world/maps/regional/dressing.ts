@@ -5,7 +5,7 @@
 // their choices from its build stream and leaves them out on phones.
 import { faceBox, facePoint, normalize3, shade, type EmitOptions, type Face, type PartSink, type Rgb, type Vec3 } from './geometry.ts';
 import type { HouseFrame } from './house.ts';
-import { hash01 } from './facade.ts';
+import { faceSlab, hash01 } from './facade.ts';
 
 const DECOR = { decor: true } as const;
 
@@ -321,4 +321,127 @@ export function hollyhocks(sink: PartSink, face: Face, u: number, bloom: Rgb, rn
         { ...DECOR, fine: 'near' }, f * 1.3);
     }
   }
+}
+
+// -------------------------------------------------------------------------------------------------------------------
+// The Bengal homestead's dressing (the looks lane, 2026-10-17; WORKPLAN-227 §5, the Bengal kit lifted toward Verdant's
+// element set): what a Jamuna char bari keeps round its houses: the cow-dung cakes drying on a wall, the clay water pots,
+// the hand pump on its raised platform, a bicycle against the house. Dressing all; no stream draws (every variation
+// hashes the piece's own place).
+// -------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Cow-dung cakes (ghute) slapped on a wall to dry for the cooking fire: rows of flattened rounds a hand and a half across
+ * between u0..u1 and y0..y1 of the face, each its own outline and its own tone (fresh and dark, dried and pale), a few
+ * gaps where cakes have been taken. Each a slab 2 cm thick, its back `o0` out of the face (clear of a sheet wall's
+ * corrugation); its rim near fine joinery.
+ */
+export function dungCakes(sink: PartSink, face: Face, u0: number, u1: number, y0: number, y1: number, o0 = 0.004): void {
+  const rowH = 0.27, colW = 0.25;
+  const rows = Math.max(1, Math.floor((y1 - y0) / rowH));
+  for (let r = 0; r < rows; r++) {
+    const y = y0 + rowH * (r + 0.5) + (y1 - y0 - rows * rowH) / 2;
+    const shift = r % 2 ? colW / 2 : 0;
+    for (let u = u0 + colW / 2 + shift; u < u1 - colW / 2 + 1e-6; u += colW) {
+      const h = hash01(u, y, face.origin[0], face.origin[2], 5.7);
+      if (h < 0.14) continue;
+      const rad = 0.085 + hash01(u, y, 2.1) * 0.03, sides = 7, spin = h * Math.PI;
+      const poly: Array<[number, number]> = [];
+      for (let k = 0; k < sides; k++) {
+        const a = spin + k * 2 * Math.PI / sides, e = 0.82 + hash01(u, y, k, 9.3) * 0.3;
+        poly.push([u + (r % 2 ? 0.01 : -0.01) + Math.cos(a) * rad * e, y + Math.sin(a) * rad * e * 0.92]);
+      }
+      // fresh cakes a dark olive brown, dry ones a pale grey-buff
+      const dry = hash01(u, y, 13.1), tone: Rgb = [0.24 + dry * 0.22, 0.2 + dry * 0.19, 0.13 + dry * 0.16];
+      faceSlab(sink, 'structureWood', face, poly, o0, 0.022, { colour: tone });
+    }
+  }
+}
+
+/**
+ * A clay water pot (kolshi): a round-bellied terracotta pot on its foot, its shoulder narrowing to a short neck and a
+ * rolled lip, the dark of the water in its mouth. (x, y, z) the pot's foot; `size` its belly's radius.
+ */
+export function clayPot(sink: PartSink, x: number, y: number, z: number, size: number, colour: Rgb): void {
+  // the profile: (height over the foot, radius) as fractions of the belly's radius
+  const prof: Array<[number, number]> = [[0, 0.5], [0.35, 0.92], [0.75, 1], [1.15, 0.86], [1.42, 0.5], [1.56, 0.36], [1.66, 0.46], [1.72, 0.44]];
+  const segs = 9;
+  for (let k = 0; k + 1 < prof.length; k++) {
+    const [h0, r0] = prof[k], [h1, r1] = prof[k + 1];
+    const tone = 0.82 + 0.2 * Math.sin(Math.PI * (h0 + h1) / 2 / 1.72);
+    sink.cylinder('structureWood', [x, y + h0 * size, z], 'y', (h1 - h0) * size, r0 * size, segs, { ...DECOR, colour: shade(colour, tone) }, r1 * size, false);
+  }
+  // the mouth: the water's dark a little down the neck
+  const mouth: Vec3[] = [];
+  for (let k = segs - 1; k >= 0; k--) {
+    const a = -k * 2 * Math.PI / segs;
+    mouth.push([x + Math.cos(a) * 0.4 * size, y + 1.62 * size, z + Math.sin(a) * 0.4 * size]);
+  }
+  sink.polygon('structureWood', mouth.reverse(), { ...DECOR, colour: [0.06, 0.06, 0.05] });
+}
+
+/**
+ * The hand pump of a tube well (a cast-iron No. 6 "chapakal") on its raised concrete platform: the apron with its rim and
+ * its drain lip, the pump's pipe column, the barrel and its cap, the spout out over the drain and the long handle raised
+ * behind on its pivot. (x, y, z) the platform's middle on the ground, `yaw` the spout's heading (about +Y, 0 toward +x).
+ */
+export function handPump(sink: PartSink, x: number, y: number, z: number, yaw: number, iron: Rgb): void {
+  sink.placed(yaw, x, y, z, () => {
+    const conc: Rgb = [0.6, 0.59, 0.56];
+    // the apron: a slab with a rim round its top, the drain lip out under the spout
+    sink.span('structureWood', -0.5, -0.12, -0.5, 0.5, 0.1, 0.5, { ...DECOR, colour: conc });
+    for (const [x0, z0, x1, z1] of [[-0.5, -0.5, 0.5, -0.42], [-0.5, 0.42, 0.5, 0.5], [-0.5, -0.42, -0.42, 0.42], [0.42, -0.42, 0.5, -0.1], [0.42, 0.1, 0.5, 0.42]]) {
+      sink.span('structureWood', x0, 0.1, z0, x1, 0.15, z1, { ...DECOR, colour: shade(conc, 0.94) });
+    }
+    sink.span('structureWood', 0.5, 0.02, -0.1, 0.78, 0.08, 0.1, { ...DECOR, colour: shade(conc, 0.9) });
+    // the column, the barrel and its cap
+    sink.cylinder('structureMetal', [-0.12, 0.1, 0], 'y', 0.62, 0.045, 7, { ...DECOR, colour: shade(iron, 0.9) });
+    sink.cylinder('structureMetal', [-0.12, 0.7, 0], 'y', 0.34, 0.085, 9, { ...DECOR, colour: iron }, 0.075);
+    sink.cylinder('structureMetal', [-0.12, 1.04, 0], 'y', 0.05, 0.095, 9, { ...DECOR, colour: shade(iron, 0.85) }, 0.06);
+    // the spout from the barrel out over the drain, turned down at its end
+    sink.member('structureMetal', [-0.06, 0.86, 0], [0.22, 0.8, 0], 0.06, 0.06, [0, 1, 0], { ...DECOR, colour: iron, exposed: true }, 0.06 / 2);
+    sink.member('structureMetal', [0.2, 0.82, 0], [0.24, 0.7, 0], 0.055, 0.055, [0, 0, 1], { ...DECOR, colour: shade(iron, 0.9), exposed: true }, 0.055 / 2);
+    // the pivot's ears and the handle: from its short end over the plunger back and up to its grip
+    sink.member('structureMetal', [-0.12, 1.08, 0], [-0.2, 1.17, 0], 0.035, 0.07, [0, 0, 1], { ...DECOR, colour: shade(iron, 0.8), exposed: true }, 0.07 / 2);
+    sink.member('structureMetal', [-0.06, 1.12, 0], [-0.98, 1.42, 0], 0.035, 0.035, [0, 0, 1], { ...DECOR, colour: iron, exposed: true, fine: true }, 0.035 / 2);
+    sink.cylinder('structureMetal', [-1.02, 1.41, 0], 'x', 0.16, 0.025, 6, { ...DECOR, colour: shade(iron, 0.75), fine: true });
+  });
+}
+
+/**
+ * A bicycle (a black roadster) standing on its wheels and leaned against something on its left: its two wheels (rims and
+ * tyres), the diamond frame, the fork, the handlebar and the saddle, the carrier over the back wheel. (x, y, z) the
+ * point on the ground under its middle, `yaw` its heading (about +Y, 0 toward +x), `lean` its tilt toward its left
+ * (radians). Fine joinery: a bicycle is drawn near the camera only.
+ */
+export function bicycle(sink: PartSink, x: number, y: number, z: number, yaw: number, lean: number, paint: Rgb): void {
+  const c = Math.cos(lean), s = Math.sin(lean);
+  // the bike's own frame: +x forward, +y up, +z its right; leaning to its left turns +y toward -z
+  const P = (px: number, py: number, pz: number): Vec3 => [px, py * c - pz * s, py * s + pz * c];
+  const side = P(0, 0, 1);
+  const fineOpts = (colour: Rgb): EmitOptions & { exposed: boolean } => ({ ...DECOR, colour, exposed: true, fine: true });
+  const tyre: Rgb = [0.07, 0.07, 0.07], R = 0.34, wb = 1.06;
+  sink.placed(yaw, x, y, z, () => {
+    for (const cx of [-wb / 2, wb / 2]) {
+      const n = 12;
+      for (let k = 0; k < n; k++) {
+        const a0 = k * 2 * Math.PI / n, a1 = (k + 1) * 2 * Math.PI / n;
+        sink.member('structureMetal', P(cx + Math.cos(a0) * R, R + Math.sin(a0) * R, 0), P(cx + Math.cos(a1) * R, R + Math.sin(a1) * R, 0), 0.035, 0.035, side,
+          fineOpts(tyre), 0.035 / 2);
+      }
+      // the hub
+      sink.member('structureMetal', P(cx, R, -0.05), P(cx, R, 0.05), 0.04, 0.04, P(0, 1, 0), fineOpts(shade(paint, 1.6)), 0.04 / 2);
+    }
+    const bb = P(0.02, 0.3, 0), seat = P(-0.18, 0.86, 0), head = P(0.36, 0.82, 0), rear = P(-wb / 2, R, 0), front = P(wb / 2, R, 0);
+    const tube = (a: Vec3, b: Vec3, w = 0.03): void => sink.member('structureMetal', a, b, w, w, side, fineOpts(paint), w / 2);
+    tube(bb, seat); tube(bb, head, 0.034); tube(seat, head); tube(bb, rear); tube(seat, rear, 0.024); tube(head, front, 0.028);
+    // the stem and the handlebar across, the saddle, the carrier over the back wheel
+    const bar = P(0.32, 1.0, 0);
+    tube(head, bar, 0.026);
+    sink.member('structureMetal', P(0.3, 1.0, -0.27), P(0.3, 1.0, 0.27), 0.025, 0.025, P(0, 1, 0), fineOpts(shade(paint, 1.4)), 0.025 / 2);
+    tube(seat, P(-0.2, 0.94, 0), 0.022);
+    sink.member('structureWood', P(-0.31, 0.95, 0), P(-0.08, 0.95, 0), 0.13, 0.05, P(0, 1, 0), fineOpts([0.12, 0.08, 0.05]), 0.05 / 2);
+    sink.member('structureMetal', P(-0.82, 0.74, 0), P(-0.26, 0.74, 0), 0.12, 0.02, P(0, 1, 0), fineOpts(shade(paint, 1.2)), 0.02 / 2);
+    tube(P(-0.76, 0.74, 0), rear, 0.02);
+  });
 }
