@@ -460,7 +460,8 @@ export function makeContainerRow(
       const g = new THREE.BoxGeometry(CW + 0.3, 0.6, 0.22).toNonIndexed();
       g.translate(0, -0.29, dz); g.rotateY(yaw); g.translate(cx, 0, cz);
       g.userData.noCollision = true; g.userData.uvJitter = 'none';
-      target.push(paintHex(g, () => 0.5, 0x5a4a3a, 1, 0));
+      // (timber, not the boxes' steel: in the matte painted bucket, outside the boxes the steel parts keep to)
+      (buckets.baked ?? target).push(paintHex(g, () => 0.5, 0x5a4a3a, 1, 0));
     }
   };
   for (let k = 0; k < n; k++) {
