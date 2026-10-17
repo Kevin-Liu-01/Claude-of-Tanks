@@ -18,6 +18,7 @@ import { withHousePlans, withWear, type HousePlan } from './house.ts';
 import { withRuinWalls, type WallPieceReading } from './shell.ts';
 import { withLattices, type LatticeReading } from './lattice.ts';
 import { registerHouseDamageKits } from './damage.ts';
+import { registerLatticeFrameKit } from './latticeFall.ts';
 import { setKitPlanReader } from '../../destructionKit.ts';
 import { HESSIAN_STYLE } from './hessian.ts';
 import { SAVOYARD_STYLE } from './savoyard.ts';
@@ -106,6 +107,8 @@ export const ARCHITECTURE_STYLES: readonly ArchitectureStyle[] = Object.freeze(O
 // the destruction seam (docs/DESTRUCTION.md §16): every style's damage kit, its anatomy read from the house plan, and
 // the plan's reader the world's describe call sites use (kitPlanFor: the world builder imports no kit)
 registerHouseDamageKits(ARCHITECTURE_STYLES);
+// (227, lane B) a catalog frame that carries its lattice (railKit.ts gantryFrame) falls as it (latticeFall.ts)
+registerLatticeFrameKit('gantry');
 setKitPlanReader((parts) => regionalKitPlanOf(parts));
 
 /** The kit a map authored (`props.architecture`), or null. An unknown id fails closed. */

@@ -444,6 +444,12 @@ const conveyor: RegionalBuilder = (ctx) => {
         sink.span('stone', s * gw / 2 - 0.3, -0.4, p[2] + e * 0.55 - 0.3, s * gw / 2 + 0.3, 0.6, p[2] + e * 0.55 + 0.3);
         sink.member('structureMetal', foot(s, e), head(s, e), 0.18, 0.18, [0, 0, 1], { colour: OXIDE, exposed: true }, 0);
       }
+      // (227, lane B; the anti-raft floor: the gallery fell as one heap at its feet) each trestle recorded as its frame, so it
+      // falls as its lattice over its standing lower bays (latticeFall.ts), the gallery's house beside it
+      const girts: number[] = [];
+      for (let y = 1.6; y < h - 0.4; y += 1.7) girts.push(y);
+      girts.push(h);
+      recordLattice(sink, ([[-1, -1], [1, -1], [1, 1], [-1, 1]] as const).map(([s, e]) => ({ foot: foot(s, e), head: head(s, e) })), girts, 0.18, 'structureMetal', OXIDE, null, undefined, { stand: 0.85 });
       if (!mobile) {
         for (let y = 1.6; y < h - 0.4; y += 1.7) {
           const yb = Math.min(h - 0.1, y + 1.4);

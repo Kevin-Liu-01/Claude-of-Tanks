@@ -8,6 +8,8 @@
 // (recordLattice, kept in the kit's plan beside its houses) so the damage reading (damage.ts describeLattice) brings
 // the frame down as its members, not as a shaft's drums.
 import { PartSink, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
+/** A solid beside a builder's frames (an intake shed, a bin house) recorded as a house body for the damage reading. */
+export { recordBody as recordFrameHouse } from './house.ts';
 
 /** A lattice frame as its builder laid it, in the building's frame (PartSink.framePoint). */
 export interface LatticeReading {
@@ -21,6 +23,31 @@ export interface LatticeReading {
   /** what stood on the frame (a tank, a wheel head, a radome): its box, bucket and tint */
   crown: { x0: number; x1: number; y0: number; y1: number; z0: number; z1: number; bucket: string; tint: Rgb } | null;
   shed?: import('./shedFall.ts').ShedWreck; // an open shed's own reading (shedFall.ts recordShed): it falls as a shed
+  /**
+   * Which of the frame's faces (leg k to leg k + 1) are braced bays (absent: all): a portal crane's leg towers are braced
+   * across their A-frames and stand open along the bridge (latticeFall.ts stands only the braced bays' girts and braces)
+   */
+  faces?: boolean[];
+  /**
+   * The share of its height the frame stands to when it falls (absent: latticeFall.ts LATTICE_STAND_SHARE; a column,
+   * one leg, 0.8): a conveyor's trestle stands, bent at its head, when the gallery comes off it
+   */
+  stand?: number;
+  /** a penstock run's own reading (penstockFall.ts): it falls as its pipe off its supports */
+  penstock?: import('./penstockFall.ts').PenstockWreck;
+}
+
+/**
+ * A frame a builder outside the regional kits laid (a catalog gantry: railKit.ts), carried on one of its geometries so its
+ * damage kit (latticeFall.ts registerLatticeFrameKit) reads it from the parts: in the building's own frame.
+ */
+export function tagLatticeReading(geometry: { userData: Record<string, unknown> }, reading: LatticeReading): void {
+  geometry.userData.latticeReading = reading;
+}
+/** The frame a builder outside the kits carried on its parts (tagLatticeReading), or null. */
+export function latticeReadingOfParts(parts: Readonly<Record<string, readonly { userData: Record<string, unknown> }[]>>): LatticeReading | null {
+  for (const list of Object.values(parts)) for (const g of list) if (g.userData?.latticeReading) return g.userData.latticeReading as LatticeReading;
+  return null;
 }
 
 let latticeSink: LatticeReading[] | null = null;
@@ -118,11 +145,13 @@ export function latticeFrame(sink: PartSink, spec: LatticeSpec, crown: LatticeRe
  * and heads and its crown in the emitting frame, so it falls as its frame (damage.ts describeLattice).
  */
 export function recordLattice(sink: PartSink, legs: Array<{ foot: Vec3; head: Vec3 }>, girts: number[], size: number, bucket: RegionalBucket,
-  colour: Rgb | null, crown: LatticeReading['crown'], shed?: LatticeReading['shed']): void {
+  colour: Rgb | null, crown: LatticeReading['crown'], shed?: LatticeReading['shed'],
+  extra: Pick<LatticeReading, 'faces' | 'stand' | 'penstock'> = {}): void {
   if (!latticeSink) return;
   const c = crown ? (() => {
     const a = sink.framePoint([crown.x0, crown.y0, crown.z0]), b = sink.framePoint([crown.x1, crown.y1, crown.z1]);
     return { x0: Math.min(a[0], b[0]), x1: Math.max(a[0], b[0]), y0: a[1], y1: b[1], z0: Math.min(a[2], b[2]), z1: Math.max(a[2], b[2]), bucket: crown.bucket, tint: crown.tint };
   })() : null;
-  latticeSink.push({ legs: legs.map((l) => ({ foot: sink.framePoint(l.foot), head: sink.framePoint(l.head) })), girts, size, bucket, colour, crown: c, ...(shed ? { shed } : {}) });
+  latticeSink.push({ legs: legs.map((l) => ({ foot: sink.framePoint(l.foot), head: sink.framePoint(l.head) })), girts, size, bucket, colour, crown: c,
+    ...(shed ? { shed } : {}), ...extra });
 }
