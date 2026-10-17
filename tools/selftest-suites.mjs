@@ -948,6 +948,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/deploymentSkew.selftest.mjs',
     'src/engine/offscreenWarm.selftest.mjs',
     'src/engine/lodEmptySentinels.selftest.mjs',
+    // sealed lane round 2 (2026-10-10): screen-size vehicle LODs, the sniper sight draws near detail
+    'src/engine/lodDistanceScale.selftest.mjs',
     'src/engine/battleWeatherPolicy.selftest.mjs',
     'src/engine/battleAtmosphereRuntime.selftest.mjs',
     'src/engine/nightLightingRuntime.selftest.mjs',

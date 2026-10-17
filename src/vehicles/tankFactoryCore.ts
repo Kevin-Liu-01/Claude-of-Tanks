@@ -23,6 +23,7 @@ import { mergeContiguousStaticRuns, type CoplanarLayerRecord } from './staticDra
 import { releaseStaticMergeParts } from './staticMergeParts.ts';
 import { combatVisibleObjects, retainCombatLods } from './combatVisibility.ts';
 import { detachEmptyLodSentinels } from '../engine/lodEmptySentinels.ts';
+import { installZoomAwareLods } from '../engine/lodDistanceScale.ts';
 import {fitLoadedTrackContact,loadedContactScratch} from './loadedTrackContact.ts';
 import { seatStaggeredTrackGround } from './staggeredTrackGround.ts';
 import {carrierWidthAt,splitCarrierSections,validateCarrierSections,type TrackCarrierWidthStation} from './trackCarrierSections.ts';
@@ -10459,6 +10460,10 @@ function* createTankOwnedSteps(
     if (batchStatic) detachEmptyLodSentinels(root);
     const tailShadowBatchFinishedAt = performance.now();
     if (batchStatic && !staticPreview) releaseBattleGeometry=shareBattleGeometry(root);
+    // Screen-size LOD (sealed lane round 2): every LOD of the finished visual picks its level by how large the vehicle
+    // looks, so the sniper sight (a narrower field of view, cameraRig fov = 60 / zoom) draws a magnified enemy's near
+    // detail instead of its distance-culled state; unscoped views keep the authored horizons exactly.
+    installZoomAwareLods(root);
     root.userData.tailBuildTiming = {
       decorStartedAt: tailDecorStartedAt,
       decorFinishedAt: tailDecorFinishedAt,
