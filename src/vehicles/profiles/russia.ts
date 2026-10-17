@@ -120,12 +120,18 @@ interface T80CastTurretOptions {
   readonly roofTiltScale?: number;
   readonly reference?: string;
   readonly equipmentSeatRevision?: string;
+  readonly closeBase?: boolean;
 }
 
 interface CurvedDomeOptions {
   readonly capR?: number;
   readonly roofTiltScale?: number;
   readonly bucket?: string;
+  readonly closeBase?: boolean;
+}
+
+interface DomeOptions {
+  readonly closeBase?: boolean;
 }
 
 interface DomeBoxSeatOptions {
@@ -508,6 +514,7 @@ export function buildT80CastTurret(P: RussiaGeometryPort, {
   curved = false, capR = 1.60, roofTiltScale = 0.62,
   reference = 't80/t80b/ua_t80u_kursk',
   equipmentSeatRevision = 'reference-original',
+  closeBase = false,
 }: T80CastTurretOptions = {}) {
   const rawRings = T80_CAST_TURRET_RINGS;
   const firstRawRing = rawRings[0]!;
@@ -515,9 +522,9 @@ export function buildT80CastTurret(P: RussiaGeometryPort, {
   const baseY = firstRawRing[1];
   const rings = rawRings.map(([r, y]) => [r, baseY + (y - baseY) * scaleY]);
   if (curved) {
-    meshDomeCurved(P, rings, sz, cx, cz, { capR, roofTiltScale });
+    meshDomeCurved(P, rings, sz, cx, cz, { capR, roofTiltScale, closeBase });
   } else {
-    meshDome(P, rings, sz, cx, cz);
+    meshDome(P, rings, sz, cx, cz, { closeBase });
   }
   const lastRing = rings[rings.length - 1]!;
   const roofDrop = (lastRawRing[1] - baseY) * (1 - scaleY);
@@ -540,8 +547,21 @@ export function buildT80CastTurret(P: RussiaGeometryPort, {
 
 // Measured cast dome: lathe rings [[r, y]] (y=0 at the ring base, in the
 // turret frame), plan-stretched by sz = depth/width, centered (cx, cz).
-export function meshDome(P: RussiaGeometryPort, rings: readonly DomeRing[], sz: number, cx = 0, cz = 0): void {
+export function meshDome(
+  P: RussiaGeometryPort, rings: readonly DomeRing[], sz: number, cx = 0, cz = 0, o: DomeOptions = {},
+): void {
   P.add('turret', KIT.lathe(rings, P.q ? 30 : 16, sz), cx, 0, cz);
+  if (o.closeBase) addDomeBaseCap(P, 'turret', rings, P.q ? 30 : 16, sz, cx, cz);
+}
+
+// TANK-OPT companions (227): the lathe dome has no floor, so once a cook-off throws the turret a camera below it looks
+// up through the open base into the casting's inside. The cap is a downward disc on the dome's first ring, built by the
+// same lathe so its rim shares the dome's base vertices exactly. Opt-in per builder: every other dome keeps its bytes.
+function addDomeBaseCap(
+  P: RussiaGeometryPort, bucket: string, rings: readonly DomeRing[], segments: number, sz: number, cx: number, cz: number,
+): void {
+  const [r0, y0] = rings[0];
+  P.add(bucket, KIT.lathe([[0, y0], [r0, y0]], segments, sz), cx, 0, cz);
 }
 
 function curvedDomeVertexAngles(rings: readonly DomeRing[]): number[] {
@@ -660,6 +680,7 @@ export function meshDomeCurved(
   const geometry = KIT.lathe(profile.points, seg, sz);
   applyCurvedDomeNormals(geometry, profile.points, profile.angles, sz, o);
   P.add(o.bucket ?? 'turret', geometry, cx, 0, cz);
+  if (o.closeBase) addDomeBaseCap(P, 'turret', rings, seg, sz, cx, cz);
 }
 
 // Dome-skin radius at height y for a measured ring profile (fitting seats).
