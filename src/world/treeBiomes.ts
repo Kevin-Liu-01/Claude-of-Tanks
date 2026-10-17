@@ -122,6 +122,15 @@ const HOLM_OAK_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
  */
 const LONGLEAF_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({ cardHue: 0.28, cardSat: 0.11 });
 
+/**
+ * The trees lane (2026-10-06, the cities lane's Miljacka quays and boulevard): a street linden's fresh, light yellow-green
+ * over the beech form it grows as — a tenth again of the leaves' saturation and lightness.
+ */
+const LINDEN_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
+  cardHue: 0.23, cardSat: 0.24,
+  texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 1.1), Math.min(1, l * 1.08)],
+});
+
 const B = (place: string, slots: TreeBiome['slots'], shrub?: GrowthSpecies, palette?: Readonly<TreeBiomeColour>, arid?: true,
   open?: true, upland?: true): Readonly<TreeBiome> =>
   Object.freeze({ place, slots: Object.freeze(slots), ...(shrub ? { shrub } : {}), ...(palette ? { palette } : {}), ...(arid ? { arid } : {}),
@@ -204,6 +213,12 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // the Sary-Arka grain steppe of the Virgin Lands (the map-revival lane, 2026-10-05): the birch groves (kolki) of the
   // northern Kazakh steppe where the map names a pine, in leaf; the poplar and oak slots stay its shelterbelts
   steppe: B('the Sary-Arka grain steppe, Akmola oblast', { pine: { form: 'birch', leaves: true } }),
+  // Sarajevo and the Miljacka valley (the trees lane, 2026-10-06, with the cities lane's valley rebuild after the gauntlet's
+  // wave 162: the ring read as "arid savanna with palm and acacia trees"): Trebević's and Igman's beech closing into
+  // broadleaf masses — the oak slot grows as the beech; the map's spruce and fir lead its ring. Waves 186/187 ("almost no
+  // trees in the city"): the quays' and the boulevard's rows of limes and planes are the aspen slot (unused elsewhere on
+  // the map), grown as the beech's broad dense ellipsoid on a clean 3 m bole in a linden's light green
+  ruinspires: B('Sarajevo, the Miljacka valley', { oak: { form: 'beech' }, aspen: { form: 'beech', colour: LINDEN_FOLIAGE } }),
 });
 
 /** The form a map's shrubs grow as (their own atlas), or none (the bush slot's). */

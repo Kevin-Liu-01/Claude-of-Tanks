@@ -1703,6 +1703,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/riparianTrees.selftest.mjs',
     // the horizons stream (2026-10-16): the Skybridge port moves no other map's heights
     'src/world/skybridgeArmIsolation.selftest.mjs',
+    // the trees lane (2026-10-07, the cities lane's Ruinspires): a town map's belts and parks inside its village
+    'src/world/townTrees.selftest.mjs',
     'src/world/foliageAtlasPadding.selftest.mjs',
     'src/world/broadleafBranchlets.selftest.mjs',
     'src/world/structureSurface.selftest.mjs',
