@@ -350,13 +350,23 @@ export default {
       // (the gorge is cut in three stages, its walls stepped by ledges a few metres wide: benchM reads them as one wall)
       // (r6 first pair, 2026-10-17: the walls read cold grey-white with Lake Powell's calcite bathtub ring at their foot) the
       // calcarenite warm, a buff-ochre as the Tajo's walls stand in the sun, and no lake ring: the gorge is floored by its river bed
-      { x: 0, z: 0, length: 540, width: 192, yawDeg: 0, span: 0.9, tone: [0.09, 0.3, 0.54], benchM: 8, ring: false, name: "the Tajo's walls" },
+      // (r7, 2026-10-17; the r6 blind: "evenly spaced vertical streaks read as a hanging curtain", flat faces the same height
+      // meeting the floor in a straight line, "slight salmon oversaturation", a "smooth melted dome") the calcarenite as it
+      // stands: thick level beds proud and receding by turns under the hard cap, split by their joints, spurs standing to
+      // their own heights, greyed in patches and streaked down from the ledges at no rhythm, a talus apron and its fallen
+      // blocks at the foot (canyonWall.ts beds); the tone pulled from salmon toward the buff-ochre of the Tajo's stone. No
+      // spur stands out under the viaduct, whose piers rise beside the walls
+      { x: 0, z: 0, length: 540, width: 192, yawDeg: 0, span: 0.9, tone: [0.105, 0.24, 0.56], benchM: 8, ring: false,
+        beds: { thickness: [0.7, 4.4], talus: [2.5, 7.5], capTuck: 1.0, keepClear: [[-16, 16]], capGaps: 0.58 }, name: "the Tajo's walls" },
     ],
     caprock: [
       // (r6 first pair: the lips sat on the first ledge, a pale band low on the wall) up the benches to the walls' tops, and
       // the hard capping bed a shade paler than the wall, not white
-      { x: 0, z: 0, length: 540, width: 192, yawDeg: 0, trench: true, benchM: 8, span: 0.9, tone: [0.1, 0.26, 0.6],
-        thickness: [1.2, 2.2], blockM: [6, 14], name: "the Tajo's lips" },
+      // (r7: "dead-straight tops", "a thin dark line across the field" from the bridge) the hard bed broken into its own
+      // blocks, each leaning out over the wall as far as it does and settled a little proud of the brow, its joints open,
+      // its back under the ground; greyer than the wall, as the cap weathers
+      { x: 0, z: 0, length: 540, width: 192, yawDeg: 0, trench: true, benchM: 8, span: 0.9, tone: [0.11, 0.15, 0.6],
+        thickness: [1.2, 2.6], blockM: [5, 14], broken: { overhang: [1.5, 2.4], lift: [0, 0.22], jointM: 0.14, gaps: 0.58 }, name: "the Tajo's lips" },
     ],
   },
   // the mountains lane (2026-10-03, gauntlet wave 15): wooded uplands round the gorge (not Verdant's plain)
