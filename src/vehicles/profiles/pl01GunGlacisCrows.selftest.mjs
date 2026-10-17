@@ -121,10 +121,13 @@ for (const id of ['pl01', 'pl01_105']) {
     `${id} must retain one merged pitch-owned gun housing`);
   gunMount.geometry.computeBoundingBox();
   const gunMountBounds = gunMount.geometry.boundingBox;
+  // 2026-10-17 (227 gun-gaps): the housing still begins on the throat's full profile at z 0.43 (the rear-profile points
+  // below); its upper tail now runs on to z 0.18 inside the nose ridge, so at +20 deg no notch opens behind the raised
+  // housing. The tail is narrower and higher than the full profile, so min x and min y still come from the housing.
   assert.ok(near(gunMountBounds.min.x, -0.34)
     && near(gunMountBounds.min.y, -0.23328)
-    && near(gunMountBounds.min.z, 0.43),
-  `${id} gun housing must begin on the turret throat's full lower/shoulder profile`);
+    && near(gunMountBounds.min.z, 0.18),
+  `${id} gun housing must begin on the turret throat's full lower/shoulder profile, its upper tail reaching z 0.18`);
   const housingPositions = gunMount.geometry.getAttribute('position');
   const rearProfile = new Set();
   for (let index = 0; index < housingPositions.count; index++) {

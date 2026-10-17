@@ -816,8 +816,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t14RoofFidelity.selftest.mjs',
     'src/vehicles/profiles/t90SprocketTier.selftest.mjs',
     'src/vehicles/profiles/ztz85iiiAttachment.selftest.mjs',
-    // 2026-10-17 (227 gun-gaps): the CV90 Mk 4 sight head carried by its neck, side plates on the in-leaning wall
-    'src/vehicles/profiles/cv90MkivRoofSight.selftest.mjs',
+    // 2026-10-17 (227 gun-gaps): CV90 Mk 4 sight head on its neck and side plates on the wall; CV90 cradle root in the shell
+    'src/vehicles/profiles/cv90TurretSeating.selftest.mjs',
     'src/vehicles/runningGearCadence.selftest.mjs',
     'src/world/sourcedTextures.selftest.mjs',
     'src/world/sourcedImageCache.selftest.mjs',

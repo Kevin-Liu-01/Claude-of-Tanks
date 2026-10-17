@@ -9,8 +9,7 @@ import { createTank } from '../tankFactory.ts';
 // vertical plates on a wall leaning in 23 deg above its knee left a wedge of air behind their upper half).
 // Seated: along rays through each part into the solid behind it, the count of solids the ray is inside never drops to 0.
 // All coordinates are world metres at rest (turret unyawed, gun level).
-const tank = createTank('cv90_mk4', null, { proceduralOnly: true });
-const { tris } = collectTriangles(tank.root);
+let tris = [];
 
 /** Surfaces crossed by an axis-aligned ray from `origin` along +/- `axis`: distance and whether the face points back
  *  at the ray (a solid begins: the ray enters it) or away from it (the ray leaves a solid). Opaque faces only. */
@@ -52,6 +51,8 @@ function airBetween(far, axis, sign, from, to) {
   return worst;
 }
 
+const tank = createTank('cv90_mk4', null, { proceduralOnly: true });
+tris = collectTriangles(tank.root).tris;
 // The sight neck spans x 0.119..0.349, z -0.765..-0.555 (y 2.395..2.585); the head (y 2.55..2.818) sits on it. Straight
 // down through the head into the neck there must be no air: from y 2.78 (inside the head) to y 2.45 (inside the neck).
 let probes = 0;
@@ -69,4 +70,28 @@ for (const side of [-1, 1]) for (const zc of [-1.05, -0.38, 0.24]) for (const dz
   probes++;
 }
 tank.dispose?.();
-console.log(`cv90MkivRoofSight.selftest: CV90 Mk 4 sight head carried by its neck and side plates seated on the shell (${probes} probes) PASS`);
+
+// CV90 (tier IX; the owner's "IX cv90 ... sticking out above the turret and its not coming from the turret"): the gun
+// cradle's root casting stood 18 mm (world) ahead of the shell's front face between the cheeks, a slot open to the sky
+// with the recoiling base showing through it. At every pitch, straight down just ahead of the shell face (world z 0.63,
+// between the cheeks' inner faces at x +-0.297) the casting must fill y 1.99..1.93 (the old slot, under the roof edge),
+// and its top must run level with the cradle's top panel (world y 2.034; it rose to 2.085 at the old rear face).
+const cv90 = createTank('cv90', null, { proceduralOnly: true });
+const gunRig = cv90.root.getObjectByName('rig_gun');
+for (const pitchDeg of [0, 37, -8]) {
+  gunRig.rotation.x = -pitchDeg * Math.PI / 180;
+  cv90.root.updateMatrixWorld(true);
+  tris = collectTriangles(cv90.root).tris;
+  for (const x of [-0.2, 0.2]) {
+    const air = airBetween([x, 6, 0.63], 1, -1, 1.99, 1.93);
+    assert.ok(air < 0.001, `cv90 root ${x} at ${pitchDeg} deg: ${(air * 1000).toFixed(1)} mm of air between the gun root and the shell face`);
+    probes++;
+  }
+}
+gunRig.rotation.x = 0;
+cv90.root.updateMatrixWorld(true);
+tris = collectTriangles(cv90.root).tris;
+const rootTop = 6 - crossings([0.2, 6, 0.66], 1, -1).find((h) => h.enters).distance;
+assert.ok(rootTop <= 2.036, `cv90 root top ${rootTop.toFixed(3)} m must run level with the cradle's top panel (2.034 m), not perched above it`);
+cv90.dispose?.();
+console.log(`cv90TurretSeating.selftest: CV90 Mk 4 sight head on its neck, side plates on the shell, CV90 gun root in the shell face (${probes} probes) PASS`);

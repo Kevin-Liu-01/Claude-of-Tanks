@@ -214,9 +214,16 @@ function addCv90ScaffoldedCradle(P: CvBuilderPort): void {
   // A solid root casting joins the cradle to the turret face. Forward of it,
   // the barrel sits inside a restrained four-rail truss with three side-only
   // diagonal openings per side; there are no broad perforated top panels.
+  // 227 gun-gaps (owner 2026-10-17, "the IX cv90 ... the part of its assembly that looks like its sticking out above
+  // the turret and its not coming from the turret"): the casting never reached the shell. Its rear face stood 20 mm
+  // ahead of the shell's front face (gun z 0.04 against 0.02), so a slot open to the sky separated them between the
+  // cheeks, with the recoiling base showing through it; and its top rose from 0.18 at the truss to 0.24 at that rear
+  // face, a box perched up to 8 cm above the cheeks' raked front edges. The casting now runs back 0.12 m into the
+  // shell (rear face at gun z -0.10, inside the loft at rest, full elevation and full depression) with its top level
+  // with the truss's top panel (0.18), so it leaves the turret face instead of standing in front of it.
   P.addGunExtra(orientedSlab(
-    [-0.39, -0.24, 0.04], [0.39, -0.24, 0.04], [0.31, -0.18, 0.42], [-0.31, -0.18, 0.42],
-    [-0.39, 0.24, 0.04], [0.39, 0.24, 0.04], [0.31, 0.18, 0.42], [-0.31, 0.18, 0.42],
+    [-0.39, -0.24, -0.10], [0.39, -0.24, -0.10], [0.31, -0.18, 0.42], [-0.31, -0.18, 0.42],
+    [-0.39, 0.18, -0.10], [0.39, 0.18, -0.10], [0.31, 0.18, 0.42], [-0.31, 0.18, 0.42],
   ));
   const point = (side: -1 | 1, t: number, vertical: number): Vec3 => [
     side * THREE.MathUtils.lerp(0.31, 0.18, t),
