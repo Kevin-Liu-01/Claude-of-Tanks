@@ -19,7 +19,7 @@ export default {
   navigationWaterPolicy: 'avoid-liquid',
   blurb: 'An irregular upland basin, pine-covered waterworks and a service settlement beneath high ridges',
   terrain: {
-    hillScale: 1.08, microScale: 0.78, rimH: 38, clearMarshVeg: true, softLakes: true,
+    hillScale: 1.08, microScale: 0.78, rimH: 12, clearMarshVeg: true, // (the horizons stream, 2026-10-16, with its Hinterland draft: rimH 38 -> 12, so the plateau's brow and villages show over the rim: edge-e 8 % -> 77 %, edge-s 21 % -> 92 %; the spawn's view 96 % -> 89 %) softLakes: true,
     village: { x0: -212, x1: 26, z0: -108, z1: 130, cx: -92, cz: 12, feather: 44, flatten: 0.82, relief: 0.18 },
     // Full platoon assembly/access, including the real outward solo search.
     // Existing hardstand stamps grade the current road grids/mask; no mesh,

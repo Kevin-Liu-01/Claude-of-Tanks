@@ -72,7 +72,7 @@ export default {
     sightLongShare: { band: [0.025, 0.15], reason: 'integ/216 only: L2 mine works under the see-through-gallery raster artifact; 217 restores the 0.03 floor' },
   } },
   terrain: {
-    hillScale: 0.72, microScale: 0.8, rimH: 38, quarryBenches: true,
+    hillScale: 0.72, microScale: 0.8, rimH: 12, quarryBenches: true, // (the horizons stream, 2026-10-16, with its Hinterland draft: rimH 38 -> 12, so Mount Owen and Mount Lyell show over the rim: edge-e 20 % -> 81 %, corner-sw 47 % -> 67 %; the spawn's view 100 % -> 97 %)
     village: { x0: 64, x1: 256, z0: -190, z1: 128, cx: 160, cz: -24, feather: 40, flatten: 0.78, relief: 0.18 },
     // (2026-10-06, the batch-4 integration: round 2's gullied hills set nine cells of zone 1's 30 m disc past the seat's
     // 0.94 slope, so the match placement moved it 24 m off its hint, and zone 3 8 m off its own to keep clear of it; an
