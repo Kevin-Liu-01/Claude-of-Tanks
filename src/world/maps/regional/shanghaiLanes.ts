@@ -153,12 +153,15 @@ export function shikumenRow(ctx: RegionalBuildContext, bank: Bank | null): Regio
     const backTop = s1 + s2 * 0.8 + s3, courtH = s1 + 1.3, terraceY = backTop + 0.12;
     const gw = clampTo(uw * 0.3, 1.2, 1.5), gh = 2.75, hallW = uw - 1.2, P = PLINTH;
     const storeys = (hs: number[]): StoreySpec[] => hs.map((h) => ({ h, wall }));
-    // the casements in a surround: on a brick lane its own brick a hand proud under a red-brick arch, on a whitewashed
-    // lane a stucco surround and lintel; granite sills; the shutters folded back on the wall or shut in the reveal
+    // the casements in a surround: on a brick lane red brick round the grey under a red-brick arch (a lintel on a phone),
+    // on a whitewashed lane a stucco surround and lintel; granite sills; the shutters folded back on the wall or shut in
+    // the reveal (the head in the surround's own bucket: the craft lays it in place of the lintel and only adds)
     const head: HeadStyle = brick ? { kind: 'segment', bucket: 'structureMetal', colour: RED_BRICK, h: 0.12, out: 0.045, ext: 0.05, rise: 0.09 }
       : { kind: 'lintel', bucket: GRANITE, h: 0.16, out: 0.05, ext: 0.07 };
     const win: WindowStyle = {
-      ...CASEMENT, surround: { bucket: brick ? 'stone' : GRANITE, width: 0.1, out: 0.035, lintel: 0.15 }, sill: { bucket: GRANITE, out: 0.09 },
+      // (a phone keeps the plain opening: the surround draws nothing from the streams)
+      ...CASEMENT, surround: mobile ? null : brick ? { bucket: 'structureMetal', colour: RED_BRICK, width: 0.1, out: 0.035, lintel: 0.15 } : { bucket: GRANITE, width: 0.1, out: 0.035, lintel: 0.15 },
+      sill: { bucket: GRANITE, out: 0.09 },
       shutters: shuttered ? { colour: shutterPaint, kind: 'louvred', closed: 0.18 } : null, head,
     };
     const hall: WindowStyle = { ...CASEMENT, frame: shade(TEAK, 0.6), bars: 'six', sill: null, surround: null, shutters: null };
@@ -355,7 +358,7 @@ export function shophouseRow(ctx: RegionalBuildContext, bank: Bank | null): Regi
     const roofX = -(zf - zr) / 2;
     const stacks = Array.from({ length: n }, (_, k) => ({ x: roofX + s - 0.75, z: -W / 2 + uw * k + 0.55, sx: 0.45, sz: 0.45, above: 0.65, bucket: wall, cap: 'slab' as const }));
     const backWin: WindowStyle = {
-      ...CASEMENT, surround: { bucket: GRANITE, width: 0.09, out: 0.035, lintel: 0.14 }, sill: { bucket: GRANITE, out: 0.09 },
+      ...CASEMENT, surround: mobile ? null : { bucket: GRANITE, width: 0.09, out: 0.035, lintel: 0.14 }, sill: { bucket: GRANITE, out: 0.09 },
       shutters: { colour: shade(TEAK, 0.8), kind: 'plank', closed: 0.3 },
     };
     const backDoor: DoorStyle = { leaf: TEAK, frame: { bucket: GRANITE, width: 0.1, out: 0.04 }, transom: false, steps: { bucket: GRANITE }, leafKind: 'plank' };
@@ -366,7 +369,8 @@ export function shophouseRow(ctx: RegionalBuildContext, bank: Bank | null): Regi
     const spec: HouseSpec = {
       w: zr - zb, d: W, plinth: { h: P, out: 0.04, bucket: GRANITE },
       storeys: [{ h: s1 - P, wall }, { h: s2, wall, jetty: [0, 0, 0, zf - zr] }, ...(three ? [{ h: s3, wall }] : [])], roof, gableBucket: wall,
-      openings, chimneys: stacks, gutters: null, verge: null, rafters: burnt ? CHAR : shade(TEAK, 0.72), reveal: 0.16,
+      // (the rafter feet are a desktop's: a phone leaves them out, as the kits do)
+      openings, chimneys: stacks, gutters: null, verge: null, rafters: mobile ? null : burnt ? CHAR : shade(TEAK, 0.72), reveal: 0.16,
       spall: wall === 'plaster' ? 'stone' : null, skirt: null,
     };
     const frame: HouseFrame = along(sink, 0, (zb + zr) / 2, () => { const fr = buildHouse(sink, spec, dialect); plinthWash(sink, spec); return fr; });
@@ -401,10 +405,10 @@ export function shophouseRow(ctx: RegionalBuildContext, bank: Bank | null): Regi
     const tf = { colour: burnt ? CHAR : shade(TEAK, 0.78), decor: true, fineSides: true } as const;
     for (const st of ups) {
       const y = s1 + (st - 1) * s2;
-      faceBox(sink, 'structureWood', up, 0, y + 0.7, 0.04, W - 0.1, 0.1, 0.06, tf);
-      faceBox(sink, 'structureWood', up, 0, y + 2.42, 0.04, W - 0.1, 0.1, 0.06, tf);
+      faceBox(sink, 'structureWood', up, 0, y + 0.7, 0.03, W - 0.1, 0.1, 0.06, tf);
+      faceBox(sink, 'structureWood', up, 0, y + 2.42, 0.03, W - 0.1, 0.1, 0.06, tf);
     }
-    for (let k = 0; k <= n * m; k++) faceBox(sink, 'structureWood', up, clampTo(-W / 2 + k * uw / m, -W / 2 + 0.06, W / 2 - 0.06), (s1 + eaveY) / 2, 0.045, 0.12, eaveY - s1 - 0.1, 0.07, tf);
+    for (let k = 0; k <= n * m; k++) faceBox(sink, 'structureWood', up, clampTo(-W / 2 + k * uw / m, -W / 2 + 0.06, W / 2 - 0.06), (s1 + eaveY) / 2, 0.035, 0.12, eaveY - s1 - 0.1, 0.07, tf);
     // (looks 227) the pent roof over the shops (the yaoyan of a Jiangnan shop front): a canal-tiled lean-to off the timber
     // front under its first casements, carried on the front's brackets (dressing: the house keeps the collision)
     leanTo(sink, { face: up, u0: -W / 2 + 0.05, u1: W / 2 - 0.05, depth: 0.72, highY: s1 + 0.44,
