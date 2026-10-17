@@ -12,18 +12,19 @@
 // tools/tank-regen-changed.mjs (npm run tank:regen:changed).
 import { resolve } from 'node:path';
 import { computeState, loadBase, resolveChanged } from './changed-only/fingerprint.mjs';
-import { STEPS } from './changed-only/steps.mjs';
+import { loadTable } from './changed-only/table.mjs';
 
 const args = process.argv.slice(2);
 const value = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
 const root = resolve(value('root') ?? process.cwd());
 const json = args.includes('--json');
 const explain = value('explain') ?? (args.includes('--explain') ? '*' : null);
+const { STEPS, config, path: tableModule } = await loadTable(value('table') ?? null);
 const names = value('step')?.split(',').filter(Boolean) ?? STEPS.map((step) => step.name);
 for (const name of names) if (!STEPS.some((step) => step.name === name)) throw new Error(`unknown step ${name}`);
 
 const started = Date.now();
-const state = computeState({ root, steps: STEPS });
+const state = computeState({ root, steps: STEPS, config, tableModule });
 const manifest = loadBase(root, value('base'));
 const result = resolveChanged(state, manifest, { steps: names });
 const seconds = ((Date.now() - started) / 1000).toFixed(1);
@@ -37,7 +38,9 @@ if (json) {
     const entry = result[name];
     const head = entry.ids.slice(0, 12).join(',');
     console.log(`${name.padEnd(10)} ${entry.mode.padEnd(4)} ${String(entry.ids.length).padStart(3)} changed${entry.ids.length ? `: ${head}${entry.ids.length > 12 ? ',...' : ''}` : ''}`);
-    if (entry.reasons['*']) console.log(`           why: ${entry.reasons['*'].join('; ')}`);
+    // Long reason lists (every shard of a table unrecorded) print their first few and a count.
+    const why = entry.reasons['*'];
+    if (why) console.log(`           why: ${why.slice(0, 4).join('; ')}${why.length > 4 ? `; and ${why.length - 4} more` : ''}`);
     if (explain) {
       for (const id of explain === '*' ? entry.ids.slice(0, 20) : [explain]) {
         if (entry.reasons[id]) console.log(`           ${id}: ${entry.reasons[id].join('; ')}`);

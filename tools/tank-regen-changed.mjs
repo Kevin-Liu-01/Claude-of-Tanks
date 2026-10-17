@@ -6,15 +6,17 @@
 //   npm run tank:regen:changed -- --dry-run         # print what would run and why
 //   npm run tank:regen:changed -- --all             # every step on the whole fleet first (bootstrap, explicit full)
 //   npm run tank:regen:changed -- --check --all     # nightly: every step's whole-fleet --check; writes nothing
-//   options: --steps=controls,fills  --no-gpu  --jobs=4 (parallel fill parts)  --max-passes=3
+//   npm run tank:regen:changed -- --verify          # then each step's --check on the ids it ran (whole fleet if it ran full)
+//   options: --steps=controls,fills  --no-gpu  --jobs=4 (parallel fill parts)  --max-passes=3  --root=<tree>
+//            --table=<module> (a fixture step table: tools/changed-only/chain.selftest.mjs)
 //
 // Order: aggregates that feed the shared core (paint catalog, legacy specs); then the CPU fixpoint, at most
 // --max-passes passes over controls, fills, seats, spare-track, anatomy, marking (seats read the fills and roof guns,
 // missionDockSeats feeds the spare-track dock keep-out); the geometry ledger; the manual reference; then centering and
 // icons under the capture lock in holds of at most 20 minutes. Centering moves the presentation anchors every build
-// reads, so the CPU fixpoint runs again for any id they moved. Each step's keys are written to
-// release/fingerprints.tsv as soon as it finishes (inKeys taken before the run, outKeys after), so the chain resumes
-// after a crash. The final resolve must report 0 changed for every step; otherwise the chain fails and names the ids.
+// reads, so the CPU fixpoint (and the ledger) runs again for any id they moved, and the GPU steps repeat until stable.
+// Each step's keys are written to release/fingerprints.tsv as soon as it finishes (inKeys taken before the run, outKeys
+// after), so the chain resumes after a crash. The final resolve must report 0 changed for every step; otherwise the chain fails and names the ids.
 //
 // Resource rules: every CPU child runs `nice -n 10 node --max-old-space-size=4096` after `headroom can-start --gb N`,
 // with a wall-clock limit that kills only that child; GPU children are not niced and run inside the capture lock.
@@ -24,21 +26,24 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { emptyManifest, computeState, readManifest, recordStep, refreshComponents, resolveChanged, writeManifest }
   from './changed-only/fingerprint.mjs';
-import { CPU_FIXPOINT_STEPS, POST_AGGREGATES, PRE_AGGREGATES, STEPS, stepByName } from './changed-only/steps.mjs';
+import { loadTable } from './changed-only/table.mjs';
 
 const args = process.argv.slice(2);
 const value = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
 const ALL = args.includes('--all'), CHECK = args.includes('--check'), DRY = args.includes('--dry-run');
-const NO_GPU = args.includes('--no-gpu');
+const NO_GPU = args.includes('--no-gpu'), VERIFY = args.includes('--verify');
 const JOBS = Math.max(1, Number(value('jobs') ?? 4) | 0);
 const MAX_PASSES = Math.max(1, Number(value('max-passes') ?? 3) | 0);
 const ONLY = value('steps')?.split(',').filter(Boolean) ?? null;
 const root = resolve(value('root') ?? process.cwd());
+const table = await loadTable(value('table') ?? null);
+const { STEPS, CPU_FIXPOINT_STEPS, PRE_AGGREGATES, POST_AGGREGATES, stepByName } = table;
 const qaDir = join(root, '.qa-dev/changed-only');
 mkdirSync(qaDir, { recursive: true });
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');
 const logPath = join(qaDir, `${stamp}.log`);
-const summary = { stamp, root, mode: CHECK ? 'check' : ALL ? 'all' : 'changed', dryRun: DRY, runs: [], passes: 0, final: null };
+const summary = { stamp, root, mode: CHECK ? 'check' : ALL ? 'all' : 'changed', dryRun: DRY, runs: [], passes: 0, final: null,
+  verify: [], resolveSeconds: [] };
 const log = (line) => { console.log(line); appendFileSync(logPath, `${line}\n`); };
 const selected = (name) => !ONLY || ONLY.includes(name);
 for (const name of ONLY ?? []) if (!stepByName(name)) throw new Error(`unknown step ${name}`);
@@ -102,27 +107,27 @@ function runChild(argv, { niced, timeoutS, label }) {
 
 const timeoutFor = (step, count) => Math.round(step.timeoutS + step.perIdS * count);
 
-/** Run a CPU step on `ids` (null: whole fleet). Fills run as parallel parts merged by the tool itself. */
+/** Run a CPU step on `ids` (null: whole fleet). A `parts` step (fills) runs as parallel parts merged by the tool itself. */
 async function runCpuStep(step, ids, state) {
   const count = ids?.length ?? state.ids.length;
   const scopedArgs = ids ? step.scoped(ids) : step.full;
-  if (step.name === 'fills' && count >= 8 && JOBS > 1) {
+  if (step.parts && count >= 8 && JOBS > 1) {
     const parts = Math.min(JOBS, Math.ceil(count / 4));
-    const all = ids ?? Object.keys(state.groupById); // --all fills every fleet-manifest id
-    const scratch = mkdtempSync(join(tmpdir(), 'cot-fills-parts-'));
+    const all = ids ?? Object.keys(state.groupById); // a whole-fleet run covers every fleet-manifest id
+    const scratch = mkdtempSync(join(tmpdir(), `cot-${step.name}-parts-`));
     const lists = Array.from({ length: parts }, () => []);
     all.forEach((id, index) => lists[index % parts].push(id));
     const runs = await Promise.all(lists.map(async (list, k) => {
       await gate(step.gb);
       const dir = join(scratch, `part${k}`);
       return runChild([step.tool, ...step.flags, `--ids=${list.join(',')}`, `--out-dir=${dir}`, `--loader=${join(dir, 'loader.ts')}`],
-        { niced: true, timeoutS: timeoutFor(step, list.length), label: `fills-part${k}` });
+        { niced: true, timeoutS: timeoutFor(step, list.length), label: `${step.name}-part${k}` });
     }));
     const failed = runs.find((run) => run.code !== 0);
     if (failed) return failed;
     const dirs = lists.map((_, k) => join(scratch, `part${k}`)).join(',');
     await gate(step.gb);
-    return runChild([step.tool, ...step.flags, ...scopedArgs, `--merge-from=${dirs}`], { niced: true, timeoutS: 900, label: 'fills-merge' });
+    return runChild([step.tool, ...step.flags, ...scopedArgs, `--merge-from=${dirs}`], { niced: true, timeoutS: 900, label: `${step.name}-merge` });
   }
   const extra = [];
   let jsonPath = null;
@@ -169,7 +174,12 @@ async function runGpuStep(step, ids, state) {
 
 let manifest = readManifest(root) ?? emptyManifest();
 const persist = (state) => { refreshComponents(manifest, state); writeManifest(root, manifest); };
-const fresh = () => computeState({ root, steps: STEPS, env: childEnv });
+const fresh = () => {
+  const started = Date.now();
+  const state = computeState({ root, steps: STEPS, env: childEnv, config: table.config, tableModule: table.path });
+  summary.resolveSeconds.push(Math.round((Date.now() - started) / 100) / 10);
+  return state;
+};
 
 /** Resolve and run one step; returns true when it ran (its keys may have moved others). */
 async function step(name, { forceFull = false } = {}) {
@@ -221,30 +231,65 @@ async function cpuFixpoint(firstPassFull) {
   }
 }
 
+/** Run one step's check form (`check` on the whole fleet, `checkScoped(ids)` on some); resolves with the child's result. */
+async function runCheck(definition, ids) {
+  const flags = definition.checkFlags ?? definition.flags;
+  const scope = ids ? definition.checkScoped(ids) : definition.check;
+  const runArgs = [definition.checkTool ?? definition.tool, ...flags, ...scope];
+  const label = `${definition.name}-check${ids ? '-ids' : ''}`;
+  if (definition.device === 'gpu') {
+    const { createCaptureLock } = await import('./capture-lock.mjs');
+    const lock = createCaptureLock();
+    await lock.acquire(Number(process.env.COT_SHOTS_LOCK_TIMEOUT_MS) || 3 * 3600_000);
+    const refresh = setInterval(() => lock.refresh(), 60_000);
+    try { return await runChild(runArgs, { niced: false, timeoutS: 1200, label }); }
+    finally { clearInterval(refresh); lock.release(); }
+  }
+  await gate(definition.gb);
+  return runChild(runArgs, { niced: true, timeoutS: timeoutFor(definition, ids?.length ?? 220), label });
+}
+
+/** --verify: each step's check on exactly the ids this chain ran it on (the whole fleet when it ran full). */
+async function verifyRuns() {
+  for (const definition of STEPS) {
+    const runs = summary.runs.filter((run) => run.step === definition.name && run.code === 0 && !run.dryRun);
+    if (!runs.length) continue;
+    const whole = runs.some((run) => run.ids.includes('*'));
+    const ids = whole ? null : [...new Set(runs.flatMap((run) => run.ids))];
+    if (!(whole ? definition.check : definition.checkScoped)) {
+      log(`[regen] verify ${definition.name}: no check form`); summary.verify.push({ step: definition.name, check: 'none' }); continue;
+    }
+    const started = Date.now();
+    const run = await runCheck(definition, ids);
+    const seconds = Math.round((Date.now() - started) / 1000);
+    summary.verify.push({ step: definition.name, ids: ids ?? ['*'], check: run.code === 0 ? 'pass' : 'fail', code: run.code, seconds });
+    log(`[regen] verify ${definition.name} (${ids ? `${ids.length} id(s)` : 'whole fleet'}): ${run.code === 0 ? 'PASS' : `FAIL (${run.out})`} in ${seconds} s`);
+  }
+  const failed = summary.verify.filter((entry) => entry.check === 'fail');
+  if (failed.length) throw new Error(`verify failed: ${failed.map((entry) => entry.step).join(', ')}`);
+}
+
 async function checkAll() {
   // Nightly: each step's whole-fleet --check (no writes). Steps without a check form are listed, not skipped silently.
   await aggregates(PRE_AGGREGATES, 'pre');
   for (const definition of STEPS.filter((entry) => selected(entry.name) && (!NO_GPU || entry.device !== 'gpu'))) {
     if (!definition.check) { log(`[regen] ${definition.name}: no --check form (compare with a scratch --all run)`); summary.runs.push({ step: definition.name, check: 'none' }); continue; }
-    const flags = definition.checkFlags ?? definition.flags;
-    const runArgs = [definition.tool, ...flags, ...definition.check];
-    let run;
-    if (definition.device === 'gpu') {
-      const { createCaptureLock } = await import('./capture-lock.mjs');
-      const lock = createCaptureLock();
-      await lock.acquire(Number(process.env.COT_SHOTS_LOCK_TIMEOUT_MS) || 3 * 3600_000);
-      try { run = await runChild(runArgs, { niced: false, timeoutS: 1200, label: `${definition.name}-check` }); }
-      finally { lock.release(); }
-    } else {
-      await gate(definition.gb);
-      run = await runChild(runArgs, { niced: true, timeoutS: timeoutFor(definition, 220), label: `${definition.name}-check` });
-    }
+    const run = await runCheck(definition, null);
     summary.runs.push({ step: definition.name, check: run.code === 0 ? 'pass' : 'fail', code: run.code });
     log(`[regen] ${definition.name} --check: ${run.code === 0 ? 'PASS' : `FAIL (${run.out})`}`);
   }
   await aggregates(POST_AGGREGATES, 'post');
   const state = fresh();
   summary.final = resolveChanged(state, readManifest(root));
+  const failed = summary.runs.filter((run) => run.check === 'fail');
+  if (failed.length) throw new Error(`--check failed: ${failed.map((run) => run.step).join(', ')}`);
+}
+
+// Steps after the CPU fixpoint (the geometry ledger measures settled builds) and the GPU steps, in table order.
+const AFTER_STEPS = STEPS.filter((entry) => entry.device === 'cpu' && entry.after).map((entry) => entry.name);
+const GPU_STEPS = STEPS.filter((entry) => entry.device === 'gpu').map((entry) => entry.name);
+async function afterSteps(forceFull) {
+  for (const name of AFTER_STEPS.filter(selected)) await step(name, { forceFull });
 }
 
 const started = Date.now();
@@ -253,13 +298,20 @@ try {
   else {
     if (!DRY) await aggregates(PRE_AGGREGATES, 'pre');
     await cpuFixpoint(ALL);
-    if (selected('ledger')) await step('ledger', { forceFull: ALL });
+    await afterSteps(ALL);
     if (!DRY) await aggregates(POST_AGGREGATES, 'post');
-    if (!NO_GPU) {
-      const ranCentering = selected('centering') && await step('centering', { forceFull: ALL });
-      // The anchors are read by every build: re-key the CPU steps and the ledger for any id they moved.
-      if (ranCentering) { await cpuFixpoint(false); if (selected('ledger')) await step('ledger'); }
-      if (selected('icons')) await step('icons', { forceFull: ALL });
+    // A GPU step can write a table every build reads (centering: the presentation anchors), so after each one that ran
+    // the CPU steps and the ledger are re-resolved (a no-op when it moved nothing), and the GPU steps repeat until a round
+    // runs none, at most --max-passes rounds.
+    if (!NO_GPU) for (let round = 1; round <= MAX_PASSES; round++) {
+      let ran = false;
+      for (const name of GPU_STEPS.filter(selected)) {
+        if (!await step(name, { forceFull: ALL && round === 1 })) continue;
+        ran = true;
+        await cpuFixpoint(false);
+        await afterSteps(false);
+      }
+      if (!ran || DRY) break;
     }
     const state = fresh();
     const names = STEPS.filter((entry) => selected(entry.name) && (!NO_GPU || entry.device !== 'gpu')).map((entry) => entry.name);
@@ -267,6 +319,7 @@ try {
     const open = Object.entries(summary.final).filter(([, entry]) => entry.mode !== 'none');
     for (const [name, entry] of Object.entries(summary.final)) log(`[regen] final ${name}: ${entry.mode} ${entry.ids.length}`);
     if (open.length && !DRY) throw new Error(`final resolve not empty: ${open.map(([name, entry]) => `${name}=${entry.ids.length}`).join(' ')}`);
+    if (VERIFY && !DRY) await verifyRuns();
   }
   summary.seconds = Math.round((Date.now() - started) / 1000);
   summary.ok = true;

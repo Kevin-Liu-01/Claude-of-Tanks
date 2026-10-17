@@ -68,8 +68,9 @@ export function parseGroupLoaders(text, filename = GROUP_LOADERS_FILE) {
   return groups;
 }
 
-function readRows(root, env) {
-  const out = execFileSync(process.execPath, ['--max-old-space-size=4096', join(import.meta.dirname, 'rows-child.mjs'), root], {
+function readRows(root, env, tableModule = null) {
+  const out = execFileSync(process.execPath, ['--max-old-space-size=4096', join(import.meta.dirname, 'rows-child.mjs'), root,
+    ...(tableModule ? [tableModule] : [])], {
     cwd: root, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024, timeout: 300_000,
     env: { ...env, NODE_OPTIONS: '' }, stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -91,7 +92,7 @@ export const DEFAULT_CONFIG = Object.freeze({
 });
 
 export function computeState({ root, steps = STEPS, env = process.env, rows = null, graph = null, cacheDir,
-  config = DEFAULT_CONFIG } = {}) {
+  config = DEFAULT_CONFIG, tableModule = null } = {}) {
   root = resolve(root);
   const { tables: TABLES, aggregates: AGGREGATES, fleetEntries: FLEET_ENTRIES, loaderFiles: LOADER_FILES,
     groupLoadersFile: GROUP_LOADERS_FILE, declared: DECLARED_DYNAMIC, accessors: ACCESSORS } = { ...DEFAULT_CONFIG, ...config };
@@ -99,7 +100,7 @@ export function computeState({ root, steps = STEPS, env = process.env, rows = nu
     .filter(([, declaration]) => declaration.importHelper).map(([file, declaration]) => [file, declaration.importHelper]));
   graph ??= createGraph({ root, importHelpers: declaredHelpers, ...(cacheDir ? { cacheDir } : {}) });
   const abs = (rel) => resolve(root, rel), rel = (path) => relative(root, path);
-  const data = rows ?? readRows(root, env);
+  const data = rows ?? readRows(root, env, tableModule);
   const globalReasons = data.errors.map((error) => `rows: ${error}`);
   // Every generator iterates one of these id lists; an id outside the keyed list would never be checked.
   const universe = (list) => JSON.stringify([...new Set(list)].sort());
@@ -401,7 +402,9 @@ const reasonsFor = (manifest, state, name, id) => {
     const before = manifest.rows[table]?.[member] ?? 'absent', now = state.rows[table]?.[member] ?? 'absent';
     if (before !== now) out.push(`row ${table}[${member}]`);
   }
-  return out.length ? out : ['inputs'];
+  // Every component matches the manifest's latest snapshot, so the key moved through rows a later step of the last
+  // chain rewrote after this step ran (the chain's next pass re-runs it).
+  return out.length ? out : ['inputs rewritten after this step ran (a later step of the last chain)'];
 };
 
 /**

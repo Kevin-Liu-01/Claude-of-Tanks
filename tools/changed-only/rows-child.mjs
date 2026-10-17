@@ -1,7 +1,7 @@
 // Child process of tools/changed-only/fingerprint.mjs: the roster, every per-id table row and each id's spec chain,
 // read by importing the data modules only (no builder, no tank build). First-party tooling: Kevin B. Liu.
 //
-//   node tools/changed-only/rows-child.mjs <root>   -> JSON on stdout
+//   node tools/changed-only/rows-child.mjs <root> [<step table module>]   -> JSON on stdout
 //
 // A row is the JSON of one id's entry as the module or file holds it (insertion order, so a reordered row is a changed
 // row). A spec chain is every roster id named anywhere in an id's registered spec (visualBase, variantOf, donors,
@@ -11,9 +11,10 @@ import { readFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { expandGlobs } from './globs.mjs';
-import { TABLES } from './steps.mjs';
 
 const root = resolve(process.argv[2] ?? join(import.meta.dirname, '../..'));
+// The repository's step table, or a fixture's (tools/changed-only/table.mjs).
+const { TABLES } = process.argv[3] ? await import(pathToFileURL(resolve(process.argv[3])).href) : await import('./steps.mjs');
 const h16 = (text) => createHash('sha256').update(text).digest('hex').slice(0, 16);
 const load = (rel) => import(pathToFileURL(join(root, rel)).href);
 

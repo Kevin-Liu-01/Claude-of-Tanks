@@ -650,6 +650,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // resolver on a fixture fleet, then the real fleet's partition, pinned dynamic reads and the chain order.
     'tools/changed-only/resolver.selftest.mjs',
     'tools/changed-only/fleet-partition.selftest.mjs',
+    // The real chain end to end on a fixture fleet: changed-only == whole-fleet regen byte for byte, order, --verify.
+    'tools/changed-only/chain.selftest.mjs',
     'src/app/checkedIntegrationPort.selftest.mjs',
     'src/app/lazyRuntimeOwner.selftest.mjs',
     'src/app/lazyImportRetry.selftest.mjs',

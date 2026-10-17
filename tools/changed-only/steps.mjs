@@ -174,9 +174,11 @@ const ids = (list) => `--ids=${list.join(',')}`;
  * spare-track dock keep-out, so the CPU order is controls, fills, seats, spare-track, anatomy, marking; the ledger
  * measures the settled builds; the GPU steps follow.
  *   flags   canonical flags (part of the step key)
- *   full    extra args for a whole-fleet run; scoped(list) for an id run; check/checkScoped for verification
+ *   full    extra args for a whole-fleet run; scoped(list) for an id run; check/checkScoped for verification (run by
+ *           checkTool when the generator has no check mode of its own)
  *   outputs per-id tables written; files: other files written whole (aggregates and reports are not keyed)
- *   gb      memory to ask headroom for; timeoutS per run (scaled by id count where noted)
+ *   gb      memory to ask headroom for; timeoutS per run (scaled by id count where noted); parts: the chain splits a
+ *           run of 8 or more ids into --jobs parallel --out-dir parts that the tool merges (--merge-from)
  */
 export const STEPS = Object.freeze([
   {
@@ -191,8 +193,11 @@ export const STEPS = Object.freeze([
     // The release flags (226: fills made at the old defaults 4/12 had to be redone); explicit, so a default change in
     // the tool cannot silently change what the chain generates.
     flags: ['--voxel=0.025', '--cell=2', '--rounds=8', '--min-fine=1'],
-    full: ['--all'], scoped: (list) => [ids(list)],
-    check: null, checkScoped: null,
+    full: ['--all'], scoped: (list) => [ids(list)], parts: true,
+    // The generator measures and writes in one pass; its check measures into scratch with the same code and flags and
+    // compares records (tools/changed-only/fills-check.mjs), so the generator's own bytes (and key) stay put.
+    checkTool: 'tools/changed-only/fills-check.mjs',
+    check: ['--all', '--jobs=4'], checkScoped: (list) => [ids(list), '--jobs=4'],
     outputs: ['interiorFills', 'movingClearanceAir'],
     files: ['src/vehicles/interiorFillLoaders.generated.ts'], gb: 8, timeoutS: 3600, perIdS: 60,
   },
