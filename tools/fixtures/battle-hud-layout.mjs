@@ -5,6 +5,9 @@ import '../../src/ui/motion.css';
 import '../../src/ui/battleUiVisibility.css';
 import '../../src/ui/hudCustomization.css';
 import '../../src/ui/responsiveSurfaces.css';
+// The battle HUD loads with its aerial sheet (battleHudAccess): without it the flight controls render as stray white
+// boxes over the score (critic r3, every phone frame).
+import '../../src/ui/aerialHud.css';
 import { Vector3 } from 'three';
 import { installResponsiveLayout } from '../../src/ui/responsiveLayout.ts';
 import { createBus } from '../../src/game/stateCore.ts';
@@ -63,11 +66,19 @@ const AMMO_STAGES = {
   // Juggernaut with unlimited rounds: commit 2 of gameplay-227 writes ammo 'unlimited' into its ruleset row.
   'ammo-unlimited': {spec:'m1a3', mode:'juggernaut', rules:{ammo:'unlimited'}, magazineRounds:3,
     reload:{t:1.4,totalS:2.5,kind:'intraClip'}},
+  // The ×8 sight (critic r3: on a landscape phone the struck round and the rack sat on the scope's ammo readout).
+  'ammo-reload-sniper': {spec:'m1a1_abrams_hc', reload:{t:3.2,totalS:6,kind:'shell'}, sniper:true},
+  'ammo-dry-cannon-sniper': {spec:'m1a1_abrams_hc', ammo:[0,0,0], reload:{t:3.2,totalS:6,kind:'shell'}, sniper:true},
+  'ammo-reload-autoloader-sniper': {spec:'m1a3', ammo:[12,4,10], magazineRounds:0,
+    reload:{t:12,totalS:21,kind:'magazine'}, sniper:true},
+  'ammo-dry-autoloader-sniper': {spec:'m1a3', ammo:[0,0,0], magazineRounds:0, reload:{t:12,totalS:21,kind:'magazine'},
+    sniper:true},
 };
+let ammoSniper = false;
 let ammoUnlimited = false;
 const ammoAim = createAimController({
   getGame: () => ({player, tanks:[player]}),
-  getRig: () => ({aimPoint:new Vector3(0, 2, 200), aimDist:200, mode:'CHASE', zoom:1}),
+  getRig: () => ({aimPoint:new Vector3(0, 2, 200), aimDist:200, mode:ammoSniper ? 'SNIPER' : 'CHASE', zoom:ammoSniper ? 8 : 1}),
   worldRaycast: () => null,
   targetVisible: () => true,
   // The shell cards as game/playerBattleActions builds them; the controller writes the counts.
@@ -92,6 +103,7 @@ function stageAmmo(name) {
   Object.assign(combat.reload, stage.reload);
   const ruleset = {...matchRulesetFor(stage.mode || 'standard'), ...stage.rules};
   ammoUnlimited = ruleset.ammo === 'unlimited';
+  ammoSniper = stage.sniper === true;
   const aim = {singleReticle:false, point:new Vector3(), distM:0, dispersionRadM:0, gunLimitSpec:false,
     reload:{t:0, totalS:0}, magazine:{rounds:0, capacity:0, launcher:false}, shellSlot:0, shells:[], zoom:1, gunDistM:0,
     gunTargetId:null, gunMarker:new Vector3(), blockedDistM:null, blockedLabel:false, penRatio:null};
@@ -101,6 +113,7 @@ function stageAmmo(name) {
     ...(ruleset.mode === 'juggernaut' ? {boss:{id:tanks[8].id, hp:5200, maxHp:8000}} : {})};
   panel.setTank(spec); panel.setState(combat);
   hud.setMode('hidden'); hud.setMode('battle');
+  frame.mode = ammoSniper ? 'sniper' : 'battle';
   for (let i = 0; i < 6; i++) hud.update(frame);
   panel.update(combat);
 }
@@ -120,7 +133,7 @@ function multiplayer(kind='healthy') {
 }
 function state(name) {
   network?.dispose();network=null;
-  delete frame.rosterTanks; frame.tanks=tanks; frame.aim=defaultAim();
+  delete frame.rosterTanks; frame.tanks=tanks; frame.aim=defaultAim(); frame.mode='battle';
   frame.aim.gunLimitSpec = name==='notifications';
   settings.close({noRelock:true});
   const modeId = name.startsWith('mode-') ? name.slice(5) : 'mars';

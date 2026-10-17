@@ -45,6 +45,26 @@ export function battleReportDock(bottom: number, ceiling: number, compact: boole
   return { top: bottom - height, height, bottom };
 }
 
+/** The reticle's band around the screen-centre sight (hud.ts paints it at the centre): above, the dispersion ring
+ * (RET_CEIL_FRAC caps it near 58 px on a phone); below, the reload countdown under the autoloader rack, the struck
+ * empty round, the aim warning (battleHudLayout.css: 50% + 48 px, 24 px tall) and, through the scope, the ammunition
+ * readout and zoom plate (hud.ts sniperAmmoReadoutY: up to 108 px down, the plate 24 px under it). */
+export const SIGHT_BAND_ABOVE = 64;
+export const SIGHT_BAND_BELOW = 140;
+/**
+ * Owner 2026-10-17 (out of ammo, critic r3): a portrait phone parks the systems row above its ammo tray, which on
+ * tall phones lands it across the sight — the countdown, the rack and the struck empty round painted over its labels.
+ * A row crossing the band moves below it when it fits above `floor` (the lower control cluster), else above it when
+ * it fits below `ceiling` (the map, the touch chrome), else it stays.
+ */
+export function portraitSightClearTop(top: number, height: number, centerY: number, floor: number, ceiling: number): number {
+  if (top >= centerY + SIGHT_BAND_BELOW || top + height <= centerY - SIGHT_BAND_ABOVE) return top;
+  const below = centerY + SIGHT_BAND_BELOW;
+  if (below + height <= floor) return below;
+  const above = centerY - SIGHT_BAND_ABOVE - height;
+  return above >= ceiling ? above : top;
+}
+
 export function installBattleHudLayout(root: HTMLElement): void {
   let frame = 0;
   const observed = new Set<Element>();
@@ -204,6 +224,21 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const touchChrome = touch ? read('.cot-touch.on .mobile-chrome') : null;
     if (touch && width < height && touchChrome && systemsLeft + dockWidth > touchChrome.left
       && systemsTop < touchChrome.bottom + 8) systemsTop = touchChrome.bottom + 8;
+    // The side lanes keep the floor the row's natural place gives them (a row moved below the sight lends them nothing).
+    const laneSystemsTop = systemsTop;
+    if (touch && width < height && systemsHeight) {
+      const floor = Math.min(read('.cot-drive')?.top ?? height, read('.cot-touch.on .fire.alt')?.top ?? height,
+        read('.cot-touch.on .joy')?.top ?? height, read('.cot-touch-aim.on .aimhint')?.top ?? height) - 8;
+      const ceiling = Math.max(map?.bottom ?? 0, touchChrome?.bottom ?? 0, top) + 8;
+      const clearTop = portraitSightClearTop(systemsTop, systemsHeight, height / 2, floor, ceiling);
+      if (clearTop !== systemsTop) {
+        systemsTop = clearTop;
+        // Level with the ammo tray: the row sits left of it, whole, rather than scrolling under it.
+        if (ammo && systemsTop + systemsHeight > ammo.top && systemsTop < ammo.bottom) {
+          systemsLeft = Math.max(12, ammo.left - 8 - dockWidth);
+        }
+      }
+    }
     if (touch && width < height && ammo && systemsTop + systemsHeight > ammo.top
       && systemsTop < ammo.bottom && systemsLeft < ammo.left) {
       systemsWidth = Math.max(52, ammo.left - systemsLeft - 8);
@@ -223,7 +258,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const killLeft = root.querySelector('.cot-kill-lane.l');
     const killRight = root.querySelector('.cot-kill-lane.r');
     const leftBottom = Math.min(leftFloor(height, touch),
-      systemsHeight && systemsLeft < sideWidth + 12 ? systemsTop - 8 : height);
+      systemsHeight && systemsLeft < sideWidth + 12 ? Math.min(laneSystemsTop, systemsTop) - 8 : height);
     const countdown = read('.cot-prebattle.on');
     const leftKillBottom = countdown && countdown.left < sideWidth
       && countdown.bottom > leftAnchor ? Math.min(leftBottom - noticeReserve, countdown.top - 8) : leftBottom - noticeReserve;
@@ -249,7 +284,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const networkBottom = strip && !touch && document.body.dataset.cotWidth === 'phone' ? top + 8 + strip.height : 0;
     const rightAnchor = Math.max(top, rosterBottomRight, chrome?.bottom || 0, networkBottom) + 8;
     const rightBottom = Math.min(rightFloor(height, width, map),
-      systemsHeight && systemsLeft + dockWidth > width - sideWidth - 12 ? systemsTop - 8 : height);
+      systemsHeight && systemsLeft + dockWidth > width - sideWidth - 12 ? Math.min(laneSystemsTop, systemsTop) - 8 : height);
     const rosterStart = rosterTopRight ?? earRight?.top ?? scoreBottom + 8;
     const rosterCount = Number(root.querySelector<HTMLElement>('.cot-ear.r')?.dataset.count) || 0;
     const rosterMinimum = earRight ? (root.querySelector('.cot-ear.r.icon-grid') ? 124 : 22 + Math.min(14, rosterCount) * 12) : 0;

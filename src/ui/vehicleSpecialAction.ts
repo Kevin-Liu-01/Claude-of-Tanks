@@ -30,11 +30,13 @@ export function depletedMissileLabel(
 }
 
 /** Owner 2026-10-17 (out of ammo): a magazine reload with no magazine-fed round left to load is spent, not a countdown.
- * Unlimited rounds refill at fire, so the stowage never reaches zero there; a state without inventory never reads spent. */
+ * The ruleset's unlimited-rounds mark (the shell cards') never reads spent, whatever the stowage counters say — the same
+ * read as the aim frame's rack and the reticle; a state without inventory never reads spent. */
 export function magazineFeedEmpty(
   combat: { ammo?: ArrayLike<number> | null; magazine?: { capacity?: number | null } | null } | null | undefined,
   spec: MagazineIndicatorSpec | null | undefined,
+  unlimited = false,
 ): boolean {
-  if (!combat?.magazine || !((combat.magazine.capacity ?? 0) > 0)) return false;
+  if (unlimited || !combat?.magazine || !((combat.magazine.capacity ?? 0) > 0)) return false;
   return magazineFedRounds(combat, spec) <= 0;
 }

@@ -276,6 +276,8 @@ assert.match(hudSource, /locale: getLocale,/,
   const { elements } = fixtures[2];
   assert.equal(elements.count.textContent, '∞', 'unlimited rounds print the infinity mark');
   assert.equal(elements.button.classes.has('empty'), false, 'an unlimited slot never reads as empty');
+  // Owner 2026-10-17 (endless ammo): the slot marks itself so its ∞ takes the numeral's size and ink.
+  assert.equal(elements.button.classes.has('unlimited'), true, 'the unlimited slot carries its class');
   assert.match(String(elements.button.attributes.get('aria-label')), /unlimited rounds/, 'the label says unlimited rounds');
   assert.ok(mutations.some(([, kind]) => kind === 'text' || true), 'the change wrote the slot');
   mutations.length = 0;
@@ -284,6 +286,16 @@ assert.match(hudSource, /locale: getLocale,/,
   cards[2] = previous;
   render();
   assert.equal(elements.count.textContent, String(ammunitionSlotViewState(previous).count), 'a finite card prints its count again');
+  assert.equal(elements.button.classes.has('unlimited'), false, 'and drops the unlimited class');
+}
+
+{
+  const rule = /\.cot-shell\.unlimited \.cnt\{([^}]*)\}/.exec(hudSource)?.[1] ?? '';
+  const size = (css) => Number(/font-size:(\d+(?:\.\d+)?)px/.exec(css)?.[1]);
+  const numeral = /\.cot-shell \.cnt\{([^}]*)\}/.exec(hudSource)?.[1] ?? '';
+  assert.ok(size(rule) > size(numeral), 'the ammo ∞ is set larger than the numerals (the glyph draws small)');
+  assert.match(rule, /color:var\(--hud-text\)/, 'in the numeral ink');
+  assert.match(rule, /z-index:4/, 'above the reload shade, which dims the numerals');
 }
 
 console.log('hudAmmunitionPresentation.selftest: retained mutations, mutable cards, pending selection, touch, reload and locale passed');

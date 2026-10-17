@@ -44,12 +44,13 @@ import {
   structureSoundOf, structureStageSounds, type RubbleShareLike, type StructureSound,
 } from './destructionSounds.ts';
 import type { MunitionClass, StructureBreachEvent, StructureStageEvent } from '../sim/destructionEvents.ts';
+import type { GameModeId } from '../sim/matchModes.ts';
 import { BUDGETS, BUS_LEVELS, CONCUSSION, SNAPSHOTS, VEHICLE_LOD, type DeviceTier, type SettingsChannel } from './mixPolicy.ts';
 import { createVehicleRig, fillVehicleInput, type RigFrame, type RigLod, type VehicleRig } from './vehicleRig.ts';
 import { createAerialRig, type AerialFrame, type AerialRig } from './aerialRig.ts';
 import { cueProfile } from './soundCues.ts';
 import { onDebrisLanding, onTurretLanding } from '../fx/clock.ts';
-import { AERIAL_RULES } from '../sim/matchRuleset.ts';
+import { AERIAL_RULES, matchRulesetFor } from '../sim/matchRuleset.ts';
 import { bindInterfaceSounds, type InterfaceSound } from './interfaceSounds.ts';
 import { resolveVehicleAudioIdentity, CREW_LANGUAGES, ENGINE_FAMILY_IDS, type CrewLanguage, type VehicleAudioIdentity } from './vehicleAudioProfiles.ts';
 import type { ModuleHealth, SurfaceId, VehicleAudioInput } from './vehicleAudioModel.ts';
@@ -228,8 +229,10 @@ function toEntity(value: RuntimeValue): AudioEntity | null {
 }
 
 /** The selected weapon holds no round, loaded or stowed (the simulation only leaves an empty slot selected once every
- * channel is spent). A state without an inventory never reads spent. */
-function selectedWeaponSpent(combat: AudioEntity['combat'] | null | undefined): boolean {
+ * channel is spent). A state without an inventory never reads spent, and neither does the ruleset's unlimited-rounds
+ * mark, whatever the counters say — the HUD's read (the shell cards carry the same mark). */
+function selectedWeaponSpent(combat: AudioEntity['combat'] | null | undefined, unlimited = false): boolean {
+  if (unlimited) return false;
   const ammo = combat?.ammo;
   const slot = combat?.shellSlot;
   if (!ammo || slot == null || !Number.isInteger(slot) || slot < 0 || slot >= ammo.length) return false;
@@ -1489,8 +1492,10 @@ export function createAudio({
   function onReload(event: ReloadEvent): void {
     if (!ctx || phase !== 'battle' || battleOver) return;
     // Owner 2026-10-17 (out of ammo): an empty gun still runs its post-shot cycle in the simulation, but the crew loads
-    // nothing — no loader cues, no latch, no "reloaded" call. Unlimited rounds refill at fire and never reach zero.
-    if (selectedWeaponSpent(latestPlayer?.combat)) {
+    // nothing — no loader cues, no latch, no "reloaded" call; the half-played plan is dropped, so a cycle that resumes
+    // starts afresh. The mode's unlimited rounds never read spent (sim/matchRuleset, the table the HUD's cards read).
+    const unlimitedRounds = matchRulesetFor((getGameMode?.() || 'standard') as GameModeId).ammo === 'unlimited';
+    if (selectedWeaponSpent(latestPlayer?.combat, unlimitedRounds)) {
       reload.active = false;
       reloadCalled = false;
       return;

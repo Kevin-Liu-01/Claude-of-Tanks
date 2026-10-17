@@ -535,6 +535,8 @@ interface ReticleDrawState {
   single: boolean;
   magazine: AutoloaderHudState | null;
   magazineBottomY: number;
+  /** Half the painted rack's width (0 without a rack): the compact sniper stack sets its countdown beside it. */
+  magazineHalfW: number;
 }
 
 interface HudFrameUpdateState {
@@ -703,12 +705,16 @@ const RELOAD_ACCENT = 'rgba(240,160,48,0.95)';    // reload sweep + countdown
 // Owner 2026-10-17 (out of ammo): a spent weapon's ink. The DOM controls read the same danger as --hud-danger.
 const DRY_ACCENT = 'rgba(240,90,90,0.92)';
 const DRY_RING = 'rgba(214,120,112,0.62)';
+/** The struck round that leads the compact sniper readout line (paintSniperAmmoReadout). */
+const COMPACT_DRY_ROUND_W = 6;
+const COMPACT_DRY_ROUND_H = 14;
 /** The reticle's reload and empty-weapon inks by role (hudAmmoOutPaint.selftest reads the painted canvas by them). */
-export const RETICLE_AMMO_INK = Object.freeze({ reload: RELOAD_ACCENT, dry: DRY_ACCENT, dryRing: DRY_RING });
+export const RETICLE_AMMO_INK = Object.freeze({ reload: RELOAD_ACCENT, dry: DRY_ACCENT, dryRing: DRY_RING,
+  cycling: 'rgba(174,184,192,0.9)' });
 export const AUTOLOADER_HUD_SHELLS = 4;
 const AUTOLOADER_HUD_ARC_DEPTH = 2.25;
 const AUTOLOADER_HUD_OUTER_ROTATION = 0.14;
-const AUTOLOADER_SHELL_RELOADING = 'rgba(174,184,192,0.9)';
+const AUTOLOADER_SHELL_RELOADING = RETICLE_AMMO_INK.cycling;
 export const HIT_CONFIRM_LIFETIME_S = 1.4;
 
 /** Exact value printed on an incoming direction arc. */
@@ -1693,6 +1699,9 @@ body.cot-spectating .cot-ret{display:none !important;}
   font-family:${FONT_COND};
   color:#e6edf3;font-variant-numeric:tabular-nums;letter-spacing:.02em;z-index:2;
   text-shadow:0 1px 2px rgba(0,0,0,.9);}
+/* Owner 2026-10-17 (endless ammo): the ammo ∞ reads as a count — the glyph draws small, so it is set larger, in the
+   numeral ink, above the reload shade that dims a numeral. */
+.cot-shell.unlimited .cnt{font-size:19px;line-height:13px;color:var(--hud-text);z-index:4;}
 .cot-shell .ty{position:absolute;bottom:2px;left:4px;font-size:8px;font-weight:800;
   font-family:${FONT_COND};
   letter-spacing:.08em;z-index:2;text-shadow:0 1px 2px rgba(0,0,0,.9);}
@@ -2333,7 +2342,7 @@ export function initHud(bus: EventBus): HudRuntime {
   }
   setControlsJumpMode(false);
   const reloadForSlot=createVehicleCooldownReader();
-  function updateSpecialAction(player: HudTank | null | undefined): void {
+  function updateSpecialAction(player: HudTank | null | undefined, aim: HudAimInput | null | undefined = null): void {
     const canControl=!!player?.combat&&!player.combat.destroyed;
     jumpHint.disabled=!canControl;
     controlsRow.hidden=!player;
@@ -2403,7 +2412,10 @@ export function initHud(bus: EventBus): HudRuntime {
     missileButton.setAttribute('aria-label', emptyMissileLabel ? `ATGM ${emptyMissileLabel}` : 'ATGM');
     const specialMissileEmpty=specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE&&missileEmpty;
     // A magazine reload with nothing stowed to load is spent too: no countdown, no pointless reload.
-    const specialEmpty=specialMissileEmpty||(specialKind===SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD&&magazineFeedEmpty(combat,player?.spec));
+    // This frame's cards (the tray reads them after this update): the ruleset's unlimited mark never reads spent.
+    const cards=aim?.shells??lastShells;
+    const specialEmpty=specialMissileEmpty||(specialKind===SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD
+      &&magazineFeedEmpty(combat,player?.spec,cards?.[aim?.shellSlot??localSlot]?.unlimited===true));
     const wait=specialEmpty?0:specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE?Math.ceil(reloadForSlot(combat,missileSlot,lastTimeS)||0)
       :specialKind===SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD?Math.ceil(combat?.gunReload?.t??combat?.reload.t??0):0;
     specialLabel.textContent=wait>0?t('systems.cooldown',{seconds:wait}):specialLabel.dataset.short||'';
@@ -2630,7 +2642,7 @@ export function initHud(bus: EventBus): HudRuntime {
     reloadFraction: 0, reloading: false, dry: false,
     gunColor: PEN_NONE, ringColor: CIRCLE_COL,
     zoomScale: 1, markerLineWidth: 1.6, centerClearanceRadius: 14,
-    single: false, magazine: null, magazineBottomY: 0,
+    single: false, magazine: null, magazineBottomY: 0, magazineHalfW: 0,
   };
   const hudFrameUpdateScratch: HudFrameUpdateState = {
     advancing: false,
@@ -3943,6 +3955,7 @@ export function initHud(bus: EventBus): HudRuntime {
     state.centerClearanceRadius = 14 + (state.zoomScale - 1) * 9;
     state.magazine = null;
     state.magazineBottomY = 0;
+    state.magazineHalfW = 0;
     return state;
   }
 
@@ -3964,12 +3977,18 @@ export function initHud(bus: EventBus): HudRuntime {
     const totalW = visibleShells * shellW + (visibleShells - 1) * gap;
     const y0 = draw.cy + draw.centerClearanceRadius + 6;
     draw.magazineBottomY = y0 + shellH;
+    draw.magazineHalfW = totalW * 0.5;
     lastMagazineIndicatorY = y0;
     lastMagazineIndicatorState = magazine;
     const shellInk = magazine.reloading ? AUTOLOADER_SHELL_RELOADING : RELOAD_ACCENT;
     const shellOutline = magazine.reloading
       ? 'rgba(174,184,192,0.64)'
       : 'rgba(240,160,48,0.7)';
+    // Between two rounds of a clip the next shell fills from its base as the cycle runs: the rack shows the cycle
+    // itself, so no numeral sits under it (critic r3: the countdown jammed the rack against the ring).
+    const cycle = magazine.intraClip && view.reload && view.reload.totalS > 0
+      ? Math.max(0, Math.min(1, 1 - view.reload.t / view.reload.totalS))
+      : 0;
 
     for (let i = 0; i < visibleShells; i++) {
       const pose = autoloaderHudShellPose(i, visibleShells, magazineShellPoseScratch);
@@ -3980,9 +3999,9 @@ export function initHud(bus: EventBus): HudRuntime {
       // Owner 2026-10-17 (out of ammo): a slot stowage can no longer fill is spent — hollow, in the danger ink, never
       // loading; the reload fill spreads over the shells that will actually load.
       const spent = i >= magazine.feedShells;
-      const loading = magazine.fullReload && !spent
-        ? Math.max(0, Math.min(1, magazine.loadProgress * magazine.feedShells - i))
-        : 0;
+      const loading = spent ? 0
+        : magazine.fullReload ? Math.max(0, Math.min(1, magazine.loadProgress * magazine.feedShells - i))
+          : i === magazine.readyShells ? cycle : 0;
       ctx.save();
       ctx.translate(shellCx, shellCy);
       ctx.rotate(pose.rotation);
@@ -4049,11 +4068,16 @@ export function initHud(bus: EventBus): HudRuntime {
    * would run — never a sweep, countdown or ready pulse that reads as a loaded gun.
    */
   function paintDryRound(draw: ReticleDrawState): void {
-    if (!draw.dry || draw.magazine) return;
+    // The compact sniper stack has no room under the marker: its readout carries the struck round (critic r3).
+    if (!draw.dry || draw.magazine || compactSniperStack(draw)) return;
     const shellW = draw.sniper ? 8 : 7;
     const shellH = draw.sniper ? 19 : 17;
-    const x = draw.cx - shellW * 0.5;
-    const y = draw.cy + draw.centerClearanceRadius + 6;
+    paintStruckRound(draw.cx - shellW * 0.5, draw.cy + draw.centerClearanceRadius + 6, shellW, shellH);
+    draw.magazineBottomY = draw.cy + draw.centerClearanceRadius + 6 + shellH;
+  }
+
+  /** One hollow round in the empty ink, struck through, over a dark contour. */
+  function paintStruckRound(x: number, y: number, shellW: number, shellH: number): void {
     magazineShellPath(ctx, x, y, shellW, shellH);
     ctx.strokeStyle = 'rgba(5,8,11,0.88)';
     ctx.lineWidth = 3;
@@ -4064,8 +4088,15 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.strokeStyle = DRY_ACCENT;
     ctx.lineWidth = 1.2;
     ctx.stroke();
-    paintDrySlash(draw.cx, y + shellH * 0.5, shellW * 0.5 + 4, shellH * 0.5 + 1);
-    draw.magazineBottomY = y + shellH;
+    paintDrySlash(x + shellW * 0.5, y + shellH * 0.5, shellW * 0.5 + 4, shellH * 0.5 + 1);
+  }
+
+  /**
+   * Short landscape screens stack the sniper readouts right under the scope (sniperAmmoReadoutY), level with the
+   * furniture under the marker. There the struck round rides the readout line and the rack's countdown sits beside it.
+   */
+  function compactSniperStack(draw: ReticleDrawState): boolean {
+    return draw.sniper && h <= 430;
   }
 
   function paintReadyPulse(draw: ReticleDrawState): void {
@@ -4104,18 +4135,21 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function paintReloadCountdown(view: HudAimView, draw: ReticleDrawState): void {
-    if (!draw.reloading) return;
+    // A clip's cycle shows on the rack itself (its next shell fills); only a gun or a whole rack reloading counts.
+    if (!draw.reloading || draw.magazine?.intraClip) return;
     const text = reloadHudCountdown(view.reload, view.ammoSelectionPending);
-    const y = draw.magazine
-      ? draw.magazineBottomY + 15
-      : draw.cy + draw.centerClearanceRadius + 15;
+    // The compact sniper stack sets a rack's countdown beside it, left (the range tag hangs off the right rim).
+    const beside = !!draw.magazine && compactSniperStack(draw);
+    const y = beside ? draw.magazineBottomY - 2
+      : draw.magazine ? draw.magazineBottomY + 15
+        : draw.cy + draw.centerClearanceRadius + 15;
     ctx.fillStyle = RELOAD_ACCENT;
     ctx.font = `700 16px ${FONT_COND}`;
     const textW = ctx.measureText(text).width;
     ctx.font = `500 10.5px ${FONT_COND}`;
     const unit = view.ammoSelectionPending ? '' : ' s';
     const unitW = ctx.measureText(unit).width;
-    const x = draw.cx - (textW + unitW) / 2;
+    const x = beside ? draw.cx - draw.magazineHalfW - 7 - textW - unitW : draw.cx - (textW + unitW) / 2;
     ctx.textAlign = 'left';
     ctx.font = `700 16px ${FONT_COND}`;
     ctx.fillText(text, x, y);
@@ -4127,7 +4161,9 @@ export function initHud(bus: EventBus): HudRuntime {
   function sniperAmmoReadoutY(draw: ReticleDrawState): number {
     // Short landscape keeps the whole readout stack close to the scope.
     if (h <= 300) return draw.cy + 32;
-    if (h <= 430) return draw.cy + 44;
+    // ... but clear of the reload countdown and under the rack, never through it (critic r3, 844x390 / 932x430 /
+    // 667x375: the readout sat level with the rack, and touched the countdown).
+    if (h <= 430) return Math.max(draw.cy + 48, draw.magazine ? draw.magazineBottomY + 13 : 0);
     return Math.min(
       draw.cy + Math.max(draw.radius * 1.02 + 24, draw.radius * 1.55 + 18, 96),
       h - 176,
@@ -4144,7 +4180,10 @@ export function initHud(bus: EventBus): HudRuntime {
     const countW = ctx.measureText(`${count} `).width;
     ctx.font = `800 9px ${FONT_COND}`;
     const typeW = ctx.measureText(type).width;
-    const x = draw.cx - (countW + typeW) / 2;
+    // Out of ammo on the compact stack, the struck round leads the line: [round] 0 APFSDS.
+    const round = draw.dry && !draw.magazine && compactSniperStack(draw) ? COMPACT_DRY_ROUND_W + 8 : 0;
+    const x = draw.cx - (round + countW + typeW) / 2 + round;
+    if (round) paintStruckRound(x - round, y - COMPACT_DRY_ROUND_H + 2, COMPACT_DRY_ROUND_W, COMPACT_DRY_ROUND_H);
     ctx.textAlign = 'left';
     ctx.font = `700 13.5px ${FONT_COND}`;
     ctx.fillStyle = draw.dry ? DRY_ACCENT : 'rgba(226,236,244,0.92)';
@@ -4161,9 +4200,11 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.textAlign = 'left';
     ctx.fillStyle = 'rgba(208,221,232,0.8)';
     ctx.font = `600 11.5px ${FONT_COND}`;
+    // On the compact stack a small ring hangs the tag level with the rack: it starts past the rack and its strike.
+    const rackClear = compactSniperStack(draw) && draw.magazine ? draw.magazineHalfW + 10 - 4 : 0;
     ctx.fillText(
       `${Math.round(view.distM)} m`,
-      draw.cx + offset + 4,
+      draw.cx + Math.max(offset, rackClear) + 4,
       draw.cy + offset + 12,
     );
     ctx.textAlign = 'center';
@@ -6509,7 +6550,7 @@ export function initHud(bus: EventBus): HudRuntime {
       droneButton.querySelector('.sk')!.textContent=frame.auxiliaryKeyLabels.drone || 'V';
     }
     root.classList.toggle('realistic-mode', frame.matchModeState?.id === 'realistic');
-    updateSpecialAction(frame.player || playerRef);
+    updateSpecialAction(frame.player || playerRef, frame.aim);
     aerialHud.update(frame.player || playerRef,frame.timeS,state.camera?.fov ?? 55,frame.aim?.distM ?? 0,mode !== 'hidden',frame.auxiliaryKeyLabels?.drone || 'V',state.camera?.userData.thermalFlight===true,frame.auxiliaryKeyLabels?.aerialVision || 'I',frame.matchModeState?.support,{ammo:frame.auxiliaryKeyLabels?.supplyAmmo||'J',heal:frame.auxiliaryKeyLabels?.supplyHeal||'K'},mode==='sniper',frame.matchModeState?.escort);
     updateDriveReadout(frame.player || playerRef, frame.timeS);
     updateDamagePanelPose(state.camera);

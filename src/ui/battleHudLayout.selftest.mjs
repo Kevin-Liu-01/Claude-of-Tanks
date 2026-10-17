@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
-import { battleSideStack, battleNotificationRows, battleRosterHeight, installBattleHudLayout, objectiveWidth, battleReportDock, REPORT_MAP_GAP } from './battleHudLayout.ts';
+import { battleSideStack, battleNotificationRows, battleRosterHeight, installBattleHudLayout, objectiveWidth, battleReportDock, REPORT_MAP_GAP,
+  portraitSightClearTop, SIGHT_BAND_ABOVE, SIGHT_BAND_BELOW } from './battleHudLayout.ts';
 
 for (const space of [0, 80, 124, 320, 500]) {
   const height = battleRosterHeight(600, space, 124);
@@ -59,6 +60,30 @@ for (const bottom of [120,240,480,800]) for (const ceiling of [80,180,400]) for 
   assert.ok(dock.height>=0&&dock.height<=(compact?160:260));
   assert.ok(dock.height===0||dock.top>=ceiling);
 }
+
+// Owner 2026-10-17 (out of ammo, critic r3): a portrait phone's systems row never crosses the sight's band — its
+// countdown, rack, struck empty round, aim warning and scope readouts. Measured portrait phones (tools/fixtures/
+// battle-hud-layout.html, Chrome): 390x844 parks the row at 416 above its tray (468), across the 422 centre; 360x640
+// parks it at 212, clear; 430x932 at 504, across 466. The floor is the lower cluster (speedometer, fire, aim hint).
+{
+  const crossing = (top, height, centre) => top < centre + SIGHT_BAND_BELOW && top + height > centre - SIGHT_BAND_ABOVE;
+  assert.equal(portraitSightClearTop(212, 44, 320, 406, 208), 212, '360x640: already clear, untouched');
+  const tall = portraitSightClearTop(416, 44, 422, 560, 208);
+  assert.ok(!crossing(tall, 44, 422) && tall >= 208, `390x844: the row leaves the band within the free space (${tall})`);
+  assert.equal(tall, 422 - SIGHT_BAND_ABOVE - 44, 'no room under the scope readouts above the cluster: above the ring');
+  assert.ok(!crossing(portraitSightClearTop(504, 44, 466, 626, 208), 44, 466), '430x932: clear too');
+  assert.equal(portraitSightClearTop(600, 44, 520, 900, 208), 520 + SIGHT_BAND_BELOW, 'a tall portrait keeps it below, nearer the thumbs');
+  assert.equal(portraitSightClearTop(300, 44, 300, 380, 280), 300, 'no room on either side: the row stays');
+  for (let centre = 280; centre <= 560; centre += 7) for (let top = 100; top <= 700; top += 13) {
+    const placed = portraitSightClearTop(top, 44, centre, 760, 160);
+    if (placed !== top) assert.ok(!crossing(placed, 44, centre) && placed >= 160 && placed + 44 <= 760, `moved rows land clear (${top}, ${centre})`);
+    else if (crossing(top, 44, centre)) assert.ok(centre + SIGHT_BAND_BELOW + 44 > 760 && centre - SIGHT_BAND_ABOVE - 44 < 160);
+  }
+}
+const layoutSource = readFileSync(new URL('./battleHudLayout.ts', import.meta.url), 'utf8');
+assert.match(layoutSource, /if \(touch && width < height && systemsHeight\) \{[\s\S]{0,600}portraitSightClearTop\(systemsTop, systemsHeight, height \/ 2, floor, ceiling\)/,
+  'the solver applies it to touch portraits, centred on the screen-centre sight');
+assert.match(layoutSource, /Math\.min\(laneSystemsTop, systemsTop\) - 8/, 'the side lanes never gain the row\'s old space');
 
 // Observer lifecycle in a deterministic DOM: no-op attribute records must not
 // turn layout into a per-frame job, but real state/viewport changes still do.

@@ -31,23 +31,45 @@ function recordingContext(canvas) {
     shadowColor: 'transparent', globalCompositeOperation: 'source-over', lineDashOffset: 0 };
   let dash = [];
   let path = [];
-  const push = (step) => { path.push(step); };
+  // The current transform (a, b, c, d, e, f): every op also carries its bounding box in canvas space, so the paint is
+  // read by where it lands (the rack's shells are drawn translated and rotated).
+  let m = [1, 0, 0, 1, 0, 0];
+  let points = [];
+  const at = (x, y) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
+  const scale = () => Math.hypot(m[0], m[1]);
+  const multiply = (n) => {
+    m = [m[0] * n[0] + m[2] * n[1], m[1] * n[0] + m[3] * n[1], m[0] * n[2] + m[2] * n[3], m[1] * n[2] + m[3] * n[3],
+      m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5]];
+  };
+  const box = (list, pad = 0) => (list.length ? {
+    x0: Math.min(...list.map((p) => p[0])) - pad, y0: Math.min(...list.map((p) => p[1])) - pad,
+    x1: Math.max(...list.map((p) => p[0])) + pad, y1: Math.max(...list.map((p) => p[1])) + pad,
+  } : null);
+  const push = (step, ...xy) => { path.push(step); for (let i = 0; i < xy.length; i += 2) points.push(at(xy[i], xy[i + 1])); };
   const ctx = {
     canvas, ops,
-    save() { stack.push({ ...state, dash }); },
-    restore() { const saved = stack.pop(); if (saved) { ({ dash } = saved); delete saved.dash; Object.assign(state, saved); } },
+    save() { stack.push({ ...state, dash, m }); },
+    restore() { const saved = stack.pop(); if (saved) { ({ dash, m } = saved); delete saved.dash; delete saved.m; Object.assign(state, saved); } },
     setLineDash(value) { dash = Array.from(value); }, getLineDash: () => dash.slice(),
-    beginPath() { path = []; }, closePath() {},
-    moveTo: (x, y) => push(['moveTo', x, y]), lineTo: (x, y) => push(['lineTo', x, y]),
-    arc: (x, y, r, a0, a1) => push(['arc', x, y, r, a0, a1]), arcTo: () => push(['arcTo']),
+    beginPath() { path = []; points = []; }, closePath() {},
+    moveTo: (x, y) => push(['moveTo', x, y], x, y), lineTo: (x, y) => push(['lineTo', x, y], x, y),
+    arc: (x, y, r, a0, a1) => push(['arc', x, y, r, a0, a1], x - r, y - r, x + r, y + r), arcTo: () => push(['arcTo']),
     ellipse: () => push(['ellipse']), rect: () => push(['rect']), roundRect: () => push(['roundRect']),
-    quadraticCurveTo: () => push(['quad']), bezierCurveTo: () => push(['bezier']),
-    stroke() { ops.push({ op: 'stroke', style: state.strokeStyle, lineWidth: state.lineWidth, dash: dash.slice(), path }); },
-    fill() { ops.push({ op: 'fill', style: state.fillStyle, path }); },
-    fillRect(x, y, w, h) { ops.push({ op: 'fillRect', style: state.fillStyle, x, y, w, h }); },
+    quadraticCurveTo: (cx, cy, x, y) => push(['quad'], cx, cy, x, y), bezierCurveTo: () => push(['bezier']),
+    stroke() { ops.push({ op: 'stroke', style: state.strokeStyle, lineWidth: state.lineWidth, dash: dash.slice(), path,
+      box: box(points, (state.lineWidth * scale()) / 2) }); },
+    fill() { ops.push({ op: 'fill', style: state.fillStyle, path, box: box(points) }); },
+    fillRect(x, y, w, h) { ops.push({ op: 'fillRect', style: state.fillStyle, x, y, w, h, box: box([at(x, y), at(x + w, y + h)]) }); },
     strokeRect() { ops.push({ op: 'strokeRect', style: state.strokeStyle }); },
     clearRect() { ops.push({ op: 'clear' }); },
-    fillText(text, x, y) { ops.push({ op: 'fillText', text: String(text), style: state.fillStyle, x, y }); },
+    fillText(text, x, y) {
+      const width = String(text).length * 7 * scale();
+      const size = Number(/(\d+(?:\.\d+)?)px/.exec(state.font)?.[1] || 10) * scale();
+      const [px, py] = at(x, y);
+      const x0 = state.textAlign === 'center' ? px - width / 2 : state.textAlign === 'right' || state.textAlign === 'end' ? px - width : px;
+      ops.push({ op: 'fillText', text: String(text), style: state.fillStyle, x, y,
+        box: { x0, y0: py - size * 0.74, x1: x0 + width, y1: py + size * 0.08 } });
+    },
     strokeText(text) { ops.push({ op: 'strokeText', text: String(text), style: state.strokeStyle }); },
     measureText: (text) => ({ width: String(text).length * 7, actualBoundingBoxAscent: 8, actualBoundingBoxDescent: 2 }),
     drawImage() { ops.push({ op: 'drawImage' }); },
@@ -55,8 +77,11 @@ function recordingContext(canvas) {
     createPattern: () => ({}),
     getImageData: (x, y, w, h) => ({ data: new Uint8ClampedArray(Math.max(4, w * h * 4)), width: w, height: h }),
     putImageData() {}, createImageData: (w, h) => ({ data: new Uint8ClampedArray(w * h * 4), width: w, height: h }),
-    setTransform() {}, resetTransform() {}, transform() {}, translate() {}, rotate() {}, scale() {}, clip() {},
-    isPointInPath: () => false, getTransform: () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }),
+    setTransform(a = 1, b = 0, c = 0, d = 1, e = 0, f = 0) { m = typeof a === 'object' ? [a.a, a.b, a.c, a.d, a.e, a.f] : [a, b, c, d, e, f]; },
+    resetTransform() { m = [1, 0, 0, 1, 0, 0]; }, transform(a, b, c, d, e, f) { multiply([a, b, c, d, e, f]); },
+    translate(x, y) { multiply([1, 0, 0, 1, x, y]); }, rotate(r) { multiply([Math.cos(r), Math.sin(r), -Math.sin(r), Math.cos(r), 0, 0]); },
+    scale(x, y) { multiply([x, 0, 0, y, 0, 0]); }, clip() {},
+    isPointInPath: () => false, getTransform: () => ({ a: m[0], b: m[1], c: m[2], d: m[3], e: m[4], f: m[5] }),
   };
   for (const key of CONTEXT_STATE) Object.defineProperty(ctx, key, { get: () => state[key], set: (v) => { state[key] = v; } });
   return ctx;
@@ -217,9 +242,10 @@ function tankOf(id, ammo = null) {
 }
 let current = null;
 let unlimitedRounds = false;
+let scope = false; // the ×8 sight
 const controller = createAimController({
   getGame: () => ({ player: current, tanks: [current] }),
-  getRig: () => ({ aimPoint: new THREE.Vector3(0, 2, 200), aimDist: 200, mode: 'CHASE', zoom: 1 }),
+  getRig: () => ({ aimPoint: new THREE.Vector3(0, 2, 200), aimDist: 200, mode: scope ? 'SNIPER' : 'CHASE', zoom: scope ? 8 : 1 }),
   worldRaycast: () => null,
   targetVisible: () => true,
   // The shell cards as game/playerBattleActions builds them: the ruleset's unlimited mark rides every card.
@@ -344,6 +370,19 @@ const DRY_RING = 16;
   unlimitedRounds = false;
 }
 
+// 4b. The feed is a reuse key of the settled reticle: a round stowed (or spent) in another slot repaints the rack.
+// (Before the sniper case: leaving the scope runs a fade that holds the reticle repainting while the clock runs.)
+{
+  const tank = tankOf('m1a3', [2, 4, 0]);
+  tank.combat.magazine.rounds = 2;
+  settle(tank.combat);
+  assert.deepEqual([settledFrame(tank).painted], [false]);
+  tank.combat.ammo[2] = 1; // the third cannon round: the magazine still holds two, the selected slot still two
+  const view = frame(tank);
+  assert.equal(view.painted, true, 'a feed change alone repaints the reused reticle');
+  assert.deepEqual([view.readyShells, view.spentShells], [2, 1], 'one spent slot fewer');
+}
+
 // 5. Sniper: the sparse ring and the chambered count in the empty ink.
 {
   const tank = tankOf('m1a1_abrams_hc', [0, 0, 0]);
@@ -442,6 +481,119 @@ const DRY_RING = 16;
   assert.deepEqual([view.spentShells, view.dryRound, view.struck], [0, 0, 0]);
   unlimitedRounds = false;
 }
+
+// --- what the critic's mutation sweep left unpinned (r3) ---
+const fills = (ops, style) => ops.filter((op) => op.op === 'fillRect' && op.style === style);
+
+// 10. A full reload spreads its fill over the shells that will load: Type 90 with one round stowed fills that one
+// shell at the reload's own pace (half way at half time), never a third of the rack at triple speed.
+{
+  const tank = tankOf('type90', [1, 0, 0]);
+  tank.combat.magazine.rounds = 0;
+  Object.assign(tank.combat.reload, { t: 5, totalS: 10, kind: 'magazine' });
+  frame(tank);
+  const loading = fills(ctx.ops, INK.cycling);
+  assert.equal(loading.length, 1, 'one shell fills: the only one stowage can load');
+  assert.ok(Math.abs(loading[0].h - (14 * 0.5 + 1)) < 1e-6, `half the reload fills half the shell (${loading[0].h})`);
+}
+
+// 12. Unlimited rounds with every stowage counter at zero: the rack, the sight and the magazine control agree (the
+// mark lifts the cap on every path, as the tray's ∞ does), and the same counters on a finite loadout agree on empty.
+{
+  unlimitedRounds = true;
+  const tank = tankOf('type90', [0, 0, 0]);
+  let view = frame(tank);
+  assert.deepEqual([view.ringInk !== INK.dryRing, view.readyShells, view.spentShells, view.struck], [true, 3, 0, 0]);
+  assert.equal(specialButton.classes.has('empty'), false,
+    'the magazine-reload control is not struck: nothing reads spent under the mark, from the first frame');
+  unlimitedRounds = false;
+  view = frame(tank);
+  assert.deepEqual([view.ringInk, view.readyShells, view.struck], [INK.dryRing, 0, 1]);
+  assert.equal(specialButton.classes.has('empty') && specialButton.disabled, true, 'finite and empty: struck');
+}
+
+// 13. Between two rounds of a clip the rack shows the cycle itself: the next shell fills, no numeral under the rack.
+{
+  const tank = tankOf('m1a3');
+  tank.combat.magazine.rounds = 2;
+  Object.assign(tank.combat.reload, { t: 1, totalS: 2, kind: 'intraClip' });
+  const view = frame(tank);
+  assert.equal(view.countdown, null, 'no countdown under the rack while the clip cycles');
+  assert.equal(view.sweep, true, 'the ring still sweeps the cycle');
+  const heights = fills(ctx.ops, INK.cycling).map((op) => op.h);
+  assert.deepEqual(heights, [15, 15, 8], 'two rounds ready, the third shell half filled at half the cycle');
+}
+
+// 14. The ×8 sight on short landscape phones (critic r3 measured 844x390, 932x430 and 667x375): the empty mark, the
+// rack, its countdown and the range tag never land on the readout line or the zoom plate. Desktop keeps its stack.
+const overlap = (a, b) => Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0) > 0.5 && Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0) > 0.5;
+function resize(width, height) {
+  Object.assign(windowStub, { innerWidth: width, innerHeight: height });
+  Object.assign(windowStub.visualViewport, { width, height });
+  windowStub.dispatchEvent(new Event('resize'));
+}
+function scopePaint(tank, width, height) {
+  const view = frame(tank, { mode: 'sniper' });
+  const texts = ctx.ops.filter((op) => op.op === 'fillText' && op.text.trim() && op.box.y0 > height / 2);
+  const strokes = ctx.ops.filter((op) => op.op === 'stroke' && op.box);
+  const dry = strokes.filter((op) => op.style === INK.dry);
+  const shells = strokes.filter((op) => op.lineWidth === 1 && op.box.x1 - op.box.x0 < 24 && op.box.y0 > height / 2
+    && Math.abs((op.box.x0 + op.box.x1) / 2 - width / 2) < 40);
+  return { view, texts, dry, shells, text: (pattern) => texts.find((op) => pattern.test(op.text)) };
+}
+function assertApart(items, others, label) {
+  for (const a of items) for (const b of others) {
+    if (a !== b) assert.ok(!overlap(a.box, b.box), `${label}: ${a.text ?? a.style} over ${b.text ?? b.style}`);
+  }
+}
+scope = true;
+for (const [width, height] of [[844, 390], [932, 430], [667, 375]]) {
+  resize(width, height);
+  const at = `${width}x${height}`;
+  // a single-shot gun, empty: the struck round leads the readout line
+  let paint = scopePaint(tankOf('m1a1_abrams_hc', [0, 0, 0]), width, height);
+  const count = paint.text(/^0 $/);
+  const round = paint.dry.filter((op) => op.lineWidth === 1.2);
+  assert.ok(count && round.length, `${at}: the empty count and its struck round`);
+  for (const op of round) {
+    assert.ok(op.box.x1 <= count.box.x0 && op.box.y1 > count.box.y0 && op.box.y0 < count.box.y1,
+      `${at}: the round rides the readout line, left of the count`);
+  }
+  assertApart(paint.dry, paint.texts, `${at} empty cannon`);
+  assertApart(paint.texts, paint.texts, `${at} empty cannon`);
+  // reloading: the countdown clears the readout line
+  const loaded = tankOf('m1a1_abrams_hc');
+  Object.assign(loaded.combat.reload, { t: 3.2, totalS: 6, kind: 'shell' });
+  paint = scopePaint(loaded, width, height);
+  assert.ok(paint.view.countdown, `${at}: the reload counts down`);
+  assertApart(paint.texts, paint.texts, `${at} reloading cannon`);
+  // an autoloader, empty: the struck rack sits above the readout line
+  const dryRack = tankOf('m1a3', [0, 0, 0]);
+  dryRack.combat.magazine.rounds = 0;
+  paint = scopePaint(dryRack, width, height);
+  assert.equal(paint.shells.length, 4, `${at}: four spent shells`);
+  assertApart(paint.dry, paint.texts, `${at} empty rack`);
+  assertApart([...paint.shells, ...paint.texts], paint.texts, `${at} empty rack`);
+  // an autoloader reloading its rack: the countdown sits beside it (left), clear of the shells, readout and range tag
+  const refill = tankOf('m1a3', [12, 4, 10]);
+  refill.combat.magazine.rounds = 0;
+  Object.assign(refill.combat.reload, { t: 12, totalS: 21, kind: 'magazine' });
+  paint = scopePaint(refill, width, height);
+  const clock = paint.text(/^12$/);
+  assert.ok(clock, `${at}: the rack reload counts down`);
+  assert.ok(clock.box.x1 <= Math.min(...paint.shells.map((op) => op.box.x0)), `${at}: the countdown is left of the rack`);
+  assertApart([...paint.shells, ...paint.texts], paint.texts, `${at} reloading rack`);
+}
+// desktop: the stack sits well below the scope, the struck round stays under the marker
+resize(WIDTH, HEIGHT);
+{
+  const paint = scopePaint(tankOf('m1a1_abrams_hc', [0, 0, 0]), WIDTH, HEIGHT);
+  const round = paint.dry.filter((op) => op.lineWidth === 1.2);
+  assert.ok(round.length && round.every((op) => Math.abs((op.box.x0 + op.box.x1) / 2 - WIDTH / 2) < 1),
+    'desktop: the struck round stays centred under the marker');
+  assertApart(paint.dry, paint.texts, 'desktop empty cannon');
+}
+scope = false;
 
 console.log('hudAmmoOutPaint.selftest: the live HUD paints no sweep, countdown or ready flash on a dry gun, a sparse '
   + 'muted ring, a struck round or rack and spent rack slots, struck launcher and magazine controls; unlimited rounds '

@@ -151,6 +151,12 @@ body.cot-touch-layout .cot-shell.sel .ty{font-size:8px;}
 /* out of ammo (owner 2026-10-17): the collapsed tray shows only the selected slot, so its empty state outranks the frame */
 body.cot-touch-layout .cot-shell.sel.empty{border-color:var(--hud-edge);border-bottom-color:var(--hud-danger);
   background:var(--hud-panel);box-shadow:inset 0 -2px 0 var(--hud-danger);}
+/* ... struck through like a spent launcher control, its count in the danger ink (critic r3: it still read as selected) */
+body.cot-touch-layout .cot-shell.sel.empty::before{content:'';position:absolute;left:11px;right:11px;top:calc(50% - .75px);
+  height:1.5px;border-radius:1px;background:var(--hud-danger);box-shadow:0 0 0 1px #05080bd9;transform:rotate(-45deg);z-index:2;}
+body.cot-touch-layout .cot-shell.sel.empty .cnt{color:var(--hud-danger);}
+/* endless ammo (owner 2026-10-17): the ∞ at the numeral's size, not the consumables' small mark */
+body.cot-touch-layout .cot-shell.unlimited .cnt{font-size:16px;line-height:11px;}
 /* MOBILE-UX r1 (owner: "move equipment to right side in a vertical column"):
    the consumable tray re-parks on the RIGHT EDGE as a thumb-reachable
    column sitting above the FIRE cluster. 48 px targets; the selection/used/

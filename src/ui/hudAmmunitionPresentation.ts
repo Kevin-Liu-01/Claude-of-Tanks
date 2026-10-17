@@ -65,6 +65,7 @@ export function createRetainedAmmunitionSlot({
   let lastPending = false;
   let selectedClass: boolean | undefined;
   let emptyClass: boolean | undefined;
+  let unlimitedClass: boolean | undefined;
   let displayedTypeLabel: string | undefined;
   let displayedName: string | undefined;
   let displayedPenetration: string | undefined;
@@ -133,6 +134,12 @@ export function createRetainedAmmunitionSlot({
     if (emptyClass !== empty) {
       elements.button.classList.toggle('empty', empty);
       emptyClass = empty;
+    }
+    // Owner 2026-10-17 (endless ammo): the ∞ takes the numeral's size and ink (the slot styles it), so it reads as a
+    // count rather than the small consumable mark.
+    if (unlimitedClass !== unlimited) {
+      elements.button.classList.toggle('unlimited', unlimited);
+      unlimitedClass = unlimited;
     }
     return rounds;
   };

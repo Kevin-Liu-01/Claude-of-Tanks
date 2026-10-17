@@ -99,13 +99,23 @@ fits its radius, and stays inside the minimap at the map edges.
 
 A weapon with no round left shows no reload sweep, countdown or ready pulse.
 Its ring turns to sparse, muted danger dashes. A single-shot gun shows one
-struck round. A rack shows spent slots for rounds stowage cannot load, and an
-empty rack is struck through. Spent launcher and magazine-reload controls are
-struck and disabled. Their count is spoken, not printed. Under unlimited rounds
-nothing ever reads empty. `src/ui/hudAmmoOut.selftest.mjs` covers the
-derivations and `src/ui/hudAmmoOutPaint.selftest.mjs` covers the live paint,
-both in `npm test`. For the rendered frames on desktop and phone (it takes
-the capture lease):
+struck round. On the short landscape scope stack that round leads the ammo
+readout line instead. A rack shows spent slots for rounds stowage cannot load,
+and an empty rack is struck through. Between two rounds of a clip, the next
+shell fills as the clip cycles, with no countdown under the rack. Spent launcher
+and magazine-reload controls are struck and disabled. Their count is spoken,
+not printed. The phone's collapsed empty slot loses its amber frame and is
+struck on a danger edge. Under unlimited rounds nothing reads empty: not the
+ring, the rack, the tray, the magazine control or the loader audio. The ammo
+`∞` takes the numeral's size. On a portrait phone the systems row stays clear
+of the sight's band (`portraitSightClearTop`). That band covers the countdown,
+the rack, the aim warning and the scope readouts.
+`src/ui/hudAmmoOut.selftest.mjs` covers the derivations and
+`src/ui/hudAmmoOutPaint.selftest.mjs` covers the live paint and the scope
+stack's geometry, both in `npm test`. For the rendered frames (it takes the
+capture lease), run the command below. It covers desktop, a portrait phone and
+three landscape phones, and checks pixels, recorded canvas geometry and the
+tray's computed styles:
 
 ```sh
 node tools/hud-ammo-states.browser.mjs --url=http://127.0.0.1:5189 --out=/absolute/new-evidence-directory

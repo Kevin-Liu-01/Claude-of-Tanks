@@ -127,7 +127,7 @@ function read(tank) {
   const dry = reticleWeaponDry(frame.shells[frame.shellSlot], frame.ammoSelectionPending);
   return { frame, dry, sweep: reloadHudFraction(frame.reload, frame.ammoSelectionPending, dry),
     rack: autoloaderHudState(frame.magazine, frame.reload, null, dry),
-    magazineControlSpent: magazineFeedEmpty(tank.combat, tank.spec) };
+    magazineControlSpent: magazineFeedEmpty(tank.combat, tank.spec, frame.shells[frame.shellSlot]?.unlimited === true) };
 }
 
 // 1. A conventional gun fired to its last round: the reload still runs in the sim, the HUD shows none of it.
@@ -217,14 +217,20 @@ function read(tank) {
   assert.equal(view.dry, false);
   assert.equal(view.frame.magazine.feed, view.frame.magazine.capacity, 'the clip cadence is untouched');
   assert.equal(reticleWeaponDry({ type: 'APFSDS', count: 0, unlimited: true }), false);
-  // The ∞ mark itself lifts the cap: stowage counters at zero (a mirror between refills) still feed the whole rack.
+  // The ∞ mark is the one read of "endless" on every path (round 32: an unlimited slot never reads empty, whatever its
+  // count): with every stowage counter at zero the rack stays fed, the sight live, the magazine control unstruck — and
+  // the loader audible (audioEngine.selftest) — so no indicator contradicts another.
   const empty = tankOf('m1a3', [0, 0, 0]);
   const capped = read(empty);
   assert.deepEqual([capped.frame.magazine.feed, capped.frame.magazine.rounds, capped.frame.magazine.capacity], [4, 4, 4],
     'unlimited rounds never cap the magazine by the stowage counters');
-  assert.deepEqual([capped.dry, capped.rack.readyShells, capped.rack.feedShells], [false, 4, 4]);
+  assert.deepEqual([capped.dry, capped.rack.readyShells, capped.rack.feedShells, capped.magazineControlSpent],
+    [false, 4, 4, false], 'rack, sight and magazine control agree under the mark');
+  assert.equal(ammunitionSlotViewState({ type: 'APFSDS', count: 0, unlimited: true }).empty, false, 'and so does the tray');
   unlimitedRounds = false;
-  assert.deepEqual([read(empty).frame.magazine.feed, read(empty).rack.readyShells], [0, 0], 'the same counters, finite: capped');
+  const finite = read(empty);
+  assert.deepEqual([finite.frame.magazine.feed, finite.rack.readyShells, finite.dry, finite.magazineControlSpent],
+    [0, 0, true, true], 'the same counters, finite: every path reads empty');
 }
 
 // 6. The network mirror: the client reads the authority's indicator and its own mirrored ammunition.
@@ -246,6 +252,11 @@ function read(tank) {
     'the struck control reads the token');
   assert.match(touch, /\.cot-shell\.sel\.empty\{[^}]*border-bottom-color:var\(--hud-danger\)/,
     'the collapsed phone tray shows its selected empty slot in the token, over the amber frame');
+  assert.match(touch, /\.cot-shell\.sel\.empty::before\{[^}]*background:var\(--hud-danger\)[^}]*rotate\(-45deg\)/,
+    'struck through like a spent control (r3: the bare danger edge still read as selected)');
+  assert.match(touch, /\.cot-shell\.sel\.empty \.cnt\{color:var\(--hud-danger\);\}/, 'its count in the danger ink');
+  assert.match(touch, /\.cot-shell\.unlimited \.cnt\{font-size:16px;/, 'the phone ∞ at the numeral\'s size');
+  // the rendered proof of these rules is tools/hud-ammo-states.browser.mjs (computed styles of the live tray)
 }
 
 console.log('hudAmmoOut.selftest: conventional, autoloader, salvo rack and ATGM fired dry through the simulation show no '
