@@ -602,11 +602,8 @@ const tankTrestle: RegionalBuilder = (ctx) => {
     const paint = pick(look, [rgb(0x7a6a5a), rgb(0x9aa09c), rgb(0x5f6466)]);
     const staves = shade(TIMBER, 0.9 + look() * 0.15);
     latticeFrame(sink, { foot: post + 0.25, head: post, y0: 0.25, y1: legH, size: 0.3, girt: 0.16, brace: 0.12, panels: 3, bucket: 'structureWood',
-      colour: TIMBER, pad: { bucket: CONCRETE, size: 0.7, top: 0.25 }, mobile },
+      colour: TIMBER, pad: { bucket: CONCRETE, size: 0.7, top: 0.25, solid: true }, mobile },
       { x0: -R, x1: R, y0: legH + 0.3, y1: legH + 4.2, z0: -R, z1: R, bucket: 'structureWood', tint: staves });
-    // (the building census's world pass, 227: on a slope a pad stood 0.29 m over the ground) each pad's pier going on down
-    // past the slope, its collision with it
-    for (const [sx, sz] of [[-1, -1], [1, -1], [1, 1], [-1, 1]] as const) sink.span(CONCRETE, sx * (post + 0.25) - 0.34, -1.0, sz * (post + 0.25) - 0.34, sx * (post + 0.25) + 0.34, -0.23, sz * (post + 0.25) + 0.34);
     // the deck: bearers on the post heads, the joists across them, the boards
     trestleDeck(sink, P, legH, shade(TIMBER, 0.85)); // (looks r2 b-east, 2026-10-16: extracted to queenstownTrestle.ts, rebuilt there)
     for (const s of [-1, 1]) sink.span('structureWood', -P / 2 - 0.1, legH - 0.12, s * post - 0.12, P / 2 + 0.1, legH + 0.14, s * post + 0.12, { colour: shade(TIMBER, 0.8), decor: true });

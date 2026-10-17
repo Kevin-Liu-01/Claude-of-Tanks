@@ -146,7 +146,10 @@ const CANVAS_OLIVE = rgb(0x5a5a3e), PLYWOOD = shade(rgb(0x5a5a3e), 1.25);
 export const jamesway: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
   const L = num(ctx, 'length', 6), W = num(ctx, 'width', 3), r = W / 2, floor = 0.45, z0 = -L / 2;
-  footing(sink, ctx, 0, 0, r + 0.1, L / 2 + 0.1, 0.05);
+  // (the building census's world pass, 227: a footing topped at 5 cm under the 6 cm a ground-contact solid stands to
+  // carried no collision, so the hut's stood from its sleepers' feet, up to 0.14 m over the snow on a slope) the footing up
+  // under the sleepers' feet, the hut's collision down with it
+  footing(sink, ctx, 0, 0, r + 0.1, L / 2 + 0.1, 0.07);
   // the platform on its sleepers (three runners along the hut) and its edge joist
   // (the looks lane's r2 sweep, 2026-10-16: plain boxes carried 71 % of the hut) the floor laid in its 4 × 8 ft plywood
   // sheets, each its own tone, its edge joist round it; the sleepers sawn timbers with their arrises eased

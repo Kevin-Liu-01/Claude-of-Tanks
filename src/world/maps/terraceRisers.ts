@@ -14,6 +14,8 @@
 // fine distance), and past them the painted riser is its far form. No collision, no stream draws (hash noise).
 import { PartSink, type RegionalParts, type Rgb, type Vec3 } from './regional/geometry.ts';
 
+const shade3 = (c: Rgb, k: number): Rgb => [Math.min(1, c[0] * k), Math.min(1, c[1] * k), Math.min(1, c[2] * k)];
+
 /** A terrace zone as terrain.ts takes it (TerraceZoneConfig): its outline, its step, its settlement share. */
 export interface TerraceRiserZone {
   polygon: readonly (readonly [number, number])[];
@@ -135,19 +137,26 @@ export function* traceTerraceRisers(zones: readonly TerraceRiserZone[], o: Terra
           // to the ground under it, a few centimetres into it
           const af: Vec3 = [a[0], Math.min(yFoot, at(a[0], a[2]) - 0.04), a[2]], bf: Vec3 = [b[0], Math.min(yFoot, at(b[0], b[2]) - 0.04), b[2]];
           const colour = tone(k, n, 0x7e2);
-          const up = (p: Vec3, q: Vec3, r: Vec3, s2: Vec3) => {
-            // wound counter-clockwise from above (the quad's own winding checked against +y)
-            const nyv = (q[2] - p[2]) * (r[0] - p[0]) - (q[0] - p[0]) * (r[2] - p[2]);
-            if (nyv > 0) sink.quad('regionalStone', p, q, r, s2, { colour, decor: true, fine: true });
-            else sink.quad('regionalStone', p, s2, r, q, { colour, decor: true, fine: true });
+          // (the 227 sweep: each stone a flat top and a flat face, 85 % plain primitives) each coping stone dressed as one:
+          // its top swelling a centimetre along its middle, its front arris knocked off, the face under it
+          const lift = (p: Vec3, dy: number): Vec3 => [p[0], p[1] + dy, p[2]];
+          const back2 = (p: Vec3, d: number): Vec3 => [p[0] + ux * d, p[1], p[2] + uz * d];
+          const ac = back2(a, 0.025), bc = back2(b, 0.025), ad = lift(a, -0.025), bd = lift(b, -0.025);
+          const ma = lift([(ac[0] + a2[0]) / 2, (ac[1] + a2[1]) / 2, (ac[2] + a2[2]) / 2], 0.01);
+          const mb = lift([(bc[0] + b2[0]) / 2, (bc[1] + b2[1]) / 2, (bc[2] + b2[2]) / 2], 0.01);
+          // each quad wound to face `dir` (its normal checked against it)
+          const toward = (p: Vec3, q: Vec3, r: Vec3, s2: Vec3, dir: Vec3, c: Rgb) => {
+            const e1 = [q[0] - p[0], q[1] - p[1], q[2] - p[2]], e2 = [r[0] - p[0], r[1] - p[1], r[2] - p[2]];
+            const nx = e1[1] * e2[2] - e1[2] * e2[1], ny = e1[2] * e2[0] - e1[0] * e2[2], nz = e1[0] * e2[1] - e1[1] * e2[0];
+            if (nx * dir[0] + ny * dir[1] + nz * dir[2] > 0) sink.quad('regionalStone', p, q, r, s2, { colour: c, decor: true, fine: true });
+            else sink.quad('regionalStone', p, s2, r, q, { colour: c, decor: true, fine: true });
           };
-          up(a, b, b2, a2);
-          // the face down the riser (seen from downhill: wound against -up)
-          const faceOut: Vec3 = [-ux, 0, -uz];
-          const fn = ((b[1] - a[1]) * (af[2] - a[2]) - (b[2] - a[2]) * (af[1] - a[1])) * faceOut[0]
-            + ((b[0] - a[0]) * (af[1] - a[1]) - (b[1] - a[1]) * (af[0] - a[0])) * faceOut[2];
-          if (fn > 0) sink.quad('regionalStone', a, b, bf, af, { colour: tone(k, n, 0x7e2, 0.92), decor: true, fine: true });
-          else sink.quad('regionalStone', a, af, bf, b, { colour: tone(k, n, 0x7e2, 0.92), decor: true, fine: true });
+          const faceOut: Vec3 = [-ux, 0, -uz], arrisOut: Vec3 = [-ux, 1, -uz];
+          toward(ac, bc, mb, ma, [0, 1, 0], colour);
+          toward(ma, mb, b2, a2, [0, 1, 0], colour);
+          toward(ad, bd, bc, ac, arrisOut, tone(k, n, 0x7e2, 0.96));
+          // the face down the riser (seen from downhill)
+          toward(ad, bd, bf, af, faceOut, tone(k, n, 0x7e2, 0.92));
           coping++;
           // now and then a stone the riser shed, at its foot: down the slope until the tread below
           if (hash(k, n, 0x7e3) < 0.16) {
@@ -159,11 +168,20 @@ export function* traceTerraceRisers(zones: readonly TerraceRiserZone[], o: Terra
             const y = at(fxp, fzp), r = 0.12 + hash(k, n, 0x7e5) * 0.12, h = r * (0.55 + hash(k, n, 0x7e6) * 0.3), turn = hash(k, n, 0x7e7) * Math.PI;
             const pt = (ang: number, rr: number, yy: number): Vec3 => [fxp + Math.cos(turn + ang) * rr, yy, fzp + Math.sin(turn + ang) * rr];
             const ring = [0, 1, 2, 3, 4].map((q) => pt((q / 5) * Math.PI * 2, r * (0.8 + hash(q, k, 0x7e8) * 0.35), y - h * 0.3));
+            // (227) the shed stone rounded: a shoulder ring between its bed and its crown, turned a half step
+            const shoulder = [0, 1, 2, 3, 4].map((q) => pt(((q + 0.5) / 5) * Math.PI * 2, r * (0.62 + hash(q, k, 0x7ea) * 0.2), y + h * 0.42));
             const apex: Vec3 = [fxp, y + h, fzp], col = tone(k, n, 0x7e9, 0.85);
+            const out = (tri: Vec3[]): Vec3[] => {
+              const [p1, p2, p3] = tri, cx = (p1[0] + p2[0] + p3[0]) / 3 - fxp, cz = (p1[2] + p2[2] + p3[2]) / 3 - fzp, cy = (p1[1] + p2[1] + p3[1]) / 3 - y;
+              const e1 = [p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]], e2 = [p3[0] - p1[0], p3[1] - p1[1], p3[2] - p1[2]];
+              const nx = e1[1] * e2[2] - e1[2] * e2[1], ny = e1[2] * e2[0] - e1[0] * e2[2], nz = e1[0] * e2[1] - e1[1] * e2[0];
+              return nx * cx + ny * cy + nz * cz > 0 ? tri : [p1, p3, p2];
+            };
             for (let q = 0; q < 5; q++) {
-              const p1 = ring[q], p2 = ring[(q + 1) % 5];
-              const nyv = (p2[2] - p1[2]) * (apex[0] - p1[0]) - (p2[0] - p1[0]) * (apex[2] - p1[2]);
-              sink.polygon('regionalStone', nyv > 0 ? [p1, p2, apex] : [p1, apex, p2], { colour: col, decor: true, fine: true });
+              const p1 = ring[q], p2 = ring[(q + 1) % 5], s1 = shoulder[q], s0 = shoulder[(q + 4) % 5];
+              sink.polygon('regionalStone', out([p1, p2, s1]), { colour: col, decor: true, fine: true });
+              sink.polygon('regionalStone', out([p1, s1, s0]), { colour: col, decor: true, fine: true });
+              sink.polygon('regionalStone', out([s1, shoulder[(q + 1) % 5], apex]), { colour: shade3(col, 1.06), decor: true, fine: true });
             }
             tumble++;
           }
