@@ -131,7 +131,9 @@ export function* traceTerraceRisers(zones: readonly TerraceRiserZone[], o: Terra
           const yTop = tread + 0.055 + set, yFoot = tread - 0.17, back = 0.34, proud = 0.07;
           const a: Vec3 = [ax - ux * proud, yTop, az - uz * proud], b: Vec3 = [bx - ux * proud, yTop, bz - uz * proud];
           const a2: Vec3 = [ax + ux * back, yTop - 0.012, az + uz * back], b2: Vec3 = [bx + ux * back, yTop - 0.012, bz + uz * back];
-          const af: Vec3 = [a[0], yFoot, a[2]], bf: Vec3 = [b[0], yFoot, b[2]];
+          // (the 227 sweep: a face's foot stood 3 cm over the ground where the riser drops steeper) each end of the face down
+          // to the ground under it, a few centimetres into it
+          const af: Vec3 = [a[0], Math.min(yFoot, at(a[0], a[2]) - 0.04), a[2]], bf: Vec3 = [b[0], Math.min(yFoot, at(b[0], b[2]) - 0.04), b[2]];
           const colour = tone(k, n, 0x7e2);
           const up = (p: Vec3, q: Vec3, r: Vec3, s2: Vec3) => {
             // wound counter-clockwise from above (the quad's own winding checked against +y)

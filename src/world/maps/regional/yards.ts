@@ -379,7 +379,8 @@ export function gardenParts(w: number, d: number, look: () => number, drop = 0, 
         for (const [cx, cy, cz, r] of clumps) {
           if (look() < 0.55) continue;
           const side = look() < 0.5 ? -1 : 1;
-          mound(sink, [cx + (look() - 0.5) * r * 0.6, cy - 0.02, cz + side * r * 0.5], X, Z, 0.05, 0.05, 0.08, rgb(0xb83020), dec, 0, 4);
+          // (the 227 sweep: one hung 2 cm off its clump on Caldera) set into the clump's side, not on its skin
+          mound(sink, [cx + (look() - 0.5) * r * 0.4, cy - 0.01, cz + side * r * 0.32], X, Z, 0.05, 0.05, 0.08, rgb(0xb83020), dec, 0, 4);
         }
       }
       continue;
