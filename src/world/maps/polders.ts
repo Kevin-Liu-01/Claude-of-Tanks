@@ -153,7 +153,10 @@ export default {
   terrain: {
     hillScale: 0.42, microScale: 0.4, rimH: 18, clearMarshVeg: true, softLakes: true,
     // The farm court's paved yard, inside the mill lane's loop: the zone-control placement seats its middle disc there.
-    hardstands: [{ x: -40, z: 0, width: 60, length: 60, yawDeg: 0, grade: 0 }],
+    // (2026-10-17, the maps lane; the Polders village blind, pose 1: "a large dark flat square plot in the village centre
+    // reads as an untextured void") painted as a grazed green worn bare in patches, not one compacted 60 m rectangle; the
+    // apron's level and every road query are unchanged (paint only)
+    hardstands: [{ x: -40, z: 0, width: 60, length: 60, yawDeg: 0, grade: 0, paint: { cover: 0.25, mottle: 0.35 } }],
     village: VILLAGE,
     // Step 7 (2026-10-07; gauntlet wave 248: "lanes as wide as a modern road and level with the water"; the coordinator's
     // ruling): the polder's roads narrowed and raised a metre on crowned banks of their own (terrain.ts RoadPathStyle
