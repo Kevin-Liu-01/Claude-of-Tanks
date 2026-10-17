@@ -68,18 +68,48 @@ export const AGGREGATES = Object.freeze([
  * already cover (with the reason beside it): the edge to them is dropped from the step's own key.
  */
 export const DECLARED_DYNAMIC = Object.freeze({
+  'tools/vehicle-controls-inventory.mjs': {
+    pin: 'aa9097b373101a7b',
+    reads: [],
+    note: 'reads its own four generated files (the --ids merge and --check)',
+  },
+  'tools/barak-rear-bay-fill-policy.mjs': {
+    pin: '4fd2707a1d932bbd',
+    reads: [],
+    note: 'reads BARAK_SOURCE_CONFIGURATION.source.path, the literal public/models/community-candidates/merkava4_barak_x_source.glb in tools/barak-source-openings.mjs, which the fills key already holds as a named input (and checks its sha256)',
+  },
+  'tools/moving-clearance-air.mjs': {
+    pin: '8bfcaa7c14405742',
+    reads: [],
+    note: 'reads and merges the clearance record it is given: the fills step\'s own docs/geometry-gate/moving-clearance-air.json (or a part\'s scratch copy)',
+  },
+  'tools/gen-mission-attachment-seats.mjs': {
+    pin: '4db346525b73f24e',
+    reads: [],
+    note: 'reads a --hints file only when the flag is passed; the chain refuses --hints in step flags (its contents would not be keyed)',
+  },
+  'tools/fleet-geometry-digest.mjs': {
+    pin: 'e82a768b0c8ebc28',
+    reads: [],
+    note: 'reads the ledger step\'s own docs/references/fleet-geometry-ledger.json (partial updates, comparisons)',
+  },
+  'src/vehicles/materialPainterWorker.ts': {
+    pin: '02080ee9df202934',
+    reads: [],
+    note: 'a page worker: fetches the painter font, public/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2, inside the GPU steps\' public/** reads',
+  },
   'tools/gen-interior-fills.mjs': {
-    pin: '940b8d8d3f93c150',
+    pin: '7ad1c72d6da8aede',
     reads: [],
     note: 'readdirSync/import of its own interiorFillGroups shards (the --ids merge and stale-family moves) and of the chain\'s own --merge-from parts (records this step measured with the same flags); git rev-parse/show and the data: import run only with --uniform-from, which the chain never passes',
   },
   'tools/mission-dock-seats.mjs': {
-    pin: '25e8208f967031dd',
+    pin: '216ec533c50b350d',
     reads: [],
-    note: 'the computed import runs only when the file is executed as a CLI (it imports the seats generator output); the generator imports it as a library',
+    note: 'the computed import and the reads run only when the file is executed as a CLI (they read the seats generator\'s own outputs); the generator imports it as a library',
   },
   'tools/spare-track-placement-check.mjs': {
-    pin: 'd9f0bf06ba201c7f',
+    pin: '20ca77abf4fe3e4c',
     importHelper: 'imp',
     reads: [],
     // The run classifier reads the source lines of the stack frames that built each id's parts (src/<frame file>): code
@@ -89,14 +119,14 @@ export const DECLARED_DYNAMIC = Object.freeze({
     note: 'imp(<literal>) imports repository modules (followed as edges); node_modules imports are covered by the lockfiles; src source-line reads are covered (see covered)',
   },
   'tools/gen-combat-anatomy.mjs': {
-    pin: 'b167ef1ce75d0f51',
+    pin: 'd1f869f3a73b1713',
     reads: [],
-    note: 'readdirSync of its own combatAnatomyGroups directory (stale shard removal)',
+    note: 'readdirSync and reads of its own combatAnatomyGroups directory and index (stale shards, --check)',
   },
   'tools/gen-vehicle-marking-seats.mjs': {
-    pin: '296e09f6f23f64ea',
+    pin: '435bca1cb685e50d',
     reads: [],
-    note: 'readdirSync of its own vehicleMarkingSeatGroups directory (stale shard removal)',
+    note: 'readdirSync and reads of its own vehicleMarkingSeatGroups directory and index (stale shards, --check)',
   },
   'src/ui/i18nDictionaries.ts': {
     pin: 'a10171fb8b5b9857',
@@ -104,19 +134,36 @@ export const DECLARED_DYNAMIC = Object.freeze({
     note: 'both computed imports load the URL a document names in its cot-i18n-catalog meta; tools/icons-page.html has none and Node has no document, so neither runs in a fleet step',
   },
   'tools/presentation-centering.mjs': {
-    pin: '542d67ec9cf0c14e',
+    pin: 'a4e7b6de6e518f96',
     reads: [],
-    note: 'a Vite dev server (configFile false) over the repository root serves tools/icons-page.html to Chrome; what the page can fetch is the step\'s declared reads (public/**). Re-pinned 2026-10-16 (test-speed R4c): only the server\'s port policy moved (toolServerOptions: 127.0.0.1, strictPort false); root, config and reads are unchanged',
+    note: 'a Vite dev server (configFile false) over the repository root serves tools/icons-page.html to Chrome; what the page can fetch is the step\'s declared reads (public/**); file reads are its own anchors file, and public/icons only under --check/--sync-assets (the chain runs --update). Port policy 2026-10-16 (test-speed R4c): the Vite server listens through toolServerOptions (127.0.0.1, strictPort false); root, config and reads are unchanged',
   },
   'tools/genIcons.mjs': {
-    pin: '08970c21427424cd',
+    pin: '7d944ce5dd44bc5c',
     reads: [],
-    note: 'a Vite dev server (configFile false) over the repository root serves tools/icons-page.html to Chrome; what the page can fetch is the step\'s declared reads (public/**). Re-pinned 2026-10-16 (test-speed R4c): only the server\'s port policy moved (toolServerOptions: 127.0.0.1, strictPort false); root, config and reads are unchanged',
+    note: 'a Vite dev server (configFile false) over the repository root serves tools/icons-page.html to Chrome; what the page can fetch is the step\'s declared reads (public/**); file reads are its own manifest and images. Port policy 2026-10-16 (test-speed R4c): the Vite server listens through toolServerOptions (127.0.0.1, strictPort false); root, config and reads are unchanged',
   },
   'tools/fleet-geometry-ledger.mjs': {
     pin: '1c72be85b54a8dbf',
     reads: [],
     note: 'spawns itself (--worker) for --jobs shards; the shards run this same closure',
+  },
+});
+
+/**
+ * Tool-side modules that read a per-id table only at the id they are handed. A step that reaches a table through one
+ * of these (and no other edge) keys that table per id instead of whole. `pin` is sha256/16 of the module's sorted
+ * trimmed source lines naming the table's export (tools/changed-only/graph.mjs accessorPin): a new use, such as an
+ * enumeration, breaks it and the table counts whole again until reviewed.
+ */
+export const PER_ID_ACCESSORS = Object.freeze({
+  'src/vehicles/auxiliaryInventory.ts': {
+    tables: ['auxiliaryInventory'], exportName: 'AUXILIARY_INVENTORY', pin: '60ffc036ad5f9c5a',
+    note: 'auxiliaryCapabilities(spec) returns AUXILIARY_INVENTORY[spec.id]',
+  },
+  'src/vehicles/ghillieSuit.ts': {
+    tables: ['missionDockSeats'], exportName: 'MISSION_DOCK_SEATS', pin: 'b290c053cb31034c',
+    note: 'the cradle keep-out reads MISSION_DOCK_SEATS[specId] of the suit being built',
   },
 });
 
@@ -199,7 +246,8 @@ export const STEPS = Object.freeze([
     // The page renders through Vite and Chrome: everything the dev server can serve from public/ is an input (source
     // models excepted: no playable build loads one, AGENTS.md).
     reads: ['public/**'],
-    excludeReads: ['public/media/**', 'public/models/**'],
+    // --update renders live builds; the exported-icon audit (public/icons) runs only under --check/--sync-assets.
+    excludeReads: ['public/icons/**', 'public/media/**', 'public/models/**'],
   },
   {
     name: 'icons', device: 'gpu', tool: 'tools/genIcons.mjs', entries: ['tools/icons-page.html'],

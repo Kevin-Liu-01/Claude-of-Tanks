@@ -19,8 +19,8 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import ts from 'typescript-compiler-api';
-import { createGraph, h16, sha256 } from './graph.mjs';
-import { AGGREGATES, DECLARED_DYNAMIC, FLEET_ENTRIES, GROUP_LOADERS_FILE, LOADER_FILES, STEPS, TABLES,
+import { accessorPin, createGraph, h16, sha256 } from './graph.mjs';
+import { AGGREGATES, DECLARED_DYNAMIC, FLEET_ENTRIES, GROUP_LOADERS_FILE, LOADER_FILES, PER_ID_ACCESSORS, STEPS, TABLES,
   stepDefinition } from './steps.mjs';
 import { expandGlobs } from './globs.mjs';
 
@@ -87,14 +87,14 @@ export function normalizedNodeOptions(value = '') {
  */
 export const DEFAULT_CONFIG = Object.freeze({
   tables: TABLES, aggregates: AGGREGATES, fleetEntries: FLEET_ENTRIES, loaderFiles: LOADER_FILES,
-  groupLoadersFile: GROUP_LOADERS_FILE, declared: DECLARED_DYNAMIC,
+  groupLoadersFile: GROUP_LOADERS_FILE, declared: DECLARED_DYNAMIC, accessors: PER_ID_ACCESSORS,
 });
 
 export function computeState({ root, steps = STEPS, env = process.env, rows = null, graph = null, cacheDir,
   config = DEFAULT_CONFIG } = {}) {
   root = resolve(root);
   const { tables: TABLES, aggregates: AGGREGATES, fleetEntries: FLEET_ENTRIES, loaderFiles: LOADER_FILES,
-    groupLoadersFile: GROUP_LOADERS_FILE, declared: DECLARED_DYNAMIC } = { ...DEFAULT_CONFIG, ...config };
+    groupLoadersFile: GROUP_LOADERS_FILE, declared: DECLARED_DYNAMIC, accessors: ACCESSORS } = { ...DEFAULT_CONFIG, ...config };
   const declaredHelpers = Object.fromEntries(Object.entries(DECLARED_DYNAMIC)
     .filter(([, declaration]) => declaration.importHelper).map(([file, declaration]) => [file, declaration.importHelper]));
   graph ??= createGraph({ root, importHelpers: declaredHelpers, ...(cacheDir ? { cacheDir } : {}) });
@@ -168,7 +168,7 @@ export function computeState({ root, steps = STEPS, env = process.env, rows = nu
   const dynamicProblem = (file) => {
     const { flags } = graph.edges(file);
     const dynamic = flags.broad || flags.opaqueImport || flags.opaqueEnvironment || flags.unresolved || flags.git
-      || flags.browser || flags.helperComputed.length;
+      || flags.browser || flags.helperComputed.length || flags.sites.length;
     if (!dynamic) return null;
     const declaration = DECLARED_DYNAMIC[rel(file)];
     if (!declaration) return `undeclared dynamic read in ${rel(file)}`;
@@ -202,9 +202,19 @@ export function computeState({ root, steps = STEPS, env = process.env, rows = nu
     const ownFiles = new Set([...step.files.map(abs),
       ...[...tableFiles].filter(([, names]) => [...names].some((name) => ownTables.has(name))).map(([file]) => file)]);
     const entries = [step.tool, ...(step.entries ?? [])];
-    // A declaration may name what a tool reads that the fleet keys already cover (see steps.mjs `covered`).
-    const covered = (from, to) => (DECLARED_DYNAMIC[rel(from)]?.covered ?? []).includes(rel(to));
-    const closure = graph.closure(entries, { stop: new Set([...coreSet, ...tableStop]), skip: covered });
+    // A declaration may name what a tool reads that the fleet keys already cover (see steps.mjs `covered`), and a
+    // per-id accessor turns its table into per-id rows (steps.mjs PER_ID_ACCESSORS).
+    const perIdTables = new Set();
+    const skip = (from, to) => {
+      if ((DECLARED_DYNAMIC[rel(from)]?.covered ?? []).includes(rel(to))) return true;
+      const accessor = ACCESSORS[rel(from)];
+      const names = [...(tableFiles.get(to) ?? [])];
+      if (!accessor || !names.length || !names.every((name) => accessor.tables.includes(name))) return false;
+      if (accessorPin(readFileSync(from, 'utf8'), accessor.exportName) !== accessor.pin) return false; // stale: whole table
+      for (const name of names) perIdTables.add(name);
+      return true;
+    };
+    const closure = graph.closure(entries, { stop: new Set([...coreSet, ...tableStop]), skip });
     const toolFiles = new Set(), foreignTables = new Set();
     for (const file of closure.files) {
       if (coreSet.has(file) || aggregateFiles.has(file) || ownFiles.has(file)) continue;
@@ -243,6 +253,8 @@ export function computeState({ root, steps = STEPS, env = process.env, rows = nu
       step, tool, reasons, decomposed: reasons.length === 0,
       outputFiles: outputFiles.map(rel).sort(),
       toolFiles: [...toolFiles].map(rel).sort(),
+      foreignTables: [...foreignTables].map(rel).sort(),
+      rowTables: [...new Set([...buildReadTables, ...perIdTables])].sort(),
     };
   }
 
@@ -264,7 +276,7 @@ export function computeState({ root, steps = STEPS, env = process.env, rows = nu
   const rowOf = (table, id) => data.rows[table]?.[id] ?? 'absent';
   const rowsKey = (step, id) => {
     const parts = [];
-    for (const table of buildReadTables) for (const member of chainOf(id)) {
+    for (const table of stepStates[step.name].rowTables) for (const member of chainOf(id)) {
       if (member === id && step.outputs.includes(table)) continue;
       parts.push(`${table}:${member}:${rowOf(table, member)}`);
     }
@@ -384,7 +396,7 @@ const reasonsFor = (manifest, state, name, id) => {
   if (manifest.tools[name] !== step.tool) out.push(`tool ${step.step.tool} or its flags`);
   if (manifest.core !== state.core) out.push('core');
   for (const group of state.groupChain(id)) if (manifest.groups[group] !== state.groups[group]) out.push(`group ${group}`);
-  for (const table of state.buildReadTables) for (const member of state.chainOf(id)) {
+  for (const table of step.rowTables) for (const member of state.chainOf(id)) {
     if (member === id && step.step.outputs.includes(table)) continue;
     const before = manifest.rows[table]?.[member] ?? 'absent', now = state.rows[table]?.[member] ?? 'absent';
     if (before !== now) out.push(`row ${table}[${member}]`);
