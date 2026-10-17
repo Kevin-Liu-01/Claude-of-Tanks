@@ -52,7 +52,10 @@ export interface CaprockSpec {
   broken?: { overhang?: readonly [number, number]; lift?: readonly [number, number]; jointM?: number;
     /** where the bed has broken away along the brow: caprockGap's threshold (the trench's canyon wall reads the same
      * threshold, canyonWall.ts beds.capGaps, and rounds its top over the bare brow there; default none) */
-    gaps?: number };
+    gaps?: number;
+    /** runs of the axis (s, m from the centre) where the blocks lie flush, never standing proud (a bridge deck over the
+     * brow: its roadway a hand over the ground) */
+    keepClear?: ReadonlyArray<readonly [number, number]> };
 }
 
 /**
@@ -174,6 +177,8 @@ export function buildCaprockRim(spec: CaprockSpec, ground: CastleGround, noise: 
           lift0 = l0 + (l1 - l0) * rng(); lift1 = l0 + (l1 - l0) * rng();
           trim = 0.06 + (broken.jointM ?? 0.12) * (0.4 + 0.6 * rng());
           back = 0.9 + 0.9 * rng(); dl = (rng() - 0.5) * 0.16;
+          const s0 = rims[k]!.s, s1 = rims[end]!.s;
+          if ((broken.keepClear ?? []).some(([a, b]) => s1 > Math.min(a, b) && s0 < Math.max(a, b))) { lift0 = 0; lift1 = 0; }
         }
         const rows: number[][] = [];
         for (let q = k; q <= end; q++) {

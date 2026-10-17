@@ -159,7 +159,8 @@ interface SceneryCaprock {
   /** (Aegis r6) a trench's bench-stepped wall: caprockRim.ts benchM. */
   benchM?: number;
   /** (Aegis r7) the bed broken into its own blocks: caprockRim.ts broken. */
-  broken?: { overhang?: readonly [number, number]; lift?: readonly [number, number]; jointM?: number; gaps?: number };
+  broken?: { overhang?: readonly [number, number]; lift?: readonly [number, number]; jointM?: number; gaps?: number;
+    keepClear?: ReadonlyArray<readonly [number, number]> };
   name?: string;
 }
 

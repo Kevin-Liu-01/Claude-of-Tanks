@@ -364,9 +364,9 @@ export default {
       // the hard capping bed a shade paler than the wall, not white
       // (r7: "dead-straight tops", "a thin dark line across the field" from the bridge) the hard bed broken into its own
       // blocks, each leaning out over the wall as far as it does and settled a little proud of the brow, its joints open,
-      // its back under the ground; greyer than the wall, as the cap weathers
+      // its back under the ground; greyer than the wall, as the cap weathers; flush under the viaduct's deck
       { x: 0, z: 0, length: 540, width: 192, yawDeg: 0, trench: true, benchM: 8, span: 0.9, tone: [0.11, 0.15, 0.6],
-        thickness: [1.2, 2.6], blockM: [5, 14], broken: { overhang: [1.5, 2.4], lift: [0, 0.22], jointM: 0.14, gaps: 0.58 }, name: "the Tajo's lips" },
+        thickness: [1.2, 2.6], blockM: [5, 14], broken: { overhang: [1.5, 2.4], lift: [0, 0.22], jointM: 0.14, gaps: 0.58, keepClear: [[-16, 16]] }, name: "the Tajo's lips" },
     ],
   },
   // the mountains lane (2026-10-03, gauntlet wave 15): wooded uplands round the gorge (not Verdant's plain)
