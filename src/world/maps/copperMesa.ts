@@ -284,6 +284,8 @@ export default {
   // left no room for the mine) a band of the map's own: the Mount Lyell works and Queenstown stand in the basin by
   // design, and with the open cut's rim they close its long lines (wave 358a passed the works; main's 0.031 had none of
   // them); the galleries see-through and the haul trucks off the corridors keep what can be kept (0.026)
+  // PERMANENT (program item 69, landed on main 2026-10-17; replaces main's temporary integ/216 band [0.025, 0.15], which
+  // was to expire at 217): the basin's own long-sight floor is 0.024, not the brief's 0.03; no expiry
   layoutBrief: { bands: {
     sightLongShare: { band: [0.024, 0.15], reason: 'the Mount Lyell works, Queenstown and the open cut\'s rim close the basin\'s long lines by design (the works passed wave 358a; main\'s 0.031 had none of them)' },
   } },
