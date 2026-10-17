@@ -92,11 +92,13 @@ const CLI = fileURLToPath(new URL('./tank-standard-check.mjs', import.meta.url))
 }
 
 // --- 2. the real CLI, end to end ------------------------------------------------------------------------------------
-const COMPARISON = 'leo2a6', CONCEPT = 't72_rys', PHOTO = 'marder2';
+const COMPARISON = 'leo2a6', CONCEPT = 't72_rys', PHOTO = 'marder2', UNSCORED = 'amx30b';
 // The fixture ids must stay in their classes; this receipt fails loudly if the fleet reclassifies them.
 assert.deepEqual(partitionConceptIds([COMPARISON, CONCEPT, PHOTO]).concepts, [CONCEPT]);
 assert.equal(isPhotoReference(PHOTO), true);
 assert.equal(isPhotoReference(COMPARISON), false);
+assert.deepEqual(partitionConceptIds([UNSCORED]).concepts, []);
+assert.equal(isPhotoReference(UNSCORED), false);
 const conceptGuns = firstPartyConcept(CONCEPT).roofMachineGuns;
 const photoGuns = readPhotoReference(PHOTO, file => readFileSync(path.join(REPO, file))).target.roofMachineGuns;
 
@@ -239,17 +241,19 @@ const explain = result => `${result.name}: exit ${result.code}\n${result.stdout}
 
 try {
   const ids = `--ids=${COMPARISON},${CONCEPT},${PHOTO}`;
-  const [stagesRun, defaultRun, green, stageError, clipCrash, noRender] = await Promise.all([
+  const [stagesRun, defaultRun, green, stageError, clipCrash, noRender, renderError] = await Promise.all([
     runScenario('stages', RED_EVERYWHERE, [ids, '--gate', '--stages']),
     runScenario('default', RED_EVERYWHERE, [ids, '--gate']),
     runScenario('green', ALL_GREEN, [`--ids=${COMPARISON}`, '--gate', '--stages']),
     runScenario('stage-error', { ...ALL_GREEN, geometryExit: 1 }, [`--ids=${COMPARISON}`, '--gate', '--stages']),
     runScenario('clip-crash', { clip: { [COMPARISON]: [0, 0, 0, 0] }, clipExit: 3 }, [`--ids=${COMPARISON}`, '--no-render', '--stages'],
       { [COMPARISON]: PASSING_PACKET }),
-    runScenario('no-render', { clip: { [COMPARISON]: [0, 0, 0, 0] } }, [`--ids=${COMPARISON}`, '--no-render', '--stages'],
-      { [COMPARISON]: PASSING_PACKET }),
+    // UNSCORED has no packet: outside --gate it stays procedural-only (N/A), as it always has.
+    runScenario('no-render', { clip: { [COMPARISON]: [0, 0, 0, 0], [UNSCORED]: [0, 0, 0, 0] } },
+      [`--ids=${COMPARISON},${UNSCORED}`, '--no-render', '--stages'], { [COMPARISON]: PASSING_PACKET }),
+    runScenario('render-error', { ...ALL_GREEN, renderThrows: true }, [`--ids=${COMPARISON}`, '--gate', '--stages']),
   ]);
-  for (const result of [stagesRun, defaultRun, green, stageError, clipCrash, noRender])
+  for (const result of [stagesRun, defaultRun, green, stageError, clipCrash, noRender, renderError])
     assert.ok(!result.lock.length || result.lock.every(line => /^(acquire|captured )/.test(line)), explain(result));
 
   // --stages: a red geometry gate, red concept and photo proofs and a red B4 no longer hide B2 and B3.
@@ -301,10 +305,20 @@ try {
   assert.equal(noRender.code, 0, explain(noRender));
   assert.deepEqual(noRender.rendered, []);
   assert.deepEqual(noRender.lock, [], 'no capture phase ran');
-  assert.deepEqual(rowsOf(noRender.report), { [COMPARISON]: { geometry: 'PASS', clip: 'PASS', contiguity: 'SKIP', decor: 'SKIP' } });
+  assert.deepEqual(rowsOf(noRender.report), {
+    [COMPARISON]: { geometry: 'PASS', clip: 'PASS', contiguity: 'SKIP', decor: 'SKIP' },
+    [UNSCORED]: { geometry: 'N/A', clip: 'PASS', contiguity: 'SKIP', decor: 'SKIP' },
+  }, explain(noRender));
   assert.equal(noRender.report.render, false);
+
+  // A render stage that dies (lock, vite, browser) fails B2/B3 for every id and the run; the earlier stages stand.
+  assert.equal(renderError.code, 2, explain(renderError));
+  assert.deepEqual(renderError.rendered, []);
+  assert.deepEqual(rowsOf(renderError.report), { [COMPARISON]: { geometry: 'PASS', clip: 'PASS', contiguity: 'FAIL', decor: 'FAIL' } });
+  assert.deepEqual(renderError.report.summary.failures.map(failure => [failure.stage, failure.reason]),
+    [['render', 'vite failed to start (stub)']]);
 } finally {
-  for (const name of ['stages', 'default', 'green', 'stage-error', 'clip-crash', 'no-render']) {
+  for (const name of ['stages', 'default', 'green', 'stage-error', 'clip-crash', 'no-render', 'render-error']) {
     const link = path.join(scratch, name, 'docs/references');
     try { unlinkSync(link); } catch { /* never created */ }
   }
