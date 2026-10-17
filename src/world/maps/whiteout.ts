@@ -94,6 +94,21 @@ export default {
     architecture: 'arctic',
     sourcedPalette: 'winter',
     plan: ['depot', 'warehouse', 'watertower', 'foundryoffice', 'containerRow', 'depot', 'warehouse', 'ruin', 'firestation', 'depot', 'containerRow', 'woodshed', 'warehouse', 'ruin', 'depot', 'foundryoffice'],
+    // Lane B's Whiteout pass (2026-10-17, MAP-01: a town plan with plots and yards): the plan above strings the station
+    // along the service street, and north of the module train the village rect lay empty. A main station's camp stood
+    // round its train: the heated vehicle garages where the Bv 206s, the Sno-Cats and the dozers were kept running, their
+    // doors on a ploughed yard; the warehouse the sealift filled each summer; the Jamesway huts of the summer camp in a row,
+    // where the construction and resupply crews lived in the short season; the utility sheds on their skids; a module
+    // stripped for parts. Here they close the yard between the train's entries and the north drift fence (it moves north of
+    // them), after the plan has seated every building of its own (plannedSitesAfterPlan: the street stands as it was)
+    plannedSites: [
+      { structure: 'depot', x: -72, z: 8, yawDeg: 0 }, { structure: 'depot', x: -72, z: 36, yawDeg: 0 },
+      { structure: 'warehouse', x: -32, z: 46, yawDeg: 180 },
+      { structure: 'containerRow', x: 8, z: 18, yawDeg: 90 }, { structure: 'containerRow', x: 8, z: 34, yawDeg: 90 },
+      { structure: 'containerRow', x: 8, z: 50, yawDeg: 90 },
+      { structure: 'woodshed', x: -48, z: 20, yawDeg: 90 }, { structure: 'ruin', x: 26, z: -6, yawDeg: 10 },
+    ],
+    plannedSitesAfterPlan: true,
     destructibleBuildings: ['quonsethut', 'relaystation', 'motorpool', 'servicegarage'],
     buildingLat: [14, 2], destructibleBuildingLat: [18, 3], sideSkip: 0.18, spacingPad: 8,
     tacticalBeats: [
@@ -105,7 +120,12 @@ export default {
       { id: 'north-fuel-shelter', role: 'support', x: -70, z: 270, yawDeg: 180, structure: 'quonsethut', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true },
     ],
     industrialCladding: 'steel', // round 75: a polar station's halls are corrugated sheet, not brick
-    yardDressing: 60, // round 75: a snowed-in station keeps its yards sparse
+    // round 75: a snowed-in station keeps its yards sparse (60). Lane B's Whiteout pass (2026-10-17, MAP-01: built the way
+    // Verdant was): the village yard pass dressed the station's doors as a Kursk farm's — firewood stacks on a plateau no
+    // tree grows within hundreds of kilometres of, cattle troughs, a bench and a bucket on the doorstep, hand carts, garden
+    // fences. Off (yardClutter); a station's yards are its own stock instead, the pallets, crates, cable drums, drums and
+    // skips of the industrial yard band round every building (yardDressing.ts), half as many again
+    yardClutter: false, yardDressing: 110,
     // (the map-content lane's L2, gauntlet wave 355: "brick pieces that have no place at a DEW Line station", "brick-
     // textured crates") the fieldstone field walls are gone from the station (drift fences stand on their lines, in the
     // landmarks below), and with them the brick rubble heaps; fewer crates in the yards, more of the station's drums
@@ -117,10 +137,10 @@ export default {
     // drift fence for the wire belts, a drum row for the concrete barrier, each seated on its slope
     structureVariants: { sandbagwall: 'polardrumwall', sandbagbig: 'polardrumwallbig', sandbagsmall: 'polardrumwallsmall',
       barbedwire: 'polardriftfence', barrier: 'polardrumrow' },
-    well: false, hayCrates: false, fences: true,
+    well: false, hayCrates: false, fences: false, // (Lane B, 10-17: no rail fences along a polar station's roads)
     // (the map-content lane's round 1c, 2026-10-09) the station's pole line along its service roads; the glacial erratics
     // and frost-shattered outcrops of the plateau (was 136 rocks, 22 outcrops)
-    telegraph: true, carts: false, logs: true,
+    telegraph: true, carts: false, logs: false, // (Lane B, 10-17: no fallen logs on the ice)
     rocks: 224, outcrops: 38, craters: 50, rubblePiles: 0, sandbagLines: 16, hedgehogs: 12,
     // the map-vehicles lane (2026-10-06, the period ruling): the Arctic north in the 1980s: Norway's Leopard 1 and
     // M48, Sweden's Strv 103, the Soviet T-80B and BMP-2
@@ -128,7 +148,7 @@ export default {
     // map revival lane 2, round 3 (gauntlet wave 130: "an untextured flat-tan box with a tent-shaped canopy, a floating
     // black tyre and steps to nowhere"; folded in by the map-content lane): the roadside camps (a canvas tent camp's kit)
     // and the park benches do not belong at a DEW station; its camps are the Jamesway camps below
-    inhabit: { stalls: 0, benches: 0, coreClutter: 8, sleds: 10, drums: 16, trucks: 5, jeeps: 4, drumClusters: 5, camps: 0, modernClutter: 20, looseClutter: 20, roadFence: 'fencerail', yardFence: 'fencerail' },
+    inhabit: { stalls: 0, benches: 0, coreClutter: 8, sleds: 10, drums: 24, trucks: 5, jeeps: 4, drumClusters: 8, camps: 0, modernClutter: 20, looseClutter: 20, roadFence: 'fencerail', yardFence: 'fencerail' },
     // the map-content lane (2026-10-09; owner: "some maps like whiteout crossing and mesa mines look unfinished and so
     // empty"; the census: 67 % of the playable square more than 30 m from anything standing, the station one strip along
     // the service street). Reference: DYE-M, the Distant Early Warning Line's main station at Cape Dyer on Baffin Island,
@@ -147,8 +167,11 @@ export default {
       { kind: 'fuelTankFarm', x: -240, z: -185, yawDeg: 90, params: { tanks: 2, radius: 4, height: 6 }, ground: 'veto', name: 'the motor pool tanks' },
       { kind: 'fuelTankFarm', x: 60, z: 236, yawDeg: 0, params: { tanks: 2, radius: 4, height: 6 }, ground: 'veto', name: 'the north tanks' },
       // the billboards on the high ground, facing the next stations east (Greenland) and west along the line
-      { kind: 'troposcatter', x: 342, z: 22, yawDeg: 90, ground: 'veto', name: 'the east billboards (south)' },
-      { kind: 'troposcatter', x: 342, z: 56, yawDeg: 90, ground: 'veto', name: 'the east billboards (north)' },
+      // (Lane B, 10-17: the hero of the place) the east pair at a main station's scale: the link east across Davis Strait
+      // to Greenland was one of the longest hops the line made, and DYE-M's billboards facing it stood far above everything
+      // else on the plateau (was 18 m wide and 14 m high, the size of the pair facing west along the line)
+      { kind: 'troposcatter', x: 346, z: 20, yawDeg: 90, params: { width: 30, height: 26 }, ground: 'veto', name: 'the east billboards (south)' },
+      { kind: 'troposcatter', x: 346, z: 54, yawDeg: 90, params: { width: 30, height: 26 }, ground: 'veto', name: 'the east billboards (north)' },
       { kind: 'troposcatter', x: -376, z: 6, yawDeg: -90, ground: 'veto', name: 'the west billboards (south)' },
       { kind: 'troposcatter', x: -376, z: 40, yawDeg: -90, ground: 'veto', name: 'the west billboards (north)' },
       // the masts
@@ -198,19 +221,19 @@ export default {
       { kind: 'drumCache', x: 380, z: -160, yawDeg: 30, params: { rows: 5, columns: 12 }, ground: 'veto', name: 'the east drum dump' },
       { kind: 'drumCache', x: -424, z: 290, yawDeg: 70, params: { rows: 4, columns: 12 }, ground: 'veto', name: 'the lake drum dump' },
       // the drift fences across the wind, windward of the station's roads
-      { kind: 'snowFence', x: 0, z: -200, yawDeg: 0, ground: 'veto', name: 'the south drift fence' },
-      { kind: 'snowFence', x: 160, z: -210, yawDeg: 10, ground: 'veto', name: 'the south-east drift fence' },
-      { kind: 'snowFence', x: 0, z: 190, yawDeg: 0, ground: 'veto', name: 'the north drift fence' },
-      { kind: 'snowFence', x: -170, z: 160, yawDeg: -10, ground: 'veto', name: 'the north-west drift fence' },
-      { kind: 'snowFence', x: 400, z: -150, yawDeg: 90, ground: 'veto', name: 'the east drift fence' },
-      { kind: 'snowFence', x: -398, z: -100, yawDeg: 90, ground: 'veto', name: 'the west drift fence' },
+      { kind: 'snowFence', x: 0, z: -200, yawDeg: 0, params: { module: 'barbedwire' }, ground: 'veto', name: 'the south drift fence' },
+      { kind: 'snowFence', x: 160, z: -210, yawDeg: 10, params: { module: 'barbedwire' }, ground: 'veto', name: 'the south-east drift fence' },
+      { kind: 'snowFence', x: 0, z: 190, yawDeg: 0, params: { module: 'barbedwire' }, ground: 'veto', name: 'the north drift fence' },
+      { kind: 'snowFence', x: -170, z: 160, yawDeg: -10, params: { module: 'barbedwire' }, ground: 'veto', name: 'the north-west drift fence' },
+      { kind: 'snowFence', x: 400, z: -150, yawDeg: 90, params: { module: 'barbedwire' }, ground: 'veto', name: 'the east drift fence' },
+      { kind: 'snowFence', x: -398, z: -100, yawDeg: 90, params: { module: 'barbedwire' }, ground: 'veto', name: 'the west drift fence' },
       // (L2, wave 355) drift fences on the lines the fieldstone walls held round the station (a hull breaks through a module)
-      { kind: 'snowFence', x: -148, z: -46, yawDeg: 90, params: { length: 60 }, ground: 'veto', name: 'the motor pool drift fence (south)' },
-      { kind: 'snowFence', x: -148, z: 52, yawDeg: 90, params: { length: 64 }, ground: 'veto', name: 'the motor pool drift fence (north)' },
-      { kind: 'snowFence', x: -35, z: -58, yawDeg: 0, params: { length: 62 }, ground: 'veto', name: 'the station drift fence (south)' },
-      { kind: 'snowFence', x: -35, z: 52, yawDeg: 0, params: { length: 62 }, ground: 'veto', name: 'the station drift fence (north)' },
-      { kind: 'snowFence', x: 15, z: 296, yawDeg: 0, params: { length: 82 }, ground: 'veto', name: 'the fuel shelter drift fence' },
-      { kind: 'snowFence', x: 316, z: 37, yawDeg: 90, params: { length: 74 }, ground: 'veto', name: 'the relay drift fence' },
+      { kind: 'snowFence', x: -148, z: -46, yawDeg: 90, params: { module: 'barbedwire', length: 60 }, ground: 'veto', name: 'the motor pool drift fence (south)' },
+      { kind: 'snowFence', x: -148, z: 52, yawDeg: 90, params: { module: 'barbedwire', length: 64 }, ground: 'veto', name: 'the motor pool drift fence (north)' },
+      { kind: 'snowFence', x: -35, z: -58, yawDeg: 0, params: { module: 'barbedwire', length: 62 }, ground: 'veto', name: 'the station drift fence (south)' },
+      { kind: 'snowFence', x: -35, z: 76, yawDeg: 0, params: { module: 'barbedwire', length: 62 }, ground: 'veto', name: 'the station drift fence (north)' },
+      { kind: 'snowFence', x: 15, z: 296, yawDeg: 0, params: { module: 'barbedwire', length: 82 }, ground: 'veto', name: 'the fuel shelter drift fence' },
+      { kind: 'snowFence', x: 316, z: 37, yawDeg: 90, params: { module: 'barbedwire', length: 74 }, ground: 'veto', name: 'the relay drift fence' },
     ],
     // the station's machines (vehicleSetPiecesWorks.ts): the Bv 206 carriers, the Sno-Cats and the D8 dozers that kept the
     // roads and the drifts open (the arctic1980s fleet's trucks and pickups stay the inhabit pass's)

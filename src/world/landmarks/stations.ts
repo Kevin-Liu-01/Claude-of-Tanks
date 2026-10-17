@@ -16,6 +16,7 @@
 // are dressing; the bodies, the legs and the footings are structure.
 import { PartSink } from '../maps/regional/geometry.ts';
 import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
+import { driftFenceModule } from './plan.ts';
 // (props census #12: the module train, the Jamesway and the airstrip are the looks lane's, in polarStations.ts)
 export { airstrip, jamesway, moduleTrain } from './polarStations.ts';
 // (the looks lane's r2 sweep, 2026-10-16: the radome tower, the billboards and the guyed mast are the looks lane's, in dewLine.ts)
@@ -43,15 +44,19 @@ export const drumCache: LandmarkBuilder = (ctx) => {
 };
 
 /**
- * A drift fence: a line of plank fence modules across the wind (the props' own fence pool: a hull breaks through it),
- * its length along x, broken here and there where the drifts have flattened a module.
+ * A drift fence: a line of fence modules across the wind (the props' own pools: a hull breaks through it), its length
+ * along x, broken here and there where the drifts have flattened a module. Its module is the plank fence, or the wire's
+ * (`module: 'barbedwire'`): on a map that dresses its wire as the slatted drift fence (props structureVariants barbedwire
+ * -> polardriftfence, maps/regional/polarWorks.ts) the fence is the grey laths on their T-posts a polar station set
+ * across the wind (Lane B's Whiteout pass, 2026-10-17: the plank zabor of the Kursk villages had stood on the tundra).
  */
 export const snowFence: LandmarkBuilder = (ctx) => {
-  const L = num(ctx, 'length', 5), module = 2.5, n = Math.max(1, Math.floor(L / module));
+  const { kind, pitch } = driftFenceModule(ctx.params);
+  const L = num(ctx, 'length', 5), n = Math.max(1, Math.floor(L / pitch));
   const destructibles: Array<{ kind: string; x: number; z: number; yawDeg: number }> = [];
   for (let k = 0; k < n; k++) {
     if (ctx.rng() < 0.1) continue;
-    destructibles.push({ kind: 'fenceplank', x: -((n - 1) * module) / 2 + k * module, z: 0, yawDeg: 90 });
+    destructibles.push({ kind, x: -((n - 1) * pitch) / 2 + k * pitch, z: 0, yawDeg: 90 });
   }
   return { parts: new PartSink().finish(), destructibles };
 };
