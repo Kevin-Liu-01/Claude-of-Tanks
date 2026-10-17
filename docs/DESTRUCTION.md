@@ -1078,11 +1078,13 @@ u-bin (NaN where none stands behind it), and the drawn walls' top per cell. Its 
   under what covers it (no ceiling over a court), rectangles for its floor and ceiling and its boundary for its inward
   walls, its ceiling at the band's drawn wall top; none where the band encloses under half its box (a frame, a trestle, a
   pipe run, a tank farm), the room would be under 2 m² or under 1.9 m across either way (a porch pocket under a portico),
+  more than 35 % of its edge is open to the outside (a space shut only by the gap closing between posts: an ore bin's legs),
   and no cell of it where what covers the cell is drawn under the ceiling (a house row stepping down its slope). A
   structure measured from its parts that encloses nothing it draws (a set piece whose every house is a named piece) has
   no room; only a kit's anatomy handed over without parts uses its faces as walls. `layInterior` and the fracture's
   `roomFor` both lay it, one room per storey and component, gone with its storey (a storey drop, or every wall of it
-  fallen).
+  fallen); a kit's own room run of any bucket (the regional kit's open storey behind a fallen section, its walls, boards
+  and joists on the faces' box) is taken by `structureStages` as the ask for that one room, never drawn.
 - `faceSetback(anatomy, storey, face, u)`: `holeAt` puts a hole on the drawn wall behind the face (`BreachSpec.setback`);
   a NaN bin is no kit hole (the round passed an opening or a frame: its burst only); the default kit's rim, room and cut
   and its stubs go there; the wall fracture's grid stands at the face's median setback, a cell over no drawn wall is void
@@ -1098,7 +1100,10 @@ u-bin (NaN where none stands behind it), and the drawn walls' top per cell. Its 
 The default reading's faces now stand on the body's walls too (`describeDefault`: the enclosed plan up to the eaves, grown
 to the walls, about its own centre; without a roof bucket the eaves are the body's top — the highest half metre whose
 walls' box is still 45 % of the widest — so towers and domes are no storeys), and `anatomyCentre` is what a reach round
-the body measures from. A set piece's body is re-measured without its named pieces.
+the body measures from. A set piece's body is re-measured without its named pieces; a named piece that comes off lies
+along the ground under it whether laid flat, dropped or toppled (a tower mill's upper tower on its mound's flank), a
+toppled piece much wider than it is tall lands near flat, and a piece the stage has no room to lay still comes off in its
+chips (never left hanging where it was: the sails on a fallen tower's hub).
 
 **Roof slabs.** A fallen roof slab's body grows in its plane only (its normal extent held to the planned box, 0.35 m
 under and 0.6 m over); a slab takes only what lies on its plane (0.8 m, facing within 50 degrees); what stands over the

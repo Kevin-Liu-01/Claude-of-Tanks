@@ -692,8 +692,11 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     let wantsRoom = false;
     const mesh0 = out.mesh;
     const meshW = Object.create(mesh0) as DamageWriters['mesh'];
+    // (destruction-slabs 227, Copper Mesa's ore bin: the regional kit's open storey behind a fallen section, its side and
+    // opposite walls, boards and joists in the building's own buckets, stood between the bin's legs on the faces' box) a
+    // kit's room of any bucket is the storey's one interior
     meshW.begin = (bucket: string, role: DamageRole): boolean => {
-      if (role === 'room' && bucket === 'dark') { wantsRoom = true; return false; }
+      if (role === 'room') { wantsRoom = true; return false; }
       return mesh0.begin(bucket, role);
     };
     const writers: DamageWriters = { mesh: meshW, pieces: out.pieces };

@@ -174,8 +174,12 @@ function restPose(a: StructureDamageAnatomy, plan: LandmarkPlan, p: KeptPiece): 
   let pose: Pose;
   if (fall === 'topple') {
     // over about its foot's edge on the fall side, top toward the fall
+    // (destruction-slabs 227, Longleaf's fire lookout: its 6.9 x 5.1 m deck toppled through a right angle and stood on its
+    // edge at the tower's foot, a dark board in the open) a piece much wider than it is tall lands near flat
     const edge = Math.abs(dx) * hx + Math.abs(dz) * hz;
-    pose = { r: rotation(dz, 0, -dx, 1.36 + rng() * 0.3), px: cx + dx * edge, py: p.min[1], pz: cz + dz * edge, tx: 0, ty: 0, tz: 0 };
+    const flatPiece = p.max[1] - p.min[1] < 0.35 * Math.max(p.max[0] - p.min[0], p.max[2] - p.min[2]);
+    const tilt = flatPiece ? 0.12 + rng() * 0.3 : 1.36 + rng() * 0.3;
+    pose = { r: rotation(dz, 0, -dx, tilt), px: cx + dx * edge, py: p.min[1], pz: cz + dz * edge, tx: 0, ty: 0, tz: 0 };
   } else if (fall === 'flat') {
     // laid on its thinnest side (a sail, a dish, a panel), turned a little, out from where it hung
     const ex = p.max[0] - p.min[0], ey = p.max[1] - p.min[1], ez = p.max[2] - p.min[2];
@@ -360,13 +364,15 @@ const GROUND_TILT_MAX = 35 * Math.PI / 180;
 const DRAPE_THIN_M = 0.6;
 /**
  * (destruction-slabs 227: Polders' mound windmill laid its 5.4 x 4.4 m sails flat by their lowest point, standing 1.5 m
- * out over the slope) a piece laid flat or dropped lies along the ground under it: turned onto the least-squares plane of
+ * out over the slope) a piece laid flat, dropped or toppled lies along the ground under it: turned onto the least-squares plane of
  * the ground under its footprint (35 degrees at most), then seated by its lowest point over the whole footprint. Returns
  * the plane (y = ax + bz + c) for a drape, or null.
  */
 function fitGround(p: KeptPiece, pose: Pose): [number, number, number] | null {
   const fall = p.fall ?? 'topple';
-  if (fall !== 'flat' && fall !== 'drop') return null;
+  // (and a toppled one: Polders' tower mill's upper tower went over onto the mound's flank on its rim, its broken end a
+  // 6 m disc standing 5 m over the slope)
+  if (fall !== 'flat' && fall !== 'drop' && fall !== 'topple') return null;
   let total = 0;
   for (const run of p.runs) total += run.pos.length / 3;
   const every = Math.max(1, Math.floor(total / 96));
@@ -420,9 +426,10 @@ function detach(a: StructureDamageAnatomy, plan: LandmarkPlan, p: KeptPiece, out
       return true;
     })
     : layPiece(p, pose, out);
-  if (!ok) return;
+  // (destruction-slabs 227, Polders' tower mill: its upper tower took the stage's room, and the sails left standing on the
+  // fallen tower's hub hung in the air) a piece the stage has no room to lay still comes off: gone in its chips
   res.hides.push({ section: null, partClass: null, piece: p.name } satisfies DamageHide);
-  chips(p, a, out, 6);
+  chips(p, a, out, ok ? 6 : 12);
 }
 
 /** A tank ruptures on the side the blow came from (body frame `dirX`, `dirZ`): the cut, the torn petals, its dark inside

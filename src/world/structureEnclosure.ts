@@ -483,6 +483,12 @@ const ROOM_MIN_SHARE = 0.5;
  * pocket got a room whose walls stood in its open entrance).
  */
 const ROOM_MIN_SPAN_M = 1.9;
+/**
+ * At most this share of a room's edge may be open to the outside (the rest its drawn walls): a space shut only by the gap
+ * closing between posts (an ore bin's legs and its ladder, a colonnade) is no room (Copper Mesa's ore bin, 2026-10-17: a
+ * room laid between its legs under the hopper).
+ */
+const ROOM_MAX_OPEN = 0.35;
 /** How far round the hint a room's component is looked for (m). */
 const HINT_REACH_M = 2.5;
 
@@ -521,6 +527,22 @@ export function storeyInterior(anatomy: Pick<StructureDamageAnatomy, 'enclosure'
     }
   }
   if (!label) return null;
+  // its edge: open to the outside, or a drawn wall
+  {
+    let open = 0, walled = 0;
+    for (let c = 0; c < labels.length; c++) {
+      if (labels[c] !== label) continue;
+      const i = c % nx, k = (c - i) / nx;
+      for (const [di, dk] of DIRS) {
+        const ii = i + di, kk = k + dk;
+        if (ii < 0 || kk < 0 || ii >= nx || kk >= nz) { open++; continue; }
+        const v = band.cells[kk * nx + ii];
+        if (v === 0) open++;
+        else if (v === 1) walled++;
+      }
+    }
+    if (open > ROOM_MAX_OPEN * (open + walled)) return null;
+  }
   // its ceiling: under the band's top, at the drawn walls round it (their median top), never under a metre over its floor
   const y0 = band.y0 + 0.03;
   const tops: number[] = [];
