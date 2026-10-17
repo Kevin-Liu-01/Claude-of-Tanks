@@ -29,6 +29,7 @@ import { buildBedrock, buildRockFormation, type RockFormationSpec } from './scen
 import { buildCastleRock } from './castleRock.ts';
 import { buildCaprockRim } from './caprockRim.ts';
 import { buildCanyonWall } from './canyonWall.ts';
+import { buildJebelSkin } from './jebelSkin.ts'; // the maps lane, 2026-10-14 (MA.12)
 import { restsOnTalus, TALUS_DEG } from './landformGeology.ts';
 import { buildConductor, buildPylon, SCENERY_DESTRUCTIBLE_TYPES } from './maps/sceneryKit.ts';
 import { buildFieldWorks, type FieldWorksBuilt, type FieldWorksKeepOut, type FieldWorksReceipt, type FieldWorksRect } from './fieldWorks.ts';
@@ -449,6 +450,19 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
     const feature: SceneryFeatureReceipt = { family: 'canyonWall', kind: 'canyon wall', name: arm.name ?? null, x: arm.x, z: arm.z, status: 'placed' };
     const built = buildCanyonWall(arm, ground, noise, mulberry32(ctx.seed + 17701 + 131 * wi), { mobile: ctx.mobile });
     if (!built.geometry) { skip(feature, 'no wall'); yield { fine: true, progress: false, stage: 'scenery' }; continue; }
+    rockPieces.push(built.geometry);
+    feature.triangles = built.triangles;
+    receipt.rockTriangles += built.triangles;
+    receipt.placed++;
+    receipt.features.push(feature);
+    yield { fine: true, progress: false, stage: 'scenery' };
+  }
+
+  // ---- jebel skins (the maps lane, 2026-10-14, MA.12): a dome's jointed face over its wall; one stream each, no mass
+  for (const [si, skin] of (scenery.jebelSkins ?? []).entries()) {
+    const feature: SceneryFeatureReceipt = { family: 'bedrock', kind: 'sandstone jebel skin', name: skin.name ?? null, x: skin.x, z: skin.z, status: 'placed' };
+    const built = buildJebelSkin(skin, ground, noise, mulberry32(ctx.seed + 19301 + 131 * si), { mobile: ctx.mobile });
+    if (!built.geometry) { skip(feature, 'no wall steeper than the skin asks'); continue; }
     rockPieces.push(built.geometry);
     feature.triangles = built.triangles;
     receipt.rockTriangles += built.triangles;
