@@ -123,8 +123,8 @@
    "silhouette": 4,
    "mid": 5,
    "fine": 5,
-   "trisPerWallM2": 8.86,
-   "fineShare": 0.278,
+   "trisPerWallM2": 8.89,
+   "fineShare": 0.277,
    "facePass": 0.875
   },
   "siwa": {
@@ -548,7 +548,7 @@
   "arctic/firestation": "50d66f95674f294e",
   "arctic/watertower": "49cb3471c21458fd",
   "arctic/depot": "d1c2f7df87248bc7",
-  "arctic/warehouse": "a30345c7798ee8c8",
+  "arctic/warehouse": "9173b9aa7466324a",
   "arctic/containerRow": "e3b534338d899929",
   "arctic/ruin": "c9091b476591ddcb",
   "arctic/woodshed": "8df147039821f6da",
