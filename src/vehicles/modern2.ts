@@ -1557,10 +1557,34 @@ function buildMBT70BareHull(P: Modern2BuilderPort): void {
   for (const side of [-1, 1]) {
     P.addMudguard(`mbt70_m1_front_fender_${side}`, 'hull',
       box(0.42, 0.09, 1.18), side * 1.54, 1.37, 3.10, -0.055, 0, 0);
+    // The donor M1A1 front fender covers the whole track width from the deck
+    // edge outward. The skirtless composition kept only its outer 0.42 m, so
+    // the inner track band and the ground beside the hull wall showed through
+    // a 6-30 cm slot (B2 contiguity hole, |x| 1.04-1.33, z 2.36-3.12 world).
+    // The inner fender continues the outer one in its own plane and section:
+    // it abuts the outer fender's inner face at |x| 1.33 and buries 5 mm into
+    // the upper hull wall (deck edge |x| 1.035). Its underside stays 7.8 cm
+    // above the front idler's track crown. Painted bodywork, no armour role.
+    P.addMudguard(`mbt70_m1_front_fender_inner_${side}`, 'hullFixedPaintedBodywork',
+      box(0.30, 0.09, 1.18), side * 1.18, 1.37, 3.10, -0.055, 0, 0);
     P.addMudguard(`mbt70_m1_rear_fender_${side}`, 'hull',
       box(0.42, 0.09, 1.32), side * 1.54, 1.64, -3.16, 0.035, 0, 0);
     P.add('hull', box(0.12, 0.48, 1.38), side * 0.96, 1.41, -3.05, 0.025 * side, 0, 0);
     P.add('hull', box(0.48, 0.10, 1.34), side * 1.31, 1.69, -3.05, 0.025 * side, 0, 0);
+    // The stern deck above ended 4.6 cm short of the donor's deep rear guard
+    // plate (z -3.766) and 5 cm outboard of the hull wall (|x| 1.02): an
+    // L-shaped see-through slot to the ground behind the sprocket (B2
+    // contiguity, |x| 1.02-1.33, z -3.63..-3.68 world). Two closures in the
+    // deck's own tilted frame and 0.10 m section continue it: aft into the
+    // guard plate (4 mm lap) and along its inner edge onto the hull wall
+    // (5 mm laps). Painted bodywork, no armour role; the sprocket course
+    // stays below the guard plate.
+    P.addMudguard(`mbt70_stern_deck_closure_${side}`, 'hullFixedPaintedBodywork',
+      box(0.535, 0.10, 0.055).translate(side * -0.0275, 0, -0.6925),
+      side * 1.31, 1.69, -3.05, 0.025 * side, 0, 0);
+    P.addMudguard(`mbt70_stern_deck_edge_${side}`, 'hullFixedPaintedBodywork',
+      box(0.06, 0.10, 0.117).translate(side * -0.265, 0, -0.6065),
+      side * 1.31, 1.69, -3.05, 0.025 * side, 0, 0);
     P.add('hullDetail', box(0.035, 0.34, 1.18), side * 1.00, 1.43, -3.05,
       0.025 * side, 0, 0);
     for (const z of [-3.48, -3.05, -2.62]) {
