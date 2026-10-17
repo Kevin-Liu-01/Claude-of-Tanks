@@ -7666,23 +7666,41 @@ function buildT90MProryvNative2026(P: T90BuilderPort): void {
   if (remoteKord) remoteKord.scale.y /= installedTurretY;
   const hullLengthFactor = VEHICLE_HULL_LENGTH_FACTORS[P.spec.id] ?? 1;
   if (hullLengthFactor !== 1) P.extendHullLength(hullLengthFactor);
-  // 2026-10-11 (wave 402b, the Garage hero): the 160 mm ride-height lift left a clear sightline under the bow,
-  // through which the far track showed beneath the glacis like a second, offset hull. The T-90M's folded
-  // self-entrenching blade now hangs under the lower-glacis toe, track to track, in the final (lifted, lengthened)
-  // frame: a two-facet moldboard whose top laps the toe, braced back to the belly.
+  // 2026-10-11 (wave 402b, the Garage hero): the 160 mm ride-height lift left the bow open: the far track showed
+  // beneath and beside the lower glacis like a second, offset hull. The folded self-entrenching blade that hung under
+  // the toe to close it went 23 cm below the belly (the 226 gate: it became the combat hull floor and the belly guard,
+  // authoritativeBots and physics-torture). The coordinator's ruling 2026-10-16: nothing below the belly line.
+  // - The blade rides as the real one does: folded flat on the lower front plate, its cutting edge just above the toe,
+  //   hinged to two brackets ('hullEquipment': the hull's paint and camouflage, equipment role, no armour; MP lane
+  //   b94935410). Every vertex stays above the belly (builder y 0.40).
+  // - A lower-front closure each side: the channel between the nose and the track, under the sponson, is closed by a
+  //   cheek plate from the belly line up to the sponson's front, 6.5 cm inside the track band
+  //   ('hullFixedPaintedBodywork': painted silhouette, kept at range, no armour role), so the bow reads as one hull.
   {
-    const toeY = 0.43, toeZ = 2.79, halfW = 1.12;
-    P.add('hull', orientedSlab(
-      [-halfW, 0.19, toeZ + 0.07], [halfW, 0.19, toeZ + 0.07], [halfW, 0.19, toeZ + 0.035], [-halfW, 0.19, toeZ + 0.035],
-      [-halfW, 0.32, toeZ + 0.055], [halfW, 0.32, toeZ + 0.055], [halfW, 0.32, toeZ + 0.02], [-halfW, 0.32, toeZ + 0.02],
-    ));
-    P.add('hull', orientedSlab(
-      [-halfW, 0.32, toeZ + 0.055], [halfW, 0.32, toeZ + 0.055], [halfW, 0.32, toeZ + 0.02], [-halfW, 0.32, toeZ + 0.02],
-      [-halfW, toeY + 0.012, toeZ + 0.025], [halfW, toeY + 0.012, toeZ + 0.025], [halfW, toeY + 0.012, toeZ - 0.02], [-halfW, toeY + 0.012, toeZ - 0.02],
-    ));
-    P.add('hullDark', KIT.box(halfW * 2 - 0.04, 0.022, 0.03), 0, 0.205, toeZ + 0.078);
-    for (const x of [-0.62, 0.62]) {
-      P.add('hullDark', KIT.box(0.07, 0.07, 0.42), x, 0.30, toeZ - 0.17, 0.42, 0, 0);
+    // the lower front plate (builder frame, measured): z = 2.759 + (y - 0.42) * 2.756, |x| <= 0.85; belly y 0.40
+    const plateZ = (y: number): number => 2.759 + (y - 0.42) * 2.756;
+    const len = Math.hypot(1, 2.756), ny = -2.756 / len, nz = 1 / len;   // outward plate normal (forward and down)
+    const onPlate = (x: number, y: number, off: number): number[] => [x, y + off * ny, plateZ(y) + off * nz];
+    const plateSlab = (bucket: string, x0: number, x1: number, y0: number, y1: number, off0: number, off1: number): void => {
+      P.add(bucket, orientedSlab(
+        onPlate(x0, y0, off0), onPlate(x1, y0, off0), onPlate(x1, y1, off0), onPlate(x0, y1, off0),
+        onPlate(x0, y0, off1), onPlate(x1, y0, off1), onPlate(x1, y1, off1), onPlate(x0, y1, off1),
+      ));
+    };
+    const halfW = 0.78, edgeY = 0.448, topY = 0.585;
+    plateSlab('hullEquipment', -halfW, halfW, edgeY, topY, 0.004, 0.034);            // the moldboard, folded flat
+    plateSlab('hullDark', -halfW + 0.02, halfW - 0.02, edgeY, edgeY + 0.03, 0.034, 0.046); // the cutting edge
+    for (const x of [-0.52, 0.52]) {
+      plateSlab('hullDark', x - 0.05, x + 0.05, topY - 0.012, topY + 0.04, 0.0, 0.058); // hinge brackets on the plate
+    }
+    // lower-front closure cheeks (each side), from the belly line to the sponson's front edge
+    const yBot = 0.405, zBot = 2.72, yTop = 0.79, zTop = 3.49;
+    for (const side of [-1, 1]) {
+      const xi = side * 0.875, xo = side * 1.12;
+      P.add('hullFixedPaintedBodywork', orientedSlab(
+        [xi, yBot, zBot], [xo, yBot, zBot], [xo, yTop, zTop], [xi, yTop, zTop],
+        [xi, yBot + 0.018, zBot - 0.009], [xo, yBot + 0.018, zBot - 0.009], [xo, yTop, zTop - 0.02], [xi, yTop, zTop - 0.02],
+      ));
     }
   }
   P.hullG.userData.t90mProryvTrackReceipt = {

@@ -44,10 +44,14 @@ function sourceForms(t){
     near(hit?.point.y,1.765735,.000003,'source actual transverse rear drum crown');
   }
   assert.equal(new THREE.Raycaster(new THREE.Vector3(0,1.75,-3.4954),new THREE.Vector3(0,-1,0),0,.35).intersectObject(detail,false).length,0,'real air between drums');
-  const mg=t.root.getObjectByName('sourceMachineGun_turretDark');assert.equal(mg.parent.parent,t.root.getObjectByName('rig_turret'));
+  // 2026-10-16 (226 gate): VH.14 (76ef67d65, every drawn gun works) makes the AA gun a working roof station: the
+  // fitting rides its station's pitch node under the turret, so ownership is an ancestor test (a boolean: assert.equal on
+  // two scene graphs made node inspect both whole and ran the process past 40 GB)
+  const mg=t.root.getObjectByName('sourceMachineGun_turretDark');assert.ok(ridesUnder(mg,t.root.getObjectByName('rig_turret')),'the AA station rides the turret');
   const ray=new THREE.Raycaster(new THREE.Vector3(-.60653,2.68942,2.3),new THREE.Vector3(0,0,-1),0,.3);
   near(ray.intersectObject(mg,false)[0]?.point.z,2.18421,.000003,'coherent actual source AA terminal');
 }
+const ridesUnder=(o,a)=>{for(let p=o.parent;p;p=p.parent)if(p===a)return true;return false;};
 function gearAndEra(t){
   const wheel=t.root.getObjectByName('gearRoadWheelTires'),m=new THREE.Matrix4(),v=new THREE.Vector3();assert.equal(wheel.count,12);
   for(let i=0;i<wheel.count;i++){

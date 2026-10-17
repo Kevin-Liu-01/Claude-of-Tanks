@@ -35,7 +35,7 @@
       "magazineSize": 24,
       "intraClipS": 0.25,
       "fullReloadS": 48,
-      "roofMachineGuns": 1,
+      "roofMachineGuns": 0,
       "hullLengthM": 6.36530017853,
       "hullWidthM": 3.7802,
       "widthM": 3.7802,
@@ -55,5 +55,15 @@
     "24-shot local and authoritative firing, finite ammunition, full rack reload, successive launch origins, no homing or cannon recoil",
     "Complete unchanged physical gates, anatomy, asset/centering, full tests, typecheck and public/private builds"
   ],
-  "status": "Frozen design contract, not a qualification receipt."
+  "status": "Frozen design contract, not a qualification receipt.",
+  "amendments": [
+    {
+      "date": "2026-10-16",
+      "design": "tos1a_tagil",
+      "field": "roofMachineGuns",
+      "from": 1,
+      "to": 0,
+      "evidence": "VH.14 (76ef67d65, src/vehicles/roofWeaponPolicy.ts: the real vehicle carries no roof machine gun); 226 gate re-pin by the VEHICLES lane."
+    }
+  ]
 }
