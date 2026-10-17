@@ -85,6 +85,32 @@ assert.match(matrixTrouble(new THREE.Matrix4().set(NaN, 0, 0, 0, 0, 1, 0, 0, 0, 
   assert.ok(r.findings.length === 1 && r.findings[0].reasons[0].startsWith('degenerate'), 'a degenerate matrix is flagged');
 }
 
+// (2026-10-17 continuation, the owner's frame on a roofed building) a fallen roof's slab lying flat across the wall heads
+// with its overhang past the walls is flagged `on the wall heads` once it is at rest; one lying flat on the top floor
+// inside the walls is listed, not flagged; one still falling (not settled, not rested) is not judged yet
+{
+  const slab = (x0, y, x1) => mesh('fx-collapse-roof-0-1.0', box(x0, y, 1, x1, y + 0.18, 5));
+  const over = judgeSlabs([slab(6, 6, 11.5)], { footprint, groundAt, supportAt, settled: true });
+  assert.ok(over.findings.length === 1 && over.findings[0].reasons.some((r) => r.startsWith('on the wall heads')),
+    `a roof slab flat on the wall heads past the walls is flagged (${JSON.stringify(over.findings.map((f) => f.reasons))})`);
+  const inside = judgeSlabs([slab(1, 3, 9)], { footprint, groundAt, supportAt, settled: true });
+  assert.equal(inside.findings.length, 0, `a roof slab flat on the top floor inside the walls passes (${JSON.stringify(inside.findings.map((f) => f.reasons))})`);
+  const falling = judgeSlabs([slab(6, 6, 11.5)], { footprint, groundAt, supportAt, settled: false, rested: () => false });
+  assert.equal(falling.findings.length, 0, 'a roof slab still falling is judged where it comes to rest');
+  const rested = judgeSlabs([slab(6, 6, 11.5)], { footprint, groundAt, supportAt, settled: false, rested: () => true });
+  assert.ok(rested.findings.length === 1 && rested.findings[0].attributes.includes('a fallen roof slab at rest'), 'a roof slab at rest is judged where it lies');
+}
+// a plate 4 m up reaching 2.5 m past the walls over the building's 3 m ground plinth: past the walls' plan at height
+// (the plinth is in the whole plan, not in the plan at height)
+{
+  const plinth = Float32Array.from(quad([-3, 0.1, -3], [13, 0.1, -3], [13, 0.1, 9], [-3, 0.1, 9]));
+  const whole = footprintOf([...intact, plinth]), atHeight = footprintOf(intact);
+  const plate = [mesh('fx-structure-room-wood', quad([0.5, 4, 0.5], [12.5, 4, 0.5], [12.5, 4, 5.5], [0.5, 4, 5.5]))];
+  assert.equal(judgeSlabs(plate, { footprint: whole, groundAt, supportAt }).findings.length, 0, 'over the plinth the whole plan holds it');
+  const r = judgeSlabs(plate, { footprint: whole, upperFootprint: atHeight, groundAt, supportAt });
+  assert.ok(r.findings.length === 1 && r.findings[0].reasons.some((x) => x.includes('plan at height')), `the plan at height flags it (${JSON.stringify(r.findings.map((f) => f.reasons))})`);
+}
+
 if (process.argv.includes('--church')) {
   const { runSlabCheck } = await import('./destruction-slab-check.mjs');
   const report = await runSlabCheck({ mapId: 'verdant', ids: [9], rounds: 40, storeys: [0, 1] });
@@ -95,4 +121,4 @@ if (process.argv.includes('--church')) {
   assert.ok(ceilings.length >= 1, `a room ceiling past the church's walls (${JSON.stringify(row.worst.map((f) => [f.mesh, f.orientation, f.reasons]))})`);
   console.log(`destruction-slab-check selftest --church: #9 church flagged (${row.snapshots.filter((p) => p.findings.length).length} snapshots; worst ${row.worst[0].mesh} ${row.worst[0].extentsM.join(' x ')} m) — ok`);
 }
-console.log('destruction-slab-check selftest: inside ceiling passes; outside ceiling, standing panel, floating plate, degenerate matrix flagged; lying debris and blocks pass — ok');
+console.log('destruction-slab-check selftest: inside ceiling passes; outside ceiling, standing panel, floating plate, degenerate matrix flagged; lying debris and blocks pass; roof slab on the wall heads flagged at rest, inside the walls passes; plan at height past a plinth — ok');

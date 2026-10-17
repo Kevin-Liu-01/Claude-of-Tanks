@@ -34,6 +34,10 @@
  *   node tools/destruction-slab-check.mjs [--map=verdant] [--ids=9] [--builders=church] [--per-builder=1] [--rounds=40]
  *        [--gap=0.45] [--settle=10] [--sections=1] [--fracture=1] [--storeys=0,1] [--render=<dir>] [--json=<out>]
  *        [--max-snapshots=40]
+ *        [--stop-after=roof] [--upper=0]
+ * (--stop-after=roof: stop firing once the roof section falls and judge the building standing roofless at the end of the
+ *  settle — a fallen roof's slabs lying flat across the wall heads at the eaves, the owner's 2026-10-17 frame; --upper=0:
+ *  judge plates 2 m or more up against the whole intact plan instead of the walls' plan at height)
  * (--storeys: the anatomy storeys whose widest face the rounds cycle through; the ground storey by default)
  *
  * (census9b, 2026-10-17) Every snapshot carries its phase: hit (holes only), damaged, heavily damaged (a breached stage or
@@ -60,13 +64,14 @@ import { fileURLToPath } from 'node:url';
 import { installWorldBuildFixture } from './headlessWorldCollision.mjs';
 
 const STEP = 1 / 60;
+const _still = new THREE.Vector3();
 
 // ------------------------------------------------------------------------------------------------ the slab judgement
 
 /** The thresholds of a stray slab (exported for the receipt). */
 export const SLAB = {
   thickMaxM: 0.6, thickShare: 0.12, sideMinM: 2.0, areaMinM2: 8,
-  elevatedM: 1.0, outsideShare: 0.1, outsideAreaM2: 3, floatingShare: 0.4, supportBandM: 0.8, darkLuma: 0.16, footprintGrowM: 0.3,
+  elevatedM: 1.0, upperLiftM: 2.0, restedS: 1.5, stillS: 0.75, outsideShare: 0.1, outsideAreaM2: 3, floatingShare: 0.4, supportBandM: 0.8, darkLuma: 0.16, footprintGrowM: 0.3,
 };
 
 /** Eigen-decomposition of a symmetric 3×3 (Jacobi): the eigenvectors as columns, by eigenvalue descending. */
@@ -401,7 +406,7 @@ export function drawnMeshes(roots, accept = () => true) {
  * intact plan (footprintOf); `groundAt(x, z)` the ground as drawn; `supportAt(x, z, y)` true when a live record holds
  * something at height y there.
  */
-export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => false, settled = true, ownMaterials = null }) {
+export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => false, settled = true, ownMaterials = null, upperFootprint = null, rested = null }) {
   const pieces = [];
   let gid = 0;
   for (const d of meshes) for (const tris of piecesOfTriangles(d.tris)) {
@@ -422,18 +427,24 @@ export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => fals
     for (const t of p.d.troubles) reasons.push(`degenerate: ${t}`);
     // a body in flight (a collapse's piece, a wall's cell, a rubble body, a set piece's part) is judged where it comes to
     // rest: at the settled snapshot (what stands — rooms, rims, remnants, faces, heaps, baked rests — always)
-    const slab = isSlab(s) && (settled || !IN_FLIGHT.test(p.d.name));
+    // (census9b, 2026-10-17 continuation) a fallen roof's slab that has lain still is judged where it lies, settled or not:
+    // in battle a building whose roof came down stands for minutes with its slabs flat across its wall heads
+    const restedRoof = !settled && IN_FLIGHT.test(p.d.name) && !!rested?.(p.d.name);
+    const slab = isSlab(s) && (settled || !IN_FLIGHT.test(p.d.name) || restedRoof);
     if (!slab && !reasons.length) return;
     const groundC = groundAt(s.centre[0], s.centre[2]);
     const lift = s.min[1] - groundC;
     const elevated = lift >= SLAB.elevatedM;
+    // a plate 2 m or more up is judged against the walls' plan at height (the intact plan without its plinths, steps and
+    // ground slabs): a slab at the eaves over a porch's footing is past the walls all the same
+    const plan = upperFootprint && lift >= SLAB.upperLiftM ? upperFootprint : footprint;
     surfaceSamples(p.tris, samples);
     const ns = samples.length / 4;
     let total = 0, outside = 0, unsupported = 0, weighed = 0;
     for (let i = 0; i < ns; i++) {
       const x = samples[i * 4], z = samples[i * 4 + 1], y = samples[i * 4 + 2], w = samples[i * 4 + 3];
       total += w;
-      if (!footprint.has(x, z)) outside += w;
+      if (!plan.has(x, z)) outside += w;
       if (!elevated) continue;
       weighed += w;
       // under it: the ground, a live record, another drawn piece's box top within the band
@@ -457,7 +468,16 @@ export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => fals
     if (slab) {
       // a plate past the walls in the air, or a panel standing in the open past them (one lying on the ground is debris)
       if ((elevated || vertical) && outsideShare >= SLAB.outsideShare && outside >= SLAB.outsideAreaM2) {
-        reasons.push(`outside: ${outside.toFixed(1)} m² (${(outsideShare * 100).toFixed(0)} %) past the intact walls, ${lift.toFixed(1)} m up`);
+        reasons.push(`outside: ${outside.toFixed(1)} m² (${(outsideShare * 100).toFixed(0)} %) past the intact walls${plan === footprint ? '' : ' (plan at height)'}, ${lift.toFixed(1)} m up`);
+      }
+      if (restedRoof) attributes.push('a fallen roof slab at rest');
+      // (the owner's 2026-10-17 frame) a fallen roof's slab lying flat across the wall heads, 2 m or more up, reads as a
+      // flat roof as wide as the old roof's slope, its eave overhang standing out past the walls
+      // (inside the walls, on the top floor, it is a fallen roof where it belongs: listed, not flagged)
+      const flatHigh = /^fx-collapse-roof-/.test(p.d.name) && (settled || restedRoof) && Math.abs(s.axes[2][1]) > 0.8 && lift >= SLAB.upperLiftM;
+      if (flatHigh && !(outside >= 1 && outsideShare >= 0.05)) attributes.push(`lying flat ${lift.toFixed(1)} m up inside the walls`);
+      if (flatHigh && outside >= 1 && outsideShare >= 0.05) {
+        reasons.push(`on the wall heads: a fallen roof slab lying flat ${lift.toFixed(1)} m up (${(s.ext[0] * s.ext[1]).toFixed(1)} m², ${(outsideShare * 100).toFixed(0)} % past the walls' plan at height)`);
       }
       if (elevated && floatingShare >= SLAB.floatingShare) reasons.push(`floating: ${(floatingShare * 100).toFixed(0)} % of it unsupported, ${lift.toFixed(1)} m up`);
       // (census9b) a piece drawn in one of the intact building's own materials is no stranger to it, mapped or not (a
@@ -624,7 +644,7 @@ export function renderPng(file, layers, { eye, target, fov = 50, width = 1280, h
 
 /** The check, as a function: the report (pass, per-building rows with their snapshots and findings). */
 export async function runSlabCheck({
-  mapId = 'verdant', ids = null, builders = null, perBuilder = 1, rounds = 40, roundGapS = 0.45, settleS = 10,
+  mapId = 'verdant', ids = null, builders = null, perBuilder = 1, rounds = 40, roundGapS = 0.45, settleS = 10, stopAfterRoof = false, upper = true,
   sections = true, fracture = true, renderDir = null, maxSnapshots = 40, storeys = [0], log = () => {}, rejoin = true,
 } = {}) {
   installWorldBuildFixture();
@@ -716,6 +736,8 @@ export async function runSlabCheck({
   for (const id of picks) {
     const seam = seamOf(id);
     const a = seam.anatomy;
+    // (the roof pass) a building without a roof section has no roof to come down: the full pass covers it
+    if (stopAfterRoof && !a.roof) { log(`#${id} ${seam.builder}: no roof section (skipped by the roof pass)`); continue; }
     for (const r of [...built.obstacles, ...built.colliders]) { r.crushed = false; r.dead = false; r.openings = null; }
     restoreSpans();
     let clock = 0;
@@ -731,6 +753,20 @@ export async function runSlabCheck({
     const ownMaterials = new Set();
     for (const span of seam.spans) for (const m of [span.mesh.material].flat()) if (m) ownMaterials.add(m);
     const footprint = footprintOf(intactLists);
+    // the walls' plan at height: the intact triangles reaching 1.5 m over the ground under them (no plinth, step or slab)
+    const upperFootprint = upper ? footprintOf(intactLists.map((t) => {
+      const keepTris = [];
+      for (let o = 0; o + 8 < t.length; o += 9) {
+        const top = Math.max(t[o + 1], t[o + 4], t[o + 7]);
+        if (top >= ground0((t[o] + t[o + 3] + t[o + 6]) / 3, (t[o + 2] + t[o + 5] + t[o + 8]) / 3) + 1.5) for (let k = 0; k < 9; k++) keepTris.push(t[o + k]);
+      }
+      return Float32Array.from(keepTris);
+    }).filter((t) => t.length)) : null;
+    // when each of the building's falling bodies first drew (a body that has lain RESTED_S is judged where it lies)
+    const firstSeen = new Map(), lastMoved = new Map(), motionKey = new Map();
+    const rested = (name) => /^fx-collapse-roof-/.test(name) && firstSeen.has(name) && clock - firstSeen.get(name) >= SLAB.restedS
+      && clock - (lastMoved.get(name) ?? -Infinity) >= SLAB.stillS;
+    let roofDownAt = -1;
     const mask = createStructureMask(4096, { holes: true });
     const env = { groundAt: (x, z) => ground(x, z), queryStatic: query, isSolid: (r) => !r.crushed && !r.dead };
     const bodies = rubbleMod ? rubbleMod.createRubbleBodies({ now: () => clock, environment: () => env, capacity: rubbleMod.RUBBLE_BODY_CAPACITY,
@@ -757,6 +793,7 @@ export async function runSlabCheck({
         }
       }
       replay.push({ type, e: { ...e } });
+      if (e?.structureId === id && type === DESTRUCTION_BUS_EVENTS.breach && e.sectionDown && e.sectionKind === 'roof' && roofDownAt < 0) roofDownAt = clock;
       if (e?.structureId === id) {
         events.push({ t: +clock.toFixed(3), type, stage: e.stage ?? null, hole: e.hole ?? null, storeyDown: !!e.storeyDown,
           y: e.y !== undefined ? +(+e.y).toFixed(2) : null });
@@ -820,7 +857,7 @@ export async function runSlabCheck({
     // before the first round: the building as it stands (its spans), judged as a control
     {
       const meshes = drawnMeshes([debris.group, fxGroup, bodies?.group], accept);
-      const judged = judgeSlabs(meshes, { footprint, groundAt: ground, supportAt, ownMaterials });
+      const judged = judgeSlabs(meshes, { footprint, groundAt: ground, supportAt, ownMaterials, upperFootprint });
       snapshots.push({ t: 0, label: 'intact', phase: 'intact', meshes: meshes.length, pieces: judged.pieces, findings: judged.findings.map(strip),
         render: shoot('intact', meshes, judged.findings, true) });
     }
@@ -832,7 +869,7 @@ export async function runSlabCheck({
     function phaseSnap(label) {
       if (snapshots.length >= maxSnapshots) return;
       const meshes = drawnMeshes([debris.group, fxGroup, bodies?.group], accept);
-      const judged = judgeSlabs(meshes, { footprint, groundAt: ground, supportAt, settled: false, ownMaterials });
+      const judged = judgeSlabs(meshes, { footprint, groundAt: ground, supportAt, settled: false, ownMaterials, upperFootprint, rested });
       const flagged = judged.findings.length > 0;
       const firstFlag = flagged && !snapshots.some((p) => p.findings.length);
       const tag = `t${clock.toFixed(1)}-${label}`;
@@ -845,7 +882,7 @@ export async function runSlabCheck({
     const lastS = rounds * roundGapS + settleS + 4;
     for (let tick = 0; tick * STEP <= lastS; tick++) {
       clock = tick * STEP;
-      if (collapsedAt < 0 && fired < rounds && clock >= 0.3 + fired * roundGapS) {
+      if (collapsedAt < 0 && fired < rounds && !(stopAfterRoof && roofDownAt >= 0) && clock >= 0.3 + fired * roundGapS) {
         const sf = struckFaces[fired % struckFaces.length];
         const uu = offs[fired % offs.length] * sf.width * 0.8;
         const y = sf.origin[1] + Math.max(0.6, Math.min(sf.height - 0.6, ys[fired % ys.length] * sf.height));
@@ -860,18 +897,32 @@ export async function runSlabCheck({
       fx?.update();
       debris.update();
       bodies?.update();
+      fxGroup.traverse((m) => {
+        if (!m.isMesh || !m.name) return;
+        if (!firstSeen.has(m.name)) firstSeen.set(m.name, clock);
+        if (!/^fx-collapse-roof-/.test(m.name)) return;
+        // still: neither its matrix nor its positions changed (a merged mesh's pieces move in its positions)
+        const pos = m.geometry?.attributes?.position;
+        if (!pos) return;
+        m.updateMatrixWorld?.(true);
+        const step = Math.max(1, Math.floor(pos.count / 12));
+        let key = `${pos.count}`;
+        for (let i = 0; i < pos.count; i += step) { _still.fromBufferAttribute(pos, i).applyMatrix4(m.matrixWorld); key += `|${Math.round(_still.x * 50)},${Math.round(_still.y * 50)},${Math.round(_still.z * 50)}`; }
+        if (motionKey.get(m.uuid) !== key) { motionKey.set(m.uuid, key); lastMoved.set(m.name, clock); }
+      });
       if (collapsedAt < 0 && collapsed) collapsedAt = clock;
       if (events.length > lastEventCount) {
         // each new stage or breach: judged once its pieces are laid (0.8 s) and once they have fallen (3 s)
         for (const dt of [0.8, 3.0]) if (!due.some((d) => Math.abs(d - (clock + dt)) < 0.4)) due.push(clock + dt);
         lastEventCount = events.length;
       }
-      const atEnd = (collapsedAt >= 0 && clock > collapsedAt + settleS) || (tick + 1) * STEP > lastS;
+      const atEnd = (collapsedAt >= 0 && clock > collapsedAt + settleS) || (stopAfterRoof && roofDownAt >= 0 && collapsedAt < 0 && clock > roofDownAt + settleS)
+        || (tick + 1) * STEP > lastS;
       if ((due.length && clock >= due[0]) || atEnd) {
         due.shift();
         if (snapshots.length < maxSnapshots || atEnd) {
           const meshes = drawnMeshes([debris.group, fxGroup, bodies?.group], accept);
-          const judged = judgeSlabs(meshes, { footprint, groundAt: ground, supportAt, settled: atEnd, ownMaterials });
+          const judged = judgeSlabs(meshes, { footprint, groundAt: ground, supportAt, settled: atEnd, ownMaterials, upperFootprint, rested });
           const last = events[events.length - 1];
           const label = atEnd ? 'final' : `t${clock.toFixed(1)}-${last ? (last.stage ?? (last.storeyDown ? 'storeyDown' : last.hole === 255 ? 'sectionDown' : 'hole')) : 'none'}`;
           const flagged = judged.findings.length > 0;
@@ -924,7 +975,7 @@ export async function runSlabCheck({
         for (let k = 0; k < 150; k++) { rclock += STEP; rstages.update(); rfx?.update(); rdebris.update(); rbodies?.update(); }
         const raccept = (m) => (m.parent === rgroup ? own.test(m.name) || /^fx-collapse-(?!baked)/.test(m.name) : true);
         const meshes = drawnMeshes([rdebris.group, rgroup, rbodies?.group], raccept);
-        const judged = judgeSlabs(meshes, { footprint, groundAt: rground, supportAt, settled: true, ownMaterials });
+        const judged = judgeSlabs(meshes, { footprint, groundAt: rground, supportAt, settled: true, ownMaterials, upperFootprint });
         const flagged = judged.findings.length > 0;
         const label = `rejoin-${p.phase.startsWith('rejoin mid') ? 'mid' : 'end'}-${snapshots.length}`;
         snapshots.push({ t: +p.t.toFixed(2), label, phase: p.phase, events: p.count, meshes: meshes.length, pieces: judged.pieces,
@@ -1015,6 +1066,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     builders: typeof args.builders === 'string' ? args.builders.split(',') : null,
     perBuilder: Number(args['per-builder'] ?? 1), rounds: Number(args.rounds ?? 40), roundGapS: Number(args.gap ?? 0.45),
     settleS: Number(args.settle ?? 10), sections: args.sections !== '0', fracture: args.fracture !== '0',
+    stopAfterRoof: args['stop-after'] === 'roof', upper: args.upper !== '0',
     renderDir: typeof args.render === 'string' ? args.render : null, maxSnapshots: Number(args['max-snapshots'] ?? 40), rejoin: args.rejoin !== '0',
     storeys: typeof args.storeys === 'string' ? args.storeys.split(',').map(Number) : [0],
     log: (...m) => console.log('[slab-check]', ...m),
