@@ -610,6 +610,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-r5/site50.selftest.mjs',
     'tools/media-r5/motion.selftest.mjs',
     'tools/media-r5/world-model.selftest.mjs',
+    'tools/media-r5/wire-model.selftest.mjs',
     'tools/media-r5/films/restore.selftest.mjs',
     'tools/media-r5/fleet-media.selftest.mjs',
     'tools/media-r5/site-video-budget.selftest.mjs',
