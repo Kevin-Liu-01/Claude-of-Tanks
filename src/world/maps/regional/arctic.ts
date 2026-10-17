@@ -234,8 +234,15 @@ function steelCraft(sink: PartSink, frame: HouseFrame, openings: readonly Openin
     sink.cylinder('structureMetal', [c.x, top - 0.05, c.z], 'y', 0.6, r, 8, { colour: STEEL_DARK, decor: true });
     sink.cylinder('structureMetal', [c.x, top + 0.48, c.z], 'y', 0.16, r + 0.13, 8, { colour: STEEL_DARK, decor: true }, 0.03);
     if (k === 0 && rg.s > 0.8) {
-      const side = c.x >= 0 ? 1 : -1, z = c.z + (c.z < 0 ? 0.75 : -0.75);
-      roofLadder(sink, frame, side, z, Math.max(0.2, 1 - (Math.abs(c.x) + 0.1) / rg.s), GALV);
+      const side = c.x >= 0 ? 1 : -1, z = c.z + (c.z < 0 ? 0.75 : -0.75), rise = Math.max(0.2, 1 - (Math.abs(c.x) + 0.1) / rg.s);
+      roofLadder(sink, frame, side, z, rise, GALV);
+      // (kitConnectivity: the rails ride 26 mm over the sheet) the hook brackets they ride on, three to a rail, from the sheet
+      // up into the rail (roofLadder's rail line: from 0.92 of the slope's run to its top at 1 - rise)
+      const xa = rg.s * 0.92, xb = Math.max(0.3, rg.s * (1 - rise));
+      for (const dz of [-0.2, 0.2]) for (const t of [0.08, 0.5, 0.92]) {
+        const x = side * (xa + (xb - xa) * t), top = rg.topAt(x, z + dz) ?? rg.eaveY;
+        sink.span('structureMetal', x - 0.02, top - 0.01, z + dz - 0.025, x + 0.02, top + 0.036, z + dz + 0.025, { colour: STEEL_DARK, decor: true });
+      }
     }
   });
 }
