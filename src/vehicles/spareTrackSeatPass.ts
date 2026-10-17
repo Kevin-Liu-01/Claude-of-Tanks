@@ -152,7 +152,35 @@ function seatEnv(frames: SeatFrames, frame: 'hull' | 'turret', region: THREE.Box
     : [...frames.turret, ...moved(frames.gun, gunToTurret, false),
       ...moved(frames.hull, turretToHull.clone().invert(), true)];
   return { frame, soup: new SeatSoup(sources, region.clone().expandByScalar(SOUP_MARGIN_M)), motion, markings: markingBoxes[frame],
-    dock: dockBoxes[frame] };
+    dock: dockBoxes[frame], outline: outlineBoxes[frame] ?? undefined };
+}
+
+/** The current build's plan outline per frame (set by seatAuthoredSpareTracks, read by seatEnv). */
+let outlineBoxes: Record<'hull' | 'turret', THREE.Box3 | null> = { hull: null, turret: null };
+/** Seat roles that are not the vehicle's outline: the runs themselves, the field suit and the decor's loads. */
+const NOT_OUTLINE: ReadonlySet<SeatRole> = new Set<SeatRole>(['run', 'suit', 'decor', 'ignore']);
+/**
+ * The vehicle's plan outline (x and z) in hull-frame coordinates: the exact vertex extents of the hull frame's own
+ * geometry (hull, skirts, running gear, fittings), before any run is moved or racked. The turret frame reads it at
+ * rest (translated by the turret pivot).
+ */
+function planOutline(frames: SeatFrames): THREE.Box3 | null {
+  const box = new THREE.Box3(new THREE.Vector3(Infinity, -Infinity, Infinity), new THREE.Vector3(-Infinity, Infinity, -Infinity));
+  const v = new THREE.Vector3();
+  for (const source of frames.hull) {
+    if (source.owner || NOT_OUTLINE.has(source.role)) continue;
+    const pos = source.geometry.getAttribute('position');
+    if (!pos) continue;
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i);
+      if (source.matrix) v.applyMatrix4(source.matrix);
+      if (v.x < box.min.x) box.min.x = v.x;
+      if (v.x > box.max.x) box.max.x = v.x;
+      if (v.z < box.min.z) box.min.z = v.z;
+      if (v.z > box.max.z) box.max.z = v.z;
+    }
+  }
+  return box.min.x <= box.max.x ? box : null;
 }
 
 /** The current build's marking keep-outs per frame (set by seatAuthoredSpareTracks, read by seatEnv). */
@@ -226,6 +254,7 @@ export function seatAuthoredSpareTracks(a: AuthoredSeatArgs): SpareTrackSeatRepo
       new THREE.Vector3(m.pos[0] + half, m.pos[1] + half, m.pos[2] + half)));
   }
   dockBoxes = dockKeepOutBoxes(a.spec.id);
+  outlineBoxes = { hull: null, turret: null };
   a.root.updateMatrixWorld(true);
   const frameOf = (o: THREE.Object3D): 'hull' | 'turret' | null =>
     under(o, a.gunG) ? null : under(o, a.turretG) ? 'turret' : under(o, a.hullG) ? 'hull' : null;
@@ -320,6 +349,11 @@ export function seatAuthoredSpareTracks(a: AuthoredSeatArgs): SpareTrackSeatRepo
     return frames;
   };
   let frames = collect();
+  // the plan outline before anything moves: no seat this pass chooses or keeps lets a run stand past it
+  const outline = planOutline(frames);
+  outlineBoxes = { hull: outline, turret: outline
+    ? outline.clone().translate(new THREE.Vector3(-frames.pivot.x, 0, -frames.pivot.z)) : null };
+  a.root.userData.spareTrackOutline = outline ? [outline.min.x, outline.max.x, outline.min.z, outline.max.z] : null;
   const motion = buildSeatMotion(a.spec, frames, a.fixedMount);
   const plan = SPARE_TRACK_SEAT_PLAN[a.spec.id];
   const consulted = new Set<string>();
@@ -696,6 +730,10 @@ export function decorSeatEnv(spec: SeatSpec, hullG: THREE.Group, turretG: THREE.
     for (const geometry of decor[frame]) frames[frame].push({ geometry, matrix: null, role: 'decor', owner: 0 });
   }
   let motion: SeatMotion | null | undefined;
+  // the same plan outline as the authored pass (before the decor's own loads join): no decor run stands past it
+  const hullOutline = planOutline(frames);
+  const outlines: Record<'hull' | 'turret', THREE.Box3 | undefined> = { hull: hullOutline ?? undefined,
+    turret: hullOutline?.clone().translate(new THREE.Vector3(-frames.pivot.x, 0, -frames.pivot.z)) };
   return (frame, region) => {
     if (motion === undefined) motion = buildSeatMotion(spec, frames, fixedMount);
     // decor committed since the factory was made joins on the next call (the lists are live)
@@ -706,7 +744,7 @@ export function decorSeatEnv(spec: SeatSpec, hullG: THREE.Group, turretG: THREE.
     }
     // the decor's own stations keep their own marking rules; the authored pass's keep-outs belong to its build
     // (the decor keeps its pieces out of the dock itself: decorations.ts dockKeepOut)
-    return { ...seatEnv(frames, frame, region, motion), markings: undefined, dock: undefined };
+    return { ...seatEnv(frames, frame, region, motion), markings: undefined, dock: undefined, outline: outlines[frame] };
   };
 }
 
