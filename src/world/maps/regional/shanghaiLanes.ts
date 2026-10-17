@@ -24,7 +24,7 @@ import {
   type RoofSpec, type StoreySpec,
 } from './house.ts';
 import { doorUnit, openShop, windowUnit, type DoorStyle, type WindowStyle } from './openings.ts';
-import { facadeOn, facadeRng, plinthPaint, type HeadStyle } from './facade.ts';
+import { facadeOn, facadeRng, paintBand, plinthPaint, type HeadStyle } from './facade.ts';
 import { pottedPlant, washingLine } from './dressing.ts';
 import type { RegionalBuildContext } from './types.ts';
 import {
@@ -42,6 +42,8 @@ const GRANITE: RegionalBucket = 'plaster3';
 const PLINTH = 0.3;
 /** The tar and soot-black limewash over a plinth's granite (the lanes' wet feet): a multiplier on its render. */
 const TARRED: Rgb = [0.58, 0.56, 0.54];
+/** The grey wash of a whitewashed lane's dado over its granite foot (a multiplier on the render). */
+const DADO: Rgb = [0.74, 0.74, 0.72];
 /** The iron of the gutters, downpipes and washing racks. */
 const GUTTER = rgb(0x34383a);
 /** The louvred shutters' paints in the lanes: a dark green, a brown, an oxblood, a grey. */
@@ -252,6 +254,7 @@ export function shikumenRow(ctx: RegionalBuildContext, bank: Bank | null): Regio
       }
     }
     plinthRuns.push([from, W / 2]);
+    const plinthGaps = plinthRuns.slice(0, -1).map(([, b], k): [number, number] => [b, plinthRuns[k + 1][0]]);
     // (looks 227) the court wall's granite foot, darkest where the lane's wet reaches it
     for (const [a, b] of plinthRuns) {
       if (b - a < 0.2) continue;
@@ -262,8 +265,10 @@ export function shikumenRow(ctx: RegionalBuildContext, bank: Bank | null): Regio
       const houseFront: Face = { origin: [0, 0, zf], u: [1, 0, 0], out: [0, 0, 1], width: W };
       // (the bands clear of the casements cut through the house front, at their heads' line and the eave's)
       brickBands(sink, houseFront, -W / 2, W / 2, [eaveY - 0.25], RED_BRICK);
-    } else {
-      faceBox(sink, 'plaster3', front, 0, 0.6, 0.015, W, 0.6, 0.03, DEC);
+    } else if (facadeOn()) {
+      // (looks 227: the whitewashed lanes' grey dado ran across the gates as a panel) a wash over the granite foot, broken
+      // at the gates' frames (facade craft)
+      paintBand(sink, 'plaster', front, -W / 2, W / 2, 0.38, 1.05, DADO, plinthGaps);
     }
     // the terrace's parapet and the washing on its bamboo poles
     sink.span(wall, -W / 2, terraceY, -D / 2, W / 2, terraceY + 0.83, -D / 2 + 0.22, SHADOWED);
