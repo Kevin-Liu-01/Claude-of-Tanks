@@ -79,9 +79,9 @@ function keepRuns(input: StructureDescribeInput, name: string): PieceRun[] {
 /** The body's reading: the parts without the named pieces, through the map's regional kit, else the default. */
 function describeBody(input: StructureDescribeInput): StructureDamageAnatomy {
   const parts: Record<string, BufferGeometry[]> = {};
-  for (const [bucket, list] of Object.entries(input.parts)) parts[bucket] = (list as readonly BufferGeometry[]).filter((g) => !g.userData.damagePiece || !!landmarkPiecesOf(input.parts)?.some((p) => p.kind === 'lattice')); // (227, lane B: an open frame's reading is its members' — its body kit never lays them — not the default's stone)
+  const open = !!landmarkPiecesOf(input.parts)?.some((p) => p.kind === 'lattice'); for (const [bucket, list] of Object.entries(input.parts)) parts[bucket] = (list as readonly BufferGeometry[]).filter((g) => open || !g.userData.damagePiece); // (227, lane B: an open frame's body reads its members through the default — its kits never lay them — not the default's stone)
   const bodyInput: StructureDescribeInput = { ...input, parts };
-  for (const kit of structureDamageKitChain('', input.style)) {
+  for (const kit of open ? [] : structureDamageKitChain('', input.style)) {
     if (kit === DEFAULT_STRUCTURE_DAMAGE_KIT || !kit.describe) continue;
     try {
       const anatomy = kit.describe(bodyInput);
@@ -496,7 +496,7 @@ function collapseLandmark(a: StructureDamageAnatomy, seed: number, out: DamageWr
   if (!plan) return res;
   plan.body.mound = a.mound;
   const kit = bodyKit(plan, 'collapse');
-  if (!plan.lattice) merge(res, kit.collapse!.call(kit, plan.body, seed, out)); // (227, lane B: a frame's footings and sheds stand; it alone falls)
+  if (!plan.lattice) merge(res, kit.collapse!.call(kit, plan.body, seed, out)); // (227, lane B: an open frame's pieces lay its whole fall, footings and sheds standing among them; no body heap)
   const given = (out as DamageWriters & { fallAxis?: [number, number] }).fallAxis ?? ((t: number): [number, number] => [Math.cos(t), Math.sin(t)])(damageRng(damageSeed(a.seed, 11))() * Math.PI * 2);
   const gl = given ? Math.hypot(given[0], given[1]) : 0;
   // a frame that toppled lies along its line, bent at its hinge as the mask laid it down; every other piece where it rests
