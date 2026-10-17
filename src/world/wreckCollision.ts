@@ -3,38 +3,16 @@ import { convexHull2, setCompoundShape, type CollisionRecord, type SimpleCollisi
 import { capPlanesOf } from './rockCollision.ts';
 import { convexSlabs, slabParts } from './slabCollision.ts';
 
-/** Small, posed solid envelopes; never include the gun, antennas or loose debris. */
+/**
+ * Small, posed solid envelopes; never include the gun, antennas or loose debris. The movement record's solids are the
+ * posed vertices' convex corners (collectWreckShellSolids), so its drawn top (placeWreckCollision: capPlanesOf) follows
+ * the steel as it leans — the glacis, the engine deck, a turret's flanks. (destruction lane 2026-10-17, DST-03: these were
+ * each mesh's outline extruded from its lowest point to its highest, so the support top stood at the hull's highest
+ * point everywhere over its plan: the fidelity census still read wreck records floating a hull 0.46 m over the drawn
+ * steel at the median, 85 % of their points.)
+ */
 export function collectWreckSolids(root: THREE.Object3D): number[][] {
-  const groups = [[], []] as number[][];
-  const inverse = root.matrixWorld.clone().invert();
-  const transform = new THREE.Matrix4();
-  const point = new THREE.Vector3();
-  root.traverse(object => {
-    if (!(object instanceof THREE.Mesh)) return;
-    const turret = object.name === 'turret' || object.name === 'turretExternalArmor';
-    const hull = object.name === 'hull' || object.name === 'hullExternalArmor' ||
-      object.name === 'gearTrackPadsSimplified';
-    if (!hull && !turret) return;
-    for (let node: THREE.Object3D | null = object; node; node = node.parent) {
-      if (!node.visible) return;
-      if (node === root) break;
-    }
-    object.geometry.computeBoundingBox();
-    const box = object.geometry.boundingBox;
-    if (!box || box.isEmpty()) return;
-    transform.multiplyMatrices(inverse, object.matrixWorld);
-    const points = groups[turret ? 1 : 0];
-    // Preserve tapered noses/corners instead of replacing each part with a rectangle.
-    const position = object.geometry.attributes.position;
-    const outline: [number, number][] = [];
-    for (let i = 0; i < position.count; i++) outline.push([position.getX(i), position.getZ(i)]);
-    const footprint = convexHull2(outline);
-    for (let i = 0; i < footprint.length; i += 2) for (const y of [box.min.y, box.max.y]) {
-      point.set(footprint[i], y, footprint[i + 1]).applyMatrix4(transform);
-      points.push(point.x, point.y, point.z);
-    }
-  });
-  return groups.filter(points => points.length > 0);
+  return collectWreckShellSolids(root);
 }
 
 /** Directions whose extreme vertices stand for a solid's convex hull (a Fibonacci sphere; deterministic). */
