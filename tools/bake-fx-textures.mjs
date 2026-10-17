@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import puppeteer from 'puppeteer';
 import { createServer } from 'vite';
+import { filterPublishedImage } from './media-r5/master-filter.mjs';
 
 const server = await createServer({
   root: process.cwd(),
@@ -36,7 +37,8 @@ try {
   const ledgerPath = join(process.cwd(), 'src', 'fx', 'particleAtlases.ledger.json');
   const ledger = JSON.parse(await readFile(ledgerPath, 'utf8'));
   for (const [name, atlas] of Object.entries(atlases)) {
-    const bytes = Buffer.from(atlas.png.slice(atlas.png.indexOf(',') + 1), 'base64');
+    const raw = Buffer.from(atlas.png.slice(atlas.png.indexOf(',') + 1), 'base64');
+    const bytes = await filterPublishedImage(raw, `fxatlas-${name}`, { type: 'image/png' });
     await writeFile(join(outDir, `particles-${name}.png`), bytes);
     ledger.atlases[name] = [bytes.readUInt32BE(16), bytes.readUInt32BE(20), createHash('sha256').update(bytes).digest('hex')];
     console.log(`${name.padEnd(5)} ${atlas.width}x${atlas.height} ${bytes.length} bytes`);

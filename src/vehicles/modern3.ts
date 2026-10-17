@@ -1689,6 +1689,10 @@ function buildType10Native2026(
     // anchor is the +-1.782 lobes; rear end -2.42 clear of the raised wrap
     // corridor [-3.49..-2.80], §5.308-B trim carried at the new stations)
     fenders(P, 1.496, 1.672, 1.32, -2.42, 3.17, 0.0385);                          // front end 3.17 meets the raked skirt-panel end — closes the 6 cm skirt/band top-down slit (§B2 5-cell receipt this round)
+    // VEH-13 (2026-10-16): a floor plate closes each nose chute between the hull nose (|x| <= 1.04), the bow lamp
+    // housing (|x| >= 1.24) and the front lip (z 3.70). The chutes are 16 x 15 cm and open to the ground from above, so
+    // the B2 contiguity scan reads them as enclosed sky in every grid phase. The plate's edge laps the nose top.
+    for (const s of [-1, 1]) P.add('hull', box(0.22, 0.025, 0.22), s * 1.14, 1.0875, 3.59);
     for (const s of [-1, 1]) {
       P.add('hull', box(0.077, 0.11, 0.44), s * 1.7435, 0.561, 2.442);            // §D WIDTH ANCHOR lobe x 1.705..1.782 at the ref's side band ×1.10 — widthM 3.56 anchor, both station caps inside one slab
       P.add('hull', box(0.0605, 0.11, 5.731), s * 1.7133, 0.561, 0.2365);         // low guard strip x 1.683..1.744, z -2.63..3.10
@@ -3035,11 +3039,20 @@ export function buildBradley(P: Modern3BuilderPort) {
         });
         lamp.position.set(s * 1.22, 1.16, 3.135);
         P.hullG.add(lamp);
+        // VEH-13 (2026-10-16): a closure plate under each trim-vane corner floors the slot between the vane's lower edge
+        // (z 2.86), the bow fender (|x| >= 1.10) and the lower nose plate (z 2.96). The slot is 12 x 9 cm and open to
+        // the ground from above, so the B2 contiguity scan reads it as enclosed sky in some grid phases. Every Bradley
+        // hull carries it: M2A2, M2A3 (UA), M3A3, M6 and the Marder 1A3 donor.
+        P.add('hull', box(0.16, 0.02, 0.12), s * 1.02, 1.18, 2.915);
       }
+      // VEH-13 outline rule (2026-10-16): the course lies on the upper glacis plane (0.4636 rad, y 1.675 at z 2.10 to
+      // 1.475 at z 2.50), its feet on the plate, right of the driver's periscopes. The 25 mm gun clears it by 5 cm at
+      // full depression. The foredeck station (0.72, 1.925, 0.80) sank it 7 cm into the deck. A deck seat on top would
+      // stand in the turret's traverse; the solver's racks stood past the hull side.
       const links = FITTINGS.spareTrackLinks({
-        mats: P.mats, links: 4, width: 0.48, seed: 9, rotation: [0, 0, 0],
+        mats: P.mats, links: 4, width: 0.48, seed: 9, rotation: [0.4636, 0, 0],
       });
-      links.position.set(0.72, 1.925, 0.80);                                      // laid on the right foredeck (r4:
+      links.position.set(0.50, 1.6662, 2.2081);                                   // laid on the right upper glacis (r4:
       P.hullG.add(links);                                                         //   the glacis seat's ~1.96 top ran
                                                                                   //   0.4 over the ref's 1.56 crest
                                                                                   //   band on the side z 2.36-2.47

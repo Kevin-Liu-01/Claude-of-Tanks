@@ -191,6 +191,12 @@ export default {
     // lane A's apron bank law).
     hardstands: [
       { x: 22, z: -192, width: 56, length: 56, yawDeg: 76, grade: 'road', bankM: 24 },
+      // (2026-10-17, the maps lane; 227 backlog) the ford green stays where it was: zone 2 is played on its north half at
+      // (144, 60), and the steep cells Lane C found within 4 m of that seat (2026-10-16) were the f3 hedge-bank's faces
+      // (retired below), not the green's edge. Re-centring the green on the seat (60 m at 144, 60) was tried and backed
+      // out: its south bank no longer held Pine Hollow's bog above the water (12.4 % wet, minimapLiquidWater) or eased
+      // the ford approach (road grade 0.180 at 185, 27). The f3 seat on the north meadow (128, 96-106) is no seat for
+      // zone 2 — graded level there, the drives read 534 m from alpha against 371 m from bravo (objective symmetry 1.44)
       { x: 154, z: 54, width: 56, length: 56, yawDeg: -22, grade: 'road', bankM: 18 },
       { x: 0, z: 102, width: 56, length: 56, yawDeg: 0, level: 4.5, grade: 0, bankM: 18 },
     ],
@@ -255,8 +261,10 @@ export default {
       // the FORD: the wade's bed sits at the water plane so the lane dips to a wheel-deep crossing
       { kind: 'basin', x: 186, z: 30, rx: 60, rz: 45, height: -2.4, yawDeg: 68, wetScale: 1 },
       // (2026-10-11, the map-revival lane; the coordinator's fairness ruling, try f3) zone 2's hedge-bank along its south
-      // edge facing the river knoll: a low earth bank, 1.6 m, 54 x 8 m, its hedgerow on the crest (vegetation belts)
-      { kind: 'ridge', x: 128, z: 59, length: 54, width: 8, height: 1.6, yawDeg: 0 },
+      // edge facing the river knoll. (2026-10-17, the maps lane; 227 backlog) retired: it stood on the lane at z 59 with
+      // no wetScale, so the river's wet band and the lane left it no height; given its height it would raise a 1.6 m bank
+      // across the lane inside zone 2's disc, its faces steeper than the disc allows (normal 0.93 < 0.94). The hedgerow
+      // along the lane stays (vegetation belts).
     ],
   },
 

@@ -120,6 +120,12 @@ export interface ArchitectureStyle {
   region: string;
   surfaces: ArchitectureSurfaces;
   builders: Readonly<Record<string, RegionalBuilder>>;
+  /**
+   * (227, the maps lane) A map's own reading of the kit: on that map a structure id builds as another of the kit's
+   * builders, named here (`{ skybridge: { gantry: 'motelRow' } }`); every other map, and the kit's receipts, read
+   * `builders` as it is. The build streams and the plan keep the structure id (buildRegionalParts).
+   */
+  mapBuilders?: Readonly<Record<string, Readonly<Record<string, string>>>>;
   /** per-building tint palettes and weathering strengths (weather.ts DEFAULT_WEATHER when absent) */
   weather?: WeatherPalette;
   /** share of houses showing war damage: burnt or boarded windows, a stripped roof patch (house.ts; default 0.2) */

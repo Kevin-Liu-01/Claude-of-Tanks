@@ -325,6 +325,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/spareTrackAttachment.selftest.mjs',
     // 2026-10-15 (VEH-13): one seat solver for every spare-track run; the Strv 103 family builds clean; the fleet ledger
     'src/vehicles/spareTrackSeat.selftest.mjs',
+    // 2026-10-16 (VEH-13 outline rule): the receipt's PROUD class and its seeded break
+    'tools/spare-track-outline.selftest.mjs',
     'src/vehicles/turretBarrelCircularity.selftest.mjs',
     'src/vehicles/profiles/gunTopFixturePlacement.selftest.mjs',
     'src/vehicles/profiles/bradleyHullClosure.selftest.mjs',
@@ -917,6 +919,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/particleTextureAssets.selftest.mjs',
     'src/fx/volumeMedia.selftest.mjs',
     'src/fx/structureStages.selftest.mjs',
+    'src/fx/structureStagesPieceHides.selftest.mjs', // 2026-10-16 props lane B (227 co-hold): a live run's named-piece hides wait for its wreck's birth, a settled run's apply at once
     'src/fx/structureDebris.selftest.mjs', // 2026-10-12: thrown pieces lie where their flight meets the ground; still pieces belong to their building
     'src/fx/rubbleBodies.selftest.mjs', // 2026-10-12: a building's larger falling pieces are bodies of the one physics engine
     // 2026-10-15 (the fracture package on integ/226): walls break where struck as cells, a section's fall keeps its stub and
@@ -1281,6 +1284,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/phoneLayoutIdentity.selftest.mjs',
     'src/sim/botRoutePlanner.selftest.mjs',
     'src/sim/botRouteClearance.selftest.mjs',
+    // 2026-10-16 (bots lane, READY-227): the hard bot's Verdant approach, after the clearance bevel (the smock mill's needles)
+    'src/sim/botVerdantApproach.selftest.mjs',
     // 2026-10-03 (bots lane): an edge holds the side slope across it to the two-way slope rule.
     'src/sim/botRouteSideSlope.selftest.mjs',
     'src/sim/botNavigationWater.selftest.mjs',
@@ -1599,6 +1604,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // the scenery lane (after wave 57): the telegraph poles' weathered timber
     'src/world/poleTimber.selftest.mjs',
     'src/world/scenery.selftest.mjs',
+    'src/world/jebelSkin.selftest.mjs', // 2026-10-14 (maps lane, MA.12): a dome's jointed face — all round, normals out, proud, in budget, no mass
     'src/world/sceneryTierIdentity.selftest.mjs', // 2026-10-11 the hitbox lane: a phone builds the desktop's formation masses
     // the scenery lane (2026-10-03): the dry-stone field walls' own rubble print
     'src/world/fieldStoneSurface.selftest.mjs',
@@ -1906,6 +1912,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageOrder.selftest.mjs',
     'src/ui/garageAuxiliarySummary.selftest.mjs',
     'src/vehicles/auxiliaryRoofGuns.selftest.mjs',
+    // 2026-10-16 (the perf lane): the roof-gun table's compact form
+    'src/vehicles/auxiliaryRoofGunsCodec.selftest.mjs',
     'src/ui/randomPreviews.selftest.mjs',
     'src/ui/touchControls.selftest.mjs',
     'src/ui/mobileLayout.selftest.mjs',
@@ -1942,6 +1950,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/leopardHullClosure.selftest.mjs',
     'src/vehicles/tankFactoryCore.selftest.mjs',
     'src/vehicles/tankFactoryStaging.selftest.mjs',
+    'src/vehicles/tankFactoryDeferredAssembly.selftest.mjs',
     'src/vehicles/plateDistanceScratch.selftest.mjs',
     'src/vehicles/profileBuilderAdapter.selftest.mjs',
     'src/vehicles/fleetSpecRegistry.selftest.mjs',

@@ -170,7 +170,13 @@ const summary = [];
  * the base's reach. Here each PR-head structure keeps a structure whose centre stands within KIT_SEAT_M of its own,
  * one to one, or a short move off a carriageway. Every structure left over must be shed-sized (a yard's shed).
  */
-const KIT_SEAT_M = 2.5, KIT_SHED_M = 6, PLANNED_SEAT_M = 1.0, YARD_SHED_REACH_M = 8, YARD_SHEDS_LEFT_OUT = 2;
+const KIT_SEAT_M = 2.5, KIT_SHED_M = 6, PLANNED_SEAT_M = 1.0, YARD_SHED_REACH_M = 8;
+// The PR-head yard sheds a map's yards build no more, each named with what stands in its corners (2026-10-17, the maps
+// lane, re-tightened from 226's "up to 2 a map"): every other shed keeps its seat or turns with its yard.
+// - polders (-104.55, -72.85), the cottage (-95.6, -74.3)'s shed: its yard still forms on the west side, 8 m deep, but a
+//   clutter barrel (r 0.37) stands at (-104.0, -74.7), inside both corners' shed plots (yards.ts rectClear counts every
+//   destructible), where the dyke village's houses moved the clutter's draws.
+const YARD_SHEDS_LEFT_OUT = { polders: [[-104.55, -72.85]] };
 /**
  * The buildings a map's water reaches (props.ts settlementOverWater: Suzhou Creek laid through the Blackglass district,
  * the map-revival lane, 2026-10-05): each landmark the creek reached moved to the nearest dry seat the district left it
@@ -247,8 +253,8 @@ function kitSeats(mapId, config, carriageway, structures, now, setPieces = 0) {
   // its house (the plots, the solids, the destructibles), so when the clutter a new street draws lands in a yard's ground
   // the yard takes another side or corner and its shed with it (Tidegate Polders' cottage at (-95.6, -74.3): its shed 3.5 m
   // along its west wall). A shed-sized PR-head structure reseats on a shed-sized structure within its yard's reach; no
-  // building of the plan moves. A shed whose yard has no clear corner left is not built at all (yards.ts drops it): up to
-  // YARD_SHEDS_LEFT_OUT a map, each named in the summary
+  // building of the plan moves. A shed whose yard has no clear corner left is not built at all (yards.ts drops it): only
+  // the sheds YARD_SHEDS_LEFT_OUT names, each with its blocker
   let turned = 0;
   const leftOut = [];
   for (let k = pending.length - 1; k >= 0; k--) {
@@ -259,7 +265,10 @@ function kitSeats(mapId, config, carriageway, structures, now, setPieces = 0) {
     if (best >= 0) { taken.add(best); turned++; } else leftOut.push([cx, cz]);
     pending.splice(k, 1);
   }
-  assert.ok(leftOut.length <= YARD_SHEDS_LEFT_OUT, `${mapId}: at most ${YARD_SHEDS_LEFT_OUT} PR-head yard sheds left out (${JSON.stringify(leftOut)})`);
+  const named = YARD_SHEDS_LEFT_OUT[mapId] ?? [];
+  for (const at of leftOut) {
+    assert.ok(named.some((n) => same(n, at)), `${mapId}: the PR-head yard shed at (${at}) is built, or named in YARD_SHEDS_LEFT_OUT with its blocker`);
+  }
   for (const [cx, cz] of pending) {
     const authored = (config.props.roadClearanceTargets ?? []).find((t) => Math.hypot(t.from[0] - cx, t.from[1] - cz) <= 1.5);
     const [i, d] = authored ? nearest(authored.to[0], authored.to[1], KIT_SEAT_M) : nearest(cx, cz, 30);
@@ -280,6 +289,14 @@ function kitSeats(mapId, config, carriageway, structures, now, setPieces = 0) {
     const [i] = nearest(entry.x, entry.z, KIT_SEAT_M);
     if (i >= 0) { taken.add(i); added++; }
   }
+  // the map's own additions to its recorded plan (props.townPlanAdditions; Ironworks' furnace line, the map-revival lane,
+  // 2026-10-06): each stands at its authored pose, as a recorded building stands at its recorded one
+  let additions = 0;
+  for (const entry of config.props.townPlanAdditions ?? []) {
+    const [i] = nearest(entry.x, entry.z, KIT_SEAT_M);
+    assert.ok(i >= 0, `${mapId}: the authored addition (${entry.structure}) at (${entry.x}, ${entry.z}) stands at its pose`);
+    taken.add(i); additions++;
+  }
   // (a site whose building's footprint centre stands off its site — a family camp's compound reaches past its hogan —
   // takes its structure within KIT_SEAT_M once the PR head's buildings have theirs)
   for (const site of unseated) {
@@ -291,7 +308,7 @@ function kitSeats(mapId, config, carriageway, structures, now, setPieces = 0) {
     assert.ok(s.w <= KIT_SHED_M && s.d <= KIT_SHED_M, `${mapId}: a structure the PR head had no seat for at (${s.cx.toFixed(1)}, ${s.cz.toFixed(1)}) is a yard's shed (${s.w.toFixed(1)} x ${s.d.toFixed(1)} m)`);
   }
   summary.push(`${mapId} (${config.props.architecture} kit) ${seated} seated (up to ${worstSeat.toFixed(1)} m), ${moved} off a carriageway (up to ${worstMove.toFixed(1)} m), ${turned ? `${turned} yard sheds turned with their yards, ` : ''}${leftOut.length ? `${leftOut.length} yard sheds left out (${leftOut.map((a) => a.join(', ')).join('; ')}), ` : ''}`
-    + `${overWater ? `${overWater} off the water and ${water.dropped.length} rows left out, ` : ''}${added ? `${added} authored rows, ` : ''}${planned ? `${planned} sites after the plan, ` : ''}${extra.length} yard sheds`);
+    + `${overWater ? `${overWater} off the water and ${water.dropped.length} rows left out, ` : ''}${added ? `${added} authored rows, ` : ''}${additions ? `${additions} authored additions, ` : ''}${planned ? `${planned} sites after the plan, ` : ''}${extra.length} yard sheds`);
 }
 for (const [mapId, { carriageway, structures, setPieces = 0 }] of Object.entries(PR_HEAD)) {
   const config = getMapConfig(mapId);
@@ -353,15 +370,18 @@ for (const [mapId, entries] of Object.entries(TOWN_LIGHT_PLANS)) {
   for (const [kind, x, z] of leftOut) {
     assert.ok(entries.some((e) => e.kind === kind && e.x === x && e.z === z), `${mapId}: the left-out ${kind} at (${x}, ${z}) is a recorded light building`);
   }
+  // (a map may replace a recorded kind out of place in its region at the same pose: props townLightPlanSwaps)
+  const swaps = getMapConfig(mapId).props.townLightPlanSwaps ?? {};
   let out = 0;
   for (const entry of entries) {
-    if (leftOut.some(([kind, x, z]) => kind === entry.kind && x === entry.x && z === entry.z)) {
-      assert.ok(!obstacles.some((o) => o.k === entry.kind && holds(o, entry.x, entry.z)), `${mapId}: the ${entry.kind} at (${entry.x}, ${entry.z}) is left out`);
-      assert.ok(obstacles.some((o) => o.k === 'structure' && holds(o, entry.x, entry.z)), `${mapId}: a house stands over the left-out ${entry.kind}'s seat`);
+    const kind = swaps[entry.kind] ?? entry.kind;
+    if (leftOut.some(([k, x, z]) => k === entry.kind && x === entry.x && z === entry.z)) {
+      assert.ok(!obstacles.some((o) => o.k === kind && holds(o, entry.x, entry.z)), `${mapId}: the ${kind} at (${entry.x}, ${entry.z}) is left out`);
+      assert.ok(obstacles.some((o) => o.k === 'structure' && holds(o, entry.x, entry.z)), `${mapId}: a house stands over the left-out ${kind}'s seat`);
       out++;
       continue;
     }
-    assert.ok(obstacles.some((o) => o.k === entry.kind && holds(o, entry.x, entry.z)), `${mapId}: the ${entry.kind} stands at its recorded (${entry.x}, ${entry.z})`);
+    assert.ok(obstacles.some((o) => o.k === kind && holds(o, entry.x, entry.z)), `${mapId}: the ${kind} stands at its recorded (${entry.x}, ${entry.z})`);
   }
   summary.push(`${mapId} ${entries.length - out} light buildings at their recorded poses${out ? ` (${out} under the village's houses, left out)` : ''}`);
 }

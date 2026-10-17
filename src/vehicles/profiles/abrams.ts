@@ -3550,8 +3550,11 @@ function tejasRoofKit(
     // ARAT surfaces, so they complete the load path without changing the
     // certified exterior silhouette.
     if (P.spec.id === 'm1a1_abrams_sa') {
+      // The tray runs forward under the front ARAT block (z 2.24): the old
+      // 2.32 front edge left a 5 cm see-through slot between the block's aft
+      // face and the tray (B2 contiguity, |x| 1.85-1.89, z 2.28-2.33).
       for (const side of [-1, 1]) {
-        P.add('hull', box(0.22, 0.025, 0.22), side * 1.86, 1.28, 2.43);
+        P.add('hull', box(0.22, 0.025, 0.30), side * 1.86, 1.28, 2.39);
       }
     } else if (P.spec.id === 'm1a1_abrams_fep') {
       for (const side of [-1, 1]) {
