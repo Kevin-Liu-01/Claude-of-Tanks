@@ -185,9 +185,11 @@ function sight(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):
 // gun (machineGunGeometry.ts, Poland's class) in the open cradle; the auxiliary roof-station logic aims and fires them.
 
 /** The Zubr's field emplacement: a square-cut 10 mm light shield in four bolted plates round a .10 x .09 barrel port,
- * braced by two gussets to the cradle rails. No receiver housing: the gun lies open in its cradle. */
+ * braced by two gussets to the cradle rails. No receiver housing: the gun lies open in its cradle. (Round 2, 2026-10-16:
+ * the shield is a splinter plate for the receiver's front, .26 x .20, no crew shield: from the front quarters the open
+ * receiver, its feed and its box read over and beside it.) */
 function cradleShield(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
- const sz=z+.25,t=.010,W=.38,top=.18,bottom=-.12,port=[.10,.09] as const;
+ const sz=z+.25,t=.010,W=.26,top=.11,bottom=-.09,port=[.10,.09] as const;
  g.add('turretDetail',box(W,top-port[1]/2,t),x,y+(top+port[1]/2)/2,sz);
  g.add('turretDetail',box(W,-bottom-port[1]/2,t),x,y+(bottom-port[1]/2)/2,sz);
  for(const s of [-1,1])g.add('turretDetail',box((W-port[0])/2,port[1],t),x+s*(port[0]/2+(W-port[0])/4),y,sz);
@@ -195,7 +197,7 @@ function cradleShield(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:n
  const railX=w/2-.006,front=z-.08+.23;
  for(const s of [-1,1])g.add('turretDetail',box(.012,.08,sz-t/2-front+.004),x+s*railX,y-.03,(front+sz-t/2)/2);
  // bolt heads along the shield's top edge
- for(const s of [-.15,-.05,.05,.15])g.add('turretDark',cylZ(.008,.006,8),x+s,y+top-.02,sz+t/2+.002);
+ for(const s of [-.10,-.035,.035,.10])g.add('turretDark',cylZ(.008,.006,8),x+s,y+top-.018,sz+t/2+.002);
  void l;
 }
 
@@ -246,21 +248,29 @@ function casemateSight(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:
  g.add('turretGlass',box(.075,.05,.012),sx-side*.045,y+.235,face);
  g.add('turretGlass',cylZ(.035,.012,20),sx+side*.045,y+.235,face);
  g.add('turretGlass',cylZ(.018,.012,12),sx,y+.16,face);
- // the illuminator housing: four walls round a .072 x .047 bore 18 mm deep, on a back block
- const hy=y+.08,hz=z+.16,bw=.072,bh=.047,depth=.018,front=hz+.04;
- g.add('turretDark',box(.09,.06,.08-depth),sx,hy,hz-depth/2);
+ // the illuminator housing: four walls round a .072 x .047 bore 18 mm deep, on a back block, tilted ILLUMINATOR_UP
+ // about its back block's centre
+ const hy=y+.08,hz=z+.16,bw=.072,bh=.047,depth=.018,front=.04;
+ const piece=(geo:THREE.BufferGeometry,dx:number,dy:number,dz:number)=>g.add('turretDark',geo.translate(dx,dy,dz).rotateX(-ILLUMINATOR_UP),sx,hy,hz);
+ piece(box(.09,.06,.08-depth),0,0,-depth/2);
  for(const s of [-1,1]){
-  g.add('turretDark',box(.09,(.06-bh)/2,depth),sx,hy+s*(bh/2+(.06-bh)/4),front-depth/2);
-  g.add('turretDark',box((.09-bw)/2,bh,depth),sx+s*(bw/2+(.09-bw)/4),hy,front-depth/2);
+  piece(box(.09,(.06-bh)/2,depth),0,s*(bh/2+(.06-bh)/4),front-depth/2);
+  piece(box((.09-bw)/2,bh,depth),s*(bw/2+(.09-bw)/4),0,front-depth/2);
  }
 }
+
+/** The illuminator looks 8 degrees over the weapon's line (round 2, 2026-10-16; the critic's night frames: "the new
+ * station illuminator lights up the tank's own main-gun barrel"): a counter-drone station's targets fly above its line,
+ * and the 19-degree cone's lower edge, the low beam's drop included, then passes over the main gun's barrel below it. */
+const ILLUMINATOR_UP=8*Math.PI/180;
 
 /** The illuminator's lens, authored in the turret frame at the rest pose as factory stock captured into the station's
  * pitch stage (the factory moves it under auxiliaryWeaponPitch and registers its night emitter there). */
 function casemateIlluminator(P:TankBuilderPort,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
  const half=supportHalfWidth(l,w),side=-l.feedSide,sx=x+side*(half+.16);
  const done=captureAuxiliaryStock(P,l.name,'pitch');
- P.addEquipment('turretGlass',markVehicleNightLens(box(.07,.045,.012),'headlight'),sx,y+.08,z+.16+.04-.010-.006);
+ // its face 10 mm inside the bore's mouth, in the housing's tilted frame (casemateSight)
+ P.addEquipment('turretGlass',markVehicleNightLens(box(.07,.045,.012),'headlight',{aimUp:true}).translate(0,0,.04-.010-.006).rotateX(-ILLUMINATOR_UP),sx,y+.08,z+.16);
  done();
 }
 

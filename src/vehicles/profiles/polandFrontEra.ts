@@ -59,23 +59,33 @@ interface BoxPlan {
   /** Outer-face plan path at the box's foot, |x| (mirrored by side), from the mantlet end to the flank end. */
   path: readonly (readonly [number, number])[];
   y0: number; y1: number; wall: number; floor: number; lid: number; rake: number;
-  /** Tile columns per wall segment and their widths; rows bottom to top (heights) with the bars between them. */
+  /** Tile columns per wall segment: their widths (level 1) or, with `fit`, only their count (each width fitted to the
+   * raked face's narrowest span); rows bottom to top (heights) with the bars between them. */
   columns: readonly (readonly number[])[];
+  fit?: {gap: number};
   rows: readonly (readonly [number, number])[];
   bars: readonly (readonly [number, number])[];
   tile: {base: number; top: number; proudPerRow: number} | {single: number};
+  /** The welded frame: how far its bars stand out of the wall (the corner uprights 3 mm further, the mullions 3 mm less:
+   * no two frame faces share a plane), and whether mullions stand between the tile columns. */
+  frame: {proud: number; mullions: boolean};
 }
 const BOXES: Readonly<Record<PolishLevel, BoxPlan>> = {
   1: {path: [[.39, 1.44], [.98, 1.44], [1.40, 1.02], [1.40, .62]], y0: .11, y1: .47, wall: .025, floor: .025, lid: .025, rake: 0,
     columns: [[.175, .175, .175], [.175, .175, .175], [.175, .175]],
-    rows: [[.1475, .2775], [.3075, .4375]], bars: [[.125, .14], [.285, .30], [.445, .46]], tile: {single: .055}},
+    rows: [[.1475, .2775], [.3075, .4375]], bars: [[.125, .14], [.285, .30], [.445, .46]], tile: {single: .055},
+    // (round 2, 2026-10-16; the critic: the Zubr's cheek "reads as a plain two-row crate ... the thin frame posts barely
+    // show"): the Krata frame stands 4 cm out between its .055 m tiles, a mullion between every two columns
+    frame: {proud: .040, mullions: true}},
   // the jamb starts 8 cm further out than the Zubr's end plate so its cassettes, standing out towards the mantlet,
   // stay outboard of the mantlet's sweep (|x| .39) at their thickest (the lowest course, .115 m)
   2: {path: [[.47, 1.36], [.59, 1.48], [1.00, 1.48], [1.44, 1.04], [1.44, .62]], y0: .11, y1: .53, wall: .025, floor: .025,
     lid: .025, rake: 12,
-    columns: [[.15], [.19, .19], [.185, .185, .185], [.185, .185]],
+    // (counts; fitted widths of about .11, .15, .165 and .17 m: a raked face shortens as it rises, by .035 m at each
+    // mitred corner at the top course, and every tile stays on its own face at every height)
+    columns: [[.15], [.19, .19], [.185, .185, .185], [.185, .185]], fit: {gap: .016},
     rows: [[.13, .243], [.263, .376], [.396, .509]], bars: [[.11, .13], [.243, .263], [.376, .396], [.509, .529]],
-    tile: {base: .05, top: .035, proudPerRow: .015}},
+    tile: {base: .05, top: .035, proudPerRow: .015}, frame: {proud: .013, mullions: false}},
 };
 
 interface Seg { a: THREE.Vector3; b: THREE.Vector3; dir: THREE.Vector3; n: THREE.Vector3; len: number }
@@ -155,6 +165,15 @@ function cheekBox(P: TankBuilderPort, casting: Stock, side: number, plan: BoxPla
 const faceNormal = (s: Seg, rake: number): THREE.Vector3 =>
   s.n.clone().multiplyScalar(Math.cos(rake * Math.PI / 180)).add(new THREE.Vector3(0, Math.sin(rake * Math.PI / 180), 0)).normalize();
 
+/** The raked wall face's span along segment i (its `along` coordinate from the segment's foot vertex) at height y: the
+ * face's vertices at that height lie on the wall's station frames (cheekBox), so the face shortens at the mitred
+ * (convex) corners as it rises and runs on along the oblique end plate at the jamb. */
+function faceSpan(side: number, segs: readonly Seg[], plan: BoxPlan, i: number, y: number): [number, number] {
+  const frames = vertexFrames(side, segs), s = segs[i], d = (y - plan.y0) * Math.tan(plan.rake * Math.PI / 180);
+  const at = (k: number) => frames[k].o.clone().addScaledVector(frames[k].out, -d * frames[k].scale).sub(s.a).dot(s.dir);
+  return [at(i), at(i + 1)];
+}
+
 function cheekFaces(P: TankBuilderPort, wall: Stock, side: number, plan: BoxPlan, level: PolishLevel): void {
   const id = idOf(level), segs = segments(side, plan.path), tan = Math.tan(plan.rake * Math.PI / 180);
   const faceAt = (s: Seg, along: number, y: number): THREE.Vector3 =>
@@ -163,11 +182,23 @@ function cheekFaces(P: TankBuilderPort, wall: Stock, side: number, plan: BoxPlan
     const n = faceNormal(s, plan.rake), p = faceAt(s, along, y);
     return wall.face(tup(p.clone().addScaledVector(n, .2)), tup(n.clone().negate())).point;
   };
+  const yLow = plan.rows[0][0], yHigh = plan.rows[plan.rows.length - 1][1];
   segs.forEach((s, i) => {
-    const cols = plan.columns[i], gap = (s.len - cols.reduce((a, b) => a + b, 0)) / (cols.length + 1);
     const n = faceNormal(s, plan.rake), up = new THREE.Vector3(0, 1, 0).addScaledVector(s.n, -tan).normalize();
-    let at = gap;
-    for (const w of cols) {
+    // the tiles' common span: on the face at every height of the courses (a tile's ends are square to its wall), clear of
+    // the box's end uprights (.015 m) and of the corner uprights
+    const [s0, e0] = faceSpan(side, segs, plan, i, yLow), [s1, e1] = faceSpan(side, segs, plan, i, yHigh);
+    let lo = Math.max(s0, s1), hi = Math.min(e0, e1), cols = plan.columns[i], gap: number, at: number;
+    if (plan.fit) {
+      // (the box's end uprights stand on the wall's first and last .015 m, wherever the raked face runs on past them)
+      lo = i === 0 ? Math.max(lo, 0) + .018 : lo + .012; hi = i === segs.length - 1 ? Math.min(hi, s.len) - .018 : hi - .012;
+      gap = plan.fit.gap;
+      const w = (hi - lo - (cols.length - 1) * gap) / cols.length;
+      cols = cols.map(() => w); at = lo;
+    } else {
+      gap = (hi - lo - cols.reduce((a, b) => a + b, 0)) / (cols.length + 1); at = lo + gap;
+    }
+    for (const [ci, w] of cols.entries()) {
       plan.rows.forEach(([r0, r1], r) => {
         const corner = seatOn(s, at, r0);
         let g: THREE.BufferGeometry;
@@ -180,17 +211,27 @@ function cheekFaces(P: TankBuilderPort, wall: Stock, side: number, plan: BoxPlan
           g = stackTile(P, corner, s.dir, up, n, w, (r1 - r0) / Math.cos(plan.rake * Math.PI / 180), base, plan.tile.top);
         }
         const bolt = 'single' in plan.tile ? [] : [hardwareBlock(tup(corner.clone().addScaledVector(s.dir, w / 2)
-          .addScaledVector(up, (r1 - r0) - .02).addScaledVector(n, plan.tile.base + plan.tile.proudPerRow * (plan.rows.length - 1 - r) + plan.tile.top - .002)),
+          .addScaledVector(up, (r1 - r0) / Math.cos(plan.rake * Math.PI / 180) - .035).addScaledVector(n, plan.tile.base + plan.tile.proudPerRow * (plan.rows.length - 1 - r) + plan.tile.top)),
           [.024, .016, .008], {x: tup(s.dir), y: tup(up)})];
         eraModule(P, {owner: 'turret', sector: sectorOf('turret_era', side), geometry: g, outward: tup(n), minDot: .5,
           name: `cheek cassette ${i}.${r}`, hardware: bolt, guard: (nm, geo) => assertTurretPart(id, nm, geo)});
       });
       at += w + gap;
+      // a mullion in the gap after this column (not after the last)
+      if (plan.frame.mullions && ci < cols.length - 1) {
+        const y0 = plan.bars[0][1], y1 = plan.bars[plan.bars.length - 1][0], d = plan.frame.proud - .003;
+        const g = orientedBox([.012, y1 - y0 + .004, d + .004], seatOn(s, at - gap / 2, (y0 + y1) / 2).addScaledVector(n, d / 2 - .002), s.dir, n);
+        assertTurretPart(id, 'cheek mullion', g);
+        P.addEquipment('turretDetail', g);
+      }
     }
-    // perimeter bars across this wall: bottom, middle and top (level 2: between every row)
+    // perimeter bars across this wall: bottom, middle and top (level 2: between every row), each the face's length at
+    // its own height
     for (const [b0, b1] of plan.bars) {
-      const p = seatOn(s, s.len / 2, (b0 + b1) / 2).addScaledVector(n, .0075 - .004);
-      const g = orientedBox([s.len, b1 - b0, .015 + .004], p, s.dir, n);
+      const [a0, a1] = faceSpan(side, segs, plan, i, b1), [c0, c1] = faceSpan(side, segs, plan, i, b0);
+      const from = Math.max(a0, c0), to = Math.min(a1, c1);
+      const p = seatOn(s, (from + to) / 2, (b0 + b1) / 2).addScaledVector(n, plan.frame.proud / 2 - .002);
+      const g = orientedBox([to - from, b1 - b0, plan.frame.proud + .004], p, s.dir, n);
       assertTurretPart(id, 'cheek bar', g);
       P.addEquipment('turretDetail', g);
     }
@@ -206,8 +247,9 @@ function cheekFaces(P: TankBuilderPort, wall: Stock, side: number, plan: BoxPlan
     const along = sA.dir.clone().add(sB.dir).normalize();
     // the box's two end uprights stand on their wall, not past its end
     const shift = k === 0 ? .0075 : k === verts.length - 1 ? -.0075 : 0;
-    const g = orientedBox([.015, h / Math.cos(plan.rake * Math.PI / 180), .015 + .004],
-      hit.point.addScaledVector(n, .0075 - .004).addScaledVector(along, shift), along, n);
+    const d = plan.frame.proud + .003;
+    const g = orientedBox([.015, h / Math.cos(plan.rake * Math.PI / 180), d + .004],
+      hit.point.addScaledVector(n, d / 2 - .002).addScaledVector(along, shift), along, n);
     assertTurretPart(id, 'cheek upright', g);
     P.addEquipment('turretDetail', g);
   });
@@ -222,33 +264,60 @@ export function polishCheekBoxes(P: TankBuilderPort, casting: Stock, level: Poli
   }
 }
 
-/** The roof row (level 1: two tiles a side in a three-bar frame) or grid (level 2: four in a four-bar frame) on the
- * dome's front, each flat tile tilted to its seat. */
+/** The roof row (level 1: two flat .22 m tiles a side in a three-bar frame) or grid (level 2: four two-layer tiles a
+ * side, a base layer and a chamfered face layer, in two columns stepped back outboard, in a seven-bar frame) on the
+ * dome's front, each tile tilted to its seat (its lowest corner 4 mm into the dome). The level-2 grid keeps behind the
+ * cheek box's lid, whose inner edge runs diagonally across the dome from (.955, .65) to (.47, .95), and its tops under
+ * .67 m (the dome rises to the rear and the centre); its outer column stands clear of the roof plate (rear edge z .396). */
 export function polishRoofGrid(P: TankBuilderPort, casting: Stock, level: PolishLevel): void {
-  const id = idOf(level), xs = [.545, .795], zs = level === 1 ? [.68] : [.52, .68], s = .22, t = .035;
+  const id = idOf(level);
+  // tiles as plan rectangles [x0, x1, z0, z1] (|x|)
+  const L = level === 1
+    ? {tiles: [[.435, .655, .57, .79], [.685, .905, .57, .79]], base: .035, top: 0}
+    : {tiles: [[.45, .64, .49, .63], [.45, .64, .645, .785], [.66, .83, .415, .545], [.66, .83, .56, .69]], base: .022, top: .020};
   for (const side of SIDES) {
-    for (const X of xs) for (const z of zs) {
-      const x = side * X, corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => new THREE.Vector3(x + a * s / 2, casting.top(x + a * s / 2, z + b * s / 2), z + b * s / 2));
+    for (const [X0, X1, z0, z1] of L.tiles) {
+      const X = (X0 + X1) / 2, z = (z0 + z1) / 2, sx = X1 - X0, sz = z1 - z0, x = side * X;
+      const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) =>
+        new THREE.Vector3(x + a * sx / 2, casting.top(x + a * sx / 2, z + b * sz / 2), z + b * sz / 2));
       const n = corners[2].clone().sub(corners[0]).cross(corners[3].clone().sub(corners[1])).normalize();
       if (n.y < 0) n.negate();
       const centre = corners.reduce((c, p) => c.add(p), new THREE.Vector3()).multiplyScalar(.25);
       const low = Math.min(...corners.map(p => p.clone().sub(centre).dot(n)));
-      const g = orientedBox([s, s, t + .004], centre.clone().addScaledVector(n, low + (t - .004) / 2), new THREE.Vector3(1, 0, 0), n);
-      // the box's z is the seat normal, its thickness t + 4 mm sunk; the tile's face is the hit face
+      let g: THREE.BufferGeometry;
+      if (!L.top) {
+        // the box's z is the seat normal, its thickness t + 4 mm sunk; the tile's face is the hit face
+        g = orientedBox([sx, sz, L.base + .004], centre.clone().addScaledVector(n, low + (L.base - .004) / 2), new THREE.Vector3(1, 0, 0), n);
+      } else {
+        const along = new THREE.Vector3(1, 0, 0).addScaledVector(n, -n.x).normalize(), up = n.clone().cross(along).normalize();
+        const corner = centre.clone().addScaledVector(n, low).addScaledVector(along, -sx / 2).addScaledVector(up, -sz / 2);
+        g = stackTile(P, corner, along, up, n, sx, sz, L.base, L.top);
+      }
+      g.computeBoundingBox();
+      if (g.boundingBox!.max.y > .67 + 1e-4) throw new Error(`${id}: roof tile top ${g.boundingBox!.max.y.toFixed(3)} over .67`);
       eraModule(P, {owner: 'turret', sector: sectorOf('turret_era', x), geometry: g, outward: tup(n), minDot: .5,
         name: 'roof tile', guard: (nm, geo) => assertTurretPart(id, nm, geo)});
     }
-    // the welded frame: front and rear bars across the row, and between (level 1) or round (level 2) the tiles
-    const z0 = Math.min(...zs) - s / 2 - .012, z1 = Math.max(...zs) + s / 2 + .012, x0 = xs[0] - s / 2 - .012, x1 = xs[1] + s / 2 + .012;
-    const bars: [THREE.Vector3, THREE.Vector3][] = [];
+    // the welded frame, 12 mm round the tiles: level 1, front and rear bars across the row and one between its tiles;
+    // level 2, a bar along each column's outer sides and one between the columns, and a front and a rear bar per column
     const at = (X: number, z: number) => new THREE.Vector3(side * X, casting.top(side * X, z), z);
-    bars.push([at(x0, z0), at(x1, z0)], [at(x0, z1), at(x1, z1)]);
-    if (level === 1) bars.push([at((xs[0] + xs[1]) / 2, z0), at((xs[0] + xs[1]) / 2, z1)]);
-    else bars.push([at(x0, z0), at(x0, z1)], [at(x1, z0), at(x1, z1)]);
-    for (const [a, b] of bars) {
+    const bars: [THREE.Vector3, THREE.Vector3][] = [];
+    if (level === 1) {
+      const [a, b] = L.tiles, z0 = a[2] - .012, z1 = a[3] + .012, x0 = a[0] - .012, x1 = b[1] + .012, xm = (a[1] + b[0]) / 2;
+      bars.push([at(x0, z0), at(x1, z0)], [at(x0, z1), at(x1, z1)], [at(xm, z0), at(xm, z1)]);
+    } else {
+      const inner = L.tiles.slice(0, 2), outer = L.tiles.slice(2);
+      const xi = inner[0][0] - .012, xm = (inner[0][1] + outer[0][0]) / 2, xo = outer[0][1] + .012;
+      const span = (col: number[][]) => [col[0][2] - .012, col[col.length - 1][3] + .012];
+      const [ia, ib] = span(inner), [oa, ob] = span(outer);
+      bars.push([at(xi, ia), at(xi, ib)], [at(xm, Math.min(ia, oa)), at(xm, Math.max(ib, ob))], [at(xo, oa), at(xo, ob)],
+        [at(xi, ia), at(xm, ia)], [at(xi, ib), at(xm, ib)], [at(xm, oa), at(xo, oa)], [at(xm, ob), at(xo, ob)]);
+    }
+    for (const [k, [a, b]] of bars.entries()) {
       const along = b.clone().sub(a), len = along.length(), mid = a.clone().add(b).multiplyScalar(.5);
       const n = new THREE.Vector3(0, 1, 0);
-      const g = orientedBox([len, .02, .024], mid.addScaledVector(n, .008), along, n);
+      // (level 2's bar between the columns is 14 mm wide: 3 mm clear of the tiles on both sides)
+      const g = orientedBox([len, level === 2 && k === 1 ? .014 : .02, .024], mid.addScaledVector(n, .008), along, n);
       assertTurretPart(id, 'roof frame bar', g);
       P.addEquipment('turretDetail', g);
     }
@@ -445,12 +514,19 @@ function facing(p: readonly THREE.Vector3[], i: number): THREE.Vector3 {
   return n.z < 0 ? n.negate() : n;
 }
 
-/** The front bay's fitted cassette grid between permanent bars, and brick-bond cassettes on the front return's falling
- * face. The Zubr's grid leaves a slot round its hull screen's support arm and shoe (z 2.30): two columns of three. */
+/** The Zubr II's hull-screen support arm stands on a mount shoe on its front bay at z 2.615-2.745
+ * (nationalPolandProtection.ts): the bay's cassette grid ends 2 cm short of the shoe, its end upright clear of the arm. */
+const ZUBR_II_SHOE_Z = 2.615;
+
+/** The front bay's fitted cassette grid between permanent bars, and cassettes on the front return's falling face (the
+ * Zubr: two courses of two in brick bond; the Zubr II: a 2 x 2 grid fitted inside the return's outer face). The Zubr's
+ * grid leaves a slot round its hull screen's support arm and shoe (z 2.30): two columns of three; the Zubr II's three
+ * columns end ahead of its shoe. */
 export function polishFrontSkirt(P: TankBuilderPort, level: PolishLevel, s: PolishFrontSkirt): void {
   const id = idOf(level), b = s.bay, thick = level === 1 ? .06 : .09;
+  const z2 = [b.flat[0] + .01, ZUBR_II_SHOE_Z - .02], w2 = (z2[1] - z2[0] - 2 * .015) / 3;
   const columns: [number, number][] = level === 1 ? [[b.flat[0] + .01, 2.215], [2.385, b.flat[1] - .01]]
-    : [[b.flat[0] + .01, b.flat[0] + .17], [b.flat[0] + .185, b.flat[0] + .345], [b.flat[0] + .36, 2.65]];
+    : [0, 1, 2].map(k => [z2[0] + k * (w2 + .015), z2[0] + k * (w2 + .015) + w2] as [number, number]);
   // the Zubr: three courses of two (6 a side, the plan's count) round the screen-arm slot; the Zubr II: three of three
   const zubrRow = (b.high - b.low - .012 - 2 * .016) / 3;
   const rows: [number, number][] = level === 1 ? [0, 1, 2].map(k => [b.low + .006 + k * (zubrRow + .016), b.low + .006 + k * (zubrRow + .016) + zubrRow] as [number, number])
@@ -487,16 +563,38 @@ export function polishFrontSkirt(P: TankBuilderPort, level: PolishLevel, s: Poli
     const xo = (z: number) => r.outer0 + (r.outer1 - r.outer0) * (z - r.z0) / len;
     const mid = (z: number) => (yb(z) + yt(z)) / 2, dir = new THREE.Vector3(0, mid(r.z1) - mid(r.z0), len).normalize();
     const hgt = Math.min(yt(r.z0) - yb(r.z0), yt(r.z1) - yb(r.z1)) * Math.cos(Math.atan2(-dir.y, dir.z));
-    const rowH = (hgt - .03) / 2, cl = level === 1 ? .24 : .24, tiles = [[.06, 0], [.06 + cl + .015, 0], [.06 + cl / 2 + .0075, 1], [.06 + 1.5 * cl + .0225, 1]];
-    const perp = new THREE.Vector3(0, dir.z, -dir.y).normalize();
-    for (const [at, row] of tiles) {
-      const z = r.z0 + dir.z * at, centre = new THREE.Vector3(side * xo(z + dir.z * cl / 2), mid(z + dir.z * cl / 2), z + dir.z * cl / 2)
-        .addScaledVector(perp, row === 0 ? -(rowH / 2 + .0075) : rowH / 2 + .0075);
-      const geo = level === 1
-        ? orientedBox([cl, rowH, thick + .005], centre.clone().addScaledVector(n, (thick - .005) / 2), dir, n)
-        : stackTile(P, centre.clone().addScaledVector(dir, -cl / 2).addScaledVector(perp, -rowH / 2), dir, perp, n, cl, rowH, .05, thick - .05);
-      eraModule(P, {owner: 'hull', sector: sectorOf('skirt_era', side), geometry: geo, outward: [side, 0, 0], minDot: .5,
-        name: 'front-return cassette', guard: (nm, g2) => assertHullPart(id, nm, g2, {skirtTop: yt(z)})});
+    const rowH = (hgt - .03) / 2, perp = new THREE.Vector3(0, dir.z, -dir.y).normalize();
+    // each cassette laid in the return face's own plane (its outer edge flares outward over the return's length), sunk 5
+    // mm (level 1) or 4 mm (level 2) into it all over
+    const k = (r.outer1 - r.outer0) / len, nf = new THREE.Vector3(side, 0, -k).normalize();
+    const along = new THREE.Vector3(side * k * dir.z, dir.y, dir.z).normalize(), up = nf.clone().cross(along).normalize();
+    if (up.dot(perp) < 0) up.negate();
+    // the front bay module's chamfered end overlaps the return's first 2.3 cm: the lower course's rear corner keeps 8 mm
+    // ahead of it (round 2; the receipt's two-way overlap test: the first lower cassette entered it 7.7 mm)
+    const bayEnd = b.z + b.half, lowerRear = .0075 + (level === 1 ? rowH : rowH);
+    const first = Math.max(level === 1 ? .06 : .03, (bayEnd + .008 - r.z0 + Math.max(0, up.z) * lowerRear) / dir.z);
+    if (level === 1) {
+      const cl = .24, o = first - .06, tiles = [[.06 + o, 0], [.06 + o + cl + .015, 0], [.06 + o + cl / 2 + .0075, 1], [.06 + o + 1.5 * cl + .0225, 1]];
+      if (r.z0 + dir.z * (.06 + o + 2.5 * cl + .0225) + Math.max(0, up.z) * lowerRear > r.z1 - .01)
+        throw new Error(`${id}: the front-return cassettes overrun the return`);
+      for (const [at, row] of tiles) {
+        const z = r.z0 + dir.z * at, zc = z + dir.z * cl / 2, centre = new THREE.Vector3(side * xo(zc), mid(zc), zc)
+          .addScaledVector(up, row === 0 ? -(rowH / 2 + .0075) : rowH / 2 + .0075);
+        const geo = orientedBox([cl, rowH, thick + .005], centre.clone().addScaledVector(nf, (thick - .005) / 2), along, nf);
+        eraModule(P, {owner: 'hull', sector: sectorOf('skirt_era', side), geometry: geo, outward: [side, 0, 0], minDot: .5,
+          name: 'front-return cassette', guard: (nm, g2) => assertHullPart(id, nm, g2, {skirtTop: yt(z)})});
+      }
+    } else {
+      // the Zubr II: two columns fitted 3 cm inside the outer face's ends (it turns in past z1)
+      // the upper course's front corner 1 cm short of the face's end (the face falls forward, so the course leans ahead)
+      const last = Math.min(len / dir.z - .03, (r.z1 - .01 - r.z0 - Math.max(0, up.z) * lowerRear) / dir.z), cl = (last - first - .015) / 2;
+      for (const at of [first, first + cl + .015]) for (const row of [0, 1]) {
+        const z = r.z0 + dir.z * at, foot = new THREE.Vector3(side * xo(z), mid(z), z)
+          .addScaledVector(up, row === 0 ? -(rowH + .0075) : .0075);
+        const geo = stackTile(P, foot, along, up, nf, cl, rowH, .05, thick - .05);
+        eraModule(P, {owner: 'hull', sector: sectorOf('skirt_era', side), geometry: geo, outward: [side, 0, 0], minDot: .5,
+          name: 'front-return cassette', guard: (nm, g2) => assertHullPart(id, nm, g2, {skirtTop: yt(z)})});
+      }
     }
   }
 }

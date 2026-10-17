@@ -87,6 +87,8 @@ function camouflage(id:ProtectionId,index:number):GhillieConfig{
     id,seed:8460+index*113,style:'leafy',density:1.8,leafScale:.8,boughShare:.42,fieldClearanceM:.03,hemFloorM:.6,
     // the hull's suit keeps under the protection receipt's continuous main-gun envelope (its glacis boughs lie low)
     conservativeGunEnvelope:true,
+    // release 227 (round 2): Hetman II's stepped prow and chevron glacis: no card passes into a course or a band
+    ...(id==='t72b3m_hetman_ii'?{cardsClearOfArmour:true}:{}),
     light:0x6d7e48,dark:0x31482d,netColor:'rgba(38,53,30,0.83)',
     hull:{
      // 2026-10-12 (cam-netting): the glacis netted to the bow plate, the driver's hatch and periscopes open (the
@@ -96,7 +98,8 @@ function camouflage(id:ProtectionId,index:number):GhillieConfig{
       laidNet({x0:-1.5,x1:1.5,z0:k.glacis[0],z1:k.glacis[1],nx:30,nz:Math.round((k.glacis[1]-k.glacis[0])/.1),
        yAt:(_x:number,z:number)=>k.glacisTop-Math.max(0,z-k.glacis[0])*k.fall,garnishRiseM:.1,seed:137}),
      ],
-     face:[{z:bowZ,x0:-1.02,x1:1.02,y0:bowTop-.36,y1:bowTop,nx:20,ny:5,seed:101}],
+     // (release 227, round 2: Hetman II's bow drape is tied over its hinged lower-plate aprons, under its nose sill)
+     face:[{z:bowZ,x0:-1.02,x1:1.02,y0:bowTop-.36,y1:bowTop,nx:20,ny:5,seed:101,...(id==='t72b3m_hetman_ii'?{y1:.935,seatGapM:.012}:{})}],
      side:[-1,1].flatMap(side=>d.hullPanels.map(([z0,z1],i)=>({
       side,z0:z0+.055,z1:z1-.055,nz:15,ny:7,seed:37+side+i*17,
       // Tied under the header (tiedTop): the drape starts 4 mm under the header's centre line, 1.4 cm outside the

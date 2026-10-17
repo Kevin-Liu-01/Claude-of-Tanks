@@ -100,6 +100,8 @@ function fieldSuit(d: Layout, m: number): GhillieConfig {
     // the owner's performance push (the coordinator, 2026-10-13): 70 % of each clump's cards, broader, so the clump covers
     // the same net; the far tier (LOW) keeps 35 % of them (the Zubr II's LOW was already 75.4 % of its HIGH bare)
     garnishBudget: {clumpCards: .7, lowShare: .35},
+    // release 227 (round 2): the Zubrs' Krata glacis fields and cheek grids: no card passes into a cassette or a riser
+    ...(d.id === 't72b3_zubr' || d.id === 't72b3_zubr_ii' ? {cardsClearOfArmour: true} : {}),
     light: [0x68724b, 0x73744d, 0x657547, 0x747852][m]!, dark: 0x2f3a2c, netColor: 'rgba(49,61,37,0.88)', netTextureSeed: 1101,
     hull: {
       top: [laid({x0: -2.12, x1: 2.12, z0: f.stern, z1: f.bow, nx: 42, nz: Math.round((f.bow - f.stern) / .1), yAt: deckAt,

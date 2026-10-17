@@ -156,6 +156,8 @@ export function eraModule(P: TankBuilderPort, o: {owner: Owner; sector: string; 
   tagFrontPart(o.geometry, name, o.owner);
   o.geometry.userData.frontEraModule = name;
   o.geometry.userData.frontEraSector = o.sector;
+  // the authored outward axis (the receipt finds the module's seat faces against it)
+  o.geometry.userData.frontEraOutward = v(o.outward).normalize().toArray();
   P.destructibleCluster(o.sector, () => {
     P.addExternalArmor(o.owner, o.geometry);
     if (P.q) for (const h of o.hardware ?? []) {

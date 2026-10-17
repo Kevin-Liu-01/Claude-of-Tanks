@@ -80,15 +80,19 @@ export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret
 export const NATIONAL_DONOR_TURRET_IDS = Object.freeze(Object.keys(NATIONAL_DONOR_TURRETS));
 
 /**
- * Release 227 (the coordinator's brief, defect 3): the lowest main-gun pitch by absolute turret yaw (degrees, in the
- * gunPitchLimits format: yaw 0..180 from the hull's front, minimum pitch) where the gun's full depression over the rear
- * arc cut the deck stock (the Zubr's deck cases, the Zubr II's deck cabinets, the Hetman II's T-72B3M engine deck). Each
- * station is the lowest pitch, in half degrees, at which the gun (recoil 0 and -.135) clears every hull stock triangle
- * by 1.5 cm at that yaw and both neighbouring degrees (probe-gunpitch, 1 degree steps over the rear arc); the front arc
- * keeps its -6 degrees. Data only: sim/gunPitchLimits.ts applies it; matchRuleset.ts is untouched.
+ * Release 227: the lowest main-gun pitch by absolute turret yaw (degrees, in the gunPitchLimits format: yaw 0..180 from
+ * the hull's front, minimum pitch). The brief's defect 3: the gun's full depression over the rear arc cut the deck stock
+ * (the Zubr's deck cases, the Zubr II's deck cabinets, the Hetman II's T-72B3M engine deck). Round 2 (2026-10-16, the
+ * critic's D7: "at the -6 the curves keep in the front arc, the whole main gun still cuts existing hull stock"): over the
+ * front quarters too, where the barrel at -6 met the front skirt bays' straps, rails and modules (the Zubrs, yaw 32-47)
+ * and the hull package's skirt fronts (Hetman II, yaw 26-52); dead ahead and broadside the gun keeps its -6. Each
+ * station is the lowest pitch, in half degrees, at which the whole gun (recoil 0 and -.135) keeps its barrel 1.5 cm off
+ * every hull stock triangle and its mantlet off all of them, at that yaw and both neighbouring degrees (the lane's
+ * gunclear probe, 1 degree steps over 0..180, both sides). Data only: sim/gunPitchLimits.ts applies it; matchRuleset.ts is
+ * untouched.
  */
 export const NATIONAL_GUN_PITCH_BY_YAW: Readonly<Record<string, readonly (readonly [number, number])[]>> = {
-  t72b3m_hetman_ii: [[0,-6],[129,-6],[130,-5.5],[131,-5],[132,-4],[133,-3.5],[134,-3.5],[135,-3],[139,-3],[140,-3.5],[141,-3],[142,-2.5],[160,-2.5],[161,1.5],[162,2],[166,2],[167,2.5],[171,2.5],[172,2],[180,2]],
-  t72b3_zubr: [[0,-6],[128,-6],[129,-5.5],[133,-5.5],[134,-5],[135,-5],[136,-4.5],[137,-4.5],[138,-4],[142,-4],[143,-3.5],[144,-1.5],[145,-1],[147,-1],[148,-0.5],[149,0],[152,0],[153,-0.5],[156,-0.5],[157,-1],[159,-1],[160,-1.5],[161,-2.5],[162,-5.5],[163,-5],[167,-5],[168,-5.5],[172,-5.5],[173,-6],[180,-6]],
-  t72b3_zubr_ii: [[0,-6],[129,-6],[130,-5.5],[131,-5.5],[132,-4.5],[133,-4],[134,-3],[135,-3],[136,-2.5],[137,-2],[143,-2],[144,-1.5],[145,-1],[158,-1],[159,-1.5],[160,-2],[161,-5.5],[162,-5],[164,-5],[165,-5.5],[168,-5.5],[169,-6],[171,-6],[172,-5.5],[179,-5.5],[180,-6]],
+  t72b3m_hetman_ii: [[0,-6],[25,-6],[26,-5.5],[27,-5],[29,-5],[30,-5.5],[37,-5.5],[38,-6],[39,-6],[40,-5.5],[43,-5.5],[44,-6],[46,-6],[47,-5.5],[48,-5],[51,-5],[52,-5.5],[53,-6],[129,-6],[130,-5.5],[131,-5],[132,-4],[133,-3.5],[134,-3.5],[135,-3],[139,-3],[140,-3.5],[141,-3],[142,-2.5],[160,-2.5],[161,1.5],[162,2],[166,2],[167,2.5],[171,2.5],[172,2],[180,2]],
+  t72b3_zubr: [[0,-6],[31,-6],[32,-5.5],[33,-5],[35,-5],[36,-4.5],[38,-4.5],[39,-4],[41,-4],[42,-4.5],[43,-4.5],[44,-5],[45,-5.5],[47,-5.5],[48,-6],[128,-6],[129,-5.5],[133,-5.5],[134,-5],[135,-5],[136,-4.5],[137,-4.5],[138,-4],[142,-4],[143,-3.5],[144,-1.5],[145,-1],[147,-1],[148,-0.5],[149,0],[152,0],[153,-0.5],[156,-0.5],[157,-1],[159,-1],[160,-1.5],[161,-2.5],[162,-5.5],[163,-5],[167,-5],[168,-5.5],[172,-5.5],[173,-6],[180,-6]],
+  t72b3_zubr_ii: [[0,-6],[31,-6],[32,-5],[33,-4.5],[42,-4.5],[43,-5],[45,-5],[46,-5.5],[47,-5.5],[48,-6],[129,-6],[130,-5.5],[131,-5.5],[132,-4.5],[133,-4],[134,-3],[135,-3],[136,-2.5],[137,-2],[143,-2],[144,-1.5],[145,-1],[158,-1],[159,-1.5],[160,-2],[161,-5.5],[162,-5],[164,-5],[165,-5.5],[168,-5.5],[169,-6],[171,-6],[172,-5.5],[179,-5.5],[180,-6]],
 };

@@ -194,6 +194,14 @@ export interface GhillieConfig {
    * yaw-aware clearance over the decks behind and ahead of the turret. Needs fieldClearanceM.
    */
   conservativeGunEnvelope?: boolean;
+  /**
+   * Release 227 (round 2, 2026-10-16; the critic on the new national frontal ERA: "net blades and leaf clumps sink into the
+   * new brick rows and stick out between them"): no point of a garnish card may lie inside the owner's armour (the
+   * nearest surface over it faces up: the top of the block it is in), sampled densely over the card's face. The net's
+   * cells bridge a stepped ERA field's bricks and risers, and a card laid on the cloth there would pass into them. Set
+   * on the suits of the hulls carrying those fields; unset suits keep their cards as laid.
+   */
+  cardsClearOfArmour?: boolean;
 
   /**
    * The netting lane: the seed of the painted net texture (default: the suit's seed). Suits sharing one share a single
@@ -2432,6 +2440,8 @@ interface FieldTuftContext extends TuftContext {
    * faces: a builder's winding is no guide; its running gear aside).
    */
   readonly overArmour?: (x: number, y: number, z: number) => boolean;
+  /** Release 227 (cardsClearOfArmour): whether a point lies inside the owner's armour (its nearest surface over it faces up). */
+  readonly insideArmour?: (x: number, y: number, z: number) => boolean;
   /**
    * netting-proper round 2: the owner's roof cards laid so far, over all its roof and deck nets (where two nets meet,
    * either's clumps may reach the same point): each card's tuck point and plan heading.
@@ -2836,7 +2846,8 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
         // netting-proper: and lies on its net between its rows too (a dip in the net under a long bough)
         && (!top || lyingOk(dense!, stem))
         && (!clothNear || pts.every((p) => clothNear(p)))
-        && (!ctx.tubes?.length || !cardCrossesTube(card, ctx.tubes));
+        && (!ctx.tubes?.length || !cardCrossesTube(card, ctx.tubes))
+        && (!ctx.insideArmour || !(dense ?? denseCardPoints(card)).some((p) => ctx.insideArmour!(p[0], p[1], p[2])));
       if (ok) return card;
     }
     return null;
@@ -5259,6 +5270,12 @@ function addGhillieOwner(
       } : undefined,
       overArmour: field && surfacesAt
         ? (x, y, z) => surfacesAt(x, z).some((h) => !h.gear && h.y <= y + 0.005) : undefined,
+      insideArmour: cfg.cardsClearOfArmour && surfacesAt ? (x, y, z) => {
+        // the surfaces come highest first: the last one over the point is the nearest over it
+        let above: { up: boolean } | null = null;
+        for (const h of surfacesAt(x, z)) { if (h.gear) continue; if (h.y > y + 0.001) above = h; else break; }
+        return above !== null && above.up;
+      } : undefined,
       // the card's own vertices keep the vehicle's clearances; its face, sampled densely, keeps the thin lens views
       // and smoke lines clear (a line can pass between a card's vertices)
       cardClear: clearance ? field ? (card) => denseCardPoints(card).every((p) => clearance.fieldLinesOk(owner, p))
