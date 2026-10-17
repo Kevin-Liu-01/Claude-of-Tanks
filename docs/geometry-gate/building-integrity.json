@@ -6,8 +6,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 3.583,
-   "gapM2": 164.368,
+   "insideM2": 1.493,
+   "gapM2": 131.506,
    "invertedM2": 0
   },
   "longleaf/ruin": {
@@ -69,7 +69,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 33.486,
+   "insideM2": 2.298,
    "gapM2": 3.936,
    "invertedM2": 0
   },
@@ -114,7 +114,7 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 33.1,
+   "insideM2": 2.316,
    "gapM2": 0,
    "invertedM2": 0
   },
@@ -255,7 +255,7 @@
   },
   "sarajevo/firestation": {
    "floating": 0,
-   "sliver": 12,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0.483,
    "insideM2": 2.092,
@@ -453,7 +453,7 @@
   },
   "sarajevo/factory": {
    "floating": 0,
-   "sliver": 2,
+   "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
@@ -3003,8 +3003,8 @@
    "sliver": 0,
    "floatingM2": 0,
    "holeM2": 0,
-   "insideM2": 1.058,
-   "gapM2": 0.768,
+   "insideM2": 0.23,
+   "gapM2": 0.661,
    "invertedM2": 0
   },
   "sarajevo/arcology": {
@@ -3013,7 +3013,7 @@
    "floatingM2": 0,
    "holeM2": 0,
    "insideM2": 0,
-   "gapM2": 148.056,
+   "gapM2": 202.184,
    "invertedM2": 0
   },
   "sarajevo/parkingdeck": {
@@ -4457,5 +4457,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-16T16:32:28.171Z"
+ "updatedAt": "2026-10-17T19:40:59.481Z"
 }
