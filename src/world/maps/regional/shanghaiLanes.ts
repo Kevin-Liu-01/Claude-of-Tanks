@@ -228,6 +228,8 @@ export function shikumenRow(ctx: RegionalBuildContext, bank: Bank | null): Regio
       const x0 = clampTo(-W / 2 + k * uw - 0.12, -W / 2, W / 2 - 0.24);
       sink.span(wall, x0, -0.4, zf, x0 + 0.24, courtH - 0.45, D / 2 - T);
     }
+    // (looks 227) the tianjing's granite paving between the house and the court wall (its pots stand on it)
+    sink.span(GRANITE, -W / 2, -0.4, zf, W / 2, 0.03, D / 2 - T, DEC);
     // the raised ridge over the saddle cap, the stepped fire walls (or the house's own gables)
     const top = (a: number) => rg.topAt(Math.min(a, s + roof.eave), 0) ?? eaveY;
     raisedRidge(sink, -W / 2 + 0.25, W / 2 - 0.25, rg.ridgeTopY, zc, stepped ? 0.32 : 0);
@@ -298,7 +300,7 @@ export function shikumenRow(ctx: RegionalBuildContext, bank: Bank | null): Regio
       const backFace: Face = { origin: [0, 0, -D / 2], u: [-1, 0, 0], out: [0, 0, -1], width: W };
       for (let k = 0; k < n; k++) {
         const u = -W / 2 + uw * (k + 0.5), ub = W / 2 - uw * (k + 0.5);
-        if (fr() < 0.7) for (const side of [-1, 1]) pottedPlant(sink, u + side * (uw / 2 - 0.36), 0, Math.min(zf + 0.7, D / 2 - T - 0.3), 0.3 + fr() * 0.12, fr);
+        if (fr() < 0.7) for (const side of [-1, 1]) pottedPlant(sink, u + side * (uw / 2 - 0.36), 0.03, Math.min(zf + 0.7, D / 2 - T - 0.3), 0.3 + fr() * 0.12, fr);
         if (fr() < 0.5) pottedPlant(sink, -W / 2 + uw * (k + 0.5) + (fr() - 0.5) * uw * 0.5, terraceY, -D / 2 + 0.5, 0.32 + fr() * 0.12, fr);
         if (!burnt && fr() < 0.55) washingLine(sink, backFace, ub - 0.75, ub + 0.75, s1 + 0.5, fr);
       }

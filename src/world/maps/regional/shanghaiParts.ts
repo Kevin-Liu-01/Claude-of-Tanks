@@ -55,7 +55,8 @@ export function roofHole(sink: PartSink, ridgeTopY: number, zc: number, s: numbe
   sink.quad('dark', [u - w / 2, y1, zc + a1], [u + w / 2, y1, zc + a1], [u + w / 2, y0, zc + a0], [u - w / 2, y0, zc + a0], { decor: true });
   for (let k = 0; k < 3; k++) {
     const x = u - w / 2 + (k + 0.5) * w / 3;
-    sink.member('structureWood', [x, y0 + 0.05, zc + a0], [x + (look() - 0.5) * 0.3, y1 + 0.05, zc + a1], 0.1, 0.1, [0, 1, 0], { colour: CHAR, decor: true, exposed: true }, 0);
+    // (looks 227, the contact audit: the rafters lay 2 cm over the slab, both ends free) bedded on it
+    sink.member('structureWood', [x, y0 + 0.02, zc + a0], [x + (look() - 0.5) * 0.3, y1 + 0.02, zc + a1], 0.1, 0.1, [0, 1, 0], { colour: CHAR, decor: true, exposed: true }, 0);
   }
 }
 

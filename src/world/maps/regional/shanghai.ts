@@ -129,7 +129,8 @@ function settlementBlock(ctx: RegionalBuildContext): RegionalParts {
       faceBox(sink, 'plaster3', front, 0, by - 0.08, 0.45, bw, 0.18, 0.9, SHADOWED);
       faceBox(sink, 'structureMetal', front, 0, by + 0.95, 0.88, bw, 0.05, 0.05, { colour: IRON, decor: true });
       for (let b = 0; b <= Math.round(bw / 0.16); b++) {
-        faceBox(sink, 'structureMetal', front, -bw / 2 + b * bw / Math.round(bw / 0.16), by + 0.5, 0.88, 0.022, 0.9, 0.022, { colour: IRON, decor: true, fine: true });
+        // (looks 227, the contact audit: the bars stood 4 cm over the slab) from the slab's top to the rail
+        faceBox(sink, 'structureMetal', front, -bw / 2 + b * bw / Math.round(bw / 0.16), by + 0.485, 0.88, 0.022, 0.95, 0.022, { colour: IRON, decor: true, fine: true });
       }
     }
     // the vertical signs down the front, the awnings over the shops, sandbags
