@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { buildHouse, holedBox, holedPolygon, leanTo, recordShaft, windowRhythm, type HoleRect, type HouseDialect, type Opening } from './house.ts';
-import { paintBand, plinthPaint } from './facade.ts';
+import { paintBand } from './facade.ts';
 import { bench, pottedPlant } from './dressing.ts';
 import { roundBody, type BodyBox } from './roundedBody.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
@@ -807,15 +807,21 @@ function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: nu
       // (no stone apron round a Siwan house: the lane's sand runs to its footing)
       skirt: null,
     }, dialect);
-    // (E2) a house's wall foot rendered in a darker mud over the footing, a band of it round the body, its top a ledge
     if (!door) return;
-    plinthPaint(hs, bucket, [W / 2, D / 2], 0.012, foot, foot + 0.42 + look() * 0.18, [0.8, 0.72, 0.63]);
-    const f = frame.faces.front, fy = frame.floors[0];
+    const f = frame.faces.front, fy = frame.floors[0], e = door.w / 2 + 0.1, band = 0.42 + look() * 0.18;
     // the doorway limewashed round its frame on most houses (E16), its head over the lintel
-    if (look() < 0.65) {
-      const e = door.w / 2 + 0.1, head = fy + door.h + 0.1;
+    const limed = look() < 0.65;
+    if (limed) {
+      const head = fy + door.h + 0.1;
       paintBand(hs, 'plaster3', f, door.u - e - 0.32, door.u + e + 0.32, fy, head, [1, 1, 1], [[door.u - e, door.u + e]]);
       paintBand(hs, 'plaster3', f, door.u - e - 0.32, door.u + e + 0.32, head, head + 0.38, [1, 1, 1]);
+    }
+    // (E2) a house's wall foot rendered in a darker mud over its footing, a band round the body (bent round its corners
+    // with the walls), broken at the doorway and its limewash (the blind pair: a band run across the door read as a block
+    // in its foot)
+    for (const name of SIDES) {
+      const g = frame.faces[name], gap: Array<[number, number]> = name === 'front' ? [limed ? [door.u - e - 0.32, door.u + e + 0.32] : [door.u - e, door.u + e]] : [];
+      paintBand(hs, bucket, g, -g.width / 2, g.width / 2, fy, fy + band, [0.8, 0.72, 0.63], gap);
     }
     // the hood over the door (E13): palm trunks cantilevered out of the wall over its lintel, a mud slab laid on them, a
     // lean-to roof on the wall with no posts
@@ -846,7 +852,8 @@ function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: nu
     for (let k = 0; k < n; k++) {
       if (look() < 0.18) continue;
       const u = -fb.width / 2 + (k + 0.5) * fb.width / n + (look() - 0.5) * 0.12, end = 0.07 + look() * 0.03;
-      trunkEnd(ps, fb, u, top - 0.25, end, 0.3, 0.25, shade(PALM, 0.8 + look() * 0.3));
+      // (the blind pair: five-sided dark ends read as rocks) seven sides on a house, the sun-greyed palm among them
+      trunkEnd(ps, fb, u, top - 0.25, end, 0.3, 0.25, shade(look() < 0.5 ? PALM : PALM_GREY, 0.85 + look() * 0.3), 0, opts.packed ? 5 : 7);
     }
     // the kershef's lumps: the salt-rock in the mud standing proud of the render here and there
     for (let k = 0, m = (opts.packed ? 0 : 2) + Math.floor(look() * (opts.packed ? 2.5 : 3)); k < m; k++) {
@@ -856,7 +863,8 @@ function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: nu
   }
   // the rain spouts (E15): palm-wood channels through the parapet at the roof, open along their tops (a sole board and
   // two sides), one or two to a roof on its first dressed side, never over the door
-  {
+  // (a room on a roof drains onto the terrace below it: the blind pair read its spout as a trough over the roofline)
+  if (ground) {
     const name = faces[0], f = at(name), sp = { colour: PALM, decor: true, uv: UV_MEMBER } as const;
     for (const u of f.width > 3.6 && look() < 0.5 ? [-f.width * 0.28, f.width * 0.28] : [(look() - 0.5) * f.width * 0.5]) {
       if (name === 'front' && door && Math.abs(u - door.u) < 0.9) continue;
@@ -898,10 +906,11 @@ function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: nu
       jar = -s;
       break;
     }
+    // (the blind pair: the same bright pot at every door read as a toy) a smaller one by some doors
     const uj = door.u + jar * (door.w / 2 + 0.75);
-    if (Math.abs(uj) < half - 0.3) {
+    if (look() < 0.4 && Math.abs(uj) < half - 0.3) {
       const p = facePoint(f, uj, 0, 0.3);
-      pottedPlant(sink, p[0], 0, p[2], 0.55, look);
+      pottedPlant(sink, p[0], 0, p[2], 0.42, look);
     }
   }
   return body;
@@ -909,16 +918,16 @@ function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: nu
 
 /**
  * A palm trunk run out of a wall square to its face (`f`), its end `out` past the face and `len` long (the rest buried in
- * the wall): five sides tapering a little to its end and the end's cap, no cap inside the wall. (u, y) its axis on the
- * face, r its radius, `turn` its roll in a fifth of a turn.
+ * the wall): `sides` sides tapering a little to its end and the end's cap, no cap inside the wall. (u, y) its axis on
+ * the face, r its radius, `turn` its roll in a side's turn.
  */
-function trunkEnd(sink: PartSink, f: Face, u: number, y: number, r: number, len: number, out: number, colour: Rgb, turn = 0): void {
-  const ring = (o: number, rr: number): Vec3[] => Array.from({ length: 5 }, (_, k) => {
-    const a = (k + turn) * Math.PI * 2 / 5 + Math.PI / 2;
+function trunkEnd(sink: PartSink, f: Face, u: number, y: number, r: number, len: number, out: number, colour: Rgb, turn = 0, sides = 5): void {
+  const ring = (o: number, rr: number): Vec3[] => Array.from({ length: sides }, (_, k) => {
+    const a = (k + turn) * Math.PI * 2 / sides + Math.PI / 2;
     return facePoint(f, u + Math.cos(a) * rr, y + Math.sin(a) * rr, o);
   });
   const a0 = ring(out - len, r), a1 = ring(out, r * 0.9), opts = { colour, decor: true } as const;
-  for (let k = 0; k < 5; k++) sink.quad('structureWood', a0[k], a0[(k + 1) % 5], a1[(k + 1) % 5], a1[k], opts);
+  for (let k = 0; k < sides; k++) sink.quad('structureWood', a0[k], a0[(k + 1) % sides], a1[(k + 1) % sides], a1[k], opts);
   sink.polygon('structureWood', a1, opts);
 }
 
