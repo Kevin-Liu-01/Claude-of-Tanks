@@ -88,6 +88,19 @@ assert.ok(smokeClipReach([0.01, 0]) === 14.2, 'never shorter than the legacy rea
   assert.equal(agree, lines, `the client's sight block is the authority's (${agree}/${lines} lines)`);
   const legacyPacked = JSON.parse(JSON.stringify(packSmokeScreen(legacy)));
   assert.equal(legacyPacked.wind, undefined, 'a screen with no drift sends none');
+  // the field rides the snapshot's existing smoke JSON (codec meta.smokeJson, a string of at most 32768 bytes): no wire
+  // layout or protocol change. The wire receipt's worst case (84 full salvos of the biggest launcher kit) still fits with
+  // the longest drift any map stamps
+  const big = Object.keys(AUXILIARY_INVENTORY).sort((a, b) => AUXILIARY_INVENTORY[b].smoke.length - AUXILIARY_INVENTORY[a].smoke.length)[0];
+  const longest = Object.keys(SCENE_WIND).map(smokeWindForMap).sort((a, b) => JSON.stringify(b).length - JSON.stringify(a).length)[0];
+  const screens = Array.from({ length: 84 }, (_, i) => {
+    const e = { id: String(i), team: 'alpha', spec: { id: big, armor: { turretPivot: [0, 1.45678, 0.34567] } },
+      state: { pos: { x: 1234.56789 + i, y: 78.34567, z: -876.45678 }, yaw: 1.234567, turretYaw: 0.234567, visualPitch: 0.123456, visualRoll: 0.12345 }, combat: {} };
+    requestAuxiliary(e, 'smoke', 1234.12345, () => 78, null, longest);
+    return packSmokeScreen(e.combat.auxiliary.smoke);
+  });
+  const bytes = new TextEncoder().encode(JSON.stringify(screens)).length;
+  assert.ok(bytes <= 32768, `84 full salvos with their drift fit the smoke metadata (${bytes} of 32768 bytes)`);
 }
 
 // ---- 5. the wiring: every authority launches on its map's wind; the presentation draws the screen's own ---------------
