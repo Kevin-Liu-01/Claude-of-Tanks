@@ -97,16 +97,19 @@ export default {
     // Lane B's Whiteout pass (2026-10-17, MAP-01: a town plan with plots and yards): the plan above strings the station
     // along the service street, and north of the module train the village rect lay empty. A main station's camp stood
     // round its train: the heated vehicle garages where the Bv 206s, the Sno-Cats and the dozers were kept running, their
-    // doors on a ploughed yard; the warehouse the sealift filled each summer; the Jamesway huts of the summer camp in a row,
-    // where the construction and resupply crews lived in the short season; the utility sheds on their skids; a module
-    // stripped for parts. Here they close the yard between the train's entries and the north drift fence (it moves north of
-    // them), after the plan has seated every building of its own (plannedSitesAfterPlan: the street stands as it was)
+    // doors on the ploughed yard; the warehouse the sealift filled each summer; the Jamesway huts of the summer camp in
+    // rows by the road, where the construction and resupply crews lived in the short season; a utility shed on its skids.
+    // The yard itself, 60 m across between the train's entries, the garages and the warehouse, stays open: the
+    // zone-control placement seats the middle zone on it (matchObjectiveLayouts.ts, (-48, 11), a 30 m clear radius), as
+    // on the map without the camp. They stand after the plan has seated every building of its own
+    // (plannedSitesAfterPlan: the street stands as it was); the huts and the shed keep the author's spacing (terrace).
     plannedSites: [
-      { structure: 'depot', x: -72, z: 8, yawDeg: 0 }, { structure: 'depot', x: -72, z: 36, yawDeg: 0 },
-      { structure: 'warehouse', x: -32, z: 46, yawDeg: 180 },
-      { structure: 'containerRow', x: 8, z: 18, yawDeg: 90 }, { structure: 'containerRow', x: 8, z: 34, yawDeg: 90 },
-      { structure: 'containerRow', x: 8, z: 50, yawDeg: 90 },
-      { structure: 'woodshed', x: -48, z: 20, yawDeg: 90 }, { structure: 'ruin', x: 26, z: -6, yawDeg: 10 },
+      { structure: 'depot', x: -86, z: 6, yawDeg: 0 }, { structure: 'depot', x: -86, z: 32, yawDeg: 0 },
+      { structure: 'warehouse', x: -40, z: 58, yawDeg: 180 },
+      // (the huts north of the west zone's clear ground, (-155, 25) and its 30 m)
+      { structure: 'containerRow', x: -125, z: 52, yawDeg: 0, terrace: true }, { structure: 'containerRow', x: -125, z: 63, yawDeg: 0, terrace: true },
+      { structure: 'containerRow', x: -125, z: 74, yawDeg: 0, terrace: true },
+      { structure: 'woodshed', x: -16, z: 50, yawDeg: 90, terrace: true },
     ],
     plannedSitesAfterPlan: true,
     destructibleBuildings: ['quonsethut', 'relaystation', 'motorpool', 'servicegarage'],
@@ -258,6 +261,8 @@ export default {
       { kind: 'snocat', x: 406, z: 22, yawDeg: 300 }, { kind: 'd8h', x: 398, z: -182, yawDeg: 20 },
       // the dump's burnt-out carrier
       { kind: 'bv206', x: -410, z: -380, yawDeg: 70, wrecked: true },
+      // (Lane B, 10-17) the camp's machines parked west of the warehouse, clear of the yard
+      { kind: 'bv206', x: -62, z: 58, yawDeg: 0 }, { kind: 'snocat', x: -74, z: 54, yawDeg: 20 },
     ],
   },
   // the map-content lane (2026-10-09; the owner: "so empty", and the bird view the judge): the plateau's frost-shattered
