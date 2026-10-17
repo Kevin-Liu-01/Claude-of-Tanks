@@ -273,8 +273,11 @@ export const dacha: RegionalBuilder = (ctx) => {
     ...windowRhythm('back', 0, vD - 0.06, { w: 0.62, h: 0.95, sill: 1.0, spacing: 0.72, margin: 0.3, max: 2 }),
   ];
   // sideways: the veranda's local frame is the house's turned by 0 (side +1) or π (side -1), its +x away from the house;
-  // across the back: turned a quarter so its +x runs out to the lot's -z
-  const vyaw = sideways ? (side > 0 ? 0 : Math.PI) : -Math.PI / 2;
+  // across the back: turned a quarter so its +x runs out to the lot's -z. (The looks lane, 227: the quarter was turned
+  // the wrong way, -π/2 putting its +x toward the house — PartSink.placed: local +x goes to (cos yaw, -sin yaw) — so every
+  // Kestrel dacha's glazing faced its own back wall 8 cm away, its blank boards faced the yard and its lean-to fell onto
+  // the house. Its footprint is the same rectangle either way round.)
+  const vyaw = sideways ? (side > 0 ? 0 : Math.PI) : Math.PI / 2;
   const vx = sideways ? fp.cx + side * (fp.w / 2 - vD / 2) : fp.cx, vz = sideways ? fp.cz : fp.cz - fp.d / 2 + vD / 2;
   sink.placed(vyaw, vx, 0, vz, () => {
     const vf = buildHouse(sink, {
