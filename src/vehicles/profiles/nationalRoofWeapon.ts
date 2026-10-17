@@ -249,8 +249,8 @@ function casemateSight(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:
  g.add('turretGlass',cylZ(.035,.012,20),sx+side*.045,y+.235,face);
  g.add('turretGlass',cylZ(.018,.012,12),sx,y+.16,face);
  // the illuminator housing: four walls round a .072 x .047 bore 18 mm deep, on a back block, tilted ILLUMINATOR_UP
- // about its back block's centre
- const hy=y+.08,hz=z+.16,bw=.072,bh=.047,depth=.018,front=.04;
+ // about its back block's centre, ILLUMINATOR_Y over the weapon's line (its tilted top edge 4 mm under the head's floor)
+ const hy=y+ILLUMINATOR_Y,hz=z+.16,bw=.072,bh=.047,depth=.018,front=.04;
  const piece=(geo:THREE.BufferGeometry,dx:number,dy:number,dz:number)=>g.add('turretDark',geo.translate(dx,dy,dz).rotateX(-ILLUMINATOR_UP),sx,hy,hz);
  piece(box(.09,.06,.08-depth),0,0,-depth/2);
  for(const s of [-1,1]){
@@ -259,10 +259,14 @@ function casemateSight(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:
  }
 }
 
-/** The illuminator looks 8 degrees over the weapon's line (round 2, 2026-10-16; the critic's night frames: "the new
- * station illuminator lights up the tank's own main-gun barrel"): a counter-drone station's targets fly above its line,
- * and the 19-degree cone's lower edge, the low beam's drop included, then passes over the main gun's barrel below it. */
-const ILLUMINATOR_UP=8*Math.PI/180;
+/** The illuminator looks 16 degrees over the weapon's line (round 2, 2026-10-16; the critic's night frames: "the new
+ * station illuminator lights up the tank's own main-gun barrel"): a counter-drone station's targets fly above its line.
+ * Round 3 (measured, tools r5/illumtilt): at 8 degrees the runtime spot (engine/nightLightingRuntime.ts, an 18.9-degree
+ * half-angle after the low beam's 0.05 drop) still took in the main gun's muzzle 6.7 m ahead at 14.4 degrees off its
+ * axis; at 16 the cone's lower edge passes 3.3 degrees over the barrel at every station yaw with the station level and
+ * the main gun level, 7.9 at its full depression. The housing sits 14 mm lower so its tilted top edge stays under the
+ * sensor head's floor. */
+const ILLUMINATOR_UP=16*Math.PI/180,ILLUMINATOR_Y=.066;
 
 /** The illuminator's lens, authored in the turret frame at the rest pose as factory stock captured into the station's
  * pitch stage (the factory moves it under auxiliaryWeaponPitch and registers its night emitter there). */
@@ -270,7 +274,7 @@ function casemateIlluminator(P:TankBuilderPort,l:NationalRoofLoadout,x:number,y:
  const half=supportHalfWidth(l,w),side=-l.feedSide,sx=x+side*(half+.16);
  const done=captureAuxiliaryStock(P,l.name,'pitch');
  // its face 10 mm inside the bore's mouth, in the housing's tilted frame (casemateSight)
- P.addEquipment('turretGlass',markVehicleNightLens(box(.07,.045,.012),'headlight',{aimUp:true}).translate(0,0,.04-.010-.006).rotateX(-ILLUMINATOR_UP),sx,y+.08,z+.16);
+ P.addEquipment('turretGlass',markVehicleNightLens(box(.07,.045,.012),'headlight',{aimUp:true}).translate(0,0,.04-.010-.006).rotateX(-ILLUMINATOR_UP),sx,y+ILLUMINATOR_Y,z+.16);
  done();
 }
 

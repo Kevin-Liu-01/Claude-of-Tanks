@@ -26,6 +26,7 @@ import {getSpec} from './specs.ts';
 import {frontEnvelope, mosaicLayout} from './profiles/eraModuleKit.ts';
 import {minimumMechanicalGunPitch} from '../sim/gunPitchLimits.ts';
 import {vehicleNightLightEmittersFor} from './vehicleNightLighting.ts';
+import {HEADLIGHT_CONE_RAD, HEADLIGHT_LOW_BEAM_DROP} from '../engine/nightLightingRuntime.ts';
 import {NATIONAL_ROOF_LOADOUTS} from './nationalRoofConfig.ts';
 import {auxiliaryWeaponProfile} from './auxiliaryWeapons.ts';
 import {auxiliaryState, requestAuxiliary, stepRoofGun, auxiliaryShot} from '../sim/auxiliarySystems.ts';
@@ -398,8 +399,8 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
       const world = () => { t.root.updateMatrixWorld(true); return {p: new THREE.Vector3(...lamp.position).applyMatrix4(mesh.matrixWorld),
         d: new THREE.Vector3(...lamp.direction).transformDirection(mesh.matrixWorld)}; };
       const rest = world(), restElev = Math.asin(rest.d.y);
-      // (round 2: it looks 8 degrees over the weapon's line, its cone's lower edge over the main gun's barrel)
-      assert(Math.abs(Math.atan2(rest.d.x, rest.d.z)) < .01 && Math.abs(restElev - 8 * DEG) < .01, `${label}: the illuminator looks along the weapon, 8 degrees over its line, at rest (${(restElev / DEG).toFixed(2)})`);
+      // (round 3: it looks 16 degrees over the weapon's line, its cone's lower edge over the main gun's barrel; checked below)
+      assert(Math.abs(Math.atan2(rest.d.x, rest.d.z)) < .01 && Math.abs(restElev - 16 * DEG) < .01, `${label}: the illuminator looks along the weapon, 16 degrees over its line, at rest (${(restElev / DEG).toFixed(2)})`);
       const glass = new THREE.Box3().setFromObject(mesh);
       assert(glass.expandByScalar(.01).containsPoint(rest.p), `${label}: the illuminator's emitter sits on its lens`);
       station.rotation.y = .6; pitch.rotation.x = -.3;
@@ -408,6 +409,29 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
       const yaw = Math.atan2(moved.d.x, moved.d.z), elev = Math.asin(moved.d.y);
       assert(Math.abs(yaw - .6) < .02 && Math.abs(elev - .3 - restElev) < .02, `${label}: the illuminator's beam follows the station (yaw ${yaw.toFixed(3)}, pitch ${elev.toFixed(3)})`);
       assert(!glass.containsPoint(moved.p), `${label}: the illuminator's emitter moves with the weapon`);
+      // its runtime spot (the low beam's drop in the lens's frame, HEADLIGHT_CONE_RAD half-angle, range 42 m) leaves the
+      // main gun's barrel dark with the station level at every yaw and at the capture poses, the main gun level and at
+      // its full depression (round 3: at 8 degrees the muzzle sat 14.4 degrees off the beam, inside the 18.9-degree cone)
+      if (high) {
+        const barrel = gunLocal.filter(e => !e.mount).map(e => e.o), savedGun = gun.rotation.x;
+        let worst = Infinity, worstAt = null;
+        for (const gp of [0, -spec.gunDepressionDeg]) {
+          gun.rotation.x = -gp * DEG; t.root.updateMatrixWorld(true);
+          const V = []; for (const o of barrel) for (const q of vertsOf(o.geometry)) V.push(q.applyMatrix4(o.matrixWorld));
+          const poses = [];
+          for (let y = -180; y < 180; y += 2) poses.push([y, 0]);
+          poses.push([60, 20], [-40, -5], [35, 6], [-35, 6], [0, 22]);
+          for (const [y, p] of poses) {
+            station.rotation.y = y * DEG; pitch.rotation.x = -p * DEG; t.root.updateMatrixWorld(true);
+            const at = new THREE.Vector3(...lamp.position).applyMatrix4(mesh.matrixWorld);
+            const d = new THREE.Vector3(...lamp.direction); d.y -= HEADLIGHT_LOW_BEAM_DROP * Math.hypot(d.x, d.z); d.normalize().transformDirection(mesh.matrixWorld);
+            for (const q of V) { const w = q.clone().sub(at); if (w.length() > 42) continue; const m = w.angleTo(d) - HEADLIGHT_CONE_RAD; if (m < worst) { worst = m; worstAt = [gp, y, p]; } }
+          }
+        }
+        station.rotation.y = 0; pitch.rotation.x = 0; gun.rotation.x = savedGun; t.root.updateMatrixWorld(true);
+        assert(worst > 0, `${label}: the illuminator's cone takes in the main gun's barrel (${(worst / DEG).toFixed(2)} degrees at gun/yaw/pitch ${worstAt})`);
+        (report[id] ??= {}).illuminatorBarrelMarginDeg = +(worst / DEG).toFixed(2);
+      }
     }
     proxyMat.dispose();
 
