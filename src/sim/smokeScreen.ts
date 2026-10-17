@@ -8,9 +8,11 @@ import { sceneWindFor } from '../world/sceneWind.ts';
 export interface SmokeScreen {
   x:number; y:number; z:number; yaw:number; born:number; canisters?:readonly SmokeCanister[]; banks?:readonly number[];
   source?:SmokeSource; flightMs?:readonly number[]; clip?:readonly (readonly number[] | 0)[]; paths?:readonly (readonly number[] | 0)[];
+  /** (FX lane 2026-10-17) the wire's flight times, compact (smokeReceipt.ts packFlightTimes); an older packet: flightMs */
+  f?:string;
   /** (FX lane 2026-10-17) the drift the authority launched it on (m/s, world xz): its map's surface wind at
-   *  SMOKE_DRIFT_SHARE (smokeWindForMap); absent, the legacy breeze (SMOKE_WIND_X/Z). It crosses the wire with the screen,
-   *  so a client's screen drifts exactly as the authority's sight block does. */
+   *  SMOKE_DRIFT_SHARE (smokeWindForMap); absent, the legacy breeze (SMOKE_WIND_X/Z). It never crosses the wire: a client
+   *  restores a network screen with its own map's drift (restoreSmokeScreen), the same numbers the authority stamped. */
   wind?:readonly [number, number];
 }
 export interface SmokeVolume { x:number; y:number; z:number; radius:number; height:number; density:number }

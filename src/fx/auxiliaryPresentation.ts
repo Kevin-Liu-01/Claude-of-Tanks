@@ -742,12 +742,13 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
   }
 
   return {
-    setNetworkScreens(screens:readonly SmokeScreen[]){
+    /** `wind` (FX lane 2026-10-17): the match map's smoke drift, which a compact network screen restores with */
+    setNetworkScreens(screens:readonly SmokeScreen[],wind?:readonly [number,number]|null){
       // Solo already owns expanded receipts and publishes them each sim step.
       // Decode only compact network receipts, never clone the solo list per frame.
       let compact=false;
       for(const screen of screens)if(!screen.canisters&&screen.source){compact=true;break;}
-      networkScreens=compact?screens.map(restoreSmokeScreen):screens;
+      networkScreens=compact?screens.map((screen)=>restoreSmokeScreen(screen,wind)):screens;
     },
     update(){
       const now=ports.time();if(now===lastTime)return;const dt=lastTime<0?0:Math.min(.1,Math.max(0,now-lastTime));lastTime=now;

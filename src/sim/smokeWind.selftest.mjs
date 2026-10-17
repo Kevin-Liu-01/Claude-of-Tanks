@@ -12,7 +12,7 @@ import {
   smokeBlocks, smokeClip, smokeClipReach, smokeScreenWind, smokeVolume, smokeWindForMap, SMOKE_DRIFT_SHARE, SMOKE_DURATION_S,
   SMOKE_WIND_X, SMOKE_WIND_Z,
 } from './smokeScreen.ts';
-import { packSmokeScreen, restoreSmokeScreen } from './smokeReceipt.ts';
+import { packFlightTimes, packSmokeScreen, restoreSmokeScreen, unpackFlightTimes } from './smokeReceipt.ts';
 import { SCENE_WIND, sceneWindFor } from '../world/sceneWind.ts';
 
 // ---- 1. the map's drift: its surface wind's direction at the share of its speed, rounded to the wire's 1e-4 -----------
@@ -70,12 +70,16 @@ assert.ok(smokeClipReach([0.01, 0]) === 14.2, 'never shorter than the legacy rea
   assert.ok(clip && clip[0] === 200, 'the steppe\'s reach reads it');
 }
 
-// ---- 4. the wire: the drift crosses with the screen; the client's screen blocks exactly as the authority's ------------
+// ---- 4. the wire: no drift field and no version change — the client restores with its own map's drift; the flight
+//         times travel as compact text so the biggest full-salvo match stays under 80 % of the snapshot's smoke text -------
 {
   const packed = JSON.parse(JSON.stringify(packSmokeScreen(blown)));
-  assert.deepEqual(packed.wind, steppe, 'the drift crosses the wire');
-  const client = restoreSmokeScreen(packed);
-  assert.deepEqual(client.wind, steppe, 'and the client keeps it');
+  assert.equal(packed.wind, undefined, 'the drift never crosses the wire (the map is known to every client)');
+  assert.equal(packed.flightMs, undefined, 'the flight times travel compact');
+  assert.equal(typeof packed.f, 'string');
+  const client = restoreSmokeScreen(packed, smokeWindForMap('steppe'));
+  assert.deepEqual(client.wind, steppe, 'a client restores its map\'s drift, the numbers its authority stamped');
+  assert.deepEqual(client.canisters.map((c) => c[6]), blown.canisters.map((c) => Math.round(c[6] * 1000) / 1000), 'the flight times to the millisecond');
   let lines = 0, agree = 0;
   for (let t = tLand + 1; t < SMOKE_DURATION_S; t += 1.5) {
     for (let k = 0; k < 24; k++) {
@@ -86,21 +90,26 @@ assert.ok(smokeClipReach([0.01, 0]) === 14.2, 'never shorter than the legacy rea
     }
   }
   assert.equal(agree, lines, `the client's sight block is the authority's (${agree}/${lines} lines)`);
-  const legacyPacked = JSON.parse(JSON.stringify(packSmokeScreen(legacy)));
-  assert.equal(legacyPacked.wind, undefined, 'a screen with no drift sends none');
-  // the field rides the snapshot's existing smoke JSON (codec meta.smokeJson, a string of at most 32768 bytes): no wire
-  // layout or protocol change. The wire receipt's worst case (84 full salvos of the biggest launcher kit) still fits with
-  // the longest drift any map stamps
+  assert.equal(restoreSmokeScreen(packed).wind, undefined, 'restored without a map drift: the legacy breeze');
+  // an older authority's packet (its times as an array) still restores
+  const older = { ...packed, flightMs: unpackFlightTimes(packed.f) };
+  delete older.f;
+  assert.equal(restoreSmokeScreen(older).canisters.length, blown.canisters.length, 'an older packet still restores');
+  // the compact times: exact to the millisecond, three characters a time past 4.095 s
+  for (const ms of [[0, 1, 4095, 2240], [4096, 17, 262143], []]) assert.deepEqual(unpackFlightTimes(packFlightTimes(ms)), ms);
+  assert.equal(packFlightTimes([867, 942]).length, 5, 'two characters a canister');
+  assert.equal(unpackFlightTimes('9AA'), null, 'a malformed text restores nothing');
+  // the budget: the wire receipt's worst case (84 full salvos of the biggest launcher kit, at a match clock of sixtieths)
   const big = Object.keys(AUXILIARY_INVENTORY).sort((a, b) => AUXILIARY_INVENTORY[b].smoke.length - AUXILIARY_INVENTORY[a].smoke.length)[0];
-  const longest = Object.keys(SCENE_WIND).map(smokeWindForMap).sort((a, b) => JSON.stringify(b).length - JSON.stringify(a).length)[0];
   const screens = Array.from({ length: 84 }, (_, i) => {
     const e = { id: String(i), team: 'alpha', spec: { id: big, armor: { turretPivot: [0, 1.45678, 0.34567] } },
-      state: { pos: { x: 1234.56789 + i, y: 78.34567, z: -876.45678 }, yaw: 1.234567, turretYaw: 0.234567, visualPitch: 0.123456, visualRoll: 0.12345 }, combat: {} };
-    requestAuxiliary(e, 'smoke', 1234.12345, () => 78, null, longest);
+      state: { pos: { x: -1234.56789 - i, y: 78.34567, z: -876.45678 }, yaw: -1.234567, turretYaw: -0.234567, visualPitch: -0.123456, visualRoll: -0.12345 }, combat: {} };
+    requestAuxiliary(e, 'smoke', 1234 + (i * 7 + 1) / 60, () => 78, null, steppe);
     return packSmokeScreen(e.combat.auxiliary.smoke);
   });
   const bytes = new TextEncoder().encode(JSON.stringify(screens)).length;
-  assert.ok(bytes <= 32768, `84 full salvos with their drift fit the smoke metadata (${bytes} of 32768 bytes)`);
+  assert.ok(bytes <= 0.8 * 32768, `84 full salvos fit 80 % of the snapshot's smoke text (${bytes} of ${Math.floor(0.8 * 32768)} bytes)`);
+  console.log(`  wire: 84 full salvos ${bytes} bytes (${(bytes / 327.68).toFixed(1)} % of the 32768-byte smoke text)`);
 }
 
 // ---- 5. the wiring: every authority launches on its map's wind; the presentation draws the screen's own ---------------

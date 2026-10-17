@@ -11,6 +11,7 @@ import { MISSILE_AIRFRAMES, createMissileBodies, missileBodyDims } from './missi
 import { usesLauncherMuzzles } from '../sim/launcherPolicy.ts';
 import { puffRandom } from './atmosRecipes.ts';
 import type { SmokeScreen } from '../sim/auxiliarySystems.ts';
+import { smokeWindForMap } from '../sim/smokeScreen.ts';
 /**
  * effects.ts — combat VFX orchestration (public Fx API, ARCHITECTURE §3.8.2).
  *
@@ -6127,7 +6128,8 @@ function* createFxSteps(
      * @param {object} bus injected event bus
      */
     bindBus(bus: FxEventBus): void {
-      bus.on('auxiliary:smokeScreens', (payload) => { auxiliary?.setNetworkScreens((payload as {screens:SmokeScreen[]}).screens); });
+      // (FX lane 2026-10-17) a network screen drifts on this map's wind, the one its authority stamped (no wire field)
+      bus.on('auxiliary:smokeScreens', (payload) => { auxiliary?.setNetworkScreens((payload as {screens:SmokeScreen[]}).screens, smokeWindForMap(world?.()?.mapId)); });
       // destruction-fx lane: the core lane's structure stages and crater stamps (DESTRUCTION.md §11)
       bus.on(DESTRUCTION_BUS_EVENTS.stage, (payload) => {
         const e = payload as StructureStageEvent;
