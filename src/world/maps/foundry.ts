@@ -23,7 +23,7 @@
 
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
-import { FURNACE_LINE_ADDITIONS } from './saarWorks.ts';
+import { FURNACE_LINE_ADDITIONS } from './saarWorksPlan.ts';
 
 export default {
   id: 'foundry',
