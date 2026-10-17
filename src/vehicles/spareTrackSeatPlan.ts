@@ -9,7 +9,6 @@ export type SeatPlanEntry = number | readonly number[];
 export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<string, SeatPlanEntry>>>> = {
   "amx40_proto": {
     "amx40-rear-links@hull(1.19,1.22,-3.37)": [-1.59, -0.347, -0.043, -0.70711, 0, 0, 0.70711, 1],
-    "fitting@hull(-1.08,1.63,1.62)": [-1.6505, 1.173, 1.78, 0, 0, 0.70711, 0.70711, 1],
   },
   "bmp2": {
     "fitting@hull(1.38,1.27,-2.60)": [0.755, 0.86963, -3.12336, 0.51656, -0.48287, 0.51656, -0.48287, 1],
@@ -30,14 +29,8 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   "c1_ariete_preserie": {
     "fitting@hull(-0.70,1.48,-2.98)": [-0.9, 1.478, -3.28, 0, 0, 0, 1, 1],
   },
-  "c1_ariete_proto_serie1": {
-    "fitting@hull(1.08,1.79,-2.88)": [1.89255, 1.3273, -2.739, 0, 0, -0.70711, 0.70711, 0],
-  },
   "c2_ariete": {
     "ariete-forward-carry@hull(0.00,1.40,3.91)": [-0.87094, -1.54361, 2.51099, 0.5, 0.5, 0.5, -0.5, 0],
-  },
-  "c2_ariete_proto": {
-    "fitting@hull(1.08,1.79,-2.88)": [0.4868, 1.3273, -4.07055, 0.5, -0.5, 0.5, -0.5, 1],
   },
   "centurion3": {
     "strip@hull(-0.55,1.41,3.05)": 1,

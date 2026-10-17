@@ -378,8 +378,8 @@ function buildAMX40(P: FranceBuilderPort): void {
       P.add('hullDetail', box(0.12, 0.055, 0.10), xc2, yc, zc);                // cable saddle/clip keeps the route visibly load-bearing
       P.add('hullDark', box(0.045, 0.075, 0.12), xc2, yc + 0.025, zc);
     }
-    const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.50, seed: 9 });
-    links.position.set(-1.08, 1.625, 1.62);                                     // outside the turret-core swept annulus (r 2.17 > 2.04 corner sweep)
+    const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 3, width: 0.50, seed: 9, rotation: [0, 0, Math.PI / 2] });
+    links.position.set(-1.6505, 1.23, 2.64);
     P.hullG.add(links);
   }
   for (const s of [-1, 1]) {

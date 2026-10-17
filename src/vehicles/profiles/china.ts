@@ -1455,6 +1455,14 @@ function buildType59(P: ChinaBuilderPort): void {
         x + bx * w, 1.447, 1.88, -0.18, 0, 0);
     }
   }
+  // VEH-13 (2026-10-16): a fender web closes each slot between the nose armour and the front track run. In world units,
+  // the slot was 3-6 cm wide at x 0.93-1.02, z 2.40-2.85, and open to the ground from above. A leg carries the web
+  // down to the lower nose plate. The B2 contiguity scan read the slot as enclosed sky once a remounted link course
+  // re-framed its grid. Hull-local values: the hull rig is scaled 0.855.
+  for (const side of [-1, 1]) {
+    P.add('hull', box(0.1404, 0.0292, 0.6082), side * 1.152, 1.3421, 3.076);
+    P.add('hull', box(0.0234, 0.269, 0.292), side * 1.0965, 1.193, 3.070);
+  }
   // Segmented steel/rubber skirt armor hangs from the existing fender line;
   // broad hangers visibly transfer each panel into the hull instead of
   // leaving another parallel floating wall outside the track.
