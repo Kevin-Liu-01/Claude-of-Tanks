@@ -23,6 +23,7 @@
 
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
+import { FURNACE_LINE_ADDITIONS } from './saarWorks.ts';
 
 export default {
   id: 'foundry',
@@ -49,6 +50,10 @@ export default {
       { x: -258, z: 50, width: 56, length: 56, yawDeg: 0, grade: 'road' },
       { x: 0, z: -72, width: 50, length: 50, yawDeg: 56, level: 0.7, grade: 0.016 },
       { x: 200, z: -176, width: 56, length: 56, yawDeg: 104, grade: 'road' },
+      // the map-revival lane (2026-10-06): the furnace line's floor at the works street's level, one level for the three
+      // casting houses and their bunker front (maps/saarWorks.ts), cut into the ore berm's north-east end; its width runs
+      // along the line (the block's yaw), its length across it; a 14 m bank keeps the cut under the bank law's 0.6
+      { x: -74, z: -29, width: 48, length: 22, yawDeg: 25, level: 2.4, grade: 0, bankM: 14 },
     ],
     villageWear: 'activity-patches',
     // A compact loading court and its southern access, not a new flattened
@@ -136,15 +141,24 @@ export default {
     // corridors now do to the ground under them; the planned sites below are what that plan was built from
     townPlan: TOWN_PLANS.foundry,
     townLightPlan: TOWN_LIGHT_PLANS.foundry,
+    // the map-revival lane (2026-10-06): the blast-furnace line. The recorded block at (-74, -29) gets a furnace either
+    // side along its own width, each replayed from the block's stream (props.townPlanAdditions), so the three
+    // casting houses stand side by side with their bunkers in one front; the high-line runs over that front and the
+    // receiving yard's ore and coke heaps lie beyond its western end (maps/saarWorks.ts, the `saar` extra kit below)
+    townPlanAdditions: FURNACE_LINE_ADDITIONS,
     plannedSites: [
       { structure: 'factory', x: -74, z: -29, yawDeg: 25 },
       { structure: 'stack', x: -44, z: -36, yawDeg: 0 }, { structure: 'stack', x: -104, z: -64, yawDeg: 0 },
       { structure: 'warehouse', x: 199, z: -28, yawDeg: 0 },
     ],
+    // (the map-revival lane, 2026-10-06, wave 137: the critics read the Nissen hut as a poly-tunnel out of place in a German
+    // works; the recorded one beside the west street becomes a brick office of about its footprint, and the pool
+    // offers it no more)
     destructibleBuildings: [
-      'quonsethut', 'transformershed', 'motorpool', 'checkpointhut',
+      'transformershed', 'motorpool', 'checkpointhut',
       'securityoffice', 'servicegarage', 'relaystation', 'corneroffice',
     ],
+    townLightPlanSwaps: { quonsethut: 'securityoffice' },
     tacticalBeats: [
       { id: 'western-rail-fan', role: 'brawl', x: -280, z: 146, yawDeg: 4,
         structure: 'motorpool', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetZ: -15 },
@@ -153,7 +167,7 @@ export default {
       { id: 'eastern-power-yard', role: 'support', x: 305, z: 125, yawDeg: -8,
         structure: 'transformershed', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: 15 },
     ],
-    extraKits: ['rail'], wallStyle: 'fieldstone', wallStoneChance: 0.76,
+    extraKits: ['rail', 'saar'], wallStyle: 'fieldstone', wallStoneChance: 0.76,
     wallRuns: [
       [-322, -156, -230, -124, 2], [-316, 146, -220, 176, 3],
       [218, -156, 318, -124, 3], [216, 146, 316, 178, 2],
@@ -166,7 +180,8 @@ export default {
     // the works' palette (the realistic city tones) with the Saar kit's yellow brick carried over it: a map's tones
     // override its kit's (props.ts), so the bands' brick of maps/regional/saar.ts surfaces.tones stands here as there
     tones: {
-      ...makeRealisticCityBuildingTones({ value: 0.88, saturation: 0.92, soot: 0.035, roofValue: 0.84 }),
+      // (2026-10-06, wave 137: "no soot": the works' brick takes the furnaces' smoke)
+      ...makeRealisticCityBuildingTones({ value: 0.86, saturation: 0.88, soot: 0.065, roofValue: 0.8 }),
       plaster2: (_h: number, s: number, l: number) => [0.11, Math.min(1, s * 0.6 + 0.2), Math.min(1, l + 0.05)],
     },
     buildingLat: [18, 4], sideSkip: 0.06, maxSpread: 2.4, spacingPad: 6,
