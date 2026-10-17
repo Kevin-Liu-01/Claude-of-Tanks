@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { closeSync, mkdirSync, openSync, writeFileSync } from 'node:fs';
+import { closeSync, mkdirSync, mkdtempSync, openSync, rmSync, writeFileSync } from 'node:fs';
 import { availableParallelism, constants, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -68,6 +68,22 @@ export const SELFTEST_FRESH_FILES = Object.freeze([
   // The functional fuzz corpus also gates measured decode time.
   'src/mp/wire/wireFuzz.selftest.mjs',
 ]);
+
+// Test-speed R9a (2026-10-16): a judge merges the records other receipts of the same run wrote
+// and plays whatever it has no records of. server/battlePacing.selftest.mjs judges the 132
+// matches its eight one-thread shards (server/battlePacingShard<n>.selftest.mjs) played. The
+// pool admits a judge after every other receipt; the registry lists it after its shards for
+// the serial path.
+export const SELFTEST_LAST_FILES = Object.freeze(['server/battlePacing.selftest.mjs']);
+
+// The run's own directory for records receipts hand to a judge (COT_SELFTEST_RUN_DIR): a fresh
+// one per invocation unless the caller (a gate running its own pool) exported one, and removed
+// after the run when this runner made it. Records never outlive their run, so this is not a
+// result cache: every receipt still runs.
+export function selftestRunDirectory(env = process.env, make = () => mkdtempSync(join(tmpdir(), 'cot-selftest-run-'))) {
+  if (env.COT_SELFTEST_RUN_DIR) return { dir: env.COT_SELFTEST_RUN_DIR, created: false };
+  return { dir: make(), created: true };
+}
 
 // This caches compilation, NEVER test results or module instances. Every file
 // still executes all assertions in a fresh process. Node validates source and
@@ -338,9 +354,12 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       // index; the committed snapshot covers receipts it has not seen, e.g. on a fresh clone).
       const snapshot = loadDurationSnapshot();
       const runMsOf = file => runtimes.runMsOf(file) ?? snapshot.get(file);
-      const order = command.order === 'longest' ? admissionOrder(suite, { runMsOf, barriers: new Set(SELFTEST_BARRIER_FILES) }) : undefined;
+      const order = command.order === 'longest' ? admissionOrder(suite, { runMsOf, barriers: new Set(SELFTEST_BARRIER_FILES),
+        last: new Set(SELFTEST_LAST_FILES) }) : undefined;
       if (order) console.log(`[selftests] ${suiteName}: admission longest-first (${suite.filter(file => runMsOf(file) !== undefined).length} of ${suite.length} run times known; barriers first); --order=registry admits in registry order`);
       const logOf = file => join(command.logs, `${file}.log`);
+      const runDirectory = selftestRunDirectory();
+      process.env.COT_SELFTEST_RUN_DIR = runDirectory.dir; // every child inherits it (selftestChildEnv)
       process.exitCode = await runSelftestSuite(suiteName, suite, {
         concurrency,
         failFast: selftestFailFast(),
@@ -360,6 +379,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       });
       cache.persist();
       runtimes.persist();
+      if (runDirectory.created) rmSync(runDirectory.dir, { recursive: true, force: true });
       if (skipped) console.log(`[selftests] ${suiteName}: ${skipped} of ${suite.length} receipts skipped (inputs unchanged since their last PASS; --all or COT_SELFTEST_CACHE=0 runs everything)${cache.enabled ? '' : ' [cache disabled]'}`);
       if (failures.length) console.error(`[selftests] ${suiteName}: ${failures.length} FAILED\n  ${failures.join('\n  ')}`);
       console.log(`[selftests] ${suiteName}: ${(performance.now() - suiteStarted).toFixed(0)}ms elapsed, ${executionMs.toFixed(0)}ms summed child across ${concurrency} CPU workers, ${queueMs.toFixed(0)}ms runner FIFO; browser children remain exclusive`);

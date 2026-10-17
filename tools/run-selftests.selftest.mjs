@@ -6,7 +6,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SELFTEST_SUITES } from './selftest-suites.mjs';
 import { runSelftestFile, runSelftestSuite, selftestChildEnv, selftestFailFast, selftestCommand, selftestPlan,
-  SELFTEST_OWNED_LEASE_FILES, SELFTEST_FRESH_FILES } from './run-selftests.mjs';
+  selftestRunDirectory, SELFTEST_LAST_FILES, SELFTEST_OWNED_LEASE_FILES, SELFTEST_FRESH_FILES } from './run-selftests.mjs';
 // The runners read COT_SHOTS_LOCK_TIMEOUT_MS (landing chains export three hours); this receipt pins the default wait.
 process.env.COT_SHOTS_LOCK_TIMEOUT_MS = '';
 
@@ -340,6 +340,23 @@ const originalEnv = { EXAMPLE: 'preserved' }, cachedEnv = selftestChildEnv(origi
 assert.equal(cachedEnv.EXAMPLE, 'preserved');
 assert.equal(originalEnv.NODE_COMPILE_CACHE, undefined, 'never mutate parent environment');
 assert.match(cachedEnv.NODE_COMPILE_CACHE, /cot-selftest-compile-/);
+
+// Test-speed R9a (2026-10-16): the run's directory for records a judge merges (COT_SELFTEST_RUN_DIR) is fresh for each
+// invocation unless the caller exported one, which it keeps; a judge is registered after the receipts it merges (the
+// serial path) and the pool admits it last (tools/selftest-schedule.mjs admissionOrder `last`).
+assert.deepEqual(selftestRunDirectory({ COT_SELFTEST_RUN_DIR: '/gate/run' }, () => assert.fail('made a directory')),
+  { dir: '/gate/run', created: false }, 'a gate\'s exported directory is used and kept');
+assert.deepEqual(selftestRunDirectory({}, () => '/tmp/cot-selftest-run-x'), { dir: '/tmp/cot-selftest-run-x', created: true });
+const madeRunDirectory = selftestRunDirectory({});
+try { assert.match(madeRunDirectory.dir, /cot-selftest-run-/); } finally { rmSync(madeRunDirectory.dir, { recursive: true, force: true }); }
+const registry = Object.values(SELFTEST_SUITES).flat();
+assert.deepEqual(SELFTEST_LAST_FILES, ['server/battlePacing.selftest.mjs']);
+for (const judge of SELFTEST_LAST_FILES) assert.ok(registry.includes(judge), `${judge} is registered`);
+const shardIndices = registry.map((file, index) => (/^server\/battlePacingShard\d\.selftest\.mjs$/.test(file) ? index : -1))
+  .filter((index) => index >= 0);
+assert.equal(shardIndices.length, 8, 'the eight battlePacing shards are registered');
+assert.ok(shardIndices.every((index) => index < registry.indexOf('server/battlePacing.selftest.mjs')),
+  'the shards precede their judge in registry order');
 
 // Real fresh processes prove that compiled code reuse does not cache test
 // results/global state and that editing the source cannot reuse a stale pass.

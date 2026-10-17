@@ -1196,7 +1196,18 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/authoritativeBots.selftest.mjs',
     'server/botModes.selftest.mjs',
     'server/botObjectives.selftest.mjs',
+    // 2026-10-16 (test-speed R9a): the 132 pacing matches play in eight one-thread shards; battlePacing merges their
+    // records and judges them (the runner admits it last; it plays any share without records from this run).
+    'server/battlePacingShard1.selftest.mjs',
+    'server/battlePacingShard2.selftest.mjs',
+    'server/battlePacingShard3.selftest.mjs',
+    'server/battlePacingShard4.selftest.mjs',
+    'server/battlePacingShard5.selftest.mjs',
+    'server/battlePacingShard6.selftest.mjs',
+    'server/battlePacingShard7.selftest.mjs',
+    'server/battlePacingShard8.selftest.mjs',
     'server/battlePacing.selftest.mjs',
+    'server/battlePacingRun.selftest.mjs', // the shards' partition, report check, merge and hand-over, on fixtures
     // 2026-10-05 (owner: "floor as a tail rate"): the pacing gate's arithmetic and the tail's shard merge.
     'tools/pacing-tail.selftest.mjs',
     'server/roadCrossingSweep.selftest.mjs', // 2026-10-03: the maps lane's road crossings, driven both ways (nothing standing in a carriageway)
