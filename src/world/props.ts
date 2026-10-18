@@ -523,6 +523,13 @@ interface PropsSettings {
   /** Rows the record never held, replayed after the recorded rows where their plot is clear (townRowAdditions.ts). */
   townRowPlanAdditions?: readonly TownRowEntry[];
   /**
+   * The looks lane (227, Steinburg's night): the street furniture — the lampposts down both pavements, the toppled post,
+   * the kerb's litter — laid beside a town's planned rows as the street-row pass lays it beside its own (its stream,
+   * seed + 606, is the furniture's alone, so the lamps stand where the pass stood them). A recorded settlement keeps
+   * the furniture its record left out (Suzhou Creek). Default off.
+   */
+  townRowFurniture?: boolean;
+  /**
    * The map-revival lane (2026-10-05, Suzhou Creek): a water course (the map's liquid marsh chain) laid through a
    * recorded settlement (townPlan, townRowPlan, townLightPlan). What its water reaches leaves it: a planned building is
    * packed for the carriageway post-pass (its new place dry, looked for out to 80 m), a street row or a light building
@@ -5551,6 +5558,9 @@ ${snowCap ? `
         }
         yield { fine: true };
       }
+      // (the looks lane, 227: Steinburg's planned rows, 10-15, returned before the furniture, and the town went dark at
+      // night — no lampposts, no warm pools on the pavements) the furniture beside the planned rows
+      if (P.townRowFurniture) placeStreetFurniture();
       return;
     }
     const srng = mulberry32(seed + 505);
