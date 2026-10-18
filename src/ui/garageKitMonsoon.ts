@@ -32,6 +32,19 @@ export const GARAGE_KIT_MONSOON: GarageKitPlacement = {
     { kind: 'bench', name: 'weldingCart', at: [6.8, 29.6], yaw: Math.PI / 4 + 0.5, y: FLOOR },
     { kind: 'prop', name: 'oilRack', at: [9.8, 30.8], yaw: Math.PI / 4, y: FLOOR },
     { kind: 'prop', name: 'spillBin', at: [11.0, 28.2], yaw: Math.PI / 2, y: FLOOR },
+    // (r2: the canopy's front half stood bare) the stores staged for the next pull, all low so they sit behind the
+    // hero's hull in the opening view: blue and green tarps over pallets, a track pallet and road wheels, the pallet jack
+    // that brought them, a cable reel, crates on a pallet
+    { kind: 'prop', name: 'tarpStack', at: [-1.4, 23.0], yaw: Math.PI / 4 + 0.2, y: FLOOR, params: { color: 0x2e5a86 } },
+    { kind: 'prop', name: 'tarpStack', at: [0.2, 24.5], yaw: Math.PI / 4 - 0.1, y: FLOOR, params: { color: 0x41683c } },
+    { kind: 'prop', name: 'trackPallet', at: [3.0, 23.2], yaw: Math.PI / 4, y: FLOOR },
+    { kind: 'prop', name: 'roadWheel', at: [4.7, 24.4], yaw: 0.4, y: FLOOR },
+    { kind: 'prop', name: 'roadWheel', at: [5.5, 23.6], yaw: 1.1, y: FLOOR },
+    { kind: 'prop', name: 'palletJack', at: [1.8, 26.6], yaw: 0.9, y: FLOOR },
+    { kind: 'prop', name: 'cableReel', at: [-2.4, 25.9], yaw: 0.3, y: FLOOR },
+    { kind: 'prop', name: 'pallet', at: [4.6, 27.6], yaw: Math.PI / 4, y: FLOOR },
+    { kind: 'prop', name: 'ammoCrate', at: [4.4, 27.5], yaw: Math.PI / 4, y: FLOOR + 0.14 },
+    { kind: 'prop', name: 'ammoCrate', at: [4.9, 27.8], yaw: Math.PI / 4 + 0.1, y: FLOOR + 0.14 },
     // the field computer beside the panel's column, on its rugged case; the radio's generator and sealed cases by it
     { kind: 'display', display: 'station', at: [16.0, 19.6], yaw: Math.PI / 4 - 0.25, screens: ['readout.armor.leopard', 'map.monsoon'], width: 1.7, rugged: true },
     { kind: 'prop', name: 'generator', at: [18.4, 19.0], yaw: 0.2 },

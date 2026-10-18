@@ -46,7 +46,7 @@ const STYLES: Readonly<Partial<Record<string, SkylineStyle>>> = Object.freeze({
   badlands: { biome: 'redrock', kElev: 0.56, haze: 0xd9b89a, hazeBoost: 0.02, hazePerOctave: 0.1, ambient: 0.3 },
   alpine: { biome: 'alpine', kElev: 0.6, haze: 0xc6d4df, hazeBoost: 0, hazePerOctave: 0.1, ambient: 0.4 },
   winter: { biome: 'tatra', kElev: 0.6, haze: 0xc8d2db, hazeBoost: 0.03, hazePerOctave: 0.12, ambient: 0.44 },
-  monsoon: { biome: 'naga', kElev: 0.72, haze: 0xb9c8c6, hazeBoost: 0.06, hazePerOctave: 0.2, ambient: 0.42 },
+  monsoon: { biome: 'naga', kElev: 0.95, haze: 0xb9c8c6, hazeBoost: 0.05, hazePerOctave: 0.17, ambient: 0.42 },
 });
 
 /** True when the Garage of this map builds its horizon from the map's skyline. */
@@ -476,10 +476,18 @@ function addMassif(ctx: SkylineContext, mark: GarageSkylineLandmark, salt: numbe
     const z = -(1 - v) * back + apex * Math.sin(Math.PI * Math.min(1, v * 1.15));
     return P(x, v === 0 ? FOOT : top * Math.pow(v, alpine ? 0.85 : 1.05), z);
   };
+  // whether the last tone was forest: the spruce stays dark at range in the clear winter air (it hazed to the snow's grey)
+  let lastForest = false;
   const tone = (n: THREE.Vector3, v: number, x: number, c: number, flank: 0 | 1): THREE.Color => {
     const u = x / (2 * half) + 0.5;
-    if (tatra && v < 0.3 + 0.12 * noise1(u * 7, salt + 8)) {
-      return colour.copy(hex(noise1(c * 1.7, salt + 4) > 0.5 ? 0x223029 : 0x2d3b33)).lerp(hex(0x9aa6ac), hash1(c, salt + 3) > 0.7 ? 0.4 : 0);
+    // the spruce forest climbs to the treeline (about half the relief on the High Tatra, most of the foothills), ragged
+    // up the ribs and down the couloirs, snow-dusted near its top (garage r9 g1 r2: at 0.3 it all sat behind the near
+    // ground and the range read as a white mound)
+    const treeline = (mark.heightM < 700 ? 0.78 : 0.5) + 0.12 * noise1(u * 7, salt + 8) + (flank ? 0.05 : -0.05) * (hash1(c, salt + 9) - 0.3);
+    lastForest = tatra && v < treeline;
+    if (lastForest) {
+      const dusted = THREE.MathUtils.smoothstep(v, treeline - 0.14, treeline);
+      return colour.copy(hex(noise1(c * 1.7, salt + 4) > 0.5 ? 0x223029 : 0x2d3b33)).lerp(hex(0x9aa6ac), (hash1(c * 5 + Math.round(v * 9), salt + 3) > 0.72 ? 0.35 : 0) + dusted * 0.4);
     }
     // the rock runs in streaks down one flank of a rib, from high on it toward the foot (it holds no snow: too steep),
     // the couloirs and ledges between the ribs under snow; the steepest facets bare anywhere
@@ -487,7 +495,7 @@ function addMassif(ctx: SkylineContext, mark: GarageSkylineLandmark, salt: numbe
     const rockFlank = hash1(c, salt + 18) > 0.5 ? 1 : 0;
     const rockFrom = 0.18 + 0.6 * hash1(c, salt + 16);
     const rockTo = Math.min(1, rockFrom + 0.3 + 0.5 * hash1(c, salt + 19));
-    const snowy = !(ribbed && flank === rockFlank && v > rockFrom && v < rockTo) && n.y > (alpine ? 0.28 : 0.22);
+    const snowy = !(ribbed && flank === rockFlank && v > rockFrom && v < rockTo) && n.y > (alpine ? 0.28 : tatra ? 0.3 : 0.22);
     if (!snowy) return colour.copy(hex(alpine ? 0x4a525b : 0x56606b)).lerp(hex(0x333a42), hash1(c * 13 + Math.round(v * 9), salt + 6) * 0.55);
     return colour.copy(hex(0xf2f6f9)).lerp(hex(0xc9d5df), hash1(c * 7 + Math.round(v * 5), salt + 7) * 0.35);
   };
@@ -511,8 +519,10 @@ function addMassif(ctx: SkylineContext, mark: GarageSkylineLandmark, salt: numbe
       const va = ROWS[r], vb = ROWS[r + 1];
       const L0 = at(x0, va, 0), L1 = at(x0, vb, 0), M0 = at(mid(r), va, apex), M1 = at(mid(r + 1), vb, apex), R0 = at(x1, va, 0), R1 = at(x1, vb, 0);
       const vm = (va + vb) / 2;
-      quadColor(ctx, [L0, M0, M1, L1], faceTone(L0, M0, L1, vm, x0, c, 0), pr.haze + (1 - vm) * 0.08);
-      quadColor(ctx, [M0, R0, R1, M1], faceTone(M0, R0, M1, vm, x1, c, 1), pr.haze + (1 - vm) * 0.08);
+      const left = faceTone(L0, M0, L1, vm, x0, c, 0), leftForest = lastForest;
+      quadColor(ctx, [L0, M0, M1, L1], left, (pr.haze + (1 - vm) * 0.08) * (leftForest ? 0.5 : 1));
+      const right = faceTone(M0, R0, M1, vm, x1, c, 1);
+      quadColor(ctx, [M0, R0, R1, M1], right, (pr.haze + (1 - vm) * 0.08) * (lastForest ? 0.5 : 1));
     }
   }
   return pr;

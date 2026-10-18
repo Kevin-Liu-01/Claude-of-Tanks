@@ -100,9 +100,11 @@ const faceCache = new Map<string, THREE.BufferGeometry>();
  * low-angle facets, water stains under the ledges, no horizontal smear"; its build 282 ms -> under the pack's budget).
  *
  * One grid over the face, columns along it and rows up it to the crest: the plan swings in buttresses and gullies; the
- * vertical joint sets cut V-notches every 2.5-6 m and set each block a little proud or back; sheeting joints step the
- * blocks back every few metres up; two benches dip across the face where it lies back and the snow collects; the face
- * batters back with height and its ends curl into the hill. Snow lies on the facets that face up (from the grid's own
+ * vertical joint sets (2.5-6 m apart, some closing in each tier) cut the face into blocks, each block a stack of planar
+ * facets that lean and turn their own way, its sheeting joints stepping it back onto snow ledges (or now and then out
+ * over a dark wet overhang) every 2.6-5.2 m up; the joints are crevices the two blocks share, each block tops out at its
+ * own height; two benches dip across the face where it lies back and the snow collects; the face batters back with
+ * height and its ends curl into the hill. Snow lies on the facets that face up (from the grid's own
  * normals), broken by noise; water stains streak down from the benches; the joints read dark. The crest slopes back under
  * snow, the ends close into the hill, and a horseshoe tunnel lining runs back from the opening. Built once a session per
  * face and handed out as copies.
@@ -146,14 +148,13 @@ function buildGraniteFace(frame: RockFrame, options: RockFaceOptions): THREE.Buf
   const columns = Math.max(8, Math.round(width / Math.max(0.7, cell * 0.72)));
   const rowsN = Math.max(8, Math.round(height / 0.82));
   const crest = (u: number): number => height * (0.8 + 0.2 * fbm(u * 0.09 + 3, 1.7)) * (1 - 0.35 * Math.pow(Math.abs(u) / half, 3));
-  // the vertical joints: boundaries 2.5-6 m apart (a fixed set across the face), each a V-notch
+  // the vertical joints: boundaries 2.5-6 m apart (a fixed set across the face)
   const joints: number[] = [];
   for (let u = -half - 3, k = 0; u < half + 6; k += 1) { joints.push(u); u += 2.5 + 3.5 * hash(k, 41); }
-  const jointAt = (u: number): { block: number; notch: number } => {
+  const blockAt = (u: number): number => {
     let lo = 0, hi = joints.length - 1;
     while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (joints[mid] <= u) lo = mid; else hi = mid; }
-    const d = Math.min(u - joints[lo], joints[hi] - u);
-    return { block: lo, notch: Math.max(0, 1 - d / 0.55) };
+    return lo;
   };
   const plan = (u: number): number => (1 - Math.abs(noise(u * 0.085 + 5.3, 2.1) * 2 - 1)) * 2.4 - 1.2 + (fbm(u * 0.21 + 1.3, 7.7) - 0.5) * 1.2;
   const benchLine = (u: number, at: number, seedU: number): number => at + 0.12 * u + (fbm(u * 0.05 + seedU, 3.3) - 0.5) * 3.0;
@@ -162,17 +163,47 @@ function buildGraniteFace(frame: RockFrame, options: RockFaceOptions): THREE.Buf
     return -reach * smooth((y - benchLine(u, at, seedU)) / 1.6);
   };
   const cutShare = (u: number): number => (options.cut && opening ? 1 - smooth((Math.abs(u - opening.u) - options.cut.half) / 3) : 0);
-  const setBack = (u: number, y: number): number => {
+  // each joint-bounded block is a set of planar facets, one per sheet: the sheeting joints step the block back (a snow
+  // ledge) or, now and then, out (an overhang) every 2.6-5.2 m up, and every facet leans and turns a little its own way,
+  // so the face reads as squared granite blocks and not as a fluted curtain (garage r9 g1 r2: the round-1 face's
+  // rounded V-notched columns read "organ pipes" behind the hero)
+  const sheetH = (k: number): number => 2.6 + 2.6 * hash(k, 9);
+  const sheetOff = (k: number): number => hash(k, 7) * 3;
+  const sheetOf = (k: number, y: number): number => Math.max(0, Math.floor((y + sheetOff(k)) / sheetH(k)));
+  const stepOf = (k: number, s: number): number => (hash(k * 13 + s, 27) < 0.16 ? -0.35 : 0.3 + 0.55 * hash(k * 13 + s, 29));
+  const sheetBase = (k: number, s: number): number => { let w = 0; for (let i = 0; i < s; i += 1) w -= stepOf(k, i); return w; };
+  // not every vertical joint runs the full height: in each 5-7 m tier some joints close, and the block to their right
+  // carries on its left neighbour's facets there (one wider block), so the joints step and stop as real ones do
+  const jointOpen = (joint: number, y: number): boolean => {
+    const tier = Math.floor((y + hash(joint, 63) * 4) / (5 + 2 * hash(joint, 65)));
+    return hash(joint * 19 + tier, 61) > 0.38;
+  };
+  const owner = (k: number, y: number): number => { let q = k; while (q > 0 && !jointOpen(q, y)) q -= 1; return q; };
+  const facet = (k0: number, u: number, y: number): number => {
+    const k = owner(k0, y);
+    const s = sheetOf(k, y);
+    const uc = (joints[k] + joints[k + 1]) / 2, ys = s * sheetH(k) - sheetOff(k);
+    const tiltU = (hash(k * 7 + s, 21) - 0.5) * 0.5, tiltY = -0.04 - 0.16 * hash(k * 5 + s, 23);
+    return (hash(k, 3) - 0.5) * 1.3 + (hash(k * 31 + s, 5) - 0.5) * 0.45 + sheetBase(k, s) * 0.8 + tiltU * (u - uc) + tiltY * (y - ys);
+  };
+  const crevice = (k: number): number => 0.3 + 0.35 * hash(k, 11);
+  const rockAt = (u: number, y: number, w: number): number => {
     const curl = -depth * 0.45 * Math.pow(Math.abs(u) / half, 3) * (0.8 + 0.4 * fbm(y * 0.2, 4.1));
-    const { block, notch } = jointAt(u);
-    // each block stands proud or back; sheeting joints step it back every few metres up
-    const sheet = Math.floor((y + hash(block, 7) * 3) / (3 + 2 * hash(block, 9)));
-    const blockOut = (hash(block, 3) - 0.5) * 0.9 - 0.25 * (hash(block * 31 + sheet, 5) > 0.6 ? 1 : 0);
-    const rock = curl - 0.2 * y + plan(u) * 0.9 + bench(u, y, height * 0.34, 2.0, 1.7) + bench(u, y, height * 0.68, 1.5, 6.1)
-      + blockOut - notch * (0.35 + 0.35 * hash(block, 11)) + (fbm(u * 0.5 + 11, y * 0.5) - 0.5) * 0.35;
+    const rock = curl - 0.07 * y + plan(u) * 0.6 + bench(u, y, height * 0.34, 2.0, 1.7) + bench(u, y, height * 0.68, 1.5, 6.1)
+      + w + (fbm(u * 0.5 + 11, y * 0.5) - 0.5) * 0.08;
     const share = cutShare(u) * (options.cut ? 1 - smooth((y - options.cut.top) / 3) : 0);
     return share > 0 ? rock + (options.cut!.w - rock) * share : rock;
   };
+  /** The set-back of a block's column: its facet, or at a joint the deeper of the two blocks' facets less the crevice. */
+  const setBackIn = (k: number, u: number, y: number, edge: number): number => {
+    if (edge === 0) return rockAt(u, y, facet(k, u, y));
+    const other = edge < 0 ? k - 1 : k + 1;
+    const joint = edge < 0 ? k : k + 1;
+    const ok = other >= 0 && other < joints.length - 1;
+    if (ok && !jointOpen(joint, y)) return rockAt(u, y, facet(k, u, y));
+    return rockAt(u, y, Math.min(facet(k, u, y), ok ? facet(other, u, y) : facet(k, u, y)) - crevice(joint));
+  };
+  const setBack = (u: number, y: number): number => rockAt(u, y, facet(blockAt(u), u, y));
   const inOpening = (u: number, y: number, margin = 0): boolean => {
     if (!opening) return false;
     const du = Math.abs(u - opening.u);
@@ -180,7 +211,7 @@ function buildGraniteFace(frame: RockFrame, options: RockFaceOptions): THREE.Buf
     return Math.hypot(du, y - opening.spring) < opening.half + margin;
   };
   // the columns, block by block: each joint-bounded block its own patch (its columns shared inside it, duplicated at
-  // the joints), so the joints read as creases between flat-ish blocks and not as a fluted curtain
+  // the joints, where both twins sit at the shared crevice), so the joints read as creases between planar blocks
   const cellU = width / columns;
   const usList: number[] = [], blockList: number[] = [];
   for (let k = 0; k < joints.length - 1; k += 1) {
@@ -195,11 +226,25 @@ function buildGraniteFace(frame: RockFrame, options: RockFaceOptions): THREE.Buf
   const ground = Float32Array.from(us, (u) => frame.groundAt(u, 0));
   const pos = new Float32Array(cols * rows * 3);
   const local = new Float32Array(cols * rows); // height over the ground
+  // each block tops out at its own height (a stepped crest, not one smooth roll); a joint's twin columns take the lower
+  // of their two blocks' crests, so the skyline notches at every joint and the twins stay one seam
+  const blockCrest = (k: number, u: number): number => crest(u) + (hash(k, 51) - 0.5) * 2.4;
+  const edgeOf = new Int8Array(cols);
   for (let k = 0; k < cols; k += 1) {
-    const top = crest(us[k]) + 0.6;
+    if (k === 0 || colBlock[k - 1] !== colBlock[k]) edgeOf[k] = -1;
+    else if (k === columnsN || colBlock[k + 1] !== colBlock[k]) edgeOf[k] = 1;
+  }
+  const colTop = Float32Array.from(us, (u, k) => {
+    const block = colBlock[k], edge = edgeOf[k];
+    if (edge === 0) return blockCrest(block, u);
+    const other = block + edge;
+    return Math.min(blockCrest(block, u), other >= 0 && other < joints.length - 1 ? blockCrest(other, u) : blockCrest(block, u)) - 0.5;
+  });
+  for (let k = 0; k < cols; k += 1) {
+    const top = colTop[k] + 0.6;
     for (let j = 0; j < rows; j += 1) {
       const y = -0.6 + (j / rowsN) * top;
-      const w = setBack(us[k], y);
+      const w = setBackIn(colBlock[k], us[k], y, edgeOf[k]);
       const o = (j * cols + k);
       local[o] = y;
       pos[o * 3] = frame.x + cos * us[k] + sin * w;
@@ -215,8 +260,13 @@ function buildGraniteFace(frame: RockFrame, options: RockFaceOptions): THREE.Buf
   const t0 = new THREE.Vector3(), t1 = new THREE.Vector3();
   for (let j = 0; j < rows; j += 1) {
     for (let k = 0; k < cols; k += 1) {
-      const kl = k > 0 && colBlock[k - 1] === colBlock[k] ? k - 1 : k;
-      const kr = k < columnsN && colBlock[k + 1] === colBlock[k] ? k + 1 : k;
+      // inside a block the facet's own normal (its edge columns, down in the crevice, left out); an edge column takes
+      // the crevice wall's
+      const same = (q: number): boolean => q >= 0 && q <= columnsN && colBlock[q] === colBlock[k];
+      let kl = same(k - 1) && (edgeOf[k] !== 0 || edgeOf[k - 1] === 0) ? k - 1 : k;
+      let kr = same(k + 1) && (edgeOf[k] !== 0 || edgeOf[k + 1] === 0) ? k + 1 : k;
+      if (kl === kr) { kl = same(k - 1) ? k - 1 : k; kr = same(k + 1) ? k + 1 : k; }
+      if (edgeOf[k] === -1) kl = k; else if (edgeOf[k] === 1) kr = k;
       a.copy(P(kr, j, t0)).sub(P(kl, j, t1));
       b.copy(P(k, j + 1, t0)).sub(P(k, j - 1, t1));
       n.crossVectors(a, b);
@@ -233,17 +283,27 @@ function buildGraniteFace(frame: RockFrame, options: RockFaceOptions): THREE.Buf
   for (let j = 0; j < rows; j += 1) {
     for (let k = 0; k < cols; k += 1) {
       const o = j * cols + k, u = us[k], y = local[o];
-      const block = colBlock[k], { notch } = jointAt(u);
-      c.copy(granite[block % 4]).multiplyScalar(0.84 + 0.12 * hash(block, 13) + 0.18 * fbm(u * 0.9 + 9, y * 0.9));
-      c.multiplyScalar(1 - notch * 0.32);
+      const block = owner(colBlock[k], y), sheet = sheetOf(block, y);
+      const joint = edgeOf[k] < 0 ? colBlock[k] : colBlock[k] + 1;
+      const inCrevice = edgeOf[k] !== 0 && (joint <= 0 || joint >= joints.length - 1 || jointOpen(joint, y));
+      // tone by block and by sheet (each facet its own weathering), speckled; the crevices dark; the foot dirtier
+      c.copy(granite[block % 4]).multiplyScalar(0.8 + 0.16 * hash(block, 13) + 0.12 * hash(block * 17 + sheet, 31) + 0.12 * fbm(u * 0.9 + 9, y * 0.9));
+      if (inCrevice) c.multiplyScalar(0.62);
       if (y < 1.2) c.multiplyScalar(0.78 + y / 6);
       // water stains: dark streaks hanging below the benches, on some columns
       for (const [at, seedU] of [[height * 0.34, 1.7], [height * 0.68, 6.1]] as const) {
         const below = benchLine(u, at, seedU) - y;
         if (below > 0 && below < 5) c.lerp(stainTone, smooth((fbm(u * 1.3 + seedU, 0.5) - 0.55) * 4) * (1 - below / 5) * 0.55);
       }
+      // under an overhang the rock is wet and dark; on a ledge (a step back just above) the snow lies
+      const above = j < rowsN ? local[o + cols] : y;
+      const stepUp = j < rowsN && !inCrevice && sheetOf(block, above) > sheet ? stepOf(block, sheet) : 0;
+      const below = j > 0 ? local[o - cols] : y;
+      const stepBelow = j > 0 && !inCrevice && sheetOf(block, below) < sheet ? stepOf(block, sheetOf(block, below)) : 0;
+      if (stepUp < 0) c.multiplyScalar(0.7);
       const ny = nrm[o * 3 + 1];
-      const lying = smooth((ny - 0.42) / 0.22) * smooth((fbm(u * 0.21 + 4, y * 0.3) - 0.25) * 2.4) + (y > crest(u) - 0.2 ? 0.6 : 0);
+      const lying = smooth((ny - 0.42) / 0.22) * smooth((fbm(u * 0.21 + 4, y * 0.3) - 0.25) * 2.4) + (y > colTop[k] - 0.2 ? 0.6 : 0)
+        + (stepUp > 0.38 || stepBelow > 0.38 ? (stepUp > 0.38 ? 1 : 0.6) * smooth((fbm(u * 0.55 + sheet * 3.1, y * 0.2 + 2) - 0.36) * 4) : 0);
       if (lying > 0) c.lerp(snowShade.clone().lerp(snow, 0.6 + 0.4 * fbm(u * 0.7, y * 0.7)), Math.min(1, lying));
       col.set([c.r, c.g, c.b], o * 3);
     }
