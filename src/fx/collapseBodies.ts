@@ -37,7 +37,7 @@ import { createRigidShape, type RigidEnvironment, type RigidShape } from '../sim
 import type { CollisionRecord } from '../world/collision.ts';
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
 import { anatomyCentre, type StructureDamageAnatomy } from '../world/destructionKit.ts';
-import { bandEnclosure, enclosedAt } from '../world/structureEnclosure.ts';
+import { bandEnclosure, drawnOverAt, enclosedAt } from '../world/structureEnclosure.ts';
 import { rubbleProfile, rubbleStampOf, type RubbleMound, type RubbleStamp } from '../sim/terrainDeformation.ts';
 import type { DebrisPhysics } from './debrisPhysics.ts';
 import type { WreckTurretTank } from '../sim/wreckTurrets.ts';
@@ -224,6 +224,8 @@ interface LivePart {
   box: number[] | null;
   /** Times shoved off a rest high past the walls (destruction-slabs 227 round 2); −1 once looked at and left. */
   shoves: number;
+  /** How long it has crept (under 0.25 m/s and 0.4 rad/s): a sheet balanced on a stump never sleeps. */
+  slowS: number;
 }
 
 /**
@@ -273,6 +275,8 @@ interface LivePiece {
   /** Its body's box [x0, y0, z0, x1, y1, z1] in its frame (the grown box, or the planned boxes' bounds): where it lies is
    *  judged at this box, not at the frame's origin (round 2: a slab's frame sat 2.5 m under the slab it draws). */
   box: number[];
+  /** How long it has crept (a roof slab's look waits for this or for sleep, not for sleep alone). */
+  slowS: number;
 }
 
 interface LiveCollapse {
@@ -973,7 +977,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       for (const m of meshes) m.castShadow = big;
       const offset = new THREE.Vector3(off[0], off[1], off[2]);
       parts.push({ meshes, offset, offsetM: offset.lengthSq() > 0 ? new THREE.Matrix4().makeTranslation(off[0], off[1], off[2]) : null,
-        handle: -1, pose: new Float64Array(7).fill(NaN), dusts: 0, tipped: false, shape: null, box: null, shoves: 0 });
+        handle: -1, pose: new Float64Array(7).fill(NaN), dusts: 0, tipped: false, shape: null, box: null, shoves: 0, slowS: 0 });
     }
     if (!parts.some((pp) => pp.meshes.length)) return;
     // (2026-10-15, the port's receipt: a hip roof's slab, its eave boards and verges past its banded boxes, lay a metre
@@ -1026,7 +1030,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     }
     const lp: LivePiece = { piece, com: [0, 0, 0], handle: -1, parts, broken: false, still: 0, sounds: 0, dusts: 0, kicked: false,
       shattered: false, tipped: false, pose: new Float64Array(7).fill(NaN), spawn: { ...spawn, ...(tumble ?? {}) }, rested: false, shape, half,
-      shoves: 0, box: shapeBox ?? plannedBox(piece) };
+      shoves: 0, box: shapeBox ?? plannedBox(piece), slowS: 0 };
     writeWhole(lp, [spawn.x, spawn.y, spawn.z, spawn.qx, spawn.qy, spawn.qz, spawn.qw]);
     lc.pieces.push(lp);
     if (now) spawnBody(lc, lp); else lc.spawnQueue.push(lp);
@@ -1128,10 +1132,12 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     let n = 0, out = 0;
     for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) {
       _hv.set(box[0]! + (box[3]! - box[0]!) * (i / 4), ly, box[2]! + (box[5]! - box[2]!) * (j / 4)).applyQuaternion(_hq);
-      const wx = at[0] + _hv.x, wz = at[2] + _hv.z;
+      const wx = at[0] + _hv.x, wz = at[2] + _hv.z, yb = at[1] + _hv.y - a.placement.y;
       const bx = (wx - f.x) * f.c - (wz - f.z) * f.s, bz = (wx - f.x) * f.s + (wz - f.z) * f.c;
       n++;
-      if (enclosedAt(a, bx, bz, 0.3, band) === false) out++;
+      // past the walls of its band, or (round 2: a needle tower's one 41 m band took a slab on its podium's plan at 25 m)
+      // over a spot where nothing is drawn within a metre and a half of its height (the plan at its height)
+      if (enclosedAt(a, bx, bz, 0.3, band) === false || drawnOverAt(a, bx, bz, 1) < yb - 1.5) out++;
     }
     return out >= 0.1 * n;
   }
@@ -1166,6 +1172,12 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     // time) and up at 1.6 m/s, pushed over its middle so it tips over the edge it lies across
     const m = Math.max(1, massKg), lift = Math.min(0.6, Math.max(0.15, thin + 0.1)), v = nth > 1 ? 5 : 3.5;
     pool.impulse(handle, dx * v * m, 1.6 * m, dz * v * m, px, py + lift, pz);
+    wakeOver(px, py, pz, box);
+  }
+  /** Wake whatever rests on a slab at (x, y, z) of `box`'s size that moves or breaks up (baked asleep, it would hang). */
+  function wakeOver(x: number, y: number, z: number, box: readonly number[]): void {
+    const r = Math.hypot(box[3]! - box[0]!, box[4]! - box[1]!, box[5]! - box[2]!) / 2 + 0.6;
+    pool.world.wakeInBox(x - r, y - 0.5, z - r, x + r, y + r + 1, z + r);
   }
   /** A piece (or its parts) laid at rest on the ground under `at` (its pose now), its thinnest side down. */
   function restOnGround(lp: LivePiece, at: ArrayLike<number>): void {
@@ -1499,6 +1511,12 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
 
   // the update's walk over a collapse's pieces (no closure a frame): whether all lie still, all only creep
   let allStill = true, allSlow = true;
+  /** Whether a body creeps (under 0.25 m/s and 0.4 rad/s): at rest to the eye, asleep or not. */
+  function creeping(handle: number): boolean {
+    if (pool.asleep(handle)) return true;
+    if (!pool.velocity(handle, vel)) return false;
+    return Math.hypot(vel[0], vel[1], vel[2]) < 0.25 && Math.hypot(vel[3], vel[4], vel[5]) < 0.4;
+  }
   function settle(handle: number, p: LivePiece, age: number, dtS: number): void {
     if (pool.asleep(handle) && age > p.piece.releaseS + 0.5) p.still += dtS; else { p.still = 0; allStill = false; }
     if (p.still < BAKE_STILL_S) allStill = false;
@@ -1558,8 +1576,10 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
         // goes (round 2: laid on the ground at once, it vanished from the wall heads between two frames); still there after
         // two shoves, it breaks into its sheets, or (none) lies on the ground under it
         // (one left at rest where it belongs is looked at again once it moves: a floor under it gave, the building fell)
-        if (p.shoves < 0 && p.still === 0) p.shoves = 0;
-        if (p.shoves >= 0 && p.still > 0.2 && p.piece.kind === 'roof' && pool.framePoseAt(p.handle, pose)) {
+        // (round 2: looked at only once asleep, a slab lay visibly still a second first, and one balanced never slept)
+        if (p.piece.kind === 'roof') p.slowS = creeping(p.handle) ? p.slowS + dtS : 0;
+        if (p.shoves < 0 && p.still === 0 && p.slowS === 0) p.shoves = 0;
+        if (p.shoves >= 0 && (p.still > 0.2 || p.slowS > 0.35) && p.piece.kind === 'roof' && pool.framePoseAt(p.handle, pose)) {
           lookAtRoof(c, p);
         }
         // (a slab shoved off its rest is looked at again before the collapse bakes: baked as it went, it lay where the shove
@@ -1580,8 +1600,10 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
           }
           // (destruction-slabs 227) a roof sheet at rest high and out past the walls is shoved off it as its slab is; still
           // there after two shoves, it lies on the ground under it
-          if (part.shoves < 0 && !pool.asleep(part.handle)) part.shoves = 0;
-          if (part.shoves >= 0 && spec && p.piece.kind === 'roof' && part.tipped && pool.asleep(part.handle) && pool.framePoseAt(part.handle, pose)) {
+          if (p.piece.kind === 'roof') part.slowS = creeping(part.handle) ? part.slowS + dtS : 0;
+          if (part.shoves < 0 && !pool.asleep(part.handle) && part.slowS === 0) part.shoves = 0;
+          if (part.shoves >= 0 && spec && p.piece.kind === 'roof' && ((part.tipped && pool.asleep(part.handle)) || part.slowS > 0.35)
+            && pool.framePoseAt(part.handle, pose)) {
             lookAtSheet(c, p, k);
           }
           if (p.piece.kind === 'roof' && part.shoves > 0) { allStill = false; allSlow = false; }
@@ -1634,6 +1656,8 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     }
     for (const m of part.meshes) { m.removeFromParent(); m.geometry.dispose(); }
     part.meshes.length = 0;
+    _hv.set((box[0]! + box[3]!) / 2, (box[1]! + box[4]!) / 2, (box[2]! + box[5]!) / 2).applyQuaternion(_hq);
+    wakeOver(pose[0] + _hv.x, pose[1] + _hv.y, pose[2] + _hv.z, box);
   }
   /** A broken slab's sheet at rest looked at (its pose in `pose`), as its slab is. True when it was moved. */
   function lookAtSheet(c: LiveCollapse, p: LivePiece, k: number): boolean {

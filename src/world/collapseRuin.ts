@@ -418,7 +418,7 @@ function tallWallStubs(rng: () => number, slot: FractureSlot, cap: number, mesh:
     for (let q = 0; q < placed.length; q += 2) if ((placed[q]! - spot.x) ** 2 + (placed[q + 1]! - spot.z) ** 2 < minGap2) { near = true; break; }
     if (near) continue;
     // a half to most of the wall's drawn height there, and over the height the ruin lacks where the wall reaches it
-    const h = Math.min(cap, Math.max(spot.top * (pass === 2 ? 0.84 + rng() * 0.12 : pass ? 0.7 + rng() * 0.22 : 0.5 + rng() * 0.35), Math.min(spot.top * 0.92, target * (1.2 + rng() * 0.3))));
+    const h = Math.min(cap, Math.max(spot.top * (pass === 2 ? 0.72 + rng() * 0.16 : pass ? 0.7 + rng() * 0.22 : 0.5 + rng() * 0.35), Math.min(spot.top * 0.92, target * (1.2 + rng() * 0.3))));
     if (h < 0.6) continue;
     // its run: out from the spot along its wall while the wall stands that tall, up to 1.3 m each way
     const dx = spot.alongX ? 1 : 0, dz = spot.alongX ? 0 : 1;
@@ -593,7 +593,8 @@ function framePosts(rng: () => number, slot: FractureSlot, cap: number, mesh: Da
       if (!Number.isFinite(d) && loose) d = 0;
       if (!Number.isFinite(d)) continue;
       const x = alongX ? fcx + u : fcx + side * (off - d - t / 2), z = alongX ? fcz + side * (off - d - t / 2) : fcz + u;
-      const h = Math.min(h0, loose && ruinOf ? Math.max(topOfWallIn(px, pz, pnx, pnz, d), wallTopAt(ruinOf, x, z, 2)) : topOfWallIn(px, pz, pnx, pnz, d));
+      // (loose: no taller than drawn in its own cell, and none where nothing is drawn — a frame's yard, a farm's gap)
+      const h = Math.min(h0, loose && ruinOf ? wallTopAt(ruinOf, x, z, 0) : topOfWallIn(px, pz, pnx, pnz, d));
       if (h < 0.5) continue;
       const h1 = h * 0.55;
       box(mesh, x, (h1 - FOOT_M) / 2, z, t / 2, (h1 + FOOT_M) / 2, t / 2, 0, slot.tint, shade);
@@ -610,7 +611,12 @@ function framePosts(rng: () => number, slot: FractureSlot, cap: number, mesh: Da
       if (!Number.isFinite(d)) continue;
       const inset = off - d - t - 0.12;
       const x = alongX ? fcx + u : fcx + side * inset, z = alongX ? fcz + side * inset : fcz + u;
-      const ph = Math.min(ph0, loose && ruinOf ? Math.max(topOfWallIn(px, pz, pnx, pnz, d), wallTopAt(ruinOf, x, z, 2)) : topOfWallIn(px, pz, pnx, pnz, d));
+      // (loose: under what is drawn at its middle and both its ends, inside the drawn plan)
+      const ex = alongX ? pl / 2 : 0, ez = alongX ? 0 : pl / 2;
+      const ph = Math.min(ph0, loose && ruinOf
+        ? (enclosedAt(ruinOf, x - ex, z - ez, 0) && enclosedAt(ruinOf, x + ex, z + ez, 0)
+          ? Math.min(wallTopAt(ruinOf, x, z, 0), wallTopAt(ruinOf, x - ex, z - ez, 0), wallTopAt(ruinOf, x + ex, z + ez, 0)) : 0)
+        : topOfWallIn(px, pz, pnx, pnz, d));
       if (!(ph > 0.3)) continue;
       box(mesh, x, ph / 2 - 0.1, z, alongX ? pl / 2 : 0.05, ph / 2, alongX ? 0.05 : pl / 2, 0, slot.tint, shade);
     }
@@ -631,6 +637,9 @@ function roofSlabs(anatomy: StructureDamageAnatomy, rng: () => number, mesh: Dam
     // (destruction-slabs 227) only over what the building drew (its walls and their enclosure)
     const yaw = rng() * Math.PI;
     if (enclosedAt(anatomy, x, z, 0.5) === false) continue;
+    // (round 2: a warehouse's leant slab stood a third past its walls) both its ends over the drawn plan too
+    const ex = Math.cos(yaw) * len / 2, ez = -Math.sin(yaw) * len / 2;
+    if (enclosedAt(anatomy, x + ex, z + ez, 0) === false || enclosedAt(anatomy, x - ex, z - ez, 0) === false) continue;
     // a slab stood on its end against the heap: a thin box, tall over the mound
     box(mesh, x, base + rise / 2, z, len / 2, rise / 2, Math.max(0.08, roof.thicknessM), yaw, roof.covering.tint, shade);
   }

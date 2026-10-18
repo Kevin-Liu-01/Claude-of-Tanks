@@ -1110,8 +1110,15 @@ chips (never left hanging where it was: the sails on a fallen tower's hub).
 
 **Roof slabs.** A fallen roof slab's body grows in its plane only (its normal extent held to the planned box, 0.35 m
 under and 0.6 m over); a slab takes only what lies on its plane (0.8 m, facing within 50 degrees); what stands over the
-eaves on no slab is the top storey's panel's when it lies by a face, else dropped with the collapse; a partial fall's slab
-at rest high and past the walls breaks into its sheets, and a sheet still high past them is laid on the ground.
+eaves on no slab is the top storey's panel's when it lies by a face, the roof's furniture when nothing is drawn under it
+from below (`structureEnclosure standsFromBelow`: a chimney or a dormer on the covering, a turret on the ridge — it rides
+the slab it stands on, a roof chimney's own piece falls with the roof, and the world's copy is flattened with the roof's
+hide), else dropped with the collapse (a tower and its spire stand: they are drawn from below). A slab or sheet at rest
+1.5 m or more up with a tenth of its plan past the walls of the height it lies at (judged at its body's box, not its
+frame's origin) is looked at before the collapse may bake: a slab of several sheets breaks into them; a sheet (or a
+one-sheet slab under 20 m² in its plane) is shoved off with a hop, into the shell from over it and out from past it,
+twice; still there — or a one-sheet slab too big to tip — it breaks up where it lies, its dust and broken tiles thrown.
+Nothing is laid on the ground out of view (round 2: a panel leant on a tavern's wall vanished between two frames).
 
 **Rejoin parity.** A late joiner's settled holes, panel falls and breach stages break the walls as the live ones did (cut
 and drawn at once, nothing thrown); a settled roof fall lays only the kit's roof rubble; a settled collapse drops the
@@ -1124,6 +1131,20 @@ past the walls of its height band, floating, untextured or degenerate; a standin
 the building as drawn at its spot; a fallen roof slab drawn off the body it rides in) and its selftest;
 `tools/destruction-slab-kinds.selftest.mjs` (the detector over every destructible kind of every map, one props build a
 map in a worker pool; its judged exceptions listed with their reasons, a kind that stops flagging leaving the list).
+
+**Round 2 (2026-10-17, the round-1 critics).** A tower mill's upper tower comes off as two courses of four ragged
+quarter-rings of its brick wall (each with its window, along one shared break line: whole, the shaft shows no seam), each
+falling out over the side it stood on — no solid brick log, no hollow drum — with its windshaft and tail pole as pieces of
+their own, and a wide flat piece (the stage ring) slumps only a few degrees. The ruin keeps over the anti-raft floors where
+the round-1 enclosure took its height: a frame read by its posts stands its posts and boards on the plan's edge where it
+is drawn (a fish rack, a shed), a skin body's walls take a third, denser course of stubs where they stand tall (a tank
+farm's shells, a ruin's ragged runs), wall fragments lower than the height the ruin lacks are not drawn (they only spread
+the heap thinner), and a leant roof slab stands with both ends over the drawn plan. The enclosure's measure walks each wall
+edge cell by cell and steps across a covering's samples (30 % less CPU at load). The detector strikes any of a building's
+four faces (`--faces`, each face's own seed), welds vertices by number, renders a film cadence on the CPU (`--film`), and
+counts a standing building's own drawn floors as support; the kinds receipt runs on worker threads (its imports, not the
+tree, are its cache inputs), strikes each kind from the face its name picks, and its judged exceptions name a finding
+(building, mesh, reason), not a building.
 
 **The census (2026-10-17, round 1).** The detector over all 33 maps (667 building runs, 12,365 snapshots, the final
 detector on both trees): main flagged 249 buildings (2,778 snapshots: rooms past their walls, fracture rooms, remnants,

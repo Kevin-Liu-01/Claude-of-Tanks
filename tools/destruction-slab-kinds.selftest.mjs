@@ -1,9 +1,10 @@
 // destruction-slab-kinds.selftest.mjs — the stray-slab detector over every destructible kind of every map (destruction-
 // slabs 227, 2026-10-17; the owner: "for building destruction, these weird ugly boxes/surfaces still randomly come up.
 // fix"). Each map is built once and every kind on it (a builder under its damage kit) is struck on the battle's path,
-// sections on, the fracture on, from two faces: its widest (the census's) and one more the kind's name picks (the critic's
-// variant census: a building struck from another face flagged what the widest never showed), on a short staging (32 rounds
-// over 3 m bands up the drawn height, a 6 s settle, the late joiner's replays). The maps run in a pool of worker threads,
+// sections on, the fracture on, from the face its name picks of its four (the wider or narrower side, the near or the far:
+// the critic's variant census struck a building from another face and found what the widest never showed; across the
+// fleet every face is struck, and the round's census strikes every kind from all four — DESTRUCTION.md §19), on a short
+// staging (28 rounds over 3 m bands up the drawn height, a 5 s settle, the late joiner's replays). The maps run in a pool of worker threads,
 // each loading the world once for all its maps (no child process: the selftest cache reads this file's imports, not the
 // whole tree). Every kind passes: no plate or wall standing past the walls of its height band, none floating, none
 // untextured or degenerate, no run off the walls, no remnant taller than the building is drawn there, no fallen roof slab
@@ -14,14 +15,14 @@ import assert from 'node:assert/strict';
 import os from 'node:os';
 import { Worker, isMainThread, parentPort } from 'node:worker_threads';
 
-/** The receipt's staging: the census's (60 rounds, 40 snapshots) cut to what a kind's phases need. */
-const STAGING = Object.freeze({ perBuilder: 1, storeys: [0, 1, 2, 3], rounds: 32, settleS: 6, maxSnapshots: 14 });
-/** The second face a kind is struck from: one of the other three, by its name. */
-const OTHER_FACES = Object.freeze(['wide-back', 'narrow', 'narrow-back']);
-function secondFace(builder, kit) {
+/** The receipt's staging: the census's (60 rounds, 40 snapshots, four faces) cut to what a kind's phases need. */
+const STAGING = Object.freeze({ perBuilder: 1, storeys: [0, 1, 2, 3], rounds: 28, settleS: 5, maxSnapshots: 12 });
+/** The face a kind is struck from: one of four, by its name (FNV-1a). */
+const FACES = Object.freeze(['wide', 'wide-back', 'narrow', 'narrow-back']);
+function faceOf(builder, kit) {
   let h = 2166136261;
   for (const ch of `${builder}|${kit}`) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
-  return OTHER_FACES[h % OTHER_FACES.length];
+  return FACES[h % FACES.length];
 }
 
 if (!isMainThread) {
@@ -30,7 +31,7 @@ if (!isMainThread) {
   parentPort.on('message', async (mapId) => {
     if (mapId === null) { parentPort.close(); return; }
     try {
-      const report = await runSlabCheck({ mapId, ...STAGING, facesFor: (_id, builder, kit) => ['wide', secondFace(builder, kit)] });
+      const report = await runSlabCheck({ mapId, ...STAGING, facesFor: (_id, builder, kit) => [faceOf(builder, kit)] });
       parentPort.postMessage({ mapId, rows: report.rows.map((r) => ({ id: r.id, face: r.face, builder: r.builder, kit: r.kit, pass: r.pass,
         spanIssues: r.spanIssues, snapshots: r.snapshots.length,
         findings: r.snapshots.flatMap((p) => p.findings.map((f) => ({ t: p.t, phase: p.phase, mesh: f.mesh, orientation: f.orientation,
@@ -101,6 +102,6 @@ if (!isMainThread) {
   assert.deepEqual(flagged, [], `every destructible kind passes the stray-slab check:\n${flagged.join('\n')}`);
   const stale = KNOWN.filter(([at], i) => maps.includes(at.split(' ')[0]) && !used.has(i)).map(([at, mesh, reason]) => `${at} ${mesh} ${reason}`);
   assert.deepEqual(stale, [], `known exceptions that no longer flag leave KNOWN: ${stale.join(', ')}`);
-  console.log(`destruction-slab-kinds selftest: ${kinds.size} kinds on ${results.length} maps (${runs} runs, two faces each), ${snaps} snapshots, `
+  console.log(`destruction-slab-kinds selftest: ${kinds.size} kinds on ${results.length} maps (${runs} runs, a face each by name), ${snaps} snapshots, `
     + `none flags a stray slab${used.size ? ` (${used.size} judged exceptions)` : ''} — ok`);
 }

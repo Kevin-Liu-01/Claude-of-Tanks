@@ -889,43 +889,70 @@ function wallCell(enc: StructureEnclosure, c: number): boolean {
 }
 
 /**
- * Whether something over the eaves at a plan point stands on walls drawn from below — on one (a wall cell within `reach`
- * cells drawn from no higher than `maxBaseY`: an end wall's stack) or inside them (shut in by walls drawn from below that
- * rise 2.5 m and more over `maxBaseY`: a tower's spire, its belfry) — not on the roof (a chimney or a dormer set on the
- * covering, a turret on the ridge: they go with the roof). True where nothing restricts (no enclosure, or one measured
- * without its walls' bases: a probe's).
+ * Whether what is drawn over the eaves at a plan point is the roof's furniture (destruction-slabs 227 round 2): the walls
+ * drawn over `eaveY` (by 30 cm) gather in clusters (8-connected cells); a cluster under 3 m across whose cells are mostly
+ * not drawn from below (their walls' lowest point over the eaves less a metre) — a chimney or a dormer on the covering, a
+ * turret on the ridge — is furniture, and goes with the roof whole; a gable, a tower and its spire, a stack drawn from the
+ * ground, a wall dormer flush with its facade stand. One decision per cluster (round 2: a dormer's window frames stood in
+ * the sky after its plaster went with the roof). False where nothing is known (no enclosure, or one without its walls'
+ * bases).
  */
-export function standsFromBelow(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>, x: number, z: number, maxBaseY: number, reach = 1): boolean {
-  const enc = enclosureOf(anatomy);
-  if (!enc?.base) return true;
-  const ci = Math.floor((x - enc.x0) / enc.cell), ck = Math.floor((z - enc.z0) / enc.cell);
-  const need = Math.round(maxBaseY * 100) + 1;
-  for (let dk = -reach; dk <= reach; dk++) for (let di = -reach; di <= reach; di++) {
-    const i = ci + di, k = ck + dk;
-    if (i < 0 || k < 0 || i >= enc.nx || k >= enc.nz) continue;
-    const b = enc.base[k * enc.nx + i]!;
-    if (b > 0 && b <= need) return true;
-  }
-  if (ci < 0 || ck < 0 || ci >= enc.nx || ck >= enc.nz) return false;
-  return towerInside(enc, need)[ck * enc.nx + ci] === 2;
+export function roofFurnitureAt(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>, x: number, z: number, eaveY: number): boolean {
+  return furnitureCell(anatomy, x, z, eaveY) === 2;
 }
-/** The cells shut in by walls drawn from below (base ≤ `need` cm) rising 2.5 m over it (2), the walls (1); cached per
- *  height, built on the first ask (a roof's fall). */
-const towerCache = new WeakMap<StructureEnclosure, Map<number, Uint8Array>>();
-function towerInside(enc: StructureEnclosure, need: number): Uint8Array {
-  let byNeed = towerCache.get(enc);
-  if (!byNeed) { byNeed = new Map(); towerCache.set(enc, byNeed); }
-  let cells = byNeed.get(need);
-  if (cells) return cells;
-  cells = new Uint8Array(enc.nx * enc.nz);
-  const tall = need + 250;
-  for (let c = 0; c < cells.length; c++) {
-    const b = enc.base![c]!;
-    if (b > 0 && b <= need && enc.top[c]! >= tall) cells[c] = 1;
+/** Whether a plan point lies under none of the clusters standing over the eaves (a gable, a tower, a stack). */
+export function clearOverEaves(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>, x: number, z: number, eaveY: number): boolean {
+  return furnitureCell(anatomy, x, z, eaveY) !== 1;
+}
+function furnitureCell(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>, x: number, z: number, eaveY: number): number {
+  const enc = enclosureOf(anatomy);
+  if (!enc?.base) return 1;
+  const ci = Math.floor((x - enc.x0) / enc.cell), ck = Math.floor((z - enc.z0) / enc.cell);
+  if (ci < 0 || ck < 0 || ci >= enc.nx || ck >= enc.nz) return 0;
+  const mask = furnitureMask(enc, Math.round(eaveY * 100));
+  // (a triangle's centroid a cell off its cluster: its neighbours decide)
+  if (mask[ck * enc.nx + ci]) return mask[ck * enc.nx + ci]!;
+  for (let dk = -1; dk <= 1; dk++) for (let di = -1; di <= 1; di++) {
+    const i = ci + di, k = ck + dk;
+    if (i >= 0 && k >= 0 && i < enc.nx && k < enc.nz && mask[k * enc.nx + i]) return mask[k * enc.nx + i]!;
   }
-  enclose(cells, enc.nx, enc.nz, Math.max(1, Math.ceil((CLOSE_GAP_M / 2) / enc.cell)));
-  byNeed.set(need, cells);
-  return cells;
+  return 0;
+}
+const furnitureCache = new WeakMap<StructureEnclosure, Map<number, Uint8Array>>();
+/** Per cell: 0 nothing over the eaves, 1 a standing cluster's, 2 furniture's; cached per eave height. */
+function furnitureMask(enc: StructureEnclosure, eaveCm: number): Uint8Array {
+  let byEave = furnitureCache.get(enc);
+  if (!byEave) { byEave = new Map(); furnitureCache.set(enc, byEave); }
+  let mask = byEave.get(eaveCm);
+  if (mask) return mask;
+  const N = enc.nx * enc.nz;
+  mask = new Uint8Array(N);
+  const over = eaveCm + 1 + 30, below = eaveCm + 1 - 100;
+  const seen = new Uint8Array(N), stack: number[] = [], members: number[] = [];
+  for (let c0 = 0; c0 < N; c0++) {
+    if (seen[c0] || !(enc.top[c0]! >= over)) continue;
+    stack.push(c0); seen[c0] = 1; members.length = 0;
+    let i0 = Infinity, i1 = -Infinity, k0 = Infinity, k1 = -Infinity, fromBelow = 0;
+    while (stack.length) {
+      const c = stack.pop()!;
+      members.push(c);
+      const i = c % enc.nx, k = (c - i) / enc.nx;
+      i0 = Math.min(i0, i); i1 = Math.max(i1, i); k0 = Math.min(k0, k); k1 = Math.max(k1, k);
+      if (enc.base![c]! > 0 && enc.base![c]! <= below) fromBelow++;
+      for (let dk = -1; dk <= 1; dk++) for (let di = -1; di <= 1; di++) {
+        const ii = i + di, kk = k + dk;
+        if (ii < 0 || kk < 0 || ii >= enc.nx || kk >= enc.nz) continue;
+        const cc = kk * enc.nx + ii;
+        if (seen[cc] || !(enc.top[cc]! >= over)) continue;
+        seen[cc] = 1; stack.push(cc);
+      }
+    }
+    const across = Math.max(i1 - i0 + 1, k1 - k0 + 1) * enc.cell;
+    const v = across < 3 && fromBelow < 0.5 * members.length ? 2 : 1;
+    for (const c of members) mask[c] = v;
+  }
+  byEave.set(eaveCm, mask);
+  return mask;
 }
 
 /** Whether a wall is drawn (in any band) at a plan point standing at least `minTopM` over it (the point's own cell). */

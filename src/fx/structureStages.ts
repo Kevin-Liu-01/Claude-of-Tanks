@@ -29,7 +29,7 @@ import {
   anatomyCentre, damageRng, damageSeed, type DamageFace, type DamageRole, type DamageStageResult, type DamageStorey, type DamageWriters,
   type DebrisShape, type FractureMaterial, type FractureSlot,
 } from '../world/destructionKit.ts';
-import { faceSetback, faceSetbackMedian, standsFromBelow, storeyInterior } from '../world/structureEnclosure.ts';
+import { clearOverEaves, faceSetback, faceSetbackMedian, roofFurnitureAt, storeyInterior } from '../world/structureEnclosure.ts';
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
 import { breachBlowFor } from './structureFx.ts';
 import {
@@ -544,10 +544,11 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
 
   /**
    * The roof's furniture out of the world's buckets when its roof falls (destruction-slabs 227 round 2): every triangle of
-   * the structure's other spans wholly over the eaves line (less 15 cm), centred in the footprint plus 1.5 m, off the top
-   * storey's faces (a gable stands, as a real one does) and standing on no wall drawn from below (structureEnclosure
-   * standsFromBelow: a tower and its spire stay) collapses to a point — collapsePieces' furnitureAt reads the same, so the
-   * roof's slabs carry what the world drops. Needs the drawn enclosure (none: nothing goes). Non-indexed spans.
+   * the structure's other spans wholly over the eaves line (less 15 cm), centred in the footprint plus 1.5 m, over a cluster
+   * structureEnclosure roofFurnitureAt reads as furniture (a chimney or a dormer on the covering: small, not drawn from
+   * below — one decision a cluster, its frames and glass with its plaster) collapses to a point; collapsePieces'
+   * furnitureAt reads the same, so the roof's slabs carry what the world drops. Needs the drawn enclosure (none: nothing
+   * goes). Non-indexed spans.
    */
   function flattenRoofFurniture(seam: StructureDamageSeam): boolean {
     const a = seam.anatomy;
@@ -557,9 +558,6 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     const [bcx, bcz] = anatomyCentre(a);
     const { x: px, y: py, z: pz, yaw } = a.placement;
     const c = Math.cos(yaw), sn = Math.sin(yaw);
-    const top = a.storeys[a.storeys.length - 1]!;
-    const faceT = top.faces.map((f) => f.layers.reduce((sum, l) => sum + (l.thicknessM || 0), 0) || 0.3);
-    const bx = [0, 0, 0], bz = [0, 0, 0];
     let changed = false;
     for (const span of seam.spans) {
       if (span.count < 3 || span.partClass === 'roof' || span.piece || flattenedSpans.has(span)) continue;
@@ -574,26 +572,17 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         _tb.set(arr[i * 3 + 3], arr[i * 3 + 4], arr[i * 3 + 5]).applyMatrix4(_m);
         _tc.set(arr[i * 3 + 6], arr[i * 3 + 7], arr[i * 3 + 8]).applyMatrix4(_m);
         if (Math.min(_ta.y, _tb.y, _tc.y) - py < eave) continue;
-        // the body frame
-        let k = 0, mx = 0, mz = 0;
-        for (const v of [_ta, _tb, _tc]) {
-          const wx = v.x - px, wz = v.z - pz;
-          bx[k] = wx * c - wz * sn; bz[k] = wx * sn + wz * c; mx += bx[k] / 3; mz += bz[k] / 3; k++;
-        }
+        // its centroid in the body frame
+        const wx = (_ta.x + _tb.x + _tc.x) / 3 - px, wz = (_ta.z + _tb.z + _tc.z) / 3 - pz;
+        const mx = wx * c - wz * sn, mz = wx * sn + wz * c;
         if (Math.abs(mx - bcx) > reachX || Math.abs(mz - bcz) > reachZ) continue;
-        // a gable or an end wall: every corner by a top-storey face's plane, within its width
-        let onFace = false;
-        for (let f = 0; f < top.faces.length && !onFace; f++) {
-          const face = top.faces[f]!;
-          const u = (mx - face.origin[0]) * face.u[0] + (mz - face.origin[2]) * face.u[2];
-          if (Math.abs(u) > face.width / 2 + 0.3) continue;
-          onFace = true;
-          for (let q = 0; q < 3; q++) {
-            const d = (bx[q] - face.origin[0]) * face.out[0] + (bz[q] - face.origin[2]) * face.out[2];
-            if (d > 0.6 || d < -faceT[f]! - 0.6) { onFace = false; break; }
-          }
+        // (and a level surface over the eaves under no standing cluster: the attic's lid the roof covered — left, it capped
+        // the roofless storey as one clean flat roof, the critic's "flat raft")
+        if (!roofFurnitureAt(a, mx, mz, a.roof.eaveY)) {
+          const ux = _tb.x - _ta.x, uy = _tb.y - _ta.y, uz = _tb.z - _ta.z, vx = _tc.x - _ta.x, vy = _tc.y - _ta.y, vz = _tc.z - _ta.z;
+          const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+          if (!(Math.abs(ny) > 0.85 * Math.hypot(nx, ny, nz)) || !clearOverEaves(a, mx, mz, a.roof.eaveY)) continue;
         }
-        if (onFace || standsFromBelow(a, mx, mz, a.roof.eaveY - 1)) continue;
         if (!touched) { keep(span); touched = true; }
         for (let q = 1; q < 3; q++) {
           arr[(i + q) * 3] = arr[i * 3]; arr[(i + q) * 3 + 1] = arr[i * 3 + 1]; arr[(i + q) * 3 + 2] = arr[i * 3 + 2];

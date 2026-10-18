@@ -457,7 +457,7 @@ export function drawnMeshes(roots, accept = () => true) {
  * something at height y there.
  */
 export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => false, settled = true, ownMaterials = null, upperFootprint = null, rested = null,
-  bandFootprint = null, drawnTopAt = null, byDesign = null }) {
+  bandFootprint = null, drawnTopAt = null, byDesign = null, floorAt = null }) {
   const pieces = [];
   let gid = 0;
   for (const d of meshes) for (const tris of piecesOfTriangles(d.tris)) {
@@ -519,6 +519,7 @@ export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => fals
       const below = y - (roomFlat ? SLAB.roomSupportM : SLAB.supportBandM);
       if (groundAt(x, z) >= below) continue;
       if (supportAt(x, z, y)) continue;
+      if (floorAt?.(x, z, y, y - below)) continue;
       let held = false;
       for (let k = 0; k < boxes.length && !held; k++) {
         if (k === idx || pieces[k].gid === p.gid) continue;
@@ -707,6 +708,47 @@ export function drawnTopOf(triLists, cell = 0.5) {
       if (i >= 0 && kk >= 0 && i < nx && kk < nz && top[kk * nx + i] > best) best = top[kk * nx + i];
     }
     return best;
+  };
+}
+
+/**
+ * (round 2) The standing building's own floors as drawn: its level surfaces (not its roof's) up to the top storey's floor,
+ * per 0.5 m cell up to four heights — what a fallen roof slab inside a standing building lies on (a raised ground floor's
+ * plinth, a drawn storey floor; the detector saw nothing under it and called it floating).
+ */
+export function floorsOf(triLists, maxY, cell = 0.5) {
+  let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+  for (const t of triLists) for (let i = 0; i < t.length; i += 3) {
+    x0 = Math.min(x0, t[i]); x1 = Math.max(x1, t[i]); z0 = Math.min(z0, t[i + 2]); z1 = Math.max(z1, t[i + 2]);
+  }
+  if (!Number.isFinite(x0)) return () => false;
+  x0 -= cell; z0 -= cell; x1 += cell; z1 += cell;
+  const nx = Math.ceil((x1 - x0) / cell), nz = Math.ceil((z1 - z0) / cell);
+  const hs = new Float32Array(nx * nz * 4).fill(NaN);
+  const put = (c, y) => {
+    for (let k = 0; k < 4; k++) {
+      const h = hs[c * 4 + k];
+      if (Number.isNaN(h)) { hs[c * 4 + k] = y; return; }
+      if (Math.abs(h - y) < 0.1) return;
+    }
+  };
+  for (const t of triLists) for (let o = 0; o + 8 < t.length; o += 9) {
+    const ux = t[o + 3] - t[o], uy = t[o + 4] - t[o + 1], uz = t[o + 5] - t[o + 2], wx = t[o + 6] - t[o], wy = t[o + 7] - t[o + 1], wz = t[o + 8] - t[o + 2];
+    const fx = uy * wz - uz * wy, fy = uz * wx - ux * wz, fz = ux * wy - uy * wx, fl = Math.hypot(fx, fy, fz);
+    if (!(fl > 1e-9) || fy < 0.9 * fl || Math.max(t[o + 1], t[o + 4], t[o + 7]) > maxY) continue;
+    const len = Math.max(Math.hypot(ux, uz), Math.hypot(wx, wz), Math.hypot(t[o + 6] - t[o + 3], t[o + 8] - t[o + 5]));
+    const k = Math.max(1, Math.min(48, Math.ceil(len / (cell * 0.5))));
+    for (let i = 0; i <= k; i++) for (let j = 0; j <= k - i; j++) {
+      const u = i / k, v = j / k;
+      const ci = Math.floor((t[o] + ux * u + wx * v - x0) / cell), ck = Math.floor((t[o + 2] + uz * u + wz * v - z0) / cell);
+      if (ci >= 0 && ck >= 0 && ci < nx && ck < nz) put(ck * nx + ci, t[o + 1] + uy * u + wy * v);
+    }
+  }
+  return (x, z, y, band) => {
+    const ci = Math.floor((x - x0) / cell), ck = Math.floor((z - z0) / cell);
+    if (ci < 0 || ck < 0 || ci >= nx || ck >= nz) return false;
+    for (let k = 0; k < 4; k++) { const h = hs[(ck * nx + ci) * 4 + k]; if (h >= y - band && h <= y + 0.05) return true; }
+    return false;
   };
 }
 
@@ -966,6 +1008,9 @@ export async function runSlabCheck({
       return f;
     };
     const drawnTopAt = drawnTopOf(intactLists);
+    const floorLists = drawnSpanTriangles(seam.spans.filter((sp) => sp.partClass !== 'roof'));
+    const topFloorY = a.placement.y + (a.storeys.length ? a.storeys[a.storeys.length - 1].y0 : 0) + 0.5;
+    const standingFloorAt = floorsOf(floorLists, topFloorY);
     // the walls' plan at height: the intact triangles reaching 1.5 m over the ground under them (no plinth, step or slab)
     const upperFootprint = upper ? footprintOf(intactLists.map((t) => {
       const keepTris = [];
@@ -1131,7 +1176,8 @@ export async function runSlabCheck({
     function phaseSnap(label) {
       if (snapshots.length >= maxSnapshots) return;
       const meshes = drawnMeshes([debris.group, fxGroup, bodies?.group], accept);
-      const judged = judgeSlabs(meshes, { footprint, groundAt: ground, supportAt, settled: false, ownMaterials, upperFootprint, rested, bandFootprint, drawnTopAt, byDesign });
+      const judged = judgeSlabs(meshes, { footprint, groundAt: ground, supportAt, settled: false, ownMaterials, upperFootprint, rested, bandFootprint, drawnTopAt, byDesign,
+        floorAt: felled ? null : standingFloorAt });
       const flagged = judged.findings.length > 0;
       const firstFlag = flagged && !snapshots.some((p) => p.findings.length);
       const tag = `t${clock.toFixed(1)}-${label}`;
@@ -1180,7 +1226,9 @@ export async function runSlabCheck({
       // (round 2) a film's cadence: the CPU's renders every `filmS` from `filmFromS` (motion read headless: a pop, a chimney)
       if (filmS > 0 && renderDir && clock + 1e-9 >= nextFilm) {
         nextFilm += filmS;
-        shoot(`film-${clock.toFixed(2).padStart(6, '0')}`, drawnMeshes([debris.group, fxGroup, bodies?.group], accept), [], !collapsed || !fx?.took(id));
+        // (COT_SLAB_FILM_SPANS=1: the world's own spans alone, as the CPU flattens them — what a hide left standing)
+        shoot(`film-${clock.toFixed(2).padStart(6, '0')}`, process.env.COT_SLAB_FILM_SPANS ? [] : drawnMeshes([debris.group, fxGroup, bodies?.group], accept), [],
+          !!process.env.COT_SLAB_FILM_SPANS || !collapsed || !fx?.took(id));
       }
       if (events.length > lastEventCount) {
         // each new stage or breach: judged once its pieces are laid (0.8 s) and once they have fallen (3 s)
@@ -1193,7 +1241,8 @@ export async function runSlabCheck({
         due.shift();
         if (snapshots.length < maxSnapshots || atEnd) {
           const meshes = drawnMeshes([debris.group, fxGroup, bodies?.group], accept);
-          const judged = judgeSlabs(meshes, { footprint, groundAt: ground, supportAt, settled: atEnd, ownMaterials, upperFootprint, rested, bandFootprint, drawnTopAt, byDesign });
+          const judged = judgeSlabs(meshes, { footprint, groundAt: ground, supportAt, settled: atEnd, ownMaterials, upperFootprint, rested, bandFootprint, drawnTopAt, byDesign,
+            floorAt: felled ? null : standingFloorAt });
           const last = events[events.length - 1];
           const label = atEnd ? 'final' : `t${clock.toFixed(1)}-${last ? (last.stage ?? (last.storeyDown ? 'storeyDown' : last.hole === 255 ? 'sectionDown' : 'hole')) : 'none'}`;
           const flagged = judged.findings.length > 0;
@@ -1248,7 +1297,8 @@ export async function runSlabCheck({
         const raccept = (m) => (m.parent === rgroup ? own.test(m.name)
           : m.parent === rdebris.group ? !rgone?.has(m) && ownRun(m) : true);
         const meshes = drawnMeshes([rdebris.group, rgroup, rbodies?.group], raccept);
-        const judged = judgeSlabs(meshes, { footprint, groundAt: rground, supportAt, settled: true, ownMaterials, upperFootprint, bandFootprint, drawnTopAt, byDesign });
+        const judged = judgeSlabs(meshes, { footprint, groundAt: rground, supportAt, settled: true, ownMaterials, upperFootprint, bandFootprint, drawnTopAt, byDesign,
+          floorAt: rfelled ? null : standingFloorAt });
         const flagged = judged.findings.length > 0;
         const label = `rejoin-${p.phase.startsWith('rejoin mid') ? 'mid' : 'end'}-${snapshots.length}`;
         snapshots.push({ t: +p.t.toFixed(2), label, phase: p.phase, events: p.count, meshes: meshes.length, pieces: judged.pieces,

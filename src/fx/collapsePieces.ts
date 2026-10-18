@@ -27,7 +27,7 @@ import {
   type DamageFace, type FractureMaterial, type FractureSlot, type StructureDamageAnatomy, type Vec3,
 } from '../world/destructionKit.ts';
 import type { CollisionRecord } from '../world/collision.ts';
-import { bandEnclosure, standsFromBelow } from '../world/structureEnclosure.ts';
+import { bandEnclosure, roofFurnitureAt } from '../world/structureEnclosure.ts';
 import { createRigidBox, createRigidShape, type RigidShape } from '../sim/rigidBody.ts';
 
 type CollapsePieceKind = 'wall' | 'floor' | 'roof' | 'gable' | 'chimney' | 'drum' | 'crown';
@@ -917,7 +917,7 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
   }
   return { pieces, structureIdx: anatomy.structureIdx, groundY, eaveY, cx, cz, hw, hd, storeys: storeyPlans, roof: slabs, gables: gableFaces,
     chimneys, struckSide, chimneyBucket: anatomy.chimneys[0]?.bucket ?? 'brick', shaft: null,
-    ...(anatomy.enclosure && slabs.length ? { furnitureAt: (x: number, z: number) => !standsFromBelow(anatomy, x, z, eaveY - 1) } : {}) };
+    ...(anatomy.enclosure && slabs.length ? { furnitureAt: (x: number, z: number) => roofFurnitureAt(anatomy, x, z, anatomy.roof?.eaveY ?? eaveY) } : {}) };
 }
 
 /** A shaft's crown as its kit hands it over (regional/shaft.ts ShaftExtras.crown). */
@@ -1421,6 +1421,10 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
     if (probing) { emit(OFF_ROOF_PROBE, poly); return; }
     const top = plan.storeys[plan.storeys.length - 1];
     const c0 = centroid(poly);
+    // (destruction-slabs 227 round 2) the roof's furniture (a cluster the enclosure reads as standing on the covering, not
+    // drawn from below: the world's flatten reads the same) rides the slab it stands on — before the face rule, or a wall
+    // dormer's cheeks went with the panels and its frames into the sky
+    if (plan.furnitureAt?.(c0[0], c0[2])) { slabAssign(poly, depth, slab); return; }
     // (within a little of the eaves: a panel draws no more than that over its box)
     if (top && ny < 0.5 && c0[1] <= plan.eaveY + 1.2) {
       const c = c0;
@@ -1437,8 +1441,6 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
         if (near) { wallAssign(poly, depth); return; }
       }
     }
-    // (destruction-slabs 227 round 2) the roof's furniture (nothing drawn under it from below) rides the slab it stands on
-    if (plan.furnitureAt?.(c0[0], c0[2])) { slabAssign(poly, depth, slab); return; }
     emit(DROPPED_PIECE, poly);
   };
   // most triangles lie inside one piece: each corner probed alone (no plane can split a point), and when all three
