@@ -348,10 +348,11 @@ function pageDressing(sink: PartSink, frame: HouseFrame, f: () => number, finish
   for (const u of [frame.faces.front.width / 2 - 0.55, -(frame.faces.front.width / 2 - 0.55)]) {
     if (!clear(u) || f() < 0.35 || (u > 0 && h.carport)) continue;
     const size = 1.0 + f() * 0.35, tone = 0.85 + f() * 0.25;
-    for (const [du, k, tall] of [[-0.3, 0.62, 0.8], [0.28, 0.66, 0.88], [0, 0.72, 1.12]] as const) {
-      const c = facePoint(onPlinth, u + du * size, -0.05, size * 0.4);
-      const tint: Rgb = tall > 1 ? [leaf[0] * 0.8 + bloom[0] * tone * 0.2, leaf[1] * 0.8 + bloom[1] * tone * 0.2, leaf[2] * 0.8 + bloom[2] * tone * 0.2] : shade(leaf, 0.85 + f() * 0.25);
-      mound(sink, c, onPlinth.u, onPlinth.out, size * k * 0.62, size * k * 0.5, size * tall, tint, { decor: true }, u + du);
+    for (const [du, k, tall] of [[-0.32, 0.6, 0.62], [0.3, 0.64, 0.68], [0, 0.74, 0.85]] as const) {
+      const c = facePoint(onPlinth, u + du * size, -0.05, size * 0.42);
+      // (rounded, a leafy green: the bloom a touch of warmth on the tallest; a steeper or paler mound read as a cone)
+      const tint: Rgb = tall > 0.8 ? [leaf[0] * 0.9 + bloom[0] * tone * 0.1, leaf[1] * 0.92 + bloom[1] * tone * 0.06, leaf[2] * 0.9 + bloom[2] * tone * 0.08] : shade(leaf, 0.85 + f() * 0.25);
+      mound(sink, c, onPlinth.u, onPlinth.out, size * k * 0.78, size * k * 0.62, size * tall, tint, { decor: true }, u + du);
     }
   }
 }
