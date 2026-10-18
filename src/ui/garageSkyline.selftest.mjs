@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { createGarageSkylineBackdrop, garageSkylineEnabled } from './garageSkyline.ts';
+import { buildGarageSkyline, createGarageSkylineBackdrop, garageSkylineEnabled } from './garageSkyline.ts';
 import { GARAGE_SKYLINES } from './garageSkylines.generated.ts';
 
 const check = spawnSync(process.execPath, [fileURLToPath(new URL('../../tools/generate-garage-skylines.mjs', import.meta.url)), '--check'], {
@@ -22,10 +22,17 @@ const REQUIRED = {
 };
 for (const [mapId, required] of Object.entries(REQUIRED)) {
   assert.ok(garageSkylineEnabled(mapId), `${mapId}: builds its horizon from its map`);
-  const geometry = createGarageSkylineBackdrop(mapId);
-  const again = createGarageSkylineBackdrop(mapId);
+  const geometry = buildGarageSkyline(mapId);
+  const again = buildGarageSkyline(mapId);
   assert.deepEqual([...again.getAttribute('position').array.slice(0, 3000)], [...geometry.getAttribute('position').array.slice(0, 3000)],
     `${mapId}: the skyline builds deterministically`);
+  // a pack takes its own copy of the map's cached bake: the same horizon, arrays it may dispose
+  const copy = createGarageSkylineBackdrop(mapId);
+  const second = createGarageSkylineBackdrop(mapId);
+  assert.notEqual(copy.getAttribute('position').array, second.getAttribute('position').array, `${mapId}: each pack owns its copy`);
+  assert.deepEqual([...copy.getAttribute('position').array.slice(0, 3000)], [...geometry.getAttribute('position').array.slice(0, 3000)],
+    `${mapId}: the cached horizon is the map's bake`);
+  copy.dispose(); second.dispose();
   const triangles = geometry.index.count / 3;
   assert.ok(triangles <= 9500, `${mapId}: horizon and landmarks ${triangles} triangles (K10: 9,500)`);
   const marks = geometry.userData.skylineLandmarks;

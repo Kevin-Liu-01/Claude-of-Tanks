@@ -685,12 +685,27 @@ export interface GarageSkylineLandmarkReceipt {
   readonly elevationDeg: number;
 }
 
+const skylineCache = new Map<string, THREE.BufferGeometry>();
+
+/**
+ * A Garage's horizon for its pack: the bake is deterministic, so each map's is built once and every pack build takes its
+ * own copy (the pack disposes what it is given; the Garage revisited skips the rebuild).
+ */
+export function createGarageSkylineBackdrop(mapId: string): THREE.BufferGeometry {
+  let geometry = skylineCache.get(mapId);
+  if (!geometry) {
+    geometry = buildGarageSkyline(mapId);
+    skylineCache.set(mapId, geometry);
+  }
+  return geometry.clone();
+}
+
 /**
  * Build a Garage's horizon from its map's skyline. Returns the geometry for the horizon's one draw; its userData
  * receipts the near layers, every landmark (type, name, bearing, ring radius, elevation), the tallest point and the
  * largest elevation angle seen from the opening camera.
  */
-export function createGarageSkylineBackdrop(mapId: string): THREE.BufferGeometry {
+export function buildGarageSkyline(mapId: string): THREE.BufferGeometry {
   const style = STYLES[mapId];
   const record = GARAGE_SKYLINES[mapId];
   if (!style || !record) throw new Error(`garage skyline: no skyline for ${mapId}`);
