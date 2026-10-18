@@ -85,6 +85,13 @@ export interface SkyPreset {
   /** Tint of that disc. */
   planetHex: number;
   /**
+   * (the Earthrise 228 rebuild, 2026-10-18) the disc's own direction, degrees (azimuth as the sun's: 0 toward +z, 90 toward
+   * +x; elevation over the horizon), and its phase lit from the sun's direction; absent (null), the disc stands at the night
+   * key light's direction under the fixed gibbous phase as before. The Moon authors its Earth over the valley's open west.
+   */
+  earthAzimuthDeg?: number | null;
+  earthElevationDeg?: number | null;
+  /**
    * Round 65 (2026-09-24): overrides on the physically based atmosphere the desktop tier derives from this
    * preset (atmosphere.ts `skyPresetToAtmosphere`); null = the calibrated mapping. Mars authors its thin CO2 sky.
    */
@@ -524,6 +531,8 @@ const DEFAULT_PRESET: Readonly<SkyPreset> = Object.freeze({
   planetDeg: 0.8,
   earth: 0,
   planetHex: 0xedf2ff,
+  earthAzimuthDeg: null,
+  earthElevationDeg: null,
   atmosphere: null,
   cloudLayer: null,
   cloudscape: null,
@@ -665,6 +674,9 @@ vec3 cotNightSky( vec3 dn, vec3 moonDir, float galaxy, vec3 nebula, float planet
 	float mz = sqrt( max( 0.0, 1.0 - dot( mo, mo ) ) );
 	vec3 mn = vec3( mo, mz );
 	vec3 phaseL = normalize( vec3( 0.55, 0.25, 0.80 ) );
+	// (the Earthrise 228 rebuild) a disc authored apart from the sun takes its phase from the sun's direction in the disc's
+	// frame (screen right, up, toward the viewer): its lit limb toward the sun
+	if ( uPlanetPhase > 0.5 ) phaseL = normalize( vec3( dot( uPlanetSun, mx ), dot( uPlanetSun, my ), -dot( uPlanetSun, moonDir ) ) + vec3( 0.0, 0.0, 1e-4 ) );
 	float lit = clamp( dot( mn, phaseL ), 0.0, 1.0 );
 	float terminator = smoothstep( -0.06, 0.22, dot( mn, phaseL ) );
 	float maria = 0.74 + 0.26 * cotHash3( floor( mo * 3.0 + 7.0 ) ).x;
@@ -715,10 +727,24 @@ vec3 cotNightSky( vec3 dn, vec3 moonDir, float galaxy, vec3 nebula, float planet
 		cover *= 1.0 - 0.85 * max(aridN, aridS) * land;
 		float clouds = smoothstep(0.62 - 0.22 * cover, 0.80 - 0.14 * cover, swirl) * clamp(cover, 0.0, 1.0);
 		surface = mix(surface, vec3(.93, .95, .98) * (0.9 + 0.1 * grain2), clouds * .92);
+		// (the Earthrise 228 rebuild, round 2; the blind critics: "Earth is oversaturated, cartoonish") the colours a fifth
+		// toward their grey (a photograph's, not a poster's), the land's and the sea's shading darkening toward the limb
+		// as a lit sphere's does, and the thin blue limb fainter and only on the lit side
+		surface = mix(surface, vec3(dot(surface, vec3(.2126, .7152, .0722))), .2) * (.78 + .22 * mz);
 		// the sea's glint toward the sun, and the thin blue limb
 		float glint = pow(max(dot(reflect(-phaseL, mn), vec3(0.0, 0.0, 1.0)), 0.0), 60.0) * (1.0 - land) * (1.0 - clouds);
 		float rim = pow(1.0 - mz, 4.0);
-		moonCol = surface * (.06 + .97 * lit) * terminator + vec3(.55, .62, .70) * glint * .35 * terminator + vec3(.05, .25, .57) * rim * .55;
+		// (the Earthrise 228 rebuild, round 3; the blind judge: "the Earth's terminator is a hard, slightly cut-off edge") the
+		// day fades into the night across the twilight the air lays over the terminator — about a fifth of the radius, the
+		// last of the light reddened by its long path through the air — and the night limb keeps a trace of the blue air
+		// near the terminator, so the disc reads as a sphere turning from the sun, not a cut-out
+		float dL = dot(mn, phaseL);
+		float dusk = smoothstep(-0.14, 0.34, dL);
+		float eLit = clamp((dL + 0.1) / 1.1, 0.0, 1.0);
+		vec3 duskTint = mix(vec3(1.0, 0.66, 0.48), vec3(1.0), smoothstep(0.02, 0.3, dL));
+		float nightAir = rim * (1.0 - dusk) * smoothstep(-0.55, -0.05, dL);
+		moonCol = surface * duskTint * (.03 + .97 * eLit) * dusk + vec3(.55, .62, .70) * glint * .35 * dusk + vec3(.05, .25, .57) * rim * .30 * dusk
+			+ vec3(.04, .12, .30) * nightAir * .5;
 		disc = 1.0 - smoothstep(1.0 - fwidth(length(mo)) * 1.5, 1.0, length(mo));
 	}
 	// the compact glow scales with the disc (a 3 deg planet keeps a ~4 deg halo, never a quarter-sky wash)
@@ -782,6 +808,9 @@ uniform float uEarth;
 uniform sampler2D uEarthLand;
 uniform vec4 uStarLaw;
 uniform vec4 uStarShape;
+uniform vec3 uPlanetDir;
+uniform vec3 uPlanetSun;
+uniform float uPlanetPhase;
 uniform sampler2D tStarClouds;
 uniform vec4 uStarClouds;
 uniform vec2 uStarCloudCut;
@@ -847,7 +876,7 @@ void main() {
 			float cloudT = texture2D( tStarClouds, ( gl_FragCoord.xy - uStarClouds.xy ) * uStarClouds.zw ).a;
 			starVis = smoothstep( uStarCloudCut.x, uStarCloudCut.y, cloudT );
 		}
-		nightCol = cotNightSky( direction, uSunDirection, uGalaxy, uNebula, uPlanetR, uPlanetTint, uEarth, starVis ) * uNight;
+		nightCol = cotNightSky( direction, uPlanetDir, uGalaxy, uNebula, uPlanetR, uPlanetTint, uEarth, starVis ) * uNight;
 	}
 	gl_FragColor = vec4( max( skyCol, vec3( 0.0 ) ) * uSkyIntensity + nightCol, 1.0 );
 }`;
@@ -947,6 +976,20 @@ function configureSkyUniforms(
   u.uPlanetR.value = preset.planetDeg * Math.PI / 360;
   u.uPlanetTint ??= { value: new THREE.Color(0xedf2ff) };
   u.uPlanetTint.value.setHex(preset.planetHex);
+  // (the Earthrise 228 rebuild, 2026-10-18) the disc's direction: the live sun's (the same vector) unless the preset
+  // authors its own, and then its phase lit from the live sun (uPlanetPhase 1); every map that authors none draws as before
+  u.uPlanetDir ??= { value: sunDir };
+  u.uPlanetSun ??= { value: sunDir };
+  u.uPlanetPhase ??= { value: 0 };
+  u.uPlanetSun.value = sunDir;
+  if (preset.earthAzimuthDeg != null && preset.earthElevationDeg != null) {
+    u.uPlanetDir.value = new THREE.Vector3().setFromSphericalCoords(1, (90 - preset.earthElevationDeg) * Math.PI / 180,
+      preset.earthAzimuthDeg * Math.PI / 180);
+    u.uPlanetPhase.value = 1;
+  } else {
+    u.uPlanetDir.value = sunDir;
+    u.uPlanetPhase.value = 0;
+  }
   // 2026-10-09 (the skies lane): the starfield's law — round 22's cell law until applyStarLaw writes the preset's (this
   // function's source is evaluated on its own by the environment-cache receipt: literals only)
   u.uStarLaw ??= { value: new THREE.Vector4(0.11, 0.09, 1.45, 0) };
@@ -977,6 +1020,9 @@ function configureSkyUniforms(
     shader.uniforms.uEarthLand = u.uEarthLand;
     shader.uniforms.uPlanetR = u.uPlanetR;
     shader.uniforms.uPlanetTint = u.uPlanetTint;
+    shader.uniforms.uPlanetDir = u.uPlanetDir;
+    shader.uniforms.uPlanetSun = u.uPlanetSun;
+    shader.uniforms.uPlanetPhase = u.uPlanetPhase;
     shader.uniforms.uStarLaw = u.uStarLaw;
     shader.uniforms.uStarShape = u.uStarShape;
     const patched = shader.fragmentShader.replace(
@@ -1022,14 +1068,15 @@ function configureSkyUniforms(
 	// break up gradient banding on the low-frequency sky ramps
 	skyCol += ( fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 ) - 0.5 ) * ${SKY_DITHER.toFixed(4)};
 	vec3 nightCol = vec3( 0.0 );
-	if ( uNight > 0.001 ) nightCol = cotNightSky( normalize( direction ), vSunDirection, uGalaxy, uNebula, uPlanetR, uPlanetTint, uEarth, 1.0 ) * uNight;
+	if ( uNight > 0.001 ) nightCol = cotNightSky( normalize( direction ), uPlanetDir, uGalaxy, uNebula, uPlanetR, uPlanetTint, uEarth, 1.0 ) * uNight;
 	gl_FragColor = vec4( max( skyCol, vec3( 0.0 ) ) * uSkyIntensity + nightCol, 1.0 );`,
     );
     if (patched === shader.fragmentShader) {
       throw new Error('sky.ts: radiance-scale injection anchor not found in Sky shader');
     }
     shader.fragmentShader = `uniform float uSkyIntensity;\nuniform float uNight;\nuniform float uGalaxy;\nuniform vec3 uNebula;\nuniform float uPlanetR;\nuniform vec3 uPlanetTint;
-uniform float uEarth;\nuniform sampler2D uEarthLand;\nuniform vec4 uStarLaw;\nuniform vec4 uStarShape;\n${NIGHT_SKY_GLSL}\n${patched}`;
+uniform float uEarth;\nuniform sampler2D uEarthLand;\nuniform vec4 uStarLaw;\nuniform vec4 uStarShape;\nuniform vec3 uPlanetDir;\nuniform vec3 uPlanetSun;
+uniform float uPlanetPhase;\n${NIGHT_SKY_GLSL}\n${patched}`;
   };
   sky.material.needsUpdate = true;
 }
@@ -1374,6 +1421,7 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
       uNebula: skyUniforms.uNebula, uEarth: skyUniforms.uEarth, uPlanetR: skyUniforms.uPlanetR, uPlanetTint: skyUniforms.uPlanetTint,
       uEarthLand: skyUniforms.uEarthLand,
       uStarLaw: skyUniforms.uStarLaw, uStarShape: skyUniforms.uStarShape,
+      uPlanetDir: skyUniforms.uPlanetDir, uPlanetSun: skyUniforms.uPlanetSun, uPlanetPhase: skyUniforms.uPlanetPhase,
       // 2026-10-09: the cloud layer's resolved history (its transmittance hides the stars), bound per draw below
       tStarClouds: { value: null }, uStarClouds: { value: new THREE.Vector4(0, 0, 1, 1) },
       uStarCloudCut: { value: new THREE.Vector2(STAR_CLOUD_CUT[0], STAR_CLOUD_CUT[1]) }, uStarCloudsOn: { value: 0 },
@@ -2090,14 +2138,18 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
      * @returns {void}
      */
     applyFog(targetScene: THREE.Scene): void {
-      const fogColor = horizonColor.clone()
+      // (the Earthrise 228 rebuild, round 2; the blind critics: the shaded far ranges "snow-blue") an airless map (fogDensity
+      // 0, the Moon) has no air to colour: its fog pole is its authored tint (the regolith's grey) — never the black
+      // dome's sampled horizon nor the hue guard's blue-grey, which every far face the sun leaves took as its sky light
+      const airless = preset.fogDensity === 0;
+      const fogColor = airless ? new THREE.Color(preset.fogTintHex) : horizonColor.clone()
         .lerp(new THREE.Color(preset.fogTintHex), preset.fogMix);
       // r4 LP2 hue guard: atmospheric extinction color must NEVER be
       // green-dominant (the r3 sniper "jade fog" carryover) — whatever the
       // sampled sky band or preset tint produced, clamp toward blue-grey so
       // B >= G always holds on the fog pole. (Verdant currently samples
       // blue already; this is insurance against any preset/band drift.)
-      if (fogColor.g > fogColor.b) {
+      if (!airless && fogColor.g > fogColor.b) {
         const lum = 0.2126 * fogColor.r + 0.7152 * fogColor.g + 0.0722 * fogColor.b;
         fogColor.lerp(new THREE.Color(lum * 0.92, lum * 0.99, lum * 1.12), 0.6);
       }

@@ -971,6 +971,11 @@ const AerialShader = {
     // band's (sky.ts sampleHorizonElevationFalloff, published on scene.userData.skyElevationFalloff) — the
     // scatter-in target follows the view ray's elevation so a far ridge converges toward the sky BEHIND it
     uHazeElevFloor: { value: 1 },
+    // (the Earthrise 228 rebuild, 2026-10-18; the blind critics: "the distant hills are bright blue-white and read as snow
+    // or ice") 1 on an airless map (a FogExp2 of density 0: fogDensity 0, the Moon alone): its haze law has no air (σ 0),
+    // so the pixel fell to the legacy distance law below — the cool extinction and the blue-grey scatter-in that whitened
+    // every far range; airless, the legacy law, its scatter-in and the far hue clamp all stand down
+    uAirless: { value: 0 },
     // round 65 (2026-09-24): the physically based sky. When the desktop dome runs the Hillaire atmosphere
     // (sky.ts publishes scene.userData.atmosphere), the scatter-in target is its sky-view LUT sampled along
     // each pixel's view ray — the sky the far range actually stands against, round 37's rule per pixel —
@@ -1050,6 +1055,7 @@ const AerialShader = {
     uniform float uDesat;
     uniform vec3 uCool;
     uniform float uHazeDensity;
+    uniform float uAirless;
     uniform float uHazeFull;
     uniform vec3 uHazeWarm;
     uniform vec3 uHazeCool;
@@ -1284,7 +1290,7 @@ const AerialShader = {
           f = min( f, extCeil );
           float lum = dot( texel.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
           vec3 hazy = mix( texel.rgb, vec3( lum ), uDesat ) * uCool;
-          texel.rgb = mix( texel.rgb, hazy, f );
+          texel.rgb = mix( texel.rgb, hazy, f * ( 1.0 - uAirless ) );
           // scattering-in: distance pulls everything toward the sun-directional
           // sky haze — warm near the sun azimuth, cool blue away from it.
           // r2 BLACK-POINT GUARD ("combat frame drowned in a warm low-contrast
@@ -1313,7 +1319,7 @@ const AerialShader = {
           f2 *= 0.25 + 0.75 * smoothstep( 0.0, 0.05, lum );
           f2 *= mix( 1.0, hAtt, ${AERIAL_HEIGHT_SCATTER_K.toFixed(2)} );
           f2 = min( f2, scatCeil );
-          texel.rgb = mix( texel.rgb, hazeCol, f2 );
+          texel.rgb = mix( texel.rgb, hazeCol, f2 * ( 1.0 - uAirless ) );
         }
         // large-scale cloud shadows / light patchiness (see CLOUD_SHADE
         // const block): world-anchored soft patches multiply the ground —
@@ -1335,7 +1341,7 @@ const AerialShader = {
           float gDom = smoothstep( 0.0, 0.032, texel.g - texel.b );
           float hl = dot( texel.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
           vec3 grey = hl * vec3( ${AERIAL_HUE_GREY[0].toFixed(3)}, ${AERIAL_HUE_GREY[1].toFixed(3)}, ${AERIAL_HUE_GREY[2].toFixed(3)} );
-          texel.rgb = mix( texel.rgb, grey, hueW * gDom * hzLayer );
+          texel.rgb = mix( texel.rgb, grey, hueW * gDom * hzLayer * ( 1.0 - uAirless ) );
         }
         // Same arcade/scope amplitude, distances and chroma policy; sample
         // true world volume so every slope retains two surface dimensions.
@@ -2959,6 +2965,8 @@ export function createPost(
   }
 
   function updateAerialFogColors(): void {
+    // (the Earthrise 228 rebuild) no air at all: no distance law (the uAirless note)
+    aerial.uniforms.uAirless.value = scene.fog instanceof THREE.FogExp2 && scene.fog.density === 0 ? 1 : 0;
     if (!scene.fog) return;
     const fogColor = scene.fog.color;
     aerial.uniforms.uHazeWarm.value.setRGB(

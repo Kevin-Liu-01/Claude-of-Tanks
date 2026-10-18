@@ -161,7 +161,10 @@ const LITTER_PROFILES: Readonly<Record<string, GroundLitterConfig>> = Object.fre
   blackglass: { density: 0.9, clods: 0.1, splinters: 0.1, stoneTint: [0.10, 0.105, 0.11], stoneForm: 'brick', stoneTintAlt: [0.17, 0.07, 0.05], stoneAltShare: 0.3 },
   // (#19) the regolith: angular clasts, no soil clods, no timber — Olympus Basin's rust, the lunar grey
   mars: { density: 1.0, clods: 0, splinters: 0, stoneForm: 'clast', stoneTint: [0.2, 0.095, 0.055] },
-  moon: { density: 0.9, clods: 0, splinters: 0, stoneForm: 'clast', stoneTint: [0.15, 0.148, 0.142] },
+  // (the Earthrise 228 rebuild, round 2; the blind critics at tank height: "an empty rolling foreground", "a large flat,
+  // featureless foreground") the regolith strewn as the Apollo crews photographed it: clasts of every size, the tier's full
+  // budget (1.3, was 0.9), the gardened ones the regolith's grey and a third the paler grey of fresh-broken breccia
+  moon: { density: 1.3, clods: 0, splinters: 0, stoneForm: 'clast', stoneTint: [0.12, 0.118, 0.114], stoneTintAlt: [0.2, 0.197, 0.19], stoneAltShare: 0.33 },
   // (#19) the shelled towns' rubble: brick bats among the grey grit and concrete — Steinburg's red brick, Sarajevo's,
   // the Ruhr's dark engineering brick among its slag
   urban: { density: 0.85, clods: 0.15, splinters: 0.2, stoneTint: [0.15, 0.148, 0.14], stoneForm: 'brick', stoneTintAlt: [0.2, 0.075, 0.05], stoneAltShare: 0.55 },
