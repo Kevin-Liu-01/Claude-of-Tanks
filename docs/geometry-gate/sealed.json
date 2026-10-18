@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-18T13:19:10.634Z",
+ "generatedAt": "2026-10-18T13:32:31.706Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening) and inside-out pixel totals over the 33 census views. Gate: a tank may not exceed its ledger open px by more than max(12, 10%) and a sealed tank must stay sealed.",
@@ -1562,7 +1562,7 @@
    "openViews": 0,
    "insideOutPx": 80,
    "seeThroughPx": 5430,
-   "tris": 146517
+   "tris": 146501
   },
   "t72b3_zubr_ii": {
    "sealed": true,
