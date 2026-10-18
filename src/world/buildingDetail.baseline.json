@@ -191,13 +191,13 @@
    "facePass": 0.75
   },
   "glencanyon": {
-   "score": 8,
-   "silhouette": 1,
-   "mid": 3,
-   "fine": 2,
-   "trisPerWallM2": 1.82,
-   "fineShare": 0.443,
-   "facePass": 0.813
+   "score": 17,
+   "silhouette": 4,
+   "mid": 5,
+   "fine": 6,
+   "trisPerWallM2": 14.6,
+   "fineShare": 0.554,
+   "facePass": 1
   },
   "navajo": {
    "score": 13,
@@ -635,8 +635,8 @@
   "glencanyon/gantry": "d65e81680844b1ee",
   "glencanyon/foundryoffice": "33a203f2e6e4752b",
   "glencanyon/warehouse": "913c23a97afc7835",
-  "glencanyon/depot": "5e542622c74eca3f",
-  "glencanyon/containerRow": "46677062b4bf74d0",
+  "glencanyon/depot": "cb86906824ab290d",
+  "glencanyon/containerRow": "06d46ca9e2dd049d",
   "glencanyon/firestation": "4a8e23f47b3b546c",
   "glencanyon/watertower": "2102d3b93db56f67",
   "glencanyon/ruin": "d1ad0675b3db32f4",

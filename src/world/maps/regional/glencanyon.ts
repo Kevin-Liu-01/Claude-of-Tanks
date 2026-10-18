@@ -1152,9 +1152,10 @@ export const GLENCANYON_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
   // (227, the looks lane; BLD-04) Page's ranch houses stand on the depot plots (two a plot) and the container-row plots
   // (one, its carport at its end): the building-detail census reads the kit's dwellings over them
   dwellings: ['depot', 'containerRow'],
-  // (227, the looks lane) the houses' back yards walled in concrete block (coursedWallKit's Glen Canyon CMU, its cap
-  // blocks), the ranch gate in the street run; no outbuilding, no kitchen beds on the mesa's sand
-  yard: { kinds: ['depot', 'containerRow'], fence: 'wallstone', gate: 'gatestone', shed: null, garden: false },
+  // (227, the looks lane) the houses' back and side yards walled in concrete block (coursedWallKit's Glen Canyon CMU, its
+  // cap blocks) with the ranch gate; never across a container-row house's front (its door and picture window: Page's
+  // front lawns lay open to the street); no outbuilding, no kitchen beds on the mesa's sand
+  yard: { kinds: ['depot', 'containerRow'], fence: 'wallstone', gate: 'gatestone', shed: null, garden: false, keepFront: true },
   // the desert's dry air; the stucco houses each their own pale colour (peach, sky, sand, mint) and the concrete stained
   weather: {
     plaster: [[1, 1, 1], [1.08, 0.98, 0.9], [0.92, 0.98, 1.06], [1.04, 1.02, 0.9], [0.94, 1.04, 0.98]],
