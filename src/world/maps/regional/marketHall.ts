@@ -14,7 +14,7 @@
 import { PartSink, faceBox, pick, shade, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import { emitRoof, roofGeometry, type RoofGeometry, type RoofSpec } from './house.ts';
 import { recordLattice } from './lattice.ts';
-import { bevelMember, bevelSpan } from './millWorks.ts';
+import { bevelMember, bevelSpan, orientedPrism } from './millWorks.ts';
 
 export interface HalleSpec {
   /** the floor's extent, the kerb's outside: across (x) and along (z) */
@@ -97,12 +97,13 @@ export function timberHalle(sink: PartSink, spec: HalleSpec): { rg: RoofGeometry
   sink.dressing(spec.mobile, () => {
     // the setts in their courses: each a little out of the next's tone, the courses broken bond
     const sx0 = -W / 2 + KERB + 0.02, sx1 = W / 2 - KERB - 0.02, sz0 = -D / 2 + KERB + 0.02, sz1 = D / 2 - KERB - 0.02;
-    const step = 0.42;
+    // (227, the facade budget: the welded courses' joints cost four triangles a sett) each sett 0.72 m along its course
+    const step = 0.42, run = 0.72;
     for (let z = sz0, row = 0; z < sz1 - 0.05; z += step, row++) {
       const z1 = Math.min(sz1, z + step - 0.025);
       const course: Array<[number, number, number]> = [];
-      for (let x = sx0 - (row % 2 ? step / 2 : 0); x < sx1 - 0.05; x += step) {
-        const a = Math.max(sx0, x), b = Math.min(sx1, x + step - 0.025);
+      for (let x = sx0 - (row % 2 ? run / 2 : 0); x < sx1 - 0.05; x += run) {
+        const a = Math.max(sx0, x), b = Math.min(sx1, x + run - 0.025);
         if (b - a < 0.08) continue;
         course.push([a, b, 0.86 + look() * 0.22]);
       }
@@ -146,13 +147,19 @@ export function timberHalle(sink: PartSink, spec: HalleSpec): { rg: RoofGeometry
     const bc = spec.boardedGables;
     for (const sz of [-1, 1]) {
       const z = sz * (rd / 2 - 0.34);
-      for (let x = -px; x < px - 0.1; x += 0.2) {
-        const xm = x + 0.1, top = under(Math.abs(xm) + 0.1) - 0.04;
+      // (227, the facade budget: boards 24 cm, was 20)
+      for (let x = -px; x < px - 0.1; x += 0.24) {
+        const xm = x + 0.12, top = under(Math.abs(xm) + 0.12) - 0.04;
         if (top - tieTop < 0.1) continue;
         const board = { colour: shade(bc, 0.88 + look() * 0.2), decor: true };
-        // (the boards' eased arrises a desktop's: a phone draws them square)
-        if (spec.mobile) sink.span('structureWood', x + 0.005, tieTop, z - 0.012, x + 0.195, top, z + 0.012, board);
-        else bevelSpan(sink, 'structureWood', x + 0.005, tieTop, z - 0.012, x + 0.195, top, z + 0.012, 0.006, board);
+        // (the boards' eased arrises a desktop's: a phone draws them square; 227, the facade budget: only the two on the
+        // gable's outer face, the ones the field sees, a hexagonal section)
+        if (spec.mobile) sink.span('structureWood', x + 0.005, tieTop, z - 0.012, x + 0.235, top, z + 0.012, board);
+        else {
+          const x0 = x + 0.005, x1 = x + 0.235, zi = z - sz * 0.012, zo = z + sz * 0.012, c = 0.006 * sz;
+          orientedPrism(sink, 'structureWood', [[x0, tieTop, zi], [x1, tieTop, zi], [x1, tieTop, zo - c], [x1 - 0.006, tieTop, zo], [x0 + 0.006, tieTop, zo], [x0, tieTop, zo - c]],
+            [0, 1, 0], top - tieTop, board);
+        }
       }
       const face: Face = { origin: [0, 0, z + sz * 0.012], u: [sz, 0, 0], out: [0, 0, sz], width: 1 };
       const vy = tieTop + (under(0) - tieTop) * 0.45, zf = z + sz * 0.012, zo = zf + sz * 0.13;
@@ -236,7 +243,7 @@ export function hallStalls(sink: PartSink, spec: HalleSpec, opts: { tables?: num
         const x = sx * Math.min(px - 0.85, W * 0.2), L = Math.min(2.4, D * 0.36), y = FLOOR + 0.74;
         bevelSpan(sink, 'structureWood', x - 0.4, y, zc - L / 2, x + 0.4, y + 0.045, zc + L / 2, 0.012, { colour: board, decor: true, shadow: true });
         for (const dz of [-1, 1]) for (const dx of [-1, 1]) {
-          bevelMember(sink, 'structureWood', [x + dx * 0.38, FLOOR, zc + dz * (L / 2 - 0.2)], [x + dx * 0.2, y, zc + dz * (L / 2 - 0.2)], 0.05, 0.05, [0, 0, 1],
+          sink.member('structureWood', [x + dx * 0.38, FLOOR, zc + dz * (L / 2 - 0.2)], [x + dx * 0.2, y, zc + dz * (L / 2 - 0.2)], 0.05, 0.05, [0, 0, 1],
             { colour: leg, decor: true, exposed: true }, 0);
         }
         // the produce in heaps along the boards
