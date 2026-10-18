@@ -614,6 +614,12 @@ for (const [width, height] of [[844, 390], [932, 430], [667, 375]]) {
   assert.equal(paint.shells.length, 4, `${at}: four spent shells`);
   assertApart(paint.dry, paint.texts, `${at} empty rack`);
   assertApart([...paint.shells, ...paint.texts], paint.texts, `${at} empty rack`);
+  // ... and the strike keeps 3 px from every text, the readout line under it included (the capture's strike gap)
+  for (const strike of paint.dry.filter((op) => op.lineWidth === 1.5)) for (const text of paint.texts) {
+    const apart = Math.max(text.box.x0 - strike.box.x1, strike.box.x0 - text.box.x1, text.box.y0 - strike.box.y1,
+      strike.box.y0 - text.box.y1);
+    assert.ok(apart >= 3, `${at} empty rack: the strike keeps ${apart.toFixed(2)} px from "${text.text}"`);
+  }
   // an autoloader reloading its rack: the countdown sits beside it (left), clear of the shells, readout and range tag
   const refill = tankOf('m1a3', [12, 4, 10]);
   refill.combat.magazine.rounds = 0;

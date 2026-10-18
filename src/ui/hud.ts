@@ -4206,7 +4206,8 @@ export function initHud(bus: EventBus): HudRuntime {
     // Short landscape keeps the whole readout stack close to the scope, but clear of the reload countdown and under
     // the rack, never through it (critic r3, 844x390 / 932x430 / 667x375: the readout sat level with the rack, and
     // touched the countdown; a struck rack may drop below a small ring, sightMarkTop).
-    const underRack = draw.magazine ? draw.magazineBottomY + 13 : 0;
+    // A struck rack's strike reaches 2.4 px under the shells: the line keeps 3 px from it (the capture's strike gap).
+    const underRack = !draw.magazine ? 0 : draw.magazineBottomY + (draw.magazine.dry ? 16 : 13);
     if (h <= 300) return Math.max(draw.cy + 32, underRack);
     if (h <= 430) return Math.max(draw.cy + 48, underRack);
     return Math.min(

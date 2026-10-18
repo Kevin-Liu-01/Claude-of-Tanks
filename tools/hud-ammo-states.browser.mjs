@@ -294,7 +294,8 @@ try {
       }
       for (const row of hud.trayText) if (row.gap != null && row.gap < 2) issues.push(`tray text "${row.text}" ${row.gap} px apart`);
       if (c.touch) {
-        const dim = hud.fire.length && hud.fire.every((button) => button.opacity < 0.7);
+        // (the scope may hide the FIRE buttons: then only the body mark is read)
+        const dim = hud.fire.every((button) => button.opacity < 0.7);
         if (hud.gunDry !== dryStage || (dryStage && !dim) || (!dryStage && hud.fire.some((button) => button.opacity < 0.8))) {
           issues.push(`FIRE dimming does not follow the dry gun (${JSON.stringify({ gunDry: hud.gunDry, fire: hud.fire })})`);
         }
