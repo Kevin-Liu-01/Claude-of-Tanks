@@ -787,13 +787,13 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
     const kept = pieceCache.get(mesh);
     const pv = (pos as THREE.BufferAttribute).version ?? 0, iv = ix?.version ?? -1;
     if (kept && kept.geometry === g && kept.pv === pv && kept.iv === iv && kept.m.every((v, k) => v === M.elements[k])) return kept.out;
-    const out = facePiecesNow(g!, pos as THREE.BufferAttribute, M, ix);
+    const out = facePiecesNow(pos as THREE.BufferAttribute, M, ix);
     pieceCache.set(mesh, { geometry: g!, pv, iv, m: Float64Array.from(M.elements), out });
     return out;
   }
   const pieceCache = new WeakMap<THREE.Mesh, { geometry: THREE.BufferGeometry; pv: number; iv: number; m: Float64Array;
     out: Array<{ tris: number[]; xyz: Float32Array }> }>();
-  function facePiecesNow(g: THREE.BufferGeometry, pos: THREE.BufferAttribute, M: THREE.Matrix4, ix: THREE.BufferAttribute | null): Array<{ tris: number[]; xyz: Float32Array }> {
+  function facePiecesNow(pos: THREE.BufferAttribute, M: THREE.Matrix4, ix: THREE.BufferAttribute | null): Array<{ tris: number[]; xyz: Float32Array }> {
     const n = Math.floor((ix ? ix.count : pos.count) / 3);
     const parent = new Int32Array(n);
     for (let t = 0; t < n; t++) parent[t] = t;

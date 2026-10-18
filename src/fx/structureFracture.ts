@@ -1563,7 +1563,83 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     pose[3] = _layQ.x; pose[4] = _layQ.y; pose[5] = _layQ.z; pose[6] = _layQ.w;
     writePose(b, pose);
   }
-  const _layQ = new THREE.Quaternion();
+  const _layQ = new THREE.Quaternion(), _bakePose = new Float64Array(7);
+  /**
+   * (round 4; the hostomel tower: a clump whose box is thick — two faces at a corner — drew one plate 3.9 x 2.5 m standing
+   * upright on the ground, a box no push turns) a body whose drawing is one flat plate standing up 1.5 m and more is laid
+   * on its broad side as it bakes: turned about its middle so the plate lies flat, its lowest point kept.
+   */
+  function flattenStandingPlate(b: LiveBody): void {
+    let n = 0, mx = 0, my = 0, mz = 0, y0 = Infinity, y1 = -Infinity;
+    const c = [0, 0, 0, 0, 0, 0];
+    for (const m of b.meshes) {
+      const pos = m.geometry.getAttribute('position');
+      if (!pos) continue;
+      for (let i = 0; i < pos.count; i++) {
+        _plv.fromBufferAttribute(pos as THREE.BufferAttribute, i).applyMatrix4(m.matrix);
+        n++; mx += _plv.x; my += _plv.y; mz += _plv.z;
+        c[0] += _plv.x * _plv.x; c[1] += _plv.x * _plv.y; c[2] += _plv.x * _plv.z; c[3] += _plv.y * _plv.y; c[4] += _plv.y * _plv.z; c[5] += _plv.z * _plv.z;
+        if (_plv.y < y0) y0 = _plv.y; if (_plv.y > y1) y1 = _plv.y;
+      }
+    }
+    if (n < 3 || y1 - y0 < 1.5) return;
+    mx /= n; my /= n; mz /= n;
+    const cov = [c[0] / n - mx * mx, c[1] / n - mx * my, c[2] / n - mx * mz, c[3] / n - my * my, c[4] / n - my * mz, c[5] / n - mz * mz];
+    // the plate's normal: the covariance's least axis (inverse iteration on cov + εI from the vertical's complement)
+    const nrm = leastAxis(cov);
+    if (!nrm || Math.abs(nrm[1]) > 0.45) return;
+    // thin: its spread along the normal a hand at most (a plate, not a block)
+    let lo = Infinity, hi = -Infinity;
+    for (const m of b.meshes) {
+      const pos = m.geometry.getAttribute('position');
+      if (!pos) continue;
+      for (let i = 0; i < pos.count; i++) {
+        _plv.fromBufferAttribute(pos as THREE.BufferAttribute, i).applyMatrix4(m.matrix);
+        const d = (_plv.x - mx) * nrm[0] + (_plv.y - my) * nrm[1] + (_plv.z - mz) * nrm[2];
+        if (d < lo) lo = d; if (d > hi) hi = d;
+      }
+    }
+    if (hi - lo > 0.6) return;
+    _pln.set(nrm[0], nrm[1], nrm[2]);
+    _plu.set(0, nrm[1] >= 0 ? 1 : -1, 0);
+    _plq.setFromUnitVectors(_pln, _plu);
+    // about its middle, then down so it lies where its foot stood
+    _plm.makeTranslation(mx, my, mz).multiply(_plm2.makeRotationFromQuaternion(_plq)).multiply(_plm3.makeTranslation(-mx, -my, -mz));
+    let ny0 = Infinity;
+    for (const m of b.meshes) {
+      m.matrix.premultiply(_plm);
+      const pos = m.geometry.getAttribute('position');
+      if (!pos) continue;
+      for (let i = 0; i < pos.count; i++) { _plv.fromBufferAttribute(pos as THREE.BufferAttribute, i).applyMatrix4(m.matrix); if (_plv.y < ny0) ny0 = _plv.y; }
+    }
+    for (const m of b.meshes) { m.matrix.elements[13] += y0 - ny0 + 0.02; m.matrixWorldNeedsUpdate = true; }
+  }
+  const _plv = new THREE.Vector3(), _pln = new THREE.Vector3(), _plu = new THREE.Vector3(), _plq = new THREE.Quaternion();
+  const _plm = new THREE.Matrix4(), _plm2 = new THREE.Matrix4(), _plm3 = new THREE.Matrix4();
+  /** A symmetric 3×3's (xx xy xz yy yz zz) least eigenvector (Jacobi), or null. */
+  function leastAxis(cv: readonly number[]): [number, number, number] | null {
+    const a = [[cv[0]!, cv[1]!, cv[2]!], [cv[1]!, cv[3]!, cv[4]!], [cv[2]!, cv[4]!, cv[5]!]];
+    const v = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+    for (let sweep = 0; sweep < 24; sweep++) {
+      let off = 0;
+      for (let p = 0; p < 3; p++) for (let q = p + 1; q < 3; q++) off += a[p]![q]! * a[p]![q]!;
+      if (off < 1e-18) break;
+      for (let p = 0; p < 3; p++) for (let q = p + 1; q < 3; q++) {
+        if (Math.abs(a[p]![q]!) < 1e-20) continue;
+        const theta = (a[q]![q]! - a[p]![p]!) / (2 * a[p]![q]!);
+        const t = Math.sign(theta || 1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+        const cs = 1 / Math.sqrt(t * t + 1), sn = t * cs;
+        for (let k = 0; k < 3; k++) { const akp = a[k]![p]!, akq = a[k]![q]!; a[k]![p] = cs * akp - sn * akq; a[k]![q] = sn * akp + cs * akq; }
+        for (let k = 0; k < 3; k++) { const apk = a[p]![k]!, aqk = a[q]![k]!; a[p]![k] = cs * apk - sn * aqk; a[q]![k] = sn * apk + cs * aqk; }
+        for (let k = 0; k < 3; k++) { const vkp = v[k]![p]!, vkq = v[k]![q]!; v[k]![p] = cs * vkp - sn * vkq; v[k]![q] = sn * vkp + cs * vkq; }
+      }
+    }
+    let best = 0;
+    for (let k = 1; k < 3; k++) if (a[k]![k]! < a[best]![best]!) best = k;
+    const out: [number, number, number] = [v[0]![best]!, v[1]![best]!, v[2]![best]!];
+    const l = Math.hypot(out[0], out[1], out[2]);
+    return l > 1e-9 ? [out[0] / l, out[1] / l, out[2] / l] : null;
+  }
   /** Whether a body at `pose` stands on its edge (its thin axis within 24° of level, reaching 2.5 times its thickness up)
    *  1.5 m tall or more. */
   function onEdge(b: LiveBody, pose: ArrayLike<number>): boolean {
@@ -1589,6 +1665,10 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   }
   /** A body at rest into its building's heap: its geometry baked where it lies (one static mesh a body). */
   function bake(b: LiveBody, release = true): void {
+    // (round 4) never baked standing on its edge, whatever bakes it (its rest, the pool's eviction, the share's room): laid
+    // flat where it stands (the census's hostomel tower: its dark interior plate baked upright beside the tower)
+    if (Number.isFinite(b.pose[0]!) && onEdge(b, b.pose)) { _bakePose.set(b.pose); layFlat(b, _bakePose); }
+    else flattenStandingPlate(b);
     unlist(b);
     if (release) o.pool.release(b.handle);
     const live = lives.get(b.structureIdx);

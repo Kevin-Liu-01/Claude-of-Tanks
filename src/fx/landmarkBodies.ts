@@ -99,6 +99,32 @@ interface Layout { names: string[]; sizes: number[] }
 
 const BAKE_STILL_S = 1.5, BAKE_AGE_S = 30;
 
+const _pn = new THREE.Vector3(), _pu = new THREE.Vector3();
+/** A symmetric 3×3's (xx xy xz yy yz zz) least eigenvector (Jacobi), or null. */
+function leastAxis3(cv: readonly number[]): [number, number, number] | null {
+  const a = [[cv[0]!, cv[1]!, cv[2]!], [cv[1]!, cv[3]!, cv[4]!], [cv[2]!, cv[4]!, cv[5]!]];
+  const v = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+  for (let sweep = 0; sweep < 24; sweep++) {
+    let off = 0;
+    for (let p = 0; p < 3; p++) for (let q = p + 1; q < 3; q++) off += a[p]![q]! * a[p]![q]!;
+    if (off < 1e-18) break;
+    for (let p = 0; p < 3; p++) for (let q = p + 1; q < 3; q++) {
+      if (Math.abs(a[p]![q]!) < 1e-20) continue;
+      const theta = (a[q]![q]! - a[p]![p]!) / (2 * a[p]![q]!);
+      const t = Math.sign(theta || 1) / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+      const cs = 1 / Math.sqrt(t * t + 1), sn = t * cs;
+      for (let k = 0; k < 3; k++) { const akp = a[k]![p]!, akq = a[k]![q]!; a[k]![p] = cs * akp - sn * akq; a[k]![q] = sn * akp + cs * akq; }
+      for (let k = 0; k < 3; k++) { const apk = a[p]![k]!, aqk = a[q]![k]!; a[p]![k] = cs * apk - sn * aqk; a[q]![k] = sn * apk + cs * aqk; }
+      for (let k = 0; k < 3; k++) { const vkp = v[k]![p]!, vkq = v[k]![q]!; v[k]![p] = cs * vkp - sn * vkq; v[k]![q] = sn * vkp + cs * vkq; }
+    }
+  }
+  let best = 0;
+  for (let k = 1; k < 3; k++) if (a[k]![k]! < a[best]![best]!) best = k;
+  const out: [number, number, number] = [v[0]![best]!, v[1]![best]!, v[2]![best]!];
+  const l = Math.hypot(out[0], out[1], out[2]);
+  return l > 1e-9 ? [out[0] / l, out[1] / l, out[2] / l] : null;
+}
+
 export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
   const live: LiveBody[] = [];
   /** Hanging parts falling to where they lie (no body): world centre, heights, turns, clock. */
@@ -166,6 +192,28 @@ export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
 
   interface Tri { span: StructureSpan; at: number }
   /** One group's body: its triangles (body frame bounds, their own attributes about the box's centre), thrown. */
+  /** A group's drawing (body frame about its centre) read as a plate: its least axis and half its spread along it, when
+   *  that spread is a hand at most; else null. */
+  function plateAxis(byMat: Map<THREE.Material, { pos: number[] }>): [number, number, number, number] | null {
+    let n = 0;
+    const cv = [0, 0, 0, 0, 0, 0];
+    let mx = 0, my = 0, mz = 0;
+    for (const e of byMat.values()) for (let i = 0; i + 2 < e.pos.length; i += 3) { mx += e.pos[i]!; my += e.pos[i + 1]!; mz += e.pos[i + 2]!; n++; }
+    if (n < 3) return null;
+    mx /= n; my /= n; mz /= n;
+    for (const e of byMat.values()) for (let i = 0; i + 2 < e.pos.length; i += 3) {
+      const x = e.pos[i]! - mx, y = e.pos[i + 1]! - my, z = e.pos[i + 2]! - mz;
+      cv[0] += x * x; cv[1] += x * y; cv[2] += x * z; cv[3] += y * y; cv[4] += y * z; cv[5] += z * z;
+    }
+    const ax = leastAxis3(cv);
+    if (!ax) return null;
+    let lo = Infinity, hi = -Infinity;
+    for (const e of byMat.values()) for (let i = 0; i + 2 < e.pos.length; i += 3) {
+      const d = (e.pos[i]! - mx) * ax[0] + (e.pos[i + 1]! - my) * ax[1] + (e.pos[i + 2]! - mz) * ax[2];
+      if (d < lo) lo = d; if (d > hi) hi = d;
+    }
+    return hi - lo <= 0.6 ? [ax[0], ax[1], ax[2], Math.max(0.02, (hi - lo) / 2)] : null;
+  }
   function throwGroup(seam: StructureDamageSeam, rule: PieceRule, tris: Tri[], salt: number, dirX: number, dirZ: number,
     settled: boolean, kinematic = false): boolean {
     if (!tris.length) return false;
@@ -225,6 +273,10 @@ export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
       meshes.push(mesh);
       drawn.push(mesh);
     }
+    // (round 4) a flat piece standing across its body frame's axes (a diagonal plate: its box a fat block round it, which
+    // lands on its base and holds the plate upright) falls as a tween to its broad side, never as that box
+    const plate = plateAxis(byMat);
+    if (plate && Math.abs(plate[1]) < 0.5 && Math.max(Math.abs(plate[0]), Math.abs(plate[2])) < 0.9) kinematic = true;
     // the body: its box, its density; spawned where it stood, turned as the set piece is
     const massKg = 8 * hx * hy * hz * rule.density;
     const shape = createRigidBox(hx, hy, hz, rule.density, { restitution: 0.12, friction: 0.7, rolling: 0.3, forceSleepS: 8 });
@@ -247,9 +299,17 @@ export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
       // settled, or no room (a barrage's collapses at once): it lies on the ground under where it stood, its thinnest side
       // down (an upright arm laid along the road's edge), never standing there
       const q0 = _q.clone();
-      if (hx < hy && hx <= hz) _q.multiply(_tq.setFromAxisAngle(_fwd, Math.PI / 2));
+      // (destruction-slabs 227 round 4; the census's delta #9 farmhouse: a 12.6 x 4.1 m plate diagonal in its body's plan
+      // laid in a late joiner's page standing on its edge — its box read thin upright) a flat piece lies on its broad side
+      // whatever its heading: its drawing's least axis turned up
+      let half = Math.min(hx, hy, hz);
+      if (plate && Math.abs(plate[1]) < 0.5) {
+        _pn.set(plate[0], plate[1], plate[2]);
+        _q.multiply(_tq.setFromUnitVectors(_pn, _pu.set(0, plate[1] >= 0 ? 1 : -1, 0)));
+        half = plate[3];
+      } else if (hx < hy && hx <= hz) _q.multiply(_tq.setFromAxisAngle(_fwd, Math.PI / 2));
       else if (hz < hy && hz < hx) _q.multiply(_tq.setFromAxisAngle(_right, Math.PI / 2));
-      const restY = o.groundAt(wcx, wcz) + Math.min(hx, hy, hz) + 0.02;
+      const restY = o.groundAt(wcx, wcz) + half + 0.02;
       if (kinematic && !settled) {
         // (destruction-slabs 227 round 3) a hanging part no box holds well (a mill's sails, a gutter round a corner): it
         // falls where it hung under gravity's time, turning over to lie on its broad side, no body to land on
