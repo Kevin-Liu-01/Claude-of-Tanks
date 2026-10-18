@@ -3126,7 +3126,8 @@ export function addGarageFacilityDetails({
       addPoweredWinch(fixedCluster(featureSide - 9.5, featureDepth - 8.2), 0, 0, new THREE.Color(0x9a6542));
       addPartsPallet(fixedCluster(featureSide - 12.5, featureDepth - 6.0), 0, 0, 3);
       addSafetyRail(fixedCluster(featureSide + 9.0, featureDepth - 7.6), 0, 0, 8.5);
-      addPlatePreparationRack(fixedCluster(featureSide + 11.0, featureDepth - 10.0), 0, 0, new THREE.Color(0x8a614f));
+      // (garage r9: the plate rack's flat panels before the dock are gone, the audit's "flat dock panels"; the kit's crane
+      // bay at work on a turret is the arsenal's process zone, garageSteinburgKit.ts)
   };
   const addNavalDrydock = (): void => {
       environmentSpecificAssemblies += 1;

@@ -2593,6 +2593,7 @@ export function buildGarageEnvironment(
     // the kit's working cells carry stocked spares and secured stores of their own (garage r9)
     looseParts: facilityDetails.looseParts + (kit?.stats.looseParts ?? 0),
     secureStorageSystems: facilityDetails.secureStorageSystems + (kit?.stats.secureStores ?? 0),
+    factoryProcessZones: facilityDetails.factoryProcessZones + (kit?.stats.processZones ?? 0),
     ...approachDetails,
     approachTerrainGraded: true,
     approachMaxGrade,

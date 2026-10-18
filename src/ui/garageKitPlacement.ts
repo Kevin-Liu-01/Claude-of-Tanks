@@ -98,6 +98,8 @@ export interface GarageKitBuild {
     /** Stocked spares the props carry and the props that are secured stores (the facility receipt's own counts). */
     looseParts: number;
     secureStores: number;
+    /** Lifts in progress (a crane at work with its load): each a process zone of the facility receipt. */
+    processZones: number;
   }>;
   readonly slideshow: GarageSlideshowPose | null;
   /** Each grounded piece's footprint (world x, z and radius) for the pack's vegetation to keep clear of. */
@@ -374,6 +376,7 @@ export function buildGarageKitDressing(params: {
       kitPieces: items.length, kitTriangles, displayTriangles, decalTriangles, atmosphereTriangles,
       cranes: Object.freeze(cranes), brandPieces, tankImages, stations, stationMonitors, nameboards,
       displayRects: Object.freeze(displayRects), looseParts, secureStores,
+      processZones: cranes.filter((crane) => crane.atWork).length,
     }),
   };
 }
