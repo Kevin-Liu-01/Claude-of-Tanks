@@ -97,34 +97,36 @@ fits its radius, and stays inside the minimap at the map edges.
 
 ### Out of ammo and unlimited rounds
 
-A weapon with no round left shows no reload sweep, countdown or ready pulse.
-Its ring turns to sparse, muted danger dashes. A single-shot gun shows one
-struck round. A ring too small to hold that round, or an empty rack, drops the
-mark below the ring, 3 px clear of it (`sightMarkTop`). On the short landscape
-scope stack the round leads the ammo readout line instead. A rack shows spent
-slots for rounds stowage cannot load, and an empty rack is struck through. The
-range tag starts past the rack and its strike. Between two rounds of a clip or
-a salvo rack, the round being chambered fills as the group cycles. That is the
-last ready slot, so the slot of the round just fired never fills. No countdown
-shows under the rack. Spent launcher and magazine-reload controls are struck and
-disabled. Their count is spoken, not printed. Every empty tray slot is struck on
-a danger edge with its 0 in the danger ink, on desktop as on the phone. The
-phone's collapsed empty slot also loses its amber frame. A dry gun dims both
-phone FIRE buttons. A count of three digits or more tightens its slot's type
-label and count. Under unlimited rounds nothing reads empty: not the ring, the
-rack, the tray, the magazine control or the loader audio. The ammo `∞` takes the
-numeral's size. Unlimited rounds are read per vehicle (`rulesetUnlimitedFor`).
-In the AC-130 only the gunship refills, so an escort shows its real empty
-states. On a portrait phone a systems row that crosses the sight
-(`portraitSightClearTop`) moves below the scope readouts when there is room,
-otherwise above the ring. The sight's band covers the countdown, the rack, the
-struck round and the aim warning.
+A weapon with no round left shows no reload sweep, countdown or ready pulse. Its
+ring turns to sparse, muted danger dashes. A single-shot gun shows one struck
+round. When the ring's lower arc would cross that round or an empty rack, the
+mark drops below the ring, 3 px clear of it (`sightMarkTop`), and a canvas aim
+warning moves below the mark. On the short landscape scope stack the round leads
+the ammo readout line instead. A rack shows spent slots for rounds stowage
+cannot load, and an empty rack is struck through. The range tag starts past the
+rack and its strike. Between two rounds of a clip or a salvo rack, the round
+being chambered fills as the group cycles. That is the last ready slot, so the
+slot of the round just fired never fills. No countdown shows under the rack.
+Spent launcher and magazine-reload controls are struck and disabled. Their count
+is spoken, not printed. Every empty tray slot is struck on a danger edge with
+its 0 in the danger ink, on desktop as on the phone. The phone's collapsed empty
+slot also loses its amber frame. A dry gun dims both phone FIRE buttons. A count
+of three digits or more tightens its slot's type label and count, and the shell
+icon gives way to it: on desktop the icon rises, on the phone it shrinks below
+the corner count, 2 px clear in ink. Under unlimited rounds nothing reads empty:
+not the ring, the rack, the tray, the magazine control or the loader audio. The
+ammo `∞` takes the numeral's size. Unlimited rounds are read per vehicle
+(`rulesetUnlimitedFor`). In the AC-130 only the gunship refills, so an escort
+shows its real empty states. On a portrait phone a systems row that crosses the
+sight (`portraitSightClearTop`) moves below the scope readouts when there is
+room, otherwise above the ring. The sight's band covers the countdown, the rack,
+the struck round and the aim warning.
 `src/ui/hudAmmoOut.selftest.mjs` covers the derivations and
 `src/ui/hudAmmoOutPaint.selftest.mjs` covers the live paint and the scope
 stack's geometry, both in `npm test`. For the rendered frames (it takes the
 capture lease), run the command below. It covers desktop, a portrait phone and
-three landscape phones, and checks pixels, recorded canvas geometry and the
-tray's computed styles:
+three landscape phones, and checks pixels, recorded canvas geometry, the
+tray's computed styles and each slot's count-to-icon ink gap:
 
 ```sh
 node tools/hud-ammo-states.browser.mjs --url=http://127.0.0.1:5189 --out=/absolute/new-evidence-directory

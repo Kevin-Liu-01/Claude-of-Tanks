@@ -254,16 +254,26 @@ function read(tank) {
     'the struck control reads the token');
   assert.match(touch, /\.cot-shell\.sel\.empty\{[^}]*border-bottom-color:var\(--hud-danger\)/,
     'the collapsed phone tray shows its selected empty slot in the token, over the amber frame');
-  assert.match(touch, /\.cot-shell\.sel\.empty::before\{[^}]*background:var\(--hud-danger\)[^}]*rotate\(-45deg\)/,
+  assert.match(touch, /\.cot-shell\.sel\.empty::before\{content:'';[^}]*background:var\(--hud-danger\)[^}]*rotate\(-45deg\)/,
     'struck through like a spent control (r3: the bare danger edge still read as selected)');
   assert.match(touch, /\.cot-shell\.sel\.empty \.cnt\{color:var\(--hud-danger\);\}/, 'its count in the danger ink');
   assert.match(touch, /\.cot-shell\.unlimited \.cnt\{font-size:16px;/, 'the phone ∞ at the numeral\'s size');
   // critic r3: desktop empty slots read OUT the way the phone's do — struck on a danger edge, their 0 in the token
   assert.match(hud, /\.cot-shell\.empty\{[^}]*border-bottom-color:var\(--hud-danger\)[^}]*box-shadow:inset 0 -2px 0 var\(--hud-danger\)/,
     'a desktop empty slot sits on a danger edge');
-  assert.match(hud, /\.cot-shell\.empty::before\{[^}]*background:var\(--hud-danger\)[^}]*rotate\(-45deg\)/, 'struck through');
+  // (critic r4 advisory: the values the capture reads are pinned here too — the strike is drawn, the label is 7.5 px)
+  assert.match(hud, /\.cot-shell\.empty::before\{content:'';[^}]*background:var\(--hud-danger\)[^}]*rotate\(-45deg\)/, 'struck through');
   assert.match(hud, /\.cot-shell\.empty \.cnt\{color:var\(--hud-danger\);\}/, 'its 0 in the danger ink');
-  assert.match(hud, /\.cot-shell\.wide \.ty\{[^}]*\}\n\.cot-shell\.wide \.cnt\{[^}]*\}/, 'a three-digit count tightens its row');
+  assert.match(hud, /\.cot-shell\.wide \.ty\{[^}]*font-size:7\.5px;[^}]*\}\n\.cot-shell\.wide \.cnt\{[^}]*\}/,
+    'a three-digit count tightens its row');
+  // critic r4: the shell gives way to a three-digit count — rising on desktop, shrinking under the phone's corner count
+  // (the rendered ink gap, 2 px at the least, is the capture's)
+  assert.match(hud, /\n\.cot-shell\.wide canvas\{transform:translate\(-50%,calc\(-50% - 4px\)\) scale\(\.88\);\}/,
+    'a desktop slot\'s shell rises clear of its three-digit count');
+  assert.match(touch, /body\.cot-touch-layout \.cot-shell\.wide \.cnt\{top:1px;right:2px;font-size:10px;\}\n/,
+    'the phone sets a three-digit count smaller in its corner');
+  assert.match(touch, /body\.cot-touch-layout \.cot-shell\.wide canvas\{transform:translate\(-50%,calc\(-50% \+ 3px\)\) scale\(\.6\);\}/,
+    'and its shell shrinks below it');
   assert.match(touch, /body\.cot-gun-dry \.cot-touch \.fire\{[^}]*opacity:\.62/, 'a dry gun dims the FIRE buttons');
   // the rendered proof of these rules is tools/hud-ammo-states.browser.mjs (computed styles of the live tray)
 }

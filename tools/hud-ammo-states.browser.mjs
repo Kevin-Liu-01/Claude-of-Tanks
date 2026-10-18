@@ -14,7 +14,9 @@
 //    phone the systems row stays clear of the sight's band (battleHudLayout SIGHT_BAND_*);
 //  - the DOM: struck controls, ∞ counts at the numeral's size, every empty tray slot struck on a danger edge with its
 //    0 in the danger ink (the phone's collapsed slot without its amber frame), the tray's type label and count apart,
-//    and a dry gun's FIRE buttons dimmed on a touch layout.
+//    and a dry gun's FIRE buttons dimmed on a touch layout;
+//  - rendered pixels of every visible tray slot: its count keeps 2 CSS px of ink from its shell icon (each slot is shot
+//    bare, with only its count and with only its icon; ink is what each adds in brightness).
 // Takes the capture lock (NORMAL band) and accepts an existing dev server. --ticket-stamp=<ms> rejoins the queue at an
 // earlier ticket of the same run (capture-lock ticketAt: a relaunched run keeps its place):
 // node tools/hud-ammo-states.browser.mjs --url=http://127.0.0.1:5189 --out=outputs/hud-ammo-states
@@ -65,6 +67,8 @@ const RELOAD_INK = 'rgba(240,160,48,0.95)';
 const SIGHT_BAND = { above: 64, below: 80, half: 90 };
 /** The least gap between the empty mark's strike and any text on the reticle (critic r3: 1.5 px from the range tag). */
 const STRIKE_TEXT_GAP = 3;
+/** The least ink gap between a tray slot's count and its shell icon (critic r4: the phone's 180 ran into the dart). */
+const TRAY_INK_GAP = 2;
 
 /** Installed before the page boots: records the reticle canvas's calls in CSS px, one paint at a time. */
 function recordReticle() {
@@ -232,6 +236,63 @@ function readHud(rules) {
   };
 }
 
+/** In the page: the least distance between the ink a slot's count adds and the ink its icon adds, in CSS px. */
+async function inkGap({ shots, width }) {
+  const read = async (b64) => {
+    const img = new Image();
+    img.src = `data:image/png;base64,${b64}`;
+    await img.decode();
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width; canvas.height = img.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    return ctx.getImageData(0, 0, img.width, img.height);
+  };
+  const [bare, count, icon] = await Promise.all(shots.map(read));
+  const luma = (d, i) => 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+  // brighter than the bare slot (a text shadow only darkens it); the icon may be dimmed (an empty slot's .34)
+  const ink = (shot, threshold) => {
+    const points = [];
+    for (let i = 0; i < shot.data.length; i += 4) {
+      if (luma(shot.data, i) - luma(bare.data, i) > threshold) points.push([(i / 4) % shot.width, Math.floor(i / 4 / shot.width)]);
+    }
+    return points;
+  };
+  const text = ink(count, 40);
+  const shell = ink(icon, 24);
+  if (!text.length || !shell.length) return null;
+  let best = Infinity;
+  for (const [x0, y0] of text) for (const [x1, y1] of shell) best = Math.min(best, Math.hypot(x1 - x0, y1 - y0));
+  // neighbouring device pixels touch: one pixel apart is no gap
+  return Math.round((Math.max(0, best - 1) / (bare.width / width)) * 10) / 10;
+}
+
+/** Every visible tray slot's count-to-icon ink gap, read off the rendered slot. */
+async function trayInkGaps(page) {
+  const slots = await page.evaluate(() => [...document.querySelectorAll('.cot-shell')].map((el, index) => {
+    const cnt = el.querySelector('.cnt');
+    if (!cnt?.textContent || !el.querySelector('canvas') || !el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) return null;
+    const r = el.getBoundingClientRect();
+    return { index, text: cnt.textContent, clip: { x: r.left, y: r.top, width: r.width, height: r.height } };
+  }).filter(Boolean));
+  const show = (index, count, icon) => page.evaluate(([i, showCount, showIcon]) => {
+    const el = document.querySelectorAll('.cot-shell')[i];
+    el.querySelector('.cnt').style.visibility = showCount ? '' : 'hidden';
+    el.querySelector('canvas').style.visibility = showIcon ? '' : 'hidden';
+  }, [index, count, icon]);
+  const rows = [];
+  for (const slot of slots) {
+    const shots = [];
+    for (const [count, icon] of [[false, false], [true, false], [false, true]]) {
+      await show(slot.index, count, icon);
+      shots.push((await page.screenshot({ clip: slot.clip })).toString('base64'));
+    }
+    await show(slot.index, true, true);
+    rows.push({ text: slot.text, gap: await page.evaluate(inkGap, { shots, width: slot.clip.width }) });
+  }
+  return rows;
+}
+
 const amberish = (color) => {
   const [r, g, b] = (/rgba?\((\d+), (\d+), (\d+)/.exec(color)?.slice(1) ?? []).map(Number);
   return r > 200 && g > 140 && g < 210 && b < 120;
@@ -293,6 +354,10 @@ try {
         }
       }
       for (const row of hud.trayText) if (row.gap != null && row.gap < 2) issues.push(`tray text "${row.text}" ${row.gap} px apart`);
+      const trayInk = await trayInkGaps(page);
+      for (const row of trayInk) {
+        if (row.gap == null || row.gap < TRAY_INK_GAP) issues.push(`tray count "${row.text}" ${row.gap} px from its shell icon`);
+      }
       if (c.touch) {
         // (the scope may hide the FIRE buttons: then only the body mark is read)
         const dim = hud.fire.every((button) => button.opacity < 0.7);
@@ -314,7 +379,7 @@ try {
         await page.screenshot({ path: resolve(out, `${c.name}-${stage}-reticle.png`),
           clip: { x: c.width / 2 - 170, y: c.height / 2 - 120, width: 340, height: Math.min(240, c.height / 2 + 100) } });
       }
-      reports.push({ case: c.name, stage, file, ...hud, issues });
+      reports.push({ case: c.name, stage, file, ...hud, trayInk, issues });
       for (const issue of issues) failures.push(`${c.name}/${stage}: ${issue}`);
       refreshCaptureLock();
     }

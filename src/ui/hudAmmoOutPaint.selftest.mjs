@@ -17,7 +17,7 @@ import { createSpecialActionState } from '../sim/specialActionPolicy.ts';
 import { matchRulesetFor, refillUnlimitedAmmunition } from '../sim/matchRuleset.ts';
 import { createAimController } from '../game/aimController.ts';
 import { createBus } from '../game/stateCore.ts';
-import { initHud, RETICLE_AMMO_INK as INK } from './hud.ts';
+import { aimWarningState, initHud, RETICLE_AMMO_INK as INK } from './hud.ts';
 
 // --- a minimal DOM: elements remember classes, attributes, styles and their queried children; canvases record ---
 const created = [];
@@ -699,6 +699,42 @@ for (const [id, label] of [['m1a1_abrams_hc', 'struck round'], ['m1a3', 'struck 
     const top = Math.min(...marks.map((op) => op.box.y0));
     if (wide) assert.ok(top < ring.y + ring.r - 10, `${id}, a ${Math.round(ring.r)} px ring holds the ${label} under the marker`);
     else assert.ok(top > ring.y + ring.r, `${id}, a ${Math.round(ring.r)} px ring: the ${label} sits below it`);
+  }
+}
+// 15b. critic r4 (D3): the canvas aim warning (a non-touch layout; a touch layout shows its own chip) moves under an
+// empty mark that dropped below a small ring. On rings of 22, 29 and 40 px — a 29 px ring drops the struck round to
+// about cy+36..53, just above where the warning used to sit — the chip never covers the mark and the warning text
+// keeps 3 px from the mark and its strike, for both the gun travel limit and the rollover warning.
+{
+  const apart = (a, b) => Math.max(a.x0 - b.x1, b.x0 - a.x1, a.y0 - b.y1, b.y0 - a.y1);
+  const contains = (outer, inner) => outer.x0 <= inner.x0 && outer.x1 >= inner.x1 && outer.y0 <= inner.y0 && outer.y1 >= inner.y1;
+  for (const [id, label] of [['m1a1_abrams_hc', 'struck round'], ['m1a3', 'struck rack']]) {
+    for (const metres of [6, 8, 11]) {
+      for (const [kind, warn] of [['limit', { gunLimitSpec: true }], ['rollover', { selfRightLabel: 'F' }]]) {
+        dispersionM = metres;
+        const tank = tankOf(id, [0, 0, 0]);
+        if (tank.combat.magazine) tank.combat.magazine.rounds = 0;
+        if (kind === 'limit') tank.state.gunLimitSpec = true;
+        else Object.assign(tank.state, { overturned: true, grounded: true, _body: { tumbling: true } });
+        const ops = settledPaint(tank);
+        const ring = ringOf(ops);
+        const at = `${id}, a ${Math.round(ring.r)} px ring, ${kind}`;
+        const warning = aimWarningState(warn);
+        assert.equal(warning.kind, kind);
+        const text = ops.find((op) => op.op === 'fillText' && op.text === warning.text);
+        assert.ok(text, `${at}: the canvas paints the warning`);
+        const chip = ops.find((op) => op.op === 'fill' && op.box && op.path.length === 6 && contains(op.box, text.box));
+        assert.ok(chip, `${at}: the warning's chip`);
+        const marks = ops.filter((op) => op.op === 'stroke' && op.style === INK.dry && op.box);
+        assert.ok(marks.length && Math.min(...marks.map((op) => op.box.y0)) > ring.y + ring.r, `${at}: the ${label} sits below the ring`);
+        for (const mark of marks) {
+          const what = mark.lineWidth === 1.5 ? 'strike' : label;
+          assert.ok(apart(text.box, mark.box) >= 3,
+            `${at}: the warning text keeps ${apart(text.box, mark.box).toFixed(2)} px from the ${what}`);
+          assert.ok(apart(chip.box, mark.box) > 0, `${at}: the warning chip covers the ${what}`);
+        }
+      }
+    }
   }
 }
 dispersionM = 8;

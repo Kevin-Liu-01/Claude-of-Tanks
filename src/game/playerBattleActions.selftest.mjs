@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { createPlayerBattleActions } from './playerBattleActions.ts';
 import { createBus } from './stateCore.ts';
 import { matchRulesetFor, rulesetUnlimitedFor } from '../sim/matchRuleset.ts';
@@ -346,5 +347,22 @@ for (const mode of ['juggernaut', 'infected', 'endless_horde']) {
   assert.ok(actions.setTank(spec).every((card) => card.unlimited === true), `${mode}: every seat carries ∞`);
 }
 game.ruleset = null;
+
+// critic r4 (D2): the shipped composition hands these actions that same per-entity read. main.ts passes the battle
+// client access's function (battleClientAccess.selftest: the access hands out rulesetUnlimitedFor itself, and
+// app/combatAimComposition returns that access unwrapped); a mode-wide stand-in here would mark an escort's cards ∞.
+{
+  const main = readFileSync(new URL('../main.ts', import.meta.url), 'utf8');
+  const composition = readFileSync(new URL('../app/combatAimComposition.ts', import.meta.url), 'utf8');
+  const start = main.indexOf('playerBattleActions = createPlayerBattleActions({');
+  assert.ok(start >= 0, 'main.ts composes the player battle actions');
+  const call = main.slice(start, main.indexOf('\n});', start));
+  assert.deepEqual(call.match(/\brulesetUnlimitedFor\b[^,\n]*/g), ['rulesetUnlimitedFor: battleClientAccess.rulesetUnlimitedFor'],
+    'main.ts passes battleClientAccess.rulesetUnlimitedFor, and nothing else, as the actions\' unlimited read');
+  assert.match(main, /const \{\s*battleClient: battleClientAccess,[^}]*\} = createCombatAimComposition\(/,
+    'main.ts takes its battle client access from the combat aim composition');
+  assert.match(composition, /const battleClient = createBattleClientAccess\(/);
+  assert.match(composition, /return \{ battleClient, rig, targetVisible \};/, 'the composition returns the access as built');
+}
 
 console.log('playerBattleActions.selftest: ammo, cooldowns, local rules, and network routing passed');

@@ -227,6 +227,10 @@ body.cot-touch-layout .cot-sixth .sub{font-size:7px;letter-spacing:.12em;}
    (11px overlap, both bottom-anchored). The keycap badge is hidden on touch,
    so its top-right corner is free: the count moves there. */
 body.cot-touch-layout .cot-shell .cnt{top:2px;right:3px;bottom:auto;}
+/* A three-digit count (an autocannon's 180) reaches the slot's centre: it sets smaller in the corner and the shell
+   shrinks below it, its base where it was (critic r4: the dart's tip ran into the 1). */
+body.cot-touch-layout .cot-shell.wide .cnt{top:1px;right:2px;font-size:10px;}
+body.cot-touch-layout .cot-shell.wide canvas{transform:translate(-50%,calc(-50% + 3px)) scale(.6);}
 /* Touch-target floor for garage chrome the phone shares with desktop. */
 body.cot-touch-layout .nv{padding:9px 14px;}
 body.cot-touch-layout .cot-country-chip{padding:9px 12px;}
