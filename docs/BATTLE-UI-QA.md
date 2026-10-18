@@ -107,9 +107,10 @@ and magazine-reload controls are struck and disabled. Their count is spoken,
 not printed. The phone's collapsed empty slot loses its amber frame and is
 struck on a danger edge. Under unlimited rounds nothing reads empty: not the
 ring, the rack, the tray, the magazine control or the loader audio. The ammo
-`∞` takes the numeral's size. On a portrait phone the systems row stays clear
-of the sight's band (`portraitSightClearTop`). That band covers the countdown,
-the rack, the aim warning and the scope readouts.
+`∞` takes the numeral's size. On a portrait phone a systems row that crosses the
+sight (`portraitSightClearTop`) moves below the scope readouts when there is
+room, otherwise above the ring. The sight's band covers the countdown, the
+rack, the struck round and the aim warning.
 `src/ui/hudAmmoOut.selftest.mjs` covers the derivations and
 `src/ui/hudAmmoOutPaint.selftest.mjs` covers the live paint and the scope
 stack's geometry, both in `npm test`. For the rendered frames (it takes the

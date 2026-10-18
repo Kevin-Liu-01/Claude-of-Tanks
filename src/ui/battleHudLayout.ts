@@ -47,19 +47,21 @@ export function battleReportDock(bottom: number, ceiling: number, compact: boole
 
 /** The reticle's band around the screen-centre sight (hud.ts paints it at the centre): above, the dispersion ring
  * (RET_CEIL_FRAC caps it near 58 px on a phone); below, the reload countdown under the autoloader rack, the struck
- * empty round, the aim warning (battleHudLayout.css: 50% + 48 px, 24 px tall) and, through the scope, the ammunition
- * readout and zoom plate (hud.ts sniperAmmoReadoutY: up to 108 px down, the plate 24 px under it). */
+ * empty round and the aim warning (battleHudLayout.css: 50% + 48 px, 24 px tall). Through the scope the ammunition
+ * readout and zoom plate run lower (hud.ts sniperAmmoReadoutY: up to 108 px down, the plate 24 px under it). */
 export const SIGHT_BAND_ABOVE = 64;
-export const SIGHT_BAND_BELOW = 140;
+export const SIGHT_BAND_BELOW = 80;
+export const SCOPE_BAND_BELOW = 140;
 /**
  * Owner 2026-10-17 (out of ammo, critic r3): a portrait phone parks the systems row above its ammo tray, which on
  * tall phones lands it across the sight — the countdown, the rack and the struck empty round painted over its labels.
- * A row crossing the band moves below it when it fits above `floor` (the lower control cluster), else above it when
- * it fits below `ceiling` (the map, the touch chrome), else it stays.
+ * A row crossing the sight's band moves below the scope's band too when the lower cluster leaves room above `floor`,
+ * else above the ring when it fits below `ceiling` (the map, the touch chrome), else it stays. A row already clear of
+ * the sight keeps its place (a tablet's row sits under the battle furniture, where it always was).
  */
 export function portraitSightClearTop(top: number, height: number, centerY: number, floor: number, ceiling: number): number {
   if (top >= centerY + SIGHT_BAND_BELOW || top + height <= centerY - SIGHT_BAND_ABOVE) return top;
-  const below = centerY + SIGHT_BAND_BELOW;
+  const below = centerY + SCOPE_BAND_BELOW;
   if (below + height <= floor) return below;
   const above = centerY - SIGHT_BAND_ABOVE - height;
   return above >= ceiling ? above : top;

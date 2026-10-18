@@ -48,10 +48,11 @@ const EXPECT = {
   // the scope may hide the controls row: its struck controls are the battle stages' (null skips the control checks)
   'ammo-dry-autoloader-sniper': { noReloadInk: true, dangerMin: 20, struckControl: null, dryMark: true },
 };
-// hud.ts RETICLE_AMMO_INK.dry / RELOAD_ACCENT; battleHudLayout.ts SIGHT_BAND_ABOVE / SIGHT_BAND_BELOW
+// hud.ts RETICLE_AMMO_INK.dry / RELOAD_ACCENT; battleHudLayout.ts SIGHT_BAND_ABOVE / SIGHT_BAND_BELOW (the scope's
+// readouts are checked against the row as furniture)
 const DRY_INK = 'rgba(240,90,90,0.92)';
 const RELOAD_INK = 'rgba(240,160,48,0.95)';
-const SIGHT_BAND = { above: 64, below: 140, half: 90 };
+const SIGHT_BAND = { above: 64, below: 80, half: 90 };
 
 /** Installed before the page boots: records the reticle canvas's calls in CSS px, one paint at a time. */
 function recordReticle() {
@@ -141,8 +142,9 @@ function readHud(rules) {
   }
   for (const text of readouts) for (const shell of rack) if (hit(text.box, shell.box)) overlaps.push(`"${text.text}" over the rack`);
   const furniture = [...dry, ...rack, ...readouts];
+  // (.flight-identity: the scope's vision switch, which the aerial sheet seats beside the sight)
   const controls = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con', '.cot-touch.on .round', '.cot-dp',
-    '.cot-aim-warning:not([hidden])'].flatMap((selector) => [...document.querySelectorAll(selector)].filter(visible)
+    '.cot-aim-warning:not([hidden])', '.flight-identity'].flatMap((selector) => [...document.querySelectorAll(selector)].filter(visible)
     .map((el) => ({ name: selector, box: rect(el) })));
   for (const item of furniture) for (const control of controls) {
     if (hit(item.box, control.box)) overlaps.push(`${item.op === 'text' ? `"${item.text}"` : 'sight mark'} over ${control.name}`);
