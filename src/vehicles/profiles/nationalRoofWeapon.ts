@@ -214,9 +214,10 @@ function cradleShield(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:n
   g.add('turretDetail',orientedSlab([a[0],y0,a[1]+.002],[b[0],y0,b[1]],[b[0]+ox,y0,b[1]+oz],[a[0]+ox,y0,a[1]+oz+.002],
    [a[0],y1,a[1]+.002],[b[0],y1,b[1]],[b[0]+ox,y1,b[1]+oz],[a[0]+ox,y1,a[1]+oz+.002]),0,0,0);
  }
- // the gussets from the cradle rails' front ends (z + .15) to the shield's back face
+ // the gussets from the cradle rails' front ends (z + .15) to the shield's back face (round 6: 10 mm, 1 mm inside the
+ // 12 mm rails' side planes over their 2 mm lap: no shared face)
  const railX=w/2-.006,front=z-.08+.23;
- for(const s of [-1,1])g.add('turretDetail',box(.012,.08,sz-c.t/2-front+.004),x+s*railX,y-.03,(front+sz-c.t/2)/2);
+ for(const s of [-1,1])g.add('turretDetail',box(.010,.08,sz-c.t/2-front+.004),x+s*railX,y-.03,(front+sz-c.t/2)/2);
  // bolt heads on the flange, top and bottom
  for(const v of [c.top-e-f.w/2,c.bottom+e+f.w/2])for(const s of [-.14,-.07,0,.07,.14])g.add('turretDark',cylZ(.007,.006,8),x+s,y+v,fz+f.t/2+.002);
  void l;
