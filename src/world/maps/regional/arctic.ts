@@ -12,6 +12,8 @@ import {
 } from './geometry.ts';
 import { buildHouse, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { doorCanopy, facadeOn, pilaster } from './facade.ts';
+import { roofLadder, wallLantern } from './dressing.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 // (the looks lane's r2 sweep, 2026-10-16: the module train, the billboard, the derelict, the radar tower and the Jamesway hut
 // are the looks lane's, in arcticStation.ts)
@@ -41,10 +43,15 @@ export const uvOffset = (ctx: RegionalBuildContext): [number, number] => [ctx.rn
 const hashPlot = (ctx: RegionalBuildContext): number => { const v = ctx.variant; const a = v(), b = v(); return (a + b * 0.5) % 1; };
 
 export const WINDOW: WindowStyle = {
-  frame: STEEL_DARK, frameWidth: 0.06, frameOut: 0.03, bars: 'none',
+  // (the looks lane, 227, BLD-04: the census read the station's windows as single blank lights) the line's insulated
+  // horizontal sliders: two sashes, the meeting stile between them
+  frame: STEEL_DARK, frameWidth: 0.06, frameOut: 0.03, bars: 'two',
   surround: { bucket: 'structureMetal', width: 0.08, out: 0.03, colour: STEEL },
   // (the sill is the steel drip flashing: it stands well proud of the skin)
   sill: { bucket: 'structureMetal', out: 0.1, colour: STEEL }, shutters: null,
+  // (227) and the head flashing over the surround, the drip cap a steel skin's every opening carries (desktop craft: the
+  // surround's own head on a phone)
+  head: { kind: 'lintel', bucket: 'structureMetal', h: 0.07, out: 0.09, ext: 0.03, colour: STEEL },
 };
 
 /**
@@ -164,6 +171,86 @@ function openingCuts(frame: HouseFrame, openings: readonly Opening[], name: 'fro
   });
 }
 
+/** Safety yellow: the guard posts at the vehicle doors. */
+const YELLOW = rgb(0xd2a62a);
+
+/**
+ * A steel building's finish (the looks lane, 227, BLD-04: the census read 9 of Verdant's 20 elements; the line's steel
+ * garages and warehouses as their contractors left them), the facade craft of a desktop build, all of it decor and none of
+ * it drawing from the build or look streams: the corner flashings up every corner (broken round the station's colour band
+ * at `band`), a steel hood over each man door with the vapour-proof lamp on its bracket beside it, a lamp over each
+ * overhead door and the concrete-filled guard posts at its jambs, the flue pipe and its rain cap over each chimney chase,
+ * and the roof ladder up to the first flue from the eave on its side.
+ */
+function steelCraft(sink: PartSink, frame: HouseFrame, openings: readonly Opening[], band: readonly [number, number] | null = null): void {
+  if (!facadeOn()) return;
+  const y0 = frame.floors[0] + 0.02, y1 = frame.eaveY - 0.02;
+  const runs: Array<[number, number]> = band ? [[y0, band[0] - 0.02], [band[1] + 0.02, y1]] : [[y0, y1]];
+  for (const name of ['front', 'right', 'back', 'left'] as const) {
+    const face = frame.faces[name], half = face.width / 2;
+    for (const side of [-1, 1]) for (const [a, b] of runs) pilaster(sink, 'structureMetal', face, side * (half - 0.06), a, b, 0.12, 0.025, { colour: STEEL });
+    // the insulated panels' joints every 1.2 m up the wall, a shade under its paint, broken round the openings' frames and
+    // the band (the modules' seams, the same panels)
+    const wall = PAINT_RGB[frame.spec.storeys[0].wall as Paint] ?? WHITE;
+    // (the blind pair: at 0.8 the joints on a long side seen raking read as streaks) a shade under the paint
+    const seam = { colour: shade(wall, 0.87), decor: true, fine: true } as const;
+    const cuts = openingCuts(frame, openings, name).map((c, k) => {
+      const m = openings.filter((o) => o.face === name)[k]?.kind === 'gate' ? 0.2 : 0.15;
+      return { u0: c.u0 - m, u1: c.u1 + m, y0: c.y0 - 0.12, y1: c.y1 + 0.2 };
+    });
+    if (band) cuts.push({ u0: -half, u1: half, y0: band[0] - 0.02, y1: band[1] + 0.02 });
+    for (let u = -half + 1.2; u < half - 0.3; u += 1.2) {
+      let from = y0;
+      for (const c of cuts.filter((q) => u > q.u0 && u < q.u1).sort((p, q) => p.y0 - q.y0)) {
+        if (c.y0 - from > 0.1) faceBox(sink, 'structureMetal', face, u, (from + c.y0) / 2, 0.01, 0.04, c.y0 - from, 0.02, seam, 'caps');
+        from = Math.max(from, c.y1);
+      }
+      if (y1 - from > 0.1) faceBox(sink, 'structureMetal', face, u, (from + y1) / 2, 0.01, 0.04, y1 - from, 0.02, seam, 'caps');
+    }
+  }
+  for (const o of openings) {
+    if (o.storey !== 0) continue;
+    const face = frame.faces[o.face], top = frame.floors[0] + o.y0 + o.h, half = face.width / 2;
+    if (o.kind === 'door') {
+      doorCanopy(sink, face, o.u, top, o.w, { kind: 'shed', bucket: 'structureMetal', colour: STEEL, timber: STEEL_DARK, depth: 0.9 });
+      // the lamp beside the hood, on the side clearer of the face's other openings (and inside the face)
+      const off = (o.w + 0.7) / 2 + 0.25;
+      const room = (u: number): number => Math.min(half - Math.abs(u) - 0.2,
+        ...openings.filter((q) => q !== o && q.face === o.face && q.storey === 0).map((q) => Math.abs(q.u - u) - q.w / 2 - 0.25));
+      const u = room(o.u + off) >= room(o.u - off) ? o.u + off : o.u - off;
+      if (room(u) > 0.1) wallLantern(sink, face, u, top + 0.12);
+    } else if (o.kind === 'gate') {
+      // the lamp over the door's head (its frame stands 14 cm over the opening); the jamb guards beside the frame, concrete-
+      // filled pipes in safety yellow a hand off the wall, braced back to it twice (the blind pair: free posts a stride out
+      // stood buried to their caps where a slope's snow rose over the apron; on the wall they stand with the door)
+      wallLantern(sink, face, o.u, top + 0.36);
+      for (const side of [-1, 1]) {
+        const u = o.u + side * (o.w / 2 + 0.26), p = facePoint(face, u, -0.2, 0.16);
+        sink.cylinder('structureMetal', p, 'y', 1.75, 0.085, 8, { colour: YELLOW, decor: true });
+        sink.cylinder('structureMetal', [p[0], 1.55, p[2]], 'y', 0.05, 0.085, 8, { colour: shade(YELLOW, 0.8), decor: true }, 0.04);
+        for (const y of [0.55, 1.3]) faceBox(sink, 'structureMetal', face, u, y, 0.06, 0.05, 0.05, 0.12, { colour: STEEL_DARK, decor: true });
+      }
+    }
+  }
+  const rg = frame.roof;
+  frame.spec.chimneys.forEach((c, k) => {
+    const top = (rg.topAt(c.x, c.z) ?? rg.ridgeTopY) + c.above, r = Math.min(c.sx, c.sz) * 0.3;
+    sink.cylinder('structureMetal', [c.x, top - 0.05, c.z], 'y', 0.6, r, 8, { colour: STEEL_DARK, decor: true });
+    sink.cylinder('structureMetal', [c.x, top + 0.48, c.z], 'y', 0.16, r + 0.13, 8, { colour: STEEL_DARK, decor: true }, 0.03);
+    if (k === 0 && rg.s > 0.8) {
+      const side = c.x >= 0 ? 1 : -1, z = c.z + (c.z < 0 ? 0.75 : -0.75), rise = Math.max(0.2, 1 - (Math.abs(c.x) + 0.1) / rg.s);
+      roofLadder(sink, frame, side, z, rise, GALV);
+      // (kitConnectivity: the rails ride 26 mm over the sheet) the hook brackets they ride on, three to a rail, from the sheet
+      // up into the rail (roofLadder's rail line: from 0.92 of the slope's run to its top at 1 - rise)
+      const xa = rg.s * 0.92, xb = Math.max(0.3, rg.s * (1 - rise));
+      for (const dz of [-0.2, 0.2]) for (const t of [0.08, 0.5, 0.92]) {
+        const x = side * (xa + (xb - xa) * t), top = rg.topAt(x, z + dz) ?? rg.eaveY;
+        sink.span('structureMetal', x - 0.02, top - 0.01, z + dz - 0.025, x + 0.02, top + 0.036, z + dz + 0.025, { colour: STEEL_DARK, decor: true });
+      }
+    }
+  });
+}
+
 function dialect(rng: () => number, paint: Paint): HouseDialect {
   return {
     window: (sink, face, o, y0) => windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, WINDOW, rng, 0.5),
@@ -226,9 +313,11 @@ const garage: RegionalBuilder = (ctx) => {
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.3, out: 0.05, bucket: 'stone' }, storeys: [{ h: 4.6, wall: paint }], roof, gableBucket: paint, openings,
       chimneys: [{ x: -W * 0.25, z: -D * 0.3, sx: 0.3, sz: 0.3, above: 1.4, bucket: 'structureMetal', cap: 'none' }],
-      gutters: null, verge: null, reveal: 0.14, spall: null,
+      // (227, BLD-04) the rake trim down both gables' verges, the steel flashing over the sheets' cut ends
+      gutters: null, verge: { colour: STEEL, bucket: 'structureMetal' }, reveal: 0.14, spall: null,
     }, dialect(rng, paint));
     drifts(sink, frame, openings, look);
+    steelCraft(sink, frame, openings);
     // (round 3, wave 130: "uniformly clean, no rust streaking") the rust run from under the eaves on every wall
     for (const name of ['front', 'back', 'left', 'right'] as const) {
       rustStreaks(sink, frame.faces[name], frame.eaveY - 0.15, rustStream(frame.eaveY * 13.1 + frame.faces[name].width * 5.3 + name.length), 0.3,
@@ -299,9 +388,13 @@ const warehouse: RegionalBuilder = (ctx) => {
     const roof: RoofSpec = { kind: 'gable', pitchDeg: 9, eave: 0.35, verge: 0.3, thickness: 0.14, bucket: 'roof', ridge: 'saddle' };
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.35, out: 0.05, bucket: 'stone' }, storeys: [{ h: 6.4, wall: paint }], roof, gableBucket: paint, openings,
-      chimneys: [], gutters: null, verge: null, reveal: 0.14, spall: null,
+      // (227, BLD-04: no stack on the station's biggest heated building) the oil-fired unit heaters' flue chase through the
+      // +x slope toward the back, and the rake trim down both gables' verges
+      chimneys: [{ x: W * 0.3, z: -D * 0.3, sx: 0.4, sz: 0.4, above: 1.5, bucket: 'structureMetal', cap: 'none' }],
+      gutters: null, verge: { colour: STEEL, bucket: 'structureMetal' }, reveal: 0.14, spall: null,
     }, dialect(rng, paint));
     drifts(sink, frame, openings, look);
+    steelCraft(sink, frame, openings, [5.85, 6.35]);
     // (round 3, wave 130: "uniformly clean, no rust streaking") the rust run from under the eaves on every wall
     for (const name of ['front', 'back', 'left', 'right'] as const) {
       rustStreaks(sink, frame.faces[name], frame.eaveY - 0.15, rustStream(frame.eaveY * 13.1 + frame.faces[name].width * 5.3 + name.length), 0.3,

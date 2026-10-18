@@ -26,7 +26,7 @@ export function kohimaStall(ctx: RegionalBuildContext): RegionalParts {
   const plank = pick(rng, WEATHERED_PLANK);
   const d: StallDress = {
     post: 'timber', timber: shade(plank, 0.85), cover: 'sheet', coverColour: pick(rng, TIN), back: 'boards', backColour: plank, floor: 'deck',
-    counter: 'plank', shutter: shade(plank, 1.05), mobile: ctx.tier === 'mobile', look,
+    counter: 'plank', shutter: shade(plank, 1.05), mobile: ctx.tier === 'mobile', look, eased: true,
     goods: { produce: [0x6a8a3a, 0xb0802a, 0x8a3a2a, 0x9a8a5a, 0xc8b04a].map(rgb), baskets: WILLOW, sacks: rgb(0xa8946a), cones: true, scale: true },
   };
   openStall(sink, d, W, D, { shedRoof: true });
@@ -37,7 +37,9 @@ export function kohimaStall(ctx: RegionalBuildContext): RegionalParts {
  * The Kohima bazaar row (kit:kohima/marketRow; the judges: "plank boxes with a painted-on dark opening"): two or three
  * open booths under one sheet roof along the plot, each framed in sawn posts on a plank floor on stilts, boarded at the
  * back and between, its counter of goods across the front, its shelves on the back, its shutter propped up as the
- * awning, its signboard; a fascia and a gutter along the front.
+ * awning, its signboard; a fascia and a gutter along the front. (The looks lane, 227; the r2 sweep: 94 % plain boxes)
+ * Kohima's stalls in the eased dress: the sawn boards and timbers with their arrises eased, the deck's planks in a run
+ * with their joints sunk.
  */
 export function kohimaBazaarRow(ctx: RegionalBuildContext): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
@@ -46,7 +48,7 @@ export function kohimaBazaarRow(ctx: RegionalBuildContext): RegionalParts {
   const plank = pick(rng, WEATHERED_PLANK);
   const d: StallDress = {
     post: 'timber', timber: shade(plank, 0.85), cover: 'sheet', coverColour: pick(rng, TIN), back: 'boards', backColour: plank, floor: 'deck',
-    counter: 'plank', shutter: shade(plank, 1.05), mobile: ctx.tier === 'mobile', look,
+    counter: 'plank', shutter: shade(plank, 1.05), mobile: ctx.tier === 'mobile', look, eased: true,
     goods: { produce: [0x6a8a3a, 0xb0802a, 0x8a3a2a, 0xd8d0b0].map(rgb), baskets: WILLOW, sacks: rgb(0xa8946a), cones: false, scale: true },
   };
   boothRow(sink, d, L, D, n, [0x2e4a3a, 0x6a2a24, 0x2a3a5a, 0x5a4a2a].map(rgb));

@@ -4558,6 +4558,13 @@ vec2 nzq(vec2 p, float s, vec2 o) {
 }
 // maps lane B (2026-10-03): two hash values in [0, 1) per integer cell, for the airfield's slab tones and the salt
 // crust's desiccation polygons
+// ground lane (2026-10-07, Ironworks round 4, wave 223: "no black slag, cinder or soot anywhere", "white-outlined orange
+// patches") a works' slag and cinder: black-grey, a breath warm where it has weathered (rust only a stain), soot drifted
+// over it in broad gradients (n2 the ~300 m field, n1h the ~20 m one)
+vec3 worksSlag(float n1h, float n2, float jit) {
+  vec3 s = mix(vec3(0.054, 0.054, 0.057), vec3(0.068, 0.061, 0.055), smoothstep(0.45, 0.80, n1h));
+  return s * (0.88 + 0.24 * jit) * (0.80 + 0.34 * smoothstep(0.25, 0.75, n2));
+}
 vec2 cellHash2(vec2 p) {
   return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453);
 }
@@ -4743,6 +4750,13 @@ vec2 wallCragTilt(vec2 q, float ph) {
 // of identical width and spacing"; "thin wavy lines drawn over a soft surface read as texture overlay"): Wadi Rum's faces
 // as relief in the normal. Hoskins' hash11 for the beds' and joints' draws.
 float jh1(float p) { p = fract(p * 0.1031); p *= p + 33.33; p *= p + p; return fract(p); }
+// (MAPS 227) a soft value field on jh1's lattice (smoothstep between its four corners), seeded by s: the honeycomb's patches
+float jvn(vec2 p, float s) {
+  vec2 i = floor(p), f = fract(p), w = f * f * (3.0 - 2.0 * f);
+  float a = jh1(i.x * 17.3 + i.y * 61.7 + s), b = jh1((i.x + 1.0) * 17.3 + i.y * 61.7 + s);
+  float c = jh1(i.x * 17.3 + (i.y + 1.0) * 61.7 + s), d = jh1((i.x + 1.0) * 17.3 + (i.y + 1.0) * 61.7 + s);
+  return mix(mix(a, b, w.x), mix(c, d, w.x), w.y);
+}
 // One wall projection of a jebel face: u along the wall and y the bed height (both metres), ph the cliff's slow phase;
 // returns (tilt along the wall, tilt up, albedo factor). The beds ~6.5 m (±35 %) parted by grooves (the upper lip facing
 // down, the floor up, faintly dark in the groove, some partings near gone), each bed a shade of its own and cross-bedded
@@ -4792,28 +4806,37 @@ vec3 jebelFaceV2(float u, float y, float ph, float nearW, float tafW, float foot
   tv += (jh1(j * 5.9 + 0.4) - 0.5) * 0.05;
   shade *= 0.95 + 0.10 * jh1(j * 2.9 + 6.1);
   // the honeycomb: pits in 1.3 m cells, in patches
+  // (round 11, the gauntlet's wave 282: "a stamped pattern of evenly sized, evenly spaced elliptical pits, like Swiss
+  // cheese", "pale decals" — each stretch of rock its own cell size, 1-2.2 m; a pit in two cells of five; most pits
+  // small, a few large; dark in their hollows; in patches)
+  // (MAPS 227, Redrock's blind critics on v2: "dark blotchy 'eye' holes" on the lane dome, "an artificial pockmark
+  // pattern": the pits stood apart, up to 2.3 m across and near black at their hearts (a fifth of the rock's light), and
+  // the patches were 7 x 5 m blocks, so a pit was cut off at a block's edge) tafoni are a honeycomb: hollows a hand to an
+  // arm across, packed side by side with thin walls of rock between them (the cells of a jittered lattice, a hollow's
+  // depth zero at the wall between it and its neighbour), each a little darker in its bowl (two thirds of the light at
+  // the deepest, the bowl's own tilt shading one side); the patches a soft field, the walls thickening toward a patch's
+  // edge so the comb thins out into a few separate pits; and a cell never under five pixels across
   if (tafW > 0.003) {
-    // (round 11, the gauntlet's wave 282: "a stamped pattern of evenly sized, evenly spaced elliptical pits, like Swiss
-    // cheese", "pale decals" — each stretch of rock its own cell size, 1-2.2 m; a pit in two cells of five; most pits
-    // small, a few large; dark in their hollows; in patches)
-    float cs = 1.0 + 1.2 * jh1(floor(u / 13.0) * 5.7 + floor(yb / 9.0) * 3.3 + 0.7);
-    vec2 p = vec2(u, yb) / cs, cell = floor(p);
+    float cs = 0.36 + 0.34 * jh1(floor(u / 11.0) * 5.7 + floor(yb / 7.0) * 3.3 + 0.7);
     // (not 'patch': a word GLSL ES 3.00 reserves for future use, so the program would not compile)
-    float pitPatch = smoothstep(0.45, 0.8, jh1(floor(u / 7.0) * 3.1 + floor(yb / 5.0) * 7.3 + 1.9));
-    for (int i = -1; i <= 1; i++) for (int m = -1; m <= 1; m++) {
-      vec2 c = cell + vec2(float(i), float(m));
-      float hc = jh1(c.x * 12.9 + c.y * 78.2);
-      if (hc < 0.6) continue;
-      vec2 ctr = c + 0.5 + 0.8 * (vec2(jh1(c.x * 3.9 + c.y * 1.7), jh1(c.x * 5.3 + c.y * 9.1)) - 0.5);
-      float rk = jh1(c.x * 7.1 + c.y * 2.3), R = 0.1 + 0.42 * rk * rk;
-      vec2 dpv = p - ctr;
-      float r = length(dpv) / R;
-      if (r < 1.0) {
-        float wpit = tafW * pitPatch;
-        tu -= dpv.x / R * 0.9 * wpit;
-        tv -= dpv.y / R * 0.9 * wpit;
-        shade *= 1.0 - wpit * 0.78 * (1.0 - r * r);
+    float pitPatch = smoothstep(0.54, 0.8, jvn(vec2(u / 5.5, yb / 3.2), 1.9) * 0.75 + jvn(vec2(u / 1.9, yb / 1.3), 4.1) * 0.25);
+    float wpit = tafW * pitPatch * smoothstep(2.5, 5.0, cs / max(footM, 0.001));
+    if (wpit > 0.003) {
+      vec2 p = vec2(u, yb) / cs, cell = floor(p), nd = vec2(0.0);
+      float f1 = 9.0, f2 = 9.0, nk = 0.0;
+      for (int i = -1; i <= 1; i++) for (int m = -1; m <= 1; m++) {
+        vec2 c = cell + vec2(float(i), float(m));
+        vec2 ctr = c + 0.5 + 0.75 * (vec2(jh1(c.x * 3.9 + c.y * 1.7), jh1(c.x * 5.3 + c.y * 9.1)) - 0.5);
+        vec2 dpv = p - ctr;
+        float d = length(dpv);
+        if (d < f1) { f2 = f1; f1 = d; nd = dpv; nk = jh1(c.x * 7.1 + c.y * 2.3); } else if (d < f2) { f2 = d; }
       }
+      float wallT = 0.10 + 0.32 * (1.0 - pitPatch);
+      float k = wpit * smoothstep(wallT, wallT + 0.28, f2 - f1) * (0.45 + 0.55 * nk);
+      vec2 dir = nd / max(f1, 0.001);
+      tu -= dir.x * 0.55 * k;
+      tv -= dir.y * 0.55 * k;
+      shade *= 1.0 - 0.34 * k;
     }
   }
   return vec3(tu, tv, shade);
@@ -4842,6 +4865,14 @@ void splatCompute() {
   // ground lane (the GPU cut, hold 16): the land use's bake goes out with the ground mask's own read
   vec4 luA = vec4(0.0), luB = vec4(0.0), luK = vec4(0.5); ivec2 luT = ivec2(0);
   if (uLandA.x > 0.001) lu_fetch(wp.xz, luA, luB, luK, luT);
+  // (2026-10-07, Ironworks round 4) a works' floor: its zones' own ground kinds (slag, ballast, hardstanding, gravel)
+  // under every texel of it — its lots, its roads, its pads and its banks alike (the bake's crop, read once; the village
+  // mask's alpha is the wear, patchy, not the floor); 0 on every other map
+  float gWorksFloor = 0.0;
+  if (uLandE.w > 1.5) {
+    int kc = int(luA.r * 255.0 + 0.5) & 31;
+    gWorksFloor = (kc >= 15 && kc <= 16) || (kc >= 18 && kc <= 19) ? 1.0 : 0.0;
+  }
   // map revival lane 2 (townPaving): the paved town rect reads as a textured road (after the two fetches above, which
   // go out together)
   gRoadTex = uRoadTex;
@@ -5290,6 +5321,14 @@ void splatCompute() {
   // basin (groundRedux VOLCANIC) a lava flow — the landform channel, the maps lane's flowCover in the mask — is basalt
   // over its whole surface, its top, levees and front alike, not only where it is steep
   if (uReduxFold.w > 0.001 && uRockGate > 0.5) fR = max(fR, rockGate * uReduxFold.w * (1.0 - roadCore));
+  // Ground lane (2026-10-06, Ironworks round 3): on a works' ground (uLandE.w 2) a slag landform — the tips and the
+  // banks the rock gate reads (landformRock) — is slag over its whole surface, its gentle top and flanks as well as its
+  // faces: the works' lots, which now run up the ore berms to ~40°, stop at the slag (every other map as it was)
+  if (uLandE.w > 1.5 && uRockGate > 0.5) fR = max(fR, rockGate * (1.0 - roadCore));
+  // (2026-10-07, Ironworks round 4, wave 223: "the highline banks are pale, snow-like mounds" — a hardstand's bank and the
+  // high-line's berm are graded ground, not a slag landform, so they drew the map's pale grass and dirt) inside a works'
+  // floor (its village mask) a bank past the lots' ~40° is tipped slag too, from where the lots end (the same band)
+  if (uLandE.w > 1.5) fR = max(fR, smoothstep(0.22, 0.40, slope) * gWorksFloor * (1.0 - roadCore));
   // r7: SHARPENED AXIS TRIPLANAR replaces the r6 tangent projection. The
   // tangent frame was derived from the interpolated normal, so on undulating
   // walls it rotated per-fragment and the sample coordinate wandered — the
@@ -5506,6 +5545,14 @@ void splatCompute() {
       fD = reduxHeightMix(fD, hBase, hD, hK);
       hBase = mix(hBase, hD, fD);
     }
+    // (2026-10-07, Ironworks round 4, wave 223: "two flat brown squares with hard edges" — a hardstand is the
+    // carriageway's coverage with no centreline, so its whole surface was this layer, the map's pale dirt; and the works'
+    // worn ground) inside a works' floor (gWorksFloor) the bare ground is cinder and slag ballast trodden flat —
+    // black-grey, mottled at 3 m, its soot in broad gradients (worksSlag); every other map's bare ground as it was
+    if (uLandE.w > 1.5) {
+      float wkD = gWorksFloor;
+      if (wkD > 0.003) aD.rgb = mix(aD.rgb, worksSlag(n1h, n2, 0.5) * 1.12 * (0.86 + 0.28 * nz(uv, 0.31, vec2(0.71, 0.13)).r), wkD);
+    }
     a = mix(a, aD, fD);
     if (nrmOn) n = mix(n, groundNrm(uNrmD, uv * 0.210, df, mipB), fD);
     // (the cinder yard: the photo's twig relief mostly flattened, the grains' faces in its place)
@@ -5514,6 +5561,11 @@ void splatCompute() {
       n.xy = mix(n.xy, vec2(0.5), 0.7 * yd) + vec2(cinN - 0.5, fract(cinN * 7.31) - 0.5) * 0.45 * cinVis * yd;
     }
     gYardOil *= fD;
+  }
+  // (2026-10-07, Ironworks round 4: a green strip of turf down every works road — the base layer between a road and the
+  // lots, where no field is drawn) a works' floor is cinder under its turf too, a few weeds' worth of green left in it
+  if (gWorksFloor > 0.5 && fD < 0.998) {
+    a.rgb = mix(a.rgb, worksSlag(n1h, n2, 0.5) * 1.15 * (0.86 + 0.28 * nz(uv, 0.31, vec2(0.71, 0.13)).r), 0.85 * (1.0 - fD));
   }
   if (seaSand > 0.003) { // maps r1: bare shoreline apron under the surf line
     a = mix(a, groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB), seaSand);
@@ -5592,6 +5644,12 @@ void splatCompute() {
       }
       mipB -= 1.3 * uJebelFace.x;
     }
+    // (2026-10-07, Ironworks round 4: the tips, the banks and the berms' faces drew the map's cobble print) on a works'
+    // ground the rock layer is its slag, mottled by a 3 m field, the photo's relief halved
+    if (uLandE.w > 1.5) {
+      aR.rgb = worksSlag(n1h, n2, 0.5) * (0.84 + 0.32 * nz(uv, 0.31, vec2(0.13, 0.57)).r);
+      if (nrmOn) nR = mix(nR, NRM_MEAN, 0.5);
+    }
     // round 73: the rock border is a height transition too — the outcrop's high faces clear the turf or the snow,
     // its seams stay buried
     if (hK > 0.001) {
@@ -5610,6 +5668,7 @@ void splatCompute() {
       if (nrmOn) n = mix(n, wallNrm(uNrmD, 0.210, df, mipB), steepW);
     } else {
       vec4 aS = wallSamp(uAlbR, uMeanR, 0.155, df, mipB + 1.3 * uJebelFace.x);
+      if (uLandE.w > 1.5) aS.rgb = worksSlag(n1h, n2, 0.5) * (0.84 + 0.32 * nz(uv, 0.31, vec2(0.13, 0.57)).r); // (a works' slag)
       a = mix(a, aS, steepW);
       if (nrmOn) n = mix(n, wallNrm(uNrmR, 0.155, df, mipB), steepW);
     }
@@ -5839,12 +5898,16 @@ void splatCompute() {
     // its wear keep the fields off)
     // (Ironworks: a works' ground is uLandE.w 2 — the village's gate reads it as the urban 1)
     landW = uLandA.x * (1.0 - projW) * (1.0 - fMs) * (1.0 - fR) * (1.0 - outsideW) * (1.0 - smoothstep(0.05, 0.30, mk.a) * (1.0 - step(0.5, uLandE.w)))
-      * (1.0 - shoulder) * (1.0 - smoothstep(0.040, 0.100, slope)) * (1.0 - smoothstep(0.02, 0.10, fM))
-      * (1.0 - smoothstep(0.35, 0.70, woods));
+      * (1.0 - shoulder) * (1.0 - (uLandE.w > 1.5 ? smoothstep(0.22, 0.40, slope) : smoothstep(0.040, 0.100, slope)))
+      * (1.0 - smoothstep(0.02, 0.10, fM)) * (1.0 - smoothstep(0.35, 0.70, woods));
     // (wave 81, Frontier's establishing view: "an edgeless blotch of mud-brown, sand and lawn") a field ended wherever
     // its ground passed ~11° — along the contours, so on a rolling map every field was a blob — and around every lone
     // tree (a single crown's 4 m cover read 0.1–0.45). A field is worked up to ~16° and gone by ~25°, and only a closed
     // stand stops it (tallGrass.ts and vegetation.ts read the same slope gate; the trees' own layout is the trees lane's)
+    // (2026-10-06, Ironworks round 3, wave 176: "the stair-stepped diagonal green band" was the ore berm's flanks — past
+    // the fields' 25° the meadow under the land use came through, a wavy green strip down the works with the berm's
+    // grid-stepped contours for its edges) a works' lots run up its berms and tips to ~40° and are gone by ~53°: the
+    // spoil is the works' ground too (its rock-gated slag tips and their faces stay the rock layer's)
     if (landW > 0.003) {
       // (the GPU cut, hold 13: the block was bound by its rounds of reads — a read that waited on another's answer cost a
       // whole fetch latency at this material's occupancy, its ALU next to nothing. Two rounds now: the field-wide reads
@@ -6128,10 +6191,29 @@ void splatCompute() {
         cropCol = vec3(0.600, 1.600, 0.427) * baseL * bright; // jute: tall, dark green
       } else if (crop < 15.5) {
         // slag tipped from the furnaces: black-grey, granular, a little blue in the fresh and rust in the weathered
-        cropCol = mix(vec3(0.068, 0.068, 0.072), vec3(0.090, 0.072, 0.060), smoothstep(0.40, 0.75, n1h)) * (0.85 + 0.30 * jit);
+        // (2026-10-07, Ironworks round 4, wave 223: "orange patches") a works' slag black-grey, its rust only a stain, its
+        // soot in broad gradients (worksSlag); every other map's slag as it was
+        cropCol = uLandE.w > 1.5 ? worksSlag(n1h, n2, jit)
+          : mix(vec3(0.068, 0.068, 0.072), vec3(0.090, 0.072, 0.060), smoothstep(0.40, 0.75, n1h)) * (0.85 + 0.30 * jit);
+        if (uLandE.w > 1.5 && uLandTier > 0.5) {
+          // the wheels' and the tracks' ruts along the lot's run, a pair every 6–9 m, a darker pressed groove each (gone as
+          // the footprint outgrows them)
+          float pitchS = 6.0 + 3.0 * fract(jit * 3.71 + 0.41);
+          float rq = (abs(fract(across / pitchS + jit * 2.3) - 0.5) * pitchS - 0.9) / 0.26;
+          float rutS = exp(-rq * rq) * smoothstep(0.12, 0.45, 0.45 / max(gFootM, 1e-3));
+          cropCol *= 1.0 - 0.26 * rutS;
+          stoneLump *= 1.0 - 0.6 * rutS;
+        }
         // its clinker near the camera: lumps a third paler where the glass catches, the gaps black
         cropCol *= 1.0 + stoneLump * 0.34;
         if (nrmOn) n.xy += vec2(stoneN - 0.5, 0.5 - stoneN) * 0.40 * stoneVis * inField * landW;
+        // (round 4, wave 223: "flat … plates") a works' slag lot is tipped and trodden ground, not a sheet: its relief in
+        // the light at ~0.7 and ~2 m (two octaves, gone as the footprint outgrows them)
+        // (2026-10-10, the landing: High only, and read only where they show — tileVis(0.8) is 0 past a 0.2 m footprint)
+        if (nrmOn && uLandE.w > 1.5 && uLandTier > 1.5 && gFootM < 0.2) {
+          vec2 tr = nz(uv, 0.53, vec2(0.37, 0.19)).rg * 0.6 + nz(uv, 1.37, vec2(0.83, 0.47)).rg * 0.4 - 0.5;
+          n.xy += tr * 0.55 * tileVis(0.8) * inField * landW;
+        }
       } else if (crop < 16.5) {
         cropCol = vec3(0.16, 0.155, 0.15) * (0.88 + 0.24 * n1h) * bright; // ballast and hardcore: grey crushed stone
         cropCol *= 1.0 + stoneLump * 0.26; // its stones near the camera, their gaps shaded
@@ -6207,12 +6289,14 @@ void splatCompute() {
         rows -= tram * 0.22;
       }
       // (Ironworks: a works' ballast and gravel under its soot — a third darker)
-      if (uLandE.w > 1.5 && ((crop > 15.5 && crop < 16.5) || (crop > 18.5 && crop < 19.5))) cropCol *= 0.66;
+      // (round 4: 0.66 → 0.58, and the soot's broad gradients over them as over the slag)
+      if (uLandE.w > 1.5 && ((crop > 15.5 && crop < 16.5) || (crop > 18.5 && crop < 19.5))) cropCol *= 0.58 * (0.82 + 0.30 * smoothstep(0.25, 0.75, n2));
       cropCol *= (1.0 + rows * rowsShow) * fieldVar;
       a.rgb = mix(a.rgb, cropCol, inField * landW);
       // (an urban land use: the town's wear lies over its parcels — trodden, dusty, dug — at four tenths of the wear the
       // village draws on its bare ground)
-      if (uLandE.w > 0.5) a.rgb = mix(a.rgb, uMeanD.rgb * vec3(1.02, 0.98, 0.92),
+      // (2026-10-07, Ironworks round 4: a works' wear is its cinder — toward the map's pale dirt it lifted every lot)
+      if (uLandE.w > 0.5) a.rgb = mix(a.rgb, uLandE.w > 1.5 ? worksSlag(n1h, n2, 0.5) * 1.12 : uMeanD.rgb * vec3(1.02, 0.98, 0.92),
         clamp(mk.a * uTownWear * (0.35 + 0.65 * n1), 0.0, 1.0) * 0.40 * inField * landW);
       // (wave 21, the Verdant boundary at tank eye: "a dead-straight, unblended seam between the green grass field and the
       // golden wheat field") a worked field's edge is a feature: inside its grass margin lies the headland, 3–5.5 m where
@@ -6250,12 +6334,15 @@ void splatCompute() {
         // line from the ridge: a shade darker and greener than either field, so the strip reads at range
         // (2026-10-05, Ironworks — a works' ground, uLandE.w 2: no grass between its lots) a works' margin is its trodden
         // dirt, the soil half greyed and darkened, a little lumpy
-        vec3 marginCol = uLandE.w > 1.5 ? mix(soilF, vec3(reduxLuma(soilF)), 0.5) * (0.62 + 0.20 * n1h)
+        // (2026-10-07, round 4, wave 223: "white-outlined" lots — the trodden soil was paler than the slag) a works' margin
+        // is a sooty seam of the lot's own ground, a shade darker and lumpy
+        vec3 marginCol = uLandE.w > 1.5 ? a.rgb * (0.78 + 0.16 * n1h)
                                          : a.rgb * vec3(0.80, 0.93, 0.74) * (0.86 + 0.28 * n1h);
         a.rgb = mix(a.rgb, marginCol, (1.0 - inField) * (1.0 - track) * landW * (uLandE.w > 1.5 ? 0.90 : 0.80));
         if (hedgeL > 0.01) {
           float hb = hedgeL * (0.55 + 0.45 * smoothstep(0.30, 0.70, nEdge.z));
-          a.rgb = mix(a.rgb, a.rgb * vec3(0.52, 0.60, 0.46), hb * (1.0 - track) * landW * 0.85);
+          // (a works' hedge is its birch scrub over cinder: a sooty base, not a green bank)
+          a.rgb = mix(a.rgb, a.rgb * (uLandE.w > 1.5 ? vec3(0.56, 0.56, 0.53) : vec3(0.52, 0.60, 0.46)), hb * (1.0 - track) * landW * 0.85);
         }
       } else if (bnd < 2.5) {
         // a paddy's bund: a raised earth line half a metre wide, grassed on its top, between the water and the rice
@@ -6339,7 +6426,8 @@ void splatCompute() {
           // (the floor's share of the lane inside the pixel: at range the lane's colour is its floor and walls averaged)
           float floorM = (clamp(qx + 0.5 * fq, -0.6, 0.6) - clamp(qx - 0.5 * fq, -0.6, 0.6)) / fq / max(laneM, 1e-3);
           float wallVis = 1.0 - smoothstep(0.30, 0.65, fq);
-          vec3 soilL = soil.rgb * uSoilTint;
+          // (2026-10-07, Ironworks round 4: a works' track is trodden cinder, not the map's pale dirt)
+          vec3 soilL = uLandE.w > 1.5 ? worksSlag(n1h, n2, 0.5) * 1.25 : soil.rgb * uSoilTint;
           // (wave 88: "pinkish-brown") the trodden soil half greyed, a breath of warmth left — the local soil, darker
           vec3 trodden = mix(soilL, vec3(reduxLuma(soilL)), 0.50) * vec3(1.02, 0.98, 0.92);
           // the floor: the same soil pressed, a shade darker, and damp in its wet stretches — never ink (wave 86)
@@ -7116,6 +7204,11 @@ void splatCompute() {
         roadCol = mix(packedSnow, roadCol * 1.05, slush);
         roadCol = mix(roadCol, packedSnow * vec3(0.80, 0.82, 0.86), (padRut - padSlush) * 0.85);
       }
+      // (2026-10-07, Ironworks round 4, wave 223: "two flat brown squares with hard edges" — the yards' and the furnace
+      // line's hardstands are road ground, the map's brown packed earth) inside a works' floor its roads and yards are
+      // trodden cinder: grey-black, a shade paler than the slag lots either side so the streets still read, their wheel
+      // lanes and puddles as before
+      if (uLandE.w > 1.5) roadCol = mix(roadCol, worksSlag(n1h, n2, 0.5) * 1.30, 0.80 * gWorksFloor);
       a.rgb = mix(a.rgb, roadCol, dW);
       // (the Redrock lane, round 10, splat.roadRuts: the wheel lanes darker where they are worn deep, and gravel strewn on
       // the crown between them near the camera — the carriageway's own stones, not a smooth smear)
@@ -7147,7 +7240,9 @@ void splatCompute() {
       a.rgb *= mix(1.0, 0.86 + drift.x * 0.28, dW);
       a.rgb = mix(a.rgb, a.rgb * vec3(1.04, 1.02, 0.95), smoothstep(0.55, 0.85, drift.y) * dW * 0.6);
       if (uReduxD.y < 0.5) {
-        float crownGrass = crown * dW * smoothstep(0.48, 0.66, drift.y) * smoothstep(0.30, 0.62, n1h + roadBite.y * 0.4);
+        // (2026-10-07, Ironworks round 4: no weedy green crown down a works' cinder road)
+        float crownGrass = crown * dW * smoothstep(0.48, 0.66, drift.y) * smoothstep(0.30, 0.62, n1h + roadBite.y * 0.4)
+          * (1.0 - step(1.5, uLandE.w));
         if (crownGrass > 0.01) {
           vec4 cg = groundSamp(uAlbG, uMeanG, uv * 0.240, df, mipB);
           a = mix(a, cg * vec4(0.92, 0.95, 0.85, 1.0), crownGrass * 0.80);
@@ -7205,7 +7300,8 @@ ${ROAD_PAVING_GLSL}
         float outer = paveCore * (1.0 - smoothstep(0.24, 0.46, mk.r));
         float pavL = dot(pav.rgb, vec3(0.34, 0.45, 0.21)) / max(dot(uMeanR.rgb, vec3(0.34, 0.45, 0.21)) * 0.8, 1e-3);
         float joint = 1.0 - smoothstep(0.55, 0.95, pavL);
-        pav.rgb = mix(pav.rgb, pav.rgb * vec3(0.70, 0.96, 0.50), joint * outer * 0.85);
+        // (a works' outer joints fill with cinder and soot, not moss)
+        pav.rgb = mix(pav.rgb, pav.rgb * (uLandE.w > 1.5 ? vec3(0.62, 0.60, 0.58) : vec3(0.70, 0.96, 0.50)), joint * outer * 0.85);
         float margin = smoothstep(0.02, 0.15, mk.r + (paveN - 0.5) * 0.06) * (1.0 - paveCore) * gRoadTex;
         a.rgb = mix(a.rgb, a.rgb * vec3(0.80, 0.76, 0.68), margin * 0.65);
         a.a = mix(a.a, max(a.a, 0.94), margin);
@@ -7213,7 +7309,38 @@ ${ROAD_PAVING_GLSL}
       // (a procedural surface carries its own albedo, a third of the map's road hue over it; the map's tint calibrates its
       // sett print)
       vec3 paveHue = mix(vec3(1.0), uRoadTint / max(dot(uRoadTint, vec3(0.34, 0.45, 0.21)), 0.05), 0.33);
-      a.rgb = mix(a.rgb, pav.rgb * (pCls > 0.5 ? (uLandTier < 0.5 ? vec3(1.0) : paveHue) : uRoadTint), paveCore * 0.94);
+      vec3 paveMul = pCls > 0.5 ? (uLandTier < 0.5 ? vec3(1.0) : paveHue) : uRoadTint;
+      // (2026-10-06, Ironworks round 3, wave 176: "the clean concrete apron needs staining" — the casting yard's and the
+      // furnace line's hardstands) a works' paving carries its work: soot settled in drifts, oil and tar in blotches where
+      // the wagons and the engines stood, a little glossier, and rust run-off between them (uLandE.w 2: a works' ground
+      // only — every other map's paving is what it was)
+      // (2026-10-07, Ironworks round 4, wave 223: "two flat brown squares with hard edges" — the casting yard's and the
+      // furnace line's hardstands are paved, so they drew the map's cobble print) a works' paved hardstand (a pad: no
+      // centreline near it) is compacted cinder and slag ballast — black-grey, its lumps near the camera, the lorries' wheel
+      // lanes pressed along the works' axis, soot over it in broad gradients (the stains below fall on it as on the setts);
+      // a works' streets keep their setts
+      float worksPad = uLandE.w > 1.5 ? (1.0 - smoothstep(0.05, 0.25, mk.g)) : 0.0;
+      if (worksPad > 0.003 && paveCore > 0.003) {
+        vec3 cinder = worksSlag(n1h, n2, 0.5) * 1.30;
+        float lumpV = uLandTier > 1.5 ? 1.0 - smoothstep(0.02, 0.04, gFootM) : 0.0;
+        float lumpN = lumpV > 0.001 ? nz(uv, 3.1, vec2(0.29, 0.61)).r : 0.5;
+        cinder *= 1.0 + (smoothstep(0.52, 0.68, lumpN) - (1.0 - smoothstep(0.30, 0.44, lumpN))) * 0.30 * lumpV;
+        float lp = 7.0 + 2.0 * nz(uv, 0.05, vec2(0.61, 0.37)).g;
+        float lq = (abs(fract(wp.x / lp) - 0.5) * lp - 0.95) / 0.30;
+        cinder *= 1.0 - 0.20 * exp(-lq * lq) * smoothstep(0.12, 0.45, 0.45 / max(gFootM, 1e-3)) * smoothstep(0.35, 0.65, n1h);
+        pav.rgb = mix(pav.rgb, cinder / max(paveMul, vec3(0.05)), worksPad);
+        pav.a = mix(pav.a, 0.95, worksPad);
+        pnn = mix(pnn, NRM_MEAN, worksPad * 0.7);
+      }
+      if (uLandE.w > 1.5 && paveCore > 0.003) {
+        vec2 sq = nzq(uv, 0.071, vec2(0.53, 0.21));
+        float soot = smoothstep(0.38, 0.78, sq.x);
+        float oil = smoothstep(0.64, 0.80, nz(uv, 0.29, vec2(0.17, 0.83)).r) * smoothstep(0.40, 0.70, sq.y) * tileVis(1.2);
+        pav.rgb *= (1.0 - 0.38 * soot) * (1.0 - 0.50 * oil);
+        pav.rgb = mix(pav.rgb, pav.rgb * vec3(1.12, 0.90, 0.76), 0.30 * smoothstep(0.58, 0.80, sq.y) * (1.0 - oil));
+        pav.a = mix(pav.a, 0.62, oil);
+      }
+      a.rgb = mix(a.rgb, pav.rgb * paveMul, paveCore * 0.94);
       a.a = mix(a.a, pav.a, paveCore * 0.85);
       n = mix(n, pnn, paveCore * 0.85);
       // gutter shading: a darkened seam just inside the pavement edge gives

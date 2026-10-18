@@ -17,7 +17,7 @@
 import { PartSink } from '../maps/regional/geometry.ts';
 import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
 // (props census #12: the module train, the Jamesway and the airstrip are the looks lane's, in polarStations.ts)
-export { airstrip, jamesway, moduleTrain } from './polarStations.ts';
+export { airstrip, jamesway, moduleTrain, stripShack } from './polarStations.ts';
 // (the looks lane's r2 sweep, 2026-10-16: the radome tower, the billboards and the guyed mast are the looks lane's, in dewLine.ts)
 export { guyedMast, radomeTower, sagDepth, troposcatter } from './dewLine.ts';
 

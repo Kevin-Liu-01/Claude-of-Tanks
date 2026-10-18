@@ -64,6 +64,9 @@ export interface DestructiblePropType {
   /** A frozen contact band the pool refit uses in place of the built geometry's (the rebuilt vehicles keep their legacy
    * collision exactly: civilianVehicleLegacy.ts). */
   contactBand?: StructureCollisionRuntimeBand;
+  /** A band for the kind's collider (`collider`) apart from its obstacle's: the timber fences' drawn silhouette, which the
+   * shells and every sight line meet, while the obstacle a hull crushes keeps its own (fenceKit.ts drawnRecordBand). */
+  colliderBand?: StructureCollisionRuntimeBand;
   /** Each instance's own colour (a vehicle's livery through the material's paint mask), by its place and slot. */
   instancePaint?: (out: THREE.Color, x: number, z: number, slot: number) => void;
   /** The fortifications lane: the whole work's ground for the placement checks (props.ts destructibleFootprint) where

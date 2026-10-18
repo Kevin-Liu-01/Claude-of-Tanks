@@ -4764,7 +4764,7 @@ function hutTools(out: THREE.BufferGeometry[], rng: Rng): HutTools {
 }
 
 /** (props #12) A station's kind as `world` builds it (spaceKit.ts): member by member, on its own stream, its pieces
- *  named for the wreck (the receipt builds Mars's while the Olympus kit is pending). */
+ *  named for the wreck (the receipt builds Mars's). */
 export function spaceCraft(kind: string, world: SpaceWorld): THREE.BufferGeometry {
   return withCraftCapture({ bucket: 'structureMetal', material: 'metal' }, () => spaceCraftBuild(kind, world));
 }
@@ -4774,9 +4774,10 @@ function spaceCraftBuild(kind: string, world: SpaceWorld): THREE.BufferGeometry 
   return mergeConnectedStructure(kind, out);
 }
 
-/** (props #12) The kits whose stations wait for their architecture to land (the Olympus kit, item/looks-mars): the
- *  integrator empties this when it does, and Mars draws its own forms. */
-const SPACE_KITS_PENDING: ReadonlySet<string> = new Set(['olympus']);
+/** (props #12) The kits whose stations wait for their architecture to land: the integrator empties this when it does,
+ *  and the map draws its own forms through its kit. (item/maps-olympus-227, 2026-10-17: the Olympus kit landed from
+ *  item/looks-mars; Mars's stations are its kit's variants, REGIONAL_DESTRUCTIBLE_TYPES.olympus.) */
+const SPACE_KITS_PENDING: ReadonlySet<string> = new Set<string>();
 
 /** A kit's hut (hutKit.ts): built member by member on its own stream. */
 function regionalHut(kit: string, kind: string): THREE.BufferGeometry {
@@ -5148,13 +5149,12 @@ export const REGIONAL_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Recor
 
 /**
  * (the r2 sweep, 2026-10-16: Mars and the Moon drew one station form, the Moon's) A map's own light-family variants where
- * it has no architecture kit: map id -> family key -> the variant (props.ts LOCAL_TYPES, after the kits'). Mars draws
- * its stations as Olympus Basin built them in 2100 until the Olympus kit lands (SPACE_KITS_PENDING), the Moon the
+ * it has no architecture kit: map id -> family key -> the variant (props.ts LOCAL_TYPES, after the kits'). Mars drew
+ * its stations as Olympus Basin built them in 2100 here until the Olympus kit landed (item/maps-olympus-227,
+ * 2026-10-17): they are now its kit's (REGIONAL_DESTRUCTIBLE_TYPES.olympus, the same builds); the Moon keeps the
  * generic forms (Earthrise Basin, 1972).
  */
-export const MAP_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Record<string, DestructibleBuildingType>>>> = Object.freeze({
-  mars: Object.freeze(marsSpaceTypes()),
-});
+export const MAP_DESTRUCTIBLE_TYPES: Readonly<Record<string, Readonly<Record<string, DestructibleBuildingType>>>> = Object.freeze({});
 
 export const STRUCTURE_CATALOG = [
   ...Object.keys(STRUCTURE_BUILDERS).map((id) => ({ id, mode: 'merged' })),

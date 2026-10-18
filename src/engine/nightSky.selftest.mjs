@@ -24,8 +24,19 @@ const unkeyed = (skyIntensity) => {
   globalThis.__LIGHT_TUNE = { NIGHT_CLOUD_KEY: 1, NIGHT_CLOUD_AMBIENT: 1 };
   try { return at(skyIntensity); } finally { delete globalThis.__LIGHT_TUNE; }
 };
+// (2026-10-17, 227: the approved night keeps the layer's moonlight whole — the default key and sky share are 1; the QA knobs
+// still dim them, pinned here at the 10-09 values)
+const keyed = (skyIntensity) => {
+  globalThis.__LIGHT_TUNE = { NIGHT_CLOUD_KEY: 0.3, NIGHT_CLOUD_AMBIENT: 0.8 };
+  try { return at(skyIntensity); } finally { delete globalThis.__LIGHT_TUNE; }
+};
+for (const skyIntensity of [0.08, 0.04, 0.19]) {
+  const d = at(skyIntensity), u = unkeyed(skyIntensity);
+  assert.equal(d.sunGain, u.sunGain, `the approved night's moonlight whole (intensity ${skyIntensity})`);
+  assert.equal(d.ambientScale, u.ambientScale);
+}
 for (const [skyIntensity, night] of [[0.08, 1], [0.04, 1], [0.19, 0.5]]) {
-  const k = at(skyIntensity), u = unkeyed(skyIntensity);
+  const k = keyed(skyIntensity), u = unkeyed(skyIntensity);
   const key = 1 - night * 0.7, amb = 1 - night * 0.2;
   assert.ok(Math.abs(k.sunGain - u.sunGain * key) < 1e-9, `night ${night}: the moon's key ${key} of the day law's (${k.sunGain} vs ${u.sunGain})`);
   assert.ok(Math.abs(k.ambientScale - u.ambientScale * amb) < 1e-9, `night ${night}: the sky's light ${amb} of the day law's`);
@@ -54,7 +65,8 @@ assert.match(sky, /float cloudT = texture2D\( tStarClouds, \( gl_FragCoord\.xy -
 assert.match(sky, /stars \*= starVis;/, 'every star is dimmed by it');
 assert.match(sky, /const history = \(u\.uNight\.value as number\) > 0\.001 \? volumetricClouds\?\.historyTexture \?\? null : null;/, 'only at night, from the layer\'s resolved history');
 assert.match(sky, /atmosphereDome\.onAfterRender = \(\) => \{\s*atmosphereMaterial\.uniforms\.uStarCloudsOn\.value = 0;/, 'the binding cleared after the dome\'s draw (the environment bake shares the material)');
-// ---- a terrestrial night's pixel law; a galaxy sky's cell law
-assert.ok(STAR_LAW_PIXEL[0] < 0.11 && STAR_LAW_PIXEL[1] < 0.09, 'a terrestrial night: sparser and fainter than round 22\'s carpet');
+// ---- (227) every night draws round 22's cell law (the approved stars); the pixel law is a QA knob (STAR_PIXEL_LAW 1)
+assert.ok(STAR_LAW_PIXEL[0] < 0.11 && STAR_LAW_PIXEL[1] < 0.09, 'the pixel law: sparser and fainter than round 22\'s carpet');
+assert.match(sky, /if \(galaxySky \|\| !\(lightTune\('STAR_PIXEL_LAW', 0\) > 0\)\) \{/, 'the cell law by default');
 assert.match(sky, /writeStarLaw\(u\.uStarLaw\.value as THREE\.Vector4, u\.uStarShape\.value as THREE\.Vector4, \(preset\.nightSky \?\? 0\) > 0\.5\)/, 'a forced night sky (the galaxy domes) keeps the cell law');
-console.log('nightSky.selftest: moonlit clouds (key 0.3, sky 0.8 at full night; day, sunset, Mars and the galaxy domes untouched), no stars over cloud, the pixel law PASS');
+console.log('nightSky.selftest: the approved night (moonlight whole; the knobs at 0.3 / 0.8 still key it; day, sunset, Mars and the galaxy domes untouched), no stars over cloud, the cell-law stars PASS');

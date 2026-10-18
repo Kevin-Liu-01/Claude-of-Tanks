@@ -3,6 +3,7 @@ import { createGameState, setupBattle } from './state.ts';
 import { spawnTanks } from './rosterState.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import { ENEMY_NATION_OPTIONS } from './teamArrangement.ts';
+import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
 
 // Same-nation waves (owner 2026-09-17: "frontline and endless horde need to have waves where tanks of similar
@@ -30,13 +31,15 @@ const play = (gameMode, playerSpecId, ordinal, arrangement = null) => {
 };
 try {
   const hordeBlocs = new Set();
+  // the Horde's split is the ruleset's (2026-10-17: four allies, a twenty-strong pool)
+  const { allies: hordeAllies, enemies: hordePool } = matchRulesetFor('endless_horde');
   for (const ordinal of [0, 1, 2, 3]) {
     const battle = play('endless_horde', 'm1a3', ordinal);
-    assert.equal(battle.enemies.length, 14, `horde ordinal ${ordinal}: fourteen hostiles`);
-    assert.equal(battle.allies.length, 2, `horde ordinal ${ordinal}: two allied bots`);
+    assert.equal(battle.enemies.length, hordePool, `horde ordinal ${ordinal}: ${hordePool} hostiles`);
+    assert.equal(battle.allies.length, hordeAllies, `horde ordinal ${ordinal}: ${hordeAllies} allied bots`);
     const blocs = new Set(battle.enemies.map(blocOf));
     assert.equal(blocs.size, 1, `horde ordinal ${ordinal}: every hostile from one nation bloc (${[...blocs].join(',')})`);
-    assert.deepEqual(battle.leadTeams.slice(0, 14), Array(14).fill('enemy'), `horde ordinal ${ordinal}: the formation seats are the enemy side`);
+    assert.deepEqual(battle.leadTeams.slice(0, hordePool), Array(hordePool).fill('enemy'), `horde ordinal ${ordinal}: the formation seats are the enemy side`);
     hordeBlocs.add([...blocs][0]);
   }
   assert.ok(hordeBlocs.size >= 2, `consecutive Horde sorties meet different armies (${[...hordeBlocs].join(',')})`);

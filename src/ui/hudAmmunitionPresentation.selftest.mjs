@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRetainedAmmunitionSlot } from './hudAmmunitionPresentation.ts';
-import { ammunitionSelectionLabel, ammunitionSlotViewState } from './hud.ts';
+import { ammunitionSelectionLabel, ammunitionSlotViewState, hordeStatusCopy } from './hud.ts';
+import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import { shellTypeLabel } from './garageDossier.ts';
 import { getLocale, setLocale } from './i18n.ts';
 
@@ -286,4 +287,22 @@ assert.match(hudSource, /locale: getLocale,/,
   assert.equal(elements.count.textContent, String(ammunitionSlotViewState(previous).count), 'a finite card prints its count again');
 }
 
-console.log('hudAmmunitionPresentation.selftest: retained mutations, mutable cards, pending selection, touch, reload and locale passed');
+// owner 2026-10-17 ("for special modes like juggernaut, ammo should be endless"): the Horde's status line drops its
+// ammunition count under unlimited rounds; the live ruleset decides when it is the mode's, else the mode's own table
+{
+  const previousLocale = getLocale();
+  setLocale('en-US');
+  try {
+    const horde = { id: 'endless_horde', horde: { wave: 4, alive: 7 }, playerAmmo: 30, playerAmmoCapacity: 42 };
+    const specRounds = { ...matchRulesetFor('endless_horde'), ammo: 'spec' };
+    assert.equal(matchRulesetFor('endless_horde').ammo, 'unlimited');
+    assert.equal(hordeStatusCopy(horde, null), 'WAVE 4 · 7 HOSTILES', 'unlimited rounds: wave and hostiles, no count');
+    assert.equal(hordeStatusCopy(horde, matchRulesetFor('endless_horde')), 'WAVE 4 · 7 HOSTILES', 'the live Horde ruleset agrees');
+    assert.equal(hordeStatusCopy(horde, matchRulesetFor('standard')), 'WAVE 4 · 7 HOSTILES', 'another mode\'s ruleset is ignored');
+    assert.equal(hordeStatusCopy(horde, specRounds), 'WAVE 4 · 7 HOSTILES · AMMO 30 / 42', 'finite rounds keep the count');
+  } finally {
+    setLocale(previousLocale);
+  }
+}
+
+console.log('hudAmmunitionPresentation.selftest: retained mutations, mutable cards, pending selection, touch, reload, locale and the Horde line under unlimited rounds passed');

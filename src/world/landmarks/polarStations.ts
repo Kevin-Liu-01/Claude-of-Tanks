@@ -10,7 +10,8 @@ import { bar } from './kit.ts';
 import { drapedPath } from './grounds.ts';
 import { holedPolygon } from '../maps/regional/house.ts';
 import { chamferedSection, panelSlab, sectionMember, shellBody, type ShellHole } from '../maps/regional/steelMembers.ts';
-import type { LandmarkBuilder, LandmarkBuildContext } from './types.ts';
+import type { LandmarkBuilder, LandmarkBuildContext, LandmarkPlacement } from './types.ts';
+import { finishLandmark, piece } from './pieces.ts';
 
 const PANEL = rgb(0xd9d8d0), PANEL_CREAM = rgb(0xd3ccb8), TRIM_RED = rgb(0x8a3026), TRIM_BLUE = rgb(0x34506e);
 const STEEL = rgb(0x7f868b), STEEL_DARK = rgb(0x4b5157), IRON = rgb(0x2c2e30);
@@ -23,6 +24,40 @@ const num = (ctx: LandmarkBuildContext, key: string, min: number): number => Mat
 /** A concrete footing from below the ground (the piece's fall) up to `top`. */
 function footing(sink: PartSink, ctx: LandmarkBuildContext, x: number, z: number, hw: number, hd: number, top = 0.35): void {
   sink.span('stone', x - hw, -0.6 - ctx.groundFall, z - hd, x + hw, top, z + hd);
+}
+
+/**
+ * A snow bank along a run (the map-content lane's R6; gauntlet wave 358a on Whiteout: the station "on clean untouched snow
+ * with no ... drift, scour", "drift tails behind the screens", "drift against module piles"): a ridge whose crest stands
+ * `h` over the ground along the run from a to b, its short face 0.7 m back toward the structure and its long tail `out`
+ * metres out along (nx, nz), both toes sunk in the snow, the ends tapering. Snow maps only; dressing (no collision: a hull
+ * drives through snow). The radome tower and the billboards bank theirs too (dewLine.ts).
+ */
+export function snowBank(sink: PartSink, ctx: LandmarkBuildContext, ax: number, az: number, bx: number, bz: number, nx: number, nz: number,
+  h: number, out: number): void {
+  if (!ctx.snowCap) return;
+  const gl = (x: number, z: number) => ctx.ground?.(x, z) ?? 0;
+  const len = Math.hypot(bx - ax, bz - az), n = Math.max(2, Math.ceil(len / 2.5));
+  const face = (pts: Vec3[], up: Vec3) => {
+    const ux = pts[1][0] - pts[0][0], uy = pts[1][1] - pts[0][1], uz = pts[1][2] - pts[0][2];
+    const vx = pts[2][0] - pts[0][0], vy = pts[2][1] - pts[0][1], vz = pts[2][2] - pts[0][2];
+    const d = (uy * vz - uz * vy) * up[0] + (uz * vx - ux * vz) * up[1] + (ux * vy - uy * vx) * up[2];
+    sink.polygon('plaster', d >= 0 ? pts : [...pts].reverse(), { decor: true });
+  };
+  let prev: Vec3[] | null = null;
+  for (let k = 0; k <= n; k++) {
+    const t = k / n, x = ax + (bx - ax) * t, z = az + (bz - az) * t, taper = Math.sqrt(Math.sin(Math.PI * t)), reach = 0.55 + 0.45 * taper;
+    const back: Vec3 = [x - nx * 0.7 * reach, gl(x - nx * 0.7 * reach, z - nz * 0.7 * reach) - 0.12, z - nz * 0.7 * reach];
+    const crest: Vec3 = [x, gl(x, z) + h * (0.2 + 0.8 * taper), z];
+    const toe: Vec3 = [x + nx * out * reach, gl(x + nx * out * reach, z + nz * out * reach) - 0.12, z + nz * out * reach];
+    const row = [back, crest, toe];
+    if (prev) {
+      face([prev[0], prev[1], row[1], row[0]], [-nx, 1, -nz]);
+      face([prev[1], prev[2], row[2], row[1]], [nx, 1, nz]);
+    } else face(row, [-(bz - az), 0, bx - ax]);
+    prev = row;
+  }
+  if (prev) face([...prev].reverse(), [bx - ax, 0, bz - az]);
 }
 
 // ------------------------------------------------------------------------------------------------------ module train
@@ -124,6 +159,10 @@ export const moduleTrain: LandmarkBuilder = (ctx) => {
   const xr = x0 + total - L * 0.5, topR = eave + (n > 2 ? 1.6 : 0) + 0.3;
   for (const dz of [-1.2, 1.2]) bar(sink, 'structureMetal', [xr, topR, dz], [xr, topR + 3.5, dz], 0.035, { colour: STEEL_DARK, decor: true });
   sink.span('structureMetal', x0 + (Math.min(1, n - 1) + 0.5) * L - 0.8, floor + 2.6, hd + 1.5, x0 + (Math.min(1, n - 1) + 0.5) * L + 0.8, floor + 2.95, hd + 1.55, { colour: SIGN_YELLOW, decor: true });
+  // (the map-content lane's R6, wave 358a: "lifting the module train onto steel piles with drift underneath") the snow
+  // banked against the train's back, into the void under its floor, and against its far end
+  snowBank(sink, ctx, x0 - 0.4, -hd + 0.5, x0 + total + 0.4, -hd + 0.5, 0, -1, Math.min(1.1, floor + 0.5), 2.4);
+  snowBank(sink, ctx, x0 + 0.5, hd + 0.4, x0 + 0.5, -hd - 0.4, -1, 0, Math.min(1.0, floor + 0.4), 1.8);
   return { parts: sink.finish() };
 };
 
@@ -145,7 +184,10 @@ const CANVAS_OLIVE = rgb(0x5a5a3e), PLYWOOD = shade(rgb(0x5a5a3e), 1.25);
 export const jamesway: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
   const L = num(ctx, 'length', 6), W = num(ctx, 'width', 3), r = W / 2, floor = 0.45, z0 = -L / 2;
-  footing(sink, ctx, 0, 0, r + 0.1, L / 2 + 0.1, 0.05);
+  // (the building census's world pass, 227: a footing topped at 5 cm under the 6 cm a ground-contact solid stands to
+  // carried no collision, so the hut's stood from its sleepers' feet, up to 0.14 m over the snow on a slope) the footing up
+  // under the sleepers' feet, the hut's collision down with it
+  footing(sink, ctx, 0, 0, r + 0.1, L / 2 + 0.1, 0.07);
   // the platform on its sleepers (three runners along the hut) and its edge joist
   // (the looks lane's r2 sweep, 2026-10-16: plain boxes carried 71 % of the hut) the floor laid in its 4 × 8 ft plywood
   // sheets, each its own tone, its edge joist round it; the sleepers sawn timbers with their arrises eased
@@ -201,6 +243,10 @@ export const jamesway: LandmarkBuilder = (ctx) => {
   sink.span('structureWood', -0.6, 0, -z0 + 1.2, 0.6, floor * 0.5, -z0 + 1.55, { colour: TIMBER, decor: true });
   sink.cylinder('structureMetal', [r * 0.45, floor + r * 0.85, -z0 * 0.4], 'y', 1.4, 0.09, 6, { colour: IRON, decor: true });
   sink.cylinder('structureMetal', [r * 0.45, floor + r * 0.85 + 1.32, -z0 * 0.4], 'y', 0.2, 0.2, 6, { colour: IRON, decor: true }, 0.03);
+  // (the map-content lane's R6, wave 358a: "fix their seating (timber floors, drifted ends)", "drift built up against the
+  // huts") the snow banked up the hut's windward side and against its far end
+  snowBank(sink, ctx, -r + 0.3, z0 - 0.3, -r + 0.3, -z0 + 0.3, -1, 0, 0.9, 1.6);
+  snowBank(sink, ctx, r + 0.3, z0 + 0.4, -r - 0.3, z0 + 0.4, 0, -1, 1.0, 1.6);
   return { parts: sink.finish() };
 };
 
@@ -208,9 +254,12 @@ export const jamesway: LandmarkBuilder = (ctx) => {
 
 /**
  * The station's airstrip (DYE-M's gravel strip, kept open by its graders and ploughs): the strip draped on the ground along
- * z, its edge markers (the props' barrels: a hull scatters them) every 30 m down both sides, the windsock on its mast
- * beside the strip's middle and the plywood shack of its radio operator. Built of the map's ground: on falling ground it
- * follows the slope (plan.ts drapes).
+ * z, its edge markers (the props' barrels: a hull scatters them) every 30 m down both sides, the plough's berms and the
+ * threshold markers. Built of the map's ground: on falling ground it follows the slope (plan.ts drapes).
+ * (the looks lane, 227: the strip's collapse laid the default's heap over its whole 17,500 m2 and stood at 6 % of its
+ * height) The strip is ground, all of it dressing (plan.ts `dressing`: no solid, no collision record, no collapse); the
+ * windsock and the radio shack beside its middle stand as a set piece of their own, its child (stripShack), with its own
+ * small body and its mast a frame of its own.
  */
 export const airstrip: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
@@ -219,36 +268,6 @@ export const airstrip: LandmarkBuilder = (ctx) => {
   drapedPath(sink, 'plaster3', ctx.ground, [0, -L / 2], [0, L / 2], W, { lift: 0.05, cell: 4 });
   const destructibles: Array<{ kind: string; x: number; z: number; yawDeg: number }> = [];
   for (let z = -L / 2; z <= L / 2 + 0.01; z += 30) for (const sx of [-1, 1]) destructibles.push({ kind: 'barrel', x: sx * (hw + 1.2), z, yawDeg: ctx.rng() * 360 });
-  // the windsock: its mast, the hoop and the orange sock streaming down the wind
-  const wx = hw + 4.5, wz = 0, wg = gl(wx, wz);
-  sink.span('stone', wx - 0.4, Math.min(wg - 0.8, -0.6), wz - 0.4, wx + 0.4, wg + 0.3, wz + 0.4);
-  bar(sink, 'structureMetal', [wx, wg + 0.3, wz], [wx, wg + 6.5, wz], 0.12, { colour: STEEL });
-  const sock: Vec3[] = [];
-  for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; sock.push([wx + 0.15, wg + 6.2 + Math.sin(a) * 0.45, wz + Math.cos(a) * 0.45]); }
-  // (the connectivity sweep, 217: the sock hung 9 cm off the mast) its hoop, and the arms that carry it from the mast
-  for (let k = 0; k < 8; k++) bar(sink, 'structureMetal', sock[k], sock[(k + 1) % 8], 0.04, { colour: STEEL_DARK, decor: true });
-  bar(sink, 'structureMetal', [wx, wg + 6.42, wz], [wx + 0.15, wg + 6.65, wz], 0.04, { colour: STEEL_DARK, decor: true });
-  bar(sink, 'structureMetal', [wx, wg + 5.75, wz], [wx + 0.17, wg + 5.75, wz], 0.04, { colour: STEEL_DARK, decor: true });
-  for (let k = 0; k < 8; k++) {
-    const n = (k + 1) % 8, tip = (p: Vec3): Vec3 => [p[0] + 2.4, wg + 6.0 + (p[1] - wg - 6.2) * 0.4, p[2] * 0.4 + wz * 0.6];
-    sink.quad('structureMetal', sock[k], sock[n], tip(sock[n]), tip(sock[k]), { colour: k % 2 ? AVI_ORANGE : AVI_WHITE, decor: true });
-    sink.quad('structureMetal', tip(sock[k]), tip(sock[n]), sock[n], sock[k], { colour: shade(AVI_ORANGE, 0.7), decor: true });
-  }
-  // the radio shack on its skids by the windsock
-  const sx0 = hw + 6.5, sz0 = 4, sg = Math.max(gl(sx0, sz0), gl(sx0 + 3, sz0), gl(sx0, sz0 + 2.4), gl(sx0 + 3, sz0 + 2.4));
-  sink.span('structureWood', sx0 - 0.1, Math.min(sg - 0.4, -0.6), sz0, sx0 + 3.1, sg + 0.25, sz0 + 2.4, { colour: TIMBER });
-  sink.span('plaster2', sx0, sg + 0.25, sz0 + 0.1, sx0 + 3, sg + 2.6, sz0 + 2.3);
-  sink.span('structureMetal', sx0 - 0.15, sg + 2.6, sz0 - 0.05, sx0 + 3.15, sg + 2.75, sz0 + 2.45, { colour: STEEL });
-  if (ctx.snowCap) sink.span('structureMetal', sx0, sg + 2.75, sz0 + 0.1, sx0 + 3, sg + 2.88, sz0 + 2.3, { colour: SNOW, decor: true });
-  sink.quad('structureMetal', [sx0 - 0.02, sg + 0.3, sz0 + 1.6], [sx0 - 0.02, sg + 0.3, sz0 + 0.8], [sx0 - 0.02, sg + 2.2, sz0 + 0.8], [sx0 - 0.02, sg + 2.2, sz0 + 1.6], { colour: DOOR, decor: true });
-  bar(sink, 'structureMetal', [sx0 + 2.6, sg + 2.75, sz0 + 1.2], [sx0 + 2.6, sg + 7.5, sz0 + 1.2], 0.05, { colour: STEEL_DARK, decor: true });
-  // (props census #12, 2026-10-15, the r2 standard) the shack's window and its stovepipe with the rain cap
-  sink.quad('glass', [sx0 + 3.02, sg + 1.2, sz0 + 0.5], [sx0 + 3.02, sg + 1.2, sz0 + 1.3], [sx0 + 3.02, sg + 1.9, sz0 + 1.3], [sx0 + 3.02, sg + 1.9, sz0 + 0.5], { decor: true });
-  for (const [a, b] of [[[sg + 1.15, sz0 + 0.45], [sg + 1.15, sz0 + 1.35]], [[sg + 1.95, sz0 + 0.45], [sg + 1.95, sz0 + 1.35]], [[sg + 1.15, sz0 + 0.45], [sg + 1.95, sz0 + 0.45]], [[sg + 1.15, sz0 + 1.35], [sg + 1.95, sz0 + 1.35]]] as const) {
-    bar(sink, 'structureWood', [sx0 + 3.03, a[0], a[1]], [sx0 + 3.03, b[0], b[1]], 0.06, { colour: shade(TIMBER, 0.7), decor: true, fine: true });
-  }
-  sink.cylinder('structureMetal', [sx0 + 0.6, sg + 2.7, sz0 + 1.9], 'y', 1.3, 0.08, 6, { colour: IRON, decor: true });
-  sink.cylinder('structureMetal', [sx0 + 0.6, sg + 3.95, sz0 + 1.9], 'y', 0.18, 0.18, 6, { colour: IRON, decor: true }, 0.03);
   // the plough's berms along both edges, a step out from the markers, in segments down the slope
   for (let z = -L / 2; z < L / 2 - 0.5; z += 10) for (const sx of [-1, 1]) {
     const z1 = Math.min(L / 2, z + 10), bx = sx * (hw + 2.4), g0 = Math.min(gl(bx, z), gl(bx, z1)), g1 = Math.max(gl(bx, z), gl(bx, z1));
@@ -260,5 +279,59 @@ export const airstrip: LandmarkBuilder = (ctx) => {
     for (const s of [-0.5, 0.5]) bar(sink, 'structureMetal', [mx + s, mg - 0.3, mz], [mx + s, mg + 0.9, mz], 0.05, { colour: STEEL_DARK, decor: true });
     sink.span('structureMetal', mx - 0.55, mg + 0.35, mz - 0.02, mx + 0.55, mg + 0.85, mz + 0.02, { colour: (fx < 0) === (e < 0) ? AVI_ORANGE : AVI_WHITE, decor: true });
   }
-  return { parts: sink.finish(), tints: { plaster3: [0.62, 0.6, 0.58] }, destructibles };
+  // its windsock and radio shack beside the strip's middle, on the ground the strip vetoes
+  const children: LandmarkPlacement[] = [{ kind: 'stripShack', x: hw + SHACK_X, z: SHACK_Z, yawDeg: 0, ground: 'veto' }];
+  return { parts: sink.finish(), tints: { plaster3: [0.62, 0.6, 0.58] }, destructibles, children };
+};
+
+/** The windsock and shack set piece's centre beside the strip's edge (the airstrip's frame, from the strip's edge). */
+const SHACK_X = 6.9, SHACK_Z = 3;
+
+/**
+ * The airstrip's windsock and its radio operator's plywood shack (stripShack, the airstrip's child; their places beside
+ * the strip as they stood, its frame centred on the pair). The windsock's mast, hoop and sock are a frame of their own
+ * (pieces.ts: a lattice piece that goes over when the shack falls); the shack is the piece's body — its skids, its
+ * plywood skin with its door and window cut through (the leaf and the pane set back in their reveals), its roof in its
+ * ribbed panels, the stovepipe and the radio whip — so its fall is the shack's own small heap.
+ */
+export const stripShack: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const gl = (lx: number, lz: number) => ctx.ground?.(lx, lz) ?? 0;
+  // the windsock: its footing, and its mast with the hoop and the orange sock streaming down the wind
+  const wx = 4.5 - SHACK_X, wz = -SHACK_Z, wg = gl(wx, wz);
+  sink.span('stone', wx - 0.4, Math.min(wg - 0.8, -0.6), wz - 0.4, wx + 0.4, wg + 0.3, wz + 0.4);
+  piece(sink, { name: 'mast', kind: 'lattice', at: 'collapse', fall: 'topple' }, (sink) => {
+    bar(sink, 'structureMetal', [wx, wg + 0.3, wz], [wx, wg + 6.5, wz], 0.12, { colour: STEEL });
+    const sock: Vec3[] = [];
+    for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; sock.push([wx + 0.15, wg + 6.2 + Math.sin(a) * 0.45, wz + Math.cos(a) * 0.45]); }
+    // (the connectivity sweep, 217: the sock hung 9 cm off the mast) its hoop, and the arms that carry it from the mast
+    for (let k = 0; k < 8; k++) bar(sink, 'structureMetal', sock[k], sock[(k + 1) % 8], 0.04, { colour: STEEL_DARK, decor: true });
+    bar(sink, 'structureMetal', [wx, wg + 6.42, wz], [wx + 0.15, wg + 6.65, wz], 0.04, { colour: STEEL_DARK, decor: true });
+    bar(sink, 'structureMetal', [wx, wg + 5.75, wz], [wx + 0.17, wg + 5.75, wz], 0.04, { colour: STEEL_DARK, decor: true });
+    for (let k = 0; k < 8; k++) {
+      const n = (k + 1) % 8, tip = (p: Vec3): Vec3 => [p[0] + 2.4, wg + 6.0 + (p[1] - wg - 6.2) * 0.4, p[2] * 0.4 + wz * 0.6];
+      sink.quad('structureMetal', sock[k], sock[n], tip(sock[n]), tip(sock[k]), { colour: k % 2 ? AVI_ORANGE : AVI_WHITE, decor: true });
+      sink.quad('structureMetal', tip(sock[k]), tip(sock[n]), sock[n], sock[k], { colour: shade(AVI_ORANGE, 0.7), decor: true });
+    }
+  });
+  // the radio shack on its skids by the windsock
+  const sx0 = 6.5 - SHACK_X, sz0 = 4 - SHACK_Z, sg = Math.max(gl(sx0, sz0), gl(sx0 + 3, sz0), gl(sx0, sz0 + 2.4), gl(sx0 + 3, sz0 + 2.4));
+  // its skids, sawn timbers with their arrises eased, sunk into the snow, and the floor on them
+  for (const z of [sz0 + 0.25, sz0 + 2.15]) sectionMember(sink, 'structureWood', [sx0 - 0.1, (Math.min(sg - 0.4, -0.6) + sg + 0.25) / 2, z], [sx0 + 3.1, (Math.min(sg - 0.4, -0.6) + sg + 0.25) / 2, z],
+    chamferedSection(0.3, sg + 0.25 - Math.min(sg - 0.4, -0.6), 0.04), { colour: TIMBER });
+  panelSlab(sink, 'structureWood', sx0 - 0.05, sg + 0.13, sz0 + 0.05, sx0 + 3.05, sg + 0.25, sz0 + 2.35, 1.22, (k) => shade(TIMBER, 0.9 + 0.08 * (k % 2)), shade(TIMBER, 0.75));
+  // (the r2 standard: the door and the window were dark plates on the box) its plywood skin with the door in its -x end and
+  // the window in its +x end cut through, the leaf and the pane set back, framed
+  shellBody(sink, 'plaster2', sx0, sg + 0.25, sz0 + 0.1, sx0 + 3, sg + 2.6, sz0 + 2.3, [
+    { face: 'w', u0: -0.4, u1: 0.4, y0: sg + 0.3, y1: sg + 2.2, fill: 'leaf', leaf: DOOR },
+    { face: 'e', u0: -0.1, u1: 0.7, y0: sg + 1.2, y1: sg + 1.9, fill: 'glass' },
+  ], {}, { reveal: 0.08, inset: 0.05, revealBucket: 'structureWood', revealColour: shade(TIMBER, 0.7), frame: { bucket: 'structureWood', colour: shade(TIMBER, 0.7), width: 0.06, out: 0.03 } });
+  // its roof in ribbed steel panels, the eaves over the skin all round, the snow on it
+  panelSlab(sink, 'structureMetal', sx0 - 0.15, sg + 2.6, sz0 - 0.05, sx0 + 3.15, sg + 2.75, sz0 + 2.45, 0.6, (k) => shade(STEEL, 0.92 + 0.08 * (k % 2)), shade(STEEL, 0.8));
+  if (ctx.snowCap) sink.span('structureMetal', sx0, sg + 2.75, sz0 + 0.1, sx0 + 3, sg + 2.88, sz0 + 2.3, { colour: SNOW, decor: true });
+  bar(sink, 'structureMetal', [sx0 + 2.6, sg + 2.75, sz0 + 1.2], [sx0 + 2.6, sg + 7.5, sz0 + 1.2], 0.05, { colour: STEEL_DARK, decor: true });
+  // the stovepipe with its rain cap
+  sink.cylinder('structureMetal', [sx0 + 0.6, sg + 2.7, sz0 + 1.9], 'y', 1.3, 0.08, 6, { colour: IRON, decor: true });
+  sink.cylinder('structureMetal', [sx0 + 0.6, sg + 3.95, sz0 + 1.9], 'y', 0.18, 0.18, 6, { colour: IRON, decor: true }, 0.03);
+  return { parts: finishLandmark(sink), tints: { plaster3: [0.62, 0.6, 0.58] } };
 };

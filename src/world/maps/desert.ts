@@ -352,6 +352,9 @@ export default {
   },
 
   props: {
+    // (2026-10-17, the maps lane; the fleet dressing rules 227, the coordinator's ruling) a fence run's module or gate that
+    // meets a building's plot is left out (props.ts dressingRules.fencesClearBuildings; no stub rule)
+    dressingRules: { fencesClearBuildings: true },
     // regional-buildings lane: the Tunisian ksar kit (maps/regional/ksar.ts)
     architecture: 'ksar',
     // r2 (content_breadth): plan 10 -> 18 slots — three more adobe clusters

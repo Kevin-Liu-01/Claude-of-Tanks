@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createMatchPlacement, matchPlacementAnchors, placementTerrainSafe } from './matchPlacement.ts';
 import { createMatchModeController } from './matchModes.ts';
+import { hordeWaveHealthScale, matchRulesetFor } from './matchRuleset.ts';
 import { createObjectiveAccess } from './matchPlacementAccess.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
 import { MAP_IDS } from '../world/maps/index.ts';
@@ -103,7 +104,9 @@ for (const mode of ['capture_the_flag', 'zone_control', 'turbo_ball']) {
   assert.equal(controller.state.horde.wave, 2); assert.equal(calls, 12);
   controller.step(1 / 60, 9.5); assert.equal(calls, 12);
   available = true; controller.step(1 / 60, 10);
-  assert.equal(calls, 15); assert.deepEqual(healthScales, [1, 1, 1, 1.16, 1.16, 1.16],
+  const horde = matchRulesetFor('endless_horde');
+  const [one, two] = [1, 2].map((wave) => hordeWaveHealthScale(horde, horde.horde, wave));
+  assert.equal(calls, 15); assert.deepEqual(healthScales, [one, one, one, two, two, two],
     'inactive Horde activation retries preserve the pending wave health scale');
 }
 

@@ -7,6 +7,7 @@ import { emitRoof, holedFace, leanTo, placeShed, roofGeometry, type HoleRect, ty
 import { doorUnit, windowUnit } from './openings.ts';
 import type { RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { latticeFrame } from './lattice.ts';
+import { recordShed } from './shedFall.ts';
 import { board, pad, rod } from './r2Members.ts';
 /** Juniper logs and posts silvered by the sun (a few fresher, browner), and the shadowed underside of a log. */
 export const JUNIPER: readonly Rgb[] = [0x8c7d6b, 0x7f705f, 0x968874, 0x7a6a58].map(rgb);
@@ -627,6 +628,7 @@ export const hayShed: RegionalBuilder = (ctx) => {
   }
   // (the r2 sweep 2026-10-16: the plates, purlins and the stacks' cores plain boxes) the plates hewn, their arrises taken off
   for (const z of [-half, half]) chamferedBeam(sink, 'structureWood', 'x', -L / 2, L / 2, z, H - 0.125, 0.1, 0.125, 0.025, { colour: JUNIPER_DARK, uv: UV_MEMBER });
+  sink.placed(Math.PI / 2, 0, 0, 0, () => recordShed(sink, xs.flatMap((x) => [-half, half].map((z) => ({ foot: [-z, -0.3, x] as Vec3, head: [-z, H - 0.25, x] as Vec3 }))), { W: Dd, D: L, pitchDeg: 12, eaveY: H, eave: 0.45, verge: 0.4, deck: 0.03, post: 0.12, posts: xs.flatMap((x) => [-half, half].map((z): [number, number, number, number] => [-z, x, -0.3, H - 0.25])), pad: null, timber: JUNIPER[0], boards: null, boardW: 0.2, back: false, ends: false, roof: { bucket: 'roof', colour: null, shape: 'sheet' }, stone: null, pile: 0, gable: true })); // (227, lane B co-hold: the hay shed falls as an open shed, shedFall.ts)
   sink.dressing(mobile, () => {
     for (const x of xs) {
       // the knee braces from each post to the plate, both ways along it

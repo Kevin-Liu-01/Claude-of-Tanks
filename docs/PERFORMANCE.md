@@ -1529,6 +1529,36 @@ sub-20 fps under load put it past the acceptable line. Re-measure on a quiet mac
 the limit (`sim/matchRuleset.ts`, `docs/GAME-MODES.md` "Sides"). The loading screen's reveal budget
 scales with the field for the same reason (`game/battleEntryLifecycle.ts` `revealTimeoutForField`).
 
+## Endless Horde field on the mobile tier — 2026-10-17
+
+The zombie rebalance (gameplay-227, `docs/GAME-MODES.md` "Zombie balance") grew the Horde's field: four allied bots and
+a twenty-strong pool (`sim/matchRuleset.ts` `endless_horde`), so the field peaks at 25 live vehicles from wave 7 (1 + 4
++ 20), against 17 before (1 + 2 + 14, reached from wave 8). The waves most runs reach field fewer: waves 1-6 bring 6, 8,
+10, 13, 15 and 17 hostiles, and the probe's human seat lasted 4.7 waves on average. The peak was measured two ways on the
+M5 Max under other sessions' load, old field and new field interleaved so the drift falls on both:
+
+- **Mobile tier, rendered.** A scratch probe (`horde-mobile-frames.mjs`, never staged; one capture-lock hold of 5:42)
+  served the worktree through the map-probe dev server, emulated the mobile lap's iPhone (892 x 412 landscape, DSF 3,
+  iPhone UA) on headless Chromium over ANGLE with `?tier=mobile`, entered a real solo Endless Horde on Verdant in
+  `m1a1_abrams_hc`, drove the waves up with `__DEBUG.slayEnemies` until the whole pool was live (arranged first wave
+  12; old wave 2, new wave 5) and sampled 20 s of rAF gaps with the full field live throughout (1-minute load 56-87).
+
+  | Field (live) | fps | Gap p50 | p90 | p99 | Frames over 33 ms / 50 ms | Draw calls |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | 17 (old peak), run 1 / run 2 | 53.3 / 54.3 | 16.7 / 16.7 ms | 25.0 / 25.0 | 34.5 / 33.3 | 17 / 1, 4 / 1 | 574 / 585 |
+  | 25 (new peak), run 1 / run 2 | 38.8 / 41.8 | 25.0 / 25.0 ms | 33.4 / 33.3 | 50.1 / 49.9 | 62 / 8, 43 / 4 | 786 / 734 |
+
+- **Simulation, headless.** The shared authority on Verdant with every seat a bot and the first wave set to the whole
+  pool (`horde-sim-cost.mjs`, never staged; 4 seeds, the first 45 simulated seconds, 1-minute load 127-134): a step cost
+  6.7 ms on average at 17 live (p95 41.6 ms) and 10.8 ms at 25 (p95 59.7 ms), +62 % for +47 % vehicles.
+
+At its peak the new field costs about a quarter of the mobile tier's frame rate (54 to 40 fps on this host, the median
+frame from one vsync to one and a half, p99 33 to 50 ms) and draw calls rise by about a third. Both fields sit over the
+mobile lap's `fight` budget (gap p95 20 ms) on this loaded host and the dev build, the 17 already at p90 25 ms. The
+peak stays below the 28-vehicle 14 v 14 preset every tier already offers, and the arrangement panel's pool (6-20) and
+allied bots (0-6) shrink a Horde for a device that needs it. Re-run both probes before raising the pool or the allies,
+and treat the Horde's `enemies` and `allies` as the field-size knobs if a mobile field budget is introduced.
+
 ## Vista pass — 2026-09-19
 
 The horizon vista pass (round 24: 431-column ring with a subdivided ridged ladder, the layered world-anchored
