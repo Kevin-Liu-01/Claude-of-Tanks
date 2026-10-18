@@ -56,8 +56,8 @@ const SURFACE_INDEX: Readonly<Record<SurfaceKind, number>> = Object.freeze({
   soil: 0, sand: 1, snow: 2, mud: 3, rock: 4, concrete: 4, water: 0, wood: 0, metal: 4,
 });
 
-/** The map's ground climate (world/groundRedux.ts), with the volcanic maps' ash. */
-export type CraterClimate = 'vegetated' | 'arid' | 'snow' | 'ash';
+/** The map's ground climate (world/groundRedux.ts), with the volcanic maps' ash and the Moon's regolith. */
+export type CraterClimate = 'vegetated' | 'arid' | 'snow' | 'ash' | 'regolith';
 
 /**
  * The turned soil of a place (linear rgb) and how fully the mark covers the ground: the surface under the burst, then
@@ -66,6 +66,11 @@ export type CraterClimate = 'vegetated' | 'arid' | 'snow' | 'ash';
 export function craterSoil(surface: SurfaceKind, climate: CraterClimate, out: [number, number, number, number]): [number, number, number, number] {
   const set = (r: number, g: number, b: number, cover: number) => { out[0] = r; out[1] = g; out[2] = b; out[3] = cover; return out; };
   if (climate === 'ash' && (surface === 'soil' || surface === 'rock' || surface === 'mud')) return set(0.032, 0.031, 0.033, 0.95);
+  // (the Earthrise 228 rebuild, 2026-10-18; the blind critics: "the tan halos round the craters look like glowing sand
+  // rings", "three crater rims glow tan like lit desert sand") the Moon's ground is regolith whatever it classifies as: the
+  // sand's sandy tan, dried to 1.35 times under a wrapped light, glowed half again over the floor. The gardened grey a
+  // shade lighter when dried (the fresher ejecta of a young crater), on a lighter cover
+  if (climate === 'regolith') return set(0.084, 0.082, 0.079, 0.62);
   switch (surface) {
     case 'sand': return set(0.29, 0.23, 0.155, 0.8);
     case 'snow': return set(0.05, 0.039, 0.027, 0.92);

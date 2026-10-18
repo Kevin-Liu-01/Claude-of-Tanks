@@ -10,8 +10,9 @@
 //   concave talus apron; fans spread from the wall's foot), 'canyon' (a knoll of negative height: a trough with a level
 //   floor, a talus apron rising to a near-vertical wall and the plain at the rim; ramps may cut the wall) or, on a ridge,
 //   'flow' (a lava flow: a lowered channel between raised levees, a steep margin, a short talus; with `front`, a steep
-//   blocky front at its downhill end) or 'dyke' (an earth embankment: a level crest, straight batters, the shoulder and
-//   the toe rounded);
+//   blocky front at its downhill end), 'dyke' (an earth embankment: a level crest, straight batters, the shoulder and
+//   the toe rounded) or 'scarp' (a thrust scarp's lobe: a rounded crest, a steep face toward `face` and a long even back
+//   slope);
 // - gullies: V-shaped rills down the flanks, irregularly spaced, fading into the apron; on a knoll, talus fans spread
 //   below the rills' mouths onto the plain;
 // - strata: bedding, a bench and a riser per bed, the beds dipping slightly so no bench is level;
@@ -28,7 +29,10 @@ export interface LandformGeology {
   outline?: number;
   /** The radial (knoll) or cross-axis (ridge) profile. 'flow' (ridges): a lava flow's lowered channel between raised
    * levees, a steep margin and a short talus. */
-  profile?: 'dome' | 'butte' | 'cone' | 'flow' | 'inselberg' | 'canyon' | 'dyke';
+  profile?: 'dome' | 'butte' | 'cone' | 'flow' | 'inselberg' | 'canyon' | 'dyke' | 'scarp';
+  /** scarp (ridges): the side of the ridge's axis its steep face looks to, +1 toward its local +z (the across axis), -1
+   * toward -z (default +1); the back slope falls the other way (the Earthrise 228 rebuild, 2026-10-18). */
+  face?: 1 | -1;
   /** dyke: the crest's half-width as a fraction of the half-width (default 0.25); the batters take the rest. */
   crest?: number;
   /** butte: the cap's edge and the wall's foot, as fractions of the radius or half-width (default 0.45, 0.62). canyon:
@@ -223,6 +227,28 @@ function dykeProfile(q: number, geology: LandformGeology): number {
   if (q <= c) return 1;
   if (q >= 1) return 0;
   const t = (q - c) / (1 - c), r = 0.125, k = 1 / (1 - r);
+  if (t < r) return 1 - k * t * t / (2 * r);
+  if (t > 1 - r) { const u = 1 - t; return k * u * u / (2 * r); }
+  return 1 - k * (r / 2 + (t - r));
+}
+
+/**
+ * A thrust scarp's lobe (the Earthrise 228 rebuild, 2026-10-18: the Lee-Lincoln scarp across the Taurus-Littrow floor), in
+ * the signed share `v` of the half-width across the ridge's axis, positive toward its face. Its crest is level and
+ * rounded a little either side of the axis (so the ridge keeps its seat and its height); the face falls on a smoothstep
+ * over most of the half-width (on Earthrise's 11-13 m lobes about 20 degrees at the steepest); the back slope is a dyke's
+ * straight batter, its shoulder and toe rounded over a fifth of it (about 15 degrees there): one steep face and one long
+ * even slope, not a snowbank's two rounded sides.
+ */
+export function scarpProfile(v: number): number {
+  if (v >= 0) {
+    const t = (v - 0.06) / 0.86;
+    return t <= 0 ? 1 : t >= 1 ? 0 : 1 - t * t * (3 - 2 * t);
+  }
+  const t = (-v - 0.06) / 0.94;
+  if (t <= 0) return 1;
+  if (t >= 1) return 0;
+  const r = 0.2, k = 1 / (1 - r);
   if (t < r) return 1 - k * t * t / (2 * r);
   if (t > 1 - r) { const u = 1 - t; return k * u * u / (2 * r); }
   return 1 - k * (r / 2 + (t - r));
@@ -712,7 +738,10 @@ export function ridgeGeologyHeight(form: GeologicForm, lx: number, lz: number, a
   if (outline > 0) q /= 1 + outline * ridgeLobe(at, sideW, salt);
   if (q >= 1) return 0;
   const shape = geology.profile === 'canyon' && height < 0 && (geology.ledge || geology.brow)
-    ? canyonSection(q, geology, at, sideW, salt) : profileOf(q, geology, height, ridgeShoulder);
+    ? canyonSection(q, geology, at, sideW, salt)
+    // a scarp's two sides differ: the share across signed toward its face
+    : geology.profile === 'scarp' ? scarpProfile(q * (lz * (geology.face ?? 1) >= 0 ? 1 : -1))
+    : profileOf(q, geology, height, ridgeShoulder);
   if (geology.front) {
     // a flow's own ends: a steep blocky front downhill, a gently thinning vent end uphill
     const half = Math.max(1, (form.length || 100) * 0.5), t = Math.max(-1, Math.min(1, lx / half)) * geology.front;

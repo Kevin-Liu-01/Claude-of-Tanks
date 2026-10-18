@@ -633,6 +633,9 @@ interface PropsSettings {
    * (fieldWallDressing.ts adobeApronCoarse); unset, as before. */
   adobeApronCoarse?: boolean;
   sandbagLines?: number;
+  /** The Earthrise 228 rebuild, round 3 (2026-10-18; the blind judge: "the white sandbag stacks on the pad apron"): false
+   * leaves out the sandbag nest at the junction's corner, where the junction is a landing field. Default true. */
+  plazaNest?: boolean;
   /** The map-revival lane (2026-10-11; gauntlet wave 380 on Olympus Basin, its sandbag walls read as "timber logs lying
    * on Mars"): a multiplier on the sandbag stacks' instance tint (linear RGB) — the hessian under the place's own dust.
    * Default none (white). */
@@ -8131,8 +8134,8 @@ ${snowCap ? `
     for (let i = 6; i < authoredRoadStationCount(L, 0) - 2 && placedS < sandbagCap; i += 3) {
       if (placeSandbagAtRoadNode(i)) placedS++;
     }
-    // plaza corner nest by the well
-    {
+    // plaza corner nest by the well (a map whose junction is a landing field keeps none: P.plazaNest false)
+    if (P.plazaNest !== false) {
       const nx = junction.x - 11, nz = junction.z - 8;
       const y = heightField.getHeightAt(nx, nz);
       addDestructible('sandbagbig', nx, y - 0.04, nz, Math.PI * 0.7, 1.4);
@@ -10573,7 +10576,8 @@ ${snowCap ? `
     }
     const budget = P.yardDressing ?? Math.min(140, Math.round(structures.length * 4.5));
     if (!structures.length || !(budget > 0)) return;
-    const palette = mapId === 'mars' ? 'martian' : snowCap || mapId === 'whiteout' ? 'polar' : 'brownfield';
+    // (the Earthrise 228 rebuild) the Moon's yards take the lunar set: no tyres, timber or skips
+    const palette = mapId === 'mars' ? 'martian' : mapId === 'moon' ? 'lunar' : snowCap || mapId === 'whiteout' ? 'polar' : 'brownfield';
     const plan = planYardDressing(structures, heightField, obstacles, seed, { budget, palette });
     const families = new Map<YardFamily, ReturnType<typeof buildYardFamily>>();
     const perMaterial: Record<string, { bucket: string; pieces: number; families: string[]; vertices: number }> = {};
