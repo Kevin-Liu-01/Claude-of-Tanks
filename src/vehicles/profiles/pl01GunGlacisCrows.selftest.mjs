@@ -125,6 +125,14 @@ for (const id of ['pl01', 'pl01_105']) {
     && near(gunMountBounds.min.y, -0.23328)
     && near(gunMountBounds.min.z, 0.43),
   `${id} gun housing must begin on the turret throat's full lower/shoulder profile`);
+  // 2026-10-18 (227 gun-gaps, r4): behind that profile a dark round cradle tube on the gun line runs from 2 cm inside
+  // the ring to z 0.30 (88 mm radius at the ring, 74 mm at its rear), so at +20 deg no notch opens behind the raised
+  // housing; at rest and at full depression it lies inside the nose ridge.
+  const cradle = gun.getObjectByName('gunMountDark');
+  assert.ok(cradle?.isMesh, `${id} must carry the gun's dark cradle stock`);
+  cradle.geometry.computeBoundingBox();
+  const cradleBounds = cradle.geometry.boundingBox;
+  assert.ok(near(cradleBounds.min.z, 0.30), `${id} cradle tube reaches z 0.30 behind the housing (${cradleBounds.min.z})`);
   const housingPositions = gunMount.geometry.getAttribute('position');
   const rearProfile = new Set();
   for (let index = 0; index < housingPositions.count; index++) {

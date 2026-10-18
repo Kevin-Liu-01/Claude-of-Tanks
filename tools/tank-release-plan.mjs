@@ -33,6 +33,9 @@ export function tankReleaseSteps(ids, gate, node = process.execPath) {
     // 2026-10-17 (the wheel-band lane): every opaque lit material each id draws holds its own vehicle registration (an
     // untagged pixel under the belly line is ground to the aerial pass: the band through the road wheels)
     cpu('vehicle-material-registration',selected),
+    // 227 gun-gaps (2026-10-18): every main gun line re-measured (4 mm, 12 directions, rest/limits/half travel), equal
+    // to its ledger row and bound to the turret and gun geometry it was measured on
+    cpu('gun-junction-census',selected,'--ledger=docs/geometry-gate/gun-junction.json','--check',...(gate?['--gate']:[])),
     gpu('tank-assets-check',selected),
     gpu('track-duplicate-audit',selected),
     gpu('muzzle-bore-probe',selected),

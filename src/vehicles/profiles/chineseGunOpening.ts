@@ -5,10 +5,40 @@ import {KIT} from './kit.ts';
 import {sectionSolid} from './sectionSolid.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
-/** Keep the positive half-space of a closed stock. These authored turret
- * sections have one convex intersection contour; original faces are retained. */
+/** The cut contour as one closed chain of rim keys, or null when the segments do not form exactly one simple loop. */
+function contourLoop(links:Map<string,string[]>):string[]|null {
+  if(links.size<3)return null;
+  for(const next of links.values())if(next.length!==2)return null;
+  const start=links.keys().next().value as string,loop=[start];
+  let previous=start,current=links.get(start)![0];
+  while(current!==start){
+    if(loop.length>links.size)return null;
+    loop.push(current);
+    const [a,b]=links.get(current)!;const next=a===previous?b:a;previous=current;current=next;
+  }
+  return loop.length===links.size?loop:null;
+}
+
+/** Whether two key cycles visit the same keys in the same cyclic order, in either direction. */
+function sameCycle(a:readonly string[],b:readonly string[]):boolean {
+  if(a.length!==b.length)return false;
+  const at=b.indexOf(a[0]);if(at<0)return false;
+  const n=a.length;let forward=true,backward=true;
+  for(let i=0;i<n;i++){
+    if(a[i]!==b[(at+i)%n])forward=false;
+    if(a[i]!==b[(at-i+n)%n])backward=false;
+  }
+  return forward||backward;
+}
+
+/** Keep the positive half-space of a closed stock; original faces are retained. The cut is capped by a fan round the
+ * contour's centroid when the contour is star-shaped from it (the authored turret sections); otherwise the chained
+ * contour is ear-clipped. 227 gun-gaps r3: an ERA cassette is a thin chevron skin whose cut at the gun channel's wall
+ * is an arrow-shaped band; the angle-sorted fan zig-zagged between its outer and inner lines and left a sawtooth of
+ * open notches along the channel wall beside the gun (the census's off-axis slivers on t72b3_qilin, ztz99a2, vt4a1). */
 function halfStock(source:THREE.BufferGeometry,axis:0|2,sign:number,limit:number):THREE.BufferGeometry|null {
   const p=source.getAttribute('position'),index=source.index,points:number[]=[],rim=new Map<string,THREE.Vector3>();
+  const rimKey=(v:THREE.Vector3)=>v.toArray().map(n=>n.toFixed(6)).join(','),links=new Map<string,string[]>();
   const distance=(v:THREE.Vector3)=>sign*v.getComponent(axis)-limit;
   const vertex=(i:number)=>new THREE.Vector3().fromBufferAttribute(p,index?index.getX(i):i);
   const triangle=(a:THREE.Vector3,b:THREE.Vector3,c:THREE.Vector3)=>points.push(...a.toArray(),...b.toArray(),...c.toArray());
@@ -24,16 +54,33 @@ function halfStock(source:THREE.BufferGeometry,axis:0|2,sign:number,limit:number
       }
     }
     for(let j=1;j+1<output.length;j++)triangle(output[0],output[j],output[j+1]);
+    // the clipped polygon's edges lying on the cut plane are the contour's segments
+    for(let j=0;j<output.length;j++){
+      const a=output[j],b=output[(j+1)%output.length];
+      if(Math.abs(distance(a))>=1e-7||Math.abs(distance(b))>=1e-7)continue;
+      const ka=rimKey(a),kb=rimKey(b);if(ka===kb)continue;
+      if(!links.has(ka))links.set(ka,[]);if(!links.has(kb))links.set(kb,[]);
+      links.get(ka)!.push(kb);links.get(kb)!.push(ka);
+    }
   }
   if(points.length===0)return null;
   const cap=[...rim.values()];
+  const loop=contourLoop(links);
   if(cap.length>=3){
     const center=cap.reduce((a,b)=>a.add(b),new THREE.Vector3()).divideScalar(cap.length);
     const u=axis===0?2:0,v=1;
     cap.sort((a,b)=>Math.atan2(a.getComponent(v)-center.getComponent(v),a.getComponent(u)-center.getComponent(u))
       -Math.atan2(b.getComponent(v)-center.getComponent(v),b.getComponent(u)-center.getComponent(u)));
     const normal=new THREE.Vector3().setComponent(axis,-sign);
-    for(let i=0;i<cap.length;i++){
+    const fanOrder=cap.map(rimKey);
+    if(loop&&loop.length===cap.length&&!sameCycle(loop,fanOrder)){
+      const ring=loop.map(k=>rim.get(k)!);
+      const faces=THREE.ShapeUtils.triangulateShape(ring.map(q=>new THREE.Vector2(q.getComponent(u),q.getComponent(v))),[]);
+      for(const [i,j,k] of faces){
+        const a=ring[i],b=ring[j],c=ring[k];
+        if(b.clone().sub(a).cross(c.clone().sub(a)).dot(normal)>0)triangle(a,b,c);else triangle(a,c,b);
+      }
+    }else for(let i=0;i<cap.length;i++){
       const a=cap[i],b=cap[(i+1)%cap.length];
       const cross=a.clone().sub(center).cross(b.clone().sub(center));
       if(cross.lengthSq()<1e-18)continue;

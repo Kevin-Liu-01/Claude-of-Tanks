@@ -330,6 +330,8 @@ const bootSelectedBuilderP = STUDIO_BOOT_INTENT
 const _v1 = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
 const _v3 = new THREE.Vector3();
+/** The camera's view for the night lamps (nightLightingAccess getCameraForward). */
+const _nightCameraForward = new THREE.Vector3();
 const _rayO = new THREE.Vector3();
 
 // ---------------------------------------------------------------------------
@@ -1660,6 +1662,8 @@ const nightLighting = createNightLightingAccess({
   // actors; game.tanks alone is only the currently visible network roster.
   getEntities: () => multiplayerV2.current?.active ? game.tankById.values() : game.tanks,
   getCameraPosition: () => camera.position,
+  // (the looks lane, 228) a town's lamps light the street the camera looks down
+  getCameraForward: () => camera.getWorldDirection(_nightCameraForward),
   isNight: () => battleAtmosphere.current?.weather?.timeOfDay === 'night',
   isBattlePresentation: () => game.phase !== 'garage' && !studio.active,
   isEntityVisible: (entity) => entity.networkVisible !== undefined ? entity.networkVisible

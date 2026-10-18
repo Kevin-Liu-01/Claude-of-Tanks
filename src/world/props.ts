@@ -7974,6 +7974,9 @@ ${snowCap ? `
       const blocked = placedB.some((building) =>
         Math.hypot(lx - building.x, lz - building.z) < building.rr + 1.2);
       if (blocked) return false;
+      // (the looks lane, 228: Steinburg's square showed two poles side by side) beside planned rows' furniture, a node
+      // whose pavement lamp already stands keeps the one
+      if (P.townRowFurniture && destructibles.some((d) => d.kind === 'lamp' && d.slot >= 0 && Math.hypot(d.x - lx, d.z - lz) < 3)) return false;
       const y = heightField.getHeightAt(lx, lz);
       const armAngle = Math.atan2(ax - lx, az - lz);
       addDestructible('lamp', lx, y - 0.02, lz,
