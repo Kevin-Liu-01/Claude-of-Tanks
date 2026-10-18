@@ -1427,9 +1427,16 @@ const HAZE_NIGHT_LEVEL = 1.0;
  * milder blue than before (a night is not "a blue-tinted copy of the day"): [amount, key from, key to, the brightest
  * channel's weight in the key].
  */
-export const GRADE_NIGHT_SCOTOPIC: readonly [number, number, number, number] = Object.freeze([0.78, 0.10, 0.80, 0.80]);
+/*
+ * 2026-10-17 (227; the media lane's QA on the live 226 build: Steinburg's night square "a flat blue wash" over what the
+ * approved frame lit warm): the 10-09 law took most of a moonlit midtone's colour and keyed the drain up to luma 0.8, so
+ * the warm pools under the lamps and the lit windows drained to a cool grey. The approved night's law is back — a drain of
+ * 0.55 over luma 0.06 to 0.55 toward the old cool blue, keyed on luma alone (the lamps keep their colour) — and the
+ * brightest-channel key stays a QA knob (GRADE_SCOT_MAXC).
+ */
+export const GRADE_NIGHT_SCOTOPIC: readonly [number, number, number, number] = Object.freeze([0.55, 0.06, 0.55, 0]);
 /** The scotopic shift's target: the pixel's luma times this cool grey. */
-export const GRADE_NIGHT_SCOTOPIC_TINT: readonly [number, number, number] = Object.freeze([0.86, 0.97, 1.14]);
+export const GRADE_NIGHT_SCOTOPIC_TINT: readonly [number, number, number] = Object.freeze([0.82, 0.96, 1.22]);
 /**
  * 2026-10-03 (the shade-fill lane; the gauntlet's waves 29, 34 and 36: a tank's shadow on Verdant's grass at about RGB
  * (12, 40, 8), a shaded village wall "a flat, textureless matte-black mass", Saltmere's tor "crushed to near-black"):
