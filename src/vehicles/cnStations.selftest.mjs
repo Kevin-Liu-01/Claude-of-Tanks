@@ -12,7 +12,9 @@
 // material the vehicle does not already draw with.
 // Round 4 (critics D10, S1: the pintle column stood on the commander's hatch lid, so the hatch could not open): each
 // cupola emplacement stands in a socket post at its cupola's rim, the post welded into the fixed ring and seated in the
-// roof, the flange on the post's collar, and the pintle's foot keeps 10 mm outside the lid at every yaw.
+// roof, the flange on the post's collar, and the pintle's foot keeps 10 mm outside the lid at every yaw; on the Type 96B
+// cupola, which draws its lid's hinge, the lid swings open past the emplacement at rest and, with the gun elevated where
+// its barrel lies back over the cupola, at every yaw.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
@@ -25,7 +27,7 @@ import { NATIONAL_DONOR_TURRETS } from './nationalDonorTurrets.ts';
 import { auxiliaryWeaponProfile } from './auxiliaryWeapons.ts';
 import { stepRoofGun, auxiliaryState } from '../sim/auxiliarySystems.ts';
 import { FITTINGS } from './profiles/kit.ts';
-import { stationSelfClearance } from './cnTurretGeometry.test-support.mjs';
+import { stationSelfClearance, SurfaceGrid, meshTriangles } from './cnTurretGeometry.test-support.mjs';
 
 const EXPECT = {
   t72b3_qilin: { name: 'Qilin cupola QJC-88', pintle: true, shield: 'standard', arc: true, table: true, excluded: -84 },
@@ -117,6 +119,40 @@ for (const [id, want] of Object.entries(EXPECT)) {
       assert.ok(roof && seatW.y - roof.point.y > .05, `${id}: the socket post rises from the turret roof (${roof ? ((seatW.y - roof.point.y) * 1000).toFixed(0) : '-'} mm)`);
       assert.ok(column.some((h) => roof.point.y - h.point.y >= .002 && roof.point.y - h.point.y <= .020), `${id}: the socket post's foot is seated in the roof`);
       sides.dispose();
+      // the Type 96B cupola draws its lid's rear hinge (type96bX.ts addType96Cupola: the hinge pins at source z -.107,
+      // turret z .043, y .877): its lid (r .276, top .886) swings open to upright past the emplacement, 10 mm clear, at every
+      // yaw with the gun at rest or, where its barrel lies back over the cupola, elevated (the 99A2 cupola draws no hinge:
+      // its lid is held to the foot receipt above)
+      if (donor.donor === 'type96b') {
+        const hinge = [.043, .877], lidPts = [];
+        for (let x = -socket.lidR; x <= socket.lidR; x += .02) for (let z = -socket.lidR; z <= socket.lidR; z += .02) {
+          if (Math.hypot(x, z) > socket.lidR || socket.cupola[1] + z < hinge[0]) continue;
+          for (const y of [.886, .856]) lidPts.push([socket.cupola[0] + x, y, socket.cupola[1] + z]);
+        }
+        const tInv = new THREE.Matrix4().copy(turret.matrixWorld).invert(), restYaw = station.rotation.y, elevation = auxiliaryWeaponProfile(12.7, id).elevationRad;
+        const swing = (yd, el) => {
+          station.rotation.y = restYaw + yd * Math.PI / 180; pitch.rotation.x = -el; tank.root.updateMatrixWorld(true);
+          const own = []; station.traverse((o) => { if (o.isMesh && !/Shadow/.test(o.name)) own.push(o); });
+          const grid = new SurfaceGrid(meshTriangles(own, tInv), { cell: .04, rq: .1 });
+          let d = Infinity;
+          for (let a = 0; a <= 90; a += 10) {
+            const c = Math.cos(a * Math.PI / 180), sn = Math.sin(a * Math.PI / 180);
+            for (const [x, y, z] of lidPts) { const dz = z - hinge[0], dy = y - hinge[1]; d = Math.min(d, grid.distance(x, hinge[1] + dy * c + dz * sn, hinge[0] + dz * c - dy * sn)); }
+          }
+          return d;
+        };
+        let lidWorst = { d: Infinity }, elevated = 0;
+        for (let yd = -180; yd < 180; yd += 10) {
+          let d = swing(yd, 0);
+          if (d < .010) { d = swing(yd, elevation); elevated++; }
+          if (d < lidWorst.d) lidWorst = { d, yd };
+        }
+        const rest = swing(0, 0);
+        station.rotation.y = restYaw; pitch.rotation.x = 0; tank.root.updateMatrixWorld(true);
+        assert.ok(rest >= .010, `${id}: the commander's lid opens past the emplacement at its rest bearing (${(rest * 1000).toFixed(1)} mm)`);
+        assert.ok(lidWorst.d >= .010, `${id}: the commander's lid opens past the emplacement at every yaw (${(lidWorst.d * 1000).toFixed(1)} mm at yaw ${lidWorst.yd})`);
+        console.log(`${id}: the commander's lid swings open past the emplacement at every yaw (${elevated} of 36 with the gun elevated), ${(lidWorst.d * 1000).toFixed(1)} mm at worst, ${(rest * 1000).toFixed(1)} mm at rest`);
+      }
       // no material of its own: every material the station draws with is drawn elsewhere on the vehicle
       const elsewhere = new Set(); tank.root.traverse((o) => { if (!o.isMesh) return; for (let q = o; q; q = q.parent) if (q === station) return; for (const m of [].concat(o.material)) elsewhere.add(m.uuid); });
       station.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) assert.ok(elsewhere.has(m.uuid), `${id}: the station's ${o.name} adds a material (${m.name || m.color?.getHexString?.()})`); });
