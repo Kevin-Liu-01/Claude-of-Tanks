@@ -215,10 +215,15 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
         for (let x = Math.floor(b.min.x / C); x <= Math.floor(b.max.x / C); x++) for (let y = Math.floor(b.min.y / C); y <= Math.floor(b.max.y / C); y++)
           for (let z = Math.floor(b.min.z / C); z <= Math.floor(b.max.z / C); z++) { const k = ck(x, y, z); let l = cells.get(k); if (!l) cells.set(k, l = []); l.push(tr); }
       }
-      const sunk = (q) => {
+      // (only the stock's surface on the module's side of the point counts: through a thin wall the far face is nearer, and
+      // the critic's D4 seeded a cassette 15 mm into a 25 mm wall that read 6 mm)
+      const sunk = (q, fn) => {
         let m = Infinity; const cp = new THREE.Vector3(), [i, j, k] = [q.x, q.y, q.z].map(v => Math.floor(v / C));
         for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (let c = -1; c <= 1; c++)
-          for (const tr of cells.get(ck(i + a, j + b, k + c)) ?? []) { tr.tri.closestPointToPoint(q, cp); m = Math.min(m, cp.distanceTo(q)); }
+          for (const tr of cells.get(ck(i + a, j + b, k + c)) ?? []) {
+            tr.tri.closestPointToPoint(q, cp);
+            if (cp.clone().sub(q).dot(fn) < 1e-5) m = Math.min(m, cp.distanceTo(q));
+          }
         return m;
       };
       for (const m of modules.filter(p => p.owner === owner)) {
@@ -244,7 +249,7 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
             const hit = seatRay.intersectObjects(stockMeshes, false)[0], gap = hit ? hit.distance - back : Infinity;
             seatWorst = Math.max(seatWorst, gap);
             assert(gap <= .006, `${label}: ${m.name} is seated on permanent stock over its whole seat (${Number.isFinite(gap) ? `${gap.toFixed(4)} m off` : 'no stock behind'} at ${q.toArray().map(x => x.toFixed(3))})`);
-            const sink = gap < 0 ? Math.min(-gap, sunk(q)) : 0;
+            const sink = gap < 0 ? Math.min(-gap, sunk(q, fn)) : 0;
             sinkWorst = Math.min(sinkWorst, -sink);
             assert(sink <= .0075, `${label}: ${m.name} sinks ${sink.toFixed(4)} m into its seat (7.5 mm) at ${q.toArray().map(x => x.toFixed(3))}`);
           }
