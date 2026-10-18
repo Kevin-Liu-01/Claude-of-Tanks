@@ -464,9 +464,10 @@ export function addGarageApproachDetails({
       // shoulder of red laterite gravel outside them where the causeway meets the grass
       for (const side of [-1, 1]) {
         addEdgeCourse(side * (approach.width / 2 + 0.4), 0x7b7064, 0.36, 0.26);
-        addEdgeCourse(side * (approach.width / 2 + 1.05), 0x8a5a3e, 0.95, 0.07);
+        addEdgeCourse(side * (approach.width / 2 + 1.05), 0x5e4433, 0.95, 0.05);
       }
-      addRuts(approach.lanes || [-2.6, 2.6], 0x3c4f45, 0.34);
+      // the tracks' ruts hold the red mud they carried up from the yard (they were a teal-green strip)
+      addRuts(approach.lanes || [-2.6, 2.6], 0x4a3628, 0.34);
       addRoadsidePosts(7, approach.width / 2 + 1.0, 0xd19a2e, 1.45);
     },
     'alpine-pass': () => {

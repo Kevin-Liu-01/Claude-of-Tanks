@@ -463,7 +463,11 @@ diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.3 + vec3(0.012, 0.
   // after-rain sky in it, strongest at the grazing angles the yard is seen at (Schlick's term), a darker sky near the zenith
   float hardstandFacing = clamp(dot(normalize(vViewPosition), normalize(nonPerturbedNormal)), 0.0, 1.0);
   float hardstandFresnel = 0.04 + 0.96 * pow(1.0 - hardstandFacing, 5.0);
-  totalEmissiveRadiance += hardstandWater * mix(vec3(0.035, 0.042, 0.05), vec3(0.15, 0.17, 0.19), clamp(hardstandFresnel * 2.2, 0.0, 1.0));
+  // (garage r9 g1 r2: a flat grey read as "grey paper cut-outs") the sky's own blue at the grazing angles, the shore
+  // a darker wet line where the water thins over the mud
+  float hardstandShore = clamp(hardstandWater * (1.0 - hardstandWater) * 4.0, 0.0, 1.0);
+  totalEmissiveRadiance += hardstandWater * (1.0 - 0.6 * hardstandShore)
+    * mix(vec3(0.03, 0.042, 0.056), vec3(0.15, 0.2, 0.27), clamp(hardstandFresnel * 2.2, 0.0, 1.0));
 }
 #endif`)
     .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
