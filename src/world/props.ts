@@ -464,6 +464,9 @@ export const PILLBOX_SET_BACK_M: Readonly<Record<string, number>> = Object.freez
  *  yard clutter keeps off the clutter already placed (past both radii), how far a hedgehog drawn in the town keeps off
  *  every building (past its ring), and the most a field work's breastwork stations' ground may step (m). */
 const FENCE_BUILDING_CLEAR_M = 0.8, YARD_CLUTTER_GAP_M = 1.2, HEDGEHOG_TOWN_CLEAR_M = 12, FIELD_WORK_STEP_M = 0.55;
+/** props.dressingRules.fencesClearBuildings (the fleet dressing rules 227): the fewest modules a fence run's piece stands
+ *  with — a shorter piece between two breaks is left out (the stub a plot's clearance left of a field-edge run). */
+const FENCE_PIECE_MIN = 3;
 
 interface PropsSettings {
   sourcedPalette?: BuildingPaletteId;
@@ -636,17 +639,20 @@ interface PropsSettings {
    *  - fencesClearBuildings: a fence run's module or gate that meets a building's plot (grown FENCE_BUILDING_CLEAR_M) is
    *    left out, its draws taken (a field-edge run 7.6 m off a road the village now lines ran along its houses' back
    *    walls; a yard run stood into a gable's corner);
+   *  - fenceStubsOut: a run's piece of fewer than FENCE_PIECE_MIN modules between two breaks is left out, with the gate
+   *    that would hang on it (the fleet dressing rules 227: "a few white fence stubs still float in open grass"; the
+   *    coordinator's ruling: its own switch);
    *  - yardClutterClear: the yard clutter (placeYardClutter) is laid after the kit's yards and keeps off them, and
    *    YARD_CLUTTER_GAP_M off the clutter already placed (a gate stack, a cart, barrels and a woodpile from two houses
    *    heaped in one front garden read as a staged prop pile); a house that takes its kit's yard takes no free-standing
    *    yard fence run (its yard is fenced: the run stood in its ground at any angle);
    *  - hedgehogsAtApproaches: the steel hedgehogs drawn inside the town stand only at its approaches, HEDGEHOG_TOWN_CLEAR_M
    *    and more off every building, not in its streets ("a dark object lies in the middle of the road");
-   *  - fieldWorksLevel: a field work's breastwork stands on ground its modules can follow, its stations within
-   *    FIELD_WORK_STEP_M of each other (a work laid up a dyke's batter stepped its bags into "a dark rectangular block on
+   *  - fieldWorksLevel: a field work's breastwork keeps the run of its stations the ground lets its modules follow,
+   *    within FIELD_WORK_STEP_M of each other (the rest left out, draws taken, so no work moves) (a work laid up a dyke's batter stepped its bags into "a dark rectangular block on
    *    the hillside").
    */
-  dressingRules?: { fencesClearBuildings?: boolean; yardClutterClear?: boolean; hedgehogsAtApproaches?: boolean; fieldWorksLevel?: boolean };
+  dressingRules?: { fencesClearBuildings?: boolean; fenceStubsOut?: boolean; yardClutterClear?: boolean; hedgehogsAtApproaches?: boolean; fieldWorksLevel?: boolean };
   /** The field works' pillboxes keep off the trunks the vegetation planted (the Redrock lane's rule, visual/redrock-smooth
    *  ae7dcffa7, 2026-10-07; every map's default since the scenery lane's b40): a seat whose pillbox footprint, with
    *  PILLBOX_TRUNK_BERTH_M round it, holds a trunk is passed for the work's next seat. false keeps the old seats. */
@@ -4722,19 +4728,31 @@ ${snowCap ? `
     const straightYaw = Math.atan2(tx, tz); // module runs along local +z
     let gated = false;
     let openRun = false;
+    // (props.dressingRules.fencesClearBuildings) the run's modules wait in their piece — the modules between two breaks (a
+    // road, a building's plot, a missing module) — and a piece shorter than FENCE_PIECE_MIN is left out, its draws taken,
+    // a gate hanging only on a piece that stands
+    const pieceRule = typeof P !== 'undefined' && !!P.dressingRules?.fenceStubsOut;
+    const piece: Array<readonly [number, number, number, number, number, number, number]> = [];
+    const endPiece = (): boolean => {
+      const stands = piece.length >= FENCE_PIECE_MIN;
+      if (stands) for (const [px, py, pz, pyaw, ps, ptx, ptz] of piece) addDestructible(kind, px, py, pz, pyaw, ps, ptx, ptz);
+      piece.length = 0;
+      return stands;
+    };
     for (let k = 0; k < n; k++) {
       const a = curved?.at(k * along / n), b = curved?.at((k + 1) * along / n);
       const ax = a?.[0] ?? x0 + tx * (k * FENCE_SEG), az = a?.[1] ?? z0 + tz * (k * FENCE_SEG);
       const bx = b?.[0] ?? x0 + tx * ((k + 1) * FENCE_SEG), bz = b?.[1] ?? z0 + tz * ((k + 1) * FENCE_SEG);
       const yaw = curved ? Math.atan2(bx - ax, bz - az) : straightYaw;
       const cx = (ax + bx) / 2, cz = (az + bz) / 2;
-      if (Math.max(Math.abs(cx), Math.abs(cz)) > 478) { openRun = false; continue; }
+      if (Math.max(Math.abs(cx), Math.abs(cz)) > 478) { if (pieceRule) endPiece(); openRun = false; continue; }
       if (heightField._roadDist(cx, cz) < 4.6 || noVeg(cx, cz)) {
+        const stood = pieceRule ? endPiece() : true;
         if (openRun && !gated && drng() < gateChance) {
           // hang an open gate at the field entrance the road cuts
           const gy = heightField.getHeightAt(ax, az);
           // (the looks lane: the run's own family's gate — a picket wicket in a picket fence, a woven gate in wattle)
-          if (!underBridgeDeck(ax, az) && clearOfBuildings(ax, az, ax + Math.sin(yaw) * FENCE_SEG, az + Math.cos(yaw) * FENCE_SEG)) {
+          if (stood && !underBridgeDeck(ax, az) && clearOfBuildings(ax, az, ax + Math.sin(yaw) * FENCE_SEG, az + Math.cos(yaw) * FENCE_SEG)) {
             addDestructible(gateKindForFence(kind), ax, gy - 0.06, az, yaw, 1);
           }
           gated = true;
@@ -4742,14 +4760,18 @@ ${snowCap ? `
         openRun = false;
         continue;
       }
-      if (drng() < 0.05) { openRun = false; continue; } // the odd missing module
+      if (drng() < 0.05) { if (pieceRule) endPiece(); openRun = false; continue; } // the odd missing module
       const ya = heightField.getHeightAt(ax, az), yb = heightField.getHeightAt(bx, bz);
       const cy = Math.min(ya, yb);
       const tiltX = Math.atan2(yb - ya, FENCE_SEG) * 0.85;
       const scale = 0.96 + drng() * 0.10, tiltZ = (drng() - 0.5) * 0.03;
-      if (!underBridgeDeck(cx, cz) && clearOfBuildings(ax, az, bx, bz)) addDestructible(kind, cx, cy - 0.06, cz, yaw, scale, tiltX, tiltZ);
+      if (!underBridgeDeck(cx, cz) && clearOfBuildings(ax, az, bx, bz)) {
+        if (pieceRule) piece.push([cx, cy - 0.06, cz, yaw, scale, tiltX, tiltZ]);
+        else addDestructible(kind, cx, cy - 0.06, cz, yaw, scale, tiltX, tiltZ);
+      } else if (pieceRule) endPiece();
       openRun = true;
     }
+    if (pieceRule) endPiece();
   }
 
   /** Seeded ring scatter of destructibles around a point (yards, markets). */
@@ -6080,6 +6102,45 @@ ${snowCap ? `
       }
       return null;
     }
+    // (props.dressingRules.yardClutterClear; the Polders village blind 227's follow-ups, pose 3: "the barrels sit on the
+    // verge away from any door or shed", and the woodpile stood end-on a metre off its wall "still chunky") the wall-tied
+    // pieces of a house whose plot the pass knows -- a water butt at a corner under the downpipe, a woodpile laid along a
+    // wall, the trough at a wall -- stand against its own walls, 4.5 m and more off a road (not on the street side), their
+    // other spacing as the rest of the clutter's; one no wall of its house can take is left out
+    const plotOf = (building: PlacedRadius): PlacedBuilding | undefined => buildingFeatures.find((f) =>
+      Math.abs(f.x - building.x) < 0.01 && Math.abs(f.z - building.z) < 0.01);
+    const wallClear = (x: number, z: number, building: PlacedRadius, plot: PlacedBuilding): boolean => {
+      for (let i = 0; i < destructibles.length; i++) {
+        const d = destructibles[i];
+        if (Math.hypot(x - d.x, z - d.z) < d.r + 0.9 + (i >= clutterFrom ? YARD_CLUTTER_GAP_M : 0.3)) return false;
+      }
+      if (placedB.some((ob) => ob !== building && Math.hypot(x - ob.x, z - ob.z) < ob.rr)) return false;
+      // every other structure's box 0.6 m off (its own house's box is the one that holds its plot's centre)
+      return !structureBoxes.some((o) => !(plot.x > o.min[0] && plot.x < o.max[0] && plot.z > o.min[2] && plot.z < o.max[2])
+        && x > o.min[0] - 0.6 && x < o.max[0] + 0.6 && z > o.min[2] - 0.6 && z < o.max[2] + 0.6);
+    };
+    /** A spot `off` metres out from one of the house's walls (at a corner, or along it clear of both ends), the yaw that
+     *  turns a piece's local +z out from that wall, and the wall's run from the spot toward its middle. */
+    function wallSpot(building: PlacedRadius, off: number, corner: boolean, rng: () => number):
+      { x: number; z: number; yaw: number; ax: number; az: number } | null {
+      const plot = plotOf(building);
+      if (!plot) return null;
+      const c = Math.cos(plot.rot), sn = Math.sin(plot.rot);
+      for (let t = 0; t < 8; t++) {
+        // a face of the plot's box (its +x, -x, +z or -z wall), in the props frame: local +x -> (cos, -sin), +z -> (sin, cos)
+        const face = (rng() * 4) | 0, sign = face % 2 === 0 ? 1 : -1, alongX = face >= 2;
+        const half = (alongX ? plot.w : plot.d) / 2, out = (alongX ? plot.d : plot.w) / 2 + off;
+        const end = rng() < 0.5 ? -1 : 1;
+        const u = corner ? end * Math.max(0, half - 0.45) : (rng() - 0.5) * 2 * Math.max(0, half - 1.3);
+        const lx = alongX ? u : sign * out, lz = alongX ? sign * out : u;
+        const x = plot.x + lx * c + lz * sn, z = plot.z - lx * sn + lz * c;
+        if (heightField._roadDist(x, z) < 4.5 || noVeg(x, z) || heightField.getNormalAt(x, z).y < 0.9) continue;
+        if (!wallClear(x, z, building, plot)) continue;
+        const nlx = alongX ? 0 : sign, nlz = alongX ? sign : 0, alx = alongX ? -end : 0, alz = alongX ? 0 : -end;
+        return { x, z, yaw: Math.atan2(nlx * c + nlz * sn, -nlx * sn + nlz * c), ax: alx * c + alz * sn, az: -alx * sn + alz * c };
+      }
+      return null;
+    }
     // world-dressing r1: yard dressing is now the DESTRUCTIBLE inhabiting-
     // object layer — firewood stacks, barrels, troughs, churns, benches,
     // laundry lines and hand carts placed per the map's inhabit config, all
@@ -6090,6 +6151,12 @@ ${snowCap ? `
     const placeYardFirewood = (building: PlacedRadius): void => {
       if (INH.firewood === 0) return;
       if (yrng() >= 0.6) return;
+      if (spaced && plotOf(building)) {
+        // (along a wall, its length along the wall)
+        const wall = wallSpot(building, 0.45, false, yrng);
+        if (wall) addDestructible('firewood', wall.x, heightField.getHeightAt(wall.x, wall.z) - 0.03, wall.z, wall.yaw, 0.9 + yrng() * 0.15);
+        return;
+      }
       const spot = yardSpot(building, 1.2, 3.4);
       if (!spot) return;
       const y = heightField.getHeightAt(spot[0], spot[1]);
@@ -6097,6 +6164,17 @@ ${snowCap ? `
     };
     const placeYardBarrels = (building: PlacedRadius): void => {
       if (yrng() >= 0.7) return;
+      if (spaced && plotOf(building)) {
+        // (a water butt at a corner, under the downpipe, now and then a second beside it along the wall)
+        const wall = wallSpot(building, 0.42, true, yrng);
+        if (!wall) return;
+        const butts = 1 + ((yrng() * 2) | 0);
+        for (let i = 0; i < butts; i++) {
+          const x = wall.x + wall.ax * i * 0.72, z = wall.z + wall.az * i * 0.72;
+          addDestructible('barrel', x, heightField.getHeightAt(x, z) - 0.02, z, yrng() * Math.PI * 2, 0.95 + yrng() * 0.1);
+        }
+        return;
+      }
       const spot = yardSpot(building, 0.8, 2.6);
       if (!spot) return;
       const count = 1 + ((yrng() * 2) | 0);
@@ -6108,6 +6186,12 @@ ${snowCap ? `
     };
     const placeYardTrough = (building: PlacedRadius): void => {
       if (!(INH.troughs ?? 1) || yrng() >= 0.35) return;
+      if (spaced && plotOf(building)) {
+        // (at a wall, its length along it)
+        const wall = wallSpot(building, 0.6, false, yrng);
+        if (wall) addDestructible('trough', wall.x, heightField.getHeightAt(wall.x, wall.z) - 0.03, wall.z, wall.yaw + Math.PI / 2, 1);
+        return;
+      }
       const spot = yardSpot(building, 1.4, 3.2);
       if (!spot) return;
       const y = heightField.getHeightAt(spot[0], spot[1]);
@@ -6214,6 +6298,23 @@ ${snowCap ? `
     };
     const placeYardWoodpile = (building: PlacedRadius): void => {
       if (!(INH.woodpiles ?? 1) || detailRng() >= 0.3) return;
+      if (spaced && plotOf(building)) {
+        // (along a wall, its splitting crate at the pile's end)
+        const wall = wallSpot(building, 0.45, false, detailRng);
+        if (!wall) return;
+        addDestructible('firewood', wall.x, heightField.getHeightAt(wall.x, wall.z) - 0.03, wall.z, wall.yaw, 0.85 + detailRng() * 0.2);
+        if (detailRng() < 0.6) {
+          const end = detailRng() < 0.5 ? -1 : 1, cx = wall.x + wall.ax * end * 1.9, cz = wall.z + wall.az * end * 1.9;
+          // (beside the pile on the wall's ground: never past the house's corner into another's)
+          const plot = plotOf(building)!, lx = (cx - plot.x) * Math.cos(plot.rot) - (cz - plot.z) * Math.sin(plot.rot);
+          const lz = (cx - plot.x) * Math.sin(plot.rot) + (cz - plot.z) * Math.cos(plot.rot);
+          const onWall = Math.abs(lx) < plot.w / 2 + 1.2 && Math.abs(lz) < plot.d / 2 + 1.2;
+          if (onWall && heightField._roadDist(cx, cz) >= 4.0 && !noVeg(cx, cz) && wallClear(cx, cz, building, plot)) {
+            addDestructible('crate', cx, heightField.getHeightAt(cx, cz) - 0.03, cz, wall.yaw + (detailRng() - 0.5) * 0.4, 0.8 + detailRng() * 0.2);
+          }
+        }
+        return;
+      }
       const spot = detailSpot(building, 0.6, 1.8);
       if (!spot) return;
       const y = heightField.getHeightAt(spot[0], spot[1]);
@@ -8172,18 +8273,29 @@ ${snowCap ? `
         stations.push([cx + lx * off, cz + lz * off]);
       }
       if (!stations.every(([bx, bz]) => clear(bx, bz))) continue;
-      // (props.dressingRules.fieldWorksLevel) its modules follow the ground: no station steps more than FIELD_WORK_STEP_M
-      // off the next, nor the work more than two steps from end to end
+      // (props.dressingRules.fieldWorksLevel) the work stands where it was drawn, on the run of its stations the ground lets
+      // its modules follow: the longest run whose stations step no more than FIELD_WORK_STEP_M off the next, nor two
+      // steps from end to end. The stations off it are left out with their draws taken, so the work keeps its seat and
+      // every later work keeps its own (the coordinator's ruling, 2026-10-17: level the breastworks, never delete the
+      // cover; a first cut refused the whole work and the next draw laid it elsewhere, leaving the spot bare)
+      let keepFrom = 0, keepTo = stations.length - 1;
       if (P.dressingRules?.fieldWorksLevel) {
         const ys = stations.map(([bx, bz]) => heightField.getHeightAt(bx, bz));
-        if (ys.some((y, k) => k > 0 && Math.abs(y - ys[k - 1]) > FIELD_WORK_STEP_M)
-          || Math.max(...ys) - Math.min(...ys) > 2 * FIELD_WORK_STEP_M) continue;
+        let best = [0, 0];
+        for (let i = 0; i < ys.length; i++) {
+          let lo = ys[i], hi = ys[i], j = i;
+          while (j + 1 < ys.length && Math.abs(ys[j + 1] - ys[j]) <= FIELD_WORK_STEP_M
+            && Math.max(hi, ys[j + 1]) - Math.min(lo, ys[j + 1]) <= 2 * FIELD_WORK_STEP_M) { j++; lo = Math.min(lo, ys[j]); hi = Math.max(hi, ys[j]); }
+          if (j - i > best[1] - best[0]) best = [i, j];
+        }
+        [keepFrom, keepTo] = best;
       }
-      for (const [bx, bz] of stations) {
+      for (const [si, [bx, bz]] of stations.entries()) {
         const kind = SOURCED.sandbags ? (wrng() < 0.6 ? 'sandbagwall' : 'sandbagbig') : 'barrier';
         // every piece keeps its whole footprint out of the road core: one that would reach into it is left out, its
         // draws still taken, so the rest of the works keep their seats
         const moduleYaw = yaw + (wrng() - 0.5) * 0.1, moduleScale = SOURCED.sandbags ? 1.15 + wrng() * 0.2 : 1;
+        if (si < keepFrom || si > keepTo) continue;
         if (!destructibleClearOfRoad(kind, bx, bz, moduleYaw, moduleScale)) continue;
         addDestructible(kind, bx, heightField.getHeightAt(bx, bz) - 0.04, bz, moduleYaw, moduleScale);
         bedSandbagNest(kind, bx, bz, moduleYaw, moduleScale, [fx, fz]); // (its spoil thrown toward the threat)
