@@ -572,10 +572,18 @@ const commsTower: RegionalBuilder = (ctx) => {
   // fine joinery, drawn near the camera)
   bar(sink, leg(1, 0.2), leg(1, H * 0.78), 0.07, { colour: DARK, decor: true });
   sink.dressing(mobile, () => {
-    // (on the back face beside its corner leg, its rails against the girts: rungs between them along the face)
+    // (on the back face beside its corner leg: its rails in one run per girt level, each run from girt to girt on the leg's
+    // taper so it meets them both, the first from the pad; the rungs on each run's own line between its rails)
     const rail = (y: number, s: number): Vec3 => { const p = leg(3, y); return [p[0] + (s > 0 ? 0.78 : 0.32), p[1], p[2] + 0.05]; };
-    for (const s of [-1, 1]) bar(sink, rail(0.1, s), rail(H - 0.2, s), 0.04, { colour: STEEL, decor: true, fine: true });
-    for (let y = 0.4; y < H - 0.3; y += 0.6) bar(sink, rail(y, -1), rail(y, 1), 0.025, { colour: STEEL, decor: true, fine: true });
+    for (let l = 0; l < levels; l++) {
+      const ya = (l / levels) * H, yb = ((l + 1) / levels) * H;
+      for (const s of [-1, 1]) bar(sink, rail(ya, s), rail(yb, s), 0.04, { colour: STEEL, decor: true, fine: true });
+      const a0 = rail(ya, -1), a1 = rail(yb, -1), b0 = rail(ya, 1), b1 = rail(yb, 1), steps = Math.max(1, Math.round((yb - ya) / 0.6));
+      for (let k = 1; k < steps; k++) {
+        const t = k / steps, lerp3 = (p: Vec3, q: Vec3): Vec3 => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, p[2] + (q[2] - p[2]) * t];
+        bar(sink, lerp3(a0, a1), lerp3(b0, b1), 0.025, { colour: STEEL, decor: true, fine: true });
+      }
+    }
     for (const [x0, x1] of [[wl1[0] + 0.3, wl1[0] + 3.5], [wl0[0] - 3.5, wl0[0] - 0.3]] as const) {
       for (let yy = wl0[1] - 1.2; yy < wl0[1] + 1.6; yy += 0.4) sink.span(M, x0, yy - 0.012, wz - 0.145, x1, yy + 0.012, wz - 0.13, { colour: shade(rgb(0x1c2740), 1.6), decor: true, fine: true });
     }
