@@ -102,6 +102,8 @@ const BUDGET = {
   radomeTower: 9000, troposcatter: 9000, guyedMast: 9000, moduleTrain: 9000, fuelTankFarm: 9000,
   headframe: 9000, oreBin: 9000, conveyor: 9000, oreCars: 9000, jamesway: 9000, drumCache: 9000, snowFence: 9000, airstrip: 9000, stripShack: 3000, floodMast: 9000,
   hayRack: 3000, fishRack: 9000, stabbur: 3000,
+  // (the Earthrise 228 rebuild) Taurus-Littrow Station's set pieces
+  apolloSite: 9000, isruWorks: 12000, solarTower: 5000,
 };
 assert.deepEqual(Object.keys(BUDGET).sort(), [...KINDS].sort(), 'a budget for every kind');
 /** The authored variants each kind is built in besides its defaults. */
@@ -131,6 +133,8 @@ const VARIANTS = {
   quay: [{ length: 24, depth: 10, top: 1.0 }],
   slipway: [{ length: 20, width: 6, head: 0.5, toe: -1.0 }],
   harbour: [{ basin: 'left', boats: 0, slip: 0, nets: false }, { turn: 40, arm: 16, light: 'red', length: 30 }],
+  isruWorks: [{ part: 'front' }],
+  apolloSite: [{ radius: 16 }],
 };
 const COLOURED = new Set(['structureMetal', 'structureWood', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']);
 

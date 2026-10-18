@@ -349,6 +349,16 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [num(p, 'length') / 2 + 0.4, num(p, 'height') * 0.42 + 0.3] },
   stabbur: { family: 'civic', defaults: { width: 3.6, depth: 3.6 },
     footprint: (p) => [num(p, 'width') / 2 + 1.0, num(p, 'depth') / 2 + 2.0] },
+  // ------------------------------------------------------------------------------- Taurus-Littrow Station's (lunar.ts)
+  // (the Earthrise 228 rebuild, 2026-10-18) Challenger's site inside its ring of posts (the ring's radius; the piece follows
+  // the valley floor under it: its pads, posts and instruments each on their own ground); the oxygen works' plant and its
+  // excavation front; the solar tower on the scarp's crest, its guys' anchors 6.2 m out
+  apolloSite: { family: 'works', drapes: true, defaults: { radius: 22 },
+    footprint: (p) => [num(p, 'radius') + 0.6, num(p, 'radius') + 0.6] },
+  isruWorks: { family: 'works', drapes: true, defaults: { part: 'plant' },
+    footprint: (p) => (p.part === 'front' ? [12.6, 9.6] : [11.2, 9.4]) },
+  solarTower: { family: 'works', drapes: true, defaults: { height: 18 },
+    footprint: (): [number, number] => [6.8, 6.8] },
 });
 
 /** A placement's parameters over its kind's defaults. An unknown kind fails closed. */

@@ -10451,7 +10451,8 @@ ${snowCap ? `
     }
     const budget = P.yardDressing ?? Math.min(140, Math.round(structures.length * 4.5));
     if (!structures.length || !(budget > 0)) return;
-    const palette = mapId === 'mars' ? 'martian' : snowCap || mapId === 'whiteout' ? 'polar' : 'brownfield';
+    // (the Earthrise 228 rebuild) the Moon's yards take the lunar set: no tyres, timber or skips
+    const palette = mapId === 'mars' ? 'martian' : mapId === 'moon' ? 'lunar' : snowCap || mapId === 'whiteout' ? 'polar' : 'brownfield';
     const plan = planYardDressing(structures, heightField, obstacles, seed, { budget, palette });
     const families = new Map<YardFamily, ReturnType<typeof buildYardFamily>>();
     const perMaterial: Record<string, { bucket: string; pieces: number; families: string[]; vertices: number }> = {};
