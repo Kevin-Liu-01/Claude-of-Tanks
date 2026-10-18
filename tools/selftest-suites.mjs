@@ -20,6 +20,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/modeConfiguration.selftest.mjs',
     'src/sim/sixModes.selftest.mjs',
     'src/sim/infectedLifecycle.selftest.mjs',
+    // 2026-10-17 (owner): fragile zombies and sturdy humans in Infected and the Horde (rules, hunt, measured band), and
+    // unlimited rounds in every special and arcade mode
+    'src/sim/zombieBalance.selftest.mjs',
+    // the zombies' tier-down wiring in both bot builders (the authority per seat, the solo battle per setting)
+    'src/game/zombieBotTier.selftest.mjs',
+    'src/sim/specialModeAmmo.selftest.mjs',
     'src/sim/modeAdditions.selftest.mjs',
     'src/fx/sceneLightTint.selftest.mjs',
     'src/fx/droneModel.selftest.mjs',
@@ -325,6 +331,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/spareTrackAttachment.selftest.mjs',
     // 2026-10-15 (VEH-13): one seat solver for every spare-track run; the Strv 103 family builds clean; the fleet ledger
     'src/vehicles/spareTrackSeat.selftest.mjs',
+    // 2026-10-16 (VEH-13 outline rule): the receipt's PROUD class and its seeded break
+    'tools/spare-track-outline.selftest.mjs',
     'src/vehicles/turretBarrelCircularity.selftest.mjs',
     'src/vehicles/profiles/gunTopFixturePlacement.selftest.mjs',
     'src/vehicles/profiles/bradleyHullClosure.selftest.mjs',
@@ -917,6 +925,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/particleTextureAssets.selftest.mjs',
     'src/fx/volumeMedia.selftest.mjs',
     'src/fx/structureStages.selftest.mjs',
+    'src/fx/structureStagesPieceHides.selftest.mjs', // 2026-10-16 props lane B (227 co-hold): a live run's named-piece hides wait for its wreck's birth, a settled run's apply at once
     'src/fx/structureDebris.selftest.mjs', // 2026-10-12: thrown pieces lie where their flight meets the ground; still pieces belong to their building
     'src/fx/rubbleBodies.selftest.mjs', // 2026-10-12: a building's larger falling pieces are bodies of the one physics engine
     // 2026-10-15 (the fracture package on integ/226): walls break where struck as cells, a section's fall keeps its stub and
@@ -956,6 +965,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/worldNightLighting.selftest.mjs',
     'src/world/worldNightFixtureInstances.selftest.mjs',
     'src/world/worldNightEmissionGeometry.selftest.mjs',
+    'src/world/townNightLights.selftest.mjs', // 227 looks: the town kits' dwellings light their panes; Steinburg's street lamps beside its planned rows
     'src/dev/nightWindowInspection.selftest.mjs',
     'src/dev/nightWorldFixtureInspection.selftest.mjs',
     'src/world/villageWindowPlacement.selftest.mjs',
@@ -1281,6 +1291,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/phoneLayoutIdentity.selftest.mjs',
     'src/sim/botRoutePlanner.selftest.mjs',
     'src/sim/botRouteClearance.selftest.mjs',
+    // 2026-10-16 (bots lane, READY-227): the hard bot's Verdant approach, after the clearance bevel (the smock mill's needles)
+    'src/sim/botVerdantApproach.selftest.mjs',
     // 2026-10-03 (bots lane): an edge holds the side slope across it to the two-way slope rule.
     'src/sim/botRouteSideSlope.selftest.mjs',
     'src/sim/botNavigationWater.selftest.mjs',
@@ -1599,6 +1611,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // the scenery lane (after wave 57): the telegraph poles' weathered timber
     'src/world/poleTimber.selftest.mjs',
     'src/world/scenery.selftest.mjs',
+    'src/world/jebelSkin.selftest.mjs', // 2026-10-14 (maps lane, MA.12): a dome's jointed face — all round, normals out, proud, in budget, no mass
     'src/world/sceneryTierIdentity.selftest.mjs', // 2026-10-11 the hitbox lane: a phone builds the desktop's formation masses
     // the scenery lane (2026-10-03): the dry-stone field walls' own rubble print
     'src/world/fieldStoneSurface.selftest.mjs',
@@ -1756,6 +1769,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/ammoCrates.selftest.mjs',
     'src/world/maps/rollingStock.selftest.mjs',
     'src/world/maps/vehicleSetPieces.selftest.mjs',
+    // the map-content lane's R6 (wave 358a): the works vehicles on their own gear, their prints and ground contact
+    'src/world/maps/setPieceSeat.selftest.mjs',
     'src/world/maps/strandWrack.selftest.mjs',
     'src/world/maps/shoreJetty.selftest.mjs',
     // #16 r2 (Lane C, 2026-10-14): the waterside family in its members (jetty forms, gangway, driftwood, buoys, fords, reeds)
@@ -1906,6 +1921,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageOrder.selftest.mjs',
     'src/ui/garageAuxiliarySummary.selftest.mjs',
     'src/vehicles/auxiliaryRoofGuns.selftest.mjs',
+    // 2026-10-16 (the perf lane): the roof-gun table's compact form
+    'src/vehicles/auxiliaryRoofGunsCodec.selftest.mjs',
     'src/ui/randomPreviews.selftest.mjs',
     'src/ui/touchControls.selftest.mjs',
     'src/ui/mobileLayout.selftest.mjs',
@@ -1945,6 +1962,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/leopardHullClosure.selftest.mjs',
     'src/vehicles/tankFactoryCore.selftest.mjs',
     'src/vehicles/tankFactoryStaging.selftest.mjs',
+    'src/vehicles/tankFactoryDeferredAssembly.selftest.mjs',
     'src/vehicles/plateDistanceScratch.selftest.mjs',
     'src/vehicles/profileBuilderAdapter.selftest.mjs',
     'src/vehicles/fleetSpecRegistry.selftest.mjs',

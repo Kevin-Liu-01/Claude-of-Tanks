@@ -23,9 +23,13 @@
 // sunk 0.2 m. On the structure wood (craftMesh: its grain along a member's length, the colour albedo over the print);
 // stone, concrete and steel members sample a flat texel and carry their colour.
 //
-// The collision is the legacy module's exactly (props.ts fenceTypes): the legacy builder still runs first on the pool's
-// stream (its draws), its contact band is frozen as the pool's (DestructiblePropType.contactBand, as the rebuilt vehicles
-// keep theirs) and its fixed-seed build is the placement footprint. The broken state is this build broken by member
+// The collision (props.ts fenceTypes): the legacy builder still runs first on the pool's stream (its draws), its contact band
+// is frozen as the module's obstacle — what a hull meets and crushes, exactly as before — and its fixed-seed build is the
+// placement footprint. (The looks lane, 227, the coordinator: "a fence that LOOKS solid is seen and shot through between
+// the old rails") Each module has a collider of its own besides, its band drawn round the module's side silhouette
+// (drawnRecordBand): what spotting, every sight line and the shells meet, so a fence stops a line where it shows a board,
+// a lath, a pale, a pole or a woven course. (The coordinator, 227, the published shard budget: at most three boxes a
+// module — a panel run one box across its gaps, a rail or a post one each.) The broken state is this build broken by member
 // (propFracture.ts FENCE_FRACTURE: posts snap low, boards and rails lie along the line). Cost (WORKLIST #6 guardrail:
 // net triangles <= +0 on Saltwind, the delta, the coast and the desert): every form's module triangles are capped
 // (FENCE_TRIANGLE_CAP), the guardrail maps within an r2 allowance of the legacy counts (fenceKit.selftest). Pure geometry;
@@ -476,13 +480,194 @@ export function buildFence(kind: FenceKind, gate: GateStyle, forms: FenceForms, 
   return g;
 }
 
+/** The silhouette's cell (m) and the share of a cell's samples a member must cover for the cell to stop a line. */
+const RECORD_CELL_M = 0.015, RECORD_FILL = 5 / 9;
+/**
+ * The record's economy (227, the published shard budget: one module's record is in every shard as often as the fence
+ * stands): at most RECORD_BOX_CAP boxes, together stopping at least RECORD_STOP of the lines through the module's opaque
+ * spans. A row of the silhouette at least PANEL_FILL covered is part of a panel (boards, laths, pales, a woven course, a
+ * rail); panel rows a slit of up to PANEL_GAP_CELLS apart are one panel run, one box.
+ */
+const RECORD_BOX_CAP = 3, RECORD_STOP = 0.97, PANEL_FILL = 0.25, PANEL_GAP_CELLS = 3;
+
+/**
+ * A drawn module's record as rectangles (the looks lane, 227): its side silhouette — the module seen along x, its triangles
+ * projected onto the (z, y) plane — sampled on RECORD_CELL_M cells (3 x 3 samples a cell, a cell covered when
+ * RECORD_FILL of them fall inside a member: a 3 mm wire or the slit between two boards stops nothing, a lath or a withy
+ * does), closed over hairline slits. The record is the fewest rectangles that stop the opaque spans (a cell whose eight
+ * neighbours are covered too): one box a panel run — a board fence's boards, a picket fence's pales and its rails, a
+ * hurdle's weave, each rail of a rail fence — and the posts or the ragged heads a panel leaves out, a column each, the
+ * one that stops the most first, until RECORD_STOP of the opaque spans are stopped (RECORD_BOX_CAP at most; a sparser
+ * panel row joins a panel until they are). A panel's box spans its gaps: a lath, picket or wattle fence stops a sight
+ * line as a board fence does. Each rectangle a box across the members' depth (x0..x1, y0..y1, z0..z1 in the module's frame).
+ */
+function drawnRecordRects(g: THREE.BufferGeometry): Array<{ x0: number; x1: number; y0: number; y1: number; z0: number; z1: number }> {
+  const flat = g.index ? g.toNonIndexed() : g;
+  const p = flat.getAttribute('position').array as ArrayLike<number>;
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  for (let i = 0; i < p.length; i += 3) {
+    x0 = Math.min(x0, p[i]); x1 = Math.max(x1, p[i]); y0 = Math.min(y0, p[i + 1]); y1 = Math.max(y1, p[i + 1]);
+    z0 = Math.min(z0, p[i + 2]); z1 = Math.max(z1, p[i + 2]);
+  }
+  if (flat !== g) flat.dispose();
+  // (the members' depth across the line, at most a post's: the record is the fence's plane, not its widest member's box)
+  const xc = (x0 + x1) / 2, depth = Math.min(0.16, Math.max(0.03, x1 - x0));
+  const cell = RECORD_CELL_M;
+  const nz = Math.max(1, Math.ceil((z1 - z0) / cell)), ny = Math.max(1, Math.ceil((y1 - y0) / cell));
+  const hits = new Uint8Array(nz * ny);
+  for (let t = 0; t < p.length; t += 9) {
+    const az = p[t + 2], ay = p[t + 1], bz = p[t + 5], by = p[t + 4], cz = p[t + 8], cy = p[t + 7];
+    const den = (by - cy) * (az - cz) + (cz - bz) * (ay - cy);
+    if (Math.abs(den) < 1e-10) continue; // seen edge-on along x: no area in the silhouette
+    const i0 = Math.max(0, Math.floor((Math.min(az, bz, cz) - z0) / cell)), i1 = Math.min(nz - 1, Math.floor((Math.max(az, bz, cz) - z0) / cell));
+    const j0 = Math.max(0, Math.floor((Math.min(ay, by, cy) - y0) / cell)), j1 = Math.min(ny - 1, Math.floor((Math.max(ay, by, cy) - y0) / cell));
+    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+      let mask = hits[i + j * nz];
+      for (let s = 0; s < 9; s++) {
+        if (mask & (1 << s)) continue;
+        const qz = z0 + (i + ((s % 3) + 0.5) / 3) * cell, qy = y0 + (j + (Math.floor(s / 3) + 0.5) / 3) * cell;
+        const l1 = ((by - cy) * (qz - cz) + (cz - bz) * (qy - cy)) / den, l2 = ((cy - ay) * (qz - cz) + (az - cz) * (qy - cy)) / den;
+        if (l1 >= 0 && l2 >= 0 && l1 + l2 <= 1) mask |= 1 << s;
+      }
+      hits[i + j * nz] = mask;
+    }
+  }
+  const need = Math.ceil(RECORD_FILL * 9);
+  const raw = new Uint8Array(nz * ny);
+  for (let k = 0; k < raw.length; k++) { let m = hits[k], c = 0; while (m) { c += m & 1; m >>= 1; } raw[k] = c >= need ? 1 : 0; }
+  // closed over a slit of up to two cells (a dilation and an erosion by one): the hairline between two boards or two
+  // woven courses stops a line as the fence does
+  const morph = (src: Uint8Array, grow: boolean): Uint8Array => {
+    const dst = new Uint8Array(src.length);
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nz; i++) {
+      let v = grow ? 0 : 1;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+        const ii = i + di, jj = j + dj;
+        const s2 = ii < 0 || jj < 0 || ii >= nz || jj >= ny ? 0 : src[ii + jj * nz];
+        v = grow ? v | s2 : v & s2;
+      }
+      dst[i + j * nz] = v;
+    }
+    return dst;
+  };
+  // what the record must stop: every cell whose centre lies in a member at least a cell across each way — a neighbour's
+  // centre in it along the line and up it (a sight line through it meets the fence; a wire's 3 mm is none); the
+  // silhouette the boxes are drawn round: those and the closed cells
+  const centre = (i: number, j: number) => i >= 0 && j >= 0 && i < nz && j < ny && ((hits[i + j * nz] >> 4) & 1) === 1;
+  const inner = new Uint8Array(nz * ny);
+  for (let j = 0; j < ny; j++) for (let i = 0; i < nz; i++) {
+    inner[i + j * nz] = centre(i, j) && (centre(i - 1, j) || centre(i + 1, j)) && (centre(i, j - 1) || centre(i, j + 1)) ? 1 : 0;
+  }
+  const closed = morph(morph(raw, true), false);
+  for (let k = 0; k < closed.length; k++) closed[k] |= inner[k];
+  let innerN = 0;
+  for (let k = 0; k < inner.length; k++) innerN += inner[k];
+  type Rect = { i0: number; i1: number; j0: number; j1: number };
+  const fill = new Float64Array(ny);
+  for (let j = 0; j < ny; j++) { let c = 0; for (let i = 0; i < nz; i++) c += closed[i + j * nz]; fill[j] = c / nz; }
+  // the posts and heads a panel leaves out: each column's covered runs, joined across neighbouring columns of like runs
+  // (each end within two cells)
+  const columns: Rect[] = [];
+  {
+    const TOL = 2;
+    let group: { i0: number; i1: number; runs: Array<[number, number]> } | null = null;
+    const flush = () => { if (group) for (const [a, b] of group.runs) columns.push({ i0: group.i0, i1: group.i1, j0: a, j1: b }); group = null; };
+    for (let i = 0; i < nz; i++) {
+      const runs: Array<[number, number]> = [];
+      for (let j = 0; j < ny; j++) {
+        if (!closed[i + j * nz]) continue;
+        const a = j;
+        while (j + 1 < ny && closed[i + (j + 1) * nz]) j++;
+        runs.push([a, j]);
+      }
+      if (!runs.length) { flush(); continue; }
+      const g0 = group as { i0: number; i1: number; runs: Array<[number, number]> } | null;
+      if (g0 && g0.runs.length === runs.length && runs.every(([a, b], k) => Math.abs(a - g0.runs[k][0]) <= TOL && Math.abs(b - g0.runs[k][1]) <= TOL)) {
+        g0.i1 = i;
+        g0.runs = g0.runs.map(([a, b], k) => [Math.min(a, runs[k][0]), Math.max(b, runs[k][1])] as [number, number]);
+      } else { flush(); group = { i0: i, i1: i, runs }; }
+    }
+    flush();
+  }
+  /** The panel runs at `panelFill`: rows at least that covered, a slit of up to PANEL_GAP_CELLS joined, one box each. */
+  const panels = (panelFill: number): Rect[] => {
+    const rects: Rect[] = [];
+    for (let j = 0; j < ny;) {
+      if (fill[j] < panelFill) { j++; continue; }
+      let b = j;
+      for (let k = j + 1; k < ny; k++) {
+        if (fill[k] >= panelFill) { b = k; continue; }
+        let g = k;
+        while (g < ny && fill[g] < panelFill) g++;
+        if (g < ny && g - k <= PANEL_GAP_CELLS) { b = g; k = g; } else break;
+      }
+      let i0 = nz, i1 = -1;
+      for (let jj = j; jj <= b; jj++) for (let i = 0; i < nz; i++) if (closed[i + jj * nz]) { i0 = Math.min(i0, i); i1 = Math.max(i1, i); }
+      if (i1 >= i0) rects.push({ i0, i1, j0: j, j1: b });
+      j = b + 1;
+    }
+    return rects;
+  };
+  /** The panels and, while the box cap leaves room, the column that stops the most of what they leave, until RECORD_STOP. */
+  const withColumns = (bands: readonly Rect[]): { rects: Rect[]; stopped: number } => {
+    const rects = [...bands], taken = new Uint8Array(nz * ny);
+    let stopped = 0;
+    const take = (r: Rect) => {
+      for (let j = r.j0; j <= r.j1; j++) for (let i = r.i0; i <= r.i1; i++) {
+        const k = i + j * nz;
+        if (!taken[k]) { taken[k] = 1; stopped += inner[k]; }
+      }
+    };
+    for (const r of rects) take(r);
+    while (stopped < RECORD_STOP * innerN && rects.length < RECORD_BOX_CAP) {
+      let best: Rect | null = null, gain = 0;
+      for (const r of columns) {
+        let g = 0;
+        for (let j = r.j0; j <= r.j1; j++) for (let i = r.i0; i <= r.i1; i++) { const k = i + j * nz; if (!taken[k]) g += inner[k]; }
+        if (g > gain) { gain = g; best = r; }
+      }
+      if (!best) break;
+      rects.push(best);
+      take(best);
+    }
+    return { rects, stopped };
+  };
+  // too many panels, or too few boxes left for the columns: the two panels nearest each other become one; one panel
+  // still short of RECORD_STOP: sparser rows join it
+  let panelFill = PANEL_FILL, bands = panels(panelFill), res = withColumns(bands);
+  while (res.stopped < RECORD_STOP * innerN || res.rects.length > RECORD_BOX_CAP) {
+    if (bands.length >= 2) {
+      let k = 0;
+      for (let q = 1; q + 1 < bands.length; q++) if (bands[q + 1].j0 - bands[q].j1 < bands[k + 1].j0 - bands[k].j1) k = q;
+      const a = bands[k], b = bands[k + 1];
+      bands = [...bands.slice(0, k), { i0: Math.min(a.i0, b.i0), i1: Math.max(a.i1, b.i1), j0: a.j0, j1: b.j1 }, ...bands.slice(k + 2)];
+    } else if (panelFill > 0.02) bands = panels(panelFill *= 0.6);
+    else break;
+    res = withColumns(bands);
+  }
+  return res.rects.map((r) => ({ x0: xc - depth / 2, x1: xc + depth / 2, y0: y0 + r.j0 * cell, y1: y0 + (r.j1 + 1) * cell, z0: z0 + r.i0 * cell, z1: z0 + (r.i1 + 1) * cell }));
+}
+
+/**
+ * The pool's contact band from a drawn module (props.ts applies it to every module's obstacle and collider at its pose):
+ * one box part a silhouette rectangle (drawnRecordRects), each with its own height — laid out directly, not through the
+ * structures' footprint derivation, whose ground band absorbs a part lying within another's plan into one part of their
+ * joined height (every rectangle of a fence lies in the one line).
+ */
+export function drawnRecordBand(g: THREE.BufferGeometry): StructureCollisionRuntimeBand {
+  const rects = drawnRecordRects(g);
+  const parts = rects.map((r) => ({ kind: 'obb' as const, cx: (r.x0 + r.x1) / 2, cz: (r.z0 + r.z1) / 2, hw: (r.x1 - r.x0) / 2, hl: (r.z1 - r.z0) / 2, yaw: 0, y0: r.y0, y1: r.y1 }));
+  return { minY: Math.min(...rects.map((r) => r.y0)), maxY: Math.max(...rects.map((r) => r.y1)), parts };
+}
+
 /** A fence kind's record on the structure wood (props.ts PropsDestructibleMeta: any material by name). */
 export type FenceType = Omit<DestructiblePropType, 'mat'> & { mat: 'structureWood'; ownBroken?: boolean };
 
 /**
  * The map's timber fence kinds in its region's build (props.ts LOCAL_TYPES): each kind's record, class, contact and
- * debris plan unchanged; its legacy builder still runs first on the pool's stream (its draws), its contact band frozen as
- * the pool's collision, its fixed-seed build the placement footprint (`legacyRng` the props' mulberry32 at 0x0f0f7).
+ * debris plan unchanged; its legacy builder still runs first on the pool's stream (its draws), its fixed-seed build the
+ * placement footprint (`legacyRng` the props' mulberry32 at 0x0f0f7), its contact band frozen as the obstacle's; a collider
+ * besides, its band the drawn module's (drawnRecordBand).
  */
 export function fenceTypes(architectureId: string | null | undefined, mapId: string, base: Readonly<Record<FenceKind, DestructiblePropType>>,
   footprintRng: () => () => number): Record<FenceKind, FenceType> {
@@ -490,21 +675,29 @@ export function fenceTypes(architectureId: string | null | undefined, mapId: str
   const out = {} as Record<FenceKind, FenceType>;
   for (const kind of FENCE_KINDS) {
     const legacy = base[kind];
-    let band: StructureCollisionRuntimeBand | undefined;
+    let band: StructureCollisionRuntimeBand | undefined, sight: StructureCollisionRuntimeBand | undefined;
     const entry: FenceType = {
       ...legacy, mat: 'structureWood',
+      // (the looks lane, 227) a collider of its own, its band what's drawn: spotting, sight lines and the shells meet the
+      // fence's members; the obstacle a hull crushes keeps the legacy module's band, so a fence breaks under a hull as before
+      collider: true,
       build: (rng) => {
         const old = legacy.build(rng);
         band = deriveRuntimeStructureContactBand({ baked: [old] });
         old.dispose();
-        return buildFence(kind, gate, forms);
+        const drawn = buildFence(kind, gate, forms);
+        sight = drawnRecordBand(drawn);
+        return drawn;
       },
       // (r2, 2026-10-16: the module's own wreck, pushed over — the legacy broken builder's draws still spent first)
       broken: (rng) => { legacy.broken!(rng).dispose(); return buildFence(kind, gate, forms, 0, true); },
       ownBroken: true,
       footprintBuild: () => legacy.build(footprintRng()),
     };
-    out[kind] = Object.defineProperty(entry, 'contactBand', { enumerable: true, get: () => band });
+    out[kind] = Object.defineProperties(entry, {
+      contactBand: { enumerable: true, get: () => band },
+      colliderBand: { enumerable: true, get: () => sight },
+    });
   }
   return out;
 }

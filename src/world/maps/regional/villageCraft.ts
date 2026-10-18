@@ -68,7 +68,7 @@ export type SheetLivery = (k: number) => Rgb;
  * proud of the sheets at the head. `holes` the openings, their casings `margin` wide.
  */
 export function corrugatedCladding(sink: PartSink, face: Face, rect: WallRect, openings: readonly Opening[], livery: SheetLivery,
-  frame: Rgb, opts: { mobile: boolean; cover?: number; margin?: number }): void {
+  frame: Rgb, opts: { mobile: boolean; cover?: number; margin?: number; /** false: the window units' own surrounds case the cuts */ casings?: boolean }): void {
   const cover = opts.cover ?? 0.76, margin = opts.margin ?? 0.07;
   const holes = holesOf(openings, rect, margin);
   const lap = rect.y1 - rect.y0 > 2.2 ? rect.y0 + 1.8 : null;
@@ -93,7 +93,7 @@ export function corrugatedCladding(sink: PartSink, face: Face, rect: WallRect, o
   // the frame showing: the corner posts and the plate under the eave, and the casings round the openings
   for (const u of [rect.u0 + 0.05, rect.u1 - 0.05]) faceBox(sink, 'structureWood', face, u, (rect.y0 + rect.y1) / 2, 0.03, 0.1, rect.y1 - rect.y0, 0.06, { colour: frame, decor: true }, 'caps');
   faceBox(sink, 'structureWood', face, 0, rect.y1 - 0.06, 0.035, rect.u1 - rect.u0, 0.12, 0.07, { colour: shade(frame, 0.9), decor: true }, 'ends');
-  casings(sink, face, holes, frame);
+  if (opts.casings !== false) casings(sink, face, holes, frame);
 }
 
 /**
@@ -128,7 +128,7 @@ export function boardCladding(sink: PartSink, face: Face, rect: WallRect, openin
  * direction (two layers of diagonal splints, fine joinery near the camera), the poles round each bay, the casings.
  */
 export function matCladding(sink: PartSink, face: Face, rect: WallRect, openings: readonly Opening[], mat: (k: number) => Rgb,
-  pole: Rgb, opts: { mobile: boolean; bay?: number; margin?: number }): void {
+  pole: Rgb, opts: { mobile: boolean; bay?: number; margin?: number; /** false: the window units' own surrounds case the cuts */ casings?: boolean }): void {
   const bay = opts.bay ?? 1.2, margin = opts.margin ?? 0.08;
   const holes = holesOf(openings, rect, margin);
   for (const col of columns(rect, holes, bay, 0.06)) {
@@ -165,7 +165,7 @@ export function matCladding(sink: PartSink, face: Face, rect: WallRect, openings
     for (const [u0, u1] of spansAlong(rect, holes, y)) sink.member('structureWood', facePoint(face, u0, y, 0.045), facePoint(face, u1, y, 0.045), 0.07, 0.07, face.out,
       { colour: shade(pole, 0.94), decor: true, exposed: true }, 0.02);
   }
-  casings(sink, face, holes, pole);
+  if (opts.casings !== false) casings(sink, face, holes, pole);
 }
 
 /** The free stretches of a line across the wall at height y (between the holes it meets). */

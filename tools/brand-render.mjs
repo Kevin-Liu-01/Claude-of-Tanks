@@ -6,15 +6,19 @@
 //   export: node tools/brand-render.mjs export <svg> <out.png> <width> [height] [bg]
 //           -> single PNG at exact size; bg 'transparent' (default), a CSS
 //              color, or 'cot-dark' for the official social-card gradient.
+//   ico:    node tools/brand-render.mjs ico <svg> <out.ico> [sizes]
+//           -> favicon.ico holding a transparent export at each size
+//              (default 16,32,48; Google wants a multiple of 48), each entry a
+//              PNG (supported by every current browser and Windows Vista+).
 // SVGs are rasterized via data-URI <img> onto <canvas>, so only pure-path SVGs
 // (no <text>) are size-faithful; brand marks here are pure paths by design.
 import puppeteer from 'puppeteer';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const [, , mode, svgPath, outPath, wArg, hArg, bgArg] = process.argv;
 if (!mode || !svgPath || !outPath) {
-  console.error('usage: brand-render.mjs sheet|export <svg> <out.png> [w] [h] [bg]');
+  console.error('usage: brand-render.mjs sheet|export|ico <svg> <out.png|out.ico> [w|sizes] [h] [bg]');
   process.exit(2);
 }
 const svgText = readFileSync(resolve(svgPath), 'utf8');
@@ -79,9 +83,40 @@ if (mode === 'sheet') {
 } else if (mode === 'export') {
   const w = parseInt(wArg, 10);
   const h = hArg && hArg !== 'auto' ? parseInt(hArg, 10) : 0;
-  const bg = bgArg || 'transparent';
+  writeFileSync(resolve(outPath), await renderPng(w, h, bgArg || 'transparent'));
+} else if (mode === 'ico') {
+  const sizes = (wArg || '16,32,48').split(',').map((size) => parseInt(size, 10));
+  if (sizes.some((size) => !(size >= 1 && size <= 256))) throw new Error(`ico sizes must be 1-256 px: ${wArg}`);
+  const images = [];
+  for (const size of sizes) images.push({ size, png: await renderPng(size, size, 'transparent') });
+  // ICONDIR, one 16-byte ICONDIRENTRY per image, then the PNG payloads in order.
+  const header = Buffer.alloc(6 + 16 * images.length);
+  header.writeUInt16LE(0, 0);
+  header.writeUInt16LE(1, 2);
+  header.writeUInt16LE(images.length, 4);
+  let offset = header.length;
+  images.forEach(({ size, png }, index) => {
+    const entry = 6 + 16 * index;
+    header.writeUInt8(size % 256, entry); // 0 means 256
+    header.writeUInt8(size % 256, entry + 1);
+    header.writeUInt16LE(1, entry + 4); // colour planes
+    header.writeUInt16LE(32, entry + 6); // bits per pixel
+    header.writeUInt32LE(png.length, entry + 8);
+    header.writeUInt32LE(offset, entry + 12);
+    offset += png.length;
+  });
+  writeFileSync(resolve(outPath), Buffer.concat([header, ...images.map(({ png }) => png)]));
+} else {
+  console.error(`unknown mode ${mode}`);
+  process.exit(2);
+}
+await browser.close();
+console.log(`${mode} -> ${outPath}`);
+
+async function renderPng(w, h, bg) {
   await page.setViewport({ width: Math.max(w, 8), height: Math.max(h || w, 8), deviceScaleFactor: 1 });
-  await page.setContent(`<!doctype html><html><body style="margin:0"><script>
+  // setContent keeps the page's global scope, so the script is a block: its consts are fresh on every render.
+  await page.setContent(`<!doctype html><html><body style="margin:0"><script>{
     const img = new Image();
     img.onload = () => {
       const ar = img.naturalHeight / img.naturalWidth;
@@ -112,13 +147,8 @@ if (mode === 'sheet') {
       c.id = 'out'; document.body.appendChild(c); document.title = 'ready';
     };
     img.src = ${JSON.stringify(svgUri)};
-  </script></body></html>`);
+  }</script></body></html>`);
   await page.waitForFunction(() => document.title === 'ready', { timeout: 15000 });
   const el = await page.$('#out');
-  await el.screenshot({ path: resolve(outPath), omitBackground: bg === 'transparent' });
-} else {
-  console.error(`unknown mode ${mode}`);
-  process.exit(2);
+  return Buffer.from(await el.screenshot({ omitBackground: bg === 'transparent' }));
 }
-await browser.close();
-console.log(`${mode} -> ${outPath}`);
