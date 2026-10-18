@@ -1111,14 +1111,17 @@ chips (never left hanging where it was: the sails on a fallen tower's hub).
 **Roof slabs.** A fallen roof slab's body grows in its plane only (its normal extent held to the planned box, 0.35 m
 under and 0.6 m over); a slab takes only what lies on its plane (0.8 m, facing within 50 degrees); what stands over the
 eaves on no slab is the top storey's panel's when it lies by a face, the roof's furniture when nothing is drawn under it
-from below (`structureEnclosure standsFromBelow`: a chimney or a dormer on the covering, a turret on the ridge — it rides
-the slab it stands on, a roof chimney's own piece falls with the roof, and the world's copy is flattened with the roof's
-hide), else dropped with the collapse (a tower and its spire stand: they are drawn from below). A slab or sheet at rest
-1.5 m or more up with a tenth of its plan past the walls of the height it lies at (judged at its body's box, not its
-frame's origin) is looked at before the collapse may bake: a slab of several sheets breaks into them; a sheet (or a
-one-sheet slab under 20 m² in its plane) is shoved off with a hop, into the shell from over it and out from past it,
-twice; still there — or a one-sheet slab too big to tip — it breaks up where it lies, its dust and broken tiles thrown.
-Nothing is laid on the ground out of view (round 2: a panel leant on a tavern's wall vanished between two frames).
+from below (a chimney or a dormer on the covering, a turret on the ridge — it rides the slab it stands on, a roof
+chimney's own piece falls with the roof, and the world's copy is flattened with the roof's hide; one decision a cluster
+— `structureEnclosure roofFurnitureAt`: the walls drawn over the eaves gathered in 8-connected cells, a cluster under 3
+m across, mostly not drawn from below and no higher than 3.5 m over the ridge — and the attic's lid the roof covered
+goes too), else dropped with the collapse (a tower and its spire, a gable, a stack drawn from the ground stand). A slab
+or sheet at rest 1.5 m or more up with a tenth of its plan past the walls of the height it lies at (judged at its body's
+box, not its frame's origin) is looked at before the collapse may bake: a slab of several sheets breaks into them; a
+sheet (or a one-sheet slab under 20 m² in its plane) is shoved off with a hop, into the shell from over it and out from
+past it, twice; still there — or a one-sheet slab too big to tip — it breaks up where it lies, its dust and broken tiles
+thrown. Nothing is laid on the ground out of view (round 2: a panel leant on a tavern's wall vanished between two
+frames).
 
 **Rejoin parity.** A late joiner's settled holes, panel falls and breach stages break the walls as the live ones did (cut
 and drawn at once, nothing thrown); a settled roof fall lays only the kit's roof rubble; a settled collapse drops the
@@ -1151,3 +1154,24 @@ detector on both trees): main flagged 249 buildings (2,778 snapshots: rooms past
 rims, roof slabs, baked rests); this round leaves the judged residue the kinds receipt lists (fallen objects' faces on the
 ground, low remnants over the heap, held storeys' rooms and joists, roof slabs and baked rests at rest on what holds them,
 rims at holes in round and open walls).
+
+**The census (2026-10-18, round 2).** Every map, every destructible kind struck from all four of its faces (the A pass: 60
+rounds up storeys 0-3, every phase and the late joiner's replays) and the roof pass (R): 1,846 building runs, 35,720
+snapshots. 27 buildings flag, in 674 snapshots (1.9 %; main, one face: 249 buildings in 2,778), and all are the judged
+residue: low remnants and stubs 1.1-2.9 m over the drawn wall or heap at their spot (piers, never slabs: airfield #25,
+badlands #54, blackglass #9 and #14, caldera #34, fjord #0 and #9, polders #13, steppe #10, titan_gorge #3, skybridge #12,
+whiteout #21 as on main, whiteout #40 on its airstrip's 5 m grid); what stands with a storey the simulation holds, and a
+room in the 0.9 s between a ground storey's fall and the collapse it brings (oasis #2 and #14, ruinspires #1 and #36,
+skybridge #7); fallen objects' faces on the ground (longleaf #16's lookout cab on its side, orchard #4's tower drum); rims
+at holes in round and open walls (reservoir #17, skybridge #7); a remnant on a slope, 16 % of it below the downhill ground
+(skybridge #24); a roof slab or baked rest lying across a fallen stack's drums or on a held floor (ruinspires #7,
+titan_gorge #0); and three panels on their edge at the ground beside a ruin, each from one face (autumn #0, badlands #0's
+roof sheet, caldera #28's fracture heap piece) — the open item, tipped once more when they rest and still standing. The
+kinds receipt (one face a kind by name) passes on the same commit: 393 kinds, 6,060 snapshots, 20 judged findings.
+
+**The anti-raft floors (round 2).** The ruin probe over all 1,943 structures (ruin height at least 25 % of the intact p90,
+plan at least 60 %): 24 below the floors, main 28 — 8 fixed (gantries, boatsheds, a guyed mast), 4 new, each explained:
+skybridge #12 (a 47 m lattice mast over a 3.7 m hut: its p90 is the mast's antenna head, and main stood 13-21 m stone piers
+on the hut to pass), longleaf #11 (a building already in ruins, its walls drawn low: 0.249), fjord #65 (the tallest fish
+rack: its posts at 0.8 of their drawn cells, 0.235), copper_mesa #49 (a tank farm whose crumpled shells and heap spend the
+debris writer's vertices, 0.214; its twin #48 stands at 0.33).
