@@ -195,8 +195,8 @@
    "silhouette": 4,
    "mid": 5,
    "fine": 6,
-   "trisPerWallM2": 14.74,
-   "fineShare": 0.558,
+   "trisPerWallM2": 14.8,
+   "fineShare": 0.556,
    "facePass": 1
   },
   "navajo": {
@@ -635,7 +635,7 @@
   "glencanyon/gantry": "d65e81680844b1ee",
   "glencanyon/foundryoffice": "33a203f2e6e4752b",
   "glencanyon/warehouse": "913c23a97afc7835",
-  "glencanyon/depot": "5e74f225d0a34d2c",
+  "glencanyon/depot": "c4b537eecd8cbd96",
   "glencanyon/containerRow": "06d46ca9e2dd049d",
   "glencanyon/firestation": "4a8e23f47b3b546c",
   "glencanyon/watertower": "2102d3b93db56f67",
