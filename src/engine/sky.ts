@@ -566,7 +566,10 @@ function applyStarLaw(sky: Sky, preset: Readonly<SkyPreset>): void {
   writeStarLaw(u.uStarLaw.value as THREE.Vector4, u.uStarShape.value as THREE.Vector4, (preset.nightSky ?? 0) > 0.5);
 }
 function writeStarLaw(law: THREE.Vector4, shape: THREE.Vector4, galaxySky: boolean): void {
-  if (galaxySky) {
+  // (2026-10-17, 227; the media lane's QA on live 226: Copper Mesa's approved night sky "starry", the live one "no stars"
+  // — the pixel law's sparse pixel-wide faint stars vanish under the night camera) every night draws round 22's cell law
+  // again, the owner's approved stars; the pixel law stays behind QA: __LIGHT_TUNE.STAR_PIXEL_LAW 1
+  if (galaxySky || !(lightTune('STAR_PIXEL_LAW', 0) > 0)) {
     law.set(STAR_LAW_CELL[0], STAR_LAW_CELL[1], STAR_LAW_CELL[2], 0);
     shape.set(0, 0, 0, 8);
     return;
