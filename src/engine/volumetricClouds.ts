@@ -328,8 +328,6 @@ uniform float uRainCore;
 // plane. QA knob CLOUD_RAIN_SOFT (1; 0 = the box): the run follows the ray to the ground (the scene depth ends it), its
 // density ramps in over its first 1.5 km, out over its last quarter, and in over the 60 m under the base
 uniform float uRainSoft;
-// (227, the SKY lane) the rain curtains' streaks: 1 = soft (a broad fall pattern, a faint fine one), 0 = round 7's
-uniform float uRainStreak;
 uniform vec4 uFogBank;
 // a in front of b (premultiplied radiance, transmittance)
 vec4 cloudOver( vec4 a, vec4 b ) { return vec4( a.rgb + a.a * b.rgb, a.a * b.a ); }
@@ -405,14 +403,9 @@ vec4 slabRain( vec3 dir, float cosT, float jitter, float sceneT, out float tLaye
 		if ( prec <= 0.0 ) continue;
 		// streaks: the detail volume on a slice, constant down the fall (curtains), and the virga's evaporation front
 		float streak = texture( tDetail, vec3( cxz.x, 37.0, cxz.y ) / 520.0 ).r;
-		// (227; the 226 judging on Monsoon's eye views: "smeared grey masses" — the 520 m slice held down the whole fall drew
-		// even vertical stripes tens of metres apart) the soft curtains: the fall pattern from a slice three times broader,
-		// the fine slice a faint fifth over it, and the density's swing about its old mean halved, so a shaft reads as a
-		// veil with a few soft falls through it, not a striped wall
-		if ( uRainStreak > 0.5 ) streak = mix( texture( tDetail, vec3( cxz.x, 61.0, cxz.y ) / 1560.0 ).r, streak, 0.2 );
 		float reach = 1.0 - uRain.y * ( 0.55 + 0.45 * streak );
 		float vprof = 1.0 - smoothstep( reach - 0.18, reach + 0.04, fall / drop );
-		float rho = uRain.x * uRain.w * prec * ( uRainStreak > 0.5 ? 0.62 + 0.45 * streak : 0.4 + 0.9 * streak ) * vprof;
+		float rho = uRain.x * uRain.w * prec * ( 0.4 + 0.9 * streak ) * vprof;
 		if ( uRainSoft > 0.5 ) rho *= smoothstep( tStart, tStart + 1500.0, t ) * ( 1.0 - smoothstep( ${f(CLOUD_RAIN_RANGE_M[1] * 0.75)}, ${f(CLOUD_RAIN_RANGE_M[1])}, t ) )
 			* smoothstep( 0.0, 60.0, fall );
 		if ( rho <= 0.0 ) continue;
@@ -1429,7 +1422,6 @@ export class VolumetricCloudLayer {
     t.uOpaqueCut.value = lightTune('CLOUD_OPAQUE_CUT', 1);
     t.uRainCore.value = lightTune('CLOUD_RAIN_CORE', 0);
     t.uRainSoft.value = lightTune('CLOUD_RAIN_SOFT', 1);
-    t.uRainStreak.value = lightTune('CLOUD_RAIN_STREAK', 1);
     // QA (round 10): the cost lab's knobs — the step cap, the entry refinement, the far cascade's bilinear read, the
     // streets' share; the march's budget the tier's (round 11)
     const budget = CLOUD_TIERS[this.traceTier] ?? CLOUD_TIERS.high;
