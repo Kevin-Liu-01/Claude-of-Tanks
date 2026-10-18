@@ -97,6 +97,8 @@ export interface GarageKitBuild {
     displayRects: readonly string[];
   }>;
   readonly slideshow: GarageSlideshowPose | null;
+  /** Each grounded piece's footprint (world x, z and radius) for the pack's vegetation to keep clear of. */
+  readonly footprints: ReadonlyArray<{ readonly x: number; readonly z: number; readonly radius: number }>;
 }
 
 interface CachedPiece {
@@ -218,6 +220,7 @@ export function buildGarageKitDressing(params: {
   let kitTriangles = 0, displayTriangles = 0, decalTriangles = 0;
   let brandPieces = 0, tankImages = 0, stations = 0, stationMonitors = 0, nameboards = 0;
   let slideshow: GarageSlideshowPose | null = null;
+  const footprints: Array<{ x: number; z: number; radius: number }> = [];
   const blotRect = garageDisplayRect('decal.blot');
   const matrix = new THREE.Matrix4();
   const countRect = (rect: string): void => {
@@ -263,6 +266,13 @@ export function buildGarageKitDressing(params: {
       blot.applyMatrix4(matrix);
       decals.push(blot);
       decalTriangles += 2;
+    }
+    if (item.kind !== 'wall' && item.kind !== 'sign') {
+      const box = piece.result.solid.boundingBox;
+      if (box && !box.isEmpty()) {
+        const centre = box.getCenter(new THREE.Vector3()).applyMatrix4(matrix);
+        footprints.push({ x: centre.x, z: centre.z, radius: Math.hypot(box.max.x - box.min.x, box.max.z - box.min.z) / 2 });
+      }
     }
     if (piece.crane) cranes.push(piece.crane);
     if (item.kind === 'sign' || (item.kind === 'display' && 'rect' in item)) countRect((item as { rect: string }).rect);
@@ -325,7 +335,7 @@ export function buildGarageKitDressing(params: {
     materials.push(mesh.material as THREE.Material);
   }
   return {
-    meshes, materials, slideshow,
+    meshes, materials, slideshow, footprints,
     stats: Object.freeze({
       kitPieces: items.length, kitTriangles, displayTriangles, decalTriangles, atmosphereTriangles,
       cranes: Object.freeze(cranes), brandPieces, tankImages, stations, stationMonitors, nameboards,

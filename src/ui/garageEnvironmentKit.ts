@@ -2407,7 +2407,9 @@ export function buildGarageEnvironment(
         Math.hypot(x - terrace.x, z - terrace.z)
           < Math.max(terrace.radiusSide, terrace.radiusDepth) + 4.2
       ));
-      return !nearStructure && !nearFacility
+      // no grove grows through a placed kit piece (garage r9: the LED trailer, the cells, the cranes)
+      const nearKit = (kit?.footprints ?? []).some((footprint) => Math.hypot(x - footprint.x, z - footprint.z) < footprint.radius + 3.6);
+      return !nearStructure && !nearFacility && !nearKit
         && !grovePoints.some((point) => point !== self && Math.hypot(x - point.x, z - point.z) < 7.0);
     };
     for (let attempt = 0;

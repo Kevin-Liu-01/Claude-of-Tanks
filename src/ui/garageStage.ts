@@ -782,7 +782,7 @@ export function createGarageStage(
     let collar = platformCollars.get(architecture);
     if (!collar) {
       const built = kit.platform.buildGaragePlatformCollar(architecture as Parameters<typeof kit.platform.buildGaragePlatformCollar>[0],
-        { pedestalAngle: Math.PI / 2, windAngle: 0.8 });
+        { pedestalAngle: 2.0, windAngle: 0.8 });
       collar = new THREE.Group();
       collar.name = `garage_platform_collar_${architecture}`;
       const solid = new THREE.Mesh(track(built.solid), platformCollarSolid);

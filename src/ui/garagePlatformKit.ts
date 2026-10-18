@@ -179,15 +179,21 @@ export function buildGaragePlatformCollar(architecture: GarageVariant['architect
         at(sideR(0.1 * w1), 0.1 * w1 + 0.01, a1), at(sideR(0.1 * w0), 0.1 * w0 + 0.01, a0)], collar.drift, [Math.cos(a0), 1, Math.sin(a0)]);
     }
   }
-  // 48 warm LED pucks set in the collar top
+  // 48 warm LED pucks set in the collar's face just under its top bevel, each lens lying on the sloped side
   const warm = garageDisplayRect('glow.warm');
-  for (let k = 0; k < PUCKS; k += 1) {
-    const a = (k / PUCKS) * Math.PI * 2;
-    const r = r0 + 0.16;
-    const y = top - bevel * 0.45 + 0.004;
-    const c = Math.cos(a), sn = Math.sin(a), d = 0.022;
-    b.face([c * (r - d) - sn * d, y, sn * (r - d) + c * d], [c * (r + d) - sn * d, y, sn * (r + d) + c * d],
-      [c * (r + d) + sn * d, y, sn * (r + d) - c * d], [c * (r - d) + sn * d, y, sn * (r - d) - c * d], warm);
+  {
+    const y = top - bevel - 0.035, d = 0.024;
+    const r = sideR(y) + 0.003;
+    const slopeR = sideR(y + 0.02) - sideR(y - 0.02), slopeY = 0.04;
+    const slopeLength = Math.hypot(slopeR, slopeY);
+    for (let k = 0; k < PUCKS; k += 1) {
+      const a = (k / PUCKS) * Math.PI * 2;
+      const c = Math.cos(a), sn = Math.sin(a);
+      const tx = -sn * d, tz = c * d; // along the ring
+      const ur = (slopeR / slopeLength) * d, uy = (slopeY / slopeLength) * d; // up the sloped face
+      const at2 = (dr: number, dy: number, t: number): [number, number, number] => [c * (r + dr) + tx * t, y + dy, sn * (r + dr) + tz * t];
+      b.face(at2(-ur, -uy, 1), at2(-ur, -uy, -1), at2(ur, uy, -1), at2(ur, uy, 1), warm); // wound to face outward
+    }
   }
   // the cable-trench cover and the control pedestal with its touchscreen, front-left
   {

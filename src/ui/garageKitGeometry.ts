@@ -677,7 +677,8 @@ export class KitBuilder {
       }
       // weathering on up-facing faces
       if (weatherTone && ny > 0.6) {
-        const amount = skin.weathering === 'snow' ? 0.82 * THREE.MathUtils.smoothstep(ny, 0.6, 0.85)
+        // snow lies in patches on the tops (never a white-painted lid), thinner on narrow members
+        const amount = skin.weathering === 'snow' ? (0.3 + 0.42 * hash) * THREE.MathUtils.smoothstep(ny, 0.7, 0.95)
           : skin.weathering === 'sand' || skin.weathering === 'reddust' ? 0.14 + 0.14 * hash
             : skin.weathering === 'coal' ? 0.22 : skin.weathering === 'salt' ? 0.14 : skin.weathering === 'mud' ? 0.1 : 0.05;
         tone.lerp(weatherTone, amount);

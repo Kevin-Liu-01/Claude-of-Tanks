@@ -1451,6 +1451,10 @@ export function createGarageDressing(
         battleScreenMesh.position.set(0, 0, 0.115);
         battleScreenMesh.scale.setScalar(1);
       }
+      // the workshop optimizer freezes every static matrix under the dressing (matrixAutoUpdate off): a moved mount
+      // and screen write their own
+      battleScreenYardRoot.updateMatrix();
+      battleScreenMesh.updateMatrix();
     }
     battleScreenYardRoot.visible = pose !== null;
     group.userData.battleScreenPlacement = pose ? 'yard-pose' : isVerdant ? 'verdant-west-wall' : 'none';

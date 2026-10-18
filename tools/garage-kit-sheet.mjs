@@ -61,6 +61,7 @@ const surfaceMaterials = {
 };
 const labels = [];
 const stats = [];
+const pieces = new Map();
 
 function place(result, x, z, yaw = 0, label = '') {
   const group = new THREE.Group();
@@ -79,6 +80,7 @@ function place(result, x, z, yaw = 0, label = '') {
   scene.add(group);
   if (label) {
     const box = result.solid.boundingBox;
+    pieces.set(label, group);
     labels.push({ text: `${label} ${result.triangles}`, at: new THREE.Vector3(x, (box ? box.max.y : 1) + 0.25, z) });
     stats.push({ label, triangles: result.triangles, display: result.displayTriangles, decal: result.decalTriangles });
   }
@@ -95,10 +97,13 @@ const build = (fn, seed = 1) => {
 const propNames = Object.keys(GARAGE_PROP_BUILDERS);
 const bigProps = new Set(['forklift', 'bowser', 'lowLoader', 'lightTower', 'skip', 'generator', 'compressor', 'oilRack', 'gasCage', 'tarpStack']);
 let x = -40;
-for (const name of propNames.filter((n) => !bigProps.has(n))) {
-  place(build((b) => buildGarageProp(b, name), x * 13 + 7), x, 0, 0.35, name);
-  x += 2.2;
-}
+propNames.filter((n) => !bigProps.has(n)).forEach((name, index) => {
+  const row = index < 9 ? 0 : 1;
+  const col = index % 9;
+  const span = name === 'towBar' ? 3.2 : name === 'trackPallet' || name === 'pallet' ? 1.6 : 1.3;
+  place(build((b) => buildGarageProp(b, name), index * 13 + 7), (row ? -10 : -40) + col * 1.5 + (name === 'towBar' ? 0.8 : 0), 0, 0.35, name);
+  void span;
+});
 x = -40;
 for (const name of propNames.filter((n) => bigProps.has(n))) {
   const span = name === 'lowLoader' ? 9 : name === 'bowser' ? 6 : name === 'forklift' ? 4 : 3.6;
@@ -200,8 +205,41 @@ const VIEWS = {
   atmosphere: { from: [8, 4, 86], at: [8, 4, 102] },
 };
 
+// framed views: the named pieces' combined bounds seen from the front-left and above (the kit's fronts face the camera)
+const FRAMED = {
+  'props-small-a': ['drum200', 'jerrycan', 'ammoBoxSteel', 'ammoCrate', 'pallet', 'roadWheel', 'trackPallet', 'towBar', 'chocks'],
+  'props-small-b': ['cone', 'bollard', 'extinguisher', 'gasCylinder', 'cableReel', 'coiledHose', 'sandbag', 'palletJack', 'spillBin'],
+  'props-big-a': ['forklift', 'lightTower', 'generator', 'compressor', 'oilRack'],
+  'props-big-b': ['bowser', 'lowLoader', 'skip', 'gasCage', 'tarpStack'],
+  'benches-a': ['workbench', 'rollCab', 'partsTrolley', 'weldingCart', 'fumeArm'],
+  'benches-b': ['weldingScreens', 'standSet', 'turretStand', 'powerPackStand'],
+  'crane-overhead': ['overhead-single-work'],
+  'crane-double': ['overhead-double'],
+  'crane-portal': ['portal-lattice'],
+  'cranes-small': ['jib', 'a-frame', 'monorail'],
+  'cranes-special': ['breakdown', 'magnet', 'ropeway'],
+  'walls-a': ['hesco', 'twall', 'heras', 'brick'],
+  'walls-b': ['palisade', 'gabion', 'quay', 'kerb'],
+  'indoor': ['indoor-bay', 'protector', 'shadowboard'],
+  'signs': ['post', 'hanging', 'aboard', 'plate', 'stencil'],
+  'displays-a': ['print', 'poster', 'banner-v', 'banner-h'],
+  'displays-b': ['pvc', 'crest-plate', 'nameboard', 'station', 'monitor', 'led-trailer'],
+  'collars-a': ['field_shed', 'shade_depot', 'repair_bunker', 'brick_arsenal', 'naval_drydock'],
+  'collars-b': ['rail_roundhouse', 'rain_canopy', 'rock_cavern', 'recovery_yard', 'factory_line'],
+};
+function framed(names) {
+  const box = new THREE.Box3();
+  for (const name of names) { const g = pieces.get(name); if (g) box.expandByObject(g); }
+  const center = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
+  const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), tanH = tanV * camera.aspect;
+  const dist = Math.max(size.x * 0.56 / tanH + size.z * 0.5, size.y * 0.6 / tanV + size.z * 0.5, 2.5);
+  const dir = new THREE.Vector3(-0.22, 0.36, -1).normalize();
+  return { from: center.clone().addScaledVector(dir, dist).toArray(), at: center.toArray(), labelRange: Math.max(size.x, size.z) * 0.6 + 1 };
+}
+for (const [name, names] of Object.entries(FRAMED)) VIEWS[name] = null;
+
 function view(name) {
-  const v = VIEWS[name];
+  const v = VIEWS[name] ?? framed(FRAMED[name] ?? []);
   if (!v) throw new Error(`no view ${name}`);
   camera.position.set(...v.from);
   camera.lookAt(new THREE.Vector3(...v.at));
@@ -227,6 +265,6 @@ function view(name) {
 
 ensureGarageDisplayAtlas({ anisotropy: 8 });
 window.__KIT_SHEET = {
-  ready: false, stats, views: Object.keys(VIEWS), view,
+  ready: false, stats, views: Object.keys(FRAMED), allViews: Object.keys(VIEWS), view,
 };
 onGarageDisplayAtlasReady(() => { window.__KIT_SHEET.ready = true; view('props'); });

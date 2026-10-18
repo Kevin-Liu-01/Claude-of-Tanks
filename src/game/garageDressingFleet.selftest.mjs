@@ -253,6 +253,8 @@ assert.match(dressing, /if \(battleScreenShown && battleScreenCurrentTexture\) o
   'the slideshow never runs where its screen is hidden');
 assert.match(dressing, /const pose = isVerdant \? null : garageSlideshowPose\(currentVariant\.architecture\);/,
   'outdoor Garages hang the one screen on the pose their pack builds the frame at');
+assert.match(dressing, /battleScreenYardRoot\.updateMatrix\(\);\s*battleScreenMesh\.updateMatrix\(\);/,
+  'the optimizer freezes static matrices: a moved screen and its mount must write theirs (a boot outdoors then Verdant hid it)');
 assert.doesNotMatch(dressing, /new THREE\.PlaneGeometry\(BATTLE_SCREEN_PANEL_W[^\n]*\n[\s\S]*new THREE\.PlaneGeometry\(BATTLE_SCREEN_PANEL_W/,
   'one screen mesh, moved between mounts, never a second slideshow');
 // 2026-10-11, waves 398 and 402 ("the same red box and drawer cabinet in every yard"): Verdant's chests are its own
