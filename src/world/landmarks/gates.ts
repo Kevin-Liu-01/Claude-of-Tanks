@@ -326,11 +326,13 @@ export const townGate: LandmarkBuilder = (ctx) => {
     }
     // the arms: a shield in the town's colours on the field face over the arch ring
     const af: Face = { origin: [0, 0, D / 2], u: [1, 0, 0], out: [0, 0, 1], width: W }, ay = crown + 0.75;
-    const shield = (s: number, dz: number): Vec3[] => [[-0.55 * s, ay + 0.65 * s], [0.55 * s, ay + 0.65 * s], [0.55 * s, ay - 0.1 * s], [0, ay - 0.7 * s], [-0.55 * s, ay - 0.1 * s]]
+    // (227, the integrity gate: the arms were plates standing 15-19 cm off the wall, open behind) each layer a solid plaque,
+    // the gilt border's set 2 cm into the wall, the field and the pale each standing on the one under it
+    const shield = (s: number, dz: number): Vec3[] => [[-0.55 * s, ay + 0.65 * s], [-0.55 * s, ay - 0.1 * s], [0, ay - 0.7 * s], [0.55 * s, ay - 0.1 * s], [0.55 * s, ay + 0.65 * s]]
       .map(([u, y]) => facePoint(af, u, y, dz));
-    sink.polygon('structureMetal', shield(1.12, 0.15), { colour: GILT, decor: true });
-    sink.polygon('structureMetal', shield(1, 0.17), { colour: rgb(0xa8261e), decor: true });
-    sink.polygon('structureMetal', [[-0.12, ay + 0.5], [0.12, ay + 0.5], [0.12, ay - 0.45], [-0.12, ay - 0.45]].map(([u, y]) => facePoint(af, u, y, 0.19)), { colour: WHITE, decor: true });
+    sink.prism('structureMetal', shield(1.12, -0.02), [0, 0, 1], 0.17, { colour: GILT, decor: true });
+    sink.prism('structureMetal', shield(1, 0.14), [0, 0, 1], 0.03, { colour: rgb(0xa8261e), decor: true });
+    sink.prism('structureMetal', [[-0.12, ay + 0.5], [-0.12, ay - 0.45], [0.12, ay - 0.45], [0.12, ay + 0.5]].map(([u, y]) => facePoint(af, u, y, 0.16)), [0, 0, 1], 0.03, { colour: WHITE, decor: true });
   }
   // the clock under the roof on the field side (a framed gate carries the town's arms over its passage instead)
   const cf = f.front, cy = top - 0.9;
@@ -364,7 +366,10 @@ export const townGate: LandmarkBuilder = (ctx) => {
     // the lantern astride the ridge: its posts, its little hipped cap
     const ly = rg.ridgeY - 0.25, lx = 0.9;
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) sink.span('structureWood', sx * lx - 0.08, ly, sz * 0.6 - 0.08, sx * lx + 0.08, ly + 1.5, sz * 0.6 + 0.08, { colour: TIMBER, decor: true });
-    sink.span('plaster', -lx + 0.1, ly, -0.5, lx - 0.1, ly + 0.5, 0.5, { decor: true });
+    // (227, the integrity gate: open between its posts, the cap's underside showed and the sky through it) the lantern
+    // boarded up to its cap between the posts, the louvres' dark in a band on each long side
+    sink.span('plaster', -lx, ly, -0.6, lx, ly + 1.5, 0.6, { decor: true });
+    for (const sz of [-1, 1]) sink.span('dark', -lx + 0.12, ly + 0.7, sz * 0.6 - (sz > 0 ? 0 : 0.012), lx - 0.12, ly + 1.25, sz * 0.6 + (sz > 0 ? 0.012 : 0), { decor: true });
     const cap: RoofSpec = { kind: 'hip', pitchDeg: 55, eave: 0.2, verge: 0.2, thickness: 0.08, bucket: 'roof', ridge: null };
     emitRoof(sink, roofGeometry(2 * lx + 0.16, 1.36, ly + 1.5, cap), cap);
   }
