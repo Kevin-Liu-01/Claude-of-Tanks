@@ -1849,6 +1849,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/cost-census.selftest.mjs', // 2026-10-14 props lane A (#2): the landing protocol's cost census (draws, triangles, programs, pools; base against branch)
     'src/world/maps/clutterKit.selftest.mjs', // 2026-10-14 props lane A (#2): every map's clutter forms (draws spent, caps, the shadow rule, r2Standard, +45k a map)
     'src/world/landmarks/landmarkDamage.selftest.mjs', // 2026-10-14 props lane A (E12): set pieces' named pieces, ruptures, open frames, light set pieces' fall
+    'src/world/landmarks/landmarkPlacement.selftest.mjs', // 2026-10-17 MAPS Lane A (227): every map's named set pieces stand in its built world (base and trenches), or a pinned allowance names the refusal
     'src/world/wreckCollision.selftest.mjs',
     'src/world/wreckRoster.selftest.mjs',
     'src/world/wreckFleet.selftest.mjs',
