@@ -8,7 +8,7 @@ import { PartSink, facePoint, rgb, shade, type Face, type RegionalBucket, type R
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
 import { dressedQuoin } from '../maps/regional/facade.ts';
 import {
-  ARCH_GAP_M, archLine, archRise, archSurround, archWindow, archedBody, archedFace, bar, columnProfile, cornerPilasters, moulding, revolve, smoothRender, star,
+  ARCH_GAP_M, archLine, archRise, archSurround, archWindow, archedBody, archedFace, bar, columnProfile, moulding, revolve, smoothRender, star,
   type ArchHole, LIMEWASH_UV } from './kit.ts';
 import { fenceRun } from './grounds.ts';
 import { letterText, measureText } from './lettering.ts';
