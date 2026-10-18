@@ -1714,7 +1714,7 @@ body.cot-spectating .cot-ret{display:none !important;}
   letter-spacing:.08em;z-index:2;text-shadow:0 1px 2px rgba(0,0,0,.9);}
 /* A count of three digits or more (an autocannon's 180) shares the bottom row with the type label: both tighten so
    they stay apart (critic r3: APFSDS180). */
-.cot-shell.wide .ty{left:3px;letter-spacing:.02em;}
+.cot-shell.wide .ty{left:3px;font-size:7.5px;letter-spacing:0;}
 .cot-shell.wide .cnt{right:3px;font-size:12px;letter-spacing:0;}
 .cot-shell .cool{position:absolute;left:0;right:0;top:0;height:0;
   background:rgba(4,6,9,.72);pointer-events:none;z-index:3;}
