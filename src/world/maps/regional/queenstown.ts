@@ -602,7 +602,7 @@ const tankTrestle: RegionalBuilder = (ctx) => {
     const paint = pick(look, [rgb(0x7a6a5a), rgb(0x9aa09c), rgb(0x5f6466)]);
     const staves = shade(TIMBER, 0.9 + look() * 0.15);
     latticeFrame(sink, { foot: post + 0.25, head: post, y0: 0.25, y1: legH, size: 0.3, girt: 0.16, brace: 0.12, panels: 3, bucket: 'structureWood',
-      colour: TIMBER, pad: { bucket: CONCRETE, size: 0.7, top: 0.25 }, mobile },
+      colour: TIMBER, pad: { bucket: CONCRETE, size: 0.7, top: 0.25, solid: true }, mobile },
       { x0: -R, x1: R, y0: legH + 0.3, y1: legH + 4.2, z0: -R, z1: R, bucket: 'structureWood', tint: staves });
     // the deck: bearers on the post heads, the joists across them, the boards
     trestleDeck(sink, P, legH, shade(TIMBER, 0.85)); // (looks r2 b-east, 2026-10-16: extracted to queenstownTrestle.ts, rebuilt there)

@@ -101,6 +101,8 @@ export interface CloudLayerPreset {
   cluster?: number;
   /** 2026-10-03: 0..1 a deck's definition (cloudscapes.ts CloudscapeConfig.deckDetail). */
   deckDetail?: number;
+  /** 2026-10-18: a deck's drawn extinction share (cloudscapes.ts CloudscapeConfig.deckDensity; 1 when absent). */
+  deckDensity?: number;
   /** 2026-10-01: the time of day the layer was resolved for (cloudTimeOfDay: the diurnal law's input). */
   timeOfDay: CloudTimeOfDay;
   /** 2026-10-01: contrails — how many (0..6) and their mean spread (0 fresh, 1 old contrail cirrus). */
@@ -243,8 +245,11 @@ const CLOUD_WEATHER_RULES = Object.freeze({
    * the moon. At full night the moon's share of the layer's light is nightKey of the sun's (the forward lobe keeps its
    * shape), and the sky's is nightAmbient. QA: __LIGHT_TUNE.NIGHT_CLOUD_KEY, NIGHT_CLOUD_AMBIENT.
    */
-  nightKey: 0.3,
-  nightAmbient: 0.8,
+  // (2026-10-17, 227; the media lane's QA on live 226: Copper Mesa's night lost its moonlit clouds — a flat dark gradient
+  // where the approved frame drew silvered night clouds over the stars) the approved night keeps the layer's moonlight
+  // whole: the key and the sky's share at 1 (QA: NIGHT_CLOUD_KEY / NIGHT_CLOUD_AMBIENT still dim them)
+  nightKey: 1,
+  nightAmbient: 1,
 });
 
 function hexToLinear(hex: number): [number, number, number] {
@@ -393,7 +398,7 @@ export function cloudLayerKey(p: CloudLayerPreset): string {
   return [p.regime, p.coverage, p.baseM, p.thicknessM, p.towers, p.stratiform, p.fieldMix, p.density, ...p.tint,
     p.windDirRad, p.windSpeed, ...p.offset, p.clearRadiusM, p.shadow ? 1 : 0, p.shadowPattern ?? 0, p.deckBeam ?? 0, p.shadowThreshold,
     ...p.typeRange, p.anvil, p.wispiness, p.shearM, p.streets, p.cirrus, p.cirrusAngleRad, p.cirrusAltM, p.cirrusDensity,
-    p.sunGain, p.ambientScale, p.farBand, p.farBandAltM, p.scud, p.cells, p.cellM, p.deckLight, p.undulatus, p.interior, p.lumps ?? 0, p.baseFlat ?? 0, p.cluster ?? 0, p.deckDetail ?? 0,
+    p.sunGain, p.ambientScale, p.farBand, p.farBandAltM, p.scud, p.cells, p.cellM, p.deckLight, p.undulatus, p.interior, p.lumps ?? 0, p.baseFlat ?? 0, p.cluster ?? 0, p.deckDetail ?? 0, p.deckDensity ?? 1,
     p.timeOfDay, p.contrails, p.contrailAge, p.rain, p.virga, p.fogBank, p.fogBankTopM, ...p.groundGlow, ...p.keyTint,
   ].map((v) => (typeof v === 'number' ? v.toFixed(5) : v)).join(',');
 }

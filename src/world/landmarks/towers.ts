@@ -351,6 +351,8 @@ export const campanile: LandmarkBuilder = (ctx) => {
   // its stepped foot (gauntlet wave 158: "rises straight out of bare sandy dirt with no plinth, steps, paving"): a broad
   // step round the plinth and the flight up to the door
   sink.span('stone', -S / 2 - 0.75, base, -S / 2 - 0.75, S / 2 + 0.75, 0.35, S / 2 + 0.75, { decor: true });
+  // (round 5, wave 389: "a blank slab ... needs steps, a plinth") a third, lower step round the broad one: a stylobate
+  sink.span('stone', -S / 2 - 1.1, base, -S / 2 - 1.1, S / 2 + 1.1, 0.17, S / 2 + 1.1, { decor: true });
   sink.span('stone', -0.9, base, S / 2 + 0.75, 0.9, 0.18, S / 2 + 1.05, { decor: true });
   const shaftTop = H * 0.68, bellTop = H * 0.82, stages = Math.max(3, Math.round(shaftTop / 6));
   const stageY = (k: number) => 0.7 + (shaftTop - 0.7) * k / stages;

@@ -141,6 +141,8 @@ function applyCloudscape(legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scap
     cluster: clamp(pick('cluster'), 0, 1),
     baseFlat: clamp(pick('baseFlat'), 0, 1),
     deckDetail: clamp(pick('deckDetail'), 0, 1),
+    // (2026-10-18) written only where a map authors it (a deck's drawn share; 1 = the closing law's)
+    ...(scape.deckDensity != null ? { deckDensity: clamp(scape.deckDensity, 0.05, 1) } : {}),
     ...resolveWeather(sky, scape, row),
   };
 }

@@ -290,6 +290,9 @@ export default {
     ]),
   },
   props: {
+    // (2026-10-17, the maps lane; the fleet dressing rules 227, the coordinator's ruling) a fence run's module or gate that
+    // meets a building's plot is left out (props.ts dressingRules.fencesClearBuildings; no stub rule)
+    dressingRules: { fencesClearBuildings: true },
     // map revival lane 2 (2026-10-05): the Andalusian kit (maps/regional/andalusian.ts)
     architecture: 'andalusian',
     // Every building is an authored site (the towns are mirror images), so the roadside builder places none.

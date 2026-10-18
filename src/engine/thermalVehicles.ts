@@ -1,4 +1,5 @@
 import {Mesh,MeshStandardMaterial,type Material,type Object3D} from 'three';
+import {tagUnlitVehiclePixels} from './vehicleOcclusion.ts';
 interface ThermalActor {
   team?:string;networkVisible?:boolean;
   combat?:{destroyed?:boolean}|null;
@@ -21,11 +22,15 @@ export function createThermalVehicles(){
         m.name='Thermal vehicle '+(i?'hostile':'friendly');m.color.setRGB(.035,.035,.035);
         m.emissive.setRGB(i?4:2.2,i?4:2.2,i?4:2.2);m.emissiveIntensity=1;m.emissiveMap=null;
         m.metalness=0;m.roughness=1;
+        // 2026-10-18 (the wheel-band lane, round 3): the heat stand-ins write the vehicle alpha (tagUnlitVehiclePixels),
+        // or the aerial pass's ground occlusion took a hot hull's running gear under the belly line for ground and
+        // cooled it below a straight edge at the belly + 2 cm
         m.onBeforeCompile=shader=>{
           shader.fragmentShader=shader.fragmentShader.replace('#include <emissivemap_fragment>',
             '#include <emissivemap_fragment>\n totalEmissiveRadiance *= 0.62 + 0.38 * abs(normal.z);');
+          tagUnlitVehiclePixels(shader);
         };
-        m.customProgramCacheKey=()=> 'thermal-vehicle-v1';
+        m.customProgramCacheKey=()=> 'thermal-vehicle-v2';
       }
       const owned=pair;
       source.addEventListener('dispose',()=>{for(const m of owned)m.dispose();});

@@ -76,8 +76,9 @@ export interface LatticeSpec {
   braces?: boolean;
   bucket: RegionalBucket;
   colour?: Rgb;
-  /** a concrete pad under each leg (bucket), sunk to -0.4 */
-  pad?: { bucket: RegionalBucket; size: number; top: number } | null;
+  /** a concrete pad under each leg (bucket), sunk to -0.4; `solid`: the pad carries the frame's collision down with it
+   *  (the building census's world pass, 227: a tower on a slope whose legs' collision stood over the ground) */
+  pad?: { bucket: RegionalBucket; size: number; top: number; solid?: boolean } | null;
   /** the frame's members as dressing past its legs (the legs carry the collision) */
   mobile?: boolean;
 }
@@ -101,7 +102,7 @@ export function latticeFrame(sink: PartSink, spec: LatticeSpec, crown: LatticeRe
     sink.member(spec.bucket, spec.pad ? foot : under, head, spec.size, spec.size, [corners[k][0], 0, 0], { ...opts, exposed: true }, 0);
     if (spec.pad) {
       const p = spec.pad;
-      sink.span(p.bucket, foot[0] - p.size / 2, -0.4, foot[2] - p.size / 2, foot[0] + p.size / 2, p.top, foot[2] + p.size / 2, { decor: true, shade: 0.9 });
+      sink.span(p.bucket, foot[0] - p.size / 2, -0.4, foot[2] - p.size / 2, foot[0] + p.size / 2, p.top, foot[2] + p.size / 2, { decor: !p.solid, shade: 0.9 });
     }
     legs.push({ foot: sink.framePoint(foot), head: sink.framePoint(head) });
   }

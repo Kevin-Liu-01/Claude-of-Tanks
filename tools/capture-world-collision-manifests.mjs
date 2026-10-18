@@ -182,8 +182,21 @@ if (options.node && options.variant) {
     console.log(`drawn-shape ${mapId}: ${walked} walked, ${standIns} stand-ins, ${offenders.length} offenders`
       + (offenders.length ? ` (${offenders.slice(0, 6).join('; ')})` : ''));
   } : undefined;
+  // 2026-10-17 (MAPS Lane A): COT_LANDMARK_PLACEMENT=1 (the drift receipt sets it) also reads the set-piece composer's
+  // receipt on this same build: every authored piece stands (src/world/landmarks/landmarkPlacement.test-support.mjs);
+  // one line per map with set pieces, read by the receipt
+  const placement = process.env.COT_LANDMARK_PLACEMENT === '1' ? await import('../src/world/landmarks/landmarkPlacement.test-support.mjs') : null;
+  const { getMapConfig } = placement ? await import('../src/world/maps/index.ts') : {};
+  const inspectAll = shape || placement ? (args) => {
+    inspect?.(args);
+    if (!placement) return;
+    const landmarks = getMapConfig(args.mapId).props?.landmarks ?? [];
+    if (!landmarks.length) return;
+    const { failures, placed } = placement.landmarkPlacementFailures(args.mapId, args.dressing.group.userData.landmarks ?? null, landmarks);
+    console.log(`landmarks ${args.mapId}: ${placed} placed, ${failures.length} failures` + (failures.length ? ` (${failures.join('; ')})` : ''));
+  } : undefined;
   for (const mapId of options.mapIds) {
-    const data = await buildWorldCollisionData(mapId, { inspect });
+    const data = await buildWorldCollisionData(mapId, { inspect: inspectAll });
     if (!options.check) { publish(mapId, data); continue; }
     const encoded = encodeCollisionManifest(readCollisionManifest(data));
     const text = JSON.stringify(encoded);

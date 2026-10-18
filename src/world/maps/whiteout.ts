@@ -125,6 +125,10 @@ export default {
     // and frost-shattered outcrops of the plateau (was 136 rocks, 22 outcrops)
     telegraph: true, carts: false, logs: true,
     rocks: 224, outcrops: 38, craters: 50, rubblePiles: 0, sandbagLines: 16, hedgehogs: 12,
+    // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the fence
+    // runs stop short of the buildings' plots (the audit counted 11 fence or gate records reaching into a structure), a
+    // run's piece under 3 modules left out
+    dressingRules: { fencesClearBuildings: true, fenceStubsOut: true },
     // the map-vehicles lane (2026-10-06, the period ruling): the Arctic north in the 1980s: Norway's Leopard 1 and
     // M48, Sweden's Strv 103, the Soviet T-80B and BMP-2
     tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['leo1a5', 'm48a5_patton', 'strv103b', 't80b', 'bmp2'] },
@@ -314,7 +318,10 @@ export default {
     // deck widens the shadows' filter (shadowStability.ts deckPenumbraRadius): a faint, diffuse bearing under the same grey
     // deck (wave 342a: 0.45 read "sharp sunny-day shadows" and raised the snow's relief into a marbled swirl; a quarter
     // stays at or under the snow relief's limit until that relief is redone)
-    deckBeam: 0.25 },
+    // 2026-10-18 (the SKY lane, 228 census; the media lane's approved s165 against 226: the bright polar haze became a dark
+    // grey overcast): the stratus drawn at 0.35 of the closing law's extinction — pale from below, its structure faint
+    // (blind WIN 3-0-2 / 3-0-2 against the reference strip); the ground's light keeps the closing deck's law
+    deckBeam: 0.25, deckDensity: 0.35 },
   sky: { ...winter.sky, sunElevationDeg: 13, sunAzimuthDeg: 164, fogDensity: 0.00072, fogTintHex: 0xb3bfc9, fogMix: 0.56, cloudOpacity: 1.15, cloudOpacity2: 0.86, cloudAltM: 300, cloudHazeK: 0.00012, cloudUvM: 2000, cloudShadowAmp: 0.08, sunIntensity: 2.75, hemiIntensity: 0.58,
     postExposure: 0.83 /* round 70: 0.86 (winter's) → 0.83, the snow re-grade's exposure half */,
     // 2026-10-09 (the skies lane; owner R139 "skybox ... too bland", 10-09 "so empty"): a polar sky of its own (Frosthollow

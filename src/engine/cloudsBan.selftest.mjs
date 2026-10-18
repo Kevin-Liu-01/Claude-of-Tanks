@@ -142,18 +142,18 @@ for (const [id, sky] of Object.entries(GARAGE_SKY_PRESETS)) {
   assert.ok(drawn.regime !== BANNED && drawn.regime !== LEGACY_BROKEN, `Garage ${id} draws ${drawn.regime}`);
   assert.deepEqual(brokenDecks(drawn), [], `Garage ${id}: no broken stratocumulus deck`);
 }
-// the decks the world draws today: closed (Frosthollow, Cinder Junction, Ironworks, Whiteout), every other sky cumuliform
+// the decks the world draws today: closed (Frosthollow, Whiteout), every other sky cumuliform
 // or without a cell deck; and the vocabulary's cell-deck rows cannot be authored back into breaks by their own defaults
 {
   const closedDecks = skyMaps.filter((id) => cloudStackOf(dayLayer[id]).lanes.some((lane) => lane.cells >= 0.5 && lane.baseM < 2000));
-  assert.deepEqual(closedDecks.sort(), ['foundry', 'whiteout', 'winter'], 'the closed cell decks (Cinder Junction on cumulus, 2026-10-16)');
+  assert.deepEqual(closedDecks.sort(), ['whiteout', 'winter'], 'the closed cell decks (Cinder Junction on cumulus 2026-10-16, Ironworks 2026-10-18)');
   assert.equal(CLOUD_DECK_TUNE.CLOUD_DECK_COVER, 1, 'the render tune never opens a deck into breaks');
   // the negative control: Frosthollow's old 0.86 deck, and a stratocumulus deck at 0.7, are what the check catches
   for (const coverage of [0.86, 0.7]) {
     const old = layerOf({ ...getMapConfig('winter').sky, cloudscape: { ...getMapConfig('winter').clouds, coverage } });
     assert.ok(brokenDecks(old).length > 0, `the check sees a broken cell deck at ${coverage}`);
   }
-  for (const id of ['winter', 'foundry']) assert.equal(getMapConfig(id).clouds.coverage, 0.92, `${id}: closed (0.86 / 0.88 left the banned breaks)`);
+  for (const id of ['winter']) assert.equal(getMapConfig(id).clouds.coverage, 0.92, `${id}: closed (0.86 / 0.88 left the banned breaks)`);
   assert.equal(getMapConfig('blackglass').clouds.regime, 'fair-weather-cumulus', 'Suzhou Creek: its ash veil was a low broken cell deck');
   assert.equal(getMapConfig('urban').clouds.regime, 'fair-weather-cumulus', 'Steinburg (urban): its broken altocumulus read as the banned deck in stills (coordinator, 2026-10-15)');
 }
@@ -171,7 +171,7 @@ for (const [id, sky] of Object.entries(GARAGE_SKY_PRESETS)) {
     const lin = (c) => { const s = c / 255; return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
     return 0.2126 * lin((hex >> 16) & 255) + 0.7152 * lin((hex >> 8) & 255) + 0.0722 * lin(hex & 255);
   };
-  for (const id of [...FORMER, 'blackglass', 'railyard']) {
+  for (const id of [...FORMER, 'blackglass', 'railyard', 'foundry']) {
     const s = { ...DEFAULT_SKY_PRESET, ...getMapConfig(id).sky };
     const overcastBranch = s.cloudOpacity >= 0.95 && s.cloudOpacity2 >= 0.9 && s.turbidity >= 7; // sky.ts updateCloudDecks
     assert.ok(!overcastBranch, `${id}: the phone deck is not the 340 m broken-stratus branch`);
@@ -209,7 +209,8 @@ for (const [id, sky] of Object.entries(GARAGE_SKY_PRESETS)) {
     assert.equal(resolveTreeWind(cfg).strength, 1, `${id}: the trees sway as before`);
   }
   const by = Object.fromEntries(FORMER.map((id) => [id, dayLayer[id]]));
-  assert.ok(by.polders.coverage > verdant.coverage, 'the Dutch sky: a little more cumulus than Verdant');
+  // (227: Verdant's cumulus back to the approved round's plenty, 0.51 — the owner's bar; the Dutch sky keeps its own)
+  assert.ok(verdant.coverage >= 0.5 && by.polders.coverage >= 0.4, 'Verdant\'s plentiful cumulus; the Dutch sky a cumulus sky of its own');
   assert.ok(by.copper_mesa.coverage < verdant.coverage && by.copper_mesa.baseM > verdant.baseM, 'the dry upland: less cover, a higher base');
   assert.ok(by.fjord.baseM < verdant.baseM && getMapConfig('fjord').clouds.windDirDeg === getMapConfig('fjord').ocean.windDirDeg,
     'the fjord: a lower sea-air base, the clouds on the fjord\'s sea wind');
@@ -221,7 +222,7 @@ for (const [id, sky] of Object.entries(GARAGE_SKY_PRESETS)) {
 {
   const verdant = dayLayer.verdant;
   const shape = (p) => [p.typeRange, p.cluster, p.baseFlat, p.stratiform, p.fieldMix, p.density, p.wispiness, p.anvil];
-  for (const id of ['blackglass', 'urban', 'railyard']) {
+  for (const id of ['blackglass', 'urban', 'railyard', 'foundry']) {
     const cfg = getMapConfig(id);
     assert.equal(cfg.clouds.regime, 'fair-weather-cumulus', `${id} authors Verdant's regime`);
     for (const time of BATTLE_TIMES) {
@@ -232,7 +233,8 @@ for (const [id, sky] of Object.entries(GARAGE_SKY_PRESETS)) {
     }
     const day = dayLayer[id];
     assert.deepEqual(shape(day), shape(verdant), `${id}: Verdant's cumulus shape model`);
-    assert.ok(day.coverage >= 0.2 && day.coverage <= 0.45, `${id}: scattered cover (${day.coverage})`);
+    // (Ironworks' field a little fuller: the approved s146's big lumpy cumulus over blue, the 228 census)
+    assert.ok(day.coverage >= 0.2 && day.coverage <= (id === 'foundry' ? 0.55 : 0.45), `${id}: scattered cover (${day.coverage})`);
     assert.ok(day.baseM >= 1000 && day.baseM <= 1800, `${id}: a cumulus base (${day.baseM} m)`);
     assert.equal(resolveOvercast({ ...cfg.sky, cloudscape: cfg.clouds }), 0, `${id}: the sun is not cut`);
     assert.ok(cloudStackOf(day).lanes.every((lane) => lane.cells < 0.5), `${id}: no cell layer at any height`);
