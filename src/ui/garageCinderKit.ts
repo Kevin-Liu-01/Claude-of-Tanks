@@ -456,6 +456,8 @@ export const CINDER_KIT: GarageKitPlacement = {
     { kind: 'prop', name: 'drum200', at: [13.6, 18.4], yaw: 0.3 },
     { kind: 'prop', name: 'drum200', at: [14.2, 18.9], yaw: 1.1 },
     { kind: 'prop', name: 'extinguisher', at: [12.0, 20.4], yaw: 0 },
+    // the yard's brick boundary wall behind the throat (the map's walls run behind each service road)
+    { kind: 'wall', wall: 'brick', points: [[26.6, 1.8], [26.6, 16.6]], params: { height: 2.1 } },
     // the shelters' flanks beside the turntable (the facility's primitive stations there gave way to these)
     { kind: 'prop', name: 'gasCage', at: [15.1, -4.9], yaw: -FACE_CAMERA },
     { kind: 'prop', name: 'pallet', at: [-13.0, -9.6], yaw: 0.2 },
