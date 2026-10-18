@@ -1835,9 +1835,11 @@ export function addGarageFacilityDetails({
     }
     clusterCylinder(cluster, lateral, longitudinal, 1.72,
       1.02, 5.55, shellTint, 0, 16, Math.PI / 2);
+    // (garage r9: Ironworks' vessel ends in its own mill steel, not the accent's salmon discs)
+    const capTone = variant.architecture === 'factory_line' ? shellTint.clone().multiplyScalar(0.78) : accent;
     for (const capOffset of [-2.74, 2.74]) {
       clusterCylinder(cluster, lateral + capOffset, longitudinal, 1.72,
-        1.06, 0.10, accent, 0, 16, Math.PI / 2);
+        1.06, 0.10, capTone, 0, 16, Math.PI / 2);
     }
     clusterBox(cluster, lateral + 2.72, longitudinal - 1.18, 0.62,
       1.05, 1.04, 0.76, primer, 'painted');
