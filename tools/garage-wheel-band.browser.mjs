@@ -12,14 +12,17 @@
 //   band     the darkening the ground occlusion adds (the same frame with __LIGHT_TUNE.VEHICLE_GROUND_AO = 0 minus the
 //            frame) on the tank's pixels just under the belly line minus just over it, in 8-bit display levels, and
 //            the frame / no-ground-AO luminance ratios under and over the line.
-// --battle adds a daylight battle view of the player tank, plain and wearing the live energy skin (the Juggernaut's).
+// --battle adds a daylight battle view of the player tank, plain and wearing the live energy skin (the Juggernaut's);
+// --battle-skins=juggernaut,flagOwn,flagEnemy,infected (TANK_ENERGY styles, default juggernaut) wears each in turn: the
+// Juggernaut's frames keep the `live` name, the others are `live-<style>`.
 // --gate fails the run when a Garage view's band step reaches --max-step (default 4 levels) or its tag share under the
 // line falls below --min-tag (default 0.8).
 //
 // Usage (worktree root):
 //   node --max-old-space-size=4096 tools/garage-wheel-band.browser.mjs --out=<dir> [--root=<checkout>]
 //     [--garages=verdant_motor_pool,desert_forward_depot,urban_arsenal] [--tanks=ztz99a2,leo2a4,m1a1_abrams_hc]
-//     [--views=low,side] [--battle] [--battle-tank=ztz99a2] [--no-garage] [--gate] [--cap-min=18] [--lock-held]
+//     [--views=low,side] [--battle] [--battle-tank=ztz99a2] [--battle-skins=juggernaut] [--no-garage] [--gate]
+//     [--cap-min=18] [--lock-held]
 //     [--skin-off-check]
 // --skin-off-check then clears each tank's dormant skin and draws the view again: at zero strength the skin must
 // leave the frame as the tank's own materials draw it (the difference is reported; it clears the skin for the rest of
@@ -46,6 +49,7 @@ const garages = flag('no-garage') ? [] : list('garages', 'verdant_motor_pool,des
 const tanks = list('tanks', 'ztz99a2,leo2a4,m1a1_abrams_hc');
 const viewNames = list('views', 'low,side');
 const battleTank = String(flag('battle-tank', tanks[0]));
+const battleSkins = list('battle-skins', 'juggernaut');
 const gate = !!flag('gate');
 const maxStep = Number(flag('max-step', 4));
 const minTag = Number(flag('min-tag', 0.8));
@@ -114,7 +118,10 @@ try {
     P.root = () => (P.mode === 'garage' ? D.pedestalVisual?.root : D.game.player?.visual?.root) ?? null;
     P.applySkin = () => {
       const r = P.root();
-      if (P.skin === 'live' && r) energy.syncTankEnergyVisual(r, P.dims ?? {}, 1.12, 1, 1, 0, false, energy.TANK_ENERGY.juggernaut, false);
+      if (!P.skin || !r) return;
+      const style = energy.TANK_ENERGY[P.skin];
+      if (!style) throw new Error(`garage-wheel-band: no TANK_ENERGY style ${P.skin}`);
+      energy.syncTankEnergyVisual(r, P.dims ?? {}, 1.12, 1, 1, 0, false, style, false);
     };
     P.frame = () => {
       P.applySkin();
@@ -374,8 +381,9 @@ try {
     log('battle', JSON.stringify(info));
     await sleep(5000);
     await page.evaluate(() => { const P = window.__GWB; P.mode = 'battle'; P.hideUi(true); });
-    for (const skin of ['none', 'live']) {
-      await page.evaluate((skin) => { window.__GWB.skin = skin === 'live' ? 'live' : null; }, skin);
+    for (const style of ['none', ...battleSkins]) {
+      const skin = style === 'none' ? 'none' : style === 'juggernaut' ? 'live' : `live-${style}`;
+      await page.evaluate((style) => { window.__GWB.skin = style === 'none' ? null : style; }, style);
       for (const view of viewNames) {
         // the battle pose reads the ground-AO hull record, measured once the hull has drawn near the camera
         await page.evaluate((o) => window.__GWB.poseSide(1, o), VIEWS[view]);
@@ -388,7 +396,7 @@ try {
         report.battle.push({ ...info, skin, view, posed, ...m });
         log('battle measured', skin, view, `step=${m.step}`, `tagUnder=${m.under?.tag}`, `tagAll=${m.tagAll}`);
       }
-      if (skin === 'live') await page.evaluate(() => { const P = window.__GWB; P.skin = null; P.energy.clearJuggernautVisual(P.root()); });
+      if (style !== 'none') await page.evaluate(() => { const P = window.__GWB; P.skin = null; P.energy.clearJuggernautVisual(P.root()); });
     }
   }
   report.heldS = Math.round((Date.now() - heldAt) / 1000);
