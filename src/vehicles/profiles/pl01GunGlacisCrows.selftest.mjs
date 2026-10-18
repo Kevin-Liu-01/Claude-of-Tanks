@@ -121,14 +121,18 @@ for (const id of ['pl01', 'pl01_105']) {
     `${id} must retain one merged pitch-owned gun housing`);
   gunMount.geometry.computeBoundingBox();
   const gunMountBounds = gunMount.geometry.boundingBox;
-  // 2026-10-17 (227 gun-gaps, r3): the housing still begins on the throat's full profile at z 0.43 (the rear-profile
-  // points below); a cradle boss round the gun line now runs on to z 0.26 inside the nose ridge, so at +20 deg no notch
-  // opens behind the raised housing. The boss is far narrower and shallower than the full profile, so min x and min y
-  // still come from the housing.
   assert.ok(near(gunMountBounds.min.x, -0.34)
     && near(gunMountBounds.min.y, -0.23328)
-    && near(gunMountBounds.min.z, 0.26),
-  `${id} gun housing must begin on the turret throat's full lower/shoulder profile, its cradle boss reaching z 0.26`);
+    && near(gunMountBounds.min.z, 0.43),
+  `${id} gun housing must begin on the turret throat's full lower/shoulder profile`);
+  // 2026-10-18 (227 gun-gaps, r4): behind that profile a dark round cradle tube on the gun line runs from 2 cm inside
+  // the ring to z 0.30 (88 mm radius at the ring, 74 mm at its rear), so at +20 deg no notch opens behind the raised
+  // housing; at rest and at full depression it lies inside the nose ridge.
+  const cradle = gun.getObjectByName('gunMountDark');
+  assert.ok(cradle?.isMesh, `${id} must carry the gun's dark cradle stock`);
+  cradle.geometry.computeBoundingBox();
+  const cradleBounds = cradle.geometry.boundingBox;
+  assert.ok(near(cradleBounds.min.z, 0.30), `${id} cradle tube reaches z 0.30 behind the housing (${cradleBounds.min.z})`);
   const housingPositions = gunMount.geometry.getAttribute('position');
   const rearProfile = new Set();
   for (let index = 0; index < housingPositions.count; index++) {
