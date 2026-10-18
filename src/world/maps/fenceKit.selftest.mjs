@@ -3,8 +3,8 @@
 // their triangle caps, deterministic; each map's forms are its region's (keyed as the gates are, so fence and gate agree);
 // the WORKLIST #6 guardrail maps (Saltwind, the delta, the coast, the desert) draw no more fence triangles than before;
 // the legacy module's draws spent, its footprint and its obstacle (what a hull crushes) kept; a collider of the drawn module
-// (the looks lane, 227): every opaque span of every form's module stops a line through it, and every form's collider as dense
-// as the fence it draws; the broken
+// (the looks lane, 227): at most three boxes a module, stopping at least 97 % of the lines through its opaque spans, never
+// thinner than the fence it draws; the broken
 // state lies low; props.ts lays them.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -115,8 +115,10 @@ for (const kind of FENCE_KINDS) {
 
 // 4c. what's drawn is what stops a line (the coordinator, 227: "a fence that LOOKS solid is seen and shot through between
 // the old rails"): every region's every form, its module seen along x on a 1.5 cm grid — every ray through an opaque span
-// of the drawn module (the ray and its eight neighbours all meet a member) meets the record, and the record covers the
-// module's face as densely as the drawn fence does (within 0.12)
+// of the drawn module (the ray and its eight neighbours all meet a member) meets the record. (The coordinator, 227: the
+// published shard budget — "collapse each module's record to the minimal box set that still blocks at least 95%":
+// at most three boxes a module, at least 97 % of its opaque-span rays stopped, was every one; a panel's box spans its
+// gaps, so the record is never thinner than the drawn fence)
 {
   const hitsTri = (oy, oz, p, i) => {
     // a ray along +x at (y, z): the triangle's projection onto the (z, y) plane holds the point
@@ -157,11 +159,9 @@ for (const kind of FENCE_KINDS) {
       if (!r) open++;
     }
     const cells = ys.length * zs.length;
-    // (the boards, laths, pales and woven courses stand square in the fence's plane: none may pass; a rail fence's leaning
-    // poles — the skigard's diagonals, laid in the record's steps — within 2 % of its opaque rays, at their edges)
-    if (kind === 'fencerail') assert.ok(open <= Math.max(2, interiorHere * 0.02), `${kind} ${form}: ${open} of ${interiorHere} rays through its opaque spans pass its record`);
-    else assert.equal(open, 0, `${kind} ${form}: ${open} rays through its opaque spans pass its record`);
-    assert.ok(Math.abs(recN - drawnN) / cells <= 0.12, `${kind} ${form}: the record covers ${(recN / cells).toFixed(2)} of the face, the drawn fence ${(drawnN / cells).toFixed(2)}`);
+    assert.ok(t.colliderBand.parts.length <= 3, `${kind} ${form}: ${t.colliderBand.parts.length} boxes in its record (at most 3)`);
+    assert.ok(open <= interiorHere * 0.03, `${kind} ${form}: ${open} of ${interiorHere} rays through its opaque spans pass its record (at most 3 %)`);
+    assert.ok(recN / cells >= drawnN / cells - 0.05, `${kind} ${form}: the record covers ${(recN / cells).toFixed(2)} of the face, thinner than the drawn fence's ${(drawnN / cells).toFixed(2)}`);
     checked++;
     if (flat !== built) flat.dispose();
     built.dispose();
@@ -193,4 +193,4 @@ const local = props.slice(props.indexOf('const LOCAL_TYPES:'), props.indexOf('co
 assert.ok(local.includes('...fenceTypes(regionalArchitecture?.id, mapId, DESTRUCTIBLE_TYPES, () => mulberry32(0x0f0f7))'), 'props.ts lays the fences');
 assert.ok(local.indexOf('...fenceTypes(') < local.indexOf('REGIONAL_DESTRUCTIBLE_TYPES'), 'a kit\'s own variants still win');
 const forms = [...new Set(Object.keys(tris))].length;
-console.log(`fenceKit.selftest: ${regions.length} regions x 4 kinds (${forms} forms) under their caps and the r2 standard, guardrail maps within the r2 allowance, drawn collision (opaque spans stop every line, density matched), pushed-over wrecks, wired`);
+console.log(`fenceKit.selftest: ${regions.length} regions x 4 kinds (${forms} forms) under their caps and the r2 standard, guardrail maps within the r2 allowance, drawn collision (at most 3 boxes a module, 97 % of the opaque spans' lines stopped), pushed-over wrecks, wired`);
