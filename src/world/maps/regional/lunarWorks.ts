@@ -371,8 +371,6 @@ export const LUNAR_BAG_FENCE = dressed('fenceplank', 0.9, () => bagFence(0x1a91)
 
 /** For the receipt: the plans the walls stand in (fieldworksKit.ts SANDBAG_STACKS' envelopes). */
 export const LUNAR_WALL_PLANS = Object.freeze({ sandbagwall: WALL, sandbagbig: BIG, sandbagsmall: SMALL });
-/** The Moon's structure variants, kind by kind (props structureVariants). */
-export const LUNAR_STRUCTURE_VARIANTS = Object.freeze({
-  sandbagwall: 'lunarbagwall', sandbagbig: 'lunarbagwallbig', sandbagsmall: 'lunarbagwallsmall', barbedwire: 'lunartether',
-  barrier: 'lunarblockrow', cone: 'lunarbeacon', trashcan: 'lunarcanister', fenceplank: 'lunarbagfence',
-} as const);
+/** The Moon's structure variants, kind by kind (props structureVariants): plain data in lunarWorksPlan.ts, so moon.ts names
+ * them without drawing this kit into the host Worker's graph. */
+export { LUNAR_STRUCTURE_VARIANTS } from '../lunarWorksPlan.ts';
