@@ -353,6 +353,13 @@ for (const [mapId, { carriageway, structures, setPieces = 0 }] of Object.entries
 // Light buildings (props.ts townLightPlan): a replayed settlement replays its huts, tents and sheds as well, so each one
 // the record holds stands at its recorded pose in the committed shard: a destructible of its kind whose footprint holds
 // that point (the pool refits a light building's box to the solids it bears on, up to a metre off its centre).
+// (2026-10-17, the maps lane; the Polders village blind 227) a light building whose seat a house of the map's sites seated
+// after the plan now stands over is left out (props.ts lightBuildingCovered: the dyke village's planner kept clear of the
+// plan's structures, not of its light buildings, and three of Polders' four stood inside its farmhouses). Each is named
+// here; its seat holds no record of its kind and stands inside a structure's box in the committed shard.
+const LIGHT_LEFT_OUT = {
+  polders: [['fieldhut', -62.625574, 42.085958], ['fishershack', -98.434514, -45.494945], ['transformershed', 44.62151, -51.394437]],
+};
 assert.deepEqual(Object.keys(TOWN_LIGHT_PLANS).sort(), Object.keys(TOWN_PLANS).sort(), 'every recorded plan records its light buildings');
 for (const [mapId, entries] of Object.entries(TOWN_LIGHT_PLANS)) {
   assert.equal(getMapConfig(mapId).props.townLightPlan, entries, `${mapId}: the map replays its recorded light buildings`);
@@ -360,11 +367,22 @@ for (const [mapId, entries] of Object.entries(TOWN_LIGHT_PLANS)) {
     new URL(`../../server/world-collision-manifests/${mapId}.json`, import.meta.url), 'utf8'))).obstacles;
   // (a map may replace a recorded kind out of place in its region at the same pose: props townLightPlanSwaps)
   const swaps = getMapConfig(mapId).props.townLightPlanSwaps ?? {};
-  for (const entry of entries) {
-    const kind = swaps[entry.kind] ?? entry.kind;
-    assert.ok(obstacles.some((o) => o.k === kind && entry.x >= o.b[0] && entry.x <= o.b[3]
-      && entry.z >= o.b[2] && entry.z <= o.b[5]), `${mapId}: the ${kind} stands at its recorded (${entry.x}, ${entry.z})`);
+  const holds = (o, x, z) => x >= o.b[0] && x <= o.b[3] && z >= o.b[2] && z <= o.b[5];
+  const leftOut = LIGHT_LEFT_OUT[mapId] ?? [];
+  for (const [kind, x, z] of leftOut) {
+    assert.ok(entries.some((e) => e.kind === kind && e.x === x && e.z === z), `${mapId}: the left-out ${kind} at (${x}, ${z}) is a recorded light building`);
   }
-  summary.push(`${mapId} ${entries.length} light buildings at their recorded poses`);
+  let out = 0;
+  for (const entry of entries) {
+    if (leftOut.some(([kind, x, z]) => kind === entry.kind && x === entry.x && z === entry.z)) {
+      assert.ok(!obstacles.some((o) => o.k === (swaps[entry.kind] ?? entry.kind) && holds(o, entry.x, entry.z)), `${mapId}: the ${entry.kind} at (${entry.x}, ${entry.z}) is left out`);
+      assert.ok(obstacles.some((o) => o.k === 'structure' && holds(o, entry.x, entry.z)), `${mapId}: a house stands over the left-out ${entry.kind}'s seat`);
+      out++;
+      continue;
+    }
+    const kind = swaps[entry.kind] ?? entry.kind;
+    assert.ok(obstacles.some((o) => o.k === kind && holds(o, entry.x, entry.z)), `${mapId}: the ${kind} stands at its recorded (${entry.x}, ${entry.z})`);
+  }
+  summary.push(`${mapId} ${entries.length - out} light buildings at their recorded poses${out ? ` (${out} under the village's houses, left out)` : ''}`);
 }
 console.log(`townPlans.selftest: ${summary.join('; ')}`);

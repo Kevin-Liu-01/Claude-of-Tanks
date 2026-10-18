@@ -69,6 +69,8 @@ import { applyRailBallastHook } from './railBallast.ts'; // the ground lane (wav
 import { railBerthReaches } from './railSpurs.ts'; // the buildings lane: no stack on a clearance berth
 import { composeScenery } from './scenery.ts'; // the scenery lane, 2026-10-03
 import { composeLandmarks } from './landmarks/compose.ts'; // the landmarks lane, 2026-10-05
+import { drapedRect } from './landmarks/grounds.ts';
+import { PartSink } from './maps/regional/geometry.ts';
 import type { LandmarkPlacement } from './landmarks/types.ts';
 import { createFieldWallLod, placeFieldBoundaryWorks } from './fieldBoundaryWorks.ts'; // the field boundaries' works and their LOD
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, type TreeSpecies } from './treeSpecies.ts';
@@ -136,8 +138,8 @@ import { RUNNER_SNOW_SINK_M } from './maps/cartBodies.ts';
 // the map-vehicles lane (2026-10-05): the vehicles' surface stream and liveries, their ground-contact patches
 import { applyVehicleSurfaceHook, VEHICLE_SURFACE_PROGRAM } from './maps/vehicleSurface.ts';
 import {
-  boatMudHoles, buildBoatMud, buildBoatMudRims, buildHullWaterRings, buildRunnerTracks, buildVehicleContactShadows,
-  vehicleShadowCaster,
+  boatMudHoles, buildBoatMud, buildBoatMudRims, buildHullWaterRings, buildRunnerTracks, buildSetPieceContacts,
+  buildVehicleContactShadows, vehicleShadowCaster,
 } from './maps/vehicleContactShadow.ts';
 import {
   CART_RELOCATE_MAX_M, CART_SLIDE_MAX_M, PARKED_VEHICLE_CLEARANCE, polygonGap, seatCartsClear, separateParkedVehicles, shapePolygons,
@@ -213,7 +215,9 @@ import {
 // DESTRUCTIBLES r1: real-roster tank wrecks baked to static geometry
 import { bakeTankWreckSteps, seatHulk, wreckRemnantPaint, type WreckBake } from './wrecks.ts';
 import { buildWreckDebris, seatWreckDebris } from './wreckDebris.ts';
-import type { VehicleSetPiece } from './maps/vehicleSetPieces.ts';
+import {
+  RUNNING_GEAR_SEATED, SET_PIECE_SIZE, seatOnRunningGear, setPiecePrints, setPieceRunningGear, type VehicleSetPiece,
+} from './maps/vehicleSetPieces.ts';
 import type { RollingStockKind } from './maps/rollingStock.ts';
 import {
   rollingStockDestructibleKind, rollingStockDestructibleTypes, setPieceDestructibleKind, setPieceDestructibleTypes, tramDestructibleKind,
@@ -456,6 +460,10 @@ export const HAY_CRATE_SITES: Readonly<Record<string, number>> = Object.freeze({
  * gives it its margin.)
  */
 export const PILLBOX_SET_BACK_M: Readonly<Record<string, number>> = Object.freeze({ alpine: 6 });
+/** props.dressingRules (the Polders village blind 227): how far a fence module keeps off a building's plot, how far the
+ *  yard clutter keeps off the clutter already placed (past both radii), how far a hedgehog drawn in the town keeps off
+ *  every building (past its ring), and the most a field work's breastwork stations' ground may step (m). */
+const FENCE_BUILDING_CLEAR_M = 0.8, YARD_CLUTTER_GAP_M = 1.2, HEDGEHOG_TOWN_CLEAR_M = 12, FIELD_WORK_STEP_M = 0.55;
 
 interface PropsSettings {
   sourcedPalette?: BuildingPaletteId;
@@ -621,6 +629,24 @@ interface PropsSettings {
   sandbagTint?: readonly [number, number, number];
   /** Field works between the spawns (breastwork + wire + pillbox); every map, default 3 (2026-09-17). */
   fieldWorks?: number;
+  /**
+   * (2026-10-17, the maps lane; the Polders village blind 227's after-defects) the dressing rules that blind asked for, map
+   * by map: each moves where a map's fences, yard clutter, hedgehogs or field works stand, so a map takes them with its own
+   * collision recapture (unset: as before).
+   *  - fencesClearBuildings: a fence run's module or gate that meets a building's plot (grown FENCE_BUILDING_CLEAR_M) is
+   *    left out, its draws taken (a field-edge run 7.6 m off a road the village now lines ran along its houses' back
+   *    walls; a yard run stood into a gable's corner);
+   *  - yardClutterClear: the yard clutter (placeYardClutter) is laid after the kit's yards and keeps off them, and
+   *    YARD_CLUTTER_GAP_M off the clutter already placed (a gate stack, a cart, barrels and a woodpile from two houses
+   *    heaped in one front garden read as a staged prop pile); a house that takes its kit's yard takes no free-standing
+   *    yard fence run (its yard is fenced: the run stood in its ground at any angle);
+   *  - hedgehogsAtApproaches: the steel hedgehogs drawn inside the town stand only at its approaches, HEDGEHOG_TOWN_CLEAR_M
+   *    and more off every building, not in its streets ("a dark object lies in the middle of the road");
+   *  - fieldWorksLevel: a field work's breastwork stands on ground its modules can follow, its stations within
+   *    FIELD_WORK_STEP_M of each other (a work laid up a dyke's batter stepped its bags into "a dark rectangular block on
+   *    the hillside").
+   */
+  dressingRules?: { fencesClearBuildings?: boolean; yardClutterClear?: boolean; hedgehogsAtApproaches?: boolean; fieldWorksLevel?: boolean };
   /** The field works' pillboxes keep off the trunks the vegetation planted (the Redrock lane's rule, visual/redrock-smooth
    *  ae7dcffa7, 2026-10-07; every map's default since the scenery lane's b40): a seat whose pillbox footprint, with
    *  PILLBOX_TRUNK_BERTH_M round it, holds a trunk is passed for the work's next seat. false keeps the old seats. */
@@ -4675,6 +4701,22 @@ ${snowCap ? `
       }
       return false;
     }
+    // (props.dressingRules.fencesClearBuildings) a module or a gate that meets a building's plot is left out, its draws
+    // taken, so every other placement keeps its seat. (The run is executed on its own by roadFencePath and roadStations,
+    // with no props build around it: with no P in scope the rule is off, so neither needs the build's state.)
+    const fencesClearBuildings = typeof P !== 'undefined' && !!P.dressingRules?.fencesClearBuildings;
+    const clearOfBuildings = !fencesClearBuildings ? () => true : (ax: number, az: number, bx: number, bz: number): boolean => {
+      const steps = Math.max(2, Math.ceil(Math.hypot(bx - ax, bz - az) / 0.3));
+      for (const b of buildingFeatures) {
+        const c = Math.cos(b.rot), sn = Math.sin(b.rot), hw = b.w / 2 + FENCE_BUILDING_CLEAR_M, hd = b.d / 2 + FENCE_BUILDING_CLEAR_M;
+        if (Math.hypot((ax + bx) / 2 - b.x, (az + bz) / 2 - b.z) > Math.hypot(hw, hd) + FENCE_SEG) continue;
+        for (let k = 0; k <= steps; k++) {
+          const dx = ax + (bx - ax) * k / steps - b.x, dz = az + (bz - az) * k / steps - b.z;
+          if (Math.abs(dx * c - dz * sn) < hw && Math.abs(dx * sn + dz * c) < hd) return false;
+        }
+      }
+      return true;
+    };
     const n = Math.max(1, Math.round(along / FENCE_SEG));
     const tx = (x1 - x0) / along, tz = (z1 - z0) / along;
     const straightYaw = Math.atan2(tx, tz); // module runs along local +z
@@ -4692,7 +4734,9 @@ ${snowCap ? `
           // hang an open gate at the field entrance the road cuts
           const gy = heightField.getHeightAt(ax, az);
           // (the looks lane: the run's own family's gate — a picket wicket in a picket fence, a woven gate in wattle)
-          if (!underBridgeDeck(ax, az)) addDestructible(gateKindForFence(kind), ax, gy - 0.06, az, yaw, 1);
+          if (!underBridgeDeck(ax, az) && clearOfBuildings(ax, az, ax + Math.sin(yaw) * FENCE_SEG, az + Math.cos(yaw) * FENCE_SEG)) {
+            addDestructible(gateKindForFence(kind), ax, gy - 0.06, az, yaw, 1);
+          }
           gated = true;
         }
         openRun = false;
@@ -4703,7 +4747,7 @@ ${snowCap ? `
       const cy = Math.min(ya, yb);
       const tiltX = Math.atan2(yb - ya, FENCE_SEG) * 0.85;
       const scale = 0.96 + drng() * 0.10, tiltZ = (drng() - 0.5) * 0.03;
-      if (!underBridgeDeck(cx, cz)) addDestructible(kind, cx, cy - 0.06, cz, yaw, scale, tiltX, tiltZ);
+      if (!underBridgeDeck(cx, cz) && clearOfBuildings(ax, az, bx, bz)) addDestructible(kind, cx, cy - 0.06, cz, yaw, scale, tiltX, tiltZ);
       openRun = true;
     }
   }
@@ -5431,6 +5475,7 @@ ${snowCap ? `
   }
   yield* placeRoadBuildings();
   // (the map-revival lane, 2026-10-07) the sites that close a square stand last, between the plan's houses
+  const afterPlanFrom = buildingFeatures.length;
   for (const [index, site] of (P.plannedSitesAfterPlan ? P.plannedSites ?? [] : []).entries()) {
     if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
     if (!site.terrace && !isRoadBuildingSiteClear(site.x, site.z)) continue;
@@ -5438,6 +5483,7 @@ ${snowCap ? `
       site.vacated, site.terrace ? mulberry32(seed + 104729 * (index + 1)) : rng);
     yield { fine: true };
   }
+  const afterPlanTo = buildingFeatures.length;
 
   // heaped masonry chunks + a jutting charred beam (shared by the street
   // rubble scatter and the collapsed rowhouse slots).
@@ -5906,6 +5952,25 @@ ${snowCap ? `
   }
   yield* placeTacticalBeats();
 
+  /**
+   * Whether a house of the sites seated after the plan (props.plannedSitesAfterPlan) stands over a recorded light
+   * building's seat (2026-10-17, the maps lane; the Polders village blind, pose 2: "the gable house and black shed roofs
+   * nearly collide"): the dyke village's planner kept clear of the plan's structures but not of its light buildings, and
+   * three of Polders' four stood inside the village's farmhouses (75-85 % of their footprints). Such a building is left
+   * out: the village's house took its ground (townPlans.selftest names each).
+   */
+  function lightBuildingCovered(x: number, z: number, w: number, d: number, rot: number): boolean {
+    const obb = (ox: number, oz: number, bw: number, bd: number, r: number) => ({ x: ox, z: oz, hw: bw / 2, hd: bd / 2, c: Math.cos(r), s: Math.sin(r) });
+    type Obb = ReturnType<typeof obb>;
+    // the axes a plot's frame carries (props: local +x -> (cos, -sin), local +z -> (sin, cos))
+    const axesOf = (o: Obb): Array<[number, number]> => [[o.c, -o.s], [o.s, o.c]];
+    const ext = (o: Obb, ax: number, az: number) => { const [[ux, uz], [vx, vz]] = axesOf(o); return o.hw * Math.abs(ux * ax + uz * az) + o.hd * Math.abs(vx * ax + vz * az); };
+    const overlaps = (a: Obb, b: Obb): boolean => [...axesOf(a), ...axesOf(b)]
+      .every(([ax, az]) => Math.abs((a.x - b.x) * ax + (a.z - b.z) * az) < ext(a, ax, az) + ext(b, ax, az));
+    const self = obb(x, z, w, d, rot);
+    return buildingFeatures.slice(afterPlanFrom, afterPlanTo).some((b) => overlaps(self, obb(b.x, b.z, b.w, b.d, b.rot)));
+  }
+
   // Light-building pass: huts, shelters, tents and camp infrastructure are
   // individually destructible, unlike the heavyweight merged landmarks.
   // A separate seeded stream keeps the established village layout stable.
@@ -5918,9 +5983,10 @@ ${snowCap ? `
         const kind = P.townLightPlanSwaps?.[entry.kind] ?? entry.kind;
         const meta = DESTRUCTIBLE_BUILDING_TYPES[kind];
         if (!meta) continue;
-        const fit = groundFit(entry.x, entry.z, meta.hw * 2, meta.hl * 2, entry.rot);
         // (props.settlementOverWater: one the course's water reaches is left out)
         if (footprintWet(entry.x, entry.z, meta.hw * 2, meta.hl * 2, entry.rot)) continue;
+        if (lightBuildingCovered(entry.x, entry.z, meta.hw * 2, meta.hl * 2, entry.rot)) continue;
+        const fit = groundFit(entry.x, entry.z, meta.hw * 2, meta.hl * 2, entry.rot);
         addDestructible(kind, entry.x, fit.y + 0.04, entry.z, entry.rot);
         buildingFeatures.push({ x: entry.x, z: entry.z, w: meta.hw * 2, d: meta.hl * 2, rot: entry.rot });
         placedB.push({ x: entry.x, z: entry.z, rr: Math.hypot(meta.hw, meta.hl) * 0.72 });
@@ -5986,12 +6052,26 @@ ${snowCap ? `
   function placeYardClutter(): void {
     if (!(P.yardClutter ?? !P.streetRows)) return;
     const yrng = mulberry32(seed + 808);
+    // (props.dressingRules.yardClutterClear: the pass runs after the kit's yards) a spot keeps YARD_CLUTTER_GAP_M off the
+    // clutter this pass placed already and 0.3 m off every other destructible (a yard's fence and gate among them), past
+    // both radii (a new piece taken at 0.9 m), and 0.6 m off every structure's box (a yard's shed among them)
+    const clutterFrom = destructibles.length, spaced = !!P.dressingRules?.yardClutterClear;
+    const structureBoxes = spaced ? obstacles.filter((o) => o.kind === 'structure') : [];
+    const clutterClear = (x: number, z: number): boolean => {
+      if (!spaced) return true;
+      for (let i = 0; i < destructibles.length; i++) {
+        const d = destructibles[i];
+        if (Math.hypot(x - d.x, z - d.z) < d.r + 0.9 + (i >= clutterFrom ? YARD_CLUTTER_GAP_M : 0.3)) return false;
+      }
+      return !structureBoxes.some((o) => x > o.min[0] - 0.6 && x < o.max[0] + 0.6 && z > o.min[2] - 0.6 && z < o.max[2] + 0.6);
+    };
     function yardSpot(pb: PlacedRadius, rMin: number, rMax: number): [number, number] | null {
       for (let t = 0; t < 8; t++) {
         const a = yrng() * Math.PI * 2, r = pb.rr + rMin + yrng() * (rMax - rMin);
         const x = pb.x + Math.cos(a) * r, z = pb.z + Math.sin(a) * r;
         if (heightField._roadDist(x, z) < 4.5 || noVeg(x, z)) continue;
         if (heightField.getNormalAt(x, z).y < 0.9) continue;
+        if (!clutterClear(x, z)) continue;
         let clear = true;
         for (const ob of placedB) {
           if (ob !== pb && Math.hypot(x - ob.x, z - ob.z) < ob.rr) { clear = false; break; }
@@ -6059,8 +6139,12 @@ ${snowCap ? `
       const y = heightField.getHeightAt(spot[0], spot[1]);
       addDestructible('handcart', spot[0], y - 0.02, spot[1], yrng() * Math.PI * 2, 1);
     };
+    // (props.dressingRules.yardClutterClear) a house of its kit's yard kinds is fenced by its yard (placeYards)
+    const yardKinds = new Set(spaced ? regionalArchitecture?.yard?.kinds ?? [] : []);
+    const takesKitYard = (building: PlacedRadius): boolean => yardKinds.size > 0 && buildingFeatures.some((f) =>
+      !!f.kind && yardKinds.has(f.kind) && Math.abs(f.x - building.x) < 0.01 && Math.abs(f.z - building.z) < 0.01);
     const placeYardFence = (building: PlacedRadius): void => {
-      if (yrng() >= 0.5) return;
+      if (yrng() >= 0.5 || takesKitYard(building)) return;
       const spot = yardSpot(building, 2.6, 4.4);
       if (!spot) return;
       const yaw = yrng() * Math.PI * 2;
@@ -6103,7 +6187,7 @@ ${snowCap ? `
         const x = building.x + Math.cos(a) * r, z = building.z + Math.sin(a) * r;
         if (heightField._roadDist(x, z) < 4.5 || noVeg(x, z)) continue;
         if (heightField.getNormalAt(x, z).y < 0.9) continue;
-        if (!waterworksClear(x, z)) continue;
+        if (!waterworksClear(x, z) || !clutterClear(x, z)) continue;
         let clear = true;
         for (const ob of placedB) {
           if (ob !== building && Math.hypot(x - ob.x, z - ob.z) < ob.rr) { clear = false; break; }
@@ -6168,7 +6252,9 @@ ${snowCap ? `
       placeYardGateStack(building);
     }
   }
-  placeYardClutter();
+  // (props.dressingRules.yardClutterClear) the yard clutter waits for the kit's yards (after placeRegionalYards): the
+  // yards plan round the houses first, and the clutter keeps off their fences, gates and sheds
+  if (!P.dressingRules?.yardClutterClear) placeYardClutter();
 
   yield;
   // --- low boundary walls (cover) ---
@@ -7801,8 +7887,10 @@ ${snowCap ? `
       const hz = inTown ? town.z0 + hrng() * (town.z1 - town.z0) : (hrng() * 2 - 1) * 320;
       const roadDistance = heightField._roadDist(hx, hz);
       if (roadDistance > 8.5 || (roadDistance < 2.2 && hrng() < 0.5)) return false;
+      // (props.dressingRules.hedgehogsAtApproaches) one drawn in the town stands at its approaches, clear of its streets
+      const clearOfBuildings = inTown && P.dressingRules?.hedgehogsAtApproaches ? HEDGEHOG_TOWN_CLEAR_M : 1.5;
       const blocked = placedB.some((building) =>
-        Math.hypot(hx - building.x, hz - building.z) < building.rr + 1.5);
+        Math.hypot(hx - building.x, hz - building.z) < building.rr + clearOfBuildings);
       if (blocked || noVeg(hx, hz)) return false;
       const nearSpawn = [L.spawns.player, ...L.spawns.enemies]
         .some((spawn) => Math.hypot(hx - spawn.x, hz - spawn.z) < 20);
@@ -8084,6 +8172,13 @@ ${snowCap ? `
         stations.push([cx + lx * off, cz + lz * off]);
       }
       if (!stations.every(([bx, bz]) => clear(bx, bz))) continue;
+      // (props.dressingRules.fieldWorksLevel) its modules follow the ground: no station steps more than FIELD_WORK_STEP_M
+      // off the next, nor the work more than two steps from end to end
+      if (P.dressingRules?.fieldWorksLevel) {
+        const ys = stations.map(([bx, bz]) => heightField.getHeightAt(bx, bz));
+        if (ys.some((y, k) => k > 0 && Math.abs(y - ys[k - 1]) > FIELD_WORK_STEP_M)
+          || Math.max(...ys) - Math.min(...ys) > 2 * FIELD_WORK_STEP_M) continue;
+      }
       for (const [bx, bz] of stations) {
         const kind = SOURCED.sandbags ? (wrng() < 0.6 ? 'sandbagwall' : 'sandbagbig') : 'barrier';
         // every piece keeps its whole footprint out of the road core: one that would reach into it is left out, its
@@ -8734,16 +8829,19 @@ ${snowCap ? `
       stats.modules += plan.modules.length;
       if (plan.gate && yard.gate) stats.gates++;
       for (const m of plan.modules) {
-        const ya = heightField.getHeightAt(m.x - Math.sin(m.yaw) * seg / 2, m.z - Math.cos(m.yaw) * seg / 2);
-        const yb = heightField.getHeightAt(m.x + Math.sin(m.yaw) * seg / 2, m.z + Math.cos(m.yaw) * seg / 2);
-        addDestructible(yard.fence, m.x, Math.min(ya, yb) - sink, m.z, m.yaw, 0.96 + yrngYard() * 0.08, Math.atan2(yb - ya, seg) * 0.85);
+        // (a tidy yard: YardStyle.tidy) the module scaled to its slot, its own tone of scale under it
+        const span = seg * (m.s ?? 1);
+        const ya = heightField.getHeightAt(m.x - Math.sin(m.yaw) * span / 2, m.z - Math.cos(m.yaw) * span / 2);
+        const yb = heightField.getHeightAt(m.x + Math.sin(m.yaw) * span / 2, m.z + Math.cos(m.yaw) * span / 2);
+        const sc = m.s === undefined ? 0.96 + yrngYard() * 0.08 : m.s * (0.96 + yrngYard() * 0.04);
+        addDestructible(yard.fence, m.x, Math.min(ya, yb) - sink, m.z, m.yaw, sc, Math.atan2(yb - ya, span) * 0.85);
       }
       if (plan.gate && yard.gate) {
         // (the looks lane) a family gate fills its slot from the slot's start (gateKit.ts: its hanging post or pier at
         // z = 0, the gap to z = width); the farm gate stood at the slot's middle, half over the next module
-        const half = ((GATE_WIDTH as Record<string, number>)[yard.gate] ?? 0) / 2;
+        const half = ((GATE_WIDTH as Record<string, number>)[yard.gate] ?? 0) / 2 * (plan.gate.s ?? 1);
         const gx = plan.gate.x - Math.sin(plan.gate.yaw) * half, gz = plan.gate.z - Math.cos(plan.gate.yaw) * half;
-        addDestructible(yard.gate, gx, heightField.getHeightAt(plan.gate.x, plan.gate.z) - 0.06, gz, plan.gate.yaw, 1);
+        addDestructible(yard.gate, gx, heightField.getHeightAt(plan.gate.x, plan.gate.z) - 0.06, gz, plan.gate.yaw, plan.gate.s ?? 1);
       }
       if (plan.shed && yard.shed && style.builders[yard.shed]) {
         const { x, z, yaw, w: sw, d: sd } = plan.shed;
@@ -8797,6 +8895,51 @@ ${snowCap ? `
       }
     }
     trimCropRowsInYards(rects);
+    if (yard.tidy) paveSlots(houses, rects, holes);
+  }
+  /**
+   * (a tidy yard: YardStyle.tidy; the Polders village blind 227, pose 3: "a dark strip/ditch runs along the house
+   * foundation (reads as a hole)") the slot between two houses of a street standing side by side 1.2-6 m apart, and in no
+   * yard, is the passage between them paved in the kit's brick (the 'stone' bucket), wall to wall from the front of the
+   * shallower to the back of it: in the low sun's shadow a 4 m strip of tall grass between two gables read as a ditch.
+   * Dressing, with the grass, tall grass and litter held off it.
+   */
+  function paveSlots(houses: readonly PlacedBuilding[], yards: ReadonlyArray<{ x: number; z: number; c: number; s: number; x0: number; x1: number; z0: number; z1: number }>,
+    holes: Array<{ x: number; z: number; r: number }>): void {
+    const sink = new PartSink([0.37, 0.61]);
+    const ground = (x: number, z: number) => surfaceAt(x, z);
+    const inYard = (x: number, z: number) => yards.some((r) => {
+      const dx = x - r.x, dz = z - r.z, lx = dx * r.c - dz * r.s, lz = dx * r.s + dz * r.c;
+      return lx > r.x0 && lx < r.x1 && lz > r.z0 && lz < r.z1;
+    });
+    const bodyOf = (h: PlacedBuilding) => regionalBodies.get(h) ?? { minX: -h.w / 2, maxX: h.w / 2, minZ: -h.d / 2, maxZ: h.d / 2 };
+    let paved = 0;
+    for (let i = 0; i < houses.length; i++) for (let j = 0; j < houses.length; j++) {
+      const a = houses[i], b = houses[j];
+      if (i === j || Math.abs(Math.sin(a.rot - b.rot)) > 0.17) continue;
+      const c = Math.cos(a.rot), sn = Math.sin(a.rot), dx = b.x - a.x, dz = b.z - a.z;
+      const lx = dx * c - dz * sn, lz = dx * sn + dz * c;
+      // b stands on a's +x side (each pair once), its body's near wall facing a's
+      if (lx <= 0 || Math.abs(lz) > 2.5) continue;
+      const A = bodyOf(a), B = bodyOf(b), flip = Math.cos(a.rot - b.rot) < 0;
+      const bNear = lx + (flip ? -B.maxX : B.minX), gap = bNear - A.maxX;
+      if (gap < 1.2 || gap > 6) continue;
+      const bz0 = lz + (flip ? -B.maxZ : B.minZ), bz1 = lz + (flip ? -B.minZ : B.maxZ);
+      const z0 = Math.max(A.minZ, bz0), z1 = Math.min(A.maxZ, bz1);
+      if (z1 - z0 < 3) continue;
+      const mx = (A.maxX + bNear) / 2, mz = (z0 + z1) / 2;
+      const cx = a.x + mx * c + mz * sn, cz = a.z - mx * sn + mz * c;
+      if (inYard(cx, cz)) continue;
+      drapedRect(sink, 'stone', ground, { cx, cz, hw: gap / 2 + 0.05, hd: (z1 - z0) / 2, yaw: a.rot }, { lift: 0.035, cell: 1.2, skirt: 0.12 });
+      for (let k = 0, n = Math.max(1, Math.ceil((z1 - z0) / gap)); k < n; k++) {
+        const kz = z0 + (z1 - z0) * (k + 0.5) / n;
+        holes.push({ x: a.x + mx * c + kz * sn, z: a.z - mx * sn + kz * c, r: Math.hypot(gap / 2, (z1 - z0) / (2 * n)) });
+      }
+      paved++;
+    }
+    if (!paved) return;
+    mergeInto(buckets, sink.finish() as unknown as PropsBuckets, _mat4.identity());
+    group.userData.regionalYards.slots = paved;
   }
   /**
    * A field's sown rows stop at a yard's fence (the close yard pairs of 2026-10-03: a Hessian farmyard standing in a
@@ -8824,6 +8967,7 @@ ${snowCap ? `
     if (kept.length < index.count) crop.geometry.setIndex(kept);
   }
   placeRegionalYards();
+  if (P.dressingRules?.yardClutterClear) placeYardClutter();
   // authored ground-cover holes (props.groundCoverHoles): ground no blade or tuft grows through that no solid marks — a
   // spring's pool inside its stone rim (Oasis round 3, wave 135: "dry grass cards sprout through the spring's water");
   // map.ts holds them with the yards' and the scenery's
@@ -9753,8 +9897,19 @@ ${snowCap ? `
     slots[rec.slot] = span;
   };
   for (const piece of setPieceRecords) {
-    const kind = setPieceDestructibleKind(piece.kind);
-    const rec = addDestructible(kind, piece.x, heightField.getHeightAt(piece.x, piece.z), piece.z, (piece.yawDeg * Math.PI) / 180, 1);
+    const kind = setPieceDestructibleKind(piece.kind), yaw = (piece.yawDeg * Math.PI) / 180;
+    const rec = addDestructible(kind, piece.x, heightField.getHeightAt(piece.x, piece.z), piece.z, yaw, 1);
+    // (the map-content lane's R6, gauntlet wave 358a: the Sno-Cat "hovers above the snow", the haul truck "hovers on the
+    // slope") a works vehicle sits on its own running gear (vehicleSetPieces.ts seatOnRunningGear: no floor point more
+    // than 2 cm clear of the ground) over the destructible's corner seat, as the rolling stock takes its rail pose below
+    const seat = RUNNING_GEAR_SEATED.has(piece.kind)
+      ? seatOnRunningGear(piece, setPieceRunningGear(piece.kind), (x, z) => heightField.getHeightAt(x, z)) : null;
+    const pool = dPools.get(kind);
+    if (seat && pool && rec.slot >= 0) {
+      _quat.setFromEuler(new THREE.Euler(-seat.pitch, yaw, seat.roll, 'YXZ'));
+      pool.mats4[rec.slot].compose(_posv.set(piece.x, seat.y, piece.z), _quat, _scalev.set(1, 1, 1));
+      rec.y = seat.y;
+    }
     bakeIntactSpan(kind, rec);
   }
   // (Lane C, #24) the rolling stock on its rails: the exact rail pose (the ground under the rails, pitched along them)
@@ -10968,6 +11123,25 @@ ${snowCap ? `
     const wheelTracks = buildRunnerTracks(rovers, heightField, aniso, () => ({ xs: [-0.915, 0.915], z0: -1.145 - 11, z1: 1.145 + 0.2, width: 0.12 }),
       () => true, { texture: 'chevron', name: 'props-wheel-tracks', pitch: 0.24 });
     if (wheelTracks) group.add(wheelTracks);
+    // the map-content lane's R6 (gauntlet wave 358a on Whiteout and Copper Mesa: the Sno-Cat "hovers above the snow ... with
+    // no shadow", the haul truck "hovers on the slope with no contact shadow or seated wheels", "no tracks"): each works
+    // vehicle's prints out behind it, the way it drove in, a strip under each side's line of gear (vehicleSetPieces.ts
+    // setPiecePrints; the wrecks long since drifted over), and its contact with the ground, a soft patch under the body
+    // and a crease along each tyre, track and pontoon (the contact-shadows lane's rule: 0.6 at the most on the ground
+    // lines, the body 0.35, no hard edge; vehicleContactShadow.ts buildSetPieceContacts)
+    const works = (P.vehicleSetPieces ?? []).filter((piece) => RUNNING_GEAR_SEATED.has(piece.kind));
+    if (works.length) {
+      const driven = works.filter((piece) => !piece.wrecked)
+        .map((piece) => ({ kind: piece.kind, x: piece.x, z: piece.z, yaw: (piece.yawDeg * Math.PI) / 180, sc: 1 }));
+      const prints = buildRunnerTracks(driven, heightField, aniso, (kind) => setPiecePrints(kind as VehicleSetPiece['kind']), () => true,
+        { texture: 'chevron', name: 'props-works-tracks', pitch: 0.3 });
+      if (prints) group.add(prints);
+      const contacts = buildSetPieceContacts(works.map((piece) => ({
+        x: piece.x, z: piece.z, yaw: (piece.yawDeg * Math.PI) / 180, hw: SET_PIECE_SIZE[piece.kind].hw, hl: SET_PIECE_SIZE[piece.kind].hl,
+        gear: setPieceRunningGear(piece.kind, !!piece.wrecked).contacts,
+      })), heightField);
+      if (contacts) group.add(contacts);
+    }
     // round 3: the mud a landing's hauled-out boat lies in (mapKits.ts beachedBoat's receipt), lit and shadowed
     const hauled = decorationGroundingReceipts.filter((r) => r.kind === 'beached-boat' && r.mud === true)
       .map((r) => ({ x: r.x, z: r.z, yaw: r.yaw as number, halfLength: r.halfLength as number, halfWidth: r.halfWidth as number }));
