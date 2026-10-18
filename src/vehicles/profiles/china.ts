@@ -1076,10 +1076,23 @@ function splitTrianglesAtZ(g: BufferGeometry, z0: number): void {
     return u.map((attr, n) => attr.map((c, k) => (n === 0 && k === 2 ? z0 : c + (v[n][k] - c) * t)));
   };
   const emit = (...tri: number[][][]): void => { for (const v of tri) v.forEach((attr, n) => out[n].push(...attr)); };
+  // release 227 round 4 (critic CN3-D2: per-vertex arrays for every triangle of the shell): a triangle that does not
+  // cross the plane is copied component by component, and a shell no triangle of which crosses is left as it is
+  const crosses = (i: number): boolean => {
+    const a = Math.sign(pos.getZ(i) - z0), b = Math.sign(pos.getZ(i + 1) - z0), c = Math.sign(pos.getZ(i + 2) - z0);
+    return (a === 1 || b === 1 || c === 1) && (a === -1 || b === -1 || c === -1);
+  };
+  let any = false;
+  for (let i = 0; i < pos.count && !any; i += 3) any = crosses(i);
+  if (!any) return;
+  const attrs = names.map((n) => g.getAttribute(n));
   let changed = false;
   for (let i = 0; i < pos.count; i += 3) {
+    if (!crosses(i)) {
+      for (let n = 0; n < attrs.length; n++) { const a = attrs[n], o = out[n]; for (let j = i; j < i + 3; j++) for (let k = 0; k < sizes[n]; k++) o.push(a.getComponent(j, k)); }
+      continue;
+    }
     const V = [vertex(i), vertex(i + 1), vertex(i + 2)], side = V.map((v) => Math.sign(v[0][2] - z0));
-    if (!(side.includes(1) && side.includes(-1))) { emit(...V); continue; }
     changed = true;
     const on = side.indexOf(0);
     if (on >= 0) {

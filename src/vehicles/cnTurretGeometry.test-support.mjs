@@ -315,25 +315,132 @@ export function sightFieldIntrusions(parts, f, options) {
   return sightFieldApproach(parts, f, options).filter((a) => a.m >= 0).map((a) => ({ part: a.part, intrusion: a.m }));
 }
 
-// ---- Round 3 (2026-10-17, critic D4): a working station's moving gun against its own mount.
-/** The closest the station's pitch group comes to its yaw stage (both ways, dense samples `h` apart) as it pitches about
- * its pivot from -depression to elevation in `step` radians: { d, el } (d capped at 0.03 m). `station` is the fitting
- * root (its yaw owner), `pitch` its auxiliaryWeaponPitch; both world-placed. */
-export function stationSelfClearance(station, pitch, { depression, elevation, step = .5 * Math.PI / 180, h = .004 } = {}) {
-  const sInv = new THREE.Matrix4().copy(station.matrixWorld).invert(), pInv = new THREE.Matrix4().copy(pitch.matrixWorld).invert();
-  const pitchMeshes = [], yawMeshes = [];
-  station.traverse((o) => { if (!o.isMesh) return; let moving = false; for (let q = o; q; q = q.parent) if (q === pitch) moving = true; (moving ? pitchMeshes : yawMeshes).push(o); });
-  const P = meshTriangles(pitchMeshes, pInv), Y = meshTriangles(yawMeshes, sInv);
-  const pPts = densePoints(P, h), yPts = densePoints(Y, h), pGrid = new SurfaceGrid(P, { cell: .03, rq: .03 }), yGrid = new SurfaceGrid(Y, { cell: .03, rq: .03 });
-  const rest = pitch.position.clone(), v = new THREE.Vector3();
-  let worst = { d: Infinity, el: 0 };
-  const els = []; for (let el = -depression; el < elevation; el += step) els.push(el); els.push(elevation);
-  for (const el of els) {
-    const M = new THREE.Matrix4().compose(rest, new THREE.Quaternion().setFromEuler(new THREE.Euler(-el, 0, 0)), new THREE.Vector3(1, 1, 1)), Mi = M.clone().invert();
-    let d = Infinity;
-    for (let i = 0; i < pPts.length; i += 3) { v.set(pPts[i], pPts[i + 1], pPts[i + 2]).applyMatrix4(M); d = Math.min(d, yGrid.distance(v.x, v.y, v.z)); }
-    for (let i = 0; i < yPts.length; i += 3) { v.set(yPts[i], yPts[i + 1], yPts[i + 2]).applyMatrix4(Mi); d = Math.min(d, pGrid.distance(v.x, v.y, v.z)); }
-    if (d < worst.d) worst = { d, el };
+// ---- Round 3 (2026-10-17, critic D4): a working station's moving gun against its own mount. Round 4 (critic CN3-D1: the
+// sweep pitched the gun but never recoiled it, and the runtime recoiled the whole pitch group, pin and all, out of its
+// bearing): the sweep covers recoil too, as the presentation applies it (fx/auxiliaryPresentation.ts). A station with an
+// `auxiliaryWeaponRecoil` group under its pitch group (a riding cradle) recoils that group alone, `auxiliaryRecoilM`
+// along the gun's axis; any other station recoils its whole pitch group 0.025 m.
+
+/** Triangle pairs of soup M (already posed) crossing soup B (bucketed in `grid`, a TriangleGrid): an edge of one passing
+ * through the other's interior (open intervals, so faces that only touch, or share a plane, do not count). */
+export function crossingPairs(M, grid) {
+  let count = 0;
+  for (let t = 0; t < M.length; t += 9) {
+    let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+    for (let k = 0; k < 9; k += 3) { x0 = Math.min(x0, M[t + k]); x1 = Math.max(x1, M[t + k]); y0 = Math.min(y0, M[t + k + 1]); y1 = Math.max(y1, M[t + k + 1]); z0 = Math.min(z0, M[t + k + 2]); z1 = Math.max(z1, M[t + k + 2]); }
+    for (const b of grid.candidates(x0, y0, z0, x1, y1, z1)) if (trianglesCross(M, t, grid.T, b)) count++;
   }
-  return { ...worst, pitchMeshes: pitchMeshes.length, yawMeshes: yawMeshes.length };
+  return count;
+}
+function openSegmentCrosses(T, o, ax, ay, az, bx, by, bz) {
+  const e = 1e-7, dx = bx - ax, dy = by - ay, dz = bz - az;
+  const e1x = T[o + 3] - T[o], e1y = T[o + 4] - T[o + 1], e1z = T[o + 5] - T[o + 2], e2x = T[o + 6] - T[o], e2y = T[o + 7] - T[o + 1], e2z = T[o + 8] - T[o + 2];
+  const px = dy * e2z - dz * e2y, py = dz * e2x - dx * e2z, pz = dx * e2y - dy * e2x, det = e1x * px + e1y * py + e1z * pz;
+  if (Math.abs(det) < 1e-14) return false;
+  const inv = 1 / det, tx = ax - T[o], ty = ay - T[o + 1], tz = az - T[o + 2], u = (tx * px + ty * py + tz * pz) * inv;
+  if (u < e || u > 1 - e) return false;
+  const qx = ty * e1z - tz * e1y, qy = tz * e1x - tx * e1z, qz = tx * e1y - ty * e1x, v = (dx * qx + dy * qy + dz * qz) * inv;
+  if (v < e || u + v > 1 - e) return false;
+  const t = (e2x * qx + e2y * qy + e2z * qz) * inv; return t > e && t < 1 - e;
+}
+function trianglesCross(A, a, B, b) {
+  for (const [i, j] of [[0, 3], [3, 6], [6, 0]]) if (openSegmentCrosses(B, b, A[a + i], A[a + i + 1], A[a + i + 2], A[a + j], A[a + j + 1], A[a + j + 2])) return true;
+  for (const [i, j] of [[0, 3], [3, 6], [6, 0]]) if (openSegmentCrosses(A, a, B[b + i], B[b + i + 1], B[b + i + 2], B[b + j], B[b + j + 1], B[b + j + 2])) return true;
+  return false;
+}
+/** A uniform grid of a triangle soup's boxes for crossingPairs. */
+export class TriangleGrid {
+  constructor(T, cell = .02) {
+    this.T = T; this.cell = cell; this.map = new Map();
+    const key = (i, j, k) => (i + 4000) * 64000000 + (j + 4000) * 8000 + (k + 4000);
+    this.key = key;
+    for (let t = 0; t < T.length; t += 9) {
+      let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+      for (let k = 0; k < 9; k += 3) { x0 = Math.min(x0, T[t + k]); x1 = Math.max(x1, T[t + k]); y0 = Math.min(y0, T[t + k + 1]); y1 = Math.max(y1, T[t + k + 1]); z0 = Math.min(z0, T[t + k + 2]); z1 = Math.max(z1, T[t + k + 2]); }
+      for (let i = Math.floor(x0 / cell); i <= Math.floor(x1 / cell); i++) for (let j = Math.floor(y0 / cell); j <= Math.floor(y1 / cell); j++)
+        for (let k = Math.floor(z0 / cell); k <= Math.floor(z1 / cell); k++) { const c = key(i, j, k); let a = this.map.get(c); if (!a) this.map.set(c, a = []); a.push(t); }
+    }
+  }
+  candidates(x0, y0, z0, x1, y1, z1) {
+    const c = this.cell, out = new Set();
+    for (let i = Math.floor(x0 / c); i <= Math.floor(x1 / c); i++) for (let j = Math.floor(y0 / c); j <= Math.floor(y1 / c); j++)
+      for (let k = Math.floor(z0 / c); k <= Math.floor(z1 / c); k++) { const a = this.map.get(this.key(i, j, k)); if (a) for (const t of a) out.add(t); }
+    return out;
+  }
+}
+function posed(T, M) {
+  const e = M.elements, out = new Float64Array(T.length);
+  for (let i = 0; i < T.length; i += 3) { const x = T[i], y = T[i + 1], z = T[i + 2];
+    out[i] = e[0] * x + e[4] * y + e[8] * z + e[12]; out[i + 1] = e[1] * x + e[5] * y + e[9] * z + e[13]; out[i + 2] = e[2] * x + e[6] * y + e[10] * z + e[14]; }
+  return out;
+}
+
+/** The closest a station's moving parts come to its yaw stage as the gun pitches about its pivot from -depression to
+ * elevation in `step` radians and recoils (rest, half and full travel at each pitch), dense samples `h` apart both ways:
+ * { d, el, r } (d capped at `cap`, 8 mm), with `crossings` (triangle pairs of the moving parts through the yaw stage over
+ * the same poses) and, for a riding cradle, `gunCradle`: the recoiling gun against its cradle over its travel (1 mm
+ * steps) — `crossings` (must be 0) and `bearing` (its closest approach: the receiver bears on the cradle floor).
+ * `wholeRecoil` recoils the whole pitch group `travel` (the pre-round-4 runtime: a negative control). `station` is the
+ * fitting root (its yaw owner), `pitch` its auxiliaryWeaponPitch; both world-placed. */
+export function stationSelfClearance(station, pitch, { depression, elevation, step = .5 * Math.PI / 180, h = .004, travel, wholeRecoil = false, cap = .008 } = {}) {
+  const sInv = new THREE.Matrix4().copy(station.matrixWorld).invert(), pInv = new THREE.Matrix4().copy(pitch.matrixWorld).invert();
+  const recoilGroup = pitch.getObjectByName('auxiliaryWeaponRecoil') ?? null;
+  const stroke = travel ?? (recoilGroup ? Number(station.userData.auxiliaryRecoilM) : .025);
+  const under = (o, g) => { for (let q = o; q; q = q.parent) if (q === g) return true; return false; };
+  const cradleMeshes = [], gunMeshes = [], yawMeshes = [];
+  station.traverse((o) => { if (!o.isMesh) return; if (!under(o, pitch)) yawMeshes.push(o); else if (recoilGroup && under(o, recoilGroup) && !wholeRecoil) gunMeshes.push(o); else (recoilGroup && !wholeRecoil ? cradleMeshes : gunMeshes).push(o); });
+  // with no recoil group (or the whole-group control) everything under the pitch group recoils: it is all "gun"
+  const C = meshTriangles(cradleMeshes, pInv), G = meshTriangles(gunMeshes, pInv), Y = meshTriangles(yawMeshes, sInv);
+  const rest = pitch.position.clone(), v = new THREE.Vector3();
+  // Only samples that can come within the cap of the other side matter. Pitching about the pivot (the pitch
+  // frame's x axis) keeps a point's x and its radius from that axis; the recoil stroke moves it at most `stroke`.
+  const reach = cap + h + stroke + .002, cellKey = (a, b) => `${Math.floor(a / reach)},${Math.floor(b / reach)}`;
+  const axial = (pts, dy = 0, dz = 0) => { const set = new Set(); for (let i = 0; i < pts.length; i += 3) set.add(cellKey(pts[i], Math.hypot(pts[i + 1] - dy, pts[i + 2] - dz))); return set; };
+  const within = (pts, set, dy = 0, dz = 0) => { const out = [];
+    for (let i = 0; i < pts.length; i += 3) { const a = Math.floor(pts[i] / reach), b = Math.floor(Math.hypot(pts[i + 1] - dy, pts[i + 2] - dz) / reach);
+      let hit = false; for (let p = -1; p <= 1 && !hit; p++) for (let q = -1; q <= 1 && !hit; q++) hit = set.has(`${a + p},${b + q}`);
+      if (hit) out.push(pts[i], pts[i + 1], pts[i + 2]); }
+    return Float64Array.from(out); };
+  const cAll = densePoints(C, h), gAll = densePoints(G, h), yAll = densePoints(Y, h);
+  const yAxial = axial(yAll, rest.y, rest.z), mAxial = axial(cAll.length ? Float64Array.from([...cAll, ...gAll]) : gAll);
+  const cPts = within(cAll, yAxial, 0, 0), gPts = within(gAll, yAxial, 0, 0), yPts = within(yAll, mAxial, rest.y, rest.z);
+  const cGrid = C.length ? new SurfaceGrid(C, { cell: cap, rq: cap }) : null, gGrid = new SurfaceGrid(G, { cell: cap, rq: cap }), yGrid = new SurfaceGrid(Y, { cell: cap, rq: cap });
+  const yTri = new TriangleGrid(Y, .02);
+  let worst = { d: Infinity, el: 0, r: 0 }, crossings = 0;
+  const els = []; for (let el = -depression; el < elevation; el += step) els.push(el); els.push(elevation);
+  const away = (pts, M, grid, Mi) => {
+    let d = Infinity;
+    for (let i = 0; i < pts.length; i += 3) { v.set(pts[i], pts[i + 1], pts[i + 2]).applyMatrix4(M); d = Math.min(d, yGrid.distance(v.x, v.y, v.z)); }
+    for (let i = 0; i < yPts.length; i += 3) { v.set(yPts[i], yPts[i + 1], yPts[i + 2]).applyMatrix4(Mi); d = Math.min(d, grid.distance(v.x, v.y, v.z)); }
+    return d;
+  };
+  for (const el of els) {
+    const M = new THREE.Matrix4().compose(rest, new THREE.Quaternion().setFromEuler(new THREE.Euler(-el, 0, 0)), new THREE.Vector3(1, 1, 1));
+    if (cGrid) { const d = away(cPts, M, cGrid, M.clone().invert()); if (d < worst.d) worst = { d, el, r: 0 }; if (el === els[0] || el === elevation || Math.abs(el) < step / 2) crossings += crossingPairs(posed(C, M), yTri); }
+    for (const r of [0, stroke / 2, stroke]) {
+      const Mr = M.clone().multiply(new THREE.Matrix4().makeTranslation(0, 0, -r));
+      const d = away(gPts, Mr, gGrid, Mr.clone().invert()); if (d < worst.d) worst = { d, el, r };
+      if ((r === stroke || r === 0) && (el === els[0] || el === elevation || Math.abs(el) < step / 2 || Math.abs(el - worst.el) < step / 2)) crossings += crossingPairs(posed(G, Mr), yTri);
+    }
+  }
+  let gunCradle = null;
+  if (cGrid) {
+    const cTri = new TriangleGrid(C, .02); let gc = 0, bearing = Infinity;
+    // the gun's samples within the cap of the cradle (its z widened by the stroke), and the cradle's of the gun
+    const box = (pts) => { const b = new THREE.Box3(); for (let i = 0; i < pts.length; i += 3) b.expandByPoint(v.set(pts[i], pts[i + 1], pts[i + 2])); return b; };
+    const cb = box(cAll).expandByScalar(cap + .002), gb = box(gAll).expandByScalar(cap + .002); cb.min.z -= 0; cb.max.z += stroke; gb.min.z -= stroke;
+    const inside = (pts, b) => { const out = []; for (let i = 0; i < pts.length; i += 3) if (b.containsPoint(v.set(pts[i], pts[i + 1], pts[i + 2]))) out.push(pts[i], pts[i + 1], pts[i + 2]); return Float64Array.from(out); };
+    const gNear = inside(gAll, cb), cNear = inside(cAll, gb);
+    const gTris = []; for (let t = 0; t < G.length; t += 9) { let hit = false; for (let k = 0; k < 9 && !hit; k += 3) hit = cb.containsPoint(v.set(G[t + k], G[t + k + 1], G[t + k + 2])); if (hit) for (let k = 0; k < 9; k++) gTris.push(G[t + k]); }
+    const Gn = Float64Array.from(gTris);
+    for (let r = 0; r <= stroke + 1e-9; r += .001) {
+      const T = new THREE.Matrix4().makeTranslation(0, 0, -r), Ti = new THREE.Matrix4().makeTranslation(0, 0, r);
+      gc += crossingPairs(posed(Gn, T), cTri);
+      if (r > 0 && r < stroke - 1e-9 && Math.abs(r - stroke / 2) > 5e-4) continue;
+      for (let i = 0; i < gNear.length; i += 3) { v.set(gNear[i], gNear[i + 1], gNear[i + 2]).applyMatrix4(T); bearing = Math.min(bearing, cGrid.distance(v.x, v.y, v.z)); }
+      for (let i = 0; i < cNear.length; i += 3) { v.set(cNear[i], cNear[i + 1], cNear[i + 2]).applyMatrix4(Ti); bearing = Math.min(bearing, gGrid.distance(v.x, v.y, v.z)); }
+    }
+    gunCradle = { crossings: gc, bearing };
+  }
+  return { ...worst, crossings, gunCradle, stroke, pitchMeshes: cradleMeshes.length + gunMeshes.length, recoilMeshes: recoilGroup && !wholeRecoil ? gunMeshes.length : 0, yawMeshes: yawMeshes.length };
 }

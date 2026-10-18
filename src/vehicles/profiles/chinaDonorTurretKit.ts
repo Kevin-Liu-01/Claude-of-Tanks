@@ -11,7 +11,7 @@
 import * as THREE from 'three';
 import {KIT,orientedSlab} from './kit.ts';
 import {machinedRing} from '../machineGunGeometry.ts';
-import {chinaDonorHull,equipmentFoot,lowOptic,permanentParts,seatCheekTile,serviceCable,serviceCase} from './nationalChina.ts';
+import {chinaDonorHull,equipmentFoot,lowOptic,permanentParts,seatCheekTile,serviceCable,serviceCase,stockRoof} from './nationalChina.ts';
 import {weldedFlankHousing} from './weldedFlankHousing.ts';
 import {addChineseChevronFacet} from './chineseChevronEra.ts';
 import {markSmokeTube} from '../vehicleAuxiliaryGeometry.ts';
@@ -380,12 +380,8 @@ function seatedPlate(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],buc
 }
 
 function roofAt(parts:readonly THREE.BufferGeometry[],x:number,z:number):number {
-  const mat=new THREE.MeshBasicMaterial({side:THREE.DoubleSide}),ray=new THREE.Raycaster(new THREE.Vector3(x,3,z),new THREE.Vector3(0,-1,0),0,6);
-  let y=-Infinity;
-  for(const g of parts){const m=new THREE.Mesh(g,mat);m.updateMatrixWorld(true);const h=ray.intersectObject(m,false)[0];if(h)y=Math.max(y,h.point.y);}
-  mat.dispose();
-  if(!Number.isFinite(y))throw new Error(`Chinese donor kit: no permanent roof at ${x},${z}`);
-  return y;
+  // the frozen parts' downward-ray index (nationalChina.ts stockRoof: the raycaster's heights to the bit, round 4)
+  try{return stockRoof(parts,x,z);}catch{throw new Error(`Chinese donor kit: no permanent roof at ${x},${z}`);}
 }
 
 /** The brow's four chevron cassettes a side (the cast Qilin's eight a turret): two on each of the sleeve's two forward
@@ -426,7 +422,7 @@ function qilin(P:TankBuilderPort):void {
   const roof=permanentParts(P,['turret','turretEquipment']);
   // The bustle roof plate (the cast bustle box's roof) on the crown, 5 cm behind the cupola disc and stopping 20 mm
   // short of the 99A2 rear armour box's front face (z -1.68, inside the shell's rear wall).
-  const plateTop=seatedPlate(tagged(P,QILIN_MODEL,'bustle-plate'),roof,'turretExternalArmor',0,-1.43,.95,.44,.022);
+  seatedPlate(tagged(P,QILIN_MODEL,'bustle-plate'),roof,'turretExternalArmor',0,-1.43,.95,.44,.022);
   const deck=[...roof,...permanentParts(P,['turretExternalArmor'])];
   // Round guarded lamps on the crown just behind the chevrons' upper roots, 5 cm ahead of the commander's sight.
   for(const side of [-1,1])footedLamp(tagged(P,QILIN_MODEL,'lamp'),roof,side*.82,-.14,l.lamp);
@@ -456,7 +452,7 @@ function qilin(P:TankBuilderPort):void {
     rollCrew.addEquipment('turretDetail',box(.042,.036,.22),x,y+.007,-1.40);
     rollCrew.addEquipment('turretDark',cylX(.082,.028,16),x,y+.070,-1.40);
   }
-  qilinRack(tagged(P,QILIN_MODEL,'rack'),deck,plateTop);
+  qilinRack(tagged(P,QILIN_MODEL,'rack'),deck);
   qilinRearBasket(P);
 }
 
@@ -507,8 +503,7 @@ function qilinRearBoxMarks(P:TankBuilderPort):void {
 }
 
 /** The small rack framing the roll: two posts on shaped feet, their side rails and the rear cross rail. */
-function qilinRack(P:TankBuilderPort,deck:readonly THREE.BufferGeometry[],plateTop:number):void {
-  void plateTop;
+function qilinRack(P:TankBuilderPort,deck:readonly THREE.BufferGeometry[]):void {
   let railY=-Infinity;
   for(const x of [-.42,.42]){
     const foot=equipmentFoot(P,deck,x,-1.40,.070,.13);
@@ -706,12 +701,17 @@ function yunSightHood(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[]):v
 }
 
 /** The crosswind sensor head on the Type 96B's rear mast stem (cylY r 0.026 at its top, turret-local y 1.4145 at
- * (0.761, -1.179)): a small vertical sensor housing 3 mm over the stem's tip and its rain cap, so the stem carries what a
- * Chinese fire-control mast carries rather than standing bare beside the station. */
+ * (0.761, -1.179)), so the stem carries what a Chinese fire-control mast carries rather than standing bare beside the
+ * station. Round 4 (visual critic CN-5: "a thick, featureless tan rod ... with no sensor head"): a clamp collar 3 mm
+ * over the stem's tip, the sensor's dark housing on it (two clamp bands proud of it) and the rain cap, each seated
+ * 2 mm into the one under it. */
 function yunMetHead(P:TankBuilderPort):void {
-  const x=.761,z=-1.179,top=1.4145,h=.07;
-  P.addEquipment('turretDetail',cylY(.034,.034,h,P.q?14:10),x,top-.003+h/2,z);
-  P.addEquipment('turretDark',cylY(.044,.044,.012,P.q?14:10),x,top-.003+h+.006,z);
+  const x=.761,z=-1.179,top=1.4145,seg=P.q?16:10,collar=.022,body=.105;
+  P.addEquipment('turretDetail',cylY(.040,.034,collar,seg),x,top-.003+collar/2,z);
+  const b0=top-.003+collar-.002;
+  P.addEquipment('turretDark',cylY(.048,.048,body,seg),x,b0+body/2,z);
+  for(const f of [.32,.68])P.addEquipment('turretDetail',cylY(.0525,.0525,.010,seg),x,b0+body*f,z);
+  P.addEquipment('turretDetail',cylY(.058,.052,.016,seg),x,b0+body-.002+.008,z);
 }
 
 function yun(P:TankBuilderPort):void {

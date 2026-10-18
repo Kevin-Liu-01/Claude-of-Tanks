@@ -323,31 +323,51 @@ export function addPintleMount(context: PintleLayout): void {
 }
 
 /**
+ * The riding cradle's recoil travel (metres): the gun (receiver, barrel and can) slides this far back along its own axis
+ * inside the cradle on each shot (the runtime's `auxiliaryWeaponRecoil` group, fx/auxiliaryPresentation.ts), a
+ * soft-mounted 12.7 mm's buffer stroke.
+ */
+export const RIDING_CRADLE_RECOIL_M = 0.012;
+
+/**
  * Release 227, round 3 (critic D4; owner field-equipment standard: nothing interpenetrates a moving part): a working
  * pintle whose cradle rides the gun. The fleet's working pintle keeps its cradle, shield and yoke bridge on the yaw stage
  * while the gun pitches about the receiver's centre (recY, recZ), so at full elevation the receiver's lower rear sweeps
  * 22 mm into the bridge, at 23 degrees the barrel passes 15 mm through the shield's top beam, and the ammunition can
  * meets the shield's brace. Here everything that carries the gun pitches with it about its trunnion pin, on the pitch
- * axis: the two cheeks clasping the receiver, the cradle floor, the pin and its head, and the shield on a bar and a
- * cross-bar under the barrel (`cradle`, the caller's pitch-group parts; the shield itself is the caller's
- * addPintleShield into the same parts, without its yaw-stage braces). The yaw stage keeps the flange, a shortened
- * column, a low yoke base under the receiver's swept floor (its top 10 mm under the lowest the receiver, cradle and can
- * come over it through 45 degrees of elevation) and one side arm on the side away from the feed, its bearing ring round
- * the pin with 2 mm of air. The arm stands 4 mm outboard of the cheek, behind the charging handle's rod (which stays more
- * than 40 mm from the pin at every pitch). The lock lever (inside the can on the fleet mount) is not drawn.
+ * axis: the two cheeks, the cradle floor, the pin and its head, and the shield on a bar and a cross-bar under the barrel
+ * (`cradle`, the caller's pitch-group parts; the shield itself is the caller's addPintleShield into the same parts,
+ * without its yaw-stage braces). The yaw stage keeps the flange, a shortened column, a low yoke base under the
+ * receiver's swept floor (its top 10 mm under the lowest the receiver, cradle and can come over it through 45 degrees of
+ * elevation) and one side arm on the side away from the feed, its bearing ring round the pin with 2 mm of air. The lock
+ * lever (inside the can on the fleet mount) is not drawn.
+ *
+ * Round 4 (critic CN3-D1: the runtime recoiled the whole pitch group, so the pin left its bearing by 12-25 mm through
+ * every burst): the gun recoils RIDING_CRADLE_RECOIL_M inside the cradle (the caller draws it into its own recoil group)
+ * and the cradle, pin and shield stay on the trunnion. The cheeks stand clear of the receiver's side furniture over that
+ * stroke: the pin-side cheek 3 mm outboard of the charging-handle slide, its front 3 mm ahead of the pin and the handle's
+ * knob 9 mm ahead of it at full recoil; the feed-side cheek 2 mm outboard of the side-plate seam and 1.5 mm inboard of the
+ * can, its front 2 mm behind the can tray's arm (which runs in under the receiver) at full recoil; the receiver bears on
+ * the cradle floor. The bearing ring's
+ * outer radius is 20 mm, 2 mm behind the knob's stem at full recoil. The cradle (cheeks, floor, carrier bars) is painted
+ * with the vehicle (`cradleSlot`, critic CN-4: the weapon steel's grain read as a crumpled silver sheet from below); the
+ * pin stays steel.
  */
-export function addPintleRidingCradle(context: PintleLayout, cradle: MachineGunParts): void {
+export function addPintleRidingCradle(context: PintleLayout, cradle: MachineGunParts, cradleSlot = 'detail'): void {
   if (context.mount === 'external-cradle') throw new Error('addPintleRidingCradle: a pintle mount only');
   const { bodyBottom, bodyW, feedSign: f, parts, recY, recZ, s, trunY, weaponSlot } = context;
   const near = context.detail === 1;
-  const cx = bodyW / 2 + 0.008 * s, cheekT = 0.012 * s, floorBottom = bodyBottom - 0.010 * s;
+  const floorBottom = bodyBottom - 0.010 * s;
+  // the pin-side cheek outboard of the charging slide (bodyW/2 + 9 mm), the feed-side one between the seam strip
+  // (bodyW/2 + 3.5 mm) and the can (bodyW/2 + 14 mm)
+  const pinIn = bodyW / 2 + 0.012 * s, pinT = 0.012 * s, feedIn = bodyW / 2 + 0.0055 * s, feedT = 0.007 * s;
   // the lowest the receiver's floor line comes over the base's rear edge through 45 degrees (y / cos e + z tan e)
   const e = 45 * Math.PI / 180, baseRear = -0.03 * s, baseFront = recZ + 0.025 * s;
   const sweptLow = recY + (bodyBottom - recY) / Math.cos(e) + (baseRear - recZ) * Math.tan(e);
   const baseH = 0.030 * s, baseTop = sweptLow - 0.010 * s, baseY = baseTop - baseH;
   if (baseY < 0.014 + Math.max(0, context.riser > 0.03 ? context.riser + 0.02 : 0) + 0.010 * s) throw new Error('addPintleRidingCradle: no room for the yoke base over the riser');
-  const armIn = cx + cheekT / 2 + 0.004 * s, armT = 0.012 * s, armX = -f * (armIn + armT / 2), armD = 0.040 * s;
-  const ringIn = 0.011 * s, ringOut = 0.024 * s, pinR = 0.009 * s;
+  const armIn = pinIn + pinT + 0.004 * s, armT = 0.012 * s, armX = -f * (armIn + armT / 2);
+  const ringIn = 0.011 * s, ringOut = 0.020 * s, pinR = 0.009 * s, armD = 2 * ringOut;
   // yaw stage: flange, column, riser sleeve, the base and the side arm with its bearing ring round the pin
   addPintleFlange(context);
   const colH = baseY - 0.014;
@@ -359,18 +379,25 @@ export function addPintleRidingCradle(context: PintleLayout, cradle: MachineGunP
   parts.add(weaponSlot, block(armT, armTop - baseTop + 0.002 * s, armD), armX, (armTop + baseTop - 0.002 * s) / 2, recZ);
   parts.add(weaponSlot, place(machinedRing(ringIn, ringOut, armT, 0.002 * s, near ? 24 : 16), 0, 0, 0, 0, 0, Math.PI / 2),
     armX + armT / 2, recY, recZ);
-  // pitch group: the cheeks (their fronts 5 mm behind the charging handle's rod), the floor, the pin and its head
-  const cheekFront = recZ + 0.030 * s, cheekRear = -0.04 * s, cheekTop = trunY + 0.010 * s;
-  for (const side of [-1, 1]) cradle.add(weaponSlot, block(cheekT, cheekTop - floorBottom, cheekFront - cheekRear), side * cx, (cheekTop + floorBottom) / 2, (cheekFront + cheekRear) / 2);
-  cradle.add(weaponSlot, block(2 * cx + cheekT, 0.010 * s, cheekFront - cheekRear), 0, floorBottom + 0.005 * s, (cheekFront + cheekRear) / 2);
-  const pinOut = armIn + armT + 0.005 * s, pinIn = cx + cheekT / 2 - 0.002 * s;
-  cradle.add(weaponSlot, cylX(pinR, pinIn + pinOut, near ? 10 : 8), (f * pinIn - f * pinOut) / 2, recY, recZ);
+  // pitch group: the cheeks (the pin side's front 3 mm ahead of the pin; the feed side's 2 mm behind the can tray's arm
+  // under the receiver at full recoil, addPintleAmmo), the floor under the receiver, the pin and its head
+  const cheekFront = recZ + pinR + 0.003 * s, cheekRear = -0.04 * s, cheekTop = trunY + 0.010 * s;
+  const canD = (context.cls.caliber > 10 ? 0.26 : 0.24) * s, canArmRear = recZ - 0.02 * s + canD * 0.18 - 0.015 * s;
+  const feedFront = context.ammo ? Math.min(cheekFront, canArmRear - RIDING_CRADLE_RECOIL_M - 0.002 * s) : cheekFront;
+  for (const [x0, t, front] of [[-f * pinIn, -f * pinT, cheekFront], [f * feedIn, f * feedT, feedFront]] as const) {
+    cradle.add(cradleSlot, block(Math.abs(t), cheekTop - floorBottom, front - cheekRear), x0 + t / 2, (cheekTop + floorBottom) / 2, (front + cheekRear) / 2);
+  }
+  // the floor ends with the feed-side cheek (the can's strap and tray arm come back over its front at full recoil)
+  const floorX0 = -f * (pinIn + pinT), floorX1 = f * (feedIn + feedT);
+  cradle.add(cradleSlot, block(Math.abs(floorX1 - floorX0), 0.010 * s, feedFront - cheekRear), (floorX0 + floorX1) / 2, floorBottom + 0.005 * s, (feedFront + cheekRear) / 2);
+  const pinOut = armIn + armT + 0.005 * s, pinStart = pinIn + pinT - 0.002 * s;
+  cradle.add(weaponSlot, cylX(pinR, pinOut - pinStart, near ? 10 : 8), -f * (pinStart + pinOut) / 2, recY, recZ);
   if (near) cradle.add(weaponSlot, cylX(0.016 * s, 0.006 * s, 10), -f * (pinOut + 0.002 * s), recY, recZ);
   // the shield's carrier under the barrel: a bar forward from the floor's front, inboard of the can, and a cross-bar
   // behind the shield's inner panels
   const shieldBack = context.trunZ + 0.035 * s - 0.015 * s;
-  cradle.add(weaponSlot, block(0.080 * s, 0.010 * s, shieldBack - cheekFront + 0.002 * s), 0, floorBottom + 0.005 * s, (shieldBack + cheekFront) / 2);
-  cradle.add(weaponSlot, block(0.180 * s, 0.010 * s, 0.025 * s), 0, floorBottom + 0.005 * s, shieldBack - 0.0125 * s + 0.002 * s);
+  cradle.add(cradleSlot, block(0.080 * s, 0.010 * s, shieldBack - feedFront + 0.002 * s), 0, floorBottom + 0.005 * s, (shieldBack + feedFront) / 2);
+  cradle.add(cradleSlot, block(0.180 * s, 0.010 * s, 0.025 * s), 0, floorBottom + 0.005 * s, shieldBack - 0.0125 * s + 0.002 * s);
 }
 
 // 2026-10-05 (tank-accessories lane): the Browning family keeps its load path, its envelope and its muzzle point;

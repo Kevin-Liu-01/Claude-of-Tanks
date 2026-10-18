@@ -10,6 +10,12 @@
 // keeps at least 1.5 mm from every part of its mount that does not pitch (the fleet's working pintle, whose cradle and
 // shield stand on the yaw stage, must fail that: its receiver sweeps 22 mm into the yoke bridge); and the station adds no
 // material the vehicle does not already draw with.
+// Round 4 (critic CN3-D1: the sweep never recoiled the gun, and the runtime recoiled the whole pitch group, so the
+// trunnion pin left its bearing through every burst): the gun (receiver, barrel, can) recoils alone in its own group
+// (`auxiliaryWeaponRecoil`, 12 mm along its axis) and the presentation moves that group and nothing else; through the
+// whole pitch range and the whole stroke no triangle of a moving part crosses its yaw stage and the moving parts keep
+// 1.5 mm from it, the recoiling gun crosses nothing of its cradle and bears on its floor; the whole pitch group recoiled
+// 25 mm (the pre-round-4 runtime) must fail.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
@@ -20,7 +26,9 @@ import { INERT_DRAWN_WEAPONS } from './inertDrawnWeapons.generated.ts';
 import { NATIONAL_ROOF_LOADOUTS } from './nationalRoofConfig.ts';
 import { auxiliaryWeaponProfile } from './auxiliaryWeapons.ts';
 import { stepRoofGun, auxiliaryState } from '../sim/auxiliarySystems.ts';
+import { createAuxiliaryPresentation } from '../fx/auxiliaryPresentation.ts';
 import { FITTINGS } from './profiles/kit.ts';
+import { RIDING_CRADLE_RECOIL_M } from './machineGunGeometry.ts';
 import { stationSelfClearance } from './cnTurretGeometry.test-support.mjs';
 
 const EXPECT = {
@@ -82,13 +90,37 @@ for (const [id, want] of Object.entries(EXPECT)) {
       // the shield, cradle and pin ride the gun; the yaw stage is the flange, column, yoke and race ring in one mesh
       let shieldOnGun = false; pitch.traverse((o) => { if (o.isMesh && o.userData.fittingSlot === 'detail') shieldOnGun = true; });
       assert.ok(shieldOnGun, `${id}: the shield rides the gun`);
-      const self = stationSelfClearance(station, pitch, { depression: auxiliaryWeaponProfile(12.7, id).depressionRad, elevation: auxiliaryWeaponProfile(12.7, id).elevationRad });
+      const range = { depression: auxiliaryWeaponProfile(12.7, id).depressionRad, elevation: auxiliaryWeaponProfile(12.7, id).elevationRad };
+      const recoil = pitch.getObjectByName('auxiliaryWeaponRecoil');
+      assert.ok(recoil && recoil.parent === pitch, `${id}: the gun recoils in its own group inside the cradle`);
+      assert.equal(station.userData.auxiliaryRecoilM, RIDING_CRADLE_RECOIL_M, `${id}: the gun's published recoil stroke`);
+      const self = stationSelfClearance(station, pitch, range);
       assert.equal(self.yawMeshes, 1, `${id}: one yaw-stage mesh`);
-      assert.ok(self.d >= .0015, `${id}: the moving gun keeps 1.5 mm from its own mount (${(self.d * 1000).toFixed(1)} mm at ${(self.el * 180 / Math.PI).toFixed(1)} deg)`);
+      assert.ok(self.recoilMeshes >= 1 && self.stroke === RIDING_CRADLE_RECOIL_M, `${id}: the sweep recoils the gun its stroke`);
+      assert.ok(self.d >= .0015, `${id}: the moving parts keep 1.5 mm from their own mount through pitch and recoil (${(self.d * 1000).toFixed(1)} mm at ${(self.el * 180 / Math.PI).toFixed(1)} deg, recoil ${(self.r * 1000).toFixed(0)} mm)`);
+      assert.equal(self.crossings, 0, `${id}: no moving triangle crosses the yaw stage`);
+      assert.equal(self.gunCradle.crossings, 0, `${id}: the recoiling gun crosses nothing of its cradle over its stroke`);
+      assert.ok(self.gunCradle.bearing <= .0005, `${id}: the gun bears on its cradle (${(self.gunCradle.bearing * 1000).toFixed(2)} mm)`);
+      // negative control: the whole pitch group recoiled 25 mm (the pre-round-4 runtime) pulls the pin through its bearing
+      const whole = stationSelfClearance(station, pitch, { ...range, travel: .025, wholeRecoil: true });
+      assert.ok(whole.d < .0015 && whole.crossings > 0, `${id}: negative control: the whole pitch group recoiling carries the pin through its bearing (${(whole.d * 1000).toFixed(1)} mm, ${whole.crossings} pairs)`);
+      // the presentation fires it: the gun group slides back its stroke, the cradle (pitch group) holds its trunnion
+      {
+        const scene = new THREE.Group(); scene.add(tank.root);
+        const entity = { id: 'p', spec: TANK_SPECS[id], visual: { root: tank.root }, state: {}, combat: { auxiliary: { gunYaw: 0, gunPitch: .2, shots: 0 } } };
+        let now = 1; const fx = createAuxiliaryPresentation(new THREE.Group(), { entities: () => [entity], time: () => now, ground: () => 0, report() {}, flash() {}, smoke() {}, visible: () => true });
+        const pitchRest = pitch.position.clone(), gunRest = recoil.position.clone();
+        fx.update(); entity.combat.auxiliary.shots = 1; now += 1 / 600; fx.update(); now += 1 / 600; fx.update();
+        assert.ok(pitch.position.equals(pitchRest), `${id}: the cradle holds its trunnion when the gun fires`);
+        const back = gunRest.z - recoil.position.z;
+        assert.ok(back > RIDING_CRADLE_RECOIL_M * .9 && back <= RIDING_CRADLE_RECOIL_M + 1e-9 && recoil.position.x === gunRest.x && recoil.position.y === gunRest.y, `${id}: the gun recoils along its axis (${(back * 1000).toFixed(1)} mm)`);
+        fx.reset(); assert.ok(recoil.position.equals(gunRest), `${id}: reset returns the gun to battery`);
+        scene.remove(tank.root);
+      }
       // no material of its own: every material the station draws with is drawn elsewhere on the vehicle
       const elsewhere = new Set(); tank.root.traverse((o) => { if (!o.isMesh) return; for (let q = o; q; q = q.parent) if (q === station) return; for (const m of [].concat(o.material)) elsewhere.add(m.uuid); });
       station.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) assert.ok(elsewhere.has(m.uuid), `${id}: the station's ${o.name} adds a material (${m.name || m.color?.getHexString?.()})`); });
-      console.log(`${id}: emplacement ${size.toArray().map((x) => x.toFixed(3)).join(' x ')} m, its gun ${(self.d * 1000).toFixed(1)} mm from its mount at worst`);
+      console.log(`${id}: emplacement ${size.toArray().map((x) => x.toFixed(3)).join(' x ')} m, its moving parts ${(self.d * 1000).toFixed(1)} mm from its mount at worst (pitch and ${(self.stroke * 1000).toFixed(0)} mm recoil), gun on cradle 0 crossings`);
     }
     tank.root.updateMatrixWorld(true);
     const meshes = []; pitch.traverse((o) => { if (o.isMesh) meshes.push(o); });

@@ -183,14 +183,61 @@ function receivingRoof(P:TankBuilderPort,owner:'hull'|'turret',x:number,z:number
   return y;
 }
 
-function stockRoof(parts:readonly THREE.BufferGeometry[],x:number,z:number):number {
-  const ray=new THREE.Raycaster(new THREE.Vector3(x,3,z),new THREE.Vector3(0,-1,0));
-  const material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});let y=-Infinity;
-  for(const g of parts){
-    const mesh=new THREE.Mesh(g,material);mesh.updateMatrixWorld();
-    const hit=ray.intersectObject(mesh)[0];if(hit)y=Math.max(y,hit.point.y);
+/** Release 227, round 4 (critic CN3-D2: each equipment foot cast 13 downward rays through every triangle of the frozen
+ * stock, and the Qilin's kit ran 20 % slower than its 226 build): each frozen part keeps its plan box, and a part a ray
+ * lands in more than once keeps its triangles' plan boxes filed by 5 cm strips across X (both per geometry, rebuilt if
+ * its positions change). A downward ray at (x, z) meets only triangles whose plan box holds (x, z), and each is tested
+ * with the raycaster's own Ray.intersectTriangle on the same ray (double-sided, identity frame), so every height is the
+ * one the raycaster returned, to the bit. */
+interface RoofStrips {base:number;count:number;offsets:Int32Array;tris:Int32Array;abc:Int32Array;bb:Float64Array}
+interface RoofIndex {version:number;x0:number;x1:number;z0:number;z1:number;queries:number;strips:RoofStrips|null}
+const ROOF_STRIP=.05,ROOF_INDEX=new WeakMap<THREE.BufferGeometry,RoofIndex>();
+const roofRay=new THREE.Ray(),roofA=new THREE.Vector3(),roofB=new THREE.Vector3(),roofC=new THREE.Vector3(),roofHit=new THREE.Vector3();
+const attributeVersion=(p:THREE.BufferAttribute|THREE.InterleavedBufferAttribute):number=>
+  p instanceof THREE.InterleavedBufferAttribute?p.data.version:p.version;
+function roofIndex(g:THREE.BufferGeometry):RoofIndex {
+  const p=g.attributes.position,cached=ROOF_INDEX.get(g),version=attributeVersion(p);
+  if(cached&&cached.version===version)return cached;
+  let x0=Infinity,x1=-Infinity,z0=Infinity,z1=-Infinity;
+  for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getZ(i);if(x<x0)x0=x;if(x>x1)x1=x;if(z<z0)z0=z;if(z>z1)z1=z;}
+  const index={version,x0,x1,z0,z1,queries:0,strips:null};ROOF_INDEX.set(g,index);return index;
+}
+function roofStrips(g:THREE.BufferGeometry,index:RoofIndex):RoofStrips {
+  const p=g.attributes.position,idx=g.index,n=Math.floor((idx?idx.count:p.count)/3);
+  const abc=new Int32Array(n*3),bb=new Float64Array(n*4);
+  const base=Math.floor(index.x0/ROOF_STRIP),count=Math.floor(index.x1/ROOF_STRIP)-base+1,offsets=new Int32Array(count+1);
+  for(let t=0;t<n;t++){
+    const a=idx?idx.getX(t*3):t*3,b=idx?idx.getX(t*3+1):t*3+1,c=idx?idx.getX(t*3+2):t*3+2;abc[t*3]=a;abc[t*3+1]=b;abc[t*3+2]=c;
+    const xa=p.getX(a),xb=p.getX(b),xc=p.getX(c),za=p.getZ(a),zb=p.getZ(b),zc=p.getZ(c);
+    const lx=Math.min(xa,xb,xc),hx=Math.max(xa,xb,xc);bb[t*4]=lx;bb[t*4+1]=hx;bb[t*4+2]=Math.min(za,zb,zc);bb[t*4+3]=Math.max(za,zb,zc);
+    for(let s=Math.floor(lx/ROOF_STRIP)-base;s<=Math.floor(hx/ROOF_STRIP)-base;s++)offsets[s+1]!++;
   }
-  material.dispose();
+  for(let s=0;s<count;s++)offsets[s+1]!+=offsets[s]!;
+  const fill=offsets.slice(0,count),tris=new Int32Array(offsets[count]!);
+  for(let t=0;t<n;t++)for(let s=Math.floor(bb[t*4]!/ROOF_STRIP)-base;s<=Math.floor(bb[t*4+1]!/ROOF_STRIP)-base;s++)tris[fill[s]!++]=t;
+  return {base,count,offsets,tris,abc,bb};
+}
+function roofTest(p:THREE.BufferAttribute|THREE.InterleavedBufferAttribute,a:number,b:number,c:number,y:number):number {
+  roofA.fromBufferAttribute(p,a);roofB.fromBufferAttribute(p,b);roofC.fromBufferAttribute(p,c);
+  return roofRay.intersectTriangle(roofA,roofB,roofC,false,roofHit)?Math.max(y,roofHit.y):y;
+}
+/** The highest frozen-stock surface under (x, z): a downward ray from y = 3 (throws where there is none). */
+export function stockRoof(parts:readonly THREE.BufferGeometry[],x:number,z:number):number {
+  roofRay.origin.set(x,3,z);roofRay.direction.set(0,-1,0);let y=-Infinity;
+  for(const g of parts){
+    const index=roofIndex(g);
+    if(x<index.x0||x>index.x1||z<index.z0||z>index.z1)continue;
+    const p=g.attributes.position,idx=g.index,n=idx?idx.count:p.count;
+    if(!index.strips&&++index.queries>1&&n>3*64)index.strips=roofStrips(g,index);
+    const st=index.strips;
+    if(st){
+      const s=Math.floor(x/ROOF_STRIP)-st.base;if(s<0||s>=st.count)continue;
+      for(let k=st.offsets[s]!;k<st.offsets[s+1]!;k++){
+        const t=st.tris[k]!;if(x<st.bb[t*4]!||x>st.bb[t*4+1]!||z<st.bb[t*4+2]!||z>st.bb[t*4+3]!)continue;
+        y=roofTest(p,st.abc[t*3]!,st.abc[t*3+1]!,st.abc[t*3+2]!,y);
+      }
+    }else for(let t=0;t+2<n;t+=3)y=roofTest(p,idx?idx.getX(t):t,idx?idx.getX(t+1):t+1,idx?idx.getX(t+2):t+2,y);
+  }
   if(!Number.isFinite(y))throw new Error(`Chinese equipment has no permanent seat at ${x},${z}`);
   return y;
 }
