@@ -167,7 +167,9 @@ for (const [architecture, placement] of Object.entries(GARAGE_KIT_PLACEMENTS)) {
   assert.ok(kit.stats.tankImages >= 3, `${architecture}: tank images ${kit.stats.tankImages}`);
   assert.ok(kit.stats.stations >= 1 && kit.stats.stationMonitors >= 2, `${architecture}: a computer station with two monitors`);
   assert.equal(kit.stats.nameboards, 1, `${architecture}: one nameboard`);
-  assert.ok(kit.stats.kitTriangles + kit.stats.displayTriangles <= 16000, `${architecture}: kit ${kit.stats.kitTriangles} tris`);
+  // (the per-garage lanes, garage r9: the design's K1-K9 budgets sum to some 30k a pack; the pack's own 70k cap
+  // (garageArchitecture) governs, and a kit stays inside 20k of it)
+  assert.ok(kit.stats.kitTriangles + kit.stats.displayTriangles <= 20000, `${architecture}: kit ${kit.stats.kitTriangles} tris`);
   assert.ok(kit.stats.atmosphereTriangles <= 2500, `${architecture}: atmosphere ${kit.stats.atmosphereTriangles} tris`);
   assert.ok(kit.meshes.length <= 3, `${architecture}: the kit adds at most three draws (display, decal, atmosphere)`);
   assert.ok(warmMs < coldMs, `${architecture}: a second build reuses the session cache (${warmMs.toFixed(1)} vs ${coldMs.toFixed(1)} ms)`);
@@ -184,7 +186,8 @@ for (const [architecture, placement] of Object.entries(GARAGE_KIT_PLACEMENTS)) {
 // deck painter's slice timer only pace work; neither shapes a vertex or a texel)
 for (const file of ['garageKitGeometry', 'garageKitSkins', 'garagePropKit', 'garageBenchKit', 'garageCraneKit', 'garageWallKit',
   'garageSignKit', 'garageDisplayKit', 'garageDisplayAtlas', 'garagePlatformKit', 'garageAtmosphereKit', 'garageKitPlacement',
-  'garageKitPlacements', 'garageSlideshowPlacement', 'garageVerdantKit']) {
+  'garageKitPlacements', 'garageSlideshowPlacement', 'garageVerdantKit', 'garageSkylineKit', 'garageSaltmereKit', 'garageCinderKit',
+  'garageIronworksKit']) {
   const source = await readFile(new URL(`./${file}.ts`, import.meta.url), 'utf8');
   assert.doesNotMatch(source, /Math\.random|Date\.now|new Date\(/, `${file}: no random numbers or dates`);
   const clocks = (source.match(/performance\.now\(\)/g) || []).length;

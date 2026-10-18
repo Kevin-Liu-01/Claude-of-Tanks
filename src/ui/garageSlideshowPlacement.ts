@@ -30,6 +30,15 @@ export const GARAGE_SLIDESHOW_PLACEMENTS: Readonly<Partial<Record<GarageVariant[
   // Redrock: a rugged LED trailer on its outriggers past the gantry, in the frame's right band clear of the hero's halo,
   // its panel turned to the yard
   recovery_yard: Object.freeze({ at: [19, 37] as const, yaw: 0, width: 2.8, mount: 'trailer' }),
+  // Ironworks: on the yard wall of the control kiosk right of the crane bay (garageIronworksKit.ts), between the bay's
+  // columns from the opening view, facing down the yard
+  factory_line: Object.freeze({ at: [17.2, 24.8] as const, yaw: Math.PI / 4, width: 2.2, mount: 'wall', bottomY: 1.9 }),
+  // Cinder: hung from the throat platform's canopy at its front column, an LED departure board facing the yard
+  // (garageCinderKit.ts); the platform's deck is 0.9 m up
+  rail_roundhouse: Object.freeze({ at: [18.6, 21.35] as const, yaw: Math.PI / 4, width: 2.2, mount: 'column', bottomY: 1.4, y: 0.9 }),
+  // Saltmere: an LED harbour board on the dock's far pierhead past the crane's rails, facing up the quay
+  // (garageSaltmereKit.ts)
+  naval_drydock: Object.freeze({ at: [23.5, 37.25] as const, yaw: Math.PI / 4, width: 2.0, mount: 'freestanding', bottomY: 1.3, y: 0.12 }),
 });
 
 /** The bezel's bottom edge over the panel's base for a mount. */

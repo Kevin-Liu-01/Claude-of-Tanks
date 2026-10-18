@@ -63,7 +63,8 @@ import {
   type GarageApproachStats,
 } from './garageApproachDetails.ts';
 import { buildGarageKitDressing, type GarageKitBuild, type GarageKitPlacement } from './garageKitPlacement.ts';
-import { GARAGE_KIT_PLACEMENTS } from './garageKitPlacements.ts';
+import { GARAGE_KIT_PLACEMENTS, GARAGE_SKYLINES } from './garageKitPlacements.ts';
+import { arcWeight, GarageSkylineEmitter, type GarageSkyline } from './garageSkylineKit.ts';
 
 interface GarageEnvironmentEngineContext {
   anisotropy?: number;
@@ -94,6 +95,8 @@ interface GarageEnvironmentStats {
   /** The built horizon's tallest building mass and slender accent (0 where the biome has none). */
   readonly builtHorizonMassTopM: number;
   readonly builtHorizonAccentTopM: number;
+  /** The named landmarks of a Garage's built skyline (garage r9, garageSkylineKit.ts), or none. */
+  readonly skylineLandmarks: readonly string[];
   readonly groundCover: number;
   readonly structures: number;
   readonly facilityProps: number;
@@ -528,6 +531,7 @@ function createBackdropGeometry(
   seed: number,
   atmosphere: GarageAtmospherePalette,
   recipe: GarageEnvironmentRecipe,
+  skyline: GarageSkyline | null = null,
 ): THREE.BufferGeometry {
   // Five map-derived bands close the terrain. Relief is authored by biome: mesas terrace, dunes crest and only the alpine
   // recipe receives a mountain skyline; the exact sampled patch still perturbs every crest, so the result stays grounded
@@ -547,7 +551,9 @@ function createBackdropGeometry(
   // with conifer woods, the pass has a forested foot that grows out of its snowfield, the mesas carry strata, varnish
   // and shaded cliffs, and the sea darkens toward the shore and fades into the horizon. One unlit vertex-colour program.
   // the near bands carry the most columns; the far, hazed ones need fewer (the pack's 50k-triangle budget)
-  const LAYER_SEGMENTS = [160, 160, 104, 80, 80] as const;
+  // (garage r9: a Garage with a built skyline of its own (garageSkylineKit.ts) draws its landmarks into this draw and may
+  // reshape the bands: sea arcs, strands, hedges; its low land needs fewer columns)
+  const LAYER_SEGMENTS = skyline?.bandSegments ?? [160, 160, 104, 80, 80] as const;
   const segments = 120;
   const ROWS = 8;
   const layers = [
@@ -704,10 +710,11 @@ function createBackdropGeometry(
       const sourceZ = Math.sin(angle) * patch.sizeZM * 0.48;
       const sampled = THREE.MathUtils.clamp(samplePatch(patch, values, sourceX, sourceZ) - datum, -2.4, 4.8);
       const nominal = recipe.horizonHeightM * layer.height * (builtKind ? 0.55 : 1);
-      const crest = THREE.MathUtils.clamp(
+      const clamped = THREE.MathUtils.clamp(
         nominal + sampled * layer.relief + crestProfile(angle, layerIndex, layer) * recipe.horizonHeightM,
         -0.15, recipe.horizonHeightM,
       );
+      const crest = skyline?.crest ? Math.min(recipe.horizonHeightM, skyline.crest(angle, layerIndex, clamped)) : clamped;
       crestHeights[segment] = crest;
       maxHeightM = Math.max(maxHeightM, crest);
     }
@@ -740,7 +747,8 @@ function createBackdropGeometry(
         const p = at(wrapped, k);
         if (normal.x * -p.x + normal.z * -p.z < 0) normal.negate();
         const slope = 1 - Math.max(0, Math.min(1, normal.y * 1.4));
-        ground(colour, t, p.y, slope, segment / segments, layerIndex);
+        if (!skyline?.ground?.(colour, (segment / segments) * Math.PI * 2, t, p.y, slope, layerIndex,
+          noise(segment / segments * 5, t * 0.8 + layerIndex * 0.11))) ground(colour, t, p.y, slope, segment / segments, layerIndex);
         const sunlit = Math.max(0, normal.dot(sun));
         const lit = rugged ? 0.46 + 0.86 * sunlit + 0.1 * Math.max(0, normal.y) : 0.56 + 0.64 * sunlit + 0.1 * Math.max(0, normal.y);
         let shade = lit * (0.92 + (noise(segment / segments * 17, t + layerIndex) - 0.5) * 0.16);
@@ -754,6 +762,8 @@ function createBackdropGeometry(
       }
     }
     for (let segment = 0; segment < segments; segment += 1) {
+      // a column drowned under a skyline's sea arc is never seen: it draws nothing
+      if (skyline && crestHeights[segment] < -2.4 && crestHeights[segment + 1] < -2.4) continue;
       for (let k = 0; k < ROWS - 1; k += 1) {
         const i0 = first + segment * ROWS + k, i1 = i0 + 1, i2 = i0 + ROWS, i3 = i2 + 1;
         indices.push(i0, i1, i2, i2, i1, i3);
@@ -778,6 +788,8 @@ function createBackdropGeometry(
     });
     for (let ringIndex = 0; ringIndex < rings.length - 1; ringIndex += 1) {
       for (let segment = 0; segment < segments; segment += 1) {
+        // a skyline's sea runs only over its arc (the land bands hide the rest)
+        if (skyline?.seaArc && arcWeight((segment + 0.5) / segments * Math.PI * 2, skyline.seaArc[0], skyline.seaArc[1], 0.35) <= 0) continue;
         const i0 = first + ringIndex * columns + segment, i1 = i0 + 1, i2 = i0 + columns, i3 = i2 + 1;
         indices.push(i0, i2, i1, i1, i2, i3);
       }
@@ -785,7 +797,12 @@ function createBackdropGeometry(
   }
   let accentTopM = 0;
   let massTopM = 0;
-  if (builtKind) {
+  if (skyline) {
+    const emitter = new GarageSkylineEmitter(positions, colors, indices, horizon, sun, seed ^ 0x51c1);
+    skyline.build(emitter);
+    massTopM = emitter.massTop;
+    accentTopM = emitter.accentTop;
+  } else if (builtKind) {
     const built = addBuiltHorizon(builtKind, seed, horizon, sun, positions, colors, indices);
     massTopM = built.massTopM;
     accentTopM = built.accentTopM;
@@ -798,7 +815,8 @@ function createBackdropGeometry(
   geometry.computeVertexNormals();
   geometry.computeBoundingSphere();
   geometry.userData.horizonStyle = recipe.horizonStyle;
-  geometry.userData.builtHorizon = builtKind;
+  geometry.userData.builtHorizon = skyline ? 'skyline' : builtKind;
+  geometry.userData.skylineLandmarks = skyline ? skyline.landmarks.map((landmark) => landmark.name) : [];
   geometry.userData.accentTopM = Number(accentTopM.toFixed(3));
   geometry.userData.massTopM = Number(massTopM.toFixed(3));
   geometry.userData.maxHeightM = Number(maxHeightM.toFixed(3));
@@ -1230,9 +1248,10 @@ export function buildGarageEnvironment(
       for (let column = 0; column < patch.width; column += 1) {
         const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
         const { side, depth } = garageWorldPointToView(x, z);
-        if (depth < 9 || Math.abs(side) > 44) continue;
+        if (depth < 9 || Math.abs(side) > 60) continue;
         const index = row * patch.width + column;
-        const quay = THREE.MathUtils.smoothstep(depth, 9, 15) * (1 - THREE.MathUtils.smoothstep(Math.abs(side), 34, 44));
+        // (garage r9: the quay runs on to the patch's sides, the brief's "grass mounds on the quay" beside the dock gone)
+        const quay = THREE.MathUtils.smoothstep(depth, 9, 15) * (1 - THREE.MathUtils.smoothstep(Math.abs(side), 50, 60));
         const shoreDepth = 33 + 2.5 * Math.sin(side * 0.13 + 1.1);
         const nearBuilding = keep.some((placement) => Math.hypot(placement.side - side, placement.depth - depth) < 6.5);
         const drop = nearBuilding ? 0 : THREE.MathUtils.smoothstep(depth, shoreDepth - 0.5, shoreDepth + 4.5);
@@ -1286,7 +1305,7 @@ export function buildGarageEnvironment(
   const atmosphere = atmospherePalette(variant.weather);
 
   const horizon = new THREE.Mesh(
-    track(createBackdropGeometry(patch, heights, seed, atmosphere, recipe)),
+    track(createBackdropGeometry(patch, heights, seed, atmosphere, recipe, GARAGE_SKYLINES[variant.architecture] ?? null)),
     track(new THREE.MeshBasicMaterial({
       vertexColors: true,
       side: THREE.DoubleSide,
@@ -2248,7 +2267,10 @@ export function buildGarageEnvironment(
       case 'plaster': return texturedMaterial('plaster', { color: building, roughness: 1 });
       case 'plaster2': return texturedMaterial('plaster', { color: building.clone().offsetHSL(0, -0.04, -0.08), roughness: 1 });
       case 'plaster3': return texturedMaterial('plaster', { color: building.clone().offsetHSL(0.02, -0.02, 0.05), roughness: 1 });
-      case 'stone': return texturedMaterial('brick', { color: building.clone().multiplyScalar(0.86), roughness: 1 });
+      // Saltmere's walls are whitewashed granite render, not red brick (garage r9, the per-garage brief 5)
+      case 'stone': return variant.architecture === 'naval_drydock'
+        ? texturedMaterial('plaster', { color: new THREE.Color(0xf2f0ea), roughness: 1 })
+        : texturedMaterial('brick', { color: building.clone().multiplyScalar(0.86), roughness: 1 });
       // dry-country roofs are flat earth-plastered decks, not European red tiles (wave 377: "a European red-tile house in
       // the badlands")
       // the snowbound yards' roofs lie under snow (the re-judge, 2026-10-15: "the roofs carry no snow ... bare saturated
@@ -2261,6 +2283,9 @@ export function buildGarageEnvironment(
           // re-judge, 2026-10-15): a cool grey multiplier draws its orange toward brown
           : variant.architecture === 'brick_arsenal'
             ? texturedMaterial('roof', { color: 0x8c949b, roughness: 0.96 })
+            // Breton slate over Saltmere's whitewash (garage r9): a cold blue-grey multiplier takes the tile's red out
+            : variant.architecture === 'naval_drydock'
+              ? texturedMaterial('roof', { color: 0x5a6670, roughness: 0.9 })
             : texturedMaterial('roof', { color: new THREE.Color(variant.accent).lerp(new THREE.Color(0xaaa19a), 0.74), roughness: 0.96 });
       case 'wood': return texturedMaterial('wood', { color: 0xd2c3aa, roughness: 1 });
       case 'glass': return plainMaterial({ color: 0x6b8790, roughness: 0.16, metalness: 0.08, transparent: true, opacity: 0.78 });
@@ -2336,6 +2361,14 @@ export function buildGarageEnvironment(
     }
   };
   foldTinyPlasterBuckets();
+  // Saltmere's whitewashed walls and its render share the plaster texture: the render's few fixtures ride the walls'
+  // draw (garage r9: the kit's display, decal and atmosphere draws are paid for here)
+  if (variant.architecture === 'naval_drydock') {
+    for (const key of ['plaster', 'plaster2', 'plaster3'] as const) {
+      (combined.stone ||= []).push(...(combined[key] || []));
+      combined[key] = [];
+    }
+  }
   const addMergedStructures = (): void => {
     for (const key of BUCKET_KEYS) {
       const sources = combined[key] || [];
@@ -2532,6 +2565,7 @@ export function buildGarageEnvironment(
     horizonMaxHeightM: Number(horizon.geometry.userData.maxHeightM || 0),
     builtHorizonMassTopM: Number(horizon.geometry.userData.massTopM || 0),
     builtHorizonAccentTopM: Number(horizon.geometry.userData.accentTopM || 0),
+    skylineLandmarks: Object.freeze([...(horizon.geometry.userData.skylineLandmarks as string[] ?? [])]),
     drawCalls: objects,
     enclosingSurfaces: 0,
     landmarkHeightM: recipe.landmark[1],

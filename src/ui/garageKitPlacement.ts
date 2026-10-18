@@ -64,7 +64,11 @@ type GarageKitItem = GarageKitItemBase & (
   | { readonly kind: 'display'; readonly display: 'station'; readonly at: readonly [number, number]; readonly yaw?: number;
     readonly y?: number; readonly screens: readonly string[]; readonly width?: number; readonly rugged?: boolean }
   | { readonly kind: 'display'; readonly display: 'slideshow'; readonly at: readonly [number, number]; readonly yaw?: number;
-    readonly y?: number; readonly width: number; readonly mount: 'freestanding' | 'wall' | 'column' | 'trailer'; readonly bottomY?: number });
+    readonly y?: number; readonly width: number; readonly mount: 'freestanding' | 'wall' | 'column' | 'trailer'; readonly bottomY?: number }
+  // a Garage's own signature piece (garage r9 per-garage lanes): a pure builder from that Garage's kit module, cached by
+  // its stable `key` (the builder's own parameters belong in the key); `grounded` false skips the contact blot
+  | { readonly kind: 'piece'; readonly key: string; readonly build: (b: KitBuilder) => KitCraneReceipt | void;
+    readonly at: readonly [number, number]; readonly yaw?: number; readonly y?: number; readonly grounded?: boolean });
 
 export interface GarageKitPlacement {
   readonly items: readonly GarageKitItem[];
@@ -115,7 +119,7 @@ const pieceCache = new Map<string, CachedPiece>();
 function buildGarageKitPiece(item: GarageKitItem, architecture: GarageVariant['architecture'], mapId: string): CachedPiece {
   const skin = garageKitSkin(architecture);
   const { at: _at, yaw: _yaw, y: _y, ...shape } = item as GarageKitItem & { at?: unknown; yaw?: unknown; y?: unknown };
-  const key = `${skin.id}|${mapId}|${JSON.stringify(shape)}`;
+  const key = `${skin.id}|${mapId}|${item.kind === 'piece' ? `piece:${item.key}` : JSON.stringify(shape)}`;
   const cached = pieceCache.get(key);
   if (cached) return cached;
   const b = new KitBuilder(kitRandom(hash(key)), skin);
@@ -141,6 +145,7 @@ function buildGarageKitPiece(item: GarageKitItem, architecture: GarageVariant['a
       }
       break;
     }
+    case 'piece': crane = item.build(b) ?? undefined; grounded = item.grounded !== false; break;
     case 'wall': buildWallRun(b, item.wall, item.points.map(([side, depth]) => [side, -depth] as const), item.params); grounded = false; break;
     case 'sign': {
       const [w, h] = item.size;
@@ -380,6 +385,8 @@ export function garageKitItemBounds(variant: GarageVariant, placement: GarageKit
     readonly item: GarageKitItem; readonly solid: THREE.Box3; readonly display: THREE.Box3 | null;
     /** Each display face and decal quad on its own (a wall's murals, a board's prints, a station's screens). */
     readonly quads: readonly THREE.Box3[];
+    /** The same faces as their corner points (bottom-left, bottom-right, top-right, top-left), for oriented tests. */
+    readonly quadCorners: ReadonlyArray<readonly [THREE.Vector3, THREE.Vector3, THREE.Vector3, THREE.Vector3]>;
   }> {
   const matrix = new THREE.Matrix4();
   return garageKitItems(variant, placement).map((item) => {
@@ -398,6 +405,7 @@ export function garageKitItemBounds(variant: GarageVariant, placement: GarageKit
       return box;
     };
     const quads: THREE.Box3[] = [];
+    const quadCorners: Array<[THREE.Vector3, THREE.Vector3, THREE.Vector3, THREE.Vector3]> = [];
     for (const geometry of [piece.result.display, piece.result.decal]) {
       if (!geometry) continue;
       const placed = place(geometry);
@@ -406,10 +414,14 @@ export function garageKitItemBounds(variant: GarageVariant, placement: GarageKit
         const box = new THREE.Box3();
         for (let k = 0; k < 6 && i + k < position.count; k += 1) box.expandByPoint(new THREE.Vector3().fromBufferAttribute(position, i + k));
         quads.push(box);
+        if (i + 5 < position.count) {
+          const corner = (k: number) => new THREE.Vector3().fromBufferAttribute(position, i + k);
+          quadCorners.push([corner(0), corner(1), corner(2), corner(5)]);
+        }
       }
       placed.dispose();
     }
-    return { item, solid: boxOf(piece.result.solid), display: piece.result.display ? boxOf(piece.result.display) : null, quads };
+    return { item, solid: boxOf(piece.result.solid), display: piece.result.display ? boxOf(piece.result.display) : null, quads, quadCorners };
   });
 }
 

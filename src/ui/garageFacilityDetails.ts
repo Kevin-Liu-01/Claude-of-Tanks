@@ -1955,34 +1955,6 @@ export function addGarageFacilityDetails({
     structuralConnections += 19;
   };
 
-  const addTrackOnCluster = (
-    cluster: FacilityCluster,
-    centerLateral: number,
-    centerLongitudinal: number,
-    length: number,
-  ): void => {
-    const gauge = 1.52;
-    for (const railSide of [-gauge / 2, gauge / 2]) {
-      // Raise the permanent way above the sampled yard surface. The earlier
-      // replacement pack put the rails at terrain height, so most of Cinder's
-      // identity vanished beneath its cobbles on even a mild grade.
-      clusterBox(cluster, centerLateral + railSide, centerLongitudinal, 0.28,
-        0.12, 0.18, length, steel, 'structure');
-      clusterBox(cluster, centerLateral + railSide, centerLongitudinal, 0.13,
-        0.28, 0.08, length, dark, 'structure');
-      railSegments += 2;
-    }
-    const sleepers = Math.max(12, Math.floor(length / 1.05));
-    for (let index = 0; index < sleepers; index += 1) {
-      const along = -length / 2 + (index + 0.5) * (length / sleepers);
-      // Rails use the canonical camera axis. Fan-track yaw is only used for
-      // the long beams; its sleepers remain visually legible and merged.
-      clusterBox(cluster, centerLateral, centerLongitudinal + along, 0.10,
-        2.45, 0.13, 0.28, timber, 'equipment');
-      railSegments += 1;
-    }
-  };
-
   /**
    * Steinburg's Zeughaus (garage round 7, 2026-10-14; props census #20, garage:brick_arsenal grade 0: a low loading dock
    * and a wall of painted panels across the boulevard). The arsenal range the boulevard runs into: two storeys of brick
@@ -2988,7 +2960,7 @@ export function addGarageFacilityDetails({
     rain_canopy: ['tarped', 'pump', 'sandbags', 'gasCage', 'pump', 'drums'],
     rock_cavern: ['avalancheKit', 'heater', 'drums', 'gasCage', 'heater', 'avalancheKit'],
     recovery_yard: ['trackStack', 'winchDrum', 'drums', 'pallets', 'winchDrum', 'jerrycans'],
-    factory_line: ['billets', 'gasCage', 'slagPot', 'billets', 'gasCage', 'drums'],
+    factory_line: ['billets', 'gasCage', 'billets', 'billets', 'gasCage', 'drums'], // (garage r9: the kit's slag pot carrier)
   });
   const kit = REGIONAL_KIT[variant.architecture] ?? ['pallets', 'drums', 'pallets', 'drums', 'pallets', 'drums'];
   const burlakView = garageWorldPointToView(burlakBay.x, burlakBay.z);
@@ -3342,9 +3314,8 @@ export function addGarageFacilityDetails({
         clusterCylinder(dock, 0, -1.2, deck + 5.3, 0.09, 4.2, grey, 0, 10); // the mast
         clusterBox(dock, 0, -1.2, deck + 6.0, 1.9, 0.06, 0.06, grey, 'painted'); // its yard
         clusterBox(dock, 0, -1.2, deck + 6.85, 1.6, 0.14, 0.34, iron, 'structure'); // the radar
-        clusterCylinder(dock, 0, shoulder + 1.2, deck + 0.75, 0.5, 0.55, grey, 0, 16); // the gun's mount
-        clusterBox(dock, 0, shoulder + 1.2, deck + 1.25, 1.0, 0.6, 1.2, grey, 'painted'); // its shield
-        clusterBox(dock, 0, shoulder + 2.6, deck + 1.3, 0.11, 0.11, 2.0, iron, 'structure'); // its barrel
+        clusterCylinder(dock, 0, shoulder + 1.2, deck + 0.75, 0.5, 0.55, grey, 0, 16); // the gun's mount (garage r9: its
+        // shield and barrel hang on the portal crane's hook, lifted off for overhaul: garageSaltmereKit.ts)
         // the superstructure's fittings: scuttles along the deckhouse, a door each side, the bridge wings and their
         // screens, life rings, whip aerials on the bridge roof, a searchlight, the anchors in their hawses
         for (const sign of [-1, 1]) {
@@ -3384,13 +3355,9 @@ export function addGarageFacilityDetails({
       const craneSide = basin.side + basin.halfWidth + 4.7;
       const craneDepth = middle - 2.0;
       const quay: FacilityCluster = { ...onPaving(craneSide, craneDepth), yaw: quayYaw };
-      // the harbour's blue weathered by salt (the re-judge, 2026-10-15: "flat untextured cyan-blue ... no rivets, rust or
-      // grime"): a duller paint, rust run down the legs from their joints, grime at their feet
-      const portalBlue = new THREE.Color(0x4d666b), houseTone = new THREE.Color(0x8a9497), roofTone = new THREE.Color(0x4f5658);
-      const rustRun = new THREE.Color(0x6e4630), grime = new THREE.Color(0x343a3b);
-      // low enough for the whole crane to stand inside the hero frame (the re-judge, 2026-10-15: "crane is cropped"): a
-      // 5.6 m portal, a 14 m jib luffed down to 22 degrees
-      const gauge = 5.0, legX = 3.2, portalY = 5.6;
+      // (garage r9: the crane itself is the kit's portal jib crane in plate and lattice, garageSaltmereKit.ts; its rails
+      // stay here, set flush in the setts)
+      const gauge = 5.0;
       // the crane's two rails, set flush in the paving from the head wall to the pierhead, a buffer stop at each end
       {
         const from = craneDepth - (basin.depth0 - basin.headWall + 0.6), to = craneDepth - (basin.depth1 + basin.caisson + basin.pierheads - 0.6);
@@ -3400,93 +3367,6 @@ export function addGarageFacilityDetails({
           railSegments += 1;
         }
       }
-      // the portal: four I-section legs on bogies, braced in pairs, a deck on top
-      for (const lx of [-legX, legX]) for (const lz of [-gauge / 2, gauge / 2]) {
-        clusterBox(quay, lz, lx, 0.55, 0.9, 0.5, 2.0, iron, 'structure'); // the bogie
-        for (const dx of [-0.7, 0.7]) clusterCylinder(quay, lz, lx + dx, 0.32, 0.3, 0.22, iron, 0, 16, Math.PI / 2);
-        for (const df of [-0.22, 0.22]) clusterBox(quay, lz, lx + df, 0.8 + (portalY - 0.8) / 2, 0.5, portalY - 0.8, 0.05, portalBlue, 'structure');
-        clusterBox(quay, lz, lx, 0.8 + (portalY - 0.8) / 2, 0.035, portalY - 0.8, 0.44, portalBlue, 'structure');
-        for (const df of [-0.25, 0.25]) clusterBox(quay, lz, lx + df, portalY - 1.6, 0.52, 1.6 + Math.abs(df) * 2, 0.02, rustRun, 'painted'); // rust runs
-        clusterBox(quay, lz, lx, 1.15, 0.54, 0.7, 0.48, grime, 'painted'); // grime at the leg's foot
-      }
-      for (const lz of [-gauge / 2, gauge / 2]) {
-        clusterBeam(quay, [lz, -legX, 1.2], [lz, legX, portalY - 0.6], 0.16, portalBlue, 'structure');
-        clusterBeam(quay, [lz, legX, 1.2], [lz, -legX, portalY - 0.6], 0.16, portalBlue, 'structure');
-        clusterBox(quay, lz, 0, portalY - 0.3, 0.5, 0.6, 2 * legX + 0.5, portalBlue, 'structure');
-      }
-      clusterBox(quay, 0, 0, portalY + 0.2, gauge + 1.0, 0.4, 2 * legX + 1.0, portalBlue, 'structure'); // the deck
-      clusterCylinder(quay, 0, 0, portalY + 0.55, 1.8, 0.3, iron, 0, 16); // the slewing ring
-      // the slewing house: machinery house, roof, vents, cab, A-frame, counterweight
-      // the jib points down the dock toward the sea, its hook over the ship's stern (and clear of the hero)
-      const luff = THREE.MathUtils.degToRad(22), jibLen = 14;
-      const reach = 2.0 + Math.cos(luff) * jibLen, across = craneSide - basin.side;
-      const craneAt = cameraPoint(craneSide, craneDepth);
-      const over = cameraPoint(basin.side, craneDepth + Math.sqrt(Math.max(0, reach * reach - across * across)));
-      const house = { ...quay, yaw: Math.atan2(over.x - craneAt.x, over.z - craneAt.z) };
-      const houseY = portalY + 0.7;
-      clusterBox(house, 0, -0.6, houseY + 1.4, 3.6, 2.8, 5.2, houseTone, 'painted');
-      clusterBox(house, 0, -0.6, houseY + 2.9, 3.8, 0.2, 5.4, roofTone, 'painted');
-      for (const dz of [-2.0, -0.6, 0.8]) for (const side of [-1, 1]) clusterBox(house, side * 1.81, dz, houseY + 1.9, 0.04, 0.6, 0.8, iron, 'painted'); // windows
-      for (const dz of [-1.8, -0.2]) clusterBox(house, 0, dz, houseY + 3.15, 0.8, 0.3, 0.8, roofTone, 'painted'); // roof vents
-      clusterBox(house, 1.2, 2.4, houseY + 1.6, 1.3, 1.8, 1.4, houseTone, 'painted'); // the cab
-      clusterBox(house, 1.2, 3.12, houseY + 1.85, 1.1, 1.0, 0.04, new THREE.Color(0x2a3438), 'painted'); // its glazing
-      clusterBox(house, 0, -3.8, houseY + 1.2, 3.2, 2.0, 1.4, new THREE.Color(0x5a5f60), 'painted'); // the counterweight
-      // the house built up from plate (rejudge6, 2026-10-15: "the crane is a flat-shaded primitive box"): its walls in
-      // stiffened panels with a drip rail under the eaves, every window framed with a mullion, louvres to the motor
-      // room, a door with its landing and handrail onto the deck, a ladder up the portal leg, the deck's guardrail and
-      // a salt-rusted counterweight
-      const frame = new THREE.Color(0x2e3436), louvre = new THREE.Color(0x5d676a);
-      for (const side of [-1, 1]) {
-        for (let k = 0; k < 6; k += 1) clusterBox(house, side * 1.815, -3.0 + k * 0.96, houseY + 1.4, 0.05, 2.7, 0.06, frame, 'structure'); // stiffeners
-        clusterBox(house, side * 1.84, -0.6, houseY + 2.72, 0.07, 0.07, 5.3, frame, 'structure'); // the drip rail
-        for (const dz of [-2.0, -0.6, 0.8]) {
-          clusterBox(house, side * 1.83, dz, houseY + 2.22, 0.05, 0.06, 0.9, frame, 'structure');
-          clusterBox(house, side * 1.83, dz, houseY + 1.58, 0.05, 0.06, 0.9, frame, 'structure');
-          clusterBox(house, side * 1.83, dz, houseY + 1.9, 0.05, 0.66, 0.05, frame, 'structure'); // the mullion
-        }
-        for (let k = 0; k < 5; k += 1) clusterBox(house, side * 1.83, -2.95 + k * 0.11, houseY + 0.7, 0.05, 0.05, 0.9, louvre, 'structure', 0, 0.5);
-      }
-      clusterBox(house, 1.81, 1.6, houseY + 1.0, 0.05, 1.9, 0.8, new THREE.Color(0x3a4245), 'painted'); // the door
-      clusterBox(house, 2.3, 1.6, houseY - 0.02, 0.9, 0.06, 1.0, frame, 'structure'); // its landing
-      clusterBox(house, 2.72, 1.6, houseY + 0.5, 0.04, 1.0, 1.0, frame, 'structure');
-      clusterBox(house, 1.2, 3.13, houseY + 1.85, 0.05, 1.0, 0.05, frame, 'structure'); // the cab glazing's mullion
-      clusterBox(house, 1.2, 3.13, houseY + 2.37, 1.14, 0.06, 0.05, frame, 'structure');
-      clusterBox(house, 0, -4.52, houseY + 1.2, 3.0, 1.6, 0.02, new THREE.Color(0x6a4a34), 'painted'); // rust on the counterweight
-      for (const lz of [-gauge / 2, gauge / 2]) { // the deck's guardrail, two courses
-        for (const y of [portalY + 0.85, portalY + 1.4]) clusterBox(quay, lz + Math.sign(lz) * 0.45, 0, y, 0.04, 0.04, 2 * legX + 0.9, frame, 'structure');
-      }
-      const ladderAt = legX - 0.75; // the ladder up the outer face of a leg, stiles and rungs
-      for (const df of [-0.2, 0.2]) clusterBox(quay, gauge / 2 + 0.38, ladderAt + df, (0.8 + portalY) / 2, 0.04, portalY - 0.8, 0.04, iron, 'structure');
-      for (let y = 1.1; y < portalY; y += 0.3) clusterBox(quay, gauge / 2 + 0.38, ladderAt, y, 0.03, 0.03, 0.42, iron, 'structure');
-      for (const side of [-1, 1]) {
-        clusterBeam(house, [side * 1.2, 1.4, houseY + 3.0], [side * 0.4, -0.4, houseY + 6.6], 0.22, portalBlue, 'structure');
-        clusterBeam(house, [side * 1.2, -2.6, houseY + 3.0], [side * 0.4, -0.4, houseY + 6.6], 0.22, portalBlue, 'structure');
-      }
-      // the lattice jib: two chord pairs laced, luffed to 52 degrees from its heel at the house front
-      const heel = [0, 2.0, houseY + 0.6] as const;
-      const tip = [0, heel[1] + Math.cos(luff) * jibLen, heel[2] + Math.sin(luff) * jibLen] as const;
-      for (const side of [-1, 1]) {
-        for (const up of [-1, 1]) {
-          const off = (t: number): [number, number, number] => {
-            const w = (1 - t) * 0.75 + 0.2, h = (1 - t) * 0.55 + 0.18;
-            return [side * w, heel[1] + (tip[1] - heel[1]) * t - up * h * Math.sin(luff), heel[2] + (tip[2] - heel[2]) * t + up * h * Math.cos(luff)];
-          };
-          clusterBeam(house, off(0), off(1), 0.12, portalBlue, 'structure');
-          if (up > 0) for (let k = 0; k < 10; k += 1) {
-            const a = off(k / 10), b = off((k + 1) / 10);
-            const other = (t: number): [number, number, number] => {
-              const w = (1 - t) * 0.75 + 0.2, h = (1 - t) * 0.55 + 0.18;
-              return [side * w, heel[1] + (tip[1] - heel[1]) * t + h * Math.sin(luff), heel[2] + (tip[2] - heel[2]) * t - h * Math.cos(luff)];
-            };
-            clusterBeam(house, k % 2 ? a : other(k / 10), k % 2 ? other((k + 1) / 10) : b, 0.05, portalBlue, 'structure');
-          }
-        }
-      }
-      clusterCylinder(house, 0, tip[1], tip[2], 0.45, 0.4, iron, 0, 16, Math.PI / 2); // the head sheave
-      clusterBeam(house, [0, -0.4, houseY + 6.6], [0, tip[1], tip[2]], 0.04, iron, 'structure'); // the luffing ropes
-      const hookY = 3.4;
-      for (const dx of [-0.15, 0.15]) clusterBox(house, dx, tip[1], (tip[2] + hookY) / 2, 0.03, tip[2] - hookY, 0.03, iron, 'structure');
-      clusterBox(house, 0, tip[1], hookY - 0.25, 0.6, 0.5, 0.4, new THREE.Color(0xb88a2a), 'painted');
       heavyLiftSystems += 1;
       operationalMachines += 1;
       structuralConnections += 58;
@@ -3976,9 +3856,8 @@ export function addGarageFacilityDetails({
           clusterBox(bay, u, f, 0.43, 0.9, 0.06, 0.9, soot, 'structure'); // the base plate
           for (const du of [-0.34, 0.34]) for (const dw of [-0.34, 0.34]) clusterCylinder(bay, u + du, f + dw, 0.5, 0.04, 0.1, soot, 0, 8); // its anchor nuts
         }
-        // the runway girder and its rail, a walkway with a handrail behind it
-        clusterBox(bay, side * (halfSpan - 0.4), 0, runwayY + 0.35, 0.5, 0.9, 2 * halfLen + 1, millSteel, 'structure');
-        clusterBox(bay, side * (halfSpan - 0.4), 0, runwayY + 0.86, 0.1, 0.12, 2 * halfLen + 1, soot, 'structure');
+        // the walkway with a handrail behind the runway (garage r9: the runway beams and their rails are the kit crane's
+        // own, on these brackets: garageIronworksKit.ts)
         clusterBox(bay, side * (halfSpan + 0.35), 0, runwayY + 0.82, 0.7, 0.05, 2 * halfLen + 1, millSteel, 'structure');
         clusterBox(bay, side * (halfSpan + 0.68), 0, runwayY + 1.35, 0.05, 0.05, 2 * halfLen + 1, craneYellow, 'painted');
       }
@@ -4033,58 +3912,14 @@ export function addGarageFacilityDetails({
         }
         structuralConnections += 10;
       }
-      // the overhead crane: end carriages on the rails, a twin box-girder bridge, the crab with its rope drum, a hook
-      // block on its falls holding a teeming ladle by its trunnions
-      const craneF = 3.5;
-      for (const side of [-1, 1]) {
-        clusterBox(bay, side * (halfSpan - 0.4), craneF, runwayY + 1.25, 0.7, 0.75, 4.2, craneYellow, 'painted');
-        for (const df of [-1.6, 1.6]) clusterCylinder(bay, side * (halfSpan - 0.4), craneF + df, runwayY + 0.98, 0.32, 0.22, soot, 0, 16, Math.PI / 2);
-      }
-      for (const df of [-0.75, 0.75]) clusterBox(bay, 0, craneF + df, runwayY + 1.45, 2 * halfSpan - 0.8, 1.0, 0.55, craneYellow, 'painted');
-      const crabU = 10.4; // racked over to the bay's right, the ladle hanging clear of the hero's outline
-      // (the re-judge, 2026-10-15: "flat yellow and black boxes ... no I- or box-girder flanges, end carriages, trolley,
-      // hook block, festoon cable or capacity plate"): the box girders' flange plates and stiffeners, a crab rail on
-      // each, the capacity plate on the near girder, the festoon cable's loops on its wire along the bridge, the
-      // end carriages' buffers and drives
-      const flange = craneYellow.clone().multiplyScalar(0.78);
-      for (const df of [-0.75, 0.75]) {
-        for (const dy of [-0.52, 0.52]) clusterBox(bay, 0, craneF + df, runwayY + 1.45 + dy, 2 * halfSpan - 0.8, 0.05, 0.7, flange, 'painted');
-        for (let k = -6; k <= 6; k += 1) clusterBox(bay, k * 1.9, craneF + df + Math.sign(df) * 0.29, runwayY + 1.45, 0.06, 0.96, 0.03, flange, 'painted');
-        clusterBox(bay, 0, craneF + df, runwayY + 2.0, 2 * halfSpan - 1.2, 0.1, 0.08, soot, 'structure'); // the crab rail
-      }
-      clusterBox(bay, -4.5, craneF + 1.04, runwayY + 1.45, 2.2, 0.55, 0.03, new THREE.Color(0xe9e4d4), 'painted'); // the capacity plate
-      clusterBox(bay, -4.5, craneF + 1.055, runwayY + 1.45, 1.6, 0.18, 0.02, soot, 'painted'); // its lettering
-      clusterBox(bay, 0, craneF - 1.25, runwayY + 1.9, 2 * halfSpan - 1.0, 0.02, 0.02, soot, 'structure'); // the festoon wire
-      for (let k = 0; k < 9; k += 1) { // the festoon loops bunched toward the crab
-        const u = crabU - 1.4 - k * (k < 5 ? 0.7 : 2.2);
-        clusterBox(bay, u, craneF - 1.25, runwayY + 1.55, 0.06, 0.7, 0.06, soot, 'structure');
-      }
-      for (const side of [-1, 1]) {
-        for (const df of [-2.15, 2.15]) clusterBox(bay, side * (halfSpan - 0.4), craneF + df, runwayY + 1.25, 0.5, 0.4, 0.12, soot, 'structure'); // buffers
-        clusterBox(bay, side * (halfSpan - 0.95), craneF - 1.2, runwayY + 1.55, 0.5, 0.5, 0.6, soot, 'structure'); // the long-travel drive
-      }
-      clusterBox(bay, crabU, craneF, runwayY + 2.25, 2.4, 0.6, 2.4, craneYellow, 'painted');
-      clusterCylinder(bay, crabU, craneF, runwayY + 2.0, 0.55, 1.8, soot, 0, 16, Math.PI / 2);
-      clusterBox(bay, crabU + 0.9, craneF + 0.7, runwayY + 2.75, 0.8, 0.5, 0.7, soot, 'structure'); // the hoist motor
-      const hookY = 4.6;
-      for (const du of [-0.35, 0.35]) clusterBox(bay, crabU + du, craneF, (runwayY + 1.7 + hookY + 0.6) / 2, 0.04, runwayY + 1.7 - hookY - 0.6, 0.04, soot, 'structure');
-      clusterBox(bay, crabU, craneF, hookY + 0.35, 0.9, 0.7, 0.5, craneYellow, 'painted'); // the hook block
-      for (const du of [-1.15, 1.15]) clusterBeam(bay, [crabU, craneF, hookY], [crabU + du, craneF, hookY - 1.0], 0.07, soot, 'structure'); // the bail
-      clusterCylinder(bay, crabU, craneF, hookY - 2.0, 1.05, 1.9, rust, 0, 16); // the ladle
-      clusterCylinder(bay, crabU, craneF, hookY - 1.0, 1.12, 0.12, soot, 0, 16);
-      for (const du of [-1.15, 1.15]) clusterCylinder(bay, crabU + du, craneF, hookY - 1.0, 0.14, 0.3, soot, 0, 10, Math.PI / 2); // trunnions
+      // the overhead crane (garage r9): the kit's double-girder process crane at work on a steel coil over the bay's right
+      // (garageIronworksKit.ts); the flat-box bridge and its primitive teeming ladle are gone
       heavyLiftSystems += 1;
       operationalMachines += 1;
-      // a ladle on its stand at the back left
-      {
-        const stand = atGround(-6.2, -6.0);
-        for (const du of [-1.3, 1.3]) clusterBeam(stand, [du, -0.8, 0], [du, 0, 2.2], 0.16, millSteel, 'structure');
-        for (const du of [-1.3, 1.3]) clusterBeam(stand, [du, 0.8, 0], [du, 0, 2.2], 0.16, millSteel, 'structure');
-        clusterCylinder(stand, 0, 0, 1.9, 1.0, 1.7, rust, 0, 16);
-        clusterCylinder(stand, 0, 0, 2.78, 1.06, 0.1, soot, 0, 16);
-        environmentSpecificAssemblies += 1;
-        servicePurposeTags.add('ladle-and-casting-bay');
-      }
+      // the casting bay's story (garage r9): the bell-shaped slag pot on its rail carrier by the kiosk, the kit's
+      // (garageIronworksKit.ts), replaces the primitive ladle on its stand
+      environmentSpecificAssemblies += 1;
+      servicePurposeTags.add('ladle-and-casting-bay');
       // mould boxes stacked by size and moulding-sand heaps at the back right
       {
         const moulds = atGround(5.6, -6.6);
@@ -4124,8 +3959,16 @@ export function addGarageFacilityDetails({
         operationalMachines += 1;
       }
       // two transfer tracks along the bay, either side of the road
-      addTrackOnCluster(bay, -5.6, -1, 22);
-      addTrackOnCluster(bay, 5.6, -1, 22);
+      // their rails flush in a concrete strip, a flangeway inside each (garage r9, the brief's "thin rails": the sleepered
+      // track stood proud of the floor)
+      for (const lateral of [-5.6, 5.6]) {
+        clusterBox(bay, lateral, -1, 0.02, 2.6, 0.04, 22, concreteBase, 'masonry');
+        for (const rail of [-0.76, 0.76]) {
+          clusterBox(bay, lateral + rail, -1, 0.048, 0.08, 0.016, 22, steel, 'structure');
+          clusterBox(bay, lateral + rail - Math.sign(rail) * 0.08, -1, 0.043, 0.06, 0.006, 22, soot, 'structure');
+          railSegments += 1;
+        }
+      }
       structuralConnections += 60;
       // the coating booth at the back right, open toward the yard (behind the hero it stood dark over the turret: the
       // garage critic panel, 2026-10-14); the yard kit round the bay
@@ -4133,7 +3976,8 @@ export function addGarageFacilityDetails({
       addPoweredWinch(fixedCluster(-12.5, 14.5), 0, 0, new THREE.Color(0x9a5439));
       addPartsPallet(fixedCluster(12.5, 15.0), 0, 0, 3);
       addSafetyRail(fixedCluster(9.5, 12.0), 0, 0, 5.5);
-      addTurningRollStation(fixedCluster(-12.8, 21.0), 0, 0, new THREE.Color(0x8b4d3b));
+      // (garage r9: the vessel on its rolls in mill steel and rust, not the brief's "primitive orange" ladle colour)
+      addTurningRollStation(fixedCluster(-12.8, 21.0), 0, 0, new THREE.Color(0x4f4a46));
   };
   const variantBuilders: Partial<Record<GarageVariant['architecture'], () => void>> = {
     shade_depot: addShadeDepot,
@@ -4248,12 +4092,9 @@ export function addGarageFacilityDetails({
         looseParts += 5;
         break;
       }
-      case 'factory_line': { // a scrap skip and a small ladle on its cart
+      case 'factory_line': { // a scrap skip (garage r9: its little ladle on a cart went with the primitive ladles)
         clusterBox(at, 0, 0, 0.55, 1.8, 1.0, 1.2, new THREE.Color(0x5a5048), 'painted');
         for (let k = 0; k < 4; k += 1) clusterBox(at, -0.5 + k * 0.32, 0.1, 1.1, 0.3, 0.12, 0.6, steel, 'equipment', k * 0.4, k * 0.2); // scrap
-        clusterBox(at, -2.0, 0, 0.3, 0.9, 0.12, 0.9, steel, 'structure');
-        wheelPair(-2.0, 0, 0.18, 0.9);
-        clusterCylinder(at, -2.0, 0, 0.75, 0.38, 0.7, new THREE.Color(0x6a3f2c), 0, 16); // the ladle
         looseParts += 4;
         break;
       }

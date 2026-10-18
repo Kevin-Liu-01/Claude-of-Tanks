@@ -353,13 +353,42 @@ export function addGarageApproachDetails({
         const ds = b.side - a.side, dd = b.depth - a.depth, length = Math.hypot(ds, dd) || 1;
         return { side: point.side + (dd / length) * offset, depth: point.depth - (ds / length) * offset };
       });
-      for (const railOffset of [-0.76, 0.76]) {
-        // the rail's head flush in the concrete, a dark flangeway inside it (one strip: the head's inner edge darkened)
-        const rail = offsetPath(railOffset - Math.sign(railOffset) * 0.03);
-        for (let index = 0; index < rail.length - 1; index += 1) {
-          approachGroundErrorM = Math.max(approachGroundErrorM,
-            pathPanel(dark, groundAtWorld, rail[index], rail[index + 1], 0.13, 0.04, 0.052));
+      // (garage r9, the per-garage brief: "the radial roads run up on a ballast formation of 0.3-0.36 m to meet deck
+      // level, as a real turntable's roads do"; the flush strips read as 44 thin lines drawn on the slab): each road
+      // leaves the doors as real track, a ballast formation with sloped shoulders, timber sleepers and rails whose heads
+      // stand at the turntable deck's level, the middle road running straight onto the turntable's rim
+      const deckTop = 0.36;
+      for (let index = 0; index < yardPath.length - 1; index += 1) {
+        approachGroundErrorM = Math.max(approachGroundErrorM,
+          pathPanel(baked, groundAtWorld, yardPath[index], yardPath[index + 1], 4.0, 0.34, 0.12));
+        paint(baked.at(-1)!, 0x4f4a44);
+        pathPanel(baked, groundAtWorld, yardPath[index], yardPath[index + 1], 2.9, 0.12, 0.19);
+        paint(baked.at(-1)!, 0x45403b);
+        approachSegments += 2;
+      }
+      // sleepers square to the road every 0.68 m along it
+      let carried = 0.3;
+      for (let index = 0; index < yardPath.length - 1; index += 1) {
+        const a = yardPath[index], b = yardPath[index + 1];
+        const ds = b.side - a.side, dd = b.depth - a.depth, length = Math.hypot(ds, dd);
+        if (length < 1e-3) continue;
+        const ns = -dd / length, nd = ds / length;
+        for (; carried < length; carried += 0.68) {
+          const t = carried / length, side = a.side + ds * t, depth = a.depth + dd * t;
+          pathPanel(baked, groundAtWorld, { side: side - ns * 1.25, depth: depth - nd * 1.25 }, { side: side + ns * 1.25, depth: depth + nd * 1.25 },
+            0.24, 0.12, 0.215);
+          paint(baked.at(-1)!, 0x3a2e24);
           approachDetails += 1;
+        }
+        carried -= length;
+      }
+      for (const railOffset of [-0.72, 0.72]) {
+        const rail = offsetPath(railOffset);
+        for (let index = 0; index < rail.length - 1; index += 1) {
+          pathPanel(dark, groundAtWorld, rail[index], rail[index + 1], 0.13, 0.12, deckTop - 0.045); // foot and web
+          approachGroundErrorM = Math.max(approachGroundErrorM,
+            pathPanel(dark, groundAtWorld, rail[index], rail[index + 1], 0.07, 0.045, deckTop)); // the head
+          approachDetails += 2;
         }
       }
     }

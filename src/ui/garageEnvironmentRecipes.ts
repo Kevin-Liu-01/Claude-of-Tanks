@@ -250,7 +250,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       'damaged high-rise skyline', 'munition street frontage', 'armored parking depot'],
   },
   naval_drydock: {
-    terrainSurface: 'grass', terrainTint: 0xa9b79d, hardstandTint: 0x829a9b, buildingTint: 0xc8d2cd,
+    // (garage r9: granite grey quay paving, not a blue plane; healthy maritime pines and oaks on the downs)
+    terrainSurface: 'grass', terrainTint: 0xa9b79d, hardstandTint: 0x8e8f88, buildingTint: 0xc8d2cd,
     structures: [
       at(makeFishery, 'working fishery', -36, -6, 0.78),
       // off the hero's axis to the far left (it rose out of the turret: the garage critic panel, 2026-10-14)
@@ -263,7 +264,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeFishery, 'breakwater repair fishery', -41, 23, 0.46),
       at(makeLighthouse, 'outer approach light', 31, 31, 0.56),
     ],
-    treeSpecies: ['cedar', 'pine'], treeCount: 22,
+    treeSpecies: ['pine', 'oak'], treeCount: 18,
     horizonStyle: 'coastal', horizonHeightM: 5.8,
     approach: {
       // the causeway ends at the quay edge, where the shore falls to the sea (2026-10-11)
@@ -273,24 +274,26 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     terrainProfile: 'actual Saltmere Bay spawn excerpt with wind-cut maritime ground',
     serviceFrame: 'harbor work apron, fishery dock and drydock service shelter',
     sourceBeat: 'saltmere-harbor-service', sourceStructure: 'fishery + lighthouse + shed', landmark: [25, 16.2, -31],
-    distinctiveElements: ['maritime grass PBR', 'working fishery dock', 'harbor lighthouse', 'cedar and pine breakwater',
-      'twin approach lights', 'rigging yard', 'breakwater repair frontage'],
+    distinctiveElements: ['maritime grass PBR', 'working fishery dock', 'harbor lighthouse', 'maritime pine and oak downs',
+      'twin approach lights', 'rigging yard', 'breakwater repair frontage', 'portal jib crane at work', 'whitewashed slate village',
+      'lighthouse headland skyline'],
   },
   rail_roundhouse: {
     // cinder ballast ground, not a paved hillside (2026-10-10, wave 377: "a vast, empty cobbled slope")
     // soot-dark railway brick (the garage critic panel, 2026-10-14: "clean brick ... darker engineering brick")
-    terrainSurface: 'rock', terrainTint: 0x6e6860, hardstandTint: 0x6f6960, buildingTint: 0x86735f,
+    // (garage r9: ash and cinder underfoot, the yard's scrub mounds levelled to a working yard's grade)
+    terrainSurface: 'rock', terrainTint: 0x58534d, hardstandTint: 0x625d56, buildingTint: 0x86735f, reliefScale: 0.45,
     structures: [
       at(makeWarehouse, 'freight warehouse', -38, -6, 0.78), // 1.4 m further out: clear of the engine shed (GA.04)
-      // over the roads behind the engine shed (GA.04: 4.2 m further back, clear of the shed's terrace)
-      at(makeGantry, 'rail gantry', -33, -33, 0.82),
-      at(makeContainerRow, 'container rank', -7, -36, 0.74),
+      // (garage r9: the rail gantry behind the shed and the container rank right of it gave way to a goods shed, 10k
+      // triangles funding the breakdown crane, the signal box, the platform and the yard's ballasted roads)
+      at(makeShed, 'goods shed', -7, -36, 0.7),
       at(makeWaterTower, 'junction water tower', 18, -34, 0.72),
       at(makeWarehouse, 'roundhouse annex', 36, -14, 0.58),
       at(makeDepot, 'Cinder Junction station', 40, -11, 0.72),
       at(makeFactory, 'locomotive machine shop', 6, 38, 0.54),
       atView(makeShed, 'three-road engine shed', -42, -24, 0.76),
-      atView(makeGantry, 'roundhouse transfer crane', 30, -42, 0.60),
+      atView(makeStack, 'boiler house stack', 30, -42, 0.7),
       atView(makeDepot, 'junction passenger depot', 42, 31, 0.50),
     ],
     treeSpecies: ['poplar', 'birch'], treeCount: 16,
@@ -302,9 +305,10 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     },
     terrainProfile: 'actual Cinder Junction spawn excerpt with cinder and rail-yard grades',
     serviceFrame: 'rail-served overhaul apron beneath a connected gantry',
-    sourceBeat: 'cinder-junction-overhaul', sourceStructure: 'warehouse + gantry + containers', landmark: [19, 11.6, -19],
-    distinctiveElements: ['cinder cobble PBR', 'freight warehouse', 'connected crane gantry', 'authored container rank',
-      'three-road engine shed', 'roundhouse transfer crane', 'station frontage', 'water-tower skyline'],
+    sourceBeat: 'cinder-junction-overhaul', sourceStructure: 'warehouse + engine shed + goods shed', landmark: [19, 11.6, -19],
+    distinctiveElements: ['cinder cobble PBR', 'freight warehouse', 'rail breakdown crane at work', 'goods shed',
+      'three-road engine shed', 'boiler house stack', 'station frontage', 'water-tower skyline', 'colliery headframe skyline',
+      'signal box and semaphores'],
   },
   rain_canopy: {
     terrainSurface: 'grass', terrainTint: 0x779978, hardstandTint: 0x708079, buildingTint: 0xa4af99,
@@ -404,8 +408,10 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       at(makeWarehouse, 'works warehouse', 36, -14, 0.58),
       at(makeParkingDeck, 'works vehicle depot', 40, -11, 0.48),
       at(makeGantry, 'foundry transfer gantry', 6, 38, 0.66),
-      atView(makeFireStation, 'works emergency hall', -42, -24, 0.52),
-      atView(makeContainerRow, 'rail-fed component rank', 30, -42, 0.60),
+      // (garage r9: a pay office and a component shed behind the camera in place of a fire hall and a container rank,
+      // 7.4k triangles that only the out-ring views saw, funding the kit's crane bay, pulpit and scrap yard)
+      atView(makeDepot, 'works pay office', -42, -24, 0.56),
+      atView(makeShed, 'rail-fed component shed', 30, -42, 0.62),
     ],
     treeSpecies: ['poplar', 'birch'], treeCount: 14,
     horizonStyle: 'flat', horizonHeightM: 7.8,
@@ -417,6 +423,6 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     serviceFrame: 'sawtooth works road with foundry service line',
     sourceBeat: 'ironworks-heavy-service', sourceStructure: 'foundry office + factory + stack', landmark: [29, 18.4, -20],
     distinctiveElements: ['industrial cobble PBR', 'sawtooth foundry office', 'heavy factory hall', 'stack and water-tower skyline',
-      'works emergency hall', 'rail-fed component rank', 'transfer gantry line'],
+      'works pay office', 'rail-fed component shed', 'transfer gantry line'],
   },
 });
