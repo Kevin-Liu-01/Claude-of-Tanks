@@ -150,7 +150,7 @@ function insideHull(pts, x, z) {
  * envelope is or its envelope's middle lies inside what holds it (bears: a roof's side held along its eave and up its
  * gables). A piece that bore in the intact building and bears no more, its held share down by a quarter or more, hangs.
  */
-export function createHangingJudge(spans, names, groundAt) {
+export function createHangingJudge(spans, names, groundAt, floorUnder = null) {
   const C = HANG.cellM, V = HANG.voxelM, HOLDS = HANG.bearShare;
   // ---- the world's pieces as built (each its span and triangles: what a hide or a storey's fall does to them later is
   // read from the spans as drawn, the pieces' membership kept)
@@ -209,7 +209,8 @@ export function createHangingJudge(spans, names, groundAt) {
       cells++;
       const i0 = Math.floor(ck / CELL_BITS) - 1048576, k0 = (ck % CELL_BITS) - 1048576;
       const lo = y - HANG.bandM, hi = y + 0.1;
-      if (ground((i0 + 0.5) * C, (k0 + 0.5) * C) >= lo) { held++; heldPts.push(i0, k0); continue; }
+      const gx = (i0 + 0.5) * C, gz = (k0 + 0.5) * C;
+      if (ground(gx, gz) >= lo || (floorUnder && floorUnder(gx, gz, hi) >= lo)) { held++; heldPts.push(i0, k0); continue; }
       let ok = false;
       for (let di = -1; di <= 1 && (!ok || holders); di++) for (let dk = -1; dk <= 1 && (!ok || holders); dk++) {
         const key = cellKey(i0 + di, k0 + dk);
@@ -284,7 +285,8 @@ export function createHangingJudge(spans, names, groundAt) {
     const join = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent[ra] = rb; };
     const grounded = new Uint8Array(M);
     const { sx, sy, sz, sp, N, voxels } = ix;
-    for (let i = 0; i < N; i++) if (sy[i] - ground(sx[i], sz[i]) <= HANG.groundTouchM) grounded[sp[i]] = 1;
+    const onFloor = (x, y, z) => y - ground(x, z) <= HANG.groundTouchM || (floorUnder && y - floorUnder(x, z, y + 0.05) <= HANG.groundTouchM);
+    for (let i = 0; i < N; i++) if (onFloor(sx[i], sy[i], sz[i])) grounded[sp[i]] = 1;
     // the presentation's samples into their own voxels beside the world's ([x, y, z, owner] each)
     const all = new Map();
     for (const [vk, list] of voxels) all.set(vk, list.slice());
@@ -292,7 +294,7 @@ export function createHangingJudge(spans, names, groundAt) {
       const id = W + k;
       for (let i = 0; i < e.xyz.length; i += 3) {
         const x = e.xyz[i], y = e.xyz[i + 1], z = e.xyz[i + 2];
-        if (y - ground(x, z) <= HANG.groundTouchM) grounded[id] = 1;
+        if (onFloor(x, y, z)) grounded[id] = 1;
         const vk = voxKey(Math.floor(x / V), Math.floor(y / V), Math.floor(z / V));
         let vl = all.get(vk); if (!vl) all.set(vk, vl = []);
         let mine = 0;

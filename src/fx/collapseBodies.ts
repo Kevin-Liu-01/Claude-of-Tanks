@@ -349,6 +349,9 @@ const CRACK_KEEP = 0.7;
  *  an infill panel; a thick brick chunk standing on its own end is left as it lies); the shove that tips it over (m/s at
  *  its top across its thin side, times its mass). */
 const STAND_TALL = 3, STAND_TIP_MPS = 1.2;
+/** boxMiddle's and boxHalf's answers (one each, reused). */
+const _boxMid: [number, number] = [0, 0];
+const _boxHalf = [0, 0, 0];
 /** panelsStanding's body frame (one, reused: it runs each frame of a collapse's first 40 s). */
 const panelFrame = { c: 1, s: 0, x: 0, z: 0 };
 /** Times a panel found on its edge past the walls is tipped over again (round 3: counted on a tip made). */
@@ -1717,6 +1720,15 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
    * walls before the bake (round 2: baked so, a 4.5 m wall panel stood upright in the yard): each is tipped once more, and
    * the bake waits for it to fall.
    */
+  /** The world plan point of a body's box middle (its pose in `pose`; null box: the frame's origin): a panel's frame can sit
+   *  metres off the sheet it draws (round 3: a roof sheet on its edge past the walls read as inside them). Reuses _boxMid. */
+  function boxMiddle(box: readonly number[] | null | undefined): [number, number] {
+    if (!box) { _boxMid[0] = pose[0]!; _boxMid[1] = pose[2]!; return _boxMid; }
+    _hq.set(pose[3]!, pose[4]!, pose[5]!, pose[6]!);
+    _hv.set((box[0]! + box[3]!) / 2, (box[1]! + box[4]!) / 2, (box[2]! + box[5]!) / 2).applyQuaternion(_hq);
+    _boxMid[0] = pose[0]! + _hv.x; _boxMid[1] = pose[2]! + _hv.z;
+    return _boxMid;
+  }
   function panelsStanding(c: LiveCollapse): boolean {
     let moved = false;
     const a = c.seam.anatomy, pl = a.placement;
@@ -1731,22 +1743,37 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       if (p.rested || p.shattered) continue;
       if (!p.broken) {
         const h = p.half ?? pieceHalf(p.piece);
-        if (p.handle < 0 || p.retipped >= PANEL_TIPS || !isPanel(h) || !creeping(p.handle) || !pool.framePoseAt(p.handle, pose) || !pastWalls(a, f, pose[0]!, pose[2]!)) continue;
-        if (tipOutward(p.handle, h, p.piece.massKg, midX, midZ)) { p.retipped++; moved = true; }
+        if (p.handle < 0 || p.retipped > PANEL_TIPS || !isPanel(h) || !creeping(p.handle) || !pool.framePoseAt(p.handle, pose) || !pastWalls(a, f, ...boxMiddle(p.box))) continue;
+        if (p.retipped < PANEL_TIPS) { if (tipOutward(p.handle, boxHalf(p.box, h), p.piece.massKg, midX, midZ, p.retipped)) { p.retipped++; moved = true; } continue; }
+        // (still on its edge after its pushes: it breaks up where it stands, its dust and shards thrown)
+        if (tipOutward(p.handle, boxHalf(p.box, h), p.piece.massKg, midX, midZ, 0, true)) {
+          p.retipped++;
+          byHandle.delete(p.handle); pool.release(p.handle); p.handle = -1;
+          for (const part of p.parts) breakUp(c, part, p.box, p.piece.massKg / Math.max(1, p.parts.length));
+          p.shattered = true; moved = true;
+        }
         continue;
       }
       for (let k = 0; k < p.parts.length; k++) {
         const part = p.parts[k]!, spec = p.piece.parts[k];
-        if (!spec || part.handle < 0 || part.retipped >= PANEL_TIPS || !isPanel(spec.half) || !creeping(part.handle) || !pool.framePoseAt(part.handle, pose)
-          || !pastWalls(a, f, pose[0]!, pose[2]!)) continue;
-        if (tipOutward(part.handle, spec.half, spec.massKg, midX, midZ)) { part.retipped++; moved = true; }
+        if (!spec || part.handle < 0 || part.retipped > PANEL_TIPS || !isPanel(spec.half) || !creeping(part.handle) || !pool.framePoseAt(part.handle, pose)
+          || !pastWalls(a, f, ...boxMiddle(part.box))) continue;
+        const ph = boxHalf(part.box, spec.half);
+        if (part.retipped < PANEL_TIPS) { if (tipOutward(part.handle, ph, spec.massKg, midX, midZ, part.retipped)) { part.retipped++; moved = true; } continue; }
+        if (tipOutward(part.handle, ph, spec.massKg, midX, midZ, 0, true)) {
+          part.retipped++;
+          const pbox = part.box ?? [-spec.half[0]!, -spec.half[1]!, -spec.half[2]!, spec.half[0]!, spec.half[1]!, spec.half[2]!];
+          byHandle.delete(part.handle); pool.release(part.handle); part.handle = -1;
+          breakUp(c, part, pbox, spec.massKg);
+          moved = true;
+        }
       }
     }
     return moved;
   }
   /** A panel standing on its edge (its pose in `pose`) pushed over away from the building's middle, at its top (it falls
    *  flat on the ground outside rather than back against the wall it leans on). False when it is not standing. */
-  function tipOutward(handle: number, half: readonly number[], massKg: number, midX: number, midZ: number): boolean {
+  function tipOutward(handle: number, half: readonly number[], massKg: number, midX: number, midZ: number, times = 0, dry = false): boolean {
     let thin = 0;
     for (let k = 1; k < 3; k++) if (half[k]! < half[thin]!) thin = k;
     _hq.set(pose[3]!, pose[4]!, pose[5]!, pose[6]!);
@@ -1758,9 +1785,17 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     let up = 0;
     for (let k = 0; k < 3; k++) { _l.set(k === 0 ? 1 : 0, k === 1 ? 1 : 0, k === 2 ? 1 : 0).applyQuaternion(_hq); up += half[k]! * Math.abs(_l.y); }
     if (up < STAND_TALL * half[thin]!) return false;
-    const j = Math.max(1, massKg) * 2.5;
+    if (dry) return true;
+    // (round 3: a sheet whose body is thicker than it draws stood up to the first push) harder each time
+    const j = Math.max(1, massKg) * 2.5 * (1 + 1.5 * times);
     pool.impulse(handle, ox * j, 0, oz * j, pose[0]!, pose[1]! + up * 0.8, pose[2]!);
     return true;
+  }
+  /** A body's half extents from its box (or `fallback`): what it stands on, not what it draws. Reuses _boxHalf. */
+  function boxHalf(box: readonly number[] | null | undefined, fallback: readonly number[]): readonly number[] {
+    if (!box) return fallback;
+    _boxHalf[0] = (box[3]! - box[0]!) / 2; _boxHalf[1] = (box[4]! - box[1]!) / 2; _boxHalf[2] = (box[5]! - box[2]!) / 2;
+    return _boxHalf;
   }
   /** Whether a roof slab or sheet still lies high past the walls (each not yet looked at is, and is moved). */
   function roofLeftHigh(c: LiveCollapse): boolean {

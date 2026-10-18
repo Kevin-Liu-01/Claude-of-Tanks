@@ -24,6 +24,7 @@
  */
 import * as THREE from 'three';
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
+import { enclosedAt } from '../world/structureEnclosure.ts';
 
 /** A triangle of a span (its first vertex, absolute in the span's position attribute). */
 export interface HangingTri { span: StructureSpan; at: number }
@@ -118,7 +119,26 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
   }
 
   /** The intact reading of a structure: its parts, their samples, and which bore and stood. */
+  /** The highest storey floor line (world y) under a point inside the building's ground plan, at or under `y` (−Infinity:
+   *  none): the simulation holds a storey on its floor until it drops it (DESTRUCTION.md §3.4) — what stands on it is held. */
+  let floorSeam: StructureDamageSeam | null = null;
+  let floorLines: number[] = [];
+  function setFloors(seam: StructureDamageSeam): void {
+    const a = seam.anatomy as StructureDamageSeam['anatomy'] | undefined;
+    floorSeam = a?.storeys ? seam : null;
+    floorLines = a?.storeys ? a.storeys.slice(1).map((st) => a.placement.y + st.y0) : [];
+  }
+  function floorUnder(x: number, z: number, y: number): number {
+    if (!floorSeam || !floorLines.length) return -Infinity;
+    let best = -Infinity;
+    for (const fy of floorLines) if (fy <= y && fy > best) best = fy;
+    if (best === -Infinity) return best;
+    const { x: px, z: pz, yaw } = floorSeam.anatomy.placement;
+    const c = Math.cos(yaw), sn = Math.sin(yaw), wx = x - px, wz = z - pz;
+    return enclosedAt(floorSeam.anatomy, wx * c - wz * sn, wx * sn + wz * c, 0.3, 0) === false ? -Infinity : best;
+  }
   function modelOf(seam: StructureDamageSeam): Model {
+    setFloors(seam);
     let model = models.get(seam);
     if (model) return model;
     const parts: Part[] = [];
@@ -237,7 +257,8 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
     for (const [ck, y] of env) {
       const i0 = Math.floor(ck / CELL_BITS) - 1048576, k0 = (ck % CELL_BITS) - 1048576;
       const lo = y - BAND, hi = y + 0.1;
-      let ok = ground((i0 + 0.5) * CELL, (k0 + 0.5) * CELL) >= lo;
+      const gx = (i0 + 0.5) * CELL, gz = (k0 + 0.5) * CELL;
+      let ok = ground(gx, gz) >= lo || floorUnder(gx, gz, hi) >= lo;
       for (let di = -1; di <= 1 && !ok; di++) for (let dk = -1; dk <= 1 && !ok; dk++) {
         const c = sm.column.get(cellKey(i0 + di, k0 + dk));
         if (c) for (let j = 0; j < c.length; j += 2) {
@@ -306,8 +327,9 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
     }
     for (const [ck, c] of sm.column) {
       const i0 = Math.floor(ck / CELL_BITS) - 1048576, k0 = (ck % CELL_BITS) - 1048576;
-      const g = ground((i0 + 0.5) * CELL, (k0 + 0.5) * CELL) + TOUCH;
-      for (let j = 0; j < c.length; j += 2) if (c[j]! <= g) grounded[c[j + 1]!] = 1;
+      const gx = (i0 + 0.5) * CELL, gz = (k0 + 0.5) * CELL;
+      const g = ground(gx, gz) + TOUCH;
+      for (let j = 0; j < c.length; j += 2) if (c[j]! <= g || c[j]! - floorUnder(gx, gz, c[j]! + 0.05) <= TOUCH) grounded[c[j + 1]!] = 1;
     }
     const roots = new Set<number>();
     for (let i = 0; i < M; i++) if (grounded[i]) roots.add(find(i));

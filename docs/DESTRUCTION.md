@@ -1175,3 +1175,43 @@ skybridge #12 (a 47 m lattice mast over a 3.7 m hut: its p90 is the mast's anten
 on the hut to pass), longleaf #11 (a building already in ruins, its walls drawn low: 0.249), fjord #65 (the tallest fish
 rack: its posts at 0.8 of their drawn cells, 0.235), copper_mesa #49 (a tank farm whose crumpled shells and heap spend the
 debris writer's vertices, 0.214; its twin #48 stands at 0.33).
+
+**Round 3 (2026-10-18, the round-2 critics: roof trim and furniture left in the sky, a receipt blind to it).** Nothing a
+building's damage leaves without what held it stays in the air, slab or not, and the receipts read it:
+
+- *What hangs comes down* (`fx/structureHanging.ts`, swept by `fractureStages` once a building's faces are drawn and no
+  storey of it is falling, after every hide, section fall, storey drop and face redraw): the world's parts (each span's
+  triangles welded into parts) are read against what is drawn round them — never a collision record. A part *bears* where
+  the ground or a part that bears itself lies within 0.8 m under half its lower envelope (0.4 m cells; a wall beside it at
+  that height holds it too: a sign, a gutter), or under points round its middle (a roof's side held along its eave and up
+  its gables); support propagates up from the ground, so two boards side by side hold nothing up. Touching parts (a sample
+  of each within 0.25 m) gather in clusters; a cluster touching the ground stands. A part that bore in the intact building
+  and bears no more (its held share down by a quarter), or whose cluster stood and stands no more, comes down —
+  `landmarkBodies.drop`: a compact cluster as a body of the one engine, a sparse one (a mill's sail cross, a gutter round a
+  corner) falling under gravity's time to lie on its broad side; settled (a late joiner), at rest at once. The fracture's
+  redrawn faces are read piece by piece: a piece touching nothing that stands falls as a body of its cells (what stands
+  with the face — past its rectangle, over no drawn wall — goes where it hung); the kit's runs (rims, remnants) and rooms
+  touching nothing that stands go.
+- *A roof's furniture* (`structureStages flattenRoofFurniture`, at the roof's hide and again at any wall's fall after it):
+  every welded part that starts within a metre under the eaves and reaches 30 cm over them, centred in the footprint, goes
+  unless the structure's standing parts hold it up (a 0.5 m grid of what the non-roof parts draw; a part held over half its
+  lowest cells holds in its turn: a gable drawn in a wall's bucket holds its verge boards) — a ladder, an aerial, a verge
+  board, a dormer's cap, a ridge's tiles; the dark interior's level top in the top storey's upper half (its lid) goes too.
+- *The fracture's faces*: trim standing proud of a gable is the roof's verge (not claimed into the face: the roof's fall
+  takes it); roof triangles are claimed only as a gable over the wall (an eave's overhang a side face took stood on as
+  long slivers); a gable's apex over its sampled outline goes with its nearest cell, what reaches over its head stands
+  while the gable's top row does; what reaches past a face's ends goes with its row's end cell; only a cell that draws
+  something has reveals; a storey's fall lowers the faces over it (in flight by their matrices, at its end for good — their
+  grids and cells: a late joiner saw a tavern's upper floors hang over its empty ground floor).
+- *Rooms* are the wall's own colour in shade (the owner's "dark grey-navy slabs": a blown-out facade showed the room's far
+  wall as one flat near-black plane); *ruin stubs* stand only where the walls are drawn down to their foot, no taller than
+  the wall drawn at their own cell, and no course over one not drawn; a roof's fall onto a held floor cracks into its sheets
+  at its first touch; a panel on its edge past the walls is tipped once a roof's held fall rests too (the held-floor return
+  came before both looks), again once knocked onto its edge (counted on a tip made), and the look allocates nothing.
+
+The detector judges any drawn piece left hanging (`tools/destruction-hanging.mjs`, the same two readings against the
+intact building: held then not, cut loose), reads the world's spans as drawn at each snapshot (a storey's fall moves
+them), models the mask's fold of a kit's collapse (the spans gone COLLAPSE_S after the blow), and reads hanging only two
+seconds after the building's last event (the sweep's creak, then the fall). The kinds receipt strikes each roofed kind's
+roof pass too (`wide+roof`) and skips a kind whose fingerprint (its spans, anatomy and enclosure as built, its staging,
+and the destruction code's hash) a clean run passed before: a world change runs the kinds it changed.

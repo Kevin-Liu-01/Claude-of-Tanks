@@ -1045,7 +1045,20 @@ export async function runSlabCheck({
     const drawnTopAt = drawnTopOf(intactLists);
     // (round 3) what the damage leaves hanging (destruction-hanging.mjs): the building's own pieces, slab or not, judged
     // against what is drawn round them — never the standing building's collision record
-    const hangingJudge = createHangingJudge(spanTrianglesAll(seam.spans), seam.spans.map((sp) => (sp.mesh.name || 'span').replace(/^props-bucket-/, '')), ground0);
+    // (the storeys' floor lines inside the walls: the simulation holds a storey on its floor until it drops — §3.4)
+    const floorLines = a.storeys.slice(1).map((st) => a.placement.y + st.y0);
+    let holdFloors = true;
+    const floorLineUnder = (x, z, y) => {
+      if (!footprint.has(x, z)) return -Infinity;
+      let best = -Infinity;
+      for (const fy of floorLines) if (fy <= y && fy > best) best = fy;
+      return best;
+    };
+    const floorUnder = (x, z, y) => (holdFloors ? floorLineUnder(x, z, y) : -Infinity);
+    // (round 3) a standing building's drawn floors, and its storeys' floor lines the simulation holds (§3.4: a storey's room
+    // and walls stand on its floor until it drops)
+    const floorOrLine = (x, z, y, band) => standingFloorAt(x, z, y, band) || floorLineUnder(x, z, y + 0.05) >= y - band;
+    const hangingJudge = createHangingJudge(spanTrianglesAll(seam.spans), seam.spans.map((sp) => (sp.mesh.name || 'span').replace(/^props-bucket-/, '')), ground0, floorUnder);
     /** Its findings at a snapshot: `spansDrawn` the world's spans as the CPU holds them, or false (gone: a fallen building's). */
     const bucketOfMaterial = new Map([...worldMaterials].map(([b, m]) => [m, b]));
     const hangingAt = (meshes, spansDrawn, groundFn) => hangingJudge(spansDrawn ? spanTrianglesAll(seam.spans) : null,
@@ -1224,9 +1237,10 @@ export async function runSlabCheck({
       if (snapshots.length >= maxSnapshots) return;
       const meshes = drawnMeshes([debris.group, fxGroup, bodies?.group], accept);
       const judged = judgeSlabs(meshes, { footprint, groundAt: ground, supportAt, settled: false, ownMaterials, upperFootprint, rested, bandFootprint, drawnTopAt, byDesign,
-        floorAt: felled ? null : standingFloorAt });
+        floorAt: felled ? null : floorOrLine });
       // (what an event left hanging comes down in the presentation's next updates — its faces drawn, its storeys landed: a
       // look within HANG_SETTLE_S of the building's last event is none)
+      holdFloors = !felled;
       { const st = spansState(); if (st !== 'moving' && clock - lastEventAt >= HANG_SETTLE_S) judged.findings.push(...hangingAt(meshes, st === 'drawn', ground)); }
       const flagged = judged.findings.length > 0;
       const firstFlag = flagged && !snapshots.some((p) => p.findings.length);
@@ -1313,7 +1327,8 @@ export async function runSlabCheck({
             });
           }
           const judged = judgeSlabs(meshes, { footprint, groundAt: ground, supportAt, settled: atEnd, ownMaterials, upperFootprint, rested, bandFootprint, drawnTopAt, byDesign,
-            floorAt: felled ? null : standingFloorAt });
+            floorAt: felled ? null : floorOrLine });
+          holdFloors = !felled;
           { const st = spansState(); if (st !== 'moving' && (atEnd || clock - lastEventAt >= HANG_SETTLE_S)) judged.findings.push(...hangingAt(meshes, st === 'drawn', ground)); }
           const last = events[events.length - 1];
           const label = atEnd ? 'final' : `t${clock.toFixed(1)}-${last ? (last.stage ?? (last.storeyDown ? 'storeyDown' : last.hole === 255 ? 'sectionDown' : 'hole')) : 'none'}`;
@@ -1370,8 +1385,9 @@ export async function runSlabCheck({
           : m.parent === rdebris.group ? !rgone?.has(m) && ownRun(m) : true);
         const meshes = drawnMeshes([rdebris.group, rgroup, rbodies?.group], raccept);
         const judged = judgeSlabs(meshes, { footprint, groundAt: rground, supportAt, settled: true, ownMaterials, upperFootprint, bandFootprint, drawnTopAt, byDesign,
-          floorAt: rfelled ? null : standingFloorAt });
+          floorAt: rfelled ? null : floorOrLine });
         // (a settled collapse is gone at once: the mask folds it, the fracture drops its spans)
+        holdFloors = !rfelled;
         judged.findings.push(...hangingAt(meshes, !rfelled, rground));
         if (process.env.COT_SLAB_DUMP) {
           const lists = drawnSpanTriangles(seam.spans, true);
