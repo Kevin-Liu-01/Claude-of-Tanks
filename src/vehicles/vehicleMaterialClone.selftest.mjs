@@ -190,8 +190,8 @@ try {
       }
       if (clone.defines.COT_WHEEL_PAINT_READABILITY) wheelPaint++;
       const sourceShader = shaderFor(source);
-      // a profile that replaced a set material's hook outright (the Abrams' pad grime over its spare-track steel) left its
-      // cascade hook behind; its skin compiles exactly the hook chain its source does
+      // round 2 (2026-10-17): a profile's patch over a set material (the Abrams' pad grime over its track bands and
+      // spare-track steel) chains after its registration (chainVehicleMaterialHook); the skin compiles that chain
       const entry = cascadeShaders.get(source), cascaded = entry === sourceShader;
       if (!cascaded) { replacedHooks.add(`${id}:${source.name}`); }
       const shader = shaderFor(clone);
@@ -202,9 +202,12 @@ try {
       assert.ok(shader.fragmentShader.includes('gl_FragColor.a += 2.0;'), `${label}: and the vehicle tag`);
       assert.ok(shader.fragmentShader.includes('juggernautStrength'), `${label}: under the skin's rim term`);
       if (cascaded) {
+        // the set's materials trim the sky light by their own envMapIntensity (a live uniform); a profile's re-hooked
+        // clone (cloneRehookedVehicleMaterial, the bare hook) keeps the scene's whole sky light, as its hand re-hook did
+        const trims = !!Object.getOwnPropertyDescriptor(sourceShader.uniforms.uVehEnvScale, 'value')?.get;
         const own = source.envMapIntensity;
         clone.envMapIntensity = own + 0.125;
-        assert.equal(shader.uniforms.uVehEnvScale.value, own + 0.125, `${label}: its own sky-light scale`);
+        assert.equal(shader.uniforms.uVehEnvScale.value, trims ? own + 0.125 : 1, `${label}: its own sky-light scale, as its source's`);
         clone.envMapIntensity = own;
       }
     }
@@ -234,10 +237,9 @@ assert.equal(leaked.length, 0, `every registered vehicle material is released on
 assert.ok(registered.size > 40, 'real vehicle material sets, not a single fake hook');
 // the hook a direct (stub) registration assigns is the readability hook itself, unchanged by this law
 assert.equal(typeof vehicleAmbientFloorHook, 'function');
-// known: the Abrams' pad grime (profiles/abrams.ts grime) replaces the hook of its set's spare-track steel and track bands
-// outright, cascade hook and all (their USE_CSM stays, their cascade uniforms never bind); the skin over them compiles
-// what they do. A new entry here is a profile dropping a registered material's cascade hook.
-const KNOWN_REPLACED_HOOKS = ['m1a1_abrams_hc:cot:spare-track-steel', 'm1a1_abrams_hc:cot:track-band-left', 'm1a1_abrams_hc:cot:track-band-right'];
-assert.deepEqual([...replacedHooks].sort(), KNOWN_REPLACED_HOOKS, 'profiles replacing a registered material\'s cascade hook');
+// round 2 (2026-10-17): no profile replaces a registered material's cascade hook any more — the Abrams' pad grime chains
+// after it (profiles/abrams.ts grime: its track bands and spare-track steel drew near-black, their cascade uniforms
+// never bound). An entry here is a profile dropping a registered material's cascade hook.
+assert.deepEqual([...replacedHooks].sort(), [], 'profiles replacing a registered material\'s cascade hook');
 console.log(`vehicleMaterialClone.selftest: shoes, isolated gear roles, band finishes and the energy skins join the cascade registration, `
   + `${registered.size} registered materials all released PASS`);

@@ -166,6 +166,11 @@ the tank's pixels in the scene target's alpha and the ground occlusion's step ac
 with `__LIGHT_TUNE.VEHICLE_GROUND_AO = 0` as reference); `--battle` adds a daylight player view, plain and with the
 live Juggernaut skin, `--root` serves another checkout for a before/after pair, `--gate` fails on a step of 4 levels or
 a tag share under 0.8. It takes the capture lock.
+`tools/vehicle-material-registration.mjs [--ids=a,b|all] [--quality=low,high]` (node, no GPU; round 2, the same day)
+builds each tank through a recording cascade context and fails on any drawn opaque lit material without its own
+vehicle registration (unregistered, a replaced cascade hook, no vehicle-tag write) or left registered after dispose:
+the material invariant behind the band. `tank:release:check` runs it on the released ids; `--ids=all` (220 tanks, two
+qualities) takes about 25 minutes in one process, so split it across processes for a fleet sweep.
 
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->

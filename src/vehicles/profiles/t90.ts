@@ -8,7 +8,7 @@ import { KIT as UNTYPED_KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, muzz
 import { paintAmmoVertexColours, prepareWeaponFinishGeometry } from '../weaponFinish.ts';
 import { addSovietChevronEra } from './sovietChevronEra.ts';
 import { DRUM_ISSUE_PAINTS, barkLog, fabricRollParts, fuelDrumParts, latheY, place, sweptTube } from '../accessoryPrimitives.ts';
-import { vehicleAmbientFloorHook } from '../materials.ts';
+import { cloneFloorlessVehicleMaterial } from '../materials.ts';
 import { pushConvexQuad } from '../factoryGeometry.ts';
 import { clippedArmorSkin } from './armorFaceSampling.ts';
 import { buildPT91MPendekar } from './pt91mPendekar.ts';
@@ -1135,6 +1135,7 @@ function addT90ALegacyHullDeckAndGear(P: T90BuilderPort): void {
   // rides at the end of the build).
   {
     const lcMats = { ...P.mats, dark: rehookClone(P.mats.dark, 0x3a3e30, 0x10140c), detail: rehookClone(P.mats.detail, null, 0x0e120b) };
+    P.disposables.push(lcMats.dark, lcMats.detail); // each holds its own cascade registration (2026-10-17)
     for (const sL of [-1, 1]) {
       // x 0.95 (not the certified 1.54 drum seat): the 2-pod cluster's
       // footprint at the old seat rode the §B4 idler wrap/shoe envelope
@@ -2857,10 +2858,12 @@ function addT90MProryvRunningGearAndSkirts(P: T90BuilderPort): void {
   // Sprocket/idler BODY meshes keep scheme steel (the ref's end-wheel
   // zones read pale, win-luma 69-73).
   {
-    const darkTire = P.mats.rubber.clone();
+    // (2026-10-17, the wheel-band lane: floorless clones in the set's cascade registration — the raw clones drew these
+    // road wheels untagged, and the ground occlusion banded them under the belly line)
+    const darkTire = cloneFloorlessVehicleMaterial(P.mats.rubber);
     darkTire.color.setHex(0x22201b);
     darkTire.emissive.setHex(0x050504);
-    const darkDish = P.mats.wheels.clone();
+    const darkDish = cloneFloorlessVehicleMaterial(P.mats.wheels);
     // Keep the rubber course dark, but let the six authored steel dishes
     // read at gameplay scale.  The later wrapper made the whole suspension
     // a near-black strip; a restrained 0.68 steel tone restores the older
@@ -4349,6 +4352,7 @@ function buildT90(P: T90BuilderPort): void {
     // read as blue lens cells floating between the ERA rows; the print
     // carries its clusters on the fender line)
     const lcMats = { ...P.mats, dark: rehookClone(P.mats.dark, 0x3a3e30, 0x10140c), detail: rehookClone(P.mats.detail, null, 0x0e120b) };
+    P.disposables.push(lcMats.dark, lcMats.detail); // each holds its own cascade registration (2026-10-17)
     for (const sL of [-1, 1]) {
       const lc = FITTINGS.lightCluster({ nightKind: 'headlight', mats: lcMats, pods: 2, spacing: 0.15, rake: -0.30, seed: 3 });
       lc.position.set(sL * 1.66, 1.50, 2.62);   // base ON the fender shelf top (1.50)

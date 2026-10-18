@@ -9,6 +9,13 @@
 // (vehicleGroundOcclusion.ts) then took the untagged road wheels for ground under the hull: a dark band under the belly
 // line on every wheel. A vehicle material is cloned through materials.ts cloneVehicleMaterial; this receipt keeps the
 // raw clones to the reviewed list below. Source text only: comments are ignored, nothing is built.
+// Round 2 (2026-10-17): the profiles' own hand re-hooked clones went the same way (cloneRehookedVehicleMaterial,
+// cloneFloorlessVehicleMaterial: the Patton's camouflaged road wheels, the KF51's tyres, the T-90's dark wheels banded
+// under the belly line in the Garage and in battle), and so did the profiles' hooks that replaced a registered material's
+// hook outright (chainVehicleMaterialHook). The set-member clones are now none, a bare hand re-hook or an emptied hook is
+// banned outside materials.ts, and a profile assigns a compile hook only as a reviewed chain over the hook it replaces.
+// The built fleet itself is held to the registration by tools/vehicle-material-registration.mjs and
+// vehicleMaterialRegistration.selftest.mjs.
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -24,7 +31,7 @@ const SET_CLONE = /\bmats\.[A-Za-z_$]+\.clone\(\)/g;
 /** Where vehicle materials are swapped or cloned at run time: a material-named raw clone needs a reviewed reason. */
 const RUNTIME_DIRS = ['src/app', 'src/engine', 'src/fx', 'src/game', 'src/mp', 'src/ui', 'src/vehicles'];
 const RUNTIME_ALLOWED = new Map([
-  ['src/vehicles/materials.ts', [1, 'cloneVehicleMaterial itself: the clone joins its source\'s registration']],
+  ['src/vehicles/materials.ts', [2, 'cloneVehicleMaterial and cloneRehookedVehicleMaterial: the clone joins its source\'s registration']],
   ['src/vehicles/battleGeometrySharing.ts', [1, 'a BufferGeometry (source.clone of a geometry), no material']],
   ['src/engine/thermalVehicles.ts', [2, 'the thermal view\'s emissive, unlit stand-ins (raw on purpose; their ground-AO read is a separate check)']],
   ['src/engine/shadowDepthKinds.ts', [1, 'plain depth/distance materials without hooks']],
@@ -34,22 +41,23 @@ const RUNTIME_ALLOWED = new Map([
   ['src/ui/garageEnvironmentKit.ts', [1, 'a BufferGeometry (source.clone of a geometry), no material']],
 ]);
 /**
- * A set member's raw clone (P.mats.X.clone()). The profiles' sites predate cloneVehicleMaterial and sit in hash-pinned
- * sources: they re-hook the bare readability hook without the cascade (their pixels carry no vehicle tag; the
- * KF51's and the T-90M Proryv's wheel dishes among them) and wait for their own reviewed pass. The count may only fall.
+ * A set member's raw clone (P.mats.X.clone()): none on a tank. The profiles' 48 hand re-hooked clones moved to
+ * cloneRehookedVehicleMaterial / cloneFloorlessVehicleMaterial in round 2 (2026-10-17).
  */
 const SET_CLONE_BASELINE = new Map([
-  ['src/vehicles/profiles/abrams.ts', 3],
-  ['src/vehicles/profiles/challenger.ts', 3],
-  ['src/vehicles/profiles/leopard.ts', 21],
-  ['src/vehicles/profiles/merkava.ts', 1],
-  ['src/vehicles/profiles/patton.ts', 10],
-  ['src/vehicles/profiles/shtora.ts', 1],
-  ['src/vehicles/profiles/soviet-heavy.ts', 3],
-  ['src/vehicles/profiles/t90.ts', 2],
-  ['src/vehicles/profiles/uk.ts', 2],
-  ['src/vehicles/profiles/ukraine.ts', 1],
   ['src/world/props.ts', 1], // the map vehicles' own set (props.ts), not a tank's
+]);
+/** A hand re-hook (the bare readability hook assigned to a material) or an emptied hook: the registration's to give. */
+const BARE_HOOK = /\.onBeforeCompile\s*=\s*(?:vehicleAmbientFloorHook\b|\(\s*\)\s*=>\s*\{\s*\})/g;
+const BARE_HOOK_ALLOWED = new Map([
+  ['src/vehicles/materials.ts', [2, 'the unregistered fallbacks of cloneRehookedVehicleMaterial and rehookVehicleMaterial']],
+]);
+/** A profile's compile hook: each is a reviewed chain that calls the hook it replaces (chainVehicleMaterialHook's shape). */
+const PROFILE_HOOK = /\.onBeforeCompile\s*=/g;
+const PROFILE_HOOK_CHAINS = new Map([
+  ['src/vehicles/profiles/challenger.ts', 1], // the Challenger lift, over `prev`
+  ['src/vehicles/profiles/merkava.ts', 1], // roofLift, over `prev`
+  ['src/vehicles/profiles/uk.ts', 1], // inkLift, over `prev`
 ]);
 
 function* sourceFiles(dir) {
@@ -108,6 +116,30 @@ for (const [rel, found] of setHits) {
   assert.ok(found.length <= baseline, `${relative(ROOT, join(ROOT, rel))}: a new raw clone of a tank material set's member `
     + `(${found.length} > ${baseline}); clone it with cloneVehicleMaterial:\n  ${found.join('\n  ')}`);
 }
+
+// --- hand re-hooks and emptied hooks: the vehicle registration's alone
+for (const dir of RUNTIME_DIRS) {
+  for (const rel of sourceFiles(dir)) {
+    const found = hits(rel, BARE_HOOK);
+    if (!found.length) continue;
+    const allowed = BARE_HOOK_ALLOWED.get(rel);
+    assert.ok(allowed && found.length <= allowed[0], `a hand re-hook or an emptied compile hook drops the vehicle registration `
+      + `(the cascade, the sun state and the vehicle tag): use cloneRehookedVehicleMaterial, cloneFloorlessVehicleMaterial, `
+      + `rehookVehicleMaterial or setVehicleMaterialFloorless (materials.ts):\n  ${found.join('\n  ')}`);
+  }
+}
+// --- profiles: a compile hook is a reviewed chain over the one it replaces
+for (const rel of sourceFiles('src/vehicles/profiles')) {
+  const found = hits(rel, PROFILE_HOOK);
+  const allowed = PROFILE_HOOK_CHAINS.get(rel) ?? 0;
+  assert.ok(found.length <= allowed, `${rel}: ${found.length} compile hook assignment(s), ${allowed} reviewed chain(s); chain `
+    + `a profile's shader patch with chainVehicleMaterialHook (materials.ts), which keeps the registration under it:\n  ${found.join('\n  ')}`);
+}
+for (const [rel, allowed] of PROFILE_HOOK_CHAINS) {
+  const text = code(readFileSync(join(ROOT, rel), 'utf8'));
+  assert.ok(/\bprev\s*\(|\bprev\.call\s*\(/.test(text) && hits(rel, PROFILE_HOOK).length === allowed,
+    `${rel}: its reviewed hook chain calls the hook it replaces (prev); update PROFILE_HOOK_CHAINS when it moves`);
+}
 const setTotal = [...setHits.values()].reduce((n, f) => n + f.length, 0);
 console.log(`vehicleMaterialRawClone.selftest: ${runtime.size} run-time files with reviewed raw clones, `
-  + `${setTotal} legacy set-member clones (baseline ${[...SET_CLONE_BASELINE.values()].reduce((a, b) => a + b, 0)}) PASS`);
+  + `${setTotal} set-member clone(s) outside the tanks, no hand re-hooks, ${PROFILE_HOOK_CHAINS.size} reviewed profile hook chains PASS`);

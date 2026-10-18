@@ -2490,6 +2490,7 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
   shader.fragmentShader = shader.fragmentShader.replace(
     '#include <lights_fragment_end>',
     `#include <lights_fragment_end>
+	#ifndef COT_VEHICLE_FLOORLESS
 	#ifdef COT_WHEEL_PAINT_READABILITY
 	{
 		// Painted wheel bowls need their received-light differences: flooring
@@ -2629,6 +2630,7 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
 		reflectedLight.indirectDiffuse *= mix( ${VEHICLE_GROUND_DARK.toFixed(3)}, 1.0,
 			smoothstep( ${VEHICLE_GROUND_H0.toFixed(3)}, ${VEHICLE_GROUND_H1.toFixed(3)}, vehHeight ) );
 	}
+	#endif
 	#ifdef COT_GEAR_CAVITY
 	{
 		// fleet lane 2026-10-08: a wheel inset sits at the bottom of a lightening hole or hub well, whose walls take most
@@ -2689,6 +2691,11 @@ const VEHICLE_MATERIAL_SETUP = new WeakMap<THREE.Material, VehicleMaterialSetup>
 const VEHICLE_REGISTRATION = new WeakMap<THREE.Material, MaterialCompileHook>();
 /** The engine context's cascade release for each registered material (releaseVehicleMaterial). */
 const VEHICLE_MATERIAL_RELEASE = new WeakMap<THREE.Material, (material: THREE.Material) => boolean>();
+/** The engine context each registered material was set up through (cloneRehookedVehicleMaterial registers with it). */
+const VEHICLE_MATERIAL_CONTEXT = new WeakMap<THREE.Material, {
+  readonly engineCtx: ShadowEngineContext | null | undefined;
+  readonly cascaded: boolean;
+}>();
 /** The registered material a hook chain is compiling for, while runVehicleHookChain runs another material's chain. */
 let vehicleCompileTarget: THREE.Material | null = null;
 
@@ -2708,6 +2715,7 @@ function vehicleMaterialSetup(
   const release = cascaded && typeof engineCtx?.releaseShadowMaterial === 'function'
     ? (material: THREE.Material): boolean => engineCtx.releaseShadowMaterial?.(material) ?? false
     : null;
+  const context = { engineCtx, cascaded };
   const setup = <T extends THREE.Material>(material: T): T => {
     const hook = hookFor(material);
     if (cascaded && typeof engineCtx?.setupShadowMaterial === 'function') engineCtx.setupShadowMaterial(material, hook);
@@ -2722,6 +2730,7 @@ function vehicleMaterialSetup(
     };
     material.customProgramCacheKey = () => programKey;
     VEHICLE_MATERIAL_SETUP.set(material, setup); // cloneVehicleMaterial re-registers its clones the same way
+    VEHICLE_MATERIAL_CONTEXT.set(material, context);
     if (release) VEHICLE_MATERIAL_RELEASE.set(material, release);
     return material;
   };
@@ -2747,6 +2756,7 @@ export function releaseVehicleMaterial(material: THREE.Material): boolean {
   const release = VEHICLE_MATERIAL_RELEASE.get(material);
   VEHICLE_MATERIAL_RELEASE.delete(material);
   VEHICLE_REGISTRATION.delete(material);
+  VEHICLE_MATERIAL_CONTEXT.delete(material);
   return release ? release(material) : false;
 }
 
@@ -2766,12 +2776,39 @@ export function runVehicleHookChain(
   finally { vehicleCompileTarget = outer; }
 }
 
+/** Whether a material holds its own vehicle registration (vehicleMaterialSetup; the fleet registration audit reads it). */
+export function isVehicleMaterialRegistered(material: THREE.Material): boolean {
+  return VEHICLE_REGISTRATION.has(material);
+}
+
+/**
+ * Chain a profile's shader patch after a vehicle material's compile hook — its registration (the cascade, the readability
+ * hook and the vehicle tag) and every wrapper already on it — under the patch's own program key.
+ * 2026-10-17 (the wheel-band lane, round 2): profiles that assigned their patch as the whole hook (the Abrams' pad grime,
+ * the KF51's track ceiling, the Merkava's void pockets) dropped the cascade hook of a registered material: USE_CSM stayed
+ * defined and its uniforms never bound, so those tracks drew near-black in battle and, since the Garage's energy skin
+ * clones registered materials, on the Garage pedestal too.
+ */
+export function chainVehicleMaterialHook<T extends THREE.Material>(
+  material: T,
+  programKey: string,
+  patch: (shader: MaterialShader) => void,
+): T {
+  const compile = material.onBeforeCompile;
+  material.onBeforeCompile = function (this: THREE.Material, shader, renderer) {
+    compile.call(this, shader, renderer);
+    patch(shader);
+  };
+  material.customProgramCacheKey = () => programKey;
+  return material;
+}
+
 /**
  * The vehicle's own shader switches, which three's copy drops with the rest of the defines and a clone keeps (the wheel
  * paint's floor). The cascade's defines (USE_CSM, CSM_*, COT_CLOUD_SHADE) belong to the registration and come back
  * with it.
  */
-const VEHICLE_SHADER_SWITCHES = ['COT_WHEEL_PAINT_READABILITY', 'COT_GEAR_CAVITY'] as const;
+const VEHICLE_SHADER_SWITCHES = ['COT_WHEEL_PAINT_READABILITY', 'COT_GEAR_CAVITY', 'COT_VEHICLE_FLOORLESS'] as const;
 
 /** A dev build and the node receipts say so; the public build stays quiet. */
 const UNREGISTERED_CASCADE_CLONES = new WeakSet<THREE.Material>();
@@ -2806,6 +2843,66 @@ export function cloneVehicleMaterial<T extends THREE.Material>(source: T, config
   clone.onBeforeCompile = source.onBeforeCompile;
   clone.customProgramCacheKey = source.customProgramCacheKey;
   return clone;
+}
+
+/** The program key of a material compiled through the bare readability hook (the decorations', a profile's re-hook). */
+const VEHICLE_BARE_HOOK_KEY = 'veh-ambient-floor-v2';
+
+/**
+ * A profile's re-hooked clone, registered: a clone of a vehicle material that compiles the bare readability hook under
+ * the program key 'veh-ambient-floor-v2' — what the profiles re-attached by hand after Material.clone() — through its
+ * source's cascade registration. Like the hand re-hook it keeps none of the source's shader switches and takes the
+ * scene's whole sky light (no per-material trim), so a renderer stub (the Gallery, the boards) compiles exactly what
+ * it did; under the cascades the clone now lights with its own cascade, takes the cascade shadows and writes the sun
+ * state and the vehicle tag.
+ * 2026-10-17 (the wheel-band lane, round 2; the owner: "in garage, on all tanks, i can see this weird shadow on
+ * wheels"): the hand re-hook left the cascade registration behind, so the Patton's camouflaged wheel discs, the KF51's
+ * tyres and the other re-hooked running gear drew untagged, and the ground occlusion (vehicleGroundOcclusion.ts) took
+ * them for ground under the hull: the dark band under the belly line, in the Garage and in battle.
+ */
+export function cloneRehookedVehicleMaterial<T extends THREE.Material>(source: T, configure?: (clone: T) => void): T {
+  const clone = source.clone() as T;
+  configure?.(clone);
+  const context = VEHICLE_MATERIAL_CONTEXT.get(source);
+  if (context) return registerVehicleMaterial(context.engineCtx, clone, VEHICLE_BARE_HOOK_KEY, context.cascaded);
+  const sourceDefines = (source as { defines?: Record<string, unknown> }).defines;
+  if (sourceDefines && 'USE_CSM' in sourceDefines) reportUnregisteredCascadeClone(source);
+  clone.onBeforeCompile = vehicleAmbientFloorHook;
+  clone.customProgramCacheKey = () => VEHICLE_BARE_HOOK_KEY;
+  return clone;
+}
+
+/**
+ * A profile's re-hook of a material it found on its own build (a retone by colour): a registered vehicle material keeps
+ * its registration — assigning it the bare hook dropped its cascade hook (USE_CSM defined, the cascade uniforms never
+ * bound) — and anything else takes the bare readability hook, as the hand re-hook did.
+ */
+export function rehookVehicleMaterial<T extends THREE.Material>(material: T): T {
+  if (VEHICLE_REGISTRATION.has(material)) return material;
+  material.onBeforeCompile = vehicleAmbientFloorHook;
+  material.customProgramCacheKey = () => VEHICLE_BARE_HOOK_KEY;
+  return material;
+}
+
+/**
+ * Draw a vehicle material without the readability floors and the ground occlusion (COT_VEHICLE_FLOORLESS): the light it
+ * receives, as a hookless material draws it, under its registration — the cascade, the sun state and the vehicle tag
+ * stay. 2026-10-17 (the wheel-band lane, round 2): the profiles' void pockets, bores and deliberately floorless wheels
+ * were raw clones left without any hook (or a set material's hook emptied), so they drew untagged.
+ */
+export function setVehicleMaterialFloorless<T extends THREE.Material>(material: T): T {
+  const surface = material as T & { defines?: Record<string, unknown> };
+  surface.defines = { ...surface.defines, COT_VEHICLE_FLOORLESS: 1 };
+  material.needsUpdate = true;
+  return material;
+}
+
+/** A floorless re-hooked clone (cloneRehookedVehicleMaterial, setVehicleMaterialFloorless): what a profile's raw, hookless clone drew. */
+export function cloneFloorlessVehicleMaterial<T extends THREE.Material>(source: T, configure?: (clone: T) => void): T {
+  return cloneRehookedVehicleMaterial(source, (clone) => {
+    setVehicleMaterialFloorless(clone);
+    configure?.(clone);
+  });
 }
 
 /**
@@ -3146,7 +3243,11 @@ export function createTankMaterials(
   // soft red "spotlight" blobs (r4 wreck-closeup major). Triplanar in world
   // space gives every wreck the same soot/char frequency regardless of UV
   // layout or model unit scale; wrecks are static, so no texture swim.
-  burnt.onBeforeCompile = (shader) => {
+  // 2026-10-17 (the wheel-band lane, round 2): chained after the registration with the floors off, as the hook it replaced
+  // drew it — assigned as the whole hook it dropped the cascade hook (USE_CSM defined, the cascade uniforms never bound)
+  // and the vehicle tag of every fallback-burnt wreck panel.
+  setVehicleMaterialFloorless(burnt);
+  chainVehicleMaterialHook(burnt, 'burnt-triplanar-r6', (shader) => {
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vBwPos;\nvarying vec3 vBwNrm;')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
@@ -3184,8 +3285,7 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
   // while staying far below the sun-lit side's response.
   totalEmissiveRadiance += diffuseColor.rgb * 0.125; // r5: shadow-side floor up
 }`);
-  };
-  burnt.customProgramCacheKey = () => 'burnt-triplanar-r6';
+  });
 
   // Independent L/R UV transforms share the immutable image Source, so Three
   // can retain one GPU texture without coupling either side's scrolling.

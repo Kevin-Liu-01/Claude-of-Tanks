@@ -408,7 +408,8 @@ cascade registration — three resets a standard material's `defines` and never 
 no sun state or vehicle tag for the aerial pass. Clone through `cloneVehicleMaterial(source)` (materials.ts), which
 re-registers the clone exactly as its source and keeps its shader switches (`COT_WHEEL_PAINT_READABILITY`);
 `vehicleMaterialClone.selftest.mjs` pins the running-gear clones (shoes, isolated gear roles, band finishes). About
-forty profile-pack clones still re-hook by hand (`rehook`, `'veh-ambient-floor-v2'`) and predate it.
+forty profile-pack clones re-hooked by hand (`rehook`, `'veh-ambient-floor-v2'`) until round 2 of the wheel-band lane
+(below).
 2026-10-17 (the wheel-band lane; the owner: "in garage, on all tanks, i can see this weird shadow on wheels"): the
 Garage's dormant energy skin (`juggernautVisual.ts`, on every pedestal tank since 16f624704; the battle's Juggernaut,
 flag-carrier and Infected skins too) made raw clones, so every skinned pixel lost the vehicle tag, and since 045cdbed4
@@ -420,6 +421,22 @@ registration with `runVehicleHookChain(source, clone, …)` — the burn mask, t
 and is released with `releaseVehicleMaterial(clone)` before it is disposed. `vehicleMaterialRawClone.selftest.mjs`
 keeps raw clones to a reviewed list (the profiles' set-member clones may only fall);
 `tools/garage-wheel-band.browser.mjs` measures the band and the tag share in the Garage.
+Round 2 (2026-10-17): the tanks' own materials left the registration the same three ways, and banded in the Garage and
+in battle alike (the M46/M47 camouflaged road wheels, the KF51's tyres, the T-90's dark wheels; the Abrams', KF51's and
+Merkava's tracks drew near-black). Every opaque lit material a tank draws holds its own registration:
+- a profile's re-hooked clone is `cloneRehookedVehicleMaterial(P.mats.x)` — the bare hook and `'veh-ambient-floor-v2'`
+  the hand re-hook gave (no switches, the scene's whole sky light, so a renderer stub compiles exactly what it did),
+  through the source's cascade registration;
+- a deliberately floorless one (a void, a bore, a hookless wheel) is `cloneFloorlessVehicleMaterial` /
+  `setVehicleMaterialFloorless` (`COT_VEHICLE_FLOORLESS` holds the readability floors and the ground occlusion out, the
+  tag stays);
+- a profile's shader patch over a material is `chainVehicleMaterialHook(m, key, patch)`, never an assigned hook, and a
+  retone that re-hooks what it finds is `rehookVehicleMaterial` (a registered material keeps its registration);
+- push every clone into `P.disposables`: each holds a cascade entry until the tank releases it.
+`vehicleMaterialRegistration.selftest.mjs` builds the band's tanks through a recording cascade context and audits every
+drawn material (registered, its cascade entry bound under its own key, the vehicle tag written, released on dispose);
+`tools/vehicle-material-registration.mjs --ids=…|all` sweeps the fleet the same way and runs in `tank:release:check`;
+`vehicleMaterialRawClone.selftest.mjs` bans a set member's raw clone, a hand re-hook and an emptied hook.
 The field camouflages (`catalogCamoPainter.ts` paintField) and the digital patterns paint production's 2 m tile
 (fix/camo-defaults, 2026-10-09: the v2/v3 patch fields, 4 m wide tiles, digital clusters, per-triangle box projection,
 bore-wrapped gun UVs and camouflage panels are retired with the rest of PR #9's camouflage system).

@@ -976,6 +976,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/vehicleMaterialClone.selftest.mjs',
     // 2026-10-17 (the wheel-band lane): no new raw Material.clone() of a vehicle material (the Garage skin's road-wheel band)
     'src/vehicles/vehicleMaterialRawClone.selftest.mjs',
+    // 2026-10-17 (the wheel-band lane, round 2): every opaque lit material a tank draws holds its own vehicle registration
+    // (the band's tanks: the M46/M47 wheels, the KF51 tyres, the Abrams track grime, the Merkava voids ...)
+    'src/vehicles/vehicleMaterialRegistration.selftest.mjs',
     'src/vehicles/fleetRoundOneSurfaces.selftest.mjs',
     'src/engine/skyCloudBake.selftest.mjs',
     'src/engine/skyHorizonCache.selftest.mjs',
