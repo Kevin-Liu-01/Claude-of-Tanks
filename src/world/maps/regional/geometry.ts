@@ -116,6 +116,12 @@ export interface EmitOptions {
    */
   fine?: boolean | 'near';
   /**
+   * what the part is, for the receipts that read the drawn parts (the looks lane, 227): 'renderLoss', a render's spalled
+   * patch (house.ts spallRender, layeredLoss), which the r2 sweep's painted-opening grading excuses — a loss, not an
+   * opening. Its own geometry (userData.partTag); the drawing as before
+   */
+  tag?: 'renderLoss';
+  /**
    * a box seated on a wall (a timber, a shutter leaf): its outward face reads at any range, its sides and caps are
    * fine joinery (`fine`). Honoured by `box` for non-casting dressing; `member` sets it on every framing member.
    * 'near': those faces are near fine joinery (`fine` 'near'), on a box's `coarse` faces' complement as well
@@ -234,9 +240,9 @@ export class PartSink {
     try { return body(); } finally { this.pieceName = prior; }
   }
 
-  private acc(bucket: RegionalBucket, decor: boolean, shadow = false, fine: boolean | 'near' = false, ground = false): Accumulator {
+  private acc(bucket: RegionalBucket, decor: boolean, shadow = false, fine: boolean | 'near' = false, ground = false, tag?: EmitOptions['tag']): Accumulator {
     const key = `${bucket}|${decor ? (fine ? (fine === 'near' || this.nearDepth > 0 ? 'n' : 'f') : shadow ? 'c' : 'd') : 's'}${ground ? '|g' : ''}`
-      + (this.pieceName ? `|p=${this.pieceName}` : '');
+      + (this.pieceName ? `|p=${this.pieceName}` : '') + (tag ? `|t=${tag}` : '');
     let group = this.groups.get(key);
     if (!group) {
       group = { pos: [], nor: [], uv: [], col: COLOURED.has(bucket) ? [] : null, mask: bucket === 'curtain' ? [] : null,
@@ -266,7 +272,7 @@ export class PartSink {
     }
     normal.normalize();
     const n: Vec3 = [normal.x, normal.y, normal.z];
-    const g = this.acc(bucket, !!opts.decor, !!opts.shadow, opts.fine === 'near' ? 'near' : !!opts.fine, !!opts.ground);
+    const g = this.acc(bucket, !!opts.decor, !!opts.shadow, opts.fine === 'near' ? 'near' : !!opts.fine, !!opts.ground, opts.tag);
     const colour = g.col ? (opts.colour ?? this.paint ?? [0.6, 0.6, 0.6]) : null;
     const glow = g.mask && opts.window ? (n[0] * opts.window[0] + n[1] * opts.window[1] + n[2] * opts.window[2] > 0.999 ? 1 : 0) : 0;
     const density = opts.density ?? BUCKET_UV_DENSITY[bucket];
@@ -576,7 +582,7 @@ export class PartSink {
     for (const [key, g] of this.groups) {
       if (!g.pos.length) continue;
       const [bucket, role, ...rest] = key.split('|') as [RegionalBucket, 'd' | 'c' | 'f' | 'n' | 's', ...string[]];
-      const place = rest.includes('g') ? 'g' : undefined, piece = rest.find((r) => r.startsWith('p='))?.slice(2);
+      const place = rest.includes('g') ? 'g' : undefined, piece = rest.find((r) => r.startsWith('p='))?.slice(2), tag = rest.find((r) => r.startsWith('t='))?.slice(2);
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.Float32BufferAttribute(g.pos, 3));
       geometry.setAttribute('normal', new THREE.Float32BufferAttribute(g.nor, 3));
@@ -592,6 +598,7 @@ export class PartSink {
       if (role === 'n') geometry.userData.fineNear = true;
       if (place === 'g') geometry.userData.onGround = true;
       if (piece) geometry.userData.damagePiece = piece;
+      if (tag) geometry.userData.partTag = tag;
       geometry.userData.uvJitter = 'none';
       geometry.userData.regional = true;
       parts[bucket].push(geometry);

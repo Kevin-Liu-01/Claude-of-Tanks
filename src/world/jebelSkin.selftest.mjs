@@ -44,6 +44,32 @@ for (let j = 0; j < top.length; j++) {
 }
 assert.ok(worstStep <= 2.5, `neighbouring columns end together (worst step ${worstStep.toFixed(2)} m)`);
 assert.equal(slots, 0, 'the skin runs unbroken round the wall');
+// (MAPS 227, the critics' fins, second look) the skin closes over the height field's V-cuts (no slot more than 3 m deep
+// against the wall four rays either side, up its body), its foot comes down every ray's wall to the ground (each ray's
+// lowest point within a metre of it), and no vertex is thrown across a saddle (no triangle edge over 8 m)
+const { foot } = desk.wall, rays = top.length;
+const rayOf = (x, z) => ((Math.round(Math.atan2(z - skin.z, x - skin.x) / (Math.PI * 2) * rays) % rays) + rays) % rays;
+const outer = new Map(), lowest = new Map();
+for (let v = 0; v < count; v++) {
+  const x = p[v * 3], y = p[v * 3 + 1], z = p[v * 3 + 2], j = rayOf(x, z), r = Math.hypot(x - skin.x, z - skin.z);
+  if (y > foot[j] + 1 && y < top[j] - 1) { const k = j * 1000 + Math.floor(y); if (!(outer.get(k) >= r)) outer.set(k, r); }
+  const lo = lowest.get(j); if (!lo || y < lo[1]) lowest.set(j, [x, y, z]);
+}
+let deepest = 0;
+for (const [k, r] of outer) {
+  const j = Math.floor(k / 1000), y = k - j * 1000, a = outer.get(((j - 4 + rays) % rays) * 1000 + y), b = outer.get(((j + 4) % rays) * 1000 + y);
+  if (a !== undefined && b !== undefined) deepest = Math.max(deepest, (a + b) / 2 - r);
+}
+assert.ok(deepest <= 3, `the skin closes over the height field's cuts (deepest slot ${deepest.toFixed(2)} m)`);
+let hung = 0;
+for (const [, [x, y, z]] of lowest) if (y > field.getHeightAt(x, z) + 1) hung++;
+assert.equal(hung, 0, 'every ray of the skin comes down into the ground');
+let longest = 0;
+for (let t = 0; t < count / 3; t++) for (let e = 0; e < 3; e++) {
+  const a = t * 9 + e * 3, c = t * 9 + ((e + 1) % 3) * 3;
+  longest = Math.max(longest, Math.hypot(p[a] - p[c], p[a + 1] - p[c + 1], p[a + 2] - p[c + 2]));
+}
+assert.ok(longest <= 8, `no sliver thrown across a saddle (longest edge ${longest.toFixed(2)} m)`);
 assert.ok(desk.triangles <= 14000, `a desktop's skin within budget (${desk.triangles} triangles)`);
 assert.ok(phone.triangles < desk.triangles * 0.7, `a phone builds fewer (${phone.triangles})`);
-console.log(`jebelSkin.selftest: ${desk.triangles} triangles (phone ${phone.triangles}), ${desk.rays.walled}/${desk.rays.total} rays walled, ${(proud / count * 100).toFixed(1)} % proud, normals out; worst top step ${worstStep.toFixed(2)} m, no slot`);
+console.log(`jebelSkin.selftest: ${desk.triangles} triangles (phone ${phone.triangles}), ${desk.rays.walled}/${desk.rays.total} rays walled, ${(proud / count * 100).toFixed(1)} % proud, normals out; worst top step ${worstStep.toFixed(2)} m, no slot; deepest cut ${deepest.toFixed(2)} m, every foot in the ground, longest edge ${longest.toFixed(2)} m`);

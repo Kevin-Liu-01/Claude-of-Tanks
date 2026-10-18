@@ -4,8 +4,12 @@
 // fronts; flat-roofed village houses rendered in ochre or whitewash with Tunisian blue doors and window grilles, a stair
 // block to the roof terrace and a parapet; a whitewashed mosque with a squat square minaret; the borj, a tapering
 // watch tower; a domed hammam.
-import { PartSink, faceBox, facePoint, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
-import { buildHouse, holedBox, holedPolygon, recordShaft, windowRhythm, type HoleRect, type HouseDialect, type Opening } from './house.ts';
+import * as THREE from 'three';
+import { PartSink, bodyFaces, faceBox, facePoint, pick, rgb, shade, UV_MEMBER, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
+import { buildHouse, holedBox, holedPolygon, leanTo, recordShaft, roofGeometry, windowRhythm, withHousePlans, type HoleRect, type HouseDialect, type HouseFrame, type Opening } from './house.ts';
+import { paintBand } from './facade.ts';
+import { bench, pottedPlant } from './dressing.ts';
+import { roundBody, type BodyBox } from './roundedBody.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
@@ -224,22 +228,23 @@ const house: RegionalBuilder = (ctx) => {
  * Batter a body's parts in place (the looks lane, 2026-10-16): every point drawn in toward the body's vertical axis at
  * (cx, cz) in proportion to its height over the foot, `inset` metres at `top` and level with the top above it (a roof
  * room stands on the battered roof); a vertex's normal turned with the wall it lies on (the map's inverse transpose).
- * hx, hz the body's half sizes at its foot: both its faces lean in by the same distance.
+ * hx, hz the body's half sizes at its foot: both its faces lean in by the same distance. `y0` the foot (a room on a
+ * roof stands on its own foot).
  */
-function batterParts(parts: RegionalParts, cx: number, cz: number, hx: number, hz: number, top: number, inset: number): void {
-  const kx = inset / hx, kz = inset / hz;
+function batterParts(parts: RegionalParts, cx: number, cz: number, hx: number, hz: number, top: number, inset: number, y0 = 0): void {
+  const kx = inset / hx, kz = inset / hz, span = top - y0;
   for (const list of Object.values(parts)) for (const g of list) {
     // (the CPU gate, facade.selftest: the wall-foot apron moved off the ground it was draped on) what the house laid on
     // the ground (its apron and door paths: userData.onGround) stays where it lies
     if (g.userData?.onGround) continue;
     const pos = g.getAttribute('position'), nor = g.getAttribute('normal');
     for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), t = Math.max(0, Math.min(1, y / top)), on = y > 0 && y < top;
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), t = Math.max(0, Math.min(1, (y - y0) / span)), on = y > y0 && y < top;
       const sx = 1 - kx * t, sz = 1 - kz * t;
       pos.setXYZ(i, cx + (x - cx) * sx, y, cz + (z - cz) * sz);
       if (!nor) continue;
       // J = [[sx, dx/dy, 0], [0, 1, 0], [0, dz/dy, sz]]: the normal's m solves J^T m = n
-      const bx = on ? -(x - cx) * kx / top : 0, bz = on ? -(z - cz) * kz / top : 0;
+      const bx = on ? -(x - cx) * kx / span : 0, bz = on ? -(z - cz) * kz / span : 0;
       const n0 = nor.getX(i), n1 = nor.getY(i), n2 = nor.getZ(i);
       const m0 = n0 / sx, m2 = n2 / sz, m1 = n1 - bx * m0 - bz * m2, l = Math.hypot(m0, m1, m2) || 1;
       nor.setXYZ(i, m0 / l, m1 / l, m2 / l);
@@ -396,8 +401,18 @@ const hammam: RegionalBuilder = (ctx) => {
       chimneys: [], gutters: null, verge: null, reveal: 0.35, core: 'adobe',
     }, quiet);
     const back: Face = { origin: [0, 0, -fd / 2], u: [-1, 0, 0], out: [0, 0, -1], width: fw };
-    // the soot up the wall over the stoke hole, the fuel (palm wood and brush) stacked beside it
-    faceBox(sink, 'plaster', back, -fw * 0.18, 1.55, 0.004, 0.9, 1.1, 0.008, { decor: true, tint: [0.32, 0.3, 0.28] });
+    // the soot up the wall over the stoke hole (the looks lane, 227; the r2 sweep: a dark plate 0.9 x 1.1 m on the wall):
+    // a plume from the hole's head narrowing as it climbs, black over the head and fading into the lime as it rises, laid
+    // in bands a hand's breadth apart in tone; the fuel (palm wood and brush) stacked beside it
+    const su = -fw * 0.18, sy0 = 0.94, sy1 = 2.12, bands = 24, half = (t: number) => 0.44 - 0.3 * t;
+    for (let b = 0; b < bands; b++) {
+      // (the 227 blind pair: a hairline of lime showed between the bands) each band overlapping the next by 2 mm, the bands
+      // standing alternately 4 and 6.5 mm off the wall so none shares an edge with the next; the black held longer
+      const t0 = b / bands, t1 = (b + 1) / bands, ya = sy0 + (sy1 - sy0) * t0 - 0.001, yb = sy0 + (sy1 - sy0) * t1 + 0.001, o = b % 2 ? 0.0065 : 0.004;
+      const k = 0.26 + 0.64 * Math.pow((t0 + t1) / 2, 1.3);
+      sink.polygon('plaster', [facePoint(back, su - half(t0), ya, o), facePoint(back, su + half(t0), ya, o), facePoint(back, su + half(t1), yb, o),
+        facePoint(back, su - half(t1), yb, o)], { decor: true, tint: [k, k * 0.96, k * 0.92] });
+    }
     for (let k = 0; k < 5; k++) {
       sink.cylinder('structureWood', [fw * 0.12 + k * 0.05, 0.08 + (k % 3) * 0.14, -fd / 2 - 0.25], 'x', 1.0, 0.07, 6, { colour: shade(TIMBER, 0.7 + look() * 0.3), decor: true });
     }
@@ -558,19 +573,12 @@ type Side = 'front' | 'right' | 'back' | 'left';
  * radius shrinking with the inset), where the dressing stands.
  */
 function slumpedMass(sink: PartSink, bucket: RegionalBucket, x0: number, z0: number, x1: number, z1: number, yb: number, top: number,
-  rc: number, batter: number, ph: number, t = 0.32, holes?: Partial<Record<Side, readonly MassHole[]>>, salt?: (p: Vec3) => Rgb): (name: Side, y: number) => Face {
+  rc: number, batter: number, ph: number, t = 0.32): (name: Side, y: number) => Face {
   const base = roundedRing(x0, z0, x1, z1, rc, 0, yb), crown = roundedRing(x0, z0, x1, z1, rc, batter, top);
-  const holed = new Set<number>(), cut = (Object.keys(holes ?? {}) as Side[]).filter((n) => holes![n]!.length);
-  for (const name of cut) holed.add(SIDE_SEGMENT[name]);
-  ringBand(sink, bucket, base, crown, false, salt ? { tintAt: salt } : {}, holed);
+  ringBand(sink, bucket, base, crown, false, {}, new Set());
   sink.polygon(bucket, crown);
   sink.polygon(bucket, [...base].reverse());
-  const out1 = roundedRing(x0, z0, x1, z1, rc, batter + 0.06, top + ph), crest = roundedRing(x0, z0, x1, z1, rc, batter + 0.06 + t / 2, top + ph + 0.1);
-  const in1 = roundedRing(x0, z0, x1, z1, rc, batter + 0.06 + t, top + ph), in0 = roundedRing(x0, z0, x1, z1, rc, batter + 0.06 + t, top);
-  ringBand(sink, bucket, crown, out1);
-  ringBand(sink, bucket, out1, crest);
-  ringBand(sink, bucket, in1, crest, true);
-  ringBand(sink, bucket, in0, in1, true, { shade: 0.86 });
+  kershefParapet(sink, bucket, x0, z0, x1, z1, rc, batter, top, ph, t, 0, []);
   const sideAt = (name: Side, y: number): Face => {
     const i = batter * (y - yb) / (top - yb);
     const fx0 = x0 + rc, fx1 = x1 - rc, fz0 = z0 + rc, fz1 = z1 - rc;
@@ -579,13 +587,91 @@ function slumpedMass(sink: PartSink, bucket: RegionalBucket, x0: number, z0: num
     if (name === 'right') return { origin: [x1 - i, 0, (fz0 + fz1) / 2], u: [0, 0, -1], out: [1, 0, 0], width: fz1 - fz0 };
     return { origin: [x0 + i, 0, (fz0 + fz1) / 2], u: [0, 0, 1], out: [-1, 0, 0], width: fz1 - fz0 };
   };
-  for (const name of cut) holedSide(sink, bucket, sideAt, name, yb, top, holes![name]!, salt);
   return sideAt;
 }
 
-/** An opening cut through a slumped mass's straight side: `u` its middle along the run, `y0` its foot, w x h, its reveal
- *  `depth` into the mass (props census #26, the looks lane 2026-10-15). */
-interface MassHole { u: number; y0: number; w: number; h: number; depth: number }
+/**
+ * The parapet on a rounded crown ring (`inset` in from x0..x1 x z0..z1 at `top`, corners of radius rc): its outer face
+ * leaning in 6 cm to a bevelled crest `ph` over the roof, its inner face `t` in from the outer down to the roof. (Round 3,
+ * gauntlet wave 358b: "pale stacked boxes with crisp edges and almost no openings") the corners rise into Siwa's rounded
+ * horns, `horn` at each corner's middle and 0.45 of it along the straight runs; on the `vented` sides a row of small
+ * triangular vents is pierced through the parapet, as Siwa's builders pierced theirs: through holes, their reveals the
+ * parapet's thickness, the terrace and the sky seen through them (no dark plate laid on the mud).
+ */
+function kershefParapet(sink: PartSink, bucket: RegionalBucket, x0: number, z0: number, x1: number, z1: number, rc: number, inset: number, top: number,
+  ph: number, t: number, horn: number, vented: readonly Side[]): void {
+  const crown = roundedRing(x0, z0, x1, z1, rc, inset, top);
+  const out1 = horned(roundedRing(x0, z0, x1, z1, rc, inset + 0.06, top + ph), horn), crest = horned(roundedRing(x0, z0, x1, z1, rc, inset + 0.06 + t / 2, top + ph + 0.1), horn);
+  const in1 = horned(roundedRing(x0, z0, x1, z1, rc, inset + 0.06 + t, top + ph), horn), in0 = roundedRing(x0, z0, x1, z1, rc, inset + 0.06 + t, top);
+  const skip = new Set(vented.map((name) => SIDE_SEGMENT[name]));
+  ringBand(sink, bucket, crown, out1, false, {}, skip);
+  ringBand(sink, bucket, out1, crest);
+  ringBand(sink, bucket, in1, crest, true);
+  ringBand(sink, bucket, in0, in1, true, { shade: 0.86 }, skip);
+  for (const name of vented) {
+    const k = SIDE_SEGMENT[name], j = (k + 1) % crown.length;
+    const L = Math.hypot(crown[j][0] - crown[k][0], crown[j][2] - crown[k][2]), H = out1[k][1] - top;
+    const nv = Math.max(2, Math.floor((L - 0.4) / 0.85)), v0 = (ph * 0.35) / H, v1 = (ph * 0.35 + 0.22) / H;
+    if (L < 0.8 || v1 > 0.9) {
+      ringBand(sink, bucket, [crown[k], crown[j]], [out1[k], out1[j]], false, {}, new Set([1]));
+      ringBand(sink, bucket, [in0[k], in0[j]], [in1[k], in1[j]], true, { shade: 0.86 }, new Set([1]));
+      continue;
+    }
+    const vents = Array.from({ length: nv }, (_, i) => ({ s: (0.2 + (i + 0.5) * (L - 0.4) / nv) / L, hw: 0.1 / L, v0, v1 }));
+    const outer = bandPoint(crown[k], crown[j], out1[j], out1[k]), inner = bandPoint(in0[k], in0[j], in1[j], in1[k]);
+    ventedBand(sink, bucket, outer, vents, false, {});
+    ventedBand(sink, bucket, inner, vents, true, { shade: 0.86 });
+    // each vent's reveal through the parapet: its sill facing up, its two raking sides facing into the hole
+    for (const v of vents) {
+      const eL: [number, number] = [v.s - v.hw, v.v0], eR: [number, number] = [v.s + v.hw, v.v0], eA: [number, number] = [v.s, v.v1];
+      const mid = outer(v.s, (2 * v.v0 + v.v1) / 3);
+      for (const [a, b] of [[eL, eR], [eL, eA], [eA, eR]] as const) {
+        const m = outer((a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+        const n: Vec3 = a === eL && b === eR ? [0, 1, 0] : [mid[0] - m[0], mid[1] - m[1], mid[2] - m[2]];
+        facing(sink, bucket, [outer(a[0], a[1]), outer(b[0], b[1]), inner(b[0], b[1]), inner(a[0], a[1])], n, { shade: a === eL && b === eR ? 0.86 : 0.7 });
+      }
+    }
+  }
+}
+
+/** The corners' horns (kershefParapet): each arc's points lifted toward its middle (RING_ARC points to an arc). */
+const HORN_SHAPE: readonly number[] = [0, 0.5, 1, 0.5, 0];
+function horned(ring: Array<[number, number, number]>, horn: number): Array<[number, number, number]> {
+  return horn > 0 ? ring.map(([x, y, z], i): [number, number, number] => [x, y + horn * (0.45 + 0.55 * HORN_SHAPE[i % RING_ARC]), z]) : ring;
+}
+
+/** A planar band quad (a, b along its foot, c, d over them) as a map of (s along it, v up it) in 0..1. */
+function bandPoint(a: readonly number[], b: readonly number[], c: readonly number[], d: readonly number[]): (s: number, v: number) => Vec3 {
+  return (s, v) => {
+    const lo = [a[0] + (b[0] - a[0]) * s, a[1] + (b[1] - a[1]) * s, a[2] + (b[2] - a[2]) * s];
+    const hi = [d[0] + (c[0] - d[0]) * s, d[1] + (c[1] - d[1]) * s, d[2] + (c[2] - d[2]) * s];
+    return [lo[0] + (hi[0] - lo[0]) * v, lo[1] + (hi[1] - lo[1]) * v, lo[2] + (hi[2] - lo[2]) * v];
+  };
+}
+
+/**
+ * A band (bandPoint) with triangular vents through it, each from its sill at v0 (s ± hw) to its apex at v1: the band in
+ * columns at the vents' corners, each column's parts round its vent convex. Wound to face out of the ring (or in).
+ */
+function ventedBand(sink: PartSink, bucket: RegionalBucket, at: (s: number, v: number) => Vec3, vents: ReadonlyArray<{ s: number; hw: number; v0: number; v1: number }>,
+  inward: boolean, opts: { shade?: number }): void {
+  const cuts = [...new Set([0, 1, ...vents.flatMap((v) => [v.s - v.hw, v.s, v.s + v.hw])])].sort((p, q) => p - q);
+  const emit = (pts: ReadonlyArray<readonly [number, number]>): void => {
+    const q = pts.map(([s, v]) => at(s, v));
+    sink.polygon(bucket, inward ? q.reverse() : q, opts);
+  };
+  for (let i = 0; i + 1 < cuts.length; i++) {
+    const sa = cuts[i], sb = cuts[i + 1];
+    if (sb - sa < 1e-6) continue;
+    const left = vents.find((v) => Math.abs(v.s - v.hw - sa) < 1e-9 && Math.abs(v.s - sb) < 1e-9);
+    const right = vents.find((v) => Math.abs(v.s - sa) < 1e-9 && Math.abs(v.s + v.hw - sb) < 1e-9);
+    const v = left ?? right;
+    if (!v) { emit([[sa, 0], [sb, 0], [sb, 1], [sa, 1]]); continue; }
+    emit([[sa, 0], [sb, 0], [sb, v.v0], [sa, v.v0]]);
+    emit(left ? [[sa, v.v0], [sb, v.v1], [sb, 1], [sa, 1]] : [[sa, v.v1], [sb, v.v0], [sb, 1], [sa, 1]]);
+  }
+}
+
 /** Each straight side's segment in roundedRing's ring: a corner's RING_ARC points, then the side to the next corner. */
 const RING_ARC = 5;
 const SIDE_SEGMENT: Readonly<Record<Side, number>> = Object.freeze({ left: RING_ARC - 1, front: 2 * RING_ARC - 1, right: 3 * RING_ARC - 1, back: 4 * RING_ARC - 1 });
@@ -599,137 +685,326 @@ function facing(sink: PartSink, bucket: RegionalBucket, q: readonly Vec3[], n: V
   sink.quad(bucket, o[0], o[1], o[2], o[3], opts);
 }
 
+/** A block's four sides in the house grammar's order. */
+const SIDES: readonly Side[] = ['front', 'right', 'back', 'left'];
+/** The share of a kershef house's windows behind palm-plank shutters (E10), and the dress over which a palm lintel heads one (E11). */
+const SHUTTERED = 0.5, LINTELLED = 0.68;
+
 /**
- * A straight side of a slumped mass with its openings cut through it: the battered wall in columns at the openings'
- * sides (each column's free heights a quad on the side's leaning plane), each opening's reveal running `depth` back into
- * the mass level — the sill up, the jambs and the head facing into it — and the dark of the room at its back.
+ * A kershef window (props census #26 cut it through the mass; WORKPLAN-227 §5 builds it as Verdant's are, through
+ * windowUnit): a small opening deep in the wall, its palm-wood frame and a palm-rib mullion at the back of the reveal,
+ * the mud worked out round it into a lip, a palm board for its sill through the reveal; on some palm-plank shutters, on
+ * others a palm-wood lintel over it.
  */
-function holedSide(sink: PartSink, bucket: RegionalBucket, sideAt: (name: Side, y: number) => Face, name: Side, yb: number, top: number,
-  holes: readonly MassHole[], salt?: (p: Vec3) => Rgb): void {
-  const P = (u: number, y: number, o = 0): Vec3 => facePoint(sideAt(name, y), u, y, o);
-  const W = sideAt(name, yb).width, out = sideAt(name, yb).out, uAx = sideAt(name, yb).u;
-  const us = [...new Set([-W / 2, W / 2, ...holes.flatMap((h) => [h.u - h.w / 2, h.u + h.w / 2])])].filter((u) => u >= -W / 2 - 1e-6 && u <= W / 2 + 1e-6).sort((a, b) => a - b);
-  for (let i = 0; i + 1 < us.length; i++) {
-    const ua = us[i], ub = us[i + 1];
-    if (ub - ua < 1e-4) continue;
-    const um = (ua + ub) / 2;
-    let free: Array<[number, number]> = [[yb, top]];
-    for (const h of holes) {
-      if (um <= h.u - h.w / 2 || um >= h.u + h.w / 2) continue;
-      free = free.flatMap(([a, b]): Array<[number, number]> => (h.y0 + h.h <= a || h.y0 >= b ? [[a, b]] : [...(h.y0 > a ? [[a, h.y0] as [number, number]] : []), ...(h.y0 + h.h < b ? [[h.y0 + h.h, b] as [number, number]] : [])]));
+function kershefWindow(wall: RegionalBucket, dress: number, tone: Rgb): WindowStyle {
+  return {
+    frame: shade(tone, 0.85), frameWidth: 0.05, frameOut: 0.04, bars: 'two',
+    // (a window under a palm lintel has no lip: the lintel bears on the mud either side of it)
+    surround: dress > LINTELLED ? null : { bucket: wall, width: 0.09, out: 0.04 },
+    sill: { bucket: 'structureWood', out: 0.06, colour: shade(PALM, 0.75) },
+    // (closed, most of them, against the sun: the leaves inside the deep reveal)
+    shutters: dress < SHUTTERED ? { colour: tone, kind: 'plank', closed: 0.65 } : null,
+    head: dress > LINTELLED ? { kind: 'lintel', bucket: 'structureWood', h: 0.12, out: 0.1, ext: 0.12, colour: shade(PALM, 0.8) } : null,
+  };
+}
+
+/** A block's side along its straight run (the wall between its rounded corners, at its foot), `out` past the wall. */
+function runFace(x0: number, z0: number, x1: number, z1: number, rc: number, name: Side, out = 0): Face {
+  const fx0 = x0 + rc, fx1 = x1 - rc, fz0 = z0 + rc, fz1 = z1 - rc;
+  if (name === 'front') return { origin: [(fx0 + fx1) / 2, 0, z1 + out], u: [1, 0, 0], out: [0, 0, 1], width: fx1 - fx0 };
+  if (name === 'back') return { origin: [(fx0 + fx1) / 2, 0, z0 - out], u: [-1, 0, 0], out: [0, 0, -1], width: fx1 - fx0 };
+  if (name === 'right') return { origin: [x1 + out, 0, (fz0 + fz1) / 2], u: [0, 0, -1], out: [1, 0, 0], width: fz1 - fz0 };
+  return { origin: [x0 - out, 0, (fz0 + fz1) / 2], u: [0, 0, 1], out: [-1, 0, 0], width: fz1 - fz0 };
+}
+
+/** (WORKLIST #26 "salt bands") the salt the ground draws up the kershef: a pale crust at the wall's foot fading up it. */
+function saltCrust(list: readonly THREE.BufferGeometry[], foot: number): void {
+  for (const g of list) {
+    const pos = g.getAttribute('position');
+    if (!pos) continue;
+    let tint = g.getAttribute('tint') as THREE.BufferAttribute | undefined;
+    if (!tint) { tint = new THREE.BufferAttribute(new Float32Array(pos.count * 3).fill(1), 3); g.setAttribute('tint', tint); }
+    for (let i = 0; i < pos.count; i++) {
+      const t = 1.1 - 0.1 * Math.max(0, Math.min(1, (pos.getY(i) - foot) / 1.1));
+      tint.setXYZ(i, tint.getX(i) * t, tint.getY(i) * t, tint.getZ(i) * t * 0.99);
     }
-    for (const [a, b] of free) if (b - a > 1e-4) sink.quad(bucket, P(ua, a), P(ub, a), P(ub, b), P(ua, b), salt ? { tintAt: salt } : {});
-  }
-  for (const h of holes) {
-    const u0 = h.u - h.w / 2, u1 = h.u + h.w / 2, y0 = h.y0, y1 = h.y0 + h.h, d = -h.depth;
-    const A = P(u0, y0), B = P(u1, y0), C = P(u1, y1), D = P(u0, y1);
-    const back = (q: Vec3): Vec3 => [q[0] + out[0] * d, q[1], q[2] + out[2] * d];
-    facing(sink, bucket, [A, B, back(B), back(A)], [0, 1, 0], { shade: 0.86 });
-    facing(sink, bucket, [D, C, back(C), back(D)], [0, -1, 0], { shade: 0.6 });
-    facing(sink, bucket, [A, D, back(D), back(A)], uAx, { shade: 0.7 });
-    facing(sink, bucket, [B, C, back(C), back(B)], [-uAx[0], -uAx[1], -uAx[2]], { shade: 0.7 });
-    facing(sink, 'dark', [back(A), back(B), back(C), back(D)], out, { decor: true });
   }
 }
 
+/** Add parts built in other sinks to a builder's own. */
+function withParts(parts: RegionalParts, more: readonly RegionalParts[]): RegionalParts {
+  for (const m of more) for (const name of Object.keys(m) as Array<keyof RegionalParts>) parts[name].push(...m[name]);
+  return parts;
+}
+
+/**
+ * A kershef block from y0, h high, over x0..x1 x z0..z1, as Shali's houses stand, built the way Verdant's houses are
+ * (WORKPLAN-227 §5, the looks lane 2026-10-17). The house grammar lays its body (house.ts buildHouse): on the ground a
+ * footing course of the rock the town stands on, the storeys' walls cut by their openings in reveals the kershef's
+ * thickness deep, the palm-framed windows and the plank door in them with the stone steps up to its sill, the facade
+ * craft's sill runs, spall and foot grime, and its plan for the damage reading. Its corners are then worn round
+ * (roundedBody.ts; Oasis round 3, wave 135: "sharp-cornered boxes ... nothing like Shali's slumped, rounded grey-beige
+ * salt-mud masses": a fifth of the block across), its parapet laid on the rounded crown with its horns and vents
+ * (kershefParapet), and the whole battered in as it rises (batterParts). The region's craft over the grammar's: the palm
+ * beams' ends under the parapet, the salt-rock lumps standing proud of the render, palm-wood rain spouts through the
+ * parapet, a palm-trunk hood over the door and its doorway limewashed, a bench and a jar beside it, the clods fallen at
+ * the wall's foot and on some terraces a jerid shade. A block in a cluster dresses its outer `faces` only. Its parts are
+ * built in sinks of its own and returned for the builder to add (withParts); its dressing on the lane goes to `sink`.
+ */
 function kershefBlock(sink: PartSink, x0: number, z0: number, x1: number, z1: number, y0: number, h: number, bucket: RegionalBucket,
-  rng: () => number, look: () => number, opts: { door?: boolean; faces?: ReadonlyArray<Side> } = {}): void {
-  const yb = y0 > 0 ? y0 : -0.3, top = y0 + h;
-  // (Oasis round 3, wave 135: "sharp-cornered boxes ... nothing like Shali's slumped, rounded grey-beige salt-mud
-  // masses") the walls battered half again as much and the corners rounded to a fifth of the block (was 0.055 of the
-  // height and 0.14 of the block, at most 0.9 m)
-  const batter = Math.min(0.45, 0.08 * (top - yb)) * (0.8 + look() * 0.4);
+  rng: () => number, look: () => number, opts: { door?: boolean; faces?: ReadonlyArray<Side>; shade?: boolean; packed?: boolean; onto?: KershefPlan | null } = {}):
+  { parts: RegionalParts; plan: KershefPlan | null } {
+  const ground = y0 === 0, top = y0 + h;
+  const batter = Math.min(0.45, 0.08 * (top - (ground ? -0.3 : y0))) * (0.8 + look() * 0.4);
   const rc = Math.max(batter + 0.3, Math.min(1.7, Math.min(x1 - x0, z1 - z0) * 0.21));
-  const ph = 0.45 + look() * 0.2;
-  // (the looks lane, 2026-10-15; WORKLIST #26 "Siwa kershef compounds with cut windows"; the r2 probe read every window
-  // as a dark plate on a mud frame) the openings first, then the mass with them cut through its sides: each small window
-  // a hole through the kershef 34 cm deep, its palm-wood frame at the back of the reveal, some behind a palm shutter,
-  // some under a palm-log lintel; the door cut into the front with its plank leaf at the back of its reveal
-  const runs: Record<Side, number> = { front: x1 - x0 - 2 * rc, back: x1 - x0 - 2 * rc, right: z1 - z0 - 2 * rc, left: z1 - z0 - 2 * rc };
-  const faces = opts.faces ?? ['front', 'right', 'back', 'left'] as const;
-  const holes: Partial<Record<Side, MassHole[]>> = {};
-  const units: Array<{ name: Side; hole: MassHole; dress: number; tone: Rgb }> = [];
-  const DEPTH = 0.34;
+  const ph = 0.45 + look() * 0.2, horn = 0.34 + look() * 0.26;
+  const W = x1 - x0, D = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  const run = (name: Side): number => (name === 'front' || name === 'back' ? W : D) - 2 * rc;
+  const faces = opts.faces ?? SIDES;
+  // the footing course (E1, and its water table E2): the town's rock a hand over the lane under the ground storeys
+  const foot = ground ? 0.24 + look() * 0.1 : 0;
+  // its floors 2.9 m or so apart, the windows in a row to each; the walls one lift of mud from the footing to the roof
+  // (the grammar's storey: the kershef was raised in courses, not floor by floor)
+  const storeys = Math.max(1, Math.round((h - foot) / 2.9)), sh = (h - foot) / storeys;
+  const door = opts.door && ground ? { u: (rng() - 0.5) * Math.max(0, run('front') - 2.4) * 0.6, w: 0.95, h: 1.95 } : null;
+  const openings: Opening[] = door ? [{ face: 'front', storey: 0, kind: 'door', u: door.u, w: door.w, y0: 0, h: door.h }] : [];
+  const dressing = new Map<Opening, { dress: number; tone: Rgb }>();
   for (const name of faces) {
-    const width = runs[name], list: MassHole[] = (holes[name] = []);
-    const storeys = Math.max(1, Math.round(h / 3.0));
+    // (round 3, gauntlet wave 358b: "almost no openings") small square windows in rows storey by storey along the
+    // straight runs, fewer on the ground storey and clear of the doorway
+    const width = run(name);
     for (let st = 0; st < storeys; st++) {
-      const wy = y0 + st * 3.0 + 1.5;
-      if (wy + 0.6 > top - 0.4) continue;
-      const m = width > 4.5 ? 2 : 1;
+      const low = st === 0 && ground, sill = low ? 1.3 - foot : 1.15;
+      if (sill + 0.62 > sh - 0.35) continue;
+      // (a block packed in old Shali's heap, its windows sparser: the heap's many faces carry the town's openings)
+      const m = Math.max(1, Math.floor((width - 0.6) / (low ? (opts.packed ? 2.1 : 1.5) : (opts.packed ? 1.8 : 1.2))));
       for (let k = 0; k < m; k++) {
-        if (rng() < 0.3) continue;
-        const u = m === 1 ? (rng() - 0.5) * width * 0.4 : (k === 0 ? -1 : 1) * width * (0.16 + rng() * 0.14);
-        const w = 0.32 + look() * 0.16, hh = 0.42 + look() * 0.2;
-        if (Math.abs(u) + w / 2 > width / 2 - 0.15) continue;
-        const hole = { u, y0: wy, w, h: hh, depth: DEPTH };
-        list.push(hole);
-        units.push({ name, hole, dress: look(), tone: look() < 0.5 ? PALM : PALM_GREY });
+        if (rng() < (low ? (opts.packed ? 0.45 : 0.38) : (opts.packed ? 0.3 : 0.16))) continue;
+        const u = -width / 2 + 0.3 + (k + 0.5) * (width - 0.6) / m + (rng() - 0.5) * 0.2;
+        const w = 0.42 + look() * 0.14, hh = 0.48 + look() * 0.14, dress = look(), tone = look() < 0.5 ? PALM : PALM_GREY;
+        // its reach along the wall: room for its shutters folded back beside it, whether it has them or not (no window
+        // dropped for its dress); the corners' arcs stay clear
+        const reach = w + 0.06;
+        if (Math.abs(u) + reach > width / 2) continue;
+        if (name === 'front' && door && low && Math.abs(u - door.u) < door.w / 2 + 0.45 + reach) continue;
+        const o: Opening = { face: name, storey: 0, kind: 'window', u, w, y0: st * sh + sill, h: hh };
+        openings.push(o);
+        dressing.set(o, { dress, tone });
       }
     }
   }
-  let door: MassHole | null = null;
-  if (opts.door && y0 === 0) {
-    const du = (rng() - 0.5) * Math.max(0, runs.front - 2.4) * 0.6;
-    door = { u: du, y0: 0, w: 0.95, h: 1.95, depth: DEPTH + 0.06 };
-    const list = (holes.front ??= []);
-    // (a window over the door's place gives way to it)
-    for (let i = list.length - 1; i >= 0; i--) if (Math.abs(list[i].u - du) < (list[i].w + 0.95) / 2 + 0.15 && list[i].y0 < 2.3) {
-      const gone = list.splice(i, 1)[0];
-      const j = units.findIndex((x) => x.hole === gone);
-      if (j >= 0) units.splice(j, 1);
+  const vents = faces.filter(() => look() < 0.5);
+  const dialect: HouseDialect = {
+    window: (s, face, o, fy) => {
+      const d = dressing.get(o) ?? { dress: 0.5, tone: PALM };
+      windowUnit(s, face, o.u, fy + o.y0, o.w, o.h, kershefWindow(bucket, d.dress, d.tone), rng, 0.3);
+    },
+    door: (s, face, o, fy) => {
+      doorUnit(s, face, o.u, fy + o.y0, o.w, o.h, { leaf: PALM, frame: { bucket: 'structureWood', width: 0.1, out: 0.04, colour: shade(PALM, 0.8) },
+        steps: { bucket: 'stone' }, leafKind: 'plank' }, fy + o.y0);
+      // the palm-trunk lintel over it, its ends bedded in the wall
+      palmLog(s, face, o.u - o.w / 2 - 0.25, o.u + o.w / 2 + 0.25, fy + o.y0 + o.h + 0.09, 0.08, shade(PALM, 0.75));
+    },
+  };
+  const hs = new PartSink(sink.uvOffset);
+  let plan: HouseFrame | null = null;
+  hs.placed(0, cx, y0, cz, () => {
+    // (E15: its rain goods, the palm spouts this builder lays through the parapet with its own roof)
+    // (a room on a roof is described as the upper storeys of the house under it, its own plan folded into that one's:
+    // stackPlan)
+    const house = (): HouseFrame => buildHouse(hs, {
+      // (the footing is rubble with no dressed course over it: the mud band at the wall's foot is its band)
+      w: W, d: D, plinth: ground ? { h: foot, out: 0.07, bucket: 'stone', course: false } : null,
+      storeys: [{ h: h - foot, wall: bucket }],
+      roof: { kind: 'flat', pitchDeg: 0, eave: 0, verge: 0, thickness: 0.3, bucket, parapet: ph }, ownRoof: true,
+      gableBucket: bucket, openings, chimneys: [], gutters: { colour: PALM }, verge: null, reveal: 0.34, core: 'adobe',
+      // (no stone apron round a Siwan house: the lane's sand runs to its footing)
+      skirt: null,
+    }, dialect);
+    const frame = plan = opts.onto ? withHousePlans(house)[0] : house();
+    if (!door) return;
+    const f = frame.faces.front, fy = frame.floors[0], e = door.w / 2 + 0.1, band = 0.42 + look() * 0.18;
+    // the doorway limewashed round its frame on most houses (E16), its head over the lintel
+    const limed = look() < 0.65;
+    if (limed) {
+      const head = fy + door.h + 0.1;
+      paintBand(hs, 'plaster3', f, door.u - e - 0.32, door.u + e + 0.32, fy, head, [1, 1, 1], [[door.u - e, door.u + e]]);
+      paintBand(hs, 'plaster3', f, door.u - e - 0.32, door.u + e + 0.32, head, head + 0.38, [1, 1, 1]);
     }
-    list.push(door);
-  }
-  // (WORKLIST #26 "salt bands") the salt the ground draws up the kershef: a pale crust at the wall's foot fading up it
-  const salt = (p: Vec3): Rgb => { const k = Math.max(0, Math.min(1, (p[1] - Math.max(0, yb)) / 1.1)); const t = 1.1 - 0.1 * k; return [t, t, t * 0.99]; };
-  const sideAt = slumpedMass(sink, bucket, x0, z0, x1, z1, yb, top, rc, batter, ph, 0.32, holes, y0 === 0 ? salt : undefined);
-  // the kershef's lumps: the salt-rock in the mud standing proud of the render here and there (a few to a side)
-  for (const name of faces) {
-    const n = 2 + Math.floor(look() * 3);
+    // (E2) a house's wall foot rendered in a darker mud over its footing, a band round the body (bent round its corners
+    // with the walls), broken at the doorway and its limewash (the blind pair: a band run across the door read as a block
+    // in its foot)
+    for (const name of SIDES) {
+      const g = frame.faces[name], gap: Array<[number, number]> = name === 'front' ? [limed ? [door.u - e - 0.32, door.u + e + 0.32] : [door.u - e, door.u + e]] : [];
+      paintBand(hs, bucket, g, -g.width / 2, g.width / 2, fy, fy + band, [0.8, 0.72, 0.63], gap);
+    }
+    // the hood over the door (E13): palm trunks cantilevered out of the wall over its lintel, a mud slab laid on them, a
+    // lean-to roof on the wall with no posts
+    const y = fy + door.h + 0.3, out = 0.6, n = 6;
     for (let k = 0; k < n; k++) {
-      const yy = y0 + 0.3 + look() * (h - 0.9), f = sideAt(name, yy), u = (look() - 0.5) * (f.width - 0.6), sz = 0.12 + look() * 0.12;
-      if ((holes[name] ?? []).some((q) => Math.abs(q.u - u) < q.w / 2 + sz && yy > q.y0 - sz && yy < q.y0 + q.h + sz)) continue;
-      faceBox(sink, bucket, f, u, yy, 0.02, sz * 1.4, sz, 0.05, { decor: true, shade: 0.9 + look() * 0.15 });
+      const u = door.u - 0.72 + 1.44 * (k + 0.5) / n;
+      trunkEnd(hs, f, u, y, 0.06, out + 0.06, out, shade(PALM, 0.85 + look() * 0.25), look());
     }
-  }
+    leanTo(hs, { face: f, u0: door.u - 0.8, u1: door.u + 0.8, depth: out, highY: y + 0.055, posts: null,
+      roof: { pitchDeg: 5, eave: 0.03, verge: 0.03, thickness: 0.1, bucket, decor: true } });
+  });
+  const body = hs.finish(), box: BodyBox = { x0, z0, x1, z1 };
+  // (the floors between its storeys, its underside and its footing's buried base stay whole: hidden in the body)
+  roundBody(body, box, rc, { uncut: (y, ny) => (y > y0 + foot + 1e-3 && y < top - 1e-3) || y < y0 - 0.05 || (ny < -0.5 && Math.abs(y - y0 - foot) < 1e-3) });
+  if (ground) saltCrust(body[bucket], foot);
+  // the crown and the region's craft on the rounded body, battered with it
+  const ps = new PartSink(sink.uvOffset);
+  kershefParapet(ps, bucket, x0, z0, x1, z1, rc, 0, top, ph, 0.32, horn, vents);
+  const at = (name: Side, out = 0): Face => runFace(x0, z0, x1, z1, rc, name, out);
+  const clear = (name: Side, u: number, y: number, r: number): boolean => !openings.some((o) => {
+    const oy = y0 + foot + o.y0;
+    return o.face === name && Math.abs(o.u - u) < o.w / 2 + r + (o.kind === 'door' ? 0.5 : 0.28) && y > oy - r - 0.15 && y < oy + o.h + r + 0.2;
+  });
   for (const name of faces) {
-    // the palm-beam ends through the wall under the parapet: thin, a few to a side, not every one
-    const fb = sideAt(name, top - 0.25), n = Math.max(1, Math.floor(fb.width / 1.2));
+    // (round 3, wave 358b) the palm beams' ends in a row under the parapet, a few missing; (wave 135: "neat rectangular
+    // planks rather than round palm trunks") each a trunk's round end standing out of the wall
+    const fb = at(name), n = Math.max(2, Math.floor(fb.width / (opts.packed ? 0.95 : 0.75)));
     for (let k = 0; k < n; k++) {
-      if (look() < 0.35) continue;
-      const u = -fb.width / 2 + (k + 0.5) * fb.width / n + (look() - 0.5) * 0.3;
-      // (Oasis round 3, wave 135: "its beam ends are neat rectangular planks rather than round palm trunks") a palm
-      // trunk's round end standing out of the wall
-      const end = 0.07 + look() * 0.03, outward = fb.out[0] + fb.out[2] > 0, p = facePoint(fb, u, top - 0.25, outward ? -0.05 : 0.25);
-      sink.cylinder('structureWood', p, fb.out[0] !== 0 ? 'x' : 'z', 0.3, end, 7, { colour: shade(PALM, 0.8 + look() * 0.3), decor: true }, end * 0.9, true);
+      if (look() < 0.18) continue;
+      const u = -fb.width / 2 + (k + 0.5) * fb.width / n + (look() - 0.5) * 0.12, end = 0.07 + look() * 0.03;
+      // (the blind pair: five-sided dark ends read as rocks) seven sides on a house, the sun-greyed palm among them
+      trunkEnd(ps, fb, u, top - 0.25, end, 0.3, 0.25, shade(look() < 0.5 ? PALM : PALM_GREY, 0.85 + look() * 0.3), 0, opts.packed ? 5 : 7);
+    }
+    // the kershef's lumps: the salt-rock in the mud standing proud of the render here and there
+    for (let k = 0, m = (opts.packed ? 0 : 2) + Math.floor(look() * (opts.packed ? 2.5 : 3)); k < m; k++) {
+      const yy = y0 + foot + 0.3 + look() * (h - foot - 0.9), u = (look() - 0.5) * (fb.width - 0.6), sz = 0.12 + look() * 0.12;
+      if (clear(name, u, yy, sz)) faceBox(ps, bucket, fb, u, yy, 0.02, sz * 1.4, sz, 0.05, { decor: true, shade: 0.9 + look() * 0.15 });
     }
   }
-  for (const { name, hole, dress, tone } of units) {
-    const f = sideAt(name, hole.y0 + hole.h / 2), cy = hole.y0 + hole.h / 2, back = -hole.depth + 0.03;
-    const pc = { colour: shade(tone, 0.85), decor: true, uv: UV_MEMBER } as const;
-    // the palm-wood frame at the back of the reveal: its two posts and the head and sill pieces
-    for (const sx of [-1, 1]) faceBox(sink, 'structureWood', f, hole.u + sx * (hole.w / 2 - 0.03), cy, back, 0.06, hole.h, 0.05, pc, 'caps');
-    for (const sy of [-1, 1]) faceBox(sink, 'structureWood', f, hole.u, cy + sy * (hole.h / 2 - 0.03), back, hole.w - 0.12, 0.06, 0.05, pc, 'ends');
-    if (dress < 0.3) {
-      // a palm-plank shutter closed in the frame
-      for (let k = 0; k < 3; k++) faceBox(sink, 'structureWood', f, hole.u - hole.w / 2 + 0.06 + (hole.w - 0.12) * (k + 0.5) / 3, cy, back + 0.035, (hole.w - 0.12) / 3 - 0.008, hole.h - 0.12, 0.025,
-        { colour: shade(tone, 0.95 + k * 0.04), decor: true, uv: UV_MEMBER });
-    } else {
-      // two palm-rib bars across the opening
-      for (const t of [-0.17, 0.17]) faceBox(sink, 'structureWood', f, hole.u + t * hole.w, cy, back + 0.02, 0.03, hole.h - 0.1, 0.03, { colour: tone, decor: true, fine: true }, 'caps');
+  // the rain spouts (E15): palm-wood channels through the parapet at the roof, open along their tops (a sole board and
+  // two sides), one or two to a roof on its first dressed side, never over the door
+  // (a room on a roof drains onto the terrace below it: the blind pair read its spout as a trough over the roofline)
+  if (ground) {
+    const name = faces[0], f = at(name), sp = { colour: PALM, decor: true, uv: UV_MEMBER } as const;
+    for (const u of f.width > 3.6 && look() < 0.5 ? [-f.width * 0.28, f.width * 0.28] : [(look() - 0.5) * f.width * 0.5]) {
+      if (name === 'front' && door && Math.abs(u - door.u) < 0.9) continue;
+      faceBox(ps, 'structureWood', f, u, top - 0.015, 0.03, 0.16, 0.03, 0.9, sp);
+      for (const s of [-1, 1]) faceBox(ps, 'structureWood', f, u + s * 0.08, top + 0.03, 0.03, 0.03, 0.09, 0.9, { ...sp, colour: shade(PALM, 0.85) });
     }
-    // a palm-log lintel over some, bedded in the face
-    if (dress > 0.55) palmLog(sink, f, hole.u - hole.w / 2 - 0.18, hole.u + hole.w / 2 + 0.18, hole.y0 + hole.h + 0.07, 0.065, shade(PALM, 0.8));
   }
+  // (round 3) the clods fallen from the crest, heaped at the wall's foot past the footing (dressing on the ground)
+  if (ground) for (const name of faces) {
+    const ff = at(name, 0.07), clods = 1 + Math.floor(look() * (opts.packed ? 2 : 3));
+    for (let k = 0; k < clods; k++) {
+      const u = (look() - 0.5) * (ff.width - 0.8), r = 0.12 + look() * 0.12;
+      const c = facePoint(ff, u, -0.06, r * 0.6);
+      ps.cylinder(KERSHEF_OLD, c, 'y', 0.08 + r * 0.5, r, 5, { decor: true }, r * 0.35, true, look() * 3);
+    }
+  }
+  // (round 3) a jerid shade on the roof terrace: four palm posts and a mat of palm ribs on their beams, in the terrace's
+  // back corner and inside its rounded parapet (its posts within the inner face's arc)
+  if (opts.shade) {
+    const inner = 0.06 + 0.32, off = Math.max(inner + 0.15, rc - (rc - inner - 0.12) / Math.SQRT2);
+    const sx0 = x0 + off, sz0 = z0 + off, sw = Math.min(2.6, W - 2 * off), sd = Math.min(2.4, D - 2 * off);
+    if (sw > 1.2 && sd > 1.2) {
+      const hs2 = 1.95, palm = { colour: shade(PALM, 0.9), decor: true, uv: UV_MEMBER } as const;
+      for (const [px, pz] of [[sx0, sz0], [sx0 + sw, sz0], [sx0, sz0 + sd], [sx0 + sw, sz0 + sd]] as const) ps.span('structureWood', px - 0.06, top - 0.02, pz - 0.06, px + 0.06, top + hs2, pz + 0.06, palm);
+      for (const pz of [sz0, sz0 + sd]) ps.span('structureWood', sx0 - 0.1, top + hs2 - 0.02, pz - 0.06, sx0 + sw + 0.1, top + hs2 + 0.1, pz + 0.06, palm);
+      const mat = shade(PALM_GREY, 0.95 + look() * 0.1);
+      ps.span('structureWood', sx0 - 0.25, top + hs2 + 0.1, sz0 - 0.2, sx0 + sw + 0.25, top + hs2 + 0.16, sz0 + sd + 0.2, { colour: mat, decor: true });
+      // (the integrity gate: an open frame on the roof read as a see-through gap) its back and its two ends screened with
+      // jerid panels from the terrace to the mat, as Siwa's roof shelters stand against the wind; open to the terrace
+      const screen = { colour: shade(mat, 0.92), decor: true } as const;
+      ps.span('structureWood', sx0 - 0.02, top - 0.02, sz0 - 0.04, sx0 + sw + 0.02, top + hs2 + 0.1, sz0 + 0.0, screen);
+      for (const x of [sx0, sx0 + sw]) ps.span('structureWood', x - 0.02, top - 0.02, sz0, x + 0.02, top + hs2 + 0.1, sz0 + sd, screen);
+    }
+  }
+  withParts(body, [ps.finish()]);
+  batterParts(body, cx, cz, W / 2, D / 2, top, batter, y0);
+  // the lived-in dressing by the door (E17), on the lane: a palm-wood bench against the wall to one side, a jar on the other
   if (door) {
-    const f = sideAt('front', 1.0);
-    sink.recess = door.depth;
-    try {
-      doorUnit(sink, f, door.u, 0, door.w, door.h, { leaf: PALM, frame: { bucket: 'structureWood', width: 0.1, out: 0.04, colour: shade(PALM, 0.8) }, steps: null, leafKind: 'plank' });
-    } finally { sink.recess = 0; }
-    palmLog(sink, f, door.u - door.w / 2 - 0.25, door.u + door.w / 2 + 0.25, door.h + 0.09, 0.08, shade(PALM, 0.75));
+    const f = at('front', 0.12), len = 1.1 + look() * 0.4, half = f.width / 2, first = look() < 0.5 ? 1 : -1;
+    let jar = -first;
+    for (const s of [first, -first]) {
+      const ub = door.u + s * (door.w / 2 + 0.85 + len / 2);
+      if (Math.abs(ub) + len / 2 > half - 0.1) continue;
+      bench(sink, f, ub, len, shade(PALM, 0.9 + look() * 0.15));
+      jar = -s;
+      break;
+    }
+    // (the blind pair: the same bright pot at every door read as a toy) a smaller one by some doors
+    const uj = door.u + jar * (door.w / 2 + 0.75);
+    if (look() < 0.4 && Math.abs(uj) < half - 0.3) {
+      const p = facePoint(f, uj, 0, 0.3);
+      pottedPlant(sink, p[0], 0, p[2], 0.42, look);
+    }
   }
+  if (!plan) return { parts: body, plan: null };
+  batteredPlan(plan, batter, top - y0, storeys);
+  if (opts.onto) stackPlan(opts.onto, plan, [cx, y0, cz]);
+  return { parts: body, plan: { frame: plan, at: [cx, y0, cz] } };
+}
+
+/** A kershef block's house plan and the origin of its frame (the block's foot in the builder's frame). */
+interface KershefPlan { frame: HouseFrame; at: readonly [number, number, number] }
+
+/**
+ * A room on a roof described as the upper storeys of the house it stands on (houseDamage: its own body's collapse
+ * left its walls' stubs standing in the air over the heap of the house under it): its bands appended to that plan,
+ * moved into its frame, its openings re-hung in them, the plan's eave and roof the room's.
+ */
+function stackPlan(base: KershefPlan, room: HouseFrame, at: readonly [number, number, number]): void {
+  const dx = at[0] - base.at[0], dy = at[1] - base.at[1], dz = at[2] - base.at[2];
+  const b = base.frame, n = b.bodies.length;
+  for (const r of room.bodies) b.bodies.push({ x0: r.x0 + dx, x1: r.x1 + dx, z0: r.z0 + dz, z1: r.z1 + dz, y0: r.y0 + dy, y1: r.y1 + dy });
+  b.floors.push(...room.floors.map((y) => y + dy));
+  b.spec.storeys.push(...room.spec.storeys);
+  for (const o of room.spec.openings) b.spec.openings.push({ ...o, storey: o.storey + n });
+  b.eaveY = room.eaveY + dy;
+  b.roof = roofGeometry(room.roof.s * 2, room.roof.halfD * 2, b.eaveY, b.spec.roof);
+}
+
+/**
+ * The plan the damage reads, made to follow the batter (the coordinator, 2026-10-17: a breach the damage draws on the
+ * grammar's upright face stood up to the batter off the leaning wall — the floating dark patch the owner flags): the
+ * storey cut at the house's floors (`floors` of them, its window rows one to each), each floor's body drawn in by the
+ * batter seven tenths up it (batterParts: `batter` at the block's top, `span` over its foot), the openings re-hung in
+ * their floors, the roof over the top one. The walls drawn are the grammar's one lift of mud battered whole; only the
+ * description the damage reads changes, so a breach at a tank's gun height lands within a hand of the leaning wall
+ * (houseDamage: the cuts are real floors — a roof's fall stops on the top floor, a stub stands from the ground floor).
+ * The rounded corners stay outside the description (its faces run the body's full width, so a wall panel's fall takes
+ * its corners): a breach centred on a corner's arc still stands off it by up to the arc's depth there. Run after the
+ * builder's own last use of the openings (their heights become their floors').
+ */
+function batteredPlan(frame: HouseFrame, batter: number, span: number, floors: number): void {
+  const spec = frame.spec, b0 = frame.bodies[0], foot = b0.y0, top = b0.y1;
+  const cuts = Array.from({ length: floors + 1 }, (_, k) => foot + (top - foot) * k / floors);
+  const wall = spec.storeys[0];
+  const bands = cuts.slice(0, -1).map((y0, k) => {
+    const y1 = cuts[k + 1], inset = batter * (y0 + 0.7 * (y1 - y0)) / span;
+    return { x0: b0.x0 + inset, x1: b0.x1 - inset, z0: b0.z0 + inset, z1: b0.z1 - inset, y0, y1 };
+  });
+  for (const o of spec.openings) {
+    const at = foot + o.y0, k = Math.max(0, bands.findIndex((b) => at >= b.y0 - 1e-6 && at < b.y1 - 1e-6));
+    o.storey = k;
+    o.y0 = at - bands[k].y0;
+  }
+  spec.storeys = bands.map((b) => ({ ...wall, h: b.y1 - b.y0 }));
+  frame.bodies.splice(0, frame.bodies.length, ...bands);
+  frame.floors.splice(0, frame.floors.length, ...bands.map((b) => b.y0));
+  frame.faces = bodyFaces(b0.x1 - b0.x0, b0.z1 - b0.z0);
+  const t = bands[bands.length - 1];
+  frame.roof = roofGeometry(t.x1 - t.x0, t.z1 - t.z0, frame.eaveY, spec.roof);
+}
+
+/**
+ * A palm trunk run out of a wall square to its face (`f`), its end `out` past the face and `len` long (the rest buried in
+ * the wall): `sides` sides tapering a little to its end and the end's cap, no cap inside the wall. (u, y) its axis on
+ * the face, r its radius, `turn` its roll in a side's turn.
+ */
+function trunkEnd(sink: PartSink, f: Face, u: number, y: number, r: number, len: number, out: number, colour: Rgb, turn = 0, sides = 5): void {
+  const ring = (o: number, rr: number): Vec3[] => Array.from({ length: sides }, (_, k) => {
+    const a = (k + turn) * Math.PI * 2 / sides + Math.PI / 2;
+    return facePoint(f, u + Math.cos(a) * rr, y + Math.sin(a) * rr, o);
+  });
+  const a0 = ring(out - len, r), a1 = ring(out, r * 0.9), opts = { colour, decor: true } as const;
+  for (let k = 0; k < sides; k++) sink.quad('structureWood', a0[k], a0[(k + 1) % sides], a1[(k + 1) % sides], a1[k], opts);
+  sink.polygon('structureWood', a1, opts);
 }
 
 /** A palm log lying along a face from u0 to u1 at y, bedded half into it (a lintel). */
@@ -745,26 +1020,33 @@ const kershefHouse: RegionalBuilder = (ctx) => {
   const rng = ctx.rng, look = ctx.variant;
   const R = reach(ctx);
   const x0 = R.x0 + 0.25, x1 = R.x1 - 0.25, z0 = R.z0 + 0.25, z1 = R.z1 - 0.25, h = 3.1 + rng() * 0.5;
-  kershefBlock(sink, x0, z0, x1, z1, 0, h, rng() < 0.3 ? KERSHEF_OLD : MUD, rng, look, { door: true });
-  if (rng() < 0.55) {
+  const bucket = rng() < 0.3 ? KERSHEF_OLD : MUD, upper = rng() < 0.55;
+  // (a house without its upper room keeps a jerid shade on its roof terrace instead, on most plots)
+  const house = kershefBlock(sink, x0, z0, x1, z1, 0, h, bucket, rng, look, { door: true, shade: !upper && look() < 0.7 }), blocks = [house.parts];
+  if (upper) {
     const ux1 = x0 + (x1 - x0) * (0.5 + rng() * 0.2), uz1 = z0 + (z1 - z0) * (0.45 + rng() * 0.15);
-    kershefBlock(sink, x0 + 0.45, z0 + 0.45, ux1, uz1, h, 2.6, MUD, rng, look, { faces: ['front', 'right'] });
+    blocks.push(kershefBlock(sink, x0 + 0.45, z0 + 0.45, ux1, uz1, h, 2.6, MUD, rng, look, { faces: ['front', 'right'], onto: house.plan }).parts);
   }
-  return sink.finish();
+  return withParts(sink.finish(), blocks);
 };
 
 /**
  * Old Shali (a caravanserai or compound plot): the town's houses heaped together, a block to each cell of the plot,
  * packed against each other (their battered walls lean apart into narrow clefts as they rise), lower at the edges and
- * highest in the middle, a room set back on some roofs; the outer faces on the plot's edge, doors to the front lane.
+ * highest in the middle, a room set back on some roofs; the outer faces on the plot's edge, doors to the front lane. A
+ * caravanserai's heap stands round an open court. Each block a kershef house of the grammar (kershefBlock).
  */
 const shaliCluster: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng, look = ctx.variant;
   const R = reach(ctx);
-  const nx = R.W > 15 ? 3 : 2, nz = R.D > 13 ? 3 : 2;
-  const cw = R.W / nx, cd = R.D / nz;
+  // (looks 227: a cell about a house's size, 6-8 m: a compound's 14.5 m depth two of them)
+  const nx = R.W > 15 ? 3 : 2, nz = R.D > 16.5 ? 3 : 2;
+  const cw = R.W / nx, cd = R.D / nz, blocks: RegionalParts[] = [];
+  // (looks 227) a caravanserai's houses stand round its court: a heap of nine leaves its middle cell open
+  const court = ctx.structureId === 'caravanserai' && nx === 3 && nz === 3;
   for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+    if (court && i === 1 && j === 1) continue;
     // each cell's block reaches 0.1 m past its inner boundaries (the neighbours' feet meet), 0.25 m in from the plot's edge
     const x0 = R.x0 + i * cw + (i === 0 ? 0.25 : -0.1), x1 = R.x0 + (i + 1) * cw - (i === nx - 1 ? 0.25 : -0.1);
     const z0 = R.z0 + j * cd + (j === 0 ? 0.25 : -0.1), z1 = R.z0 + (j + 1) * cd - (j === nz - 1 ? 0.25 : -0.1);
@@ -776,16 +1058,19 @@ const shaliCluster: RegionalBuilder = (ctx) => {
     if (i === nx - 1) outer.push('right');
     if (j === 0) outer.push('back');
     if (i === 0) outer.push('left');
-    const bucket = rng() < 0.35 ? KERSHEF_OLD : MUD;
-    kershefBlock(sink, x0, z0, x1, z1, 0, h, bucket, rng, look, { door: j === nz - 1, faces: outer.length ? outer : ['front'] });
+    // (a room on fewer roofs of a heap of nine: the kits' triangle budget holds the whole heap)
+    const bucket = rng() < 0.35 ? KERSHEF_OLD : MUD, room = storeys >= 2 && rng() < (nx * nz > 6 ? 0.3 : 0.45);
+    const block = kershefBlock(sink, x0, z0, x1, z1, 0, h, bucket, rng, look, { door: j === nz - 1, faces: outer.length ? outer : ['front'], shade: !room && look() < 0.4, packed: true });
+    blocks.push(block.parts);
     // a room set back on the roof terrace of some blocks
-    if (storeys >= 2 && rng() < 0.45) {
+    if (room) {
       const ux0 = x0 + (x1 - x0) * (0.18 + rng() * 0.12), uz0 = z0 + (z1 - z0) * (0.18 + rng() * 0.12);
       const ux1 = ux0 + (x1 - x0) * (0.4 + rng() * 0.15), uz1 = uz0 + (z1 - z0) * (0.4 + rng() * 0.15);
-      kershefBlock(sink, ux0, uz0, Math.min(x1 - 0.6, ux1), Math.min(z1 - 0.6, uz1), h, 2.4, MUD, rng, look, { faces: outer.length ? outer : ['front'] });
+      blocks.push(kershefBlock(sink, ux0, uz0, Math.min(x1 - 0.6, ux1), Math.min(z1 - 0.6, uz1), h, 2.4, MUD, rng, look,
+        { faces: outer.length ? outer : ['front'], packed: true, onto: block.plan }).parts);
     }
   }
-  return sink.finish();
+  return withParts(sink.finish(), blocks);
 };
 
 /**

@@ -124,6 +124,8 @@ uniform float uTurbulence;
 uniform float uWeatherWarp;
 // QA (round 9 candidate): the shell under which a sample keeps no density (0 = none) — the detached fragments culled
 uniform float uFragMin;
+// (227) the detail's erosion exponent at a convective base (volumetricClouds.ts CLOUD2_BASE_ERODE; 6 was round 1's cores only)
+uniform float uBaseErode;
 const float CL2_LOCAL = ${f(CLOUD2_PERIODS.local)};
 const float CL2_STREETS = ${f(CLOUD2_PERIODS.streets)};
 const float CL2_SHAPE = ${f(CLOUD2_PERIODS.shape)};
@@ -229,7 +231,7 @@ vec4 cl2Media( vec3 p, vec4 shell, vec4 hf, float lod, float detail ) {
 		float dn = textureLod( tDetail, ( sp + uDetailShift ) / CL2_DETAIL, 0.0 ).r;
 		// fluffy (the inverted cells) on the tops, the cells' cores at the base; a wispy lane takes the cells higher up
 		vec4 topErode = mix( vec4( 1.0 - dn ), vec4( dn ), uLayerWisp );
-		vec4 modifier = mix( vec4( pow( dn, 6.0 ) ), topErode, clamp( ( hf - 0.2 ) / 0.2, 0.0, 1.0 ) ) * uLayerDetail * detail;
+		vec4 modifier = mix( vec4( pow( dn, uBaseErode ) ), topErode, clamp( ( hf - 0.2 ) / 0.2, 0.0, 1.0 ) ) * uLayerDetail * detail;
 		d = clamp( ( d * 2.0 - modifier * 0.5 ) / max( 1.0 - modifier * 0.5, vec4( 1e-3 ) ), 0.0, 1.0 );
 	}
 	vec4 profile = uProfA * exp( uProfB * hf ) + uProfC * hf + uProfD;
