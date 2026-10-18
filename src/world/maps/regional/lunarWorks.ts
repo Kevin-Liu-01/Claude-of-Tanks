@@ -13,12 +13,10 @@
 //     heights and orange pennants along the top one;
 //   barrier -> lunarblockrow: three sintered regolith blocks in a row over the barrier's length;
 //   cone -> lunarbeacon: a delineator pole on its base plate, its solar cap and its pennant;
-//   transformer -> lunarpowerbox: a power distribution cabinet, its radiator fins and its conduit;
-//   cablespool -> lunarcablereel: a power-cable reel on its steel frame;
-//   churn -> lunardewar: a cryogenic dewar, its domed head, valve and gauge;
 //   trashcan -> lunarcanister: a waste stowage canister under its clamped lid;
-//   loosewheel -> lunarwheel: a spare wire-mesh rover wheel, its chevron treads and its hub;
 //   fenceplank -> lunarbagfence: the yards' course of regolith bags.
+// The Moon's churn (a water can), loose wheel (a mesh rover wheel), cable spool (a steel spool) and transformer (lunar
+// switchgear) are already the clutter kit's lunar forms (clutterKit.ts, utilityKit.ts) and stay as they are.
 // Each keeps its kind's name, record radius, class, cover rule, crush threshold and seat, and its records sit on the
 // ground under it (props.ts groundPose). Each build spends exactly the draws the generic build spent from the props'
 // shared destructible stream (brokenDraws.ts: every later pool keeps its geometry) and draws its own shape from a seed of
@@ -273,56 +271,6 @@ function beacon(seed: number): THREE.BufferGeometry {
   ]);
 }
 
-/** A power distribution cabinet (in the transformer's footprint): its body, the radiator fins down its back, its label. */
-function powerBox(seed: number, tipped = false): THREE.BufferGeometry {
-  const rng = mulberry32(seed);
-  const parts = [
-    paint(block(1.36, 1.55, 0.72, 0, 0, 0.12), PANEL, 0.05, rng),
-    paint(block(1.42, 0.1, 0.8, 0, 1.55, 0.12), STEEL, 0.04, rng),
-    paint(block(1.0, 0.12, 0.02, 0, 1.25, 0.49), ORANGE, 0.04, rng),
-    paint(block(0.06, 0.8, 0.02, -0.25, 0.4, 0.49), DARK, 0.03, rng),
-    paint(block(0.3, 0.12, 0.3, 0.45, 0, 0.62), CABLE, 0.03, rng),
-  ];
-  for (let k = 0; k < 6; k++) parts.push(paint(block(0.04, 1.3, 0.2, -0.5 + k * 0.2, 0.12, -0.33), STEEL, 0.05, rng));
-  parts.push(paint(block(1.12, 0.06, 0.22, 0, 1.4, -0.33), STEEL, 0.04, rng));
-  const g = merge(parts);
-  if (tipped) { g.rotateX(-Math.PI / 2); g.translate(0, 0.62, 0.9); }
-  return g;
-}
-
-/** A power-cable reel on its frame (in the spool's footprint): the flanges, the drum's coils and the frame. */
-function cableReel(seed: number, lying = false): THREE.BufferGeometry {
-  const rng = mulberry32(seed);
-  const parts: THREE.BufferGeometry[] = [];
-  const R = 0.66, y = 0.74;
-  for (const x of [-0.5, 0.5]) parts.push(paint(new THREE.CylinderGeometry(R, R, 0.05, 16).rotateZ(Math.PI / 2).translate(x, y, 0), STEEL, 0.05, rng));
-  parts.push(paint(new THREE.CylinderGeometry(R * 0.78, R * 0.78, 0.95, 16, 1, true).rotateZ(Math.PI / 2).translate(0, y, 0), CABLE, 0.05, rng));
-  for (const x of [-0.6, 0.6]) {
-    for (const s of [-1, 1]) {
-      const leg = new THREE.BoxGeometry(0.06, 0.92, 0.06);
-      leg.rotateX(s * 0.42);
-      parts.push(paint(leg.translate(x, 0.4, s * 0.18), ORANGE, 0.05, rng));
-    }
-  }
-  parts.push(paint(new THREE.CylinderGeometry(0.04, 0.04, 1.3, 6).rotateZ(Math.PI / 2).translate(0, y, 0), STEEL, 0.04, rng));
-  const g = merge(parts);
-  if (lying) { g.rotateZ(Math.PI / 2); g.translate(0.74, -0.08, 0); }
-  return g;
-}
-
-/** A cryogenic dewar (in the churn's 0.82 m): its body, domed head, collar, valve and gauge. */
-function dewar(seed: number): THREE.BufferGeometry {
-  const rng = mulberry32(seed);
-  return merge([
-    paint(new THREE.CylinderGeometry(0.235, 0.24, 0.6, 14).translate(0, 0.3, 0), PANEL, 0.04, rng),
-    paint(new THREE.SphereGeometry(0.235, 14, 4, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.55, 1).translate(0, 0.6, 0), PANEL, 0.04, rng),
-    paint(new THREE.CylinderGeometry(0.245, 0.245, 0.07, 14).translate(0, 0.48, 0), ORANGE, 0.04, rng),
-    paint(new THREE.CylinderGeometry(0.06, 0.06, 0.1, 8).translate(0, 0.76, 0), STEEL, 0.04, rng),
-    paint(new THREE.BoxGeometry(0.2, 0.03, 0.03).translate(0, 0.8, 0), DARK, 0.03, rng),
-    paint(new THREE.CylinderGeometry(0.04, 0.04, 0.03, 8).rotateX(Math.PI / 2).translate(0.08, 0.66, 0.2), DARK, 0.03, rng),
-  ]);
-}
-
 /** A waste stowage canister (in the trash can's 0.85 m): its drum, clamped lid and label. */
 function canister(seed: number): THREE.BufferGeometry {
   const rng = mulberry32(seed);
@@ -333,28 +281,6 @@ function canister(seed: number): THREE.BufferGeometry {
     paint(new THREE.BoxGeometry(0.2, 0.04, 0.05).translate(0, 0.82, 0), DARK, 0.03, rng),
   ]);
 }
-
-/** A spare wire-mesh rover wheel standing on its tread (in the loose wheel's 0.69 m): its mesh tyre, chevrons and hub. */
-function meshWheel(seed: number): THREE.BufferGeometry {
-  const rng = mulberry32(seed);
-  const r = 0.34, parts: THREE.BufferGeometry[] = [];
-  parts.push(paint(new THREE.CylinderGeometry(r, r, 0.23, 18, 1, true).rotateZ(Math.PI / 2).translate(0, r, 0), STEEL, 0.08, rng));
-  parts.push(paint(new THREE.CylinderGeometry(0.12, 0.12, 0.25, 10).rotateZ(Math.PI / 2).translate(0, r, 0), DARK, 0.04, rng));
-  // (its two side screens close the mesh tyre's open ends)
-  for (const x of [-0.12, 0.12]) parts.push(paint(new THREE.CylinderGeometry(r, r, 0.012, 18).rotateZ(Math.PI / 2).translate(x, r, 0), shade(STEEL, 0.8), 0.05, rng));
-  // the chevron treads round the tyre (laid at its crown about the axle, turned round it, the axle lifted to the hub)
-  for (let k = 0; k < 12; k++) {
-    const chev = new THREE.BoxGeometry(0.2, 0.012, 0.035);
-    chev.rotateY(k % 2 ? 0.35 : -0.35);
-    chev.translate(0, r + 0.004, 0);
-    chev.rotateX((k / 12) * Math.PI * 2);
-    parts.push(paint(chev.translate(0, r, 0), DARK, 0.04, rng));
-  }
-  return merge(parts);
-}
-
-/** A colour's lightness scaled. */
-function shade([h, s, l]: Hsl, k: number): Hsl { return [h, s, l * k]; }
 
 /** The yards' course of regolith bags in the plank fence's run along z: two courses and a coping bag here and there. */
 const FENCE_HALF = 1.24;
@@ -415,12 +341,14 @@ export const LUNAR_BAG_WALL_BIG = wallType(BIG, 2.0, 0.97);
 export const LUNAR_BAG_WALL_SMALL = wallType(SMALL, 1.7, 0.975);
 
 /** A generic kind dressed: its record as it is, its build and break the lunar form's after the generic draws. */
-function dressed<K extends keyof typeof DESTRUCTIBLE_TYPES>(kind: K, h: number, build: () => THREE.BufferGeometry, broken: (() => THREE.BufferGeometry) | null) {
+function dressed<K extends keyof typeof DESTRUCTIBLE_TYPES>(kind: K, h: number, build: () => THREE.BufferGeometry, broken: (() => THREE.BufferGeometry) | null,
+  extents: { hw?: number } = {}) {
   const generic = DESTRUCTIBLE_TYPES[kind] as { build: Builder; broken?: Builder };
   return Object.freeze({
     ...DESTRUCTIBLE_TYPES[kind],
     mat: 'baked' as const,
     h,
+    ...extents,
     groundPose: true as const,
     build: (rng: Rng) => { spend(generic.build, rng); return build(); },
     broken: broken ? (rng: Rng) => { spend(generic.broken, rng); return broken(); } : null,
@@ -430,18 +358,14 @@ function dressed<K extends keyof typeof DESTRUCTIBLE_TYPES>(kind: K, h: number, 
 export const LUNAR_TETHER = dressed('barbedwire', TETHER_TOP, () => tether(0x1a11), () => tetherBroken(0x1a12));
 export const LUNAR_BLOCK_ROW = dressed('barrier', ROW_TOP, () => blockRow(0x1a21), () => blockRowBroken(0x1a22));
 export const LUNAR_BEACON = dressed('cone', 0.805, () => beacon(0x1a31), null);
-export const LUNAR_POWER_BOX = dressed('transformer', 1.65, () => powerBox(0x1a41), () => powerBox(0x1a42, true));
-export const LUNAR_CABLE_REEL = dressed('cablespool', 1.4, () => cableReel(0x1a51), () => cableReel(0x1a52, true));
-export const LUNAR_DEWAR = dressed('churn', 0.815, () => dewar(0x1a61), null);
 export const LUNAR_CANISTER = dressed('trashcan', 0.84, () => canister(0x1a71), null);
-export const LUNAR_WHEEL = dressed('loosewheel', 0.69, () => meshWheel(0x1a81), null);
-export const LUNAR_BAG_FENCE = dressed('fenceplank', 0.9, () => bagFence(0x1a91), () => bagFenceBroken(0x1a92));
+// (the bag course is a bag's depth across, where the plank fence was a board's: its footprint takes the bags')
+export const LUNAR_BAG_FENCE = dressed('fenceplank', 0.9, () => bagFence(0x1a91), () => bagFenceBroken(0x1a92), { hw: 0.22 });
 
 /** For the receipt: the plans the walls stand in (fieldworksKit.ts SANDBAG_STACKS' envelopes). */
 export const LUNAR_WALL_PLANS = Object.freeze({ sandbagwall: WALL, sandbagbig: BIG, sandbagsmall: SMALL });
 /** The Moon's structure variants, kind by kind (props structureVariants). */
 export const LUNAR_STRUCTURE_VARIANTS = Object.freeze({
   sandbagwall: 'lunarbagwall', sandbagbig: 'lunarbagwallbig', sandbagsmall: 'lunarbagwallsmall', barbedwire: 'lunartether',
-  barrier: 'lunarblockrow', cone: 'lunarbeacon', transformer: 'lunarpowerbox', cablespool: 'lunarcablereel', churn: 'lunardewar',
-  trashcan: 'lunarcanister', loosewheel: 'lunarwheel', fenceplank: 'lunarbagfence',
+  barrier: 'lunarblockrow', cone: 'lunarbeacon', trashcan: 'lunarcanister', fenceplank: 'lunarbagfence',
 } as const);

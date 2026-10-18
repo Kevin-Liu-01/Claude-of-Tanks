@@ -49,8 +49,8 @@ export const EARTHRISE_STATION: readonly StationSite[] = [
   ...LOGISTICS_YARD,
   // the comms tower at the apron's north-west corner and the sample lab at its south-east corner
   // (each just off the apron's hardstand, which no plot may stand on)
-  site('mill', -41, 24, 180),
-  site('chapel', 41, -24, 0),
+  site('mill', -48, 22, 180),
+  site('chapel', 48, -22, 0),
   // the tank farms beyond the yard and the works, their long axes along their service lanes, their fronts to them
   site('farmhouse', -100, 80, 74.5),
   twin(site('farmhouse', -100, 80, 74.5)),

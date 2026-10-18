@@ -222,10 +222,10 @@
       "concealers": 0
     },
     "moon": {
-      "bytes": 740530,
-      "sha256": "62538f849dda3db92da82613f1a26a88b1dbc6da88495aad45775aebfa20099c",
-      "obstacles": 755,
-      "colliders": 654,
+      "bytes": 1180623,
+      "sha256": "0ab97bfe8116321c8d84fa6b204344b503802a98906596cf0ef854b181cffc88",
+      "obstacles": 831,
+      "colliders": 953,
       "concealers": 0
     },
     "cliffbridge": {
@@ -456,10 +456,10 @@
         "concealers": 0
       },
       "moon": {
-        "bytes": 821429,
-        "sha256": "2ff9894e7bd1e18a7ec8e89efc6e765e48ca97371862c4d4806db6208cec4aa0",
-        "obstacles": 888,
-        "colliders": 693,
+        "bytes": 1421223,
+        "sha256": "dc5c5534dde796092e0d2d76d2851cb7e832b1a375810c671747f7a9dcd4b7fc",
+        "obstacles": 972,
+        "colliders": 1001,
         "concealers": 0
       },
       "cliffbridge": {

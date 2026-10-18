@@ -57,4 +57,21 @@ assert.match(sky, /atmosphereDome\.onAfterRender = \(\) => \{\s*atmosphereMateri
 // ---- a terrestrial night's pixel law; a galaxy sky's cell law
 assert.ok(STAR_LAW_PIXEL[0] < 0.11 && STAR_LAW_PIXEL[1] < 0.09, 'a terrestrial night: sparser and fainter than round 22\'s carpet');
 assert.match(sky, /writeStarLaw\(u\.uStarLaw\.value as THREE\.Vector4, u\.uStarShape\.value as THREE\.Vector4, \(preset\.nightSky \?\? 0\) > 0\.5\)/, 'a forced night sky (the galaxy domes) keeps the cell law');
+// ---- (the Earthrise 228 rebuild, 2026-10-18) the planet's own direction: the sun's unless a preset authors it, its phase
+// then lit from the sun (sky.ts uPlanetDir / uPlanetSun / uPlanetPhase)
+assert.equal(DEFAULT_SKY_PRESET.earthAzimuthDeg, null, 'no map but one that authors it moves its disc off the sun');
+assert.equal(DEFAULT_SKY_PRESET.earthElevationDeg, null);
+assert.match(sky, /u\.uPlanetDir\.value = sunDir;\s*u\.uPlanetPhase\.value = 0;/, 'unauthored, the disc is the live sun\'s direction under the fixed phase');
+assert.equal(sky.split('cotNightSky( direction, uPlanetDir, ').length, 2, 'the dome draws the disc at the planet\'s direction');
+assert.equal(sky.split('cotNightSky( normalize( direction ), uPlanetDir, ').length, 2, 'the legacy dome too');
+assert.match(sky, /if \( uPlanetPhase > 0\.5 \) phaseL = normalize\( vec3\( dot\( uPlanetSun, mx \), dot\( uPlanetSun, my \), -dot\( uPlanetSun, moonDir \) \)/,
+  'an authored disc takes its phase from the sun in the disc\'s frame');
+{
+  // the Moon's Earth: apart from the sun, gibbous (the share of its disc lit, (1 + cos(180 - angle)) / 2)
+  const moonSky = getMapConfig('moon').sky, rad = Math.PI / 180;
+  const dir = (az, el) => [Math.sin(az * rad) * Math.cos(el * rad), Math.sin(el * rad), Math.cos(az * rad) * Math.cos(el * rad)];
+  const e = dir(moonSky.earthAzimuthDeg, moonSky.earthElevationDeg), sun = dir(moonSky.sunAzimuthDeg, moonSky.sunElevationDeg);
+  const angle = Math.acos(e[0] * sun[0] + e[1] * sun[1] + e[2] * sun[2]) / rad, lit = (1 + Math.cos((180 - angle) * rad)) / 2;
+  assert.ok(angle >= 90 && lit > 0.5 && lit < 0.95, `the Earth ${angle.toFixed(0)} degrees from the sun, gibbous (${(lit * 100).toFixed(0)} % lit)`);
+}
 console.log('nightSky.selftest: moonlit clouds (key 0.3, sky 0.8 at full night; day, sunset, Mars and the galaxy domes untouched), no stars over cloud, the pixel law PASS');

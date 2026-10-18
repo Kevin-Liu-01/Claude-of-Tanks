@@ -248,6 +248,35 @@ const habitat: RegionalBuilder = (ctx) => {
       }
     }
   });
+  // the blanket's longitudinal seams on the shell's vertices (18, 36 and 54 degrees off its crown), a handrail along each
+  // shoulder on its standoffs, sintered blocks spilled at the berm's toes, the porch's lamp, window and Earth antenna
+  sink.dressing(mobile, () => {
+    for (const k of [-3, -2, -1, 1, 2, 3]) {
+      const a = (k * Math.PI) / 10, ux = Math.sin(a), uy = Math.cos(a), r = R + 0.012;
+      bar(sink, [cx + ux * r, ay + uy * r, zBack + 0.15], [cx + ux * r, ay + uy * r, zFront - 0.2], 0.026, { colour: shade(MLI, 0.82), decor: true, fine: true });
+    }
+    for (const s of [1, -1]) {
+      const a = s * (2 * Math.PI) / 10, ux = Math.sin(a), uy = Math.cos(a), z0 = zBack + 0.6, z1 = zFront - 0.6, rr = R + 0.16;
+      bar(sink, [cx + ux * rr, ay + uy * rr, z0], [cx + ux * rr, ay + uy * rr, z1], 0.035, { colour: ORANGE, decor: true, fine: true });
+      for (let k = 0; k <= 3; k++) {
+        const z = z0 + ((z1 - z0) * k) / 3;
+        bar(sink, [cx + ux * (R - 0.02), ay + uy * (R - 0.02), z], [cx + ux * rr, ay + uy * rr, z], 0.03, { colour: STEEL, decor: true, fine: true });
+      }
+    }
+    for (const s of [1, -1]) {
+      for (let k = 0; k < 4; k++) {
+        const z = P.z0 + 1.2 + k * (P.d - 2.6) / 3 + (rng() - 0.5) * 0.8, x = cx + s * (P.w / 2 - 0.35 - rng() * 0.3), sz = 0.25 + rng() * 0.2;
+        sink.span('stone', x - sz, -0.1, z - sz * 0.8, x + sz, sz * 0.9, z + sz * 0.8, { decor: true });
+      }
+    }
+    sink.span(M, cx - 0.28, ph - 0.32, pz1, cx + 0.28, ph - 0.14, pz1 + 0.14, { colour: DARK, decor: true });
+    sink.span(M, cx - 0.24, ph - 0.3, pz1 + 0.14, cx + 0.24, ph - 0.16, pz1 + 0.15, { colour: RADIATOR, decor: true, fine: true });
+    const wy = (2.1 + ph - 0.4) / 2;
+    if (ph - 0.4 - 2.15 > 0.12) sink.span('glass', cx - 0.9, wy - 0.06, pz1 - 0.01, cx - 0.45, wy + 0.06, pz1 + 0.02, { decor: true });
+    const e = earthLocal(ctx), ax0 = cx + pw / 2 - 0.35, az0 = pz0 + 0.45;
+    bar(sink, [ax0, ph + 0.1, az0], [ax0, ph + 1.25, az0], 0.06, { colour: STEEL, decor: true });
+    dish(sink, [ax0, ph + 1.25, az0], e, 0.38, 0.1, PANEL, mobile);
+  });
   if (look() < 0.15) {
     const z = zBack + (zFront - zBack) * (0.3 + look() * 0.4);
     sink.span(M, cx - 0.5, top - 0.06, z - 0.6, cx + 0.5, top + 0.005, z + 0.6, { colour: GOLD, decor: true });
@@ -339,6 +368,15 @@ const garage: RegionalBuilder = (ctx) => {
       sink.span(M, cx - half, y - 0.025, z1, cx + half, y + 0.025, z1 + 0.04, { colour: DARK, decor: true, fine: true });
     }
   });
+  // the personnel door let into the big door's foot and the panels' vertical joints (dressing)
+  sink.dressing(mobile, () => {
+    sink.span(M, cx + Rv * 0.45 - 0.45, base + 0.02, z1 + 0.01, cx + Rv * 0.45 + 0.45, base + 2.0, z1 + 0.06, { colour: ORANGE, decor: true });
+    sink.span(M, cx + Rv * 0.45 - 0.36, base + 0.1, z1 + 0.06, cx + Rv * 0.45 + 0.36, base + 1.9, z1 + 0.08, { colour: PANEL, decor: true, fine: true });
+    for (const x of [-0.5, 0, 0.5]) {
+      const xx = cx + x * Rv, h = Math.sqrt(Math.max(0, Rv * Rv - (x * Rv) ** 2)) - 0.15;
+      sink.span(M, xx - 0.02, base + 0.05, z1, xx + 0.02, base + h, z1 + 0.04, { colour: DARK, decor: true, fine: true });
+    }
+  });
   // the berm on both flanks to the vault's haunches (half sunk), the bag wall over its back
   const bermH = clamp(Rv * 0.55, 1.4, 2.0), crest = Math.sqrt(Math.max(0.3, Rv * Rv - (bermH - base) ** 2)) - 0.06;
   for (const s of [1, -1] as const) berm(sink, s, cx, P.z0 + 0.25, z1 - 0.4, P.w / 2 - 0.08, crest, Rv * 0.4, bermH, 4, rng);
@@ -398,6 +436,26 @@ const tankFarm: RegionalBuilder = (ctx) => {
     bar(sink, [tx0 - 0.1, ay + Rt + 0.06, z], [tx0 - 1.0, ay + Rt + 0.06, z], 0.1, { colour: STEEL, decor: true });
     bar(sink, [tx0 - 1.0, ay + Rt + 0.11, z], [tx0 - 1.0, 1.0, cz + s * 0.3], 0.1, { colour: STEEL, decor: true });
   }
+  // the walkway between the tanks' crowns over their west halves, the ladder up to it at the filling station's end, the
+  // valves on the transfer lines
+  sink.dressing(mobile, () => {
+    // (the deck spans the gap to both hulls at its height, so it rests on them)
+    const wy = ay + Rt * 0.55, wx0 = tx0 + 0.2, wx1 = tx0 + (L - 1.2) * 0.55, hw = 0.57 + 0.17 * Rt;
+    sink.span(M, wx0, wy - 0.05, cz - hw, wx1, wy + 0.04, cz + hw, { colour: STEEL, decor: true });
+    for (const z of [cz - hw + 0.04, cz + hw - 0.04]) {
+      bar(sink, [wx0, wy + 1.0, z], [wx1, wy + 1.0, z], 0.035, { colour: ORANGE, decor: true, fine: true });
+      for (let k = 0; k <= 3; k++) { const x = wx0 + ((wx1 - wx0) * k) / 3; bar(sink, [x, wy, z], [x, wy + 1.0, z], 0.035, { colour: ORANGE, decor: true, fine: true }); }
+    }
+    for (const z of [cz - 0.3, cz + 0.3]) bar(sink, [wx0 + 0.03, 0, z], [wx0 + 0.03, wy, z], 0.05, { colour: STEEL, decor: true });
+    for (let y = 0.35; y < wy - 0.1; y += 0.32) bar(sink, [wx0 + 0.03, y, cz - 0.32], [wx0 + 0.03, y, cz + 0.32], 0.035, { colour: STEEL, decor: true, fine: true });
+    for (const s of [1, -1]) {
+      const z = cz + s * (Rt + 0.55);
+      for (const x of [tx0 + L * 0.2, tx0 + L * 0.6]) {
+        sink.cylinder(M, [x, ay + Rt + 0.06, z - 0.13], 'z', 0.26, 0.13, 8, { colour: ORANGE, decor: true });
+        bar(sink, [x, ay + Rt + 0.06, z], [x, ay + Rt + 0.36, z], 0.04, { colour: DARK, decor: true, fine: true });
+      }
+    }
+  });
   // the filling station at the -x end between the tanks: its cabinet, the coupling arm
   sink.span(M, tx0 - 1.6, 0, cz - 0.6, tx0 - 0.4, 1.7, cz + 0.6, { colour: PANEL });
   sink.span(M, tx0 - 1.62, 1.0, cz - 0.62, tx0 - 1.0, 1.4, cz + 0.62, { colour: ORANGE, decor: true });

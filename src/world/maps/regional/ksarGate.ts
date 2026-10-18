@@ -17,8 +17,8 @@ import { DESTRUCTIBLE_BUILDING_TYPES } from '../structureKit.ts';
 import { DESERT_SANGAR } from './desertSangar.ts';
 import { BEDOUIN_CAMP_TENT, BEDOUIN_TENT, RUM_BARRACK, RUM_POST, RUM_SHED } from './wadiRumPosts.ts';
 import { POLAR_DRIFT_FENCE, POLAR_DRUM_ROW, POLAR_DRUM_WALL, POLAR_DRUM_WALL_BIG, POLAR_DRUM_WALL_SMALL } from './polarWorks.ts';
-import { LUNAR_BAG_FENCE, LUNAR_BAG_WALL, LUNAR_BAG_WALL_BIG, LUNAR_BAG_WALL_SMALL, LUNAR_BEACON, LUNAR_BLOCK_ROW, LUNAR_CABLE_REEL, LUNAR_CANISTER, LUNAR_DEWAR,
-  LUNAR_POWER_BOX, LUNAR_TETHER, LUNAR_WHEEL } from './lunarWorks.ts';
+import { LUNAR_BAG_FENCE, LUNAR_BAG_WALL, LUNAR_BAG_WALL_BIG, LUNAR_BAG_WALL_SMALL, LUNAR_BEACON, LUNAR_BLOCK_ROW, LUNAR_CANISTER,
+  LUNAR_TETHER } from './lunarWorks.ts';
 
 type Rng = () => number;
 
@@ -206,5 +206,4 @@ export const STRUCTURE_VARIANTS = Object.freeze({ ksargate: KSAR_GATE_POST, sang
   polardriftfence: POLAR_DRIFT_FENCE, polardrumrow: POLAR_DRUM_ROW,
   // (the Earthrise 228 rebuild, 2026-10-18) a lunar station's works and clutter (lunarWorks.ts)
   lunarbagwall: LUNAR_BAG_WALL, lunarbagwallbig: LUNAR_BAG_WALL_BIG, lunarbagwallsmall: LUNAR_BAG_WALL_SMALL, lunartether: LUNAR_TETHER,
-  lunarblockrow: LUNAR_BLOCK_ROW, lunarbeacon: LUNAR_BEACON, lunarpowerbox: LUNAR_POWER_BOX, lunarcablereel: LUNAR_CABLE_REEL,
-  lunardewar: LUNAR_DEWAR, lunarcanister: LUNAR_CANISTER, lunarwheel: LUNAR_WHEEL, lunarbagfence: LUNAR_BAG_FENCE });
+  lunarblockrow: LUNAR_BLOCK_ROW, lunarbeacon: LUNAR_BEACON, lunarcanister: LUNAR_CANISTER, lunarbagfence: LUNAR_BAG_FENCE });

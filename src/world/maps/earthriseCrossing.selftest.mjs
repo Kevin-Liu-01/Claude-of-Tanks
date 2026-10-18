@@ -7,6 +7,15 @@ import {structureTopAt} from '../../sim/structureSupport.ts';
 import {trackSurfacePolicy} from '../trackSurface.ts';
 const moon=getMapConfig('moon');
 assert.equal(moon.sky.earth,1);assert.ok(moon.sky.planetDeg>=12);
+// (the Earthrise 228 rebuild, 2026-10-18) the Earth apart from the sun: authored at its bearing over the valley's open west,
+// at least 90 degrees from the sun so it hangs gibbous with its own lit limb, 12-14 degrees across, the sun low (15-20 up)
+{const r=Math.PI/180,d=(az,el)=>[Math.sin(az*r)*Math.cos(el*r),Math.sin(el*r),Math.cos(az*r)*Math.cos(el*r)];
+ assert.ok(Number.isFinite(moon.sky.earthAzimuthDeg)&&Number.isFinite(moon.sky.earthElevationDeg),'the Earth\'s direction is authored');
+ const e=d(moon.sky.earthAzimuthDeg,moon.sky.earthElevationDeg),s=d(moon.sky.sunAzimuthDeg,moon.sky.sunElevationDeg);
+ assert.ok(Math.acos(e[0]*s[0]+e[1]*s[1]+e[2]*s[2])/r>=90,'the Earth stands at least 90 degrees from the sun');
+ assert.ok(moon.sky.planetDeg>=12&&moon.sky.planetDeg<=14,'the Earth 12-14 degrees across');
+ assert.ok(moon.sky.sunElevationDeg>=15&&moon.sky.sunElevationDeg<=20,'a low sun, 15-20 degrees up');
+ assert.ok(moon.sky.earthElevationDeg-moon.sky.planetDeg/2>=12,'the whole disc clear of the skyline');}
 assert.equal(moon.sky.cloudOpacity+moon.sky.cloudOpacity2,0);
 assert.equal(moon.sky.fogDensity,0);assert.equal(moon.vegetation.grassDensity,0);
 assert.equal(moon.vegetation.clusterCount+moon.vegetation.loneCount+moon.vegetation.rimCount,0);
