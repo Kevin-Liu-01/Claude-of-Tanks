@@ -392,8 +392,12 @@ export function addGarageApproachDetails({
     'snow-road': () => {
       addPath(points, approach.width, 0.13);
       addRuts(approach.lanes || [-2.2, 2.2], 0x86949a, 0.46);
-      addEdgeCourse(-approach.width / 2 - 0.45, 0xbec8ca, 0.68, 0.34);
-      addEdgeCourse(approach.width / 2 + 0.45, 0xbec8ca, 0.68, 0.34);
+      // the plough's windrows: a broad low berm under a narrower crest each side, not one raw box course (garage r9:
+      // "the flat faceted drift wedges")
+      for (const side of [-1, 1]) {
+        addEdgeCourse(side * (approach.width / 2 + 0.75), 0xdfe6ea, 1.5, 0.16);
+        addEdgeCourse(side * (approach.width / 2 + 0.8), 0xeaeff2, 0.7, 0.32);
+      }
       addRoadsidePosts(5.8, approach.width / 2 + 1.0, 0x9a5c4a, 1.85, true); // weathered paint (the re-judge)
     },
     'urban-street': () => {
