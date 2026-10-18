@@ -498,8 +498,8 @@ export function archWindow(sink: PartSink, face: Face, h: ArchHole, reveal: numb
  * the face (no collision); its sides are fine joinery.
  */
 export function archSurround(sink: PartSink, bucket: RegionalBucket, face: Face, h: ArchHole, width: number, out: number,
-  opts: { keystone?: boolean; sill?: boolean; colour?: Rgb } = {}): void {
-  const dec: EmitOptions = { decor: true, ...(opts.colour ? { colour: opts.colour } : {}) };
+  opts: { keystone?: boolean; sill?: boolean; colour?: Rgb; tint?: Rgb } = {}): void {
+  const dec: EmitOptions = { decor: true, ...(opts.colour ? { colour: opts.colour } : {}), ...(opts.tint ? { tint: opts.tint } : {}) };
   const line = archLine(h, 8);
   // the archivolt: a band of quads between the arch line and its offset outward (away from the opening)
   const offset = line.map(([u, y], i): [number, number] => {

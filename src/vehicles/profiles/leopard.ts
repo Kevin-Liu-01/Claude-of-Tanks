@@ -7686,6 +7686,14 @@ function addLeo2PrototypeMudguards(P: TankBuilderPort): void {
   const { box } = KIT;
   for (const side of [-1, 1] as const) {
     P.add('hull', box(0.09, 0.21, 0.42), side * 1.775, 1.155, 3.74);
+    // The side plate's inner face (|x| 1.73) stood 5.2 cm outside the shoe
+    // face (1.678); ahead of the sponson rail's front slab (z 3.64) that open
+    // slot reached the front lip (B2 contiguity hole, z 3.66-3.90). The inner
+    // lining takes the rail's own section line (inner face 1.7075, the same
+    // 2.95 cm shoe clearance) so the rail runs unbroken to the bow. It stays
+    // inside the side plate's rounded edges (y 1.07-1.255, z 3.56-3.94): a
+    // square corner below them closed one voxel row of the nose's own air.
+    P.add('hullFixedPaintedBodywork', box(0.0225, 0.185, 0.38), side * 1.71875, 1.1625, 3.75);
     P.add('hull', box(0.90, 0.20, 0.04), side * 1.35, 1.14, 3.93);
     P.add('hullDetail', box(0.86, 0.022, 0.024), side * 1.35, 1.033, 3.926);
     P.add('hullRubber', box(0.66, 0.40, 0.024), side * 1.36, 0.78, 3.849);
@@ -14336,6 +14344,12 @@ function buildLeo2A4M(P: TankBuilderPort) {
       st.position.set(0.58, 1.52, 2.86);
       P.hullG.add(st);
     }
+    // VEH-13 (2026-10-16): a closure web floors each nose slot. The slots run between the hull nose (|x| <= 0.88) and
+    // the front track wrap (|x| >= 0.99) at z 3.15-3.60, 6-10 cm wide and open to the ground from above. The B2
+    // contiguity scan read the right one as enclosed sky beside the re-seated glacis links.
+    // The web runs forward to the nose lip (z 3.71) and in under the glacis edge (|x| 0.76), so the pocket between the
+    // lip, the web and the track (|x| 0.78-0.98, z 3.62-3.70) is floored too.
+    for (const s of [-1, 1] as const) P.add('hull', box(0.225, 0.02, 0.58), s * 0.8725, 1.155, 3.42);
     P.add('hullDetail', box(0.30, 0.16, 0.015), 0.02, 1.32, -3.755);            // convoy plate
     for (const s of [-1, 1] as const) {
       P.add('hullDetail', box(0.09, 0.09, 0.12), s * 0.72, 1.28, 3.66);

@@ -64,10 +64,35 @@ export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret
     // The Type 96B's 3 m rear whip would make the listed height (body and roof weapon: the sim's body height) 5.2 m.
     builderOptions: { mastTopY: 3.40 } },
   t72b3m_hetman: { donor: 't72b3m_2016', pivot: T72B3M_RING, roofY: .82, station: T72B3M_CUPOLA, heightM: 3.382 },
-  t72b3m_hetman_ii: { donor: 't72b3m_2016', pivot: T72B3M_RING, roofY: .82, station: T72B3M_CUPOLA, heightM: 3.402 },
+  // Release 227 (owner 2026-10-16: "brand new era packages ... donnt make it just copy the t90ms"): Hetman II and both
+  // Zubrs fit their own frontal ERA (ukraineFrontEra.ts, polandFrontEra.ts), so the donor's Relikt cells, their beams
+  // and its roof cassettes are not emitted on them. The Zubrs' heights are their lower 12.7 mm WKM-B emplacements'
+  // (the sight box tops them: 3.2627 -> 3.0777, 3.3227 -> 3.1077).
+  t72b3m_hetman_ii: { donor: 't72b3m_2016', pivot: T72B3M_RING, roofY: .82, station: T72B3M_CUPOLA, heightM: 3.402,
+    builderOptions: { reliktEra: false } },
   t72b3_sich: { donor: 't72b3', pivot: T72B3_RING, roofY: .82, station: T72B3_CUPOLA_RING, heightM: 3.305 },
-  t72b3_zubr: { donor: 't72b3m_2016', pivot: T72B3M_ON_T72B3, roofY: .82, station: T72B3M_CUPOLA, heightM: 3.2627 },
-  t72b3_zubr_ii: { donor: 't72b3m_2016', pivot: T72B3M_ON_T72B3, roofY: .82, station: T72B3M_CUPOLA, heightM: 3.3227 },
+  t72b3_zubr: { donor: 't72b3m_2016', pivot: T72B3M_ON_T72B3, roofY: .82, station: T72B3M_CUPOLA, heightM: 3.0777,
+    builderOptions: { reliktEra: false } },
+  t72b3_zubr_ii: { donor: 't72b3m_2016', pivot: T72B3M_ON_T72B3, roofY: .82, station: T72B3M_CUPOLA, heightM: 3.1077,
+    builderOptions: { reliktEra: false } },
 };
 
 export const NATIONAL_DONOR_TURRET_IDS = Object.freeze(Object.keys(NATIONAL_DONOR_TURRETS));
+
+/**
+ * Release 227: the lowest main-gun pitch by absolute turret yaw (degrees, in the gunPitchLimits format: yaw 0..180 from
+ * the hull's front, minimum pitch). The brief's defect 3: the gun's full depression over the rear arc cut the deck stock
+ * (the Zubr's deck cases, the Zubr II's deck cabinets, the Hetman II's T-72B3M engine deck). Round 2 (2026-10-16, the
+ * critic's D7: "at the -6 the curves keep in the front arc, the whole main gun still cuts existing hull stock"): over the
+ * front quarters too, where the barrel at -6 met the front skirt bays' straps, rails and modules (the Zubrs, yaw 32-47)
+ * and the hull package's skirt fronts (Hetman II, yaw 26-52); dead ahead and broadside the gun keeps its -6. Each
+ * station is the lowest pitch, in half degrees, at which the whole gun (recoil 0 and -.135) keeps its barrel 1.5 cm off
+ * every hull stock triangle and its mantlet off all of them, at that yaw and both neighbouring degrees (the lane's
+ * gunclear probe, 1 degree steps over 0..180, both sides). Data only: sim/gunPitchLimits.ts applies it; matchRuleset.ts is
+ * untouched.
+ */
+export const NATIONAL_GUN_PITCH_BY_YAW: Readonly<Record<string, readonly (readonly [number, number])[]>> = {
+  t72b3m_hetman_ii: [[0,-6],[25,-6],[26,-5.5],[27,-5],[29,-5],[30,-5.5],[37,-5.5],[38,-6],[39,-6],[40,-5.5],[43,-5.5],[44,-6],[46,-6],[47,-5.5],[48,-5],[51,-5],[52,-5.5],[53,-6],[129,-6],[130,-5.5],[131,-5],[132,-4],[133,-3.5],[134,-3.5],[135,-3],[139,-3],[140,-3.5],[141,-3],[142,-2.5],[160,-2.5],[161,1.5],[162,2],[166,2],[167,2.5],[171,2.5],[172,2],[180,2]],
+  t72b3_zubr: [[0,-6],[31,-6],[32,-5.5],[33,-5],[35,-5],[36,-4.5],[38,-4.5],[39,-4],[41,-4],[42,-4.5],[43,-4.5],[44,-5],[45,-5.5],[47,-5.5],[48,-6],[128,-6],[129,-5.5],[133,-5.5],[134,-5],[135,-5],[136,-4.5],[137,-4.5],[138,-4],[142,-4],[143,-3.5],[144,-1.5],[145,-1],[147,-1],[148,-0.5],[149,0],[152,0],[153,-0.5],[156,-0.5],[157,-1],[159,-1],[160,-1.5],[161,-2.5],[162,-5.5],[163,-5],[167,-5],[168,-5.5],[172,-5.5],[173,-6],[180,-6]],
+  t72b3_zubr_ii: [[0,-6],[31,-6],[32,-5],[33,-4.5],[42,-4.5],[43,-5],[45,-5],[46,-5.5],[47,-5.5],[48,-6],[129,-6],[130,-5.5],[131,-5.5],[132,-4.5],[133,-4],[134,-3],[135,-3],[136,-2.5],[137,-2],[143,-2],[144,-1.5],[145,-1],[158,-1],[159,-1.5],[160,-2],[161,-5.5],[162,-5],[164,-5],[165,-5.5],[168,-5.5],[169,-6],[171,-6],[172,-5.5],[179,-5.5],[180,-6]],
+};

@@ -652,7 +652,9 @@ const cannery: RegionalBuilder = (ctx) => {
     });
     // the stack beside it: a battered plinth with its dressed course, the square shaft tapering in its courses to a corbelled
     // cap; recorded as a shaft so it topples as a chimney in its own drums, not with the hall's heap
-    const sx = bw / 2 + 0.85, sz = (bz0 + bz1) / 2, h = 12 + rng() * 3, g0 = 1.24, g1 = 0.9;
+    // (the looks lane, 227: the stack stood 5 cm before the boiler house's door, a pocket behind it between the house and
+    // the hall's back gable) the stack on the boiler house's blank side, its plinth in the corner against the hall
+    const sx = -(bw / 2 + 0.8), sz = bz1 - 0.8, h = 12 + rng() * 3, g0 = 1.24, g1 = 0.9;
     sink.span('stone', sx - 0.8, -0.6, sz - 0.8, sx + 0.8, 0.3, sz + 0.8);
     sink.span('stone', sx - g0 / 2 - 0.06, 0.3, sz - g0 / 2 - 0.06, sx + g0 / 2 + 0.06, 3.0, sz + g0 / 2 + 0.06);
     sink.span('stone', sx - g0 / 2 - 0.12, 3.0, sz - g0 / 2 - 0.12, sx + g0 / 2 + 0.12, 3.25, sz + g0 / 2 + 0.12, { decor: true, tint: [1.06, 1.04, 1.0] });

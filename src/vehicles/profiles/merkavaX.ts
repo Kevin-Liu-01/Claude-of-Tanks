@@ -199,6 +199,16 @@ function merkava3SmokeBanks(P: TankBuilderPort): void {
   }
 }
 
+/** Forged towing-eye plate, upright in the YZ plane with a lateral (X) bore. */
+function towEyePlate(): THREE.BufferGeometry {
+  const plate=new THREE.Shape();plate.absellipse(0,0,.0995*1.15,.0995,0,Math.PI*2,false,0);
+  const bore=new THREE.Path();bore.absellipse(0,0,.0585*1.15,.0585,0,Math.PI*2,true,0);
+  plate.holes.push(bore);
+  const geometry=new THREE.ExtrudeGeometry(plate,{depth:.041,bevelEnabled:false,curveSegments:16});
+  geometry.translate(0,0,-.0205);geometry.rotateY(-Math.PI/2);
+  return geometry;
+}
+
 function merkava3HullDetails(P: TankBuilderPort): void {
   for(const side of[-1,1]){
     for(let i=0;i<10;i++){
@@ -230,8 +240,14 @@ function merkava3HullDetails(P: TankBuilderPort): void {
     P.addEquipment('hullDetail',torus(.068,.021,12,6),side*.69,.97,-3.38-MK3.center);
     // The forward towing eyes, not an extended armored nose, set this
     // source's hull exterior length. Preserve their open side-view aperture.
-    const eye=torus(.079,.0205,16,8);eye.scale(1.15,1,1);
-    P.addEquipment('hullDetail',eye,side*.6768,1.0131+MK3.ground,3.6452-MK3.center,0,Math.PI/2);
+    // KIT.torus is authored flat (axis +Y), so the former ring lay flat with
+    // its aperture to the sky (a top-down hole inside each eye). The eye is now
+    // the forged plate it represents, upright in the YZ plane with a straight
+    // lateral bore: same 41 mm thickness, outer and bore ellipses (1.15 forward
+    // stretch), nose reach (z 3.756) and lug bite. A plate's bore has flat
+    // walls through its thickness, so no voxel inside the aperture reads as
+    // enclosed body the way the torus tube's curved lower arc did.
+    P.addEquipment('hullDetail',towEyePlate(),side*.6768,1.0131+MK3.ground,3.6452-MK3.center);
     P.addEquipment('hullDetail',box(.1038,.101,.099),side*.6768,1.024+MK3.ground,3.566-MK3.center);
   }
   merkava3FrontDeck(P);

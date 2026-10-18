@@ -216,7 +216,8 @@ export default {
       // of the south's, the road bending a metre through the tower's depth — 8.2 m wide so its piers keep out of the
       // road's 3.5 m core; each stub to its own end of the wall)
       { kind: 'townGate', x: -51.839, z: 100.564, yawDeg: 2, ground: 'veto', name: 'the north gate', params: { passage: 8.2, wallsLeft: 5.67, wallsRight: 9.35, height: 22 } },
-      { kind: 'townGate', x: -48.339, z: -101.256, yawDeg: 184, ground: 'veto', name: 'the south gate', params: { passage: 8.2, wallsLeft: 3.87, wallsRight: 11.21, height: 22 } },
+      // (round 5, wave 389: "north and south are the same tower model") the south gate's top storey timber framed
+      { kind: 'townGate', x: -48.339, z: -101.256, yawDeg: 184, ground: 'veto', name: 'the south gate', params: { passage: 8.2, wallsLeft: 3.87, wallsRight: 11.21, height: 22, style: 'framed' } },
       { kind: 'fountain', x: -62, z: 47, yawDeg: 6, ground: 'veto', name: 'the Marktbrunnen before the church', params: { style: 'markt', radius: 2.6 } },
       // (the maps lane, 2026-10-15, the Verdant process; the blind critics: "no hill, castle or church mass": the Burgberg
       // carried two 9 m wall towers and a chapel) the castle's mass — the keep (Bergfried) on the rock's crown, five
@@ -278,6 +279,8 @@ export default {
     // street at one building line, a gap only where a lane, a planned building, a set piece, the square or the town wall
     // stops the row (tools/plan-street-rows.mjs, steinburgRows.ts)
     townRowPlan: STEINBURG_ROWS,
+    // (the looks lane, 227) the lampposts and the kerb's litter beside the planned rows, as the street pass laid them
+    townRowFurniture: true,
     curbs: true,
     monument: true,
     blockFill: true,
@@ -362,6 +365,9 @@ export default {
     // Leopards and Marder, the NVA's T-72M and BMP, an M1A1
     tankWrecks: { era: 'cold-war', count: 6, debris: true, ids: ['leo2a2', 't72m1_jaguar', 'marder1a3', 'bmp2', 'leo1a5', 'm1a1'] },
     sandbagLines: 12,
+    // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the fence
+    // runs stop short of the buildings' plots (the audit counted 16 fence or gate records reaching into a structure)
+    dressingRules: { fencesClearBuildings: true, fenceStubsOut: true },
     // world-dressing r1: brick boundary walls w/ coping; street inhabitants —
     // a market ring on the central square, oil drums + pallet/crate work
     // clutter down the alleys, benches on the pavements (all destructible;

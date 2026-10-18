@@ -16,7 +16,7 @@ import { ASSAULT_LINE_FRACTIONS } from './assaultLines.ts';
 import { MATCH_MODE_ARENA_HALF_EXTENT_M as WORLD_MARGIN_M } from './matchObjectiveLayouts.ts';
 import {
   FLAG_CARRIER_SPEED_SCALE, HORDE_WAVE_REPAIR, RULESET_SCORE_TARGETS, matchRulesetFor, type MatchRuleset, hordeWaveSize,
-  assaultWaveHealthScale,
+  assaultWaveHealthScale, cacheHealChance, hordeWaveHealthScale, hordeWaveSpeedScale,
   MARS_DEFAULT_RULES, GUN_GAME_WEAPONS, type RulesetPhysics,
 } from './matchRuleset.ts';
 
@@ -407,6 +407,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const definition = GAME_MODE_DEFINITIONS[id];
   const ruleset: MatchRuleset = rulesetOption && rulesetOption.mode === id ? rulesetOption : matchRulesetFor(id);
   const baseSpeed = ruleset.speedMultiplier;
+  // the wave law: the Horde's own, and Frontline's wave pressure reads the Horde's speed ramp
+  const hordeRules = ruleset.horde ?? matchRulesetFor('endless_horde').horde!;
   const infectionStamped=new WeakSet<object>();
   const stampInfection=(entity:Entity):void=>{
     const infection=ruleset.infection;if(!infection||infectionStamped.has(entity.combat))return;
@@ -607,9 +609,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     stampInfection(entity);
     if (ruleset.gunGame) setWeaponStage(entity, Math.min(GUN_GAME_WEAPONS.length - 1, Math.floor((weaponKills.get(entity.id) ?? 0) / ruleset.gunGame.killsPerWeapon)));
     entity.modeActive = true;
-    // wave pressure: Horde / Frontline defenders drive faster every wave (capped at +55 %)
+    // wave pressure: Horde / Frontline defenders drive faster every wave (the ruleset's capped ramp)
     stampPhysics(entity, (id === 'endless_horde' || id === 'frontline_assault') && teamOf(entity) === 'bravo'
-      ? baseSpeed * (1 + Math.min(0.55, (wave - 1) * 0.045)) : baseSpeed);
+      ? baseSpeed * hordeWaveSpeedScale(hordeRules, wave) : baseSpeed);
     destroyed.set(entity.id, false);
     scoredDeaths.delete(entity.id);
     respawnAt.delete(entity.id);
@@ -629,7 +631,6 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   // its hostiles afresh from the pool — a seeded shuffle that puts identities rested last wave
   // first — so consecutive waves share as few vehicles as the pool allows, and the wave grows by
   // the ruleset's law until the whole pool is on the field.
-  const hordeRules = ruleset.horde ?? matchRulesetFor('endless_horde').horde!;
   let lastWaveIds = new Set<string>();
   const drawWave = (count: number): Set<Entity> => {
     const order = hordeEnemies.slice();
@@ -666,7 +667,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
 
   const startHordeWave = (): void => {
     const activeCount = Math.min(hordeEnemies.length, hordeWaveSize(hordeRules, wave));
-    const healthScale = 1 + (wave - 1) * 0.16;
+    // the zombies' fodder hull (the revive's stamp multiplies by the humans' hpScale, so this divides it back out)
+    const healthScale = hordeWaveHealthScale(ruleset, hordeRules, wave);
     fieldWave(drawWave(activeCount), healthScale);
     for (const ally of teams.alpha) {
       if (ally.combat.destroyed) reviveAtSpawn(ally, 1);
@@ -676,14 +678,15 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       state.horde.wave = wave;
       state.horde.total = activeCount;
       state.horde.nextWaveInS = 0;
-      state.horde.healChance = Math.max(0.08, 0.62 - (wave - 1) * 0.055);
+      state.horde.healChance = cacheHealChance(ruleset, wave);
     }
     emit('mode_wave_started', { wave, enemies: activeCount, healthScale });
   };
 
   const spawnPickup = (): void => {
     if (!state.horde && id !== 'mars') return;
-    const healChance = state.horde?.healChance ?? 0.5;
+    // the draw is kept under unlimited rounds (every cache a repair), so the seeded stream does not shift
+    const healChance = state.horde?.healChance ?? cacheHealChance(ruleset, wave);
     const kind: PickupState['kind'] = rng() < healChance ? 'heal' : 'ammo';
     const along = (rng() * 2 - 1) * Math.min(145, axisLength * 0.28);
     const lateral = (rng() * 2 - 1) * 135;
@@ -1429,6 +1432,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     }
     if (id === 'turbo_ball') return ballBotTarget(entity, team);
     if (id === 'endless_horde') return hordeBotTarget(entity, team);
+    // the infected hunt the nearest survivor (the Horde's law) when the ruleset says so; survivors roam free
+    if (ruleset.infection?.hunt && team === 'bravo') return hordeBotTarget(entity, team);
     if (id === 'frontline_assault') {
       if (regroup && team === 'alpha' && entity.bot) return { x: regroup.x, z: regroup.z, mission: 'assault' };
       const point = assaultBotTarget();

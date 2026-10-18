@@ -115,8 +115,10 @@ export const NATIONAL_MODERNIZATION_PROFILES={
    if(donor){
     P.hullG.position.set(0,0,0);
     if(c.package==='ua'){
-     // Hetman II (as buildHetmanII): the complete native T-72B3M hull, then its own heavy hull package (the kit).
-     buildT72B3MXHull(P);
+     // Hetman II (as buildHetmanII): the native T-72B3M hull, then its own heavy hull package (the kit). Release 227: its
+     // own frontal package (ukraineFrontEra.ts) replaces the native glacis Relikt, skirt boxes and glacis lamps; the deck
+     // cover strap in its mantlet's sweep is left off.
+     buildT72B3MXHull(P,{nativeEra:false,glacisLamps:false,sweptStrap:false});
      fitDonorTurret(P,c.id,()=>buildHetmanIIDonorKit(P));
     }else{
      buildZubrIIHull(P);

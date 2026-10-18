@@ -73,6 +73,23 @@ interface TopPanel {
    */
   restOnProbeM?: number;
   /**
+   * Release 227 (round 4, 2026-10-17; the critic on the Zubr II's terraced glacis: "the camouflage-suit net and foliage
+   * lie in the gaps between the new glacis ERA rows and pass under the module rows"): over a stepped ERA field (between
+   * `envelopeZ`, owner-local z) a laid net lies on the field's tops, as a net thrown over blocks does: each of its points
+   * rests on the highest armour within `envelopeM` of it (no higher than ENVELOPE_RISE_M over the armour under it: a
+   * taller fitting is cut round, as before). With the reach at least half a cell's diagonal no cloth triangle passes
+   * into a block between its corners, and the net spans every gap and step narrower than twice the reach.
+   */
+  envelopeM?: number;
+  envelopeZ?: readonly [number, number];
+  /**
+   * Release 227 round 6 (the critic's UAPL-R5C-1 era census; the suit receipt: "hull net piece of 24 vertices ... nearest
+   * armour 2.4 cm"): the smallest piece (triangles) a laid sheet keeps (default 8). Over Hetman II's shingled glacis
+   * blocks the gun envelope's cut leaves two four-cell scraps lying 2.4 cm over the blocks, tied to nothing; 12 drops
+   * them and keeps every real patch.
+   */
+  minPieceTris?: number;
+  /**
    * 2026-10-09 (the netting lane; the owner: "add a ton more netting ... all over"): the carrier's authored height is
    * read from the owner's armour where the probe finds it (the highest surface within 3.5 cm), so a net laid over a
    * whole roof or deck follows every step and slope of it; `yAt` holds only where no armour answers.
@@ -194,6 +211,14 @@ export interface GhillieConfig {
    * yaw-aware clearance over the decks behind and ahead of the turret. Needs fieldClearanceM.
    */
   conservativeGunEnvelope?: boolean;
+  /**
+   * Release 227 (round 2, 2026-10-16; the critic on the new national frontal ERA: "net blades and leaf clumps sink into the
+   * new brick rows and stick out between them"): no point of a garnish card may lie inside the owner's armour (the
+   * nearest surface over it faces up: the top of the block it is in), sampled densely over the card's face. The net's
+   * cells bridge a stepped ERA field's bricks and risers, and a card laid on the cloth there would pass into them. Set
+   * on the suits of the hulls carrying those fields; unset suits keep their cards as laid.
+   */
+  cardsClearOfArmour?: boolean;
 
   /**
    * The netting lane: the seed of the painted net texture (default: the suit's seed). Suits sharing one share a single
@@ -229,8 +254,11 @@ interface GhillieBuilderPort {
   /** The cloth the suit clones, and the scheme wheel paint its theatre is read from (round 5). */
   mats: { canvasCloth: THREE.MeshStandardMaterial; wheels?: THREE.MeshStandardMaterial };
   disposables: DisposableResource[];
-  /** Steps run once the tank is assembled, after its profile's postAssemble (TankBuilderPort.afterAssemble). */
-  afterAssemble?: Array<(rig: never) => void>;
+  /**
+   * Steps run once the tank is assembled, after its profile's postAssemble (TankBuilderPort.afterAssemble). A step may
+   * return its work as checkpoints; the factory runs it after the core build, one checkpoint per slice.
+   */
+  afterAssemble?: Array<(rig: never) => void | Generator<void, void, void>>;
 }
 
 // Shared physical-ghillie authoring process.
@@ -967,6 +995,24 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
         if (!under || here === null || under.y < here + 0.06) standing = true;
       }
     }
+    // release 227 (envelopeM): over a stepped ERA field the net rests on the highest top within its reach
+    const env = panel.envelopeM, band = panel.envelopeZ;
+    // (a point just past the field's edge, over no armour, rests on the edge within its reach: the net's last cell
+    // there lies level off the edge instead of hanging down through the edge's top corner)
+    if (env !== undefined && !standing && (!band || (z >= band[0] && z <= band[1]))) {
+      const ref = centre ?? rest;
+      let top = ref === null ? null : rest !== null && rest - ref < ENVELOPE_RISE_M ? Math.max(rest, ref) : ref;
+      for (const [ux, uz] of ENVELOPE_RING) {
+        const sx = x + ux * env, sz = z + uz * env;
+        if (sx < x0 || sx > x1 || sz < z0 || sz > z1) continue;
+        for (const h of probe?.surfacesAt?.(sx, sz) ?? []) {
+          if (!h.up || h.y > ceiling) continue;
+          if (!h.gear && (top === null || h.y > top) && (ref === null || h.y - ref <= ENVELOPE_RISE_M)) top = h.y;
+          break;
+        }
+      }
+      if (top !== null) return { rest: top, standing };
+    }
     // the armour under the point itself; its neighbours' only over a slot or a bolt head (their highest on a sloped plate
     // would hold the net off the slope)
     return { rest: centre !== null && rest !== null && rest - centre < 0.01 ? rest : centre ?? rest, standing };
@@ -1233,7 +1279,7 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
     const a = vtx(i, j), b = vtx(i + 1, j), c = vtx(i + 1, j + 1), d = vtx(i, j + 1);
     tri(a, c, b); tri(a, d, c);
   }
-  dropIslands(positions, uvs);
+  dropIslands(positions, uvs, panel.minPieceTris ?? 8);
   const geometry = makeGeometry(positions, uvs);
   const ring = outline ?? rect(x0, x1, z0, z1);
   return {
@@ -1411,6 +1457,14 @@ function foldAt(f: FoldField, u: number, below: number): number {
 
 /** The netting lane: how far under a laid net's level armour still holds it (m), and the step a laid cell never spans. */
 const LAID_DROP_M = 0.35;
+/** Release 227 (TopPanel.envelopeM): the most a net's envelope rises over the armour under a point (a stepped ERA
+ * field's tops stand at most 18 cm over the plate between its rows; a taller fitting is cut round), and the unit
+ * offsets it samples: sixteen directions at the reach and at half of it (an edge within 98 % of the reach is met). */
+const ENVELOPE_RISE_M = 0.2;
+const ENVELOPE_RING: ReadonlyArray<readonly [number, number]> = [1, 0.5].flatMap((r) =>
+  Array.from({ length: 16 }, (_, k) => [r * Math.cos(k * Math.PI / 8), r * Math.sin(k * Math.PI / 8)] as const));
+/** Release 227 round 4 (cardsClearOfArmour): how far over a roof or deck card armour counts as overhanging it. */
+const OVERHUNG_M = 0.25;
 const LAID_STEP_M = 0.25;
 /** The netting lane: how far off its authored plane a hanging face net still finds its face (m). */
 const FACE_REACH_M = 0.3;
@@ -2432,6 +2486,11 @@ interface FieldTuftContext extends TuftContext {
    * faces: a builder's winding is no guide; its running gear aside).
    */
   readonly overArmour?: (x: number, y: number, z: number) => boolean;
+  /** Release 227 (cardsClearOfArmour): whether a point lies inside the owner's armour (its nearest surface over it faces up). */
+  readonly insideArmour?: (x: number, y: number, z: number) => boolean;
+  /** Release 227 round 4 (cardsClearOfArmour): whether the owner's armour overhangs a point within OVERHUNG_M (a roof or
+   * deck card tucked under a module's lip; drapes hang beside walls under rails and keep their cards). */
+  readonly underArmour?: (x: number, y: number, z: number) => boolean;
   /**
    * netting-proper round 2: the owner's roof cards laid so far, over all its roof and deck nets (where two nets meet,
    * either's clumps may reach the same point): each card's tuck point and plan heading.
@@ -2836,7 +2895,9 @@ function addFieldTufts(out: FoliageCardBuffer, surface: ClothSurface, ctx: Field
         // netting-proper: and lies on its net between its rows too (a dip in the net under a long bough)
         && (!top || lyingOk(dense!, stem))
         && (!clothNear || pts.every((p) => clothNear(p)))
-        && (!ctx.tubes?.length || !cardCrossesTube(card, ctx.tubes));
+        && (!ctx.tubes?.length || !cardCrossesTube(card, ctx.tubes))
+        && (!ctx.insideArmour || !(dense ?? denseCardPoints(card)).some((p) => ctx.insideArmour!(p[0], p[1], p[2])))
+        && (!top || !ctx.underArmour || !dense!.some((p) => ctx.underArmour!(p[0], p[1], p[2])));
       if (ok) return card;
     }
     return null;
@@ -4901,7 +4962,7 @@ function fieldOk(mesh: THREE.Object3D, ok: (p: readonly number[]) => boolean): v
 
 /** Drop a carrier's triangles with a corner the clearance refuses (the cloth's garnish is held to the same rule). */
 function clearedGeometry(geometry: THREE.BufferGeometry, ok: (p: readonly number[]) => boolean,
-  triangleOk?: (a: readonly number[], b: readonly number[], c: readonly number[]) => boolean): THREE.BufferGeometry {
+  triangleOk?: (a: readonly number[], b: readonly number[], c: readonly number[]) => boolean, minPieceTris = 8): THREE.BufferGeometry {
   const pos = geometry.attributes.position as THREE.BufferAttribute, uv = geometry.attributes.uv as THREE.BufferAttribute | undefined;
   const positions: number[] = [], uvs: number[] = [];
   // a corner shared by several triangles is asked once
@@ -4930,7 +4991,7 @@ function clearedGeometry(geometry: THREE.BufferGeometry, ok: (p: readonly number
     }
   }
   if (!dropped) return geometry;
-  dropIslands(positions, uvs);
+  dropIslands(positions, uvs, minPieceTris);
   geometry.dispose();
   return makeGeometry(positions, uvs);
 }
@@ -5072,7 +5133,7 @@ function fieldSpecies(cfg: GhillieConfig, theatre: SuitTheatre): readonly [Spray
   return [own ?? 'spruce', 'beech'];
 }
 
-function addGhillieOwner(
+function* addGhillieOwner(
   P: GhillieBuilderPort,
   cfg: GhillieConfig,
   owner: GhillieOwner,
@@ -5083,7 +5144,7 @@ function addGhillieOwner(
   cover: CoverPalette,
   clearance: FieldClearance | null = null,
   cap: SuitCap | null = null,
-): void {
+): Generator<void, void, void> {
   const leafy = cfg.style === 'leafy';
   // push 3b's field roof cage: its tubes hold up nothing laid on the turret, and (on a draped net suit) each of its
   // wings carries a net of its own
@@ -5174,7 +5235,7 @@ function addGhillieOwner(
     // the netting lane: a carrier is filtered by the clearance as it is laid, and the drapes built after it see only
     // what is left of it (a drape never starts from a roof edge the clearance took away)
     if (coverOk) {
-      const geometry = clearedGeometry(laid.geometry, coverOk, coverEdgesOk);
+      const geometry = clearedGeometry(laid.geometry, coverOk, coverEdgesOk, panel.minPieceTris ?? 8);
       // the cells whose cloth is really there (torn perimeter cells, islands and what the clearance took are not): a
       // drape starts only on cloth that exists
       const { x0, x1, z0, z1, nx = 18, nz = 30 } = panel;
@@ -5195,10 +5256,16 @@ function addGhillieOwner(
         },
       });
     } else tops.push(laid);
+    // a checkpoint between the suit's stages (2026-10-16): the factory runs the suit in its own slices after the core
+    yield;
   }
   const surfaces: ClothSurface[] = [...tops];
-  for (const panel of panels.side ?? []) surfaces.push(sideCloth(panel, cfg, support, uvk, gunFloor?.standing ?? null));
+  for (const panel of panels.side ?? []) {
+    surfaces.push(sideCloth(panel, cfg, support, uvk, gunFloor?.standing ?? null));
+    yield;
+  }
   for (const panel of panels.face ?? []) surfaces.push(faceCloth(panel, cfg, support, uvk));
+  yield;
   if (leafy && cage.length && gunFloor) cage.forEach((wing, i) => surfaces.push(...cageWingCloths(wing, i, cfg, probe, uvk, gunFloor, dock)));
   if (gunFloor || dock) {
     const inColumn = (p: readonly number[]): boolean => !!dock && p[1] > dock.min.y - 0.05
@@ -5259,6 +5326,14 @@ function addGhillieOwner(
       } : undefined,
       overArmour: field && surfacesAt
         ? (x, y, z) => surfacesAt(x, z).some((h) => !h.gear && h.y <= y + 0.005) : undefined,
+      insideArmour: cfg.cardsClearOfArmour && surfacesAt ? (x, y, z) => {
+        // the surfaces come highest first: the last one over the point is the nearest over it
+        let above: { up: boolean } | null = null;
+        for (const h of surfacesAt(x, z)) { if (h.gear) continue; if (h.y > y + 0.001) above = h; else break; }
+        return above !== null && above.up;
+      } : undefined,
+      underArmour: cfg.cardsClearOfArmour && surfacesAt
+        ? (x, y, z) => surfacesAt(x, z).some((h) => !h.gear && h.y > y + 0.001 && h.y < y + OVERHUNG_M) : undefined,
       // the card's own vertices keep the vehicle's clearances; its face, sampled densely, keeps the thin lens views
       // and smoke lines clear (a line can pass between a card's vertices)
       cardClear: clearance ? field ? (card) => denseCardPoints(card).every((p) => clearance.fieldLinesOk(owner, p))
@@ -5266,10 +5341,11 @@ function addGhillieOwner(
         : (card) => foliageCardPoints(card).every((p) => clearance.netOk(owner, p))
           && denseCardPoints(card).every((p) => clearance.linesOk(owner, p)) : undefined,
     };
-    surfaces.forEach((surface, k) => {
-      (field ? addFieldTufts : addTufts)(foliage, surface, ctx, cfg.seed + k * 1000 + (owner === 'turret' ? 37 : owner === 'gun' ? 71 : 0));
+    for (let k = 0; k < surfaces.length; k++) {
+      (field ? addFieldTufts : addTufts)(foliage, surfaces[k], ctx, cfg.seed + k * 1000 + (owner === 'turret' ? 37 : owner === 'gun' ? 71 : 0));
       if (k < tops.length) topCards = foliage.cardCount;
-    });
+      yield;
+    }
   }
   const suitMats = suitMaterialsOf(P), netGeos = surfaces.map((s) => s.geometry);
   // the suit's parts share one net material (an empty part still builds and disposes its own throwaway, as before)
@@ -5411,7 +5487,12 @@ function suitCapOf(P: GhillieBuilderPort): SuitCap | null {
     top: box.max.y + FIELD_CAP_M };
 }
 
-function buildGhillieSuit(P: GhillieBuilderPort, cfg: GhillieConfig): void {
+/**
+ * The suit's build, as checkpoints (2026-10-16, PERF: the garage's default tank wears a suit and its build was one long
+ * task). The factory runs it after the core build, before the decorations that read it, and the vehicle it reads is the
+ * one the assembly left (tankFactoryCore.ts runDeferredAssembly); nothing it draws or decides depends on where it pauses.
+ */
+function* buildGhillieSuit(P: GhillieBuilderPort, cfg: GhillieConfig): Generator<void, void, void> {
   const theatre = buildTheatre(P);
   const cover = buildCoverPalette(P, theatre);
   const owners: readonly [GhillieOwner, THREE.Group, readonly THREE.Object3D[]][] = [
@@ -5423,11 +5504,12 @@ function buildGhillieSuit(P: GhillieBuilderPort, cfg: GhillieConfig): void {
   // before the turret's suit, so that suit also clears the hull's)
   const clearance = cfg.fieldClearanceM !== undefined ? fieldClearance(P, cfg.fieldClearanceM, cfg.conservativeGunEnvelope === true) : null;
   const cap = isFieldNet(cfg) ? suitCapOf(P) : null;
+  yield;
   for (const [owner, parent, others] of owners) {
     const panels = cfg[owner];
     if (!panels) continue;
     if (owner === 'turret') clearance?.addHullSuit();
-    addGhillieOwner(P, cfg, owner, parent, panels, others, theatre, cover, clearance, cap);
+    yield* addGhillieOwner(P, cfg, owner, parent, panels, others, theatre, cover, clearance, cap);
   }
 }
 
@@ -5478,6 +5560,10 @@ export function addVehicleGhillieSuit(P: GhillieBuilderPort, config?: GhillieCon
   // laid against the finished armour: after the profile's own postAssemble chain, which it never wraps (a port without
   // that stage builds at once)
   if (P.afterAssemble) P.afterAssemble.push(() => buildGhillieSuit(P, cfg));
-  else buildGhillieSuit(P, cfg);
+  else {
+    // a port without that stage builds at once
+    const steps = buildGhillieSuit(P, cfg);
+    for (let step = steps.next(); !step.done; step = steps.next()) { /* every checkpoint at once */ }
+  }
   return true;
 }

@@ -388,7 +388,11 @@ for (const id of ['leo2a2', 't72b3m_hetman_ii', 't72b3_sich', 't80u_zoria', 't72
   P.postAssemble = (rig) => { before?.(rig); calls.push('field kit'); };
   const rig = { root, hullG, turretG, gunG, recoilG: gunG };
   P.postAssemble(rig);
-  for (const step of P.afterAssemble) step(rig);
+  // 2026-10-16: an assembly step returns its work as checkpoints (the factory runs them after the core); drain them here
+  for (const step of P.afterAssemble) {
+    const work = step(rig);
+    if (work) for (let next = work.next(); !next.done; next = work.next()) { /* every checkpoint */ }
+  }
   assert.deepEqual(calls, ['profile', 'field kit'], 'both profile postAssemble steps still run around the suit');
   assert.ok(turretG.getObjectByName('receipt_port_ghillie_turret_net')?.isMesh, 'the suit builds after assembly');
 }

@@ -6,7 +6,7 @@ import {nationalModernizationDesign,NATIONAL_GUN_PIVOT,NATIONAL_BARREL_LENGTH,NA
 import type {FleetTankSpec} from './specContracts.ts';
 import {synchronizeNationalLegacyMetadata} from './nationalLegacySpecs.ts';
 import {NATIONAL_PROTECTION_WIDTHS_M} from './nationalProtectionDimensions.ts';
-import {NATIONAL_DONOR_TURRETS} from './nationalDonorTurrets.ts';
+import {NATIONAL_DONOR_TURRETS,NATIONAL_GUN_PITCH_BY_YAW} from './nationalDonorTurrets.ts';
 const entries:Record<string,FleetTankSpec>={};
 for(const c of NATIONAL_MODERNIZATION_CONFIG){
   const s=cloneFleetVariant(TANK_SPECS,c.id,'t90sm',{name:c.name,nation:c.nation,era:'next-generation'});
@@ -119,5 +119,8 @@ function synchronizeDonorTurretConcept(c:(typeof NATIONAL_MODERNIZATION_CONFIG)[
   s.hp=upper.hp+(c.package==='ru'?100:0);
   s.gun.reloadS=upper.gun.reloadS*(c.package==='ru'?.94:1);
   s.turretTraverseDegS=upper.turretTraverseDegS+3;
+  // release 227: the rear-arc deck clearance of the donor gun over this hull (data, nationalDonorTurrets.ts)
+  const pitchByYaw=NATIONAL_GUN_PITCH_BY_YAW[c.id];
+  if(pitchByYaw)s.gunPitchByYawDeg=pitchByYaw;
   s.description='Original game concept. '+design.description+' Retains the '+c.donor+' mechanical running gear.';
 }
