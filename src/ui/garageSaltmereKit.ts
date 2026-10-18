@@ -458,6 +458,9 @@ export const SALTMERE_KIT: GarageKitPlacement = {
     { kind: 'prop', name: 'ammoCrate', at: [-13.9, -7.5], yaw: 0.1, y: 0.14, blot: false },
     { kind: 'prop', name: 'coiledHose', at: [-12.5, -6.4], yaw: 0.5, params: { color: 0x8c7a55 } },
     { kind: 'prop', name: 'tarpStack', at: [-15.4, -8.8], yaw: 0.3 },
+    // rust bleed and oil where the cage and the hut's door stand on the quay
+    { kind: 'sign', sign: 'stencil', rect: 'decal.oil', at: [15.2, -3.6], yaw: 0.5, size: [1.6, 1.2] },
+    { kind: 'sign', sign: 'stencil', rect: 'decal.grime', at: [29.2, 14.2], yaw: 0.9, size: [2.4, 1.4], datum: true },
     // the wet dock floor's puddles, standing between the keel blocks
     { kind: 'sign', sign: 'stencil', rect: 'decal.oil', at: [16.4, 25.0], yaw: 0.3, size: [1.4, 2.2], datum: true, y: -5.38 },
     { kind: 'sign', sign: 'stencil', rect: 'decal.grime', at: [17.0, 30.5], yaw: 1.2, size: [2.0, 1.3], datum: true, y: -5.38 },

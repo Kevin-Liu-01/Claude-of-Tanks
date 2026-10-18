@@ -444,6 +444,10 @@ export const CINDER_KIT: GarageKitPlacement = {
     { kind: 'piece', key: 'cinder-outrigger-packing', build: outriggerPacking, at: [-27.6, 7.6], yaw: FACE_LEFT, datum: true, grounded: false },
     { kind: 'crane', crane: 'breakdown', at: [-27.6, 7.6], yaw: FACE_LEFT, y: 0.31, datum: true, params: { slew: 0.5, jibAngle: 0.62, load: { kind: 'turret' } } },
     { kind: 'piece', key: 'cinder-cribbing', build: cribbing, at: [-35.5, 2.84], yaw: 0.2, datum: true },
+    // oil and ash worked into the ground where the crane, the ash pit and the lamp stand stand
+    { kind: 'sign', sign: 'stencil', rect: 'decal.oil', at: [-28.4, 6.8], yaw: 0.7, size: [3.2, 2.2] },
+    { kind: 'sign', sign: 'stencil', rect: 'decal.grime', at: [-17.0, 13.0], yaw: 0.2, size: [2.6, 1.6] },
+    { kind: 'sign', sign: 'stencil', rect: 'decal.oil', at: [13.4, 19.2], yaw: 1.4, size: [1.6, 1.3] },
     // the ash pit, the rail and sleeper store, the oil-lamp stand, the yard's poster hoarding and the brand's banner
     { kind: 'piece', key: 'cinder-ash-pit', build: ashPit, at: [-14.4, 16.2], yaw: FACE_CAMERA },
     { kind: 'piece', key: 'cinder-rail-store', build: railStore, at: [22.6, 1.6], yaw: FACE_CAMERA + 0.1 },
