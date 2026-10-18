@@ -23,7 +23,7 @@ import { buildT64Modern } from './t72ModernVariants.ts';
 // primitive construction — measured dimensions only, no source topology.
 import * as THREE from 'three';
 import { KIT, FITTINGS, MUDGUARDS, muzzleBore } from './kit.ts';
-import { vehicleAmbientFloorHook } from '../materials.ts';
+import { cloneRehookedVehicleMaterial } from '../materials.ts';
 import { addShtoraEyes } from './shtora.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
@@ -900,9 +900,8 @@ export function rehookClone(
   colorHex: number | null,
   emissiveHex: number | null,
 ): THREE.MeshStandardMaterial {
-  const m = base.clone();
-  m.onBeforeCompile = vehicleAmbientFloorHook;
-  m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+  // 2026-10-17 (the wheel-band lane, round 2): the re-hooked clone in its base's cascade registration
+  const m = cloneRehookedVehicleMaterial(base);
   if (colorHex != null) m.color.setHex(colorHex);
   if (emissiveHex != null && m.emissive) m.emissive.setHex(emissiveHex);
   return m;

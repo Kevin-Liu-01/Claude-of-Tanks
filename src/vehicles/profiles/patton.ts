@@ -47,7 +47,7 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // lands ONLY in wholeCurves/turretCurves and is certified per packet.
 import * as THREE from 'three';
 import { KIT, FITTINGS, MUDGUARDS, evenStations, muzzleBore, orientedSlab, convexSlab } from './kit.ts';
-import { vehicleAmbientFloorHook } from '../materials.ts';
+import { cloneRehookedVehicleMaterial, rehookVehicleMaterial } from '../materials.ts';
 import { tagVehicleMaterial } from '../appearanceAudit.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
@@ -1504,13 +1504,11 @@ function t26Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
   let mgPale: THREE.MeshStandardMaterial | null = null;
   const t26CastAssemblyStage2 = (): void => {
     if ((T.mg && T.mg.tone === 'two-tone') || (T.pedestal && T.pedestal.tone === 'two-tone')) {
-      mgPale = P.mats.shadow.clone();
+      mgPale = cloneRehookedVehicleMaterial(P.mats.shadow);
       mgPale.color.setHex(0x424635);
       mgPale.roughness = 0.9;
       mgPale.metalness = 0.02;
       mgPale.envMapIntensity = 0.18;
-      mgPale.onBeforeCompile = vehicleAmbientFloorHook;
-      mgPale.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       P.disposables.push(mgPale);
     }
   };
@@ -1587,10 +1585,8 @@ function t26Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
       // Per-build canvasCloth clones + ambient rehook (clone drops
       // onBeforeCompile — merkava gearFloor law).
       const mkCloth = (hex: number): THREE.MeshStandardMaterial => {
-        const m = P.mats.canvasCloth.clone();
+        const m = cloneRehookedVehicleMaterial(P.mats.canvasCloth);
         m.color.setHex(hex);
-        m.onBeforeCompile = vehicleAmbientFloorHook;
-        m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
         P.disposables.push(m);
         return m;
       };
@@ -2120,7 +2116,7 @@ function m47Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
   let mgPale: THREE.MeshStandardMaterial | null = null;
   const m47CastAssemblyStage2 = (): void => {
     if (T.rackFill || machineGun.tone === 'two-tone') {
-      mgPale = P.mats.shadow.clone();
+      mgPale = cloneRehookedVehicleMaterial(P.mats.shadow);
       // cycle-7/8 dial (ordered-class law, sampled on the render): 0x565a45
       // rendered the rod med 94, 0x484c3a rendered 85.2 — final step lands
       // the ref's 79.5 class while the B2 cavity med stays >= 68
@@ -2128,8 +2124,6 @@ function m47Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
       mgPale.roughness = 0.9;
       mgPale.metalness = 0.02;
       mgPale.envMapIntensity = 0.18;
-      mgPale.onBeforeCompile = vehicleAmbientFloorHook;
-      mgPale.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       P.disposables.push(mgPale);
     }
   };
@@ -2260,13 +2254,11 @@ function m47Cast(P: PattonBuilderPort, T: T26TurretConfig): void {
   // bit-identical x2 with it present this round).
   const m47CastTurretStage4 = (): void => {
     if (T.bustleSmooth) {
-      const notchMat = P.mats.shadow.clone();
+      const notchMat = cloneRehookedVehicleMaterial(P.mats.shadow);
       notchMat.color.setHex(0x424535);
       notchMat.roughness = 0.97;
       notchMat.metalness = 0.0;
       notchMat.envMapIntensity = 0.24;
-      notchMat.onBeforeCompile = vehicleAmbientFloorHook;
-      notchMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       P.disposables.push(notchMat);
       const ng = new THREE.BoxGeometry(1.42, 0.17, 0.17);
       const nm = new THREE.Mesh(ng, notchMat);
@@ -3061,13 +3053,11 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
       // plan interior to the bay. Default absent — every sibling
       // (m26/m45/m47/m60s) byte-identical.
       const DS = cfg.deckSlats;
-      const palem = P.mats.shadow.clone();
+      const palem = cloneRehookedVehicleMaterial(P.mats.shadow);
       palem.color.setHex(DS.hex ?? 0x424635);
       palem.roughness = 0.9;
       palem.metalness = 0.02;
       palem.envMapIntensity = 0.18;
-      palem.onBeforeCompile = vehicleAmbientFloorHook;
-      palem.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       P.disposables.push(palem);
       const places = [];
       const zm = (DS.z0 + DS.z1) / 2, zd = DS.z0 - DS.z1;
@@ -3133,13 +3123,11 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
       // as ONE InstancedMesh per bank (t90am ERA-brick pattern). Default
       // absent — every sibling (m45/m46/m47/m60s) byte-identical.
       const dAt = hull.deckAt;
-      const rbPale = P.mats.shadow.clone();
+      const rbPale = cloneRehookedVehicleMaterial(P.mats.shadow);
       rbPale.color.setHex(cfg.rampBanks.hex ?? 0x424635);
       rbPale.roughness = 0.9;
       rbPale.metalness = 0.02;
       rbPale.envMapIntensity = 0.18;
-      rbPale.onBeforeCompile = vehicleAmbientFloorHook;
-      rbPale.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       P.disposables.push(rbPale);
       for (const B of cfg.rampBanks.banks) {
         const spans = B.x0 < 0 ? [[B.x0, B.x1]] : [[B.x0, B.x1], [-B.x1, -B.x0]];
@@ -3359,11 +3347,6 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
       // ambient floor on the per-build pad/chain clones, the leo r13b
       // gearDarkLift pattern) + the m60 r4 grey-olive retone + camo-painted
       // wheel drums (the ref paints its whole wheel train).
-      const rehook = (m: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial => {
-        m.onBeforeCompile = vehicleAmbientFloorHook;
-        m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-        return m;
-      };
       // shoe pads (0x171614) / inner chain+guide horns (0x27251f): per-build
       // clones whose colors buildRunningGear pins — retone by hex on this
       // build's own subtree and re-hook the ambient floor the clone dropped
@@ -3395,7 +3378,7 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
         const [hex, env] = tone;
         material.color.setHex(hex);
         material.envMapIntensity = env;
-        rehook(material);
+        rehookVehicleMaterial(material); // (2026-10-17: a registered clone keeps its registration)
       });
       // band material: linear multiplier over the shared band map (m60 recipe)
       // r6 N1: multiplier r/g 1.0175 -> 0.956 at the same luma weight
@@ -3412,7 +3395,10 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
       // instance so the hull map's transform is untouched; repeat sized so
       // the blotch scale on a 0.66 m drum matches the hull plates). Hub
       // rings/bolts are hullDark — kept, per the order.
-      const wheelCamo = rehook(P.mats.hull.clone());
+      // 2026-10-17 (the wheel-band lane, round 2): in the hull's cascade registration (cloneRehookedVehicleMaterial) — the
+      // hand re-hooked raw clone drew the M46/M47 road wheels untagged, and the ground occlusion banded every wheel under
+      // the belly line, in the Garage and in battle.
+      const wheelCamo = cloneRehookedVehicleMaterial(P.mats.hull);
       tagVehicleMaterial(wheelCamo, 'wheelPaint', 'patton-wheel-camouflage');
       wheelCamo.vertexColors = false;
       const hullMap = P.mats.hull.map;
@@ -3504,13 +3490,11 @@ function buildPershing(P: PattonBuilderPort, cfg: PershingBuildConfig): void {
           rimBoost: true,
         } : gearShade;
         const mkShade = (hex: number, env = 0.12): THREE.MeshStandardMaterial => {
-          const m = P.mats.shadow.clone();
+          const m = cloneRehookedVehicleMaterial(P.mats.shadow);
           m.color.setHex(hex);
           m.roughness = 0.97;
           m.metalness = 0.0;
           m.envMapIntensity = env;
-          m.onBeforeCompile = vehicleAmbientFloorHook;
-          m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
           P.disposables.push(m);
           return m;
         };
@@ -6086,11 +6070,9 @@ function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
     // the ring at yaw) but is excluded from every measurement mask; parented
     // to the turret (§B5).
     {
-      const tubMat = P.mats.shadow.clone();
+      const tubMat = cloneRehookedVehicleMaterial(P.mats.shadow);
       tubMat.color.setHex(0x22251f);
       tubMat.roughness = 0.95;
-      tubMat.onBeforeCompile = vehicleAmbientFloorHook;
-      tubMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       P.disposables.push(tubMat);
       const tubGeo = new THREE.BoxGeometry(1.30, 0.52, 1.35);
       const tub = new THREE.Mesh(tubGeo, tubMat);
@@ -6112,13 +6094,11 @@ function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
   // tops (the 3.105 cover stays the heightM carrier), widths wrap +0.02.
   const buildM48TurretStage6 = (): void => {
     if (cfg.turret.mg) {
-      const crown = P.mats.shadow.clone();
+      const crown = cloneRehookedVehicleMaterial(P.mats.shadow);
       crown.color.setHex(0x424635);
       crown.roughness = 0.9;
       crown.metalness = 0.02;
       crown.envMapIntensity = 0.18;
-      crown.onBeforeCompile = vehicleAmbientFloorHook;
-      crown.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       P.disposables.push(crown);
       const M = cfg.turret.mg;
       const axis = M.topY - 0.10;
