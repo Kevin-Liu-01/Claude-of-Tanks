@@ -494,6 +494,9 @@ export const IRONWORKS_KIT: GarageKitPlacement = {
     { kind: 'sign', sign: 'supergraphic', rect: 'stencil.wordmark', at: [-2.0, 33.25], yaw: FACE_CAMERA, y: 9.05, size: [6.0, 1.125] },
     { kind: 'display', display: 'banner', rect: 'brand.banner.v', at: [12.8, 12.52], yaw: FACE_CAMERA, y: 7.4, size: [1.0, 4.0],
       options: { hang: 0.5 } },
+    // IRONWORKS on the foundry office's brick facade toward the yard (its +X wall at x -32.3), under the parapet
+    { kind: 'display', display: 'plate', rect: 'name.foundry', at: [-21.42, 24.25], yaw: Math.PI / 2, y: 7.05, size: [4.5, 0.9],
+      datum: true },
     // the control kiosk on the bay's right (its wall carries the slideshow: garageSlideshowPlacement.ts), the safety
     // board beside it, the parts store: coil cradles, a plate stack with its clamp, firebrick pallets, a parked forklift
     { kind: 'piece', key: 'ironworks-kiosk', build: controlKiosk, at: [17.2, 24.8], yaw: FACE_CAMERA, datum: true },
