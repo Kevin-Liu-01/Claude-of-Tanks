@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { configureWorldLampMaterial, registerWorldNightLighting, WORLD_LAMP_ACTIVE_ATTRIBUTE } from './worldNightLighting.ts';
+import { configureWorldLampMaterial, registerWorldNightLighting, STREET_LAMP_CANDELA, WORLD_LAMP_ACTIVE_ATTRIBUTE } from './worldNightLighting.ts';
 import { createNightLightingRuntime } from '../engine/nightLightingRuntime.ts';
 import { NIGHT_EMISSION_ATTRIBUTE } from '../engine/nightEmissionMaterial.ts';
 import { DESTRUCTIBLE_TYPES } from './maps/inhabitKit.ts';
@@ -57,7 +57,10 @@ try {
   runtime.update(expected);
   const light = runtime.lights.find(light => light.isPointLight);
   assert.ok(light.position.distanceTo(expected) < 1e-10, 'light uses actual tilted/scaled instance lens, not pole base');
-  assert.equal(light.intensity, 6, 'near-facade point contribution is two stops below the captured 24 input');
+  // (the looks lane, 228: at 6 cd — two stops under the captured 24 — no lamp pool showed at any pose; the pool now reads
+  // beside a headlight's, its range still bounding the unshadowed spill)
+  assert.equal(light.intensity, STREET_LAMP_CANDELA, 'the street lamp pool reads on the pavement');
+  assert.equal(light.distance, 17, 'its unshadowed spill bounded to its own stretch of street');
   assert.equal(light.distance, 17, 'the original range/selection footprint is not reduced');
   assert.equal(light.color.getHex(), 0xffc889, 'no lamp palette change');
   assert.equal(curtain.emissive.getHex(), 0xffffff, 'authored mask supplies warm pane/red beacon tint');

@@ -65,6 +65,8 @@ interface PolishBuilderPort {
   };
   muzzleZ?: number;
   topY?: number;
+  /** High-detail build (the factory port's quality flag). */
+  readonly q?: boolean;
   add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addExternalArmor(owner: VehicleAssemblyOwner, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addCupola(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
@@ -1367,6 +1369,14 @@ function addPL01Gun(P: PolishBuilderPort, context: PL01BuildContext): void {
     },
   ] as const satisfies readonly FacetedGunHousingStation[];
   P.addGunExtra(facetedGunHousing(housingStations));
+  // 227 gun-gaps (owner 2026-10-17, "fix any of these" with the C2 gun gap): the housing pitches about a trunnion
+  // 0.43 m behind its rear ring, so at full elevation (+20 deg) the gun line rose clear of the turret's falling nose
+  // ridge (top 2.52 m at z 0.93) before it reached the ring, and the sky showed through that notch along the gun line
+  // (96 mm, 15 of 24 directions). The gun cradle now shows there: a dark round cradle tube on the gun line, from 2 cm
+  // inside the ring to 0.13 m behind it (radius 88 mm at the ring, 74 mm at its rear), inside the ridge's raked flanks
+  // at rest and at full depression, so only an elevated gun uncovers it, as the cradle running back into the turret.
+  // (r3 closed the notch with a six-facet boss in the housing's paint; at +20 deg it read as a pale stub facet.)
+  P.addGunExtraDark(cylZ(0.088, 0.15, P.q ? 24 : 14, 0.074), 0, 0, throatRearZ - 0.055);
   P.addGunExtraDark(box(0.38, 0.03, 0.05), 0, gunAssemblyY(0.225), 2.10); // cover spine seam
   P.addGunExtraDark(box(0.42, 0.36 * equipmentHeightScale, 0.03), 0, gunAssemblyY(0.03), 3.262); // cover end plate
   // Armored coaxial 7.62 mm fairing and visible receiver beside the main
