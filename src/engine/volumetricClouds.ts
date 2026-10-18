@@ -1457,6 +1457,7 @@ export class VolumetricCloudLayer {
     // (2026-10-15, the C2 diagnosis critic: the Beer map's share under a low sun made the shade muddy brown on every
     // sunset map, and its single-front texel stacks a 5-degree ray's cumulus into strata) none at the horizon, all of it
     // from 17 degrees up; the secondary march takes three more doubling steps there instead (lowSunExtraSteps)
+    // (2026-10-18) a deck lane keeps the map at any sun (cloudShaders.ts: the s187 evening deck lit through)
     (t.uBsmLowSun.value as THREE.Vector2).set(lightTune('CLOUD_BSM_LOWSUN', 0), lightTune('CLOUD_BSM_LOWSUN_UP', 0.3));
     t.uFarFade.value = lightTune('CLOUD_FAR_FADE', 1);
     t.uEntryJitter.value = lightTune('CLOUD_ENTRY_JITTER', 1);

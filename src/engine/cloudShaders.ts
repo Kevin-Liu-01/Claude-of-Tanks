@@ -781,8 +781,12 @@ void main() {
 					// past both cascades (the far field, hazed): the column over the point along the sun at half its own density
 					// (a far tower's interior stays a cloud's, never lit through); the cascades fade into it at their outer edge
 					float column = sigma * 0.5 * clamp( dot( wgt, uLayerTop ) - h, 0.0, 1500.0 ) / max( sunUp, 0.05 );
-					od += cl2BsmDepth( p, run, column )
-						* mix( uBsmLowSun.x, 1.0, smoothstep( 0.0, max( uBsmLowSun.y, 1e-3 ), sunUp ) );
+					// (2026-10-18, the SKY lane's s187 bisect) a deck lane keeps the Beer map under a low sun: the secondary march's
+					// 2.5 km ends inside a closed deck's slant toward a 7-degree sun, and without the map's depth the evening sun
+					// lit Frosthollow's deck through — the approved grey evening sheet became a strong orange-pink one. The convective
+					// lanes keep 0d5af7dc2's law (no Beer map at the horizon: its single front stair-stepped a low sun's cumulus)
+					float bsmK = max( smoothstep( 0.0, max( uBsmLowSun.y, 1e-3 ), sunUp ), dot( wgt, step( vec4( 0.5 ), uLayerFlat ) ) );
+					od += cl2BsmDepth( p, run, column ) * mix( uBsmLowSun.x, 1.0, bsmK );
 				}
 				lit++;
 				// [ported] the multiple-scattering octaves (a = b = c = 1/2 per octave)
