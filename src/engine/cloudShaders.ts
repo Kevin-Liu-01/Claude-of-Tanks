@@ -525,6 +525,8 @@ uniform float uStepCap;
 uniform vec2 uFine;
 // the forward lobe of the sun's light diffused through a deck (0 = isotropic)
 uniform float uDeckLobe;
+// (2026-10-18) the share of a low sun's light a closing deck's deep diffusion drops at dusk (CLOUD_DECK_DUSK)
+uniform float uDeckDusk;
 // a deck's light by its own column: x the diffusion's depth from the column over the point in its own cell (0 the sun
 // ray's depth by its slope), y the ground's return at the deck's base as the light the deck itself passes down (0 the
 // map's ambient scale over it), z the ground's return on a closing deck's base (a multiple; a broken deck's lane, flat
@@ -781,12 +783,8 @@ void main() {
 					// past both cascades (the far field, hazed): the column over the point along the sun at half its own density
 					// (a far tower's interior stays a cloud's, never lit through); the cascades fade into it at their outer edge
 					float column = sigma * 0.5 * clamp( dot( wgt, uLayerTop ) - h, 0.0, 1500.0 ) / max( sunUp, 0.05 );
-					// (2026-10-18, the SKY lane's s187 bisect) a deck lane keeps the Beer map under a low sun: the secondary march's
-					// 2.5 km ends inside a closed deck's slant toward a 7-degree sun, and without the map's depth the evening sun
-					// lit Frosthollow's deck through — the approved grey evening sheet became a strong orange-pink one. The convective
-					// lanes keep 0d5af7dc2's law (no Beer map at the horizon: its single front stair-stepped a low sun's cumulus)
-					float bsmK = max( smoothstep( 0.0, max( uBsmLowSun.y, 1e-3 ), sunUp ), dot( wgt, step( vec4( 0.5 ), uLayerFlat ) ) );
-					od += cl2BsmDepth( p, run, column ) * mix( uBsmLowSun.x, 1.0, bsmK );
+					od += cl2BsmDepth( p, run, column )
+						* mix( uBsmLowSun.x, 1.0, smoothstep( 0.0, max( uBsmLowSun.y, 1e-3 ), sunUp ) );
 				}
 				lit++;
 				// [ported] the multiple-scattering octaves (a = b = c = 1/2 per octave)
@@ -821,7 +819,12 @@ void main() {
 					// the sun's share keeps a broad forward lobe through the deck (its mean over the sky unchanged): a readable
 					// sun direction under a closed deck without a disc (2026-10-04, the gauntlet's wave 62 on Titan Gorge)
 					float lobe = 1.0 + uDeckLobe * ( mix( phaseHG( cosT, 0.6 ), phaseHG( cosT, -0.225 ), 0.3 ) * 4.0 * CL_PI - 1.0 );
-					vec3 eTop = sunE * sunUp * lobe + uSkyIrradiance * CL_PI;
+					// (2026-10-18, the SKY lane's s187 bisect: Frosthollow's evening deck, an approved grey sheet, drew a strong
+					// orange-pink one once it closed on 10-15 and took this diffusion) a sun under ~17 degrees strikes the deck's top
+					// at grazing incidence, where the thick layer reflects most of it back up (a diffuser's transmission falls toward
+					// grazing incidence); what the deck passes down at dusk is the sky's light more than the low sun's
+					float dusk = 1.0 - uDeckDusk * ( 1.0 - smoothstep( 0.0, 0.3, sunUp ) );
+					vec3 eTop = sunE * sunUp * lobe * dusk + uSkyIrradiance * CL_PI;
 					radiance += eTop * ( diffuse * ( 1.0 - exp( -od * 0.3 ) ) / ( 1.0 + 0.1125 * tauV ) / CL_PI );
 				}
 				vec3 dbgDiffuse = radiance - dbgSun;
