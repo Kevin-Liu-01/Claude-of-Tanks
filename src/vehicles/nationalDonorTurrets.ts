@@ -54,6 +54,9 @@ export interface NationalPintleSocket {
   topY: number;
   /** The post's radius (its collar is 6 mm wider). */
   postR: number;
+  /** A web plate welding a tall post to the cupola under its ring's top edge: its inner end's radius (in the cupola's
+   * stock) and its top. */
+  web?: { readonly innerR: number; readonly topY: number };
 }
 
 /** A socket at `bearingDeg` round the cupola (0 = turret forward, +Z; positive toward +X), welded 4 mm into its ring. */
@@ -97,9 +100,11 @@ const TYPE96B_CUPOLA = [-.592, -.045 + .15] as const;
 // lids. Each stands 22.5 degrees off the turret's forward line toward the gun's feed side (+X), so the ammunition can
 // faces away from the hatch: on the 99A2 cupola (ring r .279 over its lid's .251) clear of its periscope at the inboard
 // rim; on the Type 96B cupola (fixed ring r .377, lid inside the periscope ring at r .276) between its forward and its
-// forward-inboard periscopes and beside the lid's forward latch.
+// forward-inboard periscopes and beside the lid's forward latch. The 96B's roof falls away ahead of the cupola, so the
+// Kunlun's post stands 0.25 m tall, welded to the cupola's base and ring by a web plate up to 7 mm under the ring's top.
 const QILIN_SOCKET = rimSocket(ZTZ99A2_CUPOLA, 22.5, { lidR: .251, ringR: .279, topY: .905, postR: .046 });
-const KUNLUN_SOCKET = rimSocket(TYPE96B_CUPOLA, 22.5, { lidR: .276, ringR: .377, topY: .91, postR: .046 });
+const KUNLUN_SOCKET = rimSocket(TYPE96B_CUPOLA, 22.5, { lidR: .276, ringR: .377, topY: .91, postR: .046,
+  web: { innerR: .352, topY: .822 } });
 
 /** The Qilin's bustle cut (metres): 10 % of the ZTZ-99A2 body's 3.954 m front-to-rear length. */
 export const QILIN_BUSTLE_CUT_M = .395;

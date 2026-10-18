@@ -91,8 +91,9 @@ export function nationalCupolaPintle(P:TankBuilderPort,seat:Point,l:NationalRoof
  * could not open"): the emplacement's socket post at the cupola's rim, a classic hatch-side pintle socket. A turned
  * post stands 8 mm into the turret roof under it (`seat`: its plan seat and that roof's height) and 4 mm into the
  * cupola's fixed ring, with a clamp collar 6 mm wider at its top (the pintle flange's seat, `socket.topY`) and the
- * collar's lock bolt facing outboard. It is turret stock in the turret's detail paint; the pintle turns in it and the
- * hatch lid inside the ring stays free. Returns the seat's height.
+ * collar's lock bolt facing outboard; a tall post (`socket.web`) is welded to the cupola by a web plate on the radial.
+ * It is turret stock in the turret's detail paint; the pintle turns in it and the hatch lid inside the ring stays free.
+ * Returns the seat's height.
  */
 export function nationalPintleSocket(P:TankBuilderPort,seat:Point,socket:NationalPintleSocket):number {
  const [x,roof,z]=seat,{topY,postR}=socket,collarH=.024,collarR=postR+.006,bottom=roof-.008,postH=topY-collarH-bottom;
@@ -104,6 +105,12 @@ export function nationalPintleSocket(P:TankBuilderPort,seat:Point,socket:Nationa
  const boltY=topY-collarH/2,ry=out-Math.PI/2;
  P.add('turretDark',cylX(.006,.022,8),x+ox*(collarR-.007),boltY,z+oz*(collarR-.007),0,ry,0);
  P.add('turretDark',cylX(.011,.007,6),x+ox*(collarR+.0035),boltY,z+oz*(collarR+.0035),0,ry,0);
+ // a tall post's web plate (22 mm thick) on the radial, from inside the cupola's stock to the post's axis
+ if(socket.web){
+  const {innerR,topY:webTop}=socket.web,outerR=Math.hypot(x-socket.cupola[0],z-socket.cupola[1]),h=webTop-bottom,mid=(innerR+outerR)/2;
+  if(h<.02||outerR-innerR<postR)throw new Error(`${P.spec?.id}: the pintle socket's web plate has no room`);
+  P.add('turretDetail',box(.022,h,outerR-innerR),socket.cupola[0]+ox*mid,bottom+h/2,socket.cupola[1]+oz*mid,0,out,0);
+ }
  return topY;
 }
 

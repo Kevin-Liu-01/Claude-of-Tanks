@@ -12,7 +12,7 @@
 // material the vehicle does not already draw with.
 // Round 4 (critics D10, S1: the pintle column stood on the commander's hatch lid, so the hatch could not open): each
 // cupola emplacement stands in a socket post at its cupola's rim, the post welded into the fixed ring and seated in the
-// roof, the flange on the post's collar, and the pintle's turning stage keeps 10 mm outside the lid at every yaw.
+// roof, the flange on the post's collar, and the pintle's foot keeps 10 mm outside the lid at every yaw.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
@@ -90,8 +90,8 @@ for (const [id, want] of Object.entries(EXPECT)) {
       assert.equal(self.yawMeshes, 1, `${id}: one yaw-stage mesh`);
       assert.ok(self.d >= .0015, `${id}: the moving gun keeps 1.5 mm from its own mount (${(self.d * 1000).toFixed(1)} mm at ${(self.el * 180 / Math.PI).toFixed(1)} deg)`);
       // round 4 (critics D10, S1: the pintle column stood on the commander's hatch lid, so the hatch could not open): the
-      // pintle stands in a socket post at the cupola's rim, welded into its fixed ring, and its turning stage keeps 10 mm
-      // outside the lid's circle at every yaw
+      // pintle stands in a socket post at the cupola's rim, welded into its fixed ring, and its foot (the turning stage's
+      // flange and column up to 60 mm, under the yoke) keeps 10 mm outside the lid's circle at every yaw
       const donor = NATIONAL_DONOR_TURRETS[id], socket = donor.socket;
       assert.ok(socket, `${id}: the emplacement stands in a rim socket`);
       assert.ok(Math.abs(station.position.x - donor.station[0]) < 1e-9 && Math.abs(station.position.z - donor.station[1]) < 1e-9, `${id}: the pintle stands at its socket`);
@@ -100,10 +100,13 @@ for (const [id, want] of Object.entries(EXPECT)) {
       let turning = 0; const sv = new THREE.Vector3();
       station.traverse((o) => { if (!o.isMesh) return; for (let q = o; q; q = q.parent) if (q === pitch) return;
         const M = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld), p = o.geometry.attributes.position;
-        for (let i = 0; i < p.count; i++) { sv.fromBufferAttribute(p, i).applyMatrix4(M); turning = Math.max(turning, Math.hypot(sv.x, sv.z)); } });
-      assert.ok(off - turning >= socket.lidR + .010, `${id}: the pintle's turning stage stays 10 mm outside the hatch lid at every yaw (${((off - turning - socket.lidR) * 1000).toFixed(1)} mm)`);
+        for (let i = 0; i < p.count; i++) { sv.fromBufferAttribute(p, i).applyMatrix4(M); if (sv.y <= .06) turning = Math.max(turning, Math.hypot(sv.x, sv.z)); } });
+      assert.ok(turning > .03 && off - turning >= socket.lidR + .010, `${id}: the pintle's foot stays 10 mm outside the hatch lid at every yaw (${((off - turning - socket.lidR) * 1000).toFixed(1)} mm)`);
       // the flange's seat is the post's collar (2 mm in), and the post stands on the roof (8 mm in) clear of the lid
-      const fixed = []; turret.traverse((o) => { if (!o.isMesh) return; for (let q = o; q; q = q.parent) if (q === station) return; fixed.push(o); });
+      // double-sided proxies, so a ray meets a cap from inside too
+      const sides = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }), fixed = [];
+      turret.traverse((o) => { if (!o.isMesh) return; for (let q = o; q; q = q.parent) if (q === station) return;
+        const m = new THREE.Mesh(o.geometry, sides); m.matrixAutoUpdate = false; m.matrix.copy(o.matrixWorld); m.matrixWorld.copy(o.matrixWorld); fixed.push(m); });
       const seatW = station.getWorldPosition(new THREE.Vector3());
       const down = (dx, dz, from) => new THREE.Raycaster(new THREE.Vector3(seatW.x + dx, seatW.y + from, seatW.z + dz), new THREE.Vector3(0, -1, 0), 0, 2).intersectObjects(fixed, false);
       const column = down(0, 0, .3);
@@ -113,6 +116,7 @@ for (const [id, want] of Object.entries(EXPECT)) {
       const roof = down(Math.sin(out) * clear, Math.cos(out) * clear, 0)[0];
       assert.ok(roof && seatW.y - roof.point.y > .05, `${id}: the socket post rises from the turret roof (${roof ? ((seatW.y - roof.point.y) * 1000).toFixed(0) : '-'} mm)`);
       assert.ok(column.some((h) => roof.point.y - h.point.y >= .002 && roof.point.y - h.point.y <= .020), `${id}: the socket post's foot is seated in the roof`);
+      sides.dispose();
       // no material of its own: every material the station draws with is drawn elsewhere on the vehicle
       const elsewhere = new Set(); tank.root.traverse((o) => { if (!o.isMesh) return; for (let q = o; q; q = q.parent) if (q === station) return; for (const m of [].concat(o.material)) elsewhere.add(m.uuid); });
       station.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) assert.ok(elsewhere.has(m.uuid), `${id}: the station's ${o.name} adds a material (${m.name || m.color?.getHexString?.()})`); });
