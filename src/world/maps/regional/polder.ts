@@ -474,5 +474,6 @@ export const POLDER_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
   },
   builders: POLDER_BUILDERS,
   // the yards: a plank fence round the kitchen garden and the shed, a gate (yards.ts)
-  yard: { kinds: ['cottage', 'farmhouse'], fence: 'fenceplank', gate: 'gate', shed: 'woodshed', shedSize: [4.1, 4.9], garden: true },
+  // (2026-10-17, the Polders village blind 227: tidy, its modules to their slots and the shed out of the gate's way)
+  yard: { kinds: ['cottage', 'farmhouse'], fence: 'fenceplank', gate: 'gate', shed: 'woodshed', shedSize: [4.1, 4.9], garden: true, tidy: true },
 });

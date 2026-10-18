@@ -260,7 +260,11 @@ export default {
   },
 
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'fair-weather-cumulus', streets: 0.45, coverage: 0.36, contrails: 0.35, contrailAge: 0.7 },
+  // 2026-10-17 (the SKY lane, 227; the media lane's QA on live 226, s225 Verdant duel at golden hour: the approved round's
+  // big, plentiful cumulus thinned to a few small puffs low on the horizon at the Clouds 2.0 cutover — Verdant's clouds are
+  // the owner's bar): the coverage 0.36 -> 0.51 (the lane's cover 0.46 -> 0.64, the blind's cov14), so the fair-weather
+  // field fills the upper sky again with full, well-formed cumulus
+  clouds: { regime: 'fair-weather-cumulus', streets: 0.45, coverage: 0.51, contrails: 0.35, contrailAge: 0.7 },
   sky: DEFAULT_GARAGE_SKY,
 
   minimap: {

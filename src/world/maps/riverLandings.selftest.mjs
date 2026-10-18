@@ -144,8 +144,10 @@ const SALTWIND_SPANS = { '-25': 7, '45': 8 };
 // paving one stone piece, the landward stair a second (in place of the gangway plank), the weed line and the head's
 // cast-iron bollards one painted piece; the moored boat's two bollards are cast iron too (painted) and only their
 // lines stay timber — the wood a landing keeps is the two lines and the hauled-out boat's stake and line (5); the
-// paint is the beached hull, the jetty's painted piece, the moored hull and its two bollards
-const landingWood = () => 2 + 5;
+// paint is the beached hull, the jetty's painted piece, the moored hull and its two bollards. (The looks lane, 227, map
+// kits 5cb4642b0: the stake's line one round rope along the same sag, mapKits.ts ropeGeometry — it was four square
+// runs — so a landing's wood is the two lines, the stake and its one line: 4)
+const landingWood = () => 2 + 2;
 const LANDING_PAINT = 5;
 const LANDING_STONE = 2;
 const landingReceipts = (spans) => 1 + 2 * (spans + 1) + 2;
@@ -341,15 +343,18 @@ for (const seed of [1337, 2025, 7719]) {
   // the hauled-out boat's stake is a round driven pole with its broomed head and the hitch's two turns (waterside.ts:
   // 228 triangles, 238 vertices where the box had 12 and 24): 168 / 11760 / 336 -> 600 / 28048 / 764, the merged
   // 504 / 16128 -> 1800 / 57600
-  assert.equal(metrics.triangles, 600);
-  assert.equal(metrics.bytes, 28048);
-  assert.equal(metrics.vertices, 764);
+  // (the looks lane, 227, map kits 5cb4642b0; the r2 sweep: the lines were square boxes) the two mooring lines and the
+  // stake's line each one round rope (mapKits.ts ropeGeometry: 8 segments of 5 sides, 80 triangles; the lines were a box
+  // each and the stake's line four): 600 / 28048 / 764 -> 936 / 31216 / 800, the merged 1800 / 57600 -> 2808 / 89856
+  assert.equal(metrics.triangles, 936);
+  assert.equal(metrics.bytes, 31216);
+  assert.equal(metrics.vertices, 800);
   // Same non-indexed merge used by props.ts: incremental bytes in its existing
   // wood batch, not a whole-world draw-count or renderer-memory certification.
   const expanded = landings.wood.map((geometry) => geometry.toNonIndexed());
   const merged = mergeGeometries(expanded, false);
-  assert.equal(merged.attributes.position.count, 1800); // round 58: was 3024; P2: was 3852; round 3: was 2340; #16 r2: was 2700, then 504
-  assert.equal(Object.values(merged.attributes).reduce((n, a) => n + a.array.byteLength, 0), 57600); // round 58: was 96768; P2: was 123264; round 3: was 74880; #16 r2: was 86400, then 16128
+  assert.equal(merged.attributes.position.count, 2808); // round 58: was 3024; P2: was 3852; round 3: was 2340; #16 r2: was 2700, then 504; 227: 1800
+  assert.equal(Object.values(merged.attributes).reduce((n, a) => n + a.array.byteLength, 0), 89856); // round 58: was 96768; P2: was 123264; round 3: was 74880; #16 r2: was 86400, then 16128; 227: 57600
   for (const geometry of expanded) geometry.dispose();
   merged.dispose();
   const replay = build(saltwind, field);
@@ -363,5 +368,5 @@ for (const seed of [1337, 2025, 7719]) {
   assert.equal(replay.state, result.state);
   disposeBuckets(result.buckets);
   disposeBuckets(replay.buckets);
-  console.log(`riverLandings.selftest: Saltwind seed ${seed}: 2 beached boats/2 rivas on 34 planted supports/2 stairs/2 moored hulls (painted hulls), +600 wood triangles/+57,600 merged bytes`);
+  console.log(`riverLandings.selftest: Saltwind seed ${seed}: 2 beached boats/2 rivas on 34 planted supports/2 stairs/2 moored hulls (painted hulls), +936 wood triangles/+89,856 merged bytes`);
 }

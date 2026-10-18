@@ -244,6 +244,10 @@ const grange: RegionalBuilder = (ctx) => {
       { face: 'right', storey: 0, kind: 'window', u: (rng() - 0.5) * D * 0.3, w: 0.45, h: 0.5, y0: 1.2 },
     ];
     if (!logs) openings.push({ face: 'front', storey: 0, kind: 'loft', u: 0, w: 0.8, h: 0.7, y0: 2.0 });
+    // (the building census's world pass, 227: on a slope a corner stood 5 cm over the ground) the walls' rubble footing
+    // under them, down into the slope, its course showing a hand over the ground (a ground-contact solid stands to 6 cm:
+    // the grange's collision down with it)
+    sink.span('stone', -W / 2 - 0.04, -0.5, -D / 2 - 0.04, W / 2 + 0.04, 0.08, D / 2 + 0.04);
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: null, storeys: logs ? [{ h: 2.1, wall: 'stone' }, { h: 1.7, wall: 'wood' }] : [{ h: 2.9, wall: 'stone' }],
       roof: lauze(25 + rng() * 4, 0.5, 0.7), gableBucket: 'wood', openings,

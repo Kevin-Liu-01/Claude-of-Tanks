@@ -83,7 +83,8 @@ export default {
     detailNormal: 0.4, midRelief: 0.2,
   },
   vegetation: { ...mars.vegetation },
-  props: { ...mars.props, sourcedPalette: 'winter', plan: [],
+  // (the Moon builds no plan: its station is its set pieces; it keeps no kit of Mars's)
+  props: { ...mars.props, architecture: undefined, sourcedPalette: 'winter', plan: [],
     // Olympus Basin's recorded station (props townPlan / townLightPlan) stays on Mars
     townPlan: undefined, townLightPlan: undefined, roadBuildingClearance: undefined,
     // the outpost's own module families are its strongpoints' structures

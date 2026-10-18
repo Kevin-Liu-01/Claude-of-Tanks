@@ -200,6 +200,9 @@ export default {
   },
 
   props: {
+    // (2026-10-17, the maps lane; the fleet dressing rules 227, the coordinator's ruling) a fence run's module or gate that
+    // meets a building's plot is left out (props.ts dressingRules.fencesClearBuildings; no stub rule)
+    dressingRules: { fencesClearBuildings: true },
     // regional-buildings lane: the Breton granite kit (maps/regional/breton.ts)
     architecture: 'breton',
     // world-dressing r1: + chapel and granary in the fishing village

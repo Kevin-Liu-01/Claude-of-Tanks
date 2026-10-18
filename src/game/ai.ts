@@ -44,9 +44,9 @@ import {
 import { driveGroundTypeAt, terrainTravelCostFactor } from '../sim/terrainMobility.ts';
 import { PLAYER_ACTION_BITS } from '../sim/playerActions.ts';
 import {
-  collisionFootprintContainsPoint,
+  collisionClearanceContainsPoint,
   hullYieldingRecord,
-  rayCollisionFootprintEntry2,
+  rayCollisionClearanceEntry2,
   type CollisionRecord,
   type CollisionShape,
 } from '../world/collision.ts';
@@ -136,6 +136,8 @@ interface AiController {
   hasClearShot(targetId: string): boolean;
   readonly terrainBlocked: boolean;
   readonly targetId: string | null;
+  /** The tier the controller was built with (the solo battle and the authority may step it down per ruleset). */
+  readonly difficulty: AiDifficulty;
   debugInfo(): AiControllerDebugInfo;
   state: string;
 }
@@ -2221,7 +2223,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const o = candidates[i];
       if (o.crushed || o.kind === 'bridge') continue; // decks are road; edge safety owns parapets
       // gameplay_feel r6: felled crushables don't block
-      if (!collisionFootprintContainsPoint(o as CollisionRecord, px, pz, margin)) continue;
+      if (!collisionClearanceContainsPoint(o as CollisionRecord, px, pz, margin)) continue;
       // BATTLE-AI r7: a CRUSHABLE in the lane is driven THROUGH, not around —
       // and with authority. The old ×0.6 damping (and the ease-in) parked
       // bots at 0.4 throttle against saplings forever, just under the
@@ -2750,7 +2752,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     for (let i = 0; i < obstacles.length; i++) {
       const o = obstacles[i];
       if (o.crushed || hullYieldingRecord(o) || o.kind === 'bridge') continue;
-      const entry = rayCollisionFootprintEntry2(
+      const entry = rayCollisionClearanceEntry2(
         o as CollisionRecord,
         sourceX, sourceZ, directionX, directionZ,
         limit, margin,
@@ -2813,7 +2815,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     for (let i = 0; i < candidates.length; i++) {
       const o = candidates[i];
       if (o.crushed || o.crushable || o.kind === 'bridge') continue;
-      if (collisionFootprintContainsPoint(o as CollisionRecord, x, z, margin)) return true;
+      if (collisionClearanceContainsPoint(o as CollisionRecord, x, z, margin)) return true;
     }
     return false;
   }
@@ -2833,10 +2835,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const o = candidates[i];
       if (o === skip || o.crushed || o.crushable || o.kind === 'bridge') continue;
       const record = o as CollisionRecord;
-      if (rayCollisionFootprintEntry2(record, sx, sz, dx, dz, length, margin) == null) continue;
-      if (!collisionFootprintContainsPoint(record, sx, sz, margin)) return true;
-      if (collisionFootprintContainsPoint(record, (sx + ex) * 0.5, (sz + ez) * 0.5, margin)
-        || collisionFootprintContainsPoint(record, ex, ez, margin)) return true;
+      if (rayCollisionClearanceEntry2(record, sx, sz, dx, dz, length, margin) == null) continue;
+      if (!collisionClearanceContainsPoint(record, sx, sz, margin)) return true;
+      if (collisionClearanceContainsPoint(record, (sx + ex) * 0.5, (sz + ez) * 0.5, margin)
+        || collisionClearanceContainsPoint(record, ex, ez, margin)) return true;
     }
     return false;
   }
@@ -2853,7 +2855,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       const o = candidates[i];
       if (o.crushed || o.crushable || o.kind === 'bridge') continue;
       const record = o as CollisionRecord;
-      const entry = rayCollisionFootprintEntry2(record, sx, sz, dirX, dirZ, reach, margin);
+      const entry = rayCollisionClearanceEntry2(record, sx, sz, dirX, dirZ, reach, margin);
       if (entry != null && entry > 0) return true;
     }
     return false;
@@ -2870,7 +2872,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       let ddx = endX - sourceX, ddz = endZ - sourceZ;
       const len = Math.hypot(ddx, ddz) || 1e-9;
       ddx /= len; ddz /= len;
-      return rayCollisionFootprintEntry2(
+      return rayCollisionClearanceEntry2(
         box as CollisionRecord,
         sourceX,
         sourceZ,
@@ -3041,7 +3043,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       for (let i = 0; i < obstacles.length; i++) {
         const o = obstacles[i];
         if (o.crushed || hullYieldingRecord(o) || o.kind === 'bridge') continue;
-        const entry = rayCollisionFootprintEntry2(
+        const entry = rayCollisionClearanceEntry2(
           o as CollisionRecord, sx, sz, ux, uz, clear, margin,
         );
         if (entry != null) clear = entry;
@@ -6324,6 +6326,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     get terrainBlocked() { return terrainBlocked; },
     hasClearShot: (id) => target?.id === id && losClear && friendlyBlockT <= 0 && gunLaneBlockedT <= 0 && penGateOk,
     get targetId() { return target ? target.id : null; },
+    difficulty: opts.difficulty ?? 'normal',
     /** Headless-probe introspection (controls_gunnery r5): gate snapshot. */
     debugInfo: () => ({
       mode, targetId: target ? target.id : null,
