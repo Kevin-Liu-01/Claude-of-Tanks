@@ -71,7 +71,7 @@ interface BoxPlan {
   frame: {proud: number; mullions: boolean};
 }
 const BOXES: Readonly<Record<PolishLevel, BoxPlan>> = {
-  1: {path: [[.39, 1.44], [.98, 1.44], [1.40, 1.02], [1.40, .62]], y0: .11, y1: .47, wall: .025, floor: .025, lid: .025, rake: 0,
+  1: {path: [[.39, 1.44], [.98, 1.44], [1.40, 1.02], [1.40, .62]], y0: .11, y1: .47, wall: .025, floor: .025, lid: .024, rake: 0,
     columns: [[.175, .175, .175], [.175, .175, .175], [.175, .175]],
     rows: [[.1475, .2775], [.3075, .4375]], bars: [[.125, .14], [.285, .30], [.445, .46]], tile: {single: .055},
     // (round 2, 2026-10-16; the critic: the Zubr's cheek "reads as a plain two-row crate ... the thin frame posts barely
@@ -115,33 +115,62 @@ function vertexFrames(side: number, segs: readonly Seg[]): {o: THREE.Vector3; ou
   return frames;
 }
 
+/** The welded cheek box: a raked wall of constant thickness from the foot to the lid, the lid over the wall's top from
+ * its outer face to the casting, the floor inside the wall from its inner face to the casting, and the end plates
+ * between the floor and the lid. Round 4 (2026-10-17; the critic's D7: "the Zubr II 'cheek box lid' has 3
+ * self-intersecting triangle pairs, 13 faces wound inward"; D8: "cheek box lid vs end plate" coplanar): the lid and
+ * the floor are solids between two plan rings, the wall's face sampled every 8 cm along its path and the casting met
+ * along rays to the turret ring's centre from each sample (every pair on one ray: no ring folds), and no two plates
+ * share a face: the wall stops under the lid, the end plates between the floor and the lid. Returns the stock the
+ * frame and the cassettes seat on (the wall's and the lid's outer faces). */
 function cheekBox(P: TankBuilderPort, casting: Stock, side: number, plan: BoxPlan, level: PolishLevel): Stock {
   const id = idOf(level), segs = segments(side, plan.path), frames = vertexFrames(side, segs);
   const tan = Math.tan(plan.rake * Math.PI / 180), rake = (y: number) => (y - plan.y0) * tan;
   const station = (f: typeof frames[number], ring: SectionPoint[]): LoftStation => ({o: tup(f.o), out: tup(f.out), up: [0, 1, 0], ring});
-  // the wall: constant thickness, raked back by plan.rake
+  const wallTop = plan.y1 - plan.lid;
+  // the wall: constant thickness, raked back by plan.rake, from the foot to the lid
   const wall = sectionLoft(frames.map(f => {
     const uo = (y: number) => -rake(y) * f.scale, ui = (y: number) => uo(y) - plan.wall * f.scale;
-    return station(f, [[ui(plan.y0), plan.y0], [uo(plan.y0), plan.y0], [uo(plan.y1), plan.y1], [ui(plan.y1), plan.y1]]);
+    return station(f, [[ui(plan.y0), plan.y0], [uo(plan.y0), plan.y0], [uo(wallTop), wallTop], [ui(wallTop), wallTop]]);
   }));
   assertTurretPart(id, 'cheek box wall', wall);
   P.addExternalArmor('turret', wall);
-  // the floor and the lid, each from the wall's inner face (2 mm into it) to 4 mm inside the casting
-  const plate = (y0: number, y1: number, name: string) => {
-    const g = sectionLoft(frames.map(f => {
-      const ui = (y: number) => -rake(y) * f.scale - (plan.wall - .002) * f.scale, ym = (y0 + y1) / 2;
-      const start = f.o.clone().setY(ym).addScaledVector(f.out, ui(ym) - .01);
-      const hit = casting.face(tup(start), tup(f.out.clone().negate()));
-      const uc = hit.point.clone().setY(0).sub(f.o).dot(f.out) - .004;
-      return station(f, [[uc, y0], [ui(y0), y0], [ui(y1), y1], [uc, y1]]);
-    }));
+  // a plate between two plan rings: the wall's (outer or inner) face at y, sampled every 8 cm along the path, and the
+  // casting met from each sample along the inward direction there (the end planes' at the box's ends, the mitres' at its
+  // corners, turning evenly between them: neighbouring rays never cross in front of the casting)
+  // (the same count of samples on each segment at every height: its foot's length over 8 cm)
+  const counts = frames.map((f, k) => k ? Math.max(1, Math.ceil(f.o.distanceTo(frames[k - 1].o) / .08)) : 0);
+  const facePoints = (y: number, inner: boolean): {q: THREE.Vector3; d: THREE.Vector3}[] => {
+    const at = frames.map(f => f.o.clone().addScaledVector(f.out, (-rake(y) - (inner ? plan.wall : 0)) * f.scale).setY(y));
+    const out: {q: THREE.Vector3; d: THREE.Vector3}[] = [{q: at[0], d: frames[0].out.clone().negate()}];
+    for (let k = 1; k < at.length; k++) {
+      const n = counts[k];
+      for (let j = 1; j <= n; j++) out.push({q: at[k - 1].clone().lerp(at[k], j / n),
+        d: frames[k - 1].out.clone().lerp(frames[k].out, j / n).normalize().negate()});
+    }
+    return out;
+  };
+  // (4 mm into the casting; where the casting hugs the wall's end, the plate is still 6 mm deep)
+  const castingBehind = ({q, d}: {q: THREE.Vector3; d: THREE.Vector3}): THREE.Vector3 => {
+    const hit = casting.tryFace(tup(q.clone().addScaledVector(d, -.01)), tup(d));
+    if (!hit) throw new Error(`${id}: no casting behind the cheek box at ${tup(q).map(v => v.toFixed(3))}`);
+    return q.clone().addScaledVector(d, Math.max(.006, hit.point.clone().sub(q).dot(d) + .004));
+  };
+  const plate = (y0: number, y1: number, inner: boolean, name: string) => {
+    // the casting met at the plate's mid height (its inner face vertical), the wall's face at each ring's own height
+    const back = facePoints((y0 + y1) / 2, inner).map(castingBehind).reverse();
+    const rings = [y0, y1].map(y => [...facePoints(y, inner).map(e => e.q), ...back].map(q => [q.x, q.z] as SectionPoint));
+    const g = sectionLoft(rings.map((ring, k) => ({o: [0, k ? y1 : y0, 0] as V3, out: [1, 0, 0] as V3, up: [0, 0, 1] as V3, ring})));
     assertTurretPart(id, name, g);
     P.addExternalArmor('turret', g);
+    return g;
   };
-  plate(plan.y0, plan.y0 + plan.floor, 'cheek box floor');
-  plate(plan.y1 - plan.lid, plan.y1, 'cheek box lid');
-  // the end plates, from the wall back to the casting (the mantlet end in the plane x = .39, the flank end in z = .62)
-  const heights = [plan.y0, plan.y0 + (plan.y1 - plan.y0) / 3, plan.y0 + 2 * (plan.y1 - plan.y0) / 3, plan.y1];
+  plate(plan.y0, plan.y0 + plan.floor, true, 'cheek box floor');
+  const lid = plate(wallTop, plan.y1, false, 'cheek box lid');
+  // the end plates, from the wall back to the casting between the floor and the lid (the mantlet end in the plane x =
+  // .39, the flank end in z = .62)
+  const e0 = plan.y0 + plan.floor, e1 = wallTop - .002;
+  const heights = [e0, e0 + (e1 - e0) / 3, e0 + 2 * (e1 - e0) / 3, e1];
   for (const [k, f] of [[0, frames[0]], [frames.length - 1, frames[frames.length - 1]]] as const) {
     const across = k === 0 ? new THREE.Vector3(side, 0, 0) : new THREE.Vector3(0, 0, 1);
     const inner = (y: number) => -rake(y) * f.scale - (plan.wall - .002) * f.scale;
@@ -151,14 +180,15 @@ function cheekBox(P: TankBuilderPort, casting: Stock, side: number, plan: BoxPla
         const hit = casting.face(tup(start), tup(f.out.clone().negate()));
         return [hit.point.clone().setY(0).sub(f.o).sub(across.clone().multiplyScalar(shift)).dot(f.out) - .004, y] as [number, number];
       });
-      return [...back, [inner(plan.y1), plan.y1], [inner(plan.y0), plan.y0]];
+      return [...back, [inner(e1), e1], [inner(e0), e0]];
     };
-    const g = sectionLoft([0, plan.wall].map(sh => ({o: tup(f.o.clone().addScaledVector(across, sh)), out: tup(f.out),
+    // (its outer face 1 mm inside the wall's end plane: no shared face)
+    const g = sectionLoft([.001, plan.wall].map(sh => ({o: tup(f.o.clone().addScaledVector(across, sh)), out: tup(f.out),
       up: [0, 1, 0] as V3, ring: ring(sh)})));
     assertTurretPart(id, 'cheek box end plate', g);
     P.addExternalArmor('turret', g);
   }
-  return new Stock(P.spec.id, [wall]);
+  return new Stock(P.spec.id, [wall, lid]);
 }
 
 /** The wall face's outward normal on segment s (raked back by plan.rake). */
@@ -219,17 +249,21 @@ function cheekFaces(P: TankBuilderPort, wall: Stock, side: number, plan: BoxPlan
       at += w + gap;
       // a mullion in the gap after this column (not after the last)
       if (plan.frame.mullions && ci < cols.length - 1) {
+        // (round 4, D8: its back 5 mm into the wall, the bars' 4 mm: no shared plane)
         const y0 = plan.bars[0][1], y1 = plan.bars[plan.bars.length - 1][0], d = plan.frame.proud - .003;
-        const g = orientedBox([.012, y1 - y0 + .004, d + .004], seatOn(s, at - gap / 2, (y0 + y1) / 2).addScaledVector(n, d / 2 - .002), s.dir, n);
+        const g = orientedBox([.012, y1 - y0 + .004, d + .005], seatOn(s, at - gap / 2, (y0 + y1) / 2).addScaledVector(n, d / 2 - .0025), s.dir, n);
         assertTurretPart(id, 'cheek mullion', g);
         P.addEquipment('turretDetail', g);
       }
     }
     // perimeter bars across this wall: bottom, middle and top (level 2: between every row), each the face's length at
     // its own height
+    // (round 4, D8: a bar ends 2 mm short of the box's end planes and clear of a corner's upright, so no two frame faces
+    // share a plane where they meet)
+    const trim0 = i === 0 ? .004 : .0085, trim1 = i === segs.length - 1 ? .004 : .0085;
     for (const [b0, b1] of plan.bars) {
       const [a0, a1] = faceSpan(side, segs, plan, i, b1), [c0, c1] = faceSpan(side, segs, plan, i, b0);
-      const from = Math.max(a0, c0), to = Math.min(a1, c1);
+      const from = Math.max(a0, c0) + trim0, to = Math.min(a1, c1) - trim1;
       const p = seatOn(s, (from + to) / 2, (b0 + b1) / 2).addScaledVector(n, plan.frame.proud / 2 - .002);
       const g = orientedBox([to - from, b1 - b0, plan.frame.proud + .004], p, s.dir, n);
       assertTurretPart(id, 'cheek bar', g);
@@ -246,10 +280,11 @@ function cheekFaces(P: TankBuilderPort, wall: Stock, side: number, plan: BoxPlan
     if (!hit) return;
     const along = sA.dir.clone().add(sB.dir).normalize();
     // the box's two end uprights stand on their wall, not past its end
-    const shift = k === 0 ? .0075 : k === verts.length - 1 ? -.0075 : 0;
+    const shift = k === 0 ? .0095 : k === verts.length - 1 ? -.0095 : 0;
     const d = plan.frame.proud + .003;
-    const g = orientedBox([.015, h / Math.cos(plan.rake * Math.PI / 180), d + .004],
-      hit.point.addScaledVector(n, d / 2 - .002).addScaledVector(along, shift), along, n);
+    // (its back 5 mm into the wall, the cassettes' and bars' 4 mm)
+    const g = orientedBox([.015, (h - .004) / Math.cos(plan.rake * Math.PI / 180), d + .005],
+      hit.point.addScaledVector(n, d / 2 - .0025).addScaledVector(along, shift), along, n);
     assertTurretPart(id, 'cheek upright', g);
     P.addEquipment('turretDetail', g);
   });
@@ -390,8 +425,8 @@ function lampPockets(P: TankBuilderPort, g: HullSurface): void {
     assertHullPart(id, 'lamp pocket', hood);
     P.addExternalArmor('hull', hood);
     // its back plate, closing the hood behind the lamp
-    const back = sectionLoft([z0, z0 + .03].map(z => {
-      const yb = g.glacisAt(z) - .004, lo = side < 0 ? -x1 + t - .002 : x0 + t - .002, hi = side < 0 ? -x0 - t + .002 : x1 - t + .002;
+    const back = sectionLoft([z0 + .001, z0 + .03].map(z => {
+      const yb = g.glacisAt(z) - .006, lo = side < 0 ? -x1 + t - .002 : x0 + t - .002, hi = side < 0 ? -x0 - t + .002 : x1 - t + .002;
       return {o: [0, 0, z] as V3, out: [1, 0, 0] as V3, up: [0, 1, 0] as V3, ring: [[lo, yb], [hi, yb], [hi, top[0] - t + .002], [lo, top[0] - t + .002]] as SectionPoint[]};
     }));
     P.addExternalArmor('hull', tagFrontPart(back, 'lamp pocket back plate', 'hull'));
@@ -476,11 +511,13 @@ export function polishLowerPlate(P: TankBuilderPort, level: PolishLevel, g: Hull
       assertHullPart(id, 'lower-plate frame', rail);
       P.addExternalArmor('hull', rail);
     }
+    // (round 4, D8: the foot and head bars run between the rails, 3 mm lower: no frame faces share a plane)
     for (const yi of [0, ys.length - 1]) {
       const a = pts(f.x[0])[yi], b = pts(f.x[1])[yi], p = pts((f.x[0] + f.x[1]) / 2);
       const n = facing(p, yi), up = (yi === 0 ? p[1].clone().sub(p[0]) : p[yi - 1].clone().sub(p[yi])).normalize();
-      const c = a.clone().add(b).multiplyScalar(.5).addScaledVector(up, RAIL.w / 2).addScaledVector(n, (RAIL.h - .004) / 2);
-      const bar = orientedBox([f.x[1] - f.x[0], RAIL.w, RAIL.h + .004], c, X_AXIS, n);
+      const h = RAIL.h - .003;
+      const c = a.clone().add(b).multiplyScalar(.5).addScaledVector(up, RAIL.w / 2).addScaledVector(n, (h - .004) / 2);
+      const bar = orientedBox([f.x[1] - f.x[0] - 2 * RAIL.w - .002, RAIL.w, h + .004], c, X_AXIS, n);
       assertHullPart(id, 'lower-plate frame', bar);
       P.addExternalArmor('hull', bar);
     }
@@ -551,9 +588,10 @@ export function polishFrontSkirt(P: TankBuilderPort, level: PolishLevel, s: Poli
       P.addEquipment('hullDetail', tagFrontPart(g, 'front-skirt bar', 'hull'));
     }
     const ends = level === 1 ? [zA, columns[0][1] + .008, columns[1][0] - .008, zB] : [zA, ...columns.slice(1).map((c, i) => (columns[i][1] + c[0]) / 2), zB];
+    // (round 4, D8: the column ends stand 3 mm prouder than the bars: no shared outer face)
     for (const z of ends) {
-      const g = new THREE.BoxGeometry(.016 + .004, rows[rows.length - 1][1] - rows[0][0] + .012, .010)
-        .translate(side * (b.outer + .006), (rows[0][0] + rows[rows.length - 1][1]) / 2, z);
+      const g = new THREE.BoxGeometry(.019 + .004, rows[rows.length - 1][1] - rows[0][0] + .012, .010)
+        .translate(side * (b.outer + .0065), (rows[0][0] + rows[rows.length - 1][1]) / 2, z);
       P.addEquipment('hullDetail', tagFrontPart(g, 'front-skirt upright', 'hull'));
     }
     // the front return: two courses of two along its falling face, the upper course offset half a cassette
