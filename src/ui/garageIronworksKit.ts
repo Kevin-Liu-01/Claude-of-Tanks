@@ -492,7 +492,7 @@ export const IRONWORKS_KIT: GarageKitPlacement = {
     { kind: 'crane', crane: 'overhead', at: [0, 23], yaw: FACE_CAMERA, params: { span: 24.8, runway: 21, railY: 8.72, girders: 2, swl: 40,
       bridgeAt: 0.7, trolleyAt: 0.93, load: { kind: 'coil' }, columns: false, number: 2, face: 1 } },
     // the brand stencilled on the back wall's sheeting under the crane's girder, and a banner on the front right column
-    { kind: 'sign', sign: 'supergraphic', rect: 'stencil.wordmark', at: [-2.0, 33.25], yaw: FACE_CAMERA, y: 9.05, size: [6.0, 1.125] },
+    { kind: 'sign', sign: 'supergraphic', rect: 'stencil.wordmark', at: [-2.2, 33.25], yaw: FACE_CAMERA, y: 8.9, size: [7.6, 1.425] },
     { kind: 'display', display: 'banner', rect: 'brand.banner.v', at: [12.8, 12.52], yaw: FACE_CAMERA, y: 7.4, size: [1.0, 4.0],
       options: { hang: 0.5 } },
     // IRONWORKS on the foundry office's brick facade toward the yard (its +X wall at x -32.3), under the parapet
