@@ -9,7 +9,7 @@
  * warehouse, coastal #0's farmhouse, delta #9's and whiteout #3's dropped walls).
  *
  * `layUprightPlates` reads a resting drawing in world space, splits it into its connected pieces (corners welded at a
- * centimetre), and lays every piece that is an upright plate — thin (a hand or less through), broad (1.6 m and more
+ * millimetre, as the slab check splits them), and lays every piece that is an upright plate — thin (a hand or less through), broad (1.6 m and more
  * each way in its plane), standing 1.4 m and more — on its broad side where its foot stood: turned about its middle
  * so its thin axis is vertical, then lowered so its lowest point is where its lowest point was. Nothing else moves.
  * Visual only: it rewrites the geometry of a drawing that no longer moves (a baked heap, a body put to rest); the
@@ -72,12 +72,12 @@ export function layUprightPlates(geometry: THREE.BufferGeometry, matrix: THREE.M
     if (matrix) _v.applyMatrix4(matrix);
     w[i * 3] = _v.x; w[i * 3 + 1] = _v.y; w[i * 3 + 2] = _v.z;
   }
-  // corners welded at a centimetre, then the triangles' corners joined
+  // corners welded at a millimetre, then the triangles' corners joined
   const weld = new Map<string, number>();
   const id = new Int32Array(count);
   let ids = 0;
   for (let i = 0; i < count; i++) {
-    const key = `${Math.round(w[i * 3]! * 100)},${Math.round(w[i * 3 + 1]! * 100)},${Math.round(w[i * 3 + 2]! * 100)}`;
+    const key = `${Math.round(w[i * 3]! * 1000)},${Math.round(w[i * 3 + 1]! * 1000)},${Math.round(w[i * 3 + 2]! * 1000)}`;
     let k = weld.get(key);
     if (k === undefined) { k = ids++; weld.set(key, k); }
     id[i] = k;
