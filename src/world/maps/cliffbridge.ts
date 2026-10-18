@@ -290,6 +290,9 @@ export default {
     ]),
   },
   props: {
+    // (2026-10-17, the maps lane; the fleet dressing rules 227, the coordinator's ruling) a fence run's module or gate that
+    // meets a building's plot is left out (props.ts dressingRules.fencesClearBuildings; no stub rule)
+    dressingRules: { fencesClearBuildings: true },
     // map revival lane 2 (2026-10-05): the Andalusian kit (maps/regional/andalusian.ts)
     architecture: 'andalusian',
     // Every building is an authored site (the towns are mirror images), so the roadside builder places none.
@@ -340,6 +343,34 @@ export default {
       { kind: 'strawstack' as const, x: 214, z: side * -350, yawDeg: 64, name: 'the second stack on the east tableland' },
       { kind: 'strawstack' as const, x: -200, z: side * -350, yawDeg: -15, name: 'the straw stack below the swell' },
     ]),
+    // (the maps lane, 2026-10-17, Aegis r6: a new approach after r4-5's -0.80; the blind critics: "the gorge reads as one
+    // smooth stretched ochre wall with a sawtooth crest and no strata or ledges", "a smeared swirly cliff texture") the
+    // Tajo's walls as the skins Glen Canyon's arm wears (canyonWall.ts, caprockRim.ts), in Ronda's rock: the Miocene
+    // calcarenite, a pale grey-buff sandstone laid in thick level beds, its faces buttressed and fluted where the seeps
+    // and the rain cut it, the beds standing proud by turns, dark streaks down from the lips; and over the walls the
+    // lips' hard beds in blocks, leaning out over the void. Decor: the gorge's landform stays the battlefield's rock.
+    canyonWalls: [
+      // (the gorge is cut in three stages, its walls stepped by ledges a few metres wide: benchM reads them as one wall)
+      // (r6 first pair, 2026-10-17: the walls read cold grey-white with Lake Powell's calcite bathtub ring at their foot) the
+      // calcarenite warm, a buff-ochre as the Tajo's walls stand in the sun, and no lake ring: the gorge is floored by its river bed
+      // (r7, 2026-10-17; the r6 blind: "evenly spaced vertical streaks read as a hanging curtain", flat faces the same height
+      // meeting the floor in a straight line, "slight salmon oversaturation", a "smooth melted dome") the calcarenite as it
+      // stands: thick level beds proud and receding by turns under the hard cap, split by their joints, spurs standing to
+      // their own heights, greyed in patches and streaked down from the ledges at no rhythm, a talus apron and its fallen
+      // blocks at the foot (canyonWall.ts beds); the tone pulled from salmon toward the buff-ochre of the Tajo's stone. No
+      // spur stands out under the viaduct, whose piers rise beside the walls
+      { x: 0, z: 0, length: 540, width: 192, yawDeg: 0, span: 0.9, tone: [0.105, 0.27, 0.56], benchM: 8, ring: false,
+        beds: { thickness: [0.8, 4.6], talus: [2.5, 7.5], capTuck: 1.0, keepClear: [[-16, 16]], capGaps: 0.58 }, name: "the Tajo's walls" },
+    ],
+    caprock: [
+      // (r6 first pair: the lips sat on the first ledge, a pale band low on the wall) up the benches to the walls' tops, and
+      // the hard capping bed a shade paler than the wall, not white
+      // (r7: "dead-straight tops", "a thin dark line across the field" from the bridge) the hard bed broken into its own
+      // blocks, each leaning out over the wall as far as it does and settled a little proud of the brow, its joints open,
+      // its back under the ground; greyer than the wall, as the cap weathers; flush under the viaduct's deck
+      { x: 0, z: 0, length: 540, width: 192, yawDeg: 0, trench: true, benchM: 8, span: 0.9, tone: [0.11, 0.15, 0.6],
+        thickness: [1.2, 2.6], blockM: [5, 14], broken: { overhang: [1.5, 2.4], lift: [0, 0.22], jointM: 0.14, gaps: 0.58, keepClear: [[-16, 16]] }, name: "the Tajo's lips" },
+    ],
   },
   // the mountains lane (2026-10-03, gauntlet wave 15): wooded uplands round the gorge (not Verdant's plain)
   horizon:{...verdant.horizon,amp:1.1,baseHex:0x456a38,rockHex:0x777c70,treeline:.95,haze:.7,panorama:{regional:'upland'}},

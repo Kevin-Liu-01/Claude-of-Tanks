@@ -1427,9 +1427,16 @@ const HAZE_NIGHT_LEVEL = 1.0;
  * milder blue than before (a night is not "a blue-tinted copy of the day"): [amount, key from, key to, the brightest
  * channel's weight in the key].
  */
-export const GRADE_NIGHT_SCOTOPIC: readonly [number, number, number, number] = Object.freeze([0.78, 0.10, 0.80, 0.80]);
+/*
+ * 2026-10-17 (227; the media lane's QA on the live 226 build: Steinburg's night square "a flat blue wash" over what the
+ * approved frame lit warm): the 10-09 law took most of a moonlit midtone's colour and keyed the drain up to luma 0.8, so
+ * the warm pools under the lamps and the lit windows drained to a cool grey. The approved night's law is back — a drain of
+ * 0.55 over luma 0.06 to 0.55 toward the old cool blue, keyed on luma alone (the lamps keep their colour) — and the
+ * brightest-channel key stays a QA knob (GRADE_SCOT_MAXC).
+ */
+export const GRADE_NIGHT_SCOTOPIC: readonly [number, number, number, number] = Object.freeze([0.55, 0.06, 0.55, 0]);
 /** The scotopic shift's target: the pixel's luma times this cool grey. */
-export const GRADE_NIGHT_SCOTOPIC_TINT: readonly [number, number, number] = Object.freeze([0.86, 0.97, 1.14]);
+export const GRADE_NIGHT_SCOTOPIC_TINT: readonly [number, number, number] = Object.freeze([0.82, 0.96, 1.22]);
 /**
  * 2026-10-03 (the shade-fill lane; the gauntlet's waves 29, 34 and 36: a tank's shadow on Verdant's grass at about RGB
  * (12, 40, 8), a shaded village wall "a flat, textureless matte-black mass", Saltmere's tor "crushed to near-black"):
@@ -1474,17 +1481,22 @@ const GRADE_TOE_STOPS = 2.5;
  * a white wall 212 -> 210, a blue sky 204 -> 206 (its brightest channel 244, no clip), deep shade 28 -> 25.
  * The lever TONE_R1 (QA: 0 = the 2026-10-01 look, every knob at its old default) A/Bs the whole look on one page, and
  * GRADE_CONTRAST, GRADE_SHOULDER_*, TONE_LOOK_SAT and TONE_LOOK_SAT_WHITE still tune on top of either.
+ * 2026-10-17 (227; the JUDGE lane's blind catch-up, VERDICTS-226 row 2): tone r1 lost to the 2026-10-01 look on one page,
+ * 27-5 over both critics' clean runs, "neon/oversaturated" on 19 of 20 frames; the SKY lane's re-tune lost too (blind,
+ * the JUDGE's 10 maps at eye height and on tank views: r1half — contrast 1.36, look 1.12 — 11-20 against it; r1c — 1.36
+ * with the old colour — 11-14, "lime" greens and orange ground still named). The day look is the 2026-10-01 look again:
+ * the lever's default is 0, and TONE_R1 1 brings tone r1 back for an A/B.
  */
 const TONE_R1: ToneLook = Object.freeze({
   contrast: 1.45, toeSlope: 0.8, toeStops: 1.5, shoulderSlope: 0.5, shoulderStops: 2.5, shoulderStart: 0.6, lookSat: 1.25, lookSatWhite: 0.75,
 });
-/** The look by the light: tone r1 by day (QA: TONE_R1 0 = the 2026-10-01 look), easing to the 2026-10-01 look with the night. */
+/** The look by the light: the 2026-10-01 look (227; QA: TONE_R1 1 = tone r1 by day, easing to the 2026-10-01 look with the night). */
 interface ToneLook {
   readonly contrast: number; readonly toeSlope: number; readonly toeStops: number; readonly shoulderSlope: number;
   readonly shoulderStops: number; readonly shoulderStart: number; readonly lookSat: number; readonly lookSatWhite: number;
 }
 function toneFor(night: number): ToneLook {
-  const r1 = lightTune('TONE_R1', 1) > 0 ? TONE_R1 : TONE_R0;
+  const r1 = lightTune('TONE_R1', 0) > 0 ? TONE_R1 : TONE_R0;
   const n = Math.min(1, Math.max(0, night));
   if (n <= 0 || r1 === TONE_R0) return r1;
   const out = { ...r1 } as Record<keyof ToneLook, number>;

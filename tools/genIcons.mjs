@@ -15,6 +15,7 @@
 
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { filterPublishedImage } from './media-r5/master-filter.mjs';
 import { dirname, resolve } from 'node:path';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
@@ -174,9 +175,11 @@ try {
       console.error(`[tank-assets] ${name}: ${dataUrl}`);
       continue;
     }
-    const buffer = Buffer.from(dataUrl.split(',')[1], 'base64');
+    const raw = Buffer.from(dataUrl.split(',')[1], 'base64');
     const outputPath = resolve(outDir, name);
     mkdirSync(dirname(outputPath), { recursive: true });
+    const buffer = await filterPublishedImage(raw, `icon-${name.replace(/\.[^.]+$/, '')}`,
+      { type: name.endsWith('.png') ? 'image/png' : 'image/webp', quality: 90 });
     writeFileSync(outputPath, buffer);
     console.log(`[tank-assets] wrote ${name} (${Math.round(buffer.length / 1024)} KB)`);
   }

@@ -160,6 +160,21 @@ finite leaf, while interior rays retain the bay walls. Retain raw residuals, tes
 missing/moved stock and wrong-source negatives, and keep all geometry in the
 source and physical audits.
 
+The Garage running-gear band (2026-10-17, the wheel-band lane): `tools/garage-wheel-band.browser.mjs` stages Garages
+and tanks as the Garage does (the dormant energy skin on), poses beside the run and reports the vehicle-tag share of
+the tank's pixels in the scene target's alpha and the ground occlusion's step across the belly line (the same frame
+with `__LIGHT_TUNE.VEHICLE_GROUND_AO = 0` as reference); `--battle` adds a daylight player view, plain and with the
+live Juggernaut skin, `--root` serves another checkout for a before/after pair, `--gate` fails on a step of 4 levels or
+a tag share under 0.8. It takes the capture lock. Round 3 (2026-10-18): `--battle-thermal` adds the sensor view (the
+tank in its hostile heat stand-ins under the white-hot grade), `--views=front` frames the near run's front end (the
+KF51's flaps), and the report counts untagged unlit pixels under the line.
+`tools/vehicle-material-registration.mjs [--ids=a,b|all] [--quality=low,high]` (node, no GPU; round 2, the same day)
+builds each tank through a recording cascade context and fails on any drawn opaque lit material without its own
+vehicle registration (unregistered, a replaced cascade hook, no vehicle-tag write), any other opaque one without the
+unlit vehicle tag (round 3), or one left registered after dispose:
+the material invariant behind the band. `tank:release:check` runs it on the released ids; `--ids=all` (220 tanks, two
+qualities) takes about 25 minutes in one process, so split it across processes for a fleet sweep.
+
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->
 Collision-fixture codec changes use the maintained, headless

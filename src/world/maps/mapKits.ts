@@ -21,6 +21,7 @@
 
 import * as THREE from 'three';
 import { box, jitterUV, pitchSkillionRoof, scaleUV } from '../propGeometry.ts';
+import { bevelBox, sectionPrism } from './bevelBox.ts';
 import { planGroundedObbPose, planGroundedSegment } from '../propPlacement.ts';
 import type { GroundedSegmentEndpoint } from '../propPlacement.ts';
 import type { GeometryBuckets, StructureBuilder, StructureDimensions } from './exteriorDetailKit.ts';
@@ -36,14 +37,16 @@ import { mooredHullPhase } from './mooredHullMotion.ts';
 // #16 r2 (Lane C, 2026-10-14): the waterside family's kits, their forms keyed on the coast's boats
 import { dressReedClump, reedFormForBoat, type ReedForm } from './reedBeds.ts';
 import {
-  buildDriftLog, buildMooringBuoy, driftCoastForBoat, fordMarker, fordStyleForBoat, mooringStakeGeometry, type DriftCoast, type FordStyle,
+  buildDriftLog, buildMooringBuoy, driftCoastForBoat, fordMarker, fordStyleForBoat, mooringStakeGeometry, ropeGeometry, type DriftCoast, type FordStyle,
 } from './waterside.ts';
 import {
   buildGangway, buildJetty, buildRivaSteps, ironBollard, jettyFormForCoast, legacyJettyDraws, timberBollard, type JettyForm, type JettyFrame,
 } from './jettyKit.ts';
 import { BOAT_FAMILIES, boatFamilyForMap, familyBoat, type BoatFamily } from './boatHulls.ts';
 import { ROLLING_STOCK_BODY, ROLLING_STOCK_LENGTH, buildRollingStock, type RollingStockKind } from './rollingStock.ts';
-import { SET_PIECE_SIZE, buildSetPiece, type VehicleSetPiece } from './vehicleSetPieces.ts';
+import {
+  RUNNING_GEAR_SEATED, SET_PIECE_SIZE, buildSetPiece, runningGearOf, seatOnRunningGear, type RunningGear, type VehicleSetPiece,
+} from './vehicleSetPieces.ts';
 import { dressShanghai } from './shanghaiStreets.ts';
 import {
   cloneCollisionRecord, convexHull2, setConvexShape, type CollisionRecord,
@@ -58,6 +61,7 @@ import {
   RAIL_OPEN_KIT_M, RAIL_SPUR_BALLAST_M, RAIL_SPUR_GAUGE_M, RAIL_SPUR_LAY_M, railCoalStageStations, railRunLength, railStockPlacements,
   resampleRailPath, resolveRailCuttings, type RailCutting, type RailSpurConfig,
 } from '../railSpurs.ts';
+import { SAAR_YARD_GAPS, dressSaarWorks } from './saarWorks.ts';
 import { RAIL_BALLAST_BED, RAIL_BALLAST_SHOULDER, tagRailBallast } from '../railBallast.ts';
 import { bufferStopGeometry, cableDrum, sleeperStack } from './railYardStores.ts'; // #24 r2: the yard's stores
 import { dressSarajevo } from './sarajevoStreets.ts';
@@ -900,7 +904,7 @@ export function dressMapExtras({
     else if (mapId === 'autumn') dressAmberfordRiver(focused);
     else dressAutumnRiver(focused);
   }
-  if (kits.includes('rail')) dressRailYard(focused, mapId === 'skybridge');
+  if (kits.includes('rail')) dressRailYard(focused, mapId === 'skybridge', kits.includes('saar') ? SAAR_YARD_GAPS : []);
   if (kits.includes('winterLake')) dressWinterLakes(focused);
   if (kits.includes('winterRiver')) dressWinterRiverBanks(focused);
   // the map-revival lane (2026-10-05): Suzhou Creek's four bridges, on the decks terrain.ts resolved for the stations
@@ -932,6 +936,9 @@ export function dressMapExtras({
   // Round 57 (2026-09-24): authored spurs lay after every kit, so a map that adds one keeps the seeded stream of
   // its earlier dressing; a map without one draws nothing here.
   if (L.railSpurs?.length) dressRailSpurs(focused, L.railSpurs);
+  // the map-revival lane (2026-10-06): Ironworks' furnace line, its high-line over the bunker front and the receiving
+  // yard's heaps (maps/saarWorks.ts), after the rail fan so each trestle and heap clears the sidings' records
+  if (kits.includes('saar')) dressSaarWorks(focused);
   // 2026-10-06 (the map-vehicles lane, P5): the authored vehicle set pieces, last (no draws)
   if (vehicleSetPieces?.length) dressVehicleSetPieces(focused, vehicleSetPieces);
   // The map-revival lane (2026-10-06, Skybridge round 4): Glen Canyon Dam on the road over the arm's end, last, so every
@@ -941,11 +948,13 @@ export function dressMapExtras({
 
 // The map-vehicles lane (P5, 2026-10-06): an authored vehicle at its spot (vehicleSetPieces.ts), seated on the ground
 // under its footprint's corners (pitched and rolled to the plane through them), into the painted bucket, with a solid
-// convex record over its footprint from the ground to its top (a shell collider where the kind stops shells).
+// convex record over its footprint from the ground to its top (a shell collider where the kind stops shells). The works
+// vehicles (the map-content lane's R6, wave 358a: "hovers above the snow", "hovers on the slope") sit on their own running
+// gear instead (vehicleSetPieces.ts seatOnRunningGear: no floor point more than 2 cm clear of the ground).
 function dressVehicleSetPieces(ctx: FocusedDressingContext, pieces: readonly VehicleSetPiece[]): void {
   const { heightField, buckets } = ctx;
   if (!buckets.baked) return;
-  type Built = { geo: THREE.BufferGeometry; hull: number[]; top: number };
+  type Built = { geo: THREE.BufferGeometry; hull: number[]; top: number; gear: RunningGear | null };
   const built = new Map<string, Built>();
   const solidOf = (kind: VehicleSetPiece['kind'], wrecked: boolean): Built => {
     const key = `${kind}${wrecked ? '/w' : ''}`;
@@ -961,7 +970,7 @@ function dressVehicleSetPieces(ctx: FocusedDressingContext, pieces: readonly Veh
       pts.push([p.getX(i), p.getZ(i)]);
       top = Math.max(top, p.getY(i));
     }
-    const made = { geo, hull: convexHull2(pts), top };
+    const made = { geo, hull: convexHull2(pts), top, gear: RUNNING_GEAR_SEATED.has(kind) ? runningGearOf(geo) : null };
     built.set(key, made);
     return made;
   };
@@ -974,8 +983,10 @@ function dressVehicleSetPieces(ctx: FocusedDressingContext, pieces: readonly Veh
     const at = (a: number, b: number): [number, number] => [piece.x + sx * a * size.hw + fx * b * size.hl, piece.z + sz * a * size.hw + fz * b * size.hl];
     const h = (a: number, b: number) => { const [x, z] = at(a, b); return heightField.getHeightAt(x, z); };
     const hFL = h(-1, 1), hFR = h(1, 1), hBL = h(-1, -1), hBR = h(1, -1);
-    const pitch = Math.atan2((hFL + hFR - hBL - hBR) / 2, size.hl * 2), roll = Math.atan2((hFR + hBR - hFL - hBL) / 2, size.hw * 2);
-    const y = (hFL + hFR + hBL + hBR) / 4;
+    const seat = solid.gear ? seatOnRunningGear(piece, solid.gear, (x, z) => heightField.getHeightAt(x, z)) : null;
+    const pitch = seat ? seat.pitch : Math.atan2((hFL + hFR - hBL - hBR) / 2, size.hl * 2);
+    const roll = seat ? seat.roll : Math.atan2((hFR + hBR - hFL - hBL) / 2, size.hw * 2);
+    const y = seat ? seat.y : (hFL + hFR + hBL + hBR) / 4;
     const g = geo.clone();
     g.rotateZ(roll);
     g.rotateX(-pitch);
@@ -1105,19 +1116,9 @@ function mooringStake(buckets: DressingBuckets, heightField: DressingHeightField
   stake.translate(sx, ground + 0.2, sz);
   buckets.wood.push(stake);
   breakableSmallProp('prop-mooring-stake', [stake], sinks); // (PRP-02) a hull or a round breaks it
-  // the line in four runs, sagging 0.14 m at its middle
+  // the line, sagging 0.14 m at its middle: a round rope (227: it was four square runs)
   const from: [number, number, number] = [head[0], head[1] - 0.03, head[2]], to: [number, number, number] = [sx, ground + 0.5, sz];
-  const at = (t: number): [number, number, number] => [from[0] + (to[0] - from[0]) * t,
-    from[1] + (to[1] - from[1]) * t - 0.14 * 4 * t * (1 - t), from[2] + (to[2] - from[2]) * t];
-  for (let k = 0; k < 4; k++) {
-    const a = at(k / 4), b = at((k + 1) / 4);
-    const runX = b[0] - a[0], runY = b[1] - a[1], runZ = b[2] - a[2], run = Math.hypot(runX, runZ);
-    const line = box(Math.hypot(run, runY) + 0.02, 0.025, 0.025, 1);
-    line.rotateZ(Math.atan2(runY, run));
-    line.rotateY(-Math.atan2(runZ, runX));
-    line.translate((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
-    buckets.wood.push(line);
-  }
+  buckets.wood.push(ropeGeometry(from, to, 0.14, 0.0125));
 }
 
 function addCoastalBoats(
@@ -1416,11 +1417,8 @@ function jettyMoorings(buckets: DressingBuckets, rng: Rng, plan: ShoreJettyPlan,
     const hullAlong = plan.boat!.along + end * boat.L * 0.42;
     const hx = plan.x + dx * hullAlong + ax * nearGunwale, hz = plan.z + dz * hullAlong + az * nearGunwale;
     const fromY = top + (iron ? 0.33 : 0.52), toY = gunwale;
-    const runX = hx - px, runZ = hz - pz, run = Math.hypot(runX, runZ);
-    const line = box(Math.hypot(run, toY - fromY), 0.03, 0.03, 1);
-    line.rotateZ(Math.atan2(toY - fromY, run));
-    line.rotateY(-Math.atan2(runZ, runX));
-    line.translate((px + hx) / 2, (fromY + toY) / 2, (pz + hz) / 2);
+    // (227) a round rope sagging a hand between them, not a square box; its UV draws spent as the box's were
+    const line = ropeGeometry([px, fromY, pz], [hx, toY, hz], 0.08, 0.015);
     buckets.wood.push(jitterUV(line, rng)); // the kit's timber texture at 3 cm reads as a tarred line; no new bucket
   }
 }
@@ -1659,7 +1657,8 @@ function addWeirAndMill(links: readonly LayoutDisc[], crossing: Readonly<{ x: nu
   let nx = -tz, nz = tx; // the bank normal toward the town side (+z)
   if (nz < 0) { nx = -nx; nz = -nz; }
   const water = heightField.getHeightAt(link.x, link.z);
-  // (props census #22, Lane C 2026-10-15) the weir: a coursed sill of dressed limestone across the channel, its crest
+  // (props census #22, Lane C 2026-10-15; the looks lane, 227: every dressed stone with its arrises eased, the r2 sweep's
+  // box-only share 1.00) the weir: a coursed sill of dressed limestone across the channel, its crest
   // 0.5 m over the water, stepped down its downstream face, the sluice in its middle (regional/lorrainMill.ts vanne) and
   // a pier at each end under its coping. The map's stream draws what it drew (the sill's and the two piers' jitters);
   // every new piece draws a stream of its own.
@@ -1671,23 +1670,23 @@ function addWeirAndMill(links: readonly LayoutDisc[], crossing: Readonly<{ x: nu
   const gap = SLUICE_GATE_W / 2 + SLUICE_PIER_W, half = Math.max(1, sillLength / 2 - gap);
   for (const side of [-1, 1]) {
     const mid = side * (gap + half / 2);
-    const body = box(half, 0.62, 1.7, 0.8);
+    const body = bevelBox(half, 0.62, 1.7, 0.04, 0.8);
     jitterUV(body, side < 0 ? rng : local);
     buckets.stone.push(across(body, mid, water - 0.09, 0));
     // the crest course in blocks a little off the line, set to the upstream edge; the low step downstream
     const count = Math.max(1, Math.round(half / 1.15)), block = half / count;
     for (let k = 0; k < count; k++) {
       const h = 0.28 + (local() - 0.5) * 0.04;
-      const crest = jitterUV(box(block - 0.03, h, 1.25, 0.8), local);
+      const crest = jitterUV(bevelBox(block - 0.03, h, 1.25, 0.035, 0.8), local);
       buckets.stone.push(across(crest, mid - half / 2 + (k + 0.5) * block, water + 0.5 - h / 2, -down * 0.15 + (local() - 0.5) * 0.04));
     }
-    buckets.stone.push(across(jitterUV(box(half, 0.3, 0.5, 0.8), local), mid, water - 0.09, down * 1.1));
+    buckets.stone.push(across(jitterUV(bevelBox(half, 0.3, 0.5, 0.03, 0.8), local), mid, water - 0.09, down * 1.1));
   }
   for (const end of [-1, 1]) {
-    const pier = box(1.3, 1.9, 1.7, 0.8);
+    const pier = bevelBox(1.3, 1.9, 1.7, 0.05, 0.8);
     jitterUV(pier, rng);
     buckets.stone.push(across(pier, end * (sillLength / 2 + 0.7), water + 0.55, 0));
-    buckets.stone.push(across(jitterUV(box(1.45, 0.14, 1.85, 0.8), local), end * (sillLength / 2 + 0.7), water + 1.57, 0));
+    buckets.stone.push(across(jitterUV(bevelBox(1.45, 0.14, 1.85, 0.03, 0.8), local), end * (sillLength / 2 + 0.7), water + 1.57, 0));
   }
   const sluiceBase = water - 0.4, sluiceYaw = Math.atan2(-nz, nx);
   const sluicePlace = { x: link.x, y: sluiceBase, z: link.z, yaw: sluiceYaw, mapId: AMBERFORD, seed: Math.round(link.x * 31 + link.z * 17) };
@@ -1866,6 +1865,8 @@ interface RailLay {
   conform: 'along' | 'full';
   /** Skip spans over the liquid mask (advancing their seeded draws, so the rest of the dressing is unchanged). */
   washout: boolean;
+  /** Skip a span whose middle this rejects, the same way: a map's gap in a yard line (maps/saarWorks.ts). */
+  gap?: (x: number, z: number) => boolean;
 }
 
 /** The 'full' lay's ground samples in the slab's own frame (along, across), each ±1 = the footprint's half-extent. */
@@ -1876,6 +1877,15 @@ const RAIL_FOOTPRINT_SAMPLES: ReadonlyArray<readonly [number, number]> = [
 const RAIL_SEAT_SINK_M = 0.05;
 /** Slab overhang past the span ends (the joints of consecutive tilted slabs stay closed). */
 const RAIL_SLAB_OVERHANG_M = 0.35;
+/** The receipts read a track's parts by their boxes' sizes (BoxGeometry.parameters): a shaped part carries its box's. */
+const sized = <T extends THREE.BufferGeometry>(g: T, width: number, height: number, depth: number): T & { parameters: { width: number; height: number; depth: number } } =>
+  Object.assign(g, { parameters: { width, height, depth } });
+/** A flat-bottom rail's section about its 9 x 17 cm box's centre (x across, y up): the foot, the web, the head (twelve
+ *  corners, no ends: the rails abut span to span; 24 triangles a rail where the box drew 12). */
+const RAIL_SECTION: ReadonlyArray<readonly [number, number]> = [
+  [0.065, -0.085], [0.065, -0.073], [0.011, -0.06], [0.011, 0.045], [0.033, 0.052], [0.033, 0.085],
+  [-0.033, 0.085], [-0.033, 0.052], [-0.011, 0.045], [-0.011, -0.06], [-0.065, -0.073], [-0.065, -0.085],
+];
 /**
  * The 'full' lay's ballast is a deep slab (the yards' is 0.16 m): its top stays at the yards' +0.15 m, so rails
  * and sleepers sit where they always did, while its sides run 0.26 m below the fitted plane — deeper than the
@@ -1916,7 +1926,7 @@ function layRailSpan(
   const len = Math.hypot(run, rise);
   const tilt = Math.atan2(rise, run);
   const nS = Math.round(len / 1.4);
-  if (lay.washout && !railSpanIsDry(heightField, ax, az, bx, bz, lay.ballast / 2)) {
+  if ((lay.washout && !railSpanIsDry(heightField, ax, az, bx, bz, lay.ballast / 2)) || lay.gap?.(xm, zm)) {
     // A drowned siding ends at the bank; the liquid surface is not ground
     // that can support a paper-thin ballast slab. Advance the original 24
     // BoxGeometry vertex-color draws plus one jitter draw per sleeper so
@@ -1948,14 +1958,21 @@ function layRailSpan(
   // carries a worn bright head; and the sleepers lie every ~0.7 m. The seeded draws are exactly the old ones (24 slab
   // colours, one jitter per seeded sleeper): the infill sleepers and the new parts take none.
   const deep = lay.conform === 'full';
-  const bal = box(lay.ballast, deep ? RAIL_SLAB_DEPTH_FULL_M : 0.16, len + RAIL_SLAB_OVERHANG_M, 0.55);
+  // (the looks lane, 227; the r2 sweep: the track all plain boxes) the bed's top crowned a centimetre along the track's
+  // centre, its edges where the shoulders meet them; its stone's 24 colour draws spent as the box's 24 corners spent
+  // them, laid round its corners
+  const bh = (deep ? RAIL_SLAB_DEPTH_FULL_M : 0.16) / 2, bw = lay.ballast / 2;
+  const bal = sized(sectionPrism([[bw, -bh], [bw, bh], [0, bh + 0.01], [-bw, bh], [-bw, -bh]], len + RAIL_SLAB_OVERHANG_M, 0.55),
+    lay.ballast, 2 * bh, len + RAIL_SLAB_OVERHANG_M);
+  bal.userData.colourDraws = 24;
   {
+    const tones = Array.from({ length: 24 }, () => 0.062 + rng() * 0.020);
     const n = bal.attributes.position.count;
     const col = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) {
       // (wave 8, railyard establishing: the pale bed and bright heads read as "flat gray grid patches … solar-panel
       // arrays"): weathered, oil-dark crushed stone — between the old near-black and the first pale pass
-      const v = 0.062 + rng() * 0.020;
+      const v = tones[i % 24];
       col[i * 3] = v; col[i * 3 + 1] = v * 0.97; col[i * 3 + 2] = v * 0.92;
     }
     bal.setAttribute('color', new THREE.BufferAttribute(col, 3));
@@ -1989,11 +2006,12 @@ function layRailSpan(
   // twin rails
   const half = lay.gauge / 2;
   for (const side of [-half, half]) {
-    const rail = box(0.09, 0.17, len + 0.06, 2.0);
+    // (227) the flat-bottom rail's section — its foot, its web, its head — where a 9 x 17 cm box stood
+    const rail = sized(sectionPrism(RAIL_SECTION, len + 0.06, 2.0, false), 0.09, 0.17, len + 0.06);
     place(rail, side, 0.24, 0);
     buckets.dark.push(rail);
-    // ground lane: the head the wheels keep bright — worn steel over the rusted web
-    const head = box(0.066, 0.016, len + 0.06, 2.0);
+    // ground lane: the head the wheels keep bright — worn steel over the rusted web (227: crowned, as a worn head is)
+    const head = sized(sectionPrism([[0.033, -0.008], [0.033, 0.004], [0.02, 0.008], [-0.02, 0.008], [-0.033, 0.004], [-0.033, -0.008]], len + 0.06, 2.0, false), 0.066, 0.016, len + 0.06);
     const hp = head.attributes.position, hc = new Float32Array(hp.count * 3);
     for (let i = 0; i < hp.count; i++) { hc[i * 3] = 0.23; hc[i * 3 + 1] = 0.232; hc[i * 3 + 2] = 0.24; }
     head.setAttribute('color', new THREE.BufferAttribute(hc, 3));
@@ -2052,8 +2070,9 @@ function railLine(
   z0: number,
   z1: number,
   washoutLiquid = false,
+  gap?: (x: number, z: number) => boolean,
 ): void {
-  const lay: RailLay = { gauge: RAIL_SPUR_GAUGE_M, ballast: RAIL_SPUR_BALLAST_M, conform: 'along', washout: washoutLiquid };
+  const lay: RailLay = { gauge: RAIL_SPUR_GAUGE_M, ballast: RAIL_SPUR_BALLAST_M, conform: 'along', washout: washoutLiquid, gap };
   for (const span of resampleRailPath([[x, z0], [x, z1]])) {
     layRailSpan(buckets, rng, heightField, span.ax, span.az, span.bx, span.bz, lay);
   }
@@ -2206,15 +2225,33 @@ function addRailYardLines(
   buckets: DressingBuckets,
   washoutLiquid: boolean,
   sinks?: SmallPropSinks,
+  gaps: readonly RailYardGap[] = [],
 ): void {
+  const inGap = (gap: RailYardGap) => (_x: number, z: number): boolean => z > gap.z0 && z < gap.z1;
   for (const line of RAIL_YARD_LINES) {
-    railLine(buckets, rng, heightField, line.x, line.z0, line.z1, washoutLiquid);
+    const gap = gaps.find((g) => g.x === line.x);
+    railLine(buckets, rng, heightField, line.x, line.z0, line.z1, washoutLiquid, gap && inGap(gap));
   }
   for (const line of RAIL_YARD_LINES) {
     if (line.z1 < 230) bufferStop(buckets, rng, heightField, line.x, line.z1 + 0.8, 0, RAIL_SPUR_GAUGE_M, sinks);
     if (line.z0 > -230) bufferStop(buckets, rng, heightField, line.x, line.z0 - 0.8, 0, RAIL_SPUR_GAUGE_M, sinks);
   }
+  // a gap's two buffer stops, 0.8 m past the spans either side of it, each facing its track; after the yard's seeded
+  // draws and with a fixed UV jitter (no draw), so every later draw of the dressing stream keeps its seat
+  const fixed = (): number => 0.5;
+  for (const gap of gaps) {
+    const line = RAIL_YARD_LINES.find((l) => l.x === gap.x);
+    if (!line) continue;
+    const skipped = resampleRailPath([[line.x, line.z0], [line.x, line.z1]]).filter((s) => inGap(gap)(s.ax, (s.az + s.bz) / 2));
+    if (!skipped.length) continue;
+    // (each breaks to a hull or a round as the yard's other stops do: PRP-02, maps/smallPropBreak.ts)
+    bufferStop(buckets, fixed, heightField, line.x, skipped[0].az + 0.8, 0, RAIL_SPUR_GAUGE_M, sinks);
+    bufferStop(buckets, fixed, heightField, line.x, skipped[skipped.length - 1].bz - 0.8, Math.PI, RAIL_SPUR_GAUGE_M, sinks);
+  }
 }
+
+/** A stretch of a yard line (its x) left without track between z0 and z1 (maps/saarWorks.ts SAAR_YARD_GAPS). */
+interface RailYardGap { x: number; z0: number; z1: number }
 
 function addRailYardCoalHeaps(
   heightField: DressingHeightField, rng: Rng, buckets: DressingBuckets,
@@ -2290,10 +2327,10 @@ function addRailYardSupplies(
 }
 
 function dressRailYard(
-  ctx: FocusedDressingContext, washoutLiquid = false,
+  ctx: FocusedDressingContext, washoutLiquid = false, gaps: readonly RailYardGap[] = [],
 ): void {
   const { L, heightField, rng, buckets } = ctx;
-  addRailYardLines(heightField, rng, buckets, washoutLiquid, ctx);
+  addRailYardLines(heightField, rng, buckets, washoutLiquid, ctx, gaps);
   addRailYardCoalHeaps(heightField, rng, buckets, ctx);
   addRailYardSupplies(L.village, heightField, rng, buckets, ctx);
 }

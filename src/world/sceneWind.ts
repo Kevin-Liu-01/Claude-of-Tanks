@@ -35,7 +35,7 @@ export const SCENE_WIND: Readonly<Record<MapId, { readonly dirDeg: number; reado
   monsoon: { dirDeg: 200, speed: 2.8 }, // ocean
   alpine: { dirDeg: 18, speed: 2.4 }, // ground
   caldera: { dirDeg: 37, speed: 3 }, // ground (batch 4: Aso's sward, the map-revival lane; was legacy 181)
-  foundry: { dirDeg: 45, speed: 3 }, // ground
+  foundry: { dirDeg: 45, speed: 3.6 }, // ground (2026-10-18: Ironworks' cumulus aloft at 6 m/s since the 228 census; was the industrial deck's 5)
   ruinspires: { dirDeg: 45, speed: 3.6 }, // ground
   blackglass: { dirDeg: 80, speed: 2.2 }, // ocean (batch 4: Suzhou Creek's sea state; was ground 45 at 3)
   titan_gorge: { dirDeg: 191, speed: 3.6 }, // legacy (batch 4: Monument Valley's cloud regime aloft; was 3)

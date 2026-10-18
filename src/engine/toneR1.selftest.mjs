@@ -2,7 +2,8 @@
 // (linear saturation, the photographic toe and log contrast round the card, the luminance shoulder, three's AgX with the
 // encoded-space look, sRGB, black point, display saturation), run at TONE_R0 (the 2026-10-01 look) and TONE_R1 as post.ts
 // declares them. Tone r1 must give back local contrast and colour (grass, camo) while the card, a white wall and the sky
-// hold their levels and nothing clips.
+// hold their levels and nothing clips. (227: tone r1 lost the blind judging to the 2026-10-01 look, and so did its re-tune;
+// the lever's default is 0 — the day look is TONE_R0 again — and the receipt keeps tone r1 honest for the A/B it serves.)
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
@@ -85,7 +86,7 @@ assert.ok(r1.skyBlue.max < 250 && r1.skyBlue.L <= r0.skyBlue.L + 4, 'the sky cli
 assert.ok(r1.deepShade.L >= r0.deepShade.L - 4 && r1.grassShade.L >= r0.grassShade.L - 4, 'the shade lands where the toe put it');
 // the shader: the look inside AgX after its sigmoid, the lever, every knob still live
 for (const term of ["vec3 cotAgXToneMapping( vec3 color ) {", 'outputColor.rgb = cotAgXToneMapping( outputColor.rgb );', 'uniform vec2 uLook;',
-  "const r1 = lightTune('TONE_R1', 1) > 0 ? TONE_R1 : TONE_R0;", 'const tone = toneFor(model?.night ?? 0);',
+  "const r1 = lightTune('TONE_R1', 0) > 0 ? TONE_R1 : TONE_R0;", 'const tone = toneFor(model?.night ?? 0);',
   'for (const k of Object.keys(TONE_R0) as (keyof ToneLook)[]) out[k] = r1[k] + (TONE_R0[k] - r1[k]) * n;', "lightTune('TONE_LOOK_SAT', tone.lookSat)", "lightTune('GRADE_TOE_SLOPE', tone.toeSlope)",
   "lightTune('GRADE_SHOULDER_STOPS', shoulderTone.shoulderStops)"]) assert.ok(src.includes(term), term);
 assert.ok(THREE.ShaderChunk.tonemapping_pars_fragment.includes('color = agxDefaultContrastApprox( color );'), 'three\'s AgX sigmoid anchor');

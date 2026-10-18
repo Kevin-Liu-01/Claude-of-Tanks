@@ -12,6 +12,7 @@
 //      1 on) none; the same anatomy and seed write the same bytes; a tank ruptures toward the blow (a cut in its shell,
 //      the torn petals, its dark inside, the spill on the ground); an open frame takes no spall and no cut; a light
 //      frame's collapse lays its frame along the line it toppled, low on the ground, past its foot.
+import { toppleHingeM } from '../toppleHinge.ts';
 import assert from 'node:assert/strict';
 import { installWorldBuildFixture } from '../../../tools/headlessWorldCollision.mjs';
 installWorldBuildFixture();
@@ -67,7 +68,8 @@ const expect = {
   statue: ['figure'], columnMonument: ['figure'], equestrianStatue: ['rider'], obelisk: ['finial'], fountain: ['bowl', 'finial'],
   campanile: ['pinnacle-0', 'pinnacle-1', 'pinnacle-2', 'pinnacle-3', 'cross'], valveTower: ['finial'],
   fireLookout: ['frame', 'cab', 'cab-roof'], radomeTower: ['radome-shell', 'radome', 'whip-0', 'whip-1'], troposcatter: ['face', 'truss', 'feed'],
-  headframe: ['deck-rail', 'sheave-l', 'sheave-r'],
+  // (227, the maps lane: Copper Mesa's R6 on lane B's pieces) the shaft yard, a piece of its own that stays where it lies
+  headframe: ['winding-house', 'deck-rail', 'sheave-l', 'sheave-r', 'shaft-yard', 'ropes', 'rope-l', 'rope-r', 'frame', 'bin-legs', 'ore-bin'],
 };
 for (const [kind, want] of Object.entries(expect)) assert.deepEqual(names(kind), want, `${kind}'s pieces`);
 assert.deepEqual(names('fountain', { style: 'markt' }), ['figure'], 'the Marktbrunnen\'s saint');
@@ -82,12 +84,23 @@ assert.deepEqual(names('guyedMast'), ['mast', 'mast-head', 'guys-0', 'guys-1', '
 assert.ok(names('fuelTankFarm', { tanks: 3 }).every((n) => n.startsWith('tank-')) && names('fuelTankFarm', { tanks: 3 }).length === 3);
 
 // ---------------------------------------------------------------------------------------------------------- 3. the kit's claim
-function describe(kind, params = {}, style = null, massClass = 'landmark') {
+function describe(kind, params = {}, style = null, massClass = 'landmark', sized = false) {
   const parts = build(kind, params);
   markLandmarkParts(parts);
   const pieces = landmarkPiecesOf(parts);
   if (pieces) samplePieceGround(pieces, () => 0);
-  return describeStructure({ structureIdx: 7, mapId: 'selftest', builder: kind, style, parts, w: 8, d: 8, h: 10,
+  // (227, lane B: `sized`, the set piece's own plan and height, as a map's placement measures it — a headframe's works run
+  // 28 m from its winding house to its ore bin, and on the 8 m square its house and collar read as anchored far out)
+  let w = 8, d = 8, h = 10;
+  if (sized) {
+    let x = 0, z = 0; h = 0;
+    for (const g of Object.values(parts).flat()) {
+      const arr = g.getAttribute('position').array;
+      for (let i = 0; i < arr.length; i += 3) { x = Math.max(x, Math.abs(arr[i])); h = Math.max(h, arr[i + 1]); z = Math.max(z, Math.abs(arr[i + 2])); }
+    }
+    w = 2 * x; d = 2 * z;
+  }
+  return describeStructure({ structureIdx: 7, mapId: 'selftest', builder: kind, style, parts, w, d, h,
     placement: { x: 0, y: 0, z: 0, yaw: 0 }, massClass });
 }
 assert.equal(describe('statue').kit, 'statue', 'a set piece with pieces is the kit\'s');
@@ -183,8 +196,12 @@ const holeSpec = (anatomy, hole) => ({ section: 0, storey: 0, face: 'front', hol
   assert.ok(['mast', 'mast-head', 'guys-0', 'guys-1', 'guys-2'].every((n) => c.hides.some((h) => h.piece === n)), 'the frame laid down');
   const lying = out.runs.filter((r) => r.role === 'rubble');
   const xs = lying.flatMap((r) => r.v.filter((_, i) => i % 11 === 0));
-  assert.ok(Math.max(...xs) > 18, `it lies along its line, out past its foot (${Math.max(...xs).toFixed(1)} m)`);
-  assert.ok(maxY(lying) < 4, `low on the ground (${maxY(lying).toFixed(2)} m)`);
+  // (227, lane B: an open frame reads its members, so its height is the mast's own, and what lies is what stood over the
+  // hinge, world/toppleHinge.ts)
+  const over = a.h - toppleHingeM(a.h, true);
+  assert.ok(Math.max(...xs) > Math.max(4, 0.8 * over), `it lies along its line, out past its foot (${Math.max(...xs).toFixed(1)} m of ${over.toFixed(1)} over the hinge)`);
+  // (227, lane B: a frame buckles over its standing bays, world/toppleHinge.ts) no higher than its buckle, the rest lies low
+  assert.ok(maxY(lying) < toppleHingeM(24, true) + 1, `no higher than its buckle (${maxY(lying).toFixed(2)} m)`);
 }
 
 {
@@ -195,7 +212,7 @@ const holeSpec = (anatomy, hole) => ({ section: 0, storey: 0, face: 'front', hol
   const THREE = await import('three');
   const r2 = await import('../../../tools/r2-standard.mjs');
   for (const [kind, params] of [['guyedMast', { height: 24 }], ['fireLookout', {}], ['troposcatter', {}], ['headframe', {}]]) {
-    const a = describe(kind, params, null, 'shed');
+    const a = describe(kind, params, null, 'shed', kind === 'headframe');
     const out = writers(60000, 1024);
     out.fallAxis = [0.8, 0.6];
     seam(a).collapse(a, damageSeed(a.seed, 3), out);
@@ -207,11 +224,22 @@ const holeSpec = (anatomy, hole) => ({ section: 0, storey: 0, face: 'front', hol
     { let top = -Infinity, at = null; for (let i = 0; i < pos.length; i += 3) if (pos[i + 1] > top) { top = pos[i + 1]; at = [pos[i], pos[i + 2]]; }
       console.log('[probe]', kind, 'w', a.w, 'd', a.d, 'h', a.h, 'laid top', top.toFixed(2), 'at', at.map((v) => v.toFixed(1)).join(',')); }
     // and it lies down (the E12 film: a mast's guys swung up into the air, a billboard stood on its edge, a lookout's
-    // frame lay as tall as its foot is wide): nothing of its fall stands over four metres
+    // frame lay as tall as its foot is wide): nothing of its fall stands over its standing bays (227, lane B: the frame
+    // buckles over them, world/toppleHinge.ts) and four metres
     let top = -Infinity;
     for (let i = 1; i < pos.length; i += 3) top = Math.max(top, pos[i]);
-    assert.ok(top <= 4, `${kind}: its fall lies down (up to ${top.toFixed(2)} m)`);
-    const floating = r2.floatingMembers(r2.toParts(g), { groundM: 0.05, contactM: 0.07 });
+    assert.ok(top <= Math.max(4, toppleHingeM(a.h, true) + 1), `${kind}: its fall lies down past its standing bays (up to ${top.toFixed(2)} m)`);
+    // (227, lane B: a frame's footings, collar and sheds stand while it falls — landmarks/damage.ts — so what it lays may
+    // rest on them: they join the check as they stand)
+    const standing = [...pos];
+    for (const sg of Object.values(build(kind, params)).flat()) {
+      if (sg.userData.damagePiece) continue;
+      const q = sg.index ? sg.toNonIndexed() : sg, arr = q.getAttribute('position').array;
+      for (let i = 0; i < arr.length; i++) standing.push(arr[i]);
+    }
+    const gs = new THREE.BufferGeometry();
+    gs.setAttribute('position', new THREE.Float32BufferAttribute(standing, 3));
+    const floating = r2.floatingMembers(r2.toParts(gs), { groundM: 0.05, contactM: 0.07 });
     assert.deepEqual(floating.map((f) => f.min), [], `${kind}: nothing of its fall left in the air`);
     assert.ok(out.pushed.every((p) => p[4] < 0.3 || Math.hypot(p[16], p[17], p[18]) > 1e-3), `${kind}: every chip above the ground is thrown`);
   }
