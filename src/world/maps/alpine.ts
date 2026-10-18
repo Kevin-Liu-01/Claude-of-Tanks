@@ -181,6 +181,10 @@ export default {
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     rocks: 330, outcrops: 72, craters: 66, rubblePiles: 20, // map pass 2026-09-12: exposed windward stone on the snowfields
     sandbagLines: 20, hedgehogs: 18,
+    // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the fence
+    // runs stop short of the buildings' plots (the audit counted 14 fence or gate records reaching into a structure);
+    // the field works stand on ground their bags can follow (1 stepped breastwork neighbour over 0.7 m)
+    dressingRules: { fencesClearBuildings: true, fieldWorksLevel: true },
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
     tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },

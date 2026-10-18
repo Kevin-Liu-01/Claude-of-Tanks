@@ -158,6 +158,10 @@ export default {
     wallRuns: [[-180, -40, -180, 22, 2], [-178, 124, -116, 124, 2], [-78, 48, -14, 48, 3], [-78, -40, -14, -40, 2], [270, 78, 270, 148, 3], [-58, -268, -58, -204, 2]],
     well: true, hayCrates: true, fences: true, telegraph: false, carts: true, logs: true,
     haystacks: 8, rocks: 114, outcrops: 12, craters: 48, rubblePiles: 10, cropFields: 4, sandbagLines: 14, hedgehogs: 6,
+    // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the fence
+    // runs stop short of the buildings' plots (the audit counted 7 fence or gate records reaching into a structure);
+    // the field works stand on ground their bags can follow (3 stepped breastwork neighbours over 0.7 m)
+    dressingRules: { fencesClearBuildings: true, fieldWorksLevel: true },
     // the map-vehicles lane (2026-10-06, the period ruling): Vietnam: the People's Army's T-55s (the Type 59 copy),
     // BMPs and T-62s, a captured M48
     tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['type59', 'bmp2', 't62_1975', 'm48a5_patton'] },

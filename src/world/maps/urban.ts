@@ -362,6 +362,9 @@ export default {
     // Leopards and Marder, the NVA's T-72M and BMP, an M1A1
     tankWrecks: { era: 'cold-war', count: 6, debris: true, ids: ['leo2a2', 't72m1_jaguar', 'marder1a3', 'bmp2', 'leo1a5', 'm1a1'] },
     sandbagLines: 12,
+    // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the fence
+    // runs stop short of the buildings' plots (the audit counted 16 fence or gate records reaching into a structure)
+    dressingRules: { fencesClearBuildings: true },
     // world-dressing r1: brick boundary walls w/ coping; street inhabitants —
     // a market ring on the central square, oil drums + pallet/crate work
     // clutter down the alleys, benches on the pavements (all destructible;

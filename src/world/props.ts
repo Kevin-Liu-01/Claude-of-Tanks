@@ -462,6 +462,9 @@ export const PILLBOX_SET_BACK_M: Readonly<Record<string, number>> = Object.freez
  *  yard clutter keeps off the clutter already placed (past both radii), how far a hedgehog drawn in the town keeps off
  *  every building (past its ring), and the most a field work's breastwork stations' ground may step (m). */
 const FENCE_BUILDING_CLEAR_M = 0.8, YARD_CLUTTER_GAP_M = 1.2, HEDGEHOG_TOWN_CLEAR_M = 12, FIELD_WORK_STEP_M = 0.55;
+/** props.dressingRules.fencesClearBuildings (the fleet dressing rules 227): the fewest modules a fence run's piece stands
+ *  with — a shorter piece between two breaks is left out (the stub a plot's clearance left of a field-edge run). */
+const FENCE_PIECE_MIN = 3;
 
 interface PropsSettings {
   sourcedPalette?: BuildingPaletteId;
@@ -633,7 +636,9 @@ interface PropsSettings {
    * collision recapture (unset: as before).
    *  - fencesClearBuildings: a fence run's module or gate that meets a building's plot (grown FENCE_BUILDING_CLEAR_M) is
    *    left out, its draws taken (a field-edge run 7.6 m off a road the village now lines ran along its houses' back
-   *    walls; a yard run stood into a gable's corner);
+   *    walls; a yard run stood into a gable's corner), and so is a run's piece of fewer than FENCE_PIECE_MIN modules
+   *    between two breaks, with the gate that would hang on it (the fleet dressing rules 227: "a few white fence stubs
+   *    still float in open grass");
    *  - yardClutterClear: the yard clutter (placeYardClutter) is laid after the kit's yards and keeps off them, and
    *    YARD_CLUTTER_GAP_M off the clutter already placed (a gate stack, a cart, barrels and a woodpile from two houses
    *    heaped in one front garden read as a staged prop pile); a house that takes its kit's yard takes no free-standing
@@ -4718,19 +4723,31 @@ ${snowCap ? `
     const straightYaw = Math.atan2(tx, tz); // module runs along local +z
     let gated = false;
     let openRun = false;
+    // (props.dressingRules.fencesClearBuildings) the run's modules wait in their piece — the modules between two breaks (a
+    // road, a building's plot, a missing module) — and a piece shorter than FENCE_PIECE_MIN is left out, its draws taken,
+    // a gate hanging only on a piece that stands
+    const pieceRule = !!P.dressingRules?.fencesClearBuildings;
+    const piece: Array<readonly [number, number, number, number, number, number, number]> = [];
+    const endPiece = (): boolean => {
+      const stands = piece.length >= FENCE_PIECE_MIN;
+      if (stands) for (const [px, py, pz, pyaw, ps, ptx, ptz] of piece) addDestructible(kind, px, py, pz, pyaw, ps, ptx, ptz);
+      piece.length = 0;
+      return stands;
+    };
     for (let k = 0; k < n; k++) {
       const a = curved?.at(k * along / n), b = curved?.at((k + 1) * along / n);
       const ax = a?.[0] ?? x0 + tx * (k * FENCE_SEG), az = a?.[1] ?? z0 + tz * (k * FENCE_SEG);
       const bx = b?.[0] ?? x0 + tx * ((k + 1) * FENCE_SEG), bz = b?.[1] ?? z0 + tz * ((k + 1) * FENCE_SEG);
       const yaw = curved ? Math.atan2(bx - ax, bz - az) : straightYaw;
       const cx = (ax + bx) / 2, cz = (az + bz) / 2;
-      if (Math.max(Math.abs(cx), Math.abs(cz)) > 478) { openRun = false; continue; }
+      if (Math.max(Math.abs(cx), Math.abs(cz)) > 478) { if (pieceRule) endPiece(); openRun = false; continue; }
       if (heightField._roadDist(cx, cz) < 4.6 || noVeg(cx, cz)) {
+        const stood = pieceRule ? endPiece() : true;
         if (openRun && !gated && drng() < gateChance) {
           // hang an open gate at the field entrance the road cuts
           const gy = heightField.getHeightAt(ax, az);
           // (the looks lane: the run's own family's gate — a picket wicket in a picket fence, a woven gate in wattle)
-          if (!underBridgeDeck(ax, az) && clearOfBuildings(ax, az, ax + Math.sin(yaw) * FENCE_SEG, az + Math.cos(yaw) * FENCE_SEG)) {
+          if (stood && !underBridgeDeck(ax, az) && clearOfBuildings(ax, az, ax + Math.sin(yaw) * FENCE_SEG, az + Math.cos(yaw) * FENCE_SEG)) {
             addDestructible(gateKindForFence(kind), ax, gy - 0.06, az, yaw, 1);
           }
           gated = true;
@@ -4738,14 +4755,18 @@ ${snowCap ? `
         openRun = false;
         continue;
       }
-      if (drng() < 0.05) { openRun = false; continue; } // the odd missing module
+      if (drng() < 0.05) { if (pieceRule) endPiece(); openRun = false; continue; } // the odd missing module
       const ya = heightField.getHeightAt(ax, az), yb = heightField.getHeightAt(bx, bz);
       const cy = Math.min(ya, yb);
       const tiltX = Math.atan2(yb - ya, FENCE_SEG) * 0.85;
       const scale = 0.96 + drng() * 0.10, tiltZ = (drng() - 0.5) * 0.03;
-      if (!underBridgeDeck(cx, cz) && clearOfBuildings(ax, az, bx, bz)) addDestructible(kind, cx, cy - 0.06, cz, yaw, scale, tiltX, tiltZ);
+      if (!underBridgeDeck(cx, cz) && clearOfBuildings(ax, az, bx, bz)) {
+        if (pieceRule) piece.push([cx, cy - 0.06, cz, yaw, scale, tiltX, tiltZ]);
+        else addDestructible(kind, cx, cy - 0.06, cz, yaw, scale, tiltX, tiltZ);
+      } else if (pieceRule) endPiece();
       openRun = true;
     }
+    if (pieceRule) endPiece();
   }
 
   /** Seeded ring scatter of destructibles around a point (yards, markets). */

@@ -425,6 +425,9 @@ export default {
     // copy)
     tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['type59'] },
     sandbagLines: 10,
+    // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the fence
+    // runs stop short of the buildings' plots (the audit counted 13 fence or gate records reaching into a structure)
+    dressingRules: { fencesClearBuildings: true },
     hedgehogs: 6,
     cropFields: 5,
     // world-dressing r1: open-plain hay economy — heavy bale/stook scatter,

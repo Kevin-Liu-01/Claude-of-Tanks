@@ -207,6 +207,9 @@ export default {
     // the war
     tankWrecks: { era: 'ww2', count: 5, debris: true, ids: ['kv2'] },
     sandbagLines: 12,
+    // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the field
+    // works stand on ground their bags can follow (1 stepped breastwork neighbour over 0.7 m)
+    dressingRules: { fieldWorksLevel: true },
     hedgehogs: 6,
     // r6 terrain_environment: standing grain plots on the open farmland —
     // "summer fields have no crops" was a major dressing gap; pairs with the

@@ -194,6 +194,9 @@ export default {
     // band, 75 m bands along the deployments' axis, about their midpoint: map revival's banded halves)
     rubbleHalvesAbout: { x: -117.9, z: 2.4 },
     hedgehogs: 34, sandbagLines: 28, townCraters: true,
+    // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the fence
+    // runs stop short of the buildings' plots (the audit counted 24 fence or gate records reaching into a structure)
+    dressingRules: { fencesClearBuildings: true },
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
     tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },

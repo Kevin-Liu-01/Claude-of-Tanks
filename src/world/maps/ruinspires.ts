@@ -214,6 +214,9 @@ export default {
     well: false, hayCrates: false, fences: true, telegraph: false, carts: false, logs: false,
     rocks: 96, outcrops: 10, craters: 128, rubblePiles: 160,
     hedgehogs: 38, sandbagLines: 26, townCraters: true,
+    // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the fence
+    // runs stop short of the buildings' plots (the audit counted 10 fence or gate records reaching into a structure)
+    dressingRules: { fencesClearBuildings: true },
     // the map-vehicles lane (2026-10-06, the period ruling): Sarajevo, 1992-96: the T-72M1 (the M-84's parent), the
     // T-55 (its Type 59 copy) and the BMP
     tankWrecks: { era: 'cold-war', count: 9, debris: true, ids: ['t72m1_jaguar', 'type59', 'bmp2'] },
