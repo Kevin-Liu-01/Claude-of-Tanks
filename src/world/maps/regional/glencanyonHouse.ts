@@ -18,7 +18,7 @@ import { PartSink, faceBox, facePoint, pick, rgb, shade, streamFrom, type Face, 
 import { buildHouse, leanTo, windowRhythm, type HouseFrame, type Opening } from './house.ts';
 import { doorUnit, windowUnit, type WindowStyle } from './openings.ts';
 import { mound, tvAerial, wallLantern } from './dressing.ts';
-import { doorCanopy, facadeOn, facadeRng, plinthPaint } from './facade.ts';
+import { doorCanopy, facadeGround, facadeOn, facadeRng, plinthPaint } from './facade.ts';
 
 /** Poured concrete (the plaster2 canvas under the kit's concrete tone), painted concrete, block, stucco (glencanyon.ts). */
 const CONCRETE: RegionalBucket = 'plaster2', PAINTED: RegionalBucket = 'plaster3', BLOCK: RegionalBucket = 'stone', STUCCO: RegionalBucket = 'plaster';
@@ -39,6 +39,19 @@ const STEM: readonly Rgb[] = [0x8a8682, 0x8a5a48, 0x6e5e50].map((hex) => shade(r
 const OLEANDER: readonly Rgb[] = [0xe08aa6, 0xe8e2dc, 0xc23a48].map(rgb);
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
+
+/**
+ * The ground's height at a point of the house's frame, over the house's base (its local y = 0): the terrain the building
+ * is seated on (facade.ts facadeGround, in the building's frame), 0 on a bare build. The dressing that stands on the
+ * ground (the planter, the oleanders, the porch's posts) stands on it, never buried in a slope or hung over a hollow.
+ */
+function groundAt(sink: PartSink, x: number, z: number): number {
+  const g = facadeGround();
+  if (!g) return 0;
+  const [bx, , bz] = sink.framePoint([x, 0, z]);
+  const y = g.at(bx, bz);
+  return Number.isFinite(y) ? y : 0;
+}
 
 /**
  * The windows' draws: the pane's from the build stream, as the house drew it before it had shutters; a shutter's (its
@@ -223,14 +236,27 @@ function porch(sink: PartSink, frame: HouseFrame, finish: PageFinish, du: number
   const iron = finish.trim === WHITE ? IRON : finish.trim;
   // (the lean-to lays the roof alone: its plate and posts are laid here as dressing, as leanTo lays them, so the
   // house's collision stays its body's)
+  // the cover: a sheet of ribbed aluminium (the 1950s patio cover), white or in the trim's colour, its ribs down the fall
+  const sheet = finish.trim === WHITE ? ALUMINIUM : finish.trim, pitch = 7, eave = 0.18;
   const laid = leanTo(sink, {
     face: f, u0, u1, depth, highY,
-    roof: { pitchDeg: 7, eave: 0.18, verge: 0.12, thickness: 0.08, bucket: 'roof', decor: true },
-    posts: null, plate: null,
+    roof: { pitchDeg: pitch, eave, verge: 0.12, thickness: 0.05, bucket: 'structureMetal', decor: true },
+    roofColour: sheet, posts: null, plate: null,
   });
+  const skin = 0.05 / Math.cos(pitch * Math.PI / 180);
+  const topAt = (o: number) => { const q = facePoint(f, (u0 + u1) / 2, 0, o); return laid.shed.undersideAt(q[0], q[2]) + skin; };
+  const yWall = topAt(0.02), yEave = topAt(depth + eave - 0.02);
+  for (let u = u0 - 0.06; u <= u1 + 0.06; u += 0.32) {
+    sink.member('structureMetal', facePoint(f, u, yWall + 0.012, 0.02), facePoint(f, u, yEave + 0.012, depth + eave - 0.02), 0.03, 0.025, [0, 1, 0],
+      { colour: shade(sheet, 0.86), decor: true, fine: true }, 0.01);
+  }
   const ph = 0.16, postTop = laid.plateTop - ph;
   faceBox(sink, 'structureWood', f, (u0 + u1) / 2, laid.plateTop - ph / 2, depth, u1 - u0 + 0.1, ph, 0.1, { colour: finish.trim, decor: true });
-  for (const u of posts) faceBox(sink, 'structureMetal', f, u, postTop / 2, depth, 0.07, postTop, 0.07, { colour: iron, decor: true }, { top: true });
+  for (const u of posts) {
+    // (each post down to the ground under it, a hand into it: a slope's low side never leaves it hanging)
+    const at = facePoint(f, u, 0, depth), foot = Math.min(0, groundAt(sink, at[0], at[2])) - 0.08;
+    faceBox(sink, 'structureMetal', f, u, (foot + postTop) / 2, depth, 0.07, postTop - foot, 0.07, { colour: iron, decor: true }, { top: true });
+  }
   // the wrought iron's scrolls: a knee from each post up to the plate (fine)
   for (const u of posts) {
     for (const side of [-1, 1]) {
@@ -318,12 +344,17 @@ function pageDressing(sink: PartSink, frame: HouseFrame, f: () => number, finish
   // the block planter under the picture window, its shrubs (a hand under the sill's nose)
   const pw = ops.find((o) => o.face === 'front' && o.kind === 'window');
   if (pw && f() < 0.65) {
-    const pu = pw.u, pl = pw.w + 0.3, ph = 0.45;
-    faceBox(sink, BLOCK, onPlinth, pu, ph / 2 - 0.1, 0.25, pl, ph + 0.2, 0.5, { decor: true });
-    const green: Rgb = [0.16, 0.26, 0.12];
-    for (let k = 0; k < 3; k++) {
-      const c = facePoint(onPlinth, pu + (k - 1) * pl * 0.3, ph, 0.25);
-      mound(sink, c, onPlinth.u, onPlinth.out, 0.28, 0.17, 0.32 + f() * 0.12, shade(green, 0.9 + f() * 0.2), { decor: true }, k);
+    // (its foot a hand under the lowest ground along it, its top 45 cm over the highest, a hand under the sill's nose)
+    const pu = pw.u, pl = pw.w + 0.3;
+    const gs = [-1, 1].flatMap((e) => [0, 0.5].map((o) => { const q = facePoint(onPlinth, pu + e * pl / 2, 0, o); return groundAt(sink, q[0], q[2]); }));
+    const lo = Math.min(...gs) - 0.15, top = Math.max(...gs) + 0.45;
+    if (top < frame.floors[0] + pw.y0 - 0.2) {
+      faceBox(sink, BLOCK, onPlinth, pu, (lo + top) / 2, 0.25, pl, top - lo, 0.5, { decor: true });
+      const green: Rgb = [0.16, 0.26, 0.12];
+      for (let k = 0; k < 3; k++) {
+        const c = facePoint(onPlinth, pu + (k - 1) * pl * 0.3, top, 0.25);
+        mound(sink, c, onPlinth.u, onPlinth.out, 0.28, 0.17, 0.32 + f() * 0.12, shade(green, 0.9 + f() * 0.2), { decor: true }, k);
+      }
     }
   }
   // the oleanders at the front's corners clear of the openings and the porch's posts: a leafy mound, its flowering
@@ -332,10 +363,12 @@ function pageDressing(sink: PartSink, frame: HouseFrame, f: () => number, finish
   const clear = (u: number) => ops.every((o) => o.face !== 'front' || Math.abs(o.u - u) > o.w / 2 + (o.kind === 'door' ? 1.1 : 0.7));
   for (const u of [frame.faces.front.width / 2 - 0.55, -(frame.faces.front.width / 2 - 0.55)]) {
     if (!clear(u) || f() < 0.35 || (u > 0 && h.carport)) continue;
-    const size = 1.0 + f() * 0.35, c = facePoint(onPlinth, u, 0, size * 0.42);
+    const size = 1.0 + f() * 0.35, at = facePoint(onPlinth, u, 0, size * 0.42), g = groundAt(sink, at[0], at[2]) - 0.05;
+    const c = facePoint(onPlinth, u, g, size * 0.42);
     mound(sink, c, onPlinth.u, onPlinth.out, size * 0.62, size * 0.42, size * 1.15, shade(leaf, 0.9 + f() * 0.2), { decor: true }, u);
-    const crown = facePoint(onPlinth, u, size * 0.62, size * 0.42);
+    const crown = facePoint(onPlinth, u, g + size * 0.62, size * 0.42);
     const tone = 0.85 + f() * 0.25;
-    mound(sink, crown, onPlinth.u, onPlinth.out, size * 0.5, size * 0.34, size * 0.62, [bloom[0] * tone * 0.8 + leaf[0] * 0.2, bloom[1] * tone * 0.8 + leaf[1] * 0.2, bloom[2] * tone * 0.8 + leaf[2] * 0.2], { decor: true }, u + 1);
+    // (the crown the leaves' green flecked with the bloom: an oleander in flower reads green at a distance)
+    mound(sink, crown, onPlinth.u, onPlinth.out, size * 0.5, size * 0.34, size * 0.62, [bloom[0] * tone * 0.42 + leaf[0] * 0.75, bloom[1] * tone * 0.42 + leaf[1] * 0.75, bloom[2] * tone * 0.42 + leaf[2] * 0.75], { decor: true }, u + 1);
   }
 }
