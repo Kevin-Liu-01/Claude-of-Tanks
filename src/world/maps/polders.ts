@@ -156,7 +156,10 @@ export default {
     // (2026-10-17, the maps lane; the Polders village blind, pose 1: "a large dark flat square plot in the village centre
     // reads as an untextured void") painted as a grazed green worn bare in patches, not one compacted 60 m rectangle; the
     // apron's level and every road query are unchanged (paint only)
-    hardstands: [{ x: -40, z: 0, width: 60, length: 60, yawDeg: 0, grade: 0, paint: { cover: 0.25, mottle: 0.35 } }],
+    // (2026-10-17, the follow-ups of the same blind, pose 1: "the trampled-dirt crossroads has blobby edges") no wear
+    // painted: a quarter cover mottled lifted the road mask past the shoulder's threshold in blobs round the crossing;
+    // the grazed green is the ground's own, the roads' edges their own
+    hardstands: [{ x: -40, z: 0, width: 60, length: 60, yawDeg: 0, grade: 0, paint: { cover: 0 } }],
     village: VILLAGE,
     // Step 7 (2026-10-07; gauntlet wave 248: "lanes as wide as a modern road and level with the water"; the coordinator's
     // ruling): the polder's roads narrowed and raised a metre on crowned banks of their own (terrain.ts RoadPathStyle
@@ -335,9 +338,14 @@ export default {
       // (2026-10-17, the maps lane; the village blind 227, pose 5: "the church tower reads as a bare slab with no
       // churchyard") its kerkhof before the west tower, as a Walcheren church keeps it: a white picket fence round the
       // graves under their crosses and headstones, the gate on the tower's axis and the flagged path to the portal, and
-      // the path on from the gate to the village road
+      // the path on from the gate to the village road. (2026-10-17, the follow-ups of the same blind, pose 5: "a grey
+      // cross stands in the approach path right in front of the church door … the right-hand picket fence runs
+      // diagonally and encloses nothing") the door's approach kept clear of graves 4 m out (doorApron), the side fences
+      // run on 5.2 m past the yard's back beside the 6.2 m tower, to within 1.5 m of the nave's west corners, clear of
+      // the church's footprint (reach)
       { kind: 'churchyard', x: 29.5, z: -24, yawDeg: -90, ground: 'reserve', name: 'the churchyard',
-        params: { width: 12, depth: 12, fence: 'fencepicket', holyGate: false, tradition: 'latin', graves: 12 } },
+        params: { width: 12, depth: 12, fence: 'fencepicket', holyGate: false, tradition: 'latin', graves: 12,
+          doorApron: 4, reach: 5.2 } },
       { kind: 'path', x: 18.3, z: -24, yawDeg: -90, name: 'the path from the churchyard gate to the road', params: { length: 9.6, width: 1.6 } },
     ],
     plan: ['mill', 'farmhouse', 'granary', 'fishery', 'depot', 'cottage', 'woodshed', 'tavern', 'farmhouse', 'barn', 'barn', 'cottage', 'granary', 'ruin', 'depot', 'woodshed', 'farmhouse', 'barn'],

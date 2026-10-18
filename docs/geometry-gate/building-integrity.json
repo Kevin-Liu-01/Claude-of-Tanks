@@ -4500,7 +4500,16 @@
    "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
+  },
+  "landmark/polders:churchyard#8": {
+   "floating": 0,
+   "sliver": 0,
+   "floatingM2": 0,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-17T19:04:05.235Z"
+ "updatedAt": "2026-10-18T00:26:58.738Z"
 }

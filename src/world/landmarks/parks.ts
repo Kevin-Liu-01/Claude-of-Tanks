@@ -844,6 +844,11 @@ const GREEN_IRON = rgb(0x4f7d5a);
  * fence the holy gate of a Russian church — a whitewashed brick gateway, its arch, a cornice and a small iron roof under
  * a cross — or a plain gate; the flagstone path from the gate to the church door, and on from the gate toward the road
  * (a `path` piece of its own); the graves either side of the path under their crosses.
+ * (2026-10-17, the maps lane; the Polders village blind 227's follow-ups, pose 5: "a grey cross stands in the approach
+ * path right in front of the church door … the right-hand picket fence runs diagonally and encloses nothing")
+ * `doorApron` (m): the ground that deep before the church kept clear of graves beside the path, the door's approach
+ * open; `reach` (m): the side fences run on that far past the yard's back, beside a west tower narrower than the yard,
+ * to close on the nave's corners.
  */
 export const churchyard: LandmarkBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx.rng));
@@ -852,12 +857,13 @@ export const churchyard: LandmarkBuilder = (ctx) => {
   const pathW = Math.max(0, Number(ctx.params.path) || 0);
   const orthodox = String(ctx.params.tradition || 'orthodox') === 'orthodox';
   const hw = W / 2, hd = D / 2, gateW = 2.2, pier = 0.85;
+  const doorApron = Math.max(0, Number(ctx.params.doorApron) || 0), reach = Math.max(0, Number(ctx.params.reach) || 0);
   const destructibles: GroundsDestructible[] = [];
   // the fence: the two sides from the church to the front, the front either side of the gate (the back is the church's);
   // `gate: 'right' | 'left'` hangs a plain gate in that side instead (the front fenced through)
   const side = String(ctx.params.gate ?? 'front');
-  fenceRun(destructibles, fence, [hw, -hd], [hw, hd], side === 'right' ? { gateAt: hd, gate: 'gate' } : {});
-  fenceRun(destructibles, fence, [-hw, hd], [-hw, -hd], side === 'left' ? { gateAt: hd, gate: 'gate' } : {});
+  fenceRun(destructibles, fence, [hw, -hd - reach], [hw, hd], side === 'right' ? { gateAt: hd + reach, gate: 'gate' } : {});
+  fenceRun(destructibles, fence, [-hw, hd], [-hw, -hd - reach], side === 'left' ? { gateAt: hd, gate: 'gate' } : {});
   if (String(ctx.params.back) === 'fence') fenceRun(destructibles, fence, [-hw, -hd], [hw, -hd]);
   if (side === 'right' || side === 'left') fenceRun(destructibles, fence, [hw, hd], [-hw, hd]);
   else if (holy) {
@@ -894,7 +900,10 @@ export const churchyard: LandmarkBuilder = (ctx) => {
       for (let x = pathW / 2 + 1.5; x < hw - 1.0 && placed < max; x += 2.3) {
         if (ctx.variant() < 0.3) continue;
         const jx = (ctx.variant() - 0.5) * 0.5, jz = (ctx.variant() - 0.5) * 0.6, yaw = (ctx.variant() - 0.5) * 0.08;
-        grave(sink, ctx.ground, side * x + jx, z + jz, yaw, markers[Math.floor(ctx.variant() * markers.length)]);
+        const marker = markers[Math.floor(ctx.variant() * markers.length)];
+        // (`doorApron`) a grave whose marker would stand in the door's approach is left out, its draws taken
+        if (doorApron > 0 && z + jz - 1.25 < -hd + doorApron && x < pathW / 2 + 2.9) continue;
+        grave(sink, ctx.ground, side * x + jx, z + jz, yaw, marker);
         placed++;
       }
     }
