@@ -32,9 +32,11 @@
  * and a batch's instance matrix drawing a span is finite and unflattened (the BatchedMesh flatten bug's tell).
  *
  *   node tools/destruction-slab-check.mjs [--map=verdant] [--ids=9] [--builders=church] [--per-builder=1] [--rounds=40]
- *        [--gap=0.45] [--settle=10] [--sections=1] [--fracture=1] [--storeys=0,1] [--render=<dir>] [--json=<out>]
+ *        [--gap=0.45] [--settle=10] [--sections=1] [--fracture=1|0|phone] [--storeys=0,1] [--render=<dir>] [--json=<out>]
  *        [--max-snapshots=40] [--faces=wide,wide-back,narrow,narrow-back] [--seed=<n>]
  *        [--stop-after=roof] [--upper=0]
+ * (--fracture=0: the kit's path alone; --fracture=phone: the phone as the battle wires it — the kit's holes, falls and
+ *  heaps, and the fracture stages' hanging sweep alone, a third of the desktop's work a frame)
  * (--stop-after=roof: stop firing once the roof section falls and judge the building standing roofless at the end of the
  *  settle — a fallen roof's slabs lying flat across the wall heads at the eaves, the owner's 2026-10-17 frame; --upper=0:
  *  judge plates 2 m or more up against the whole intact plan instead of the walls' plan at height)
@@ -635,15 +637,19 @@ export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => fals
     });
   }
   // (destruction-slabs 227) a remnant pier or stub standing taller than the building was drawn at its spot (a lookout's
-  // 16 m masonry piers, a tank's corner piers over its plinth): its pieces' tops against the intact top there
+  // 16 m masonry piers, a tank's corner piers over its plinth): its pieces' tops against the intact top there — at the
+  // top's own spot (round 4: a roof frame's rafter left by the phone's roof fall reads its ridge end against the roof's
+  // height half way down its slope, 1.5-2.3 m lower, at its middle)
   if (drawnTopAt) for (const d of meshes) {
     if (!/^fx-structure-remnant-/.test(d.name)) continue;
     let worst = null;
     for (const tris of piecesOfTriangles(d.tris)) {
       const s = shapeOf(tris);
       if (s.max[1] - s.min[1] < 1) continue;
-      const top = drawnTopAt(s.centre[0], s.centre[2]);
-      const over = s.max[1] - (Number.isFinite(top) ? top : groundAt(s.centre[0], s.centre[2]));
+      let tx = s.centre[0], tz = s.centre[2], ty = -Infinity;
+      for (let i = 0; i + 2 < tris.length; i += 3) if (tris[i + 1] > ty) { ty = tris[i + 1]; tx = tris[i]; tz = tris[i + 2]; }
+      const top = drawnTopAt(tx, tz);
+      const over = s.max[1] - (Number.isFinite(top) ? top : groundAt(tx, tz));
       if (over >= SLAB.tallerM && (!worst || over > worst.over)) worst = { over, s, tris, top };
     }
     if (!worst) continue;
@@ -895,6 +901,8 @@ export async function runSlabCheck({
   const { createStructureStages } = await import('../src/fx/structureStages.ts');
   const rubbleMod = await import('../src/fx/rubbleBodies.ts').catch(() => null);
   const fractureMod = fracture ? await import('../src/fx/fractureStages.ts').catch(() => null) : null;
+  // (round 4) the phone as the battle wires it (effects.ts): the kit's holes and falls, the stages' hanging sweep alone
+  const phoneStages = fracture === 'phone' ? { sweepOnly: true, capacity: 16, poolShare: 0, hangingSteps: 4, hangingSlice: 4000 } : {};
   const { createStudioDestruction } = await import('../src/game/studioDestruction.ts');
   const { matchRulesetFor } = await import('../src/sim/matchRuleset.ts');
   const { DESTRUCTION_BUS_EVENTS } = await import('../src/sim/destructionEvents.ts');
@@ -1097,7 +1105,7 @@ export async function runSlabCheck({
     const debris = debrisMod.createStructureDebris({ now: () => clock, groundY: ground, baseGroundY: ground0, poolCapacity: 256, pieceCap: 1024, bodies });
     const fxGroup = new THREE.Group();
     const fx = fractureMod ? fractureMod.createFractureStages({ group: fxGroup, now: () => clock, environment: () => env, groundAt: ground,
-      materialFor: (bucket) => worldMaterials.get(bucket) ?? null }) : null;
+      materialFor: (bucket) => worldMaterials.get(bucket) ?? null, ...phoneStages }) : null;
     const stages = createStructureStages({ mask, debris, now: () => clock, materialFor: (bucket) => worldMaterials.get(bucket) ?? null,
       scars: null, crumble: 1, ...(fx ? { fracture: fx.attach } : {}) });
     const events = [];
@@ -1392,7 +1400,7 @@ export async function runSlabCheck({
         const rdebris = debrisMod.createStructureDebris({ now: () => rclock, groundY: rground, baseGroundY: ground0, poolCapacity: 256, pieceCap: 1024, bodies: rbodies });
         const rgroup = new THREE.Group();
         const rfx = fractureMod ? fractureMod.createFractureStages({ group: rgroup, now: () => rclock, environment: () => renv, groundAt: rground,
-          materialFor: (bucket) => worldMaterials.get(bucket) ?? null }) : null;
+          materialFor: (bucket) => worldMaterials.get(bucket) ?? null, ...phoneStages }) : null;
         const rstages = createStructureStages({ mask: rmask, debris: rdebris, now: () => rclock, materialFor: (bucket) => worldMaterials.get(bucket) ?? null,
           scars: null, crumble: 1, ...(rfx ? { fracture: rfx.attach } : {}) });
         let rfelled = false;
@@ -1558,7 +1566,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     ids: typeof args.ids === 'string' ? args.ids.split(',').map(Number) : null,
     builders: typeof args.builders === 'string' ? args.builders.split(',') : null,
     perBuilder: Number(args['per-builder'] ?? 1), rounds: Number(args.rounds ?? 40), roundGapS: Number(args.gap ?? 0.45),
-    settleS: Number(args.settle ?? 10), sections: args.sections !== '0', fracture: args.fracture !== '0',
+    settleS: Number(args.settle ?? 10), sections: args.sections !== '0', fracture: args.fracture === 'phone' ? 'phone' : args.fracture !== '0',
     stopAfterRoof: args['stop-after'] === 'roof', upper: args.upper !== '0',
     renderDir: typeof args.render === 'string' ? args.render : null, maxSnapshots: Number(args['max-snapshots'] ?? 40), rejoin: args.rejoin !== '0',
     storeys: typeof args.storeys === 'string' ? args.storeys.split(',').map(Number) : [0],
@@ -1576,6 +1584,6 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     }
     for (const s of r.spanIssues) console.log(`  span: ${s}`);
   }
-  console.log(`destruction-slab-check ${report.mapId} (sections ${report.sections ? 'on' : 'off'}, fracture ${report.fracture ? 'on' : 'off'}): ${report.pass ? 'PASS' : 'FAIL'} (${report.buildings} buildings)`);
+  console.log(`destruction-slab-check ${report.mapId} (sections ${report.sections ? 'on' : 'off'}, fracture ${report.fracture === 'phone' ? 'as the phone' : report.fracture ? 'on' : 'off'}): ${report.pass ? 'PASS' : 'FAIL'} (${report.buildings} buildings)`);
   process.exit(report.pass ? 0 : 1);
 }

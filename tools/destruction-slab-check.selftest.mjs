@@ -134,6 +134,17 @@ assert.match(matrixTrouble(new THREE.Matrix4().set(NaN, 0, 0, 0, 0, 1, 0, 0, 0, 
   const tall = judgeSlabs(pier(16), { footprint, groundAt, supportAt, drawnTopAt });
   assert.ok(tall.findings.length === 1 && tall.findings[0].reasons[0].startsWith('too tall'), 'a pier over the drawn top is flagged');
   assert.equal(judgeSlabs(pier(4), { footprint, groundAt, supportAt, drawnTopAt }).findings.length, 0, 'a pier under it passes');
+  // (round 4) a rafter of a gable's roof frame, under the roof's slope from the eave to the ridge, is judged at its top's own
+  // spot (its ridge end against the ridge), not its middle (its ridge end over a metre above the slope half way down): it passes; the
+  // same rafter 1.5 m proud of the ridge is flagged
+  const gable = [Float32Array.from([...box(0, 0, 0, 10, 6, 0.3), ...box(0, 0, 5.7, 10, 6, 6),
+    ...quad([0, 6, 0], [10, 6, 0], [10, 14, 3], [0, 14, 3]), ...quad([0, 14, 3], [10, 14, 3], [10, 6, 6], [0, 6, 6])])];
+  const gableTop = drawnTopOf(gable);
+  const rafter = (lift) => [mesh('fx-structure-remnant-structureWood', [...quad([5, 6 - 0.2, 0.2], [5.14, 6 - 0.2, 0.2], [5.14, 14 - 0.2 + lift, 3], [5, 14 - 0.2 + lift, 3]),
+    ...quad([5, 6 - 0.3, 0.2], [5, 14 - 0.3 + lift, 3], [5.14, 14 - 0.3 + lift, 3], [5.14, 6 - 0.3, 0.2])])];
+  assert.equal(judgeSlabs(rafter(0), { footprint, groundAt, supportAt, drawnTopAt: gableTop }).findings.length, 0, 'a rafter under its roof passes');
+  const proud = judgeSlabs(rafter(1.5), { footprint, groundAt, supportAt, drawnTopAt: gableTop });
+  assert.ok(proud.findings.length === 1 && proud.findings[0].reasons[0].startsWith('too tall'), 'a rafter 1.5 m proud of its ridge is flagged');
 }
 // a fallen roof slab drawn well off the body it rides in hovers; one drawn on its body passes
 {

@@ -47,7 +47,7 @@ export interface HangingResult {
 
 // (the sweep reads a little stricter than the slab check — touching at 0.2 m, bearing over 55 % of its envelope, down when
 // its held share fell by a fifth — so what the check would call borderline has come down: their samples differ)
-const SLICE = 12000;
+const SLICE_UNITS = 12000;
 /** Samples a putInto call puts between a step's checks (round 4). */
 const PUT_CHUNK = 2048;
 const CELL = 0.4, VOX = 0.25, JOIN = 0.2, SPACING = 0.3, BAND = 0.8, BEAR = 0.55, DROP = 0.2, TOUCH = 0.3, MOVED = 0.002, LIFT = 1, TWIN = 0.1;
@@ -145,9 +145,12 @@ export interface HangingSweepOptions {
   originalOf(span: StructureSpan): Float32Array | null;
   /** The ground as drawn under a point. */
   groundAt(x: number, z: number): number;
+  /** Units of work a step (default 12,000: under a millisecond on a desktop; the phone's a third of that, round 4). */
+  slice?: number;
 }
 
 export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
+  const SLICE = Math.max(PUT_CHUNK, Math.floor(o.slice ?? SLICE_UNITS));
   const models = new WeakMap<StructureDamageSeam, Model>();
   const building = new Map<StructureDamageSeam, Generator<void, Model, void>>();
   /** The ground at a cell's middle, read once a sweep (heldOf and the clusters ask it of the same cells). */

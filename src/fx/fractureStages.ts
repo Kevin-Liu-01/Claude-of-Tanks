@@ -119,6 +119,17 @@ interface FractureStagesOptions {
   /** Live bodies (default 96) and the wall cells' share of them (default 48). */
   capacity?: number;
   poolShare?: number;
+  /**
+   * (destruction-slabs 227 round 4; the round-3 critics: "phones get none of the round-3 hanging fix") the phone: no wall
+   * breaks where it is struck, no fall or collapse as bodies — the kit lays its holes, falls and heaps as it does without
+   * the fracture — only the hanging sweep (what a stage's hides leave without what held it comes down: a chimney cap over a
+   * fallen roof, a dark interior's lid, a mill's stage round its tower) and the drops it makes, `hangingSteps` steps a frame.
+   */
+  sweepOnly?: boolean;
+  /** Steps of the hanging sweep a frame (default 4: each under a millisecond on a desktop) and the units of work a step
+   *  (structureHanging's, default 12,000). */
+  hangingSteps?: number;
+  hangingSlice?: number;
 }
 
 export interface FractureStages {
@@ -265,7 +276,8 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
   });
   // (destruction-slabs 227 round 3) what a building's damage left hanging comes down: read once its faces are drawn and
   // no storey of it is falling, one building an update; a fallen building's spans are gone (the mask's, the fracture's)
-  const hangingSweep = createHangingSweep({ originalOf: (span) => host?.originalOf?.(span) ?? null, groundAt: o.groundAt });
+  const hangingSweep = createHangingSweep({ originalOf: (span) => host?.originalOf?.(span) ?? null, groundAt: o.groundAt,
+    ...(o.hangingSlice ? { slice: o.hangingSlice } : {}) });
   const hangingDue = new Map<number, { seam: StructureDamageSeam; settled: boolean }>();
   /** Buildings struck whose intact reading is still to be made (round 4). */
   const toPrepare = new Map<number, StructureDamageSeam>();
@@ -279,7 +291,9 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
   let hangingJob: { idx: number; due: { seam: StructureDamageSeam; settled: boolean }; runs: THREE.Mesh[]; rooms: THREE.Mesh[];
     gen: Generator<void, HangingResult, void> } | null = null;
   /** Steps of the sweep a frame (each about structureHanging's SLICE units of work: under a millisecond on a desktop). */
-  const HANGING_STEPS = 4;
+  const HANGING_STEPS = Math.max(1, Math.floor(o.hangingSteps ?? 4));
+  /** The phone's stages (o.sweepOnly): the kit draws every break; the fracture only reads what hangs. */
+  const sweepOnly = o.sweepOnly === true;
   function markHanging(seam: StructureDamageSeam, settled: boolean): void {
     if (fallen.has(seam.structureIdx)) return;
     hangingChain.delete(seam.structureIdx);
@@ -486,6 +500,8 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
     return {
       strike(seam, p) {
         seams.set(seam.structureIdx, seam);
+        // (the phone: the kit's hole; the building's intact reading made from its first hole on, for its first sweep)
+        if (sweepOnly) { if (!toPrepare.has(seam.structureIdx)) toPrepare.set(seam.structureIdx, seam); return false; }
         // (declined, the stages lay the kit's hole: a run the cut laid ahead must hold too)
         bump(seam.structureIdx);
         if (sectionsOn.has(seam.structureIdx) || isLandmark(seam)) return false;
@@ -499,6 +515,11 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
         const idx = seam.structureIdx;
         const sections = (e as StructureStageEvent & { sections?: boolean }).sections === true;
         const settled = e.settled === true;
+        if (sweepOnly) {
+          // (the phone: the kit's stages, its collapse the mask's; a fallen building is swept no more)
+          if (e.stage === 'collapsed') { fallen.add(idx); hangingDue.delete(idx); toPrepare.delete(idx); }
+          return 0;
+        }
         if (isLandmark(seam)) {
           if (landmarks.handles(seam.builder)) landmarks.stage(seam, e.stage, e.dirX, e.dirZ, settled);
           return 0;
@@ -535,7 +556,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
         const idx = seam.structureIdx;
         seams.set(idx, seam);
         if (!settled && !toPrepare.has(idx)) toPrepare.set(idx, seam);
-        if (isLandmark(seam)) return false;
+        if (sweepOnly || isLandmark(seam)) return false;
         sectionsOn.add(idx);
         fracture.holdStoreys(idx, seam);
         bump(idx);
@@ -551,7 +572,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       fallPanel(e, seam, storey, face, stubTop, top, settled = false) {
         const idx = seam.structureIdx;
         seams.set(idx, seam);
-        if (isLandmark(seam)) return false;
+        if (sweepOnly || isLandmark(seam)) return false;
         sectionsOn.add(idx);
         fracture.holdStoreys(idx, seam);
         bump(idx);
@@ -581,7 +602,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       fallRoof(e, seam) {
         const idx = seam.structureIdx;
         seams.set(idx, seam);
-        if (isLandmark(seam)) return false;
+        if (sweepOnly || isLandmark(seam)) return false;
         sectionsOn.add(idx);
         bump(idx);
         bodies.markFalling(seam, true);
@@ -631,7 +652,8 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       }
     },
     warm(at, material) {
-      if (!material) return 0;
+      // (the phone draws no fracture face: nothing to compile)
+      if (!material || sweepOnly) return 0;
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.Float32BufferAttribute([at.x, at.y + 0.5, at.z, at.x + 0.3, at.y + 0.5, at.z, at.x, at.y + 0.8, at.z], 3));
       g.setAttribute('normal', new THREE.Float32BufferAttribute([0, 0, 1, 0, 0, 1, 0, 0, 1], 3));

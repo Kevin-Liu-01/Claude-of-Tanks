@@ -136,6 +136,32 @@ function collapse(dts) {
   assert.deepEqual(pool.stats(), { bodies: 0, awake: 0, waiting: 0, handles: 0, timeS: 0 });
 }
 
+// --- (destruction-slabs 227 round 4) no body is launched: two slabs released deep in each other (a roof's sheets cut
+// with their eave boards, a cell spawned into a resting slab) part without a burst — what a step adds is held, and no
+// step lifts a body faster than 8 m/s; a throw set at a body's release keeps its speed
+{
+  const pool = createDebrisPhysics({ capacity: 8 });
+  pool.bind(flat);
+  const slab = createRigidBox(2.5, 0.12, 2, 1200, { restitution: 0.2, friction: 0.6 });
+  const a = pool.spawn(slab, { x: 0, y: 3, z: 0 }), b = pool.spawn(slab, { x: 0.3, y: 3.05, z: 0.2, wx: 0.3 });
+  const vel = new Float64Array(6);
+  let topUp = 0, topY = 0;
+  for (let i = 0; i < 240; i++) {
+    pool.advance(1 / 60);
+    for (const h of [a, b]) {
+      if (pool.velocity(h, vel)) topUp = Math.max(topUp, vel[1]);
+      if (pool.framePoseAt(h, pose)) topY = Math.max(topY, pose[1]);
+    }
+  }
+  assert.ok(topUp <= 8 + 1e-9, `no step lifts a body faster than 8 m/s (${topUp.toFixed(2)})`);
+  assert.ok(topY < 6.5, `the overlap parts without a burst (highest ${topY.toFixed(2)} m from 3 m)`);
+  // a thrown spawn keeps its throw (12 m/s up: the guard holds what a step adds, never what a body had)
+  const thrown = pool.spawn(block, { x: 8, y: 1, z: 0, vy: 12 });
+  pool.advance(1 / 60);
+  pool.velocity(thrown, vel);
+  assert.ok(vel[1] > 11, `a throw keeps its speed (${vel[1].toFixed(2)} m/s)`);
+}
+
 // --- no allocation per advance once warm
 if (typeof globalThis.gc === 'function') {
   const pool = createDebrisPhysics({ capacity: 32 });
@@ -149,4 +175,4 @@ if (typeof globalThis.gc === 'function') {
   assert.ok(process.memoryUsage().heapUsed - before < 256 * 1024, 'the heap stays flat');
 }
 
-console.log('debrisPhysics.selftest: progressive release, resting pieces (catch, early wake, release velocity), impulse/velocity, landings with handles, rest flat, bit-identical across frame times, hull decks and shoves, oldest-sleeper eviction with its pose, flat heap');
+console.log('debrisPhysics.selftest: progressive release, resting pieces (catch, early wake, release velocity), impulse/velocity, landings with handles, rest flat, bit-identical across frame times, hull decks and shoves, oldest-sleeper eviction with its pose, flat heap, no launch from an overlap (a throw kept)');

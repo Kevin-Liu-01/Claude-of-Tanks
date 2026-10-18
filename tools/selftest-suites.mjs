@@ -1296,6 +1296,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-17 (destruction-slabs 227, the owner's church slabs): one drawn enclosure per structure; the room, floor
     // and ruin writers place through it
     'src/world/structureEnclosure.selftest.mjs',
+    // 2026-10-18 (destruction-slabs 227 round 4): the intact and enclosure measures made off the parts when first asked
+    // for (never in the props build), the same read back through the placement
+    'src/world/structureDeferredMeasure.selftest.mjs',
     // the kit seam's world side: the default kit, the aDamage tags, spans, depth materials and shadow touch (§16.4)
     'src/world/destructionKit.selftest.mjs',
     'src/world/fractureAnatomy.selftest.mjs',

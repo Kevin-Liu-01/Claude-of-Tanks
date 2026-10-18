@@ -15,10 +15,11 @@ import { ARCHITECTURE_STYLES, buildRegionalParts, regionalKitPlanOf } from '../w
 import { streamFrom } from '../world/maps/regional/geometry.ts';
 import { structureDamageKitChain } from '../world/destructionKit.ts';
 import { createStructureDamageSeam } from '../world/structureDamageSeam.ts';
-import { createStructureMask } from './structureMask.ts';
+import { createStructureMask, STAGE_RUN_TAG } from './structureMask.ts';
 import { createStructureDebris } from './structureDebris.ts';
 import { createStructureStages } from './structureStages.ts';
 import { createFractureStages } from './fractureStages.ts';
+import { createHangingSweep } from './structureHanging.ts';
 
 const IDX = 5;
 const placement = { x: 30, y: 2, z: -20, yaw: 0.35 };
@@ -66,7 +67,7 @@ function house() {
 }
 
 /** The stages and the fracture over one flat ground, stepped at 60 Hz on their own clock. */
-function rig(ground = () => GROUND, records = []) {
+function rig(ground = () => GROUND, records = [], phone = false) {
   let now = 50;
   const mask = createStructureMask(64);
   const debris = createStructureDebris({ now: () => now, groundY: ground });
@@ -80,7 +81,8 @@ function rig(ground = () => GROUND, records = []) {
     },
     isSolid: (r) => !r.crushed && !r.dead,
   };
-  const fx = createFractureStages({ group, now: () => now, environment: () => env, groundAt: ground, materialFor: () => null });
+  const fx = createFractureStages({ group, now: () => now, environment: () => env, groundAt: ground, materialFor: () => null,
+    ...(phone ? { sweepOnly: true, capacity: 16, poolShare: 0, hangingSteps: 4, hangingSlice: 4000 } : {}) });
   const stages = createStructureStages({ mask, debris, now: () => now, materialFor: () => null, fracture: fx.attach });
   const step = (seconds) => {
     for (let k = Math.round(seconds * 60); k > 0; k--) { now += 1 / 60; stages.update(); fx.update(); debris.update(); }
@@ -229,6 +231,73 @@ assert.equal(B.left, A.left, 'and leaves the same');
   H.snapshot().forEach((arr, i) => assert.deepEqual(arr, before[i], `sections off: the reset stands bucket ${i} up`));
 }
 
+// ---- the phone (round 4; the round-3 critics: "phones get none of the round-3 hanging fix"): the kit draws every break,
+// the stages' hanging sweep alone runs — what the kit's hides leave without what held it comes down ----------------------
+let phoneDropped = 0;
+{
+  const r = rig(() => GROUND, [], true);
+  const seam = H.seam();
+  const tag = STAGE_RUN_TAG + IDX + 1;
+  r.stages.stage(stageEvent('damaged', 'intact', { sections: true }), seam);
+  r.step(1);
+  const [hx, hy, hz] = facePoint(front, -1.2, 1.6);
+  r.stages.breach({ ...identity, section: fi, sectionKind: 'wall', y0: placement.y, y1: placement.y + st0.y1, hole: 0, x: hx, y: hy, z: hz,
+    nx: outW[0], ny: 0, nz: outW[2], radiusM: 0.6, munition: 'he', sectionDown: false }, seam);
+  r.step(0.6);
+  assert.ok(r.mask.holes(IDX) >= 1, 'the phone: a hole the sim opened is the kit\'s hole in the mask');
+  assert.equal(r.group.children.filter((m) => m.userData.structureFractureFace).length, 0, 'the phone: no wall is redrawn as cells');
+  const wallEvent = (k) => {
+    const f = st1.faces[k];
+    const [px, py, pz] = facePoint(f, 0, (st1.y1 - st1.y0) / 2);
+    const o = [f.out[0] * c + f.out[2] * s, -f.out[0] * s + f.out[2] * c];
+    return { ...identity, section: 4 + k, sectionKind: 'wall', y0: placement.y + st1.y0, y1: placement.y + st1.y1, hole: 255, x: px, y: py, z: pz,
+      nx: o[0], ny: 0, nz: o[1], radiusM: 0, munition: 'he', sectionDown: true };
+  };
+  for (let k = 0; k < st1.faces.length; k++) { r.stages.breach(wallEvent(k), seam); r.step(0.4); }
+  assert.equal(r.fx.stats().fracture, 0, 'the phone: a fallen section throws no fracture body (the kit\'s pieces)');
+  const roofAt = toWorld(0, H.anatomy.roof.eaveY + 0.5, 0);
+  r.stages.breach({ ...identity, section: H.anatomy.storeys.length * 4, sectionKind: 'roof', y0: placement.y + H.anatomy.roof.eaveY,
+    y1: placement.y + H.anatomy.roof.ridgeY, hole: 255, x: roofAt[0], y: roofAt[1], z: roofAt[2], nx: 0, ny: 1, nz: 0, radiusM: 0, munition: 'he',
+    sectionDown: true }, seam);
+  r.step(0.3);
+  assert.equal(named(r, 'fx-collapse-roof').length, 0, 'the phone: the roof\'s fall is the kit\'s (no slabs as bodies)');
+  assert.ok(r.fx.hangingPending(), 'the roof\'s fall asks for a sweep');
+  const settle = () => { let waited = 0; while (r.fx.hangingPending() && waited < 30) { r.step(0.5); waited += 0.5; } return waited; };
+  const waited = settle();
+  assert.ok(!r.fx.hangingPending(), `the sweep is done (${waited} s)`);
+  // what it left stands on something (a fresh sweep of the same state and the same holders takes nothing more): the
+  // chimney's head over the ridge stands on the kit's roof frame (its rafters, standing where the covering was)
+  const fresh = () => {
+    const all = r.debris.standingRuns(tag);
+    return createHangingSweep({ originalOf: (span) => before[H.meshes.indexOf(span.mesh)].slice(span.first * 3, (span.first + span.count) * 3),
+      groundAt: () => GROUND }).sweep(seam, { faces: [], runs: all.filter((m) => m.userData.room !== true), rooms: all.filter((m) => m.userData.room === true) });
+  };
+  const left = fresh();
+  assert.ok(!left.groups.length && !left.runs.length && !left.rooms.length, `the phone's sweep left nothing hanging (${left.groups.length} parts, ${left.runs.length} run pieces)`);
+  // the roof frame gone (its runs let go), the next change asks for a sweep: the chimney's head, held by nothing now, comes down
+  const roofSection = H.anatomy.storeys.length * 4;
+  let frameRuns = 0;
+  for (const m of r.debris.standingRuns(tag)) if (m.userData.runOwner?.section === roofSection) { r.debris.dropRun(m); frameRuns++; }
+  assert.ok(frameRuns >= 1, 'the roof\'s fall laid its frame');
+  r.stages.breach(wallEvent(0), seam);
+  settle();
+  r.step(6);
+  const dropped = named(r, 'fx-landmark-piece-');
+  phoneDropped = dropped.length;
+  assert.ok(dropped.length >= 1, `the chimney's head, held by nothing, comes down (${dropped.length} pieces)`);
+  for (const m of dropped) {
+    const b = boxOf(m);
+    assert.ok(b.min.y < GROUND + st1.y0 + 1.5, `${m.name}: down on the floor or the ground, not in the air (${(b.min.y - GROUND).toFixed(2)} m)`);
+  }
+  const after = fresh();
+  assert.ok(!after.groups.length, `and nothing of it is left in the air (${after.groups.length} parts)`);
+  r.stages.stage(stageEvent('collapsed', 'breached', { sections: true }), seam);
+  r.step(2);
+  assert.ok(!r.fx.took(IDX) && !r.fx.hangingPending(), 'the phone: the collapse is the mask\'s, and a fallen building is swept no more');
+  r.stages.reset(); r.fx.reset(); r.mask.reset(); r.debris.reset();
+  H.snapshot().forEach((arr, i) => assert.deepEqual(arr, before[i], `the phone: the reset stands bucket ${i} up`));
+}
+
 // ---- a lift bridge's named pieces (the E12 contract) -----------------------------------------------------------------
 {
   const BI = 9;
@@ -315,4 +384,5 @@ assert.equal(B.left, A.left, 'and leaves the same');
 console.log(`fractureStages.selftest: sections on — a sim hole broke the wall (${A.faces} faces drawn, no kit hole), the fallen section threw `
   + `${A.thrown} bodies that lie on the ground or the stub, the roof's ${A.roofPieces} slabs lay on the upper floor until its storey dropped; `
   + 'sections off — rounds broke the walls and the house came down as its own pieces; the same twice, the reset byte for byte; '
+  + `the phone — the kit's holes and falls, its sweep alone left nothing hanging and brought down the chimney's head (${phoneDropped} piece${phoneDropped === 1 ? '' : 's'}) once its roof frame went; `
   + 'the lift bridge\'s arms, leaves and counterweights fell at their stages and lie on the bed and the approach PASS');
