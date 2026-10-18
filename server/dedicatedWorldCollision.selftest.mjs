@@ -61,7 +61,7 @@ const expected = {
   verdant: [6874, 6932, 7940], // integ/227 (LOOKS fence records 555994745: every timber fence module a collider, its band the drawn silhouette; obstacles unchanged): was [6874, 6728, 7940]
   desert: [1762, 1839, 1289], // integ/227 (LOOKS fence records 555994745: every timber fence module a collider, its band the drawn silhouette; obstacles unchanged): was [1762, 1781, 1289]
   winter: [8413, 8517, 7256], // integ/227 (LOOKS fence records 555994745: every timber fence module a collider, its band the drawn silhouette; obstacles unchanged): was [8413, 8371, 7256]
-  urban: [2832, 8146, 2472], // integ/227 (LOOKS fence records 555994745: every timber fence module a collider, its band the drawn silhouette; obstacles unchanged): was [2832, 8002, 2472]
+  urban: [2832, 8148, 2472], // the r3 landmarks port: Urban's south gate's framed top storey (its sill plate and render body): was [2832, 8146, 2472]
   coastal: [4549, 4693, 4325], // integ/227 (LOOKS fence records 555994745: every timber fence module a collider, its band the drawn silhouette; obstacles unchanged): was [4549, 4527, 4325]
   autumn: [6228, 6778, 6033], // integ/227 (LOOKS fence records 555994745: every timber fence module a collider, its band the drawn silhouette; obstacles unchanged): was [6228, 6610, 6033]
   steppe: [2282, 2348, 1210], // integ/227 (LOOKS fence records 555994745: every timber fence module a collider, its band the drawn silhouette; obstacles unchanged): was [2282, 2145, 1210]
