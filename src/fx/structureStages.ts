@@ -680,6 +680,30 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     return changed;
   }
 
+  /**
+   * (destruction-slabs 227 round 4, the critics' tavern #7: the roofless top storey capped by one flat dark plane at its
+   * wall heads — the ceiling of the room laid behind its holes before the roof fell) the top storey's rooms lose their
+   * ceilings with the roof: open to the sky. True when one changed.
+   */
+  function openTopRooms(seam: StructureDamageSeam): boolean {
+    const a = seam.anatomy;
+    const top = a.storeys.length - 1;
+    let changed = false;
+    for (const m of debris.standingRuns(STAGE_RUN_TAG + seam.structureIdx + 1)) {
+      if (m.userData.room !== true || (m.userData.runOwner as RunOwner | undefined)?.storey !== top) continue;
+      const g = m.geometry, ix = g.index, nrm = g.getAttribute('normal') as THREE.BufferAttribute | undefined;
+      if (!ix || !nrm) continue;
+      const tris: number[] = [];
+      for (let t = 0; t * 3 + 2 < ix.count; t++) {
+        const v = ix.getX(t * 3);
+        if (ix.getX(t * 3 + 1) === v && ix.getX(t * 3 + 2) === v) continue;
+        if (nrm.getY(v) < -0.9) tris.push(t);
+      }
+      if (tris.length) { debris.dropRunTris(m, tris); changed = true; }
+    }
+    return changed;
+  }
+
   /** Whether the triangle in _ta.._tc is a level top of the dark bucket (an interior's dark volume) over `overY` (body y). */
   function darkTop(span: StructureSpan, py: number, overY: number): boolean {
     if (span.bucket !== 'dark') return false;
@@ -1033,10 +1057,13 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       // a blown-out facade) in shade, its texture readable
       quad(wb, wt, Math.abs(nx) > 0.5 ? 0.56 : 0.6, [nx!, 0, nz!], [[ax!, y0, az!], [bx!, y0, bz!], [bx!, y1, bz!], [ax!, y1, az!]]);
     }
-    // its floor (up) and its ceiling (down), rectangle by rectangle
+    // its floor (up) and its ceiling (down), rectangle by rectangle — (destruction-slabs 227 round 4, the visual and the
+    // engineering critics' tavern #7: a hole on the top storey after the roof fell laid a room whose ceiling stood as a flat
+    // dark plane at the wall heads, the roofless tavern read as a box with a lid) no ceiling under a roof that has fallen
+    const open = !above && !!a.roof && !!fallenSections.get(seam.structureIdx)?.has(a.roof.section);
     for (const [x0, z0, x1, z1] of room.rects) {
       quad(floorSlot.bucket, floorSlot.tint, 0.55, [0, 1, 0], [[x0!, y0, z1!], [x1!, y0, z1!], [x1!, y0, z0!], [x0!, y0, z0!]]);
-      quad(ceilSlot.bucket, ceilSlot.tint, 0.4, [0, -1, 0], [[x0!, y1, z0!], [x1!, y1, z0!], [x1!, y1, z1!], [x0!, y1, z1!]]);
+      if (!open) quad(ceilSlot.bucket, ceilSlot.tint, 0.4, [0, -1, 0], [[x0!, y1, z0!], [x1!, y1, z0!], [x1!, y1, z1!], [x0!, y1, z1!]]);
     }
     const made = debris.commit();
     for (const mesh of made) {
@@ -1557,7 +1584,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         }
         // (destruction-slabs 227 round 3) a wall gone under a roof that fell before it: what stood over the eaves on it (the
         // verge boards along a gable the roof left standing) is looked at again — held by nothing now, it goes
-        if (a.roof && fallenSections.get(e.structureId)?.has(a.roof.section)) changed = flattenRoofFurniture(seam) || changed;
+        if (a.roof && fallenSections.get(e.structureId)?.has(a.roof.section)) { const opened = openTopRooms(seam); changed = flattenRoofFurniture(seam) || opened || changed; }
         if (ev.storeyDown === true && storey) {
           // the band down to its floor line, what stood on it lowered by its height, its holes' runs and cuts gone, then
           // the kit's heap on the floor line (laid last: it stands); live, it comes down over gravity's time (the core

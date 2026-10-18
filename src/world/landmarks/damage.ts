@@ -23,7 +23,7 @@
 import type { BufferGeometry } from 'three';
 import {
   anatomyCentre, damageRng, damageSeed, registerStructureDamageKit, structureDamageKitChain,
-  type BreachSpec, type DamageHide, type DamageStageResult, type DamageWriters, type StructureCut, type StructureDamageAnatomy,
+  type BreachSpec, type DamageHide, type DamageMeshWriter, type DamageStageResult, type DamageWriters, type StructureCut, type StructureDamageAnatomy,
   type StructureDamageKit, type StructureDescribeInput,
 } from '../destructionKit.ts';
 import { DEFAULT_STRUCTURE_DAMAGE_KIT, describeDefault } from '../destructionDefaultKit.ts';
@@ -699,6 +699,21 @@ function collapseLandmark(a: StructureDamageAnatomy, seed: number, out: DamageWr
   return res;
 }
 
+/** An open frame's writers for the body kit's section and storey falls: its stubs, rooms and remnants are not laid (its
+ *  members are no wall: lane B's open frames, round 4). */
+function openFrameWriters(out: DamageWriters): DamageWriters {
+  const m = out.mesh;
+  const mesh: DamageMeshWriter = {
+    begin: (bucket, role) => (role === 'remnant' || role === 'room' || role === 'rim' ? false : m.begin(bucket, role)),
+    vertex: (px, py, pz, nx, ny, nz, u, v, r, g, b) => m.vertex(px, py, pz, nx, ny, nz, u, v, r, g, b),
+    triangle: (a, b, c) => m.triangle(a, b, c),
+    end: () => m.end(),
+    get vertices() { return m.vertices; },
+    get capacity() { return m.capacity; },
+  };
+  return { ...out, mesh };
+}
+
 /** The kit, under every set-piece kind (destructionKit.ts structureDamageKitChain finds a set piece's builder first). */
 export function registerLandmarkDamageKits(): void {
   for (const kind of Object.keys(LANDMARK_KINDS)) {
@@ -711,16 +726,18 @@ export function registerLandmarkDamageKits(): void {
       // sections (P2) stay the body's
       sectionDown: (a, section, seed, out) => {
         const plan = synced(a);
-        // (round 4) a bodyless set piece's sections are its pieces' to lay (no stub along an anatomy face it never drew)
+        // (round 4) a bodyless set piece's sections are its pieces' to lay (no stub along an anatomy face it never drew); an
+        // open frame's hide what they hide but lay no stub, room or remnant (copper_mesa #38's headframe: a 34 m course of
+        // steel units along its anatomy's face at its feet)
         if (!plan || plan.bodyless) return { cuts: [], hides: [] };
         const kit = bodyKit(plan, 'sectionDown');
-        return kit.sectionDown!.call(kit, plan.body, section, seed, out);
+        return kit.sectionDown!.call(kit, plan.body, section, seed, plan.lattice ? openFrameWriters(out) : out);
       },
       storeyDown: (a, storey, seed, out) => {
         const plan = synced(a);
         if (!plan || plan.bodyless) return { cuts: [], hides: [] };
         const kit = bodyKit(plan, 'storeyDown');
-        return kit.storeyDown!.call(kit, plan.body, storey, seed, out);
+        return kit.storeyDown!.call(kit, plan.body, storey, seed, plan.lattice ? openFrameWriters(out) : out);
       },
     });
   }

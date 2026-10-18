@@ -99,6 +99,9 @@ export interface StructureFracture {
   rooms(structureIdx: number): THREE.Mesh[];
   /** One room out (its walls went round it). */
   dropRoom(structureIdx: number, mesh: THREE.Mesh): void;
+  /** A building's roof fell (sections on, its roof section's fall): a room laid in its top storey from now on has no
+   *  ceiling (round 4). */
+  roofFell(structureIdx: number): void;
   /** Pieces of its faces cut loose (structureHanging.ts: touching nothing that stands): their cells fall as a body each. */
   dropPieces(structureIdx: number, pieces: ReadonlyArray<{ mesh: THREE.Mesh; tris: readonly number[] }>): void;
   /** The building came down: its standing faces leave (the collapse drew them); its bodies and heaps stay. */
@@ -210,6 +213,8 @@ interface LiveBody {
    *  once at rest (tipped over if it stood on its edge). */
   half: [number, number, number];
   tipped: boolean;
+  /** (round 4) Times it was found still on its edge when it would bake, and pushed over again. */
+  retips?: number;
 }
 
 interface Live {
@@ -346,6 +351,8 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   // the round's dust; a chunk cracks into no more clumps than the share has room for
   const poolShare = Math.max(2, o.poolShare ?? 48);
   let skipped = 0;
+  /** Buildings whose roof has fallen (round 4: their top storey's room is laid open to the sky). */
+  const roofGone = new Set<number>();
   const outcome = createWallStrikeOutcome();
   let lastSoundS = -1;
   /** Chunks that landed hard this step (cracked after it: no body is spawned inside the pool's report). */
@@ -1081,15 +1088,18 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     const q = (p0: number[], p1: number[], p2: number[], p3: number[], n: number[], shade: number) =>
       pushQuad(list, layout, p0, p1, p2, p3, n, col, room ? shade * ROOM_SHADE : shade);
     for (const [ax, az, bx, bz, nx, nz] of interior.walls) q([ax, y0, az], [bx, y0, bz], [bx, y1, bz], [ax, y1, az], [nx, 0, nz], Math.abs(nx) > 0.5 ? 0.9 : 1);
-    for (const [x0, z0, x1, z1] of interior.rects) {
-      q([x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], [0, 1, 0], 0.9);
-      q([x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1], [0, -1, 0], 0.7);
-    }
+    // (round 4, tavern #7) the top storey's room under a roof that has fallen has no ceiling: open to the sky, never a lid
+    const open = storey === a.storeys.length - 1 && !!a.roof && roofGone.has(live.seam.structureIdx);
+    for (const [x0, z0, x1, z1] of interior.rects) q([x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], [0, 1, 0], 0.9);
+    // (the ceilings last: a roof that falls after this room was laid takes them by the draw range)
+    const ceilFrom = list.length / layout.stride;
+    if (!open) for (const [x0, z0, x1, z1] of interior.rects) q([x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1], [0, -1, 0], 0.7);
     if (!list.length) return;
     const mesh = new THREE.Mesh(interleavedOf(layout, Float32Array.from(list)), material);
     mesh.name = `fx-fracture-room-${live.seam.structureIdx}`;
     mesh.userData.storey = storey;
     mesh.userData.roomKey = interior.key;
+    mesh.userData.ceilFrom = ceilFrom;
     mesh.matrixAutoUpdate = false;
     bodyToWorld(live, mesh.matrix);
     mesh.matrix.elements[13] -= (live.sunk[storey] ?? 0) + (live.flight[storey] ?? 0);
@@ -1535,6 +1545,20 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     return true;
   }
   const _tipA = new THREE.Vector3(), _tipB = new THREE.Vector3();
+  /** Whether a body at `pose` stands on its edge (its thin axis within 24° of level, reaching 2.5 times its thickness up)
+   *  1.5 m tall or more. */
+  function onEdge(b: LiveBody, pose: ArrayLike<number>): boolean {
+    const h = b.half;
+    let thin = 0;
+    for (let k = 1; k < 3; k++) if (h[k] < h[thin]) thin = k;
+    _q.set(pose[3], pose[4], pose[5], pose[6]);
+    _tipA.set(thin === 0 ? 1 : 0, thin === 1 ? 1 : 0, thin === 2 ? 1 : 0).applyQuaternion(_q);
+    if (Math.abs(_tipA.y) > 0.4) return false;
+    let up = 0;
+    for (let k = 0; k < 3; k++) { _tipB.set(k === 0 ? 1 : 0, k === 1 ? 1 : 0, k === 2 ? 1 : 0).applyQuaternion(_q); up += h[k] * Math.abs(_tipB.y); }
+    if (up < 2.5 * h[thin]) return false;
+    return 2 * up >= 1.5;
+  }
   function writePose(b: LiveBody, src: ArrayLike<number>): void {
     let same = true;
     for (let k = 0; k < 7; k++) if (b.pose[k] !== src[k]) { same = false; b.pose[k] = src[k]; }
@@ -1897,6 +1921,14 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       return out;
     },
     rooms: (structureIdx) => [...(lives.get(structureIdx)?.room ?? [])],
+    roofFell(structureIdx) {
+      roofGone.add(structureIdx);
+      // (a room laid before the fall loses its ceiling with the roof: it stood as a lid over the roofless top storey)
+      const live = lives.get(structureIdx);
+      if (!live) return;
+      const top = live.seam.anatomy.storeys.length - 1;
+      for (const m of live.room) if (m.userData.storey === top && Number.isFinite(m.userData.ceilFrom)) m.geometry.setDrawRange(0, m.userData.ceilFrom as number);
+    },
     dropPieces(structureIdx, pieces) {
       const live = lives.get(structureIdx);
       if (!live) return;
@@ -2070,7 +2102,16 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
         // never came)
         const old = b.age >= SLOW_AGE_S && o.pool.velocity(b.handle, _vel)
           && Math.hypot(_vel[0], _vel[1], _vel[2]) < SLOW_MPS && Math.hypot(_vel[3], _vel[4], _vel[5]) < SLOW_RADS;
-        if ((b.still >= BAKE_STILL_S || b.age >= BAKE_AGE_S || old) && !o.holdBake?.(b.structureIdx, b.pose[1])) bake(b);
+        if ((b.still >= BAKE_STILL_S || b.age >= BAKE_AGE_S || old) && !o.holdBake?.(b.structureIdx, b.pose[1])) {
+          // (destruction-slabs 227 round 4; the census: wall panels of a fallen tower and a depot baked into their heaps
+          // standing on their edges beside the ruin, 4-6 m² plates upright on the ground) one still on its edge when it would
+          // bake cracks into its clumps, or (too few cells) is pushed over again, twice at most
+          if (b.age < BAKE_AGE_S && onEdge(b, _pose)) {
+            if (!b.cracked && b.cells.length >= CRACK_MIN_CELLS * 2) { b.cracked = true; cracking.push(b); b.still = 0; continue; }
+            if ((b.retips ?? 0) < 2) { b.retips = (b.retips ?? 0) + 1; b.tipped = false; b.still = 0; tipIfStanding(b, _pose); continue; }
+          }
+          bake(b);
+        }
       }
       profEnd('fr.poses', tPose);
     },
@@ -2081,6 +2122,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       list.length = 0;
       cracking.length = 0;
       skipped = 0;
+      roofGone.clear();
       for (const live of lives.values()) {
         for (const d of live.faces.values()) for (const m of d.meshes) { o.group.remove(m); m.geometry.dispose(); }
         for (const m of [...live.room, ...live.baked, ...live.bakedPending, ...live.bakedMerged.values()]) { o.group.remove(m); m.geometry.dispose(); }

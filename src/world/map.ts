@@ -67,9 +67,12 @@ import {
   type ObstacleQuery,
 } from './collision.ts';
 import {
-  createStructureDamageSeam, patchStructureMaterialEntries, type StructureDamageSeam, type StructureMaterialInfo,
+  createStructureDamageSeam, measureDeferredStructures, patchStructureMaterialEntries, type StructureDamageSeam, type StructureMaterialInfo,
 } from './structureDamageSeam.ts';
 import { createStructureDamage } from '../sim/structureDamage.ts';
+
+/** The idle measurer's slice a frame (ms): the structures' deferred damage measures (structureDamageSeam.ts). */
+const DEFERRED_MEASURE_MS = 2;
 import { createDeformedHeightField, rubbleHeightFor, type TerrainDeformation } from '../sim/terrainDeformation.ts';
 import { installTerrainCraterMesh } from './terrainCraterMesh.ts';
 import { mapCraterStamps, type MapCraterStamp } from './mapCraters.ts';
@@ -828,6 +831,9 @@ function assembleWorld(
   terrain.userData.followGroundOverlay = followGroundCover;
   // destruction (§16): each structure's seam on first ask, its mound from the world's own structure table
   const structureSeams = new Map<number, StructureDamageSeam>();
+  /** Whether the build left structures' damage measures to the idle measurer (the world's update, DEFERRED_MEASURE_MS a
+   *  frame: round 4's load-time budget). */
+  let deferredMeasures = true;
   let structureTable: ReturnType<typeof createStructureDamage> | null = null;
   const getStructureDamage = (structureIdx: number): StructureDamageSeam | null => {
     const cached = structureSeams.get(structureIdx);
@@ -1043,6 +1049,9 @@ function assembleWorld(
       litter.update(cameraPos);
       tallGrass.update(dt, cameraPos, focusPos, cameraFwd); // round 73: the sward's ring, wind and press
       if (props.updateProps) props.updateProps(dt, cameraPos); // pole LOD + hinge-topple anims
+      // (destruction-slabs 227 round 4) the structures' damage measures the build deferred (structureDamageSeam.ts), a
+      // slice a frame till none is left
+      if (deferredMeasures) deferredMeasures = measureDeferredStructures(DEFERRED_MEASURE_MS) > 0;
       if (groundOcclusion) {
         // (2026-10-09) the world being updated is the one on screen: its ground occlusion is the pass's
         engineCtx.scene.userData.structureGroundOcclusion = groundOcclusion;

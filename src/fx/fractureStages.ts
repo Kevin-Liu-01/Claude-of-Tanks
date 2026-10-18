@@ -585,6 +585,8 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
     took: (structureIdx) => bodies.took(structureIdx),
     breach(e) {
       const ev = e as StructureBreachEvent & { storeyDown?: boolean };
+      // (round 4) a roof's fall: its top storey's rooms are laid open from now on
+      if (e.sectionDown && e.sectionKind === 'roof') fracture.roofFell(e.structureId);
       if (!ev.storeyDown || ev.settled || !host) return;
       // the storey whose floor line the fall reached lets go of its floor (what lay on it falls on)
       const a = seams.get(e.structureId)?.anatomy;

@@ -219,7 +219,8 @@ anatomy.intact = intact;
   const seam = readFileSync(new URL('./structureDamageSeam.ts', import.meta.url), 'utf8');
   assert.match(seam, /collapse: \(seed, out\) => keepRuinStanding\(anatomy, seed, out,/, 'every kit\'s collapse keeps its ruin');
   assert.match(seam, /call\(collapseKit, anatomy, seed, writers\), builder\),/, 'and names its builder (an open frame by name)');
-  assert.match(seam, /const intact = measureIntactParts\(args\.parts\);/, 'the intact form measured at describe');
+  // (destruction-slabs 227 round 4: measured once off the parts, when first asked for or by the idle measurer — the load's budget)
+  assert.match(seam, /const intact = measureIntactParts\(body\);/, 'the intact form measured off the described parts');
 }
 
 console.log('collapseRuin selftest: PASS — a raft becomes a ruin (height and plan over the floors), a standing ruin is left alone, seeded, the reserve kept');

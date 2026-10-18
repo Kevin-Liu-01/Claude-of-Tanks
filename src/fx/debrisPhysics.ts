@@ -28,6 +28,9 @@ const MAX_STEPS_PER_ADVANCE = 4;
 /** The most speed (m/s) and spin (rad/s) one solver step adds to a body, and the speeds under which it never holds one
  *  back (guardEnergy). */
 const STEP_GAIN_MPS = 4, STEP_SPIN_GAIN = 5, STEP_SPEED_FLOOR = 6, STEP_SPIN_FLOOR = 8;
+/** What no debris body ever exceeds: rising speed (m/s: a thrown cell leaves at 3, a shove at 1.6), speed (m/s: a fall
+ *  from 60 m) and spin (rad/s). */
+const UP_CAP_MPS = 8, SPEED_CAP_MPS = 35, SPIN_CAP = 12;
 const HANDLE_NONE = -1;
 
 export type DebrisImpactListener = (x: number, y: number, z: number, speedMps: number, massKg: number, handle: number) => void;
@@ -117,15 +120,20 @@ export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisP
    * more than STEP_GAIN_MPS (and STEP_SPIN_GAIN rad/s) over what it had: falls, landings and thrown spawns are untouched (a
    * spawn's throw is set at its release, before the step); a deep overlap's burst is held to a nudge.
    */
-  const speedBefore = new Float64Array(capacity), spinBefore = new Float64Array(capacity);
+  const speedBefore = new Float64Array(capacity), spinBefore = new Float64Array(capacity), upBefore = new Float64Array(capacity);
   function guardEnergy(): void {
     for (let sl = 0; sl < world.capacity; sl++) {
       if (!world.active[sl]) continue;
       const v = Math.hypot(world.vx[sl]!, world.vy[sl]!, world.vz[sl]!), w = Math.hypot(world.wx[sl]!, world.wy[sl]!, world.wz[sl]!);
-      const vMax = Math.max(STEP_SPEED_FLOOR, speedBefore[sl]! + STEP_GAIN_MPS), wMax = Math.max(STEP_SPIN_FLOOR, spinBefore[sl]! + STEP_SPIN_GAIN);
-      if (v <= vMax && w <= wMax) continue;
+      // (and never past the absolute caps: a body held in an overlap the solver pushes it out of step after step gained
+      // its 4 m/s every step — copper_mesa #37's piece thrown 46 m up and 26 m off)
+      // (what a body had stays: a throw set at its release only slows; the caps hold what a step adds)
+      const vMax = Math.max(speedBefore[sl]!, Math.min(SPEED_CAP_MPS, Math.max(STEP_SPEED_FLOOR, speedBefore[sl]! + STEP_GAIN_MPS)));
+      const wMax = Math.max(spinBefore[sl]!, Math.min(SPIN_CAP, Math.max(STEP_SPIN_FLOOR, spinBefore[sl]! + STEP_SPIN_GAIN)));
+      const up = world.vy[sl]!, upMax = Math.max(UP_CAP_MPS, upBefore[sl]!);
+      if (v <= vMax && w <= wMax && up <= upMax) continue;
       const kv = v > vMax ? vMax / v : 1, kw = w > wMax ? wMax / w : 1;
-      world.setVelocity(sl, world.vx[sl]! * kv, world.vy[sl]! * kv, world.vz[sl]! * kv, world.wx[sl]! * kw, world.wy[sl]! * kw, world.wz[sl]! * kw);
+      world.setVelocity(sl, world.vx[sl]! * kv, Math.min(upMax, up * kv), world.vz[sl]! * kv, world.wx[sl]! * kw, world.wy[sl]! * kw, world.wz[sl]! * kw);
     }
   }
   let alpha = 1;
@@ -304,6 +312,7 @@ export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisP
         for (let sl = 0; sl < world.capacity; sl++) {
           if (!world.active[sl]) continue;
           speedBefore[sl] = Math.hypot(world.vx[sl]!, world.vy[sl]!, world.vz[sl]!);
+          upBefore[sl] = world.vy[sl]!;
           spinBefore[sl] = Math.hypot(world.wx[sl]!, world.wy[sl]!, world.wz[sl]!);
         }
         world.step(RIGID_STEP_S);
