@@ -120,6 +120,47 @@ export function matrixTrouble(e) {
 }
 
 /**
+ * Each corner's welded vertex id (positions rounded to the millimetre; equal ids, equal rounded positions). Numbers, not
+ * strings, where the rounded box fits 52 bits (every building's does): the judge's hot loop (round 2: a third of the
+ * receipt's time went to string keys).
+ */
+function weldIds(tris) {
+  const m = tris.length / 3;
+  const ids = new Int32Array(m);
+  const q = new Float64Array(tris.length);
+  const lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < tris.length; i++) {
+    const v = Math.round(tris[i] * 1000), d = i % 3;
+    q[i] = v;
+    if (v < lo[d]) lo[d] = v;
+    if (v > hi[d]) hi[d] = v;
+  }
+  const bits = (d) => Math.ceil(Math.log2(Math.max(1, hi[d] - lo[d] + 1)));
+  const bx = bits(0), by = bits(1), bz = bits(2);
+  const owner = new Map();
+  let next = 0;
+  if (bx + by + bz <= 52) {
+    const sy = 2 ** bz, sx = 2 ** (by + bz);
+    for (let i = 0; i < m; i++) {
+      const key = (q[i * 3] - lo[0]) * sx + (q[i * 3 + 1] - lo[1]) * sy + (q[i * 3 + 2] - lo[2]);
+      let id = owner.get(key);
+      if (id === undefined) { id = next++; owner.set(key, id); }
+      ids[i] = id;
+    }
+  } else {
+    for (let i = 0; i < m; i++) {
+      const key = `${q[i * 3]},${q[i * 3 + 1]},${q[i * 3 + 2]}`;
+      let id = owner.get(key);
+      if (id === undefined) { id = next++; owner.set(key, id); }
+      ids[i] = id;
+    }
+  }
+  return ids;
+}
+/** An undirected edge's key from its two vertex ids (ids < 2^26). */
+const edgeKey = (a, b) => (a < b ? a * 67108864 + b : b * 67108864 + a);
+
+/**
  * A mesh's drawn triangles in world space, split into connected pieces (vertices welded at 1 mm): for each piece its
  * triangle list (flat xyz × 3 per triangle) — degenerate triangles (a span flattened out of its bucket) left out.
  */
@@ -128,12 +169,12 @@ function piecesOfTriangles(tris) {
   const parent = new Int32Array(n);
   for (let i = 0; i < n; i++) parent[i] = i;
   const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
-  const owner = new Map();
+  const ids = weldIds(tris);
+  const owner = new Int32Array(n * 3).fill(-1);
   for (let t = 0; t < n; t++) for (let k = 0; k < 3; k++) {
-    const o = t * 9 + k * 3;
-    const key = `${Math.round(tris[o] * 1000)},${Math.round(tris[o + 1] * 1000)},${Math.round(tris[o + 2] * 1000)}`;
-    const prev = owner.get(key);
-    if (prev === undefined) owner.set(key, t);
+    const v = ids[t * 3 + k];
+    const prev = owner[v];
+    if (prev < 0) owner[v] = t;
     else { const a = find(prev), b = find(t); if (a !== b) parent[a] = b; }
   }
   const groups = new Map();
@@ -150,15 +191,13 @@ function piecesOfTriangles(tris) {
   });
 }
 
-const vkey = (tris, o) => `${Math.round(tris[o] * 1000)},${Math.round(tris[o + 1] * 1000)},${Math.round(tris[o + 2] * 1000)}`;
-
 /** Whether a piece has a boundary (an edge only one of its triangles uses). */
 function isOpen(tris) {
+  const ids = weldIds(tris);
   const uses = new Map();
-  for (let o = 0; o + 8 < tris.length; o += 9) {
-    const k = [vkey(tris, o), vkey(tris, o + 3), vkey(tris, o + 6)];
+  for (let t = 0; t * 3 < ids.length; t++) {
     for (let e = 0; e < 3; e++) {
-      const a = k[e], b = k[(e + 1) % 3], key = a < b ? `${a}|${b}` : `${b}|${a}`;
+      const key = edgeKey(ids[t * 3 + e], ids[t * 3 + (e + 1) % 3]);
       uses.set(key, (uses.get(key) ?? 0) + 1);
     }
   }
@@ -181,11 +220,11 @@ function planarFacets(tris) {
   const parent = new Int32Array(n);
   for (let i = 0; i < n; i++) parent[i] = i;
   const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  const ids = weldIds(tris);
   const edgeOwner = new Map();
   for (let t = 0; t < n; t++) {
-    const o = t * 9, k = [vkey(tris, o), vkey(tris, o + 3), vkey(tris, o + 6)];
     for (let e = 0; e < 3; e++) {
-      const a = k[e], b = k[(e + 1) % 3], key = a < b ? `${a}|${b}` : `${b}|${a}`;
+      const key = edgeKey(ids[t * 3 + e], ids[t * 3 + (e + 1) % 3]);
       const u = edgeOwner.get(key);
       if (u === undefined) { edgeOwner.set(key, t); continue; }
       const dot = nrm[u * 4] * nrm[t * 4] + nrm[u * 4 + 1] * nrm[t * 4 + 1] + nrm[u * 4 + 2] * nrm[t * 4 + 2];
@@ -797,7 +836,7 @@ export function renderPng(file, layers, { eye, target, fov = 50, width = 1280, h
 export async function runSlabCheck({
   mapId = 'verdant', ids = null, builders = null, perBuilder = 1, rounds = 40, roundGapS = 0.45, settleS = 10, stopAfterRoof = false, upper = true,
   sections = true, fracture = true, renderDir = null, maxSnapshots = 40, storeys = [0], log = () => {}, rejoin = true,
-  faces = ['wide'], seed = null,
+  faces = ['wide'], seed = null, filmS = 0, filmFromS = 0, facesFor = null,
 } = {}) {
   installWorldBuildFixture();
   const [maps, terrain, vegetation, props, models, fleet] = await Promise.all([
@@ -892,7 +931,11 @@ export async function runSlabCheck({
   // narrow-back — its wider or narrower side, the near or the far one), each face's rounds at its own seeded offsets
   // (the receipt's own at seed 0; the critic's variant census: the same building from another face flagged what the
   // widest face never showed)
-  const runs = picks.flatMap((id) => faces.map((faceName) => [id, faceName]));
+  // (`facesFor(id, builder, kit)`: a caller's own faces per building — the kinds receipt's second face by the kind's hash)
+  const runs = picks.flatMap((id) => {
+    const d = built.structureDamage.get(id);
+    return (facesFor?.(id, d.builder, d.anatomy.kit) ?? faces).map((faceName) => [id, faceName]);
+  });
   for (const [id, faceName] of runs) {
     const faceSeed = seed ?? FACE_SEEDS[faceName] ?? 0;
     const seam = seamOf(id);
@@ -1037,7 +1080,9 @@ export async function runSlabCheck({
     // its fall and folds them away (the fracture's collapse drops them at once)
     let gone = null;
     const accept = (m) => {
-      if (m.parent === fxGroup) return own.test(m.name) || /^fx-collapse-(?!baked)/.test(m.name);
+      // (round 2: every structure's collapse pieces were taken, a neighbour's roof slabs on its own walls judged against this
+      // building's plan) the fx group's meshes of this building only
+      if (m.parent === fxGroup) return own.test(m.name);
       if (gone?.has(m)) return false;
       return m.parent === debris.group ? ownRun(m) : true;
     };
@@ -1096,6 +1141,7 @@ export async function runSlabCheck({
     }
     const due = [];
     let lastEventCount = 0, fired = 0, collapsedAt = -1;
+    let nextFilm = filmFromS;
     const lastS = rounds * roundGapS + settleS + 4;
     for (let tick = 0; tick * STEP <= lastS; tick++) {
       clock = tick * STEP;
@@ -1131,6 +1177,11 @@ export async function runSlabCheck({
         if (motionKey.get(m.uuid) !== key) { motionKey.set(m.uuid, key); lastMoved.set(m.name, clock); }
       });
       if (collapsedAt < 0 && collapsed) collapsedAt = clock;
+      // (round 2) a film's cadence: the CPU's renders every `filmS` from `filmFromS` (motion read headless: a pop, a chimney)
+      if (filmS > 0 && renderDir && clock + 1e-9 >= nextFilm) {
+        nextFilm += filmS;
+        shoot(`film-${clock.toFixed(2).padStart(6, '0')}`, drawnMeshes([debris.group, fxGroup, bodies?.group], accept), [], !collapsed || !fx?.took(id));
+      }
       if (events.length > lastEventCount) {
         // each new stage or breach: judged once its pieces are laid (0.8 s) and once they have fallen (3 s)
         for (const dt of [0.8, 3.0]) if (!due.some((d) => Math.abs(d - (clock + dt)) < 0.4)) due.push(clock + dt);
@@ -1194,7 +1245,7 @@ export async function runSlabCheck({
         // the page's first frames (what it laid settles where it lands)
         for (let k = 0; k < 150; k++) { rclock += STEP; rstages.update(); rfx?.update(); rdebris.update(); rbodies?.update(); }
         const rgone = rfelled ? new Set(rdebris.standingRuns(runTag)) : null;
-        const raccept = (m) => (m.parent === rgroup ? own.test(m.name) || /^fx-collapse-(?!baked)/.test(m.name)
+        const raccept = (m) => (m.parent === rgroup ? own.test(m.name)
           : m.parent === rdebris.group ? !rgone?.has(m) && ownRun(m) : true);
         const meshes = drawnMeshes([rdebris.group, rgroup, rbodies?.group], raccept);
         const judged = judgeSlabs(meshes, { footprint, groundAt: rground, supportAt, settled: true, ownMaterials, upperFootprint, bandFootprint, drawnTopAt, byDesign });
@@ -1295,6 +1346,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     renderDir: typeof args.render === 'string' ? args.render : null, maxSnapshots: Number(args['max-snapshots'] ?? 40), rejoin: args.rejoin !== '0',
     storeys: typeof args.storeys === 'string' ? args.storeys.split(',').map(Number) : [0],
     faces: typeof args.faces === 'string' ? args.faces.split(',') : ['wide'], seed: args.seed !== undefined ? Number(args.seed) : null,
+    filmS: Number(args.film ?? 0), filmFromS: Number(args['film-from'] ?? 0),
     log: (...m) => console.log('[slab-check]', ...m),
   });
   if (typeof args.json === 'string') writeFileSync(args.json, JSON.stringify(report, null, 1));

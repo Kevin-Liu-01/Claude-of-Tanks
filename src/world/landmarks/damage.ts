@@ -193,7 +193,10 @@ function restPose(a: StructureDamageAnatomy, plan: LandmarkPlan, p: KeptPiece): 
     // (the E12 film: a lookout's roof dropped on its edge, five metres up) a dropped piece wider than it is tall lands near
     // flat; a tall one goes down on its side
     const tallish = p.max[1] - p.min[1] > Math.max(p.max[0] - p.min[0], p.max[2] - p.min[2]);
-    const tilt = fall === 'drop' ? (tallish ? 0.9 + rng() * 0.6 : 0.12 + rng() * 0.3) : 0.14 + rng() * 0.3, ta = rng() * Math.PI * 2;
+    // (destruction-slabs 227 round 2: a tower mill's stage ring, 12 m across, slumped 25 degrees: its far side stood 5 m up
+    // over the stump, a crown of plates) a piece much wider than it is tall slumps only a few degrees
+    const flatPiece = p.max[1] - p.min[1] < 0.35 * Math.max(p.max[0] - p.min[0], p.max[2] - p.min[2]);
+    const tilt = fall === 'drop' ? (tallish ? 0.9 + rng() * 0.6 : 0.12 + rng() * 0.3) : flatPiece ? 0.05 + rng() * 0.07 : 0.14 + rng() * 0.3, ta = rng() * Math.PI * 2;
     pose = { r: rotation(Math.cos(ta), 0, Math.sin(ta), tilt), px: cx, py: (p.min[1] + p.max[1]) / 2, pz: cz, tx: 0, ty: 0, tz: 0 };
     if (fall === 'drop') { const out = 0.3 + rng() * 1.2; pose.tx = dx * out; pose.tz = dz * out; }
   }

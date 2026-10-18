@@ -94,6 +94,16 @@ function clipY(src: Float64Array, n: number, at: number, sign: 1 | -1, dst: Floa
   return m;
 }
 
+/** A geometry's positions as an array, its stride and first offset (an interleaved buffer's too); null when it has none
+ *  or they are normalized (no structure's are). */
+function positionsOf(g: BufferGeometry): { array: ArrayLike<number>; stride: number; offset: number; count: number } | null {
+  const pos = g.getAttribute('position') as (BufferGeometry['attributes'][string] & { isInterleavedBufferAttribute?: boolean;
+    data?: { array: ArrayLike<number>; stride: number }; offset?: number }) | undefined;
+  if (!pos || pos.normalized) return null;
+  if (pos.isInterleavedBufferAttribute) return { array: pos.data!.array, stride: pos.data!.stride, offset: pos.offset ?? 0, count: pos.count };
+  return { array: (pos as { array: ArrayLike<number> }).array, stride: pos.itemSize, offset: 0, count: pos.count };
+}
+
 /**
  * The drawn enclosure of a structure from its parts (body frame, by bucket) and its anatomy's storeys; null when it draws
  * no wall. Built once at describe (structureDamageSeam.ts).
@@ -107,10 +117,11 @@ export function measureEnclosure(parts: Readonly<Record<string, readonly BufferG
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
   for (const [bucket, list] of Object.entries(parts)) for (const g of list ?? []) {
     if (!keep(bucket, g) && !COVER_BUCKETS.has(bucket)) continue;
-    const pos = g.getAttribute('position');
-    if (!pos) continue;
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i), z = pos.getZ(i);
+    const src = positionsOf(g);
+    if (!src) continue;
+    const { array, stride, offset, count } = src;
+    for (let i = 0, o = offset; i < count; i++, o += stride) {
+      const x = array[o]!, z = array[o + 2]!;
       if (x < minX) minX = x; if (x > maxX) maxX = x; if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
     }
   }
@@ -140,61 +151,101 @@ export function measureEnclosure(parts: Readonly<Record<string, readonly BufferG
   }));
   const top = new Uint16Array(N), over = new Uint16Array(N), base = new Uint16Array(N);
   const cm = (y: number): number => Math.max(1, Math.min(65535, Math.round(y * 100) + 1));
+  const invCell = 1 / cell;
   const cellOf = (x: number, z: number): number => {
-    const i = Math.floor((x - x0) / cell), k = Math.floor((z - z0) / cell);
+    const i = Math.floor((x - x0) * invCell), k = Math.floor((z - z0) * invCell);
     return i >= 0 && k >= 0 && i < nx && k < nz ? k * nx + i : -1;
   };
   const step = cell * 0.5;
-  /** Walk a plan segment at half-cell steps (endpoints included): each sample's cell and its point. */
-  const walk = (ax: number, az: number, ay: number, bx: number, bz: number, by: number, visit: (c: number, x: number, z: number, y: number) => void): void => {
-    const len = Math.hypot(bx - ax, bz - az);
-    const n = Math.max(1, Math.ceil(len / step));
-    for (let s = 0; s <= n; s++) {
-      const t = s / n, x = ax + (bx - ax) * t, z = az + (bz - az) * t;
-      const c = cellOf(x, z);
-      if (c >= 0) visit(c, x, z, ay + (by - ay) * t);
+  // (destruction-slabs 227 round 2, the critic's load-time CPU: +19 % on urban's props build) the walks below run inline
+  // over the position arrays, a triangle or an edge whose corners share one cell updates that cell once (what its samples
+  // would: a cell is convex, and a linear height's extremes are at its corners), and a covering's samples step across
+  // it (no division a sample: 8 million of them on urban)
+  /** A wall edge into top / over / base: every cell it crosses, its height's extremes where it crosses (a grid walk). */
+  const mark = (c: number, qa: number, qb: number, wall: boolean): void => {
+    const hi = qa > qb ? qa : qb, lo = qa < qb ? qa : qb;
+    if (hi > over[c]!) over[c] = hi;
+    if (wall) {
+      if (hi > top[c]!) top[c] = hi;
+      if (!base[c] || lo < base[c]!) base[c] = lo;
+    }
+  };
+  const edgeTop = (ax: number, az: number, ay: number, bx: number, bz: number, by: number, wall: boolean): void => {
+    const gx = (ax - x0) * invCell, gz = (az - z0) * invCell, ex = (bx - x0) * invCell, ez = (bz - z0) * invCell;
+    let ci = Math.floor(gx), ck = Math.floor(gz);
+    const ti = Math.floor(ex), tk = Math.floor(ez);
+    if (ci === ti && ck === tk) {
+      if (ci >= 0 && ck >= 0 && ci < nx && ck < nz) mark(ck * nx + ci, cm(ay), cm(by), wall);
+      return;
+    }
+    const dx = ex - gx, dz = ez - gz;
+    const si = dx > 0 ? 1 : -1, sk = dz > 0 ? 1 : -1;
+    const tdx = dx !== 0 ? Math.abs(1 / dx) : Infinity, tdz = dz !== 0 ? Math.abs(1 / dz) : Infinity;
+    let tx = dx !== 0 ? (dx > 0 ? ci + 1 - gx : gx - ci) * tdx : Infinity;
+    let tz = dz !== 0 ? (dz > 0 ? ck + 1 - gz : gz - ck) * tdz : Infinity;
+    let t0 = 0;
+    for (let guard = 0; guard < 4096; guard++) {
+      const t1 = Math.min(tx, tz, 1);
+      if (ci >= 0 && ck >= 0 && ci < nx && ck < nz) mark(ck * nx + ci, cm(ay + (by - ay) * t0), cm(ay + (by - ay) * t1), wall);
+      if (t1 >= 1 || (ci === ti && ck === tk)) break;
+      if (tx < tz) { ci += si; t0 = tx; tx += tdx; } else { ck += sk; t0 = tz; tz += tdz; }
     }
   };
   for (const [bucket, list] of Object.entries(parts)) for (const g of list ?? []) {
     const wall = keep(bucket, g);
     const covers = cover && COVER_BUCKETS.has(bucket) && (!g.userData?.damagePiece || g.userData?.damageStands === true);
     if (!wall && !covers) continue;
-    const pos = g.getAttribute('position');
-    if (!pos) continue;
+    const src = positionsOf(g);
+    if (!src) continue;
+    const { array, stride, offset } = src;
     const index = g.getIndex();
-    const n = index ? index.count : pos.count;
+    const idx = index ? index.array : null;
+    const n = idx ? index!.count : src.count;
     for (let t = 0; t + 2 < n; t += 3) {
       for (let k = 0; k < 3; k++) {
-        const v = index ? index.getX(t + k) : t + k;
-        parts3[k * 3] = pos.getX(v); parts3[k * 3 + 1] = pos.getY(v); parts3[k * 3 + 2] = pos.getZ(v);
+        const o = offset + (idx ? idx[t + k]! : t + k) * stride;
+        parts3[k * 3] = array[o]!; parts3[k * 3 + 1] = array[o + 1]!; parts3[k * 3 + 2] = array[o + 2]!;
       }
       const ux = parts3[3] - parts3[0], uy = parts3[4] - parts3[1], uz = parts3[5] - parts3[2];
       const wx = parts3[6] - parts3[0], wy = parts3[7] - parts3[1], wz = parts3[8] - parts3[2];
       const fx = uy * wz - uz * wy, fy = uz * wx - ux * wz, fz = ux * wy - uy * wx;
-      const fl = Math.hypot(fx, fy, fz);
+      const fl = Math.sqrt(fx * fx + fy * fy + fz * fz);
       if (!(fl > 1e-9)) continue;
       const vertical = Math.abs(fy) <= VERTICAL_NY * fl;
       if (!vertical) {
         // a slope, a deck, a roof: what covers the plan under it (its area sampled at a cell; none for a probe)
         if (!cover) continue;
-        const reach = Math.max(Math.hypot(ux, uz), Math.hypot(wx, wz), Math.hypot(parts3[6] - parts3[3], parts3[8] - parts3[5]));
+        const c0 = cellOf(parts3[0], parts3[2]);
+        if (c0 >= 0 && c0 === cellOf(parts3[3], parts3[5]) && c0 === cellOf(parts3[6], parts3[8])) {
+          const y = cm(Math.max(parts3[1], parts3[4], parts3[7]));
+          if (y > over[c0]!) over[c0] = y;
+          continue;
+        }
+        const ex3 = parts3[6] - parts3[3], ez3 = parts3[8] - parts3[5];
+        const reach = Math.sqrt(Math.max(ux * ux + uz * uz, wx * wx + wz * wz, ex3 * ex3 + ez3 * ez3));
         const m = Math.max(1, Math.min(64, Math.ceil(reach / cell)));
-        for (let i = 0; i <= m; i++) for (let j = 0; j <= m - i; j++) {
-          const a = i / m, b = j / m;
-          const c = cellOf(parts3[0] + ux * a + wx * b, parts3[2] + uz * a + wz * b);
-          if (c >= 0) { const y = cm(parts3[1] + uy * a + wy * b); if (y > over[c]) over[c] = y; }
+        const im = 1 / m;
+        const dux = ux * im, duy = uy * im, duz = uz * im, dwx = wx * im, dwy = wy * im, dwz = wz * im;
+        // (in cell units from the grid's corner, heights in cm: one floor a coordinate a sample)
+        const gx0 = (parts3[0] - x0) * invCell, gz0 = (parts3[2] - z0) * invCell, gy0 = parts3[1] * 100;
+        const gdux = dux * invCell, gduz = duz * invCell, gdwx = dwx * invCell, gdwz = dwz * invCell, gduy = duy * 100, gdwy = dwy * 100;
+        for (let i = 0; i <= m; i++) {
+          let gx = gx0 + gdux * i, gz = gz0 + gduz * i, gy = gy0 + gduy * i;
+          for (let j = 0; j <= m - i; j++, gx += gdwx, gz += gdwz, gy += gdwy) {
+            const ci = Math.floor(gx), ck = Math.floor(gz);
+            if (ci < 0 || ck < 0 || ci >= nx || ck >= nz) continue;
+            const c = ck * nx + ci;
+            const y = Math.max(1, Math.min(65535, Math.round(gy) + 1));
+            if (y > over[c]!) over[c] = y;
+          }
         }
         continue;
       }
       // a wall: its top over the plan along its edges, and what covers there
-      if (cover) for (let e = 0; e < 3; e++) {
-        const a = e * 3, b = ((e + 1) % 3) * 3;
-        walk(parts3[a], parts3[a + 2], parts3[a + 1], parts3[b], parts3[b + 2], parts3[b + 1], (c, _x, _z, y) => {
-          const q = cm(y);
-          if (q > over[c]) over[c] = q;
-          if (wall && q > top[c]) top[c] = q;
-          if (wall && (!base[c] || q < base[c])) base[c] = q;
-        });
+      if (cover) {
+        edgeTop(parts3[0], parts3[2], parts3[1], parts3[3], parts3[5], parts3[4], wall);
+        edgeTop(parts3[3], parts3[5], parts3[4], parts3[6], parts3[8], parts3[7], wall);
+        edgeTop(parts3[6], parts3[8], parts3[7], parts3[0], parts3[2], parts3[1], wall);
       }
       if (!wall) continue;
       const lo = Math.min(parts3[1], parts3[4], parts3[7]), hi = Math.max(parts3[1], parts3[4], parts3[7]);
@@ -202,10 +253,14 @@ export function measureEnclosure(parts: Readonly<Record<string, readonly BufferG
         const band = bands[s];
         if (Math.min(hi, band.y1) - Math.max(lo, band.y0) < 0.05) continue;
         // its part in the band, and that part's plan as a segment between its farthest corners (kept for the setbacks)
-        let m = clipY(parts3, 3, band.y0, 1, clipA);
-        if (m < 2) continue;
-        m = clipY(clipA, m, band.y1, -1, clipB);
-        if (m < 2) continue;
+        // (a triangle wholly in the band is its own part: two thirds of them)
+        let m: number;
+        if (lo >= band.y0 && hi <= band.y1) { clipB.set(parts3.subarray(0, 9)); m = 3; } else {
+          m = clipY(parts3, 3, band.y0, 1, clipA);
+          if (m < 2) continue;
+          m = clipY(clipA, m, band.y1, -1, clipB);
+          if (m < 2) continue;
+        }
         let ia = 0, ib = 0, best = -1;
         for (let i = 0; i < m; i++) {
           for (let j = i + 1; j < m; j++) {
@@ -221,12 +276,24 @@ export function measureEnclosure(parts: Readonly<Record<string, readonly BufferG
         for (let i = 1; i + 1 < m; i++) {
           const ex = clipB[i * 3] - clipB[0], ey = clipB[i * 3 + 1] - clipB[1], ez = clipB[i * 3 + 2] - clipB[2];
           const gx = clipB[(i + 1) * 3] - clipB[0], gy = clipB[(i + 1) * 3 + 1] - clipB[1], gz = clipB[(i + 1) * 3 + 2] - clipB[2];
-          area += 0.5 * Math.hypot(ey * gz - ez * gy, ez * gx - ex * gz, ex * gy - ey * gx);
+          { const qx = ey * gz - ez * gy, qy = ez * gx - ex * gz, qz = ex * gy - ey * gx; area += 0.5 * Math.sqrt(qx * qx + qy * qy + qz * qz); }
         }
         const len = Math.sqrt(best);
         const samples = Math.max(1, Math.ceil(len / step)) + 1;
         const each = (area / Math.max(len, 1e-3)) * (Math.max(len, 0.02) / samples) / cell;
-        walk(ax, az, 0, bx, bz, 0, (c) => { band.cover[c] += each; });
+        // (the walk's samples: n + 1 of them for n = ceil(len / step))
+        const cover0 = band.cover;
+        const ca = cellOf(ax, az);
+        if (ca === cellOf(bx, bz)) {
+          if (ca >= 0) for (let q = 0; q < samples; q++) cover0[ca] += each;
+        } else {
+          const sn = samples - 1;
+          for (let q = 0; q <= sn; q++) {
+            const tt = q / sn;
+            const c = cellOf(ax + (bx - ax) * tt, az + (bz - az) * tt);
+            if (c >= 0) cover0[c] += each;
+          }
+        }
       }
     }
   }
@@ -240,9 +307,17 @@ export function measureEnclosure(parts: Readonly<Record<string, readonly BufferG
     const segs = band.segs;
     // (a hole goes on a wall that stands through the band: a garden wall or a parapet low in front of it is no face's)
     const tall = cm(band.y0 + 0.7 * (band.y1 - band.y0));
+    const cells = band.cells;
     for (let q = 0; q + 3 < segs.length; q += 4) {
-      walk(segs[q]!, segs[q + 1]!, 0, segs[q + 2]!, segs[q + 3]!, 0, (c, x, z) => {
-        if (band.cells[c] !== 1 || top[c]! < tall) return;
+      const ax = segs[q]!, az = segs[q + 1]!, bx = segs[q + 2]!, bz = segs[q + 3]!;
+      // (a segment within one cell that is no tall wall cell sets nothing)
+      const ca = cellOf(ax, az);
+      if (ca === cellOf(bx, bz) && (ca < 0 || cells[ca] !== 1 || top[ca]! < tall)) continue;
+      const n = Math.max(1, Math.ceil(Math.sqrt((bx - ax) * (bx - ax) + (bz - az) * (bz - az)) / step));
+      for (let st = 0; st <= n; st++) {
+        const t = st / n, x = ax + (bx - ax) * t, z = az + (bz - az) * t;
+        const c = cellOf(x, z);
+        if (c < 0 || cells[c] !== 1 || top[c]! < tall) continue;
         for (let f = 0; f < faces.length; f++) {
           const face = faces[f]!;
           const ox = x - face.origin[0], oz = z - face.origin[2];
@@ -253,7 +328,7 @@ export function measureEnclosure(parts: Readonly<Record<string, readonly BufferG
           const k = Math.min(list.length - 1, Math.max(0, Math.floor((u + face.width / 2) / bin)));
           if (!(list[k]! <= d)) list[k] = d;
         }
-      });
+      }
     }
   }
   let any = false;
@@ -811,6 +886,46 @@ function wallCell(enc: StructureEnclosure, c: number): boolean {
   for (const b of enc.bands) if (b.cells[c] === 1) return true;
   const lo = enc.base?.[c] ?? 0, hi = enc.top[c]!;
   return lo > 0 && hi > 0 && lo - 1 <= 0.4 * (hi - 1);
+}
+
+/**
+ * Whether something over the eaves at a plan point stands on walls drawn from below — on one (a wall cell within `reach`
+ * cells drawn from no higher than `maxBaseY`: an end wall's stack) or inside them (shut in by walls drawn from below that
+ * rise 2.5 m and more over `maxBaseY`: a tower's spire, its belfry) — not on the roof (a chimney or a dormer set on the
+ * covering, a turret on the ridge: they go with the roof). True where nothing restricts (no enclosure, or one measured
+ * without its walls' bases: a probe's).
+ */
+export function standsFromBelow(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>, x: number, z: number, maxBaseY: number, reach = 1): boolean {
+  const enc = enclosureOf(anatomy);
+  if (!enc?.base) return true;
+  const ci = Math.floor((x - enc.x0) / enc.cell), ck = Math.floor((z - enc.z0) / enc.cell);
+  const need = Math.round(maxBaseY * 100) + 1;
+  for (let dk = -reach; dk <= reach; dk++) for (let di = -reach; di <= reach; di++) {
+    const i = ci + di, k = ck + dk;
+    if (i < 0 || k < 0 || i >= enc.nx || k >= enc.nz) continue;
+    const b = enc.base[k * enc.nx + i]!;
+    if (b > 0 && b <= need) return true;
+  }
+  if (ci < 0 || ck < 0 || ci >= enc.nx || ck >= enc.nz) return false;
+  return towerInside(enc, need)[ck * enc.nx + ci] === 2;
+}
+/** The cells shut in by walls drawn from below (base ≤ `need` cm) rising 2.5 m over it (2), the walls (1); cached per
+ *  height, built on the first ask (a roof's fall). */
+const towerCache = new WeakMap<StructureEnclosure, Map<number, Uint8Array>>();
+function towerInside(enc: StructureEnclosure, need: number): Uint8Array {
+  let byNeed = towerCache.get(enc);
+  if (!byNeed) { byNeed = new Map(); towerCache.set(enc, byNeed); }
+  let cells = byNeed.get(need);
+  if (cells) return cells;
+  cells = new Uint8Array(enc.nx * enc.nz);
+  const tall = need + 250;
+  for (let c = 0; c < cells.length; c++) {
+    const b = enc.base![c]!;
+    if (b > 0 && b <= need && enc.top[c]! >= tall) cells[c] = 1;
+  }
+  enclose(cells, enc.nx, enc.nz, Math.max(1, Math.ceil((CLOSE_GAP_M / 2) / enc.cell)));
+  byNeed.set(need, cells);
+  return cells;
 }
 
 /** Whether a wall is drawn (in any band) at a plan point standing at least `minTopM` over it (the point's own cell). */

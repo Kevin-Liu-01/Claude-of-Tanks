@@ -32,6 +32,14 @@ function plankDoor(sink: PartSink, face: Face, u: number, y0: number, w: number,
  * named piece (props lane A, E12, landmarks/pieces.ts): one comes off at the first damage, the rest when the mill is
  * breached, each laid flat where it lands.
  */
+/** A quad emitted to face `dir` (its winding by its normal's side). */
+function facing(s: PartSink, q: readonly Vec3[], dir: readonly [number, number, number], opts: EmitOptions): void {
+  const [a, b, c] = q as [Vec3, Vec3, Vec3, Vec3];
+  const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
+  const n = [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx];
+  if (n[0]! * dir[0] + n[1]! * dir[1] + n[2]! * dir[2] >= 0) s.quad('stone', q[0]!, q[1]!, q[2]!, q[3]!, opts);
+  else s.quad('stone', q[3]!, q[2]!, q[1]!, q[0]!, opts);
+}
 function sails(sink: PartSink, y: number, z: number, length: number, width: number, turn: number, colour: Rgb, cloth: number): void {
   for (let k = 0; k < 4; k++) {
     piece(sink, { name: `sail-${k}`, kind: 'detach', at: k === 0 ? 'damaged' : 'breached', fall: 'flat', toward: [0, 1], clear: 1.5 }, (s) => sail(s, k, y, z, length, width, turn, colour, cloth));
@@ -137,23 +145,94 @@ export const windmill: LandmarkBuilder = (ctx) => {
       const r = shaft(y)[0] + out;
       revolve(s, 'stone', 0, 0, [[r - out, y - h / 2], [r, y - h / 2 + 0.02], [r, y + h / 2], [r - out, y + h / 2]], 16, { decor: true, tint: [0.92, 0.88, 0.84] }, F);
     };
+    /** A band's arc over ring vertices i0..i1 (a chunk's share of a course band): its face out, its top and its soffit. */
+    const bandArc = (y: number, s: PartSink, i0: number, i1: number, out = 0.045, h = 0.12): void => {
+      const r = shaft(y)[0];
+      const at = (i: number, rr: number, yy: number): Vec3 => { const a = -((((i % 16) + 16) % 16) / 16 * Math.PI * 2 + F); return [Math.cos(a) * rr, yy, Math.sin(a) * rr]; };
+      const opts = { decor: true, tint: [0.92, 0.88, 0.84] as Rgb };
+      for (let i = i0; i < i1; i++) {
+        const a0 = at(i, r + out, y - h / 2), a1 = at(i + 1, r + out, y - h / 2), b0 = at(i, r + out, y + h / 2), b1 = at(i + 1, r + out, y + h / 2);
+        s.quad('stone', a0, a1, b1, b0, opts);
+        s.quad('stone', b0, b1, at(i + 1, r, y + h / 2), at(i, r, y + h / 2), opts);
+        s.quad('stone', at(i, r, y - h / 2), at(i + 1, r, y - h / 2), a1, a0, opts);
+      }
+    };
     for (let y = 2.6; y < sy - 0.6; y += 2.2) band(y, sink);
     band(sy - 0.08, sink, 0.09, 0.22);
-    piece(sink, { name: 'tower-top', kind: 'detach', at: 'breached', fall: 'topple' }, (s) => {
-      revolve(s, 'stone', 0, 0, [[0, sy + 0.3], shaft(sy + 0.3), shaft(capY), [0, capY]], 16, {}, F);
-      band((sy + capY) / 2, s);
-      band(capY - 0.18, s, 0.08, 0.26);
-      for (const a of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
+    // (destruction-slabs 227 round 2; the critic's film: the upper tower went over as one solid brick log with a closed
+    // brick end, a giant box; hollow drums read as pipes) the upper shaft over the stage breaks into chunks of its brick
+    // wall: two courses of four, each a quarter of the shaft's ring with the wall's thickness, ragged where it broke (its
+    // top and bottom stepped course by course, its two broken ends jagged), its window and surround with it; each falls
+    // out over the side it stood on, clear of the stump
+    const ROWS = 2, SECTORS = 4, wall = 0.55, N = 16;
+    const winY = capY * 0.62;
+    // (the break between the courses clear of the windows' surrounds and of the ragged course: over them where the top
+    // course keeps 2.5 m, under them otherwise)
+    const over = winY + 2.05 + ctx.variant() * 0.3;
+    const breaks = [sy + 0.3, capY - over >= 2.5 ? over : Math.max(sy + 2.5, winY - 0.7 - ctx.variant() * 0.3), capY];
+    // ring vertex i's angle (kit.ts ringY: −(i / N · 2π + F)); window w faces (sin a, cos a) for a = w · π / 2: the sector
+    // that holds facet jw (its centre nearest that direction) starts one facet before it
+    const vtx = (i: number): number => -((((i % N) + N) % N) / N * Math.PI * 2 + F);
+    let jw = 0, bestDot = -Infinity;
+    for (let j = 0; j < N; j++) { const dd = Math.sin(vtx(j)) + Math.sin(vtx(j + 1)); if (dd > bestDot) { bestDot = dd; jw = j; } }
+    const first = jw - 1;
+    for (let row = 0; row < ROWS; row++) for (let k = 0; k < SECTORS; k++) {
+      const y0 = breaks[row]!, y1 = breaks[row + 1]!;
+      const i0 = first + k * (N / SECTORS), i1 = i0 + N / SECTORS;
+      const tx = Math.cos(vtx(i0)) + Math.cos(vtx(i1)), tz = Math.sin(vtx(i0)) + Math.sin(vtx(i1)), tl = Math.hypot(tx, tz) || 1;
+      const toward: readonly [number, number] = [tx / tl, tz / tl];
+      // the window this chunk carries: the one whose direction falls inside its arc, at winY within its course
+      const winA = (() => {
+        if (winY < y0 + 0.55 || winY > y1 - 1.95) return null;
+        for (const a of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) if (Math.sin(a) * toward[0] + Math.cos(a) * toward[1] > 0.8) return a;
+        return null;
+      })();
+      piece(sink, { name: `tower-top-${row}-${k}`, kind: 'detach', at: 'breached', fall: row === 0 ? 'drop' : 'topple', toward, clear: 0.6 + row * 1.4 }, (s) => {
+        // the courses' ragged ends: the break between the two courses runs course by course round the shaft (each ring
+        // vertex's column a step up or down off it, the same for the chunks either side and above and below: whole, the
+        // shaft shows no seam); the lowest course stands whole on the shaft's head, the highest whole under the cap
+        const breakAt = (b: number, i: number): number => {
+          if (b === 0 || b === ROWS) return breaks[b]!;
+          const h = Math.abs(Math.sin((((i % N) + N) % N + 1) * 12.9898 + b * 78.233) * 43758.5453) % 1;
+          return breaks[b]! + (h < 0.35 ? -0.44 : h < 0.65 ? 0 : 0.44);
+        };
+        const cols = N / SECTORS + 1;
+        const lo: number[] = [], hi: number[] = [];
+        for (let c = 0; c < cols; c++) { lo.push(breakAt(row, i0 + c)); hi.push(breakAt(row + 1, i0 + c)); }
+        const at = (i: number, y: number, inset: number): Vec3 => { const r = shaft(y)[0] - inset, a = vtx(i); return [Math.cos(a) * r, y, Math.sin(a) * r]; };
+        const inTint = { tint: [0.62, 0.6, 0.58] as Rgb };
+        for (let c = 0; c + 1 < cols; c++) {
+          const i = i0 + c, j = i + 1;
+          // the brick face out (its courses wrap by arc length, as the shaft's do), the wall's inside in, a broken course
+          // top and bottom
+          const oa = at(i, lo[c]!, 0), ob = at(j, lo[c + 1]!, 0), oc = at(j, hi[c + 1]!, 0), od = at(i, hi[c]!, 0);
+          const ia = at(i, lo[c]!, wall), ib = at(j, lo[c + 1]!, wall), ic = at(j, hi[c + 1]!, wall), id = at(i, hi[c]!, wall);
+          s.quad('stone', oa, ob, oc, od, {});
+          s.quad('stone', ib, ia, id, ic, inTint);
+          s.quad('stone', od, oc, ic, id, inTint);
+          s.quad('stone', ob, oa, ia, ib, inTint);
+        }
+        // the two broken ends: the wall's section, each turned out of the chunk (along the ring away from it)
+        for (const [c, i, sign] of [[0, i0, 1], [cols - 1, i1, -1]] as const) {
+          const a = vtx(i);
+          const P = (aa: number, y: number, inset: number): Vec3 => { const r = shaft(y)[0] - inset; return [Math.cos(aa) * r, y, Math.sin(aa) * r]; };
+          const away = P(a, lo[c]!, 0), next = P(a - sign * (Math.PI * 2 / N), lo[c]!, 0);
+          facing(s, [P(a, lo[c]!, 0), P(a, hi[c]!, 0), P(a, hi[c]!, wall), P(a, lo[c]!, wall)], [away[0] - next[0], 0, away[2] - next[2]], inTint);
+        }
+        const midY = (sy + capY) / 2;
+        if (midY >= y0 + 0.3 && midY < y1 - 0.3) bandArc(midY, s, i0, i1);
+        if (row === ROWS - 1) bandArc(capY - 0.18, s, i0, i1, 0.08, 0.26);
+        if (winA === null) return;
         // (each on the tapering wall at its own height, the 16-sided tower's facet a little inside its corner radius)
-        const y0 = capY * 0.62, rw = towerR(y0 + 0.6) * Math.cos(F) + 0.02;
-        const f: Face = { origin: [Math.sin(a) * rw, 0, Math.cos(a) * rw], u: [Math.cos(a), 0, -Math.sin(a)], out: [Math.sin(a), 0, Math.cos(a)], width: 1 };
+        const rw = towerR(winY + 0.6) * Math.cos(F) + 0.02;
+        const f: Face = { origin: [Math.sin(winA) * rw, 0, Math.cos(winA) * rw], u: [Math.cos(winA), 0, -Math.sin(winA)], out: [Math.sin(winA), 0, Math.cos(winA)], width: 1 };
         // its brick surround standing out of the wall: the jambs, the arch's soffit over the head, the sill
-        for (const side of [-1, 1]) faceBox(s, 'stone', f, side * 0.45, y0 + 0.62, 0.08, 0.2, 1.4, 0.16, { decor: true });
-        faceBox(s, 'stone', f, 0, y0 + 1.36, 0.08, 1.1, 0.24, 0.16, { decor: true });
-        faceBox(s, 'stone', f, 0, y0 - 0.05, 0.1, 1.0, 0.1, 0.2, { decor: true });
-        archWindow(s, f, { u: 0, w: 0.7, y0, spring: y0 + 1.0, form: 'segmental', rise: 0.18 }, 0, FRAME_WHITE, false, { bars: false, coarse: true });
-      }
-    });
+        for (const side of [-1, 1]) faceBox(s, 'stone', f, side * 0.45, winY + 0.62, 0.08, 0.2, 1.4, 0.16, { decor: true });
+        faceBox(s, 'stone', f, 0, winY + 1.36, 0.08, 1.1, 0.24, 0.16, { decor: true });
+        faceBox(s, 'stone', f, 0, winY - 0.05, 0.1, 1.0, 0.1, 0.2, { decor: true });
+        archWindow(s, f, { u: 0, w: 0.7, y0: winY, spring: winY + 1.0, form: 'segmental', rise: 0.18 }, 0, FRAME_WHITE, false, { bars: false, coarse: true });
+      });
+    }
     // the stage (stelling) round the tower at a third of its height, its railing and the struts under it
     piece(sink, { name: 'stage', kind: 'detach', at: 'breached', fall: 'slump' }, (s) => {
       // the deck: its soffit, its edge and its boards (a closed ring round the tower)
@@ -201,14 +280,21 @@ export const windmill: LandmarkBuilder = (ctx) => {
     }
   });
   const hubY = capY + 1.3, hubZ = capD / 2 + 0.8;
-  sink.member('structureWood', [0, hubY - 0.15, capD / 2 - 0.8], [0, hubY, hubZ], 0.4, 0.4, [1, 0, 0], { colour: TIMBER_DARK, exposed: true }, 0.2);
+  // (destruction-slabs 227 round 2: the windshaft and the tail pole stood on in the sky over the stump when the cap and the
+  // upper tower fell) the windshaft rides the cap; the tail pole, its struts and its capstan wheel come off with it, laid
+  // on the ground at the mill's back
+  piece(sink, { name: 'windshaft', kind: 'detach', at: 'breached', fall: 'drop' }, (s) => {
+    s.member('structureWood', [0, hubY - 0.15, capD / 2 - 0.8], [0, hubY, hubZ], 0.4, 0.4, [1, 0, 0], { colour: TIMBER_DARK, exposed: true }, 0.2);
+  });
   sails(sink, hubY, hubZ, tower ? sailLen : Math.min(10, hubY - 1.2), tower ? 1.45 : 1.2, turn, TIMBER, cloth);
   // the tail pole and its struts down from the cap's back, the capstan wheel at its foot (the miller turns the cap)
   const stageY = Math.min(capY * 0.42, capY + 1.3 - sailLen - 1.7);
   const footY = tower ? stageY + 0.9 : 0.9, footZ = tower ? -(towerR(stageY) + 1.6) : -(r0 + 3.6);
-  bar(sink, 'structureWood', [0, capY + 0.1, -capD / 2 + 0.3], [0, footY, footZ], 0.24, { colour: TIMBER_DARK, decor: true });
-  for (const sx of [-1, 1]) bar(sink, 'structureWood', [sx * capW * 0.4, capY + 0.05, -capD / 2 + 0.4], [0, footY + 2.2, footZ * 0.8], 0.14, { colour: TIMBER_DARK, decor: true });
-  revolve(sink, 'structureWood', 0, footZ - 0.2, [[0.9, footY - 0.05], [0.9, footY + 0.05]], 10, { colour: TIMBER, decor: true });
+  piece(sink, { name: 'tail', kind: 'detach', at: 'breached', fall: 'flat', toward: [0, -1], clear: 0.8 }, (s) => {
+    bar(s, 'structureWood', [0, capY + 0.1, -capD / 2 + 0.3], [0, footY, footZ], 0.24, { colour: TIMBER_DARK, decor: true });
+    for (const sx of [-1, 1]) bar(s, 'structureWood', [sx * capW * 0.4, capY + 0.05, -capD / 2 + 0.4], [0, footY + 2.2, footZ * 0.8], 0.14, { colour: TIMBER_DARK, decor: true });
+    revolve(s, 'structureWood', 0, footZ - 0.2, [[0.9, footY - 0.05], [0.9, footY + 0.05]], 10, { colour: TIMBER, decor: true });
+  });
   return { parts: finishLandmark(sink) };
 };
 

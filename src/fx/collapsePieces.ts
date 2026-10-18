@@ -27,7 +27,7 @@ import {
   type DamageFace, type FractureMaterial, type FractureSlot, type StructureDamageAnatomy, type Vec3,
 } from '../world/destructionKit.ts';
 import type { CollisionRecord } from '../world/collision.ts';
-import { bandEnclosure } from '../world/structureEnclosure.ts';
+import { bandEnclosure, standsFromBelow } from '../world/structureEnclosure.ts';
 import { createRigidBox, createRigidShape, type RigidShape } from '../sim/rigidBody.ts';
 
 type CollapsePieceKind = 'wall' | 'floor' | 'roof' | 'gable' | 'chimney' | 'drum' | 'crown';
@@ -197,6 +197,13 @@ export interface CollapsePlan {
   readonly struckSide: number;
   /** The chimneys' bucket (a stack's broken top draws in it). */
   readonly chimneyBucket: string;
+  /**
+   * (destruction-slabs 227 round 2) Whether what stands over the eaves at a body-frame plan point off every slab is the
+   * roof's furniture — a chimney or a dormer set on the covering, a turret on the ridge, nothing drawn under it from below
+   * — and goes with the roof (it rode nothing: a roof's fall left its chimney in the sky and its dormer on the attic floor).
+   * Absent: none is (what stands over the eaves off the slabs stays, as a tower does).
+   */
+  readonly furnitureAt?: (x: number, z: number) => boolean;
   /**
    * A shaft (a stack, a water tower, a minaret, a tower: the kit reads it as one) topples as a stack of drums over its
    * stump instead: its stump's top, the drums' bounds up it (ascending, from the stump's top) and their pieces, its crown.
@@ -909,7 +916,8 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
     });
   }
   return { pieces, structureIdx: anatomy.structureIdx, groundY, eaveY, cx, cz, hw, hd, storeys: storeyPlans, roof: slabs, gables: gableFaces,
-    chimneys, struckSide, chimneyBucket: anatomy.chimneys[0]?.bucket ?? 'brick', shaft: null };
+    chimneys, struckSide, chimneyBucket: anatomy.chimneys[0]?.bucket ?? 'brick', shaft: null,
+    ...(anatomy.enclosure && slabs.length ? { furnitureAt: (x: number, z: number) => !standsFromBelow(anatomy, x, z, eaveY - 1) } : {}) };
 }
 
 /** A shaft's crown as its kit hands it over (regional/shaft.ts ShaftExtras.crown). */
@@ -1387,11 +1395,15 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
       const off = (cc[0] - slab.p[0]) * slab.n[0] + (cc[1] - slab.p[1]) * slab.n[1] + (cc[2] - slab.p[2]) * slab.n[2];
       const facing = (nx * slab.n[0] + ny * slab.n[1] + nz * slab.n[2]) / nl;
       const onSlab = Math.abs(off) <= ROOF_ON_M && (facing >= ROOF_FACING || (facing <= -ROOF_FACING && Math.abs(off) <= 0.45));
-      if (!onSlab) { offRoof(poly, depth, Math.abs(ny / nl)); return; }
+      if (!onSlab) { offRoof(poly, depth, Math.abs(ny / nl), slab); return; }
     }
+    slabAssign(poly, depth, slab);
+  };
+  /** A polygon to a slab's piece (its halves by the slab's cuts). */
+  const slabAssign = (poly: Poly, depth: number, slab: RoofSlabPlan): void => {
     const eOff = dot(slab.e, slab.p);
     for (const cut of slab.cuts) {
-      if (!probing && across(poly, slab.e[0], slab.e[1], slab.e[2], eOff + cut, depth, (h, _s, dd) => roofAssign(h, dd))) return;
+      if (!probing && across(poly, slab.e[0], slab.e[1], slab.e[2], eOff + cut, depth, (h, _s, dd) => slabAssign(h, dd, slab))) return;
     }
     const c = centroid(poly);
     const e = slab.e[0] * c[0] + slab.e[1] * c[1] + slab.e[2] * c[2] - eOff;
@@ -1404,7 +1416,7 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
   // over the eaves but on no slab: a near-vertical surface by a top-storey face (a dormer's cheek, an end wall the gable
   // rule did not take) goes with that storey's panels; anything else (a tower's, a spire's, a cupola's) is dropped with the
   // collapse (a roof-only cut builds nothing of it: it stands in the world's buckets)
-  const offRoof = (poly: Poly, depth: number, ny: number): void => {
+  const offRoof = (poly: Poly, depth: number, ny: number, slab: RoofSlabPlan): void => {
     // (a corner probed alone says only that the triangle needs the whole test: its centroid decides)
     if (probing) { emit(OFF_ROOF_PROBE, poly); return; }
     const top = plan.storeys[plan.storeys.length - 1];
@@ -1425,6 +1437,8 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
         if (near) { wallAssign(poly, depth); return; }
       }
     }
+    // (destruction-slabs 227 round 2) the roof's furniture (nothing drawn under it from below) rides the slab it stands on
+    if (plan.furnitureAt?.(c0[0], c0[2])) { slabAssign(poly, depth, slab); return; }
     emit(DROPPED_PIECE, poly);
   };
   // most triangles lie inside one piece: each corner probed alone (no plane can split a point), and when all three

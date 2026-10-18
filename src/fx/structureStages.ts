@@ -29,7 +29,7 @@ import {
   anatomyCentre, damageRng, damageSeed, type DamageFace, type DamageRole, type DamageStageResult, type DamageStorey, type DamageWriters,
   type DebrisShape, type FractureMaterial, type FractureSlot,
 } from '../world/destructionKit.ts';
-import { faceSetback, faceSetbackMedian, storeyInterior } from '../world/structureEnclosure.ts';
+import { faceSetback, faceSetbackMedian, standsFromBelow, storeyInterior } from '../world/structureEnclosure.ts';
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
 import { breachBlowFor } from './structureFx.ts';
 import {
@@ -535,8 +535,77 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       for (const span of seam.spans) if (span.partClass === hide.partClass) { flattenSpan(span); changed = true; }
       // (a building whose roof has its own bucket loses it above; one whose roof shares the walls' bucket loses its faces)
       if (hide.partClass === 'roof' && !seam.spans.some((sp) => sp.partClass === 'roof')) changed = flattenRoofFaces(seam) || changed;
+      // (destruction-slabs 227 round 2) and the roof's furniture goes with it (a chimney or a dormer on the covering: the
+      // roof's slabs carry it down; stood in the world it was left in the sky, or on the attic floor)
+      if (hide.partClass === 'roof') changed = flattenRoofFurniture(seam) || changed;
     }
     if (changed) seam.touchShadows();
+  }
+
+  /**
+   * The roof's furniture out of the world's buckets when its roof falls (destruction-slabs 227 round 2): every triangle of
+   * the structure's other spans wholly over the eaves line (less 15 cm), centred in the footprint plus 1.5 m, off the top
+   * storey's faces (a gable stands, as a real one does) and standing on no wall drawn from below (structureEnclosure
+   * standsFromBelow: a tower and its spire stay) collapses to a point — collapsePieces' furnitureAt reads the same, so the
+   * roof's slabs carry what the world drops. Needs the drawn enclosure (none: nothing goes). Non-indexed spans.
+   */
+  function flattenRoofFurniture(seam: StructureDamageSeam): boolean {
+    const a = seam.anatomy;
+    if (!a.roof || !a.enclosure || !a.storeys.length) return false;
+    const eave = a.roof.eaveY - 0.15;
+    const reachX = a.w / 2 + 1.5, reachZ = a.d / 2 + 1.5;
+    const [bcx, bcz] = anatomyCentre(a);
+    const { x: px, y: py, z: pz, yaw } = a.placement;
+    const c = Math.cos(yaw), sn = Math.sin(yaw);
+    const top = a.storeys[a.storeys.length - 1]!;
+    const faceT = top.faces.map((f) => f.layers.reduce((sum, l) => sum + (l.thicknessM || 0), 0) || 0.3);
+    const bx = [0, 0, 0], bz = [0, 0, 0];
+    let changed = false;
+    for (const span of seam.spans) {
+      if (span.count < 3 || span.partClass === 'roof' || span.piece || flattenedSpans.has(span)) continue;
+      const geo = (span.mesh as THREE.Mesh).geometry as THREE.BufferGeometry | undefined;
+      if (!geo || geo.index) continue;
+      spanMatrices(span);
+      const arr = span.position.array as Float32Array;
+      const start = span.first + ((3 - (span.first % 3)) % 3);
+      let touched = false;
+      for (let i = start; i + 2 < span.first + span.count; i += 3) {
+        _ta.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
+        _tb.set(arr[i * 3 + 3], arr[i * 3 + 4], arr[i * 3 + 5]).applyMatrix4(_m);
+        _tc.set(arr[i * 3 + 6], arr[i * 3 + 7], arr[i * 3 + 8]).applyMatrix4(_m);
+        if (Math.min(_ta.y, _tb.y, _tc.y) - py < eave) continue;
+        // the body frame
+        let k = 0, mx = 0, mz = 0;
+        for (const v of [_ta, _tb, _tc]) {
+          const wx = v.x - px, wz = v.z - pz;
+          bx[k] = wx * c - wz * sn; bz[k] = wx * sn + wz * c; mx += bx[k] / 3; mz += bz[k] / 3; k++;
+        }
+        if (Math.abs(mx - bcx) > reachX || Math.abs(mz - bcz) > reachZ) continue;
+        // a gable or an end wall: every corner by a top-storey face's plane, within its width
+        let onFace = false;
+        for (let f = 0; f < top.faces.length && !onFace; f++) {
+          const face = top.faces[f]!;
+          const u = (mx - face.origin[0]) * face.u[0] + (mz - face.origin[2]) * face.u[2];
+          if (Math.abs(u) > face.width / 2 + 0.3) continue;
+          onFace = true;
+          for (let q = 0; q < 3; q++) {
+            const d = (bx[q] - face.origin[0]) * face.out[0] + (bz[q] - face.origin[2]) * face.out[2];
+            if (d > 0.6 || d < -faceT[f]! - 0.6) { onFace = false; break; }
+          }
+        }
+        if (onFace || standsFromBelow(a, mx, mz, a.roof.eaveY - 1)) continue;
+        if (!touched) { keep(span); touched = true; }
+        for (let q = 1; q < 3; q++) {
+          arr[(i + q) * 3] = arr[i * 3]; arr[(i + q) * 3 + 1] = arr[i * 3 + 1]; arr[(i + q) * 3 + 2] = arr[i * 3 + 2];
+        }
+      }
+      if (touched) {
+        span.position.addUpdateRange(span.first * 3, span.count * 3);
+        span.position.needsUpdate = true;
+        changed = true;
+      }
+    }
+    return changed;
   }
 
   /** A roof drawn in another bucket (a sheet hall's in structureMetal, shingles in wood: their spans are 'wall' by
