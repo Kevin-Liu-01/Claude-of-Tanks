@@ -409,8 +409,10 @@ function tallWallStubs(rng: () => number, slot: FractureSlot, cap: number, mesh:
   const placed: number[] = [];
   // two passes: stubs 1.8 m apart at a half to most of the wall's drawn height; still short, closer (1 m) and taller (a
   // low wide body's heap outweighs a few stubs: a tank farm's crumpled shells stand to most of their height)
-  for (let pass = 0, n = 0; pass < 2; pass++, n = 0) {
-  const minGap2 = pass ? 1.0 : 1.8 * 1.8;
+  // (round 2: a third course, 0.6 m apart and lower, on a fine grid, for a body whose tall walls are few — a ruin's ragged
+  // runs, a tank farm's shells)
+  for (let pass = 0, n = 0; pass < (cell <= 0.6 ? 3 : 2); pass++, n = 0) {
+  const minGap2 = pass === 2 ? 0.36 : pass ? 1.0 : 1.8 * 1.8;
   for (; n < spots.length && placed.length < 192 && roomFor(mesh, 1) && heightP90() < target; n++) {
     // a seeded stride through the tallest spots (not every stub on the one tallest wall)
     const spot = spots[(n * 7 + Math.floor(rng() * 5)) % spots.length]!;
@@ -418,7 +420,7 @@ function tallWallStubs(rng: () => number, slot: FractureSlot, cap: number, mesh:
     for (let q = 0; q < placed.length; q += 2) if ((placed[q]! - spot.x) ** 2 + (placed[q + 1]! - spot.z) ** 2 < minGap2) { near = true; break; }
     if (near) continue;
     // a half to most of the wall's drawn height there, and over the height the ruin lacks where the wall reaches it
-    const h = Math.min(cap, Math.max(spot.top * (pass ? 0.7 + rng() * 0.22 : 0.5 + rng() * 0.35), Math.min(spot.top * 0.92, target * (1.2 + rng() * 0.3))));
+    const h = Math.min(cap, Math.max(spot.top * (pass === 2 ? 0.7 + rng() * 0.15 : pass ? 0.7 + rng() * 0.22 : 0.5 + rng() * 0.35), Math.min(spot.top * 0.92, target * (1.2 + rng() * 0.3))));
     if (h < 0.6) continue;
     // its run: out from the spot along its wall while the wall stands that tall, up to 1.3 m each way
     const dx = spot.alongX ? 1 : 0, dz = spot.alongX ? 0 : 1;
@@ -576,6 +578,9 @@ function framePosts(rng: () => number, slot: FractureSlot, cap: number, mesh: Da
   // (loose posts need a grid fine enough to read a post's own drawn height: a guyed mast's metre cells stood them 1.8 m
   // over what is drawn there)
   if (loose && !((ruinOf?.enclosure?.cell ?? Infinity) <= 0.6)) return;
+  // (and any post on a grid too coarse to stand on a wall: an airstrip's 5 m cells stood its posts and boards where nothing is
+  // drawn)
+  if ((ruinOf?.enclosure?.cell ?? 0) > 1) return;
   if (!roomFor(mesh, 8) || !mesh.begin(slot.bucket, 'remnant')) return;
   const t = Math.max(0.14, Math.min(0.32, slot.thicknessM > 0.05 ? slot.thicknessM : 0.2));
   for (let face = 0; face < 4 && roomFor(mesh, 3); face++) {
@@ -597,7 +602,7 @@ function framePosts(rng: () => number, slot: FractureSlot, cap: number, mesh: Da
       if (!Number.isFinite(d)) continue;
       const x = alongX ? fcx + u : fcx + side * (off - d - t / 2), z = alongX ? fcz + side * (off - d - t / 2) : fcz + u;
       // (loose: no taller than drawn in its own cell, and none where nothing is drawn — a frame's yard, a farm's gap)
-      const h = Math.min(h0, loose && ruinOf ? 0.6 * wallTopAt(ruinOf, x, z, 0) : topOfWallIn(px, pz, pnx, pnz, d));
+      const h = Math.min(h0, loose && ruinOf ? 0.8 * wallTopAt(ruinOf, x, z, 0) : topOfWallIn(px, pz, pnx, pnz, d));
       if (h < 0.5) continue;
       const h1 = h * 0.55;
       box(mesh, x, (h1 - FOOT_M) / 2, z, t / 2, (h1 + FOOT_M) / 2, t / 2, 0, slot.tint, shade);
@@ -618,7 +623,7 @@ function framePosts(rng: () => number, slot: FractureSlot, cap: number, mesh: Da
       const ex = alongX ? pl / 2 : 0, ez = alongX ? 0 : pl / 2;
       const ph = Math.min(ph0, loose && ruinOf
         ? (enclosedAt(ruinOf, x - ex, z - ez, 0) && enclosedAt(ruinOf, x + ex, z + ez, 0)
-          ? 0.6 * Math.min(wallTopAt(ruinOf, x, z, 0), wallTopAt(ruinOf, x - ex, z - ez, 0), wallTopAt(ruinOf, x + ex, z + ez, 0)) : 0)
+          ? 0.8 * Math.min(wallTopAt(ruinOf, x, z, 0), wallTopAt(ruinOf, x - ex, z - ez, 0), wallTopAt(ruinOf, x + ex, z + ez, 0)) : 0)
         : topOfWallIn(px, pz, pnx, pnz, d));
       if (!(ph > 0.3)) continue;
       box(mesh, x, ph / 2 - 0.1, z, alongX ? pl / 2 : 0.05, ph / 2, alongX ? 0.05 : pl / 2, 0, slot.tint, shade);
@@ -910,7 +915,10 @@ export function keepRuinStanding<R>(anatomy: StructureDamageAnatomy, seed: numbe
       for (let tier = 1; tier <= 2 && heightP90() < target; tier++) frameTier(rng, cap, measuringWriter, tier, frameSlot(anatomy), anatomy);
       // (destruction-slabs 227 round 2: a rack or a shed read as a frame by its posts — no longer as a skin wall — stood
       // at a fifth of its height on its legs alone) still short: its posts where it is drawn, and its boards leant on them
-      for (let pass = 0; pass < 12 && ruinOf && heightP90() < target; pass++) framePosts(rng, frameSlot(anatomy), cap, measuringWriter, 0.4 + Math.min(8, pass) * 0.05, true);
+      // (not a named frame's or a lattice's: a gantry, a mast or a mill wheel stands on its own legs)
+      for (let pass = 0; pass < 12 && ruinOf && !frameByName(builder) && !framePlan(anatomy) && heightP90() < target; pass++) {
+        framePosts(rng, frameSlot(anatomy), cap, measuringWriter, 0.4 + Math.min(8, pass) * 0.05, true);
+      }
       return result;
     }
     if (pile && planShare() < RUIN_PLAN_SHARE) fillMound(anatomy, rng, pile, measuringWriter, fcx - fhw, fcx + fhw, fcz - fhd, fcz + fhd);

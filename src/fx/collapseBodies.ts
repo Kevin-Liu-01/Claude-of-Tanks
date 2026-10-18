@@ -226,6 +226,8 @@ interface LivePart {
   shoves: number;
   /** How long it has crept (under 0.25 m/s and 0.4 rad/s): a sheet balanced on a stump never sleeps. */
   slowS: number;
+  /** Tipped once more before the bake, found standing on its edge past the walls (round 2). */
+  retipped: boolean;
 }
 
 /**
@@ -277,6 +279,8 @@ interface LivePiece {
   box: number[];
   /** How long it has crept (a roof slab's look waits for this or for sleep, not for sleep alone). */
   slowS: number;
+  /** Tipped once more before the bake, found standing on its edge past the walls (round 2). */
+  retipped: boolean;
 }
 
 interface LiveCollapse {
@@ -977,7 +981,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       for (const m of meshes) m.castShadow = big;
       const offset = new THREE.Vector3(off[0], off[1], off[2]);
       parts.push({ meshes, offset, offsetM: offset.lengthSq() > 0 ? new THREE.Matrix4().makeTranslation(off[0], off[1], off[2]) : null,
-        handle: -1, pose: new Float64Array(7).fill(NaN), dusts: 0, tipped: false, shape: null, box: null, shoves: 0, slowS: 0 });
+        handle: -1, pose: new Float64Array(7).fill(NaN), dusts: 0, tipped: false, shape: null, box: null, shoves: 0, slowS: 0, retipped: false });
     }
     if (!parts.some((pp) => pp.meshes.length)) return;
     // (2026-10-15, the port's receipt: a hip roof's slab, its eave boards and verges past its banded boxes, lay a metre
@@ -1030,7 +1034,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     }
     const lp: LivePiece = { piece, com: [0, 0, 0], handle: -1, parts, broken: false, still: 0, sounds: 0, dusts: 0, kicked: false,
       shattered: false, tipped: false, pose: new Float64Array(7).fill(NaN), spawn: { ...spawn, ...(tumble ?? {}) }, rested: false, shape, half,
-      shoves: 0, box: shapeBox ?? plannedBox(piece), slowS: 0 };
+      shoves: 0, box: shapeBox ?? plannedBox(piece), slowS: 0, retipped: false };
     writeWhole(lp, [spawn.x, spawn.y, spawn.z, spawn.qx, spawn.qy, spawn.qz, spawn.qw]);
     lc.pieces.push(lp);
     if (now) spawnBody(lc, lp); else lc.spawnQueue.push(lp);
@@ -1615,7 +1619,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     const ready = allStill || (allSlow && age > BAKE_SLOW_AGE_S);
     // (round 2) and none of its roof's slabs or sheets lies high past the walls when it bakes: one the looks above missed (it
     // crept, never asleep) is shoved now and the bake waits for it
-    if (ready && age <= BAKE_AGE_S && roofLeftHigh(c)) return;
+    if (ready && age <= BAKE_AGE_S && (roofLeftHigh(c) || panelsStanding(c))) return;
     if (ready || age > BAKE_AGE_S) { const tBake = profStart(); bake(c); profEnd('cb.bake', tBake); }
   }
   /** A roof slab at rest looked at (its pose in `pose`): left where it belongs, or shoved off a rest high past the walls,
@@ -1682,6 +1686,40 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     byHandle.delete(part.handle); pool.release(part.handle); part.handle = -1;
     breakUp(c, part, pbox, spec.massKg);
     return true;
+  }
+  /**
+   * Whether a panel (a slab of any kind: a wall's, a gable's, a roof's sheet) stands on its edge past the ground storey's
+   * walls before the bake (round 2: baked so, a 4.5 m wall panel stood upright in the yard): each is tipped once more, and
+   * the bake waits for it to fall.
+   */
+  function panelsStanding(c: LiveCollapse): boolean {
+    let moved = false;
+    const a = c.seam.anatomy, f = frameOf(a);
+    const outside = (x: number, z: number): boolean => {
+      const bx = (x - f.x) * f.c - (z - f.z) * f.s, bz = (x - f.x) * f.s + (z - f.z) * f.c;
+      return enclosedAt(a, bx, bz, 0.3, 0) === false;
+    };
+    const panel = (h: readonly number[]): boolean => {
+      const e = [...h].sort((x, y) => x - y);
+      return e[0]! <= 0.35 && e[1]! >= 0.75;
+    };
+    for (const p of c.pieces) {
+      if (p.rested || p.shattered) continue;
+      if (!p.broken) {
+        const h = p.half ?? pieceHalf(p.piece);
+        if (p.handle < 0 || p.retipped || !panel(h) || !pool.framePoseAt(p.handle, pose) || !outside(pose[0]!, pose[2]!)) continue;
+        p.retipped = true;
+        if (tipIfStanding(p.handle, h, p.piece.massKg, c.structureIdx * 131 + p.piece.index + 13, 0.5)) moved = true;
+        continue;
+      }
+      for (let k = 0; k < p.parts.length; k++) {
+        const part = p.parts[k]!, spec = p.piece.parts[k];
+        if (!spec || part.handle < 0 || part.retipped || !panel(spec.half) || !pool.framePoseAt(part.handle, pose) || !outside(pose[0]!, pose[2]!)) continue;
+        part.retipped = true;
+        if (tipIfStanding(part.handle, spec.half, spec.massKg, c.structureIdx * 131 + p.piece.index * 16 + k + 13, 0.5)) moved = true;
+      }
+    }
+    return moved;
   }
   /** Whether a roof slab or sheet still lies high past the walls (each not yet looked at is, and is moved). */
   function roofLeftHigh(c: LiveCollapse): boolean {

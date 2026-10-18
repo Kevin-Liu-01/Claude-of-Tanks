@@ -894,22 +894,22 @@ function wallCell(enc: StructureEnclosure, c: number): boolean {
  * not drawn from below (their walls' lowest point over the eaves less a metre) — a chimney or a dormer on the covering, a
  * turret on the ridge — is furniture, and goes with the roof whole; a gable, a tower and its spire, a stack drawn from the
  * ground, a wall dormer flush with its facade stand. One decision per cluster (round 2: a dormer's window frames stood in
- * the sky after its plaster went with the roof). False where nothing is known (no enclosure, or one without its walls'
- * bases).
+ * the sky after its plaster went with the roof), none rising 3.5 m over the ridge. False where nothing is known (no
+ * enclosure, or one without its walls' bases).
  */
-export function roofFurnitureAt(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>, x: number, z: number, eaveY: number): boolean {
-  return furnitureCell(anatomy, x, z, eaveY) === 2;
+export function roofFurnitureAt(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>, x: number, z: number, eaveY: number, ridgeY = Infinity): boolean {
+  return furnitureCell(anatomy, x, z, eaveY, ridgeY) === 2;
 }
 /** Whether a plan point lies under none of the clusters standing over the eaves (a gable, a tower, a stack). */
-export function clearOverEaves(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>, x: number, z: number, eaveY: number): boolean {
-  return furnitureCell(anatomy, x, z, eaveY) !== 1;
+export function clearOverEaves(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>, x: number, z: number, eaveY: number, ridgeY = Infinity): boolean {
+  return furnitureCell(anatomy, x, z, eaveY, ridgeY) !== 1;
 }
-function furnitureCell(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>, x: number, z: number, eaveY: number): number {
+function furnitureCell(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>, x: number, z: number, eaveY: number, ridgeY: number): number {
   const enc = enclosureOf(anatomy);
   if (!enc?.base) return 1;
   const ci = Math.floor((x - enc.x0) / enc.cell), ck = Math.floor((z - enc.z0) / enc.cell);
   if (ci < 0 || ck < 0 || ci >= enc.nx || ck >= enc.nz) return 0;
-  const mask = furnitureMask(enc, Math.round(eaveY * 100));
+  const mask = furnitureMask(enc, Math.round(eaveY * 100), Number.isFinite(ridgeY) ? Math.round(ridgeY * 100) : 65535);
   // (a triangle's centroid a cell off its cluster: its neighbours decide)
   if (mask[ck * enc.nx + ci]) return mask[ck * enc.nx + ci]!;
   for (let dk = -1; dk <= 1; dk++) for (let di = -1; di <= 1; di++) {
@@ -919,11 +919,12 @@ function furnitureCell(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>, x: nu
   return 0;
 }
 const furnitureCache = new WeakMap<StructureEnclosure, Map<number, Uint8Array>>();
-/** Per cell: 0 nothing over the eaves, 1 a standing cluster's, 2 furniture's; cached per eave height. */
-function furnitureMask(enc: StructureEnclosure, eaveCm: number): Uint8Array {
+/** Per cell: 0 nothing over the eaves, 1 a standing cluster's, 2 furniture's; cached per eave and ridge height. */
+function furnitureMask(enc: StructureEnclosure, eaveCm: number, ridgeCm: number): Uint8Array {
   let byEave = furnitureCache.get(enc);
   if (!byEave) { byEave = new Map(); furnitureCache.set(enc, byEave); }
-  let mask = byEave.get(eaveCm);
+  const key = eaveCm * 65536 + ridgeCm;
+  let mask = byEave.get(key);
   if (mask) return mask;
   const N = enc.nx * enc.nz;
   mask = new Uint8Array(N);
@@ -932,13 +933,14 @@ function furnitureMask(enc: StructureEnclosure, eaveCm: number): Uint8Array {
   for (let c0 = 0; c0 < N; c0++) {
     if (seen[c0] || !(enc.top[c0]! >= over)) continue;
     stack.push(c0); seen[c0] = 1; members.length = 0;
-    let i0 = Infinity, i1 = -Infinity, k0 = Infinity, k1 = -Infinity, fromBelow = 0;
+    let i0 = Infinity, i1 = -Infinity, k0 = Infinity, k1 = -Infinity, fromBelow = 0, peak = 0;
     while (stack.length) {
       const c = stack.pop()!;
       members.push(c);
       const i = c % enc.nx, k = (c - i) / enc.nx;
       i0 = Math.min(i0, i); i1 = Math.max(i1, i); k0 = Math.min(k0, k); k1 = Math.max(k1, k);
       if (enc.base![c]! > 0 && enc.base![c]! <= below) fromBelow++;
+      peak = Math.max(peak, enc.top[c]!);
       for (let dk = -1; dk <= 1; dk++) for (let di = -1; di <= 1; di++) {
         const ii = i + di, kk = k + dk;
         if (ii < 0 || kk < 0 || ii >= enc.nx || kk >= enc.nz) continue;
@@ -948,10 +950,12 @@ function furnitureMask(enc: StructureEnclosure, eaveCm: number): Uint8Array {
       }
     }
     const across = Math.max(i1 - i0 + 1, k1 - k0 + 1) * enc.cell;
-    const v = across < 3 && fromBelow < 0.5 * members.length ? 2 : 1;
+    // (and no higher than 3.5 m over the ridge: a chimney's stack; round 2: a broadcast tower's platforms 30 m over its
+    // podium's roof were no roof's furniture)
+    const v = across < 3 && fromBelow < 0.5 * members.length && peak <= ridgeCm + 1 + 350 ? 2 : 1;
     for (const c of members) mask[c] = v;
   }
-  byEave.set(eaveCm, mask);
+  byEave.set(key, mask);
   return mask;
 }
 

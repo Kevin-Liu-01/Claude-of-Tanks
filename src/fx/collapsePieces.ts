@@ -917,7 +917,7 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
   }
   return { pieces, structureIdx: anatomy.structureIdx, groundY, eaveY, cx, cz, hw, hd, storeys: storeyPlans, roof: slabs, gables: gableFaces,
     chimneys, struckSide, chimneyBucket: anatomy.chimneys[0]?.bucket ?? 'brick', shaft: null,
-    ...(anatomy.enclosure && slabs.length ? { furnitureAt: (x: number, z: number) => roofFurnitureAt(anatomy, x, z, anatomy.roof?.eaveY ?? eaveY) } : {}) };
+    ...(anatomy.enclosure && slabs.length ? { furnitureAt: (x: number, z: number) => roofFurnitureAt(anatomy, x, z, anatomy.roof?.eaveY ?? eaveY, anatomy.roof?.ridgeY ?? Infinity) } : {}) };
 }
 
 /** A shaft's crown as its kit hands it over (regional/shaft.ts ShaftExtras.crown). */

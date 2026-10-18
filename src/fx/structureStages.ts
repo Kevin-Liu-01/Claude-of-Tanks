@@ -578,10 +578,10 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         if (Math.abs(mx - bcx) > reachX || Math.abs(mz - bcz) > reachZ) continue;
         // (and a level surface over the eaves under no standing cluster: the attic's lid the roof covered — left, it capped
         // the roofless storey as one clean flat roof, the critic's "flat raft")
-        if (!roofFurnitureAt(a, mx, mz, a.roof.eaveY)) {
+        if (!roofFurnitureAt(a, mx, mz, a.roof.eaveY, a.roof.ridgeY)) {
           const ux = _tb.x - _ta.x, uy = _tb.y - _ta.y, uz = _tb.z - _ta.z, vx = _tc.x - _ta.x, vy = _tc.y - _ta.y, vz = _tc.z - _ta.z;
           const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-          if (!(Math.abs(ny) > 0.85 * Math.hypot(nx, ny, nz)) || !clearOverEaves(a, mx, mz, a.roof.eaveY)) continue;
+          if (!(Math.abs(ny) > 0.85 * Math.hypot(nx, ny, nz)) || !clearOverEaves(a, mx, mz, a.roof.eaveY, a.roof.ridgeY)) continue;
         }
         if (!touched) { keep(span); touched = true; }
         for (let q = 1; q < 3; q++) {
