@@ -28,11 +28,15 @@
 //    list entirely, so battle frames never cull or draw any of this.
 import * as THREE from 'three';
 import {
-  mulberry32, canvasTexture, dither, makeSignTexture, makeHazardTexture, SIGN_FONT,
+  mulberry32, canvasTexture, makeHazardTexture,
 } from '../ui/garageStage.ts';
 import { FEATURED_SHOTS } from '../ui/featuredShots.ts';
 import { garageSlideshowPose } from '../ui/garageSlideshowPlacement.ts';
 import { buildGarageVerdantKit } from '../ui/garageVerdantKit.ts';
+import { createGarageDisplayMaterial, ensureGarageDisplayAtlas, garageDisplaySignRect, garageDisplayRect } from '../ui/garageDisplayAtlas.ts';
+import { KitBuilder, kitRandom } from '../ui/garageKitGeometry.ts';
+import { garageKitSkin } from '../ui/garageKitSkins.ts';
+import { buildShadowBoard } from '../ui/garageWallKit.ts';
 import { DECOR_KITS } from '../vehicles/decorations.ts';
 import { optimizeGarageDressing } from './garageDressingOptimization.ts';
 import { getGarageVariant, type GarageVariant } from './garageVariants.ts';
@@ -238,7 +242,6 @@ export function createGarageDressing(
     disposables.push(o);
     return o;
   };
-  const signTextures: THREE.Texture[] = [];
   const workshopVisuals: GarageWorkshopVisual[] = [];
   const workshopFleet = existing.workshopFleet;
   const preparedVehicleIds = new Set<string>();
@@ -337,75 +340,6 @@ export function createGarageDressing(
   // --- tiny canvas textures ---------------------------------------------------
   // pegboard: dark board, peg-hole grid, painted hanging-tool silhouettes —
   // one textured quad reads as a whole wall of wrenches/hammers/pliers.
-  function makePegboardTexture(): HTMLCanvasElement {
-    const W = 256, H = 160;
-    const c = document.createElement('canvas');
-    c.width = W; c.height = H;
-    const g = c.getContext('2d')!;
-    g.fillStyle = '#2e3236';
-    g.fillRect(0, 0, W, H);
-    g.strokeStyle = '#1a1d20';
-    g.lineWidth = 6;
-    g.strokeRect(3, 3, W - 6, H - 6);
-    g.fillStyle = 'rgba(14,16,18,0.8)';
-    for (let y = 14; y < H - 8; y += 12) {
-      for (let x = 12; x < W - 8; x += 12) g.fillRect(x, y, 2.4, 2.4);
-    }
-    // painted tool shadows first (slight offset), then the tools
-    const tool = (draw: () => void): void => {
-      g.save(); g.translate(2, 3); g.strokeStyle = 'rgba(0,0,0,0.45)'; g.fillStyle = 'rgba(0,0,0,0.45)'; draw(); g.restore();
-      g.strokeStyle = '#83898f'; g.fillStyle = '#83898f'; draw();
-    };
-    g.lineWidth = 5;
-    // open-end wrenches (angled bars with C heads)
-    for (const [x, y, l, a] of [[30, 26, 52, 0.12], [58, 24, 66, 0.06], [86, 28, 46, 0.16]]) {
-      tool(() => {
-        g.beginPath();
-        g.moveTo(x, y); g.lineTo(x + Math.sin(a) * 14, y + l);
-        g.stroke();
-        g.beginPath(); g.arc(x, y - 3, 6, 0.6, Math.PI * 1.6); g.stroke();
-      });
-    }
-    // hammer
-    tool(() => {
-      g.fillRect(120, 22, 8, 56);
-      g.fillRect(108, 18, 32, 12);
-    });
-    // pliers (two arcs)
-    tool(() => {
-      g.beginPath(); g.moveTo(160, 26); g.quadraticCurveTo(154, 60, 150, 82); g.stroke();
-      g.beginPath(); g.moveTo(166, 26); g.quadraticCurveTo(172, 60, 176, 82); g.stroke();
-      g.beginPath(); g.arc(163, 24, 7, 0, Math.PI * 2); g.stroke();
-    });
-    // hand saw
-    tool(() => {
-      g.beginPath();
-      g.moveTo(196, 30); g.lineTo(240, 30); g.lineTo(238, 44); g.lineTo(196, 40);
-      g.closePath(); g.fill();
-      g.fillRect(190, 26, 8, 22);
-    });
-    // hex keys + screwdrivers row
-    g.lineWidth = 3.5;
-    for (let i = 0; i < 7; i++) {
-      const x = 34 + i * 14;
-      tool(() => {
-        g.beginPath(); g.moveTo(x, 104); g.lineTo(x, 128 + (i % 3) * 6); g.stroke();
-      });
-    }
-    // coiled air hose
-    tool(() => {
-      g.lineWidth = 4;
-      for (let i = 0; i < 3; i++) { g.beginPath(); g.arc(196, 116, 14 - i * 4, 0, Math.PI * 2); g.stroke(); }
-    });
-    // grime
-    for (let i = 0; i < 240; i++) {
-      g.fillStyle = rng() < 0.6 ? 'rgba(12,14,16,0.25)' : 'rgba(140,148,156,0.08)';
-      g.fillRect(rng() * W, rng() * H, 1 + rng() * 2, 1 + rng() * 2);
-    }
-    dither(g, W, H, rng, 0.05);
-    return c;
-  }
-
   // soft radial pool for faked lamp light / under-bay work light
   function makePoolTexture(
     r0 = 'rgba(255,236,200,0.26)',
@@ -640,7 +574,12 @@ export function createGarageDressing(
     return b;
   }
 
-  /** pegboard quad + backing plate flush against a wall. */
+  // the shadow boards' one vertex-colour material (the Verdant kit's key), made with the first board
+  let shadowBoardMaterial: THREE.MeshStandardMaterial | null = null;
+  /**
+   * A shadow tool board flush against a wall (garage r9 K2, replacing the flat canvas pegboards): its backing plate and
+   * the kit's board, each tool hung in its own painted outline, built through the shared KitBuilder.
+   */
   function pegboard(
     x: number,
     y: number,
@@ -650,20 +589,21 @@ export function createGarageDressing(
     h = 1.55,
     wallBayId = '',
   ): void {
-    const tex = track(canvasTexture(makePegboardTexture(), { aniso }));
-    const m = track(shadowMat(new THREE.MeshStandardMaterial({
-      map: tex, roughness: 0.7, metalness: 0.15,
-      emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.05,
-    })));
     const back = put(track(new THREE.BoxGeometry(w + 0.1, h + 0.1, 0.05)), mat.steelDark, x, y, z, ry, 0, 0, 1, group, false);
     back.castShadow = false;
     back.userData.wallBayId = wallBayId;
-    const boardGeo = track(new THREE.PlaneGeometry(w, h));
-    const board = new THREE.Mesh(boardGeo, m);
+    const builder = new KitBuilder(kitRandom(0x5bd + wallBayId.length * 97), garageKitSkin('field_shed'));
+    buildShadowBoard(builder, w, h);
+    const built = builder.build(-10); // a wall piece: no ground AO
+    shadowBoardMaterial ||= track(shadowMat(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, metalness: 0.08 })));
+    const board = new THREE.Mesh(track(built.solid), shadowBoardMaterial);
+    built.display?.dispose(); built.decal?.dispose();
     board.position.set(x, y, z);
     board.rotation.y = ry;
-    board.translateZ(0.032);
+    board.translateZ(0.04);
     board.userData.wallBayId = wallBayId;
+    board.castShadow = false;
+    board.receiveShadow = true;
     group.add(board);
   }
 
@@ -719,7 +659,14 @@ export function createGarageDressing(
     return t;
   }
 
-  /** wall sign: steel plate + stencil board (garageStage language). */
+  // the plates' one DISPLAY-LIT material (the wall signs' program key), made with the first plate
+  let signMaterial: THREE.MeshStandardMaterial | null = null;
+  function signDisplayMaterial(): THREE.MeshStandardMaterial {
+    signMaterial ||= track(createGarageDisplayMaterial((material) => { shadowMat(material); }));
+    return signMaterial;
+  }
+
+  /** wall sign: a steel plate carrying its atlas pictogram (garageStage language). */
   function wallSign(
     text: string,
     x: number,
@@ -732,12 +679,12 @@ export function createGarageDressing(
     parent: THREE.Object3D = group,
     freestanding = parent === legacyVerdantRoot,
   ): void {
-    const tex = track(canvasTexture(makeSignTexture(rng, text), { aniso }));
-    signTextures.push(tex);
-    const m = track(shadowMat(new THREE.MeshStandardMaterial({
-      map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: 0.13,
-      roughness: 0.6, metalness: 0.2,
-    })));
+    // the plate's picture is a pictogram, numeral or readout of the Garages' one display atlas (garage r9 K3: "less
+    // text, more pictograms"; type comes from the atlas generator, never the browser's canvas). The old canvas plate drew
+    // its wear from this dressing's random stream: the same draws are spent so every later piece keeps its place.
+    for (let draw = 0; draw < 1300; draw += 1) rng();
+    const rect = garageDisplayRect(garageDisplaySignRect(text));
+    const m = signDisplayMaterial();
     const mount = new THREE.Group();
     mount.position.set(x, 0, z);
     mount.rotation.y = ry;
@@ -751,7 +698,14 @@ export function createGarageDressing(
     const back = put(track(new THREE.BoxGeometry(w + 0.12, h + 0.12, 0.05)), mat.steelDark,
       0, y, 0, 0, 0, 0, 1, mount, false);
     back.userData.wallBayId = wallBayId;
-    const board = new THREE.Mesh(track(new THREE.PlaneGeometry(w, h)), m);
+    // the picture fitted inside the plate at its own aspect, the dark steel round it
+    const aspect = (rect.u1 - rect.u0) / (rect.v1 - rect.v0) * 2;
+    const fitW = Math.min(w * 0.94, h * 0.9 * aspect), fitH = fitW / aspect;
+    const boardGeometry = track(new THREE.PlaneGeometry(fitW, fitH));
+    const uv = boardGeometry.getAttribute('uv') as THREE.BufferAttribute;
+    for (let i = 0; i < uv.count; i += 1) uv.setXY(i, rect.u0 + uv.getX(i) * (rect.u1 - rect.u0), rect.v0 + uv.getY(i) * (rect.v1 - rect.v0));
+    const board = new THREE.Mesh(boardGeometry, m);
+    board.onBeforeRender = () => { ensureGarageDisplayAtlas({ anisotropy: aniso }); };
     board.position.set(0, y, 0.032);
     board.translateZ(0.032);
     board.userData.wallBayId = wallBayId;
@@ -3603,14 +3557,6 @@ export function createGarageDressing(
     // shared material programs incrementally, while the optimization pass
     // above preserves the exact static composition for subsequent variants.
   });
-
-  // sign plates bake before the webfont settles — refresh them once it lands
-  // (same contract as garageStage's own signs)
-  if (document.fonts && !document.fonts.check(SIGN_FONT)) {
-    document.fonts.load(SIGN_FONT)
-      .then(faces => { if (!disposed && faces.length) for (const t of signTextures) t.needsUpdate = true; })
-      .catch(() => {});
-  }
 
   let next = 0;
   let pendingPump: Promise<boolean> | null = null;

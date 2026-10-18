@@ -32,6 +32,7 @@ import {
 import type { HallMesh } from './garageHallKit.ts';
 import { buildVerdantFloorAlbedo, VERDANT_FLOOR_TEXELS } from './garageVerdantFloor.ts';
 import { buildVerdantHallParts, verdantHallShutter } from './garageVerdantHall.ts';
+import { createGarageDisplayMaterial, ensureGarageDisplayAtlas, garageDisplayRect, garageDisplaySignRect } from './garageDisplayAtlas.ts';
 
 type RandomSource = () => number;
 type SignWear = [boolean, number, number, number, number];
@@ -108,7 +109,7 @@ export function canvasTexture(
 }
 
 // fine noise dither pass — kills flat-fill banding under light falloff
-export function dither(
+function dither(
   c2d: CanvasRenderingContext2D,
   w: number,
   h: number,
@@ -1229,33 +1230,31 @@ export function createGarageStage(
   const plateMat = track(shadowMat(new THREE.MeshStandardMaterial({
     color: 0x1b1e21, roughness: 0.55, metalness: 0.55,
   })));
-  const signGeoBig = track(new THREE.PlaneGeometry(3.6, 1.8));
-  const signGeoSmall = track(new THREE.PlaneGeometry(2.2, 1.1));
-  const signTex1 = track(canvasTexture(makeSignTexture(rng, 'BAY 01'), { aniso }));
-  const signTex2 = track(canvasTexture(makeSignTexture(rng, 'NO SMOKING'), { aniso }));
-  // Sign plates re-bake when their own font loads (see makeSignTexture) —
-  // this pushes the refreshed canvases to the GPU.
-  function refreshSignsAfterFontLoad(): void {
-    if (!document.fonts || document.fonts.check(SIGN_FONT)) return;
-    document.fonts.load(SIGN_FONT)
-      .then(faces => { if (faces.length) { signTex1.needsUpdate = true; signTex2.needsUpdate = true; } })
-      .catch(() => {});
-  }
-  refreshSignsAfterFontLoad();
-  const signMat1 = track(shadowMat(new THREE.MeshStandardMaterial({
-    map: signTex1, emissive: 0xffffff, emissiveMap: signTex1, emissiveIntensity: 0.16,
-    roughness: 0.6, metalness: 0.2,
-  })));
-  const signMat2 = track(shadowMat(new THREE.MeshStandardMaterial({
-    map: signTex2, emissive: 0xffffff, emissiveMap: signTex2, emissiveIntensity: 0.14,
-    roughness: 0.6, metalness: 0.2,
-  })));
+  // The hall's two plates carry the atlas's bay numeral and no-smoking pictogram (garage r9 K3: "less text, more
+  // pictograms"; type from the atlas generator, never the browser's canvas), fitted at their own aspect on the dark
+  // plates, on the DISPLAY-LIT key the wall signs always used. The old canvas plates drew their wear from the stage's
+  // random stream: the same draws are spent so everything after them keeps its place.
+  for (let draw = 0; draw < 2600; draw += 1) rng();
+  const signMat = track(createGarageDisplayMaterial((material) => { shadowMat(material); }));
+  const signPlane = (legend: string, maxW: number, maxH: number): THREE.PlaneGeometry => {
+    const rect = garageDisplayRect(garageDisplaySignRect(legend));
+    const aspect = (rect.u1 - rect.u0) / (rect.v1 - rect.v0) * 2;
+    const w = Math.min(maxW, maxH * aspect), h = w / aspect;
+    const plane = track(new THREE.PlaneGeometry(w, h));
+    const uv = plane.getAttribute('uv') as THREE.BufferAttribute;
+    for (let i = 0; i < uv.count; i += 1) uv.setXY(i, rect.u0 + uv.getX(i) * (rect.u1 - rect.u0), rect.v0 + uv.getY(i) * (rect.v1 - rect.v0));
+    return plane;
+  };
+  const signGeoBig = signPlane('BAY 01', 3.4, 1.7);
+  const signGeoSmall = signPlane('NO SMOKING', 2.1, 1.05);
+  const signMat1 = signMat, signMat2 = signMat;
   // north-wall sign (faces +z): halo on the wall, plate, then the board
   const halo1 = new THREE.Mesh(track(new THREE.PlaneGeometry(4.6, 2.6)), haloMat);
   halo1.position.set(-13.5, 5.55, -HW + 0.05); // over the sheeting's crowns; the plate sits on the girts (GA.05)
   const plate1 = new THREE.Mesh(track(new THREE.BoxGeometry(3.72, 1.92, 0.05)), plateMat);
   plate1.position.set(-13.5, 5.6, -HW + 0.145);
   const sign1 = new THREE.Mesh(signGeoBig, signMat1);
+  sign1.onBeforeRender = () => { ensureGarageDisplayAtlas({ anisotropy: aniso }); };
   sign1.position.set(-13.5, 5.6, -HW + 0.175);
   group.add(halo1, plate1, sign1);
   // west-wall sign (faces +x)
@@ -1265,6 +1264,7 @@ export function createGarageStage(
   const plate2 = new THREE.Mesh(track(new THREE.BoxGeometry(0.05, 1.2, 2.3)), plateMat);
   plate2.position.set(-HW + 0.145, 3.4, -6);
   const sign2 = new THREE.Mesh(signGeoSmall, signMat2);
+  sign2.onBeforeRender = () => { ensureGarageDisplayAtlas({ anisotropy: aniso }); };
   sign2.rotation.y = Math.PI / 2;
   sign2.position.set(-HW + 0.175, 3.4, -6);
   group.add(halo2, plate2, sign2);
