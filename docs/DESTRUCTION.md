@@ -1187,11 +1187,25 @@ building's damage leaves without what held it stays in the air, slab or not, and
   its gables); support propagates up from the ground, so two boards side by side hold nothing up. Touching parts (a sample
   of each within 0.25 m) gather in clusters; a cluster touching the ground stands. A part that bore in the intact building
   and bears no more (its held share down by a quarter), or whose cluster stood and stands no more, comes down —
-  `landmarkBodies.drop`: a compact cluster as a body of the one engine, a sparse one (a mill's sail cross, a gutter round a
-  corner) falling under gravity's time to lie on its broad side; settled (a late joiner), at rest at once. The fracture's
-  redrawn faces are read piece by piece: a piece touching nothing that stands falls as a body of its cells (what stands
-  with the face — past its rectangle, over no drawn wall — goes where it hung); the kit's runs (rims, remnants) and rooms
-  touching nothing that stands go.
+  `landmarkBodies.drop`: a compact cluster as a body of the one engine, a sparse or tall one (a mill's sail cross, a
+  gutter round a corner, a chimney that stood upright on the floor with a roof slab on its head) falling under gravity's
+  time to lie on its broad side, one going round the building's middle (a mill's stage round its tower: a box round it
+  stood on its braces over the ruin) breaking up where it hung; settled (a late joiner), at rest at once. What the
+  presentation draws is read piece by piece (each mesh's triangles welded) as the parts are — it bears or not, up from the
+  ground with them: a fracture face's piece or a kit run's piece (a rim's chunk, a remnant) touching nothing that stands,
+  or over a metre up and held no more where the intact building held its spot (its own twin, what lies within 0.1 m of
+  it, left out: a frame's infill drawn under its beam goes, a wall over an arcade held at its columns' heads as built
+  stands), comes down — a face's piece as a body of its cells (a reveal of a standing cell found touching nothing is drawn
+  no more: a lattice's cell drew it as a strip in the air), a run's piece as a body of its own triangles, the rest of the
+  run standing; a room touching nothing that stands goes. The sweep reads a little stricter than the slab check (touching
+  at 0.2 m, bearing over 55 % of its envelope, down when its held share fell by a fifth) and samples as it does (rows
+  along each triangle's longest edge with its corners: a grid's square of samples on a sliver made a parking deck's sweep
+  200,000 samples). It reads over the intact reading as a base — made once a building (in steps ahead, while its damage
+  is still being drawn): every sample as built, which parts touched (a witness pair of triangles each) and which touched
+  the ground; a sweep puts only what moved and what the presentation draws in an overlay, reads a hidden triangle's base
+  samples no more, and searches which pieces stand lazily (the lowest samples first, on through what they touch, until
+  one stands). It runs in steps over the frames (12,000 units of work a step, four a frame: the whole of a big building's
+  sweep held a frame for a tenth of a second and more); a change while it runs is read by the next.
 - *A roof's furniture* (`structureStages flattenRoofFurniture`, at the roof's hide and again at any wall's fall after it):
   every welded part that starts within a metre under the eaves and reaches 30 cm over them, centred in the footprint, goes
   unless the structure's standing parts hold it up (a 0.5 m grid of what the non-roof parts draw; a part held over half its
@@ -1204,14 +1218,19 @@ building's damage leaves without what held it stays in the air, slab or not, and
   something has reveals; a storey's fall lowers the faces over it (in flight by their matrices, at its end for good — their
   grids and cells: a late joiner saw a tavern's upper floors hang over its empty ground floor).
 - *Rooms* are the wall's own colour in shade (the owner's "dark grey-navy slabs": a blown-out facade showed the room's far
-  wall as one flat near-black plane); *ruin stubs* stand only where the walls are drawn down to their foot, no taller than
-  the wall drawn at their own cell, and no course over one not drawn; a roof's fall onto a held floor cracks into its sheets
+  wall as one flat near-black plane); *ruin stubs* stand only where the walls are drawn down to their foot (a frame's
+  posts excepted: a boatshed's reach the ground under its cladding on stilts), no taller than the wall drawn at their own
+  cell, and no course over one not drawn or capped under its plan (a tower's pier course stood over its capped one); a
+  frame's bent legs go on from their stub's kinked head, its corners the head's (one member bent: a strut from beside the
+  head stood held at one end only); a sheet hall's column stumps stand from the ground (from the face's foot they stood
+  0.4-0.8 m over it where a pad had been); a roof's fall onto a held floor cracks into its sheets
   at its first touch; a panel on its edge past the walls is tipped once a roof's held fall rests too (the held-floor return
   came before both looks), again once knocked onto its edge (counted on a tip made), and the look allocates nothing.
 
 The detector judges any drawn piece left hanging (`tools/destruction-hanging.mjs`, the same two readings against the
 intact building: held then not, cut loose), reads the world's spans as drawn at each snapshot (a storey's fall moves
 them), models the mask's fold of a kit's collapse (the spans gone COLLAPSE_S after the blow), and reads hanging only two
-seconds after the building's last event (the sweep's creak, then the fall). The kinds receipt strikes each roofed kind's
+seconds after the building's last event (the sweep's creak, then the fall); a late joiner's page is read once its
+hanging sweeps are done and what they took down has had 1.5 s to land (at most 15 s). The kinds receipt strikes each roofed kind's
 roof pass too (`wide+roof`) and skips a kind whose fingerprint (its spans, anatomy and enclosure as built, its staging,
 and the destruction code's hash) a clean run passed before: a world change runs the kinds it changed.

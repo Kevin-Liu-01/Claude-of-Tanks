@@ -271,28 +271,38 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
     for (let s = 0; s < seam.spans.length; s++) {
       const span = seam.spans[s]!;
       if (span.count < 3) continue;
-      work += span.count * 4;
-      if (work >= SLICE) { work = 0; yield; }
       const orig = o.originalOf(span);
       const arr = orig ?? (span.position.array as Float32Array);
       const base = orig ? span.first : 0;
-      const M = spanMatrix(span);
       const start = span.first + ((3 - (span.first % 3)) % 3);
       const ats: number[] = [];
-      for (let at = start; at + 2 < span.first + span.count; at += 3) if (corners(arr, base, at, M)) ats.push(at);
+      let M = spanMatrix(span);
+      for (let at = start; at + 2 < span.first + span.count; at += 3) {
+        if (corners(arr, base, at, M)) ats.push(at);
+        if (++work >= SLICE) { work = 0; yield; M = spanMatrix(span); }
+      }
       if (!ats.length) continue;
       // connected parts: corners welded at a millimetre
       const parent = new Int32Array(ats.length);
       for (let i = 0; i < ats.length; i++) parent[i] = i;
       const find = (i: number): number => { while (parent[i] !== i) { parent[i] = parent[parent[i]!]!; i = parent[i]!; } return i; };
       const mm = new Float64Array(ats.length * 9);
+      M = spanMatrix(span);
       ats.forEach((at, q) => { corners(arr, base, at, M); for (let k = 0; k < 9; k++) mm[q * 9 + k] = Math.round(a3[k]! * 1000); });
+      work += ats.length * 4;
+      if (work >= SLICE) { work = 0; yield; }
       weldCorners(mm, (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent[ra] = rb; });
+      work += ats.length * 6;
+      if (work >= SLICE) { work = 0; yield; }
       const groups = new Map<number, number[]>();
       ats.forEach((at, q) => { const r = find(q); let g = groups.get(r); if (!g) groups.set(r, g = []); g.push(at); });
       for (const list of groups.values()) {
         const xyz: number[] = [], tags: number[] = [];
-        list.forEach((at, t) => { corners(arr, base, at, M); sampleA3(xyz, tags, t); });
+        M = spanMatrix(span);
+        for (let t = 0; t < list.length; t++) {
+          corners(arr, base, list[t]!, M); sampleA3(xyz, tags, t);
+          if ((t & 255) === 255) { work += 1024; if (work >= SLICE) { work = 0; yield; M = spanMatrix(span); } }
+        }
         parts.push(partOf(s, list, xyz, tags));
       }
     }
@@ -316,6 +326,8 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
       const from = witness.length;
       for (const w of set) witness.push(Math.floor(w / 1048576), w % 1048576);
       pairs.push(Math.floor(k / P), k % P, from, witness.length);
+      work += 4 + set.size;
+      if (work >= SLICE) { work = 0; yield; }
     }
     model.pairs = Int32Array.from(pairs);
     model.witness = Int32Array.from(witness);
@@ -323,9 +335,10 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
     for (let p = 0; p < P; p++) { model.groundAt[p] = gt.length; for (const t of rec.ground.get(p) ?? []) gt.push(t); }
     model.groundAt[P] = gt.length;
     model.groundTris = Int32Array.from(gt);
+    const pts: number[] = [];
     for (let p = 0; p < parts.length; p++) {
       parts[p]!.sup0 = sup[p] === 1;
-      parts[p]!.held0 = sampled.env[p] ? heldOf(sampled, sampled.env[p]!, p, sup, cellGround) : 0;
+      parts[p]!.held0 = sampled.env[p] ? yield* heldSteps(sampled, sampled.env[p]!, p, sup, cellGround, null, pts) : 0;
       parts[p]!.stood0 = stands.has(p);
     }
     models.set(seam, model);
@@ -372,9 +385,11 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
       const xyz = model.parts[p]!.xyz;
       if (!xyz.length) continue;
       xyzs[p] = xyz; env[p] = new Map();
-      putInto(column, voxels, p, xyz, 0, xyz.length / 3, env[p]!, lo, model.parts[p]!.owner);
-      work += xyz.length / 3;
-      if (work >= SLICE) { work = 0; yield; }
+      for (let from = 0, n = xyz.length / 3; from < n; from += 1024) {
+        putInto(column, voxels, p, xyz, from, Math.min(n, from + 1024), env[p]!, lo, model.parts[p]!.owner);
+        work += Math.min(1024, n - from) * 2;
+        if (work >= SLICE) { work = 0; yield; }
+      }
     }
     return { xyz: xyzs, env, lo, column, voxels, base: null, dead: null, alive: null };
   }
@@ -397,12 +412,12 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
       work += part.tris.length * 3;
       if (work >= SLICE) { work = 0; yield; }
       const arr = span.position.array as Float32Array;
-      const M = spanMatrix(span);
+      let M = spanMatrix(span);
       const alive = new Uint8Array(part.tris.length);
       let moved = false, any = false, all = true;
       for (let t = 0; t < part.tris.length; t++) {
         const at = part.tris[t]!;
-        if ((t & 1023) === 1023) { work += 3072; if (work >= SLICE) { work = 0; yield; } }
+        if ((t & 1023) === 1023) { work += 3072; if (work >= SLICE) { work = 0; yield; M = spanMatrix(span); } }
         if (!corners(arr, 0, at, M)) { all = false; continue; }
         alive[t] = 1; any = true;
         let off = false;
@@ -421,7 +436,11 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
       } else {
         dead[p] = 1;
         const xyz: number[] = [];
-        for (let t = 0; t < part.tris.length; t++) if (alive[t] && corners(arr, 0, part.tris[t]!, M)) sampleA3(xyz, null, 0);
+        let Mm = spanMatrix(span);
+        for (let t = 0; t < part.tris.length; t++) {
+          if (alive[t] && corners(arr, 0, part.tris[t]!, Mm)) sampleA3(xyz, null, 0);
+          if ((t & 255) === 255) { work += 1024; if (work >= SLICE) { work = 0; yield; Mm = spanMatrix(span); } }
+        }
         now[p] = Float32Array.from(xyz);
       }
     }
@@ -462,23 +481,26 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
 
   const heldPts: number[] = [];
   /** A part's held share over its envelope: cells under which the ground, a holder or a part that bears lies within the
-   *  band (the held cells left in heldPts) — the overlay's samples, then the base's of every part unchanged. */
+   *  band (the held cells left in `pts`) — the overlay's samples, then the base's of every part unchanged. In steps (a
+   *  big part's envelope is thousands of cells). */
   let holdLimit = Infinity;
-  function heldOf(sm: Sampled, env: Map<number, number>, self: number, sup: Uint8Array, ground: (x: number, z: number) => number,
-    near: Set<number> | null = null): number {
+  function* heldSteps(sm: Sampled, env: Map<number, number>, self: number, sup: Uint8Array, ground: (x: number, z: number) => number,
+    near: Set<number> | null, pts: number[]): Generator<void, number, void> {
     let held = 0;
-    heldPts.length = 0;
+    pts.length = 0;
     const P = sup.length, base = sm.base, dead = sm.dead, alive = sm.alive;
     for (const [ck, y] of env) {
       const i0 = lckI(ck), k0 = lckK(ck);
       const lo = y - BAND, hi = y + 0.1;
       const gx = (i0 + 0.5) * CELL, gz = (k0 + 0.5) * CELL;
       let ok = ground(gx, gz) >= lo || floorUnder(gx, gz, hi) >= lo;
+      let read = 9;
       for (let di = -1; di <= 1 && !ok; di++) for (let dk = -1; dk <= 1 && !ok; dk++) {
         const key = lck(i0 + di, k0 + dk);
         for (let pass = 0; pass < 2 && !ok; pass++) {
           const c = pass === 0 ? sm.column.get(key) : base?.column.get(key);
           if (c) for (let j = 0; j < c.length; j += 5) {
+            read++;
             const q = c[j + 3]!, cy = c[j + 1]!;
             if (q === self || cy < lo || cy > hi || q >= P || !sup[q] || q >= holdLimit) continue;
             if (pass === 1 && dead && (dead[q] || (alive![q] && !alive![q]![c[j + 4]!]))) continue;
@@ -487,32 +509,39 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
           }
         }
       }
-      if (ok) { held++; heldPts.push(i0, k0); }
+      if (ok) { held++; pts.push(i0, k0); }
+      work += read;
+      if (work >= SLICE) { work = 0; yield; }
     }
     return env.size ? held / env.size : 1;
   }
-  /** Whether a part bears (after heldOf): half its envelope held, or its middle inside the held cells' hull. */
-  function bears(env: Map<number, number>, share: number): boolean {
+  /** Whether a part bears (after heldOf / heldSteps): half its envelope held, or its middle inside the held cells' hull. */
+  function bears(env: Map<number, number>, share: number, pts: number[] = heldPts): boolean {
     if (share > BEAR) return true;
-    if (heldPts.length < 6) return false;
+    if (pts.length < 6) return false;
     let mx = 0, mz = 0;
     for (const ck of env.keys()) { mx += lckI(ck); mz += lckK(ck); }
-    return insideHull(heldPts, mx / env.size, mz / env.size);
+    return insideHull(pts, mx / env.size, mz / env.size);
   }
-  /** Which parts and judged pieces (the first `R` owners) bear, up from the ground; owners past them hold nothing. */
+  /** Which parts and judged pieces (the first `R` owners) bear, up from the ground (read lowest first, so a round mostly
+   *  settles it: what is left is read again while any came to bear); owners past them hold nothing. */
   function* propagateSteps(sm: Sampled, R: number, ground: (x: number, z: number) => number): Generator<void, Uint8Array, void> {
     const sup = new Uint8Array(R);
-    const open: number[] = [];
+    let open: number[] = [];
     for (let p = 0; p < R; p++) if (sm.env[p]) open.push(p);
+    open.sort((a, b) => sm.lo[a]! - sm.lo[b]! || a - b);
+    const pts: number[] = [];
     for (let round = 0; round < 48 && open.length; round++) {
-      let changed = false;
-      for (let j = open.length - 1; j >= 0; j--) {
-        const p = open[j]!, env = sm.env[p]!;
-        if (bears(env, heldOf(sm, env, p, sup, ground))) { sup[p] = 1; open[j] = open[open.length - 1]!; open.pop(); changed = true; }
-        work += env.size * 12;
+      const rest: number[] = [];
+      for (const p of open) {
+        const env = sm.env[p]!;
+        const share = yield* heldSteps(sm, env, p, sup, ground, null, pts);
+        if (bears(env, share, pts)) sup[p] = 1; else rest.push(p);
+        work += 8;
         if (work >= SLICE) { work = 0; yield; }
       }
-      if (!changed) break;
+      if (rest.length === open.length) break;
+      open = rest;
     }
     return sup;
   }
@@ -545,6 +574,7 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
         for (let b = same ? ae : 0; b < L.length;) {
           const be = runEnd(L, b), ob = L[b + 3]!;
           if (oa !== ob) for (let i = a; i < ae; i += 5) for (let j = b; j < be; j += 5) {
+            work++;
             const dx = A[i]! - L[j]!, dy = A[i + 1]! - L[j + 1]!, dz = A[i + 2]! - L[j + 2]!;
             if (dx * dx + dy * dy + dz * dz > D2) continue;
             touch(oa, A[i + 4]!, ob, L[j + 4]!);
@@ -557,7 +587,7 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
     };
     for (const [vk, list] of sm.voxels) {
       const vi = Math.floor(vk / (LV * LV)) + vI, vj = (Math.floor(vk / LV) % LV) + vJ, vz = (vk % LV) + vK;
-      work += 40 + list.length * 8;
+      work += 40;
       if (work >= SLICE) { work = 0; yield; }
       pairRuns(list, null);
       for (let da = -1; da <= 1; da++) for (let db = -1; db <= 1; db++) for (let dc = -1; dc <= 1; dc++) {
@@ -650,6 +680,7 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
             for (let src = 0; src < 2; src++) {
               const l = src === 0 ? sm.voxels.get(key) : base.voxels.get(key);
               if (!l) continue;
+              work += l.length / 5;
               for (let j = 0; j < l.length; j += 5) {
                 const b = l[j + 3]!;
                 if (b === a || (src === 1 && !draws(b, l[j + 4]!))) continue;
@@ -661,7 +692,7 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
               }
             }
           }
-          work += 60;
+          work += 54;
           if (work >= SLICE) { work = 0; yield; }
         }
       }
@@ -808,7 +839,12 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
         if (work >= SLICE) { work = 0; yield; }
       }
       const J = pieces.length, R = P + J;
-      const hx = [...pieces.map((pc) => pc.xyz), ...rooms.map(holderSamples)];
+      const hx = pieces.map((pc) => pc.xyz);
+      for (const room of rooms) {
+        hx.push(holderSamples(room));
+        work += 4 * ((room.geometry as THREE.BufferGeometry).getAttribute('position')?.count ?? 0);
+        if (work >= SLICE) { work = 0; yield; }
+      }
       const sm = yield* sampleNowSteps(seam, model, hx, J);
       holdLimit = R;
       const sup = yield* propagateSteps(sm, R, cellGround);
@@ -839,10 +875,13 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
             if (x < x0) x0 = x; if (x > x1) x1 = x; if (z < z0) z0 = z; if (z > z1) z1 = z;
           }
           if (sm.lo[id]! - o.groundAt((x0 + x1) / 2, (z0 + z1) / 2) >= LIFT) {
-            const env = sm.env[id]!;
-            const held = heldOf(sm, env, id, sup, cellGround);
-            const held0 = heldOf(model.intact, env, -1, model.sup0, cellGround, nearSet(pc.xyz));
-            goes = bears(env, held0) && held <= held0 - DROP;
+            const env = sm.env[id]!, pts: number[] = [];
+            const held = yield* heldSteps(sm, env, id, sup, cellGround, null, pts);
+            const near = nearSet(pc.xyz);
+            work += pc.xyz.length * 9;
+            if (work >= SLICE) { work = 0; yield; }
+            const held0 = yield* heldSteps(model.intact!, env, -1, model.sup0, cellGround, near, pts);
+            goes = bears(env, held0, pts) && held <= held0 - DROP;
           }
         }
         if (!goes) continue;
@@ -860,7 +899,7 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
         if (sm.lo[p]! - o.groundAt(sm.xyz[p]![0]!, sm.xyz[p]![2]!) < TOUCH) continue;
         if (part.stood0 && flag[p] === 2) { down.push(p); continue; }
         if (!part.sup0 || sup[p]) continue;
-        if (heldOf(sm, env, p, sup, cellGround) <= part.held0 - DROP) down.push(p);
+        if ((yield* heldSteps(sm, env, p, sup, cellGround, null, heldPts)) <= part.held0 - DROP) down.push(p);
       }
       if (!down.length) return { groups: [], faces: facesDown, runs: runsDown, rooms: roomsDown };
       // one body a cluster of what comes down (the parts touching: a mill's sails with their stocks and shaft)

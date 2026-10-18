@@ -277,7 +277,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
   let hangingJob: { idx: number; due: { seam: StructureDamageSeam; settled: boolean }; runs: THREE.Mesh[]; rooms: THREE.Mesh[];
     gen: Generator<void, HangingResult, void> } | null = null;
   /** Steps of the sweep a frame (each about structureHanging's SLICE units of work: under a millisecond on a desktop). */
-  const HANGING_STEPS = 2;
+  const HANGING_STEPS = 4;
   function markHanging(seam: StructureDamageSeam, settled: boolean): void {
     if (fallen.has(seam.structureIdx)) return;
     hangingChain.delete(seam.structureIdx);
