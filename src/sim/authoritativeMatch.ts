@@ -118,7 +118,7 @@ import {
 import { consumeAmmunition, hasAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 import {
-  applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetLoadout, type MatchRuleset,
+  applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetBotDifficulty, rulesetLoadout, type MatchRuleset,
   type RulesetPhysics,
 } from './matchRuleset.ts';
 import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type MatchPlacement } from './matchPlacement.ts';
@@ -1066,7 +1066,8 @@ export function createAuthoritativeMatch({
     const searchRng = mulberry32(seed + 43000 + index * 991);
     const navigation = botNavigation;
     entity.aiCtl = createAI(entity, {
-      difficulty: playerRecordById.get(entity.id)?.difficulty || 'normal',
+      // the seat's difficulty, stepped down for the Horde's zombies by the ruleset
+      difficulty: rulesetBotDifficulty(ruleset, entity.team, playerRecordById.get(entity.id)?.difficulty || 'normal'),
       rng: botRng,
       deps: {
         heightField,

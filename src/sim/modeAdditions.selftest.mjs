@@ -48,8 +48,9 @@ const tank=(id,team='alpha',bot=false)=>({id,team,bot,spec,state:{pos:new Vector
 }
 {
  const a=tank('s'),b=tank('i','bravo');createMatchModeController({mode:'infected',entities:[a,b],revive(){}});
- assert.equal(a.combat.maxHp,Math.round(spec.hp*.3));assert.equal(b.combat.maxHp,Math.round(spec.hp*1.25));
- assert.equal(matchRulesetFor('infected').enemies,4);assert.equal(matchRulesetFor('infected',null,{enemies:1}).enemies,3);
+ // owner 2026-10-17: sturdy survivors, fragile infected
+ assert.equal(a.combat.maxHp,Math.round(spec.hp*1.5));assert.equal(b.combat.maxHp,Math.round(spec.hp*.3));
+ assert.equal(matchRulesetFor('infected').enemies,5);assert.equal(matchRulesetFor('infected',null,{enemies:1}).enemies,3);
 }
 {
  const a=tank('observer'),b=tank('hidden','bravo');b.state.pos.z=600;

@@ -2,7 +2,7 @@
 // sweep 2026-10-16): the Orthodox village church of the black-earth governorates and the Western hall church.
 import { PartSink, facePoint, rgb, type Face, type RegionalBucket, type Vec3 } from '../maps/regional/geometry.ts';
 import { emitRoof, roofGeometry, type RoofSpec } from '../maps/regional/house.ts';
-import { LIMEWASH_UV, archLine, archSurround, archWindow, archedBody, archedFace, prismBody, archedSlab, cornerPilasters, cross, dome, drum, portico, revolve, smoothRender, tentRoof, type ArchHole, type FaceName } from './kit.ts';
+import { LIMEWASH_UV, archLine, archSurround, archWindow, archedBody, archedFace, prismBody, archedSlab, cornerPilasters, cross, dome, drum, moulding, portico, revolve, smoothRender, tentRoof, type ArchHole, type FaceName } from './kit.ts';
 import { ageWall } from './age.ts';
 import type { LandmarkBuildContext, LandmarkBuilder } from './types.ts';
 import { DOME_GREEN, FRAME_WHITE, GILT, GREEN_IRON, SLATE_BLUE, bell, cornice, doorLeaf, lit, towerClock, uvOffset } from './civicKit.ts';
@@ -308,16 +308,30 @@ function westernChurch(ctx: LandmarkBuildContext): ReturnType<LandmarkBuilder> {
   const zt = (zTowerBack + L / 2) / 2, Ht = Math.max(Hn + 6, towerTop * 0.56);
   const portal: ArchHole = { u: 0, w: 2.0, y0: 0.4, spring: 2.9, form: 'pointed' };
   const lou = (u: number): ArchHole => ({ u, w: 1.0, y0: Ht - 4.2, spring: Ht - 2.2, form: 'pointed' });
+  // (2026-10-17, the maps lane; the Polders village blind 227, pose 5: "the church tower reads as a bare slab") the tower
+  // in its stages, as the brick towers of Walcheren and the Hessian sandstone ones stand: a string course over the portal
+  // stage and one under the belfry, a glazed lancet lighting the ringing chamber in the middle stage of each free face,
+  // and the corner buttresses stepping back once at the first course and rising to the second
+  const s1 = Math.max(5.2, Ht * 0.34), s2 = Ht - 6.2 - 1.6;
+  const lancet = (): ArchHole => ({ u: 0, w: 0.7, y0: s1 + (s2 - s1) * 0.3, spring: s1 + (s2 - s1) * 0.3 + Math.min(2.6, (s2 - s1) * 0.45), form: 'pointed' });
   const towerHoles: Partial<Record<FaceName, ArchHole[]>> = {
-    front: [portal, lou(-T * 0.18), lou(T * 0.18)], left: [lou(-T * 0.18), lou(T * 0.18)], right: [lou(-T * 0.18), lou(T * 0.18)],
+    front: [portal, lancet(), lou(-T * 0.18), lou(T * 0.18)], left: [lancet(), lou(-T * 0.18), lou(T * 0.18)], right: [lancet(), lou(-T * 0.18), lou(T * 0.18)],
     back: [lou(-T * 0.18), lou(T * 0.18)],
   };
   const tf = archedBody(sink, wall, 0, zt, T, T, 0.4, Ht, towerHoles, 0.42);
   doorLeaf(sink, tf.front, portal, 0.42);
   archSurround(sink, 'stone', tf.front, portal, 0.3, 0.1);
+  for (const name of ['front', 'left', 'right'] as const) {
+    const lancets = (towerHoles[name] ?? []).filter((h) => h.w === 0.7);
+    dressOpenings(sink, ctx, tf[name], lancets, 0.42, { bucket: 'stone', width: 0.12, out: 0.05 }, 0.1);
+  }
+  // the string courses: a weathered band round the tower at each stage
+  sink.placed(0, 0, 0, zt, () => {
+    for (const y of [s1, s2]) moulding(sink, 'stone', T, T, y, 0.22, 0.09);
+  });
   for (const name of ['front', 'left', 'right', 'back'] as const) {
     const f = tf[name];
-    for (const h of (towerHoles[name] ?? []).filter((x) => x !== portal)) {
+    for (const h of (towerHoles[name] ?? []).filter((x) => x !== portal && x.w !== 0.7)) {
       // louvred belfry openings: slats across the dark reveal
       for (let k = 0; k < 6; k++) {
         const y = h.y0 + 0.2 + k * (h.spring - h.y0) / 6;
@@ -330,10 +344,12 @@ function westernChurch(ctx: LandmarkBuildContext): ReturnType<LandmarkBuilder> {
     const cy = Ht - 6.2;
     towerClock(sink, f, 0, cy, 0.95, wall);
   }
-  // corner buttresses on the tower
+  // corner buttresses on the tower: to the first string course, then stepped back to the second
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
     sink.span('stone', sx * T / 2 - (sx > 0 ? 0.4 : 0.5), 0.4, zt + sz * T / 2 - (sz > 0 ? 0.4 : 0.5), sx * T / 2 + (sx > 0 ? 0.5 : 0.4),
-      Ht * 0.5, zt + sz * T / 2 + (sz > 0 ? 0.5 : 0.4));
+      s1, zt + sz * T / 2 + (sz > 0 ? 0.5 : 0.4));
+    sink.span('stone', sx * T / 2 - (sx > 0 ? 0.3 : 0.32), s1, zt + sz * T / 2 - (sz > 0 ? 0.3 : 0.32), sx * T / 2 + (sx > 0 ? 0.32 : 0.3),
+      s2, zt + sz * T / 2 + (sz > 0 ? 0.32 : 0.3));
   }
   cornice(sink, wall, 0, zt, T, T, Ht + 0.3, 1);
   const spireBase = Ht + 0.3;

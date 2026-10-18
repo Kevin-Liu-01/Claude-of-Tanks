@@ -26,6 +26,40 @@ function footing(sink: PartSink, ctx: LandmarkBuildContext, x: number, z: number
   sink.span('stone', x - hw, -0.6 - ctx.groundFall, z - hd, x + hw, top, z + hd);
 }
 
+/**
+ * A snow bank along a run (the map-content lane's R6; gauntlet wave 358a on Whiteout: the station "on clean untouched snow
+ * with no ... drift, scour", "drift tails behind the screens", "drift against module piles"): a ridge whose crest stands
+ * `h` over the ground along the run from a to b, its short face 0.7 m back toward the structure and its long tail `out`
+ * metres out along (nx, nz), both toes sunk in the snow, the ends tapering. Snow maps only; dressing (no collision: a hull
+ * drives through snow). The radome tower and the billboards bank theirs too (dewLine.ts).
+ */
+export function snowBank(sink: PartSink, ctx: LandmarkBuildContext, ax: number, az: number, bx: number, bz: number, nx: number, nz: number,
+  h: number, out: number): void {
+  if (!ctx.snowCap) return;
+  const gl = (x: number, z: number) => ctx.ground?.(x, z) ?? 0;
+  const len = Math.hypot(bx - ax, bz - az), n = Math.max(2, Math.ceil(len / 2.5));
+  const face = (pts: Vec3[], up: Vec3) => {
+    const ux = pts[1][0] - pts[0][0], uy = pts[1][1] - pts[0][1], uz = pts[1][2] - pts[0][2];
+    const vx = pts[2][0] - pts[0][0], vy = pts[2][1] - pts[0][1], vz = pts[2][2] - pts[0][2];
+    const d = (uy * vz - uz * vy) * up[0] + (uz * vx - ux * vz) * up[1] + (ux * vy - uy * vx) * up[2];
+    sink.polygon('plaster', d >= 0 ? pts : [...pts].reverse(), { decor: true });
+  };
+  let prev: Vec3[] | null = null;
+  for (let k = 0; k <= n; k++) {
+    const t = k / n, x = ax + (bx - ax) * t, z = az + (bz - az) * t, taper = Math.sqrt(Math.sin(Math.PI * t)), reach = 0.55 + 0.45 * taper;
+    const back: Vec3 = [x - nx * 0.7 * reach, gl(x - nx * 0.7 * reach, z - nz * 0.7 * reach) - 0.12, z - nz * 0.7 * reach];
+    const crest: Vec3 = [x, gl(x, z) + h * (0.2 + 0.8 * taper), z];
+    const toe: Vec3 = [x + nx * out * reach, gl(x + nx * out * reach, z + nz * out * reach) - 0.12, z + nz * out * reach];
+    const row = [back, crest, toe];
+    if (prev) {
+      face([prev[0], prev[1], row[1], row[0]], [-nx, 1, -nz]);
+      face([prev[1], prev[2], row[2], row[1]], [nx, 1, nz]);
+    } else face(row, [-(bz - az), 0, bx - ax]);
+    prev = row;
+  }
+  if (prev) face([...prev].reverse(), [bx - ax, 0, bz - az]);
+}
+
 // ------------------------------------------------------------------------------------------------------ module train
 
 /**
@@ -125,6 +159,10 @@ export const moduleTrain: LandmarkBuilder = (ctx) => {
   const xr = x0 + total - L * 0.5, topR = eave + (n > 2 ? 1.6 : 0) + 0.3;
   for (const dz of [-1.2, 1.2]) bar(sink, 'structureMetal', [xr, topR, dz], [xr, topR + 3.5, dz], 0.035, { colour: STEEL_DARK, decor: true });
   sink.span('structureMetal', x0 + (Math.min(1, n - 1) + 0.5) * L - 0.8, floor + 2.6, hd + 1.5, x0 + (Math.min(1, n - 1) + 0.5) * L + 0.8, floor + 2.95, hd + 1.55, { colour: SIGN_YELLOW, decor: true });
+  // (the map-content lane's R6, wave 358a: "lifting the module train onto steel piles with drift underneath") the snow
+  // banked against the train's back, into the void under its floor, and against its far end
+  snowBank(sink, ctx, x0 - 0.4, -hd + 0.5, x0 + total + 0.4, -hd + 0.5, 0, -1, Math.min(1.1, floor + 0.5), 2.4);
+  snowBank(sink, ctx, x0 + 0.5, hd + 0.4, x0 + 0.5, -hd - 0.4, -1, 0, Math.min(1.0, floor + 0.4), 1.8);
   return { parts: sink.finish() };
 };
 
@@ -205,6 +243,10 @@ export const jamesway: LandmarkBuilder = (ctx) => {
   sink.span('structureWood', -0.6, 0, -z0 + 1.2, 0.6, floor * 0.5, -z0 + 1.55, { colour: TIMBER, decor: true });
   sink.cylinder('structureMetal', [r * 0.45, floor + r * 0.85, -z0 * 0.4], 'y', 1.4, 0.09, 6, { colour: IRON, decor: true });
   sink.cylinder('structureMetal', [r * 0.45, floor + r * 0.85 + 1.32, -z0 * 0.4], 'y', 0.2, 0.2, 6, { colour: IRON, decor: true }, 0.03);
+  // (the map-content lane's R6, wave 358a: "fix their seating (timber floors, drifted ends)", "drift built up against the
+  // huts") the snow banked up the hut's windward side and against its far end
+  snowBank(sink, ctx, -r + 0.3, z0 - 0.3, -r + 0.3, -z0 + 0.3, -1, 0, 0.9, 1.6);
+  snowBank(sink, ctx, r + 0.3, z0 + 0.4, -r - 0.3, z0 + 0.4, 0, -1, 1.0, 1.6);
   return { parts: sink.finish() };
 };
 

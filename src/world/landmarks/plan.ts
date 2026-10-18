@@ -308,7 +308,9 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => {
       const n = Math.round(num(p, 'tanks')), cols = Math.min(n, Math.max(1, Math.round(num(p, 'columns')))), rows = Math.ceil(n / cols);
       const pitch = 2 * num(p, 'radius') + 3;
-      return [(cols - 1) * pitch / 2 + num(p, 'radius') + 2.8, (rows - 1) * pitch / 2 + num(p, 'radius') + 3.4];
+      // (the map-content lane's R6, landed 2026-10-17) the earth berm's outer toe and its corners: its crest a face's run
+      // outside the old wall's line, the runs carried past the corners by a face's run (tankFarm.ts)
+      return [(cols - 1) * pitch / 2 + num(p, 'radius') + 6.0, (rows - 1) * pitch / 2 + num(p, 'radius') + 6.0];
     } },
   // (a Jamesway hut; a fuel cache and a drift fence are the props' own drums and fence modules: all dressing)
   jamesway: { family: 'works', defaults: { length: 14.6, width: 4.9 },
@@ -326,10 +328,12 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
   stripShack: { family: 'works', drapes: true, defaults: {}, footprint: (): [number, number] => [4.6, 4.2] },
   snowFence: { family: 'works', drapes: true, dressing: () => true, defaults: { length: 60 },
     footprint: (p) => [Math.max(2.5, Math.floor(num(p, 'length') / 2.5) * 1.25) + 0.2, 0.6] },
-  // a mine's works (mining.ts): the headframe stands over its shaft with its winding house behind (the piece centred on
+  // a mine's works (mineWorks.ts): the headframe stands over its shaft with its winding house behind (the piece centred on
   // both); the conveyor's bents and end houses are its movement record, so it spans the ground between them
   headframe: { family: 'works', drapes: true, defaults: { height: 20, paint: 'oxide' },
-    footprint: (p) => [5.2, 0.25 * num(p, 'height') + 9.8] },
+    // (the map-content lane's R6) the shaft 3 m further forward, the winding house 6 m further back (mineWorks.ts
+    // headframeShaftZ), its roof's eaves past the back; the shaft yard's skip road and timber stack out to the collar's side
+    footprint: (p) => [9.9, 0.25 * num(p, 'height') + 12.45] },
   oreBin: { family: 'works', drapes: true, defaults: { width: 7, depth: 6, clearance: 5.4, height: 13 },
     footprint: (p) => [num(p, 'width') / 2 + 0.7, num(p, 'depth') / 2 + 0.7] },
   conveyor: { family: 'works', drapes: true, defaults: { length: 56, width: 2.6, head: 10, tail: 2.2 },
