@@ -1234,3 +1234,21 @@ seconds after the building's last event (the sweep's creak, then the fall); a la
 hanging sweeps are done and what they took down has had 1.5 s to land (at most 15 s). The kinds receipt strikes each roofed kind's
 roof pass too (`wide+roof`) and skips a kind whose fingerprint (its spans, anatomy and enclosure as built, its staging,
 and the destruction code's hash) a clean run passed before: a world change runs the kinds it changed.
+
+**The census (2026-10-18, round 3).** On `06b774833`, every map and destructible kind from all four faces (the A pass: 60
+rounds up storeys 0-3, every phase and the late joiner's replays) and the roof pass (R), with the hanging judge on: 1,846
+building runs, 35,720 snapshots; 34 buildings flag, in 681 snapshots (1.9 %; the round-2 census, blind to hanging pieces,
+27 in 674). The round-2 residue stands as judged (remnant piers 1.1-2.9 m over the drawn wall or heap, rooms and rims of
+held storeys and open frames, fallen objects' faces, the panels on their edge at the ground beside a ruin: autumn #0,
+caldera #28, skybridge #13); what the hanging judge adds (the first three seen in their renders): the sheave's bearing stands on a
+headframe's deck once the hit takes the wheel (copper_mesa #38, bolted at their feet: their diagonal legs read 50 %), a
+water tower's top X-brace bolted at the posts' heads (copper_mesa #35), a fire station's hose-tower legs bent up inside its
+lattice (foundry #4), a 1 m steel remnant 1.1 m up on a late joiner's ruin (delta #12), the troposcatter hut's chunks on
+the reflector's fallen frame (whiteout #21, as on main), the megatower's and needle tower's held-storey members and rims
+(ruinspires #1 and #3, skybridge #7). Open: a dark chimney cap 9 m up on a tavern's falling roof side during its roof's
+sections' fall (frontier #15, narrow face), a windmill's cap read cut loose in a late joiner's page after the first hit
+(polders #46), three thin steel members the terrace tower's roof pass leaves 3 m up (skybridge #20), and two roof slabs
+on wall heads (caldera #27, whiteout #3). The kinds receipt passes on the same code from its dump: 393 kinds, 667 runs
+(one face by name and each roofed kind's roof pass), 9,252 snapshots, 32 judged findings — among them a roof slab the
+rigid world launches 200 m up in badlands #0's roof pass (round 2's collapseBodies does the same: open). The anti-raft
+probe: 24 below the floors (main 28), the same four explained as round 2.
