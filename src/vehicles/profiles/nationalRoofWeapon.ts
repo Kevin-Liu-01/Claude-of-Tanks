@@ -8,6 +8,7 @@ import {captureAuxiliaryStock} from './auxiliaryStation.ts';
 import {markVehicleNightLens} from '../vehicleNightLighting.ts';
 import {crosswiseSolid} from './eraModuleKit.ts';
 import {nationalStationWidth,type NationalRoofLoadout,type NationalRoofMount} from '../nationalRoofConfig.ts';
+import type {NationalPintleSocket} from '../nationalDonorTurrets.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 import {tankSeedId} from '../tankIdAliases.ts';
 type Point=readonly[number,number,number];
@@ -70,12 +71,14 @@ export function nationalRoofWeapon(P:TankBuilderPort,rws:Point,cupola:Point|null
  * There is no second cupola and no collar: any riser is the pintle's own sleeve and clamp. Round 3 (critic D4): its
  * cradle, trunnion pin and shield ride the gun on a low yoke with one side arm (FittingOptions.ridingCradle), so the
  * moving gun never passes through its own mount; its race ring and shield recesses take the mount's and the gun's steel.
+ * Round 4 (critics D10, S1): on a rim socket (nationalPintleSocket) the foot is the socket's collar and the emplacement
+ * draws no race ring of its own.
  */
 export function nationalCupolaPintle(P:TankBuilderPort,seat:Point,l:NationalRoofLoadout):THREE.Group {
  const e=l.emplacement;
  if(l.mount!=='pintle'||!e)throw new Error(`${P.spec?.id}: ${l.name} is not a pintle emplacement`);
  const fitting=FITTINGS.pintleMG({mats:P.mats,cls:e.cls,scale:1,tone:'two-tone',elev:.08,shield:e.shield,ammo:true,
-  ring:{...e.ring},riser:e.riserM,working:e.crewServed,remoteControlled:!e.crewServed,datumBarrel:false,ridingCradle:true,
+  ring:e.ring?{...e.ring}:false,riser:e.riserM,working:e.crewServed,remoteControlled:!e.crewServed,datumBarrel:false,ridingCradle:true,
   seed:emplacementSeed(l.name)}) as THREE.Group;
  if(fitting.userData.caliberMm!==l.caliber)throw new Error(`${P.spec?.id}: ${l.name} draws a ${fitting.userData.caliberMm} mm gun`);
  fitting.name=l.name;
@@ -85,6 +88,34 @@ export function nationalCupolaPintle(P:TankBuilderPort,seat:Point,l:NationalRoof
  if(l.depressionByYaw)fitting.userData.depressionByYaw=l.depressionByYaw.map(r=>[...r]);
  mount(P,'turret',fitting,seat[0],seat[1],seat[2]);
  return fitting;
+}
+
+/**
+ * Release 227, round 4 (geometry critic D10, visual critic S1: "the pintle column stands on the hatch lid, so the hatch
+ * could not open"): the emplacement's socket post at the cupola's rim, a classic hatch-side pintle socket. A turned
+ * post stands 8 mm into the turret roof under it (`seat`: its plan seat and that roof's height) and 4 mm into the
+ * cupola's fixed ring, with a clamp collar 6 mm wider at its top (the pintle flange's seat, `socket.topY`) and the
+ * collar's lock bolt facing outboard; a tall post (`socket.web`) is welded to the cupola by a web plate on the radial.
+ * It is turret stock in the turret's detail paint; the pintle turns in it and the hatch lid inside the ring stays free.
+ * Returns the seat's height.
+ */
+export function nationalPintleSocket(P:TankBuilderPort,seat:Point,socket:NationalPintleSocket):number {
+ const [x,roof,z]=seat,{topY,postR}=socket,collarH=.024,collarR=postR+.006,bottom=roof-.008,postH=topY-collarH-bottom;
+ if(postH<.02)throw new Error(`${P.spec?.id}: no room for the pintle socket's post (roof ${roof.toFixed(3)}, top ${topY})`);
+ const seg=P.q?20:12,out=Math.atan2(x-socket.cupola[0],z-socket.cupola[1]),ox=Math.sin(out),oz=Math.cos(out);
+ P.add('turretDetail',cylY(postR,postR+.004,postH,seg),x,bottom+postH/2,z);
+ P.add('turretDetail',cylY(collarR,collarR,collarH,seg),x,topY-collarH/2,z);
+ // the lock bolt: its stem 18 mm into the collar, its head 7 mm proud of it (cylX turned onto the outboard radial)
+ const boltY=topY-collarH/2,ry=out-Math.PI/2;
+ P.add('turretDark',cylX(.006,.022,8),x+ox*(collarR-.007),boltY,z+oz*(collarR-.007),0,ry,0);
+ P.add('turretDark',cylX(.011,.007,6),x+ox*(collarR+.0035),boltY,z+oz*(collarR+.0035),0,ry,0);
+ // a tall post's web plate (22 mm thick) on the radial, from inside the cupola's stock to the post's axis
+ if(socket.web){
+  const {innerR,topY:webTop}=socket.web,outerR=Math.hypot(x-socket.cupola[0],z-socket.cupola[1]),h=webTop-bottom,mid=(innerR+outerR)/2;
+  if(h<.02||outerR-innerR<postR)throw new Error(`${P.spec?.id}: the pintle socket's web plate has no room`);
+  P.add('turretDetail',box(.022,h,outerR-innerR),socket.cupola[0]+ox*mid,bottom+h/2,socket.cupola[1]+oz*mid,0,out,0);
+ }
+ return topY;
 }
 
 /** A stable fitting seed from the loadout's name (FITTINGS seeds only small finish variations). */
