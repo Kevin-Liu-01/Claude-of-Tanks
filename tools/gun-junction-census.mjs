@@ -4,6 +4,7 @@
 //
 //   node tools/gun-junction-census.mjs --ids=c2_ariete,cv90 [--poses=rest,elev,dep,e0.5,d0.5] [--res-mm=2] [--images] [--json=path]
 //   node tools/gun-junction-census.mjs --all [--gate]
+//   node tools/gun-junction-census.mjs --ledger=docs/geometry-gate/gun-junction.json --update|--check [--gate] --ids=<a,b>|--all
 //
 // Every main-gun mouth the factory publishes (userData.physicalMouth under rig_gun: origin on the mouth plane, -Z into
 // the bore) defines the gun axis. The tank is built first-party (createTank, proceduralOnly, interior fills applied, LOD
