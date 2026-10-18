@@ -158,6 +158,12 @@ export const HERO_FLAG = Object.freeze({
   haze: 0.05, // a touch of the ground colour in the cloth
   whiteCeiling: 0.88, // soft luminance shoulder: white fields (KR, JP, IL, PL, US stripes) stay below the hull's highlights
   hoistFeather: 0.10,
+  // Pure horizontal-band flags (RU, DE tricolours; PL, UA bicolours, detected from the art) are drawn shorter, so
+  // the lowest band's centre line sits at `lowestBandCentreY` of the layer, above the hull's rear deck. At 4x3 the
+  // lowest band lay behind the hull: r5 measured RU red and DE gold at 0.1-1.4 % of the art box in every card size
+  // (white-blue and black-red read as no nation). The hoist sits under the feather and the fly runs off the card,
+  // so only band thickness is ever seen and the stretch is invisible; flags with emblems keep their 4x3 art.
+  bandFit: Object.freeze({ lowestBandCentreY: 0.36 }),
 });
 
 /**

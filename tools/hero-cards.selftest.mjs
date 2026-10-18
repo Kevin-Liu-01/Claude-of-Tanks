@@ -5,7 +5,7 @@ import { createCanvas } from '@napi-rs/canvas';
 import { GARAGE_CAMERA_AZIMUTH_RAD, GARAGE_CAMERA_PITCH_RAD } from '../src/game/garagePresentationPose.ts';
 import { HERO_CAMERA, HERO_FLAG, HERO_FLAG_MASK, HERO_CARD_SIZES } from './hero-card-policy.mjs';
 import {
-  CARD_LAYOUT, applyFlagMask, drawTank, flagMaskStops, heroFlagMaskCss, measureCore, renderFlagLayer,
+  CARD_LAYOUT, applyFlagMask, drawTank, flagMaskStops, heroFlagMaskCss, horizontalBands, measureCore, renderFlagLayer,
 } from './hero-cards-compose.mjs';
 
 const deg = (rad) => rad * 180 / Math.PI;
@@ -84,6 +84,29 @@ assert.ok(heroFlagMaskCss(HERO_FLAG_MASK, 'right').includes(` at ${pct(1 - HERO_
   assert.ok(hb > hr, 'hoist band is blue (obverse, toward the gun)');
   assert.ok(fr > fb, 'fly band is red (toward the rear edge)');
   assert.ok(px[(w - 1) * 4 + 3] > 200, 'the fly runs off the far edge');
+}
+
+// 6. Pure horizontal-band flags are detected from the art and drawn short enough that every band clears the hull:
+//    in the rear column, above the lowest band's centre line, RU shows white, blue and red (r5 hid the red).
+{
+  assert.equal(await horizontalBands('ru'), 3, 'RU: three bands');
+  assert.equal(await horizontalBands('de'), 3, 'DE: three bands');
+  assert.equal(await horizontalBands('pl'), 2, 'PL: two bands');
+  assert.equal(await horizontalBands('us'), 0, 'US: an emblem flag keeps its 4x3 art');
+  assert.equal(await horizontalBands('fr'), 0, 'FR: vertical bands keep their 4x3 art');
+  const w = 320, h = 200;
+  const flag = await renderFlagLayer('ru', HERO_FLAG, { width: w, height: h });
+  const rows = Math.round(h * HERO_FLAG.bandFit.lowestBandCentreY) + 2;
+  const col = flag.getContext('2d').getImageData(Math.round(w * 0.9), 0, 1, rows).data;
+  const seen = { white: 0, blue: 0, red: 0 };
+  for (let i = 0; i < col.length; i += 4) {
+    if (col[i + 3] < 200) continue;
+    const r = col[i], g = col[i + 1], b = col[i + 2];
+    if (r > 160 && g > 160 && b > 160) seen.white++;
+    else if (b > r + 40 && b > g) seen.blue++;
+    else if (r > b + 60 && r > g + 40) seen.red++;
+  }
+  assert.ok(seen.white && seen.blue && seen.red, `RU bands above the floor line: ${JSON.stringify(seen)}`);
 }
 
 console.log('hero-cards selftest: ok');

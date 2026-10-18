@@ -65,6 +65,34 @@ export async function flagImage(code, width, height) {
   return loadImage(Buffer.from(svg));
 }
 
+/**
+ * Number of bands when a flag's art is pure horizontal bands (every row one colour: RU, DE, PL, UA), else 0.
+ * Rasterised small, so the answer follows the shipped SVG rather than a list of codes.
+ */
+export async function horizontalBands(code) {
+  const w = 64, h = 48;
+  const c = createCanvas(w, h);
+  const ctx = c.getContext('2d');
+  ctx.drawImage(await flagImage(code, w, h), 0, 0, w, h);
+  const px = ctx.getImageData(0, 0, w, h).data;
+  let bands = 0, prev = null;
+  for (let y = 0; y < h; y++) {
+    const k0 = y * w * 4;
+    for (let x = 1; x < w; x++) {
+      const k = k0 + x * 4;
+      if (Math.abs(px[k] - px[k0]) + Math.abs(px[k + 1] - px[k0 + 1]) + Math.abs(px[k + 2] - px[k0 + 2]) > 24) return 0;
+    }
+    const rgb = [px[k0], px[k0 + 1], px[k0 + 2]];
+    // Antialiased boundary rows blend two bands: count a band only where the colour holds for two rows.
+    if (!prev || Math.abs(rgb[0] - prev[0]) + Math.abs(rgb[1] - prev[1]) + Math.abs(rgb[2] - prev[2]) > 24) {
+      const next = y + 1 < h ? [px[k0 + w * 4], px[k0 + w * 4 + 1], px[k0 + w * 4 + 2]] : rgb;
+      if (Math.abs(next[0] - rgb[0]) + Math.abs(next[1] - rgb[1]) + Math.abs(next[2] - rgb[2]) <= 24) bands++;
+    }
+    prev = rgb;
+  }
+  return bands;
+}
+
 // ---------------------------------------------------------------------------
 // Cloth
 
@@ -85,7 +113,9 @@ export async function renderFlagLayer(code, policy = HERO_FLAG, overrides = {}) 
   const p = { ...policy, ...overrides };
   const W = p.width, H = p.height;
   const FW = W * p.flagWidth;
-  const FH = FW * p.flagAspect;
+  let FH = FW * p.flagAspect;
+  const bands = p.bandFit ? await horizontalBands(code) : 0;
+  if (bands >= 2) FH = Math.min(FH, (p.bandFit.lowestBandCentreY - p.topY) * H * bands / (bands - 0.5));
   const reverse = p.layout === 'reverse';
   const x0 = reverse ? W * (1 - p.hoistX) : W * p.hoistX; // hoist edge (the reverse face hoists on the right)
   const y0 = H * p.topY;
