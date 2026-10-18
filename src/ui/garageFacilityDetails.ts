@@ -17,6 +17,7 @@ import {
   type GarageWorkshopBayPose,
 } from '../game/garageWorkshopLayout.ts';
 import { garageContactShadowTexture } from './garageYardWear.ts';
+import { GARAGE_KIT_CELL_ARCHITECTURES } from './garageKitTable.ts';
 import { GARAGE_FACILITY_GRIME_KEY, garageFacilityGrimeHook } from './garageGrimeProgram.ts';
 import { buildConifers, buildEarthMound, buildRockFace, buildTalusApron, buildTropicalPlants } from './garageRockKit.ts';
 
@@ -430,27 +431,6 @@ export function addGarageFacilityDetails({
       new THREE.Quaternion().setFromEuler(new THREE.Euler(rotationX, yaw, rotationZ)),
       new THREE.Vector3(scale[0], scale[1], scale[2]),
     );
-  };
-
-  const box = (
-    side: number,
-    depth: number,
-    y: number,
-    width: number,
-    height: number,
-    length: number,
-    color = steel,
-    yaw = GARAGE_FACILITY_AXIS_YAW_RAD,
-    rotationX = 0,
-    rotationZ = 0,
-    materialClass: PrimitiveInstance['materialClass'] = 'structure',
-  ): void => {
-    boxInstances.push({
-      matrix: transform(side, depth, y, [width, height, length], yaw, rotationX, rotationZ),
-      color: color.clone(),
-      materialClass,
-    });
-    facilityProps += 1;
   };
 
   const cylinder = (
@@ -1562,23 +1542,6 @@ export function addGarageFacilityDetails({
     }
   };
 
-  const addCrates = (side: number, depth: number, rows = 2): void => {
-    // the stack stands on dark pallets that spread its weight and show where it meets the ground (2026-10-10, wave 377:
-    // "crates float on snow")
-    for (let column = 0; column < 4; column += 1) {
-      box(side + column * 1.05 - 1.5, depth, 0.07, 1.04, 0.14, 1.0, dark, GARAGE_FACILITY_AXIS_YAW_RAD, 0, 0, 'equipment');
-    }
-    for (let row = 0; row < rows; row += 1) {
-      for (let column = 0; column < 4 - row; column += 1) {
-        const width = 0.88 + ((row + column) % 2) * 0.22;
-        box(side + column * 1.05 - 1.5, depth + row * 0.18,
-          0.53 + row * 0.82, width, 0.78, 0.82, timber);
-        box(side + column * 1.05 - 1.5, depth + row * 0.18,
-          0.53 + row * 0.82, 0.08, 0.82, 0.86, steel);
-      }
-    }
-  };
-
   const addDrums = (side: number, depth: number, count = 6): void => {
     for (let index = 0; index < count; index += 1) {
       const x = side + (index % 3) * 0.74;
@@ -2261,7 +2224,6 @@ export function addGarageFacilityDetails({
       const top = sailY(l, f) - foot.baseY + 0.2;
       clusterBox(foot, 0, 0, 0.12, 0.7, 0.24, 0.7, dark, 'masonry');
       clusterBox(foot, 0, 0, 0.27, 0.42, 0.04, 0.42, mast, 'structure');
-      for (const dl of [-0.15, 0.15]) for (const df of [-0.15, 0.15]) clusterCylinder(foot, dl, df, 0.31, 0.025, 0.05, dark, 0, 8);
       clusterCylinder(foot, 0, 0, 0.29 + (top - 0.29) / 2, 0.06, top - 0.29, mast, 0, 10);
       clusterCylinder(foot, 0, 0, top + 0.04, 0.08, 0.08, mast, 0, 10);
       clusterCylinder(foot, 0, 0, top - 0.12, 0.07, 0.025, cable, Math.PI / 2, 10); // the eye
@@ -2802,8 +2764,12 @@ export function addGarageFacilityDetails({
   if (!burlakBay || !t90Bay) throw new Error(`Garage ${variant.id} lacks workshop bay anchors`);
   addPurposeBuiltServiceBay(burlakBay, 1, false);
   addPurposeBuiltServiceBay(t90Bay, -1, true, false);
-  addFloodTower(layout.floods[0][0], layout.floods[0][1], 7.6);
-  addFloodTower(layout.floods[1][0], layout.floods[1][1], 7.6);
+  // (garage r9: a Garage whose kit table lays out its own cells lights them with the kit's towed light tower instead of
+  // these bare poles)
+  if (!GARAGE_KIT_CELL_ARCHITECTURES.has(variant.architecture)) {
+    addFloodTower(layout.floods[0][0], layout.floods[0][1], 7.6);
+    addFloodTower(layout.floods[1][0], layout.floods[1][1], 7.6);
+  }
   // Kit for the place (2026-10-11, waves 398 and 402: "one stock kit everywhere: the same crate, tool chest, wheel rack
   // and blank panels, recoloured per yard"): each Garage furnishes its four yard stations and the two shelter flanks
   // with what its own army keeps there.
@@ -3004,7 +2970,11 @@ export function addGarageFacilityDetails({
     winchDrum: 'recovery-winching', trackStack: 'track-spares', billets: 'plate-and-billet-stock', slagPot: 'slag-handling',
     avalancheKit: 'avalanche-rescue',
   });
+  // (garage r9: a Garage whose kit table lays out its own working cells drops these primitive station piles; the cells
+  // carry the same purposes in authored pieces: garageSiroccoKit.ts)
+  const kitCellsReplaceStations = GARAGE_KIT_CELL_ARCHITECTURES.has(variant.architecture);
   stations.forEach(([side, depth], index) => {
+    if (kitCellsReplaceStations) return;
     kitBuilders[kit[index]](fixedCluster(side, depth));
     servicePurposeTags.add(KIT_PURPOSE[kit[index]]);
   });
@@ -3017,36 +2987,17 @@ export function addGarageFacilityDetails({
       // the shade depot in the frame's right third, its open side to the yard; its stores and kit round its far sides,
       // clear of the convoy road
       addDesertShadeDepot(featureSide, featureDepth, [featureSide - 6.5, featureDepth - 9]);
-      addDrums(featureSide + 11.5, featureDepth - 4.0, 6);
-      addCrates(featureSide - 2.0, featureDepth + 8.0, 2);
+      // (garage r9: its loose primitive drums and crates gave way to the kit's fuel point and engine cell)
       addServiceManifold(fixedCluster(featureSide + 4.0, featureDepth - 9.5), 0, 0, 4.2);
       addPoweredWinch(fixedCluster(featureSide + 7.5, featureDepth - 10.5), 0, 0, new THREE.Color(0xb98536));
       addPartsPallet(fixedCluster(featureSide - 4.0, featureDepth + 9.0), 0, 0, 2);
       // (the turning-roll station that stood here read as "a large tan half-cylinder ... a fuel bladder or culvert" in the
       // hero frame's right foreground, the re-judge 2026-10-15; the bowsers' refit under the shade is the process zone)
       factoryProcessZones += 1;
-      // the depot's perimeter on the yard's left (the re-judge, 2026-10-15: no tower, berm or sandbag wall in the hero
-      // frame; the critic panel: "HESCO or sandbag berms, a guard tower"): a HESCO line across the left third with the
-      // guard tower standing in its gap, clear of the turret and the gun, the plain caravanserai wall behind them
-      {
-        const towerSide = -15.5, towerDepth = 17.0;
-        const facing = (side: number, depth: number): FacilityCluster => {
-          const at = cameraPoint(side, depth), toward = cameraPoint(side, depth - 1);
-          return { x: at.x, z: at.z, baseY: groundAtWorld(at.x, at.z), yaw: Math.atan2(toward.x - at.x, toward.z - at.z) };
-        };
-        addGuardTower(facing(towerSide, towerDepth), new THREE.Color(0xb59a6c), new THREE.Color(0x6a5238));
-        const sand = new THREE.Color(0xc0a676), sandDark = new THREE.Color(0xa58c60), mesh = new THREE.Color(0x5e5a50);
-        for (const [from, to] of [[-27.5, -18.6], [-12.4, -6.2]] as const) {
-          for (let k = 0; k < Math.floor((to - from) / 1.08); k += 1) {
-            const cell = facing(from + 0.54 + k * 1.08, towerDepth + 0.4);
-            clusterBox(cell, 0, 0, 0.68, 1.04, 1.36, 1.04, k % 3 === 1 ? sandDark : sand, 'painted');
-            for (const dl of [-0.52, 0.52]) for (const df of [-0.52, 0.52]) clusterBox(cell, dl, df, 0.7, 0.03, 1.4, 0.03, mesh, 'structure');
-            for (const df of [-0.52, 0.52]) clusterBox(cell, 0, df, 1.38, 1.04, 0.03, 0.03, mesh, 'structure');
-            clusterBox(cell, 0, 0, 1.33, 0.98, 0.06, 0.98, sand.clone().multiplyScalar(1.06), 'masonry'); // the fill, slumped
-          }
-        }
-        environmentSpecificAssemblies += 1;
-      }
+      // (garage r9: the depot's perimeter on the yard's left, its HESCO line and its guard tower, is the kit's: a HESCO
+      // line with its mesh banner, the rebuilt sandbagged tower under its camouflage net and a muralled T-wall run,
+      // garageSiroccoKit.ts)
+      environmentSpecificAssemblies += 1;
   };
   const addRepairBunker = (): void => {
       environmentSpecificAssemblies += 1;
@@ -4163,6 +4114,8 @@ export function addGarageFacilityDetails({
     // nor does Redrock: its recovery gear lies on the recovery yard's own pallet, and the vignette here read as "toy-like
     // scattered props (a black puck disc, a plank with two sticks, little red cylinders)" (rejudge6, 2026-10-15)
     if (variant.architecture === 'recovery_yard') return;
+    // nor do the Garages whose kit tables lay out their own working cells (garage r9: Sirocco's water point)
+    if (GARAGE_KIT_CELL_ARCHITECTURES.has(variant.architecture)) return;
     const at = fixedCluster(floor.side, floor.depth);
     const olive = new THREE.Color(0x4f5536), rope = new THREE.Color(0x8c7a55);
     const black = new THREE.Color(0x1b1c1d), red = new THREE.Color(0x8a2e24), wood = new THREE.Color(0x6a5238);

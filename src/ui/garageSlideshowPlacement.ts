@@ -1,5 +1,6 @@
 import { GARAGE_HERO_HEADING_RAD, garageViewPoint } from '../game/garagePresentationPose.ts';
 import type { GarageVariant } from '../game/garageVariants.ts';
+import { kitYawToward } from './garageKitTable.ts';
 
 /**
  * Where each Garage's one slideshow stands (garage r9). The pack builds the panel's frame (a slim LED bezel on its
@@ -30,6 +31,12 @@ export const GARAGE_SLIDESHOW_PLACEMENTS: Readonly<Partial<Record<GarageVariant[
   // Redrock: a rugged LED trailer on its outriggers past the gantry, in the frame's right band clear of the hero's halo,
   // its panel turned to the yard
   recovery_yard: Object.freeze({ at: [19, 37] as const, yaw: 0, width: 2.8, mount: 'trailer' }),
+  // Sirocco: a rugged LED trailer under the shade sail's back edge, in the frame's right band clear of the hero's halo,
+  // turned to the lens (garage r9, garageSiroccoKit.ts)
+  shade_depot: Object.freeze({ at: [16.4, 27.6] as const, yaw: kitYawToward([16.4, 27.6]), width: 2.8, mount: 'trailer' }),
+  // Steinburg: a freestanding LED panel before the corner shop, in the frame's right band clear of the hero's halo (the
+  // brief's gate passage stands behind the hero), turned to the lens (garage r9, garageSteinburgKit.ts)
+  brick_arsenal: Object.freeze({ at: [15.4, 24.0] as const, yaw: kitYawToward([15.4, 24.0]), width: 2.6, mount: 'freestanding' }),
 });
 
 /** The bezel's bottom edge over the panel's base for a mount. */

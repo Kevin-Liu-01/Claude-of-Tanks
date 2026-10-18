@@ -1,6 +1,8 @@
 import type { GarageVariant } from '../game/garageVariants.ts';
 import { atmosphereBand, atmospherePlume, atmosphereStreamer } from './garageAtmosphereKit.ts';
 import type { GarageKitPlacement } from './garageKitPlacement.ts';
+import { SIROCCO_KIT_PLACEMENT } from './garageSiroccoKit.ts';
+import { STEINBURG_KIT_PLACEMENT } from './garageSteinburgKit.ts';
 
 /**
  * Each Garage's kit arrangement (garage r9): the per-garage lanes fill these rows; garageKitPlacement.ts builds them.
@@ -10,6 +12,10 @@ import type { GarageKitPlacement } from './garageKitPlacement.ts';
  * and 67-78 %); everything else fills the orbit, the bays and the out-ring views.
  */
 export const GARAGE_KIT_PLACEMENTS: Readonly<Partial<Record<GarageVariant['architecture'], GarageKitPlacement>>> = Object.freeze({
+  // Sirocco Deployment: a forward FOB terrace at the wadi crossing (garage r9 g3; its cells: garageSiroccoKit.ts)
+  shade_depot: SIROCCO_KIT_PLACEMENT,
+  // Steinburg Deployment: the Zeughaus's street, crane bay and dispatch office (garage r9 g3: garageSteinburgKit.ts)
+  brick_arsenal: STEINBURG_KIT_PLACEMENT,
   // Redrock Divide: a heavy recovery yard on a red sand valley floor (garage r9 kit demo; the Redrock lane extends it).
   // The site office's cell by the compound gate (a computer station, the recovery board, a parts and fuel cell), the
   // LED trailer and its generator past the gantry in the frame's right band (garageSlideshowPlacement.ts); the recovery story's low-loader with its

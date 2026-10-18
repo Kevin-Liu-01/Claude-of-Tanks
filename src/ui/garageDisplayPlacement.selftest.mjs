@@ -53,7 +53,8 @@ const halo = { minX: hero.minX - 0.08, maxX: hero.maxX + 0.08, minY: hero.minY -
 const inHalo = (rect) => rect && rect.maxX > halo.minX && rect.minX < halo.maxX && rect.maxY > halo.minY && rect.minY < halo.maxY
   && rect.maxX > 0 && rect.minX < 1 && rect.maxY > 0 && rect.minY < 1;
 
-// triangle / box overlap (separating axes), the box shrunk by the centimetre the rule allows
+// triangle / box overlap (separating axes), the box shrunk by the centimetre the rule allows; an oriented box (a display
+// quad's own frame: across, up and its normal) is tested by carrying the triangle into its frame
 const overlap = (() => {
   const axes = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)];
   const v = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
@@ -101,12 +102,24 @@ for (const [architecture, placement] of Object.entries(GARAGE_KIT_PLACEMENTS)) {
   const instanceMatrix = new THREE.Matrix4();
   let intrusions = 0;
   const offenders = [];
-  for (const { item, solid, quads } of bounds) {
+  for (const { item, solid, quads, quadCorners } of bounds) {
     const isDisplay = item.kind === 'display' || item.kind === 'sign' || (item.kind === 'wall' && item.params?.mural);
     if (!isDisplay) continue;
     // the slideshow by its screen (the dressing's one screen at the shared pose; its frame is the support) and against
     // the structures by its whole frame; everything else by its faces and decals
     let boxes = quads.length ? quads : [solid];
+    // each face as an oriented box in its own frame (its plane and edges), so a face turned off the world's axes is not
+    // measured by its world box (the design: no display OBB cuts a structure by more than a centimetre)
+    let frames = quads.length ? quadCorners.map(([a, b, c, d]) => {
+      const center = new THREE.Vector3().add(a).add(b).add(c).add(d).multiplyScalar(0.25);
+      const u = new THREE.Vector3().subVectors(b, a), v = new THREE.Vector3().subVectors(d, a);
+      const width = u.length(), height = v.length();
+      u.normalize(); v.normalize();
+      const n = new THREE.Vector3().crossVectors(u, v).normalize();
+      v.crossVectors(n, u).normalize();
+      const toLocal = new THREE.Matrix4().makeBasis(u, v, n).setPosition(center).invert();
+      return { toLocal, half: new THREE.Vector3(Math.max(0.001, width / 2 - 0.01), Math.max(0.001, height / 2 - 0.01), 0.004) };
+    }) : null;
     if (item.kind === 'display' && item.display === 'slideshow') {
       const pose = garageSlideshowPose(architecture);
       const across = new THREE.Vector3(Math.cos(pose.yaw), 0, -Math.sin(pose.yaw)).multiplyScalar(pose.width / 2);
@@ -116,15 +129,18 @@ for (const [architecture, placement] of Object.entries(GARAGE_KIT_PLACEMENTS)) {
       ]);
       assert.ok(!inHalo(screenRect(screen)), `${architecture}: the slideshow's screen enters the hero's halo`);
       boxes = [solid];
+      frames = null;
     }
-    for (const box of boxes) {
+    for (const [boxIndex, box] of boxes.entries()) {
+    const frame = frames ? frames[boxIndex] : null;
     // 1. the halo
     if (!(item.kind === 'display' && item.display === 'slideshow')) {
       assert.ok(!inHalo(screenRect(box)), `${architecture}: ${item.kind}/${item.display ?? item.sign ?? item.wall} enters the hero's halo`);
     }
     // 2. the structures: its display faces (or its sign plate) never cut into them
-    const center = box.getCenter(new THREE.Vector3());
-    const half = box.getSize(new THREE.Vector3()).multiplyScalar(0.5).subScalar(0.01).max(new THREE.Vector3(0.001, 0.001, 0.001));
+    const center = frame ? new THREE.Vector3() : box.getCenter(new THREE.Vector3());
+    const half = frame ? frame.half : box.getSize(new THREE.Vector3()).multiplyScalar(0.5).subScalar(0.01).max(new THREE.Vector3(0.001, 0.001, 0.001));
+    const worldCenter = box.getCenter(new THREE.Vector3());
     const reach = half.length() + 0.5;
     let hit = false;
     for (const mesh of obstacles) {
@@ -136,14 +152,17 @@ for (const [architecture, placement] of Object.entries(GARAGE_KIT_PLACEMENTS)) {
       const instances = mesh.isInstancedMesh ? mesh.count : 1;
       for (let k = 0; k < instances && !hit; k += 1) {
         if (mesh.isInstancedMesh) mesh.getMatrixAt(k, instanceMatrix); else instanceMatrix.copy(mesh.matrixWorld);
-        if (!mesh.isInstancedMesh && sphere && sphere.center.distanceTo(center) > sphere.radius + reach) break;
+        if (!mesh.isInstancedMesh && sphere && sphere.center.distanceTo(worldCenter) > sphere.radius + reach) break;
         if (mesh.isInstancedMesh) {
           const p = new THREE.Vector3().setFromMatrixPosition(instanceMatrix);
           const s = new THREE.Vector3().setFromMatrixScale(instanceMatrix);
-          if (p.distanceTo(center) > s.length() + reach) continue;
+          if (p.distanceTo(worldCenter) > s.length() + reach) continue;
         }
         for (let t = 0; t < count; t += 3) {
-          for (let c = 0; c < 3; c += 1) triangle[c].fromBufferAttribute(position, index ? index.getX(t + c) : t + c).applyMatrix4(instanceMatrix);
+          for (let c = 0; c < 3; c += 1) {
+            triangle[c].fromBufferAttribute(position, index ? index.getX(t + c) : t + c).applyMatrix4(instanceMatrix);
+            if (frame) triangle[c].applyMatrix4(frame.toLocal);
+          }
           if (overlap(triangle[0], triangle[1], triangle[2], center, half)) { hit = true; break; }
         }
       }

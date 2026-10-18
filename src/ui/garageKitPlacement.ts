@@ -95,6 +95,9 @@ export interface GarageKitBuild {
     stationMonitors: number;
     nameboards: number;
     displayRects: readonly string[];
+    /** Stocked spares the props carry and the props that are secured stores (the facility receipt's own counts). */
+    looseParts: number;
+    secureStores: number;
   }>;
   readonly slideshow: GarageSlideshowPose | null;
   /** Each grounded piece's footprint (world x, z and radius) for the pack's vegetation to keep clear of. */
@@ -110,6 +113,15 @@ interface CachedPiece {
 }
 
 const pieceCache = new Map<string, CachedPiece>();
+
+/** The stocked spares a placed prop carries (drums, cans, crates, sandbags, wheels ...) for the facility receipt. */
+const KIT_LOOSE_PARTS: Readonly<Record<string, number>> = Object.freeze({
+  drum200: 1, jerrycan: 1, ammoBoxSteel: 1, ammoCrate: 1, sandbag: 1, pallet: 1, roadWheel: 1, trackPallet: 6, towBar: 1,
+  chocks: 2, cone: 1, extinguisher: 1, gasCylinder: 1, cableReel: 1, coiledHose: 1, tarpStack: 4, jerrycanRack: 10, gasCage: 4,
+  oilRack: 2, rollCage: 2,
+});
+/** The props that are secured stores: locked racks, cages and closed containers. */
+const KIT_SECURE_STORES: ReadonlySet<string> = new Set(['jerrycanRack', 'gasCage', 'oilRack', 'rollCage', 'isoContainer']);
 
 /** Build (or fetch) one piece in its own frame. Exported for the kit sheet and the receipts. */
 function buildGarageKitPiece(item: GarageKitItem, architecture: GarageVariant['architecture'], mapId: string): CachedPiece {
@@ -188,6 +200,23 @@ function hash(text: string): number {
   return value >>> 0;
 }
 
+/**
+ * Build a Garage's kit pieces into the session cache ahead of its pack (garage r9 K0.3: "build each kit geometry once
+ * per session ... and only transform it into packs"): the pack's synchronous bake then only places cached pieces. The
+ * work yields to the event loop every few milliseconds, so a cold visit never builds the whole table inside one frame.
+ */
+export async function prepareGarageKitPieces(variant: GarageVariant, placement: GarageKitPlacement, sliceMs = 6): Promise<void> {
+  const now = (): number => (typeof performance !== 'undefined' ? performance.now() : 0);
+  let sliceStart = now();
+  for (const item of garageKitItems(variant, placement)) {
+    buildGarageKitPiece(item, variant.architecture, variant.mapId);
+    if (now() - sliceStart > sliceMs) {
+      await new Promise<void>((resolve) => { setTimeout(resolve, 0); });
+      sliceStart = now();
+    }
+  }
+}
+
 /** Drop the session cache (tests). */
 export function clearGarageKitCache(): void {
   for (const piece of pieceCache.values()) {
@@ -218,7 +247,7 @@ export function buildGarageKitDressing(params: {
   const cranes: KitCraneReceipt[] = [];
   const displayRects: string[] = [];
   let kitTriangles = 0, displayTriangles = 0, decalTriangles = 0;
-  let brandPieces = 0, tankImages = 0, stations = 0, stationMonitors = 0, nameboards = 0;
+  let brandPieces = 0, tankImages = 0, stations = 0, stationMonitors = 0, nameboards = 0, looseParts = 0, secureStores = 0;
   let slideshow: GarageSlideshowPose | null = null;
   const footprints: Array<{ x: number; z: number; radius: number }> = [];
   const blotRect = garageDisplayRect('decal.blot');
@@ -275,6 +304,11 @@ export function buildGarageKitDressing(params: {
       }
     }
     if (piece.crane) cranes.push(piece.crane);
+    if (item.kind === 'prop') {
+      looseParts += KIT_LOOSE_PARTS[item.name] ?? 0;
+      // an open container is a workplace, not a store
+      if (KIT_SECURE_STORES.has(item.name) && !(item.name === 'isoContainer' && (item.params?.variant ?? 0) > 0)) secureStores += 1;
+    }
     if (item.kind === 'sign' || (item.kind === 'display' && 'rect' in item)) countRect((item as { rect: string }).rect);
     if (item.kind === 'display' && item.display === 'nameboard') nameboards += 1;
     if (item.kind === 'display' && item.display === 'board') for (const rect of item.rects) countRect(rect);
@@ -339,7 +373,7 @@ export function buildGarageKitDressing(params: {
     stats: Object.freeze({
       kitPieces: items.length, kitTriangles, displayTriangles, decalTriangles, atmosphereTriangles,
       cranes: Object.freeze(cranes), brandPieces, tankImages, stations, stationMonitors, nameboards,
-      displayRects: Object.freeze(displayRects),
+      displayRects: Object.freeze(displayRects), looseParts, secureStores,
     }),
   };
 }
@@ -380,6 +414,8 @@ export function garageKitItemBounds(variant: GarageVariant, placement: GarageKit
     readonly item: GarageKitItem; readonly solid: THREE.Box3; readonly display: THREE.Box3 | null;
     /** Each display face and decal quad on its own (a wall's murals, a board's prints, a station's screens). */
     readonly quads: readonly THREE.Box3[];
+    /** The same quads' corners (bottom-left, bottom-right, top-right, top-left), for oriented tests. */
+    readonly quadCorners: ReadonlyArray<readonly [THREE.Vector3, THREE.Vector3, THREE.Vector3, THREE.Vector3]>;
   }> {
   const matrix = new THREE.Matrix4();
   return garageKitItems(variant, placement).map((item) => {
@@ -398,18 +434,22 @@ export function garageKitItemBounds(variant: GarageVariant, placement: GarageKit
       return box;
     };
     const quads: THREE.Box3[] = [];
+    const quadCorners: Array<[THREE.Vector3, THREE.Vector3, THREE.Vector3, THREE.Vector3]> = [];
     for (const geometry of [piece.result.display, piece.result.decal]) {
       if (!geometry) continue;
       const placed = place(geometry);
       const position = placed.getAttribute('position');
-      for (let i = 0; i < position.count; i += 6) {
+      for (let i = 0; i + 5 < position.count; i += 6) {
         const box = new THREE.Box3();
-        for (let k = 0; k < 6 && i + k < position.count; k += 1) box.expandByPoint(new THREE.Vector3().fromBufferAttribute(position, i + k));
+        for (let k = 0; k < 6; k += 1) box.expandByPoint(new THREE.Vector3().fromBufferAttribute(position, i + k));
         quads.push(box);
+        // the atlas quads are written as (a, b, c) and (a, c, d)
+        const corner = (k: number): THREE.Vector3 => new THREE.Vector3().fromBufferAttribute(position, i + k);
+        quadCorners.push([corner(0), corner(1), corner(2), corner(5)]);
       }
       placed.dispose();
     }
-    return { item, solid: boxOf(piece.result.solid), display: piece.result.display ? boxOf(piece.result.display) : null, quads };
+    return { item, solid: boxOf(piece.result.solid), display: piece.result.display ? boxOf(piece.result.display) : null, quads, quadCorners };
   });
 }
 
