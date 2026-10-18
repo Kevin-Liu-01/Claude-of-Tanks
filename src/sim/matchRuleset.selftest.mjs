@@ -6,7 +6,8 @@ import {
   matchRulesetFor, rulesetLines, rulesetAmmoCapacity, rulesetReloadMultiplier, RULESET_SCORE_TARGETS,
   applyRulesetToCombat, rulesetLoadout, refillUnlimitedAmmunition, rulesetAllyCap,
   FLAG_CARRIER_SPEED_SCALE, HORDE_WAVE_REPAIR, TEAM_ARRANGEMENT_LIMITS, normalizeTeamArrangement,
-  acceptsTeamArrangement, hordeWaveSize, assaultWaveHealthScale, BATTLE_FIELD_LIMIT, SIDES_PRESETS, STANDARD_SIDES, isWaveMode, rulesetSides, sidesPresetOf,
+  acceptsTeamArrangement, hordeWaveSize, hordeHostileHull, hordeWaveHealthScale, hordeWaveSpeedScale, cacheHealChance, rulesetBotDifficulty,
+  assaultWaveHealthScale, BATTLE_FIELD_LIMIT, SIDES_PRESETS, STANDARD_SIDES, isWaveMode, rulesetSides, sidesPresetOf,
   MARS_CACHE_IDS, MARS_DEFAULT_RULES, MARS_GRAVITY_IDS, ENDING_HOLD_LIMIT_S, endingHoldExpired, STANDARD_PHYSICS, rulesetPhysicsAt,
   AERIAL_RULES,
 } from './matchRuleset.ts';
@@ -49,16 +50,38 @@ assert.equal(rulesetLines(turbo)[0].values.value, '0.6 g');
 assert.equal(rulesetLines(turbo)[1].values.value, '+85 %');
 assert.equal(rulesetLines(turbo)[4].values.value, '+43 %', 'reload shows as a rate gain');
 
+// the zombies (owner 2026-10-17: "all the zombies actually have low hp"): the humans' hull doubled, the hostiles fodder at
+// 15 % of their own plus 2 % a wave, more of them (six, two more a wave, a twenty-strong pool), one difficulty tier down
 const horde = matchRulesetFor('endless_horde');
-assert.equal(horde.allies, 2, 'Horde fields the player with two allied bots (co-op humans join alpha)');
-assert.equal(horde.enemies, 14, 'owner 2026-09-15: fourteen hostile identities in the pool');
-assert.deepEqual(horde.horde, { waveSize: 5, waveStep: 1, surgeEvery: 3 }, 'five on the first wave, one more each wave, a surge every third');
-assert.deepEqual([1, 2, 3, 4, 5, 6, 7].map((w) => hordeWaveSize(horde.horde, w)), [5, 6, 7, 9, 10, 11, 13], 'the wave law grows without a cap');
-assert.equal(horde.timeLimitS, null); assert.equal(horde.respawnS, null); assert.equal(horde.hpScale, 1.25);
-assert.deepEqual(rulesetLines(horde).map((line) => line.key), ['hp', 'noRespawn', 'noClock', 'allies', 'enemyPool', 'hordeWaves', 'waveRepair']);
-assert.equal(rulesetLines(horde)[6].values.value, '30 %');
-assert.deepEqual(rulesetLines(horde)[5].values, { value: '5', step: '1' });
+assert.equal(horde.allies, 4, 'Horde fields the player with four allied bots (co-op humans join alpha)');
+assert.equal(horde.enemies, 20, 'a twenty-strong pool of hostile identities');
+assert.deepEqual({ ...horde.horde, cacheHeal: { ...horde.horde.cacheHeal } }, {
+  waveSize: 6, waveStep: 2, surgeEvery: 3, hostileHpScale: 0.15, hpPerWave: 0.02, speedPerWave: 0.045, speedPerWaveMax: 0.55,
+  cacheHeal: { first: 0.62, perWave: 0.055, floor: 0.08 }, hostileDifficultyStep: 1,
+}, 'six on the first wave, two more each wave, a surge every third; fodder hulls; the speed ramp and cache law live here');
+assert.deepEqual([1, 2, 3, 4, 5, 6, 7].map((w) => hordeWaveSize(horde.horde, w)), [6, 8, 10, 13, 15, 17, 20], 'the wave law grows without a cap');
+assert.equal(horde.timeLimitS, null); assert.equal(horde.respawnS, null); assert.equal(horde.hpScale, 2, 'the humans\' hull');
+assert.equal(horde.ammo, 'unlimited');
+assert.deepEqual(rulesetLines(horde).map((line) => line.key), ['hp', 'ammoUnlimited', 'noRespawn', 'noClock', 'allies', 'enemyPool', 'hordeWaves', 'waveRepair']);
+assert.equal(rulesetLines(horde)[0].values.value, '+100 % / -85 %', 'one hull chip: the humans\' hull, then the zombies\' after a slash');
+assert.equal(rulesetLines(horde)[7].values.value, '30 %');
+assert.deepEqual(rulesetLines(horde)[6].values, { value: '6', step: '2' });
 assert.equal(HORDE_WAVE_REPAIR, 0.3);
+{
+  const near = (a, b) => Math.abs(a - b) < 1e-9;
+  assert.ok(near(hordeHostileHull(horde.horde, 1), 0.15) && near(hordeHostileHull(horde.horde, 11), 0.18), 'a hostile is 15 % of its hull on wave 1, 18 % on wave 11');
+  assert.ok(near(hordeWaveHealthScale(horde, horde.horde, 1) * horde.hpScale, 0.15), 'the revive scale times the ruleset stamp lands on the fodder hull');
+  assert.ok(near(hordeWaveSpeedScale(horde.horde, 1), 1) && near(hordeWaveSpeedScale(horde.horde, 5), 1.18) && near(hordeWaveSpeedScale(horde.horde, 40), 1.55),
+    'the wave speed ramp: +4.5 % a wave, capped at +55 %');
+  assert.equal(cacheHealChance(horde, 1), 1, 'unlimited rounds: every Horde cache is a repair');
+  const spec = { ...horde, ammo: 'spec' };
+  assert.ok(near(cacheHealChance(spec, 1), 0.62) && near(cacheHealChance(spec, 3), 0.51) && near(cacheHealChance(spec, 40), 0.08), 'the spec-rounds cache law');
+  assert.equal(cacheHealChance(matchRulesetFor('mars'), 1), 1); assert.equal(cacheHealChance({ ...matchRulesetFor('mars'), ammo: 'spec' }, 1), 0.5);
+  assert.equal(rulesetBotDifficulty(horde, 'bravo', 'normal'), 'easy', 'a Horde zombie plays one tier below the battle');
+  assert.equal(rulesetBotDifficulty(horde, 'enemy', 'hard'), 'normal'); assert.equal(rulesetBotDifficulty(horde, 'enemy', 'easy'), 'easy', 'never under the easiest');
+  assert.equal(rulesetBotDifficulty(horde, 'alpha', 'normal'), 'normal'); assert.equal(rulesetBotDifficulty(horde, 'player', 'hard'), 'hard', 'the human side keeps its tier');
+  for (const mode of GAME_MODE_IDS) if (mode !== 'endless_horde') assert.equal(rulesetBotDifficulty(matchRulesetFor(mode), 'bravo', 'hard'), 'hard', `${mode}: bots keep the battle's tier`);
+}
 
 // team arrangement (owner 2026-09-15): the co-op modes take the player's side arrangement, clamped
 // sides (owner 2026-09-18): every registered mode arranges its two sides under one field limit
@@ -82,7 +105,8 @@ const arrangedHorde = matchRulesetFor('endless_horde', null, { allies: 0, enemie
 assert.equal(arrangedHorde.allies, 0); assert.equal(arrangedHorde.enemies, 18); assert.equal(arrangedHorde.horde.waveSize, 8);
 assert.equal(arrangedHorde.enemyNation, 'russia');
 assert.ok(Object.isFrozen(arrangedHorde) && Object.isFrozen(arrangedHorde.horde));
-assert.deepEqual(rulesetLines(arrangedHorde).map((line) => line.key), ['hp', 'noRespawn', 'noClock', 'noAllies', 'enemyPool', 'enemyNation', 'hordeWaves', 'waveRepair']);
+assert.deepEqual(rulesetLines(arrangedHorde).map((line) => line.key), ['hp', 'ammoUnlimited', 'noRespawn', 'noClock', 'noAllies', 'enemyPool', 'enemyNation', 'hordeWaves', 'waveRepair']);
+assert.equal(arrangedHorde.horde.hostileHpScale, 0.15, 'an arranged wave keeps the fodder law');
 assert.equal(matchRulesetFor('endless_horde', null, { waveSize: 12, enemies: 6 }).horde.waveSize, 6, 'the first wave never exceeds the pool');
 assert.equal(matchRulesetFor('endless_horde', null, {}), horde, 'an empty arrangement is the base ruleset');
 assert.equal(matchRulesetFor('standard', null, { allies: 0 }).allies, 0, 'Standard takes the arrangement (owner 2026-09-18)');
@@ -164,7 +188,7 @@ assert.equal(rulesetAmmoCapacity(heOnly, 'HE', 0), 1, 'HE-only always leaves at 
 {
   const combat = { hp: 1000, maxHp: 1000, ammo: [20, 12], ammoCapacity: [20, 12] };
   applyRulesetToCombat(combat, [{ type: 'AP' }, { type: 'HE' }], matchRulesetFor('endless_horde'), 1.32);
-  assert.equal(combat.maxHp, 1650, 'the wave health scale multiplies the ruleset hull scale (1.25 × 1.32)');
+  assert.equal(combat.maxHp, 2640, 'the wave health scale multiplies the ruleset hull scale (2 × 1.32)');
   assert.equal(combat.modeDamageTakenScale, 1);
   assert.equal(combat.equipMults, undefined, 'a unit reload scale leaves the multipliers alone');
   const only = { hp: 1000, maxHp: 1000, ammo: [20, 12], ammoCapacity: [20, 12] };
@@ -178,7 +202,7 @@ assert.deepEqual(rulesetLoadout(turbo, ['a', 'b', 'c']), [], 'Turbo Ball honours
 assert.deepEqual(rulesetLoadout(standard, ['a', 'b', 'c']), ['a', 'b', 'c']);
 assert.deepEqual(rulesetLoadout({ ...standard, equipmentSlots: 1 }, ['a', 'b', 'c']), ['a']);
 assert.deepEqual(rulesetLoadout(standard, null), []);
-assert.equal(rulesetAllyCap(standard, 6), 6); assert.equal(rulesetAllyCap(horde, 6), 2); assert.equal(rulesetAllyCap(assault, 6), 3);
+assert.equal(rulesetAllyCap(standard, 6), 6); assert.equal(rulesetAllyCap(horde, 6), 4); assert.equal(rulesetAllyCap(assault, 6), 3);
 
 // Mars settings (owner 2026-09-18 "boosts and settings"): the gravity world and the boost-cache cadence ride the
 // mars arrangement; other modes drop them, unknown ids drop, a gravity-only choice keeps the default caches

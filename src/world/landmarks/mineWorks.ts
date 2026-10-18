@@ -108,8 +108,9 @@ function sheave(sink: PartSink, c: Vec3, r: number, spokes: number, colour: Rgb,
 
 // ------------------------------------------------------------------------------------------------------------ headframe
 
-/** Where a headframe's shaft stands in its frame (the piece centred on its footprint): see plan.ts. */
-export function headframeShaftZ(height: number): number { return 0.25 * height + 4; }
+/** Where a headframe's shaft stands in its frame (the piece centred on its footprint): see plan.ts. (The map-content lane's
+ * R6: 3 m further forward than it stood, the winding house set 6 m further back behind it.) */
+export function headframeShaftZ(height: number): number { return 0.25 * height + 7; }
 
 /**
  * The steel poppet headframe: four legs over the shaft collar, braced back by two raking struts toward the winding house,
@@ -154,8 +155,10 @@ export const headframe: LandmarkBuilder = (ctx) => {
   const az = zs - 0.5 * Hh;
   const padAt = (sx: number) => gl(sx * 2.4, az);
   const binAt = (sx: number) => gl(sx * 1.6, zs + half + 2.4);
-  // the winding house behind the struts (its own footing)
-  const hz1 = az - 3, hd = 10;
+  // the winding house set back behind the struts (its own footing), the ropes rising from its drums to the sheaves (the
+  // map-content lane's R6, gauntlet wave 358a: "the real layout sets the winding-engine house back from the headframe
+  // with ropes rising to the sheaves"; it stood 3 m behind the struts' feet, pressed against the frame)
+  const hz1 = az - 9, hd = 10;
   let hy = 0;
   piece(sink, { name: 'winding-house', kind: 'lattice', at: 'collapse', fall: 'slump' }, (s) => { hy = shed(s, 0, hz1 - hd / 2, 9, hd, 6.0, 8.0, IRON_SHEET, ctx, [-0.9, 0.9]); });
   const rail = (s: PartSink, x0: number, z0: number, x1: number, z1: number) => {
@@ -172,13 +175,55 @@ export const headframe: LandmarkBuilder = (ctx) => {
     const c: Vec3 = [sx * 0.9, hubY, zs - 0.2];
     piece(sink, { name: `sheave-${sx < 0 ? 'l' : 'r'}`, kind: 'lattice', at: 'breached', fall: 'flat' }, (s) => sheave(s, c, R, 6, IRON, 0.12));
   }
-  // the ropes down from the sheaves to the winding house's drums and to the cage: they come down slack with the frame
-  piece(sink, { name: 'ropes', kind: 'lattice', at: 'collapse', fall: 'drop' }, (s) => {
-    for (const sx of [-1, 1]) {
-      bar(s, 'structureMetal', [sx * 0.9, hubY + R, zs - 0.2], [sx * 0.9, hy + 4.2, hz1 - 0.4], 0.05, { colour: IRON, decor: true });
-      bar(s, 'structureMetal', [sx * 0.9, hubY - R * 0.2, zs + R * 0.9], [sx * 0.9, g0 + 1.3, zs + 0.6], 0.05, { colour: IRON, decor: true });
+  // (the map-content lane's R6, gauntlet wave 358a: "no mullock heaps, rails, timber stacks, tracks or fences round the
+  // shaft"; "clutter concentrated at the works") the shaft yard on the collar's open side: the skip road (rails on their
+  // sleepers, laid on the ground) out from the collar with a side-tipping skip standing on it, the stack of mine timber
+  // beside it on its dunnage, the drums of the winder's oil; all dressing, so the yard's ground stays the hulls' (the
+  // waste rock the map lays beside the collar is its own scree: copperMesa.ts)
+  // (227, the maps lane: ported onto lane B's lattice pieces) a piece of its own on the ground: it stays where it lies
+  // through the frame's fall, as the winding house and the bin's legs stand
+  piece(sink, { name: 'shaft-yard', kind: 'lattice', at: 'collapse', fall: 'slump', dressing: true }, (s) => {
+    const rz = zs, x0 = -2.7, x1 = -9.5, gauge = 0.6, TIMBER = rgb(0x6a5644);
+    for (let x = x0 - 0.3; x > x1; x -= 0.65) {
+      const g = gl(x, rz);
+      s.span('structureWood', x - 0.09, g - 0.06, rz - 0.55, x + 0.09, g + 0.06, rz + 0.55, { colour: shade(TIMBER, 0.7), decor: true, fine: true });
+    }
+    for (const dz of [-gauge / 2, gauge / 2]) {
+      const ga = gl(x0, rz + dz), gb = gl(x1, rz + dz);
+      bar(s, 'structureMetal', [x0, ga + 0.1, rz + dz], [x1, gb + 0.1, rz + dz], 0.06, { colour: RUST, decor: true });
+    }
+    const kx = -6.0, gk = gl(kx, rz);
+    s.span('structureMetal', kx - 0.75, gk + 0.12, rz - 0.42, kx + 0.75, gk + 0.3, rz + 0.42, { colour: IRON, decor: true });
+    for (const wx of [kx - 0.45, kx + 0.45]) for (const dz of [-gauge / 2, gauge / 2]) {
+      s.cylinder('structureMetal', [wx, gk + 0.22, rz + dz - 0.04], 'z', 0.08, 0.2, 8, { colour: IRON, decor: true });
+    }
+    s.span('structureMetal', kx - 0.8, gk + 0.3, rz - 0.55, kx + 0.8, gk + 1.25, rz + 0.55, { colourAt: rusting(STEEL, gk + 0.3, gk + 1.25, 0.6), decor: true });
+    s.span('structureMetal', kx - 0.7, gk + 1.1, rz - 0.45, kx + 0.7, gk + 1.22, rz + 0.45, { colour: ORE, decor: true });
+    // the mine timber, square sets in a stack on its dunnage
+    const tx = -6.5, tz = zs + 3.4, gt = Math.min(gl(tx - 1.6, tz), gl(tx + 1.6, tz));
+    for (let row = 0; row < 3; row++) for (let k = 0; k < 5 - row; k++) {
+      const z = tz - 1.0 + (k + row * 0.5) * 0.42;
+      s.span('structureWood', tx - 1.6, gt + 0.12 + row * 0.36, z - 0.17, tx + 1.6, gt + 0.46 + row * 0.36, z + 0.17, { colour: shade(TIMBER, 0.9 + 0.1 * ((k + row) % 2)), decor: true });
+    }
+    for (const dx of [-1.2, 1.2]) s.span('structureWood', tx + dx - 0.1, gt - 0.05, tz - 1.3, tx + dx + 0.1, gt + 0.12, tz + 1.0, { colour: shade(TIMBER, 0.6), decor: true });
+    // the winder's oil drums
+    for (const [dx, dz] of [[0, 0], [0.62, 0.1], [0.3, 0.6]]) {
+      const x = -5.2 + dx, z = zs - 3.6 + dz;
+      s.cylinder('structureMetal', [x, gl(x, z) - 0.02, z], 'y', 0.88, 0.29, 10, { colour: dz > 0.5 ? rgb(0x7a2a1e) : IRON, decor: true });
     }
   });
+  // the ropes down from the sheaves to the cage: they come down slack with the frame
+  piece(sink, { name: 'ropes', kind: 'lattice', at: 'collapse', fall: 'drop' }, (s) => {
+    for (const sx of [-1, 1]) bar(s, 'structureMetal', [sx * 0.9, hubY - R * 0.2, zs + R * 0.9], [sx * 0.9, g0 + 1.3, zs + 0.6], 0.05, { colour: IRON, decor: true });
+  });
+  // (227, the maps lane: Copper Mesa's R6 on lane B's pieces) the ropes rising from the set-back winding house's drums to
+  // the sheaves, each a piece of its own: fifteen metres of rope run back past the frame's hinge, which the frame's fall
+  // swung up into the air with it (landmarkDamage: "nothing of its fall left in the air"); cut loose, each lies flat
+  for (const sx of [-1, 1]) {
+    piece(sink, { name: `rope-${sx < 0 ? 'l' : 'r'}`, kind: 'detach', at: 'collapse', fall: 'flat', clear: 0.5 }, (s) => {
+      bar(s, 'structureMetal', [sx * 0.9, hubY + R, zs - 0.2], [sx * 0.9, hy + 4.2, hz1 - 0.4], 0.05, { colour: IRON, decor: true });
+    });
+  }
   piece(sink, { name: 'frame', kind: 'lattice', at: 'collapse', fall: 'topple' }, (sink) => {
     collar(sink);
     for (const sx of [-1, 1]) sink.span('stone', sx * 2.4 - 0.55, Math.min(padAt(sx) - 0.8, -0.6), az - 0.55, sx * 2.4 + 0.55, padAt(sx) + 0.4, az + 0.55);
@@ -389,20 +434,27 @@ export const conveyor: LandmarkBuilder = (ctx) => {
   for (const x of [0.75, 1.25]) bar(sink, 'structureMetal', [x, lg - 0.05, z1 + 1.0], [x, yH - 0.2, z1 + 1.0], 0.05, { colour: IRON, decor: true });
   for (let y = lg + 0.35; y < yH - 0.3; y += 0.35) bar(sink, 'structureMetal', [0.75, y, z1 + 1.0], [1.25, y, z1 + 1.0], 0.03, { colour: IRON, decor: true, fine: true });
   // the gallery: segments between the bents, each a clad box truss on the incline
+  // (the map-content lane's R6, the coordinator's ruling of 2026-10-11 on Copper Mesa's long sight lines: a gallery is
+  // sheet cladding on a light truss, and a hull's gunner sees and shoots under it and through its sheets) a segment whose
+  // underside stands more than 3 m over the ground under it is dressing that still casts its shadow: no shell or sight
+  // record (the layout raster, which has no underside, read the elevated galleries as walls from the ground up); the
+  // segments near the tail, low over the ground, and the head tower and tail house stay solid
   const bents = Math.max(1, Math.round((z1 - z0) / 12));
   const corner = (z: number, sx: number, up: number): Vec3 => [sx * hw, yAt(z) + up, z];
   const sill = gh * 0.48, head = gh * 0.82, frameC = shade(GALV, 0.6);
   for (let k = 0; k < bents; k++) {
     const a = z0 + ((z1 - z0) * k) / bents, b = z0 + ((z1 - z0) * (k + 1)) / bents;
+    const under = Math.min(yAt(a) - Math.max(g(-hw, a), g(hw, a)), yAt(b) - Math.max(g(-hw, b), g(hw, b)), yAt((a + b) / 2) - g(0, (a + b) / 2));
+    const clad: EmitOptions = under > 3 ? { decor: true, shadow: true } : {};
     const side = (sx: number) => {
-      const band = (y0: number, y1: number, opts: EmitOptions, inset = 0) => {
+      const band = (y0: number, y1: number, opts: EmitOptions, inset = 0, glass = false) => {
         const p: Vec3[] = [corner(a, sx, y0), corner(b, sx, y0), corner(b, sx, y1), corner(a, sx, y1)].map((v) => [v[0] - sx * inset, v[1], v[2]] as Vec3);
-        sink.polygon(opts.decor ? 'glass' : 'structureMetal', sx > 0 ? [p[1], p[0], p[3], p[2]] : p, opts);
+        sink.polygon(glass ? 'glass' : 'structureMetal', sx > 0 ? [p[1], p[0], p[3], p[2]] : p, opts);
       };
-      band(0, sill, { colourAt: rusting(GALV, yAt(a), yAt(a) + gh, 0.4) });
-      band(head, gh, { colourAt: rusting(GALV, yAt(a), yAt(a) + gh, 0.4) });
+      band(0, sill, { colourAt: rusting(GALV, yAt(a), yAt(a) + gh, 0.4), ...clad });
+      band(head, gh, { colourAt: rusting(GALV, yAt(a), yAt(a) + gh, 0.4), ...clad });
       // the lights: glass set back 6 cm behind the band's sill and head rails and its mullions
-      band(sill, head, { decor: true }, 0.06);
+      band(sill, head, { decor: true }, 0.06, true);
       for (const y of [sill, head]) {
         const ra = corner(a, sx, y), rb = corner(b, sx, y);
         bar(sink, 'structureMetal', [ra[0] + sx * 0.02, ra[1], ra[2]], [rb[0] + sx * 0.02, rb[1], rb[2]], 0.07, { colour: frameC, decor: true });
@@ -427,13 +479,13 @@ export const conveyor: LandmarkBuilder = (ctx) => {
     const eaveP = (z: number, sx: number): Vec3 => [sx * (hw + o), yAt(z) + gh - 0.02, z];
     for (const sx of [-1, 1]) {
       const q: Vec3[] = [eaveP(a, sx), eaveP(b, sx), ridge(b), ridge(a)];
-      sink.polygon('structureMetal', sx > 0 ? [q[1], q[0], q[3], q[2]] : q, { colour: shade(GALV, 0.85) });
+      sink.polygon('structureMetal', sx > 0 ? [q[1], q[0], q[3], q[2]] : q, { colour: shade(GALV, 0.85), ...clad });
       const f: Vec3[] = [[sx * (hw + o), yAt(a) + gh - 0.16, a], [sx * (hw + o), yAt(b) + gh - 0.16, b], eaveP(b, sx), eaveP(a, sx)];
       sink.polygon('structureMetal', sx > 0 ? [f[1], f[0], f[3], f[2]] : f, { colour: shade(GALV, 0.7), decor: true });
       const u: Vec3[] = [[sx * hw, yAt(a) + gh - 0.02, a], [sx * hw, yAt(b) + gh - 0.02, b], [sx * (hw + o), yAt(b) + gh - 0.16, b], [sx * (hw + o), yAt(a) + gh - 0.16, a]];
       sink.polygon('structureMetal', sx > 0 ? u : [u[1], u[0], u[3], u[2]], { colour: shade(GALV, 0.45), decor: true });
     }
-    sink.quad('structureMetal', corner(a, -1, 0), corner(a, 1, 0), corner(b, 1, 0), corner(b, -1, 0), { colour: shade(GALV, 0.5) });
+    sink.quad('structureMetal', corner(a, -1, 0), corner(a, 1, 0), corner(b, 1, 0), corner(b, -1, 0), { colour: shade(GALV, 0.5), ...clad });
     // the chords along the bottom (the truss under the cladding)
     for (const sx of [-1, 1]) bar(sink, 'structureMetal', [sx * (hw + 0.08), yAt(a) - 0.1, a], [sx * (hw + 0.08), yAt(b) - 0.1, b], 0.16, { colour: OXIDE, decor: true });
   }
