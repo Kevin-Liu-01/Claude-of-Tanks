@@ -66,6 +66,7 @@ export function createRetainedAmmunitionSlot({
   let selectedClass: boolean | undefined;
   let emptyClass: boolean | undefined;
   let unlimitedClass: boolean | undefined;
+  let wideClass: boolean | undefined;
   let displayedTypeLabel: string | undefined;
   let displayedName: string | undefined;
   let displayedPenetration: string | undefined;
@@ -129,6 +130,12 @@ export function createRetainedAmmunitionSlot({
     if (displayedCount !== shown) {
       elements.count.textContent = shown;
       displayedCount = shown;
+    }
+    // Three digits or more share the bottom row with the type label: the slot tightens both (critic r3: APFSDS180).
+    const wide = shown.length >= 3;
+    if (wideClass !== wide) {
+      elements.button.classList.toggle('wide', wide);
+      wideClass = wide;
     }
     const empty = !unlimited && rounds <= 0;
     if (emptyClass !== empty) {

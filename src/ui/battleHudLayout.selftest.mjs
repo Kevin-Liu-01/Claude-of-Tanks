@@ -255,6 +255,83 @@ try {
     if(descriptor)Object.defineProperty(globalThis,key,descriptor);else delete globalThis[key];
   }
 }
+// Touch portrait, solved end to end (critic r3: the source pins above let the wiring drift). The measured 390x844
+// phone (tools/fixtures/battle-hud-layout.html in Chrome, layout-r3): the tray's collapsed slot at 468-520 parks the
+// systems row at 416, across the sight centred at 422; the lower cluster (speedometer 594, left FIRE 628, stick 702)
+// leaves no room under the scope readouts, so the row moves above the ring (314). The side kill lanes then end above
+// the moved row. A taller portrait moves the row below the scope readouts, level with the tray and left of it, and the
+// lanes keep the floor the row's natural place gave them: a moved row lends them nothing.
+{
+  const saved = new Map(['document','window','ResizeObserver','MutationObserver','requestAnimationFrame','getComputedStyle']
+    .map(key=>[key,Object.getOwnPropertyDescriptor(globalThis,key)]));
+  const box = (top,bottom,left,right) => ({top,bottom,left,right,width:right-left,height:bottom-top,x:left,y:top});
+  function solvePortrait(width, height, rects, rowWidth) {
+    const props = new Map(); let frame = null;
+    const element = (rect, extra={}) => ({ getClientRects: () => [rect], getBoundingClientRect: () => rect, children: [],
+      childElementCount: 0, dataset: {}, getAttribute: () => null, hasAttribute: () => false, toggleAttribute() {}, ...extra });
+    const lane = (rect) => { const children = Array.from({length:8}, () => ({hidden:false}));
+      return element(rect, {children, childElementCount: children.length}); };
+    const nodes = Object.fromEntries(Object.entries(rects).map(([selector, rect]) => [selector, element(rect)]));
+    nodes['.cot-vehicle-controls'] = element(rects['.cot-vehicle-controls'], {scrollWidth: rowWidth - 2});
+    const kills = {'.cot-kill-lane.l': lane(box(0,84,0,171)), '.cot-kill-lane.r': lane(box(0,84,219,390))};
+    const body = { dataset: {}, classList: { contains: (name) => name === 'cot-touch-layout' },
+      style: { getPropertyValue: (key) => props.get(key) ?? '', setProperty: (key, value) => props.set(key, value),
+        removeProperty: (key) => props.delete(key) },
+      hasAttribute: () => true, toggleAttribute() {}, getAttribute: () => '' };
+    globalThis.document = { body, documentElement: { clientWidth: width },
+      querySelector: (selector) => nodes[selector] ?? kills[selector] ?? null, querySelectorAll: () => [] };
+    globalThis.window = { innerWidth: width, innerHeight: height, visualViewport: { width, height }, document: globalThis.document,
+      addEventListener() {} };
+    globalThis.getComputedStyle = () => ({ visibility: 'visible' });
+    globalThis.requestAnimationFrame = (fn) => { frame = fn; return 1; };
+    globalThis.ResizeObserver = class { observe() {} };
+    globalThis.MutationObserver = class { observe() {} };
+    const root = { getClientRects: () => [{}], dataset: {}, classList: { contains: () => false, toggle() {} },
+      getAttribute: () => null, querySelector: (selector) => kills[selector] ?? null };
+    installBattleHudLayout(root);
+    frame();
+    const px = (name) => parseFloat(props.get(`--hud-${name}`));
+    return { px, kills };
+  }
+  try {
+    // 390x844, the measured phone
+    const phone = solvePortrait(390, 844, {
+      '.cot-top': box(0,62,23,367), '.cot-mode-status.show': box(62,103,56,334), '.cot-minimap': box(111,203,8,100),
+      '.cot-touch.on .mobile-chrome': box(111,155,240,380), '.cot-shells': box(468,520,332,380),
+      '.cot-vehicle-controls': box(416,460,12,378), '.cot-drive': box(593.76,678,14,98.24),
+      '.cot-touch.on .fire.alt': box(628,684,137,193), '.cot-touch.on .joy': box(702,820,14,132),
+      '.cot-dp': box(797,836,136.5,253.5), '.cot-net': box(822,842,14,102),
+    }, 366);
+    const centre = 844 / 2;
+    assert.equal(phone.px('systems-top'), centre - SIGHT_BAND_ABOVE - 44, '390x844: the row moves above the ring (314)');
+    assert.deepEqual([phone.px('systems-left'), phone.px('systems-width')], [12, 366], '390x844: whole, where it was across');
+    // the kill lanes end 8 px above the moved row (306): three rows a side under the map and the touch chrome
+    assert.equal(phone.px('kill-left-top'), 211, 'the left lane starts under the map');
+    assert.equal(phone.px('kill-left-height'), 3 * 29 - 3, '390x844: the left kill lane stops above the moved row');
+    assert.equal(phone.px('kill-right-top'), 163, 'the right lane starts under the touch chrome');
+    assert.equal(phone.px('kill-right-height'), 5 * 29 - 3, '390x844: the right kill lane stops above the moved row');
+    assert.deepEqual(phone.kills['.cot-kill-lane.l'].children.map((row) => row.hidden).filter((hidden) => !hidden).length, 3,
+      'the left lane shows only the rows that fit');
+    // a taller portrait: room under the scope readouts above the cluster, level with the tray (the map and the touch
+    // chrome expanded, so the lanes hold fewer than their eight rows and their floor shows)
+    const tall = solvePortrait(430, 1000, {
+      '.cot-top': box(0,62,43,387), '.cot-minimap': box(111,403,8,300), '.cot-touch.on .mobile-chrome': box(111,400,280,420),
+      '.cot-shells': box(620,672,374,422), '.cot-vehicle-controls': box(568,612,52,418), '.cot-drive': box(820,904,14,98),
+      '.cot-touch.on .fire.alt': box(850,906,137,193), '.cot-touch.on .joy': box(860,978,14,132), '.cot-dp': box(952,991,156,274),
+    }, 366);
+    assert.equal(tall.px('systems-top'), 500 + SCOPE_BAND_BELOW, 'tall: the row moves below the scope readouts (640)');
+    assert.deepEqual([tall.px('systems-left'), tall.px('systems-width')], [12, 374 - 12 - 8],
+      'tall: level with the tray, the row sits left of it, whole within the space');
+    // the lanes keep the row's natural floor (568 - 8 = 560), not the moved row's (632): five rows from 411 and 408
+    assert.deepEqual([tall.px('kill-left-top'), tall.px('kill-right-top')], [411, 408], 'tall: under the map and the chrome');
+    assert.equal(tall.px('kill-left-height'), 5 * 29 - 3, 'tall: the left kill lane keeps the natural floor');
+    assert.equal(tall.px('kill-right-height'), 5 * 29 - 3, 'tall: the right kill lane keeps the natural floor');
+  } finally {
+    for (const [key, descriptor] of saved) {
+      if (descriptor) Object.defineProperty(globalThis, key, descriptor); else delete globalThis[key];
+    }
+  }
+}
 const layout=readFileSync(new URL('./battleHudLayout.ts',import.meta.url),'utf8');
 const hud=readFileSync(new URL('./hud.ts',import.meta.url),'utf8');
 assert.match(layout,/new ResizeObserver\(schedule\)/,'map zoom and roster size changes relayout the lanes');

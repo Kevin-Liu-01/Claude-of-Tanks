@@ -70,6 +70,10 @@ const CSS = `
   letter-spacing:.13em;text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 3px #000;}
 .cot-touch .fire.alt{left:166px;right:auto;bottom:156px;width:64px;height:64px;opacity:.86;}
 .cot-touch .fire.alt svg{width:20px;height:34px}.cot-touch .fire.alt .lb{display:none}
+/* out of ammo (owner 2026-10-17; critic r3 advisory): the selected gun is dry (hud.ts marks the body), so both FIRE
+   buttons dim to a muted shell on a danger rim, in colour only */
+body.cot-gun-dry .cot-touch .fire{color:var(--hud-muted,#93a3af);border-color:rgba(240,90,90,.5);opacity:.62;
+  background:radial-gradient(circle at 38% 27%,rgba(78,84,90,.86),rgba(26,30,34,.97) 48%,rgba(10,10,9,.98) 76%);}
 .cot-touch .fire.aiming{border-color:#ffd27a;box-shadow:0 0 0 5px rgba(240,160,48,.13),
   0 0 22px rgba(240,150,40,.45),inset 0 2px 7px rgba(0,0,0,.65);}
 .cot-touch .fire.autofire{border-color:#ffbd5c;box-shadow:0 0 0 5px rgba(255,179,74,.16),

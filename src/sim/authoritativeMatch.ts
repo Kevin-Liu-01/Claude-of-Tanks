@@ -118,7 +118,8 @@ import {
 import { consumeAmmunition, hasAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 import {
-  applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetBotDifficulty, rulesetLoadout, type MatchRuleset,
+  applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetBotDifficulty, rulesetLoadout, rulesetUnlimitedFor,
+  type MatchRuleset,
   type RulesetPhysics,
 } from './matchRuleset.ts';
 import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type MatchPlacement } from './matchPlacement.ts';
@@ -1916,7 +1917,8 @@ export function createAuthoritativeMatch({
     }
     // ruleset gravity rides the shooter's stamp (Turbo Ball: 0.6 g lobs); unlimited rounds refill the channel
     shell.gravityMps2 *= Number.isFinite(entity.modeGravityScale) ? entity.modeGravityScale! : 1;
-    if(ruleset.aerial!=='gunship'||isGunship(entity))refillUnlimitedAmmunition(ruleset, combat, firedSlot);
+    // ... only where the entity really refills (the AC-130's escorts never do: matchRuleset rulesetUnlimitedFor)
+    if (rulesetUnlimitedFor(ruleset, entity)) refillUnlimitedAmmunition(ruleset, combat, firedSlot);
     shells.push(shell);
     startPostShotReload(combat, entity.spec);
     selectFallbackAfterShot(entity, firedSlot);

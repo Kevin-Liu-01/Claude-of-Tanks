@@ -205,10 +205,12 @@ function read(tank) {
   assert.equal(view.magazineControlSpent, false, 'a hull without a magazine never shows a spent magazine control');
 }
 
-// 5. Unlimited rounds (the Juggernaut / Infected / Horde rule): counts never run down, nothing ever reads dry.
+// 5. Unlimited rounds (Juggernaut, Infected and the Horde play them in their ruleset rows since the merged rules head,
+// gameplay-modes-227 ab82b3403): counts never run down, nothing ever reads dry.
 {
   unlimitedRounds = true;
-  const ruleset = { ...matchRulesetFor('standard'), ammo: 'unlimited' };
+  for (const mode of ['juggernaut', 'infected', 'endless_horde']) assert.equal(matchRulesetFor(mode).ammo, 'unlimited', mode);
+  const ruleset = matchRulesetFor('juggernaut');
   const tank = tankOf('m1a3');
   for (let shot = 0; shot < 120; shot++) assert.ok(fire(tank, ruleset));
   const view = read(tank);
@@ -256,6 +258,13 @@ function read(tank) {
     'struck through like a spent control (r3: the bare danger edge still read as selected)');
   assert.match(touch, /\.cot-shell\.sel\.empty \.cnt\{color:var\(--hud-danger\);\}/, 'its count in the danger ink');
   assert.match(touch, /\.cot-shell\.unlimited \.cnt\{font-size:16px;/, 'the phone ∞ at the numeral\'s size');
+  // critic r3: desktop empty slots read OUT the way the phone's do — struck on a danger edge, their 0 in the token
+  assert.match(hud, /\.cot-shell\.empty\{[^}]*border-bottom-color:var\(--hud-danger\)[^}]*box-shadow:inset 0 -2px 0 var\(--hud-danger\)/,
+    'a desktop empty slot sits on a danger edge');
+  assert.match(hud, /\.cot-shell\.empty::before\{[^}]*background:var\(--hud-danger\)[^}]*rotate\(-45deg\)/, 'struck through');
+  assert.match(hud, /\.cot-shell\.empty \.cnt\{color:var\(--hud-danger\);\}/, 'its 0 in the danger ink');
+  assert.match(hud, /\.cot-shell\.wide \.ty\{[^}]*\}\n\.cot-shell\.wide \.cnt\{[^}]*\}/, 'a three-digit count tightens its row');
+  assert.match(touch, /body\.cot-gun-dry \.cot-touch \.fire\{[^}]*opacity:\.62/, 'a dry gun dims the FIRE buttons');
   // the rendered proof of these rules is tools/hud-ammo-states.browser.mjs (computed styles of the live tray)
 }
 

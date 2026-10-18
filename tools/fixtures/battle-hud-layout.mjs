@@ -20,7 +20,7 @@ import { createSettings } from '../../src/ui/settings.ts';
 import { createEndOverlayRuntime } from '../../src/ui/endOverlayRuntime.ts';
 import '../../src/vehicles/fleetRegistration.ts';
 import { TANK_SPECS } from '../../src/vehicles/specs.ts';
-import { matchRulesetFor } from '../../src/sim/matchRuleset.ts';
+import { matchRulesetFor, rulesetUnlimitedFor } from '../../src/sim/matchRuleset.ts';
 import { createAimController } from '../../src/game/aimController.ts';
 import { createTankState } from '../../src/sim/movement.ts';
 import { createCombatState } from '../../src/sim/damage.ts';
@@ -60,12 +60,17 @@ const AMMO_STAGES = {
   'ammo-reload': {spec:'m1a1_abrams_hc', reload:{t:3.2,totalS:6,kind:'shell'}},
   'ammo-dry-cannon': {spec:'m1a1_abrams_hc', ammo:[0,0,0], reload:{t:3.2,totalS:6,kind:'shell'}},
   'ammo-low-autoloader': {spec:'m1a3', ammo:[2,4,0], magazineRounds:4, reload:{t:0,totalS:2.5,kind:'ready'}},
+  // dry between clips (the magazine reload pending) and mid-clip (stowage ran out with the clip counter at two: the
+  // intra-clip cycle still runs in the simulation, the rack shows no round)
   'ammo-dry-autoloader': {spec:'m1a3', ammo:[0,0,0], magazineRounds:0, reload:{t:12,totalS:21,kind:'magazine'}},
+  'ammo-dry-autoloader-midclip': {spec:'m1a3', ammo:[0,0,0], magazineRounds:2, reload:{t:1.2,totalS:2.5,kind:'intraClip'}},
   'ammo-dry-salvo': {spec:'ztz100_prototype', ammo:[0,0,0], salvoShots:0, reload:{t:7,totalS:12,kind:'shell'}},
   'ammo-dry-atgm': {spec:'bwp1', ammo:[180,0,220], reload:{t:0,totalS:0.32,kind:'ready'}},
-  // Juggernaut with unlimited rounds: commit 2 of gameplay-227 writes ammo 'unlimited' into its ruleset row.
-  'ammo-unlimited': {spec:'m1a3', mode:'juggernaut', rules:{ammo:'unlimited'}, magazineRounds:3,
-    reload:{t:1.4,totalS:2.5,kind:'intraClip'}},
+  // Juggernaut with unlimited rounds (its ruleset row since the merged rules head, gameplay-modes-227 ab82b3403)
+  'ammo-unlimited': {spec:'m1a3', mode:'juggernaut', magazineRounds:3, reload:{t:1.4,totalS:2.5,kind:'intraClip'}},
+  // An AC-130 escort out of rounds: the mode plays unlimited rounds, but only the gunship refills (rulesetUnlimitedFor),
+  // so the escort's cards carry no ∞ and its gun reads empty (critic r3)
+  'ammo-escort-dry': {spec:'m1a1_abrams_hc', mode:'ac130', ammo:[0,0,0], reload:{t:3.2,totalS:6,kind:'shell'}},
   // The ×8 sight (critic r3: on a landscape phone the struck round and the rack sat on the scope's ammo readout).
   'ammo-reload-sniper': {spec:'m1a1_abrams_hc', reload:{t:3.2,totalS:6,kind:'shell'}, sniper:true},
   'ammo-dry-cannon-sniper': {spec:'m1a1_abrams_hc', ammo:[0,0,0], reload:{t:3.2,totalS:6,kind:'shell'}, sniper:true},
@@ -81,7 +86,8 @@ const ammoAim = createAimController({
   getRig: () => ({aimPoint:new Vector3(0, 2, 200), aimDist:200, mode:ammoSniper ? 'SNIPER' : 'CHASE', zoom:ammoSniper ? 8 : 1}),
   worldRaycast: () => null,
   targetVisible: () => true,
-  // The shell cards as game/playerBattleActions builds them; the controller writes the counts.
+  // The shell cards as game/playerBattleActions builds them (the ruleset's mark per entity); the controller writes the
+  // counts.
   getShellCards: () => player.spec.gun.shells.map((shell) => ({name:shell.name, type:shell.guided === true ? 'ATGM' : shell.type,
     dmg:shell.dmg, penLabel:`${Math.round(shell.pen100Mm)} mm`, count:0, ...(ammoUnlimited ? {unlimited:true} : {})})),
   // Sized to the fixture's default ring (5% of the short side) at the 200 m aim distance and the HUD's 60° fallback FOV.
@@ -101,8 +107,9 @@ function stageAmmo(name) {
   if (combat.magazine && stage.magazineRounds != null) combat.magazine.rounds = stage.magazineRounds;
   if (stage.salvoShots != null) combat.launcherSalvoShots = stage.salvoShots;
   Object.assign(combat.reload, stage.reload);
-  const ruleset = {...matchRulesetFor(stage.mode || 'standard'), ...stage.rules};
-  ammoUnlimited = ruleset.ammo === 'unlimited';
+  const ruleset = matchRulesetFor(stage.mode || 'standard');
+  delete player.aerial; // a ground seat (the AC-130's gunship alone is aerial)
+  ammoUnlimited = rulesetUnlimitedFor(ruleset, player);
   ammoSniper = stage.sniper === true;
   const aim = {singleReticle:false, point:new Vector3(), distM:0, dispersionRadM:0, gunLimitSpec:false,
     reload:{t:0, totalS:0}, magazine:{rounds:0, capacity:0, launcher:false}, shellSlot:0, shells:[], zoom:1, gunDistM:0,

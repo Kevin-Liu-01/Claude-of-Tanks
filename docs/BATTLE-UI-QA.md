@@ -99,18 +99,26 @@ fits its radius, and stays inside the minimap at the map edges.
 
 A weapon with no round left shows no reload sweep, countdown or ready pulse.
 Its ring turns to sparse, muted danger dashes. A single-shot gun shows one
-struck round. On the short landscape scope stack that round leads the ammo
-readout line instead. A rack shows spent slots for rounds stowage cannot load,
-and an empty rack is struck through. Between two rounds of a clip, the next
-shell fills as the clip cycles, with no countdown under the rack. Spent launcher
-and magazine-reload controls are struck and disabled. Their count is spoken,
-not printed. The phone's collapsed empty slot loses its amber frame and is
-struck on a danger edge. Under unlimited rounds nothing reads empty: not the
-ring, the rack, the tray, the magazine control or the loader audio. The ammo
-`∞` takes the numeral's size. On a portrait phone a systems row that crosses the
-sight (`portraitSightClearTop`) moves below the scope readouts when there is
-room, otherwise above the ring. The sight's band covers the countdown, the
-rack, the struck round and the aim warning.
+struck round. A ring too small to hold that round, or an empty rack, drops the
+mark below the ring, 3 px clear of it (`sightMarkTop`). On the short landscape
+scope stack the round leads the ammo readout line instead. A rack shows spent
+slots for rounds stowage cannot load, and an empty rack is struck through. The
+range tag starts past the rack and its strike. Between two rounds of a clip or
+a salvo rack, the round being chambered fills as the group cycles. That is the
+last ready slot, so the slot of the round just fired never fills. No countdown
+shows under the rack. Spent launcher and magazine-reload controls are struck and
+disabled. Their count is spoken, not printed. Every empty tray slot is struck on
+a danger edge with its 0 in the danger ink, on desktop as on the phone. The
+phone's collapsed empty slot also loses its amber frame. A dry gun dims both
+phone FIRE buttons. A count of three digits or more tightens its slot's type
+label and count. Under unlimited rounds nothing reads empty: not the ring, the
+rack, the tray, the magazine control or the loader audio. The ammo `∞` takes the
+numeral's size. Unlimited rounds are read per vehicle (`rulesetUnlimitedFor`).
+In the AC-130 only the gunship refills, so an escort shows its real empty
+states. On a portrait phone a systems row that crosses the sight
+(`portraitSightClearTop`) moves below the scope readouts when there is room,
+otherwise above the ring. The sight's band covers the countdown, the rack, the
+struck round and the aim warning.
 `src/ui/hudAmmoOut.selftest.mjs` covers the derivations and
 `src/ui/hudAmmoOutPaint.selftest.mjs` covers the live paint and the scope
 stack's geometry, both in `npm test`. For the rendered frames (it takes the

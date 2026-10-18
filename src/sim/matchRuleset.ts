@@ -906,6 +906,19 @@ export function rulesetLoadout(ruleset: MatchRuleset, ids: readonly string[] | n
   return ruleset.equipmentSlots >= 3 ? list : list.slice(0, ruleset.equipmentSlots);
 }
 
+/**
+ * Whether one entity's rounds are unlimited under a ruleset: the one read for both refill sites (the solo battle's and
+ * the authority's), both shell-card builders and the loader audio. The AC-130 refills only the gunship (its escorts'
+ * rounds are what the gunship's airdrop is for), so an escort shows the real empty states (critic r3). The gunship test
+ * is sim/aerialCombat isGunship, read structurally here (that module imports this one).
+ */
+export function rulesetUnlimitedFor(
+  ruleset: { readonly ammo?: string; readonly aerial?: string | null } | null | undefined,
+  entity: { readonly aerial?: { readonly kind?: string } | null } | null | undefined,
+): boolean {
+  return ruleset?.ammo === 'unlimited' && (ruleset.aerial !== 'gunship' || entity?.aerial?.kind === 'gunship');
+}
+
 /** After a shot under unlimited ammunition, refill the fired channel (the HUD keeps the loadout shape). */
 export function refillUnlimitedAmmunition(
   ruleset: MatchRuleset,

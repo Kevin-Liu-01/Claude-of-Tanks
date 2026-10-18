@@ -50,7 +50,7 @@ import { createVehicleRig, fillVehicleInput, type RigFrame, type RigLod, type Ve
 import { createAerialRig, type AerialFrame, type AerialRig } from './aerialRig.ts';
 import { cueProfile } from './soundCues.ts';
 import { onDebrisLanding, onTurretLanding } from '../fx/clock.ts';
-import { AERIAL_RULES, matchRulesetFor } from '../sim/matchRuleset.ts';
+import { AERIAL_RULES, matchRulesetFor, rulesetUnlimitedFor } from '../sim/matchRuleset.ts';
 import { bindInterfaceSounds, type InterfaceSound } from './interfaceSounds.ts';
 import { resolveVehicleAudioIdentity, CREW_LANGUAGES, ENGINE_FAMILY_IDS, type CrewLanguage, type VehicleAudioIdentity } from './vehicleAudioProfiles.ts';
 import type { ModuleHealth, SurfaceId, VehicleAudioInput } from './vehicleAudioModel.ts';
@@ -1493,8 +1493,9 @@ export function createAudio({
     if (!ctx || phase !== 'battle' || battleOver) return;
     // Owner 2026-10-17 (out of ammo): an empty gun still runs its post-shot cycle in the simulation, but the crew loads
     // nothing — no loader cues, no latch, no "reloaded" call; the half-played plan is dropped, so a cycle that resumes
-    // starts afresh. The mode's unlimited rounds never read spent (sim/matchRuleset, the table the HUD's cards read).
-    const unlimitedRounds = matchRulesetFor((getGameMode?.() || 'standard') as GameModeId).ammo === 'unlimited';
+    // starts afresh. The mode's unlimited rounds never read spent where this entity really refills (sim/matchRuleset
+    // rulesetUnlimitedFor, the read the HUD's cards carry: an AC-130 escort runs dry, the gunship never does).
+    const unlimitedRounds = rulesetUnlimitedFor(matchRulesetFor((getGameMode?.() || 'standard') as GameModeId), latestPlayer);
     if (selectedWeaponSpent(latestPlayer?.combat, unlimitedRounds)) {
       reload.active = false;
       reloadCalled = false;

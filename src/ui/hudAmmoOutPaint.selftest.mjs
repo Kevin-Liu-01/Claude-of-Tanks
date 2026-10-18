@@ -218,7 +218,7 @@ const missileButton = created.find((element) => element.classes.has('cot-auxilia
 assert.equal(traySlots.length, 3);
 hud.setMode('battle');
 
-await ensureAuthorityFleet(['m1a1_abrams_hc', 'm1a3', 'type90', 'ztz100_prototype', 'bwp1', 'mbt70']);
+await ensureAuthorityFleet(['m1a1_abrams_hc', 'm1a3', 'type90', 'ztz100_prototype', 'object695', 'bwp1', 'mbt70']);
 const DT = 1 / 60;
 const busy = (combat) => combat.reload.t > 0 || (combat.gunReload?.t ?? 0) > 0;
 const settle = (combat) => { for (let guard = 0; busy(combat) && guard < 200000; guard++) tickReload(combat, DT); };
@@ -243,6 +243,7 @@ function tankOf(id, ammo = null) {
 let current = null;
 let unlimitedRounds = false;
 let scope = false; // the ×8 sight
+let dispersionM = 8;
 const controller = createAimController({
   getGame: () => ({ player: current, tanks: [current] }),
   getRig: () => ({ aimPoint: new THREE.Vector3(0, 2, 200), aimDist: 200, mode: scope ? 'SNIPER' : 'CHASE', zoom: scope ? 8 : 1 }),
@@ -251,7 +252,7 @@ const controller = createAimController({
   // The shell cards as game/playerBattleActions builds them: the ruleset's unlimited mark rides every card.
   getShellCards: () => current.spec.gun.shells.map((shell) => ({ name: shell.name, type: shell.guided ? 'ATGM' : shell.type,
     dmg: shell.dmg, penLabel: '', count: 0, ...(unlimitedRounds ? { unlimited: true } : {}) })),
-  computeDispersion: () => 8, // a ring above the radius floor, so a settled reticle is reused
+  computeDispersion: () => dispersionM, // 8 m: a ring above the radius floor, so a settled reticle is reused
   now: () => 0,
 });
 const aim = {
@@ -450,6 +451,9 @@ const DRY_RING = 16;
   assert.equal(specialButton.classes.has('empty') && specialButton.disabled, true, 'the guided special is struck');
   assert.equal(label.textContent, label.dataset.short, 'no "0/N" text on the control');
   assert.notEqual(specialButton.getAttribute('aria-label'), specialButton.title, 'the spoken label carries the count');
+  // the autocannon's three-digit count tightens its slot's bottom row (critic r3: APFSDS180); two digits do not
+  assert.ok(tank.combat.ammo[0] >= 100 && traySlots[0].classes.has('wide'), `a ${tank.combat.ammo[0]}-round slot is wide`);
+  assert.equal(traySlots[slot].classes.has('wide'), false, 'an empty launcher slot is not');
 }
 {
   const tank = tankOf('mbt70');
@@ -466,10 +470,12 @@ const DRY_RING = 16;
   assert.equal(specialButton.classes.has('empty'), false, 'the hydropneumatic special is untouched');
 }
 
-// 9. Unlimited rounds (Juggernaut, Infected, Horde): stowage at zero never caps the rack or empties the sight.
+// 9. Unlimited rounds (Juggernaut, Infected and the Horde, in their ruleset rows since the merged rules head): stowage
+// at zero never caps the rack or empties the sight.
 {
   unlimitedRounds = true;
-  const ruleset = { ...matchRulesetFor('standard'), ammo: 'unlimited' };
+  const ruleset = matchRulesetFor('juggernaut');
+  assert.equal(ruleset.ammo, 'unlimited');
   const tank = tankOf('m1a3', [0, 0, 0]);
   let view = frame(tank);
   assert.deepEqual([view.ringInk !== INK.dryRing, view.readyShells, view.spentShells, view.struck], [true, 4, 0, 0],
@@ -512,16 +518,50 @@ const fills = (ops, style) => ops.filter((op) => op.op === 'fillRect' && op.styl
   assert.equal(specialButton.classes.has('empty') && specialButton.disabled, true, 'finite and empty: struck');
 }
 
-// 13. Between two rounds of a clip the rack shows the cycle itself: the next shell fills, no numeral under the rack.
-{
-  const tank = tankOf('m1a3');
-  tank.combat.magazine.rounds = 2;
-  Object.assign(tank.combat.reload, { t: 1, totalS: 2, kind: 'intraClip' });
-  const view = frame(tank);
-  assert.equal(view.countdown, null, 'no countdown under the rack while the clip cycles');
-  assert.equal(view.sweep, true, 'the ring still sweeps the cycle');
-  const heights = fills(ctx.ops, INK.cycling).map((op) => op.h);
-  assert.deepEqual(heights, [15, 15, 8], 'two rounds ready, the third shell half filled at half the cycle');
+// 13. Between two rounds of a clip the rack shows the cycle itself: the round being chambered (the next to fire, the
+// last ready slot) fills from its base, the slot of the round just fired stays empty, and nothing vanishes when the
+// cycle ends (critic r3: the fired slot filled back in, then emptied). No numeral under the rack. The same holds for
+// the guided salvo racks between two missiles: the ZTZ-100 prototype's pair and Object 695's four.
+/** The rack's fills in one ink by slot, left to right: the shells' 1 px outlines give the slot centres. */
+function rackFills(ops, style) {
+  const centre = (box) => (box.x0 + box.x1) / 2;
+  const slots = ops.filter((op) => op.op === 'stroke' && op.lineWidth === 1 && op.box && op.box.x1 - op.box.x0 < 24
+    && op.box.y0 > HEIGHT / 2).map((op) => centre(op.box)).sort((a, b) => a - b);
+  const heights = slots.map(() => 0);
+  for (const op of fills(ops, style)) {
+    const x = centre(op.box);
+    const slot = slots.reduce((best, c, index) => (Math.abs(c - x) < Math.abs(slots[best] - x) ? index : best), 0);
+    heights[slot] = op.h;
+  }
+  return heights;
+}
+for (const [id, slots, fired] of [['m1a3', 4, 2], ['ztz100_prototype', 2, 1], ['object695', 4, 1]]) {
+  const tank = tankOf(id);
+  for (let shot = 0; shot < fired; shot++) assert.ok(fire(tank), `${id}: shot ${shot + 1}`);
+  assert.equal(tank.combat.reload.kind, 'intraClip', `${id}: the group cycles to its next round`);
+  const ready = slots - fired;
+  const totalS = tank.combat.reload.totalS;
+  tank.combat.reload.t = totalS / 2;
+  let view = frame(tank);
+  assert.equal(view.countdown, null, `${id}: no countdown under the rack while the group cycles`);
+  assert.equal(view.sweep, true, `${id}: the ring still sweeps the cycle`);
+  const half = rackFills(ctx.ops, INK.cycling);
+  assert.equal(half.length, slots, `${id}: ${slots} rack slots`);
+  assert.deepEqual(half, [...Array(ready - 1).fill(15), 8, ...Array(fired).fill(0)],
+    `${id}: the round being chambered half filled at half the cycle, the fired slot${fired > 1 ? 's' : ''} empty (${half})`);
+  // through the whole cycle: the chambered slot only grows, a fired slot never fills
+  let last = 0;
+  for (let step = 1; step <= 6; step++) {
+    tank.combat.reload.t = totalS * (1 - step / 6) + (step === 6 ? 0 : 1e-6);
+    view = frame(tank);
+    const ink = step === 6 ? INK.reload : INK.cycling;
+    const heights = rackFills(ctx.ops, ink);
+    assert.ok(heights.slice(ready).every((h) => h === 0), `${id} step ${step}: a fired slot never fills (${heights})`);
+    assert.ok(heights[ready - 1] >= last, `${id} step ${step}: the chambered round only fills (${heights})`);
+    last = heights[ready - 1];
+  }
+  assert.deepEqual(rackFills(ctx.ops, INK.reload), [...Array(ready).fill(15), ...Array(fired).fill(0)],
+    `${id}: the cycle ends with every ready round whole; nothing vanishes`);
 }
 
 // 14. The ×8 sight on short landscape phones (critic r3 measured 844x390, 932x430 and 667x375): the empty mark, the
@@ -584,6 +624,18 @@ for (const [width, height] of [[844, 390], [932, 430], [667, 375]]) {
   assert.ok(clock.box.x1 <= Math.min(...paint.shells.map((op) => op.box.x0)), `${at}: the countdown is left of the rack`);
   assertApart([...paint.shells, ...paint.texts], paint.texts, `${at} reloading rack`);
 }
+// the shortest stack (h <= 300: a small phone under browser bars): a rack, struck or reloading, keeps the readout line
+// and the zoom plate under it too (a struck rack may drop below a small ring)
+resize(568, 290);
+for (const [ammo, reload] of [[[0, 0, 0], null], [[12, 4, 10], { t: 12, totalS: 21, kind: 'magazine' }]]) {
+  const tank = tankOf('m1a3', ammo);
+  tank.combat.magazine.rounds = 0;
+  if (reload) Object.assign(tank.combat.reload, reload);
+  const paint = scopePaint(tank, 568, 290);
+  const lines = paint.texts.filter((op) => !/^\d+ m$/.test(op.text) && !/^\d+$/.test(op.text) && op.text.trim() !== 's');
+  assert.ok(lines.length >= 2 && paint.shells.length === 4, '568x290: the readout line, the zoom plate and the rack');
+  assertApart([...paint.shells, ...paint.dry], lines, `568x290 ${reload ? 'reloading' : 'empty'} rack`);
+}
 // desktop: the stack sits well below the scope, the struck round stays under the marker
 resize(WIDTH, HEIGHT);
 {
@@ -595,6 +647,94 @@ resize(WIDTH, HEIGHT);
 }
 scope = false;
 
+/** The last painted frame once the ring has eased to its target (the next frame reuses the canvas). */
+function settledPaint(tank, mode = 'battle') {
+  let ops = null;
+  for (let guard = 0; guard < 600; guard++) {
+    if (!frame(tank, { mode }).painted) break;
+    ops = ctx.ops.slice();
+  }
+  assert.ok(ops, 'the reticle painted');
+  return ops;
+}
+/** The dispersion ring's halo (the wider of its two dashed full strokes): centre, radius and outer reach. */
+function ringOf(ops) {
+  const halo = ops.filter((op) => op.op === 'stroke' && op.dash.length >= 2 && arcOf(op)
+    && arcOf(op)[5] - arcOf(op)[4] >= FULL_TURN - 1e-6)[0];
+  const r = (halo.box.x1 - halo.box.x0) / 2 - halo.lineWidth / 2;
+  return { x: (halo.box.x0 + halo.box.x1) / 2, y: (halo.box.y0 + halo.box.y1) / 2, r, reach: halo.lineWidth / 2 };
+}
+/** How far an empty mark keeps from the ring's stroke (negative: the ring runs through it). */
+function ringClearance(ring, mark) {
+  const { x0, y0, x1, y1 } = mark.box;
+  const near = Math.hypot(Math.max(x0 - ring.x, 0, ring.x - x1), Math.max(y0 - ring.y, 0, ring.y - y1));
+  const far = Math.max(...[[x0, y0], [x1, y0], [x0, y1], [x1, y1]].map(([x, y]) => Math.hypot(x - ring.x, y - ring.y)));
+  return Math.max(near - (ring.r + ring.reach), (ring.r - ring.reach) - far);
+}
+
+// 15. A phone's small ring, unscoped (critic r3: the struck round sat on the ring's sparse dashes, the same red): the
+// empty mark — a single gun's struck round, an autoloader's struck rack — drops below the ring, 3 px clear of its
+// stroke; a ring wide enough to hold the mark keeps it under the marker.
+resize(390, 844);
+for (const [id, label] of [['m1a1_abrams_hc', 'struck round'], ['m1a3', 'struck rack']]) {
+  // rings of 11 (the floor), 15, 22, 29 and 40 px under the mark, and 58.5 (the phone's ceiling) holding it
+  for (const [metres, wide] of [[1, false], [4, false], [6, false], [8, false], [11, false], [40, true]]) {
+    dispersionM = metres;
+    const tank = tankOf(id, [0, 0, 0]);
+    if (tank.combat.magazine) tank.combat.magazine.rounds = 0;
+    const ops = settledPaint(tank);
+    const ring = ringOf(ops);
+    const marks = ops.filter((op) => op.op === 'stroke' && op.style === INK.dry && op.box);
+    assert.ok(marks.length, `${id} ${metres} m: the ${label} is painted`);
+    for (const mark of marks) {
+      const clear = ringClearance(ring, mark);
+      assert.ok(clear >= 3, `${id}, a ${Math.round(ring.r)} px ring: the ${label} keeps ${clear.toFixed(2)} px from it`);
+    }
+    const top = Math.min(...marks.map((op) => op.box.y0));
+    if (wide) assert.ok(top < ring.y + ring.r - 10, `${id}, a ${Math.round(ring.r)} px ring holds the ${label} under the marker`);
+    else assert.ok(top > ring.y + ring.r, `${id}, a ${Math.round(ring.r)} px ring: the ${label} sits below it`);
+  }
+}
+dispersionM = 8;
+
+// 16. The portrait phone's scope (h > 430; critic r3: the struck rack's strike ended 1.5 px from the range tag): the
+// tag starts past the rack on every small ring, not only on the short landscape stack — 3 px clear of the strike.
+scope = true;
+dispersionM = 1; // the scope's smallest ring: the tag hangs nearest the rack
+{
+  const tank = tankOf('m1a3', [0, 0, 0]);
+  tank.combat.magazine.rounds = 0;
+  const ops = settledPaint(tank, 'sniper');
+  const tag = ops.find((op) => op.op === 'fillText' && /^\d+ m$/.test(op.text));
+  const strike = ops.filter((op) => op.op === 'stroke' && op.style === INK.dry && op.lineWidth === 1.5);
+  assert.ok(tag && strike.length, 'the range tag and the rack\'s strike');
+  for (const op of strike) {
+    const apart = Math.max(tag.box.x0 - op.box.x1, op.box.x0 - tag.box.x1, tag.box.y0 - op.box.y1, op.box.y0 - tag.box.y1);
+    assert.ok(apart >= 3, `390x844 scope: the strike keeps ${apart.toFixed(2)} px from "${tag.text}"`);
+  }
+}
+dispersionM = 8;
+scope = false;
+resize(WIDTH, HEIGHT);
+
+// 17. The touch layer dims its FIRE buttons while the selected gun is dry (critic r3 advisory): the HUD marks the body,
+// clears the mark when a round is loaded or the HUD hides, and an unlimited mark never sets it.
+{
+  const marked = () => documentStub.body.classes.has('cot-gun-dry');
+  frame(tankOf('m1a1_abrams_hc', [0, 0, 0]));
+  assert.equal(marked(), true, 'dry: marked');
+  frame(tankOf('m1a1_abrams_hc', [1, 0, 0]));
+  assert.equal(marked(), false, 'a round loaded: cleared');
+  unlimitedRounds = true;
+  frame(tankOf('m1a1_abrams_hc', [0, 0, 0]));
+  assert.equal(marked(), false, 'unlimited rounds: never marked');
+  unlimitedRounds = false;
+  frame(tankOf('m1a1_abrams_hc', [0, 0, 0]));
+  hud.setMode('hidden');
+  assert.equal(marked(), false, 'a hidden HUD clears it');
+  hud.setMode('battle');
+}
+
 console.log('hudAmmoOutPaint.selftest: the live HUD paints no sweep, countdown or ready flash on a dry gun, a sparse '
-  + 'muted ring, a struck round or rack and spent rack slots, struck launcher and magazine controls; unlimited rounds '
-  + 'never read dry');
+  + 'muted ring, a struck round or rack (below a small ring) and spent rack slots, struck launcher and magazine controls; '
+  + 'a clip or salvo fills the round being chambered; unlimited rounds never read dry');

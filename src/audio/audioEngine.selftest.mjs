@@ -189,17 +189,30 @@ assert.ok(names.includes('drum_rotate') && names.at(-1) === 'latch_ready', 'the 
   me.combat.ammo.splice(0, stowed.length, ...stowed);
   cycle(0.95);
   assert.equal(starts(), started + 1, 'rounds back after a dry spell: the loader cycle restarts, not the stale plan');
-  // The mode's unlimited rounds (the ruleset table the HUD's shell cards read) never read spent, whatever the counters.
-  const unlimitedMode = GAME_MODE_IDS.find((id) => matchRulesetFor(id).ammo === 'unlimited');
-  assert.ok(unlimitedMode, 'some mode plays with unlimited rounds');
+  // The mode's unlimited rounds (the ruleset table the HUD's shell cards read) never read spent, whatever the counters,
+  // in every ground-only unlimited mode (Juggernaut among them, after the rules head).
+  const unlimitedModes = GAME_MODE_IDS.filter((id) => matchRulesetFor(id).ammo === 'unlimited' && matchRulesetFor(id).aerial !== 'gunship');
+  assert.ok(unlimitedModes.includes('juggernaut'), `Juggernaut plays with unlimited rounds (${unlimitedModes})`);
   const modeBefore = gameMode;
-  gameMode = unlimitedMode;
+  gameMode = 'juggernaut';
   me.combat.ammo.fill(0);
   const unlimitedStarts = starts();
   for (const progress of [0, 0.3, 0.6, 0.9]) cycle(progress);
   assert.equal(starts(), unlimitedStarts + 1, 'unlimited rounds at zero counters still run the loader cycle');
   gameMode = modeBefore;
   cycle(0.95); // finite again with nothing stowed: the half-played plan is dropped (no "done", no crew call)
+  // The AC-130 refills only its gunship (critic r3, matchRuleset rulesetUnlimitedFor): an escort at zero is dry and its
+  // crew loads nothing, while the gunship's cycle runs whatever its counters say.
+  gameMode = 'ac130';
+  const escortStarts = starts();
+  for (const progress of [0, 0.3, 0.6, 0.9]) cycle(progress);
+  assert.equal(starts(), escortStarts, 'an AC-130 escort out of rounds runs no loader cycle');
+  me.aerial = { kind: 'gunship' };
+  for (const progress of [0, 0.3, 0.6, 0.9]) cycle(progress);
+  assert.equal(starts(), escortStarts + 1, 'the gunship at zero counters still cycles: its rounds refill');
+  delete me.aerial;
+  gameMode = modeBefore;
+  cycle(0.95);
   me.combat.ammo.splice(0, stowed.length, ...stowed);
 }
 

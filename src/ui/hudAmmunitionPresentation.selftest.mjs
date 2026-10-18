@@ -290,6 +290,28 @@ assert.match(hudSource, /locale: getLocale,/,
   assert.equal(elements.button.classes.has('unlimited'), false, 'and drops the unlimited class');
 }
 
+// critic r3 (APFSDS180): a count of three digits or more marks its slot wide (the slot's bottom row tightens); fewer
+// digits, or the ∞, drop the mark, and an unchanged count writes nothing.
+{
+  const previous = cards[0];
+  const { elements } = fixtures[0];
+  for (const [count, wide] of [[180, true], [1000, true], [99, false], [100, true], [0, false]]) {
+    cards[0] = { ...previous, count };
+    render();
+    assert.equal(elements.button.classes.has('wide'), wide, `${count} rounds: ${wide ? '' : 'not '}wide`);
+  }
+  cards[0] = { ...previous, count: 240 };
+  render();
+  mutations.length = 0;
+  for (let frame = 0; frame < 30; frame++) render();
+  assert.deepEqual(mutations, [], 'an unchanged wide count performs no writes');
+  cards[0] = { ...previous, count: 0, unlimited: true };
+  render();
+  assert.equal(elements.button.classes.has('wide'), false, 'the ∞ is never wide');
+  cards[0] = previous;
+  render();
+}
+
 {
   const rule = /\.cot-shell\.unlimited \.cnt\{([^}]*)\}/.exec(hudSource)?.[1] ?? '';
   const size = (css) => Number(/font-size:(\d+(?:\.\d+)?)px/.exec(css)?.[1]);
