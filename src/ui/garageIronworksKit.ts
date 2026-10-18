@@ -106,12 +106,13 @@ function shunter(b: KitBuilder): void {
 
 /** A pile of scrap: twisted beams, plates, tube and wheel sets, rusted, on a low dark heap. */
 function scrapPile(b: KitBuilder): void {
-  b.lathe(0, 0, 0, [[3.4, 0], [2.6, 0.5], [1.4, 1.0], [0, 1.2]], 12, [0x3a2c24, 0x4a3326, 0x3d2c24]);
+  // a low dark bed of rust scale and swarf under the pieces (the pieces read, not a red dome)
+  b.lathe(0, 0, 0, [[3.4, 0], [2.4, 0.3], [1.2, 0.62], [0, 0.72]], 10, [0x2a2522, 0x332a24, 0x2e2622]);
   const r = b.rng;
-  for (let i = 0; i < 19; i += 1) {
+  for (let i = 0; i < 22; i += 1) {
     const a = r() * Math.PI * 2, d = Math.sqrt(r()) * 2.8;
     const x = Math.cos(a) * d, z = Math.sin(a) * d * 0.8;
-    const y = 1.2 * (1 - d / 3.4) + 0.15;
+    const y = 0.72 * (1 - d / 3.4) + 0.2 + r() * 0.5;
     const tone = r() < 0.5 ? RUST : r() < 0.5 ? 0x5a3a28 : 0x4f4a45;
     b.push().translate(x, y, z).rotateY(r() * Math.PI).rotateZ((r() - 0.5) * 1.1).rotateX((r() - 0.5) * 0.7);
     const kind = i % 4;
