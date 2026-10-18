@@ -415,7 +415,10 @@ function level1Glacis(P: TankBuilderPort, g: HullSurface): void {
 /** The armoured lamp pocket (level 1): a welded hood on the glacis round the existing round driving lamp, its lens
  * recessed 11 mm inside the hood's mouth. */
 function lampPockets(P: TankBuilderPort, g: HullSurface): void {
-  const id = idOf(1), x0 = .80, x1 = 1.02, z0 = 2.80, z1 = 3.00, t = .03, top = [1.16, 1.11] as const;
+  // (round 4, the critic's UAPL-R3-Z1-1: from the front quarter the lens rim showed cut by the hood's inner wall beside
+  // the glacis field's end rail: the pocket stands 2 cm further out, 4 cm clear of the rail, and the lens sits 6 mm inside
+  // its housing's mouth instead of 10)
+  const id = idOf(1), x0 = .82, x1 = 1.04, z0 = 2.80, z1 = 3.00, t = .03, top = [1.16, 1.11] as const;
   for (const side of SIDES) {
     const ring = (z: number, yt: number): SectionPoint[] => {
       const yb = g.glacisAt(z) - .004, a = side * x0, b = side * x1, lo = Math.min(a, b), hi = Math.max(a, b);
@@ -430,11 +433,11 @@ function lampPockets(P: TankBuilderPort, g: HullSurface): void {
       return {o: [0, 0, z] as V3, out: [1, 0, 0] as V3, up: [0, 1, 0] as V3, ring: [[lo, yb], [hi, yb], [hi, top[0] - t + .002], [lo, top[0] - t + .002]] as SectionPoint[]};
     }));
     P.addExternalArmor('hull', tagFrontPart(back, 'lamp pocket back plate', 'hull'));
-    // the round lamp: a bored housing whose mouth is 2 mm inside the pocket's, its lens 10 mm inside that mouth and
+    // the round lamp: a bored housing whose mouth is 2 mm inside the pocket's, its lens 6 mm inside that mouth and
     // lapping 6 mm into the bore's floor
     const x = side * (x0 + x1) / 2, y = .995, mouth = z1 - .002;
     P.addEquipment('hullDetail', tagFrontPart(blindTube(.073, .058, .085, .016, P.q ? 16 : 12), 'pocket lamp housing', 'hull'), x, y, mouth - .0425);
-    P.addEquipment('hullGlass', tagFrontPart(nightLens(cylZ(.056, .012, P.q ? 16 : 12), 'headlight'), 'pocket lamp lens', 'hull'), x, y, mouth - .010 - .006);
+    P.addEquipment('hullGlass', tagFrontPart(nightLens(cylZ(.056, .016, P.q ? 16 : 12), 'headlight'), 'pocket lamp lens', 'hull'), x, y, mouth - .006 - .008);
   }
 }
 

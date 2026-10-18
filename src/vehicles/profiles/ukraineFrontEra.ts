@@ -63,9 +63,9 @@ const BROW = {x0: .40, x1: .95, z: [.44, .60, .72, .74] as const, thick: [.03, .
 const JOINT = {plate: .012, gap: .003, inset: .006, sink: .004};
 const HALF_JOINT = JOINT.plate / 2 + JOINT.gap;
 /** Along a run the stations stand at most `step` apart (a block's, a ledge's); one is added between two whose seated
- * back leaves their chord by more than SEAT_TOL, so a back seated SEAT_IN into the casting at its stations stays from 1
- * mm off it to 7 mm into it between them. */
-const BLOCK_STEP = .13, LEDGE_STEP = .17, SEAT_TOL = .004, SEAT_IN = .003;
+ * back leaves their chord by more than SEAT_TOL, so a back seated SEAT_IN into the casting at its stations stays from 2
+ * mm off it to 6 mm into it between them. */
+const BLOCK_STEP = .16, LEDGE_STEP = .17, SEAT_TOL = .004, SEAT_IN = .002;
 
 type P2 = readonly [number, number];
 /** A station frame in the (|x|, z) plan: its origin on the course's foot line, its u axis `out`, and the factor that
@@ -111,8 +111,41 @@ function rakedRing(casting: Stock, side: number, f: Frame, yb: number, yt: numbe
   return ring;
 }
 
-/** The three heights a block's back is seated at (its foot and top 2 mm in, and its middle). */
-const blockBacks = (yb: number, yt: number): number[] => [yb + .002, (yb + yt) / 2, yt - .002];
+/** The heights a block's back is seated at: its foot and top 2 mm in and its middle; a block taller than 12 cm (the jaw
+ * collars) also its quarters (the casting's bulge between them would sink a straight back past 7.5 mm). */
+const blockBacks = (yb: number, yt: number): number[] => yt - yb > .12
+  ? [0, .25, .5, .75, 1].map(t => yb + .002 + (yt - yb - .004) * t)
+  : [yb + .002, (yb + yt) / 2, yt - .002];
+
+/** A block's seat heights refined on the casting behind one of its stations: between two heights whose chord leaves the
+ * casting's seat by more than SEAT_TOL (a crease in the cast front: the T-72B3M's breaks at y .27-.29 beside the
+ * mantlet), the middle height is added (three passes). */
+function seatHeights(casting: Stock, side: number, f: Frame, yb: number, yt: number): number[] {
+  let ys = blockBacks(yb, yt);
+  const u = (y: number) => seatU(casting, side, f, y, -((y - yb) * RAKE) * f.scale);
+  for (let pass = 0; pass < 3; pass++) {
+    const next = [ys[0]];
+    for (let i = 0; i < ys.length - 1; i++) {
+      const a = ys[i], b = ys[i + 1], m = (a + b) / 2, ua = u(a), ub = u(b), um = u(m);
+      if (ua !== null && ub !== null && um !== null && b - a > .01 && Math.abs(um - (ua + ub) / 2) > SEAT_TOL) next.push(m);
+      next.push(b);
+    }
+    if (next.length === ys.length) break;
+    ys = next;
+  }
+  return ys;
+}
+/** A span's seat heights: the union of the heights refined behind five of its stations (a crease runs at different
+ * heights along a block), heights within 5 mm of each other merged. */
+function spanSeatHeights(casting: Stock, side: number, sp: Span, yb: number, yt: number): number[] {
+  const all = [0, .25, .5, .75, 1].flatMap(t => seatHeights(casting, side, spanFrame(sp, sp.s0 + (sp.s1 - sp.s0) * t), yb, yt)).sort((a, b) => a - b);
+  const out: number[] = [];
+  for (const y of all) if (!out.length || y - out[out.length - 1] > .005) out.push(y);
+  out[out.length - 1] = Math.max(out[out.length - 1], all[all.length - 1]);
+  return out;
+}
+/** The ring vertices of a raked ring that lie on the casting (all but its two front corners). */
+const backVertices = (n: number): number[] => Array.from({length: n + 2}, (_, i) => i).filter(i => i !== 1 && i !== 2);
 
 /** A straight run of a course's foot line: its start, direction and facet normal. */
 interface Run { start: P2; dir: P2; n: P2 }
@@ -169,12 +202,18 @@ function spanStations(casting: Stock, sp: Span, ring: (f: Frame) => SectionPoint
     if (v === null || Math.sign(v) !== Math.sign(h)) return h;
     return Math.sign(h) * Math.abs(h * v) / Math.hypot(h, v);
   };
+  // the back's vertices by height: its chords between the two stations, and between two heights the quad's centre and both
+  // of its diagonals' midpoints (a twisted quad is split along one of them)
+  const byHeight = [...backs].sort((i, j) => list[0].ring[i][1] - list[0].ring[j][1]);
   const off = (a: Station, b: Station): number => {
-    let worst = 0;
-    for (const i of backs) for (const t of [.25, .5, .75]) {
-      const d = depth(world(a, i).lerp(world(b, i), t));
-      worst = Math.max(worst, d === null ? Infinity : Math.abs(d - SEAT_IN));
+    const pts: THREE.Vector3[] = [];
+    for (const i of byHeight) for (const t of [.25, .5, .75]) pts.push(world(a, i).lerp(world(b, i), t));
+    for (let k = 0; k < byHeight.length - 1; k++) {
+      const i = byHeight[k], j = byHeight[k + 1], Ai = world(a, i), Aj = world(a, j), Bi = world(b, i), Bj = world(b, j);
+      pts.push(Ai.clone().add(Aj).add(Bi).add(Bj).multiplyScalar(.25), Ai.clone().lerp(Bj, .5), Aj.clone().lerp(Bi, .5));
     }
+    let worst = 0;
+    for (const p of pts) { const d = depth(p); worst = Math.max(worst, d === null ? Infinity : Math.abs(d - SEAT_IN)); }
     return worst;
   };
   for (let pass = 0; pass < 4; pass++) {
@@ -366,12 +405,13 @@ function cheekPost(P: TankBuilderPort, casting: Stock, side: number): void {
 
 function courses(P: TankBuilderPort, casting: Stock, side: number): void {
   COURSES.forEach((c, i) => {
-    const plan = coursePlan(casting, side, c), backs = blockBacks(c.yb, c.yt);
+    const plan = coursePlan(casting, side, c);
     if (i > 0) ledge(P, casting, side, c, plan);
     // (the far tier keeps the blocks, ledges and posts; the dividers are near-tier frame detail)
     if (P.q) dividers(P, casting, side, c, plan);
     for (const b of plan.blocks) {
-      const list = spanStations(casting, b.span, f => rakedRing(casting, side, f, c.yb, c.yt, c.yb, backs), side, BLOCK_STEP, [0, 3, 4]);
+      const ys = spanSeatHeights(casting, side, b.span, c.yb, c.yt);
+      const list = spanStations(casting, b.span, f => rakedRing(casting, side, f, c.yb, c.yt, c.yb, ys), side, BLOCK_STEP, backVertices(ys.length));
       if (!list) throw new Error(`${ID}: prow block ${i + 1}${b.tag} leaves the casting`);
       const mid = list[Math.floor(list.length / 2)].f;
       eraModule(P, {owner: 'turret', sector: sectorOf('turret_era', side * mid.X), geometry: loftOf(side, list),
@@ -400,8 +440,12 @@ function jaws(P: TankBuilderPort, casting: Stock, side: number): void {
   assertTurretPart(ID, 'jaw ledge', lg);
   P.addExternalArmor('turret', lg);
   for (const [i, j] of JAW.blocks.entries()) {
-    const backs = blockBacks(j.yb, j.yt);
-    const g = loftOf(side, stationsAlong(j.front, HALF_JOINT, f => rakedRing(casting, side, f, j.yb, j.yt, j.yb, backs)));
+    // (seated like a prow block: heights refined at its middle, stations added where the casting bulges between two)
+    const span: Span = {run: {start: [0, j.front], dir: [1, 0], n: nJ}, s0: JAW.x0, s1: POST_X - HALF_JOINT, out0: nJ, out1: nJ};
+    const backs = spanSeatHeights(casting, side, span, j.yb, j.yt);
+    const list = spanStations(casting, span, f => rakedRing(casting, side, f, j.yb, j.yt, j.yb, backs), side, .06, backVertices(backs.length));
+    if (!list) throw new Error(`${ID}: jaw collar ${i + 1} leaves the casting`);
+    const g = loftOf(side, list);
     eraModule(P, {owner: 'turret', sector: sectorOf('turret_era', side), geometry: g, outward: [0, Math.sin(.26), Math.cos(.26)],
       name: `jaw collar ${i + 1}`, guard: (n, geo) => assertTurretPart(ID, n, geo)});
   }
@@ -435,11 +479,11 @@ function dazzlers(P: TankBuilderPort): void {
     const x = side * 1.50, y = .255, z = .70;
     P.addEquipment('turretDetail', tagFrontPart(new THREE.BoxGeometry(.08, y - .055 - SHELF.top + .004, .10), 'dazzler bracket', 'turret'), x, (SHELF.top - .004 + y - .055) / 2, z);
     // an open-mouthed hood: a 44 mm bore 16 mm deep in a 55 mm housing
-    const hood = blindTube(.055, .044, .11, .016, P.q ? 14 : 10);
+    const hood = blindTube(.055, .044, .11, .016, P.q ? 10 : 8);
     assertTurretPart(ID, 'dazzler hood', hood.clone().translate(x, y, z));
     P.addEquipment('turretDetail', tagFrontPart(hood, 'dazzler hood', 'turret'), x, y, z);
     // the lens's face 10 mm inside the hood's mouth (z + .055), lapping into the hood bore
-    P.addEquipment('turretGlass', tagFrontPart(nightLens(cylZ(.042, .012, P.q ? 14 : 10), 'marker', 'red'), 'dazzler lens', 'turret'), x, y, z + .055 - .010 - .006);
+    P.addEquipment('turretGlass', tagFrontPart(nightLens(cylZ(.042, .012, P.q ? 10 : 8), 'marker', 'red'), 'dazzler lens', 'turret'), x, y, z + .055 - .010 - .006);
   }
 }
 
@@ -537,7 +581,7 @@ function railsAndKeel(P: TankBuilderPort, glacisAt: (z: number) => number): void
 
 /** The three sawtooth chevron bands per side: wedges .025 thick at their rear rising to a front lip raked 60 degrees,
  * their lips swept back 15 degrees outboard. Round 4: each band's rear edge abuts a permanent retainer rib welded to the
- * glacis (14 mm, 3 cm tall: spent, the three chevrons stay drawn on the plate as the frame they hung on), and the
+ * glacis (RIB: spent, the three chevrons stay drawn on the plate as the frame they hung on), and the
  * doublet seam groove on the lips is gone (with the prow's, it drew the critic's "stair-stepped contour lines"). */
 function chevronBands(P: TankBuilderPort, glacisAt: (z: number) => number): void {
   const cot60 = 1 / Math.tan(Math.PI / 3);
@@ -551,7 +595,7 @@ function chevronBands(P: TankBuilderPort, glacisAt: (z: number) => number): void
     eraModule(P, {owner: 'hull', sector: sectorOf('glacis_era', side), geometry: crosswiseSolid(stations), outward: [0, .7071, .7071], minDot: .5,
       name: `chevron band ${i + 1}`, guard: (nm, geo) => assertHullPart(ID, nm, geo)});
     const rib = crosswiseSolid(BAND_X.map((X, k) => {
-      const z1 = b.rear[k] - .002, z0 = z1 - RIB.w;
+      const z1 = b.rear[k] - RIB.gap, z0 = z1 - RIB.w;
       // (its foot 6 mm into the plate, under the bands' 4 mm: no shared plane)
       return {x: side * X, ring: [[z0, glacisAt(z0) - .006], [z1, glacisAt(z1) - .006], [z1, glacisAt(z1) + RIB.h], [z0, glacisAt(z0) + RIB.h]] as [number, number][]};
     }));
@@ -559,7 +603,9 @@ function chevronBands(P: TankBuilderPort, glacisAt: (z: number) => number): void
     P.addExternalArmor('hull', rib);
   });
 }
-const RIB = {w: .014, h: .03};
+/** The retainer rib: 10 mm thick, 1 mm behind its band, so 4 mm clear of the band ahead's lip foot (the bands' 15 mm
+ * gaps), 3 cm tall. */
+const RIB = {w: .010, h: .03, gap: .001};
 
 /** Hinged aprons on the lower front plate: a two-facet panel .07 thick, hung on a hinge line on the plate in the gap
  * between its top edge and the sill: three permanent knuckles and, between them, the apron's own (near tier). */
@@ -594,7 +640,7 @@ function aprons(P: TankBuilderPort, hull: Stock): void {
       if (out.z < 0) out.negate();
       return b.clone().setX(side * X).addScaledVector(up, r - .003).addScaledVector(out, r - .004);
     };
-    const knuckles = APRON.knuckles.map(line), segs = P.q ? 9 : 7;
+    const knuckles = APRON.knuckles.map(line), segs = P.q ? 8 : 7;
     const leaves = APRON.knuckles.slice(1).map((X, k) => {
       const x0 = APRON.knuckles[k] + .05 + .003, x1 = X - .05 - .003, c = line((x0 + x1) / 2);
       return cylX(r, x1 - x0, segs).translate(c.x, c.y, c.z);

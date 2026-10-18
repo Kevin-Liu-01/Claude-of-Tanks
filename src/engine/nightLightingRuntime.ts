@@ -19,8 +19,8 @@ export interface NightLightEmitter {
    * and shape in all five station states"): a weapon searchlight, boresighted with the station that carries it. It
    * keeps its authored aim (no low-beam drop), lights its own narrow cone (`coneRad`, the spot's half-angle), and on a
    * pool wider than one vehicle's two sides (desktop's four spots) it ranks half a priority step ahead of its vehicle's
-   * driving lamps, so it holds a beam while their two sides keep theirs; a two-spot pool (mobile) keeps both spots on
-   * the driving lamps.
+   * driving lamps, so it holds a beam while their two sides keep theirs; on a two-spot pool (mobile) it ranks half a
+   * step behind them, which keep both spots.
    */
   readonly searchlight?: boolean;
   readonly coneRad?: number;
@@ -227,8 +227,8 @@ function chooseEmitter<T extends THREE.SpotLight | THREE.PointLight>(
     // Mild retention prevents nearly equidistant lamps swapping every frame.
     const retained = slots[index].source === candidate ? .85 : 1;
     // (release 227) a searchlight ranks half a priority step ahead of its own vehicle's lamps on a pool with room for
-    // more than one vehicle's two sides
-    const lift = candidate.emitter.searchlight && slots.length > 2 ? .5 : 0;
+    // more than one vehicle's two sides, and half a step behind them on a smaller one (they keep both of its spots)
+    const lift = candidate.emitter.searchlight ? slots.length > 2 ? .5 : -.5 : 0;
     const score = candidate.distanceSquared * retained - ((candidate.source.priority ?? 0) + lift) * 1e8;
     if (score < bestScore) { best = candidate; bestScore = score; }
   }

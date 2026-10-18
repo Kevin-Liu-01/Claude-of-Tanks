@@ -23,7 +23,8 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createTank} from './tankFactory.ts';
 import {getSpec} from './specs.ts';
-import {frontEnvelope, mosaicLayout} from './profiles/eraModuleKit.ts';
+import {frontEnvelope, mosaicLayout, SMOKE_RAYS, SMOKE_FREE, SMOKE_REACH} from './profiles/eraModuleKit.ts';
+import {AUXILIARY_INVENTORY} from './auxiliaryInventory.generated.ts';
 import {minimumMechanicalGunPitch} from '../sim/gunPitchLimits.ts';
 import {vehicleNightLightEmittersFor, SEARCHLIGHT_CONE_RAD} from './vehicleNightLighting.ts';
 import {NATIONAL_ROOF_LOADOUTS} from './nationalRoofConfig.ts';
@@ -52,9 +53,6 @@ const HATCHES = {
   t72b3_zubr: {hull: [[0, 1.59, .59, 1.46]], turret: [[-.627, -.359, .74, .79], [.528, -.527, .63, .70]]},
   t72b3_zubr_ii: {hull: [[0, 1.59, .59, 1.46]], turret: [[-.627, -.359, .74, .79], [.528, -.527, .63, .70]]},
 };
-const SMOKE = [[1.16, 2.163, .085], [1.37, 2.129, .145], [1.58, 2.067, .199], [1.35, 1.994, .242], [1.56, 1.932, .296], [1.56, 1.82, .36]]
-  .map(([x, y, z]) => new THREE.Vector3(x - .0000072471277, y - 1.52948397398, z - .1143146502203));
-const SMOKE_AXIS = new THREE.Vector3(.31, .38, .872).normalize();
 const DEG = Math.PI / 180;
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -129,6 +127,37 @@ class Grid {
   }
 }
 const vertsOf = g => { const p = g.getAttribute('position'), out = []; for (let i = 0; i < p.count; i++) out.push(new THREE.Vector3().fromBufferAttribute(p, i)); return out; };
+/** (Round 4, the critic's D8) faces of a new part lying in another part's plane (gap under .3 mm), facing the same way
+ * (within 1.5 degrees) and overlapping it by more than 1 mm2: the pairs that can z-fight. */
+function coplanarPairs(parts) {
+  const COS = Math.cos(1.5 * DEG), cell = .05, list = [], grid = new Map();
+  for (const [pi, p] of parts.entries()) for (const tr of trisOf(p.g)) { const area = tr.tri.getArea(); if (area < 1e-6) continue;
+    list.push({pi, v: tr.v, n: tr.tri.getNormal(new THREE.Vector3()), c: tr.tri.getMidpoint(new THREE.Vector3()), box: tr.box}); }
+  const keys = b => { const out = []; for (let x = Math.floor(b.min.x / cell); x <= Math.floor(b.max.x / cell); x++) for (let y = Math.floor(b.min.y / cell); y <= Math.floor(b.max.y / cell); y++) for (let z = Math.floor(b.min.z / cell); z <= Math.floor(b.max.z / cell); z++) out.push(`${x},${y},${z}`); return out; };
+  for (const [k, t] of list.entries()) for (const key of keys(t.box)) { let l = grid.get(key); if (!l) grid.set(key, l = []); l.push(k); }
+  const area2 = pts => { let a = 0; for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length]; a += p[0] * q[1] - q[0] * p[1]; } return a / 2; };
+  const overlap = (a, b) => {
+    const u = new THREE.Vector3().crossVectors(a.n, Math.abs(a.n.x) < .9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0)).normalize(), w = a.n.clone().cross(u);
+    let poly = a.v.map(q => [q.dot(u), q.dot(w)]); const clip = b.v.map(q => [q.dot(u), q.dot(w)]);
+    if (area2(clip) < 0) clip.reverse(); if (area2(poly) < 0) poly.reverse();
+    for (let i = 0; i < 3 && poly.length; i++) {
+      const A = clip[i], B = clip[(i + 1) % 3], side = p => (B[0] - A[0]) * (p[1] - A[1]) - (B[1] - A[1]) * (p[0] - A[0]), out = [];
+      for (let j = 0; j < poly.length; j++) { const p = poly[j], q = poly[(j + 1) % poly.length], sp = side(p), sq = side(q);
+        if (sp >= 0) out.push(p); if ((sp >= 0) !== (sq >= 0)) { const t = sp / (sp - sq); out.push([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]); } }
+      poly = out;
+    }
+    return poly.length >= 3 ? Math.abs(area2(poly)) : 0;
+  };
+  const pairs = new Map();
+  for (const [k, a] of list.entries()) { if (!parts[a.pi].fresh) continue; const seen = new Set();
+    for (const key of keys(a.box)) for (const j of grid.get(key) ?? []) {
+      if (j === k || seen.has(j)) continue; seen.add(j); const b = list[j];
+      if (b.pi === a.pi || (parts[b.pi].fresh && b.pi < a.pi) || a.n.dot(b.n) < COS || Math.abs(b.c.clone().sub(a.c).dot(a.n)) > .0003) continue;
+      const area = overlap(a, b); if (area < 1e-6) continue;
+      const key2 = `${parts[a.pi].name} | ${parts[b.pi].name}`; pairs.set(key2, (pairs.get(key2) ?? 0) + area);
+    } }
+  return [...pairs].map(([k, a]) => `${k} (${(a * 1e4).toFixed(1)} cm2)`);
+}
 const seatMat = new THREE.MeshBasicMaterial({side: THREE.DoubleSide}), seatRay = new THREE.Raycaster();
 const AXES = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)], overlapRay = new THREE.Ray(), overlapPt = new THREE.Vector3();
 const isShadow = o => o.userData.shadowOnly || o.userData.authoredShadowProxy || /^procShadow/.test(o.name);
@@ -174,9 +203,24 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
     // against its authored outward axis (cosine under -.75) that do not face another part of the same module (a seam
     // groove's wall); at each face's centroid and at its corners and edge midpoints (pulled 10 % in), a ray along the
     // face's normal from 3 cm inside the module meets permanent stock no more than 6 mm out
-    let seatWorst = -Infinity;
+    let seatWorst = -Infinity, sinkWorst = Infinity;
     for (const owner of ['hull', 'turret']) {
       const stockMeshes = stock[owner].map(g => { const m = new THREE.Mesh(g, seatMat); m.updateMatrixWorld(true); return m; });
+      // the stock's triangles hashed in 5 cm cells: a seat point behind the stock's surface along its face's normal sinks by
+      // its shortest distance to the stock (along a steep face's normal past a cast crease the ray meets the casting's
+      // lower bulge first and reads deeper than the module sits)
+      const cells = new Map(), C = .05, ck = (x, y, z) => `${x},${y},${z}`;
+      for (const g of stock[owner]) for (const tr of trisOf(g)) {
+        const b = tr.box;
+        for (let x = Math.floor(b.min.x / C); x <= Math.floor(b.max.x / C); x++) for (let y = Math.floor(b.min.y / C); y <= Math.floor(b.max.y / C); y++)
+          for (let z = Math.floor(b.min.z / C); z <= Math.floor(b.max.z / C); z++) { const k = ck(x, y, z); let l = cells.get(k); if (!l) cells.set(k, l = []); l.push(tr); }
+      }
+      const sunk = (q) => {
+        let m = Infinity; const cp = new THREE.Vector3(), [i, j, k] = [q.x, q.y, q.z].map(v => Math.floor(v / C));
+        for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) for (let c = -1; c <= 1; c++)
+          for (const tr of cells.get(ck(i + a, j + b, k + c)) ?? []) { tr.tri.closestPointToPoint(q, cp); m = Math.min(m, cp.distanceTo(q)); }
+        return m;
+      };
       for (const m of modules.filter(p => p.owner === owner)) {
         const outward = new THREE.Vector3(...m.g.userData.frontEraOutward), self = new THREE.Mesh(m.g, seatMat);
         self.updateMatrixWorld(true);
@@ -190,16 +234,38 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
           if (seatRay.intersectObject(self, false).length) continue;
           for (const q of at) {
             samples++;
-            seatRay.set(q.clone().addScaledVector(fn, -.03), fn); seatRay.far = .33;
-            const hit = seatRay.intersectObjects(stockMeshes, false)[0], gap = hit ? hit.distance - .03 : Infinity;
+            // (round 4, the critic's D4: the ray starts inside the module, never past its own front, so a module sunk
+            // through a thin wall reads its whole sink, and the seat is held both ways: at most 6 mm off the stock and
+            // at most 7.5 mm into it (a 4 mm seat and its tolerance))
+            seatRay.set(q.clone().addScaledVector(fn, -.0005), fn.clone().negate()); seatRay.far = .2;
+            // (a thin edge starts 12 mm out, in front of its 4 mm seat: a ray starting inside the stock would miss it)
+            const own = seatRay.intersectObject(self, false)[0], back = Math.max(.012, Math.min(.9 * ((own?.distance ?? .03) + .0005), .03));
+            seatRay.set(q.clone().addScaledVector(fn, -back), fn); seatRay.far = .33;
+            const hit = seatRay.intersectObjects(stockMeshes, false)[0], gap = hit ? hit.distance - back : Infinity;
             seatWorst = Math.max(seatWorst, gap);
             assert(gap <= .006, `${label}: ${m.name} is seated on permanent stock over its whole seat (${Number.isFinite(gap) ? `${gap.toFixed(4)} m off` : 'no stock behind'} at ${q.toArray().map(x => x.toFixed(3))})`);
+            const sink = gap < 0 ? Math.min(-gap, sunk(q)) : 0;
+            sinkWorst = Math.min(sinkWorst, -sink);
+            assert(sink <= .0075, `${label}: ${m.name} sinks ${sink.toFixed(4)} m into its seat (7.5 mm) at ${q.toArray().map(x => x.toFixed(3))}`);
           }
         }
         assert(samples >= 4, `${label}: ${m.name} has a seat (${samples} samples)`);
       }
     }
 
+    // the smoke launch lines (round 4, the critic's D6): the inventory's sockets the sim fires from, the guard's own rays,
+    // each held over its free length to the first existing turret stock (measured here, pinned in SMOKE_FREE)
+    const smokeRays = AUXILIARY_INVENTORY[id].smoke.filter(r => r.owner === 'turret')
+      .map(r => ({o: new THREE.Vector3(...r.position), d: new THREE.Vector3(...r.direction).normalize()}));
+    assert.equal(smokeRays.length, SMOKE_RAYS.length, `${label}: six turret smoke launch lines`);
+    const existingTurret = others.turret.map(o => { const m = new THREE.Mesh(o.g, seatMat); m.updateMatrixWorld(true); return m; });
+    smokeRays.forEach((r, k) => {
+      assert(r.o.distanceTo(SMOKE_RAYS[k].o) < 1e-4 && r.d.angleTo(SMOKE_RAYS[k].d) < 1e-3, `${label}: the guard's smoke line ${k} is the inventory's`);
+      seatRay.set(r.o.clone().addScaledVector(r.d, .02), r.d); seatRay.far = 3;
+      const hit = seatRay.intersectObjects(existingTurret, false)[0];
+      r.free = Math.min(SMOKE_REACH, hit ? hit.distance + .02 : Infinity);
+      assert(Math.abs(r.free - SMOKE_FREE[id][k]) < .01, `${label}: smoke line ${k} runs free ${r.free.toFixed(3)} m to existing stock (pinned ${SMOKE_FREE[id][k]})`);
+    });
     // analytic envelopes over every new vertex
     const tan9 = Math.tan(9 * DEG), [dz, dy] = env.driver;
     let mins = {driver: Infinity, mantlet: Infinity, smoke: Infinity, sight: Infinity, hatch: Infinity};
@@ -212,8 +278,10 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
         } else {
           if (v.y > -.052 && v.y < .628 && v.z > .765 && v.z < 1.702) { mins.mantlet = Math.min(mins.mantlet, Math.abs(v.x) - .337);
             assert(Math.abs(v.x) >= .39 - 1e-4, `${label}: ${p.name} enters the mantlet's sweep (x ${v.x.toFixed(3)})`); }
-          for (const s of SMOKE) { const d = v.clone().sub(s), tt = Math.max(0, d.dot(SMOKE_AXIS)), dist = d.addScaledVector(SMOKE_AXIS, -tt).length();
-            mins.smoke = Math.min(mins.smoke, dist); assert(dist >= .10, `${label}: ${p.name} is ${dist.toFixed(3)} m from a smoke line of fire`); }
+          // (past a line's free length it has met existing stock: nothing new there counts)
+          for (const [k, r] of smokeRays.entries()) { const d = v.clone().sub(r.o), along = d.dot(r.d); if (along > r.free) continue;
+            const dist = d.addScaledVector(r.d, -Math.max(0, along)).length();
+            mins.smoke = Math.min(mins.smoke, dist); assert(dist >= .10, `${label}: ${p.name} is ${dist.toFixed(3)} m from smoke launch line ${k}`); }
           if (v.x > .60 && v.x < .97 && v.z > .15) { const m = .80 - .176 * (v.z - .15) - v.y; mins.sight = Math.min(mins.sight, m);
             assert(m >= -1e-4, `${label}: ${p.name} enters the gunner's sight's lower ray (${m.toFixed(4)})`); }
           for (const [hx, hz, r, plane] of HATCHES[id].turret) if (Math.hypot(v.x - hx, v.z - hz) < r) {
@@ -345,6 +413,13 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
       }
     }
 
+    // no new part shares a face's plane with another part of its owner, facing the same way (HIGH)
+    if (high) for (const owner of ['hull', 'turret']) {
+      const z = coplanarPairs([...fresh.filter(q => q.owner === owner).map(q => ({name: q.name, g: q.g, fresh: true})),
+        ...others[owner].map(o => ({name: `existing ${o.bucket}`, g: o.g, fresh: false}))]);
+      assert.equal(z.length, 0, `${label}: coplanar overlapping faces (z-fight) on the ${owner}: ${z.join('; ')}`);
+    }
+
     // lamps: every new lens a registered emitter, open for .5 m, recessed 4-26 mm, lapping 4 mm into its housing
     const coverage = t.root.userData.nightLightCoverage;
     assert.equal(coverage.headlights, LIGHTS[id].headlights, `${label}: ${LIGHTS[id].headlights} driving lamps`);
@@ -379,12 +454,18 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
       let back = 0;
       for (const v of vertsOf(p.g)) back = Math.min(back, v.clone().sub(c).dot(n));
       const cw = c.clone().applyMatrix4(rig.matrixWorld), nw = n.clone().transformDirection(rig.matrixWorld);
-      const blocked = firstHit(cw.clone().addScaledVector(nw, .5), nw.clone().negate(), .497);
-      assert(!blocked, `${label}: ${p.name}'s aperture is open for .5 m (${blocked?.object.name})`);
       const u = new THREE.Vector3().crossVectors(nw, Math.abs(nw.y) < .9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0)).normalize(), w = nw.clone().cross(u);
+      const lu = p.g.clone().applyMatrix4(rig.matrixWorld), extent = d => { let e = 0; for (const v of vertsOf(lu)) e = Math.max(e, v.clone().sub(cw).dot(d)); return e; };
+      // (round 4, the critic's UAPL-R3-H2-1: "foliage strands cross the new LED light-bar housings"; the field suit is in
+      // the build: its net and garnish are solid here) open for .5 m over the aperture: its centre and four points at 70 %
+      // of its extent
+      for (const [du, dw] of [[0, 0], [.7, 0], [-.7, 0], [0, .7], [0, -.7]]) {
+        const at = cw.clone().addScaledVector(u, du * extent(du < 0 ? u.clone().negate() : u)).addScaledVector(w, dw * extent(dw < 0 ? w.clone().negate() : w));
+        const blocked = firstHit(at.addScaledVector(nw, .5), nw.clone().negate(), .497);
+        assert(!blocked, `${label}: ${p.name}'s aperture is open for .5 m (${blocked?.object.name} at ${du},${dw})`);
+      }
       // the housing's mouth: rays just outside the lens's own extent in four directions meet its rim (the deepest of the
       // four is the slot or bore wall next to it, the shallowest the lens's own housing face)
-      const lu = p.g.clone().applyMatrix4(rig.matrixWorld), extent = d => { let e = 0; for (const v of vertsOf(lu)) e = Math.max(e, v.clone().sub(cw).dot(d)); return e; };
       let recess = -Infinity;
       for (const d of [u, u.clone().negate(), w, w.clone().negate()]) {
         const h = firstHit(cw.clone().addScaledVector(d, extent(d) + .003).addScaledVector(nw, .05), nw.clone().negate(), .2);
@@ -465,7 +546,7 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
     const k = high ? 0 : 1, base = BASELINE[id];
     assert(tris <= base.tris[k], `${label}: drawn triangles ${tris} within the baseline ${base.tris[k]}`);
     assert(draws <= base.draws[k] + base.extraDraws, `${label}: draws ${draws} within ${base.draws[k]} + ${base.extraDraws}`);
-    (report[id] ??= {})[quality] = {modules: modules.length, tris, draws, ringMin: +ringMin.toFixed(4), overlapMax: +overlapMax.toFixed(4), seatWorst: +seatWorst.toFixed(4),
+    (report[id] ??= {})[quality] = {modules: modules.length, tris, draws, ringMin: +ringMin.toFixed(4), overlapMax: +overlapMax.toFixed(4), seatWorst: +seatWorst.toFixed(4), sinkWorst: +sinkWorst.toFixed(4),
       mins: Object.fromEntries(Object.entries(mins).map(([key, value]) => [key, +value.toFixed(4)]))};
     console.log(`${label}: ${modules.length} new ERA modules, six sectors, seated; envelopes ${JSON.stringify(report[id][quality].mins)}, ring ${ringMin.toFixed(3)}, gun sweeps clear; ${lenses.length} lenses; ${tris} triangles, ${draws} draws PASS`);
   } finally {

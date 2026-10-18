@@ -221,12 +221,24 @@ interface FrontEnvelope {
    * piecewise-linear knots [r, height] (measured on the gatefix2 builds, 2 degree yaw steps; tools probe-ring). */
   hullTops: readonly (readonly [number, number])[];
 }
-const SMOKE_TUBES: readonly V3[] = [[1.16, 2.163, .085], [1.37, 2.129, .145], [1.58, 2.067, .199],
-  [1.35, 1.994, .242], [1.56, 1.932, .296], [1.56, 1.82, .36]];
-/** The T-72B3M (2016) donor's six smoke tubes in its turret frame (t72b3mX.ts smoke, less its turret pivot). */
-const B3M_PIVOT: V3 = [.0000072471277, 1.52948397398, .1143146502203];
-const SMOKE_LOCAL = SMOKE_TUBES.map(([x, y, z]) => new THREE.Vector3(x - B3M_PIVOT[0], y - B3M_PIVOT[1], z - B3M_PIVOT[2]));
-const SMOKE_AXIS = new THREE.Vector3(.31, .38, .872).normalize();
+/** The donor's six smoke launch lines in its turret frame: the authoritative launch sockets the sim fires from
+ * (auxiliaryInventory.generated.ts, identical on the three national T-72B3M turrets; frontEraPackages.selftest pins them
+ * to the inventory). Round 4 (the critic's D6): E5 was measured on one axis averaged over the drawn tubes, up to 29.9
+ * degrees off the fanned launch lines. */
+export const SMOKE_RAYS: readonly {o: THREE.Vector3; d: THREE.Vector3}[] = ([
+  [[1.1938, .6749, .0657], [-.0806, .3798, .9215]], [[1.4038, .6409, .1257], [.2828, .3798, .8808]],
+  [[1.6138, .5789, .1797], [.729, .3798, .5695]], [[1.3838, .5059, .2227], [.1031, .3798, .9193]],
+  [[1.5938, .4439, .2767], [.602, .3798, .7024]], [[1.5938, .3319, .3407], [.4513, .3798, .8075]],
+] as const).map(([o, d]) => ({o: new THREE.Vector3(...o), d: new THREE.Vector3(...d).normalize()}));
+/** How far along a launch line E5 holds: 1.6 m (the field suit's smoke reach), or less where existing stock already
+ * stands in the line (the Zubr II's left cabinet's front-top corner meets its third line at .338 m, as on integ/227:
+ * frontEraPackages.selftest measures each free length on the build). */
+export const SMOKE_REACH = 1.6;
+export const SMOKE_FREE: Readonly<Record<string, readonly number[]>> = {
+  t72b3m_hetman_ii: [SMOKE_REACH, SMOKE_REACH, SMOKE_REACH, SMOKE_REACH, SMOKE_REACH, SMOKE_REACH],
+  t72b3_zubr: [SMOKE_REACH, SMOKE_REACH, SMOKE_REACH, SMOKE_REACH, SMOKE_REACH, SMOKE_REACH],
+  t72b3_zubr_ii: [SMOKE_REACH, SMOKE_REACH, .338, SMOKE_REACH, SMOKE_REACH, SMOKE_REACH],
+};
 const ENVELOPES: Readonly<Record<string, FrontEnvelope>> = {
   // the rear deck's intake box rises to .094 from r 1.80 (its sloped front from r 1.62)
   t72b3m_hetman_ii: {ring: [0, 1.5295, .1143], gunUnderside: r => 1.833 - .1051 * r, driver: [2.07, 1.50],
@@ -284,11 +296,12 @@ export function assertHullPart(id: string, name: string, g: THREE.BufferGeometry
 }
 
 /** Turret-part guard: E3 (no turret ERA or carrier inboard of |x| .39 in the mantlet's sweep box), E4 (bottoms at least
- * 2.5 cm over the hull stock at their plan radius), E5 (at least .10 from every smoke tube's line of fire) and E6 (under
+ * 2.5 cm over the hull stock at their plan radius), E5 (at least .10 from every smoke launch line over its free length,
+ * SMOKE_FREE) and E6 (under
  * the gunner's sight's lower ray over x .60-.97). Throws with the part name. */
 export function assertTurretPart(id: string, name: string, g: THREE.BufferGeometry, o: {smoke?: number} = {}): void {
   tagFrontPart(g, name, 'turret');
-  const e = frontEnvelope(id), smokeMin = o.smoke ?? .10;
+  const e = frontEnvelope(id), smokeMin = o.smoke ?? .10, free = SMOKE_FREE[id];
   const d = new THREE.Vector3();
   eachVertex(g, p => {
     if (Math.abs(p.x) < .39 - 1e-4 && p.y > -.052 && p.y < .628 && p.z > .765 && p.z < 1.702)
@@ -296,11 +309,13 @@ export function assertTurretPart(id: string, name: string, g: THREE.BufferGeomet
     const r = Math.hypot(p.x, p.z), h = hullTopAt(e, r);
     if (h !== null && p.y < h + .025 - 1e-4)
       throw new Error(`${id}: ${name} drops to ${p.y.toFixed(3)} over hull stock ${h.toFixed(3)} at r ${r.toFixed(3)} (ring keep-out 2.5 cm; x ${p.x.toFixed(3)} z ${p.z.toFixed(3)})`);
-    for (const s of SMOKE_LOCAL) {
-      d.copy(p).sub(s); const t = Math.max(0, d.dot(SMOKE_AXIS));
-      const dist = d.addScaledVector(SMOKE_AXIS, -t).length();
-      if (dist < smokeMin) throw new Error(`${id}: ${name} is ${dist.toFixed(3)} from a smoke tube's line of fire`);
-    }
+    SMOKE_RAYS.forEach((r, k) => {
+      // (past its free length the line has met existing stock)
+      d.copy(p).sub(r.o); const t = d.dot(r.d);
+      if (t > free[k]) return;
+      const dist = d.addScaledVector(r.d, -Math.max(0, t)).length();
+      if (dist < smokeMin) throw new Error(`${id}: ${name} is ${dist.toFixed(3)} from smoke launch line ${k}`);
+    });
     if (p.x > .60 && p.x < .97 && p.z > .15 && p.y > .80 - .176 * (p.z - .15) + 1e-4)
       throw new Error(`${id}: ${name} enters the gunner's sight's lower ray at z ${p.z.toFixed(3)}`);
   });
