@@ -6551,6 +6551,157 @@
     "tMs": 4800,
     "exposureMs": 2
    }
+  },
+  "s225-verdant-duel": {
+   "versions": [
+    {
+     "version": "go226",
+     "sha256": "5950b04bf4d8edfb54ff02725eca48afb077d7d8f822399e5adf9d90c4a66b4d",
+     "at": "2026-10-18T01:19:20.078Z",
+     "note": "the combat round on 226: each duel resolved on the 226 world; s225's opening lens lifted over the new board fence"
+    }
+   ],
+   "renders": [
+    {
+     "round": "combat226",
+     "sceneVersion": "go226",
+     "sceneSha256": "5950b04bf4d8edfb54ff02725eca48afb077d7d8f822399e5adf9d90c4a66b4d",
+     "renderer": "16aeab482",
+     "at": "2026-10-18T01:19:20.209Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "the 226 render: 1080p films and 4K stills"
+    }
+   ],
+   "title": "A Leopard 2A7V races a T-90M across Verdant Fields at golden hour, trading broadsides",
+   "map": "verdant",
+   "time": "golden",
+   "hero": "leo2a7v_x",
+   "paint": {
+    "unit": "factory",
+    "enemy": "factory"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 4560,
+    "exposureMs": 2
+   }
+  },
+  "s226-church-duel": {
+   "versions": [
+    {
+     "version": "go226",
+     "sha256": "12f0abca1f3b0fb4c28533d76e8e7a317eb166565a9c17970b3dd24d2132798d",
+     "at": "2026-10-18T01:19:20.078Z",
+     "note": "the combat round on 226: each duel resolved on the 226 world; s225's opening lens lifted over the new board fence"
+    }
+   ],
+   "renders": [
+    {
+     "round": "combat226",
+     "sceneVersion": "go226",
+     "sceneSha256": "12f0abca1f3b0fb4c28533d76e8e7a317eb166565a9c17970b3dd24d2132798d",
+     "renderer": "16aeab482",
+     "at": "2026-10-18T01:19:20.209Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "the 226 render: 1080p films and 4K stills"
+    }
+   ],
+   "title": "A Challenger 3 and a T-80U trade rounds by the onion-domed church in the snow",
+   "map": "winter",
+   "time": "day",
+   "hero": "challenger_3",
+   "paint": {
+    "unit": "factory",
+    "enemy": "factory"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 4560,
+    "exposureMs": 2
+   }
+  },
+  "s227-oasis-duel": {
+   "versions": [
+    {
+     "version": "go226",
+     "sha256": "ca461518fd6c39f00420bbb0976648d81396e34ffdb12fcec2083f5a680eb857",
+     "at": "2026-10-18T01:19:20.078Z",
+     "note": "the combat round on 226: each duel resolved on the 226 world; s225's opening lens lifted over the new board fence"
+    }
+   ],
+   "renders": [
+    {
+     "round": "combat226",
+     "sceneVersion": "go226",
+     "sceneSha256": "ca461518fd6c39f00420bbb0976648d81396e34ffdb12fcec2083f5a680eb857",
+     "renderer": "16aeab482",
+     "at": "2026-10-18T01:19:20.209Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "the 226 render: 1080p films and 4K stills"
+    }
+   ],
+   "title": "An M1A2 Abrams SEPv3 knocks out a T-14 Armata at the caravanserai at sunset",
+   "map": "oasis",
+   "time": "sunset",
+   "hero": "m1a2_sepv3_x",
+   "paint": {
+    "unit": "factory",
+    "enemy": "factory"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 4560,
+    "exposureMs": 2
+   }
+  },
+  "s228-street-1v2": {
+   "versions": [
+    {
+     "version": "go226",
+     "sha256": "b6788a87eccbbd8daa0d5f9505333bdbe3749640b66f462af88d5c42ea92122f",
+     "at": "2026-10-18T01:19:20.078Z",
+     "note": "the combat round on 226: each duel resolved on the 226 world; s225's opening lens lifted over the new board fence"
+    },
+    {
+     "version": "combat-v6",
+     "sha256": "0711141beb0e14b623deb10f1a58cf17552e0d611e617f5ab091f2f2656afdbc",
+     "at": "2026-10-18T04:20:58.170Z",
+     "note": "the approved night render kept: 226 draws the night without its stars, clouds and lit windows"
+    }
+   ],
+   "renders": [
+    {
+     "round": "combat226",
+     "sceneVersion": "go226",
+     "sceneSha256": "b6788a87eccbbd8daa0d5f9505333bdbe3749640b66f462af88d5c42ea92122f",
+     "renderer": "16aeab482",
+     "at": "2026-10-18T01:19:20.209Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "the 226 render: 1080p films and 4K stills"
+    },
+    {
+     "round": "combat-v6",
+     "sceneVersion": "combat-v6",
+     "sceneSha256": "0711141beb0e14b623deb10f1a58cf17552e0d611e617f5ab091f2f2656afdbc",
+     "renderer": "a0f84beaf",
+     "at": "2026-10-18T04:20:58.253Z",
+     "kept": "shots/media-r5/site50/{renders,deliver}",
+     "note": "the combat round's approved render, before 226"
+    }
+   ],
+   "title": "An AbramsX takes on a T-90M and a T-72B3 down Steinburg's main street at night",
+   "map": "urban",
+   "time": "night",
+   "hero": "abramsx",
+   "paint": {
+    "unit": "factory",
+    "enemy": "factory"
+   },
+   "turrets": "sectors",
+   "still": {
+    "tMs": 4560,
+    "exposureMs": 2
+   }
   }
  }
 }

@@ -128,7 +128,11 @@ const webp = (src, out, q, size) => run('cwebp', ['-quiet', '-m', '6', '-sharp_y
 // sources.deliverOver (r14b, 2026-10-12): a later round that re-filmed some takes (round 15: the rut-ring takes) is looked
 // up first, so its takes replace round 14's and the rest stay round 14's; both are current
 // sources.deliverFleet (2026-10-12): the fleet takes' own round (a take for every production vehicle, fleet-plan.mjs)
-const CURRENT = [PICKS.sources.deliverOver, PICKS.sources.deliver, PICKS.sources.deliverFleet].filter(Boolean);
+// sources.deliverCombat (2026-10-17): the combat round's takes (tools/media-r5/combat-check.mjs; s225-s228 on 226)
+// sources.deliverFleetOver (2026-10-17): the fleet takes rendered again on 226, looked up before deliverFleet, so their
+// takes replace the earlier ones and the rest stay deliverFleet's
+const CURRENT = [PICKS.sources.deliverOver, PICKS.sources.deliver, PICKS.sources.deliverCombat, PICKS.sources.deliverFleetOver,
+  PICKS.sources.deliverFleet].filter(Boolean);
 const ROUNDS = [...CURRENT, ...(fallback ? ['shots/media-r5/site50/deliver-r13', 'shots/media-r5/site50/deliver'] : [])];
 const deliveries = new Map();
 function delivery(id) {
