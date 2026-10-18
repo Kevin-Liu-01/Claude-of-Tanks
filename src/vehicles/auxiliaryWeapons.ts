@@ -73,6 +73,8 @@ const ubr6=ammunition(cannon,'30×165 mm 3UBR6 AP-T');
 // the QJC-88 on its open cupola pintle depresses 5 degrees, the real cupola mount's limit (as griffinRoofM2 is held to
 // its cradle's); the auxiliary control still aims and fires it by itself.
 const qjc88Cupola:AuxiliaryWeaponProfile=ammunition({...heavy,depressionRad:.087},'12.7×108 mm Type 54 API');
+// Release 227: the Zubr and Zubr II emplacements' WKM-B (Poland's licensed 12.7×99 mm NSV-class gun), heavy MG numbers
+const wkmb=ammunition(heavy,'12.7×99 mm NATO API (WKM-B)');
 // 2026-10-09 (owner order: the Griffin 50 mm's old roof M2 is back, now its working roof gun): the 1.28-scale gun's
 // 1.5 m barrel sweeps low over the roof's raised service plates from its elevated cradle, so it depresses 4.6 degrees,
 // not the heavy mount's 10.3 (fieldEquipment.selftest's 360-degree sweep: at 6.9 degrees and 320 degrees of traverse
@@ -95,13 +97,13 @@ const vehicleAmmunition: Readonly<Record<string,AuxiliaryWeaponProfile>> = {
   t72b3m_2022:b32Heavy,
   t84bm_oplot_m:b32Heavy,
   t72b3m_hetman_ii:ubr6,
-  t72b3_zubr_ii:cannon,
+  t72b3_zubr_ii:wkmb,
   t80u_zoria:b32Heavy,
   t72b3m_hetman:ubr6,
   t72b3_sich:ubr6,
   t80u_husarz:heavy,
   t72b3m_wilk:cannon,
-  t72b3_zubr:heavy,
+  t72b3_zubr:wkmb,
   t80u_yun:type54,
   t72b3m_kunlun:qjc88Cupola,
   t72b3_qilin:qjc88Cupola,

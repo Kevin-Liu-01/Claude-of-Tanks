@@ -8348,7 +8348,6 @@ function* createTankOwnedSteps(
       mesh.userData.materialOnlyPaintMigration = true;
       mesh.userData.materialOnlyPaintSourceBucket = paintSourceBucket;
     }
-    registerVehicleNightLensMesh(mesh, list);
     const parent:THREE.Object3D|undefined = mergedBucketParents[parentKey];
     if(station && parent){
       mesh.name=station.name+'_'+station.stage+'_'+bucket;
@@ -8359,9 +8358,14 @@ function* createTankOwnedSteps(
       if(!mount)throw new Error('Missing auxiliary station '+station.name);
       const target=station.stage==='pitch'?mount.getObjectByName('auxiliaryWeaponPitch')!:mount;
       root.updateMatrixWorld(true);
-      merged.applyMatrix4(new THREE.Matrix4().copy(target.matrixWorld).invert().multiply(owner.matrixWorld));
+      const toStation=new THREE.Matrix4().copy(target.matrixWorld).invert().multiply(owner.matrixWorld);
+      merged.applyMatrix4(toStation);
+      // (release 227) a station's own lamp (the Zubr II's illuminator) emits from where its lens now lies: the emitter
+      // frame follows the merged stock into the station's stage
+      registerVehicleNightLensMesh(mesh, list, toStation);
       target.add(mesh);return;
     }
+    registerVehicleNightLensMesh(mesh, list);
     if (!parent) throw new Error(`${specId}: bucket ${bucket} requires authored twin barrels`);
     if (LOD0_KEEP.has(bucket)) parent.add(mesh);
     else lodWrap(parent, mesh, detailLodDistM);

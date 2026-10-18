@@ -107,7 +107,7 @@ function hullCassettes(P:TankBuilderPort,nativeEra=true):void {
   }
 }
 
-function deckEquipment(P:TankBuilderPort,glacisLamps=true):void {
+function deckEquipment(P:TankBuilderPort,glacisLamps=true,sweptStrap=true):void {
   P.addEquipment('hullDetail',boxSections([[-2.19,1.058,1.578,1.535],[-2.03,1.058,1.62359,1.535],
     [-1.69,1.058,1.62359,1.535],[-1.482,1.058,1.577,1.535]]));
   for(const x of [-.527,.523]){
@@ -119,7 +119,8 @@ function deckEquipment(P:TankBuilderPort,glacisLamps=true):void {
     [1.44,-2.70,.58,.82,1.511],[1.42,-1.80,.51,.79,1.582],[1.45,-.45,.59,1.60,1.505],
     [1.43,1.04,.59,1.25,1.503],[1.43,2.20,.59,.89,1.468]]){
     P.addEquipment('hullDetail',box(w,.024,d),x,y,z);
-    for(const dz of [-d*.38,d*.38])P.addEquipment('hullDetail',box(w*.84,.020,.037),x,y+.022,z+dz);
+    // (sweptStrap false: no strap whose inner end lies within 1.4 m of the turret's yaw axis on the right covers)
+    for(const dz of [-d*.38,d*.38])if(sweptStrap||x>0||Math.hypot(Math.abs(x)-w*.42,z+dz-YAW[2])>1.4)P.addEquipment('hullDetail',box(w*.84,.020,.037),x,y+.022,z+dz);
   }
   P.addEquipment('hullDark',box(.17,.12,.586),1.759,1.431,-1.797);
   for(const z of [-2.043,-1.917,-1.79,-1.665,-1.54])P.addEquipment('hullDetail',box(.025,.138,.018),1.828,1.43,z);
@@ -308,12 +309,15 @@ function mainGun(P:TankBuilderPort):void {
 /** Options for carrying the T-72B3M hull under a national package. Each defaults to the T-72B3M's own output.
  * `nativeEra: false` drops its Relikt glacis sheet and straps and its side-skirt Relikt boxes with their backing
  * strips (the rubber curtains stay); `glacisLamps: false` drops the two round glacis headlights and their guards.
- * (2026-10-16, release 227: Hetman II's own frontal package replaces them; its fitted skirt banks buried the boxes.) */
-export interface T72B3MXHullOptions { nativeEra?:boolean; glacisLamps?:boolean }
+ * (2026-10-16, release 227: Hetman II's own frontal package replaces them; its fitted skirt banks buried the boxes.)
+ * `sweptStrap: false` drops the two right deck-cover straps within 1.4 m of the turret's yaw axis (z .22 and .55): they
+ * stand 2 cm over their covers, into the path of the T-72B3M turret's mantlet, whose foot rides 4 mm over the covers at
+ * yaw -57 to -99 (release 227, round 2: Hetman II's whole-gun sweep). */
+interface T72B3MXHullOptions { nativeEra?:boolean; glacisLamps?:boolean; sweptStrap?:boolean }
 
 export function buildT72B3MXHull(P:TankBuilderPort,options:T72B3MXHullOptions={}):void {
   P.hullG.position.set(0,0,0);
-  hull(P);runningGear(P);hullCassettes(P,options.nativeEra!==false);deckEquipment(P,options.glacisLamps!==false);rearEquipment(P);
+  hull(P);runningGear(P);hullCassettes(P,options.nativeEra!==false);deckEquipment(P,options.glacisLamps!==false,options.sweptStrap!==false);rearEquipment(P);
 }
 
 export function buildT72B3MX(P:TankBuilderPort):void {

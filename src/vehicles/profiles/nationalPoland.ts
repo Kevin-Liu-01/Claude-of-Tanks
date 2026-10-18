@@ -10,6 +10,7 @@ import {eraCassette, glacisEraCassette, strappedPack} from './modernizationFitti
 import {mount} from './fittingMount.ts';
 import {addPolishProtection} from './nationalPolandProtection.ts';
 import {markVehicleNightLens} from '../vehicleNightLighting.ts';
+import {polishGlacis, polishLowerPlate, polishFrontSkirt, polishHullSurface} from './polandFrontEra.ts';
 import {NATIONAL_POLAND_DESIGNS} from '../nationalPolandDesign.ts';
 import type {NationalModernizationConfig} from '../nationalModernizationConfig.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
@@ -51,10 +52,13 @@ function packOnCast(P: TankBuilderPort, x: number, z: number, width: number, dep
  * layered skirts. Zubr keeps it unchanged beneath its donor turret. */
 export function hullEquipment(P: TankBuilderPort, c: NationalModernizationConfig): void {
   const m = c.model;
+  // Release 227: the Zubr carries its own framed frontal package (polandFrontEra.ts) in place of the small glacis tiles,
+  // the guarded glacis lamps and its front bay's skirt tiles; the Husarz and the Wilk keep theirs.
+  const zubr = c.id === 't72b3_zubr';
   // Small tiles follow the native low glacis and leave its folded guards clear.
   const zs = m === 0 ? [2.00, 2.28, 2.56, 2.83] : m === 1 ? [2.12, 2.45, 2.78, 3.09] : [2.15, 2.41, 2.67, 2.91];
   const xs = m === 1 ? [.23, .65, .99] : [.23, .56, .86];
-  for (const side of [-1, 1]) for (const z of zs) for (const x of xs)
+  if (!zubr) for (const side of [-1, 1]) for (const z of zs) for (const x of xs)
     glacisEraCassette(P, `glacis_era_${side < 0 ? 'L' : 'R'}`, side * x, z, [m === 1 ? .32 : .265, .082, m === 1 ? .29 : .23]);
   const hatchZ = m === 0 ? 1.66 : m === 1 ? 1.68 : 1.59, hatchY = topOn(P, 'hull', 0, hatchZ);
   P.addHatch('hull', cylY(.29, .29, .033, 24), 0, hatchY + .013, hatchZ);
@@ -71,6 +75,7 @@ export function hullEquipment(P: TankBuilderPort, c: NationalModernizationConfig
   for (const side of [-1, 1]) {
     deckCase(P, side * 1.39, m === 0 ? -2.71 : -2.63, m === 1 ? .47 : .39, m === 1 ? .69 : .56, m === 1 ? .18 : .11);
     if (m === 0) deckCase(P, side * 1.37, -1.83, .34, .40, .07);
+    if (zubr) continue;
     const x = side * .91, z = m === 0 ? 2.72 : m === 1 ? 2.95 : 2.77;
     const y = topOn(P, 'hull', x, z);
     P.addEquipment('hullDetail', box(.20, .072, .14), x, y + .033, z);
@@ -79,7 +84,12 @@ export function hullEquipment(P: TankBuilderPort, c: NationalModernizationConfig
     for (const dx of [-.103, .103]) P.addEquipment('hullDark', beamBetween([x + dx, y, z - .10], [x + dx, y + .18, z + .095], .009));
     P.addEquipment('hullDark', beamBetween([x - .103, y + .18, z + .095], [x + .103, y + .18, z + .095], .009));
   }
-  skirts(P, m);
+  const front = skirts(P, m, {frontBay: !zubr});
+  if (zubr) {
+    const surface = polishHullSurface(P);
+    try { polishGlacis(P, 1, surface); polishLowerPlate(P, 1, surface); polishFrontSkirt(P, 1, front); }
+    finally { surface.dispose(); }
+  }
   for (const side of [-1, 1]) {
     const z = m === 0 ? 3.012 : m === 1 ? 3.34 : 3.175, y = m === 0 ? .99 : m === 1 ? .97 : .823;
     P.addEquipment('hullDetail', box(.12, .082, .085), side * .67, y - .018, z - .018);
@@ -87,9 +97,17 @@ export function hullEquipment(P: TankBuilderPort, c: NationalModernizationConfig
   }
 }
 
+/** The front bay module's outer face and the front return's outer face (hull frame, per side: x is |x|), for a
+ * national frontal package that lays its own front-skirt ERA there (polandFrontEra.ts). */
+export interface PolishFrontSkirt {
+  bay: {z: number; half: number; flat: readonly [number, number]; low: number; high: number; outer: number};
+  ret: {z0: number; z1: number; outer0: number; outer1: number; bottom: readonly [number, number]; top: readonly [number, number]};
+}
+
 /** Layered skirt modules have a real chamfered thickness and a continuous
- * mounting rail. Their returns turn inwards only past the native track ends. */
-function skirts(P: TankBuilderPort, model: number): void {
+ * mounting rail. Their returns turn inwards only past the native track ends.
+ * `frontBay: false` (release 227, the Zubr) leaves the front bay's tiles to the national frontal package. */
+function skirts(P: TankBuilderPort, model: number, options: {frontBay?: boolean} = {}): PolishFrontSkirt {
   const count = model === 0 ? 7 : model === 1 ? 6 : 8;
   const length = model === 1 ? 5.82 : 5.15, zCenter = model === 1 ? .07 : .03;
   const inner = model === 1 ? 1.92 : model === 0 ? 1.87 : 1.86;
@@ -100,6 +118,7 @@ function skirts(P: TankBuilderPort, model: number): void {
     [[inside, bottom + .055], [inside + .026, bottom], [outside - .035, bottom],
       [outside, bottom + .065], [outside, top - .065], [outside - .035, top], [inside, top]];
   const mirrored = (ring: SectionPoint[], side: number): SectionPoint[] => side > 0 ? ring : ring.map(([x, y]) => [-x, y] as const).reverse();
+  let last = 0;
   for (const side of [-1, 1]) {
     const heights: number[] = [];
     for (let i = 0; i < count; i++) {
@@ -120,7 +139,7 @@ function skirts(P: TankBuilderPort, model: number): void {
       P.addEquipment('hullDetail', box(.060, .15, pitch + .024), side * (inner + .035), high - .060, z);
       const rows = model === 2 ? 2 : 3, columns = 3;
       const tileHeight = (h - .105) / rows, tileDepth = (pitch - .15) / columns;
-      for (let row = 0; row < rows; row++) for (let j = 0; j < columns; j++)
+      if (options.frontBay !== false || i < count - 1) for (let row = 0; row < rows; row++) for (let j = 0; j < columns; j++)
         eraCassette(P, 'hull', `skirt_era_${side < 0 ? 'L' : 'R'}`,
           [side * (outer + .041), low + .055 + tileHeight * (row + .5), z + (j - (columns - 1) / 2) * tileDepth],
           [.092, tileHeight - .015, tileDepth - .019]);
@@ -170,7 +189,15 @@ function skirts(P: TankBuilderPort, model: number): void {
     })));
     P.addEquipment('hullDetail', beamBetween([side * (inner + .035), heights[0] - .04, rear + .03],
       [side * (inner + .035), 1.18, rearClear + .05], .020));
+    last = heights[count - 1];
   }
+  const half = pitch / 2 - .017, z = rear + pitch * (count - .5);
+  const frontClear = model === 1 ? 3.60 : model === 0 ? 3.22 : 3.35, frontTop = model === 1 ? .89 : model === 0 ? .88 : .87;
+  return {
+    bay: {z, half, flat: [z - half + .07, z + half - .07], low: low + .065, high: last - .065, outer},
+    ret: {z0: front - .040, z1: frontClear, outer0: outer - .020, outer1: outer,
+      bottom: [low + .030 + .065, Math.min(low, frontTop - .25) + .065], top: [last - .018 - .065, frontTop + .19 - .065]},
+  };
 }
 
 type HousingStation = readonly [z: number, inside: number, outside: number, bottom: number, top: number];

@@ -210,16 +210,16 @@
       "hullWidthM": 4.690134,
       "widthM": 4.634,
       "overallLengthM": 9.8991,
-      "tallestM": 3.2627,
+      "tallestM": 3.0777,
       "specDimensions": {
         "hullLengthM": 6.95035,
         "overallLengthM": 10.013968163896699,
         "widthM": 4.690134,
-        "heightM": 3.2627
+        "heightM": 3.0777
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Polish T-72B3 field modernization carrying the complete T-72B3M (2016) turret: its Relikt cheek fan, roof cassettes and bustle boxes, a lower course of ERAWA tiles, slat screens outside the bustle boxes, a short slatted rear rack with the camouflage roll, tools and pack, round lamps, laser-warning heads, a flat sensor head and radome, the 30 mm low-shield remote cannon on the commander's cupola and the Polish field net and leaves. The native T-72B3 hull keeps its layered ERAWA skirts and glacis tiles."
+      "silhouette": "Polish T-72B3 field modernization carrying the T-72B3M (2016) turret and its bustle boxes: welded cheek boxes faced by a grid of ERAWA-2 cassettes in a welded frame of bars and mullions, a two-tile roof row, slat screens outside the bustle boxes, a short slatted rear rack with the camouflage roll, tools and pack, round lamps, laser-warning heads, a flat sensor head and radome, the 12.7 mm WKM-B field emplacement open behind a bolted square light shield on the commander's cupola and the Polish field net and leaves. The native T-72B3 hull carries framed glacis cassette fields with armoured lamp pockets, a framed lower front plate and layered ERAWA skirts with a fitted front grid."
     },
     "cn_t80u_modern": {
       "id": "cn_t80u_modern",
