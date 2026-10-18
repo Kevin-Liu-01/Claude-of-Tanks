@@ -477,7 +477,9 @@ where they are drawn; a main gun fixed in the hull draws into `hullGun`/`hullGun
 and `tank:anatomy:check`); never fix a run with a per-tank `p: 0` or a coordinate nudge. The search is the pass's only
 real cost, so `--update` also records its answers in the generated `spareTrackSeatPlan.ts` (a failing run goes straight
 to its station, or is not built); `--check` fails a stale record. Every built run is still measured, so a stale record
-costs time, never a bad seat.
+costs time, never a bad seat. A ledger row keys each run by source, part and authoring function and file, never a line
+number (`ledgerSiteKeys` in `tools/spare-track-digest.mjs`), so an unrelated edit never fails `--gate`; `--rekey`
+rewrites an older ledger's keys and nothing else.
 The shared checkout often contains active tank-generation WIP. Never stage
 builders, profiles, icons, GLBs, or generated geometry ledgers by directory.
 Chassis closure (FSP-05, 2026-09-25): a mirrored `for s of [-1, 1]` slab, a
