@@ -1552,6 +1552,12 @@ void main() {
   float rr = rowRadius(hitV);
   vec3 wp = vec3(cos(a) * rr, uFrame.w + tanE * rr, sin(a) * rr);
   vec3 n = gridNormal(g);
+  // (the Earthrise 228 rebuild, round 2; the blind critics' "fence" along the far skyline) on an airless map no air
+  // softens the strip's column-by-column slopes: the normal averaged over its neighbours either side
+  if (uAirless > 0.5) {
+    float dc = 1.0 / uGrid.x;
+    n = normalize(gridNormal(g - vec2(2.0 * dc, 0.0)) + gridNormal(g - vec2(dc, 0.0)) + n + gridNormal(g + vec2(dc, 0.0)) + gridNormal(g + vec2(2.0 * dc, 0.0)));
+  }
   // below the first row's elevation: the ground between the ring and the annulus (the shell's apron reads it from
   // below) — the ray's own meeting with that row's level, so the apron carries ground texture, not one streak per column
   float h0 = texture2D(uHeight, vec2(u, 0.5 / uGrid.y)).r;
@@ -1589,7 +1595,14 @@ void main() {
   // it takes the open sky's)
   apron = max(apron, smoothstep(40.0, 160.0, footprint));
   // (a grazing reach's light too: its shadows and occlusion land a column apart as streaks — it takes a mild open sky)
-  vec4 light = mix(texture2D(uLight, g), vec4(0.94, 0.9, 0.0, 1.0), apron);
+  vec4 lightTex = texture2D(uLight, g);
+  // (airless: the shadows and occlusion the bake lands a column apart averaged over the neighbours either side)
+  if (uAirless > 0.5) {
+    float dl = 1.0 / uGrid.x;
+    lightTex = (texture2D(uLight, g - vec2(2.0 * dl, 0.0)) + texture2D(uLight, g - vec2(dl, 0.0)) + lightTex
+      + texture2D(uLight, g + vec2(dl, 0.0)) + texture2D(uLight, g + vec2(2.0 * dl, 0.0))) * 0.2;
+  }
+  vec4 light = mix(lightTex, vec4(0.94, 0.9, 0.0, 1.0), apron);
   vec3 col = surfaceColour(g, wp, n, apron, light);
   float n1 = noised(wp.xz / 1900.0 + vec2(5.3, 1.7)).x * 0.7 + noised(wp.xz / 700.0 + vec2(-3.1, 8.2)).x * 0.3;
   float fogL = (uFog.r + uFog.g + uFog.b) / 3.0;
