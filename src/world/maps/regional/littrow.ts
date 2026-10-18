@@ -79,18 +79,20 @@ function berm(sink: PartSink, side: 1 | -1, cx: number, z0: number, z1: number, 
  */
 function bagCourse(sink: PartSink, a: readonly [number, number], b: readonly [number, number], y0: number, h: number, depth: number,
   rng: () => number, mobile: boolean, pitch = 0.62): void {
-  if (mobile) { for (let k = 0; k < 3; k++) rng(); return; }
   const dx = b[0] - a[0], dz = b[1] - a[1], len = Math.hypot(dx, dz);
   if (len < 0.3) return;
   const n = Math.max(1, Math.round(len / pitch)), ux = dx / len, uz = dz / len;
   const yaw = Math.atan2(ux, uz) - Math.PI / 2;
-  for (let k = 0; k < n; k++) {
-    const t = (k + 0.5) / n, x = a[0] + dx * t, z = a[1] + dz * t;
-    const l = len / n - 0.05, hh = h * (0.9 + rng() * 0.16), dd = depth * (0.92 + rng() * 0.12), j = (rng() - 0.5) * 0.06;
-    sink.placed(yaw + (rng() - 0.5) * 0.08, x - uz * j, y0, z + ux * j, () => {
-      sink.span('plaster', -l / 2, 0, -dd / 2, l / 2, hh, dd / 2, { decor: true });
-    });
-  }
+  // (a phone draws every bag's stream as the desktop does and keeps none of them: PartSink.dressing)
+  sink.dressing(mobile, () => {
+    for (let k = 0; k < n; k++) {
+      const t = (k + 0.5) / n, x = a[0] + dx * t, z = a[1] + dz * t;
+      const l = len / n - 0.05, hh = h * (0.9 + rng() * 0.16), dd = depth * (0.92 + rng() * 0.12), j = (rng() - 0.5) * 0.06;
+      sink.placed(yaw + (rng() - 0.5) * 0.08, x - uz * j, y0, z + ux * j, () => {
+        sink.span('plaster', -l / 2, 0, -dd / 2, l / 2, hh, dd / 2, { decor: true });
+      });
+    }
+  });
 }
 
 /** A bagged wall's solid core and its bag courses: from a to b, `courses` courses each `h` high, battered inward. */

@@ -85,8 +85,9 @@ export default {
       // (the Earthrise 228 rebuild) the station's regolith berms — radiation and blast shielding banked up by the dozers,
       // 2.4-2.6 m high, in rotation pairs, laid across the deployments' axis where the middle of the floor was open
       // ground (the layout brief's middle sector, cover .168 at 227): north of the habitat row and its rotation, between
-      // the apron and the habitats, beyond the logistics yard and its rotation. Terrain: cover with no collision records.
-      ...([[10, 82, 32, 2.5], [52, 16, 18, 2.4], [-62, 104, 30, 2.5], [-121, -6, 26, 2.5], [-96, 108, 24, 2.5], [63, -28, 16, 2.4], [98, 128, 20, 2.5], [-102, 62, 24, 2.4]] as const).flatMap(([x, z, length, height]) => [x, -x].map((bx, k) => ({
+      // the apron and the habitats, beyond the logistics yard and its rotation; each toe outside the 30 m disc an objective
+      // seats on (matchPlacement.ts: under 20 degrees everywhere in it). Terrain: cover with no collision records.
+      ...([[10, 82, 32, 2.5], [52, 16, 18, 2.4], [-62, 104, 30, 2.5], [-121, -6, 26, 2.5], [-96, 108, 24, 2.5], [61, -28, 14, 2.4], [98, 128, 20, 2.5]] as const).flatMap(([x, z, length, height]) => [x, -x].map((bx, k) => ({
         kind: 'ridge', x: bx, z: k ? -z : z, length, width: 7, height, yawDeg: 0, corridorScale: 1, settlementScale: 1,
         geology: { profile: 'dyke' as const, crest: 0.3, outline: 0.06, rough: 0.12 } }))),
     ],
