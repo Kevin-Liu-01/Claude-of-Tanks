@@ -3,9 +3,10 @@
 // bottom-left Monument Grotesk lockup, rendered from the current crest master.
 // Every card shows the current game (owner, 2026-10-15: "for the social link cards, they have to use the modern version
 // of the game, not the old"): the versus stills (public/media/versus-r1) for the game, the home page, private rooms,
-// the 404 and the manual's battle topics, performance and loading among them; the current Tank Gallery, Scene Studio,
-// battle HUD and multiplayer captures for the pages about those screens. A picture shared by two cards is framed
-// differently on each.
+// the 404 and the manual's battle topics, performance and loading among them; two of the combat round's duels
+// (public/media/site50-r14/stills) for simulation and combat (a round striking a turret) and for filming the media;
+// the current Tank Gallery, Scene Studio, battle HUD and multiplayer captures for the pages about those screens. A
+// picture shared by two cards is framed differently on each.
 // A 1920x1080 picture covers the card at its full width, so its focus only moves the 45 px it loses top and bottom
 // (every tank stays in frame); the 2400x700 dual view, the HUD and the Studio's manual card are shown whole
 // ('contain', over their own blurred copy) so no player view, HUD edge or panel is cut.
@@ -31,7 +32,7 @@ export const OG_IMAGE_CARDS = [
   ['docs', 'TECHNICAL FIELD MANUAL', 'public/media/versus-r1/vs05-oasis-merkava-t72b3-r6.webp', '50% 50%'],
   ['docs-build', 'HOW THE GAME WAS BUILT', 'public/media/showcase-r2/13_gallery_modules.webp', '50% 48%'],
   ['docs-models', 'PROCEDURAL MODEL PIPELINE', 'public/media/showcase-r2/12_gallery_armor.webp', '50% 48%'],
-  ['docs-simulation', 'SIMULATION AND COMBAT', 'public/media/versus-r1/vs04-railyard-leclerc-t14-r6.webp', '50% 50%'],
+  ['docs-simulation', 'SIMULATION AND COMBAT', 'public/media/site50-r14/stills/s226-church-duel.webp', '50% 100%'],
   ['docs-vehicles', 'VEHICLES & RUNNING GEAR', 'public/media/versus-r1/vs07-autumn-ariete-t62-r6.webp', '50% 50%'],
   ['docs-rendering', 'RENDERER AND GRAPHICS', 'public/media/versus-r1/vs09-alpine-strv122-t80bv-r6.webp', '50% 50%'],
   ['docs-performance', 'PERFORMANCE AND LOADING', 'public/media/versus-r1/f7-t90m-column-r5.webp', '50% 0%'],
@@ -41,7 +42,7 @@ export const OG_IMAGE_CARDS = [
   ['docs-audio', 'AUDIO & BATTLEFIELD FX', 'public/media/versus-r1/vs06-coastal-type10-ztz99a2-r6.webp', '50% 50%'],
   ['docs-interface', 'INTERFACE & CONTROLS', 'public/media/showcase-r2/17_live_player_hud.webp', '50% 50%', 'contain'],
   ['docs-studio', 'SCENE STUDIO & CAPTURE', 'public/media/showcase-r2/15_studio_workspace.webp', '50% 50%', 'contain'],
-  ['docs-filming', 'FILMING THE MEDIA', 'public/media/versus-r1/vs10-steppe-chieftain-t64-r6.webp', '50% 50%'],
+  ['docs-filming', 'FILMING THE MEDIA', 'public/media/site50-r14/stills/s225-verdant-duel.webp', '50% 50%'],
   ['404', 'ROUTE NOT FOUND', 'public/media/versus-r1/vs08-winter-cv90-bmp3-r6.webp', '50% 40%'],
 ];
 
