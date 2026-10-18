@@ -83,4 +83,52 @@ export function buildM3BradleyGunMount(P: TankBuilderPort): void {
   P.addGunExtra(sectionSolid([
     {z:-.10,low:-.218},{z:0,low:-.240},{z:.10,low:-.218},{z:.16,low:-.170},
   ].map(({z,low})=>({z,ring:[[-.275,low],[.275,low],[.275,-.130],[-.275,-.130]]}))));
+  buildM3CradleHood(P);
+}
+
+/** Every hood station lies within this radius of the pitch axis. The roof
+ * plate's nearest stock to that axis is its lower leading edge, 180 mm behind
+ * and 89 mm above it (r 200.7 mm), so the hood sweeps under it at any pitch. */
+export const M3_CRADLE_HOOD_RADIUS_M = .196;
+/** Receiver passage: the M242 receiver is 115 mm in radius and recoils 60 mm. */
+export const M3_CRADLE_HOOD_PASSAGE_M = .13;
+
+/** Upper cradle hood (227 gun-gaps, r4). Between the roof's leading edge and
+ * the receiver's rear the gun line lay open from above: a 90 mm slot showing
+ * the turret interior past the gun at rest and at full depression. The hood is
+ * a gun-rig casting the shield's width, so it pitches with the shield; its rear
+ * is a drum about the trunnion that tucks under the roof edge, its fore part an
+ * arch over the receiver with a 15 mm working passage, ending inside the
+ * shield's rear. Its cheeks come down to the shoe's top and a floor plate runs
+ * from the drum onto the shoe, so the receiver recoils in a closed cradle: the
+ * pocket behind it is not a nook open to the trough beside the hood. */
+function buildM3CradleHood(P: TankBuilderPort): void {
+  const R = M3_CRADLE_HOOD_RADIUS_M, halfWidth = .278, chamfer = .025, crown = .16, sill = -.13;
+  // Behind the pitch axis the crown follows the drum radius; ahead of it
+  // nothing of the turret lies above the cradle, so the crown runs level.
+  const top = (z: number) => (z < 0 ? Math.min(crown, Math.sqrt(R * R - z * z)) : crown);
+  const outline = (z: number): [number, number][] => {
+    const y = top(z), c = Math.min(chamfer, y / 2);
+    return [[halfWidth, y - c], [halfWidth - c, y], [-(halfWidth - c), y], [-halfWidth, y - c]];
+  };
+  // Rear drum: solid behind the receiver's full-recoil reach (rear at -0.135).
+  P.addGunExtra(sectionSolid([-.192, -.185, -.175, -.16, -.14].map((z) => ({
+    z, ring: [[-halfWidth, sill], [halfWidth, sill], ...outline(z)],
+  }))));
+  // Fore arch over the receiver, from the drum into the shield's rear face; its
+  // cheeks run down to the shoe's top beside the passage.
+  const arc = P.q ? 16 : 10, r = M3_CRADLE_HOOD_PASSAGE_M;
+  const passage: [number, number][] = [[-r, sill]];
+  for (let k = 0; k <= arc; k++) {
+    const a = Math.PI - (Math.PI * k) / arc;
+    passage.push([r * Math.cos(a), r * Math.sin(a)]);
+  }
+  passage.push([r, sill]);
+  P.addGunExtra(sectionSolid([-.14, -.13, -.113, .16].map((z) => ({
+    z, ring: [[halfWidth, sill], ...outline(z), [-halfWidth, sill], ...passage],
+  }))));
+  // Cradle floor under the recoil stroke, from under the drum onto the shoe.
+  P.addGunExtra(sectionSolid([-.192, -.095].map((z) => ({
+    z, ring: [[-halfWidth, sill - .02], [halfWidth, sill - .02], [halfWidth, sill], [-halfWidth, sill]],
+  }))));
 }
