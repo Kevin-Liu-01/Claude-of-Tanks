@@ -86,7 +86,7 @@ export const GARAGE_KIT_PLACEMENTS: Readonly<Partial<Record<GarageVariant['archi
  * Each Garage's built skyline (garage r9, K10: garageSkylineKit.ts): its map's named landmarks at their bearings and the
  * land between them, drawn into the pack's backdrop. A Garage without a row keeps the biome bands (and its built horizon).
  */
-export const GARAGE_SKYLINES: Readonly<Partial<Record<GarageVariant['architecture'], GarageSkyline>>> = Object.freeze({
+export const GARAGE_KIT_SKYLINES: Readonly<Partial<Record<GarageVariant['architecture'], GarageSkyline>>> = Object.freeze({
   factory_line: IRONWORKS_SKYLINE,
   rail_roundhouse: CINDER_SKYLINE,
   naval_drydock: SALTMERE_SKYLINE,

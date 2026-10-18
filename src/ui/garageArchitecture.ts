@@ -50,7 +50,7 @@ export interface GarageArchitectureStats {
   builtHorizonMassTopM: number;
   builtHorizonAccentTopM: number;
   /** The named landmarks of the pack's built skyline (garage r9, garageSkylineKit.ts). */
-  skylineLandmarks: readonly string[];
+  kitSkylineLandmarks: readonly string[];
   groundCover: number;
   structures: number;
   wrecks: number;
@@ -226,7 +226,7 @@ function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
     horizonMaxHeightM: 0,
     builtHorizonMassTopM: 0,
     builtHorizonAccentTopM: 0,
-    skylineLandmarks: [],
+    kitSkylineLandmarks: [],
     groundCover: 0,
     structures: 1,
     facilityProps: 0,
@@ -432,7 +432,7 @@ export function createGarageArchitectureController(
       horizonMaxHeightM: numericStat(data.horizonMaxHeightM),
       builtHorizonMassTopM: numericStat(data.builtHorizonMassTopM),
       builtHorizonAccentTopM: numericStat(data.builtHorizonAccentTopM),
-      skylineLandmarks: Array.isArray(data.skylineLandmarks) ? data.skylineLandmarks as string[] : [],
+      kitSkylineLandmarks: Array.isArray(data.kitSkylineLandmarks) ? data.kitSkylineLandmarks as string[] : [],
       groundCover: numericStat(data.groundCover),
       structures: numericStat(data.structures),
       wrecks: numericStat(data.wrecks),

@@ -749,7 +749,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageAtmosphere.selftest.mjs',
     'src/ui/garageDisplayPlacement.selftest.mjs',
     // garage r9 per-garage lanes: the built skylines (named map landmarks at their bearings, deterministic, bounded)
-    'src/ui/garageSkyline.selftest.mjs',
+    'src/ui/garageSkylineKit.selftest.mjs',
     'tools/garage-terrain-patches.selftest.mjs',
     'tools/garage-variants-probe.selftest.mjs',
     'src/game/rosterPlanning.selftest.mjs',

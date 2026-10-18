@@ -63,7 +63,7 @@ import {
   type GarageApproachStats,
 } from './garageApproachDetails.ts';
 import { buildGarageKitDressing, type GarageKitBuild, type GarageKitPlacement } from './garageKitPlacement.ts';
-import { GARAGE_KIT_PLACEMENTS, GARAGE_SKYLINES } from './garageKitPlacements.ts';
+import { GARAGE_KIT_PLACEMENTS, GARAGE_KIT_SKYLINES } from './garageKitPlacements.ts';
 import { arcWeight, GarageSkylineEmitter, type GarageSkyline } from './garageSkylineKit.ts';
 
 interface GarageEnvironmentEngineContext {
@@ -96,7 +96,7 @@ interface GarageEnvironmentStats {
   readonly builtHorizonMassTopM: number;
   readonly builtHorizonAccentTopM: number;
   /** The named landmarks of a Garage's built skyline (garage r9, garageSkylineKit.ts), or none. */
-  readonly skylineLandmarks: readonly string[];
+  readonly kitSkylineLandmarks: readonly string[];
   readonly groundCover: number;
   readonly structures: number;
   readonly facilityProps: number;
@@ -817,7 +817,7 @@ function createBackdropGeometry(
   geometry.computeBoundingSphere();
   geometry.userData.horizonStyle = recipe.horizonStyle;
   geometry.userData.builtHorizon = skyline ? 'skyline' : builtKind;
-  geometry.userData.skylineLandmarks = skyline ? skyline.landmarks.map((landmark) => landmark.name) : [];
+  geometry.userData.kitSkylineLandmarks = skyline ? skyline.landmarks.map((landmark) => landmark.name) : [];
   geometry.userData.accentTopM = Number(accentTopM.toFixed(3));
   geometry.userData.massTopM = Number(massTopM.toFixed(3));
   geometry.userData.maxHeightM = Number(maxHeightM.toFixed(3));
@@ -1308,7 +1308,7 @@ export function buildGarageEnvironment(
   const atmosphere = atmospherePalette(variant.weather);
 
   const horizon = new THREE.Mesh(
-    track(createBackdropGeometry(patch, heights, seed, atmosphere, recipe, GARAGE_SKYLINES[variant.architecture] ?? null)),
+    track(createBackdropGeometry(patch, heights, seed, atmosphere, recipe, GARAGE_KIT_SKYLINES[variant.architecture] ?? null)),
     track(new THREE.MeshBasicMaterial({
       vertexColors: true,
       side: THREE.DoubleSide,
@@ -2574,7 +2574,7 @@ export function buildGarageEnvironment(
     horizonMaxHeightM: Number(horizon.geometry.userData.maxHeightM || 0),
     builtHorizonMassTopM: Number(horizon.geometry.userData.massTopM || 0),
     builtHorizonAccentTopM: Number(horizon.geometry.userData.accentTopM || 0),
-    skylineLandmarks: Object.freeze([...(horizon.geometry.userData.skylineLandmarks as string[] ?? [])]),
+    kitSkylineLandmarks: Object.freeze([...(horizon.geometry.userData.kitSkylineLandmarks as string[] ?? [])]),
     drawCalls: objects,
     enclosingSurfaces: 0,
     landmarkHeightM: recipe.landmark[1],

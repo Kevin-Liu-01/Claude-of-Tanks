@@ -1,4 +1,4 @@
-// garage r9 skyline receipt (K10): every Garage with a built skyline of its own (garageKitPlacements.ts GARAGE_SKYLINES)
+// garage r9 skyline receipt (K10): every Garage with a built skyline of its own (garageKitPlacements.ts GARAGE_KIT_SKYLINES)
 // names its map's landmarks, places each within 15 degrees of its bearing from the Garage's terrain-patch anchor (map x/z
 // = pack x/z: the patch is unrotated), builds byte-identically twice, stays in its triangle share and in the biome's
 // ceilings (masses 13.2 m, slender accents 26 m). Saltmere's coast is composed about its quay (garageSaltmereKit.ts):
@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
-import { GARAGE_SKYLINES } from './garageKitPlacements.ts';
+import { GARAGE_KIT_SKYLINES } from './garageKitPlacements.ts';
 import { GarageSkylineEmitter, mapBearing } from './garageSkylineKit.ts';
 import { getGarageTerrainPatch } from './garageTerrainPatches.generated.ts';
 
@@ -20,7 +20,7 @@ const build = (skyline) => {
 };
 
 let checked = 0;
-for (const [architecture, skyline] of Object.entries(GARAGE_SKYLINES)) {
+for (const [architecture, skyline] of Object.entries(GARAGE_KIT_SKYLINES)) {
   const variant = GARAGE_VARIANTS.find((v) => v.architecture === architecture);
   assert.ok(variant, `${architecture}: a Garage`);
   assert.ok(skyline.landmarks.length >= 4, `${architecture}: at least four named landmarks`);
@@ -64,4 +64,4 @@ for (const [architecture, skyline] of Object.entries(GARAGE_SKYLINES)) {
   checked += 1;
 }
 assert.ok(checked >= 3, 'the per-garage skylines are checked');
-console.log(`garageSkyline.selftest: ${checked} built skylines name their map's landmarks at their bearings`);
+console.log(`garageSkylineKit.selftest: ${checked} built skylines name their map's landmarks at their bearings`);

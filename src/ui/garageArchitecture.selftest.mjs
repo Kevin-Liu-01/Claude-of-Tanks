@@ -268,7 +268,7 @@ for (const variant of GARAGE_VARIANTS) {
   }
   // garage r9 (K10): a Garage with a built skyline of its own names its map's landmarks
   if (['naval_drydock', 'rail_roundhouse', 'factory_line'].includes(variant.architecture)) {
-    assert.ok(stats.skylineLandmarks.length >= 4, `${variant.id} names its skyline's landmarks: ${stats.skylineLandmarks.join(', ')}`);
+    assert.ok(stats.kitSkylineLandmarks.length >= 4, `${variant.id} names its skyline's landmarks: ${stats.kitSkylineLandmarks.join(', ')}`);
   }
   if (['naval_drydock', 'rail_roundhouse'].includes(variant.architecture)) {
     assert.ok(stats.horizonMaxHeightM <= 6.5,

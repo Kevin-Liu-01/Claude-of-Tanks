@@ -131,9 +131,9 @@ kit (collars, LED pucks, pedestal, the segmented deck) loads at Garage idle. `to
 every piece for review.
 A Garage's own pieces live in its kit module (`garageSaltmereKit.ts`, `garageCinderKit.ts`, `garageIronworksKit.ts`):
 pure `KitBuilder` functions placed as `{ kind: 'piece', key, build }` items (cached by `key`). Its outside environment
-is a built skyline (`garageSkylineKit.ts`, rows in `GARAGE_SKYLINES`): named map landmarks drawn into the pack's one
+is a built skyline (`garageSkylineKit.ts`, rows in `GARAGE_KIT_SKYLINES`): named map landmarks drawn into the pack's one
 backdrop draw at their bearings from the terrain patch's anchor (map x/z = pack x/z), plus optional band reshaping
-(sea arcs, strands, hedges); `garageSkyline.selftest.mjs` checks each landmark within 15 degrees of its map point.
+(sea arcs, strands, hedges); `garageSkylineKit.selftest.mjs` checks each landmark within 15 degrees of its map point.
 The hero's outline from the Garage camera stays clear (garage critic panel and
 ruling, 2026-10-14: the current layout protects the hero's spot, the turntable,
 the camera and the UI, not the backdrop): no post, mast, leg, hook or lamp crosses
