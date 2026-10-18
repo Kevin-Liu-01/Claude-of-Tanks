@@ -79,37 +79,50 @@ export const windmill: LandmarkBuilder = (ctx) => {
   const cloth = ctx.variant() < 0.5 ? 0 : 0.35 + ctx.variant() * 0.5;
   if (style === 'post') {
     const bw = 3.8, bd = 4.6, bh = 5.0, lift = Math.max(3.2, H - bh - 1.8);
-    for (const [x, z] of [[-2.6, 0], [2.6, 0], [0, -2.6], [0, 2.6]] as const) sink.span('stone', x - 0.42, base, z - 0.42, x + 0.42, 0.55, z + 0.42);
-    sink.span('structureWood', -2.8, 0.55, -0.2, 2.8, 0.95, 0.2, { colour: TIMBER_DARK });
-    sink.span('structureWood', -0.2, 0.55, -2.8, 0.2, 0.95, 2.8, { colour: TIMBER_DARK });
-    revolve(sink, 'structureWood', 0, 0, [[0.3, 0.55], [0.26, lift]], 8, { colour: TIMBER_DARK });
-    for (const [x, z] of [[-2.4, 0], [2.4, 0], [0, -2.4], [0, 2.4]] as const) bar(sink, 'structureWood', [x, 0.95, z], [x * 0.07, lift - 0.6, z * 0.07], 0.2, { colour: TIMBER_DARK });
-    // the body: boards, a gable roof, the door at the back up the ladder
+    // (227, lane B; the anti-raft floor: the mill fell as a heap at its feet, 13 % of its height) the trestle on its stone
+    // piers and the post one open frame (pieces.ts 'lattice') under the hinge: it stands through the fall (world/
+    // toppleHinge.ts; the piers in it, what the crosstrees stand on); the body with its roof and windshaft comes off the post
+    // whole and goes over, the tail pole and the ladder down flat, the sails off it (the 227 films: one frame with the body,
+    // cut at the hinge, stood half a body on the trestle; the post run up into the body stood as a bare mast; the roof torn
+    // off lay on the ground as a tent)
+    const hubY = lift + bh * 0.8, hubZ = bd / 2 + 0.7;
     const roof: RoofSpec = { kind: 'gable', pitchDeg: 38, eave: 0.25, verge: 0.3, thickness: 0.1, bucket: 'roof', ridge: 'saddle' };
-    sink.placed(0, 0, lift, 0, () => {
-      // (the maps lane, 2026-10-16; the building-integrity gate: 5.7 m2 of the body seen into from below, its underside
-      // open over the post) the body's floor, the joists' boards under the walls, the post's head under it
-      sink.span('structureWood', -bw / 2, -0.16, -bd / 2, bw / 2, 0, bd / 2, { colour: TIMBER_DARK });
-      const f = archedBody(sink, 'structureWood', 0, 0, bw, bd, 0, bh, {}, 0, { colour: BOARD_GREY });
-      emitRoof(sink, roofGeometry(bw, bd, bh, roof), roof);
-      plankDoor(sink, f.back, 0, 0.1, 0.9, 1.8, TIMBER_DARK, 0.02);
-      for (let k = -3; k <= 3; k++) {
-        for (const name of ['left', 'right'] as const) {
-          sink.box('structureWood', facePoint(f[name], k * bd / 7, bh / 2, 0.03), [0.03, bh / 2, 0.03], { colour: shade(BOARD_GREY, 0.8), decor: true, fine: true },
-            new LocalFrame(f[name].u, [0, 1, 0], f[name].out, [0, 0, 0]), { nz: true });
+    piece(sink, { name: 'frame', kind: 'lattice', at: 'collapse', fall: 'slump' }, (s) => {
+      for (const [x, z] of [[-2.6, 0], [2.6, 0], [0, -2.6], [0, 2.6]] as const) s.span('stone', x - 0.42, base, z - 0.42, x + 0.42, 0.55, z + 0.42);
+      s.span('structureWood', -2.8, 0.55, -0.2, 2.8, 0.95, 0.2, { colour: TIMBER_DARK });
+      s.span('structureWood', -0.2, 0.55, -2.8, 0.2, 0.95, 2.8, { colour: TIMBER_DARK });
+      revolve(s, 'structureWood', 0, 0, [[0.3, 0.55], [0.26, lift]], 8, { colour: TIMBER_DARK });
+      for (const [x, z] of [[-2.4, 0], [2.4, 0], [0, -2.4], [0, 2.4]] as const) bar(s, 'structureWood', [x, 0.95, z], [x * 0.07, lift - 0.6, z * 0.07], 0.2, { colour: TIMBER_DARK });
+    });
+    piece(sink, { name: 'body', kind: 'detach', at: 'collapse', fall: 'topple' }, (s) => {
+      // the body: boards, a gable roof, the door at the back up the ladder
+      s.placed(0, 0, lift, 0, () => {
+        // (the maps lane, 2026-10-16; the building-integrity gate: 5.7 m2 of the body seen into from below, its underside
+        // open over the post) the body's floor, the joists' boards under the walls, the post's head under it
+        s.span('structureWood', -bw / 2, -0.16, -bd / 2, bw / 2, 0, bd / 2, { colour: TIMBER_DARK });
+        const f = archedBody(s, 'structureWood', 0, 0, bw, bd, 0, bh, {}, 0, { colour: BOARD_GREY });
+        emitRoof(s, roofGeometry(bw, bd, bh, roof), roof);
+        plankDoor(s, f.back, 0, 0.1, 0.9, 1.8, TIMBER_DARK, 0.02);
+        for (let k = -3; k <= 3; k++) {
+          for (const name of ['left', 'right'] as const) {
+            s.box('structureWood', facePoint(f[name], k * bd / 7, bh / 2, 0.03), [0.03, bh / 2, 0.03], { colour: shade(BOARD_GREY, 0.8), decor: true, fine: true },
+              new LocalFrame(f[name].u, [0, 1, 0], f[name].out, [0, 0, 0]), { nz: true });
+          }
         }
+      });
+      s.member('structureWood', [0, hubY - 0.1, bd / 2 - 0.5], [0, hubY + 0.05, hubZ], 0.34, 0.34, [1, 0, 0], { colour: TIMBER_DARK, exposed: true }, 0.17);
+    });
+    // the tail pole to the ground and the ladder up to the door: they come down flat off the body's back (with it, they
+    // propped the fallen body in the air)
+    piece(sink, { name: 'tail', kind: 'detach', at: 'collapse', fall: 'flat' }, (s) => {
+      bar(s, 'structureWood', [0, lift + 0.3, -bd / 2], [0, 0.5, -bd / 2 - 5.2], 0.22, { colour: TIMBER_DARK, decor: true });
+      for (const sx of [-0.5, 0.5]) bar(s, 'structureWood', [sx, lift, -bd / 2 - 0.1], [sx, 0.1, -bd / 2 - 3.0], 0.12, { colour: TIMBER_DARK, decor: true });
+      for (let k = 1; k < 9; k++) {
+        const t = k / 9, y = lift * (1 - t) + 0.1 * t, z = -bd / 2 - 0.1 - 2.9 * t;
+        s.span('structureWood', -0.5, y - 0.03, z - 0.08, 0.5, y + 0.03, z + 0.08, { colour: TIMBER, decor: true, fine: true });
       }
     });
-    const hubY = lift + bh * 0.8, hubZ = bd / 2 + 0.7;
-    sink.member('structureWood', [0, hubY - 0.1, bd / 2 - 0.5], [0, hubY + 0.05, hubZ], 0.34, 0.34, [1, 0, 0], { colour: TIMBER_DARK, exposed: true }, 0.17);
     sails(sink, hubY, hubZ, Math.min(9.5, hubY - 0.8), 1.15, turn, TIMBER, cloth);
-    // the tail pole to the ground and the ladder up to the door
-    bar(sink, 'structureWood', [0, lift + 0.3, -bd / 2], [0, 0.5, -bd / 2 - 5.2], 0.22, { colour: TIMBER_DARK, decor: true });
-    for (const sx of [-0.5, 0.5]) bar(sink, 'structureWood', [sx, lift, -bd / 2 - 0.1], [sx, 0.1, -bd / 2 - 3.0], 0.12, { colour: TIMBER_DARK, decor: true });
-    for (let k = 1; k < 9; k++) {
-      const t = k / 9, y = lift * (1 - t) + 0.1 * t, z = -bd / 2 - 0.1 - 2.9 * t;
-      sink.span('structureWood', -0.5, y - 0.03, z - 0.08, 0.5, y + 0.03, z + 0.08, { colour: TIMBER, decor: true, fine: true });
-    }
     return { parts: finishLandmark(sink) };
   }
   const tower = style === 'tower';
@@ -129,16 +142,29 @@ export const windmill: LandmarkBuilder = (ctx) => {
     const F = Math.PI / 16, shaft = (y: number): readonly [number, number] => [r0 - 0.26 * r0 * Math.max(0, y - 0.62) / (capY - 0.62), y];
     // (the shaft's head under the upper shaft: its wall's top and inside, which the toppled top leaves open)
     const head = shaft(sy + 0.3), inner = head[0] - 0.6;
-    revolve(sink, 'stone', 0, 0, [[r0 + 0.3, base], [r0 + 0.3, 0.32], [r0 + 0.05, 0.62], shaft(0.62), head, [inner, head[1]], [inner, head[1] - 0.9]], 16, {}, F);
-    // the tarred foot of the shaft, a skin over the brick from the water table up
-    revolve(sink, 'stone', 0, 0, [[shaft(0.62)[0] + 0.025, 0.62], [shaft(1.5)[0] + 0.025, 1.5], [shaft(1.5)[0], 1.53]], 16,
-      { decor: true, tint: [0.36, 0.34, 0.32] }, F);
+    // (the looks lane, 227: the mill's collapse laid its whole brick body down in the default's heap, so the Polders mills
+    // stood under a quarter of their height) the shaft to the stage — its plinth, its courses, its door — a piece of its
+    // own that stands where it stood when the mill falls, its broken head open over the heap of the upper shaft, the cap
+    // and the sails
     const band = (y: number, s: PartSink, out = 0.045, h = 0.12): void => {
       const r = shaft(y)[0] + out;
       revolve(s, 'stone', 0, 0, [[r - out, y - h / 2], [r, y - h / 2 + 0.02], [r, y + h / 2], [r - out, y + h / 2]], 16, { decor: true, tint: [0.92, 0.88, 0.84] }, F);
     };
+    piece(sink, { name: 'shaft', kind: 'detach', at: 'collapse', fall: 'slump' }, (sink) => {
+    revolve(sink, 'stone', 0, 0, [[r0 + 0.3, base], [r0 + 0.3, 0.32], [r0 + 0.05, 0.62], shaft(0.62), head, [inner, head[1]], [inner, head[1] - 0.9]], 16, {}, F);
+    // the tarred foot of the shaft, a skin over the brick from the water table up
+    revolve(sink, 'stone', 0, 0, [[shaft(0.62)[0] + 0.025, 0.62], [shaft(1.5)[0] + 0.025, 1.5], [shaft(1.5)[0], 1.53]], 16,
+      { decor: true, tint: [0.36, 0.34, 0.32] }, F);
     for (let y = 2.6; y < sy - 0.6; y += 2.2) band(y, sink);
     band(sy - 0.08, sink, 0.09, 0.22);
+    // the door in its brick doorcase: two jambs and the head standing out of the shaft, the leaf set back between them
+    const rd = towerR(1.6) * Math.cos(F) + 0.02;
+    const df: Face = { origin: [0, 0, rd], u: [1, 0, 0], out: [0, 0, 1], width: 1 };
+    for (const side of [-1, 1]) faceBox(sink, 'stone', df, side * 0.72, 1.65, 0.16, 0.3, 2.1, 0.36);
+    faceBox(sink, 'stone', df, 0, 2.86, 0.16, 1.74, 0.36, 0.36);
+    faceBox(sink, 'stone', df, 0, 0.55, 0.3, 1.5, 0.14, 0.6, { decor: true });
+    plankDoor(sink, df, 0, 0.62, 1.14, 2.08, IRON_GREEN, 0.03);
+    });
     piece(sink, { name: 'tower-top', kind: 'detach', at: 'breached', fall: 'topple' }, (s) => {
       revolve(s, 'stone', 0, 0, [[0, sy + 0.3], shaft(sy + 0.3), shaft(capY), [0, capY]], 16, {}, F);
       band((sy + capY) / 2, s);
@@ -165,24 +191,23 @@ export const windmill: LandmarkBuilder = (ctx) => {
         railing(s, [Math.cos(a) * rs, Math.sin(a) * rs], [Math.cos(b) * rs, Math.sin(b) * rs], 0.95, TIMBER_DARK, { pitch: 1.8, base: sy + 0.18 });
       }
     });
-    // the door in its brick doorcase: two jambs and the head standing out of the shaft, the leaf set back between them
-    const rd = towerR(1.6) * Math.cos(F) + 0.02;
-    const df: Face = { origin: [0, 0, rd], u: [1, 0, 0], out: [0, 0, 1], width: 1 };
-    for (const side of [-1, 1]) faceBox(sink, 'stone', df, side * 0.72, 1.65, 0.16, 0.3, 2.1, 0.36);
-    faceBox(sink, 'stone', df, 0, 2.86, 0.16, 1.74, 0.36, 0.36);
-    faceBox(sink, 'stone', df, 0, 0.55, 0.3, 1.5, 0.14, 0.6, { decor: true });
-    plankDoor(sink, df, 0, 0.62, 1.14, 2.08, IRON_GREEN, 0.03);
   } else {
-    revolve(sink, 'stone', 0, 0, [[r0 / Math.cos(OCT), base], [r0 / Math.cos(OCT), 1.6], [(r0 - 0.15) / Math.cos(OCT), 1.6]], 8, {}, OCT);
     const body = ctx.mapId === 'polders' ? 'straw' : 'structureWood';
-    revolve(sink, body, 0, 0, [[(r0 - 0.15) / Math.cos(OCT), 1.6], [2.0 / Math.cos(OCT), capY]], 8, body === 'straw' ? {} : { colour: BOARD_GREY }, OCT);
     plankDoor(sink, { origin: [0, 0, r0 - 0.1], u: [1, 0, 0], out: [0, 0, 1], width: 1 }, 0, 0.3, 1.0, 1.25, TIMBER_DARK, 0.02);
-    for (const a of [Math.PI / 4, Math.PI * 1.25]) {
-      const rr = (r0 - 0.15) + (2.0 - (r0 - 0.15)) * 0.45;
-      const f: Face = { origin: [Math.sin(a) * (rr + 0.02), 0, Math.cos(a) * (rr + 0.02)], u: [Math.cos(a), 0, -Math.sin(a)], out: [Math.sin(a), 0, Math.cos(a)], width: 1 };
-      sink.quad('glass', facePoint(f, -0.3, capY * 0.5, 0), facePoint(f, 0.3, capY * 0.5, 0), facePoint(f, 0.3, capY * 0.5 + 0.6, 0), facePoint(f, -0.3, capY * 0.5 + 0.6, 0),
-        { decor: true });
-    }
+    // (227, lane B; the anti-raft floor: the mill fell as a heap at its feet, 16 % of its height) the boarded smock over its
+    // brick base one frame of posts and boards (pieces.ts 'lattice'): it buckles over its lower storeys (world/toppleHinge.ts)
+    // and goes over along the blow
+    piece(sink, { name: 'frame', kind: 'lattice', at: 'collapse', fall: 'topple' }, (s) => {
+      // (its brick base in it: the smock stands in the fall on what stands)
+      revolve(s, 'stone', 0, 0, [[r0 / Math.cos(OCT), base], [r0 / Math.cos(OCT), 1.6], [(r0 - 0.15) / Math.cos(OCT), 1.6]], 8, {}, OCT);
+      revolve(s, body, 0, 0, [[(r0 - 0.15) / Math.cos(OCT), 1.6], [2.0 / Math.cos(OCT), capY]], 8, body === 'straw' ? {} : { colour: BOARD_GREY }, OCT);
+      for (const a of [Math.PI / 4, Math.PI * 1.25]) {
+        const rr = (r0 - 0.15) + (2.0 - (r0 - 0.15)) * 0.45;
+        const f: Face = { origin: [Math.sin(a) * (rr + 0.02), 0, Math.cos(a) * (rr + 0.02)], u: [Math.cos(a), 0, -Math.sin(a)], out: [Math.sin(a), 0, Math.cos(a)], width: 1 };
+        s.quad('glass', facePoint(f, -0.3, capY * 0.5, 0), facePoint(f, 0.3, capY * 0.5, 0), facePoint(f, 0.3, capY * 0.5 + 0.6, 0), facePoint(f, -0.3, capY * 0.5 + 0.6, 0),
+          { decor: true });
+      }
+    });
   }
   // the cap: a boat-shaped gable turning on the curb, the windshaft out of its breast, the sails, the tail
   const capW = tower ? 4.8 : 4.4, capD = tower ? 6.0 : 5.4;
@@ -201,14 +226,20 @@ export const windmill: LandmarkBuilder = (ctx) => {
     }
   });
   const hubY = capY + 1.3, hubZ = capD / 2 + 0.8;
-  sink.member('structureWood', [0, hubY - 0.15, capD / 2 - 0.8], [0, hubY, hubZ], 0.4, 0.4, [1, 0, 0], { colour: TIMBER_DARK, exposed: true }, 0.2);
   sails(sink, hubY, hubZ, tower ? sailLen : Math.min(10, hubY - 1.2), tower ? 1.45 : 1.2, turn, TIMBER, cloth);
-  // the tail pole and its struts down from the cap's back, the capstan wheel at its foot (the miller turns the cap)
+  // the windshaft out of the cap's breast; the tail pole and its struts down from the cap's back, the capstan wheel at its
+  // foot (the miller turns the cap). (227, lane B) a smock mill's go over with its frame (one more open frame: its body
+  // stands no more than its brick base); a tower mill's stand with its brick
   const stageY = Math.min(capY * 0.42, capY + 1.3 - sailLen - 1.7);
   const footY = tower ? stageY + 0.9 : 0.9, footZ = tower ? -(towerR(stageY) + 1.6) : -(r0 + 3.6);
-  bar(sink, 'structureWood', [0, capY + 0.1, -capD / 2 + 0.3], [0, footY, footZ], 0.24, { colour: TIMBER_DARK, decor: true });
-  for (const sx of [-1, 1]) bar(sink, 'structureWood', [sx * capW * 0.4, capY + 0.05, -capD / 2 + 0.4], [0, footY + 2.2, footZ * 0.8], 0.14, { colour: TIMBER_DARK, decor: true });
-  revolve(sink, 'structureWood', 0, footZ - 0.2, [[0.9, footY - 0.05], [0.9, footY + 0.05]], 10, { colour: TIMBER, decor: true });
+  const gear = (s: PartSink): void => {
+    s.member('structureWood', [0, hubY - 0.15, capD / 2 - 0.8], [0, hubY, hubZ], 0.4, 0.4, [1, 0, 0], { colour: TIMBER_DARK, exposed: true }, 0.2);
+    bar(s, 'structureWood', [0, capY + 0.1, -capD / 2 + 0.3], [0, footY, footZ], 0.24, { colour: TIMBER_DARK, decor: true });
+    for (const sx of [-1, 1]) bar(s, 'structureWood', [sx * capW * 0.4, capY + 0.05, -capD / 2 + 0.4], [0, footY + 2.2, footZ * 0.8], 0.14, { colour: TIMBER_DARK, decor: true });
+    revolve(s, 'structureWood', 0, footZ - 0.2, [[0.9, footY - 0.05], [0.9, footY + 0.05]], 10, { colour: TIMBER, decor: true });
+  };
+  if (tower) gear(sink);
+  else piece(sink, { name: 'tail', kind: 'lattice', at: 'collapse', fall: 'topple' }, gear);
   return { parts: finishLandmark(sink) };
 };
 

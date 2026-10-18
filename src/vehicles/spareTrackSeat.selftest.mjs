@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {
   measureSeat, refineSeat, SeatSoup, seatAngularLow, seatRadialProfile, solveSpareTrackSeat, seatRoleForBucket,
-  rackSeat, RACK_POST_MAX_M,
+  rackSeat, RACK_POST_MAX_M, outlineExcess, OUTLINE_TOL_M,
 } from './spareTrackSeat.ts';
 
 const UNIT = new THREE.Vector3(1, 1, 1);
@@ -38,6 +38,29 @@ const env = (sources, frame = 'hull', motion = null) => ({
   assert.ok(m.ok, `control seat passes (${m.reason})`);
   assert.equal(m.support, 1);
   assert.ok(m.exposure > 0.9, `open deck exposure ${m.exposure}`);
+}
+
+// 0b. OUTLINE (2026-10-16, the owner's rule: no run stands past the tank's width or length): the control seat inside a
+// plan outline passes. The seeded break moves the outline's right edge 5 cm inside the run's right edge, and the same
+// seat fails on 'outline' with a 5 cm excess. Inside the tolerance it still passes.
+{
+  const plateOnly = () => env([src(plate(2, 0.1, 2, 0, -0.05, 0), 'armor')]);
+  const outline = (maxX) => new THREE.Box3(new THREE.Vector3(-1, -Infinity, -1), new THREE.Vector3(maxX, Infinity, 1));
+  const inside = { ...plateOnly(), outline: outline(1) };
+  assert.ok(measureSeat(inside, shape(), poseOn(0, 0, 0), 7).ok, 'a run inside the plan outline passes');
+  const seeded = { ...plateOnly(), outline: outline(0.25 - 0.05) };
+  const broken = measureSeat(seeded, shape(), poseOn(0, 0, 0), 7, true);
+  assert.equal(broken.ok, false, 'the seeded break: a run 5 cm past the outline fails');
+  assert.equal(broken.reason, 'outline');
+  assert.ok(Math.abs(outlineExcess(seeded.outline, shape(), poseOn(0, 0, 0)) - 0.05) < 1e-9, 'its excess reads 5 cm');
+  const grazing = { ...plateOnly(), outline: outline(0.25 - OUTLINE_TOL_M / 2) };
+  assert.ok(measureSeat(grazing, shape(), poseOn(0, 0, 0), 7).ok, 'within the tolerance it still passes');
+  // a rack lifts the run off the plate along its normal; a rack that would carry it past a side outline is refused
+  const wall = env([src(plate(0.1, 2, 2, 1.05, 1, 0), 'armor')]);
+  const sideQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, -Math.PI / 2));
+  const sidePose = { pos: new THREE.Vector3(1.1 + 0.0405 + 0.03, 1, 0), quat: sideQuat };
+  const tight = { ...wall, outline: new THREE.Box3(new THREE.Vector3(-1.2, -Infinity, -1), new THREE.Vector3(1.2, Infinity, 1)) };
+  assert.equal(rackSeat(tight, shape(), sidePose, 7), null, 'no rack past the side outline');
 }
 
 // 1. ON_GUN: the Strv 103A case, an 18-gon tube whose crown facet is 10 degrees; posed from one ray on its crown
