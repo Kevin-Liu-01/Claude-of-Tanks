@@ -362,6 +362,10 @@ export function buildHorizonFarRange(options: HorizonFarRangeOptions & { detailT
     uFGains: { value: new THREE.Vector2(options.gains.ambient, options.gains.sunGain) },
     uFRock: { value: options.rock.clone() }, uFSnow: { value: options.snow.clone() }, uFFog: { value: fog.clone() },
     uFSnowline: { value: s.snowline <= 1 ? s.snowline : 2 }, uFDetailOn: { value: detail ? 1 : 0 },
+    // (the Earthrise 228 rebuild, round 2; the blind critics' "fence" along the far skyline) 1 on an airless map: no water
+    // ever cut its ranges, so no striations stand on their faces (they read as palisades at 2.6 km), and a face the sun
+    // leaves takes no sky's blue
+    uFAirless: { value: options.airless ? 1 : 0 },
     // (Part 1, 2026-10-05: the clouds' shadows on the sun's term, as the panorama that replaces this range takes them —
     // the layer's shared shade map, pointed at each draw; w 0 = off)
     tCotCloudShade: { value: null as THREE.Texture | null }, uCotCloudShade: { value: new THREE.Vector4(0, 0, 1 / 12000, 0) },
@@ -372,7 +376,7 @@ export function buildHorizonFarRange(options: HorizonFarRangeOptions & { detailT
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nattribute vec3 aFarNormal; attribute vec4 aFarParam;\nvarying vec3 vFPos; varying vec3 vFNrm; varying vec4 vFPar; varying vec3 vFWorld;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvFPos = position; vFNrm = aFarNormal; vFPar = aFarParam; vFWorld = (modelMatrix * vec4(position, 1.0)).xyz;');
-    shader.fragmentShader = 'uniform sampler2D uFDetail; uniform vec3 uFSun; uniform vec2 uFGains; uniform vec3 uFRock; uniform vec3 uFSnow; uniform vec3 uFFog; uniform float uFSnowline; uniform float uFDetailOn;\nvarying vec3 vFPos; varying vec3 vFNrm; varying vec4 vFPar; varying vec3 vFWorld;\n' + CLOUD_SHADE_PARS_GLSL + shader.fragmentShader
+    shader.fragmentShader = 'uniform sampler2D uFDetail; uniform vec3 uFSun; uniform vec2 uFGains; uniform vec3 uFRock; uniform vec3 uFSnow; uniform vec3 uFFog; uniform float uFSnowline; uniform float uFDetailOn; uniform float uFAirless;\nvarying vec3 vFPos; varying vec3 vFNrm; varying vec4 vFPar; varying vec3 vFWorld;\n' + CLOUD_SHADE_PARS_GLSL + shader.fragmentShader
       .replace('#include <color_fragment>', /* glsl */`#include <color_fragment>
       {
         float hT = vFPar.x, haze = vFPar.y, rib = vFPar.z, marine = vFPar.w;
@@ -387,7 +391,7 @@ export function buildHorizonFarRange(options: HorizonFarRangeOptions & { detailT
           // 454 tiles around at 2.6 km = 36 m across a striation, 150 m down it: at 2.5-4 m per pixel a 12 m field
           // minified into a dotted grey (the first try)
           float ang = atan(vFPos.z, vFPos.x) * 0.15915494309;
-          fS = (texture2D(uFDetail, vec2(ang * 454.0 + fA * 0.35, vFPos.y * 0.0067) + vec2(0.61, 0.27)).r - 0.5) * 3.0;
+          fS = (texture2D(uFDetail, vec2(ang * 454.0 + fA * 0.35, vFPos.y * 0.0067) + vec2(0.61, 0.27)).r - 0.5) * 3.0 * (1.0 - uFAirless);
         }
         // the six-row mesh carries a face's slope at 0.10-0.16 (1 - n.y) where the near ring's stands at 0.2-0.4, so the
         // striations, not the geometry, make the faces: they tilt the normal about the face's horizontal tangent (a
@@ -418,7 +422,7 @@ export function buildHorizonFarRange(options: HorizonFarRangeOptions & { detailT
         float sky = 0.55 + 0.45 * n.y;
         float shade = uFGains.x * sky + uFGains.y * max(ndl, 0.0) * cotCloudSun(vFWorld);
         col *= shade * (1.0 + rib * 0.14);
-        col = mix(col, col * vec3(0.90, 0.94, 1.08), clamp(-ndl, 0.0, 1.0) * 0.35);
+        col = mix(col, col * vec3(0.90, 0.94, 1.08), clamp(-ndl, 0.0, 1.0) * 0.35 * (1.0 - uFAirless));
         // the sea sectors are the low sky, like the ring's far apron
         col = mix(col, uFFog * 0.9, marine);
         // aerial perspective by row: bluer and lighter with distance, never gone

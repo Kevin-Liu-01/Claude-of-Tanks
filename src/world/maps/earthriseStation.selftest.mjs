@@ -107,11 +107,36 @@ for (const zone of layout.zones) {
   }
 }
 
+// (round 2, 2026-10-18; the blind critics: "no hero landmark that reads at this height", "the comm tower is a spindly
+// mast") the relay mast, the station's landmark: its head 40 m and more over the apron's corner, 10 m and more over anything
+// else on the valley floor
+let mastNote = '';
+{
+  const mill = seated.find((b) => b.kind === 'mill'), gy = field.getHeightAt(mill.x, mill.z);
+  let top = -Infinity, others = -Infinity;
+  dressing.group.updateMatrixWorld(true);
+  dressing.group.traverse((o) => {
+    const pos = o.isMesh ? o.geometry?.attributes?.position : null;
+    if (!pos || o.isInstancedMesh) return;
+    const e = o.matrixWorld.elements;
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+      const wx = e[0] * x + e[4] * y + e[8] * z + e[12], wy = e[1] * x + e[5] * y + e[9] * z + e[13], wz = e[2] * x + e[6] * y + e[10] * z + e[14];
+      if (Math.hypot(wx - mill.x, wz - mill.z) < 6) top = Math.max(top, wy);
+      else if (Math.hypot(wx, wz) < 200) others = Math.max(others, wy - field.getHeightAt(wx, wz));
+    }
+  });
+  assert.ok(top - gy >= 40, `the relay mast's head ${(top - gy).toFixed(1)} m over its pad (40 m and more)`);
+  assert.ok(top - gy > others + 10, `the mast stands 10 m and more over anything else on the floor (${others.toFixed(1)} m)`);
+  mastNote = `the relay mast ${(top - gy).toFixed(1)} m (the next tallest ${others.toFixed(1)} m), `;
+}
+
 // the set pieces
 const lm = ud.landmarks;
 assert.equal(lm.skipped, 0, `no set piece skipped (${JSON.stringify(lm.pieces.filter((p) => p.status !== 'placed'))})`);
 const placed = lm.pieces.filter((p) => p.status === 'placed').map((p) => p.kind).sort();
-assert.deepEqual(placed, ['apolloSite', 'isruWorks', 'isruWorks', 'solarTower', 'solarTower'], 'Challenger\'s site, the works and its front, the two solar towers');
+assert.deepEqual(placed, ['apolloSite', 'isruWorks', 'isruWorks', 'solarTower', 'solarTower', 'solarTower', 'solarTower'],
+  'Challenger\'s site, the works and its front, the two solar towers on the scarps and the station\'s two power masts (round 2)');
 // (the collision records and the props' destructibles, the clutter among them, by kind)
 const kinds = new Map();
 for (const o of [...(dressing.obstacles ?? []), ...(dressing.destructibles ?? [])]) if (o.kind) kinds.set(o.kind, (kinds.get(o.kind) ?? 0) + 1);
@@ -138,4 +163,4 @@ families.add('landform:berm'); families.add('landform:scarp'); families.add('gro
 assert.ok(families.size >= 40, `at least 40 kinds of object on the Moon (${families.size}: ${[...families].sort().join(', ')})`);
 console.log(`earthriseStation: ${seated.length} sites seated in rotation pairs (plots ${worstRoad.toFixed(1)} m off the carriageways, `
   + `${worstZone.toFixed(1)} m off the objective discs), ${placed.length} set pieces with none skipped, one rover, no lander, `
-  + `the works in their lunar forms (${built.join(', ')}), ${families.size} kinds of object`);
+  + `${mastNote}the works in their lunar forms (${built.join(', ')}), ${families.size} kinds of object`);

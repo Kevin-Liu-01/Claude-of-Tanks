@@ -56,6 +56,19 @@ export const EARTHRISE_STATION: readonly StationSite[] = [
   twin(site('farmhouse', -100, 80, 74.5)),
 ];
 
+/**
+ * The sky over the station (round 2, 2026-10-18; the blind critics: "Earth has left the frame ... nothing tells you this is
+ * a lunar base", "the habs are dark and backlit"): the Earth in the north-north-east, 18 degrees up, where the south
+ * deployment looks over the North Massif and the station's own rows look out past their porches (it hangs in the frame
+ * of a tank driving up from the south saddle, at Challenger's site and over the habitat rows), its whole disc clear of
+ * the skyline; the sun a morning sun 20 degrees up in the south-east, 97 degrees from the Earth, so the Earth hangs a
+ * little more than half lit (its lit limb toward the sun), every street of the station is side-lit or lit three-quarter
+ * from the front, and the shadows run north-west. The sky (moon.ts), the high-gain dishes (littrow.ts) and the solar
+ * arrays and towers (moon.ts) read these.
+ */
+export const EARTH_SKY = Object.freeze({ azimuthDeg: 35, elevationDeg: 18 });
+export const SUN_SKY = Object.freeze({ azimuthDeg: 140, elevationDeg: 20 });
+
 /** The oxygen works' plant (props.landmarks isruWorks) where the logistics yard's rotation falls, and its heading. */
 export const ISRU_PLANT = Object.freeze({ x: 56, z: -65, yawDeg: 253.3 });
 /** Challenger's site, its gate (local -z) toward the station, and the works' excavation front at its rotation. */

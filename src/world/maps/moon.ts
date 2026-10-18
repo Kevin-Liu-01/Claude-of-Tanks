@@ -18,7 +18,7 @@
 // (also the turbo-ball kickoff) and on two crater-free stretches of the floor either side of it.
 import mars from './mars.ts';
 import type { MapCompositionConfig } from './contracts.ts';
-import { APOLLO_SITE, EARTHRISE_STATION, EXCAVATION_FRONT, ISRU_PLANT } from './earthriseStation.ts';
+import { APOLLO_SITE, EARTHRISE_STATION, EARTH_SKY, EXCAVATION_FRONT, ISRU_PLANT, SUN_SKY } from './earthriseStation.ts';
 import { LUNAR_STRUCTURE_VARIANTS } from './regional/lunarWorks.ts';
 // (2026-10-10, the map-revival lane; wave 346: "icy-blue crater-free regolith") the regolith a neutral, faintly warm grey,
 // not a blue one: hue 0.60 -> 0.09, saturation 0.025 -> 0.012
@@ -27,6 +27,31 @@ const grey = (_h: number, _s: number, l: number): [number, number, number] => [0
  * surface, as the disturbed ground round every Apollo site photographs (the worn channel: the yards, the excavation
  * strips, the tracks' shoulders). */
 const turned = (_h: number, _s: number, l: number): [number, number, number] => [0.09, .014, .24 + l * .32];
+/** A painted ring of radius `r` round the landing field's centre, in `n` straight runs closed on itself. */
+const ring = (r: number, n: number): Array<[number, number]> =>
+  Array.from({ length: n + 1 }, (_, i) => [Math.round(Math.sin((i / n) * Math.PI * 2) * r * 100) / 100, Math.round(Math.cos((i / n) * Math.PI * 2) * r * 100) / 100]);
+/** An approach chevron on the landing field's axis at `d` m out along (ux, uz), its point toward the centre. */
+const chevron = (ux: number, uz: number, d: number): Array<[number, number]> =>
+  [[ux * (d + 3) - uz * 4, uz * (d + 3) + ux * 4], [ux * d, uz * d], [ux * (d + 3) + uz * 4, uz * (d + 3) - ux * 4]];
+/**
+ * (round 2, 2026-10-18; the blind critics on the frames from the landing field: "the foreground is empty", "a large flat
+ * featureless foreground") the landing field's paint (world/groundMarkings.ts): the pad's edge line, the touchdown ring
+ * and the inner ring round the kickoff, an approach chevron on each axis and the station's number at the ring's north and
+ * south, each the other's rotation — white and safety yellow, worn by the dust the landers blow across it.
+ */
+const LANDING_FIELD_PAINT = {
+  lines: [
+    { points: [[-33, -33], [33, -33], [33, 33], [-33, 33], [-33, -33]] as Array<[number, number]>, width: 0.45, paint: 'white' as const, round: 1.5 },
+    { points: ring(21, 48), width: 0.7, paint: 'white' as const, round: 0.5 },
+    { points: ring(6.5, 24), width: 0.35, paint: 'yellow' as const, round: 0.3 },
+    ...([[0, 1], [1, 0], [0, -1], [-1, 0]] as const).map(([ux, uz]) => ({ points: chevron(ux, uz, 25), width: 0.6, paint: 'yellow' as const, round: 0.4 })),
+  ],
+  numbers: [
+    { x: 0, z: -13.5, headingDeg: 0, text: '17', height: 3.6, paint: 'white' as const },
+    { x: 0, z: 13.5, headingDeg: 180, text: '17', height: 3.6, paint: 'white' as const },
+  ],
+  slabM: 0,
+};
 /** The ejecta blocks' breccia (sceneryRocks.ts 'breccia'): a neutral grey a shade under the regolith, dust at the foot. */
 const LUNAR_BRECCIA: readonly [number, number, number] = [0.09, 0.04, 0.33];
 export default {
@@ -119,15 +144,18 @@ export default {
     // the station: Taurus-Littrow Station's plan (maps/earthriseStation.ts), built by its own kit (maps/regional/littrow.ts)
     architecture: 'littrow',
     plannedSites: EARTHRISE_STATION,
+    // the landing field's paint (LANDING_FIELD_PAINT, above)
+    groundMarkings: LANDING_FIELD_PAINT,
     plan: [],
     sourcedPalette: 'winter',
     yardClutter: false,
-    // the four light station kinds the plan keeps: the solar arrays beside the tank farms, each the other's rotation
+    // the four light station kinds the plan keeps: the solar arrays beside the tank farms, each the other's rotation,
+    // turned to the sun (earthriseStation.ts SUN_SKY)
     orbitalSettlement: [
-      { id: 'farm-power-a', structure: 'solararray', x: 124, z: -62, yawDeg: 92 },
-      { id: 'farm-power-b', structure: 'solararray', x: 128, z: -118, yawDeg: 92 },
-      { id: 'farm-power-c', structure: 'solararray', x: -124, z: 62, yawDeg: 92 },
-      { id: 'farm-power-d', structure: 'solararray', x: -128, z: 118, yawDeg: 92 },
+      { id: 'farm-power-a', structure: 'solararray', x: 124, z: -62, yawDeg: SUN_SKY.azimuthDeg },
+      { id: 'farm-power-b', structure: 'solararray', x: 128, z: -118, yawDeg: SUN_SKY.azimuthDeg },
+      { id: 'farm-power-c', structure: 'solararray', x: -124, z: 62, yawDeg: SUN_SKY.azimuthDeg },
+      { id: 'farm-power-d', structure: 'solararray', x: -128, z: 118, yawDeg: SUN_SKY.azimuthDeg },
     ],
     // the outpost's own module families are its strongpoints' structures
     destructibleBuildings: ['habmodule', 'commsmast', 'fueltanks'],
@@ -148,13 +176,18 @@ export default {
         outcrop: { count: 4, radius: 8 } },
     ],
     // the set pieces: Challenger's site kept as found (the hero), the oxygen works and its excavation front at the site's
-    // rotation, the two solar towers on the scarp's crests turned to the low east sun (landmarks/lunar.ts)
+    // rotation, the two solar towers on the scarp's crests turned to the low sun (landmarks/lunar.ts)
     landmarks: [
       { kind: 'apolloSite' as const, ...APOLLO_SITE, name: "Challenger's site, Apollo 17" },
       { kind: 'isruWorks' as const, ...ISRU_PLANT, name: 'the oxygen works' },
       { kind: 'isruWorks' as const, ...EXCAVATION_FRONT, params: { part: 'front' }, name: "the oxygen works' excavation front" },
-      { kind: 'solarTower' as const, x: 300, z: -342, yawDeg: 92, name: 'the solar tower on the south scarp' },
-      { kind: 'solarTower' as const, x: -300, z: 342, yawDeg: 92, name: 'the solar tower on the north scarp' },
+      { kind: 'solarTower' as const, x: 300, z: -342, yawDeg: SUN_SKY.azimuthDeg, name: 'the solar tower on the south scarp' },
+      { kind: 'solarTower' as const, x: -300, z: 342, yawDeg: SUN_SKY.azimuthDeg, name: 'the solar tower on the north scarp' },
+      // (round 2, 2026-10-18; the blind critics: "the base is small in the mid-distance under a mostly empty sky", "the
+      // outpost reads as scattered white specks") the station's own power masts, a rotation pair 24 m high beyond the
+      // habitat rows' outer berms, their blankets turned to the sun: the verticals of the station's west and east ends
+      { kind: 'solarTower' as const, x: -130, z: -20, yawDeg: SUN_SKY.azimuthDeg, params: { height: 24 }, name: 'the station\'s west power mast' },
+      { kind: 'solarTower' as const, x: 130, z: 20, yawDeg: SUN_SKY.azimuthDeg, params: { height: 24 }, name: 'the station\'s east power mast' },
     ],
     // every terrestrial form on the Moon dressed in the station's stock on its own seat (maps/regional/lunarWorks.ts):
     // regolith bags for the sandbags, a keep-out tether for the wire, sintered blocks for the barrier, the beacon, the
@@ -241,17 +274,18 @@ export default {
     // pyramids on these airless ranges (the skyline cone measure, horizonMassif.selftest.mjs: 0 -> 13 over three seeds)
     massif: false },
   // (the Earthrise 228 rebuild, 2026-10-18; the 10-12 report: "the light comes out of the Earth") the Earth apart from the
-  // sun: at its true bearing from Taurus-Littrow (240 degrees, over the valley's open west) but lowered from its true 54 to
-  // 22 degrees so it stands in a tank-height frame, and 12 degrees across (the earthriseCrossing floor, was 18); the sun a
-  // low morning sun from the east as at the Apollo 17 landing (92 degrees, 18 up, was 48 / 20), 129 degrees from the Earth,
-  // so the Earth hangs gibbous (about 81 % lit, its lit limb toward the sun) and the shadows run west-north-west, receding
-  // into the Earth's frame; both teams' axes are side-lit (sky.ts uPlanetDir / uPlanetPhase)
+  // sun (sky.ts uPlanetDir / uPlanetPhase), 12 degrees across (the earthriseCrossing floor, was 18); round 1 hung it at
+  // its true bearing (240, over the open west, 22 up) under a sun from the east (92, 18 up)
+  // (round 2, 2026-10-18; the blind critics: "Earth has left the frame", "the habs are dark and backlit", "the shaded
+  // hills read as snow-blue") the Earth and the sun from the station's sky (earthriseStation.ts EARTH_SKY / SUN_SKY): the
+  // Earth in the north-north-east over the North Massif, 18 up, the sun 20 up in the south-east, 97 degrees apart (the
+  // Earth a little more than half lit); the shade light the regolith's own grey (shadeHex: the black sky lends no blue)
   sky: { skyIntensity: 0, nightSky: 1, galaxy: .35, nebulaHex: 0, earth: 1, planetDeg: 12, planetHex: 0x8abdff,
-    earthAzimuthDeg: 240, earthElevationDeg: 22,
+    earthAzimuthDeg: EARTH_SKY.azimuthDeg, earthElevationDeg: EARTH_SKY.elevationDeg, shadeHex: 0x948f88,
     // (2026-10-10, the map-revival lane; wave 346: "flat shadowless light") an airless sky gives the sun no help: the sky's
     // fill and the bounce come down (hemi .38 -> .12, fill .16 -> .05, environment .3 -> .15), so the shadows are the hard
     // black of the photographs, and a lower sun (28 -> 20 deg) draws them long across the crater floors and rims
-    sunElevationDeg: 18, sunAzimuthDeg: 92, turbidity: 1, rayleigh: 0, mieCoefficient: 0,
+    sunElevationDeg: SUN_SKY.elevationDeg, sunAzimuthDeg: SUN_SKY.azimuthDeg, turbidity: 1, rayleigh: 0, mieCoefficient: 0,
     fogDensity: 0, fogMix: 0, envIntensity: .15, cloudOpacity: 0, cloudOpacity2: 0, cloudShadowAmp: 0,
     // (2026-10-11) the sun white, not blue-white (0xf1f4ff), and the air's tint the regolith's neutral grey where a law
     // reads one (the horizon's sky term, the default 0x8fa3bd tinted it blue)

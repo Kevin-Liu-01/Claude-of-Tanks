@@ -85,8 +85,18 @@ function bag(l: number, h: number, d: number, rng: Rng, dust: number): THREE.Buf
     // the crown rounder than the bed
     if (p.getY(i) > 0 && !end) p.setY(i, p.getY(i) * 1.06);
   }
-  g.translate(0, h / 2, 0);
   g.computeVertexNormals();
+  // (round 2, 2026-10-18; the blind critics: "the white sandbag stack is blocky") a filled bag is a pillow, not a box: each
+  // corner's normal leans from its face's toward the bag's own rounded body (the ellipsoid through its corners), so the
+  // light rolls over its shoulders and crown — the same triangles, no hard edge between its faces
+  const nrm = g.attributes.normal;
+  for (let i = 0; i < p.count; i++) {
+    const ex = p.getX(i) / (l * 0.5), ey = p.getY(i) / (h * 0.5), ez = p.getZ(i) / (d * 0.5), el = Math.hypot(ex, ey, ez) || 1;
+    const nx = nrm.getX(i) * 0.4 + (ex / el) * 0.6, ny = nrm.getY(i) * 0.4 + (ey / el) * 0.6, nz = nrm.getZ(i) * 0.4 + (ez / el) * 0.6;
+    const nl = Math.hypot(nx, ny, nz) || 1;
+    nrm.setXYZ(i, nx / nl, ny / nl, nz / nl);
+  }
+  g.translate(0, h / 2, 0);
   const col = new Float32Array(p.count * 3);
   for (let i = 0; i < p.count; i++) {
     const t = Math.min(1, Math.max(0, p.getY(i) / h)) * (1 - dust);

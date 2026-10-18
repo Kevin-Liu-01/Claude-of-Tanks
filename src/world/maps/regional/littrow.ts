@@ -12,7 +12,8 @@
 //                   rack and (on some) a workshop jib arm;
 //   - farmhouse     the cryogenic tank farm: two horizontal tanks on saddles behind a low berm, a radiator wing, the
 //                   transfer lines and a filling station (the contents' band from where the farm stands);
-//   - mill          the comms tower: a 22 m lattice tower, its relay dish and its high-gain dish turned to the Earth;
+//   - mill          the relay mast, the station's landmark: a 40 m banded lattice mast, its solar wing, its head's pod,
+//                   beacons and dishes, the high-gain dish turned to the Earth;
 //   - chapel        the sample lab: a small hab with a glovebox port, sample racks and an instrument mast;
 //   - gantry        the offloading crane (after NASA's LSMS): a boom on a turret over a cargo pad, pallets under it;
 //   - containerRow  the logistics modules on cradles, banked in regolith bags to their shoulders, soft cargo bags between;
@@ -23,6 +24,7 @@
 // Moon's low gravity flat or convex.
 import { PartSink, faceBox, normalize3, rgb, shade, type EmitOptions, type Face, type RegionalBucket, type Rgb, type Vec3 } from './geometry.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { EARTH_SKY } from '../earthriseStation.ts';
 
 // the station palette: MLI white and its dusted foot, the bright panels, gold foil, safety orange, cells, steel
 const MLI = rgb(0xdedcd6), DUSTED = rgb(0xb9b4aa), PANEL = rgb(0xeceae4), GOLD = rgb(0xc49a46), ORANGE = rgb(0xd46f2a);
@@ -154,9 +156,9 @@ function dish(sink: PartSink, c: Vec3, dir: Vec3, r: number, depth: number, colo
   sink.span(M, focus[0] - 0.07, focus[1] - 0.07, focus[2] - 0.07, focus[0] + 0.07, focus[1] + 0.07, focus[2] + 0.07, { colour: DARK, decor: true });
 }
 
-/** The Earth's direction in a building's frame (the map's Earth at 240 degrees, 22 up), for its high-gain dishes. */
+/** The Earth's direction in a building's frame (the map's Earth, earthriseStation.ts EARTH_SKY), for its high-gain dishes. */
 function earthLocal(ctx: RegionalBuildContext): Vec3 {
-  const az = (240 * Math.PI) / 180, el = (22 * Math.PI) / 180, yaw = ctx.yaw ?? 0;
+  const az = (EARTH_SKY.azimuthDeg * Math.PI) / 180, el = (EARTH_SKY.elevationDeg * Math.PI) / 180, yaw = ctx.yaw ?? 0;
   const wx = Math.sin(az) * Math.cos(el), wz = Math.cos(az) * Math.cos(el), c = Math.cos(yaw), s = Math.sin(yaw);
   // (props.ts turns a building's frame by +yaw about +Y into the world: the world direction turned back)
   return normalize3([wx * c - wz * s, Math.sin(el), wx * s + wz * c]);
@@ -489,50 +491,95 @@ const tankFarm: RegionalBuilder = (ctx) => {
 
 // --------------------------------------------------------------------------------------------------------- comms tower
 
-/** The comms tower: a 22 m lattice tower on a sintered pad, its relay dish and its high-gain dish turned to the Earth. */
+/**
+ * The relay mast — the station's landmark (round 2, 2026-10-18; the blind critics: "no hero landmark that reads at this
+ * height", "the comm tower is a spindly mast", "the distant base is only a faint smudge"): a 40 m lattice mast banded in
+ * safety orange and white for the landers' approach, broad at the foot and tapering to its head, over the apron's
+ * north-west corner where it stands over the scarps' crests from both deployments. The legs, girts and braces are drawn
+ * at every range (no fine joinery: the lattice is the silhouette); a solar wing at mid-height; at the head the equipment
+ * pod, the platform and its rail, the 4.8 m high-gain dish turned to the Earth, the relay dish along the floor and the
+ * obstruction beacons. Solids: the pad, the shelter at the foot, the banded legs.
+ */
 const commsTower: RegionalBuilder = (ctx) => {
   const sink = new PartSink(uvOffset(ctx));
   const rng = ctx.rng, mobile = ctx.tier === 'mobile', P = plot(ctx);
-  const cx = P.cx, cz = P.cz, H = 22, foot = clamp(Math.min(P.w, P.d) / 2 - 1.3, 1.4, 1.9), head = 0.45;
-  // the pad over the plot, the equipment shelter on it banked in bags
-  sink.span('stone', P.x0 + 0.1, -0.15, P.z0 + 0.1, P.x1 - 0.1, 0.35, P.z1 - 0.1);
-  const sx0 = cx + foot + 0.25, sx1 = P.x1 - 0.2;
-  sink.span(M, sx0, 0.35, cz - 1.1, sx1, 2.4, cz + 1.1, { colourAt: (p) => (p[1] < 0.9 ? DUSTED : PANEL), colour: PANEL });
-  bagWall(sink, [sx0 + 0.1, cz - 1.45], [sx1, cz - 1.45], 3, 0.5, rng, mobile);
+  const cx = P.cx, cz = P.cz, H = 40, foot = clamp(Math.min(P.w, P.d) / 2 - 0.65, 1.9, 2.7), head = 0.62, y0 = 0.35;
+  // the pad over the plot; the equipment shelter between the legs at the foot, banked in bags on its open sides
+  sink.span('stone', P.x0 + 0.1, -0.15, P.z0 + 0.1, P.x1 - 0.1, y0, P.z1 - 0.1);
+  const sh = Math.min(1.3, foot - 0.5);
+  sink.span(M, cx - sh, y0, cz - sh, cx + sh, y0 + 2.3, cz + sh, { colourAt: (p) => (p[1] < 0.95 ? DUSTED : PANEL), colour: PANEL });
+  sink.span(M, cx - 0.45, y0 + 0.2, cz + sh, cx + 0.45, y0 + 2.0, cz + sh + 0.06, { colour: ORANGE, decor: true });
+  bagWall(sink, [cx - sh, cz - sh - 0.45], [cx + sh, cz - sh - 0.45], 3, 0.5, rng, mobile);
   const leg = (k: number, y: number): Vec3 => {
-    const t = y / H, half = foot + (head - foot) * t, sxk = k === 0 || k === 3 ? -1 : 1, szk = k < 2 ? -1 : 1;
-    return [cx + sxk * half, 0.35 + y, cz + szk * half];
+    const t = Math.max(0, y) / H, half = foot + (head - foot) * Math.pow(t, 0.8), sxk = k === 0 || k === 3 ? -1 : 1, szk = k < 2 ? -1 : 1;
+    return [cx + sxk * half, y0 + y, cz + szk * half];
   };
-  // the four legs, solid; the girts and the cross braces between them, dressing that meets the legs at both ends
-  for (let k = 0; k < 4; k++) bar(sink, leg(k, -0.3), leg(k, H), 0.16, { colour: STEEL });
-  const levels = 9;
-  for (let l = 1; l <= levels; l++) {
-    const y = (l / levels) * H, yp = ((l - 1) / levels) * H;
-    for (let k = 0; k < 4; k++) {
-      const j = (k + 1) % 4;
-      bar(sink, leg(k, y), leg(j, y), 0.07, { colour: STEEL, decor: true });
-      bar(sink, leg(k, yp), leg(j, y), 0.05, { colour: STEEL, decor: true, fine: !mobile && l > 2 });
+  // the four legs in eight bands, orange and white by turns (solid: a hull stops against a leg)
+  const bands = 8;
+  for (let k = 0; k < 4; k++) {
+    for (let b = 0; b < bands; b++) {
+      const ya = b === 0 ? -0.3 : (b / bands) * H, yb = ((b + 1) / bands) * H;
+      bar(sink, leg(k, ya), leg(k, yb), 0.3 - 0.12 * (b / bands), { colour: b % 2 === 0 ? ORANGE : PANEL });
     }
   }
-  // the platform at the head and its rail, the beacon over it
-  sink.span(M, cx - 0.9, 0.35 + H, cz - 0.9, cx + 0.9, 0.35 + H + 0.1, cz + 0.9, { colour: DARK, decor: true });
+  // the girts and the braces between the legs, every level, zig-zagging (dressing that meets the legs at both ends)
+  const levels = 14;
+  for (let l = 1; l <= levels; l++) {
+    const y = (l / levels) * H, yp = ((l - 1) / levels) * H, t = 0.13 - 0.05 * (l / levels);
+    for (let k = 0; k < 4; k++) {
+      const j = (k + 1) % 4;
+      bar(sink, leg(k, y), leg(j, y), t, { colour: STEEL, decor: true });
+      if (l % 2) bar(sink, leg(k, yp), leg(j, y), t * 0.7, { colour: STEEL, decor: true });
+      else bar(sink, leg(j, yp), leg(k, y), t * 0.7, { colour: STEEL, decor: true });
+    }
+  }
+  // the solar wing at mid-height: a boom along the seventh girt of the front face, run out past both legs, and a dark
+  // panel on each end (the boom meets the girt along its length, the panels the boom)
+  const wl0 = leg(0, H * 0.5), wl1 = leg(1, H * 0.5), wz = wl0[2];
+  bar(sink, [wl0[0] - 3.6, wl0[1], wz], [wl1[0] + 3.6, wl1[1], wz], 0.12, { colour: STEEL, decor: true });
+  for (const [x0, x1] of [[wl1[0] + 0.3, wl1[0] + 3.5], [wl0[0] - 3.5, wl0[0] - 0.3]] as const) {
+    sink.span(M, x0, wl0[1] - 1.6, wz - 0.13, x1, wl0[1] + 1.6, wz - 0.03, { colour: rgb(0x1c2740), decor: true });
+    sink.span(M, x0 - 0.05, wl0[1] - 1.66, wz - 0.12, x1 + 0.05, wl0[1] - 1.56, wz - 0.04, { colour: PANEL, decor: true });
+  }
+  // the head: the platform and its rail, the equipment pod, the whip and its beacon
+  const top = y0 + H;
+  sink.span(M, cx - 1.3, top, cz - 1.3, cx + 1.3, top + 0.14, cz + 1.3, { colour: DARK, decor: true });
+  sink.cylinder(M, [cx, top + 0.14, cz], 'y', 2.2, 0.72, 12, { colour: PANEL, decor: true });
+  sink.cylinder(M, [cx, top + 2.34, cz], 'y', 0.12, 0.76, 12, { colour: GOLD, decor: true });
+  for (const [a, b] of [[[-1.3, -1.3], [1.3, -1.3]], [[1.3, -1.3], [1.3, 1.3]], [[1.3, 1.3], [-1.3, 1.3]], [[-1.3, 1.3], [-1.3, -1.3]]] as const) {
+    bar(sink, [cx + a[0], top + 1.1, cz + a[1]], [cx + b[0], top + 1.1, cz + b[1]], 0.05, { colour: ORANGE, decor: true });
+    bar(sink, [cx + a[0], top + 0.14, cz + a[1]], [cx + a[0], top + 1.1, cz + a[1]], 0.05, { colour: ORANGE, decor: true });
+  }
+  bar(sink, [cx, top + 2.46, cz], [cx, top + 6.2, cz], 0.1, { colour: STEEL, decor: true });
+  sink.span(M, cx - 0.18, top + 6.2, cz - 0.18, cx + 0.18, top + 6.6, cz + 0.18, { colour: H2_RED, decor: true });
+  // the obstruction beacons on two legs at a third and two thirds of the height
+  for (const [k, f] of [[1, 1 / 3], [3, 2 / 3], [3, 1 / 3], [1, 2 / 3]] as const) {
+    const p = leg(k, H * f);
+    sink.span(M, p[0] - 0.2, p[1], p[2] - 0.2, p[0] + 0.2, p[1] + 0.34, p[2] + 0.2, { colour: H2_RED, decor: true });
+  }
+  // the high-gain dish on its arm off the head, turned to the Earth; the relay dish lower down, turned along the floor
+  const e = earthLocal(ctx), hy = top + 2.4;
+  const arm: Vec3 = [cx + e[0] * 2.5, hy, cz + e[2] * 2.5];
+  bar(sink, [cx, top + 1.2, cz], arm, 0.16, { colour: STEEL, decor: true });
+  dish(sink, arm, e, 2.4, 0.62, PANEL, mobile);
+  const ry = y0 + H * 0.78, rl = leg(1, H * 0.78);
+  bar(sink, rl, [rl[0] + 0.9, ry, rl[2]], 0.1, { colour: STEEL, decor: true });
+  dish(sink, [rl[0] + 0.9, ry, rl[2]], normalize3([1, 0.05, 0.2]), 1.3, 0.34, PANEL, mobile);
+  const ql = leg(3, H * 0.62);
+  bar(sink, ql, [ql[0] - 0.7, ql[1], ql[2]], 0.08, { colour: STEEL, decor: true });
+  dish(sink, [ql[0] - 0.7, ql[1], ql[2]], normalize3([-1, 0.12, -0.4]), 0.8, 0.22, PANEL, mobile);
+  // the cable tray down a leg to the shelter; the climbing ladder up the opposite leg (its rungs and the panels' cell joints
+  // fine joinery, drawn near the camera)
+  bar(sink, leg(1, 0.2), leg(1, H * 0.78), 0.07, { colour: DARK, decor: true });
   sink.dressing(mobile, () => {
-    for (const [a, b] of [[[-0.9, -0.9], [0.9, -0.9]], [[0.9, -0.9], [0.9, 0.9]], [[0.9, 0.9], [-0.9, 0.9]], [[-0.9, 0.9], [-0.9, -0.9]]] as const) {
-      bar(sink, [cx + a[0], 0.35 + H + 1.0, cz + a[1]], [cx + b[0], 0.35 + H + 1.0, cz + b[1]], 0.035, { colour: ORANGE, decor: true, fine: true });
-      bar(sink, [cx + a[0], 0.35 + H + 0.1, cz + a[1]], [cx + a[0], 0.35 + H + 1.0, cz + a[1]], 0.035, { colour: ORANGE, decor: true, fine: true });
+    // (on the back face beside its corner leg, its rails against the girts: rungs between them along the face)
+    const rail = (y: number, s: number): Vec3 => { const p = leg(3, y); return [p[0] + (s > 0 ? 0.78 : 0.32), p[1], p[2] + 0.05]; };
+    for (const s of [-1, 1]) bar(sink, rail(0.1, s), rail(H - 0.2, s), 0.04, { colour: STEEL, decor: true, fine: true });
+    for (let y = 0.4; y < H - 0.3; y += 0.6) bar(sink, rail(y, -1), rail(y, 1), 0.025, { colour: STEEL, decor: true, fine: true });
+    for (const [x0, x1] of [[wl1[0] + 0.3, wl1[0] + 3.5], [wl0[0] - 3.5, wl0[0] - 0.3]] as const) {
+      for (let yy = wl0[1] - 1.2; yy < wl0[1] + 1.6; yy += 0.4) sink.span(M, x0, yy - 0.012, wz - 0.145, x1, yy + 0.012, wz - 0.13, { colour: shade(rgb(0x1c2740), 1.6), decor: true, fine: true });
     }
   });
-  bar(sink, [cx, 0.35 + H + 0.1, cz], [cx, 0.35 + H + 3.2, cz], 0.08, { colour: STEEL, decor: true });
-  sink.span(M, cx - 0.12, 0.35 + H + 3.2, cz - 0.12, cx + 0.12, 0.35 + H + 3.46, cz + 0.12, { colour: H2_RED, decor: true });
-  // the high-gain dish on its arm over the platform, turned to the Earth; the relay dish lower down, turned along the floor
-  const e = earthLocal(ctx), hy = 0.35 + H + 1.9;
-  bar(sink, [cx, 0.35 + H + 0.1, cz], [cx - e[0] * 0.6, hy, cz - e[2] * 0.6], 0.1, { colour: STEEL, decor: true });
-  dish(sink, [cx - e[0] * 0.6, hy, cz - e[2] * 0.6], e, 1.35, 0.36, PANEL, mobile);
-  const ry = 0.35 + H * 0.72, rl = leg(1, H * 0.72);
-  bar(sink, rl, [rl[0] + 0.55, ry, rl[2]], 0.08, { colour: STEEL, decor: true });
-  dish(sink, [rl[0] + 0.55, ry, rl[2]], normalize3([1, 0.05, 0.2]), 0.62, 0.18, PANEL, mobile);
-  // the cable tray down a leg to the shelter
-  bar(sink, leg(1, 0.2), leg(1, H * 0.7), 0.06, { colour: DARK, decor: true });
   return sink.finish();
 };
 

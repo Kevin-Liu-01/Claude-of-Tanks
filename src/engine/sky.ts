@@ -724,10 +724,14 @@ vec3 cotNightSky( vec3 dn, vec3 moonDir, float galaxy, vec3 nebula, float planet
 		cover *= 1.0 - 0.85 * max(aridN, aridS) * land;
 		float clouds = smoothstep(0.62 - 0.22 * cover, 0.80 - 0.14 * cover, swirl) * clamp(cover, 0.0, 1.0);
 		surface = mix(surface, vec3(.93, .95, .98) * (0.9 + 0.1 * grain2), clouds * .92);
+		// (the Earthrise 228 rebuild, round 2; the blind critics: "Earth is oversaturated, cartoonish") the colours a fifth
+		// toward their grey (a photograph's, not a poster's), the land's and the sea's shading darkening toward the limb
+		// as a lit sphere's does, and the thin blue limb fainter and only on the lit side
+		surface = mix(surface, vec3(dot(surface, vec3(.2126, .7152, .0722))), .2) * (.78 + .22 * mz);
 		// the sea's glint toward the sun, and the thin blue limb
 		float glint = pow(max(dot(reflect(-phaseL, mn), vec3(0.0, 0.0, 1.0)), 0.0), 60.0) * (1.0 - land) * (1.0 - clouds);
 		float rim = pow(1.0 - mz, 4.0);
-		moonCol = surface * (.06 + .97 * lit) * terminator + vec3(.55, .62, .70) * glint * .35 * terminator + vec3(.05, .25, .57) * rim * .55;
+		moonCol = surface * (.06 + .97 * lit) * terminator + vec3(.55, .62, .70) * glint * .35 * terminator + vec3(.05, .25, .57) * rim * .30 * terminator;
 		disc = 1.0 - smoothstep(1.0 - fwidth(length(mo)) * 1.5, 1.0, length(mo));
 	}
 	// the compact glow scales with the disc (a 3 deg planet keeps a ~4 deg halo, never a quarter-sky wash)
@@ -2121,14 +2125,18 @@ export function createSky(scene: THREE.Scene, renderer: THREE.WebGLRenderer): Sk
      * @returns {void}
      */
     applyFog(targetScene: THREE.Scene): void {
-      const fogColor = horizonColor.clone()
+      // (the Earthrise 228 rebuild, round 2; the blind critics: the shaded far ranges "snow-blue") an airless map (fogDensity
+      // 0, the Moon) has no air to colour: its fog pole is its authored tint (the regolith's grey) — never the black
+      // dome's sampled horizon nor the hue guard's blue-grey, which every far face the sun leaves took as its sky light
+      const airless = preset.fogDensity === 0;
+      const fogColor = airless ? new THREE.Color(preset.fogTintHex) : horizonColor.clone()
         .lerp(new THREE.Color(preset.fogTintHex), preset.fogMix);
       // r4 LP2 hue guard: atmospheric extinction color must NEVER be
       // green-dominant (the r3 sniper "jade fog" carryover) — whatever the
       // sampled sky band or preset tint produced, clamp toward blue-grey so
       // B >= G always holds on the fog pole. (Verdant currently samples
       // blue already; this is insurance against any preset/band drift.)
-      if (fogColor.g > fogColor.b) {
+      if (!airless && fogColor.g > fogColor.b) {
         const lum = 0.2126 * fogColor.r + 0.7152 * fogColor.g + 0.0722 * fogColor.b;
         fogColor.lerp(new THREE.Color(lum * 0.92, lum * 0.99, lum * 1.12), 0.6);
       }
