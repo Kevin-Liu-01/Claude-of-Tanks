@@ -703,15 +703,16 @@ function yunSightHood(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[]):v
 /** The crosswind sensor head on the Type 96B's rear mast stem (cylY r 0.026 at its top, turret-local y 1.4145 at
  * (0.761, -1.179)), so the stem carries what a Chinese fire-control mast carries rather than standing bare beside the
  * station. Round 4 (visual critic CN-5: "a thick, featureless tan rod ... with no sensor head"): a clamp collar 3 mm
- * over the stem's tip, the sensor's dark housing on it (two clamp bands proud of it) and the rain cap, each seated
- * 2 mm into the one under it. */
+ * over the stem's tip, the sensor's dark housing on it (a clamp band proud of it) and the rain cap, each seated
+ * 2 mm into the one under it, all within 47 mm of the stem's axis (the Yun station's arc ends 1 degree short of the
+ * stem; cnClearance holds its gun 25 mm off the head). */
 function yunMetHead(P:TankBuilderPort):void {
-  const x=.761,z=-1.179,top=1.4145,seg=P.q?16:10,collar=.022,body=.105;
-  P.addEquipment('turretDetail',cylY(.040,.034,collar,seg),x,top-.003+collar/2,z);
+  const x=.761,z=-1.179,top=1.4145,seg=P.q?12:10,collar=.020,body=.088;
+  P.addEquipment('turretDetail',cylY(.036,.032,collar,10),x,top-.003+collar/2,z);
   const b0=top-.003+collar-.002;
-  P.addEquipment('turretDark',cylY(.048,.048,body,seg),x,b0+body/2,z);
-  for(const f of [.32,.68])P.addEquipment('turretDetail',cylY(.0525,.0525,.010,seg),x,b0+body*f,z);
-  P.addEquipment('turretDetail',cylY(.058,.052,.016,seg),x,b0+body-.002+.008,z);
+  P.addEquipment('turretDark',cylY(.040,.040,body,seg),x,b0+body/2,z);
+  P.addEquipment('turretDetail',cylY(.0445,.0445,.010,seg),x,b0+body*.55,z);
+  P.addEquipment('turretDetail',cylY(.047,.043,.014,seg),x,b0+body-.002+.007,z);
 }
 
 function yun(P:TankBuilderPort):void {

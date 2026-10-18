@@ -15,7 +15,9 @@
 //     collar is excused only inside its own circle on the pivot (it bears on the deck's ring race); that circle must be
 //     concentric with the pivot, and its skirt keeps 20 mm from every fender, sponson, hatch and cover at every yaw.
 //  4. Each roof station's moving mass (its pitch group at recoil 0 and the presentation's 0.025 m firing recoil, and its
-//     yaw stage above the foot) keeps 25 mm from every other turret mesh over its whole published arc and its pitch
+//     yaw stage above the foot; round 4, critic CN3-D1: a riding-cradle emplacement's gun recoils 12 mm alone, so round
+//     each minimum its whole pitch group is also posed at half and full that stroke, which holds the gun's every real
+//     pose and the cradle beyond its own) keeps 25 mm from every other turret mesh over its whole published arc and its pitch
 //     range [-depression(yaw), elevation]: 2-degree yaw steps by 0.05 rad pitch steps one way (the moving surface's
 //     30 mm samples against the fixed stock), then both ways (15 mm samples of each against the other) at 0.5-degree by
 //     0.0125 rad steps round every local minimum under 75 mm. The arc and table the builder publishes are the loadout's and the
@@ -235,6 +237,7 @@ for (const id of (process.env.CN_CLEARANCE_IDS ?? 't72b3_qilin,t72b3m_kunlun,t80
     const depAt = (table) => (yaw) => { if (!table || yaw < table[0][0] || yaw > table.at(-1)[0]) return profile.depressionRad;
       for (let i = 1; i < table.length; i++) if (yaw <= table[i][0]) return Math.min(profile.depressionRad, table[i - 1][1], table[i][1]); return profile.depressionRad; };
     const restP = pitchGroup.position.clone();
+    const stroke = Number(station.userData.auxiliaryRecoilM), fineRecoils = stroke > 0 && stroke < .025 ? [0, stroke / 2, stroke, .025] : [0, .025];
     const posesAt = (dep, step) => { const els = []; for (let el = -dep; el < profile.elevationRad; el += step) els.push(el); els.push(profile.elevationRad); return els; };
     /** One pose: the moving surface's samples against the fixed stock, and (`both`) the fixed stock's against it. */
     const pose = (yaw, el, rc, pts, both, stop) => {
@@ -268,7 +271,7 @@ for (const id of (process.env.CN_CLEARANCE_IDS ?? 't72b3_qilin,t72b3m_kunlun,t80
         const dy = yawStage(yaw, yawPts, true, stop); if (dy < worst.d) worst = { d: dy, yaw, el: 'yaw stage' };
         if (e0 === null) continue;
         for (let j = -4; j <= 4; j++) { const el = Math.min(profile.elevationRad, Math.max(-dp, e0 + j * .0125));
-          for (const rc of [0, .025]) { const d = pose(yaw, el, rc, pitchPts, true, stop); if (d < worst.d) worst = { d, yaw, el, rc }; if (worst.d < stop) return worst; } }
+          for (const rc of fineRecoils) { const d = pose(yaw, el, rc, pitchPts, true, stop); if (d < worst.d) worst = { d, yaw, el, rc }; if (worst.d < stop) return worst; } }
       }
       // with no pose under 75 mm the coarse sweep's own minimum stands (less its sampling slack)
       if (!minima.length) { const c = rows.reduce((a, b) => (b.d < a.d ? b : a)); worst = { d: c.d - .015, yaw: c.yaw, el: c.el ?? 'yaw stage' }; }
