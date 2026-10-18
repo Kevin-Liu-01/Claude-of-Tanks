@@ -49,6 +49,10 @@ interface LandmarkPlan {
   /** The reading the set piece had (its regional kit's or the default's), and that kit's id. */
   body: StructureDamageAnatomy;
   lattice: boolean;
+  /** (destruction-slabs 227 round 4) Every part is a named piece's (the Polders tower mill since main's standing shaft
+   *  piece and this lane's chunked upper tower): the body lays nothing of its own — no hole rim, no heap, no remnant on an
+   *  anatomy read from the whole set piece's box (a 21 m remnant run stood past its walls). */
+  bodyless: boolean;
   pieces: KeptPiece[];
 }
 
@@ -115,7 +119,9 @@ function describeLandmark(input: StructureDescribeInput): StructureDamageAnatomy
   const body = describeBody(input);
   const pieces: KeptPiece[] = [];
   named.forEach((p, index) => { if (p.triangles <= PIECE_TRI_CAP) pieces.push({ ...p, index, runs: keepRuns(input, p.name) }); });
-  const plan: LandmarkPlan = { kind: 'landmark-pieces', body, lattice, pieces };
+  let own = 0;
+  for (const list of Object.values(input.parts)) for (const g of list as readonly BufferGeometry[]) if (!g.userData.damagePiece) own++;
+  const plan: LandmarkPlan = { kind: 'landmark-pieces', body, lattice, bodyless: !lattice && own === 0, pieces };
   const bodyShaft = (body.kitPlan as { damage?: { shaft?: unknown } } | undefined)?.damage?.shaft;
   // a light frame goes over whole when it falls (the shaft topple); a body read as a shaft keeps its own topple
   const shaft = lattice && input.massClass !== 'landmark' ? { lattice: true } : bodyShaft;
@@ -512,8 +518,11 @@ function rupture(a: StructureDamageAnatomy, p: KeptPiece, dirX: number, dirZ: nu
 /** Every piece of `stage` comes off (a tank ruptures, toward the blow when there is one). */
 function takeStage(a: StructureDamageAnatomy, plan: LandmarkPlan, stage: 'damaged' | 'breached', dirX: number, dirZ: number,
   out: DamageWriters, res: DamageStageResult): void {
+  // (destruction-slabs 227 round 4; Polders' tower mill in a late joiner's page after its first hole: the breached pieces
+  // — its upper tower, cap and windshaft — off, its first sail, a damaged piece, left on the hub 19 m up) a breach takes the
+  // damaged pieces with its own (one taken before is laid again where it lay: the two copies agree)
   for (const p of plan.pieces) {
-    if (p.at !== stage) continue;
+    if (p.at !== stage && !(stage === 'breached' && p.at === 'damaged')) continue;
     if (p.kind === 'tank') rupture(a, p, dirX, dirZ, out, res);
     else detach(a, plan, p, out, res);
   }
@@ -537,7 +546,7 @@ function damagedLandmark(a: StructureDamageAnatomy, seed: number, out: DamageWri
   const res: DamageStageResult = { cuts: [], hides: [] };
   if (!plan) return res;
   // an open frame has no wall to spall
-  if (!plan.lattice) merge(res, bodyKit(plan, 'damaged').damaged!.call(bodyKit(plan, 'damaged'), plan.body, seed, out));
+  if (!plan.lattice && !plan.bodyless) merge(res, bodyKit(plan, 'damaged').damaged!.call(bodyKit(plan, 'damaged'), plan.body, seed, out));
   takeStage(a, plan, 'damaged', 0, 0, out, res);
   return res;
 }
@@ -547,7 +556,7 @@ function breachLandmark(a: StructureDamageAnatomy, hole: BreachSpec, out: Damage
   const res: DamageStageResult = { cuts: [], hides: [] };
   if (!plan) return res;
   // an open frame takes no round hole (a round passes its members)
-  if (!plan.lattice) merge(res, bodyKit(plan, 'breach').breach!.call(bodyKit(plan, 'breach'), plan.body, hole, out));
+  if (!plan.lattice && !plan.bodyless) merge(res, bodyKit(plan, 'breach').breach!.call(bodyKit(plan, 'breach'), plan.body, hole, out));
   // the breach stage's own hole (slot 0) is the stage: its pieces come off; a strike's (slot 1 on) takes nothing off
   if (hole.hole === 0) takeStage(a, plan, 'breached', hole.dirX, hole.dirZ, out, res);
   return res;
@@ -595,7 +604,7 @@ function collapseLandmark(a: StructureDamageAnatomy, seed: number, out: DamageWr
   const res: DamageStageResult = { cuts: [], hides: [] };
   if (!plan) return res;
   const kit = bodyKit(plan, 'collapse');
-  if (!plan.lattice) merge(res, kit.collapse!.call(kit, plan.body, seed, out)); // (227, lane B: an open frame's pieces lay its whole fall, footings and sheds standing among them; no body heap)
+  if (!plan.lattice && !plan.bodyless) merge(res, kit.collapse!.call(kit, plan.body, seed, out)); // (227, lane B: an open frame's pieces lay its whole fall, footings and sheds standing among them; no body heap)
   const given = (out as DamageWriters & { fallAxis?: [number, number] }).fallAxis ?? ((t: number): [number, number] => [Math.cos(t), Math.sin(t)])(damageRng(damageSeed(a.seed, 11))() * Math.PI * 2);
   const gl = given ? Math.hypot(given[0], given[1]) : 0;
   // a frame that toppled lies along its line, bent at its hinge as the mask laid it down; every other piece where it rests
@@ -702,13 +711,14 @@ export function registerLandmarkDamageKits(): void {
       // sections (P2) stay the body's
       sectionDown: (a, section, seed, out) => {
         const plan = synced(a);
-        if (!plan) return { cuts: [], hides: [] };
+        // (round 4) a bodyless set piece's sections are its pieces' to lay (no stub along an anatomy face it never drew)
+        if (!plan || plan.bodyless) return { cuts: [], hides: [] };
         const kit = bodyKit(plan, 'sectionDown');
         return kit.sectionDown!.call(kit, plan.body, section, seed, out);
       },
       storeyDown: (a, storey, seed, out) => {
         const plan = synced(a);
-        if (!plan) return { cuts: [], hides: [] };
+        if (!plan || plan.bodyless) return { cuts: [], hides: [] };
         const kit = bodyKit(plan, 'storeyDown');
         return kit.storeyDown!.call(kit, plan.body, storey, seed, out);
       },

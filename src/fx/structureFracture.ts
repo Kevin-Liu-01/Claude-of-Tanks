@@ -122,6 +122,14 @@ export interface StructureFracture {
   stats(): { buildings: number; faces: number; bodies: number; baked: number; skipped: number };
 }
 
+/** A face is a wall the fracture takes when its slab's triangles facing along it cover this share of it (round 4). */
+const WALL_FILL_MIN = 0.5;
+/** The raster that coverage is read at (m). */
+const WALL_FILL_CELL_M = 0.25;
+/** A triangle counts toward a face's wall when it faces along the face within 16° (a pipe's or a round tower's facets
+ *  turned past that are no flat wall). */
+const WALL_FILL_COS = 0.96;
+
 /** A round's hole on a wall by its munition (structureStages strikeHoleRadius / pierceHoleRadius, the same law). */
 function holeFor(munition: MunitionClass, chargeKg: number, caliberMm: number): { radiusM: number; kind: WallStrikeKind } {
   const kinetic = munition === 'kinetic' || munition === 'autocannon_ap';
@@ -502,10 +510,18 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
    * whole, flattened in their buckets (kept for the reset) and the face drawn from its cells — the swap in one frame.
    */
   function claimFaceSlice(live: Live, f: number): boolean {
-    if (live.faces.has(f)) return true;
+    if (live.faces.has(f) || live.wall.faces[f]!.notWall) return true;
     let job = live.claiming.get(f);
     if (!job) {
       const grid = live.wall.faces[f];
+      // (round 4) a face whose slab draws no flat wall is not taken: its triangles stay where they are drawn, no cell of it
+      // is drawn, no chunk of it is thrown, and no later round breaks it (lane B's penstock: a pipe's face drawn as a flat
+      // patch of wall with its bands as bars in front of the pipe)
+      if (!flatWallDrawn(grid, live.byFace!.get(f) ?? null)) {
+        grid.notWall = true;
+        for (let c = 0; c < grid.state.length; c++) grid.state[c] = CELL_VOID;
+        return true;
+      }
       const face = live.seam.anatomy.storeys[grid.storey].faces[grid.faceIndex];
       const core = face.layers.find((l) => l.material !== 'plaster' && l.material !== 'glass') ?? face.layers[face.layers.length - 1]
         ?? { material: grid.material, bucket: face.bucket, tint: [1, 1, 1], thicknessM: grid.thickness, share: 1 };
@@ -555,6 +571,65 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     redraw(live, draw);
     o.onRedrawn?.(live.seam, grid.storey, grid.faceIndex, true);
     return true;
+  }
+
+  /**
+   * Whether a face's slab draws a flat wall: its triangles facing along the face's normal (WALL_FILL_COS) cover WALL_FILL_MIN
+   * or more of the face's wall below its gable (its cells over no drawn wall left out), rasterised at WALL_FILL_CELL_M.
+   */
+  function flatWallDrawn(grid: FaceGrid, entry: FaceSort | null): boolean {
+    if (!entry) return false;
+    const W = grid.width, H = grid.wallHeight;
+    const nu = Math.max(1, Math.min(160, Math.ceil(W / WALL_FILL_CELL_M))), nv = Math.max(1, Math.min(80, Math.ceil(H / WALL_FILL_CELL_M)));
+    const du = W / nu, dv = H / nv;
+    const counted = new Uint8Array(nu * nv), covered = new Uint8Array(nu * nv);
+    let total = 0;
+    const rows = grid.rowY.length - 1;
+    for (let j = 0; j < nv; j++) {
+      const v = (j + 0.5) * dv;
+      let r = 0;
+      while (r < rows - 1 && v >= grid.rowY[r + 1]!) r++;
+      for (let i = 0; i < nu; i++) {
+        const u = -W / 2 + (i + 0.5) * du;
+        let cell = -1;
+        for (let c = grid.rowStart[r]!; c < grid.rowStart[r + 1]!; c++) if (u >= grid.cellU[2 * c]! && u <= grid.cellU[2 * c + 1]!) { cell = c; break; }
+        if (cell >= 0 && (grid.absent[cell] || grid.state[cell] === CELL_VOID)) continue;
+        counted[j * nu + i] = 1; total++;
+      }
+    }
+    if (!total) return false;
+    const ox = grid.origin[0], oy = grid.origin[1], oz = grid.origin[2];
+    const ux = grid.u[0], uz = grid.u[2], outx = grid.out[0], outz = grid.out[2];
+    for (const { layout, soup } of entry.soups.values()) {
+      const st = layout.stride;
+      for (let t = 0; t + 3 * st <= soup.length; t += 3 * st) {
+        const ax = soup[t]!, ay = soup[t + 1]!, az = soup[t + 2]!;
+        const bx = soup[t + st]!, by = soup[t + st + 1]!, bz = soup[t + st + 2]!;
+        const cx = soup[t + 2 * st]!, cy = soup[t + 2 * st + 1]!, cz = soup[t + 2 * st + 2]!;
+        const e1x = bx - ax, e1y = by - ay, e1z = bz - az, e2x = cx - ax, e2y = cy - ay, e2z = cz - az;
+        const nx = e1y * e2z - e1z * e2y, ny = e1z * e2x - e1x * e2z, nz = e1x * e2y - e1y * e2x;
+        const nl = Math.hypot(nx, ny, nz);
+        if (!(nl > 1e-9) || Math.abs(nx * outx + nz * outz) < WALL_FILL_COS * nl) continue;
+        // its corners on the face (u, v)
+        const pu0 = (ax - ox) * ux + (az - oz) * uz, pv0 = ay - oy;
+        const pu1 = (bx - ox) * ux + (bz - oz) * uz, pv1 = by - oy;
+        const pu2 = (cx - ox) * ux + (cz - oz) * uz, pv2 = cy - oy;
+        const i0 = Math.max(0, Math.floor((Math.min(pu0, pu1, pu2) + W / 2) / du)), i1 = Math.min(nu - 1, Math.floor((Math.max(pu0, pu1, pu2) + W / 2) / du));
+        const j0 = Math.max(0, Math.floor(Math.min(pv0, pv1, pv2) / dv)), j1 = Math.min(nv - 1, Math.floor(Math.max(pv0, pv1, pv2) / dv));
+        const d = (pv1 - pv2) * (pu0 - pu2) + (pu2 - pu1) * (pv0 - pv2);
+        if (Math.abs(d) < 1e-9) continue;
+        for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+          const k = j * nu + i;
+          if (!counted[k] || covered[k]) continue;
+          const u = -W / 2 + (i + 0.5) * du, v = (j + 0.5) * dv;
+          const l0 = ((pv1 - pv2) * (u - pu2) + (pu2 - pu1) * (v - pv2)) / d, l1 = ((pv2 - pv0) * (u - pu2) + (pu0 - pu2) * (v - pv2)) / d;
+          if (l0 >= -0.02 && l1 >= -0.02 && l0 + l1 <= 1.02) covered[k] = 1;
+        }
+      }
+    }
+    let n = 0;
+    for (let k = 0; k < covered.length; k++) n += covered[k]!;
+    return n >= WALL_FILL_MIN * total;
   }
 
   // ---- cutting a soup between a face's cells ------------------------------------------------------------------------
@@ -1702,7 +1777,11 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       if (w.step === 2) {
         while (w.spawned < w.bodies.length) {
           const b = w.bodies[w.spawned++];
-          spawnCells(live, b.cells, b.vx, b.vy, b.vz, b.spin, b.seed, null, b.lean ?? null);
+          // (round 4) none of a face that draws no flat wall: it threw no chunk
+          let cells = b.cells;
+          for (let i = 0; i < cells.length; i += 2) if (live.wall.faces[cells[i]!]!.notWall) { cells = cells.filter((_, k) => !live.wall.faces[cells[k - (k & 1)]!]!.notWall); break; }
+          if (!cells.length) continue;
+          spawnCells(live, cells, b.vx, b.vy, b.vz, b.spin, b.seed, null, b.lean ?? null);
           units -= WORK_BODY;
           if (units <= 0) return;
         }
@@ -1789,7 +1868,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       const live = liveOf(seam);
       if (!live) return false;
       const f = live.wall.faces.findIndex((g) => g.storey === storey && g.faceIndex === faceIndex);
-      if (f < 0) return false;
+      if (f < 0 || live.wall.faces[f]!.notWall) return false;
       const yaw = seam.anatomy.placement.yaw, c = Math.cos(yaw), s = Math.sin(yaw);
       const dl = Math.hypot(dirX, dirZ) || 1;
       const bdx = (dirX * c - dirZ * s) / dl, bdz = (dirX * s + dirZ * c) / dl;

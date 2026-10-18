@@ -191,7 +191,9 @@ const holeSpec = (anatomy, hole) => ({ section: 0, storey: 0, face: 'front', hol
   assert.deepEqual(d.hides.filter((h) => h.piece).map((h) => h.piece), ['dish-0', 'dish-2']);
   const b = kit.breach(a, holeSpec(a, 0), writers());
   assert.equal(b.cuts.length, 0, 'no round hole through a lattice');
-  assert.deepEqual(b.hides.filter((h) => h.piece).map((h) => h.piece), ['crown']);
+  // (destruction-slabs 227 round 4) a breach takes the damaged pieces with its own: a late joiner's page laid from a first
+  // hole alone left the damaged ones standing on what the breach took (the Polders tower mill's sail on its fallen hub)
+  assert.deepEqual(b.hides.filter((h) => h.piece).map((h) => h.piece), ['dish-0', 'dish-2', 'crown']);
   a.mound = undefined;
   const out = writers();
   out.fallAxis = [1, 0];

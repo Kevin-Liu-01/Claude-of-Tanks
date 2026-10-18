@@ -242,8 +242,9 @@ function ridesRoof(plan: CollapsePlan, index: number): boolean {
   return piece.kind === 'chimney' && plan.chimneys.some((ch) => ch.piece === index && ch.fromRoof);
 }
 
-/** How many times a roof slab or sheet at rest high past the walls is shoved off (the second harder) before it breaks up. */
-const ROOF_SHOVES = 2;
+/** How many times a roof slab or sheet at rest high past the walls is shoved off before it breaks up (round 4: once, a flat one
+ * into a standing shell; round 2 shoved twice, the second out and harder). */
+const ROOF_SHOVES = 1;
 
 interface LivePiece {
   piece: CollapsePiece;
@@ -350,6 +351,17 @@ const CRACK_KEEP = 0.7;
  *  its top across its thin side, times its mass). */
 const STAND_TALL = 3, STAND_TIP_MPS = 1.2;
 /** boxMiddle's and boxHalf's answers (one each, reused). */
+/**
+ * (destruction-slabs 227 round 4) A roof body at rest is perched — it breaks up where it lies — when its underside stands
+ * PERCH_LIFT_M or more over the ground and either PERCH_SHARE or more of it has nothing under it within PERCH_BAND_M (the
+ * ground, a solid record or floor, another body), or it stands steep (its thin axis within PERCH_STEEP of level) with its
+ * middle PERCH_STEEP_LIFT_M up. (The detector flags 40 % over nothing a metre up: the runtime breaks up sooner.)
+ */
+const PERCH_LIFT_M = 0.9, PERCH_SHARE = 0.3, PERCH_BAND_M = 0.8, PERCH_STEEP = 0.57, PERCH_STEEP_LIFT_M = 1.5;
+/** A sample under a slab counts another body's contact sphere as holding it within this plan distance (m). */
+const PERCH_NEAR_M = 0.45;
+/** A drawn mesh of a roof body judged for its perch draws this much or more (the detector's slab: 8 m² and more). */
+const PERCH_PLATE_M2 = 4;
 const _boxMid: [number, number] = [0, 0];
 const _boxHalf = [0, 0, 0];
 /** panelsStanding's body frame (one, reused: it runs each frame of a collapse's first 40 s). */
@@ -1167,6 +1179,178 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     }
     return out >= 0.1 * n;
   }
+  /**
+   * Whether a roof body at rest (pose `at`, `box` in its frame; `self` its handle) is perched (PERCH_*): the engineering
+   * critic's saltwind #0 fishery, round 3 seed 41 — a 7.4 x 4 m slab at rest 1.4 m up over the heap inside the walls, 64 %
+   * of it over nothing, which highPastWalls never reads (it is not past the walls); and roof sheets standing on their edges
+   * high over the heap. Its underside sampled 4 x 4: each sample held by the ground, a solid record (a floor), or another
+   * body's contact sphere under it.
+   */
+  function perchedAt(at: ArrayLike<number>, box: readonly number[], self: number, meshes: readonly THREE.Mesh[] | null = null): boolean {
+    _hq.set(at[3]!, at[4]!, at[5]!, at[6]!);
+    let thin = 0;
+    for (let k = 1; k < 3; k++) if (box[k + 3]! - box[k]! < box[thin + 3]! - box[thin]!) thin = k;
+    _hv.set(thin === 0 ? 1 : 0, thin === 1 ? 1 : 0, thin === 2 ? 1 : 0).applyQuaternion(_hq);
+    const upY = _hv.y;
+    // steep: its middle high over the ground
+    if (Math.abs(upY) < PERCH_STEEP) {
+      _hv.set((box[0]! + box[3]!) / 2, (box[1]! + box[4]!) / 2, (box[2]! + box[5]!) / 2).applyQuaternion(_hq);
+      const mx = at[0]! + _hv.x, my = at[1]! + _hv.y, mz = at[2]! + _hv.z;
+      return my - env.groundAt(mx, mz) >= PERCH_STEEP_LIFT_M;
+    }
+    // what it draws, mesh by mesh (the detector's reading: each drawn plate's area-weighted samples, its lift its lowest
+    // point over the ground at its middle; a covering on its rafters is judged as the covering), else its box's underside
+    const selfSlot = pool.slotOf?.(self) ?? -1;
+    let any = false;
+    if (meshes) for (const m of meshes) {
+      const comps = componentsOf(m);
+      for (let c = 0; c < comps; c++) {
+        if (!drawnSamples(m, c)) continue;
+        any = true;
+        if (perchedSamples(selfSlot)) return true;
+      }
+    }
+    if (any) return false;
+    perchSamples.length = 0;
+    pb[0] = Infinity; pb[1] = Infinity; pb[2] = Infinity; pb[3] = -Infinity; pb[4] = -Infinity; pb[5] = -Infinity;
+    const ua = thin === 0 ? 1 : 0, va = thin === 2 ? 1 : 2, kc = upY > 0 ? box[thin]! : box[thin + 3]!;
+    for (let i = 0; i < 4; i++) for (let j = 0; j < 4; j++) {
+      _perchLocal[thin] = kc;
+      _perchLocal[ua] = box[ua]! + (box[ua + 3]! - box[ua]!) * (i + 0.5) / 4;
+      _perchLocal[va] = box[va]! + (box[va + 3]! - box[va]!) * (j + 0.5) / 4;
+      _hv.set(_perchLocal[0]!, _perchLocal[1]!, _perchLocal[2]!).applyQuaternion(_hq);
+      const x = at[0]! + _hv.x, y = at[1]! + _hv.y, z = at[2]! + _hv.z;
+      perchSamples.push(x, y, z, 1);
+      grow(x, y, z);
+    }
+    return perchedSamples(selfSlot);
+  }
+  /** The perch samples' bounds [x0, y0, z0, x1, y1, z1]. */
+  const pb = [0, 0, 0, 0, 0, 0];
+  function grow(x: number, y: number, z: number): void {
+    if (x < pb[0]!) pb[0] = x; if (y < pb[1]!) pb[1] = y; if (z < pb[2]!) pb[2] = z;
+    if (x > pb[3]!) pb[3] = x; if (y > pb[4]!) pb[4] = y; if (z > pb[5]!) pb[5] = z;
+  }
+  /** A drawn mesh's area-weighted samples (world, its matrix) into perchSamples, when it draws PERCH_PLATE_M2 or more. */
+  function drawnSamples(m: THREE.Mesh, comp: number): boolean {
+    perchSamples.length = 0;
+    pb[0] = Infinity; pb[1] = Infinity; pb[2] = Infinity; pb[3] = -Infinity; pb[4] = -Infinity; pb[5] = -Infinity;
+    const pos = m.geometry.getAttribute('position') as THREE.BufferAttribute | undefined;
+    if (!pos) return false;
+    const idx = m.geometry.index;
+    const n = idx ? idx.count : pos.count;
+    let areaAll = 0;
+    for (let t = 0; t + 2 < n; t += 3) {
+      if (perchComp[t / 3] !== comp) continue;
+      for (let k = 0; k < 3; k++) {
+        const v = idx ? idx.getX(t + k) : t + k;
+        _pt[k]!.fromBufferAttribute(pos, v).applyMatrix4(m.matrix);
+        grow(_pt[k]!.x, _pt[k]!.y, _pt[k]!.z);
+      }
+      _pe1.subVectors(_pt[1]!, _pt[0]!); _pe2.subVectors(_pt[2]!, _pt[0]!);
+      const area = 0.5 * _pv.crossVectors(_pe1, _pe2).length();
+      if (!(area > 1e-4)) continue;
+      areaAll += area;
+      const ks = Math.max(1, Math.min(24, Math.round(area / 0.25)));
+      for (let q = 0; q < ks; q++) {
+        let u = ((q + 0.5) * 0.618034) % 1, w = ((q + 0.5) * 0.754878) % 1;
+        if (u + w > 1) { u = 1 - u; w = 1 - w; }
+        perchSamples.push(_pt[0]!.x + _pe1.x * u + _pe2.x * w, _pt[0]!.y + _pe1.y * u + _pe2.y * w, _pt[0]!.z + _pe1.z * u + _pe2.z * w, area / ks);
+      }
+    }
+    return areaAll >= PERCH_PLATE_M2;
+  }
+  /** A drawn mesh's connected pieces (corners welded at a millimetre): each triangle's piece in perchComp; their count. */
+  function componentsOf(m: THREE.Mesh): number {
+    const pos = m.geometry.getAttribute('position') as THREE.BufferAttribute | undefined;
+    if (!pos) return 0;
+    const idx = m.geometry.index;
+    const n = Math.floor((idx ? idx.count : pos.count) / 3);
+    if (perchParent.length < n) { perchParent = new Int32Array(n * 2); perchComp = new Int32Array(n * 2); }
+    for (let t = 0; t < n; t++) perchParent[t] = t;
+    const find = (i: number): number => { while (perchParent[i] !== i) { perchParent[i] = perchParent[perchParent[i]!]!; i = perchParent[i]!; } return i; };
+    perchWeld.clear();
+    for (let t = 0; t < n; t++) for (let k = 0; k < 3; k++) {
+      const v = idx ? idx.getX(t * 3 + k) : t * 3 + k;
+      const key = `${Math.round(pos.getX(v) * 1000)},${Math.round(pos.getY(v) * 1000)},${Math.round(pos.getZ(v) * 1000)}`;
+      const prev = perchWeld.get(key);
+      if (prev === undefined) perchWeld.set(key, t);
+      else { const a = find(prev), b = find(t); if (a !== b) perchParent[a] = b; }
+    }
+    perchWeld.clear();
+    let count = 0;
+    const ids = new Map<number, number>();
+    for (let t = 0; t < n; t++) {
+      const r = find(t);
+      let id = ids.get(r);
+      if (id === undefined) { id = count++; ids.set(r, id); }
+      perchComp[t] = id;
+    }
+    return count;
+  }
+  let perchParent = new Int32Array(0), perchComp = new Int32Array(0);
+  const perchWeld = new Map<string, number>();
+  /** Whether the samples in perchSamples (bounds pb) are lifted and a share of them over nothing (PERCH_*). */
+  function perchedSamples(selfSlot: number): boolean {
+    const x0 = pb[0]!, y0 = pb[1]!, z0 = pb[2]!, x1 = pb[3]!, y1 = pb[4]!, z1 = pb[5]!;
+    // lifted: its lowest point over the ground at its middle (the detector's lift)
+    const lift = y0 - env.groundAt((x0 + x1) / 2, (z0 + z1) / 2);
+    if (!(lift >= PERCH_LIFT_M)) return false;
+    // what could hold it: the records round it (a live record holds as the detector reads it, the falling building's own
+    // standing walls with them), the other bodies' contact spheres round it, in the world frame
+    const recs = env.queryStatic ? env.queryStatic(x0 - 0.3, z0 - 0.3, x1 + 0.3, z1 + 0.3, perchRecords) : perchRecords;
+    if (!env.queryStatic) recs.length = 0;
+    const w = pool.world;
+    perchSpheres.length = 0;
+    for (let slot = 0; slot < w.capacity; slot++) {
+      if (!w.active[slot] || slot === selfSlot) continue;
+      const sh = w.shape(slot);
+      if (!sh) continue;
+      const cx = w.px[slot]!, cy = w.py[slot]!, cz = w.pz[slot]!, r = sh.radius + PERCH_NEAR_M;
+      if (cx + r < x0 || cx - r > x1 || cz + r < z0 || cz - r > z1 || cy - sh.radius > y1 + 0.1 || cy + sh.radius < y0 - PERCH_BAND_M) continue;
+      _pq.set(w.qx[slot]!, w.qy[slot]!, w.qz[slot]!, w.qw[slot]!);
+      for (let k = 0; k < sh.sphereCount; k++) {
+        _pv.set(sh.spheres[k * 4]!, sh.spheres[k * 4 + 1]!, sh.spheres[k * 4 + 2]!).applyQuaternion(_pq);
+        perchSpheres.push(cx + _pv.x, cy + _pv.y, cz + _pv.z, sh.spheres[k * 4 + 3]!);
+      }
+    }
+    let total = 0, free = 0;
+    for (let i = 0; i < perchSamples.length; i += 4) {
+      const x = perchSamples[i]!, y = perchSamples[i + 1]!, z = perchSamples[i + 2]!, wt = perchSamples[i + 3]!;
+      total += wt;
+      if (env.groundAt(x, z) >= y - PERCH_BAND_M) continue;
+      let held = false;
+      for (let r = 0; r < recs.length && !held; r++) {
+        const rec = recs[r]!;
+        if (rec.crushed || rec.dead) continue;
+        if (rec.max[1] >= y - PERCH_BAND_M && rec.min[1] <= y + 0.05 && x >= rec.min[0] - 0.3 && x <= rec.max[0] + 0.3 && z >= rec.min[2] - 0.3 && z <= rec.max[2] + 0.3) held = true;
+      }
+      for (let k = 0; k < perchSpheres.length && !held; k += 4) {
+        const sx = perchSpheres[k]!, sy = perchSpheres[k + 1]!, sz = perchSpheres[k + 2]!, sr = perchSpheres[k + 3]!;
+        if (Math.hypot(sx - x, sz - z) <= PERCH_NEAR_M + sr && sy + sr >= y - PERCH_BAND_M && sy - sr <= y + 0.1) held = true;
+      }
+      if (!held) free += wt;
+    }
+    return total > 0 && free >= PERCH_SHARE * total;
+  }
+  const perchSamples: number[] = [], perchSpheres: number[] = [];
+  /** A whole piece's drawn meshes (every part's: a look at a slab, not each frame). */
+  function piecesMeshes(p: LivePiece): THREE.Mesh[] {
+    const out: THREE.Mesh[] = [];
+    for (const part of p.parts) for (const m of part.meshes) out.push(m);
+    return out;
+  }
+  const _pt = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()], _pe1 = new THREE.Vector3(), _pe2 = new THREE.Vector3();
+  const perchRecords: CollisionRecord[] = [];
+  /** Whether a body (pose `at`, box in its frame) lies flat: its thin axis within 37° of the vertical. */
+  function lyingFlat(at: ArrayLike<number>, box: readonly number[]): boolean {
+    let thin = 0;
+    for (let k = 1; k < 3; k++) if (box[k + 3]! - box[k]! < box[thin + 3]! - box[thin]!) thin = k;
+    _hq.set(at[3]!, at[4]!, at[5]!, at[6]!);
+    _hv.set(thin === 0 ? 1 : 0, thin === 1 ? 1 : 0, thin === 2 ? 1 : 0).applyQuaternion(_hq);
+    return Math.abs(_hv.y) > 0.8;
+  }
+  const _pq = new THREE.Quaternion(), _pv = new THREE.Vector3(), _perchLocal = [0, 0, 0];
   /** Whether a collapse's building is down (a whole collapse, or a roof's fall onto a building fallen since). */
   function fallenUnder(c: LiveCollapse): boolean {
     return !c.partial || live.some((l) => l.structureIdx === c.structureIdx && !l.partial);
@@ -1654,6 +1838,16 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
    *  or (shoved enough) broken into its sheets or laid on the ground under it. True when it was moved. */
   function lookAtRoof(c: LiveCollapse, p: LivePiece): boolean {
     if (!highPastWalls(c, pose, p.box)) {
+      // (round 4) perched over nothing, or on its edge high over the heap: a slab of several sheets cracks into them (each
+      // looked at in turn), a one-sheet slab breaks up where it lies
+      if (perchedAt(pose, p.box, p.handle, piecesMeshes(p))) {
+        p.shoves = -1;
+        if (p.parts.length > 1 && !p.broken) { p.broken = true; breaking.push(c, p); return true; }
+        byHandle.delete(p.handle); pool.release(p.handle); p.handle = -1;
+        for (const part of p.parts) breakUp(c, part, p.box, p.piece.massKg / Math.max(1, p.parts.length));
+        p.shattered = true;
+        return true;
+      }
       // (a shove's landing looked at once more: a slab come down on its edge goes over, as one that fell there does)
       if (p.shoves > 0) tipIfStanding(p.handle, p.half ?? pieceHalf(p.piece), p.piece.massKg, c.structureIdx * 131 + p.piece.index + 7, 0.7);
       p.shoves = -1;
@@ -1666,6 +1860,10 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     // tower — breaks up where it lies at once, rather than hop on the pile)
     const plane = [p.box[3]! - p.box[0]!, p.box[4]! - p.box[1]!, p.box[5]! - p.box[2]!].sort((x, y) => y - x);
     if (p.shoves === 0 && plane[0]! * plane[1]! >= 20) p.shoves = ROOF_SHOVES;
+    // (round 4; the engineering critic's films: a hip end shoved off its rest stood up on its point 10 m over the heap, and
+    // a sheet shoved twice slid round a floor for three seconds and tumbled off a corner) one shove only, and only a flat
+    // slab over a building still standing, into its shell; anything else breaks up where it lies
+    if (p.shoves === 0 && (fallenUnder(c) || !lyingFlat(pose, p.box))) p.shoves = ROOF_SHOVES;
     if (p.shoves < ROOF_SHOVES) {
       p.shoves++; p.still = 0;
       shoveOff(c, p.handle, pose, p.box, p.piece.massKg, !fallenUnder(c) && p.shoves === 1, p.shoves);
@@ -1701,10 +1899,18 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     const part = p.parts[k]!, spec = p.piece.parts[k]!;
     const pbox = part.box ?? [-spec.half[0], -spec.half[1], -spec.half[2], spec.half[0], spec.half[1], spec.half[2]];
     if (!highPastWalls(c, pose, pbox)) {
+      // (round 4) perched over nothing, or on its edge high over the heap: it breaks up where it lies
+      if (perchedAt(pose, pbox, part.handle, part.meshes)) {
+        part.shoves = -1;
+        byHandle.delete(part.handle); pool.release(part.handle); part.handle = -1;
+        breakUp(c, part, pbox, spec.massKg);
+        return true;
+      }
       if (part.shoves > 0) tipIfStanding(part.handle, spec.half, spec.massKg, c.structureIdx * 131 + p.piece.index * 16 + k + 7, 0.7);
       part.shoves = -1;
       return false;
     }
+    if (part.shoves === 0 && (fallenUnder(c) || !lyingFlat(pose, pbox))) part.shoves = ROOF_SHOVES;
     if (part.shoves < ROOF_SHOVES) {
       part.shoves++;
       shoveOff(c, part.handle, pose, pbox, spec.massKg, !fallenUnder(c) && part.shoves === 1, part.shoves);

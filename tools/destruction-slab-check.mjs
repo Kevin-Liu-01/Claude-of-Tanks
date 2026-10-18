@@ -609,7 +609,7 @@ export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => fals
       mesh: p.d.name, sheet: !!p.sheet, material: m.name, map: m.map, tint: tint.map((c) => +c.toFixed(3)), slab,
       orientation: horizontal ? 'horizontal' : vertical ? 'vertical' : 'tilted',
       extentsM: s.ext.map((e) => +e.toFixed(2)), areaM2: +(s.ext[0] * s.ext[1]).toFixed(1),
-      centre: s.centre.map((c) => +c.toFixed(2)), liftM: +lift.toFixed(2), outsideShare: +outsideShare.toFixed(2),
+      centre: s.centre.map((c) => +c.toFixed(2)), liftM: +lift.toFixed(2), groundM: +groundC.toFixed(2), minY: +s.min[1].toFixed(2), outsideShare: +outsideShare.toFixed(2),
       outsideM2: +outside.toFixed(1), floatingShare: +floatingShare.toFixed(2), triangles: s.tris, reasons, attributes, _tris: p.tris,
     });
   });
@@ -1159,6 +1159,8 @@ export async function runSlabCheck({
     const bandsUp = storeys.map((k) => { const y0 = Math.min(k * 3, Math.max(0, btop - 3)); return [y0, Math.min(btop, y0 + 3)]; });
     const nx = face.out[0] * c + face.out[2] * s, nz = -face.out[0] * s + face.out[2] * c;
     const ownRecords = [...built.colliders, ...built.obstacles].filter((r) => r.structureIdx === id);
+    // the building's records' state at the last tick's end (crushed 1, dead 2), and a scratch for now's
+    const prevOwnState = new Uint8Array(ownRecords.length), nowOwnState = new Uint8Array(ownRecords.length);
     /** The first of the structure's records a round from outside meets at (x, y, z) flying (dx, dz): [t, record] or null. */
     const trace = (x, y, z, dx, dz) => {
       let best = null;
@@ -1245,6 +1247,15 @@ export async function runSlabCheck({
     // the standing phase's last look, just before the event that ends it
     function phaseSnap(label) {
       if (snapshots.length >= maxSnapshots) return;
+      // (round 4) judged as it stood: the building's records as they were before the event that ends the phase (the sim
+      // crushes them, then raises the event — the critic's saltwind #0 slab, on the walls' records a tick before, read 64 %
+      // over nothing in the instant between)
+      for (let i = 0; i < ownRecords.length; i++) { const r = ownRecords[i]; nowOwnState[i] = (r.crushed ? 1 : 0) | (r.dead ? 2 : 0); r.crushed = !!(prevOwnState[i] & 1); r.dead = !!(prevOwnState[i] & 2); }
+      try { phaseSnapJudged(label); } finally {
+        for (let i = 0; i < ownRecords.length; i++) { const r = ownRecords[i]; r.crushed = !!(nowOwnState[i] & 1); r.dead = !!(nowOwnState[i] & 2); }
+      }
+    }
+    function phaseSnapJudged(label) {
       const meshes = drawnMeshes([debris.group, fxGroup, bodies?.group], accept);
       const judged = judgeSlabs(meshes, { footprint, groundAt: ground, supportAt, settled: false, ownMaterials, upperFootprint, rested, bandFootprint, drawnTopAt, byDesign,
         floorAt: felled ? null : floorOrLine });
@@ -1263,8 +1274,14 @@ export async function runSlabCheck({
     let lastEventCount = 0, fired = 0;
     let nextFilm = filmFromS;
     const lastS = rounds * roundGapS + settleS + 4;
-    for (let tick = 0; tick * STEP <= lastS; tick++) {
+    // (destruction-slabs 227 round 4; the engineering critic's reservoir #11 cottage, roof pass from the narrow back: a
+    // roof sheet shoved off a rest high past the walls was judged in mid-tumble off the corner, the standing end come in
+    // its flight) the end waits for the building's bodies to come to rest and its hanging sweep to settle, REST_WAIT_S at
+    // most
+    let restWaited = 0;
+    for (let tick = 0; tick * STEP <= lastS + REST_WAIT_S; tick++) {
       clock = tick * STEP;
+      for (let i = 0; i < ownRecords.length; i++) prevOwnState[i] = (ownRecords[i].crushed ? 1 : 0) | (ownRecords[i].dead ? 2 : 0);
       if (collapsedAt < 0 && fired < rounds && !(stopAfterRoof && roofDownAt >= 0) && clock >= 0.3 + fired * roundGapS) {
         const [b0, b1] = bandsUp[fired % bandsUp.length];
         const uu = offs[fired % offs.length] * face.width * 0.8;
@@ -1309,8 +1326,9 @@ export async function runSlabCheck({
         for (const dt of [0.8, 3.0]) if (!due.some((d) => Math.abs(d - (clock + dt)) < 0.4)) due.push(clock + dt);
         lastEventCount = events.length;
       }
-      const atEnd = (collapsedAt >= 0 && clock > collapsedAt + settleS) || (stopAfterRoof && roofDownAt >= 0 && collapsedAt < 0 && clock > roofDownAt + settleS)
+      let atEnd = (collapsedAt >= 0 && clock > collapsedAt + settleS) || (stopAfterRoof && roofDownAt >= 0 && collapsedAt < 0 && clock > roofDownAt + settleS)
         || (tick + 1) * STEP > lastS;
+      if (atEnd && (tick + 1) * STEP <= lastS + REST_WAIT_S && (fx?.stats().awake > 0 || fx?.hangingPending() || bodies?.stats().awake > 0)) { atEnd = false; restWaited += STEP; }
       if ((due.length && clock >= due[0]) || atEnd) {
         due.shift();
         if (snapshots.length < maxSnapshots || atEnd) {
@@ -1346,6 +1364,7 @@ export async function runSlabCheck({
           const firstFlag = flagged && !snapshots.some((p) => p.findings.length);
           const phase = atEnd ? (felled ? 'settled ruin' : `standing end (${PHASE[reached]})`) : felled ? 'collapse' : PHASE[reached];
           snapshots.push({ t: +clock.toFixed(2), label, phase, events: events.length, meshes: meshes.length, pieces: judged.pieces, findings: judged.findings.map(strip),
+            ...(atEnd ? { restWaitedS: +restWaited.toFixed(2), awakeAtEnd: fx?.stats().awake ?? 0 } : {}),
             render: firstFlag || atEnd || (flagged && rendered < 5) ? shoot(label, meshes, judged.findings, spansState() !== 'gone') : null });
           if (!felled && !atEnd && reached !== 'intact') midPoints.set(reached, { t: clock, count: replay.length, records: recordState() });
         }
@@ -1408,7 +1427,7 @@ export async function runSlabCheck({
         if (process.env.COT_SLAB_DUMP) {
           const lists = drawnSpanTriangles(seam.spans, true);
           seam.spans.forEach((span, k) => { const t = lists[k]; if (!t?.length) return; const sh = shapeOf(t);
-            log(`  rdump ${p.phase} span ${k} ${span.mesh.name} class=${span.partClass} ${sh.tris}/${Math.floor(span.count / 3)} min ${sh.min.map((v) => v.toFixed(1))} max ${sh.max.map((v) => v.toFixed(1))}`); });
+            log(`  rdump ${p.phase} span ${k} ${span.mesh.name} piece=${span.piece ?? "-"} class=${span.partClass} ${sh.tris}/${Math.floor(span.count / 3)} min ${sh.min.map((v) => v.toFixed(1))} max ${sh.max.map((v) => v.toFixed(1))}`); });
           for (const d of meshes) { const sh = shapeOf(d.tris); log(`  rdump ${p.phase} ${d.name} ${sh.tris} min ${sh.min.map((v) => v.toFixed(1))} max ${sh.max.map((v) => v.toFixed(1))}`); }
         }
         const flagged = judged.findings.length > 0;
@@ -1445,6 +1464,8 @@ export async function runSlabCheck({
 }
 
 /** Each face's default seed (the wide face's rounds are the receipt's own; the others the critic's variant stagings). */
+/** How long past its end a run waits for the building's bodies to rest before its last look (round 4). */
+const REST_WAIT_S = 20;
 const FACE_SEEDS = Object.freeze({ wide: 0, 'wide-back': 3, narrow: 5, 'narrow-back': 7 });
 
 function strip(f) { const { _tris, ...rest } = f; void _tris; return rest; }

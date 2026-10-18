@@ -25,6 +25,9 @@ import { hullQuaternion, wreckTurretProfile, type WreckTurretTank } from '../sim
 
 /** Fixed steps one advance may run (a long frame catches up this far, then drops the rest). */
 const MAX_STEPS_PER_ADVANCE = 4;
+/** The most speed (m/s) and spin (rad/s) one solver step adds to a body, and the speeds under which it never holds one
+ *  back (guardEnergy). */
+const STEP_GAIN_MPS = 4, STEP_SPIN_GAIN = 5, STEP_SPEED_FLOOR = 6, STEP_SPIN_FLOOR = 8;
 const HANDLE_NONE = -1;
 
 export type DebrisImpactListener = (x: number, y: number, z: number, speedMps: number, massKg: number, handle: number) => void;
@@ -69,6 +72,9 @@ export interface DebrisPhysics {
   asleep(handle: number): boolean;
   /** Whether a piece has a body in the world (false while it waits outside it: its release not due, or the pool full). */
   inWorld(handle: number): boolean;
+  /** A piece's slot in the world (its state in `world`), or -1 while it has no body there (destruction-slabs 227 round 4:
+   *  what lies under a resting slab read over the world's other bodies). */
+  slotOf(handle: number): number;
   onImpact(listener: DebrisImpactListener): () => void;
   onEvict(listener: DebrisEvictListener): () => void;
   /** Drop a piece (its body and handle). */
@@ -105,6 +111,23 @@ export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisP
   let handles = 0;
   let timeS = 0;
   let accumulator = 0;
+  /**
+   * (destruction-slabs 227 round 4; the engineering critic's badlands #0 slab thrown to y = 212 m, saltwind #0's hip ends
+   * launched 15 m over the roof at 17-42 m/s in one step, no hit reported) what the solver gives a body in one step is never
+   * more than STEP_GAIN_MPS (and STEP_SPIN_GAIN rad/s) over what it had: falls, landings and thrown spawns are untouched (a
+   * spawn's throw is set at its release, before the step); a deep overlap's burst is held to a nudge.
+   */
+  const speedBefore = new Float64Array(capacity), spinBefore = new Float64Array(capacity);
+  function guardEnergy(): void {
+    for (let sl = 0; sl < world.capacity; sl++) {
+      if (!world.active[sl]) continue;
+      const v = Math.hypot(world.vx[sl]!, world.vy[sl]!, world.vz[sl]!), w = Math.hypot(world.wx[sl]!, world.wy[sl]!, world.wz[sl]!);
+      const vMax = Math.max(STEP_SPEED_FLOOR, speedBefore[sl]! + STEP_GAIN_MPS), wMax = Math.max(STEP_SPIN_FLOOR, spinBefore[sl]! + STEP_SPIN_GAIN);
+      if (v <= vMax && w <= wMax) continue;
+      const kv = v > vMax ? vMax / v : 1, kw = w > wMax ? wMax / w : 1;
+      world.setVelocity(sl, world.vx[sl]! * kv, world.vy[sl]! * kv, world.vz[sl]! * kv, world.wx[sl]! * kw, world.wy[sl]! * kw, world.wz[sl]! * kw);
+    }
+  }
   let alpha = 1;
   const impactListeners: DebrisImpactListener[] = [];
   const evictListeners: DebrisEvictListener[] = [];
@@ -278,7 +301,13 @@ export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisP
       let steps = 0;
       while (accumulator >= RIGID_STEP_S && steps < MAX_STEPS_PER_ADVANCE) {
         releaseDue();
+        for (let sl = 0; sl < world.capacity; sl++) {
+          if (!world.active[sl]) continue;
+          speedBefore[sl] = Math.hypot(world.vx[sl]!, world.vy[sl]!, world.vz[sl]!);
+          spinBefore[sl] = Math.hypot(world.wx[sl]!, world.wy[sl]!, world.wz[sl]!);
+        }
         world.step(RIGID_STEP_S);
+        guardEnergy();
         timeS += RIGID_STEP_S;
         dispatchImpacts();
         accumulator -= RIGID_STEP_S;
@@ -301,6 +330,9 @@ export function createDebrisPhysics(options: DebrisPhysicsOptions = {}): DebrisP
     },
     inWorld(handle) {
       return handle >= 0 && handle < handleCapacity && handleLive[handle] === 1 && handleSlot[handle] !== HANDLE_NONE;
+    },
+    slotOf(handle) {
+      return handle >= 0 && handle < handleCapacity && handleLive[handle] === 1 && handleSlot[handle] !== HANDLE_NONE ? handleSlot[handle]! : -1;
     },
     asleep(handle) {
       if (handle < 0 || handle >= handleCapacity || !handleLive[handle]) return false;

@@ -116,6 +116,12 @@ export interface FaceGrid {
    *  drawn walls): void — nothing breaks, nothing falls, nothing is drawn — but it bears what stands over it (an upper
    *  storey's wall over a hall's gate is carried by what the face does not model). */
   readonly absent: Uint8Array;
+  /**
+   * (destruction-slabs 227 round 4; lane B's skybridge #2 penstock: an open pipe's face redrawn as cells stood as a flat
+   * patch of wall and bars in front of the pipe) set once the presentation finds no flat wall drawn in the face's slab (a
+   * pipe, a frame, an arcade): no round breaks it, nothing of it falls (the kit's hole stands for it).
+   */
+  notWall?: boolean;
 }
 
 export interface WallFracture {
@@ -411,6 +417,7 @@ function endBears(wall: WallFracture, fi: number, r: number, side: 0 | 1): boole
 export function struckFace(wall: WallFracture, x: number, y: number, z: number): { face: number; u: number; v: number } | null {
   let best = -1, bestD = 1.2, bu = 0, bv = 0;
   wall.faces.forEach((g, i) => {
+    if (g.notWall) return;
     const dx = x - g.origin[0], dy = y - g.origin[1], dz = z - g.origin[2];
     const along = dx * g.u[0] + dy * g.u[1] + dz * g.u[2];
     const v = dy;
