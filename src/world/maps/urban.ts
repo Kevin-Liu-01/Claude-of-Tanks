@@ -279,6 +279,8 @@ export default {
     // street at one building line, a gap only where a lane, a planned building, a set piece, the square or the town wall
     // stops the row (tools/plan-street-rows.mjs, steinburgRows.ts)
     townRowPlan: STEINBURG_ROWS,
+    // (the looks lane, 227) the lampposts and the kerb's litter beside the planned rows, as the street pass laid them
+    townRowFurniture: true,
     curbs: true,
     monument: true,
     blockFill: true,

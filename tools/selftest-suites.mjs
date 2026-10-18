@@ -965,6 +965,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/worldNightLighting.selftest.mjs',
     'src/world/worldNightFixtureInstances.selftest.mjs',
     'src/world/worldNightEmissionGeometry.selftest.mjs',
+    'src/world/townNightLights.selftest.mjs', // 227 looks: the town kits' dwellings light their panes; Steinburg's street lamps beside its planned rows
     'src/dev/nightWindowInspection.selftest.mjs',
     'src/dev/nightWorldFixtureInspection.selftest.mjs',
     'src/world/villageWindowPlacement.selftest.mjs',
