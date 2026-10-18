@@ -6,6 +6,8 @@ import {KIT} from './kit.ts';
 import {near} from '../../../tools/receipt-kit.test-support.mjs';
 
 const material=new MeshBasicMaterial({side:DoubleSide});
+// The hood's cheeks and floor (below the gun line behind the trunnion) sweep down toward the bay sill, never up to the roof.
+const LOWER_SWEEP_M=.25;
 const ray=new Raycaster();
 function sectionRadius(mesh,frame,z){
   const p=mesh.geometry.attributes.position,index=mesh.geometry.index;
@@ -78,9 +80,10 @@ for(const quality of ['high','low']){
     for(let i=0;i<p.count;i++)out.push(new Vector3().fromBufferAttribute(p,i).applyMatrix4(piece.matrixWorld));
     return out;
   });
-  const behind=hood.filter(v=>v.z<0);
-  assert.ok(behind.length>20,`${quality}: the hood reaches behind the trunnion`);
-  assert.ok(Math.max(...behind.map(v=>Math.hypot(v.y,v.z)))<=M3_CRADLE_HOOD_RADIUS_M+1e-6,`${quality}: hood drum within ${M3_CRADLE_HOOD_RADIUS_M} m of the pitch axis`);
+  const behind=hood.filter(v=>v.z<0),upper=behind.filter(v=>v.y>=0);
+  assert.ok(upper.length>20,`${quality}: the hood reaches behind the trunnion`);
+  assert.ok(Math.max(...upper.map(v=>Math.hypot(v.y,v.z)))<=M3_CRADLE_HOOD_RADIUS_M+1e-6,`${quality}: hood drum within ${M3_CRADLE_HOOD_RADIUS_M} m of the pitch axis above it`);
+  assert.ok(Math.max(...behind.map(v=>Math.hypot(v.y,v.z)))<=LOWER_SWEEP_M,`${quality}: the cradle's cheeks and floor within ${LOWER_SWEEP_M} m of the pitch axis`);
   assert.ok(Math.min(...hood.filter(v=>v.z>-.135&&Math.abs(v.x)<.12).map(v=>Math.hypot(v.x,v.y)))>=M3_CRADLE_HOOD_PASSAGE_M*Math.cos(Math.PI/10)-1e-6,
     `${quality}: the arch leaves the receiver passage`);
   for(const piece of pieces)piece.geometry.dispose();
@@ -158,12 +161,17 @@ for(const quality of ['high','low']){
     // every bearing it can take through -9/+30 degrees, meet no turret stock inside the drum radius.
     recoil.position.z=0;root.updateMatrixWorld(true);
     let roofClearance=Infinity;
-    for(const x of [-.25,0,.25])for(let deg=40;deg<=220;deg+=2){
+    // Over the upper sweep (the drum, 40-175 deg from the muzzle direction) turret stock lies beyond the drum radius;
+    // over the lower sweep (the cheeks and floor carried down to 265 deg at +30) it lies beyond their reach.
+    let sillClearance=Infinity;
+    for(const x of [-.25,0,.25])for(let deg=40;deg<=265;deg+=2){
       const a=deg*Math.PI/180,origin=gun.localToWorld(new Vector3(x,0,0)),toward=gun.localToWorld(new Vector3(x,Math.sin(a),Math.cos(a)));
       ray.set(origin,toward.sub(origin).normalize());ray.far=.5;
-      const hit=ray.intersectObject(body,false)[0];if(hit)roofClearance=Math.min(roofClearance,hit.distance);
+      const hit=ray.intersectObject(body,false)[0];if(!hit)continue;
+      if(deg<=175)roofClearance=Math.min(roofClearance,hit.distance);else sillClearance=Math.min(sillClearance,hit.distance);
     }
-    assert.ok(roofClearance>M3_CRADLE_HOOD_RADIUS_M+.003,`${quality}: turret stock stays outside the hood's sweep (${roofClearance})`);
+    assert.ok(roofClearance>M3_CRADLE_HOOD_RADIUS_M+.003,`${quality}: turret stock stays outside the hood's upper sweep (${roofClearance})`);
+    assert.ok(sillClearance>LOWER_SWEEP_M,`${quality}: turret stock stays outside the cradle's lower sweep (${sillClearance})`);
     assert.ok(oldAxleMinimum<-.008,'the original cross-shaft obstructs the recoiling root');
     assert.ok(oldReceiverMinimum<-.05,'the original solid receiver obstructs the recoiling root');
     oldAxle.geometry.dispose();oldReceiver.geometry.dispose();

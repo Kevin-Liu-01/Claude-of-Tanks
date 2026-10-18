@@ -3416,11 +3416,12 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
       [-0.75, 0.62, -0.62], [0.75, 0.62, -0.62], [0.60, 0.54, -1.36], [-0.60, 0.54, -1.36]));
     // ---- gun mount: dark vertical slot recess ON the raked face, cast
     // collar — §B3.1: cylinders and cast shapes only, no prisms on the run.
-    // 227 gun-gaps r4: the slot, its cheeks, lintel and lower cradle block are
-    // centred on the RARDEN (gunG x 0.05). The 2026-08-12 restore moved the gun
-    // 0.15 m right of the -0.10 slot it had shared, so the gun's root sleeve ran
-    // into the right cheek casting instead of entering the slot between them.
-    const slotX = 0.05;
+    // 227 gun-gaps r4: the slot, its cheeks, lintel and lower cradle block (and
+    // the coax port beside them, below) are centred on the RARDEN (gunG x 0.05).
+    // The 2026-08-12 restore moved the gun 0.15 m right of the -0.10 slot it had
+    // shared, so the gun's root sleeve ran into the right cheek casting instead
+    // of entering the slot between them.
+    const slotX = P.gunG.position.x;
     P.add('turretDark', box(0.40, 0.34, 0.025), slotX, 0.30, 0.505, -0.651, 0, 0);
     // uk round 2026-08-07 (owner identity list): the RARDEN's DISTINCTIVE
     // MANTLET CHEEKS — the paired angular castings flanking the mount slot
@@ -3583,9 +3584,11 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     P.add('gun', cylZ(0.037, 0.05, 12), 0, 0, 1.84);            // hider nose 1.815..1.865
     P.add('gunDark', cylZ(0.0375, 0.006, 12), 0, 0, 1.858);     // slot read behind the tip
     P.add('gun', cylZ(0.030, 0.012, 12), 0, 0, 1.866);          // tip collar 1.860..1.872 (bore face)
-    // coax 7.62 chain gun port left of the main gun (dark ring + stub)
-    P.add('turretDark', cylZ(0.032, 0.02, 10), -0.42, 0.30, 0.52);
-    P.add('turretDark', cylZ(0.014, 0.16, 8), -0.42, 0.30, 0.58);
+    // coax 7.62 chain gun port left of the main gun (dark ring + stub), at the
+    // left cheek casting's outer edge, 0.32 m from the RARDEN as authored
+    const coaxX = P.gunG.position.x - 0.32;
+    P.add('turretDark', cylZ(0.032, 0.02, 10), coaxX, 0.30, 0.52);
+    P.add('turretDark', cylZ(0.014, 0.16, 8), coaxX, 0.30, 0.58);
     // Match the measured 1.68 m Warrior roof without individually nudging a
     // hundred authored plates. This affine correction touches our primitives
     // only; no source vertices enter the runtime builder.
