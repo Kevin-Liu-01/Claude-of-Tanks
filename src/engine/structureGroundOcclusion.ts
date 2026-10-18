@@ -467,6 +467,15 @@ export const STRUCTURE_GROUND_OCCLUSION_GLSL = /* glsl */ `
     uniform sampler2D tAur;
     // (227 v2) the occlusion's broadening under a closed deck: occ' = 1 - (1 - occ)^k
     uniform float uSgoBroad;
+    // the aureole raster's gate, as the occlusion's below: its texel's base (stored modulo ${SGO_BASE_WRAP_M} m, the one nearest
+    // the pixel's own height) against the pixel's height; inside a standing solid's footprint only the ground at its base
+    float cotAurGate( vec2 near, float y, float gateM, float softM ) {
+      float d = near.g * ${f((255 / 256) * SGO_BASE_WRAP_M)} - mod( y, ${f(SGO_BASE_WRAP_M)} );
+      d -= ${f(SGO_BASE_WRAP_M)} * floor( d * ${f(1 / SGO_BASE_WRAP_M)} + 0.5 );
+      bool coveredHere = mod( floor( near.r * 255.0 + 0.5 ), 2.0 ) > 0.5;
+      return coveredHere ? 1.0 - smoothstep( ${f(SGO_COVERED_GATE_M)}, ${f(SGO_COVERED_GATE_M + SGO_COVERED_GATE_SOFT_M)}, -d )
+        : 1.0 - smoothstep( gateM, gateM + softM, -d );
+    }
     float cotStructureGroundShade( vec2 uv, vec3 P, float alpha, float dist ) {
       vec2 t = P.xz * ${f(1 / (2 * SGO_HALF_M))} + 0.5;
       if ( any( lessThan( t, vec2( 0.0 ) ) ) || any( greaterThan( t, vec2( 1.0 ) ) ) ) return 1.0;

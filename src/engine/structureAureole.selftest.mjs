@@ -151,6 +151,12 @@ handle.dispose();
 
 // ---- 8. the wiring
 assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, /uniform vec2 uAur;\s*uniform sampler2D tAur;/);
+// every function the block calls is defined in it or in the blocks before it (v4's black frames: a dropped definition)
+for (const fn of STRUCTURE_GROUND_OCCLUSION_GLSL.matchAll(/\b(cot[A-Za-z]+)\(/g)) {
+  const name = fn[1];
+  const own = new RegExp(`(float|vec3|bool|vec2|void) ${name}\\(`).test(STRUCTURE_GROUND_OCCLUSION_GLSL);
+  assert.ok(own || ['cotSunVisOf', 'cotNormalAt'].includes(name), `${name} is defined`);
+}
 assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, /aurDark = uAur\.x \* aur \* aGate \/ max\( T \+ A, 1e-4 \);/, 'the hidden aureole over all the pixel\'s light');
 assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, new RegExp(`cotAurGate\\( texelFetch\\( tAur, ti, 0 \\)\\.rg, P\\.y, ${AUREOLE_GATE_M.toFixed(5)}`), 'its receivers near the shading solid\'s base');
 assert.match(STRUCTURE_GROUND_OCCLUSION_GLSL, new RegExp(`return 1\\.0 - min\\( uSgo \\* occ .*, ${SGO_DARK_MAX.toFixed(5)} \\);`), 'never deeper than the cap: shade, not a hole');
