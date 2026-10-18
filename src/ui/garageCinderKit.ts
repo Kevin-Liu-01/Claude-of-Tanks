@@ -375,15 +375,17 @@ function cinderSkylineBuild(e: GarageSkylineEmitter): void {
     e.lathe(at, 20, 7, [[1.6, e.foot], [1.2, 19], [1.3, 20], [1.0, 20]], [0x7b4e3c, 0x2a2624, 0x1c1a19], haze * 0.9, 8);
     e.accent = false;
   }
-  for (let k = 0; k < 26; k += 1) {
-    const deg = 168 + k * 6 + (e.random() - 0.5) * 3;
+  // birch and willow scrub in clumps with gaps, allotment sheds between them
+  for (let k = 0; k < 16; k += 1) {
+    const deg = 168 + k * 9.5 + (e.random() - 0.5) * 6;
     if (deg > 222 && deg < 244) continue;
     const r = 56 + e.random() * 18, at = e.frame(deg * DEG, r), haze = e.hazeAt(r);
-    if (k % 4 === 0) { // an allotment shed
+    if (k % 3 === 0) { // an allotment shed
       e.box(at, -1.5, 1.5, 0, 2.4, 2.2, 0x5a4a3a, 0x3e3a36, haze, { flat: false });
       e.gable(at, -1.7, 1.7, -0.2, 2.6, 2.2, 3.0, 0x5a4a3a, 0x3e4246, haze);
-    } else {
-      for (let t = 0; t < 3; t += 1) e.tree(at, (t - 1) * 3, e.random() * 2, 6 + e.random() * 4, 2.6, t % 2 ? 0x5a6a40 : 0x6a7448, haze, 0);
+    } else if (k % 3 === 1) {
+      const n = 2 + Math.floor(e.random() * 3);
+      for (let t = 0; t < n; t += 1) e.tree(at, (t - n / 2) * (2 + e.random() * 2), e.random() * 3, 5 + e.random() * 5, 2.4 + e.random() * 1.6, [0x5a6a40, 0x6a7448, 0x4e5c38][t % 3], haze, 0);
     }
   }
   // telegraph poles along the line's embankment, left of the yard

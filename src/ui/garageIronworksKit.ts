@@ -448,14 +448,16 @@ function ironworksSkylineBuild(e: GarageSkylineEmitter): void {
       const w = 8 + e.random() * 8, d = 6 + e.random() * 4, eave = 4 + e.random() * 2;
       e.box(at, -w / 2, w / 2, 0, d, eave, k % 2 ? 0x6e5a4a : 0x5d6064, 0x3e4246, haze, { flat: false });
       e.gable(at, -w / 2 - 0.3, w / 2 + 0.3, -0.3, d + 0.3, eave, eave + 2, k % 2 ? 0x6e5a4a : 0x5d6064, 0x45494c, haze);
-    } else {
-      for (let t = 0; t < 3; t += 1) e.tree(at, (t - 1) * 3.2, e.random() * 2, 7 + e.random() * 3, 3 + e.random(), t % 2 ? 0x55603e : 0x4a5436, haze, 0);
+    } else if (k % 3 === 1) {
+      const n = 2 + Math.floor(e.random() * 2);
+      for (let t = 0; t < n; t += 1) e.tree(at, (t - n / 2) * (2.5 + e.random() * 2), e.random() * 2, 6 + e.random() * 4, 2.8 + e.random(), t % 2 ? 0x55603e : 0x4a5436, haze, 0);
     }
   }
-  for (let k = 0; k < 10; k += 1) {
-    const deg = 300 + k * 6 + (e.random() - 0.5) * 2;
+  for (let k = 0; k < 6; k += 1) {
+    const deg = 300 + k * 10 + (e.random() - 0.5) * 5;
     const r = 56 + e.random() * 10, at = e.frame(deg * DEG, r), haze = e.hazeAt(r);
-    for (let t = 0; t < 2; t += 1) e.tree(at, t * 3.5 - 1.7, e.random() * 2, 6.5 + e.random() * 3, 3, 0x4f5a3a, haze, 0);
+    const n = 1 + Math.floor(e.random() * 3);
+    for (let t = 0; t < n; t += 1) e.tree(at, t * 3.2 - 1.6, e.random() * 2, 6 + e.random() * 4, 2.6 + e.random(), 0x4f5a3a, haze, 0);
   }
 }
 

@@ -272,8 +272,11 @@ export class GarageSkylineEmitter {
   }
 
   /** A tree crown silhouette (a squat cone over a short trunk), for birch scrub, pines and poplars on the skyline. */
-  tree(at: Local, x: number, z: number, height: number, width: number, tone: number, haze: number, foot = 0, sides = 5): void {
+  tree(at: Local, x: number, z: number, height: number, width: number, tone: number, haze: number, foot = 0, sides = 6): void {
     this.prism(at, x, z, width * 0.08, foot + height * 0.35, 0x3a322a, 0x3a322a, haze, 3, foot, { rise: 0 });
-    this.lathe(at, x, z, [[width * 0.5, foot + height * 0.28], [width * 0.42, foot + height * 0.7], [0, foot + height]], tone, haze, sides);
+    // a rounded, slightly ragged crown (not a cone): wide at its shoulders, its top domed
+    const lean = (this.random() - 0.5) * width * 0.25;
+    this.lathe(at, x + lean * 0.3, z, [[width * 0.3, foot + height * 0.26], [width * 0.52, foot + height * 0.45],
+      [width * 0.46, foot + height * 0.72], [width * 0.24, foot + height * 0.92], [0, foot + height]], tone, haze, sides);
   }
 }
