@@ -6,7 +6,7 @@ import type { GarageKitPlacement } from './garageKitPlacement.ts';
  * (garageSkyline.ts draws the misted ridges, the flood channel, Kohima on its saddle and the tea estate from the map).
  * Coordinates are the opening view's frame (garageKitPlacements.ts); the rain canopy's floor stands 0.45 m on its plinth.
  *
- * The cells: the canopy busy, not bare: a light A-frame gantry at work on a power pack beside its stand, the bench and
+ * The cells: bamboo lashed round the canopy's columns; the canopy busy, not bare: a light A-frame gantry at work on a power pack beside its stand, the bench and
  * roll cabs at its back, the welding cart and the raised drum rack on the right; the LED panel bolted to the canopy's
  * front-right column (garageSlideshowPlacement.ts) with the field computer beside it on its rugged case; the tarp banner
  * lashed between bamboo poles; the bamboo-framed notice board with three prints at the left; sandbags along the drain,
@@ -15,8 +15,14 @@ import type { GarageKitPlacement } from './garageKitPlacement.ts';
  */
 const FLOOR = 0.46; // the canopy's plinth over its ground
 
+/** Bamboo lashed round the lower third of the canopy's steel columns, on their outer faces (a pole each side). */
+const BAMBOO_CLADDING = [-1, 1].flatMap((side) => [20, 24, 28, 32].flatMap((depth) => [-0.28, 0.28].map((offset) => ({
+  kind: 'prop' as const, name: 'pole', at: [side * 12.3, depth + offset] as const, yaw: 0, y: FLOOR, params: { variant: 0 },
+})))).filter((pole) => !(pole.at[0] > 0 && pole.at[1] < 20)); // the panel's bracket takes the front-right column's face
+
 export const GARAGE_KIT_MONSOON: GarageKitPlacement = {
   items: [
+    ...BAMBOO_CLADDING,
     // under the canopy: the A-frame at work on a power pack, its stand, the bench and roll cabs at the back
     { kind: 'crane', crane: 'aframe', at: [-6.6, 27.2], yaw: Math.PI / 4, y: FLOOR, params: { span: 4.0, height: 3.6, load: { kind: 'powerpack' } } },
     { kind: 'bench', name: 'powerPackStand', at: [-3.6, 28.6], yaw: Math.PI / 4, y: FLOOR },
