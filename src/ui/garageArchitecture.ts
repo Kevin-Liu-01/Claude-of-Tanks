@@ -95,6 +95,25 @@ export interface GarageArchitectureStats {
   platformGroundClearanceM: number;
   outdoorWarmReady: boolean;
   lastBuildMs: number;
+  /** The garage r9 kit's receipt for the selected pack (pieces, triangles, cranes, displays), or null. */
+  kit: GarageKitStats | null;
+}
+
+/** The kit receipt as the architecture stats publish it (garageKitPlacement.ts builds it). */
+interface GarageKitStats {
+  readonly kitPieces: number;
+  readonly kitTriangles: number;
+  readonly displayTriangles: number;
+  readonly decalTriangles: number;
+  readonly atmosphereTriangles: number;
+  readonly cranes: ReadonlyArray<{ readonly kind: string; readonly atWork: boolean; readonly load: string | null }>;
+  readonly brandPieces: number;
+  readonly tankImages: number;
+  readonly stations: number;
+  readonly stationMonitors: number;
+  readonly nameboards: number;
+  readonly displayRects: readonly string[];
+  readonly slideshow: { readonly position: readonly number[]; readonly yaw: number; readonly width: number; readonly height: number } | null;
 }
 
 const CACHE_LIMIT = 2;
@@ -252,6 +271,7 @@ function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
     maxGroundContactErrorM: 0,
     platformGroundClearanceM: 0.025,
     triangles: 0,
+    kit: null,
   });
   Object.assign(root.userData, stats, {
     mode: 'verdant-workshop',
@@ -456,6 +476,7 @@ export function createGarageArchitectureController(
       outdoorWarmReady: selected?.architecture === 'field_shed'
         || warmedArchitectures.has(selected?.architecture || 'field_shed'),
       lastBuildMs,
+      kit: (data.kit as GarageKitStats | null | undefined) ?? null,
     };
   };
 

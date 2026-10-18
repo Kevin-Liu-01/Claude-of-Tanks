@@ -31,6 +31,8 @@ import {
   mulberry32, canvasTexture, dither, makeSignTexture, makeHazardTexture, SIGN_FONT,
 } from '../ui/garageStage.ts';
 import { FEATURED_SHOTS } from '../ui/featuredShots.ts';
+import { garageSlideshowPose } from '../ui/garageSlideshowPlacement.ts';
+import { buildGarageVerdantKit } from '../ui/garageVerdantKit.ts';
 import { DECOR_KITS } from '../vehicles/decorations.ts';
 import { optimizeGarageDressing } from './garageDressingOptimization.ts';
 import { getGarageVariant, type GarageVariant } from './garageVariants.ts';
@@ -153,6 +155,7 @@ const GARAGE_BATTLE_SCREEN_SHOTS = Object.freeze(
 );
 const BATTLE_SCREEN_HOLD_MS = 6_500;
 const BATTLE_SCREEN_SCROLL_MS = 720;
+const BATTLE_SCREEN_PANEL_W = 5.86;
 const BATTLE_SCREEN_DECODE_W = 1024;
 const BATTLE_SCREEN_DECODE_H = 576;
 
@@ -1260,6 +1263,14 @@ export function createGarageDressing(
   // each instead of 10.55 MB, the current image alone at rest and the next one only for the 720 ms crossfade.
   let battleScreenMaterial: THREE.ShaderMaterial | null = null;
   let battleScreenMesh: THREE.Mesh | null = null;
+  // Verdant's panel (its legs, bezel and cabinet) and the yard mount the outdoor Garages hang the same screen on, at the
+  // pose their pack builds its frame (garageSlideshowPlacement.ts): one screen, one material, one driver
+  let battleScreenVerdantRoot: THREE.Group | null = null;
+  const battleScreenYardRoot = new THREE.Group();
+  battleScreenYardRoot.name = 'garage_slideshow_yard_mount';
+  battleScreenYardRoot.visible = false;
+  group.add(battleScreenYardRoot);
+  let battleScreenShown = false;
   let battleScreenFallbackTexture: THREE.Texture | null = null;
   let battleScreenCurrentTexture: THREE.Texture | null = null;
   let battleScreenNextTexture: THREE.Texture | null = null;
@@ -1341,7 +1352,7 @@ export function createGarageDressing(
       // The garage phase owner removes this whole root from the scene during
       // battle. Stop here instead of polling; onBeforeRender restarts the
       // archive on the first garage-return frame, preserving zero battle cost.
-      if (!group.parent || !group.visible || !battleScreenOwner.visible || document.hidden) return;
+      if (!group.parent || !group.visible || !battleScreenShown || document.hidden) return;
       void advanceBattleScreen();
     }, delay);
   }
@@ -1425,6 +1436,38 @@ export function createGarageDressing(
     scheduleBattleScreenAdvance();
   }
 
+  /** Hang the one screen on Verdant's panel, or on the yard mount at an outdoor Garage's slideshow pose. */
+  function placeSlideshowScreen(isVerdant: boolean): boolean {
+    const pose = isVerdant ? null : garageSlideshowPose(currentVariant.architecture);
+    if (battleScreenMesh) {
+      if (pose) {
+        battleScreenYardRoot.position.set(pose.position[0], pose.position[1], pose.position[2]);
+        battleScreenYardRoot.rotation.set(0, pose.yaw, 0);
+        battleScreenYardRoot.add(battleScreenMesh);
+        battleScreenMesh.position.set(0, 0, 0);
+        battleScreenMesh.scale.setScalar(pose.width / BATTLE_SCREEN_PANEL_W);
+      } else if (battleScreenVerdantRoot) {
+        battleScreenVerdantRoot.add(battleScreenMesh);
+        battleScreenMesh.position.set(0, 0, 0.115);
+        battleScreenMesh.scale.setScalar(1);
+      }
+    }
+    battleScreenYardRoot.visible = pose !== null;
+    group.userData.battleScreenPlacement = pose ? 'yard-pose' : isVerdant ? 'verdant-west-wall' : 'none';
+    return isVerdant || pose !== null;
+  }
+
+  /** On arriving in a Garage the slideshow opens on that Garage's own map still, then cycles. */
+  function openSlideshowOnGarage(): void {
+    const start = battleScreenStartIndex(currentVariant.mapId);
+    if (start !== battleScreenIndex && battleScreenFrame === null && !battleScreenLoading) {
+      if (battleScreenTimer !== null) { window.clearTimeout(battleScreenTimer); battleScreenTimer = null; }
+      void advanceBattleScreen(start);
+      return;
+    }
+    scheduleBattleScreenAdvance();
+  }
+
   function setVariant(variantId: string): string {
     currentVariant = getGarageVariant(variantId);
     group.userData.garageVariantId = currentVariant.id;
@@ -1458,8 +1501,9 @@ export function createGarageDressing(
     verdantInteriorRoot.visible = isVerdant;
     battleScreenOwner.visible = isVerdant;
     for (const owner of verdantKitOwners) owner.visible = isVerdant;
-    group.userData.battleScreenVisible = isVerdant;
-    if (isVerdant && battleScreenCurrentTexture) scheduleBattleScreenAdvance();
+    battleScreenShown = placeSlideshowScreen(isVerdant);
+    group.userData.battleScreenVisible = battleScreenShown;
+    if (battleScreenShown && battleScreenCurrentTexture) openSlideshowOnGarage();
     group.userData.verdantOriginalVisible = legacyVerdantRoot.children.length > 0;
     group.userData.workshopTriangleCount = group.userData.verdantOriginalTriangleCount || 0;
     group.userData.activeWorkshopTriangleCount =
@@ -1782,6 +1826,7 @@ export function createGarageDressing(
     group.userData.battleScreenFacing = 'inward-to-hero';
     legacyVerdantRoot.add(battleScreenOwner);
     battleScreenOwner.add(screenRoot);
+    battleScreenVerdantRoot = screenRoot;
     // bezel, the cabinet behind it, and a status LED at the bezel's foot
     put(track(new THREE.BoxGeometry(6.06, 3.5, 0.1)), mat.steelDark,
       0, 0, 0.06, 0, 0, 0, 1, screenRoot, false);
@@ -1847,7 +1892,7 @@ export function createGarageDressing(
     }));
     battleScreenMaterial.name = 'garage_slideshow_material';
     // 16:9 at 5.86 x 3.296 m inside the bezel
-    const screenGeometry = track(new THREE.PlaneGeometry(5.86, 3.296));
+    const screenGeometry = track(new THREE.PlaneGeometry(BATTLE_SCREEN_PANEL_W, BATTLE_SCREEN_PANEL_W * 9 / 16));
     battleScreenMesh = put(screenGeometry, battleScreenMaterial,
       0, 0, 0.115, 0, 0, 0, 1, screenRoot, false);
     battleScreenMesh.name = 'garage_slideshow_screen';
@@ -1865,6 +1910,8 @@ export function createGarageDressing(
     group.userData.battleScreenResidentImageLimit = 2;
     group.userData.battleScreenResidentImageCount = 0;
     group.userData.battleScreenDecodeSize = [BATTLE_SCREEN_DECODE_W, BATTLE_SCREEN_DECODE_H];
+    battleScreenShown = placeSlideshowScreen(currentVariant.id === 'verdant_motor_pool');
+    group.userData.battleScreenVisible = battleScreenShown;
     void startBattleScreen(fallbackTexture);
     const interiorChildrenStart = group.children.length;
     return interiorChildrenStart;
@@ -2644,7 +2691,22 @@ export function createGarageDressing(
     const interiorChildrenStart = buildBattleArchiveMonitors();
     buildVerdantFactoryArchitecture();
     buildWorkshopClutter(interiorChildrenStart);
+    buildVerdantR9Kit();
   });
+
+  // Verdant's share of the garage r9 kit (garageVerdantKit.ts): column and wordmark banners, the hall of fame's framed
+  // prints, a diagnostics station and daylight shafts, on its own Verdant-only owner in the hall's world frame
+  function buildVerdantR9Kit(): void {
+    const owner = new THREE.Group();
+    owner.name = 'garage_verdant_kit_r9';
+    owner.visible = currentVariant.id === 'verdant_motor_pool';
+    const kit = buildGarageVerdantKit({ setupShadowMaterial: shadowMat, anisotropy: aniso });
+    for (const mesh of kit.meshes) { track(mesh.geometry); owner.add(mesh); }
+    for (const material of kit.materials) track(material);
+    group.add(owner);
+    verdantKitOwners.push(owner);
+    group.userData.verdantKitStats = kit.stats;
+  }
 
   // ==========================================================================
   // CHUNK 2 — ORIGINAL VERDANT BAY A: T-90A Burlak on jack stands with its

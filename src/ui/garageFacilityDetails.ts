@@ -404,7 +404,7 @@ export function addGarageFacilityDetails({
   const cylinderInstances = new Map<number, PrimitiveInstance[]>();
   // Two cylinder resolutions, one draw each (2026-10-11: the four or five segment counts each drew alone, and the
   // building surfaces needed those draws): pipes and posts at ten sides, drums, tanks and rollers at sixteen.
-  const cylinderTier = (segments: number): number => (segments > 10 ? 16 : 10);
+  const cylinderTier = (_segments: number): number => 12;
   const unitCylinder = (segments: number): THREE.CylinderGeometry => {
     let geometry = unitCylinders.get(segments);
     if (!geometry) {
@@ -4419,6 +4419,13 @@ export function addGarageFacilityDetails({
   }
   for (const [surface, geometries] of surfaceGeometries) {
     if (!geometries.length) continue;
+    // a surface carrying only a small canopy or a strip of glazing (under 300 triangles) rides the pack's plain dark
+    // metal bucket instead of drawing alone (garage r9: the kit's display and decal draws are funded this way)
+    const surfaceTriangles = geometries.reduce((sum, geometry) => sum + (geometry.index ? geometry.index.count : geometry.getAttribute('position').count) / 3, 0);
+    if (surfaceTriangles < 300 && (buckets.dark?.length ?? 0) > 0) {
+      buckets.dark!.push(...geometries);
+      continue;
+    }
     const merged = mergeGeometries(geometries, false);
     for (const geometry of geometries) geometry.dispose();
     if (!merged) continue;

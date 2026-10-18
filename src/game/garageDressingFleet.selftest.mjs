@@ -247,10 +247,14 @@ assert.equal((dressing.match(/new THREE\.ShaderMaterial\(/g) || []).length, 1,
 assert.doesNotMatch(dressing, /battleScreenMaterial\.clone\(\)/);
 // 2026-10-11, the redesign (waves 393 and 398: "a battle-footage monitor on stands in every yard"): the slideshow stands
 // in Verdant's hall only, on its own static owner, and sleeps elsewhere
-assert.match(dressing, /battleScreenOwner\.visible = isVerdant;[\s\S]{0,120}group\.userData\.battleScreenVisible = isVerdant;/,
-  'the slideshow shows in Verdant only');
-assert.match(dressing, /if \(isVerdant && battleScreenCurrentTexture\) scheduleBattleScreenAdvance\(\);/,
-  'the slideshow never runs where its panel is hidden');
+assert.match(dressing, /battleScreenOwner\.visible = isVerdant;[\s\S]{0,160}battleScreenShown = placeSlideshowScreen\(isVerdant\);\s*group\.userData\.battleScreenVisible = battleScreenShown;/,
+  'Verdant\'s panel shows in Verdant only; the screen shows where the Garage places a slideshow');
+assert.match(dressing, /if \(battleScreenShown && battleScreenCurrentTexture\) openSlideshowOnGarage\(\);/,
+  'the slideshow never runs where its screen is hidden');
+assert.match(dressing, /const pose = isVerdant \? null : garageSlideshowPose\(currentVariant\.architecture\);/,
+  'outdoor Garages hang the one screen on the pose their pack builds the frame at');
+assert.doesNotMatch(dressing, /new THREE\.PlaneGeometry\(BATTLE_SCREEN_PANEL_W[^\n]*\n[\s\S]*new THREE\.PlaneGeometry\(BATTLE_SCREEN_PANEL_W/,
+  'one screen mesh, moved between mounts, never a second slideshow');
 // 2026-10-11, waves 398 and 402 ("the same red box and drawer cabinet in every yard"): Verdant's chests are its own
 assert.match(dressing, /for \(const owner of verdantKitOwners\) owner\.visible = isVerdant;/, 'Verdant\'s workshop chests show in Verdant only');
 assert.match(dressing, /battleScreenDisplayCount = 1/,
@@ -408,7 +412,7 @@ assert.match(dressing, /mix\(texture2D\(uImageA, uv\)\.rgb, texture2D\(uImageB, 
   'the slideshow crossfades between its two resident images');
 assert.match(dressing, /shot\.maps\?\.includes\(mapId\)/,
   'the slideshow opens on its Garage\'s own map still');
-assert.match(dressing, /if \(!group\.parent \|\| !group\.visible \|\| !battleScreenOwner\.visible \|\| document\.hidden\) return/,
+assert.match(dressing, /if \(!group\.parent \|\| !group\.visible \|\| !battleScreenShown \|\| document\.hidden\) return/,
   'the screen timer must stop instead of polling during battle or background tabs');
 assert.match(access, /prepareGarageDressing\?\./,
   'the access boundary prepares fleet builders before the quiet chunk pump');

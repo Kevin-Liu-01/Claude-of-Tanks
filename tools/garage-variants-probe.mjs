@@ -365,8 +365,9 @@ try {
           !== 'service_t90m|service_usa_desert|service_leo2a6m|service_bmp3_rok') {
       failures.push(`${result.id}: fixed service-finish optimization is missing`);
     }
-    // the one slideshow panel stands where the Garage places it (Verdant's west wall since garage r9)
-    if (result.stats.battleScreenVisible !== isVerdant
+    // the one slideshow stands where the Garage places it: Verdant's west wall, or the yard pose its pack builds the
+    // frame at (garageSlideshowPlacement.ts, receipted by the pack's kit stats)
+    if (result.stats.battleScreenVisible !== (isVerdant || Boolean(architecture?.kit?.slideshow))
         || result.stats.battleScreenMode !== 'led-crossfade-slideshow'
         || result.stats.battleScreenWallBay !== 'west-freestanding'
         || result.stats.battleScreenDisplayCount !== 1

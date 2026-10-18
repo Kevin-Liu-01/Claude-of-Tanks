@@ -742,6 +742,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageYardWear.selftest.mjs',
     'src/ui/garageVerdantHall.selftest.mjs',
     'src/ui/garageQualityRubric.selftest.mjs',
+    // garage r9 (2026-10-17): the shared kit (pieces, cranes, walls, displays, platform, placement), its display atlas
+    // (generator check, rect names, the swap test) and the atmosphere
+    'src/ui/garageKit.selftest.mjs',
+    'src/ui/garageDisplayAtlas.selftest.mjs',
+    'src/ui/garageAtmosphere.selftest.mjs',
+    'src/ui/garageDisplayPlacement.selftest.mjs',
     'tools/garage-terrain-patches.selftest.mjs',
     'tools/garage-variants-probe.selftest.mjs',
     'src/game/rosterPlanning.selftest.mjs',
