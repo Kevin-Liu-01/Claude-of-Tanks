@@ -417,18 +417,27 @@ function drawName(ctx, name, { x, y, size, minSize, maxWidth, font, hollow, scal
   ctx.fillText(variant, x, y);
 }
 
+/**
+ * The tier badge, written "Tier X" (Premiere SPEC badge row: a lone "X" reads as a close button), in the data
+ * face: the word in muted ink, the numeral in tungsten. The runtime card draws it as HTML in this slot.
+ */
 function drawTierChip(ctx, tier, { x, y, size, font, scale }) {
-  ctx.font = `600 ${size}px "${font}"`;
-  const tw = ctx.measureText(tier).width;
-  const bh = Math.round(size * 1.5), bw = Math.max(bh, Math.round(tw + size * 0.9));
-  ctx.fillStyle = 'rgba(11,14,17,0.74)';
+  ctx.font = `500 ${size}px "${font}"`;
+  const word = 'Tier ';
+  const ww = ctx.measureText(word).width;
+  const tw = ww + ctx.measureText(tier).width;
+  const bh = Math.round(size * 1.55), bw = Math.round(tw + size * 0.9);
+  ctx.fillStyle = 'rgba(11,14,17,0.72)';
   ctx.fillRect(x, y, bw, bh);
-  ctx.strokeStyle = 'rgba(246,243,236,0.22)';
+  ctx.strokeStyle = 'rgba(246,243,236,0.20)';
   ctx.lineWidth = scale;
   ctx.strokeRect(x + scale / 2, y + scale / 2, bw - scale, bh - scale);
-  ctx.fillStyle = TUNGSTEN;
   ctx.textBaseline = 'middle';
-  ctx.fillText(tier, x + (bw - tw) / 2, y + bh / 2 + scale * 0.5);
+  const tx = x + (bw - tw) / 2, ty = y + bh / 2 + scale * 0.5;
+  ctx.fillStyle = 'rgba(246,243,236,0.72)';
+  ctx.fillText(word, tx, ty);
+  ctx.fillStyle = TUNGSTEN;
+  ctx.fillText(tier, tx + ww, ty);
   ctx.textBaseline = 'alphabetic';
 }
 
@@ -437,7 +446,7 @@ function drawTierChip(ctx, tier, { x, y, size, font, scale }) {
  * name in the band under the contact line (never over the hull), the tier chip and the
  * frame. No eyebrow, no nation text: the flag is the nation.
  */
-export function composeCard(kind, { tank, core, flag, name, tier, font = 'Chakra Petch', selected = false, facing = 'left', ground = HERO_GROUND }, scale = 2) {
+export function composeCard(kind, { tank, core, flag, name, tier, font = 'Chakra Petch', dataFont = 'IBM Plex Mono', selected = false, facing = 'left', ground = HERO_GROUND }, scale = 2) {
   const size = HERO_CARD_SIZES[kind];
   const layout = CARD_LAYOUT[kind];
   const w = size.width * scale, h = size.height * scale;
@@ -464,8 +473,8 @@ export function composeCard(kind, { tank, core, flag, name, tier, font = 'Chakra
     maxWidth: w - pad * 2, font, hollow: layout.hollow, scale,
   });
   if (layout.tier && tier) {
-    const ts = Math.round((kind === 'roster' ? 9.5 : kind === 'galleryBrowse' ? 11 : kind === 'deploy' ? 13 : 16) * scale);
-    drawTierChip(ctx, tier, { x: Math.round(pad * 0.7), y: Math.round(pad * 0.7), size: ts, font, scale });
+    const ts = Math.round((kind === 'roster' ? 8.5 : kind === 'galleryBrowse' ? 10 : kind === 'deploy' ? 12 : 14) * scale);
+    drawTierChip(ctx, tier, { x: Math.round(pad * 0.7), y: Math.round(pad * 0.7), size: ts, font: dataFont, scale });
   }
   ctx.lineWidth = selected ? 2 * scale : scale;
   ctx.strokeStyle = selected ? TUNGSTEN : 'rgba(246,243,236,0.13)';
@@ -572,6 +581,8 @@ async function board() {
   mkdirSync(out, { recursive: true });
   const font = opt('font');
   if (font) GlobalFonts.registerFromPath(font, 'Chakra Petch');
+  const dataFont = opt('data-font');
+  if (dataFont) GlobalFonts.registerFromPath(dataFont, 'IBM Plex Mono');
   const records = tankRecords();
   const pick = opt('pick', 'az48');
   const ids = opt('ids', 'm1a2_abrams_sepv3,leo2a7v,t90m').split(',');
@@ -731,6 +742,31 @@ async function board() {
     label(ctx, "owner's reference (faces right)", 40, h + 82, 24);
     label(ctx, 'ours: mirrored for the Garage (faces left), own render and own flag art', rw + 80, h + 82, 24);
     writeFileSync(resolve(out, 'board-reference-compare.png'), sheet.toBuffer('image/png'));
+  }
+  // 6. Facing: the shipped left-facing card beside the same tank facing right (the reference's direction),
+  //    end-screen size, one row per final id, the owner's reference on top.
+  const rightPick = opt('right-pick');
+  if (rightPick) {
+    const gap = 40, cw = 2 * 560, ch = 2 * 360;
+    const ref = reference && existsSync(reference) ? await loadImage(reference) : null;
+    const refH = ref ? Math.round(ch * 0.8) : 0;
+    const { sheet, ctx } = sheetOf(2 * cw + 3 * gap, (ref ? refH + 76 : 0) + finals.length * (ch + 76) + gap);
+    let y = gap;
+    if (ref) {
+      ctx.drawImage(ref, gap, y, Math.round(ref.width * (refH / ref.height)), refH);
+      label(ctx, "owner's reference (faces right)", gap + Math.round(ref.width * (refH / ref.height)) + 24, y + 40, 24);
+      y += refH + 76;
+    }
+    for (const { id, set } of finals) {
+      if (!existsSync(resolve(layersDir, `${id}__${rightPick}.png`))) continue;
+      ctx.drawImage(set.endScreen, gap, y);
+      const right = await load(id, `${id}__${rightPick}`);
+      ctx.drawImage(composeCard('endScreen', right, 2), 2 * gap + cw, y);
+      label(ctx, `${pick}: faces left, as the Garage hall and the roster strip`, gap, y + ch + 34, 24);
+      label(ctx, `${rightPick}: faces right, as the reference`, 2 * gap + cw, y + ch + 34, 24);
+      y += ch + 76;
+    }
+    writeFileSync(resolve(out, 'board-facing-compare.png'), sheet.toBuffer('image/png'));
   }
   writeFileSync(resolve(out, 'weights.json'), `${JSON.stringify(weights, null, 2)}\n`);
   console.log(`[hero-board] ${out}`);
