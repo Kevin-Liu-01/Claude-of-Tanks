@@ -99,7 +99,12 @@ function portalJibCrane(b: KitBuilder): KitCraneReceipt {
   const houseY = portalY + 0.7;
   b.push().translate(0, 0, 0).rotateY(CRANE_SLEW);
   b.box(0, houseY + 1.4, -0.6, 3.6, 2.8, 5.2, HOUSE, { bevel: 0.03 });
-  b.box(0, houseY + 2.9, -0.6, 3.8, 0.2, 5.4, ROOF, { bevel: 0.02 });
+  b.box(0, houseY + 2.86, -0.6, 3.8, 0.12, 5.4, ROOF, { bevel: 0.01 });
+  for (const s of [-1, 1]) {
+    b.polygon([[s * 1.9, houseY + 2.92, -3.3], [s * 1.9, houseY + 2.92, 2.1], [0, houseY + 3.32, 2.1], [0, houseY + 3.32, -3.3]], ROOF, [s * 0.3, 1, 0]);
+    b.box(s * 1.94, houseY + 2.86, -0.6, 0.1, 0.1, 5.4, 0x2e3436, { bevel: 0 }); // the gutter
+  }
+  for (const z of [-3.3, 2.1]) b.polygon([[-1.9, houseY + 2.92, z], [1.9, houseY + 2.92, z], [0, houseY + 3.32, z]], HOUSE, [0, 0, z > 0 ? 1 : -1]);
   for (const s of [-1, 1]) {
     for (let k = 0; k < 6; k += 1) b.box(s * 1.815, houseY + 1.4, -3.0 + k * 0.96, 0.05, 2.7, 0.06, 0x2e3436, { bevel: 0 });
     b.box(s * 1.84, houseY + 2.72, -0.6, 0.07, 0.07, 5.3, 0x2e3436, { bevel: 0 }); // the drip rail
@@ -109,7 +114,7 @@ function portalJibCrane(b: KitBuilder): KitCraneReceipt {
     }
     for (let k = 0; k < 5; k += 1) b.box(s * 1.83, houseY + 0.55 + k * 0.11, -2.95, 0.05, 0.05, 0.9, 0x5d676a, { bevel: 0 });
   }
-  for (const dz of [-1.8, -0.2]) b.box(0, houseY + 3.15, dz, 0.8, 0.3, 0.8, ROOF, { bevel: 0.01 });
+  for (const dz of [-1.8, -0.2]) b.box(0, houseY + 3.4, dz, 0.7, 0.3, 0.7, ROOF, { bevel: 0.01 });
   b.box(1.2, houseY + 1.6, 2.4, 1.3, 1.8, 1.4, HOUSE, { bevel: 0.03 }); // the cab
   b.box(1.2, houseY + 1.85, 3.11, 1.1, 1.0, 0.03, 0x2a3438, { bevel: 0 });
   b.box(1.2, houseY + 1.85, 3.13, 0.05, 1.0, 0.04, 0x2e3436, { bevel: 0 });
@@ -130,6 +135,9 @@ function portalJibCrane(b: KitBuilder): KitCraneReceipt {
   lattice(b, heel, tip, 0.9, 0.4, 1.4, 0.5, 9, HARBOUR_BLUE);
   b.cylinder(0.25, tip[1], tip[2], 0.4, 0.5, 12, IRON, { axis: 'x' }); // the head sheave
   for (const s of [-0.15, 0.15]) b.tube([[s, houseY + 6.6, -0.4], [s, tip[1] + 0.3, tip[2]]], 0.02, 4, 0x2a2c2c); // luffing ropes
+  // the amber beacon on the roof's ridge
+  b.box(0, houseY + 3.38, 0.8, 0.16, 0.12, 0.16, 0x2a2c2d, { bevel: 0.01 });
+  b.face([-0.06, houseY + 3.44, 0.88], [0.06, houseY + 3.44, 0.88], [0.06, houseY + 3.6, 0.88], [-0.06, houseY + 3.6, 0.88], garageDisplayRect('glow.amber'));
   b.pop();
   const tipWorld: KitVec = [Math.sin(CRANE_SLEW) * tip[2], tip[1], Math.cos(CRANE_SLEW) * tip[2]];
   // the hoist rope, the hook block and the gun shield it lifts off the forecastle
@@ -148,12 +156,10 @@ function portalJibCrane(b: KitBuilder): KitCraneReceipt {
     b.box(0, -0.38, 0, 0.7, 0.08, 0.8, IRON, { bevel: 0 }); // the trunnion cradle
     b.pop();
   }
-  // capacity plate on the portal girder and the amber beacon on the house roof
+  // the capacity plate on the portal girder
   b.push().translate(0, portalY - 0.3, legX + 0.28);
   b.uprightFace(0, 0, 0, 1.2, 0.45, garageDisplayRect('plate.swl.20'));
   b.pop();
-  b.box(0, houseY + 3.12, -0.6, 0.16, 0.12, 0.16, 0x2a2c2d, { bevel: 0.01 });
-  b.face([-0.06, houseY + 3.18, -0.52], [0.06, houseY + 3.18, -0.52], [0.06, houseY + 3.34, -0.52], [-0.06, houseY + 3.34, -0.52], garageDisplayRect('glow.amber'));
   // the power cable from the cable drum on the portal to its pit in the quay
   b.cylinder(-gauge / 2 - 0.4, 1.4, -legX, 0.45, 0.4, 12, 0x2e3436, { axis: 'x' });
   b.tube([[-gauge / 2 - 0.6, 1.0, -legX], [-gauge / 2 - 0.7, 0.05, -legX - 1.6], [-gauge / 2 - 0.7, 0.02, -legX - 4.0]], 0.03, 4, 0x1c1d1e);
@@ -463,6 +469,7 @@ export const SALTMERE_KIT: GarageKitPlacement = {
       atmosphereBand(polarOf(BEARING.headland - 0.25, 84, -1), polarOf(BEARING.headland + 0.2, 98, -1), 7, 'mist', 0.2),
       atmosphereBand(polarOf(BEARING.village - 0.35, 70, -0.5), polarOf(BEARING.village + 0.3, 72, -0.5), 6, 'mist', 0.6),
       atmosphereBand(polarOf(268 * DEG, 150, -2.3), polarOf(300 * DEG, 150, -2.3), 5, 'mist', 0.4),
+      atmosphereBand(polarOf(150 * DEG, 150, -2.3), polarOf(184 * DEG, 150, -2.3), 5, 'mist', 0.7),
     ],
   },
 };

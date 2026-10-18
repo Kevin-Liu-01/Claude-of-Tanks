@@ -145,8 +145,15 @@ export function buildGaragePlatformCollar(architecture: GarageVariant['architect
       b.polygon([at(r1 + 0.06, 0.0, a0), at(r1 + 0.06, 0.0, a1), at(sideR(0.02) + 0.01, 0.025, a1), at(sideR(0.02) + 0.01, 0.025, a0)], collar.plinth, [Math.cos(am), 1, Math.sin(am)]);
     }
   }
-  // the brick collar carries a circular running rail on its top bevel
+  // the brick collar carries a circular running rail on its top bevel, and the deck the turntable's two roads' rails
+  // inlaid flush across it along the hero's axis (+Z), a flangeway inside each (garage r9, Cinder's brief)
   if (collar.kind === 'brick-rail') {
+    const y = top + 0.004, half = r0 - 0.06;
+    for (const x of [-0.7175, 0.7175]) {
+      const inner = x - Math.sign(x) * 0.075;
+      b.polygon([[inner - 0.03, y, -half], [inner + 0.03, y, -half], [inner + 0.03, y, half], [inner - 0.03, y, half]], 0x161514, [0, 1, 0]);
+      b.polygon([[x - 0.036, y + 0.002, -half], [x + 0.036, y + 0.002, -half], [x + 0.036, y + 0.002, half], [x - 0.036, y + 0.002, half]], 0xb8bcbe, [0, 1, 0]);
+    }
     for (let s = 0; s < SEGMENTS; s += 1) {
       const a0 = (s / SEGMENTS) * Math.PI * 2, a1 = ((s + 1) / SEGMENTS) * Math.PI * 2;
       const rr = r0 + 0.17;

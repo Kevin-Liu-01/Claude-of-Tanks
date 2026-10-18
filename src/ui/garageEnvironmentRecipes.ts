@@ -399,7 +399,8 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
   },
   factory_line: {
     // slag and cinder ground round the works (wave 377: "a paved hillside rather than a workshop yard")
-    terrainSurface: 'rock', terrainTint: 0x5f5953, hardstandTint: 0x65615b, buildingTint: 0x91857b,
+    // (garage r9: the works' scrub mounds levelled toward the yard's grade)
+    terrainSurface: 'rock', terrainTint: 0x5a544e, hardstandTint: 0x65615b, buildingTint: 0x91857b, reliefScale: 0.5,
     structures: [
       at(makeFoundryOffice, 'foundry office', -37.8, -4.6, 0.8), // clear of the wider crane bay
       at(makeFactory, 'heavy factory', -31, -31, 0.76), // 1.4 m back: clear of the crane bay (garage round 7)

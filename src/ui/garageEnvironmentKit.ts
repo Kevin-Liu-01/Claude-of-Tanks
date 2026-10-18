@@ -781,7 +781,8 @@ function createBackdropGeometry(
         const angle = (segment / segments) * Math.PI * 2;
         positions.push(Math.cos(angle) * r, -2.3, Math.sin(angle) * r);
         const swell = noise(segment / segments * 31 + ringIndex * 0.21, 0.2 + ringIndex * 0.1);
-        colour.copy(hexColor(0x274f57)).lerp(hexColor(0x3d6f78), far * 0.8 + (swell - 0.5) * 0.12) // (rejudge6: "flat teal bands")
+        // (rejudge6: "flat teal bands"; garage r9: shallow turquoise toward the strand, deepening to blue-green offshore)
+        colour.copy(hexColor(skyline ? 0x2f747a : 0x274f57)).lerp(hexColor(skyline ? 0x2e6a78 : 0x3d6f78), far * 0.8 + (swell - 0.5) * 0.12)
           .lerp(horizon, Math.min(0.92, 0.12 + far * far * 0.85));
         colors.push(colour.r, colour.g, colour.b);
       }
