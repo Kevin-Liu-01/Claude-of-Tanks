@@ -85,6 +85,12 @@ export function buildGarageVerdantKit(params: {
   add(156, 20.4, 0, -2.8, 0.4, (b) => buildGarageProp(b, 'palletJack'));
   add(157, 22.0, 0, -15.4, -Math.PI / 2, (b) => buildGarageBenchPiece(b, 'rollCab'));
   add(158, 22.0, 0, -14.1, -Math.PI / 2 + 0.08, (b) => buildGarageBenchPiece(b, 'rollCab'));
+  // the hall's working benches under their shadow boards (garage r9: the kit's steel-frame bench with its dressing set and
+  // rugged laptop replaces the dressing's one-red-box benches) and a roll cab beside the far one; the indoor set is
+  // half-turned, so the authored wall points are negated here
+  add(162, -21.95, 0, 7.0, Math.PI / 2, (b) => buildGarageBenchPiece(b, 'workbench', { length: 2.6, screen: 'readout.modules.t90' }));
+  add(163, -3.2, 0, 21.85, Math.PI, (b) => buildGarageBenchPiece(b, 'workbench', { length: 2.6, screen: 'readout.armor.abrams' }));
+  add(164, -6.4, 0, 21.55, Math.PI + 0.12, (b) => buildGarageBenchPiece(b, 'rollCab'));
   // the Leopard's track spares in the hall's south-west corner
   add(159, -21.3, 0, 20.4, 0.15, (b) => buildGarageProp(b, 'trackPallet'));
   add(160, -21.1, 0, 18.9, -0.1, (b) => buildGarageProp(b, 'trackPallet'));

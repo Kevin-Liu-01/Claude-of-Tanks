@@ -547,33 +547,6 @@ export function createGarageDressing(
   }
 
   /** worn steel workbench with clutter (vice, welder box, grinder, cans). */
-  function workbench(x: number, z: number, ry: number): THREE.Group {
-    const b = new THREE.Group();
-    b.position.set(x, 0, z);
-    b.rotation.y = ry;
-    group.add(b);
-    put(track(new THREE.BoxGeometry(3.1, 0.11, 0.95)), mat.timber, 0, 0.98, 0, 0, 0, 0, 1, b);
-    put(track(new THREE.BoxGeometry(3.0, 0.07, 0.85)), mat.steelDark, 0, 0.5, 0, 0, 0, 0, 1, b); // lower shelf
-    const legG = track(new THREE.BoxGeometry(0.09, 0.98, 0.09));
-    for (const [lx, lz] of [[-1.42, -0.38], [1.42, -0.38], [-1.42, 0.38], [1.42, 0.38]]) {
-      put(legG, mat.steelMid, lx, 0.49, lz, 0, 0, 0, 1, b);
-    }
-    // vice: base + jaw blocks + spindle
-    put(track(new THREE.BoxGeometry(0.16, 0.1, 0.22)), mat.steelDark, -1.05, 1.09, 0.18, 0, 0, 0, 1, b);
-    put(track(new THREE.BoxGeometry(0.22, 0.18, 0.14)), mat.blueSteel, -1.05, 1.22, 0.18, 0, 0, 0, 1, b);
-    put(track(new THREE.CylinderGeometry(0.02, 0.02, 0.3, 8)), mat.steelBright, -1.05, 1.2, 0.34, 0, Math.PI / 2, 0, 1, b);
-    // stick welder box w/ dial + handle
-    put(track(new THREE.BoxGeometry(0.52, 0.34, 0.4)), mat.redCab, 0.15, 1.21, -0.05, 0.15, 0, 0, 1, b);
-    put(track(new THREE.CylinderGeometry(0.06, 0.06, 0.03, 12)), mat.steelBright, 0.15, 1.27, 0.17, 0, 1.42, 0, 1, b);
-    // angle grinder on its side
-    put(track(new THREE.CylinderGeometry(0.055, 0.065, 0.34, 10)), mat.blueSteel, 0.95, 1.09, 0.22, 0, 0, Math.PI / 2, 1, b);
-    put(track(new THREE.CylinderGeometry(0.11, 0.11, 0.018, 14)), mat.steelBright, 1.18, 1.09, 0.22, 0, 0.2, Math.PI / 2, 1, b);
-    // oil can + rag pile
-    put(track(new THREE.CylinderGeometry(0.07, 0.08, 0.2, 10)), mat.olive, 1.32, 1.14, -0.18, 0, 0, 0, 1, b);
-    put(track(new THREE.BoxGeometry(0.3, 0.05, 0.24)), mat.timberDark, -0.42, 1.07, -0.24, 0.5, 0, 0, 1, b);
-    return b;
-  }
-
   // the shadow boards' one vertex-colour material (the Verdant kit's key), made with the first board
   let shadowBoardMaterial: THREE.MeshStandardMaterial | null = null;
   /**
@@ -2411,7 +2384,7 @@ export function createGarageDressing(
 
   function buildWorkshopClutter(interiorChildrenStart: number): void {
     // --- EAST WALL (left of frame from the hero cam) ------------------------
-    workbench(21.95, -7, -Math.PI / 2);
+    // (garage r9: the bench under the shadow board is the kit's working bench, garageVerdantKit.ts)
     pegboardAt('east_tools');
     workLamp(21.6, -7);
     // steel locker pair
@@ -2577,10 +2550,9 @@ export function createGarageDressing(
       // drip tray under it
       put(track(new THREE.BoxGeometry(0.8, 0.05, 0.6)), mat.steelDark, 0, 0.03, 1.38, 0, 0, 0, 1, eh);
     }
-    // NORTH wall: second bench + red chest + engine on pallet + lamp
-    workbench(3.2, -21.85, 0);
+    // NORTH wall: the shadow board over the kit's second bench and roll cab (garage r9, garageVerdantKit.ts), the engine
+    // on its pallet, the lamp
     pegboardAt('north_tools');
-    toolChest(6.6, -21.4, 0.15, mat.redCab, mat.redCabDark);
     workLamp(3.2, -21.2);
     {
       put(track(new THREE.BoxGeometry(1.2, 0.11, 0.95)), mat.timberDark, 10.3, 0.06, -20.9, -0.15);
