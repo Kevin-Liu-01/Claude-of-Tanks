@@ -286,8 +286,10 @@ function read(tank) {
     'a touch slot\'s shell stands on the label\'s floor');
   assert.match(responsive, /\[data-cot-orientation='landscape'\] \.cot-shell:not\(\.wide\) canvas\{bottom:12px;transform:translateX\(-50%\) scale\(\.64\)\}/,
     'the 48 px landscape slot\'s shell is smaller, clear of the corner count and the label');
-  assert.equal(layout.match(/\.cot-touch-layout \.cot-shell:not\(\.wide\) canvas\{transform:translateX\(-50%\) scale\(\.6\)\}/g)?.length, 2,
-    'and the 44 px slots\' (a landscape under 300 px tall, a portrait under 341 px wide) smaller again');
+  assert.equal(layout.match(/\.cot-touch-layout \.cot-shell:not\(\.wide\) canvas\{transform:translateX\(-50%\) scale\(\.6\)\}/g)?.length, 1,
+    'and the 44 px tall slots\' smaller again (a portrait under 341 px wide)');
+  assert.equal(layout.match(/\.cot-touch-layout \.cot-shell:not\(\.wide\) canvas\{transform:translateX\(calc\(-50% - 3px\)\) scale\(\.6\)\}/g)?.length, 1,
+    'a landscape under 300 px tall too, its 44 px wide slot stepping the dart left of the corner count');
   assert.match(touch, /body\.cot-gun-dry \.cot-touch \.fire\{[^}]*opacity:\.62/, 'a dry gun dims the FIRE buttons');
   // critic r6: every mouse tray under 1000 px stacks (48x52 slots at 900 px, 44x52 at 640) and its bottom row cannot
   // hold a type label and a count (APFSDS|∞ overlapped by 12 px; the old stacked scale had dropped the desktop raise).
@@ -305,6 +307,8 @@ function read(tank) {
   assert.match(layout, stacked(":is\\(\\.cot-shell,\\.cot-con\\) \\.key\\{top:1px;left:1px;padding:0 2px;font-size:8px;line-height:10px\\}"),
     'a smaller key keeps the top-left corner (the consumables\' too, so the tray\'s keys match)');
   assert.match(layout, stacked("\\.cot-shell\\.empty::before\\{left:12px;right:12px\\}"), 'an empty slot\'s strike spans its icon');
+  assert.match(layout, /\[data-hud-tray='stacked'\]:is\(\[data-cot-width='phone'\],\[data-cot-width='compact'\]\) \.cot-shell:not\(\.wide\) canvas\{transform:translateX\(calc\(-50% - 1px\)\) scale\(\.56\)\}/,
+    'the 44 px wide stacked slots draw it smaller and 1 px left, clear of a two-digit count');
   // the rendered proof of these rules is tools/hud-ammo-states.browser.mjs (computed styles of the live tray)
 }
 

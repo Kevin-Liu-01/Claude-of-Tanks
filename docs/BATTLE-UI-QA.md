@@ -127,7 +127,8 @@ cannot hold a label and a count, so the count takes the top-right corner beside
 a smaller key, and the shell stands on the label's floor, small enough that the
 HE drum's top keeps clear of both corners. On touch the shell stands on the
 label's floor too, so every slot height keeps the gap, and the shorter slots
-draw it smaller. A count of three digits or more tightens its slot's type label
+draw it smaller. The 44 px wide slots step it left of the corner count (by 1 px
+on the stacked mouse tray, 3 px on a landscape phone under 300 px tall). A count of three digits or more tightens its slot's type label
 and count, and the shell icon gives way to it: on desktop the icon rises; on
 touch and on the stacked mouse tray it shrinks and steps left, out from under
 the corner count. Under unlimited rounds nothing reads empty:

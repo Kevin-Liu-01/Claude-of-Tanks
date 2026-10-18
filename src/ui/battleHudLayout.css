@@ -83,6 +83,9 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell.unlimited .cnt{font-size:16px;line-height:11px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] :is(.cot-shell,.cot-con) .key{top:1px;left:1px;padding:0 2px;font-size:8px;line-height:10px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell.empty::before{left:12px;right:12px}
+/* the 44 px wide slots (under 768 px) draw it smaller again and 1 px left, so the HE drum keeps 3 px from a two-digit
+   count (r7 capture: 2.7 px at 640 px) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-shell:not(.wide) canvas{transform:translateX(calc(-50% - 1px)) scale(.56)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-minimap{top:80px}
 /* Keep touch health inside the gap between thumbs; the old inline schematic
    width overrode the responsive HP-only width and hit the joystick. */
@@ -272,7 +275,8 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire:not(.alt){bottom:8px}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shells{top:66px;bottom:auto!important}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell{height:44px}
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell:not(.wide) canvas{transform:translateX(-50%) scale(.6)}
+  /* (its 44 px wide slot steps the dart 3 px left, clear of the corner count: r7 capture, 1.7 px at 568x290) */
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell:not(.wide) canvas{transform:translateX(calc(-50% - 3px)) scale(.6)}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-cons{top:116px;bottom:auto!important}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-con{height:44px}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-sixth{left:122px;transform:none;width:136px;min-height:32px;font-size:9px}
