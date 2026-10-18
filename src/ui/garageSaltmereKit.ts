@@ -430,7 +430,7 @@ export const SALTMERE_KIT: GarageKitPlacement = {
       options: { gap: 0.12 }, datum: true },
     // the harbour master's hut beyond the crane's runway, its desk and screens in the office window, its flag mast
     { kind: 'piece', key: 'saltmere-hut', build: harbourMasterHut, at: [30.4, 16.4], yaw: FACE_CAMERA - 0.35, datum: true },
-    { kind: 'display', display: 'station', at: [30.42, 17.03], yaw: FACE_CAMERA - 0.35, y: HUT_FLOOR, datum: true,
+    { kind: 'display', display: 'station', at: [30.42, 17.03], yaw: FACE_CAMERA - 0.35, y: HUT_FLOOR + 0.32, datum: true,
       screens: ['readout.armor.k2', 'map.coastal', 'readout.modules.abrams'], width: 2.2 },
     { kind: 'piece', key: 'saltmere-flag', build: flagMast, at: [27.6, 19.6], yaw: FACE_CAMERA, datum: true },
     { kind: 'display', display: 'plate', rect: 'brand.crest.metal', at: [28.35, 15.32], yaw: FACE_CAMERA - 0.35, y: 2.6,

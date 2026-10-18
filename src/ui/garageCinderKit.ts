@@ -432,7 +432,7 @@ export const CINDER_KIT: GarageKitPlacement = {
     { kind: 'sign', sign: 'plate', rect: 'picto.nosmoking', at: [18.6, 26.2], yaw: FACE_CAMERA, y: 1.75, size: [0.42, 0.42], datum: true },
     // the signal box at the throat, its desk in the window band, a semaphore at the shed's road ends, the point levers
     { kind: 'piece', key: 'cinder-signal-box', build: signalBox, at: [17.0, 10.8], yaw: FACE_CAMERA - 0.3 },
-    { kind: 'display', display: 'station', at: [17.15, 11.28], yaw: FACE_CAMERA - 0.3, y: BOX_FLOOR + 0.08,
+    { kind: 'display', display: 'station', at: [17.15, 11.28], yaw: FACE_CAMERA - 0.3, y: BOX_FLOOR + 0.42,
       screens: ['readout.armor.leopard', 'map.railyard', 'readout.modules.burlak'], width: 2.4 },
     { kind: 'piece', key: 'cinder-semaphore', build: semaphore, at: [11.6, 16.2], yaw: FACE_CAMERA },
     { kind: 'piece', key: 'cinder-point-lever', build: pointLever, at: [9.6, 12.4], yaw: FACE_CAMERA + 0.2 },

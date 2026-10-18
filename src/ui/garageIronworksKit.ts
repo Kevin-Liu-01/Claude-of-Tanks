@@ -515,7 +515,7 @@ export const IRONWORKS_KIT: GarageKitPlacement = {
     { kind: 'piece', key: 'ironworks-shunter', build: shunter, at: [17.6, 41.2], yaw: FACE_CAMERA, datum: true, y: 0.05 },
     // the elevated control pulpit left of the bay, its console's screens, the media board, the PPE station, heat screens
     { kind: 'piece', key: 'ironworks-pulpit', build: controlPulpit, at: [-18.6, 16.4], yaw: FACE_CAMERA },
-    { kind: 'display', display: 'station', at: [-18.6, 17.0], yaw: FACE_CAMERA, y: PULPIT_FLOOR,
+    { kind: 'display', display: 'station', at: [-18.6, 17.0], yaw: FACE_CAMERA, y: PULPIT_FLOOR + 0.36,
       screens: ['readout.modules.t90', 'map.foundry', 'readout.armor.abrams'], width: 2.4 },
     { kind: 'display', display: 'board', rects: ['media.foundry', 'media.railyard', 'media.urban'], at: [-14.6, 11.6],
       yaw: FACE_CAMERA + 0.25, size: [2.8, 1.0], posts: 0.9 },
