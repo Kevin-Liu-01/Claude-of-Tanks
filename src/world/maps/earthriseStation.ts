@@ -15,7 +15,7 @@
 // which the works' plant takes; every plot stands 12 m or more off a carriageway and 35 m or more off an objective disc
 // (the station receipt, earthriseStation.selftest.mjs). The sites are terraces in the props' sense (an authored site, its
 // own stream, its author holding the footprints apart), so each stands exactly where it is written.
-export interface StationSite {
+interface StationSite {
   structure: string;
   x: number;
   z: number;

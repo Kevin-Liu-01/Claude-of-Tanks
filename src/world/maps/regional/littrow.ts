@@ -715,7 +715,7 @@ const toolLocker: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-export const LITTROW_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
+const LITTROW_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   barn: habitat,
   cottage: node,
   schoolhouse: garage,

@@ -72,11 +72,6 @@ function merge(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
   return geometry;
 }
 
-/** A box `w` x `h` x `d` standing on y = 0 at (x, z). */
-function block(w: number, h: number, d: number, x: number, y: number, z: number): THREE.BufferGeometry {
-  return new THREE.BoxGeometry(w, h, d).translate(x, y + h / 2, z);
-}
-
 /**
  * A regolith bag `l` long (along x), `h` high and `d` deep, its bottom on y = 0: a filled sack, full in the middle and
  * gathered at its tied ends, settled flat underneath; coloured from its dusted foot to its paler top.
