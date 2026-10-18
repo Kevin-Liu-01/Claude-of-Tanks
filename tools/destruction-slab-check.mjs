@@ -33,12 +33,14 @@
  *
  *   node tools/destruction-slab-check.mjs [--map=verdant] [--ids=9] [--builders=church] [--per-builder=1] [--rounds=40]
  *        [--gap=0.45] [--settle=10] [--sections=1] [--fracture=1] [--storeys=0,1] [--render=<dir>] [--json=<out>]
- *        [--max-snapshots=40]
+ *        [--max-snapshots=40] [--faces=wide,wide-back,narrow,narrow-back] [--seed=<n>]
  *        [--stop-after=roof] [--upper=0]
  * (--stop-after=roof: stop firing once the roof section falls and judge the building standing roofless at the end of the
  *  settle — a fallen roof's slabs lying flat across the wall heads at the eaves, the owner's 2026-10-17 frame; --upper=0:
  *  judge plates 2 m or more up against the whole intact plan instead of the walls' plan at height)
  * (--storeys: the anatomy storeys whose widest face the rounds cycle through; the ground storey by default)
+ * (--faces: the sides of the drawn plan struck, each a run of its own — wide (the default), wide-back, narrow, narrow-back;
+ *  each face's rounds at its own seeded offsets (wide 0, wide-back 3, narrow 5, narrow-back 7), or all at --seed)
  *
  * (census9b, 2026-10-17) Every snapshot carries its phase: hit (holes only), damaged, heavily damaged (a breached stage or
  * a section down), collapse, settled ruin (or `standing end`); each standing phase is also judged just before the event
@@ -795,6 +797,7 @@ export function renderPng(file, layers, { eye, target, fov = 50, width = 1280, h
 export async function runSlabCheck({
   mapId = 'verdant', ids = null, builders = null, perBuilder = 1, rounds = 40, roundGapS = 0.45, settleS = 10, stopAfterRoof = false, upper = true,
   sections = true, fracture = true, renderDir = null, maxSnapshots = 40, storeys = [0], log = () => {}, rejoin = true,
+  faces = ['wide'], seed = null,
 } = {}) {
   installWorldBuildFixture();
   const [maps, terrain, vegetation, props, models, fleet] = await Promise.all([
@@ -885,7 +888,13 @@ export async function runSlabCheck({
   const ground0 = (x, z) => (field.getContactHeightAt ? field.getContactHeightAt(x, z) : field.getHeightAt(x, z));
 
   const rows = [];
-  for (const id of picks) {
+  // (destruction-slabs 227 round 2) each building struck from every face asked for (`faces`: wide, wide-back, narrow,
+  // narrow-back — its wider or narrower side, the near or the far one), each face's rounds at its own seeded offsets
+  // (the receipt's own at seed 0; the critic's variant census: the same building from another face flagged what the
+  // widest face never showed)
+  const runs = picks.flatMap((id) => faces.map((faceName) => [id, faceName]));
+  for (const [id, faceName] of runs) {
+    const faceSeed = seed ?? FACE_SEEDS[faceName] ?? 0;
     const seam = seamOf(id);
     const a = seam.anatomy;
     // (the roof pass) a building without a roof section has no roof to come down: the full pass covers it
@@ -982,10 +991,13 @@ export async function runSlabCheck({
       const bx = dx * c - dz * s, bz = dx * s + dz * c;
       bx0 = Math.min(bx0, bx); bx1 = Math.max(bx1, bx); bz0 = Math.min(bz0, bz); bz1 = Math.max(bz1, bz); btop = Math.max(btop, t[i + 1] - a.placement.y);
     }
-    const alongX = bx1 - bx0 >= bz1 - bz0;
+    const alongX = (bx1 - bx0 >= bz1 - bz0) !== faceName.startsWith('narrow');
+    const back = faceName.endsWith('-back');
     const face = alongX
-      ? { origin: [(bx0 + bx1) / 2, 0, bz1], u: [1, 0, 0], out: [0, 0, 1], width: bx1 - bx0, height: btop }
-      : { origin: [bx1, 0, (bz0 + bz1) / 2], u: [0, 0, -1], out: [1, 0, 0], width: bz1 - bz0, height: btop };
+      ? (back ? { origin: [(bx0 + bx1) / 2, 0, bz0], u: [-1, 0, 0], out: [0, 0, -1], width: bx1 - bx0, height: btop }
+        : { origin: [(bx0 + bx1) / 2, 0, bz1], u: [1, 0, 0], out: [0, 0, 1], width: bx1 - bx0, height: btop })
+      : (back ? { origin: [bx0, 0, (bz0 + bz1) / 2], u: [0, 0, 1], out: [-1, 0, 0], width: bz1 - bz0, height: btop }
+        : { origin: [bx1, 0, (bz0 + bz1) / 2], u: [0, 0, -1], out: [1, 0, 0], width: bz1 - bz0, height: btop });
     const bandsUp = storeys.map((k) => { const y0 = Math.min(k * 3, Math.max(0, btop - 3)); return [y0, Math.min(btop, y0 + 3)]; });
     const nx = face.out[0] * c + face.out[2] * s, nz = -face.out[0] * s + face.out[2] * c;
     const ownRecords = [...built.colliders, ...built.obstacles].filter((r) => r.structureIdx === id);
@@ -1005,8 +1017,13 @@ export async function runSlabCheck({
       }
       return best;
     };
-    const offs = [0, -0.42, 0.38, -0.18, 0.24, -0.33, 0.1, 0.45, -0.45, 0.05, 0.3, -0.25, 0.15, -0.1];
-    const ys = [0.35, 0.6, 0.45, 0.75, 0.3, 0.65, 0.5, 0.85, 0.4, 0.55, 0.7, 0.35, 0.6, 0.5];
+    const offs0 = [0, -0.42, 0.38, -0.18, 0.24, -0.33, 0.1, 0.45, -0.45, 0.05, 0.3, -0.25, 0.15, -0.1];
+    const ys0 = [0.35, 0.6, 0.45, 0.75, 0.3, 0.65, 0.5, 0.85, 0.4, 0.55, 0.7, 0.35, 0.6, 0.5];
+    // a seeded face's rounds: a deterministic shuffle of the offsets along the face and the heights in each band
+    let rs = (faceSeed * 2654435761 + id * 97 + 1) >>> 0;
+    const rnd = () => { rs = (rs * 1664525 + 1013904223) >>> 0; return rs / 4294967296; };
+    const offs = faceSeed ? offs0.map(() => (rnd() - 0.5) * 0.92) : offs0;
+    const ys = faceSeed ? ys0.map(() => 0.25 + rnd() * 0.65) : ys0;
     const spec = { name: 'check', type: 'HE', caliberMm: 125, velocityMps: 850 };
     const munition = munitionClassForShell(spec), chargeKg = munitionChargeKg(spec, munition);
     const record = shellRecord.get(id);
@@ -1044,7 +1061,7 @@ export async function runSlabCheck({
       const layers = [{ tris: groundPatch(groundFn, mid[0], mid[2], reach * 1.2, 3), rgb: [0.36, 0.48, 0.26] }];
       if (standingSpans) for (const t of drawnSpanTriangles(seam.spans)) layers.push({ tris: t, rgb: [0.82, 0.8, 0.76] });
       for (const m of meshes) layers.push({ tris: m.tris, rgb: tintOf(m), side: m.material.side });
-      const base = path.join(renderDir, `${mapId}-s${id}-${String(rendered++).padStart(2, '0')}-${label}`);
+      const base = path.join(renderDir, `${mapId}-s${id}${faceName === 'wide' ? '' : `-${faceName}`}-${String(rendered++).padStart(2, '0')}-${label}`);
       // as drawn (the CPU's approximation: flat tints, no texture, no hole cuts), then with the flagged pieces magenta
       renderPng(`${base}-look.png`, layers, { eye, target: mid });
       renderPng(`${base}-low.png`, layers, { eye: eyeLow, target: mid });
@@ -1193,7 +1210,7 @@ export async function runSlabCheck({
     }
     const flaggedSnaps = snapshots.filter((p) => p.findings.length);
     const row = {
-      id, builder: seam.builder, kit: a.kit, style: seam.style, anatomy: { w: +a.w.toFixed(2), d: +a.d.toFixed(2), h: +a.h.toFixed(2), storeys: a.storeys.length,
+      id, face: faceName, seed: faceSeed, builder: seam.builder, kit: a.kit, style: seam.style, anatomy: { w: +a.w.toFixed(2), d: +a.d.toFixed(2), h: +a.h.toFixed(2), storeys: a.storeys.length,
         floors: a.storeys.filter((st) => st.floor).length, roof: a.roof?.kind ?? null }, fired, collapsedAtS: +collapsedAt.toFixed(2),
       staging: { placement: { x: +a.placement.x.toFixed(2), y: +a.placement.y.toFixed(2), z: +a.placement.z.toFixed(2), yaw: +a.placement.yaw.toFixed(4) },
         dir: [+(-nx).toFixed(4), +(-nz).toFixed(4)], mid: mid.map((v) => +v.toFixed(2)), eye: eye.map((v) => +v.toFixed(2)),
@@ -1208,10 +1225,13 @@ export async function runSlabCheck({
       }, {}),
     };
     rows.push(row);
-    log(`#${id} ${seam.builder}: ${row.pass ? 'PASS' : `FAIL (${flaggedSnaps.length} of ${snapshots.length} snapshots flag stray slabs; ${spanIssues.length} span issues)`}`);
+    log(`#${id} ${seam.builder}${faceName === 'wide' ? '' : ` (${faceName})`}: ${row.pass ? 'PASS' : `FAIL (${flaggedSnaps.length} of ${snapshots.length} snapshots flag stray slabs; ${spanIssues.length} span issues)`}`);
   }
   return { mapId, sections, fracture, pass: rows.every((r) => r.pass), buildings: rows.length, skipped: [...skipped.values()], rows };
 }
+
+/** Each face's default seed (the wide face's rounds are the receipt's own; the others the critic's variant stagings). */
+const FACE_SEEDS = Object.freeze({ wide: 0, 'wide-back': 3, narrow: 5, 'narrow-back': 7 });
 
 function strip(f) { const { _tris, ...rest } = f; void _tris; return rest; }
 
@@ -1274,11 +1294,12 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     stopAfterRoof: args['stop-after'] === 'roof', upper: args.upper !== '0',
     renderDir: typeof args.render === 'string' ? args.render : null, maxSnapshots: Number(args['max-snapshots'] ?? 40), rejoin: args.rejoin !== '0',
     storeys: typeof args.storeys === 'string' ? args.storeys.split(',').map(Number) : [0],
+    faces: typeof args.faces === 'string' ? args.faces.split(',') : ['wide'], seed: args.seed !== undefined ? Number(args.seed) : null,
     log: (...m) => console.log('[slab-check]', ...m),
   });
   if (typeof args.json === 'string') writeFileSync(args.json, JSON.stringify(report, null, 1));
   for (const r of report.rows) {
-    console.log(`${r.pass ? 'PASS' : 'FAIL'} #${r.id} ${r.builder} (${r.kit}; ${r.anatomy.w} x ${r.anatomy.d} x ${r.anatomy.h} m, ${r.anatomy.storeys} storeys, ${r.anatomy.floors} floors):`
+    console.log(`${r.pass ? 'PASS' : 'FAIL'} #${r.id} ${r.builder}${r.face === 'wide' ? '' : ` [${r.face}]`} (${r.kit}; ${r.anatomy.w} x ${r.anatomy.d} x ${r.anatomy.h} m, ${r.anatomy.storeys} storeys, ${r.anatomy.floors} floors):`
       + ` ${r.fired} rounds, ${r.events.length} events, ${r.collapsedAtS >= 0 ? `collapsed at ${r.collapsedAtS} s` : 'standing'}`);
     for (const p of r.snapshots) if (p.findings.length) {
       console.log(`  t=${p.t}s ${p.label} [${p.phase}]: ${p.findings.length} stray slab(s)${p.render ? ` -> ${p.render}` : ''}`);
