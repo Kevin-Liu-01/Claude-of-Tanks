@@ -456,7 +456,16 @@ diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.3 + vec3(0.012, 0.
   float hardstandGlint = step(0.986, hardstandHash(hardstandCrystal + 7.1))
     * step(0.55, hardstandHash(hardstandCrystal * 1.7 + 3.3));
   totalEmissiveRadiance += vec3(1.5) * hardstandGlint * hardstandSparkle * (1.0 - smoothstep(9.0, 30.0, length(vViewPosition)));
-}`)
+}
+#ifdef USE_MAP
+{
+  // the standing water mirrors the sky (garage r9: "puddles mirroring the sky, replacing the black blots"): the pale
+  // after-rain sky in it, strongest at the grazing angles the yard is seen at (Schlick's term), a darker sky near the zenith
+  float hardstandFacing = clamp(dot(normalize(vViewPosition), normalize(nonPerturbedNormal)), 0.0, 1.0);
+  float hardstandFresnel = 0.04 + 0.96 * pow(1.0 - hardstandFacing, 5.0);
+  totalEmissiveRadiance += hardstandWater * mix(vec3(0.035, 0.042, 0.05), vec3(0.15, 0.17, 0.19), clamp(hardstandFresnel * 2.2, 0.0, 1.0));
+}
+#endif`)
     .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
 roughnessFactor = mix(roughnessFactor * (1.0 - 0.28 * hardstandWet) * (1.0 - 0.3 * hardstandDamp), 0.05, hardstandWater);`)
     .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>

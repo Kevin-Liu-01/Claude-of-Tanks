@@ -404,7 +404,10 @@ function drawHardstand(
   const dir = (angle: number): [number, number] => [Math.sin(angle), Math.cos(angle)];
   // packed snow under tracks is a compacted blue-grey with grit, read against the white (the re-judge, 2026-10-15: "no
   // ... packed track ruts")
-  const rutDark = earth ? (snow ? '104,112,122' : '42,30,22') : '26,24,22';
+  // (garage r9, the g1 lane: the dry and snow yards' ruts read as black painted smears) a dry rut is the ground compacted
+  // and a shade darker, a snow rut is grey slush with the gravel showing through; the wet and slab yards keep theirs
+  const RUT_TONES: Partial<Record<GarageHardstandStyle, string>> = { 'earth-dust': '120,66,42', 'earth-snow': '132,128,120', 'gravel-snow': '98,96,92' };
+  const rutDark = RUT_TONES[style] ?? (earth ? (snow ? '104,112,122' : '42,30,22') : '26,24,22');
   const berm = snow ? '246,250,252' : style === 'earth-sand' ? '232,212,176' : style === 'earth-dust' ? '214,160,124' : '';
   const wheelPath = (
     p0: readonly [number, number], p1: readonly [number, number], p2: readonly [number, number],
@@ -697,7 +700,38 @@ function drawHardstand(
       // compacted redrock earth: gravel in patches, a dry crust between the paths, pale dust blown along the edges
       scatter(80, 0.8, 3.0, 'rgba(206,140,100,0.2)', 'rgba(206,140,100,0.06)', [0.3, 0.7]);
       aggregate(3000, ['120,96,84', '214,170,140'], [0.6, 3.2], [0.12, 0.3], 0.85);
-      crustCracks(260, '92,52,34');
+      crustCracks(160, '92,52,34');
+      // (garage r9: "red hardpan with desiccation-crack polygons in the margins ... gravel and black varnished stones")
+      // the hardpan's shrinkage cracks: polygons of 0.8-1.6 m, their edges wobbling, only away from the turntable and
+      // where the traffic has not crushed them (the density field's quiet ground), fainter toward the busy ground
+      {
+        const cell = 1.15 * PX_PER_M;
+        const cols = Math.ceil(CANVAS_W / cell) + 1, rows = Math.ceil(CANVAS_H / cell) + 1;
+        const nodes: Array<[number, number]> = [];
+        for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) nodes.push([(i + 0.15 + rng() * 0.7) * cell, (j + 0.15 + rng() * 0.7) * cell]);
+        const at = (i: number, j: number): [number, number] => nodes[j * cols + i];
+        g.lineCap = 'round';
+        for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+          const [x, y] = at(i, j);
+          const xm = (x / PX_PER_M) - APRON_W_M / 2, zm = (y / PX_PER_M) - APRON_D_M / 2;
+          const quiet = 1 - THREE.MathUtils.smoothstep(density(x, y), 0.34, 0.58);
+          const away = THREE.MathUtils.smoothstep(Math.hypot(xm, zm), 8.5, 11);
+          const strength = quiet * away;
+          if (strength < 0.05) continue;
+          for (const [di, dj] of [[1, 0], [0, 1], [1, 1]] as const) {
+            if (i + di >= cols || j + dj >= rows || (di && dj && rng() < 0.6)) continue;
+            const [x2, y2] = at(i + di, j + dj);
+            const mx = (x + x2) / 2 + (rng() - 0.5) * cell * 0.25, my = (y + y2) / 2 + (rng() - 0.5) * cell * 0.25;
+            g.strokeStyle = `rgba(74,38,24,${(strength * (0.22 + rng() * 0.18)).toFixed(3)})`;
+            g.lineWidth = 0.8 + rng() * 1.1;
+            g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(mx, my, x2, y2); g.stroke();
+          }
+          // the polygon's face curls and lightens a little toward its edges
+          if (rng() < 0.5) blot(xm + 0.5, zm + 0.5, 0.45, `rgba(214,160,122,${(strength * 0.12).toFixed(3)})`, 'rgba(214,160,122,0)', 0.8);
+        }
+      }
+      // desert varnish on the stones: small dark pebbles lying on the hardpan, more in the margins
+      aggregate(900, ['44,26,20', '64,38,28'], [0.8, 2.6], [0.3, 0.55], 0.6);
       drifts('214,160,124', 0.26, 2.0, false);
       break;
     }
@@ -718,17 +752,19 @@ function drawHardstand(
       break;
     }
     case 'earth-snow': {
-      // packed snow: glazed ice where it melted and froze, grit and soot, drifts banked at the edges and the podium
-      scatter(40, 0.5, 1.8, 'rgba(176,196,214,0.32)', 'rgba(176,196,214,0.1)', [0.4, 0.8]);
-      scatter(24, 0.3, 1.0, 'rgba(118,112,104,0.1)', 'rgba(118,112,104,0.03)'); // grit, not grey smears (the re-judge)
-      aggregate(1600, ['80,78,74'], [0.5, 1.8], [0.06, 0.18], 0.85);
-      drifts('250,252,255', 0.6, 2.8, true);
+      // packed snow: glazed ice where it melted and froze, a little grit, drifts banked at the edges and the podium
+      // (garage r9: "the mottled grey snow" goes: the glaze in fewer, cleaner patches, the grit finer)
+      scatter(22, 0.5, 1.6, 'rgba(186,204,220,0.26)', 'rgba(186,204,220,0.08)', [0.4, 0.8]);
+      aggregate(900, ['92,88,82'], [0.5, 1.4], [0.05, 0.14], 0.85);
+      drifts('250,252,255', 0.66, 3.0, true);
       break;
     }
     case 'gravel-snow': {
       // crushed-rock hardstand with old snow lying in its hollows and banked at the edges
-      aggregate(5600, ['70,70,66', '120,120,116', '180,180,176'], [0.7, 3.4], [0.16, 0.42], 0.75);
-      scatter(70, 0.6, 2.6, 'rgba(232,238,244,0.56)', 'rgba(232,238,244,0.16)', [0.35, 0.8]);
+      // (garage r9: "compacted snow and gravel with ruts and plough berms", the yard snow-covered, the gravel showing
+      // through in the lanes, not a grey mottle)
+      aggregate(3000, ['78,78,74', '124,124,120', '180,180,176'], [0.6, 2.6], [0.1, 0.28], 0.75);
+      scatter(120, 0.8, 3.0, 'rgba(236,241,246,0.62)', 'rgba(236,241,246,0.2)', [0.35, 0.8]);
       drifts('236,242,246', 0.55, 2.6, true);
       break;
     }

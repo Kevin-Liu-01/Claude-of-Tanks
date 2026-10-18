@@ -1682,7 +1682,8 @@ export function addGarageFacilityDetails({
    * corrugated roof, a searchlight on the front rail, and a ring of sandbags round the legs' feet. Faces the cluster's
    * +longitudinal.
    */
-  const addGuardTower = (cluster: FacilityCluster, sandbag: THREE.Color, timber: THREE.Color): void => {
+  const addGuardTower = (cluster: FacilityCluster, sandbag: THREE.Color, timber: THREE.Color,
+    options: Readonly<{ cage?: boolean; net?: THREE.Color }> = {}): void => {
     const deckY = 5.0, foot = 1.75, head = 1.35, roofY = 7.6;
     const bagDark = sandbag.clone().multiplyScalar(0.84);
     const leg = (sx: number, sz: number, y: number): [number, number, number] => {
@@ -1737,6 +1738,27 @@ export function addGarageFacilityDetails({
     }
     const pitch = Math.atan2(0.3, 2 * deckHalf);
     clusterBox(cluster, 0, 0, roofY - 0.1, 2 * deckHalf + 0.6, 0.05, 2 * deckHalf + 0.6, new THREE.Color(0x8b8676), 'structure', 0, pitch);
+    // (garage r9, Redrock: "a caged ladder ... a camo-net roof") hoops round the ladder from head height up, tied by
+    // three hoop bars; a camouflage net thrown over the roof, sagging past its eaves
+    if (options.cage) {
+      for (let hoop = 0; hoop < 6; hoop += 1) {
+        const t = (2.4 + hoop * 0.62) / (deckY + 0.9), y = 2.4 + hoop * 0.62;
+        const ladderZ = -foot - 0.45 + t * (foot - head + 0.2);
+        clusterBox(cluster, 0, ladderZ - 0.68, y, 0.82, 0.04, 0.04, timber.clone().multiplyScalar(0.7), 'structure');
+        for (const sx of [-1, 1]) clusterBox(cluster, sx * 0.4, ladderZ - 0.36, y, 0.04, 0.04, 0.68, timber.clone().multiplyScalar(0.7), 'structure');
+      }
+      for (const [dl, dz] of [[-0.4, -0.36], [0.4, -0.36], [0, -0.68]] as const) {
+        clusterBeam(cluster, [dl, -foot - 0.45 + (2.4 / (deckY + 0.9)) * (foot - head + 0.2) + dz, 2.4],
+          [dl, -foot - 0.45 + ((2.4 + 5 * 0.62) / (deckY + 0.9)) * (foot - head + 0.2) + dz, 2.4 + 5 * 0.62], 0.035, timber.clone().multiplyScalar(0.7), 'structure');
+      }
+    }
+    if (options.net) {
+      clusterBox(cluster, 0, 0, roofY + 0.04, 2 * deckHalf + 1.3, 0.06, 2 * deckHalf + 1.3, options.net, 'painted', 0, pitch);
+      for (const [sx, sz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) { // the net's skirts hanging off the eaves
+        clusterBox(cluster, sx * (deckHalf + 0.62), sz * (deckHalf + 0.62), roofY - 0.4, sz ? 2 * deckHalf + 1.1 : 0.05, 0.75, sx ? 2 * deckHalf + 1.1 : 0.05,
+          options.net.clone().multiplyScalar(0.86), 'painted');
+      }
+    }
     // the searchlight on the front rail
     clusterCylinder(cluster, deckHalf - 0.45, deckHalf - 0.2, deckY + 1.0, 0.16, 0.3, dark, Math.PI / 2, 12);
     clusterCylinder(cluster, deckHalf - 0.45, deckHalf - 0.04, deckY + 1.0, 0.14, 0.02, new THREE.Color(0xd8d3bf), Math.PI / 2, 12);
@@ -3209,8 +3231,8 @@ export function addGarageFacilityDetails({
       structuralConnections += 40;
       // the yard's heated-component kit in front of the bunker, clear of the road
       // (the teal pipe gantry is gone: the re-judge, "cut off by the top of the frame and has no clear purpose")
-      addPoweredWinch(fixedCluster(featureSide - 11.0, featureDepth - 9.0), 0, 0, new THREE.Color(0x758b9a));
-      addPartsPallet(fixedCluster(featureSide - 13.0, featureDepth - 3.0), 0, 0, 2);
+      // (garage r9: the winch and the parts pallet stood straight behind the hero; the kit's monorail cell and the bays
+      // carry that work now: garageKitFrosthollow.ts)
       addHydrostaticInspectionDock(fixedCluster(featureSide + 13.0, featureDepth - 3.5), 0, 0, new THREE.Color(0x73848c));
   };
   const addBrickArsenal = (): void => {
@@ -3612,7 +3634,8 @@ export function addGarageFacilityDetails({
       }
       for (let k = 1; k <= 4; k += 1) for (const side of [-1, 1]) {
         const t = k / 5;
-        clusterBox(bayC, side * (halfW + overhang) * (1 - t), 0, eaveY + 0.2 + (ridgeY - eaveY) * t + 0.12 - overhang * 0.53 * (1 - t), 0.12, 0.12, 2 * halfL + 1.4, timberC, 'painted');
+        // under the sheet (garage r9: the purlins stood 2-17 cm proud of it and striped the roof from above)
+        clusterBox(bayC, side * (halfW + overhang) * (1 - t), 0, eaveY + 0.2 + (ridgeY - eaveY) * t - 0.2 - overhang * 0.53 * (1 - t), 0.12, 0.12, 2 * halfL + 1.4, timberC, 'painted');
       }
       gableRoof(bayC, 'roofing', halfW + overhang, eaveY + 0.3 - overhang * Math.tan(THREE.MathUtils.degToRad(28)), ridgeY + 0.15, 2 * halfL + 1.8);
       // the ridge ventilator: a raised cap on posts over the ridge
@@ -3671,7 +3694,7 @@ export function addGarageFacilityDetails({
       }
       // the drainage pumps and the yard kit round the bay
       addServiceManifold(fixedCluster(-9.5, 13.5), 0, 0, 4.2);
-      addPoweredWinch(fixedCluster(13.5, 17.0), 0, 0, new THREE.Color(0x4e8065));
+      // (garage r9: the winch stood in front of the LED panel's column: the canopy's A-frame does the lifting now)
       addSafetyRail(fixedCluster(-11.5, 18.5), 0, 0, 6.5);
       addHydrostaticInspectionDock(fixedCluster(15.5, 24.0), 0, 0, new THREE.Color(0x456d5c));
   };
@@ -3742,9 +3765,27 @@ export function addGarageFacilityDetails({
         clusterCylinder(portal, -wallHalf + 0.6 + bolt * ((2 * wallHalf - 1.2) / 17), wallFront + 0.55, spring + half + 0.42, 0.05, 0.06, dark, Math.PI / 2, 8);
       }
       clusterBox(portal, 0, wallFront + 0.3, 0.05, 2 * wallHalf - 0.4, 0.1, 0.24, ribSteel, 'structure');
-      // the two blast-door leaves parked open either side of the mouth, against the headwall: plate faces on stiffeners
+      // the ice-fall canopy: steel beams cantilevered off the coping over the mouth on raking struts, a decking under a
+      // load of snow, its front edge hung with icicles (garage r9)
+      {
+        const out = 2.6, canopyHalf = half + 1.8, rootY = wallTop + 0.3, tipY = wallTop + 0.05;
+        for (const u of [-canopyHalf, -canopyHalf / 3, canopyHalf / 3, canopyHalf]) {
+          clusterBeam(portal, [u, wallFront - 0.2, rootY], [u, wallFront + out, tipY], 0.2, ribSteel, 'structure');
+          if (Math.abs(u) > half) clusterBeam(portal, [u, wallFront + 0.02, rootY - 2.2], [u, wallFront + out - 0.3, tipY - 0.05], 0.12, ribSteel, 'structure');
+        }
+        clusterBox(portal, 0, wallFront + out / 2 + 0.05, (rootY + tipY) / 2 + 0.16, 2 * canopyHalf + 0.4, 0.08, out + 0.5, concreteDark, 'masonry', 0,
+          Math.atan2(rootY - tipY, out));
+        clusterBox(portal, 0, wallFront + out / 2 + 0.05, (rootY + tipY) / 2 + 0.36, 2 * canopyHalf + 0.2, 0.3, out + 0.3, new THREE.Color(0xe6ecf0), 'painted', 0,
+          Math.atan2(rootY - tipY, out));
+        for (let i = 0; i < 11; i += 1) {
+          const u = -canopyHalf + 0.3 + i * ((2 * canopyHalf - 0.6) / 10), len = 0.35 + ((i * 7) % 4) * 0.18;
+          clusterBox(portal, u, wallFront + out + 0.12, tipY + 0.05 - len / 2, 0.05, len, 0.05, new THREE.Color(0xd6e3ec), 'painted');
+        }
+      }
+      // the two blast-door leaves: the left parked open against the headwall, the right run part-way across the mouth on
+      // its sill track (garage r9: "two blast-door leaves, one open"); plate faces on stiffeners
       for (const side of [-1, 1]) {
-        const leafU = side * (half + 1.35), leafW = wallFront + 0.32, leafH = spring + half - 0.1;
+        const leafU = side < 0 ? -(half + 1.35) : half - 1.05, leafW = wallFront + 0.32, leafH = spring + half - 0.1;
         clusterBox(portal, leafU, leafW, 0.1 + leafH / 2, 2.3, leafH, 0.32, doorSteel, 'painted');
         for (const y of [0.9, leafH / 2, leafH - 0.7]) clusterBox(portal, leafU, leafW + 0.18, y, 2.2, 0.16, 0.06, ribSteel, 'structure');
         for (const du of [-0.95, 0.95]) clusterBox(portal, leafU + du, leafW + 0.18, 0.1 + leafH / 2, 0.12, leafH - 0.2, 0.06, ribSteel, 'structure');
@@ -3917,7 +3958,7 @@ export function addGarageFacilityDetails({
         };
         // pale khaki against the red earth (ticket 6: reddish bags were "barely legible" on Redrock's ground)
         const bag = new THREE.Color(0xc4b48e), bagDark = new THREE.Color(0xa99a76);
-        addGuardTower(facing(towerSide, towerDepth), bag, new THREE.Color(0x5e4632));
+        addGuardTower(facing(towerSide, towerDepth), bag, new THREE.Color(0x5e4632), { cage: true, net: new THREE.Color(0x7a6a48) });
         const fill = new THREE.Color(0xbba57e), mesh = new THREE.Color(0x6a6660);
         for (const side of [-19.6, -11.4]) { // a HESCO cell either side of the tower
           const cell = facing(side, towerDepth + 0.4);

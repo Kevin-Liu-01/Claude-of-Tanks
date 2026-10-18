@@ -23,10 +23,10 @@ export const GARAGE_KIT_FROSTHOLLOW: GarageKitPlacement = {
     { kind: 'display', display: 'board', rects: ['media.winter', 'media.alpine', 'media.verdant'], at: [24.2, 19.6], yaw: Math.PI / 4 - 0.4, size: [2.2, 1.0], posts: 1.0 },
     { kind: 'display', display: 'pvc', rect: 'brand.banner.h', at: [19.8, 20.15], yaw: Math.PI / 4, y: 1.45, size: [4.6, 0.72], options: { gap: 0.3 } },
     // a monorail on its portal frame at work: a road-wheel station lifted over its stands
-    { kind: 'crane', crane: 'monorail', at: [-11.6, 16.4], yaw: Math.PI / 2 - 0.2, params: { length: 5.2, height: 4.6, trolleyAt: 0.72, load: { kind: 'roadwheels' } } },
-    { kind: 'bench', name: 'standSet', at: [-13.4, 19.6], yaw: Math.PI / 2 - 0.2 },
-    { kind: 'bench', name: 'workbench', at: [-16.6, 14.4], yaw: Math.PI / 2 - 0.2, params: { screen: 'readout.modules.burlak' } },
-    { kind: 'bench', name: 'rollCab', at: [-15.8, 17.6], yaw: Math.PI / 2 },
+    { kind: 'crane', crane: 'monorail', at: [-16.2, 15.6], yaw: Math.PI / 2 - 0.2, params: { length: 5.2, height: 4.6, trolleyAt: 0.72, load: { kind: 'roadwheels' } } },
+    { kind: 'bench', name: 'standSet', at: [-18.0, 18.8], yaw: Math.PI / 2 - 0.2 },
+    { kind: 'bench', name: 'workbench', at: [-21.0, 13.4], yaw: Math.PI / 2 - 0.2, params: { screen: 'readout.modules.burlak' } },
+    { kind: 'bench', name: 'rollCab', at: [-20.4, 16.6], yaw: Math.PI / 2 },
     // the cold-start cell: the booster compressor and its hose, the frosted bowser, jerrycans
     { kind: 'prop', name: 'compressor', at: [-18.4, 9.6], yaw: Math.PI / 2 + 0.3 },
     { kind: 'prop', name: 'coiledHose', at: [-16.8, 8.2], yaw: 0.4 },

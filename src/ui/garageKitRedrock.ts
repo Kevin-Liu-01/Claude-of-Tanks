@@ -7,7 +7,7 @@ import type { GarageKitPlacement } from './garageKitPlacement.ts';
  * (garageKitPlacements.ts).
  *
  * The cells: the recovery gantry at work, a hull hanging under its spreader beam over the turning rolls (it replaces the
- * facility's box-built frame); the site office's cell in the compound (a computer station, the recovery board); the LED
+ * facility's box-built frame); the site office's cell at the yard's left (a computer station, the recovery board); the LED
  * trailer and its generator in the frame's right band (garageSlideshowPlacement.ts); the parts and fuel cell; the
  * recovery story's low-loader with its ramps down, chained timber on its deck, damaged road wheels and a track pallet by
  * it; an A-frame at work on a power pack beside its stand and the bench; muralled T-walls
@@ -20,14 +20,14 @@ export const GARAGE_KIT_REDROCK: GarageKitPlacement = {
     { kind: 'crane', crane: 'portal', at: [16, 17], yaw: Math.PI / 2,
       params: { span: 15, height: 8.2, runway: 11, lattice: true, swl: 40, load: { kind: 'hull', rigging: 'beam' }, trolleyAt: 0.68 } },
     // the site office cell
-    { kind: 'display', display: 'station', at: [-20.6, 30.4], yaw: Math.PI / 2, screens: ['readout.armor.k2', 'map.badlands', 'readout.modules.burlak'], width: 2.0, rugged: true },
+    { kind: 'display', display: 'station', at: [-12.8, 7.0], yaw: Math.PI / 2 - 0.25, screens: ['readout.armor.k2', 'map.badlands', 'readout.modules.burlak'], width: 2.0, rugged: true },
     // the LED trailer's generator and its cable reel beside it (the trailer itself: garageSlideshowPlacement.ts)
     { kind: 'prop', name: 'generator', at: [22.2, 37.6], yaw: 0 },
     { kind: 'prop', name: 'cableReel', at: [21.2, 39.6], yaw: 0.4 },
     { kind: 'display', display: 'nameboard', at: [-15.4, 14.2], yaw: Math.PI / 2, width: 2.6, posts: 1.2 },
-    { kind: 'display', display: 'board', rects: ['media.desert', 'media.foundry', 'media.urban'], at: [-19.8, 27.6], yaw: Math.PI / 2, size: [2.6, 1.1], posts: 0.9 },
-    { kind: 'sign', sign: 'post', rect: 'picto.speed10', at: [-12.4, 9.6], yaw: Math.PI / 2, size: [0.6, 0.6] },
-    { kind: 'sign', sign: 'post', rect: 'picto.tankcrossing', at: [-12.4, 11.2], yaw: Math.PI / 2, size: [0.7, 0.62] },
+    { kind: 'display', display: 'board', rects: ['media.desert', 'media.foundry', 'media.urban'], at: [-21.4, 8.6], yaw: Math.PI / 2 - 0.1, size: [2.6, 1.1], posts: 0.9 },
+    { kind: 'sign', sign: 'post', rect: 'picto.speed10', at: [-9.8, 3.6], yaw: Math.PI / 2 - 0.3, size: [0.6, 0.6] },
+    { kind: 'sign', sign: 'post', rect: 'picto.tankcrossing', at: [-10.6, 5.0], yaw: Math.PI / 2 - 0.3, size: [0.7, 0.62] },
     // the parts and fuel cell behind the trailer
     { kind: 'prop', name: 'tarpStack', at: [-12.6, 32.6], yaw: 0.1 },
     { kind: 'prop', name: 'pallet', at: [-14.6, 33.4], yaw: 0 },

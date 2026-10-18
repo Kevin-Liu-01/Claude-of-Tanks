@@ -30,7 +30,7 @@ const GARAGE_PLATFORM_BASE_R = GARAGE_PLATFORM_GEOMETRY.baseRadiusM;
 const GARAGE_PLATFORM_TOP_Y = GARAGE_PLATFORM_GEOMETRY.topYM;
 
 type GaragePlatformCollarKind =
-  | 'epoxy-chevron' | 'galvanised' | 'granite' | 'brick-rail' | 'grating-trench' | 'steel-plate' | 'wet-steel';
+  | 'epoxy-chevron' | 'galvanised' | 'granite' | 'brick-rail' | 'grating-trench' | 'steel-plate' | 'wet-steel' | 'melt-ring';
 
 interface GaragePlatformCollar {
   readonly kind: GaragePlatformCollarKind;
@@ -53,7 +53,7 @@ export const GARAGE_PLATFORM_COLLARS: Readonly<Record<GarageVariant['architectur
   naval_drydock: { kind: 'galvanised', body: 0x9aa0a0, accent: 0x7a5038, plinth: 0x8a8c88, drift: null, note: 'galvanised steel with salt bloom and rust streaks' },
   rail_roundhouse: { kind: 'brick-rail', body: 0x7a3e2e, accent: 0x7a7e82, plinth: 0x3a3634, drift: null, note: 'brick-faced collar with a circular running rail' },
   rain_canopy: { kind: 'grating-trench', body: 0x4a5048, accent: 0x2e3a3a, plinth: 0x6a6c64, drift: null, note: 'a steel-grating drainage trench holding water' },
-  rock_cavern: { kind: 'granite', body: 0x7e8488, accent: 0x5e6468, plinth: 0x6a7074, drift: null, note: 'heated melt ring with granite setts showing' },
+  rock_cavern: { kind: 'melt-ring', body: 0x7e8488, accent: 0x464c50, plinth: 0x585e62, drift: null, note: 'heated melt ring with granite setts showing' },
   recovery_yard: { kind: 'galvanised', body: 0x9a948c, accent: 0xa5603e, plinth: 0x8a6a54, drift: 0xb06a44, note: 'galvanised steel with red dust banked to windward' },
   factory_line: { kind: 'steel-plate', body: 0x4a4e52, accent: 0x5a6aa0, plinth: 0x3a3836, drift: null, note: 'heavy plate, heat-tinted edges, bolt heads, slag spatter' },
 });
@@ -110,6 +110,14 @@ export function buildGaragePlatformCollar(architecture: GarageVariant['architect
         bevelTone = tone.clone().multiplyScalar(1.05);
         break;
       }
+      case 'melt-ring': {
+        // Glacier's heated ring: dressed granite setts, wet from the melt, darker and glossier toward the foot
+        const block = Math.floor(s / 2);
+        tone.copy(bodyColor).offsetHSL(0, 0, ((block * 7919) % 11) / 11 * 0.07 - 0.035);
+        sideTone = tone.clone().lerp(accent, 0.35);
+        bevelTone = tone.clone().multiplyScalar(0.96);
+        break;
+      }
       case 'brick-rail': {
         sideTone = bodyColor.clone().offsetHSL(0, 0, ((s * 37) % 11) / 11 * 0.08 - 0.04);
         bevelTone = new THREE.Color(0x4a4644);
@@ -158,6 +166,16 @@ export function buildGaragePlatformCollar(architecture: GarageVariant['architect
     for (let s = 0; s < SEGMENTS; s += 1) {
       const a0 = (s / SEGMENTS) * Math.PI * 2, a1 = ((s + 1) / SEGMENTS) * Math.PI * 2;
       b.polygon([at(r1 + 0.06, 0.012, a0), at(r1 + 0.06, 0.012, a1), at(r1 + 0.42, 0.012, a1), at(r1 + 0.42, 0.012, a0)], s % 2 ? 0x2a3030 : 0x384040, [0, 1, 0]);
+    }
+  }
+  // Glacier's melt margin: a ring of wet granite setts round the plinth where the heated collar keeps the snow off
+  if (collar.kind === 'melt-ring') {
+    for (let s = 0; s < SEGMENTS; s += 1) {
+      const a0 = (s / SEGMENTS) * Math.PI * 2, a1 = ((s + 1) / SEGMENTS) * Math.PI * 2;
+      const wet = new THREE.Color(collar.plinth ?? collar.accent).offsetHSL(0, 0, ((s * 37) % 7) / 7 * 0.05 - 0.025);
+      b.polygon([at(r1 + 0.06, 0.011, a0), at(r1 + 0.06, 0.011, a1), at(r1 + 0.32, 0.011, a1), at(r1 + 0.32, 0.011, a0)], wet, [0, 1, 0]);
+      b.polygon([at(r1 + 0.32, 0.01, a0), at(r1 + 0.32, 0.01, a1), at(r1 + 0.58, 0.008, a1), at(r1 + 0.58, 0.008, a0)],
+        wet.clone().lerp(new THREE.Color(0xc7d0d6), 0.45 + ((s * 13) % 5) * 0.06), [0, 1, 0]);
     }
   }
   // heavy plate bolt heads round the bevel

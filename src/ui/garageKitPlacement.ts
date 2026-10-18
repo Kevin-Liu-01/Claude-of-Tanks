@@ -35,8 +35,12 @@ import { GARAGE_SLIDESHOW_PLACEMENTS } from './garageSlideshowPlacement.ts';
  * - Every piece standing on the ground gets a contact blot (decal) a little wider than its footprint.
  */
 
-/** Every item may stand on the Garage datum (y = 0, the pads' level) instead of the terrain under it. */
-type GarageKitItemBase = { readonly datum?: boolean };
+/**
+ * Every item may stand on the Garage datum (y = 0, the pads' level) instead of the terrain under it, and may carry a
+ * `shade` (0-1): a piece deep in a bore or under a heavy roof keeps that occlusion in its baked colours (garage r9: the
+ * crane in Glacier's tunnel read lit yellow straight behind the hero).
+ */
+type GarageKitItemBase = { readonly datum?: boolean; readonly shade?: number };
 
 type GarageKitItem = GarageKitItemBase & (
   | { readonly kind: 'prop'; readonly name: string; readonly at: readonly [number, number]; readonly yaw?: number; readonly y?: number;
@@ -173,6 +177,11 @@ function buildGarageKitPiece(item: GarageKitItem, architecture: GarageVariant['a
     default: break;
   }
   const result = b.build();
+  if (item.shade !== undefined && item.shade < 1) {
+    const color = result.solid.getAttribute('color') as THREE.BufferAttribute;
+    for (let i = 0; i < color.array.length; i += 1) (color.array as Float32Array)[i] *= item.shade;
+    color.needsUpdate = true;
+  }
   const box = result.solid.boundingBox;
   const footprint: readonly [number, number] | null = grounded && box && !box.isEmpty() && box.min.y < 0.2
     ? [Math.max(Math.abs(box.min.x), Math.abs(box.max.x)), Math.max(Math.abs(box.min.z), Math.abs(box.max.z))]

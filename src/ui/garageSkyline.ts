@@ -403,7 +403,7 @@ function addInselberg(ctx: SkylineContext, mark: GarageSkylineLandmark, salt: nu
     const depth = half * 0.85;
     const F = ringFrame(mark.azDeg, pr.R + (offset ? half * 0.4 : 0));
     const P = (phi: number, radius: number, y: number): THREE.Vector3 => F(cx + Math.sin(phi) * half * radius, y, -Math.cos(phi) * depth * radius, new THREE.Vector3());
-    const columns = near ? 11 : 7;
+    const columns = near ? 14 : 8;
     // rows: the wall's foot, two tiers of cliff, the cap's shoulder, the dome
     const ROWS: ReadonlyArray<readonly [number, number]> = [[0.12, 1], [0.4, 0.97], [0.66, 0.93], [0.84, 0.74], [1, 0.3]];
     for (let c = 0; c < columns; c += 1) {
@@ -418,11 +418,10 @@ function addInselberg(ctx: SkylineContext, mark: GarageSkylineLandmark, salt: nu
         const t = (ya + yb) / 2;
         if (r >= 3) {
           // the beehive cap: horizontal bands
-          colour.copy(hex(r === 3 ? 0xa65b3f : 0xb2694a)).lerp(hex(0x8f4b35), (c % 2) * 0.25);
+          colour.copy(hex(r === 3 ? 0x9c553c : 0xa86246)).multiplyScalar(0.95 + 0.08 * hash1(c + lobe * 5, salt + 3));
         } else {
-          const bed = (r + (c % 3 === 0 ? 1 : 0)) % 3;
-          colour.copy(hex([0x924a30, 0xa3573a, 0x86412b][bed]));
-          if (hash1(c + lobe * 7, salt + 8) > 0.6) colour.lerp(hex(0x30190f), 0.45 * (1 - Math.abs(t - 0.45) * 2));
+          colour.copy(hex([0x8a4630, 0x9a5238, 0x82402c][r % 3])).multiplyScalar(0.94 + 0.1 * hash1(c + lobe * 7, salt + 2));
+          if (hash1(c + lobe * 7, salt + 8) > 0.55) colour.lerp(hex(0x2c180f), 0.5 * (1 - Math.abs(t - 0.45) * 2));
         }
         quadColor(ctx, [L0, M0, M1, L1], colour.clone(), pr.haze);
         quadColor(ctx, [M0, R0, R1, M1], colour.clone(), pr.haze);
@@ -465,7 +464,8 @@ function addMassif(ctx: SkylineContext, mark: GarageSkylineLandmark, salt: numbe
   }
   // the ribs: columns across the face, each a rib standing forward of its couloirs
   const columns = THREE.MathUtils.clamp(Math.round(half / 2.6), 8, 18);
-  const ROWS = low ? [0, 0.35, 0.7, 1] : [0, 0.22, 0.45, 0.66, 0.84, 1];
+  // the far ranges (past 5 km, hazed) take the low form's rows: the near walls carry the detail
+  const ROWS = low || mark.distM > 5000 ? [0, 0.3, 0.6, 0.82, 1] : [0, 0.16, 0.32, 0.48, 0.62, 0.75, 0.87, 1];
   const P = (x: number, y: number, z: number): THREE.Vector3 => F(x, y, z, new THREE.Vector3());
   const colour = new THREE.Color();
   const back = 0.62 * H + 4; // the face's run back from its foot to its crest
@@ -484,7 +484,7 @@ function addMassif(ctx: SkylineContext, mark: GarageSkylineLandmark, salt: numbe
     // snow on the ledges and in the couloirs; the rock shows where the face is steep, more of it high on the ribs
     const patch = hash1(c * 13 + Math.round(v * 7), salt + 15);
     const snowy = n.y > (alpine ? 0.5 : 0.38) + (patch - 0.5) * 0.24 - (v < 0.3 ? 0.1 : 0) || (v > 0.88 && n.y > 0.28);
-    if (!snowy) return colour.copy(hex(alpine ? 0x565d64 : 0x5e6770)).lerp(hex(0x3a4046), hash1(c * 13 + Math.round(v * 9), salt + 6) * 0.5);
+    if (!snowy) return colour.copy(hex(alpine ? 0x4a525b : 0x56606b)).lerp(hex(0x333a42), hash1(c * 13 + Math.round(v * 9), salt + 6) * 0.55);
     return colour.copy(hex(0xf2f6f9)).lerp(hex(0xc9d5df), hash1(c * 7 + Math.round(v * 5), salt + 7) * 0.35);
   };
   const n = new THREE.Vector3();

@@ -169,7 +169,7 @@ function buildGraniteFace(frame: RockFrame, options: RockFaceOptions): THREE.Buf
     const sheet = Math.floor((y + hash(block, 7) * 3) / (3 + 2 * hash(block, 9)));
     const blockOut = (hash(block, 3) - 0.5) * 0.9 - 0.25 * (hash(block * 31 + sheet, 5) > 0.6 ? 1 : 0);
     const rock = curl - 0.2 * y + plan(u) * 0.9 + bench(u, y, height * 0.34, 2.0, 1.7) + bench(u, y, height * 0.68, 1.5, 6.1)
-      + blockOut - notch * (0.7 + 0.6 * hash(block, 11)) + (fbm(u * 0.5 + 11, y * 0.5) - 0.5) * 0.35;
+      + blockOut - notch * (0.35 + 0.35 * hash(block, 11)) + (fbm(u * 0.5 + 11, y * 0.5) - 0.5) * 0.35;
     const share = cutShare(u) * (options.cut ? 1 - smooth((y - options.cut.top) / 3) : 0);
     return share > 0 ? rock + (options.cut!.w - rock) * share : rock;
   };
@@ -179,8 +179,19 @@ function buildGraniteFace(frame: RockFrame, options: RockFaceOptions): THREE.Buf
     if (y < opening.spring) return du < opening.half + margin;
     return Math.hypot(du, y - opening.spring) < opening.half + margin;
   };
-  const cols = columns + 1, rows = rowsN + 1;
-  const us = Float32Array.from({ length: cols }, (_, k) => -half + (k / columns) * width);
+  // the columns, block by block: each joint-bounded block its own patch (its columns shared inside it, duplicated at
+  // the joints), so the joints read as creases between flat-ish blocks and not as a fluted curtain
+  const cellU = width / columns;
+  const usList: number[] = [], blockList: number[] = [];
+  for (let k = 0; k < joints.length - 1; k += 1) {
+    const u0 = Math.max(-half, joints[k]), u1 = Math.min(half, joints[k + 1]);
+    if (u1 - u0 < 1e-3) continue;
+    const n = Math.max(1, Math.ceil((u1 - u0) / cellU));
+    for (let i = 0; i <= n; i += 1) { usList.push(u0 + ((u1 - u0) * i) / n); blockList.push(k); }
+  }
+  const cols = usList.length, rows = rowsN + 1;
+  const columnsN = cols - 1;
+  const us = Float32Array.from(usList), colBlock = Int32Array.from(blockList);
   const ground = Float32Array.from(us, (u) => frame.groundAt(u, 0));
   const pos = new Float32Array(cols * rows * 3);
   const local = new Float32Array(cols * rows); // height over the ground
@@ -196,17 +207,20 @@ function buildGraniteFace(frame: RockFrame, options: RockFaceOptions): THREE.Buf
       pos[o * 3 + 2] = frame.z - sin * us[k] + cos * w;
     }
   }
-  // the grid's normals (central differences), turned toward the yard
+  // the grid's normals (central differences inside each block, one-sided at its joints), turned toward the yard
   const nrm = new Float32Array(cols * rows * 3);
   const yard = new THREE.Vector3(sin, 0, cos); // the frame's +w
   const a = new THREE.Vector3(), b = new THREE.Vector3(), n = new THREE.Vector3();
-  const P = (k: number, j: number, out: THREE.Vector3): THREE.Vector3 => out.fromArray(pos, (Math.min(rowsN, Math.max(0, j)) * cols + Math.min(columns, Math.max(0, k))) * 3);
+  const P = (k: number, j: number, out: THREE.Vector3): THREE.Vector3 => out.fromArray(pos, (Math.min(rowsN, Math.max(0, j)) * cols + Math.min(columnsN, Math.max(0, k))) * 3);
   const t0 = new THREE.Vector3(), t1 = new THREE.Vector3();
   for (let j = 0; j < rows; j += 1) {
     for (let k = 0; k < cols; k += 1) {
-      a.copy(P(k + 1, j, t0)).sub(P(k - 1, j, t1));
+      const kl = k > 0 && colBlock[k - 1] === colBlock[k] ? k - 1 : k;
+      const kr = k < columnsN && colBlock[k + 1] === colBlock[k] ? k + 1 : k;
+      a.copy(P(kr, j, t0)).sub(P(kl, j, t1));
       b.copy(P(k, j + 1, t0)).sub(P(k, j - 1, t1));
-      n.crossVectors(a, b).normalize();
+      n.crossVectors(a, b);
+      if (n.lengthSq() < 1e-12) n.copy(yard); else n.normalize();
       if (n.dot(yard) < 0) n.negate();
       nrm.set([n.x, n.y, n.z], (j * cols + k) * 3);
     }
@@ -219,9 +233,9 @@ function buildGraniteFace(frame: RockFrame, options: RockFaceOptions): THREE.Buf
   for (let j = 0; j < rows; j += 1) {
     for (let k = 0; k < cols; k += 1) {
       const o = j * cols + k, u = us[k], y = local[o];
-      const { block, notch } = jointAt(u);
-      c.copy(granite[block % 4]).multiplyScalar(0.88 + 0.24 * fbm(u * 0.9 + 9, y * 0.9));
-      c.multiplyScalar(1 - notch * 0.4);
+      const block = colBlock[k], { notch } = jointAt(u);
+      c.copy(granite[block % 4]).multiplyScalar(0.84 + 0.12 * hash(block, 13) + 0.18 * fbm(u * 0.9 + 9, y * 0.9));
+      c.multiplyScalar(1 - notch * 0.32);
       if (y < 1.2) c.multiplyScalar(0.78 + y / 6);
       // water stains: dark streaks hanging below the benches, on some columns
       for (const [at, seedU] of [[height * 0.34, 1.7], [height * 0.68, 6.1]] as const) {
@@ -236,7 +250,8 @@ function buildGraniteFace(frame: RockFrame, options: RockFaceOptions): THREE.Buf
   }
   const index: number[] = [];
   for (let j = 0; j < rowsN; j += 1) {
-    for (let k = 0; k < columns; k += 1) {
+    for (let k = 0; k < columnsN; k += 1) {
+      if (colBlock[k] !== colBlock[k + 1]) continue; // the joint: two blocks meet, no face between their twin columns
       const mu = (us[k] + us[k + 1]) / 2, my = (local[j * cols + k] + local[(j + 1) * cols + k + 1]) / 2;
       if (inOpening(mu, my, -0.15)) continue;
       const i0 = j * cols + k, i1 = i0 + 1, i2 = i0 + cols, i3 = i2 + 1;
@@ -258,9 +273,11 @@ function buildGraniteFace(frame: RockFrame, options: RockFaceOptions): THREE.Buf
     crestRow.push(vertex(top, up, snow));
     backRow.push(vertex(world(us[k] * 0.96, top.y + depth * 0.45, -depth), up, snowShade));
   }
-  for (let k = 0; k < columns; k += 1) index.push(crestRow[k], crestRow[k + 1], backRow[k + 1], crestRow[k], backRow[k + 1], backRow[k]);
+  for (let k = 0; k < columnsN; k += 1) {
+    if (colBlock[k] === colBlock[k + 1]) index.push(crestRow[k], crestRow[k + 1], backRow[k + 1], crestRow[k], backRow[k + 1], backRow[k]);
+  }
   // the two ends close back into the hill
-  for (const [k, sign] of [[0, -1], [columns, 1]] as const) {
+  for (const [k, sign] of [[0, -1], [columnsN, 1]] as const) {
     const side = new THREE.Vector3(cos * sign, 0, -sin * sign);
     let prevFront = -1, prevBack = -1;
     for (let j = 0; j < rows; j += 1) {

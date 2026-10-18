@@ -18,8 +18,8 @@ import type { GarageKitPlacement } from './garageKitPlacement.ts';
 export const GARAGE_KIT_GLACIER: GarageKitPlacement = {
   items: [
     // the overhead crane in the bore, its runway along the tunnel, hook down on a turret (seen through the mouth)
-    { kind: 'crane', crane: 'overhead', at: [8.5, 33.2], yaw: Math.PI / 4,
-      params: { span: 5.4, runway: 7.2, railY: 4.25, girders: 1, swl: 20, columns: false, bridgeAt: 0.3, trolleyAt: 0.5, number: 7,
+    { kind: 'crane', crane: 'overhead', at: [8.5, 33.2], yaw: Math.PI / 4, shade: 0.38,
+      params: { span: 5.4, runway: 7.2, railY: 4.25, girders: 1, swl: 20, columns: false, bridgeAt: 0.62, trolleyAt: 0.5, number: 7,
         load: { kind: 'turret', rigging: 'slings' } } },
     // the portal's header over the opening: the crest-and-wordmark plate and the tunnel number, above the track lintel
     { kind: 'display', display: 'plate', rect: 'brand.banner.h', at: [8.5, 26.75], yaw: Math.PI / 4, y: 7.88, size: [4.4, 0.66] },

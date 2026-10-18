@@ -27,10 +27,10 @@ export const GARAGE_KIT_MONSOON: GarageKitPlacement = {
     { kind: 'prop', name: 'oilRack', at: [9.8, 30.8], yaw: Math.PI / 4, y: FLOOR },
     { kind: 'prop', name: 'spillBin', at: [11.0, 28.2], yaw: Math.PI / 2, y: FLOOR },
     // the field computer beside the panel's column, on its rugged case; the radio's generator and sealed cases by it
-    { kind: 'display', display: 'station', at: [15.4, 21.6], yaw: Math.PI / 4 - 0.25, screens: ['readout.armor.leopard', 'map.monsoon'], width: 1.7, rugged: true },
-    { kind: 'prop', name: 'generator', at: [17.4, 23.4], yaw: 0.2 },
-    { kind: 'prop', name: 'ammoBoxSteel', at: [16.6, 20.4], yaw: 0.3 },
-    { kind: 'prop', name: 'ammoBoxSteel', at: [16.6, 20.4], yaw: 0.25, y: 0.2 },
+    { kind: 'display', display: 'station', at: [16.0, 19.6], yaw: Math.PI / 4 - 0.25, screens: ['readout.armor.leopard', 'map.monsoon'], width: 1.7, rugged: true },
+    { kind: 'prop', name: 'generator', at: [18.4, 19.0], yaw: 0.2 },
+    { kind: 'prop', name: 'ammoBoxSteel', at: [17.4, 17.6], yaw: 0.3 },
+    { kind: 'prop', name: 'ammoBoxSteel', at: [17.4, 17.6], yaw: 0.25, y: 0.2 },
     // the tarp banner lashed between bamboo poles on the canopy's right, the frame's right edge
     { kind: 'prop', name: 'pole', at: [20.0, 12.4], yaw: 0, params: { variant: 0 } },
     { kind: 'prop', name: 'pole', at: [23.0, 10.4], yaw: 0, params: { variant: 0 } },

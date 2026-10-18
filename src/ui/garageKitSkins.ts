@@ -44,7 +44,7 @@ export const GARAGE_KIT_SKINS: Readonly<Record<GarageVariant['architecture'], Ga
   }),
   recovery_yard: Object.freeze({
     id: 'redrock-dust', paint: 0x8a7a5c, accent: 0xc0843a, steel: 0x8a5a3a, primer: 0x7a4030, wood: 0x80603e,
-    rubber: 0x1c1816, concrete: 0xa8907a, canvas: 0xa88a64, ground: 0xa5603e, weathering: 'reddust', wear: 0.55,
+    rubber: 0x1c1816, concrete: 0x8e7866, canvas: 0xa88a64, ground: 0xa5603e, weathering: 'reddust', wear: 0.55,
   }),
   factory_line: Object.freeze({
     id: 'ironworks-heat', paint: 0x4a4e50, accent: 0xc0862e, steel: 0x5d6266, primer: 0x6a3a2c, wood: 0x5a4632,
