@@ -128,7 +128,18 @@ where the pack builds the frame and the dressing hangs the same screen. No displ
 enters the hero's halo in the canonical frame (its screen box plus 8 %, `garageDisplayPlacement.selftest.mjs` with
 the measured canonical camera), which leaves the top band and the frame's outer edges for displays. The platform
 kit (collars, LED pucks, pedestal, the segmented deck) loads at Garage idle. `tools/garage-kit-sheet.html` stages
-every piece for review.
+every piece for review. Each Garage's arrangement lives in its own module (`garageKitRedrock.ts`,
+`garageKitGlacier.ts`, `garageKitFrosthollow.ts`, `garageKitMonsoon.ts`, ...), laid out in the opening view's frame
+(atmosphere cards too, through `atView`); the halo receipt tests each face and card by its own corners and the
+structure receipt by each face's oriented box, so a plate on a wall square to the view can sit 2 cm proud of it.
+The outside environment comes from the map (K10): `tools/generate-garage-skylines.mjs` (`npm run
+garage:skylines:check`) bakes each map's near relief (ray-cast over its heightfield in three bands) and its landmarks
+at their compass bearings from the Garage's anchor (hinterland drafts, the map file's lakes, inselbergs, villages,
+churches, sawmill, town, river, tea estate; an authored row only where a map has no draft) into
+`garageSkylines.generated.ts`; `garageSkyline.ts` builds a Garage with a style row (Redrock, Glacier, Frosthollow,
+Monsoon) into the horizon's one vertex-colour draw: bearings kept, distance compressed onto the ring, elevation by one
+factor, nearest first with occluded far forms dropped, under 9,500 triangles. Add a Garage by giving it a style row
+and, where its draft lacks them, its map's rows in the generator.
 The hero's outline from the Garage camera stays clear (garage critic panel and
 ruling, 2026-10-14: the current layout protects the hero's spot, the turntable,
 the camera and the UI, not the backdrop): no post, mast, leg, hook or lamp crosses
