@@ -63,13 +63,15 @@ export function nationalRoofWeapon(P:TankBuilderPort,rws:Point,cupola:Point|null
  * the class's receiver, feed, ammunition can and barrel, a race ring round the foot and a light shield) in the working
  * station's rig, so the auxiliary roof-gun control (src/sim/auxiliarySystems.ts) turns and fires it by itself; a
  * crew-served emplacement keeps its spade grips, leaf sight and true crew barrel, the solenoid form its back plate.
- * There is no second cupola and no collar: any riser is the pintle's own sleeve and clamp.
+ * There is no second cupola and no collar: any riser is the pintle's own sleeve and clamp. Round 3 (critic D4): its
+ * cradle, trunnion pin and shield ride the gun on a low yoke with one side arm (FittingOptions.ridingCradle), so the
+ * moving gun never passes through its own mount; its race ring and shield recesses take the mount's and the gun's steel.
  */
 export function nationalCupolaPintle(P:TankBuilderPort,seat:Point,l:NationalRoofLoadout):THREE.Group {
  const e=l.emplacement;
  if(l.mount!=='pintle'||!e)throw new Error(`${P.spec?.id}: ${l.name} is not a pintle emplacement`);
  const fitting=FITTINGS.pintleMG({mats:P.mats,cls:e.cls,scale:1,tone:'two-tone',elev:.08,shield:e.shield,ammo:true,
-  ring:{...e.ring},riser:e.riserM,working:e.crewServed,remoteControlled:!e.crewServed,datumBarrel:false,
+  ring:{...e.ring},riser:e.riserM,working:e.crewServed,remoteControlled:!e.crewServed,datumBarrel:false,ridingCradle:true,
   seed:emplacementSeed(l.name)}) as THREE.Group;
  if(fitting.userData.caliberMm!==l.caliber)throw new Error(`${P.spec?.id}: ${l.name} draws a ${fitting.userData.caliberMm} mm gun`);
  fitting.name=l.name;

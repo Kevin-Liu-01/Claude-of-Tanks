@@ -84,7 +84,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/cnAddOns.selftest.mjs',
     'src/vehicles/cnStations.selftest.mjs',
     // 2026-10-17 (release 227 CN M5): the moving-part clearances (main gun over the hull and the add-ons, the underside and
-    // the ring collars, the roof stations over their arcs, the box sights on the boots), about 95 s of CPU
+    // the ring collars, the roof stations over their arcs, the box sights on the boots): about 300 s of CPU unloaded
+    // (Qilin ~110-170 s, Kunlun ~130 s, Yun ~50-190 s; 430-830 s wall on a loaded box)
     'src/vehicles/cnClearance.selftest.mjs',
     'src/sim/smokeBallistics.selftest.mjs',
     'src/vehicles/smokeFan.selftest.mjs',

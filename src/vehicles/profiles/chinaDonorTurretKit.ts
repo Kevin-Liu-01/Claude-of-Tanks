@@ -76,8 +76,15 @@ function chevronCassette(back:readonly THREE.Vector3[],normal:THREE.Vector3,dept
     const e=.02/h;
     return [[.012,0],[.035,0],[depth,.5-e],[depth,.5+e],[.035,1],[.012,1]];
   };
-  const g=sectionSolid([{z:0,ring:ring(hRear)},{z:1,ring:ring(hFront)}]);
-  const p=g.getAttribute('position') as THREE.BufferAttribute,q=new THREE.Vector3();
+  return tileMap(sectionSolid([{z:0,ring:ring(hRear)},{z:1,ring:ring(hFront)}]),back,normal);
+}
+
+interface WedgeTile {z0:number;z1:number;t0:number;t1:number}
+
+const CARRIER_STANDOFF_M=.004,CARRIER_BURIAL_M=.008;
+/** The bilinear tile frame: canonical (u off the back plane along the normal, v shoulder to roof, w rear to front). */
+function tileMap(g:THREE.BufferGeometry,back:readonly THREE.Vector3[],normal:THREE.Vector3):THREE.BufferGeometry {
+  const [b0,b1,b2,b3]=back,p=g.getAttribute('position') as THREE.BufferAttribute,q=new THREE.Vector3();
   for(let i=0;i<p.count;i++){
     const u=p.getX(i),v=p.getY(i),w=p.getZ(i);
     q.copy(b0).lerp(b3,v).lerp(b1.clone().lerp(b2,v),w).addScaledVector(normal,u);
@@ -94,7 +101,20 @@ function chevronCassette(back:readonly THREE.Vector3[],normal:THREE.Vector3,dept
   return g;
 }
 
-interface WedgeTile {z0:number;z1:number;t0:number;t1:number}
+/** A tile's permanent carrier (round 3, critic D3): its top is the back plane; its underside follows the actual shell
+ * under a 3 x 3 grid of the tile (the 96B's welded wedge panels are folded, two triangles each), 8 mm inside it. A
+ * four-corner underside left a panel's fold up to 26 mm deep in the carrier. */
+function wedgeCarrier(P:TankBuilderPort,shell:Stock,back:readonly THREE.Vector3[],normal:THREE.Vector3):THREE.BufferGeometry {
+  const [b0,b1,b2,b3]=back,down=normal.clone().negate();
+  const depth=(v:number,w:number)=>{
+    const at=b0.clone().lerp(b3,v).lerp(b1.clone().lerp(b2,v),w);
+    const hit=shell.hit(at.clone().addScaledVector(normal,.45),down,.9);
+    if(!hit)throw new Error(`${P.spec.id}: no Type 96B wedge face under the ERA carrier at ${at.toArray()}`);
+    return at.sub(hit.point).dot(normal)+CARRIER_BURIAL_M;
+  };
+  const stations=[0,.5,1].map(w=>({z:w,ring:[[0,0],[0,1],[-depth(1,w),1],[-depth(.5,w),.5],[-depth(0,w),0]] as SectionPoint[]}));
+  return tileMap(sectionSolid(stations),back,normal);
+}
 
 /** One seated chevron tile: carrier (shell to back plane), seat pad (-4..+18 mm), removable cassette (sector). */
 function wedgeTile(P:TankBuilderPort,shell:Stock,side:number,tile:WedgeTile,records:ChineseChevronReceipt[]):void {
@@ -114,11 +134,11 @@ function wedgeTile(P:TankBuilderPort,shell:Stock,side:number,tile:WedgeTile,reco
   const normal=hits[2].clone().sub(hits[0]).cross(hits[3].clone().sub(hits[1])).normalize();
   if(normal.dot(approx)<0)normal.negate();
   const origin=hits.reduce((s,h)=>s.add(h),new THREE.Vector3()).multiplyScalar(.25);
-  const lift=Math.max(...[...hits,...inner].map(h=>h.clone().sub(origin).dot(normal)));
+  // Round 3 (critic D3): the back plane stands 4 mm over the panel's highest point under the tile. A tile wholly on one
+  // flat panel triangle otherwise had its carrier's top in the shell's own face, z-fighting round the seat pad.
+  const lift=Math.max(...[...hits,...inner].map(h=>h.clone().sub(origin).dot(normal)))+CARRIER_STANDOFF_M;
   const back=hits.map(h=>h.clone().addScaledVector(normal,lift-h.clone().sub(origin).dot(normal)));
-  // Permanent carrier: its underside is buried 15 mm in the actual shell at every corner, its top is the back plane.
-  P.addExternalArmor('turret',orientedSlab(...hits.map(h=>h.clone().addScaledVector(normal,-.015).toArray()),
-    ...back.map(b=>b.toArray())));
+  P.addExternalArmor('turret',wedgeCarrier(P,shell,back,normal));
   const centre=back.reduce((s,b)=>s.add(b),new THREE.Vector3()).multiplyScalar(.25);
   const seat=back.map(b=>b.clone().lerp(centre,.10));
   P.addExternalArmor('turret',orientedSlab(...seat.map(s=>s.clone().addScaledVector(normal,-.004).toArray()),
@@ -156,7 +176,7 @@ function kunlunEra(P:TankBuilderPort):void {
 // vertical plane and the heads stand 0.2 m outboard of the widest mantlet boot.
 const EYE_X=.60,EYE_Y=.205,EYE_W=.30,EYE_H=.30;
 
-function shtoraHead(P:TankBuilderPort,shell:Stock,proud:Stock,side:number):number[] {
+function shtoraHead(P:TankBuilderPort,shell:Stock,proud:Stock,side:number,lamp?:{P:TankBuilderPort;shape:Parameters<typeof nationalLamp>[4]}):number[] {
   const x=side*EYE_X,y=EYE_Y,r=.125,glass=.10;
   // Where the upper bracket meets the permanent cheek, straight behind the lens centre.
   const anchor=shell.hit(new THREE.Vector3(x,y,3.5),new THREE.Vector3(0,0,-1),3);
@@ -186,23 +206,34 @@ function shtoraHead(P:TankBuilderPort,shell:Stock,proud:Stock,side:number):numbe
   // their ends in two side straps standing on the armour frame outboard of the bezel.
   for(const dy of [-.06,0,.06])P.addEquipment('turretDark',box(EYE_W-.03,.014,.014),x,y+dy,front+.062);
   for(const dx of [-1,1])P.addEquipment('turretDark',box(.016,EYE_H,.066),x+dx*(EYE_W/2-.018),y,front+.037);
-  // Rain hood over the aperture, its sides running back along the housing.
-  P.addEquipment('turretDetail',box(EYE_W+.04,.020,.12),x,hi+.010,front-.030);
-  // Two bracket arms: each is buried 30 mm in the cheek and runs 30 mm into the housing's back.
+  // Rain hood over the aperture, its sides running back along the housing top (wholly on it: from 5 mm ahead of the
+  // housing's deeper back corner to 35 mm past its front). Round 3 (critic N1): it carries the turret's driving lamp, its
+  // lens ahead of the head's aperture and guard (YUN_LAMP_SEAT's note).
+  const hoodRear=Math.max(backIn,backOut)+.005,hoodFront=front+.035;
+  if(lamp&&hoodFront-hoodRear<.17)throw new Error(`${P.spec.id}: the Shtora housing top (${(hoodFront-hoodRear).toFixed(3)} m) is too short to carry its lamp`);
+  P.addEquipment('turretDetail',box(EYE_W+.04,.020,hoodFront-hoodRear),x,hi+.010,(hoodFront+hoodRear)/2);
+  if(lamp)nationalLamp(lamp.P,x,hoodFront-.085,hi+.020+.005,lamp.shape,LAMP_GUARD_INSET_M);
+  // Two bracket arms, each running 30 mm into the housing's back. Round 3 (critic D3): each arm's root end follows the
+  // receding cheek under its four corners, 8 mm inside it (a square-cut end buried 30 mm at its centre line reached 45-49
+  // mm into the sloping cheek at its corners).
+  const back=line(x)+lift;
   for(const dy of [0,-.095]){
-    const a=dy?shell.hit(new THREE.Vector3(x,y+dy,3.5),new THREE.Vector3(0,0,-1),3)?.point:anchor.point;
-    if(!a)throw new Error(`${P.spec.id}: no cheek receiver for the Shtora lower arm`);
-    const back=line(x)+lift,from=a.z-.03,to=back+.03;
-    P.addEquipment('turretDark',box(.085,.060,to-from),x,a.y,(from+to)/2);
+    const ay=y+dy,cheek=(cx:number,cy:number)=>{
+      const hit=shell.hit(new THREE.Vector3(cx,cy,3.5),new THREE.Vector3(0,0,-1),3);
+      if(!hit)throw new Error(`${P.spec.id}: no cheek receiver for the Shtora bracket at ${cx},${cy}`);
+      return hit.point.z-.008;
+    };
+    const ring=(cy:number)=>[[x-.0425,cy,cheek(x-.0425,cy)],[x+.0425,cy,cheek(x+.0425,cy)],[x+.0425,cy,back+.03],[x-.0425,cy,back+.03]];
+    P.addEquipment('turretDark',orientedSlab(...ring(ay-.03),...ring(ay+.03)));
   }
   return anchor.point.toArray();
 }
 
-function kunlunEyes(P:TankBuilderPort):void {
+function kunlunEyes(P:TankBuilderPort,lamp:{P:TankBuilderPort;shape:Parameters<typeof nationalLamp>[4]}):void {
   // Heads stand clear of the shell and of the front-facet ERA, both frozen here.
   const shell=new Stock(P,['turret']),proud=new Stock(P,['turret','turretExternalArmor'],true);
   const anchors:number[][]=[];
-  try {for(const side of [-1,1])anchors.push(shtoraHead(P,shell,proud,side));}
+  try {for(const side of [-1,1])anchors.push(shtoraHead(P,shell,proud,side,lamp));}
   finally{shell.dispose();proud.dispose();}
   P.turretG.userData.cheekOptics={anchors,axisY:EYE_Y};
 }
@@ -259,16 +290,18 @@ function footedLamp(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[],x:nu
   nationalLamp(P,x,z,equipmentFoot(P,parts,x,z+.01,.27,.22),shape,LAMP_GUARD_INSET_M);
 }
 const LAMP_GUARD_INSET_M=.010;
-/** Release 227 (M1): the lamp pairs on the Type 96B front wedge, ahead of the gunner's sight and the commander's
- * forward periscope and behind the box sight and the mantlet boot's swept volume. Each seat was searched on a 2 cm grid
- * near the plan's (0.30, 1.05) and mirrored, keeping its lamp at least 20 mm outside every sight's field (cnAddOns
- * .selftest.mjs: the glass swept 3 m forward, widening 8 degrees a side, -2..+8 degrees in elevation) and the slit lens's
- * inner edge 20 mm outboard of the box sight; the 226 seats ahead of the gunner's sight glass (|x| 0.55, z 0.86 and
- * |x| 0.50, z 0.92) stood in its field. The nominal seat left the Kunlun's square lamp 3 mm clear and put the Yun's wider
- * slit lamp 25 mm into the field. Measured margins: Kunlun 23 mm, Yun 20 mm (the gunner's sight's field, its inner
- * side). [|x|, z], turret frame. */
-export const KUNLUN_LAMP_SEAT=[.28,1.05] as const;
-export const YUN_LAMP_SEAT=[.26,1.00] as const;
+/** Where the turret's driving lamps stand. Release 227 (M1) put both pairs on the Type 96B front roof either side of the
+ * gun, out of every sight's field (cnAddOns.selftest.mjs: the glass swept 3 m forward, widening 8 degrees a side,
+ * -2..+8 degrees in elevation; the 226 seats ahead of the gunner's sight glass, |x| 0.55 z 0.86 and |x| 0.50 z 0.92,
+ * stood in its field). Round 3 (critic N1, N2): there each lamp's runtime spot (nightLightingRuntime.ts, a 19-degree cone
+ * dropped for the low beam) shone straight along the box sight's side 0.7 m ahead and blew it out at night (spill
+ * 876-1353 against the 226 lamps' 113, which only reach the barrel 2.9 m out; cnAddOns measures it). Between the box
+ * sight and the gunner's sight's field no seat on that roof keeps the box sight out of the cone, so the lamps moved to
+ * the turret's front corners, ahead of everything the turret carries: the Kunlun's square lamps ride the hoods of its
+ * Shtora heads (shtoraHead, the lens 6 mm ahead of the head's guard), the Yun's slit lamps stand on the flat front shelves
+ * of its wrap housings (the foot wholly on the shelf, inboard of its outer chamfer). Both stand below every sight's field.
+ * [|x|, z], turret frame. */
+const YUN_LAMP_SEAT=[.68,1.60] as const;
 
 /** The Kunlun's add-ons carry the model tag of its 226 Chinese package and their roles (the sight-field census and the
  * moving-part clearances read them; the rear cage's beams carry their own). */
@@ -277,18 +310,19 @@ const KUNLUN_MODEL=1;
 function kunlun(P:TankBuilderPort):void {
   const l=NATIONAL_ROOF_LOADOUTS.t72b3m_kunlun,kit=(role:string)=>tagged(P,KUNLUN_MODEL,role);
   kunlunEra(kit('chevron'));
-  kunlunEyes(kit('shtora'));
+  // the square guarded lamps ride the Shtora heads' hoods (YUN_LAMP_SEAT's note)
+  kunlunEyes(kit('shtora'),{P:kit('lamp'),shape:l.lamp});
   const roof=permanentParts(P,['turret','turretDetail']);
-  // Square guarded lamps on the front wedge, either side of the gun and clear of every sight's field (KUNLUN_LAMP_SEAT).
-  for(const side of [-1,1])footedLamp(kit('lamp'),roof,side*KUNLUN_LAMP_SEAT[0],KUNLUN_LAMP_SEAT[1],l.lamp);
   // The scanner head between the cupola and the loader's hatch.
   const scanner=kit('scanner');
   nationalRoofSensor(scanner,-.05,-.18,equipmentFoot(scanner,roof,-.05,-.18,.35,.33),l);
   // Removable service cases on the bustle roof (the 96B's mast and whip stand on its left rear).
   const cases=permanentParts(P,['turret']);
   serviceCase(kit('service-case'),cases,-.02,-1.56,.80,.15,.34);
-  serviceCase(kit('service-case'),cases,-1.03,-1.30,.28,.14,.32);
-  serviceCable(kit('cable'),cases,[[-1.03,-1.12],[-1.05,-.98],[-1.07,-.80],[-1.08,-.62]]);
+  // (round 3, critic D3: 30 mm inboard, its foot wholly on the flat roof; at x -1.03 its outer edge reached the roof's
+  // chamfer at x -1.14 and the foot's straight underside cut 27 mm into the crown)
+  serviceCase(kit('service-case'),cases,-1.00,-1.30,.28,.14,.32);
+  serviceCable(kit('cable'),cases,[[-1.00,-1.12],[-1.04,-.98],[-1.07,-.80],[-1.08,-.62]]);
   whip(kit('antenna'),cases,-.82,-1.80,.58);
   kunlunRearCage(kit('cage-console'));
 }
@@ -551,10 +585,11 @@ function type96BarrelRadius(z:number):number {
 /** The Yun's gun modifications on the recoiling 96B barrel: five thermal-sleeve clamp bands and the muzzle strip. */
 function yunGun(P:TankBuilderPort):void {
   const bands=tagged(P,YUN_MODEL,'gun-band');
-  // each band a machined ring round the tube (its bore 2 mm inside the barrel's skin), not a disc through it
+  // each band a machined ring round the tube (its bore 2 mm inside the barrel's skin), not a disc through it (round 3:
+  // 24 sides at HIGH, 30 mm facets, keeping the Yun within 1 % of its round-1 triangle budget)
   for(const z of [1.80,2.40,2.90,3.78,4.62]){
     const r=type96BarrelRadius(z);
-    bands.add('gunDark',KIT.xform(machinedRing(r-.002,r+.018,.027,.003,P.q?28:16),0,-.0135,0),0,0,z,Math.PI/2,0,0);
+    bands.add('gunDark',KIT.xform(machinedRing(r-.002,r+.018,.027,.003,P.q?24:16),0,-.0135,0),0,0,z,Math.PI/2,0,0);
   }
   // the muzzle-reference strip on the barrel's top line, 2 mm into the tube
   tagged(P,YUN_MODEL,'muzzle-strip').add('gun',box(.035,.039,.74),0,type96BarrelRadius(4.21)+.0195-.002,4.21);
@@ -717,7 +752,7 @@ function yun(P:TankBuilderPort):void {
   yunMetHead(tagged(P,YUN_MODEL,'met-sensor'));
   const sensor=tagged(P,YUN_MODEL,'spine-sensor');
   nationalRoofSensor(sensor,-.04,-.20,equipmentFoot(sensor,roof,-.04,-.20,.35,.33),l);
-  // the slit lamps on the 96B front wedge, clear of the gunner's sight and the forward periscope's fields (YUN_LAMP_SEAT)
+  // the slit lamps on the wrap housings' front shelves, below every sight's field and ahead of the box sight (YUN_LAMP_SEAT)
   for(const side of [-1,1])footedLamp(tagged(P,YUN_MODEL,'slit-lamp'),roof,side*YUN_LAMP_SEAT[0],YUN_LAMP_SEAT[1],l.lamp);
   // The monocle eye on the left housing shelf, outboard of the sight hood; the side electronics on both shelves.
   const eye=tagged(P,YUN_MODEL,'monocle-eye');

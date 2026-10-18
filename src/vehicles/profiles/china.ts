@@ -1230,12 +1230,17 @@ export function buildZTZ99A2ProductionTurret(P: ChinaBuilderPort, options: ZTZ99
     P.add('turretDetail', box(0.035, 0.035, railLength), s * 1.49, 0.76, railZ, 0, -s * 0.05, 0);
     for (const z of [-0.16, -0.82, -1.48, -2.06]) {
       if (!rearFlank && z < -1.27) continue;
-      P.add('turretDetail', box(0.034, 0.40, 0.034), s * 1.50, 0.55, bz(z), 0, -s * 0.05, 0);
+      // release 227, round 3 (critic D8): on a cut bustle each stanchion stands under the rail's yawed line (on the fleet
+      // turret, x 1.50 throughout, the front one stands 23 mm beside it and holds nothing; tracked as a fleet follow-up)
+      const x = cut > 0 ? 1.49 - Math.sin(0.05) * (bz(z) - railZ) / Math.cos(0.05) : 1.50;
+      P.add('turretDetail', box(0.034, 0.40, 0.034), s * x, 0.55, bz(z), 0, -s * 0.05, 0);
     }
     liftEye(P, 'turretDetail', s * 0.98, 0.82, -1.18);
   }
   P.addExternalArmor('turret', box(2.22, 0.36, 0.16), 0, 0.62, bz(-2.17), -0.10, 0, 0);
-  P.add('turretDark', box(2.02, 0.18, 0.035), 0, 0.57, bz(-2.27), -0.10, 0, 0);
+  // (release 227, round 3, critic Q2: on a cut bustle, where the dark flank slabs are gone, the rear box's backing strip
+  // behind its ribs takes the turret's paint instead of reading as a flat grey placeholder panel)
+  P.add(cut > 0 ? 'turretDetail' : 'turretDark', box(2.02, 0.18, 0.035), 0, 0.57, bz(-2.27), -0.10, 0, 0);
   for (let i = 0; i < 7; i++) {
     P.add('turretDetail', box(0.030, 0.30, 0.038), -0.90 + i * 0.30, 0.62, bz(-2.30), -0.10, 0, 0);
   }

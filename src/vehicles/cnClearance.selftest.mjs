@@ -20,7 +20,7 @@
 //     30 mm samples against the fixed stock), then both ways (15 mm samples of each against the other) at 0.5-degree by
 //     0.0125 rad steps round every local minimum under 75 mm. The arc and table the builder publishes are the loadout's and the
 //     combat anatomy's rows.
-//  5. With boxSightOnGun (Kunlun, Yun): the Type 96B box sight rides the boot on the gun's pitch group, seated (no gap
+//  5. Every Type 96B donor (Kunlun, Yun) sets boxSightOnGun: its box sight rides the boot on the gun's pitch group, seated (no gap
 //     anywhere under it, the saddle no more than 5 mm into the boot), and keeps 10 mm from every turret mesh over the
 //     whole pitch range.
 //  Negative controls must fail the same checks: the Yun's and Kunlun's guns without their depression curves, the Qilin's
@@ -114,7 +114,8 @@ function boxSightInsideFleetBoot() {
   } finally { tank.dispose(); }
 }
 
-for (const id of ['t72b3_qilin', 't72b3m_kunlun', 't80u_yun']) {
+// CN_CLEARANCE_IDS=<ids> limits a local run (the suite runs all three)
+for (const id of (process.env.CN_CLEARANCE_IDS ?? 't72b3_qilin,t72b3m_kunlun,t80u_yun').split(',')) {
   const t0 = Date.now(), spec = getSpec(id), l = NATIONAL_ROOF_LOADOUTS[id], donor = NATIONAL_DONOR_TURRETS[id];
   const kit = [], census = [];
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242,
@@ -286,8 +287,10 @@ for (const id of ['t72b3_qilin', 't72b3m_kunlun', 't80u_yun']) {
     assert.deepEqual(row?.yawArc ?? null, l.yawArc ? [...l.yawArc] : null, `${id}: the combat anatomy carries the station's arc`);
     assert.deepEqual(row?.depressionByYaw ?? null, l.depressionByYaw ? l.depressionByYaw.map((r) => [...r]) : null, `${id}: the combat anatomy carries the station's table`);
     const t4 = secs(t); progress(id, `station ${t4} s`);
-    // ---- 5. the box sight on the gun (Kunlun, Yun)
+    // ---- 5. the box sight on the gun (Kunlun, Yun; round 3, critic D5: both must keep the option, without it the fleet's
+    // turret-fixed box sight stands 1-5 cm inside the pitching boot)
     let s5 = '';
+    assert.equal(Boolean(donor.builderOptions?.boxSightOnGun), donor.donor === 'type96b', `${id}: the Type 96B's box sight rides the gun (boxSightOnGun)`);
     if (donor.builderOptions?.boxSightOnGun) {
       t = Date.now();
       const gunParts = census.filter((p) => p.bucket.startsWith('gunMount'));

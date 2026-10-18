@@ -40,8 +40,10 @@ export interface NationalRoofLoadout {
 }
 // The emplacements' pintle risers (m), measured with the moving gun's clearance sweep (tools/roof-station-arcs.mjs; the
 // Qilin's 30 mm, release 227 M5, keeps the receiver's rear 25 mm over the 99A2 cupola's periscope head facing aft-left at
-// full elevation and in recoil, where 20 mm left 22.5 mm: cnClearance.selftest.mjs).
-const KUNLUN_RISER_M=.04;
+// full elevation and in recoil, where 20 mm left 22.5 mm: cnClearance.selftest.mjs). Round 3 (critic D6: the emplacement
+// stands no taller than 0.46 m, foot to leaf sight): the Kunlun's 36 mm keeps its spade grips 25 mm over the 96B
+// cupola's front hatch latch facing aft at full elevation (26 mm left 19.1 mm, 40 mm 30.2 mm), 458 mm tall.
+const KUNLUN_RISER_M=.036;
 const QILIN_RISER_M=.03;
 export const NATIONAL_ROOF_LOADOUTS:Readonly<Record<string,NationalRoofLoadout>>={
  t80u_zoria:{name:'Bureviy open cradle',caliber:12.7,mount:'fork',feedSide:1,axisHeight:.62,muzzleZ:1.04,eyes:'monocle-left',eyeRadius:.145,roof:'split-panels',roofZ:-.12,lamp:'round'},

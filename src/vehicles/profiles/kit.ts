@@ -14,7 +14,7 @@ import { KIT } from '../tankFactoryCore.ts';
 import { emitSpareLink } from '../spareLinkGeometry.ts';
 import { ownFittingGeometry } from '../ownedFittingGeometry.ts';
 import {
-  addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, addPintleRing, addPintleShield,
+  addPintleAmmo, addPintleBarrel, addPintleMount, addPintleReceiver, addPintleRidingCradle, addPintleRing, addPintleShield,
   createPintleLayout, isMgClass, machinedRing, MG_AMMO_CAN_SLOT, MG_CARTRIDGE_SLOT, MG_CLASSES, type PintleLayout,
 } from '../machineGunGeometry.ts';
 import {
@@ -210,6 +210,13 @@ interface FittingOptions {
    * can pitch on the trunnion (`auxiliaryWeaponPitch`), and the station publishes its pivot and muzzle.
    */
   working?: boolean;
+  /**
+   * Release 227, round 3 (critic D4): a working pintle whose cradle, trunnion pin and shield pitch with the gun on a
+   * low yoke with one side arm (machineGunGeometry.ts addPintleRidingCradle), so nothing that moves passes through what
+   * does not. The fleet's working pintles keep their yaw-stage cradle and shield (unchanged geometry); the classic
+   * cupola emplacements (nationalRoofWeapon.ts nationalCupolaPintle) ride theirs. Working rigs only.
+   */
+  ridingCradle?: boolean;
   mats?: RuntimeValue;
   shadows?: boolean;
   rotation?: Vec3Tuple;
@@ -1521,11 +1528,21 @@ function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
   // Crew-operated pintles retain their authored assembly. Only remote stations
   // get the powered yaw/pitch rig used by the auxiliary auto-gun control.
   const context = createPintleMgBuildContext(opts);
-  addPintleMgMount(context);
+  if (opts.ridingCradle && !(opts.remoteControlled || opts.working)) throw new Error('KIT.fittings.pintleMG: ridingCradle needs a working rig');
+  if (!opts.ridingCradle) addPintleMgMount(context);
   if (opts.remoteControlled || opts.working) {
     const weapon=fitParts(), weaponContext={...context,parts:weapon};
+    if (opts.ridingCradle) addPintleRidingCradle(context,weapon);
     addPintleMgReceiver(weaponContext);addPintleMgBarrel(weaponContext);addPintleMgAmmo(weaponContext);
-    addPintleMgShield(context);addPintleMgRing(context);
+    // a riding cradle carries its shield on the pitch group (its vision recesses in the gun's steel, no extra material)
+    // and its race ring in the mount's steel (the yaw stage is one mesh)
+    // and its race ring in the mount's steel (the yaw stage is one mesh). It rides 12 mm lower than the fleet's yaw-stage
+    // shield: its top line comes level with the leaf sight's (the emplacement's height is the sight's), its top beam
+    // still 50 mm over the barrel's support collar.
+    if (opts.ridingCradle) {
+      addPintleShield({...weaponContext,recY:weaponContext.recY-.012*context.s},{braces:false,recessSlot:'dark'});addPintleRing(context,'dark');
+    }
+    else {addPintleMgShield(context);addPintleMgRing(context);}
     const fitting=assemblePintleMg(context);
     fitting.userData.remoteControlled=true;
     fitting.userData.barrelAxisLocalY=context.trunY;

@@ -262,32 +262,46 @@ export function machinedRing(rIn: number, rOut: number, h: number, chamfer: numb
   return creased;
 }
 
-export function addPintleMount(context: PintleLayout): void {
-  if (context.mount === 'external-cradle') return;
-  const { bodyBottom, bodyW, colTop, parts, s, supportSlot, trunY, weaponSlot } = context;
+/** The pintle's flanged bearing and its bolt heads on the roof (the foot of every pintle mount). */
+function addPintleFlange(context: PintleLayout): void {
+  const { parts, s, supportSlot, weaponSlot } = context;
   const near = context.detail === 1;
-  // Flanged bearing, spindle and yoke bridge form one visible load path. The old single post made every gun look like
-  // a block on a rod.
   // 2026-10-07 (round 4, Type 99A critics: "the dark rings round the MG pedestal read as loose rubber hoses, not
   // machined ring mounts"): the bearing is a turned flange with a chamfered collar and its bolt heads, not a round
   // torus.
-  const colH = colTop - 0.014;
   parts.add(supportSlot, latheY([[0.0005, 0], [0.040 * s, 0], [0.040 * s, 0.006], [0.034 * s, 0.010], [0.029 * s, 0.010],
     [0.029 * s, 0.017], [0.025 * s, 0.021], [0.0005, 0.021]], near ? 14 : 10), 0, 0, 0);
   if (near) for (let k = 0; k < 4; k++) {
     const a = Math.PI / 4 + k * Math.PI / 2;
     parts.add(weaponSlot, cylY(0.0045 * s, 0.0045 * s, 0.006, 6), Math.cos(a) * 0.035 * s, 0.009, Math.sin(a) * 0.035 * s);
   }
-  parts.add(weaponSlot, cylY(0.018 * s, 0.023 * s, colH, near ? 12 : 8), 0, 0.014 + colH / 2, 0);
+}
+
+/** A risen pintle's sleeve, clamp collar and lock bolt over its column (risers over 30 mm). */
+function addPintleRiserSleeve(context: PintleLayout): void {
+  const { s, weaponSlot } = context;
+  const near = context.detail === 1;
   if (context.riser > 0.03) {
     // 2026-10-08 (round 5; wave 254 on the Challenger 1: "it sits on a bare thin pole, so it reads as a prop on a stick
     // rather than a gun in a mount"): a risen pintle stands in its post: a 64 mm sleeve over the riser with a clamp
     // collar and its lock bolt at the top, so the spindle above it reads as the pintle in its socket.
     const sleeveH = context.riser + 0.02;
-    parts.add(context.supportSlot, cylY(0.03 * s, 0.034 * s, sleeveH, near ? 12 : 8), 0, 0.014 + sleeveH / 2, 0);
-    parts.add(context.supportSlot, cylY(0.038 * s, 0.038 * s, 0.022 * s, near ? 12 : 8), 0, 0.014 + sleeveH - 0.011 * s, 0);
-    if (near) parts.add(weaponSlot, cylX(0.006 * s, 0.03 * s, 6), 0.045 * s, 0.014 + sleeveH - 0.011 * s, 0);
+    context.parts.add(context.supportSlot, cylY(0.03 * s, 0.034 * s, sleeveH, near ? 12 : 8), 0, 0.014 + sleeveH / 2, 0);
+    context.parts.add(context.supportSlot, cylY(0.038 * s, 0.038 * s, 0.022 * s, near ? 12 : 8), 0, 0.014 + sleeveH - 0.011 * s, 0);
+    if (near) context.parts.add(weaponSlot, cylX(0.006 * s, 0.03 * s, 6), 0.045 * s, 0.014 + sleeveH - 0.011 * s, 0);
   }
+}
+
+export function addPintleMount(context: PintleLayout): void {
+  if (context.mount === 'external-cradle') return;
+  const { bodyBottom, bodyW, colTop, parts, s, trunY, weaponSlot } = context;
+  const near = context.detail === 1;
+  // Flanged bearing, spindle and yoke bridge form one visible load path. The old single post made every gun look like
+  // a block on a rod.
+  const colH = colTop - 0.014;
+  addPintleFlange(context);
+  parts.add(weaponSlot, cylY(0.018 * s, 0.023 * s, colH, near ? 12 : 8), 0, 0.014 + colH / 2, 0);
+  addPintleRiserSleeve(context);
   parts.add(weaponSlot, box(0.115 * s, 0.045 * s, 0.15 * s), 0, colTop + 0.0225 * s, 0.01);
   // 2026-10-07 (round 3): a cradle that carries the gun. The fork arms used to stand inside the receiver's walls; the
   // cheeks now clasp the receiver from outside, a cradle floor runs under it, and the trunnion pin passes through
@@ -306,6 +320,57 @@ export function addPintleMount(context: PintleLayout): void {
   if (near) parts.add(weaponSlot, place(block(0.010 * s, 0.055 * s, 0.012 * s), 0, 0, 0, 0.5, 0, 0),
     cx + 0.013 * s, colTop + 0.075 * s, -0.01 * s);
   if (context.classKey === 'nsvt') addNsvtMountFurniture(context);
+}
+
+/**
+ * Release 227, round 3 (critic D4; owner field-equipment standard: nothing interpenetrates a moving part): a working
+ * pintle whose cradle rides the gun. The fleet's working pintle keeps its cradle, shield and yoke bridge on the yaw stage
+ * while the gun pitches about the receiver's centre (recY, recZ), so at full elevation the receiver's lower rear sweeps
+ * 22 mm into the bridge, at 23 degrees the barrel passes 15 mm through the shield's top beam, and the ammunition can
+ * meets the shield's brace. Here everything that carries the gun pitches with it about its trunnion pin, on the pitch
+ * axis: the two cheeks clasping the receiver, the cradle floor, the pin and its head, and the shield on a bar and a
+ * cross-bar under the barrel (`cradle`, the caller's pitch-group parts; the shield itself is the caller's
+ * addPintleShield into the same parts, without its yaw-stage braces). The yaw stage keeps the flange, a shortened
+ * column, a low yoke base under the receiver's swept floor (its top 10 mm under the lowest the receiver, cradle and can
+ * come over it through 45 degrees of elevation) and one side arm on the side away from the feed, its bearing ring round
+ * the pin with 2 mm of air. The arm stands 4 mm outboard of the cheek, behind the charging handle's rod (which stays more
+ * than 40 mm from the pin at every pitch). The lock lever (inside the can on the fleet mount) is not drawn.
+ */
+export function addPintleRidingCradle(context: PintleLayout, cradle: MachineGunParts): void {
+  if (context.mount === 'external-cradle') throw new Error('addPintleRidingCradle: a pintle mount only');
+  const { bodyBottom, bodyW, feedSign: f, parts, recY, recZ, s, trunY, weaponSlot } = context;
+  const near = context.detail === 1;
+  const cx = bodyW / 2 + 0.008 * s, cheekT = 0.012 * s, floorBottom = bodyBottom - 0.010 * s;
+  // the lowest the receiver's floor line comes over the base's rear edge through 45 degrees (y / cos e + z tan e)
+  const e = 45 * Math.PI / 180, baseRear = -0.03 * s, baseFront = recZ + 0.025 * s;
+  const sweptLow = recY + (bodyBottom - recY) / Math.cos(e) + (baseRear - recZ) * Math.tan(e);
+  const baseH = 0.030 * s, baseTop = sweptLow - 0.010 * s, baseY = baseTop - baseH;
+  if (baseY < 0.014 + Math.max(0, context.riser > 0.03 ? context.riser + 0.02 : 0) + 0.010 * s) throw new Error('addPintleRidingCradle: no room for the yoke base over the riser');
+  const armIn = cx + cheekT / 2 + 0.004 * s, armT = 0.012 * s, armX = -f * (armIn + armT / 2), armD = 0.040 * s;
+  const ringIn = 0.011 * s, ringOut = 0.024 * s, pinR = 0.009 * s;
+  // yaw stage: flange, column, riser sleeve, the base and the side arm with its bearing ring round the pin
+  addPintleFlange(context);
+  const colH = baseY - 0.014;
+  parts.add(weaponSlot, cylY(0.018 * s, 0.023 * s, colH, near ? 12 : 8), 0, 0.014 + colH / 2, 0);
+  addPintleRiserSleeve(context);
+  const baseIn = 0.045 * s, baseX0 = -f * (armIn + armT), baseX1 = f * baseIn;
+  parts.add(weaponSlot, block(Math.abs(baseX1 - baseX0), baseH, baseFront - baseRear), (baseX0 + baseX1) / 2, baseY + baseH / 2, (baseRear + baseFront) / 2);
+  const armTop = recY - ringOut + 0.004 * s;
+  parts.add(weaponSlot, block(armT, armTop - baseTop + 0.002 * s, armD), armX, (armTop + baseTop - 0.002 * s) / 2, recZ);
+  parts.add(weaponSlot, place(machinedRing(ringIn, ringOut, armT, 0.002 * s, near ? 24 : 16), 0, 0, 0, 0, 0, Math.PI / 2),
+    armX + armT / 2, recY, recZ);
+  // pitch group: the cheeks (their fronts 5 mm behind the charging handle's rod), the floor, the pin and its head
+  const cheekFront = recZ + 0.030 * s, cheekRear = -0.04 * s, cheekTop = trunY + 0.010 * s;
+  for (const side of [-1, 1]) cradle.add(weaponSlot, block(cheekT, cheekTop - floorBottom, cheekFront - cheekRear), side * cx, (cheekTop + floorBottom) / 2, (cheekFront + cheekRear) / 2);
+  cradle.add(weaponSlot, block(2 * cx + cheekT, 0.010 * s, cheekFront - cheekRear), 0, floorBottom + 0.005 * s, (cheekFront + cheekRear) / 2);
+  const pinOut = armIn + armT + 0.005 * s, pinIn = cx + cheekT / 2 - 0.002 * s;
+  cradle.add(weaponSlot, cylX(pinR, pinIn + pinOut, near ? 10 : 8), (f * pinIn - f * pinOut) / 2, recY, recZ);
+  if (near) cradle.add(weaponSlot, cylX(0.016 * s, 0.006 * s, 10), -f * (pinOut + 0.002 * s), recY, recZ);
+  // the shield's carrier under the barrel: a bar forward from the floor's front, inboard of the can, and a cross-bar
+  // behind the shield's inner panels
+  const shieldBack = context.trunZ + 0.035 * s - 0.015 * s;
+  cradle.add(weaponSlot, block(0.080 * s, 0.010 * s, shieldBack - cheekFront + 0.002 * s), 0, floorBottom + 0.005 * s, (shieldBack + cheekFront) / 2);
+  cradle.add(weaponSlot, block(0.180 * s, 0.010 * s, 0.025 * s), 0, floorBottom + 0.005 * s, shieldBack - 0.0125 * s + 0.002 * s);
 }
 
 // 2026-10-05 (tank-accessories lane): the Browning family keeps its load path, its envelope and its muzzle point;
@@ -730,7 +795,8 @@ export function addPintleFeed(context: PintleLayout, p0: readonly number[], apex
   addBelt(context, p0, p1, p2, p3, round, maxRounds);
 }
 
-export function addPintleShield(context: PintleLayout): void {
+export function addPintleShield(context: PintleLayout,
+  { braces = true, recessSlot = 'shadow' }: { readonly braces?: boolean; readonly recessSlot?: string } = {}): void {
   const { parts, recY, s, shieldVariant, tone, trunZ, weaponSlot } = context;
   if (!shieldVariant) return;
   // 2026-10-08 (round 5; wave 254 on the T-90M: "the two flat dark plates flanking the gun are slabs with a pair of tiny
@@ -755,14 +821,15 @@ export function addPintleShield(context: PintleLayout): void {
     parts.add(shieldSlot, plate(outerW, shieldH * 0.94),
       side * (xe + Math.cos(wing) * outerW * s / 2), recY + 0.018 * s, shieldZ - Math.sin(wing) * outerW * s / 2,
       0, side * wing, side * 0.035);
-    // the stiffener post behind the inner panel's outboard edge, and the brace down to the cradle
+    // the stiffener post behind the inner panel's outboard edge, and the brace down to the cradle (a riding cradle
+    // carries its shield on its own bars: addPintleRidingCradle)
     parts.add(weaponSlot, box(0.018 * s, shieldH * 0.82 * s, 0.030 * s), side * (xe - 0.012 * s), recY + 0.006 * s, shieldZ - 0.026 * s);
-    parts.add(weaponSlot, box(0.020 * s, 0.020 * s, 0.14 * s),
+    if (braces) parts.add(weaponSlot, box(0.020 * s, 0.020 * s, 0.14 * s),
       side * 0.115 * s, recY - shieldH * 0.30 * s, shieldZ - 0.060 * s,
       -0.22, 0, side * 0.08);
     // the vision slot (a recess in the inner panel) under its hood
     const slotY = recY + shieldH * 0.22 * s;
-    parts.add('shadow', box(innerW * 0.6 * s, 0.024 * s, T * 0.7), side * xi, slotY, shieldZ + T * 0.2, 0, -side * 0.055, 0);
+    parts.add(recessSlot, box(innerW * 0.6 * s, 0.024 * s, T * 0.7), side * xi, slotY, shieldZ + T * 0.2, 0, -side * 0.055, 0);
     parts.add(shieldSlot, box(innerW * 0.72 * s, 0.012 * s, 0.032 * s), side * xi, slotY + 0.019 * s, shieldZ + T * 0.5 + 0.008 * s,
       0.4, -side * 0.055, 0);
     if (near) for (const sy of [-0.3, 0.36]) for (const sx of [0.2, 0.86]) {
@@ -782,12 +849,12 @@ export function addPintleShield(context: PintleLayout): void {
  * pedestal read as loose rubber hoses, not machined ring mounts"): a flat-faced machined ring with chamfered edges,
  * its bolt heads and the brackets that carry it, in the mount's paint, instead of a round 22 mm torus.
  */
-export function addPintleRing(context: PintleLayout): void {
+export function addPintleRing(context: PintleLayout, slot?: 'dark'): void {
   const { parts, ring, s, tone } = context;
   if (ring) {
     const rr = (ring.r || 0.20) * s;
     const near = context.detail === 1;
-    const rSlot = tone === 'dark' ? 'dark' : 'detail';
+    const rSlot = slot ?? (tone === 'dark' ? 'dark' : 'detail');
     parts.add(rSlot, machinedRing(rr - 0.013, rr + 0.013, 0.016, 0.004, near ? 24 : 16), 0, 0.027, 0);
     if (near) {
       const bolts = Math.min(8, Math.max(6, Math.round(rr / 0.04)));

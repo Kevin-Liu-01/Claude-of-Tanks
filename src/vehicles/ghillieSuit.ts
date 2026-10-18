@@ -16,7 +16,7 @@ import {
   type SuitTheatre,
 } from './camoNetTexture.ts';
 import { FLEET_GHILLIE_SUITS } from './ghillieFleetSuits.ts';
-import { minimumMechanicalGunPitch, type GunPitchByYawCurve } from '../sim/gunPitchLimits.ts';
+import { mechanicalGunPitchFloor, type GunPitchByYawCurve } from '../sim/gunPitchLimits.ts';
 import { MISSION_DOCK_SEATS } from '../sim/missionDockSeats.generated.ts';
 import { vehicleMarkingSeats } from './vehicleMarkingSeatRegistry.ts';
 import { missionAirframeVolumes, missionCradleVolumes } from '../sim/missionDockVolumes.ts';
@@ -4678,6 +4678,8 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
   const deg = Math.PI / 180;
   const tMax = (spec.gunElevationDeg ?? 18) * deg;
   const tMinFront = -(spec.gunDepressionDeg ?? 8) * deg;
+  // the deck curve's floor at a yaw, its curve validated once (the per-call form cost the Yun's suit 40-90 % of its build)
+  const pitchFloor = mechanicalGunPitchFloor(spec);
   // nothing farther out than the muzzle's reach, or lower than the gun's deepest depression brings its belly, meets it
   const gunReachR = Math.abs(gunAt.x) + gunAt.z + maxAlong + gunReach + clearance;
   let deepest = 0;
@@ -4765,7 +4767,7 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
       const flat = plate !== null && p[1] <= plate + 0.04;
       const hitAt = (off: number): boolean => {
         const lateral = r * Math.sin(off) - gunAt.x, along = r * Math.cos(off);
-        const lo = minimumMechanicalGunPitch(spec, aim - off);
+        const lo = pitchFloor(aim - off);
         if (!sweptBy(lateral, qy, along, lo, tMax)) return false;
         // a spec whose depression has no deck curve lets the bare gun reach its own deck: where the gun at that yaw's
         // lowest pitch, passing over the point (the same reach across), already comes down to within the cloth's 4 cm

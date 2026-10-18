@@ -5,6 +5,11 @@
 // (never an inert drawn gun), published with its pivot, muzzle, traverse arc and depression table, and the auxiliary
 // roof-gun control (src/sim/auxiliarySystems.ts) slews it to and fires it at a spotted enemy inside its arc with no
 // player input, and holds it off a target inside an excluded window.
+// Round 3 (critics D4, D6, D7): each cupola emplacement stands within 0.46 x 0.46 x 1.60 m (its riser included); its
+// cradle, pin and shield ride the gun (FittingOptions.ridingCradle) so that through its whole pitch range the moving gun
+// keeps at least 1.5 mm from every part of its mount that does not pitch (the fleet's working pintle, whose cradle and
+// shield stand on the yaw stage, must fail that: its receiver sweeps 22 mm into the yoke bridge); and the station adds no
+// material the vehicle does not already draw with.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
@@ -15,6 +20,8 @@ import { INERT_DRAWN_WEAPONS } from './inertDrawnWeapons.generated.ts';
 import { NATIONAL_ROOF_LOADOUTS } from './nationalRoofConfig.ts';
 import { auxiliaryWeaponProfile } from './auxiliaryWeapons.ts';
 import { stepRoofGun, auxiliaryState } from '../sim/auxiliarySystems.ts';
+import { FITTINGS } from './profiles/kit.ts';
+import { stationSelfClearance } from './cnTurretGeometry.test-support.mjs';
 
 const EXPECT = {
   t72b3_qilin: { name: 'Qilin cupola QJC-88', pintle: true, shield: 'standard', arc: true, table: true, excluded: -69 },
@@ -66,8 +73,22 @@ for (const [id, want] of Object.entries(EXPECT)) {
       assert.equal(station.userData.weaponClass, 'qjc88', `${id}: QJC-88 class`);
       assert.equal(station.userData.crewServed, true, `${id}: the classic crew-served emplacement form`);
       assert.equal(station.userData.shieldVariant, want.shield, `${id}: its light shield`);
-      const size = new THREE.Box3().setFromObject(station).getSize(new THREE.Vector3());
-      assert.ok(size.x <= .50 && size.z <= 1.60 && size.y <= .50 + l.emplacement.riserM, `${id}: a small emplacement ${size.toArray()}`);
+      assert.equal(station.userData.shieldVariant, 'standard', `${id}: the class's standard two-leaf shield`);
+      tank.root.updateMatrixWorld(true);
+      const inv = new THREE.Matrix4().copy(station.matrixWorld).invert(), box = new THREE.Box3();
+      station.traverse((o) => { if (o.isMesh) box.union(new THREE.Box3().setFromBufferAttribute(o.geometry.attributes.position).applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld))); });
+      const size = box.getSize(new THREE.Vector3());
+      assert.ok(size.x <= .46 && size.y <= .46 && size.z <= 1.60, `${id}: the emplacement within 0.46 x 0.46 x 1.60 m (${size.toArray().map((x) => x.toFixed(4)).join(' x ')})`);
+      // the shield, cradle and pin ride the gun; the yaw stage is the flange, column, yoke and race ring in one mesh
+      let shieldOnGun = false; pitch.traverse((o) => { if (o.isMesh && o.userData.fittingSlot === 'detail') shieldOnGun = true; });
+      assert.ok(shieldOnGun, `${id}: the shield rides the gun`);
+      const self = stationSelfClearance(station, pitch, { depression: auxiliaryWeaponProfile(12.7, id).depressionRad, elevation: auxiliaryWeaponProfile(12.7, id).elevationRad });
+      assert.equal(self.yawMeshes, 1, `${id}: one yaw-stage mesh`);
+      assert.ok(self.d >= .0015, `${id}: the moving gun keeps 1.5 mm from its own mount (${(self.d * 1000).toFixed(1)} mm at ${(self.el * 180 / Math.PI).toFixed(1)} deg)`);
+      // no material of its own: every material the station draws with is drawn elsewhere on the vehicle
+      const elsewhere = new Set(); tank.root.traverse((o) => { if (!o.isMesh) return; for (let q = o; q; q = q.parent) if (q === station) return; for (const m of [].concat(o.material)) elsewhere.add(m.uuid); });
+      station.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) assert.ok(elsewhere.has(m.uuid), `${id}: the station's ${o.name} adds a material (${m.name || m.color?.getHexString?.()})`); });
+      console.log(`${id}: emplacement ${size.toArray().map((x) => x.toFixed(3)).join(' x ')} m, its gun ${(self.d * 1000).toFixed(1)} mm from its mount at worst`);
     }
     tank.root.updateMatrixWorld(true);
     const meshes = []; pitch.traverse((o) => { if (o.isMesh) meshes.push(o); });
@@ -101,4 +122,17 @@ for (const [id, want] of Object.entries(EXPECT)) {
   }
   console.log(`${id}: ${want.name} calibre-true, published, automatic inside its arc PASS`);
 }
-console.log('cnStations: the Qilin, Kunlun and Yun roof stations are working, automatic and calibre-true PASS');
+// negative control: the fleet's working pintle (the same class, shield, ring and riser; its cradle and shield on the yaw
+// stage) — its moving gun goes through its own mount
+{
+  const mat = () => new THREE.MeshStandardMaterial();
+  const mats = { dark: mat(), detail: mat(), shadow: mat(), glass: mat(), hull: mat() };
+  const e = NATIONAL_ROOF_LOADOUTS.t72b3_qilin.emplacement;
+  const fleet = FITTINGS.pintleMG({ mats, cls: e.cls, scale: 1, tone: 'two-tone', elev: .08, shield: e.shield, ammo: true, ring: { ...e.ring },
+    riser: e.riserM, working: true, datumBarrel: false });
+  fleet.updateMatrixWorld(true);
+  const self = stationSelfClearance(fleet, fleet.getObjectByName('auxiliaryWeaponPitch'), { depression: .087, elevation: .75 });
+  assert.ok(self.d < .0015, `negative control: the fleet working pintle's gun goes through its own mount (${(self.d * 1000).toFixed(1)} mm)`);
+  for (const m of Object.values(mats)) m.dispose();
+}
+console.log('cnStations: the Qilin, Kunlun and Yun roof stations are working, automatic and calibre-true; the emplacements small and clear of their own mounts PASS');

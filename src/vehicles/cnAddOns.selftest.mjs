@@ -14,6 +14,12 @@
 // role) may enter it, and the 226 Kunlun lamp seat (|x| 0.55, z 0.86, ahead of the 96B gunner's sight) must fail it.
 // Every turret lamp's lens (driving lamps and Shtora) shines out unobstructed for 3 m with the gun at rest, fully
 // depressed and fully elevated (rays from its whole aperture), and each lamp pair is a mirror pair.
+// Round 3 (critic D3, N1, N2): the Kunlun's add-ons take the same inventory and seating census (its chevron carriers, Shtora
+// heads, lamps, scanner, cases, cable, whip and cage); and each turret lamp's runtime spot light (nightLightingRuntime.ts:
+// a 19-degree cone with a 0.7 penumbra, dropped for the low beam, inverse-square) may not flood the vehicle near it: the
+// irradiance it throws on any front-facing surface stays under 60 within 1.5 m of the lens and under 200 anywhere (the
+// 226 lamps reach 113 on the barrel 2.9 m out). The round-2 lamp seats beside the box sight (876 on its side face 0.7 m
+// out) must fail it.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
@@ -21,6 +27,7 @@ import { NATIONAL_DONOR_TURRETS, QILIN_BUSTLE_CUT_M } from './nationalDonorTurre
 import { bustleCutZ, ZTZ99A2_BUSTLE_CUT_FRONT_Z } from './donorBustleCut.ts';
 import { censusPart, seatingCensus, SurfaceGrid, sightField, sightFieldApproach, densePoints, meshTriangles, insideClosed } from './cnTurretGeometry.test-support.mjs';
 import { vehicleNightLightEmittersFor } from './vehicleNightLighting.ts';
+import { HEADLIGHT_CONE_RAD, HEADLIGHT_LOW_BEAM_DROP } from '../engine/nightLightingRuntime.ts';
 import { getSpec } from './specs.ts';
 
 // role -> [minimum parts, exact reactive cassettes (parts with ERA hit faces) or null]
@@ -39,8 +46,16 @@ const INVENTORY = {
     lamp: [2, 0], camera: [3, 0], 'field-box': [1, 0], 'tool-chest': [1, 0], roll: [4, 0], carrier: [3, 0], cable: [2, 0],
     'cage-root': [2, 0], 'cage-front-post': [2, 0], 'cage-side-rail': [2, 0], 'cage-post': [2, 0], 'cage-rear-rail': [3, 0], 'cage-floor': [4, 0],
   },
+  // round 3 (critic D3): the Kunlun's 226 package on its Type 96B, its lamps now riding the Shtora heads' hoods
+  t72b3m_kunlun: {
+    chevron: [36, 12], shtora: [24, 0], lamp: [14, 0], scanner: [5, 0], 'service-case': [20, 0], cable: [7, 0], antenna: [3, 0],
+    'cage-root': [2, 0], 'cage-side-rail': [2, 0], 'cage-post': [2, 0], 'cage-mid-rail': [2, 0], 'cage-rear-rail': [3, 0], 'cage-floor': [3, 0],
+    'cage-rear-post': [3, 0], 'cage-console': [12, 0],
+  },
 };
 const LIGHTS = { t80u_yun: [6, 0], t72b3_qilin: [4, 0], t72b3m_kunlun: [6, 2] };
+// the hull's driving lamps among those headlights (the turret carries the rest)
+const HULL_HEADLIGHTS = { t80u_yun: 4, t72b3_qilin: 2, t72b3m_kunlun: 4 };
 // the lenses on the turret (its lamp pair, and the Kunlun's Shtora pair); the rest are the hull's driving lamps
 const TURRET_LENSES = { t80u_yun: 2, t72b3_qilin: 2, t72b3m_kunlun: 4 };
 
@@ -171,6 +186,64 @@ function apertureRays(id, tank, parts) {
   }
   return { problems, lenses: lenses.length };
 }
+/** Round 3 (critic N1, N2): each turret driving lamp's runtime spot (its registered emitter: position, aim and intensity;
+ * the runtime's cone, penumbra and low-beam drop) against every front-facing surface of the vehicle and the roof station,
+ * the gun at rest, fully depressed and fully elevated: irradiance E = I * spot * n.l / d^2 on dense samples. Returns the
+ * worst within `near` m of the lens and anywhere, each with its part. `emitters` may stand in for the built ones (the
+ * negative control) and `skip` drops parts from the scene. */
+function lampSpill(id, tank, parts, { emitters = null, skip = () => false, near = 1.5 } = {}) {
+  const spec = getSpec(id), turret = tank.root.getObjectByName('rig_turret'), gun = tank.root.getObjectByName('rig_gun');
+  const tInv = new THREE.Matrix4().copy(turret.matrixWorld).invert(), hullToTurret = tInv.clone().multiply(turret.parent.matrixWorld);
+  let lamps = emitters;
+  if (!lamps) { lamps = []; turret.traverse((o) => { for (const e of vehicleNightLightEmittersFor(o)) if (e.kind === 'headlight') {
+    const M = new THREE.Matrix4().multiplyMatrices(tInv, o.matrixWorld);
+    lamps.push({ p: new THREE.Vector3().fromArray(e.position).applyMatrix4(M), d: new THREE.Vector3().fromArray(e.direction ?? [0, -.08, 1]).transformDirection(M), I: e.intensity ?? 80 });
+  } }); }
+  // the runtime's low beam (nightLightingRuntime.ts updateEmitter), the turret frame upright as the vehicle's
+  lamps = lamps.map((L) => { const d = L.d.clone(); d.y -= HEADLIGHT_LOW_BEAM_DROP * Math.hypot(d.x, d.z); return { ...L, d: d.normalize() }; });
+  const coneCos = Math.cos(HEADLIGHT_CONE_RAD), penCos = Math.cos(HEADLIGHT_CONE_RAD * (1 - .7)); // createSpots: penumbra 0.7
+  const smooth = (x) => { const t = Math.min(1, Math.max(0, (x - coneCos) / (penCos - coneCos))); return t * t * (3 - 2 * t); };
+  let station = null; turret.traverse((o) => { if (!station && o.userData.remoteControlled && o.userData.firingAxis === '+Z') station = o; });
+  const stationMeshes = []; station?.traverse((o) => { if (o.isMesh && !/Shadow/.test(o.name)) stationMeshes.push(o); });
+  const v = new THREE.Vector3(), worst = { near: { E: 0 }, all: { E: 0 } };
+  const scan = (T, part, L) => {
+    for (let t = 0; t < T.length; t += 9) {
+      const ux = T[t + 3] - T[t], uy = T[t + 4] - T[t + 1], uz = T[t + 5] - T[t + 2], wx = T[t + 6] - T[t], wy = T[t + 7] - T[t + 1], wz = T[t + 8] - T[t + 2];
+      let nx = uy * wz - uz * wy, ny = uz * wx - ux * wz, nz = ux * wy - uy * wx; const a = Math.hypot(nx, ny, nz); if (a < 1e-12) continue;
+      nx /= a; ny /= a; nz /= a;
+      // a triangle wholly behind the lamp or more than 6 m off is dark
+      let ahead = false, close = false;
+      for (let k = 0; k < 9; k += 3) { const qx = T[t + k] - L.p.x, qy = T[t + k + 1] - L.p.y, qz = T[t + k + 2] - L.p.z;
+        if (qx * L.d.x + qy * L.d.y + qz * L.d.z > 0) ahead = true; if (Math.hypot(qx, qy, qz) < 6) close = true; }
+      if (!ahead || !close) continue;
+      const S = densePoints(T.slice(t, t + 9), .02);
+      for (let i = 0; i < S.length; i += 3) {
+        const lx = L.p.x - S[i], ly = L.p.y - S[i + 1], lz = L.p.z - S[i + 2], dist = Math.hypot(lx, ly, lz); if (dist < .02) continue;
+        const ndl = (nx * lx + ny * ly + nz * lz) / dist; if (ndl <= 0) continue;
+        const s = smooth(-(L.d.x * lx + L.d.y * ly + L.d.z * lz) / dist); if (s <= 0) continue;
+        const E = L.I * s * ndl / (dist * dist);
+        const r = { E, part, d: dist, at: [S[i], S[i + 1], S[i + 2]] };
+        if (E > worst.all.E) worst.all = r;
+        if (dist < near && E > worst.near.E) worst.near = r;
+      }
+    }
+  };
+  const placed = (p, M) => { if (!M) return p.tri; const T = new Float64Array(p.tri.length); for (let i = 0; i < T.length; i += 3) { v.set(p.tri[i], p.tri[i + 1], p.tri[i + 2]).applyMatrix4(M); T[i] = v.x; T[i + 1] = v.y; T[i + 2] = v.z; } return T; };
+  for (const pitch of [0, -(spec.gunDepressionDeg ?? 6), spec.gunElevationDeg ?? 14]) {
+    const gunToTurret = new THREE.Matrix4().copy(tInv).multiply(gun.parent.matrixWorld)
+      .multiply(new THREE.Matrix4().compose(gun.position, new THREE.Quaternion().setFromEuler(new THREE.Euler(gun.rotation.x - pitch * Math.PI / 180, gun.rotation.y, gun.rotation.z)), gun.scale));
+    const scene = parts.filter((p) => !p.lens && !skip(p) && (pitch === 0 || owner(p) === 'gun'))
+      .map((p) => ({ p, T: placed(p, owner(p) === 'turret' ? null : owner(p) === 'gun' ? gunToTurret : hullToTurret) }));
+    if (pitch === 0) scene.push({ p: { role: 'roof station', bucket: 'station', box: new THREE.Box3() }, T: meshTriangles(stationMeshes, tInv) });
+    for (const L of lamps) for (const { p, T } of scene) {
+      // a lamp's own assembly (its guard, base and the hood it rides) lies behind or beside its lens
+      if (p.box && !p.box.isEmpty() && p.role && ['lamp', 'slit-lamp'].includes(p.role) && p.box.distanceToPoint(L.p) < .2) continue;
+      scan(T, p, L);
+    }
+  }
+  return { ...worst, lamps: lamps.length };
+}
+
 /** Each lamp role's parts pair off with their mirror images across the turret's centre plane: in plan within 1.5 mm, in
  * height within 15 mm (each foot follows its own roof; the 99A2's crown is not symmetric under the Qilin's lamps). */
 function asymmetricLamps(parts) {
@@ -196,7 +269,7 @@ for (const quality of ['high', 'low']) {
     if (p.tri[i + 2] >= ZTZ99A2_BUSTLE_CUT_FRONT_Z && !fleetCollar(p.tri[i], p.tri[i + 1], p.tri[i + 2])) fleetShell.add(key(p.tri[i], p.tri[i + 1], p.tri[i + 2]));
   fleet.tank.dispose();
 
-  for (const id of [...Object.keys(INVENTORY), 't72b3m_kunlun']) {
+  for (const id of Object.keys(INVENTORY)) {
     const { tank, parts } = build(id, quality);
     try {
       // ---- inventory
@@ -330,16 +403,29 @@ for (const quality of ['high', 'low']) {
           assert.ok(!parts.some((p) => p !== lens && owner(p) === 'turret' && p.box.containsPoint(new THREE.Vector3(c.x, c.y, front)) && insideClosed(p, c.x, c.y, front)), `${id}: the lens at ${c.toArray().map((x) => x.toFixed(3))} stands proud of its housing`);
         }
 
-        // negative control: the 226 Kunlun lamps (|x| 0.55, z 0.86 on the wedge falling 16 degrees forward) stand in the
-        // 96B gunner's sight's field
+        // round 3 (critic N1, N2): the lamps' spot lights do not flood the vehicle round them
+        const spill = lampSpill(id, tank, parts);
+        assert.equal(spill.lamps, LIGHTS[id][0] - HULL_HEADLIGHTS[id], `${id}: every turret driving lamp's spot measured`);
+        const where = (r) => `${r.part?.role ?? r.part?.bucket} at ${r.at?.map((x) => x.toFixed(3))}, ${r.d?.toFixed(2)} m out`;
+        assert.ok(spill.near.E < 60, `${id}: a turret lamp's spot floods a surface within 1.5 m (${spill.near.E.toFixed(0)}: ${where(spill.near)})`);
+        assert.ok(spill.all.E < 200, `${id}: a turret lamp's spot floods a surface (${spill.all.E.toFixed(0)}: ${where(spill.all)})`);
+        console.log(`${id}: lamp spill ${spill.near.E.toFixed(0)} within 1.5 m, ${spill.all.E.toFixed(0)} worst (${where(spill.all)})`);
         if (id === 't72b3m_kunlun') {
-          const old = parts.map((p) => (p.role === 'lamp' ? moved(p, Math.sign(midX(p)) * .27, .19 * Math.tan(16 * Math.PI / 180), -.19) : p));
+          // negative control: the 226 Kunlun lamps (|x| 0.55, z 0.86 on the 96B front roof) stand in the 96B gunner's sight's
+          // field: each lamp's parts moved so its lens lands where the 226 lens stood (0.550, 0.794, 0.985)
+          const lensOf = (side) => parts.find((p) => p.lens && p.role === 'lamp' && Math.sign(midX(p)) === side).box.getCenter(new THREE.Vector3());
+          const old = parts.map((p) => { if (p.role !== 'lamp') return p; const side = Math.sign(midX(p)), c = lensOf(side);
+            return moved(p, side * .550 - c.x, .794 - c.y, .985 - c.z); });
           const control = sightFieldCensus(id, old, gunToTurret).find(([name]) => name === "96B gunner's sight");
           assert.ok(control[1] >= 0 && control[2]?.role === 'lamp', `negative control: the 226 Kunlun lamp seat stands in the gunner's sight's field (${(control[1] * 1000).toFixed(1)} mm)`);
+          // negative control: the round-2 seats (lenses at |x| 0.28, z 1.175 on the front roof beside the box sight) flood it
+          const r2 = lampSpill(id, tank, parts, { skip: (p) => p.role === 'lamp', emitters: [-1, 1].map((side) =>
+            ({ p: new THREE.Vector3(side * .280, .747, 1.175), d: new THREE.Vector3(0, 0, 1), I: 1200 })) });
+          assert.ok(r2.near.E >= 60, `negative control: the round-2 Kunlun lamp seats flood the box sight (${r2.near.E.toFixed(0)}: ${where(r2.near)})`);
         }
       }
       console.log(`${id}/${quality}: add-ons ${want ? Object.keys(want).length : 0} roles present and seated PASS`);
     } finally { tank.dispose(); }
   }
 }
-console.log('cnAddOns: the Yun and Qilin add-ons wrapped round their base turrets and seated, the Qilin 10 % shorter PASS');
+console.log('cnAddOns: the Yun and Qilin add-ons wrapped round their base turrets, every CN add-on seated, the Qilin 10 % shorter, the lamps clear of every sight and flooding nothing PASS');

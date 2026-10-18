@@ -314,3 +314,26 @@ export function sightFieldApproach(parts, f, { h = .008, field = SIGHT_FIELD } =
 export function sightFieldIntrusions(parts, f, options) {
   return sightFieldApproach(parts, f, options).filter((a) => a.m >= 0).map((a) => ({ part: a.part, intrusion: a.m }));
 }
+
+// ---- Round 3 (2026-10-17, critic D4): a working station's moving gun against its own mount.
+/** The closest the station's pitch group comes to its yaw stage (both ways, dense samples `h` apart) as it pitches about
+ * its pivot from -depression to elevation in `step` radians: { d, el } (d capped at 0.03 m). `station` is the fitting
+ * root (its yaw owner), `pitch` its auxiliaryWeaponPitch; both world-placed. */
+export function stationSelfClearance(station, pitch, { depression, elevation, step = .5 * Math.PI / 180, h = .004 } = {}) {
+  const sInv = new THREE.Matrix4().copy(station.matrixWorld).invert(), pInv = new THREE.Matrix4().copy(pitch.matrixWorld).invert();
+  const pitchMeshes = [], yawMeshes = [];
+  station.traverse((o) => { if (!o.isMesh) return; let moving = false; for (let q = o; q; q = q.parent) if (q === pitch) moving = true; (moving ? pitchMeshes : yawMeshes).push(o); });
+  const P = meshTriangles(pitchMeshes, pInv), Y = meshTriangles(yawMeshes, sInv);
+  const pPts = densePoints(P, h), yPts = densePoints(Y, h), pGrid = new SurfaceGrid(P, { cell: .03, rq: .03 }), yGrid = new SurfaceGrid(Y, { cell: .03, rq: .03 });
+  const rest = pitch.position.clone(), v = new THREE.Vector3();
+  let worst = { d: Infinity, el: 0 };
+  const els = []; for (let el = -depression; el < elevation; el += step) els.push(el); els.push(elevation);
+  for (const el of els) {
+    const M = new THREE.Matrix4().compose(rest, new THREE.Quaternion().setFromEuler(new THREE.Euler(-el, 0, 0)), new THREE.Vector3(1, 1, 1)), Mi = M.clone().invert();
+    let d = Infinity;
+    for (let i = 0; i < pPts.length; i += 3) { v.set(pPts[i], pPts[i + 1], pPts[i + 2]).applyMatrix4(M); d = Math.min(d, yGrid.distance(v.x, v.y, v.z)); }
+    for (let i = 0; i < yPts.length; i += 3) { v.set(yPts[i], yPts[i + 1], yPts[i + 2]).applyMatrix4(Mi); d = Math.min(d, pGrid.distance(v.x, v.y, v.z)); }
+    if (d < worst.d) worst = { d, el };
+  }
+  return { ...worst, pitchMeshes: pitchMeshes.length, yawMeshes: yawMeshes.length };
+}
