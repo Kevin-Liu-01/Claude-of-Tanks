@@ -748,6 +748,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageDisplayAtlas.selftest.mjs',
     'src/ui/garageAtmosphere.selftest.mjs',
     'src/ui/garageDisplayPlacement.selftest.mjs',
+    // garage r9 (g3): Sirocco's and Steinburg's map landmarks at their bearings, bounded and deterministic
+    'src/ui/garageHorizonLandmarks.selftest.mjs',
     'tools/garage-terrain-patches.selftest.mjs',
     'tools/garage-variants-probe.selftest.mjs',
     'src/game/rosterPlanning.selftest.mjs',

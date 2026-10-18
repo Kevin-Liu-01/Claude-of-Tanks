@@ -5,6 +5,9 @@ import { KitBuilder, kitRandom, type KitBuildResult } from './garageKitGeometry.
 import { garageKitSkin } from './garageKitSkins.ts';
 import { buildComputerStation, buildFabricBanner, buildFramedPrint } from './garageDisplayKit.ts';
 import { buildGarageProp } from './garagePropKit.ts';
+import { buildGarageBenchPiece } from './garageBenchKit.ts';
+import { buildJibCrane } from './garageCraneKit.ts';
+import { buildDeckLedStrip, buildLongSpanRacking, buildMezzanineOffice } from './garageVerdantFinish.ts';
 import { createGarageDecalMaterial, createGarageDisplayMaterial, ensureGarageDisplayAtlas } from './garageDisplayAtlas.ts';
 import { atmosphereMotes, atmosphereShaft, createGarageAtmosphere } from './garageAtmosphereKit.ts';
 
@@ -58,6 +61,34 @@ export function buildGarageVerdantKit(params: {
     buildComputerStation(b, { screens: ['readout.armor.abrams', 'map.verdant', 'readout.modules.abrams'], width: 2.0 });
   });
   add(121, -18.8, 0, 9.4, Math.PI / 2 + 0.3, (b) => buildGarageProp(b, 'extinguisher'));
+  // the hall of fame's second run, left of the slideshow and its station (garage r9 g3: six prints in all)
+  const morePrints = ['media.urban', 'media.monsoon', 'media.railyard'] as const;
+  morePrints.forEach((rect, index) => add(140 + index, WEST, 6.62, 8.4 + index * 1.95, Math.PI / 2, (b) => buildFramedPrint(b, rect, 1.6, 0.9)));
+
+  // the mezzanine's finish (garage r9 g3; the brief: "today an empty deck"): the glass-fronted operations office on the
+  // deck's right end with its monitor wall (readouts and the Verdant Fields map), long-span racking along the rest of it
+  // with bins, a pallet of track links and one of road wheels, and the warm LED strip along the deck's fascia. The deck
+  // (garageDressing.ts buildFactoryStructure, turned with the hall) spans x -18.5..18.5, z -20.45..-16.85, its top at
+  // 4.52 m; the office stands right of the hero's halo in the canonical frame.
+  const DECK_Y = 4.52;
+  add(150, 2.1, DECK_Y, -18.775, 0, (b) => buildMezzanineOffice(b, {
+    width: 9, depth: 3.05, height: 2.7,
+    screens: ['readout.armor.k2', 'map.verdant', 'readout.modules.burlak', 'readout.armor.leopard'],
+  }));
+  add(151, 12.4, DECK_Y, -19.6, 0, (b) => buildLongSpanRacking(b, { length: 10 }));
+  add(152, 8.0, 4.33, -16.82, 0, (b) => buildDeckLedStrip(b, 20));
+  // a pillar jib crane parked beside the K2's rotisserie, its arm swung to the east wall
+  add(153, 20.2, 0, 12.6, 0, (b) => { buildJibCrane(b, { height: 4.6, reach: 2.2, slew: 0, swl: 5 }); });
+  // the Burlak cell's services against the east wall: the bunded oil rack, the spill kit, a pallet jack, two roll cabs
+  add(154, 22.1, 0, -1.0, -Math.PI / 2, (b) => buildGarageProp(b, 'oilRack'));
+  add(155, 22.2, 0, 1.4, -Math.PI / 2, (b) => buildGarageProp(b, 'spillBin'));
+  add(156, 20.4, 0, -2.8, 0.4, (b) => buildGarageProp(b, 'palletJack'));
+  add(157, 22.0, 0, -15.4, -Math.PI / 2, (b) => buildGarageBenchPiece(b, 'rollCab'));
+  add(158, 22.0, 0, -14.1, -Math.PI / 2 + 0.08, (b) => buildGarageBenchPiece(b, 'rollCab'));
+  // the Leopard's track spares in the hall's south-west corner
+  add(159, -21.3, 0, 20.4, 0.15, (b) => buildGarageProp(b, 'trackPallet'));
+  add(160, -21.1, 0, 18.9, -0.1, (b) => buildGarageProp(b, 'trackPallet'));
+  add(161, -19.6, 0, 20.9, 0, (b) => { buildGarageProp(b, 'roadWheel'); b.at(0.04, 0.17, 0.02, 0.3, () => { buildGarageProp(b, 'roadWheel'); }); });
 
   const solids: THREE.BufferGeometry[] = [], displays: THREE.BufferGeometry[] = [], decals: THREE.BufferGeometry[] = [];
   let triangles = 0;
@@ -121,6 +152,6 @@ export function buildGarageVerdantKit(params: {
   finish(atmosphere, 'garage_verdant_kit_atmosphere');
   return {
     meshes, materials,
-    stats: Object.freeze({ triangles, brandPieces: 3, tankImages: prints.length, stations: 1, stationMonitors: 3 }),
+    stats: Object.freeze({ triangles, brandPieces: 3, tankImages: prints.length + morePrints.length, stations: 2, stationMonitors: 7 }),
   };
 }
