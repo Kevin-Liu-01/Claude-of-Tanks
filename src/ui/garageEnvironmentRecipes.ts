@@ -342,16 +342,20 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       // a military pass station of steel sheds, containers and a plant house (wave 398: no chalets, chapels or domes)
       // at the cliff's foot, clear of its face (the cliff now runs 46 m across the frame: the garage critic panel)
       at(makeWarehouse, 'glacier vehicle store', -34.65, 0.71, 0.6),
-      at(makeContainerRow, 'pass container line', -30, -30, 0.55),
+      // a plough shed off the cliff's left end, where the container line stood hidden inside the cliff (garage r9: 7k
+      // triangles no view saw)
+      atView(makeShed, 'pass plough shed', -43.5, 31, 0.6),
       at(makeFireStation, 'pass plant house', -2.1, -31.8, 0.5),
       at(makeShed, 'pass service shelter', 18, -34, 0.72),
-      at(makeContainerRow, 'glacier outpost containers', 36, -14, 0.45),
+      at(makeWarehouse, 'glacier outpost store', 36, -14, 0.45), // (a container line was 6.4k triangles: garage r9 funds the kit)
       at(makeWaterTower, 'high-pass water tank', 40, -11, 0.6),
       at(makeWarehouse, 'avalanche patrol garage', 6, 38, 0.5),
       at(makeDepot, 'cliff rescue depot', -41, 23, 0.5),
-      at(makeContainerRow, 'high-pass rescue containers', 31, 31, 0.5),
+      at(makeWarehouse, 'high-pass rescue garage', 31, 31, 0.4), // (was a container line: 5.7k triangles behind the lens)
     ],
-    treeSpecies: ['spruce', 'fir'], treeCount: 28, reliefScale: 0.38,
+    // a few wind-cut spruce and fir below the col (garage r9: the col stands above the treeline, the hinterland's own
+    // reading; 28 trees were 7.8k triangles of a forest the place does not have)
+    treeSpecies: ['spruce', 'fir'], treeCount: 12, reliefScale: 0.38,
     horizonStyle: 'alpine', horizonHeightM: 13.2,
     approach: {
       style: 'alpine-pass', label: 'snowbound cavern approach', surface: 'snow', width: 7.2,
@@ -374,11 +378,11 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
       // third (stills ticket 6, 2026-10-15): it now stands behind the showroom lens on the right, seen from the orbit
       atView(makeGantry, 'heavy lift gantry', 17, -38, 0.76),
       at(makeWaterTower, 'divide water tower', 18, -34, 0.68),
-      at(makeContainerRow, 'salvage container line', 36, -14, 0.62),
+      at(makeWarehouse, 'salvage parts store', 36, -14, 0.55), // (a container line was 5k triangles: garage r9 funds the kit)
       at(makeShed, 'recovery fabrication shed', 40, -11, 0.72),
       at(makeCaravanserai, 'mesa crew compound', 6, 38, 0.54),
       at(MARKET_BUILDERS.compound, 'salvage fortification', -41, 23, 0.50),
-      at(makeGantry, 'canyon recovery bridge', 31, 31, 0.56),
+      at(makeShed, 'recovery spares shed', 31, 31, 0.6), // (was a second gantry behind the lens: garage r9 funds the kit's)
     ],
     // acacia and scrub oak only: a cedar read as "a stray spruce instead of badlands" (wave 408)
     treeSpecies: ['acacia', 'oak'], treeCount: 12, reliefScale: 0.72,

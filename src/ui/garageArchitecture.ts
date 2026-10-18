@@ -47,6 +47,11 @@ export interface GarageArchitectureStats {
   backdropLayers: number;
   horizonStyle: 'flat' | 'rolling' | 'urban' | 'coastal' | 'alpine' | 'mesa' | 'dune' | 'none';
   horizonMaxHeightM: number;
+  /** The horizon's largest elevation angle from the opening camera (deg). */
+  horizonMaxElevationDeg: number;
+  /** The map skyline's landmarks (type, name, compass bearing, distance, ring radius), or null for the biome backdrop. */
+  skylineLandmarks: ReadonlyArray<{ readonly type: string; readonly name: string | null; readonly azDeg: number; readonly distM: number;
+    readonly ringRadiusM: number; readonly elevationDeg: number }> | null;
   builtHorizonMassTopM: number;
   builtHorizonAccentTopM: number;
   groundCover: number;
@@ -222,6 +227,8 @@ function buildVerdantWorkshopOwner(): GarageEnvironmentBuild {
     backdropLayers: 0,
     horizonStyle: 'none',
     horizonMaxHeightM: 0,
+    horizonMaxElevationDeg: 0,
+    skylineLandmarks: null,
     builtHorizonMassTopM: 0,
     builtHorizonAccentTopM: 0,
     groundCover: 0,
@@ -427,6 +434,8 @@ export function createGarageArchitectureController(
       backdropLayers: numericStat(data.backdropLayers),
       horizonStyle: horizonStyleStat(data.horizonStyle),
       horizonMaxHeightM: numericStat(data.horizonMaxHeightM),
+      horizonMaxElevationDeg: numericStat(data.horizonMaxElevationDeg),
+      skylineLandmarks: Array.isArray(data.skylineLandmarks) ? data.skylineLandmarks as GarageArchitectureStats['skylineLandmarks'] : null,
       builtHorizonMassTopM: numericStat(data.builtHorizonMassTopM),
       builtHorizonAccentTopM: numericStat(data.builtHorizonAccentTopM),
       groundCover: numericStat(data.groundCover),

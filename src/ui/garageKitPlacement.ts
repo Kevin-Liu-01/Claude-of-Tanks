@@ -49,7 +49,7 @@ type GarageKitItem = GarageKitItemBase & (
     readonly params: PortalGantryParams }
   | { readonly kind: 'crane'; readonly crane: 'jib' | 'aframe' | 'monorail' | 'gable' | 'breakdown' | 'magnet' | 'ropeway';
     readonly at: readonly [number, number]; readonly yaw?: number; readonly y?: number;
-    readonly params: Readonly<Record<string, number | string | boolean | KitCraneLoad | null | undefined>> }
+    readonly params: Readonly<Record<string, number | string | boolean | KitCraneLoad | KitVec | null | undefined>> }
   | { readonly kind: 'wall'; readonly wall: KitWallKind; readonly points: ReadonlyArray<readonly [number, number]>; readonly y?: number;
     readonly params?: KitWallRunParams }
   | { readonly kind: 'sign'; readonly sign: 'plate' | 'post' | 'hanging' | 'aboard' | 'supergraphic' | 'stencil'; readonly rect: string;
@@ -380,6 +380,10 @@ export function garageKitItemBounds(variant: GarageVariant, placement: GarageKit
     readonly item: GarageKitItem; readonly solid: THREE.Box3; readonly display: THREE.Box3 | null;
     /** Each display face and decal quad on its own (a wall's murals, a board's prints, a station's screens). */
     readonly quads: readonly THREE.Box3[];
+    /** Each quad's six corners in the Garage frame (its oriented box: the placement receipt's structure test). */
+    readonly quadCorners: ReadonlyArray<readonly THREE.Vector3[]>;
+    /** The piece's oriented bounds (its own box under its placement), or null for a wall run seated per module. */
+    readonly solidObb: { readonly matrix: THREE.Matrix4; readonly box: THREE.Box3 } | null;
   }> {
   const matrix = new THREE.Matrix4();
   return garageKitItems(variant, placement).map((item) => {
@@ -398,18 +402,27 @@ export function garageKitItemBounds(variant: GarageVariant, placement: GarageKit
       return box;
     };
     const quads: THREE.Box3[] = [];
+    const quadCorners: THREE.Vector3[][] = [];
     for (const geometry of [piece.result.display, piece.result.decal]) {
       if (!geometry) continue;
       const placed = place(geometry);
       const position = placed.getAttribute('position');
       for (let i = 0; i < position.count; i += 6) {
         const box = new THREE.Box3();
-        for (let k = 0; k < 6 && i + k < position.count; k += 1) box.expandByPoint(new THREE.Vector3().fromBufferAttribute(position, i + k));
+        const corners: THREE.Vector3[] = [];
+        for (let k = 0; k < 6 && i + k < position.count; k += 1) {
+          const corner = new THREE.Vector3().fromBufferAttribute(position, i + k);
+          box.expandByPoint(corner);
+          corners.push(corner);
+        }
         quads.push(box);
+        quadCorners.push(corners);
       }
       placed.dispose();
     }
-    return { item, solid: boxOf(piece.result.solid), display: piece.result.display ? boxOf(piece.result.display) : null, quads };
+    const own = piece.result.solid.boundingBox;
+    const solidObb = item.kind !== 'wall' && own && !own.isEmpty() ? { matrix: matrix.clone(), box: own.clone() } : null;
+    return { item, solid: boxOf(piece.result.solid), display: piece.result.display ? boxOf(piece.result.display) : null, quads, quadCorners, solidObb };
   });
 }
 

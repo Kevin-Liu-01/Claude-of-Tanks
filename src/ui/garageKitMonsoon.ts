@@ -1,0 +1,73 @@
+import { atmosphereBand, atmosphereDrips, atmosphereStreamer, atView } from './garageAtmosphereKit.ts';
+import type { GarageKitPlacement } from './garageKitPlacement.ts';
+
+/**
+ * Monsoon Ridge's kit (garage r9, g1 lane): a hill-station field bay just after the rain under the Naga Hills
+ * (garageSkyline.ts draws the misted ridges, the flood channel, Kohima on its saddle and the tea estate from the map).
+ * Coordinates are the opening view's frame (garageKitPlacements.ts); the rain canopy's floor stands 0.45 m on its plinth.
+ *
+ * The cells: the canopy busy, not bare: a light A-frame gantry at work on a power pack beside its stand, the bench and
+ * roll cabs at its back, the welding cart and the raised drum rack on the right; the LED panel bolted to the canopy's
+ * front-right column (garageSlideshowPlacement.ts) with the field computer beside it on its rugged case; the tarp banner
+ * lashed between bamboo poles; the bamboo-framed notice board with three prints at the left; sandbags along the drain,
+ * sealed cases and the radio's generator; the nameboard; drips off the right gutter, mist in the hills' folds and steam
+ * rising off the sunlit laterite.
+ */
+const FLOOR = 0.46; // the canopy's plinth over its ground
+
+export const GARAGE_KIT_MONSOON: GarageKitPlacement = {
+  items: [
+    // under the canopy: the A-frame at work on a power pack, its stand, the bench and roll cabs at the back
+    { kind: 'crane', crane: 'aframe', at: [-6.6, 27.2], yaw: Math.PI / 4, y: FLOOR, params: { span: 4.0, height: 3.6, load: { kind: 'powerpack' } } },
+    { kind: 'bench', name: 'powerPackStand', at: [-3.6, 28.6], yaw: Math.PI / 4, y: FLOOR },
+    { kind: 'bench', name: 'workbench', at: [-9.6, 30.9], yaw: Math.PI / 4, y: FLOOR, params: { screen: 'readout.modules.abrams' } },
+    { kind: 'bench', name: 'rollCab', at: [-11.0, 28.4], yaw: Math.PI / 4 + 0.3, y: FLOOR },
+    { kind: 'bench', name: 'partsTrolley', at: [-4.4, 25.0], yaw: Math.PI / 4 - 0.4, y: FLOOR },
+    { kind: 'bench', name: 'weldingCart', at: [6.8, 29.6], yaw: Math.PI / 4 + 0.5, y: FLOOR },
+    { kind: 'prop', name: 'oilRack', at: [9.8, 30.8], yaw: Math.PI / 4, y: FLOOR },
+    { kind: 'prop', name: 'spillBin', at: [11.0, 28.2], yaw: Math.PI / 2, y: FLOOR },
+    // the field computer beside the panel's column, on its rugged case; the radio's generator and sealed cases by it
+    { kind: 'display', display: 'station', at: [15.4, 21.6], yaw: Math.PI / 4 - 0.25, screens: ['readout.armor.leopard', 'map.monsoon'], width: 1.7, rugged: true },
+    { kind: 'prop', name: 'generator', at: [17.4, 23.4], yaw: 0.2 },
+    { kind: 'prop', name: 'ammoBoxSteel', at: [16.6, 20.4], yaw: 0.3 },
+    { kind: 'prop', name: 'ammoBoxSteel', at: [16.6, 20.4], yaw: 0.25, y: 0.2 },
+    // the tarp banner lashed between bamboo poles on the canopy's right, the frame's right edge
+    { kind: 'prop', name: 'pole', at: [20.0, 12.4], yaw: 0, params: { variant: 0 } },
+    { kind: 'prop', name: 'pole', at: [23.0, 10.4], yaw: 0, params: { variant: 0 } },
+    { kind: 'display', display: 'pvc', rect: 'brand.banner.h', at: [21.5, 11.4], yaw: 0.2, y: 2.2, size: [3.1, 0.48], options: { gap: 0.25 } },
+    // the crest hanging under the canopy's right eave, in the frame's right band
+    { kind: 'sign', sign: 'hanging', rect: 'brand.crest.color', at: [13.5, 20.6], yaw: Math.PI / 4 + 0.2, y: 4.35, size: [0.8, 0.8] },
+    // the bamboo-framed notice board with three prints, the frame's left
+    { kind: 'display', display: 'board', rects: ['media.monsoon', 'media.verdant', 'media.railyard'], at: [-16.4, 14.6], yaw: Math.PI / 2 - 0.25, size: [2.4, 1.05], posts: 0.95 },
+    { kind: 'display', display: 'nameboard', at: [-11.4, 6.6], yaw: Math.PI / 2 - 0.35, width: 2.4, posts: 1.1 },
+    // sandbags along the right drain, a sealed case on them
+    { kind: 'prop', name: 'sandbag', at: [14.9, 24.6], yaw: 0.1 },
+    { kind: 'prop', name: 'sandbag', at: [14.9, 25.3], yaw: -0.1, params: { variant: 1 } },
+    { kind: 'prop', name: 'sandbag', at: [14.9, 26.0], yaw: 0.2, params: { variant: 2 } },
+    { kind: 'prop', name: 'sandbag', at: [14.9, 24.95], yaw: 0, y: 0.18, params: { variant: 1 } },
+    { kind: 'prop', name: 'sandbag', at: [14.9, 25.65], yaw: 0.1, y: 0.18 },
+    // mud-splashed jerrycans and a pallet on blocks on the left, out of the water
+    { kind: 'prop', name: 'pallet', at: [-15.2, 20.4], yaw: 0.3, y: 0.2 },
+    { kind: 'prop', name: 'jerrycan', at: [-15.0, 20.3], yaw: 0.3, y: 0.34 },
+    { kind: 'prop', name: 'jerrycan', at: [-15.4, 20.5], yaw: 0.35, y: 0.34 },
+    { kind: 'prop', name: 'jerrycan', at: [-14.6, 20.6], yaw: 0.25, y: 0.34 },
+    // the bays' swaps: a water pump (compressor) and its hose by the right pavilion, track pallets by the left
+    { kind: 'prop', name: 'compressor', at: [28.2, -1.6], yaw: Math.PI / 2 },
+    { kind: 'prop', name: 'coiledHose', at: [27.0, -0.2], yaw: 0.6 },
+    { kind: 'prop', name: 'trackPallet', at: [-27.6, -4.2], yaw: 0.8 },
+  ],
+  atmosphere: {
+    drift: 0.022,
+    cards: [
+      // drips off the canopy's right gutter (the left one stands behind the hero in the frame)
+      atmosphereDrips(atView(13.8, 5.05, 19.6), atView(13.8, 5.05, 24.6), 1.0),
+      // steam rising off the sunlit laterite, the yard's left and right
+      atmosphereStreamer(atView(-30, 0.1, 4), atView(-18, 0.1, -10), 'mist'),
+      atmosphereStreamer(atView(20, 0.1, 6), atView(32, 0.1, -10), 'mist', 0.5),
+      // mist lying in the folds of the hills, in the out-ring's directions
+      atmosphereBand(atView(-70, 1.5, -20), atView(-60, 2.5, 34), 7, 'mist'),
+      atmosphereBand(atView(58, 1.5, -46), atView(70, 2.5, 8), 7, 'mist', 0.5),
+      atmosphereBand(atView(-36, 1.5, -66), atView(34, 2.0, -68), 7, 'mist', 0.3),
+    ],
+  },
+};

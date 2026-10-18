@@ -64,6 +64,7 @@ import {
 } from './garageApproachDetails.ts';
 import { buildGarageKitDressing, type GarageKitBuild, type GarageKitPlacement } from './garageKitPlacement.ts';
 import { GARAGE_KIT_PLACEMENTS } from './garageKitPlacements.ts';
+import { createGarageSkylineBackdrop, garageSkylineEnabled, type GarageSkylineLandmarkReceipt } from './garageSkyline.ts';
 
 interface GarageEnvironmentEngineContext {
   anisotropy?: number;
@@ -91,6 +92,10 @@ interface GarageEnvironmentStats {
   readonly backdropLayers: number;
   readonly horizonStyle: GarageEnvironmentRecipe['horizonStyle'] | 'none';
   readonly horizonMaxHeightM: number;
+  /** The horizon's largest elevation angle from the opening camera (deg). */
+  readonly horizonMaxElevationDeg: number;
+  /** The map skyline's landmarks as built (garageSkyline.ts), or null where the Garage keeps the biome backdrop. */
+  readonly skylineLandmarks: readonly GarageSkylineLandmarkReceipt[] | null;
   /** The built horizon's tallest building mass and slender accent (0 where the biome has none). */
   readonly builtHorizonMassTopM: number;
   readonly builtHorizonAccentTopM: number;
@@ -1285,8 +1290,13 @@ export function buildGarageEnvironment(
   // remains visible with zero additional frame work or Garage-owned textures.
   const atmosphere = atmospherePalette(variant.weather);
 
+  // garage r9 (K10): a Garage whose map carries a skyline builds its horizon from it (the near relief ray-cast over its
+  // battlefield, its landmarks at their true bearings: garageSkyline.ts); the others keep the biome backdrop
+  const skyline = garageSkylineEnabled(variant.mapId);
   const horizon = new THREE.Mesh(
-    track(createBackdropGeometry(patch, heights, seed, atmosphere, recipe)),
+    track(skyline
+      ? createGarageSkylineBackdrop(variant.mapId)
+      : createBackdropGeometry(patch, heights, seed, atmosphere, recipe)),
     track(new THREE.MeshBasicMaterial({
       vertexColors: true,
       side: THREE.DoubleSide,
@@ -2530,6 +2540,8 @@ export function buildGarageEnvironment(
     backdropLayers: 5,
     horizonStyle: recipe.horizonStyle,
     horizonMaxHeightM: Number(horizon.geometry.userData.maxHeightM || 0),
+    horizonMaxElevationDeg: Number(horizon.geometry.userData.maxElevationDeg || 0),
+    skylineLandmarks: skyline ? horizon.geometry.userData.skylineLandmarks : null,
     builtHorizonMassTopM: Number(horizon.geometry.userData.massTopM || 0),
     builtHorizonAccentTopM: Number(horizon.geometry.userData.accentTopM || 0),
     drawCalls: objects,

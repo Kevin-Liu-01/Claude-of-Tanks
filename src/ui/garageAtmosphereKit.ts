@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
 import { fxNow } from '../fx/clock.ts';
+import { garageViewPoint } from '../game/garagePresentationPose.ts';
 import { kitRandom, type KitVec } from './garageKitGeometry.ts';
 
 /**
@@ -138,6 +139,15 @@ export interface GarageAtmosphereRecipe {
   readonly cards: readonly GarageAtmosphereCard[];
   /** U scroll speed (strip widths a second): the wind. */
   readonly drift?: number;
+}
+
+/**
+ * A point in the opening view's frame (`side` right, `depth` away from the camera, metres; `y` up) as the Garage-frame
+ * point an atmosphere card's corners take: the per-Garage recipes are laid out in the frame the camera sees.
+ */
+export function atView(side: number, y: number, depth: number): KitVec {
+  const point = garageViewPoint(side, depth);
+  return [point.x, y, point.z];
 }
 
 /** A light shaft: a tall card from a roof light or door down to the floor, `width` wide, leaning by `lean`. */

@@ -162,8 +162,18 @@ for (const variant of GARAGE_VARIANTS) {
   assert.equal(stats.backdropLayers, 5,
     `${variant.id} must close the view with five map-derived terrain bands`);
   assert.notEqual(stats.horizonStyle, 'none');
-  assert.ok(stats.horizonMaxHeightM > 0 && stats.horizonMaxHeightM <= 13.2,
-    `${variant.id} skyline must stay inside its authored biome ceiling`);
+  if (stats.skylineLandmarks) {
+    // garage r9 (K10): the horizon from the map: its near relief and its landmarks at their true bearings, the tallest
+    // seen from the opening camera low enough to leave the fair-weather sky its share of the frame
+    assert.ok(stats.skylineLandmarks.length >= 4, `${variant.id} skyline carries its map's landmarks`);
+    assert.ok(stats.skylineLandmarks.every((mark) => Number.isFinite(mark.azDeg) && mark.ringRadiusM >= 58 && mark.ringRadiusM <= 116),
+      `${variant.id} skyline landmarks stand on the horizon ring at their bearings`);
+    assert.ok(stats.horizonMaxElevationDeg > 2 && stats.horizonMaxElevationDeg <= 13,
+      `${variant.id} skyline leaves the sky its share (${stats.horizonMaxElevationDeg} deg)`);
+  } else {
+    assert.ok(stats.horizonMaxHeightM > 0 && stats.horizonMaxHeightM <= 13.2,
+      `${variant.id} skyline must stay inside its authored biome ceiling`);
+  }
   assert.equal(stats.treeDetailTier, 'battlefield-far',
     'headless Garage audits must retain the DOM-free battlefield tree fallback');
   assert.ok(stats.groundCover >= 48,

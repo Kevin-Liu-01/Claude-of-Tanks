@@ -18,6 +18,8 @@
     "garage:terrain:check": "node tools/generate-garage-terrain-patches.mjs --check",
     "garage:atlas:update": "node tools/generate-garage-display-atlas.mjs",
     "garage:atlas:check": "node tools/generate-garage-display-atlas.mjs --check",
+    "garage:skylines:update": "node tools/generate-garage-skylines.mjs",
+    "garage:skylines:check": "node tools/generate-garage-skylines.mjs --check",
     "test:public-copy": "node src/presentation/publicCopy.selftest.mjs",
     "test:social-proof": "node src/presentation/socialProof.selftest.mjs",
     "test:analytics": "node src/presentation/analytics.selftest.mjs",

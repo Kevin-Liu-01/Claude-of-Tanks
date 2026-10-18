@@ -184,7 +184,8 @@ for (const [architecture, placement] of Object.entries(GARAGE_KIT_PLACEMENTS)) {
 // deck painter's slice timer only pace work; neither shapes a vertex or a texel)
 for (const file of ['garageKitGeometry', 'garageKitSkins', 'garagePropKit', 'garageBenchKit', 'garageCraneKit', 'garageWallKit',
   'garageSignKit', 'garageDisplayKit', 'garageDisplayAtlas', 'garagePlatformKit', 'garageAtmosphereKit', 'garageKitPlacement',
-  'garageKitPlacements', 'garageSlideshowPlacement', 'garageVerdantKit']) {
+  'garageKitPlacements', 'garageSlideshowPlacement', 'garageVerdantKit', 'garageKitRedrock', 'garageKitGlacier', 'garageKitFrosthollow',
+  'garageKitMonsoon', 'garageSkyline']) {
   const source = await readFile(new URL(`./${file}.ts`, import.meta.url), 'utf8');
   assert.doesNotMatch(source, /Math\.random|Date\.now|new Date\(/, `${file}: no random numbers or dates`);
   const clocks = (source.match(/performance\.now\(\)/g) || []).length;
