@@ -40,7 +40,16 @@
 // ztz99a2 and vt4a1 were the ERA cassettes' sawtooth caps on the gun channel walls (chineseGunOpening.ts halfStock);
 // closed (src/vehicles/profiles/chineseChannelWallCaps.selftest.mjs), ztz99a2 and vt4a1 now CLOSED at rest/elev/dep/
 // e0.5/d0.5 (t72b3_qilin keeps a pre-existing 12-45 px turretEquipment box edge at the band's rear station).
-import { mkdirSync, writeFileSync } from 'node:fs';
+// r4 (2026-10-18): that box edge, the bmpt_t90 'seam', the fv510/fv510_milan 12 px crevice and the cv90_mk4 run at full
+// elevation all sat on the band's last column: triangles there were culled one pixel early, so their front faces went
+// missing; with the cull fixed all four read CLOSED (cv90_mk4's run past the pivot at +45 deg is the turret-ring
+// clearance over the hull deck, a 'behind-pivot' run, never gated). Guns fixed in the hull (strv103a, strv103b, udes03)
+// are censused from their hull mouth at one pose; launchers with fixed canisters (aft10, griffin_viper, tos1a_tagil)
+// have no cannon mouth. m3a3_bradley's 86-90 mm aperture (the gun line open from above between the roof's leading edge
+// and the receiver) closed with a trunnion hood (m3BradleyGunMount.ts); cv90_mk4's smoke-tube rings no longer overhang
+// their tubes (the ring's back face was the 'opening'); fv510's mantlet slot was re-centred on the RARDEN. The per-id
+// ledger (--ledger, below) now holds all 220 rows.
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
 import { collectTriangles } from './tank-surface-collect.mjs';
@@ -48,27 +57,44 @@ import { collectTriangles } from './tank-surface-collect.mjs';
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
 const flag = (name) => args.includes(`--${name}`);
-const RES_M = Number(opt('res-mm', '2')) / 1000;
-const BAND_M = Number(opt('band-m', '0.45'));
-const AZIMUTHS = Number(opt('azimuths', '24'));
+// Per-id ledger (r4, 2026-10-18): --ledger=docs/geometry-gate/gun-junction.json measures every row at the ledger's own
+// settings (the CLI resolution, directions and poses are ignored there, so rows stay comparable) and binds each row to
+// the tank's turret and gun group digests in docs/references/fleet-geometry-ledger.json (plus the hull group for a gun
+// fixed in the hull). --update re-measures and writes the rows for --ids (or --all); --check re-measures them and
+// compares, failing on a moved status or a stale binding; --gate also fails on any row that is not closed (a launcher
+// with fixed canisters has no cannon mouth and is its own status). tools/gun-junction-census.selftest.mjs holds the
+// whole fleet against the ledger without building a tank (every binding current, every row closed or a launcher).
+const LEDGER_PATH = opt('ledger', '');
+const FLEET_LEDGER_PATH = 'docs/references/fleet-geometry-ledger.json';
+const LEDGER_DEFAULTS = Object.freeze({ resMm: 4, azimuths: 12, poses: ['rest', 'elev', 'dep', 'e0.5', 'd0.5'], minMm: 4, minPx: 12, bandM: 0.45, behindM: 0.35 });
+const ledger = LEDGER_PATH && existsSync(resolve(LEDGER_PATH)) ? JSON.parse(readFileSync(resolve(LEDGER_PATH), 'utf8')) : null;
+const L = LEDGER_PATH ? (ledger?.settings ?? LEDGER_DEFAULTS) : null;
+const RES_M = (L ? L.resMm : Number(opt('res-mm', '2'))) / 1000;
+const BAND_M = L ? L.bandM : Number(opt('band-m', '0.45'));
+const AZIMUTHS = L ? L.azimuths : Number(opt('azimuths', '24'));
 const MUZZLE_M = Number(opt('muzzle-m', '0.8'));
-const MIN_MM = Number(opt('min-mm', '4'));
-const MIN_PX = Number(opt('min-px', '12'));
+const MIN_MM = L ? L.minMm : Number(opt('min-mm', '4'));
+const MIN_PX = L ? L.minPx : Number(opt('min-px', '12'));
 const SEED_RECOIL_M = Number(opt('seed-recoil-m', '0'));
-const BEHIND_PIVOT_M = 0.35;
+const BEHIND_PIVOT_M = L ? L.behindM : Number(opt('behind-m', '0.35'));
 const SEAM_EPS = 0.004, INVERTED_DEPTH = 0.08, AXIS_TOL = 0.002;
 // Sample points sit off the pixel centres by irrational fractions so a round-metre edge (a 0.25 m box seen edge-on)
 // never lands exactly on a sample row; triangles seen within 0.006 deg of edge-on cover no area and are skipped.
 const SX = 0.5 + 0.1913, SY = 0.5 + 0.3771, EDGE_ON = 1e-4;
-const poses = opt('poses', 'rest,elev,dep').split(',').filter(Boolean);
+const poses = L ? [...L.poses] : opt('poses', 'rest,elev,dep').split(',').filter(Boolean);
 const outDir = resolve(opt('out', '.qa-dev/out/gun-junction'));
 const writeImages = flag('images');
 if (writeImages) mkdirSync(outDir, { recursive: true });
+// A gun fixed in the hull (Strv 103, UDES 03) aims with the hull: its smallest main-gun bore is 15 mm, so a hull
+// machine gun's mouth is never taken for it.
+const HULL_GUN_MIN_BORE_M = 0.015;
 
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
 const { ensureInteriorFills } = await import('../src/vehicles/interiorFills.ts');
 const { ALL_TANK_IDS, getSpec } = await import('../src/vehicles/specs.ts');
-const ids = flag('all') ? [...ALL_TANK_IDS] : opt('ids', 'c2_ariete').split(',').filter(Boolean);
+const ids = flag('all') ? [...ALL_TANK_IDS] : opt('ids', LEDGER_PATH ? '' : 'c2_ariete').split(',').filter(Boolean);
+if (LEDGER_PATH && !ids.length) { console.error('gun-junction ledger: pass --ids=<a,b> or --all'); process.exit(2); }
+if (LEDGER_PATH && flag('update') === flag('check')) { console.error('gun-junction ledger: pass exactly one of --update or --check'); process.exit(2); }
 
 /** Show only LOD level 0 (the close-up surface the player inspects); returns a restore function. */
 function nearestLodOnly(root) {
@@ -101,7 +127,7 @@ function isUnder(o, ancestor) { for (let p = o; p; p = p.parent) if (p === ances
 /** Main-gun mouths: frames under rig_gun with a physical mouth seat receipt. */
 function collectMouths(root) {
   root.updateMatrixWorld(true);
-  const gun = root.getObjectByName('rig_gun');
+  const gun = root.getObjectByName('rig_gun'), turretRig = root.getObjectByName('rig_turret');
   const mouths = [];
   root.traverseVisible((o) => {
     const seat = o.userData?.muzzleSeatReceipt;
@@ -109,8 +135,9 @@ function collectMouths(root) {
     const scale = Math.abs(o.getWorldScale(new THREE.Vector3()).x) || 1;
     const r = Number(seat.physicalInnerRadiusM ?? seat.innerRadiusM), depth = Number(seat.physicalBoreDepthM);
     const outer = Math.max(r || 0, Number(seat.outerRadiusM ?? seat.measuredOuterRadiusM) || 0, Number(seat.supportOuterRadiusM) || 0);
+    const main = !!gun && isUnder(o, gun), turret = !!turretRig && isUnder(o, turretRig);
     mouths.push({
-      name: o.name, main: !!gun && isUnder(o, gun), inv: o.matrixWorld.clone().invert(), worldScale: scale,
+      name: o.name, main, hullFixed: !main && !turret && r >= HULL_GUN_MIN_BORE_M, inv: o.matrixWorld.clone().invert(), worldScale: scale,
       r: r > 0 ? r : 0, depth: depth > 0 ? depth : 0, outer: (outer || 0.05) * scale,
       origin: new THREE.Vector3().setFromMatrixPosition(o.matrixWorld),
       axis: new THREE.Vector3(0, 0, 1).transformDirection(o.matrixWorld).normalize(),
@@ -152,7 +179,9 @@ function axisFrame(tris, owners, mouth, sMax) {
       return [-(px * a.x + py * a.y + pz * a.z), px * e1.x + py * e1.y + pz * e1.z, px * e2.x + py * e2.y + pz * e2.z];
     });
     const sLo = Math.min(pts[0][0], pts[1][0], pts[2][0]), sHi = Math.max(pts[0][0], pts[1][0], pts[2][0]);
-    if (sHi < -RES_M || sLo > sMax + RES_M) continue;
+    // Keep every triangle that can reach the last image column: its sample sits up to 1.7 px past sMax (r4, 2026-10-18:
+    // culling at sMax + 1 px dropped front faces there and read a band-edge sliver on t72b3_qilin, bmpt_t90, fv510 and cv90_mk4).
+    if (sHi < -RES_M || sLo > (Math.ceil(sMax / RES_M) + 2) * RES_M) continue;
     const rig = owners[t.mesh].rig;
     if (rig === 'gun' || rig === 'turret') for (const q of pts) if (Math.hypot(q[1], q[2]) <= BAND_M && q[0] >= 0 && q[0] < sJunction) sJunction = q[0];
     keep.push(ti); v9.push(pts[0][0], pts[0][1], pts[0][2], pts[1][0], pts[1][1], pts[1][2], pts[2][0], pts[2][1], pts[2][2]);
@@ -266,6 +295,13 @@ function classify(run, sPivot) {
   return 'mount';
 }
 
+/** The main-gun mouths a census covers: those under rig_gun, or, on a gun fixed in the hull, its hull mouths. */
+function censusMouths(mouths) {
+  const main = mouths.filter((m) => m.main);
+  return main.length ? main : mouths.filter((m) => m.hullFixed);
+}
+const mouthKind = (mouths) => (mouths.some((m) => m.main) ? 'turret' : mouths.some((m) => m.hullFixed) ? 'hull-fixed' : 'none');
+
 function censusPose(tank, spec, pose) {
   const root = tank.root; const gun = root.getObjectByName('rig_gun');
   // rest, elev, dep, or a fraction of either limit: e0.5 is half the maximum elevation, d0.5 half the depression
@@ -281,7 +317,8 @@ function censusPose(tank, spec, pose) {
   restore();
   const pivot = gun ? new THREE.Vector3().setFromMatrixPosition(gun.matrixWorld) : null;
   const results = [];
-  for (const mouth of mouths.filter((m) => m.main)) {
+  const censused = censusMouths(mouths);
+  for (const mouth of censused) {
     const sPivot = pivot ? new THREE.Vector3().subVectors(mouth.origin, pivot).dot(mouth.axis) : 3;
     const sMax = Math.max(0.5, sPivot + BEHIND_PIVOT_M);
     const frame = axisFrame(tris, owners, mouth, sMax);
@@ -338,7 +375,7 @@ function censusPose(tank, spec, pose) {
     results.push({ mouth: mouth.name, outerRadiusMm: Math.round(mouth.outer * 1000), pivotBehindMouthMm: Math.round(sPivot * 1000), junctionBehindMouthMm: Number.isFinite(frame.sJunction) ? Math.round(frame.sJunction * 1000) : null, runs: reported, offAxis, images });
   }
   if (gun) { gun.rotation.x = 0; root.updateMatrixWorld(true); }
-  return { pose, pitchDeg: pitch, mainMouths: mouths.filter((m) => m.main).length, allMouths: mouths.length, results };
+  return { pose, pitchDeg: pitch, mainMouths: censused.length, kind: mouthKind(mouths), allMouths: mouths.length, results };
 }
 
 async function writeImage(path, view) {
@@ -362,33 +399,74 @@ for (const id of ids) {
   const started = performance.now();
   await ensureInteriorFills([id]);
   let tank;
-  try { tank = createTank(id, null, { proceduralOnly: true }); } catch (error) { console.log(`${id}: build failed: ${error.message}`); failures++; continue; }
+  try { tank = createTank(id, null, { proceduralOnly: true }); } catch (error) { console.log(`${id}: build failed: ${error.message}`); failures++; report.push({ id, status: 'build-failed', error: error.message }); continue; }
   const spec = getSpec(id);
   if (SEED_RECOIL_M) { const recoil = tank.root.getObjectByName('rig_recoil'); if (recoil) recoil.position.z += SEED_RECOIL_M; }
   const built = performance.now();
+  // A gun fixed in the hull does not pitch against its mount (the whole vehicle aims), so one pose covers it.
+  const kind = mouthKind(collectMouths(tank.root));
+  const tankPoses = kind === 'hull-fixed' ? ['rest'] : poses;
   const rows = [];
-  for (const pose of poses) rows.push(censusPose(tank, spec, pose));
+  for (const pose of tankPoses) rows.push(censusPose(tank, spec, pose));
   const censused = performance.now();
-  let worst = 0; const lines = [];
+  let worst = 0, openings = 0; const lines = [];
   let gated = false;
   for (const r of rows) for (const m of r.results) {
     for (const run of m.runs) {
       const counts = run.class !== 'muzzle-device' && run.class !== 'behind-pivot' && run.sizeMm >= MIN_MM && run.directions >= 2;
-      if (counts) { gated = true; worst = Math.max(worst, run.sizeMm); }
+      if (counts) { gated = true; worst = Math.max(worst, run.sizeMm); openings++; }
       if (run.sizeMm >= MIN_MM || flag('verbose')) lines.push(`   ${r.pose}(${r.pitchDeg}°) ${m.mouth}: ${run.class} ${run.sizeMm} mm at ${run.behindMouthMm.join('..')} mm behind mouth (${run.forwardOfPivotMm.join('..')} fwd of pivot), ${run.directions}/${AZIMUTHS} dirs [${run.shows.join(',')}] behind=${run.behind} ahead=${run.ahead}`);
     }
-    for (const o of m.offAxis) { gated = true; lines.push(`   ${r.pose}(${r.pitchDeg}°) ${m.mouth}: off-axis opening ${o.px} px from ${o.view} at s ${o.sMm.join('..')} mm, v ${o.vMm.join('..')} mm — ${o.meshes.join('/')}`); }
+    for (const o of m.offAxis) { gated = true; openings++; lines.push(`   ${r.pose}(${r.pitchDeg}°) ${m.mouth}: off-axis opening ${o.px} px from ${o.view} at s ${o.sMm.join('..')} mm, v ${o.vMm.join('..')} mm — ${o.meshes.join('/')}`); }
     if (writeImages) for (const im of m.images) await writeImage(`${outDir}/${id}__${r.pose}__${m.mouth}__${im.name}.png`, im.view);
   }
-  if (gated) failures++;
   const mouthCount = rows[0]?.mainMouths ?? 0;
-  report.push({ id, mainMouths: mouthCount, gap: gated, worstMm: worst, poses: rows.map((r) => ({ pose: r.pose, pitchDeg: r.pitchDeg, mouths: r.results.map(({ images, ...rest }) => rest) })) });
-  console.log(`${id}: ${mouthCount ? (gated ? `GAP (worst ${worst} mm)` : 'CLOSED') : 'no main-gun mouth'} — ${mouthCount} main mouth(s), ${poses.length} poses (build ${((built - started) / 1000).toFixed(1)} s, census ${((censused - built) / 1000).toFixed(1)} s, total ${((performance.now() - started) / 1000).toFixed(1)} s)`);
+  // No cannon mouth is a status of its own only for a launcher with fixed canisters; anywhere else it is uncensused.
+  const status = mouthCount ? (gated ? 'gap' : 'closed') : spec.gun?.fixedLaunchCanisters === true ? 'launcher' : 'no-mouth';
+  if (status === 'gap' || status === 'no-mouth') failures++;
+  report.push({ id, status, kind, mainMouths: mouthCount, gap: gated, worstMm: worst, openings, poses: rows.map((r) => ({ pose: r.pose, pitchDeg: r.pitchDeg, mouths: r.results.map(({ images, ...rest }) => rest) })) });
+  const verdict = { closed: 'CLOSED', gap: `GAP (worst ${worst} mm)`, launcher: 'launcher (fixed canisters, no cannon mouth)', 'no-mouth': 'NO MAIN-GUN MOUTH' }[status];
+  console.log(`${id}: ${verdict} — ${mouthCount} main mouth(s)${kind === 'hull-fixed' ? ' fixed in the hull' : ''}, ${tankPoses.length} poses (build ${((built - started) / 1000).toFixed(1)} s, census ${((censused - built) / 1000).toFixed(1)} s, total ${((performance.now() - started) / 1000).toFixed(1)} s)`);
   for (const l of lines) console.log(l);
   tank.dispose?.();
 }
 const jsonPath = opt('json', '');
 if (jsonPath) { writeFileSync(resolve(jsonPath), JSON.stringify({ generated: new Date().toISOString(), resMm: RES_M * 1000, bandM: BAND_M, azimuths: AZIMUTHS, poses, tanks: report }, null, 1) + '\n'); console.log(`wrote ${jsonPath}`); }
-const gapped = report.filter((r) => r.gap).map((r) => r.id);
+const gapped = report.filter((r) => r.status === 'gap' || r.status === 'no-mouth').map((r) => r.id);
 console.log(`gun-junction census: ${report.length} tank(s), ${gapped.length} with gun gaps${gapped.length ? ': ' + gapped.join(', ') : ''}`);
+
+if (LEDGER_PATH) {
+  const fleet = JSON.parse(readFileSync(resolve(FLEET_LEDGER_PATH), 'utf8')).tanks;
+  const binding = (id, kind) => {
+    const groups = fleet[id]?.high?.groups;
+    if (!groups) return null;
+    return kind === 'hull-fixed' ? { hull: groups.hull, turret: groups.turret, gun: groups.gun } : { turret: groups.turret, gun: groups.gun };
+  };
+  const rowOf = (r) => {
+    const row = { status: r.status, kind: r.kind ?? 'none', mouths: r.mainMouths ?? 0 };
+    if (r.status === 'gap') Object.assign(row, { worstMm: r.worstMm, openings: r.openings });
+    row.geometry = binding(r.id, r.kind);
+    return row;
+  };
+  const book = ledger ?? { schemaVersion: 1, generator: 'tools/gun-junction-census.mjs --ledger', settings: LEDGER_DEFAULTS, binding: `turret and gun group digests (hull too for a gun fixed in the hull) of ${FLEET_LEDGER_PATH} at high quality`, tanks: {} };
+  let problems = 0;
+  for (const r of report) {
+    const row = rowOf(r);
+    if (!row.geometry) { console.log(`${r.id}: no ${FLEET_LEDGER_PATH} row (run node tools/fleet-geometry-ledger.mjs --update --ids=${r.id} first)`); problems++; continue; }
+    if (flag('update')) { book.tanks[r.id] = row; continue; }
+    const held = book.tanks[r.id];
+    if (!held) { console.log(`${r.id}: no gun-junction ledger row`); problems++; continue; }
+    const diffs = ['status', 'kind', 'mouths'].filter((k) => held[k] !== row[k]).map((k) => `${k} ${held[k]} -> ${row[k]}`);
+    for (const [group, digest] of Object.entries(row.geometry)) if (held.geometry?.[group] !== digest) diffs.push(`${group} geometry moved since the row was measured`);
+    if (diffs.length) { console.log(`${r.id}: ledger differs: ${diffs.join('; ')}`); problems++; }
+  }
+  if (flag('update')) {
+    const tanks = Object.fromEntries(Object.keys(book.tanks).sort().map((id) => [id, book.tanks[id]]));
+    const head = JSON.stringify({ ...book, tanks: undefined }, null, 1).replace(/\n}$/, '');
+    const body = Object.entries(tanks).map(([id, row]) => `  ${JSON.stringify(id)}: ${JSON.stringify(row)}`).join(',\n');
+    writeFileSync(resolve(LEDGER_PATH), `${head},\n "tanks": {\n${body}\n }\n}\n`);
+    console.log(`gun-junction ledger: wrote ${report.length} row(s) to ${LEDGER_PATH} (${Object.keys(tanks).length} held)`);
+  } else console.log(`gun-junction ledger: ${problems ? `FAIL: ${problems} difference(s)` : `PASS: ${report.length} tank(s) match ${LEDGER_PATH}`}`);
+  if (problems) process.exit(1);
+}
 if (flag('gate') && failures) process.exit(1);

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {Matrix4, Mesh, MeshBasicMaterial, DoubleSide, Raycaster, Vector3} from 'three';
 import {createTank} from '../tankFactory.ts';
-import {buildM3BradleyGunMount} from './m3BradleyGunMount.ts';
+import {buildM3BradleyGunMount,M3_CRADLE_HOOD_RADIUS_M,M3_CRADLE_HOOD_PASSAGE_M} from './m3BradleyGunMount.ts';
 import {KIT} from './kit.ts';
 import {near} from '../../../tools/receipt-kit.test-support.mjs';
 
@@ -70,6 +70,19 @@ for(const quality of ['high','low']){
   folded.geometry.dispose();
   ray.set(new Vector3(-.27,.17,.8),new Vector3(0,0,-1));ray.far=.7;
   assert.equal(ray.intersectObject(mask).length,0,`${quality}: clipped upper corner removes the old box silhouette`);
+  // 227 gun-gaps r4: the cradle hood (the last two castings) closes the gun line from above between the roof's
+  // leading edge and the receiver. Behind the trunnion every hood vertex lies within its drum radius of the pitch
+  // axis, so pitching never carries it into the roof; ahead of the receiver's full-recoil rear it leaves the passage.
+  const hood=pieces.slice(-2).flatMap(piece=>{
+    const p=piece.geometry.attributes.position,out=[];
+    for(let i=0;i<p.count;i++)out.push(new Vector3().fromBufferAttribute(p,i).applyMatrix4(piece.matrixWorld));
+    return out;
+  });
+  const behind=hood.filter(v=>v.z<0);
+  assert.ok(behind.length>20,`${quality}: the hood reaches behind the trunnion`);
+  assert.ok(Math.max(...behind.map(v=>Math.hypot(v.y,v.z)))<=M3_CRADLE_HOOD_RADIUS_M+1e-6,`${quality}: hood drum within ${M3_CRADLE_HOOD_RADIUS_M} m of the pitch axis`);
+  assert.ok(Math.min(...hood.filter(v=>v.z>-.135&&Math.abs(v.x)<.12).map(v=>Math.hypot(v.x,v.y)))>=M3_CRADLE_HOOD_PASSAGE_M*Math.cos(Math.PI/10)-1e-6,
+    `${quality}: the arch leaves the receiver passage`);
   for(const piece of pieces)piece.geometry.dispose();
 
   const tank=createTank('m3a3_bradley',null,{quality,proceduralOnly:true,geometryReceipt:true,batchStatic:false,decor:false,camoSeed:4242});
@@ -141,10 +154,20 @@ for(const quality of ['high','low']){
         assert.ok(inner-radius>.004,`${quality}: actual recoiling barrel clears sleeve at ${z}, recoil ${shift}: ${inner-radius}`);
       }
     }
+    // The hood's sweep disk is clear of the turret: radial rays from the pitch axis, across the hood's width and over
+    // every bearing it can take through -9/+30 degrees, meet no turret stock inside the drum radius.
+    recoil.position.z=0;root.updateMatrixWorld(true);
+    let roofClearance=Infinity;
+    for(const x of [-.25,0,.25])for(let deg=40;deg<=220;deg+=2){
+      const a=deg*Math.PI/180,origin=gun.localToWorld(new Vector3(x,0,0)),toward=gun.localToWorld(new Vector3(x,Math.sin(a),Math.cos(a)));
+      ray.set(origin,toward.sub(origin).normalize());ray.far=.5;
+      const hit=ray.intersectObject(body,false)[0];if(hit)roofClearance=Math.min(roofClearance,hit.distance);
+    }
+    assert.ok(roofClearance>M3_CRADLE_HOOD_RADIUS_M+.003,`${quality}: turret stock stays outside the hood's sweep (${roofClearance})`);
     assert.ok(oldAxleMinimum<-.008,'the original cross-shaft obstructs the recoiling root');
     assert.ok(oldReceiverMinimum<-.05,'the original solid receiver obstructs the recoiling root');
     oldAxle.geometry.dispose();oldReceiver.geometry.dispose();
-    console.log(`M3 ${quality}: rounded mask, real apertures and repaired pivot pass; sleeve clearance ${(minimum*1000).toFixed(2)} mm, journal/receiver passage ${(passageMinimum*1000).toFixed(2)} mm.`);
+    console.log(`M3 ${quality}: rounded mask, real apertures and repaired pivot pass; sleeve clearance ${(minimum*1000).toFixed(2)} mm, journal/receiver passage ${(passageMinimum*1000).toFixed(2)} mm, hood sweep clears the turret by ${((roofClearance-M3_CRADLE_HOOD_RADIUS_M)*1000).toFixed(1)} mm.`);
   }finally{tank.dispose();}
 }
 material.dispose();

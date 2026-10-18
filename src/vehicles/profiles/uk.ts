@@ -3415,18 +3415,23 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
       [-0.76, 0.34, -0.62], [0.76, 0.34, -0.62], [0.61, 0.30, -1.36], [-0.61, 0.30, -1.36],
       [-0.75, 0.62, -0.62], [0.75, 0.62, -0.62], [0.60, 0.54, -1.36], [-0.60, 0.54, -1.36]));
     // ---- gun mount: dark vertical slot recess ON the raked face, cast
-    // collar — §B3.1: cylinders and cast shapes only, no prisms on the run
-    P.add('turretDark', box(0.40, 0.34, 0.025), -0.10, 0.30, 0.505, -0.651, 0, 0);
+    // collar — §B3.1: cylinders and cast shapes only, no prisms on the run.
+    // 227 gun-gaps r4: the slot, its cheeks, lintel and lower cradle block are
+    // centred on the RARDEN (gunG x 0.05). The 2026-08-12 restore moved the gun
+    // 0.15 m right of the -0.10 slot it had shared, so the gun's root sleeve ran
+    // into the right cheek casting instead of entering the slot between them.
+    const slotX = 0.05;
+    P.add('turretDark', box(0.40, 0.34, 0.025), slotX, 0.30, 0.505, -0.651, 0, 0);
     // uk round 2026-08-07 (owner identity list): the RARDEN's DISTINCTIVE
     // MANTLET CHEEKS — the paired angular castings flanking the mount slot
     // on the real Warrior face, riding ON the raked plane (§B1.1: detail on
     // the plane, never replacing it) + the lintel over the slot.
-    P.add('turret', box(0.15, 0.30, 0.075), -0.335, 0.295, 0.515, -0.651, 0, 0); // left cheek casting
-    P.add('turret', box(0.15, 0.30, 0.075), 0.135, 0.295, 0.515, -0.651, 0, 0);  // right cheek casting
-    P.add('turret', box(0.44, 0.09, 0.065), -0.10, 0.475, 0.425, -0.651, 0, 0);  // mantlet lintel
-    P.add('turretDark', box(0.13, 0.02, 0.078), -0.335, 0.30, 0.517, -0.651, 0, 0); // cheek bolt seams
-    P.add('turretDark', box(0.13, 0.02, 0.078), 0.135, 0.30, 0.517, -0.651, 0, 0);
-    P.add('turret', box(0.44, 0.22, 0.65), -0.10, 0.10, 0.75, -0.18, 0, 0);
+    P.add('turret', box(0.15, 0.30, 0.075), slotX - 0.235, 0.295, 0.515, -0.651, 0, 0); // left cheek casting
+    P.add('turret', box(0.15, 0.30, 0.075), slotX + 0.235, 0.295, 0.515, -0.651, 0, 0); // right cheek casting
+    P.add('turret', box(0.44, 0.09, 0.065), slotX, 0.475, 0.425, -0.651, 0, 0);  // mantlet lintel
+    P.add('turretDark', box(0.13, 0.02, 0.078), slotX - 0.235, 0.30, 0.517, -0.651, 0, 0); // cheek bolt seams
+    P.add('turretDark', box(0.13, 0.02, 0.078), slotX + 0.235, 0.30, 0.517, -0.651, 0, 0);
+    P.add('turret', box(0.44, 0.22, 0.65), slotX, 0.10, 0.75, -0.18, 0, 0);
     // ---- twin sight heads: BGTI hood (the 2.795 height anchor) + commander
     // day sight; hooded visors + glass slits (§B3 tells) ----
     P.add('turret', box(0.44, 0.36, 0.18), -0.26, 0.64, -1.40);
