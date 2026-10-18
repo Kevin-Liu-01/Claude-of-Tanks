@@ -1044,7 +1044,7 @@ export async function runSlabCheck({
     const stages = createStructureStages({ mask, debris, now: () => clock, materialFor: (bucket) => worldMaterials.get(bucket) ?? null,
       scars: null, crumble: 1, ...(fx ? { fracture: fx.attach } : {}) });
     const events = [];
-    let collapsed = false, collapsedAt = -1;
+    let collapsed = false, collapsedAt = -1, lastEventAt = -Infinity;
     // the world's spans: drawn (standing), moving (a storey's fall in flight carries what stood over it down; a kit's
     // collapse: the mask's front cuts them and folds them onto the pivot COLLAPSE_S after the blow — the CPU does not see
     // it), or gone (folded; or the fracture took the collapse)
@@ -1065,6 +1065,7 @@ export async function runSlabCheck({
       replay.push({ type, e: { ...e } });
       if (e?.structureId === id && type === DESTRUCTION_BUS_EVENTS.breach && e.sectionDown && e.sectionKind === 'roof' && roofDownAt < 0) roofDownAt = clock;
       if (e?.structureId === id) {
+        lastEventAt = clock;
         events.push({ t: +clock.toFixed(3), type, stage: e.stage ?? null, hole: e.hole ?? null, storeyDown: !!e.storeyDown,
           y: e.y !== undefined ? +(+e.y).toFixed(2) : null });
       }
@@ -1190,7 +1191,8 @@ export async function runSlabCheck({
       const meshes = drawnMeshes([debris.group, fxGroup, bodies?.group], accept);
       const judged = judgeSlabs(meshes, { footprint, groundAt: ground, supportAt, settled: false, ownMaterials, upperFootprint, rested, bandFootprint, drawnTopAt, byDesign,
         floorAt: felled ? null : standingFloorAt });
-      { const st = spansState(); if (st !== 'moving') judged.findings.push(...hangingAt(meshes, st === 'drawn', ground)); }
+      // (what an event left hanging comes down in the presentation's next updates: a look in the event's own tick is none)
+      { const st = spansState(); if (st !== 'moving' && clock - lastEventAt >= 0.25) judged.findings.push(...hangingAt(meshes, st === 'drawn', ground)); }
       const flagged = judged.findings.length > 0;
       const firstFlag = flagged && !snapshots.some((p) => p.findings.length);
       const tag = `t${clock.toFixed(1)}-${label}`;
@@ -1265,6 +1267,13 @@ export async function runSlabCheck({
               const t = lists[k];
               if (!t?.length) return;
               const s = shapeOf(t);
+              let up = 0, uy0 = Infinity, uy1 = -Infinity;
+              for (let o = 0; o + 8 < t.length; o += 9) {
+                const ax = t[o + 3] - t[o], ay = t[o + 4] - t[o + 1], az = t[o + 5] - t[o + 2], bx = t[o + 6] - t[o], by = t[o + 7] - t[o + 1], bz = t[o + 8] - t[o + 2];
+                const nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx, l = Math.hypot(nx, ny, nz);
+                if (ny > 0.85 * l) { up += l / 2; const y = (t[o + 1] + t[o + 4] + t[o + 7]) / 3; uy0 = Math.min(uy0, y); uy1 = Math.max(uy1, y); }
+              }
+              if (up > 20) log(`  dump t=${clock.toFixed(2)} span ${k} level tops ${up.toFixed(0)} m² at y ${uy0.toFixed(2)}..${uy1.toFixed(2)}`);
               log(`  dump t=${clock.toFixed(2)} span ${k} ${span.mesh.name || span.bucket || '?'} piece=${span.piece ?? '-'} class=${span.partClass ?? '-'} ${s.tris}/${Math.floor(span.count / 3)} tris drawn, min ${s.min.map((v) => v.toFixed(1)).join(',')} max ${s.max.map((v) => v.toFixed(1)).join(',')} took=${fx?.took(id) ?? '-'}`);
             });
           }

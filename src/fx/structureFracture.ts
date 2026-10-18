@@ -95,6 +95,10 @@ export interface StructureFracture {
   has(structureIdx: number): boolean;
   /** Its standing faces' meshes (world space): a collapse cuts them with the building. */
   standing(structureIdx: number): THREE.Mesh[];
+  /** Its rooms' meshes (world space). */
+  rooms(structureIdx: number): THREE.Mesh[];
+  /** One room out (its walls went round it). */
+  dropRoom(structureIdx: number, mesh: THREE.Mesh): void;
   /** The building came down: its standing faces leave (the collapse drew them); its bodies and heaps stay. */
   release(structureIdx: number): void;
   /** A storey dropped (sections on): the rooms laid in it and over it go (destruction-slabs 227: they stood in the air). */
@@ -260,6 +264,8 @@ const SOUND_GAP_S = 0.06;
 const CRACK_MPS = 3;
 /** (the decisive wave's barn: "bright, undusted, same-size bricks") how far what broke off is greyed toward its own dust. */
 const DUST_COAT = 0.42;
+/** A room's light behind a breach (its walls; the floor and ceiling by their own shade): the wall's colour in shade. */
+const ROOM_SHADE = 0.6;
 const CRACK_MIN_CELLS = 6;
 /** A gable's void cell's home (cutIntoCells): its row's nearest cell that is no void, else the nearest in the rows under it;
  *  none (STATIC_CELL) when the face has no such cell. */
@@ -380,7 +386,8 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   // ---- a face taken out of the buckets and cut between its cells ---------------------------------------------------
   /** The face a body-frame triangle belongs to: the nearest plane it lies on (or proud of, a sill, a shutter), inside
    *  the face's span and storey; its normal breaks a tie at a corner. −1 for none. */
-  function faceOfTriangle(wall: WallFracture, cx: number, cy: number, cz: number, nx: number, ny: number, nz: number, wallPart = true): number {
+  function faceOfTriangle(wall: WallFracture, cx: number, cy: number, cz: number, nx: number, ny: number, nz: number, wallPart = true,
+    roofPart = false): number {
     let best = -1, bestScore = Infinity;
     for (let i = 0; i < wall.faces.length; i++) {
       const g = wall.faces[i];
@@ -396,6 +403,9 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       // boards and barge (taken into the face, they stood as an A-frame over the roofless walls when the roof fell; left in
       // the world, the roof's fall takes them) — the gable's own timbers and frames lie flush with it or in it
       if (!wallPart && v > g.wallHeight + 0.06 && depth > 0.04) continue;
+      // (and the roof's own triangles only as a gable over the wall: an eave's overhang a side face took stood on in its
+      // top cells as long slivers in the air when the roof fell)
+      if (roofPart && !(g.gableTop && v > g.wallHeight + 0.06)) continue;
       if (depth < -g.thickness - 0.15 || depth > 0.4) continue;
       const facing = nx * g.out[0] + ny * g.out[1] + nz * g.out[2];
       const score = Math.abs(depth > 0 ? depth : depth < -g.thickness ? -g.thickness - depth : 0) + Math.abs(depth) * 0.25 - 0.08 * Math.max(0, facing);
@@ -448,7 +458,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
         const wx = cx - px, wz = cz - pz;
         const bx = wx * c - wz * s, by = cy - py, bz = wx * s + wz * c;
         const bnx = (fx * c - fz * s) / area2, bny = fy / area2, bnz = (fx * s + fz * c) / area2;
-        const f = faceOfTriangle(live.wall, bx, by, bz, bnx, bny, bnz, span.partClass !== 'trim');
+        const f = faceOfTriangle(live.wall, bx, by, bz, bnx, bny, bnz, span.partClass !== 'trim', span.partClass === 'roof');
         if (f < 0) continue;
         let entry = byFace.get(f);
         if (!entry) { entry = { soups: new Map(), flat: [] }; byFace.set(f, entry); }
@@ -969,14 +979,17 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     const layout = room ? roomLayout : cg.layout;
     const material = room ?? cg.material;
     const { y0, y1 } = interior;
-    const col = a.interior.color;
+    // (destruction-slabs 227 round 3, the owner's "dark grey-navy slabs" and the visual critic's: a blown-out facade showed
+    // the room's far wall as one flat untextured dark plane filling the building) the room in the wall's own colour, in
+    // shade — an interior, its texture readable — never the near-black void the anatomy's interior colour drew
+    const col = room ? draw.core.tint : a.interior.color;
     const list: number[] = [];
     // inward-facing walls, floor and ceiling of the storey's room
     const q = (p0: number[], p1: number[], p2: number[], p3: number[], n: number[], shade: number) =>
-      pushQuad(list, layout, p0, p1, p2, p3, n, col, shade);
+      pushQuad(list, layout, p0, p1, p2, p3, n, col, room ? shade * ROOM_SHADE : shade);
     for (const [ax, az, bx, bz, nx, nz] of interior.walls) q([ax, y0, az], [bx, y0, bz], [bx, y1, bz], [ax, y1, az], [nx, 0, nz], Math.abs(nx) > 0.5 ? 0.9 : 1);
     for (const [x0, z0, x1, z1] of interior.rects) {
-      q([x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], [0, 1, 0], 1.3);
+      q([x0, y0, z0], [x1, y0, z0], [x1, y0, z1], [x0, y0, z1], [0, 1, 0], 0.9);
       q([x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1], [0, -1, 0], 0.7);
     }
     if (!list.length) return;
@@ -1785,6 +1798,15 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       const out: THREE.Mesh[] = [];
       for (const d of live.faces.values()) out.push(...d.meshes);
       return out;
+    },
+    rooms: (structureIdx) => [...(lives.get(structureIdx)?.room ?? [])],
+    dropRoom(structureIdx, mesh) {
+      const live = lives.get(structureIdx);
+      if (!live) return;
+      const i = live.room.indexOf(mesh);
+      if (i < 0) return;
+      o.group.remove(mesh); mesh.geometry.dispose();
+      live.room.splice(i, 1);
     },
     release(structureIdx) {
       const live = lives.get(structureIdx);

@@ -489,8 +489,10 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     // (a busy pool — a barrage's collapses at once — keeps its panels whole: each crack adds bodies to step; a roof's
     // sheets crack whatever else is awake)
     const roof = p.piece.kind === 'roof';
+    // (destruction-slabs 227 round 3, the visual critic: a tavern's roof came down onto its top floor whole and lay there as
+    // one flat dark lid over the storey) a roof's fall onto a floor cracks into its sheets at its first touch however soft
     if (!p.broken && p.parts.length > 1 && hit.part < 0
-      && (roof ? speed >= ROOF_BREAK_MPS : speed >= BREAK_MPS && pool.world.awakeCount < BREAK_AWAKE_MAX)) {
+      && (roof ? speed >= ROOF_BREAK_MPS || (c.partial && speed >= 0.6) : speed >= BREAK_MPS && pool.world.awakeCount < BREAK_AWAKE_MAX)) {
       p.broken = true;
       breaking.push(c, p);
     }

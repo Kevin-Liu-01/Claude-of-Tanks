@@ -578,6 +578,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     let changed = false;
     const perSpan: OverEavesSpan[] = [];
     const candidates: Array<{ span: StructureSpan; r: number }> = [];
+    const topSt = a.storeys[a.storeys.length - 1]!;
+    const topHalf = (topSt.y0 + topSt.y1) / 2;
     for (const span of seam.spans) {
       if (span.count < 3 || span.partClass === 'roof' || span.piece || flattenedSpans.has(span)) continue;
       const geo = (span.mesh as THREE.Mesh).geometry as THREE.BufferGeometry | undefined;
@@ -647,17 +649,21 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
           _ta.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
           _tb.set(arr[i * 3 + 3], arr[i * 3 + 4], arr[i * 3 + 5]).applyMatrix4(_m);
           _tc.set(arr[i * 3 + 6], arr[i * 3 + 7], arr[i * 3 + 8]).applyMatrix4(_m);
-          if (Math.min(_ta.y, _tb.y, _tc.y) - py < eave) continue;
+          // (round 3, the visual critic: a tavern's top storey stood capped by one flat dark plane, its interior's dark
+          // volume's top the roof had covered) the dark bucket's level tops in the top storey's upper half go too
           // its centroid in the body frame
           const wx = (_ta.x + _tb.x + _tc.x) / 3 - px, wz = (_ta.z + _tb.z + _tc.z) / 3 - pz;
           const mx = wx * c - wz * sn, mz = wx * sn + wz * c;
           if (Math.abs(mx - bcx) > reachX || Math.abs(mz - bcz) > reachZ) continue;
-          // (and a level surface over the eaves under no standing cluster: the attic's lid the roof covered — left, it
-          // capped the roofless storey as one clean flat roof, the critic's "flat raft")
-          if (!roofFurnitureAt(a, mx, mz, eaveY, ridgeY)) {
-            const ux = _tb.x - _ta.x, uy = _tb.y - _ta.y, uz = _tb.z - _ta.z, vx = _tc.x - _ta.x, vy = _tc.y - _ta.y, vz = _tc.z - _ta.z;
-            const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-            if (!(Math.abs(ny) > 0.85 * Math.hypot(nx, ny, nz)) || !clearOverEaves(a, mx, mz, eaveY, ridgeY)) continue;
+          if (!darkTop(span, py, topHalf)) {
+            if (Math.min(_ta.y, _tb.y, _tc.y) - py < eave) continue;
+            // (and a level surface over the eaves under no standing cluster: the attic's lid the roof covered — left, it
+            // capped the roofless storey as one clean flat roof, the critic's "flat raft")
+            if (!roofFurnitureAt(a, mx, mz, eaveY, ridgeY)) {
+              const ux = _tb.x - _ta.x, uy = _tb.y - _ta.y, uz = _tb.z - _ta.z, vx = _tc.x - _ta.x, vy = _tc.y - _ta.y, vz = _tc.z - _ta.z;
+              const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+              if (!(Math.abs(ny) > 0.85 * Math.hypot(nx, ny, nz)) || !clearOverEaves(a, mx, mz, eaveY, ridgeY)) continue;
+            }
           }
         }
         if (!touched) { keep(span); touched = true; }
@@ -674,6 +680,14 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     return changed;
   }
 
+  /** Whether the triangle in _ta.._tc is a level top of the dark bucket (an interior's dark volume) over `overY` (body y). */
+  function darkTop(span: StructureSpan, py: number, overY: number): boolean {
+    if (span.bucket !== 'dark') return false;
+    if ((_ta.y + _tb.y + _tc.y) / 3 - py < overY) return false;
+    _e1.subVectors(_tb, _ta); _e2.subVectors(_tc, _ta);
+    const n = _e1.cross(_e2);
+    return n.y > 0.85 * n.length();
+  }
   /**
    * Which parts over the eaves the structure's standing parts do not hold up (flattenRoofFurniture, round 3): per span, the
    * roots of the parts (`candidates`) that go. A body-frame grid (0.5 m) of the highest point drawn per cell by every part
@@ -1011,12 +1025,14 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     const wt = wallSlot.tint, wb = wallSlot.bucket;
     // its walls, facing in along the room's drawn boundary
     for (const [ax, az, bx, bz, nx, nz] of room.walls) {
-      quad(wb, wt, Math.abs(nx) > 0.5 ? 0.4 : 0.42, [nx!, 0, nz!], [[ax!, y0, az!], [bx!, y0, bz!], [bx!, y1, bz!], [ax!, y1, az!]]);
+      // (round 3: the owner's "dark grey-navy slabs" — a room's walls at 0.4 of the render read as one flat dark plane through
+      // a blown-out facade) in shade, its texture readable
+      quad(wb, wt, Math.abs(nx) > 0.5 ? 0.56 : 0.6, [nx!, 0, nz!], [[ax!, y0, az!], [bx!, y0, bz!], [bx!, y1, bz!], [ax!, y1, az!]]);
     }
     // its floor (up) and its ceiling (down), rectangle by rectangle
     for (const [x0, z0, x1, z1] of room.rects) {
-      quad(floorSlot.bucket, floorSlot.tint, 0.45, [0, 1, 0], [[x0!, y0, z1!], [x1!, y0, z1!], [x1!, y0, z0!], [x0!, y0, z0!]]);
-      quad(ceilSlot.bucket, ceilSlot.tint, 0.26, [0, -1, 0], [[x0!, y1, z0!], [x1!, y1, z0!], [x1!, y1, z1!], [x0!, y1, z1!]]);
+      quad(floorSlot.bucket, floorSlot.tint, 0.55, [0, 1, 0], [[x0!, y0, z1!], [x1!, y0, z1!], [x1!, y0, z0!], [x0!, y0, z0!]]);
+      quad(ceilSlot.bucket, ceilSlot.tint, 0.4, [0, -1, 0], [[x0!, y1, z0!], [x1!, y1, z0!], [x1!, y1, z1!], [x0!, y1, z1!]]);
     }
     const made = debris.commit();
     for (const mesh of made) {

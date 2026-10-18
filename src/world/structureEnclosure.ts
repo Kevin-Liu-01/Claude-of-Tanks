@@ -513,6 +513,17 @@ export function wallTopAt(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>, x:
   return best ? (best - 1) / 100 : -1;
 }
 
+/** The lowest a wall is drawn at a plan point (body y, its own cell): −Infinity where nothing is known (no enclosure, no
+ *  bases measured), +Infinity where no wall is drawn there. */
+export function wallBaseAt(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>, x: number, z: number): number {
+  const enc = enclosureOf(anatomy);
+  if (!enc?.base) return -Infinity;
+  const ci = Math.floor((x - enc.x0) / enc.cell), ck = Math.floor((z - enc.z0) / enc.cell);
+  if (ci < 0 || ck < 0 || ci >= enc.nx || ck >= enc.nz) return Infinity;
+  const b = enc.base[ck * enc.nx + ci]!;
+  return b ? (b - 1) / 100 : Infinity;
+}
+
 /** The highest thing drawn over a plan point (body y: a wall's top or a covering, a tank's roof, a deck), within `reach`
  *  cells; +Infinity where nothing restricts, −1 for nothing drawn there. */
 export function drawnOverAt(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>, x: number, z: number, reach = 1): number {

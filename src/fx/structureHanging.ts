@@ -61,9 +61,11 @@ interface Sampled {
 export interface HangingSweep {
   /**
    * The parts of `seam` its damage left hanging, gathered in clusters (each a body's triangles): read against what the
-   * world draws of it now and `holders` (the presentation's meshes that stand: the fracture's faces, the kit's runs).
+   * world draws of it now and `holders` (the presentation's meshes that stand: the fracture's faces, the kit's runs); and
+   * which of its `rooms` (a storey's room behind its holes) stand touching nothing that stands (their walls gone round
+   * them: a dark box in the air) — they go.
    */
-  sweep(seam: StructureDamageSeam, holders: readonly THREE.Mesh[]): HangingTri[][];
+  sweep(seam: StructureDamageSeam, holders: readonly THREE.Mesh[], rooms?: readonly THREE.Mesh[]): { groups: HangingTri[][]; rooms: number[] };
   reset(): void;
 }
 
@@ -221,6 +223,7 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
   const heldPts: number[] = [];
   /** A part's held share over its envelope: cells under which the ground, a holder or a part that bears lies within the
    *  band (the held cells left in heldPts). */
+  let holdLimit = Infinity;
   function heldOf(sm: Sampled, env: Map<number, number>, self: number, sup: Uint8Array, ground: (x: number, z: number) => number): number {
     let held = 0;
     heldPts.length = 0;
@@ -233,7 +236,7 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
         const c = sm.column.get(cellKey(i0 + di, k0 + dk));
         if (c) for (let j = 0; j < c.length; j += 2) {
           const q = c[j + 1]!;
-          if (q === self || c[j]! < lo || c[j]! > hi || (q < P && !sup[q])) continue;
+          if (q === self || c[j]! < lo || c[j]! > hi || (q < P && !sup[q]) || q >= holdLimit) continue;
           ok = true; break;
         }
       }
@@ -267,6 +270,7 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
   }
   /** The parts whose cluster (touching parts and holders) touches the ground; `find` for the clusters of the rest. */
   let lastFind: ((i: number) => number) | null = null;
+  let lastRoots: Set<number> = new Set();
   function clusters(model: Model, sm: Sampled, holders: number, ground: (x: number, z: number) => number): Set<number> {
     const P = model.parts.length, M = P + holders;
     const parent = new Int32Array(M);
@@ -304,6 +308,7 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
     const out = new Set<number>();
     for (let p = 0; p < P; p++) if (roots.has(find(p))) out.add(p);
     lastFind = find;
+    lastRoots = roots;
     return out;
   }
   /** A holder mesh's triangles sampled (world). */
@@ -327,15 +332,20 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
   }
 
   return {
-    sweep(seam, holders) {
+    sweep(seam, holders, rooms = []) {
       const model = modelOf(seam);
       const P = model.parts.length;
-      if (!P) return [];
-      const hx = holders.map(holderSamples);
+      if (!P) return { groups: [], rooms: [] };
+      const hx = [...holders, ...rooms].map(holderSamples);
       const sm = sample(seam, model, hx, holders, false);
+      // (a room holds nothing up: it stands inside walls)
+      holdLimit = P + holders.length;
       const sup = propagate(model, sm, hx.length, o.groundAt);
       const stands = clusters(model, sm, hx.length, o.groundAt);
-      const find = lastFind!;
+      holdLimit = Infinity;
+      const find = lastFind!, roots = lastRoots;
+      const roomsDown: number[] = [];
+      rooms.forEach((_m, r) => { if (hx[holders.length + r]!.length && !roots.has(find(P + holders.length + r))) roomsDown.push(r); });
       const down: number[] = [];
       for (let p = 0; p < P; p++) {
         const part = model.parts[p]!, env = sm.env[p];
@@ -346,7 +356,12 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
         if (!part.sup0 || sup[p]) continue;
         if (heldOf(sm, env, p, sup, o.groundAt) <= part.held0 - DROP) down.push(p);
       }
-      if (!down.length) return [];
+      if (globalThis.process?.env?.COT_HANG_RT) {
+        let present = 0, stood = 0, standsN = 0;
+        for (let p = 0; p < P; p++) { if (!sm.env[p]) continue; present++; if (model.parts[p]!.stood0) stood++; if (stands.has(p)) standsN++; }
+        console.log(`[hang-rt] #${seam.structureIdx} parts ${P} present ${present} stood0 ${stood} stands ${standsN} down ${down.length}`);
+      }
+      if (!down.length) return { groups: [], rooms: roomsDown };
       // one body a cluster of what comes down (the parts touching: a mill's sails with their stocks and shaft)
       const byRoot = new Map<number, HangingTri[]>();
       for (const p of down) {
@@ -357,7 +372,7 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
         if (!list) byRoot.set(r, list = []);
         for (let t = 0; t < part.tris.length; t++) if (corners(arr, 0, part.tris[t]!, M)) list.push({ span, at: part.tris[t]! });
       }
-      return [...byRoot.values()].filter((l) => l.length);
+      return { groups: [...byRoot.values()].filter((l) => l.length), rooms: roomsDown };
     },
     reset() { /* the intact readings stand: the spans as built do not change */ },
   };

@@ -27,7 +27,7 @@ import {
   type DamageMeshWriter, type DamageRole, type DamageWriters, type FractureSlot, type Rgb, type StructureDamageAnatomy,
 } from './destructionKit.ts';
 import {
-  bandEnclosure, drawnOverAt, enclosedAt, positionsOf, standsOnPosts, tallestDrawn, tallWallAt, wallAlong, wallClusters, wallSpots, wallTopAt,
+  bandEnclosure, drawnOverAt, enclosedAt, positionsOf, standsOnPosts, tallestDrawn, tallWallAt, wallAlong, wallBaseAt, wallClusters, wallSpots, wallTopAt,
 } from './structureEnclosure.ts';
 
 /** The ruin's floors (the sweep's: 25 % and 60 %, with margin). */
@@ -249,8 +249,8 @@ function cornerPiers(rng: () => number, slot: FractureSlot, cap: number, mesh: D
       // the leg along x (on the z face), then the leg along z (on the x face)
       const lx = legX * shrink * (0.85 + rng() * 0.15), lz = legZ * shrink * (0.85 + rng() * 0.15);
       if (height < 0.6 || !(hy > 0.05)) continue;
-      if (legs[0]) box(mesh, fcx + sx * (hw - lx / 2), cy, fcz + sz * (hd - inZ - t / 2), lx / 2, hy, t / 2, 0, slot.tint, shade);
-      if (legs[1]) box(mesh, fcx + sx * (hw - inX - t / 2), cy, fcz + sz * (hd - lz / 2), t / 2, hy, lz / 2, 0, slot.tint, shade);
+      if (legs[0]) rbox(mesh, fcx + sx * (hw - lx / 2), cy, fcz + sz * (hd - inZ - t / 2), lx / 2, hy, t / 2, 0, slot.tint, shade);
+      if (legs[1]) rbox(mesh, fcx + sx * (hw - inX - t / 2), cy, fcz + sz * (hd - lz / 2), t / 2, hy, lz / 2, 0, slot.tint, shade);
       h0 = top;
     }
   }
@@ -280,8 +280,8 @@ function wallStubs(rng: () => number, slot: FractureSlot, cap: number, mesh: Dam
       const h = Math.min(h0, alongX ? topAlong(x - hu, z, x + hu, z) : topAlong(x, z - hu, x, z + hu));
       if (h < 0.4) continue;
       const cy = (h - FOOT_M) / 2, hy = (h + FOOT_M) / 2;
-      if (alongX) box(mesh, x, cy, z, hu, hy, t / 2, 0, slot.tint, shade);
-      else box(mesh, x, cy, z, t / 2, hy, hu, 0, slot.tint, shade);
+      if (alongX) rbox(mesh, x, cy, z, hu, hy, t / 2, 0, slot.tint, shade);
+      else rbox(mesh, x, cy, z, t / 2, hy, hu, 0, slot.tint, shade);
     }
   }
   mesh.end();
@@ -319,11 +319,36 @@ function wallFragment(rng: () => number, slot: FractureSlot, cap: number, mesh: 
     const uc = u + lean * (run - l) / 2;
     const hy = (y1 - y0) / 2, shade = 0.8 + rng() * 0.18;
     if (!(height > 0.4) || !(hy > 0.05)) continue;
-    if (alongX) box(mesh, fcx + uc, y0 + hy, fcz + side * at, l / 2, hy, t / 2, 0, slot.tint, shade);
-    else box(mesh, fcx + side * at, y0 + hy, fcz + uc, t / 2, hy, l / 2, 0, slot.tint, shade);
+    if (alongX) rbox(mesh, fcx + uc, y0 + hy, fcz + side * at, l / 2, hy, t / 2, 0, slot.tint, shade);
+    else rbox(mesh, fcx + side * at, y0 + hy, fcz + uc, t / 2, hy, l / 2, 0, slot.tint, shade);
     y0 = y1;
   }
   mesh.end();
+}
+
+/**
+ * A remnant's box no taller than the walls are drawn under it — its middle and its ends, each its own cell (destruction-
+ * slabs 227 round 3: a ruin's stubs and piers stood 1–3 m over the walls as drawn at their spots; one where nothing is
+ * drawn is no remnant).
+ */
+function rbox(mesh: DamageMeshWriter, cx: number, cy: number, cz: number, hx: number, hy: number, hz: number, yaw: number,
+  tint: Rgb, shade: number): void {
+  if (ruinOf) {
+    const c = Math.cos(yaw), s = Math.sin(yaw);
+    const ax = hx >= hz ? hx * 0.8 : 0, az = hx >= hz ? 0 : hz * 0.8;
+    let lim = wallTopAt(ruinOf, cx, cz, 0);
+    lim = Math.min(lim, wallTopAt(ruinOf, cx + ax * c + az * s, cz - ax * s + az * c, 0), wallTopAt(ruinOf, cx - ax * c - az * s, cz + ax * s - az * c, 0));
+    const bottom = cy - hy;
+    // (and only where the wall is drawn down to its foot: a post mill's body on its trestle stood its ruin's walls from
+    // the ground up to where the body hung)
+    if (wallBaseAt(ruinOf, cx, cz) > Math.max(0, bottom) + 1.2) return;
+    if (Number.isFinite(lim) && cy + hy > lim + 0.05) {
+      const top = Math.max(bottom, lim);
+      if (top - bottom < 0.3) return;
+      hy = (top - bottom) / 2; cy = bottom + hy;
+    }
+  }
+  box(mesh, cx, cy, cz, hx, hy, hz, yaw, tint, shade);
 }
 
 /** A segment from (ax, az) to (bx, bz) in plan as a box `hy` half high at `cy`, `t` thick (the box's local x along it). */
@@ -609,8 +634,8 @@ function framePosts(rng: () => number, slot: FractureSlot, cap: number, mesh: Da
       const h = Math.min(h0, loose && ruinOf ? 0.8 * wallTopAt(ruinOf, x, z, 0) : topOfWallIn(px, pz, pnx, pnz, d));
       if (h < 0.5) continue;
       const h1 = h * 0.55;
-      box(mesh, x, (h1 - FOOT_M) / 2, z, t / 2, (h1 + FOOT_M) / 2, t / 2, 0, slot.tint, shade);
-      box(mesh, x + (alongX ? lean : 0), (h1 + h) / 2, z + (alongX ? 0 : lean), t / 2, (h - h1) / 2, t / 2, 0, slot.tint, shade);
+      rbox(mesh, x, (h1 - FOOT_M) / 2, z, t / 2, (h1 + FOOT_M) / 2, t / 2, 0, slot.tint, shade);
+      rbox(mesh, x + (alongX ? lean : 0), (h1 + h) / 2, z + (alongX ? 0 : lean), t / 2, (h - h1) / 2, t / 2, 0, slot.tint, shade);
     }
     // panels of the wall leant against its posts, inside the walls (destruction-slabs 227: they stood 0.25 m past them)
     for (let p = 0; p < 2 && roomFor(mesh, 1); p++) {
@@ -630,7 +655,7 @@ function framePosts(rng: () => number, slot: FractureSlot, cap: number, mesh: Da
           ? 0.8 * Math.min(wallTopAt(ruinOf, x, z, 0), wallTopAt(ruinOf, x - ex, z - ez, 0), wallTopAt(ruinOf, x + ex, z + ez, 0)) : 0)
         : topOfWallIn(px, pz, pnx, pnz, d));
       if (!(ph > 0.3)) continue;
-      box(mesh, x, ph / 2 - 0.1, z, alongX ? pl / 2 : 0.05, ph / 2, alongX ? 0.05 : pl / 2, 0, slot.tint, shade);
+      rbox(mesh, x, ph / 2 - 0.1, z, alongX ? pl / 2 : 0.05, ph / 2, alongX ? 0.05 : pl / 2, 0, slot.tint, shade);
     }
   }
   mesh.end();
