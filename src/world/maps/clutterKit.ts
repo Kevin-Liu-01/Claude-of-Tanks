@@ -351,7 +351,10 @@ const RED_DRUM_LATE = { shell: 0xb02a22, hoop: 0x801e18, head: 0xb02a22, band: 0
 /** A map's cable drum: the cable lead-sheathed before 1955 (periodClutterKit MODERN_KIND_INTRODUCED), PVC black after;
  *  the stations' steel spool and its orange cable. */
 function spoolOf(mapId: string): { form: string; spec: { cheek: Hex; cable: Hex; steel?: boolean } } {
-  if (mapId === 'moon' || mapId === 'mars') return { form: 'steel-spool', spec: { cheek: 0xb8b8b4, cable: 0xd8702a, steel: true } };
+  // (the Earthrise 228 rebuild, round 3; the blind judge: "a stray orange marker sits beside the berm") the Moon's spool
+  // carries the station's dark power cable: its orange coil read as a lone marker across the regolith
+  if (mapId === 'moon') return { form: 'steel-spool', spec: { cheek: 0xb8b8b4, cable: 0x3a3c40, steel: true } };
+  if (mapId === 'mars') return { form: 'steel-spool', spec: { cheek: 0xb8b8b4, cable: 0xd8702a, steel: true } };
   const year = MAP_SETTING_YEAR[mapId] ?? 2000;
   return year < 1955 ? { form: 'lead-cable-drum', spec: { cheek: 0x8a6a48, cable: 0x6a6c70 } } : { form: 'cable-drum', spec: { cheek: 0x9a7a52, cable: 0x232323 } };
 }

@@ -14,7 +14,7 @@
 import assert from 'node:assert/strict';
 import { getMapConfig } from './index.ts';
 import mars from './mars.ts';
-import { APOLLO_SITE, EARTHRISE_STATION, EXCAVATION_FRONT, ISRU_PLANT } from './earthriseStation.ts';
+import { APOLLO_SITE, EARTHRISE_STATION, EXCAVATION_FRONT, ISRU_PLANT, RELAY_REPEATERS, STATION_DOMES } from './earthriseStation.ts';
 import { LUNAR_STRUCTURE_VARIANTS } from './regional/lunarWorks.ts';
 import { STRUCTURE_VARIANTS } from './regional/ksarGate.ts';
 import { resolveRegionalArchitecture } from './regional/index.ts';
@@ -135,8 +135,49 @@ let mastNote = '';
 const lm = ud.landmarks;
 assert.equal(lm.skipped, 0, `no set piece skipped (${JSON.stringify(lm.pieces.filter((p) => p.status !== 'placed'))})`);
 const placed = lm.pieces.filter((p) => p.status === 'placed').map((p) => p.kind).sort();
-assert.deepEqual(placed, ['apolloSite', 'isruWorks', 'isruWorks', 'solarTower', 'solarTower', 'solarTower', 'solarTower'],
-  'Challenger\'s site, the works and its front, the two solar towers on the scarps and the station\'s two power masts (round 2)');
+assert.deepEqual(placed, ['apolloSite', 'isruWorks', 'isruWorks', 'relayRepeater', 'relayRepeater', 'solarTower', 'solarTower', 'solarTower', 'solarTower', 'stationDome', 'stationDome'],
+  'Challenger\'s site, the works and its front, the two solar towers on the scarps, the station\'s two power masts (round 2), its two commons and the deployments\' two relay repeaters (round 3)');
+
+// (round 3, 2026-10-18; the blind judge from the aerial: "no strong hero landmark", "loose, with large empty gaps between
+// buildings and few roads or cables linking them") the commons: a rotation pair, each 30 m and more of its footprint off
+// every objective disc, its main airlock to the hub; the station's tracks: rotation pairs, laid across the open ground,
+// every plot's door on one (within 4 m of a track's line), each commons' airlock and every deployment's pads linked
+assert.equal(STATION_DOMES.length, 2);
+assert.ok(Math.hypot(STATION_DOMES[0].x + STATION_DOMES[1].x, STATION_DOMES[0].z + STATION_DOMES[1].z) < 0.01, 'the commons a rotation pair');
+for (const d of STATION_DOMES) {
+  const toHub = Math.atan2(-d.x, -d.z) * 180 / Math.PI, back = ((((d.yawDeg + 180) - toHub) % 360) + 540) % 360 - 180;
+  assert.ok(Math.abs(back) < 1, `the commons at (${d.x}, ${d.z}): its main airlock (local -z) to the hub`);
+  for (const zone of layout.zones) assert.ok(Math.hypot(d.x - zone.x, d.z - zone.z) - 17.8 * Math.SQRT2 >= 30, `the commons at (${d.x}, ${d.z}): 30 m off the zone at (${zone.x}, ${zone.z})`);
+}
+const lines = P.groundMarkings.lines, tracks = lines.filter((l) => l.paint === 'track');
+assert.ok(tracks.length >= 24, `the station's tracks (${tracks.length})`);
+assert.ok(lines.filter((l) => l.paint === 'track' || l.paint === 'rut').every((l) => l.unpaved === true), 'every track across the open ground');
+const key = (pts) => pts.map(([x, z]) => `${x.toFixed(1)},${z.toFixed(1)}`).join(' ');
+const trackKeys = new Set(tracks.map((l) => key(l.points)));
+const unpaired = tracks.filter((l) => !trackKeys.has(key(l.points.map(([x, z]) => [-x, -z]))));
+assert.ok(unpaired.length <= 1, `the tracks in rotation pairs (the oxygen works' spur alone): ${unpaired.map((l) => key(l.points)).join(' | ')}`);
+const segD = (x, z, [ax, az], [bx, bz]) => { const ex = bx - ax, ez = bz - az, l2 = ex * ex + ez * ez, t = l2 ? Math.max(0, Math.min(1, ((x - ax) * ex + (z - az) * ez) / l2)) : 0; return Math.hypot(x - ax - ex * t, z - az - ez * t); };
+const trackDist = (x, z) => Math.min(...tracks.flatMap((l) => l.points.slice(1).map((p, i) => segD(x, z, l.points[i], p))));
+const HALF = { barn: 6.4, cottage: 4.4, schoolhouse: 8.2, gantry: 2.9, containerRow: 4.3, mill: 3.4, chapel: 4.8, farmhouse: 5.6 };
+for (const site of EARTHRISE_STATION) {
+  const a = site.yawDeg * Math.PI / 180, h = HALF[site.structure] + 0.8, dx = site.x + Math.sin(a) * h, dz = site.z + Math.cos(a) * h;
+  const d = trackDist(dx, dz);
+  assert.ok(d <= 4, `${site.structure} at (${site.x}, ${site.z}): its door ${d.toFixed(1)} m from a track (4 m)`);
+}
+for (const [x, z] of [[config.spawns.player.x, config.spawns.player.z], [-config.spawns.player.x, -config.spawns.player.z]]) {
+  assert.ok(trackDist(x, z) <= 10, `the deployment's pads at (${x}, ${z}) on their track over the scarp`);
+}
+// the relay repeaters: a rotation pair on the scarps' crests beside the deployments' tracks, their dishes to the hub
+assert.ok(RELAY_REPEATERS.length === 2 && Math.hypot(RELAY_REPEATERS[0].x + RELAY_REPEATERS[1].x, RELAY_REPEATERS[0].z + RELAY_REPEATERS[1].z) < 0.01, 'the repeaters a rotation pair');
+for (const r of RELAY_REPEATERS) {
+  const d = trackDist(r.x, r.z), toHub = Math.atan2(-r.x, -r.z) * 180 / Math.PI, off = ((((r.yawDeg + 180) - toHub) % 360) + 540) % 360 - 180;
+  assert.ok(d >= 7 && d <= 15, `the repeater at (${r.x}, ${r.z}) ${d.toFixed(1)} m off its track (7-15 m: beside it, its guys clear of it)`);
+  assert.ok(Math.abs(off) < 1, `the repeater at (${r.x}, ${r.z}): its dish to the hub`);
+}
+// the landers' blast under the pad's paint: the soot first, every streak on the pad
+const soot = lines.filter((l) => l.paint === 'soot');
+assert.ok(soot.length >= 30 && lines.indexOf(soot[soot.length - 1]) < lines.findIndex((l) => l.paint === 'white'), 'the blast laid under the paint');
+assert.ok(soot.every((l) => l.points.every(([x, z]) => Math.max(Math.abs(x), Math.abs(z)) < 33)), 'the blast on the pad');
 // (the collision records and the props' destructibles, the clutter among them, by kind)
 const kinds = new Map();
 for (const o of [...(dressing.obstacles ?? []), ...(dressing.destructibles ?? [])]) if (o.kind) kinds.set(o.kind, (kinds.get(o.kind) ?? 0) + 1);

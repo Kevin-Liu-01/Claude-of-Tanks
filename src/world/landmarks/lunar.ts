@@ -14,6 +14,13 @@
 //   - solarTower  the mills on the swells: a vertical solar array tower (after NASA's VSAT) — the mast, its two blankets
 //                 rolled out on the turning head toward its local +z (the map turns it to the low east sun), the guys and
 //                 the foot cabinet.
+//   - stationDome the station's commons (round 3): a pressurised dome 24 m across in its white blanket, dusted at the foot,
+//                 its gores' seams, under a shielding collar of sintered regolith; the cupola at its crown with its ports,
+//                 gold rim and beacon mast; three airlock tunnels on their cradles (the main one to local -z), each with
+//                 its hatch and step; two radiator wings standing edge-on beside it and its light masts.
+//   - relayRepeater the deployments' link over the scarps (round 3): a 16 m three-legged lattice mast on the crest beside
+//                 the rovers' track, banded orange and white at its head, its dish to the station (local -z), its solar
+//                 wing, the cabinet at its foot, three guys and the beacon.
 // Drawn in its own frame (x across, y up, z out of its front, the ground at y = 0) into the regional part sink, so each
 // merges into the props' material buckets. The bodies (the descent stage, the vessels, the masts, the cabinets) are
 // structure; the instruments, cables, flags, posts, guys and blankets are dressing. A phone keeps every coarse part; the
@@ -90,15 +97,34 @@ function descentStage(sink: PartSink, g: (x: number, z: number) => number, varia
       sink.span(M, -half, y1 - 0.11, -0.01, half, y1 - 0.07, 0.04, { colour: rgb(0xe9e2c8), decor: true, fine: true });
     });
   }
-  // the black foil of the four quad bays (the diagonal faces) and the open bay (the equipment's, left of the ladder)
+  // the four quad bays (the diagonal faces) and the open bay (the equipment's, left of the ladder)
+  // (round 3, 2026-10-18; the blind judge: "the lander's dark descent-stage panel looks like a black void") the quads' outer
+  // blankets as the photographs show them: the darker amber and the aluminised film in crinkled sheets, two columns and
+  // two courses, each sheet to its own sheen; the open bay's stowage shelves and boxes in their silver under the shadow of
+  // the bay, so no face is one flat black
+  const QUAD: readonly Rgb[] = [rgb(0x9a7a3a), rgb(0xb8babd), rgb(0x86682e), rgb(0xa58440), rgb(0x9fa1a4), rgb(0x8f7034)];
   for (let k = 0; k < 4; k++) {
     const a = Math.PI / 4 + (k * Math.PI) / 2, nx = Math.sin(a), nz = Math.cos(a), ap = R * Math.cos(Math.PI / 8);
     const open = k === 3;
     sink.placed(Math.atan2(nx, nz), nx * ap, 0, nz * ap, () => {
-      sink.span(M, -0.82, y0 + 0.12, -0.02, 0.82, y1 - 0.12, open ? -0.01 : 0.03, { colour: open ? BLACK : shade(BLACK, 1.4), decor: true });
+      sink.span(M, -0.82, y0 + 0.12, -0.02, 0.82, y1 - 0.12, open ? -0.01 : 0.03, { colour: open ? DARK : shade(GOLD_DARK, 0.9), decor: true });
+      if (!open) {
+        for (let c = 0; c < 2; c++) for (let r = 0; r < 2; r++) {
+          const x0 = -0.8 + c * 0.8 + 0.015, x1 = x0 + 0.77, ya = y0 + 0.14 + r * (y1 - y0 - 0.28) / 2 + 0.012, yb = ya + (y1 - y0 - 0.28) / 2 - 0.024;
+          const f = QUAD[(k * 3 + c * 2 + r * 5 + Math.floor(variant() * 6)) % QUAD.length], out = 0.04 + variant() * 0.02;
+          sink.span(M, x0, ya, 0.02, x1, yb, out, { colourAt: (q) => shade(f, 0.86 + 0.26 * Math.sin(q[0] * 8.1 + q[1] * 6.3 + k * 1.7)), colour: f, decor: true });
+        }
+      }
       if (open) {
-        // the bay's pallet let down on its hinges, its stowage dark behind it
-        sink.span(M, -0.7, y0 + 0.2, -0.36, 0.7, y1 - 0.2, -0.02, { colour: BLACK, decor: true });
+        // the bay's pallet let down on its hinges, its stowage behind it: two shelves of silver boxes
+        sink.span(M, -0.7, y0 + 0.2, -0.36, 0.7, y1 - 0.2, -0.02, { colour: shade(DARK, 0.8), decor: true });
+        // (the shelves stand out of the bay's face: the stage's body fills the octagon behind it)
+        for (let r = 0; r < 2; r++) {
+          const yb = y0 + 0.3 + r * 0.6;
+          sink.span(M, -0.7, yb - 0.04, -0.01, 0.7, yb, 0.3, { colour: STEEL, decor: true });
+          for (let c = 0; c < 3; c++) sink.span(M, -0.62 + c * 0.43, yb, 0.01, -0.27 + c * 0.43, yb + 0.26 + (c % 2) * 0.1, 0.27, { colour: c === 1 ? WHITE : SILVER, decor: true });
+        }
+        for (const x of [-0.7, 0.7]) sink.span(M, x - 0.025, y0 + 0.2, -0.01, x + 0.025, y1 - 0.2, 0.3, { colour: STEEL, decor: true });
         bar(sink, [-0.68, y0 + 0.15, 0.0], [-0.68, y0 - 0.35, 0.95], 0.06, { colour: SILVER, decor: true });
         bar(sink, [0.68, y0 + 0.15, 0.0], [0.68, y0 - 0.35, 0.95], 0.06, { colour: SILVER, decor: true });
         sink.placed(0, 0, 0, 0, () => sink.span(M, -0.72, y0 - 0.42, 0.85, 0.72, y0 - 0.3, 1.0, { colour: SILVER, decor: true }));
@@ -200,11 +226,14 @@ export const apolloSite: LandmarkBuilder = (ctx) => {
   // the heritage ring: sixteen posts at the radius and the tape between them, open at the gate (local -z)
   const posts = 16;
   const postAt = (k: number): Vec3 => { const a = Math.PI + ((k + 0.5) / posts) * Math.PI * 2, x = Math.sin(a) * r, z = Math.cos(a) * r; return [x, g(x, z), z]; };
-  for (let k = 0; k < posts; k++) {
+  // (round 3, 2026-10-18; the blind judge: "a close fence post is cut off hard at the left edge" of the visitor's view from
+  // the gate) the gate three spans wide, the visitors' way in: the posts either side of the old one-span gap stand down,
+  // so the ring opens on the walk from the station and its first posts frame the stage from the gate, not the lens's edge
+  for (let k = 1; k < posts - 1; k++) {
     const p = postAt(k);
     bar(sink, [p[0], p[1] - 0.15, p[2]], [p[0], p[1] + 1.1, p[2]], 0.09, { colour: STEEL, decor: true });
     sink.span(M, p[0] - 0.06, p[1] + 1.02, p[2] - 0.06, p[0] + 0.06, p[1] + 1.16, p[2] + 0.06, { colour: ORANGE, decor: true });
-    if (k === posts - 1) continue;
+    if (k === posts - 2) continue;
     // (round 2, 2026-10-18; the blind critics: "the orange tape fence line runs ruler-straight and looks floating") the
     // tape hangs from post to post: a flat ribbon in four runs that sag a third of a metre at mid-span over the ground
     // under each run (each run meets the next, the first and last the posts' heads)
@@ -219,13 +248,16 @@ export const apolloSite: LandmarkBuilder = (ctx) => {
     }
   }
   // the interpretive stand inside the gate: its post and its sloped panel turned to the visitor
+  // (round 3, 2026-10-18; the blind judge: "the heritage-site placard sits center-frame and hides the lander") the stand
+  // beside the walk, not on it: at the walk's right hand 3.2 m in from the gate, its face turned to the visitor coming
+  // in, so the view through the gate holds the stage and the stand stands to one side of it
   {
-    const sz = -r + 1.6, sy = g(0, sz);
-    bar(sink, [0, sy - 0.2, sz], [0, sy + 1.0, sz], 0.1, { colour: STEEL, decor: true });
+    const sx = -3.2, sz = -r + 3.4, sy = g(sx, sz), syaw = -0.42;
+    sink.placed(syaw, sx, 0, sz, () => bar(sink, [0, sy - 0.2, 0], [0, sy + 1.0, 0], 0.1, { colour: STEEL, decor: true }));
     // (round 2; the blind critics: "blank grey signboards ... no markings or texture") the panel printed: a blue header
     // band with its white title rule, the descent stage's photograph (black sky, the gold stage, the grey floor), five
     // lines of text, the mission's round patch; the face and its print drawn at every range a panel can be read from
-    sink.placed(0, 0, sy + 1.05, sz, () => {
+    sink.placed(syaw, sx, sy + 1.05, sz, () => {
       sink.span(M, -0.55, -0.08, -0.06, 0.55, 0.42, 0.04, { colour: DARK, decor: true });
       sink.span(M, -0.5, -0.04, -0.075, 0.5, 0.38, -0.06, { colour: shade(WHITE, 0.95), decor: true });
       const ink = (x0: number, y0: number, x1: number, y1: number, colour: Rgb): void =>
@@ -407,14 +439,33 @@ export const solarTower: LandmarkBuilder = (ctx) => {
   sink.cylinder(M, [0, y + H - 0.2, 0], 'y', 0.6, 0.42, 12, { colour: PANEL });
   bar(sink, [-3.0, y + H + 0.2, 0.32], [3.0, y + H + 0.2, 0.32], 0.16, { colour: STEEL });
   const bottom = y + H - 12.0;
+  // (round 3, 2026-10-18; the blind judge: "the solar mast's panel, seen from the side or back, looks like a dark billboard
+  // slab") each wing in two blankets with a slot of sky between them, each blanket hung in its own white frame, and behind
+  // them the wing's spar and its battens every 1.5 m — light members proud of the backing that catch the low sun on their
+  // edges when the blanket's back is in its own shade — and the battens' tension wires down the back on the diagonals
+  const top = y + H + 0.12;
   for (const s of [-1, 1]) {
-    const x0 = s * 0.42, x1 = s * 3.0;
-    sink.span(M, Math.min(x0, x1), bottom, 0.3, Math.max(x0, x1), y + H + 0.12, 0.34, { colour: CELL, decor: true });
-    // (round 2; the blind critics: the power mast "a dark slab on a pole" from behind) the blanket's white backing sheet
-    sink.span(M, Math.min(x0, x1), bottom, 0.27, Math.max(x0, x1), y + H + 0.12, 0.3, { colour: shade(PANEL, 0.86), decor: true });
-    for (let yy = bottom + 0.5; yy < y + H; yy += 0.5) sink.span(M, Math.min(x0, x1), yy - 0.012, 0.335, Math.max(x0, x1), yy + 0.012, 0.345, { colour: shade(CELL, 1.6), decor: true, fine: true });
+    const x1 = s * 3.0;
+    for (const [pa, pb] of [[0.42, 1.66], [1.76, 3.0]] as const) {
+      const xa = s * pa, xb = s * pb, lo = Math.min(xa, xb), hi = Math.max(xa, xb);
+      sink.span(M, lo, bottom, 0.3, hi, top, 0.34, { colour: CELL, decor: true });
+      sink.span(M, lo, bottom, 0.27, hi, top, 0.3, { colour: shade(PANEL, 0.92), decor: true });
+      for (let yy = bottom + 0.5; yy < y + H; yy += 0.5) sink.span(M, lo, yy - 0.012, 0.335, hi, yy + 0.012, 0.345, { colour: shade(CELL, 1.6), decor: true, fine: true });
+      // the blanket's frame: its two stiles and its head and foot rails, white
+      for (const x of [lo + 0.03, hi - 0.03]) sink.span(M, x - 0.04, bottom - 0.02, 0.24, x + 0.04, top + 0.02, 0.36, { colour: RADIATOR, decor: true });
+      for (const yy of [bottom, top]) sink.span(M, lo, yy - 0.05, 0.24, hi, yy + 0.05, 0.36, { colour: RADIATOR, decor: true });
+    }
+    // the spar along the wing's outer edge and its foot rail to the mast, the battens across its back
     bar(sink, [x1, bottom - 0.05, 0.32], [x1, y + H + 0.2, 0.32], 0.07, { colour: STEEL, decor: true });
     bar(sink, [x1, bottom, 0.32], [0, bottom, 0.32], 0.07, { colour: STEEL, decor: true });
+    for (let yy = bottom + 1.5; yy < top - 0.4; yy += 1.5) {
+      sink.span(M, Math.min(s * 0.3, x1), yy - 0.05, 0.1, Math.max(s * 0.3, x1), yy + 0.05, 0.27, { colour: shade(RADIATOR, 0.94), decor: true });
+    }
+    // the tension wires down the back on the diagonals, batten to batten
+    for (let yy = bottom + 1.5; yy + 3.0 < top - 0.4; yy += 3.0) {
+      bar(sink, [s * 0.35, yy, 0.14], [x1 * 0.97, yy + 1.5, 0.14], 0.02, { colour: STEEL, decor: true, fine: true });
+      bar(sink, [x1 * 0.97, yy + 1.5, 0.14], [s * 0.35, yy + 3.0, 0.14], 0.02, { colour: STEEL, decor: true, fine: true });
+    }
   }
   // the three guys from under the head to their anchors in the regolith
   for (let k = 0; k < 3; k++) {
@@ -426,5 +477,164 @@ export const solarTower: LandmarkBuilder = (ctx) => {
   sink.span(M, -0.12, y + H + 0.4, -0.12, 0.12, y + H + 0.62, 0.12, { colour: rgb(0xb4453a), decor: true });
   bar(sink, [0, y + H + 0.28, 0], [0, y + H + 0.42, 0], 0.05, { colour: STEEL, decor: true });
   void ORANGE; void SILVER;
+  return { parts: finishLandmark(sink) };
+};
+
+// ------------------------------------------------------------------------------------------------------- the commons
+
+/**
+ * The station's commons (round 3, 2026-10-18; the blind judge from the aerial: "no strong hero landmark"): a pressurised
+ * dome `radius` across its foot and `rise` high in its white blanket, dusted grey to the collar, the seams of its gores up
+ * to the cupola; under a collar of sintered regolith banked round its foot; the cupola, its ports, the gold rim and the
+ * beacon mast at the crown; three airlock tunnels on their cradles (the main one to local -z, the others at 100 degrees to
+ * either side), each with its orange hatch and its step; two radiator wings standing edge-on on their legs beside it and
+ * three light masts round it. Solids: the pad, the collar, the shell, the cupola, the tunnels and the radiator wings.
+ */
+export const stationDome: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const g = ctx.ground ?? (() => 0), r = num(ctx, 'radius', 6), rise = num(ctx, 'rise', 4), variant = ctx.variant;
+  // the pad over the ring's ground (its top a quarter metre over the highest of it, its foot under the lowest)
+  const around = Array.from({ length: 16 }, (_, k) => { const a = (k / 16) * Math.PI * 2; return g(Math.sin(a) * (r + 2.4), Math.cos(a) * (r + 2.4)); });
+  const lo = Math.min(g(0, 0), ...around), hi = Math.max(g(0, 0), ...around), y0 = hi + 0.25;
+  sink.cylinder('stone', [0, lo - 0.5, 0], 'y', y0 - lo + 0.5, r + 2.6, 28);
+  // the collar: sintered regolith banked round the foot to 2.3 m, steep at its toe and rounding to its crest
+  sink.revolve('stone', [0, y0 - 0.05, 0], 'y', [[0, r + 2.0], [0.7, r + 1.45], [1.5, r + 0.8], [2.1, r + 0.25], [2.35, r - 0.12]], 32);
+  // the shell: an ellipsoid's half in its blanket, dusted to the collar's crest
+  const prof: Array<[number, number]> = [];
+  for (let i = 0; i <= 12; i++) {
+    const a = (i / 12) * (Math.PI / 2);
+    prof.push([Math.sin(a) * rise, Math.max(0.05, Math.cos(a) * r)]);
+  }
+  const shellAt = (t: number): [number, number] => {
+    const a = t * (Math.PI / 2);
+    return [Math.cos(a) * r, Math.sin(a) * rise];
+  };
+  sink.revolve(M, [0, y0, 0], 'y', prof, 36, { colourAt: (p) => (p[1] < y0 + 2.6 ? DUSTED : MLI), colour: MLI });
+  // the gores' seams from the collar to the cupola's ring, a little proud of the blanket (dressing at every range)
+  const seams = 16, tTop = Math.acos(Math.min(0.98, 2.5 / r)) / (Math.PI / 2);
+  for (let k = 0; k < seams; k++) {
+    const a = (k / seams) * Math.PI * 2 + Math.PI / seams, ux = Math.sin(a), uz = Math.cos(a);
+    const steps = 7;
+    for (let i = 0; i < steps; i++) {
+      const t0 = 0.12 + ((tTop - 0.12) * i) / steps, t1 = 0.12 + ((tTop - 0.12) * (i + 1)) / steps;
+      const [r0, h0] = shellAt(t0), [r1, h1] = shellAt(t1);
+      bar(sink, [ux * (r0 + 0.04), y0 + h0, uz * (r0 + 0.04)], [ux * (r1 + 0.04), y0 + h1, uz * (r1 + 0.04)], 0.09, { colour: shade(MLI, 0.82), decor: true });
+    }
+  }
+  // two courses round the shell: the gold band at the collar's crest and the blanket's lap at two-thirds of its height
+  {
+    const [rc, hc] = shellAt(0.17), [rl, hl] = shellAt(0.5);
+    sink.cylinder(M, [0, y0 + hc - 0.14, 0], 'y', 0.28, rc + 0.06, 36, { colour: GOLD, decor: true }, rc + 0.02, false);
+    sink.cylinder(M, [0, y0 + hl - 0.08, 0], 'y', 0.16, rl + 0.05, 36, { colour: shade(MLI, 0.86), decor: true }, rl - 0.02, false);
+  }
+  // the cupola at the crown: its drum, eight ports round it, the gold rim, the radiator cap and the beacon mast
+  const cy = y0 + rise - 0.35;
+  sink.cylinder(M, [0, cy, 0], 'y', 1.0, 2.6, 16, { colour: PANEL });
+  sink.cylinder(M, [0, cy + 1.0, 0], 'y', 0.2, 2.8, 16, { colour: GOLD, decor: true });
+  sink.cylinder(M, [0, cy + 1.2, 0], 'y', 0.35, 2.0, 16, { colour: RADIATOR, decor: true }, 1.4);
+  for (let k = 0; k < 8; k++) {
+    const a = (k / 8) * Math.PI * 2;
+    sink.placed(a, Math.sin(a) * 2.6, 0, Math.cos(a) * 2.6, () => sink.span(M, -0.55, cy + 0.22, -0.02, 0.55, cy + 0.78, 0.05, { colour: BLACK, decor: true }));
+  }
+  bar(sink, [0, cy + 1.5, 0], [0, cy + 5.4, 0], 0.14, { colour: STEEL, decor: true });
+  sink.span(M, -0.2, cy + 5.4, -0.2, 0.2, cy + 5.85, 0.2, { colour: H2_RED_LM, decor: true });
+  dishSmall(sink, [0.5, cy + 3.6, 0], normalize3([0.9, 0.35, -0.2]), 0.7);
+  bar(sink, [0, cy + 3.6, 0], [0.5, cy + 3.6, 0], 0.08, { colour: STEEL, decor: true });
+  // the airlock tunnels: a drum on two cradles out of the shell, its end ring and hatch, the step, the porch lamp
+  const tunnels = [Math.PI, Math.PI - 1.75, Math.PI + 1.75];
+  for (const [ti, a] of tunnels.entries()) {
+    const len = ti === 0 ? 6.4 : 5.0, tr = ti === 0 ? 1.5 : 1.3, ty = y0 + tr + 0.35, z0 = r - 2.2, z1 = r + len - 2.2;
+    sink.placed(a, 0, 0, 0, () => {
+      sink.cylinder(M, [0, ty, z0], 'z', z1 - z0, tr, 18, { colourAt: (p) => (p[1] < ty - tr * 0.4 ? DUSTED : MLI), colour: MLI });
+      for (const z of [z1 - 0.9, (z0 + z1) / 2 + 1.2]) sink.span(M, -tr * 0.8, y0 - 0.1, z - 0.25, tr * 0.8, ty - tr * 0.6, z + 0.25, { colour: DARK });
+      sink.cylinder(M, [0, ty, z1], 'z', 0.16, tr + 0.14, 18, { colour: ORANGE, decor: true });
+      sink.cylinder(M, [0, ty, z1 + 0.12], 'z', 0.08, tr * 0.62, 14, { colour: PANEL, decor: true });
+      sink.cylinder(M, [0, ty - 0.1, z1 + 0.18], 'z', 0.05, tr * 0.18, 8, { colour: DARK, decor: true, fine: true });
+      sink.span(M, -0.9, y0 - 0.05, z1 + 0.05, 0.9, y0 + 0.3, z1 + 1.1, { colour: STEEL, decor: true });
+      sink.span(M, -0.25, ty + tr - 0.06, z1 - 0.5, 0.25, ty + tr + 0.22, z1 - 0.1, { colour: RADIATOR, decor: true });
+      // the seam rings along the drum
+      for (let z = z0 + 2.4; z < z1 - 0.6; z += 1.6) sink.cylinder(M, [0, ty, z - 0.04], 'z', 0.08, tr + 0.03, 18, { colour: shade(MLI, 0.84), decor: true, fine: true });
+    });
+  }
+  // the radiator wings either side, edge-on to the sun's arc: a panel on its legs, its tubes as a ribbing
+  for (const sx of [-1, 1]) {
+    const x = sx * (r + 5.2), gx = g(x, 0), wy = gx + 1.2;
+    for (const z of [-3.2, 3.2]) bar(sink, [x, gx - 0.2, z], [x, wy + 0.3, z], 0.16, { colour: STEEL, decor: true });
+    sink.span(M, x - 0.08, wy, -4.2, x + 0.08, wy + 3.4, 4.2, { colour: RADIATOR });
+    for (let z = -3.9; z < 4.2; z += 0.6) sink.span(M, x - 0.12, wy + 0.1, z - 0.03, x + 0.12, wy + 3.3, z + 0.03, { colour: shade(RADIATOR, 0.84), decor: true, fine: true });
+    groundCable(sink, g, [x, 0], [sx * (r + 2.2), 0], BLACK);
+  }
+  // three light masts round it, their lamp heads toward the dome
+  for (let k = 0; k < 3; k++) {
+    const a = (k / 3) * Math.PI * 2 + Math.PI / 3 + (variant() - 0.5) * 0.3, mx = Math.sin(a) * (r + 3.6), mz = Math.cos(a) * (r + 3.6), my = g(mx, mz);
+    bar(sink, [mx, my - 0.2, mz], [mx, my + 6.2, mz], 0.12, { colour: STEEL, decor: true });
+    sink.placed(a + Math.PI, mx, my + 6.0, mz, () => {
+      sink.span(M, -0.32, 0, -0.12, 0.32, 0.3, 0.3, { colour: DARK, decor: true });
+      sink.span(M, -0.28, 0.03, 0.3, 0.28, 0.27, 0.33, { colour: RADIATOR, decor: true, fine: true });
+    });
+  }
+  return { parts: finishLandmark(sink) };
+};
+
+// -------------------------------------------------------------------------------------------------- the relay repeater
+
+/**
+ * The relay repeater on a scarp's crest (round 3, 2026-10-18; the blind judge from the deployments: "the tank-eye view is
+ * almost empty, with no outpost visible", "the base is hidden behind the ridge, only the tip of the comms tower showing"):
+ * the station's link to the deployment behind the scarp, beside the rovers' track over the crest — a three-legged lattice
+ * mast `height` high, its legs in four lifts (the top lift safety orange), girts and braces at every level, the head's
+ * platform and beacon whip, the 2.2 m dish turned down the track to the station (local -z), a solar wing on its boom, the
+ * equipment cabinet between the legs and the three guys to their anchors. Solids: the pad, the cabinet and the legs.
+ */
+export const relayRepeater: LandmarkBuilder = (ctx) => {
+  const sink = new PartSink(uvOffset(ctx.rng));
+  const g = ctx.ground ?? (() => 0), H = num(ctx, 'height', 8);
+  const y = Math.max(g(0, 0), g(1.6, 1.6), g(-1.6, 1.6), g(1.6, -1.6), g(-1.6, -1.6)), y0 = y + 0.25;
+  const lo = Math.min(g(0, 0), g(1.6, 1.6), g(-1.6, 1.6), g(1.6, -1.6), g(-1.6, -1.6));
+  sink.span('stone', -1.9, lo - 0.5, -1.9, 1.9, y0, 1.9);
+  const foot = 1.25, head = 0.38;
+  const leg = (k: number, h: number): Vec3 => {
+    const a = (k / 3) * Math.PI * 2 + Math.PI, half = foot + (head - foot) * (h / H);
+    return [Math.sin(a) * half, y0 + h, Math.cos(a) * half];
+  };
+  // the legs in four lifts, the head's lift orange (solid: a hull stops against a leg)
+  for (let k = 0; k < 3; k++) {
+    for (let b = 0; b < 4; b++) bar(sink, leg(k, b === 0 ? -0.2 : (b / 4) * H), leg(k, ((b + 1) / 4) * H), 0.17 - 0.03 * b, { colour: b === 3 ? ORANGE : b === 2 ? PANEL : STEEL });
+  }
+  // the girts and braces at every level (dressing meeting the legs at both ends)
+  const levels = 8;
+  for (let l = 1; l <= levels; l++) {
+    const h = (l / levels) * H, hp = ((l - 1) / levels) * H;
+    for (let k = 0; k < 3; k++) {
+      const j = (k + 1) % 3;
+      bar(sink, leg(k, h), leg(j, h), 0.07, { colour: STEEL, decor: true });
+      bar(sink, l % 2 ? leg(k, hp) : leg(j, hp), l % 2 ? leg(j, h) : leg(k, h), 0.05, { colour: STEEL, decor: true });
+    }
+  }
+  // the head: its platform plate, the beacon on its whip
+  const top = y0 + H;
+  sink.cylinder(M, [0, top, 0], 'y', 0.12, 0.75, 9, { colour: DARK, decor: true });
+  bar(sink, [0, top + 0.1, 0], [0, top + 2.4, 0], 0.07, { colour: STEEL, decor: true });
+  sink.span(M, -0.14, top + 2.4, -0.14, 0.14, top + 2.72, 0.14, { colour: H2_RED_LM, decor: true });
+  // the dish down the track to the station (local -z), on its arm off the head
+  const arm: Vec3 = [0, top - 0.9, -1.0];
+  bar(sink, [0, top - 0.9, 0], arm, 0.09, { colour: STEEL, decor: true });
+  dishSmall(sink, arm, normalize3([0, 0.04, -1]), 1.1);
+  // the solar wing on its boom at two-thirds of the height, its blanket and white frame
+  // (at the fifth girt's level, off the leg toward local +z, the blanket's face to +z at the boom's end)
+  const wy = y0 + H * 0.625, wl = leg(0, H * 0.625), wz = wl[2] + 2.4;
+  bar(sink, [wl[0], wy, wl[2]], [wl[0], wy, wz], 0.08, { colour: STEEL, decor: true });
+  sink.span(M, wl[0] - 1.1, wy - 0.9, wz - 0.06, wl[0] + 1.1, wy + 0.9, wz, { colour: RADIATOR, decor: true });
+  sink.span(M, wl[0] - 1.04, wy - 0.84, wz, wl[0] + 1.04, wy + 0.84, wz + 0.03, { colour: CELL, decor: true });
+  // the cabinet between the legs, its door orange
+  sink.span(M, -0.55, y0, -0.45, 0.55, y0 + 1.5, 0.45, { colourAt: (p) => (p[1] < y0 + 0.5 ? DUSTED : PANEL), colour: PANEL });
+  sink.span(M, -0.3, y0 + 0.2, -0.47, 0.3, y0 + 1.3, -0.45, { colour: ORANGE, decor: true });
+  // the three guys from the sixth girt (three quarters up) to their anchors, 6.5 m out between the legs
+  for (let k = 0; k < 3; k++) {
+    const a = ((k + 0.5) / 3) * Math.PI * 2 + Math.PI, ax = Math.sin(a) * 6.5, az = Math.cos(a) * 6.5, ay = g(ax, az);
+    const at = leg(k, H * 0.75), bt = leg((k + 1) % 3, H * 0.75);
+    bar(sink, [(at[0] + bt[0]) / 2, at[1], (at[2] + bt[2]) / 2], [ax, ay + 0.15, az], 0.03, { colour: DARK, decor: true });
+    sink.span(M, ax - 0.22, ay - 0.2, az - 0.22, ax + 0.22, ay + 0.25, az + 0.22, { colour: STEEL, decor: true });
+  }
   return { parts: finishLandmark(sink) };
 };

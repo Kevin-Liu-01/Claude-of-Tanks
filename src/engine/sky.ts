@@ -731,7 +731,17 @@ vec3 cotNightSky( vec3 dn, vec3 moonDir, float galaxy, vec3 nebula, float planet
 		// the sea's glint toward the sun, and the thin blue limb
 		float glint = pow(max(dot(reflect(-phaseL, mn), vec3(0.0, 0.0, 1.0)), 0.0), 60.0) * (1.0 - land) * (1.0 - clouds);
 		float rim = pow(1.0 - mz, 4.0);
-		moonCol = surface * (.06 + .97 * lit) * terminator + vec3(.55, .62, .70) * glint * .35 * terminator + vec3(.05, .25, .57) * rim * .30 * terminator;
+		// (the Earthrise 228 rebuild, round 3; the blind judge: "the Earth's terminator is a hard, slightly cut-off edge") the
+		// day fades into the night across the twilight the air lays over the terminator — about a fifth of the radius, the
+		// last of the light reddened by its long path through the air — and the night limb keeps a trace of the blue air
+		// near the terminator, so the disc reads as a sphere turning from the sun, not a cut-out
+		float dL = dot(mn, phaseL);
+		float dusk = smoothstep(-0.14, 0.34, dL);
+		float eLit = clamp((dL + 0.1) / 1.1, 0.0, 1.0);
+		vec3 duskTint = mix(vec3(1.0, 0.66, 0.48), vec3(1.0), smoothstep(0.02, 0.3, dL));
+		float nightAir = rim * (1.0 - dusk) * smoothstep(-0.55, -0.05, dL);
+		moonCol = surface * duskTint * (.03 + .97 * eLit) * dusk + vec3(.55, .62, .70) * glint * .35 * dusk + vec3(.05, .25, .57) * rim * .30 * dusk
+			+ vec3(.04, .12, .30) * nightAir * .5;
 		disc = 1.0 - smoothstep(1.0 - fwidth(length(mo)) * 1.5, 1.0, length(mo));
 	}
 	// the compact glow scales with the disc (a 3 deg planet keeps a ~4 deg halo, never a quarter-sky wash)

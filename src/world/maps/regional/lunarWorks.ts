@@ -31,8 +31,10 @@ type Rng = () => number;
 type Hsl = readonly [number, number, number];
 
 // the geotextile under its dust, the dust itself, sintered regolith, steel, safety orange, reflective tape, white panels
-const BAG: Hsl = [0.1, 0.035, 0.66];
-const BAG_DUST: Hsl = [0.09, 0.045, 0.5];
+// (round 3, 2026-10-18; the blind judge: "the white sandbag stacks ... are off-palette") the geotextile grey under its dust,
+// a shade over the regolith, not a white
+const BAG: Hsl = [0.1, 0.035, 0.56];
+const BAG_DUST: Hsl = [0.09, 0.045, 0.44];
 const SINTER: Hsl = [0.08, 0.05, 0.36];
 const STEEL: Hsl = [0.1, 0.03, 0.48];
 const DARK: Hsl = [0.6, 0.06, 0.18];

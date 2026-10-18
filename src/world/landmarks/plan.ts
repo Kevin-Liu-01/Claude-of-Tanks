@@ -359,6 +359,13 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => (p.part === 'front' ? [12.6, 9.6] : [11.2, 9.4]) },
   solarTower: { family: 'works', drapes: true, defaults: { height: 18 },
     footprint: (): [number, number] => [6.8, 6.8] },
+  // (round 3, 2026-10-18) the station's commons: the dome and its collar, the tunnels 4.2 m past the foot (the main one
+  // 5.6 m and its step), the radiator wings 5.4 m out at either side
+  stationDome: { family: 'works', drapes: true, defaults: { radius: 12, rise: 9.5 },
+    footprint: (p) => [num(p, 'radius') + 5.8, num(p, 'radius') + 5.4] },
+  // the deployments' relay repeaters on the scarps' crests: the pad and the legs, the guys' anchors 6.5 m out
+  relayRepeater: { family: 'works', drapes: true, defaults: { height: 16 },
+    footprint: (): [number, number] => [7.0, 7.0] },
 });
 
 /** A placement's parameters over its kind's defaults. An unknown kind fails closed. */

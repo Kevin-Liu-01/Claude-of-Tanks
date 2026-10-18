@@ -103,7 +103,7 @@ const BUDGET = {
   headframe: 9000, oreBin: 9000, conveyor: 9000, oreCars: 9000, jamesway: 9000, drumCache: 9000, snowFence: 9000, airstrip: 9000, stripShack: 3000, floodMast: 9000,
   hayRack: 3000, fishRack: 9000, stabbur: 3000,
   // (the Earthrise 228 rebuild) Taurus-Littrow Station's set pieces
-  apolloSite: 9000, isruWorks: 12000, solarTower: 5000,
+  apolloSite: 9000, isruWorks: 12000, solarTower: 5000, stationDome: 9000, relayRepeater: 4000,
 };
 assert.deepEqual(Object.keys(BUDGET).sort(), [...KINDS].sort(), 'a budget for every kind');
 /** The authored variants each kind is built in besides its defaults. */

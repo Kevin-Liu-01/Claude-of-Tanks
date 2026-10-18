@@ -18,7 +18,7 @@
 // (also the turbo-ball kickoff) and on two crater-free stretches of the floor either side of it.
 import mars from './mars.ts';
 import type { MapCompositionConfig } from './contracts.ts';
-import { APOLLO_SITE, EARTHRISE_STATION, EARTH_SKY, EXCAVATION_FRONT, ISRU_PLANT, SUN_SKY } from './earthriseStation.ts';
+import { APOLLO_SITE, EARTHRISE_STATION, EARTH_SKY, EXCAVATION_FRONT, ISRU_PLANT, RELAY_REPEATERS, STATION_DOMES, SUN_SKY, roverTrack, stationTracks } from './earthriseStation.ts';
 import { LUNAR_STRUCTURE_VARIANTS } from './regional/lunarWorks.ts';
 // (2026-10-10, the map-revival lane; wave 346: "icy-blue crater-free regolith") the regolith a neutral, faintly warm grey,
 // not a blue one: hue 0.60 -> 0.09, saturation 0.025 -> 0.012
@@ -39,8 +39,25 @@ const chevron = (ux: number, uz: number, d: number): Array<[number, number]> =>
  * and the inner ring round the kickoff, an approach chevron on each axis and the station's number at the ring's north and
  * south, each the other's rotation — white and safety yellow, worn by the dust the landers blow across it.
  */
+/** A hash in [0, 1) of an integer (the blast's streaks are fixed by their index). */
+const frac = (i: number, k: number): number => { const v = Math.sin(i * 12.9898 + k * 78.233) * 43758.5453; return v - Math.floor(v); };
+/**
+ * (round 3, 2026-10-18; the blind judge: "a bare white pad line crosses an empty foreground") the landers' blast across
+ * the pad: forty soot streaks radiating from the touchdown point out to 11-20 m, overlapping into a dark core round it,
+ * and two rings of scorch at the core — laid under the paint, so the rings and the chevrons stand over the burn.
+ */
+const BLAST_SOOT = [
+  ...Array.from({ length: 40 }, (_, i) => {
+    const a = (i / 40) * Math.PI * 2 + (frac(i, 1) - 0.5) * 0.12, r0 = 2.5 + 2.5 * frac(i, 2), r1 = 11 + 9 * frac(i, 3);
+    const p = (r: number): [number, number] => [Math.round(Math.sin(a) * r * 100) / 100, Math.round(Math.cos(a) * r * 100) / 100];
+    return { points: [p(r0), p(r1)], width: Math.round((0.9 + 1.5 * frac(i, 4)) * 100) / 100, paint: 'soot' as const, round: 0 };
+  }),
+  { points: ring(3.4, 24), width: 2.6, paint: 'soot' as const, round: 0.4 },
+  { points: ring(6.2, 32), width: 2.2, paint: 'soot' as const, round: 0.5 },
+];
 const LANDING_FIELD_PAINT = {
   lines: [
+    ...BLAST_SOOT,
     { points: [[-33, -33], [33, -33], [33, 33], [-33, 33], [-33, -33]] as Array<[number, number]>, width: 0.45, paint: 'white' as const, round: 1.5 },
     { points: ring(21, 48), width: 0.7, paint: 'white' as const, round: 0.5 },
     { points: ring(6.5, 24), width: 0.35, paint: 'yellow' as const, round: 0.3 },
@@ -52,6 +69,38 @@ const LANDING_FIELD_PAINT = {
   ],
   slabM: 0,
 };
+const MOON_ROADS: Array<Array<[number, number]>> = [
+  // 0 — the north-south rover track: from the south edge over the South Massif's saddle to the landing field, and on
+  // over the North Massif's saddle to the north edge (its two halves are each other's rotation).
+  [[150, -448], [136, -400], [118, -340], [100, -280], [76, -220], [48, -150], [24, -80], [0, 0], [-24, 80],
+    [-48, 150], [-76, 220], [-100, 280], [-118, 340], [-136, 400], [-150, 448]],
+  // 1 — the west-east rover track along the valley floor through the landing field.
+  [[-448, 70], [-380, 64], [-300, 50], [-220, 34], [-150, 20], [-80, 8], [0, 0], [80, -8], [150, -20], [220, -34],
+    [300, -50], [380, -64], [448, -70]],
+  // 2 / 3 — the survey loops: from the landing field round the craters on each side and back to the long track.
+  [[-80, 8], [-120, -60], [-200, -110], [-290, -96], [-330, -40], [-320, 10], [-300, 50]],
+  [[80, -8], [120, 60], [200, 110], [290, 96], [330, 40], [320, -10], [300, -50]],
+];
+/** A point and its rotation about the landing field. */
+const both = (pts: ReadonlyArray<readonly [number, number]>): Array<Array<[number, number]>> =>
+  [pts.map(([x, z]): [number, number] => [x, z]), pts.map(([x, z]): [number, number] => [-x, -z])];
+/**
+ * (round 3, 2026-10-18; the blind judge: "few roads or cables linking them", "the foreground is flat and featureless")
+ * the station's service tracks (earthriseStation.ts stationTracks) and the rovers' longer tracks, each with its rotation:
+ * from the power masts round the berms to the long track, along the tank farms' solar arrays, from each deployment's
+ * pads over its scarp to the north-south track (the frames from the pads lead down them to the station), and from
+ * Challenger's gate and the excavation front out to the survey loops; the oxygen works' spur to the long track.
+ */
+const ROVER_TRACKS = [
+  ...stationTracks(),
+  ...[
+    ...both([[133, 14], [142, 2], [143.5, -18.5]]),
+    ...both([[128, -112], [125, -68], [119, -34], [118.5, -14.6]]),
+    ...both([[-60, -412], [-56, -362], [-42, -300], [-12, -232], [22, -178], [40, -131]]),
+    ...both([[136.7, 205], [128, 178], [140, 122], [160, 86]]),
+    [[46, -61], [19.6, -62]] as Array<[number, number]>,
+  ].flatMap((pts) => roverTrack(pts)),
+];
 /** The ejecta blocks' breccia (sceneryRocks.ts 'breccia'): a neutral grey a shade under the regolith, dust at the foot. */
 const LUNAR_BRECCIA: readonly [number, number, number] = [0.09, 0.04, 0.33];
 export default {
@@ -72,18 +121,7 @@ export default {
     ],
     // the landing field: a level apron where the zone-control disc and the turbo-ball kickoff seat
     hardstands: [{ x: 0, z: 0, width: 72, length: 72, yawDeg: 0, grade: 0 }],
-    roads: { paths: [
-      // 0 — the north-south rover track: from the south edge over the South Massif's saddle to the landing field, and on
-      // over the North Massif's saddle to the north edge (its two halves are each other's rotation).
-      [[150, -448], [136, -400], [118, -340], [100, -280], [76, -220], [48, -150], [24, -80], [0, 0], [-24, 80],
-        [-48, 150], [-76, 220], [-100, 280], [-118, 340], [-136, 400], [-150, 448]],
-      // 1 — the west-east rover track along the valley floor through the landing field.
-      [[-448, 70], [-380, 64], [-300, 50], [-220, 34], [-150, 20], [-80, 8], [0, 0], [80, -8], [150, -20], [220, -34],
-        [300, -50], [380, -64], [448, -70]],
-      // 2 / 3 — the survey loops: from the landing field round the craters on each side and back to the long track.
-      [[-80, 8], [-120, -60], [-200, -110], [-290, -96], [-330, -40], [-320, 10], [-300, 50]],
-      [[80, -8], [120, 60], [200, 110], [290, 96], [330, 40], [320, -10], [300, -50]],
-    ] },
+    roads: { paths: MOON_ROADS },
     landforms: [
       // The South and North massifs, each broken by its saddle (rotation pairs): the south massif's west and east
       // blocks leave the saddle at x 70..160; the north massif's at x -160..-70.
@@ -112,9 +150,19 @@ export default {
       // ground (the layout brief's middle sector, cover .168 at 227): north of the habitat row and its rotation, between
       // the apron and the habitats, beyond the logistics yard and its rotation; each toe outside the 30 m disc an objective
       // seats on (matchPlacement.ts: under 20 degrees everywhere in it). Terrain: cover with no collision records.
-      ...([[10, 82, 32, 2.5], [52, 16, 18, 2.4], [-62, 104, 30, 2.5], [-121, -6, 26, 2.5], [-96, 108, 24, 2.5], [61, -28, 14, 2.4], [98, 128, 20, 2.5]] as const).flatMap(([x, z, length, height]) => [x, -x].map((bx, k) => ({
-        kind: 'ridge', x: bx, z: k ? -z : z, length, width: 7, height, yawDeg: 0, corridorScale: 1, settlementScale: 1,
-        geology: { profile: 'dyke' as const, crest: 0.3, outline: 0.06, rough: 0.12 } }))),
+      // (round 3, 2026-10-18) the pair north and south of the apron gave its seats to the station's commons (STATION_DOMES)
+      // (round 3; the blind judge: "the dark flat-topped berm ... looks like an untextured slab", "dark rectangular berm
+      // shadows") dozed banks, not ruled dykes: each long bank pushed up as two heaps a little apart in line and height, every
+      // heap turned a few degrees off the axis, its crest a rounded ridge (a twentieth of the half-width level, was three
+      // tenths), its plan lobed and its back knobbly with the clods the blade left — the face the sun leaves falls at 23
+      // degrees at the steepest, under the sun's 25 across the bank, so it takes the low light at a graze instead of one
+      // black slab and its shadow ends at its foot; the heaps keep the banks' seats, lengths and the layout brief's cover
+      ...([
+        [52, 16, 18, 2.4, 5], [-69, 103, 18, 2.5, 7], [-54, 105.5, 16, 2.3, -6], [-127, -5, 15, 2.5, -8], [-114, -7, 13, 2.4, 6],
+        [-102, 107, 13, 2.5, 6], [-90.5, 109.5, 13, 2.3, -7], [61, -28, 14, 2.4, -6], [98, 128, 20, 2.5, 4],
+      ] as const).flatMap(([x, z, length, height, yawDeg]) => [x, -x].map((bx, k) => ({
+        kind: 'ridge', x: bx, z: k ? -z : z, length, width: 7, height, yawDeg, corridorScale: 1, settlementScale: 1,
+        geology: { profile: 'dyke' as const, crest: 0.05, outline: 0.2, rough: 0.5 } }))),
     ],
   },
   spawns: {
@@ -145,7 +193,7 @@ export default {
     architecture: 'littrow',
     plannedSites: EARTHRISE_STATION,
     // the landing field's paint (LANDING_FIELD_PAINT, above)
-    groundMarkings: LANDING_FIELD_PAINT,
+    groundMarkings: { ...LANDING_FIELD_PAINT, lines: [...LANDING_FIELD_PAINT.lines, ...ROVER_TRACKS] },
     plan: [],
     sourcedPalette: 'winter',
     yardClutter: false,
@@ -188,6 +236,11 @@ export default {
       // habitat rows' outer berms, their blankets turned to the sun: the verticals of the station's west and east ends
       { kind: 'solarTower' as const, x: -130, z: -20, yawDeg: SUN_SKY.azimuthDeg, params: { height: 24 }, name: 'the station\'s west power mast' },
       { kind: 'solarTower' as const, x: 130, z: 20, yawDeg: SUN_SKY.azimuthDeg, params: { height: 24 }, name: 'the station\'s east power mast' },
+      // (round 3, 2026-10-18; the blind judge from the aerial: "no strong hero landmark") the station's two commons, each
+      // a 24 m dome under its shielding collar, its main airlock to the hub (earthriseStation.ts STATION_DOMES)
+      ...STATION_DOMES.map((d, i) => ({ kind: 'stationDome' as const, ...d, name: `the station's ${i ? 'south' : 'north'} commons` })),
+      // (round 3) the deployments' relay repeaters on the scarps' crests beside the rovers' tracks over them
+      ...RELAY_REPEATERS.map((r, i) => ({ kind: 'relayRepeater' as const, ...r, name: `the relay repeater on the ${i ? 'north' : 'south'} scarp` })),
     ],
     // every terrestrial form on the Moon dressed in the station's stock on its own seat (maps/regional/lunarWorks.ts):
     // regolith bags for the sandbags, a keep-out tether for the wire, sintered blocks for the barrier, the beacon, the
@@ -197,7 +250,7 @@ export default {
     sideSkip: 0.14, spacingPad: 8, buildingLat: [12, 5], maxSpread: 2.0,
     tones: {
       // the bags' geotextile and the station's dusted panels, the sintered regolith's neutral grey (the kit's own tones)
-      plaster: (_h: number, _s: number, l: number) => [0.1, 0.025, Math.min(1, 0.5 + l * 0.32)],
+      plaster: (_h: number, _s: number, l: number) => [0.1, 0.025, Math.min(1, 0.42 + l * 0.26)],
       roof: (_h: number, s: number, l: number) => [0.1, Math.min(1, s * 0.2), Math.min(1, l)],
       stone: (_h: number, s: number, l: number) => [0.09, Math.min(1, s * 0.3 + 0.02), Math.min(1, l * 0.95)],
       wood: (_h: number, s: number, l: number) => [0.08, Math.min(1, s * 0.4), Math.min(1, l * 0.9)],
@@ -213,6 +266,9 @@ export default {
     // front's war; the war shows through the burnt period trucks and carts
     tankWrecks: { era: 'cold-war', count: 0, debris: true, ids: [] },
     sandbagLines: 0,
+    // (round 3, 2026-10-18; the blind judge: "the white sandbag stacks on the pad apron are off-palette") the plaza's corner
+    // nest stood on the landing field's painted pad: a landing field keeps its pad clear
+    plazaNest: false,
     // (the Earthrise 228 rebuild) a stack the variants leave a sandbag (none on the Moon) the regolith's grey, not Mars's ochre
     sandbagTint: [1.0, 1.0, 0.98],
     wallStyle: 'adobe',
@@ -268,7 +324,11 @@ export default {
   // uAirless, horizonFarRange.ts airless)
   horizon: { baseHex: 0x6a6865, rockHex: 0x86837e, amp: 1.35, style: 'rolling', treeline: 0,
     treelineLayers: 0, ground: 'sand', relief: 'martian', haze: 0, grain: .7, farRange: true,
-    panorama: { tables: false, strata: 0, rockSlope: 0.62, sharp: 0.85 },
+    // (the Earthrise 228 rebuild, round 3, 2026-10-18; the blind judge: "vertical, repeating stripes from stretched texture"
+    // on the far ridge, poses 3, 6, 7, 8) the stripes were the martian character's erosion octaves — Clay John's gullies,
+    // waves across the slope 35 m deep at 600 and 300 m, lit apart by the low sun with no air to soften them: the
+    // massifs of Taurus-Littrow are gardened smooth under their regolith, so the Moon's far country takes no gullies
+    panorama: { tables: false, strata: 0, rockSlope: 0.62, sharp: 0.85, gullyM: 0 },
     reliefCover: { varnish: 0, beds: 0 },
     // the mountains lane (2026-10-02): the moon keeps its own walls — the carved landform drew straight-flanked
     // pyramids on these airless ranges (the skyline cone measure, horizonMassif.selftest.mjs: 0 -> 13 over three seeds)

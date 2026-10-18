@@ -38,7 +38,9 @@ interface SpacePaint {
   bag: number; glass: number;
 }
 const PAINT: Readonly<Record<SpaceWorld, SpacePaint>> = {
-  moon: { hull: 0xe2e0d8, blanket: 0xd8d6cc, foil: 0xc49a4a, frame: 0x4a4e52, dark: 0x101214, accent: 0xb8b8b0,
+  // (the Earthrise 228 rebuild, round 3; the blind judge: "a small dark speck floats on the hillside" — a crater-rim mast's
+  // dish over a lattice too dark to see against the regolith) the Moon's frames the station's steel, the colour of the dust
+  moon: { hull: 0xe2e0d8, blanket: 0xd8d6cc, foil: 0xc49a4a, frame: 0x8d8a84, dark: 0x101214, accent: 0xb8b8b0,
     apron: 0x5f5c57, cell: 0x1c2638, bag: 0x6f6c66, glass: 0x52849a },
   mars: { hull: 0xd9d2c4, blanket: 0xcfc6b4, foil: 0xb98a4a, frame: 0x5a5650, dark: 0x120f0d, accent: 0xd8712a,
     apron: 0x7a5440, cell: 0x1f2f4a, bag: 0x8a5a40, glass: 0x86b9d8 },

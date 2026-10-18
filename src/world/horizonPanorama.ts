@@ -1552,12 +1552,6 @@ void main() {
   float rr = rowRadius(hitV);
   vec3 wp = vec3(cos(a) * rr, uFrame.w + tanE * rr, sin(a) * rr);
   vec3 n = gridNormal(g);
-  // (the Earthrise 228 rebuild, round 2; the blind critics' "fence" along the far skyline) on an airless map no air
-  // softens the strip's column-by-column slopes: the normal averaged over its neighbours either side
-  if (uAirless > 0.5) {
-    float dc = 1.0 / uGrid.x;
-    n = normalize(gridNormal(g - vec2(2.0 * dc, 0.0)) + gridNormal(g - vec2(dc, 0.0)) + n + gridNormal(g + vec2(dc, 0.0)) + gridNormal(g + vec2(2.0 * dc, 0.0)));
-  }
   // below the first row's elevation: the ground between the ring and the annulus (the shell's apron reads it from
   // below) — the ray's own meeting with that row's level, so the apron carries ground texture, not one streak per column
   float h0 = texture2D(uHeight, vec2(u, 0.5 / uGrid.y)).r;
@@ -1595,14 +1589,7 @@ void main() {
   // it takes the open sky's)
   apron = max(apron, smoothstep(40.0, 160.0, footprint));
   // (a grazing reach's light too: its shadows and occlusion land a column apart as streaks — it takes a mild open sky)
-  vec4 lightTex = texture2D(uLight, g);
-  // (airless: the shadows and occlusion the bake lands a column apart averaged over the neighbours either side)
-  if (uAirless > 0.5) {
-    float dl = 1.0 / uGrid.x;
-    lightTex = (texture2D(uLight, g - vec2(2.0 * dl, 0.0)) + texture2D(uLight, g - vec2(dl, 0.0)) + lightTex
-      + texture2D(uLight, g + vec2(dl, 0.0)) + texture2D(uLight, g + vec2(2.0 * dl, 0.0))) * 0.2;
-  }
-  vec4 light = mix(lightTex, vec4(0.94, 0.9, 0.0, 1.0), apron);
+  vec4 light = mix(texture2D(uLight, g), vec4(0.94, 0.9, 0.0, 1.0), apron);
   vec3 col = surfaceColour(g, wp, n, apron, light);
   float n1 = noised(wp.xz / 1900.0 + vec2(5.3, 1.7)).x * 0.7 + noised(wp.xz / 700.0 + vec2(-3.1, 8.2)).x * 0.3;
   float fogL = (uFog.r + uFog.g + uFog.b) / 3.0;
@@ -1993,7 +1980,24 @@ export function createHorizonPanorama(options: HorizonPanoramaOptions, fallback:
       edgeData[i * 4] = THREE.DataUtils.toHalfFloat(h);
       edgeData[i * 4 + 1] = THREE.DataUtils.toHalfFloat(seaW[i]);
       edgeData[i * 4 + 2] = THREE.DataUtils.toHalfFloat(seaL[i]);
-      edgeData[i * 4 + 3] = THREE.DataUtils.toHalfFloat(ringSkyline[k]);
+      // (the Earthrise 228 rebuild, round 3, 2026-10-18; the blind judge: "vertical, repeating stripes" on the far ridge,
+      // one to each of the ring's 431 columns, 0.84 degrees apart from anywhere on the floor) the texel took its nearest
+      // column: a staircase of 431 treads round the compass in the outer height the far country's first kilometre eases
+      // out of and in the skyline its near band is capped under (nearCap, a few metres a tread at 3 km) and its far layers
+      // rise over (`behind`). Where air hazes the far country the treads are lost in it; on an airless map the texel takes
+      // the ring's nine-column means at the two columns either side of its bearing, blended by where it falls between them
+      let sky = ringSkyline[k];
+      if (options.fogDensity === 0) {
+        const f = (angle / (Math.PI * 2)) * n, k0 = Math.floor(f), t = f - k0;
+        const mean = (arr: ArrayLike<number>, at: number, base: number): number => {
+          let sum = 0;
+          for (let d = -4; d <= 4; d++) sum += arr[base + ((at + d) % n + n) % n];
+          return sum / 9;
+        };
+        sky = mean(ringSkyline, k0, 0) * (1 - t) + mean(ringSkyline, k0 + 1, 0) * t;
+        edgeData[i * 4] = THREE.DataUtils.toHalfFloat(mean(options.ringEdge.heights, k0, start) * (1 - t) + mean(options.ringEdge.heights, k0 + 1, start) * t);
+      }
+      edgeData[i * 4 + 3] = THREE.DataUtils.toHalfFloat(sky);
     }
   }
 

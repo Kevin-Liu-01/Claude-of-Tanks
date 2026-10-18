@@ -36,10 +36,15 @@ assert.equal(moon.sky.fogDensity,0);assert.equal(moon.vegetation.grassDensity,0)
   const rough=(g)=>{let s=0,c=0;for(let row=1;row<g.rowCount;row++)for(let k=0;k<g.columns;k++){const o=row*g.columns;const d=g.heights[o+k]-(g.heights[o+(k+g.columns-1)%g.columns]+g.heights[o+(k+1)%g.columns])/2;s+=d*d;c++;}return Math.sqrt(s/c);};
   const a=rough(sampleHorizonFarRange({...base,airless:true})),b=rough(sampleHorizonFarRange(base));
   assert.ok(a<b*0.6,`airless far rows: column-to-column relief ${a.toFixed(1)} m against ${b.toFixed(1)} m`);}
- // the far country's panorama (its shell is the visible far range): airless, its strip's light and grid normal are averaged
- // over the columns either side, so its march's column-by-column shadows and slopes stand as no palisade
+ // the far country's panorama (its shell is the visible far range; round 3): airless, the ring's outer height and skyline
+ // the far country eases out of, caps its near band under and lifts its layers over are blended between the columns'
+ // nine-column means either side of each bearing, so no range steps a tread at each of the ring's 431 columns (the
+ // palisade); and the Moon's far country takes no erosion gullies
  const pano=readFileSync(new URL('../../world/horizonPanorama.ts',import.meta.url),'utf8');
- assert.ok(/if \(uAirless > 0\.5\) \{\s*float dc = 1\.0 \/ uGrid\.x;/.test(pano)&&/if \(uAirless > 0\.5\) \{\s*float dl = 1\.0 \/ uGrid\.x;/.test(pano),'airless: the panorama strip smoothed across its columns');
+ assert.ok(/if \(options\.fogDensity === 0\) \{\s*const f = \(angle \/ \(Math\.PI \* 2\)\) \* n, k0 = Math\.floor\(f\), t = f - k0;/.test(pano)
+   &&pano.includes('sky = mean(ringSkyline, k0, 0) * (1 - t) + mean(ringSkyline, k0 + 1, 0) * t;')
+   &&pano.includes('mean(options.ringEdge.heights, k0, start) * (1 - t) + mean(options.ringEdge.heights, k0 + 1, start) * t'),'airless: the ring edge blended between its columns');
+ {const moonCfg=(await import('./moon.ts')).default;assert.equal(moonCfg.horizon.panorama.gullyM,0,'the Moon\'s far massifs gardened smooth: no gullies');}
  // the fog pole: an airless map's own grey, never the black dome's horizon nor the hue guard's blue-grey
  const skySrc=readFileSync(new URL('../../engine/sky.ts',import.meta.url),'utf8');
  assert.match(skySrc,/const fogColor = airless \? new THREE\.Color\(preset\.fogTintHex\) :/,'airless: the fog pole is the authored tint');
