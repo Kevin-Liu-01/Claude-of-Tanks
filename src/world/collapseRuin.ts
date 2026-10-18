@@ -641,10 +641,23 @@ function frameTier(rng: () => number, cap: number, mesh: DamageMeshWriter, tier:
       const j = (k + (n >> 1)) % n;
       if (j === k) continue;
       const y = Math.min(_stubTop[k]!, _stubTop[j]!) * (0.78 + rng() * 0.15);
-      strut(mesh, x, y, z, _stubX[j]!, y * (0.92 + rng() * 0.1), _stubZ[j]!, t * 0.7, tint, 0.8 + rng() * 0.15);
+      const y1 = y * (0.92 + rng() * 0.1), shade = 0.8 + rng() * 0.15;
+      // (round 4, Earthrise's Apollo site: its fence's opposite posts, read as a drawn frame's legs, were strutted across the
+      // whole site — a star of bars over the regolith) a strut only where the form is drawn over its whole length, to more
+      // than half its height (a water tower's legs under its tank, a tank's legs under its shell)
+      if (ruinOf && !drawnAlong(ruinOf, x, z, _stubX[j]!, _stubZ[j]!, 0.5 * Math.min(y, y1))) continue;
+      strut(mesh, x, y, z, _stubX[j]!, y1, _stubZ[j]!, t * 0.7, tint, shade);
     }
   }
   mesh.end();
+}
+
+/** Whether the form is drawn over every cell between two plan points (body frame) to at least `minM`. */
+function drawnAlong(anatomy: StructureDamageAnatomy, ax: number, az: number, bx: number, bz: number, minM: number): boolean {
+  const cell = anatomy.enclosure?.cell ?? 1;
+  const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / cell));
+  for (let i = 1; i < n; i++) if (!(drawnOverAt(anatomy, ax + ((bx - ax) * i) / n, az + ((bz - az) * i) / n, 0) >= minM)) return false;
+  return true;
 }
 
 /**
@@ -908,7 +921,9 @@ const reachBox = new Float64Array(4);
 /** The wall materials a ruin's piers and stubs stand in: masonry (a wall of courses or a mass), never a frame or a skin. */
 const MASONRY: ReadonlySet<string> = new Set(['brick', 'stone', 'rubble', 'concrete', 'adobe', 'plaster', 'infill', 'earth']);
 /** The builders that are open frames, whatever their walls read as (they fall as their own lattice: latticeFall.ts). */
-const FRAME_BUILDER = /watertower|windmill|mill-wheel|mast|pylon|lattice|headframe|gantry|derrick|crane|radar|antenna|aerial/i;
+// (round 4: Earthrise's relay repeater, a lattice mast on its pad, read as a skin wall stood its stubs 17 m up its legs' cells:
+// solid columns where it drew bars)
+const FRAME_BUILDER = /watertower|windmill|mill-wheel|mast|pylon|lattice|headframe|gantry|derrick|crane|radar|antenna|aerial|repeater/i;
 /** An open frame by its builder's name. */
 export function frameByName(builder: string | null | undefined): boolean {
   return typeof builder === 'string' && FRAME_BUILDER.test(builder);
