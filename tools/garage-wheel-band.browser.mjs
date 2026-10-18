@@ -20,6 +20,10 @@
 //   node --max-old-space-size=4096 tools/garage-wheel-band.browser.mjs --out=<dir> [--root=<checkout>]
 //     [--garages=verdant_motor_pool,desert_forward_depot,urban_arsenal] [--tanks=ztz99a2,leo2a4,m1a1_abrams_hc]
 //     [--views=low,side] [--battle] [--battle-tank=ztz99a2] [--no-garage] [--gate] [--cap-min=18] [--lock-held]
+//     [--skin-off-check]
+// --skin-off-check then clears each tank's dormant skin and draws the view again: at zero strength the skin must
+// leave the frame as the tank's own materials draw it (the difference is reported; it clears the skin for the rest of
+// the run, so give it one Garage).
 // Takes the shared capture lock (tools/capture-lock.mjs) for the whole run (--lock-held: the caller holds it, a chain's
 // lease) and stops before --cap-min minutes of hold; serves --root (default: the current directory) through its own
 // vite dev server. Writes <out>/report.json and PNGs.
@@ -47,6 +51,7 @@ const maxStep = Number(flag('max-step', 4));
 const minTag = Number(flag('min-tag', 0.8));
 const capMs = Number(flag('cap-min', 18)) * 60 * 1000;
 const lockHeld = !!flag('lock-held');
+const skinOffCheck = !!flag('skin-off-check');
 const WIDTH = 1600, HEIGHT = 900;
 mkdirSync(out, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -219,6 +224,19 @@ try {
       return { pts, shape: { hx: +sh.hx.toFixed(3), yb: +sh.yb.toFixed(3), y0: +sh.y0.toFixed(3), xo: +(sh.xo ?? sh.hx).toFixed(3) } };
     };
     /** Band and tag metrics over the tank's pixels just under / just over the belly line (2..26 px), whole tank too. */
+    /** The display difference of two captured frames: mean |dL| over the frame and over the tank, share over 2 levels. */
+    P.diff = (a, b) => {
+      const A = P.lum[a], B = P.lum[b], M = P.mask;
+      if (!A || !B || A.w !== B.w || A.h !== B.h) return null;
+      let s = 0, sm = 0, nm = 0, over = 0, max = 0;
+      for (let i = 0; i < A.lum.length; i++) {
+        const d = Math.abs(A.lum[i] - B.lum[i]);
+        s += d; if (d > max) max = d;
+        if (M && M.mask[i]) { sm += d; nm++; if (d > 2) over++; }
+      }
+      return { meanAbs: +(s / A.lum.length).toFixed(3), tankMeanAbs: nm ? +(sm / nm).toFixed(3) : null,
+        tankOver2: nm ? +(over / nm).toFixed(4) : null, max: +max.toFixed(1) };
+    };
     P.measure = (sign, base, ref) => {
       const L = P.lum[base], Lr = P.lum[ref], M = P.mask, A = P.alpha();
       if (!L || !Lr || !M || !A) return { error: 'missing frame' };
@@ -315,6 +333,24 @@ try {
         log('measured', garage, tank, view, `step=${m.step}`, `tagUnder=${m.under?.tag}`, `tagAll=${m.tagAll}`,
           `ratio u/o=${m.under?.ratio}/${m.over?.ratio}`);
         if (gate && (m.step === null || m.step >= maxStep || (m.under?.tag ?? 0) < minTag)) failed.push(`${garage}:${tank}:${view}`);
+        await page.evaluate((view) => { const P = window.__GWB; P.lum[`on_${view}`] = P.lum.base; }, view);
+      }
+      if (skinOffCheck) {
+        const cleared = await page.evaluate(() => {
+          const P = window.__GWB, r = P.root();
+          P.energy.clearJuggernautVisual(r, true);
+          return !P.energy.hasGarageTankEnergyVisual(r);
+        });
+        await page.evaluate(() => window.__GWB.frames(30));
+        await sleep(1500);
+        for (const view of viewNames) {
+          const posed = await page.evaluate((o) => window.__GWB.poseSide(1, o), VIEWS[view]);
+          const prefix = `${out}/garage_${garage}_${tank}_${view}__skin_off`;
+          const m = await measureView(prefix, 1);
+          const skinDiff = await page.evaluate((view) => window.__GWB.diff(`on_${view}`, 'base'), view);
+          report.garage.push({ garage, tank, view, skin: 'off', cleared, posed, ...m, skinDiff });
+          log('skin off', garage, tank, view, `step=${m.step}`, `tagUnder=${m.under?.tag}`, `vs skin on ${JSON.stringify(skinDiff)}`);
+        }
       }
       await page.evaluate(() => window.__GWB.hideUi(false));
     }
