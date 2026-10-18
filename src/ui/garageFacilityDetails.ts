@@ -4273,12 +4273,20 @@ export function addGarageFacilityDetails({
       meshes.push(mesh);
     }
   }
+  // Ironworks' crane bay is clad and roofed in corrugated sheeting (its back wall faces the opening view: the brief's
+  // "blue corrugated back wall"): roofing and sheeting share their maps and draw together in the sheeting's look, kept
+  // from the small-surface fold below (garage r9 g2; the pack pays for the draw by folding its few render fixtures)
+  const cladBay = variant.architecture === 'factory_line';
+  if (cladBay && (surfaceGeometries.get('roofing')?.length ?? 0) > 0) {
+    surfaceGeometries.set('sheeting', [...(surfaceGeometries.get('sheeting') ?? []), ...surfaceGeometries.get('roofing')!]);
+    surfaceGeometries.set('roofing', []);
+  }
   for (const [surface, geometries] of surfaceGeometries) {
     if (!geometries.length) continue;
     // a surface carrying only a small canopy or a strip of glazing (under 300 triangles) rides the pack's plain dark
     // metal bucket instead of drawing alone (garage r9: the kit's display and decal draws are funded this way)
     const surfaceTriangles = geometries.reduce((sum, geometry) => sum + (geometry.index ? geometry.index.count : geometry.getAttribute('position').count) / 3, 0);
-    if (surfaceTriangles < 300 && (buckets.dark?.length ?? 0) > 0) {
+    if (surfaceTriangles < 300 && (buckets.dark?.length ?? 0) > 0 && !(cladBay && surface === 'sheeting')) {
       buckets.dark!.push(...geometries);
       continue;
     }
