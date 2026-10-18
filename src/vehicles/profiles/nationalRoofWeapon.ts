@@ -278,8 +278,10 @@ function casemateHousing(g:Gun,_l:NationalRoofLoadout,x:number,y:number,z:number
  * cube (D8: "a plain olive cube ... toy-like"): its front-top edge chamfered, its lid on a rear hinge with a carry handle
  * and two latches on its outer face; on the lid's outer front stands the illuminator's housing (UAPL-R5C-2: under the
  * sensor head, .31 m off the main gun's line, the searchlight's cone took in the main gun's muzzle once the gun rose
- * past 4 degrees; here, a metre outboard of it, the cone passes beside the barrel at every main-gun pitch). */
-const BIN = {at: .215, w: .24, h: .20, d: .34, y: .02, z: -.13, chamfer: .05, lid: .02} as const;
+ * past 4 degrees; here, a metre outboard of it, the cone passes beside the barrel at every main-gun pitch). The bin is
+ * 4 cm shorter at the rear than round 5's box: at full elevation its rear corner swings down past the right rear
+ * stanchion's sensor at yaw 280 (nationalRoof's 360-degree sweep). */
+const BIN = {at: .215, w: .24, h: .20, d: .30, y: .02, z: -.11, chamfer: .05, lid: .02} as const;
 function binFrame(l:NationalRoofLoadout,x:number,y:number,z:number,w:number){
  const half=supportHalfWidth(l,w),side=l.feedSide,fx=x+side*(half+BIN.at);
  return {side,fx,y0:y+BIN.y-BIN.h/2,y1:y+BIN.y+BIN.h/2,z0:z+BIN.z-BIN.d/2,z1:z+BIN.z+BIN.d/2};

@@ -1,12 +1,12 @@
 // Release 227: Hetman II's own frontal ERA package, "Stepped Prow" (owner 2026-10-16: "for our turret upghrades, it
 // should be a brand new era packages for both though, donnt make it just copy the t90ms. innovate for the hetman 2").
 // An original Ukrainian concept in the diagonal, deep-block language of the Duplet/Nizh lineage, not a T-90M/MS Relikt
-// layout: no fan of flat cheek cells, no roof cassette field. The turret front is a stepped prow of three raked
-// two-layer (doublet) courses per side on two facets, each course stepping back .07 m as it rises, carried on a
-// permanent welded shelf, with jaw collars framing the mantlet, returns round the shoulders and a low brow on the roof
-// front. The hull carries a framed chevron glacis (three sawtooth bands per side between a keel and two side rails),
-// a nose sill holding two recessed LED bars, hinged aprons on the lower front plate and two-layer bow modules on its
-// front skirt banks. Every module is a lofted solid bound to an existing gameplay ERA sector with authored hit faces;
+// layout: no fan of flat cheek cells, no roof cassette carpet. The turret front is a stepped prow of three raked
+// courses of deep blocks per side on two facets, each course set back .085 m as it rises, carried on a permanent welded
+// shelf, with jaw collars framing the mantlet, returns round the shoulders and a roof course of swept wedge blocks
+// behind the top course (round 6). The hull carries a framed chevron glacis (three sawtooth bands per side laid as
+// shingled wedge blocks between a keel and two side rails), a nose sill holding two recessed LED bars, three two-tier
+// hinged aprons a side on the lower front plate and two-layer bow modules on its front skirt banks. Every module is a lofted solid bound to an existing gameplay ERA sector with authored hit faces;
 // every carrier, sill, rail, keel, hinge and housing is permanent and survives stripEra/resetEra.
 //
 // Frames: the turret frame of the T-72B3M (2016) donor turret (origin on the ring centre, +Z forward, +X the vehicle's
@@ -36,7 +36,7 @@ const RAKE = Math.tan(15 * Math.PI / 180);
 // casting (course 1 on the prow shelf); the doublet seam groove is gone (it drew two more horizontal lines across every
 // course). A block's back follows the casting at four heights, and a station is added along it wherever the casting's
 // bulge between two stations would leave the back more than 2 mm off it. Spent, the shelf, the ledges, the dividers,
-// the jaw ledge and the brow rails stay: a stepped frame of empty bays.
+// the jaw ledge and the roof sill rail stay: a stepped frame of empty bays (round 6: shallow and gunmetal, FRAME_DEPTH).
 
 /** Facet A (raked 22 degrees in plan) and facet B (58 degrees): plan normals in (|x|, z). */
 const NA = [.375, .927] as const, NB = [.848, .530] as const;
