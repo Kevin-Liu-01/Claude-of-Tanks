@@ -99,7 +99,7 @@ export function resolveFarRangeAmp(settings: HorizonFarRangeSettings, deckBaseM:
 }
 
 /** Pure geometry (world xz, heights), for the mesh and the receipts. */
-export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'seed' | 'settings' | 'deckBaseM' | 'seaOpenings' | 'nearEdge' | 'massif' | 'escarpment'>): HorizonFarRangeGeometry {
+export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'seed' | 'settings' | 'deckBaseM' | 'seaOpenings' | 'nearEdge' | 'massif' | 'escarpment' | 'airless'>): HorizonFarRangeGeometry {
   const { settings: s, seed } = options;
   const n = options.nearEdge?.columns ?? HORIZON_FAR_SEGMENTS, rows = HORIZON_FAR_ROWS;
   const noise = new SimplexNoise({ random: mulberry32(seed >>> 0) });
@@ -249,6 +249,20 @@ export function sampleHorizonFarRange(options: Pick<HorizonFarRangeOptions, 'see
   // to its shoulder (the ranged crests through the bed stair alone were stepped pyramids — the far horns over Redrock,
   // Oasis and Sirocco in the mountains-lane census)
   const tableScratch = plateaus ? new Float32Array(n) : null;
+  // (the Earthrise 228 rebuild, round 2; the blind critics' "fence" along the far skyline) an airless map's far ranges are
+  // gardened smooth under their regolith: each row is smoothed along its columns (two [1, 2, 1] passes) so no column
+  // stands proud of its neighbours — the column-to-column relief (60 m facets) shaded as a palisade of light and dark
+  // stripes at 2.6 km with no air to soften it; the rows' step clamp below then runs as before
+  if (options.airless) {
+    const smooth = new Float32Array(n);
+    for (let row = 1; row < rows.length; row++) {
+      const off = row * n;
+      for (let pass = 0; pass < 2; pass++) {
+        for (let k = 0; k < n; k++) smooth[k] = (heights[off + (k - 1 + n) % n] + 2 * heights[off + k] + heights[off + (k + 1) % n]) / 4;
+        heights.set(smooth, off);
+      }
+    }
+  }
   for (let row = 1; row < rows.length; row++) {
     const off = row * n;
     if (tableScratch) openRowTables(heights, off, n, Math.max(2, Math.round(FAR_TABLE_HALF_M / (rows[row].r * TAU / n))), tableScratch);
@@ -421,7 +435,7 @@ export function buildHorizonFarRange(options: HorizonFarRangeOptions & { detailT
         float ndl = dot(n, uFSun);
         float sky = 0.55 + 0.45 * n.y;
         float shade = uFGains.x * sky + uFGains.y * max(ndl, 0.0) * cotCloudSun(vFWorld);
-        col *= shade * (1.0 + rib * 0.14);
+        col *= shade * (1.0 + rib * 0.14 * (1.0 - uFAirless));
         col = mix(col, col * vec3(0.90, 0.94, 1.08), clamp(-ndl, 0.0, 1.0) * 0.35 * (1.0 - uFAirless));
         // the sea sectors are the low sky, like the ring's far apron
         col = mix(col, uFFog * 0.9, marine);

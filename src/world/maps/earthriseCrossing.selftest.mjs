@@ -30,6 +30,12 @@ assert.equal(moon.sky.fogDensity,0);assert.equal(moon.vegetation.grassDensity,0)
  const far=readFileSync(new URL('../../world/horizonFarRange.ts',import.meta.url),'utf8');
  assert.match(far,/uFAirless: \{ value: options\.airless \? 1 : 0 \}/,'the far range takes the airless flag');
  assert.ok(far.includes('* 3.0 * (1.0 - uFAirless);')&&far.includes('clamp(-ndl, 0.0, 1.0) * 0.35 * (1.0 - uFAirless)'),'airless: no striations, no cool shade');
+ assert.ok(far.includes('rib * 0.14 * (1.0 - uFAirless)')&&/if \(options\.airless\) \{\s*const smooth = new Float32Array\(n\);/.test(far),'airless: the rows smoothed along their columns, no rib stripes');
+ {const {sampleHorizonFarRange}=await import('../../world/horizonFarRange.ts');const {resolveHorizonRelief}=await import('../../world/horizonRelief.ts');
+  const base={seed:4242,settings:resolveHorizonRelief('martian').far,deckBaseM:4000,seaOpenings:[],nearEdge:null,massif:null,escarpment:null};
+  const rough=(g)=>{let s=0,c=0;for(let row=1;row<g.rowCount;row++)for(let k=0;k<g.columns;k++){const o=row*g.columns;const d=g.heights[o+k]-(g.heights[o+(k+g.columns-1)%g.columns]+g.heights[o+(k+1)%g.columns])/2;s+=d*d;c++;}return Math.sqrt(s/c);};
+  const a=rough(sampleHorizonFarRange({...base,airless:true})),b=rough(sampleHorizonFarRange(base));
+  assert.ok(a<b*0.6,`airless far rows: column-to-column relief ${a.toFixed(1)} m against ${b.toFixed(1)} m`);}
  // the fog pole: an airless map's own grey, never the black dome's horizon nor the hue guard's blue-grey
  const skySrc=readFileSync(new URL('../../engine/sky.ts',import.meta.url),'utf8');
  assert.match(skySrc,/const fogColor = airless \? new THREE\.Color\(preset\.fogTintHex\) :/,'airless: the fog pole is the authored tint');
