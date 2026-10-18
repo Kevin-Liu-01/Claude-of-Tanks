@@ -792,7 +792,7 @@ for (const term of ['uCirrus', 'halo', 'seaFogBank(', 'slabRain(', 'contrailDept
 // take the vertical depth over the point in its cell (by the lane's flatness), the ground's return at a deck's base is the
 // light the deck passes down (cloudGroundLight), not the map's ambient scale over the open sky's blue irradiance
 for (const term of ['vec2 cell = cl2Cell( p.xz, wLod );\n\t\t\tvec4 shell = cl2Shell( h, w, cell, hf );',
-  'float tauV = od * max( sunUp, 0.2 );', 'float deckK = dot( wgt, uLayerFlat ) * uDeckTune.x;', 'tauV = mix( tauV, tauUp, deckK );',
+  'float tauV = od * max( sunUp, 0.2 );', 'float deckK = dot( wgt, uLayerFlat ) * uDeckTune.x * ( 1.0 - uDeckDusk.x * duskK );', 'tauV = mix( tauV, tauUp, deckK );',
   'radiance += eTop * ( diffuse * ( 1.0 - exp( -od * 0.3 ) ) / ( 1.0 + 0.1125 * tauV ) / CL_PI );', 'float skyThrough = 1.0 / ( 1.0 + 0.1125 * tauV );',
   'mix( uAmbientScale, 1.0, flatK * uDeckTune.y )']) {
   assert.ok(shadersSource.includes(term), `the trace carries ${term}`);
@@ -825,9 +825,9 @@ assert.match(layerSource, /lightTune\('CLOUD_SUN_STEPS_LOW', CLOUD2_LOW_SUN_EXTR
 assert.match(layerSource, /lightTune\('CLOUD_BSM_LOWSUN', 0\), lightTune\('CLOUD_BSM_LOWSUN_UP', 0\.3\)/);
 // (2026-10-18, the s187 bisect) a closing deck's deep diffusion drops a low sun's share at dusk (the evening deck grey, not
 // orange-pink); the day's sun (over 17 degrees) keeps all of it
-assert.ok(shadersSource.includes('float dusk = 1.0 - uDeckDusk * ( 1.0 - smoothstep( 0.0, 0.3, sunUp ) );'), 'the dusk share');
-assert.ok(shadersSource.includes('vec3 eTop = sunE * sunUp * lobe * dusk + uSkyIrradiance * CL_PI;'));
-assert.match(layerSource, /t\.uDeckDusk\.value = lightTune\('CLOUD_DECK_DUSK', CLOUD_DECK_DUSK\);/, 'read each frame');
+assert.ok(shadersSource.includes('float deckK = dot( wgt, uLayerFlat ) * uDeckTune.x * ( 1.0 - uDeckDusk.x * duskK );'), 'the dusk hands the depth back to the sun ray');
+assert.ok(shadersSource.includes('vec3 eTop = sunE * sunUp * lobe * ( 1.0 - uDeckDusk.y * duskK ) + uSkyIrradiance * CL_PI;'), 'the dusk share');
+assert.match(layerSource, /\(t\.uDeckDusk\.value as THREE\.Vector2\)\.set\(lightTune\('CLOUD_DECK_DUSK_TAU', CLOUD_DECK_DUSK_TAU\), lightTune\('CLOUD_DECK_DUSK', CLOUD_DECK_DUSK\)\);/, 'read each frame');
 assert.match(readFileSync(new URL('./cloudLayers.ts', import.meta.url), 'utf8'), /CLOUD_DECK_FILTER: 1\.6, CLOUD_DECK_COVER: 1, CLOUD_DECK_SHAPE: 1\.4, CLOUD_DECK_DETAIL: 1\.4,/, 'the tune lives in the light stack module (the world reads it: cloudBase.ts)');
 assert.match(layerSource, /if \(lane\.flat >= 0\.5 && \(lane\.cells >= 0\.5 \|\| lightTune\(knob, -1\) !== -1\)\)/, 'a stratocumulus deck\'s lanes only, unless a knob is set');
 assert.match(layerSource, /const k = lightTune\(knob, CLOUD_DECK_TUNE\[knob\] \?\? 1\);/);
@@ -862,7 +862,7 @@ assert.match(layerSource, /t\.uOpaqueCut\.value = lightTune\('CLOUD_OPAQUE_CUT',
 }
 // and the sun's light diffused through a deck keeps a broad forward lobe (its mean over the sky unchanged): a readable
 // sun direction under a closed deck without a disc
-assert.match(shadersSource, /float lobe = 1\.0 \+ uDeckLobe \* \( mix\( phaseHG\( cosT, 0\.6 \), phaseHG\( cosT, -0\.225 \), 0\.3 \) \* 4\.0 \* CL_PI - 1\.0 \);[\s\S]{0,600}?vec3 eTop = sunE \* sunUp \* lobe \* dusk \+ uSkyIrradiance \* CL_PI;/,
+assert.match(shadersSource, /float lobe = 1\.0 \+ uDeckLobe \* \( mix\( phaseHG\( cosT, 0\.6 \), phaseHG\( cosT, -0\.225 \), 0\.3 \) \* 4\.0 \* CL_PI - 1\.0 \);[\s\S]{0,600}?vec3 eTop = sunE \* sunUp \* lobe \* \( 1\.0 - uDeckDusk\.y \* duskK \) \+ uSkyIrradiance \* CL_PI;/,
   'the lobe on the sun\'s diffused share only, the sky\'s untouched');
 // (round 6, wave 222: an overcast with no brighter patch toward the sun — the lobe at 0.45)
 assert.match(layerSource, /export const CLOUD_DECK_SUN_LOBE = 0\.45;/);
