@@ -586,9 +586,10 @@ function railsAndKeel(P: TankBuilderPort, glacisAt: (z: number) => number): void
 function chevronBands(P: TankBuilderPort, glacisAt: (z: number) => number): void {
   const cot60 = 1 / Math.tan(Math.PI / 3);
   for (const side of SIDES) BANDS.forEach((b, i) => {
+    const seat = BAND_SEAT[i];
     const stations = BAND_X.map((X, k) => {
       const zr = b.rear[k], zf = b.front[k];
-      const bottom = [0, 1 / 3, 2 / 3, 1].map(t => { const z = zr + (zf - zr) * t; return [z, glacisAt(z) - .004] as [number, number]; });
+      const bottom = [0, 1 / 3, 2 / 3, 1].map(t => { const z = zr + (zf - zr) * t; return [z, glacisAt(z) - seat] as [number, number]; });
       const top: [number, number] = [zf - b.lip * cot60, glacisAt(zf) + b.lip];
       return {x: side * X, ring: [...bottom, top, [zr, glacisAt(zr) + .025]] as [number, number][]};
     });
@@ -596,8 +597,9 @@ function chevronBands(P: TankBuilderPort, glacisAt: (z: number) => number): void
       name: `chevron band ${i + 1}`, guard: (nm, geo) => assertHullPart(ID, nm, geo)});
     const rib = crosswiseSolid(BAND_X.map((X, k) => {
       const z1 = b.rear[k] - RIB.gap, z0 = z1 - RIB.w;
-      // (its foot 6 mm into the plate, under the bands' 4 mm: no shared plane)
-      return {x: side * X, ring: [[z0, glacisAt(z0) - .006], [z1, glacisAt(z1) - .006], [z1, glacisAt(z1) + RIB.h], [z0, glacisAt(z0) + RIB.h]] as [number, number][]};
+      // (its foot under its band's seat: no shared plane)
+      const foot = RIB_FOOT[i];
+      return {x: side * X, ring: [[z0, glacisAt(z0) - foot], [z1, glacisAt(z1) - foot], [z1, glacisAt(z1) + RIB.h], [z0, glacisAt(z0) + RIB.h]] as [number, number][]};
     }));
     assertHullPart(ID, 'chevron retainer rib', rib);
     P.addExternalArmor('hull', rib);
@@ -606,6 +608,12 @@ function chevronBands(P: TankBuilderPort, glacisAt: (z: number) => number): void
 /** The retainer rib: 10 mm thick, 1 mm behind its band, so 4 mm clear of the band ahead's lip foot (the bands' 15 mm
  * gaps), 3 cm tall. */
 const RIB = {w: .010, h: .03, gap: .001};
+/** Round 5 (2026-10-17; the lane's seat-sink receipt: band 2 entered the plate 7.3 mm at (.73, 1.305, 2.407)): the
+ * T-72B3M glacis breaks 2.7 degrees at z 2.40 (slope .348 behind, .396 ahead), and bands 1 and 2 cross the break
+ * obliquely (band 1's front edge, band 2's rear edge and its rib), so their bottoms, lofted straight between the two
+ * stations, sag up to 3.3 mm under it. Their seats are shallower (bands 2.5 mm, band 2's rib foot 3.5 mm; band 3 and
+ * the other ribs keep 4 and 6 mm), so no part enters the plate past 7 mm and no rib foot shares a band's plane. */
+const BAND_SEAT = [.0025, .0025, .004] as const, RIB_FOOT = [.006, .0035, .006] as const;
 
 /** Hinged aprons on the lower front plate: a two-facet panel .07 thick, hung on a hinge line on the plate in the gap
  * between its top edge and the sill: three permanent knuckles and, between them, the apron's own (near tier). */

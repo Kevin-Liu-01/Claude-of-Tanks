@@ -203,7 +203,7 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
     // against its authored outward axis (cosine under -.75) that do not face another part of the same module (a seam
     // groove's wall); at each face's centroid and at its corners and edge midpoints (pulled 10 % in), a ray along the
     // face's normal from 3 cm inside the module meets permanent stock no more than 6 mm out
-    let seatWorst = -Infinity, sinkWorst = Infinity;
+    let seatWorst = -Infinity, sinkWorst = Infinity, sinkWorstAt = null;
     for (const owner of ['hull', 'turret']) {
       const stockMeshes = stock[owner].map(g => { const m = new THREE.Mesh(g, seatMat); m.updateMatrixWorld(true); return m; });
       // the stock's triangles hashed in 5 cm cells: a seat point behind the stock's surface along its face's normal sinks by
@@ -241,7 +241,7 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
             samples++;
             // (round 4, the critic's D4: the ray starts inside the module, never past its own front, so a module sunk
             // through a thin wall reads its whole sink, and the seat is held both ways: at most 6 mm off the stock and
-            // at most 7.5 mm into it (a 4 mm seat and its tolerance))
+            // at most 7 mm into it (a 4 mm seat and its tolerance; acceptance 5's 7 mm seat))
             seatRay.set(q.clone().addScaledVector(fn, -.0005), fn.clone().negate()); seatRay.far = .2;
             // (a thin edge starts 12 mm out, in front of its 4 mm seat: a ray starting inside the stock would miss it)
             const own = seatRay.intersectObject(self, false)[0], back = Math.max(.012, Math.min(.9 * ((own?.distance ?? .03) + .0005), .03));
@@ -250,8 +250,8 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
             seatWorst = Math.max(seatWorst, gap);
             assert(gap <= .006, `${label}: ${m.name} is seated on permanent stock over its whole seat (${Number.isFinite(gap) ? `${gap.toFixed(4)} m off` : 'no stock behind'} at ${q.toArray().map(x => x.toFixed(3))})`);
             const sink = gap < 0 ? Math.min(-gap, sunk(q, fn)) : 0;
-            sinkWorst = Math.min(sinkWorst, -sink);
-            assert(sink <= .0075, `${label}: ${m.name} sinks ${sink.toFixed(4)} m into its seat (7.5 mm) at ${q.toArray().map(x => x.toFixed(3))}`);
+            if (-sink < sinkWorst) { sinkWorst = -sink; sinkWorstAt = `${m.name} @ ${q.toArray().map(x => x.toFixed(3))}`; }
+            assert(sink <= .007, `${label}: ${m.name} sinks ${sink.toFixed(4)} m into its seat (7 mm) at ${q.toArray().map(x => x.toFixed(3))}`);
           }
         }
         assert(samples >= 4, `${label}: ${m.name} has a seat (${samples} samples)`);
@@ -551,7 +551,7 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
     const k = high ? 0 : 1, base = BASELINE[id];
     assert(tris <= base.tris[k], `${label}: drawn triangles ${tris} within the baseline ${base.tris[k]}`);
     assert(draws <= base.draws[k] + base.extraDraws, `${label}: draws ${draws} within ${base.draws[k]} + ${base.extraDraws}`);
-    (report[id] ??= {})[quality] = {modules: modules.length, tris, draws, ringMin: +ringMin.toFixed(4), overlapMax: +overlapMax.toFixed(4), seatWorst: +seatWorst.toFixed(4), sinkWorst: +sinkWorst.toFixed(4),
+    (report[id] ??= {})[quality] = {modules: modules.length, tris, draws, ringMin: +ringMin.toFixed(4), overlapMax: +overlapMax.toFixed(4), seatWorst: +seatWorst.toFixed(4), sinkWorst: +sinkWorst.toFixed(4), sinkWorstAt,
       mins: Object.fromEntries(Object.entries(mins).map(([key, value]) => [key, +value.toFixed(4)]))};
     console.log(`${label}: ${modules.length} new ERA modules, six sectors, seated; envelopes ${JSON.stringify(report[id][quality].mins)}, ring ${ringMin.toFixed(3)}, gun sweeps clear; ${lenses.length} lenses; ${tris} triangles, ${draws} draws PASS`);
   } finally {
