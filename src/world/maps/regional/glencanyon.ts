@@ -15,6 +15,7 @@ import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from '.
 import { sheetHall } from './hall.ts';
 import { latticeFrame, recordLattice } from './lattice.ts';
 import { yardPad } from './glencanyonPads.ts';
+import { pageHouse } from './glencanyonHouse.ts';
 
 /** Poured concrete (the plaster2 canvas under a concrete tone), painted concrete, block (the stone painter's CMU). */
 const CONCRETE: RegionalBucket = 'plaster2', PAINTED: RegionalBucket = 'plaster3', BLOCK: RegionalBucket = 'stone', STUCCO: RegionalBucket = 'plaster';
@@ -23,7 +24,6 @@ const TRANSFORMER: readonly Rgb[] = [0x76827c, 0x7f8b8e, 0x6c7a72].map(rgb);
 const PENSTOCK: readonly Rgb[] = [0x7f8a86, 0x6f7f7c, 0x8a8e88].map(rgb);
 const PORCELAIN = rgb(0x7a4a32), ALUMINIUM = rgb(0xb8bdbd), WHITE = rgb(0xe4e2dc);
 const DOOR_PAINT: readonly Rgb[] = [0x2f5f8a, 0x8a3a2c, 0x4d6f45, 0xc9a24a, 0x6a4a3a].map(rgb);
-const CAR_ROOF: readonly Rgb[] = [0x9aa09c, 0xb8b4a8, 0x8a8478].map(rgb);
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
@@ -794,42 +794,9 @@ const steelWarehouse: RegionalBuilder = (ctx) => {
   return sink.finish();
 };
 
-/**
- * A Page ranch house at the origin facing +z: one storey of stucco or painted block under a shallow shingled gable,
- * a picture window, the front door with its stoop, a carport on steel posts beside it.
- */
-function ranchHouse(sink: PartSink, rng: () => number, look: () => number, W: number, D: number, carport: number): void {
-  const wall: RegionalBucket = rng() < 0.55 ? STUCCO : BLOCK;
-  const door = pick(rng, DOOR_PAINT);
-  const du = -W * 0.18;
-  const openings: Opening[] = [
-    { face: 'front', storey: 0, kind: 'door', u: du, w: 0.95, y0: 0, h: 2.05 },
-    { face: 'front', storey: 0, kind: 'window', u: W * 0.2, w: 2.4, h: 1.4, y0: 0.8 },
-  ];
-  for (const face of ['left', 'right'] as const) for (const o of windowRhythm(face, 0, D, { w: 1.1, h: 1.1, sill: 1.0, spacing: 3.0, margin: 1.2, max: 2 })) openings.push(o);
-  for (const o of windowRhythm('back', 0, W, { w: 1.1, h: 1.0, sill: 1.1, spacing: 3.0, margin: 1.2, max: 3 })) openings.push(o);
-  buildHouse(sink, {
-    w: W, d: D, plinth: { h: 0.35, out: 0.04, bucket: CONCRETE }, storeys: [{ h: 2.55, wall }],
-    roof: { kind: 'gable', pitchDeg: 17, eave: 0.55, verge: 0.4, thickness: 0.1, bucket: 'roof', ridge: 'saddle' }, gableBucket: wall,
-    openings, chimneys: rng() < 0.4 ? [{ x: W * 0.3, z: -D * 0.15, sx: 0.5, sz: 0.5, above: 0.5, bucket: BLOCK, cap: 'slab' }] : [],
-    gutters: rng() < 0.5 ? { colour: WHITE } : null, verge: { colour: WHITE, bucket: 'structureWood' }, reveal: 0.14, rafters: null,
-  }, dialectOf(rng, ALU, door, 0.45, rng() < 0.5 ? 'panel' : 'glazed', look));
-  if (carport > 2.4) {
-    // the carport (props census #3, lane B 2026-10-14; the judges: "a flat slab on two sticks"): its pad, three steel
-    // posts along the outer edge to the fascia beam, the ledger on the house wall, the rafters across and the ribbed
-    // sheet roof falling outward over them
-    const x0 = W / 2, x1 = W / 2 + carport, sheet = pick(look, CAR_ROOF), hi = 2.75, lo = 2.55;
-    sink.span(CONCRETE, x0, -0.2, -D / 2 - 0.1, x1 + 0.1, 0.06, D / 2 + 0.4, { decor: true, shade: 0.92 });
-    for (const z of [-D / 2 + 0.3, 0, D / 2 + 0.1]) sink.cylinder('structureMetal', [x1 - 0.15, 0.06, z], 'y', lo - 0.2, 0.05, 8, { colour: WHITE });
-    sink.span('structureMetal', x1 - 0.22, lo - 0.2, -D / 2 - 0.1, x1 - 0.08, lo, D / 2 + 0.4, { colour: WHITE });
-    sink.span('structureWood', x0, hi - 0.2, -D / 2 - 0.1, x0 + 0.08, hi, D / 2 + 0.4, { colour: WHITE, decor: true });
-    for (let z = -D / 2 + 0.2; z < D / 2 + 0.4; z += 1.2) sink.member('structureWood', [x0 + 0.08, hi - 0.1, z], [x1 - 0.08, lo - 0.1, z], 0.05, 0.14, [0, 1, 0], { colour: WHITE, decor: true }, 0);
-    const slope = (hi - lo) / (x1 - x0);
-    sink.quad('structureMetal', [x0, hi + 0.04, D / 2 + 0.45], [x1 + 0.1, lo - slope * 0.1 + 0.04, D / 2 + 0.45], [x1 + 0.1, lo - slope * 0.1 + 0.04, -D / 2 - 0.15], [x0, hi + 0.04, -D / 2 - 0.15], { colour: sheet, shadow: true });
-    sink.quad('structureMetal', [x0, hi, -D / 2 - 0.15], [x1 + 0.1, lo - slope * 0.1, -D / 2 - 0.15], [x1 + 0.1, lo - slope * 0.1, D / 2 + 0.45], [x0, hi, D / 2 + 0.45], { colour: shade(sheet, 0.6), decor: true });
-    for (let z = -D / 2; z < D / 2 + 0.4; z += 0.6) sink.member('structureMetal', [x0, hi + 0.06, z], [x1 + 0.1, lo - slope * 0.1 + 0.06, z], 0.03, 0.03, [0, 1, 0], { colour: shade(sheet, 0.9), decor: true, fine: true }, 0);
-  }
-}
+// (227, the looks lane: BLD-04) Page's ranch houses are built in glencanyonHouse.ts (pageHouse): their stucco, block or
+// lap siding, casings, shutters, porch, swamp cooler and the desktop finish, the body and the build stream's draws as
+// they were, the carport (props census #3, lane B 2026-10-14) as it was.
 
 /** Two Page ranch houses side by side down a depot plot (their fronts to +x, the plot's long side), carports between. */
 const housePair: RegionalBuilder = (ctx) => {
@@ -840,7 +807,7 @@ const housePair: RegionalBuilder = (ctx) => {
   const R = reach(ctx), across = Math.max(6, R.W - 1.0), along = Math.max(5, R.D / 2 - 1.0);
   for (const sz of [-1, 1]) {
     // each house turned to face the plot's +x side (the street): its +z to world +x
-    sink.placed(Math.PI / 2, R.cx, 0, R.cz + sz * R.D / 4, () => ranchHouse(sink, rng, look, along, across, 0));
+    sink.placed(Math.PI / 2, R.cx, 0, R.cz + sz * R.D / 4, () => pageHouse(sink, rng, look, along, across, 0));
   }
   return sink.finish();
 };
@@ -851,7 +818,7 @@ const houseSingle: RegionalBuilder = (ctx) => {
   // the house and its carport fill the old row's reach (its bounds)
   const R = reach(ctx), carport = Math.max(2.6, Math.min(3.6, R.W * 0.22));
   const W = Math.max(6, R.W - 0.6 - carport), D = Math.max(5, R.D - 0.8);
-  sink.placed(0, R.x0 + 0.3 + W / 2, 0, R.cz, () => ranchHouse(sink, ctx.rng, ctx.variant, W, D, carport));
+  sink.placed(0, R.x0 + 0.3 + W / 2, 0, R.cz, () => pageHouse(sink, ctx.rng, ctx.variant, W, D, carport));
   return sink.finish();
 };
 
@@ -1182,6 +1149,12 @@ export const GLENCANYON_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
   // run's wreck, penstockFall.ts, stays in play), so the round's motor courts are not built. The kit keeps the
   // powerhouse, surge tower, gate-hoist house and penstock run for every other map that builds it.
   mapBuilders: { skybridge: { arcology: 'shoppingCentre', needletower: 'church', factory: 'church', megatower: 'fieldHeadquarters' } },
+  // (227, the looks lane; BLD-04) Page's ranch houses stand on the depot plots (two a plot) and the container-row plots
+  // (one, its carport at its end): the building-detail census reads the kit's dwellings over them
+  dwellings: ['depot', 'containerRow'],
+  // (227, the looks lane) the houses' back yards walled in concrete block (coursedWallKit's Glen Canyon CMU, its cap
+  // blocks), the ranch gate in the street run; no outbuilding, no kitchen beds on the mesa's sand
+  yard: { kinds: ['depot', 'containerRow'], fence: 'wallstone', gate: 'gatestone', shed: null, garden: false },
   // the desert's dry air; the stucco houses each their own pale colour (peach, sky, sand, mint) and the concrete stained
   weather: {
     plaster: [[1, 1, 1], [1.08, 0.98, 0.9], [0.92, 0.98, 1.06], [1.04, 1.02, 0.9], [0.94, 1.04, 0.98]],

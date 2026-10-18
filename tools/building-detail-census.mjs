@@ -4,7 +4,7 @@
 //   kits   each builder built at three seeds (11 plaster, 29 plaster2, 47 stone) on its own map, with the shared detail
 //          modules instrumented (building-detail-census-loader.mjs): triangles, triangles per m² of wall, the decor and
 //          fine shares, its buffer hashes at seeds 11 and 29, the house grammar's specs it built; per kit, over its
-//          dwelling-class builders, Verdant's twenty elements E1–E20 (B1 §2.3), the three reading distances (K2),
+//          dwelling-class builders (and those a kit names as its houses, ArchitectureStyle.dwellings), Verdant's twenty elements E1–E20 (B1 §2.3), the three reading distances (K2),
 //          the geometry floor (K3: tris/m² and fine share), the face pass (K4: dwellings through buildHouse) and the
 //          regional light kit (K9). The declared-bespoke manifest credits craft the instrumentation cannot see.
 //   maps   every battlefield's planned kinds against its kit (K1 coverage: the share built by the map's own kit).
@@ -124,7 +124,8 @@ export async function censusKits({ kits = null } = {}) {
       const rows = [];
       for (const id of Object.keys(style.builders)) {
         const [w, d, h] = INFO[id] ?? [7, 9, 6];
-        const row = { kit: style.id, id, dwelling: DWELLINGS.has(id), w, d, h, tris: 0, decor: 0, fine: 0, hashes: {}, specs: [], buildHouse: false,
+        // (227, the looks lane) a kit whose houses stand on other plots names their builders (ArchitectureStyle.dwellings)
+        const row = { kit: style.id, id, dwelling: DWELLINGS.has(id) || !!style.dwellings?.includes(id), w, d, h, tris: 0, decor: 0, fine: 0, hashes: {}, specs: [], buildHouse: false,
           calls: {}, win: { n: 0, shutters: 0, surround: 0, sill: 0, carved: 0, head: 0, bars: 0, paintedShutters: 0 }, door: { n: 0, steps: 0 }, seeds: 0 };
         for (const [seed, wall] of SEEDS) {
           cur = row;
@@ -389,7 +390,7 @@ export function formatMarkdown(run, date = new Date().toISOString().slice(0, 10)
   L.push('The census measures every regional kit the way the owner reads Verdant\'s buildings: element completeness at three');
   L.push('reading distances, in one vocabulary (the 10-12 B1 study, `~/cot-launch-state/2026-10-12/docs/horizons-buildings/`).');
   L.push('Each builder is built at seeds 11, 29 and 47 on its own map with the shared detail modules instrumented');
-  L.push('(`tools/building-detail-census-loader.mjs`); a kit is scored over its dwelling-class builders (all of them where it has none).');
+  L.push('(`tools/building-detail-census-loader.mjs`); a kit is scored over its dwelling-class builders and those it names as its houses (`ArchitectureStyle.dwellings`; all of them where it has none).');
   L.push('`src/world/buildingDetail.selftest.mjs` holds every kit and map to `src/world/buildingDetail.baseline.json`: a kit may rise, never drop.', '');
   L.push('**Elements** (● present, b bespoke craft confirmed by reading, · absent): E1 plinth ≥ 0.15 m · E2 plinth band or water table ·');
   L.push('E3 eave ≥ 0.3 m · E4 ridge cap · E5 roof craft (thatch courses, riders, dormers) · E6 chimney · E7 glazing bars · E8 surround ·');
