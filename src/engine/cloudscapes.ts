@@ -164,6 +164,13 @@ export interface CloudscapeConfig {
    * detail erosion near a cumulus's strength and a crisper outline. 0 = round 76's deck.
    */
   deckDetail?: number;
+  /**
+   * 2026-10-18 (the SKY lane, 228 census; the approved s165's bright polar haze had become a dark grey overcast): 0.05..1 the
+   * deck's drawn extinction as a share of the closing law's — a thin stratus reads pale from below. The medium alone (the
+   * trace and its Beer shadow maps); the ground's light law keeps the closing deck's depth (cloudLayers.ts cloudDeckTau).
+   * 1 = the closing law's deck.
+   */
+  deckDensity?: number;
   // ---- 2026-10-01: the weather layers beyond the slab (cloudWeatherLayers.ts) and the time of day
   /** 0..1 contrails (six at 1) over the sky and their spread: 0 fresh lines, 1 old contrail cirrus. */
   contrails?: number;

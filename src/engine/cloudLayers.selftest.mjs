@@ -171,6 +171,14 @@ assert.ok(stacks.winter.lanes[0].cells > 0, 'a stratocumulus deck carries its ce
   assert.equal(u.uLayerBase.value.x, stack.lanes[0].baseM);
   assert.equal(u.uLayerTop.value.y, stack.lanes[1].topM);
   assert.equal(u.uLayerDensity.value.z, 0, 'an absent lane has no density');
+  // (2026-10-18, the 228 census) a thin deck draws a share of its extinction; the ground's light law keeps the whole depth
+  assert.equal(u.uLayerDensity.value.x, deck.density, 'Frosthollow draws its whole deck');
+  const w = stacks.whiteout.lanes[0];
+  assert.equal(w.mediumShare, 0.35, 'Whiteout: the pale polar stratus at 0.35 of the closing law');
+  packCloudStack(stacks.whiteout, u);
+  assert.ok(Math.abs(u.uLayerDensity.value.x - w.density * 0.35) < 1e-9, 'the medium draws the share');
+  assert.equal(cloudDeckTau(stacks.whiteout), w.density * w.core * (w.topM - w.baseM) * CLOUD_COLUMN_SHARE, 'the light law keeps the depth');
+  packCloudStack(stack, u);
   assert.equal(u.uLayerDensity.value.w, 0);
   assert.equal(u.uLayerCells.value.x, stack.lanes[0].cells);
   assert.deepEqual([u.uHeightRange.value.x, u.uHeightRange.value.y], [stack.lowM, stack.highM]);
