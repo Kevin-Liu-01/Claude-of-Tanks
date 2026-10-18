@@ -206,6 +206,26 @@ assert.throws(() => createNightLightingRuntime(scene, { spotLights: 2, pointLigh
     assert.ok(four.lights.filter((light) => light.isSpotLight && light.intensity === 90).every((light) => light.angle === HEADLIGHT_CONE_RAD),
       'a slot that held the searchlight goes back to the low-beam cone with a driving lamp'); void slot;
   } finally { two.dispose(); four.dispose(); scene.remove(tank); }
+  // Round 6 (the critic's UAPL-R5C-10): the lift belongs to the player's searchlight only; another vehicle's searchlight
+  // 60 m off competes by distance and leaves the spots to a nearer vehicle's driving lamps.
+  {
+    const player = new THREE.Group(), near2 = new THREE.Group(), far = new THREE.Group(), farStation = new THREE.Group();
+    for (const g of [player, near2, far]) scene.add(g);
+    far.add(farStation); near2.position.set(0, 0, 20); far.position.set(0, 0, 60); farStation.position.set(-.6, 1.4, -.3);
+    registerNightLightEmitters(player, [pod(-.7), pod(.7)]);
+    registerNightLightEmitters(near2, [pod(-.7), pod(.7)]);
+    registerNightLightEmitters(far, [pod(-.7), pod(.7)]);
+    registerNightLightEmitters(farStation, [{ kind: 'headlight', position: [.3, .1, .2], direction: [0, .02, 1], intensity: 2000, range: 100,
+      searchlight: true, coneRad: .11 }]);
+    const pool = createNightLightingRuntime(scene, { spotLights: 4, pointLights: 2 });
+    try {
+      pool.prepare([{ root: player, priority: 1 }, { root: near2, priority: 0 }, { root: far, priority: 0 }], true);
+      pool.update(new THREE.Vector3(0, 3, -6));
+      const spots = pool.lights.filter((light) => light.isSpotLight && light.intensity > 0);
+      assert.equal(spots.filter((light) => light.intensity === 2000).length, 0, 'a far non-player searchlight does not outrank a nearer vehicle');
+      assert.equal(spots.filter((light) => light.intensity === 90).length, 4, 'the player and the nearer vehicle keep all four spots');
+    } finally { pool.dispose(); for (const g of [player, near2, far]) scene.remove(g); }
+  }
   assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'headlight', position: [0, 0, 0], coneRad: .5 }]), /cone/);
   assert.throws(() => registerNightLightEmitters(alias, [{ kind: 'marker', position: [0, 0, 0], searchlight: true }]), /searchlight/);
 }

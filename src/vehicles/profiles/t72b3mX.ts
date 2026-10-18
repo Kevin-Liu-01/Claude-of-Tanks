@@ -34,10 +34,10 @@ export function buildT72B3MXHullCore(P:TankBuilderPort):void {
   P.add('hull',cylY(1.318788,.026,48),YAW[0],1.512,YAW[2]);
 }
 
-function hull(P:TankBuilderPort):void {
+function hull(P:TankBuilderPort,skirtEra=true):void {
   buildT72B3MXHullCore(P);
   for(const side of [-1,1])fenders(P,side);
-  addT72B3MSideMounts(P);
+  addT72B3MSideMounts(P,{skirtEra});
 }
 
 function fenders(P:TankBuilderPort,side:number):void {
@@ -308,7 +308,9 @@ function mainGun(P:TankBuilderPort):void {
 
 /** Options for carrying the T-72B3M hull under a national package. Each defaults to the T-72B3M's own output.
  * `nativeEra: false` drops its Relikt glacis sheet and straps and its side-skirt Relikt boxes with their backing
- * strips (the rubber curtains stay); `glacisLamps: false` drops the two round glacis headlights and their guards.
+ * strips (the rubber curtains stay: under a national hull's own fitted skirt banks their top edges tuck into the banks'
+ * undersides), and with them the side mounts that only those boxes carried (t72b3mXSideMounts skirtEra: the rearmost
+ * upper links and the open rail fields' four lower strips); `glacisLamps: false` drops the two round glacis headlights and their guards.
  * (2026-10-16, release 227: Hetman II's own frontal package replaces them; its fitted skirt banks buried the boxes.)
  * `sweptStrap: false` drops the two right deck-cover straps within 1.4 m of the turret's yaw axis (z .22 and .55): they
  * stand 2 cm over their covers, into the path of the T-72B3M turret's mantlet, whose foot rides 4 mm over the covers at
@@ -317,7 +319,7 @@ interface T72B3MXHullOptions { nativeEra?:boolean; glacisLamps?:boolean; sweptSt
 
 export function buildT72B3MXHull(P:TankBuilderPort,options:T72B3MXHullOptions={}):void {
   P.hullG.position.set(0,0,0);
-  hull(P);runningGear(P);hullCassettes(P,options.nativeEra!==false);deckEquipment(P,options.glacisLamps!==false,options.sweptStrap!==false);rearEquipment(P);
+  hull(P,options.nativeEra!==false);runningGear(P);hullCassettes(P,options.nativeEra!==false);deckEquipment(P,options.glacisLamps!==false,options.sweptStrap!==false);rearEquipment(P);
 }
 
 export function buildT72B3MX(P:TankBuilderPort):void {

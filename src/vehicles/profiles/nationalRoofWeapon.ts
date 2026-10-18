@@ -5,6 +5,7 @@ import {MG_CLASSES,addPintleBarrel,addPintleReceiver,createPintleLayout,machined
 import {sourceMachineGun} from './sourceMachineGun.ts';
 import {captureAuxiliaryStock} from './auxiliaryStation.ts';
 import {markVehicleNightLens} from '../vehicleNightLighting.ts';
+import {crosswiseSolid} from './eraModuleKit.ts';
 import {nationalStationWidth,type NationalRoofLoadout,type NationalRoofMount} from '../nationalRoofConfig.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 import {tankSeedId} from '../tankIdAliases.ts';
@@ -193,15 +194,18 @@ function sight(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):
  * II's casemate closes them in. */
 const SHIELD = {z: .25, t: .010, half: .18, top: .17, bottom: -.11, port: [.10, .09] as const, wing: {depth: .09, top: .095, rake: 30 * Math.PI / 180},
   flange: {w: .022, t: .008}} as const;
+const SHIELD_FLANGE_INSET = .002;
 function cradleShield(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
  const c=SHIELD,sz=z+c.z,W=2*c.half,[pw,ph]=c.port;
  g.add('turretDetail',box(W,c.top-ph/2,c.t),x,y+(c.top+ph/2)/2,sz);
  g.add('turretDetail',box(W,-c.bottom-ph/2,c.t),x,y+(c.bottom-ph/2)/2,sz);
  for(const s of [-1,1])g.add('turretDetail',box((W-pw)/2,ph,c.t),x+s*(pw/2+(W-pw)/4),y,sz);
- // the bolted flange round the face (its bars 2 mm into the plate, the side bars between the top and bottom bars)
- const f=c.flange,fz=sz+c.t/2+f.t/2-.002;
- for(const v of [c.top-f.w/2,c.bottom+f.w/2])g.add('turretDark',box(W,f.w,f.t),x,y+v,fz);
- for(const s of [-1,1])g.add('turretDark',box(f.w,c.top-c.bottom-2*f.w,f.t),x+s*(c.half-f.w/2),y+(c.top+c.bottom)/2,fz);
+ // the bolted flange round the face (its bars 2 mm into the plate, the side bars between the top and bottom bars).
+ // Round 6 (the critic's UAPL-R5C-6: the bars' outer faces lay in the plate's edge planes over their 2 mm seat, a
+ // z-fight): the flange stands 2 mm in from the plate's edges, the side bars 1 mm clear of the top and bottom bars.
+ const f=c.flange,fz=sz+c.t/2+f.t/2-.002,e=SHIELD_FLANGE_INSET;
+ for(const v of [c.top-e-f.w/2,c.bottom+e+f.w/2])g.add('turretDark',box(W-2*e,f.w,f.t),x,y+v,fz);
+ for(const s of [-1,1])g.add('turretDark',box(f.w,c.top-c.bottom-2*f.w-2*e-.002,f.t),x+s*(c.half-e-f.w/2),y+(c.top+c.bottom)/2,fz);
  // the wings: from the shield's side edges back and out at 30 degrees, under the sight head's floor (y + .105)
  for(const s of [-1,1]){
   const a=[x+s*c.half,sz-c.t/2],b=[x+s*(c.half+c.wing.depth*Math.sin(c.wing.rake)),sz-c.t/2-c.wing.depth*Math.cos(c.wing.rake)];
@@ -214,17 +218,20 @@ function cradleShield(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:n
  const railX=w/2-.006,front=z-.08+.23;
  for(const s of [-1,1])g.add('turretDetail',box(.012,.08,sz-c.t/2-front+.004),x+s*railX,y-.03,(front+sz-c.t/2)/2);
  // bolt heads on the flange, top and bottom
- for(const v of [c.top-f.w/2,c.bottom+f.w/2])for(const s of [-.14,-.07,0,.07,.14])g.add('turretDark',cylZ(.007,.006,8),x+s,y+v,fz+f.t/2+.002);
+ for(const v of [c.top-e-f.w/2,c.bottom+e+f.w/2])for(const s of [-.14,-.07,0,.07,.14])g.add('turretDark',cylZ(.007,.006,8),x+s,y+v,fz+f.t/2+.002);
  void l;
 }
 
-/** The Zubr's 150-round box (issue drab) on the feed side, its lid, and the link chute into the receiver. */
+/** The Zubr's 150-round box (issue drab) on the feed side, its lid, and the link chute into the receiver. Round 6 (the
+ * critic's UAPL-R5C-7: the box rides the pitch stage and its inner face passed 27.5 mm through the yoke's trunnion boss
+ * at every pitch; UAPL-R5C-6: the chute's underside lay in the lid's underside plane): the box stands 12.5 mm clear of
+ * the boss (its inner face at half + .09, the boss's outer at half + .0775) and the chute 3 mm over the lid's underside. */
 function cradleFeed(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
- const half=supportHalfWidth(l,w),side=l.feedSide,fx=x+side*(half+.15);
+ const half=supportHalfWidth(l,w),side=l.feedSide,fx=x+side*(half+.19);
  g.add('turretAmmo',box(.20,.17,.30),fx,y+.03,z-.12);
  g.add('turretAmmo',box(.214,.02,.314),fx,y+.125,z-.12);
  for(const dz of [-.22,-.02])g.add('turretDark',box(.03,.04,.028),fx+side*.105,y+.04,z+dz);
- feedBridge(g,side,half,x,y,y+.15,z);
+ feedBridge(g,side,half,x,y,y+.153,z);
 }
 
 /** The Zubr II's armoured emplacement. Round 4 (2026-10-17; the critic's D1: "the casemate is not a closed armoured box.
@@ -265,20 +272,44 @@ function casemateHousing(g:Gun,_l:NationalRoofLoadout,x:number,y:number,z:number
  }
 }
 
-/** The Zubr II's 200-round box on the feed side (outside its side plate) and the chute over the casemate's roof into
- * the receiver (round 4: it lies 4 mm into the roof plate, the receiver's feed port under it). */
+/** The Zubr II's 200-round bin on the feed side and the chute over the casemate's roof into the receiver (round 4: it
+ * lies 4 mm into the roof plate, the receiver's feed port under it). Round 6: the bin stands 17.5 mm clear of the yoke's
+ * trunnion boss (the critic's UAPL-R5C-7: it pitched 17.5 mm through it), and it is a fitted bin rather than a plain
+ * cube (D8: "a plain olive cube ... toy-like"): its front-top edge chamfered, its lid on a rear hinge with a carry handle
+ * and two latches on its outer face; on the lid's outer front stands the illuminator's housing (UAPL-R5C-2: under the
+ * sensor head, .31 m off the main gun's line, the searchlight's cone took in the main gun's muzzle once the gun rose
+ * past 4 degrees; here, a metre outboard of it, the cone passes beside the barrel at every main-gun pitch). */
+const BIN = {at: .215, w: .24, h: .20, d: .34, y: .02, z: -.13, chamfer: .05, lid: .02} as const;
+function binFrame(l:NationalRoofLoadout,x:number,y:number,z:number,w:number){
+ const half=supportHalfWidth(l,w),side=l.feedSide,fx=x+side*(half+BIN.at);
+ return {side,fx,y0:y+BIN.y-BIN.h/2,y1:y+BIN.y+BIN.h/2,z0:z+BIN.z-BIN.d/2,z1:z+BIN.z+BIN.d/2};
+}
 function casemateFeed(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
- const half=supportHalfWidth(l,w),side=l.feedSide,fx=x+side*(half+.18);
- g.add('turretAmmo',box(.24,.20,.34),fx,y+.02,z-.13);
- g.add('turretAmmo',box(.254,.02,.354),fx,y+.13,z-.13);
+ const half=supportHalfWidth(l,w),B=BIN,{side,fx,y0,y1,z0,z1}=binFrame(l,x,y,z,w),c=B.chamfer;
+ const ring:[number,number][]=[[z0,y0],[z1,y0],[z1,y1-c],[z1-c,y1],[z0,y1]];
+ g.add('turretAmmo',crosswiseSolid([fx-B.w/2,fx+B.w/2].map(px=>({x:px,ring}))),0,0,0);
+ // the lid over the flat top, 7 mm over the bin's sides and rear, its front edge 4 mm onto the chamfer's crest
+ g.add('turretAmmo',box(B.w+.014,B.lid,z1-c+.004-(z0-.007)),fx,y1-.002+B.lid/2,(z1-c+.004+z0-.007)/2);
+ // the hinge along the lid's rear edge, the carry handle on its inner half, the latches on the outer face
+ g.add('turretDark',cylX(.011,B.w*.8,P_SEG),fx,y1+.006,z0-.012);
+ const hx=fx-side*.06,ht=y1-.002+B.lid;
+ for(const dz of [-.055,.055])g.add('turretDark',box(.012,.032,.012),hx,ht+.014,z0+.11+dz);
+ g.add('turretDark',box(.012,.012,.122),hx,ht+.034,z0+.11);
+ for(const dz of [-.26,-.04])g.add('turretDark',box(.036,.048,.032),fx+side*.13,y+.015,z+dz);
+ // the illuminator's housing on the lid's outer front: its foot 4 mm into the lid, its mouth 6 mm past the lid's front
+ // edge over the chamfer's crest (no shared face)
+ const I=ILLUMINATOR,ix=fx+side*I.out,hy=ht-.004+I.h/2,front=z1-c+I.lip,back=front-I.depth;
+ g.add('turretDark',box(I.w,I.h,I.depth-I.bore.depth),ix,hy,back+(I.depth-I.bore.depth)/2);
+ for(const s of [-1,1]){
+  g.add('turretDark',box(I.w,(I.h-I.bore.h)/2,I.bore.depth),ix,hy+s*(I.bore.h/2+(I.h-I.bore.h)/4),front-I.bore.depth/2);
+  g.add('turretDark',box((I.w-I.bore.w)/2,I.bore.h,I.bore.depth),ix+s*(I.bore.w/2+(I.w-I.bore.w)/4),hy,front-I.bore.depth/2);
+ }
  const top=CASEMATE.top-.004,h=.07;
  g.add('turretDark',box(.22,h,.12),x+side*(half+.06),y+top+h/2,z-.05);
 }
 
 /** The Zubr II's sensor head (a Horus-type concept: day, thermal and rangefinder windows) on its bracket opposite the
- * feed, its foot through the casemate's roof into the receiver, and under the head the illuminator: a boresighted
- * housing (round 4, 2026-10-17; the critic: "only a small emitter on the station's sight head glows"), .15 x .095, its
- * .125 x .07 bore 22 mm deep, hung 4 mm into the head's floor. */
+ * feed, its foot through the casemate's roof into the receiver. (Round 6: its illuminator moved to the feed bin.) */
 function casemateSight(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
  const half=supportHalfWidth(l,w),side=-l.feedSide,sx=x+side*(half+.16);
  g.add('turretDetail',box(.065,.19,.12),x+side*(w/2-.025),y+.115,z+.015);
@@ -288,27 +319,21 @@ function casemateSight(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:
  g.add('turretGlass',box(.075,.05,.012),sx-side*.045,y+.235,face);
  g.add('turretGlass',cylZ(.035,.012,20),sx+side*.045,y+.235,face);
  g.add('turretGlass',cylZ(.018,.012,12),sx,y+.16,face);
- const I=ILLUMINATOR,hy=y+I.y,front=z+I.front,back=front-I.depth;
- g.add('turretDark',box(I.w,I.h,I.depth-I.bore.depth),sx,hy,back+(I.depth-I.bore.depth)/2);
- for(const s of [-1,1]){
-  g.add('turretDark',box(I.w,(I.h-I.bore.h)/2,I.bore.depth),sx,hy+s*(I.bore.h/2+(I.h-I.bore.h)/4),front-I.bore.depth/2);
-  g.add('turretDark',box((I.w-I.bore.w)/2,I.bore.h,I.bore.depth),sx+s*(I.bore.w/2+(I.w-I.bore.w)/4),hy,front-I.bore.depth/2);
- }
 }
 
-/** The illuminator (round 4): boresighted with the weapon (the runtime's narrow searchlight cone: on the station's line,
- * level, its lower edge 6.3 degrees under it passes over the main gun's barrel 1.1 m below at every station yaw); the
- * housing's top 4 mm into the sensor head's floor (y + .11), its mouth flush with the head's front (z + .20). */
-const ILLUMINATOR = {w: .15, h: .095, depth: .12, y: .11 + .004 - .095 / 2, front: .20, bore: {w: .125, h: .07, depth: .022},
+/** The illuminator: a searchlight boresighted with the weapon (the runtime's narrow searchlight cone, on the station's
+ * line), .15 x .095, its .125 x .07 bore 22 mm deep, centred `out` towards the bin's outer side. */
+const ILLUMINATOR = {w: .15, h: .095, depth: .12, out: .045, lip: .010, bore: {w: .125, h: .07, depth: .022},
   lens: [.124, .069, .017] as const, recess: .010} as const;
+const P_SEG = 12;
 
 /** The illuminator's lens, authored in the turret frame at the rest pose as factory stock captured into the station's
  * pitch stage (the factory moves it under auxiliaryWeaponPitch and registers its night emitter there). Its face 10 mm
  * inside the bore's mouth, its body lapping into the bore's floor. */
 function casemateIlluminator(P:TankBuilderPort,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
- const half=supportHalfWidth(l,w),side=-l.feedSide,sx=x+side*(half+.16),I=ILLUMINATOR;
+ const I=ILLUMINATOR,{side,fx,y1,z1}=binFrame(l,x,y,z,w),ht=y1-.002+BIN.lid,front=z1-BIN.chamfer+I.lip;
  const done=captureAuxiliaryStock(P,l.name,'pitch');
- P.addEquipment('turretGlass',markVehicleNightLens(box(...I.lens),'headlight',{searchlight:true}),sx,y+I.y,z+I.front-I.recess-I.lens[2]/2);
+ P.addEquipment('turretGlass',markVehicleNightLens(box(...I.lens),'headlight',{searchlight:true}),fx+side*I.out,ht-.004+I.h/2,front-I.recess-I.lens[2]/2);
  done();
 }
 
