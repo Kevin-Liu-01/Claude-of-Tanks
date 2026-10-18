@@ -48,6 +48,7 @@ import {
 } from './collapsePieces.ts';
 import { emitDebrisLanding } from './clock.ts';
 import { profEnd, profStart } from './fxProf.ts';
+import { layUprightPlates } from './uprightPlates.ts';
 
 /** A live collapse's stage event (StructureStageEvent's fields this module reads). */
 export interface CollapseBodiesEvent {
@@ -1691,6 +1692,8 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       for (const part of p.parts) {
         for (const mesh of part.meshes) {
           const geo = mesh.geometry.clone().applyMatrix4(mesh.matrix);
+          // (round 4; coastal #0's farmhouse: a gable plate baked on its edge beside the heap) no piece of it upright
+          layUprightPlates(geo);
           const list = byMaterial.get(mesh.material as THREE.Material) ?? [];
           list.push(geo);
           byMaterial.set(mesh.material as THREE.Material, list);

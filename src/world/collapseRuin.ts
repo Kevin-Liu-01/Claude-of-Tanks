@@ -731,19 +731,49 @@ function roofSlabs(anatomy: StructureDamageAnatomy, rng: () => number, mesh: Dam
   for (let k = 0; k < 6 && roomFor(mesh, 1); k++) {
     const x = fcx + (rng() - 0.5) * fhw * 1.4, z = fcz + (rng() - 0.5) * fhd * 1.4;
     const base = bodyMoundHeightAt(anatomy, x, z);
-    const len = 2 * Math.min(fhw, fhd) * (0.25 + rng() * 0.2);
+    // (destruction-slabs 227 round 4; caldera #28's warehouse: six plates of its roof 5-7 m across stood bolt upright in a
+    // row over its heap, billboards in the ruin — the owner's "weird ugly boxes/surfaces") a section of the covering a
+    // roof's bay across at most, leant on the heap from one buried edge: 25-40° off the vertical, never on its end
+    const len = Math.min(3.2, 2 * Math.min(fhw, fhd) * (0.25 + rng() * 0.2));
     const rise = Math.min(cap, len * (0.5 + rng() * 0.4));
     const shade = 0.7 + rng() * 0.25;
     // (destruction-slabs 227) only over what the building drew (its walls and their enclosure)
     const yaw = rng() * Math.PI;
+    const lean = (0.44 + rng() * 0.26) * (rng() < 0.5 ? 1 : -1);
     if (enclosedAt(anatomy, x, z, 0.5) === false) continue;
     // (round 2: a warehouse's leant slab stood a third past its walls) both its ends over the drawn plan too
     const ex = Math.cos(yaw) * len / 2, ez = -Math.sin(yaw) * len / 2;
     if (enclosedAt(anatomy, x + ex, z + ez, 0) === false || enclosedAt(anatomy, x - ex, z - ez, 0) === false) continue;
-    // a slab stood on its end against the heap: a thin box, tall over the mound
-    box(mesh, x, base + rise / 2, z, len / 2, rise / 2, Math.max(0.08, roof.thicknessM), yaw, roof.covering.tint, shade);
+    // its foot a hand into the mound, its top over the heap at the lean (and over the drawn plan: the top's reach too)
+    const ox = Math.sin(yaw) * Math.sin(lean) * rise / 2, oz = Math.cos(yaw) * Math.sin(lean) * rise / 2;
+    if (enclosedAt(anatomy, x + 2 * ox, z + 2 * oz, 0) === false) continue;
+    leantBox(mesh, x + ox, base - 0.1 + Math.cos(lean) * rise / 2, z + oz, len / 2, rise / 2, Math.max(0.08, roof.thicknessM), yaw, lean,
+      roof.covering.tint, shade);
   }
   mesh.end();
+}
+
+/** An oriented box leant `lean` radians about its own long (local x) axis, then turned `yaw` about y: a slab leaning on
+ *  the heap (its local z its thickness). Written vertex by vertex, as `box`. */
+function leantBox(mesh: DamageMeshWriter, cx: number, cy: number, cz: number, hx: number, hy: number, hz: number, yaw: number,
+  lean: number, tint: Rgb, shade: number): void {
+  const c = Math.cos(yaw), s = Math.sin(yaw), cl = Math.cos(lean), sl = Math.sin(lean);
+  const r = tint[0] * shade, g = tint[1] * shade, b = tint[2] * shade;
+  for (const [n, quad] of BOX_FACES) {
+    // the normal: leant about x (y, z), then turned about y
+    const ny = n[1] * cl - n[2] * sl, nzl = n[1] * sl + n[2] * cl;
+    const nx = n[0] * c + nzl * s, nz = -n[0] * s + nzl * c;
+    const su = n[0] !== 0 ? hz * 2 : hx * 2, sv = n[1] !== 0 ? hz * 2 : hy * 2;
+    for (let i = 0; i < 4; i++) {
+      const [qx, qy, qz] = quad[i]!;
+      const lx = qx * hx, ly = qy * hy, lz = qz * hz;
+      const yl = ly * cl - lz * sl, zl = ly * sl + lz * cl;
+      _quad[i] = mesh.vertex(cx + lx * c + zl * s, cy + yl, cz - lx * s + zl * c, nx, ny, nz,
+        i === 1 || i === 2 ? su : 0, i >= 2 ? sv : 0, r, g, b);
+    }
+    mesh.triangle(_quad[0]!, _quad[2]!, _quad[1]!);
+    mesh.triangle(_quad[0]!, _quad[3]!, _quad[2]!);
+  }
 }
 
 /**

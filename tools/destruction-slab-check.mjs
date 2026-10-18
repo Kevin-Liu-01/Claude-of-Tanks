@@ -82,6 +82,7 @@ const HANG_SETTLE_S = 2;
 export const SLAB = {
   thickMaxM: 0.6, thickShare: 0.12, sideMinM: 2.0, areaMinM2: 8,
   elevatedM: 1.0, upperLiftM: 2.0, restedS: 1.5, stillS: 0.75, hoverM: 0.5, tallerM: 1.0, debrisLiftM: 2.5, roomSupportM: 3.6, outsideShare: 0.1, outsideAreaM2: 3, floatingShare: 0.4, supportBandM: 0.8, darkLuma: 0.16, footprintGrowM: 0.3,
+  onEndM: 2.2,
 };
 
 /** Eigen-decomposition of a symmetric 3×3 (Jacobi): the eigenvectors as columns, by eigenvalue descending. */
@@ -554,6 +555,15 @@ export function judgeSlabs(meshes, { footprint, groundAt, supportAt = () => fals
         reasons.push(`outside: ${outside.toFixed(1)} m² (${(outsideShare * 100).toFixed(0)} %) past the intact walls${planNote}, ${lift.toFixed(1)} m up`);
       }
       if (restedRoof) attributes.push('a fallen roof slab at rest');
+      // (destruction-slabs 227 round 4; caldera #28's warehouse: six plates of its fallen roof stood bolt upright in a row
+      // over its heap, inside its walls, where no rule looked) debris at rest standing on its end — a plate upright, its top
+      // 2.2 m or more over the ground — inside the walls or past them: a billboard in the ruin, never a heap's piece
+      const debrisAtRest = /^fx-(structure-rubble|collapse-baked|fracture-heap)-/.test(p.d.name)
+        || (settled && /^fx-(collapse-roof|fracture-body|rubble-body|landmark-piece)/.test(p.d.name));
+      const topUp = s.max[1] - groundC;
+      if (debrisAtRest && vertical && !p.grounded && topUp >= SLAB.onEndM && !reasons.length) {
+        reasons.push(`on end: a debris plate standing upright, its top ${topUp.toFixed(1)} m up (${(s.ext[0] * s.ext[1]).toFixed(1)} m², ${(outsideShare * 100).toFixed(0)} % past the walls)`);
+      }
       // (the owner's 2026-10-17 frame) a fallen roof's slab lying flat across the wall heads, 2 m or more up, reads as a
       // flat roof as wide as the old roof's slope, its eave overhang standing out past the walls
       // (inside the walls, on the top floor, it is a fallen roof where it belongs: listed, not flagged)

@@ -30,6 +30,7 @@ import type { StructureDamageSeam, StructureSpan } from '../world/structureDamag
 import type { DebrisPhysics } from './debrisPhysics.ts';
 import { emitDebrisLanding } from './clock.ts';
 import { profEnd, profStart } from './fxProf.ts';
+import { layUprightPlates } from './uprightPlates.ts';
 import {
   CELL_CRACKED, CELL_FALLEN, CELL_GONE, CELL_OPENING, CELL_SPALLED, CELL_VOID, CRACK_AT, SPALL_AT, cellRect, createWallFracture,
   createWallStrikeOutcome, dropFace, gableTopAt, strikeWall, struckFace, type FaceGrid, type WallFracture, type WallStrikeKind,
@@ -1692,6 +1693,9 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     if (!live.bakedPending.length) return;
     const groups = new Map<string, { material: THREE.Material; stride: number; meshes: THREE.Mesh[]; floats: number }>();
     for (const mesh of live.bakedPending) {
+      // (round 4; airfield #0's tower, caldera #28's warehouse: a clump's dark interior plate or a sheet face baked upright
+      // beside the ruin, its body lying well on its box) no piece of what lies still stands on its edge
+      layUprightPlates(mesh.geometry, mesh.matrix);
       const pos = mesh.geometry.getAttribute('position') as THREE.InterleavedBufferAttribute;
       const data = pos?.data;
       if (!data) continue;

@@ -27,6 +27,7 @@ import { damageRng, damageSeed } from '../world/destructionKit.ts';
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
 import type { DebrisPhysics } from './debrisPhysics.ts';
 import { emitDebrisLanding } from './clock.ts';
+import { layUprightPlates } from './uprightPlates.ts';
 
 /** A body a builder's piece becomes: its stage, how it groups (one body a group), its density and how it leaves. */
 interface PieceRule {
@@ -318,6 +319,8 @@ export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
         _m.compose(_v.set(wcx, wcy, wcz), q0, _s);
       } else _m.compose(_v.set(wcx, restY, wcz), _q, _s);
       for (const m of meshes) { m.matrix.copy(_m); m.matrixWorldNeedsUpdate = true; }
+      // (round 4) laid at rest: no piece of its drawing stands upright on its edge (uprightPlates.ts)
+      if (!(kinematic && !settled)) for (const m of meshes) layUprightPlates(m.geometry, m.matrix);
       baked++;
       return true;
     }
@@ -510,6 +513,7 @@ export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
         _m.compose(_v.set(w.x, w.y0 + (w.y1 - w.y0) * u * u, w.z), _tq, _s);
         for (const m of w.meshes) { m.matrix.copy(_m); m.matrixWorldNeedsUpdate = true; }
         if (u >= 1) {
+          for (const m of w.meshes) layUprightPlates(m.geometry, m.matrix);
           o.onLanding?.(w.x, w.y1, w.z, Math.min(9, 9.81 * w.T), w.massKg, w.structureIdx);
           tweens[i] = tweens[tweens.length - 1]!; tweens.length--;
         }
@@ -521,7 +525,10 @@ export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
         b.age += dtS;
         b.still = o.pool.asleep(b.handle) ? b.still + dtS : 0;
         // still: it stays drawn where it lies, its body gone from the pool
-        if (b.still >= BAKE_STILL_S || b.age >= BAKE_AGE_S) { o.pool.release(b.handle); unlist(b); baked++; }
+        if (b.still >= BAKE_STILL_S || b.age >= BAKE_AGE_S) {
+          o.pool.release(b.handle); unlist(b); baked++;
+          for (const m of b.meshes) layUprightPlates(m.geometry, m.matrix);
+        }
       }
     },
     liveBodies: () => live.length,
