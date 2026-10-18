@@ -334,7 +334,7 @@ for (const id of MAP_IDS) {
   if (p.shearM > 0) assert.ok(p.shearM <= p.thicknessM * 2, `${id}: the lean is bounded by the slab`);
 }
 assert.deepEqual(table, {
-  verdant: { regime: 'fair-weather-cumulus', coverage: 0.36, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.45, cirrus: 0.12, farBand: 0.25, contrails: 2, rain: 0, virga: 0, fogBank: 0 },
+  verdant: { regime: 'fair-weather-cumulus', coverage: 0.51, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.45, cirrus: 0.12, farBand: 0.25, contrails: 2, rain: 0, virga: 0, fogBank: 0 },
   desert: { regime: 'cumulus-humilis', coverage: 0.14, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.5, farBand: 0.15, contrails: 2, rain: 0.3, virga: 0.85, fogBank: 0 },
   winter: { regime: 'stratocumulus-deck', coverage: 0.92, baseM: 700, thicknessM: 420, shadow: false, streets: 0.2, cirrus: 0, farBand: 0.6, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
   // (2026-10-15: Steinburg's altocumulus, a broken 0.60 cell layer, moved to Verdant's cumulus — the coordinator's ruling)
@@ -903,4 +903,13 @@ assert.match(layerSource, /t\.uDeckLobe\.value = lightTune\('CLOUD_DECK_SUN_LOBE
   a.dispose();
   b.dispose();
 }
-console.log('volumetricClouds.selftest: the cut ray opaque (no disc through a closed deck), the forward lobe of a deck PASS');
+// (227 SKY-01) a convective base breaks under the detail: the erosion exponent 4 (blind WIN over round 1's 6), the medium's
+// default and the frame's lever both reading it, and the shader taking the uniform
+{
+  const vc = here('./volumetricClouds.ts'), sh = here('./cloudShaders.ts');
+  assert.match(vc, /const CLOUD2_BASE_ERODE = 4;/, 'the base erosion exponent');
+  assert.match(vc, /uBaseErode: \{ value: CLOUD2_BASE_ERODE \}/, 'the medium starts at it');
+  assert.match(vc, /m\.uBaseErode\.value = Math\.max\(1, lightTune\('CLOUD_BASE_ERODE', CLOUD2_BASE_ERODE\)\);/, 'each frame, under its QA lever');
+  assert.match(sh, /vec4 modifier = mix\( vec4\( pow\( dn, uBaseErode \) \), topErode,/, 'the base modifier reads it');
+}
+console.log('volumetricClouds.selftest: the cut ray opaque (no disc through a closed deck), the forward lobe of a deck, the base erosion PASS');

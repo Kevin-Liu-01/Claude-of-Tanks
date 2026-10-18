@@ -981,9 +981,11 @@ export interface TankBuilderPort extends GeometryAddPort, GunBuilderPort, Cupola
   /**
    * Steps that run after postAssemble, in the order they were added (round 5, 2026-10-08): equipment laid against the
    * finished armour (a camouflage suit, ghillieSuit.ts) adds itself here, so no profile's own postAssemble chain is
-   * wrapped or replaced, and it always runs after them.
+   * wrapped or replaced, and it always runs after them. 2026-10-16: they run after the core build, in slices of their
+   * own (a step may return its work as checkpoints), each against the vehicle as the assembly left it
+   * (runDeferredAssembly).
    */
-  readonly afterAssemble: Array<(rig: TankRig) => void>;
+  readonly afterAssemble: Array<(rig: TankRig) => void | Generator<void, void, void>>;
   addMudguard(
     label: string,
     bucket: string,
@@ -1118,6 +1120,10 @@ interface TankFactoryOptions {
    * positions moved up to 1,615 px in the P21 captures); 'off' keeps the separate
    * draws (A/B receipts and probes). */
   staticDrawMerge?: 'off' | 'identity' | 'translations';
+  /** Build the deferred assembly (TankBuilderPort.afterAssemble: a suit or field net) inside the core, where it ran
+   * before 2026-10-16, instead of in its own slices after the core checkpoint. Only the parity receipts pass it
+   * (tools/deferred-assembly-parity.mjs, tankFactoryDeferredAssembly.selftest.mjs): both builds must be identical. */
+  assemblyInCore?: boolean;
   /** FSP-06 material-role census (tools/material-roles-audit.mjs): observes every authored part with the
    * bucket it merges into, before the merge erases part identity. Diagnostic only; builds are byte-identical
    * when absent. */
@@ -1889,6 +1895,83 @@ function authoredShadowHull(
  * gun, the track bands and the instanced running gear (one draw each), never the greeble, decals, fills or the
  * 30k-triangle detailed track pads. Ordered by triangle count so the cap keeps the largest silhouettes.
  */
+function isSuitShadowCaster(object: THREE.Object3D): boolean {
+  return object.userData.fieldSuit === true && /_ghillie_/.test(object.name || '');
+}
+
+/** The suit meshes collectNearShadowDetail appends after the armour it picks, in its traversal order. */
+function collectSuitShadowDetail(groups: readonly THREE.Object3D[]): THREE.Object3D[] {
+  const camouflage = new Set<THREE.Object3D>();
+  for (const group of groups) {
+    group.traverse((object) => {
+      if ((isVehicleMesh(object) || isVehicleInstancedMesh(object)) && isSuitShadowCaster(object)) camouflage.add(object);
+    });
+  }
+  return [...camouflage];
+}
+
+/**
+ * 2026-10-16 (PERF: the garage's default tank, m1a3, wears a suit; its build was one long task at boot and in the
+ * countdown stream). Equipment laid against the finished armour (TankBuilderPort.afterAssemble: a camouflage suit or
+ * field net) is built after the core, in its own slices, and must come out exactly as it did inside the core. Each step
+ * sees the vehicle as the assembly left it: every child the core added since is lifted out for the step (and any it
+ * removed is back in its place), and afterwards the step's own children stand where they stood when it ran there,
+ * after the assembly's and before the core's later ones. The tree is private to the build throughout (no checkpoint
+ * publishes it), and a cancelled step still puts every child back before the visual is disposed.
+ */
+function captureAssemblyChildren(root: THREE.Object3D): Map<THREE.Object3D, THREE.Object3D[]> {
+  const children = new Map<THREE.Object3D, THREE.Object3D[]>();
+  root.traverse((object) => { children.set(object, object.children.slice()); });
+  return children;
+}
+
+function* runDeferredAssembly(
+  steps: ReadonlyArray<(rig: TankRig) => void | Generator<void, void, void>>,
+  assembled: Map<THREE.Object3D, THREE.Object3D[]>,
+  rig: TankRig,
+): Generator<void, THREE.Object3D[], void> {
+  const made: THREE.Object3D[] = [];
+  for (const step of steps) {
+    const stepMade: THREE.Object3D[] = [];
+    // the tree as the assembly left it: each parent's children exactly as they were, their parents restored
+    const now = new Map<THREE.Object3D, THREE.Object3D[]>();
+    const parents = new Map<THREE.Object3D, THREE.Object3D | null>();
+    for (const [parent, before] of assembled) {
+      const current = parent.children;
+      if (current.length === before.length && current.every((child, i) => child === before[i])) continue;
+      now.set(parent, current.slice());
+      for (const child of before) if (child.parent !== parent) { parents.set(child, child.parent); child.parent = parent; }
+      current.splice(0, current.length, ...before);
+    }
+    try {
+      const work = step(rig) as Generator<void, void, void> | undefined;
+      if (work) yield* work;
+    } finally {
+      for (const [parent, before] of assembled) {
+        const current = now.get(parent);
+        if (!current) continue;
+        // the step's own children, after the assembly's (still standing) and before the core's later ones
+        const held = new Set(before);
+        const added = parent.children.filter((child) => !held.has(child));
+        stepMade.push(...added);
+        parent.children.splice(0, parent.children.length,
+          ...current.filter((child) => held.has(child)), ...added, ...current.filter((child) => !held.has(child)));
+      }
+      for (const [parent, before] of assembled) {
+        if (now.has(parent)) continue;
+        const held = new Set(before);
+        stepMade.push(...parent.children.filter((child) => !held.has(child)));
+      }
+      for (const [child, parent] of parents) child.parent = parent;
+    }
+    // the next step starts from the vehicle with this one's work in place
+    for (const object of stepMade) if (object.parent) assembled.get(object.parent)?.push(object);
+    made.push(...stepMade);
+    yield;
+  }
+  return made;
+}
+
 function collectNearShadowDetail(groups: readonly THREE.Object3D[]): THREE.Object3D[] {
   const picked: { mesh: THREE.Object3D; triangles: number }[] = [];
   // 2026-10-11 (the netting lane's fix round, the coordinator: "solid clumps of cut branches ... casting shadow"): a
@@ -1899,7 +1982,7 @@ function collectNearShadowDetail(groups: readonly THREE.Object3D[]): THREE.Objec
   for (const group of groups) {
     group.traverse((object) => {
       if (!(isVehicleMesh(object) || isVehicleInstancedMesh(object))) return;
-      if (object.userData.fieldSuit === true && /_ghillie_/.test(object.name || '')) {
+      if (isSuitShadowCaster(object)) {
         camouflage.add(object);
         return;
       }
@@ -1914,6 +1997,11 @@ function collectNearShadowDetail(groups: readonly THREE.Object3D[]): THREE.Objec
   return [...picked.slice(0, NEAR_SHADOW_DETAIL_MAX_MESHES).map((entry) => entry.mesh), ...camouflage];
 }
 
+/** The procedural shadow proxies cast for every mesh under the hull, turret and recoil groups. */
+function castThroughProxies(object: THREE.Object3D): void {
+  if (isVehicleMesh(object) || isVehicleInstancedMesh(object)) object.castShadow = false;
+}
+
 function installProceduralShadowProxies(
   spec: FleetTankSpec,
   hullG: THREE.Group,
@@ -1924,11 +2012,7 @@ function installProceduralShadowProxies(
   additionalSources?: TankBuilderPort['additionalShadowSources'],
 ): THREE.Mesh[] {
   const sources: THREE.Mesh[] = [];
-  for (const group of [hullG, turretG, recoilG]) {
-    group.traverse((object) => {
-      if (isVehicleMesh(object) || isVehicleInstancedMesh(object)) object.castShadow = false;
-    });
-  }
+  for (const group of [hullG, turretG, recoilG]) group.traverse(castThroughProxies);
 
   const find = (owner: THREE.Object3D, names: readonly string[]) =>
     names.map((name) => owner.getObjectByName(name)).filter((item): item is THREE.Object3D => !!item);
@@ -8433,7 +8517,16 @@ function* createTankOwnedSteps(
   if (typeof P.postAssemble === 'function') {
     P.postAssemble({ root, hullG, turretG, gunG, recoilG });
   }
-  for (const step of P.afterAssemble) step({ root, hullG, turretG, gunG, recoilG });
+  // Equipment laid against the finished armour (a camouflage suit or field net) is built after the core, in slices of its
+  // own, against the vehicle exactly as it stands here (runDeferredAssembly).
+  const deferredAssembly = P.afterAssemble.splice(0);
+  if (opts.assemblyInCore === true) {
+    for (const step of deferredAssembly.splice(0)) {
+      const work = step({ root, hullG, turretG, gunG, recoilG }) as Generator<void, void, void> | undefined;
+      if (work) for (let next = work.next(); !next.done; next = work.next()) { /* the whole step, here */ }
+    }
+  }
+  const assembledChildren = deferredAssembly.length ? captureAssemblyChildren(root) : null;
 
   // ---- physically seated vehicle markings ----
   // Resolve these after all profile-owned regrouping so the support ray sees
@@ -10304,6 +10397,37 @@ function* createTankOwnedSteps(
     // No earlier yield: all core resources now belong to visual.dispose().
     // The root remains private through decoration and the unchanged finalizers.
     yield;
+    // The deferred assembly (a suit or field net), before the decorations that lay loads on it and drape it over them.
+    // Its resources join the core's disposables as they are made; the near-shadow casters gain its meshes exactly where
+    // the core's own list would have placed them (after the armour it picked).
+    if (assembledChildren) {
+      const made = yield* runDeferredAssembly(deferredAssembly, assembledChildren, { root, hullG, turretG, gunG, recoilG });
+      // the geometry receipt's caster work was measured over the hull and turret with the assembly's meshes casting
+      const casterWork = root.userData.shadowReplacementReceipt as ReturnType<typeof measureNearShadowCasterWork> | undefined;
+      if (casterWork) {
+        const laid = made.filter((object) => {
+          let owner: THREE.Object3D | null = object.parent;
+          while (owner && owner !== hullG && owner !== turretG) owner = owner.parent;
+          return !!owner;
+        });
+        const added = measureNearShadowCasterWork(laid);
+        root.userData.shadowReplacementReceipt = Object.freeze({ ...casterWork,
+          draws: casterWork.draws + added.draws, triangles: casterWork.triangles + added.triangles });
+      }
+      // the core's shadow proxies stand in for what the assembly put under the hull, turret and recoil groups
+      for (const object of made) {
+        let owner: THREE.Object3D | null = object.parent;
+        while (owner && owner !== hullG && owner !== turretG && owner !== recoilG) owner = owner.parent;
+        if (owner) object.traverse(castThroughProxies);
+      }
+      const shadowDetail = vehicleShadowDetailOf(root);
+      if (shadowDetail) {
+        markVehicleShadowDetail(root, {
+          detail: [...shadowDetail.detail, ...collectSuitShadowDetail([hullG, turretG, gunG, recoilG])],
+          proxies: shadowDetail.proxies,
+        });
+      }
+    }
     // FSP-01 (2026-09-25): the finisher stages after the core keep their own
     // elapsed-interval receipts (same contract as coreBuildTiming: bounded
     // non-await intervals, never CPU time) so a Garage switch profile can
