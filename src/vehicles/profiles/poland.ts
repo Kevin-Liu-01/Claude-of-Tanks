@@ -65,6 +65,8 @@ interface PolishBuilderPort {
   };
   muzzleZ?: number;
   topY?: number;
+  /** High-detail build (the factory port's quality flag). */
+  readonly q?: boolean;
   add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addExternalArmor(owner: VehicleAssemblyOwner, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addCupola(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
