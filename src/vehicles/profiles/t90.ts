@@ -2858,8 +2858,8 @@ function addT90MProryvRunningGearAndSkirts(P: T90BuilderPort): void {
   // Sprocket/idler BODY meshes keep scheme steel (the ref's end-wheel
   // zones read pale, win-luma 69-73).
   {
-    // (2026-10-17, the wheel-band lane: floorless clones in the set's cascade registration — the raw clones drew these
-    // road wheels untagged, and the ground occlusion banded them under the belly line)
+    // (2026-10-17, the wheel-band lane: floorless clones in the set's cascade registration — a raw clone draws
+    // untagged, and the ground occlusion bands untagged running gear under the belly line)
     const darkTire = cloneFloorlessVehicleMaterial(P.mats.rubber);
     darkTire.color.setHex(0x22201b);
     darkTire.emissive.setHex(0x050504);
