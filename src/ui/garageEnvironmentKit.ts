@@ -2305,9 +2305,11 @@ export function buildGarageEnvironment(
   const materialForBucket = (key: BucketKey): THREE.Material => {
     // Source albedo already contains its own value range. Keep the material
     // multiplier close to white so shaded facades retain readable PBR detail.
-    // Sirocco's courts are mud plaster, not whitewash (garage r9, the audit's "white box walls"): its tint keeps most of
-    // the wadi's earth
-    const building = new THREE.Color(recipe.buildingTint).lerp(new THREE.Color(0xffffff), variant.architecture === 'shade_depot' ? 0.22 : 0.62);
+    // Sirocco's courts are mud plaster, not whitewash (garage r9, the audit's "white box walls"; the r1 frames still read
+    // the lightened tint as white under the desert sun): the wadi's own mud, no white in it
+    const building = variant.architecture === 'shade_depot'
+      ? new THREE.Color(0xa88a64)
+      : new THREE.Color(recipe.buildingTint).lerp(new THREE.Color(0xffffff), 0.62);
     switch (key) {
       case 'plaster': return texturedMaterial('plaster', { color: building, roughness: 1 });
       case 'plaster2': return texturedMaterial('plaster', { color: building.clone().offsetHSL(0, -0.04, -0.08), roughness: 1 });
