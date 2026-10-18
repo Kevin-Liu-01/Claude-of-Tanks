@@ -334,7 +334,7 @@ function wallFragment(rng: () => number, slot: FractureSlot, cap: number, mesh: 
  * drawn is no remnant).
  */
 function rbox(mesh: DamageMeshWriter, cx: number, cy: number, cz: number, hx: number, hy: number, hz: number, yaw: number,
-  tint: Rgb, shade: number): boolean {
+  tint: Rgb, shade: number, footed = true): boolean {
   if (ruinOf) {
     const c = Math.cos(yaw), s = Math.sin(yaw);
     const ax = hx >= hz ? hx * 0.8 : 0, az = hx >= hz ? 0 : hz * 0.8;
@@ -342,8 +342,8 @@ function rbox(mesh: DamageMeshWriter, cx: number, cy: number, cz: number, hx: nu
     lim = Math.min(lim, wallTopAt(ruinOf, cx + ax * c + az * s, cz - ax * s + az * c, 0), wallTopAt(ruinOf, cx - ax * c - az * s, cz + ax * s - az * c, 0));
     const bottom = cy - hy;
     // (and only where the wall is drawn down to its foot: a post mill's body on its trestle stood its ruin's walls from
-    // the ground up to where the body hung)
-    if (wallBaseAt(ruinOf, cx, cz) > 1.2) return false;
+    // the ground up to where the body hung — a frame's posts excepted: a boatshed's reach the ground under its cladding)
+    if (footed && wallBaseAt(ruinOf, cx, cz) > 1.2) return false;
     if (Number.isFinite(lim) && cy + hy > lim + 0.05) {
       const top = Math.max(bottom, lim);
       if (top - bottom < 0.3) return false;
@@ -637,8 +637,8 @@ function framePosts(rng: () => number, slot: FractureSlot, cap: number, mesh: Da
       const h = Math.min(h0, loose && ruinOf ? 0.8 * wallTopAt(ruinOf, x, z, 0) : topOfWallIn(px, pz, pnx, pnz, d));
       if (h < 0.5) continue;
       const h1 = h * 0.55;
-      if (rbox(mesh, x, (h1 - FOOT_M) / 2, z, t / 2, (h1 + FOOT_M) / 2, t / 2, 0, slot.tint, shade)) {
-        rbox(mesh, x + (alongX ? lean : 0), (h1 + h) / 2, z + (alongX ? 0 : lean), t / 2, (h - h1) / 2, t / 2, 0, slot.tint, shade);
+      if (rbox(mesh, x, (h1 - FOOT_M) / 2, z, t / 2, (h1 + FOOT_M) / 2, t / 2, 0, slot.tint, shade, false)) {
+        rbox(mesh, x + (alongX ? lean : 0), (h1 + h) / 2, z + (alongX ? 0 : lean), t / 2, (h - h1) / 2, t / 2, 0, slot.tint, shade, false);
       }
     }
     // panels of the wall leant against its posts, inside the walls (destruction-slabs 227: they stood 0.25 m past them)
@@ -659,7 +659,7 @@ function framePosts(rng: () => number, slot: FractureSlot, cap: number, mesh: Da
           ? 0.8 * Math.min(wallTopAt(ruinOf, x, z, 0), wallTopAt(ruinOf, x - ex, z - ez, 0), wallTopAt(ruinOf, x + ex, z + ez, 0)) : 0)
         : topOfWallIn(px, pz, pnx, pnz, d));
       if (!(ph > 0.3)) continue;
-      rbox(mesh, x, ph / 2 - 0.1, z, alongX ? pl / 2 : 0.05, ph / 2, alongX ? 0.05 : pl / 2, 0, slot.tint, shade);
+      rbox(mesh, x, ph / 2 - 0.1, z, alongX ? pl / 2 : 0.05, ph / 2, alongX ? 0.05 : pl / 2, 0, slot.tint, shade, false);
     }
   }
   mesh.end();
