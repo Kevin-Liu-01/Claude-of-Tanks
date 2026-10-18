@@ -195,7 +195,9 @@ export async function renderFlagLayer(code, policy = HERO_FLAG, overrides = {}) 
           if (ch === 0) r += lit; else if (ch === 1) g += lit; else b += lit;
         }
         cover += 1;
-        hoistFade += smooth(0, p.hoistFeather ?? 0.05, u) * smooth(0, 0.006, v);
+        // The hoist always fades; the fly fades only where a layout keeps it inside the card (mirrorRight).
+        hoistFade += smooth(0, p.hoistFeather ?? 0.05, u) * smooth(0, 0.006, v)
+          * (p.flyFeather ? 1 - smooth(1 - p.flyFeather, 1, u) : 1);
       }
       if (!cover) continue;
       r /= cover; g /= cover; b /= cover;
@@ -234,7 +236,7 @@ export async function renderFlagLayer(code, policy = HERO_FLAG, overrides = {}) 
 export const FLAG_LAYOUTS = Object.freeze({
   mirror: Object.freeze({}),
   // The same obverse cloth for a right-facing card: hoist off the left edge, as in the owner's reference.
-  mirrorRight: Object.freeze({ hoistX: -0.06 }),
+  mirrorRight: Object.freeze({ hoistX: -0.06, flyFeather: 0.3 }),
   reverse: Object.freeze({ layout: 'reverse', hoistX: -0.04, flagWidth: 0.80, topY: -0.06 }),
   stream: Object.freeze({
     layout: 'stream', hoistX: 0.36, topY: 0.035, flagWidth: 0.80, hoistFeather: 0.12, maxAlpha: 0.92,
@@ -421,12 +423,13 @@ function drawName(ctx, name, { x, y, size, minSize, maxWidth, font, hollow, scal
  * The tier badge, written "Tier X" (Premiere SPEC badge row: a lone "X" reads as a close button), in the data
  * face: the word in muted ink, the numeral in tungsten. The runtime card draws it as HTML in this slot.
  */
-function drawTierChip(ctx, tier, { x, y, size, font, scale }) {
+function drawTierChip(ctx, tier, { x, right, y, size, font, scale }) {
   ctx.font = `500 ${size}px "${font}"`;
   const word = 'Tier ';
   const ww = ctx.measureText(word).width;
   const tw = ww + ctx.measureText(tier).width;
   const bh = Math.round(size * 1.55), bw = Math.round(tw + size * 0.9);
+  if (x == null) x = right - bw;
   ctx.fillStyle = 'rgba(11,14,17,0.72)';
   ctx.fillRect(x, y, bw, bh);
   ctx.strokeStyle = 'rgba(246,243,236,0.20)';
@@ -474,7 +477,9 @@ export function composeCard(kind, { tank, core, flag, name, tier, font = 'Chakra
   });
   if (layout.tier && tier) {
     const ts = Math.round((kind === 'roster' ? 8.5 : kind === 'galleryBrowse' ? 10 : kind === 'deploy' ? 12 : 14) * scale);
-    drawTierChip(ctx, tier, { x: Math.round(pad * 0.7), y: Math.round(pad * 0.7), size: ts, font: dataFont, scale });
+    // The badge takes the top corner on the gun side, clear of the flag (top-left for a left-facing card).
+    const chipX = facing === 'right' ? null : Math.round(pad * 0.7);
+    drawTierChip(ctx, tier, { x: chipX, right: w - Math.round(pad * 0.7), y: Math.round(pad * 0.7), size: ts, font: dataFont, scale });
   }
   ctx.lineWidth = selected ? 2 * scale : scale;
   ctx.strokeStyle = selected ? TUNGSTEN : 'rgba(246,243,236,0.13)';
