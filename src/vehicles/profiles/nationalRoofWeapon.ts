@@ -228,16 +228,18 @@ function feed(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):v
 }
 
 /** The wedge station's box (release 227 land stage, geometry critic CN4-2: the box rides the pitch stage and its inner
- * face passed 22.5 mm through the yoke's trunnion boss at every pitch, as the Zubrs' did before UAPL-R5C-7): the box
- * stands 12.5 mm clear of the bearing housing (its inner face at half + .09, the housing's outer end at half + .0775),
- * its lid, latches and feed bridge with it; the bridge's column stands 2 mm inside the bridge's front and back faces. */
+ * face passed 22.5 mm through the yoke's trunnion boss at every pitch, as the Zubrs' did before UAPL-R5C-7): its inner
+ * face stands 12.5 mm clear of the bearing housing (half + .09; the housing's outer end at half + .0775) and its outer
+ * face, lid edge and latches stay where the plain feed's are (half + .305), so the station's swept envelope does not
+ * grow (the Yun's arc and every 360-degree sweep keep their clearances); 21.5 cm wide, its lid with it; the bridge's
+ * column stands 2 mm inside the bridge's front and back faces. */
 function wedgeFeed(g:Gun,l:NationalRoofLoadout,x:number,y:number,z:number,w:number):void {
- const half=supportHalfWidth(l,w);
- const side=l.feedSide,fx=x+side*(half+.215),cannon=l.caliber===30;
+ const half=supportHalfWidth(l,w),inner=half+.09,outer=half+.305,bw=outer-inner;
+ const side=l.feedSide,fx=x+side*(inner+outer)/2,cannon=l.caliber===30;
  const h=cannon?.30:.23;
- g.add('turretAmmo',box(.25,h,.38),fx,y+.045,z-.15);
- g.add('turretAmmo',box(.269,.026,.399),fx,y+.045+h/2,z-.15);
- for(const dz of [-.26,-.04])g.add('turretDark',box(.036,.048,.032),fx+side*.13,y+.015,z+dz);
+ g.add('turretAmmo',box(bw,h,.38),fx,y+.045,z-.15);
+ g.add('turretAmmo',box(bw+.019,.026,.399),fx,y+.045+h/2,z-.15);
+ for(const dz of [-.26,-.04])g.add('turretDark',box(.036,.048,.032),x+side*(half+.31),y+.015,z+dz);
  feedBridge(g,side,half,x,y,y+.19,z,.116);
 }
 
@@ -458,18 +460,21 @@ function supportHalfWidth(l:NationalRoofLoadout,w:number):number {
  * theirs. The pitch group recoils 1.5 mm (`auxiliaryRecoilM`), half that air, so the pin keeps 1.5 mm from its bore. The plain yoke's
  * span, heights and the bosses' outer form are kept, so the station's silhouette does not change.
  */
-const TRUNNION = {pin: .055, air: .003, outer: .073, length: .065, cap: .006, cheekTop: -.060} as const;
+const TRUNNION = {pin: .055, air: .003, outer: .073, length: .065, cap: .003, cheekTop: -.060, sides: 16} as const;
 function boredYoke(g:Gun,x:number,y:number,z:number,half:number):void {
- // the bore's 20 flats stand the air off the pin's (circumscribed) radius
- const T=TRUNNION,cheekBottom=-.36,bore=(T.pin+T.air)/Math.cos(Math.PI/20);
+ // the bore's flats stand the air off the pin's (circumscribed) radius
+ const T=TRUNNION,cheekBottom=-.36,bore=(T.pin+T.air)/Math.cos(Math.PI/T.sides);
  g.add('turretDetail',box(half*2+.096,.08,.116),x,y-.34,z);
  for(const side of [-1,1]) {
   g.add('turretDetail',box(.044,T.cheekTop-cheekBottom,.12),x+side*(half+.028),y+(T.cheekTop+cheekBottom)/2,z);
-  // the bored housing (a lathe along +Y, chamfered at its top, turned onto X with that end outboard) and its end cap: a
-  // plug 1 mm inside the bore's chamfered mouth, its rim buried in the housing (no shared face), 23 mm off the pin's end
-  // (one yaw-stage piece a side, as the solid boss was)
-  const ring=machinedRing(bore,T.outer,T.length,.002,20).rotateZ(-side*Math.PI/2).translate(-side*T.length/2,0,0);
-  const cap=cylX(bore+.003,T.cap,20).toNonIndexed().translate(side*(T.length/2-.001-T.cap/2),0,0);
+  // the bored housing (a plain lathe tube along +Y turned onto X, 16 sides) and its end cap, a disc 3 mm inside the
+  // bore's mouth whose rim meets the bore's corners, 27 mm off the pin's end: one yaw-stage piece a side, as the solid
+  // boss was, and no heavier (the Hetman II's triangle budget, frontEraPackages)
+  const tube=[[bore,0],[T.outer,0],[T.outer,T.length],[bore,T.length],[bore,0]].map(([r,h])=>new THREE.Vector2(r,h));
+  const lathe=new THREE.LatheGeometry(tube,T.sides),ring=lathe.toNonIndexed().rotateZ(-side*Math.PI/2).translate(-side*T.length/2,0,0);
+  lathe.dispose();
+  const disc=new THREE.CircleGeometry(bore,T.sides,Math.PI/2),cap=disc.toNonIndexed().rotateY(side*Math.PI/2).translate(side*(T.length/2-T.cap),0,0);
+  disc.dispose();
   g.add('turretDark',KIT.mergeAll([ring,cap]),x+side*(half+.045),y,z);
  }
 }
