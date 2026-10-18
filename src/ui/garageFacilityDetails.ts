@@ -356,6 +356,105 @@ function cameraPoint(side: number, depth: number): { readonly x: number; readonl
   return garageViewPoint(side, depth);
 }
 
+/**
+ * garage r9 (criterion 16: "within 25 m of the turntable, facility primitive instances larger than 0.25 m down at least
+ * 80 %"): the Garages listed here rebuild the facility's near boxes and cylinders as kit geometry in the baked bucket:
+ * ground AO, dirt climbing the feet, the skin's weathering on the tops (snow, red dust, mud), chips along the edges, and a
+ * chamfer on the ones nearest the camera within `bevelTriangles` (a chamfered box costs 32 more triangles). The far ones
+ * and the large textured panels (a face over 4 m²) stay instanced on their textured classes. A lane adds its row.
+ */
+const FACILITY_KIT_NEAR: Readonly<Partial<Record<GarageVariant['architecture'], { readonly bevelTriangles: number }>>> = Object.freeze({
+  recovery_yard: { bevelTriangles: 1900 },
+  rock_cavern: { bevelTriangles: 1100 },
+  repair_bunker: { bevelTriangles: 3800 },
+  rain_canopy: { bevelTriangles: 7600 },
+});
+const FACILITY_KIT_NEAR_RADIUS_M = 25;
+const FACILITY_KIT_MIN_EXTENT_M = 0.25;
+const FACILITY_KIT_KEEP_FACE_M2 = 4;
+/** The textured classes' albedo canvases (garageYardWear.ts) average about this much of white once linear. */
+const FACILITY_KIT_ALBEDO: Readonly<Record<PrimitiveInstance['materialClass'], number>> = Object.freeze({
+  structure: 0.8, painted: 0.8, masonry: 0.66, equipment: 1,
+});
+
+/**
+ * Split the facility's primitives into the ones that stay instanced and kit geometry for the near ones (see
+ * FACILITY_KIT_NEAR). Kit pieces are grouped by their ground height (0.25 m bins) so each group's AO and dirt read from
+ * its own ground; the returned geometries are in world space.
+ */
+function kitNearFacilityPrimitives(
+  variant: GarageVariant,
+  boxes: readonly PrimitiveInstance[],
+  cylinders: ReadonlyMap<number, readonly PrimitiveInstance[]>,
+  groundAtWorld: (x: number, z: number) => number,
+): { boxes: PrimitiveInstance[]; cylinders: Map<number, PrimitiveInstance[]>; geometries: THREE.BufferGeometry[]; converted: number } {
+  const config = FACILITY_KIT_NEAR[variant.architecture];
+  if (!config) return { boxes: [...boxes], cylinders: new Map([...cylinders].map(([k, v]) => [k, [...v]])), geometries: [], converted: 0 };
+  const position = new THREE.Vector3(), quaternion = new THREE.Quaternion(), scale = new THREE.Vector3();
+  const euler = new THREE.Euler();
+  const camera = cameraPoint(0, -19);
+  interface Piece { readonly instance: PrimitiveInstance; readonly kind: 'box' | 'cylinder'; readonly segments: number;
+    readonly p: THREE.Vector3; readonly e: THREE.Euler; readonly s: THREE.Vector3; readonly priority: number; bevel: number }
+  const pieces: Piece[] = [];
+  const keptBoxes: PrimitiveInstance[] = [];
+  const keptCylinders = new Map<number, PrimitiveInstance[]>();
+  const consider = (instance: PrimitiveInstance, kind: Piece['kind'], segments: number): boolean => {
+    instance.matrix.decompose(position, quaternion, scale);
+    if (Math.hypot(position.x, position.z) > FACILITY_KIT_NEAR_RADIUS_M) return false;
+    const s = new THREE.Vector3(Math.abs(scale.x), Math.abs(scale.y), Math.abs(scale.z));
+    const dims = kind === 'box' ? [s.x, s.y, s.z] : [s.x * 2, s.y, s.z * 2];
+    if (Math.max(...dims) <= FACILITY_KIT_MIN_EXTENT_M) return false;
+    dims.sort((a, b) => b - a);
+    if (kind === 'box' && instance.materialClass !== 'equipment' && dims[0] * dims[1] > FACILITY_KIT_KEEP_FACE_M2) return false;
+    const toCamera = Math.max(4, Math.hypot(position.x - camera.x, position.z - camera.z));
+    pieces.push({ instance, kind, segments, p: position.clone(), e: euler.setFromQuaternion(quaternion, 'XYZ').clone(), s,
+      priority: kind === 'box' && dims[2] >= 0.05 ? dims[0] / toCamera : -1, bevel: 0 });
+    return true;
+  };
+  for (const instance of boxes) if (!consider(instance, 'box', 0)) keptBoxes.push(instance);
+  for (const [segments, rows] of cylinders) {
+    for (const instance of rows) {
+      if (consider(instance, 'cylinder', segments)) continue;
+      const list = keptCylinders.get(segments) ?? [];
+      list.push(instance);
+      keptCylinders.set(segments, list);
+    }
+  }
+  // chamfers where the camera sees them best: the larger and nearer first, within the Garage's triangle allowance
+  let allowance = config.bevelTriangles;
+  for (const piece of [...pieces].filter((candidate) => candidate.priority > 0).sort((a, b) => b.priority - a.priority)) {
+    if (allowance < 32) break;
+    const minDim = Math.min(piece.s.x, piece.s.y, piece.s.z);
+    piece.bevel = THREE.MathUtils.clamp(minDim * 0.18, 0.012, 0.035);
+    allowance -= 32;
+  }
+  const skin = garageKitSkin(variant.architecture);
+  const groups = new Map<number, KitBuilder>();
+  pieces.forEach((piece, index) => {
+    const bin = Math.round(groundAtWorld(piece.p.x, piece.p.z) / 0.25);
+    let builder = groups.get(bin);
+    if (!builder) {
+      builder = new KitBuilder(kitRandom(0x3f1d + bin * 131), skin);
+      groups.set(bin, builder);
+    }
+    const tone = piece.instance.color.clone().multiplyScalar(FACILITY_KIT_ALBEDO[piece.instance.materialClass]);
+    builder.push().translate(piece.p.x, piece.p.y - bin * 0.25, piece.p.z).rotateX(piece.e.x).rotateY(piece.e.y).rotateZ(piece.e.z);
+    if (piece.kind === 'box') {
+      builder.box(0, 0, 0, piece.s.x, piece.s.y, piece.s.z, tone, { bevel: piece.bevel, wear: (index % 5) * 0.04 });
+    } else {
+      builder.cylinder(0, -piece.s.y / 2, 0, piece.s.x, piece.s.y, 12, tone);
+    }
+    builder.pop();
+  });
+  const geometries: THREE.BufferGeometry[] = [];
+  for (const [bin, builder] of groups) {
+    const solid = builder.build(0).solid;
+    solid.translate(0, bin * 0.25, 0);
+    geometries.push(solid);
+  }
+  return { boxes: keptBoxes, cylinders: keptCylinders, geometries, converted: pieces.length };
+}
+
 /** Build dense static service-facility geometry without adding live scene nodes. */
 export function addGarageFacilityDetails({
   buckets,
@@ -4359,12 +4458,14 @@ export function addGarageFacilityDetails({
     }),
   ] as const);
   const emitFacilityMeshes = (): void => {
+  const near = kitNearFacilityPrimitives(variant, boxInstances, cylinderInstances, groundAtWorld);
+  buckets.baked!.push(...near.geometries);
   for (const renderClass of renderClasses) {
-    const instances = boxInstances.filter((instance) => (
+    const instances = near.boxes.filter((instance) => (
       renderClass.source.includes(instance.materialClass as never)
     ));
     const cylinders: Array<{ segments: number; rows: PrimitiveInstance[] }> = [];
-    for (const [segments, rows] of cylinderInstances) {
+    for (const [segments, rows] of near.cylinders) {
       const matching = rows.filter((instance) => (
         renderClass.source.includes(instance.materialClass as never)
       ));
