@@ -169,6 +169,9 @@ export interface PintleLayout {
   readonly barrelLength: number;
   /** The recessed bore's depth at the muzzle (0: the end marker; PintleOptions.muzzleBoreDepth). */
   readonly muzzleBoreDepth: number;
+  /** Release 227 round 4 (critic CN-4): the can's tray, strap and arm in the can's own paint rather than the gun's steel
+   * (a riding-cradle emplacement's: its tray plate, the largest face under the gun, read as crumpled silver sheet). */
+  readonly canTrayPainted?: boolean;
 }
 
 /** Machine-gun barrel components are authored on the fitting's local +Z axis and only translated (straight barrels). */
@@ -776,13 +779,13 @@ export function addPintleAmmo(context: PintleLayout): void {
   // the can tray on a pintle: a floor under the can, its strap and the arm to the cradle under the receiver (an external
   // cradle's host carries the can)
   const canBottom = canY - canH / 2;
-  const armX0 = Math.abs(ax) - canW / 2, armX1 = bodyW * 0.3;
+  const armX0 = Math.abs(ax) - canW / 2, armX1 = bodyW * 0.3, traySlot = context.canTrayPainted ? canSlot : weaponSlot;
   if (tall) {
-    parts.add(weaponSlot, block(canW + 0.012 * s, 0.008 * s, canD * 0.62), ax, canBottom - 0.004 * s, canZ);
-    if (near) parts.add(weaponSlot, block(0.008 * s, canH * 0.7, 0.028 * s), ax - f * (canW / 2 + 0.004 * s), canBottom + canH * 0.35, canZ + canD * 0.18);
+    parts.add(traySlot, block(canW + 0.012 * s, 0.008 * s, canD * 0.62), ax, canBottom - 0.004 * s, canZ);
+    if (near) parts.add(traySlot, block(0.008 * s, canH * 0.7, 0.028 * s), ax - f * (canW / 2 + 0.004 * s), canBottom + canH * 0.35, canZ + canD * 0.18);
     if (armX0 > armX1) {
       const armY = Math.max(canBottom, bodyBottom) + 0.005 * s;
-      parts.add(weaponSlot, block(armX0 - armX1, 0.009 * s, 0.03 * s), f * (armX0 + armX1) / 2, armY, canZ + canD * 0.18);
+      parts.add(traySlot, block(armX0 - armX1, 0.009 * s, 0.03 * s), f * (armX0 + armX1) / 2, armY, canZ + canD * 0.18);
     }
   }
   // the belt: out of the mouth, up and over, and down onto the tray at the feedway

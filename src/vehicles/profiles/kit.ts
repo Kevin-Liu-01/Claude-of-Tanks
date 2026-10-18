@@ -1560,7 +1560,8 @@ function fittingPintleMG(opts: FittingOptions = {}): THREE.Group {
   if (opts.remoteControlled || opts.working) {
     const weapon=fitParts(), weaponContext={...context,parts:weapon};
     // a riding cradle's gun (receiver, barrel, can) recoils inside the cradle: its own parts, its own group
-    const gun=opts.ridingCradle?fitParts():weapon, gunContext=opts.ridingCradle?{...context,parts:gun}:weaponContext;
+    // (its can tray, strap and arm in the can's paint: critic CN-4)
+    const gun=opts.ridingCradle?fitParts():weapon, gunContext=opts.ridingCradle?{...context,parts:gun,canTrayPainted:true}:weaponContext;
     // a stored riding cradle's cradle and gun parts are kept already moved into the pitch frame (attachAuxiliaryWeapon)
     const key=opts.ridingCradle?ridingCradleKey(opts):'', stored=opts.ridingCradle?RIDING_CRADLE_PARTS.get(key):undefined;
     if (stored) restoreFittingParts(stored,[context.parts,weapon,gun]);
