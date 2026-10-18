@@ -15,13 +15,17 @@
 // --battle adds a daylight battle view of the player tank, plain and wearing the live energy skin (the Juggernaut's);
 // --battle-skins=juggernaut,flagOwn,flagEnemy,infected (TANK_ENERGY styles, default juggernaut) wears each in turn: the
 // Juggernaut's frames keep the `live` name, the others are `live-<style>`.
+// --battle-thermal (round 3, 2026-10-18) adds the sensor view: the tank in its hostile heat stand-ins
+// (engine/thermalVehicles.ts) under the white-hot grade, frames named `thermal` (their PNGs read in the frame's own task).
+// --views also takes `front`: low and close on the near run's front end (the KF51's mud flaps).
 // --gate fails the run when a Garage view's band step reaches --max-step (default 4 levels) or its tag share under the
 // line falls below --min-tag (default 0.8).
 //
 // Usage (worktree root):
 //   node --max-old-space-size=4096 tools/garage-wheel-band.browser.mjs --out=<dir> [--root=<checkout>]
 //     [--garages=verdant_motor_pool,desert_forward_depot,urban_arsenal] [--tanks=ztz99a2,leo2a4,m1a1_abrams_hc]
-//     [--views=low,side] [--battle] [--battle-tank=ztz99a2] [--battle-skins=juggernaut] [--no-garage] [--gate]
+//     [--views=low,side,front] [--battle] [--battle-tank=ztz99a2] [--battle-skins=juggernaut] [--battle-thermal]
+//     [--no-garage] [--gate]
 //     [--cap-min=18] [--lock-held]
 //     [--skin-off-check]
 // --skin-off-check then clears each tank's dormant skin and draws the view again: at zero strength the skin must
@@ -50,6 +54,7 @@ const tanks = list('tanks', 'ztz99a2,leo2a4,m1a1_abrams_hc');
 const viewNames = list('views', 'low,side');
 const battleTank = String(flag('battle-tank', tanks[0]));
 const battleSkins = list('battle-skins', 'juggernaut');
+const battleThermal = !!flag('battle-thermal');
 const gate = !!flag('gate');
 const maxStep = Number(flag('max-step', 4));
 const minTag = Number(flag('min-tag', 0.8));
@@ -65,6 +70,7 @@ const log = (...a) => console.log(`[wheel-band ${new Date().toISOString().slice(
 const VIEWS = {
   low: { dist: 3.4, up: 0.08, sz: 0.9, fov: 42, ty: 0.42 },
   side: { dist: 5.2, up: 0.9, sz: 1.2, fov: 38, ty: 0.55 },
+  front: { dist: 2.6, up: 0.12, sz: 0.5, fov: 40, ty: 0.5, zf: 0.9 },
 };
 
 const lock = createCaptureLock();
@@ -109,7 +115,8 @@ try {
     const threeUrl = text.match(/from\s+["']([^"']*\/three\.js(?:\?[^"']*)?)["']/)?.[1];
     const THREE = await import(threeUrl);
     const energy = await import('/src/game/juggernautVisual.ts');
-    const P = window.__GWB = { mode: 'garage', pose: null, skin: null, target: null, lum: {}, THREE, energy };
+    const thermalVehicles = await import('/src/engine/thermalVehicles.ts');
+    const P = window.__GWB = { mode: 'garage', pose: null, skin: null, vision: 0, target: null, lum: {}, THREE, energy, thermalVehicles };
     const setRT = R.setRenderTarget;
     R.setRenderTarget = function (t, ...rest) {
       if (t && t.texture && t.texture.name === 'SceneAAPass.color') P.target = t;
@@ -133,8 +140,17 @@ try {
       D.camera.updateMatrixWorld(true);
       D.lighting.setStaticPresentationDormant?.(false);
       D.lighting.update(true);
-      D.post.render(1 / 60, 1 / 60);
+      // the sensor view (--battle-thermal): the tank's hostile heat stand-ins under the grade's thermal mode, as
+      // mainFrameRuntime wraps post.render with thermalVehicles.begin / end
+      const heat = P.vision ? (P.heat ??= P.thermalVehicles.createThermalVehicles()) : null;
+      if (heat) {
+        D.camera.userData.sensorVision = P.vision;
+        heat.begin([{ team: 'enemy', visual: { root: P.root() } }], true, 'probe');
+      }
+      try { D.post.render(1 / 60, 1 / 60); } finally { heat?.end(); }
     };
+    /** The frame as a PNG data URL, read in the frame's own task (a frame the app's own loop cannot replace). */
+    P.snap = () => { P.frame(); return R.domElement.toDataURL('image/png'); };
     P.frames = async (n) => { for (let i = 0; i < n; i++) { P.frame(); await new Promise((r) => requestAnimationFrame(r)); } };
     P.toggle = (tune) => { globalThis.__LIGHT_TUNE = { ...(tune ?? {}) }; try { D.post.pinDynScale?.(1); } catch {} };
     P.hideUi = (hide) => {
@@ -165,7 +181,9 @@ try {
       });
       const sh = r.userData.groundAoShape;
       if (P.mode !== 'garage' && sh) { minX = -sh.hx; maxX = sh.hx; minY = sh.y0; minZ = sh.fz0; maxZ = sh.fz1; }
-      const halfW = sign > 0 ? maxX : -minX, zc = 0.5 * (minZ + maxZ), ty = minY + o.ty;
+      // a view along the run (o.zf: the front view) spans the hull's footprint, never the gun's overhang
+      else if (sh && o.zf !== undefined) { minZ = sh.fz0; maxZ = sh.fz1; }
+      const halfW = sign > 0 ? maxX : -minX, zc = minZ + (maxZ - minZ) * (o.zf ?? 0.5), ty = minY + o.ty;
       const target = r.localToWorld(new THREE.Vector3(sign * halfW * 0.85, ty, zc));
       const pos = r.localToWorld(new THREE.Vector3(sign * (halfW + o.dist), ty + o.up, zc + o.sz));
       P.pose = { pos, target, fov: o.fov };
@@ -282,7 +300,12 @@ try {
     };
   });
 
-  const shot = async (file) => { await page.evaluate(() => window.__GWB.frames(4)); await page.screenshot({ path: file }); };
+  const shot = async (file) => {
+    await page.evaluate(() => window.__GWB.frames(4));
+    if (!(await page.evaluate(() => window.__GWB.vision))) { await page.screenshot({ path: file }); return; }
+    const url = await page.evaluate(() => window.__GWB.snap());
+    writeFileSync(file, Buffer.from(url.slice(url.indexOf(',') + 1), 'base64'));
+  };
   /** One view: the frame, the frame without the ground occlusion, the tank mask and the metrics. */
   const measureView = async (prefix, sign) => {
     await page.evaluate(() => window.__GWB.toggle({}));
@@ -381,9 +404,13 @@ try {
     log('battle', JSON.stringify(info));
     await sleep(5000);
     await page.evaluate(() => { const P = window.__GWB; P.mode = 'battle'; P.hideUi(true); });
-    for (const style of ['none', ...battleSkins]) {
-      const skin = style === 'none' ? 'none' : style === 'juggernaut' ? 'live' : `live-${style}`;
-      await page.evaluate((style) => { window.__GWB.skin = style === 'none' ? null : style; }, style);
+    for (const style of ['none', ...battleSkins, ...(battleThermal ? ['thermal'] : [])]) {
+      const skin = style === 'none' || style === 'thermal' ? style : style === 'juggernaut' ? 'live' : `live-${style}`;
+      await page.evaluate((style) => {
+        const P = window.__GWB;
+        P.skin = style === 'none' || style === 'thermal' ? null : style;
+        P.vision = style === 'thermal' ? 1 : 0;
+      }, style);
       for (const view of viewNames) {
         // the battle pose reads the ground-AO hull record, measured once the hull has drawn near the camera
         await page.evaluate((o) => window.__GWB.poseSide(1, o), VIEWS[view]);
@@ -396,7 +423,8 @@ try {
         report.battle.push({ ...info, skin, view, posed, ...m });
         log('battle measured', skin, view, `step=${m.step}`, `tagUnder=${m.under?.tag}`, `tagAll=${m.tagAll}`);
       }
-      if (style !== 'none') await page.evaluate(() => { const P = window.__GWB; P.skin = null; P.energy.clearJuggernautVisual(P.root()); });
+      if (style === 'thermal') await page.evaluate(() => { const P = window.__GWB; P.vision = 0; window.__DEBUG.camera.userData.sensorVision = 0; });
+      else if (style !== 'none') await page.evaluate(() => { const P = window.__GWB; P.skin = null; P.energy.clearJuggernautVisual(P.root()); });
     }
   }
   report.heldS = Math.round((Date.now() - heldAt) / 1000);

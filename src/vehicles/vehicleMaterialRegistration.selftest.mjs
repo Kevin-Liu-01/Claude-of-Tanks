@@ -14,13 +14,16 @@
 //      KF51's tyres and track ceiling, the Abrams' track grime and recess shade, the Merkava's voids, the KV-2's pocket
 //      tyres, the Challenger's mud flaps, the Leopard 2A5 kit, the T-90's light clusters and Shtora lenses) draw
 //      registered materials only, and release every one on dispose.
+// Round 3 (2026-10-18): the unlit flat class (an opaque MeshBasicMaterial: the KF51's mud flaps, the bore discs) writes
+// the unlit vehicle tag (materials.ts tagUnlitVehicleMaterials) and the audit holds every opaque material to a tag, lit
+// or unlit; a profile's chained patch keeps the whole sky light the hook it replaced compiled.
 // The whole fleet is swept by tools/vehicle-material-registration.mjs (tank-release-check runs it on the released ids).
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { installCanvasFixture } from './canvasFixture.test-support.mjs';
 import {
   chainVehicleMaterialHook, cloneFloorlessVehicleMaterial, cloneRehookedVehicleMaterial, registerVehicleMaterial,
-  rehookVehicleMaterial, vehicleAmbientFloorHook,
+  rehookVehicleMaterial, tagUnlitVehicleMaterials, vehicleAmbientFloorHook,
 } from './materials.ts';
 import {
   auditVehicleMaterialRegistration, createCascadeRecorder, leakedRegistrations,
@@ -51,14 +54,44 @@ try {
       registerVehicleMaterial(recorder.engineCtx, new THREE.MeshStandardMaterial({ name: 'chained' }), 'veh-ambient-floor-v2', true),
       'chained-v1', (shader) => { shader.fragmentShader += '\n// patched'; });
     const glass = new THREE.MeshStandardMaterial({ name: 'glass', transparent: true }); // blended: no tag to write
+    // round 3: the light-immune flat class — an untagged flap, a tagged one, a blended decal
+    const flap = new THREE.MeshBasicMaterial({ name: 'flap', color: 0x292c22 });
+    const taggedFlap = new THREE.MeshBasicMaterial({ name: 'taggedFlap', color: 0x313529 });
+    const decal = new THREE.MeshBasicMaterial({ name: 'decal', transparent: true });
+    const flaps = new THREE.Group();
+    for (const material of [taggedFlap, decal]) flaps.add(meshOf(material, `${material.name}Mesh`));
+    tagUnlitVehicleMaterials(recorder.engineCtx, flaps);
+    tagUnlitVehicleMaterials(recorder.engineCtx, flaps); // a part shared by two builds takes the tag once
+    tagUnlitVehicleMaterials({ anisotropy: 1 }, new THREE.Group().add(meshOf(flap, 'stubFlap'))); // a renderer stub: no tag
     const root = new THREE.Group();
-    for (const material of [paint, rawClone, replaced, emptied, chained, glass]) root.add(meshOf(material, `${material.name}Mesh`));
+    for (const material of [paint, rawClone, replaced, emptied, chained, glass, flap]) root.add(meshOf(material, `${material.name}Mesh`));
+    root.add(flaps);
     const { checked, faults } = auditVehicleMaterialRegistration(root, recorder);
-    assert.equal(checked, 5, 'the opaque lit materials are audited, a blended one is not');
-    assert.deepEqual(faults.map((f) => `${f.material}:${f.fault}`).sort(), ['emptied:replaced', 'raw:unregistered', 'replaced:replaced'],
-      'a hand re-hooked clone, a replaced hook and an emptied hook leave the registration; a chain keeps it');
+    assert.equal(checked, 7, 'the opaque materials are audited, lit and unlit; a blended one is not');
+    assert.deepEqual(faults.map((f) => `${f.material}:${f.fault}`).sort(),
+      ['emptied:replaced', 'flap:unlit', 'raw:unregistered', 'replaced:replaced'],
+      'a hand re-hooked clone, a replaced hook, an emptied hook and an untagged unlit part fail; a chain and a tagged flap keep the tag');
+    const unlitText = (material) => {
+      const shader = { vertexShader: THREE.ShaderLib.basic.vertexShader, fragmentShader: THREE.ShaderLib.basic.fragmentShader, uniforms: {} };
+      material.onBeforeCompile(shader, {});
+      return shader.fragmentShader;
+    };
+    assert.equal(unlitText(taggedFlap).split('gl_FragColor.a = 5.0;').length, 2, 'the unlit tag (2 + sun 1 + tag 2), written once');
+    assert.ok(/#ifdef OPAQUE\s*gl_FragColor\.a = 5\.0;\s*#endif/.test(unlitText(taggedFlap)), 'on opaque draws only');
+    assert.ok(!unlitText(flap).includes('gl_FragColor.a = 5.0;'), 'a renderer stub (no cascades) leaves the flat class as it was');
+    assert.ok(!unlitText(decal).includes('gl_FragColor.a = 5.0;'), 'a blended part keeps its alpha');
+    assert.notEqual(taggedFlap.customProgramCacheKey(), new THREE.MeshBasicMaterial().customProgramCacheKey(),
+      'the tagged flat class compiles its own program');
     assert.ok(compile(chained).fragmentShader.endsWith('// patched'), 'a chained patch runs after the registration');
     assert.equal(chained.customProgramCacheKey(), 'chained-v1', 'under its own program key');
+    // a chain keeps the whole sky light of the hook it replaced, whatever trim the registration under it binds
+    const trimmed = registerVehicleMaterial(recorder.engineCtx, new THREE.MeshStandardMaterial({ name: 'trimmed' }), 'veh-ambient-floor-v2', true);
+    const trim = trimmed.onBeforeCompile;
+    trimmed.onBeforeCompile = function (shader, renderer) { trim.call(this, shader, renderer); shader.uniforms.uVehEnvScale = { value: 0.12 }; };
+    assert.equal(compile(trimmed).uniforms.uVehEnvScale.value, 0.12);
+    assert.equal(compile(chainVehicleMaterialHook(trimmed, 'trimmed-chain-v1', () => {})).uniforms.uVehEnvScale.value, 1,
+      'a chained patch binds the bare hook\'s whole sky light');
+    recorder.engineCtx.releaseShadowMaterial(trimmed);
     // a registered material a profile re-hooks keeps its registration; an unregistered one takes the bare hook
     assert.equal(rehookVehicleMaterial(paint).onBeforeCompile, paint.onBeforeCompile);
     const before = new Set(recorder.registered);
@@ -91,7 +124,11 @@ try {
   // --- 3. the tanks whose own materials left the registration
   const recorder = createCascadeRecorder();
   const IDS = ['m46_patton', 'm47_patton', 'kf51_evo', 'm1a1_abrams_hc', 'merkava1b', 'kv2', 'challenger1_mk2', 'leo2a4m', 't90a'];
-  let checked = 0;
+  // the profiles' chained patches over a set material that binds its own sky-light trim (the Abrams' track grime, the
+  // KF51's track ceiling): round 3 holds them to the whole sky light their replaced hooks compiled
+  const CHAINED = /^(?:abrams-(?:band|pad|link|chain)grime-v1|kf51-(?:track|shoe)-hicap-r8)$/;
+  const chainedKeys = new Set();
+  let checked = 0, unlit = 0;
   for (const id of IDS) {
     await ensureTankBuilder(id);
     const before = new Set(recorder.registered);
@@ -100,13 +137,30 @@ try {
     const audit = auditVehicleMaterialRegistration(visual.root, recorder);
     checked += audit.checked;
     assert.deepEqual(audit.faults.map((f) => `${f.fault} ${f.material} on ${[...new Set(f.meshes)].slice(0, 4).join(', ')}`), [],
-      `${id}: every opaque lit material it draws holds its own vehicle registration`);
+      `${id}: every opaque lit material it draws holds its own vehicle registration, every unlit one the unlit tag`);
+    const drawn = new Set();
+    visual.root.traverseVisible((object) => { for (const m of [].concat(object.material ?? [])) if (m?.isMaterial) drawn.add(m); });
+    for (const material of drawn) {
+      if (material.isMeshBasicMaterial && !material.transparent) unlit++;
+      const key = material.customProgramCacheKey?.();
+      if (!material.isMeshStandardMaterial || !CHAINED.test(key ?? '')) continue;
+      chainedKeys.add(key);
+      assert.equal(compile(material).uniforms.uVehEnvScale?.value, 1,
+        `${id}: ${key} keeps the whole sky light (its own trim ${material.envMapIntensity})`);
+    }
+    if (id === 'kf51_evo') {
+      assert.ok([...drawn].some((m) => m.name === 'cot:kf51-mudguard' && m.isMeshBasicMaterial),
+        'kf51_evo: its light-immune mud flaps are drawn (and audited above)');
+    }
     visual.dispose();
     assert.deepEqual(leakedRegistrations(recorder, before), [], `${id}: every registration its build made is released on dispose`);
   }
   assert.ok(checked > 150, `real material sets (${checked} drawn materials)`);
-  console.log(`vehicleMaterialRegistration.selftest: the audit sees all three exits; registered clones compile their hand `
-    + `re-hooks in a stub; ${IDS.length} tanks, ${checked} drawn materials, all registered and released PASS`);
+  assert.ok(unlit >= 2, `the unlit flat class is in the sweep (${unlit} drawn)`);
+  assert.ok(chainedKeys.size >= 3, `the chained track patches are checked (${[...chainedKeys].join(', ')})`);
+  console.log(`vehicleMaterialRegistration.selftest: the audit sees all four exits; registered clones compile their hand `
+    + `re-hooks in a stub; ${IDS.length} tanks, ${checked} drawn materials (${unlit} unlit), all tagged and released; `
+    + `${chainedKeys.size} chained patches keep the whole sky PASS`);
 } finally {
   restoreCanvas();
 }

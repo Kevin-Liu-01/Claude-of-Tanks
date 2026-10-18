@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 // tools/vehicle-material-registration.mjs — every opaque lit material a tank draws holds its own vehicle registration
 // (2026-10-17, the wheel-band lane, round 2; the owner: "in garage, on all tanks, i can see this weird shadow on wheels,
-// no matter what garage i switch through").
+// no matter what garage i switch through"), and every other opaque one writes the unlit vehicle tag (round 3,
+// 2026-10-18: the KF51's light-immune mud flaps).
 //
 // Builds each tank (decorations on, each --quality) through a cascade-registering engine context and runs the
 // registration audit (src/vehicles/vehicleMaterialRegistrationAudit.test-support.mjs): a drawn material that is
-// unregistered (a hand re-hooked raw clone), replaced (its cascade hook assigned away) or untagged (no vehicle tag
-// write) is a pixel the aerial pass takes for ground — the band under the belly line — and one that lights with every
+// unregistered (a hand re-hooked raw clone), replaced (its cascade hook assigned away), untagged (no vehicle tag
+// write) or unlit (an opaque unlit part without the unlit tag) is a pixel the aerial pass takes for ground — the band under the belly line — and one that lights with every
 // cascade's sun at once; every material a build registered must be released on dispose. Node, no GPU.
 //
 // Usage: node --max-old-space-size=4096 tools/vehicle-material-registration.mjs [--ids=a,b|all] [--quality=low,high]

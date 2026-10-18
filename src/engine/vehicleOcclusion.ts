@@ -43,6 +43,23 @@ export const VEHICLE_OCCLUSION_STRENGTH = 0.8;
 export const VEHICLE_OCCLUSION_RANGE_M = 120;
 export const VEHICLE_OCCLUSION_FADE_M = 40;
 
+/**
+ * An unlit vehicle surface's alpha: a lit pixel's 2, the sun state an unshadowed lit pixel writes (lighting.ts cotSunVis
+ * starts at 1) and the vehicle tag.
+ */
+export const VEHICLE_ALPHA_UNLIT = 3 + VEHICLE_ALPHA_TAG;
+
+/**
+ * 2026-10-18 (the wheel-band lane, round 3): a vehicle surface outside the cascade setup — the light-immune flat class
+ * (an opaque MeshBasicMaterial, materials.ts tagUnlitVehicleMaterials), the thermal view's emissive heat stand-ins
+ * (thermalVehicles.ts) — writes the vehicle alpha too, or the ground occlusion takes its pixels under the belly line for
+ * ground (a straight band at the belly + 2 cm). Opaque draws only: a blended one keeps its real alpha.
+ */
+export function tagUnlitVehiclePixels(shader: { fragmentShader: string }): void {
+  shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>',
+    `#include <opaque_fragment>\n#ifdef OPAQUE\n\tgl_FragColor.a = ${VEHICLE_ALPHA_UNLIT.toFixed(1)};\n#endif`);
+}
+
 /** Decode the scene alpha as a vehicle pixel's sun visibility, or -1 when it is not a vehicle pixel. */
 export function vehicleSunVisibility(alpha: number): number {
   return alpha >= VEHICLE_ALPHA_MIN ? Math.min(1, Math.max(0, alpha - 4)) : -1;

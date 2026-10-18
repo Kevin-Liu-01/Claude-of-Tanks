@@ -33,7 +33,7 @@ const RUNTIME_DIRS = ['src/app', 'src/engine', 'src/fx', 'src/game', 'src/mp', '
 const RUNTIME_ALLOWED = new Map([
   ['src/vehicles/materials.ts', [2, 'cloneVehicleMaterial and cloneRehookedVehicleMaterial: the clone joins its source\'s registration']],
   ['src/vehicles/battleGeometrySharing.ts', [1, 'a BufferGeometry (source.clone of a geometry), no material']],
-  ['src/engine/thermalVehicles.ts', [2, 'the thermal view\'s emissive, unlit stand-ins (raw on purpose; their ground-AO read is a separate check)']],
+  ['src/engine/thermalVehicles.ts', [2, 'the thermal view\'s emissive heat stand-ins (raw on purpose: no cascades; they write the vehicle alpha through tagUnlitVehiclePixels, round 3)']],
   ['src/engine/shadowDepthKinds.ts', [1, 'plain depth/distance materials without hooks']],
   ['src/fx/structureDebris.ts', [1, 'map structure debris, not a vehicle material']],
   ['src/game/garageDressing.ts', [1, 'the Garage set dressing (a battle screen), not a vehicle material']],
@@ -49,9 +49,9 @@ const SET_CLONE_BASELINE = new Map([
 ]);
 /** A hand re-hook (the bare readability hook assigned to a material) or an emptied hook: the registration's to give. */
 const BARE_HOOK = /\.onBeforeCompile\s*=\s*(?:vehicleAmbientFloorHook\b|\(\s*\)\s*=>\s*\{\s*\})/g;
-const BARE_HOOK_ALLOWED = new Map([
-  ['src/vehicles/materials.ts', [2, 'the unregistered fallbacks of cloneRehookedVehicleMaterial and rehookVehicleMaterial']],
-]);
+// none (round 3, 2026-10-18): the unregistered fallbacks of cloneRehookedVehicleMaterial and rehookVehicleMaterial
+// register too (registerVehicleMaterial without a cascade context)
+const BARE_HOOK_ALLOWED = new Map();
 /** A profile's compile hook: each is a reviewed chain that calls the hook it replaces (chainVehicleMaterialHook's shape). */
 const PROFILE_HOOK = /\.onBeforeCompile\s*=/g;
 const PROFILE_HOOK_CHAINS = new Map([

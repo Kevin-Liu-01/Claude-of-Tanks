@@ -11,16 +11,20 @@
 //                 Patton's camouflaged wheel discs, the KF51's tyres, the KV-2's return-roller tyres, ...;
 //   replaced      a registered material whose hook a profile assigned outright (the Abrams' pad grime, the KF51's track
 //                 ceiling, the Merkava's void pockets): USE_CSM defined, the cascade uniforms never bound;
-//   untagged      a registered material whose chain no longer writes the vehicle tag.
+//   untagged      a registered material whose chain no longer writes the vehicle tag;
+//   unlit         an opaque material outside the lit set (the light-immune flat class, a MeshBasicMaterial: the KF51's
+//                 mud flaps) that never writes the unlit vehicle tag (materials.ts tagUnlitVehicleMaterials; round 3,
+//                 2026-10-18: the flaps kept a straight edge at the belly + 2 cm after every lit material was tagged).
 // A tank is built through a cascade-registering engine context (the shape of lighting.ts setupShadowMaterial: the
 // defines, then the cascade hook with the extra hook chained after it) and every material it draws is compiled once
 // against three's standard program text; on dispose every material it registered must be released. Canvas storage is a
 // CPU-only fixture: shader ownership is checked, never painted pixels or WebGL.
 import * as THREE from 'three';
 import { isVehicleMaterialRegistered } from './materials.ts';
-import { VEHICLE_ALPHA_TAG } from '../engine/vehicleOcclusion.ts';
+import { VEHICLE_ALPHA_TAG, VEHICLE_ALPHA_UNLIT } from '../engine/vehicleOcclusion.ts';
 
 const TAG_WRITE = `gl_FragColor.a += ${VEHICLE_ALPHA_TAG.toFixed(1)};`;
+const UNLIT_TAG_WRITE = `gl_FragColor.a = ${VEHICLE_ALPHA_UNLIT.toFixed(1)};`;
 
 /** A cascade-registering engine context that records each material's registration, compiled entry and release. */
 export function createCascadeRecorder() {
@@ -57,14 +61,17 @@ function scratchShader(material) {
   return { vertexShader: source.vertexShader, fragmentShader: source.fragmentShader, uniforms: {}, defines: material.defines };
 }
 
-/** Whether a drawn material is an opaque lit one the scene target's alpha must tag. */
+/**
+ * Whether a drawn material is an opaque one the scene target's alpha must tag: a lit one (MeshStandardMaterial) through
+ * its registration, any other (round 3: the unlit flat class) through the unlit tag. A blended one keeps its real alpha.
+ */
 export function isTaggedSurface(material) {
-  return !!material?.isMeshStandardMaterial && material.visible !== false && material.colorWrite !== false && !material.transparent;
+  return !!material?.isMaterial && material.visible !== false && material.colorWrite !== false && !material.transparent;
 }
 
 /**
- * Every opaque lit material `root` draws that breaks the registration: rows of { mesh, material, fault }. `recorder` is
- * the createCascadeRecorder the tank was built through.
+ * Every opaque material `root` draws that breaks the registration (a lit one) or the unlit tag (any other): rows of
+ * { mesh, material, fault }. `recorder` is the createCascadeRecorder the tank was built through.
  */
 export function auditVehicleMaterialRegistration(root, recorder) {
   const faults = new Map();
@@ -84,7 +91,17 @@ export function auditVehicleMaterialRegistration(root, recorder) {
   return { checked: seen.size, faults: [...faults.values()] };
 }
 
+/** An opaque material outside the lit set: its compile writes the unlit vehicle tag, or it is ground to the aerial pass. */
+function unlitFaultOf(material) {
+  const program = material.isMeshBasicMaterial ? THREE.ShaderLib.basic : null;
+  if (!program) return `unlit (${material.type}: no unlit tag path)`;
+  const shader = { vertexShader: program.vertexShader, fragmentShader: program.fragmentShader, uniforms: {}, defines: material.defines };
+  try { material.onBeforeCompile(shader, {}); } catch (error) { return `throws (${error?.message ?? error})`; }
+  return shader.fragmentShader.includes(UNLIT_TAG_WRITE) ? null : 'unlit';
+}
+
 function faultOf(material, recorder) {
+  if (!material.isMeshStandardMaterial) return unlitFaultOf(material);
   if (!recorder.registered.has(material) || !isVehicleMaterialRegistered(material)) return 'unregistered';
   if (material.defines?.USE_CSM !== 1 || material.defines?.CSM_CASCADES !== 4) return 'unregistered';
   const shader = scratchShader(material);

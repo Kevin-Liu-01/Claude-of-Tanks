@@ -437,6 +437,16 @@ Merkava's tracks drew near-black). Every opaque lit material a tank draws holds 
 drawn material (registered, its cascade entry bound under its own key, the vehicle tag written, released on dispose);
 `tools/vehicle-material-registration.mjs --ids=…|all` sweeps the fleet the same way and runs in `tank:release:check`;
 `vehicleMaterialRawClone.selftest.mjs` bans a set member's raw clone, a hand re-hook and an emptied hook.
+Round 3 (2026-10-18): every opaque material a tank draws carries the tag, lit or not. The light-immune flat class (an
+opaque `MeshBasicMaterial`: the KF51's mud flaps and fender boards, the bore discs) never takes the cascade setup and wrote
+a card's alpha, so the KF51's flaps kept the straight edge at the belly + 2 cm; the factory now runs
+`tagUnlitVehicleMaterials(engineCtx, root)` after the appearance pass (the unlit tag, `engine/vehicleOcclusion.ts`
+`tagUnlitVehiclePixels`: 2 + sun 1 + tag 2, opaque draws only, wherever the cascades run), and the thermal view's heat
+stand-ins write it too. The audit holds unlit parts to it. `chainVehicleMaterialHook` binds the bare hook's whole sky
+light (`uVehEnvScale` 1) after the registration: the hook it replaced never bound the material's own trim, so the fix
+brings the cascade back without newly honouring a dead `envMapIntensity` dial (the Abrams' track bands, the KF51's). The
+readability hook's GLSL notes are TypeScript comments between the template pieces: keep comments out of that shader text
+(it ships in the game page's bundle and in every vehicle program).
 The field camouflages (`catalogCamoPainter.ts` paintField) and the digital patterns paint production's 2 m tile
 (fix/camo-defaults, 2026-10-09: the v2/v3 patch fields, 4 m wide tiles, digital clusters, per-triangle box projection,
 bore-wrapped gun UVs and camouflage panels are retired with the rest of PR #9's camouflage system).
