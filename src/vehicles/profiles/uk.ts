@@ -3551,11 +3551,11 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     // the trunnion and the recoiling base ended 0.075 m behind it: from 12-14 of 24 directions the background showed
     // along the gun line between the RARDEN and the face (83-305 mm behind the pivot, 80-350 mm at -9 deg). The cradle
     // now continues aft as a 0.070 m sleeve (just over the 0.067 m recoiling base it receives) from 0.03 m behind the
-    // trunnion into the face. Its 0.49 m reach keeps the rear rim behind the raked face at rest, +30 and -9 deg. At
-    // full depression that rim rises toward the roof, and at full radius it broke 14 mm up through the seam groove
-    // between the roof plate and the add-on block ahead of it (r3 critic). The full section now ends 0.36 m aft (the
-    // face's rake reaches 0.32 m at -9 deg) and its last 0.09 m tapers to a 0.036 m rim, so at full depression the
-    // sleeve passes 18 mm under that groove's floor.
+    // trunnion into the face, keeping its rear behind the raked face at rest, +30 and -9 deg. r3 (critic): at full
+    // depression the r2 sleeve's full-radius rear (0.49 m aft) broke 14 mm up through the seam groove between the roof
+    // plate and the add-on block ahead of it. The full section now ends 0.36 m aft (the face's rake reaches 0.32 m at
+    // -9 deg) and its last 0.09 m tapers to a 0.036 m rim 0.45 m aft, so at full depression the sleeve passes 18 mm
+    // under that groove's floor.
     P.addGunExtra(cylZ(0.070, 0.33, 12), 0, 0, -0.195);
     P.addGunExtra(cylZ(0.070, 0.09, 12, 0.036), 0, 0, -0.405);
     buildGun(P, { len: 1.84, r: 0.030, sleeve: false, evac: null, collar: false, baseR: 0.058 });
