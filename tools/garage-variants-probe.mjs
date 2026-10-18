@@ -365,13 +365,14 @@ try {
           !== 'service_t90m|service_usa_desert|service_leo2a6m|service_bmp3_rok') {
       failures.push(`${result.id}: fixed service-finish optimization is missing`);
     }
-    if (!result.stats.battleScreenVisible
-        || result.stats.battleScreenMode !== 'crt-scroll-slideshow'
-        || result.stats.battleScreenWallBay !== 'dual-freestanding-shared'
-        || result.stats.battleScreenDisplayCount !== 2
+    // the one slideshow panel stands where the Garage places it (Verdant's west wall since garage r9)
+    if (result.stats.battleScreenVisible !== isVerdant
+        || result.stats.battleScreenMode !== 'led-crossfade-slideshow'
+        || result.stats.battleScreenWallBay !== 'west-freestanding'
+        || result.stats.battleScreenDisplayCount !== 1
         || result.stats.battleScreenImageCount < 2
-        || result.stats.battleScreenResidentImageLimit !== 3) {
-      failures.push(`${result.id}: dual field-record displays are missing`);
+        || result.stats.battleScreenResidentImageLimit !== 2) {
+      failures.push(`${result.id}: the slideshow display is missing`);
     }
     if (result.stats.sceneMode !== (isVerdant ? 'verdant-workshop' : 'authentic-scene-pack')
         || result.stats.roofMode !== (isVerdant ? 'enclosed-original' : 'open-environment')
