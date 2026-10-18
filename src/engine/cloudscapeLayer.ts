@@ -42,6 +42,11 @@ function scapeTime(sky: CloudLayerSkyInput, scape: CloudscapeConfig): CloudTimeO
 }
 
 const degToRad = (deg: number): number => deg * Math.PI / 180;
+/** A tint's grey at its own luminance (Rec. 709 weights). */
+const greyOf = (t: readonly [number, number, number]): [number, number, number] => {
+  const y = 0.2126 * t[0] + 0.7152 * t[1] + 0.0722 * t[2];
+  return [y, y, y];
+};
 
 /** The cloudscape over the legacy derivation: the regime's row, then the map's own knobs. */
 function applyCloudscape(legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scape: CloudscapeConfig): CloudLayerPreset {
@@ -104,7 +109,11 @@ function applyCloudscape(legacy: CloudLayerPreset, sky: CloudLayerSkyInput, scap
     // a grey-white diffuser at night and lets the moonlight bring the hue. 2026-10-02: the sunset keeps the preset's
     // warm deck tint — the captures without it showed the front-lit evening cumulus grey-white, the low sun's
     // back-scattered share being small beside the sky's light. A map's authored tint is kept.)
+    // (2026-10-18, the SKY lane's s187 bisect: since Clouds 2.0 reached main on 10-15, Frosthollow's approved grey evening
+    // deck drew a strong orange-pink sheet) a deck at sunset keeps a grey albedo at the evening tint's level: the warm
+    // tint is the light on an evening cumulus' sunward faces, while a deck's underside is the deck's own diffusion
     tint: scape.tintHex != null ? tintOf(scape.tintHex, sheet)
+      : time === 'sunset' && clamp(pick('deckLight'), 0, 1) >= 0.5 ? greyOf(tintOf(sky.cloudTintHex, sheet))
       : tintOf(time === 'night' ? CLOUD_WEATHER_RULES.nightTintHex : sky.cloudTintHex, sheet),
     windDirRad,
     windSpeed: Math.max(0, pick('windSpeed')),

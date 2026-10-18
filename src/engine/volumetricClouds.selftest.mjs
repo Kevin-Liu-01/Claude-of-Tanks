@@ -436,6 +436,12 @@ assert.deepEqual(table, {
   const railyard = deriveCloudLayerPreset(skyOf('railyard'));
   // (2026-10-16: Cinder Junction under hazy fair-weather cumulus everywhere — no deck structure, its clouds cast their shadows)
   assert.deepEqual([railyard.regime, railyard.cells, railyard.deckLight, railyard.shadow], ['fair-weather-cumulus', 0, 0, true], 'railyard: fair-weather cumulus, no deck');
+  // (2026-10-18, the s187 bisect) at sunset a deck keeps a grey albedo at the evening tint's level (Frosthollow's approved
+  // grey evening sheet); an evening cumulus keeps the warm tint on its sunward faces
+  const evening = (id) => deriveCloudLayerPreset({ ...skyOf(id), sunElevationDeg: 7, skyIntensity: 0.72, cloudTintHex: 0xeab492 });
+  const wEve = evening('winter'), vEve = evening('verdant');
+  assert.ok(wEve.tint[0] === wEve.tint[1] && wEve.tint[1] === wEve.tint[2] && wEve.tint[0] > 0.6, `winter at sunset: a grey deck albedo (${wEve.tint})`);
+  assert.ok(vEve.tint[0] > vEve.tint[2] + 0.2, `verdant at sunset: the warm evening cumulus (${vEve.tint})`);
   const urban = deriveCloudLayerPreset(skyOf('urban'));
   // (2026-10-15: Steinburg on Verdant's cumulus under the 10-13 ruling; the altocumulus row stays in the vocabulary, unused)
   assert.ok(urban.regime === 'fair-weather-cumulus' && urban.cells === 0, 'urban: fair-weather cumulus, no cell layer');
