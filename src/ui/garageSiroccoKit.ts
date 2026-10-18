@@ -14,13 +14,14 @@ import type { GarageKitPlacement } from './garageKitPlacement.ts';
  *   the hero's halo (garageSlideshowPlacement.ts), with its generator;
  * - the engine cell at the canonical frame's right edge: an A-frame gantry at work with a power pack hanging plumb over
  *   its stand, the bench and the welding cart;
- * - the fuel point past the shade sail: the fuel bladder in its bund, the bowser, a hose, the no-smoking post, the spill
- *   kit and an extinguisher;
+ * - the fuel point on the level yard right of the camera: the bowser, a hose, the no-smoking post, the spill kit and an
+ *   extinguisher;
  * - the water point: the water buffalo trailer and a jerrycan rack;
  * - the tactical operations centre: an ISO container with its doors open (a desk and two monitors inside), a rugged
  *   station under a camouflage net at its door, the map board and the nameboard;
  * - the ammunition point: a closed container revetted with HESCO, crates on pallets;
  * - a light tower, a windsock on its mast past the sail, prints on a board by the water point.
+ * Every grounded piece stands on a level pad (garageKitPads).
  * The facility's primitive drums, jerrycans, crates, HESCO cells, guard tower and water trailer they replace are gone
  * (garageFacilityDetails.ts addShadeDepot).
  */
@@ -36,8 +37,8 @@ export const SIROCCO_KIT_PLACEMENT: GarageKitPlacement = {
     { kind: 'prop', name: 'sandbag', at: [-18.1, 16.0], yaw: -0.3, params: { variant: 2 } },
     { kind: 'prop', name: 'sandbag', at: [-18.3, 16.1], yaw: 0.1, y: 0.15 },
     // -- the LED trailer under the sail's back edge (garageSlideshowPlacement.ts), its generator and cable reel
-    { kind: 'prop', name: 'generator', at: [19.2, 28.6], yaw: toward([19.2, 28.6]) + 1.2 },
-    { kind: 'prop', name: 'cableReel', at: [13.8, 28.2], yaw: 0.5 },
+    { kind: 'prop', name: 'generator', at: [16.6, 21.6], yaw: toward([16.6, 21.6]) + 1.2 },
+    { kind: 'prop', name: 'cableReel', at: [11.4, 20.6], yaw: 0.5 },
     // -- the engine cell at the canonical frame's right edge: an A-frame at work on a power pack
     { kind: 'crane', crane: 'aframe', at: [15.2, 8.6], yaw: toward([15.2, 8.6]), params: { span: 4.2, height: 3.8, load: { kind: 'powerpack' } } },
     { kind: 'bench', name: 'powerPackStand', at: [17.8, 11.0], yaw: toward([17.8, 11.0]) },
@@ -45,25 +46,25 @@ export const SIROCCO_KIT_PLACEMENT: GarageKitPlacement = {
     { kind: 'bench', name: 'weldingCart', at: [12.6, 10.6], yaw: toward([12.6, 10.6]) + 0.6 },
     { kind: 'prop', name: 'drum200', at: [19.6, 9.6], yaw: 0.4 },
     { kind: 'prop', name: 'drum200', at: [20.1, 9.9], yaw: 1.1 },
-    // -- the fuel point past the shade sail
-    { kind: 'prop', name: 'fuelBladder', at: [28.8, 1.8], yaw: Math.PI / 4, blot: false },
-    { kind: 'prop', name: 'bowser', at: [26.6, 8.0], yaw: toward([26.6, 8.0], [0, 0]) + 0.4 },
-    { kind: 'prop', name: 'coiledHose', at: [28.6, 10.6], yaw: 0 },
-    { kind: 'sign', sign: 'post', rect: 'picto.nosmoking', at: [25.2, 11.6], yaw: toward([25.2, 11.6], [0, 0]), size: [0.6, 0.6] },
-    { kind: 'prop', name: 'extinguisher', at: [25.0, 10.4], yaw: 0 },
-    { kind: 'prop', name: 'spillBin', at: [29.8, 7.6], yaw: toward([29.8, 7.6], [0, 0]) },
-    { kind: 'prop', name: 'drum200', at: [24.0, 7.4], yaw: 0.2 },
-    { kind: 'prop', name: 'drum200', at: [24.6, 7.7], yaw: 1.4 },
+    // -- the fuel point on the level yard right of the camera: the bowser, its hose, the no-smoking post, the spill kit,
+    // an extinguisher and drums
+    { kind: 'prop', name: 'bowser', at: [12.4, -3.6], yaw: toward([12.4, -3.6], [0, 0]) + 1.3 },
+    { kind: 'prop', name: 'coiledHose', at: [10.2, -2.2], yaw: 0 },
+    { kind: 'sign', sign: 'post', rect: 'picto.nosmoking', at: [9.2, -4.8], yaw: toward([9.2, -4.8], [0, 0]), size: [0.6, 0.6] },
+    { kind: 'prop', name: 'extinguisher', at: [8.8, -3.4], yaw: 0 },
+    { kind: 'prop', name: 'spillBin', at: [14.4, -5.8], yaw: toward([14.4, -5.8], [0, 0]) },
+    { kind: 'prop', name: 'drum200', at: [13.8, -1.2], yaw: 0.2 },
+    { kind: 'prop', name: 'drum200', at: [14.4, -0.9], yaw: 1.4 },
     // -- the water point
     { kind: 'prop', name: 'waterBuffalo', at: [-21.4, 9.2], yaw: toward([-21.4, 9.2], [0, 0]) + 0.5 },
     { kind: 'prop', name: 'jerrycanRack', at: [-24.6, 11.4], yaw: toward([-24.6, 11.4], [0, 0]) },
-    { kind: 'prop', name: 'lightTower', at: [-19.2, 4.4], yaw: toward([-19.2, 4.4], [0, 0]) },
+    { kind: 'prop', name: 'lightTower', at: [-17.2, 7.6], yaw: toward([-17.2, 7.6], [0, 0]) },
     // -- the tactical operations centre
-    { kind: 'prop', name: 'isoContainer', at: [-31.2, 2.4], yaw: toward([-31.2, 2.4], [0, 0]), params: { variant: 1 } },
-    { kind: 'prop', name: 'camoNetFrame', at: [-27.2, 2.0], yaw: toward([-27.2, 2.0], [0, 0]), blot: false },
-    { kind: 'display', display: 'station', at: [-26.4, 0.6], yaw: toward([-26.4, 0.6], [0, 0]), screens: ['readout.armor.abrams', 'map.desert', 'readout.modules.t90'], width: 2.0, rugged: true },
-    { kind: 'display', display: 'board', rects: ['map.desert', 'media.desert', 'media.alpine'], at: [-25.0, 4.8], yaw: toward([-25.0, 4.8], [0, 0]), size: [2.6, 1.1], posts: 0.9 },
-    { kind: 'display', display: 'nameboard', at: [-22.8, 6.8], yaw: toward([-22.8, 6.8]), width: 2.6, posts: 1.2 },
+    { kind: 'prop', name: 'isoContainer', at: [-33.4, 3.0], yaw: toward([-33.4, 3.0], [0, 0]), params: { variant: 1 } },
+    { kind: 'prop', name: 'camoNetFrame', at: [-29.6, 2.6], yaw: toward([-29.6, 2.6], [0, 0]), blot: false },
+    { kind: 'display', display: 'station', at: [-28.8, 1.2], yaw: toward([-28.8, 1.2], [0, 0]), screens: ['readout.armor.abrams', 'map.desert', 'readout.modules.t90'], width: 2.0, rugged: true },
+    { kind: 'display', display: 'board', rects: ['map.desert', 'media.desert', 'media.alpine'], at: [-27.0, 5.6], yaw: toward([-27.0, 5.6], [0, 0]), size: [2.6, 1.1], posts: 0.9 },
+    { kind: 'display', display: 'nameboard', at: [-24.6, 7.0], yaw: toward([-24.6, 7.0]), width: 2.6, posts: 1.2 },
     // -- the ammunition point: a container revetted with HESCO, crates on pallets at its door
     { kind: 'prop', name: 'isoContainer', at: [-33.0, -7.0], yaw: toward([-33.0, -7.0], [0, 0]) },
     { kind: 'wall', wall: 'hesco', points: [[-36.0, -9.8], [-36.9, -5.7]] },
@@ -76,7 +77,7 @@ export const SIROCCO_KIT_PLACEMENT: GarageKitPlacement = {
     { kind: 'prop', name: 'ammoBoxSteel', at: [-28.0, -7.4], yaw: 0.25 },
     { kind: 'prop', name: 'ammoBoxSteel', at: [-27.6, -7.2], yaw: 0.3 },
     // -- the right perimeter: muralled T-walls, the windsock, prints under the sail
-    { kind: 'prop', name: 'windsock', at: [35.4, 26.6], yaw: 0.6, blot: false },
+    { kind: 'prop', name: 'windsock', at: [20.4, 26.4], yaw: 0.6, blot: false },
     { kind: 'display', display: 'board', rects: ['media.desert', 'media.urban', 'media.winter'], at: [-20.2, 13.6], yaw: toward([-20.2, 13.6], [0, 0]), size: [2.8, 1.1], posts: 0.9 },
   ],
   atmosphere: {

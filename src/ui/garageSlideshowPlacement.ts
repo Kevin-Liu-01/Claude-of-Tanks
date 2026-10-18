@@ -31,12 +31,12 @@ export const GARAGE_SLIDESHOW_PLACEMENTS: Readonly<Partial<Record<GarageVariant[
   // Redrock: a rugged LED trailer on its outriggers past the gantry, in the frame's right band clear of the hero's halo,
   // its panel turned to the yard
   recovery_yard: Object.freeze({ at: [19, 37] as const, yaw: 0, width: 2.8, mount: 'trailer' }),
-  // Sirocco: a rugged LED trailer under the shade sail's back edge, in the frame's right band clear of the hero's halo,
-  // turned to the lens (garage r9, garageSiroccoKit.ts)
-  shade_depot: Object.freeze({ at: [16.4, 27.6] as const, yaw: kitYawToward([16.4, 27.6]), width: 2.8, mount: 'trailer' }),
-  // Steinburg: a freestanding LED panel before the corner shop, in the frame's right band clear of the hero's halo (the
-  // brief's gate passage stands behind the hero), turned to the lens (garage r9, garageSteinburgKit.ts)
-  brick_arsenal: Object.freeze({ at: [15.4, 24.0] as const, yaw: kitYawToward([15.4, 24.0]), width: 2.6, mount: 'freestanding' }),
+  // Sirocco: a rugged LED trailer under the shade sail, on the depot's level terrace (1.5 m under the datum), in the
+  // frame's right band clear of the hero's halo, turned to the lens (garage r9, garageSiroccoKit.ts)
+  shade_depot: Object.freeze({ at: [13.4, 17.8] as const, yaw: kitYawToward([13.4, 17.8]), width: 2.8, mount: 'trailer', y: -1.5 }),
+  // Steinburg: a freestanding LED panel on the yard's level floor by its right bank, in the frame's right band clear of
+  // the hero's halo (the brief's gate passage stands behind the hero), turned to the lens (garage r9, garageSteinburgKit.ts)
+  brick_arsenal: Object.freeze({ at: [12.6, 16.0] as const, yaw: kitYawToward([12.6, 16.0]), width: 2.2, mount: 'freestanding' }),
 });
 
 /** The bezel's bottom edge over the panel's base for a mount. */

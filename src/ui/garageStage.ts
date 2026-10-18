@@ -158,7 +158,8 @@ function makeWallTexture(rng: RandomSource): HTMLCanvasElement {
   const g = get2dContext(c, { willReadFrequently: true });
   // base panel color: a painted warm grey sheet (2026-10-10, wave 357: "near-black navy walls"; 2026-10-11, wave 402:
   // "the hall drowned in a flat dark-navy cast")
-  g.fillStyle = '#6a675f';
+  // (garage r9: a lighter sheet, the brief's "lift the hall out of the charcoal box", wall luminance up about a third)
+  g.fillStyle = '#86837a';
   g.fillRect(0, 0, W, H);
   // The ribs, the girts' lines, the concrete base and its hazard band were painted here until 2026-10-14 (GA.05, the
   // props standard: no painted detail); they are geometry now (garageVerdantHall.ts). The sheet keeps its weathering.
@@ -880,7 +881,7 @@ export function createGarageStage(
   const wallTexBase = makeWallTexture(rng);
   const wallMat = shadowMat(new THREE.MeshStandardMaterial({
     map: track(canvasTexture(wallTexBase, { aniso, repeat: [3, 1] })),
-    roughness: 0.7, metalness: 0.3,
+    roughness: 0.7, metalness: 0.22,
     emissive: 0x14120f, emissiveIntensity: 0.45,
   }));
   track(wallMat);

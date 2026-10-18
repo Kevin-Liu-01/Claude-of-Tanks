@@ -11,6 +11,10 @@ import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
 import { SIROCCO_LANDMARKS } from './garageSiroccoHorizon.ts';
 import { STEINBURG_LANDMARKS } from './garageSteinburgHorizon.ts';
 import { buildGarageEnvironment, createGarageEnvironmentAssetLibrary, prepareGarageEnvironmentAssets } from './garageEnvironmentKit.ts';
+import { garageViewPoint } from '../game/garagePresentationPose.ts';
+import { GARAGE_SLIDESHOW_PLACEMENTS } from './garageSlideshowPlacement.ts';
+import { GARAGE_KIT_PLACEMENTS } from './garageKitPlacements.ts';
+import { garageKitItemBounds } from './garageKitPlacement.ts';
 
 const bearingDeg = (from, to) => (Math.atan2(to[1] - from[1], to[0] - from[0]) * 180) / Math.PI;
 const gap = (a, b) => { const d = Math.abs(((a - b) % 360 + 540) % 360 - 180); return d; };
@@ -113,7 +117,35 @@ const gap = (a, b) => { const d = Math.abs(((a - b) % 360 + 540) % 360 - 180); r
   }
 }
 
-// 4. no random numbers or clocks in the landmark and regional modules
+// 4. the g3 Garages' slideshow frames stand on their ground (their table height is the terrain's under them, the kit's
+// pads level the rest) and every grounded kit piece stands on level ground (no bank under it)
+{
+  const assets = createGarageEnvironmentAssetLibrary({});
+  for (const architecture of ['shade_depot', 'brick_arsenal']) {
+    const variant = GARAGE_VARIANTS.find((v) => v.architecture === architecture);
+    await prepareGarageEnvironmentAssets(assets, variant);
+    const bare = buildGarageEnvironment({}, assets, variant, () => {}, { kitPlacement: null });
+    const placement = GARAGE_SLIDESHOW_PLACEMENTS[architecture];
+    const point = garageViewPoint(placement.at[0], placement.at[1]);
+    assert.ok(Math.abs(bare.groundAtWorld(point.x, point.z) - (placement.y ?? 0)) < 0.15,
+      `${architecture}: the slideshow's base height ${(placement.y ?? 0)} is the ground under it (${bare.groundAtWorld(point.x, point.z).toFixed(2)})`);
+    bare.dispose();
+    const built = buildGarageEnvironment({}, assets, variant, () => {});
+    for (const { item, solid } of garageKitItemBounds(variant, GARAGE_KIT_PLACEMENTS[architecture], built.groundAtWorld)) {
+      if (item.kind === 'wall' || item.kind === 'display' || solid.min.y > solid.max.y) continue;
+      const cx = (solid.min.x + solid.max.x) / 2, cz = (solid.min.z + solid.max.z) / 2;
+      const hx = (solid.max.x - solid.min.x) * 0.3, hz = (solid.max.z - solid.min.z) * 0.3;
+      let lo = Infinity, hi = -Infinity;
+      for (const [dx, dz] of [[0, 0], [-hx, -hz], [hx, -hz], [-hx, hz], [hx, hz]]) {
+        const h = built.groundAtWorld(cx + dx, cz + dz); lo = Math.min(lo, h); hi = Math.max(hi, h);
+      }
+      assert.ok(hi - lo < 0.3, `${architecture}: ${item.name ?? item.crane} at ${item.at} stands on level ground (${(hi - lo).toFixed(2)} m)`);
+    }
+    built.dispose();
+  }
+}
+
+// 5. no random numbers or clocks in the landmark and regional modules
 for (const file of ['garageLandmarkMesh', 'garageSiroccoHorizon', 'garageSteinburgHorizon', 'garageHorizonLandmarks', 'garageRegionalProps',
   'garageKitTable', 'garageSiroccoKit', 'garageSteinburgKit']) {
   const source = await readFile(new URL(`./${file}.ts`, import.meta.url), 'utf8');

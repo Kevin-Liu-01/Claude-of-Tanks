@@ -215,7 +215,7 @@ const guardTower: PropBuilder = (b) => {
 /** A camouflage-net frame: four poles and spreaders carrying a mottled net that sags between them (a shaded bay). */
 const camoNetFrame: PropBuilder = (b) => {
   const { skin } = b;
-  const w = 7.5, d = 6.5, h = 3.6;
+  const w = 6.2, d = 5.2, h = 3.4;
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
     b.box(sx * w / 2, h / 2, sz * d / 2, 0.07, h, 0.07, skin.steel, { bevel: 0, noBottom: true });
     b.tube([[sx * w / 2, h, sz * d / 2], [sx * (w / 2 + 1.4), 0.04, sz * (d / 2 + 0.6)]], 0.008, 3, 0x3a3a38);

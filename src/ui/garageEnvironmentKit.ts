@@ -62,7 +62,7 @@ import {
   addGarageApproachDetails,
   type GarageApproachStats,
 } from './garageApproachDetails.ts';
-import { buildGarageKitDressing, prepareGarageKitPieces, type GarageKitBuild, type GarageKitPlacement } from './garageKitPlacement.ts';
+import { buildGarageKitDressing, garageKitPads, prepareGarageKitPieces, type GarageKitBuild, type GarageKitPlacement } from './garageKitPlacement.ts';
 import { GARAGE_KIT_PLACEMENTS } from './garageKitPlacements.ts';
 import { garageHorizonLandmarks } from './garageHorizonLandmarks.ts';
 
@@ -1621,6 +1621,36 @@ export function buildGarageEnvironment(
   // the reseat levels every facility terrace's core back to its datum; the dock and the bore are cut again after it
   carveDrydock();
   carveTunnelBore();
+  // The kit's work cells stand on graded pads (garage r9): the ground under each grounded piece is levelled to the
+  // height under its centre (a datum piece to its own height) and feathered back into the excerpt over two metres, so
+  // no container, bowser or trailer stands on a bank or half buried in a dune. Never inside the turntable's feather.
+  const kitPlacement = options.kitPlacement !== undefined ? options.kitPlacement : GARAGE_KIT_PLACEMENTS[variant.architecture];
+  const levelKitPads = (): void => {
+    if (!kitPlacement) return;
+    // the largest pieces first; a smaller piece standing in a levelled pad's reach joins its level, so a cell (a tower
+    // and its sandbags, a container and its desk) stands on one platform instead of a terrace of small steps
+    const levelled: Array<{ x: number; z: number; reach: number; target: number }> = [];
+    const pads = [...garageKitPads(variant, kitPlacement)].sort((a, b) => b.radius - a.radius);
+    for (const pad of pads) {
+      if (Math.hypot(pad.x, pad.z) - pad.radius - 2 < GARAGE_PLATFORM_GEOMETRY.terrainFeatherRadiusM) continue;
+      const host = levelled.find((other) => Math.hypot(pad.x - other.x, pad.z - other.z) < other.reach - 1.2);
+      const target = pad.y ?? host?.target ?? samplePatch(patch, heights, pad.x, pad.z);
+      // (the excerpt's grid is 2.4 m: the level core reaches a cell's half diagonal past the footprint)
+      const core = pad.radius + 1.2, feather = 2.4;
+      levelled.push({ x: pad.x, z: pad.z, reach: core + feather * 0.5, target });
+      for (let row = 0; row < patch.height; row += 1) {
+        const z = -patch.sizeZM / 2 + (row / (patch.height - 1)) * patch.sizeZM;
+        for (let column = 0; column < patch.width; column += 1) {
+          const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
+          const distance = Math.hypot(x - pad.x, z - pad.z);
+          if (distance >= core + feather) continue;
+          const index = row * patch.width + column;
+          heights[index] = THREE.MathUtils.lerp(target, heights[index], THREE.MathUtils.smoothstep(distance, core, core + feather));
+        }
+      }
+    }
+  };
+  levelKitPads();
 
 
   const measurePlacementQuality = (): {
@@ -2249,7 +2279,6 @@ export function buildGarageEnvironment(
   // atmosphere. Solids join the baked bucket and surfaces their own buckets before the merge below; the kit's display,
   // decal and atmosphere meshes are the pack's only new draws.
   // (the placement receipts pass their own: an empty one measures the scene the kit must keep clear of)
-  const kitPlacement = options.kitPlacement !== undefined ? options.kitPlacement : GARAGE_KIT_PLACEMENTS[variant.architecture];
   const kit = kitPlacement
     ? buildGarageKitDressing({
         variant,

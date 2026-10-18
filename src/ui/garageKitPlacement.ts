@@ -205,18 +205,39 @@ function hash(text: string): number {
 /**
  * Build a Garage's kit pieces into the session cache ahead of its pack (garage r9 K0.3: "build each kit geometry once
  * per session ... and only transform it into packs"): the pack's synchronous bake then only places cached pieces. The
- * work yields to the event loop every few milliseconds, so a cold visit never builds the whole table inside one frame.
+ * work yields to the event loop every few pieces, so a cold visit never builds the whole table inside one frame.
  */
-export async function prepareGarageKitPieces(variant: GarageVariant, placement: GarageKitPlacement, sliceMs = 6): Promise<void> {
-  const now = (): number => (typeof performance !== 'undefined' ? performance.now() : 0);
-  let sliceStart = now();
+export async function prepareGarageKitPieces(variant: GarageVariant, placement: GarageKitPlacement, piecesPerSlice = 4): Promise<void> {
+  let built = 0;
   for (const item of garageKitItems(variant, placement)) {
     buildGarageKitPiece(item, variant.architecture, variant.mapId);
-    if (now() - sliceStart > sliceMs) {
-      await new Promise<void>((resolve) => { setTimeout(resolve, 0); });
-      sliceStart = now();
-    }
+    built += 1;
+    // a few pieces a slice (each is a few milliseconds cold), then the event loop runs: no clock decides the slices
+    if (built % piecesPerSlice === 0) await new Promise<void>((resolve) => { setTimeout(resolve, 0); });
   }
+}
+
+/**
+ * The ground pads a Garage's placed kit stands on (garage r9: "every part is supported"; a work cell stands on graded
+ * ground): each grounded piece's world centre (x, z), the radius its footprint reaches, and the height to level to (the
+ * datum pieces' own height, or null for the ground under its centre). The pack levels its terrain under them before it
+ * builds the ground, so no piece stands on a bank or half buried in a dune.
+ */
+export function garageKitPads(variant: GarageVariant, placement: GarageKitPlacement): Array<{
+  readonly x: number; readonly z: number; readonly radius: number; readonly y: number | null;
+}> {
+  const pads: Array<{ x: number; z: number; radius: number; y: number | null }> = [];
+  for (const item of garageKitItems(variant, placement)) {
+    if (item.kind === 'wall') continue;
+    const piece = buildGarageKitPiece(item, variant.architecture, variant.mapId);
+    if (!piece.footprint && !(item.kind === 'prop' && item.blot === false)) continue;
+    const box = piece.result.solid.boundingBox;
+    const [hx, hz] = piece.footprint ?? (box && !box.isEmpty()
+      ? [Math.max(Math.abs(box.min.x), Math.abs(box.max.x)), Math.max(Math.abs(box.min.z), Math.abs(box.max.z))] : [0.5, 0.5]);
+    const point = garageViewPoint(item.at[0], item.at[1]);
+    pads.push({ x: point.x, z: point.z, radius: Math.max(hx, hz) + 0.3, y: item.datum ? (item.y ?? 0) : null });
+  }
+  return pads;
 }
 
 /** Drop the session cache (tests). */
