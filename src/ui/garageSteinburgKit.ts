@@ -14,7 +14,8 @@ import type { KitVec } from './garageKitGeometry.ts';
  *   a red pillar hydrant, a park bench, bollards, a vertical crest-and-wordmark banner on its mast, the municipal notice
  *   board with three stills and the cast-iron nameboard;
  * - the lift cell at the yard's left: a pillar jib crane at work, a turret hanging in slings over its turret stand, a
- *   wheat-pasted poster hoarding, the welding cart, a roll cab, the gas cage, drums, crates, wheels and a skip;
+ *   wheat-pasted poster hoarding behind it, the welding cart, the gas cage, drums, crates and wheels (all clear of the
+ *   line from the turntable to the T-90M bay);
  * - the right: the slideshow on its freestanding LED panel on the yard floor by the right bank
  *   (garageSlideshowPlacement.ts), a lamp post, roll cages and pallets of crates by the corner shop;
  * - the dispatch office on the yard's west terrace: a container office, its doors open on a desk with the Steinburg
@@ -55,7 +56,9 @@ export const STEINBURG_KIT_PLACEMENT: GarageKitPlacement = {
     // (the hook hangs 2.53 m from the pillar over the stand: slew 1.107 rad, the hook at 0.72 of a 3.51 m arm)
     { kind: 'crane', crane: 'jib', at: [-13.8, 4.2], yaw: 0, params: { height: 5.0, reach: 3.51, slew: 1.107, swl: 20, hookY: 3.75, load: { kind: 'turret' } } },
     { kind: 'bench', name: 'turretStand', at: [-11.4, 5.0], yaw: 0 },
-    { kind: 'prop', name: 'posterHoarding', at: [-12.2, -5.6], yaw: toward([-12.2, -5.6], [0, 0]) },
+    // (the hoarding stands behind the crane, its back to the bank: at the cell's front it hid the T-90M bay from the
+    // turntable and the bay's own frame, r2)
+    { kind: 'prop', name: 'posterHoarding', at: [-15.4, 8.6], yaw: toward([-15.4, 8.6], [0, 0]) },
     { kind: 'bench', name: 'weldingCart', at: [-11.2, 0.2], yaw: toward([-11.2, 0.2], [0, 0]) + 0.5 },
     { kind: 'prop', name: 'gasCage', at: [-27.4, -2.2], yaw: toward([-27.4, -2.2], [0, 0]) },
     { kind: 'prop', name: 'drum200', at: [-12.6, -8.0], yaw: 0.3 },
