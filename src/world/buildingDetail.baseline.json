@@ -128,13 +128,13 @@
    "facePass": 0.875
   },
   "siwa": {
-   "score": 2,
-   "silhouette": 1,
-   "mid": 0,
-   "fine": 0,
-   "trisPerWallM2": 17.93,
-   "fineShare": 0.08,
-   "facePass": 0.25
+   "score": 15,
+   "silhouette": 2,
+   "mid": 6,
+   "fine": 5,
+   "trisPerWallM2": 18.5,
+   "fineShare": 0.162,
+   "facePass": 0.75
   },
   "wadirum": {
    "score": 8,
@@ -552,10 +552,10 @@
   "arctic/containerRow": "4e3dacb2df0b6665",
   "arctic/ruin": "c9091b476591ddcb",
   "arctic/woodshed": "4ed92c149aa6c362",
-  "siwa/adobe": "026ebd2e7a66a218",
-  "siwa/caravanserai": "c426f6178b84c34f",
-  "siwa/compound": "3b1c336e4837dc29",
-  "siwa/compoundSouk": "422eb62aea14b628",
+  "siwa/adobe": "f06bdafe66fb57b4",
+  "siwa/caravanserai": "1ad84a3c81da29e0",
+  "siwa/compound": "16e3e3e10cb06ede",
+  "siwa/compoundSouk": "d678baa8b1ea3891",
   "siwa/marketRow": "757d893baa212540",
   "siwa/minaret": "197581a01b02c192",
   "siwa/tower": "91fb67777b2e1c07",
