@@ -35,6 +35,7 @@ import type { CollapsePiece } from './collapsePieces.ts';
 import { createDebrisPhysics, type DebrisPhysics } from './debrisPhysics.ts';
 import { createLandmarkBodies, type LandmarkBodies } from './landmarkBodies.ts';
 import { createStructureFracture, type StructureFracture } from './structureFracture.ts';
+import { createHangingSweep } from './structureHanging.ts';
 import { breachBlowFor } from './structureFx.ts';
 import { STAGE_RUN_TAG, type StructureMask } from './structureMask.ts';
 import type { StructureDebris } from './structureDebris.ts';
@@ -45,6 +46,10 @@ export interface FractureHost {
   o: { mask: StructureMask; debris: StructureDebris; now(): number; scars?: StructureScars | null };
   /** Keep a span's original positions before the first change (the stages' reset restores them). */
   keep(span: StructureSpan): void;
+  /** A span's positions as kept before the stages' first change to it (null: never changed). */
+  originalOf?(span: StructureSpan): Float32Array | null;
+  /** Whether a structure's storey is coming down now (its fall in flight: what hangs is read once it lands). */
+  falling?(structureIdx: number): boolean;
   /** Let go of a structure's standing runs inside a volume (body frame) or owned by a section. */
   dropRuns(seam: StructureDamageSeam, inside: (bx: number, by: number, bz: number) => boolean,
     owns: (owner: { section: number; storey: number }) => boolean): boolean;
@@ -86,6 +91,12 @@ export interface StageFracture {
   fallRoof(e: StructureBreachEvent, seam: StructureDamageSeam): boolean;
   /** A storey dropped: the rooms behind its holes, and over it, go with it (`only`: its own alone — every wall of it fell). */
   storeyDown(seam: StructureDamageSeam, storey: number, only?: boolean): void;
+  /** A storey's fall lowers the faces over it by `dropM`: for good (`baked`: its end, or a late joiner's at once), or as
+   *  shown in flight (structureFracture lowerOver). */
+  lowerOver(seam: StructureDamageSeam, storey: number, dropM: number, baked: boolean): void;
+  /** A structure's damage changed what it draws: what it left hanging is read (structureHanging.ts) once its faces are
+   *  drawn, and comes down (`settled`: a late joiner's, at rest at once). */
+  hanging(seam: StructureDamageSeam, settled: boolean): void;
 }
 
 interface FractureStagesOptions {
@@ -231,6 +242,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
     },
     onRedrawn(seam, storey, faceIndex) {
       dropFaceRuns(seam, storey, faceIndex);
+      markHanging(seam, false);
       // a fallen panel's leftovers (what stood proud of its face) clamped now its face stands as cells
       for (let i = clamps.length - 1; i >= 0; i--) {
         const c = clamps[i];
@@ -249,6 +261,28 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       list.push(minX, minZ, maxX, maxZ);
     },
   });
+  // (destruction-slabs 227 round 3) what a building's damage left hanging comes down: read once its faces are drawn and
+  // no storey of it is falling, one building an update; a fallen building's spans are gone (the mask's, the fracture's)
+  const hangingSweep = createHangingSweep({ originalOf: (span) => host?.originalOf?.(span) ?? null, groundAt: o.groundAt });
+  const hangingDue = new Map<number, { seam: StructureDamageSeam; settled: boolean }>();
+  const fallen = new Set<number>();
+  function markHanging(seam: StructureDamageSeam, settled: boolean): void {
+    if (fallen.has(seam.structureIdx)) return;
+    const was = hangingDue.get(seam.structureIdx);
+    hangingDue.set(seam.structureIdx, { seam, settled: settled && (was ? was.settled : true) });
+  }
+  function sweepHanging(): void {
+    for (const [idx, due] of hangingDue) {
+      if (fallen.has(idx)) { hangingDue.delete(idx); continue; }
+      if (!fracture.idle(idx) || host?.falling?.(idx)) continue;
+      hangingDue.delete(idx);
+      const tag = tagOf(idx);
+      const holders = [...fracture.standing(idx), ...(host ? host.o.debris.standingRuns(tag) : [])];
+      const groups = hangingSweep.sweep(due.seam, holders);
+      if (groups.length) { landmarks.drop(due.seam, groups, due.settled); bump(idx); }
+      return;
+    }
+  }
   const bodies: CollapseBodies = createCollapseBodies({
     pool, group: o.group, materialFor: o.materialFor, groundAt: o.groundAt, environment,
     onLanding: o.onLanding, onShards: o.onShards, hulls: o.hulls,
@@ -408,6 +442,8 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
         // a building that may come down soon: its cut laid ahead, a little an update (sections on: its roof's only)
         if (!settled && (e.stage === 'damaged' || e.stage === 'breached')) want(seam, sections);
         if (e.stage === 'collapsed') {
+          fallen.add(idx);
+          hangingDue.delete(idx);
           if (!settled && !sections && collapseAsBodies(e, seam)) return 1;
           // the mask's collapse (settled, sections on, a cut declined): the redrawn faces go with the building (its kit's
           // remnant stands), the bodies already thrown stay where they lie
@@ -466,6 +502,13 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       storeyDown(seam, storey, only = false) {
         fracture.dropRooms(seam.structureIdx, storey, only);
       },
+      lowerOver(seam, storey, dropM, baked) {
+        fracture.lowerOver(seam.structureIdx, storey, dropM, baked);
+      },
+      hanging(seam, settled) {
+        if (isLandmark(seam) && !landmarks.handles(seam.builder)) { markHanging(seam, settled); return; }
+        markHanging(seam, settled);
+      },
       fallRoof(e, seam) {
         const idx = seam.structureIdx;
         seams.set(idx, seam);
@@ -500,6 +543,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       fracture.update();
       bodies.update(dt);
       landmarks.update(dt);
+      if (hangingDue.size) sweepHanging();
       flushRefused();
       // a cut laid ahead gone stale (the walls redrawn, a stage laid since): laid again once the walls' drawing is done,
       // one building an update
@@ -542,6 +586,8 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       events.clear();
       clamps.length = 0;
       refused.clear();
+      hangingDue.clear();
+      fallen.clear();
       last = o.now();
     },
     stats() {

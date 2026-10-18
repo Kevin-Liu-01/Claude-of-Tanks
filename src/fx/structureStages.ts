@@ -27,7 +27,7 @@ import * as THREE from 'three';
 import type { MunitionClass, StructureBreachEvent, StructureStageEvent } from '../sim/destructionEvents.ts';
 import {
   anatomyCentre, damageRng, damageSeed, type DamageFace, type DamageRole, type DamageStageResult, type DamageStorey, type DamageWriters,
-  type DebrisShape, type FractureMaterial, type FractureSlot,
+  type DebrisShape, type FractureMaterial, type FractureSlot, type StructureDamageAnatomy,
 } from '../world/destructionKit.ts';
 import { clearOverEaves, faceSetback, faceSetbackMedian, roofFurnitureAt, storeyInterior } from '../world/structureEnclosure.ts';
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
@@ -39,6 +39,15 @@ import type { StructureDebris } from './structureDebris.ts';
 import { bindMaterialEnvIntensity } from '../engine/materialEnvIntensity.ts';
 import type { StructureScars } from './structureScars.ts';
 import type { FractureHost, StageFracture } from './fractureStages.ts';
+
+/** A span's parts as flattenRoofFurniture reads them: its drawn triangles (from `start`, `n` of them) and their roots. */
+interface OverEavesSpan {
+  readonly span: StructureSpan;
+  readonly find: (t: number) => number;
+  readonly n: number;
+  readonly start: number;
+  readonly drawn: Uint8Array;
+}
 
 export interface StructureStages {
   /** A stage event, with its structure's seam (null: the mask alone — a world without the seam). */
@@ -64,6 +73,8 @@ export interface StructureStages {
   warm(at: { x: number; y: number; z: number }, buckets: Iterable<string>): number;
   /** Per render frame: touch the casters of every building still falling. */
   update(): void;
+  /** Whether a structure's storey is coming down now (its fall in flight: what stood over it moves with it). */
+  falling(structureIdx: number): boolean;
   shiftTime(delta: number): void;
   /** Stand every building up again: the mask is the caller's to reset; the flattened parts come back here. */
   reset(): void;
@@ -549,16 +560,24 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
    * below — one decision a cluster, its frames and glass with its plaster) collapses to a point; collapsePieces'
    * furnitureAt reads the same, so the roof's slabs carry what the world drops. Needs the drawn enclosure (none: nothing
    * goes). Non-indexed spans.
+   * (round 3, the engineering critic: a cottage's verge boards stood as an A-frame over its roofless walls, a farmhouse's
+   * roof ladder hung beside its gable, a dormer's cap at antenna height — fine trim the enclosure never measures) And every
+   * connected part (its corners welded) that starts within a metre under the eaves and reaches 30 cm over them, centred in
+   * the footprint, over no cluster standing over the eaves (a gable, a tower, a stack drawn from below: their trim stays
+   * with them) goes whole: what the roof carried (a ladder, an aerial, a verge board, a ridge's tiles) goes with it.
    */
   function flattenRoofFurniture(seam: StructureDamageSeam): boolean {
     const a = seam.anatomy;
     if (!a.roof || !a.enclosure || !a.storeys.length) return false;
-    const eave = a.roof.eaveY - 0.15;
+    const eaveY = a.roof.eaveY, ridgeY = a.roof.ridgeY;
+    const eave = eaveY - 0.15;
     const reachX = a.w / 2 + 1.5, reachZ = a.d / 2 + 1.5;
     const [bcx, bcz] = anatomyCentre(a);
     const { x: px, y: py, z: pz, yaw } = a.placement;
     const c = Math.cos(yaw), sn = Math.sin(yaw);
     let changed = false;
+    const perSpan: OverEavesSpan[] = [];
+    const candidates: Array<{ span: StructureSpan; r: number }> = [];
     for (const span of seam.spans) {
       if (span.count < 3 || span.partClass === 'roof' || span.piece || flattenedSpans.has(span)) continue;
       const geo = (span.mesh as THREE.Mesh).geometry as THREE.BufferGeometry | undefined;
@@ -566,22 +585,80 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       spanMatrices(span);
       const arr = span.position.array as Float32Array;
       const start = span.first + ((3 - (span.first % 3)) % 3);
-      let touched = false;
-      for (let i = start; i + 2 < span.first + span.count; i += 3) {
+      const n = Math.max(0, Math.floor((span.first + span.count - start) / 3));
+      if (!n) continue;
+      // each triangle's corners in the world (the buckets stand at identity) and its connected part (corners welded)
+      const parent = new Int32Array(n);
+      for (let t = 0; t < n; t++) parent[t] = t;
+      const find = (t: number): number => { while (parent[t] !== t) { parent[t] = parent[parent[t]]!; t = parent[t]!; } return t; };
+      const owner = new Map<string, number>();
+      const drawn = new Uint8Array(n);
+      for (let t = 0; t < n; t++) {
+        const i = start + t * 3;
         _ta.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
         _tb.set(arr[i * 3 + 3], arr[i * 3 + 4], arr[i * 3 + 5]).applyMatrix4(_m);
         _tc.set(arr[i * 3 + 6], arr[i * 3 + 7], arr[i * 3 + 8]).applyMatrix4(_m);
-        if (Math.min(_ta.y, _tb.y, _tc.y) - py < eave) continue;
-        // its centroid in the body frame
+        _e1.subVectors(_tb, _ta); _e2.subVectors(_tc, _ta);
+        if (!(_e1.cross(_e2).lengthSq() > 1e-18)) continue;
+        drawn[t] = 1;
+        for (const v of [_ta, _tb, _tc]) {
+          const key = `${Math.round(v.x * 1000)},${Math.round(v.y * 1000)},${Math.round(v.z * 1000)}`;
+          const prev = owner.get(key);
+          if (prev === undefined) owner.set(key, t);
+          else { const ra = find(prev), rb = find(t); if (ra !== rb) parent[ra] = rb; }
+        }
+      }
+      // per part: its lowest and highest corner (body y) and its middle (body frame)
+      const lo = new Map<number, number>(), hi = new Map<number, number>(), mid = new Map<number, [number, number, number]>();
+      for (let t = 0; t < n; t++) {
+        if (!drawn[t]) continue;
+        const r = find(t), i = start + t * 3;
+        _ta.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
+        _tb.set(arr[i * 3 + 3], arr[i * 3 + 4], arr[i * 3 + 5]).applyMatrix4(_m);
+        _tc.set(arr[i * 3 + 6], arr[i * 3 + 7], arr[i * 3 + 8]).applyMatrix4(_m);
+        const y0 = Math.min(_ta.y, _tb.y, _tc.y) - py, y1 = Math.max(_ta.y, _tb.y, _tc.y) - py;
+        lo.set(r, Math.min(lo.get(r) ?? Infinity, y0)); hi.set(r, Math.max(hi.get(r) ?? -Infinity, y1));
         const wx = (_ta.x + _tb.x + _tc.x) / 3 - px, wz = (_ta.z + _tb.z + _tc.z) / 3 - pz;
-        const mx = wx * c - wz * sn, mz = wx * sn + wz * c;
-        if (Math.abs(mx - bcx) > reachX || Math.abs(mz - bcz) > reachZ) continue;
-        // (and a level surface over the eaves under no standing cluster: the attic's lid the roof covered — left, it capped
-        // the roofless storey as one clean flat roof, the critic's "flat raft")
-        if (!roofFurnitureAt(a, mx, mz, a.roof.eaveY, a.roof.ridgeY)) {
-          const ux = _tb.x - _ta.x, uy = _tb.y - _ta.y, uz = _tb.z - _ta.z, vx = _tc.x - _ta.x, vy = _tc.y - _ta.y, vz = _tc.z - _ta.z;
-          const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-          if (!(Math.abs(ny) > 0.85 * Math.hypot(nx, ny, nz)) || !clearOverEaves(a, mx, mz, a.roof.eaveY, a.roof.ridgeY)) continue;
+        const m = mid.get(r) ?? [0, 0, 0];
+        m[0] += wx * c - wz * sn; m[1] += wx * sn + wz * c; m[2]++;
+        mid.set(r, m);
+      }
+      for (const [r, y0] of lo) {
+        const m = mid.get(r)!;
+        if (!(y0 >= eaveY - 1 && hi.get(r)! > eaveY + 0.3)) continue;
+        if (Math.abs(m[0] / m[2] - bcx) > reachX || Math.abs(m[1] / m[2] - bcz) > reachZ) continue;
+        candidates.push({ span, r });
+      }
+      perSpan.push({ span, find, n, start, drawn });
+    }
+    // what holds a part over the eaves up: the structure's other parts standing under it (its walls, a gable drawn in a
+    // wall's bucket, a stack drawn from below — never the roof that falls, nor another part over the eaves until it is
+    // held itself: two verge boards side by side hold nothing up); held over half its lowest points, it stands
+    const goes = holdOverEaves(a, perSpan, candidates, eaveY);
+    for (const ps of perSpan) {
+      const { span, find, n, start, drawn } = ps;
+      const arr = span.position.array as Float32Array;
+      spanMatrices(span);
+      let touched = false;
+      for (let t = 0; t < n; t++) {
+        if (!drawn[t]) continue;
+        const i = start + t * 3;
+        if (!goes.get(span)?.has(find(t))) {
+          _ta.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
+          _tb.set(arr[i * 3 + 3], arr[i * 3 + 4], arr[i * 3 + 5]).applyMatrix4(_m);
+          _tc.set(arr[i * 3 + 6], arr[i * 3 + 7], arr[i * 3 + 8]).applyMatrix4(_m);
+          if (Math.min(_ta.y, _tb.y, _tc.y) - py < eave) continue;
+          // its centroid in the body frame
+          const wx = (_ta.x + _tb.x + _tc.x) / 3 - px, wz = (_ta.z + _tb.z + _tc.z) / 3 - pz;
+          const mx = wx * c - wz * sn, mz = wx * sn + wz * c;
+          if (Math.abs(mx - bcx) > reachX || Math.abs(mz - bcz) > reachZ) continue;
+          // (and a level surface over the eaves under no standing cluster: the attic's lid the roof covered — left, it
+          // capped the roofless storey as one clean flat roof, the critic's "flat raft")
+          if (!roofFurnitureAt(a, mx, mz, eaveY, ridgeY)) {
+            const ux = _tb.x - _ta.x, uy = _tb.y - _ta.y, uz = _tb.z - _ta.z, vx = _tc.x - _ta.x, vy = _tc.y - _ta.y, vz = _tc.z - _ta.z;
+            const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+            if (!(Math.abs(ny) > 0.85 * Math.hypot(nx, ny, nz)) || !clearOverEaves(a, mx, mz, eaveY, ridgeY)) continue;
+          }
         }
         if (!touched) { keep(span); touched = true; }
         for (let q = 1; q < 3; q++) {
@@ -595,6 +672,83 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       }
     }
     return changed;
+  }
+
+  /**
+   * Which parts over the eaves the structure's standing parts do not hold up (flattenRoofFurniture, round 3): per span, the
+   * roots of the parts (`candidates`) that go. A body-frame grid (0.5 m) of the highest point drawn per cell by every part
+   * that is no candidate (the walls, a stack drawn from below; the roof's spans are not among them); a candidate whose
+   * lowest points (per cell) stand within 0.8 m over that grid's tops round them for half or more of its cells is held, and
+   * holds in its turn (a gable drawn in a wall's bucket from the eaves holds its verge boards), until none more is.
+   */
+  function holdOverEaves(a: StructureDamageAnatomy, perSpan: readonly OverEavesSpan[], candidates: ReadonlyArray<{ span: StructureSpan; r: number }>,
+    eaveY: number): Map<StructureSpan, Set<number>> {
+    const goes = new Map<StructureSpan, Set<number>>();
+    if (!candidates.length) return goes;
+    const CELL = 0.5;
+    const [bcx, bcz] = anatomyCentre(a);
+    const half = Math.max(a.w, a.d) / 2 + 3;
+    const x0 = bcx - half, z0 = bcz - half, nx = Math.ceil((2 * half) / CELL), N = nx * nx;
+    const top = new Float32Array(N).fill(-Infinity);
+    const { x: px, y: py, z: pz, yaw } = a.placement;
+    const c = Math.cos(yaw), sn = Math.sin(yaw);
+    const pending = new Map<StructureSpan, Set<number>>();
+    for (const { span, r } of candidates) { let set = pending.get(span); if (!set) pending.set(span, set = new Set()); set.add(r); }
+    /** Every sample (body frame, ~0.4 m apart) of span `ps`'s triangles in parts `pick(root)`: visit(cell, y). */
+    const samples = (ps: OverEavesSpan, pick: (root: number) => boolean, visit: (cell: number, y: number) => void): void => {
+      spanMatrices(ps.span);
+      const arr = ps.span.position.array as Float32Array;
+      for (let t = 0; t < ps.n; t++) {
+        if (!ps.drawn[t] || !pick(ps.find(t))) continue;
+        const i = ps.start + t * 3;
+        _ta.set(arr[i * 3], arr[i * 3 + 1], arr[i * 3 + 2]).applyMatrix4(_m);
+        _tb.set(arr[i * 3 + 3], arr[i * 3 + 4], arr[i * 3 + 5]).applyMatrix4(_m);
+        _tc.set(arr[i * 3 + 6], arr[i * 3 + 7], arr[i * 3 + 8]).applyMatrix4(_m);
+        const la = _ta.distanceTo(_tb), lb = _tb.distanceTo(_tc), lc = _tc.distanceTo(_ta);
+        const k = Math.max(1, Math.min(40, Math.ceil(Math.max(la, lb, lc) / 0.4)));
+        for (let u = 0; u <= k; u++) for (let v = 0; v <= k - u; v++) {
+          const wa = 1 - (u + v) / k, wb = u / k, wc = v / k;
+          const x = _ta.x * wa + _tb.x * wb + _tc.x * wc - px, y = _ta.y * wa + _tb.y * wb + _tc.y * wc - py, z = _ta.z * wa + _tb.z * wb + _tc.z * wc - pz;
+          const bx = x * c - z * sn, bz = x * sn + z * c;
+          const ci = Math.floor((bx - x0) / CELL), ck = Math.floor((bz - z0) / CELL);
+          if (ci < 0 || ck < 0 || ci >= nx || ck >= nx) continue;
+          visit(ck * nx + ci, y);
+        }
+      }
+    };
+    for (const ps of perSpan) {
+      const mine = pending.get(ps.span);
+      samples(ps, (root) => !mine?.has(root), (cell, y) => { if (y > top[cell]!) top[cell] = y; });
+    }
+    for (let pass = 0; pass < 6; pass++) {
+      let held = 0;
+      for (const ps of perSpan) {
+        const mine = pending.get(ps.span);
+        if (!mine?.size) continue;
+        for (const root of [...mine]) {
+          const low = new Map<number, number>();
+          samples(ps, (r) => r === root, (cell, y) => { const v = low.get(cell); if (v === undefined || y < v) low.set(cell, y); });
+          let ok = 0;
+          for (const [cell, y] of low) {
+            const ci = cell % nx, ck = (cell - ci) / nx;
+            let t = -Infinity;
+            for (let dk = -1; dk <= 1; dk++) for (let di = -1; di <= 1; di++) {
+              const ii = ci + di, kk = ck + dk;
+              if (ii >= 0 && kk >= 0 && ii < nx && kk < nx) t = Math.max(t, top[kk * nx + ii]!);
+            }
+            if (t >= y - 0.8) ok++;
+          }
+          if (low.size && ok * 2 >= low.size) {
+            mine.delete(root); held++;
+            samples(ps, (r) => r === root, (cell, y) => { if (y > top[cell]!) top[cell] = y; });
+          }
+        }
+      }
+      if (!held) break;
+    }
+    for (const [span, set] of pending) if (set.size) goes.set(span, set);
+    void eaveY;
+    return goes;
   }
 
   /** A roof drawn in another bucket (a sheet hall's in structureMetal, shingles in wood: their spans are 'wall' by
@@ -1011,6 +1165,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     let changed = clampStorey(seam, storey);
     const [reachX, reachZ, rcx, rcz] = storeyReach(seam, storey);
     const dropM = storey.y1 - storey.y0;
+    // (destruction-slabs 227 round 3) the faces the fracture draws over it come down with the world's spans
+    fracture?.lowerOver(seam, storey.index, dropM, true);
     changed = dropRuns(seam, (bx, by, bz) => by > storey.y0 + 0.02 && by <= storey.y1 + SLAB_EPS && Math.abs(bx - rcx) <= reachX
       && Math.abs(bz - rcz) <= reachZ, (owner) => owner.storey === storey.index) || changed;
     changed = settleRuns(seam, storey, reachX, reachZ, rcx, rcz) || changed;
@@ -1120,6 +1276,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       mask.moveHoles(f.seam.structureIdx, f.py + f.storey.y0 + 0.02, f.py + f.storey.y1 + SLAB_EPS - f.d, d - f.d);
       f.d = d;
     }
+    fracture?.lowerOver(f.seam, f.storey.index, d, false);
     f.seam.touchShadows();
   }
   /** The fall's end: everything back where it stood, then the instant drop's own path lays the exact end. */
@@ -1152,7 +1309,9 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     storeyFalls.length = k;
   }
 
-  const fracture = o.fracture?.({ o, keep, dropRuns, clampPanel, finishFalls, run, worldMaterial, spanMaterials, roomMaterialFor }) ?? null;
+  const fracture = o.fracture?.({ o, keep, dropRuns, clampPanel, finishFalls, run, worldMaterial, spanMaterials, roomMaterialFor,
+    originalOf: (span) => originals.get(span) ?? null,
+    falling: (structureIdx) => storeyFalls.some((f) => f.structureId === structureIdx) }) ?? null;
   return {
     stage(e, seam) {
       finishFalls(e.structureId);
@@ -1185,6 +1344,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         }
       }
       if (!seam) return;
+      // (destruction-slabs 227 round 3) what a stage's hides left hanging comes down once the faces are drawn
+      if (e.stage !== 'collapsed') fracture?.hanging(seam, settled);
       const stageSeed = (stage: number): number => damageSeed(seam.anatomy.seed, stage);
       // a blow that jumps a stage lays the one it skipped: a breach out of an intact building is damaged too
       if (e.stage === 'damaged' || (e.stage === 'breached' && e.previous === 'intact')) {
@@ -1374,6 +1535,9 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
             if (r.userData.room === true && (r.userData.runOwner as RunOwner | undefined)?.storey === storey.index) { debris.dropRun(r); changed = true; }
           }
         }
+        // (destruction-slabs 227 round 3) a wall gone under a roof that fell before it: what stood over the eaves on it (the
+        // verge boards along a gable the roof left standing) is looked at again — held by nothing now, it goes
+        if (a.roof && fallenSections.get(e.structureId)?.has(a.roof.section)) changed = flattenRoofFurniture(seam) || changed;
         if (ev.storeyDown === true && storey) {
           // the band down to its floor line, what stood on it lowered by its height, its holes' runs and cuts gone, then
           // the kit's heap on the floor line (laid last: it stands); live, it comes down over gravity's time (the core
@@ -1382,6 +1546,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
           else startStoreyFall(e.structureId, seam, storey, settled);
         }
       }
+      // (destruction-slabs 227 round 3) what the section's fall left hanging comes down once the faces are drawn
+      fracture?.hanging(seam, settled);
       if (changed) seam.touchShadows();
     },
     update() {
@@ -1412,6 +1578,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       for (const f of falling) { f.seam.touchShadows(); if (now <= f.until) falling[k++] = f; }
       falling.length = k;
     },
+    falling: (structureIdx) => storeyFalls.some((f) => f.structureId === structureIdx),
     shiftTime(delta) {
       for (const p of pendingStrikes) p.at += delta;
       for (const f of falling) f.until += delta;

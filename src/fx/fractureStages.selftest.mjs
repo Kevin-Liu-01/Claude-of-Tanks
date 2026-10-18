@@ -182,7 +182,9 @@ for (const b of A.panel) {
 }
 assert.ok(A.roofPieces >= 2, `the roof's section comes down as its slabs (${A.roofPieces} meshes)`);
 const floorY = GROUND + st1.y0;
-for (const b of A.onFloor) assert.ok(b.min.y < floorY + 0.9, `a roof slab lies on the upper floor or under it, never at the eaves (${(b.min.y - GROUND).toFixed(2)} m)`);
+// (destruction-slabs 227 round 3: the chimney the roof left standing over the eaves comes down on the pile once nothing holds
+// it — structureHanging.ts — and a slab under it lies on it, a little over the floor)
+for (const b of A.onFloor) assert.ok(b.min.y < floorY + 1.5, `a roof slab lies on the upper floor or under it, never at the eaves (${(b.min.y - GROUND).toFixed(2)} m)`);
 // (its slabs fall into the top storey: some rest on its floor, some slide off it over the fallen face to the ground)
 assert.ok(A.onFloor.some((b) => b.min.y < floorY + 0.3 && b.max.y > floorY - 0.1), 'the upper floor holds slabs while its storey stands');
 assert.ok(A.down.length >= 1, 'its slabs are still there, lying or baked');

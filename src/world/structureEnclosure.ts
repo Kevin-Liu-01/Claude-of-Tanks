@@ -96,7 +96,7 @@ function clipY(src: Float64Array, n: number, at: number, sign: 1 | -1, dst: Floa
 
 /** A geometry's positions as an array, its stride and first offset (an interleaved buffer's too); null when it has none
  *  or they are normalized (no structure's are). */
-function positionsOf(g: BufferGeometry): { array: ArrayLike<number>; stride: number; offset: number; count: number } | null {
+export function positionsOf(g: BufferGeometry): { array: ArrayLike<number>; stride: number; offset: number; count: number } | null {
   const pos = g.getAttribute('position') as (BufferGeometry['attributes'][string] & { isInterleavedBufferAttribute?: boolean;
     data?: { array: ArrayLike<number>; stride: number }; offset?: number }) | undefined;
   if (!pos || pos.normalized) return null;

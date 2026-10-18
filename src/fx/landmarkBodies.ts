@@ -49,6 +49,11 @@ const RULES: Readonly<Record<string, readonly PieceRule[]>> = Object.freeze({
 
 const STAGE_RANK: Readonly<Record<string, number>> = Object.freeze({ damaged: 1, breached: 2, collapsed: 3 });
 
+/** What a building's damage left hanging comes down as (drop): a timber's weight, off where it hung. */
+const HANGING_RULE: PieceRule = { match: /^$/, at: 'damaged', group: (n) => n, density: 450, kind: 'drop' };
+/** Bodies a sweep throws at most (the rest go with their dust). */
+const HANGING_BODIES = 6;
+
 interface LandmarkBodiesOptions {
   pool: DebrisPhysics;
   group: THREE.Group;
@@ -68,6 +73,12 @@ export interface LandmarkBodies {
   stage(seam: StructureDamageSeam, stage: string, dirX: number, dirZ: number, settled?: boolean): number;
   /** Whether a builder has pieces here. */
   handles(builder: string): boolean;
+  /**
+   * (destruction-slabs 227 round 3) What a building's damage left hanging (structureHanging.ts): each group of triangles
+   * out of the buckets and down as a body (the largest few; the rest go with their dust), or at rest on the ground under
+   * where it hung (settled). The bodies thrown.
+   */
+  drop(seam: StructureDamageSeam, groups: ReadonlyArray<ReadonlyArray<{ span: StructureSpan; at: number }>>, settled?: boolean): number;
   update(dtS: number): void;
   liveBodies(): number;
   reset(): void;
@@ -84,6 +95,9 @@ const BAKE_STILL_S = 1.5, BAKE_AGE_S = 30;
 
 export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
   const live: LiveBody[] = [];
+  /** Hanging parts falling to where they lie (no body): world centre, heights, turns, clock. */
+  const tweens: Array<{ meshes: THREE.Mesh[]; x: number; z: number; y0: number; y1: number; q0: THREE.Quaternion; q1: THREE.Quaternion;
+    t: number; T: number; structureIdx: number; massKg: number }> = [];
   /** Every mesh a piece drew (live or lying still), for the reset. */
   const drawn: THREE.Mesh[] = [];
   const byHandle = new Map<number, LiveBody>();
@@ -147,7 +161,7 @@ export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
   interface Tri { span: StructureSpan; at: number }
   /** One group's body: its triangles (body frame bounds, their own attributes about the box's centre), thrown. */
   function throwGroup(seam: StructureDamageSeam, rule: PieceRule, tris: Tri[], salt: number, dirX: number, dirZ: number,
-    settled: boolean): boolean {
+    settled: boolean, kinematic = false): boolean {
     if (!tris.length) return false;
     const a = seam.anatomy, { x: px, y: py, z: pz, yaw } = a.placement;
     const c = Math.cos(yaw), s = Math.sin(yaw);
@@ -218,7 +232,7 @@ export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
     else if (rule.kind === 'drop') { vbz = (cz < 0 ? -1 : 1) * (0.4 + 0.3 * rng()); wbx = (rng() - 0.5) * 0.8; }
     else { wbz = (cx < 0 ? 1 : -1) * (1.1 + 0.4 * rng()); vbx = (cx < 0 ? -1 : 1) * 0.3; }
     // a blow's push along it (the stage's direction, a little)
-    const handle = settled ? -1 : o.pool.spawn(shape, {
+    const handle = settled || kinematic ? -1 : o.pool.spawn(shape, {
       x: wcx, y: wcy, z: wcz, qx: _q.x, qy: _q.y, qz: _q.z, qw: _q.w,
       vx: vbx * c + vbz * s + dirX * 0.4, vy: vby, vz: -vbx * s + vbz * c + dirZ * 0.4,
       wx: wbx * c + wbz * s, wy: wby, wz: -wbx * s + wbz * c,
@@ -226,9 +240,17 @@ export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
     if (handle < 0) {
       // settled, or no room (a barrage's collapses at once): it lies on the ground under where it stood, its thinnest side
       // down (an upright arm laid along the road's edge), never standing there
+      const q0 = _q.clone();
       if (hx < hy && hx <= hz) _q.multiply(_tq.setFromAxisAngle(_fwd, Math.PI / 2));
       else if (hz < hy && hz < hx) _q.multiply(_tq.setFromAxisAngle(_right, Math.PI / 2));
-      _m.compose(_v.set(wcx, o.groundAt(wcx, wcz) + Math.min(hx, hy, hz) + 0.02, wcz), _q, _s);
+      const restY = o.groundAt(wcx, wcz) + Math.min(hx, hy, hz) + 0.02;
+      if (kinematic && !settled) {
+        // (destruction-slabs 227 round 3) a hanging part no box holds well (a mill's sails, a gutter round a corner): it
+        // falls where it hung under gravity's time, turning over to lie on its broad side, no body to land on
+        const T = Math.max(0.35, Math.min(1.4, Math.sqrt(2 * Math.max(0.1, wcy - restY) / 9.81)));
+        tweens.push({ meshes, x: wcx, z: wcz, y0: wcy, y1: restY, q0, q1: _q.clone(), t: 0, T, structureIdx: seam.structureIdx, massKg });
+        _m.compose(_v.set(wcx, wcy, wcz), q0, _s);
+      } else _m.compose(_v.set(wcx, restY, wcz), _q, _s);
       for (const m of meshes) { m.matrix.copy(_m); m.matrixWorldNeedsUpdate = true; }
       baked++;
       return true;
@@ -250,6 +272,28 @@ export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
     return true;
   }
 
+  /** A triangle out of its bucket (onto its first corner; its span kept for the reset). */
+  function hideTri(span: StructureSpan, at: number): void {
+    o.keepSpan(span);
+    const arr = span.position.array as Float32Array;
+    for (let k = 1; k < 3; k++) { arr[(at + k) * 3] = arr[at * 3]; arr[(at + k) * 3 + 1] = arr[at * 3 + 1]; arr[(at + k) * 3 + 2] = arr[at * 3 + 2]; }
+  }
+  /** Whether a group's box holds it well enough to be its body (box-like, or small): a thin plate, a long rail or a sparse
+   *  cross falls as a tween instead (a box round it would stand invisible where it lands). */
+  function compact(seam: StructureDamageSeam, g: ReadonlyArray<{ span: StructureSpan; at: number }>): boolean {
+    let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+    const { x: px, z: pz, yaw } = seam.anatomy.placement, c = Math.cos(yaw), s = Math.sin(yaw);
+    for (const t of g) {
+      const M = spanMatrix(t.span), arr = t.span.position.array as Float32Array;
+      for (let k = 0; k < 3; k++) {
+        _v.set(arr[(t.at + k) * 3], arr[(t.at + k) * 3 + 1], arr[(t.at + k) * 3 + 2]).applyMatrix4(M);
+        const wx = _v.x - px, wz = _v.z - pz, bx = wx * c - wz * s, bz = wx * s + wz * c;
+        if (bx < x0) x0 = bx; if (bx > x1) x1 = bx; if (_v.y < y0) y0 = _v.y; if (_v.y > y1) y1 = _v.y; if (bz < z0) z0 = bz; if (bz > z1) z1 = bz;
+      }
+    }
+    const e = [x1 - x0, y1 - y0, z1 - z0].sort((p, q) => q - p);
+    return e[1]! <= 1.5 || e[2]! >= 0.3 * e[1]!;
+  }
   /** A span's triangles out of its bucket (onto their first corner; kept for the reset). */
   function hideSpan(span: StructureSpan): void {
     o.keepSpan(span);
@@ -262,6 +306,28 @@ export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
 
   return {
     handles: (builder) => !!RULES[builder],
+    drop(seam, groups, settled = false) {
+      // the largest first (by triangles): a few bodies, the rest out with their dust
+      const order = groups.map((g, i) => i).sort((p, q) => groups[q]!.length - groups[p]!.length || p - q);
+      let thrown = 0;
+      const touched = new Set<StructureSpan>();
+      order.forEach((gi, n) => {
+        const g = groups[gi]!;
+        if (!g.length) return;
+        const salt = damageSeed(seam.structureIdx, 0x4a6, gi, g.length);
+        if (n < HANGING_BODIES && throwGroup(seam, HANGING_RULE, g as Tri[], salt, 0, 0, settled, !compact(seam, g))) thrown++;
+        else if (!settled) {
+          // its dust where it was
+          const t = g[0]!, arr = t.span.position.array as Float32Array, M = spanMatrix(t.span);
+          _v.set(arr[t.at * 3], arr[t.at * 3 + 1], arr[t.at * 3 + 2]).applyMatrix4(M);
+          o.onLanding?.(_v.x, _v.y, _v.z, 3, 40, seam.structureIdx);
+        }
+        for (const t of g) { hideTri(t.span, t.at); touched.add(t.span); }
+      });
+      for (const span of touched) { span.position.addUpdateRange(span.first * 3, span.count * 3); span.position.needsUpdate = true; }
+      if (touched.size) seam.touchShadows();
+      return thrown;
+    },
     stage(seam, stage, dirX, dirZ, settled = false) {
       const rules = RULES[seam.builder];
       const rank = STAGE_RANK[stage] ?? 0;
@@ -310,6 +376,18 @@ export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
     },
     update(dtS) {
       clock += Math.max(0, dtS);
+      for (let i = tweens.length - 1; i >= 0; i--) {
+        const w = tweens[i]!;
+        w.t = Math.min(w.T, w.t + Math.max(0, dtS));
+        const u = w.t / w.T;
+        _tq.slerpQuaternions(w.q0, w.q1, Math.min(1, u * 1.4));
+        _m.compose(_v.set(w.x, w.y0 + (w.y1 - w.y0) * u * u, w.z), _tq, _s);
+        for (const m of w.meshes) { m.matrix.copy(_m); m.matrixWorldNeedsUpdate = true; }
+        if (u >= 1) {
+          o.onLanding?.(w.x, w.y1, w.z, Math.min(9, 9.81 * w.T), w.massKg, w.structureIdx);
+          tweens[i] = tweens[tweens.length - 1]!; tweens.length--;
+        }
+      }
       for (let i = live.length - 1; i >= 0; i--) {
         const b = live[i];
         if (!o.pool.framePoseAt(b.handle, pose)) { unlist(b); continue; }
@@ -326,6 +404,7 @@ export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
       live.length = 0;
       byHandle.clear();
       taken.clear();
+      tweens.length = 0;
       for (const m of drawn) { m.removeFromParent(); m.geometry.dispose(); }
       drawn.length = 0;
       baked = 0;

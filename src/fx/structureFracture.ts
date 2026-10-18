@@ -99,6 +99,13 @@ export interface StructureFracture {
   release(structureIdx: number): void;
   /** A storey dropped (sections on): the rooms laid in it and over it go (destruction-slabs 227: they stood in the air). */
   dropRooms(structureIdx: number, fromStorey: number, only?: boolean): void;
+  /**
+   * A storey's fall lowers what stands over it by `dropM` (destruction-slabs 227 round 3: the faces the fracture had
+   * taken stood at their heights over the fallen storey while the world's spans came down — a late joiner saw a house's
+   * upper floors hang over its empty ground floor): `baked`, for good (its faces' cells and grids move, later strikes and
+   * cells with them); otherwise as shown in flight (the faces' matrices) until the fall's end bakes it.
+   */
+  lowerOver(structureIdx: number, storey: number, dropM: number, baked: boolean): void;
   /** Per frame (after the pool's step): the strikes' drawing within its budget, live bodies' poses, still ones baked. */
   update(): void;
   /** Finish every queued strike's drawing now (receipts, a settle), or one building's (a storey dropping with its face). */
@@ -127,6 +134,9 @@ interface Layout { names: string[]; sizes: number[]; stride: number }
 
 /** The face's triangles past its rectangle (a plinth's lip, an eave's board): they stand with it whatever its cells do. */
 const STATIC_CELL = -1;
+/** What reaches over a gable's apex (the roof's cap over it): it stands while the gable's top row does, and goes with it
+ *  (destruction-slabs 227 round 3: standing with the face, it was left in the sky as two triangles when the gable fell). */
+const HEAD_CELL = -2;
 
 interface FaceGroup {
   material: THREE.Material;
@@ -152,6 +162,12 @@ interface FaceDraw {
   /** Each cell's depth through the wall to the proudest part it carries (m along the face's normal): its body's box. */
   depthMin: Float32Array;
   depthMax: Float32Array;
+}
+
+/** A face's share of the building's triangles (sortByFaceSlice): copied by material, and where each lies in its bucket. */
+interface FaceSort {
+  soups: Map<THREE.Material, { layout: Layout; soup: number[] }>;
+  flat: Array<[StructureSpan, number]>;
 }
 
 interface LiveBody {
@@ -189,16 +205,20 @@ interface Live {
   /** Its standing faces went with a collapse: its queued drawing is dropped. */
   released: boolean;
   /** Faces being cut a slice at a time: their draw, their sorted triangles and how far the cut has come. */
-  claiming: Map<number, { draw: FaceDraw; entry: { soups: Map<THREE.Material, { layout: Layout; soup: number[] }>; flat: Array<[StructureSpan, number]> } | null;
+  claiming: Map<number, { draw: FaceDraw; entry: FaceSort | null;
     materials: THREE.Material[]; m: number; tri: number }>;
   /** How far the sort by face has come (span, triangle) while it runs in slices. */
   sortAt: [number, number];
-  sorting: Map<number, { soups: Map<THREE.Material, { layout: Layout; soup: number[] }>; flat: Array<[StructureSpan, number]> }> | null;
+  sorting: Map<number, FaceSort> | null;
   /** The building's triangles sorted by face (sortByFace, at its first strike), each face's dropped once taken. */
-  byFace: Map<number, { soups: Map<THREE.Material, { layout: Layout; soup: number[] }>; flat: Array<[StructureSpan, number]> }> | null;
+  byFace: Map<number, FaceSort> | null;
   room: THREE.Mesh[];
   /** The rooms laid (storey and enclosed component keys: structureEnclosure storeyInterior). */
   roomStoreys: Set<string>;
+  /** (destruction-slabs 227 round 3) Per storey: how far a storey's fall under it has lowered it (m; its faces' cells and
+   *  their grids carry it, its rooms by their matrix), and how far a fall in flight shows it lowered so far. */
+  sunk: Float32Array;
+  flight: Float32Array;
   baked: THREE.Mesh[];
   /** Baked bodies' meshes waiting to join the building's merged heap, and that heap (one mesh a material and layout:
    *  a hundred clumps lying still drew a hundred draw calls and their shadows each, the decisive wave's hitch probe). */
@@ -241,6 +261,38 @@ const CRACK_MPS = 3;
 /** (the decisive wave's barn: "bright, undusted, same-size bricks") how far what broke off is greyed toward its own dust. */
 const DUST_COAT = 0.42;
 const CRACK_MIN_CELLS = 6;
+/** A gable's void cell's home (cutIntoCells): its row's nearest cell that is no void, else the nearest in the rows under it;
+ *  none (STATIC_CELL) when the face has no such cell. */
+function gableHome(grid: FaceGrid, cell: number): number {
+  const rows = grid.rowStart.length - 1;
+  let r = 0;
+  while (r + 1 < rows && grid.rowStart[r + 1]! <= cell) r++;
+  const u = (grid.cellU[2 * cell]! + grid.cellU[2 * cell + 1]!) / 2;
+  for (let rr = r; rr >= 0; rr--) {
+    let best = -1, bd = Infinity;
+    for (let c = grid.rowStart[rr]!; c < grid.rowStart[rr + 1]!; c++) {
+      if (grid.state[c] === CELL_VOID) continue;
+      const d = Math.abs((grid.cellU[2 * c]! + grid.cellU[2 * c + 1]!) / 2 - u);
+      if (d < bd) { bd = d; best = c; }
+    }
+    if (best >= 0) return best;
+  }
+  return STATIC_CELL;
+}
+/** Whether a gable face's topmost drawn row has a cell standing (HEAD_CELL stands while it does). */
+function headStands(grid: FaceGrid): boolean {
+  for (let r = grid.rowStart.length - 2; r >= 0; r--) {
+    let any = false;
+    for (let c = grid.rowStart[r]!; c < grid.rowStart[r + 1]!; c++) {
+      if (grid.state[c] === CELL_VOID) continue;
+      any = true;
+      if (grid.state[c]! <= CELL_SPALLED || grid.state[c] === CELL_OPENING) return true;
+    }
+    if (any) return false;
+  }
+  return false;
+}
+
 /** (dcore 2026-10-11, wave 397: "from 1.80 s to 2.46 s the whole front hangs in its own plane as a staggered mosaic of
  *  loose rectangular panels") a wall that lost its footing leans out off its foot: every piece of a fallen cluster
  *  leaves with the cluster's lean (rad/s about the cluster's lowest course, along the wall), so its upper pieces go out
@@ -328,7 +380,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   // ---- a face taken out of the buckets and cut between its cells ---------------------------------------------------
   /** The face a body-frame triangle belongs to: the nearest plane it lies on (or proud of, a sill, a shutter), inside
    *  the face's span and storey; its normal breaks a tie at a corner. −1 for none. */
-  function faceOfTriangle(wall: WallFracture, cx: number, cy: number, cz: number, nx: number, ny: number, nz: number): number {
+  function faceOfTriangle(wall: WallFracture, cx: number, cy: number, cz: number, nx: number, ny: number, nz: number, wallPart = true): number {
     let best = -1, bestScore = Infinity;
     for (let i = 0; i < wall.faces.length; i++) {
       const g = wall.faces[i];
@@ -340,6 +392,10 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       // over the storey's wall only the gable itself (under its sloping edges: never the roof's verge over them)
       if (v > g.wallHeight + 0.06 && v > gableTopAt(g, along) + 0.06) continue;
       const depth = dx * g.out[0] + dz * g.out[2];
+      // (destruction-slabs 227 round 3) and over the wall no trim standing proud of the gable: the roof's verge
+      // boards and barge (taken into the face, they stood as an A-frame over the roofless walls when the roof fell; left in
+      // the world, the roof's fall takes them) — the gable's own timbers and frames lie flush with it or in it
+      if (!wallPart && v > g.wallHeight + 0.06 && depth > 0.04) continue;
       if (depth < -g.thickness - 0.15 || depth > 0.4) continue;
       const facing = nx * g.out[0] + ny * g.out[1] + nz * g.out[2];
       const score = Math.abs(depth > 0 ? depth : depth < -g.thickness ? -g.thickness - depth : 0) + Math.abs(depth) * 0.25 - 0.08 * Math.max(0, facing);
@@ -392,7 +448,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
         const wx = cx - px, wz = cz - pz;
         const bx = wx * c - wz * s, by = cy - py, bz = wx * s + wz * c;
         const bnx = (fx * c - fz * s) / area2, bny = fy / area2, bnz = (fx * s + fz * c) / area2;
-        const f = faceOfTriangle(live.wall, bx, by, bz, bnx, bny, bnz);
+        const f = faceOfTriangle(live.wall, bx, by, bz, bnx, bny, bnz, span.partClass !== 'trim');
         if (f < 0) continue;
         let entry = byFace.get(f);
         if (!entry) { entry = { soups: new Map(), flat: [] }; byFace.set(f, entry); }
@@ -518,7 +574,10 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     const tris = Math.min(to, soup.length / (3 * stride));
     const listOf = (cell0: number): number[] => {
       // (a gable's void cells over its sloping edges hold nothing: what reaches into one stands with the face)
-      const cell = cell0 !== STATIC_CELL && grid.state[cell0] === CELL_VOID ? STATIC_CELL : cell0;
+      // (destruction-slabs 227 round 3: a gable's apex and the slivers of its edge over the sampled outline stood in the sky
+      // as two triangles when the cells under them fell — they go with the gable's nearest cell; a stretch where no wall is
+      // drawn stands with the face as before)
+      const cell = cell0 < 0 || grid.state[cell0] !== CELL_VOID ? cell0 : grid.absent[cell0] === 1 ? STATIC_CELL : gableHome(grid, cell0);
       let list = cells.get(cell);
       if (!list) { list = []; cells.set(cell, list); }
       return list;
@@ -575,9 +634,39 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       let poly: Poly | null = poly0;
       if (!inside) {
         poly = within(poly, 0, -1, 0, -y0Face);
-        poly = within(poly, 0, 1, 0, y1Face);
-        poly = within(poly, ux, 0, uz, ou + half);
-        poly = within(poly, -ux, 0, -uz, -(ou - half));
+        // (destruction-slabs 227 round 3) a gable's head is its apex: what reaches over it (the roof's cap over the gable,
+        // drawn in the roof's bucket) goes with the gable's top cell under it — standing with the face, it was left in the
+        // sky as two triangles when the gable's cells fell under it
+        if (grid.gableTop && poly) {
+          clip(poly, 0, 1, 0, y1Face, front, back);
+          if (front.length >= 3) emitPoly(listOf(HEAD_CELL), front.slice());
+          poly = back.length >= 3 ? back.slice() : null;
+        } else poly = within(poly, 0, 1, 0, y1Face);
+        // (destruction-slabs 227 round 3) what reaches past its ends (a sill beam running round the corner, an end board) goes
+        // with its row's end cell — standing with the face, a 10 m rail stood in the air over a storey's fallen cells
+        for (const side of [1, -1] as const) {
+          if (!poly) break;
+          clip(poly, ux * side, 0, uz * side, side > 0 ? ou + half : -(ou - half), front, back);
+          const keepBack = back.length >= 3 ? back.slice() : null;
+          if (front.length >= 3) {
+            // row by row (a corner board the face's height falls a row at a time with its end cells)
+            let rest: Poly | null = front.slice();
+            let ylo = Infinity, yhi = -Infinity;
+            for (const v of rest) { if (v[1]! < ylo) ylo = v[1]!; if (v[1]! > yhi) yhi = v[1]!; }
+            const r1 = rowOf(Math.min(y1Face, yhi));
+            for (let r = rowOf(Math.max(y0Face, ylo)); r <= r1 && rest; r++) {
+              let inRow: Poly | null;
+              if (r === r1) { inRow = rest; rest = null; }
+              else {
+                clip(rest, 0, 1, 0, oy + grid.rowY[r + 1]!, front, back);
+                inRow = back.length >= 3 ? back.slice() : null;
+                rest = front.length >= 3 ? front.slice() : null;
+              }
+              if (inRow) emitPoly(listOf(side > 0 ? grid.rowStart[r + 1]! - 1 : grid.rowStart[r]!), inRow);
+            }
+          }
+          poly = keepBack;
+        }
         if (!poly) continue;
       }
       // rows the polygon spans, from its lowest: peel each row off (what is under its top is that row's)
@@ -684,7 +773,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   function packGroup(draw: FaceDraw, fg: FaceGroup): void {
     const g = draw.grid, stride = fg.layout.stride;
     for (const [cell, list] of fg.cells) {
-      if (cell === STATIC_CELL) { fg.core.set(cell, Float32Array.from(list)); continue; }
+      if (cell < 0) { fg.core.set(cell, Float32Array.from(list)); continue; }
       let skinN = 0;
       const isSkin = new Uint8Array(list.length / (stride * 3));
       for (let t = 0, i = 0; i < list.length; t++, i += stride * 3) {
@@ -724,10 +813,14 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     if (cg) {
       const tint = draw.core.tint;
       const T = g.thickness;
+      // (destruction-slabs 227 round 3) only a cell that draws something has a broken edge to cap: a standing cell over no
+      // drawn wall (a frame's open bay, a wall the face runs past) drew its reveals as long bare strips in the air
+      const filled = new Set<number>();
+      for (const fg of draw.groups.values()) { for (const cell of fg.core.keys()) filled.add(cell); for (const cell of fg.skin.keys()) filled.add(cell); }
       for (let r = 0; r < rows; r++) {
         for (let c = g.rowStart[r]; c < g.rowStart[r + 1]; c++) {
           const st = g.state[c];
-          if (!standingState(st)) continue;
+          if (!standingState(st) || !filled.has(c)) continue;
           cellRect(g, c, rect);
           const [u0, u1, y0, y1] = rect;
           const sag = g.sag[c];
@@ -777,14 +870,15 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       const stride = fg.layout.stride;
       // what stands: a standing cell's core, its skin unless spalled; an opening's frame while its jambs stand
       let total = fg === cg ? caps.length : 0;
-      for (const [cell, arr] of fg.core) if (cell === STATIC_CELL || drawnCore(g.state[cell])) total += arr.length;
+      const head = headStands(g);
+      for (const [cell, arr] of fg.core) if (cell === STATIC_CELL || (cell === HEAD_CELL ? head : drawnCore(g.state[cell]))) total += arr.length;
       for (const [cell, arr] of fg.skin) if (drawnSkin(g.state[cell])) total += arr.length;
       if (!total) continue;
       const buf = new Float32Array(total);
       let at = 0;
       const put = (cell: number, arr: Float32Array): void => {
         buf.set(arr, at);
-        if (cell !== STATIC_CELL) {
+        if (cell >= 0) {
           // (dcore 2026-10-11, the decisive wave's house: a plastered timber frame's cracked cells shoved in and out read
           // as a mosaic of loose tiles with dark slivers between) only coursed masonry stands loose in its course
           const sag = g.sag[cell], loose = g.bonded && g.state[cell] === CELL_CRACKED ? looseOf(g, cell) : 0;
@@ -797,12 +891,13 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
         }
         at += arr.length;
       };
-      for (const [cell, arr] of fg.core) if (cell === STATIC_CELL || drawnCore(g.state[cell])) put(cell, arr);
+      for (const [cell, arr] of fg.core) if (cell === STATIC_CELL || (cell === HEAD_CELL ? head : drawnCore(g.state[cell]))) put(cell, arr);
       for (const [cell, arr] of fg.skin) if (drawnSkin(g.state[cell])) put(cell, arr);
       if (fg === cg) for (let i = 0; i < caps.length; i++) buf[at + i] = caps[i];
       const mesh = new THREE.Mesh(interleavedOf(fg.layout, buf, faceSphere(g)), fg.material);
       mesh.matrixAutoUpdate = false;
       bodyToWorld(live, mesh.matrix);
+      mesh.matrix.elements[13] -= live.flight[g.storey] ?? 0;
       // (dcore 2026-10-11: a face drawn in the body frame was never carried to the world — a matrix set by hand under a
       // static group is left out of the world update unless flagged, so the redrawn front stood at the world's origin and
       // the house showed a hole where its face was)
@@ -891,6 +986,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     mesh.userData.roomKey = interior.key;
     mesh.matrixAutoUpdate = false;
     bodyToWorld(live, mesh.matrix);
+    mesh.matrix.elements[13] -= (live.sunk[storey] ?? 0) + (live.flight[storey] ?? 0);
     mesh.matrixWorldNeedsUpdate = true;
     mesh.receiveShadow = true;
     o.group.add(mesh);
@@ -1605,6 +1701,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     if (!live) {
       live = { seam, wall: createWallFracture(a), faces: new Map(), sag: new Map(), roofCorners: null, sagSignature: '', released: false,
         claiming: new Map(), sortAt: [0, 0], sorting: null, byFace: null, room: [], roomStoreys: new Set(), baked: [], bakedPending: [],
+        sunk: new Float32Array(a.storeys.length), flight: new Float32Array(a.storeys.length),
         bakedMerged: new Map(), mergedAt: 0, strikes: 0, version: 0, lastX: 0, lastY: 0, lastZ: 0, lastAt: -1e9 };
       lives.set(seam.structureIdx, live);
     }
@@ -1709,6 +1806,55 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
         live.roomStoreys.delete(m.userData.roomKey as string);
         live.room.splice(i, 1);
       }
+    },
+    lowerOver(structureIdx, storey, dropM, baked) {
+      const live = lives.get(structureIdx);
+      if (!live || !(dropM > 0)) return;
+      const over = (st: number): boolean => st > storey;
+      if (!baked) {
+        // in flight: shown lowered, the data as it stood
+        for (let st = storey + 1; st < live.flight.length; st++) live.flight[st] = dropM;
+        for (const d of live.faces.values()) {
+          if (!over(d.grid.storey)) continue;
+          for (const m of d.meshes) { bodyToWorld(live, m.matrix); m.matrix.elements[13] -= dropM; m.matrixWorldNeedsUpdate = true; }
+        }
+        for (const m of live.room) {
+          const st = m.userData.storey as number;
+          if (!over(st)) continue;
+          bodyToWorld(live, m.matrix); m.matrix.elements[13] -= live.sunk[st]! + dropM; m.matrixWorldNeedsUpdate = true;
+        }
+        live.seam.touchShadows();
+        return;
+      }
+      // for good: the faces over it (their grids, cut cells and sorted triangles) lowered, then drawn again
+      for (let st = storey + 1; st < live.sunk.length; st++) { live.sunk[st] += dropM; live.flight[st] = 0; }
+      const shift = (list: { length: number; [i: number]: number }, stride: number): void => {
+        for (let i = 1; i < list.length; i += stride) list[i] -= dropM;
+      };
+      live.wall.faces.forEach((g, f) => {
+        if (!over(g.storey)) return;
+        (g.origin as unknown as number[])[1] -= dropM;
+        const sorted = live.byFace?.get(f) ?? live.sorting?.get(f);
+        if (sorted) for (const soup of sorted.soups.values()) shift(soup.soup, soup.layout.stride);
+      });
+      for (const d of live.faces.values()) {
+        if (!over(d.grid.storey)) continue;
+        for (const g of d.groups.values()) {
+          for (const list of g.cells.values()) shift(list, g.layout.stride);
+          for (const arr of g.core.values()) shift(arr, g.layout.stride);
+          for (const arr of g.skin.values()) shift(arr, g.layout.stride);
+        }
+        redraw(live, d);
+      }
+      for (const m of live.room) {
+        const st = m.userData.storey as number;
+        if (!over(st)) continue;
+        bodyToWorld(live, m.matrix); m.matrix.elements[13] -= live.sunk[st]!; m.matrixWorldNeedsUpdate = true;
+      }
+      // the roof's sag reads its corners again
+      live.roofCorners = null; live.sagSignature = '';
+      live.version++;
+      live.seam.touchShadows();
     },
     flush(structureIdx) {
       if (structureIdx !== undefined) { const live = lives.get(structureIdx); if (live) advanceWork(Infinity, live); return; }

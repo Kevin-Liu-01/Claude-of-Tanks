@@ -27,7 +27,7 @@ import {
   type DamageMeshWriter, type DamageRole, type DamageWriters, type FractureSlot, type Rgb, type StructureDamageAnatomy,
 } from './destructionKit.ts';
 import {
-  bandEnclosure, drawnOverAt, enclosedAt, standsOnPosts, tallestDrawn, tallWallAt, wallAlong, wallClusters, wallSpots, wallTopAt,
+  bandEnclosure, drawnOverAt, enclosedAt, positionsOf, standsOnPosts, tallestDrawn, tallWallAt, wallAlong, wallClusters, wallSpots, wallTopAt,
 } from './structureEnclosure.ts';
 
 /** The ruin's floors (the sweep's: 25 % and 60 %, with margin). */
@@ -698,12 +698,19 @@ export function intactHeightP90(anatomy: StructureDamageAnatomy): number {
  */
 export function measureIntactParts(parts: Readonly<Record<string, readonly BufferGeometry[]>> | null | undefined): StructureDamageAnatomy['intact'] | null {
   if (!parts) return null;
-  let topY = 0, minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, any = false;
+  // (destruction-slabs 227 round 3, the load-time budget) the parts' positions read straight from their arrays (a
+  // generic attribute accessor a corner was most of its time on urban); the same numbers as before
+  const sources: Array<{ array: ArrayLike<number>; stride: number; offset: number; count: number; index: ArrayLike<number> | null; n: number }> = [];
   for (const list of Object.values(parts)) for (const geometry of list) {
-    const pos = geometry.getAttribute('position');
-    if (!pos) continue;
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const src = positionsOf(geometry);
+    if (!src) continue;
+    const ix = geometry.getIndex();
+    sources.push({ ...src, index: ix ? ix.array : null, n: ix ? ix.count : src.count });
+  }
+  let topY = 0, minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, any = false;
+  for (const { array, stride, offset, count } of sources) {
+    for (let i = 0, o = offset; i < count; i++, o += stride) {
+      const x = array[o]!, y = array[o + 1]!, z = array[o + 2]!;
       if (y > topY) topY = y;
       if (x < minX) minX = x; if (x > maxX) maxX = x; if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
       any = true;
@@ -712,20 +719,16 @@ export function measureIntactParts(parts: Readonly<Record<string, readonly Buffe
   if (!any || !(topY > 0)) return null;
   bins.fill(0);
   let total = 0;
-  for (const list of Object.values(parts)) for (const geometry of list) {
-    const pos = geometry.getAttribute('position');
-    if (!pos) continue;
-    const index = geometry.getIndex();
-    const n = index ? index.count : pos.count;
+  for (const { array, stride, offset, index, n } of sources) {
     for (let t = 0; t + 2 < n; t += 3) {
-      const a = index ? index.getX(t) : t, b = index ? index.getX(t + 1) : t + 1, c = index ? index.getX(t + 2) : t + 2;
-      const ax = pos.getX(a), ay = pos.getY(a), az = pos.getZ(a);
-      const ux = pos.getX(b) - ax, uy = pos.getY(b) - ay, uz = pos.getZ(b) - az;
-      const vx = pos.getX(c) - ax, vy = pos.getY(c) - ay, vz = pos.getZ(c) - az;
+      const a = offset + (index ? index[t]! : t) * stride, b = offset + (index ? index[t + 1]! : t + 1) * stride, c = offset + (index ? index[t + 2]! : t + 2) * stride;
+      const ax = array[a]!, ay = array[a + 1]!, az = array[a + 2]!;
+      const ux = array[b]! - ax, uy = array[b + 1]! - ay, uz = array[b + 2]! - az;
+      const vx = array[c]! - ax, vy = array[c + 1]! - ay, vz = array[c + 2]! - az;
       const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
       const area = 0.5 * Math.sqrt(nx * nx + ny * ny + nz * nz);
       if (!(area > 0)) continue;
-      const y = (ay + pos.getY(b) + pos.getY(c)) / 3;
+      const y = (ay + array[b + 1]! + array[c + 1]!) / 3;
       bins[Math.max(0, Math.min(BINS - 1, Math.floor((y / topY) * BINS)))] += area;
       total += area;
     }
@@ -739,15 +742,20 @@ export function measureIntactParts(parts: Readonly<Record<string, readonly Buffe
   // its plan: every triangle laid on a 32 × 32 grid over its box (a barycentric lattice no coarser than a cell)
   const cells = new Uint8Array(PLAN_N * PLAN_N);
   const sx = Math.max(1e-3, maxX - minX), sz = Math.max(1e-3, maxZ - minZ), cell = Math.min(sx, sz) / PLAN_N;
-  for (const list of Object.values(parts)) for (const geometry of list) {
-    const pos = geometry.getAttribute('position');
-    if (!pos) continue;
-    const index = geometry.getIndex();
-    const n = index ? index.count : pos.count;
+  for (const { array, stride, offset, index, n } of sources) {
     for (let t = 0; t + 2 < n; t += 3) {
-      const a = index ? index.getX(t) : t, b = index ? index.getX(t + 1) : t + 1, c = index ? index.getX(t + 2) : t + 2;
-      const ax = pos.getX(a), az = pos.getZ(a), ux = pos.getX(b) - ax, uz = pos.getZ(b) - az, vx = pos.getX(c) - ax, vz = pos.getZ(c) - az;
+      const a = offset + (index ? index[t]! : t) * stride, b = offset + (index ? index[t + 1]! : t + 1) * stride, c = offset + (index ? index[t + 2]! : t + 2) * stride;
+      const ax = array[a]!, az = array[a + 2]!, ux = array[b]! - ax, uz = array[b + 2]! - az, vx = array[c]! - ax, vz = array[c + 2]! - az;
       const steps = Math.max(1, Math.min(64, Math.ceil(Math.max(Math.hypot(ux, uz), Math.hypot(vx, vz)) / cell)));
+      if (steps === 1) {
+        // (the lattice of one step: its three corners)
+        for (const [px, pz] of [[ax, az], [ax + ux, az + uz], [ax + vx, az + vz]] as const) {
+          const ci = Math.min(PLAN_N - 1, Math.max(0, Math.floor(((px - minX) / sx) * PLAN_N)));
+          const ck = Math.min(PLAN_N - 1, Math.max(0, Math.floor(((pz - minZ) / sz) * PLAN_N)));
+          cells[ck * PLAN_N + ci] = 1;
+        }
+        continue;
+      }
       for (let i = 0; i <= steps; i++) for (let j = 0; j <= steps - i; j++) {
         const x = ax + (ux * i + vx * j) / steps, z = az + (uz * i + vz * j) / steps;
         const ci = Math.min(PLAN_N - 1, Math.max(0, Math.floor(((x - minX) / sx) * PLAN_N)));

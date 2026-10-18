@@ -257,7 +257,8 @@ function layGrid(anatomy: StructureDamageAnatomy, storeyIndex: number, faceIndex
   const med = faceSetbackMedian(anatomy, storeyIndex, faceIndex);
   if (!(med.share > 0)) return null;
   const back = Number.isFinite(med.median) ? med.median : 0;
-  const origin: Vec3 = back !== 0 ? [face.origin[0] - face.out[0] * back, face.origin[1], face.origin[2] - face.out[2] * back] : face.origin;
+  // (its own copy: a storey's fall lowers a grid's origin, never the anatomy's face — destruction-slabs 227 round 3)
+  const origin: Vec3 = [face.origin[0] - face.out[0] * back, face.origin[1], face.origin[2] - face.out[2] * back];
   const material = faceMaterial(face);
   const law = cellLaw(material);
   const wallHeight = Math.max(0.3, face.height);

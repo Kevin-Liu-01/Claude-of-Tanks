@@ -226,8 +226,9 @@ interface LivePart {
   shoves: number;
   /** How long it has crept (under 0.25 m/s and 0.4 rad/s): a sheet balanced on a stump never sleeps. */
   slowS: number;
-  /** Tipped once more before the bake, found standing on its edge past the walls (round 2). */
-  retipped: boolean;
+  /** Times tipped over again, found standing on its edge past the walls (round 2; round 3: counted on a tip made, a sheet
+   *  found lying is looked at again once it is knocked onto its edge). */
+  retipped: number;
 }
 
 /**
@@ -279,8 +280,9 @@ interface LivePiece {
   box: number[];
   /** How long it has crept (a roof slab's look waits for this or for sleep, not for sleep alone). */
   slowS: number;
-  /** Tipped once more before the bake, found standing on its edge past the walls (round 2). */
-  retipped: boolean;
+  /** Times tipped over again, found standing on its edge past the walls (round 2; round 3: counted on a tip made, a sheet
+   *  found lying is looked at again once it is knocked onto its edge). */
+  retipped: number;
 }
 
 interface LiveCollapse {
@@ -347,6 +349,21 @@ const CRACK_KEEP = 0.7;
  *  an infill panel; a thick brick chunk standing on its own end is left as it lies); the shove that tips it over (m/s at
  *  its top across its thin side, times its mass). */
 const STAND_TALL = 3, STAND_TIP_MPS = 1.2;
+/** panelsStanding's body frame (one, reused: it runs each frame of a collapse's first 40 s). */
+const panelFrame = { c: 1, s: 0, x: 0, z: 0 };
+/** Times a panel found on its edge past the walls is tipped over again (round 3: counted on a tip made). */
+const PANEL_TIPS = 2;
+/** Whether half extents are a panel's: its least under 0.35 m, its middle over 0.75 m (no copy, no sort: per frame). */
+function isPanel(h: readonly number[]): boolean {
+  const a = h[0]!, b = h[1]!, c = h[2]!;
+  const lo = Math.min(a, b, c), hi = Math.max(a, b, c), mid = a + b + c - lo - hi;
+  return lo <= 0.35 && mid >= 0.75;
+}
+/** Whether a world point lies past the ground storey's drawn walls (body frame `f`: frameOf). */
+function pastWalls(a: StructureDamageAnatomy, f: { c: number; s: number; x: number; z: number }, x: number, z: number): boolean {
+  const bx = (x - f.x) * f.c - (z - f.z) * f.s, bz = (x - f.x) * f.s + (z - f.z) * f.c;
+  return enclosedAt(a, bx, bz, 0.3, 0) === false;
+}
 
 /** A deterministic hash of three integers to [0, 1) (the presentation's own: a break looks the same on every client). */
 function hash01(a: number, b: number, c: number): number {
@@ -981,7 +998,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       for (const m of meshes) m.castShadow = big;
       const offset = new THREE.Vector3(off[0], off[1], off[2]);
       parts.push({ meshes, offset, offsetM: offset.lengthSq() > 0 ? new THREE.Matrix4().makeTranslation(off[0], off[1], off[2]) : null,
-        handle: -1, pose: new Float64Array(7).fill(NaN), dusts: 0, tipped: false, shape: null, box: null, shoves: 0, slowS: 0, retipped: false });
+        handle: -1, pose: new Float64Array(7).fill(NaN), dusts: 0, tipped: false, shape: null, box: null, shoves: 0, slowS: 0, retipped: 0 });
     }
     if (!parts.some((pp) => pp.meshes.length)) return;
     // (2026-10-15, the port's receipt: a hip roof's slab, its eave boards and verges past its banded boxes, lay a metre
@@ -1034,7 +1051,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     }
     const lp: LivePiece = { piece, com: [0, 0, 0], handle: -1, parts, broken: false, still: 0, sounds: 0, dusts: 0, kicked: false,
       shattered: false, tipped: false, pose: new Float64Array(7).fill(NaN), spawn: { ...spawn, ...(tumble ?? {}) }, rested: false, shape, half,
-      shoves: 0, box: shapeBox ?? plannedBox(piece), slowS: 0, retipped: false };
+      shoves: 0, box: shapeBox ?? plannedBox(piece), slowS: 0, retipped: 0 };
     writeWhole(lp, [spawn.x, spawn.y, spawn.z, spawn.qx, spawn.qy, spawn.qz, spawn.qw]);
     lc.pieces.push(lp);
     if (now) spawnBody(lc, lp); else lc.spawnQueue.push(lp);
@@ -1614,15 +1631,18 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
         }
       }
     }
-    // (a roof come down onto a floor still standing stays bodies, asleep, until that floor goes: baked it would hang)
-    if (c.partial && floors.get(c.structureIdx)?.length) return;
     const ready = allStill || (allSlow && age > BAKE_SLOW_AGE_S);
     // (round 2) and none of its roof's slabs or sheets lies high past the walls when it bakes: one the looks above missed (it
     // crept, never asleep) is shoved now and the bake waits for it
     // (a panel come to rest on its edge past the walls is tipped as soon as it rests, not only when the collapse would bake:
     // round 2, a caravanserai's roof sheet stood on edge in the yard until the end)
+    // (round 3: a roof's fall onto a floor still standing returned before either look — its sheets stood on edge past the
+    // walls and its slabs lay over the street until the floor went)
     const tipped = age <= BAKE_AGE_S && panelsStanding(c);
-    if (ready && age <= BAKE_AGE_S && (roofLeftHigh(c) || tipped)) return;
+    const high = ready && age <= BAKE_AGE_S && roofLeftHigh(c);
+    // (a roof come down onto a floor still standing stays bodies, asleep, until that floor goes: baked it would hang)
+    if (c.partial && floors.get(c.structureIdx)?.length) return;
+    if (high || (ready && age <= BAKE_AGE_S && tipped)) return;
     if (ready || age > BAKE_AGE_S) { const tBake = profStart(); bake(c); profEnd('cb.bake', tBake); }
   }
   /** A roof slab at rest looked at (its pose in `pose`): left where it belongs, or shoved off a rest high past the walls,
@@ -1697,32 +1717,27 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
    */
   function panelsStanding(c: LiveCollapse): boolean {
     let moved = false;
-    const a = c.seam.anatomy, f = frameOf(a);
-    const outside = (x: number, z: number): boolean => {
-      const bx = (x - f.x) * f.c - (z - f.z) * f.s, bz = (x - f.x) * f.s + (z - f.z) * f.c;
-      return enclosedAt(a, bx, bz, 0.3, 0) === false;
-    };
-    const panel = (h: readonly number[]): boolean => {
-      const e = [...h].sort((x, y) => x - y);
-      return e[0]! <= 0.35 && e[1]! >= 0.75;
-    };
+    const a = c.seam.anatomy, pl = a.placement;
+    const f = panelFrame;
+    f.c = Math.cos(pl.yaw); f.s = Math.sin(pl.yaw); f.x = pl.x; f.z = pl.z;
     const sb = bandEnclosure(a, 0)?.solidBox;
-    const [bcx, bcz] = sb && Number.isFinite(sb[0]) ? [(sb[0] + sb[2]) / 2, (sb[1] + sb[3]) / 2] : anatomyCentre(a);
+    let bcx = 0, bcz = 0;
+    if (sb && Number.isFinite(sb[0])) { bcx = (sb[0] + sb[2]) / 2; bcz = (sb[1] + sb[3]) / 2; }
     const midX = f.x + bcx * f.c + bcz * f.s, midZ = f.z - bcx * f.s + bcz * f.c;
-    for (const p of c.pieces) {
+    for (let i = 0; i < c.pieces.length; i++) {
+      const p = c.pieces[i]!;
       if (p.rested || p.shattered) continue;
       if (!p.broken) {
         const h = p.half ?? pieceHalf(p.piece);
-        if (p.handle < 0 || p.retipped || !panel(h) || !creeping(p.handle) || !pool.framePoseAt(p.handle, pose) || !outside(pose[0]!, pose[2]!)) continue;
-        p.retipped = true;
-        if (tipOutward(p.handle, h, p.piece.massKg, midX, midZ)) moved = true;
+        if (p.handle < 0 || p.retipped >= PANEL_TIPS || !isPanel(h) || !creeping(p.handle) || !pool.framePoseAt(p.handle, pose) || !pastWalls(a, f, pose[0]!, pose[2]!)) continue;
+        if (tipOutward(p.handle, h, p.piece.massKg, midX, midZ)) { p.retipped++; moved = true; }
         continue;
       }
       for (let k = 0; k < p.parts.length; k++) {
         const part = p.parts[k]!, spec = p.piece.parts[k];
-        if (!spec || part.handle < 0 || part.retipped || !panel(spec.half) || !creeping(part.handle) || !pool.framePoseAt(part.handle, pose) || !outside(pose[0]!, pose[2]!)) continue;
-        part.retipped = true;
-        if (tipOutward(part.handle, spec.half, spec.massKg, midX, midZ)) moved = true;
+        if (!spec || part.handle < 0 || part.retipped >= PANEL_TIPS || !isPanel(spec.half) || !creeping(part.handle) || !pool.framePoseAt(part.handle, pose)
+          || !pastWalls(a, f, pose[0]!, pose[2]!)) continue;
+        if (tipOutward(part.handle, spec.half, spec.massKg, midX, midZ)) { part.retipped++; moved = true; }
       }
     }
     return moved;

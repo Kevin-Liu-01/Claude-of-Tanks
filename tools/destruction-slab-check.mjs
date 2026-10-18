@@ -64,6 +64,7 @@ import { deflateSync } from 'node:zlib';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { installWorldBuildFixture } from './headlessWorldCollision.mjs';
+import { createHangingJudge } from './destruction-hanging.mjs';
 
 const STEP = 1 / 60;
 const _still = new THREE.Vector3();
@@ -897,7 +898,7 @@ export async function runSlabCheck({
   const { rubbleHeightFor, rubbleMoundHeightAt } = await import('../src/sim/terrainDeformation.ts');
   const { createObstacleGrid, shellPassesThroughCollisionRecord } = await import('../src/world/collision.ts');
   const { munitionClassForShell, munitionChargeKg } = await import('../src/sim/munitionBlast.ts');
-  const { STAGE_RUN_TAG } = await import('../src/fx/structureMask.ts');
+  const { STAGE_RUN_TAG, COLLAPSE_S } = await import('../src/fx/structureMask.ts');
   await models.preloadPropModels();
 
   const config = maps.getMapConfig(mapId);
@@ -1008,6 +1009,13 @@ export async function runSlabCheck({
       return f;
     };
     const drawnTopAt = drawnTopOf(intactLists);
+    // (round 3) what the damage leaves hanging (destruction-hanging.mjs): the building's own pieces, slab or not, judged
+    // against what is drawn round them — never the standing building's collision record
+    const hangingJudge = createHangingJudge(spanTrianglesAll(seam.spans), seam.spans.map((sp) => (sp.mesh.name || 'span').replace(/^props-bucket-/, '')), ground0);
+    /** Its findings at a snapshot: `spansDrawn` the world's spans as the CPU holds them, or false (gone: a fallen building's). */
+    const bucketOfMaterial = new Map([...worldMaterials].map(([b, m]) => [m, b]));
+    const hangingAt = (meshes, spansDrawn, groundFn) => hangingJudge(spansDrawn ? spanTrianglesAll(seam.spans) : null,
+      meshes.map((d) => ({ name: bucketOfMaterial.has(d.raw) ? `${d.name} (${bucketOfMaterial.get(d.raw)})` : d.name, tris: d.tris, standing: STANDING_MESH.test(d.name) })), groundFn).map(hangingFinding);
     const floorLists = drawnSpanTriangles(seam.spans.filter((sp) => sp.partClass !== 'roof'));
     const topFloorY = a.placement.y + (a.storeys.length ? a.storeys[a.storeys.length - 1].y0 : 0) + 0.5;
     const standingFloorAt = floorsOf(floorLists, topFloorY);
@@ -1036,7 +1044,11 @@ export async function runSlabCheck({
     const stages = createStructureStages({ mask, debris, now: () => clock, materialFor: (bucket) => worldMaterials.get(bucket) ?? null,
       scars: null, crumble: 1, ...(fx ? { fracture: fx.attach } : {}) });
     const events = [];
-    let collapsed = false;
+    let collapsed = false, collapsedAt = -1;
+    // the world's spans: drawn (standing), moving (a storey's fall in flight carries what stood over it down; a kit's
+    // collapse: the mask's front cuts them and folds them onto the pivot COLLAPSE_S after the blow — the CPU does not see
+    // it), or gone (folded; or the fracture took the collapse)
+    const spansState = () => (!collapsed ? (stages.falling?.(id) ? 'moving' : 'drawn') : fx?.took(id) ? 'gone' : collapsedAt >= 0 && clock >= collapsedAt + COLLAPSE_S - 1e-6 ? 'gone' : 'moving');
     const bus = { emit(type, e) {
       if (e?.structureId === id && !felled) {
         // the phase this event moves the building into; the phase it leaves is judged as it stands, before the event
@@ -1178,6 +1190,7 @@ export async function runSlabCheck({
       const meshes = drawnMeshes([debris.group, fxGroup, bodies?.group], accept);
       const judged = judgeSlabs(meshes, { footprint, groundAt: ground, supportAt, settled: false, ownMaterials, upperFootprint, rested, bandFootprint, drawnTopAt, byDesign,
         floorAt: felled ? null : standingFloorAt });
+      { const st = spansState(); if (st !== 'moving') judged.findings.push(...hangingAt(meshes, st === 'drawn', ground)); }
       const flagged = judged.findings.length > 0;
       const firstFlag = flagged && !snapshots.some((p) => p.findings.length);
       const tag = `t${clock.toFixed(1)}-${label}`;
@@ -1186,7 +1199,7 @@ export async function runSlabCheck({
       midPoints.set(reached, { t: clock, count: replay.length, records: recordState() });
     }
     const due = [];
-    let lastEventCount = 0, fired = 0, collapsedAt = -1;
+    let lastEventCount = 0, fired = 0;
     let nextFilm = filmFromS;
     const lastS = rounds * roundGapS + settleS + 4;
     for (let tick = 0; tick * STEP <= lastS; tick++) {
@@ -1228,7 +1241,7 @@ export async function runSlabCheck({
         nextFilm += filmS;
         // (COT_SLAB_FILM_SPANS=1: the world's own spans alone, as the CPU flattens them — what a hide left standing)
         shoot(`film-${clock.toFixed(2).padStart(6, '0')}`, process.env.COT_SLAB_FILM_SPANS ? [] : drawnMeshes([debris.group, fxGroup, bodies?.group], accept), [],
-          !!process.env.COT_SLAB_FILM_SPANS || !collapsed || !fx?.took(id));
+          !!process.env.COT_SLAB_FILM_SPANS || spansState() !== 'gone');
       }
       if (events.length > lastEventCount) {
         // each new stage or breach: judged once its pieces are laid (0.8 s) and once they have fallen (3 s)
@@ -1241,15 +1254,30 @@ export async function runSlabCheck({
         due.shift();
         if (snapshots.length < maxSnapshots || atEnd) {
           const meshes = drawnMeshes([debris.group, fxGroup, bodies?.group], accept);
+          // (COT_SLAB_DUMP=1: every drawn mesh's name, triangles and bounds at each judged snapshot — a diagnosis aid)
+          if (process.env.COT_SLAB_DUMP) {
+            for (const d of meshes) {
+              const s = shapeOf(d.tris);
+              log(`  dump t=${clock.toFixed(2)} ${d.name} [${d.material.name}] ${s.tris} tris, min ${s.min.map((v) => v.toFixed(1)).join(',')} max ${s.max.map((v) => v.toFixed(1)).join(',')}`);
+            }
+            const lists = drawnSpanTriangles(seam.spans, true);
+            seam.spans.forEach((span, k) => {
+              const t = lists[k];
+              if (!t?.length) return;
+              const s = shapeOf(t);
+              log(`  dump t=${clock.toFixed(2)} span ${k} ${span.mesh.name || span.bucket || '?'} piece=${span.piece ?? '-'} class=${span.partClass ?? '-'} ${s.tris}/${Math.floor(span.count / 3)} tris drawn, min ${s.min.map((v) => v.toFixed(1)).join(',')} max ${s.max.map((v) => v.toFixed(1)).join(',')} took=${fx?.took(id) ?? '-'}`);
+            });
+          }
           const judged = judgeSlabs(meshes, { footprint, groundAt: ground, supportAt, settled: atEnd, ownMaterials, upperFootprint, rested, bandFootprint, drawnTopAt, byDesign,
             floorAt: felled ? null : standingFloorAt });
+          { const st = spansState(); if (st !== 'moving') judged.findings.push(...hangingAt(meshes, st === 'drawn', ground)); }
           const last = events[events.length - 1];
           const label = atEnd ? 'final' : `t${clock.toFixed(1)}-${last ? (last.stage ?? (last.storeyDown ? 'storeyDown' : last.hole === 255 ? 'sectionDown' : 'hole')) : 'none'}`;
           const flagged = judged.findings.length > 0;
           const firstFlag = flagged && !snapshots.some((p) => p.findings.length);
           const phase = atEnd ? (felled ? 'settled ruin' : `standing end (${PHASE[reached]})`) : felled ? 'collapse' : PHASE[reached];
           snapshots.push({ t: +clock.toFixed(2), label, phase, events: events.length, meshes: meshes.length, pieces: judged.pieces, findings: judged.findings.map(strip),
-            render: firstFlag || atEnd || (flagged && rendered < 5) ? shoot(label, meshes, judged.findings, !collapsed || !fx?.took(id)) : null });
+            render: firstFlag || atEnd || (flagged && rendered < 5) ? shoot(label, meshes, judged.findings, spansState() !== 'gone') : null });
           if (!felled && !atEnd && reached !== 'intact') midPoints.set(reached, { t: clock, count: replay.length, records: recordState() });
         }
         if (atEnd) break;
@@ -1299,11 +1327,19 @@ export async function runSlabCheck({
         const meshes = drawnMeshes([rdebris.group, rgroup, rbodies?.group], raccept);
         const judged = judgeSlabs(meshes, { footprint, groundAt: rground, supportAt, settled: true, ownMaterials, upperFootprint, bandFootprint, drawnTopAt, byDesign,
           floorAt: rfelled ? null : standingFloorAt });
+        // (a settled collapse is gone at once: the mask folds it, the fracture drops its spans)
+        judged.findings.push(...hangingAt(meshes, !rfelled, rground));
+        if (process.env.COT_SLAB_DUMP) {
+          const lists = drawnSpanTriangles(seam.spans, true);
+          seam.spans.forEach((span, k) => { const t = lists[k]; if (!t?.length) return; const sh = shapeOf(t);
+            log(`  rdump ${p.phase} span ${k} ${span.mesh.name} class=${span.partClass} ${sh.tris}/${Math.floor(span.count / 3)} min ${sh.min.map((v) => v.toFixed(1))} max ${sh.max.map((v) => v.toFixed(1))}`); });
+          for (const d of meshes) { const sh = shapeOf(d.tris); log(`  rdump ${p.phase} ${d.name} ${sh.tris} min ${sh.min.map((v) => v.toFixed(1))} max ${sh.max.map((v) => v.toFixed(1))}`); }
+        }
         const flagged = judged.findings.length > 0;
         const label = `rejoin-${p.phase.startsWith('rejoin mid') ? 'mid' : 'end'}-${snapshots.length}`;
         snapshots.push({ t: +p.t.toFixed(2), label, phase: p.phase, events: p.count, meshes: meshes.length, pieces: judged.pieces,
           findings: judged.findings.map(strip),
-          render: flagged || !p.phase.startsWith('rejoin mid') ? shoot(label, meshes, judged.findings, !rfelled || !rfx?.took(id), rground) : null });
+          render: flagged || !p.phase.startsWith('rejoin mid') ? shoot(label, meshes, judged.findings, !rfelled, rground) : null });
         rstages.reset(); rfx?.reset(); rdebris.reset(); rbodies?.reset?.();
         restoreSpans();
       }
@@ -1344,8 +1380,9 @@ function tintOf(m) {
   return t.map(g);
 }
 
-/** The spans' triangles as drawn now (world space; a flattened triangle left out). */
-function drawnSpanTriangles(spans) {
+/** The spans' triangles as drawn now (world space; a flattened triangle left out; `aligned`: one list per span, empty ones
+ *  kept). */
+function drawnSpanTriangles(spans, aligned = false) {
   const lists = [];
   const v = new THREE.Vector3();
   for (const span of spans) {
@@ -1359,9 +1396,41 @@ function drawnSpanTriangles(spans) {
       if (Math.hypot(uy * wz - uz * wy, uz * wx - ux * wz, ux * wy - uy * wx) < 1e-8) continue;
       tris.push(...p);
     }
-    if (tris.length) lists.push(Float32Array.from(tris));
+    if (tris.length || aligned) lists.push(Float32Array.from(tris));
   }
   return lists;
+}
+
+/** The spans' triangles every one, as built or as drawn now (world space; a hidden one collapsed where it was): one
+ *  list a span, aligned with its triangles (the hanging judge's identity). */
+function spanTrianglesAll(spans) {
+  const v = new THREE.Vector3();
+  return spans.map((span) => {
+    span.mesh.updateMatrixWorld?.(true);
+    const e = span.mesh.matrixWorld;
+    const n = Math.floor(span.count / 3);
+    const out = new Float32Array(n * 9);
+    for (let t = 0; t < n; t++) for (let j = 0; j < 3; j++) {
+      v.fromBufferAttribute(span.position, span.first + t * 3 + j).applyMatrix4(e);
+      out[t * 9 + j * 3] = v.x; out[t * 9 + j * 3 + 1] = v.y; out[t * 9 + j * 3 + 2] = v.z;
+    }
+    return out;
+  });
+}
+
+/** The presentation's meshes that stand where they were laid (the hanging check judges them, and they hold only once held
+ *  themselves): a ruin's remnants, rims and stubs, a storey's room, a collapse's remnant, the fracture's redrawn faces and
+ *  rooms (its heaps and a collapse's baked rests are debris lying where it fell: they hold, the slab check judges them). */
+const STANDING_MESH = /^fx-(structure-(rim|remnant|stub|room)|fracture-(face|room)|collapse-remnant)-/;
+
+/** A hanging judge's finding in the slab check's row format. */
+function hangingFinding(h) {
+  const area = h.extentsM.slice().sort((p, q) => q - p);
+  return {
+    mesh: h.mesh, sheet: false, material: '', map: null, tint: [0, 0, 0], slab: false, orientation: 'hanging', extentsM: h.extentsM,
+    areaM2: +(area[0] * area[1]).toFixed(1), centre: h.centre, liftM: h.liftM, outsideShare: 0, outsideM2: 0, floatingShare: 0,
+    triangles: h.tris.length / 9, reasons: [h.reason], attributes: [], _tris: h.tris,
+  };
 }
 
 /** A square of the ground as drawn round (cx, cz), `cell` m quads. */
