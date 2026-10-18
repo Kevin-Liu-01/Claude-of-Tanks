@@ -1644,6 +1644,10 @@ export function buildGarageEnvironment(
           const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
           const distance = Math.hypot(x - pad.x, z - pad.z);
           if (distance >= core + feather) continue;
+          // a facility terrace keeps its own level (the exhibits' pads, the stations' floors, the signature facility)
+          const view = garageWorldPointToView(x, z);
+          if (terraceRecords.some((terrace) => Math.hypot((view.side - terrace.side) / terrace.radiusSide,
+            (view.depth - terrace.depth) / terrace.radiusDepth) <= 1.25)) continue;
           const index = row * patch.width + column;
           heights[index] = THREE.MathUtils.lerp(target, heights[index], THREE.MathUtils.smoothstep(distance, core, core + feather));
         }

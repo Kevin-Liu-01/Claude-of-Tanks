@@ -60,11 +60,11 @@ export const SIROCCO_KIT_PLACEMENT: GarageKitPlacement = {
     { kind: 'prop', name: 'jerrycanRack', at: [-24.6, 11.4], yaw: toward([-24.6, 11.4], [0, 0]) },
     { kind: 'prop', name: 'lightTower', at: [-17.2, 7.6], yaw: toward([-17.2, 7.6], [0, 0]) },
     // -- the tactical operations centre
-    { kind: 'prop', name: 'isoContainer', at: [-33.4, 3.0], yaw: toward([-33.4, 3.0], [0, 0]), params: { variant: 1 } },
-    { kind: 'prop', name: 'camoNetFrame', at: [-29.6, 2.6], yaw: toward([-29.6, 2.6], [0, 0]), blot: false },
-    { kind: 'display', display: 'station', at: [-28.8, 1.2], yaw: toward([-28.8, 1.2], [0, 0]), screens: ['readout.armor.abrams', 'map.desert', 'readout.modules.t90'], width: 2.0, rugged: true },
-    { kind: 'display', display: 'board', rects: ['map.desert', 'media.desert', 'media.alpine'], at: [-27.0, 5.6], yaw: toward([-27.0, 5.6], [0, 0]), size: [2.6, 1.1], posts: 0.9 },
-    { kind: 'display', display: 'nameboard', at: [-24.6, 7.0], yaw: toward([-24.6, 7.0]), width: 2.6, posts: 1.2 },
+    { kind: 'prop', name: 'isoContainer', at: [-35.4, 3.6], yaw: toward([-35.4, 3.6], [0, 0]), params: { variant: 1 } },
+    { kind: 'prop', name: 'camoNetFrame', at: [-31.6, 3.2], yaw: toward([-31.6, 3.2], [0, 0]), blot: false },
+    { kind: 'display', display: 'station', at: [-30.8, 1.8], yaw: toward([-30.8, 1.8], [0, 0]), screens: ['readout.armor.abrams', 'map.desert', 'readout.modules.t90'], width: 2.0, rugged: true },
+    { kind: 'display', display: 'board', rects: ['map.desert', 'media.desert', 'media.alpine'], at: [-28.4, 6.4], yaw: toward([-28.4, 6.4], [0, 0]), size: [2.6, 1.1], posts: 0.9 },
+    { kind: 'display', display: 'nameboard', at: [-25.4, 7.6], yaw: toward([-25.4, 7.6]), width: 2.6, posts: 1.2 },
     // -- the ammunition point: a container revetted with HESCO, crates on pallets at its door
     { kind: 'prop', name: 'isoContainer', at: [-33.0, -7.0], yaw: toward([-33.0, -7.0], [0, 0]) },
     { kind: 'wall', wall: 'hesco', points: [[-36.0, -9.8], [-36.9, -5.7]] },
