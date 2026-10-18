@@ -476,22 +476,26 @@ function addMassif(ctx: SkylineContext, mark: GarageSkylineLandmark, salt: numbe
     const z = -(1 - v) * back + apex * Math.sin(Math.PI * Math.min(1, v * 1.15));
     return P(x, v === 0 ? FOOT : top * Math.pow(v, alpine ? 0.85 : 1.05), z);
   };
-  const tone = (n: THREE.Vector3, v: number, x: number, c: number): THREE.Color => {
+  const tone = (n: THREE.Vector3, v: number, x: number, c: number, flank: 0 | 1): THREE.Color => {
     const u = x / (2 * half) + 0.5;
     if (tatra && v < 0.3 + 0.12 * noise1(u * 7, salt + 8)) {
       return colour.copy(hex(noise1(c * 1.7, salt + 4) > 0.5 ? 0x223029 : 0x2d3b33)).lerp(hex(0x9aa6ac), hash1(c, salt + 3) > 0.7 ? 0.4 : 0);
     }
-    // snow on the ledges and in the couloirs; the rock shows where the face is steep, more of it high on the ribs
-    const patch = hash1(c * 13 + Math.round(v * 7), salt + 15);
-    const snowy = n.y > (alpine ? 0.5 : 0.38) + (patch - 0.5) * 0.24 - (v < 0.3 ? 0.1 : 0) || (v > 0.88 && n.y > 0.28);
+    // the rock runs in streaks down one flank of a rib, from high on it toward the foot (it holds no snow: too steep),
+    // the couloirs and ledges between the ribs under snow; the steepest facets bare anywhere
+    const ribbed = hash1(c, salt + 17) > (alpine ? 0.22 : 0.45);
+    const rockFlank = hash1(c, salt + 18) > 0.5 ? 1 : 0;
+    const rockFrom = 0.18 + 0.6 * hash1(c, salt + 16);
+    const rockTo = Math.min(1, rockFrom + 0.3 + 0.5 * hash1(c, salt + 19));
+    const snowy = !(ribbed && flank === rockFlank && v > rockFrom && v < rockTo) && n.y > (alpine ? 0.28 : 0.22);
     if (!snowy) return colour.copy(hex(alpine ? 0x4a525b : 0x56606b)).lerp(hex(0x333a42), hash1(c * 13 + Math.round(v * 9), salt + 6) * 0.55);
     return colour.copy(hex(0xf2f6f9)).lerp(hex(0xc9d5df), hash1(c * 7 + Math.round(v * 5), salt + 7) * 0.35);
   };
   const n = new THREE.Vector3();
-  const faceTone = (a: THREE.Vector3, b: THREE.Vector3, c2: THREE.Vector3, v: number, x: number, c: number): THREE.Color => {
+  const faceTone = (a: THREE.Vector3, b: THREE.Vector3, c2: THREE.Vector3, v: number, x: number, c: number, flank: 0 | 1): THREE.Color => {
     n.subVectors(b, a).cross(new THREE.Vector3().subVectors(c2, a)).normalize();
     if (n.x * -a.x + n.z * -a.z < 0) n.negate();
-    return tone(n, v, x, c).clone();
+    return tone(n, v, x, c, flank).clone();
   };
   // irregular rib widths (a quarter to twice the mean), the ribs wandering across the face row by row
   const edges: number[] = [-half];
@@ -507,8 +511,8 @@ function addMassif(ctx: SkylineContext, mark: GarageSkylineLandmark, salt: numbe
       const va = ROWS[r], vb = ROWS[r + 1];
       const L0 = at(x0, va, 0), L1 = at(x0, vb, 0), M0 = at(mid(r), va, apex), M1 = at(mid(r + 1), vb, apex), R0 = at(x1, va, 0), R1 = at(x1, vb, 0);
       const vm = (va + vb) / 2;
-      quadColor(ctx, [L0, M0, M1, L1], faceTone(L0, M0, L1, vm, x0, c), pr.haze + (1 - vm) * 0.08);
-      quadColor(ctx, [M0, R0, R1, M1], faceTone(M0, R0, M1, vm, x1, c), pr.haze + (1 - vm) * 0.08);
+      quadColor(ctx, [L0, M0, M1, L1], faceTone(L0, M0, L1, vm, x0, c, 0), pr.haze + (1 - vm) * 0.08);
+      quadColor(ctx, [M0, R0, R1, M1], faceTone(M0, R0, M1, vm, x1, c, 1), pr.haze + (1 - vm) * 0.08);
     }
   }
   return pr;
