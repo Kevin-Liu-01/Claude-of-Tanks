@@ -20,7 +20,8 @@ export const HERO_CAMERA = Object.freeze({
   facing: 'left',
   // Between the showroom's own view (GARAGE_PRESENTATION_POSE: azimuth pi/4, pitch 6.3 deg) and the owner's
   // reference (about 60 deg, a low camera): the long flank and the gun read like the reference while the glacis
-  // and turret face stay in view (the owner's fronts rule, 2026-10-05). Sample round r4 fixes the value.
+  // and turret face stay in view (the owner's fronts rule, 2026-10-05). Fixed by sample round r4 (45/50/55/60
+  // on 16 vehicles): 45 foreshortens the gun in the small cards, 55+ shrinks long-gun tanks (the gun sets the fit).
   azimuthDeg: 50,
   elevationDeg: 5,
   fovDeg: 20, // a long lens: little perspective swell on the glacis
@@ -36,14 +37,17 @@ export const HERO_CAMERA = Object.freeze({
  * the rim draws the rear and the roof line against the dark ground.
  */
 export const HERO_LIGHTS = Object.freeze({
-  exposure: 1.05,
+  exposure: 1.15, // r4 judged 1.05 a step dark for dark camo on the steel ground in the 168 px roster card
   environmentIntensity: 0.4,
   hemisphere: Object.freeze({ sky: 0xdfe8f2, ground: 0x262c33, intensity: 0.4 }),
   key: Object.freeze({ color: 0xfff1e0, intensity: 3.4, position: [2.5, 12, 7], shadow: true }),
   fill: Object.freeze({ color: 0xcfe0ff, intensity: 0.7, position: [9, 2.5, -1.5] }),
-  rim: Object.freeze({ color: 0xffffff, intensity: 2.8, position: [-5, 6, -9] }),
+  rim: Object.freeze({ color: 0xffffff, intensity: 3.2, position: [-5, 6, -9] }),
   kicker: Object.freeze({ color: 0xa9c8ff, intensity: 1.0, position: [-8, 2.5, 7] }),
-  groundShadowOpacity: 0.5,
+  groundShadowOpacity: 0.55,
+  // The floor shadow becomes a soft pool under the hull (ratios of the dense core): blurred by blurRatio of the
+  // core width, kept inside an ellipse centred liftRatio above the contact line, so the barrel never draws a line.
+  contactShadow: Object.freeze({ blurRatio: 0.018, opacity: 0.95, radiusX: 0.66, radiusY: 0.30, liftRatio: 0.02, inner: 0.45 }),
 });
 
 /**

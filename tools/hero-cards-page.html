@@ -127,6 +127,44 @@ function fullBounds(pixels, width, height, threshold = 8) {
 }
 
 /**
+ * The studio floor's shadow as a soft pool under the hull: the shadow catcher's pixels (the full
+ * render minus the vehicle), blurred, kept inside an ellipse on the contact line, the vehicle on top.
+ * A hard cast shadow drew the barrel and the hull edge as lines across the card's empty ground.
+ */
+function softContactShadow(fullCanvas, vehicleCanvas, core, def) {
+  const w = fullCanvas.width, h = fullCanvas.height;
+  const only = document.createElement('canvas');
+  only.width = w; only.height = h;
+  const oc = only.getContext('2d');
+  oc.drawImage(fullCanvas, 0, 0);
+  oc.globalCompositeOperation = 'destination-out';
+  oc.drawImage(vehicleCanvas, 0, 0);
+  const out = document.createElement('canvas');
+  out.width = w; out.height = h;
+  const ctx = out.getContext('2d');
+  ctx.filter = `blur(${Math.max(1, Math.round(core.width * def.blurRatio))}px)`;
+  ctx.globalAlpha = def.opacity;
+  ctx.drawImage(only, 0, 0);
+  ctx.filter = 'none';
+  ctx.globalAlpha = 1;
+  // destination-in is unbounded: the gradient fill covers the whole canvas on purpose.
+  ctx.globalCompositeOperation = 'destination-in';
+  ctx.save();
+  ctx.translate(core.centerX, core.bottom - core.height * def.liftRatio);
+  ctx.scale(core.width * def.radiusX, core.height * def.radiusY);
+  const pool = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+  pool.addColorStop(0, 'rgba(0,0,0,1)');
+  pool.addColorStop(def.inner, 'rgba(0,0,0,1)');
+  pool.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = pool;
+  ctx.fillRect(-1e4, -1e4, 2e4, 2e4);
+  ctx.restore();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.drawImage(vehicleCanvas, 0, 0);
+  return out;
+}
+
+/**
  * First row (top down) whose opaque run inside [x0, x1] is wider than a whip: thin masts and
  * antennas above it never set the vertical fit.
  */
@@ -204,12 +242,13 @@ function renderHero(id, overrides = {}) {
     const pixels = sc.getImageData(0, 0, sw, sh).data;
     // Measure the vehicle alone (the shadow catcher writes alpha too): re-render without it.
     let vehiclePixels = pixels;
+    let vehicleCanvas = null;
     if (shadows) {
       ground.visible = false;
       renderer.render(scene, cam);
-      const tmp = document.createElement('canvas');
-      tmp.width = sw; tmp.height = sh;
-      const tc = tmp.getContext('2d', { willReadFrequently: true });
+      vehicleCanvas = document.createElement('canvas');
+      vehicleCanvas.width = sw; vehicleCanvas.height = sh;
+      const tc = vehicleCanvas.getContext('2d', { willReadFrequently: true });
       tc.drawImage(renderer.domElement, 0, 0);
       vehiclePixels = tc.getImageData(0, 0, sw, sh).data;
       ground.visible = true;
@@ -217,6 +256,7 @@ function renderHero(id, overrides = {}) {
     const core = measurePortraitCoreBounds(vehiclePixels, sw, sh);
     const full = fullBounds(vehiclePixels, sw, sh);
     if (!core || !full) throw new Error(`${id}: empty hero render`);
+    const layerSource = vehicleCanvas ? softContactShadow(src, vehicleCanvas, core, rig.contactShadow) : src;
     const top = solidTop(vehiclePixels, sw, sh, full.x0, full.x1, frame.solidRowShare);
     // The dense core fills its share unless the solid silhouette (gun, roof weapons, stowage) would
     // leave the layer: every card crops from this master, so the master never loses a solid pixel.
@@ -240,7 +280,7 @@ function renderHero(id, overrides = {}) {
     const oc = out.getContext('2d');
     oc.imageSmoothingEnabled = true;
     oc.imageSmoothingQuality = 'high';
-    oc.drawImage(src, dx, dy, sw * scale, sh * scale);
+    oc.drawImage(layerSource, dx, dy, sw * scale, sh * scale);
     const placed = {
       x0: full.x0 * scale + dx, x1: (full.x1 + 1) * scale + dx,
       y0: full.y0 * scale + dy, y1: (full.y1 + 1) * scale + dy,
@@ -258,8 +298,9 @@ function renderHero(id, overrides = {}) {
       oc.globalCompositeOperation = 'source-over';
     }
     const clear = frame.edgeClearPx;
-    const clipped = placed.x0 < clear || solidY0 < fadePx - 0.5
-      || placed.x1 > frame.width - clear || placed.y1 > frame.height - clear;
+    // Half a pixel of tolerance: a silhouette slid exactly onto the clearance is not clipped.
+    const clipped = placed.x0 < clear - 0.5 || solidY0 < fadePx - 0.5
+      || placed.x1 > frame.width - clear + 0.5 || placed.y1 > frame.height - clear + 0.5;
     return {
       dataUrl: out.toDataURL('image/png'),
       meta: {

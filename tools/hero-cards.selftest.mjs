@@ -10,10 +10,13 @@ import {
 
 const deg = (rad) => rad * 180 / Math.PI;
 
-// 1. The card shows the tank as the showroom does: the Garage camera's azimuth and pitch, bow to screen-left.
+// 1. The card shows the tank much as the showroom does: bow to screen-left (the roster convention, owner
+//    2026-09-20), the camera on the Garage camera's flank, within 10 deg of its azimuth (the r4 pick leans toward
+//    the owner's more side-on reference) and 2 deg of its pitch.
 assert.equal(HERO_CAMERA.facing, 'left', 'hero cards face the Garage hero (bow toward screen-left)');
-assert.ok(Math.abs(HERO_CAMERA.azimuthDeg - deg(GARAGE_CAMERA_AZIMUTH_RAD)) < 0.01, 'hero azimuth = Garage camera azimuth');
-assert.ok(Math.abs(HERO_CAMERA.elevationDeg - deg(GARAGE_CAMERA_PITCH_RAD)) < 0.5, 'hero elevation = Garage camera pitch');
+assert.ok(Math.abs(HERO_CAMERA.azimuthDeg - deg(GARAGE_CAMERA_AZIMUTH_RAD)) <= 10, `hero azimuth ${HERO_CAMERA.azimuthDeg} within 10 deg of the Garage camera`);
+assert.ok(HERO_CAMERA.azimuthDeg > 0 && HERO_CAMERA.azimuthDeg < 90, 'front three-quarter: the glacis and the flank both show');
+assert.ok(Math.abs(HERO_CAMERA.elevationDeg - deg(GARAGE_CAMERA_PITCH_RAD)) <= 2, `hero elevation ${HERO_CAMERA.elevationDeg} within 2 deg of the Garage pitch`);
 
 // 2. One mask, two renderers: the CSS string carries the compositor's stops and mirrors with the facing.
 const stops = flagMaskStops();
