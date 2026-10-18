@@ -823,6 +823,10 @@ assert.match(layerSource, /set\(Math\.max\(1, Math\.round\(lightTune\('CLOUD_LIG
 assert.match(layerSource, /lightTune\('CLOUD_SUN_STEPS_LOW', CLOUD2_LOW_SUN_EXTRA_STEPS\)/, 'on by default (2026-10-15)');
 // (2026-10-15) the Beer map's share off at the horizon, on from 17 degrees; the deck tune the critic picked on Frosthollow
 assert.match(layerSource, /lightTune\('CLOUD_BSM_LOWSUN', 0\), lightTune\('CLOUD_BSM_LOWSUN_UP', 0\.3\)/);
+// (2026-10-18, the s187 bisect) a deck lane keeps the Beer map at any sun: the secondary march ends inside a closed deck's
+// slant toward an evening sun, and without the map's depth the deck was lit through (an orange-pink sheet)
+assert.ok(shadersSource.includes('float bsmK = max( smoothstep( 0.0, max( uBsmLowSun.y, 1e-3 ), sunUp ), dot( wgt, step( vec4( 0.5 ), uLayerFlat ) ) );'), 'a deck lane keeps the Beer map under a low sun');
+assert.ok(shadersSource.includes('od += cl2BsmDepth( p, run, column ) * mix( uBsmLowSun.x, 1.0, bsmK );'));
 assert.match(readFileSync(new URL('./cloudLayers.ts', import.meta.url), 'utf8'), /CLOUD_DECK_FILTER: 1\.6, CLOUD_DECK_COVER: 1, CLOUD_DECK_SHAPE: 1\.4, CLOUD_DECK_DETAIL: 1\.4,/, 'the tune lives in the light stack module (the world reads it: cloudBase.ts)');
 assert.match(layerSource, /if \(lane\.flat >= 0\.5 && \(lane\.cells >= 0\.5 \|\| lightTune\(knob, -1\) !== -1\)\)/, 'a stratocumulus deck\'s lanes only, unless a knob is set');
 assert.match(layerSource, /const k = lightTune\(knob, CLOUD_DECK_TUNE\[knob\] \?\? 1\);/);
