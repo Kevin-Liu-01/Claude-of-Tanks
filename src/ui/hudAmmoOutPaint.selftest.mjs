@@ -241,6 +241,7 @@ function tankOf(id, ammo = null) {
     visual: { gunMuzzleWorld(out) { out.set(0, 2, 0); }, gunDirWorld(out) { out.set(0, 0, 1); } } };
 }
 let current = null;
+let camera = null; // a camera on the frame projects the gun's own ring off the screen's centre (19b)
 let unlimitedRounds = false;
 let scope = false; // the ×8 sight
 let dispersionM = 8;
@@ -293,7 +294,7 @@ function frame(tank, { advance = 0, mode = 'battle' } = {}) {
   controller.update(aim);
   ctx.ops.length = 0;
   timeS += DT;
-  hud.update({ timeS, mode, player: tank, tanks: [tank], spotting: { isSpotted: () => true }, aim,
+  hud.update({ timeS, mode, player: tank, tanks: [tank], spotting: { isSpotted: () => true }, aim, camera,
     auxiliaryKeyLabels: { missile: 'E' } });
   const view = readReticle(ctx.ops);
   view.trayCooldown = traySlots[aim.shellSlot].querySelector('.cool').style.height;
@@ -862,7 +863,162 @@ resize(WIDTH, HEIGHT);
   resize(WIDTH, HEIGHT);
 }
 
+// 19. critic r7 (D2): from 431 to about 525 px tall the readout line's rest clamp (h - 176) won over the furniture under
+// the marker, and the line landed on the rack's countdown (800x500 down to -29.5 px, 900x480 -37.5, 700x460 -45.4, and a
+// single gun's '24 ' 5.5 px into '3.2' at 700x460 and 16 m), the rack itself, the struck round and the ring; the range
+// tag sat on a small ring's countdown ("3.2 s200 m") and the canvas aim warning's chip on the readout line. On the short
+// mouse windows, stacked (under 1000 px) and wide, over a spread of rings, for every reticle state with and without the
+// gun travel warning: the readout line and the zoom plate keep 3 px from the countdown, the rack, the empty marks, the
+// warning chip, the range tag and the ring's stroke; the empty marks, the rack, the countdown and the chip keep 3 px
+// from the ring; the chip keeps 3 px from every other mark; the tag keeps a group gap (16 px) beside a countdown on its
+// row, or 3 px from one off it (the phone and landscape scopes too); and a wide tray's controls row (its top 112 px over
+// the floor) stays clear of the stack — with the warning too from 460 px up (the zoom plate moves beside the line, then
+// the chip joins the row).
+const scopeStates = {
+  'rack reload': () => { const tank = tankOf('m1a3', [12, 4, 10]); tank.combat.magazine.rounds = 0;
+    Object.assign(tank.combat.reload, { t: 12, totalS: 21, kind: 'magazine' }); return tank; },
+  'gun reload': () => { const tank = tankOf('m1a1_abrams_hc'); Object.assign(tank.combat.reload, { t: 3.2, totalS: 6, kind: 'shell' }); return tank; },
+  'dry gun': () => tankOf('m1a1_abrams_hc', [0, 0, 0]),
+  'dry rack': () => { const tank = tankOf('m1a3', [0, 0, 0]); tank.combat.magazine.rounds = 0; return tank; },
+  'live rack': () => tankOf('m1a3'),
+  'mid-cycle': () => { const tank = tankOf('m1a3'); tank.combat.magazine.rounds = 3;
+    Object.assign(tank.combat.reload, { t: 1.4, totalS: 2.5, kind: 'intraClip' }); return tank; },
+  'gun ready': () => tankOf('m1a1_abrams_hc'),
+  // a shell switch the authority has not confirmed: the countdown reads SWITCHING, wide enough to reach the range tag's
+  // columns on a small ring
+  switching: () => { const tank = tankOf('m1a1_abrams_hc'); tank.input = { shellSlot: 1 }; tank._networkShellSlot = 0;
+    Object.assign(tank.combat.reload, { t: 3.2, totalS: 6, kind: 'shell' }); return tank; },
+};
+/** The settled paint: the ring eases at exp(-14 dt), so 0.1 s HUD frames (the HUD's dt ceiling) settle it in a few. */
+function quickPaint(tank, mode = 'sniper') {
+  let ops = null;
+  for (let guard = 0; guard < 200; guard++) {
+    timeS += 0.1 - DT;
+    if (!frame(tank, { mode }).painted) break;
+    ops = ctx.ops.slice();
+  }
+  assert.ok(ops, 'the reticle painted');
+  return ops;
+}
+/** Every gap the reticle's furniture keeps (above); returns the parts, by role. */
+function reticleGaps(ops, at, { warn, scoped }) {
+  const apart = (a, b) => Math.max(a.x0 - b.x1, b.x0 - a.x1, a.y0 - b.y1, b.y0 - a.y1);
+  const contains = (outer, inner) => outer.x0 <= inner.x0 && outer.x1 >= inner.x1 && outer.y0 <= inner.y0 && outer.y1 >= inner.y1;
+  const ring = ringOf(ops);
+  const warning = warn ? aimWarningState({ gunLimitSpec: true }) : null;
+  const warningText = warning && ops.find((op) => op.op === 'fillText' && op.text === warning.text);
+  const chip = warningText && ops.find((op) => op.op === 'fill' && op.box && op.path.length === 6 && contains(op.box, warningText.box));
+  assert.ok(!warn || chip, `${at}: the canvas paints the warning's chip`);
+  const countdown = ops.filter((op) => op.op === 'fillText' && op.style === INK.reload && op.text.trim() && !op.text.startsWith('+'));
+  const rack = ops.filter((op) => op.op === 'stroke' && op.lineWidth === 3 && op.path.length === 7 && op.style !== INK.dry);
+  const marks = ops.filter((op) => op.op === 'stroke' && op.style === INK.dry && op.box);
+  const tag = ops.find((op) => op.op === 'fillText' && /^\d+ m$/.test(op.text));
+  const zoom = ops.find((op) => op.op === 'fillText' && /^×/.test(op.text));
+  const rules = ops.filter((op) => op.op === 'stroke' && op.style === 'rgba(170,240,178,0.5)');
+  const line = ops.filter((op) => op.op === 'fillText' && op.style !== INK.reload
+    && (/^(\d+|∞) $/.test(op.text) || (/^[A-Z]+$/.test(op.text) && op !== warningText)));
+  if (scoped) assert.ok(tag && zoom && rules.length && line.length >= 2, `${at}: the readout line, the zoom plate and the range tag`);
+  const stack = scoped ? [...line, zoom, ...rules] : [];
+  const furniture = [...countdown.map((op) => [op, `the countdown "${op.text}"`]), ...rack.map((op) => [op, 'the rack']),
+    ...marks.map((op) => [op, 'an empty mark']), ...(tag ? [[tag, 'the range tag']] : []), ...(chip ? [[chip, 'the warning chip']] : [])];
+  for (const item of stack) {
+    const name = item.text ?? 'a zoom rule';
+    for (const [other, what] of furniture) {
+      assert.ok(apart(item.box, other.box) >= 3 - 1e-6, `${at}: "${name}" keeps ${apart(item.box, other.box).toFixed(2)} px from ${what}`);
+    }
+    assert.ok(ringClearance(ring, item) >= 3 - 1e-6, `${at}: "${name}" keeps ${ringClearance(ring, item).toFixed(2)} px from the ring`);
+  }
+  for (const [item, what] of furniture.filter(([op]) => op !== tag)) {
+    assert.ok(ringClearance(ring, item) >= 3 - 1e-6, `${at}: ${what} keeps ${ringClearance(ring, item).toFixed(2)} px from the ring`);
+  }
+  if (chip) {
+    for (const [other, what] of furniture.filter(([op]) => op !== chip)) {
+      assert.ok(apart(chip.box, other.box) >= 3 - 1e-6, `${at}: the warning chip keeps ${apart(chip.box, other.box).toFixed(2)} px from ${what}`);
+    }
+  }
+  if (tag) {
+    for (const text of countdown) {
+      const row = Math.min(tag.box.y1, text.box.y1) - Math.max(tag.box.y0, text.box.y0) > 0;
+      const gap = row ? tag.box.x0 - text.box.x1 : apart(tag.box, text.box);
+      assert.ok(gap >= (row ? 16 : 3) - 1e-6, `${at}: the range tag keeps ${gap.toFixed(2)} px beside the countdown "${text.text}"${row ? ' on its row' : ''}`);
+    }
+  }
+  return { ring, chip, line, zoom, stack, tag };
+}
+{
+  // (the touch sizes, a phone and two landscape phones, paint the same canvas; their warning is a DOM chip. A mouse
+  // window 400 px tall keeps the compact stack, its struck round leading the readout line under the canvas chip)
+  const sizes = [[800, 400], [800, 500], [900, 480], [700, 460], [700, 431], [700, 440], [700, 520], [1280, 431], [1280, 460],
+    [1280, 470], [1024, 490], [1280, 520], [1024, 560], [1024, 600], [390, 844, 'touch'], [844, 390, 'touch'], [667, 375, 'touch']];
+  const modes = { zoomBeside: 0, chipBeside: 0 };
+  scope = true;
+  for (const [width, height, touch] of sizes) {
+    resize(width, height);
+    for (const metres of [1, 11, 16, 24, 40]) {
+      dispersionM = metres;
+      for (const [label, make] of Object.entries(scopeStates)) for (const warn of touch ? [false] : [false, true]) {
+        const tank = make();
+        tank.state.gunLimitSpec = warn;
+        const at = `${width}x${height} scope, ${metres} m, ${label}${warn ? ', gun travel warning' : ''}`;
+        const { chip, line, zoom, stack } = reticleGaps(quickPaint(tank), at, { warn, scoped: true });
+        if (Math.abs(zoom.box.y1 - line[0].box.y1) < 3) modes[chip && Math.abs(chip.box.y1 - line[0].box.y1 - 8.4) < 3 ? 'chipBeside' : 'zoomBeside']++;
+        if (width >= 1000 && (!warn || height >= 460)) {
+          const foot = Math.max(...stack.map((op) => op.box.y1), chip ? chip.box.y1 : -Infinity);
+          assert.ok(foot <= height - 112 - 3 + 1e-6, `${at}: the stack's foot keeps ${(height - 112 - foot).toFixed(2)} px over the controls row`);
+        }
+      }
+    }
+  }
+  assert.ok(modes.zoomBeside > 0 && modes.chipBeside > 0, `the cramped rows ran (${JSON.stringify(modes)})`);
+  scope = false;
+  dispersionM = 8;
+  resize(WIDTH, HEIGHT);
+}
+
+// 19b. r8: the gun's ring follows its own lay, off the screen's centre when the turret lags the camera. With a camera on
+// the frame and the gun turned off the camera's aim, the ring sits left, right, above and below the marker: every gap of
+// section 19 holds (the struck marks test the ring's whole circle, not its lower arc; the warning chip, its row and the
+// readout stack keep clear of the ring wherever it sits), through the scope and unscoped. (The range tag still hangs
+// off the screen centre's 4:30, not the ring's: older than this item.)
+{
+  const sizes = [[1280, 460], [800, 500], [390, 844, 'touch']];
+  const ringAt = { left: 0, right: 0, above: 0, below: 0 };
+  for (const [width, height, touch] of sizes) {
+    resize(width, height);
+    camera = new THREE.PerspectiveCamera(60, width / height, 0.1, 5000);
+    camera.position.set(0, 2, 0);
+    camera.lookAt(0, 2, 200);
+    camera.updateMatrixWorld();
+    camera.updateProjectionMatrix();
+    for (const scoped of width === 1280 ? [true, false] : [true]) {
+      scope = scoped;
+      for (const metres of [4, 16, 40]) {
+        dispersionM = metres;
+        for (const dx of [-0.3, 0, 0.3]) for (const dy of [-0.2, 0, 0.2]) {
+          for (const [label, make] of Object.entries(scopeStates)) for (const warn of touch ? [false] : [false, true]) {
+            const tank = make();
+            tank.state.gunLimitSpec = warn;
+            tank.visual.gunDirWorld = (out) => out.set(dx, dy, 1).normalize();
+            const at = `${width}x${height} ${scoped ? 'scope' : 'battle'}, ${metres} m, the gun at (${dx}, ${dy}), ${label}${warn ? ', gun travel warning' : ''}`;
+            const { ring } = reticleGaps(quickPaint(tank, scoped ? 'sniper' : 'battle'), at, { warn, scoped });
+            if (ring.x < width / 2 - 30) ringAt.left++;
+            if (ring.x > width / 2 + 30) ringAt.right++;
+            if (ring.y < height / 2 - 30) ringAt.above++;
+            if (ring.y > height / 2 + 30) ringAt.below++;
+          }
+        }
+      }
+    }
+  }
+  assert.ok(Object.values(ringAt).every((n) => n > 0), `the gun's ring sat off the centre every way (${JSON.stringify(ringAt)})`);
+  camera = null;
+  scope = false;
+  dispersionM = 8;
+  resize(WIDTH, HEIGHT);
+}
+
 console.log('hudAmmoOutPaint.selftest: the live HUD paints no sweep, countdown or ready flash on a dry gun, a sparse '
   + 'muted ring, a struck round or rack (below a small ring) and spent rack slots, struck launcher and magazine controls; '
   + 'a clip or salvo fills the round being chambered; unlimited rounds never read dry; the clip and the countdown keep '
-  + '3 px from the ring and from each other');
+  + '3 px from the ring and from each other; on short mouse windows the scope readouts keep 3 px from every mark under the '
+  + 'marker, the warning chip, the range tag and the ring, above the controls row, wherever the gun\'s ring sits');

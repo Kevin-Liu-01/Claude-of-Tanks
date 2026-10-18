@@ -17,9 +17,9 @@ const chunk = (type, body) => {
   return Buffer.concat([head, body, tail]);
 };
 const paeth = (a, b, c) => { const p = a + b - c; const pa = Math.abs(p - a); const pb = Math.abs(p - b); const pc = Math.abs(p - c); return pa <= pb && pa <= pc ? a : pb <= pc ? b : c; };
-/** An RGB PNG of `rows` (bytes per row = width * 3), each row written with its own filter, the predictors the spec's. */
-function pngOf(width, rows, filters) {
-  const bpp = 3;
+/** An RGB (bpp 3) or RGBA (bpp 4) PNG of `rows` (bytes per row = width * bpp), each row written with its own filter,
+ *  the predictors the spec's. */
+function pngOf(width, rows, filters, bpp = 3) {
   const encoded = [];
   rows.forEach((row, y) => {
     const prior = y ? rows[y - 1] : new Array(width * bpp).fill(0);
@@ -29,7 +29,7 @@ function pngOf(width, rows, filters) {
       return (v - predictor) & 255;
     }));
   });
-  const header = Buffer.alloc(13); header.writeUInt32BE(width, 0); header.writeUInt32BE(rows.length, 4); header[8] = 8; header[9] = 2;
+  const header = Buffer.alloc(13); header.writeUInt32BE(width, 0); header.writeUInt32BE(rows.length, 4); header[8] = 8; header[9] = bpp === 4 ? 6 : 2;
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', header),
     chunk('IDAT', deflateSync(Buffer.from(encoded))), chunk('IEND', Buffer.alloc(0))]);
 }
@@ -75,6 +75,35 @@ const pixelsOf = (image, width) => (x, y) => [...image.data.subarray((y * width 
   const at = pixelsOf(image, width);
   CASES.forEach((c, i) => assert.deepEqual(at(2 * i + 1, 1), row.slice((2 * i + 1) * 3, (2 * i + 2) * 3), `paeth ${c.name}`));
   for (let x = 0; x < width; x++) assert.deepEqual(at(x, 1), row.slice(x * 3, x * 3 + 3), `paeth row pixel ${x}`);
+}
+
+// 1c. The Average predictor (critic r7: every byte sum in section 1's rows was even, so a decoder rounding (left + up)
+// up passed). A filter-3 row whose sums are odd where rounding matters — the first pixel (no left, an odd up), odd sums
+// under and over 255 — and an even sum over 255 (a decoder wrapping the sum before halving it), the residuals wrapping.
+{
+  const top = [77, 51, 3, 50, 99, 201, 255, 180, 17, 180, 254, 60];
+  const row = [101, 30, 250, 20, 7, 0, 200, 133, 9, 3, 255, 128];
+  const sums = row.map((_, x) => (x >= 3 ? row[x - 3] : 0) + top[x]);
+  assert.ok(sums.slice(0, 3).every((sum) => sum % 2 === 1), 'the first pixel: no left, an odd up in every channel');
+  assert.ok(sums.some((sum) => sum % 2 === 1 && sum < 256) && sums.some((sum) => sum % 2 === 1 && sum > 255), 'odd sums under and over 255');
+  assert.ok(sums.some((sum) => sum % 2 === 0 && sum > 255), 'an even sum over 255');
+  assert.ok(row.some((v, x) => v < sums[x] >> 1), 'a residual wraps');
+  const image = decodePng(pngOf(4, [top, row], [0, 3]));
+  const at = pixelsOf(image, 4);
+  for (let x = 0; x < 4; x++) assert.deepEqual(at(x, 1), row.slice(x * 3, x * 3 + 3), `average pixel ${x} (sums ${sums.slice(x * 3, x * 3 + 3)})`);
+}
+
+// 1d. An RGBA frame (colour type 6, as a screenshot may be written): every filter over four-byte pixels, odd sums and
+// the alpha channel included, decodes exactly.
+{
+  const width = 3; const bpp = 4;
+  const rows = Array.from({ length: 5 }, (_, y) => Array.from({ length: width * bpp }, (_, x) => (y * 61 + x * 37 + (x % 4) * 83 + 1) & 255));
+  const image = decodePng(pngOf(width, rows, [0, 1, 2, 3, 4], bpp));
+  rows.forEach((row, y) => {
+    for (let x = 0; x < width; x++) {
+      assert.deepEqual([...image.data.subarray((y * width + x) * 4, (y * width + x) * 4 + 4)], row.slice(x * 4, x * 4 + 4), `RGBA filter ${y} pixel ${x}`);
+    }
+  });
 }
 
 // 2. The saved frame's slot read. A phone-sized empty selected slot at device scale 2 (CSS px below), drawn as Chrome
@@ -137,15 +166,28 @@ for (let y = 88; y < 96; y++) for (let x = 46; x < 72; x++) paint(tail, x, y, [7
 assert.ok(slotFrameFindings(tail, [{ name: 'APFSDS|24', box: slot.box, label: slot.label }], scale)[0]?.includes('its type label'),
   'a shell tail in the label box is not a label');
 
-// the reload shade over the slot's upper half dims the count and the chevron; dimmed is still there
+// the reload shade over the slot's upper half: the chevron under it still reads; a count under it is there but dimmed,
+// and that is a failure (critic r7: the stacked and touch trays' corner count read about 2:1 under the shade while the ∞
+// beside it stayed white); a count over the shade reads at full brightness
 const reloading = blank(60 * scale, 62 * scale, [42, 31, 14]);
 zero(reloading, WHITE); // a 24
 for (let k = 0; k < 6; k++) for (let w = 0; w < 2; w++) { paint(reloading, 22 - k + w, 54 + k, CHEVRON); paint(reloading, 22 - k + w, 66 - k, CHEVRON); }
+const lifted = copy(reloading);
 shade(reloading, { x0: 6, y0: 6, x1: 52, y1: 32 });
-assert.deepEqual(slotFrameFindings(reloading, [{ name: 'APFSDS|24', box: slot.box, count: { box: slot.count.box, danger: false },
-  chevron: slot.chevron }], scale), [], 'a count and chevron under the reload shade still read');
+const reloadSlot = { name: 'APFSDS|24', box: slot.box, count: { box: slot.count.box, danger: false }, chevron: slot.chevron };
+const shaded = slotFrameFindings(reloading, [reloadSlot], scale);
+assert.equal(shaded.length, 1, `only the dimmed count is a finding (${shaded.join('; ')})`);
+assert.ok(shaded[0].startsWith('slot "APFSDS|24": its count is dimmed in the frame'), shaded[0]);
 const ink = markInk(reloading, { x0: 78, y0: 12, x1: 96, y1: 42 }, { rise: 30 });
-assert.ok(ink.ink > 40 && ink.reach > 0.5, `the shaded count's ink (${JSON.stringify(ink)})`);
+assert.ok(ink.ink > 40 && ink.reach > 0.5, `the shaded count is still there (${JSON.stringify(ink)})`);
+shade(lifted, { x0: 6, y0: 6, x1: 52, y1: 32 });
+zero(lifted, WHITE); // the count over the shade
+assert.deepEqual(slotFrameFindings(lifted, [reloadSlot], scale), [], 'a count over the reload shade and the shaded chevron read');
+// the numeral's brightness bar: a grey count (luma 165) is dimmed, the numeral's white is not
+const grey = blank(60 * scale, 62 * scale, PANEL);
+zero(grey, [165, 165, 165]);
+assert.ok(slotFrameFindings(grey, [{ ...reloadSlot, chevron: null }], scale).some((line) => line.includes('its count is dimmed')),
+  'a grey count is dimmed');
 
 // 2b. The empty 0 is read by its danger hue, not its brightness (critic r6, K9: a 0 in any bright ink passed). A 0 in
 // the numeral's white, and in near misses that fail one clause of the danger class each (too dark, too little red over
@@ -219,10 +261,13 @@ function fakeSlot({ x, y, type, count, empty = false, selected = false, touch = 
   const box = { x0: x, y0: y, x1: x + w, y1: y + h };
   const rel = (x0, y0, x1, y1) => at({ x0, y0, x1, y1 }, x, y);
   const danger = 'rgb(240, 90, 90)';
-  const cnt = new FakeElement({ text: count, box: touch ? rel(w - 13, 3, w - 3, 16) : rel(w - 16, 46, w - 4, 61),
+  // a text's CSS box (its line box and padding) is larger than its ink box (what a Range measures; critic r7: equal boxes
+  // let a descriptor read off the CSS box pass)
+  const line = (box) => ({ x0: box.x0 - 2, y0: box.y0 - 2, x1: box.x1 + 2, y1: box.y1 + 2 });
+  const cnt = new FakeElement({ text: count, box: line(touch ? rel(w - 13, 3, w - 3, 16) : rel(w - 16, 46, w - 4, 61)),
     ink: touch ? rel(w - 13, 3, w - 3, 16) : rel(w - 16, 46, w - 4, 61),
     style: { color: empty ? danger : 'rgb(230, 237, 243)', opacity: '1', fontSize: touch ? '11px' : '13px', zIndex: '2' } });
-  const ty = new FakeElement({ text: type, box: rel(5, 48 - labelRise, 34, 60 - labelRise), ink: rel(5, 48 - labelRise, 34, 60 - labelRise),
+  const ty = new FakeElement({ text: type, box: line(rel(5, 48 - labelRise, 34, 60 - labelRise)), ink: rel(5, 48 - labelRise, 34, 60 - labelRise),
     style: { color: 'rgb(150, 160, 170)', opacity: empty ? '0.34' : '1' } });
   const key = new FakeElement({ text: '1', box: rel(4, 3, 16, 16), shown: !touch, style: { opacity: '1' } });
   const canvas = new FakeElement({ box: rel(w / 2 - 4, 8, w / 2 + 4, 38) });
@@ -464,6 +509,43 @@ const FLOW_ISSUES = ['saved frame:', 'the DOM read names', 'tray count', 'tray l
   assert.ok(second.reports[0].issues.includes('slot "|12": the DOM read names no type label'), second.reports[0].issues.join('; '));
 }
 
+// 4d. Every descriptor check, each on its own (critic r7: only a missing label on a mouse tray was pinned; deleting the
+// count, danger-ink, key, strike, chevron or no-slot check, or limiting the label or count check to mouse trays, passed).
+// Each run below breaks one mark the DOM read must name, on a mouse tray and on a touch tray, and that slot's line is a
+// failure of its stage; the clean runs (4a) name no descriptor failure on either tray.
+{
+  const issuesOf = async (touch, breakSlots) => {
+    const slots = touch ? touchSlots() : mouseSlots();
+    breakSlots(slots);
+    const { reports } = await run({ documents: [fakeDocument({ touch, slots })], cases: [touch ? CASE_TOUCH : CASE_MOUSE] });
+    return reports[0].issues;
+  };
+  const DESCRIPTOR = [
+    ['mouse: no count', false, (slots) => { slots[1].children['.cnt'].textContent = ''; }, 'slot "HEAT|": the DOM read names no count'],
+    ['touch: no count', true, (slots) => { slots[0].children['.cnt'].textContent = ''; }, 'slot "APFSDS|": the DOM read names no count'],
+    ['mouse: an empty slot\'s 0 in white', false, (slots) => { slots[0].children['.cnt'].computed.color = 'rgb(230, 237, 243)'; },
+      'slot "APFSDS|0": its count\'s danger ink false does not match empty true'],
+    ['mouse: a loaded slot\'s count in the danger ink', false, (slots) => { slots[2].children['.cnt'].computed.color = 'rgb(240, 90, 90)'; },
+      'slot "HE|12": its count\'s danger ink true does not match empty false'],
+    ['touch: an empty slot\'s 0 in white', true, (slots) => { slots[0].children['.cnt'].computed.color = 'rgb(230, 237, 243)'; },
+      'slot "APFSDS|0": its count\'s danger ink false does not match empty true'],
+    ['touch: no type label', true, (slots) => { slots[0].children['.ty'].textContent = ''; }, 'slot "|0": the DOM read names no type label'],
+    ['mouse: no key', false, (slots) => { slots[2].children['.key'].shown = false; }, 'slot "HE|12": the DOM read names no key'],
+    ['mouse: an empty slot without its strike', false, (slots) => { slots[0].pseudo['::before'] = { content: 'none' }; },
+      'slot "APFSDS|0": the DOM read names no strike on an empty slot'],
+    ['touch: an empty slot without its strike', true, (slots) => { slots[0].pseudo['::before'] = { content: 'none' }; },
+      'slot "APFSDS|0": the DOM read names no strike on an empty slot'],
+    ['touch: the selected slot without its chevron', true, (slots) => { slots[0].pseudo['::after'] = { content: 'none' }; },
+      'slot "APFSDS|0": the DOM read names no chevron on the selected slot'],
+    ['mouse: no visible slot', false, (slots) => { for (const el of slots) el.shown = false; }, 'no visible tray slot'],
+    ['touch: no visible slot', true, (slots) => { for (const el of slots) el.shown = false; }, 'no visible tray slot'],
+  ];
+  for (const [name, touch, breakSlots, line] of DESCRIPTOR) {
+    const issues = await issuesOf(touch, breakSlots);
+    assert.ok(issues.includes(line), `${name}: "${line}" is a failure (${issues.join('; ')})`);
+  }
+}
+
 // 5. The reticle's furniture checks in readHud, on recorded paint (critic r6: make the report catch them). The desktop
 // scope's reload as r6 measured it — the countdown on the ring's lower arc, its digits 1.65 px under the clip's
 // contours — and a phone's clip touching its small ring fail; the r7 layout passes. 400x300 CSS, the sight at 200,150.
@@ -509,7 +591,8 @@ const FLOW_ISSUES = ['saved frame:', 'the DOM read names', 'tray count', 'tray l
   assert.doesNotMatch(cli, /\.screenshot\(|\bpage\.[a-z]|\.evaluate\(|newPage/, 'the command line touches no page itself');
 }
 
-console.log('hud-ammo-frame-ink.selftest: PNG rows decode exactly, Paeth branch by branch; a stripped tray slot fails the '
-  + 'saved-frame read mark by mark, the empty 0 by its hue and the strike without the 0; the capture flow, run against a '
-  + 'recording browser, names every mark, clips no shot, reads its frame before any ink shot and fails every finding; the '
-  + 'reticle checks catch the r6 countdown and clip on the ring');
+console.log('hud-ammo-frame-ink.selftest: PNG rows decode exactly (RGB and RGBA, Paeth branch by branch, Average with odd '
+  + 'sums); a stripped tray slot fails the saved-frame read mark by mark, the empty 0 by its hue, the strike without the '
+  + '0, a count under the reload shade as dimmed; the capture flow, run against a recording browser, names every mark off '
+  + 'its ink box, fails each missing descriptor mark on mouse and touch, clips no shot, reads its frame before any ink '
+  + 'shot and fails every finding; the reticle checks catch the r6 countdown and clip on the ring');

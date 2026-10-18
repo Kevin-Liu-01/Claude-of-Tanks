@@ -309,6 +309,19 @@ function read(tank) {
   assert.match(layout, stacked("\\.cot-shell\\.empty::before\\{left:12px;right:12px\\}"), 'an empty slot\'s strike spans its icon');
   assert.match(layout, /\[data-hud-tray='stacked'\]:is\(\[data-cot-width='phone'\],\[data-cot-width='compact'\]\) \.cot-shell:not\(\.wide\) canvas\{transform:translateX\(calc\(-50% - 1px\)\) scale\(\.56\)\}/,
     'the 44 px wide stacked slots draw it smaller and 1 px left, clear of a two-digit count');
+  // critic r7: the reload shade dims a slot's picture, never its marks. The stacked and touch counts take the top-right
+  // corner, under the shade's top-anchored edge, so a reloading 24 read about 2:1 there while the ∞ beside it stayed
+  // white: the key, the count and the type label stand over the shade (the frame's brightness read is the capture's).
+  // (a rule's body may hold a ${FONT_COND} interpolation)
+  const zOf = (selector) => Number(new RegExp(`\\n${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\{(?:\\$\\{[^}]*\\}|[^}])*z-index:(\\d+);`).exec(hud)?.[1]);
+  const shadeZ = zOf('.cot-shell .cool');
+  assert.ok(shadeZ >= 1, `the reload shade's layer (${shadeZ})`);
+  for (const mark of ['.cot-shell .key', '.cot-shell .cnt', '.cot-shell .ty', '.cot-shell.unlimited .cnt']) {
+    assert.ok(zOf(mark) > shadeZ, `${mark} stands over the reload shade (${zOf(mark)} over ${shadeZ})`);
+  }
+  for (const sheet of [layout, touch, responsive]) {
+    assert.doesNotMatch(sheet, /\.cot-shell[^{]*\.(cnt|key|ty)\{[^}]*z-index/, 'no layout sheet drops a mark back under it');
+  }
   // the rendered proof of these rules is tools/hud-ammo-states.browser.mjs (computed styles of the live tray)
 }
 

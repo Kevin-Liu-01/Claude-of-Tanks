@@ -99,16 +99,28 @@ fits its radius, and stays inside the minimap at the map edges.
 
 A weapon with no round left shows no reload sweep, countdown or ready pulse. Its
 ring turns to sparse, muted danger dashes. A single-shot gun shows one struck
-round. When the ring's lower arc would cross that round or an empty rack, the
-mark drops below the ring, 3 px clear of it (`sightMarkTop`), and a canvas aim
-warning moves below the mark. A live rack (full, short of stowage, unlimited, or
+round. When the ring would cross that round or an empty rack, or come within
+3 px of its strike, the mark drops below the ring (`sightMarkTop`). The test
+covers the ring's whole circle wherever it sits, including the gun's own ring
+when a lagging lay carries it off the screen's centre. A canvas aim warning
+moves below the mark, its chip 3 px clear of every mark and of the ring. A live rack (full, short of stowage, unlimited, or
 reloading) keeps its shells' dark contours 3 px from the ring's stroke and halo
 where it sits, or drops below the ring the same way (`ringGap`). The reload
 countdown sits 3 px under the rack's contours, or under the marker, and drops
-below the ring when the ring's stroke would come within 3 px of its digits. The
-scope readout line and the canvas aim warning start under the countdown. On the
-short landscape scope stack the round leads the ammo readout line instead, and a
-rack's countdown sits beside the rack when the ring keeps clear of it there. A
+below the ring when the ring's stroke would come within 3 px of its digits. On
+the scope it also drops under the range tag when the tag hangs on its row less
+than 16 px beside it, so the two never read as one line. The canvas aim warning
+starts under the countdown and the range tag. The scope readout line starts 3 px
+under everything above it: the rack or struck round, the countdown, the warning
+chip and the range tag where it hangs over the line. The line and the zoom plate
+keep 3 px from the ring's stroke, or drop below the ring
+(`sniperReadoutStack`). Where the line's resting place would put it any higher,
+whatever sits above it wins. On a screen over 430 px tall where that would take
+the zoom plate down onto the controls row, a rack's countdown moves beside the
+rack, the zoom plate moves up beside the readout line, and then the warning chip
+joins that row, left of the line. On the short landscape scope stack the round
+leads the ammo readout line instead, and a rack's countdown sits beside the rack
+when the ring keeps clear of it there. A
 rack shows spent slots for rounds stowage cannot load, and an empty rack is
 struck through. The range tag starts past the rack and its strike. Between two
 rounds of a clip or a salvo rack, the round being chambered fills as the group
@@ -128,7 +140,10 @@ a smaller key, and the shell stands on the label's floor, small enough that the
 HE drum's top keeps clear of both corners. On touch the shell stands on the
 label's floor too, so every slot height keeps the gap, and the shorter slots
 draw it smaller. The 44 px wide slots step it left of the corner count (by 1 px
-on the stacked mouse tray, 3 px on a landscape phone under 300 px tall). A count of three digits or more tightens its slot's type label
+on the stacked mouse tray, 3 px on a landscape phone under 300 px tall). The
+reload shade dims a slot's picture, never its marks: the key, the count and the
+type label stand over it, so a reloading count stays white in the corner as the
+`∞` does. A count of three digits or more tightens its slot's type label
 and count, and the shell icon gives way to it: on desktop the icon rises; on
 touch and on the stacked mouse tray it shrinks and steps left, out from under
 the corner count. Under unlimited rounds nothing reads empty:
@@ -147,27 +162,54 @@ tray's own canvas rule replaced the raise with a centred, scaled shell, and the
 2 px and APFSDS|0 by 5.6 px at 900 px). The r5 capture had no stacked case, so
 it never measured them. The capture now covers those trays at 900 px and 640 px.
 
+Round r7 said the scope readout line and the canvas aim warning start under the
+countdown. That held only on screens over about 525 px tall. From 431 to about
+525 px the line's resting place (`h - 176`) won over the countdown, and the line
+was drawn on it: as much as 29.5 px over it at 800x500, 37.5 px at 900x480 and
+45.4 px at 700x460. A single gun's `24` also sat 5.5 px into its `3.2`. The same
+cap put the line on the rack, the struck round and the ring itself. Moving the
+rack and countdown below the ring in r7 roughly tripled the overlap. The warning
+chip, starting under the countdown too, overlapped the readout line, and a small
+ring's countdown sat 4 px from the range tag, so the touch scope read
+`3.2 s200 m`. Neither the receipt nor the capture had a mouse window in that
+band. In r7 the stacked and touch trays' corner count also sat under the reload
+shade, about 2:1 on its panel (`rgb(67,70,74)` on `rgb(11,10,10)`), while the
+`∞` beside it stayed white.
+
 `src/ui/hudAmmoOut.selftest.mjs` covers the derivations and the tray rules, and
 `src/ui/hudAmmoOutPaint.selftest.mjs` covers the live paint, the scope stack's
-geometry and the ring, rack and countdown gaps, all in `npm test`. For the
-rendered frames (it takes the capture lease), run the command below. It covers
-a 1440 px desktop, the stacked mouse trays at 900 px and 640 px, a portrait
-phone and three landscape phones, and the tray states on the two 44 px tall
-touch slots (320x568 and 568x290). It checks pixels, recorded canvas geometry
-and the tray's computed styles: every mark under the marker keeps 3 px from the
-ring's stroke, and every text there keeps 3 px from the rack. It then reads each
-saved frame (`tools/hud-ammo-frame-ink.mjs`): every mark the DOM says a visible
-slot shows must be in the frame's pixels. That covers its count, type label and
-empty strike, the touch chevron and an opaque top edge. Each visible slot's DOM
-read must name its count and label, the mouse tray's key, an empty slot's
-strike and the phone's chevron. A missing one is a failure, not a skipped check.
+geometry and the ring, rack and countdown gaps, all in `npm test`. Its scope
+sweep runs every reticle state, with and without the gun travel warning, over
+rings of 11 px up to the ceiling, on the short mouse windows (stacked and wide,
+431 to 600 px tall), a phone and two landscape phones. For the rendered frames
+(it takes the capture lease), run the command below. It covers a 1440 px
+desktop, the stacked mouse trays at 900 px and 640 px, four short mouse windows
+(800x500, 900x480, 700x460 and 1280x480), a portrait phone and three landscape
+phones, and the tray states on the two 44 px tall touch slots (320x568 and
+568x290). It checks pixels, recorded canvas geometry and the tray's computed
+styles: every mark under the marker keeps 3 px from the ring's stroke, every
+text there keeps 3 px from the rack, and none lands on a control or the scope's
+vision switch. It then reads each saved frame (`tools/hud-ammo-frame-ink.mjs`):
+every mark the DOM says a visible slot shows must be in the frame's pixels. That
+covers its count, type label and empty strike, the touch chevron and an opaque
+top edge, and a white count must read at full brightness, not under the reload
+shade. Each visible slot's DOM read must name its count and label, the mouse
+tray's key, an empty slot's strike and the phone's chevron, and an empty slot's
+count must be the danger 0. A missing one is a failure, not a skipped check; the
+receipt breaks each of these on a mouse tray and on a touch tray. With a camera
+on the frame, the paint receipt also turns the gun off the camera's aim, so the
+ring sits left, right, above and below the marker; every gap holds there too.
+One older placement remains: the range tag hangs off the screen centre's 4:30,
+not the gun ring's, so a far-displaced ring can cross it.
 Nothing touches the page between the DOM read and the frame. The ink gaps
 between count, label, key and icon are measured after the frame, from
 full-viewport shots. The tool takes no clipped screenshot. Its flow lives in
 `tools/hud-ammo-capture.mjs`. `tools/hud-ammo-frame-ink.selftest.mjs` runs that
 flow against a recording browser over a fake DOM, so it reads the calls as
 made: a clip passed in any form, a filtered findings list or a DOM read without
-a label fails it. In round r4b the gaps were measured with clipped shots taken
+a label fails it. Its fake DOM gives each text a CSS box larger than its ink, so
+a descriptor read off the CSS box fails too, and its PNG rows cover every filter
+on RGB and RGBA frames, with the Average filter's odd sums. In round r4b the gaps were measured with clipped shots taken
 before each frame. Replayed on the same tree, that flow saved 18 of 56 frames
 without the marks painted over a slot's shell icon (count, label, key, strike,
 chevron and reload shade), while hit-testing and computed styles still showed

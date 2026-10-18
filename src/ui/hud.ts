@@ -541,6 +541,12 @@ interface ReticleDrawState {
   magazineInkBottomY: number;
   /** The reload countdown's lowest ink this frame (0 without one): the scope readouts and the aim warning start under it. */
   countdownBottomY: number;
+  /** The canvas aim warning's baseline this frame (0 without one; placeAimWarning): the scope readouts start under its
+   *  chip. */
+  warningY: number;
+  /** The warning chip's centre and width (a cramped scope sets the chip beside its readout line: sniperReadoutStack). */
+  warningX: number;
+  warningW: number;
 }
 
 interface HudFrameUpdateState {
@@ -726,6 +732,12 @@ const COUNTDOWN_ASCENT = COUNTDOWN_SIZE * 0.74;
 const COUNTDOWN_DESCENT = COUNTDOWN_SIZE * 0.08;
 /** The least gap between the countdown and the rack above it (critic r6: the digits' tops touched the clip's shells). */
 const COUNTDOWN_RACK_GAP = 3;
+/** How far the scope's range tag keeps beside a countdown on its row: twice the tag's own word space (about 8 px
+ *  between 200 and m), so the two read as two groups (critic r7: "3.2 s200 m"). Nearer, the countdown drops under it. */
+const TAG_GROUP_GAP = 16;
+/** The canvas aim warning's chip: its top over the text baseline, its foot under it (paintAimWarning). */
+const AIM_WARNING_CHIP_ABOVE = 13.5;
+const AIM_WARNING_CHIP_BELOW = 9.5;
 /** The struck round that leads the compact sniper readout line (paintSniperAmmoReadout). */
 const COMPACT_DRY_ROUND_W = 6;
 const COMPACT_DRY_ROUND_H = 14;
@@ -1736,21 +1748,25 @@ body.cot-spectating .cot-ret{display:none !important;}
 .cot-shell.sel .clr{bottom:0;}
 /* the shell sits 3 px high so its tail keeps clear of the type label (critic r4b: the fins came within 2 px of APFSDS) */
 .cot-shell canvas{position:absolute;left:50%;top:50%;transform:translate(-50%,calc(-50% - 3px));}
+/* The reload shade (.cool, z-index 3) dims the slot's picture, never its marks: the key, the count and the type label
+   sit above it, as the consumables' do (critic r7: on the stacked and touch trays the count takes the top-right corner,
+   under the shade's top-anchored edge, and a reloading 24 read about 2:1 on its panel while the ∞ beside it stayed
+   white). */
 .cot-shell .key{position:absolute;top:2px;left:3px;font-size:9.5px;font-weight:700;color:#8a97a3;
   font-family:${FONT_COND};letter-spacing:-.01em;
-  border:1px solid rgba(146,164,180,.4);padding:0 3.5px;line-height:13px;z-index:2;}
+  border:1px solid rgba(146,164,180,.4);padding:0 3.5px;line-height:13px;z-index:4;}
 .cot-shell.sel .key{color:#f0b04a;border-color:rgba(240,176,74,.6);}
 /* the count sits 3 px in from the slot's edge, 3 px of ink clear of the HE drum (critic r6: 2.7 px at 4 px in) */
 .cot-shell .cnt{position:absolute;bottom:1px;right:3px;font-size:13px;font-weight:700;
   font-family:${FONT_COND};
-  color:#e6edf3;font-variant-numeric:tabular-nums;letter-spacing:.02em;z-index:2;
+  color:#e6edf3;font-variant-numeric:tabular-nums;letter-spacing:.02em;z-index:4;
   text-shadow:0 1px 2px rgba(0,0,0,.9);}
 /* Owner 2026-10-17 (endless ammo): the ammo ∞ reads as a count — the glyph draws small, so it is set larger, in the
-   numeral ink, above the reload shade that dims a numeral. */
+   numeral ink, above the reload shade like every count. */
 .cot-shell.unlimited .cnt{font-size:19px;line-height:13px;color:var(--hud-text);z-index:4;}
 .cot-shell .ty{position:absolute;bottom:2px;left:4px;font-size:8px;font-weight:800;
   font-family:${FONT_COND};
-  letter-spacing:.08em;z-index:2;text-shadow:0 1px 2px rgba(0,0,0,.9);}
+  letter-spacing:.08em;z-index:4;text-shadow:0 1px 2px rgba(0,0,0,.9);}
 /* A count of three digits or more (an autocannon's 180) shares the bottom row with the type label: both tighten so
    they stay apart (critic r3: APFSDS180), and the shell rises clear of the count (critic r4: 220 met the HE drum). */
 .cot-shell.wide .ty{left:3px;font-size:7.5px;letter-spacing:0;}
@@ -2701,6 +2717,9 @@ export function initHud(bus: EventBus): HudRuntime {
     fullReload: false, loadProgress: 0, intraClip: false, reloading: false, dry: false,
   };
   const magazineShellPoseScratch: AutoloaderShellPose = { y: 0, rotation: 0 };
+  const sniperLineScratch = { count: '', type: '', countW: 0, typeW: 0, round: 0 };
+  const sniperStackScratch = { y: 0, lineX: 0, zoomX: 0, zoomY: 0 };
+  const sniperTagScratch = { text: '', x0: 0, x1: 0, y: 0, y0: 0, y1: 0 };
   const reticleDrawScratch: ReticleDrawState = {
     cx: 0, cy: 0, radius: RET_FLOOR_PX, circleX: 0, circleY: 0,
     sniper: false, blocked: false, limited: false,
@@ -2708,6 +2727,7 @@ export function initHud(bus: EventBus): HudRuntime {
     gunColor: PEN_NONE, ringColor: CIRCLE_COL,
     zoomScale: 1, markerLineWidth: 1.6, centerClearanceRadius: 14,
     single: false, magazine: null, magazineBottomY: 0, magazineHalfW: 0, magazineInkBottomY: 0, countdownBottomY: 0,
+    warningY: 0, warningX: 0, warningW: 0,
   };
   const hudFrameUpdateScratch: HudFrameUpdateState = {
     advancing: false,
@@ -4017,6 +4037,8 @@ export function initHud(bus: EventBus): HudRuntime {
     state.magazineHalfW = 0;
     state.magazineInkBottomY = 0;
     state.countdownBottomY = 0;
+    state.warningY = 0;
+    state.warningW = 0;
     return state;
   }
 
@@ -4040,7 +4062,7 @@ export function initHud(bus: EventBus): HudRuntime {
     // its shells' contours SIGHT_MARK_RING_GAP from the ring's stroke where it sits, or drops below the ring (critic r6:
     // a phone's clip touched its small ring).
     let y0 = draw.cy + draw.centerClearanceRadius + 6;
-    if (magazine.dry) y0 = sightMarkTop(draw, totalW * 0.5 + 5, AUTOLOADER_HUD_ARC_DEPTH + shellH + 2);
+    if (magazine.dry) y0 = sightMarkTop(draw, totalW * 0.5 + 5, AUTOLOADER_HUD_ARC_DEPTH + shellH + 3);
     else {
       for (let i = 0; i < visibleShells; i++) {
         const pose = autoloaderHudShellPose(i, visibleShells, magazineShellPoseScratch);
@@ -4154,8 +4176,8 @@ export function initHud(bus: EventBus): HudRuntime {
     if (!draw.dry || draw.magazine || compactSniperStack(draw)) return;
     const shellW = draw.sniper ? 8 : 7;
     const shellH = draw.sniper ? 19 : 17;
-    // the strike reaches 4 px past the round (paintStruckRound)
-    const top = sightMarkTop(draw, shellW * 0.5 + 5, shellH + 1);
+    // the strike reaches 4 px past the round, 1 px past its ends, and its round cap 1.7 px further (paintStruckRound)
+    const top = sightMarkTop(draw, shellW * 0.5 + 6, shellH + 3);
     paintStruckRound(draw.cx - shellW * 0.5, top, shellW, shellH);
     draw.magazineBottomY = top + shellH;
   }
@@ -4168,14 +4190,10 @@ export function initHud(bus: EventBus): HudRuntime {
    */
   function sightMarkTop(draw: ReticleDrawState, halfW: number, markH: number): number {
     const top = draw.cy + draw.centerClearanceRadius + 6;
-    const r = draw.radius;
-    // The ring's lower arc across the mark's span: highest at the span's ends, lowest under the centre. Its stroke and
-    // halo reach 1.5 px past the radius, the mark's strike 3 px above its top; 3 px apart at the least.
-    const reach = Math.max(Math.abs(draw.cx - halfW - draw.circleX), Math.abs(draw.cx + halfW - draw.circleX));
-    const arcHigh = draw.circleY + (reach < r ? Math.sqrt(r * r - reach * reach) : 0);
-    const arcLow = draw.circleY + r;
-    const clear = RING_STROKE_REACH + SIGHT_MARK_RING_GAP;
-    return arcLow + clear > top - 3 && arcHigh - clear < top + markH ? belowRing(draw) + 3 : top;
+    // The mark's strike reaches 3 px above its top; the ring's stroke and halo 1.5 px past its radius; 3 px apart at the
+    // least, wherever the ring sits (r8: the gun's ring off the screen's centre, a lagging lay, crossed a mark the old
+    // lower-arc test passed).
+    return ringGap(draw, draw.cx - halfW, top - 3, draw.cx + halfW, top + markH) < SIGHT_MARK_RING_GAP ? belowRing(draw) + 3 : top;
   }
 
   /** The first row SIGHT_MARK_RING_GAP below the ring's stroke (its halo included). */
@@ -4207,7 +4225,7 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   /**
-   * Short landscape screens stack the sniper readouts right under the scope (sniperAmmoReadoutY), level with the
+   * Short landscape screens stack the sniper readouts right under the scope (sniperReadoutStack), level with the
    * furniture under the marker. There the struck round rides the readout line and the rack's countdown sits beside it.
    */
   function compactSniperStack(draw: ReticleDrawState): boolean {
@@ -4261,10 +4279,13 @@ export function initHud(bus: EventBus): HudRuntime {
     const unitW = ctx.measureText(unit).width;
     const height = COUNTDOWN_ASCENT + COUNTDOWN_DESCENT;
     // The compact sniper stack sets a rack's countdown beside it, left (the range tag hangs off the right rim), when the
-    // ring keeps clear of it there.
+    // ring keeps clear of it there; so does a taller scope whose countdown under the rack would push the readout line
+    // (its digits 3 px under the countdown's) past where it rests above the controls (critic r7: 431 to 525 px tall).
     let x = draw.cx - draw.magazineHalfW - 7 - textW - unitW;
     let y = draw.magazineBottomY - 2;
-    const beside = !!draw.magazine && compactSniperStack(draw)
+    const underRackSinks = draw.sniper
+      && draw.magazineInkBottomY + COUNTDOWN_RACK_GAP + height + 3 + 10 > sniperReadoutFloor();
+    const beside = !!draw.magazine && (compactSniperStack(draw) || underRackSinks)
       && ringGap(draw, x, y - COUNTDOWN_ASCENT, x + textW + unitW, y + COUNTDOWN_DESCENT) >= SIGHT_MARK_RING_GAP;
     if (!beside) {
       // Centred under the rack, its digits 3 px under the shells' contours (critic r6: their tops touched the clip), or
@@ -4274,6 +4295,15 @@ export function initHud(bus: EventBus): HudRuntime {
         : draw.cy + draw.centerClearanceRadius + 15 - COUNTDOWN_ASCENT;
       x = draw.cx - (textW + unitW) / 2;
       if (ringGap(draw, x, top, x + textW + unitW, top + height) < SIGHT_MARK_RING_GAP) top = Math.max(top, belowRing(draw));
+      // critic r7 (a small ring on the touch scope read "3.2 s200 m"): where the scope's range tag hangs level with the
+      // countdown and nearer than TAG_GROUP_GAP beside it, the countdown drops under the tag, so the two never read as
+      // one line.
+      const tag = sniperDistanceTag(view, draw);
+      if (tag && top < tag.y1 && top + height > tag.y0 && tag.x0 - (x + textW + unitW) < TAG_GROUP_GAP) {
+        top = Math.max(top, tag.y1 + SIGHT_MARK_RING_GAP);
+        // (dropping can carry it onto a ring that sits under the marker, the gun's lay off the centre)
+        if (ringGap(draw, x, top, x + textW + unitW, top + height) < SIGHT_MARK_RING_GAP) top = Math.max(top, belowRing(draw));
+      }
       y = top + COUNTDOWN_ASCENT;
     }
     draw.countdownBottomY = y + COUNTDOWN_DESCENT;
@@ -4285,35 +4315,129 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.textAlign = 'center';
   }
 
-  function sniperAmmoReadoutY(draw: ReticleDrawState): number {
-    // Short landscape keeps the whole readout stack close to the scope, but clear of the reload countdown and under
-    // the rack, never through it (critic r3, 844x390 / 932x430 / 667x375: the readout sat level with the rack, and
-    // touched the countdown; a struck rack may drop below a small ring, sightMarkTop).
-    // A struck rack's strike reaches 2.4 px under the shells, a live rack's contour 1.5 px: the line's digits (10 px
-    // above its baseline) keep 3 px from either (the capture's strike and rack gaps), and from the countdown's digits.
-    const underRack = !draw.magazine ? 0 : draw.magazineBottomY + (draw.magazine.dry ? 16 : 15);
-    const underCountdown = draw.countdownBottomY ? draw.countdownBottomY + 3 + 10 : 0;
-    if (h <= 300) return Math.max(draw.cy + 32, underRack, underCountdown);
-    if (h <= 430) return Math.max(draw.cy + 48, underRack, underCountdown);
-    return Math.min(
-      Math.max(draw.cy + Math.max(draw.radius * 1.02 + 24, draw.radius * 1.55 + 18, 96), underRack, underCountdown),
-      h - 176,
-    );
+  /**
+   * The scope's readout stack: the readout line, and the zoom plate sniperZoomDrop() under it. The line rests under the
+   * ring, above the controls (sniperReadoutFloor); short landscape keeps the stack close to the scope (critic r3,
+   * 844x390 / 932x430 / 667x375). What is under the marker always wins over where the line would rest (critic r7: from
+   * 431 to about 525 px tall the rest clamp put the line on the rack's countdown, the rack itself and the struck round):
+   * its digits (10 px over its baseline) keep 3 px under the rack or the struck round (a struck rack's strike reaches
+   * 2.4 px under the shells, a struck round's 2.7, a live rack's contour 1.5), the countdown, the canvas aim warning's
+   * chip and the range tag where it hangs over the stack's columns; the line and the zoom plate keep 3 px from the ring's
+   * stroke, or the stack drops below the ring. Where that would take the zoom plate down onto the controls
+   * (sniperStackFloor, a screen over 430 px tall), the plate moves up beside the line, right of it, TAG_GROUP_GAP apart;
+   * and where the canvas aim warning's chip over the row would still take it there, the chip joins the row, left of the
+   * line.
+   */
+  function sniperReadoutStack(view: HudAimView, draw: ReticleDrawState): typeof sniperStackScratch {
+    const stack = sniperStackScratch;
+    const line = sniperReadoutLine(draw);
+    const lineW = line.round + line.countW + line.typeW;
+    ctx.font = `700 16px ${FONT_COND}`;
+    // the plate's rules reach 32 px past its text, and their 1.2 px stroke 0.6 px past their ends
+    const zoomW = ctx.measureText(sniperZoomText(view)).width + 24 + 40 + 1.2;
+    const chipW = draw.warningY ? draw.warningW : 0;
+    const tag = sniperDistanceTag(view, draw);
+    const { cx } = draw;
+    // The line stays centred under the marker. How far each part's ink reaches over and under the row's baseline: the
+    // line's digits 10 and 1.1 (the compact stack's struck round, leading the line, 14.7 and 3.7 with its strike), the
+    // zoom plate's 11.9 and 1.3, the warning chip's AIM_WARNING_CHIP_ABOVE and _BELOW.
+    const lineTop = line.round ? 14.7 : 10;
+    const lineFoot = line.round ? 3.7 : 1.1;
+    const zoomLeft = cx + lineW / 2 + TAG_GROUP_GAP;
+    const chipRight = cx - lineW / 2 - TAG_GROUP_GAP;
+    /** The lowest baseline at or under `y` where the row (mode: the zoom plate under the line, beside it, or beside it
+     *  with the chip on the line's left) keeps every gap. */
+    const settle = (y: number, mode: 'stack' | 'zoomBeside' | 'chipBeside'): number => {
+      const top = mode === 'stack' ? lineTop : Math.max(lineTop, 11.9, mode === 'chipBeside' ? AIM_WARNING_CHIP_ABOVE : 0);
+      const right = mode === 'stack' ? cx + Math.max(lineW, zoomW) / 2 : zoomLeft + zoomW;
+      const under = (foot: number): number => (foot ? foot + 3 + top : 0);
+      y = Math.max(y, under(draw.magazineBottomY && draw.magazineBottomY + (draw.dry ? 3 : 2)), under(draw.countdownBottomY),
+        mode === 'chipBeside' ? 0 : under(draw.warningY && draw.warningY + AIM_WARNING_CHIP_BELOW),
+        tag && tag.x0 < right + 3 ? under(tag.y1) : 0);
+      const zoomY = mode === 'stack' ? y + sniperZoomDrop() : y;
+      const zoomX0 = mode === 'stack' ? cx - zoomW / 2 : zoomLeft;
+      if (ringGap(draw, cx - lineW / 2, y - lineTop, cx + lineW / 2, y + lineFoot) < SIGHT_MARK_RING_GAP
+        || ringGap(draw, zoomX0, zoomY - 11.9, zoomX0 + zoomW, zoomY + 1.3) < SIGHT_MARK_RING_GAP
+        || (mode === 'chipBeside' && ringGap(draw, chipRight - chipW, y - AIM_WARNING_CHIP_ABOVE, chipRight,
+          y + AIM_WARNING_CHIP_BELOW) < SIGHT_MARK_RING_GAP)) {
+        y = Math.max(y, belowRing(draw) + top);
+      }
+      return y;
+    };
+    const rest = h <= 300 ? draw.cy + 32
+      : h <= 430 ? draw.cy + 48
+        : Math.min(draw.cy + Math.max(draw.radius * 1.02 + 24, draw.radius * 1.55 + 18, 96), sniperReadoutFloor());
+    let mode: 'stack' | 'zoomBeside' | 'chipBeside' = 'stack';
+    stack.y = settle(rest, mode);
+    if (h > 430 && stack.y > sniperStackFloor()) stack.y = settle(rest, mode = 'zoomBeside');
+    if (h > 430 && stack.y > sniperStackFloor() && chipW) {
+      stack.y = settle(rest, mode = 'chipBeside');
+      draw.warningY = stack.y;
+      draw.warningX = chipRight - chipW / 2;
+    }
+    stack.lineX = cx - lineW / 2 + line.round;
+    stack.zoomX = mode === 'stack' ? cx : zoomLeft + zoomW / 2;
+    stack.zoomY = mode === 'stack' ? stack.y + sniperZoomDrop() : stack.y;
+    return stack;
   }
 
-  function paintSniperAmmoReadout(draw: ReticleDrawState): void {
-    if (draw.blocked) return;
+  /** Where the zoom plate under the readout line would reach the vehicle controls row (its top 112 px over the floor on a
+   *  mouse tray): the line's lowest baseline with the plate's foot (sniperZoomDrop() + 1.3 under it) 3 px over the row. */
+  function sniperStackFloor(): number {
+    return h - 112 - 3 - 1.3 - sniperZoomDrop();
+  }
+
+  /** The lowest the scope readout line rests on a screen over 430 px tall, clear of the controls under it. */
+  function sniperReadoutFloor(): number {
+    return h - 176;
+  }
+
+  /** How far the zoom plate's baseline sits under the readout line's. */
+  function sniperZoomDrop(): number {
+    return h <= 300 ? 18 : 24;
+  }
+
+  function sniperZoomText(view: HudAimView): string {
+    return `×${(view.zoom || 8).toFixed(1)}`;
+  }
+
+  /** The scope readout line's parts and widths: [struck round] count type. */
+  function sniperReadoutLine(draw: ReticleDrawState): typeof sniperLineScratch {
+    const line = sniperLineScratch;
     const shell = (lastShells && lastShells[localSlot]) || DEFAULT_SHELLS[0];
-    const count = ammunitionCountText(shell);
-    const type = shell.type || '';
-    const y = sniperAmmoReadoutY(draw);
+    line.count = ammunitionCountText(shell);
+    line.type = shell.type || '';
     ctx.font = `700 13.5px ${FONT_COND}`;
-    const countW = ctx.measureText(`${count} `).width;
+    line.countW = ctx.measureText(`${line.count} `).width;
     ctx.font = `800 9px ${FONT_COND}`;
-    const typeW = ctx.measureText(type).width;
+    line.typeW = ctx.measureText(line.type).width;
     // Out of ammo on the compact stack, the struck round leads the line: [round] 0 APFSDS.
-    const round = draw.dry && !draw.magazine && compactSniperStack(draw) ? COMPACT_DRY_ROUND_W + 8 : 0;
-    const x = draw.cx - (round + countW + typeW) / 2 + round;
+    line.round = draw.dry && !draw.magazine && compactSniperStack(draw) ? COMPACT_DRY_ROUND_W + 8 : 0;
+    return line;
+  }
+
+  /** The scope's range tag (null without a range): its text, origin and text box. It hangs at the 4:30 of a ring the
+   *  drawn radius around the marker (the screen's centre, not the gun's own ring when a lagging lay displaces it). */
+  function sniperDistanceTag(view: HudAimView, draw: ReticleDrawState): typeof sniperTagScratch | null {
+    if (!draw.sniper || view.distM == null || !Number.isFinite(view.distM)) return null;
+    const tag = sniperTagScratch;
+    const offset = 0.7071 * (draw.radius + 9);
+    // A small ring hangs the tag level with the rack (the compact stack, and a portrait phone's scope: critic r3, the
+    // strike ended 1.5 px from the tag): it starts past the rack and its strike, 5 px clear of the strike's end.
+    const rackClear = draw.magazine ? draw.magazineHalfW + 10 - 4 : 0;
+    tag.text = `${Math.round(view.distM)} m`;
+    tag.x0 = draw.cx + Math.max(offset, rackClear) + 4;
+    tag.y = draw.cy + offset + 12;
+    ctx.font = `600 11.5px ${FONT_COND}`;
+    tag.x1 = tag.x0 + ctx.measureText(tag.text).width;
+    tag.y0 = tag.y - 11.5 * 0.74;
+    tag.y1 = tag.y + 11.5 * 0.08;
+    return tag;
+  }
+
+  function paintSniperAmmoReadout(draw: ReticleDrawState, x: number, y: number): void {
+    if (draw.blocked) return;
+    const { count, type, countW, round } = sniperReadoutLine(draw);
     if (round) paintStruckRound(x - round, y - COMPACT_DRY_ROUND_H + 2, COMPACT_DRY_ROUND_W, COMPACT_DRY_ROUND_H);
     ctx.textAlign = 'left';
     ctx.font = `700 13.5px ${FONT_COND}`;
@@ -4326,47 +4450,65 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function paintSniperDistance(view: HudAimView, draw: ReticleDrawState): void {
-    if (view.distM == null || !Number.isFinite(view.distM)) return;
-    const offset = 0.7071 * (draw.radius + 9);
+    const tag = sniperDistanceTag(view, draw);
+    if (!tag) return;
     ctx.textAlign = 'left';
     ctx.fillStyle = 'rgba(208,221,232,0.8)';
     ctx.font = `600 11.5px ${FONT_COND}`;
-    // A small ring hangs the tag level with the rack (the compact stack, and a portrait phone's scope: critic r3, the
-    // strike ended 1.5 px from the tag): it starts past the rack and its strike, 5 px clear of the strike's end.
-    const rackClear = draw.magazine ? draw.magazineHalfW + 10 - 4 : 0;
-    ctx.fillText(
-      `${Math.round(view.distM)} m`,
-      draw.cx + Math.max(offset, rackClear) + 4,
-      draw.cy + offset + 12,
-    );
+    ctx.fillText(tag.text, tag.x0, tag.y);
     ctx.textAlign = 'center';
   }
 
-  function paintSniperZoom(view: HudAimView, draw: ReticleDrawState): void {
+  function paintSniperZoom(view: HudAimView, x: number, y: number): void {
     if (window.__HUD_HIDE_ZOOM_PLATE) return;
     // Keep the familiar zoom line directly beneath ammunition, not over the
     // target or detached down beside the vehicle console.
-    const y = sniperAmmoReadoutY(draw) + (h <= 300 ? 18 : 24);
-    const text = `×${(view.zoom || 8).toFixed(1)}`;
+    const text = sniperZoomText(view);
     ctx.font = `700 16px ${FONT_COND}`;
     ctx.fillStyle = 'rgba(196,246,202,0.95)';
-    ctx.fillText(text, draw.cx, y);
+    ctx.fillText(text, x, y);
     const halfWidth = ctx.measureText(text).width / 2 + 12;
     ctx.strokeStyle = 'rgba(170,240,178,0.5)';
     ctx.lineWidth = 1.2;
     ctx.beginPath();
-    ctx.moveTo(draw.cx - halfWidth - 20, y - 5.5);
-    ctx.lineTo(draw.cx - halfWidth, y - 5.5);
-    ctx.moveTo(draw.cx + halfWidth, y - 5.5);
-    ctx.lineTo(draw.cx + halfWidth + 20, y - 5.5);
+    ctx.moveTo(x - halfWidth - 20, y - 5.5);
+    ctx.lineTo(x - halfWidth, y - 5.5);
+    ctx.moveTo(x + halfWidth, y - 5.5);
+    ctx.lineTo(x + halfWidth + 20, y - 5.5);
     ctx.stroke();
   }
 
   function paintSniperReadouts(view: HudAimView, draw: ReticleDrawState): void {
     if (!draw.sniper) return;
-    paintSniperAmmoReadout(draw);
+    const stack = sniperReadoutStack(view, draw);
+    paintSniperAmmoReadout(draw, stack.lineX, stack.y);
     paintSniperDistance(view, draw);
-    paintSniperZoom(view, draw);
+    paintSniperZoom(view, stack.zoomX, stack.zoomY);
+  }
+
+  /**
+   * Where the canvas aim warning sits this frame (a touch layout shows its own chip): its baseline under the marker,
+   * and its chip 3 px under the rack or an empty mark that dropped below a small ring (sightMarkTop; a strike reaches
+   * 3 px under it, a live rack's contour 2), the countdown and, on the scope, the range tag, and 3 px from the ring. The
+   * scope's readout line and zoom plate then start under the chip.
+   */
+  function placeAimWarning(view: HudAimView, draw: ReticleDrawState): void {
+    const warning = aimWarningState(view, aimWarningScratch);
+    if (!warning.visible || document.body.classList.contains('cot-touch-layout')) return;
+    const tag = sniperDistanceTag(view, draw);
+    ctx.font = `800 10.5px ${FONT_COND}`;
+    draw.warningW = ctx.measureText(warning.text).width + 50;
+    draw.warningX = draw.cx;
+    let y = Math.max(draw.cy + Math.max(62, draw.radius + 24),
+      draw.magazineBottomY ? draw.magazineBottomY + (draw.dry ? 3 : 2) + 3 + AIM_WARNING_CHIP_ABOVE : 0,
+      draw.countdownBottomY ? draw.countdownBottomY + 3 + AIM_WARNING_CHIP_ABOVE : 0,
+      tag ? tag.y1 + 3 + AIM_WARNING_CHIP_ABOVE : 0);
+    // ... and 3 px from the ring's stroke wherever the ring sits (the gun's ring follows a lagging lay off the centre)
+    const half = draw.warningW / 2;
+    if (ringGap(draw, draw.cx - half, y - AIM_WARNING_CHIP_ABOVE, draw.cx + half, y + AIM_WARNING_CHIP_BELOW) < SIGHT_MARK_RING_GAP) {
+      y = Math.max(y, belowRing(draw) + AIM_WARNING_CHIP_ABOVE);
+    }
+    draw.warningY = y;
   }
 
   function paintAimWarning(view: HudAimView, draw: ReticleDrawState): void {
@@ -4379,23 +4521,20 @@ export function initHud(bus: EventBus): HudRuntime {
       return;
     }
     if (!warning.visible) return;
-    // ... and under an empty mark that dropped below a small ring (sightMarkTop), and the countdown (its chip's top
-    // 13.5 px over the baseline, 3 px under the digits)
-    const y = Math.max(draw.cy + Math.max(62, draw.radius + 24), draw.magazineBottomY + 17,
-      draw.countdownBottomY ? draw.countdownBottomY + 16.5 : 0);
+    const y = draw.warningY; // placeAimWarning
     const danger = warning.kind === 'blocked';
     const recovery = warning.kind === 'rollover';
     ctx.font = `800 10.5px ${FONT_COND}`;
-    const chipW = ctx.measureText(warning.text).width + 50;
-    const chipX = draw.cx - chipW * 0.5;
+    const chipW = draw.warningW;
+    const chipX = draw.warningX - chipW * 0.5;
     ctx.fillStyle = danger ? 'rgba(36,10,10,.92)' :
       recovery ? 'rgba(33,22,8,.94)' : 'rgba(12,17,22,.9)';
     ctx.beginPath();
-    ctx.moveTo(chipX + 8, y - 13.5);
-    ctx.lineTo(chipX + chipW - 8, y - 13.5);
+    ctx.moveTo(chipX + 8, y - AIM_WARNING_CHIP_ABOVE);
+    ctx.lineTo(chipX + chipW - 8, y - AIM_WARNING_CHIP_ABOVE);
     ctx.lineTo(chipX + chipW - 0.5, y - 2);
-    ctx.lineTo(chipX + chipW - 8, y + 9.5);
-    ctx.lineTo(chipX + 8, y + 9.5);
+    ctx.lineTo(chipX + chipW - 8, y + AIM_WARNING_CHIP_BELOW);
+    ctx.lineTo(chipX + 8, y + AIM_WARNING_CHIP_BELOW);
     ctx.lineTo(chipX + 0.5, y - 2);
     ctx.closePath();
     ctx.fill();
@@ -4548,6 +4687,7 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.shadowColor = 'rgba(0,0,0,0.9)';
     ctx.shadowBlur = 3;
     paintReloadCountdown(view, draw);
+    placeAimWarning(view, draw);
     // r4 (WoT arcade furniture): sniper-only readouts — vanilla WoT arcade
     // carries no text under the reticle. r6-2 (round critique: "the
     // 24 APFSDS / 300 m / x8.0 stack floats at ~62% screen height"): the

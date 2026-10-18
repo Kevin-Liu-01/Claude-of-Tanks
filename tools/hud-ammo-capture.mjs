@@ -6,7 +6,8 @@
 // AMMO_STAGES): a normal reload, an empty cannon, an autoloader short of stowage and one empty between clips and
 // mid-clip, an empty guided salvo rack, an empty ATGM launcher, Juggernaut with unlimited rounds, an AC-130 escort out
 // of rounds, and the ×8 sight reloading and empty — on a 1440 px desktop, two stacked mouse trays (900 and 640 px,
-// critic r6), a portrait phone and three landscape phones, and the tray states on the two 44 px tall touch slots.
+// critic r6), the sight and a reload on four short mouse windows (800x500, 900x480, 700x460 and 1280x480, critic r7),
+// a portrait phone and three landscape phones, and the tray states on the two 44 px tall touch slots.
 // Each frame is checked five ways:
 //  - pixels on the reticle canvas (no amber reload sweep, countdown or ready shell on a dry weapon; the danger-ink
 //    empty state present);
@@ -22,7 +23,8 @@
 //    touch layout; every visible slot's descriptor names the marks the slot shows — its count, type label, the mouse
 //    tray's key, an empty slot's strike, the phone's chevron (critic r6: a null label silently skipped every label read);
 //  - the saved frame itself (hud-ammo-frame-ink.mjs slotFrameFindings, on the PNG bytes written): every mark a visible
-//    tray slot shows is in the frame. Nothing touches the page between the DOM read and the frame (critic r4b);
+//    tray slot shows is in the frame, a white count at full brightness, never under the reload shade (critic r7). Nothing
+//    touches the page between the DOM read and the frame (critic r4b);
 //  - rendered pixels of every visible tray slot, after the frame, from full-viewport shots (never clipped): its count,
 //    type label and key each keep 3 CSS px of ink from its shell icon, and the count 3 px from the label and the key
 //    (critic r6: at 900 px the ∞ printed 12 px into APFSDS).
@@ -40,6 +42,12 @@ const CASES = Object.freeze([
   // critic r6: every mouse tray under 1000 px stacks (battleHudLayout data-hud-tray), 48x52 slots at 900 px, 44x52 at 640
   { name: 'stacked-900', width: 900, height: 700, touch: false, scale: 2, stages: [...BATTLE, ...SNIPER], crop: true },
   { name: 'stacked-640', width: 640, height: 720, touch: false, scale: 2, stages: [...BATTLE, ...SNIPER], crop: true },
+  // critic r7: from 431 to about 525 px tall the scope's readout line sat on the rack's countdown; three stacked windows
+  // the critic measured and a wide one, where the controls row sits under the sight
+  { name: 'short-800', width: 800, height: 500, touch: false, scale: 2, stages: ['ammo-reload', ...SNIPER], crop: true },
+  { name: 'short-900', width: 900, height: 480, touch: false, scale: 2, stages: ['ammo-reload', ...SNIPER], crop: true },
+  { name: 'short-700', width: 700, height: 460, touch: false, scale: 2, stages: ['ammo-reload', ...SNIPER], crop: true },
+  { name: 'short-1280', width: 1280, height: 480, touch: false, scale: 2, stages: ['ammo-reload', ...SNIPER], crop: true },
   { name: 'phone', width: 390, height: 844, touch: true, scale: 2, stages: [...BATTLE, ...SNIPER], crop: true },
   // critic r3 measured the scope readout overlap at these three landscape phones
   { name: 'landscape-844', width: 844, height: 390, touch: true, scale: 2, stages: [...BATTLE, ...SNIPER], crop: true },
@@ -214,9 +222,10 @@ export function readHud(rules) {
     if (g < FURNITURE_GAP - SLACK) overlaps.push(`"${text.text}" ${round(g)} px from the rack`);
   }
   const furniture = [...dry, ...rack, ...readouts];
-  // (.flight-identity: the scope's vision switch, which the aerial sheet seats beside the sight)
+  // (.cot-scope-vision: the scope's vision switch, which the aerial sheet seats under the sight, or beside it on touch;
+  // .flight-identity: the flight HUD's identity block)
   const controls = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con', '.cot-touch.on .round', '.cot-dp',
-    '.cot-aim-warning:not([hidden])', '.flight-identity'].flatMap((selector) => [...document.querySelectorAll(selector)].filter(visible)
+    '.cot-aim-warning:not([hidden])', '.cot-scope-vision', '.flight-identity'].flatMap((selector) => [...document.querySelectorAll(selector)].filter(visible)
     .map((el) => ({ name: selector, box: rect(el) })));
   for (const item of furniture) for (const control of controls) {
     if (hit(item.box, control.box)) overlaps.push(`${item.op === 'text' ? `"${item.text}"` : 'sight mark'} over ${control.name}`);

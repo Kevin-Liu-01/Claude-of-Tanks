@@ -3,7 +3,8 @@
 // every DOM check passed, because the DOM was read and the pixels were not).
 //  - decodePng / encodePng: 8-bit, non-interlaced RGB(A) PNGs, as Chrome's screenshots are.
 //  - slotFrameFindings: every mark the DOM says a tray slot shows (its count, type label, empty strike, the phone's
-//    selection chevron and an opaque top edge) is present in the saved frame, read in its own box.
+//    selection chevron and an opaque top edge) is present in the saved frame, read in its own box; a white count reads
+//    at full brightness (never under the reload shade).
 //  - inkGap: the least distance between the ink two marks add to a bare slot (the tray's no-touching-marks bar).
 import { crc32, deflateSync, inflateSync } from 'node:zlib';
 
@@ -88,6 +89,8 @@ export function cropImage(image, box) {
 const luma = (d, i) => 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
 /** The danger ink (--hud-danger, 240/90/90), the reticle reader's class. */
 const dangerInk = (r, g, b) => r > 170 && r - g > 65 && g < 150 && Math.abs(g - b) < 45;
+/** The numeral's white (#e6edf3, luma 235) at full strength: the reload shade's .72 leaves it near luma 70. */
+const numeralInk = (r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b >= 170;
 
 /** Device-pixel bounds of a CSS box, grown by `pad` CSS px. */
 const device = (box, scale, pad = 0) => ({ x0: Math.floor((box.x0 - pad) * scale), y0: Math.floor((box.y0 - pad) * scale),
@@ -138,18 +141,25 @@ export function markInk(image, box, { rise = null, hue = null } = {}) {
  */
 export function slotFrameFindings(image, slots, scale) {
   const findings = [];
+  const need = (read) => Math.max(8, Math.round(read.area * 0.04));
   const text = (tag, what, read) => {
-    const need = Math.max(8, Math.round(read.area * 0.04));
-    if (read.ink < need || read.reach < 0.5) {
+    if (read.ink < need(read) || read.reach < 0.5) {
       findings.push(`${tag}: ${what} is not in the frame (${read.ink} px, ${Math.round(read.reach * 100)} % of its width)`);
+      return false;
     }
+    return true;
   };
   for (const slot of slots) {
     const tag = `slot "${slot.name}"`;
     const countBox = slot.count ? device(slot.count.box, scale, 1) : null;
     if (slot.count) {
-      text(tag, slot.count.danger ? 'its count in the danger ink' : 'its count',
-        markInk(image, countBox, slot.count.danger ? { hue: dangerInk } : { rise: 30 }));
+      const read = markInk(image, countBox, slot.count.danger ? { hue: dangerInk } : { rise: 30 });
+      // A count in the numeral's white (a number or the ∞) reads at full brightness: the reload shade dims the slot's
+      // picture, never its count (critic r7: a reloading 24 under the shade read rgb(67,70,74) on rgb(11,10,10)).
+      if (text(tag, slot.count.danger ? 'its count in the danger ink' : 'its count', read) && !slot.count.danger) {
+        const bright = markInk(image, countBox, { hue: numeralInk }).ink;
+        if (bright < need(read)) findings.push(`${tag}: its count is dimmed in the frame (${bright} px at the numeral's brightness)`);
+      }
     }
     if (slot.label) text(tag, 'its type label', markInk(image, device(slot.label.box, scale, 1), { rise: 25 }));
     if (slot.strike) {
