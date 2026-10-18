@@ -74,7 +74,7 @@ const HALF_JOINT = JOINT.plate / 2 + JOINT.gap;
  * back leaves their chord by more than SEAT_TOL, so a back seated SEAT_IN into the casting at its stations stays from
  * 2.5 mm off it to 5.5 mm into it between them (round 6, the critic's UAPL-R5C-9: 1.5 mm seats, round 5's 2 mm left the
  * deepest block 7.0 mm in against the receipt's 7 mm limit). */
-const BLOCK_STEP = .22, LEDGE_STEP = .25, SEAT_TOL = .004, SEAT_IN = .0015;
+const BLOCK_STEP = .22, LEDGE_STEP = .40, SEAT_TOL = .004, SEAT_IN = .0015;
 
 type P2 = readonly [number, number];
 /** A station frame in the (|x|, z) plan: its origin on the course's foot line, its u axis `out`, and the factor that
@@ -463,7 +463,8 @@ function roofCourse(P: TankBuilderPort, casting: Stock, side: number): void {
   const n = 3, w = (R.x1 - R.x0 - (n - 1) * R.joint) / n;
   for (let k = 0; k < n; k++) {
     const a = R.x0 + k * (w + R.joint), b = a + w;
-    const stations = [a, b].map(X => {
+    // (three stations across: the dome turns down outboard, and a block's bottom between two would sink into it)
+    const stations = [a, (a + b) / 2, b].map(X => {
       const f = zf(X), r = zr(X), yf = dome(X, f), yr = dome(X, r);
       // (the dome falls away fastest at the front: the seat points close up there. The convex dome stands over every
       // chord between them and between the two stations, whose seat points lie at different heights of the swept course:
@@ -500,7 +501,7 @@ function dazzlers(P: TankBuilderPort): void {
     const x = side * 1.50, y = .255, z = .70;
     P.addEquipment('turretDetail', tagFrontPart(new THREE.BoxGeometry(.08, y - .055 - SHELF.top + .004, .10), 'dazzler bracket', 'turret'), x, (SHELF.top - .004 + y - .055) / 2, z);
     // an open-mouthed hood: a 44 mm bore 16 mm deep in a 55 mm housing
-    const hood = blindTube(.055, .044, .11, .016, 8);
+    const hood = blindTube(.055, .044, .11, .016, P.q ? 8 : 6);
     assertTurretPart(ID, 'dazzler hood', hood.clone().translate(x, y, z));
     P.addEquipment('turretDetail', tagFrontPart(hood, 'dazzler hood', 'turret'), x, y, z);
     // the lens's face 10 mm inside the hood's mouth (z + .055), lapping into the hood bore
@@ -699,15 +700,15 @@ function aprons(P: TankBuilderPort, hull: Stock): void {
       return b.clone().setX(side * X).addScaledVector(up, r - .003).addScaledVector(out, r - .004);
     };
     // the permanent knuckles at the line's ends and over the joints; each apron's own knuckle fills the line between
-    // (the end knuckles 4 mm inside the aprons' outer ends: no end face in an apron's plane)
-    const knuckleX = [x0 + APRON.knuckle / 2 + .004, ...spans.slice(1).map(([a]) => a - APRON.joint / 2), x1 - APRON.knuckle / 2 - .004];
+    // (the permanent knuckles over the two joints; the outer aprons' own knuckles run to 4 mm inside their outer ends)
+    const knuckleX = [x0 - APRON.knuckle / 2 + .004, ...spans.slice(1).map(([a]) => a - APRON.joint / 2), x1 + APRON.knuckle / 2 - .004];
     spans.forEach(([a, b], k) => {
       const geo = crosswiseSolid([a, b].map(X => ({x: side * X, ring: ring(X)})));
       const l0 = knuckleX[k] + APRON.knuckle / 2 + .003, l1 = knuckleX[k + 1] - APRON.knuckle / 2 - .003, c = line((l0 + l1) / 2);
       eraModule(P, {owner: 'hull', sector: sectorOf('glacis_era', side), geometry: geo, outward: [0, -.86, .51], minDot: .5,
         name: `lower-plate apron ${k + 1}`, hardware: [cylX(r, l1 - l0, segs).translate(c.x, c.y, c.z)], guard: (nm, g2) => assertHullPart(ID, nm, g2)});
     });
-    for (const X of knuckleX) { const c = line(X); P.addEquipment('hullDetail', tagFrontPart(cylX(r, APRON.knuckle, segs), 'apron hinge knuckle', 'hull'), c.x, c.y, c.z); }
+    for (const X of knuckleX.slice(1, -1)) { const c = line(X); P.addEquipment('hullDetail', tagFrontPart(cylX(r, APRON.knuckle, segs), 'apron hinge knuckle', 'hull'), c.x, c.y, c.z); }
   }
 }
 
