@@ -161,7 +161,7 @@ export default {
     // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the fence
     // runs stop short of the buildings' plots (the audit counted 7 fence or gate records reaching into a structure);
     // the field works stand on ground their bags can follow (3 stepped breastwork neighbours over 0.7 m)
-    dressingRules: { fencesClearBuildings: true, fieldWorksLevel: true },
+    dressingRules: { fencesClearBuildings: true, fenceStubsOut: true, fieldWorksLevel: true },
     // the map-vehicles lane (2026-10-06, the period ruling): Vietnam: the People's Army's T-55s (the Type 59 copy),
     // BMPs and T-62s, a captured M48
     tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['type59', 'bmp2', 't62_1975', 'm48a5_patton'] },

@@ -276,7 +276,7 @@ export default {
     sandbagLines: 16, tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
     // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the field
     // works stand on ground their bags can follow (1 stepped breastwork neighbour over 0.7 m)
-    dressingRules: { fieldWorksLevel: true },
+    dressingRules: { fieldWorksLevel: true, fencesClearBuildings: true },
     inhabit: {
       // (wave 111b: "a fairground-style market stall") no market stall: the quay's own fish trade has the fish plant
       // (round 3, gauntlet wave 129: "a park bench (1940!)") no park benches either

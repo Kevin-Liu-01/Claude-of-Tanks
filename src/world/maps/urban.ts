@@ -364,7 +364,7 @@ export default {
     sandbagLines: 12,
     // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the fence
     // runs stop short of the buildings' plots (the audit counted 16 fence or gate records reaching into a structure)
-    dressingRules: { fencesClearBuildings: true },
+    dressingRules: { fencesClearBuildings: true, fenceStubsOut: true },
     // world-dressing r1: brick boundary walls w/ coping; street inhabitants —
     // a market ring on the central square, oil drums + pallet/crate work
     // clutter down the alleys, benches on the pavements (all destructible;

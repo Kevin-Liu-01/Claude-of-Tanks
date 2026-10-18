@@ -636,9 +636,10 @@ interface PropsSettings {
    * collision recapture (unset: as before).
    *  - fencesClearBuildings: a fence run's module or gate that meets a building's plot (grown FENCE_BUILDING_CLEAR_M) is
    *    left out, its draws taken (a field-edge run 7.6 m off a road the village now lines ran along its houses' back
-   *    walls; a yard run stood into a gable's corner), and so is a run's piece of fewer than FENCE_PIECE_MIN modules
-   *    between two breaks, with the gate that would hang on it (the fleet dressing rules 227: "a few white fence stubs
-   *    still float in open grass");
+   *    walls; a yard run stood into a gable's corner);
+   *  - fenceStubsOut: a run's piece of fewer than FENCE_PIECE_MIN modules between two breaks is left out, with the gate
+   *    that would hang on it (the fleet dressing rules 227: "a few white fence stubs still float in open grass"; the
+   *    coordinator's ruling: its own switch, off on Ruinspires, whose street fences it thinned 88 -> 32);
    *  - yardClutterClear: the yard clutter (placeYardClutter) is laid after the kit's yards and keeps off them, and
    *    YARD_CLUTTER_GAP_M off the clutter already placed (a gate stack, a cart, barrels and a woodpile from two houses
    *    heaped in one front garden read as a staged prop pile); a house that takes its kit's yard takes no free-standing
@@ -649,7 +650,7 @@ interface PropsSettings {
    *    FIELD_WORK_STEP_M of each other (a work laid up a dyke's batter stepped its bags into "a dark rectangular block on
    *    the hillside").
    */
-  dressingRules?: { fencesClearBuildings?: boolean; yardClutterClear?: boolean; hedgehogsAtApproaches?: boolean; fieldWorksLevel?: boolean };
+  dressingRules?: { fencesClearBuildings?: boolean; fenceStubsOut?: boolean; yardClutterClear?: boolean; hedgehogsAtApproaches?: boolean; fieldWorksLevel?: boolean };
   /** The field works' pillboxes keep off the trunks the vegetation planted (the Redrock lane's rule, visual/redrock-smooth
    *  ae7dcffa7, 2026-10-07; every map's default since the scenery lane's b40): a seat whose pillbox footprint, with
    *  PILLBOX_TRUNK_BERTH_M round it, holds a trunk is passed for the work's next seat. false keeps the old seats. */
@@ -4728,7 +4729,7 @@ ${snowCap ? `
     // (props.dressingRules.fencesClearBuildings) the run's modules wait in their piece — the modules between two breaks (a
     // road, a building's plot, a missing module) — and a piece shorter than FENCE_PIECE_MIN is left out, its draws taken,
     // a gate hanging only on a piece that stands
-    const pieceRule = fencesClearBuildings;
+    const pieceRule = typeof P !== 'undefined' && !!P.dressingRules?.fenceStubsOut;
     const piece: Array<readonly [number, number, number, number, number, number, number]> = [];
     const endPiece = (): boolean => {
       const stands = piece.length >= FENCE_PIECE_MIN;

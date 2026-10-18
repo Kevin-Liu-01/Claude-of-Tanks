@@ -417,6 +417,9 @@ export default {
   },
 
   props: {
+    // (2026-10-17, the maps lane; the fleet dressing rules 227, the coordinator's ruling) a fence run's module or gate that
+    // meets a building's plot is left out (props.ts dressingRules.fencesClearBuildings; no stub rule)
+    dressingRules: { fencesClearBuildings: true },
     // the map-revival lane (2026-10-05): the Lorraine kit (maps/regional/lorrain.ts) builds the plan in the Moselle
     // valley's construction, every building where it stood
     architecture: 'lorrain',

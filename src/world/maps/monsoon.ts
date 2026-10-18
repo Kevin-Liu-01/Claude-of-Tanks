@@ -192,7 +192,7 @@ export default {
     sandbagLines: 22, hedgehogs: 16,
     // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the field
     // works stand on ground their bags can follow (2 stepped breastwork neighbours over 0.7 m)
-    dressingRules: { fieldWorksLevel: true },
+    dressingRules: { fieldWorksLevel: true, fencesClearBuildings: true },
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
     tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },

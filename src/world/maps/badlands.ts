@@ -346,7 +346,7 @@ export default {
     hedgehogs: 8, sandbagLines: 10,
     // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the field
     // works stand on ground their bags can follow (4 stepped breastwork neighbours over 0.7 m)
-    dressingRules: { fieldWorksLevel: true },
+    dressingRules: { fieldWorksLevel: true, fencesClearBuildings: true },
     // (the Redrock lane, 2026-10-07: the fallen blocks are the walls' red-brown sandstone, where the lithology's base drew a
     // grey-pink — "pillows" against the red cliffs)
     rockTone: (h: number, s: number, l: number) => [0.036, 0.40, clamp01(0.33 + (l - 0.3) * 0.8)],

@@ -125,7 +125,7 @@ export default {
     // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the fence
     // runs stop short of the buildings' plots (the audit counted 11 fence or gate records reaching into a structure), a
     // run's piece under 3 modules left out
-    dressingRules: { fencesClearBuildings: true },
+    dressingRules: { fencesClearBuildings: true, fenceStubsOut: true },
     // the map-vehicles lane (2026-10-06, the period ruling): the Arctic north in the 1980s: Norway's Leopard 1 and
     // M48, Sweden's Strv 103, the Soviet T-80B and BMP-2
     tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['leo1a5', 'm48a5_patton', 'strv103b', 't80b', 'bmp2'] },
