@@ -308,7 +308,7 @@ export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
     handles: (builder) => !!RULES[builder],
     drop(seam, groups, settled = false) {
       // the largest first (by triangles): a few bodies, the rest out with their dust
-      const order = groups.map((g, i) => i).sort((p, q) => groups[q]!.length - groups[p]!.length || p - q);
+      const order = groups.map((_g, i) => i).sort((p, q) => groups[q]!.length - groups[p]!.length || p - q);
       let thrown = 0;
       const touched = new Set<StructureSpan>();
       order.forEach((gi, n) => {
