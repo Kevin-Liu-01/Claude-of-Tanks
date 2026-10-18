@@ -26,7 +26,9 @@ import {
   bodyMoundHeightAt, damageRng, damageSeed,
   type DamageMeshWriter, type DamageRole, type DamageWriters, type FractureSlot, type Rgb, type StructureDamageAnatomy,
 } from './destructionKit.ts';
-import { bandEnclosure, enclosedAt, openBandShare, tallestDrawn, wallAlong, wallClusters, wallTopAt } from './structureEnclosure.ts';
+import {
+  bandEnclosure, drawnOverAt, enclosedAt, standsOnPosts, tallestDrawn, tallWallAt, wallAlong, wallClusters, wallSpots, wallTopAt,
+} from './structureEnclosure.ts';
 
 /** The ruin's floors (the sweep's: 25 % and 60 %, with margin). */
 export const RUIN_HEIGHT_SHARE = 0.3;
@@ -383,6 +385,54 @@ const _stubTop: number[] = [], _stubX: number[] = [], _stubZ: number[] = [];
 /** The last frame's stubs stood on its drawn wall clusters (no bays between them: no girts, no struts across). */
 let stubsDrawn = false;
 /**
+ * (destruction-slabs 227 round 2) Stubs where the walls are drawn tall: the drawn wall cells (of any storey: a tower on its
+ * podium) standing over the height the ruin still lacks, tallest first, each stub a short run along its wall from the
+ * ground (no farther than the wall runs that tall, no taller than it is drawn there) at least 1.8 m from the last, until
+ * the ruin stands. A tower set back on its podium keeps its own walls' lower courses, where the corner piers and edge
+ * stubs (capped at the podium's drawn top) left a raft (the critic's anti-raft probe: 39 structures under the floors, an
+ * arcology's ruin at a fifth of its height).
+ */
+function tallWallStubs(rng: () => number, slot: FractureSlot, cap: number, mesh: DamageMeshWriter, target: number): void {
+  const anatomy = ruinOf;
+  const cell = anatomy?.enclosure?.cell;
+  if (!anatomy || !cell) return;
+  // walls tall enough that a stub on them stands over the target, else the tallest there are
+  let spots = wallSpots(anatomy, target * 1.25, 600);
+  if (spots.length < 4) spots = wallSpots(anatomy, target * 0.6, 600);
+  if (!spots.length || !mesh.begin(slot.bucket, 'remnant')) return;
+  const t = Math.max(0.25, Math.min(0.7, slot.thicknessM > 0.05 ? slot.thicknessM * 1.4 : 0.4));
+  const placed: number[] = [];
+  // two passes: stubs 1.8 m apart at a half to most of the wall's drawn height; still short, closer (1 m) and taller (a
+  // low wide body's heap outweighs a few stubs: a tank farm's crumpled shells stand to most of their height)
+  for (let pass = 0, n = 0; pass < 2; pass++, n = 0) {
+  const minGap2 = pass ? 1.0 : 1.8 * 1.8;
+  for (; n < spots.length && placed.length < 192 && roomFor(mesh, 1) && heightP90() < target; n++) {
+    // a seeded stride through the tallest spots (not every stub on the one tallest wall)
+    const spot = spots[(n * 7 + Math.floor(rng() * 5)) % spots.length]!;
+    let near = false;
+    for (let q = 0; q < placed.length; q += 2) if ((placed[q]! - spot.x) ** 2 + (placed[q + 1]! - spot.z) ** 2 < minGap2) { near = true; break; }
+    if (near) continue;
+    // a half to most of the wall's drawn height there, and over the height the ruin lacks where the wall reaches it
+    const h = Math.min(cap, Math.max(spot.top * (pass ? 0.7 + rng() * 0.22 : 0.5 + rng() * 0.35), Math.min(spot.top * 0.92, target * (1.2 + rng() * 0.3))));
+    if (h < 0.6) continue;
+    // its run: out from the spot along its wall while the wall stands that tall, up to 1.3 m each way
+    const dx = spot.alongX ? 1 : 0, dz = spot.alongX ? 0 : 1;
+    const reach = 0.5 + rng() * 0.8;
+    let a = 0, b = 0;
+    for (let d = cell * 0.5; d <= reach; d += cell * 0.5) { if (!tallWallAt(anatomy, spot.x - dx * d, spot.z - dz * d, h)) break; a = d; }
+    for (let d = cell * 0.5; d <= reach; d += cell * 0.5) { if (!tallWallAt(anatomy, spot.x + dx * d, spot.z + dz * d, h)) break; b = d; }
+    const hu = Math.max(t / 2, (a + b) / 2 + cell * 0.25), mid = (b - a) / 2;
+    const x = spot.x + dx * mid, z = spot.z + dz * mid;
+    const cy = (h - FOOT_M) / 2, hy = (h + FOOT_M) / 2, shade = 0.8 + rng() * 0.18;
+    if (spot.alongX) box(mesh, x, cy, z, hu, hy, t / 2, 0, slot.tint, shade);
+    else box(mesh, x, cy, z, t / 2, hy, hu, 0, slot.tint, shade);
+    placed.push(spot.x, spot.z);
+  }
+  }
+  mesh.end();
+}
+
+/**
  * An open frame's buckled remnant (never masonry): every leg of its lattice standing to a buckle `share` of its height up
  * (kinked at mid-height, seeded), a girt ring between the legs under the buckle, in the frame's own bucket and tint;
  * a frame without a reading (a mast, a pylon, a flood mast by name) stands a four-legged stump about its footprint's
@@ -427,9 +477,10 @@ function frameStubs(anatomy: StructureDamageAnatomy, rng: () => number, cap: num
       }
       foot = [tall.spots[best]!, 0, tall.spots[best + 1]!];
     }
-    const head = legs ? legs[k]!.head : [foot[0]!, tall ? Math.min(stumpTop, tall.top) : stumpTop, foot[2]!];
+    // (a named stump buckles as high up its frame as the frame's own height reads, never over the frame as drawn there)
+    const head = legs ? legs[k]!.head : [foot[0]!, stumpTop, foot[2]!];
     const rise = Math.max(0.5, head[1]! - foot[1]!);
-    const top = Math.min(cap, foot[1]! + rise * share * (0.85 + rng() * 0.3));
+    const top = Math.min(cap, foot[1]! + rise * share * (0.85 + rng() * 0.3), tall ? tall.top : Infinity);
     const u = (top - foot[1]!) / rise;
     const x = foot[0]! + (head[0]! - foot[0]!) * u, z = foot[2]! + (head[2]! - foot[2]!) * u;
     const mid = (foot[1]! - FOOT_M + top) / 2;
@@ -443,7 +494,8 @@ function frameStubs(anatomy: StructureDamageAnatomy, rng: () => number, cap: num
   // the girt ring under the lowest buckle (not between a drawn frame's clusters: they need not be a frame's bays)
   let low = Infinity;
   for (const y of _stubTop) low = Math.min(low, y);
-  // (a named stump where its frame is drawn tallest takes no bent legs or struts out from it either)
+  // (a named stump where its frame is drawn tallest takes no bent legs out from it: struts across it, between its own
+  // legs, only)
   stubsDrawn = !!drawn || !!tall;
   if (drawn) low = NaN;
   if (Number.isFinite(low)) {
@@ -476,7 +528,7 @@ function frameStubs(anatomy: StructureDamageAnatomy, rng: () => number, cap: num
 function frameTier(rng: () => number, cap: number, mesh: DamageMeshWriter, tier: number, fallback: FractureSlot,
   anatomy: StructureDamageAnatomy): void {
   const n = _stubX.length;
-  if (!n || stubsDrawn) return;
+  if (!n || (stubsDrawn && tier === 1)) return;
   const lattice = latticeLegs(anatomy);
   const bucket = lattice ? lattice.bucket : fallback.bucket;
   if (!roomFor(mesh, n * 2) || !mesh.begin(bucket, 'remnant')) return;
@@ -488,13 +540,16 @@ function frameTier(rng: () => number, cap: number, mesh: DamageMeshWriter, tier:
   for (let k = 0; k < n && roomFor(mesh, 2); k++) {
     const x = _stubX[k]!, z = _stubZ[k]!, top = _stubTop[k]!;
     if (tier === 1) {
-      // out from the frame's middle, up to 1.45 times the buckle (never past the cap)
+      // up to 1.45 times the buckle (never past the cap): out from the frame's middle, or (destruction-slabs 227 round 2)
+      // where the frame's drawn form is known, folded in over its middle — under what it drew there (a water tower's legs
+      // under its tank), never splayed out over nothing (a leg bent out and up stood past the drawn tower's envelope; capped
+      // there, it drooped to the ground and the ruin stood a fifth of the tower's height)
       const ox = x - mx, oz = z - mz, ol = Math.hypot(ox, oz) || 1;
-      const reach = 0.8 + rng() * 1.4;
-      const tx = x + (ox / ol) * reach, tz = z + (oz / ol) * reach;
-      // (destruction-slabs 227) no higher than the frame is drawn over its tip (a tapering tower's legs splay out low:
-      // bent out and up, a leg stood over the drawn tower's envelope); over nothing drawn it droops to the ground
-      const drawnTip = ruinOf ? wallTopAt(ruinOf, tx, tz, 0) : Infinity;
+      const inward = !!ruinOf && ol > 0.6;
+      const reach = inward ? Math.min(ol * 0.85, 0.8 + rng() * 1.4) : 0.8 + rng() * 1.4;
+      const sgn = inward ? -1 : 1;
+      const tx = x + sgn * (ox / ol) * reach, tz = z + sgn * (oz / ol) * reach;
+      const drawnTip = ruinOf ? drawnOverAt(ruinOf, tx, tz, 0) : Infinity;
       const y1 = Math.min(cap, top * (1.3 + rng() * 0.15), Number.isFinite(drawnTip) ? Math.max(0.4, drawnTip + 0.4) : Infinity);
       strut(mesh, x, top, z, tx, y1, tz, t * 0.9, tint, 0.8 + rng() * 0.15);
     } else {
@@ -762,9 +817,9 @@ function framePlan(anatomy: StructureDamageAnatomy): boolean {
  * the whole pass.
  */
 export function ruinKind(anatomy: StructureDamageAnatomy, builder: string | null = null): 'frame' | 'skin' | 'masonry' {
-  // (destruction-slabs 227) or by what it draws: most of its bands enclose under 35 % of their box (a water tank on its
-  // legs, a fire lookout, a trestle: whatever their walls read as)
-  if (framePlan(anatomy) || anatomy.intact?.frame || frameByName(builder) || openBandShare(anatomy, 0.35) > 0.5) return 'frame';
+  // (destruction-slabs 227) or by what it draws: it stands on posts, every band open (a fire lookout, a market's stalls:
+  // whatever their walls read as; a ruin's ragged walls or a gate's piers enclose little too, but they are runs)
+  if (framePlan(anatomy) || anatomy.intact?.frame || frameByName(builder) || standsOnPosts(anatomy)) return 'frame';
   const wall = wallSlot(anatomy);
   return wall && MASONRY.has(wall.material) ? 'masonry' : 'skin';
 }
@@ -843,10 +898,15 @@ export function keepRuinStanding<R>(anatomy: StructureDamageAnatomy, seed: numbe
     // more of them), the fallen covering's slabs once
     if (wall && heightP90() < target) cornerPiers(rng, wall, cap, measuringWriter, 0.42 + rng() * 0.18);
     if (wall && heightP90() < target) wallStubs(rng, wall, cap, measuringWriter, 0.32);
+    // still short (a tower set back on its podium: the walls round the plan's edge are drawn low): stubs on its walls
+    // where they are drawn tall, before the fragments spend the reserve
+    if (wall && heightP90() < target) tallWallStubs(rng, wall, cap, measuringWriter, target);
     if (heightP90() < target) roofSlabs(anatomy, rng, measuringWriter, cap * 0.5);
     for (let k = 0; k < 120 && wall && heightP90() < target && roomFor(measuringWriter, 3); k++) wallFragment(rng, wall, cap, measuringWriter, k);
-    // a skin wall: its posts and leant panels until it stands
+    // a skin wall: its walls' posts where they are drawn tall (a bin over its legs, a mill on its base, a tank's shell),
+    // then its posts and leant panels round the plan until it stands
     const skin = kind === 'skin' ? wallSlot(anatomy) : null;
+    if (skin && ruinOf && heightP90() < target) tallWallStubs(rng, skin, cap, measuringWriter, target);
     for (let pass = 0; pass < 8 && skin && heightP90() < target; pass++) framePosts(rng, skin, cap, measuringWriter, 0.4 + pass * 0.05);
   } finally {
     kitPhase = false;

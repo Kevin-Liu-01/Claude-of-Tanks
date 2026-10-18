@@ -118,6 +118,9 @@ export function finishLandmark(sink: PartSink): RegionalParts {
         }
         triangles += pos.count / 3;
         geometry.userData.damagePiece = spec.name;
+        // (destruction-slabs 227 round 2) a vessel stands with the body until it falls (its shell is the body's to hole and
+        // to leave standing in its ruin: structureEnclosure.ts reads it as a wall)
+        if (spec.kind === 'tank') geometry.userData.damageStands = true;
         if (spec.dressing) geometry.userData.noCollision = true;
         // (E12, the re-film: a fallen mast's guys and its fine members stood on in the air) a piece draws in its bucket's
         // plain mesh, never the fine-detail batch (props.ts mergeMaterialBuckets: receive-only dressing and fine joinery

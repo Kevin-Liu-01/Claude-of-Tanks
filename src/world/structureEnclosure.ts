@@ -55,6 +55,8 @@ export interface StructureEnclosure {
   readonly bands: EnclosureBand[];
   /** Per cell: the drawn walls' top (cm over the body's floor; 0 none). */
   readonly top: Uint16Array;
+  /** Per cell: the drawn walls' lowest point (the same cm; 0 none): a wall drawn from low under its top, not a parapet. */
+  readonly base?: Uint16Array;
   /** Per cell: the highest thing drawn over it, a wall's top or a covering (the same cm; 0 none; absent for a probe). */
   readonly over?: Uint16Array;
 }
@@ -99,7 +101,9 @@ function clipY(src: Float64Array, n: number, at: number, sign: 1 | -1, dst: Floa
 export function measureEnclosure(parts: Readonly<Record<string, readonly BufferGeometry[]>> | null | undefined,
   anatomy: Pick<StructureDamageAnatomy, 'storeys'>, { cover = true }: { cover?: boolean } = {}): StructureEnclosure | null {
   if (!parts || !anatomy.storeys.length) return null;
-  const keep = (bucket: string, g: BufferGeometry): boolean => !SKIP_BUCKETS.has(bucket) && !g.userData?.damagePiece && g.userData?.fine !== true;
+  // (a named piece falls on its own, but a vessel stands with the body: landmarks/pieces.ts damageStands)
+  const keep = (bucket: string, g: BufferGeometry): boolean => !SKIP_BUCKETS.has(bucket) && (!g.userData?.damagePiece || g.userData?.damageStands === true)
+    && g.userData?.fine !== true;
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
   for (const [bucket, list] of Object.entries(parts)) for (const g of list ?? []) {
     if (!keep(bucket, g) && !COVER_BUCKETS.has(bucket)) continue;
@@ -134,7 +138,7 @@ export function measureEnclosure(parts: Readonly<Record<string, readonly BufferG
       return Number.isFinite(across) ? 0.55 * across : Infinity;
     }),
   }));
-  const top = new Uint16Array(N), over = new Uint16Array(N);
+  const top = new Uint16Array(N), over = new Uint16Array(N), base = new Uint16Array(N);
   const cm = (y: number): number => Math.max(1, Math.min(65535, Math.round(y * 100) + 1));
   const cellOf = (x: number, z: number): number => {
     const i = Math.floor((x - x0) / cell), k = Math.floor((z - z0) / cell);
@@ -153,7 +157,7 @@ export function measureEnclosure(parts: Readonly<Record<string, readonly BufferG
   };
   for (const [bucket, list] of Object.entries(parts)) for (const g of list ?? []) {
     const wall = keep(bucket, g);
-    const covers = cover && COVER_BUCKETS.has(bucket) && !g.userData?.damagePiece;
+    const covers = cover && COVER_BUCKETS.has(bucket) && (!g.userData?.damagePiece || g.userData?.damageStands === true);
     if (!wall && !covers) continue;
     const pos = g.getAttribute('position');
     if (!pos) continue;
@@ -189,6 +193,7 @@ export function measureEnclosure(parts: Readonly<Record<string, readonly BufferG
           const q = cm(y);
           if (q > over[c]) over[c] = q;
           if (wall && q > top[c]) top[c] = q;
+          if (wall && (!base[c] || q < base[c])) base[c] = q;
         });
       }
       if (!wall) continue;
@@ -286,7 +291,7 @@ export function measureEnclosure(parts: Readonly<Record<string, readonly BufferG
       share: inside / Math.max(1, boxCells - walls), setback: b.setback, bin, labels: null };
   });
   if (!any) return null;
-  return { x0, z0, cell, nx, nz, bands: out, top, ...(cover ? { over } : {}) };
+  return { x0, z0, cell, nx, nz, bands: out, top, ...(cover ? { over, base } : {}) };
 }
 
 /** Close a band's wall cells' gaps of up to 2r cells, flood the outside from the border, give the outside back the cells
@@ -433,6 +438,21 @@ export function wallTopAt(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>, x:
   return best ? (best - 1) / 100 : -1;
 }
 
+/** The highest thing drawn over a plan point (body y: a wall's top or a covering, a tank's roof, a deck), within `reach`
+ *  cells; +Infinity where nothing restricts, −1 for nothing drawn there. */
+export function drawnOverAt(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>, x: number, z: number, reach = 1): number {
+  const enc = enclosureOf(anatomy);
+  if (!enc) return Infinity;
+  const grid = enc.over ?? enc.top;
+  const ci = Math.floor((x - enc.x0) / enc.cell), ck = Math.floor((z - enc.z0) / enc.cell);
+  let best = 0;
+  for (let dk = -reach; dk <= reach; dk++) for (let di = -reach; di <= reach; di++) {
+    const i = ci + di, k = ck + dk;
+    if (i >= 0 && k >= 0 && i < enc.nx && k < enc.nz) best = Math.max(best, grid[k * enc.nx + i]!);
+  }
+  return best ? (best - 1) / 100 : -1;
+}
+
 /**
  * From a plan point along a level direction, the distance to the first drawn wall of a band within `maxM` (NaN for none):
  * a ruin's pier or stub stands there, not in the open past it.
@@ -454,13 +474,43 @@ export function bandEnclosure(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>
   return enclosureOf(anatomy)?.bands[band] ?? null;
 }
 
-/** The share of a structure's bands under `share` enclosed (a frame's: most of them). */
-export function openBandShare(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>, share = 0.35): number {
+/**
+ * Whether a structure stands on posts (an open frame by what it draws, whatever its walls are named): every band encloses
+ * under `share` of its box AND the ground band's walls are posts — no cluster of its wall cells runs `postM` or more (a
+ * fire lookout's legs, a market's stall posts). A ruin's ragged walls, a gate's arch piers or a depot's open front enclose
+ * little too, but their walls are runs, not posts (destruction-slabs 227 round 2: reading "most bands under 35 %" made
+ * the ruins, gates, depots and warehouses frames, their ruins rafts).
+ */
+export function standsOnPosts(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>, share = 0.35, postM = 2): boolean {
   const enc = enclosureOf(anatomy);
-  if (!enc || !enc.bands.length) return 0;
-  let open = 0;
-  for (const b of enc.bands) if (b.share < share) open++;
-  return open / enc.bands.length;
+  const b = enc?.bands[0];
+  if (!enc || !b) return false;
+  for (const band of enc.bands) if (!(band.share < share)) return false;
+  const { nx, nz, cell } = enc;
+  const longest = Math.max(1, Math.ceil(postM / cell));
+  const seen = new Uint8Array(nx * nz);
+  const stack: number[] = [];
+  let any = false;
+  for (let c0 = 0; c0 < b.cells.length; c0++) {
+    if (b.cells[c0] !== 1 || seen[c0]) continue;
+    any = true;
+    stack.push(c0);
+    seen[c0] = 1;
+    let i0 = Infinity, i1 = -Infinity, k0 = Infinity, k1 = -Infinity;
+    while (stack.length) {
+      const c = stack.pop()!;
+      const i = c % nx, k = (c - i) / nx;
+      if (i < i0) i0 = i; if (i > i1) i1 = i; if (k < k0) k0 = k; if (k > k1) k1 = k;
+      if (i1 - i0 + 1 >= longest || k1 - k0 + 1 >= longest) return false;
+      for (let dk = -1; dk <= 1; dk++) for (let di = -1; di <= 1; di++) {
+        const ii = i + di, kk = k + dk;
+        if (ii < 0 || kk < 0 || ii >= nx || kk >= nz) continue;
+        const cc = kk * nx + ii;
+        if (b.cells[cc] === 1 && !seen[cc]) { seen[cc] = 1; stack.push(cc); }
+      }
+    }
+  }
+  return any;
 }
 
 /** A storey room laid behind a hole: its floor and ceiling rectangles, its inward walls, its heights, and its key. */
@@ -731,6 +781,44 @@ export function wallClusters(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>,
   }
   out.sort((p, q) => q.cells - p.cells || p.x - q.x || p.z - q.z);
   return out.slice(0, max);
+}
+
+/**
+ * The drawn wall cells (of any band) whose walls stand at least `minTopM` (body y) over them, tallest first (ties by plan
+ * order): each its middle (body frame), its drawn top and its wall's run (along x when more of its wall neighbours lie
+ * along x) — a ruin's stubs stand where its walls are drawn tall (a tower set back on its podium: the tower's walls, never
+ * the podium's corners), at most `max` of them.
+ */
+export function wallSpots(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>, minTopM: number, max: number): Array<{ x: number; z: number; top: number; alongX: boolean }> {
+  const enc = enclosureOf(anatomy);
+  if (!enc || !enc.bands.length) return [];
+  const { nx, nz, cell, x0, z0, top } = enc;
+  const need = Math.max(1, Math.round(minTopM * 100) + 1);
+  const found: number[] = [];
+  for (let c = 0; c < top.length; c++) if (top[c]! >= need && wallCell(enc, c)) found.push(c);
+  found.sort((p, q) => top[q]! - top[p]! || p - q);
+  const at = (i: number, k: number): number => (i >= 0 && k >= 0 && i < nx && k < nz && wallCell(enc, k * nx + i) ? 1 : 0);
+  return found.slice(0, max).map((c) => {
+    const i = c % nx, k = (c - i) / nx;
+    const ax = at(i - 1, k) + at(i + 1, k) + at(i - 2, k) + at(i + 2, k);
+    const az = at(i, k - 1) + at(i, k + 1) + at(i, k - 2) + at(i, k + 2);
+    return { x: x0 + (i + 0.5) * cell, z: z0 + (k + 0.5) * cell, top: (top[c]! - 1) / 100, alongX: ax >= az };
+  });
+}
+/** A cell drawn as a wall: in a band, or (a tower over its podium, above the storeys the reading counts) a wall drawn
+ *  there from no higher than 40 % of its top, not a parapet on a roof. */
+function wallCell(enc: StructureEnclosure, c: number): boolean {
+  for (const b of enc.bands) if (b.cells[c] === 1) return true;
+  const lo = enc.base?.[c] ?? 0, hi = enc.top[c]!;
+  return lo > 0 && hi > 0 && lo - 1 <= 0.4 * (hi - 1);
+}
+
+/** Whether a wall is drawn (in any band) at a plan point standing at least `minTopM` over it (the point's own cell). */
+export function tallWallAt(anatomy: Pick<StructureDamageAnatomy, 'enclosure'>, x: number, z: number, minTopM: number): boolean {
+  const enc = enclosureOf(anatomy);
+  if (!enc) return false;
+  const c = enclosureCell(enc, x, z);
+  return c >= 0 && enc.top[c]! >= Math.round(minTopM * 100) + 1 && wallCell(enc, c);
 }
 
 /**

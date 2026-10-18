@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 import {
-  enclosedAt, faceSetback, measureEnclosure, openBandShare, storeyInterior, wallAlong, wallClusters, wallTopAt,
+  enclosedAt, faceSetback, measureEnclosure, standsOnPosts, storeyInterior, wallAlong, wallClusters, wallTopAt,
 } from './structureEnclosure.ts';
 
 /** A box's 12 triangles (non-indexed) into a geometry. */
@@ -117,9 +117,20 @@ function houseWalls(h, door = true) {
   a.enclosure = measureEnclosure(parts, a);
   assert.ok(a.enclosure.bands[0].share < 0.5, `a canopy on posts encloses nothing (share ${a.enclosure.bands[0].share.toFixed(2)})`);
   assert.equal(storeyInterior(a, 0, 0, 0), null, 'no room under a canopy');
-  assert.ok(openBandShare(a) > 0.5, 'it reads as an open frame');
+  assert.ok(standsOnPosts(a), 'it reads as an open frame (on posts)');
   const legs = wallClusters(a, 0, 8);
   assert.ok(legs.length >= 4 && legs.every((c) => c.top > 2.5), `its own posts are its legs (${legs.length})`);
+}
+
+// ---- a ruin's ragged walls enclose little but are runs, not posts: no frame (round 2: the ruins read as frames) -------
+{
+  const t = 0.35;
+  // three broken wall runs round a 6 x 8 m plan, gaps of 2-3 m between them, standing 1.5-4 m
+  const walls = [boxGeo(-3, 0, -4, 0.5, 4, -4 + t), boxGeo(-3, 0, -4, -3 + t, 2.5, 1), boxGeo(3 - t, 0, -1, 3, 3, 4), boxGeo(-1, 0, 4 - t, 1.5, 1.5, 4)];
+  const a = { storeys: storeys(-3, 3, -4, 4, [3, 6]) };
+  a.enclosure = measureEnclosure({ stone: walls }, a);
+  assert.ok(a.enclosure.bands.every((b) => b.share < 0.35), 'the broken shell encloses little');
+  assert.equal(standsOnPosts(a), false, 'its walls are runs: a ruin, never a frame');
 }
 
 // ---- a court open to the sky: walls round it, no roof over it — its room has no ceiling there ----------------------
