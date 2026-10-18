@@ -457,9 +457,10 @@ export function makeContainerRow(
   // (flush under the load they carry no collision: a ground-contact solid stands to 6 cm)
   const dunnage = (cx: number, cz: number, yaw: number): void => {
     for (const dz of [-CL * 0.36, CL * 0.36]) {
-      // (within the box's width: a kit that rebuilds the row reads the base row's bounds, which the sleepers must not widen)
-      const g = new THREE.BoxGeometry(CW - 0.02, 0.6, 0.22).toNonIndexed();
-      g.translate(0, -0.29, dz); g.rotateY(yaw); g.translate(cx, 0, cz);
+      // (within the box's width: a kit that rebuilds the row reads the base row's bounds, which the sleepers must not widen;
+      // 227, the integrity gate: 0.6 m deep they hung under the row in its below-ground views — 0.25 m beds a 0.19 m slope)
+      const g = new THREE.BoxGeometry(CW - 0.02, 0.25, 0.22).toNonIndexed();
+      g.translate(0, -0.115, dz); g.rotateY(yaw); g.translate(cx, 0, cz);
       g.userData.noCollision = true; g.userData.uvJitter = 'none';
       // (timber, not the boxes' steel: in the matte painted bucket, outside the boxes the steel parts keep to)
       (buckets.baked ?? target).push(paintHex(g, () => 0.5, 0x5a4a3a, 1, 0));
