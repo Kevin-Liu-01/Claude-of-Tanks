@@ -173,9 +173,9 @@
       "concealers": 822
     },
     "whiteout": {
-      "bytes": 1739053,
-      "sha256": "d690015e0e1c371e7a020a0cec7668dc13528f9bb42e5494e84f6c1df38d7aa7",
-      "obstacles": 1293,
+      "bytes": 1731588,
+      "sha256": "ae7b17aa71f0fb56773dfea9225a554d56ed150210135a59fe1fbbd62c90164f",
+      "obstacles": 1261,
       "colliders": 1297,
       "concealers": 0
     },
@@ -407,9 +407,9 @@
         "concealers": 822
       },
       "whiteout": {
-        "bytes": 1949297,
-        "sha256": "cd717ad093cfbff463f32b061d969cfffb221c714eb56dd1ec119f2c2d86d784",
-        "obstacles": 1440,
+        "bytes": 1941884,
+        "sha256": "dba36d135f815324863e0b30df16c562d5555b421b146951854eb30ab09d014c",
+        "obstacles": 1408,
         "colliders": 1355,
         "concealers": 0
       },
