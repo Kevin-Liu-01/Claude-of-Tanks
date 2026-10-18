@@ -168,9 +168,10 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
   const player = entity('player', 'alpha', 0, -150);
   const enemies = Array.from({ length: 5 }, (_, index) =>
     entity(`enemy-${index}`, 'bravo', index * 8, 150, { bot: true }));
-  const run = controller('endless_horde', [player, ...enemies], 6000);
+  // the cache law under the vehicles' own rounds (the base Horde plays unlimited rounds: every cache a repair, below)
+  const run = controller('endless_horde', [player, ...enemies], 6000, { ruleset: { ...matchRulesetFor('endless_horde'), ammo: 'spec' } });
   assert.equal(run.match.state.horde.wave, 1);
-  // owner 2026-09-15: the first wave fields five hostiles (the whole five-strong pool here)
+  // the first wave fields six hostiles, capped here by the five-strong pool
   assert.equal(run.match.state.horde.total, 5);
   assert.equal(enemies.filter((target) => target.modeActive !== false).length, 5);
   assert.deepEqual(player.combat.ammo, [24, 16, 6]);
@@ -221,8 +222,36 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
   assert.equal(snapshot.playerAmmoCapacity, 46);
 }
 
+// unlimited rounds (owner 2026-10-17): every Horde cache is a repair, drawn from the same seeded stream as under spec
+// rounds, so the caches land where they would have; a hostile revives at the fodder hull (15 % of its own)
+{
+  const caches = (ammo) => {
+    const player = entity('player', 'alpha', 0, -150);
+    const enemies = Array.from({ length: 5 }, (_, index) => entity(`enemy-${index}`, 'bravo', index * 8, 150, { bot: true }));
+    const run = controller('endless_horde', [player, ...enemies], 6000, ammo ? { ruleset: { ...matchRulesetFor('endless_horde'), ammo } } : {});
+    const hull = enemies.find((target) => target.modeActive !== false).combat.maxHp;
+    let clock = 0;
+    for (let cycle = 0; cycle < 12; cycle++) {
+      for (const target of enemies) if (target.modeActive !== false) target.combat.destroyed = true;
+      clock += 0.5; run.match.step(1 / 60, clock); clock += 6.01; run.match.step(1 / 60, clock);
+    }
+    const spawned = run.events.filter((event) => event.type === 'mode_pickup_spawned').map((event) => event.payload);
+    return { spawned, hull, healChance: run.match.state.horde.healChance };
+  };
+  const endless = caches(null);
+  const spec = caches('spec');
+  assert.ok(endless.spawned.length >= 10, 'a cache drops on every cleared wave');
+  assert.ok(endless.spawned.every((pickup) => pickup.kind === 'heal'), 'unlimited rounds: every cache repairs');
+  assert.equal(endless.healChance, 1);
+  assert.ok(spec.spawned.some((pickup) => pickup.kind === 'ammo'), 'spec rounds still drop ammunition caches');
+  assert.deepEqual(endless.spawned.map((pickup) => [pickup.x, pickup.z]), spec.spawned.map((pickup) => [pickup.x, pickup.z]),
+    'the kind draw is kept, so every cache lands where it would under spec rounds');
+  const scale = matchRulesetFor('endless_horde').horde.hostileHpScale / matchRulesetFor('endless_horde').hpScale;
+  assert.equal(endless.hull, Math.round(100 * scale), 'a wave-one hostile revives at hostileHpScale over the humans\' hpScale');
+}
+
 // owner 2026-09-15 ("they're the same tanks each round"): waves draw fresh identities from the pool,
-// rested vehicles first, and grow by the wave law (5, 6, 7, then a surge on the fourth wave).
+// rested vehicles first, and grow by the wave law (6, 8, 10, then a surge on the fourth wave) up to the pool.
 {
   const player = entity('player', 'alpha', 0, -150);
   const enemies = Array.from({ length: 9 }, (_, index) =>
@@ -230,7 +259,7 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
   const run = controller('endless_horde', [player, ...enemies], 4242);
   const active = () => new Set(enemies.filter((target) => target.modeActive !== false).map((target) => target.id));
   const waveOne = active();
-  assert.equal(waveOne.size, 5, 'wave 1 fields five of the nine');
+  assert.equal(waveOne.size, 6, 'wave 1 fields six of the nine');
   let clock = 0;
   const clear = () => {
     for (const target of enemies) if (target.modeActive !== false) target.combat.destroyed = true;
@@ -238,15 +267,15 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
   };
   clear();
   const waveTwo = active();
-  assert.equal(run.match.state.horde.wave, 2); assert.equal(waveTwo.size, 6, 'wave 2 adds one hostile');
+  assert.equal(run.match.state.horde.wave, 2); assert.equal(waveTwo.size, 8, 'wave 2 adds two hostiles');
   const rested = enemies.filter((target) => !waveOne.has(target.id)).map((target) => target.id);
   assert.ok(rested.every((id) => waveTwo.has(id)), 'every vehicle rested on wave 1 leads wave 2');
   clear();
-  assert.equal(run.match.state.horde.wave, 3); assert.equal(active().size, 7);
+  assert.equal(run.match.state.horde.wave, 3); assert.equal(active().size, 9, 'wave 3 (10) is capped by the nine-strong pool');
   clear();
-  assert.equal(run.match.state.horde.wave, 4); assert.equal(active().size, 9, 'the surge on wave 4 (8 + 1) is capped by the nine-strong pool');
+  assert.equal(run.match.state.horde.wave, 4); assert.equal(active().size, 9, 'the surge on wave 4 (12 + 1) is capped by the pool');
   const started = run.events.filter((event) => event.type === 'mode_wave_started').map((event) => event.payload.enemies);
-  assert.deepEqual(started, [5, 6, 7, 9]);
+  assert.deepEqual(started, [6, 8, 9, 9]);
   // the same seed replays the same draws
   const enemiesAgain = Array.from({ length: 9 }, (_, index) => entity(`enemy-${index}`, 'bravo', index * 8, 150, { bot: true }));
   controller('endless_horde', [entity('player', 'alpha', 0, -150), ...enemiesAgain], 4242);
