@@ -196,9 +196,6 @@ export default {
     // 2026-09-19: the station perimeter keeps a ring of steel anti-tank
     // hedgehogs (every map fields complete three-beam compounds).
     sandbagLines: 0,
-    // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the field
-    // works stand on ground their bags can follow (2 stepped breastwork neighbours over 0.7 m)
-    dressingRules: { fieldWorksLevel: true },
     // (2026-10-11, the map-revival lane; wave 380: "what look like timber logs lying on Mars") the sandbags filled with the
     // basin's regolith and dusted with it — an ochre hessian, not the dark brown that read as stacked logs
     sandbagTint: [1.32, 0.86, 0.62],

@@ -194,9 +194,6 @@ export default {
     wallRuns: [[110, -162, 110, -106, 2], [172, -116, 232, -116, 2], [246, -40, 246, 22, 3], [166, 118, 230, 118, 2], [-126, -244, -58, -244, 3], [-326, 96, -326, 168, 2]],
     well: false, hayCrates: false, fences: true, telegraph: false, carts: false, logs: false,
     rocks: 180, outcrops: 24, craters: 52, rubblePiles: 26, sandbagLines: 16, hedgehogs: 12,
-    // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the field
-    // works stand on ground their bags can follow (1 stepped breastwork neighbour over 0.7 m)
-    dressingRules: { fieldWorksLevel: true },
     // the map-vehicles lane (2026-10-06, the period ruling): Australia in the 1970s: the Centurion and the Leopard
     // AS1
     tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['centurion5_2', 'leo1a5'] },

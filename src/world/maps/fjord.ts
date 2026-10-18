@@ -274,9 +274,9 @@ export default {
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
     sandbagLines: 16, tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
-    // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the field
-    // works stand on ground their bags can follow (1 stepped breastwork neighbour over 0.7 m)
-    dressingRules: { fieldWorksLevel: true, fencesClearBuildings: true },
+    // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules) a fence run's module or gate that
+    // meets a building's plot is left out; the field works as they were (fieldWorksLevel is off for 227, the coordinator's ruling: its first cuts dropped local cover; 228 seats each module on its own ground)
+    dressingRules: { fencesClearBuildings: true },
     inhabit: {
       // (wave 111b: "a fairground-style market stall") no market stall: the quay's own fish trade has the fish plant
       // (round 3, gauntlet wave 129: "a park bench (1940!)") no park benches either

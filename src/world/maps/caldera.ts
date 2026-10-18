@@ -275,9 +275,6 @@ export default {
     well: false, hayCrates: false, fences: true, telegraph: true, carts: false, logs: true,
     rocks: 310, outcrops: 76, craters: 92, rubblePiles: 36,
     sandbagLines: 22, hedgehogs: 26,
-    // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the field
-    // works stand on ground their bags can follow (2 stepped breastwork neighbours over 0.7 m)
-    dressingRules: { fieldWorksLevel: true },
     // the map-vehicles lane (2026-10-06, the period ruling): Kyushu: the Ground Self-Defense Force's Types 10, 90
     // and 74 and the Type 89 IFV
     tankWrecks: { era: 'modern', count: 7, debris: true, ids: ['type10_tk_x', 'type90_kyumaru', 'type74', 'hayate_ifv'] },

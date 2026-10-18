@@ -134,9 +134,6 @@ export default {
     wallRuns: [[-196, 28, -196, 94, 2], [-190, 112, -122, 112, 3], [-48, -10, 10, -10, 2], [-48, 104, 14, 104, 3], [292, 40, 292, 112, 2], [32, -300, 104, -300, 3]],
     well: true, hayCrates: true, fences: true, telegraph: false, carts: true, logs: true,
     haystacks: 8, rocks: 194, outcrops: 32, craters: 48, rubblePiles: 14, cropFields: 3, sandbagLines: 16, hedgehogs: 10,
-    // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the field
-    // works stand on ground their bags can follow (1 stepped breastwork neighbour over 0.7 m)
-    dressingRules: { fieldWorksLevel: true },
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
     tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },
