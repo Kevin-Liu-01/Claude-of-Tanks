@@ -10,6 +10,9 @@
 // keeps at least 1.5 mm from every part of its mount that does not pitch (the fleet's working pintle, whose cradle and
 // shield stand on the yaw stage, must fail that: its receiver sweeps 22 mm into the yoke bridge); and the station adds no
 // material the vehicle does not already draw with.
+// Round 4 (critics D10, S1: the pintle column stood on the commander's hatch lid, so the hatch could not open): each
+// cupola emplacement stands in a socket post at its cupola's rim, the post welded into the fixed ring and seated in the
+// roof, the flange on the post's collar, and the pintle's turning stage keeps 10 mm outside the lid at every yaw.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
@@ -18,13 +21,14 @@ import { AUXILIARY_INVENTORY } from './auxiliaryInventory.generated.ts';
 import { AUXILIARY_ROOF_GUNS } from './auxiliaryRoofGuns.generated.ts';
 import { INERT_DRAWN_WEAPONS } from './inertDrawnWeapons.generated.ts';
 import { NATIONAL_ROOF_LOADOUTS } from './nationalRoofConfig.ts';
+import { NATIONAL_DONOR_TURRETS } from './nationalDonorTurrets.ts';
 import { auxiliaryWeaponProfile } from './auxiliaryWeapons.ts';
 import { stepRoofGun, auxiliaryState } from '../sim/auxiliarySystems.ts';
 import { FITTINGS } from './profiles/kit.ts';
 import { stationSelfClearance } from './cnTurretGeometry.test-support.mjs';
 
 const EXPECT = {
-  t72b3_qilin: { name: 'Qilin cupola QJC-88', pintle: true, shield: 'standard', arc: true, table: true, excluded: -69 },
+  t72b3_qilin: { name: 'Qilin cupola QJC-88', pintle: true, shield: 'standard', arc: true, table: true, excluded: -84 },
   t72b3m_kunlun: { name: 'Kunlun cupola QJC-88', pintle: true, shield: 'standard', arc: false, table: false },
   t80u_yun: { name: 'Yun faceted station', pintle: false, arc: true, table: false, excluded: 147.5 },
 };
@@ -85,6 +89,30 @@ for (const [id, want] of Object.entries(EXPECT)) {
       const self = stationSelfClearance(station, pitch, { depression: auxiliaryWeaponProfile(12.7, id).depressionRad, elevation: auxiliaryWeaponProfile(12.7, id).elevationRad });
       assert.equal(self.yawMeshes, 1, `${id}: one yaw-stage mesh`);
       assert.ok(self.d >= .0015, `${id}: the moving gun keeps 1.5 mm from its own mount (${(self.d * 1000).toFixed(1)} mm at ${(self.el * 180 / Math.PI).toFixed(1)} deg)`);
+      // round 4 (critics D10, S1: the pintle column stood on the commander's hatch lid, so the hatch could not open): the
+      // pintle stands in a socket post at the cupola's rim, welded into its fixed ring, and its turning stage keeps 10 mm
+      // outside the lid's circle at every yaw
+      const donor = NATIONAL_DONOR_TURRETS[id], socket = donor.socket;
+      assert.ok(socket, `${id}: the emplacement stands in a rim socket`);
+      assert.ok(Math.abs(station.position.x - donor.station[0]) < 1e-9 && Math.abs(station.position.z - donor.station[1]) < 1e-9, `${id}: the pintle stands at its socket`);
+      const off = Math.hypot(station.position.x - socket.cupola[0], station.position.z - socket.cupola[1]);
+      assert.ok(Math.abs(off - (socket.ringR + socket.postR - .004)) < 1e-9, `${id}: the socket post is welded 4 mm into the cupola's fixed ring`);
+      let turning = 0; const sv = new THREE.Vector3();
+      station.traverse((o) => { if (!o.isMesh) return; for (let q = o; q; q = q.parent) if (q === pitch) return;
+        const M = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld), p = o.geometry.attributes.position;
+        for (let i = 0; i < p.count; i++) { sv.fromBufferAttribute(p, i).applyMatrix4(M); turning = Math.max(turning, Math.hypot(sv.x, sv.z)); } });
+      assert.ok(off - turning >= socket.lidR + .010, `${id}: the pintle's turning stage stays 10 mm outside the hatch lid at every yaw (${((off - turning - socket.lidR) * 1000).toFixed(1)} mm)`);
+      // the flange's seat is the post's collar (2 mm in), and the post stands on the roof (8 mm in) clear of the lid
+      const fixed = []; turret.traverse((o) => { if (!o.isMesh) return; for (let q = o; q; q = q.parent) if (q === station) return; fixed.push(o); });
+      const seatW = station.getWorldPosition(new THREE.Vector3());
+      const down = (dx, dz, from) => new THREE.Raycaster(new THREE.Vector3(seatW.x + dx, seatW.y + from, seatW.z + dz), new THREE.Vector3(0, -1, 0), 0, 2).intersectObjects(fixed, false);
+      const column = down(0, 0, .3);
+      assert.ok(column[0] && Math.abs(column[0].point.y - (seatW.y + .002)) < .001, `${id}: the pintle's flange sits 2 mm into the socket's collar`);
+      // just outboard of the collar the ray meets the roof; the post's foot lies 2-20 mm under it
+      const out = Math.atan2(station.position.x - socket.cupola[0], station.position.z - socket.cupola[1]), clear = socket.postR + .006 + .012;
+      const roof = down(Math.sin(out) * clear, Math.cos(out) * clear, 0)[0];
+      assert.ok(roof && seatW.y - roof.point.y > .05, `${id}: the socket post rises from the turret roof (${roof ? ((seatW.y - roof.point.y) * 1000).toFixed(0) : '-'} mm)`);
+      assert.ok(column.some((h) => roof.point.y - h.point.y >= .002 && roof.point.y - h.point.y <= .020), `${id}: the socket post's foot is seated in the roof`);
       // no material of its own: every material the station draws with is drawn elsewhere on the vehicle
       const elsewhere = new Set(); tank.root.traverse((o) => { if (!o.isMesh) return; for (let q = o; q; q = q.parent) if (q === station) return; for (const m of [].concat(o.material)) elsewhere.add(m.uuid); });
       station.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) assert.ok(elsewhere.has(m.uuid), `${id}: the station's ${o.name} adds a material (${m.name || m.color?.getHexString?.()})`); });
@@ -128,7 +156,7 @@ for (const [id, want] of Object.entries(EXPECT)) {
   const mat = () => new THREE.MeshStandardMaterial();
   const mats = { dark: mat(), detail: mat(), shadow: mat(), glass: mat(), hull: mat() };
   const e = NATIONAL_ROOF_LOADOUTS.t72b3_qilin.emplacement;
-  const fleet = FITTINGS.pintleMG({ mats, cls: e.cls, scale: 1, tone: 'two-tone', elev: .08, shield: e.shield, ammo: true, ring: { ...e.ring },
+  const fleet = FITTINGS.pintleMG({ mats, cls: e.cls, scale: 1, tone: 'two-tone', elev: .08, shield: e.shield, ammo: true, ring: e.ring ? { ...e.ring } : false,
     riser: e.riserM, working: true, datumBarrel: false });
   fleet.updateMatrixWorld(true);
   const self = stationSelfClearance(fleet, fleet.getObjectByName('auxiliaryWeaponPitch'), { depression: .087, elevation: .75 });

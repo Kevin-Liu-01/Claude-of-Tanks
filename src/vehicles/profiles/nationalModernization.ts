@@ -14,7 +14,7 @@ import {buildHetmanII} from './hetmanII.ts';
 import {buildZubrII} from './zubrII.ts';
 import {NATIONAL_LEGACY_CONFIG} from '../nationalLegacyConfig.ts';
 import {boxSections} from './measuredPrimitives.ts';
-import {nationalCupolaPintle,nationalRoofWeapon} from './nationalRoofWeapon.ts';
+import {nationalCupolaPintle,nationalPintleSocket,nationalRoofWeapon} from './nationalRoofWeapon.ts';
 import {nationalRoofSystems} from './nationalRoofSystems.ts';
 import {NATIONAL_ROOF_LOADOUTS} from '../nationalRoofConfig.ts';
 import {NATIONAL_MODERNIZATION_CONFIG,type NationalModernizationConfig} from '../nationalModernizationConfig.ts';
@@ -66,8 +66,9 @@ function fitDonorTurret(P:TankBuilderPort,id:string,kit:()=>void):void {
  const d=buildNationalDonorTurret(P,id),l=NATIONAL_ROOF_LOADOUTS[id],[x,z]=d.station;
  if(l.mount==='pintle'){
   // Release 227: a classic emplacement on the commander's cupola. Its flange sits 2 mm into the cupola's own top (the
-  // highest permanent surface inside the 0.10 m foot, never the periscopes beyond it).
-  const base=donorTurretSeatY(P,x,z,.10)-.002;
+  // highest permanent surface inside the 0.10 m foot, never the periscopes beyond it). Round 4 (critics D10, S1): with a
+  // rim socket it sits 2 mm into the socket post's collar at the cupola's rim instead, off the hatch lid.
+  const base=(d.socket?nationalPintleSocket(P,[x,donorTurretSeatY(P,x,z),z],d.socket):donorTurretSeatY(P,x,z,.10))-.002;
   nationalCupolaPintle(P,[x,base,z],l);
   P.turretG.userData.nationalDonorStation={seat:[x,base,z],loadout:l.name,emplacement:true};
  }else{
