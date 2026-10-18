@@ -355,7 +355,8 @@ assert.deepEqual(table, {
   monsoon: { regime: 'cumulonimbus-front', coverage: 0.4, baseM: 1000, thicknessM: 3000, shadow: true, streets: 0.1, cirrus: 0.25, farBand: 0.4, contrails: 0, rain: 0.85, virga: 0, fogBank: 0 },
   alpine: { regime: 'towering-cumulus', coverage: 0.26, baseM: 1900, thicknessM: 900, shadow: true, streets: 0, cirrus: 0.3, farBand: 0.5, contrails: 0, rain: 0.15, virga: 0.1, fogBank: 0 },
   caldera: { regime: 'cumulus-humilis', coverage: 0.22, baseM: 1500, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.45, farBand: 0.15, contrails: 0, rain: 0.3, virga: 0.85, fogBank: 0 },
-  foundry: { regime: 'industrial-stratocumulus', coverage: 0.92, baseM: 850, thicknessM: 520, shadow: false, streets: 0.15, cirrus: 0, farBand: 0.55, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
+  // (2026-10-18, the SKY lane's 228 census: Ironworks back on cumulus — the approved s146's lumpy cumulus over blue)
+  foundry: { regime: 'fair-weather-cumulus', coverage: 0.5, baseM: 1100, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
   ruinspires: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 1100, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0.25, virga: 0.6, fogBank: 0 },
   // (2026-10-15: Suzhou Creek's ash veil, a low broken cell deck, moved to Verdant's cumulus — the 10-13 ruling on every map)
   blackglass: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 1250, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
@@ -373,7 +374,7 @@ assert.deepEqual(table, {
   whiteout: { regime: 'low-stratus', coverage: 1, baseM: 180, thicknessM: 300, shadow: false, streets: 0, cirrus: 0, farBand: 0.5, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
   orchard: { regime: 'fair-weather-cumulus', coverage: 0.28, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.4, cirrus: 0.12, farBand: 0.25, contrails: 2, rain: 0, virga: 0, fogBank: 0 },
   longleaf: { regime: 'fair-weather-cumulus', coverage: 0.32, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.5, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0.3, virga: 0, fogBank: 0 },
-  mangrove: { regime: 'towering-cumulus', coverage: 0.34, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.15, cirrus: 0.1, farBand: 0.3, contrails: 0, rain: 0.45, virga: 0.1, fogBank: 0 },
+  mangrove: { regime: 'towering-cumulus', coverage: 0.5, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.15, cirrus: 0.1, farBand: 0.3, contrails: 0, rain: 0.45, virga: 0.1, fogBank: 0 },
   saltwind: { regime: 'sea-streets', coverage: 0.3, baseM: 1100, thicknessM: 600, shadow: true, streets: 0.75, cirrus: 0.08, farBand: 0.55, contrails: 0, rain: 0, virga: 0, fogBank: 0.35 },
   reservoir: { regime: 'fair-weather-cumulus', coverage: 0.26, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25, contrails: 2, rain: 0, virga: 0, fogBank: 0 },
   mars: { regime: 'thin-ice-clouds', coverage: 0.06, baseM: 2500, thicknessM: 400, shadow: false, streets: 0.2, cirrus: 0.45, farBand: 0, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
@@ -428,8 +429,10 @@ assert.deepEqual(table, {
   // so no base lumps and no cells)
   assert.deepEqual([titan.lumps, titan.cells, titan.deckLight], [0, 0, 0], 'titan: fair-weather cumulus, no deck structure');
   const foundry = deriveCloudLayerPreset(skyOf('foundry'));
-  assert.ok(foundry.regime === 'industrial-stratocumulus' && foundry.baseM === 850 && foundry.cells === 0.9 && foundry.deckLight === 1 && foundry.cirrus === 0, 'foundry: a low cellular industrial deck, no cirrus over it');
-  assert.ok(foundry.tint[0] > foundry.tint[2] && foundry.tint[0] > 0.75, 'foundry: the smog rides on the deck\'s base as a warm-grey albedo');
+  // (2026-10-18, the 228 census: Ironworks under fair-weather cumulus — no deck structure, its clouds cast their shadows;
+  // the smog keeps its warm-grey albedo on the cumulus)
+  assert.deepEqual([foundry.regime, foundry.cells, foundry.deckLight, foundry.shadow, foundry.baseM], ['fair-weather-cumulus', 0, 0, true, 1100], 'foundry: fair-weather cumulus, no deck');
+  assert.ok(foundry.tint[0] > foundry.tint[2] && foundry.tint[0] > 0.75, 'foundry: the smog rides on the cumulus as a warm-grey albedo');
   const railyard = deriveCloudLayerPreset(skyOf('railyard'));
   // (2026-10-16: Cinder Junction under hazy fair-weather cumulus everywhere — no deck structure, its clouds cast their shadows)
   assert.deepEqual([railyard.regime, railyard.cells, railyard.deckLight, railyard.shadow], ['fair-weather-cumulus', 0, 0, true], 'railyard: fair-weather cumulus, no deck');

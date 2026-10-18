@@ -205,7 +205,13 @@ export default {
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   // (2026-10-09, the shadows lane: deckBeam — the cells passed a tenth of the sun over 88 % of the works)
   // 2026-10-15 (the SKY lane; the 10-13 ruling on every map): the works' overcast closed (0.88 left breaks: the banned deck)
-  clouds: { regime: 'industrial-stratocumulus', coverage: 0.92, tintHex: 0xd8cec0, nightGlow: 0.9, nightGlowHex: 0xff8a40, deckBeam: 0.35 },
+  // 2026-10-18 (the SKY lane, 228 sky census; the media lane's approved s146 against 226: a works sky of big lumpy
+  // cumulus over blue became a full grey deck when the ban closed it): the owner's bar is fair-weather cumulus like
+  // Verdant — the works keep their industrial character in the haze, smoke and aerial perspective, never a deck (as
+  // Cinder Junction since 227); a plentiful field (0.5), the warm smog tint and the furnace glow at night kept. The base
+  // authored (1100 m, Cinder's): the regime's own is the legacy sky block's, which reads this smoggy block as an overcast
+  // at 340 m
+  clouds: { regime: 'fair-weather-cumulus', coverage: 0.5, baseM: 1100, tintHex: 0xd8cec0, nightGlow: 0.9, nightGlowHex: 0xff8a40 },
   sky: {
     sunElevationDeg: 25, sunAzimuthDeg: 128, turbidity: 7.8, rayleigh: 1.35,
     // round 76 (2026-09-26, the deck pass): the industrial haze comes off the whole frame and onto the deck's base and
@@ -215,7 +221,10 @@ export default {
     mieCoefficient: 0.006, mieDirectionalG: 0.88, fogDensity: 0.00052,
     fogTintHex: 0x858384, fogMix: 0.45, envIntensity: 0.22,
     atmosphere: { mieTintHex: 0xd2b28c, horizonTintHex: 0xd0c6b6, horizonTintAmount: 0.5, horizonBandDeg: 11, zenithTintHex: 0x889ab0, zenithTintAmount: 0.3 },
-    cloudOpacity: 1.24, cloudOpacity2: 1.05, cloudTintHex: 0xc8ccca,
+    // 2026-10-18 (the SKY lane, 228 census): the phones' baked decks (Ultra Low) follow the battle's cumulus — Cinder
+    // Junction's Verdant-scale cover, veil and warm-white tint at the classic 620 m deck (was 1.24 / 1.05 / 0xc8ccca:
+    // sky.ts's 340 m broken-stratus branch); the volumetric tier never draws these decks
+    cloudOpacity: 1.05, cloudOpacity2: 0.6, cloudTintHex: 0xefebe4, cloudAltM: 620,
     // shadow-audit r2: the 24° key was too weak after haze/ACES on the
     // mobile-low path (3.95 changed-pixel luma against the 4.0 contract), so
     // factory and trunk shadows read as flat discoloration. Keep the authored
