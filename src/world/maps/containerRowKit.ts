@@ -452,6 +452,19 @@ export function makeContainerRow(
   const n = 5 + ((rng() * 2) | 0);
   const CL = CONTAINER_L, CW = CONTAINER_W, CH = CONTAINER_H;
   let x = -((n - 1) * (CW + 0.5)) / 2;
+  // (the building census's world pass, 227: on a slope a box's downhill end stood up to 0.19 m over the ground) each
+  // ground-tier load on two timber dunnage sleepers bedded into the ground across its width: dressing, new to the stream
+  // (flush under the load they carry no collision: a ground-contact solid stands to 6 cm)
+  const dunnage = (cx: number, cz: number, yaw: number): void => {
+    for (const dz of [-CL * 0.36, CL * 0.36]) {
+      // (within the box's width: a kit that rebuilds the row reads the base row's bounds, which the sleepers must not widen)
+      const g = new THREE.BoxGeometry(CW - 0.02, 0.6, 0.22).toNonIndexed();
+      g.translate(0, -0.29, dz); g.rotateY(yaw); g.translate(cx, 0, cz);
+      g.userData.noCollision = true; g.userData.uvJitter = 'none';
+      // (timber, not the boxes' steel: in the matte painted bucket, outside the boxes the steel parts keep to)
+      (buckets.baked ?? target).push(paintHex(g, () => 0.5, 0x5a4a3a, 1, 0));
+    }
+  };
   for (let k = 0; k < n; k++) {
     const liveryDraw = rng();
     const local = forkRng(liveryDraw + k * 0.137);
@@ -464,11 +477,13 @@ export function makeContainerRow(
       const upper = rng() < 0.45;
       if (upper) { rng(); drawBodyJitter(rng); rng(); rng(); rng(); }
       pushPeriodFreight(buckets, local, freightMap, x, zOff, yaw, upper);
+      dunnage(x, zOff, yaw);
       x += CW + 0.4 + rng() * 0.5;
       continue;
     }
     const strip: SteelStrip = local() < 0.5 ? 'sideA' : 'sideB';
     pushContainer(target, jitter, local, hex, strip, yaw, x, 0, zOff, local() < 0.5);
+    dunnage(x, zOff, yaw);
     if (rng() < 0.45) { // second tier
       const liveryDraw2 = rng();
       const local2 = forkRng(liveryDraw2 + k * 0.311);

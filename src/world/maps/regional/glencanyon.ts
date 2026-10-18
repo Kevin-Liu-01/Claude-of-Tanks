@@ -916,7 +916,7 @@ const waterTower: RegionalBuilder = (ctx) => {
   // piers, girts and X tension rods in every panel (lattice.ts); the tank's seams, its roof hatch and vent finial; it
   // falls as its frame with the tank as its crown
   latticeFrame(sink, { foot: lb, head: lt, y0: 0.4, y1: legH, size: 0.2, girt: 0.09, brace: 0.035, panels: 3, bucket: 'structureMetal',
-    colour: shade(paint, 0.85), pad: { bucket: 'stone', size: 0.75, top: 0.4 }, mobile },
+    colour: shade(paint, 0.85), pad: { bucket: 'stone', size: 0.75, top: 0.4, solid: true }, mobile },
     { x0: -tankR - 0.5, x1: tankR + 0.5, y0: legH, y1: legH + 0.4 + tankH + 1.0, z0: -tankR - 0.5, z1: tankR + 0.5, bucket: 'structureMetal', tint: paint });
   sink.cylinder('structureMetal', [0, legH, 0], 'y', 0.4, tankR * 0.7, 16, { colour: shade(paint, 0.9) }, tankR);
   sink.cylinder('structureMetal', [0, legH + 0.4, 0], 'y', tankH, tankR, 20, { colour: paint });
