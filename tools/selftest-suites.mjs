@@ -333,6 +333,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/spareTrackSeat.selftest.mjs',
     // 2026-10-16 (VEH-13 outline rule): the receipt's PROUD class and its seeded break
     'tools/spare-track-outline.selftest.mjs',
+    // 2026-10-18 (228): ledger keys hold no line number; a line-shifted tree gates green; --update then --gate round-trips
+    'tools/spare-track-key.selftest.mjs',
     'src/vehicles/turretBarrelCircularity.selftest.mjs',
     'src/vehicles/profiles/gunTopFixturePlacement.selftest.mjs',
     'src/vehicles/profiles/bradleyHullClosure.selftest.mjs',

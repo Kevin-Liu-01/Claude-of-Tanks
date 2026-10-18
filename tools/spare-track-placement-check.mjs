@@ -25,12 +25,14 @@
 //
 // Gated classes (--check and --gate fail on any): ON_GUN, IN_SWEEP, HANGING, FLOATING, WEIRD, INTERSECTING, BURIED,
 // UNCOVERED, STALE (the ledger row's input hash is not the build's geometry digest). The ledger holds one row per id.
+// A row's run `site` is its ledger key (spare-track-digest.mjs ledgerSiteKeys): source, part, authoring function and
+// file, never a source line number.
 // Cost: about 10 s an id; one process. House rules: 4 GB heap, wall-clock alarm, --yield-load.
 
 import path from 'node:path';
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { SPARE_TRACK_BUILD, spareTrackGeometryDigest } from './spare-track-digest.mjs';
+import { SPARE_TRACK_BUILD, spareTrackGeometryDigest, ledgerSiteKeys } from './spare-track-digest.mjs';
 
 const argv = process.argv.slice(2);
 const arg = (k, d) => { const a = argv.find((x) => x.startsWith(`--${k}=`)); return a ? a.slice(k.length + 3) : d; };
@@ -96,6 +98,9 @@ function authorOf(chain) {
   return { site: site ? `${site.fn}@${site.file.replace(/^vehicles\//, '')}:${site.line}` : null, via: helper ? helper.fn : null,
     caller: caller ? `${caller.fn}@${caller.file.replace(/^vehicles\//, '')}:${caller.line}` : null };
 }
+// ------------------------------------------------------------------ ledger site keys
+// a run's ledger key (spare-track-digest.mjs ledgerSiteKeys): source, part and authoring function and file, no line
+const siteKeys = (names) => ledgerSiteKeys(names, srcLinesV);
 function captureStack() {
   const lim = Error.stackTraceLimit; Error.stackTraceLimit = 40;
   const s = new Error().stack; Error.stackTraceLimit = lim;
@@ -1110,17 +1115,29 @@ function exposureOf(B, grid, bodies) {
   }
   return { exposure: r3(vis / n), exposureAbove: r3(visUp / n), openness: r3(open / n), samples: n };
 }
-function analyse(id) {
+function analyse(id, remeasure = false) {
   const spec = specs.getSpec(id);
   const { visual, buildMs } = buildTank(id);
   const t1 = Date.now();
   const inputHash = spareTrackGeometryDigest(visual.root);
   const planAudit = visual.root.userData.spareTrackPlanAudit ?? null;
   // --update re-measures only ids whose geometry changed since their ledger row; --check trusts a current row (its
-  // geometry is byte-identical) and fails a stale one; --gate always measures afresh
-  if ((UPDATE || CHECK) && !GATE && !CROPS && ledger.rows[id]?.inputHash === inputHash && !flag('force')) {
+  // geometry is byte-identical) and fails a stale one; --gate always measures afresh. --update also re-measures a row
+  // whose run keys no longer match the build's (a stage function renamed or moved file): the row it keeps is one the
+  // gate accepts.
+  const prior = ledger.rows[id];
+  if ((UPDATE || CHECK) && !GATE && !CROPS && !remeasure && prior?.inputHash === inputHash && !flag('force')) {
+    let same = true;
+    if (UPDATE) {
+      try {
+        const { bodies, decorPieces } = collect(visual, spec);
+        const fresh = siteKeys(findBundles(visual, spec, bodies, decorPieces).map((B) => B.name));
+        same = fresh.length === prior.runs.length && fresh.every((k, i) => k === prior.runs[i].site);
+      } catch (e) { visual.dispose(); throw e; }
+    }
     visual.dispose();
-    return { unchanged: true, id, inputHash, planAudit };
+    // a fresh build for the measurement: collect() and findBundles() tag the census they read
+    return same ? { unchanged: true, id, inputHash, planAudit } : analyse(id, true);
   }
   // a hand-drawn course trimmed to the links that hold reports each kept link as `<site>#k`: one run here
   const buildReceipt = Array.isArray(visual.root.userData.spareTrack) ? {
@@ -1790,14 +1807,33 @@ if (RECLASSIFY) {
     if (!line.trim()) continue;
     const o = JSON.parse(line);
     if (!o.raw) continue;
-    const runs = o.raw.bundles.map((b) => {
+    const keys = siteKeys(o.raw.bundles.map((b) => b.bundle));
+    const runs = o.raw.bundles.map((b, i) => {
       const c = classifyRun({ ...b, __id: o.id });
-      return { index: b.index, site: b.bundle, source: b.source, frame: b.frame, registered: !!b.registered, classes: c.classes,
+      return { index: b.index, site: keys[i], source: b.source, frame: b.frame, registered: !!b.registered, classes: c.classes,
         primary: c.primary, why: Object.fromEntries(Object.entries(c.why).filter(([k]) => c.classes.includes(k))), notes: c.notes };
     });
     fs.appendFileSync(out, JSON.stringify({ id: o.id, inputHash: o.inputHash, runs, uncovered: coverageOf(o.raw) }) + '\n');
   }
   console.log(`[spare-track] reclassified ${RECLASSIFY} -> ${out}`);
+  process.exit(0);
+}
+// --rekey --ledger=<file>: rewrite every row's run sites as ledger keys (ledgerSiteKeys); nothing else in a row changes
+if (flag('rekey')) {
+  const file = path.resolve(WT, arg('ledger', 'docs/geometry-gate/spare-track.json'));
+  const L = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const strip = (row) => JSON.stringify({ ...row, runs: row.runs.map(({ site, ...r }) => r), hostSweep: (row.hostSweep || []).length });
+  let changed = 0;
+  for (const [id, row] of Object.entries(L.rows)) {
+    const keys = siteKeys(row.runs.map((r) => r.site));
+    const keyOf = new Map(row.runs.map((r, i) => [r.site, keys[i]]));
+    const next = { ...row, runs: row.runs.map((r, i) => ({ ...r, site: keys[i] })), hostSweep: (row.hostSweep || []).map((s) => keyOf.get(s) ?? s) };
+    if (strip(next) !== strip(row)) throw new Error(`${id}: the rekey changed more than a site`);
+    changed += row.runs.filter((r, i) => r.site !== keys[i]).length;
+    L.rows[id] = next;
+  }
+  fs.writeFileSync(file, JSON.stringify(L, null, 1) + '\n');
+  console.log(`[spare-track] rekeyed ${changed} run site(s) in ${path.relative(WT, file)}`);
   process.exit(0);
 }
 const JSONL = arg('jsonl', null);
@@ -1839,9 +1875,10 @@ for (const id of ids) {
   if (res.planAudit) planAudits[id] = res.planAudit;
   if (res.unchanged) { results[id] = ledger.rows[id]; if (!QUIET) console.log(`${id}	unchanged (${res.inputHash})`); continue; }
   const { _bodies, _bundles, _visual, _MM, ...clean } = res;
-  const runs = clean.bundles.map((b) => {
+  const keys = siteKeys(clean.bundles.map((b) => b.bundle));
+  const runs = clean.bundles.map((b, i) => {
     const c = classifyRun({ ...b, __id: id });
-    return { index: b.index, site: b.bundle, source: b.source, frame: b.frame, registered: !!b.registered, classes: c.classes, primary: c.primary,
+    return { index: b.index, site: keys[i], source: b.source, frame: b.frame, registered: !!b.registered, classes: c.classes, primary: c.primary,
       why: Object.fromEntries(Object.entries(c.why).filter(([k]) => c.classes.includes(k))), notes: c.notes,
       measures: { support: b.support.supportedShare, gap: b.support.gapShare, air: b.support.overhangShare,
         hidden: b.support.hiddenShare, sunkMaxM: b.support.sunkMaxDepthM, sweepM: b.sweep?.depthM ?? null,
@@ -1908,8 +1945,9 @@ for (const [id, row] of Object.entries(results)) {
   const prior = ledger.rows[id];
   if ((CHECK || GATE) && prior && prior.inputHash !== row.inputHash) problems.push(`${id}: STALE (ledger ${prior.inputHash}, build ${row.inputHash}); run --update`);
   if (GATE && prior && prior.inputHash === row.inputHash) {
-    const key = (r) => `${r.site}|${r.classes.join(',')}`;
-    const was = new Set(prior.runs.map(key)), now = new Set(row.runs.map(key));
+    const key = (r, site) => `${site}|${r.classes.join(',')}`;
+    const priorKeys = siteKeys(prior.runs.map((r) => r.site));
+    const was = new Set(prior.runs.map((r, i) => key(r, priorKeys[i]))), now = new Set(row.runs.map((r) => key(r, r.site)));
     if (was.size !== now.size || [...now].some((k) => !was.has(k))) problems.push(`${id}: a fresh measurement differs from its ledger row`);
   }
   if ((CHECK || GATE) && !prior) problems.push(`${id}: no ledger row; run --update`);
