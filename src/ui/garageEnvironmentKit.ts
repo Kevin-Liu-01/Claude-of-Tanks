@@ -2369,8 +2369,9 @@ export function buildGarageEnvironment(
   foldTinyPlasterBuckets();
   // Saltmere's whitewashed walls and its render share the plaster texture: the render's few fixtures ride the walls'
   // draw (garage r9: the kit's display, decal and atmosphere draws are paid for here)
-  // (Ironworks: its few render fixtures, under a hundred triangles, ride the brick: the crane bay's clad wall draws instead)
-  if (variant.architecture === 'naval_drydock' || variant.architecture === 'factory_line') {
+  // (Ironworks and Cinder: their few render fixtures, about a hundred triangles, ride the brick: Ironworks' clad crane bay
+  // draws instead, and Cinder's hero frame holds the brief's +3 calls with its kit)
+  if (variant.architecture === 'naval_drydock' || variant.architecture === 'factory_line' || variant.architecture === 'rail_roundhouse') {
     for (const key of ['plaster', 'plaster2', 'plaster3'] as const) {
       (combined.stone ||= []).push(...(combined[key] || []));
       combined[key] = [];
