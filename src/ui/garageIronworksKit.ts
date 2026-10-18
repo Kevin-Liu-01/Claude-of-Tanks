@@ -525,6 +525,12 @@ export const IRONWORKS_KIT: GarageKitPlacement = {
     // the oil store by the bay's left front: the bunded rack, the spill kit
     { kind: 'prop', name: 'oilRack', at: [-24.8, 20.6], yaw: FACE_CAMERA },
     { kind: 'prop', name: 'spillBin', at: [-22.4, 21.4], yaw: FACE_CAMERA },
+    // the shelters' flanks beside the turntable (the facility's primitive stations there gave way to these)
+    { kind: 'prop', name: 'gasCage', at: [15.5, -4.3], yaw: -FACE_CAMERA },
+    { kind: 'prop', name: 'pallet', at: [-12.6, -8.8], yaw: 0.2 },
+    { kind: 'prop', name: 'drum200', at: [-12.9, -8.6], yaw: 0.4, y: 0.14, blot: false },
+    { kind: 'prop', name: 'drum200', at: [-12.3, -9.1], yaw: 1.3, y: 0.14, blot: false },
+    { kind: 'prop', name: 'drum200', at: [-12.2, -8.4], yaw: 2.2, y: 0.14, blot: false },
     // the works gate on the yard's right: its fence, the gate road through it, the nameboard
     { kind: 'piece', key: 'ironworks-gate-10', build: worksGate(10), at: [33.0, 12.0], yaw: FACE_RIGHT },
     { kind: 'wall', wall: 'heras', points: [[33.0, -4.0], [33.0, 6.4]], params: { mural: 'brand.banner.h', muralEvery: 4 } },

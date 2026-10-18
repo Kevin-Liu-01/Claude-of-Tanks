@@ -311,10 +311,13 @@ function saltmereSkylineBuild(e: GarageSkylineEmitter): void {
     for (let k = 0; k < 4; k += 1) e.tree(at, -6 - k * 3.5, 10 + (k % 2) * 2, 5 + (k % 2), 4.2, 0x3e5034, haze, 3.2 - k * 0.6, 6);
   }
   // islets offshore, granite with a surf line
-  for (const [deg, r, size] of [[-38, 110, 7], [-14, 128, 4.5], [12, 104, 5.5], [34, 140, 6]] as const) {
+  for (const [deg, r, size, lean] of [[-38, 110, 8, 0.3], [-14, 128, 5, -0.4], [12, 104, 6.5, 0.2], [34, 140, 7, -0.2]] as const) {
     const at = e.frame(225 * DEG + deg * DEG, r), haze = e.hazeAt(r) * 0.8;
-    e.mound(at, 0, 0, size + 1.2, -2.0, size * 0.6, [0xd8dcd8, 0xd0d4d0], haze, 10, 0.05);
-    e.mound(at, 0, 0, size, 2.4 + size * 0.2, size * 0.2, [0x6e7068, 0x7e8076, 0x5e6a4a], haze, 10, 0.14);
+    const h = 1.4 + size * 0.22;
+    // the surf breaking round it, then the granite dome worn round by the sea, a cap of turf on the larger ones
+    e.lathe(at, 0, 0, [[size * 1.5, -2.6], [size * 1.32, -2.12], [size * 1.12, -2.18]], 0xdfe4e2, haze, 12);
+    e.lathe(at, lean * size, 0, [[size * 1.15, -2.6], [size, -1.2], [size * 0.82, h * 0.35], [size * 0.52, h * 0.82], [size * 0.2, h], [0, h * 1.02]],
+      [0x5e605a, 0x6e7068, 0x7a7c72, size > 6 ? 0x5e6a4a : 0x80827a, 0x5e6a4a], haze, 12);
   }
   // the whitewashed fishing village along the coast road: cottages with slate roofs, the granite steeple
   {
@@ -442,6 +445,13 @@ export const SALTMERE_KIT: GarageKitPlacement = {
     { kind: 'prop', name: 'gasCage', at: [-24.6, 16.0], yaw: FACE_CAMERA },
     { kind: 'prop', name: 'oilRack', at: [-27.8, 20.4], yaw: FACE_CAMERA },
     { kind: 'prop', name: 'spillBin', at: [-25.6, 19.4], yaw: FACE_CAMERA },
+    // the shelters' flanks beside the turntable (the facility's primitive stations there gave way to these): the gas
+    // cage by the Burlak's shelter, rigging and stores by the T-90M's
+    { kind: 'prop', name: 'gasCage', at: [14.3, -4.7], yaw: -FACE_CAMERA },
+    { kind: 'prop', name: 'pallet', at: [-13.9, -7.5], yaw: 0.1 },
+    { kind: 'prop', name: 'ammoCrate', at: [-13.9, -7.5], yaw: 0.1, y: 0.14, blot: false },
+    { kind: 'prop', name: 'coiledHose', at: [-12.5, -6.4], yaw: 0.5, params: { color: 0x8c7a55 } },
+    { kind: 'prop', name: 'tarpStack', at: [-15.4, -8.8], yaw: 0.3 },
     // the wet dock floor's puddles, standing between the keel blocks
     { kind: 'sign', sign: 'stencil', rect: 'decal.oil', at: [16.4, 25.0], yaw: 0.3, size: [1.4, 2.2], datum: true, y: -5.38 },
     { kind: 'sign', sign: 'stencil', rect: 'decal.grime', at: [17.0, 30.5], yaw: 1.2, size: [2.0, 1.3], datum: true, y: -5.38 },

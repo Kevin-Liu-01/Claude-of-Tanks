@@ -454,6 +454,13 @@ export const CINDER_KIT: GarageKitPlacement = {
     { kind: 'prop', name: 'drum200', at: [13.6, 18.4], yaw: 0.3 },
     { kind: 'prop', name: 'drum200', at: [14.2, 18.9], yaw: 1.1 },
     { kind: 'prop', name: 'extinguisher', at: [12.0, 20.4], yaw: 0 },
+    // the shelters' flanks beside the turntable (the facility's primitive stations there gave way to these)
+    { kind: 'prop', name: 'gasCage', at: [15.1, -4.9], yaw: -FACE_CAMERA },
+    { kind: 'prop', name: 'pallet', at: [-13.0, -9.6], yaw: 0.2 },
+    { kind: 'prop', name: 'drum200', at: [-13.3, -9.4], yaw: 0.4, y: 0.14, blot: false },
+    { kind: 'prop', name: 'drum200', at: [-12.7, -9.9], yaw: 1.3, y: 0.14, blot: false },
+    { kind: 'prop', name: 'drum200', at: [-12.6, -9.2], yaw: 2.2, y: 0.14, blot: false },
+    { kind: 'prop', name: 'spillBin', at: [-14.6, -8.6], yaw: FACE_CAMERA },
   ],
   atmosphere: {
     drift: 0.02,

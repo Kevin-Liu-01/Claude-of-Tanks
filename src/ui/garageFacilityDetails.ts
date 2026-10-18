@@ -2976,8 +2976,21 @@ export function addGarageFacilityDetails({
     winchDrum: 'recovery-winching', trackStack: 'track-spares', billets: 'plate-and-billet-stock', slagPot: 'slag-handling',
     avalancheKit: 'avalanche-rescue',
   });
+  // garage r9 (the per-garage lanes, design K5): in Saltmere, Cinder and Ironworks the two shelter flanks beside the
+  // turntable are stocked with the kit's authored pieces instead (their placement tables, garage*Kit.ts); the primitive
+  // geometry is rolled back, the stations' purposes and stock counts stand
+  const kitFlanks = variant.architecture === 'naval_drydock' || variant.architecture === 'rail_roundhouse'
+    || variant.architecture === 'factory_line';
   stations.forEach(([side, depth], index) => {
+    const boxes = boxInstances.length;
+    const tiers = new Map([...cylinderInstances].map(([tier, list]) => [tier, list.length] as const));
+    const props = facilityProps;
     kitBuilders[kit[index]](fixedCluster(side, depth));
+    if (kitFlanks && index >= 4) {
+      boxInstances.length = boxes;
+      for (const [tier, list] of cylinderInstances) list.length = tiers.get(tier) ?? 0;
+      facilityProps = props;
+    }
     servicePurposeTags.add(KIT_PURPOSE[kit[index]]);
   });
   const [featureSide, featureDepth] = layout.feature;

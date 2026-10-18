@@ -1248,10 +1248,12 @@ export function buildGarageEnvironment(
       for (let column = 0; column < patch.width; column += 1) {
         const x = -patch.sizeXM / 2 + (column / (patch.width - 1)) * patch.sizeXM;
         const { side, depth } = garageWorldPointToView(x, z);
-        if (depth < 9 || Math.abs(side) > 60) continue;
+        // (garage r9, the brief's "grass mounds on the quay": the quay runs on to the patch's sides, and the apron right
+        // of the turntable, where the downs' shoulder stood 3-6 m over the dock's head, is levelled to the quay too)
+        const apron = THREE.MathUtils.smoothstep(side, 9, 15) * THREE.MathUtils.smoothstep(depth, -18, -11);
+        if ((depth < 9 && apron <= 0) || Math.abs(side) > 60) continue;
         const index = row * patch.width + column;
-        // (garage r9: the quay runs on to the patch's sides, the brief's "grass mounds on the quay" beside the dock gone)
-        const quay = THREE.MathUtils.smoothstep(depth, 9, 15) * (1 - THREE.MathUtils.smoothstep(Math.abs(side), 50, 60));
+        const quay = Math.max(apron, THREE.MathUtils.smoothstep(depth, 9, 15) * (1 - THREE.MathUtils.smoothstep(Math.abs(side), 50, 60)));
         const shoreDepth = 33 + 2.5 * Math.sin(side * 0.13 + 1.1);
         const nearBuilding = keep.some((placement) => Math.hypot(placement.side - side, placement.depth - depth) < 6.5);
         const drop = nearBuilding ? 0 : THREE.MathUtils.smoothstep(depth, shoreDepth - 0.5, shoreDepth + 4.5);
@@ -2285,9 +2287,12 @@ export function buildGarageEnvironment(
             ? texturedMaterial('roof', { color: 0x8c949b, roughness: 0.96 })
             // Breton slate over Saltmere's whitewash (garage r9): a cold blue-grey multiplier takes the tile's red out
             : variant.architecture === 'naval_drydock'
-              ? texturedMaterial('roof', { color: 0x5a6670, roughness: 0.9 })
+              ? texturedMaterial('plaster', { color: 0x5a636c, roughness: 0.82 })
             : texturedMaterial('roof', { color: new THREE.Color(variant.accent).lerp(new THREE.Color(0xaaa19a), 0.74), roughness: 0.96 });
-      case 'wood': return texturedMaterial('wood', { color: 0xd2c3aa, roughness: 1 });
+      // Saltmere's sheds are whitewashed (garage r9: the brief's "red-roof brick sheds" were brown weatherboard)
+      case 'wood': return variant.architecture === 'naval_drydock'
+        ? texturedMaterial('plaster', { color: 0xe4e1d8, roughness: 1 })
+        : texturedMaterial('wood', { color: 0xd2c3aa, roughness: 1 });
       case 'glass': return plainMaterial({ color: 0x6b8790, roughness: 0.16, metalness: 0.08, transparent: true, opacity: 0.78 });
       case 'baked': return plainMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.88, metalness: 0.06 });
       case 'route': return texturedMaterial(recipe.approach.surface, {
@@ -2426,6 +2431,9 @@ export function buildGarageEnvironment(
       // plane exclusion left alternate orbit angles looking unfinished even
       // though the environment owned enough vegetation for a complete ring.
       if (depth < 5 && Math.abs(side) < 16) return false;
+      // Saltmere's quay and shore run to the sea behind the hero: no grove there (garage r9: the brief's "dead-looking
+      // pines" stood on the strand behind the turret), the downs behind the camera keep theirs
+      if (recipe.horizonStyle === 'coastal' && depth > 12 && Math.abs(side) < 36) return false;
       // no grove in Saltmere's dock, on its paving or in its channel (a crown's reach round it)
       if (drydock && [[0, 0], [3.5, 0], [-3.5, 0], [0, 3.5], [0, -3.5]].some(([ds, dd]) => (
         garageDrydockGround(drydock, side + ds, depth + dd, 0) !== null))) return false;
