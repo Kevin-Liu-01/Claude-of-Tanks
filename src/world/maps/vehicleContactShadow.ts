@@ -575,3 +575,94 @@ export function buildBoatMudRims(records: readonly BoatMudRecord[], field: Conta
   mesh.matrixAutoUpdate = false;
   return mesh;
 }
+
+/** A works set piece's contact with the ground (props.ts: the map-content lane's R6): its place and heading, its plan
+ * half extents, and the rectangles its running gear meets the ground in, local (vehicleSetPieces.ts runningGearOf). */
+export interface SetPieceContact {
+  readonly x: number;
+  readonly z: number;
+  readonly yaw: number;
+  readonly hw: number;
+  readonly hl: number;
+  readonly gear: readonly { readonly x0: number; readonly x1: number; readonly z0: number; readonly z1: number }[];
+}
+
+/** The body's darkening at its densest, and the crease's over it: together 1 - (1 - 0.35)(1 - 0.38) = 0.6 at the most. */
+export const SET_PIECE_CONTACT_BODY = 0.35;
+export const SET_PIECE_CONTACT_CREASE = 0.38;
+/** How far the body's darkening spills past the footprint at the most, and the crease past its gear's edge. */
+export const SET_PIECE_CONTACT_SPILL_M = 0.15;
+export const SET_PIECE_CONTACT_CREASE_M = 0.08;
+
+/**
+ * The ground darkened under the works vehicles (the map-content lane's R6, to the contact-shadows lane's rule of
+ * 2026-10-10: round 4's "super super dark rectangular shadows" kept out): a soft patch under each body, 0.35 at its
+ * densest, easing out from 70 % of its half extents to nothing by 110 % (never more than 15 cm past the footprint), and
+ * a narrow crease along each tyre's, track's and pontoon's ground line, gone 8 cm past the gear's edge. Darken-only (black
+ * under each vertex's alpha), conformed to the height field, presentation only: no collision, no stream draws. Null when
+ * there is no piece.
+ */
+export function buildSetPieceContacts(pieces: readonly SetPieceContact[], field: ContactField): THREE.Mesh | null {
+  const pos: number[] = [], col: number[] = [], idx: number[] = [];
+  let parts = 0;
+  // a grid over local (us x vs) of one piece, its alpha the product of the axes' weights times `peak`
+  const grid = (p: SetPieceContact, us: readonly number[], au: readonly number[], vs: readonly number[], av: readonly number[], peak: number) => {
+    const c = Math.cos(p.yaw), s = Math.sin(p.yaw), base = pos.length / 3;
+    for (let j = 0; j < vs.length; j++) for (let i = 0; i < us.length; i++) {
+      const x = p.x + us[i] * c + vs[j] * s, z = p.z - us[i] * s + vs[j] * c;
+      pos.push(x, field.getHeightAt(x, z) + 0.035, z);
+      col.push(0, 0, 0, peak * au[i] * av[j]);
+    }
+    for (let j = 0; j + 1 < vs.length; j++) for (let i = 0; i + 1 < us.length; i++) {
+      const a = base + j * us.length + i, b = a + 1, d = a + us.length, e = d + 1;
+      idx.push(a, d, b, b, d, e);
+    }
+    parts++;
+  };
+  // the body's axis: nothing at its outer edge, half way at the falloff's middle, full from 70 % in (steps of a third of a
+  // metre at most between)
+  const bodyAxis = (half: number): [number[], number[]] => {
+    const inner = 0.7 * half, outer = Math.min(1.1 * half, half + SET_PIECE_CONTACT_SPILL_M);
+    const n = Math.max(1, Math.ceil(inner / 0.35)), ts: number[] = [], ws: number[] = [];
+    ts.push(-outer, -(inner + outer) / 2); ws.push(0, 0.5);
+    for (let k = -n; k <= n; k++) { ts.push((inner * k) / n); ws.push(1); }
+    ts.push((inner + outer) / 2, outer); ws.push(0.5, 0);
+    return [ts, ws];
+  };
+  // a crease's axis: nothing 8 cm out, full along the gear (steps of half a metre at most)
+  const creaseAxis = (a: number, b: number): [number[], number[]] => {
+    const n = Math.max(1, Math.ceil((b - a) / 0.5)), ts: number[] = [a - SET_PIECE_CONTACT_CREASE_M], ws: number[] = [0];
+    for (let k = 0; k <= n; k++) { ts.push(a + ((b - a) * k) / n); ws.push(1); }
+    ts.push(b + SET_PIECE_CONTACT_CREASE_M); ws.push(0);
+    return [ts, ws];
+  };
+  for (const p of pieces) {
+    const [us, au] = bodyAxis(p.hw), [vs, av] = bodyAxis(p.hl);
+    grid(p, us, au, vs, av, SET_PIECE_CONTACT_BODY);
+    for (const g of p.gear) {
+      const [gu, gau] = creaseAxis(g.x0, g.x1), [gv, gav] = creaseAxis(g.z0, g.z1);
+      grid(p, gu, gau, gv, gav, SET_PIECE_CONTACT_CREASE);
+    }
+  }
+  if (!parts) return null;
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pos), 3));
+  geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(col), 4));
+  geometry.setIndex(idx);
+  geometry.computeVertexNormals();
+  const material = new THREE.MeshBasicMaterial({
+    color: 0xffffff, vertexColors: true, transparent: true, depthWrite: false,
+    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2,
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.name = 'props-set-piece-contact';
+  mesh.renderOrder = 1;
+  mesh.castShadow = false;
+  mesh.receiveShadow = false;
+  mesh.matrixAutoUpdate = false;
+  mesh.userData.terrainDecal = true;
+  mesh.userData.groundContactDecal = true;
+  mesh.userData.terrainDecalKind = 'vehicle-contact';
+  mesh.userData.decalParts = parts;
+  return mesh;
+}

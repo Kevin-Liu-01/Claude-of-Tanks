@@ -136,6 +136,33 @@ export function buildJebelSkin(spec: JebelSkinSpec, ground: JebelSkinGround, noi
       });
     }
   }
+  // (MAPS 227, the same critics' fins) the smoothing above held a foot within 3 m of its top and spread the neighbours'
+  // feet, among them the rays whose wall the search had found on a boss of the cap (their feet 27 m up), and the search
+  // itself stopped at the first ledge of the dome's bedding tiers: on 86 of the west lane dome's 273 rays the skin ended
+  // more than 3 m over the ground where the wall levels out (up to 12 m), a band of columns hung from the shoulder over
+  // the bare wall, its lip zig-zagging ray to ray. Each ray's foot now comes down its own wall, over its ledges, to the
+  // last steep step before the ground levels out for good (the talus, the apron or a sand ramp) or rises again (the lobe
+  // past a saddle), where the skin runs on into the ground; a foot only ever comes down there. And it never stands under
+  // the lowest ground between the wall's top and that step: a ray whose wall falls into a saddle had its foot set under
+  // the saddle's floor by its neighbours, and its ground falling through that height only past the lobe threw the
+  // skin's foot 48 m out, a sliver across the saddle (178 vertices stood 8-30 m past their ray's wall, edges to 27 m).
+  for (let j = 0; j < rays; j++) {
+    if (!Number.isFinite(top[j])) continue;
+    const row = j * stride, steep = minGrade * 0.8;
+    let k = crest[j] + 1;
+    while (k < steps && H[row + k] > top[j]) k++;
+    let low = Infinity, kLast = -1;
+    for (k = Math.max(k, 1); k < steps; k++) {
+      if (H[row + k] > low + 2) break;
+      low = Math.min(low, H[row + k]);
+      if ((H[row + k - 1] - H[row + k + 1]) / (2 * step) > steep) kLast = k;
+    }
+    if (kLast >= 0) {
+      const ground = H[row + Math.min(steps, kLast + 1)];
+      if (ground < foot[j]) foot[j] = Math.max(ground, top[j] - 60);
+    }
+    if (low < Infinity) foot[j] = Math.min(Math.max(foot[j], low + 0.05), top[j] - 3);
+  }
   // the narrow slots left (a gully a few rays wide the cleft rule turned down: its ground falls as a ramp) bridged: the
   // skin runs across on the radii of the walls either side, so no capped slot opens into the shade behind (the critics'
   // "dark eye"); `across[j]` holds the two walled rays and the share between them
@@ -194,16 +221,57 @@ export function buildJebelSkin(spec: JebelSkinSpec, ground: JebelSkinGround, noi
   // and more from the true ground, so a joint drawn on the wall itself flickered through it), the columns' middles further;
   // below the wall's foot it runs down into the talus, and over the top it rounds in over the shoulder: the dome's cap.
   const STAND_OFF = 0.7, SINK = 1.2, SHOULDER = 1.0;
+  // (MAPS 227, the blind critics on Redrock v2, pair 4: "from 45 m up the near dome's face splits into thin vertical sliver
+  // fins", still there after the tops were regularised) the skin took each ray's wall where its own ground fell, so it ran
+  // down into every V-cut the height field draws for the domes the shader alone paints (the inselberg's fifteen jointed
+  // flutes and eight gullies): some fifteen slots a few rays wide and up to 6 m deep round the west lane dome, the faces
+  // between them standing as fins with their shade in the slot. The skin carries its own joints, so it closes over those
+  // cuts: at each height the wall's radius round the dome is closed across a few rays (for each ray, the least over the
+  // window of the most within W_CL rays, counting only the walls within FILL_MAX of its own — a farther one is another
+  // rock, the lobe's far side past a saddle), which fills a slot narrower than the window and keeps every broader turn of
+  // the wall; in a filled slot the skin keeps a joint's recess (at most JOINT m), and over the shoulder it tucks in as far
+  // again as the slot cut back, so its edge still meets the cap behind the slot. The fill is tabled every DYT m up the
+  // wall and added to the ray's own wall (edge), so a level where a ray's ground jumps never smears into its neighbours.
+  const W_CL = 4, JOINT = 0.8, FILL_MAX = 7, DYT = 0.25;
+  const yT0 = yLo - SINK - 1, nT = Math.max(2, Math.ceil((yHi + SHOULDER + 1 - yT0) / DYT) + 1);
+  const wallFill = new Float32Array(rays * nT);
+  {
+    const raw = new Float32Array(rays * nT);
+    for (let j = 0; j < rays; j++) for (let i = 0; i < nT; i++) raw[j * nT + i] = edge(j, yT0 + i * DYT);
+    for (let i = 0; i < nT; i++) {
+      for (let j = 0; j < rays; j++) {
+        const own = raw[j * nT + i];
+        if (!Number.isFinite(own)) continue;
+        let closed = Infinity;
+        for (let d = -W_CL; d <= W_CL; d++) {
+          let m = -Infinity;
+          for (let e = -W_CL; e <= W_CL; e++) {
+            const v = raw[((j + d + e + 2 * rays) % rays) * nT + i];
+            if (v > m && v <= own + FILL_MAX) m = v;
+          }
+          if (m > -Infinity && m < closed) closed = m;
+        }
+        if (closed > own && closed < Infinity) wallFill[j * nT + i] = closed - own - Math.min(JOINT, closed - own);
+      }
+    }
+  }
+  /** How far the skin's wall stands out over ray j's own at height y (a filled slot), between the table's levels. */
+  const fillAt = (j: number, y: number): number => {
+    const t = clamp((y - yT0) / DYT, 0, nT - 1.001), i = Math.floor(t), f = t - i;
+    return wallFill[j * nT + i] * (1 - f) + wallFill[j * nT + i + 1] * f;
+  };
   const vertex = (j: number, y: number, inset = false): [number, number, number, number, number, number, number] | null => {
     if (!Number.isFinite(top[j])) return null;
     const yy = clamp(y, foot[j] - SINK, top[j] + SHOULDER);
     const yr = clamp(yy, foot[j], top[j]);
     const bridge = across[j];
-    let r = bridge ? edge(bridge[0], yr) * (1 - bridge[2]) + edge(bridge[1], yr) * bridge[2] : edge(j, yr);
+    let r = bridge ? (edge(bridge[0], yr) + fillAt(bridge[0], yr)) * (1 - bridge[2]) + (edge(bridge[1], yr) + fillAt(bridge[1], yr)) * bridge[2]
+      : edge(j, yr) + fillAt(j, yr);
     if (!Number.isFinite(r)) return null;
     const over = Math.max(0, yy - top[j]) / SHOULDER;
     if (yy < foot[j]) r += (foot[j] - yy) * 0.8;
-    else if (over > 0) r -= over * 2.2;
+    // (a filled slot: the shoulder tucks back as far as the slot cut in at the wall's top)
+    else if (over > 0) r -= over * (2.2 + (bridge ? 0 : fillAt(j, top[j])));
     const a = (j / rays) * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
     const { c, f } = column(j);
     const round = Math.pow(Math.sin(Math.PI * f), 0.55);

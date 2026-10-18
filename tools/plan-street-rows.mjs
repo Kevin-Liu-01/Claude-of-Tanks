@@ -25,6 +25,8 @@
 // buildings moved off a carriageway).
 // --yards=8.5: a recorded town's houses that take a yard (the kit's yard kinds) keep this much more ground round them
 // (yards.ts plans a house's yard up to 8 m deep off any clear side: a site in that ground turns the yard and its shed)
+// --clear=2.5 (sites mode): each house slid along its street, by the least that clears it, to stand this far from every
+// building standing before it as the kit builds them (the map built with the sites); see the pass below
 import { writeFileSync } from 'node:fs';
 const T = process.cwd();
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
@@ -202,7 +204,7 @@ for (let ri = 0; ri < roads.length && SITES.length; ri++) {
       const [w, d] = INFO[kind] ?? [7, 9];
       const got = tryHouse(ri, side, s, w, d, at);
       if (typeof got === 'string') { note(got); s += got === 'outside' ? 6 : 2; continue; }
-      rows.push({ ...got, w, d, structure: kind, road: ri, side });
+      rows.push({ ...got, w, d, structure: kind, road: ri, side, s, at });
       s += w + G0 + rng() * (G1 - G0);
     }
   }
@@ -226,13 +228,93 @@ for (let ri = 0; ri < roads.length && !SITES.length; ri++) {
   }
 }
 
+// ---- (sites mode) --clear=2.5: every house of the street at least this far (m) from every other building, as the kit
+// builds them. The plan sizes its sites by INFO, a kit-agnostic table: the Zeeland farm stands 15-16.7 m long where INFO
+// gives 13.4, so a farm and its neighbour round a corner stood 1.0-1.6 m apart, roof to roof (the maps lane, 2026-10-17;
+// the Polders village blind 227, poses 1 and 2: "roofs crowd or touch"). The map is built with the sites (as --built
+// builds it without), and a house nearer than this to a building standing before it (a structure the map stands, a
+// recorded light building, an earlier site) slides along its street, away, by the least that clears it (up to 3 m, its
+// footprint moved with it) where the row's own checks still pass — where its street will not take it clear (the other
+// stands round a corner), the earlier house slides along its own — and a house that cannot is left where it stood.
+// Rebuilt and checked again, up to three rounds (a slid house's kit takes its variant from its new seat).
+if (SITES_MODE && opt.clear) {
+  const CLEAR = Number(opt.clear);
+  const [vegetation, props, fleet, models, coll] = await Promise.all([import(`${T}/src/world/vegetation.ts`), import(`${T}/src/world/props.ts`),
+    import(`${T}/src/vehicles/fleetFactory.ts`), import(`${T}/src/world/propsModelStore.ts`), import(`${T}/src/world/collision.ts`)]);
+  await models.preloadPropModels();
+  const LIGHT = new Set((P.townLightPlan ?? []).map((e) => e.kind));
+  for (let round = 0; round < 3; round++) {
+    const sites = rows.map((h) => ({ structure: h.structure, x: +h.x.toFixed(2), z: +h.z.toFixed(2), yawDeg: +(h.rot * 180 / Math.PI).toFixed(1), terrace: true }));
+    const withSites = { ...config, props: { ...config.props, plannedSites: sites, plannedSitesAfterPlan: true } };
+    const ids = withSites.props?.tankWrecks?.ids ?? []; if (ids.length) await fleet.ensureTankBuilders(ids);
+    const engine = { anisotropy: 4, setupShadowMaterial() {} };
+    const flora = vegetation.createVegetation(field, engine, 2001, withSites);
+    const built = props.createProps(field, engine, 2002, withSites, flora).obstacles
+      .filter((o) => o.kind === 'structure' || LIGHT.has(o.kind))
+      .map((o) => {
+        const cells = [];
+        for (let x = o.min[0]; x <= o.max[0]; x += 0.4) for (let z = o.min[2]; z <= o.max[2]; z += 0.4) if (coll.collisionFootprintContainsPoint(o, x, z, 0)) cells.push([x, z]);
+        return { o, cells, cx: (o.min[0] + o.max[0]) / 2, cz: (o.min[2] + o.max[2]) / 2 };
+      });
+    // each site's own building: the structure nearest its site (within 2.5 m)
+    const own = rows.map((h) => built.reduce((best, b) => (b.o.kind === 'structure' && Math.hypot(b.cx - h.x, b.cz - h.z) < (best ? Math.hypot(best.cx - h.x, best.cz - h.z) : 2.5) ? b : best), null));
+    const gapOf = (a, b) => {
+      if (a.o.min[0] > b.o.max[0] + CLEAR || b.o.min[0] > a.o.max[0] + CLEAR || a.o.min[2] > b.o.max[2] + CLEAR || b.o.min[2] > a.o.max[2] + CLEAR) return Infinity;
+      let g = Infinity;
+      for (const p of a.cells) for (const q of b.cells) g = Math.min(g, Math.hypot(p[0] - q[0], p[1] - q[1]));
+      return g;
+    };
+    // (a yard's shed is planned round the houses after them: not a building standing before)
+    const isShed = (b) => !own.includes(b) && b.o.max[0] - b.o.min[0] <= 6.5 && b.o.max[2] - b.o.min[2] <= 6.5;
+    /** Slide row k along its street, away from `from`, by the least (0.25 m steps, up to 3 m) that leaves it CLEAR of
+     *  every building of `standing` (its footprint moved with it) where the row's own checks pass. */
+    const slide = (k, standing, from) => {
+      const mine = own[k], h = rows[k];
+      const gapAt = (dx, dz) => {
+        const slid = { o: { min: [mine.o.min[0] + dx, 0, mine.o.min[2] + dz], max: [mine.o.max[0] + dx, 0, mine.o.max[2] + dz] },
+          cells: mine.cells.map(([x, z]) => [x + dx, z + dz]) };
+        return standing.reduce((g, b) => Math.min(g, gapOf(slid, b)), Infinity);
+      };
+      const [, , tx, tz] = h.at(h.s + h.w / 2);
+      const away = Math.sign((mine.cx - from.cx) * tx + (mine.cz - from.cz) * tz) || 1;
+      const self = rows.splice(k, 1)[0];
+      let got = null;
+      for (let step = 0.25; step <= 3 && !got; step += 0.25) {
+        if (gapAt(tx * away * step, tz * away * step) < CLEAR) continue;
+        const r = tryHouse(self.road, self.side, self.s + away * step, self.w, self.d, self.at);
+        if (typeof r !== 'string') got = { ...r, s: self.s + away * step };
+      }
+      rows.splice(k, 0, got ? { ...self, ...got } : self);
+      return !!got;
+    };
+    let moved = 0;
+    for (const [k] of rows.entries()) {
+      const mine = own[k];
+      if (!mine) continue;
+      // the buildings standing before it: every one but the later sites' and the yards' sheds
+      const later = new Set(own.slice(k + 1).filter(Boolean));
+      const standing = built.filter((b) => b !== mine && !later.has(b) && !isShed(b));
+      const close = standing.filter((b) => gapOf(mine, b) < CLEAR);
+      if (!close.length) continue;
+      const worst = close.reduce((w, b) => (gapOf(mine, b) < gapOf(mine, w) ? b : w));
+      if (slide(k, standing, worst)) { moved++; note('clear-moved'); continue; }
+      // where its street will not take it clear (the other house stands off its street's line, round a corner), the
+      // earlier house of the plan slides along its own, clear of every building but the yards' sheds
+      const m = own.indexOf(worst);
+      if (m >= 0 && m < k && slide(m, built.filter((b) => b !== worst && !isShed(b)), mine)) { moved++; note('clear-moved'); }
+    }
+    console.error(`--clear round ${round}: ${moved} houses slid along their streets`);
+    if (!moved) break;
+  }
+}
+
 // ---- out
 if (SITES.length) {
   // (terrace: each site builds from a stream of its own — props.ts draws a terrace site's builder from seed + its index,
   // not the props stream — and is seated without the roadside clearance test, the plan's own checks standing for it: a
   // site on the props stream moves every later draw, the clutter with it, and the yards round the plan's houses turn)
   const siteLines = rows.map((h) => `  { structure: '${h.structure}', x: ${h.x.toFixed(2)}, z: ${h.z.toFixed(2)}, yawDeg: ${(h.rot * 180 / Math.PI).toFixed(1)}, terrace: true },`);
-  const flags = process.argv.slice(3).filter((a) => /^--(keep|seed|lanes|laneClear|sites|gap|setback)/.test(a)).join(' ');
+  const flags = process.argv.slice(3).filter((a) => /^--(keep|seed|lanes|laneClear|sites|gap|setback|built|yards|clear)/.test(a)).join(' ');
   writeFileSync(outPath, `// Generated by tools/plan-street-rows.mjs ${mapId} ${flags} (the maps lane, the Verdant process): ${rows.length} houses
 // along the village's streets at one building line (setback ${SETBACK} m), each turned to its street (props.plannedSites).
 // Regenerate with the tool; do not edit by hand.

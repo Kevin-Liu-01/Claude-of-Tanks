@@ -20,14 +20,14 @@ rule the battle does not keep.
 | Capture the Flag | Carry the enemy flag to a home flag that has not been stolen | flag carrier drives at 85 % | 6 s | First team to 3 captures, or the clock (score) |
 | Zone Control | Capture and hold three battlefield sectors | — | 6 s | First team to 750 points, or the clock (score) |
 | Turbo Ball | Drive or shoot the physical ball into the opposing goal | 0.6 g (hulls, shells and the ball), +85 % speed, +50 % hull, −50 % damage, +43 % reload rate, unlimited rounds, no equipment, no consumables, no module, crew or fire damage, F jumps 9 m/s, ×12 recoil launch, ×2.5 impact knock | 3 s | First team to 5 goals, or the 10:00 clock (score) |
-| Endless Horde | Survive waves that grow without a cap and never repeat their line-up | +25 % hull, two allied bots (co-op humans join alpha), a fourteen-strong hostile pool drawn afresh every wave (five on wave one), 30 % repair for every survivor when a wave is cleared, no clock; the player arranges both sides | No | The final human-controlled tank is destroyed |
-| Frontline Assault | Take three trench sectors in turn, then hold the last one | three allied bots, a ten-strong same-nation formation (the operation's, or the arranged nation), 12:00 clock that loses the sortie when it expires; defenders escalate per sector and per campaign operation | No | The last sector held for 20 s, the human attacker destroyed, or the clock |
-| Mars Mode | Hold the three station sectors of Olympus Basin | 0.38 g, +25 % speed, +20 % hull, −10 % damage, +11 % reload rate, rocket jump 9.5 m/s (F, boosts again in the air), ×3 recoil launch, ×0.9 impact knock; boost caches every 22 s | 6 s | First team to 750 points, or the 12:00 clock (score) |
-| Juggernaut | Defeat the boss, or survive as the boss | Choose the boss or hunter role; boss has 8× hull, half reload time and 90% speed | Hunters: 6 s; boss: none | Boss destroyed, or boss survives 10:00 |
-| Infected | Survive the outbreak, or convert every survivor | Four initial infected; destroyed survivors join them with 125% HP, 40% more speed and 30% faster reload | 3 s | No survivors remain, or survivors reach 7:00 |
+| Endless Horde | Survive waves that grow without a cap and never repeat their line-up | +100 % hull for the humans, hostiles at 15 % of their own hull (+2 % a wave) on bots one difficulty tier down, unlimited rounds, four allied bots (co-op humans join alpha), a twenty-strong hostile pool drawn afresh every wave (six on wave one, two more each wave), 30 % repair for every survivor when a wave is cleared, repair caches, no clock; the player arranges both sides | No | The final human-controlled tank is destroyed |
+| Frontline Assault | Take three trench sectors in turn, then hold the last one | unlimited rounds, three allied bots, a ten-strong same-nation formation (the operation's, or the arranged nation), 12:00 clock that loses the sortie when it expires; defenders escalate per sector and per campaign operation | No | The last sector held for 20 s, the human attacker destroyed, or the clock |
+| Mars Mode | Hold the three station sectors of Olympus Basin | 0.38 g, +25 % speed, +20 % hull, −10 % damage, +11 % reload rate, rocket jump 9.5 m/s (F, boosts again in the air), ×3 recoil launch, ×0.9 impact knock, unlimited rounds; repair caches every 22 s | 6 s | First team to 750 points, or the 12:00 clock (score) |
+| Juggernaut | Defeat the boss, or survive as the boss | Choose the boss or hunter role; boss has 8× hull, half reload time and 90% speed; unlimited rounds | Hunters: 6 s; boss: none | Boss destroyed, or boss survives 10:00 |
+| Infected | Survive the outbreak, or convert every survivor | Survivors at 150 % hull; five initial infected at 30 % hull and 30 % more speed hunt the nearest survivor; destroyed survivors join them; unlimited rounds | 5 s | No survivors remain, or survivors reach 7:00 |
 | Realistic | Destroy the opposing force through critical damage | Normal spotting; no hull HP attrition, automatic module repair or consumables | No | Crew eliminated or ammunition destruction eliminates a team; 15:00 draw |
 | Gun Game | Complete a five-weapon ladder | Two confirmed kills per stage; unlimited ammunition | 4 s | First player to complete the ladder; 15:00 score decision |
-| Drone | Destroy opponents with tanks and directly piloted drones | Launch a physical FPV quadcopter; its shaped charge interacts with cages, ERA and spaced armor at the impact point | 6 s | First team to 20 kills (configurable), or 10:00 score decision |
+| Drone | Destroy opponents with tanks and directly piloted drones | Launch a physical FPV quadcopter; its shaped charge interacts with cages, ERA and spaced armor at the impact point; unlimited rounds | 6 s | First team to 20 kills (configurable), or 10:00 score decision |
 | AC-130 | Protect ground allies until at least half reach extraction | Fragile escorts, a marked exit, overhead scope, three independent weapon channels and unlimited ammunition | No | Half extracted; defeat if too few survive or 8:00 expires |
 
 ## Aerial sensor views
@@ -118,7 +118,7 @@ hunter, you join allies against one bot boss. In hosted rooms the boss role belo
 to the first participating human when that role is selected; other humans hunt it.
 The boss is 12% larger, including its armor and module hit geometry, and carries a subtle blue surface highlight that follows the hull, turret, barrel, and running gear with traveling energy bands. Shell contacts, including ricochets, create short, undulating blue-white ripples at the actual impact location; turret and gun contacts follow those moving parts. There is no enclosing bubble, and the glow does not reveal the tank through cover. Battle impact ripples and enlargement are cleared on Garage return. If Juggernaut remains selected, the Garage applies a fresh animated energy preview to the selected tank; switching modes removes it. It never respawns. Its survival clock and health are shown in the objective.
 
-**Infected** begins with four infected opponents (at least three in a custom setup). Survivors have 30% of their normal HP; infected have 125%, 40% more speed and 30% faster reloads. A survivor's destruction changes
+**Infected** begins with five infected opponents (at least three in a custom setup). Survivors have 150% of their normal HP; infected have 30%, 30% more speed and no reload bonus, and their bots hunt the nearest survivor (`infection.hunt`, the Horde's routing law). Every respawn takes five seconds. Rounds are unlimited. A survivor's destruction changes
 that player's team before their next spawn, including their allied/enemy roster
 and bot targeting. Bots discard a cached enemy as soon as either tank changes sides;
 the converted player’s spotting readout follows their new team. The remaining survivors win by lasting seven minutes; infected
@@ -160,19 +160,23 @@ controls follow a mode loadout change on the same vehicle.
 
 Horde (owner 2026-09-15: "the horde is not endless, there's only 3 tanks every time and
 they're the same tanks each round") fields `waveSize + (wave − 1) × waveStep +
-⌊(wave − 1) / surgeEvery⌋` hostiles — 5, 6, 7, 9, 10, 11, 13 … by default — drawn afresh
-every wave from a pool of fourteen hostile identities (`ruleset.enemies`): a seeded shuffle
+⌊(wave − 1) / surgeEvery⌋` hostiles — 6, 8, 10, 13, 15, 17, 20 … by default — drawn afresh
+every wave from a pool of twenty hostile identities (`ruleset.enemies`): a seeded shuffle
 that puts the vehicles rested last wave first, so consecutive waves share as few tanks as
 the pool allows, and the whole pool is on the field once the law overtakes it. The wave
 law and the pool are `HordeRules` / `TeamArrangement` in `sim/matchRuleset.ts`
-(`TEAM_ARRANGEMENT_LIMITS`: allies 0–6, pool 6–20, first wave 2–12). Enemy hit points increase by 16% per wave and
-mobility increases by 4.5% per wave, capped at 55%. Clearing a wave repairs every
+(`TEAM_ARRANGEMENT_LIMITS`: allies 0–6, pool 6–20, first wave 2–12). The zombies (owner 2026-10-17, "Zombie
+balance" below): the ruleset's `hpScale` (2) is the humans' hull; a hostile arrives at `hostileHpScale` (15 %) of its
+own vehicle's hull, `hpPerWave` (2 %) more each wave (`hordeHostileHull`; the controller hands the revive
+`hordeWaveHealthScale`, which the ruleset stamp multiplies back by `hpScale`), and its bot plays
+`hostileDifficultyStep` (one) difficulty tier below the battle's (`rulesetBotDifficulty`). Mobility increases by
+`speedPerWave` (4.5 %) per wave, capped at `speedPerWaveMax` (55 %). Clearing a wave repairs every
 surviving attacker by 30 % of maximum hull, starts a six-second intermission and
-places one deterministic floating cache. Repair cache probability begins at 62%,
-falls by 5.5 percentage points per wave, and never falls below 8%; the remaining
-caches replenish 20% of every non-full authored ammunition channel (with a minimum
-of one round per channel). Horde uses the vehicle's normal per-shell loadout from
-the first wave onward. At most 12 uncollected caches remain active.
+places one deterministic floating cache. Under the Horde's unlimited rounds every cache is a repair
+(`cacheHealChance`; the kind draw is kept, so the seeded stream and the cache positions are unchanged). Under spec
+rounds the repair probability begins at 62%, falls by 5.5 percentage points per wave, and never falls below 8%; the
+remaining caches replenish 20% of every non-full authored ammunition channel (with a minimum of one round per
+channel). At most 12 uncollected caches remain active.
 
 Frontline Assault's opening wave is the same fresh draw; every captured sector then REINFORCES
 the line (owner 2026-09-17: "capturing bases … shouldnt reset tanks"): defenders still alive keep
@@ -195,8 +199,8 @@ choice and through the mode but never by the random draw (`RANDOM_BATTLE_MAP_IDS
 is Olympus Basin's own physics — 0.38 g, a 9.5 m/s rocket jump on F, +25 % speed, +20 % hull, −10 %
 damage, faster reloads, a ×3 recoil launch and a ×0.9 impact knock — on the Zone Control
 objective (the controller maps `mars` onto the zone code paths: `placeZones`, zone markers, the
-750-point target, 6 s respawns) with a twelve-minute clock. Boost caches: from 12 s a repair or
-ammunition cache drops every 22 s (`MARS_CACHE_FIRST_S` / `MARS_CACHE_INTERVAL_S`) and any human on
+750-point target, 6 s respawns) with a twelve-minute clock. Boost caches: from 12 s a repair cache (a repair or
+ammunition cache under spec rounds; the mode plays unlimited rounds since 2026-10-17) drops every 22 s (`MARS_CACHE_FIRST_S` / `MARS_CACHE_INTERVAL_S`) and any human on
 either side may take it. The sides switch applies (Mars is a symmetric mode); rooms play it like
 any wire mode with the map forced to `mars` (`resolvePrivateMatchMap`).
 
@@ -244,8 +248,8 @@ the rule-card lines (`rules.line.marsCaches` / `marsCachesOff`).
   `applyEliminationResult` (solo) and `determineModeResult` /
   `determineEliminationResult` (authority); the HUD counts the same clock down
   (`frame.timeLimitS`, counting up when a mode has none).
-- **Roster** — `rulesetAllyCap` sets the solo split (Standard 6 / 7, Horde 2 /
-  14, Frontline Assault 3 / 10; the co-op modes size their own field from
+- **Roster** — `rulesetAllyCap` sets the solo split (Standard 6 / 7, Horde 4 /
+  20, Frontline Assault 3 / 10; the co-op modes size their own field from
   `ruleset.allies + ruleset.enemies`, `state.battleRosterPlan`); a campaign
   operation's formation (`campaignEnemyNations`) or the arranged enemy nation
   (`game/teamArrangement.ts` `ENEMY_NATION_OPTIONS`, every fleet nation) leads the
@@ -456,10 +460,96 @@ spawns from the new `spawns` field of the presentation state) and
 world presentation rasterises them into floating sprite icons with light columns.
 Do not draw a mode-specific marker anywhere else.
 
+## Zombie balance and endless rounds (2026-10-17)
+
+The owner, 2026-10-17: "if you are out of ammo, the reload indicators should have a special edge case … for special
+modes like juggernaut, ammo should be endless. also the way that endless horde is supposed to work is that all the
+zombies actually have low hp. rn its humans with low hp and a bunch of overpowered glowing zombies that can steam roll
+them, which needs to be fixed to make this more fun!"
+
+**Endless rounds.** `ruleset.ammo` classes every mode. Standard Battle, Capture the Flag, Zone Control and Realistic
+keep the vehicle's own loadout (`spec`); every special and arcade mode plays `unlimited` rounds: Turbo Ball, Gun Game
+and the AC-130's gunship as before, and now Juggernaut (both roles), Infected, Endless Horde, Gravity Mode (`mars`),
+Drone and Frontline Assault. The AC-130's ground escorts still carry spec rounds: the gunship's ammunition airdrop is
+for them. Under unlimited rounds every cache the Horde or Gravity Mode drops is a repair (`cacheHealChance` returns 1;
+the kind draw is kept, so the seeded stream and the cache positions are those of a spec-rounds match), and the Horde's
+status line drops its ammunition count (`hud.modeStatus.hordeWave`). `src/sim/specialModeAmmo.selftest.mjs` pins the
+classes, the rule cards, the caches and the authority's refill after a shot.
+
+**The zombies.** Both zombie modes had it backwards — fragile humans against tanky, fast, quick-firing zombies — and
+both lost every bot round within minutes. Now the zombies are fodder and the humans are the sturdy side; the pressure is
+numbers:
+
+| | Infected before | Infected now | Endless Horde before | Endless Horde now |
+| --- | --- | --- | --- | --- |
+| Human hull | 30 % | 150 % | 125 % | 200 % |
+| Zombie hull | 125 % | 30 % | 125 % + 16 % a wave | 15 % + 2 % a wave |
+| Zombie speed | +40 % | +30 % | +4.5 % a wave (cap +55 %) | unchanged |
+| Zombie reload | ×0.7 | ×1 | ×1 | ×1 |
+| Zombie numbers | 4 to start, 3 s respawn, every dead survivor converts | 5 to start, 5 s respawn, every dead survivor converts | waves 5 / +1, pool 14 | waves 6 / +2 (surge every 3rd), pool 20 |
+| Zombie bots | roam | hunt the nearest survivor (`infection.hunt`) | hunt the nearest human | hunt, one difficulty tier below the battle's (`hostileDifficultyStep`) |
+| Allies / rounds | 9 survivors, spec | 9 survivors, unlimited | 2 allies, spec | 4 allies, unlimited |
+
+The infected keep their green energy skin: it is how a player tells a zombie, not why it was strong.
+
+The Horde's larger field peaks at 25 live vehicles from wave 7 (17 before). At that peak the mobile tier renders about a
+quarter fewer frames than at the old peak (54 to 40 fps on the M5 Max, p99 33 to 50 ms), still below the 14 v 14
+preset's 28 vehicles; the arrangement panel's pool and allied bots shrink it (`docs/PERFORMANCE.md` "Endless Horde field
+on the mobile tier").
+
+The rule cards (play menu, arrangement panel, pre-battle chips) show both hulls in the one hull chip, the humans' first
+and the zombies' after a slash (`rulesetLines`: Infected "+50 % / -70 % hull", the Horde "+100 % / -85 % hull"), so the
+zombie modes add no line of their own. The zombies' bots playing a tier down is wired into both bot builders, the
+authority's `initializeBot` (each seat's own difficulty) and the solo `createBattleBot` (the stored setting);
+`src/game/zombieBotTier.selftest.mjs` reads the tier each controller was built with (`aiCtl.difficulty`) in both.
+
+Measured headlessly with `tools/mode-balance-probe.mjs` (the shared authority on Verdant, every seat a normal-difficulty
+bot, a seeded draw of production ground vehicles; in the Horde the `h1` seat reads as the human while the mode controller
+steps). "Before" is the 16aeab482 table run through today's code (`--before`, bit-identical to the investigation's runs
+on 16aeab482). "Now" covers 72 Infected seeds (1-64, 101-108) and 32 Horde seeds (1-24, 101-108); the hold-out is every
+seed no rule was tuned on (the Infected starter count was chosen on seeds 1-16, the Horde on 1-8). Every row the earlier
+rounds recorded (Infected 1-16 and 101-108, Horde 1-8 and 101-108, the before rows) reproduced bit for bit at this tree:
+
+| Mode | Humans win | Round ends (mean) | Human seat survives (mean / median) | Human kills / min | Zombie kills / min | Kill ratio | Waves (mean, best) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Infected before (8 seeds) | 0 / 8 | 136 s | 115 s / 117 s | 0.76 | 4.50 | 0.17 | — |
+| Infected now (72 seeds) | 24 / 72 | 377 s | 306 s / 338 s | 6.10 | 1.40 | 4.36 | — |
+| Infected now, hold-out (56) | 18 / 56 | 378 s | 298 s / 316 s | 6.19 | 1.38 | 4.49 | — |
+| Endless Horde before (8 seeds) | 0 / 8 | 114 s | 114 s / 94 s | 0.36 | 1.09 | 0.33 | 1.1 (2) |
+| Endless Horde now (32 seeds) | 0 / 32 (no clock: the numbers overrun every run) | 346 s | 346 s / 346 s | 6.46 | 0.63 | 10.18 | 4.66 (8) |
+| Endless Horde now, hold-out (24) | 0 / 24 | 341 s | 341 s / 346 s | 6.45 | 0.62 | 10.33 | 4.63 (7) |
+
+The humans now cut through the zombies — four to ten zombies for every human lost — and the numbers still decide:
+the outbreak takes two rounds in three (the survivors won 6 of the 16 tuning seeds, 16 of 48 on seeds 17-64 and 2 of 8
+on 101-108; with four starting infected they won 12 in 16, with six 1 in 8), and the Horde overruns the human seat in
+every run, at 1:11-9:14 and waves 1-8, after the human side's 4-95 kills. The probe's human is a bot; a player who uses
+cover lasts longer. `src/sim/zombieBalance.selftest.mjs` pins the rules, their invariants (a survivor outlasts four
+infected, a human outlasts eight Horde hostiles through wave 10, no fire-rate buff), the controller's hunt and fodder
+revive, and the measured band in `src/sim/zombieBalance.measured.json` (recorded with `--record`; it fails when the
+balance rules change until the band is measured again). The band holds on all seeds and on the hold-out alone, with at
+least 48 Infected and 24 Horde seeds of which 32 and 16 are hold-out: Infected survivors win 20-70 % at a kill ratio of
+3 or more; the Horde's human seat lasts 4:00 and three waves or more at a kill ratio of 5 or more, and is still overrun in
+most runs. The first band (35-70 % on 16 seeds) was fitted to the seeds the starter count was chosen on and failed on
+seeds 101-108 (2 of 8); the survivors' rate over 72 seeds is a third (33 %, hold-out 32 %), and 20 % sits about 2.4
+standard errors under it.
+
+Re-measure (about 1.5-4 minutes of wall time per seed under load; gate on `headroom can-start`):
+
+    node tools/mode-balance-probe.mjs --mode=infected --seeds=1-64,101-108 --jobs=6 --out=DIR --tag=infAfter
+    node tools/mode-balance-probe.mjs --mode=endless_horde --seeds=1-24,101-108 --jobs=6 --out=DIR --tag=hordeAfter
+    node tools/mode-balance-probe.mjs --mode=infected --before --seeds=1-8 --jobs=4 --out=DIR --tag=infBefore
+    node tools/mode-balance-probe.mjs --mode=endless_horde --before --seeds=1-8 --jobs=4 --out=DIR --tag=hordeBefore
+    node tools/mode-balance-probe.mjs --table DIR infBefore infAfter hordeBefore hordeAfter
+    node tools/mode-balance-probe.mjs --record=src/sim/zombieBalance.measured.json --dir=DIR \
+      --tags=infected:infBefore:infAfter:1-16,endless_horde:hordeBefore:hordeAfter:1-8
+
 ## Verification
 
     node src/sim/matchRuleset.selftest.mjs
     node src/sim/matchModes.selftest.mjs
+    node src/sim/zombieBalance.selftest.mjs
+    node src/game/zombieBotTier.selftest.mjs
+    node src/sim/specialModeAmmo.selftest.mjs
     node src/game/campaignOperations.selftest.mjs
     node src/ui/minimapObjectives.selftest.mjs
     node src/game/matchModeWorldPresentation.selftest.mjs

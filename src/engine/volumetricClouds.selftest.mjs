@@ -903,4 +903,13 @@ assert.match(layerSource, /t\.uDeckLobe\.value = lightTune\('CLOUD_DECK_SUN_LOBE
   a.dispose();
   b.dispose();
 }
-console.log('volumetricClouds.selftest: the cut ray opaque (no disc through a closed deck), the forward lobe of a deck PASS');
+// (227 SKY-01) a convective base breaks under the detail: the erosion exponent 4 (blind WIN over round 1's 6), the medium's
+// default and the frame's lever both reading it, and the shader taking the uniform
+{
+  const vc = here('./volumetricClouds.ts'), sh = here('./cloudShaders.ts');
+  assert.match(vc, /const CLOUD2_BASE_ERODE = 4;/, 'the base erosion exponent');
+  assert.match(vc, /uBaseErode: \{ value: CLOUD2_BASE_ERODE \}/, 'the medium starts at it');
+  assert.match(vc, /m\.uBaseErode\.value = Math\.max\(1, lightTune\('CLOUD_BASE_ERODE', CLOUD2_BASE_ERODE\)\);/, 'each frame, under its QA lever');
+  assert.match(sh, /vec4 modifier = mix\( vec4\( pow\( dn, uBaseErode \) \), topErode,/, 'the base modifier reads it');
+}
+console.log('volumetricClouds.selftest: the cut ray opaque (no disc through a closed deck), the forward lobe of a deck, the base erosion PASS');
