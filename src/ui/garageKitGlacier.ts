@@ -10,8 +10,8 @@ import type { GarageKitPlacement } from './garageKitPlacement.ts';
  * wordmark plate over the opening and its tunnel number; the guard post at the portal's right: its LED panel on legs
  * (garageSlideshowPlacement.ts: the bore and the portal stand behind the hero, in the halo no display may enter), its
  * computer station and the crest on a post; the route
- * board with three prints at the left; the heated fuel cell (the bowser on its drip tray, drums, the spill kit, the
- * no-smoking plate) in the frame's left; the plough yard's light tower, generator and cable reel by the portal's right;
+ * board with three prints at the left; the heated fuel cell (the bowser, drums, the spill kit, the no-smoking and
+ * flammable plates, its T-wall blast screen with the crest stencilled on it) in the frame's left; the plough yard's light tower, generator and cable reel by the portal's right;
  * the parts store's crates under a tarp; the ropeway's valley pylon at the cliff's foot, its ropes climbing the face; the
  * nameboard on its posts; cold air spilling from the bore along the floor and a spindrift plume off the crest.
  */
@@ -40,6 +40,9 @@ export const GARAGE_KIT_GLACIER: GarageKitPlacement = {
     { kind: 'prop', name: 'spillBin', at: [-17.2, 7.2], yaw: Math.PI / 2 },
     { kind: 'prop', name: 'extinguisher', at: [-17.6, 11.8], yaw: 0.4 },
     { kind: 'sign', sign: 'post', rect: 'picto.nosmoking', at: [-16.4, 12.6], yaw: Math.PI / 2 - 0.3, size: [0.55, 0.55] },
+    { kind: 'sign', sign: 'post', rect: 'picto.flammable', at: [-16.4, 5.4], yaw: Math.PI / 2 - 0.3, size: [0.55, 0.55] },
+    // the fuel point's blast walls: T-walls behind it, the crest stencilled on every third panel
+    { kind: 'wall', wall: 'twall', points: [[-25.5, 4.6], [-25.5, 13.4]], params: { mural: 'stencil.crest', muralEvery: 3 } },
     // the plough yard by the portal's right: the light tower over it, its generator and cable reel, cones on the road edge
     { kind: 'prop', name: 'lightTower', at: [21.0, 10.6], yaw: Math.PI / 4 - 0.6 },
     { kind: 'prop', name: 'generator', at: [22.8, 12.6], yaw: 0.3 },

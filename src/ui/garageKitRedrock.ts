@@ -19,6 +19,7 @@ export const GARAGE_KIT_REDROCK: GarageKitPlacement = {
     // the recovery gantry at work: lattice legs on rails, the hull mid-lift under a spreader beam over the turning rolls
     { kind: 'crane', crane: 'portal', at: [16, 17], yaw: Math.PI / 2,
       params: { span: 15, height: 8.2, runway: 11, lattice: true, swl: 40, load: { kind: 'hull', rigging: 'beam' }, trolleyAt: 0.68 } },
+    { kind: 'sign', sign: 'post', rect: 'picto.overhead', at: [11.6, 9.8], yaw: Math.PI / 4 + 0.3, size: [0.6, 0.6] },
     // the site office cell
     { kind: 'display', display: 'station', at: [-12.8, 7.0], yaw: Math.PI / 2 - 0.25, screens: ['readout.armor.k2', 'map.badlands', 'readout.modules.burlak'], width: 2.0, rugged: true },
     // the LED trailer's generator and its cable reel beside it (the trailer itself: garageSlideshowPlacement.ts)
@@ -42,7 +43,6 @@ export const GARAGE_KIT_REDROCK: GarageKitPlacement = {
     { kind: 'prop', name: 'lowLoader', at: [-31, 24], yaw: Math.PI / 2 },
     { kind: 'prop', name: 'roadWheel', at: [-27.5, 18.4], yaw: 0 },
     { kind: 'prop', name: 'roadWheel', at: [-27.1, 18.8], yaw: 0, y: 0.17 },
-    { kind: 'prop', name: 'roadWheel', at: [-26.4, 18.2], yaw: 0, params: { lying: false } },
     { kind: 'prop', name: 'towBar', at: [-24.8, 20.6], yaw: 0.7 },
     { kind: 'prop', name: 'trackPallet', at: [-25.6, 22.4], yaw: 0.2 },
     // an A-frame gantry at work on a power pack, its stand and the bench beside it

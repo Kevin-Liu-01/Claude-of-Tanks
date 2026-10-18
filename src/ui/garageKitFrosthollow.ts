@@ -27,6 +27,9 @@ export const GARAGE_KIT_FROSTHOLLOW: GarageKitPlacement = {
     { kind: 'bench', name: 'standSet', at: [-18.0, 18.8], yaw: Math.PI / 2 - 0.2 },
     { kind: 'bench', name: 'workbench', at: [-21.0, 13.4], yaw: Math.PI / 2 - 0.2, params: { screen: 'readout.modules.burlak' } },
     { kind: 'bench', name: 'rollCab', at: [-20.4, 16.6], yaw: Math.PI / 2 },
+    { kind: 'sign', sign: 'post', rect: 'picto.overhead', at: [-14.2, 12.4], yaw: Math.PI / 2 - 0.3, size: [0.55, 0.55] },
+    // the village's timber palisade closing the cell's back
+    { kind: 'wall', wall: 'palisade', points: [[-30.5, 9.5], [-26.5, 20.5]] },
     // the cold-start cell: the booster compressor and its hose, the frosted bowser, jerrycans
     { kind: 'prop', name: 'compressor', at: [-18.4, 9.6], yaw: Math.PI / 2 + 0.3 },
     { kind: 'prop', name: 'coiledHose', at: [-16.8, 8.2], yaw: 0.4 },

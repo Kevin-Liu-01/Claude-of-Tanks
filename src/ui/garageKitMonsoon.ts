@@ -29,6 +29,10 @@ export const GARAGE_KIT_MONSOON: GarageKitPlacement = {
     // the field computer beside the panel's column, on its rugged case; the radio's generator and sealed cases by it
     { kind: 'display', display: 'station', at: [16.0, 19.6], yaw: Math.PI / 4 - 0.25, screens: ['readout.armor.leopard', 'map.monsoon'], width: 1.7, rugged: true },
     { kind: 'prop', name: 'generator', at: [18.4, 19.0], yaw: 0.2 },
+    { kind: 'sign', sign: 'post', rect: 'picto.electric', at: [19.8, 21.2], yaw: Math.PI / 4 - 0.3, size: [0.5, 0.5] },
+    // gabions holding the terrace's edge behind the field computer, and on the left by the board
+    { kind: 'wall', wall: 'gabion', points: [[20.8, 17.8], [25.8, 22.2]] },
+    { kind: 'wall', wall: 'gabion', points: [[-22.6, 11.0], [-19.8, 19.4]] },
     { kind: 'prop', name: 'ammoBoxSteel', at: [17.4, 17.6], yaw: 0.3 },
     { kind: 'prop', name: 'ammoBoxSteel', at: [17.4, 17.6], yaw: 0.25, y: 0.2 },
     // the tarp banner lashed between bamboo poles on the canopy's right, the frame's right edge
