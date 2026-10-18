@@ -202,9 +202,6 @@ export default {
     well: true, hayCrates: false, fences: true, telegraph: true, carts: false, logs: false,
     rocks: 342, outcrops: 92, craters: 82, rubblePiles: 34,
     hedgehogs: 24, sandbagLines: 26,
-    // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the field
-    // works stand on ground their bags can follow (1 stepped breastwork neighbour over 0.7 m)
-    dressingRules: { fieldWorksLevel: true },
     // the map-vehicles lane (2026-10-06, the period ruling): the American West in the 1960s: the M60A1, M48, M551
     // and M47
     tankWrecks: { era: 'cold-war', count: 8, debris: true, ids: ['m60a1', 'm48a5_patton', 'm551_sheridan', 'm47_patton'] },

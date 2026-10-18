@@ -377,10 +377,10 @@ export default {
     // (2026-10-17, the maps lane; the village blind 227's after-defects, props.ts dressingRules) the fences stop short of
     // the houses (pose 2: "the white fence runs into the new gable house's corner"), the yard clutter spaced and the
     // fenced yards free of loose fence runs (pose 2: "haystacks/crate/barrel/cart are packed like a staged prop pile"),
-    // the hedgehogs at the village's approaches (pose 4: "a dark object lies in the middle of the road") and the field
-    // works on ground their bags can follow (pose 5: "a dark rectangular block on the distant hillside", a breastwork
-    // stepped up the main dyke's batter)
-    dressingRules: { fencesClearBuildings: true, fenceStubsOut: true, yardClutterClear: true, hedgehogsAtApproaches: true, fieldWorksLevel: true },
+    // and the hedgehogs at the village's approaches (pose 4: "a dark object lies in the middle of the road"). The field works
+    // as they were (pose 5's stepped breastwork on the dyke's batter waits for 228's terrain-seated modules: fieldWorksLevel
+    // is off for 227, the coordinator's ruling)
+    dressingRules: { fencesClearBuildings: true, fenceStubsOut: true, yardClutterClear: true, hedgehogsAtApproaches: true },
     // the map-vehicles lane (2026-10-06, the period ruling): no tank hulks — the public fleet has no tank of this
     // front's war; the war shows through the burnt period trucks and carts
     tankWrecks: { era: 'ww2', count: 0, debris: true, ids: [] },

@@ -646,8 +646,8 @@ interface PropsSettings {
    *    yard fence run (its yard is fenced: the run stood in its ground at any angle);
    *  - hedgehogsAtApproaches: the steel hedgehogs drawn inside the town stand only at its approaches, HEDGEHOG_TOWN_CLEAR_M
    *    and more off every building, not in its streets ("a dark object lies in the middle of the road");
-   *  - fieldWorksLevel: a field work's breastwork stands on ground its modules can follow, its stations within
-   *    FIELD_WORK_STEP_M of each other (a work laid up a dyke's batter stepped its bags into "a dark rectangular block on
+   *  - fieldWorksLevel: a field work's breastwork keeps the run of its stations the ground lets its modules follow,
+   *    within FIELD_WORK_STEP_M of each other (the rest left out, draws taken, so no work moves) (a work laid up a dyke's batter stepped its bags into "a dark rectangular block on
    *    the hillside").
    */
   dressingRules?: { fencesClearBuildings?: boolean; fenceStubsOut?: boolean; yardClutterClear?: boolean; hedgehogsAtApproaches?: boolean; fieldWorksLevel?: boolean };
@@ -8271,18 +8271,29 @@ ${snowCap ? `
         stations.push([cx + lx * off, cz + lz * off]);
       }
       if (!stations.every(([bx, bz]) => clear(bx, bz))) continue;
-      // (props.dressingRules.fieldWorksLevel) its modules follow the ground: no station steps more than FIELD_WORK_STEP_M
-      // off the next, nor the work more than two steps from end to end
+      // (props.dressingRules.fieldWorksLevel) the work stands where it was drawn, on the run of its stations the ground lets
+      // its modules follow: the longest run whose stations step no more than FIELD_WORK_STEP_M off the next, nor two
+      // steps from end to end. The stations off it are left out with their draws taken, so the work keeps its seat and
+      // every later work keeps its own (the coordinator's ruling, 2026-10-17: level the breastworks, never delete the
+      // cover; a first cut refused the whole work and the next draw laid it elsewhere, leaving the spot bare)
+      let keepFrom = 0, keepTo = stations.length - 1;
       if (P.dressingRules?.fieldWorksLevel) {
         const ys = stations.map(([bx, bz]) => heightField.getHeightAt(bx, bz));
-        if (ys.some((y, k) => k > 0 && Math.abs(y - ys[k - 1]) > FIELD_WORK_STEP_M)
-          || Math.max(...ys) - Math.min(...ys) > 2 * FIELD_WORK_STEP_M) continue;
+        let best = [0, 0];
+        for (let i = 0; i < ys.length; i++) {
+          let lo = ys[i], hi = ys[i], j = i;
+          while (j + 1 < ys.length && Math.abs(ys[j + 1] - ys[j]) <= FIELD_WORK_STEP_M
+            && Math.max(hi, ys[j + 1]) - Math.min(lo, ys[j + 1]) <= 2 * FIELD_WORK_STEP_M) { j++; lo = Math.min(lo, ys[j]); hi = Math.max(hi, ys[j]); }
+          if (j - i > best[1] - best[0]) best = [i, j];
+        }
+        [keepFrom, keepTo] = best;
       }
-      for (const [bx, bz] of stations) {
+      for (const [si, [bx, bz]] of stations.entries()) {
         const kind = SOURCED.sandbags ? (wrng() < 0.6 ? 'sandbagwall' : 'sandbagbig') : 'barrier';
         // every piece keeps its whole footprint out of the road core: one that would reach into it is left out, its
         // draws still taken, so the rest of the works keep their seats
         const moduleYaw = yaw + (wrng() - 0.5) * 0.1, moduleScale = SOURCED.sandbags ? 1.15 + wrng() * 0.2 : 1;
+        if (si < keepFrom || si > keepTo) continue;
         if (!destructibleClearOfRoad(kind, bx, bz, moduleYaw, moduleScale)) continue;
         addDestructible(kind, bx, heightField.getHeightAt(bx, bz) - 0.04, bz, moduleYaw, moduleScale);
         bedSandbagNest(kind, bx, bz, moduleYaw, moduleScale, [fx, fz]); // (its spoil thrown toward the threat)

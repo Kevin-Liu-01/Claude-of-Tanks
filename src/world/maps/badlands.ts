@@ -344,9 +344,9 @@ export default {
     // (the maps lane, 2026-10-14, MA.39: a village floor, not a field-works range — the patrol's hedgehogs and sandbag lines
     // by the outpost and the fuel points only; was 22 and 24)
     hedgehogs: 8, sandbagLines: 10,
-    // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the field
-    // works stand on ground their bags can follow (4 stepped breastwork neighbours over 0.7 m)
-    dressingRules: { fieldWorksLevel: true, fencesClearBuildings: true },
+    // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules) a fence run's module or gate that
+    // meets a building's plot is left out; the field works as they were (fieldWorksLevel is off for 227, the coordinator's ruling: its first cuts dropped local cover; 228 seats each module on its own ground)
+    dressingRules: { fencesClearBuildings: true },
     // (the Redrock lane, 2026-10-07: the fallen blocks are the walls' red-brown sandstone, where the lithology's base drew a
     // grey-pink — "pillows" against the red cliffs)
     rockTone: (h: number, s: number, l: number) => [0.036, 0.40, clamp01(0.33 + (l - 0.3) * 0.8)],
