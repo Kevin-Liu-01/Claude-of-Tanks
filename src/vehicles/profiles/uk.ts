@@ -3555,7 +3555,7 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     // full depression that rim rises toward the roof, and at full radius it broke 14 mm up through the seam groove
     // between the roof plate and the add-on block ahead of it (r3 critic). The full section now ends 0.36 m aft (the
     // face's rake reaches 0.32 m at -9 deg) and its last 0.09 m tapers to a 0.036 m rim, so at full depression the
-    // sleeve passes 15 mm under that groove's floor.
+    // sleeve passes 18 mm under that groove's floor.
     P.addGunExtra(cylZ(0.070, 0.33, 12), 0, 0, -0.195);
     P.addGunExtra(cylZ(0.070, 0.09, 12, 0.036), 0, 0, -0.405);
     buildGun(P, { len: 1.84, r: 0.030, sleeve: false, evac: null, collar: false, baseR: 0.058 });
