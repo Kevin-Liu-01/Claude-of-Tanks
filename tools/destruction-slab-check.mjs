@@ -72,6 +72,10 @@ const _still = new THREE.Vector3();
 
 // ------------------------------------------------------------------------------------------------ the slab judgement
 
+/** How long after a building's last event what it left hanging may take to come down (the presentation's sweep runs once
+ *  its faces are drawn and its storeys have landed: a creak, then the fall) before the hanging check reads it. */
+const HANG_SETTLE_S = 2;
+
 /** The thresholds of a stray slab (exported for the receipt). */
 export const SLAB = {
   thickMaxM: 0.6, thickShare: 0.12, sideMinM: 2.0, areaMinM2: 8,
@@ -878,8 +882,8 @@ export function renderPng(file, layers, { eye, target, fov = 50, width = 1280, h
 
 /** The check, as a function: the report (pass, per-building rows with their snapshots and findings). */
 export async function runSlabCheck({
-  mapId = 'verdant', ids = null, builders = null, perBuilder = 1, rounds = 40, roundGapS = 0.45, settleS = 10, stopAfterRoof = false, upper = true,
-  sections = true, fracture = true, renderDir = null, maxSnapshots = 40, storeys = [0], log = () => {}, rejoin = true,
+  mapId = 'verdant', ids = null, builders = null, perBuilder = 1, rounds = 40, roundGapS = 0.45, settleS = 10, stopAfterRoof: stopAfterRoofAll = false, upper = true,
+  sections = true, fracture = true, renderDir = null, maxSnapshots = 40, storeys = [0], log = () => {}, rejoin: rejoinAll = true,
   faces = ['wide'], seed = null, filmS = 0, filmFromS = 0, facesFor = null, fingerprint = null,
 } = {}) {
   installWorldBuildFixture();
@@ -980,7 +984,12 @@ export async function runSlabCheck({
     const d = built.structureDamage.get(id);
     return (facesFor?.(id, d.builder, d.anatomy.kit) ?? faces).map((faceName) => [id, faceName]);
   });
-  for (const [id, faceName] of runs) {
+  for (const [id, runFace] of runs) {
+    // (round 3) a face named `<face>+roof` is that face's roof pass alone (the kinds receipt strikes every roofed kind so:
+    // what its roof's fall leaves standing over the eaves)
+    const roofRun = runFace.endsWith('+roof');
+    const faceName = roofRun ? runFace.slice(0, -5) : runFace;
+    const stopAfterRoof = stopAfterRoofAll || roofRun, rejoin = rejoinAll && !roofRun;
     const faceSeed = seed ?? FACE_SEEDS[faceName] ?? 0;
     const seam = seamOf(id);
     const a = seam.anatomy;
@@ -994,7 +1003,7 @@ export async function runSlabCheck({
     let fp = null;
     if (fingerprint) {
       const h = createHash('sha1');
-      h.update(`${fingerprint.salt}|${mapId}|${id}|${faceName}|${faceSeed}|${rounds}|${roundGapS}|${settleS}|${sections}|${fracture}|${storeys.join(',')}|${maxSnapshots}|${rejoin}|${stopAfterRoof}\n`);
+      h.update(`${fingerprint.salt}|${mapId}|${id}|${runFace}|${faceSeed}|${rounds}|${roundGapS}|${settleS}|${sections}|${fracture}|${storeys.join(',')}|${maxSnapshots}|${rejoin}|${stopAfterRoof}\n`);
       for (const span of seam.spans) {
         h.update(`${span.bucket}|${span.partClass}|${span.piece ?? ''}|${span.count}|`);
         const arr = span.position.array;
@@ -1005,7 +1014,7 @@ export async function runSlabCheck({
       if (e) { h.update(Buffer.from(e.top.buffer)); for (const b of e.bands) h.update(Buffer.from(b.cells.buffer)); }
       fp = h.digest('hex');
       if (fingerprint.cached(fp)) {
-        rows.push({ id, face: faceName, seed: faceSeed, builder: seam.builder, kit: a.kit, style: seam.style, anatomy: { w: +a.w.toFixed(2), d: +a.d.toFixed(2),
+        rows.push({ id, face: runFace, seed: faceSeed, builder: seam.builder, kit: a.kit, style: seam.style, anatomy: { w: +a.w.toFixed(2), d: +a.d.toFixed(2),
           h: +a.h.toFixed(2), storeys: a.storeys.length, floors: a.storeys.filter((st) => st.floor).length, roof: a.roof?.kind ?? null }, fired: 0,
         collapsedAtS: -1, staging: null, events: [], spanIssues: [], snapshots: [], pass: true, cached: true, fingerprint: fp, worst: [], phases: {} });
         log(`#${id} ${seam.builder}${faceName === 'wide' ? '' : ` (${faceName})`}: PASS (a clean run of this fingerprint passed before)`);
@@ -1216,8 +1225,9 @@ export async function runSlabCheck({
       const meshes = drawnMeshes([debris.group, fxGroup, bodies?.group], accept);
       const judged = judgeSlabs(meshes, { footprint, groundAt: ground, supportAt, settled: false, ownMaterials, upperFootprint, rested, bandFootprint, drawnTopAt, byDesign,
         floorAt: felled ? null : standingFloorAt });
-      // (what an event left hanging comes down in the presentation's next updates: a look in the event's own tick is none)
-      { const st = spansState(); if (st !== 'moving' && clock - lastEventAt >= 0.25) judged.findings.push(...hangingAt(meshes, st === 'drawn', ground)); }
+      // (what an event left hanging comes down in the presentation's next updates — its faces drawn, its storeys landed: a
+      // look within HANG_SETTLE_S of the building's last event is none)
+      { const st = spansState(); if (st !== 'moving' && clock - lastEventAt >= HANG_SETTLE_S) judged.findings.push(...hangingAt(meshes, st === 'drawn', ground)); }
       const flagged = judged.findings.length > 0;
       const firstFlag = flagged && !snapshots.some((p) => p.findings.length);
       const tag = `t${clock.toFixed(1)}-${label}`;
@@ -1304,7 +1314,7 @@ export async function runSlabCheck({
           }
           const judged = judgeSlabs(meshes, { footprint, groundAt: ground, supportAt, settled: atEnd, ownMaterials, upperFootprint, rested, bandFootprint, drawnTopAt, byDesign,
             floorAt: felled ? null : standingFloorAt });
-          { const st = spansState(); if (st !== 'moving') judged.findings.push(...hangingAt(meshes, st === 'drawn', ground)); }
+          { const st = spansState(); if (st !== 'moving' && (atEnd || clock - lastEventAt >= HANG_SETTLE_S)) judged.findings.push(...hangingAt(meshes, st === 'drawn', ground)); }
           const last = events[events.length - 1];
           const label = atEnd ? 'final' : `t${clock.toFixed(1)}-${last ? (last.stage ?? (last.storeyDown ? 'storeyDown' : last.hole === 255 ? 'sectionDown' : 'hole')) : 'none'}`;
           const flagged = judged.findings.length > 0;
@@ -1382,7 +1392,7 @@ export async function runSlabCheck({
     const flaggedSnaps = snapshots.filter((p) => p.findings.length);
     const row = {
       fingerprint: fp,
-      id, face: faceName, seed: faceSeed, builder: seam.builder, kit: a.kit, style: seam.style, anatomy: { w: +a.w.toFixed(2), d: +a.d.toFixed(2), h: +a.h.toFixed(2), storeys: a.storeys.length,
+      id, face: runFace, seed: faceSeed, builder: seam.builder, kit: a.kit, style: seam.style, anatomy: { w: +a.w.toFixed(2), d: +a.d.toFixed(2), h: +a.h.toFixed(2), storeys: a.storeys.length,
         floors: a.storeys.filter((st) => st.floor).length, roof: a.roof?.kind ?? null }, fired, collapsedAtS: +collapsedAt.toFixed(2),
       staging: { placement: { x: +a.placement.x.toFixed(2), y: +a.placement.y.toFixed(2), z: +a.placement.z.toFixed(2), yaw: +a.placement.yaw.toFixed(4) },
         dir: [+(-nx).toFixed(4), +(-nz).toFixed(4)], mid: mid.map((v) => +v.toFixed(2)), eye: eye.map((v) => +v.toFixed(2)),

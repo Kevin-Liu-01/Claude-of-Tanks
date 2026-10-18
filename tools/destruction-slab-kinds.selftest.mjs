@@ -8,8 +8,10 @@
 // each loading the world once for all its maps (no child process: the selftest cache reads this file's imports, not the
 // whole tree). Every kind passes: no plate or wall standing past the walls of its height band, none floating, none
 // untextured or degenerate, no run off the walls, no remnant taller than the building is drawn there, no fallen roof slab
-// drawn off its body. A finding KNOWN names (its building, the mesh, the reason) is a judged exception; one that stops
-// flagging leaves the list (the ratchet).
+// drawn off its body, nothing left hanging (destruction-hanging.mjs: a piece held in the intact building and held no more,
+// or one touching nothing that stands — a chimney over a roof that fell, a mill's sails over its fallen body). Each roofed
+// kind is also struck until its roof falls and judged standing roofless (the roof pass, `wide+roof`). A finding KNOWN names
+// (its building, the mesh, the reason) is a judged exception; one that stops flagging leaves the list (the ratchet).
 // (round 3, the critic: minutes in npm test, any world change ran it all again) Each kind's run carries a fingerprint — the
 // structure as built (its spans, its anatomy, its enclosure), its face and staging, and the destruction code's hash (the
 // closures of the stages, the fracture, the kits, the enclosure, the ruin, the sim's table and this detector) — and a
@@ -44,7 +46,9 @@ if (!isMainThread) {
   parentPort.on('message', async (mapId) => {
     if (mapId === null) { parentPort.close(); return; }
     try {
-      const report = await runSlabCheck({ mapId, ...STAGING, facesFor: (_id, builder, kit) => [faceOf(builder, kit)], fingerprint });
+      // (round 3, the engineering critic: the roof furniture a roof's fall left in the sky passed every receipt) each roofed
+      // kind's roof pass too: struck until its roof falls, judged standing roofless at the end of the settle
+      const report = await runSlabCheck({ mapId, ...STAGING, facesFor: (_id, builder, kit) => [faceOf(builder, kit), 'wide+roof'], fingerprint });
       parentPort.postMessage({ mapId, rows: report.rows.map((r) => ({ id: r.id, face: r.face, builder: r.builder, kit: r.kit, pass: r.pass,
         fingerprint: r.fingerprint ?? null, cached: !!r.cached,
         spanIssues: r.spanIssues, snapshots: r.snapshots.length,

@@ -163,6 +163,26 @@ assert.match(matrixTrouble(new THREE.Matrix4().set(NaN, 0, 0, 0, 0, 1, 0, 0, 0, 
   assert.equal(held.findings.length, 0, `a held storey's redrawn wall passes (${JSON.stringify(held.findings.map((f) => f.reasons))})`);
 }
 
+// (destruction-slabs 227 round 3) what a roof's fall leaves hanging (destruction-hanging.mjs), slab or not: a chimney on the
+// roof and two boards lying side by side on it (each beside the other: they hold nothing up) hang once the roof is hidden;
+// a sign on a wall and the walls stand; nothing hangs in the intact building
+{
+  const { createHangingJudge } = await import('./destruction-hanging.mjs');
+  const walls = Float32Array.from([...box(0, 0, 0, 10, 6, 0.3), ...box(0, 0, 5.7, 10, 6, 6), ...box(0, 0, 0, 0.3, 6, 6), ...box(9.7, 0, 0, 10, 6, 6)]);
+  const roof = Float32Array.from(box(-0.3, 6, -0.3, 10.3, 6.2, 6.3));
+  const extras = Float32Array.from([...box(4, 6.2, 2, 4.6, 7.7, 2.6), ...box(6, 6.2, 1, 6.2, 6.35, 5), ...box(6.2, 6.2, 1, 6.4, 6.35, 5),
+    ...box(-0.1, 3, 2, 0, 4, 3.5)]);
+  const judge = createHangingJudge([walls, roof, extras], ['walls', 'roof', 'trim'], () => 0);
+  assert.equal(judge([walls, roof, extras]).length, 0, 'nothing hangs in the intact building');
+  const hidden = roof.slice();
+  for (let i = 0; i < hidden.length; i += 9) for (let k = 3; k < 9; k++) hidden[i + k] = hidden[i + (k % 3)];
+  const found = judge([walls, hidden, extras]);
+  const at = (x, z) => found.some((f) => Math.abs(f.centre[0] - x) < 0.6 && Math.abs(f.centre[2] - z) < 1.2);
+  assert.ok(at(4.3, 2.3), `the chimney over the hidden roof hangs (${JSON.stringify(found.map((f) => [f.centre, f.reason]))})`);
+  assert.ok(at(6.1, 3) || at(6.3, 3) || at(6.2, 3), `the two boards holding each other hang (${JSON.stringify(found.map((f) => [f.centre, f.reason]))})`);
+  assert.ok(!at(-0.05, 2.75), 'the sign on the wall stands');
+}
+
 if (process.argv.includes('--named')) {
   // (destruction-slabs 227) the cases the fix was made on: Verdant's church, station hall and windmills, Polders' mound
   // windmill, the reservoir tavern's roof, Steinburg's fire station, Lane B's dark-box set (copper_mesa's headframe,
@@ -188,4 +208,4 @@ if (process.argv.includes('--church')) {
   assert.ok(row.pass, `the church's damage lays no stray slab (${JSON.stringify(row.worst.slice(0, 3).map((f) => [f.mesh, f.reasons]))})`);
   console.log(`destruction-slab-check selftest --church: #9 church passes (${row.snapshots.length} snapshots) — ok`);
 }
-console.log('destruction-slab-check selftest: inside ceiling passes; outside ceiling, standing panel, floating plate, degenerate matrix flagged; lying debris and blocks pass; roof slab on the wall heads flagged at rest, inside the walls passes; plan at height past a plinth; a room past its band\'s walls, a too-tall pier, a hovering roof slab flagged; debris on the pile, a fallen cap\'s sides and a held storey\'s wall pass — ok');
+console.log('destruction-slab-check selftest: a roof\'s chimney and boards hang once it is hidden, a sign on a wall stands; inside ceiling passes; outside ceiling, standing panel, floating plate, degenerate matrix flagged; lying debris and blocks pass; roof slab on the wall heads flagged at rest, inside the walls passes; plan at height past a plinth; a room past its band\'s walls, a too-tall pier, a hovering roof slab flagged; debris on the pile, a fallen cap\'s sides and a held storey\'s wall pass — ok');

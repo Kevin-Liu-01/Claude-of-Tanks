@@ -9,7 +9,7 @@
  * the slab check's hanging judge reads them (tools/destruction-hanging.mjs), never against a collision record:
  *
  *  - a part BEARS where the ground, or a part that bears itself, lies within 0.8 m under half its lower envelope (its
- *    lowest point over each 0.5 m plan cell; a wall beside it at that height holds it too), or under points round its
+ *    lowest point over each 0.4 m plan cell; a wall beside it at that height holds it too), or under points round its
  *    middle — support propagates up from the ground, so two parts side by side hold nothing up;
  *  - parts touching (a surface sample of each within 0.25 m of the other's) gather in clusters; a cluster touching the
  *    ground stands.
@@ -34,7 +34,7 @@ export interface HangingDrawn { faces: readonly THREE.Mesh[]; runs: readonly THR
  *  triangles), and the runs and rooms (by index) touching nothing that stands. */
 export interface HangingResult { groups: HangingTri[][]; faces: Array<{ mesh: THREE.Mesh; tris: number[] }>; runs: number[]; rooms: number[] }
 
-const CELL = 0.5, VOX = 0.25, SPACING = 0.3, BAND = 0.8, BEAR = 0.5, DROP = 0.25, TOUCH = 0.3, MOVED = 0.002;
+const CELL = 0.4, VOX = 0.25, SPACING = 0.3, BAND = 0.8, BEAR = 0.5, DROP = 0.25, TOUCH = 0.3, MOVED = 0.002;
 const CELL_BITS = 2 ** 21;
 const cellKey = (i: number, k: number): number => (i + 1048576) * CELL_BITS + (k + 1048576);
 const VOX_X = 2 ** 34, VOX_Y = 2 ** 17;
@@ -409,11 +409,6 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
         if (part.stood0 && !stands.has(p)) { down.push(p); continue; }
         if (!part.sup0 || sup[p]) continue;
         if (heldOf(sm, env, p, sup, o.groundAt) <= part.held0 - DROP) down.push(p);
-      }
-      if (globalThis.process?.env?.COT_HANG_RT) {
-        let present = 0, stood = 0, standsN = 0;
-        for (let p = 0; p < P; p++) { if (!sm.env[p]) continue; present++; if (model.parts[p]!.stood0) stood++; if (stands.has(p)) standsN++; }
-        console.log(`[hang-rt] #${seam.structureIdx} parts ${P} present ${present} stood0 ${stood} stands ${standsN} down ${down.length} facePieces ${pieces.length} facesDown ${facesDown.length} runs ${runs.length}/${runsDown.length} rooms ${rooms.length}/${roomsDown.length}`);
       }
       if (!down.length) return { groups: [], faces: facesDown, runs: runsDown, rooms: roomsDown };
       // one body a cluster of what comes down (the parts touching: a mill's sails with their stocks and shaft)

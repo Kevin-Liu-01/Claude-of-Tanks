@@ -16,7 +16,7 @@
  *    on a roof that went, verge boards over a gable that went with the roof). A world piece is judged against the intact
  *    building without itself; a presentation's piece against the intact building without what lies within 0.2 m of its
  *    own surface (its own twin, as drawn before the damage).
- *  - CUT LOOSE: pieces touching (a surface sample of each within 0.22 m of the other's) gather in clusters; a cluster touching
+ *  - CUT LOOSE: pieces touching (a surface sample of each within 0.25 m of the other's) gather in clusters; a cluster touching
  *    the ground (within 0.3 m) stands. A world piece whose cluster stood in the intact building and stands no longer hangs
  *    with its cluster (a chimney on a roof that went); a presentation's standing piece hangs when its cluster does.
  *
@@ -25,7 +25,7 @@
  */
 
 export const HANG = Object.freeze({
-  cellM: 0.4, voxelM: 0.22, spacingM: 0.2, bandM: 0.8, liftM: 1.0, sizeM: 1.0, areaM2: 0.2,
+  cellM: 0.4, voxelM: 0.25, spacingM: 0.2, bandM: 0.8, liftM: 1.0, sizeM: 1.0, areaM2: 0.2,
   bearShare: 0.5, dropShare: 0.25, groundTouchM: 0.3, twinM: 0.1,
 });
 

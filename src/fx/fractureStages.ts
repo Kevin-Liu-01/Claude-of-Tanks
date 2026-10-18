@@ -289,7 +289,6 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
         if (m.userData.room === true && host) host.o.debris.dropRun(m); else fracture.dropRoom(idx, m);
       }
       if (swept.faces.length) fracture.dropPieces(idx, swept.faces);
-      if (globalThis.process?.env?.COT_HANG_RT) console.log(`[hang-rt] t=${o.now().toFixed(2)} #${idx} groups ${groups.map((g) => g.length).join(',')}`);
       if (groups.length) { landmarks.drop(due.seam, groups, due.settled); bump(idx); }
       return;
     }
