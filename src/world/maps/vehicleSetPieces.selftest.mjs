@@ -57,11 +57,15 @@ for (const mapId of MAP_IDS) {
     assert.ok(Number.isFinite(piece.x) && Number.isFinite(piece.z) && Number.isFinite(piece.yawDeg), `${mapId}: a seated piece`);
   }
 }
-// the Moon's rovers: by the ascent stage and, at the outpost's rotation, by the landing pad
-const moon = getMapConfig('moon').props.vehicleSetPieces;
-assert.equal(moon.length, 2, 'two rovers on the Moon');
-assert.ok(Math.abs(moon[0].x + moon[1].x) < 1e-9 && Math.abs(moon[0].z + moon[1].z) < 1e-9, 'twins about the landing field');
-assert.equal(((moon[0].yawDeg - moon[1].yawDeg) % 360 + 360) % 360, 180, 'the twin turned through 180 degrees');
+// the Moon's rover (the Earthrise 228 rebuild, 2026-10-18: Apollo 17 landed one; it was two twins about the landing field):
+// parked inside the ring at Challenger's site, within the site's posts
+{
+  const cfg = getMapConfig('moon'), moon = cfg.props.vehicleSetPieces;
+  assert.equal(moon.length, 1, 'one rover on the Moon (Apollo 17 landed one)');
+  assert.equal(moon[0].kind, 'lrv');
+  const site = cfg.props.landmarks.find((l) => l.kind === 'apolloSite');
+  assert.ok(site && Math.hypot(moon[0].x - site.x, moon[0].z - site.z) < 20, 'the rover stands inside the ring at Challenger\'s site');
+}
 
 console.log(`vehicleSetPieces.selftest: ${BUILT.length} kind(s) whole and wrecked on the ground inside their records (worst ${worst} `
   + `triangles), byte-identical; ${pieces} authored pieces, the Moon's rovers twinned`);

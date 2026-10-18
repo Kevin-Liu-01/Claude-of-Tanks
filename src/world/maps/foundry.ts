@@ -210,8 +210,9 @@ export default {
   // Verdant — the works keep their industrial character in the haze, smoke and aerial perspective, never a deck (as
   // Cinder Junction since 227); a plentiful field (0.5), the warm smog tint and the furnace glow at night kept. The base
   // authored (1100 m, Cinder's): the regime's own is the legacy sky block's, which reads this smoggy block as an overcast
-  // at 340 m
-  clouds: { regime: 'fair-weather-cumulus', coverage: 0.5, baseM: 1100, tintHex: 0xd8cec0, nightGlow: 0.9, nightGlowHex: 0xff8a40 },
+  // at 340 m. The field fuller (0.5 -> 0.71, the capture's CLOUD_CU_COVER 1.4: the s146 critics' "less cloud than the
+  // reference"; blind WIN 3-0-1 / 4-0-0 against the reference strip, where 1.6 began to read as a smeared sheet)
+  clouds: { regime: 'fair-weather-cumulus', coverage: 0.71, baseM: 1100, tintHex: 0xd8cec0, nightGlow: 0.9, nightGlowHex: 0xff8a40 },
   sky: {
     sunElevationDeg: 25, sunAzimuthDeg: 128, turbidity: 7.8, rayleigh: 1.35,
     // round 76 (2026-09-26, the deck pass): the industrial haze comes off the whole frame and onto the deck's base and

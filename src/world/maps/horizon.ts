@@ -144,6 +144,8 @@ export interface MapSkyConfig extends Partial<SkyPreset> {
   sunColorHex?: number;
   hemiIntensity?: number;
   fillIntensity?: number;
+  /** (the Earthrise 228 rebuild) the legacy rig's shade light, sRGB (lightModelCore.ts LightModelPreset.shadeHex). */
+  shadeHex?: number | null;
 }
 
 export interface HorizonMapConfig {
