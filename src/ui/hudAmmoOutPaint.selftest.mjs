@@ -777,6 +777,92 @@ resize(WIDTH, HEIGHT);
   hud.setMode('battle');
 }
 
+// 18. critic r6: every mark under the marker keeps 3 px from the ring's stroke (its halo), and the countdown 3 px from
+// the rack. A phone's live clip — full, short of stowage, unlimited mid-cycle — inside a small ring touched it (D3); the
+// desktop scope's rack reload printed its countdown on the ring's dashes, the digits' tops on the clip (D2). On a
+// phone's rings of 11 to 40 px and the desktop scope's at 1440x900 and 1920x1080, the clip, the countdown and the scope
+// readout line keep their gaps; a ring wide enough to hold the clip keeps it under the marker.
+{
+  const apart = (a, b) => Math.max(a.x0 - b.x1, b.x0 - a.x1, a.y0 - b.y1, b.y0 - a.y1);
+  // the rack's shells by their dark contours (magazineShellPath: seven points, 3 px wide), where their ink ends
+  const contours = (ops) => ops.filter((op) => op.op === 'stroke' && op.lineWidth === 3 && op.path.length === 7 && op.style !== INK.dry);
+  const countdownOf = (ops) => ops.filter((op) => op.op === 'fillText' && op.style === INK.reload && op.text.trim() && !op.text.startsWith('+'));
+  const live = {
+    full: () => tankOf('m1a3'),
+    'short of stowage': () => { const tank = tankOf('m1a3', [2, 4, 0]); tank.combat.magazine.rounds = 4; return tank; },
+    'unlimited mid-cycle': () => { const tank = tankOf('m1a3', [0, 0, 0]); tank.combat.magazine.rounds = 3;
+      Object.assign(tank.combat.reload, { t: 1.4, totalS: 2.5, kind: 'intraClip' }); return tank; },
+    'reloading its rack': () => { const tank = tankOf('m1a3', [12, 4, 10]); tank.combat.magazine.rounds = 0;
+      Object.assign(tank.combat.reload, { t: 12, totalS: 21, kind: 'magazine' }); return tank; },
+  };
+  const check = (ops, at) => {
+    const ring = ringOf(ops);
+    const shells = contours(ops);
+    assert.ok(shells.length >= 4, `${at}: the rack's shells`);
+    for (const shell of shells) {
+      const clear = ringClearance(ring, shell);
+      assert.ok(clear >= 3 - 1e-6, `${at}: a shell keeps ${clear.toFixed(2)} px from a ${Math.round(ring.r)} px ring`);
+    }
+    for (const text of countdownOf(ops)) {
+      const clear = ringClearance(ring, text);
+      assert.ok(clear >= 3 - 1e-6, `${at}: the countdown "${text.text}" keeps ${clear.toFixed(2)} px from the ring`);
+      for (const shell of shells) {
+        assert.ok(apart(text.box, shell.box) >= 3 - 1e-6, `${at}: the countdown keeps ${apart(text.box, shell.box).toFixed(2)} px from the rack`);
+      }
+    }
+    return { ring, shells };
+  };
+  resize(390, 844);
+  for (const [metres, wide] of [[1, false], [4, false], [6, false], [8, false], [11, false], [40, true]]) {
+    dispersionM = metres;
+    for (const [label, make] of Object.entries(live)) {
+      unlimitedRounds = label === 'unlimited mid-cycle';
+      const ops = settledPaint(make());
+      const { ring, shells } = check(ops, `390x844, ${metres} m, ${label}`);
+      if (label === 'reloading its rack') assert.ok(countdownOf(ops).length, `${metres} m: the rack reload counts down`);
+      const top = Math.min(...shells.map((op) => op.box.y0));
+      if (wide) assert.ok(top < ring.y + ring.r - 10, `a ${Math.round(ring.r)} px ring holds the ${label} clip under the marker`);
+      else assert.ok(top > ring.y + ring.r, `a ${Math.round(ring.r)} px ring: the ${label} clip sits below it`);
+    }
+    // a single gun reloading: its countdown clears the small ring too
+    const gun = tankOf('m1a1_abrams_hc');
+    Object.assign(gun.combat.reload, { t: 3.2, totalS: 6, kind: 'shell' });
+    const ops = settledPaint(gun);
+    const clock = countdownOf(ops);
+    assert.ok(clock.length, `${metres} m: the gun's countdown`);
+    for (const text of clock) assert.ok(ringClearance(ringOf(ops), text) >= 3 - 1e-6, `390x844, ${metres} m: the gun's countdown keeps 3 px from the ring`);
+  }
+  unlimitedRounds = false;
+  dispersionM = 8;
+  scope = true;
+  // (the scope's rings over a spread of dispersions: the larger ones drop the rack and its countdown below the ring,
+  // down to where the readout line used to start)
+  const radii = new Set();
+  for (const [width, height] of [[1440, 900], [1920, 1080], [WIDTH, HEIGHT]]) {
+    resize(width, height);
+    for (const metres of [1, 4, 8, 11, 16, 24]) {
+      dispersionM = metres;
+      const at = `${width}x${height} scope, ${metres} m`;
+      const ops = settledPaint(live['reloading its rack'](), 'sniper');
+      radii.add(Math.round(check(ops, at).ring.r));
+      const clock = countdownOf(ops);
+      assert.ok(clock.length, `${at}: the scope's rack reload counts down`);
+      // the readout line and the zoom plate start under the countdown
+      const lines = ops.filter((op) => op.op === 'fillText' && op.text.trim() && op.style !== INK.reload && op.box.y0 > height / 2
+        && !/^\d+ m$/.test(op.text));
+      assert.ok(lines.length >= 2, `${at}: the readout line and the zoom plate`);
+      for (const line of lines) for (const text of clock) {
+        assert.ok(line.box.y0 - text.box.y1 >= 3 - 1e-6, `${at}: "${line.text}" starts ${(line.box.y0 - text.box.y1).toFixed(2)} px under the countdown`);
+      }
+    }
+  }
+  assert.ok(Math.max(...radii) >= 45 && Math.min(...radii) <= 30, `the scope's rings span small to wide (${[...radii].join(', ')} px)`);
+  scope = false;
+  dispersionM = 8;
+  resize(WIDTH, HEIGHT);
+}
+
 console.log('hudAmmoOutPaint.selftest: the live HUD paints no sweep, countdown or ready flash on a dry gun, a sparse '
   + 'muted ring, a struck round or rack (below a small ring) and spent rack slots, struck launcher and magazine controls; '
-  + 'a clip or salvo fills the round being chambered; unlimited rounds never read dry');
+  + 'a clip or salvo fills the round being chambered; unlimited rounds never read dry; the clip and the countdown keep '
+  + '3 px from the ring and from each other');

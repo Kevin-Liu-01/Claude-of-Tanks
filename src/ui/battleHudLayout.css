@@ -71,7 +71,18 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked']:not([data-cot-width='phone']):not([data-cot-width='compact']) :is(.cot-shell,.cot-con){width:48px;height:52px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] :is(.cot-dp,.cot-drive){bottom:84px}
-body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell canvas{transform:translate(-50%,-50%) scale(.7)}
+/* Every mouse tray under 1000 px (48x52 and 44x52 slots): the bottom row cannot hold a type label and its count (critic
+   r6: APFSDS|∞ overlapped by 12 px at 900 px; the stacked scale here had also dropped the desktop shell's 3 px raise).
+   The count takes the top-right corner, a smaller key the top-left (the consumables' keys match it), and the shell
+   stands 3 px over the label's ink, small enough that its widest top (the HE drum) keeps 3 px from both corners. A
+   three-digit count shrinks its shell and steps it left; an empty slot's strike spans its icon. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell canvas{top:auto;bottom:12px;transform:translateX(-50%) scale(.6);transform-origin:50% 100%}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell.wide canvas{transform:translateX(calc(-50% - 3px)) scale(.54)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell .cnt{top:2px;right:3px;bottom:auto;font-size:11px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell.wide .cnt{top:1px;right:2px;font-size:10px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell.unlimited .cnt{font-size:16px;line-height:11px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] :is(.cot-shell,.cot-con) .key{top:1px;left:1px;padding:0 2px;font-size:8px;line-height:10px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] .cot-shell.empty::before{left:12px;right:12px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-minimap{top:80px}
 /* Keep touch health inside the gap between thumbs; the old inline schematic
    width overrode the responsive HP-only width and hit the joystick. */

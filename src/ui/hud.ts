@@ -537,6 +537,10 @@ interface ReticleDrawState {
   magazineBottomY: number;
   /** Half the painted rack's width (0 without a rack): the compact sniper stack sets its countdown beside it. */
   magazineHalfW: number;
+  /** The rack shells' lowest ink, their dark contours included (0 without a rack): the countdown starts under it. */
+  magazineInkBottomY: number;
+  /** The reload countdown's lowest ink this frame (0 without one): the scope readouts and the aim warning start under it. */
+  countdownBottomY: number;
 }
 
 interface HudFrameUpdateState {
@@ -705,8 +709,23 @@ const RELOAD_ACCENT = 'rgba(240,160,48,0.95)';    // reload sweep + countdown
 // Owner 2026-10-17 (out of ammo): a spent weapon's ink. The DOM controls read the same danger as --hud-danger.
 const DRY_ACCENT = 'rgba(240,90,90,0.92)';
 const DRY_RING = 'rgba(214,120,112,0.62)';
-/** The least gap between the dispersion ring and an empty mark under the marker (sightMarkTop). */
+/** The least gap between the dispersion ring's stroke and any mark under the marker — an empty mark (sightMarkTop), the
+ *  rack and the reload countdown (ringGap; critic r6: the desktop scope's countdown sat on the ring, a phone's clip
+ *  touched it). */
 const SIGHT_MARK_RING_GAP = 3;
+/** How far the ring's stroke reaches past its radius: the dark halo under-pass, circleLw + 1.5 wide (drawReticle). */
+const RING_STROKE_REACH = 1.5;
+/** A rack shell's dark contour reaches 1.5 px past its outline; a turned outer shell (AUTOLOADER_HUD_OUTER_ROTATION)
+ *  reaches at most 1.1 px wider and 0.4 px higher than an upright one (magazineShellBox). */
+const RACK_CONTOUR = 1.5;
+const RACK_TURN_X = 1.1;
+const RACK_TURN_Y = 0.4;
+/** The countdown's numeral: 16 px, its digits 0.74 of that above the baseline and 0.08 below (the capture's text box). */
+const COUNTDOWN_SIZE = 16;
+const COUNTDOWN_ASCENT = COUNTDOWN_SIZE * 0.74;
+const COUNTDOWN_DESCENT = COUNTDOWN_SIZE * 0.08;
+/** The least gap between the countdown and the rack above it (critic r6: the digits' tops touched the clip's shells). */
+const COUNTDOWN_RACK_GAP = 3;
 /** The struck round that leads the compact sniper readout line (paintSniperAmmoReadout). */
 const COMPACT_DRY_ROUND_W = 6;
 const COMPACT_DRY_ROUND_H = 14;
@@ -979,6 +998,24 @@ export function autoloaderHudShellPose(
   pose.y = (1 - Math.abs(normalized)) * AUTOLOADER_HUD_ARC_DEPTH;
   pose.rotation = -normalized * AUTOLOADER_HUD_OUTER_ROTATION;
   return pose;
+}
+
+interface MarkBox { x0: number; y0: number; x1: number; y1: number }
+const rackShellBoxScratch: MarkBox = { x0: 0, y0: 0, x1: 0, y1: 0 };
+/** The box of a rack shell's dark contour (magazineShellPath turned by `rotation` about its centre, padded 1.5 px). */
+function magazineShellBox(cx: number, cy: number, rotation: number, shellW: number, shellH: number, out: MarkBox): MarkBox {
+  const cos = Math.cos(rotation); const sin = Math.sin(rotation);
+  const hw = shellW * 0.5; const hh = shellH * 0.5;
+  out.x0 = Infinity; out.y0 = Infinity; out.x1 = -Infinity; out.y1 = -Infinity;
+  for (let k = 0; k < 7; k++) {
+    // magazineShellPath's seven points, relative to the shell's centre
+    const px = (k === 0 ? 0 : k <= 2 ? hw : k === 3 ? shellW * 0.22 : k === 4 ? -shellW * 0.22 : -hw);
+    const py = (k === 0 ? -hh : k === 1 || k === 6 ? shellH * 0.28 - hh : k === 2 || k === 5 ? shellH * 0.82 - hh : hh);
+    const x = cx + px * cos - py * sin; const y = cy + px * sin + py * cos;
+    if (x < out.x0) out.x0 = x; if (x > out.x1) out.x1 = x; if (y < out.y0) out.y0 = y; if (y > out.y1) out.y1 = y;
+  }
+  out.x0 -= 1.5; out.y0 -= 1.5; out.x1 += 1.5; out.y1 += 1.5;
+  return out;
 }
 
 function magazineShellPath(
@@ -1703,7 +1740,8 @@ body.cot-spectating .cot-ret{display:none !important;}
   font-family:${FONT_COND};letter-spacing:-.01em;
   border:1px solid rgba(146,164,180,.4);padding:0 3.5px;line-height:13px;z-index:2;}
 .cot-shell.sel .key{color:#f0b04a;border-color:rgba(240,176,74,.6);}
-.cot-shell .cnt{position:absolute;bottom:1px;right:4px;font-size:13px;font-weight:700;
+/* the count sits 3 px in from the slot's edge, 3 px of ink clear of the HE drum (critic r6: 2.7 px at 4 px in) */
+.cot-shell .cnt{position:absolute;bottom:1px;right:3px;font-size:13px;font-weight:700;
   font-family:${FONT_COND};
   color:#e6edf3;font-variant-numeric:tabular-nums;letter-spacing:.02em;z-index:2;
   text-shadow:0 1px 2px rgba(0,0,0,.9);}
@@ -2669,7 +2707,7 @@ export function initHud(bus: EventBus): HudRuntime {
     reloadFraction: 0, reloading: false, dry: false,
     gunColor: PEN_NONE, ringColor: CIRCLE_COL,
     zoomScale: 1, markerLineWidth: 1.6, centerClearanceRadius: 14,
-    single: false, magazine: null, magazineBottomY: 0, magazineHalfW: 0,
+    single: false, magazine: null, magazineBottomY: 0, magazineHalfW: 0, magazineInkBottomY: 0, countdownBottomY: 0,
   };
   const hudFrameUpdateScratch: HudFrameUpdateState = {
     advancing: false,
@@ -3977,6 +4015,8 @@ export function initHud(bus: EventBus): HudRuntime {
     state.magazine = null;
     state.magazineBottomY = 0;
     state.magazineHalfW = 0;
+    state.magazineInkBottomY = 0;
+    state.countdownBottomY = 0;
     return state;
   }
 
@@ -3996,9 +4036,22 @@ export function initHud(bus: EventBus): HudRuntime {
     const gap = draw.sniper ? 4 : 3.5;
     const visibleShells = magazine.visibleShells;
     const totalW = visibleShells * shellW + (visibleShells - 1) * gap;
-    // A struck rack spans its arc and strike (paintDrySlash: 3 px past the rack, 2 px past the shells).
-    const y0 = magazine.dry ? sightMarkTop(draw, totalW * 0.5 + 5, AUTOLOADER_HUD_ARC_DEPTH + shellH + 2)
-      : draw.cy + draw.centerClearanceRadius + 6;
+    // A struck rack spans its arc and strike (paintDrySlash: 3 px past the rack, 2 px past the shells). A live one keeps
+    // its shells' contours SIGHT_MARK_RING_GAP from the ring's stroke where it sits, or drops below the ring (critic r6:
+    // a phone's clip touched its small ring).
+    let y0 = draw.cy + draw.centerClearanceRadius + 6;
+    if (magazine.dry) y0 = sightMarkTop(draw, totalW * 0.5 + 5, AUTOLOADER_HUD_ARC_DEPTH + shellH + 2);
+    else {
+      for (let i = 0; i < visibleShells; i++) {
+        const pose = autoloaderHudShellPose(i, visibleShells, magazineShellPoseScratch);
+        const box = magazineShellBox(draw.cx + (i - (visibleShells - 1) * 0.5) * (shellW + gap), y0 + pose.y + shellH * 0.5,
+          pose.rotation, shellW, shellH, rackShellBoxScratch);
+        if (ringGap(draw, box.x0, box.y0, box.x1, box.y1) < SIGHT_MARK_RING_GAP) {
+          y0 = belowRing(draw) + RACK_TURN_Y + RACK_CONTOUR;
+          break;
+        }
+      }
+    }
     draw.magazineBottomY = y0 + shellH;
     draw.magazineHalfW = totalW * 0.5;
     lastMagazineIndicatorY = y0;
@@ -4021,6 +4074,8 @@ export function initHud(bus: EventBus): HudRuntime {
       const shellCx = draw.cx + (i - (visibleShells - 1) * 0.5) * (shellW + gap);
       const shellCy = y0 + pose.y + shellH * 0.5;
       draw.magazineBottomY = Math.max(draw.magazineBottomY, y0 + pose.y + shellH);
+      draw.magazineInkBottomY = Math.max(draw.magazineInkBottomY,
+        magazineShellBox(shellCx, shellCy, pose.rotation, shellW, shellH, rackShellBoxScratch).y1);
       const ready = i < magazine.readyShells && i !== chambering;
       // Owner 2026-10-17 (out of ammo): a slot stowage can no longer fill is spent — hollow, in the danger ink, never
       // loading; the reload fill spreads over the shells that will actually load.
@@ -4068,7 +4123,8 @@ export function initHud(bus: EventBus): HudRuntime {
       ctx.fillStyle = shellInk;
       ctx.font = `700 9px ${FONT_COND}`;
       ctx.textAlign = 'left';
-      ctx.fillText(`+${magazine.overflow}`, draw.cx + totalW * 0.5 + 3, y0 + shellH);
+      // 3 px past the turned outer shell's contour (the capture's rack gap)
+      ctx.fillText(`+${magazine.overflow}`, draw.cx + totalW * 0.5 + RACK_TURN_X + RACK_CONTOUR + 3, y0 + shellH);
       ctx.textAlign = 'center';
     }
     if (magazine.dry) paintDrySlash(draw.cx, y0 + AUTOLOADER_HUD_ARC_DEPTH * 0.5 + shellH * 0.5, totalW * 0.5 + 3, shellH * 0.5 + 2);
@@ -4118,8 +4174,21 @@ export function initHud(bus: EventBus): HudRuntime {
     const reach = Math.max(Math.abs(draw.cx - halfW - draw.circleX), Math.abs(draw.cx + halfW - draw.circleX));
     const arcHigh = draw.circleY + (reach < r ? Math.sqrt(r * r - reach * reach) : 0);
     const arcLow = draw.circleY + r;
-    const clear = 1.5 + SIGHT_MARK_RING_GAP;
-    return arcLow + clear > top - 3 && arcHigh - clear < top + markH ? arcLow + clear + 3 : top;
+    const clear = RING_STROKE_REACH + SIGHT_MARK_RING_GAP;
+    return arcLow + clear > top - 3 && arcHigh - clear < top + markH ? belowRing(draw) + 3 : top;
+  }
+
+  /** The first row SIGHT_MARK_RING_GAP below the ring's stroke (its halo included). */
+  function belowRing(draw: ReticleDrawState): number {
+    return draw.circleY + draw.radius + RING_STROKE_REACH + SIGHT_MARK_RING_GAP;
+  }
+
+  /** How far a box keeps from the ring's stroke (negative: the ring runs through it). */
+  function ringGap(draw: ReticleDrawState, x0: number, y0: number, x1: number, y1: number): number {
+    const { circleX: x, circleY: y, radius: r } = draw;
+    const near = Math.hypot(Math.max(x0 - x, 0, x - x1), Math.max(y0 - y, 0, y - y1));
+    const far = Math.max(Math.hypot(x0 - x, y0 - y), Math.hypot(x1 - x, y0 - y), Math.hypot(x0 - x, y1 - y), Math.hypot(x1 - x, y1 - y));
+    return Math.max(near - (r + RING_STROKE_REACH), r - RING_STROKE_REACH - far);
   }
 
   /** One hollow round in the empty ink, struck through, over a dark contour. */
@@ -4184,20 +4253,32 @@ export function initHud(bus: EventBus): HudRuntime {
     // A clip's cycle shows on the rack itself (its next shell fills); only a gun or a whole rack reloading counts.
     if (!draw.reloading || draw.magazine?.intraClip) return;
     const text = reloadHudCountdown(view.reload, view.ammoSelectionPending);
-    // The compact sniper stack sets a rack's countdown beside it, left (the range tag hangs off the right rim).
-    const beside = !!draw.magazine && compactSniperStack(draw);
-    const y = beside ? draw.magazineBottomY - 2
-      : draw.magazine ? draw.magazineBottomY + 15
-        : draw.cy + draw.centerClearanceRadius + 15;
     ctx.fillStyle = RELOAD_ACCENT;
-    ctx.font = `700 16px ${FONT_COND}`;
+    ctx.font = `700 ${COUNTDOWN_SIZE}px ${FONT_COND}`;
     const textW = ctx.measureText(text).width;
     ctx.font = `500 10.5px ${FONT_COND}`;
     const unit = view.ammoSelectionPending ? '' : ' s';
     const unitW = ctx.measureText(unit).width;
-    const x = beside ? draw.cx - draw.magazineHalfW - 7 - textW - unitW : draw.cx - (textW + unitW) / 2;
+    const height = COUNTDOWN_ASCENT + COUNTDOWN_DESCENT;
+    // The compact sniper stack sets a rack's countdown beside it, left (the range tag hangs off the right rim), when the
+    // ring keeps clear of it there.
+    let x = draw.cx - draw.magazineHalfW - 7 - textW - unitW;
+    let y = draw.magazineBottomY - 2;
+    const beside = !!draw.magazine && compactSniperStack(draw)
+      && ringGap(draw, x, y - COUNTDOWN_ASCENT, x + textW + unitW, y + COUNTDOWN_DESCENT) >= SIGHT_MARK_RING_GAP;
+    if (!beside) {
+      // Centred under the rack, its digits 3 px under the shells' contours (critic r6: their tops touched the clip), or
+      // under the marker; below the ring when its stroke would come within SIGHT_MARK_RING_GAP of the digits (critic r6:
+      // the desktop scope's countdown sat on the ring's dashes).
+      let top = draw.magazine ? draw.magazineInkBottomY + COUNTDOWN_RACK_GAP
+        : draw.cy + draw.centerClearanceRadius + 15 - COUNTDOWN_ASCENT;
+      x = draw.cx - (textW + unitW) / 2;
+      if (ringGap(draw, x, top, x + textW + unitW, top + height) < SIGHT_MARK_RING_GAP) top = Math.max(top, belowRing(draw));
+      y = top + COUNTDOWN_ASCENT;
+    }
+    draw.countdownBottomY = y + COUNTDOWN_DESCENT;
     ctx.textAlign = 'left';
-    ctx.font = `700 16px ${FONT_COND}`;
+    ctx.font = `700 ${COUNTDOWN_SIZE}px ${FONT_COND}`;
     ctx.fillText(text, x, y);
     ctx.font = `500 10.5px ${FONT_COND}`;
     ctx.fillText(unit, x + textW, y);
@@ -4208,12 +4289,14 @@ export function initHud(bus: EventBus): HudRuntime {
     // Short landscape keeps the whole readout stack close to the scope, but clear of the reload countdown and under
     // the rack, never through it (critic r3, 844x390 / 932x430 / 667x375: the readout sat level with the rack, and
     // touched the countdown; a struck rack may drop below a small ring, sightMarkTop).
-    // A struck rack's strike reaches 2.4 px under the shells: the line keeps 3 px from it (the capture's strike gap).
-    const underRack = !draw.magazine ? 0 : draw.magazineBottomY + (draw.magazine.dry ? 16 : 13);
-    if (h <= 300) return Math.max(draw.cy + 32, underRack);
-    if (h <= 430) return Math.max(draw.cy + 48, underRack);
+    // A struck rack's strike reaches 2.4 px under the shells, a live rack's contour 1.5 px: the line's digits (10 px
+    // above its baseline) keep 3 px from either (the capture's strike and rack gaps), and from the countdown's digits.
+    const underRack = !draw.magazine ? 0 : draw.magazineBottomY + (draw.magazine.dry ? 16 : 15);
+    const underCountdown = draw.countdownBottomY ? draw.countdownBottomY + 3 + 10 : 0;
+    if (h <= 300) return Math.max(draw.cy + 32, underRack, underCountdown);
+    if (h <= 430) return Math.max(draw.cy + 48, underRack, underCountdown);
     return Math.min(
-      draw.cy + Math.max(draw.radius * 1.02 + 24, draw.radius * 1.55 + 18, 96),
+      Math.max(draw.cy + Math.max(draw.radius * 1.02 + 24, draw.radius * 1.55 + 18, 96), underRack, underCountdown),
       h - 176,
     );
   }
@@ -4296,8 +4379,10 @@ export function initHud(bus: EventBus): HudRuntime {
       return;
     }
     if (!warning.visible) return;
-    // ... and under an empty mark that dropped below a small ring (sightMarkTop)
-    const y = Math.max(draw.cy + Math.max(62, draw.radius + 24), draw.magazineBottomY + 17);
+    // ... and under an empty mark that dropped below a small ring (sightMarkTop), and the countdown (its chip's top
+    // 13.5 px over the baseline, 3 px under the digits)
+    const y = Math.max(draw.cy + Math.max(62, draw.radius + 24), draw.magazineBottomY + 17,
+      draw.countdownBottomY ? draw.countdownBottomY + 16.5 : 0);
     const danger = warning.kind === 'blocked';
     const recovery = warning.kind === 'rollover';
     ctx.font = `800 10.5px ${FONT_COND}`;

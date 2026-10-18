@@ -101,23 +101,36 @@ A weapon with no round left shows no reload sweep, countdown or ready pulse. Its
 ring turns to sparse, muted danger dashes. A single-shot gun shows one struck
 round. When the ring's lower arc would cross that round or an empty rack, the
 mark drops below the ring, 3 px clear of it (`sightMarkTop`), and a canvas aim
-warning moves below the mark. On the short landscape scope stack the round leads
-the ammo readout line instead. A rack shows spent slots for rounds stowage
-cannot load, and an empty rack is struck through. The range tag starts past the
-rack and its strike. Between two rounds of a clip or a salvo rack, the round
-being chambered fills as the group cycles. That is the last ready slot, so the
-slot of the round just fired never fills. No countdown shows under the rack.
+warning moves below the mark. A live rack (full, short of stowage, unlimited, or
+reloading) keeps its shells' dark contours 3 px from the ring's stroke and halo
+where it sits, or drops below the ring the same way (`ringGap`). The reload
+countdown sits 3 px under the rack's contours, or under the marker, and drops
+below the ring when the ring's stroke would come within 3 px of its digits. The
+scope readout line and the canvas aim warning start under the countdown. On the
+short landscape scope stack the round leads the ammo readout line instead, and a
+rack's countdown sits beside the rack when the ring keeps clear of it there. A
+rack shows spent slots for rounds stowage cannot load, and an empty rack is
+struck through. The range tag starts past the rack and its strike. Between two
+rounds of a clip or a salvo rack, the round being chambered fills as the group
+cycles. That is the last ready slot, so the slot of the round just fired never
+fills. No countdown shows under the rack.
 Spent launcher and magazine-reload controls are struck and disabled. Their count
 is spoken, not printed. Every empty tray slot is struck on a danger edge with
 its 0 in the danger ink, on desktop as on the phone. The phone's collapsed empty
-slot also loses its amber frame. A dry gun dims both phone FIRE buttons. No mark
-in a tray slot touches another. On desktop the shell icon is raised 3 px clear of
-the type label. On touch it stands on the label's floor, so every slot height
-keeps the gap, and the shorter slots draw it smaller. A count of three digits or
-more tightens its slot's type label and count, and the shell icon gives way to
-it: on desktop the icon rises, on touch it shrinks and steps left, out from
-under the corner count. The count and the label each keep 2 px of ink from the
-icon. Under unlimited rounds nothing reads empty:
+slot also loses its amber frame. A dry gun dims both phone FIRE buttons. In
+every tray slot the count, the type label, the key and the shell icon keep 3 px
+of ink from each other. On the desktop tray (64 px slots, 1000 px wide and up)
+the shell icon is raised 3 px clear of the type label, and the label and the
+count share the bottom row. Every mouse tray under 1000 px wide stacks
+(`data-hud-tray='stacked'`: 48x52 slots, 44x52 below 768 px). Its bottom row
+cannot hold a label and a count, so the count takes the top-right corner beside
+a smaller key, and the shell stands on the label's floor, small enough that the
+HE drum's top keeps clear of both corners. On touch the shell stands on the
+label's floor too, so every slot height keeps the gap, and the shorter slots
+draw it smaller. A count of three digits or more tightens its slot's type label
+and count, and the shell icon gives way to it: on desktop the icon rises; on
+touch and on the stacked mouse tray it shrinks and steps left, out from under
+the corner count. Under unlimited rounds nothing reads empty:
 not the ring, the rack, the tray, the magazine control or the loader audio. The
 ammo `∞` takes the numeral's size. Unlimited rounds are read per vehicle
 (`rulesetUnlimitedFor`). In the AC-130 only the gunship refills, so an escort
@@ -125,22 +138,39 @@ shows its real empty states. On a portrait phone a systems row that crosses the
 sight (`portraitSightClearTop`) moves below the scope readouts when there is
 room, otherwise above the ring. The sight's band covers the countdown, the rack,
 the struck round and the aim warning.
-`src/ui/hudAmmoOut.selftest.mjs` covers the derivations and
-`src/ui/hudAmmoOutPaint.selftest.mjs` covers the live paint and the scope
-stack's geometry, both in `npm test`. For the rendered frames (it takes the
-capture lease), run the command below. It covers desktop, a portrait phone and
-three landscape phones, and checks pixels, recorded canvas geometry and the
-tray's computed styles. It then reads each saved frame
-(`tools/hud-ammo-frame-ink.mjs`): every mark the DOM says a visible slot shows
-must be in the frame's pixels. That covers its count, type label and empty
-strike, the touch chevron and an opaque top edge. Nothing touches the page
-between the DOM read and the frame. The count-to-icon and label-to-icon ink gaps
-are measured after the frame, from full-viewport shots. The tool takes no
-clipped screenshot. In round r4b the gaps were measured with clipped shots
-taken before each frame. Replayed on the same tree, that flow saved 18 of 56
-frames without the marks painted over a slot's shell icon (count, label, key,
-strike, chevron and reload shade), while hit-testing and computed styles still
-showed them. The current flow saved none of them. Run:
+
+Round r5 described the tray as having no touching marks, with the desktop shell
+raised 3 px. Both were true only at 1000 px and up. Under 1000 px the stacked
+tray's own canvas rule replaced the raise with a centred, scaled shell, and the
+`∞` and the empty 0 printed over the type label (APFSDS|∞ by 12 px, ATGM|∞ by
+2 px and APFSDS|0 by 5.6 px at 900 px). The r5 capture had no stacked case, so
+it never measured them. The capture now covers those trays at 900 px and 640 px.
+
+`src/ui/hudAmmoOut.selftest.mjs` covers the derivations and the tray rules, and
+`src/ui/hudAmmoOutPaint.selftest.mjs` covers the live paint, the scope stack's
+geometry and the ring, rack and countdown gaps, all in `npm test`. For the
+rendered frames (it takes the capture lease), run the command below. It covers
+a 1440 px desktop, the stacked mouse trays at 900 px and 640 px, a portrait
+phone and three landscape phones, and the tray states on the two 44 px tall
+touch slots (320x568 and 568x290). It checks pixels, recorded canvas geometry
+and the tray's computed styles: every mark under the marker keeps 3 px from the
+ring's stroke, and every text there keeps 3 px from the rack. It then reads each
+saved frame (`tools/hud-ammo-frame-ink.mjs`): every mark the DOM says a visible
+slot shows must be in the frame's pixels. That covers its count, type label and
+empty strike, the touch chevron and an opaque top edge. Each visible slot's DOM
+read must name its count and label, the mouse tray's key, an empty slot's
+strike and the phone's chevron. A missing one is a failure, not a skipped check.
+Nothing touches the page between the DOM read and the frame. The ink gaps
+between count, label, key and icon are measured after the frame, from
+full-viewport shots. The tool takes no clipped screenshot. Its flow lives in
+`tools/hud-ammo-capture.mjs`. `tools/hud-ammo-frame-ink.selftest.mjs` runs that
+flow against a recording browser over a fake DOM, so it reads the calls as
+made: a clip passed in any form, a filtered findings list or a DOM read without
+a label fails it. In round r4b the gaps were measured with clipped shots taken
+before each frame. Replayed on the same tree, that flow saved 18 of 56 frames
+without the marks painted over a slot's shell icon (count, label, key, strike,
+chevron and reload shade), while hit-testing and computed styles still showed
+them. Run:
 
 ```sh
 node tools/hud-ammo-states.browser.mjs --url=http://127.0.0.1:5189 --out=/absolute/new-evidence-directory

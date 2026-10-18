@@ -268,26 +268,43 @@ function read(tank) {
     'a three-digit count tightens its row');
   // critic r4: the shell gives way to a three-digit count — rising on desktop, shrinking and stepping out from under the
   // touch corner count
-  // (the rendered ink gap, 2 px at the least, is the capture's)
+  // (the rendered ink gap, 3 px at the least, is the capture's)
   assert.match(hud, /\n\.cot-shell\.wide canvas\{transform:translate\(-50%,calc\(-50% - 4px\)\) scale\(\.88\);\}/,
     'a desktop slot\'s shell rises clear of its three-digit count');
   assert.match(touch, /body\.cot-touch-layout \.cot-shell\.wide \.cnt\{top:1px;right:2px;font-size:10px;\}\n/,
     'the phone sets a three-digit count smaller in its corner');
-  assert.match(touch, /body\.cot-touch-layout \.cot-shell\.wide canvas\{transform:translateX\(calc\(-50% - 5px\)\) scale\(\.6\);\}/,
-    'and its shell shrinks and steps left, out from under it');
+  assert.match(touch, /body\.cot-touch-layout \.cot-shell\.wide canvas\{bottom:12px;transform:translateX\(calc\(-50% - 5px\)\) scale\(\.6\);\}/,
+    'and its shell shrinks and steps left, out from under it, 3 px over the label');
   // critic r4b: no marks touch — the shell's tail clears the type label. Desktop raises it 3 px; on touch it stands on
   // the label's floor (bottom-anchored, so every slot height keeps the gap) and shrinks on the shorter slots (the
-  // rendered label-to-icon ink gap, 2 px at the least, is the capture's)
+  // rendered label-to-icon ink gap, 3 px at the least, is the capture's)
   const responsive = readFileSync(new URL('./responsiveSurfaces.css', import.meta.url), 'utf8');
   assert.match(hud, /\n\.cot-shell canvas\{position:absolute;left:50%;top:50%;transform:translate\(-50%,calc\(-50% - 3px\)\);\}/,
     'a desktop slot\'s shell clears its type label');
+  assert.match(hud, /\n\.cot-shell \.cnt\{position:absolute;bottom:1px;right:3px;/, 'and its count keeps clear of the HE drum');
   assert.match(touch, /body\.cot-touch-layout \.cot-shell canvas\{top:auto;bottom:11px;transform:translateX\(-50%\) scale\(\.76\);transform-origin:50% 100%;\}/,
     'a touch slot\'s shell stands on the label\'s floor');
-  assert.match(responsive, /\[data-cot-orientation='landscape'\] \.cot-shell:not\(\.wide\) canvas\{transform:translateX\(-50%\) scale\(\.7\)\}/,
-    'the 48 px landscape slot\'s shell is smaller');
+  assert.match(responsive, /\[data-cot-orientation='landscape'\] \.cot-shell:not\(\.wide\) canvas\{bottom:12px;transform:translateX\(-50%\) scale\(\.64\)\}/,
+    'the 48 px landscape slot\'s shell is smaller, clear of the corner count and the label');
   assert.equal(layout.match(/\.cot-touch-layout \.cot-shell:not\(\.wide\) canvas\{transform:translateX\(-50%\) scale\(\.6\)\}/g)?.length, 2,
     'and the 44 px slots\' (a landscape under 300 px tall, a portrait under 341 px wide) smaller again');
   assert.match(touch, /body\.cot-gun-dry \.cot-touch \.fire\{[^}]*opacity:\.62/, 'a dry gun dims the FIRE buttons');
+  // critic r6: every mouse tray under 1000 px stacks (48x52 slots at 900 px, 44x52 at 640) and its bottom row cannot
+  // hold a type label and a count (APFSDS|∞ overlapped by 12 px; the old stacked scale had dropped the desktop raise).
+  // The count takes the top-right corner beside a smaller key, the shell stands on the label's floor and gives way to a
+  // three-digit count, and an empty slot's strike spans the icon (the rendered 3 px ink gaps are the capture's).
+  const stacked = (rule) => new RegExp(`:not\\(\\.cot-touch-layout\\)\\[data-hud-tray='stacked'\\] ${rule}`);
+  assert.doesNotMatch(layout, stacked("\\.cot-shell canvas\\{transform:translate\\(-50%,-50%\\)"), 'no centred stacked shell over the label');
+  assert.match(layout, stacked("\\.cot-shell canvas\\{top:auto;bottom:12px;transform:translateX\\(-50%\\) scale\\(\\.6\\);transform-origin:50% 100%\\}"),
+    'a stacked slot\'s shell stands on the label\'s floor');
+  assert.match(layout, stacked("\\.cot-shell\\.wide canvas\\{transform:translateX\\(calc\\(-50% - 3px\\)\\) scale\\(\\.54\\)\\}"),
+    'and shrinks and steps left under a three-digit count');
+  assert.match(layout, stacked("\\.cot-shell \\.cnt\\{top:2px;right:3px;bottom:auto;font-size:11px\\}"), 'its count takes the top-right corner');
+  assert.match(layout, stacked("\\.cot-shell\\.wide \\.cnt\\{top:1px;right:2px;font-size:10px\\}"), 'a three-digit count sets smaller there');
+  assert.match(layout, stacked("\\.cot-shell\\.unlimited \\.cnt\\{font-size:16px;line-height:11px\\}"), 'the ∞ at the corner numeral\'s size');
+  assert.match(layout, stacked(":is\\(\\.cot-shell,\\.cot-con\\) \\.key\\{top:1px;left:1px;padding:0 2px;font-size:8px;line-height:10px\\}"),
+    'a smaller key keeps the top-left corner (the consumables\' too, so the tray\'s keys match)');
+  assert.match(layout, stacked("\\.cot-shell\\.empty::before\\{left:12px;right:12px\\}"), 'an empty slot\'s strike spans its icon');
   // the rendered proof of these rules is tools/hud-ammo-states.browser.mjs (computed styles of the live tray)
 }
 
