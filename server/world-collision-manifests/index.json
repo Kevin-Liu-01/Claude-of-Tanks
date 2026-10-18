@@ -82,10 +82,10 @@
       "concealers": 10067
     },
     "badlands": {
-      "bytes": 2450263,
-      "sha256": "762e70abf867c27b06e0add2b854f5da5c7eab03796ff322655c7998238d20e0",
+      "bytes": 2448436,
+      "sha256": "0d4dd2fa7455e06b028bdef1ee4a40155482c3789faa949024bd8e1029966e2b",
       "obstacles": 2264,
-      "colliders": 2322,
+      "colliders": 2314,
       "concealers": 213
     },
     "monsoon": {
@@ -166,17 +166,17 @@
       "concealers": 3872
     },
     "oasis": {
-      "bytes": 1391303,
-      "sha256": "982e19213be29a12c7435c9526a66404b07675084f8143d373dacb712fd3fe7e",
-      "obstacles": 1622,
-      "colliders": 1884,
+      "bytes": 1511635,
+      "sha256": "be099617bc26fe5908d2154a7482db316129481e631c7cfb6a40a48ee598c41f",
+      "obstacles": 1624,
+      "colliders": 1885,
       "concealers": 822
     },
     "whiteout": {
-      "bytes": 2071802,
-      "sha256": "53332cba93ab1d6cd369a84f0eec40845b653347505108bda91a38243e3571c7",
+      "bytes": 2072151,
+      "sha256": "a06faf0536e77b1c08d16a5104c7dfe1862a76625b62aed092c6394691a711e5",
       "obstacles": 1293,
-      "colliders": 1739,
+      "colliders": 1742,
       "concealers": 0
     },
     "orchard": {
@@ -316,10 +316,10 @@
         "concealers": 10133
       },
       "badlands": {
-        "bytes": 2702134,
-        "sha256": "db1b38d9c7df7eeb03fbfd89ca97f92499506f7c42fa1ac13ef88f3258cb34db",
+        "bytes": 2700307,
+        "sha256": "93d0ab0e89fd8c72eef50e2b429c12ed904407c8991a0c340605d46a0327a0fb",
         "obstacles": 2392,
-        "colliders": 2358,
+        "colliders": 2350,
         "concealers": 213
       },
       "monsoon": {
@@ -400,17 +400,17 @@
         "concealers": 3872
       },
       "oasis": {
-        "bytes": 1705764,
-        "sha256": "4aecf741b490a3b55cfd113eb38d31927adb0fa148cc11b2765014bd0f2d97d8",
-        "obstacles": 1764,
-        "colliders": 1931,
+        "bytes": 1826100,
+        "sha256": "fcf954fb730b8a71d74a622f1a80600d5a22fbfeaf0004ce02b8dd76ab812e53",
+        "obstacles": 1766,
+        "colliders": 1932,
         "concealers": 822
       },
       "whiteout": {
-        "bytes": 2282000,
-        "sha256": "898a1faba4bd94bfbcc4ed87fec92ed96b691e696b54b957f2731752b5608ef3",
+        "bytes": 2282349,
+        "sha256": "4daceca24e27812a9638d12f0266f3b8fc3107a063eb304b1c66e6ea9ed883ff",
         "obstacles": 1440,
-        "colliders": 1797,
+        "colliders": 1800,
         "concealers": 0
       },
       "orchard": {
