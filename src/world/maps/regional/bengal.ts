@@ -2,7 +2,7 @@
 // Jamuna). Homesteads raised on earthen plinths (bhiti) above the flood line: houses walled and roofed with corrugated
 // iron sheet — galvanised, rust-streaked or painted — under four-slope (char-chala) or two-slope roofs, a third of the
 // small ones walled in bamboo and jute stick plastered with mud under a two-slope (do-chala) rice-straw thatch; a veranda (dawa) on
-// bamboo posts closed at its ends by sheet or mud screens, its mud steps cut into the bhiti's edge down to the yard, the doors in carved frames under their lintel boards, the windows
+// bamboo posts closed at its ends by sheet or mud screens, its mud steps down to the yard, the doors in carved frames under their lintel boards, the windows
 // in timber casings with iron grilles and plank shutters; the bari's yards fenced in bamboo round the rice granary and
 // the kitchen garden, the hand pump on its platform, the cow-dung cakes drying on a wall, the clay water pots, a bicycle;
 // the bazaar's long tin sheds on posts with shuttered stalls; brick shops with a flat roof, a corbelled cornice over
@@ -181,16 +181,6 @@ function tinHouseBody(sink: PartSink, ctx: RegionalBuildContext, rng: () => numb
     thatched ? { bucket: 'straw', thatch: 'nipa' } : { bucket: 'structureMetal', colour: verandaRoof }, false,
     { eaveY: hf!.eaveY, eave: roof.eave, tanP: hf!.roof.tanP }, { round: true, ...(thatched ? { thickness: 0.2 } : {}) });
   verandaScreens(sink, frontFace, width, deck, lean.highY, lean.plateTop, lean.postTop, mobile, thatched ? null : { livery, frame });
-  // (r2, the critic: "the steps sit on the sloped plinth like loose boxes") the flight cut into the bhiti's slumped edge:
-  // a cheek of packed mud each side of it, sloping from the veranda's edge down to the yard (dressing)
-  sink.dressing(mobile, () => {
-    const door = openings[0], n = Math.max(2, Math.ceil(deck / 0.24)), run = 0.3 * (n - 1) + 0.25, half = (door.w + 0.24 + 0.3) / 2;
-    for (const side of [-1, 1]) {
-      const u = door.u + side * (half + 0.1);
-      const prof: Array<[number, number]> = [[VERANDA_D - 0.1, -0.3], [VERANDA_D + run, -0.3], [VERANDA_D + run, 0.03], [VERANDA_D - 0.1, deck - 0.05]];
-      orientedPrism(sink, 'plaster3', prof.map(([o, y]) => facePoint(frontFace, u - 0.11, y, o)), frontFace.u, 0.22, { decor: true, shade: 0.9 });
-    }
-  });
   if (facadeOn()) homestead(sink, hf!, frontFace, { W, D, plinth, deck, bOut, width, big, thatched, door: openings[0] });
 }
 
