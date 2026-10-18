@@ -1621,7 +1621,12 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
   /** A roof slab at rest looked at (its pose in `pose`): left where it belongs, or shoved off a rest high past the walls,
    *  or (shoved enough) broken into its sheets or laid on the ground under it. True when it was moved. */
   function lookAtRoof(c: LiveCollapse, p: LivePiece): boolean {
-    if (!highPastWalls(c, pose, p.box)) { p.shoves = -1; return false; }
+    if (!highPastWalls(c, pose, p.box)) {
+      // (a shove's landing looked at once more: a slab come down on its edge goes over, as one that fell there does)
+      if (p.shoves > 0) tipIfStanding(p.handle, p.half ?? pieceHalf(p.piece), p.piece.massKg, c.structureIdx * 131 + p.piece.index + 7, 0.7);
+      p.shoves = -1;
+      return false;
+    }
     // (round 2: a 13 m roof side on the pile hopped 0.7 m a shove) a slab of several sheets breaks into them where it lies
     // (each looked at in turn: a sheet tips off the edge a whole side cannot); a one-sheet slab is shoved off, twice
     if (p.parts.length > 1 && !p.broken) { p.shoves = -1; p.broken = true; breaking.push(c, p); return true; }
@@ -1663,7 +1668,11 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
   function lookAtSheet(c: LiveCollapse, p: LivePiece, k: number): boolean {
     const part = p.parts[k]!, spec = p.piece.parts[k]!;
     const pbox = part.box ?? [-spec.half[0], -spec.half[1], -spec.half[2], spec.half[0], spec.half[1], spec.half[2]];
-    if (!highPastWalls(c, pose, pbox)) { part.shoves = -1; return false; }
+    if (!highPastWalls(c, pose, pbox)) {
+      if (part.shoves > 0) tipIfStanding(part.handle, spec.half, spec.massKg, c.structureIdx * 131 + p.piece.index * 16 + k + 7, 0.7);
+      part.shoves = -1;
+      return false;
+    }
     if (part.shoves < ROOF_SHOVES) {
       part.shoves++;
       shoveOff(c, part.handle, pose, pbox, spec.massKg, !fallenUnder(c) && part.shoves === 1, part.shoves);

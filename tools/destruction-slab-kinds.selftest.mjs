@@ -10,8 +10,10 @@
 // untextured or degenerate, no run off the walls, no remnant taller than the building is drawn there, no fallen roof slab
 // drawn off its body. A finding KNOWN names (its building, the mesh, the reason) is a judged exception; one that stops
 // flagging leaves the list (the ratchet).
-//   COT_SLAB_KINDS_WORKERS=<n> (default a third of the CPUs, at most 6); COT_SLAB_KINDS_MAPS=<map,...> (a subset)
+//   COT_SLAB_KINDS_WORKERS=<n> (default a third of the CPUs, at most 6); COT_SLAB_KINDS_MAPS=<map,...> (a subset);
+//   COT_SLAB_KINDS_DUMP=<file> (write the runs' findings) and COT_SLAB_KINDS_FROM=<file> (judge a dump, no runs: KNOWN's edits)
 import assert from 'node:assert/strict';
+import { readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import { Worker, isMainThread, parentPort } from 'node:worker_threads';
 
@@ -55,8 +57,8 @@ if (!isMainThread) {
 
   const maps = process.env.COT_SLAB_KINDS_MAPS ? process.env.COT_SLAB_KINDS_MAPS.split(',') : [...MAP_IDS];
   const workers = Math.max(1, Number(process.env.COT_SLAB_KINDS_WORKERS ?? Math.min(6, Math.max(1, Math.floor(os.availableParallelism() / 3)))));
-  const queue = [...maps];
-  const results = [];
+  const queue = process.env.COT_SLAB_KINDS_FROM ? [] : [...maps];
+  const results = process.env.COT_SLAB_KINDS_FROM ? JSON.parse(readFileSync(process.env.COT_SLAB_KINDS_FROM, 'utf8')).filter((r) => maps.includes(r.mapId)) : [];
   await Promise.all(Array.from({ length: Math.min(workers, queue.length) }, () => new Promise((resolve) => {
     const worker = new Worker(new URL(import.meta.url), { resourceLimits: { maxOldGenerationSizeMb: 4096 } });
     let current = null, timer = null;
@@ -77,6 +79,7 @@ if (!isMainThread) {
     worker.on('exit', () => { clearTimeout(timer); resolve(); });
   })));
 
+  if (process.env.COT_SLAB_KINDS_DUMP) writeFileSync(process.env.COT_SLAB_KINDS_DUMP, JSON.stringify(results));
   let runs = 0, snaps = 0;
   const kinds = new Set(), flagged = [], used = new Set();
   const excused = (key, f) => {

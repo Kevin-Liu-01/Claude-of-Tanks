@@ -145,8 +145,8 @@
       "concealers": 1003
     },
     "polders": {
-      "bytes": 1648423,
-      "sha256": "0c4ccf2abc727329be8beafeedbe5298949879e430a2a69d358b52ce8c34ba09",
+      "bytes": 1730635,
+      "sha256": "d7752bc8e4c1924637e547eb580f1a6e4bea4964f7030b0223969a2245124456",
       "obstacles": 4253,
       "colliders": 4510,
       "concealers": 3380
@@ -379,8 +379,8 @@
         "concealers": 1003
       },
       "polders": {
-        "bytes": 1859607,
-        "sha256": "1841c216000e9cddc3ad8b143d961cbd856c20330efb84c2f4140583210e111e",
+        "bytes": 1941819,
+        "sha256": "25920d61406087f99c7c48fea20593f850be2f2f35809f435475bf9beb7376cc",
         "obstacles": 4554,
         "colliders": 4721,
         "concealers": 3548
