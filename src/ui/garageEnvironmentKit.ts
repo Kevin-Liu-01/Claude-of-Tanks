@@ -2295,7 +2295,11 @@ export function buildGarageEnvironment(
     const sand = hardstandStyle === 'earth-sand';
     const snow = hardstandStyle === 'earth-snow' || hardstandStyle === 'gravel-snow' || hardstandStyle === 'slab-snow';
     if (!sand && !snow) return;
-    const inner = GARAGE_PLATFORM_GEOMETRY.baseRadiusM - 0.06, reach = sand ? 1.8 : 1.4, peak = sand ? 0.34 : 0.28;
+    // the two heated decks (Frosthollow's and Glacier's, garage r9: "a 0.4-0.6 m melt margin, a meltwater sheen") melt
+    // the snow back off the collar: a dark wet margin round the plinth, the drift banked beyond it
+    const heated = hardstandStyle === 'earth-snow' || hardstandStyle === 'gravel-snow';
+    const margin = heated ? 0.5 : 0;
+    const inner = GARAGE_PLATFORM_GEOMETRY.baseRadiusM - 0.06 + margin, reach = sand ? 1.8 : 1.4, peak = sand ? 0.34 : 0.28;
     const segments = 72, rings = 5;
     // packed and crushed-rock yards keep a grey, trodden snow; the ring is uneven, banked to windward and all but gone
     // on the lee side, never a clean halo (CPU canonical, 2026-10-15)
@@ -2321,6 +2325,23 @@ export function buildGarageEnvironment(
         for (const p of [a, c, d, a, b, c]) {
           positions.push(p[0], p[1], p[2]);
           tone.copy(light).lerp(dark, 0.3 + 0.5 * p[3]);
+          colors.push(tone.r, tone.g, tone.b);
+        }
+      }
+    }
+    if (heated) {
+      const wet = new THREE.Color(0x59636a), damp = new THREE.Color(0x9aa5ab);
+      const rim = (segment: number, outer: boolean): [number, number, number] => {
+        const angle = (segment / segments) * Math.PI * 2;
+        const r = outer ? inner + 0.04 : GARAGE_PLATFORM_GEOMETRY.baseRadiusM - 0.06;
+        const x = Math.cos(angle) * r, z = Math.sin(angle) * r;
+        return [x, Math.max(samplePatch(patch, heights, x, z), GARAGE_PLATFORM_GEOMETRY.terrainSurfaceYM) + 0.025, z];
+      };
+      for (let segment = 0; segment < segments; segment += 1) {
+        const a = rim(segment, false), b = rim(segment + 1, false), c = rim(segment + 1, true), d = rim(segment, true);
+        for (const [p, out] of [[a, 0], [c, 1], [d, 1], [a, 0], [b, 0], [c, 1]] as const) {
+          positions.push(p[0], p[1], p[2]);
+          tone.copy(wet).lerp(damp, out * (0.55 + 0.25 * Math.sin(segment * 0.9 + wind)));
           colors.push(tone.r, tone.g, tone.b);
         }
       }

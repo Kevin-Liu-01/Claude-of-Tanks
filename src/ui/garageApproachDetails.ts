@@ -460,8 +460,12 @@ export function addGarageApproachDetails({
     },
     'monsoon-causeway': () => {
       addPath(points, approach.width, 0.24);
-      addEdgeCourse(-approach.width / 2 - 0.45, 0x344f49, 0.42, 0.34);
-      addEdgeCourse(approach.width / 2 + 0.45, 0x344f49, 0.42, 0.34);
+      // (garage r9 g1 r2: the teal kerbs read as plastic planks on the grass) laterite-stained concrete kerbs, a
+      // shoulder of red laterite gravel outside them where the causeway meets the grass
+      for (const side of [-1, 1]) {
+        addEdgeCourse(side * (approach.width / 2 + 0.4), 0x7b7064, 0.36, 0.26);
+        addEdgeCourse(side * (approach.width / 2 + 1.05), 0x8a5a3e, 0.95, 0.07);
+      }
       addRuts(approach.lanes || [-2.6, 2.6], 0x3c4f45, 0.34);
       addRoadsidePosts(7, approach.width / 2 + 1.0, 0xd19a2e, 1.45);
     },
