@@ -4728,7 +4728,7 @@ ${snowCap ? `
     // (props.dressingRules.fencesClearBuildings) the run's modules wait in their piece — the modules between two breaks (a
     // road, a building's plot, a missing module) — and a piece shorter than FENCE_PIECE_MIN is left out, its draws taken,
     // a gate hanging only on a piece that stands
-    const pieceRule = !!P.dressingRules?.fencesClearBuildings;
+    const pieceRule = fencesClearBuildings;
     const piece: Array<readonly [number, number, number, number, number, number, number]> = [];
     const endPiece = (): boolean => {
       const stands = piece.length >= FENCE_PIECE_MIN;
