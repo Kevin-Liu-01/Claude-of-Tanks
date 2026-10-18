@@ -51,7 +51,7 @@ export const SCENE_WIND: Readonly<Record<MapId, { readonly dirDeg: number; reado
   saltwind: { dirDeg: 8, speed: 5 }, // ocean
   reservoir: { dirDeg: 150, speed: 3 }, // ocean
   mars: { dirDeg: 187, speed: 4 }, // legacy
-  moon: { dirDeg: 113, speed: 4 }, // legacy
+  moon: { dirDeg: 205, speed: 4 }, // legacy (2026-10-18: the Earthrise 228 sun at azimuth 140°, earthriseStation.ts SUN_SKY; was 113 from 48°)
   cliffbridge: { dirDeg: 37, speed: 3.6 }, // ground
 });
 
