@@ -79,6 +79,12 @@ export interface LandmarkBodies {
    * where it hung (settled). The bodies thrown.
    */
   drop(seam: StructureDamageSeam, groups: ReadonlyArray<ReadonlyArray<{ span: StructureSpan; at: number }>>, settled?: boolean): number;
+  /**
+   * Pieces of the presentation's own meshes left hanging (a kit's rim chunk over a hole whose wall went round it): each a
+   * copy of its triangles down as a body (the largest few; the rest their dust), or at rest under where it hung (settled).
+   * The caller takes the triangles out of its mesh after. The bodies thrown.
+   */
+  dropMeshPieces(seam: StructureDamageSeam, pieces: ReadonlyArray<{ mesh: THREE.Mesh; tris: readonly number[] }>, settled?: boolean): number;
   update(dtS: number): void;
   liveBodies(): number;
   reset(): void;
@@ -291,8 +297,27 @@ export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
         if (bx < x0) x0 = bx; if (bx > x1) x1 = bx; if (_v.y < y0) y0 = _v.y; if (_v.y > y1) y1 = _v.y; if (bz < z0) z0 = bz; if (bz > z1) z1 = bz;
       }
     }
+    // (and not standing tall: a chimney's box thrown upright stood on the floor and a roof slab leant on its head at the
+    // eaves — a tall part falls over as it drops, to lie on its broad side)
+    if (y1 - y0 > 1.5 * Math.max(x1 - x0, z1 - z0) && y1 - y0 > 1) return false;
     const e = [x1 - x0, y1 - y0, z1 - z0].sort((p, q) => q - p);
     return e[1]! <= 1.5 || e[2]! >= 0.3 * e[1]!;
+  }
+  /** Whether a group goes round the building's middle in plan (a mill's stage round its tower, a balcony's rail round a
+   *  corner): no body or fall holds it as drawn (a box round it stood on its braces over the ruin, its deck in the air) —
+   *  it breaks up where it hung. */
+  function rings(seam: StructureDamageSeam, g: ReadonlyArray<{ span: StructureSpan; at: number }>): boolean {
+    let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+    const { x: px, z: pz, yaw } = seam.anatomy.placement, c = Math.cos(yaw), s = Math.sin(yaw);
+    for (const t of g) {
+      const M = spanMatrix(t.span), arr = t.span.position.array as Float32Array;
+      for (let k = 0; k < 3; k++) {
+        _v.set(arr[(t.at + k) * 3], arr[(t.at + k) * 3 + 1], arr[(t.at + k) * 3 + 2]).applyMatrix4(M);
+        const wx = _v.x - px, wz = _v.z - pz, bx = wx * c - wz * s, bz = wx * s + wz * c;
+        if (bx < x0) x0 = bx; if (bx > x1) x1 = bx; if (bz < z0) z0 = bz; if (bz > z1) z1 = bz;
+      }
+    }
+    return x0 < -0.5 && x1 > 0.5 && z0 < -0.5 && z1 > 0.5;
   }
   /** A span's triangles out of its bucket (onto their first corner; kept for the reset). */
   function hideSpan(span: StructureSpan): void {
@@ -304,8 +329,49 @@ export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
     span.position.needsUpdate = true;
   }
 
+  /** A mesh's triangles copied out as a span of their own (non-indexed, the mesh's world matrix): a body's source. */
+  function copySpan(mesh: THREE.Mesh, tris: readonly number[]): Tri[] {
+    const g = mesh.geometry as THREE.BufferGeometry, ix = g.index;
+    const out = new THREE.BufferGeometry();
+    for (const [name, raw] of Object.entries(g.attributes)) {
+      const attr = raw as THREE.BufferAttribute, size = attr.itemSize;
+      const arr = new Float32Array(tris.length * 3 * size);
+      tris.forEach((t, n) => {
+        for (let k = 0; k < 3; k++) {
+          const i = ix ? ix.getX(t * 3 + k) : t * 3 + k;
+          for (let q = 0; q < size; q++) arr[(n * 3 + k) * size + q] = attr.getComponent(i, q);
+        }
+      });
+      out.setAttribute(name, new THREE.BufferAttribute(arr, size));
+    }
+    const copy = new THREE.Mesh(out, mesh.material);
+    mesh.updateWorldMatrix(true, false);
+    copy.matrix.copy(mesh.matrixWorld);
+    copy.matrixAutoUpdate = false;
+    const span = { mesh: copy, geometryId: null, instanceId: null, position: out.getAttribute('position'), bucket: '', partClass: '',
+      first: 0, count: tris.length * 3, piece: null } as unknown as StructureSpan;
+    return tris.map((_t, n) => ({ span, at: n * 3 }));
+  }
+
   return {
     handles: (builder) => !!RULES[builder],
+    dropMeshPieces(seam, pieces, settled = false) {
+      const order = pieces.map((_p, i) => i).sort((p, q) => pieces[q]!.tris.length - pieces[p]!.tris.length || p - q);
+      let thrown = 0;
+      order.forEach((pi, n) => {
+        const pc = pieces[pi]!;
+        if (!pc.tris.length) return;
+        const list = copySpan(pc.mesh, pc.tris);
+        const salt = damageSeed(seam.structureIdx, 0x4a7, pi, pc.tris.length);
+        if (n < HANGING_BODIES && !rings(seam, list) && throwGroup(seam, HANGING_RULE, list, salt, 0, 0, settled, !compact(seam, list))) thrown++;
+        else if (!settled) {
+          const t = list[0]!, arr = t.span.position.array as Float32Array;
+          _v.set(arr[0], arr[1], arr[2]).applyMatrix4(spanMatrix(t.span));
+          o.onLanding?.(_v.x, _v.y, _v.z, 3, 40, seam.structureIdx);
+        }
+      });
+      return thrown;
+    },
     drop(seam, groups, settled = false) {
       // the largest first (by triangles): a few bodies, the rest out with their dust
       const order = groups.map((_g, i) => i).sort((p, q) => groups[q]!.length - groups[p]!.length || p - q);
@@ -315,7 +381,7 @@ export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
         const g = groups[gi]!;
         if (!g.length) return;
         const salt = damageSeed(seam.structureIdx, 0x4a6, gi, g.length);
-        if (n < HANGING_BODIES && throwGroup(seam, HANGING_RULE, g as Tri[], salt, 0, 0, settled, !compact(seam, g))) thrown++;
+        if (n < HANGING_BODIES && !rings(seam, g) && throwGroup(seam, HANGING_RULE, g as Tri[], salt, 0, 0, settled, !compact(seam, g))) thrown++;
         else if (!settled) {
           // its dust where it was
           const t = g[0]!, arr = t.span.position.array as Float32Array, M = spanMatrix(t.span);

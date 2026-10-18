@@ -366,6 +366,9 @@ export interface StructureDebris {
   standingRuns(tag: number): readonly THREE.Mesh[];
   /** A standing run goes with the section it stood in: hidden, and never shown (a delayed stage's run included). */
   dropRun(mesh: THREE.Mesh): void;
+  /** Some of a standing run's triangles go (by triangle, in its index: a rim's chunk left hanging over a hole whose wall
+   *  went round it); the rest stands. */
+  dropRunTris(mesh: THREE.Mesh, tris: readonly number[]): void;
   update(): void;
   shiftTime(delta: number): void;
   reset(): void;
@@ -874,6 +877,13 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
     dropRun(mesh) {
       mesh.userData.dropped = true;
       mesh.visible = false;
+    },
+    dropRunTris(mesh, tris) {
+      const ix = mesh.geometry.index;
+      if (!ix) return;
+      const a = ix.array as Uint16Array | Uint32Array;
+      for (const t of tris) { const v = a[t * 3]!; a[t * 3 + 1] = v; a[t * 3 + 2] = v; }
+      ix.needsUpdate = true;
     },
     stats() {
       let pieces = 0;

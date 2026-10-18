@@ -143,6 +143,8 @@ const STATIC_CELL = -1;
 /** What reaches over a gable's apex (the roof's cap over it): it stands while the gable's top row does, and goes with it
  *  (destruction-slabs 227 round 3: standing with the face, it was left in the sky as two triangles when the gable fell). */
 const HEAD_CELL = -2;
+/** A cell's reveals in a face mesh's ranges: CAP_CELL - cell (after the cells' own triangles). */
+const CAP_CELL = -1000;
 
 interface FaceGroup {
   material: THREE.Material;
@@ -168,6 +170,9 @@ interface FaceDraw {
   /** Each cell's depth through the wall to the proudest part it carries (m along the face's normal): its body's box. */
   depthMin: Float32Array;
   depthMax: Float32Array;
+  /** Cells whose broken edges are no longer drawn: a reveal the hanging sweep found touching nothing (a lattice's cell
+   *  whose few members stand away from its rectangle's edge drew its reveal as a strip in the air). */
+  noCap: Set<number>;
 }
 
 /** A face's share of the building's triangles (sortByFaceSlice): copied by material, and where each lies in its bucket. */
@@ -508,7 +513,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       let drawn = false;
       if (entry) for (const soup of entry.soups.values()) if (soup.soup.length) { drawn = true; break; }
       const draw: FaceDraw = { seam: live.seam, grid, face: f, drawn, groups: new Map(), meshes: [], core,
-        depthMin: new Float32Array(grid.state.length).fill(-grid.thickness), depthMax: new Float32Array(grid.state.length) };
+        depthMin: new Float32Array(grid.state.length).fill(-grid.thickness), depthMax: new Float32Array(grid.state.length), noCap: new Set() };
       job = { draw, entry, materials: entry ? [...entry.soups.keys()] : [], m: 0, tri: 0 };
       live.claiming.set(f, job);
     }
@@ -821,6 +826,8 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     const rows = g.rowY.length - 1;
     // the reveals and recesses in the wall's core (small: a few quads a broken edge); none on a face that drew nothing
     const caps: number[] = [];
+    /** Each capped cell's reveals in `caps`: [from, to, cell] (floats). */
+    const capRanges: number[] = [];
     const cg = draw.drawn ? capGroup(draw) : null;
     if (cg) {
       const tint = draw.core.tint;
@@ -832,7 +839,8 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       for (let r = 0; r < rows; r++) {
         for (let c = g.rowStart[r]; c < g.rowStart[r + 1]; c++) {
           const st = g.state[c];
-          if (!standingState(st) || !filled.has(c)) continue;
+          if (!standingState(st) || !filled.has(c) || draw.noCap.has(c)) continue;
+          const capFrom = caps.length;
           cellRect(g, c, rect);
           const [u0, u1, y0, y1] = rect;
           const sag = g.sag[c];
@@ -875,6 +883,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
           for (let k = 0; k < _spans.length; k += 2) side(facePoint(g, _spans[k + 1], y1 - sag, front), facePoint(g, _spans[k], y1 - sag, front), [0, 1, 0], 0.85);
           openSpans(g, r - 1, u0, u1, _spans);
           for (let k = 0; k < _spans.length; k += 2) side(facePoint(g, _spans[k], y0 - sag, front), facePoint(g, _spans[k + 1], y0 - sag, front), [0, -1, 0], 0.55);
+          if (caps.length > capFrom) capRanges.push(capFrom, caps.length, c);
         }
       }
     }
@@ -908,7 +917,10 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       };
       for (const [cell, arr] of fg.core) if (cell === STATIC_CELL || (cell === HEAD_CELL ? head : drawnCore(g.state[cell]))) put(cell, arr);
       for (const [cell, arr] of fg.skin) if (drawnSkin(g.state[cell])) put(cell, arr);
-      if (fg === cg) for (let i = 0; i < caps.length; i++) buf[at + i] = caps[i];
+      if (fg === cg) {
+        for (let i = 0; i < caps.length; i++) buf[at + i] = caps[i];
+        for (let k = 0; k < capRanges.length; k += 3) ranges.push((at + capRanges[k]!) / (3 * stride), (at + capRanges[k + 1]!) / (3 * stride), CAP_CELL - capRanges[k + 2]!);
+      }
       const mesh = new THREE.Mesh(interleavedOf(fg.layout, buf, faceSphere(g)), fg.material);
       mesh.matrixAutoUpdate = false;
       bodyToWorld(live, mesh.matrix);
@@ -1810,14 +1822,14 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       const live = lives.get(structureIdx);
       if (!live) return;
       // per mesh: the cells its loose pieces lie in, and what of its standing-with-the-face content they are
-      const byMesh = new Map<THREE.Mesh, { draw: FaceDraw; f: number; cells: Set<number>; still: Map<number, Set<number>> }>();
+      const byMesh = new Map<THREE.Mesh, { draw: FaceDraw; f: number; cells: Set<number>; caps: Set<number>; still: Map<number, Set<number>> }>();
       for (const { mesh, tris } of pieces) {
         let entry = byMesh.get(mesh);
         if (!entry) {
           let draw: FaceDraw | null = null, f = -1;
           for (const [face, d] of live.faces) if (d.meshes.includes(mesh)) { draw = d; f = face; break; }
           if (!draw) continue;
-          entry = { draw, f, cells: new Set(), still: new Map() };
+          entry = { draw, f, cells: new Set(), caps: new Set(), still: new Map() };
           byMesh.set(mesh, entry);
         }
         const ranges = mesh.userData.cellRanges as number[] | undefined;
@@ -1826,14 +1838,17 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
           if (t < ranges[k]! || t >= ranges[k + 1]!) continue;
           const c = ranges[k + 2]!;
           // (what stands with the face — past its rectangle, over no drawn wall — has no cell to fall with: it goes where it hung)
-          if (c >= 0) entry.cells.add(c);
+          if (c <= CAP_CELL) entry.caps.add(CAP_CELL - c);
+          else if (c >= 0) entry.cells.add(c);
           else { let set = entry.still.get(c); if (!set) entry.still.set(c, set = new Set()); set.add(t - ranges[k]!); }
           break;
         }
       }
       const redrawn = new Set<FaceDraw>();
       let salt = 0;
-      for (const [mesh, { draw, f, cells, still }] of byMesh) {
+      for (const [mesh, { draw, f, cells, caps, still }] of byMesh) {
+        // a reveal cut loose (its cell's own triangles stand away from its rectangle's edge): that cell's edges are drawn no more
+        for (const c of caps) if (!cells.has(c)) { draw.noCap.add(c); redrawn.add(draw); }
         if (still.size) {
           const fg = [...draw.groups.values()].find((g) => g.material === mesh.material);
           if (fg) for (const [c, local] of still) {

@@ -35,7 +35,7 @@ import type { CollapsePiece } from './collapsePieces.ts';
 import { createDebrisPhysics, type DebrisPhysics } from './debrisPhysics.ts';
 import { createLandmarkBodies, type LandmarkBodies } from './landmarkBodies.ts';
 import { createStructureFracture, type StructureFracture } from './structureFracture.ts';
-import { createHangingSweep } from './structureHanging.ts';
+import { createHangingSweep, type HangingResult } from './structureHanging.ts';
 import { breachBlowFor } from './structureFx.ts';
 import { STAGE_RUN_TAG, type StructureMask } from './structureMask.ts';
 import type { StructureDebris } from './structureDebris.ts';
@@ -136,6 +136,8 @@ export interface FractureStages {
   warm(at: { x: number; y: number; z: number }, material: THREE.Material | null): number;
   /** Per render frame: the walls' drawing, the pool's steps, the pieces' poses, the cuts laid ahead. */
   update(): void;
+  /** Whether a hanging sweep is due or under way (a late joiner's page settling: receipts wait for it). */
+  hangingPending(): boolean;
   shiftTime(delta: number): void;
   reset(): void;
   stats(): { bodies: number; awake: number; fracture: number; collapses: number; prepared: number; skipped: number; landmark: number };
@@ -266,31 +268,76 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
   const hangingSweep = createHangingSweep({ originalOf: (span) => host?.originalOf?.(span) ?? null, groundAt: o.groundAt });
   const hangingDue = new Map<number, { seam: StructureDamageSeam; settled: boolean }>();
   const fallen = new Set<number>();
+  /** Sweeps run again after one that took something (what it took held what it left: a reveal over a fallen cell), at
+   *  most HANGING_CHAIN a change. */
+  const hangingChain = new Map<number, number>();
+  const HANGING_CHAIN = 3;
+  /** The sweep in progress (one at a time, in steps over the frames: a big building's is a few hundred thousand samples'
+   *  work), the meshes it reads kept for its result. */
+  let hangingJob: { idx: number; due: { seam: StructureDamageSeam; settled: boolean }; runs: THREE.Mesh[]; rooms: THREE.Mesh[];
+    gen: Generator<void, HangingResult, void> } | null = null;
+  /** Steps of the sweep a frame (each about structureHanging's SLICE units of work: under a millisecond on a desktop). */
+  const HANGING_STEPS = 2;
   function markHanging(seam: StructureDamageSeam, settled: boolean): void {
     if (fallen.has(seam.structureIdx)) return;
+    hangingChain.delete(seam.structureIdx);
+    // (a sweep in progress over a structure that changed runs on — a barrage would start it again for ever — and another
+    // reads the change after it: what the first takes was hanging when it read it)
     const was = hangingDue.get(seam.structureIdx);
     hangingDue.set(seam.structureIdx, { seam, settled: settled && (was ? was.settled : true) });
   }
   function sweepHanging(): void {
+    if (hangingJob) {
+      const job = hangingJob;
+      if (fallen.has(job.idx)) { hangingJob = null; return; }
+      // (a storey falling moves what the sweep read: it reads it again once the fall is done)
+      if (host?.falling?.(job.idx)) { hangingJob = null; if (!hangingDue.has(job.idx)) hangingDue.set(job.idx, job.due); return; }
+      for (let n = 0; n < HANGING_STEPS; n++) {
+        const r = job.gen.next();
+        if (r.done) { hangingJob = null; applyHanging(job.idx, job.due, job.runs, job.rooms, r.value); return; }
+      }
+      return;
+    }
+    let blocked: StructureDamageSeam | null = null;
     for (const [idx, due] of hangingDue) {
       if (fallen.has(idx)) { hangingDue.delete(idx); continue; }
-      if (!fracture.idle(idx) || host?.falling?.(idx)) continue;
+      if (!fracture.idle(idx) || host?.falling?.(idx)) { blocked ??= due.seam; continue; }
       hangingDue.delete(idx);
       const tag = tagOf(idx);
       const all = host ? host.o.debris.standingRuns(tag) : [];
       const runs = all.filter((m) => m.userData.room !== true);
       const rooms = [...all.filter((m) => m.userData.room === true), ...fracture.rooms(idx)];
-      const swept = hangingSweep.sweep(due.seam, { faces: fracture.standing(idx), runs, rooms });
-      const groups = swept.groups;
-      // a run or a room whose walls went round it (a rim in the air, a dark box) goes; a face's piece cut loose falls
-      for (const r of swept.runs) host?.o.debris.dropRun(runs[r]!);
-      for (const r of swept.rooms) {
-        const m = rooms[r]!;
-        if (m.userData.room === true && host) host.o.debris.dropRun(m); else fracture.dropRoom(idx, m);
-      }
-      if (swept.faces.length) fracture.dropPieces(idx, swept.faces);
-      if (groups.length) { landmarks.drop(due.seam, groups, due.settled); bump(idx); }
+      hangingJob = { idx, due, runs, rooms, gen: hangingSweep.steps(due.seam, { faces: fracture.standing(idx), runs, rooms }) };
+      sweepHanging();
       return;
+    }
+    // (none to sweep yet: a building whose damage is still being drawn has its intact reading made meanwhile)
+    if (blocked) for (let n = 0; n < HANGING_STEPS && !hangingSweep.prepare(blocked); n++) { /* a step */ }
+  }
+  function applyHanging(idx: number, due: { seam: StructureDamageSeam; settled: boolean }, runs: THREE.Mesh[], rooms: THREE.Mesh[],
+    swept: HangingResult): void {
+    const groups = swept.groups;
+    // a run's piece or a room whose walls went round it (a rim's chunk in the air, a dark box) goes — the piece down as a
+    // body of its own; a face's piece cut loose falls as its cells
+    if (swept.runs.length && host) {
+      landmarks.dropMeshPieces(due.seam, swept.runs.map((r) => ({ mesh: runs[r.run]!, tris: r.tris })), due.settled);
+      const byRun = new Map<number, number[]>();
+      for (const r of swept.runs) { let l = byRun.get(r.run); if (!l) byRun.set(r.run, l = []); for (const t of r.tris) l.push(t); }
+      for (const [r, tris] of byRun) {
+        const m = runs[r]!, count = Math.floor((m.geometry.index?.count ?? 0) / 3);
+        if (tris.length >= count) host.o.debris.dropRun(m); else host.o.debris.dropRunTris(m, tris);
+      }
+      bump(idx);
+    }
+    for (const r of swept.rooms) {
+      const m = rooms[r]!;
+      if (m.userData.room === true && host) host.o.debris.dropRun(m); else fracture.dropRoom(idx, m);
+    }
+    if (swept.faces.length) fracture.dropPieces(idx, swept.faces);
+    if (groups.length) { landmarks.drop(due.seam, groups, due.settled); bump(idx); }
+    if (groups.length || swept.faces.length || swept.runs.length || swept.rooms.length) {
+      const n = (hangingChain.get(idx) ?? 0) + 1;
+      if (n <= HANGING_CHAIN) { hangingDue.set(idx, due); hangingChain.set(idx, n); }
     }
   }
   const bodies: CollapseBodies = createCollapseBodies({
@@ -546,6 +593,9 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       for (let s = 0; s < a.storeys.length; s++) if (Math.abs(a.placement.y + a.storeys[s].y0 - e.y0) < 0.4) k = s;
       if (k >= 0) bodies.dropFloor(e.structureId, k);
     },
+    hangingPending() {
+      return hangingJob !== null || hangingDue.size > 0;
+    },
     update() {
       const now = o.now();
       const dt = Math.max(0, Math.min(0.25, now - last));
@@ -553,7 +603,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       fracture.update();
       bodies.update(dt);
       landmarks.update(dt);
-      if (hangingDue.size) sweepHanging();
+      if (hangingDue.size || hangingJob) sweepHanging();
       flushRefused();
       // a cut laid ahead gone stale (the walls redrawn, a stage laid since): laid again once the walls' drawing is done,
       // one building an update
@@ -597,6 +647,8 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       clamps.length = 0;
       refused.clear();
       hangingDue.clear();
+      hangingChain.clear();
+      hangingJob = null;
       fallen.clear();
       last = o.now();
     },

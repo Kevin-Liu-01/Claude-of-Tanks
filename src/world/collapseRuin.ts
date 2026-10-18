@@ -249,9 +249,9 @@ function cornerPiers(rng: () => number, slot: FractureSlot, cap: number, mesh: D
       // the leg along x (on the z face), then the leg along z (on the x face)
       const lx = legX * shrink * (0.85 + rng() * 0.15), lz = legZ * shrink * (0.85 + rng() * 0.15);
       if (height < 0.6 || !(hy > 0.05)) continue;
-      // (a leg's course over one not drawn would stand in the air: that leg stops)
-      if (legs[0] && !rbox(mesh, fcx + sx * (hw - lx / 2), cy, fcz + sz * (hd - inZ - t / 2), lx / 2, hy, t / 2, 0, slot.tint, shade)) legs[0] = false;
-      if (legs[1] && !rbox(mesh, fcx + sx * (hw - inX - t / 2), cy, fcz + sz * (hd - lz / 2), t / 2, hy, lz / 2, 0, slot.tint, shade)) legs[1] = false;
+      // (a leg's course over one not drawn, or over one capped under its plan, would stand in the air: that leg stops)
+      if (legs[0] && (!rbox(mesh, fcx + sx * (hw - lx / 2), cy, fcz + sz * (hd - inZ - t / 2), lx / 2, hy, t / 2, 0, slot.tint, shade) || rboxTop < top - 0.02)) legs[0] = false;
+      if (legs[1] && (!rbox(mesh, fcx + sx * (hw - inX - t / 2), cy, fcz + sz * (hd - lz / 2), t / 2, hy, lz / 2, 0, slot.tint, shade) || rboxTop < top - 0.02)) legs[1] = false;
       h0 = top;
     }
   }
@@ -320,9 +320,10 @@ function wallFragment(rng: () => number, slot: FractureSlot, cap: number, mesh: 
     const uc = u + lean * (run - l) / 2;
     const hy = (y1 - y0) / 2, shade = 0.8 + rng() * 0.18;
     if (!(height > 0.4) || !(hy > 0.05)) continue;
-    // (a course over one not drawn would stand in the air: the run stops)
+    // (a course over one not drawn, or over one capped under its plan, would stand in the air: the run stops)
     if (!(alongX ? rbox(mesh, fcx + uc, y0 + hy, fcz + side * at, l / 2, hy, t / 2, 0, slot.tint, shade)
       : rbox(mesh, fcx + side * at, y0 + hy, fcz + uc, t / 2, hy, l / 2, 0, slot.tint, shade))) break;
+    if (rboxTop < y1 - 0.02) break;
     y0 = y1;
   }
   mesh.end();
@@ -333,8 +334,12 @@ function wallFragment(rng: () => number, slot: FractureSlot, cap: number, mesh: 
  * slabs 227 round 3: a ruin's stubs and piers stood 1–3 m over the walls as drawn at their spots; one where nothing is
  * drawn is no remnant).
  */
+/** The top of the box rbox drew last (NaN: none) — a course capped under its plan has nothing over it (round 3: the
+ *  course over a capped one stood in the air, a warehouse's leaning post heads over its capped posts). */
+let rboxTop = NaN;
 function rbox(mesh: DamageMeshWriter, cx: number, cy: number, cz: number, hx: number, hy: number, hz: number, yaw: number,
   tint: Rgb, shade: number, footed = true): boolean {
+  rboxTop = NaN;
   if (ruinOf) {
     const c = Math.cos(yaw), s = Math.sin(yaw);
     const ax = hx >= hz ? hx * 0.8 : 0, az = hx >= hz ? 0 : hz * 0.8;
@@ -351,6 +356,7 @@ function rbox(mesh: DamageMeshWriter, cx: number, cy: number, cz: number, hx: nu
     }
   }
   box(mesh, cx, cy, cz, hx, hy, hz, yaw, tint, shade);
+  rboxTop = cy + hy;
   return true;
 }
 
@@ -396,6 +402,42 @@ function strut(mesh: DamageMeshWriter, ax: number, ay: number, az: number, bx: n
   }
 }
 
+/**
+ * A leg's bent length from its head: a prism from the head's top (its corners those of the box under it, axis-aligned at
+ * `h` round (x, z)) to the same square round the tip, and the tip's cap. Written vertex by vertex (no allocation).
+ */
+const _bl = new Float64Array(24);
+function bentLeg(mesh: DamageMeshWriter, x: number, y: number, z: number, h: number, tx: number, ty: number, tz: number,
+  tint: Rgb, shade: number): void {
+  if (!(Math.hypot(tx - x, ty - y, tz - z) > 1e-3)) return;
+  const r = tint[0] * shade, g = tint[1] * shade, b = tint[2] * shade;
+  // corners in order round the square (−,−) (+,−) (+,+) (−,+): base 0..3, tip 4..7
+  for (let k = 0; k < 4; k++) {
+    const sx = k === 1 || k === 2 ? 1 : -1, sz = k >= 2 ? 1 : -1;
+    _bl[k * 3] = x + sx * h; _bl[k * 3 + 1] = y; _bl[k * 3 + 2] = z + sz * h;
+    _bl[12 + k * 3] = tx + sx * h; _bl[12 + k * 3 + 1] = ty; _bl[12 + k * 3 + 2] = tz + sz * h;
+  }
+  const mx = (x + tx) / 2, my = (y + ty) / 2, mz = (z + tz) / 2;
+  const quad = (a: number, bb: number, c: number, d: number): void => {
+    const ax = _bl[bb * 3]! - _bl[a * 3]!, ay = _bl[bb * 3 + 1]! - _bl[a * 3 + 1]!, az = _bl[bb * 3 + 2]! - _bl[a * 3 + 2]!;
+    const cx = _bl[d * 3]! - _bl[a * 3]!, cy = _bl[d * 3 + 1]! - _bl[a * 3 + 1]!, cz = _bl[d * 3 + 2]! - _bl[a * 3 + 2]!;
+    let nx = ay * cz - az * cy, ny = az * cx - ax * cz, nz = ax * cy - ay * cx;
+    const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
+    // outward: away from the member's middle
+    const ox = (_bl[a * 3]! + _bl[c * 3]!) / 2 - mx, oy = (_bl[a * 3 + 1]! + _bl[c * 3 + 1]!) / 2 - my, oz = (_bl[a * 3 + 2]! + _bl[c * 3 + 2]!) / 2 - mz;
+    const flip = nx * ox + ny * oy + nz * oz < 0;
+    if (flip) { nx = -nx; ny = -ny; nz = -nz; }
+    const v0 = mesh.vertex(_bl[a * 3]!, _bl[a * 3 + 1]!, _bl[a * 3 + 2]!, nx, ny, nz, 0, 0, r, g, b);
+    const v1 = mesh.vertex(_bl[bb * 3]!, _bl[bb * 3 + 1]!, _bl[bb * 3 + 2]!, nx, ny, nz, 1, 0, r, g, b);
+    const v2 = mesh.vertex(_bl[c * 3]!, _bl[c * 3 + 1]!, _bl[c * 3 + 2]!, nx, ny, nz, 1, 1, r, g, b);
+    const v3 = mesh.vertex(_bl[d * 3]!, _bl[d * 3 + 1]!, _bl[d * 3 + 2]!, nx, ny, nz, 0, 1, r, g, b);
+    if (!flip) { mesh.triangle(v0, v1, v2); mesh.triangle(v0, v2, v3); }
+    else { mesh.triangle(v0, v2, v1); mesh.triangle(v0, v3, v2); }
+  };
+  for (let k = 0; k < 4; k++) quad(k, (k + 1) % 4, 4 + (k + 1) % 4, 4 + k);
+  quad(4, 5, 6, 7);
+}
+
 interface FrameLegs { legs: ReadonlyArray<{ foot: readonly number[]; head: readonly number[] }>; size: number; bucket: string; colour: Rgb | null }
 /** The frame's lattice reading (latticeFall.ts latticeOf), its own or its first body's. */
 function latticeLegs(anatomy: StructureDamageAnatomy): FrameLegs | null {
@@ -414,6 +456,8 @@ function frameSlot(anatomy: StructureDamageAnatomy): FractureSlot {
   return wall && !MASONRY.has(wall.material) ? wall : STEEL;
 }
 const _stubTop: number[] = [], _stubX: number[] = [], _stubZ: number[] = [];
+/** Each stub's kinked head (its upper length's top middle) and half-thickness: a bent leg goes on from there. */
+const _stubHeadX: number[] = [], _stubHeadZ: number[] = [], _stubHalf: number[] = [];
 /** The last frame's stubs stood on its drawn wall clusters (no bays between them: no girts, no struts across). */
 let stubsDrawn = false;
 /**
@@ -480,7 +524,7 @@ function tallWallStubs(rng: () => number, slot: FractureSlot, cap: number, mesh:
 function frameStubs(anatomy: StructureDamageAnatomy, rng: () => number, cap: number, mesh: DamageMeshWriter, share: number,
   fallback: FractureSlot | null, named = true): void {
   // (a stub-less return leaves no earlier building's stubs for frameTier)
-  _stubTop.length = 0; _stubX.length = 0; _stubZ.length = 0; stubsDrawn = false;
+  _stubTop.length = 0; _stubX.length = 0; _stubZ.length = 0; _stubHeadX.length = 0; _stubHeadZ.length = 0; _stubHalf.length = 0; stubsDrawn = false;
   const lattice = latticeLegs(anatomy);
   // (destruction-slabs 227) a frame by what it draws (no lattice reading, no frame's name: a tank on its legs, a fence)
   // stands its stubs on its own drawn legs (the ground storey's wall clusters, to their drawn tops), never a four-legged
@@ -499,7 +543,7 @@ function frameStubs(anatomy: StructureDamageAnatomy, rng: () => number, cap: num
   if (!bucket || !roomFor(mesh, 16) || !mesh.begin(bucket, 'remnant')) return;
   const tint: Rgb = lattice?.colour ?? fallback?.tint ?? [0.42, 0.42, 0.44];
   const t = Math.max(0.12, Math.min(0.5, lattice ? lattice.size : 0.2));
-  _stubTop.length = 0; _stubX.length = 0; _stubZ.length = 0;
+  _stubTop.length = 0; _stubX.length = 0; _stubZ.length = 0; _stubHeadX.length = 0; _stubHeadZ.length = 0; _stubHalf.length = 0;
   const legs = lattice ? lattice.legs : drawn;
   const n = legs ? legs.length : 4;
   const sx = tall ? tall.x : fcx, sz = tall ? tall.z : fcz;
@@ -528,7 +572,7 @@ function frameStubs(anatomy: StructureDamageAnatomy, rng: () => number, cap: num
     // the leg to the kink, then the kinked upper length to the buckle
     box(mesh, (foot[0]! + x) / 2, (foot[1]! - FOOT_M + mid) / 2, (foot[2]! + z) / 2, t / 2, (mid - foot[1]! + FOOT_M) / 2, t / 2, 0, tint, shade);
     box(mesh, x + kx, (mid + top) / 2, z + kz, t / 2, (top - mid) / 2, t / 2, 0, tint, shade);
-    _stubTop.push(top); _stubX.push(x); _stubZ.push(z);
+    _stubTop.push(top); _stubX.push(x); _stubZ.push(z); _stubHeadX.push(x + kx); _stubHeadZ.push(z + kz); _stubHalf.push(t / 2);
   }
   // the girt ring under the lowest buckle (not between a drawn frame's clusters: they need not be a frame's bays)
   let low = Infinity;
@@ -590,7 +634,9 @@ function frameTier(rng: () => number, cap: number, mesh: DamageMeshWriter, tier:
       const tx = x + sgn * (ox / ol) * reach, tz = z + sgn * (oz / ol) * reach;
       const drawnTip = ruinOf ? drawnOverAt(ruinOf, tx, tz, 0) : Infinity;
       const y1 = Math.min(cap, top * (1.3 + rng() * 0.15), Number.isFinite(drawnTip) ? Math.max(0.4, drawnTip + 0.4) : Infinity);
-      strut(mesh, x, top, z, tx, y1, tz, t * 0.9, tint, 0.8 + rng() * 0.15);
+      // (destruction-slabs 227 round 3) from the stub's kinked head itself, its corners the head's (one member bent, as the
+      // slab check reads it: a strut from beside the head stood held at one end only, a board in the air)
+      bentLeg(mesh, _stubHeadX[k]!, top, _stubHeadZ[k]!, _stubHalf[k]!, tx, y1, tz, tint, 0.8 + rng() * 0.15);
     } else {
       const j = (k + (n >> 1)) % n;
       if (j === k) continue;
@@ -637,7 +683,7 @@ function framePosts(rng: () => number, slot: FractureSlot, cap: number, mesh: Da
       const h = Math.min(h0, loose && ruinOf ? 0.8 * wallTopAt(ruinOf, x, z, 0) : topOfWallIn(px, pz, pnx, pnz, d));
       if (h < 0.5) continue;
       const h1 = h * 0.55;
-      if (rbox(mesh, x, (h1 - FOOT_M) / 2, z, t / 2, (h1 + FOOT_M) / 2, t / 2, 0, slot.tint, shade, false)) {
+      if (rbox(mesh, x, (h1 - FOOT_M) / 2, z, t / 2, (h1 + FOOT_M) / 2, t / 2, 0, slot.tint, shade, false) && rboxTop >= h1 - 0.02) {
         rbox(mesh, x + (alongX ? lean : 0), (h1 + h) / 2, z + (alongX ? 0 : lean), t / 2, (h - h1) / 2, t / 2, 0, slot.tint, shade, false);
       }
     }

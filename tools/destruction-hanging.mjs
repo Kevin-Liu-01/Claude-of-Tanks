@@ -25,7 +25,7 @@
  */
 
 export const HANG = Object.freeze({
-  cellM: 0.4, voxelM: 0.25, spacingM: 0.2, bandM: 0.8, liftM: 1.0, sizeM: 1.0, areaM2: 0.2,
+  cellM: 0.4, voxelM: 0.25, spacingM: 0.3, bandM: 0.8, liftM: 1.0, sizeM: 1.0, areaM2: 0.2,
   bearShare: 0.5, dropShare: 0.25, groundTouchM: 0.3, twinM: 0.1,
 });
 
@@ -34,25 +34,37 @@ const cellKey = (i, k) => (i + 1048576) * CELL_BITS + (k + 1048576);
 const VOX_X = 2 ** 34, VOX_Y = 2 ** 17;
 const voxKey = (i, j, k) => (i + 65536) * VOX_X + (j + 65536) * VOX_Y + (k + 65536);
 
-/** Samples of the listed triangles about `spacing` apart (at least each one's centroid; a long thin one along its
- *  longest edge): xyz, and the triangle each came from. */
+/** Samples of the listed triangles `spacing` apart: rows across each from its longest edge to the opposite corner, each
+ *  row `spacing`-stepped along (a sliver gets a line of them); its corners and edges among them (two members meeting at a
+ *  point touch there: a bent stump's knee) — as the runtime's sweep samples them (src/fx/structureHanging.ts sampleA3):
+ *  xyz, and the triangle each came from. */
 function sampleTriangles(tris, list, spacing, xyz, owner) {
-  const a2 = spacing * spacing;
   for (const t of list) {
     const o = t * 9;
     const ax = tris[o + 3] - tris[o], ay = tris[o + 4] - tris[o + 1], az = tris[o + 5] - tris[o + 2];
-    const bx = tris[o + 6] - tris[o], by = tris[o + 7] - tris[o + 1], bz = tris[o + 8] - tris[o + 2];
-    const area = 0.5 * Math.hypot(ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx);
-    if (!(area > 1e-8)) continue;
-    const la = Math.hypot(ax, ay, az), lb = Math.hypot(bx, by, bz), lc = Math.hypot(bx - ax, by - ay, bz - az);
-    const k = Math.max(1, Math.min(600, Math.max(Math.round(area / a2), Math.round(Math.max(la, lb, lc) / spacing))));
-    for (let s = 0; s < k; s++) {
-      let u = ((s + 0.5) * 0.618034) % 1, v = ((s + 0.5) * 0.754878) % 1;
-      if (u + v > 1) { u = 1 - u; v = 1 - v; }
-      if (k === 1) { u = 1 / 3; v = 1 / 3; }
-      xyz.push(tris[o] + ax * u + bx * v, tris[o + 1] + ay * u + by * v, tris[o + 2] + az * u + bz * v);
-      owner.push(t);
+    const bx0 = tris[o + 6] - tris[o], by0 = tris[o + 7] - tris[o + 1], bz0 = tris[o + 8] - tris[o + 2];
+    if (!(0.5 * Math.hypot(ay * bz0 - az * by0, az * bx0 - ax * bz0, ax * by0 - ay * bx0) > 1e-8)) continue;
+    const l01 = (tris[o + 3] - tris[o]) ** 2 + (tris[o + 4] - tris[o + 1]) ** 2 + (tris[o + 5] - tris[o + 2]) ** 2;
+    const l12 = (tris[o + 6] - tris[o + 3]) ** 2 + (tris[o + 7] - tris[o + 4]) ** 2 + (tris[o + 8] - tris[o + 5]) ** 2;
+    const l20 = (tris[o] - tris[o + 6]) ** 2 + (tris[o + 1] - tris[o + 7]) ** 2 + (tris[o + 2] - tris[o + 8]) ** 2;
+    const p = l01 >= l12 && l01 >= l20 ? 0 : l12 >= l20 ? 3 : 6, q = (p + 3) % 9, r = (p + 6) % 9;
+    const L = Math.sqrt(Math.max(l01, l12, l20));
+    const px = tris[o + p], py = tris[o + p + 1], pz = tris[o + p + 2];
+    const ex = tris[o + q] - px, ey = tris[o + q + 1] - py, ez = tris[o + q + 2] - pz;
+    const rx = tris[o + r], ry = tris[o + r + 1], rz = tris[o + r + 2];
+    const cx = ey * (rz - pz) - ez * (ry - py), cy = ez * (rx - px) - ex * (rz - pz), cz = ex * (ry - py) - ey * (rx - px);
+    const h = L > 1e-9 ? Math.hypot(cx, cy, cz) / L : 0;
+    const kl = Math.max(1, Math.min(200, Math.ceil(L / spacing))), kt = Math.max(1, Math.min(200, Math.ceil(h / spacing)));
+    for (let j = 0; j < kt; j++) {
+      const tt = j / kt, ks = Math.max(1, Math.ceil(kl * (1 - tt)));
+      for (let i = 0; i <= ks; i++) {
+        const sv = i / ks, bx = px + ex * sv, by = py + ey * sv, bz = pz + ez * sv;
+        xyz.push(bx + (rx - bx) * tt, by + (ry - by) * tt, bz + (rz - bz) * tt);
+        owner.push(t);
+      }
     }
+    xyz.push(rx, ry, rz);
+    owner.push(t);
   }
 }
 
@@ -146,7 +158,7 @@ function insideHull(pts, x, z) {
  * extentsM, liftM, tris }.
  *
  * Support propagates up from the ground: a piece is held only by the ground or by pieces that are held themselves (two
- * verge boards side by side, each beside the other, hold nothing up), a piece counting as held once over 35 % of its
+ * verge boards side by side, each beside the other, hold nothing up), a piece counting as held once over half of its
  * envelope is or its envelope's middle lies inside what holds it (bears: a roof's side held along its eave and up its
  * gables). A piece that bore in the intact building and bears no more, its held share down by a quarter or more, hangs.
  */

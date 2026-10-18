@@ -84,4 +84,28 @@ const r = sweep.sweep(seam, { faces: [face], runs: [], rooms: [room] });
 assert.equal(r.rooms.length, 1, 'a room touching nothing that stands goes');
 assert.equal(r.faces.length, 1, 'the face\'s piece over nothing comes down, its piece on the ground stands');
 assert.ok(r.faces[0].tris.length === 12, `the loose piece is the upper box (${r.faces[0]?.tris.length} triangles)`);
-console.log('structureHanging selftest: nothing comes down intact; a hidden roof\'s chimney and ladder come down, a sign stands; a hidden mast\'s sails come down; a loose room and a face\'s loose piece go — ok');
+
+// held, then not (round 3, the slab check's second reading): a frame's infill taken by the fracture, its top drawn as a
+// face's piece under the beam — touching the frame (its cluster stands) yet held by nothing under it, where the infill
+// held it in the intact building: it comes down. A wall over an arcade drawn as a face's piece, held only at its columns'
+// heads as the intact building held it there: it stands. A run's chunk in the air goes, its piece on the ground stands.
+const frame = bucket('frame', [
+  ['wall', [...box(40, 0, 0, 40.3, 4, 0.3), ...box(43.7, 0, 0, 44, 4, 0.3), ...box(40, 4, 0, 44, 4.3, 0.3)]],
+  ['wall', box(40.3, 0, 0, 43.7, 4, 0.3)],
+  ['wall', [...box(50, 0, 0, 50.3, 3, 0.3), ...box(54, 0, 0, 54.3, 3, 0.3)]],
+  ['wall', box(50, 3, 0, 54.3, 5, 0.3)],
+]);
+const seam2 = { structureIdx: 2, spans: frame.spans };
+const sweep2 = createHangingSweep({ originalOf: (span) => originals.get(span) ?? null, groundAt: () => 0 });
+assert.equal(sweep2.sweep(seam2, none).groups.length, 0, 'nothing comes down from the intact frame and arcade');
+hide(frame.spans[1]); hide(frame.spans[3]);
+const infillTop = mesh(box(41, 3, 0, 43, 4, 0.3));
+const arcadeWall = mesh(box(50, 3, 0, 54.3, 5, 0.3));
+const ix = (m) => { const n = m.geometry.getAttribute('position').count; m.geometry.setIndex([...Array(n).keys()]); return m; };
+const run = ix(mesh([...box(46, 0, 0, 47, 1, 1), ...box(46, 8, 0, 47, 9, 1)]));
+const r2 = sweep2.sweep(seam2, { faces: [infillTop, arcadeWall], runs: [run], rooms: [] });
+assert.ok(r2.faces.some((f) => f.mesh === infillTop), 'the infill\'s top under the beam, held by nothing under it, comes down');
+assert.ok(!r2.faces.some((f) => f.mesh === arcadeWall), 'the wall over the arcade, held at its columns as built, stands');
+assert.equal(r2.runs.length, 1, `one of the run's pieces goes (${JSON.stringify(r2.runs.map((r) => r.tris.length))})`);
+assert.ok(r2.runs[0].run === 0 && r2.runs[0].tris.length === 12 && r2.runs[0].tris.every((t) => t >= 12), 'the run\'s chunk in the air goes, its piece on the ground stands');
+console.log('structureHanging selftest: nothing comes down intact; a hidden roof\'s chimney and ladder come down, a sign stands; a hidden mast\'s sails come down; a loose room and a face\'s loose piece go; a face\'s piece held then not comes down, one held as built stands; a run\'s loose chunk goes alone — ok');

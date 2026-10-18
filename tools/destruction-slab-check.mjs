@@ -59,7 +59,7 @@
  * snapshot flags a stray slab.
  */
 import * as THREE from 'three';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { deflateSync } from 'node:zlib';
 import path from 'node:path';
@@ -1061,8 +1061,18 @@ export async function runSlabCheck({
     const hangingJudge = createHangingJudge(spanTrianglesAll(seam.spans), seam.spans.map((sp) => (sp.mesh.name || 'span').replace(/^props-bucket-/, '')), ground0, floorUnder);
     /** Its findings at a snapshot: `spansDrawn` the world's spans as the CPU holds them, or false (gone: a fallen building's). */
     const bucketOfMaterial = new Map([...worldMaterials].map(([b, m]) => [m, b]));
-    const hangingAt = (meshes, spansDrawn, groundFn) => hangingJudge(spansDrawn ? spanTrianglesAll(seam.spans) : null,
-      meshes.map((d) => ({ name: bucketOfMaterial.has(d.raw) ? `${d.name} (${bucketOfMaterial.get(d.raw)})` : d.name, tris: d.tris, standing: STANDING_MESH.test(d.name) })), groundFn).map(hangingFinding);
+    const hangingAt = (meshes, spansDrawn, groundFn) => {
+      const found = hangingJudge(spansDrawn ? spanTrianglesAll(seam.spans) : null,
+        meshes.map((d) => ({ name: bucketOfMaterial.has(d.raw) ? `${d.name} (${bucketOfMaterial.get(d.raw)})` : d.name, tris: d.tris, standing: STANDING_MESH.test(d.name) })), groundFn);
+      // (COT_HANG_DUMP=<file>: each finding's triangles and every drawn mesh's within 2 m of it, for a close look)
+      if (process.env.COT_HANG_DUMP && found.length) {
+        const near = (t, c) => { for (let o = 0; o + 8 < t.length; o += 9) if (Math.abs(t[o] - c[0]) < 2 && Math.abs(t[o + 1] - c[1]) < 2 && Math.abs(t[o + 2] - c[2]) < 2) return true; return false; };
+        const out = found.map((f) => ({ id, clock, mesh: f.mesh, reason: f.reason, centre: f.centre, tris: Array.from(f.tris ?? []),
+          near: meshes.filter((d) => near(d.tris, f.centre)).map((d) => ({ name: d.name, tris: Array.from(d.tris) })) }));
+        appendFileSync(process.env.COT_HANG_DUMP, JSON.stringify(out) + '\n');
+      }
+      return found.map(hangingFinding);
+    };
     const floorLists = drawnSpanTriangles(seam.spans.filter((sp) => sp.partClass !== 'roof'));
     const topFloorY = a.placement.y + (a.storeys.length ? a.storeys[a.storeys.length - 1].y0 : 0) + 0.5;
     const standingFloorAt = floorsOf(floorLists, topFloorY);
@@ -1379,7 +1389,13 @@ export async function runSlabCheck({
           else if (type === DESTRUCTION_BUS_EVENTS.breach) { rstages.breach(e, seamOf(e.structureId)); rfx?.breach(e); }
         }
         // the page's first frames (what it laid settles where it lands)
-        for (let k = 0; k < 150; k++) { rclock += STEP; rstages.update(); rfx?.update(); rdebris.update(); rbodies?.update(); }
+        // (and its hanging sweeps' end, and 1.5 s for what they took down to land: they run in steps a frame, a big building's
+        // intact reading first — a late joiner's page reads every building it lays; at most 15 s)
+        for (let k = 0, quiet = -1; k < 900; k++) {
+          rclock += STEP; rstages.update(); rfx?.update(); rdebris.update(); rbodies?.update();
+          if (rfx?.hangingPending?.()) quiet = -1; else if (quiet < 0) quiet = k;
+          if (k >= 149 && quiet >= 0 && k >= quiet + 90) break;
+        }
         const rgone = rfelled ? new Set(rdebris.standingRuns(runTag)) : null;
         const raccept = (m) => (m.parent === rgroup ? own.test(m.name)
           : m.parent === rdebris.group ? !rgone?.has(m) && ownRun(m) : true);
