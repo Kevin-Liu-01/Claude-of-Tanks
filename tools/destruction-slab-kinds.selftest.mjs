@@ -10,12 +10,21 @@
 // untextured or degenerate, no run off the walls, no remnant taller than the building is drawn there, no fallen roof slab
 // drawn off its body. A finding KNOWN names (its building, the mesh, the reason) is a judged exception; one that stops
 // flagging leaves the list (the ratchet).
+// (round 3, the critic: minutes in npm test, any world change ran it all again) Each kind's run carries a fingerprint — the
+// structure as built (its spans, its anatomy, its enclosure), its face and staging, and the destruction code's hash (the
+// closures of the stages, the fracture, the kits, the enclosure, the ruin, the sim's table and this detector) — and a
+// fingerprint a clean run (no finding at all) passed before is not run again: a world change runs the kinds it changed, a
+// change to the destruction code runs them all. Each map is still built (what a kind is comes from its build).
 //   COT_SLAB_KINDS_WORKERS=<n> (default a third of the CPUs, at most 6); COT_SLAB_KINDS_MAPS=<map,...> (a subset);
-//   COT_SLAB_KINDS_DUMP=<file> (write the runs' findings) and COT_SLAB_KINDS_FROM=<file> (judge a dump, no runs: KNOWN's edits)
+//   COT_SLAB_KINDS_DUMP=<file> (write the runs' findings) and COT_SLAB_KINDS_FROM=<file> (judge a dump, no runs: KNOWN's edits);
+//   COT_SELFTEST_CACHE=0 or --all: every kind runs
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
-import { Worker, isMainThread, parentPort } from 'node:worker_threads';
+import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
+import { createHash } from 'node:crypto';
+import { mkdirSync } from 'node:fs';
+import path from 'node:path';
 
 /** The receipt's staging: the census's (60 rounds, 40 snapshots, four faces) cut to what a kind's phases need. */
 const STAGING = Object.freeze({ perBuilder: 1, storeys: [0, 1, 2, 3], rounds: 28, settleS: 5, maxSnapshots: 12 });
@@ -30,11 +39,14 @@ function faceOf(builder, kit) {
 if (!isMainThread) {
   // a worker: maps one at a time until the queue runs dry, each report back slimmed to what the verdict reads
   const { runSlabCheck } = await import('./destruction-slab-check.mjs');
+  const passed = new Set(workerData?.passed ?? []);
+  const fingerprint = workerData?.salt ? { salt: workerData.salt, cached: (fp) => passed.has(fp) } : null;
   parentPort.on('message', async (mapId) => {
     if (mapId === null) { parentPort.close(); return; }
     try {
-      const report = await runSlabCheck({ mapId, ...STAGING, facesFor: (_id, builder, kit) => [faceOf(builder, kit)] });
+      const report = await runSlabCheck({ mapId, ...STAGING, facesFor: (_id, builder, kit) => [faceOf(builder, kit)], fingerprint });
       parentPort.postMessage({ mapId, rows: report.rows.map((r) => ({ id: r.id, face: r.face, builder: r.builder, kit: r.kit, pass: r.pass,
+        fingerprint: r.fingerprint ?? null, cached: !!r.cached,
         spanIssues: r.spanIssues, snapshots: r.snapshots.length,
         findings: r.snapshots.flatMap((p) => p.findings.map((f) => ({ t: p.t, phase: p.phase, mesh: f.mesh, orientation: f.orientation,
           extentsM: f.extentsM, reasons: f.reasons }))) })) });
@@ -81,12 +93,37 @@ if (!isMainThread) {
     ['skybridge #7', RIM, OFF, "breach rims in the needle tower's open steel frame, past its thin members"],
   ]);
 
+  // the destruction code's hash (each entry's import closure, as the selftest cache reads it) and the passed fingerprints
+  const { createSelftestCache, REPO_ROOT } = await import('./selftest-cache.mjs');
+  const { resolveSelftestCacheDir } = await import('./selftest-cache-dir.mjs');
+  const useCache = process.env.COT_SELFTEST_CACHE !== '0' && !process.argv.includes('--all') && !process.env.COT_SLAB_KINDS_FROM;
+  const CODE = ['src/fx/structureStages.ts', 'src/fx/fractureStages.ts', 'src/fx/structureDebris.ts', 'src/fx/rubbleBodies.ts', 'src/fx/structureMask.ts',
+    'src/sim/structureDamage.ts', 'src/sim/matchRuleset.ts', 'src/game/studioDestruction.ts', 'src/world/structureDamageSeam.ts',
+    'src/world/destructionKit.ts', 'src/world/destructionDefaultKit.ts', 'src/world/maps/regional/damage.ts', 'src/world/landmarks/damage.ts',
+    'src/world/collapseRuin.ts', 'src/world/structureEnclosure.ts', 'tools/destruction-hanging.mjs', 'tools/destruction-slab-check.mjs'];
+  let salt = null, storePath = null, passedStore = { v: 1, fingerprints: [] };
+  if (useCache) {
+    const cache = createSelftestCache({ root: REPO_ROOT, env: { ...process.env, COT_SELFTEST_CACHE: '1' } });
+    const h = createHash('sha1');
+    for (const f of CODE) {
+      // (the detector and this file by their own bytes: their dynamic imports of the world build are the fingerprint's)
+      if (f.startsWith('tools/destruction-slab')) h.update(`${f}:${readFileSync(path.join(REPO_ROOT, f))}\n`);
+      else h.update(`${f}:${cache.inputKey(f).key}\n`);
+    }
+    h.update(JSON.stringify(STAGING));
+    salt = h.digest('hex');
+    const dir = resolveSelftestCacheDir(REPO_ROOT, process.env).dir;
+    storePath = path.join(dir, 'destruction-slab-kinds.json');
+    try { passedStore = JSON.parse(readFileSync(storePath, 'utf8')); } catch { /* none yet */ }
+    if (passedStore?.v !== 1 || !Array.isArray(passedStore.fingerprints)) passedStore = { v: 1, fingerprints: [] };
+  }
   const maps = process.env.COT_SLAB_KINDS_MAPS ? process.env.COT_SLAB_KINDS_MAPS.split(',') : [...MAP_IDS];
   const workers = Math.max(1, Number(process.env.COT_SLAB_KINDS_WORKERS ?? Math.min(6, Math.max(1, Math.floor(os.availableParallelism() / 3)))));
   const queue = process.env.COT_SLAB_KINDS_FROM ? [] : [...maps];
   const results = process.env.COT_SLAB_KINDS_FROM ? JSON.parse(readFileSync(process.env.COT_SLAB_KINDS_FROM, 'utf8')).filter((r) => maps.includes(r.mapId)) : [];
   await Promise.all(Array.from({ length: Math.min(workers, queue.length) }, () => new Promise((resolve) => {
-    const worker = new Worker(new URL(import.meta.url), { resourceLimits: { maxOldGenerationSizeMb: 4096 } });
+    const worker = new Worker(new URL(import.meta.url), { resourceLimits: { maxOldGenerationSizeMb: 4096 },
+      workerData: { salt, passed: passedStore.fingerprints } });
     let current = null, timer = null;
     const feed = () => {
       clearTimeout(timer);
@@ -106,7 +143,13 @@ if (!isMainThread) {
   })));
 
   if (process.env.COT_SLAB_KINDS_DUMP) writeFileSync(process.env.COT_SLAB_KINDS_DUMP, JSON.stringify(results));
-  let runs = 0, snaps = 0;
+  // the fingerprints of the clean runs (no finding at all, no span issue) join the store
+  if (storePath) {
+    const all = new Set(passedStore.fingerprints);
+    for (const r of results) for (const row of r.rows ?? []) if (row.fingerprint && !row.cached && !row.findings.length && !row.spanIssues.length) all.add(row.fingerprint);
+    try { mkdirSync(path.dirname(storePath), { recursive: true }); writeFileSync(storePath, JSON.stringify({ v: 1, fingerprints: [...all].slice(-20000) })); } catch { /* a store that cannot be written runs them next time */ }
+  }
+  let runs = 0, snaps = 0, cachedRuns = 0;
   const kinds = new Set(), flagged = [], used = new Set();
   const excused = (key, f) => {
     const why = KNOWN.findIndex(([at, mesh, reason]) => at === key && mesh.test(f.mesh) && f.reasons.some((r) => reason.test(r)));
@@ -117,6 +160,7 @@ if (!isMainThread) {
     assert.ok(!r.error, `${r.mapId}: the detector reported: ${r.error}`);
     for (const row of r.rows) {
       runs++;
+      if (row.cached) cachedRuns++;
       kinds.add(`${r.mapId} ${row.builder}|${row.kit}`);
       snaps += row.snapshots;
       const key = `${r.mapId} #${row.id}`;
@@ -131,6 +175,6 @@ if (!isMainThread) {
   assert.deepEqual(flagged, [], `every destructible kind passes the stray-slab check:\n${flagged.join('\n')}`);
   const stale = KNOWN.filter(([at], i) => maps.includes(at.split(' ')[0]) && !used.has(i)).map(([at, mesh, reason]) => `${at} ${mesh} ${reason}`);
   assert.deepEqual(stale, [], `known exceptions that no longer flag leave KNOWN: ${stale.join(', ')}`);
-  console.log(`destruction-slab-kinds selftest: ${kinds.size} kinds on ${results.length} maps (${runs} runs, a face each by name), ${snaps} snapshots, `
+  console.log(`destruction-slab-kinds selftest: ${kinds.size} kinds on ${results.length} maps (${runs} runs, a face each by name; ${cachedRuns} passed before at the same fingerprint), ${snaps} snapshots, `
     + `none flags a stray slab${used.size ? ` (${used.size} judged exceptions)` : ''} — ok`);
 }

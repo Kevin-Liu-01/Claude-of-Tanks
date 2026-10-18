@@ -99,6 +99,8 @@ export interface StructureFracture {
   rooms(structureIdx: number): THREE.Mesh[];
   /** One room out (its walls went round it). */
   dropRoom(structureIdx: number, mesh: THREE.Mesh): void;
+  /** Pieces of its faces cut loose (structureHanging.ts: touching nothing that stands): their cells fall as a body each. */
+  dropPieces(structureIdx: number, pieces: ReadonlyArray<{ mesh: THREE.Mesh; tris: readonly number[] }>): void;
   /** The building came down: its standing faces leave (the collapse drew them); its bodies and heaps stay. */
   release(structureIdx: number): void;
   /** A storey dropped (sections on): the rooms laid in it and over it go (destruction-slabs 227: they stood in the air). */
@@ -886,7 +888,10 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       if (!total) continue;
       const buf = new Float32Array(total);
       let at = 0;
+      // (each cell's triangles in the mesh: a piece of it cut loose is found by its cells)
+      const ranges: number[] = [];
       const put = (cell: number, arr: Float32Array): void => {
+        ranges.push(at / (3 * stride), (at + arr.length) / (3 * stride), cell);
         buf.set(arr, at);
         if (cell >= 0) {
           // (dcore 2026-10-11, the decisive wave's house: a plastered timber frame's cracked cells shoved in and out read
@@ -915,6 +920,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       mesh.userData.structureFractureFace = true;
+      mesh.userData.cellRanges = ranges;
       mesh.name = `fx-fracture-face-${live.seam.structureIdx}`;
       o.group.add(mesh);
       draw.meshes.push(mesh);
@@ -1800,6 +1806,56 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       return out;
     },
     rooms: (structureIdx) => [...(lives.get(structureIdx)?.room ?? [])],
+    dropPieces(structureIdx, pieces) {
+      const live = lives.get(structureIdx);
+      if (!live) return;
+      // per mesh: the cells its loose pieces lie in, and what of its standing-with-the-face content they are
+      const byMesh = new Map<THREE.Mesh, { draw: FaceDraw; f: number; cells: Set<number>; still: Map<number, Set<number>> }>();
+      for (const { mesh, tris } of pieces) {
+        let entry = byMesh.get(mesh);
+        if (!entry) {
+          let draw: FaceDraw | null = null, f = -1;
+          for (const [face, d] of live.faces) if (d.meshes.includes(mesh)) { draw = d; f = face; break; }
+          if (!draw) continue;
+          entry = { draw, f, cells: new Set(), still: new Map() };
+          byMesh.set(mesh, entry);
+        }
+        const ranges = mesh.userData.cellRanges as number[] | undefined;
+        if (!ranges) continue;
+        for (const t of tris) for (let k = 0; k < ranges.length; k += 3) {
+          if (t < ranges[k]! || t >= ranges[k + 1]!) continue;
+          const c = ranges[k + 2]!;
+          // (what stands with the face — past its rectangle, over no drawn wall — has no cell to fall with: it goes where it hung)
+          if (c >= 0) entry.cells.add(c);
+          else { let set = entry.still.get(c); if (!set) entry.still.set(c, set = new Set()); set.add(t - ranges[k]!); }
+          break;
+        }
+      }
+      const redrawn = new Set<FaceDraw>();
+      let salt = 0;
+      for (const [mesh, { draw, f, cells, still }] of byMesh) {
+        if (still.size) {
+          const fg = [...draw.groups.values()].find((g) => g.material === mesh.material);
+          if (fg) for (const [c, local] of still) {
+            const arr = fg.core.get(c);
+            if (!arr) continue;
+            const per = 3 * fg.layout.stride, n = Math.floor(arr.length / per);
+            const keep = new Float32Array(arr.length);
+            let o = 0;
+            for (let t = 0; t < n; t++) if (!local.has(t)) { keep.set(arr.subarray(t * per, (t + 1) * per), o); o += per; }
+            fg.core.set(c, keep.slice(0, o));
+          }
+          redrawn.add(draw);
+        }
+        const list: number[] = [];
+        for (const c of cells) if (draw.grid.state[c] !== CELL_FALLEN && draw.grid.state[c] !== CELL_GONE) list.push(f, c);
+        if (!list.length) continue;
+        for (let k = 0; k < list.length; k += 2) draw.grid.state[list[k + 1]!] = CELL_FALLEN;
+        spawnCells(live, list, 0, -0.5, 0, 0.6, damageSeed(live.seam.anatomy.seed, 7004, structureIdx, salt++));
+        redrawn.add(draw);
+      }
+      for (const d of redrawn) { redraw(live, d); live.version++; }
+    },
     dropRoom(structureIdx, mesh) {
       const live = lives.get(structureIdx);
       if (!live) return;

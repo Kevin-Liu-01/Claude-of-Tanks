@@ -27,6 +27,12 @@ import type { StructureDamageSeam, StructureSpan } from '../world/structureDamag
 
 /** A triangle of a span (its first vertex, absolute in the span's position attribute). */
 export interface HangingTri { span: StructureSpan; at: number }
+/** What the presentation draws of a structure besides its world parts: the fracture's redrawn faces (read piece by piece),
+ *  the kit's standing runs (rims, remnants, stubs) and its rooms (a storey's room behind its holes). */
+export interface HangingDrawn { faces: readonly THREE.Mesh[]; runs: readonly THREE.Mesh[]; rooms: readonly THREE.Mesh[] }
+/** What comes down: the world's parts (a body's triangles a cluster), the faces' pieces cut loose (each its mesh and its
+ *  triangles), and the runs and rooms (by index) touching nothing that stands. */
+export interface HangingResult { groups: HangingTri[][]; faces: Array<{ mesh: THREE.Mesh; tris: number[] }>; runs: number[]; rooms: number[] }
 
 const CELL = 0.5, VOX = 0.25, SPACING = 0.3, BAND = 0.8, BEAR = 0.5, DROP = 0.25, TOUCH = 0.3, MOVED = 0.002;
 const CELL_BITS = 2 ** 21;
@@ -65,7 +71,7 @@ export interface HangingSweep {
    * which of its `rooms` (a storey's room behind its holes) stand touching nothing that stands (their walls gone round
    * them: a dark box in the air) — they go.
    */
-  sweep(seam: StructureDamageSeam, holders: readonly THREE.Mesh[], rooms?: readonly THREE.Mesh[]): { groups: HangingTri[][]; rooms: number[] };
+  sweep(seam: StructureDamageSeam, drawn: HangingDrawn): HangingResult;
   reset(): void;
 }
 
@@ -331,21 +337,69 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
     return Float32Array.from(out);
   }
 
+  /** A face mesh's connected pieces (corners welded at a millimetre): each its triangles and their samples (world). */
+  function facePieces(mesh: THREE.Mesh): Array<{ tris: number[]; xyz: Float32Array }> {
+    const g = mesh.geometry as THREE.BufferGeometry | undefined;
+    const pos = g?.getAttribute('position');
+    if (!pos) return [];
+    mesh.updateWorldMatrix(true, false);
+    const M = mesh.matrixWorld, ix = g!.index;
+    const n = Math.floor((ix ? ix.count : pos.count) / 3);
+    const parent = new Int32Array(n);
+    for (let t = 0; t < n; t++) parent[t] = t;
+    const find = (t: number): number => { while (parent[t] !== t) { parent[t] = parent[parent[t]!]!; t = parent[t]!; } return t; };
+    const owner = new Map<string, number>();
+    for (let t = 0; t < n; t++) for (let k = 0; k < 3; k++) {
+      const i = ix ? ix.getX(t * 3 + k) : t * 3 + k;
+      const key = `${Math.round(pos.getX(i) * 1000)},${Math.round(pos.getY(i) * 1000)},${Math.round(pos.getZ(i) * 1000)}`;
+      const prev = owner.get(key);
+      if (prev === undefined) owner.set(key, t); else { const ra = find(prev), rb = find(t); if (ra !== rb) parent[ra] = rb; }
+    }
+    const groups = new Map<number, number[]>();
+    for (let t = 0; t < n; t++) { const r = find(t); let l = groups.get(r); if (!l) groups.set(r, l = []); l.push(t); }
+    const out: Array<{ tris: number[]; xyz: Float32Array }> = [];
+    for (const tris of groups.values()) {
+      const xyz: number[] = [];
+      for (const t of tris) {
+        for (let k = 0; k < 3; k++) {
+          const i = ix ? ix.getX(t * 3 + k) : t * 3 + k;
+          _v.set(pos.getX(i), pos.getY(i), pos.getZ(i)).applyMatrix4(M);
+          a3[k * 3] = _v.x; a3[k * 3 + 1] = _v.y; a3[k * 3 + 2] = _v.z;
+        }
+        sampleA3(xyz, null, 0);
+      }
+      out.push({ tris, xyz: Float32Array.from(xyz) });
+    }
+    return out;
+  }
+
   return {
-    sweep(seam, holders, rooms = []) {
+    sweep(seam, drawn) {
+      const { faces, runs, rooms } = drawn;
       const model = modelOf(seam);
       const P = model.parts.length;
-      if (!P) return { groups: [], rooms: [] };
-      const hx = [...holders, ...rooms].map(holderSamples);
-      const sm = sample(seam, model, hx, holders, false);
+      const none: HangingResult = { groups: [], faces: [], runs: [], rooms: [] };
+      if (!P) return none;
+      // the owners after the world's parts: the faces' pieces, the runs, the rooms (in that order)
+      const pieces: Array<{ mesh: THREE.Mesh; tris: number[]; xyz: Float32Array }> = [];
+      for (const mesh of faces) for (const pc of facePieces(mesh)) pieces.push({ mesh, ...pc });
+      const hx = [...pieces.map((pc) => pc.xyz), ...runs.map(holderSamples), ...rooms.map(holderSamples)];
+      const sm = sample(seam, model, hx, [], false);
       // (a room holds nothing up: it stands inside walls)
-      holdLimit = P + holders.length;
+      const F = P + pieces.length, R = F + runs.length;
+      holdLimit = R;
       const sup = propagate(model, sm, hx.length, o.groundAt);
       const stands = clusters(model, sm, hx.length, o.groundAt);
       holdLimit = Infinity;
       const find = lastFind!, roots = lastRoots;
+      // what the presentation draws, touching nothing that stands (none of it on the ground, nor touching what is): it goes
+      const loose = (id: number, xyz: Float32Array): boolean => xyz.length > 0 && !roots.has(find(id));
+      const facesDown: Array<{ mesh: THREE.Mesh; tris: number[] }> = [];
+      pieces.forEach((pc, k) => { if (loose(P + k, pc.xyz)) facesDown.push({ mesh: pc.mesh, tris: pc.tris }); });
+      const runsDown: number[] = [];
+      runs.forEach((_m, r) => { if (loose(F + r, hx[pieces.length + r]!)) runsDown.push(r); });
       const roomsDown: number[] = [];
-      rooms.forEach((_m, r) => { if (hx[holders.length + r]!.length && !roots.has(find(P + holders.length + r))) roomsDown.push(r); });
+      rooms.forEach((_m, r) => { if (loose(R + r, hx[pieces.length + runs.length + r]!)) roomsDown.push(r); });
       const down: number[] = [];
       for (let p = 0; p < P; p++) {
         const part = model.parts[p]!, env = sm.env[p];
@@ -359,9 +413,9 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
       if (globalThis.process?.env?.COT_HANG_RT) {
         let present = 0, stood = 0, standsN = 0;
         for (let p = 0; p < P; p++) { if (!sm.env[p]) continue; present++; if (model.parts[p]!.stood0) stood++; if (stands.has(p)) standsN++; }
-        console.log(`[hang-rt] #${seam.structureIdx} parts ${P} present ${present} stood0 ${stood} stands ${standsN} down ${down.length}`);
+        console.log(`[hang-rt] #${seam.structureIdx} parts ${P} present ${present} stood0 ${stood} stands ${standsN} down ${down.length} facePieces ${pieces.length} facesDown ${facesDown.length} runs ${runs.length}/${runsDown.length} rooms ${rooms.length}/${roomsDown.length}`);
       }
-      if (!down.length) return { groups: [], rooms: roomsDown };
+      if (!down.length) return { groups: [], faces: facesDown, runs: runsDown, rooms: roomsDown };
       // one body a cluster of what comes down (the parts touching: a mill's sails with their stocks and shaft)
       const byRoot = new Map<number, HangingTri[]>();
       for (const p of down) {
@@ -372,7 +426,7 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
         if (!list) byRoot.set(r, list = []);
         for (let t = 0; t < part.tris.length; t++) if (corners(arr, 0, part.tris[t]!, M)) list.push({ span, at: part.tris[t]! });
       }
-      return { groups: [...byRoot.values()].filter((l) => l.length), rooms: roomsDown };
+      return { groups: [...byRoot.values()].filter((l) => l.length), faces: facesDown, runs: runsDown, rooms: roomsDown };
     },
     reset() { /* the intact readings stand: the spans as built do not change */ },
   };

@@ -60,6 +60,7 @@
  */
 import * as THREE from 'three';
 import { mkdirSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { deflateSync } from 'node:zlib';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -879,7 +880,7 @@ export function renderPng(file, layers, { eye, target, fov = 50, width = 1280, h
 export async function runSlabCheck({
   mapId = 'verdant', ids = null, builders = null, perBuilder = 1, rounds = 40, roundGapS = 0.45, settleS = 10, stopAfterRoof = false, upper = true,
   sections = true, fracture = true, renderDir = null, maxSnapshots = 40, storeys = [0], log = () => {}, rejoin = true,
-  faces = ['wide'], seed = null, filmS = 0, filmFromS = 0, facesFor = null,
+  faces = ['wide'], seed = null, filmS = 0, filmFromS = 0, facesFor = null, fingerprint = null,
 } = {}) {
   installWorldBuildFixture();
   const [maps, terrain, vegetation, props, models, fleet] = await Promise.all([
@@ -987,6 +988,30 @@ export async function runSlabCheck({
     if (stopAfterRoof && !a.roof) { log(`#${id} ${seam.builder}: no roof section (skipped by the roof pass)`); continue; }
     for (const r of [...built.obstacles, ...built.colliders]) { r.crushed = false; r.dead = false; r.openings = null; }
     restoreSpans();
+    // (round 3, the kinds receipt's cost) a run's fingerprint: what it strikes (the structure's spans as built, its anatomy
+    // and its enclosure), how (the face, the seed, the staging) and with what (the caller's salt: the code's hash); a
+    // fingerprint a clean run passed before is not run again
+    let fp = null;
+    if (fingerprint) {
+      const h = createHash('sha1');
+      h.update(`${fingerprint.salt}|${mapId}|${id}|${faceName}|${faceSeed}|${rounds}|${roundGapS}|${settleS}|${sections}|${fracture}|${storeys.join(',')}|${maxSnapshots}|${rejoin}|${stopAfterRoof}\n`);
+      for (const span of seam.spans) {
+        h.update(`${span.bucket}|${span.partClass}|${span.piece ?? ''}|${span.count}|`);
+        const arr = span.position.array;
+        h.update(Buffer.from(arr.buffer, arr.byteOffset + span.first * 12, span.count * 12));
+      }
+      h.update(JSON.stringify(a, (k, v) => (k === 'enclosure' || k === 'intact' ? undefined : ArrayBuffer.isView(v) ? Array.from(v.slice(0, 4096)) : v)));
+      const e = a.enclosure;
+      if (e) { h.update(Buffer.from(e.top.buffer)); for (const b of e.bands) h.update(Buffer.from(b.cells.buffer)); }
+      fp = h.digest('hex');
+      if (fingerprint.cached(fp)) {
+        rows.push({ id, face: faceName, seed: faceSeed, builder: seam.builder, kit: a.kit, style: seam.style, anatomy: { w: +a.w.toFixed(2), d: +a.d.toFixed(2),
+          h: +a.h.toFixed(2), storeys: a.storeys.length, floors: a.storeys.filter((st) => st.floor).length, roof: a.roof?.kind ?? null }, fired: 0,
+        collapsedAtS: -1, staging: null, events: [], spanIssues: [], snapshots: [], pass: true, cached: true, fingerprint: fp, worst: [], phases: {} });
+        log(`#${id} ${seam.builder}${faceName === 'wide' ? '' : ` (${faceName})`}: PASS (a clean run of this fingerprint passed before)`);
+        continue;
+      }
+    }
     let clock = 0;
     // every event the match raised (any structure's), in order: what a late joiner's settled log replays
     const replay = [];
@@ -1356,6 +1381,7 @@ export async function runSlabCheck({
     }
     const flaggedSnaps = snapshots.filter((p) => p.findings.length);
     const row = {
+      fingerprint: fp,
       id, face: faceName, seed: faceSeed, builder: seam.builder, kit: a.kit, style: seam.style, anatomy: { w: +a.w.toFixed(2), d: +a.d.toFixed(2), h: +a.h.toFixed(2), storeys: a.storeys.length,
         floors: a.storeys.filter((st) => st.floor).length, roof: a.roof?.kind ?? null }, fired, collapsedAtS: +collapsedAt.toFixed(2),
       staging: { placement: { x: +a.placement.x.toFixed(2), y: +a.placement.y.toFixed(2), z: +a.placement.z.toFixed(2), yaw: +a.placement.yaw.toFixed(4) },

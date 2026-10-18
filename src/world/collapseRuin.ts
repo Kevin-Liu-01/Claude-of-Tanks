@@ -249,8 +249,9 @@ function cornerPiers(rng: () => number, slot: FractureSlot, cap: number, mesh: D
       // the leg along x (on the z face), then the leg along z (on the x face)
       const lx = legX * shrink * (0.85 + rng() * 0.15), lz = legZ * shrink * (0.85 + rng() * 0.15);
       if (height < 0.6 || !(hy > 0.05)) continue;
-      if (legs[0]) rbox(mesh, fcx + sx * (hw - lx / 2), cy, fcz + sz * (hd - inZ - t / 2), lx / 2, hy, t / 2, 0, slot.tint, shade);
-      if (legs[1]) rbox(mesh, fcx + sx * (hw - inX - t / 2), cy, fcz + sz * (hd - lz / 2), t / 2, hy, lz / 2, 0, slot.tint, shade);
+      // (a leg's course over one not drawn would stand in the air: that leg stops)
+      if (legs[0] && !rbox(mesh, fcx + sx * (hw - lx / 2), cy, fcz + sz * (hd - inZ - t / 2), lx / 2, hy, t / 2, 0, slot.tint, shade)) legs[0] = false;
+      if (legs[1] && !rbox(mesh, fcx + sx * (hw - inX - t / 2), cy, fcz + sz * (hd - lz / 2), t / 2, hy, lz / 2, 0, slot.tint, shade)) legs[1] = false;
       h0 = top;
     }
   }
@@ -319,8 +320,9 @@ function wallFragment(rng: () => number, slot: FractureSlot, cap: number, mesh: 
     const uc = u + lean * (run - l) / 2;
     const hy = (y1 - y0) / 2, shade = 0.8 + rng() * 0.18;
     if (!(height > 0.4) || !(hy > 0.05)) continue;
-    if (alongX) rbox(mesh, fcx + uc, y0 + hy, fcz + side * at, l / 2, hy, t / 2, 0, slot.tint, shade);
-    else rbox(mesh, fcx + side * at, y0 + hy, fcz + uc, t / 2, hy, l / 2, 0, slot.tint, shade);
+    // (a course over one not drawn would stand in the air: the run stops)
+    if (!(alongX ? rbox(mesh, fcx + uc, y0 + hy, fcz + side * at, l / 2, hy, t / 2, 0, slot.tint, shade)
+      : rbox(mesh, fcx + side * at, y0 + hy, fcz + uc, t / 2, hy, l / 2, 0, slot.tint, shade))) break;
     y0 = y1;
   }
   mesh.end();
@@ -332,7 +334,7 @@ function wallFragment(rng: () => number, slot: FractureSlot, cap: number, mesh: 
  * drawn is no remnant).
  */
 function rbox(mesh: DamageMeshWriter, cx: number, cy: number, cz: number, hx: number, hy: number, hz: number, yaw: number,
-  tint: Rgb, shade: number): void {
+  tint: Rgb, shade: number): boolean {
   if (ruinOf) {
     const c = Math.cos(yaw), s = Math.sin(yaw);
     const ax = hx >= hz ? hx * 0.8 : 0, az = hx >= hz ? 0 : hz * 0.8;
@@ -341,14 +343,15 @@ function rbox(mesh: DamageMeshWriter, cx: number, cy: number, cz: number, hx: nu
     const bottom = cy - hy;
     // (and only where the wall is drawn down to its foot: a post mill's body on its trestle stood its ruin's walls from
     // the ground up to where the body hung)
-    if (wallBaseAt(ruinOf, cx, cz) > Math.max(0, bottom) + 1.2) return;
+    if (wallBaseAt(ruinOf, cx, cz) > 1.2) return false;
     if (Number.isFinite(lim) && cy + hy > lim + 0.05) {
       const top = Math.max(bottom, lim);
-      if (top - bottom < 0.3) return;
+      if (top - bottom < 0.3) return false;
       hy = (top - bottom) / 2; cy = bottom + hy;
     }
   }
   box(mesh, cx, cy, cz, hx, hy, hz, yaw, tint, shade);
+  return true;
 }
 
 /** A segment from (ax, az) to (bx, bz) in plan as a box `hy` half high at `cy`, `t` thick (the box's local x along it). */
@@ -634,8 +637,9 @@ function framePosts(rng: () => number, slot: FractureSlot, cap: number, mesh: Da
       const h = Math.min(h0, loose && ruinOf ? 0.8 * wallTopAt(ruinOf, x, z, 0) : topOfWallIn(px, pz, pnx, pnz, d));
       if (h < 0.5) continue;
       const h1 = h * 0.55;
-      rbox(mesh, x, (h1 - FOOT_M) / 2, z, t / 2, (h1 + FOOT_M) / 2, t / 2, 0, slot.tint, shade);
-      rbox(mesh, x + (alongX ? lean : 0), (h1 + h) / 2, z + (alongX ? 0 : lean), t / 2, (h - h1) / 2, t / 2, 0, slot.tint, shade);
+      if (rbox(mesh, x, (h1 - FOOT_M) / 2, z, t / 2, (h1 + FOOT_M) / 2, t / 2, 0, slot.tint, shade)) {
+        rbox(mesh, x + (alongX ? lean : 0), (h1 + h) / 2, z + (alongX ? 0 : lean), t / 2, (h - h1) / 2, t / 2, 0, slot.tint, shade);
+      }
     }
     // panels of the wall leant against its posts, inside the walls (destruction-slabs 227: they stood 0.25 m past them)
     for (let p = 0; p < 2 && roomFor(mesh, 1); p++) {

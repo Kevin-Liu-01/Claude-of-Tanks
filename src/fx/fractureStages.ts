@@ -277,16 +277,18 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       if (!fracture.idle(idx) || host?.falling?.(idx)) continue;
       hangingDue.delete(idx);
       const tag = tagOf(idx);
-      const runs = host ? host.o.debris.standingRuns(tag) : [];
-      const holders = [...fracture.standing(idx), ...runs.filter((m) => m.userData.room !== true)];
-      const rooms = [...runs.filter((m) => m.userData.room === true), ...fracture.rooms(idx)];
-      const swept = hangingSweep.sweep(due.seam, holders, rooms);
+      const all = host ? host.o.debris.standingRuns(tag) : [];
+      const runs = all.filter((m) => m.userData.room !== true);
+      const rooms = [...all.filter((m) => m.userData.room === true), ...fracture.rooms(idx)];
+      const swept = hangingSweep.sweep(due.seam, { faces: fracture.standing(idx), runs, rooms });
       const groups = swept.groups;
-      // a room whose walls went round it (a dark box in the air) goes
+      // a run or a room whose walls went round it (a rim in the air, a dark box) goes; a face's piece cut loose falls
+      for (const r of swept.runs) host?.o.debris.dropRun(runs[r]!);
       for (const r of swept.rooms) {
         const m = rooms[r]!;
         if (m.userData.room === true && host) host.o.debris.dropRun(m); else fracture.dropRoom(idx, m);
       }
+      if (swept.faces.length) fracture.dropPieces(idx, swept.faces);
       if (globalThis.process?.env?.COT_HANG_RT) console.log(`[hang-rt] t=${o.now().toFixed(2)} #${idx} groups ${groups.map((g) => g.length).join(',')}`);
       if (groups.length) { landmarks.drop(due.seam, groups, due.settled); bump(idx); }
       return;
