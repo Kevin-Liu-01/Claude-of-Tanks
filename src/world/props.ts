@@ -4702,8 +4702,10 @@ ${snowCap ? `
       return false;
     }
     // (props.dressingRules.fencesClearBuildings) a module or a gate that meets a building's plot is left out, its draws
-    // taken, so every other placement keeps its seat
-    const clearOfBuildings = !P.dressingRules?.fencesClearBuildings ? () => true : (ax: number, az: number, bx: number, bz: number): boolean => {
+    // taken, so every other placement keeps its seat. (The run is executed on its own by roadFencePath and roadStations,
+    // with no props build around it: with no P in scope the rule is off, so neither needs the build's state.)
+    const fencesClearBuildings = typeof P !== 'undefined' && !!P.dressingRules?.fencesClearBuildings;
+    const clearOfBuildings = !fencesClearBuildings ? () => true : (ax: number, az: number, bx: number, bz: number): boolean => {
       const steps = Math.max(2, Math.ceil(Math.hypot(bx - ax, bz - az) / 0.3));
       for (const b of buildingFeatures) {
         const c = Math.cos(b.rot), sn = Math.sin(b.rot), hw = b.w / 2 + FENCE_BUILDING_CLEAR_M, hd = b.d / 2 + FENCE_BUILDING_CLEAR_M;
