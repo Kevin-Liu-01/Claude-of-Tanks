@@ -44,6 +44,27 @@ export interface CaprockSpec {
   /** (Skybridge round 6) a path landform's control points (its `path`, landformPath.ts): the brows follow the curve,
    * its length the curve's; x, z, length and yawDeg then only name it. */
   path?: ReadonlyArray<readonly [number, number]>;
+  /** (the maps lane, 2026-10-17, Aegis r7; the r6 blind: "dead-straight tops", "a thin dark line across the field" where
+   * the slab's top ran on as one band) the bed broken by its joints into blocks each its own: how far it leans out over
+   * the void (m), how far its top stands over the brow (m, a little more at one end than the other: the block settled),
+   * how open its joints are (m); its back edge sinks under the ground behind the brow, its top a shade its own and
+   * weathered (default: none, the one bed: lip 0.4-0.9 m out, flush, joints a hand apart). */
+  broken?: { overhang?: readonly [number, number]; lift?: readonly [number, number]; jointM?: number;
+    /** where the bed has broken away along the brow: caprockGap's threshold (the trench's canyon wall reads the same
+     * threshold, canyonWall.ts beds.capGaps, and rounds its top over the bare brow there; default none) */
+    gaps?: number;
+    /** runs of the axis (s, m from the centre) where the blocks lie flush, never standing proud (a bridge deck over the
+     * brow: its roadway a hand over the ground) */
+    keepClear?: ReadonlyArray<readonly [number, number]> };
+}
+
+/**
+ * (Aegis r7) Where a broken caprock has fallen away from the brow (on station s, side -1 or 1, along the landform's axis):
+ * a function of the place alone, so the caprock and its trench's canyon wall agree on it. Runs of five to fifteen metres,
+ * the fewer the higher the threshold (in -1..1).
+ */
+export function caprockGap(noise: SimplexNoise, s: number, side: number, threshold: number): boolean {
+  return noise.noise(s * 0.04 + 31.7, side * 7.9) + 0.2 * noise.noise(s * 0.15 - 5.3, side * 2.1) > threshold;
 }
 
 interface CaprockBuildOptions {
@@ -51,6 +72,7 @@ interface CaprockBuildOptions {
 }
 
 const scl = (a: V3, k: number): V3 => [a[0] * k, a[1] * k, a[2] * k];
+const smooth = (a: number, b: number, x: number) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 /** A brow found on one station: its distance from the axis, its height. */
 interface Brow {
@@ -85,6 +107,7 @@ export function buildCaprockRim(spec: CaprockSpec, ground: CastleGround, noise: 
   const trench = !!spec.trench;
   const crest = (s: number) => { const f = frameAt(s); return groundAt(f.x, f.z); };
   const tone = spec.tone ?? [0.075, 0.13, 0.52];
+  const broken = spec.broken ?? null;
   const [tMin, tMax] = spec.thickness ?? [1.2, 2.5];
   const [bMin, bMax] = spec.blockM ?? [5, 12];
   const mesh = new SkinMesh();
@@ -126,6 +149,8 @@ export function buildCaprockRim(spec: CaprockSpec, ground: CastleGround, noise: 
       }
       rims.push(found);
     }
+    // (broken) where the bed has fallen away from the brow
+    if (broken?.gaps !== undefined) for (let k = 0; k <= stations; k++) if (rims[k] && caprockGap(noise, rims[k]!.s, side, broken.gaps)) rims[k] = null;
     // a station whose brow falls well under its neighbours' is a rill cutting it: the bed is broken there
     for (let k = 0; k <= stations; k++) {
       const me = rims[k];
@@ -144,11 +169,22 @@ export function buildCaprockRim(spec: CaprockSpec, ground: CastleGround, noise: 
       let end = k;
       while (end < k1 && rims[end + 1]) end++;
       if (end - k >= 1) {
-        const t = tMin + rng() * (tMax - tMin), over = 0.4 + rng() * 0.5;
+        const t = tMin + rng() * (tMax - tMin);
+        let over = 0.4 + rng() * 0.5, lift0 = 0, lift1 = 0, trim = 0.12, back = 2.2, dl = 0;
+        if (broken) {
+          const [o0, o1] = broken.overhang ?? [0.4, 0.9], [l0, l1] = broken.lift ?? [0, 0];
+          over = o0 + (o1 - o0) * Math.pow(rng(), 1.4);
+          lift0 = l0 + (l1 - l0) * rng(); lift1 = l0 + (l1 - l0) * rng();
+          trim = 0.06 + (broken.jointM ?? 0.12) * (0.4 + 0.6 * rng());
+          back = 0.9 + 0.9 * rng(); dl = (rng() - 0.5) * 0.16;
+          const s0 = rims[k]!.s, s1 = rims[end]!.s;
+          if ((broken.keepClear ?? []).some(([a, b]) => s1 > Math.min(a, b) && s0 < Math.max(a, b))) { lift0 = 0; lift1 = 0; }
+        }
         const rows: number[][] = [];
         for (let q = k; q <= end; q++) {
           const rim = rims[q]!;
-          const sJ = rim.s + (q === k ? 0.12 : q === end ? -0.12 : 0);
+          const sJ = rim.s + (q === k ? trim : q === end ? -trim : 0);
+          const lift = lift0 + (lift1 - lift0) * ((q - k) / (end - k));
           // dr: metres out over the void from the brow
           const P = (dr: number, y: number): V3 => {
             const r = trench ? rim.r - dr : rim.r + dr;
@@ -158,16 +194,19 @@ export function buildCaprockRim(spec: CaprockSpec, ground: CastleGround, noise: 
           const wob = noise.noise(sJ * 0.31 + salt, side * 3.1) * 0.25;
           const behind = P(-1.8, 0);
           const capY = Math.max(rim.y, groundAt(behind[0], behind[2]));
+          // (broken) the slab's back edge under the ground behind the brow: the terrain closes over it
+          const tail = broken ? P(-back, 0) : behind;
+          const tailY = broken ? groundAt(tail[0], tail[2]) - 0.12 : capY + 0.02;
           const ov = over * (0.8 + 0.4 * (noise.noise(sJ * 0.53 - salt, side) * 0.5 + 0.5));
           const tt = t * (0.85 + 0.3 * (noise.noise(sJ * 0.21 + 7, side * 2) * 0.5 + 0.5));
           // the wall's face at the slab's foot
           let dw = 0;
           for (let dr = 0; dr < 8; dr += 0.25) { const p = P(dr, 0); if (groundAt(p[0], p[2]) < rim.y - tt) { dw = dr; break; } }
           const pts: V3[] = [
-            P(-2.2, capY + 0.02),
-            P(-0.6, rim.y + 0.14 + wob * 0.2),
-            P(ov * 0.75, rim.y + 0.1),
-            P(ov, rim.y - tt * 0.35),
+            P(broken ? -back : -2.2, tailY),
+            P(-0.6, rim.y + 0.14 + wob * 0.2 + lift),
+            P(ov * 0.75, rim.y + 0.1 + lift),
+            P(ov, rim.y - tt * 0.35 + lift * 0.6),
             P(ov * 0.82, rim.y - tt),
             P(Math.min(dw - 0.35, ov * 0.5), rim.y - tt - 0.15),
           ];
@@ -175,7 +214,12 @@ export function buildCaprockRim(spec: CaprockSpec, ground: CastleGround, noise: 
             const up = idx <= 2 ? 1 : 0;
             const mott = noise.noise3d(p[0] * 0.3 + salt, p[1] * 0.3, p[2] * 0.3);
             const l = tone[2] * (0.9 + 0.1 * mott) * (up ? 1.08 : idx === 5 ? 0.62 : 0.9);
-            return mesh.vert(p, hsl(tone[0], tone[1], l), groundAt(p[0], p[2]));
+            if (!broken) return mesh.vert(p, hsl(tone[0], tone[1], l), groundAt(p[0], p[2]));
+            // (broken) each block a shade its own, its top weathered grey in patches; the top over the ground reads no
+            // soil band (the rock material's) along the brow
+            const grey = up ? smooth(0, 0.6, noise.noise3d(p[0] * 0.08 - salt, p[1] * 0.08, p[2] * 0.08)) : 0;
+            const g = groundAt(p[0], p[2]);
+            return mesh.vert(p, hsl(tone[0], tone[1] * (1 - 0.5 * grey), l * (1 + dl)), idx === 1 || idx === 2 ? Math.min(g, p[1] - 0.35) : g);
           }));
         }
         for (let q = 0; q + 1 < rows.length; q++) {
