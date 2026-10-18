@@ -32,7 +32,7 @@ export const GARAGE_SLIDESHOW_PLACEMENTS: Readonly<Partial<Record<GarageVariant[
   recovery_yard: Object.freeze({ at: [19, 37] as const, yaw: 0, width: 2.8, mount: 'trailer' }),
   // Ironworks: on the yard wall of the control kiosk right of the crane bay (garageIronworksKit.ts), between the bay's
   // columns from the opening view, facing down the yard
-  factory_line: Object.freeze({ at: [17.2, 24.8] as const, yaw: Math.PI / 4, width: 2.2, mount: 'wall', bottomY: 1.9 }),
+  factory_line: Object.freeze({ at: [17.2, 24.8] as const, yaw: Math.PI / 4, width: 2.6, mount: 'wall', bottomY: 1.7 }),
   // Cinder: hung from the throat platform's canopy at its front column, an LED departure board facing the yard
   // (garageCinderKit.ts); the platform's deck is 0.9 m up
   rail_roundhouse: Object.freeze({ at: [18.6, 21.35] as const, yaw: Math.PI / 4, width: 2.2, mount: 'column', bottomY: 1.4, y: 0.9 }),
