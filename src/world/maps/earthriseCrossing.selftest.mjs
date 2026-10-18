@@ -24,7 +24,7 @@ assert.equal(moon.sky.fogDensity,0);assert.equal(moon.vegetation.grassDensity,0)
 {const {readFileSync}=await import('node:fs');const post=readFileSync(new URL('../../engine/post.ts',import.meta.url),'utf8');
  // the aerial pass: an airless map (a FogExp2 of density 0) takes no legacy distance law, scatter-in or far hue clamp
  assert.match(post,/uAirless\.value = scene\.fog instanceof THREE\.FogExp2 && scene\.fog\.density === 0 \? 1 : 0;/,'airless: the fog of density 0 flags it');
- for(const gate of ['mix( texel.rgb, hazy, f * ( 1.0 - uAirless ) )','mix( texel.rgb, hazeCol, f2 * ( 1.0 - uAirless ) )','hueW * gDom * hzLayer * ( 1.0 - uAirless )'])
+ for(const gate of ['f *= 1.0 - uAirless;\n          texel.rgb = mix( texel.rgb, hazy, f );','mix( texel.rgb, hazeCol, f2 * ( 1.0 - uAirless ) )','hueW * gDom * hzLayer * ( 1.0 - uAirless )'])
   assert.ok(post.includes(gate),`the legacy aerial law stands down airless: ${gate}`);
  // the far range: no striations on an airless map's faces (palisades at 2.6 km) and no sky's blue on a face the sun leaves
  const far=readFileSync(new URL('../../world/horizonFarRange.ts',import.meta.url),'utf8');

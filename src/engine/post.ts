@@ -1290,7 +1290,10 @@ const AerialShader = {
           f = min( f, extCeil );
           float lum = dot( texel.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
           vec3 hazy = mix( texel.rgb, vec3( lum ), uDesat ) * uCool;
-          texel.rgb = mix( texel.rgb, hazy, f * ( 1.0 - uAirless ) );
+          // (the Earthrise 228 rebuild) airless, no extinction (the uAirless note): its own step, so the haze line stays
+          // the one contactShadows.selftest orders after the contact shade
+          f *= 1.0 - uAirless;
+          texel.rgb = mix( texel.rgb, hazy, f );
           // scattering-in: distance pulls everything toward the sun-directional
           // sky haze — warm near the sun azimuth, cool blue away from it.
           // r2 BLACK-POINT GUARD ("combat frame drowned in a warm low-contrast
