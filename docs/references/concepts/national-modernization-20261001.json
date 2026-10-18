@@ -224,17 +224,17 @@
     "cn_t80u_modern": {
       "id": "cn_t80u_modern",
       "ring": [
-        0.008,
-        1.49,
-        0.07187
+        0,
+        1.59158,
+        0.0718698169
       ],
       "gunLocal": [
         0,
-        0.43,
-        0.9
+        0.2602,
+        1.75
       ],
-      "barrelLengthM": 5.2,
-      "barrelRadiusM": 0.105,
+      "barrelLengthM": 4.92211,
+      "barrelRadiusM": 0.071,
       "pitchDeg": [
         -6,
         14
@@ -244,17 +244,17 @@
       "hullLengthM": 6.72,
       "hullWidthM": 4.34,
       "widthM": 4.34,
-      "overallLengthM": 9.5328,
-      "tallestM": 3.115,
+      "overallLengthM": 10.3534,
+      "tallestM": 3.2125,
       "specDimensions": {
         "hullLengthM": 6.72,
-        "overallLengthM": 9.531870000000001,
+        "overallLengthM": 10.1039798169,
         "widthM": 4.34,
-        "heightM": 3.115
+        "heightM": 3.212
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Yun T-80U retrofit concept: original turbine hull and compact casting, swept arrowhead armor housing, linked low electronics and service cases, six thick layered skirt modules with fitted continuous shoulders and chamfered wrap returns. Distinct mounted roof weapon, paired guarded mantlet lamps, dedicated observation optics and roof sensor installation."
+      "silhouette": "Chinese T-80U turbine modernization carrying the Type 96B turret wrapped in the Yun's own armour: one welded horseshoe housing a side from the nose round the 96B wall and the bustle module's flank, with six broad single-piece chevron ERA cassettes and three flat tiles, a bustle module, rear band and slat cage carrying the drone landing, eight roof smoke tubes on two cradles, service cases on a spine frame, an armoured hood round the gunner's sight, slit lamps on the housings' front shelves, a monocle eye, side electronics, the box sight riding the mantlet and the 12.7 mm faceted station on its own left-roof seat. The original turbine hull keeps six thick layered skirt modules, glacis tiles, twin cooling panels, a slatted transom and two small transverse fuel drums."
     },
     "cn_t72b3m_modern": {
       "id": "cn_t72b3m_modern",
@@ -280,22 +280,22 @@
       "hullWidthM": 4.54,
       "widthM": 4.54,
       "overallLengthM": 10.6151,
-      "tallestM": 3.4805,
+      "tallestM": 3.3498,
       "specDimensions": {
         "hullLengthM": 7.31,
         "overallLengthM": 10.4414246502203,
         "widthM": 4.54,
-        "heightM": 3.48048
+        "heightM": 3.35
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Chinese T-72B3M modernization carrying the complete Type 96B turret with its special chevron ERA laid over both front wedges, two Shtora-style infrared dazzler heads flanking the mantlet, the 30 mm stabilised drum station on the commander's cupola, square guarded lamps, a scanner head, service cases and an open rear maintenance cage with its three-cell console. The low T-72B3M hull keeps seven thick staggered skirt modules, a glacis ERA course and large transverse auxiliary fuel drums."
+      "silhouette": "Chinese T-72B3M modernization carrying the complete Type 96B turret with its special chevron ERA laid over both front wedges, two Shtora-style infrared dazzler heads flanking the mantlet with square guarded lamps on their hoods, a QJC-88 12.7 mm machine gun on an open pintle at the commander's cupola behind its light shield, the box sight riding the mantlet, a scanner head, service cases and an open rear maintenance cage with its three-cell console. The low T-72B3M hull keeps seven thick staggered skirt modules, a glacis ERA course and large transverse auxiliary fuel drums."
     },
     "cn_t72b3_modern": {
       "id": "cn_t72b3_modern",
       "ring": [
         0,
-        1.511100315,
+        1.513100315,
         0.065591405
       ],
       "gunLocal": [
@@ -315,16 +315,16 @@
       "hullWidthM": 4.363,
       "widthM": 4.363,
       "overallLengthM": 10.8464,
-      "tallestM": 3.3286,
+      "tallestM": 3.2129,
       "specDimensions": {
         "hullLengthM": 6.8784,
         "overallLengthM": 10.704791405,
         "widthM": 4.363,
-        "heightM": 3.3286
+        "heightM": 3.213
       },
       "test": "src/vehicles/nationalModernization.selftest.mjs",
       "weaponSystem": "conventional-cannon",
-      "silhouette": "Chinese T-72B3 field modernization carrying the complete production ZTZ-99A2 turret: its integrated chevron front with ERA face panels, deep side armour cassettes, smoke banks, commander's cupola and sights, under the Qilin's compact 12.7 mm remote station on that cupola, with round guarded lamps, a side camera, a low field-service box, tool chest and roll and a small open rear basket. The original low T-72B3 hull keeps five ribbed layered skirt modules, a glacis ERA course and two individually cradled rear fuel drums."
+      "silhouette": "Chinese T-72B3 field modernization carrying the production ZTZ-99A2 turret with its bustle shortened by a tenth and wrapped in the Qilin's own add-ons: one welded flank sleeve a side from the rear armour box to a triangular brow on the side cassette, carrying four chevron ERA cassettes, the side rail and three flat tiles, a bustle roof plate with a small rack and roll, a flat eye, a split-panel sensor on the crown's centre, round guarded lamps, a side camera, field-service boxes and a carrier, an open rear basket carrying the drone landing, and a QJC-88 12.7 mm machine gun on an open pintle at the commander's cupola behind its shield. The original low T-72B3 hull keeps five ribbed layered skirt modules, a glacis ERA course and two individually cradled rear fuel drums."
     },
     "ru_t80u_modern": {
       "id": "ru_t80u_modern",

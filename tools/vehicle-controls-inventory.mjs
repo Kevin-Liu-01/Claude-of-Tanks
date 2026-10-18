@@ -23,7 +23,11 @@ const inert={};
 const stationOf=o=>{for(let p=o;p;p=p.parent)if(p.userData?.remoteControlled&&p.userData?.auxiliaryPivot)return p;return null;};
 const gunOwned=o=>{for(let p=o;p;p=p.parent)if(p.name==='rig_gun'||p.name==='rig_recoil')return true;return false;};
 const round=a=>a.map(x=>+x.toFixed(4));
-for(const id of ALL_TANK_IDS){
+// --ids=a,b (2026-10-16, release 227 CN lane): rebuild only these vehicles and merge their rows into the committed tables
+// (every other row, and the key order, byte-identical); the full run stays the default and the --check.
+const onlyIds=(process.argv.find(a=>a.startsWith('--ids='))??'').slice(6).split(',').filter(Boolean);
+for(const id of onlyIds)if(!ALL_TANK_IDS.includes(id))throw new Error(`--ids: unknown vehicle ${id}`);
+for(const id of onlyIds.length?onlyIds:ALL_TANK_IDS){
  const tank=createTank(id,null,{proceduralOnly:true,geometryReceipt:true,decor:true});
  tank.root.updateMatrixWorld(true);
  const hull=tank.root.getObjectByName('rig_hull'), turret=tank.root.getObjectByName('rig_turret');
@@ -74,6 +78,15 @@ for(const id of ALL_TANK_IDS){
  if(!rows[id].lights)missing.push({id,name:'driving lights'});
  if(drawn.length)inert[id]=drawn;
  tank.dispose?.();
+}
+if(onlyIds.length){
+ // merge into the committed tables: committed rows keep their places, the rebuilt ones replace theirs
+ const {AUXILIARY_INVENTORY}=await import('../src/vehicles/auxiliaryInventory.generated.ts');
+ const {INERT_DRAWN_WEAPONS}=await import('../src/vehicles/inertDrawnWeapons.generated.ts');
+ const merged={...AUXILIARY_INVENTORY};for(const id of onlyIds)merged[id]=rows[id];
+ const mergedInert={...INERT_DRAWN_WEAPONS};for(const id of onlyIds){if(inert[id])mergedInert[id]=inert[id];else delete mergedInert[id];}
+ for(const k of Object.keys(rows))delete rows[k];Object.assign(rows,merged);
+ for(const k of Object.keys(inert))delete inert[k];Object.assign(inert,mergedInert);
 }
 const output=`// Generated from authored fittings by tools/vehicle-controls-inventory.mjs.\nimport type { AuxiliaryInventory } from './auxiliaryInventory.ts';\nexport const AUXILIARY_INVENTORY: Readonly<Record<string, AuxiliaryInventory>> = ${JSON.stringify(rows)};\n`;
 // Combat anatomy reads only each vehicle's first roof gun, and only when it has collision parts (the damageable

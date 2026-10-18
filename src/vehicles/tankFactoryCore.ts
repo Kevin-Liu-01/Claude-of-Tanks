@@ -7950,6 +7950,10 @@ function* createTankOwnedSteps(
       const hasGlacis = candidates.some((plate) => /glacis/i.test(plate.name));
       if (hasSkirts && hasGlacis) narrow(Math.abs(center.x) > 1.25 ? /skirt/i : /glacis/i);
     }
+    // Release 227: a visual chevron front binds to its own chevron sectors where the spec has them (the Qilin's ZTZ-99A2
+    // face panels stay turret_chevron_era beside the Qilin's own turret_era brow and flank cassettes); a vehicle without
+    // chevron-named plates keeps every candidate (narrowEraCandidates' fallback).
+    if (owner === 'turret' && /chevron/i.test(sector)) narrow(/chevron/i);
     if (center.x > 0.04) narrow(/(?:^|_)R$/i);
     else if (center.x < -0.04) narrow(/(?:^|_)L$/i);
     if (owner === 'turret'

@@ -7,6 +7,7 @@ import type {FleetTankSpec} from './specContracts.ts';
 import {synchronizeNationalLegacyMetadata} from './nationalLegacySpecs.ts';
 import {NATIONAL_PROTECTION_WIDTHS_M} from './nationalProtectionDimensions.ts';
 import {NATIONAL_DONOR_TURRETS,NATIONAL_GUN_PITCH_BY_YAW} from './nationalDonorTurrets.ts';
+import {bustleCutZ} from './donorBustleCut.ts';
 const entries:Record<string,FleetTankSpec>={};
 for(const c of NATIONAL_MODERNIZATION_CONFIG){
   const s=cloneFleetVariant(TANK_SPECS,c.id,'t90sm',{name:c.name,nation:c.nation,era:'next-generation'});
@@ -98,7 +99,15 @@ function synchronizeDonorTurretConcept(c:(typeof NATIONAL_MODERNIZATION_CONFIG)[
   const moved=new Set(turretModules.map(m=>m.module));
   s.armor.modules=structuredClone([...hull.armor.modules.filter(m=>!m.turretLocal&&!moved.has(m.module)),...turretModules]);
   s.armor.crew=structuredClone([...hull.armor.crew.filter(m=>!m.turretLocal),...turret.armor.crew.filter(m=>m.turretLocal)]);
+  // Release 227: a donor turret built with its bustle cut (the Qilin's ZTZ-99A2, donorBustleCut.ts) carries the same cut in
+  // its turret plates, modules and crew, so the hit model is the turret that is drawn.
+  const cut=Number(d.builderOptions?.bustleCutM??0);
+  if(cut>0)cutDonorTurretArmor(s.armor,cut);
+  // A donor turret built without its open side bins (the Yun's Type 96B: its armour housings fill that volume) carries
+  // no stowage screens in its hit model either: nothing is drawn where they stood.
+  if(d.builderOptions?.bins===false)s.armor.turretPlates=s.armor.turretPlates.filter(p=>!/^turret_stowage_screen_[LR]$/.test(p.name));
   s.armor.turretPivot=[...d.pivot];
+  if(d.gunPitchByYawDeg)s.gunPitchByYawDeg=d.gunPitchByYawDeg.map(([yaw,pitch])=>[yaw,pitch] as const);
   s.armor.gunPivot=[...turret.armor.gunPivot];
   s.armor.gunBarrel={...turret.armor.gunBarrel};
   s.dims={...hull.dims,hullLengthM:design.hullLength,widthM:NATIONAL_PROTECTION_WIDTHS_M[c.id]??design.width,
@@ -123,4 +132,27 @@ function synchronizeDonorTurretConcept(c:(typeof NATIONAL_MODERNIZATION_CONFIG)[
   const pitchByYaw=NATIONAL_GUN_PITCH_BY_YAW[c.id];
   if(pitchByYaw)s.gunPitchByYawDeg=pitchByYaw;
   s.description='Original game concept. '+design.description+' Retains the '+c.donor+' mechanical running gear.';
+}
+
+type ArmorRecord=FleetTankSpec['armor'];
+type Vec3=[number,number,number];
+/** Every turret-local z of the donor's turret plates, modules and crew mapped through the bustle cut: polygon vertices and
+ * box corners map, an ellipsoid or capsule keeps its ends attached (its z extent maps, so it compresses with the band). */
+function cutDonorTurretArmor(armor:ArmorRecord,cut:number):void {
+  const z=(v:number)=>bustleCutZ(v,cut);
+  const point=(p:readonly number[]):Vec3=>[p[0],p[1],z(p[2])];
+  for(const plate of armor.turretPlates)plate.verts=plate.verts.map(point) as typeof plate.verts;
+  const boxes=(r:{min:readonly number[];max:readonly number[]})=>{r.min=point(r.min) as typeof r.min;r.max=point(r.max) as typeof r.max;};
+  for(const item of [...armor.modules.filter(m=>m.turretLocal),...armor.crew.filter(m=>m.turretLocal)] as unknown as Record<string,unknown>[]){
+    boxes(item as {min:readonly number[];max:readonly number[]});
+    for(const part of (item.parts as {min:number[];max:number[]}[]|undefined)??[])boxes(part);
+    for(const shape of (item.shapes as Record<string,unknown>[]|undefined)??[]){
+      if(shape.kind==='capsule'){shape.a=point(shape.a as number[]);shape.b=point(shape.b as number[]);}
+      else if(Array.isArray(shape.center)&&Array.isArray(shape.radii)){
+        const c=shape.center as number[],r=shape.radii as number[],lo=z(c[2]-r[2]),hi=z(c[2]+r[2]);
+        shape.center=[c[0],c[1],(lo+hi)/2];shape.radii=[r[0],r[1],(hi-lo)/2];
+      }else if(Array.isArray(shape.center))shape.center=point(shape.center as number[]);
+      if(Array.isArray(shape.min)&&Array.isArray(shape.max))boxes(shape as {min:number[];max:number[]});
+    }
+  }
 }
