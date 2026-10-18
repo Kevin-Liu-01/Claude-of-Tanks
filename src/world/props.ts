@@ -639,7 +639,7 @@ interface PropsSettings {
    *    walls; a yard run stood into a gable's corner);
    *  - fenceStubsOut: a run's piece of fewer than FENCE_PIECE_MIN modules between two breaks is left out, with the gate
    *    that would hang on it (the fleet dressing rules 227: "a few white fence stubs still float in open grass"; the
-   *    coordinator's ruling: its own switch, off on Ruinspires, whose street fences it thinned 88 -> 32);
+   *    coordinator's ruling: its own switch);
    *  - yardClutterClear: the yard clutter (placeYardClutter) is laid after the kit's yards and keeps off them, and
    *    YARD_CLUTTER_GAP_M off the clutter already placed (a gate stack, a cart, barrels and a woodpile from two houses
    *    heaped in one front garden read as a staged prop pile); a house that takes its kit's yard takes no free-standing
