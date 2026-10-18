@@ -124,7 +124,7 @@ uniform float uTurbulence;
 uniform float uWeatherWarp;
 // QA (round 9 candidate): the shell under which a sample keeps no density (0 = none) — the detached fragments culled
 uniform float uFragMin;
-// (227) the detail's erosion exponent at a convective base: 6 = only the cells' cores (a smooth flat underside)
+// (227) the detail's erosion exponent at a convective base (volumetricClouds.ts CLOUD2_BASE_ERODE; 6 was round 1's cores only)
 uniform float uBaseErode;
 const float CL2_LOCAL = ${f(CLOUD2_PERIODS.local)};
 const float CL2_STREETS = ${f(CLOUD2_PERIODS.streets)};

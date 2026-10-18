@@ -54,6 +54,15 @@ import {
 /** 0..1 smoothstep of a 0..1 ramp (the deck's far rows' share of the overcast haze target). */
 const smoothstep01 = (x: number): number => { const k = Math.min(1, Math.max(0, x)); return k * k * (3 - 2 * k); };
 
+/**
+ * 2026-10-17 (the SKY lane, 227 SKY-01; the 226 judging's cloud after-defects on autumn, desert, orchard and Monsoon eye
+ * views: "hard flat undersides", "smeared grey masses"): the detail's erosion exponent at a convective base. Round 1's 6
+ * ate into the base only at the detail volume's cores, so a cumulus or a storm tower stood on a smooth grey plate; 4 lets
+ * the cells break the underside into broken cauliflower structure. Blind, one page a pose with the cloud freeze, 6 maps x
+ * 2-3 eye views: WIN against 6 (Opus 4-1-10, Sonnet 3-1-11; "broken cauliflower edges and structure in the underside",
+ * "less horizontal brush-streaking"). QA: __LIGHT_TUNE.CLOUD_BASE_ERODE.
+ */
+const CLOUD2_BASE_ERODE = 4;
 /** History resolution relative to the scene target; the trace target is a quarter of the history each way. */
 export const CLOUD_HISTORY_SCALE = 0.5;
 export const CLOUD_TRACE_DIVISOR = 4;
@@ -649,7 +658,7 @@ function createMediumUniforms(): Record<string, THREE.IUniform> {
     tLocal: { value: null }, tStreetField: { value: null }, tShape: { value: null }, tDetail: { value: null }, tTurb: { value: null },
     uLocalShift: { value: new THREE.Vector2() }, uStreetShift2: { value: new THREE.Vector2() }, uWindDir2: { value: new THREE.Vector2(1, 0) },
     uShapeShift: { value: new THREE.Vector3() }, uDetailShift: { value: new THREE.Vector3() }, uClear2: { value: new THREE.Vector3() },
-    uTurbulence: { value: 0 }, uFragMin: { value: 0 }, uBaseErode: { value: 6 }, uWeatherWarp: { value: 0 }, uCellPeriod: { value: 96000 }, uShapePeriod: { value: 3200 },
+    uTurbulence: { value: 0 }, uFragMin: { value: 0 }, uBaseErode: { value: CLOUD2_BASE_ERODE }, uWeatherWarp: { value: 0 }, uCellPeriod: { value: 96000 }, uShapePeriod: { value: 3200 },
   };
 }
 
@@ -1434,8 +1443,8 @@ export class VolumetricCloudLayer {
       (m.uLayerStreets.value as THREE.Vector4).set(base.x * k, base.y * k, base.z * k, base.w * k);
     }
     m.uFragMin.value = lightTune('CLOUD_FRAG_MIN', 0);
-    // (227, QA: __LIGHT_TUNE.CLOUD_BASE_ERODE) the detail's erosion exponent at a convective base (6: round 1's cores only)
-    m.uBaseErode.value = Math.max(1, lightTune('CLOUD_BASE_ERODE', 6));
+    // (227, QA: __LIGHT_TUNE.CLOUD_BASE_ERODE) the detail's erosion exponent at a convective base (CLOUD2_BASE_ERODE)
+    m.uBaseErode.value = Math.max(1, lightTune('CLOUD_BASE_ERODE', CLOUD2_BASE_ERODE));
     // QA: the march's light budget (cloudShaders.ts uLightBudget; the defaults the tier's law) and the towers' warp, the
     // detail's reach and the stride's growth as scales — the cost lab's knobs
     (t.uLightBudget.value as THREE.Vector4).set(Math.max(1, Math.round(lightTune('CLOUD_LIGHT_EVERY', budget.lightEvery))), lightTune('CLOUD_LIGHT_T', 0.15),
