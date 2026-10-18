@@ -1619,7 +1619,10 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     const ready = allStill || (allSlow && age > BAKE_SLOW_AGE_S);
     // (round 2) and none of its roof's slabs or sheets lies high past the walls when it bakes: one the looks above missed (it
     // crept, never asleep) is shoved now and the bake waits for it
-    if (ready && age <= BAKE_AGE_S && (roofLeftHigh(c) || panelsStanding(c))) return;
+    // (a panel come to rest on its edge past the walls is tipped as soon as it rests, not only when the collapse would bake:
+    // round 2, a caravanserai's roof sheet stood on edge in the yard until the end)
+    const tipped = age <= BAKE_AGE_S && panelsStanding(c);
+    if (ready && age <= BAKE_AGE_S && (roofLeftHigh(c) || tipped)) return;
     if (ready || age > BAKE_AGE_S) { const tBake = profStart(); bake(c); profEnd('cb.bake', tBake); }
   }
   /** A roof slab at rest looked at (its pose in `pose`): left where it belongs, or shoved off a rest high past the walls,
@@ -1703,23 +1706,44 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       const e = [...h].sort((x, y) => x - y);
       return e[0]! <= 0.35 && e[1]! >= 0.75;
     };
+    const sb = bandEnclosure(a, 0)?.solidBox;
+    const [bcx, bcz] = sb && Number.isFinite(sb[0]) ? [(sb[0] + sb[2]) / 2, (sb[1] + sb[3]) / 2] : anatomyCentre(a);
+    const midX = f.x + bcx * f.c + bcz * f.s, midZ = f.z - bcx * f.s + bcz * f.c;
     for (const p of c.pieces) {
       if (p.rested || p.shattered) continue;
       if (!p.broken) {
         const h = p.half ?? pieceHalf(p.piece);
-        if (p.handle < 0 || p.retipped || !panel(h) || !pool.framePoseAt(p.handle, pose) || !outside(pose[0]!, pose[2]!)) continue;
+        if (p.handle < 0 || p.retipped || !panel(h) || !creeping(p.handle) || !pool.framePoseAt(p.handle, pose) || !outside(pose[0]!, pose[2]!)) continue;
         p.retipped = true;
-        if (tipIfStanding(p.handle, h, p.piece.massKg, c.structureIdx * 131 + p.piece.index + 13, 0.5)) moved = true;
+        if (tipOutward(p.handle, h, p.piece.massKg, midX, midZ)) moved = true;
         continue;
       }
       for (let k = 0; k < p.parts.length; k++) {
         const part = p.parts[k]!, spec = p.piece.parts[k];
-        if (!spec || part.handle < 0 || part.retipped || !panel(spec.half) || !pool.framePoseAt(part.handle, pose) || !outside(pose[0]!, pose[2]!)) continue;
+        if (!spec || part.handle < 0 || part.retipped || !panel(spec.half) || !creeping(part.handle) || !pool.framePoseAt(part.handle, pose) || !outside(pose[0]!, pose[2]!)) continue;
         part.retipped = true;
-        if (tipIfStanding(part.handle, spec.half, spec.massKg, c.structureIdx * 131 + p.piece.index * 16 + k + 13, 0.5)) moved = true;
+        if (tipOutward(part.handle, spec.half, spec.massKg, midX, midZ)) moved = true;
       }
     }
     return moved;
+  }
+  /** A panel standing on its edge (its pose in `pose`) pushed over away from the building's middle, at its top (it falls
+   *  flat on the ground outside rather than back against the wall it leans on). False when it is not standing. */
+  function tipOutward(handle: number, half: readonly number[], massKg: number, midX: number, midZ: number): boolean {
+    let thin = 0;
+    for (let k = 1; k < 3; k++) if (half[k]! < half[thin]!) thin = k;
+    _hq.set(pose[3]!, pose[4]!, pose[5]!, pose[6]!);
+    _hv.set(thin === 0 ? 1 : 0, thin === 1 ? 1 : 0, thin === 2 ? 1 : 0).applyQuaternion(_hq);
+    if (Math.abs(_hv.y) > 0.5) return false;
+    const hl = Math.hypot(_hv.x, _hv.z) || 1;
+    let ox = _hv.x / hl, oz = _hv.z / hl;
+    if (ox * (pose[0]! - midX) + oz * (pose[2]! - midZ) < 0) { ox = -ox; oz = -oz; }
+    let up = 0;
+    for (let k = 0; k < 3; k++) { _l.set(k === 0 ? 1 : 0, k === 1 ? 1 : 0, k === 2 ? 1 : 0).applyQuaternion(_hq); up += half[k]! * Math.abs(_l.y); }
+    if (up < STAND_TALL * half[thin]!) return false;
+    const j = Math.max(1, massKg) * 2.5;
+    pool.impulse(handle, ox * j, 0, oz * j, pose[0]!, pose[1]! + up * 0.8, pose[2]!);
+    return true;
   }
   /** Whether a roof slab or sheet still lies high past the walls (each not yet looked at is, and is moved). */
   function roofLeftHigh(c: LiveCollapse): boolean {
