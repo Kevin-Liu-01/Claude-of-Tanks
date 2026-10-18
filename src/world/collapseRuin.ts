@@ -401,9 +401,13 @@ function tallWallStubs(rng: () => number, slot: FractureSlot, cap: number, mesh:
   const cell = anatomy?.enclosure?.cell;
   // (round 2: an airstrip's 5 m cells stood 12 m stubs where nothing is drawn) only on a grid fine enough to stand on a wall
   if (!anatomy || !cell || cell > 1) return;
-  // walls tall enough that a stub on them stands over the target, else the tallest there are
-  let spots = wallSpots(anatomy, target * 1.25, 600);
-  if (spots.length < 4) spots = wallSpots(anatomy, target * 0.6, 600);
+  // walls tall enough that a stub on them stands over the target, else the tallest there are — the body's own walls: not
+  // what is drawn far over it (round 2: a mast compound's lattice mast, 47 m over its 3.7 m hut, stood stone stubs in its
+  // legs' cells that the mast's fall left standing alone)
+  const ownTop = Math.max(anatomy.h, anatomy.roof?.ridgeY ?? 0) + 1;
+  const own = (list: ReturnType<typeof wallSpots>) => list.filter((sp) => sp.top <= ownTop);
+  let spots = own(wallSpots(anatomy, target * 1.25, 600));
+  if (spots.length < 4) spots = own(wallSpots(anatomy, target * 0.6, 600));
   if (!spots.length || !mesh.begin(slot.bucket, 'remnant')) return;
   const t = Math.max(0.25, Math.min(0.7, slot.thicknessM > 0.05 ? slot.thicknessM * 1.4 : 0.4));
   const placed: number[] = [];

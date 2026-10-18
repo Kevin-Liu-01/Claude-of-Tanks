@@ -51,8 +51,34 @@ if (!isMainThread) {
    * not a stray slab] (destruction-slabs 227 round 2, each looked at in the detector's renders). A finding passes only
    * when an entry names its building, its mesh and its reason; anything else the building shows still fails it.
    */
+  const REMNANT = /^fx-structure-remnant-/, RUBBLE = /^fx-structure-rubble-/, RIM = /^fx-structure-rim-/, BAKED = /^fx-collapse-baked-/;
+  const TALL = /^too tall/, OUTSIDE = /^outside/, OFF = /^off the walls/, FLOATING = /^floating/;
   const KNOWN = Object.freeze([
-    // (filled from the round's census: see docs/DESTRUCTION.md §19)
+    // low remnants over the collapse heap, where the drawn wall there stands lower (the regional kits' ruin and remnant
+    // walls over the sim's mound; the detector reads the intact top in a 1.5 m window): a metre or two, never a slab
+    ['airfield #25', REMNANT, TALL, 'a timber remnant 1.2 m over the drawn wall, banked by the heap'],
+    ['badlands #54', REMNANT, TALL, "the ruin's collapse stub over the banked heap in a gap of its drawn wall (1.8 m)"],
+    ['blackglass #9', REMNANT, TALL, 'a remnant pier 1.2 m over the drawn wall head, on the heap'],
+    ['blackglass #14', REMNANT, TALL, 'a remnant pier 1.1 m over the drawn wall head, on the heap'],
+    ['caldera #34', REMNANT, TALL, "the stack's stump 1.3 m over the drawn top at its spot, its heap banked round it"],
+    ['fjord #0', REMNANT, TALL, 'a remnant wall 1.4 m over the drawn wall, banked by the heap'],
+    ['fjord #9', REMNANT, TALL, "the ruin's collapse stub over the banked heap (1.7 m: its drawn wall there is a stump)"],
+    ['polders #13', REMNANT, TALL, "the ruin's collapse stub over the banked heap (1.2 m)"],
+    ['titan_gorge #3', REMNANT, TALL, "the ruin's collapse stub over the banked heap (1.5 m)"],
+    ['steppe #10', REMNANT, TALL, "the stack's steel stub 1.8 m over its drawn base"],
+    ['skybridge #12', REMNANT, TALL, "the mast compound's hut: a corner stub 1.1 m over its drawn wall, on the heap"],
+    ['whiteout #40', REMNANT, TALL, "the airstrip's steel stub (its 5 m grid reads a post where its edge is drawn low)"],
+    ['whiteout #21', REMNANT, TALL, "the troposcatter hut's wall stub on the reflector's fallen frame (pre-existing, unchanged from main)"],
+    ['skybridge #24', REMNANT, OUTSIDE, 'a remnant wall on the slope, 16 % of it past the plan below the ground on the downhill side'],
+    // held storeys (DESTRUCTION.md §3.4): what stands with a storey the simulation holds over a destroyed one
+    ['ruinspires #1', REMNANT, TALL, "a held upper storey's joist end at the megatower's top, 2.5 m proud"],
+    ['skybridge #7', REMNANT, TALL, "a held upper storey's member end in the needle tower's open frame, 1.6 m proud"],
+    // fallen objects lying on the ground: a face of the object, not a plate in the open
+    ['longleaf #16', RUBBLE, OUTSIDE, "the fire lookout's cab on its side at the fallen frame's end (its floor stands on edge)"],
+    ['orchard #4', RUBBLE, OUTSIDE, "the bell tower's fallen drum beyond the walls (its broken end)"],
+    // a collapse's rest on what holds it, rims at holes in open walls
+    ['ruinspires #7', BAKED, FLOATING, "the collapse's baked rest lying on the heap's records, 1.9 m up"],
+    ['skybridge #7', RIM, OFF, "breach rims in the needle tower's open steel frame, past its thin members"],
   ]);
 
   const maps = process.env.COT_SLAB_KINDS_MAPS ? process.env.COT_SLAB_KINDS_MAPS.split(',') : [...MAP_IDS];
