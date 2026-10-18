@@ -126,7 +126,7 @@
     "context": "Game-mode card copy. Preserve {gravity} (a fraction of Earth gravity, written before \"g\") and {target} (the score target); both are filled in from the match ruleset."
   },
   "playMenu.matchMode.infected.desc": {
-    "context": "Game-mode card copy. Preserve {survivorHp} (a percentage) and {minutes} (the match clock); both are filled in from the match ruleset."
+    "context": "Game-mode card copy. Preserve {survivorHp} and {infectedHp} (percentages) and {minutes} (the match clock); all are filled in from the match ruleset."
   },
   "playMenu.matchMode.gun_game.desc": {
     "context": "Game-mode card copy. Preserve {killsPerWeapon} (kills per weapon step) and {weapons} (the number of weapon stages); both are filled in from the match ruleset."

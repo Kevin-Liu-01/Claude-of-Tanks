@@ -7,6 +7,8 @@ import { buildHouse, holedPolygon, type HoleRect, type HouseDialect, type Openin
 import { recordLattice, type LatticeReading, type LatticeSpec } from './lattice.ts';
 import { recordShed } from './shedFall.ts';
 import { doorUnit, windowUnit } from './openings.ts';
+import { doorCanopy, facadeOn } from './facade.ts';
+import { wallLantern } from './dressing.ts';
 import type { RegionalBuilder } from './types.ts';
 import { angleMember, bandRing, chamferedSection, iBeam, panelSlab, pier, sectionMember, tubeMember } from './steelMembers.ts';
 import { GALV, OLIVE, PLY, STEEL_DARK, WINDOW, bank, boxFace, clamp, radome, uvOffset, wallsIn, wave } from './arctic.ts';
@@ -332,6 +334,7 @@ function module(sink: PartSink, x0: number, z0: number, x1: number, z1: number, 
   panelSlab(sink, 'roof', x0 - 0.12, floor + h, z0 - 0.12, x1 + 0.12, floor + h + 0.22, z1 + 0.12, 1.2, () => [1, 1, 1], [1, 1, 1]);
   // the fascia band: a ring round the walls (it was a slab through the body)
   bandRing(sink, band, x0, floor + h - 0.5, z0, x1, floor + h - 0.1, z1, 0.03);
+  if (facadeOn()) moduleDoorCraft(sink, x0, z0, x1, z1, floor + h - 0.5, holes);
   if (mobile) return;
   // the panel seams down every face
   const seam = { colour: shade(PAINT_RGB[paint], 0.8), decor: true, fine: true } as const;
@@ -354,6 +357,23 @@ function module(sink: PartSink, x0: number, z0: number, x1: number, z1: number, 
       for (let u = -f.width / 2 + 4.2; u < f.width / 2 - 1.0; u += 4.2) upFace(u, 0.16, floor - 0.05, floor + h + 0.05, 0.04, 0.08, { colour: STEEL, decor: true });
     }
     if (piles) rustStreaks(sink, f, floor + h - 0.55, rustStream(x0 * 3.1 + z0 * 7.7 + x1 + z1 * 0.37 + side.charCodeAt(0)), 0.25, cuts);
+  }
+}
+
+/**
+ * Over each door of a module, where its fascia band leaves the room (the looks lane, 227, BLD-04; facade craft, desktop,
+ * decor): the steel hood the line hung over a door at a stair head, and the vapour-proof lamp on its bracket beside it on
+ * the side away from the stair (the flight runs down to +u).
+ */
+function moduleDoorCraft(sink: PartSink, x0: number, z0: number, x1: number, z1: number, bandY: number,
+  holes: Partial<Record<'n' | 's' | 'e' | 'w', readonly HoleRect[]>>): void {
+  for (const side of ['n', 's', 'e', 'w'] as const) {
+    for (const c of holes[side] ?? []) {
+      if (c.y1 - c.y0 <= 1.5 || bandY - c.y1 < 0.38) continue;
+      const f = boxFace(x0, z0, x1, z1, side), u = (c.u0 + c.u1) / 2, w = c.u1 - c.u0, lamp = u - (w + 0.7) / 2 - 0.2;
+      doorCanopy(sink, f, u, c.y1 - 0.04, w, { kind: 'shed', bucket: 'structureMetal', colour: STEEL, timber: STEEL_DARK, depth: 0.85 });
+      if (Math.abs(lamp) + 0.15 < f.width / 2) wallLantern(sink, f, lamp, c.y1 + 0.05);
+    }
   }
 }
 

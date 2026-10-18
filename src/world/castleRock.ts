@@ -113,6 +113,11 @@ export class SkinMesh {
   col: number[] = [];
   gr: number[] = [];
   idx: number[] = [];
+  /** (the maps lane, 2026-10-17, Aegis r7) a builder's own uv per vertex and an offset per triangle added to it (a bedded
+   * wall's frame along its beds, each joint block its own cut of the tile); without them finishSkin lays the
+   * world-planar uv, whose sheared lattice repeats every few metres across a long wall. */
+  uv: number[] | null = null;
+  faceUv: number[] | null = null;
   vert(p: V3, c: readonly [number, number, number], ground: number): number {
     this.pos.push(p[0], p[1], p[2]);
     this.col.push(c[0], c[1], c[2]);
@@ -173,7 +178,10 @@ export function finishSkin(mesh: SkinMesh, creaseDeg: number): THREE.BufferGeome
       if (nl > 1e-9) { nor[out * 3] = sx / nl; nor[out * 3 + 1] = sy / nl; nor[out * 3 + 2] = sz / nl; } else { nor[out * 3] = fx; nor[out * 3 + 1] = fy; nor[out * 3 + 2] = fz; }
       col[out * 3] = mesh.col[v * 3]; col[out * 3 + 1] = mesh.col[v * 3 + 1]; col[out * 3 + 2] = mesh.col[v * 3 + 2];
       gr[out] = mesh.gr[v];
-      uvs[out * 2] = p[v * 3] * 0.37 + p[v * 3 + 1] * 0.21; uvs[out * 2 + 1] = p[v * 3 + 2] * 0.37 - p[v * 3 + 1] * 0.17;
+      if (mesh.uv) {
+        uvs[out * 2] = mesh.uv[v * 2] + (mesh.faceUv ? mesh.faceUv[f * 2] : 0);
+        uvs[out * 2 + 1] = mesh.uv[v * 2 + 1] + (mesh.faceUv ? mesh.faceUv[f * 2 + 1] : 0);
+      } else { uvs[out * 2] = p[v * 3] * 0.37 + p[v * 3 + 1] * 0.21; uvs[out * 2 + 1] = p[v * 3 + 2] * 0.37 - p[v * 3 + 1] * 0.17; }
       out++;
     }
   }

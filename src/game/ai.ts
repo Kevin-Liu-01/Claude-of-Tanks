@@ -136,6 +136,8 @@ interface AiController {
   hasClearShot(targetId: string): boolean;
   readonly terrainBlocked: boolean;
   readonly targetId: string | null;
+  /** The tier the controller was built with (the solo battle and the authority may step it down per ruleset). */
+  readonly difficulty: AiDifficulty;
   debugInfo(): AiControllerDebugInfo;
   state: string;
 }
@@ -6324,6 +6326,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     get terrainBlocked() { return terrainBlocked; },
     hasClearShot: (id) => target?.id === id && losClear && friendlyBlockT <= 0 && gunLaneBlockedT <= 0 && penGateOk,
     get targetId() { return target ? target.id : null; },
+    difficulty: opts.difficulty ?? 'normal',
     /** Headless-probe introspection (controls_gunnery r5): gate snapshot. */
     debugInfo: () => ({
       mode, targetId: target ? target.id : null,

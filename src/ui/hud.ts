@@ -1815,6 +1815,20 @@ function fmtTimer(s: number): string {
 }
 
 /**
+ * The Horde's status line under the live ruleset (else the mode's own table): unlimited rounds drop the ammunition
+ * count, which could only read full.
+ */
+export function hordeStatusCopy(modeState: HudMatchModeState, liveRuleset: MatchRuleset | null): string {
+  const horde = modeState.horde;
+  const wave = String(horde?.wave || 1), alive = String(horde?.alive || 0);
+  const rules = (liveRuleset?.mode === modeState.id ? liveRuleset : null) ?? matchRulesetFor(normalizeGameMode(modeState.id));
+  if (rules.ammo === 'unlimited') return t('hud.modeStatus.hordeWave', { wave, alive });
+  return t('hud.modeStatus.horde', {
+    wave, alive, ammo: String(modeState.playerAmmo ?? '—'), capacity: String(modeState.playerAmmoCapacity ?? '—'),
+  });
+}
+
+/**
  * Create the battle HUD overlay and subscribe it to the event bus.
  * @param {{on:Function,off:Function,emit:Function}} bus - injected event bus (§1.5).
  * @returns {{setMode:Function,update:Function,buildMinimap:Function,setDamagePanel:Function,forceAimDisplay:Function,root:HTMLElement}} Hud
@@ -3009,13 +3023,7 @@ export function initHud(bus: EventBus): HudRuntime {
         wave: String(modeState.horde?.wave || 1), alive: String(modeState.horde?.alive || 0),
       });
     }
-    const horde = modeState.horde;
-    return t('hud.modeStatus.horde', {
-      wave: String(horde?.wave || 1),
-      alive: String(horde?.alive || 0),
-      ammo: String(modeState.playerAmmo ?? '—'),
-      capacity: String(modeState.playerAmmoCapacity ?? '—'),
-    });
+    return hordeStatusCopy(modeState, liveRuleset);
   }
 
   function modeStatusIconName(modeId: string): string {

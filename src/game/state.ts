@@ -44,7 +44,7 @@ import type {
 // RULESETS (2026-09-14): one pure description per mode of how the sim bends — hull, damage taken,
 // reload, ammunition, equipment slots, gravity, roster split and the clock (sim/matchRuleset.ts).
 import {
-  applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetAllyCap,
+  applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetAllyCap, rulesetBotDifficulty,
   rulesetLoadout, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
 import { campaignRulesetInput } from './campaignOperations.ts';
 import {
@@ -1106,7 +1106,8 @@ function createBattleBot(
   // round 62 pacing: the no-contact search plans its legs over the shared navigation grid (own seeded stream)
   const searchRng = mulberry32(18000 + entityIndex);
   const controller = createAI(entity, {
-    difficulty: getStoredDifficulty(),
+    // the battle's difficulty, stepped down for the Horde's zombies by the ruleset
+    difficulty: rulesetBotDifficulty(context.game.ruleset, entity.team, getStoredDifficulty()),
     rng: mulberry32(7000 + entityIndex),
     deps: {
       ...context.aiDependencies,

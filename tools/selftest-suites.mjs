@@ -20,6 +20,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/modeConfiguration.selftest.mjs',
     'src/sim/sixModes.selftest.mjs',
     'src/sim/infectedLifecycle.selftest.mjs',
+    // 2026-10-17 (owner): fragile zombies and sturdy humans in Infected and the Horde (rules, hunt, measured band), and
+    // unlimited rounds in every special and arcade mode
+    'src/sim/zombieBalance.selftest.mjs',
+    // the zombies' tier-down wiring in both bot builders (the authority per seat, the solo battle per setting)
+    'src/game/zombieBotTier.selftest.mjs',
+    'src/sim/specialModeAmmo.selftest.mjs',
     'src/sim/modeAdditions.selftest.mjs',
     'src/fx/sceneLightTint.selftest.mjs',
     'src/fx/droneModel.selftest.mjs',
@@ -1762,6 +1768,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/ammoCrates.selftest.mjs',
     'src/world/maps/rollingStock.selftest.mjs',
     'src/world/maps/vehicleSetPieces.selftest.mjs',
+    // the map-content lane's R6 (wave 358a): the works vehicles on their own gear, their prints and ground contact
+    'src/world/maps/setPieceSeat.selftest.mjs',
     'src/world/maps/strandWrack.selftest.mjs',
     'src/world/maps/shoreJetty.selftest.mjs',
     // #16 r2 (Lane C, 2026-10-14): the waterside family in its members (jetty forms, gangway, driftwood, buoys, fords, reeds)
