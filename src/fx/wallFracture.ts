@@ -414,10 +414,10 @@ function endBears(wall: WallFracture, fi: number, r: number, side: 0 | 1): boole
 }
 
 /** The face a body-frame point strikes: nearest plane within 1.2 m, inside its span (±0.3 m) and its storey. */
-export function struckFace(wall: WallFracture, x: number, y: number, z: number): { face: number; u: number; v: number } | null {
+export function struckFace(wall: WallFracture, x: number, y: number, z: number, withNotWall = false): { face: number; u: number; v: number } | null {
   let best = -1, bestD = 1.2, bu = 0, bv = 0;
   wall.faces.forEach((g, i) => {
-    if (g.notWall) return;
+    if (g.notWall && !withNotWall) return;
     const dx = x - g.origin[0], dy = y - g.origin[1], dz = z - g.origin[2];
     const along = dx * g.u[0] + dy * g.u[1] + dz * g.u[2];
     const v = dy;

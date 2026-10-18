@@ -32,7 +32,7 @@ import { emitDebrisLanding } from './clock.ts';
 import { profEnd, profStart } from './fxProf.ts';
 import {
   CELL_CRACKED, CELL_FALLEN, CELL_GONE, CELL_OPENING, CELL_SPALLED, CELL_VOID, CRACK_AT, SPALL_AT, cellRect, createWallFracture,
-  createWallStrikeOutcome, dropFace, gableTopAt, strikeWall, type FaceGrid, type WallFracture, type WallStrikeKind,
+  createWallStrikeOutcome, dropFace, gableTopAt, strikeWall, struckFace, type FaceGrid, type WallFracture, type WallStrikeKind,
 } from './wallFracture.ts';
 
 interface StructureFractureOptions {
@@ -1545,6 +1545,25 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     return true;
   }
   const _tipA = new THREE.Vector3(), _tipB = new THREE.Vector3();
+  /** A body standing on its edge laid flat where it stands (its pose in `pose`, rewritten): its thin axis turned up about
+   *  its lowest point, its yaw kept (round 4). */
+  function layFlat(b: LiveBody, pose: Float64Array | number[]): void {
+    const h = b.half;
+    let thin = 0;
+    for (let k = 1; k < 3; k++) if (h[k] < h[thin]) thin = k;
+    _q.set(pose[3]!, pose[4]!, pose[5]!, pose[6]!);
+    _tipA.set(thin === 0 ? 1 : 0, thin === 1 ? 1 : 0, thin === 2 ? 1 : 0).applyQuaternion(_q);
+    let up = 0;
+    for (let k = 0; k < 3; k++) { _tipB.set(k === 0 ? 1 : 0, k === 1 ? 1 : 0, k === 2 ? 1 : 0).applyQuaternion(_q); up += h[k]! * Math.abs(_tipB.y); }
+    // the turn that takes its thin axis to the vertical (the shortest), about its lowest point
+    _tipB.set(0, _tipA.y >= 0 ? 1 : -1, 0);
+    _layQ.setFromUnitVectors(_tipA, _tipB).multiply(_q);
+    const floor = pose[1]! - up;
+    pose[1] = floor + h[thin]! + 0.02;
+    pose[3] = _layQ.x; pose[4] = _layQ.y; pose[5] = _layQ.z; pose[6] = _layQ.w;
+    writePose(b, pose);
+  }
+  const _layQ = new THREE.Quaternion();
   /** Whether a body at `pose` stands on its edge (its thin axis within 24° of level, reaching 2.5 times its thickness up)
    *  1.5 m tall or more. */
   function onEdge(b: LiveBody, pose: ArrayLike<number>): boolean {
@@ -1881,6 +1900,10 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       const bx = wx * c - wz * s, by = y - py, bz = wx * s + wz * c;
       const dl = Math.hypot(dirX, dirZ) || 1;
       const bdx = (dirX * c - dirZ * s) / dl, bdz = (dirX * s + dirZ * c) / dl;
+      // (round 4) a round on a face that draws no flat wall takes nothing and lays nothing — no kit rim either: one laid
+      // straight across a round tower's wall stood half in the air (the census's reservoir #17 valve tower)
+      const near = struckFace(live.wall, bx, by, bz, true);
+      if (near && live.wall.faces[near.face]!.notWall) return [];
       const seed = damageSeed(a.seed, 7001, live.strikes++, Math.round(bx * 100), Math.round(by * 100), Math.round(bz * 100));
       if (!strikeWall(live.wall, { x: bx, y: by, z: bz, dirX: bdx, dirZ: bdz, radiusM: hole.radiusM, kind: hole.kind, seed }, outcome)) {
         return null;
@@ -2109,6 +2132,8 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
           if (b.age < BAKE_AGE_S && onEdge(b, _pose)) {
             if (!b.cracked && b.cells.length >= CRACK_MIN_CELLS * 2) { b.cracked = true; cracking.push(b); b.still = 0; continue; }
             if ((b.retips ?? 0) < 2) { b.retips = (b.retips ?? 0) + 1; b.tipped = false; b.still = 0; tipIfStanding(b, _pose); continue; }
+            // (still on its edge, propped where no push turns it: it lies down flat where it stood, its broad side down)
+            layFlat(b, _pose);
           }
           bake(b);
         }

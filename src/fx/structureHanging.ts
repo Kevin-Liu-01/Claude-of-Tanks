@@ -48,6 +48,8 @@ export interface HangingResult {
 // (the sweep reads a little stricter than the slab check — touching at 0.2 m, bearing over 55 % of its envelope, down when
 // its held share fell by a fifth — so what the check would call borderline has come down: their samples differ)
 const SLICE = 12000;
+/** Samples a putInto call puts between a step's checks (round 4). */
+const PUT_CHUNK = 2048;
 const CELL = 0.4, VOX = 0.25, JOIN = 0.2, SPACING = 0.3, BAND = 0.8, BEAR = 0.55, DROP = 0.2, TOUCH = 0.3, MOVED = 0.002, LIFT = 1, TWIN = 0.1;
 const CELL_BITS = 2 ** 21;
 const cellKey = (i: number, k: number): number => (i + 1048576) * CELL_BITS + (k + 1048576);
@@ -431,7 +433,10 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
         // (its base samples stand where they were: those of its hidden triangles are read no more)
         alives[p] = alive;
         const keep: number[] = [];
-        for (let i = 0; i < part.owner.length; i++) if (alive[part.owner[i]!]) keep.push(part.xyz[i * 3]!, part.xyz[i * 3 + 1]!, part.xyz[i * 3 + 2]!);
+        for (let i = 0; i < part.owner.length; i++) {
+          if (alive[part.owner[i]!]) keep.push(part.xyz[i * 3]!, part.xyz[i * 3 + 1]!, part.xyz[i * 3 + 2]!);
+          if ((i & 4095) === 4095) { work += 4096; if (work >= SLICE) { work = 0; yield; } }
+        }
         now[p] = Float32Array.from(keep);
       } else {
         dead[p] = 1;
@@ -457,7 +462,13 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
         const xyz = now[p];
         if (!xyz?.length) continue;
         xyzs[p] = xyz; env[p] = new Map();
-        putInto(column, voxels, p, xyz, 0, xyz.length / 3, env[p]!, lo);
+        // (round 4, the engineering critic's frame times: a big moved part's samples put in one step held a frame 10 ms and
+        // more) in chunks, a step's share at a time
+        for (let i = 0, n = xyz.length / 3; i < n; i += PUT_CHUNK) {
+          putInto(column, voxels, p, xyz, i, Math.min(n, i + PUT_CHUNK), env[p]!, lo);
+          work += Math.min(n, i + PUT_CHUNK) - i;
+          if (work >= SLICE) { work = 0; yield; }
+        }
       } else if (changed[p]) {
         // some triangles hidden: its envelope from those still drawn (its samples stay in the base)
         const xyz = now[p]!;
@@ -472,9 +483,12 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
     for (let h = 0; h < holderXyz.length; h++) {
       const xyz = holderXyz[h]!;
       if (h < J && xyz.length) env[P + h] = new Map();
-      putInto(column, voxels, P + h, xyz, 0, xyz.length / 3, h < J ? env[P + h] ?? null : null, lo);
-      work += xyz.length / 3;
-      if (work >= SLICE) { work = 0; yield; }
+      // (a redrawn face's or a run's samples in chunks: one face held a step 12 ms on a loaded machine)
+      for (let i = 0, n = xyz.length / 3; i < n; i += PUT_CHUNK) {
+        putInto(column, voxels, P + h, xyz, i, Math.min(n, i + PUT_CHUNK), h < J ? env[P + h] ?? null : null, lo);
+        work += Math.min(n, i + PUT_CHUNK) - i;
+        if (work >= SLICE) { work = 0; yield; }
+      }
     }
     return { xyz: xyzs, env, lo, column, voxels, base: model.intact, dead, alive: alives };
   }
@@ -768,6 +782,18 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
     if (!pos) return [];
     mesh.updateWorldMatrix(true, false);
     const M = mesh.matrixWorld, ix = g!.index;
+    // (round 4, the engineering critic's frame times: every sweep welded every face mesh again, a step's 5 ms) a mesh's
+    // pieces kept while its geometry, its triangles and its place are as they were
+    const kept = pieceCache.get(mesh);
+    const pv = (pos as THREE.BufferAttribute).version ?? 0, iv = ix?.version ?? -1;
+    if (kept && kept.geometry === g && kept.pv === pv && kept.iv === iv && kept.m.every((v, k) => v === M.elements[k])) return kept.out;
+    const out = facePiecesNow(g!, pos as THREE.BufferAttribute, M, ix);
+    pieceCache.set(mesh, { geometry: g!, pv, iv, m: Float64Array.from(M.elements), out });
+    return out;
+  }
+  const pieceCache = new WeakMap<THREE.Mesh, { geometry: THREE.BufferGeometry; pv: number; iv: number; m: Float64Array;
+    out: Array<{ tris: number[]; xyz: Float32Array }> }>();
+  function facePiecesNow(g: THREE.BufferGeometry, pos: THREE.BufferAttribute, M: THREE.Matrix4, ix: THREE.BufferAttribute | null): Array<{ tris: number[]; xyz: Float32Array }> {
     const n = Math.floor((ix ? ix.count : pos.count) / 3);
     const parent = new Int32Array(n);
     for (let t = 0; t < n; t++) parent[t] = t;

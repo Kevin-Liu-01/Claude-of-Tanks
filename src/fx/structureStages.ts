@@ -1519,6 +1519,9 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
         if (spec) {
           bodiesNext = 5;
           run(seam, 0, settled, (out) => seam.breach(spec, out), true, { section: spec.section, storey: spec.storey }, false, false, spec.seed);
+          // (round 4; the census's hostomel warehouse: an earlier rim's pieces a later kit hole cut round stood in the air)
+          // what a kit hole left hanging comes down too
+          fracture?.hanging(seam, settled);
         }
         return;
       }

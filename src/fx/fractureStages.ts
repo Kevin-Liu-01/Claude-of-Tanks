@@ -267,6 +267,8 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
   // no storey of it is falling, one building an update; a fallen building's spans are gone (the mask's, the fracture's)
   const hangingSweep = createHangingSweep({ originalOf: (span) => host?.originalOf?.(span) ?? null, groundAt: o.groundAt });
   const hangingDue = new Map<number, { seam: StructureDamageSeam; settled: boolean }>();
+  /** Buildings struck whose intact reading is still to be made (round 4). */
+  const toPrepare = new Map<number, StructureDamageSeam>();
   const fallen = new Set<number>();
   /** Sweeps run again after one that took something (what it took held what it left: a reveal over a fallen cell), at
    *  most HANGING_CHAIN a change. */
@@ -312,7 +314,16 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       return;
     }
     // (none to sweep yet: a building whose damage is still being drawn has its intact reading made meanwhile)
-    if (blocked) for (let n = 0; n < HANGING_STEPS && !hangingSweep.prepare(blocked); n++) { /* a step */ }
+    if (blocked) { for (let n = 0; n < HANGING_STEPS && !hangingSweep.prepare(blocked); n++) { /* a step */ } return; }
+    // (round 4; the engineering critic's frontier #15 tavern: its chimney cap hung 9 m up for 2.9 s after its roof fell — the
+    // first sweep made the building's intact reading first) a building struck has its intact reading made from its first
+    // hole on, in the frames no sweep runs, so the sweep its first fall asks for reads at once
+    for (const [idx, seam] of toPrepare) {
+      if (fallen.has(idx)) { toPrepare.delete(idx); continue; }
+      let n = 0;
+      for (; n < HANGING_STEPS; n++) if (hangingSweep.prepare(seam)) { toPrepare.delete(idx); break; }
+      break;
+    }
   }
   function applyHanging(idx: number, due: { seam: StructureDamageSeam; settled: boolean }, runs: THREE.Mesh[], rooms: THREE.Mesh[],
     swept: HangingResult): void {
@@ -523,6 +534,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       hole(e, seam, settled = false) {
         const idx = seam.structureIdx;
         seams.set(idx, seam);
+        if (!settled && !toPrepare.has(idx)) toPrepare.set(idx, seam);
         if (isLandmark(seam)) return false;
         sectionsOn.add(idx);
         fracture.holdStoreys(idx, seam);
@@ -605,7 +617,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       fracture.update();
       bodies.update(dt);
       landmarks.update(dt);
-      if (hangingDue.size || hangingJob) sweepHanging();
+      if (hangingDue.size || hangingJob || toPrepare.size) sweepHanging();
       flushRefused();
       // a cut laid ahead gone stale (the walls redrawn, a stage laid since): laid again once the walls' drawing is done,
       // one building an update
@@ -649,6 +661,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
       clamps.length = 0;
       refused.clear();
       hangingDue.clear();
+      toPrepare.clear();
       hangingChain.clear();
       hangingJob = null;
       fallen.clear();
