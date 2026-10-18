@@ -141,7 +141,9 @@ body.cot-touch-layout .cot-shell.sel::after{content:'‹';position:absolute;left
 body.cot-touch-layout .cot-shells.touch-open .cot-shell{opacity:1;pointer-events:auto;
   transform:translateX(var(--touch-ammo-x,0));}
 body.cot-touch-layout .cot-shells.touch-open .cot-shell.sel::after{content:'›';}
-body.cot-touch-layout .cot-shell canvas{transform:translate(-50%,-50%) scale(.76);}
+/* The type label sits on the slot's floor, and so does the shell: scaled from its base 11 px up, its tail keeps 3 px
+   from the label at every touch slot height (critic r4b: APFSDS crossed the dart's tail) */
+body.cot-touch-layout .cot-shell canvas{top:auto;bottom:11px;transform:translateX(-50%) scale(.76);transform-origin:50% 100%;}
 body.cot-touch-layout .cot-shell .key,body.cot-touch-layout .cot-con .key{display:none;}
 body.cot-touch-layout .cot-shell .tip{display:none!important;}
 body.cot-touch-layout .cot-shell .ty{font-size:7px}
@@ -228,9 +230,10 @@ body.cot-touch-layout .cot-sixth .sub{font-size:7px;letter-spacing:.12em;}
    so its top-right corner is free: the count moves there. */
 body.cot-touch-layout .cot-shell .cnt{top:2px;right:3px;bottom:auto;}
 /* A three-digit count (an autocannon's 180) reaches the slot's centre: it sets smaller in the corner and the shell
-   shrinks below it, its base where it was (critic r4: the dart's tip ran into the 1). */
+   shrinks and steps left, out from under it (critic r4: the dart's tip ran into the 1; r4b: the 1 met it on a
+   landscape slot). */
 body.cot-touch-layout .cot-shell.wide .cnt{top:1px;right:2px;font-size:10px;}
-body.cot-touch-layout .cot-shell.wide canvas{transform:translate(-50%,calc(-50% + 3px)) scale(.6);}
+body.cot-touch-layout .cot-shell.wide canvas{transform:translateX(calc(-50% - 5px)) scale(.6);}
 /* Touch-target floor for garage chrome the phone shares with desktop. */
 body.cot-touch-layout .nv{padding:9px 14px;}
 body.cot-touch-layout .cot-country-chip{padding:9px 12px;}

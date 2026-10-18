@@ -1697,7 +1697,8 @@ body.cot-spectating .cot-ret{display:none !important;}
 .cot-shell .clr{position:absolute;left:0;right:0;bottom:0;height:2px;z-index:2;
   background:rgba(146,164,180,.4);}
 .cot-shell.sel .clr{bottom:0;}
-.cot-shell canvas{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);}
+/* the shell sits 3 px high so its tail keeps clear of the type label (critic r4b: the fins came within 2 px of APFSDS) */
+.cot-shell canvas{position:absolute;left:50%;top:50%;transform:translate(-50%,calc(-50% - 3px));}
 .cot-shell .key{position:absolute;top:2px;left:3px;font-size:9.5px;font-weight:700;color:#8a97a3;
   font-family:${FONT_COND};letter-spacing:-.01em;
   border:1px solid rgba(146,164,180,.4);padding:0 3.5px;line-height:13px;z-index:2;}

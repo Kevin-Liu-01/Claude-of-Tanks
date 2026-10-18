@@ -266,14 +266,27 @@ function read(tank) {
   assert.match(hud, /\.cot-shell\.empty \.cnt\{color:var\(--hud-danger\);\}/, 'its 0 in the danger ink');
   assert.match(hud, /\.cot-shell\.wide \.ty\{[^}]*font-size:7\.5px;[^}]*\}\n\.cot-shell\.wide \.cnt\{[^}]*\}/,
     'a three-digit count tightens its row');
-  // critic r4: the shell gives way to a three-digit count — rising on desktop, shrinking under the phone's corner count
+  // critic r4: the shell gives way to a three-digit count — rising on desktop, shrinking and stepping out from under the
+  // touch corner count
   // (the rendered ink gap, 2 px at the least, is the capture's)
   assert.match(hud, /\n\.cot-shell\.wide canvas\{transform:translate\(-50%,calc\(-50% - 4px\)\) scale\(\.88\);\}/,
     'a desktop slot\'s shell rises clear of its three-digit count');
   assert.match(touch, /body\.cot-touch-layout \.cot-shell\.wide \.cnt\{top:1px;right:2px;font-size:10px;\}\n/,
     'the phone sets a three-digit count smaller in its corner');
-  assert.match(touch, /body\.cot-touch-layout \.cot-shell\.wide canvas\{transform:translate\(-50%,calc\(-50% \+ 3px\)\) scale\(\.6\);\}/,
-    'and its shell shrinks below it');
+  assert.match(touch, /body\.cot-touch-layout \.cot-shell\.wide canvas\{transform:translateX\(calc\(-50% - 5px\)\) scale\(\.6\);\}/,
+    'and its shell shrinks and steps left, out from under it');
+  // critic r4b: no marks touch — the shell's tail clears the type label. Desktop raises it 3 px; on touch it stands on
+  // the label's floor (bottom-anchored, so every slot height keeps the gap) and shrinks on the shorter slots (the
+  // rendered label-to-icon ink gap, 2 px at the least, is the capture's)
+  const responsive = readFileSync(new URL('./responsiveSurfaces.css', import.meta.url), 'utf8');
+  assert.match(hud, /\n\.cot-shell canvas\{position:absolute;left:50%;top:50%;transform:translate\(-50%,calc\(-50% - 3px\)\);\}/,
+    'a desktop slot\'s shell clears its type label');
+  assert.match(touch, /body\.cot-touch-layout \.cot-shell canvas\{top:auto;bottom:11px;transform:translateX\(-50%\) scale\(\.76\);transform-origin:50% 100%;\}/,
+    'a touch slot\'s shell stands on the label\'s floor');
+  assert.match(responsive, /\[data-cot-orientation='landscape'\] \.cot-shell:not\(\.wide\) canvas\{transform:translateX\(-50%\) scale\(\.7\)\}/,
+    'the 48 px landscape slot\'s shell is smaller');
+  assert.equal(layout.match(/\.cot-touch-layout \.cot-shell:not\(\.wide\) canvas\{transform:translateX\(-50%\) scale\(\.6\)\}/g)?.length, 2,
+    'and the 44 px slots\' (a landscape under 300 px tall, a portrait under 341 px wide) smaller again');
   assert.match(touch, /body\.cot-gun-dry \.cot-touch \.fire\{[^}]*opacity:\.62/, 'a dry gun dims the FIRE buttons');
   // the rendered proof of these rules is tools/hud-ammo-states.browser.mjs (computed styles of the live tray)
 }

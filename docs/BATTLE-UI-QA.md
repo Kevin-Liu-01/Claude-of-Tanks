@@ -110,10 +110,14 @@ slot of the round just fired never fills. No countdown shows under the rack.
 Spent launcher and magazine-reload controls are struck and disabled. Their count
 is spoken, not printed. Every empty tray slot is struck on a danger edge with
 its 0 in the danger ink, on desktop as on the phone. The phone's collapsed empty
-slot also loses its amber frame. A dry gun dims both phone FIRE buttons. A count
-of three digits or more tightens its slot's type label and count, and the shell
-icon gives way to it: on desktop the icon rises, on the phone it shrinks below
-the corner count, 2 px clear in ink. Under unlimited rounds nothing reads empty:
+slot also loses its amber frame. A dry gun dims both phone FIRE buttons. No mark
+in a tray slot touches another. On desktop the shell icon is raised 3 px clear of
+the type label. On touch it stands on the label's floor, so every slot height
+keeps the gap, and the shorter slots draw it smaller. A count of three digits or
+more tightens its slot's type label and count, and the shell icon gives way to
+it: on desktop the icon rises, on touch it shrinks and steps left, out from
+under the corner count. The count and the label each keep 2 px of ink from the
+icon. Under unlimited rounds nothing reads empty:
 not the ring, the rack, the tray, the magazine control or the loader audio. The
 ammo `∞` takes the numeral's size. Unlimited rounds are read per vehicle
 (`rulesetUnlimitedFor`). In the AC-130 only the gunship refills, so an escort
@@ -125,8 +129,18 @@ the struck round and the aim warning.
 `src/ui/hudAmmoOutPaint.selftest.mjs` covers the live paint and the scope
 stack's geometry, both in `npm test`. For the rendered frames (it takes the
 capture lease), run the command below. It covers desktop, a portrait phone and
-three landscape phones, and checks pixels, recorded canvas geometry, the
-tray's computed styles and each slot's count-to-icon ink gap:
+three landscape phones, and checks pixels, recorded canvas geometry and the
+tray's computed styles. It then reads each saved frame
+(`tools/hud-ammo-frame-ink.mjs`): every mark the DOM says a visible slot shows
+must be in the frame's pixels. That covers its count, type label and empty
+strike, the touch chevron and an opaque top edge. Nothing touches the page
+between the DOM read and the frame. The count-to-icon and label-to-icon ink gaps
+are measured after the frame, from full-viewport shots. The tool takes no
+clipped screenshot. In round r4b the gaps were measured with clipped shots
+taken before each frame. Replayed on the same tree, that flow saved 18 of 56
+frames without the marks painted over a slot's shell icon (count, label, key,
+strike, chevron and reload shade), while hit-testing and computed styles still
+showed them. The current flow saved none of them. Run:
 
 ```sh
 node tools/hud-ammo-states.browser.mjs --url=http://127.0.0.1:5189 --out=/absolute/new-evidence-directory

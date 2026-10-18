@@ -5,7 +5,7 @@
 // battle-hud-layout.html, AMMO_STAGES): a normal reload, an empty cannon, an autoloader short of stowage and one empty
 // between clips and mid-clip, an empty guided salvo rack, an empty ATGM launcher, Juggernaut with unlimited rounds, an
 // AC-130 escort out of rounds, and the ×8 sight reloading and empty — desktop, a portrait phone and three landscape
-// phones. Each frame is checked three ways:
+// phones. Each frame is checked five ways:
 //  - pixels on the reticle canvas (no amber reload sweep, countdown or ready shell on a dry weapon; the danger-ink
 //    empty state present);
 //  - geometry: the canvas calls are recorded (device transform applied), so the empty mark never lands on a readout
@@ -15,14 +15,21 @@
 //  - the DOM: struck controls, ∞ counts at the numeral's size, every empty tray slot struck on a danger edge with its
 //    0 in the danger ink (the phone's collapsed slot without its amber frame), the tray's type label and count apart,
 //    and a dry gun's FIRE buttons dimmed on a touch layout;
-//  - rendered pixels of every visible tray slot: its count keeps 2 CSS px of ink from its shell icon (each slot is shot
-//    bare, with only its count and with only its icon; ink is what each adds in brightness).
+//  - the saved frame itself (tools/hud-ammo-frame-ink.mjs, on the PNG bytes written): every mark the DOM says a
+//    visible tray slot shows — its count (a 0 in the danger ink), type label, empty strike, the phone's selection
+//    chevron and an opaque top edge — is in the frame. The DOM is read after the tray's transitions run out and
+//    nothing touches the page between that read and the frame (critic r4b: clipped shots taken in between left five
+//    phone frames without the slot's marks while every DOM check passed);
+//  - rendered pixels of every visible tray slot, after the frame: its count and its type label each keep 2 CSS px of
+//    ink from its shell icon (full-viewport shots, never clipped: the slots bare, with only their counts, only their
+//    labels and only their icons; ink is what each adds in brightness).
 // Takes the capture lock (NORMAL band) and accepts an existing dev server. --ticket-stamp=<ms> rejoins the queue at an
 // earlier ticket of the same run (capture-lock ticketAt: a relaunched run keeps its place):
 // node tools/hud-ammo-states.browser.mjs --url=http://127.0.0.1:5189 --out=outputs/hud-ammo-states
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock, ticketAt } from './capture-lock.mjs';
+import { cropImage, decodePng, encodePng, inkGap, slotFrameFindings } from './hud-ammo-frame-ink.mjs';
 
 const arg = (name, fallback) => process.argv.find((v) => v.startsWith(`--${name}=`))?.split('=').slice(1).join('=') || fallback;
 const out = resolve(arg('out', 'outputs/hud-ammo-states'));
@@ -67,7 +74,8 @@ const RELOAD_INK = 'rgba(240,160,48,0.95)';
 const SIGHT_BAND = { above: 64, below: 80, half: 90 };
 /** The least gap between the empty mark's strike and any text on the reticle (critic r3: 1.5 px from the range tag). */
 const STRIKE_TEXT_GAP = 3;
-/** The least ink gap between a tray slot's count and its shell icon (critic r4: the phone's 180 ran into the dart). */
+/** The least ink gap between a tray slot's count or type label and its shell icon (critic r4: the phone's 180 ran into
+ *  the dart; r4b: APFSDS crossed the dart's tail on every touch slot). */
 const TRAY_INK_GAP = 2;
 
 /** Installed before the page boots: records the reticle canvas's calls in CSS px, one paint at a time. */
@@ -219,7 +227,50 @@ function readHud(rules) {
     .map((el) => ({ opacity: Number(getComputedStyle(el).opacity), border: getComputedStyle(el).borderTopColor }));
   const unlimitedSlot = shells.find((el) => el.classList.contains('unlimited'));
   const numeral = shells.find((el) => !el.classList.contains('unlimited'));
+  // --- what each visible slot shows, for the saved frame's pixel read (critic r4b: the DOM passed, the frame did not) ---
+  const allShells = [...document.querySelectorAll('.cot-shell')];
+  const inkBox = (node) => {
+    const range = document.createRange(); range.selectNodeContents(node);
+    const r = range.getBoundingClientRect(); return { x0: r.left, y0: r.top, x1: r.right, y1: r.bottom };
+  };
+  const shown = (node) => !!node?.textContent && visible(node) && Number(getComputedStyle(node).opacity) > 0;
+  const drawn = (el, pseudo) => {
+    const style = getComputedStyle(el, pseudo);
+    return style.content !== 'none' && style.content !== 'normal' && style.display !== 'none' ? style : null;
+  };
+  const slots = shells.map((el) => {
+    const box = rect(el); const style = getComputedStyle(el);
+    const border = ['Top', 'Right', 'Bottom', 'Left'].map((side) => parseFloat(style[`border${side}Width`]) || 0);
+    const pad = { x0: box.x0 + border[3], y0: box.y0 + border[0], x1: box.x1 - border[1], y1: box.y1 - border[2] };
+    const cnt = el.querySelector('.cnt'); const ty = el.querySelector('.ty');
+    const strike = drawn(el, '::before'); const chevron = drawn(el, '::after');
+    // a pseudo's resolved offset in px (a percentage of its slot when the engine leaves it unresolved)
+    const px = (value, basis) => (/px$/.test(value) ? parseFloat(value) : /%$/.test(value) ? (basis * parseFloat(value)) / 100 : basis / 2);
+    let strikeMark = null;
+    if (strike && el.classList.contains('empty')) {
+      const left = px(strike.left, pad.x1 - pad.x0); const right = px(strike.right, pad.x1 - pad.x0);
+      const height = px(strike.height, 0) || 1.5; const top = px(strike.top, pad.y1 - pad.y0 - height);
+      const length = pad.x1 - pad.x0 - left - right;
+      const cx = pad.x0 + left + length / 2; const cy = pad.y0 + top + height / 2;
+      const reach = (length / 2 + height / 2) * Math.SQRT1_2;
+      strikeMark = { length, box: { x0: cx - reach, y0: cy - reach, x1: cx + reach, y1: cy + reach } };
+    }
+    let chevronMark = null;
+    if (chevron && el.classList.contains('sel')) {
+      const size = parseFloat(chevron.fontSize); const x = pad.x0 + px(chevron.left, 0); const y = pad.y0 + px(chevron.top, pad.y1 - pad.y0);
+      chevronMark = { box: { x0: x - 1, y0: y - size / 2, x1: x + size * 0.7, y1: y + size / 2 } };
+    }
+    const edge = /^rgb\((\d+), (\d+), (\d+)\)$/.exec(style.borderTopColor);
+    return {
+      index: allShells.indexOf(el), name: `${ty?.textContent ?? ''}|${cnt?.textContent ?? ''}`, box,
+      count: shown(cnt) ? { box: inkBox(cnt), danger: /240, 90, 90/.test(getComputedStyle(cnt).color) } : null,
+      label: shown(ty) ? { box: inkBox(ty) } : null,
+      strike: strikeMark, chevron: chevronMark,
+      edge: edge && border[0] >= 1 ? { box: { x0: box.x0, y0: box.y0, x1: box.x1, y1: box.y0 + border[0] }, rgb: edge.slice(1).map(Number) } : null,
+    };
+  });
   return {
+    slots,
     amber, danger,
     struck: struck.map((el) => ({ label: el.getAttribute('aria-label'), disabled: el.disabled,
       strike: getComputedStyle(el.querySelector('.si'), '::after').content !== 'none' })),
@@ -236,61 +287,50 @@ function readHud(rules) {
   };
 }
 
-/** In the page: the least distance between the ink a slot's count adds and the ink its icon adds, in CSS px. */
-async function inkGap({ shots, width }) {
-  const read = async (b64) => {
-    const img = new Image();
-    img.src = `data:image/png;base64,${b64}`;
-    await img.decode();
-    const canvas = document.createElement('canvas');
-    canvas.width = img.width; canvas.height = img.height;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0);
-    return ctx.getImageData(0, 0, img.width, img.height);
-  };
-  const [bare, count, icon] = await Promise.all(shots.map(read));
-  const luma = (d, i) => 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-  // brighter than the bare slot (a text shadow only darkens it); the icon may be dimmed (an empty slot's .34)
-  const ink = (shot, threshold) => {
-    const points = [];
-    for (let i = 0; i < shot.data.length; i += 4) {
-      if (luma(shot.data, i) - luma(bare.data, i) > threshold) points.push([(i / 4) % shot.width, Math.floor(i / 4 / shot.width)]);
+/**
+ * Every visible tray slot's count-to-icon and label-to-icon ink gaps, read in Node off full-viewport shots taken after
+ * the frame: the slots shown bare, then with only their counts, only their labels and only their icons. (Critic r4b:
+ * clipped shots taken before the frame left five phone frames without the slot's count, label, strike and ∞ — see
+ * docs/BATTLE-UI-QA.md. No clipped capture runs on any page now.)
+ */
+async function trayInkGaps(page, slots, scale) {
+  if (!slots.length) return [];
+  const show = (marks) => page.evaluate(([indices, shown]) => {
+    const all = document.querySelectorAll('.cot-shell');
+    for (const index of indices) {
+      const el = all[index];
+      el.querySelector('.cnt').style.visibility = shown.includes('count') ? '' : 'hidden';
+      el.querySelector('.ty').style.visibility = shown.includes('label') ? '' : 'hidden';
+      el.querySelector('canvas').style.visibility = shown.includes('icon') ? '' : 'hidden';
     }
-    return points;
-  };
-  const text = ink(count, 40);
-  const shell = ink(icon, 24);
-  if (!text.length || !shell.length) return null;
-  let best = Infinity;
-  for (const [x0, y0] of text) for (const [x1, y1] of shell) best = Math.min(best, Math.hypot(x1 - x0, y1 - y0));
-  // neighbouring device pixels touch: one pixel apart is no gap
-  return Math.round((Math.max(0, best - 1) / (bare.width / width)) * 10) / 10;
+  }, [slots.map((slot) => slot.index), marks]);
+  const shot = async (marks) => { await show(marks); return decodePng(await page.screenshot()); };
+  const bare = await shot([]);
+  const count = await shot(['count']);
+  const label = await shot(['label']);
+  const icon = await shot(['icon']);
+  await show(['count', 'label', 'icon']);
+  return slots.map((slot) => ({ index: slot.index, text: slot.name,
+    count: slot.count ? inkGap({ bare, mark: count, icon }, slot.box, scale) : null,
+    label: slot.label ? inkGap({ bare, mark: label, icon }, slot.box, scale, { markRise: 24 }) : null }));
 }
 
-/** Every visible tray slot's count-to-icon ink gap, read off the rendered slot. */
-async function trayInkGaps(page) {
-  const slots = await page.evaluate(() => [...document.querySelectorAll('.cot-shell')].map((el, index) => {
-    const cnt = el.querySelector('.cnt');
-    if (!cnt?.textContent || !el.querySelector('canvas') || !el.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) return null;
-    const r = el.getBoundingClientRect();
-    return { index, text: cnt.textContent, clip: { x: r.left, y: r.top, width: r.width, height: r.height } };
-  }).filter(Boolean));
-  const show = (index, count, icon) => page.evaluate(([i, showCount, showIcon]) => {
-    const el = document.querySelectorAll('.cot-shell')[i];
-    el.querySelector('.cnt').style.visibility = showCount ? '' : 'hidden';
-    el.querySelector('canvas').style.visibility = showIcon ? '' : 'hidden';
-  }, [index, count, icon]);
-  const rows = [];
-  for (const slot of slots) {
-    const shots = [];
-    for (const [count, icon] of [[false, false], [true, false], [false, true]]) {
-      await show(slot.index, count, icon);
-      shots.push((await page.screenshot({ clip: slot.clip })).toString('base64'));
+/** Until the tray's own CSS transitions (frame, opacity, transform) have run out, at most 1.5 s, then two frames. */
+async function settleTray(page) {
+  return page.evaluate(async () => {
+    const deadline = performance.now() + 1500;
+    let waited = 0;
+    for (;;) {
+      const running = document.getAnimations().filter((a) => a.playState === 'running' && a.effect?.target?.closest?.('.cot-shells')
+        && Number.isFinite(a.effect.getComputedTiming().endTime));
+      if (!running.length || performance.now() > deadline) {
+        for (let i = 0; i < 2; i++) await new Promise(requestAnimationFrame);
+        return { waited, left: running.length };
+      }
+      waited += running.length;
+      await Promise.race([Promise.all(running.map((a) => a.finished.catch(() => {}))), new Promise((r) => setTimeout(r, 200))]);
     }
-    await show(slot.index, true, true);
-    rows.push({ text: slot.text, gap: await page.evaluate(inkGap, { shots, width: slot.clip.width }) });
-  }
-  return rows;
+  });
 }
 
 const amberish = (color) => {
@@ -325,7 +365,11 @@ try {
       await page.evaluate((name) => window.__HUD_LAYOUT.state(name), stage);
       await page.evaluate(async () => { for (let i = 0; i < 3; i++) await new Promise(requestAnimationFrame); });
       await page.waitForTimeout(260); // the tray's border transitions (.12 s) settle before their colours are read
+      const settled = await settleTray(page);
+      // the DOM is read, and nothing touches the page, until the frame is saved
       const hud = await page.evaluate(readHud, { DRY_INK, DRY_RING, RELOAD_INK, SIGHT_BAND, STRIKE_TEXT_GAP });
+      const file = `${c.name}-${stage}.png`;
+      const frame = decodePng(await page.screenshot({ path: resolve(out, file) }));
       const issues = [...hud.overlaps];
       if (expect.amberMin != null && hud.amber < expect.amberMin) issues.push(`reload amber ${hud.amber} < ${expect.amberMin}`);
       if (expect.amberMax != null && hud.amber > expect.amberMax) issues.push(`a dry weapon still shows reload amber (${hud.amber})`);
@@ -354,9 +398,21 @@ try {
         }
       }
       for (const row of hud.trayText) if (row.gap != null && row.gap < 2) issues.push(`tray text "${row.text}" ${row.gap} px apart`);
-      const trayInk = await trayInkGaps(page);
+      if (settled.left) issues.push(`${settled.left} tray transitions still running when the frame was taken`);
+      // the saved frame shows every mark the DOM says each slot shows (critic r4b)
+      const frameFindings = slotFrameFindings(frame, hud.slots, c.scale);
+      for (const finding of frameFindings) issues.push(`saved frame: ${finding}`);
+      if (c.crop) {
+        const clip = { x: c.width / 2 - 170, y: c.height / 2 - 120, width: 340, height: Math.min(240, c.height / 2 + 100) };
+        await writeFile(resolve(out, `${c.name}-${stage}-reticle.png`), encodePng(cropImage(frame, { x0: clip.x * c.scale,
+          y0: clip.y * c.scale, x1: (clip.x + clip.width) * c.scale, y1: (clip.y + clip.height) * c.scale })));
+      }
+      const trayInk = await trayInkGaps(page, hud.slots, c.scale);
       for (const row of trayInk) {
-        if (row.gap == null || row.gap < TRAY_INK_GAP) issues.push(`tray count "${row.text}" ${row.gap} px from its shell icon`);
+        for (const mark of ['count', 'label']) {
+          const slot = hud.slots.find((item) => item.index === row.index);
+          if (slot?.[mark] && (row[mark] == null || row[mark] < TRAY_INK_GAP)) issues.push(`tray ${mark} of "${row.text}" ${row[mark]} px from its shell icon`);
+        }
       }
       if (c.touch) {
         // (the scope may hide the FIRE buttons: then only the body mark is read)
@@ -373,13 +429,7 @@ try {
           issues.push(`the collapsed empty slot is not struck on a danger edge (${JSON.stringify(hud.emptySlot)})`);
         }
       }
-      const file = `${c.name}-${stage}.png`;
-      await page.screenshot({ path: resolve(out, file) });
-      if (c.crop) {
-        await page.screenshot({ path: resolve(out, `${c.name}-${stage}-reticle.png`),
-          clip: { x: c.width / 2 - 170, y: c.height / 2 - 120, width: 340, height: Math.min(240, c.height / 2 + 100) } });
-      }
-      reports.push({ case: c.name, stage, file, ...hud, trayInk, issues });
+      reports.push({ case: c.name, stage, file, ...hud, settled, frameFindings, trayInk, issues });
       for (const issue of issues) failures.push(`${c.name}/${stage}: ${issue}`);
       refreshCaptureLock();
     }

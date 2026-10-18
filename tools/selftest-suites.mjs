@@ -1895,6 +1895,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/hudAmmoOut.selftest.mjs',
     // ...and the live HUD paints those states (reticle, rack, tray, struck controls) over a recording canvas
     'src/ui/hudAmmoOutPaint.selftest.mjs',
+    // ...and the rendered capture reads its saved frames' tray marks, never clipping a shot (critic r4b)
+    'tools/hud-ammo-frame-ink.selftest.mjs',
     'src/ui/hudAmmunitionPresentation.selftest.mjs',
     'src/ui/hudConsumablePresentation.selftest.mjs',
     // 2026-10-14 (owner): a jump mode puts the jump farthest left in the vehicle-controls row, for every loadout

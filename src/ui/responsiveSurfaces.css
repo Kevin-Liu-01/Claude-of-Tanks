@@ -573,6 +573,8 @@ body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape']
   right:max(10px,env(safe-area-inset-right));bottom:calc(max(28px,env(safe-area-inset-bottom)) + 274px);gap:4px;
 }
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-shell{width:44px;height:48px}
+/* a 48 px tall slot draws its shell smaller, so the tip stays clear of the top edge (critic r4b) */
+body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-shell:not(.wide) canvas{transform:translateX(-50%) scale(.7)}
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-cons{
   right:max(14px,env(safe-area-inset-right));bottom:calc(max(28px,env(safe-area-inset-bottom)) + 112px);gap:7px;
 }
