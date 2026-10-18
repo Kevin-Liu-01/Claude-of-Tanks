@@ -101,7 +101,8 @@ function camouflage(id:ProtectionId,index:number):GhillieConfig{
        // and it ends behind the nose sill (DECKS: z 3.06): the sill's LED bars, its hood and the hinge line under it stay
        // clear of the net's edge and of the garnish that hung from it over them (the critic: "foliage strands cross the new
        // LED light-bar housings")
-       ...(id==='t72b3m_hetman_ii'?{envelopeM:.09,envelopeZ:[1.98,3.06] as const}:{})}),
+       // (round 6: the shingled glacis blocks leave two four-cell scraps of it tied to nothing: minPieceTris drops them)
+       ...(id==='t72b3m_hetman_ii'?{envelopeM:.09,envelopeZ:[1.98,3.06] as const,minPieceTris:12}:{})}),
      ],
      // (release 227, round 2: Hetman II's bow drape is tied over the faces of its hinged lower-plate aprons, under its
      // nose sill: the T-72B3M lower plate rises from (z 2.60, y .533) to (3.342, .955), the aprons' faces stand .07 off it)
