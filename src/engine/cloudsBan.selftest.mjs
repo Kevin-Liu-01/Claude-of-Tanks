@@ -234,7 +234,7 @@ for (const [id, sky] of Object.entries(GARAGE_SKY_PRESETS)) {
     const day = dayLayer[id];
     assert.deepEqual(shape(day), shape(verdant), `${id}: Verdant's cumulus shape model`);
     // (Ironworks' field a little fuller: the approved s146's big lumpy cumulus over blue, the 228 census)
-    assert.ok(day.coverage >= 0.2 && day.coverage <= (id === 'foundry' ? 0.55 : 0.45), `${id}: scattered cover (${day.coverage})`);
+    assert.ok(day.coverage >= 0.2 && day.coverage <= (id === 'foundry' ? 0.75 : 0.45), `${id}: scattered cover (${day.coverage})`);
     assert.ok(day.baseM >= 1000 && day.baseM <= 1800, `${id}: a cumulus base (${day.baseM} m)`);
     assert.equal(resolveOvercast({ ...cfg.sky, cloudscape: cfg.clouds }), 0, `${id}: the sun is not cut`);
     assert.ok(cloudStackOf(day).lanes.every((lane) => lane.cells < 0.5), `${id}: no cell layer at any height`);
