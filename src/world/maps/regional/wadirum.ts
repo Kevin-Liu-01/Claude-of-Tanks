@@ -67,6 +67,23 @@ function shopInterior(sink: PartSink, face: Face, u: number, w: number, mobile: 
 }
 
 /**
+ * (MAPS 227, Redrock's blind critics on v2: the one loss, at the village's north-east corner looking up at the lane dome,
+ * "a featureless olive slab of a house ... blocks a third of the frame and hides the jebel" — two two-storey houses on the
+ * back lane, 8 m boxes, stood between the lane and the rock) Rum's second storeys are the main road's: the shops and the
+ * flats over them line the valley track, and the compounds of the back lanes and the village's edge are one storey, low
+ * enough that the jebels stand over them from inside the village. The kit reads its building's place (ctx.x, ctx.z;
+ * types.ts: a form choice inside the plot, the footprint unchanged): its distance across Redrock's valley track (the line
+ * through the square at (8, 0) along (0.2334, 0.9724), badlands.ts RUM_U) — the frontage stands 17 m off it, the lanes 36
+ * and 55. The draw is the same one, so every other choice in the house draws as before; a bare build keeps the old share.
+ */
+const RUM_TRACK_ACROSS = [0.9724, -0.2334] as const;
+function upperStoreyShare(ctx: RegionalBuildContext): number {
+  if (ctx.x === undefined || ctx.z === undefined) return 0.3;
+  const across = Math.abs((ctx.x - 8) * RUM_TRACK_ACROSS[0] + ctx.z * RUM_TRACK_ACROSS[1]);
+  return across < 26 ? 0.4 : 0;
+}
+
+/**
  * The block house: one or two storeys of concrete block, flat roof, parapet, steel door, grilles, roof furniture.
  * (the looks lane, 2026-10-15; WORKLIST #26: "Wadi Rum concrete-block houses with an expressed RC frame, outside stairs
  * and steel canopies, broken as concrete") the reinforced-concrete frame the block fills, expressed: its columns at the
@@ -85,7 +102,7 @@ const blockHouse: RegionalBuilder = (ctx) => {
   const wall: RegionalBucket = ctx.wallBucket === 'stone' ? 'plaster' : ctx.wallBucket as RegionalBucket;
   const door = pick(rng, STEEL_DOORS);
   const style: WindowStyle = { frame: rgb(0x5a5e60), frameWidth: 0.05, frameOut: 0.04, bars: 'six', surround: null, sill: { bucket: 'plaster', out: 0.06 }, shutters: null };
-  const count = rng() < 0.3 ? 2 : 1;
+  const count = rng() < upperStoreyShare(ctx) ? 2 : 1;
   // the stair takes a strip of the plot along the +x side (the house a metre narrower beside it)
   const stair = look() < 0.65 && Wp > 6.0, SW = 0.95, W = stair ? Wp - SW - 0.05 : Wp, cx = stair ? -(SW + 0.05) / 2 : 0;
   const openings: Opening[] = [{ face: 'front', storey: 0, kind: 'door', u: (rng() - 0.5) * W * 0.3, w: 1.0, y0: 0, h: 2.1 }];
@@ -712,6 +729,14 @@ export const WADIRUM_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     stone: { kind: 'sandstone', tint: [0.80, 0.62, 0.48] },
     sourced: { plaster: true, wood: true },
     relief: { plasterUv: 1.8, normal: 0.22, ao: 0.32 },
+    // (MAPS 227, Redrock's blind critics on v2: "flat olive and beige house boxes", "an untextured flat olive box") the
+    // second and third render families were the shared canvas's generic shifts — a khaki that reads olive in the shade,
+    // and a dull brown-grey. Rum's houses are rendered sand (the first family, the sourced render under the map's tint),
+    // bare cement-grey block render, or a pale cream wash: the kit's own two paints
+    tones: {
+      plaster2: (_h, s, l) => [0.1, Math.min(1, s * 0.3), Math.min(1, l * 1.2)],
+      plaster3: (_h, s, l) => [0.105, Math.min(1, s * 0.4 + 0.16), Math.min(1, l * 1.25 + 0.07)],
+    },
   },
   builders: WADIRUM_BUILDERS,
   // the courtyards: a block wall round the house's court, a gate (yards.ts)
