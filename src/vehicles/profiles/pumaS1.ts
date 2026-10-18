@@ -432,8 +432,12 @@ function addTurret(P: PumaS1BuilderPort): void {
   // 227 gun-gaps (owner 2026-10-17, "fix any of these" with the C2 gun gap): the recoiling base (r 0.116) ends 0.068 m
   // behind the trunnion, right at the turret face; at full depression its top rim rocks 2 cm forward off the face and
   // opened a 14 mm notch along the gun line (5 of 24 directions). A 0.110 m trunnion sleeve now continues the base aft
-  // into the face, always inside the base's own section, so the rim never stands clear of a surface at any pitch.
-  P.addGunExtra(cylZ(0.110, 0.16, 22), 0, 0, -0.12);
+  // into the face, inside the base's own section, so the gun line never stands clear of a surface at any pitch.
+  // r3: 0.090 m and 0.07 m long (to 0.11 m behind the trunnion). The r2 0.110 x 0.16 m sleeve reached the field suit's
+  // gun keep-out and re-laid the turret's net and garnish (the yellow clump became grass); at this section the suit's
+  // inputs are unchanged (its net and leaves hash identical to the pre-lane build) and the gun line stays closed across
+  // the whole pitch range.
+  P.addGunExtra(cylZ(0.090, 0.07, 22), 0, 0, -0.075);
   // 2026-10-10 (fleet-weapons lane, round 3; wave 348c's critics: a thin plain-grey rod as long as the gun running from
   // the gun's root across the lower left beside the barrel): the coax's barrel runs inside the cradle and stands 0.19 m
   // proud of its front with its flash hider, as a coaxial machine gun does; it was a 1.95 m rod out to the cannon's muzzle.

@@ -1368,24 +1368,25 @@ function addPL01Gun(P: PolishBuilderPort, context: PL01BuildContext): void {
   ] as const satisfies readonly FacetedGunHousingStation[];
   P.addGunExtra(facetedGunHousing(housingStations));
   // 227 gun-gaps (owner 2026-10-17, "fix any of these" with the C2 gun gap): the housing pitches about a trunnion
-  // 0.43 m behind its rear ring, so at full elevation (+20 deg) that ring rose up to 0.16 m clear of the turret's
-  // narrow nose ridge and the sky showed through the notch behind it along the gun line (96 mm, 15 of 24 directions).
-  // An upper tail of the same six-facet section now continues the housing aft from inside its rear ring to z 0.18:
-  // at rest it fairs the ring's 5 cm step into the ridge and is otherwise buried in the in-leaning roof band; at +20
-  // its top slopes from the ring down into the roof (it sinks under the roof by z 0.15), and at -10 it is wholly
-  // inside the shell. Only the band above the shoulder line, where the notch opens, is carried aft.
+  // 0.43 m behind its rear ring, so at full elevation (+20 deg) the gun line rose clear of the turret's falling nose
+  // ridge (top 2.52 m at z 0.93) before it reached the ring, and the sky showed through that notch along the gun line
+  // (96 mm, 15 of 24 directions). A cradle boss of the same six-facet section now continues the ring aft around the
+  // gun line, from inside the ring to 0.17 m behind it: narrow and low enough (top 9 cm over the axis, 9 cm half-
+  // width) to stay inside the ridge's raked flanks and over its chin at rest and at full depression, so it shows only
+  // when the gun elevates, as a fairing from the ridge up into the ring's rear face. (r3: the r2 tail carried the
+  // housing's whole upper band aft and broke out through the ridge's flanks at rest and at -10 deg.)
   P.addGunExtra(facetedGunHousing([
     {
-      z: 0.18,
-      bottomHalfWidth: 0.20, bottomY: -0.07,
-      shoulderHalfWidth: 0.24, shoulderY: throatShoulderY,
-      topHalfWidth: 0.17, topY: 0.15,
+      z: throatRearZ - 0.17,
+      bottomHalfWidth: 0.12, bottomY: -0.12,
+      shoulderHalfWidth: 0.11, shoulderY: -0.02,
+      topHalfWidth: 0.07, topY: 0.03,
     },
     {
       z: throatRearZ + 0.02,
-      bottomHalfWidth: 0.24, bottomY: -0.07,
-      shoulderHalfWidth: 0.272, shoulderY: throatShoulderY,
-      topHalfWidth: 0.214, topY: throatTopY - 0.006,
+      bottomHalfWidth: 0.13, bottomY: -0.12,
+      shoulderHalfWidth: 0.12, shoulderY: 0,
+      topHalfWidth: 0.09, topY: 0.09,
     },
   ]));
   P.addGunExtraDark(box(0.38, 0.03, 0.05), 0, gunAssemblyY(0.225), 2.10); // cover spine seam

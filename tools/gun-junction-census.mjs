@@ -2,7 +2,7 @@
 // Gun-junction gap census: can a player see THROUGH the main gun where the tube, its sleeve or collar meets the
 // mantlet and the turret face?
 //
-//   node tools/gun-junction-census.mjs --ids=c2_ariete,cv90 [--poses=rest,elev,dep] [--res-mm=2] [--images] [--json=path]
+//   node tools/gun-junction-census.mjs --ids=c2_ariete,cv90 [--poses=rest,elev,dep,e0.5,d0.5] [--res-mm=2] [--images] [--json=path]
 //   node tools/gun-junction-census.mjs --all [--gate]
 //
 // Every main-gun mouth the factory publishes (userData.physicalMouth under rig_gun: origin on the mouth plane, -Z into
@@ -34,7 +34,9 @@
 // off its seat), which must open a gun-junction run of about m at a closed junction.
 // Fixes 2026-10-17 (227, same census): c2_ariete, ztz85_iii, t90am, t90m_proryv, pl01, pl01_105, fv510, fv510_milan
 // and spz_wotan CLOSED at rest, full elevation and full depression; tools/gun-junction-census.selftest.mjs holds them
-// (4 mm, 12 directions) with a seeded control.
+// (4 mm, 12 directions, plus half elevation) with a seeded control. r3 (2026-10-18): the same nine CLOSED across the
+// sweep rest/elev/dep/e0.25/e0.5/e0.75/d0.5 at 2 mm, 24 directions (the fv510/fv510_milan 12 px turret-seam sliver
+// at e0.25 is the turret's own roof-face crevice, identical in the pre-lane tree).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
@@ -263,7 +265,10 @@ function classify(run, sPivot) {
 
 function censusPose(tank, spec, pose) {
   const root = tank.root; const gun = root.getObjectByName('rig_gun');
-  const pitch = pose === 'elev' ? (spec.gunElevationDeg ?? 0) : pose === 'dep' ? -(spec.gunDepressionDeg ?? 0) : 0;
+  // rest, elev, dep, or a fraction of either limit: e0.5 is half the maximum elevation, d0.5 half the depression
+  const E = spec.gunElevationDeg ?? 0, D = spec.gunDepressionDeg ?? 0;
+  const pitch = pose === 'elev' ? E : pose === 'dep' ? -D : /^e[\d.]+$/.test(pose) ? E * Number(pose.slice(1))
+    : /^d[\d.]+$/.test(pose) ? -D * Number(pose.slice(1)) : 0;
   if (gun) gun.rotation.x = -pitch * Math.PI / 180;
   root.updateMatrixWorld(true);
   const restore = nearestLodOnly(root);

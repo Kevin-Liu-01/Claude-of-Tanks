@@ -146,8 +146,11 @@ function seatStretchedBarrelInShroud(P: TankBuilderPort): void {
   const sleeveRadius = barrelRadius - .0005;
   const emergeZ = chamferRearZ + (lipZ - chamferRearZ) * (.157286 - sleeveRadius) / (.157286 - .122);
   const z0 = emergeZ - .01, z1 = barrelRearZ + .006;
-  P.add('gun', new THREE.LatheGeometry([new THREE.Vector2(0, z0), new THREE.Vector2(sleeveRadius, z0),
-    new THREE.Vector2(sleeveRadius, z1), new THREE.Vector2(0, z1)], 48).rotateX(Math.PI / 2));
+  // r3: a cylinder, not a four-row lathe; the lathe averaged each rim's cap and side normals, so the sleeve shaded as
+  // a 45-degree bevel along its whole length and read glassy beside the barrel. The cylinder's caps carry their own
+  // vertices, and its 48 sides start at the lathe's phase (both sweep x = r sin, z = r cos from 0).
+  P.add('gun', new THREE.CylinderGeometry(sleeveRadius, sleeveRadius, z1 - z0, 48).rotateX(Math.PI / 2)
+    .translate(0, 0, (z0 + z1) / 2));
 }
 
 export function buildArieteC2X(P: TankBuilderPort): void {
