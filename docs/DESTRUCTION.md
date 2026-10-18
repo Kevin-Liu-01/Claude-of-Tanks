@@ -1122,4 +1122,11 @@ room, floor and ruin writers place through it, never off the anatomy's w x d); `
 stray-slab detector on the battle's own path: every damaged building's drawn meshes split into pieces and judged — a slab
 past the walls of its height band, floating, untextured or degenerate; a standing run off the walls; a remnant taller than
 the building as drawn at its spot; a fallen roof slab drawn off the body it rides in) and its selftest;
-`tools/destruction-slab-kinds.selftest.mjs` (the detector over every destructible kind of every map).
+`tools/destruction-slab-kinds.selftest.mjs` (the detector over every destructible kind of every map, one props build a
+map in a worker pool; its judged exceptions listed with their reasons, a kind that stops flagging leaving the list).
+
+**The census (2026-10-17, round 1).** The detector over all 33 maps (667 building runs, 12,365 snapshots, the final
+detector on both trees): main flagged 249 buildings (2,778 snapshots: rooms past their walls, fracture rooms, remnants,
+rims, roof slabs, baked rests); this round leaves the judged residue the kinds receipt lists (fallen objects' faces on the
+ground, low remnants over the heap, held storeys' rooms and joists, roof slabs and baked rests at rest on what holds them,
+rims at holes in round and open walls).
