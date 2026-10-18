@@ -56,23 +56,56 @@ export const fuelTankFarm: LandmarkBuilder = (ctx) => {
   const pitch = 2 * R + 3, ex = (cols - 1) * pitch / 2 + R + 2.5, ez = (rows - 1) * pitch / 2 + R + 2.5;
   const gl = (lx: number, lz: number) => ctx.ground?.(lx, lz) ?? 0;
   // (on falling ground — plan.ts drapes — each tank stands on its own ring footing at the highest ground under it, and
-  // the bund runs in short lengths, each from below its lowest ground to a wall's height over its highest)
-  const wallH = 1.1, t = 0.35;
-  const wall = (ax: number, az: number, bx: number, bz: number) => {
-    const len = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.ceil(len / 6));
-    for (let k = 0; k < n; k++) {
-      const x0 = ax + (bx - ax) * k / n, z0 = az + (bz - az) * k / n, x1 = ax + (bx - ax) * (k + 1) / n, z1 = az + (bz - az) * (k + 1) / n;
-      const g0 = gl(x0, z0), g1 = gl(x1, z1), gm = gl((x0 + x1) / 2, (z0 + z1) / 2);
-      const lo = Math.min(g0, g1, gm), hi = Math.max(g0, g1, gm);
-      sink.span('stone', Math.min(x0, x1) - (az === bz ? 0 : t / 2), Math.min(lo - 0.6, -0.6), Math.min(z0, z1) - (az === bz ? t / 2 : 0),
-        Math.max(x0, x1) + (az === bz ? 0 : t / 2), hi + wallH, Math.max(z0, z1) + (az === bz ? t / 2 : 0));
-    }
+  // the bund runs in short lengths following the ground)
+  // (the map-content lane's R6; gauntlet wave 358a on Whiteout and Copper Mesa: the bund "a low wall of stone blocks
+  // rather than an earth-and-gravel berm") the bund an earth and gravel berm with sloped faces, snow-covered on a snow map,
+  // its crest a little over a metre; it stands outside the old wall's line by its inner face's run, so the manifold, the
+  // stairs' feet and the sump inside the old wall stay clear of its inner slope; the tanks' ring footings concrete (never
+  // the kit's brick)
+  const wallH = 1.2, t = 0.35, crest = 0.45, run = 1.5;
+  const bermBucket = ctx.snowCap ? 'plaster' : 'plaster3';
+  const concrete = ctx.brick ? 'plaster3' : 'stone';
+  /** A quad wound to face `out` (the berm's faces: whichever way the run goes). */
+  const faceOut = (pts: [Vec3, Vec3, Vec3, Vec3], out: Vec3) => {
+    const ux = pts[1][0] - pts[0][0], uy = pts[1][1] - pts[0][1], uz = pts[1][2] - pts[0][2];
+    const vx = pts[2][0] - pts[0][0], vy = pts[2][1] - pts[0][1], vz = pts[2][2] - pts[0][2];
+    const n = [uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx];
+    sink.quad(bermBucket, ...((n[0] * out[0] + n[1] * out[1] + n[2] * out[2]) >= 0 ? pts : [pts[3], pts[2], pts[1], pts[0]] as [Vec3, Vec3, Vec3, Vec3]));
   };
-  wall(-ex, -ez + t / 2, ex, -ez + t / 2);
-  wall(-ex + t / 2, -ez, -ex + t / 2, ez);
-  wall(ex - t / 2, -ez, ex - t / 2, ez);
-  wall(-ex, ez - t / 2, -1.4, ez - t / 2);
-  wall(1.4, ez - t / 2, ex, ez - t / 2);
+  /** The berm along a run from a to b, its crest on that line, in lengths of 4 m or less, each laid on the ground under
+   * it: the inner face, the crest, the outer face. An end is 'cap' (closed square: the gap's sides) or 'mitre' (a corner:
+   * each of its section's points, `o` out from the crest line, carried `o` on past the corner along the run, so the next
+   * run's mitre lands on the same points and the corner closes with no end faces). */
+  const berm = (ax: number, az: number, bx: number, bz: number, endA: 'cap' | 'mitre', endB: 'cap' | 'mitre') => {
+    const len = Math.hypot(bx - ax, bz - az), n = Math.max(1, Math.ceil(len / 4));
+    const tx = (bx - ax) / len, tz = (bz - az) / len;
+    // the normal out of the bund (away from the farm's middle), the offsets' positive side
+    const flip = tz * (ax + bx) - tx * (az + bz) < 0 ? -1 : 1, nx = tz * flip, nz = -tx * flip;
+    const offs = [-crest - run, -crest, crest, crest + run];
+    const section = (x: number, z: number, along: number): Vec3[] => offs.map((o, i) => {
+      const px = x + nx * o + tx * along * o, pz = z + nz * o + tz * along * o, g = gl(px, pz);
+      return [px, i === 0 || i === 3 ? g - 0.15 : g + wallH, pz] as Vec3;
+    });
+    let prev = section(ax, az, endA === 'mitre' ? -1 : 0);
+    if (endA === 'cap') faceOut([prev[0], prev[1], prev[2], prev[3]], [-tx, 0, -tz]);
+    for (let k = 1; k <= n; k++) {
+      const next = section(ax + (bx - ax) * k / n, az + (bz - az) * k / n, k === n && endB === 'mitre' ? 1 : 0);
+      faceOut([prev[0], prev[1], next[1], next[0]], [-nx, 0.6, -nz]);
+      faceOut([prev[1], prev[2], next[2], next[1]], [0, 1, 0]);
+      faceOut([prev[2], prev[3], next[3], next[2]], [nx, 0.6, nz]);
+      prev = next;
+    }
+    if (endB === 'cap') faceOut([prev[0], prev[1], prev[2], prev[3]], [tx, 0, tz]);
+  };
+  // the crest lines a face's run outside the old wall's, mitred at the four corners (landed 2026-10-17: the runs carried
+  // square past the corners left each one's open end standing past the other's outer toe, the integrity ledger's holes),
+  // the gap at the front between the two front runs' capped ends
+  const ov = crest + run, bx = ex - t / 2 + run, bz = ez - t / 2 + run;
+  berm(-bx, -bz, bx, -bz, 'mitre', 'mitre');
+  berm(-bx, -bz, -bx, bz, 'mitre', 'mitre');
+  berm(bx, -bz, bx, bz, 'mitre', 'mitre');
+  berm(-bx, bz, -1.4 - ov, bz, 'mitre', 'cap');
+  berm(1.4 + ov, bz, bx, bz, 'cap', 'mitre');
   // the manifold's line: straight from 0.5 m over the ground at one end to 0.5 m over it at the other
   const manifoldY = (mx: number): number => {
     const z = ez - t - 0.75, a = gl(-ex + 1.0, z) + 0.5, b = gl(ex - 1.0, z) + 0.5;
@@ -90,7 +123,7 @@ export const fuelTankFarm: LandmarkBuilder = (ctx) => {
     // their roofs; the mine's diesel tanks in a sun-faded green paint, rust at their feet
     const arctic = ctx.mapId === 'whiteout';
     const tone = arctic ? lerp(PANEL, SNOW, ctx.variant() * 0.4) : lerp(rgb(0x5f6d5c), rgb(0x8c937f), ctx.variant() * 0.6);
-    revolve(sink, 'stone', x, z, [[R + 0.3, Math.min(lo - 0.6, -0.6)], [R + 0.3, y0], [R - 0.05, y0]], 16);
+    revolve(sink, concrete, x, z, [[R + 0.3, Math.min(lo - 0.6, -0.6)], [R + 0.3, y0], [R - 0.05, y0]], 16);
     // (props lane A, E12: each tank ruptures on the side a round came from — the first at the first damage, the rest when
     // the farm is breached — and its fuel's burn spreads under the hole; landmarks/pieces.ts)
     piece(sink, { name: `tank-${i}`, kind: 'tank', at: i === 0 ? 'damaged' : 'breached', vessel: { x, z, y0, y1: y0 + Ht, r: R, contents: 'fuel' } }, (sink) => {
@@ -150,8 +183,12 @@ export const fuelTankFarm: LandmarkBuilder = (ctx) => {
     // its outlet valve on the nozzle (the body and the hand wheel), the earthing straps from the shell to the ground
     sink.span('structureMetal', x - 0.18, y0 + 0.02, z + R + 0.05, x + 0.18, y0 + 0.38, z + R + 0.4, { colour: shade(IRON, 1.4), decor: true });
     sink.cylinder('structureMetal', [x, y0 + 0.62, z + R + 0.22], 'y', 0.04, 0.22, 10, { colour: rgb(0xa8302a), decor: true }, 0.22, false);
+    // (landed 2026-10-17: the shell's 20-sided courses stand R cos 9 degrees from the axis at their flats, so a strap headed
+    // at R + 0.01 stood 2 cm off the plate between two staves; the old bund wall's welded hull had hidden it from the
+    // connectivity receipt) each strap's head 2 cm into the plate's flat
+    const rs = R * Math.cos(Math.PI / 20) - 0.02;
     for (const a of [0.8, 3.9]) {
-      const sx = x + Math.cos(a) * (R + 0.01), sz = z + Math.sin(a) * (R + 0.01);
+      const sx = x + Math.cos(a) * rs, sz = z + Math.sin(a) * rs;
       bar(sink, 'structureMetal', [sx, y0 + 0.5, sz], [sx + Math.cos(a) * 0.5, gl(sx, sz) - 0.1, sz + Math.sin(a) * 0.5], 0.03, { colour: rgb(0x9a6a3a), decor: true, fine: true });
     }
   }
@@ -177,11 +214,8 @@ export const fuelTankFarm: LandmarkBuilder = (ctx) => {
   for (const s2 of [-1, 1]) bar(sink, 'structureMetal', [s2 * 1.15, gm + 0.98, vz0], [s2 * 1.15, gm + 1.95, vz0], 0.05, { colour: SIGN_YELLOW, decor: true, fine: true });
   bar(sink, 'structureMetal', [-1.15, gm + 1.95, vz0], [1.15, gm + 1.95, vz0], 0.05, { colour: SIGN_YELLOW, decor: true, fine: true });
   sink.span('structureMetal', -0.45, gm + 1.3, vz0 - 0.04, 0.45, gm + 1.93, vz0 - 0.01, { colour: SIGN_YELLOW, decor: true });
-  // the bund's expansion joints, its drain sump in the inside corner with its grate and valve
-  for (let xj = -ex + 6; xj < ex; xj += 6) {
-    for (const zj of [-ez + t, ez - t]) sink.span('structureMetal', xj - 0.015, gl(xj, zj) - 0.2, zj - 0.02, xj + 0.015, gl(xj, zj) + wallH + 0.02, zj + 0.02, { colour: rgb(0x2a2a2a), decor: true, fine: true });
-  }
-  const sx0 = -ex + t + 0.15, sz0 = -ez + t + 0.15, gsm = gl(sx0 + 0.4, sz0 + 0.4);
+  // the bund's drain sump in the inside corner with its grate and valve (R6: a berm has no expansion joints)
+  const sx0 = -ex + t + 0.45, sz0 = -ez + t + 0.45, gsm = gl(sx0 + 0.4, sz0 + 0.4);
   sink.span('stone', sx0, gsm - 0.6, sz0, sx0 + 0.8, gsm + 0.08, sz0 + 0.8, { decor: true, shade: 0.8 });
   for (let k = 0; k < 5; k++) sink.span('structureMetal', sx0 + 0.1 + k * 0.15, gsm + 0.08, sz0 + 0.1, sx0 + 0.13 + k * 0.15, gsm + 0.11, sz0 + 0.7, { colour: IRON, decor: true, fine: true });
   const gs = gl(0, ez + 0.1);

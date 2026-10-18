@@ -31,6 +31,7 @@ import {
 } from '../world/destructionKit.ts';
 import { clearOverEaves, faceSetback, faceSetbackMedian, roofFurnitureAt, storeyInterior } from '../world/structureEnclosure.ts';
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
+import { toppleHingeM } from '../world/toppleHinge.ts';
 import { breachBlowFor } from './structureFx.ts';
 import {
   COLLAPSE_S, MAX_HOLES, STAGE_RUN_TAG, collapseFrontTime, collapseWallHeight, holeOutlinePhase01, toppleLandS, type StructureMask,
@@ -139,8 +140,6 @@ interface StructureTopple {
   /** how far along the ground it reaches from its foot (m) */
   lengthM: number;
 }
-/** The hinge a shaft breaks at over its foot (the kit's stump stands 1.2 to 3.5 m: the shaft goes over above it). */
-const TOPPLE_HINGE_M = 1.5;
 /**
  * A collapse that topples (dcore 2026-10-09): a shaft (the regional kit's stack, water tower, minaret or tower: its
  * anatomy carries a shaft plan) goes over toward the blow (against the event's direction: the struck side's foot is
@@ -160,7 +159,8 @@ export function structureTopple(anatomy: StructureDamageSeam['anatomy'] | null |
     const ang = damageRng(damageSeed(anatomy.seed, 11))() * Math.PI * 2;
     dx = Math.cos(ang); dz = Math.sin(ang); dl = 1;
   }
-  const hingeM = Math.min(TOPPLE_HINGE_M, H * 0.2);
+  // (an open frame buckles over its standing bays, a shaft above its stump: world/toppleHinge.ts, the collapse's rule too)
+  const hingeM = toppleHingeM(H, (plan.damage.shaft as { lattice?: boolean }).lattice === true);
   return { hingeM, dirX: dx / dl, dirZ: dz / dl, landS: toppleLandS(H, hingeM), lengthM: H - hingeM };
 }
 
@@ -896,6 +896,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
   /** A strike hole's bodies by the burst's charge (kg): a pierce two, a tank HE round three to five, a howitzer eight. */
   const strikeBodies = (kind: 'blast' | 'pierce', chargeKg: number): number => kind === 'pierce' ? 2
     : Math.max(2, Math.min(STRIKE_BODIES_MAX, Math.round(2 + 1.6 * Math.sqrt(Math.max(0, chargeKg)))));
+  /** A live run's named-piece hides, held to its wreck's birth (227, lane B co-hold: a piece laid after the run's delay stood till it shows). */
+  const heldHides: { seam: StructureDamageSeam; hides: DamageStageResult['hides']; at: number }[] = [];
   /** A stage's builder through the writers. `standing`: its runs belong to the standing building (a breach's rim and
    *  room, a spall's units) and fall with it; a collapse's own stubs and pile stay where they lie. */
   function run(seam: StructureDamageSeam, delayS: number, settled: boolean, build: (out: DamageWriters) => DamageStageResult,
@@ -930,7 +932,9 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     try { result = build(writers); } catch { result = null; }
     const made = debris.commit();
     if (owner) for (const mesh of made) mesh.userData.runOwner = owner;
-    apply(seam, result, holeSeed, holeKind, made);
+    const held = !settled && delayS > 0 && result?.hides?.some((h) => h.piece) ? result.hides.filter((h) => h.piece) : null;
+    if (held) heldHides.push({ seam, hides: held, at: o.now() + delayS });
+    apply(seam, held ? { ...result!, hides: result!.hides.filter((h) => !h.piece) } : result, holeSeed, holeKind, made);
     if (wantsRoom && standing && !piecesOnly) {
       const storey = owner && owner.storey >= 0 ? owner.storey : 0;
       const hint = roomHint(seam, storey, owner?.section ?? -1, result);
@@ -1567,6 +1571,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       if (changed) seam.touchShadows();
     },
     update() {
+      if (heldHides.length) { let k = 0; for (const h of heldHides) if (o.now() >= h.at) apply(h.seam, { cuts: [], hides: h.hides }); else heldHides[k++] = h; heldHides.length = k; }
       if (pendingStrikes.length) {
         const t = o.now();
         let k = 0;
@@ -1597,6 +1602,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     falling: (structureIdx) => storeyFalls.some((f) => f.structureId === structureIdx),
     shiftTime(delta) {
       for (const p of pendingStrikes) p.at += delta;
+      for (const h of heldHides) h.at += delta;
       for (const f of falling) f.until += delta;
       for (const f of storeyFalls) f.t0 += delta;
     },
@@ -1615,6 +1621,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       downed.clear();
       sectionsSeen.clear();
       pendingStrikes.length = 0;
+      heldHides.length = 0;
       fallenSections.clear();
       flattened.length = 0;
       flattenedSpans = new WeakSet();

@@ -3,12 +3,14 @@
 // is imported merely to construct two optical fittings.
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
-import { vehicleAmbientFloorHook } from '../materials.ts';
+import { cloneRehookedVehicleMaterial } from '../materials.ts';
 import { markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh } from '../vehicleNightLighting.ts';
 
 interface ShtoraPort {
   readonly mats: { readonly dark: THREE.MeshStandardMaterial };
   readonly turretG: THREE.Group;
+  /** The tank's disposables: the lens material holds its own cascade registration until the tank releases it. */
+  readonly disposables?: { push(material: THREE.Material): unknown };
   _shtoraRed?: THREE.MeshStandardMaterial;
   _shtoraBlue?: THREE.MeshStandardMaterial;
   add(slot: string, geometry: THREE.BufferGeometry, x: number, y: number, z: number): void;
@@ -33,11 +35,10 @@ export function addShtoraEyes(P: ShtoraPort, seats: ShtoraSeats): void {
   const y = seats.y + dy, zc = seats.z + dz;
   const blue = seats.lens === 'blue';
   if (seats.round && !(blue ? P._shtoraBlue : P._shtoraRed)) {
-    const material = P.mats.dark.clone();
-    material.onBeforeCompile = vehicleAmbientFloorHook;
-    material.customProgramCacheKey = () => 'veh-ambient-floor-v2';
+    const material = cloneRehookedVehicleMaterial(P.mats.dark);
     material.color.setHex(blue ? 0x0c2a5a : 0x54180e);
     material.emissive.setHex(blue ? 0x1a4a9a : 0x7c2410);
+    P.disposables?.push(material); // released with the tank (2026-10-17)
     if (blue) P._shtoraBlue = material; else P._shtoraRed = material;
   }
   const lensMaterial = blue ? P._shtoraBlue : P._shtoraRed;

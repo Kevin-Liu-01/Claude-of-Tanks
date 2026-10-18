@@ -4806,6 +4806,7 @@
         "gravity": 1,
         "minutes": 15,
         "survivorHp": 100,
+        "infectedHp": 100,
         "killsPerWeapon": 0,
         "weapons": 5
       }
@@ -4827,6 +4828,7 @@
         "gravity": 1,
         "minutes": 15,
         "survivorHp": 100,
+        "infectedHp": 100,
         "killsPerWeapon": 0,
         "weapons": 5
       }
@@ -4848,6 +4850,7 @@
         "gravity": 1,
         "minutes": 15,
         "survivorHp": 100,
+        "infectedHp": 100,
         "killsPerWeapon": 0,
         "weapons": 5
       }
@@ -4869,6 +4872,7 @@
         "gravity": 0.6,
         "minutes": 10,
         "survivorHp": 100,
+        "infectedHp": 100,
         "killsPerWeapon": 0,
         "weapons": 5
       }
@@ -4879,9 +4883,9 @@
       "respawn": null,
       "score": null,
       "speed": 1,
-      "hp": 1.25,
+      "hp": 2,
       "reload": 1,
-      "ammo": "spec",
+      "ammo": "unlimited",
       "equipment": 3,
       "consumables": true,
       "jump": null,
@@ -4890,6 +4894,7 @@
         "gravity": 1,
         "minutes": 0,
         "survivorHp": 100,
+        "infectedHp": 100,
         "killsPerWeapon": 0,
         "weapons": 5
       }
@@ -4902,7 +4907,7 @@
       "speed": 1,
       "hp": 1,
       "reload": 1,
-      "ammo": "spec",
+      "ammo": "unlimited",
       "equipment": 3,
       "consumables": true,
       "jump": null,
@@ -4911,6 +4916,7 @@
         "gravity": 1,
         "minutes": 12,
         "survivorHp": 100,
+        "infectedHp": 100,
         "killsPerWeapon": 0,
         "weapons": 5
       }
@@ -4923,7 +4929,7 @@
       "speed": 1.25,
       "hp": 1.2,
       "reload": 0.9,
-      "ammo": "spec",
+      "ammo": "unlimited",
       "equipment": 3,
       "consumables": true,
       "jump": 9.5,
@@ -4932,6 +4938,7 @@
         "gravity": 0.38,
         "minutes": 12,
         "survivorHp": 100,
+        "infectedHp": 100,
         "killsPerWeapon": 0,
         "weapons": 5
       }
@@ -4944,7 +4951,7 @@
       "speed": 1,
       "hp": 1,
       "reload": 1,
-      "ammo": "spec",
+      "ammo": "unlimited",
       "equipment": 3,
       "consumables": true,
       "jump": null,
@@ -4953,6 +4960,7 @@
         "gravity": 1,
         "minutes": 10,
         "survivorHp": 100,
+        "infectedHp": 100,
         "killsPerWeapon": 0,
         "weapons": 5
       }
@@ -4960,12 +4968,12 @@
     {
       "id": "infected",
       "clock": 420,
-      "respawn": 3,
+      "respawn": 5,
       "score": null,
       "speed": 1,
       "hp": 1,
       "reload": 1,
-      "ammo": "spec",
+      "ammo": "unlimited",
       "equipment": 3,
       "consumables": true,
       "jump": null,
@@ -4973,7 +4981,8 @@
         "target": 0,
         "gravity": 1,
         "minutes": 7,
-        "survivorHp": 30,
+        "survivorHp": 150,
+        "infectedHp": 30,
         "killsPerWeapon": 0,
         "weapons": 5
       }
@@ -4995,6 +5004,7 @@
         "gravity": 1,
         "minutes": 15,
         "survivorHp": 100,
+        "infectedHp": 100,
         "killsPerWeapon": 0,
         "weapons": 5
       }
@@ -5016,6 +5026,7 @@
         "gravity": 1,
         "minutes": 15,
         "survivorHp": 100,
+        "infectedHp": 100,
         "killsPerWeapon": 2,
         "weapons": 5
       }
@@ -5028,7 +5039,7 @@
       "speed": 1,
       "hp": 1,
       "reload": 1,
-      "ammo": "spec",
+      "ammo": "unlimited",
       "equipment": 3,
       "consumables": true,
       "jump": null,
@@ -5037,6 +5048,7 @@
         "gravity": 1,
         "minutes": 10,
         "survivorHp": 100,
+        "infectedHp": 100,
         "killsPerWeapon": 0,
         "weapons": 5
       }
@@ -5058,6 +5070,7 @@
         "gravity": 1,
         "minutes": 8,
         "survivorHp": 100,
+        "infectedHp": 100,
         "killsPerWeapon": 0,
         "weapons": 5
       }

@@ -10,6 +10,9 @@
 import winter from './winter.ts';
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 import { roundRoadBends } from './roadBends.ts';
+// (the map-content lane's R6; gauntlet wave 358a: "flat orange-brown boulder blobs", "the cairn's warm brown should be
+// desaturated to frost-shattered grey") the plateau's granite as Baffin's is under the frost: cool grey, lichen-dark
+const FROST_GRANITE: readonly [number, number, number] = [0.58, 0.05, 0.42];
 export default {
   id: 'whiteout', name: 'Whiteout Station',
   blurb: 'A remote polar station, frozen melt pans and snow-berm service corridors beneath a pale sky',
@@ -122,6 +125,10 @@ export default {
     // and frost-shattered outcrops of the plateau (was 136 rocks, 22 outcrops)
     telegraph: true, carts: false, logs: true,
     rocks: 224, outcrops: 38, craters: 50, rubblePiles: 0, sandbagLines: 16, hedgehogs: 12,
+    // (2026-10-17, the maps lane; the fleet dressing rules 227, props.ts dressingRules, as Polders has them) the fence
+    // runs stop short of the buildings' plots (the audit counted 11 fence or gate records reaching into a structure), a
+    // run's piece under 3 modules left out
+    dressingRules: { fencesClearBuildings: true, fenceStubsOut: true },
     // the map-vehicles lane (2026-10-06, the period ruling): the Arctic north in the 1980s: Norway's Leopard 1 and
     // M48, Sweden's Strv 103, the Soviet T-80B and BMP-2
     tankWrecks: { era: 'cold-war', count: 5, debris: true, ids: ['leo1a5', 'm48a5_patton', 'strv103b', 't80b', 'bmp2'] },
@@ -147,10 +154,12 @@ export default {
       { kind: 'fuelTankFarm', x: -240, z: -185, yawDeg: 90, params: { tanks: 2, radius: 4, height: 6 }, ground: 'veto', name: 'the motor pool tanks' },
       { kind: 'fuelTankFarm', x: 60, z: 236, yawDeg: 0, params: { tanks: 2, radius: 4, height: 6 }, ground: 'veto', name: 'the north tanks' },
       // the billboards on the high ground, facing the next stations east (Greenland) and west along the line
-      { kind: 'troposcatter', x: 342, z: 22, yawDeg: 90, ground: 'veto', name: 'the east billboards (south)' },
-      { kind: 'troposcatter', x: 342, z: 56, yawDeg: 90, ground: 'veto', name: 'the east billboards (north)' },
-      { kind: 'troposcatter', x: -376, z: 6, yawDeg: -90, ground: 'veto', name: 'the west billboards (south)' },
-      { kind: 'troposcatter', x: -376, z: 40, yawDeg: -90, ground: 'veto', name: 'the west billboards (north)' },
+      // (R6, gauntlet wave 358a: the billboards "badly undersized ... far from DYE-M's towering reflector screens") the
+      // screens at their true scale, 28 m across and 24 m high
+      { kind: 'troposcatter', x: 342, z: 22, yawDeg: 90, params: { width: 28, height: 24 }, ground: 'veto', name: 'the east billboards (south)' },
+      { kind: 'troposcatter', x: 342, z: 56, yawDeg: 90, params: { width: 28, height: 24 }, ground: 'veto', name: 'the east billboards (north)' },
+      { kind: 'troposcatter', x: -376, z: 6, yawDeg: -90, params: { width: 28, height: 24 }, ground: 'veto', name: 'the west billboards (south)' },
+      { kind: 'troposcatter', x: -376, z: 40, yawDeg: -90, params: { width: 28, height: 24 }, ground: 'veto', name: 'the west billboards (north)' },
       // the masts
       { kind: 'guyedMast', x: 370, z: 200, ground: 'veto', name: 'the north-east mast' },
       { kind: 'guyedMast', x: -190, z: -252, ground: 'veto', name: 'the south-west mast' },
@@ -214,6 +223,8 @@ export default {
     ],
     // the station's machines (vehicleSetPiecesWorks.ts): the Bv 206 carriers, the Sno-Cats and the D8 dozers that kept the
     // roads and the drifts open (the arctic1980s fleet's trucks and pickups stay the inhabit pass's)
+    // (the map-content lane's R6) seated on their own gear (vehicleSetPieces.ts seatOnRunningGear); the ones on bumpy
+    // ground, a rock or a fence moved a few metres to a flatter, clear seat
     vehicleSetPieces: [
       { kind: 'bv206', x: -8, z: -12, yawDeg: 80 }, { kind: 'bv206', x: -72, z: -64, yawDeg: 90 },
       { kind: 'snocat', x: 18, z: -62, yawDeg: -60 }, { kind: 'd8h', x: 132, z: -126, yawDeg: 30 },
@@ -223,18 +234,19 @@ export default {
       { kind: 'bv206', x: -248, z: 208, yawDeg: 0 }, { kind: 'snocat', x: 318, z: 316, yawDeg: 110 },
       { kind: 'bv206', x: 300, z: -350, yawDeg: -20 },
       { kind: 'snocat', x: -392, z: -264, yawDeg: 40 }, { kind: 'bv206', x: -368, z: 166, yawDeg: 160 },
-      { kind: 'd8h', x: 230, z: 300, yawDeg: 60 }, { kind: 'snocat', x: 200, z: -380, yawDeg: 20 },
+      { kind: 'd8h', x: 230, z: 300, yawDeg: 60 }, { kind: 'snocat', x: 202, z: -376, yawDeg: 20 },
       { kind: 'bv206', x: 290, z: -60, yawDeg: 180 }, { kind: 'snocat', x: 100, z: -330, yawDeg: 300 },
       { kind: 'd8h', x: -300, z: -300, yawDeg: 30 },
       // (round 1c) the stripped trail south-east of the station, its abandoned machines; more working machines out in the voids
-      { kind: 'bv206', x: 206, z: -196, yawDeg: 130, wrecked: true }, { kind: 'snocat', x: 254, z: -250, yawDeg: 140, wrecked: true },
+      { kind: 'bv206', x: 206, z: -190, yawDeg: 130, wrecked: true }, { kind: 'snocat', x: 248, z: -242, yawDeg: 140, wrecked: true },
       { kind: 'bv206', x: 330, z: -296, yawDeg: 120, wrecked: true }, { kind: 'snocat', x: 392, z: -340, yawDeg: 150, wrecked: true },
       { kind: 'bv206', x: 432, z: -404, yawDeg: 135, wrecked: true },
       { kind: 'snocat', x: 290, z: 104, yawDeg: 10 }, { kind: 'bv206', x: -306, z: 218, yawDeg: 60 },
-      { kind: 'd8h', x: 128, z: -300, yawDeg: 200 }, { kind: 'bv206', x: -62, z: 318, yawDeg: 95 },
-      { kind: 'snocat', x: 406, z: 22, yawDeg: 300 }, { kind: 'd8h', x: 398, z: -182, yawDeg: 20 },
-      // the dump's burnt-out carrier
-      { kind: 'bv206', x: -410, z: -380, yawDeg: 70, wrecked: true },
+      { kind: 'd8h', x: 134, z: -304, yawDeg: 200 }, { kind: 'bv206', x: -62, z: 318, yawDeg: 95 },
+      { kind: 'snocat', x: 410, z: 14, yawDeg: 300 }, { kind: 'd8h', x: 402, z: -186, yawDeg: 20 },
+      // the dump's burnt-out carrier (landed on main 2026-10-17: Lane C's r2 wreck, its rear car twisted on the steering
+      // unit, sank 0.33 m at -398 on its gear seat; 7 m east-north-east it sinks 0.27)
+      { kind: 'bv206', x: -392, z: -376, yawDeg: 70, wrecked: true },
     ],
   },
   // the map-content lane (2026-10-09; the owner: "so empty", and the bird view the judge): the plateau's frost-shattered
@@ -244,30 +256,30 @@ export default {
     // (round 1c) inuksuit, the Inuit's stone figures that mark a route across the land, beside the service roads and on two
     // knolls (scenery cairns of the plateau's gneiss)
     landmarks: [
-      { kind: 'cairn', x: 286, z: -280, height: 2.0, scale: 0.9, geology: 'granite', name: 'an inuksuk on the east road (south)' },
-      { kind: 'cairn', x: 268, z: -180, height: 1.8, scale: 0.8, geology: 'granite', name: 'an inuksuk on the east road' },
-      { kind: 'cairn', x: 268, z: -20, height: 2.1, scale: 0.9, geology: 'granite', name: 'an inuksuk by the relay' },
-      { kind: 'cairn', x: 274, z: 150, height: 1.9, scale: 0.85, geology: 'granite', name: 'an inuksuk on the east road (north)' },
-      { kind: 'cairn', x: 304, z: 236, height: 2.0, scale: 0.9, geology: 'granite', name: 'an inuksuk at the east fork' },
-      { kind: 'cairn', x: -258, z: -200, height: 1.9, scale: 0.85, geology: 'granite', name: 'an inuksuk on the west road (south)' },
-      { kind: 'cairn', x: -258, z: -14, height: 2.1, scale: 0.9, geology: 'granite', name: 'an inuksuk by the motor pool' },
-      { kind: 'cairn', x: -262, z: 176, height: 1.8, scale: 0.8, geology: 'granite', name: 'an inuksuk on the west road (north)' },
-      { kind: 'cairn', x: -270, z: 330, height: 2.0, scale: 0.9, geology: 'granite', name: 'an inuksuk by the lake' },
-      { kind: 'cairn', x: -84, z: -206, height: 1.9, scale: 0.85, geology: 'granite', name: 'an inuksuk on the south road' },
-      { kind: 'cairn', x: 432, z: 76, height: 2.2, scale: 1.0, geology: 'granite', name: 'an inuksuk on the east knoll' },
-      { kind: 'cairn', x: -432, z: 330, height: 2.2, scale: 1.0, geology: 'granite', name: 'an inuksuk on the west knoll' },
+      { kind: 'cairn', x: 286, z: -280, height: 2.0, scale: 0.9, geology: 'granite', tone: FROST_GRANITE, name: 'an inuksuk on the east road (south)' },
+      { kind: 'cairn', x: 268, z: -180, height: 1.8, scale: 0.8, geology: 'granite', tone: FROST_GRANITE, name: 'an inuksuk on the east road' },
+      { kind: 'cairn', x: 268, z: -20, height: 2.1, scale: 0.9, geology: 'granite', tone: FROST_GRANITE, name: 'an inuksuk by the relay' },
+      { kind: 'cairn', x: 274, z: 150, height: 1.9, scale: 0.85, geology: 'granite', tone: FROST_GRANITE, name: 'an inuksuk on the east road (north)' },
+      { kind: 'cairn', x: 304, z: 236, height: 2.0, scale: 0.9, geology: 'granite', tone: FROST_GRANITE, name: 'an inuksuk at the east fork' },
+      { kind: 'cairn', x: -258, z: -200, height: 1.9, scale: 0.85, geology: 'granite', tone: FROST_GRANITE, name: 'an inuksuk on the west road (south)' },
+      { kind: 'cairn', x: -258, z: -14, height: 2.1, scale: 0.9, geology: 'granite', tone: FROST_GRANITE, name: 'an inuksuk by the motor pool' },
+      { kind: 'cairn', x: -262, z: 176, height: 1.8, scale: 0.8, geology: 'granite', tone: FROST_GRANITE, name: 'an inuksuk on the west road (north)' },
+      { kind: 'cairn', x: -270, z: 330, height: 2.0, scale: 0.9, geology: 'granite', tone: FROST_GRANITE, name: 'an inuksuk by the lake' },
+      { kind: 'cairn', x: -84, z: -206, height: 1.9, scale: 0.85, geology: 'granite', tone: FROST_GRANITE, name: 'an inuksuk on the south road' },
+      { kind: 'cairn', x: 432, z: 76, height: 2.2, scale: 1.0, geology: 'granite', tone: FROST_GRANITE, name: 'an inuksuk on the east knoll' },
+      { kind: 'cairn', x: -432, z: 330, height: 2.2, scale: 1.0, geology: 'granite', tone: FROST_GRANITE, name: 'an inuksuk on the west knoll' },
     ],
     rockFields: [
-      { geology: 'granite', x: -380, z: -60, radius: 70, count: 9, slopeBias: 0.4, size: [3, 6], name: 'the west knoll tors' },
-      { geology: 'granite', x: 210, z: 130, radius: 80, count: 10, slopeBias: 0.5, size: [3, 6.5], name: 'the east ridge rock' },
-      { geology: 'granite', x: -320, z: -330, radius: 80, count: 9, size: [2.5, 5.5], name: 'the esker boulder field' },
-      { geology: 'granite', x: -380, z: 370, radius: 70, count: 9, size: [2.5, 5.5], name: 'the north-west boulder field' },
-      { geology: 'granite', x: 330, z: -270, radius: 70, count: 8, size: [3, 6], name: 'the south-east tor' },
-      { geology: 'granite', x: 360, z: 330, radius: 70, count: 8, size: [3, 6], name: 'the north-east tor' },
-      { geology: 'granite', x: 40, z: -290, radius: 70, count: 8, slopeBias: 0.5, size: [2.5, 5.5], name: 'the south ridge rock' },
-      { geology: 'granite', x: 110, z: 320, radius: 70, count: 8, size: [2.5, 5.5], name: 'the north berm rock' },
+      { geology: 'granite', tone: FROST_GRANITE, x: -380, z: -60, radius: 70, count: 9, slopeBias: 0.4, size: [3, 6], name: 'the west knoll tors' },
+      { geology: 'granite', tone: FROST_GRANITE, x: 210, z: 130, radius: 80, count: 10, slopeBias: 0.5, size: [3, 6.5], name: 'the east ridge rock' },
+      { geology: 'granite', tone: FROST_GRANITE, x: -320, z: -330, radius: 80, count: 9, size: [2.5, 5.5], name: 'the esker boulder field' },
+      { geology: 'granite', tone: FROST_GRANITE, x: -380, z: 370, radius: 70, count: 9, size: [2.5, 5.5], name: 'the north-west boulder field' },
+      { geology: 'granite', tone: FROST_GRANITE, x: 330, z: -270, radius: 70, count: 8, size: [3, 6], name: 'the south-east tor' },
+      { geology: 'granite', tone: FROST_GRANITE, x: 360, z: 330, radius: 70, count: 8, size: [3, 6], name: 'the north-east tor' },
+      { geology: 'granite', tone: FROST_GRANITE, x: 40, z: -290, radius: 70, count: 8, slopeBias: 0.5, size: [2.5, 5.5], name: 'the south ridge rock' },
+      { geology: 'granite', tone: FROST_GRANITE, x: 110, z: 320, radius: 70, count: 8, size: [2.5, 5.5], name: 'the north berm rock' },
       // (round 1c) the east flank's tors beyond the relay
-      { geology: 'granite', x: 410, z: -110, radius: 60, count: 8, size: [2.5, 5.5], name: 'the east flank tors' },
+      { geology: 'granite', tone: FROST_GRANITE, x: 410, z: -110, radius: 60, count: 8, size: [2.5, 5.5], name: 'the east flank tors' },
     ],
   },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the flattest ring's tone grain 0.35 -> 0.60
@@ -306,7 +318,10 @@ export default {
     // deck widens the shadows' filter (shadowStability.ts deckPenumbraRadius): a faint, diffuse bearing under the same grey
     // deck (wave 342a: 0.45 read "sharp sunny-day shadows" and raised the snow's relief into a marbled swirl; a quarter
     // stays at or under the snow relief's limit until that relief is redone)
-    deckBeam: 0.25 },
+    // 2026-10-18 (the SKY lane, 228 census; the media lane's approved s165 against 226: the bright polar haze became a dark
+    // grey overcast): the stratus drawn at 0.35 of the closing law's extinction — pale from below, its structure faint
+    // (blind WIN 3-0-2 / 3-0-2 against the reference strip); the ground's light keeps the closing deck's law
+    deckBeam: 0.25, deckDensity: 0.35 },
   sky: { ...winter.sky, sunElevationDeg: 13, sunAzimuthDeg: 164, fogDensity: 0.00072, fogTintHex: 0xb3bfc9, fogMix: 0.56, cloudOpacity: 1.15, cloudOpacity2: 0.86, cloudAltM: 300, cloudHazeK: 0.00012, cloudUvM: 2000, cloudShadowAmp: 0.08, sunIntensity: 2.75, hemiIntensity: 0.58,
     postExposure: 0.83 /* round 70: 0.86 (winter's) → 0.83, the snow re-grade's exposure half */,
     // 2026-10-09 (the skies lane; owner R139 "skybox ... too bland", 10-09 "so empty"): a polar sky of its own (Frosthollow

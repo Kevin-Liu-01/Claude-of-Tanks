@@ -43,7 +43,11 @@ export const TROUGH_FORMS: Readonly<Record<string, TroughSpec>> = Object.freeze(
   saltwind: { ...STONE, body: 0xc8c0b0 }, orchard: { ...STONE, body: 0xc8b8a0 }, cliffbridge: { ...STONE, body: 0xb8a890 }, desert: { ...STONE, body: 0xb89a78 },
   oasis: { ...STONE, body: 0xb8a080 }, badlands: { ...STONE, body: 0xa87a5a }, autumn: { ...STONE, body: 0x9a9488 },
   longleaf: TANK, skybridge: TANK, titan_gorge: TANK, copper_mesa: TANK, airfield: TANK, whiteout: TANK,
-  railyard: CONCRETE, frontier: CONCRETE, reservoir: CONCRETE, polders: CONCRETE, coastal: CONCRETE, foundry: CONCRETE, monsoon: CONCRETE, mangrove: CONCRETE, delta: CONCRETE,
+  // (2026-10-17, the maps lane; the Polders village blind 227's follow-ups, pose 2: "a white rectangular slab/trough on
+  // the grass reads as an untextured placeholder") the Zeeland farm's trough is a block of Belgian bluestone (hardsteen),
+  // dark and weathered, not the pale cast concrete that read as a white slab in the sun
+  polders: { ...STONE, form: 'bluestone', body: 0x666a6a, trim: 0x545858 },
+  railyard: CONCRETE, frontier: CONCRETE, reservoir: CONCRETE, coastal: CONCRETE, foundry: CONCRETE, monsoon: CONCRETE, mangrove: CONCRETE, delta: CONCRETE,
   caldera: { form: 'wooden-tub', kind: 'tub', body: 0x9a7a52, trim: 0x8a9a5a },
 });
 const WATER = 0x1e2a26;

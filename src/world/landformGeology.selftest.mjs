@@ -534,7 +534,27 @@ let dykeSteepest = 0;
   assert.equal(isRockLandform(dyke), false, 'a dyke is earth, not rock');
 }
 
-console.log(`landformGeology.selftest: ${smoothForms} smooth landforms unchanged; cone flank ${steepest.toFixed(3)} `
+// a thrust scarp's lobe (the Earthrise 228 rebuild, 2026-10-18): its crest level on its axis, a steep face toward `face`, a
+// long even back slope; the face under 21 degrees (drivable), the back gentler; deterministic; the sign flips it
+let scarpFace = 0, scarpBack = 0;
+{
+  const lobe = (face) => ({ kind: 'ridge', x: 0, z: 0, length: 520, width: 65, height: 13, yawDeg: 0, geology: { profile: 'scarp', face } });
+  const h = (lz, face = 1) => sampleLandformHeight(lobe(face), 0, lz);
+  for (const lz of [0, 1, -1, 3.5]) assert.ok(Math.abs(h(lz) - 13) < 1e-9, `a scarp's crest is level on its axis (${lz} m: ${h(lz)})`);
+  assert.ok(h(65) === 0 && h(-65) === 0 && h(70) === 0, 'a scarp ends at its toes');
+  for (let lz = 0; lz < 65; lz += 0.25) {
+    scarpFace = Math.max(scarpFace, (h(lz) - h(lz + 0.25)) / 0.25);
+    scarpBack = Math.max(scarpBack, (h(-lz) - h(-lz - 0.25)) / 0.25);
+    assert.ok(h(lz + 0.25) <= h(lz) + 1e-9 && h(-lz - 0.25) <= h(-lz) + 1e-9, `a scarp never rises toward its toes (${lz} m)`);
+  }
+  assert.ok(scarpFace < Math.tan(21 * Math.PI / 180), `the face is drivable (${(Math.atan(scarpFace) * 180 / Math.PI).toFixed(1)} degrees)`);
+  assert.ok(scarpBack < scarpFace * 0.85, `the back slope gentler than the face (${(Math.atan(scarpBack) * 180 / Math.PI).toFixed(1)} vs ${(Math.atan(scarpFace) * 180 / Math.PI).toFixed(1)} degrees)`);
+  for (const lz of [-40, -12, 9, 30]) {
+    assert.equal(h(lz), h(lz), 'deterministic');
+    assert.ok(Math.abs(h(lz, -1) - h(-lz, 1)) < 1e-9, `face -1 mirrors face +1 (${lz} m)`);
+  }
+}
+console.log(`landformGeology.selftest: scarp face ${(Math.atan(scarpFace) * 180 / Math.PI).toFixed(1)} / back ${(Math.atan(scarpBack) * 180 / Math.PI).toFixed(1)} degrees; ${smoothForms} smooth landforms unchanged; cone flank ${steepest.toFixed(3)} `
   + `(predicted ${predicted.toFixed(3)}), ${notches} rills, lobed reach ${Math.min(...reach)}-${Math.max(...reach)} m, `
   + `${benches} benches on ${benchedBearings} of 12 bearings, `
   + `flow margin ${Math.min(...edges)}-${Math.max(...edges)} m, ${seamSamples} seam samples continuous (${wallSamples} on an inselberg's wall), ${fanPeaks} talus fans, flow levee ${(levee - channel).toFixed(2)} m front ${frontSlope.toFixed(2)} vent ${ventSlope.toFixed(2)}; zones: flow ${flowInside} inside, ${flowFaded} faded, cone ${coneInside} inside, fans ${fanPositive} of ${fanSamples} toe samples, sampler ${samplerPoints} points; Caldera's mask = its flow zone at ${maskPoints} points (${onFlows} on flows); inselberg wall ${steepestWall.toFixed(2)}, foot ${Math.min(...breaks)}-${Math.max(...breaks)} m, ${nearFoot} of ${boulderSites} boulder sites near the foot; rock: ${onRock} of ${rockPoints} sampler points on rock, cliff end ${cliffDrop.toFixed(2)} m per m, the rock gate matches at ${gatePoints} points; sheer jebel wall ${sheerWall.toFixed(1)} m per m, flutes ${(Math.max(...fluteRadii) - Math.min(...fluteRadii)).toFixed(2)} m, bosses ${bossRise.toFixed(2)} m, clefts ${cleftBite.toFixed(2)} m; nose apron ${noseApronDrop.toFixed(2)} m per m (a cut end ${cutApronDrop.toFixed(2)}); dyke batter ${dykeSteepest.toFixed(3)} per m`);

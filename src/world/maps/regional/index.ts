@@ -18,6 +18,7 @@ import { withHousePlans, withWear, type HousePlan } from './house.ts';
 import { withRuinWalls, type WallPieceReading } from './shell.ts';
 import { withLattices, type LatticeReading } from './lattice.ts';
 import { registerHouseDamageKits } from './damage.ts';
+import { registerLatticeFrameKit } from './latticeFall.ts';
 import { setKitPlanReader } from '../../destructionKit.ts';
 import { HESSIAN_STYLE } from './hessian.ts';
 import { SAVOYARD_STYLE } from './savoyard.ts';
@@ -49,7 +50,9 @@ import { ANDALUSIAN_STYLE } from './andalusian.ts';
 import { CHOUF_STYLE } from './chouf.ts';
 import { LORRAIN_STYLE } from './lorrain.ts';
 import { TSELINA_STYLE } from './tselina.ts';
-import type { ArchitectureStyle, BaseBounds, RegionalBuildContext, RegionalGround } from './types.ts';
+import { OLYMPUS_STYLE } from './olympus.ts';
+import { LITTROW_STYLE } from './littrow.ts';
+import type { ArchitectureStyle, BaseBounds, RegionalBuildContext, RegionalBuilder, RegionalGround } from './types.ts';
 
 export type { ArchitectureStyle } from './types.ts';
 
@@ -98,6 +101,11 @@ const STYLES: Readonly<Record<string, ArchitectureStyle>> = Object.freeze({
   chouf: CHOUF_STYLE,
   lorrain: LORRAIN_STYLE,
   tselina: TSELINA_STYLE,
+  // (the looks lane, 2026-10-13) the Olympus Basin station: its regolith works and its cargo modules
+  olympus: OLYMPUS_STYLE,
+  // (the Earthrise 228 rebuild, 2026-10-18) Taurus-Littrow Station's habitats, nodes, garages, tank farms, tower, lab,
+  // crane, logistics modules and tool lockers
+  littrow: LITTROW_STYLE,
 });
 
 export const ARCHITECTURE_STYLE_IDS: readonly string[] = Object.freeze(Object.keys(STYLES));
@@ -106,6 +114,8 @@ export const ARCHITECTURE_STYLES: readonly ArchitectureStyle[] = Object.freeze(O
 // the destruction seam (docs/DESTRUCTION.md §16): every style's damage kit, its anatomy read from the house plan, and
 // the plan's reader the world's describe call sites use (kitPlanFor: the world builder imports no kit)
 registerHouseDamageKits(ARCHITECTURE_STYLES);
+// (227, lane B) a catalog frame that carries its lattice (railKit.ts gantryFrame) falls as it (latticeFall.ts)
+registerLatticeFrameKit('gantry');
 setKitPlanReader((parts) => regionalKitPlanOf(parts));
 
 /** The kit a map authored (`props.architecture`), or null. An unknown id fails closed. */
@@ -169,13 +179,19 @@ export function regionalKitPlanOf(parts: object): RegionalKitPlan | undefined {
   return KIT_PLANS.get(parts);
 }
 
+/** The kit's builder for a structure on a map: the map's own reading of the kit first (ArchitectureStyle.mapBuilders). */
+function kitBuilder(style: ArchitectureStyle, mapId: string, structureId: string): RegionalBuilder | undefined {
+  const named = style.mapBuilders?.[mapId]?.[structureId];
+  return style.builders[named ?? structureId];
+}
+
 /**
  * A kit's whole build of one structure: the builder's parts, then the building's own tint and weathering
  * (weather.ts) drawn from `weatherRng` (never the build stream). Receipts build through this too.
  */
 export function buildRegionalParts(style: ArchitectureStyle, ctx: RegionalBuildContext, weatherRng: () => number): RegionalParts {
   const palette = style.weather ?? DEFAULT_WEATHER;
-  const builder = style.builders[ctx.structureId];
+  const builder = kitBuilder(style, ctx.mapId, ctx.structureId);
   if (!builder) throw new Error(`${style.id} has no ${ctx.structureId}`);
   // war wear (burnt and boarded windows, stripped roof patches) draws from its own fork of the weather stream
   const wearSeed = Math.floor(weatherRng() * 4294967296);
@@ -243,8 +259,7 @@ export function rebuildRegionalStructure(
   style: ArchitectureStyle, structureId: string, base: Buckets, info: { w: number; d: number; h: number },
   wallBucket: string, context: RebuildContext, x: number, z: number, yaw: number,
 ): PropsLikeBuckets | null {
-  const builder = style.builders[structureId];
-  if (!builder) return null;
+  if (!kitBuilder(style, context.mapId, structureId)) return null;
   const bounds = measure(base);
   const ctx: RegionalBuildContext = {
     structureId, info, bounds, wallBucket,

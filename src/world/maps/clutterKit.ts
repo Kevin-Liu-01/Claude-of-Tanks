@@ -206,7 +206,10 @@ export const WOOD_FORMS: Readonly<Record<string, WoodSpec>> = Object.freeze({
   longleaf: { ...RICK, form: 'cordwood', ...PINE }, titan_gorge: { ...RICK, form: 'juniper-rick', bark: 0x7a6a5a, split: 0xc0a080, end: 0xd0b48a },
   skybridge: { ...RICK, form: 'cordwood', ...PINE }, copper_mesa: { ...RICK, form: 'gum-rick', bark: 0x8a7a68, split: 0xb88a60, end: 0xc89a6a },
   whiteout: { ...RICK, form: 'lumber-rick', ...PINE }, autumn: { ...RICK, form: 'stere' }, coastal: { ...RICK, form: 'stere' },
-  polders: { ...RICK, form: 'rick', ...PINE }, reservoir: RICK, cliffbridge: { ...RICK, form: 'olive-rick', bark: 0x6a6458, split: 0xc0a07a },
+  // (2026-10-17, the maps lane; the Polders village blind 227's follow-ups, pose 3: "the foreground woodpile crate is still
+  // chunky") the Zeeland house's woodpile a long low stack one billet deep, laid along its wall (props.ts wallSpot), not a
+  // cube a metre deep stood end-on off it
+  polders: { ...RICK, form: 'wall-rick', ...PINE, length: 2.2, height: 0.8, depth: 0.6 }, reservoir: RICK, cliffbridge: { ...RICK, form: 'olive-rick', bark: 0x6a6458, split: 0xc0a07a },
   saltwind: { ...RICK, form: 'olive-rick', bark: 0x6a6458, split: 0xc0a07a }, ruinspires: RICK,
   desert: { ...BUNDLES, form: 'tamarisk', bark: 0x7a6650 }, oasis: { ...BUNDLES, form: 'palm-rib', bark: 0x8a7458, end: 0xa89060 },
   badlands: { ...BUNDLES, form: 'tamarisk', bark: 0x7a6650 }, orchard: { ...BUNDLES, form: 'prunings', bark: 0x6a6450 },
@@ -351,7 +354,10 @@ const RED_DRUM_LATE = { shell: 0xb02a22, hoop: 0x801e18, head: 0xb02a22, band: 0
 /** A map's cable drum: the cable lead-sheathed before 1955 (periodClutterKit MODERN_KIND_INTRODUCED), PVC black after;
  *  the stations' steel spool and its orange cable. */
 function spoolOf(mapId: string): { form: string; spec: { cheek: Hex; cable: Hex; steel?: boolean } } {
-  if (mapId === 'moon' || mapId === 'mars') return { form: 'steel-spool', spec: { cheek: 0xb8b8b4, cable: 0xd8702a, steel: true } };
+  // (the Earthrise 228 rebuild, round 3; the blind judge: "a stray orange marker sits beside the berm") the Moon's spool
+  // carries the station's dark power cable: its orange coil read as a lone marker across the regolith
+  if (mapId === 'moon') return { form: 'steel-spool', spec: { cheek: 0xb8b8b4, cable: 0x3a3c40, steel: true } };
+  if (mapId === 'mars') return { form: 'steel-spool', spec: { cheek: 0xb8b8b4, cable: 0xd8702a, steel: true } };
   const year = MAP_SETTING_YEAR[mapId] ?? 2000;
   return year < 1955 ? { form: 'lead-cable-drum', spec: { cheek: 0x8a6a48, cable: 0x6a6c70 } } : { form: 'cable-drum', spec: { cheek: 0x9a7a52, cable: 0x232323 } };
 }

@@ -25,7 +25,7 @@ const shares = Array.from({ length: workers }, (_, w) => MAP_IDS.filter((_, inde
 function check(maps) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [tool, '--check', '--maps', maps.join(',')],
-      { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, COT_DRAWN_GEOMETRY_SHAPE: '1' } });
+      { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, COT_DRAWN_GEOMETRY_SHAPE: '1', COT_LANDMARK_PLACEMENT: '1' } });
     let out = '', err = '';
     child.stdout.on('data', (chunk) => { out += chunk; });
     child.stderr.on('data', (chunk) => { err += chunk; });
@@ -35,13 +35,15 @@ function check(maps) {
 }
 
 const results = await Promise.all(shares.map(check));
-const rows = new Map(), shapes = new Map();
+const rows = new Map(), shapes = new Map(), placements = new Map();
 for (const { out } of results) {
   for (const line of out.split('\n')) {
     const match = /^([a-z_]+): (current|DRIFTED)(.*)$/.exec(line.trim());
     if (match) rows.set(match[1], match[2] + match[3]);
     const shape = /^drawn-shape ([a-z_]+): (\d+) walked, (\d+) stand-ins, (\d+) offenders(.*)$/.exec(line.trim());
     if (shape) shapes.set(shape[1], { walked: Number(shape[2]), standIns: Number(shape[3]), offenders: Number(shape[4]), first: shape[5] });
+    const placed = /^landmarks ([a-z_]+): (\d+) placed, (\d+) failures(.*)$/.exec(line.trim());
+    if (placed) placements.set(placed[1], { placed: Number(placed[2]), failures: Number(placed[3]), detail: placed[4] });
   }
 }
 for (const { code, err } of results) {
@@ -58,7 +60,14 @@ const slow = [...shapes.entries()].filter(([, shape]) => shape.offenders > 0);
 assert.deepEqual(slow.map(([id, shape]) => `${id}: ${shape.offenders}${shape.first}`), [],
   'drawn geometries left in dictionary mode (build them with src/world/geometryStreams.ts keepStreams, never trim them with deleteAttribute)');
 assert.ok(shapes.get('railyard').standIns > 0 && shapes.get('alpine').standIns > 0, 'the walk reaches the vehicles\' shadow stand-ins');
+// (2026-10-17, MAPS Lane A) the set pieces on the same builds: every map's named pieces stand (Delta's aat-chala temple
+// stood nowhere while its brick court did; src/world/landmarks/landmarkPlacement.test-support.mjs)
+assert.ok(placements.size >= 10 && placements.has('delta'), `the set-piece receipt read on the maps with set pieces (${[...placements.keys()].join(', ')})`);
+const refused = [...placements.entries()].filter(([, p]) => p.failures > 0);
+assert.deepEqual(refused.map(([id, p]) => `${id}:${p.detail}`), [],
+  'every authored set piece stands, or is named in landmarkPlacement.test-support.mjs SKIPPED_ALLOWANCE with the composer\'s reason');
 const walked = [...shapes.values()].reduce((sum, shape) => sum + shape.walked, 0);
 console.log(`collisionManifestDrift.selftest: ${rows.size}/${MAP_IDS.length} shards match the Node build`
   + ` (${rows.size - rounded.length} byte-identical, ${rounded.length} within the last packed digit: ${rounded.map(([id]) => id).join(', ') || 'none'}; ${workers} workers);`
-  + ` ${walked} drawn geometries keep fast attribute objects (shadow stand-ins on ${[...shapes.values()].filter((shape) => shape.standIns > 0).length} maps)`);
+  + ` ${walked} drawn geometries keep fast attribute objects (shadow stand-ins on ${[...shapes.values()].filter((shape) => shape.standIns > 0).length} maps);`
+  + ` ${[...placements.values()].reduce((sum, p) => sum + p.placed, 0)} set pieces stand on ${placements.size} maps`);

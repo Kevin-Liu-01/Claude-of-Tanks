@@ -29,12 +29,12 @@ import {
 import { DEFAULT_STRUCTURE_DAMAGE_KIT, describeDefault } from '../destructionDefaultKit.ts';
 import { LANDMARK_KINDS } from './plan.ts';
 import { isLandmarkParts, landmarkPiecesOf, pieceGroundAt, type LandmarkPiece } from './pieces.ts';
+import { toppleHingeM } from '../toppleHinge.ts'; // (227, lane B co-hold: the mask's hinge and this one, one rule)
 
 /** The set pieces that are open frames (members, not walls). */
 export const LATTICE_LANDMARKS: ReadonlySet<string> = new Set(['guyedMast', 'fireLookout', 'headframe', 'troposcatter', 'conveyor']);
 /** The shaft topple's hinge and lie (fx/structureStages TOPPLE_HINGE_M, fx/structureMask TOPPLE_LIE): the lying frame
  *  matches where the mask laid the standing one down. */
-const TOPPLE_HINGE_M = 1.5;
 const TOPPLE_LIE = 1.5;
 /** Triangles of a piece the kit keeps to lay again (a larger piece is left standing). */
 const PIECE_TRI_CAP = 4000;
@@ -79,7 +79,9 @@ function keepRuns(input: StructureDescribeInput, name: string): PieceRun[] {
 /** The body's reading: the parts without the named pieces, through the map's regional kit, else the default. */
 function describeBody(input: StructureDescribeInput): StructureDamageAnatomy {
   const parts: Record<string, BufferGeometry[]> = {};
-  for (const [bucket, list] of Object.entries(input.parts)) parts[bucket] = (list as readonly BufferGeometry[]).filter((g) => !g.userData.damagePiece);
+  // (227, lane B: an open frame's body reads its members through the default — its kits never lay them — not the default's stone)
+  const open = !!landmarkPiecesOf(input.parts)?.some((p) => p.kind === 'lattice');
+  for (const [bucket, list] of Object.entries(input.parts)) parts[bucket] = (list as readonly BufferGeometry[]).filter((g) => open || !g.userData.damagePiece);
   // (destruction-slabs 227) the body's own box (its parts less the named pieces: no sails' sweep, no tail pole), not the
   // whole set piece's
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, maxY = 0;
@@ -90,9 +92,9 @@ function describeBody(input: StructureDescribeInput): StructureDamageAnatomy {
     minX = Math.min(minX, box.min.x); maxX = Math.max(maxX, box.max.x); minZ = Math.min(minZ, box.min.z); maxZ = Math.max(maxZ, box.max.z);
     maxY = Math.max(maxY, box.max.y);
   }
-  const measured = Number.isFinite(minX) ? { w: Math.max(0.5, maxX - minX), d: Math.max(0.5, maxZ - minZ), h: Math.max(0.5, maxY) } : {};
+  const measured = !open && Number.isFinite(minX) ? { w: Math.max(0.5, maxX - minX), d: Math.max(0.5, maxZ - minZ), h: Math.max(0.5, maxY) } : {};
   const bodyInput: StructureDescribeInput = { ...input, ...measured, parts };
-  for (const kit of structureDamageKitChain('', input.style)) {
+  for (const kit of open ? [] : structureDamageKitChain('', input.style)) {
     if (kit === DEFAULT_STRUCTURE_DAMAGE_KIT || !kit.describe) continue;
     try {
       const anatomy = kit.describe(bodyInput);
@@ -108,7 +110,7 @@ function describeLandmark(input: StructureDescribeInput): StructureDamageAnatomy
   // (a regional kit's own building that shares a set piece's name — a church, a granary — is no set piece)
   if (!isLandmarkParts(input.parts)) return null;
   const named = landmarkPiecesOf(input.parts) ?? [];
-  const lattice = LATTICE_LANDMARKS.has(input.builder);
+  const lattice = LATTICE_LANDMARKS.has(input.builder) || named.some((p) => p.kind === 'lattice');
   if (!named.length && !lattice) return null;
   const body = describeBody(input);
   const pieces: KeptPiece[] = [];
@@ -593,11 +595,11 @@ function collapseLandmark(a: StructureDamageAnatomy, seed: number, out: DamageWr
   const res: DamageStageResult = { cuts: [], hides: [] };
   if (!plan) return res;
   const kit = bodyKit(plan, 'collapse');
-  merge(res, kit.collapse!.call(kit, plan.body, seed, out));
-  const given = (out as DamageWriters & { fallAxis?: [number, number] }).fallAxis;
+  if (!plan.lattice) merge(res, kit.collapse!.call(kit, plan.body, seed, out)); // (227, lane B: an open frame's pieces lay its whole fall, footings and sheds standing among them; no body heap)
+  const given = (out as DamageWriters & { fallAxis?: [number, number] }).fallAxis ?? ((t: number): [number, number] => [Math.cos(t), Math.sin(t)])(damageRng(damageSeed(a.seed, 11))() * Math.PI * 2);
   const gl = given ? Math.hypot(given[0], given[1]) : 0;
   // a frame that toppled lies along its line, bent at its hinge as the mask laid it down; every other piece where it rests
-  const H = Math.max(1, a.h), hinge = Math.min(TOPPLE_HINGE_M, H * 0.2);
+  const H = Math.max(1, a.h), hinge = toppleHingeM(H, plan.lattice);
   // (the E12 film: the troposcatter's face, toppled along its own plane, stood on its edge fifteen metres high) a frame
   // whose plan is a long, thin wall (a billboard's face) goes over across it, toward the side the blow pushed it
   const [fdx, fdz] = gl > 1e-3 ? frameFallAxis(plan, hinge, given![0] / gl, given![1] / gl) : [0, 0];
@@ -617,7 +619,7 @@ function collapseLandmark(a: StructureDamageAnatomy, seed: number, out: DamageWr
     return true;
   };
   for (const p of plan.pieces) {
-    if (!(plan.lattice && gl > 1e-3 && p.at === 'collapse' && p.max[1] > hinge)) continue;
+    if (!(plan.lattice && gl > 1e-3 && p.kind === 'lattice' && p.at === 'collapse')) continue; // (227, lane B: an open piece under the hinge stands; a detach piece comes off whole)
     let reach = false;
     for (const run of p.runs) for (let i = 0; i < run.pos.length && !reach; i += 3) {
       const x = run.pos[i], y = run.pos[i + 1], z = run.pos[i + 2];

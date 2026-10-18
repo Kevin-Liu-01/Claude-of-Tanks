@@ -24,7 +24,7 @@ import { KIT, FITTINGS, muzzleBore } from './kit.ts';
 import '../challengerSpecs.ts';
 // ch1-base tone port (uk round 2026-08-07): materials.js is cycle-free — the
 // ambient-floor hook re-attach is the same import uk.ts carries.
-import { vehicleAmbientFloorHook } from '../materials.ts';
+import { cloneRehookedVehicleMaterial, rehookVehicleMaterial } from '../materials.ts';
 // UK family kit stays owned by uk.ts (chieftains/centurions/vickers use it);
 // challenger1Build consumes the exact bindings it always did, including the
 // §C.1 winding-guarded `slab` (orientedSlab via the uk.ts KIT proxy).
@@ -1235,12 +1235,10 @@ function challenger1Build(P: ChallengerBuilderPort): void {
     // 2.143 tail-col tops), plan z >= -1.944 inside the proc's own -2.08 tail
     // columns, right-flank rails add 7 mm x at painted-below-top heights only.
     {
-      const meshMat = P.mats.detail.clone();
+      const meshMat = cloneRehookedVehicleMaterial(P.mats.detail);
       meshMat.color.setHex(0x232719);
       meshMat.roughness = 0.96;
       meshMat.envMapIntensity = 0.10;
-      meshMat.onBeforeCompile = vehicleAmbientFloorHook;
-      meshMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       P.disposables.push(meshMat);
       for (const [px, pz] of [[-0.24, -1.933], [0.24, -1.893]]) {
         const pg = new THREE.BoxGeometry(0.46, 0.25, 0.010);
@@ -1294,12 +1292,10 @@ function challenger1Build(P: ChallengerBuilderPort): void {
     // y<=0.604 / >=0.996); stems ride OUTBOARD of the shoe x-band (1.535)
     // and bond to the wing belly / rear skirt panel (§B2 chain).
     {
-      const flapMat = P.mats.rubber.clone();
+      const flapMat = cloneRehookedVehicleMaterial(P.mats.rubber);
       flapMat.color.setHex(0x4a453a);
       flapMat.roughness = 0.94;
       flapMat.envMapIntensity = 0.18;
-      flapMat.onBeforeCompile = vehicleAmbientFloorHook;
-      flapMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
       P.disposables.push(flapMat);
       const flapBox = (w: number, h: number, d: number, x: number, y: number, z: number): void => {
         const geo = new THREE.BoxGeometry(w, h, d);
@@ -1580,9 +1576,7 @@ function towHook2(P: ChallengerBuilderPort, x: number, y: number, z: number): vo
 function installVehicleAmbientFloorHook(
   material: THREE.MeshStandardMaterial,
 ): THREE.MeshStandardMaterial {
-  material.onBeforeCompile = vehicleAmbientFloorHook;
-  material.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-  return material;
+  return rehookVehicleMaterial(material); // a registered material keeps its registration (2026-10-17)
 }
 
 function applyChallengerGearTone(
@@ -1640,13 +1634,11 @@ function ch1BaseGearBackers(
   plates: readonly GearBackerPlate[],
   hex = 0x20261c,
 ): void {
-  const m = P.mats.shadow.clone();
+  const m = cloneRehookedVehicleMaterial(P.mats.shadow);
   m.color.setHex(hex);
   m.roughness = 0.97;
   m.metalness = 0.0;
   m.envMapIntensity = 0.14;
-  m.onBeforeCompile = vehicleAmbientFloorHook;
-  m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
   P.disposables.push(m);
   for (const [w, h, d, x, y, z] of plates) {
     for (const side of [-1, 1]) {

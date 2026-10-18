@@ -13,7 +13,7 @@ import { weaponAssembly } from './weaponStock.ts';
 // that module imports this file's shared UK kit (export block at the tail).
 import * as THREE from 'three';
 import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab, convexSlab } from './kit.ts';
-import { vehicleAmbientFloorHook } from '../materials.ts';
+import { cloneRehookedVehicleMaterial, rehookVehicleMaterial } from '../materials.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 const {
@@ -1407,13 +1407,10 @@ function towCableUK(
 // call this — its own r5/r6 gear tones live in CHIEFTAIN_HULL config.
 // ---------------------------------------------------------------------------
 function ukToneKit(P: UKMaterialPort, o: UKToneOptions = {}): void {
-  const rehook = (m: THREE.MeshStandardMaterial): THREE.MeshStandardMaterial => {
-    // Material.clone() drops onBeforeCompile — re-attach the family ambient
-    // floor (merkava r12 gearFloor law / leo r13b gearDarkLift pattern).
-    m.onBeforeCompile = vehicleAmbientFloorHook;
-    m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
-    return m;
-  };
+  // Material.clone() drops onBeforeCompile — re-attach the family ambient
+  // floor (merkava r12 gearFloor law / leo r13b gearDarkLift pattern); a
+  // registered material keeps its registration (2026-10-17, the wheel-band lane).
+  const rehook = rehookVehicleMaterial;
   if (o.glass !== false) {
     // Blue-glass calm (patton C1 / m60 r4 lineage): the shared 'glass' lens
     // is a blue-grey MIRROR (0x2a3540, metalness 0.85) — under the PMREM sky
@@ -1498,13 +1495,11 @@ function ukGearAirBackers(
   plates: readonly (readonly [number, number, number, number, number, number])[],
   hex = 0x20261c,
 ): void {
-  const m = P.mats.shadow.clone();
+  const m = cloneRehookedVehicleMaterial(P.mats.shadow);
   m.color.setHex(hex);
   m.roughness = 0.97;
   m.metalness = 0.0;
   m.envMapIntensity = 0.14;
-  m.onBeforeCompile = vehicleAmbientFloorHook;
-  m.customProgramCacheKey = () => 'veh-ambient-floor-v2';
   P.disposables.push(m);
   for (const [w, h, d, x, y, z] of plates) {
     for (const side of [-1, 1]) {
@@ -2486,12 +2481,10 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
         // the 1.5875 plan boundary — the r7 withdrawal was the INBOARD 1.469
         // face against the 1.4625 boundary).
         if (mk === 5) {
-          const weaveMat = P.mats.detail.clone();
+          const weaveMat = cloneRehookedVehicleMaterial(P.mats.detail);
           weaveMat.color.setHex(0x474e38);
           weaveMat.roughness = 0.95;
           weaveMat.envMapIntensity = 0.16;
-          weaveMat.onBeforeCompile = vehicleAmbientFloorHook;
-          weaveMat.customProgramCacheKey = () => 'veh-ambient-floor-v2';
           P.disposables.push(weaveMat);
           const wg = new THREE.BoxGeometry(0.05, 0.46, 0.55);
           const wall = new THREE.Mesh(wg, weaveMat);

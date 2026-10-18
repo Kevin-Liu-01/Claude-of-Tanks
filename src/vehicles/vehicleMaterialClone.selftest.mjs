@@ -13,6 +13,8 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { cloneVehicleMaterial, vehicleAmbientFloorHook } from './materials.ts';
 import { createTank } from './tankFactory.ts';
+import { getSpec } from './specs.ts';
+import { clearJuggernautVisual, prepareGarageTankEnergyVisual } from '../game/juggernautVisual.ts';
 
 function installCanvasFixture() {
   const documentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
@@ -72,7 +74,15 @@ function shaderFor(material) {
   // a material from outside the tank material set (a stub's) keeps its own hooks through cloneVehicleMaterial, and any
   // clone keeps the vehicle's own shader switches (the wheel paint's floor)
   source.defines = { ...source.defines, COT_WHEEL_PAINT_READABILITY: 1, COT_CLOUD_SHADE: '' };
-  const kept = cloneVehicleMaterial(source);
+  // 2026-10-17 (the wheel-band lane): a cascade-registered source the vehicle registration does not know cannot pass its
+  // registration on, and says so (a dev build and the receipts; the public build stays quiet)
+  const reports = [];
+  const consoleError = console.error;
+  console.error = (...args) => { reports.push(args.join(' ')); };
+  let kept;
+  try { kept = cloneVehicleMaterial(source); } finally { console.error = consoleError; }
+  assert.equal(reports.length, 1, 'a clone of an unregistered cascade material is reported');
+  assert.match(reports[0], /\[vehicle material\]/);
   assert.equal(kept.onBeforeCompile, source.onBeforeCompile);
   assert.equal(kept.customProgramCacheKey(), 'veh-ambient-floor-v5');
   assert.equal(kept.defines.COT_WHEEL_PAINT_READABILITY, 1, 'a clone keeps its source\'s switches');
@@ -84,6 +94,8 @@ function shaderFor(material) {
 // --- real hulls through a cascade-registering context
 const registered = new Set();
 const released = new Set();
+// three's CSM keeps the compiled shader it refreshes under the material its hook closed over (CSM.setupMaterial)
+const cascadeShaders = new Map();
 let cascadeCallbacks = 0;
 const engineCtx = {
   anisotropy: 1,
@@ -92,14 +104,17 @@ const engineCtx = {
     material.onBeforeCompile = (shader) => {
       cascadeCallbacks++;
       shader.uniforms.CSM_cascades = { value: [] };
+      cascadeShaders.set(material, shader);
       hook?.(shader);
     };
+    cascadeShaders.set(material, null);
     registered.add(material);
     return material;
   },
-  releaseShadowMaterial(material) { released.add(material); return true; },
+  releaseShadowMaterial(material) { released.add(material); cascadeShaders.delete(material); return true; },
 };
 const restoreCanvas = installCanvasFixture();
+const replacedHooks = new Set();
 const visuals = [];
 const seenKinds = new Map();
 const note = (kind, id) => seenKinds.set(kind, (seenKinds.get(kind) ?? new Set()).add(id));
@@ -147,8 +162,70 @@ try {
       }
     });
     assert.equal(new Set(pads).size, 1, `${id}: both shoe streams share the one registered shoe material`);
+    // 2026-10-17 (the wheel-band lane; the owner: "in garage, on all tanks, i can see this weird shadow on wheels"): the
+    // Garage's dormant energy skin, on every pedestal tank, draws clones of these materials; each joins its source's
+    // registration under its own cascade entry (a raw clone lost USE_CSM, the sun state and the vehicle tag, and the
+    // ground occlusion took the untagged road wheels for ground), takes its own sky-light scale, and is released with
+    // the skin
+    const sourceOf = new Map();
+    visual.root.traverse((object) => { if (object.isMesh) sourceOf.set(object, object.material); });
+    prepareGarageTankEnergyVisual(visual.root, getSpec(id).dims);
+    const skins = new Map();
+    visual.root.traverse((object) => {
+      const source = sourceOf.get(object);
+      if (!object.isMesh || !source || object.material === source || Array.isArray(source)) return;
+      if (registered.has(source)) skins.set(object.material, source);
+    });
+    let wheelPaint = 0;
+    for (const [clone, source] of skins) {
+      const label = `${id}: the skin over ${source.name || source.type}`;
+      assert.ok(registered.has(clone), `${label}: joins the cascade registration`);
+      assert.equal(clone.defines.USE_CSM, 1, `${label}: compiles the cascade branch`);
+      assert.equal(clone.defines.CSM_CASCADES, 4, `${label}: with the cascade count`);
+      assert.ok('CSM_FADE' in clone.defines, `${label}: and the cascade fade`);
+      assert.equal(clone.customProgramCacheKey(), `${source.customProgramCacheKey()}|tank-mode-energy-preview-v1`,
+        `${label}: the source's program key with the dormant skin's suffix`);
+      for (const key of ['COT_WHEEL_PAINT_READABILITY', 'COT_GEAR_CAVITY']) {
+        assert.equal(clone.defines[key], source.defines[key], `${label}: the source's ${key}`);
+      }
+      if (clone.defines.COT_WHEEL_PAINT_READABILITY) wheelPaint++;
+      const sourceShader = shaderFor(source);
+      // round 2 (2026-10-17): a profile's patch over a set material (the Abrams' pad grime over its track bands and
+      // spare-track steel) chains after its registration (chainVehicleMaterialHook); the skin compiles that chain
+      const entry = cascadeShaders.get(source), cascaded = entry === sourceShader;
+      if (!cascaded) { replacedHooks.add(`${id}:${source.name}`); }
+      const shader = shaderFor(clone);
+      assert.equal(cascadeShaders.get(clone), cascaded ? shader : null, `${label}: the cascade refreshes the clone's compile under the clone`);
+      assert.equal(cascadeShaders.get(source), entry, `${label}: and leaves the source's entry as it was`);
+      assert.equal(!!shader.uniforms.CSM_cascades, cascaded, `${label}: the cascade uniforms bind as the source's do`);
+      assert.ok(shader.fragmentShader.includes('float vehFill'), `${label}: the readability floor chains after it`);
+      assert.ok(shader.fragmentShader.includes('gl_FragColor.a += 2.0;'), `${label}: and the vehicle tag`);
+      assert.ok(shader.fragmentShader.includes('juggernautStrength'), `${label}: under the skin's rim term`);
+      if (cascaded) {
+        // the set's materials trim the sky light by their own envMapIntensity (a live uniform); a profile's re-hooked
+        // clone (cloneRehookedVehicleMaterial, the bare hook) keeps the scene's whole sky light, as its hand re-hook did
+        const trims = !!Object.getOwnPropertyDescriptor(sourceShader.uniforms.uVehEnvScale, 'value')?.get;
+        const own = source.envMapIntensity;
+        clone.envMapIntensity = own + 0.125;
+        assert.equal(shader.uniforms.uVehEnvScale.value, trims ? own + 0.125 : 1, `${label}: its own sky-light scale, as its source's`);
+        clone.envMapIntensity = own;
+      }
+    }
+    assert.ok(skins.size >= 8, `${id}: the skin covers the hull's registered paint (${skins.size})`);
+    assert.ok(wheelPaint > 0, `${id}: the road wheels' paint among them`);
+    clearJuggernautVisual(visual.root, true);
+    for (const [clone, source] of skins) {
+      assert.ok(released.has(clone) && !cascadeShaders.has(clone), `${id}: the released skin leaves no cascade entry (${source.name})`);
+    }
+    visual.root.traverse((object) => {
+      if (!sourceOf.has(object)) return;
+      const now = [].concat(object.material), was = [].concat(sourceOf.get(object));
+      assert.ok(now.length === was.length && now.every((m, i) => m === was[i]), `${id}: the paint is restored`);
+    });
+    note('energySkin', id);
   }
-  for (const [kind, ids] of [['trackPad', ['m1a1_abrams_hc', 'm60a1', 't72b3m_2022']], ['trackBandFinish', ['m60a1']], ['isolated', ['t72b3m_2022']]]) {
+  for (const [kind, ids] of [['trackPad', ['m1a1_abrams_hc', 'm60a1', 't72b3m_2022']], ['trackBandFinish', ['m60a1']], ['isolated', ['t72b3m_2022']],
+    ['energySkin', ['m1a1_abrams_hc', 'm60a1', 't72b3m_2022']]]) {
     for (const id of ids) assert.ok(seenKinds.get(kind)?.has(id), `${id}: a ${kind} clone was covered`);
   }
 } finally {
@@ -160,5 +237,9 @@ assert.equal(leaked.length, 0, `every registered vehicle material is released on
 assert.ok(registered.size > 40, 'real vehicle material sets, not a single fake hook');
 // the hook a direct (stub) registration assigns is the readability hook itself, unchanged by this law
 assert.equal(typeof vehicleAmbientFloorHook, 'function');
-console.log(`vehicleMaterialClone.selftest: shoes, isolated gear roles and band finishes join the cascade registration, `
+// round 2 (2026-10-17): no profile replaces a registered material's cascade hook any more — the Abrams' pad grime chains
+// after it (profiles/abrams.ts grime: its track bands and spare-track steel drew near-black, their cascade uniforms
+// never bound). An entry here is a profile dropping a registered material's cascade hook.
+assert.deepEqual([...replacedHooks].sort(), [], 'profiles replacing a registered material\'s cascade hook');
+console.log(`vehicleMaterialClone.selftest: shoes, isolated gear roles, band finishes and the energy skins join the cascade registration, `
   + `${registered.size} registered materials all released PASS`);

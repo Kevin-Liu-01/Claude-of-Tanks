@@ -23,6 +23,7 @@
 
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
+import { FURNACE_LINE_ADDITIONS } from './saarWorksPlan.ts';
 
 export default {
   id: 'foundry',
@@ -49,6 +50,10 @@ export default {
       { x: -258, z: 50, width: 56, length: 56, yawDeg: 0, grade: 'road' },
       { x: 0, z: -72, width: 50, length: 50, yawDeg: 56, level: 0.7, grade: 0.016 },
       { x: 200, z: -176, width: 56, length: 56, yawDeg: 104, grade: 'road' },
+      // the map-revival lane (2026-10-06): the furnace line's floor at the works street's level, one level for the three
+      // casting houses and their bunker front (maps/saarWorks.ts), cut into the ore berm's north-east end; its width runs
+      // along the line (the block's yaw), its length across it; a 14 m bank keeps the cut under the bank law's 0.6
+      { x: -74, z: -29, width: 48, length: 22, yawDeg: 25, level: 2.4, grade: 0, bankM: 14 },
     ],
     villageWear: 'activity-patches',
     // A compact loading court and its southern access, not a new flattened
@@ -136,15 +141,24 @@ export default {
     // corridors now do to the ground under them; the planned sites below are what that plan was built from
     townPlan: TOWN_PLANS.foundry,
     townLightPlan: TOWN_LIGHT_PLANS.foundry,
+    // the map-revival lane (2026-10-06): the blast-furnace line. The recorded block at (-74, -29) gets a furnace either
+    // side along its own width, each replayed from the block's stream (props.townPlanAdditions), so the three
+    // casting houses stand side by side with their bunkers in one front; the high-line runs over that front and the
+    // receiving yard's ore and coke heaps lie beyond its western end (maps/saarWorks.ts, the `saar` extra kit below)
+    townPlanAdditions: FURNACE_LINE_ADDITIONS,
     plannedSites: [
       { structure: 'factory', x: -74, z: -29, yawDeg: 25 },
       { structure: 'stack', x: -44, z: -36, yawDeg: 0 }, { structure: 'stack', x: -104, z: -64, yawDeg: 0 },
       { structure: 'warehouse', x: 199, z: -28, yawDeg: 0 },
     ],
+    // (the map-revival lane, 2026-10-06, wave 137: the critics read the Nissen hut as a poly-tunnel out of place in a German
+    // works; the recorded one beside the west street becomes a brick office of about its footprint, and the pool
+    // offers it no more)
     destructibleBuildings: [
-      'quonsethut', 'transformershed', 'motorpool', 'checkpointhut',
+      'transformershed', 'motorpool', 'checkpointhut',
       'securityoffice', 'servicegarage', 'relaystation', 'corneroffice',
     ],
+    townLightPlanSwaps: { quonsethut: 'securityoffice' },
     tacticalBeats: [
       { id: 'western-rail-fan', role: 'brawl', x: -280, z: 146, yawDeg: 4,
         structure: 'motorpool', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetZ: -15 },
@@ -153,7 +167,7 @@ export default {
       { id: 'eastern-power-yard', role: 'support', x: 305, z: 125, yawDeg: -8,
         structure: 'transformershed', redoubt: true, outcrop: { count: 6, radius: 10 }, wreck: true, wreckOffsetX: 15 },
     ],
-    extraKits: ['rail'], wallStyle: 'fieldstone', wallStoneChance: 0.76,
+    extraKits: ['rail', 'saar'], wallStyle: 'fieldstone', wallStoneChance: 0.76,
     wallRuns: [
       [-322, -156, -230, -124, 2], [-316, 146, -220, 176, 3],
       [218, -156, 318, -124, 3], [216, 146, 316, 178, 2],
@@ -166,7 +180,8 @@ export default {
     // the works' palette (the realistic city tones) with the Saar kit's yellow brick carried over it: a map's tones
     // override its kit's (props.ts), so the bands' brick of maps/regional/saar.ts surfaces.tones stands here as there
     tones: {
-      ...makeRealisticCityBuildingTones({ value: 0.88, saturation: 0.92, soot: 0.035, roofValue: 0.84 }),
+      // (2026-10-06, wave 137: "no soot": the works' brick takes the furnaces' smoke)
+      ...makeRealisticCityBuildingTones({ value: 0.86, saturation: 0.88, soot: 0.065, roofValue: 0.8 }),
       plaster2: (_h: number, s: number, l: number) => [0.11, Math.min(1, s * 0.6 + 0.2), Math.min(1, l + 0.05)],
     },
     buildingLat: [18, 4], sideSkip: 0.06, maxSpread: 2.4, spacingPad: 6,
@@ -190,7 +205,14 @@ export default {
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
   // (2026-10-09, the shadows lane: deckBeam — the cells passed a tenth of the sun over 88 % of the works)
   // 2026-10-15 (the SKY lane; the 10-13 ruling on every map): the works' overcast closed (0.88 left breaks: the banned deck)
-  clouds: { regime: 'industrial-stratocumulus', coverage: 0.92, tintHex: 0xd8cec0, nightGlow: 0.9, nightGlowHex: 0xff8a40, deckBeam: 0.35 },
+  // 2026-10-18 (the SKY lane, 228 sky census; the media lane's approved s146 against 226: a works sky of big lumpy
+  // cumulus over blue became a full grey deck when the ban closed it): the owner's bar is fair-weather cumulus like
+  // Verdant — the works keep their industrial character in the haze, smoke and aerial perspective, never a deck (as
+  // Cinder Junction since 227); a plentiful field (0.5), the warm smog tint and the furnace glow at night kept. The base
+  // authored (1100 m, Cinder's): the regime's own is the legacy sky block's, which reads this smoggy block as an overcast
+  // at 340 m. The field fuller (0.5 -> 0.71, the capture's CLOUD_CU_COVER 1.4: the s146 critics' "less cloud than the
+  // reference"; blind WIN 3-0-1 / 4-0-0 against the reference strip, where 1.6 began to read as a smeared sheet)
+  clouds: { regime: 'fair-weather-cumulus', coverage: 0.71, baseM: 1100, tintHex: 0xd8cec0, nightGlow: 0.9, nightGlowHex: 0xff8a40 },
   sky: {
     sunElevationDeg: 25, sunAzimuthDeg: 128, turbidity: 7.8, rayleigh: 1.35,
     // round 76 (2026-09-26, the deck pass): the industrial haze comes off the whole frame and onto the deck's base and
@@ -200,7 +222,10 @@ export default {
     mieCoefficient: 0.006, mieDirectionalG: 0.88, fogDensity: 0.00052,
     fogTintHex: 0x858384, fogMix: 0.45, envIntensity: 0.22,
     atmosphere: { mieTintHex: 0xd2b28c, horizonTintHex: 0xd0c6b6, horizonTintAmount: 0.5, horizonBandDeg: 11, zenithTintHex: 0x889ab0, zenithTintAmount: 0.3 },
-    cloudOpacity: 1.24, cloudOpacity2: 1.05, cloudTintHex: 0xc8ccca,
+    // 2026-10-18 (the SKY lane, 228 census): the phones' baked decks (Ultra Low) follow the battle's cumulus — Cinder
+    // Junction's Verdant-scale cover, veil and warm-white tint at the classic 620 m deck (was 1.24 / 1.05 / 0xc8ccca:
+    // sky.ts's 340 m broken-stratus branch); the volumetric tier never draws these decks
+    cloudOpacity: 1.05, cloudOpacity2: 0.6, cloudTintHex: 0xefebe4, cloudAltM: 620,
     // shadow-audit r2: the 24° key was too weak after haze/ACES on the
     // mobile-low path (3.95 changed-pixel luma against the 4.0 contract), so
     // factory and trunk shadows read as flat discoloration. Keep the authored
