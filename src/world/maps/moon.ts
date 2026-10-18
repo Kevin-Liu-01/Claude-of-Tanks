@@ -19,7 +19,7 @@
 import mars from './mars.ts';
 import type { MapCompositionConfig } from './contracts.ts';
 import { APOLLO_SITE, EARTHRISE_STATION, EARTH_SKY, EXCAVATION_FRONT, ISRU_PLANT, RELAY_REPEATERS, STATION_DOMES, SUN_SKY, roverTrack, stationTracks } from './earthriseStation.ts';
-import { LUNAR_STRUCTURE_VARIANTS } from './regional/lunarWorks.ts';
+import { LUNAR_STRUCTURE_VARIANTS } from './lunarWorksPlan.ts';
 // (2026-10-10, the map-revival lane; wave 346: "icy-blue crater-free regolith") the regolith a neutral, faintly warm grey,
 // not a blue one: hue 0.60 -> 0.09, saturation 0.025 -> 0.012
 const grey = (_h: number, _s: number, l: number): [number, number, number] => [0.09, .012, .30 + l * .35];
