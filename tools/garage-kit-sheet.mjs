@@ -117,15 +117,16 @@ for (const name of Object.keys(GARAGE_BENCH_BUILDERS)) {
   x += name === 'weldingScreens' ? 5 : 3.6;
 }
 // ---- row 4: cranes (z = 34)
-place(build((b) => Cranes.buildOverheadCrane(b, { span: 14, runway: 16, railY: 7, load: { kind: 'powerpack' } })), -32, 36, 0, 'overhead-single-work');
-place(build((b) => Cranes.buildOverheadCrane(b, { span: 14, runway: 12, railY: 7, girders: 2, swl: 40, load: { kind: 'coil' } })), -12, 36, 0, 'overhead-double');
-place(build((b) => Cranes.buildPortalGantry(b, { span: 10, height: 6.5, runway: 14, lattice: true, load: { kind: 'hull' } })), 8, 36, 0, 'portal-lattice');
-place(build((b) => Cranes.buildJibCrane(b, { height: 4, reach: 4, load: { kind: 'roadwheels' } })), 20, 33, 0, 'jib');
-place(build((b) => Cranes.buildAFrameGantry(b, { span: 4, height: 3.6, load: { kind: 'powerpack' } })), 27, 33, 0, 'a-frame');
-place(build((b) => Cranes.buildMonorailBeam(b, { length: 6, height: 4.5, load: { kind: 'roadwheels' } })), 33, 32, 0, 'monorail');
-place(build((b) => Cranes.buildRailBreakdownCrane(b, { load: { kind: 'crate' } })), 44, 36, 0, 'breakdown');
-place(build((b) => Cranes.buildMagnetHandler(b, {})), 56, 36, 0, 'magnet');
-place(build((b) => { Cranes.buildRopewayPylon(b, { height: 9 }); }), 66, 36, 0, 'ropeway');
+const CRANE_Z = 122; // the cranes stand behind every other row, so no row is framed through them
+place(build((b) => Cranes.buildOverheadCrane(b, { span: 14, runway: 16, railY: 7, load: { kind: 'powerpack' } })), -32, CRANE_Z, 0, 'overhead-single-work');
+place(build((b) => Cranes.buildOverheadCrane(b, { span: 14, runway: 12, railY: 7, girders: 2, swl: 40, load: { kind: 'coil' } })), -12, CRANE_Z, 0, 'overhead-double');
+place(build((b) => Cranes.buildPortalGantry(b, { span: 10, height: 6.5, runway: 14, lattice: true, load: { kind: 'hull' } })), 8, CRANE_Z, 0, 'portal-lattice');
+place(build((b) => Cranes.buildJibCrane(b, { height: 4, reach: 4, load: { kind: 'roadwheels' } })), 20, CRANE_Z - 3, 0, 'jib');
+place(build((b) => Cranes.buildAFrameGantry(b, { span: 4, height: 3.6, load: { kind: 'powerpack' } })), 27, CRANE_Z - 3, 0, 'a-frame');
+place(build((b) => Cranes.buildMonorailBeam(b, { length: 6, height: 4.5, load: { kind: 'roadwheels' } })), 33, CRANE_Z - 4, 0, 'monorail');
+place(build((b) => Cranes.buildRailBreakdownCrane(b, { load: { kind: 'crate' } })), 44, CRANE_Z, 0, 'breakdown');
+place(build((b) => Cranes.buildMagnetHandler(b, {})), 56, CRANE_Z, 0, 'magnet');
+place(build((b) => { Cranes.buildRopewayPylon(b, { height: 9 }); }), 66, CRANE_Z, 0, 'ropeway');
 // ---- row 5: walls, signs and displays (z = 52)
 place(build((b) => buildWallRun(b, 'hesco', [[0, 0], [8, 0]], { mural: 'brand.banner.h', muralEvery: 8 })), -40, 52, 0, 'hesco');
 place(build((b) => buildWallRun(b, 'twall', [[0, 0], [6, 0]], { mural: 'stencil.crest', muralEvery: 3 })), -30, 52, 0, 'twall');
@@ -164,7 +165,7 @@ deckTexture.colorSpace = THREE.SRGBColorSpace; deckTexture.needsUpdate = true;
 const deckNormal = new THREE.DataTexture(deck.normal, deck.size / 2, deck.size / 2, THREE.RGBAFormat);
 deckNormal.needsUpdate = true;
 collarArchitectures.forEach((arch, index) => {
-  const cx = -60 + index * 14.5, cz = 82;
+  const cx = -40 + (index % 5) * 14.5, cz = 82 + Math.floor(index / 5) * 15;
   const result = buildGaragePlatformCollar(arch, { pedestalAngle: 2.3 });
   const group = place(result, cx, cz, 0, arch);
   const podium = new THREE.Mesh(new THREE.CylinderGeometry(6, 6.35, 0.36, 64), [
@@ -231,9 +232,10 @@ function framed(names) {
   const box = new THREE.Box3();
   for (const name of names) { const g = pieces.get(name); if (g) box.expandByObject(g); }
   const center = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
+  if (names.some((name) => GARAGE_KIT_SKINS[name])) size.y = 2; // a collar row is framed for its width, not its pedestals
   const tanV = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)), tanH = tanV * camera.aspect;
   const dist = Math.max(size.x * 0.56 / tanH + size.z * 0.5, size.y * 0.6 / tanV + size.z * 0.5, 2.5);
-  const dir = new THREE.Vector3(-0.22, 0.36, -1).normalize();
+  const dir = new THREE.Vector3(-0.22, names.some((name) => GARAGE_KIT_SKINS[name]) ? 0.9 : 0.36, -1).normalize();
   return { from: center.clone().addScaledVector(dir, dist).toArray(), at: center.toArray(), labelRange: Math.max(size.x, size.z) * 0.6 + 1 };
 }
 for (const [name, names] of Object.entries(FRAMED)) VIEWS[name] = null;
