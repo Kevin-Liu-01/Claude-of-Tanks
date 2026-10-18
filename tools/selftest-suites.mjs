@@ -818,6 +818,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/ztz85iiiAttachment.selftest.mjs',
     // 2026-10-17 (227 gun-gaps): CV90 Mk 4 sight head on its neck and side plates on the wall; CV90 cradle root in the shell
     'src/vehicles/profiles/cv90TurretSeating.selftest.mjs',
+    // 2026-10-18 (227 gun-gaps r3): the chevron ERA cassettes' caps on the gun channel walls are closed (no sawtooth)
+    'src/vehicles/profiles/chineseChannelWallCaps.selftest.mjs',
     'src/vehicles/runningGearCadence.selftest.mjs',
     'src/world/sourcedTextures.selftest.mjs',
     'src/world/sourcedImageCache.selftest.mjs',

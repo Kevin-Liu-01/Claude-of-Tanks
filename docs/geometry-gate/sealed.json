@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-10-08T15:59:31.059Z",
+ "generatedAt": "2026-10-18T07:29:21.526Z",
  "res": 256,
  "minArea": 6,
  "note": "Sealed-hull ledger: per-tank open (true opening) and inside-out pixel totals over the 33 census views. Gate: a tank may not exceed its ledger open px by more than max(12, 10%) and a sealed tank must stay sealed.",
@@ -1579,6 +1579,14 @@
    "insideOutPx": 121,
    "seeThroughPx": 0,
    "tris": 97782
+  },
+  "cv90_mk4": {
+   "sealed": true,
+   "openPx": 1,
+   "openViews": 0,
+   "insideOutPx": 569,
+   "seeThroughPx": 0,
+   "tris": 55744
   }
  }
 }

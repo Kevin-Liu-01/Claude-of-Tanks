@@ -36,7 +36,10 @@
 // and spz_wotan CLOSED at rest, full elevation and full depression; tools/gun-junction-census.selftest.mjs holds them
 // (4 mm, 12 directions, plus half elevation) with a seeded control. r3 (2026-10-18): the same nine CLOSED across the
 // sweep rest/elev/dep/e0.25/e0.5/e0.75/d0.5 at 2 mm, 24 directions (the fv510/fv510_milan 12 px turret-seam sliver
-// at e0.25 is the turret's own roof-face crevice, identical in the pre-lane tree).
+// at e0.25 is the turret's own roof-face crevice, identical in the pre-lane tree). The off-axis slivers on t72b3_qilin,
+// ztz99a2 and vt4a1 were the ERA cassettes' sawtooth caps on the gun channel walls (chineseGunOpening.ts halfStock);
+// closed (src/vehicles/profiles/chineseChannelWallCaps.selftest.mjs), ztz99a2 and vt4a1 now CLOSED at rest/elev/dep/
+// e0.5/d0.5 (t72b3_qilin keeps a pre-existing 12-45 px turretEquipment box edge at the band's rear station).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
