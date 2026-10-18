@@ -6,7 +6,7 @@
 // is fingerprinted per id (geometry, paint, flag), so unchanged ids never re-render.
 // First-party tooling: Kevin B. Liu (NOTICE.md).
 
-export const HERO_POLICY_VERSION = 1;
+export const HERO_POLICY_VERSION = 2;
 
 /**
  * Camera. Vehicle forward is local +Z. `facing: 'left'` puts the camera on the hull's
@@ -18,26 +18,32 @@ export const HERO_POLICY_VERSION = 1;
  */
 export const HERO_CAMERA = Object.freeze({
   facing: 'left',
-  // The showroom's own view (GARAGE_PRESENTATION_POSE: azimuth pi/4, pitch atan2(1.2, hypot(7.4, 8)) = 6.3 deg):
-  // the card shows the tank as the turntable does. The reference sits near 70 deg (almost a profile); 45 keeps
-  // its long flank and gun while the glacis and turret face still read (the owner's fronts rule, 2026-10-05).
-  azimuthDeg: 45,
-  elevationDeg: 6.5,
+  // Between the showroom's own view (GARAGE_PRESENTATION_POSE: azimuth pi/4, pitch 6.3 deg) and the owner's
+  // reference (about 60 deg, a low camera): the long flank and the gun read like the reference while the glacis
+  // and turret face stay in view (the owner's fronts rule, 2026-10-05). Sample round r4 fixes the value.
+  azimuthDeg: 50,
+  elevationDeg: 5,
   fovDeg: 20, // a long lens: little perspective swell on the glacis
   gunElevationDeg: 3, // "gun forward and slightly up"; clamped to the spec's elevation limit
   margin: 1.06,
 });
 
-/** Studio light rig (three units). Positions are relative to the tank centre, in metres, for facing 'left'. */
+/**
+ * Studio light rig (three units). Positions are relative to the tank centre, in metres, for facing 'left'
+ * (+X is the camera's flank, +Z the bow). A product-shot rig: the key stands high over the bow so the roof and
+ * glacis catch it and the flank falls a step darker (the r3 rig keyed from the camera and flattened the hull);
+ * its shadow stays a compact contact shadow under the tracks. A cool fill from the camera side holds the flank,
+ * the rim draws the rear and the roof line against the dark ground.
+ */
 export const HERO_LIGHTS = Object.freeze({
-  exposure: 1.12,
-  environmentIntensity: 0.55,
-  hemisphere: Object.freeze({ sky: 0xdfe8f2, ground: 0x3a4148, intensity: 0.55 }),
-  key: Object.freeze({ color: 0xfff1e0, intensity: 3.1, position: [5.5, 9, 8.5], shadow: true }),
-  fill: Object.freeze({ color: 0xcfe0ff, intensity: 0.9, position: [9, 2.2, -2.5] }),
-  rim: Object.freeze({ color: 0xffffff, intensity: 2.6, position: [-4, 5.5, -9] }),
-  kicker: Object.freeze({ color: 0xa9c8ff, intensity: 1.1, position: [-8, 2.5, 6] }),
-  groundShadowOpacity: 0.42,
+  exposure: 1.05,
+  environmentIntensity: 0.4,
+  hemisphere: Object.freeze({ sky: 0xdfe8f2, ground: 0x262c33, intensity: 0.4 }),
+  key: Object.freeze({ color: 0xfff1e0, intensity: 3.4, position: [2.5, 12, 7], shadow: true }),
+  fill: Object.freeze({ color: 0xcfe0ff, intensity: 0.7, position: [9, 2.5, -1.5] }),
+  rim: Object.freeze({ color: 0xffffff, intensity: 2.8, position: [-5, 6, -9] }),
+  kicker: Object.freeze({ color: 0xa9c8ff, intensity: 1.0, position: [-8, 2.5, 7] }),
+  groundShadowOpacity: 0.5,
 });
 
 /**
@@ -54,7 +60,12 @@ export const HERO_FRAME = Object.freeze({
   coreHeightRatio: 0.66,
   baselineRatio: 0.86,
   centerXRatio: 0.54, // mirrored (1 - x) for facing 'right'
-  edgeClearPx: 6, // every rendered pixel (alpha > 8) stays this far inside the layer
+  edgeClearPx: 6, // every solid pixel (alpha > 8) stays this far inside the layer
+  // Rows holding fewer opaque pixels than this share of the silhouette width are whips and thin masts:
+  // they never shrink the tank to fit. They may rise into the top band, which fades them out, so no
+  // card ever shows an antenna cut by the layer's edge.
+  solidRowShare: 0.02,
+  whipFadeRatio: 0.07,
 });
 
 /**
@@ -116,13 +127,14 @@ export const HERO_FLAG = Object.freeze({
   // flag height fits the feather's reach, so horizontal tricolours (DE, RU, PL, UA)
   // show every band; the fly runs off the far edge.
   hoistX: 0.42, // the folds shorten the cloth ~9 %: the fly still clears the far edge
-  topY: -0.02,
+  topY: -0.05, // the wavy top edge stays above the card
   flagWidth: 0.70,
   flagAspect: 0.75, // the shipped 4x3 art at its own proportions (stars stay round)
+  // r4: more, shallower folds (the r3 cloth's few deep troughs read as grey smudges on white fields).
   waves: Object.freeze([
-    Object.freeze({ amp: 0.085, freq: 1.60, phase: 0.10, slant: 0.85 }),
-    Object.freeze({ amp: 0.040, freq: 2.90, phase: 0.58, slant: -0.40 }),
-    Object.freeze({ amp: 0.012, freq: 5.80, phase: 0.31, slant: 0.95 }),
+    Object.freeze({ amp: 0.065, freq: 2.00, phase: 0.10, slant: 0.75 }),
+    Object.freeze({ amp: 0.030, freq: 3.60, phase: 0.58, slant: -0.35 }),
+    Object.freeze({ amp: 0.011, freq: 6.60, phase: 0.31, slant: 0.90 }),
   ]),
   ampGrowth: 1.0, // amplitude grows from the hoist (0) to the fly (1) as u^growth, plus a base share
   ampBase: 0.35,
@@ -131,10 +143,11 @@ export const HERO_FLAG = Object.freeze({
   light: Object.freeze([-0.55, -0.55, 0.62]), // screen x right, y down, z to the viewer: the tank key's side (camera-left, high)
   ambient: 0.20,
   diffuse: 1.0,
-  highlightGain: 0.45,
-  specular: 0.26,
+  highlightGain: 0.5,
+  shadowGain: 0.62, // fold shadows at 62 % of their lit depth: the art stays legible inside a trough
+  specular: 0.30,
   shininess: 16,
-  troughDarken: 0.22,
+  troughDarken: 0.10,
   saturation: 1.0,
   brightness: 0.94,
   blackFloor: 0.13,
@@ -147,14 +160,16 @@ export const HERO_FLAG = Object.freeze({
  * The flag's feather, applied per card: an ellipse anchored at the rear-top corner
  * (top-right for facing 'left'), opaque inside `inner`, smoothstep to clear at its
  * rim. Ratios of the card box, so CSS reproduces it exactly:
- *   mask-image: radial-gradient(ellipse 66% 96% at 96% 0%, ...HERO_FLAG_MASK stops)
+ *   mask-image: radial-gradient(ellipse 70% 84% at 96% 0%, ...HERO_FLAG_MASK stops)
  */
 export const HERO_FLAG_MASK = Object.freeze({
   anchorX: 0.96, // mirrored (1 - x) for facing 'right'
   anchorY: 0.0,
-  radiusX: 0.66,
-  radiusY: 0.96,
-  inner: 0.42,
+  // r4: wider and shorter, like the reference: the flag reaches toward the turret along the top and is
+  // gone by the hull's deck line, so the running gear sits on plain ground.
+  radiusX: 0.70,
+  radiusY: 0.84,
+  inner: 0.40,
   opacity: 0.94,
   selectedOpacity: 1.0,
 });

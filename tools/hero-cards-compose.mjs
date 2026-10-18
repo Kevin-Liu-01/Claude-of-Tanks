@@ -182,7 +182,7 @@ export async function renderFlagLayer(code, policy = HERO_FLAG, overrides = {}) 
         // Relative to the flat cloth: shadows at full depth, highlights at `highlightGain`
         // (the sheen supplies the bright ridges, so lit colour never washes toward pink).
         const rel = (p.ambient + p.diffuse * diff) / flatShade;
-        const shade = (rel > 1 ? 1 + (rel - 1) * (p.highlightGain ?? 1) : rel) * trough;
+        const shade = (rel > 1 ? 1 + (rel - 1) * (p.highlightGain ?? 1) : 1 - (1 - rel) * (p.shadowGain ?? 1)) * trough;
         // Bilinear texel. u runs from the hoist; the reverse face is mirrored on screen by s.
         const tx = u * (texW - 1), ty = v * (texH - 1);
         const ix = Math.min(texW - 2, tx | 0), iy = Math.min(texH - 2, ty | 0);

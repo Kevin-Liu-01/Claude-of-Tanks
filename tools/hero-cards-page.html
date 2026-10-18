@@ -127,6 +127,21 @@ function fullBounds(pixels, width, height, threshold = 8) {
 }
 
 /**
+ * First row (top down) whose opaque run inside [x0, x1] is wider than a whip: thin masts and
+ * antennas above it never set the vertical fit.
+ */
+function solidTop(pixels, width, height, x0, x1, share, threshold = 8) {
+  const need = Math.max(12, Math.round((x1 - x0 + 1) * share));
+  for (let y = 0; y < height; y++) {
+    const row = y * width * 4;
+    let count = 0;
+    for (let x = x0; x <= x1; x++) if (pixels[row + x * 4 + 3] > threshold) count++;
+    if (count >= need) return y;
+  }
+  return 0;
+}
+
+/**
  * Render one vehicle's hero layer. `overrides` replaces fields of HERO_CAMERA / HERO_LIGHTS
  * (sample boards only; the shipped renderer passes none).
  */
@@ -202,13 +217,16 @@ function renderHero(id, overrides = {}) {
     const core = measurePortraitCoreBounds(vehiclePixels, sw, sh);
     const full = fullBounds(vehiclePixels, sw, sh);
     if (!core || !full) throw new Error(`${id}: empty hero render`);
-    // The dense core fills its share unless the complete silhouette (gun, whips, stowage) would
-    // leave the layer: every card crops from this master, so the master never loses a pixel.
+    const top = solidTop(vehiclePixels, sw, sh, full.x0, full.x1, frame.solidRowShare);
+    // The dense core fills its share unless the solid silhouette (gun, roof weapons, stowage) would
+    // leave the layer: every card crops from this master, so the master never loses a solid pixel.
+    // Whips above the solid top may rise into the fade band instead of shrinking the tank.
     const clearPx = frame.edgeClearPx;
+    const fadePx = frame.height * frame.whipFadeRatio;
     const coreScale = Math.min(frame.width * frame.coreWidthRatio / core.width, frame.height * frame.coreHeightRatio / core.height);
     const fullScale = Math.min(
       (frame.width - 2 * clearPx) / (full.x1 + 1 - full.x0),
-      (frame.height * frame.baselineRatio - clearPx) / Math.max(1, core.bottom - full.y0),
+      (frame.height * frame.baselineRatio - fadePx) / Math.max(1, core.bottom - top),
     );
     const scale = Math.min(coreScale, fullScale);
     const centerX = camera.facing === 'right' ? 1 - frame.centerXRatio : frame.centerXRatio;
@@ -227,8 +245,20 @@ function renderHero(id, overrides = {}) {
       x0: full.x0 * scale + dx, x1: (full.x1 + 1) * scale + dx,
       y0: full.y0 * scale + dy, y1: (full.y1 + 1) * scale + dy,
     };
+    const solidY0 = top * scale + dy;
+    const whipsFaded = placed.y0 < fadePx;
+    if (whipsFaded) {
+      // destination-out is a bounded operation: only the band changes, alpha ramps 0 -> 1 down it.
+      const fade = oc.createLinearGradient(0, 0, 0, fadePx);
+      fade.addColorStop(0, 'rgba(0,0,0,1)');
+      fade.addColorStop(1, 'rgba(0,0,0,0)');
+      oc.globalCompositeOperation = 'destination-out';
+      oc.fillStyle = fade;
+      oc.fillRect(0, 0, frame.width, Math.ceil(fadePx));
+      oc.globalCompositeOperation = 'source-over';
+    }
     const clear = frame.edgeClearPx;
-    const clipped = placed.x0 < clear || placed.y0 < clear
+    const clipped = placed.x0 < clear || solidY0 < fadePx - 0.5
       || placed.x1 > frame.width - clear || placed.y1 > frame.height - clear;
     return {
       dataUrl: out.toDataURL('image/png'),
@@ -242,6 +272,8 @@ function renderHero(id, overrides = {}) {
         coreBounds: { x0: core.x0 * scale + dx, x1: (core.x1 + 1) * scale + dx, y0: core.y0 * scale + dy, bottom: core.bottom * scale + dy },
         coreFill: Number((scale / coreScale).toFixed(4)), // 1 = the core fills its share; < 1 = the silhouette limited it
         fullBounds: placed,
+        solidTop: Number(solidY0.toFixed(1)),
+        whipsFaded,
         clipped,
         scale,
       },
