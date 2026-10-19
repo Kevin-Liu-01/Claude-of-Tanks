@@ -10,16 +10,18 @@
  *
  *  - CPU signals, O(1) a frame: the scene pass's draw calls, the camera's layer 0, scene.visible, the override
  *    material, the canonical passes (scene, aerial, late FX), the scene target's viewport, the battlefield root.
- *  - A GPU probe every PROBE_EVERY frames (at once while anything looks wrong): one fullscreen draw into a 16 x 9 RGBA8
- *    target, each cell 8 x 8 taps of the resolved scene colour and depth (R = any finite colour above 0, G = any
- *    non-finite value, B = any depth below 1), read back through a pixel-pack buffer and a fence, collected frames
- *    later: the probe never stalls a frame and allocates nothing but the fence the API hands back.
- *  - Verdicts (a revealed battle, no Studio or shot staging, a live context, a focused document): BLACK-WORLD = at
- *    least 90 % of the cells without colour or depth while at least a fifth of them look at ground within reach (a black
- *    lunar sky overhead is not a black world), NAN = at least 2 cells non-finite, a CPU violation = its own class; two
- *    failing verdicts in a row open an incident. Its receipt (window.__GL_DIAG.blackWorld, a ring of 8; one console
- *    warning; one entry-telemetry `error` record) names the class, every top-level root, the scene target and its
- *    framebuffers, the GL errors, the warm stage and the timing, so the owner's next black frame names its own cause.
+ *  - A GPU probe every PROBE_EVERY frames (at once while anything looks wrong): two fullscreen draws over a 16 x 9 target,
+ *    each fragment one cell of 8 x 8 taps of the resolved scene colour and depth, under two reusable ANY_SAMPLES_PASSED
+ *    occlusion queries: one keeps the cells that hold any colour or depth (on an airless map only the cells looking at
+ *    ground within reach, a black lunar sky overhead not being a black world), one the cells holding any non-finite
+ *    value. The answers arrive frames later; the probe never stalls a frame, reads back no buffer and allocates nothing.
+ *    (A pixel-pack-buffer readback trips Chrome's READ-usage shadow warning on every cycle, a known Chromium issue.)
+ *  - Verdicts (a revealed battle, no Studio or shot staging, a live context, a focused document): BLACK-WORLD = no cell
+ *    with colour or depth, NAN = a non-finite cell, a CPU violation = its own class; two failing verdicts in a row open an
+ *    incident. Its receipt (window.__GL_DIAG.blackWorld, a ring of 8; one console warning; one entry-telemetry `error`
+ *    record) names the class, the probe's cell census (one synchronous read, at the incident only), every top-level
+ *    root, the scene target and its framebuffers, the GL errors, the warm stage and the timing, so the owner's next
+ *    black frame names its own cause.
  *  - The heal ladder, one step per two more failing verdicts, never while covered, one ladder per incident per 10 s:
  *    H1 re-assert state (the camera mask taken at reveal, scene visibility, no override, the canonical passes, the scene
  *    target's viewport, the battlefield and presentation roots, the live rare warm closed so its finally blocks run),
@@ -47,12 +49,8 @@ export const PROBE_ROWS = 9;
 export const PROBE_CELLS = PROBE_COLUMNS * PROBE_ROWS;
 /** Frames between healthy-state probes (~0.2 s at 60 Hz). */
 export const PROBE_EVERY = 12;
-/** A BLACK-WORLD probe: this share of the cells without colour or depth ... */
-export const BLACK_CELL_SHARE = 0.9;
-/** ... while at least this share of the cells look at ground within reach of the far plane. */
+/** On an airless map a black probe counts only with at least this share of the cells looking at ground within reach. */
 export const GROUND_CELL_SHARE = 0.2;
-/** A NAN probe: at least this many non-finite cells (1 % of 144, rounded up). */
-export const NAN_CELLS = 2;
 /** Verdicts in a row that open an incident, and more failing ones per heal step. */
 export const FAILS_TO_OPEN = 2;
 export const FAILS_PER_STEP = 2;
@@ -75,12 +73,16 @@ const CPU_CLASS: ReadonlyArray<readonly [number, RenderBlackWorldClass]> = Objec
 /** The bits a CPU signal alone may open an incident on (an empty scene pass waits for the probe's confirmation). */
 const CPU_DECISIVE = CPU.MASK | CPU.SCENE_HIDDEN | CPU.OVERRIDE | CPU.PASSES | CPU.VIEWPORT | CPU.ROOTS;
 
-const PROBE_FRAGMENT = /* glsl */ `
+/** One cell's census: any finite colour above 0, any non-finite value, any depth below 1, and whether it looks at ground. */
+const PROBE_CELL_GLSL = /* glsl */ `
 uniform sampler2D tColor;
 uniform sampler2D tDepth;
-void main() {
+uniform mat4 uFarFromNdc;
+uniform vec4 uCamReach; // the camera's position, and the slope below which a view ray meets ground within reach
+uniform float uAllCells;
+void cellCensus( out float lit, out float bad, out float deep, out float ground ) {
   vec2 cell = floor( gl_FragCoord.xy );
-  float lit = 0.0, bad = 0.0, deep = 0.0;
+  lit = 0.0; bad = 0.0; deep = 0.0;
   for ( int j = 0; j < 8; j++ ) {
     for ( int i = 0; i < 8; i++ ) {
       vec2 uv = ( cell + ( vec2( float( i ), float( j ) ) + 0.5 ) / 8.0 ) / vec2( ${PROBE_COLUMNS}.0, ${PROBE_ROWS}.0 );
@@ -92,7 +94,31 @@ void main() {
       if ( d < 1.0 ) deep = 1.0;
     }
   }
-  gl_FragColor = vec4( lit, bad, deep, 1.0 );
+  vec4 far = uFarFromNdc * vec4( ( cell + 0.5 ) / vec2( ${PROBE_COLUMNS}.0, ${PROBE_ROWS}.0 ) * 2.0 - 1.0, 1.0, 1.0 );
+  ground = normalize( far.xyz / far.w - uCamReach.xyz ).y < uCamReach.w ? 1.0 : 0.0;
+}`;
+/** Kept (and counted by the lit query): a cell with colour or depth (on an airless map, a ground cell). */
+const PROBE_LIT_FRAGMENT = `${PROBE_CELL_GLSL}
+void main() {
+  float lit, bad, deep, ground;
+  cellCensus( lit, bad, deep, ground );
+  if ( !( ( lit > 0.5 || deep > 0.5 ) && ( ground > 0.5 || uAllCells > 0.5 ) ) ) discard;
+  gl_FragColor = vec4( 1.0 );
+}`;
+/** Kept (and counted by the non-finite query): a cell holding a NaN or an Inf. */
+const PROBE_NAN_FRAGMENT = `${PROBE_CELL_GLSL}
+void main() {
+  float lit, bad, deep, ground;
+  cellCensus( lit, bad, deep, ground );
+  if ( bad < 0.5 ) discard;
+  gl_FragColor = vec4( 1.0 );
+}`;
+/** The incident's census (read back once, synchronously): R lit, G non-finite, B depth, A ground. */
+const PROBE_CENSUS_FRAGMENT = `${PROBE_CELL_GLSL}
+void main() {
+  float lit, bad, deep, ground;
+  cellCensus( lit, bad, deep, ground );
+  gl_FragColor = vec4( lit, bad, deep, ground );
 }`;
 
 type AnyPass = Pass & { enabled: boolean };
@@ -153,7 +179,9 @@ export interface BlackWorldReceipt {
   sinceResizeMs: number | null;
   sinceResumeMs: number | null;
   cpu: Record<string, unknown>;
-  probe: { black: number; nan: number; lit: number; deep: number; ground: number; groundBlack: number } | null;
+  /** The cell census at the incident (counts of 144 cells), and the last probe's answers. */
+  probe: { black: number; nan: number; lit: number; deep: number; ground: number; groundBlack: number; anyLit: boolean;
+    anyNan: boolean } | null;
   roots: Array<{ name: string; type: string; visible: boolean; mask: number; parent: string; children: number }>;
   world: { name: string; visible: boolean; attached: boolean } | null;
   target: Record<string, unknown>;
@@ -199,49 +227,52 @@ export function installBlackWorldGuard(ports: BlackWorldGuardPorts): BlackWorldG
   return created.guard;
 }
 
-/** Classify one probe readback (RGBA8 cells): counts only, no allocation. */
-export function countProbeCells(cells: Uint8Array, out: { black: number; nan: number; lit: number; deep: number }): void {
-  let black = 0, nan = 0, lit = 0, deep = 0;
+/** The incident census of one synchronous read (RGBA8: R lit, G non-finite, B depth, A ground): counts only. */
+export function countProbeCells(cells: Uint8Array,
+  out: { black: number; nan: number; lit: number; deep: number; ground: number; groundBlack: number }): void {
+  let black = 0, nan = 0, lit = 0, deep = 0, ground = 0, groundBlack = 0;
   for (let i = 0; i < PROBE_CELLS; i++) {
-    const r = cells[i * 4] > 127, g = cells[i * 4 + 1] > 127, b = cells[i * 4 + 2] > 127;
+    const r = cells[i * 4] > 127, g = cells[i * 4 + 1] > 127, b = cells[i * 4 + 2] > 127, a = cells[i * 4 + 3] > 127;
     if (r) lit++;
     if (g) nan++;
     if (b) deep++;
-    if (!r && !b && !g) black++;
+    const isBlack = !r && !b && !g;
+    if (isBlack) black++;
+    if (a) { ground++; if (isBlack) groundBlack++; }
   }
-  out.black = black; out.nan = nan; out.lit = lit; out.deep = deep;
+  out.black = black; out.nan = nan; out.lit = lit; out.deep = deep; out.ground = ground; out.groundBlack = groundBlack;
 }
 
 const _ray = new THREE.Vector3();
-/**
- * The cells whose centre ray meets the ground within 80 % of the far plane (the camera `height` m above it), and of
- * those the black ones. Only read once a probe already counts a black world (never on a healthy frame).
- */
-export function countGroundCells(cells: Uint8Array, world: THREE.Matrix4, projectionInverse: THREE.Matrix4, height: number,
-  far: number, out: { ground: number; groundBlack: number }): void {
-  const reachSlope = -Math.max(1, height) / (0.8 * far);
-  let ground = 0, groundBlack = 0;
+/** The cells whose centre ray meets the ground within 80 % of the far plane (the camera `height` m above it). */
+export function countGroundCells(world: THREE.Matrix4, projectionInverse: THREE.Matrix4, height: number, far: number): number {
+  const reachSlope = groundReachSlope(height, far);
+  let ground = 0;
   for (let y = 0; y < PROBE_ROWS; y++) {
     for (let x = 0; x < PROBE_COLUMNS; x++) {
       _ray.set(((x + 0.5) / PROBE_COLUMNS) * 2 - 1, ((y + 0.5) / PROBE_ROWS) * 2 - 1, 1).applyMatrix4(projectionInverse)
         .transformDirection(world);
-      if (!(_ray.y < reachSlope)) continue;
-      ground++;
-      const i = (y * PROBE_COLUMNS + x) * 4;
-      if (cells[i] <= 127 && cells[i + 2] <= 127) groundBlack++;
+      if (_ray.y < reachSlope) ground++;
     }
   }
-  out.ground = ground; out.groundBlack = groundBlack;
+  return ground;
 }
 
-/** The verdict a probe (with its ground census) and the CPU bits reach; null is healthy. */
-export function judgeVerdict(cpuBits: number, probe: { black: number; nan: number; ground: number; groundBlack: number } | null):
+/** A view ray below this slope meets ground within 80 % of the far plane from `height` m up. */
+export function groundReachSlope(height: number, far: number): number {
+  return -Math.max(1, height) / (0.8 * far);
+}
+
+/**
+ * The verdict the CPU bits and a probe reach (`anyLit`: some cell holds colour or depth, ground cells only on an airless
+ * map; `ground`: the ground cells in view, read only on an airless map); null is healthy.
+ */
+export function judgeVerdict(cpuBits: number, probe: { anyLit: boolean; anyNan: boolean; allCells: boolean; ground: number } | null):
   RenderBlackWorldClass | null {
   for (let i = 0; i < CPU_CLASS.length; i++) if (cpuBits & CPU_CLASS[i][0]) return CPU_CLASS[i][1];
   if (!probe) return null;
-  if (probe.nan >= NAN_CELLS) return 'nan-history';
-  if (probe.black >= Math.ceil(BLACK_CELL_SHARE * PROBE_CELLS) && probe.ground >= Math.ceil(GROUND_CELL_SHARE * PROBE_CELLS)
-    && probe.groundBlack >= Math.ceil(0.8 * probe.ground)) {
+  if (probe.anyNan) return 'nan-history';
+  if (!probe.anyLit && (probe.allCells || probe.ground >= Math.ceil(GROUND_CELL_SHARE * PROBE_CELLS))) {
     return cpuBits & CPU.EMPTY ? 'empty-scene-pass' : 'gl-masked';
   }
   return null;
@@ -263,26 +294,34 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false,
   });
   probeTarget.texture.name = 'BlackWorldGuard.probe';
-  const probeMaterial = new THREE.ShaderMaterial({
-    name: 'BlackWorldGuard.Probe',
-    uniforms: { tColor: { value: null }, tDepth: { value: null } },
+  const probeUniforms = {
+    tColor: { value: null as THREE.Texture | null }, tDepth: { value: null as THREE.Texture | null },
+    // (a double stored in a shared `{ value }` uniform slot is boxed every frame; a vector's own fields are not)
+    uFarFromNdc: { value: new THREE.Matrix4() }, uCamReach: { value: new THREE.Vector4() }, uAllCells: { value: 1 },
+  };
+  const probeMaterial = (name: string, fragmentShader: string): THREE.ShaderMaterial => new THREE.ShaderMaterial({
+    name, uniforms: probeUniforms, fragmentShader,
     vertexShader: 'void main() { gl_Position = vec4( position.xy, 0.0, 1.0 ); }',
-    fragmentShader: PROBE_FRAGMENT,
     depthTest: false, depthWrite: false, blending: THREE.NoBlending, toneMapped: false,
   });
-  const probeQuad = new FullScreenQuad(probeMaterial);
+  const probeLit = probeMaterial('BlackWorldGuard.ProbeLit', PROBE_LIT_FRAGMENT);
+  const probeNan = probeMaterial('BlackWorldGuard.ProbeNan', PROBE_NAN_FRAGMENT);
+  const probeCensus = probeMaterial('BlackWorldGuard.ProbeCensus', PROBE_CENSUS_FRAGMENT);
+  const probeQuad = new FullScreenQuad(probeLit);
   const cells = new Uint8Array(PROBE_CELLS * 4);
-  const counts = { black: 0, nan: 0, lit: 0, deep: 0, ground: 0, groundBlack: 0 };
+  const census = { black: 0, nan: 0, lit: 0, deep: 0, ground: 0, groundBlack: 0 };
+  const answer = { anyLit: true, anyNan: false, allCells: true, ground: 0 };
   const probeWorld = new THREE.Matrix4();
   const probeProjectionInverse = new THREE.Matrix4();
   // the probe's camera height over the ground and far plane (a typed array: a double kept in a closure slot is boxed)
   const probeView = new Float64Array(2);
-  let pbo: WebGLBuffer | null = null;
-  let pboContext: WebGL2RenderingContext | null = null;
-  let pending: WebGLSync | null = null;
+  let queryLit: WebGLQuery | null = null;
+  let queryNan: WebGLQuery | null = null;
+  let queryContext: WebGL2RenderingContext | null = null;
+  let pending = false;
   let pendingSince = 0;
   let probeWanted = false;
-  let probeResult = false; // a readback landed this frame
+  let probeResult = false; // the queries answered this frame
 
   // ---- frame state ----
   let frame = 0;
@@ -321,8 +360,7 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
   const stats = { frames: 0, probes: 0, readbacks: 0, verdicts: 0, incidents: 0, heals: 0, skippedFences: 0 };
 
   const gl = (): WebGL2RenderingContext => renderer.getContext() as WebGL2RenderingContext;
-  const canProbe = (context: WebGL2RenderingContext): boolean => typeof context.fenceSync === 'function'
-    && typeof context.getBufferSubData === 'function';
+  const canProbe = (context: WebGL2RenderingContext): boolean => typeof context.createQuery === 'function';
 
   const coverShown = (): boolean => {
     if (!coverElement && frame - coverLookupFrame >= 60 && typeof document !== 'undefined') {
@@ -337,41 +375,52 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
   const worldGroup = (): THREE.Object3D | null => ports.getWorld?.()?.group ?? null;
 
   // ---- the probe (inside the scene pass, after the scene drew) ----
-  function ensurePbo(context: WebGL2RenderingContext): WebGLBuffer | null {
-    if (pbo && pboContext === context) return pbo;
-    pending = null;
-    pboContext = context;
-    pbo = context.createBuffer();
-    if (!pbo) return null;
-    context.bindBuffer(context.PIXEL_PACK_BUFFER, pbo);
-    context.bufferData(context.PIXEL_PACK_BUFFER, cells.byteLength, context.STREAM_READ);
-    context.bindBuffer(context.PIXEL_PACK_BUFFER, null);
-    return pbo;
+  function ensureQueries(context: WebGL2RenderingContext): boolean {
+    if (queryLit && queryNan && queryContext === context) return true;
+    pending = false;
+    queryContext = context;
+    queryLit = context.createQuery();
+    queryNan = context.createQuery();
+    return !!(queryLit && queryNan);
+  }
+
+  /** The probe's uniforms from the live camera and the frame's scene target. */
+  function aimProbe(): void {
+    probeUniforms.tColor.value = sceneTarget.texture;
+    probeUniforms.tDepth.value = sceneTarget.depthTexture;
+    probeUniforms.uFarFromNdc.value.multiplyMatrices(camera.matrixWorld, camera.projectionMatrixInverse);
+    const datum = post.aerial.uniforms.uHazeDatum?.value;
+    probeView[0] = camera.matrixWorld.elements[13] - (typeof datum === 'number' && Number.isFinite(datum) ? datum : 0);
+    probeView[1] = camera.far;
+    const e = camera.matrixWorld.elements;
+    // (groundReachSlope's law, inline)
+    probeUniforms.uCamReach.value.set(e[12], e[13], e[14], -Math.max(1, probeView[0]) / (0.8 * probeView[1]));
+    // an airless map's sky is black space: only the ground cells can say the world drew
+    probeUniforms.uAllCells.value = post.aerial.uniforms.uAirless?.value === 1 ? 0 : 1;
   }
 
   function issueProbe(): void {
     const context = gl();
-    if (pending || !canProbe(context) || context.isContextLost()) return;
-    const buffer = ensurePbo(context);
-    if (!buffer) return;
+    if (pending || !canProbe(context) || context.isContextLost() || !ensureQueries(context)) return;
     const previous = renderer.getRenderTarget();
     const autoClear = renderer.autoClear;
     try {
-      probeMaterial.uniforms.tColor.value = sceneTarget.texture;
-      probeMaterial.uniforms.tDepth.value = sceneTarget.depthTexture;
-      renderer.autoClear = false;
-      renderer.setRenderTarget(probeTarget);
-      probeQuad.render(renderer);
-      context.bindBuffer(context.PIXEL_PACK_BUFFER, buffer);
-      context.readPixels(0, 0, PROBE_COLUMNS, PROBE_ROWS, context.RGBA, context.UNSIGNED_BYTE, 0);
-      context.bindBuffer(context.PIXEL_PACK_BUFFER, null);
-      pending = context.fenceSync(context.SYNC_GPU_COMMANDS_COMPLETE, 0);
-      pendingSince = frame;
+      aimProbe();
+      answer.allCells = probeUniforms.uAllCells.value === 1;
       probeWorld.copy(camera.matrixWorld);
       probeProjectionInverse.copy(camera.projectionMatrixInverse);
-      const datum = post.aerial.uniforms.uHazeDatum?.value;
-      probeView[0] = camera.matrixWorld.elements[13] - (typeof datum === 'number' && Number.isFinite(datum) ? datum : 0);
-      probeView[1] = camera.far;
+      renderer.autoClear = false;
+      renderer.setRenderTarget(probeTarget);
+      context.beginQuery(context.ANY_SAMPLES_PASSED, queryLit!);
+      probeQuad.material = probeLit;
+      probeQuad.render(renderer);
+      context.endQuery(context.ANY_SAMPLES_PASSED);
+      context.beginQuery(context.ANY_SAMPLES_PASSED, queryNan!);
+      probeQuad.material = probeNan;
+      probeQuad.render(renderer);
+      context.endQuery(context.ANY_SAMPLES_PASSED);
+      pending = true;
+      pendingSince = frame;
       stats.probes++;
     } finally {
       renderer.autoClear = autoClear;
@@ -383,26 +432,41 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     probeResult = false;
     if (!pending) return;
     const context = gl();
-    if (context.isContextLost() || pboContext !== context) { pending = null; return; }
-    const status = context.clientWaitSync(pending, 0, 0);
-    if (status === context.TIMEOUT_EXPIRED) {
-      if (frame - pendingSince > 120) { context.deleteSync(pending); pending = null; stats.skippedFences++; }
+    if (context.isContextLost() || queryContext !== context) { pending = false; return; }
+    if (!context.getQueryParameter(queryLit!, context.QUERY_RESULT_AVAILABLE)
+      || !context.getQueryParameter(queryNan!, context.QUERY_RESULT_AVAILABLE)) {
+      if (frame - pendingSince > 120) { pending = false; stats.skippedFences++; }
       return;
     }
-    context.deleteSync(pending);
-    pending = null;
-    if (status === context.WAIT_FAILED) { stats.skippedFences++; return; }
-    context.bindBuffer(context.PIXEL_PACK_BUFFER, pbo);
-    context.getBufferSubData(context.PIXEL_PACK_BUFFER, 0, cells);
-    context.bindBuffer(context.PIXEL_PACK_BUFFER, null);
-    countProbeCells(cells, counts);
-    counts.ground = 0; counts.groundBlack = 0;
-    if (counts.black >= Math.ceil(BLACK_CELL_SHARE * PROBE_CELLS)) {
-      countGroundCells(cells, probeWorld, probeProjectionInverse, probeView[0], probeView[1], counts);
-    }
-    lastNan = counts.nan > 0;
+    pending = false;
+    answer.anyLit = !!context.getQueryParameter(queryLit!, context.QUERY_RESULT);
+    answer.anyNan = !!context.getQueryParameter(queryNan!, context.QUERY_RESULT);
+    // the ground census only decides an airless map's black probe
+    answer.ground = !answer.anyLit && !answer.allCells
+      ? countGroundCells(probeWorld, probeProjectionInverse, probeView[0], probeView[1]) : 0;
+    lastNan = answer.anyNan;
     probeResult = true;
     stats.readbacks++;
+  }
+
+  /** The incident's cell census: the census draw over the frame's scene target, read back once (a stall, once). */
+  function readCensus(): BlackWorldReceipt['probe'] {
+    const context = gl();
+    const previous = renderer.getRenderTarget();
+    try {
+      aimProbe();
+      renderer.setRenderTarget(probeTarget);
+      probeQuad.material = probeCensus;
+      probeQuad.render(renderer);
+      context.readPixels(0, 0, PROBE_COLUMNS, PROBE_ROWS, context.RGBA, context.UNSIGNED_BYTE, cells);
+      countProbeCells(cells, census);
+      return { ...census, anyLit: answer.anyLit, anyNan: answer.anyNan };
+    } catch {
+      return null;
+    } finally {
+      probeQuad.material = probeLit;
+      renderer.setRenderTarget(previous);
+    }
   }
 
   // ---- the wrappers ----
@@ -491,7 +555,7 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     if ((probeResult || cpuOnly) && focused()) {
       lastVerdictFrame = frame;
       stats.verdicts++;
-      onVerdict(judgeVerdict(bits, probeResult ? counts : null), t);
+      onVerdict(judgeVerdict(bits, probeResult ? answer : null), t);
     }
     if (incident && !incident.closed && !reported && incident.steps.length && t - incident.steps[incident.steps.length - 1].atMs > 2000) {
       // a ladder that ended unhealed still reports once (healedBy null)
@@ -553,9 +617,7 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
           finite: camera.matrixWorld.elements.every(Number.isFinite) && camera.projectionMatrix.elements.every(Number.isFinite) },
         exposure: lm?.exposure ?? null, night: lm?.night ?? null,
       },
-      probe: probeResult || counts.black + counts.lit + counts.deep > 0
-        ? { black: counts.black, nan: counts.nan, lit: counts.lit, deep: counts.deep, ground: counts.ground, groundBlack: counts.groundBlack }
-        : null,
+      probe: readCensus(),
       roots,
       world: world ? { name: world.name, visible: world.visible, attached: world.parent === scene } : null,
       target: describeTarget(),
@@ -705,11 +767,14 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
       }
       stepIndex = 0;
     }
-    const cpuHealthy = (cpuBits & CPU_DECISIVE) === 0;
+    // the device rungs (the recovery preset, a context restore) answer a GL-level black only: never a CPU signal, nor a
+    // non-finite value, which the histories' reset (H2) is the cure for
+    const cpuHealthy = (cpuBits & CPU_DECISIVE) === 0 && incident.class !== 'nan-history';
     while (stepIndex < 4) {
       const name = (['H1', 'H2', 'H3', 'H4'] as const)[stepIndex++];
       if ((name === 'H4') && !cpuHealthy) {
-        incident.steps.push({ step: 'H4', atMs: Math.round(t), note: 'skipped: a CPU signal a context restore cannot fix' });
+        incident.steps.push({ step: 'H4', atMs: Math.round(t), note: incident.class === 'nan-history'
+          ? 'skipped: a non-finite value a context restore cannot fix' : 'skipped: a CPU signal a context restore cannot fix' });
         continue;
       }
       incident.steps.push({ step: name, atMs: Math.round(t) });
@@ -799,7 +864,7 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     if (lastNan) { resetHistories(); lastNan = false; }
   };
   const onPointerLock = (): void => { if (typeof document !== 'undefined' && document.pointerLockElement) onResume(); };
-  const onContextLost = (): void => { pending = null; pbo = null; pboContext = null; };
+  const onContextLost = (): void => { pending = false; queryLit = queryNan = null; queryContext = null; };
   if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     window.addEventListener('focus', onResume);
     document.addEventListener('visibilitychange', onResume);
@@ -872,7 +937,7 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     stats() {
       return { ...stats, enabled: guard.enabled, active, frame, cpuBits, failStreak, pending: !!pending,
         lastClass: lastFailClass, incident: incident && !incident.closed ? incident.class : null,
-        lastBlack: counts.black, lastNan: counts.nan, lastGround: counts.ground };
+        lastLit: answer.anyLit, lastNan: answer.anyNan };
     },
     receipts,
     dispose() {
@@ -885,9 +950,11 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
         document.removeEventListener('pointerlockchange', onPointerLock);
       }
       renderer.domElement?.removeEventListener?.('webglcontextlost', onContextLost);
-      try { if (pbo && pboContext && !pboContext.isContextLost()) pboContext.deleteBuffer(pbo); } catch { /* lost */ }
-      pbo = null; pending = null;
-      probeQuad.dispose(); probeMaterial.dispose(); probeTarget.dispose();
+      try {
+        if (queryContext && !queryContext.isContextLost()) { if (queryLit) queryContext.deleteQuery(queryLit); if (queryNan) queryContext.deleteQuery(queryNan); }
+      } catch { /* lost */ }
+      queryLit = queryNan = null; pending = false;
+      probeQuad.dispose(); probeLit.dispose(); probeNan.dispose(); probeCensus.dispose(); probeTarget.dispose();
       guards.delete(renderer);
       if (host.__COT_BLACK_GUARD === guard) delete host.__COT_BLACK_GUARD;
     },
