@@ -100,7 +100,7 @@ for (const id of PICKS.ship) {
   try { item = itemOf(id); } catch (e) { problem = String(e.message ?? e); }
   const still = item ? stillOf(id) : null, size = still?.bytes ? webpSize(still.bytes) : null;
   if (!problem && still.error) problem = still.error;
-  else if (!problem && (!size || size[0] !== WIDTH || size[1] !== HEIGHT)) problem = `${still.source} is ${size ? size.join('x') : 'not a webp'}, not ${WIDTH}x${HEIGHT}`;
+  else if (!problem && (!size || size[0] !== WIDTH || size[1] !== HEIGHT)) problem = `${still.source} is ${size ? `${size[0]}x${size[1]}` : 'not a webp'}, not ${WIDTH}x${HEIGHT}`;
   else if (!problem && still.bytes.length > MAX_BYTES) problem = `${still.source} is ${still.bytes.length} B, over ${MAX_BYTES}`;
   console.log(`${id.padEnd(30)} ${problem ? 'NOT READY' : `${(still.bytes.length / 1024).toFixed(0).padStart(4)} KB `}  ${item?.title.en ?? ''}${problem ? `\n    ${problem}` : ''}`);
   if (problem) { problems.push(id); continue; }
