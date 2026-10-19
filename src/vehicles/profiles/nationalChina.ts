@@ -170,17 +170,13 @@ function frontTiles(P:TankBuilderPort,z:number,rows:number,w:number,d:number):vo
     glacisEraCassette(P,`glacis_era_${side<0?'L':'R'}`,side*.55,z+j*(d+.04),[w,.065,d]);
 }
 
+/** The highest permanent (non-ERA) surface of the owner's buckets under (x, z), from y = 4. Release 227, round 5 (critic
+ * CN5-04: each call built a mesh per part and cast through every triangle, a few per cent of each CN build): the same
+ * downward ray through stockRoof's cached plan index, to the bit (Mesh.raycast on a double-sided identity-frame mesh is
+ * Ray.intersectTriangle with no culling, and the topmost hit of each part is the topmost of all). */
 function receivingRoof(P:TankBuilderPort,owner:'hull'|'turret',x:number,z:number,includeArmor=false):number {
-  const ray=new THREE.Raycaster(new THREE.Vector3(x,4,z),new THREE.Vector3(0,-1,0));
-  const material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide});let y=-Infinity;
-  P.forEachBucketPart(includeArmor?[owner,`${owner}ExternalArmor`]:[owner],g=>{
-    if(Array.isArray(g.userData.eraHitFaceVertexStarts))return;
-    const mesh=new THREE.Mesh(g,material);mesh.updateMatrixWorld();
-    const hit=ray.intersectObject(mesh)[0];if(hit)y=Math.max(y,hit.point.y);
-  });
-  material.dispose();
-  if(!Number.isFinite(y))throw new Error(`${P.spec.id}: missing Chinese ${owner} receiving roof ${x},${z}`);
-  return y;
+  try{return stockRoof(permanentParts(P,includeArmor?[owner,`${owner}ExternalArmor`]:[owner]),x,z,4);}
+  catch{throw new Error(`${P.spec.id}: missing Chinese ${owner} receiving roof ${x},${z}`);}
 }
 
 /** Release 227, round 4 (critic CN3-D2: each equipment foot cast 13 downward rays through every triangle of the frozen
@@ -221,9 +217,9 @@ function roofTest(p:THREE.BufferAttribute|THREE.InterleavedBufferAttribute,a:num
   roofA.fromBufferAttribute(p,a);roofB.fromBufferAttribute(p,b);roofC.fromBufferAttribute(p,c);
   return roofRay.intersectTriangle(roofA,roofB,roofC,false,roofHit)?Math.max(y,roofHit.y):y;
 }
-/** The highest frozen-stock surface under (x, z): a downward ray from y = 3 (throws where there is none). */
-export function stockRoof(parts:readonly THREE.BufferGeometry[],x:number,z:number):number {
-  roofRay.origin.set(x,3,z);roofRay.direction.set(0,-1,0);let y=-Infinity;
+/** The highest frozen-stock surface under (x, z): a downward ray from y = `fromY` (3; throws where there is none). */
+export function stockRoof(parts:readonly THREE.BufferGeometry[],x:number,z:number,fromY=3):number {
+  roofRay.origin.set(x,fromY,z);roofRay.direction.set(0,-1,0);let y=-Infinity;
   for(const g of parts){
     const index=roofIndex(g);
     if(x<index.x0||x>index.x1||z<index.z0||z>index.z1)continue;
