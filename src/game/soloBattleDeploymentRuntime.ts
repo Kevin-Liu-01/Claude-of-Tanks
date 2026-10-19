@@ -547,6 +547,12 @@ export function createSoloBattleDeploymentRuntime(
       host.__BATTLE_COUNTDOWN_WARM = trace;
       delete host.__COMBAT_OPENING_WARM;
       devTrace?.mark?.('battle:entry-warm-start', {});
+      // (2026-10-19, black-screen-228) the black-world guard, armed under this cover (blackWorldGuard.ts): fresh temporal
+      // histories before the reveal, the revealed state snapshotted on the first battle frame. A safety net: the entry
+      // neither waits on it nor fails for it.
+      void import('../engine/blackWorldGuardInstall.ts').then(({ armBlackWorldGuard }) => {
+        if (stillCurrent(generation)) armBlackWorldGuard({ renderer: options.renderer, scene, camera, post, game, getWorld, lifecycle: getEntryLifecycle(), combatWarm });
+      }).catch(() => { /* the guard is optional */ });
       const startedAt = now();
       let markedAt = startedAt;
       const mark = (name: string): void => {

@@ -85,7 +85,8 @@ assert.ok(/readonly dome: THREE\.Mesh</.test(clouds) && clouds.includes('this.do
 const traceSlot = functionBody(clouds, '  private traceSlot(slot: number): void {', 'volumetricClouds.ts');
 assert.ok(traceSlot.includes('this.domeMaterial.uniforms.tClouds.value = next.texture;'), 'each trace resolves the history the dome composites');
 const beforeScene = functionBody(clouds, '  beforeSceneRender(', 'volumetricClouds.ts');
-assert.ok(beforeScene.includes('this.traceSlot(') && beforeScene.includes('this.dome.visible = true;'), 'the frame\'s traces resolve before the scene, and the dome draws');
+// (2026-10-19, black-screen-228 P2: the dome draws over a resolved history only)
+assert.ok(beforeScene.includes('this.traceSlot(') && beforeScene.includes('this.dome.visible = this.historyValid;'), 'the frame\'s traces resolve before the scene, and the dome draws');
 const post = readFileSync(new URL('../engine/post.ts', import.meta.url), 'utf8');
 // (the call itself, a statement of the frame: not a closure or a comment that names it)
 const hookAt = post.search(/^ {4}scene\.userData\.volumetricClouds\?\.beforeSceneRender\(renderer, camera,/m);
@@ -100,6 +101,8 @@ assert.ok(hookAt > 0 && jitterAt > hookAt && renderAt > jitterAt && renderAt - h
 const SAMPLER = { history: true };
 const texture2D = (sampler, [u, v]) => {
   assert.equal(sampler, SAMPLER, 'the copies sample the cloud history');
+  // (2026-10-19, black-screen-228: one corner of the history holds a NaN texel, so the copies' finite guard runs both ways)
+  if (u > 0.85 && v > 0.85) return [NaN, 0.5, 1, NaN];
   return [4 + 4 * Math.sin(7 * u + 3 * v), 0.6 + 0.5 * Math.sin(5 * u - 2 * v), 2 + 1.5 * Math.cos(3 * u + 4 * v), 0.6 + 0.7 * Math.sin(4 * u + 6 * v)];
 };
 // (each chunk's branches by its own ids)
@@ -110,7 +113,7 @@ const functionsOf = (side, uniforms) => ({
 });
 const norm = (v) => { const l = Math.hypot(...v); return v.map((x) => x / l); };
 const sunDir = norm([0.6, 0.004, 0.8]);
-const UVS = [[0.5, 0.5], [0.02, 0.97], [0.98, 0.03], [0.31, 0.62], [0.77, 0.12]];
+const UVS = [[0.5, 0.5], [0.02, 0.97], [0.98, 0.03], [0.31, 0.62], [0.77, 0.12], [0.92, 0.94]];
 const DIRS = [sunDir, norm([-0.3, -0.03, 0.95]), norm([0.1, -0.08, -0.99]), norm([0, 0.5, 0.86]), norm([0.62, 0.02, 0.79])];
 const SKIES = [[0.4, 0.5, 0.7], [1.2, 1.1, 0.9]];
 let runs = 0, worst = 0;
@@ -136,7 +139,8 @@ for (const side of ['dome', 'shell']) for (const part of ['catmull', 'knee', 'co
     assert.ok(taken[side][part].has(`${b}:true`) && taken[side][part].has(`${b}:false`), `${side}'s ${part}: branch ${b} ran both ways`);
   }
 }
-assert.ok(parsed.dome.knee.branches === 1 && parsed.dome.composite.branches === 1, 'the dome\'s knee and its flash are its branches');
+assert.ok(parsed.dome.knee.branches === 1 && parsed.dome.composite.branches === 2,
+  'the dome\'s knee, its finite guard (black-screen-228) and its flash are its branches');
 
 // ------------------------------------------------------------------------------------ the shell's read of the layer
 assert.ok(frag.includes('vec4 hc = uPanoViewProj * vec4(hdir, 0.0);') && frag.includes('vec2 cuv = hc.xy / hc.w * 0.5 + 0.5;')

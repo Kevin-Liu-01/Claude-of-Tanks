@@ -108,6 +108,12 @@ const FRAME_PROBE_TOGGLES = Object.freeze({
   'boulders': Object.freeze({
     on: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__DEBUG.scene.traverse((o) => { if (/^rock-variant-\\d(-far|-shadow)?$/.test(o.name)) o.visible = o.isInstancedMesh ? o.count > 0 : true; })`,
     off: `window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true }); window.__DEBUG.scene.traverse((o) => { if (/^rock-variant-\\d(-far|-shadow)?$/.test(o.name)) o.visible = false; })` }),
+  // (2026-10-19, black-screen-228) the battle's black-world guard (engine/blackWorldGuard.ts): its per-frame CPU checks
+  // and the probe every 12 frames (one 16 x 9 fullscreen draw, a pixel-pack readback behind a fence); off, the wrappers
+  // pass straight through. A page whose battle never armed the guard fails the toggle rather than measuring nothing.
+  'black-guard': Object.freeze({
+    on: `(() => { const g = window.__COT_BLACK_GUARD; if (!g) throw new Error('the black-world guard is not armed'); g.enabled = true; return g.stats(); })()`,
+    off: `(() => { const g = window.__COT_BLACK_GUARD; if (!g) throw new Error('the black-world guard is not armed'); g.enabled = false; return g.stats(); })()` }),
   // the null control beside a toggle under a millisecond (docs/PERFORMANCE.md, "Light presets"): the same static
   // shadow cache state as the boulders' toggle, and a switch nothing reads, so its on-off delta is the machine's own
   // drift between blocks under other sessions' load

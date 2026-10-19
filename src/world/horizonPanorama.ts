@@ -644,7 +644,9 @@ vec3 cloudKnee( vec3 c ) {
 	return c;
 }
 vec3 panoCloudOver( vec3 sky, vec2 uv, vec3 dir ) {
-	vec4 c = max( cloudsCatmullRom( uv, uHistorySize ), vec4( 0.0 ) );
+	vec4 c = cloudsCatmullRom( uv, uHistorySize );
+	// (black-screen-228 RC6) a non-finite history read is clear sky, never an opaque black dome
+	c = all( lessThan( abs( c ), vec4( 6e4 ) ) ) ? max( c, vec4( 0. ) ) : vec4( 0., 0., 0., 1. );
 	// nothing below the horizon line (the history holds no cloud there either) — unless the camera is in the slab
 	float above = max( smoothstep( -0.05, -0.02, dir.y ), uInside );
 	// the knee eases off within a few degrees of the sun: the silver lining of a cloud in front of it outshines the glow

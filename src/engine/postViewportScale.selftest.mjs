@@ -83,8 +83,12 @@ function createSizing(ports) {
 }
 `) + '\nreturn createSizing;')();
 
+// (2026-10-19, black-screen-228 RC2) the production composer sizing: whole pixels for every target and pass, at least one
+const composerSizing = sourceBetween('  composer.setSize = function', '\n  };\n') + '\n  };';
+const installComposerSizing = new Function('composer', stripTypeScriptTypes(`${composerSizing}`));
+
 const owned = [];
-function fixture(initialPreset = PRESETS.high, scale = 1, ratio = 1) {
+function fixture(initialPreset = PRESETS.high, scale = 1, ratio = 1, { productionComposer = false } = {}) {
   let width = 1440, height = 900;
   const calls = [], allocations = [];
   const renderer = {
@@ -101,6 +105,7 @@ function fixture(initialPreset = PRESETS.high, scale = 1, ratio = 1) {
   });
   const lateTarget = sceneTarget.clone();
   const composer = new EffectComposer(renderer, target);
+  if (productionComposer) installComposerSizing(composer);
   const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera();
   const sceneAA = new SceneAAPass(scene, camera, sceneTarget);
   const aerial = new SceneAerialPass(CopyShader, sceneTarget);
@@ -276,6 +281,23 @@ try {
     f.composer.setPixelRatio(1); f.composer.setSize(1440, 900);
     traversals(f, 2, 'original duplicate-size negative control');
     assert.equal(f.history(), -1e9); assert.equal(f.prepare(), 2);
+  }
+  {
+    // (black-screen-228 RC2) a 1 x 1 CSS layout (a capture's clipped screenshot, a window restore) at Ultra Low's fractional
+    // render ratio: the public setSize floors the layout at 16 CSS px and the composer sizes whole pixels, so every target
+    // is an integer of at least one pixel (it was 0.8 x 0.8: a zero-size texStorage2D and incomplete framebuffers)
+    for (const [w, h, ratio] of [[1, 1, 1], [1, 1, 2], [0.5, 0.25, 2], [1512, 945, 2], [1013.7, 633.3, 1.25]]) {
+      const f = fixture(PRESETS.ultralow, 0.67, ratio, { productionComposer: true });
+      f.resize(w, h, ratio);
+      for (const [name, size] of Object.entries(f.dimensions())) {
+        // (the stub's native output is the canvas; FsrUpscalePass.setOutputSize floors it at one pixel itself)
+        if (name === 'inverse' || name === 'output') continue;
+        for (const v of size) assert.ok(Number.isInteger(v) && v >= 1, `${w} x ${h} @ ${ratio}: ${name} ${size} is whole pixels`);
+      }
+      assert.equal(f.lateFx.target.width, f.composer.renderTarget1.width, 'the late target matches the composer (the direct colour handoff)');
+      assert.equal(f.sceneAA.sceneTarget.width, f.composer.renderTarget1.width);
+      if (w < 16) assert.ok(f.composer.renderTarget1.width >= 8, 'a sub-16 px layout keeps the 16 px floor');
+    }
   }
   console.log('postViewportScale.selftest: real composer traversal, viewport/DPR/preset/lifetime sizing, temporal reset, native output and failure retry pass');
 } finally { for (const dispose of owned) dispose(); }

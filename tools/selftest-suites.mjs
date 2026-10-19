@@ -705,6 +705,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/simplexFast.selftest.mjs',
     'src/engine/resolutionPolicy.selftest.mjs',
     'src/engine/viewportRuntime.selftest.mjs',
+    // 2026-10-19 (black-screen-228): the battle's black-world guard (detection, the heal ladder, receipts, zero allocation),
+    // the first-frame warm's one-pass transactions, the finite guards on the temporal paths, the live warms that restore
+    // before every yield, and the repro harness's summary arithmetic
+    'src/engine/blackWorldGuard.selftest.mjs',
+    'src/engine/postWarmFirstFrame.selftest.mjs',
+    'src/engine/nanGuards.selftest.mjs',
+    'src/game/liveCombatWarm.selftest.mjs',
+    'tools/black-world-repro-summary.selftest.mjs',
     'src/engine/frameLoopScheduler.selftest.mjs',
     'src/engine/cameraRig.selftest.mjs',
     'src/engine/garageFramePacer.selftest.mjs',
@@ -2016,6 +2024,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/track-texture-source.browser.selftest.mjs',
     'tools/sourced-building-source.browser.selftest.mjs',
     'tools/horizon-panorama-bake.browser.selftest.mjs',
+    // 2026-10-19 (black-screen-228): a real battle fails on a black world at its start and after Esc and Resume, and the
+    // guard heals the owner's signature (a camera without layer 0) within half a second
+    'tools/black-world.browser.selftest.mjs',
     // the drawn-geometry shape's control and garages (the maps ride on collisionManifestDrift, the tanks on fleetPassHigh)
     'src/world/maps/drawnGeometryShape.selftest.mjs',
     'tools/props-build-profile.selftest.mjs',

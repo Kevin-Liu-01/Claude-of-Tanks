@@ -38,6 +38,15 @@ interface ViewportRuntimeOptions {
   resizeRenderer?: (renderer: WebGLRenderer, camera: PerspectiveCamera) => void;
 }
 
+/**
+ * (2026-10-19, black-screen-228 RC2) the smallest layout the renderer follows, in CSS px. A momentary smaller report (a
+ * window restore, Stage Manager, a display change, a capture's clipped screenshot reporting a 1 x 1 window for ~90 ms)
+ * made every composer target a fraction of a pixel at a fractional render ratio (0.8 x 0.8 at Ultra Low):
+ * glTexStorage2D refused it and the scene, aerial and late-FX renders drew into incomplete framebuffers. Such a size
+ * keeps the last good one and is read again on the next resize event or recovery tick.
+ */
+export const MIN_VIEWPORT_CSS_PX = 16;
+
 function browserEnvironment(): ViewportEnvironment {
   return {
     window,
@@ -75,10 +84,18 @@ export function createViewportRuntime({
     height: container.clientHeight || win.innerHeight,
   });
 
+  const tiny = (size: { width: number; height: number }): boolean =>
+    !(size.width >= MIN_VIEWPORT_CSS_PX && size.height >= MIN_VIEWPORT_CSS_PX);
+
   const apply = () => {
     if (disposed) return;
-    resizeRenderer(renderer, camera);
     const { width, height } = dimensions();
+    const parent = renderer.domElement.parentElement;
+    if (tiny({ width, height }) || (parent && tiny({ width: parent.clientWidth || win.innerWidth, height: parent.clientHeight || win.innerHeight }))) {
+      startRecovery();
+      return;
+    }
+    resizeRenderer(renderer, camera);
     post.setSize(width, height);
     lighting.updateFrustums();
     lastAppliedPixelRatio = win.devicePixelRatio ?? 1;
@@ -89,7 +106,7 @@ export function createViewportRuntime({
   function onViewportChange(): void {
     if (disposed) return;
     const { width, height } = dimensions();
-    if (width <= 0 || height <= 0) {
+    if (tiny({ width, height })) {
       watchPixelRatio();
       return;
     }
@@ -111,7 +128,7 @@ export function createViewportRuntime({
     // no layout reads, objects, query allocation, timers or scheduling.
     if (disposed || (win.devicePixelRatio ?? 1) === lastAppliedPixelRatio) return false;
     const { width, height } = dimensions();
-    if (width <= 0 || height <= 0) {
+    if (tiny({ width, height })) {
       watchPixelRatio();
       return false;
     }
@@ -141,12 +158,22 @@ export function createViewportRuntime({
   };
 
   const tryRecover = () => {
-    const { width, height } = dimensions();
-    if (disposed || width <= 0 || height <= 0) return false;
-    apply();
+    if (disposed || tiny(dimensions())) return false;
     stopRecovery();
-    return true;
+    apply();
+    return !observer && interval === null;
   };
+
+  function startRecovery(): void {
+    if (disposed || observer || interval !== null) return;
+    const Observer = environment.ResizeObserver;
+    if (typeof Observer === 'function') {
+      observer = new Observer(tryRecover);
+      observer.observe(container);
+      observer.observe(environment.documentElement);
+    }
+    interval = environment.setInterval(tryRecover, 250);
+  }
 
   win.addEventListener('resize', onViewportChange);
   // responsiveLayout.ts follows window.visualViewport directly because iOS
@@ -158,20 +185,8 @@ export function createViewportRuntime({
   win.addEventListener('cot:layoutchange', onViewportChange);
   watchPixelRatio();
 
-  const initial = dimensions();
-  if (
-    initial.width <= 0 ||
-    initial.height <= 0 ||
-    renderer.domElement.width <= 0 ||
-    renderer.domElement.height <= 0
-  ) {
-    const Observer = environment.ResizeObserver;
-    if (typeof Observer === 'function') {
-      observer = new Observer(tryRecover);
-      observer.observe(container);
-      observer.observe(environment.documentElement);
-    }
-    interval = environment.setInterval(tryRecover, 250);
+  if (tiny(dimensions()) || renderer.domElement.width <= 0 || renderer.domElement.height <= 0) {
+    startRecovery();
     tryRecover();
   } else {
     // Renderer construction precedes awaited boot work. A resize in that gap

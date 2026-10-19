@@ -491,3 +491,74 @@ export function telemetryRowFromRecord(record: TelemetryRecord, at: string): Tel
   point.doubles.forEach((value, index) => { row[`double${index + 1}`] = value; });
   return telemetryRowFromSql(row);
 }
+
+// ---------------------------------------------------------------------------
+// The render black-world guard (src/engine/blackWorldGuard.ts, 2026-10-19, black-screen-228): one `error` record per
+// incident, stage `render`, code `render-black-world:<class>:<step>` and the receipt as an enumerated, numeric message
+// (no names, no text a player typed). The report (tools/telemetry-report.mjs) reads them back with
+// readRenderBlackWorld.
+// ---------------------------------------------------------------------------
+
+export const RENDER_BLACK_WORLD_STAGE = 'render';
+export const RENDER_BLACK_WORLD_CODE = 'render-black-world';
+/** What the guard found wrong when the world went black (the first CPU signal that explains it, else the probe's). */
+export const RENDER_BLACK_WORLD_CLASSES = Object.freeze([
+  'camera-layer-mask', 'scene-hidden', 'override', 'passes', 'viewport', 'roots-hidden', 'empty-scene-pass', 'gl-masked',
+  'nan-history',
+] as const);
+export type RenderBlackWorldClass = (typeof RENDER_BLACK_WORLD_CLASSES)[number];
+/** The heal ladder: re-assert state, reallocate targets and histories, MSAA off + rescue, context restore; none healed. */
+export const RENDER_BLACK_WORLD_STEPS = Object.freeze(['H1', 'H2', 'H3', 'H4', 'none'] as const);
+export type RenderBlackWorldStep = (typeof RENDER_BLACK_WORLD_STEPS)[number];
+/** The receipt's message keys, in order; every value is a bounded number or one of a key's own enumerated words. */
+export const RENDER_BLACK_WORLD_FIELDS = Object.freeze([
+  'calls', 'mask', 'vis', 'ovr', 'pass', 'world', 'roots', 'vp', 'fb', 'err', 'black', 'nan', 'ground', 'dyn', 'trim',
+  'msaa', 'preset', 'focus', 'hidden', 'lock', 'settings', 'warm', 'rare', 'reveal', 'resize', 'resume', 'steps', 'heal',
+] as const);
+const RENDER_BLACK_WORLD_WORDS: Readonly<Record<string, ReadonlySet<string>>> = Object.freeze({
+  preset: new Set(['ultra', 'high', 'medium', 'low', 'ultralow', 'mobile-high', 'mobile', 'mobile-low', 'mobile-ultralow', 'unknown']),
+  warm: new Set(['none', 'enemyVisuals', 'combatOpeningWarm', 'navigation', 'rareEffects', 'terrainLookahead',
+    'visionPrograms', 'done', 'cancelled', 'error']),
+  rare: new Set(['none', 'wreckVariants', 'armorScars', 'destructionEffects', 'textures', 'shadows', 'hiddenVariants']),
+  steps: new Set(['none', 'H1', 'H1-H2', 'H1-H2-H3', 'H1-H2-H3-H4']),
+  heal: new Set(RENDER_BLACK_WORLD_STEPS),
+});
+const RENDER_BLACK_WORLD_NUMBER = /^-?\d{1,9}(\.\d{1,3})?$/;
+
+/** `render-black-world:<class>:<step>`, or null for a class or step the schema does not name. */
+export function renderBlackWorldCode(blackClass: string, step: string): string | null {
+  if (!(RENDER_BLACK_WORLD_CLASSES as readonly string[]).includes(blackClass)) return null;
+  if (!(RENDER_BLACK_WORLD_STEPS as readonly string[]).includes(step)) return null;
+  return `${RENDER_BLACK_WORLD_CODE}:${blackClass}:${step}`;
+}
+
+/** The receipt's message: `key=value` pairs in RENDER_BLACK_WORLD_FIELDS order; an unknown key or a free word is dropped. */
+export function renderBlackWorldMessage(fields: Readonly<Record<string, string | number | boolean | null | undefined>>): string {
+  const parts: string[] = [];
+  for (const key of RENDER_BLACK_WORLD_FIELDS) {
+    const value = fields[key];
+    if (value === undefined || value === null) continue;
+    const text = typeof value === 'boolean' ? (value ? '1' : '0')
+      : typeof value === 'number' ? (Number.isFinite(value) ? String(Math.round(value * 1000) / 1000) : '')
+        : String(value);
+    const words = RENDER_BLACK_WORLD_WORDS[key];
+    if (words ? !words.has(text) : !RENDER_BLACK_WORLD_NUMBER.test(text)) continue;
+    parts.push(`${key}=${text}`);
+  }
+  return parts.join(' ').slice(0, 200);
+}
+
+/** A black-world record's class, step and receipt fields, or null when the record is another kind. */
+export function readRenderBlackWorld(record: { stage?: string | null; code?: string | null; message?: string | null; error?: { message?: string } | null }):
+  { blackClass: RenderBlackWorldClass; step: RenderBlackWorldStep; fields: Record<string, string> } | null {
+  const [prefix, blackClass, step] = String(record.code ?? '').split(':');
+  if (prefix !== RENDER_BLACK_WORLD_CODE || renderBlackWorldCode(blackClass, step) === null) return null;
+  const fields: Record<string, string> = {};
+  for (const pair of String(record.error?.message ?? record.message ?? '').split(' ')) {
+    const at = pair.indexOf('=');
+    if (at <= 0) continue;
+    const key = pair.slice(0, at);
+    if ((RENDER_BLACK_WORLD_FIELDS as readonly string[]).includes(key)) fields[key] = pair.slice(at + 1);
+  }
+  return { blackClass: blackClass as RenderBlackWorldClass, step: step as RenderBlackWorldStep, fields };
+}

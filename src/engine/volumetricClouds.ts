@@ -580,7 +580,9 @@ vec3 cloudKnee( vec3 c ) {
 void main() {
 	vec3 dir = normalize( vWorldPosition - cameraPosition );
 	vec2 uv = gl_FragCoord.xy / uTargetSize;
-	vec4 c = max( cloudsCatmullRom( uv, uHistorySize ), vec4( 0.0 ) );
+	vec4 c = cloudsCatmullRom( uv, uHistorySize );
+	// (black-screen-228 RC6) a non-finite history read is clear sky, never an opaque black dome
+	c = all( lessThan( abs( c ), vec4( 6e4 ) ) ) ? max( c, vec4( 0. ) ) : vec4( 0., 0., 0., 1. );
 	// nothing below the horizon line (the history holds no cloud there either) — unless the camera is in the slab
 	float above = max( smoothstep( -0.05, -0.02, dir.y ), uInside );
 	// the knee eases off within a few degrees of the sun: the silver lining of a cloud in front of it outshines the glow
@@ -1542,7 +1544,8 @@ export class VolumetricCloudLayer {
     this.endTimer();
     this.frame++;
     this.framesShown++;
-    this.dome.visible = true;
+    // (black-screen-228 P2) only over a resolved history: a reset or frozen layer with nothing traced yet shows no dome
+    this.dome.visible = this.historyValid;
     // a camera in or over the lowest lane sees the cloud in front of the terrain (no depth test, no horizon mask)
     const inside = C.pos.y > low ? 1 : 0;
     this.domeMaterial.uniforms.uInside.value = inside;

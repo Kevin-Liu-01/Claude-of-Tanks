@@ -342,4 +342,40 @@ for (const options of [
   assert.equal(h.state.resizeCalls, 0, 'disposed runtime cannot mutate renderer state');
 }
 
+// (2026-10-19, black-screen-228 RC2) a momentary 1 x 1 layout (a capture's clipped screenshot, a window restore, Stage
+// Manager) keeps the last good size: nothing below MIN_VIEWPORT_CSS_PX reaches the renderer, the camera or the composer,
+// and the next tick that reads a real size again applies it
+{
+  const h = createHarness({ width: 1512, height: 945, devicePixelRatio: 2 });
+  const calls = { resize: h.state.resizeCalls, post: h.state.postCalls };
+  const aspect = h.camera.aspect;
+  h.container.clientWidth = 1; h.container.clientHeight = 1;
+  h.environment.window.innerWidth = 1; h.environment.window.innerHeight = 1;
+  h.listeners.get('cot:layoutchange')();
+  h.listeners.get('resize')();
+  h.runtime.apply();
+  assert.equal(h.state.resizeCalls, calls.resize, 'a 1 x 1 blip never resizes the renderer');
+  assert.equal(h.state.postCalls, calls.post, 'a 1 x 1 blip never sizes the composer');
+  assert.equal(h.camera.aspect, aspect, 'the camera keeps its aspect through the blip');
+  assert.deepEqual(h.postSize, { width: 1512, height: 945 }, 'the composer keeps the last good size');
+  assert.equal(h.runtime.isRecovering(), true, 'a direct apply into a blip arms the re-read');
+  h.runInterval();
+  assert.equal(h.state.postCalls, calls.post, 'still tiny: the recovery tick waits');
+  h.container.clientWidth = 1512; h.container.clientHeight = 945;
+  h.environment.window.innerWidth = 1512; h.environment.window.innerHeight = 945;
+  h.runInterval();
+  assert.equal(h.state.postCalls, calls.post + 1, 'the next tick with a real size applies it');
+  assert.deepEqual(h.postSize, { width: 1512, height: 945 });
+  assert.equal(h.runtime.isRecovering(), false, 'the re-read disarms itself');
+  for (const [w, x] of [[15, 900], [900, 15], [0.5, 0.5]]) {
+    h.container.clientWidth = w; h.container.clientHeight = x;
+    h.listeners.get('resize')();
+    assert.equal(h.state.postCalls, calls.post + 1, `${w} x ${x} is below the floor`);
+  }
+  h.container.clientWidth = 16; h.container.clientHeight = 16;
+  h.listeners.get('resize')();
+  assert.equal(h.state.postCalls, calls.post + 2, 'the floor itself is a size the renderer follows');
+  h.runtime.dispose();
+}
+
 console.log('viewportRuntime selftest: PASS');

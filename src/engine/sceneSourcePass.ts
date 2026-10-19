@@ -47,7 +47,8 @@ export class SceneAAPass extends RenderPass {
 
   setSize(width: number, height: number): void {
     this.endMatrixFrame();
-    this.sceneTarget.setSize(width, height);
+    // (black-screen-228 RC2) whole pixels, at least one: never a zero-size scene target
+    this.sceneTarget.setSize(Math.max(1, Math.floor(width)), Math.max(1, Math.floor(height)));
   }
 
   /** Only the complete synchronous composer transaction may share transforms. */
