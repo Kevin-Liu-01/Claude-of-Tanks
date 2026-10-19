@@ -146,6 +146,9 @@ export function synchronizeFleetRenewalMetadata():void{
     s.armor.modules=hybridModules(base,s);
     s.armor.crew=[...structuredClone(base.armor.crew.filter(m=>!m.turretLocal)),...s.armor.crew.filter(m=>m.turretLocal)];
     s.armor.turretPivot=[0,y,z];s.visual.trackWidthM=base.visual.trackWidthM;
+    // release 227: the Type 96B's rear-deck gun clearance (suppliedSourceFleetSpecs.ts) belongs to its own hull; the clone
+    // must not carry it onto a T-72 or T-80 deck
+    delete s.gunPitchByYawDeg;
     for(const field of ['enginePowerHp','weightTons','topSpeedKmh','reverseSpeedKmh','hullTraverseDegS','terrainResistance','pivotStyle'] as const)
       Object.assign(s,{[field]:structuredClone(base[field])});
   }
