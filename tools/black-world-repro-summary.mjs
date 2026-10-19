@@ -95,7 +95,9 @@ export function summarizeParts(dirs) {
           class: first?.class ?? null, healedBy: first?.healedBy ?? null, rungs: first?.steps ?? [], repeats: first?.repeats ?? 0,
           openedAfterMs: first?.openedAfterMs ?? null, healedAfterMs: first?.healedAfterMs ?? null,
           confirmedAfterMs: first?.confirmedAfterMs ?? first?.healedAfterMs ?? null, receipts: heal?.receipts?.length ?? 0,
-          tinySizes: heal?.tinySizes ?? null, passErrors: heal?.passErrors?.length ?? 0 });
+          tinySizes: heal?.tinySizes ?? null, passErrors: heal?.passErrors?.length ?? 0,
+          // a NaN fault's own readback: did a non-finite value reach its target (a fault that landed nothing proves nothing)
+          landed: detail.nanLanded ? (detail.nanLanded.nonFinite ? `non-finite ${detail.nanLanded.target ?? ''}`.trim() : 'finite') : null });
         continue;
       }
       const key = `${target}|${chrome}|${scenario}|dsf${summary.dsf ?? 1}|${run.map}`;
@@ -156,11 +158,11 @@ export function formatSummary({ table, injections, totals }) {
     + `${totals.incidents} guard incidents on natural runs`);
   if (injections.length) {
     lines.push('');
-    lines.push('| part | map | injected fault | guard class | healed by | rungs | opened after (ms) | world back after (ms) | confirmed after (ms) | tiny sizes | pass errors |');
-    lines.push('|---|---|---|---|---|---|---|---|---|---|---|');
+    lines.push('| part | map | injected fault | guard class | healed by | rungs | opened after (ms) | world back after (ms) | confirmed after (ms) | tiny sizes | pass errors | fault landed |');
+    lines.push('|---|---|---|---|---|---|---|---|---|---|---|---|');
     for (const r of injections) {
       lines.push(`| ${r.part} | ${r.map} | ${r.fault} | ${r.class ?? 'none'} | ${r.healedBy ?? '-'} | ${r.rungs.join(' ') || '-'}${r.repeats ? ` (H1 x${r.repeats})` : ''} | `
-        + `${r.openedAfterMs ?? '-'} | ${r.healedAfterMs ?? '-'} | ${r.confirmedAfterMs ?? '-'} | ${r.tinySizes ?? '-'} | ${r.passErrors} |`);
+        + `${r.openedAfterMs ?? '-'} | ${r.healedAfterMs ?? '-'} | ${r.confirmedAfterMs ?? '-'} | ${r.tinySizes ?? '-'} | ${r.passErrors} | ${r.landed ?? '-'} |`);
     }
   }
   return lines.join('\n');

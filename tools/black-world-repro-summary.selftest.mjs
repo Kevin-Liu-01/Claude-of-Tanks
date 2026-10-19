@@ -51,12 +51,15 @@ try {
     { label: '001', map: 'badlands', action: 'boot', verdict: 'ok', guard: { incidents: 0 } },
     { label: '002', map: 'badlands', action: 'inject-layers', verdict: 'ok' },
     { label: '003', map: 'badlands', action: 'inject-persist-layers-5', verdict: 'ok' },
+    { label: '004', map: 'badlands', action: 'inject-persist-nanscene-1', verdict: 'ok' },
   ] }, [
     { label: '001', frames: healthy },
     { label: '002', frames: [frame(0, 0.99, { ctl: true })], guardHeal: { receipts: [{ class: 'camera-layer-mask', healedBy: 'H1', steps: ['H1'],
       openedAfterMs: 90, healedAfterMs: 160 }], tinySizes: 0, passErrors: [] } },
     { label: '003', frames: [frame(0, 0.99, { ctl: true })], guardHeal: { receipts: [{ class: 'camera-layer-mask', healedBy: 'H1',
       steps: ['H1', 'H2', 'H3', 'H4(skipped)'], repeats: 40, openedAfterMs: 95, healedAfterMs: 120 }], tinySizes: 0, passErrors: [] } },
+    { label: '004', frames: [frame(0, 0.99, { ctl: true })], nanLanded: { target: 'scene target', nonFinite: true, px: ['NaN', 'NaN', 'NaN', 'NaN'] },
+      guardHeal: { receipts: [{ class: 'nan-history', healedBy: 'H2', steps: ['H1', 'H2'], openedAfterMs: 120, healedAfterMs: 230 }], tinySizes: 0, passErrors: [] } },
   ]);
   const { table, injections, totals } = summarizeParts([cold, heal, path.join(root, 'missing')]);
   const badlands = table.find((row) => row.map === 'badlands' && row.scenario === 'cold+drive');
@@ -79,13 +82,16 @@ try {
   assert.equal(totals.runs, 4);
   assert.equal(totals.black, 1);
   assert.equal(totals.incidents, 1);
-  assert.equal(injections.length, 2);
-  assert.deepEqual(injections.map((row) => [row.fault, row.class, row.healedBy, row.healedAfterMs]),
-    [['layers', 'camera-layer-mask', 'H1', 160], ['persist-layers-5', 'camera-layer-mask', 'H1', 120]]);
+  assert.equal(injections.length, 3);
+  assert.deepEqual(injections.map((row) => [row.fault, row.class, row.healedBy, row.healedAfterMs, row.landed]),
+    [['layers', 'camera-layer-mask', 'H1', 160, null], ['persist-layers-5', 'camera-layer-mask', 'H1', 120, null],
+      ['persist-nanscene-1', 'nan-history', 'H2', 230, 'non-finite scene target']]);
   assert.equal(injections[1].repeats, 40);
   const text = formatSummary({ table, injections, totals });
   assert.match(text, /total: 1 BLACK-WORLD runs of 4 \(2 harness errors, 1 of them unwatched windows\); 2 black frames of 68; 3 presented empty scene-pass frames; 1 guard incidents on natural runs/);
   assert.match(text, /\| layers \| camera-layer-mask \| H1 \| H1 \| 90 \| 160 \| 160 \|/);
+  assert.match(text, /\| persist-nanscene-1 \| nan-history \| H2 \| H1 H2 \| 120 \| 230 \| 230 \| 0 \| 0 \| non-finite scene target \|/,
+    'a NaN fault names whether its value landed');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

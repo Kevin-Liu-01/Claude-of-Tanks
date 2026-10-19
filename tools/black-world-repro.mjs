@@ -662,12 +662,28 @@ function injectOnce(spec) {
     } else if (kind === 'nancloud' || kind === 'nanscene') {
       const vc = S.userData.volumetricClouds;
       const Ctor = (vc?.resolveMaterial ?? findMaterial()).constructor;
-      nanMaterial ??= new (vc?.resolveMaterial?.constructor ?? Ctor)({ uniforms: { uZero: { value: 0 } },
+      // the NaN from its bits (a uniform the compiler cannot fold): 0.0 / 0.0 is not a NaN every GPU compiler keeps
+      // (fast-math may fold or flush it), so a fault written that way could land nothing and prove nothing
+      nanMaterial ??= new (vc?.resolveMaterial?.constructor ?? Ctor)({ uniforms: { uBits: { value: 0x7fc00000 } },
         vertexShader: vc?.resolveMaterial?.vertexShader ?? 'void main(){ gl_Position = vec4(position.xy, 0.0, 1.0); }',
-        fragmentShader: 'uniform float uZero; void main(){ gl_FragColor = vec4(uZero / uZero); }', depthTest: false, depthWrite: false });
+        fragmentShader: 'uniform uint uBits; void main(){ gl_FragColor = vec4(uintBitsToFloat(uBits)); }', depthTest: false, depthWrite: false });
+      // did a non-finite value land in the target (read back independent of the guard; once per fault)
+      const landed = (target) => {
+        if (window.__bwrNanLanded) return;
+        const gl = R.getContext(), fb = R.properties.get(target).__webglFramebuffer, px = new Float32Array(4);
+        R.state.bindFramebuffer(gl.FRAMEBUFFER, fb);
+        gl.readPixels(target.width >> 1, target.height >> 1, 1, 1, gl.RGBA, gl.FLOAT, px);
+        const err = gl.getError();
+        R.setRenderTarget(target);
+        window.__bwrNanLanded = { target: kind === 'nancloud' ? 'cloud history' : 'scene target',
+          px: Array.from(px, (v) => (Number.isFinite(v) ? +v.toFixed(3) : String(v))),
+          nonFinite: !Array.from(px).every(Number.isFinite), glError: err, samples: target.samples };
+      };
       if (kind === 'nancloud') {
         if (!vc?.history) return { error: 'no cloud layer' };
+        const previous = R.getRenderTarget();
         for (const target of vc.history) vc.renderQuad(nanMaterial, target);
+        try { landed(vc.history[0]); } finally { R.setRenderTarget(previous); }
       } else if (!R.__bwrNanPass) {
         // the scene pass itself lands a non-finite value (a NaN light or a broken material over the whole view): three's
         // render into the scene target draws, then a NaN quad covers it, inside the pass and so before the guard's probe
@@ -681,7 +697,10 @@ function injectOnce(spec) {
           const result = render.call(this, sceneArg, cameraArg);
           if (!inside && target === P.sceneAA.sceneTarget) {
             inside = true;
-            try { vc.renderQuad(nanMaterial, target); } finally { inside = false; }
+            try {
+              vc.renderQuad(nanMaterial, target);
+              landed(target); // the first faulted frame's resolved scene target
+            } finally { inside = false; }
           }
           return result;
         };
@@ -1496,6 +1515,8 @@ try {
           row.guardHeal = await page.evaluate(guardReceiptsSince).catch((e) => ({ error: String(e) }));
           const first = row.guardHeal?.receipts?.[0];
           log(`  guard after ${step.value}: ${first ? `${first.class} healed by ${first.healedBy}, world back after ${first.healedAfterMs} ms, confirmed after ${first.confirmedAfterMs} ms (opened +${first.openedAfterMs} ms, rungs ${first.steps.join(' ')}${first.repeats ? `, H1 x${first.repeats}` : ''})` : 'no incident'}; tiny sizes ${row.guardHeal?.tinySizes}; pass errors ${row.guardHeal?.passErrors?.length ?? 0}`);
+          row.nanLanded = await page.evaluate(() => { const v = window.__bwrNanLanded ?? null; window.__bwrNanLanded = null; return v; }).catch(() => null);
+          if (row.nanLanded) log(`  the fault's value in the ${row.nanLanded.target}: ${JSON.stringify(row.nanLanded)}`);
           row.injectUndo = await page.evaluate(() => { try { return window.__bwrUndo?.() ?? null; } catch (e) { return String(e); } });
         }
         if (step.action === 'dynflap') {
