@@ -70,6 +70,8 @@ interface StructureFractureOptions {
   /** A body lain still at this height that must stay a body (it rests on a floor its storey may yet drop from under it:
    *  baked, it would stay in the air). */
   holdBake?(structureIdx: number, y: number): boolean;
+  /** The ground as the pieces land on it (world y): what a baked piece laid flat lies on (uprightPlates.ts). */
+  groundAt?(x: number, z: number): number;
 }
 
 export interface StructureFracture {
@@ -1695,7 +1697,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     for (const mesh of live.bakedPending) {
       // (round 4; airfield #0's tower, caldera #28's warehouse: a clump's dark interior plate or a sheet face baked upright
       // beside the ruin, its body lying well on its box) no piece of what lies still stands on its edge
-      layUprightPlates(mesh.geometry, mesh.matrix);
+      layUprightPlates(mesh.geometry, mesh.matrix, o.groundAt ? (x, z) => o.groundAt!(x, z) : null);
       const pos = mesh.geometry.getAttribute('position') as THREE.InterleavedBufferAttribute;
       const data = pos?.data;
       if (!data) continue;

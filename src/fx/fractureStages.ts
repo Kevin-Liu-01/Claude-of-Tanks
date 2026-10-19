@@ -242,7 +242,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
   const versionOf = (idx: number): number => fracture.version(idx) * 4096 + (events.get(idx) ?? 0);
 
   const fracture: StructureFracture = createStructureFracture({
-    pool, group: o.group, now: o.now, poolShare: o.poolShare ?? 48,
+    pool, group: o.group, now: o.now, poolShare: o.poolShare ?? 48, groundAt: o.groundAt,
     keepSpan: (span) => host?.keep(span),
     holdBake: (structureIdx, y) => bodies.floorHolds(structureIdx, y),
     materialFor: (seam, bucket) => resolverOf(seam)(bucket),

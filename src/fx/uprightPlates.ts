@@ -10,8 +10,9 @@
  *
  * `layUprightPlates` reads a resting drawing in world space, splits it into its connected pieces (corners welded at a
  * millimetre, as the slab check splits them), and lays every piece that is an upright plate — thin (a hand or less through), broad (1.6 m and more
- * each way in its plane), standing 1.4 m and more — on its broad side where its foot stood: turned about its middle
- * so its thin axis is vertical, then lowered so its lowest point is where its lowest point was. Nothing else moves.
+ * each way in its plane), standing 1.4 m and more — on its broad side where it stood: turned about its middle so its
+ * thin axis is vertical, then down onto the highest ground under it (where the caller knows the ground; else its lowest
+ * point where its lowest point was). Nothing else moves.
  * Visual only: it rewrites the geometry of a drawing that no longer moves (a baked heap, a body put to rest); the
  * simulation, its records and the collision never see it. Deterministic: the same drawing lays the same way.
  */
@@ -127,7 +128,8 @@ export function clampPieceTops(geometry: THREE.BufferGeometry, topAt: (x: number
  * Lay a resting drawing's upright plates on their broad sides (in place). `matrix` takes the geometry to the world
  * (null: it is already in world space). Returns how many pieces were laid.
  */
-export function layUprightPlates(geometry: THREE.BufferGeometry, matrix: THREE.Matrix4 | null = null): number {
+export function layUprightPlates(geometry: THREE.BufferGeometry, matrix: THREE.Matrix4 | null = null,
+  groundAt: ((x: number, z: number) => number) | null = null): number {
   const pos = geometry.getAttribute('position') as THREE.BufferAttribute | THREE.InterleavedBufferAttribute | undefined;
   if (!pos || pos.count < 6) return 0;
   const nrm = geometry.getAttribute('normal') as THREE.BufferAttribute | THREE.InterleavedBufferAttribute | undefined;
@@ -180,7 +182,17 @@ export function layUprightPlates(geometry: THREE.BufferGeometry, matrix: THREE.M
       w[i * 3] = _v.x + mx; w[i * 3 + 1] = _v.y + my; w[i * 3 + 2] = _v.z + mz;
       if (w[i * 3 + 1]! < ny0) ny0 = w[i * 3 + 1]!;
     }
-    const dy = y0 - ny0 + 0.02;
+    // (round 4: airfield #0's dark plate, laid at the foot it stood on up on the heap, lay half over nothing 1.5 m up) where the
+    // ground is known, onto the highest ground under where it now lies (a heap's mound, a slope), else at its old foot
+    let foot = y0;
+    if (groundAt) {
+      foot = -Infinity;
+      const every = Math.max(1, Math.floor(list.length / 48));
+      for (let k = 0; k < list.length; k += every) { const i = list[k]!; foot = Math.max(foot, groundAt(w[i * 3]!, w[i * 3 + 2]!)); }
+      foot = Math.max(foot, groundAt(mx, mz));
+      if (!Number.isFinite(foot)) foot = y0;
+    }
+    const dy = foot - ny0 + 0.02;
     for (const i of list) { w[i * 3 + 1] = w[i * 3 + 1]! + dy; changed[i] = 1; }
     if (nrm) {
       if (matrix) { _nm.getNormalMatrix(matrix); _nmInv.copy(_nm).invert(); }

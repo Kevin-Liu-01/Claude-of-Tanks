@@ -682,7 +682,9 @@ function framePosts(rng: () => number, slot: FractureSlot, cap: number, mesh: Da
       if (k === gap) continue;
       const u = -len / 2 + t / 2 + (k / (posts - 1)) * (len - t);
       const h0 = Math.min(cap, ruinScale * share * (0.6 + rng() * 0.5));
-      const lean = rng() < 0.4 ? (rng() - 0.5) * 0.6 : 0;
+      // (round 4; airfield #12's hall: a loose post's leant head stood off its drawn wall, over nothing) a loose post stands
+      // plumb over the cell it was read in (the draws kept)
+      const lean0 = rng() < 0.4 ? (rng() - 0.5) * 0.6 : 0, lean = loose ? 0 : lean0;
       const shade = 0.8 + rng() * 0.18;
       // (destruction-slabs 227) on the drawn wall in from the edge, no taller than it is drawn there
       const px = alongX ? fcx + u : fcx + side * off, pz = alongX ? fcz + side * off : fcz + u, pnx = alongX ? 0 : -side, pnz = alongX ? -side : 0;

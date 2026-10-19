@@ -5,7 +5,7 @@
 // Synthetic and deterministic: a resting drawing of a thick block with a 4 x 3 m plate standing upright beside it (one
 // geometry, two pieces — a body's clump and the dark plate behind its cell) has only the plate laid on its broad side, its
 // foot where it stood, the block untouched; a plate lying flat and a small upright tile stay; a body-frame geometry under a
-// matrix lays the same plate in world space. A remnant pier 4 m tall where the building was drawn 2 m is cut to 2.5 m about
+// matrix lays the same plate in world space; one standing 1.5 m up on the heap lies on the highest ground under it. A remnant pier 4 m tall where the building was drawn 2 m is cut to 2.5 m about
 // its foot; one wholly over the drawn height (a held storey's member) and one where the drawn form is not known stand.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -68,6 +68,12 @@ assert.equal(layUprightPlates(g3, m), 1, 'the upright body plate laid');
 const w3 = boxes(g3, m)[0];
 assert.equal(w3.thin, 1, 'flat in the world');
 assert.ok(Math.abs(w3.lo[1] - (1.5 - 1.5 + 0.02)) < 1e-3, `its world foot kept (${w3.lo[1].toFixed(3)} m)`);
+
+// where the ground is known, onto the highest ground under where it lies (a plate standing on the heap 1.5 m up)
+const g5 = geometryOf(box(0, 1.5, 0, 4, 4.5, 0.08));
+assert.equal(layUprightPlates(g5, null, (x) => (x > 2 ? 0.3 : 0.1)), 1);
+const b5 = boxes(g5)[0];
+assert.ok(Math.abs(b5.lo[1] - 0.32) < 1e-3, `laid onto the highest ground under it (${b5.lo[1].toFixed(3)} m)`);
 
 // deterministic: the same drawing lays the same way
 const g4 = geometryOf([...block, ...plate]);
