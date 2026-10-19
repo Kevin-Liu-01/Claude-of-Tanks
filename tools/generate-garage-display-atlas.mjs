@@ -121,6 +121,12 @@ function atlasItems() {
   for (const [id, tone] of [['dark', '#0d1317'], ['paper', '#e6e1d4'], ['cork', '#8a6a44'], ['steel', '#5d6367']]) {
     add(`panel.${id}`, 32, 32, 'panel', id === 'dark' ? 0 : 0.02, { tone });
   }
+  // the turntable collars' galvanised plate, one panel (joint to joint) per yard's weathering: spangled zinc with pressed
+  // ribs, bolt rows and rust weeps, the yard's dust climbing from the foot (the r9 blind critic: Redrock's vertex-coloured
+  // collar read "like plastic" beside its textured ground)
+  for (const [id, dust, bloom] of [['reddust', '#a65d39', 0], ['sand', '#c6aa78', 0], ['salt', '#d9d7cf', 1]]) {
+    add(`collar.galvanised.${id}`, 256, 40, 'collar', 0, { dust, bloom });
+  }
   return items;
 }
 
@@ -390,6 +396,70 @@ async function generate() {
     g.restore();
   };
 
+  // a galvanised collar panel: top is the collar's upper edge, bottom its foot on the yard
+  const collarPlate = (g, r, item) => {
+    const random = rng(item.name.length * 977 + item.dust.charCodeAt(1) * 13);
+    const zinc = g.createLinearGradient(r.x, r.y, r.x, r.y + r.h);
+    zinc.addColorStop(0, '#b3b2ad'); zinc.addColorStop(0.55, '#a19f9a'); zinc.addColorStop(1, '#8b8984');
+    g.fillStyle = zinc; g.fillRect(r.x, r.y, r.w, r.h);
+    // spangle: the zinc's crystal flowers, light and dark facets
+    for (let i = 0; i < 420; i += 1) {
+      const light = random() < 0.5;
+      g.fillStyle = light ? `rgba(255,255,255,${0.05 + 0.07 * random()})` : `rgba(0,0,0,${0.04 + 0.07 * random()})`;
+      const sx = r.x + random() * r.w, sy = r.y + random() * r.h, size = 2 + random() * 7;
+      g.beginPath(); g.moveTo(sx, sy); g.lineTo(sx + size, sy + size * 0.3 * random()); g.lineTo(sx + size * 0.6, sy + size * 0.8);
+      g.lineTo(sx - size * 0.2, sy + size * 0.5); g.closePath(); g.fill();
+    }
+    // two pressed ribs along the panel (a lit upper lip over a shaded lower one)
+    for (const f of [0.34, 0.66]) {
+      const y = Math.round(r.y + r.h * f);
+      g.fillStyle = 'rgba(255,255,255,0.22)'; g.fillRect(r.x, y - 1, r.w, 1);
+      g.fillStyle = 'rgba(0,0,0,0.24)'; g.fillRect(r.x, y + 1, r.w, 2);
+    }
+    // the joints at both ends: a dark seam with a cover strip's lit edge
+    for (const x of [r.x, r.x + r.w - 4]) {
+      g.fillStyle = 'rgba(28,27,26,0.85)'; g.fillRect(x + (x === r.x ? 0 : 2), r.y, 2, r.h);
+      g.fillStyle = 'rgba(255,255,255,0.16)'; g.fillRect(x + (x === r.x ? 2 : 1), r.y, 1, r.h);
+    }
+    // bolt rows top and bottom, some weeping rust
+    for (const by of [r.y + 5, r.y + r.h - 7]) {
+      for (let bx = r.x + 12; bx < r.x + r.w - 6; bx += 24) {
+        g.fillStyle = 'rgba(40,38,36,0.7)'; g.beginPath(); g.arc(bx, by, 2.4, 0, Math.PI * 2); g.fill();
+        g.fillStyle = 'rgba(235,233,228,0.55)'; g.beginPath(); g.arc(bx - 0.7, by - 0.7, 1, 0, Math.PI * 2); g.fill();
+        if (by < r.y + r.h / 2 && random() < (item.bloom ? 0.7 : 0.4)) {
+          const length = 8 + random() * 22, width = 1.5 + random() * 2;
+          const weep = g.createLinearGradient(bx, by + 2, bx, by + 2 + length);
+          weep.addColorStop(0, `rgba(118,62,34,${item.bloom ? 0.62 : 0.5})`); weep.addColorStop(1, 'rgba(118,62,34,0)');
+          g.fillStyle = weep; g.fillRect(bx - width / 2, by + 2, width, length);
+        }
+      }
+    }
+    // salt bloom: chalky blotches
+    if (item.bloom) {
+      for (let i = 0; i < 70; i += 1) {
+        g.fillStyle = `rgba(236,234,226,${0.1 + 0.18 * random()})`;
+        g.beginPath(); g.ellipse(r.x + random() * r.w, r.y + random() * r.h, 2 + random() * 9, 1 + random() * 4, random() * 3, 0, Math.PI * 2); g.fill();
+      }
+    }
+    // the yard's dust climbing from the foot, its upper edge ragged column by column
+    const [dr, dg, db] = [1, 3, 5].map((i) => parseInt(item.dust.slice(i, i + 2), 16));
+    let wander = 0;
+    for (let x = 0; x < r.w; x += 1) {
+      wander = wander * 0.9 + (random() - 0.5) * 0.12;
+      const reach = r.h * Math.min(0.92, Math.max(0.12, 0.38 + 0.26 * Math.sin(x * 0.037 + 1.3) * Math.sin(x * 0.0113 + 0.4) + wander));
+      const column = g.createLinearGradient(0, r.y + r.h, 0, r.y + r.h - reach);
+      column.addColorStop(0, `rgba(${dr},${dg},${db},0.74)`); column.addColorStop(0.35, `rgba(${dr},${dg},${db},0.42)`);
+      column.addColorStop(1, `rgba(${dr},${dg},${db},0)`);
+      g.fillStyle = column; g.fillRect(r.x + x, r.y + r.h - reach, 1, reach);
+    }
+    // splashes and wiped streaks in the dust
+    for (let i = 0; i < 46; i += 1) {
+      const sx = r.x + random() * r.w, sy = r.y + r.h * (0.35 + 0.6 * random());
+      g.fillStyle = `rgba(${dr},${dg},${db},${0.12 + 0.2 * random()})`;
+      g.beginPath(); g.ellipse(sx, sy, 1.5 + random() * 6, 1 + random() * 2.5, (random() - 0.5) * 0.6, 0, Math.PI * 2); g.fill();
+    }
+    weave(g, r.x, r.y, r.w, r.h, 4021, 0.035);
+  };
   const draw = {
     'brand.banner.v': (g, r) => {
       fieldGradient(g, r.x, r.y, r.w, r.h);
@@ -695,7 +765,8 @@ async function generate() {
     } else if (item.kind === 'panel') {
       a.fillStyle = item.tone; a.fillRect(r.x, r.y, r.w, r.h);
       weave(a, r.x, r.y, r.w, r.h, r.x * 7 + r.y, 0.05);
-    } else throw new Error(`no drawer for ${item.name}`);
+    } else if (item.kind === 'collar') collarPlate(a, r, item);
+    else throw new Error(`no drawer for ${item.name}`);
     a.restore();
     // edge extrusion: smear each border row/column PAD texels outward (mips sample clean edges)
     a.drawImage(albedo, r.x, r.y, r.w, 1, r.x, r.y - PAD, r.w, PAD);

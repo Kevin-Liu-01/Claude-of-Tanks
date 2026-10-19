@@ -41,20 +41,25 @@ interface GaragePlatformCollar {
   readonly plinth: number | null;
   /** Banked dust or snow against the windward side (sand, red dust). */
   readonly drift: number | null;
+  /**
+   * The display atlas's plate for the collar's face (a galvanised panel weathered by its yard), drawn on the pucks'
+   * DISPLAY-LIT mesh: real spangle, ribs, bolts, weeps and dust instead of a vertex-coloured band. Null: vertex colours.
+   */
+  readonly plate?: string;
   readonly note: string;
 }
 
 /** One collar finish per Garage (the per-garage briefs' PLATFORM COLLAR lines). */
 export const GARAGE_PLATFORM_COLLARS: Readonly<Record<GarageVariant['architecture'], GaragePlatformCollar>> = Object.freeze({
   field_shed: { kind: 'epoxy-chevron', body: 0xc9a436, accent: 0x1c1d1e, plinth: null, drift: null, note: 'yellow epoxy, worn black chevrons' },
-  shade_depot: { kind: 'galvanised', body: 0x9a9890, accent: 0xb59a6a, plinth: 0xa89a80, drift: 0xd2b888, note: 'sand-blasted galvanised steel on a concrete plinth, tan chevrons' },
+  shade_depot: { kind: 'galvanised', body: 0x9a9890, accent: 0xb59a6a, plinth: 0xa89a80, drift: 0xd2b888, plate: 'collar.galvanised.sand', note: 'sand-blasted galvanised steel on a concrete plinth, sand climbing its face' },
   repair_bunker: { kind: 'wet-steel', body: 0x2c3234, accent: 0x5a6266, plinth: 0x3a4042, drift: null, note: 'heated deck: wet dark steel, a melt margin' },
   brick_arsenal: { kind: 'granite', body: 0x8e8b86, accent: 0x6e6c68, plinth: 0x7c7a74, drift: null, note: 'dressed granite rim like a fountain basin, a sett ring' },
-  naval_drydock: { kind: 'galvanised', body: 0x9aa0a0, accent: 0x7a5038, plinth: 0x8a8c88, drift: null, note: 'galvanised steel with salt bloom and rust streaks' },
+  naval_drydock: { kind: 'galvanised', body: 0x9aa0a0, accent: 0x7a5038, plinth: 0x8a8c88, drift: null, plate: 'collar.galvanised.salt', note: 'galvanised steel with salt bloom and rust streaks' },
   rail_roundhouse: { kind: 'brick-rail', body: 0x7a3e2e, accent: 0x7a7e82, plinth: 0x3a3634, drift: null, note: 'brick-faced collar with a circular running rail' },
   rain_canopy: { kind: 'grating-trench', body: 0x4a5048, accent: 0x2e3a3a, plinth: 0x6a6c64, drift: null, note: 'a steel-grating drainage trench holding water' },
   rock_cavern: { kind: 'melt-ring', body: 0x7e8488, accent: 0x464c50, plinth: 0x585e62, drift: null, note: 'heated melt ring with granite setts showing' },
-  recovery_yard: { kind: 'galvanised', body: 0x8c8781, accent: 0xa5603e, plinth: 0x8a6a54, drift: 0xb06a44, note: 'dull galvanised steel, red dust climbing its face, a dust fillet at its foot' },
+  recovery_yard: { kind: 'galvanised', body: 0x8c8781, accent: 0xa5603e, plinth: 0x8a6a54, drift: 0xb06a44, plate: 'collar.galvanised.reddust', note: 'galvanised steel, red dust climbing its face, a dust fillet at its foot' },
   factory_line: { kind: 'steel-plate', body: 0x4a4e52, accent: 0x5a6aa0, plinth: 0x3a3836, drift: null, note: 'heavy plate, heat-tinted edges, bolt heads, slag spatter' },
 });
 
@@ -84,6 +89,7 @@ export function buildGaragePlatformCollar(architecture: GarageVariant['architect
   const random = b.rng;
   // the yard's dust (sand, red dust) and the wind that banks it, for the collars that carry a drift
   const dust = collar.drift !== null ? new THREE.Color(collar.drift) : null;
+  const plateRect = collar.plate ? garageDisplayRect(collar.plate) : null;
   const wind = params.windAngle ?? 0.8;
   const hash01 = (x: number): number => Math.abs(Math.sin(x * 12.9898 + 78.233) * 43758.5453) % 1;
   for (let s = 0; s < SEGMENTS; s += 1) {
@@ -147,7 +153,13 @@ export function buildGaragePlatformCollar(architecture: GarageVariant['architect
     // chevron segments lean: their upper edge is shifted along the ring
     const lean = collar.kind === 'epoxy-chevron' ? (Math.PI * 2 / SEGMENTS) * 0.9 : 0;
     const yb = 0.02, yt = top - bevel;
-    if (dust) {
+    if (plateRect) {
+      // the plate's panel runs joint to joint over eight segments; corners wound to face outward (the material is
+      // single-sided), so U runs against the angle
+      const k = s % 8;
+      b.face(at(sideR(yb), yb, a1), at(sideR(yb), yb, a0), at(sideR(yt), yt, a0), at(sideR(yt), yt, a1), plateRect,
+        [(k + 1) / 8, 0, k / 8, 1]);
+    } else if (dust) {
       // a dusty yard's collar: the dust climbs its face from the foot, thickest to windward (each corner its own tone,
       // so the face reads as weathered metal rather than one flat band)
       const dusted = (a: number, y: number, amount: number): THREE.Color => {
@@ -206,7 +218,7 @@ export function buildGaragePlatformCollar(architecture: GarageVariant['architect
       const yBolt = top - bevel - 0.04;
       const p = at(sideR(yBolt) + 0.005, yBolt, a);
       b.at(p[0], p[1], p[2], -a + Math.PI / 2, () => b.box(0, 0, 0, 0.04, 0.03, 0.02, collar.body, { bevel: 0, noBottom: true }));
-      if (collar.kind !== 'galvanised' || hash01(k * 3.7) > 0.55) continue;
+      if (collar.kind !== 'galvanised' || plateRect || hash01(k * 3.7) > 0.55) continue;
       const length = 0.07 + 0.13 * hash01(k * 9.1), half = (0.009 + 0.008 * hash01(k * 5.3)) / (sideR(yBolt) * 1.0);
       const y0 = yBolt - 0.012, y1 = Math.max(0.03, y0 - length);
       const weep = bodyColor.clone().lerp(rust, 0.55);
@@ -214,7 +226,7 @@ export function buildGaragePlatformCollar(architecture: GarageVariant['architect
         at(sideR(y0) + 0.003, y0, a + half), at(sideR(y0) + 0.003, y0, a - half),
         [bodyColor.clone().lerp(rust, 0.12), bodyColor.clone().lerp(rust, 0.12), weep, weep], [Math.cos(a), 0.2, Math.sin(a)]);
     }
-    if (collar.kind === 'galvanised') {
+    if (collar.kind === 'galvanised' && !plateRect) {
       for (let k = 0; k < 8; k += 1) {
         const a = (k / 8) * Math.PI * 2 + 0.11, half = 0.006 / GARAGE_PLATFORM_BASE_R;
         b.polygon([at(sideR(0.02) + 0.003, 0.02, a - half), at(sideR(0.02) + 0.003, 0.02, a + half),
@@ -229,7 +241,7 @@ export function buildGaragePlatformCollar(architecture: GarageVariant['architect
   // mound cannot carry the yard's grain, so it stays a fillet)
   if (dust) {
     const groundTone = new THREE.Color(b.skin.ground).multiplyScalar(0.62);
-    const crestTone = dust.clone().multiplyScalar(0.86);
+    const crestTone = dust.clone().lerp(groundTone, 0.45).multiplyScalar(0.82);
     const scallop = (a: number): number => 0.5 + 0.5 * Math.sin(a * 7 + 1.3) * Math.sin(a * 3 - 0.4);
     const ring = (a: number): readonly [[number, number, number], [number, number, number], [number, number, number]] => {
       const windward = Math.max(0, Math.cos(a - wind));
