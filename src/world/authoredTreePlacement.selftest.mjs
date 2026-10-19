@@ -18,6 +18,7 @@ import { SHORELINE_SEGMENTS, shorelineDistance, shorelineRadiusAt } from './shor
 import { treeBiomeArid, treeBiomeOpen, treeBiomeRiparian, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread } from './treeBiomes.ts';
 import { TREE_GROWTH_PROFILES } from './treeGrowth.ts';
 import { resolveLandUseProfile } from './landUse.ts';
+import { civicLawnTest, civicPavedRooms, civicTreeStations } from './civic/plans/index.ts';
 import polders from './maps/polders.ts';
 import mangrove from './maps/mangrove.ts';
 import orchard from './maps/orchard.ts';
@@ -44,7 +45,9 @@ const dependencies = { THREE, mulberry32, treeRichness, TREE_ARCHETYPES, treeTru
   // trees lane (2026-10-05): an opted-in map's stands inside its settlement rect (vegetation.ts authoredInSettlement)
   insideClearPolygon, plannedSiteClearances,
   // symmetric deployments (modes lane 2026-10-08): the slots' clearings, the trees in them dropped after placement
-  deploymentClearings, excludeVegetation };
+  deploymentClearings, excludeVegetation,
+  // (the maps lane, 228) a civic plan's trees and lawns (world/civic)
+  civicTreeStations, civicLawnTest, civicPavedRooms };
 const builder = new Function(...Object.keys(dependencies), `return ${stripTypeScriptTypes(`function* placement(heightField, cfg) {
   const seed = 2001, rng = mulberry32(seed), group = new THREE.Group();
   // trees round 5: the field law's constants (vegetation.ts module scope), read from the source

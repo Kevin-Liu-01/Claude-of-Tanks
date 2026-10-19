@@ -102,8 +102,6 @@ function fixture({ closeThrows = false } = {}) {
     // step) and its stack (stackLandUseBake) run as they do in the game
     const makeMaskTexture = () => own(new THREE.DataTexture(new Uint8Array(64 * 64 * 4), 64, 64, THREE.RGBAFormat));
     const MASK_STACK_GUTTER = 64, MAP_SIZE = 1024;
-    // (the maps lane, 228) a civic plan's lawns and paved rooms reach only the stubbed mask
-    const civicLawns = () => [], civicPavedRooms = () => [];
     // (2026-10-04, the tier gate: the material reads the live preset — High here, its change listener a no-op)
     const resolvePresetName = () => 'high', onPresetChange = () => () => true;
     ${functions}

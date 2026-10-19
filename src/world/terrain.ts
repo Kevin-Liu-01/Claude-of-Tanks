@@ -597,6 +597,8 @@ export interface TerrainLayout {
   roadStations?: (RoadStationOrigin | null)[];
   /** Round 57: the authored rail spurs, carried to the dressing kit like the lake discs; absent when the map lays none. */
   railSpurs?: readonly RailSpurConfig[];
+  /** (the maps lane, 228) a civic plan's lawns and paved square (world/civic/plans); absent on a map without one. */
+  civicGround?: { readonly lawns: readonly CivicRect[]; readonly paved: readonly CivicRect[] };
   terrain: TerrainSettings;
 }
 
@@ -1204,6 +1206,8 @@ export function createLayout(cfg: TerrainMapConfig | null = null, completeRoads 
     ...(roadStations ? { roadStations } : {}),
     // Round 57 (2026-09-24): authored rail spurs ride the layout to the dressing kit; no key on a map without one.
     ...(t.railSpurs?.length ? { railSpurs: t.railSpurs } : {}),
+    // (the maps lane, 228) a civic plan's ground (world/civic): the lawns the mask keeps green, the square it paves
+    ...(civicLawns(cfg?.id).length ? { civicGround: { lawns: civicLawns(cfg?.id), paved: civicPavedRooms(cfg?.id) } } : {}),
     terrain: t,
   };
 }
@@ -8037,7 +8041,7 @@ function* createSplatMaterialSteps(
   sourcedTexturesReady.then(measureLayerMeans, measureLayerMeans);
   const maskNoi = new SimplexNoise({ random: mulberry32(3010) });
   const mask = makeMaskTexture(maskNoi, layout, rockMask, waterWetnessAt,
-    S.shoreDirt ? (S.seaRamp?.[0] ?? 0.40) : null, sorWetnessAt, !!S.townPaving, civicLawns(mapId), civicPavedRooms(mapId));
+    S.shoreDirt ? (S.seaRamp?.[0] ?? 0.40) : null, sorWetnessAt, !!S.townPaving, layout.civicGround?.lawns, layout.civicGround?.paved);
   yield;
   if (!_splatFields) yield* splatFieldSteps();
   const noiseTex = makeShaderNoiseTexture(3011);
