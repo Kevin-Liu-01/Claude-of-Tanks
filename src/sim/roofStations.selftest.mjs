@@ -154,6 +154,12 @@ function run({ shooter, context }, seconds = 12) {
   assert.deepEqual(headOn, [], 'no MBT is engaged head-on by a 12.7 mm station at 100 m');
   // a turret traversed broadside shows the turret's flank: the turret plates follow the turret's yaw
   assert.ok(at(TANK_SPECS.bmp2, Math.PI, Math.PI / 2) >= at(TANK_SPECS.bmp2, Math.PI) - 1e-9, 'turret plates follow the turret');
+  // 2026-10-19 (owner: "Make roof guns hold fire where their rounds cannot hurt"): the share is the target's, the round
+  // is judged where it lands. A BMP-2 50 degrees off its rear shows mostly armour the K6 defeats, but the line to its
+  // centre meets armour it cannot: it took every round of the K6's bursts; now the K6 holds (src/sim/roofHoldFire.selftest
+  // .mjs: every round, every station, host and solo)
+  assert.ok(at(TANK_SPECS.bmp2, -50 * DEG) >= heavy.engageShare, 'the share rule would engage the BMP-2 50 degrees off its rear');
+  assert.deepEqual(duel('bmp2', 100, -50 * DEG), [0, 0], 'the K6 holds where the line to its centre meets armour it cannot defeat');
 }
 // 9. VH.14 launch interlock (coordinator ruling 2026-10-15): while the vehicle's own drone launches, every roof station
 //    turns back to its rest bearing, levels and holds fire; it takes its target again once the launch is over. The
@@ -183,4 +189,4 @@ function run({ shooter, context }, seconds = 12) {
   for (const id of ['t62_1975', 'type59']) assert.ok(missionAttachmentMotionClear(TANK_SPECS[id], MISSION_ATTACHMENT_SEATS[id]),
     `${id}: the drone stand clears its DShK (whole sweep docked, at rest launching)`);
 }
-console.log('roofStations: the TTS 30 mm and roof M2 both fire, each in its arc (30 mm -148..35°, M2 -56..12°), never across each other, and the 30 mm above the roof front; one toggle and one module; arcs measured against the stock; and (VH.14) a station engages only a vehicle its round can hurt; the launch interlock parks every station while its drone launches');
+console.log('roofStations: the TTS 30 mm and roof M2 both fire, each in its arc (30 mm -148..35°, M2 -56..12°), never across each other, and the 30 mm above the roof front; one toggle and one module; arcs measured against the stock; and (VH.14) a station engages only a vehicle its round can hurt where the round lands; the launch interlock parks every station while its drone launches');

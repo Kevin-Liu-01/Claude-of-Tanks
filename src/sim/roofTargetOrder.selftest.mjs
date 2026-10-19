@@ -12,7 +12,7 @@ let seed = 99991;
 const random = () => { seed = (seed * 1103515245 + 12345) >>> 0; return seed / 4294967296; };
 const pick = (n) => Math.floor(random() * n);
 
-/** The pre-2026-10-13 scan, verbatim in its logic. */
+/** The pre-2026-10-13 scan, verbatim in its logic (with the lane law of 2026-10-19 below). */
 function referenceTarget(entity, context, rangeM, from) {
   const point = new Vector3();
   let target = null, best = rangeM * rangeM;
@@ -20,17 +20,29 @@ function referenceTarget(entity, context, rangeM, from) {
     if (other === entity || other.team === entity.team || other.combat.destroyed || other.modeActive === false || !context.visible(other, entity)) continue;
     point.set(other.state.pos.x, other.state.pos.y + (other.spec.dims?.heightM ?? 2.5) * 0.5, other.state.pos.z);
     const distance = from.distanceToSquared(point);
-    if (distance < best && referenceLaneClear(entity, other, context.entities, from, point) && context.clear(from, point)) { target = other; best = distance; }
+    if (distance < best && referenceLaneClear(entity, other, context, from, point) && context.clear(from, point)) { target = other; best = distance; }
   }
   return target;
 }
-function referenceLaneClear(shooter, target, entities, a, b) {
+/** The lane: no ally in the friendly-fire corridor and (2026-10-19, roof guns hold fire where their rounds cannot hurt)
+ * no wreck or seen enemy hull box the round would strike first. The hull box sampled along the lane, independently of
+ * the station's slab test. */
+function referenceLaneClear(shooter, target, context, a, b) {
   const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z, length = dx * dx + dy * dy + dz * dz;
-  for (const ally of entities) {
-    if (ally === shooter || ally === target || ally.team !== shooter.team || ally.modeActive === false) continue;
-    const p = ally.state.pos, y = p.y + (ally.spec.dims?.heightM ?? 2.5) * 0.5;
-    const t = ((p.x - a.x) * dx + (y - a.y) * dy + (p.z - a.z) * dz) / (length || 1);
-    if (t > 0 && t < 1 && (a.x + t * dx - p.x) ** 2 + (a.z + t * dz - p.z) ** 2 < 9 && Math.abs(a.y + t * dy - y) < 2.5) return false;
+  for (const other of context.entities) {
+    if (other === shooter || other === target || other.modeActive === false) continue;
+    if (other.team === shooter.team) {
+      const p = other.state.pos, y = p.y + (other.spec.dims?.heightM ?? 2.5) * 0.5;
+      const t = ((p.x - a.x) * dx + (y - a.y) * dy + (p.z - a.z) * dz) / (length || 1);
+      if (t > 0 && t < 1 && (a.x + t * dx - p.x) ** 2 + (a.z + t * dz - p.z) ** 2 < 9 && Math.abs(a.y + t * dy - y) < 2.5) return false;
+      continue;
+    }
+    if (!other.combat.destroyed && !context.visible(other, shooter)) continue;
+    const s = other.state, c = Math.cos(s.yaw), n = Math.sin(s.yaw), h = other.spec.dims?.heightM ?? 2.5;
+    for (let k = 1; k < 4000; k++) {
+      const t = k / 4000, x = a.x + t * dx - s.pos.x, y = a.y + t * dy, z = a.z + t * dz - s.pos.z;
+      if (Math.abs(x * c - z * n) <= 1.7 && Math.abs(x * n + z * c) <= 3.3 && y >= s.pos.y && y <= s.pos.y + h) return false;
+    }
   }
   return true;
 }
