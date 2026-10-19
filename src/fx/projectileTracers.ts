@@ -97,6 +97,8 @@ interface TracerClass {
    *  round read from far off against a bright sky needs more than a ground gun's */
   dayK?: number;
   dayWidthK?: number;
+  /** (ac130-fx-228 r2) its own day colour over its lineage's (the gunship's cannon: read from the ground against the sky) */
+  dayRgb?: readonly number[];
 }
 
 // Classes by calibre: rifle and heavy machine guns, autocannons, tank guns.
@@ -116,8 +118,11 @@ const TANK: TracerClass = { beltEvery: 1, burnS: 3.6, halfWidthPx: 1.35, haloPx:
 // (r2, the motion critic: "by day, from the ground, thin pale-pink lines that nearly vanish against bright sky"; "in
 // daylight IR 1-2 px dots") by day its core burns over twice the shared day share and widens to about double, so the
 // strontium reads as a hot orange-red dash on sky and in the thermal lens
+// (r2b, the round's own film from the ground: "pale pink" on a blue sky) its day colour carries more of the strontium's
+// orange, so the additive dash reads hot orange-red against sky and cloud, not a pink line
+const GUNSHIP_CANNON_DAY: readonly number[] = [1.0, 0.38, 0.08];
 const GUNSHIP_CANNON: TracerClass = { beltEvery: 2, burnS: 3.4, halfWidthPx: 1.5, haloPx: 9, core: 3.4, halo: 0.24,
-  igniteM: 6, streakMaxM: 24, dayK: 2.3, dayWidthK: 1.0 };
+  igniteM: 6, streakMaxM: 24, dayK: 2.3, dayWidthK: 1.0, dayRgb: GUNSHIP_CANNON_DAY };
 const GUNSHIP_HOWITZER: TracerClass = { beltEvery: 1, burnS: 6, halfWidthPx: 2.3, haloPx: 14, core: 5.6, halo: 0.34,
   igniteM: 8, streakMaxM: 24, heavy: true, bead: 2.8 };
 /** (ac130-fx-228) the screenshot composer's frozen rounds held at once (pooled; the oldest reused past it) */
@@ -483,6 +488,7 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     if (cls.heavy) { r.core = TANK_CORE; r.day = TANK_DAY; r.halo = TANK_HALO; }
     else if (lineage === 'east') { r.core = GREEN_CORE; r.day = GREEN_DAY; r.halo = GREEN_HALO; }
     else { r.core = RED_CORE; r.day = RED_DAY; r.halo = RED_HALO; }
+    if (cls.dayRgb) r.day = cls.dayRgb;
     const h = typeof shell.id === 'number' ? shell.id : hashKey(shell.id);
     r.seed = ((Math.imul(h | 0, 0x9e3779b1) >>> 0) % 10007) / 10007;
     r.seen = false;

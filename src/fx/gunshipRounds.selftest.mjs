@@ -64,7 +64,7 @@ assert.ok(core.getX(0) > core.getZ(0), 'a warm orange compound');
 tr.reset();
 tr.begin(); for (let i = 0; i < 6; i++) tr.write(round(10 + i, { type: 'AP', reloadGroup: 'gunship-cannon', caliberMm: 30 }, 100)); tr.end();
 assert.equal(geo.instanceCount, 3, 'the 30 mm belt: every second round lit');
-assert.ok(core.getX(0) > 3 * core.getY(0), 'NATO red, not the pilot tank lineage green');
+assert.ok(core.getX(0) > 2 * core.getY(0) && core.getY(0) > 3 * core.getZ(0), 'NATO red-orange, not the pilot tank lineage green');
 tr.reset();
 // the composer: a pooled static round, full for 0.3 s, gone by 0.9 s, shifted with the clock
 tr.begin(); tr.compose(0, 2, 3.4, 0, 2, 1.2, 120, now); tr.end();
