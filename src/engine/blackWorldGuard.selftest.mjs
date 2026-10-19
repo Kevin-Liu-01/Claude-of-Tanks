@@ -23,6 +23,7 @@ Object.assign(globalThis, on('window'));
 globalThis.document = { ...on('document'), hidden: false, pointerLockElement: null, hasFocus: () => true,
   querySelector: (selector) => (selector === '.cot-bl' ? cover : null) };
 const fire = (key) => listeners.get(key)?.();
+const DT = 1 / 60;
 
 const { installBlackWorldGuard, judgeVerdict, countProbeCells, countGroundCells, CPU, PROBE_CELLS, PROBE_EVERY } =
   await import('./blackWorldGuard.ts');
@@ -119,7 +120,7 @@ function createWorld({ focused = () => true } = {}) {
     sceneAA, aerial, lateFx, gtao, taa, composer, dynScale: 0.67, perfTrim: 0, msaaSamples: 0, sizes: [],
     render() {
       info.render.calls += 12; // shadow-free post passes
-      if (sceneAA.enabled) post.sceneAA.render(renderer, null, null, 1 / 60, false);
+      if (sceneAA.enabled) post.sceneAA.render(renderer, null, null, DT, false);
       else sceneOutput = 'lit'; // the aerial pass reads the last scene target: a frozen world, never black
     },
     setSize(w, h) { post.sizes.push([w, h]); },
@@ -146,7 +147,7 @@ function createWorld({ focused = () => true } = {}) {
       // the battle presentation sets every actor's visibility each frame (battlePresentationRuntime.ts)
       tank.visible = true;
       each?.(i);
-      post.render(1 / 60, 1 / 60);
+      post.render(DT, DT);
       clock += 1000 / 60;
     }
   };
@@ -178,7 +179,7 @@ if (process.argv.includes('--allocation-windows')) {
   h.frames(1200);
   await session.post('HeapProfiler.stopSampling');
   const windows = [];
-  for (let w = 0; w < 3; w++) {
+  for (let w = 0; w < 5; w++) {
     await session.post('HeapProfiler.startSampling', { samplingInterval: 16,
       includeObjectsCollectedByMajorGC: true, includeObjectsCollectedByMinorGC: true });
     h.frames(600);
@@ -254,14 +255,16 @@ if (process.argv.includes('--allocation-windows')) {
   assert.ok(s.probes >= Math.floor(60 / PROBE_EVERY) - 1 && s.probes <= Math.ceil(60 / PROBE_EVERY) + 2, `probes on cadence: ${s.probes}`);
   assert.ok(s.readbacks >= s.probes - 1, 'every probe reads back two frames later');
   assert.equal(h.reports.length, 0);
-  // heap sampling (allocationWindows, in a child on the optimizing tier alone: --no-maglev): a per-frame or per-probe
-  // allocation of even one 16-byte object would read 9.6 KB (0.8 KB) in every 600-frame window
-  const child = spawnSync(process.execPath, ['--no-maglev', '--max-old-space-size=2048', fileURLToPath(import.meta.url),
+  // heap sampling (five 600-frame windows, in a child on the optimizing tier alone: --no-maglev)
+  // (no inlining either: a stand-in's own allocation must not be billed to the guard frame that called it)
+  const child = spawnSync(process.execPath, ['--no-maglev', '--no-turbo-inlining', '--max-old-space-size=2048', fileURLToPath(import.meta.url),
     '--allocation-windows'], { encoding: 'utf8', maxBuffer: 16 << 20 });
   const line = String(child.stdout).trim().split('\n').filter((l) => l.startsWith('{"windows"')).pop();
   assert.ok(child.status === 0 && line, `the allocation child ran: ${child.status} ${String(child.stderr).slice(-400)}`);
   const { windows } = JSON.parse(line);
-  assert.ok(windows.every((w) => w.bytes === 0), `no guard allocation in three steady 600-frame windows: ${JSON.stringify(windows)}`);
+  // a per-frame or per-probe allocation reads in every window (9.6 KB or 0.8 KB at 16 B); a one-off of the runtime (a
+  // feedback vector, a code tier-up: ~2 KB once) reads in one: at least three of the five windows hold nothing at all
+  assert.ok(windows.filter((w) => w.bytes === 0).length >= 3, `no guard allocation in steady 600-frame windows: ${JSON.stringify(windows)}`);
   h.frames(600);
   assert.equal(h.guard.stats().incidents, 0);
   assert.ok(h.guard.stats().probes >= 50, 'the probe kept its cadence');

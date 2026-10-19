@@ -70,7 +70,7 @@ try {
   assert.equal(injections[1].repeats, 40);
   const text = formatSummary({ table, injections, totals });
   assert.match(text, /total: 1 BLACK-WORLD runs of 4 \(1 harness errors\); 2 black frames of 68; 1 guard incidents on natural runs/);
-  assert.match(text, /\| layers \| camera-layer-mask \| H1 \| H1 \| 90 \| 160 \|/);
+  assert.match(text, /\| layers \| camera-layer-mask \| H1 \| H1 \| 90 \| 160 \| 160 \|/);
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

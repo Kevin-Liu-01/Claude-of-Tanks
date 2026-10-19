@@ -699,7 +699,9 @@ function guardReceiptsSince() {
   const since = inj ? inj.injectAt - 50 : 0;
   const rows = ring.filter((r) => r.openedAtMs >= since).map((r) => ({ class: r.class, steps: r.steps.map((s) => s.step + (s.note ? `(${s.note})` : '')),
     repeats: r.repeats ?? 0, healedBy: r.healedBy, closed: r.closed, openedAfterMs: inj ? Math.round(r.openedAtMs - inj.injectAt) : null,
-    healedAfterMs: inj && r.healedAtMs !== null ? Math.round(r.healedAtMs - (inj.persist ? inj.until : inj.injectAt)) : null,
+    // the world is back the frame after the healing rung acted (lastStepAtMs); the probe confirms it a few frames later
+    healedAfterMs: inj && r.lastStepAtMs != null ? Math.max(0, Math.round(r.lastStepAtMs - (inj.persist ? inj.until : inj.injectAt))) : null,
+    confirmedAfterMs: inj && r.healedAtMs !== null ? Math.round(r.healedAtMs - (inj.persist ? inj.until : inj.injectAt)) : null,
     healMs: r.healMs, cpu: { calls: r.cpu.sceneCalls, mask: r.cpu.cameraMask, bits: r.cpu.bits }, probe: r.probe,
     framebuffer: r.target.framebuffer ?? null, glErrors: r.gl.errors, warm: r.warm, sinceRevealMs: r.sinceRevealMs }));
   return { inject: inj ?? null, receipts: rows, stats: window.__COT_BLACK_GUARD?.stats() ?? null,
@@ -1472,7 +1474,7 @@ try {
         if (step.action === 'inject') {
           row.guardHeal = await page.evaluate(guardReceiptsSince).catch((e) => ({ error: String(e) }));
           const first = row.guardHeal?.receipts?.[0];
-          log(`  guard after ${step.value}: ${first ? `${first.class} healed by ${first.healedBy} after ${first.healedAfterMs} ms (opened +${first.openedAfterMs} ms, rungs ${first.steps.join(' ')}${first.repeats ? `, H1 x${first.repeats}` : ''})` : 'no incident'}; tiny sizes ${row.guardHeal?.tinySizes}; pass errors ${row.guardHeal?.passErrors?.length ?? 0}`);
+          log(`  guard after ${step.value}: ${first ? `${first.class} healed by ${first.healedBy}, world back after ${first.healedAfterMs} ms, confirmed after ${first.confirmedAfterMs} ms (opened +${first.openedAfterMs} ms, rungs ${first.steps.join(' ')}${first.repeats ? `, H1 x${first.repeats}` : ''})` : 'no incident'}; tiny sizes ${row.guardHeal?.tinySizes}; pass errors ${row.guardHeal?.passErrors?.length ?? 0}`);
           row.injectUndo = await page.evaluate(() => { try { return window.__bwrUndo?.() ?? null; } catch (e) { return String(e); } });
         }
         if (step.action === 'dynflap') {

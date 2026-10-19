@@ -191,6 +191,8 @@ export interface BlackWorldReceipt {
   steps: IncidentStep[];
   /** H1 re-asserted after the ladder ran out, inside its cooldown */
   repeats?: number;
+  /** When the last rung (or H1's last re-assertion) acted: the world is back on the next frame when that rung healed it */
+  lastStepAtMs?: number;
   healedBy: RenderBlackWorldStep | null;
   healedAtMs: number | null;
   /** ms from the incident's first failing verdict to the healthy one */
@@ -389,12 +391,17 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     probeUniforms.tColor.value = sceneTarget.texture;
     probeUniforms.tDepth.value = sceneTarget.depthTexture;
     probeUniforms.uFarFromNdc.value.multiplyMatrices(camera.matrixWorld, camera.projectionMatrixInverse);
-    const datum = post.aerial.uniforms.uHazeDatum?.value;
-    probeView[0] = camera.matrixWorld.elements[13] - (typeof datum === 'number' && Number.isFinite(datum) ? datum : 0);
-    probeView[1] = camera.far;
+    // (field stores, no calls taking fresh doubles: an argument a callee is not inlined for is boxed)
     const e = camera.matrixWorld.elements;
-    // (groundReachSlope's law, inline)
-    probeUniforms.uCamReach.value.set(e[12], e[13], e[14], -Math.max(1, probeView[0]) / (0.8 * probeView[1]));
+    const datum = post.aerial.uniforms.uHazeDatum?.value;
+    probeView[0] = e[13] - (typeof datum === 'number' && datum === datum && datum - datum === 0 ? datum : 0);
+    probeView[1] = camera.far;
+    const reach = probeUniforms.uCamReach.value;
+    reach.x = e[12];
+    reach.y = e[13];
+    reach.z = e[14];
+    // groundReachSlope's law
+    reach.w = -(probeView[0] > 1 ? probeView[0] : 1) / (0.8 * probeView[1]);
     // an airless map's sky is black space: only the ground cells can say the world drew
     probeUniforms.uAllCells.value = post.aerial.uniforms.uAirless?.value === 1 ? 0 : 1;
   }
@@ -549,8 +556,8 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
     if (sceneRan && sceneCalls < MIN_SCENE_CALLS) bits |= CPU.EMPTY;
     cpuBits = bits;
 
-    // a verdict point: a readback landed, or a decisive CPU signal held with no probe able to answer
-    const cpuOnly = (bits & CPU_DECISIVE) !== 0 && frame - lastVerdictFrame >= CPU_VERDICT_FRAMES && !pending;
+    // a verdict point: the probe's queries answered, or a decisive CPU signal held (it needs no probe to be believed)
+    const cpuOnly = (bits & CPU_DECISIVE) !== 0 && frame - lastVerdictFrame >= CPU_VERDICT_FRAMES;
     // (an unfocused document presents nothing the player sees: no verdict either way)
     if ((probeResult || cpuOnly) && focused()) {
       lastVerdictFrame = frame;
@@ -584,7 +591,8 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
       return;
     }
     failsSinceStep++;
-    if (failsSinceStep >= FAILS_PER_STEP) step(t);
+    // (a ladder that ran out re-asserts the state on every failing verdict: the cheapest rung, invisible when healthy)
+    if (failsSinceStep >= (stepIndex >= 4 ? 1 : FAILS_PER_STEP)) step(t);
   }
 
   // ---- the receipt ----
@@ -761,6 +769,7 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
       // more for the same incident only after the cooldown
       if (t - ladderEndedAt < LADDER_COOLDOWN_MS) {
         incident.repeats = (incident.repeats ?? 0) + 1;
+        incident.lastStepAtMs = Math.round(t);
         lastStep = 'H1';
         try { healState(); } catch { /* the next verdict tries again */ }
         return;
@@ -778,6 +787,7 @@ function createGuard(initial: BlackWorldGuardPorts): { guard: BlackWorldGuard; u
         continue;
       }
       incident.steps.push({ step: name, atMs: Math.round(t) });
+      incident.lastStepAtMs = Math.round(t);
       lastStep = name;
       try {
         if (name === 'H1') healState();

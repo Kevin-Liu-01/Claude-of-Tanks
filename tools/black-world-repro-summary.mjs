@@ -76,7 +76,8 @@ export function summarizeParts(dirs) {
         const first = heal?.receipts?.[0] ?? null;
         injections.push({ part: path.basename(dir), map: run.map, fault: String(run.action).slice('inject-'.length),
           class: first?.class ?? null, healedBy: first?.healedBy ?? null, rungs: first?.steps ?? [], repeats: first?.repeats ?? 0,
-          openedAfterMs: first?.openedAfterMs ?? null, healedAfterMs: first?.healedAfterMs ?? null, receipts: heal?.receipts?.length ?? 0,
+          openedAfterMs: first?.openedAfterMs ?? null, healedAfterMs: first?.healedAfterMs ?? null,
+          confirmedAfterMs: first?.confirmedAfterMs ?? first?.healedAfterMs ?? null, receipts: heal?.receipts?.length ?? 0,
           tinySizes: heal?.tinySizes ?? null, passErrors: heal?.passErrors?.length ?? 0 });
         continue;
       }
@@ -128,11 +129,11 @@ export function formatSummary({ table, injections, totals }) {
     + `${totals.incidents} guard incidents on natural runs`);
   if (injections.length) {
     lines.push('');
-    lines.push('| part | map | injected fault | guard class | healed by | rungs | opened after (ms) | world back after (ms) | tiny sizes | pass errors |');
-    lines.push('|---|---|---|---|---|---|---|---|---|---|');
+    lines.push('| part | map | injected fault | guard class | healed by | rungs | opened after (ms) | world back after (ms) | confirmed after (ms) | tiny sizes | pass errors |');
+    lines.push('|---|---|---|---|---|---|---|---|---|---|---|');
     for (const r of injections) {
       lines.push(`| ${r.part} | ${r.map} | ${r.fault} | ${r.class ?? 'none'} | ${r.healedBy ?? '-'} | ${r.rungs.join(' ') || '-'}${r.repeats ? ` (H1 x${r.repeats})` : ''} | `
-        + `${r.openedAfterMs ?? '-'} | ${r.healedAfterMs ?? '-'} | ${r.tinySizes ?? '-'} | ${r.passErrors} |`);
+        + `${r.openedAfterMs ?? '-'} | ${r.healedAfterMs ?? '-'} | ${r.confirmedAfterMs ?? '-'} | ${r.tinySizes ?? '-'} | ${r.passErrors} |`);
     }
   }
   return lines.join('\n');
