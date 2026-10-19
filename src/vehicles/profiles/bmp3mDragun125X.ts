@@ -217,7 +217,7 @@ function addDragunSideArmor(P: TankBuilderPort): void {
         }
         // Leading skirt return is a structural tapered end, not a duplicate belt.
         P.addExternalArmor('hull', box(.38, .64, .42), side * 1.80, 1.28, 3.61, -.25);
-        P.addMudguard(`dragun-front-${side}`, 'hullRubber', box(.42, .29, .04), side * 1.41, .98, 3.42, -.20);
+        P.hangMudguard(`dragun-front-${side}`, 'hullRubber', box(.42, .29, .04), side * 1.41, .98, 3.42, -.20);
         P.addMudguard(`dragun-rear-${side}`, 'hullRubber', box(.42, .36, .04), side * 1.41, .96, -3.31, .15);
         towEye(P, side, .76, 1.47, 3.55);
         optic(P, 'hull', side * 1.48, 1.74, 3.42, .23, .15, .18);

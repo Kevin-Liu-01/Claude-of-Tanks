@@ -35,7 +35,7 @@ function buildHull(P: TankBuilderPort): void {
     sideWall(P,side,1.625,1.68,[[-3.65,1.36,2.04],[-3.19,.84,2.04]]);
     sideWall(P,side,1.50,1.66,[[2.39,1.29,1.85],[3.54,1.54,1.64]]);
     P.addMudguard(`borsuk-front-${side}`,'hullRubber',box(.53,.25,.028),side*1.34,1.27,3.61,-.57);
-    P.addMudguard(`borsuk-rear-${side}`,'hullRubber',box(.51,.28,.028),side*1.34,.96,-3.41,.10);
+    P.hangMudguard(`borsuk-rear-${side}`,'hullRubber',box(.51,.28,.028),side*1.34,.96,-3.41,.10);
     P.addEquipment('hullDark',box(.37,.16,.026),side*1.17,1.80,2.99,-.23);
     for (const dx of [-.085,.085]) P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.045,.022,16), 'headlight'),side*1.17+dx,1.80,3.013,-.23);
     KIT.liftEye(P,'hullDetail',side*1.23,1.58,3.50);

@@ -99,7 +99,7 @@ function mudguards(P:TankBuilderPort,side:number):void {
     .map(([z,y])=>new THREE.Vector2(-side*z,y)));
   const rg=new THREE.ExtrudeGeometry(rear,{depth:.60568,steps:1,bevelEnabled:false});
   rg.rotateY(side*Math.PI/2);
-  P.addMudguard('type10-x-rear-flexible-flap','hullRubber',rg,side*.91845,0,0);
+  P.hangMudguard('type10-x-rear-flexible-flap','hullRubber',rg,side*.91845,0,0);
 }
 
 function deckEquipment(P:TankBuilderPort):void {

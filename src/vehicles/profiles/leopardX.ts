@@ -474,8 +474,8 @@ function a7Skirts(P: TankBuilderPort): void {
     }
     a7TerminalSkirt(P,side);
     P.add('hull',box(.30,.39,1.49),side*1.71,1.76,-3.06);
-    P.addMudguard('a7v-x-front-flap','hullRubber',box(.62,.17,.045),side*1.49,1.08,3.79,-.14);
-    P.addMudguard('a7v-x-rear-flap','hullRubber',box(.63,.50,.045),side*1.48,.76,-3.86,.10);
+    P.hangMudguard('a7v-x-front-flap','hullRubber',box(.62,.17,.045),side*1.49,1.08,3.79,-.14);
+    P.hangMudguard('a7v-x-rear-flap','hullRubber',box(.63,.50,.045),side*1.48,.76,-3.86,.10);
   }
 }
 
@@ -509,7 +509,7 @@ function a6HullCage(P: TankBuilderPort): void {
       P.addEquipment('hullOpenLatticeDark',box(.26,.035,.044),side*1.86,1.64,z);
     }
     for(let j=0;j<13;j++) P.addEquipment('hullOpenLattice',box(.027,.018,7.05),side*1.972,.983+j*.071,-.38);
-    P.addMudguard('a6m-x-rear-flap','hullRubber',box(.55,.48,.045),side*1.34,.72,-3.69);
+    P.hangMudguard('a6m-x-rear-flap','hullRubber',box(.55,.48,.045),side*1.34,.72,-3.69);
   }
   for(let j=0;j<13;j++) P.addEquipment('hullOpenLattice',box(3.96,.018,.027),0,.983+j*.071,-3.93);
   for(const x of [-1.96,-.66,.66,1.96]) P.addEquipment('hullOpenLattice',box(.036,.94,.036),x,1.445,-3.93);
@@ -543,7 +543,7 @@ function a5Skirts(P: TankBuilderPort): void {
     P.add('hull',box(.033,1.480-1.308,1.50-(-3.49)),side*1.7205,(1.480+1.308)/2,(1.50+(-3.49))/2);
     P.add('hull',box(.041,1.480-1.344,1.672-1.493),side*1.7585,(1.480+1.344)/2,(1.672+1.493)/2);
     a5FrontGuard(P,side);
-    P.addMudguard('a5-x-rear-flap','hullRubber',box(.60,.45,.045),side*1.371,.85,-3.53);
+    P.hangMudguard('a5-x-rear-flap','hullRubber',box(.60,.45,.045),side*1.371,.85,-3.53);
     a5BowTowEye(P,side);
     P.addEquipment('hullDetail',box(.10,.11,.08),side*.646,1.207,3.74);
   }

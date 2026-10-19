@@ -101,6 +101,8 @@ interface JapaneseBuilderPort {
     owner: VehicleAssemblyOwner,
     build: () => void,
   ): void;
+  /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
+  hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
 interface FaceSample {

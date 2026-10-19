@@ -63,6 +63,7 @@ interface MudguardBuilderPort {
   readonly hullG: THREE.Group;
   add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  hangMudguard?(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
 interface ShapedMudguardOptions {
@@ -92,6 +93,8 @@ interface ShapedMudguardOptions {
   readonly profile?: readonly (readonly [number, number])[];
   readonly rotation?: Vec3Tuple;
   readonly support?: boolean;
+  /** Hang the guard from the hull stock above its top edge once the profile is done (P.hangMudguard). */
+  readonly hang?: boolean;
 }
 
 interface SharedMudguardReceipt {
@@ -1206,7 +1209,8 @@ function addShapedMudguard(builder: RuntimeValue, options: ShapedMudguardOptions
     closedProfile: true,
     customFamilyGeometry: Boolean(options.geometry),
   };
-  P.addMudguard(options.label, bucket, geometry,
+  const register = options.hang && P.hangMudguard ? P.hangMudguard.bind(P) : P.addMudguard.bind(P);
+  register(options.label, bucket, geometry,
     options.x, options.y, options.z, rotation[0], rotation[1], rotation[2]);
 
   // A narrow painted hanger at the upper edge makes the support relationship

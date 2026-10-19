@@ -146,6 +146,8 @@ export interface UKBuilderPort {
   scaleAllBuckets(x?: number, y?: number, z?: number): void;
   scaleBuckets(slots: readonly string[], x?: number, y?: number, z?: number): void;
   scaleDecals(scale: number): void;
+  /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
+  hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
 function applyCompleteVehicleScale(
@@ -224,6 +226,8 @@ function applyCompleteVehicleScale(
 interface UKCenturionPort extends UKMaterialPort {
   readonly rng: () => number;
   addGunExtra(geometry: THREE.BufferGeometry, ...transform: number[]): void;
+  /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
+  hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
 interface TrackWheel {
@@ -2118,8 +2122,8 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
     // pulled 1.548 -> 1.560 (the pin-cap envelope ends 1.5555; the clip
     // audit read 14 rear vox with the tall flap at 1.548).)
     for (const s of [-1, 1]) {
-      P.add('hullRubber', box(0.0765, 0.85, 0.028), s * 1.59825, 1.05, -3.05);
-      P.add('hullRubber', box(0.079, 0.841, 0.028), s * 1.597, 1.0455, 3.44);
+      P.hangMudguard('centurion-rear-skirt-flap', 'hullRubber', box(0.0765, 0.85, 0.028), s * 1.59825, 1.05, -3.05);
+      P.hangMudguard('centurion-front-skirt-flap', 'hullRubber', box(0.079, 0.841, 0.028), s * 1.597, 1.0455, 3.44);
     }
     spareTrackStrip(P, 'hull', -0.55, 1.41, 3.05, 3);
     // Engine deck: louvre field + fillers, all under the ref's 1.755 ceiling.
@@ -3277,7 +3281,7 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
     }
     // mud flaps at the fender shelf tips
     for (const s of [-1, 1]) {
-      P.add('hullRubber', box(0.36, 0.27, 0.028), s * 1.155, 1.145, 3.148, -0.05, 0, 0);
+      P.hangMudguard('fv510-front-flap', 'hullRubber', box(0.36, 0.27, 0.028), s * 1.155, 1.145, 3.148, -0.05, 0, 0);
       P.add('hullRubber', box(0.36, 0.25, 0.028), s * 1.155, 1.10, -2.78, 0.05, 0, 0);
     }
     // ---- KIT fittings (§I census): headlight clusters in guards, rear
@@ -3841,8 +3845,8 @@ function addVickersMk1Hull(P: UKBuilderPort): void {
   // ref side bot is already the idler climb ~0.5).
   for (const s of [-1, 1]) {
     P.add('hullDetail', box(0.44, 0.04, 0.30), s * 1.33, 1.525, -3.28);
-    P.add('hullRubber', box(0.40, 0.34, 0.03), s * 1.30, 1.05, -3.415, 0.06, 0, 0);
-    P.add('hullRubber', box(0.10, 0.60, 0.035), s * 1.525, 0.94, 3.31);
+    P.hangMudguard('vickers-mk1-rear-flap', 'hullRubber', box(0.40, 0.34, 0.03), s * 1.30, 1.05, -3.415, 0.06, 0, 0);
+    P.hangMudguard('vickers-mk1-front-flap', 'hullRubber', box(0.10, 0.60, 0.035), s * 1.525, 0.94, 3.31);
   }
   // Fender tip wedges sloping down over the raised idler (ref side falls
   // 1.35 → 1.09 over b 3.30..3.56 at |x| up to 1.55 — thin curved mudguard

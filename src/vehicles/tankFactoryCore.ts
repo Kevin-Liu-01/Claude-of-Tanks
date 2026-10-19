@@ -127,6 +127,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createWeaponFinishMaterials, linkWeaponFinish, mainBarrelIsWeaponSteel, paintAmmoVertexColours, prepareWeaponFinishGeometry } from './weaponFinish.ts';
 import { ditherPaintTone, relaxFlatFans } from './surfaceFinish.ts';
 import { seatAuthoredSpareTracks } from './spareTrackSeatPass.ts';
+import { hangAuthoredMudguards, type MudguardHangRequest } from './mudguardHangers.ts';
 import { spareLinkBlock } from './spareLinkGeometry.ts';
 import { resetSpareTrackRunSerial, seatRoleForBucket, seatRoleForPart, spareTrackRunTag, type SeatRole } from './spareTrackSeat.ts';
 
@@ -993,6 +994,14 @@ export interface TankBuilderPort extends GeometryAddPort, GunBuilderPort, Cupola
     geometry: THREE.BufferGeometry,
     ...transform: TransformNumbers
   ): void;
+  /** addMudguard, then hung from the first permanent hull stock above its top edge once the profile is done
+   * (mudguardHangers.ts): for a flap or skirt whose builder leaves air between it and its fender or overhang. */
+  hangMudguard(
+    label: string,
+    bucket: string,
+    geometry: THREE.BufferGeometry,
+    ...transform: TransformNumbers
+  ): void;
   addHatch(bucket: string, geometry: THREE.BufferGeometry, ...transform: TransformNumbers): void;
   addExternalArmor(bucket: string, geometry: THREE.BufferGeometry, ...transform: TransformNumbers): void;
   clear(...names: Array<string | string[]>): void;
@@ -1129,6 +1138,9 @@ interface TankFactoryOptions {
    * bucket it merges into, before the merge erases part identity. Diagnostic only; builds are byte-identical
    * when absent. */
   partCensus?: ((bucket: string, part: THREE.BufferGeometry, source: 'add' | 'mudguard' | 'moduleVisual') => void) | null;
+  /** Every live part once the build is done (after size scaling and bucket clears, just before merging), in its
+   * bucket's frame: offline censuses that must see the vehicle as shipped (tools/hull-contact-census-lib.mjs). */
+  finalPartCensus?: ((bucket: string, part: THREE.BufferGeometry) => void) | null;
 }
 
 interface TankEngineContext {
@@ -7371,6 +7383,7 @@ function* createTankOwnedSteps(
     battleDetailLod = false,
     staticDrawMerge = defaultStaticDrawMerge(),
     partCensus = null,
+    finalPartCensus = null,
   } = opts;
   if (materialMode !== 'rendered' && materialMode !== 'geometry-only') {
     throw new TypeError(`Unsupported tank material mode '${String(materialMode)}'`);
@@ -7424,6 +7437,7 @@ function* createTankOwnedSteps(
   // Discharger tubes add() sends to the owner's fitting paint once the profile is done (SMOKE_TUBE_PAINT_BUCKET).
   const smokeTubesForFittingPaint = new Set<THREE.BufferGeometry>();
   const mudguardParts: MudguardPart[] = [];
+  const mudguardHangRequests: MudguardHangRequest[] = [];
   const moduleVisualParts = new Map<THREE.BufferGeometry, string>();
   // The frame bars cut from a sight pane (armouredGlassSurround) ride the housing's painted fitting bucket; each
   // remembers the pane's own bucket, and the pane remembers its bars, so the pane's combat receipt still covers the whole
@@ -7580,6 +7594,11 @@ function* createTankOwnedSteps(
       (buckets[bucket] || (buckets[bucket] = [])).push(part);
       mudguardParts.push({ label, bucket, part });
       partCensus?.(bucket, part, 'mudguard');
+    },
+    hangMudguard(label, bucket, geo, x = 0, y = 0, z = 0,
+      rx = 0, ry = 0, rz = 0, s = 1) {
+      P.addMudguard(label, bucket, geo, x, y, z, rx, ry, rz, s);
+      mudguardHangRequests.push({ label, part: mudguardParts[mudguardParts.length - 1].part, strapBucket: 'hullDetail' });
     },
     // Painted fittings sometimes share the hull/turret material, but they do
     // not own armor. Keep them in a separate semantic bucket so geometry
@@ -7831,6 +7850,21 @@ function* createTankOwnedSteps(
       (buckets[target] || (buckets[target] = [])).push(...tubes);
     }
     smokeTubesForFittingPaint.clear();
+  }
+  // Owner 2026-10-19 ("the flaps often hang off many tanks"): each guard registered with hangMudguard hangs from the
+  // first permanent hull stock above its top edge, on the finished, unmerged armour (mudguardHangers.ts).
+  if (mudguardHangRequests.length) {
+    const live = mudguardHangRequests.filter(({ part }) => Object.values(buckets).some((list) => list.includes(part)));
+    const supports: THREE.BufferGeometry[] = [];
+    for (const [bucket, list] of Object.entries(buckets)) {
+      if (BUCKET_DEF[bucket]?.[0] !== 'hullG' || /track|runninggear|shadow|glass/i.test(bucket)) continue;
+      supports.push(...list);
+    }
+    root.userData.mudguardHangers = hangAuthoredMudguards(live, supports, hullG, (request, strap) => {
+      (buckets[request.strapBucket] || (buckets[request.strapBucket] = [])).push(strap);
+      mudguardParts.push({ label: `${request.label}-hanger`, bucket: request.strapBucket, part: strap });
+      partCensus?.(request.strapBucket, strap, 'mudguard');
+    });
   }
   // VEH-13 (2026-10-15): every authored spare-link run (fittings, strips, registered hand-drawn courses) is measured on
   // the finished, unmerged armour (spareTrackSeatPass.ts): a passing run stays exactly as built, a failing one is
@@ -8172,6 +8206,8 @@ function* createTankOwnedSteps(
       toleranceM: MUDGUARD_SEAT_TOLERANCE_M,
     }));
   }
+
+  if (finalPartCensus) for (const [bucket, list] of Object.entries(buckets)) for (const part of list) finalPartCensus(bucket, part);
 
   // ---- merge buckets into meshes ----
   const gunYOff = armor.turretPivot[1] + armor.gunPivot[1];

@@ -42,6 +42,8 @@ interface PumaS1BuilderPort extends AdvancedIfvScalePort {
     ...transform: number[]): void;
   decal(owner: Owner, kind: string, label: string | null, scale: number,
     position: Vec3, ...orientation: number[]): void;
+  /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
+  hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
 interface OpenGunCradleConfig {
@@ -362,7 +364,7 @@ function addRunningGear(P: PumaS1BuilderPort): void {
     // while preserving a single continuous protective mass.
     P.add('hullDark', KIT.box(0.028, 0.026, jacketFrontZ - jacketRearZ - 0.10),
       side * 2.038, 1.31, (jacketFrontZ + jacketRearZ) * 0.5);
-    P.add('hullRubber', KIT.box(0.045, 0.16, jacketFrontZ - jacketRearZ + 0.02),
+    P.hangMudguard('puma-jacket-hem', 'hullRubber', KIT.box(0.045, 0.16, jacketFrontZ - jacketRearZ + 0.02),
       side * 2.022, 0.72, (jacketFrontZ + jacketRearZ) * 0.5);
 
     // Recessed flank camera and paired marker lamps remain readable above the

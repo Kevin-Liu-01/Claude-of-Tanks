@@ -85,7 +85,7 @@ function addAftSkirtPanels(P: TankBuilderPort, side: number): void {
             { z, ring: [[-.012, low + .10], [.012, low + .10], [.012, 1.23], [-.012, 1.23]] },
             { z: z + .60, ring: [[-.012, low], [.012, low], [.012, 1.23], [-.012, 1.23]] },
         ]);
-        P.addMudguard(`aft-side-${side}-${i}`, 'hull', g, side * 1.635, 0, 0);
+        P.hangMudguard(`aft-side-${side}-${i}`, 'hull', g, side * 1.635, 0, 0);
         if (P.q)
             for (const y of [1.36, 1.80]) {
                 equipment(P, 'hull', 'Detail', box(.018, .026, .066), side * 1.646, y, z);
@@ -95,8 +95,8 @@ function addAftSkirtPanels(P: TankBuilderPort, side: number): void {
 function addAftHullSides(P: TankBuilderPort): void {
     for (const side of [-1, 1]) {
         addAftSkirtPanels(P, side);
-        P.addMudguard(`aft-front-${side}`, 'hullRubber', box(.39, .25, .035), side * 1.40, 1.02, 3.41, -.36);
-        P.addMudguard(`aft-rear-${side}`, 'hullRubber', box(.39, .31, .035), side * 1.40, .92, -3.35, .16);
+        P.hangMudguard(`aft-front-${side}`, 'hullRubber', box(.39, .25, .035), side * 1.40, 1.02, 3.41, -.36);
+        P.hangMudguard(`aft-rear-${side}`, 'hullRubber', box(.39, .31, .035), side * 1.40, .92, -3.35, .16);
         addAftSideLampsAndTowEyes(P, side);
         // The stern projects only at its two side boxes; the central door is recessed.
         equipment(P, 'hull', 'Detail', box(.994, .782, .420), side * 1.101, 1.556, -3.383);

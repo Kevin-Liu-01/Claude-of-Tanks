@@ -56,7 +56,7 @@ function buildTmlHull(P: TankBuilderPort): void {
       for(const dz of [-.27,.27]) P.addEquipment('hullDetail',box(.026,.052,.062),side*1.56,.971,z+dz);
     }
     P.addMudguard('cv90105-front-'+side,'hullRubber',box(.46,.24,.06),side*1.25,1.04,3.32,-.23);
-    P.addMudguard('cv90105-rear-'+side,'hullRubber',box(.48,.22,.055),side*1.24,.77,-3.04,.10);
+    P.hangMudguard('cv90105-rear-'+side,'hullRubber',box(.48,.22,.055),side*1.24,.77,-3.04,.10);
     P.addEquipment('hullDetail',box(.22,.095,.13),side*1.13,1.24,2.97);
     P.addEquipment('hullGlass',markVehicleNightLens(box(.15,.045,.015), 'headlight'),side*1.13,1.25,3.044);
     for(const z of [-2.60,-1.96])P.addHatch('hullDetail',box(.76,.025,.46),side*.91,1.685,z);

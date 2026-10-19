@@ -384,7 +384,7 @@ function challenger1Build(P: ChallengerBuilderPort): void {
       // sweep (<=4.065) and the 4.047 column boundary (§C). The wrap owns
       // the 3.982 column's 0.49 bottom regardless (the flap never painted
       // it), so the move is mask-free.
-      P.add('hullRubber', box(0.16, 0.30, 0.04), s * 1.62, 0.85, 4.02);
+      P.hangMudguard('challenger1-front-flap', 'hullRubber', box(0.16, 0.30, 0.04), s * 1.62, 0.85, 4.02);
       // (r3 note: trim planks were TRIED here per the revolution r15 recipe
       // and removed — r15's plank painted a line its band couldn't reach
       // behind the skirt window; HERE the band is visible and reads LOWER

@@ -1048,13 +1048,13 @@ function buildCarro45T(P: ItalyBuilderPort): void {
         P.add('hull', box(0.045, 0.40, 0.40), s * 1.690, 1.15, -2.05);             // z inside the ref's ±1.74 plan front line)
         for (let k = 0; k < 7; k++) P.add('hullDark', box(0.034, 0.50, 0.016), s * 1.696, 1.19, 2.55 - k * 0.95); // apron seams
         P.add('hull', box(0.27, 0.05, 0.10), s * 1.545, 1.42, 3.13);              // mudguard tip stub (ref front edge 3.09-3.15)
-        MUDGUARDS.add(P, {
+        MUDGUARDS.add(P, { hang: true,
           label: `italy-front-flap-${s}`, x: s * 1.695, y: 1.05, z: 3.31,
           thickness: 0.03, length: 0.06, height: 0.20, material: 'rubber',
           crown: 0.006, frontCut: 0.02,
         });                                                                        // front flap stubs outboard of the shoe lane
         P.add('hullDetail', box(0.04, 0.05, 0.24), s * 1.695, 1.145, 3.20);       // fender-to-flap hanger
-        MUDGUARDS.add(P, {
+        MUDGUARDS.add(P, { hang: true,
           label: `italy-rear-flap-${s}`, x: s * 1.55, y: 1.02, z: -3.30,
           thickness: 0.03, length: 0.24, height: 0.28, material: 'rubber',
           rotation: [0, Math.PI / 2, 0], crown: 0.009, rearCut: 0.035,

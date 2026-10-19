@@ -1051,7 +1051,7 @@ export function ruSkirtBand(P: RussiaGeometryPort, o: SkirtBandOptions): void {
 export function ruFlaps(P: RussiaMudguardPort, o: FlapOptions): void {
   for (const s of [-1, 1]) {
     const xf = s * o.x;
-    if (o.front) MUDGUARDS.add(P, {
+    if (o.front) MUDGUARDS.add(P, { hang: true,
       label: `ru-front-flap-${s}`, x: xf, y: o.front[0], z: o.frontZ,
       thickness: 0.045, length: o.w, height: o.front[1], material: 'rubber',
       rotation: [0, Math.PI / 2, 0], crown: 0.014, frontCut: o.front[1] * 0.11,

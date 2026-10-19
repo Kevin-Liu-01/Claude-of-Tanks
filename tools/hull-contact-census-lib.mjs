@@ -209,15 +209,21 @@ function authoringSite() {
 }
 
 export function collectStock(id, options = {}) {
-  const raw = [];
+  // The add-time stream names each part's source and authoring lines; the final census is what ships (after size
+  // scaling, bucket clears and the factory's own passes), read just before the buckets merge.
+  const added = new Map(), raw = [];
   const limit = Error.stackTraceLimit;
   if (options.where) Error.stackTraceLimit = 40;
   let tank;
   try {
     tank = createTank(id, null, { proceduralOnly: true, quality: 'high', geometryReceipt: true, camoSeed: 4242,
       partCensus(bucket, geometry, source) {
+        added.set(geometry, { source, where: options.where ? authoringSite() : undefined });
+      },
+      finalPartCensus(bucket, geometry) {
         const body = bucketBody(bucket);
-        if (body) raw.push({ bucket, body, source, T: triangleSoup(geometry), where: options.where ? authoringSite() : undefined });
+        const origin = added.get(geometry) ?? { source: 'factory' };
+        if (body) raw.push({ bucket, body, source: origin.source, T: triangleSoup(geometry), where: origin.where });
       } });
   } finally { Error.stackTraceLimit = limit; }
   try {

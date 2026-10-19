@@ -173,6 +173,8 @@ interface PattonBuilderPort {
     ...rotation: number[]
   ): void;
   eraCluster(key: string, build: (place: EraPlacement) => void, turretOwned?: boolean): void;
+  /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
+  hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
 interface TrackWheel {
@@ -5429,20 +5431,20 @@ function addM60A2HullFurniture(P: PattonBuilderPort, _cfg: M60A2BuildConfig): vo
     // low rear mud board (ref station i1 reads 1.812 wide at z -3.19..-2.68
     // with front-view tops <=1.40): thin, below the deck line, unions with
     // the flaps for the widthM 0.35-band rule
-    P.add('hullRubber', box(0.019, 0.40, 0.51), side * 1.807, 1.20, -2.935);
+    P.hangMudguard('m60a2-rear-skirt-flap', 'hullRubber', box(0.019, 0.40, 0.51), side * 1.807, 1.20, -2.935);
     // ONE rear flap panel per side (containment: mid-hull panels clipped
     // the climbing top run; the -3.43..-3.64 span feeds BOTH tail width
     // stations, stays thin for the body filter and ahead of the -3.6575
     // overall anchor). Push round: bottom TAPERED 0.75 @ -3.36 -> 0.93 @
     // -3.64 (front cols +-1.81 read ref 0.752; side col -3.647 reads 0.931)
-    P.add('hullRubber', orientedSlab(
+    P.hangMudguard('m60a2-skirt-flap', 'hullRubber', orientedSlab(
       [side * 1.7965, 0.75, -3.36], [side * 1.8155, 0.75, -3.36], [side * 1.8155, 0.93, -3.64], [side * 1.7965, 0.93, -3.64],
       [side * 1.7965, 1.40, -3.36], [side * 1.8155, 1.40, -3.36], [side * 1.8155, 1.40, -3.64], [side * 1.7965, 1.40, -3.64]));
     P.add('hullDetail', box(0.0075, 0.62, 0.035), side * 1.7925, 1.52, -3.50);
   }
   // right-side flap top board (the live pair reads the RIGHT flap band to
   // 1.848 while the left stops at 1.399 — asymmetric print)
-  P.add('hullRubber', box(0.019, 0.42, 0.28), 1.806, 1.61, -3.50);
+  P.hangMudguard('m60a2-rear-flap', 'hullRubber', box(0.019, 0.42, 0.28), 1.806, 1.61, -3.50);
   // toe tip plates + front mud flaps (thin: hullLengthM keeps its fat-column
   // anchor at the glacis while the tip closes the ref's bow columns; the
   // 3.415..3.50 extension is sub-12%-band, so the body anchor holds)

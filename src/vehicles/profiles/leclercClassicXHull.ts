@@ -159,7 +159,7 @@ function engine(P: TankBuilderPort): void {
     for (let i = 0; i < 13; i++)
       P.addEquipment('hullDetail', box(.045065, .01715, .788),
         side < 0 ? -1.67330 : 1.64536, 1.3146 + i * .024, -2.9366);
-    P.addMudguard('leclerc-classic-rear-flexible-guard', 'hullRubber',
+    P.hangMudguard('leclerc-classic-rear-flexible-guard', 'hullRubber',
       box(.653465, .283212, .015), side < 0 ? -1.314717 : 1.290715,  .972035, -3.340);
   }
 }

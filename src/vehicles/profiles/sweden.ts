@@ -77,6 +77,8 @@ interface SwedishBuilderPort {
     position: Vec3Tuple,
     ...orientation: number[]
   ): void;
+  /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
+  hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
 function plate(

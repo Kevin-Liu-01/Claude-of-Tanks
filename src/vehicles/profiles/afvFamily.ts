@@ -1087,8 +1087,8 @@ function buildBMP3(P: AfvBuilderPort): void {
     P.add('hull', box(0.42, 0.06, 6.40), s * 1.40, 1.355, -0.14);              // band roof over the track run
     P.add('hullDetail', box(0.09, 0.03, 0.60), s * 1.56, 1.34, 2.40);          // band step rails
     P.add('hullDetail', box(0.09, 0.03, 0.60), s * 1.56, 1.34, -2.60);
-    P.add('hullRubber', box(0.07, 0.30, 0.42), s * 1.578, 0.74, 3.02);         // bow mud flaps (outboard of the
-    P.add('hullRubber', box(0.07, 0.32, 0.30), s * 1.578, 0.72, -3.30);        //   1.504 shoe plane, §B4)
+    P.hangMudguard('bmp3-bow-flap', 'hullRubber', box(0.07, 0.30, 0.42), s * 1.578, 0.74, 3.02);         // bow mud flaps (outboard of the
+    P.hangMudguard('bmp3-rear-flap', 'hullRubber', box(0.07, 0.32, 0.30), s * 1.578, 0.72, -3.30);        //   1.504 shoe plane, §B4)
   }
   bowLightPair(P, 1.16, 1.70, 2.62, 3810);
   shovelTool(P, -1.56, 1.40, 0.80, 0.9);

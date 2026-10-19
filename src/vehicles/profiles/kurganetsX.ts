@@ -325,7 +325,7 @@ function addKurganetsHull(P: TankBuilderPort): void {
             // |X| 2.0645 m; there are no protruding fasteners at these stations.
         }
         addKurganetsFrontFlap(P, side);
-        P.addMudguard('kurganets-rear-flap-' + side, 'hullRubber', sectionSolid([
+        P.hangMudguard('kurganets-rear-flap-' + side, 'hullRubber', sectionSolid([
             { z: -3.73, ring: [[-.269, 1.044], [.269, 1.044], [.269, 1.074], [-.269, 1.074]] },
             { z: -3.57, ring: [[-.269, 1.36], [.269, 1.36], [.269, 1.39], [-.269, 1.39]] },
         ]), side * 1.363, 0, 0);

@@ -60,6 +60,8 @@ export interface Modern3BuilderPort {
     position: Vec3Tuple,
     ...orientation: number[]
   ): void;
+  /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
+  hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
 interface Type10BuildOptions {
@@ -1290,7 +1292,7 @@ function buildK1A1Hull(P: Modern3BuilderPort) {
     }
     P.add('hullDetail', box(0.035, 0.40, 0.045), s * 0.55, 1.30, -3.724);       // unequal grille/service divider
     P.add('hullDark', box(0.14, 0.08, 0.05), s * 1.44, 1.53, -3.725);          // taillights
-    P.add('hullRubber', box(0.56, 0.24, 0.026), s * 1.36, 0.95, -3.71);        // rear flaps (ref hem 0.92 at the stern)
+    P.hangMudguard('k1e1-rear-flap', 'hullRubber', box(0.56, 0.24, 0.026), s * 1.36, 0.95, -3.71);        // rear flaps (ref hem 0.92 at the stern)
     P.add('hullDetail', box(0.07, 0.05, 0.15), s * 1.36, 1.12, -3.63);         // flap hangers
     P.add('hullDetail', box(0.07, 0.24, 0.07), s * 0.72, 0.72, -3.735);        // tow-clevis stem
     P.add('hullDetail', box(0.24, 0.07, 0.07), s * 0.72, 0.60, -3.735);        // tow-clevis cross foot
@@ -1310,8 +1312,8 @@ function finishK1A1Hull(P: Modern3BuilderPort) {
       [s * 1.77, 1.35, 3.08], [s * 1.80, 1.35, 3.08], [s * 1.80, 1.14, 3.52], [s * 1.77, 1.14, 3.52]));
     P.add('hull', box(0.13, 0.025, 0.49), s * 1.7275, 1.245, 3.30, 0.445, 0, 0); // guard top plate tracks the same prow rake
     P.add('hullDetail', box(0.05, 0.05, 0.30), s * 1.71, 1.28, 3.28);          // tie strut into the glacis edge
-    P.add('hullRubber', box(0.13, 0.22, 0.024), s * 1.73, 0.93, 3.54, 0.22, 0, 0); // guard flap rises clear of the idler
-    P.add('hullRubber', box(0.30, 0.26, 0.026), s * 1.30, 0.74, 3.66);         // center-lane front flaps
+    P.hangMudguard('k1e1-idler-guard-flap', 'hullRubber', box(0.13, 0.22, 0.024), s * 1.73, 0.93, 3.54, 0.22, 0, 0); // guard flap rises clear of the idler
+    P.hangMudguard('k1e1-front-lane-flap', 'hullRubber', box(0.30, 0.26, 0.026), s * 1.30, 0.74, 3.66);         // center-lane front flaps
   }
   // skirts (print): run faces ±1.75, tops following the deck lines (1.475
   // fwd / 1.61 aft third), hems — 0.54 front raked panel, 0.65 mid run,
@@ -1717,7 +1719,7 @@ function buildType10Native2026(
       if (P.q) for (let k = 0; k < 7; k++) {
         P.add('hullDark', cylX(0.0154, 0.0198, 6), s * 1.6693, 1.089, 1.408 - k * 0.572); // bolt studs
       }
-      P.add('hullRubber', box(0.352, 0.242, 0.0308), s * 1.067, 1.012, 3.7125);   // front mud flaps carry the print's fender-lobe plan line ×1.10, track-clear
+      P.hangMudguard('type10-tk-front-flap', 'hullRubber', box(0.352, 0.242, 0.0308), s * 1.067, 1.012, 3.7125);   // front mud flaps carry the print's fender-lobe plan line ×1.10, track-clear
       P.add('hullRubber', box(0.352, 0.22, 0.0308), s * 1.298, 0.77, -3.355);     // rear flaps inside the transom outline
       // §5.364 BLACK-LINE FIX (owner: "big black line on each side of hull";
       // attribution receipt shots/type10-fix/before-type10/attrib.json — flank
@@ -5051,7 +5053,7 @@ function buildType89Hull(P: Modern3BuilderPort) {
     P.add('hullDetail', box(0.05, 0.09, 0.26), s * 1.50, 1.20, -2.90);
     P.addMudguard(`modern3-front-flap-${s}`, 'hullRubber',
       box(0.26, 0.20, 0.035), s * 1.18, 0.98, 3.06);                          // front mudflaps
-    P.addMudguard(`modern3-rear-flap-${s}`, 'hullRubber',
+    P.hangMudguard(`modern3-rear-flap-${s}`, 'hullRubber',
       box(0.26, 0.24, 0.035), s * 1.18, 0.78, -3.28);                         // rear mudflaps
     // Transverse hangers connect the inboard curtains to the fixed skirt
     // rail instead of leaving their outer edges suspended in the track bay.

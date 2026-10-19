@@ -106,6 +106,8 @@ interface T90BuilderPort {
     slots: readonly string[],
     visit: (geometry: THREE.BufferGeometry, bounds: THREE.Box3) => void,
   ): void;
+  /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
+  hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
 const KIT = UNTYPED_KIT;
@@ -1190,8 +1192,8 @@ function addT90ALegacyHullDeckAndGear(P: T90BuilderPort): void {
     P.add('hullDark', cylZ(0.147, 0.022, 14), s * 0.72, 1.325, -3.33);
   }
   for (const s of [-1, 1]) {
-    P.add('hullRubber', box(0.36, 0.30, 0.05), s * 1.52, 0.80, -3.06); // rear mud flaps (ref plan rear -3.08 at x 1.33+, floor 0.645)
-    P.add('hullRubber', box(0.40, 0.36, 0.05), s * 1.55, 0.85, 3.345); // front mud flaps (ref plan 3.367 at ±1.76; lower edge 0.67 m)
+    P.hangMudguard('t90a-rear-flap', 'hullRubber', box(0.36, 0.30, 0.05), s * 1.52, 0.80, -3.06); // rear mud flaps (ref plan rear -3.08 at x 1.33+, floor 0.645)
+    P.hangMudguard('t90a-front-flap', 'hullRubber', box(0.40, 0.36, 0.05), s * 1.55, 0.85, 3.345); // front mud flaps (ref plan 3.367 at ±1.76; lower edge 0.67 m)
   }
   // §B3.2 DENSITY (owner directive 2026-08-06): common-kit fittings on the
   // deck, FLUSH-RECESSED to the certified deck lines (t84 r32 recipe — the
@@ -3733,7 +3735,7 @@ function addT90SMLegacyHullDeckAndGear(P: T90BuilderPort): void {
   // (t72bu_1989 fender-prong class), hung at the fender line so the side rack
   // band keeps its 1.0 raked floor.
   for (const s of [-1, 1]) {
-    P.add('hullRubber', box(0.44, 0.19, 0.19), s * 1.475, 1.04, -3.055); // T5H-b/e: corner flaps rear -3.15 (teeter compromise); front -2.96 clear of the -2.905 shoe reach
+    P.hangMudguard('t90sm-corner-flap', 'hullRubber', box(0.44, 0.19, 0.19), s * 1.475, 1.04, -3.055); // T5H-b/e: corner flaps rear -3.15 (teeter compromise); front -2.96 clear of the -2.905 shoe reach
     P.add('hull', box(0.05, 0.16, 0.16), s * 1.44, 1.10, -3.04);      // flap bracket onto the corner bin (§B2) — T5H-e: front -2.96 (the -2.72 front rode the sprocket-wrap shoe envelope: exact-audit rear blind-spot 24 vox, band 0; §B4 shoe bar). Still bridges flap (-3.15..-2.93) onto bin (-3.15..-2.91).
   }
   // The former solid outer aft course is likewise removed; the replacement
@@ -4502,7 +4504,7 @@ function buildT90(P: T90BuilderPort): void {
       rotation: [0, Math.PI / 2, 0], crown: 0.018, rearCut: 0.075,
     });
     P.add('hullDark', box(0.34, 0.035, 0.054), s * 1.52, 1.455, -3.06); // rear fender clamp
-    MUDGUARDS.add(P, {
+    MUDGUARDS.add(P, { hang: true,
       label: `t90-front-mudguard-${side}`, x: s * 1.48, y: 0.825, z: 3.345,
       thickness: 0.05, length: 0.44, height: 0.55, material: 'rubber',
       rotation: [0, Math.PI / 2, 0], crown: 0.018, frontCut: 0.07,
@@ -5679,7 +5681,7 @@ function buildT90SM(P: T90BuilderPort): void {
   // The center keel and right inner skirt lug are likewise source-visible
   // front stations, seated into existing structure rather than free details.
   P.add('hull', KIT.box(0.09, 0.05, 4.40), 0, 0.425, 0);
-  P.add('hullRubber', KIT.box(0.04, 0.37, 0.33), 1.68, 1.055, -1.70);
+  P.hangMudguard('t90sm-side-flap', 'hullRubber', KIT.box(0.04, 0.37, 0.33), 1.68, 1.055, -1.70);
   P.add('hull', KIT.box(0.020, 0.050, 0.18), -1.880, 1.365, -1.60);
   // Recovered rear-deck service module: the source front envelope carries a
   // 1.54 m asymmetric plateau from x -0.49..+0.89, and its side envelope
@@ -5914,7 +5916,7 @@ function buildT90MS(P: T90BuilderPort): void {
   widthAnchor(P, 1.89, 0.95, -1.60);
   ruSkirtBand(P, { x: 1.7675, th: 0.036, z0: -2.72, z1: 2.82, yTop: 1.28, yBot: 1.00, panels: 7, lipX: 1.755 });
   ([-1, 1] as const).forEach((s) => {
-    P.add('hullRubber', box(0.36, 0.30, 0.05), s * 1.52, 0.80, -3.06);
+    P.hangMudguard('t90ms-rear-flap', 'hullRubber', box(0.36, 0.30, 0.05), s * 1.52, 0.80, -3.06);
     const side = s < 0 ? 'left' : 'right';
     const flapLabel = `t90ms-front-guard-${side}-rubber-drop`;
     tagilFrontGuardLabels.push(flapLabel);
@@ -6908,7 +6910,7 @@ function replaceT90MProryvHull(P: T90BuilderPort): void {
       material: 'painted-steel', rotation: [0, -s * 0.20 + Math.PI / 2, 0],
       crown: 0.025, frontCut: 0.04, rearCut: 0.02,
     });
-    MUDGUARDS.add(P, {
+    MUDGUARDS.add(P, { hang: true,
       label: `t90m-proryv-rear-mudguard-${s < 0 ? 'left' : 'right'}`,
       x: s * 1.64, y: 0.78, z: -3.02,
       thickness: 0.055, length: 0.34, height: 0.58,

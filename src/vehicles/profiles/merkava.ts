@@ -892,7 +892,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
             // c.lipNoHem (1B r4 grammar audit, order item 5 "delete the hem bar"):
             // the full-length rubber strip under the lip WAS the ruled dark hem
             // bar (61-76L across 6 m vs the ref's uniform 91-94 side) — deleted.
-            if (!c.lipNoHem) P.add('hullRubber', box(0.02, 0.10, z0 - z1 - 0.05), s * (fl.x - 0.012), fl.y - 0.06, (z0 + z1) / 2);
+            if (!c.lipNoHem) P.hangMudguard('merkava-fender-hem', 'hullRubber', box(0.02, 0.10, z0 - z1 - 0.05), s * (fl.x - 0.012), fl.y - 0.06, (z0 + z1) / 2);
             if (c.lipNoHem && fl === c.fenderLip) {
               // r8 housekeeping (critic r7: 1B rear-deck sub-55 census 3.3x ref —
               // the biggest class is the deck-to-lip shadow slot along both rear
@@ -918,7 +918,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
         const bz0 = Array.isArray(fb.z0) ? fb.z0[s2 < 0 ? 0 : 1] : fb.z0;
         const bx1 = Array.isArray(fb.x1) ? fb.x1[s2 < 0 ? 0 : 1] : fb.x1;
         P.add('hull', box(bx1 - fb.x0, 0.05, bz0 - fb.z1), s2 * (fb.x0 + bx1) / 2, fb.y, (bz0 + fb.z1) / 2);
-        P.add('hullRubber', box(bx1 - fb.x0 - 0.05, 0.14, 0.028), s2 * (fb.x0 + bx1) / 2, fb.y - 0.09, bz0 + 0.005, -0.25, 0, 0);
+        P.hangMudguard('merkava-bow-hem', 'hullRubber', box(bx1 - fb.x0 - 0.05, 0.14, 0.028), s2 * (fb.x0 + bx1) / 2, fb.y - 0.09, bz0 + 0.005, -0.25, 0, 0);
       }
     }
   };
@@ -2074,7 +2074,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
               // sub-60 through the steep views' arch line (3D was the only
               // cutHem-without-wavy mark; every sibling keeps its exact path).
               const merkavaChassisHullStage39 = (): void => {
-                if (!sk.wavy && !sk.cutHem) P.add('hullRubber', box(0.024, 0.12, z0 - z1), s * (sx + 0.012), sk.bot + 0.04, (z0 + z1) / 2);
+                if (!sk.wavy && !sk.cutHem) P.hangMudguard('merkava-skirt-hem', 'hullRubber', box(0.024, 0.12, z0 - z1), s * (sx + 0.012), sk.bot + 0.04, (z0 + z1) / 2);
               };
               merkavaChassisHullStage39();
               // End flares: the measured skirts run ~+-1.83 mid-hull (stations read
@@ -2125,7 +2125,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
                       const flapW = sk.flapW ?? 0.30;
                       const flapH = sk.flapH ?? 0.34;
                       const sprocketFlapZ = c.sprocket.z + c.sprocket.r + 0.16;
-                      MUDGUARDS.add(P, {
+                      MUDGUARDS.add(P, { hang: true,
                         label: `merkava-sprocket-flap-${s}`,
                         x: s * xc, y: sk.bot + 0.05, z: sprocketFlapZ,
                         thickness: 0.035, length: flapW, height: flapH,
@@ -2161,7 +2161,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
               // the default offset stood coincident with the idler-wrap rear face
               // (§B4 120 exact voxels) — it steps rearward, clear of the band.
               const merkavaChassisHullStage43 = (): void => {
-                MUDGUARDS.add(P, {
+                MUDGUARDS.add(P, { hang: true,
                   label: `merkava-idler-flap-${s}`,
                   x: s * xc, y: sk.idlerFlapY ?? (sk.bot + 0.02),
                   z: c.idler.z - c.idler.r - (sk.idlerFlapDz ?? 0.12),
@@ -2178,7 +2178,7 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
                   const merkavaChassisHullCourse83 = (): void => {
                     const merkavaChassisHullCourse76 = (): void => {
                       const rf2 = c.rearFlaps[flapIndex]; // { z, bot, top?, w?, x?, mat?, wood? }
-                      MUDGUARDS.add(P, {
+                      MUDGUARDS.add(P, { hang: true,
                         label: `merkava-rear-flap-${s}-${flapIndex}`,
                         x: s * (rf2.x ?? xc), y: ((rf2.top ?? 0.95) + rf2.bot) / 2, z: rf2.z,
                         thickness: 0.05, length: rf2.w ?? 0.26,

@@ -163,6 +163,8 @@ try {
   // the E100 X's two hullShadow walls (inner X +-0.9768), the inboard boundary of the lane air under the hull; with
   // the walls restored in an A/B the same tree reads 4.53 L again, without them 2.97 L (fills regenerated to zero).
   assert.ok(Math.abs(litres.jpz_e100.lane - 2.97) <= 0.3, `E100 X lane air ${litres.jpz_e100.lane} L (pinned 2.97 L since the 2026-09-30 wall removal)`);
-  assert.ok(Math.abs(litres.type10.lane - 14.73) <= 0.3, `Type 10 X lane air ${litres.type10.lane} L (pinned 14.73 L, 2026-10-02)`);
+  // 2026-10-19 (owner: "the flaps often hang off many tanks"): the Type 10 X's rear flexible flaps now hang on steel
+  // straps into the hull above them (mudguardHangers.ts), inside the lane: 14.73 -> 13.23 L.
+  assert.ok(Math.abs(litres.type10.lane - 13.23) <= 0.3, `Type 10 X lane air ${litres.type10.lane} L (pinned 13.23 L, 2026-10-19)`);
 } finally { rmSync(tmp, { recursive: true, force: true }); }
 console.log(`track-lane-boxes.selftest: generator + check wiring, d0cbb9fcd lane fixture, band/shoe structure, mask == point test (${maskVoxels} lane voxels), synthetic branches, watertight lane exclusion (E100 X ${litres.jpz_e100.lane} L, Type 10 X ${litres.type10.lane} L lane air reported, 0 L leak; --no-lanes ${litres.jpz_e100.plain} / ${litres.type10.plain} L) and self-test hole conservation PASS`);

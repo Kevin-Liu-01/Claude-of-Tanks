@@ -128,7 +128,7 @@ function sideArmor(P: TankBuilderPort): void {
         P.add('hullDetail', part(cylX(0.013, 0.02, 8), 'applique-fastener'), side * 1.943, y, z);
       }
     }
-    P.addMudguard('ares-apc-skirt', 'hullRubber', part(box(0.035, 0.58, 5.62), 'track-skirt'),
+    P.hangMudguard('ares-apc-skirt', 'hullRubber', part(box(0.035, 0.58, 5.62), 'track-skirt'),
       side * 1.665, 0.82, 0.20);
     P.add('hullDark', part(box(0.06, 0.05, 6.04), 'skirt-support-rail'), side * 1.61, 1.12, 0.20);
   }

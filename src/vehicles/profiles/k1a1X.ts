@@ -140,7 +140,7 @@ function rearGuardFold(P:TankBuilderPort,side:number):void {
   ].map(([z,y])=>new THREE.Vector2(-side*z,y)));
   const g=new THREE.ExtrudeGeometry(outline,{depth:.7373,bevelEnabled:false,steps:1});
   g.rotateY(side*Math.PI/2);
-  P.addMudguard('k1a1-x-rear-fold','hullRubber',g,side>0?1.0078:-1.0088,0,0);
+  P.hangMudguard('k1a1-x-rear-fold','hullRubber',g,side>0?1.0078:-1.0088,0,0);
 }
 
 function sideSkirtPanels(P: TankBuilderPort,side: number): void {

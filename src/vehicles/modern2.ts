@@ -105,6 +105,8 @@ export interface Modern2BuilderPort {
     build: (put: EraPlacement) => void,
     turretLocal?: boolean,
   ): void;
+  /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
+  hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
 interface ArmorResistance {
@@ -994,7 +996,7 @@ function buildType99ABaseHull(P: Modern2BuilderPort) {
     P.add('hull', box(0.68, 0.035, 0.30), s * 1.47, 1.455, 3.40);              // fender noses END ~3.55 (probe
                                                                                //   r3: the print bow line drops to
                                                                                //   ~1.1 by z 3.5 — no tall noses)
-    P.add('hullRubber', box(0.60, 0.34, 0.028), s * 1.46, 0.91, 3.50);         // compact flap terminates at the
+    P.hangMudguard('ztz99-longwei-front-flap', 'hullRubber', box(0.60, 0.34, 0.028), s * 1.46, 0.91, 3.50);         // compact flap terminates at the
                                                                                //   oracle's +3.52 m thick-body line
     P.add('hullDetail', box(0.12, 0.09, 0.20), s * 1.78, 1.35, 3.43);          // hanger bracket spanning the
   }                                                                            //   skirt nose -> flap edge
@@ -1128,7 +1130,7 @@ function buildType99AHullDeckAndArmor(P: Modern2BuilderPort) {
                                                                                // only its flexible lower fringe is
                                                                                // dark rubber, not the whole panel
     for (let k = 0; k < 3; k++) P.add('hullDark', box(0.01, 0.56, 0.02), s * 1.855, 0.82, -2.32 - k * 0.52);
-    P.add('hullRubber', box(0.01, 0.12, 1.39), s * 1.855, 0.50, -2.755);       // lower fringe
+    P.hangMudguard('ztz99-longwei-skirt-fringe', 'hullRubber', box(0.01, 0.12, 1.39), s * 1.855, 0.50, -2.755);       // lower fringe
   }
   // Eight full-height FY-4 side cassettes per side.  The previous 3×11 field
   // rendered as a solid Minecraft wall and hid the characteristic six-wheel

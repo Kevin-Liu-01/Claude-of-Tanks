@@ -63,7 +63,7 @@ function hull(P:TankBuilderPort):void {
   ]));
   addAmx40HullSkirts(P);addAmx40HullSideFittings(P);addAmx40FrontFittings(P);
   for(const s of[-1,1]) {
-    P.addMudguard('amx40-x-aft-flap','hullRubber',box(.560,.425,.025),s*1.277,.885,-3.39,.14);
+    P.hangMudguard('amx40-x-aft-flap','hullRubber',box(.560,.425,.025),s*1.277,.885,-3.39,.14);
     put(P,'hullDetail',box(.17,.14,.13),s*.697,.739,-3.344);
     put(P,'hullDark',torus(.061,.017,18,8),s*.697,.739,-3.408,Math.PI/2);
     put(P,'hullDetail',box(.092,.135,.115),s*.76,.88,3.03);

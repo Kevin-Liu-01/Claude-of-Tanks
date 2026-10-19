@@ -33,7 +33,7 @@ function foreFlap(P: TankBuilderPort, side: number): void {
     .rotateY(Math.PI / 2).translate(side < 0 ? -1.620 : .960, 0, 0);
   P.addMudguard(`chieftain5_x_source_front_flap_${side}`, 'hullDark', sheet);
   for (const x of [.919, 1.635]) {
-    P.addMudguard(`chieftain5_x_source_flap_return_${side}_${x}`, 'hullDark',
+    P.hangMudguard(`chieftain5_x_source_flap_return_${side}_${x}`, 'hullDark',
       slope(side, [[3.195, x - .014, x + .014, .802, .841],
         [3.440, x - .014, x + .014, .842, .887],
         [3.521, x - .014, x + .014, .842, .891]]));

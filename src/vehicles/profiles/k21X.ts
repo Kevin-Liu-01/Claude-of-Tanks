@@ -255,7 +255,7 @@ function addK21HullSides(P: TankBuilderPort): void {
                         equipment(P, 'hull', 'Detail', box(.012, .022, .031), side * 1.738, y, z + dz);
                     }
         }
-        P.addMudguard(`k21-front-${side}`, 'hullRubber', box(.45, .28, .036), side * 1.235, 1.10, 3.29, -.23);
+        P.hangMudguard(`k21-front-${side}`, 'hullRubber', box(.45, .28, .036), side * 1.235, 1.10, 3.29, -.23);
         rearFender(P, side);
         // Source Object_20 rear stowage cases rake with the hull rear wall.
         // Preserve the exposed rear face; extend only the hidden receiver face

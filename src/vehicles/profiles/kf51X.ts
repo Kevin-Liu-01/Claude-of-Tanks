@@ -149,7 +149,7 @@ function pantherSkirts(P: TankBuilderPort): void {
       [side*.94,1.24,3.85],[side*1.61,1.24,3.745],[side*1.61,1.36,3.04],[side*.94,1.36,3.04],
     ));
     P.addMudguard('panther-x-front-flap','hullRubber',box(.57,.26,.046),side*1.27,1.096,3.75,-.13);
-    P.addMudguard('panther-x-rear-flap','hullRubber',orientedSlab(
+    P.hangMudguard('panther-x-rear-flap','hullRubber',orientedSlab(
       [side*.986,.751,-3.364],[side*1.546,.751,-3.364],[side*1.546,1.210,-3.746],[side*.986,1.210,-3.746],
       [side*.986,.770,-3.349],[side*1.546,.770,-3.349],[side*1.546,1.229,-3.731],[side*.986,1.229,-3.731],
     ));

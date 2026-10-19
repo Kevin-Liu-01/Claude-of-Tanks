@@ -95,6 +95,8 @@ interface UkraineBuilderPort {
   ): void;
   visualEraCluster(key: string, owner: VehicleAssemblyOwner, build: () => void): void;
   offsetBuckets: TankBuilderPort['offsetBuckets'];
+  /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
+  hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
 interface CassetteOptions {
@@ -625,7 +627,7 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
     // the idler; tip plate at the fender line; flap chained under the tip.
     P.add('hull', box(0.40, 0.030, 0.86), s * 1.42, 1.225, 2.82, -0.045, 0, 0);
     P.add('hull', box(0.36, 0.07, 0.24), s * 1.40, 1.17, 3.26);
-    P.add('hullRubber', box(0.30, 0.28, 0.045), s * 1.40, 0.99, 3.35);
+    P.hangMudguard('ua-t80bv-front-flap', 'hullRubber', box(0.30, 0.28, 0.045), s * 1.40, 0.99, 3.35);
     P.add('hullRubber', box(0.34, 0.26, 0.045), s * 1.53, 1.00, -3.12);
   }
   };
@@ -1193,7 +1195,7 @@ function buildUAOplotM(P: TankBuilderPort): void {
     // crank boss pair on the nose plate. Nothing passes the fender line.
     P.add('hull', box(0.38, 0.030, 0.68), s * 1.27, 1.17, 2.96, -0.06, 0, 0);
     P.add('hull', box(0.38, 0.07, 0.22), s * 1.27, 1.04, 3.40, -0.45, 0, 0);
-    P.add('hullRubber', box(0.30, 0.26, 0.045), s * 1.27, 0.80, 3.50);
+    P.hangMudguard('oplot-m-front-flap', 'hullRubber', box(0.30, 0.26, 0.045), s * 1.27, 0.80, 3.50);
     P.add('hullDetail', cylZ(0.052, 0.07, 10), s * 0.70, 0.62, 3.485);
     P.add('hullDark', cylZ(0.028, 0.05, 8), s * 0.70, 0.62, 3.52);
     P.add('hullRubber', box(0.34, 0.26, 0.045), s * 1.36, 0.92, -3.47);

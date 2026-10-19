@@ -452,7 +452,7 @@ function merkava4HullDetails(P: TankBuilderPort, candidate: 'merkava4'|'merkava4
       return {z,ring:side<0?ring.map(([x,y])=>[-x,y] as [number,number]).reverse():ring};
     })));
     P.addMudguard('merkava4-x-front-flap','hullRubber',box(.57,.235,.045),side*1.44,.928,3.76,-.13);
-    P.addMudguard('merkava4-x-rear-flap','hullRubber',box(.58,.45,.043),side*1.45,.92,-3.56,.09);
+    P.hangMudguard('merkava4-x-rear-flap','hullRubber',box(.58,.45,.043),side*1.45,.92,-3.56,.09);
     // The modern source rear openings replace the generic closed Mk.4 case.
     if(candidate!=='merkava4_trophy'&&candidate!=='merkava4_barak')
       P.addEquipment('hullDetail',box(.66,.36,.35),side*.66,1.37,-3.69);

@@ -118,6 +118,8 @@ interface MiscBuilderPort {
   eraCluster(key: string, build: (place: EraPlacement) => void, turretOwned?: boolean): void;
   visualEraCluster(key: string, owner: VehicleAssemblyOwner, build: () => void): void;
   offsetBuckets(slots: readonly string[], x?: number, y?: number, z?: number): void;
+  /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
+  hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
 interface TrunnionRollOptions {
@@ -215,7 +217,7 @@ function galixBank(
 
 // Rubber corner mud flap over a track run.
 function mudflap(P: MiscBuilderPort, x: number, y: number, z: number, w = 0.56, h = 0.36): void {
-  MUDGUARDS.add(P, {
+  MUDGUARDS.add(P, { hang: true,
     label: `misc-mudflap-${x < 0 ? 'left' : 'right'}-${z < 0 ? 'rear' : 'front'}`,
     x, y, z, thickness: 0.035, length: w, height: h,
     material: 'rubber', rotation: [0, Math.PI / 2, 0],
@@ -440,7 +442,7 @@ export function buildAriete(P: MiscBuilderPort): void {
     P.add('hull', box(0.40, 0.055, 0.21), 0, 1.415, -3.795);                     // thin tail lip 1.385..1.445 (z -3.69..-3.90) — CENTER-ONLY x +-0.30 (push round: the 2.70 lip printed plan rear -3.94 at every x where the ref rear is -3.65..-3.83; sides fall back to the -3.71 rear plate)
     P.add('hull', box(0.36, 0.41, 0.19), 0, 1.365, -3.795);                       // SS-A REAR ANCHOR: center tail block to -3.89 (ref plan -3.88 center col; band 0.32 at the ref's own 1.385-1.565 lip heights; muzzle drops to 5.78 so overall stays 9.67)
     for (const s of [-1, 1]) {
-      P.add('hullRubber', box(0.40, 0.25, 0.03), s * 1.30, 1.00, -3.62);         // rear flaps
+      P.hangMudguard('c1-ariete-preserie-rear-flap', 'hullRubber', box(0.40, 0.25, 0.03), s * 1.30, 1.00, -3.62);         // rear flaps
       P.add('hullDark', box(0.14, 0.07, 0.035), s * 1.20, 1.36, -3.71);          // taillights
     }
     for (const s of [-1, 1]) {
@@ -3410,7 +3412,7 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
       P.add('hullDark', torus(0.075, 0.018, 12), s * 0.62, 0.77, -3.283, Math.PI / 2, 0, 0);
       liftEye(P, 'hullDetail', s * 1.34, 1.655, -3.06);
       P.add('hullRubber', box(0.40, 0.28, 0.028), s * 1.26, 0.70, -3.288);       // stern mud flaps
-      P.add('hullRubber', box(0.38, 0.26, 0.028), s * 1.24, 0.92, 3.283);        // bow flaps hang from the fender tips
+      P.hangMudguard('amx30-bow-flap', 'hullRubber', box(0.38, 0.26, 0.028), s * 1.24, 0.92, 3.283);        // bow flaps hang from the fender tips
       P.add('hull', box(0.40, 0.06, 0.30), s * 1.26, 1.08, 3.12);                // fender-tip flap carrier over the idler wrap
       P.add('hullDetail', box(0.09, 0.30, 0.05), s * 1.24, 1.00, 3.22, 0.45, 0, 0); // swept hinge stay AFT of the z 3.10 wrap reach (§B4)
     }

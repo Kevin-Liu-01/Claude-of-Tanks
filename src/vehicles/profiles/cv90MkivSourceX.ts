@@ -35,7 +35,7 @@ function towerStrut(P: TankBuilderPort, a: readonly number[], b: readonly number
 function addCv90FendersAndLamps(P: TankBuilderPort, side: number): void {
     const guardX=side<0?-1.2412:1.1700;
     P.addMudguard('cv90-mkiv-front-'+side,'hullRubber',box(.703,.341,.024),guardX,.887,3.270,-.80);
-    P.addMudguard('cv90-mkiv-rear-'+side,'hullRubber',box(.50,.30,.07),side*1.25,.79,-3.09,.13);
+    P.hangMudguard('cv90-mkiv-rear-'+side,'hullRubber',box(.50,.30,.07),side*1.25,.79,-3.09,.13);
     // Broad source corner receivers carry the low forward lamps and their cap.
     const lampX=side<0?-1.337:1.204,lampW=side<0?.49:.626;
     P.addEquipment('hullDetail',box(lampW,.116,.27),lampX,1.059,3.065);

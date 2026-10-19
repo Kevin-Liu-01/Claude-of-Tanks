@@ -55,7 +55,7 @@ function addType96HullSides(P: TankBuilderPort): void {
                 for (const dz of [-.41, .41])
                     equipment(P, 'hull', 'Detail', box(.018, .020, .038), side * 1.728, 1.414, z + dz);
         }
-        P.addMudguard(`type96-front-${side}`, 'hullRubber', box(.57, .29, .033), side * 1.381, 1.315, 3.46, -.41);
+        P.hangMudguard(`type96-front-${side}`, 'hullRubber', box(.57, .29, .033), side * 1.381, 1.315, 3.46, -.41);
         P.addMudguard(`type96-rear-${side}`, 'hullRubber', box(.57, .32, .034), side * 1.381, 1.235, -3.42, .18);
         // These two bow fixtures are driving lamps, not crew optics.
         equipment(P, 'hull', 'Detail', box(.23, .13, .17), side * .98, 1.31, 2.96);

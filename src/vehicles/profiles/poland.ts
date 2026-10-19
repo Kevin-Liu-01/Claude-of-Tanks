@@ -88,6 +88,8 @@ interface PolishBuilderPort {
     owner: VehicleAssemblyOwner,
     build: () => void,
   ): void;
+  /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
+  hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
 interface EraCourseOptions {
@@ -390,7 +392,7 @@ function buildPT91Twardy(P: PolishBuilderPort): void {
   // bow corner fenders carry the plan front outboard of the center V
   for (const s of [-1, 1]) {
     P.add('hull', box(0.62, 0.13, 0.42), s * 1.40, 1.09, 3.30);
-    P.add('hullRubber', box(0.58, 0.15, 0.04), s * 1.38, 0.93, 3.52);
+    P.hangMudguard('pt91a-front-flap', 'hullRubber', box(0.58, 0.15, 0.04), s * 1.38, 0.93, 3.52);
     P.add('hullDark', box(0.03, 0.05, 0.44), s * 1.755, 1.235, 3.28);
     P.add('hull', box(0.16, 0.05, 5.7), s * 1.70, 1.215, 0.30);
     // fender-slot §B2 floor: a REAL dark slot plate riding 6 cm above the

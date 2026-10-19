@@ -29,8 +29,8 @@ function buildHull(P: TankBuilderPort): void {
         P.addEquipment('hullDetail', box(.025, .025, .13), side*1.545, .57, z+dz+.05);
       }
     }
-    P.addMudguard(`dardo-front-${side}`, 'hullRubber', box(.47,.30,.027), side*1.255,1.07,3.23,-.62);
-    P.addMudguard(`dardo-rear-${side}`, 'hullRubber', box(.46,.30,.026), side*1.255,.83,-3.22,.17);
+    P.hangMudguard(`dardo-front-${side}`, 'hullRubber', box(.47,.30,.027), side*1.255,1.07,3.23,-.62);
+    P.hangMudguard(`dardo-rear-${side}`, 'hullRubber', box(.46,.30,.026), side*1.255,.83,-3.22,.17);
     P.addEquipment('hullDetail', box(.30,.23,.24), side*1.15,1.37,2.97);
     P.addEquipment('hullGlass', markVehicleNightLens(cylZ(.070,.016,16), 'headlight'), side*1.15,1.39,3.095);
     P.addEquipment('hullDetail', box(.29,.045,.25), side*1.15,1.505,2.99);
