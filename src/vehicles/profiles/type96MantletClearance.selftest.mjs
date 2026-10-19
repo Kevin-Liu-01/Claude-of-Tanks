@@ -2,11 +2,14 @@
 // boot (buildType96Turret's Object_6 underside) hung 4-10 cm below the turret's floor: it crossed the hull roof at almost
 // every traverse, the driver's hatch lid at rest, and dipped 5.6 cm into the roof at full elevation; with the turret
 // reversed, the barrel entered the rear-deck panels at full depression. Now the fleet build clips the boot's underside
-// (type96bX.ts TYPE96B_BOOT_FLOOR) and the spec stops depression over the rear arc (gunPitchByYawDeg).
+// (type96bX.ts TYPE96B_BOOT_FLOOR) and the spec stops depression over the rear arc (gunPitchByYawDeg). The three Type 96
+// concepts carry the same turret on T-72B3, T-80U and T-72B3M decks (22-36 crossing poses in a 30-degree sweep): each
+// clips the boot to its own floors (sinoSovietConcepts.ts BOOT_FLOOR) and carries its own measured curve
+// (fleetRenewalSpecs.ts CONCEPT_GUN_PITCH_BY_YAW_DEG).
 // Every gun triangle is tested against every hull triangle (exact segment-triangle crossings both ways on a uniform
 // grid) at 2-degree turret steps: at the spec's minimum mechanical pitch for that yaw, at rest, and at half and full
-// elevation, at both qualities. Negative control: full depression with the turret reversed (below the curve) crosses the
-// rear deck.
+// elevation (each held at or above that minimum, as the sim holds it), at both qualities. Negative control: full depression with the turret reversed (below each curve) crosses
+// the deck.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
@@ -89,31 +92,40 @@ function crossings(M, G) {
   return count;
 }
 
-const spec = getSpec('type96b'), D = Math.PI / 180;
-assert.ok(spec.gunPitchByYawDeg, 'type96b: the spec declares its rear-deck gun clearance');
-for (const quality of ['high', 'low']) {
-  const tank = createTank('type96b', null, { proceduralOnly: true, quality, geometryReceipt: true, camoSeed: 4242 });
+const D = Math.PI / 180;
+for (const id of ['type96b', 'type96_72_long', 'type96_80_feng', 'type96_72m_lei']) for (const quality of ['high', 'low']) {
+  const spec = getSpec(id);
+  assert.ok(spec.gunPitchByYawDeg, `${id}: the spec declares its deck gun clearance`);
+  const tank = createTank(id, null, { proceduralOnly: true, quality, geometryReceipt: true, camoSeed: 4242 });
   try {
     tank.root.updateMatrixWorld(true);
     const hull = tank.root.getObjectByName('rig_hull'), turret = tank.root.getObjectByName('rig_turret'), gun = tank.root.getObjectByName('rig_gun');
     const toHull = hull.matrixWorld.clone().invert();
     // the hull's surfaces (its field net and garnish are cloth over them; interior fills sit inside them)
     const G = grid(soup(hull, turret, /Shadow|_ghillie_|InteriorFill/, toHull));
-    const yaw0 = turret.rotation.y, pitch0 = gun.rotation.x;
+    // the whole gun once, in its own frame; each pose only moves it into the hull's
+    const gunFrame = soup(gun, null, /Shadow/, gun.matrixWorld.clone().invert()), moved = new Float64Array(gunFrame.length);
+    const yaw0 = turret.rotation.y, pitch0 = gun.rotation.x, m = new THREE.Matrix4();
     const pose = (yawDeg, pitchRad) => {
       turret.rotation.y = yaw0 + yawDeg * D; gun.rotation.x = pitch0 - pitchRad; tank.root.updateMatrixWorld(true);
-      return crossings(soup(gun, null, /Shadow/, toHull), G);
+      const e = m.multiplyMatrices(toHull, gun.matrixWorld).elements;
+      for (let i = 0; i < gunFrame.length; i += 3) {
+        const x = gunFrame[i], y = gunFrame[i + 1], z = gunFrame[i + 2];
+        moved[i] = e[0] * x + e[4] * y + e[8] * z + e[12]; moved[i + 1] = e[1] * x + e[5] * y + e[9] * z + e[13]; moved[i + 2] = e[2] * x + e[6] * y + e[10] * z + e[14];
+      }
+      return crossings(moved, G);
     };
     const failures = [];
     for (let yaw = 0; yaw < 360; yaw += 2) {
+      // the reachable pitches: the sim never holds the gun below its curve (movement.ts clamps it there)
       const lowest = minimumMechanicalGunPitch(spec, yaw * D);
-      for (const pitch of [lowest, 0, spec.gunElevationDeg * D / 2, spec.gunElevationDeg * D]) {
+      for (const pitch of new Set([lowest, 0, spec.gunElevationDeg * D / 2, spec.gunElevationDeg * D].map((p) => Math.max(p, lowest)))) {
         const n = pose(yaw, pitch);
         if (n) failures.push(`yaw ${yaw} pitch ${(pitch / D).toFixed(2)}: ${n} gun triangles cross the hull`);
       }
     }
-    assert.deepEqual(failures, [], `type96b/${quality}: the gun clears the hull through traverse and pitch`);
-    assert.ok(pose(180, -spec.gunDepressionDeg * D) > 0, `type96b/${quality}: negative control: full depression over the rear deck crosses it`);
+    assert.deepEqual(failures, [], `${id}/${quality}: the gun clears the hull through traverse and pitch`);
+    assert.ok(pose(180, -spec.gunDepressionDeg * D) > 0, `${id}/${quality}: negative control: full depression over the rear deck crosses it`);
   } finally { tank.dispose(); }
 }
 console.log('type96MantletClearance selftest: OK');

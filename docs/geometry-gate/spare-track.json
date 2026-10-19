@@ -3814,19 +3814,19 @@
    "hostSweep": []
   },
   "type96_72_long": {
-   "inputHash": "83440bd59ca5bf0b",
+   "inputHash": "402f4bdd163f60b3",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "type96_72m_lei": {
-   "inputHash": "7b1223cbb646191e",
+   "inputHash": "d90d4f6194f2bddf",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "type96_80_feng": {
-   "inputHash": "dcc7ce67b746959d",
+   "inputHash": "273f71e081459455",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
