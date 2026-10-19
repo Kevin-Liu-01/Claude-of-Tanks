@@ -27,8 +27,12 @@ const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox']
 const page = await browser.newPage();
 await page.setContent('<canvas id="canvas" width="320" height="180"></canvas>');
 
+// --only <id,...> (2026-10-15, the manual's partial re-capture): grade just those shots' masters; publish-showcase-r2.mjs
+// --only reads such a report
+const only = option('only', null)?.split(',').map((id) => id.trim()).filter(Boolean) ?? null;
+if (only) for (const id of only) if (!config.shots.some((shot) => shot.id === id)) throw new Error(`--only names no shot ${id}`);
 const rows = [];
-for (const shot of config.shots) {
+for (const shot of config.shots.filter((s) => !only || only.includes(s.id))) {
   const file = join(rawDir, shot.source);
   const buffer = readFileSync(file);
   const dimensions = pngSize(buffer);
@@ -126,6 +130,7 @@ const failures = rows.filter((row) => !row.passed);
 const report = {
   generatedAt: new Date().toISOString(),
   expectedCount: config.expectedCount,
+  ...(only ? { only } : {}),
   totals: { images: rows.length, passed: rows.length - failures.length, failed: failures.length },
   rows,
 };

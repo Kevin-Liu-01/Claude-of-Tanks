@@ -105,10 +105,13 @@ try {
   // timeout — cold vite transforms under machine load can legitimately exceed
   // the old 30 s budget, and stale-dep 504s from a failed attempt are not
   // capture errors.
+  // (2026-10-15: a run that waited hours for the capture lock met a cold transform past 90 s twice; COT_SHOTS_NAV_TIMEOUT_MS
+  // raises both budgets for such a run)
+  const navMs = Number(process.env.COT_SHOTS_NAV_TIMEOUT_MS) || 90000;
   for (let attempt = 0; ; attempt++) {
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 90000 });
-      await page.waitForFunction('window.__GAME_READY === true', { timeout: 90000 });
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: navMs });
+      await page.waitForFunction('window.__GAME_READY === true', { timeout: navMs });
       break;
     } catch (err) {
       if (attempt >= 1) throw err;
@@ -167,6 +170,17 @@ try {
         { timeout: 20000, polling: 200 },
       ).catch(() => console.warn('[shots] garage GLB queue did not settle within 20 s — capturing anyway'));
     }
+    // the damage panel's tank diagram draws once its masks and tints have loaded, after the fixed settle on a loaded
+    // machine (2026-10-15, the manual's 17 and 19: the HUD's diagram blank in both). Where the panel is on screen, wait
+    // (bounded) for its own readiness; on timeout capture anyway (never hang).
+    await page.waitForFunction(
+      `(() => {
+        const p = window.__DEBUG && window.__DEBUG.damagePanel;
+        if (!p || !p.root || !p.root.isConnected || p.root.offsetParent === null || typeof p.debugState !== 'function') return true;
+        return !!p.debugState().masksReady;
+      })()`,
+      { timeout: 10000, polling: 200 },
+    ).catch(() => console.warn(`[shots] ${view}: the damage panel's diagram was not ready within 10 s — capturing anyway`));
     await new Promise((r) => setTimeout(r, settleMs));
     const file = `${outDir}/${view}.png`;
     const renderState = await page.evaluate(() => {

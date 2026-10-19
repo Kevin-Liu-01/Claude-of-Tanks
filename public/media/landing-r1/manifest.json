@@ -43,8 +43,8 @@
   "featureReel": {
     "video": "/media/site50-r14/films/reel.mp4",
     "poster": "/media/site50-r14/films/reel.jpg",
-    "width": 1920,
-    "height": 1080,
+    "width": 1600,
+    "height": 900,
     "durationMs": 28067,
     "fps": 30,
     "takes": [
@@ -235,8 +235,8 @@
     "width": 1920,
     "height": 1080,
     "durationMs": 6600,
-    "videoBytes": 2066099,
-    "posterBytes": 525119,
+    "videoBytes": 3254887,
+    "posterBytes": 264524,
     "captureMode": "studio-ui",
     "actors": [
       {

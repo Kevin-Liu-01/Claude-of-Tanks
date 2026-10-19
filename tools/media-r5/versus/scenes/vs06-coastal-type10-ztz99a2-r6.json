@@ -1,0 +1,458 @@
+{
+ "map": "coastal",
+ "timeOfDay": "day",
+ "seed": 1906,
+ "light": {
+  "sunAzimuthDeg": 293.9,
+  "sunElevationDeg": 35
+ },
+ "actors": [
+  {
+   "id": "type10_x",
+   "name": "hero",
+   "pos": [
+    333.4,
+    -163.25
+   ],
+   "facingDeg": 332.62,
+   "turretDeg": -60,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 7106,
+   "recoilAgeS": 0.04
+  },
+  {
+   "id": "ztz99a2",
+   "name": "foe0",
+   "pos": [
+    343.35,
+    -155.64
+   ],
+   "facingDeg": 260.02,
+   "turretDeg": -27.41,
+   "gunDeg": 0.6,
+   "camo": "factory",
+   "camoSeed": 7107,
+   "recoilAgeS": 0.04
+  }
+ ],
+ "effects": [
+  {
+   "type": "dust",
+   "at": [
+    338.86,
+    -170.84
+   ],
+   "tMs": 5800,
+   "params": {
+    "count": 21,
+    "intensity": 1.2,
+    "dirDeg": 332.62
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    336.45,
+    -172.09
+   ],
+   "tMs": 5800,
+   "params": {
+    "count": 21,
+    "intensity": 1.2,
+    "dirDeg": 332.62
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    337.94,
+    -169.07
+   ],
+   "tMs": 6200,
+   "params": {
+    "count": 21,
+    "intensity": 1.2,
+    "dirDeg": 332.62
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    335.53,
+    -170.31
+   ],
+   "tMs": 6200,
+   "params": {
+    "count": 21,
+    "intensity": 1.2,
+    "dirDeg": 332.62
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    337.14,
+    -167.51
+   ],
+   "tMs": 6550,
+   "params": {
+    "count": 18,
+    "intensity": 1.2,
+    "dirDeg": 332.62
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    334.73,
+    -168.76
+   ],
+   "tMs": 6550,
+   "params": {
+    "count": 18,
+    "intensity": 1.2,
+    "dirDeg": 332.62
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    336.56,
+    -166.4
+   ],
+   "tMs": 6800,
+   "params": {
+    "count": 15,
+    "intensity": 1.2,
+    "dirDeg": 332.62
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    334.15,
+    -167.65
+   ],
+   "tMs": 6800,
+   "params": {
+    "count": 15,
+    "intensity": 1.2,
+    "dirDeg": 332.62
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    336.31,
+    -165.92
+   ],
+   "tMs": 6910,
+   "params": {
+    "count": 12,
+    "intensity": 1.2,
+    "dirDeg": 332.62
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    333.9,
+    -167.16
+   ],
+   "tMs": 6910,
+   "params": {
+    "count": 12,
+    "intensity": 1.2,
+    "dirDeg": 332.62
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    349.22,
+    -153.1
+   ],
+   "tMs": 6300,
+   "params": {
+    "count": 16,
+    "intensity": 1.2,
+    "dirDeg": 260.02
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    349.73,
+    -156.02
+   ],
+   "tMs": 6300,
+   "params": {
+    "count": 16,
+    "intensity": 1.2,
+    "dirDeg": 260.02
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    348.04,
+    -153.31
+   ],
+   "tMs": 6600,
+   "params": {
+    "count": 14,
+    "intensity": 1.2,
+    "dirDeg": 260.02
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    348.55,
+    -156.23
+   ],
+   "tMs": 6600,
+   "params": {
+    "count": 14,
+    "intensity": 1.2,
+    "dirDeg": 260.02
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    347.17,
+    -153.46
+   ],
+   "tMs": 6820,
+   "params": {
+    "count": 12,
+    "intensity": 1.2,
+    "dirDeg": 260.02
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    347.68,
+    -156.38
+   ],
+   "tMs": 6820,
+   "params": {
+    "count": 12,
+    "intensity": 1.2,
+    "dirDeg": 260.02
+   }
+  },
+  {
+   "type": "muzzle_flash",
+   "actor": "hero",
+   "tMs": 6700,
+   "params": {
+    "caliberMm": 175
+   }
+  },
+  {
+   "type": "muzzle_flash",
+   "actor": "hero",
+   "tMs": 6958,
+   "params": {
+    "caliberMm": 175
+   }
+  },
+  {
+   "type": "muzzle_flash",
+   "actor": "foe0",
+   "tMs": 6935,
+   "params": {
+    "caliberMm": 120
+   }
+  },
+  {
+   "type": "impact",
+   "at": [
+    335.06,
+    -1.74,
+    -161.98
+   ],
+   "tMs": 6750,
+   "params": {
+    "kind": "ricochet",
+    "caliberMm": 60,
+    "normal": [
+     0.55,
+     -0.7,
+     -0.43
+    ]
+   }
+  },
+  {
+   "type": "sparks",
+   "at": [
+    335.06,
+    -1.74,
+    -161.98
+   ],
+   "tMs": 6770,
+   "params": {
+    "caliberMm": 40,
+    "normal": [
+     0.55,
+     -0.7,
+     -0.43
+    ]
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    335.06,
+    -1.74,
+    -161.98
+   ],
+   "tMs": 6760,
+   "params": {
+    "count": 8,
+    "speedMps": 6,
+    "hot": 0.6,
+    "scale": 0.4
+   }
+  }
+ ],
+ "fxTime": 7000,
+ "timeScale": 0,
+ "storyboard": {
+  "version": 1,
+  "durationMs": 8500,
+  "shots": [],
+  "actorTracks": [
+   {
+    "actor": "hero",
+    "keys": [
+     {
+      "id": "hero-0",
+      "tMs": 4400,
+      "pos": [
+       339.38,
+       -174.79
+      ],
+      "facingDeg": 332.62,
+      "turretDeg": -60,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-1",
+      "tMs": 7400,
+      "pos": [
+       332.48,
+       -161.47
+      ],
+      "facingDeg": 332.62,
+      "turretDeg": -60,
+      "gunDeg": 1,
+      "transition": "linear"
+     }
+    ]
+   },
+   {
+    "actor": "foe0",
+    "keys": [
+     {
+      "id": "foe0-0",
+      "tMs": 4400,
+      "pos": [
+       353.59,
+       -153.84
+      ],
+      "facingDeg": 260.02,
+      "turretDeg": -27.41,
+      "gunDeg": 0.6,
+      "transition": "linear"
+     },
+     {
+      "id": "foe0-1",
+      "tMs": 7400,
+      "pos": [
+       341.77,
+       -155.92
+      ],
+      "facingDeg": 260.02,
+      "turretDeg": -27.41,
+      "gunDeg": 0.6,
+      "transition": "linear"
+     }
+    ]
+   }
+  ]
+ },
+ "picture": {
+  "grain": {
+   "amount": 0.05,
+   "size": 1,
+   "color": 0.1,
+   "response": 0.7
+  },
+  "vignette": {
+   "amount": 0.36,
+   "roundness": 0.55,
+   "softness": 0.6
+  },
+  "dof": {
+   "enabled": false
+  },
+  "chromaticAberration": 0,
+  "exposure": 0.3,
+  "vibrance": 0.14,
+  "contrast": 1.05
+ },
+ "fx": {
+  "quality": "cinematic",
+  "trackDust": true
+ },
+ "autoPlace": false,
+ "meta": {
+  "id": "vs06-coastal-type10-ztz99a2-r6",
+  "kind": "versus-still",
+  "pair": "type10_x v ztz99a2",
+  "round": 6,
+  "idea": "the beach charge: the Type 10 charges up the strand at a tilted lens, its turret facing it, the ZTZ-99A2 firing back out of the surf",
+  "lens": "a",
+  "pick": "vs06-coastal-type10-ztz99a2-r6:a"
+ },
+ "camera": {
+  "name": "a",
+  "pos": [
+   320,
+   1.5,
+   -154
+  ],
+  "lookAt": [
+   347.43,
+   2.6,
+   -166.15
+  ],
+  "fov": 34,
+  "rollDeg": -10,
+  "groundRel": true
+ },
+ "cameraVariants": [
+  {
+   "name": "a",
+   "pos": [
+    320,
+    1.5,
+    -154
+   ],
+   "lookAt": [
+    347.43,
+    2.6,
+    -166.15
+   ],
+   "fov": 34,
+   "rollDeg": -10,
+   "groundRel": true
+  }
+ ]
+}

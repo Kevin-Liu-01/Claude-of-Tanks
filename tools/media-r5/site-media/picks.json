@@ -5,10 +5,12 @@
   "sources": {
     "deliverOver": "shots/media-r5/site50/deliver-r15",
     "deliver": "shots/media-r5/site50/deliver-r14",
+    "deliverCombat": "shots/media-r5/site50/deliver-combat226",
+    "deliverFleetOver": "shots/media-r5/site50/deliver-fleet226",
     "deliverFleet": "shots/media-r5/site50/deliver-fleet",
     "frames": "shots/media-r5/final/blur-r14/renders",
     "framesFallback": "shots/media-r5/final/blur-r13/renders",
-    "trailer": "shots/media-r5/motion/trailer-24h/renders/trailer-24h.mp4",
+    "trailers": "shots/media-r5/trailers-r6/deliver",
     "home": "shots/media-r5/home-r2/deliver"
   },
   "takes": {
@@ -424,6 +426,37 @@
       "zh": "一辆 Stridsvagn 103B 冒着炮击冲过农舍",
       "shortEn": "Strv 103B charge",
       "shortZh": "Strv 103B 冲锋"
+    },
+    "s225-verdant-duel": {
+      "map": "verdant",
+      "en": "A Leopard 2A7V races a T-90M across Verdant Fields at golden hour, trading broadsides",
+      "zh": "黄金时刻，一辆 Leopard 2A7V 与一辆 T-90M 在翠野原上疾驰对射",
+      "shortEn": "Leopard 2A7V races a T-90M",
+      "shortZh": "Leopard 2A7V 与 T-90M 疾驰对射",
+      "closePortrait": false
+    },
+    "s226-church-duel": {
+      "map": "winter",
+      "en": "A Challenger 3 Prototype and a T-80U trade rounds down a snowy village street",
+      "zh": "雪中，一辆 Challenger 3 Prototype 与一辆 T-80U 在村庄街道上交火",
+      "shortEn": "Challenger 3 Prototype v T-80U",
+      "shortZh": "Challenger 3 Prototype 对 T-80U"
+    },
+    "s227-oasis-duel": {
+      "map": "oasis",
+      "en": "An M1A2 Abrams SEPv3 knocks out a T-14 Armata by the caravanserai at sunset",
+      "zh": "日落时分，一辆 M1A2 Abrams SEPv3 在商队驿站旁击毁一辆 T-14 Armata",
+      "shortEn": "T-14 Armata knocked out",
+      "shortZh": "被击毁的 T-14 Armata",
+      "closePortrait": false
+    },
+    "s228-street-1v2": {
+      "map": "urban",
+      "en": "An AbramsX takes on a T-90M and a T-72B3 down Steinburg's main street at night",
+      "zh": "夜间，一辆 AbramsX 在斯泰因堡主街上以一敌二，迎战 T-90M 与 T-72B3",
+      "shortEn": "AbramsX against two",
+      "shortZh": "AbramsX 以一敌二",
+      "closePortrait": false
     }
   },
   "home": {
@@ -647,7 +680,7 @@
     ],
     "studio": {
       "label": "Scene Studio on Frontier Basin at golden hour with the Director workspace open: a Type 10 rolls toward the lens as the T-90M it knocked out explodes and burns behind it, beside the sequence library, the Stage Sequence button and the site's takes as cards.",
-      "posterS": 2.4,
+      "posterS": 4.6,
       "standIn": {
         "video": "/media/landing-r1/studio-leclerc-knockout.mp4",
         "poster": "/media/landing-r1/studio-leclerc-knockout.jpg",
@@ -1037,7 +1070,11 @@
       "s33-water-tower",
       "s34-furnace-salvo",
       "s38-church-knockout",
-      "s39-lakeside-village"
+      "s39-lakeside-village",
+      "s225-verdant-duel",
+      "s226-church-duel",
+      "s227-oasis-duel",
+      "s228-street-1v2"
     ],
     "archiveLoops": [
       "s07-lake-shellfire",
@@ -1353,9 +1390,11 @@
       }
     ]
   },
-  "posters": {
-    "trailer": 9
-  },
+  "films": [
+    "trailer",
+    "trailer-30",
+    "trailer-vertical"
+  ],
   "fleetPosters": {
     "moment": [
       "bmp2"

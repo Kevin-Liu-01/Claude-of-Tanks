@@ -5,8 +5,9 @@
 // kill-cam images, the Scene Studio loop, the mechanic and mode cards: each its delivered shot under home/, or its
 // stand-in still until that is delivered); the manual's hero, trailer, chapter cards, battle
 // takes, contact sheets and archive; each topic's hero loop and figures; the game's featured stills (boot splash, Garage
-// gallery, loading screens), its JSON-LD screenshots, the 404 page, the HUD editor's backdrop and the social cards'
-// sources; the landing contract (public/media/landing-r1/manifest.json); and the catalog copy in both locales.
+// gallery, loading screens), its JSON-LD screenshots, the 404 page and the HUD editor's backdrop (the social cards draw
+// their own pictures: tools/marketing-shots/generate-og-images.mjs); the landing contract
+// (public/media/landing-r1/manifest.json); and the catalog copy in both locales.
 //
 //   node tools/media-r5/site-media-wire.mjs --root=<tree> [--dry-run]
 // Run it on an export of main after site-media.mjs. Every rewrite matches its block exactly once, or the run stops
@@ -182,8 +183,9 @@ function wireDocs() {
     (_, open) => `${open}<img src="${still(hero.id, hero.still)}" alt="${esc(take(hero.id).en)}" data-i18n-alt="${titleKey(hero.id)}">`, 'manual hero image');
   const trailer = BUILT.get(built(`${C}/films/trailer.mp4`));
   const seconds = String(Math.round(trailer.seconds));
-  swap(D, /<video controls playsinline preload="metadata" poster="[^"]*" aria-label="[^"]*" data-i18n-aria-label="[^"]*"><source src="[^"]*" type="video\/mp4">(?:<track [^>]*>)?<\/video>/,
-    () => `<video controls playsinline preload="metadata" poster="${built(`${C}/films/trailer.jpg`)}" aria-label="${esc(COPY.en['docs.hero.trailerAria'])}" data-i18n-aria-label="docs.hero.trailerAria"><source src="${built(`${C}/films/trailer.mp4`)}" type="video/mp4"></video>`, 'trailer player');
+  // the trailer (round six): its VP9 webm first, the H.264 mp4 for a browser that plays no VP9; it loads on a click
+  swap(D, /<video controls playsinline preload="metadata" poster="[^"]*" aria-label="[^"]*" data-i18n-aria-label="[^"]*">(?:<source src="[^"]*" type="video\/webm">)?<source src="[^"]*" type="video\/mp4">(?:<track [^>]*>)?<\/video>/,
+    () => `<video controls playsinline preload="metadata" poster="${built(`${C}/films/trailer.jpg`)}" aria-label="${esc(COPY.en['docs.hero.trailerAria'])}" data-i18n-aria-label="docs.hero.trailerAria"><source src="${built(`${C}/films/trailer.webm`)}" type="video/webm"><source src="${built(`${C}/films/trailer.mp4`)}" type="video/mp4"></video>`, 'trailer player');
   swap(D, /<figcaption><span data-i18n="docs\.hero\.(?:reelCaption|trailerCaption)">[^<]*<\/span><strong data-i18n="docs\.hero\.(?:reelApproved|trailerSpec)"[^>]*>[^<]*<\/strong><\/figcaption>/,
     () => `<figcaption><span data-i18n="docs.hero.trailerCaption">${esc(COPY.en['docs.hero.trailerCaption'])}</span><strong data-i18n="docs.hero.trailerSpec" data-i18n-vars='{"seconds":"${seconds}"}'>${esc(COPY.en['docs.hero.trailerSpec'].replace('{seconds}', seconds))}</strong></figcaption>`, 'trailer caption');
   for (const [chapter, c] of Object.entries(PICKS.docs.chapters)) {
@@ -295,13 +297,9 @@ function wireGame() {
   swap('tools/studio-example-scenarios.mjs', /\/\/ `battleReels\.selftest` pins them to this table\./,
     () => '// tools/studio-example-videos.mjs records them from this table.', 'battle reel scenarios pin note',
     /records them from this table\./);
-  // the social cards' sources (generate-og-images.mjs re-renders the cards from these)
-  const og = { game: PICKS.og, home: PICKS.home.hero[1], docs: PICKS.docs.hero, 'docs-vehicles': PICKS.docs.chapters.vehicles,
-    'docs-ai': PICKS.docs.chapters.ai, 'docs-audio': PICKS.topicMedia['audio.media1'], ...PICKS.ogCards };
-  for (const [card, pick] of Object.entries(og)) {
-    swap('tools/marketing-shots/generate-og-images.mjs', new RegExp(`(\\['${card}', '[^']*', ')public/[^']+(', ')[^']+('\\])`),
-      (_, a, b, c) => `${a}public${still(pick.id, pick.still)}${b}50% 50%${c}`, `social card ${card}`);
-  }
+  // The social cards' pictures are not wired from these picks any more (2026-10-15, the owner: the cards "have to use
+  // the modern version of the game"): generate-og-images.mjs draws every card from the versus stills and the current
+  // UI captures and sets each one's framing itself, so a re-run here leaves its table alone.
   // the 404 page shares its own card (r14b, owner: "all pages with their custom ogs"), no longer the landing page's
   swap('404.html', /(<meta property="og:image" content="https:\/\/cot\.kevinliu\.studio\/brand\/og\/)[a-z0-9-]+(\.jpg">)/,
     (_, a, b) => `${a}404${b}`, '404 social card');
@@ -394,15 +392,15 @@ const COPY = {
   en: {
     'home.reel.title': 'Watch tank combat in the game engine',
     'home.reel.lede': "Every vehicle, shot, impact, fire and wreck in this reel is the game's own, rendered by its engine at 4K.",
-    'home.reel.cta': 'Watch 20 battle takes',
+    'home.reel.cta': `Watch ${PICKS.docs.reels.length} battle takes`,
     'home.shots.lede': 'Each scene was staged in Scene Studio and rendered at 4K in the game engine.',
     'home.mosaic.lede': "These frames show close combat and long-range fire across the game's battlefields, by day, at sunset and at night.",
     'docs.hero.trailerCaption': 'The trailer, filmed in the game engine',
-    'docs.hero.trailerSpec': '4K renders // {seconds} seconds',
+    'docs.hero.trailerSpec': 'In-engine renders // {seconds} seconds',
     'docs.hero.trailerAria': 'The Claude of Tanks trailer, filmed in the game engine, with its score and battle sound',
-    'docs.studio.reelsHead': 'The site fifty // {count} takes',
+    'docs.studio.reelsHead': "The site's battle takes // {count}",
     'docs.studio.reelsTitle': 'Battle takes',
-    'docs.studio.reelsLede': "Twenty of the site's fifty takes, staged in Scene Studio and rendered at 4K in the game engine, each with the sound of its own battle. Select a take to load it into the player.",
+    'docs.studio.reelsLede': "Twenty of the site's fifty takes and four duels from the combat round, each staged in Scene Studio, rendered in the game engine and played with the sound of its own battle. Select a take to load it into the player.",
     'docs.studio.reelNoscript': 'Open the first take.',
     'docs.studio.reelsGridAria': 'Battle takes',
     'docs.studio.reelSpec': '6 seconds // 720p with sound',
@@ -424,15 +422,15 @@ const COPY = {
   zh: {
     'home.reel.title': '观看游戏引擎中的坦克战斗',
     'home.reel.lede': '这段影片中的每辆载具、每次射击、命中、火焰与残骸都来自游戏本身，由游戏引擎以 4K 渲染。',
-    'home.reel.cta': '观看 20 段战斗镜头',
+    'home.reel.cta': `观看 ${PICKS.docs.reels.length} 段战斗镜头`,
     'home.shots.lede': '每个场景都在 Scene Studio 中编排，并在游戏引擎中以 4K 渲染。',
     'home.mosaic.lede': '这些画面呈现游戏各个战场上的近距离交火与远程射击，白昼、日落与夜间皆有。',
     'docs.hero.trailerCaption': '预告片，在游戏引擎中拍摄',
-    'docs.hero.trailerSpec': '4K 渲染 // {seconds} 秒',
+    'docs.hero.trailerSpec': '引擎内渲染 // {seconds} 秒',
     'docs.hero.trailerAria': 'Claude of Tanks 预告片，在游戏引擎中拍摄，配有配乐与战场音效',
-    'docs.studio.reelsHead': '网站五十镜头 // {count} 段',
+    'docs.studio.reelsHead': '网站战斗镜头 // {count} 段',
     'docs.studio.reelsTitle': '战斗镜头',
-    'docs.studio.reelsLede': '网站五十个镜头中的二十个，在 Scene Studio 中编排并在游戏引擎中以 4K 渲染，每段都带有自己那场战斗的声音。点选一段即可载入播放器。',
+    'docs.studio.reelsLede': '网站五十个镜头中的二十个，以及战斗回合的四场对决，每段都在 Scene Studio 中编排、在游戏引擎中渲染，并带有自己那场战斗的声音。点选一段即可载入播放器。',
     'docs.studio.reelNoscript': '打开第一段镜头。',
     'docs.studio.reelsGridAria': '战斗镜头',
     'docs.studio.reelSpec': '6 秒 // 720p，含声音',
