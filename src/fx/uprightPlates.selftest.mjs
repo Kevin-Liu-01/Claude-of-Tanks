@@ -126,6 +126,21 @@ assert.equal(layPerchedPlates(onHeap.d, [{ geometry: heap, matrix: null }], flat
 const chunk = perch([...box(0, 0, 0, 1.4, 1.3, 2.8), ...box(0.1, 1.32, 0, 3.9, 1.77, 2.8)]);
 assert.equal(layPerchedPlates(chunk.d, [], flat0), 1, 'the perched chunk laid');
 assert.ok(boxes(chunk.g)[1].lo[1] < 0.06, `its far side on the ground (${boxes(chunk.g)[1].lo[1].toFixed(3)} m)`);
+// a body's own pieces do not hold one another up (airfield #0's tower, round 4 fourth pass: a clump's skin and its dark
+// interior plate, both 1.7 m up, each read as the other's hold): its twin beside it holds nothing, its own stub under it does
+const twins = perch([...box(0, 1.7, 0, 4.2, 2.15, 3.3), ...box(0.05, 1.75, 0.05, 4.15, 2.1, 3.25)]);
+assert.equal(layPerchedPlates(twins.d, [], flat0), 2, 'both twins laid: neither holds the other');
+for (const b of boxes(twins.g)) assert.ok(b.lo[1] < 0.06, `each on the ground (${b.lo[1].toFixed(3)} m)`);
+const skin = geometryOf(box(0, 1.7, 0, 4.2, 2.15, 3.3)), inner = geometryOf(box(0.05, 1.75, 0.05, 4.15, 2.1, 3.25));
+assert.equal(layPerchedPlates([{ geometry: skin, matrix: null, body: 7 }, { geometry: inner, matrix: null, body: 7 }], [], flat0), 2,
+  "a body's two meshes laid: neither holds the other");
+const skin2 = geometryOf(box(0, 1.7, 0, 4.2, 2.15, 3.3)), inner2 = geometryOf(box(0.05, 1.75, 0.05, 4.15, 2.1, 3.25));
+assert.equal(layPerchedPlates([{ geometry: skin2, matrix: null, body: 7 }], [{ geometry: inner2, matrix: null, body: 8 }], flat0), 0,
+  "another body's drawing under it holds it");
+const stub = perch([...box(1.5, 0, 1, 2.5, 1.7, 2), ...box(0, 1.7, 0, 4.2, 1.9, 3.3)]);
+assert.equal(layPerchedPlates(stub.d, [], flat0, { prepare() {}, held: () => false }), 1, 'a slab wide past its stub is still perched');
+const onStub = perch([...box(0, 0, 0, 4.2, 1.7, 3.3), ...box(0, 1.7, 0, 4.2, 1.9, 3.3)]);
+assert.equal(layPerchedPlates(onStub.d, [], flat0), 0, 'a slab on its own block, which reaches down, stays');
 // deterministic
 const pc2 = perch([...box(0, 0, 0, 1.6, 1.6, 3), ...box(0.2, 1.62, 0, 4.2, 1.7, 3)]);
 layPerchedPlates(pc2.d, [], flat0);
@@ -134,4 +149,5 @@ assert.deepEqual(Array.from(pc2.g.getAttribute('position').array), Array.from(pc
 console.log('uprightPlates selftest: an upright plate beside a block laid on its broad side at its foot (the block untouched), '
   + 'flat plates and tiles left alone, a body plate laid in world space, deterministic; a remnant pier cut to half a metre over '
   + 'the drawn form, a held member and an unknown spot left as drawn; a perched plate tilted off its block onto the ground, one over '
-  + 'nothing lowered flat, plates held by their block, a hold, the ground or another drawing left alone');
+  + 'nothing lowered flat, plates held by their block, a hold, the ground or another drawing left alone; a body\'s twin pieces '
+  + '(its skin and its interior plate) hold neither each other up, its own block reaching down does');

@@ -241,6 +241,8 @@ const FLAT_NY = 0.8, PERCH_LIFT_M = 0.9, PERCH_SHARE = 0.3, PERCH_BAND_M = 0.8;
 const TILT_MAX = 0.87;
 /** The drawn tops' grid cell (m): a sample is held by a drawn top in its cell or the eight round it. */
 const TOP_CELL_M = 0.25;
+/** A piece of the plate's own body holds it only reaching this much lower than the plate's lowest point (m). */
+const OWN_LOWER_M = 0.3;
 /** A body's contact sphere holds a sample this far round it in plan (m), as collapseBodies' perch reads it. */
 const SPHERE_NEAR_M = 0.45;
 
@@ -294,6 +296,9 @@ export function createPlateHold(environment: () => RigidEnvironment | null, worl
 export interface PlateDrawing {
   geometry: THREE.BufferGeometry;
   matrix: THREE.Matrix4 | null;
+  /** The rigid body it was drawn for (its meshes share it; absent: a drawing of its own). A body's pieces do not hold one
+   *  another up: a piece of it holds a plate of it only reaching lower than the plate (a slab on its own stub). */
+  body?: number;
 }
 
 /** A drawing's vertices in world space. */
@@ -354,7 +359,20 @@ export function layPerchedPlates(edit: readonly PlateDrawing[], also: readonly P
   const all = [...edit, ...also];
   const worlds: Array<Float64Array | null> = all.map(() => null);
   const worldOf = (k: number): Float64Array => (worlds[k] ??= worldPositions(all[k]!));
-  const tris: Array<Int32Array | null> = all.map(() => null);
+  // each drawing's pieces (each triangle's root) and every piece's lowest point, as drawn when first asked (a body's own)
+  type Split = { pieces: Map<number, number[]>; tri: Int32Array; low: Map<number, number> };
+  const split: Array<Split | null> = all.map(() => null);
+  const splitOf = (k: number): Split => {
+    let sp = split[k];
+    if (!sp) {
+      const ww = worldOf(k), g = all[k]!.geometry;
+      const { pieces, tri } = piecesWithTriangles(ww, ww.length / 3, g.getIndex());
+      const low = new Map<number, number>();
+      for (const [r, l] of pieces) { let m = Infinity; for (const i of l) if (ww[i * 3 + 1]! < m) m = ww[i * 3 + 1]!; low.set(r, m); }
+      sp = split[k] = { pieces, tri, low };
+    }
+    return sp;
+  };
   let laid = 0;
   const cv = [0, 0, 0, 0, 0, 0];
   for (let e = 0; e < edit.length; e++) {
@@ -363,8 +381,7 @@ export function layPerchedPlates(edit: readonly PlateDrawing[], also: readonly P
     if (!pos || pos.count < 6) continue;
     const w = worldOf(e);
     const index = d.geometry.getIndex();
-    const { pieces, tri } = piecesWithTriangles(w, pos.count, index);
-    tris[e] = tri;
+    const { pieces, tri } = splitOf(e);
     const corner = (t: number, c: number): number => (index ? index.getX(t * 3 + c) : t * 3 + c);
     const changed = new Uint8Array(pos.count);
     let any = false;
@@ -435,9 +452,13 @@ export function layPerchedPlates(edit: readonly PlateDrawing[], also: readonly P
         const ww = worldOf(k);
         const g = all[k]!.geometry, idx = g.getIndex();
         const n = Math.floor((idx ? idx.count : ww.length / 3) / 3);
-        const own = k === e ? tri : null;
+        // (round 4, fourth pass; the census's airfield #0 tower at a fourth seed: a clump's skin and the dark interior plate
+        // behind it, both 1.7 m up, each read as holding the other) a piece of the plate's own body holds it only reaching
+        // lower than it (a slab on its own stub), never its twin beside it
+        const ownBody = k === e || (d.body !== undefined && all[k]!.body === d.body);
+        const own = ownBody ? splitOf(k) : null;
         for (let t = 0; t < n; t++) {
-          if (own && own[t] === root) continue;
+          if (own && !(own.low.get(own.tri[t]!)! < y0 - OWN_LOWER_M)) continue;
           const a = idx ? idx.getX(t * 3) : t * 3, b = idx ? idx.getX(t * 3 + 1) : t * 3 + 1, c = idx ? idx.getX(t * 3 + 2) : t * 3 + 2;
           const ax_ = ww[a * 3]!, ay = ww[a * 3 + 1]!, az = ww[a * 3 + 2]!, bx = ww[b * 3]!, by = ww[b * 3 + 1]!, bz = ww[b * 3 + 2]!;
           const cx = ww[c * 3]!, cy = ww[c * 3 + 1]!, cz = ww[c * 3 + 2]!;
@@ -544,6 +565,10 @@ export function layPerchedPlates(edit: readonly PlateDrawing[], also: readonly P
         const dy = g + 0.02 - y0;
         for (const i of list) { w[i * 3 + 1] = w[i * 3 + 1]! + dy; changed[i] = 1; }
       }
+      // (its lowest point as laid: what its body's other pieces read of it)
+      let low = Infinity;
+      for (const i of list) if (w[i * 3 + 1]! < low) low = w[i * 3 + 1]!;
+      split[e]!.low.set(root, low);
       any = true;
       laid++;
     }

@@ -1309,8 +1309,18 @@ adds:
   at rest is looked at again once it has moved a third of a metre off where it was left (caldera #27's sheet crept down
   with the storey under it, never fast enough to count as moving), and a roof body's perch is judged by the plates it
   draws before its box (that sheet's box read steep while its plate lay flat).
+- *A body does not hold itself up* (fourth pass: the census on `5a6df978e7` found the same tower at a fourth seed with a
+  4.2 x 3.3 m chunk 1.7 m up in its heap, 66 % of it over nothing). A clump draws its skin and the dark interior plate behind
+  it as two pieces a hand apart, and each read as the other's hold. A piece of a plate's own body (its drawing; a fracture
+  body's or a collapse part's other meshes, `PlateDrawing.body`) holds it only reaching 0.3 m lower than it (a slab on its own
+  stub), never as its twin beside it.
 - *The sweep's steps* (the round-3 critic's 12-20 ms single steps): a crowded voxel's sample pairs are read a run pair at a
-  step's share, and the ground columns a step's share at a time.
+  step's share, and the ground columns a step's share at a time. Measured before and after on the same machine (thread CPU
+  around the sweep each frame, load ~215, `r4/s3/perf/sweepframe.txt`), this changes nothing that shows: p99 9.5 ms
+  (verdant #9), 9.4-10.4 ms (urban #15), 14-15 ms (skybridge #27), at worst 15-20 ms. A CPU profile of skybridge #27's
+  steps over 4 ms (`r4/s3/perf/prof`) puts them in `putInto` (27 % of their samples), `heldSteps` (19 %) and the voxel pairs
+  (20 %): those units are counted at a fraction of their cost against SLICE. Open: weigh them at their cost (a step's
+  frame cost down, a heavy sweep spread over more frames, the slab check's 2 s hanging window to be re-read with it).
 - *The kinds receipt's KNOWN* is bounded: an entry excuses a finding of its building, mesh and reason only up to the
   largest extent judged (the round-3 critic: any new finding of that class on that building was hidden too).
 

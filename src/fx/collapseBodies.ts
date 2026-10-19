@@ -1716,13 +1716,15 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
   function bake(lc: LiveCollapse): void {
     const byMaterial = new Map<THREE.Material, THREE.BufferGeometry[]>();
     const laying: PlateDrawing[] = [];
+    let body = 0;
     for (const p of lc.pieces) {
       for (const part of p.parts) {
         for (const mesh of part.meshes) {
           const geo = mesh.geometry.clone().applyMatrix4(mesh.matrix);
           // (round 4; coastal #0's farmhouse: a gable plate baked on its edge beside the heap) no piece of it upright
           layUprightPlates(geo, null, (x, z) => env.groundAt(x, z));
-          laying.push({ geometry: geo, matrix: null });
+          // (a part's meshes are one body: they do not hold one another up)
+          laying.push({ geometry: geo, matrix: null, body });
           const list = byMaterial.get(mesh.material as THREE.Material) ?? [];
           list.push(geo);
           byMaterial.set(mesh.material as THREE.Material, list);
@@ -1731,6 +1733,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
         }
         part.meshes.length = 0;
         if (part.handle >= 0) { byHandle.delete(part.handle); pool.release(part.handle); part.handle = -1; }
+        body++;
       }
       if (p.handle >= 0) { byHandle.delete(p.handle); pool.release(p.handle); p.handle = -1; }
     }

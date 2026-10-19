@@ -1687,7 +1687,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     for (let i = 0; i < b.meshes.length; i++) {
       const mesh = b.meshes[i];
       mesh.matrixWorldNeedsUpdate = true;
-      if (live) live.bakedPending.push(mesh); else { o.group.remove(mesh); mesh.geometry.dispose(); }
+      if (live) { live.bakedPending.push(mesh); pendingBody.set(mesh, bakedCount); } else { o.group.remove(mesh); mesh.geometry.dispose(); }
     }
     bakedCount++;
   }
@@ -1695,6 +1695,8 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   const _mv = new THREE.Vector3(), _mn = new THREE.Vector3(), _mN = new THREE.Matrix3();
   /** What holds a plate baked (the records, the pool's bodies): uprightPlates' perch. */
   const plateHold = createPlateHold(() => o.environment?.() ?? null, o.pool.world);
+  /** A pending mesh's body (its bake's count): a body's meshes do not hold one another up. */
+  const pendingBody = new WeakMap<THREE.Mesh, number>();
   /**
    * A building's baked bodies into its merged heap: every pending mesh's interleaved vertices carried through its matrix
    * (positions and normals) and appended to its material's heap (a new buffer: the old one's vertices copied first), the
@@ -1708,11 +1710,12 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     for (const mesh of live.bakedPending) layUprightPlates(mesh.geometry, mesh.matrix, o.groundAt ? (x, z) => o.groundAt!(x, z) : null);
     // (round 4, third pass; the census's airfield #0 tower: a 3.8 x 2.8 m plate baked into its heap 1.7 m up, 57 % of it over
     // nothing) nor lies perched: held by what it lies on (the heap, the building's collapse lying still, the records, the
-    // bodies) or laid down onto the ground
+    // bodies) or laid down onto the ground — never by its own body's other pieces beside it (fourth pass: the same tower at
+    // another seed, a clump's skin and its dark interior plate each holding the other 1.7 m up)
     if (o.groundAt) {
       const also: PlateDrawing[] = [];
       for (const m of [...live.baked, ...live.bakedMerged.values(), ...(o.statics?.(live.seam.structureIdx) ?? [])]) also.push({ geometry: m.geometry, matrix: m.matrix });
-      layPerchedPlates(live.bakedPending.map((m) => ({ geometry: m.geometry, matrix: m.matrix })), also, (x, z) => o.groundAt!(x, z), plateHold);
+      layPerchedPlates(live.bakedPending.map((m) => ({ geometry: m.geometry, matrix: m.matrix, body: pendingBody.get(m) })), also, (x, z) => o.groundAt!(x, z), plateHold);
     }
     for (const mesh of live.bakedPending) {
       const pos = mesh.geometry.getAttribute('position') as THREE.InterleavedBufferAttribute;
