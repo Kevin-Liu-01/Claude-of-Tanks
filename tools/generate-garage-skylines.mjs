@@ -22,7 +22,10 @@ import { getMapConfig } from '../src/world/maps/index.ts';
 import { createHeightField } from '../src/world/terrain.ts';
 import { HINTERLAND_LAB_DRAFTS } from '../src/world/hinterland/drafts/index.ts';
 
-const MAP_IDS = ['verdant', 'desert', 'winter', 'urban', 'coastal', 'railyard', 'monsoon', 'alpine', 'badlands', 'foundry'];
+// the Garages whose horizon garageSkyline.ts builds (a style row there): the other Garages carry their own horizon kits,
+// so their maps are not baked (garage r9 g1 r4: ten maps baked, four used, in the pack's lazy chunk). Add a map here
+// with its style row.
+const MAP_IDS = ['winter', 'monsoon', 'alpine', 'badlands'];
 const TERRAIN_SEED = 1337;
 const EYE_M = 2.35; // the opening camera's height over the Garage datum
 const BEARINGS = 72; // every 5 degrees

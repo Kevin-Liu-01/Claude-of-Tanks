@@ -27,25 +27,6 @@ export interface GarageSkylineRecord {
 export const GARAGE_SKYLINE_NO_DATA = -32768;
 
 export const GARAGE_SKYLINES: Readonly<Record<string, GarageSkylineRecord>> = Object.freeze({
-  verdant: Object.freeze({
-    anchor: [-170, -365] as const,
-    bandsM: [[60,160],[160,340],[340,720]] as const,
-    bearings: 72,
-    bandsBase64: '3wGMARMBZwDD/8P/dACUAZwB2ADa/yf/v/6a/s7+2f4J/wf/Rv/A/xMAhADpACsBdQGHAT4BBQHKAGsATwBwANAAHwF6AbwB8QEUAlECWwLtAY4BBwHDAMgAgABjAFkANgC9/4f/cf9Y/zr/Fv9R/1b/Wv+F/43/WwD6AGsB0gFaAmECOQJ8AogCdAKDAkICbQBPAE8AIgCg/7z/WQB1AUoBfAAXAOD/t//u/zUAaABNADIAPABBACcA9f/L/+j/2P+0/5X/j/+F/7H/Vf8AgACAAIAAgACAAIAAgACAAIAAgACAJQBcAIIASwA1AC8AAgDr/wcAIAA8AI4AkwCFAIYAhABmAAUAWwCXAOkAHQE/AUUBUwF1AWIB9QC8AI0AJgAXABoA0//i/wAAEQADAOT/LQALABwA9/8PAHMAewB4AC8ADQAGAPb/KADZ/67/AIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIDr/wsAEwAhAF0AUABTADIAUgBeABMA/P/X/+r/CgDt/x4AGQACAAsA6f/o////',
-    landmarks: [
-      {"type":"ridge","name":null,"heightM":16,"lengthM":1100,"widthM":520,"strikeDeg":131,"source":"hinterland/verdant","azDeg":37.6,"distM":1887},
-      {"type":"ridge","name":null,"heightM":32,"lengthM":1100,"widthM":520,"strikeDeg":177,"source":"hinterland/verdant","azDeg":284.1,"distM":1211},
-    ],
-  }),
-  desert: Object.freeze({
-    anchor: [-118, -408] as const,
-    bandsM: [[60,160],[160,340],[340,720]] as const,
-    bearings: 72,
-    bandsBase64: 'CQPoAmUChwH2/9b+Dv/H/r7+Fv8Y/1X/gP/L/6z/lv+2/+z/6/+3/7r/r/+X/8T/GwBVADYAbQC+AAIBOwGcAeUBBQJQAr8C+AI4A1gDZwOeA6cDkgNuAy8DOQO3AuIBKwHGAPMA+wAMAdEAkABKAMD/qv/Y/8v/+//w/yQATgBWAGAARQBDABAAvQCxAYcCfQN5A1kD9gIpApoA+f8rAAYA5/8SABkAXAAZAC8ATQBmAHEAcQBJAAkA6P+Q/2v/lv+e/wCAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgIAAxgDCAFMABQDm//7/EQDz/8T/1f8ZADAAUgCSAOUAAwF3AFsAWACYADsCBwNuA3cDRwASAM7/x/9EAPUAMQAZAPf/4f8SADYAWQAZAPj/8v/tACEBgwD1/1kAJgAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACA9f8fAEwAbwCPAIUAfwCZAG8APgAVAFQAPQA0APL/y/8NAPr/UQDDALEA',
-    landmarks: [
-
-    ],
-  }),
   winter: Object.freeze({
     anchor: [-145, -342] as const,
     bandsM: [[60,160],[160,340],[340,720]] as const,
@@ -60,33 +41,6 @@ export const GARAGE_SKYLINES: Readonly<Record<string, GarageSkylineRecord>> = Ob
       {"type":"lake","name":"the frozen river","heightM":0,"lengthM":60.42857142857143,"widthM":40.285714285714285,"strikeDeg":0,"source":"maps/winter.ts terrain.marshes (frozen)","azDeg":92.7,"distM":101},
       {"type":"ridge","name":"the Pieniny hills","heightM":260,"lengthM":4400,"widthM":1600,"strikeDeg":110,"source":"authored: maps/winter.ts reference","azDeg":205,"distM":2400},
       {"type":"ridge","name":"the Gorce ridge","heightM":300,"lengthM":4200,"widthM":1600,"strikeDeg":30,"source":"authored: maps/winter.ts reference","azDeg":300,"distM":2600},
-    ],
-  }),
-  urban: Object.freeze({
-    anchor: [-36, -404] as const,
-    bandsM: [[60,160],[160,340],[340,720]] as const,
-    bearings: 72,
-    bandsBase64: 'Qv9G/0z/g/+8/7r/jP/H/14AYQC5AN4AJAFBARUBLwF1AWkBRAEcAf4A2QCoAHUAiQDMAK4AnQCaAFAAEgDh/8P/t/+//7b/tP+v/6r/wv8VAGMAhwCXANgALwF6AckB+QGTAUcBhQHBARoCUAI8AuYBmgFTAekAlwBaACoA9f/G/33/bf8h/zP/af9B/0H/HQBHAFcAiQCEAI4ANgASAPz/DAA/AFwAtQDaAHsAQQBAACoAXAA7ABgAJABJAJAAiQCKAHQAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIBVAb4BAwIpAmgB6gC6ALcAlwBfAGoAQQA6AGwAsACBAGoARgBSAFQAdwCIADsAPAAmAB4AJgA8AEMAQQBTALwAAQAYACwARQBFADEACgAJACUAVQB5AFYAHwAIABAAGwAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACARwA9AFoAewCGAFgAQgD8/wEAEgCOAJ0AjAB6AHMAdgBTAEsATABMAE0A',
-    landmarks: [
-
-    ],
-  }),
-  coastal: Object.freeze({
-    anchor: [-40, -381] as const,
-    bandsM: [[60,160],[160,340],[340,720]] as const,
-    bearings: 72,
-    bandsBase64: 'YgGLAZsBkQHbAJIAaABEAIgA1QBjAY4BsgHgAfYBOQISAh4CMgJwAl8CKAL3AdMBkwFaAWIBbQFIATYBQQFAAVMBOgEYAfYAGgHgAN8A2ADNAKIAmADBACUBoAHDARACcALlAlQDnwNhAxkD2wKYAhgCzQGjAW4BLQEUAdoAtQB1AHsA0wDnAIEAkwGJAXwBVQGCAYYBkQHbAJIAsACFAGUAWABnAJoAwgDjAAABzACxANEA0gDdAN0A1QCwALcAvwDcAC0B8QC7AACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgDUBmAGsAcEBsQFgAVUBXwFOAf8A0QCQAHgApADcAEIBNAEaAdsAmwCSAJcAuADQAFMA3gBMATgBOAA8AAgALAAXAOX/5v/4/xQAHgDw/9//zf/J/8f/xv/E/8T/xP/E/93/PABoAACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgEgAWQB5AJgAwACwAKoAogA7ACYAVgBXAFUAXwBxAEIAcgCBAIAATAA/ADYA',
-    landmarks: [
-
-    ],
-  }),
-  railyard: Object.freeze({
-    anchor: [-40, -400] as const,
-    bandsM: [[60,160],[160,340],[340,720]] as const,
-    bearings: 72,
-    bandsBase64: 'RP9F/1T/fP+9/9v/s//J/w4ARgBlALYA8wA5AQ0BDQEzAV4BLgEHAekAzgCSAFAAVwCVAH0AYwBpABoA3f+k/4j/fv96/4P/df91/4j/3P80AFgAUgBmAOkAJQFxAZ8BXgEoAVsBqgEIAmACgAIeAtUBjgEpAbYAYAArAOv/wv+z/6D/u/9l/3v/2v+c/43/u//R/wAANQBNAHYALgD8//T/8/8uAF8AXABgAFAANgBVAD4ARgA4ABUACQAVAEMAYABjAF4AAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAzAWgBbgFNAQsB4QC3AKwAhQBVAD0AFwApAKgAGQHMAJoAZQD5AAkBBAEMAQgA2v+8/8f/8v/e/+H/DQBcABUAcgD7/wcAHQAaABgAGwA3AEkAYABeAEgAFQD6//L/AQAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACA3v8yAEcAewCTAIsAiABJAJIA2QCLACsAHAA4ACcAIAAJAAkAJgAQABcA',
-    landmarks: [
-
     ],
   }),
   monsoon: Object.freeze({
@@ -166,15 +120,6 @@ export const GARAGE_SKYLINES: Readonly<Record<string, GarageSkylineRecord>> = Ob
       {"type":"jebel","name":null,"heightM":340,"lengthM":1300,"widthM":950,"strikeDeg":20,"source":"hinterland/badlands","azDeg":347,"distM":3066},
       {"type":"jebel","name":null,"heightM":600,"lengthM":2400,"widthM":1600,"strikeDeg":10,"source":"hinterland/badlands","azDeg":352.9,"distM":6981},
       {"type":"inselberg","name":"a floor inselberg","heightM":24,"lengthM":68,"widthM":80,"strikeDeg":0,"source":"maps/badlands.ts landforms","azDeg":357.3,"distM":505},
-    ],
-  }),
-  foundry: Object.freeze({
-    anchor: [-356, -372] as const,
-    bandsM: [[60,160],[160,340],[340,720]] as const,
-    bearings: 72,
-    bandsBase64: 'bgB5AGwAjgBrAGMAYABYAFQAWQCAALoA8wAXAQ8B3wDRAOYABAESAUUBhQGTAYQBZQE4Af8A6ADaALUAqACQAIMAoQCcAHcAcwCdAO4ArwCPAKMAzQC/APEACgEjAVQBrQHPAQcCOwJhApoCRAIcAuYBsgGoAWABSwFdAVsBNAEwAc4AkACFAHEAZQBvAHcA4gBoAHoAcwA8ADMAPwCPAIEASQBLAFAAWgC8AAQB4wC6ALkACAEKAfwA+gBTAVcBcQG1AR8BZgBOAD4AAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIBSANMACgEkAUoBXgFIAVEBAIAAgACAAIAAgACAAIDxAM8AxQCtAKoAlwCnAHQAZgCBAJYAGwFjATEBvAAnAAwAEQA0ALYAOACHAHgAOgAaABAAFAAZABYAFAATAHIABwF7AEUAWQAzAACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIAAgACAAIA2AFAAggCkAMYA',
-    landmarks: [
-
     ],
   }),
 });

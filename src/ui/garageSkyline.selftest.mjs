@@ -11,7 +11,7 @@ const check = spawnSync(process.execPath, [fileURLToPath(new URL('../../tools/ge
   cwd: fileURLToPath(new URL('../..', import.meta.url)), encoding: 'utf8',
 });
 assert.equal(check.status, 0, check.stderr || check.stdout);
-assert.match(check.stdout, /garage skylines: current \(10 maps/);
+assert.match(check.stdout, /garage skylines: current \(4 maps/);
 
 // the acceptance list (criterion 12): the landmark types each place must show
 const REQUIRED = {
@@ -48,7 +48,6 @@ for (const [mapId, required] of Object.entries(REQUIRED)) {
   assert.ok(geometry.userData.maxElevationDeg > 2 && geometry.userData.maxElevationDeg <= 13, `${mapId}: sky over the skyline`);
   geometry.dispose(); again.dispose();
 }
-for (const mapId of ['verdant', 'desert', 'urban', 'coastal', 'railyard', 'foundry']) {
-  assert.ok(GARAGE_SKYLINES[mapId], `${mapId}: the generator bakes its map's relief and rows for its lane`);
-}
+// only the Garages built from a skyline are baked (the others carry their own horizon kits)
+assert.deepEqual(Object.keys(GARAGE_SKYLINES).sort(), ['alpine', 'badlands', 'monsoon', 'winter'], 'the bake holds the four skyline Garages');
 console.log('garageSkyline.selftest: skylines current, landmarks from the maps, budgets kept');
