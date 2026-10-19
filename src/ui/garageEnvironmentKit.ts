@@ -64,7 +64,9 @@ import {
 } from './garageApproachDetails.ts';
 import { buildGarageKitDressing, type GarageKitBuild, type GarageKitPlacement } from './garageKitPlacement.ts';
 import { GARAGE_KIT_PLACEMENTS } from './garageKitPlacements.ts';
-import { createGarageSkylineBackdrop, garageSkylineEnabled, type GarageSkylineLandmarkReceipt } from './garageSkyline.ts';
+import {
+  createGarageSkylineBackdrop, garageSkylineEnabled, prepareGarageSkyline, type GarageSkylineLandmarkReceipt,
+} from './garageSkyline.ts';
 
 interface GarageEnvironmentEngineContext {
   anisotropy?: number;
@@ -1116,6 +1118,25 @@ function samplePatch(
   return THREE.MathUtils.lerp(a, b, tz);
 }
 
+/**
+ * The terrain mesh's own surface at a point: its triangles (createTerrainGeometry splits each cell on the b-c diagonal),
+ * not the bilinear field, which a twisted cell's centre can leave 10 cm under the drawn ground.
+ */
+function samplePatchSurface(
+  patch: GarageTerrainPatch,
+  values: Float32Array,
+  x: number,
+  z: number,
+): number {
+  const fx = THREE.MathUtils.clamp((x / patch.sizeXM + 0.5) * (patch.width - 1), 0, patch.width - 1);
+  const fz = THREE.MathUtils.clamp((z / patch.sizeZM + 0.5) * (patch.height - 1), 0, patch.height - 1);
+  const x0 = Math.min(patch.width - 2, Math.floor(fx)); const z0 = Math.min(patch.height - 2, Math.floor(fz));
+  const tx = fx - x0; const tz = fz - z0;
+  const a = values[z0 * patch.width + x0], b = values[z0 * patch.width + x0 + 1];
+  const c = values[(z0 + 1) * patch.width + x0], d = values[(z0 + 1) * patch.width + x0 + 1];
+  return tx + tz <= 1 ? a + (b - a) * tx + (c - a) * tz : d + (c - d) * (1 - tx) + (b - d) * (1 - tz);
+}
+
 function cameraPoint(side: number, depth: number): Readonly<{ x: number; z: number }> {
   return garageViewPoint(side, depth);
 }
@@ -1178,8 +1199,12 @@ function createBuckets(): GeometryBuckets {
   };
 }
 
-function normalizeGeometry(source: THREE.BufferGeometry, vertexColors: boolean): THREE.BufferGeometry {
-  const geometry = source.index ? source.toNonIndexed() : source.clone();
+/**
+ * One bucket source in the merge's attribute layout. `owned` sources (built for this pack and disposed after the merge)
+ * are reshaped in place instead of copied first (garage r9 g1 r4: the copies were a sixth of a cold pack bake).
+ */
+function normalizeGeometry(source: THREE.BufferGeometry, vertexColors: boolean, owned = false): THREE.BufferGeometry {
+  const geometry = source.index ? source.toNonIndexed() : owned ? source : source.clone();
   for (const key of Object.keys(geometry.attributes)) {
     if (!['position', 'normal', 'uv', 'color'].includes(key)) geometry.deleteAttribute(key);
   }
@@ -2216,6 +2241,7 @@ export function buildGarageEnvironment(
           approach: recipe.approach,
           buckets: combined,
           groundAtWorld: (x, z) => samplePatch(patch, heights, x, z),
+          surfaceAtWorld: (x, z) => samplePatchSurface(patch, heights, x, z),
         });
     for (const mesh of facilityDetails.meshes) {
       track(mesh.geometry);
@@ -2370,10 +2396,14 @@ export function buildGarageEnvironment(
   };
   foldTinyPlasterBuckets();
   const addMergedStructures = (): void => {
+    // every source is this pack's own (all are disposed below) and is reshaped in place, unless it was pushed more than
+    // once (twice into a bucket, or into two): then each use takes its own copy, as before
+    const uses = new Map<THREE.BufferGeometry, number>();
+    for (const key of BUCKET_KEYS) for (const geometry of combined[key] || []) uses.set(geometry, (uses.get(geometry) ?? 0) + 1);
     for (const key of BUCKET_KEYS) {
       const sources = combined[key] || [];
       if (!sources.length) continue;
-      const normalized = sources.map((geometry) => normalizeGeometry(geometry, key === 'baked'));
+      const normalized = sources.map((geometry) => normalizeGeometry(geometry, key === 'baked', uses.get(geometry) === 1));
       const merged = mergeGeometries(normalized, false);
       for (const geometry of normalized) geometry.dispose();
       for (const geometry of sources) geometry.dispose();
@@ -2668,4 +2698,10 @@ export async function prepareGarageEnvironmentAssets(
   const recipe = GARAGE_ENVIRONMENT_RECIPES[variant.architecture];
   if (!recipe) throw new Error(`Unknown Garage architecture: ${variant.architecture}`);
   await assets.prepareTreeGroves(recipe.treeSpecies as readonly TreeSpecies[]);
+  // the map's skyline bakes here, in its own slice before the synchronous pack bake (4-45 ms on a first visit: garage
+  // r9 g1 r4, the switch's long task); the build then takes a copy of the cached bake
+  if (garageSkylineEnabled(variant.mapId)) {
+    await new Promise<void>((resolve) => { setTimeout(resolve, 0); });
+    prepareGarageSkyline(variant.mapId);
+  }
 }

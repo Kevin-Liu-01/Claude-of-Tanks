@@ -40,12 +40,21 @@ interface SkylineStyle {
   readonly hazePerOctave: number;
   /** The shade side's light (the sky's fill): low in the desert's hard light, higher under snow and cloud. */
   readonly ambient: number;
+  /**
+   * The colour of the sky's fill and of the sun, as linear RGB multipliers (neutral when absent). Snow in shade takes
+   * the blue sky's colour and in sun a warm white: lit only in grey, Glacier's range read as "a very pale, low-contrast
+   * grey faceted shape" (garage r9 g1 r4).
+   */
+  readonly skyTint?: readonly [number, number, number];
+  readonly sunTint?: readonly [number, number, number];
 }
 
 const STYLES: Readonly<Partial<Record<string, SkylineStyle>>> = Object.freeze({
   badlands: { biome: 'redrock', kElev: 0.56, haze: 0xd9b89a, hazeBoost: 0.02, hazePerOctave: 0.1, ambient: 0.3 },
-  alpine: { biome: 'alpine', kElev: 0.6, haze: 0xc6d4df, hazeBoost: 0, hazePerOctave: 0.1, ambient: 0.4 },
-  winter: { biome: 'tatra', kElev: 0.6, haze: 0xc8d2db, hazeBoost: 0.03, hazePerOctave: 0.12, ambient: 0.44 },
+  alpine: { biome: 'alpine', kElev: 0.6, haze: 0xc2d2e0, hazeBoost: 0, hazePerOctave: 0.085, ambient: 0.4,
+    skyTint: [0.74, 0.88, 1.14], sunTint: [1.05, 1.0, 0.92] },
+  winter: { biome: 'tatra', kElev: 0.6, haze: 0xc8d2db, hazeBoost: 0.03, hazePerOctave: 0.12, ambient: 0.44,
+    skyTint: [0.8, 0.9, 1.1], sunTint: [1.04, 1.0, 0.94] },
   monsoon: { biome: 'naga', kElev: 0.95, haze: 0xb9c8c6, hazeBoost: 0.05, hazePerOctave: 0.17, ambient: 0.42 },
 });
 
@@ -164,6 +173,18 @@ function lightOf(ctx: SkylineContext, n: THREE.Vector3, lift = 0): number {
   return ctx.style.ambient + 0.95 * Math.max(0, n.dot(ctx.sun)) + 0.12 * Math.max(0, n.y) + lift;
 }
 
+/** `colour` lit by that light: grey where the style has no tints, else the sky's fill and the sun in their colours. */
+function applyLight(ctx: SkylineContext, colour: THREE.Color, n: THREE.Vector3, lift = 0, shade = 1): THREE.Color {
+  const { skyTint, sunTint } = ctx.style;
+  if (!skyTint || !sunTint) return colour.multiplyScalar(lightOf(ctx, n, lift) * shade);
+  const fill = ctx.style.ambient + 0.12 * Math.max(0, n.y) + lift, sun = 0.95 * Math.max(0, n.dot(ctx.sun));
+  return colour.setRGB(
+    colour.r * (fill * skyTint[0] + sun * sunTint[0]) * shade,
+    colour.g * (fill * skyTint[1] + sun * sunTint[1]) * shade,
+    colour.b * (fill * skyTint[2] + sun * sunTint[2]) * shade,
+  );
+}
+
 type Paint = (u: number, v: number, p: THREE.Vector3, slope: number, n: THREE.Vector3, out: THREE.Color) => THREE.Color;
 
 /**
@@ -191,7 +212,7 @@ function grid(ctx: SkylineContext, nu: number, nv: number,
   const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), d = new THREE.Vector3(), n = new THREE.Vector3();
   const colour = new THREE.Color();
   const shade = (vShare: number): void => {
-    colour.multiplyScalar(lightOf(ctx, n, lift)).lerp(ctx.haze, THREE.MathUtils.clamp(haze(vShare) + ctx.style.hazeBoost, 0, 0.92));
+    applyLight(ctx, colour, n, lift).lerp(ctx.haze, THREE.MathUtils.clamp(haze(vShare) + ctx.style.hazeBoost, 0, 0.92));
   };
   if (options.flat) {
     const tri = (i0: number, j0: number, i1: number, j1: number, i2: number, j2: number): void => {
@@ -242,18 +263,28 @@ function grid(ctx: SkylineContext, nu: number, nv: number,
   }
 }
 
-/** A flat-shaded quad (corners in order) in a colour lit by its normal and hazed. */
-function quadColor(ctx: SkylineContext, corners: readonly THREE.Vector3[], color: THREE.Color, haze: number, shade = 1): void {
-  const { mesh } = ctx;
+/** A quad's colour lit by its own normal and hazed (null for a degenerate quad). */
+function quadLit(ctx: SkylineContext, corners: readonly THREE.Vector3[], color: THREE.Color, haze: number, shade = 1): THREE.Color | null {
   const n = new THREE.Vector3().subVectors(corners[1], corners[0]).cross(new THREE.Vector3().subVectors(corners[corners.length - 1], corners[0]));
-  if (n.lengthSq() < 1e-12) return;
+  if (n.lengthSq() < 1e-12) return null;
   n.normalize();
   if (n.x * -corners[0].x + n.z * -corners[0].z < 0) n.negate();
-  const colour = color.clone().multiplyScalar(lightOf(ctx, n) * shade).lerp(ctx.haze, THREE.MathUtils.clamp(haze + ctx.style.hazeBoost, 0, 0.92));
+  return applyLight(ctx, color.clone(), n, 0, shade).lerp(ctx.haze, THREE.MathUtils.clamp(haze + ctx.style.hazeBoost, 0, 0.92));
+}
+
+/** A quad (or triangle) with one colour per corner. */
+function quadVertices(ctx: SkylineContext, corners: readonly THREE.Vector3[], colours: readonly THREE.Color[]): void {
+  const { mesh } = ctx;
   const base = mesh.positions.length / 3;
-  for (const v of corners) mesh.vertex(v.x, v.y, v.z, colour);
+  corners.forEach((v, index) => mesh.vertex(v.x, v.y, v.z, colours[index]));
   if (corners.length === 3) mesh.indices.push(base, base + 1, base + 2);
   else mesh.indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+}
+
+/** A flat-shaded quad (corners in order) in a colour lit by its normal and hazed. */
+function quadColor(ctx: SkylineContext, corners: readonly THREE.Vector3[], color: THREE.Color, haze: number, shade = 1): void {
+  const colour = quadLit(ctx, corners, color, haze, shade);
+  if (colour) quadVertices(ctx, corners, [colour, colour, colour, colour]);
 }
 
 /** A flat-shaded quad in a tone. */
@@ -478,26 +509,42 @@ function addMassif(ctx: SkylineContext, mark: GarageSkylineLandmark, salt: numbe
   };
   // whether the last tone was forest: the spruce stays dark at range in the clear winter air (it hazed to the snow's grey)
   let lastForest = false;
+  // the last tone's cover: snowfields and forest blend softly across their facets, rock keeps its crisp joints
+  let lastKind: 'snow' | 'forest' | 'rock' = 'snow';
   const tone = (n: THREE.Vector3, v: number, x: number, c: number, flank: 0 | 1): THREE.Color => {
     const u = x / (2 * half) + 0.5;
     // the spruce forest climbs to the treeline (about half the relief on the High Tatra, most of the foothills), ragged
     // up the ribs and down the couloirs, snow-dusted near its top (garage r9 g1 r2: at 0.3 it all sat behind the near
     // ground and the range read as a white mound)
-    const treeline = (mark.heightM < 700 ? 0.78 : 0.5) + 0.12 * noise1(u * 7, salt + 8) + (flank ? 0.05 : -0.05) * (hash1(c, salt + 9) - 0.3);
-    lastForest = tatra && v < treeline;
+    // Glacier's ranges (garage r9 g1 r4: "a very pale ... flat" range where the before had green foothills): the Mont
+    // Cenis valleys' spruce and larch climb their lower slopes too, lower than the Tatra's (the pass stands above them)
+    const treeline = alpine
+      ? (mark.heightM < 700 ? 0.46 : 0.26) + 0.1 * noise1(u * 7, salt + 8) + (flank ? 0.05 : -0.05) * (hash1(c, salt + 9) - 0.3)
+      : (mark.heightM < 700 ? 0.78 : 0.5) + 0.12 * noise1(u * 7, salt + 8) + (flank ? 0.05 : -0.05) * (hash1(c, salt + 9) - 0.3);
+    lastForest = (tatra || alpine) && v < treeline;
+    lastKind = lastForest ? 'forest' : 'snow';
     if (lastForest) {
       const dusted = THREE.MathUtils.smoothstep(v, treeline - 0.14, treeline);
+      if (alpine) {
+        // spruce and larch in stands: three greens by stand, snow lying in the gaps and on the upper fringe
+        const stand = hash1(c * 31 + Math.round(v * 20), salt + 4);
+        return colour.copy(hex(stand < 0.34 ? 0x2a4a2e : stand < 0.68 ? 0x37583a : 0x46664a))
+          .lerp(hex(0xb7c5cf), (hash1(c * 5 + Math.round(v * 9), salt + 3) > 0.78 ? 0.4 : 0) + dusted * 0.45);
+      }
       return colour.copy(hex(noise1(c * 1.7, salt + 4) > 0.5 ? 0x223029 : 0x2d3b33)).lerp(hex(0x9aa6ac), (hash1(c * 5 + Math.round(v * 9), salt + 3) > 0.72 ? 0.35 : 0) + dusted * 0.4);
     }
     // the rock runs in streaks down one flank of a rib, from high on it toward the foot (it holds no snow: too steep),
     // the couloirs and ledges between the ribs under snow; the steepest facets bare anywhere
-    const ribbed = hash1(c, salt + 17) > (alpine ? 0.22 : 0.45);
+    // (r4: Glacier's every rib carried a long streak and the range read as grey blocks: fewer, shorter streaks there)
+    const ribbed = hash1(c, salt + 17) > (alpine ? 0.42 : 0.45);
     const rockFlank = hash1(c, salt + 18) > 0.5 ? 1 : 0;
-    const rockFrom = 0.18 + 0.6 * hash1(c, salt + 16);
-    const rockTo = Math.min(1, rockFrom + 0.3 + 0.5 * hash1(c, salt + 19));
-    const snowy = !(ribbed && flank === rockFlank && v > rockFrom && v < rockTo) && n.y > (alpine ? 0.28 : tatra ? 0.3 : 0.22);
-    if (!snowy) return colour.copy(hex(alpine ? 0x4a525b : 0x56606b)).lerp(hex(0x333a42), hash1(c * 13 + Math.round(v * 9), salt + 6) * 0.55);
-    return colour.copy(hex(0xf2f6f9)).lerp(hex(0xc9d5df), hash1(c * 7 + Math.round(v * 5), salt + 7) * 0.35);
+    const rockFrom = (alpine ? 0.34 : 0.18) + 0.6 * hash1(c, salt + 16);
+    const rockTo = Math.min(1, rockFrom + (alpine ? 0.18 : 0.3) + (alpine ? 0.3 : 0.5) * hash1(c, salt + 19));
+    const snowy = !(ribbed && flank === rockFlank && v > rockFrom && v < rockTo) && n.y > (alpine ? 0.22 : tatra ? 0.3 : 0.22);
+    if (!snowy) lastKind = 'rock';
+    if (!snowy) return colour.copy(hex(alpine ? 0x434a52 : 0x56606b)).lerp(hex(alpine ? 0x2a3038 : 0x333a42), hash1(c * 13 + Math.round(v * 9), salt + 6) * 0.55);
+    // snow: wind-packed white high up, a faint blue-grey in the hollows lower down
+    return colour.copy(hex(0xf4f7fa)).lerp(hex(alpine ? 0xc2d0dc : 0xc9d5df), hash1(c * 7 + Math.round(v * 5), salt + 7) * 0.3 + (alpine ? (1 - v) * 0.2 : 0));
   };
   const n = new THREE.Vector3();
   const faceTone = (a: THREE.Vector3, b: THREE.Vector3, c2: THREE.Vector3, v: number, x: number, c: number, flank: 0 | 1): THREE.Color => {
@@ -511,6 +558,13 @@ function addMassif(ctx: SkylineContext, mark: GarageSkylineLandmark, salt: numbe
     edges.push(Math.min(half, edges[edges.length - 1] + (2 * half / columns) * (0.35 + 1.5 * Math.pow(hash1(c, salt + 14), 1.6))));
   }
   if (edges[edges.length - 1] < half) edges.push(half);
+  // the facets, lit and hazed; snowfields and forest then take each corner's mean over the facets of their own cover
+  // that share it (soft snow, garage r9 g1 r4: the flat facets read as "faceted ... flat"), rock stays flat-shaded
+  const facets: Array<{ corners: THREE.Vector3[]; colour: THREE.Color; kind: 'snow' | 'forest' | 'rock' }> = [];
+  const pushFacet = (corners: THREE.Vector3[], tint: THREE.Color, haze: number, kind: 'snow' | 'forest' | 'rock'): void => {
+    const lit = quadLit(ctx, corners, tint, haze);
+    if (lit) facets.push({ corners, colour: lit, kind });
+  };
   for (let c = 0; c < edges.length - 1; c += 1) {
     const x0 = edges[c], x1 = edges[c + 1];
     const apex = -(0.2 + 0.4 * hash1(c, salt + 5)) * (x1 - x0);
@@ -519,11 +573,33 @@ function addMassif(ctx: SkylineContext, mark: GarageSkylineLandmark, salt: numbe
       const va = ROWS[r], vb = ROWS[r + 1];
       const L0 = at(x0, va, 0), L1 = at(x0, vb, 0), M0 = at(mid(r), va, apex), M1 = at(mid(r + 1), vb, apex), R0 = at(x1, va, 0), R1 = at(x1, vb, 0);
       const vm = (va + vb) / 2;
-      const left = faceTone(L0, M0, L1, vm, x0, c, 0), leftForest = lastForest;
-      quadColor(ctx, [L0, M0, M1, L1], left, (pr.haze + (1 - vm) * 0.08) * (leftForest ? 0.5 : 1));
+      const left = faceTone(L0, M0, L1, vm, x0, c, 0), leftForest = lastForest, leftKind = lastKind;
+      const forestHaze = alpine ? 0.35 : 0.5;
+      pushFacet([L0, M0, M1, L1], left, (pr.haze + (1 - vm) * 0.08) * (leftForest ? forestHaze : 1), leftKind);
       const right = faceTone(M0, R0, M1, vm, x1, c, 1);
-      quadColor(ctx, [M0, R0, R1, M1], right, (pr.haze + (1 - vm) * 0.08) * (lastForest ? 0.5 : 1));
+      pushFacet([M0, R0, R1, M1], right, (pr.haze + (1 - vm) * 0.08) * (lastForest ? forestHaze : 1), lastKind);
     }
+  }
+  const soft = alpine || tatra;
+  const key = (v: THREE.Vector3, kind: string): string => `${kind}:${v.x.toFixed(2)},${v.y.toFixed(2)},${v.z.toFixed(2)}`;
+  const sums = new Map<string, { colour: THREE.Color; count: number }>();
+  if (soft) {
+    for (const facet of facets) {
+      if (facet.kind === 'rock') continue;
+      for (const corner of facet.corners) {
+        const k = key(corner, facet.kind);
+        const sum = sums.get(k);
+        if (sum) { sum.colour.add(facet.colour); sum.count += 1; } else sums.set(k, { colour: facet.colour.clone(), count: 1 });
+      }
+    }
+  }
+  for (const facet of facets) {
+    if (!soft || facet.kind === 'rock') { quadVertices(ctx, facet.corners, [facet.colour, facet.colour, facet.colour, facet.colour]); continue; }
+    quadVertices(ctx, facet.corners, facet.corners.map((corner) => {
+      const sum = sums.get(key(corner, facet.kind))!;
+      // some of the facet's own light kept, so the ribs still model under the sun (more in the forest: its stands)
+      return sum.colour.clone().multiplyScalar(1 / sum.count).lerp(facet.colour, facet.kind === 'forest' ? 0.6 : 0.4);
+    }));
   }
   return pr;
 }
@@ -702,12 +778,17 @@ const skylineCache = new Map<string, THREE.BufferGeometry>();
  * own copy (the pack disposes what it is given; the Garage revisited skips the rebuild).
  */
 export function createGarageSkylineBackdrop(mapId: string): THREE.BufferGeometry {
+  return prepareGarageSkyline(mapId).clone();
+}
+
+/** Bake a map's skyline into the session cache ahead of its pack build (idempotent); returns the cached bake. */
+export function prepareGarageSkyline(mapId: string): THREE.BufferGeometry {
   let geometry = skylineCache.get(mapId);
   if (!geometry) {
     geometry = buildGarageSkyline(mapId);
     skylineCache.set(mapId, geometry);
   }
-  return geometry.clone();
+  return geometry;
 }
 
 /**
@@ -753,9 +834,10 @@ export function buildGarageSkyline(mapId: string): THREE.BufferGeometry {
         if (noise2(u * 900, t * 12, salt + 4) > 0.82) out.lerp(hex(0x4a2a1e), 0.5);
         return out;
       }
-      case 'alpine':
-        if (slope > 0.62) return out.copy(hex(0x60676d)).lerp(hex(0x484e54), m * 0.5);
+      case 'alpine': {
+        if (slope > 0.62) return out.copy(hex(0x565e65)).lerp(hex(0x3c434a), m * 0.5);
         return out.copy(hex(0xeef3f7)).lerp(hex(0xb6c5d2), Math.min(1, slope * 0.9 + (1 - t) * 0.2 + m * 0.15));
+      }
       case 'tatra': {
         // spruce woods along the crests in clumps (dark crowns, snow-laden fringes), snow on the open slopes below
         const clump = noise1(u * 46 + layer * 11, salt + 5);

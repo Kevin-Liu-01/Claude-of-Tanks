@@ -60,6 +60,13 @@ export interface GarageApproachRecipe {
    * threshold").
    */
   readonly forecourt?: { readonly from: number; readonly width: number };
+  /**
+   * Drape the route on the drawn terrain (garage r9 g1 r4): its ribbons follow the terrain mesh's own triangles and
+   * split wherever the ground curves away from a chord, down to this length in metres. Without it a route chords every
+   * 3.2 m over the bilinear field, and a terrace's feather or a coarse cell's diagonal buries it by 10-30 cm (Monsoon's
+   * causeway showed only its kerbs, as loose slabs on the grass).
+   */
+  readonly drapeM?: number;
 }
 
 export interface GarageEnvironmentRecipe {
@@ -212,6 +219,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     approach: {
       style: 'snow-road', label: 'ploughed recovery road', surface: 'snow', width: 7.4,
       waypoints: [[0, 9], [3, 15], [6.5, 21], [9.5, 26.5]], lanes: [-2.2, 2.2], // to the bunker's portal
+      drapeM: 1.2,
     },
     terrainProfile: 'actual Frosthollow spawn excerpt with snowbank relief',
     serviceFrame: 'snowbound lodge yard and sheltered repair chalet',
@@ -329,6 +337,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     approach: {
       style: 'monsoon-causeway', label: 'drained ridge causeway', surface: 'rock', width: 7.8,
       waypoints: [[0, 10], [0, 25], [0, 46]], lanes: [-3.3, 3.3], // straight through the covered bay
+      drapeM: 0.8,
     },
     terrainProfile: 'actual Monsoon Ridge spawn excerpt with drainage relief',
     serviceFrame: 'raised depot terrace and connected rain-service shelter',
@@ -359,7 +368,7 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     horizonStyle: 'alpine', horizonHeightM: 13.2,
     approach: {
       style: 'alpine-pass', label: 'snowbound cavern approach', surface: 'snow', width: 7.2,
-      waypoints: [[0, 9], [3, 15], [6.5, 21], [8.5, 26.5]], lanes: [-2.4, 2.4],
+      waypoints: [[0, 9], [3, 15], [6.5, 21], [8.5, 26.5]], lanes: [-2.4, 2.4], drapeM: 1.6,
     },
     terrainProfile: 'actual Glacier Pass spawn excerpt with steep alpine shoulder',
     serviceFrame: 'high-pass recovery terrace between lodge and chalet',
