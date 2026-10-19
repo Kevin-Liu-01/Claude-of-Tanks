@@ -71,46 +71,24 @@ if (!isMainThread) {
   const REMNANT = /^fx-structure-remnant-/, RUBBLE = /^fx-structure-rubble-/, RIM = /^fx-structure-rim-/, BAKED = /^fx-collapse-baked-/;
   const TALL = /^too tall/, OUTSIDE = /^outside/, OFF = /^off the walls/, FLOATING = /^floating/;
   const WORLD = /^world-/, FACE = /^fx-fracture-face-/, HEAP = /^fx-fracture-heap-/, ROOF = /^fx-collapse-roof-/, LANDMARK = /^fx-landmark-piece-/;
-  const HANGING = /^hanging/, LOOSE = /^cut loose/, HEADS = /^on the wall heads/;
+  const HANGING = /^hanging/, LOOSE = /^cut loose/, HEADS = /^on the wall heads/, ON_END = /^on end/;
   const KNOWN = Object.freeze([
-    // low remnants over the collapse heap, where the drawn wall there stands lower (the regional kits' ruin and remnant
-    // walls over the sim's mound; the detector reads the intact top in a 1.5 m window): a metre or two, never a slab
-    ['airfield #25', REMNANT, TALL, 'a timber remnant 1.2 m over the drawn wall, banked by the heap'],
-    ['badlands #54', REMNANT, TALL, "the ruin's collapse stub over the banked heap in a gap of its drawn wall (1.8 m)"],
-    ['blackglass #9', REMNANT, TALL, 'a remnant pier 1.2 m over the drawn wall head, on the heap'],
-    ['blackglass #14', REMNANT, TALL, 'a remnant pier 1.1 m over the drawn wall head, on the heap'],
-    ['caldera #34', REMNANT, TALL, "the stack's stump 1.3 m over the drawn top at its spot, its heap banked round it"],
-    ['fjord #0', REMNANT, TALL, 'a remnant wall 1.4 m over the drawn wall, banked by the heap'],
-    ['fjord #9', REMNANT, TALL, "the ruin's collapse stub over the banked heap (1.7 m: its drawn wall there is a stump)"],
-    ['polders #13', REMNANT, TALL, "the ruin's collapse stub over the banked heap (1.2 m)"],
-    ['titan_gorge #3', REMNANT, TALL, "the ruin's collapse stub over the banked heap (1.5 m)"],
-    ['steppe #10', REMNANT, TALL, "the stack's steel stub 1.8 m over its drawn base"],
-    ['whiteout #40', REMNANT, TALL, "the airstrip's steel stub (its 5 m grid reads a post where its edge is drawn low)"],
-    ['whiteout #21', REMNANT, TALL, "the troposcatter hut's wall stub on the reflector's fallen frame (pre-existing, unchanged from main)"],
     // held storeys (DESTRUCTION.md §3.4): what stands with a storey the simulation holds over a destroyed one
     ['ruinspires #1', REMNANT, TALL, "a held upper storey's joist end at the megatower's top, 2.5 m proud"],
-    ['skybridge #7', REMNANT, TALL, "a held upper storey's member end in the needle tower's open frame, 1.6 m proud"],
-    // fallen objects lying on the ground: a face of the object, not a plate in the open
-    ['longleaf #16', RUBBLE, OUTSIDE, "the fire lookout's cab on its side at the fallen frame's end (its floor stands on edge)"],
-    ['orchard #4', RUBBLE, OUTSIDE, "the bell tower's fallen drum beyond the walls (its broken end)"],
-    // a collapse's rest on what holds it, rims at holes in open walls
-    ['ruinspires #7', BAKED, FLOATING, "the collapse's baked rest lying on the heap's records, 1.9 m up"],
-    ['skybridge #7', RIM, OFF, "breach rims in the needle tower's open steel frame, past its thin members"],
-    // round 3 (the hanging judge reads any drawn piece: held then not, cut loose; and each roofed kind's roof pass)
-    ['copper_mesa #38', WORLD, HANGING, "the sheave's bearing stands on the deck once the hit takes its wheel: bolted at their feet, their diagonal legs' envelope reads 50 %"],
-    ['foundry #4', REMNANT, HANGING, "the hose tower's bent legs rising inside its lattice from their buckles, read as members of their own (14-33 % held)"],
-    ['delta #12', REMNANT, HANGING, "a 1 m steel remnant 1.1 m up on the late joiner's ruin, held at one end (50 %)"],
-    ['whiteout #21', REMNANT, LOOSE, "the troposcatter hut's wall stub chunks lying on the reflector's fallen frame (pre-existing, unchanged from main)"],
-    ['ruinspires #1', REMNANT, LOOSE, "a joist end 61 m up in the megatower's held upper storeys (DESTRUCTION.md §3.4)"],
-    ['skybridge #13', HEAP, OUTSIDE, "a fracture heap piece on its edge at the ground beside the fallen water tower (round 2's open item: panels on edge beside ruins)"],
-    ['badlands #0', ROOF, HEADS, "pre-existing: a roof slab the rigid world launched 200 m up in the roof pass (round 2's collapseBodies does the same) — open"],
-    ['airfield #8', LANDMARK, FLOATING, "a dropped piece 47 m up in a late joiner's page (a launched body) — open"],
-    ['airfield #12', FACE, LOOSE, "a fracture face's piece 1.5 m up at the roof pass's standing end the sweep reads touching (its samples within 0.2 m) — open"],
-    ['polders #46', WORLD, LOOSE, "a late joiner's page after the first hit: the windmill's cap read touching nothing (19 parts, 19 m up) — open"],
-    ['reservoir #1', ROOF, HEADS, "a roof slab 3.4 m up across the depot's wall heads in the roof pass (23 % past the walls) — open"],
-    ['winter #11', ROOF, HEADS, "a roof slab 2.0 m up across the warehouse's wall heads in the roof pass — open"],
+    // round 3 (the hanging judge reads any drawn piece: held then not, cut loose; and each roofed kind's roof pass); round 4
+    // left the 29 other judged findings of rounds 1-3 flagging no more (the upright plates laid, remnants cut to the drawn
+    // form, fallen objects' faces read as their sides, the launched slabs and the perched roof bodies gone)
     ['ruinspires #3', RIM, LOOSE, "an arcology's breach rim 1.8 m up left by a hole beside it — open"],
     ['skybridge #20', WORLD, LOOSE, "the terrace tower's thin steel members 3 m up the roof pass leaves after its sections fell — open"],
+    // round 4 (the on-end rule, the remnant cut and a fresh full run on d139fe6ee2): what the round leaves, named
+    ['airfield #12', REMNANT, TALL, "a ruin post's upper length on the hall's plan edge, 2.7 m over the ground where the slab check reads nothing drawn within 0.75 m (the enclosure reads the wall there) — open"],
+    ['delta #11', REMNANT, HANGING, "a 1 m steel remnant 1.1 m up held at one end in a late joiner's destroyed set (as delta #12) — open"],
+    ['delta #31', REMNANT, TALL, "the temple's roof beam 9 m up, wholly over the drawn height at its top's spot (a held member: not cut) — open"],
+    ['foundry #0', REMNANT, OUTSIDE, "the factory's steel remnant wall at the ground, 12 % of it past the intact plan on the downhill side (1.5 m under the ground there)"],
+    ['foundry #0', REMNANT, TALL, "the same steel remnant wall's edge 2.9 m over the ground at the plan's edge where the slab check reads nothing drawn (its foot on the downhill side) — open"],
+    ['moon #11', WORLD, HANGING, "the lunar mill's vane plates 17-19 m up in a late joiner's page at its collapse (live, none: the page's sweep leaves them) — open"],
+    ['steppe #8', REMNANT, TALL, "a container row's baked remnant 1 m tall, 1.2 m over the ground where nothing is drawn — open"],
+    ['whiteout #25', RUBBLE, ON_END, "the guyed mast's two lowest guys left strung up to its fallen head's old height (two wires read as a plate) — open"],
   ]);
 
   // the destruction code's hash (each entry's import closure, as the selftest cache reads it) and the passed fingerprints

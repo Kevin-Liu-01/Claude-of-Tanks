@@ -1252,3 +1252,66 @@ on wall heads (caldera #27, whiteout #3). The kinds receipt passes on the same c
 (one face by name and each roofed kind's roof pass), 9,252 snapshots, 32 judged findings — among them a roof slab the
 rigid world launches 200 m up in badlands #0's roof pass (round 2's collapseBodies does the same: open). The anti-raft
 probe: 24 below the floors (main 28), the same four explained as round 2.
+
+**Round 4 (2026-10-18, the round-3 critics: a fallen roof slab floating past the walls on faces and seeds no census ran,
+open defects excused in the kinds receipt, the branch not merged with its base, the tavern's dark lid, phones, props CPU,
+the sweep's frame cost).** The branch carries `origin/integ/228` (merged twice: `927cf20ac`, `2ca160d6c`). What the round
+adds:
+
+- *No debris plate rests on its edge* (`src/fx/uprightPlates.ts`). A body's drawing is often more than one connected piece
+  (a wall cell's skin and the dark interior plate behind it, a clump's two faces at a corner, a set piece's gable and its
+  eave boards), and a body that lies well on its box can hold one of them bolt upright: a 3-12 m plate standing beside the
+  ruin. `layUprightPlates` reads a resting drawing in world space, splits it into its pieces (corners welded at a
+  millimetre, as the slab check splits them) and lays every upright plate (a hand thick, 1.6 m and more each way, standing
+  1.4 m and more) on its broad side onto the ground under it (the middle of the ground's spread there, never over its old
+  foot). It runs where a drawing comes to rest: the fracture's heap (`mergeBaked`), a collapse's bake, a set piece's
+  dropped piece (laid settled, at its tween's end, asleep a moment, at its bake). A set piece's plate its box does not lie
+  along (a roof slope across a box near square in section) falls as a tween to its broad side, and a dropped or slumped
+  piece that is a plate standing up lies on its broad side (`restPose`).
+- *No remnant stands over the building as drawn* (`clampPieceTops`, from `structureStages.run` after each commit): a
+  remnant run's pieces are cut to half a metre over the enclosure's drawn height where their tops stand (a piece wholly
+  over it, a held storey's member, stands; where the drawn form is unknown, as drawn). The round-3 census's 242 runs of
+  piers 1-7 m over the drawn wall (a fire station's steel stub, a stack's stump, a ruin's collapse stub) are gone.
+- *The ruin's roof sections lean*: `collapseRuin.roofSlabs` stood up to six of the covering's plates 5-7 m across bolt
+  upright over the heap (caldera #28's warehouse: a row of billboards). They are sections a bay across (3.2 m at most) leant
+  on the heap from a buried edge, 25-40 degrees off the vertical, their tops over the drawn plan.
+- *A lattice column as broad as a wall falls as a block* (`latticeFall`): tselina's gantry tower, read as one leg 4.4 m
+  across, folded its upper length as an open tube whose side stood 2.7 m up on nothing; its stub is capped and its upper
+  length lies on the ground beside it, closed, broken in two. A ruin's loose post stands plumb over the cell it was read in.
+- *The slab check reads what it was blind to*: `on end` — debris at rest (rubble runs, baked heaps and rests, settled bodies
+  and set-piece pieces) standing upright with its top 2.2 m or more up, inside the walls too (caldera #28's billboards stood
+  inside the walls, where no rule looked); an upright face with another piece drawn right behind most of it (0.35 m either
+  side) is that fallen object's side (a windmill's cap on the ground, a slumped set piece's shopfront), not a plate in the open.
+- *Phones* run the hanging sweep (the kit's holes, falls and heaps; the stages' sweep alone, a third of the desktop's work a
+  frame, a pool of 16 for its drops), and the slab check models it (`--fracture=phone`).
+- *Roof bodies and launched debris*: a roof body at rest that perches (a third of its drawn plate over nothing a metre up,
+  or on its edge high) breaks up; a flat slab over a standing shell gets one inward shove only; a solver step adds at most
+  4 m/s or 5 rad/s to a debris body and debris speeds are capped (8 m/s up, 35 m/s, 12 rad/s): badlands #0's roof slab
+  thrown 212 m up and copper_mesa #37's piece thrown 46 m are gone. No fracture body bakes standing on its edge.
+- *The tavern's dark lid*: no room ceiling under a fallen roof (rooms laid after the fall are open; the top storey's earlier
+  rooms lose theirs with it).
+- *Faces with no flat wall* (Lane B's penstock patch and its flying chunks): the fracture refuses a face that draws no flat
+  wall in its slab, a round there lays nothing, and the default kit lays a rim only where the wall runs flat across the
+  hole; a bodyless set piece lays no body-kit stub, an open frame's section falls lay none either.
+- *The sweep in time*: a building's intact reading is made from its first hole (frontier #15's chimney cap hung 2.9 s while
+  the first sweep built it); a kit hole asks for the sweep; its puts run in chunks and its face pieces are kept per mesh
+  state. The intact and enclosure measures are made when first asked for, off the props build.
+- The slab check waits for rest before its last look and judges each phase with its records as they stood.
+
+**The census (2026-10-18, round 4).** On `d139fe6ee2`, every map and destructible kind from all four faces at three seeds
+each drawn at random (`r4/final/census/seeds.txt`): the A pass (60 rounds up storeys 0-3, every phase, the late joiner's
+replays) and the R pass (to the roof's fall, judged standing roofless). @CENSUS@ The kinds receipt passes on the same code
+(a full fresh run, then judged from its dump): 406 kinds on 33 maps, 682 runs, 9,470 snapshots, 11 judged findings (round
+3: 32) — the 29 others of rounds 1-3 flag no more (the launched badlands slab, airfield #8's 47 m piece, the slabs on
+reservoir #1's and winter #11's wall heads, polders #46's late cap, airfield #12's face piece among them). What remains is
+named in its KNOWN, each its own finding, nine of them open: the megatower's held-storey joist (judged), an arcology's rim
+1.8 m up, the terrace tower's thin members, a hall's ruin post read off its wall, a 1 m remnant in a late joiner's set
+(delta #11), a temple's roof beam held over its drawn height (delta #31), a factory's remnant wall at the plan's downhill
+edge (foundry #0, judged and open), the lunar mill's vane plates in a late joiner's page (moon #11), a container row's 1 m
+baked remnant (steppe #8) and a guyed mast's two guys left strung up to its fallen head (whiteout #25, read as a plate by
+the on-end rule: wires, not a slab). The phone (`--fracture=phone`, six maps, A and R, all faces): 544 runs, five
+buildings flag, each a piece the phone's slower sweep takes down later than the check's 2 s (the tavern's roof remnants
+2.1-3.1 s after its roof; desktop and the round-3 critics' repros pass). The anti-raft probe against integ/228: 13 below
+the floors (integ 4); skybridge #12, longleaf #11 and fjord #65 as round 2 explained, the moon's five Earthrise structures
+(merged at `2ca160d6c`: the branch's intact measure reads them as frames, integ as skins), whiteout #19's tank farm (plan
+0.584) and steppe #0's water tower (0.224: the solid-column fold took its 1.4 m shaft; follow-up: the solid rule from 3 m).
