@@ -4658,6 +4658,10 @@ ${snowCap ? `
   const civicVetoed: Record<string, number> = {};
   const civicVetoAt = (x: number, z: number, kind = ''): boolean => !landmarkFurniture && civicVetoes.some((v) =>
     !v.exempt.has(kind) && x >= v.rect.x0 && x <= v.rect.x1 && z >= v.rect.z0 && z <= v.rect.z1);
+  // (and the ground beside a room the scars, the rubble and the hedgehogs keep off: its keep-outs)
+  const civicKeepOuts: CivicRect[] = [];
+  const civicGroundVetoAt = (x: number, z: number, kind: string): boolean => civicVetoAt(x, z, kind)
+    || civicKeepOuts.some((r) => x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1);
   // the scatter round a deployment slot (a building, a regional structure and a set piece's furniture keep their seats:
   // a slot they stand on moves off them with its rotated partner in the match placement)
   const deploymentVetoed: Record<string, number> = {};
@@ -5572,7 +5576,7 @@ ${snowCap ? `
   const rubbleDrawnFootprints: CollisionRecord[] = [];
   function addRubblePile(x: number, z: number, pr: number, rrng: Rng): void {
     const y = heightField.getHeightAt(x, z);
-    if (civicVetoes.length && civicVetoAt(x, z, 'rubble')) {
+    if (civicVetoes.length && civicGroundVetoAt(x, z, 'rubble')) {
       // (the maps lane, 228) a pile drawn into a civic area's room: its draws spent, nothing made
       const pile = rubblePileParts(x, y, z, pr, rrng, (px, pz) => heightField.getHeightAt(px, pz));
       for (const g of [...pile.stone, ...pile.bed, ...pile.wood]) g.dispose();
@@ -6146,6 +6150,7 @@ ${snowCap ? `
       if (built.geometry) buckets.baked.push(built.geometry);
       civicPieces.push(...built.pieces);
       civicVetoes.push({ rect: built.veto, exempt: new Set(area.vetoExempt) });
+      civicKeepOuts.push(...area.keepOuts);
       areas.push({ id: area.id, census: built.census });
       debugPolys.push(...built.debug);
     }
@@ -8093,7 +8098,7 @@ ${snowCap ? `
         (hrng() - 0.5) * 0.3,
       ];
       // (the maps lane, 228) one drawn into a civic area's room is taken, not made
-      if (civicVetoes.length && civicVetoAt(hx, hz, 'hedgehog')) { civicVetoed.hedgehog = (civicVetoed.hedgehog ?? 0) + 1; return true; }
+      if (civicVetoes.length && civicGroundVetoAt(hx, hz, 'hedgehog')) { civicVetoed.hedgehog = (civicVetoed.hedgehog ?? 0) + 1; return true; }
       const beams = hedgehogBeamSpecs(hx, y, hz, yaw, scale, yawOffsets);
       const clutterObs: CollisionRecord[] = [], clutterCols: CollisionRecord[] = [];
       const clutter = new CrushableClutter('hedgehog', hx, y, hz, 1.2 * scale, 1.7 * scale, clutterObs, clutterCols);
@@ -9794,12 +9799,24 @@ ${snowCap ? `
       const [x, z] = randomCraterCenter(corridors);
       if (!craterCenterIsClear(x, z)) return false;
       const roll = rng();
+      // (the maps lane, 228) a scar drawn into a civic area's room or keep-out: its draws taken, nothing laid
+      const vetoed = civicVetoes.length > 0 && civicGroundVetoAt(x, z, 'crater');
       if (roll < 0.24) { // burnt patch, no rim — HE strike / burn scar
-        burnDiscs.push(conformedDisc(x, z, 2.6 + rng() * 2.6, [0.03, 0.03, 0.04, 0.02]));
+        const burnR = 2.6 + rng() * 2.6;
+        if (vetoed) { civicVetoed.scar = (civicVetoed.scar ?? 0) + 1; return true; }
+        burnDiscs.push(conformedDisc(x, z, burnR, [0.03, 0.03, 0.04, 0.02]));
         return true;
       }
       const r = CR_R[(rng() * CR_R.length) | 0] * (0.85 + rng() * 0.3);
       const rim = 0.26 + rng() * 0.22;
+      if (vetoed) {
+        const baked = buckets.baked.length, clods = craterClodFootprints.length;
+        if (r > 3.2) addCraterClods(x, z, r);
+        for (const g of buckets.baked.splice(baked)) g.dispose();
+        craterClodFootprints.length = clods;
+        civicVetoed.crater = (civicVetoed.crater ?? 0) + 1;
+        return true;
+      }
       mapCraterSites.push(x, z, r, rim); // DST-04: a real bowl and its surface (world/mapCraters.ts), not a flat disc
       if (r > 3.2) addCraterClods(x, z, r);
       return true;

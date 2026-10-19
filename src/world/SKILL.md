@@ -36,6 +36,7 @@ null on mobile and in receipts); every terrain chunk vertex carries a `fold` byt
 sea and lake maps, a `shore` byte (metres landward of the waterline from the shoreline contours, inverted so a geometry
 without it reads as far) that the material's strand runs up (round 73b); `wrecks.ts` owns typed,
 deterministic static tank-wreck and zero-extra-draw-call debris baking.
+`civic/` (the maps lane, 228) is the shared civic-area and pathway kit a map adopts through a plan file (`civic/plans/`): a square's green, monument, furniture, parked cars and lamps, and its streets' fronted kerbs and pavements; no kit file names a map (docs/MAP-LAYOUT-BRIEF.md "Civic areas and pathways").
 `maps/regional/` holds the regional architecture kits (2026-10-03): a map's `props.architecture` names one, and after
 each planned building's placement settles the kit replaces its geometry with the region's version inside the same
 footprint (house grammar `house.ts`, openings cut with reveals, `weather.ts` tints and weathering into the vertex-

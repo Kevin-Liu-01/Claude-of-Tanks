@@ -1276,7 +1276,7 @@ function octagonCourse(m: Mesh, ctx: WellBuildContext, R: number, ring: number, 
 
 /** One drum of the shaft from y0 to y1 at the origin (or laid along `axis` from `o`): sixteen flutes, or a plain
  *  twelve-gon on a phone; its own tone; its top and bottom joint faces. */
-function shaftDrum(m: Mesh, ctx: WellBuildContext, y0: number, y1: number, k: number, fluted: boolean, place?: { o: V3; axis: V3 }): void {
+function shaftDrum(m: Mesh, y0: number, y1: number, k: number, fluted: boolean, place?: { o: V3; axis: V3 }): void {
   const n = fluted ? 32 : 12, base = mul(COLUMN_STONE, k);
   const shade = (q: V3, nn: V3): Rgb => {
     // lichen at the joints (the bottom and top 8 cm), a damp foot on the lowest drum
@@ -1434,12 +1434,12 @@ function saeule(ctx: WellBuildContext, broken: boolean): THREE.BufferGeometry {
   for (let d = 0; d < DRUMS; d++) {
     const y0 = Yc.attic + d * dh + (d ? 0.003 : 0), y1 = Yc.attic + (d + 1) * dh - 0.003;
     const tone = 0.95 + hash(d, 3, 0x5ae1) * 0.1;
-    if (!broken) { shaftDrum(m, ctx, y0, y1, tone, fluted); continue; }
-    if (d < 2) { shaftDrum(m, ctx, y0, y1, tone, fluted); continue; }
+    if (!broken) { shaftDrum(m, y0, y1, tone, fluted); continue; }
+    if (d < 2) { shaftDrum(m, y0, y1, tone, fluted); continue; }
     if (d === 2) {
       // the snapped drum: its lower part standing, its top broken ragged
       const start = m.mark;
-      shaftDrum(m, ctx, y0, y1, tone, fluted);
+      shaftDrum(m, y0, y1, tone, fluted);
       snap(m, start, ragged(snapAt, 4.2));
     }
   }
@@ -1461,7 +1461,7 @@ function saeule(ctx: WellBuildContext, broken: boolean): THREE.BufferGeometry {
     const y0 = Yc.attic + k * dh;
     // a laid drum: the same section along its own axis
     const start = m.mark;
-    shaftDrum(m, ctx, y0, y0 + len, 0.94 + hash(k, 3, 0x5ae1) * 0.1, fluted, { o, axis: ax });
+    shaftDrum(m, y0, y0 + len, 0.94 + hash(k, 3, 0x5ae1) * 0.1, fluted, { o, axis: ax });
     void start;
     d += len;
   }

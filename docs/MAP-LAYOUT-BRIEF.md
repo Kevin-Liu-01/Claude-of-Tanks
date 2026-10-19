@@ -1024,3 +1024,46 @@ static admission and its record in the committed shard); rebuild the map's shard
 establishing view, before and after. Proportions come from the real buildings (a Kursk-governorate village church is
 25-32 m long and 25-30 m to its cross; a railway water tower 16-20 m; a smock mill's sails 9-10 m): check the place and
 the period before choosing a kind.
+
+## Civic areas and pathways
+
+October 19, 2026 (the maps lane, 228; the owner: "completely fill in this steinburg center and fix / improve the
+pathways in steinburg", then "expand its breadth to finalize all 'pathway' architecture and civic areas for maps that
+would need that"). A town's square and its streets' kerbs are one shared, data-driven kit, `src/world/civic/`: a map
+adopts it with a plan file (`civic/plans/<map>.ts`, registered in `civic/plans/index.ts`) and a regional style row
+(`civic/styles.ts`, keyed by `props.architecture`). The map config is not edited: the plan's overlay sets the props
+settings it needs at build time. No kit file names a map (`civicPlans.selftest.mjs`). Steinburg's Friedensplatz is the
+pilot.
+
+| Part | File | What it lays |
+| --- | --- | --- |
+| Plan contract | `types.ts` | the pathway classes by road index (`main`, `gasse`, `footpath`, `none`), the kerb line, the frontage band, the return radius, the excluded squares, the gates and the wall line; each civic area's room, arms, corridors, roundel, beds, paving, monument, trees, furniture, parking, lamps, lawns, keep-outs |
+| Regional style | `styles.ts` | kerb, pavement flags, gutter, bands, edging (kerb, dwarf wall, piers, railing kind), path, lawn, flowers, hedge, grates, steps |
+| Civic area | `civicAreaKit.ts` | one baked-material geometry (the roundel's ring and rose, the beds' kerb, wall, piers, lawn, paths and feature, the flush paving, the frontage walks with their Rinne, the fountain's ring, the landing steps, the bays' sett rows, the grates, the monument's octagon) and the pieces the props add after every seeded pass |
+| Pathways | `pathwayKit.ts` | kerbs and flag pavements only where houses front a main street (the run's kerb face on `kerbM`, its pavement out to the facade line, at most `maxWalkM`), never on a square or past the wall line, a metre clear of a gate's piers; returns round the lanes' corners; the lanes laid wall to wall by the terrain; the legacy kerb pass's draws spent first |
+| Furniture | `civicFurnitureKit.ts` | the kiosk, the Litfaßsäule, the TelH78, the bollard, the planter (r2, member-built, each with its broken state); the memorial column is wellKit's `saeule`, fortified cover (`collision.ts isFortifiedCoverKind`) |
+
+**The rules each adopting map's receipts hold** (`civicArea.selftest.mjs`, `civicPathways.selftest.mjs`,
+`civicFurniture.selftest.mjs`, every map with a plan):
+
+- **G1 the objective seats.** Nothing in the roundel's hold disc (r 9 where there is one, 6 m at least); no solid that
+  is not fortified inside an objective disc; the modes probe seats every objective unchanged within 1 m.
+- **G2 the corridors.** Nothing on the arms' carriageways; no crushable and no tree on the measured traffic corridors
+  (the routeheat probe's top quartile, authored as the plan's `corridors`); ring lanes at least 9 m.
+- **G3 the planner.** A fortified monument stands at least 2.75 m (beyond its footprint) off every segment of its 25 m
+  planner cell and 3.5 m off every node: no new hull-closed edge.
+- **G4 balance.** Hull-high crushable cover balanced across the team axis within one piece; the fleet brief's bands hold.
+- **G5 trees.** Admitted 9 m off every authored road centreline, 6.5 m apart, 2.5 m clear of the planned plots; planted on
+  a stream of their own after every other tree, never a battle snag.
+- **G6 lamps.** The map's lamp count never falls; none stands in, or within 0.3 m of, a structure or a wall (the
+  lamp-seat snap moves a pass's post to the lamp line, kerb + 0.5 m, or 0.45 m off a lane's facade).
+- **G7 stream neutrality.** The props' main and destruction streams draw exactly as on the map without its plan
+  (`globalThis.__cotCivicOff` builds it so); what a later pass would stand in a room or a keep-out is left out after its
+  draws; every record outside the rooms stands where it stood (the lamp snap's moves aside).
+- **G8 the shards.** Recaptured base and every variant, `--check` clean, the phone tier identical (a kind whose phone
+  build differs gives a `collisionSolid`); the structure delta 0 unless the plan adds buildings.
+
+**Procedure for a map.** Census it (pads with frontage, the legacy kerb replay); run the civic probes for a baseline;
+write its style row and its plan; run the three receipts; recapture its shards; measure the cost census base against
+branch (`node tools/cost-census.mjs`, then `--compare`): a map's props group at most +10 draws, +180k desktop triangles
+and +100k on a phone; render before and after through the capture lock and hold the blind pairs.

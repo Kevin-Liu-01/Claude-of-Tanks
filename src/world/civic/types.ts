@@ -82,6 +82,9 @@ export interface CivicAreaPlan {
   readonly room: CivicRect;
   /** The kinds the room's veto leaves alone (the street lamps keep their posts: the lamps snap off the facades instead). */
   readonly vetoExempt: readonly string[];
+  /** Ground beside the room the battle scars, the rubble and the hedgehogs keep off (a corner lot's garden), after their
+   *  draws; the destructibles there keep their seats. */
+  readonly keepOuts: readonly CivicRect[];
   /** The hardstand this area dresses (its airfield lip, gullies and patches dropped), by index in terrain.hardstands. */
   readonly pad: number;
   /** The carriageway arms that stay prop-free (the street lanes through the square). */

@@ -66,6 +66,8 @@ export const URBAN_CIVIC_PLAN: CivicPlan = {
     id: 'friedensplatz',
     room: ROOM,
     vetoExempt: ['lamp'],
+    // the Pfarrgarten behind the church's north-west corner (the orange-ringed crater that sat there)
+    keepOuts: [{ x0: -116, x1: -92.4, z0: 19, z1: 48 }],
     pad: 0,
     arms: [{ x0: ROOM.x0, x1: ROOM.x1, z0: -9, z1: 9 }, { x0: -58.5, x1: -41.5, z0: -41, z1: 41 }],
     // the study's routeheat (C11): the north-east diagonal to frontline line-2 and the spur to the ac130 extraction
