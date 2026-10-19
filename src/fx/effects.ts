@@ -623,6 +623,9 @@ const GUNSHIP_LENS_M = 25;
  *  from outside it leaves the wing. */
 const GUNSHIP_PYLON_LOCAL = new THREE.Vector3(7.5, 1.9, 1.6);
 const GUNSHIP_PYLON_MERGE_M = 120;
+/** (ac130-fx-228 r2) the gunship missile's smoke thins out within this distance of the camera (none within a fifth of
+ *  it): seen from its own gimbal lens it is a line to the target, never a white wedge across the frame's edge */
+const GUNSHIP_TRAIL_NEAR_M = 30;
 /** (ac130-fx-228 r2) the missile motor flare's sphere (m) and the widest it is ever drawn from the camera (rad, its
  *  radius): ~10 px at the gunship's 3.6x gimbal zoom, ~3 px at a tank's 60 deg view */
 const ATGM_FLARE_RADIUS_M = 0.25;
@@ -1325,6 +1328,8 @@ function* createFxSteps(
   // (belt mix, ammunition colour, light-keyed halo, tumble, burnout); the shooter resolves through this frame's subject
   // resolver (the Studio's actors) and else the battle's entities
   let tracerSubject: ((id: string) => FxEntity | null) | null = null;
+  /** (ac130-fx-228 r2) this frame's camera images heat (writeLiveShellTracers sets it from the camera's vision) */
+  let heatCamera = false;
   const tracers = createProjectileTracers({
     shooter: (id) => {
       if (id == null) return null;
@@ -1335,6 +1340,8 @@ function* createFxSteps(
     now: () => particles.getTime(),
     // (ac130-fx-228) a networked gunship round names no weapon: its aircraft does
     gunship: (id) => id != null && subjectFor(id)?.aerial?.kind === 'gunship',
+    // (ac130-fx-228 r2) the camera images heat this frame (writeLiveShellTracers reads it off the camera, as the grade does)
+    thermal: () => heatCamera,
   });
   group.add(tracers.mesh);
   // ---- atmospherics lane (end)
@@ -4484,6 +4491,15 @@ function* createFxSteps(
     trail.lastD = d;
   }
 
+  /** (ac130-fx-228 r2) the gunship missile's trail: its family's, fading within GUNSHIP_TRAIL_NEAR_M of the camera (one
+   *  derived look per family, made once) */
+  const gunshipTrails = new Map<MissileTrail, MissileTrail>();
+  function gunshipTrailOf(base: MissileTrail): MissileTrail {
+    let t = gunshipTrails.get(base);
+    if (!t) { t = Object.freeze({ ...base, nearM: GUNSHIP_TRAIL_NEAR_M }); gunshipTrails.set(base, t); }
+    return t;
+  }
+
   /** the live presentation entity a shooter id names (the Studio's actors first, else the battle's) */
   function subjectFor(id: ShellId): FxEntity | null {
     return (tracerSubject ? tracerSubject(String(id)) : null) ?? decalEntityFor(id);
@@ -4638,8 +4654,10 @@ function* createFxSteps(
    */
   function layTrail(trail: GuidedTrail, look: MissileLook, shell: LiveShell, d: number, t: number, speed: number,
     seedU: number, dir: THREE.Vector3): void {
-    const tl: MissileTrail | null = missileTrailOf(look);
-    if (!tl) return;
+    const base: MissileTrail | null = missileTrailOf(look);
+    if (!base) return;
+    // (ac130-fx-228 r2) the gunship's own missile: its smoke, born 8 m from the gimbal lens, thins out near the camera
+    const tl = trail.pylon ? gunshipTrailOf(base) : base;
     const key = trail.seed as number;
     let slot = trail.smokeSlot ?? -1;
     if (slot < 0 || smokeTrails.slotOf(key) !== slot) {
@@ -4689,6 +4707,10 @@ function* createFxSteps(
   function writeLiveShellTracers(shells: LiveShell[], camera: THREE.Camera): void {
     camera.getWorldPosition(_flareCam);
     flareCamSet = true;
+    // the grade's own vision code (engine/post.ts uThermal): 1 infrared, 2 thermal (heat); 0 daylight, 3 intensified
+    const ud = camera.userData as { sensorVision?: number; thermalFlight?: boolean; flightVision?: number };
+    const vision = ud.sensorVision ?? (ud.thermalFlight === true ? (ud.flightVision ?? 1) : 0);
+    heatCamera = vision > 0.5 && vision < 2.5;
     drones.begin(particles.getTime(), camera.position);
     tracers.begin(); // atmospherics lane
     liveAtgmCount = 0;
@@ -5710,6 +5732,9 @@ function* createFxSteps(
       // (ac130-fx-228 r2) the ground's pressure ring: a muzzle flash raises it only near the ground, so an AC-130 battle
       // (its pilot's muzzle 240 m up) first compiled it at the first howitzer burst (107 ms in a critic's cold run)
       spawnShockRing(pos.x, pos.z, 0);
+      // and the charred-ground decal an explosive burst leaves (the first howitzer round still compiled one fx
+      // MeshBasicMaterial in a critic's cold run of round 2); resetAll hides it again with the warm's other bursts
+      spawnScorch(pos.x, pos.z, 2.4);
     },
 
     /**

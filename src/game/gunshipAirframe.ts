@@ -8,7 +8,7 @@
  * (29.8 m long, 40.4 m span): the lofted fuselage with its rounded-square section, the cockpit glazing and radome, the
  * upswept tail cone; the high wing with its dihedral and black de-icing boots; four turboprop nacelles slung under it with
  * six-bladed props (yellow tips); the landing-gear sponsons; the tall fin and the tailplane; on the port side (the side
- * that faces the target in the left-hand pylon turn) the 30 mm cannon forward of the wing, the 105 mm howitzer aft of
+ * that faces the target in the left-hand pylon turn) the 30 mm cannon forward of the wing, the 152 mm howitzer aft of
  * the sponson and the sensor ball under the nose. Gunship grey in vertex colours on one lit material (its cascade setup
  * through the hooks gunshipVisual.ts holds), the body one merged draw, each prop one more.
  */
@@ -263,7 +263,7 @@ export function buildGunshipAirframe(hooks: GunshipMaterialHooks | null): BuiltA
   const port = new THREE.Vector3(1, -0.18, 0).normalize();
   box(parts, 0.42, 0.7, 1.0, 2.12, -0.35, 6.2, DARK); // the 30 mm's gun port
   rod(parts, new THREE.Vector3(2.0, -0.38, 6.2), port, 0.075, 1.7, DARK);
-  box(parts, 0.5, 0.9, 1.3, 2.1, -0.7, -5.0, DARK); // the 105 mm's port
+  box(parts, 0.5, 0.9, 1.3, 2.1, -0.7, -5.0, DARK); // the 152 mm howitzer's port
   rod(parts, new THREE.Vector3(1.9, -0.72, -5.0), port, 0.11, 2.6, DARK, 10);
   rod(parts, new THREE.Vector3(1.9, -0.72, -5.0).addScaledVector(port, 2.55), port, 0.18, 0.38, DARK, 10);
   {

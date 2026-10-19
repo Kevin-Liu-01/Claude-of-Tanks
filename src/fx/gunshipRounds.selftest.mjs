@@ -87,6 +87,22 @@ assert.equal(missileLookFor(null, 'gunship-missile').id, 'hellfire', 'by its sou
 assert.equal(MISSILE_LOOKS.hellfire.launch, 'rail');
 assert.ok(missileTrailOf(MISSILE_LOOKS.hellfire), 'with its dense persistent trail');
 assert.equal(firedIsMissile('gunship-missile', false), true, 'its shot is a missile launch, not a cannon flash');
+// (r2) a heat-imaging lens sees the burning compound at its night radiance in daylight: hot core, wide halo
+{
+  let heat = false;
+  const lens = createProjectileTracers({ shooter: (id) => shooters[id] ?? null, scene: new THREE.Scene(), now: () => now,
+    gunship: (id) => id === 'pilot', thermal: () => heat, capacity: 16 });
+  const g = lens.mesh.geometry, tail = g.getAttribute('aTail'), haloA = g.getAttribute('aHalo');
+  const draw = () => { lens.begin(); for (let i = 0; i < 2; i++) lens.write(round(40 + i, { type: 'AP', reloadGroup: 'gunship-cannon', caliberMm: 30 }, 100)); lens.end(); };
+  draw();
+  const dayHalo = tail.getW(0), dayDark = haloA.getW(0);
+  lens.reset(); heat = true; draw();
+  assert.equal(lens.darkLevel(), 1, 'the infrared lens reads the rounds as the night does');
+  assert.ok(haloA.getW(0) === 1 && dayDark === 0 && tail.getW(0) > dayHalo, 'their night halo, in daylight');
+  lens.reset(); heat = false; draw();
+  assert.equal(lens.darkLevel(), 0, 'and the daylight lens as the day does');
+  lens.reset();
+}
 assert.equal(firedIsMissile('gunship-howitzer', false), false);
 assert.equal(firedIsMissile('tow-launch', false), true);
 assert.ok(Object.hasOwn(MISSILE_AIRFRAMES, 'hellfire'), 'the covered warm writes the hellfire airframe (warmProjectilePresentation)');

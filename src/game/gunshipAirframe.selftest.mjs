@@ -161,6 +161,8 @@ const src = (path) => readFileSync(resolve(ROOT, path), 'utf8');
   const fx = src('src/fx/effects.ts');
   const opening = fx.slice(fx.indexOf('    warmOpeningEffects('), fx.indexOf('    warmProjectilePresentation('));
   assert.match(opening, /spawnShockRing\(pos\.x, pos\.z, 0\);/, "the ground's pressure ring is warmed whatever the pilot's height");
+  assert.match(opening, /spawnScorch\(pos\.x, pos\.z, 2\.4\);/, "and the burst's scorch decal");
+  assert.match(fx.slice(fx.indexOf('    resetAll(')), /for \(const m of scorchMeshes\) m\.visible = false;/, 'which resetAll clears');
 }
 
 console.log('gunshipAirframe: the AC-130 at its proportions (port guns, one lit material, outward faces), its own chunk staged under the cover, hidden only in its own lens, and the warm path (markers, late copy, pressure ring) registered');

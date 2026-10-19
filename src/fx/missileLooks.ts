@@ -252,6 +252,9 @@ export interface MissileTrail {
   readonly c1: Rgb;
   readonly rise: number;
   readonly windK: number;
+  /** (ac130-fx-228 r2) the smoke fades out within this many metres of the camera (0: never). Only a trail born beside
+   *  the eye takes it: the gunship's own missile, whose smoke starts 8 m from its gimbal lens */
+  readonly nearM?: number;
 }
 
 const trail = (t: MissileTrail): MissileTrail => Object.freeze(t);

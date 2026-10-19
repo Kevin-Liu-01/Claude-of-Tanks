@@ -66,6 +66,9 @@ interface TracerOptions {
   now(): number;
   /** whether the firing vehicle flies the gunship (a networked round names no weapon: its aircraft does) */
   gunship?(id: ShellKey | undefined): boolean;
+  /** (ac130-fx-228 r2) this frame's camera images heat (the gunship's infrared or thermal lens, a thermal sight): a
+   *  tracer's burning charge is its hottest thing whatever the daylight, so the rounds draw at their night radiance */
+  thermal?(): boolean;
   capacity?: number;
 }
 
@@ -629,7 +632,9 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     mesh,
     begin() {
       n = 0;
-      dark = lightLevel();
+      // (ac130-fx-228 r2, the motion critic: in the default daylight infrared lens "the 30 mm rounds and impacts show as
+      // 1-2 px dots") a heat-imaging camera sees the burning compound as the night does: hot cores, halos, sparks
+      dark = o.thermal?.() === true ? 1 : lightLevel();
       records.forEach(unsee);
     },
     write(shell) {
