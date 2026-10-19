@@ -53,6 +53,7 @@ import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import type { PolyMultiLoftRing } from '../factoryGeometry.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 import { mount as wrapMount } from './fittingMount.ts';
+import { beamBetween } from './measuredPrimitives.ts';
 
 type Vec2Tuple = readonly [number, number];
 type Vec3Tuple = readonly [number, number, number];
@@ -9290,7 +9291,17 @@ function buildKF51(P: TankBuilderPort) {
       // onto the new flap line. Side col -3.70 keeps its certified 0.39
       // bottom (the flap bottom IS the carrier, z EXACT); vacated rear cols
       // x 1.06..1.21 fall back to the sprocket wrap like the ref's own.
-      P.add('hullShadow', box(0.36, 0.20, 0.02), s * 1.39, 0.91, -3.695);        // mudguard shadow above the flap (y 0.81..1.01 = old top line)
+      // Owner 2026-10-19 (Gallery markup, "floating"): the flap, the mudguard
+      // shadow remnant above it (y 0.81..1.01) and the hanger stopped 0.30 m
+      // under the fender plank (y 1.31..1.36, x 1.61..1.79, rear end −3.7025),
+      // with nothing over them inboard of it. The remnant becomes the steel
+      // mudguard the flap hangs from: a 24 mm plate standing 2 mm inside the
+      // flap's faces and 5 mm inside its sides, its foot 20 mm into the flap
+      // and its top 35 mm into the plank's rear end; a strut braces its
+      // inboard top into the sponson-tail wing's rear face (z −3.60), 0.24 m
+      // behind the sprocket course and clear of the plate's louvre slats.
+      P.addMudguard('kf51-rear-mudguard-hanger', 'hull', box(0.49, 0.555, 0.024), s * 1.46, 1.0675, -3.698);
+      P.add('hullDetail', beamBetween([s * 1.40, 1.30, -3.698], [s * 1.40, 1.47, -3.583], 0.014));
       // r4 CONTAINMENT: hanger steps 25 mm aft — its −3.61 front face shared
       // the wrap rim's voxel column (band rear extreme −3.629).
       P.add('hullDetail', box(0.07, 0.10, 0.10), s * 1.46, 0.86, -3.685);        // flap hanger bracket onto the tail (y 0.81..0.91)
@@ -11339,6 +11350,18 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     P.mats.rubber.color.setHex(0x33352b);
   };
   buildKF51OwnerExactAssemblyStage1();
+  // Owner 2026-10-19 (Gallery markup, "fill in the underside"): leoHullV3 ends
+  // the tub 0.05 m behind the deck crease (z 1.50) and starts the nose fill
+  // 1.50 m behind the beak tip (z 2.34), so the belly stood open for 0.84 m
+  // between the tracks, up to the glacis plate. One lower front plate closes
+  // it: its rear ring 30 mm inside the tub and its front ring 30 mm inside the
+  // nose fill (both past their 24 mm rounded edges), each 6 mm inside that
+  // section so no face is shared; its floor rises from the tub belly (0.42) to
+  // the nose fill's underside (0.555). |x| <= 0.924 stays inside the tub/fill
+  // corridor, clear of the 0.9685 band inner face.
+  P.add('hull', slab(
+    [-0.9125, 0.426, 1.47], [0.9125, 0.426, 1.47], [0.924, 0.561, 2.37], [-0.924, 0.561, 2.37],
+    [-0.9125, 1.184, 1.47], [0.9125, 1.184, 1.47], [0.924, 1.049, 2.37], [-0.924, 1.049, 2.37]));
   // (running gear now rides INSIDE the leoHullV3 call above — the KF51B
   // wheel/course refinements and §5.262 tones live there; no second course
   // exists.)

@@ -197,6 +197,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/tank-sealed-check.selftest.mjs',
     // 2026-10-17 (227 gun-gaps): the nine closed gun junctions at rest/elevation/depression and a seeded tube pull
     'tools/gun-junction-census.selftest.mjs',
+    // 2026-10-19 (owner Gallery markups): real-contact hull census — closed bellies and hung flaps
+    'tools/hull-contact-census.selftest.mjs',
     'tools/reference-supplement.selftest.mjs',
     'tools/fidelity-component-floor.selftest.mjs',
     'tools/fidelity-visibility.selftest.mjs',

@@ -1241,6 +1241,13 @@ export function buildLeopard2A4MX(P: TankBuilderPort): void {
     for(let i=0;i<3;i++) skirt(P,side,-3.72+i*.97,-2.765+i*.97,1.72,1.687,1.00,1.69);
     P.addMudguard('a4m-x-front-flap','hullRubber',box(.57,.18,.045),side*1.36,1.07,3.73,-.11);
     P.addMudguard('a4m-x-rear-flap','hullRubber',box(.57,.43,.045),side*1.36,.75,-3.69,.07);
+    // Owner 2026-10-19 (Gallery markup, "floating"): the rear flap hung 0.60 m under the hull's rear overhang with
+    // nothing holding it. Two flat steel hangers run from 35 mm inside its top edge, within its thickness, up into
+    // the overhang's underside (y 1.569 over the flap, 18-34 mm deep along its slope), and a clamp bar across the
+    // flap's rear face, 4 mm into the rubber, carries them. Both stand 0.18 m behind the sprocket's track course.
+    for(const dx of [-.19,.19])
+      P.addMudguard('a4m-x-rear-flap-hanger','hullDetail',box(.06,.665,.022),side*1.36+dx,1.2625,-3.675);
+    P.addEquipment('hullDetail',box(.53,.05,.014).translate(0,.185,-.0255),side*1.36,.75,-3.69,.07);
   }
   fans(P,1.833,-2.95,.51);
   driver(P,1.68,-.58,1.0);
