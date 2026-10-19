@@ -76,6 +76,13 @@ automation, so an ordinary smoke never sees a refusal) and reports entered / ref
 / stuck / black / rescued per run, plus the negative control
 (`?diagforce=blackout` must be refused); a protected preview reads
 `COT_PROTECTION_BYPASS` from the environment.
+A black world inside a revealed battle (black-screen-228: the sky and world exactly
+0 under a live HUD) is hunted with `node tools/black-world-repro.mjs --target=dev
+--scenario=cold|esc|regarage|session` (`--real-esc`, `--real-focus`, `--plan=` with
+`inject:<fault>` heal proofs for the battle's guard, `engine/blackWorldGuard.ts`);
+each part takes its own capture-lock ticket, and `node
+tools/black-world-repro-summary.mjs <part dirs>` tables the rate, the guard's
+incidents and the heal latencies (an unwatched window counts as a harness error).
 Cold-start claims require `npm run perf:cold`; use `--sessions` for repeated
 cache-disabled contexts and record `--cpu`, `--down-kbps`, `--up-kbps`, and
 `--latency` so a warm navigation cannot masquerade as first-visit reliability.
