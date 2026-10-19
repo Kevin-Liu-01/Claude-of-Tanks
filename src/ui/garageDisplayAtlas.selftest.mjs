@@ -10,7 +10,7 @@ import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
 import { GARAGE_DISPLAY_ATLAS_MANIFEST } from './garageDisplayAtlas.generated.ts';
 import {
   createGarageDecalMaterial, createGarageDisplayMaterial, garageDisplayAtlasTestHooks, garageDisplayRect,
-  garageDisplayRectNames, garageMediaRectName,
+  garageDisplayRectNames, garageMediaRectName, loadGarageDisplayAtlasOnFirstRender,
 } from './garageDisplayAtlas.ts';
 import { buildGarageKitDressing, clearGarageKitCache } from './garageKitPlacement.ts';
 import { GARAGE_KIT_PLACEMENTS } from './garageKitPlacements.ts';
@@ -83,4 +83,31 @@ for (const material of packMaterials) assert.equal(material.map, fixtureAlbedo, 
 // a material created after the atlas arrived starts on it
 assert.equal(createGarageDisplayMaterial().map, fixtureAlbedo);
 hooks.reset();
-console.log(`garageDisplayAtlas.selftest: ${rects.length} rects, ${named.size} named by the kit, swap reaches ${packMaterials.length + 2} materials`);
+// the atlas runtime stays off the game's boot path: the boot-graph stage never imports it statically (it arrives with the
+// platform kit at Garage idle), and no Garage source spells a still's rect name as a 'media.' template or prefix, which
+// the page-catalog scan reads as every media.* translation key (the site's captions in the game's boot catalogs)
+const uiDir = new URL('.', import.meta.url), gameDir = new URL('../game/', import.meta.url);
+const stageSource = await readFile(new URL('./garageStage.ts', import.meta.url), 'utf8');
+assert.doesNotMatch(stageSource, /^import[^;]*from '\.\/garageDisplayAtlas\.ts'/m, 'garageStage.ts imports the atlas only dynamically');
+const garageSources = [
+  ...(await readdir(uiDir)).filter((file) => /^garage.*\.ts$/.test(file)).map((file) => new URL(file, uiDir)),
+  ...(await readdir(gameDir)).filter((file) => /^garage.*\.ts$/.test(file)).map((file) => new URL(file, gameDir)),
+];
+for (const url of garageSources) {
+  const source = await readFile(url, 'utf8');
+  const file = url.pathname.split('/').pop();
+  assert.doesNotMatch(source, /`media\.\$\{|'media\.'\s*\+/, `${file}: a still's rect name is joined, never a 'media.' template`);
+  // a display's first render starts the atlas load and its hook retires itself: nothing calls the loader every frame
+  if (file !== 'garageDisplayAtlas.ts') assert.doesNotMatch(source, /onBeforeRender = \(\) => \{[^}]*ensureGarageDisplayAtlas/, `${file}: no per-frame atlas hook`);
+}
+{
+  const mesh = new THREE.Mesh();
+  loadGarageDisplayAtlasOnFirstRender(mesh, 8);
+  const armed = mesh.onBeforeRender;
+  armed();
+  const retired = mesh.onBeforeRender;
+  assert.notEqual(retired, armed, 'the hook retires after its first render');
+  retired();
+  assert.equal(mesh.onBeforeRender, retired, 'and stays retired');
+}
+console.log(`garageDisplayAtlas.selftest: ${rects.length} rects, ${named.size} named by the kit, swap reaches ${packMaterials.length + 2} materials; off the boot path`);

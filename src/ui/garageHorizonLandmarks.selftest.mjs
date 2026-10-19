@@ -152,4 +152,24 @@ for (const file of ['garageLandmarkMesh', 'garageSiroccoHorizon', 'garageSteinbu
   assert.doesNotMatch(source, /Math\.random|Date\.now|new Date\(|performance\.now\(\)/, `${file}: no random numbers or clocks`);
 }
 
-console.log('garageHorizonLandmarks.selftest: Sirocco and Steinburg landmarks at their map bearings; horizons bounded and deterministic');
+// 6. a disposed pack releases every material it handed to the cascade setup (the registry grew on every Garage switch)
+{
+  const registered = new Set(), released = new Set();
+  const engine = {
+    setupShadowMaterial(material) { registered.add(material); },
+    releaseShadowMaterial(material) { released.add(material); return true; },
+  };
+  const assets = createGarageEnvironmentAssetLibrary({});
+  const variant = GARAGE_VARIANTS.find((v) => v.architecture === 'shade_depot');
+  await prepareGarageEnvironmentAssets(assets, variant);
+  const build = buildGarageEnvironment(engine, assets, variant, () => {});
+  const display = build.root.getObjectByName('garage_kit_displays');
+  assert.ok(display && registered.has(display.material), 'the kit display material joins the cascade setup');
+  assert.ok(registered.size >= 6, `the pack registers its lit materials (${registered.size})`);
+  assert.equal(released.size, 0, 'nothing is released while the pack lives');
+  build.dispose();
+  assert.equal(released.size, registered.size, `the disposed pack releases ${released.size} of its ${registered.size} materials`);
+  assert.ok([...registered].every((material) => released.has(material)), 'the disposed pack releases every material it registered');
+}
+
+console.log('garageHorizonLandmarks.selftest: Sirocco and Steinburg landmarks at their map bearings; horizons bounded and deterministic; packs release their cascade materials');

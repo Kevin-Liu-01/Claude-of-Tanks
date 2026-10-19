@@ -331,7 +331,10 @@ export function buildOverheadCrane(b: KitBuilder, params: OverheadCraneParams): 
   const plateFace = face > 0 ? 0 : Math.PI;
   b.push().translate(0, girderY + girderH * 0.5, plateZ).rotateY(plateFace);
   b.uprightFace(0, 0, 0, 1.2, 0.45, garageDisplayRect(plateRect(params.swl ?? 20)));
-  b.uprightFace(1.0, 0, 0, 0.42, 0.42, garageDisplayRect(`num.0${Math.min(8, Math.max(1, params.number ?? 1))}`));
+  // the bridge number is paint with alpha: a decal on a dark plate (as an opaque display face it read as a white blob)
+  b.box(1.0, 0, 0.004, 0.46, 0.46, 0.008, 0x1c1e20, { bevel: 0 });
+  b.decal([0.8, -0.2, 0.011], [1.2, -0.2, 0.011], [1.2, 0.2, 0.011], [0.8, 0.2, 0.011],
+    garageDisplayRect(`num.0${Math.min(8, Math.max(1, params.number ?? 1))}`));
   b.pop();
   {
     const bx = 0, by = girderY + girderH + 0.06, bz = bridgeZ + girderZs[0];

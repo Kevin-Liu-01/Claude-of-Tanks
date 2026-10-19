@@ -33,7 +33,10 @@ import {
 import { FEATURED_SHOTS } from '../ui/featuredShots.ts';
 import { garageSlideshowPose } from '../ui/garageSlideshowPlacement.ts';
 import { buildGarageVerdantKit } from '../ui/garageVerdantKit.ts';
-import { createGarageDisplayMaterial, ensureGarageDisplayAtlas, garageDisplaySignRect, garageDisplayRect } from '../ui/garageDisplayAtlas.ts';
+import {
+  createGarageDecalMaterial, createGarageDisplayMaterial, garageDisplayRectHasAlpha, garageDisplaySignRect, garageDisplayRect,
+  loadGarageDisplayAtlasOnFirstRender,
+} from '../ui/garageDisplayAtlas.ts';
 import { KitBuilder, kitRandom } from '../ui/garageKitGeometry.ts';
 import { garageKitSkin } from '../ui/garageKitSkins.ts';
 import { buildShadowBoard } from '../ui/garageWallKit.ts';
@@ -638,6 +641,12 @@ export function createGarageDressing(
     signMaterial ||= track(createGarageDisplayMaterial((material) => { shadowMat(material); }));
     return signMaterial;
   }
+  // a bay numeral is paint with alpha: the decal material lays it on the dark plate
+  let signDecal: THREE.MeshBasicMaterial | null = null;
+  function signDecalMaterial(): THREE.MeshBasicMaterial {
+    signDecal ||= track(createGarageDecalMaterial());
+    return signDecal;
+  }
 
   /** wall sign: a steel plate carrying its atlas pictogram (garageStage language). */
   function wallSign(
@@ -656,8 +665,10 @@ export function createGarageDressing(
     // text, more pictograms"; type comes from the atlas generator, never the browser's canvas). The old canvas plate drew
     // its wear from this dressing's random stream: the same draws are spent so every later piece keeps its place.
     for (let draw = 0; draw < 1300; draw += 1) rng();
-    const rect = garageDisplayRect(garageDisplaySignRect(text));
-    const m = signDisplayMaterial();
+    const rectName = garageDisplaySignRect(text);
+    const rect = garageDisplayRect(rectName);
+    const painted = garageDisplayRectHasAlpha(rectName);
+    const m = painted ? signDecalMaterial() : signDisplayMaterial();
     const mount = new THREE.Group();
     mount.position.set(x, 0, z);
     mount.rotation.y = ry;
@@ -668,17 +679,20 @@ export function createGarageDressing(
       ? 'grounded-freestanding-frame'
       : 'wall-supported';
     parent.add(mount);
-    const back = put(track(new THREE.BoxGeometry(w + 0.12, h + 0.12, 0.05)), mat.steelDark,
-      0, y, 0, 0, 0, 0, 1, mount, false);
-    back.userData.wallBayId = wallBayId;
-    // the picture fitted inside the plate at its own aspect, the dark steel round it
+    // the picture at its own aspect inside the w x h bay, and the plate fitted round it with a narrow steel margin (garage
+    // r9 g3, the blind critic: a square pictogram centred on a full-width plate read as a dark blank panel)
     const aspect = (rect.u1 - rect.u0) / (rect.v1 - rect.v0) * 2;
     const fitW = Math.min(w * 0.94, h * 0.9 * aspect), fitH = fitW / aspect;
+    const plateW = fitW + 0.12;
+    const back = put(track(new THREE.BoxGeometry(plateW, fitH + 0.12, 0.05)), mat.steelDark,
+      0, y, 0, 0, 0, 0, 1, mount, false);
+    back.userData.wallBayId = wallBayId;
     const boardGeometry = track(new THREE.PlaneGeometry(fitW, fitH));
     const uv = boardGeometry.getAttribute('uv') as THREE.BufferAttribute;
     for (let i = 0; i < uv.count; i += 1) uv.setXY(i, rect.u0 + uv.getX(i) * (rect.u1 - rect.u0), rect.v0 + uv.getY(i) * (rect.v1 - rect.v0));
     const board = new THREE.Mesh(boardGeometry, m);
-    board.onBeforeRender = () => { ensureGarageDisplayAtlas({ anisotropy: aniso }); };
+    loadGarageDisplayAtlasOnFirstRender(board, aniso);
+    if (painted) board.renderOrder = 2;
     board.position.set(0, y, 0.032);
     board.translateZ(0.032);
     board.userData.wallBayId = wallBayId;
@@ -692,7 +706,7 @@ export function createGarageDressing(
       const postGeometry = track(new THREE.BoxGeometry(0.10, postHeight, 0.10));
       const footGeometry = track(new THREE.BoxGeometry(0.62, 0.08, 0.46));
       const braceGeometry = track(new THREE.BoxGeometry(0.08, 1.18, 0.08));
-      const supportOffset = Math.max(0.38, w / 2 - 0.22);
+      const supportOffset = Math.max(0.38, plateW / 2 - 0.28);
       for (const side of [-1, 1]) {
         const post = put(postGeometry, mat.steelDark,
           side * supportOffset, postHeight / 2, 0, 0, 0, 0, 1, mount, false);
@@ -704,7 +718,7 @@ export function createGarageDressing(
           side * (supportOffset - 0.16), 0.72, 0, 0, 0, side * 0.24, 1, mount, false);
         brace.name = 'garage_service_sign_connected_brace';
       }
-      const tie = put(track(new THREE.BoxGeometry(w - 0.18, 0.10, 0.10)), mat.steelMid,
+      const tie = put(track(new THREE.BoxGeometry(supportOffset * 2 + 0.10, 0.10, 0.10)), mat.steelMid,
         0, Math.max(0.48, postHeight * 0.42), 0, 0, 0, 0, 1, mount, false);
       tie.name = 'garage_service_sign_lower_tie';
       mount.userData.supportConnections = 9;
@@ -1207,6 +1221,9 @@ export function createGarageDressing(
   let battleScreenIndex = 0;
   let battleScreenLoading = false;
   let battleScreenTransitionStartedAt = 0;
+  // the arriving Garage's own still, taken the moment the screen is free (an arrival during a load or a crossfade used to
+  // leave the previous Garage's still up for a whole hold and then cycle past its own)
+  let battleScreenWanted: number | null = null;
 
   function disposeBattleScreenTexture(texture: THREE.Texture | null): void {
     if (!texture || texture === battleScreenFallbackTexture) return;
@@ -1296,7 +1313,19 @@ export function createGarageDressing(
     battleScreenFrame = null;
     group.userData.battleScreenResidentImageCount = 1;
     group.userData.battleScreenCurrentImage = GARAGE_BATTLE_SCREEN_SHOTS[battleScreenIndex]?.img || '';
-    if (group.parent && group.visible && !document.hidden) scheduleBattleScreenAdvance();
+    if (group.parent && group.visible && !document.hidden && !takeWantedBattleScreen()) scheduleBattleScreenAdvance();
+  }
+
+  /** The screen is free: show the arriving Garage's still now (true), or carry on the cycle (false). */
+  function takeWantedBattleScreen(): boolean {
+    const wanted = battleScreenWanted;
+    if (wanted === null || wanted === battleScreenIndex) {
+      battleScreenWanted = null;
+      return false;
+    }
+    if (battleScreenTimer !== null) { window.clearTimeout(battleScreenTimer); battleScreenTimer = null; }
+    void advanceBattleScreen(wanted); // which clears the wanted still as it takes it
+    return true;
   }
 
   function animateBattleScreenTransition(now: number, nextIndex: number): void {
@@ -1324,11 +1353,14 @@ export function createGarageDressing(
     if (!battleScreenMaterial || !battleScreenCurrentTexture
         || battleScreenFrame !== null || battleScreenLoading
         || GARAGE_BATTLE_SCREEN_SHOTS.length < 2) return;
-    const nextIndex = targetIndex ?? (battleScreenIndex + 1) % GARAGE_BATTLE_SCREEN_SHOTS.length;
+    const nextIndex = targetIndex ?? battleScreenWanted ?? (battleScreenIndex + 1) % GARAGE_BATTLE_SCREEN_SHOTS.length;
+    const takesWanted = nextIndex === battleScreenWanted;
+    if (takesWanted) battleScreenWanted = null;
     battleScreenLoading = true;
     const texture = await loadBattleScreenTexture(nextIndex);
     battleScreenLoading = false;
     if (!texture || !battleScreenMaterial) {
+      if (takesWanted && battleScreenWanted === null) battleScreenWanted = nextIndex; // the retry tries it again
       if (group.parent && group.visible && !document.hidden) scheduleBattleScreenAdvance(1_500);
       return;
     }
@@ -1351,6 +1383,7 @@ export function createGarageDressing(
     if (!battleScreenMaterial || !GARAGE_BATTLE_SCREEN_SHOTS.length) return;
     battleScreenCurrentTexture = fallback;
     battleScreenIndex = battleScreenStartIndex(currentVariant.mapId);
+    group.userData.battleScreenWantedImage = GARAGE_BATTLE_SCREEN_SHOTS[battleScreenIndex].img;
     battleScreenLoading = true;
     const texture = await loadBattleScreenTexture(battleScreenIndex);
     battleScreenLoading = false;
@@ -1360,7 +1393,7 @@ export function createGarageDressing(
     battleScreenMaterial.uniforms.uImageB.value = texture;
     group.userData.battleScreenResidentImageCount = 1;
     group.userData.battleScreenCurrentImage = GARAGE_BATTLE_SCREEN_SHOTS[battleScreenIndex].img;
-    scheduleBattleScreenAdvance();
+    if (!takeWantedBattleScreen()) scheduleBattleScreenAdvance();
   }
 
   /** Hang the one screen on Verdant's panel, or on the yard mount at an outdoor Garage's slideshow pose. */
@@ -1388,10 +1421,19 @@ export function createGarageDressing(
     return isVerdant || pose !== null;
   }
 
-  /** On arriving in a Garage the slideshow opens on that Garage's own map still, then cycles. */
+  /**
+   * On arriving in a Garage the slideshow opens on that Garage's own map still, then cycles. During a load or a crossfade
+   * the still waits as the wanted one and is taken the moment the screen is free.
+   */
   function openSlideshowOnGarage(): void {
     const start = battleScreenStartIndex(currentVariant.mapId);
-    if (start !== battleScreenIndex && battleScreenFrame === null && !battleScreenLoading) {
+    group.userData.battleScreenWantedImage = GARAGE_BATTLE_SCREEN_SHOTS[start]?.img || '';
+    if (battleScreenFrame !== null || battleScreenLoading) {
+      battleScreenWanted = start;
+      return;
+    }
+    battleScreenWanted = null;
+    if (start !== battleScreenIndex) {
       if (battleScreenTimer !== null) { window.clearTimeout(battleScreenTimer); battleScreenTimer = null; }
       void advanceBattleScreen(start);
       return;
@@ -2625,7 +2667,8 @@ export function createGarageDressing(
   });
 
   // Verdant's share of the garage r9 kit (garageVerdantKit.ts): column and wordmark banners, the hall of fame's framed
-  // prints, a diagnostics station and daylight shafts, on its own Verdant-only owner in the hall's world frame
+  // prints, a diagnostics station, the mezzanine finish and the service cells, on its own Verdant-only owner in the
+  // hall's world frame
   function buildVerdantR9Kit(): void {
     const owner = new THREE.Group();
     owner.name = 'garage_verdant_kit_r9';

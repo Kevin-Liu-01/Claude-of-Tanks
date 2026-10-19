@@ -127,8 +127,13 @@ pixels. Each Garage shows one slideshow: Verdant's west-wall panel, or the pose 
 where the pack builds the frame and the dressing hangs the same screen. No display, sign, banner or atmosphere card
 enters the hero's halo in the canonical frame (its screen box plus 8 %, `garageDisplayPlacement.selftest.mjs` with
 the measured canonical camera), which leaves the top band and the frame's outer edges for displays. The platform
-kit (collars, LED pucks, pedestal, the segmented deck) loads at Garage idle. `tools/garage-kit-sheet.html` stages
-every piece for review.
+kit (collars, LED pucks, pedestal, the segmented deck, the hall's two signs) loads at Garage idle together with the
+atlas runtime: no boot-graph module (`garageStage.ts`) imports `garageDisplayAtlas.ts` statically. A display mesh
+arms the atlas with `loadGarageDisplayAtlasOnFirstRender` (its first frame starts the load, then the hook retires;
+phones decode the half-size atlas), and a still's rect name is joined from its group, never written as a `media.`
+template or prefix (the i18n page-catalog scan would keep every `media.*` caption in the game's boot catalogs).
+Verdant's hall carries no light-shaft cards (they crossed its screens and read as a glitching panel).
+`tools/garage-kit-sheet.html` stages every piece for review.
 The hero's outline from the Garage camera stays clear (garage critic panel and
 ruling, 2026-10-14: the current layout protects the hero's spot, the turntable,
 the camera and the UI, not the backdrop): no post, mast, leg, hook or lamp crosses

@@ -69,6 +69,7 @@ import { garageHorizonLandmarks } from './garageHorizonLandmarks.ts';
 interface GarageEnvironmentEngineContext {
   anisotropy?: number;
   setupShadowMaterial?(material: THREE.Material, extraHook?: THREE.Material['onBeforeCompile'] | null): void;
+  releaseShadowMaterial?(material: THREE.Material): unknown;
 }
 
 interface GarageEnvironmentStats {
@@ -1224,12 +1225,26 @@ function normalizeGeometry(source: THREE.BufferGeometry, vertexColors: boolean):
 
 /** Build one authentic, renderer-only Garage scene pack. */
 export function buildGarageEnvironment(
-  engineCtx: GarageEnvironmentEngineContext,
+  engineContext: GarageEnvironmentEngineContext,
   assets: GarageEnvironmentAssetLibrary,
   variant: GarageVariant,
   requestRender: () => void = () => {},
   options: Readonly<{ kitPlacement?: GarageKitPlacement | null }> = {},
 ): GarageEnvironmentBuild {
+  // Every material this pack hands to the shared cascade setup is released with the pack (garage r9: an evicted pack's
+  // materials stayed in the cascade registry, which grew on every Garage switch). All of them are the pack's own.
+  const shadowMaterials: THREE.Material[] = [];
+  const setupShadow = engineContext.setupShadowMaterial;
+  const engineCtx: GarageEnvironmentEngineContext = {
+    anisotropy: engineContext.anisotropy,
+    setupShadowMaterial: setupShadow
+      ? (material, extraHook) => {
+        shadowMaterials.push(material);
+        if (extraHook === undefined) setupShadow.call(engineContext, material);
+        else setupShadow.call(engineContext, material, extraHook);
+      }
+      : undefined,
+  };
   const recipe = GARAGE_ENVIRONMENT_RECIPES[variant.architecture]
     || GARAGE_ENVIRONMENT_RECIPES.field_shed;
   const patch = getGarageTerrainPatch(variant.mapId);
@@ -2689,6 +2704,8 @@ export function buildGarageEnvironment(
       root.removeFromParent();
       for (const handle of handles) handle.release();
       handles.length = 0;
+      for (const material of shadowMaterials) engineContext.releaseShadowMaterial?.(material);
+      shadowMaterials.length = 0;
       for (const resource of disposables) resource.dispose();
       disposables.length = 0;
       root.clear();

@@ -8,19 +8,20 @@ import { buildGarageProp } from './garagePropKit.ts';
 import { buildGarageBenchPiece } from './garageBenchKit.ts';
 import { buildJibCrane } from './garageCraneKit.ts';
 import { buildDeckLedStrip, buildLongSpanRacking, buildMezzanineOffice } from './garageVerdantFinish.ts';
-import { createGarageDecalMaterial, createGarageDisplayMaterial, ensureGarageDisplayAtlas } from './garageDisplayAtlas.ts';
-import { atmosphereMotes, atmosphereShaft, createGarageAtmosphere } from './garageAtmosphereKit.ts';
+import { createGarageDecalMaterial, createGarageDisplayMaterial, loadGarageDisplayAtlasOnFirstRender } from './garageDisplayAtlas.ts';
 
 /**
  * Verdant's share of the garage r9 kit, in the dressing's frame (the hall's world-local axes: the west wall at x = -23
  * on the canonical frame's left, the wall behind the mezzanine at z = -23 on its right). The brand and the game's
  * battlefields on the hall's walls: two column banners in the frame's left and right thirds (the west wall beside the
  * slideshow; the far wall above the mezzanine rails, both hung high), the wordmark banner high on the far wall, a "hall
- * of fame" of framed prints with picture lights on a high rail right of the slideshow, a diagnostics station at the slideshow's foot, and daylight
- * shafts with dust motes under the roof lights clear of the hero.
+ * of fame" of framed prints with picture lights on a high rail right of the slideshow and a diagnostics station at the
+ * slideshow's foot. The hall carries no light-shaft cards (garage r9 g3, the blind critic: the shafts' hard-edged
+ * translucent panels and their motes crossed the slideshow, the prints and the office glass and read as a new glitching
+ * panel): its daylight comes from the roof lights and the clerestories themselves.
  *
- * Built once with the dressing (static, Verdant only): one vertex-colour mesh, one DISPLAY-LIT mesh, one decal mesh and
- * one atmosphere mesh, each on a program the Verdant boot already compiles.
+ * Built once with the dressing (static, Verdant only): one vertex-colour mesh, one DISPLAY-LIT mesh and one decal mesh,
+ * each on a program the Verdant boot already compiles.
  */
 export function buildGarageVerdantKit(params: {
   readonly setupShadowMaterial?: ((material: THREE.Material) => void) | null;
@@ -133,7 +134,7 @@ export function buildGarageVerdantKit(params: {
     materials.push(material);
     const mesh = new THREE.Mesh(displayGeometry, material);
     mesh.receiveShadow = true;
-    mesh.onBeforeRender = () => { ensureGarageDisplayAtlas({ anisotropy: params.anisotropy }); };
+    loadGarageDisplayAtlasOnFirstRender(mesh, params.anisotropy);
     finish(mesh, 'garage_verdant_kit_displays');
   }
   const decalGeometry = decals.length ? mergeGeometries(decals, false) : null;
@@ -145,17 +146,6 @@ export function buildGarageVerdantKit(params: {
     mesh.renderOrder = 2;
     finish(mesh, 'garage_verdant_kit_decals');
   }
-  // daylight shafts under the roof lights, left and right of the hero, with motes hanging in the left one
-  const atmosphere = createGarageAtmosphere({
-    drift: 0.012,
-    cards: [
-      atmosphereShaft([-17.8, 9.7, 2.2], [-15.9, 0.05, 5.6], 2.2),
-      atmosphereShaft([4.2, 9.7, -17.6], [5.6, 0.05, -14.2], 2.4, 0.37),
-      ...atmosphereMotes([-16.9, 3.2, 5.2], 2.4),
-    ],
-  });
-  materials.push(atmosphere.material as THREE.Material);
-  finish(atmosphere, 'garage_verdant_kit_atmosphere');
   return {
     meshes, materials,
     stats: Object.freeze({ triangles, brandPieces: 3, tankImages: prints.length + morePrints.length, stations: 2, stationMonitors: 7 }),

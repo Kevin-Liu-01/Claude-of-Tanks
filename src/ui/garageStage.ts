@@ -32,7 +32,6 @@ import {
 import type { HallMesh } from './garageHallKit.ts';
 import { buildVerdantFloorAlbedo, VERDANT_FLOOR_TEXELS } from './garageVerdantFloor.ts';
 import { buildVerdantHallParts, verdantHallShutter } from './garageVerdantHall.ts';
-import { createGarageDisplayMaterial, ensureGarageDisplayAtlas, garageDisplayRect, garageDisplaySignRect } from './garageDisplayAtlas.ts';
 
 type RandomSource = () => number;
 type SignWear = [boolean, number, number, number, number];
@@ -306,11 +305,15 @@ export function makeHazardTexture(): HTMLCanvasElement {
  *            stats:()=>import('./garageArchitecture.ts').GarageArchitectureStats,
  *            dispose:Function}}
  */
-/** The platform kit and the display atlas runtime, loaded at Garage idle (never on the boot path). */
+/**
+ * The platform kit and the display atlas runtime, loaded at Garage idle (never on the boot path: nothing in this module
+ * imports either statically; the hall's signs and the collar's pucks are built once they arrive).
+ */
 const loadPlatformKit = async () => {
   const [platform, atlas] = await Promise.all([import('./garagePlatformKit.ts'), import('./garageDisplayAtlas.ts')]);
   return { platform, atlas };
 };
+type GaragePlatformKitModules = Awaited<ReturnType<typeof loadPlatformKit>>;
 
 export function createGarageStage(
   engineCtx: GarageStageEngineContext,
@@ -772,15 +775,25 @@ export function createGarageStage(
   podTopMat.normalMap = outdoorSeedNormal;
   podTopMat.normalScale = new THREE.Vector2(0.6, 0.6);
   const platformCollars = new Map<string, THREE.Group>();
-  let platformKit: Awaited<ReturnType<typeof loadPlatformKit>> | null = null;
+  let platformKit: GaragePlatformKitModules | null = null;
   let platformCollarShown: THREE.Group | null = null;
   let platformCollarWanted = getGarageVariant(initialVariantId).architecture as string;
   const platformCollarSolid = track(shadowMat(new THREE.MeshStandardMaterial({
     vertexColors: true, roughness: 0.62, metalness: 0.3,
   })));
   platformCollarSolid.name = 'garage:platform-collar';
+  // the stage's one DISPLAY-LIT material (the collar's pucks and the hall's two signs), made when the kit arrives
   let platformCollarDisplay: THREE.Material | null = null;
-  const buildPlatformCollar = (kit: NonNullable<typeof platformKit>, architecture: string): THREE.Group => {
+  const stageDisplayMaterial = (kit: GaragePlatformKitModules): THREE.Material => {
+    platformCollarDisplay ||= track(kit.atlas.createGarageDisplayMaterial(shadowMat));
+    return platformCollarDisplay;
+  };
+  let stageDecal: THREE.Material | null = null;
+  const stageDecalMaterial = (kit: GaragePlatformKitModules): THREE.Material => {
+    stageDecal ||= track(kit.atlas.createGarageDecalMaterial());
+    return stageDecal;
+  };
+  const buildPlatformCollar = (kit: GaragePlatformKitModules, architecture: string): THREE.Group => {
     let collar = platformCollars.get(architecture);
     if (!collar) {
       const built = kit.platform.buildGaragePlatformCollar(architecture as Parameters<typeof kit.platform.buildGaragePlatformCollar>[0],
@@ -792,10 +805,9 @@ export function createGarageStage(
       solid.castShadow = true;
       collar.add(solid);
       if (built.display) {
-        platformCollarDisplay ||= track(kit.atlas.createGarageDisplayMaterial(shadowMat));
-        const lights = new THREE.Mesh(track(built.display), platformCollarDisplay);
+        const lights = new THREE.Mesh(track(built.display), stageDisplayMaterial(kit));
         lights.name = 'garage_platform_pucks';
-        lights.onBeforeRender = () => { kit.atlas.ensureGarageDisplayAtlas({ anisotropy: aniso }); };
+        kit.atlas.loadGarageDisplayAtlasOnFirstRender(lights, aniso);
         collar.add(lights);
       }
       for (const mesh of collar.children) { mesh.matrixAutoUpdate = false; mesh.updateMatrix(); }
@@ -826,7 +838,8 @@ export function createGarageStage(
     };
     const paintDeck = (): void => {
       if (!platformKit) return;
-      const painter = platformKit.platform.createGarageDeckPainter(1024, 0);
+      // a phone paints and holds the half-size deck (512 px albedo, 256 px normal)
+      const painter = platformKit.platform.createGarageDeckPainter(getDeviceTier() === 'mobile' ? 512 : 1024, 0);
       const step = (): void => {
         if (!painter.step(10)) { later(step, 300); return; }
         const albedo = track(new THREE.DataTexture(painter.albedo, painter.size, painter.size, THREE.RGBAFormat));
@@ -845,7 +858,7 @@ export function createGarageStage(
         podTopMat.map = albedo;
         podTopMat.normalMap = normal;
         previous?.dispose();
-        group.userData.platformDeck = 'segmented-steel-1024';
+        group.userData.platformDeck = `segmented-steel-${painter.size}`;
         requestRender();
       };
       later(step, 300);
@@ -854,6 +867,7 @@ export function createGarageStage(
       later(() => {
         void loadPlatformKit().then((kit) => {
           platformKit = kit;
+          buildHallSigns(kit);
           showPlatformCollar(platformCollarWanted);
           paintDeck();
           // the other Garages' collars, one per idle slice, so a switch never builds one
@@ -1231,44 +1245,51 @@ export function createGarageStage(
   const plateMat = track(shadowMat(new THREE.MeshStandardMaterial({
     color: 0x1b1e21, roughness: 0.55, metalness: 0.55,
   })));
-  // The hall's two plates carry the atlas's bay numeral and no-smoking pictogram (garage r9 K3: "less text, more
-  // pictograms"; type from the atlas generator, never the browser's canvas), fitted at their own aspect on the dark
-  // plates, on the DISPLAY-LIT key the wall signs always used. The old canvas plates drew their wear from the stage's
-  // random stream: the same draws are spent so everything after them keeps its place.
+  // The hall's two signs carry the atlas's bay numeral and no-smoking pictogram (garage r9 K3: "less text, more
+  // pictograms"; type from the atlas generator, never the browser's canvas) on the DISPLAY-LIT key the wall signs always
+  // used. Each plate fits its picture with a narrow steel margin (a square pictogram on a wide plate read as a dark blank
+  // panel). They are built when the platform kit arrives at Garage idle, so the atlas runtime stays off the boot path;
+  // until then the wall is bare, and the atlas itself only loads on their first frame. The old canvas plates drew their
+  // wear from the stage's random stream: the same draws are spent so everything after them keeps its place.
   for (let draw = 0; draw < 2600; draw += 1) rng();
-  const signMat = track(createGarageDisplayMaterial((material) => { shadowMat(material); }));
-  const signPlane = (legend: string, maxW: number, maxH: number): THREE.PlaneGeometry => {
-    const rect = garageDisplayRect(garageDisplaySignRect(legend));
-    const aspect = (rect.u1 - rect.u0) / (rect.v1 - rect.v0) * 2;
-    const w = Math.min(maxW, maxH * aspect), h = w / aspect;
-    const plane = track(new THREE.PlaneGeometry(w, h));
-    const uv = plane.getAttribute('uv') as THREE.BufferAttribute;
-    for (let i = 0; i < uv.count; i += 1) uv.setXY(i, rect.u0 + uv.getX(i) * (rect.u1 - rect.u0), rect.v0 + uv.getY(i) * (rect.v1 - rect.v0));
-    return plane;
-  };
-  const signGeoBig = signPlane('BAY 01', 3.4, 1.7);
-  const signGeoSmall = signPlane('NO SMOKING', 2.1, 1.05);
-  const signMat1 = signMat, signMat2 = signMat;
-  // north-wall sign (faces +z): halo on the wall, plate, then the board
-  const halo1 = new THREE.Mesh(track(new THREE.PlaneGeometry(4.6, 2.6)), haloMat);
-  halo1.position.set(-13.5, 5.55, -HW + 0.05); // over the sheeting's crowns; the plate sits on the girts (GA.05)
-  const plate1 = new THREE.Mesh(track(new THREE.BoxGeometry(3.72, 1.92, 0.05)), plateMat);
-  plate1.position.set(-13.5, 5.6, -HW + 0.145);
-  const sign1 = new THREE.Mesh(signGeoBig, signMat1);
-  sign1.onBeforeRender = () => { ensureGarageDisplayAtlas({ anisotropy: aniso }); };
-  sign1.position.set(-13.5, 5.6, -HW + 0.175);
-  group.add(halo1, plate1, sign1);
-  // west-wall sign (faces +x)
-  const halo2 = new THREE.Mesh(track(new THREE.PlaneGeometry(2.9, 1.7)), haloMat);
-  halo2.rotation.y = Math.PI / 2;
-  halo2.position.set(-HW + 0.05, 3.37, -6);
-  const plate2 = new THREE.Mesh(track(new THREE.BoxGeometry(0.05, 1.2, 2.3)), plateMat);
-  plate2.position.set(-HW + 0.145, 3.4, -6);
-  const sign2 = new THREE.Mesh(signGeoSmall, signMat2);
-  sign2.onBeforeRender = () => { ensureGarageDisplayAtlas({ anisotropy: aniso }); };
-  sign2.rotation.y = Math.PI / 2;
-  sign2.position.set(-HW + 0.175, 3.4, -6);
-  group.add(halo2, plate2, sign2);
+  const hallSigns = new THREE.Group();
+  hallSigns.name = 'garage_hall_signs';
+  group.add(hallSigns);
+  function buildHallSigns(kit: GaragePlatformKitModules): void {
+    if (hallSigns.children.length) return;
+    // one sign: halo on the wall, steel plate, then the picture, centred at `at` on a wall facing `yaw` (0 faces +z); a
+    // numeral is paint with alpha, laid on the dark plate with the decal material
+    const sign = (legend: string, size: number, at: readonly [number, number, number], yaw: number): void => {
+      const rectName = kit.atlas.garageDisplaySignRect(legend);
+      const painted = kit.atlas.garageDisplayRectHasAlpha(rectName);
+      const rect = kit.atlas.garageDisplayRect(rectName);
+      const aspect = (rect.u1 - rect.u0) / (rect.v1 - rect.v0) * 2;
+      const w = aspect >= 1 ? size : size * aspect, h = w / aspect;
+      const picture = track(new THREE.PlaneGeometry(w, h));
+      const uv = picture.getAttribute('uv') as THREE.BufferAttribute;
+      for (let i = 0; i < uv.count; i += 1) uv.setXY(i, rect.u0 + uv.getX(i) * (rect.u1 - rect.u0), rect.v0 + uv.getY(i) * (rect.v1 - rect.v0));
+      const mount = new THREE.Group();
+      mount.position.set(at[0], at[1], at[2]);
+      mount.rotation.y = yaw;
+      const halo = new THREE.Mesh(track(new THREE.PlaneGeometry(w + 0.92, h + 0.7)), haloMat);
+      halo.position.set(0, -0.05, 0.05);
+      const plate = new THREE.Mesh(track(new THREE.BoxGeometry(w + 0.12, h + 0.12, 0.05)), plateMat);
+      plate.position.z = 0.145;
+      const board = new THREE.Mesh(picture, painted ? stageDecalMaterial(kit) : stageDisplayMaterial(kit));
+      board.name = `garage_hall_sign_${legend.toLowerCase().replace(/[^a-z0-9]+/g, '_')}`;
+      board.position.z = 0.175;
+      if (painted) board.renderOrder = 2;
+      kit.atlas.loadGarageDisplayAtlasOnFirstRender(board, aniso);
+      mount.add(halo, plate, board);
+      for (const object of [mount, halo, plate, board]) { object.matrixAutoUpdate = false; object.updateMatrix(); }
+      hallSigns.add(mount);
+    };
+    // the north wall's bay numeral (faces +z) and the west wall's no-smoking sign (faces +x)
+    sign('BAY 01', 1.6, [-13.5, 5.6, -HW], 0);
+    sign('NO SMOKING', 1.05, [-HW, 3.4, -6], Math.PI / 2);
+    hallSigns.updateMatrixWorld(true);
+    requestRender();
+  }
 
   // The K2 bay's work lamp (2026-10-11). This was the low west-wall fill (hud_ui r2), then the K2 belly weld's light
   // while crews welded there; with no people in the Garages there is no arc, so it hangs over the parked hot-work
