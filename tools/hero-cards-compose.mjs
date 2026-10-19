@@ -3,7 +3,7 @@
 // No WebGL, no browser, no capture lock. The numbers live in src/ui/heroCardPolicy.ts.
 // First-party tooling and generated images: Kevin B. Liu (NOTICE.md).
 //
-//   node tools/hero-cards-compose.mjs ship --layers <dir> [--ids=a,b | --plan | --all]
+//   node tools/hero-cards-compose.mjs ship --layers <dir> [--ids=a,b | --plan | --all | --flags-only]
 //       encode the given ids' tank layers (and every stale flag layer) into public/icons/hero/ and
 //       write their hero-cards.json rows; unchanged rows and files stay byte-identical
 //   node tools/hero-cards-compose.mjs sheet --out <png> [--kind=roster] [--font <ttf>] [--data-font <ttf>]
@@ -583,7 +583,8 @@ async function ship() {
   if (opt('ids')) ids = opt('ids').split(',').map((id) => id.trim()).filter(Boolean);
   else if (args.includes('--plan')) ids = plan.stale.map((row) => row.id);
   else if (args.includes('--all')) ids = fleetIds();
-  else throw new Error('ship: pass --ids=<id,...>, --plan or --all');
+  else if (args.includes('--flags-only')) ids = [];
+  else throw new Error('ship: pass --ids=<id,...>, --plan, --all or --flags-only');
   const previous = readHeroManifest();
   const policyKey = tankPolicyKey();
   const policyMoved = !!previous && previous.tankPolicyKey !== policyKey;

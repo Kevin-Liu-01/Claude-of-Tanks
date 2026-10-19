@@ -2453,7 +2453,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const card = cardById.get(id);
       const spec = specById.get(id);
       if (!card || !spec || card.querySelector('.ti')) continue;
-      card.classList.add('hc-legacy');
       card.insertAdjacentHTML('afterbegin',
         `<span class="flag">${flagIconHTML(spec.nation, 20)}</span>` +
         `<img class="ti" data-cot-thumb="${spec.id}" alt="" width="256" height="256" loading="lazy" decoding="async" fetchpriority="low">`);

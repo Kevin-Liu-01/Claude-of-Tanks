@@ -181,6 +181,22 @@ const COL = {
   dim: '#8a97a3',
 };
 
+/**
+ * The player's vehicle tile takes its tank hero card (the 3/4 render over its waving flag) from the lazy
+ * hero chunk; the packaged angle icon stays until the layers are placed, and for good when they are not.
+ */
+function showHeroVehicle(card: HTMLElement, specId: string, fallback: HTMLImageElement): void {
+  import('./heroCard.ts')
+    .then((hero) => hero.decorateHeroTile(card, specId, { tankSizes: '220px', flagSizes: '260px', priority: true }))
+    .then((decorated) => {
+      if (!decorated) return;
+      card.setAttribute('role', 'img');
+      card.setAttribute('aria-label', fallback.alt);
+      fallback.remove();
+    })
+    .catch(() => { /* the angle icon stays */ });
+}
+
 const ES_CSS = `
 .cot-es{position:fixed;inset:0;z-index:71;display:none;pointer-events:none;
   flex-direction:column;align-items:center;justify-content:center;
@@ -1028,6 +1044,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       const vehicle = el('img', '', vehicleCard);
       vehicle.src = iconUrl(sum.playerSpecId, 'angle');
       vehicle.alt = sum.playerVehicle ? t('endScreen.vehicle.alt', { name: sum.playerVehicle }) : t('endScreen.vehicle.altFallback');
+      showHeroVehicle(vehicleCard, sum.playerSpecId, vehicle);
     }
     tile(statGrid, 'dealt', t('endScreen.tile.dealt'), {
       value: Math.round(sum.stats.dealt), hot: true, icon: 'damage',

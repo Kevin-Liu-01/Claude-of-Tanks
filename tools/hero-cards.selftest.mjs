@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { createCanvas } from '@napi-rs/canvas';
 import { GARAGE_CAMERA_AZIMUTH_RAD, GARAGE_CAMERA_PITCH_RAD } from '../src/game/garagePresentationPose.ts';
 import {
-  HERO_CAMERA, HERO_CARD_LAYOUT, HERO_FLAG, HERO_FLAG_MASK, flagMaskStops, heroFlagMaskCss, heroFlagPolicy, placeTank,
+  HERO_CAMERA, HERO_CARD_LAYOUT, HERO_FLAG, HERO_FLAG_MASK, HERO_SIDE_MARGIN, flagMaskStops, heroFlagMaskCss, heroFlagPolicy, placeTank,
 } from '../src/ui/heroCardPolicy.ts';
 import { applyFlagMask, drawTank, horizontalBands, measureBounds, renderFlagLayer } from './hero-cards-compose.mjs';
 
@@ -116,20 +116,25 @@ assert.ok(heroFlagMaskCss(HERO_FLAG_MASK, 'left').includes(` at ${pct(HERO_FLAG_
   assert.ok(seen.white && seen.blue && seen.red, `RU bands above the floor line: ${JSON.stringify(seen)}`);
 }
 
-// 7. The Garage strip reads the same policy: its CSS places the tank layer with placeTank's expression in
-//    container units, at the roster and compact layouts' shares, and masks the flag box like the compositor.
+// 7. The runtime cards read the same policy: the lazy layer stylesheet places the tank with placeTank's expression
+//    in container units and masks the flag box like the compositor; the Garage strip sets the roster and compact
+//    layouts' shares.
 {
+  const layerCss = readFileSync(new URL('../src/ui/heroCard.css', import.meta.url), 'utf8');
   const garageCss = readFileSync(new URL('../src/ui/garage.css', import.meta.url), 'utf8');
   const vars = (L) => `--hc-band:${L.nameBand}px;--hc-share:${L.coreShare};--hc-hshare:${L.coreHeight};--hc-cxr:${Number((right ? 1 - L.centerX : L.centerX).toFixed(2))};`;
   assert.ok(garageCss.includes(vars(HERO_CARD_LAYOUT.roster)), `roster card vars ${vars(HERO_CARD_LAYOUT.roster)}`);
   assert.ok(garageCss.includes(vars(HERO_CARD_LAYOUT.rosterCompact)), `compact card vars ${vars(HERO_CARD_LAYOUT.rosterCompact)}`);
-  assert.match(garageCss, /\.cot-card \.hc-flag\{[^}]*height:calc\(100% - var\(--hc-band\) \* 0\.35\)/, 'flag box ends bandInset of the band above the bottom');
+  assert.match(garageCss, /\.cot-card\{[^}]*container-type:size;/, 'the roster card is a size container from its first paint (no shift when the layers arrive)');
+  assert.match(layerCss, /\.cot-hc \.hc-flag\{[^}]*height:calc\(100% - var\(--hc-band\) \* 0\.35\)/, 'flag box ends bandInset of the band above the bottom');
   assert.equal(HERO_FLAG_MASK.bandInset, 0.35);
-  assert.match(garageCss, /\.cot-card \.hc-flag\{[^}]*mask-image:var\(--hc-flag-mask\)/, 'the flag takes the policy mask');
-  assert.match(garageCss, new RegExp(`\\.cot-card \\.hc-flag\\{[^}]*object-position:${right ? '0 0' : '100% 0'}`), 'the flag anchors at the rear-top corner');
-  assert.match(garageCss, /--hc-k:min\(calc\(100cqw \* var\(--hc-share\) \/ var\(--hc-cw\)\),calc\(\(100cqh - var\(--hc-band\)\) \* var\(--hc-hshare\) \/ var\(--hc-ch\)\),calc\(100cqw \* 0\.93 \/ var\(--hc-fw\)\)\)/, 'tank width is placeTank\'s k');
-  assert.match(garageCss, /left:clamp\(calc\(100cqw \* 0\.035 - var\(--hc-fx0\) \* var\(--hc-k\)\),calc\(100cqw \* var\(--hc-cxr\) - var\(--hc-cx\) \* var\(--hc-k\)\),calc\(100cqw \* 0\.965 - var\(--hc-fx1\) \* var\(--hc-k\)\)\)/, 'tank x is placeTank\'s clamped dx');
-  assert.match(garageCss, /top:calc\(100cqh - var\(--hc-band\) \+ 2px - var\(--hc-cb\) \* var\(--hc-k\)\)/, 'contact line 2 px under the art box');
+  assert.match(layerCss, /\.cot-hc \.hc-flag\{[^}]*mask-image:var\(--hc-flag-mask\)/, 'the flag takes the policy mask');
+  assert.match(layerCss, /\.cot-hc \.hc-flag\{[^}]*object-position:0 0;/, 'facing right: the flag anchors at the top-left (rear-top) corner');
+  assert.match(layerCss, /\.cot-hc\[data-hero-facing='left'\] \.hc-flag\{object-position:100% 0;\}/, 'facing left mirrors the anchor');
+  assert.match(layerCss, /--hc-k:min\(calc\(100cqw \* var\(--hc-share\) \/ var\(--hc-cw\)\),calc\(\(100cqh - var\(--hc-band\)\) \* var\(--hc-hshare\) \/ var\(--hc-ch\)\),calc\(100cqw \* 0\.93 \/ var\(--hc-fw\)\)\)/, 'tank width is placeTank\'s k');
+  assert.match(layerCss, /left:clamp\(calc\(100cqw \* 0\.035 - var\(--hc-fx0\) \* var\(--hc-k\)\),calc\(100cqw \* var\(--hc-cxr\) - var\(--hc-cx\) \* var\(--hc-k\)\),calc\(100cqw \* 0\.965 - var\(--hc-fx1\) \* var\(--hc-k\)\)\)/, 'tank x is placeTank\'s clamped dx');
+  assert.match(layerCss, /top:calc\(100cqh - var\(--hc-band\) \+ 2px - var\(--hc-cb\) \* var\(--hc-k\)\)/, 'contact line 2 px under the art box');
+  assert.equal(HERO_SIDE_MARGIN, 0.035, 'the CSS margins (0.035, 0.93, 0.965) are HERO_SIDE_MARGIN');
 }
 
 console.log('hero-cards selftest: ok');

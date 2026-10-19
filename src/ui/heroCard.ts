@@ -9,6 +9,7 @@
 // no WebGL and no canvas reads happen here.
 // First-party: Kevin B. Liu (NOTICE.md).
 
+import './heroCard.css';
 import {
   HERO_MANIFEST_FILE, HERO_POLICY_VERSION, HERO_PUBLIC_DIR, heroFlagFiles, heroFlagMaskCss, heroTankFiles,
   type HeroFacing,
@@ -105,7 +106,7 @@ export function decorateHeroCard(card: HTMLElement, specId: string, manifest: He
     tankImg.addEventListener('load', () => card.classList.add('hc-loaded'), { once: true });
   }
   card.prepend(flag, tank);
-  card.classList.add('hc');
+  card.classList.add('cot-hc');
   card.dataset.heroFacing = manifest.facing;
   return true;
 }
@@ -122,7 +123,7 @@ export async function mountRosterHeroCards(
 ): Promise<string[]> {
   const manifest = await loadHeroManifest();
   if (!manifest) return [...cards.keys()];
-  strip.style.setProperty('--hc-flag-mask', heroFlagMaskCss(undefined, manifest.facing));
+  strip.style.setProperty('--hc-flag-mask', heroCardFlagMask(manifest));
   const missing: string[] = [];
   for (const [specId, card] of cards) {
     const decorated = decorateHeroCard(card, specId, manifest, {
@@ -133,6 +134,22 @@ export async function mountRosterHeroCards(
     if (!decorated) missing.push(specId);
   }
   return missing;
+}
+
+/** The policy's flag feather as a CSS mask-image, for a host list that holds many cards. */
+export function heroCardFlagMask(manifest: HeroManifest): string {
+  return heroFlagMaskCss(undefined, manifest.facing);
+}
+
+/**
+ * Decorate one stand-alone tile (the end screen's vehicle tile): the policy feather goes on the tile
+ * itself. Resolves to false when there is no manifest or no row (the caller keeps its own image).
+ */
+export async function decorateHeroTile(tile: HTMLElement, specId: string, options: HeroCardOptions): Promise<boolean> {
+  const manifest = await loadHeroManifest();
+  if (!manifest) return false;
+  tile.style.setProperty('--hc-flag-mask', heroCardFlagMask(manifest));
+  return decorateHeroCard(tile, specId, manifest, options);
 }
 
 /** Screenshot harness: load every displayed card's layers now instead of on approach. */

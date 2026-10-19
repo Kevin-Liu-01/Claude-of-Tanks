@@ -18,6 +18,7 @@ import {
   technicalLabel,
 } from './catalog.ts';
 import type { GalleryRecord, GalleryVehicleSpec } from './catalog.ts';
+import type { HeroManifest } from '../ui/heroCard.ts';
 import { compareVehicleEras, VEHICLE_ERAS } from '../vehicles/taxonomy.ts';
 import { createInspectionOverlay, inspectionLegend } from './overlays.ts';
 import type { InspectionMode } from './overlays.ts';
@@ -505,6 +506,17 @@ function renderLegend(): void {
   }));
 }
 
+let heroCards: { module: typeof import('../ui/heroCard.ts'); manifest: HeroManifest } | null = null;
+import('../ui/heroCard.ts')
+  .then(async (module) => {
+    const manifest = await module.loadHeroManifest();
+    if (!manifest) return;
+    heroCards = { module, manifest };
+    vehicleList.style.setProperty('--hc-flag-mask', module.heroCardFlagMask(manifest));
+    renderRoster();
+  })
+  .catch(() => { /* the packaged angle icons stay */ });
+
 function renderRoster(): void {
   const fragment = document.createDocumentFragment();
   for (const record of filteredRecords) {
@@ -520,6 +532,12 @@ function renderRoster(): void {
     image.alt = '';
     image.loading = 'lazy';
     image.addEventListener('error', () => { image.style.visibility = 'hidden'; }, { once: true });
+    // The tank hero card (3/4 render over the nation's waving flag) once the lazy hero chunk has its
+    // manifest; the packaged angle icon until then, and for any vehicle without a hero row.
+    const thumb = document.createElement('span');
+    thumb.className = 'vehicle-thumb';
+    thumb.append(image);
+    if (heroCards?.module.decorateHeroCard(thumb, record.id, heroCards.manifest, { tankSizes: '90px', flagSizes: '110px' })) image.remove();
     const copy = document.createElement('span');
     const meta = document.createElement('small');
     meta.textContent = `${record.nation} // ${record.era}`;
@@ -537,7 +555,7 @@ function renderRoster(): void {
     const tier = document.createElement('span');
     tier.className = 'vehicle-tier';
     tier.textContent = record.tierNumeral;
-    button.append(image, copy, tier);
+    button.append(thumb, copy, tier);
     button.addEventListener('click', () => loadTank(record.id));
     fragment.append(button);
   }

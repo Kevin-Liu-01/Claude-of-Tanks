@@ -100,7 +100,8 @@ const budgets = [
   ['tank AVIF 480 p95', p95(tankBytes[0]), HERO_BUDGETS.tankAvif480],
   ['tank AVIF 960 p95', p95(tankBytes[1]), HERO_BUDGETS.tankAvif960],
   ['tank WebP 480 p95', p95(tankBytes[2]), HERO_BUDGETS.tankWebp480],
-  ['largest flag layer', Math.max(0, ...Object.values(manifest.flags || {}).flatMap((row) => row.bytes || [])), HERO_BUDGETS.flagLayer],
+  ['largest flag AVIF', Math.max(0, ...Object.values(manifest.flags || {}).flatMap((row) => (row.bytes || []).slice(0, 2))), HERO_BUDGETS.flagAvif],
+  ['largest flag WebP', Math.max(0, ...Object.values(manifest.flags || {}).map((row) => row.bytes?.[2] || 0)), HERO_BUDGETS.flagWebp],
   ['manifest', statSync(HERO_MANIFEST_PATH).size, HERO_BUDGETS.manifest],
   ['public/icons/hero', readdirSync(HERO_DIR).reduce((sum, file) => sum + statSync(resolve(HERO_DIR, file)).size, 0), HERO_BUDGETS.directory],
 ];

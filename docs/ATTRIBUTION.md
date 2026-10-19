@@ -50,7 +50,7 @@ project's first-party code or Reserved Content.
 
 | Asset | Author | Source | License | Files |
 |---|---|---|---|---|
-| National and territory flags (selective 4x3 SVG imports; the build includes only roster nations rather than the complete catalog). | Panayiotis Lipiridis and flag-icons contributors | https://flagicons.lipis.dev/ / https://github.com/lipis/flag-icons | MIT | npm package `flag-icons`; mapping/render adapter in `src/ui/{flagCodes,flags}.js` |
+| National and territory flags (selective 4x3 SVG imports; the build includes only roster nations rather than the complete catalog). | Panayiotis Lipiridis and flag-icons contributors | https://flagicons.lipis.dev/ / https://github.com/lipis/flag-icons | MIT | npm package `flag-icons`; mapping/render adapter in `src/ui/{flagCodes,flags}.js`; the tank hero cards' waving-cloth flag layers `public/icons/hero/flag-<code>-{480,960}.avif` and `flag-<code>-480.webp` are derived renders of these SVGs (cloth shading by `tools/hero-cards-compose.mjs`), under the same MIT notice |
 | Three.js logo mark (official icon geometry, presented in the landing-page engine credit through a CSS color mask). | three.js authors | https://github.com/mrdoob/three.js/blob/072dcccba979a47a44a44769c051793ebe800d67/files/icon.svg | MIT | `public/brand/threejs-mark.svg` |
 | General Translation GT mark (official 96 px transparent export, presented only in the language-switcher attribution). | General Translation, Inc. | https://generaltranslation.com/brand/no-bg-gt-logo-dark-96.png | General Translation trademark/branding; not covered by the project license. | `public/brand/partners/general-translation.png` |
 
@@ -722,6 +722,11 @@ bergman-derived siblings above.
   derivative renders of the community assets tabled above —
   those rows' attribution covers the derived images. All other icons render
   100% procedural geometry (no third-party content).
+- `public/icons/hero/<id>-{480,960}.avif`, `<id>-480.webp` and `hero-cards.json` — the tank hero cards'
+  transparent 3/4 tank layers and their manifest, rendered from the shipped first-party procedural
+  builds by `tools/genHeroCards.mjs` (tools/hero-cards-page.html studio scene) and encoded by
+  `tools/hero-cards-compose.mjs`: first-party Reserved Content (NOTICE.md). The `flag-*` layers in the same
+  directory derive from the flag-icons SVGs (MIT, row above).
 - `public/maps/*.webp` and `public/maps/thumbs/*.webp` — native-4K battlefield
   hero images plus lightweight picker derivatives for all shipped maps,
   captured from the game's own deterministic render; derivative only of this

@@ -113,7 +113,8 @@ export const HERO_BUDGETS = Object.freeze({
   tankAvif480: 14 * 1024,
   tankAvif960: 28 * 1024,
   tankWebp480: 30 * 1024,
-  flagLayer: 12 * 1024,
+  flagAvif: 12 * 1024, // either AVIF rung of a nation's flag layer
+  flagWebp: 20 * 1024, // the 480 WebP fallback (non-AVIF browsers only)
   directory: 12 * 1024 * 1024,
   manifest: 100 * 1024,
 });
