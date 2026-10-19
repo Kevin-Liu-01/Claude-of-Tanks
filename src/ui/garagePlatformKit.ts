@@ -82,6 +82,10 @@ export function buildGaragePlatformCollar(architecture: GarageVariant['architect
   const accent = new THREE.Color(collar.accent);
   const tone = new THREE.Color();
   const random = b.rng;
+  // the yard's dust (sand, red dust) and the wind that banks it, for the collars that carry a drift
+  const dust = collar.drift !== null ? new THREE.Color(collar.drift) : null;
+  const wind = params.windAngle ?? 0.8;
+  const hash01 = (x: number): number => Math.abs(Math.sin(x * 12.9898 + 78.233) * 43758.5453) % 1;
   for (let s = 0; s < SEGMENTS; s += 1) {
     const a0 = (s / SEGMENTS) * Math.PI * 2, a1 = ((s + 1) / SEGMENTS) * Math.PI * 2;
     const am = (a0 + a1) / 2;
@@ -135,7 +139,22 @@ export function buildGaragePlatformCollar(architecture: GarageVariant['architect
     // chevron segments lean: their upper edge is shifted along the ring
     const lean = collar.kind === 'epoxy-chevron' ? (Math.PI * 2 / SEGMENTS) * 0.9 : 0;
     const yb = 0.02, yt = top - bevel;
-    b.polygon([at(sideR(yb), yb, a0), at(sideR(yb), yb, a1), at(sideR(yt), yt, a1 + lean), at(sideR(yt), yt, a0 + lean)], sideTone, out);
+    if (dust) {
+      // a dusty yard's collar: the dust climbs its face from the foot, thickest to windward (each corner its own tone,
+      // so the face reads as weathered metal rather than one flat band)
+      const dusted = (a: number, y: number, amount: number): THREE.Color => {
+        const windward = Math.max(0, Math.cos(a - wind));
+        const mottle = 0.94 + 0.12 * hash01(a * 17.3 + y * 5.1);
+        return sideTone.clone().multiplyScalar(mottle).lerp(dust, Math.min(0.85, amount * (0.55 + 0.45 * windward)));
+      };
+      const ym = 0.13;
+      b.shadedQuad(at(sideR(yb), yb, a0), at(sideR(yb), yb, a1), at(sideR(ym), ym, a1), at(sideR(ym), ym, a0),
+        [dusted(a0, yb, 0.62), dusted(a1, yb, 0.62), dusted(a1, ym, 0.24), dusted(a0, ym, 0.24)], out);
+      b.shadedQuad(at(sideR(ym), ym, a0), at(sideR(ym), ym, a1), at(sideR(yt), yt, a1 + lean), at(sideR(yt), yt, a0 + lean),
+        [dusted(a0, ym, 0.24), dusted(a1, ym, 0.24), dusted(a1, yt, 0.04), dusted(a0, yt, 0.04)], out);
+    } else {
+      b.polygon([at(sideR(yb), yb, a0), at(sideR(yb), yb, a1), at(sideR(yt), yt, a1 + lean), at(sideR(yt), yt, a0 + lean)], sideTone, out);
+    }
     // the top bevel up to the slewing ring
     b.polygon([at(sideR(yt), yt, a0), at(sideR(yt), yt, a1), at(r0 + 0.04, top + lift, a1), at(r0 + 0.04, top + lift, a0)], bevelTone, [Math.cos(am), 1, Math.sin(am)]);
     // the slewing ring: a dark gap and a polished ring at the deck's edge
@@ -160,23 +179,60 @@ export function buildGaragePlatformCollar(architecture: GarageVariant['architect
       b.polygon([at(r1 + 0.06, 0.012, a0), at(r1 + 0.06, 0.012, a1), at(r1 + 0.42, 0.012, a1), at(r1 + 0.42, 0.012, a0)], s % 2 ? 0x2a3030 : 0x384040, [0, 1, 0]);
     }
   }
-  // heavy plate bolt heads round the bevel
+  // heavy plate bolt heads round the bevel; on galvanised collars rust weeps down the face from some of them, and the
+  // plate joints show as dark seams every eighth of the ring
   if (collar.kind === 'steel-plate' || collar.kind === 'galvanised') {
+    const rust = new THREE.Color(0x6e3f26);
     for (let k = 0; k < 36; k += 1) {
       const a = (k / 36) * Math.PI * 2;
-      const p = at(sideR(top - bevel - 0.04) + 0.005, top - bevel - 0.04, a);
+      const yBolt = top - bevel - 0.04;
+      const p = at(sideR(yBolt) + 0.005, yBolt, a);
       b.at(p[0], p[1], p[2], -a + Math.PI / 2, () => b.box(0, 0, 0, 0.04, 0.03, 0.02, collar.body, { bevel: 0, noBottom: true }));
+      if (collar.kind !== 'galvanised' || hash01(k * 3.7) > 0.55) continue;
+      const length = 0.07 + 0.13 * hash01(k * 9.1), half = (0.009 + 0.008 * hash01(k * 5.3)) / (sideR(yBolt) * 1.0);
+      const y0 = yBolt - 0.012, y1 = Math.max(0.03, y0 - length);
+      const weep = bodyColor.clone().lerp(rust, 0.55);
+      b.shadedQuad(at(sideR(y1) + 0.003, y1, a - half * 0.4), at(sideR(y1) + 0.003, y1, a + half * 0.4),
+        at(sideR(y0) + 0.003, y0, a + half), at(sideR(y0) + 0.003, y0, a - half),
+        [bodyColor.clone().lerp(rust, 0.12), bodyColor.clone().lerp(rust, 0.12), weep, weep], [Math.cos(a), 0.2, Math.sin(a)]);
+    }
+    if (collar.kind === 'galvanised') {
+      for (let k = 0; k < 8; k += 1) {
+        const a = (k / 8) * Math.PI * 2 + 0.11, half = 0.006 / GARAGE_PLATFORM_BASE_R;
+        b.polygon([at(sideR(0.02) + 0.003, 0.02, a - half), at(sideR(0.02) + 0.003, 0.02, a + half),
+          at(sideR(top - bevel) + 0.003, top - bevel, a + half), at(sideR(top - bevel) + 0.003, top - bevel, a - half)],
+        bodyColor.clone().multiplyScalar(0.55), [Math.cos(a), 0.2, Math.sin(a)]);
+      }
     }
   }
-  // banked drift on the windward side
-  if (collar.drift !== null) {
-    const wind = params.windAngle ?? 0.8;
+  // the drift: dust banked against the collar's foot, a mound with a scalloped, irregular edge that climbs the face to
+  // windward and thins to a dusting in the lee, its outer edge in the ground's own tone so it feathers into the yard
+  // instead of reading as a painted ring (the r9 blind critic: "a flat, untextured orange ring ... like plastic")
+  if (dust) {
+    const groundTone = new THREE.Color(b.skin.ground).multiplyScalar(0.86);
+    const crestTone = dust.clone().lerp(new THREE.Color(0xffffff), 0.06);
+    const scallop = (a: number): number => 0.5 + 0.5 * Math.sin(a * 7 + 1.3) * Math.sin(a * 3 - 0.4);
+    const ring = (a: number): readonly [[number, number, number], [number, number, number], [number, number, number]] => {
+      const windward = Math.max(0, Math.cos(a - wind));
+      const edge = scallop(a);
+      const reach = 0.16 + 0.55 * windward * (0.7 + 0.6 * edge) + 0.05 * hash01(a * 31.7);
+      const crest = 0.012 + 0.1 * windward * (0.75 + 0.5 * edge);
+      return [at(sideR(crest) + 0.002, crest, a), at(sideR(0) + reach * 0.32, crest * 0.6, a), at(sideR(0) + reach, 0.004, a)];
+    };
+    const tones = (a: number): readonly [THREE.Color, THREE.Color, THREE.Color] => {
+      const windward = Math.max(0, Math.cos(a - wind));
+      const n = 0.93 + 0.12 * hash01(a * 13.1);
+      // in the lee the mound is a thin dusting: its crest leans toward the ground's tone too
+      return [crestTone.clone().multiplyScalar(n).lerp(groundTone, 0.35 * (1 - windward)),
+        dust.clone().multiplyScalar(n * 0.97).lerp(groundTone, 0.25 + 0.35 * (1 - windward)), groundTone];
+    };
     for (let s = 0; s < SEGMENTS; s += 1) {
       const a0 = (s / SEGMENTS) * Math.PI * 2, a1 = ((s + 1) / SEGMENTS) * Math.PI * 2;
-      const w0 = Math.max(0, Math.cos(a0 - wind)), w1 = Math.max(0, Math.cos(a1 - wind));
-      if (w0 + w1 < 0.2) continue;
-      b.polygon([at(sideR(0.0) + 0.42 * w0 + 0.05, 0.01, a0), at(sideR(0.0) + 0.42 * w1 + 0.05, 0.01, a1),
-        at(sideR(0.1 * w1), 0.1 * w1 + 0.01, a1), at(sideR(0.1 * w0), 0.1 * w0 + 0.01, a0)], collar.drift, [Math.cos(a0), 1, Math.sin(a0)]);
+      const [p0, q0, r0d] = ring(a0), [p1, q1, r1d] = ring(a1);
+      const [c0, d0, e0] = tones(a0), [c1, d1, e1] = tones(a1);
+      const up: [number, number, number] = [Math.cos((a0 + a1) / 2), 1, Math.sin((a0 + a1) / 2)];
+      b.shadedQuad(q0, q1, p1, p0, [d0, d1, c1, c0], up);
+      b.shadedQuad(r0d, r1d, q1, q0, [e0, e1, d1, d0], up);
     }
   }
   // 48 warm LED pucks set in the collar's face just under its top bevel, each lens lying on the sloped side

@@ -32,6 +32,18 @@ export const GARAGE_SLIDESHOW_PLACEMENTS: Readonly<Partial<Record<GarageVariant[
   recovery_yard: Object.freeze({ at: [19, 37] as const, yaw: 0, width: 2.8, mount: 'trailer' }),
 });
 
+/**
+ * Verdant's one slideshow panel (the dressing's freestanding installation on the hall's west wall, its lit face turned
+ * +X toward the hero): the screen's centre in the dressing frame, its yaw and its 16:9 width. It mirrors the dressing's
+ * own literals (garageDressing.ts screenRoot and BATTLE_SCREEN_PANEL_W, which garageDressingFleet.selftest pins); the
+ * display placement receipt checks the two agree and keeps the atmosphere off the screen.
+ */
+export const GARAGE_VERDANT_SLIDESHOW = Object.freeze({
+  position: Object.freeze([-18.35, 4.15, 2.4] as const),
+  yaw: Math.PI / 2,
+  width: 5.86,
+});
+
 /** The bezel's bottom edge over the panel's base for a mount. */
 export function garageSlideshowBottomY(mount: GarageSlideshowMount, bottomY?: number): number {
   return bottomY ?? (mount === 'trailer' ? 2.1 : mount === 'freestanding' ? 1.4 : 2.2);

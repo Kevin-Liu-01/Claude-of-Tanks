@@ -17,6 +17,12 @@ import { kitRandom, type KitVec } from './garageKitGeometry.ts';
  * Budget per Garage: 1 draw, 2,500 triangles (each card is drawn with both windings), 0.15 ms a frame, one 0.26 MB
  * texture. Opacity caps: shafts 6 %, motes
  * 30 % a sprite, nothing above 5 % over the hero's halo (the placement receipt checks the halo).
+ *
+ * A light shaft is never a hard-edged pane (the r9 blind critic: "hard-edged translucent light-shaft panels ... read as a
+ * new glitch" over Verdant's slideshow): it is a two-column ribbon whose V runs ACROSS the beam, so the shaft strip's
+ * ramp feathers both sides to nothing, and whose centre V per row sets the brightness along the beam, so it fades in
+ * below the roof light and out above the floor. The shaft strip is constant along U, so the drift never moves a beam.
+ * The display placement receipt keeps every card off the screens, prints and banners in the canonical frame.
  */
 
 type GarageAtmosphereStrip = 'shaft' | 'mist' | 'smoke' | 'steam' | 'dust' | 'reddust' | 'motes' | 'drips';
@@ -53,7 +59,7 @@ export function garageAtmosphereAtlasPixels(): Uint8Array {
     return top + (bottom - top) * sv;
   };
   const motes: Array<[number, number, number]> = [];
-  for (let i = 0; i < 70; i += 1) motes.push([random() * TEX, 2 + random() * (STRIP_H - 4), 0.6 + random() * 1.4]);
+  for (let i = 0; i < 70; i += 1) motes.push([random() * TEX, 2 + random() * (STRIP_H - 4), 0.5 + random() * 0.7]);
   const drips: Array<[number, number]> = [];
   for (let i = 0; i < 22; i += 1) drips.push([random() * TEX, 0.4 + random() * 0.6]);
   STRIPS.forEach((strip, index) => {
@@ -65,9 +71,10 @@ export function garageAtmosphereAtlasPixels(): Uint8Array {
       for (let x = 0; x < TEX; x += 1) {
         let a = 0;
         switch (strip) {
-          // a shaft is even across its width (a scrolled texture must never slide a beam sideways): it fades only top and
-          // bottom
-          case 'shaft': a = edge; break;
+          // a shaft's strip is the beam's cross-section ramp, from its feathered side (row 0, nothing) to its core (the last
+          // row): a ribbon maps V across the beam (atmosphereShaft), so both sides fade; constant along U, so the drift
+          // never slides a beam sideways
+          case 'shaft': { const t = (y + 0.5) / STRIP_H; a = t * t * (3 - 2 * t); break; }
           case 'mist': a = edge * edge * (0.45 + 0.55 * noise(x, v, 6)); break;
           case 'smoke': case 'steam': {
             const billow = noise(x, v, 10) * 0.6 + noise(x * 2.0, v, 20) * 0.4;
@@ -127,6 +134,11 @@ interface GarageAtmosphereCard {
   readonly strip: GarageAtmosphereStrip;
   /** Bottom-left, bottom-right, top-right, top-left corners. */
   readonly corners: readonly [KitVec, KitVec, KitVec, KitVec];
+  /**
+   * A feathered ribbon instead of a quad (light shafts): the core brightness (0..1) at evenly spaced rows from the bottom
+   * edge to the top; the card is drawn as two columns with V across it, its sides at the strip's transparent row.
+   */
+  readonly profile?: readonly number[];
   /** How many strip widths the card spans along U (a long mist band repeats its strip). */
   readonly repeat?: number;
   /** A U offset so neighbouring cards do not show the same billow. */
@@ -140,13 +152,25 @@ export interface GarageAtmosphereRecipe {
   readonly drift?: number;
 }
 
-/** A light shaft: a tall card from a roof light or door down to the floor, `width` wide, leaning by `lean`. */
-export function atmosphereShaft(top: KitVec, bottom: KitVec, width: number, phase = 0): GarageAtmosphereCard {
+/** A shaft's default core brightness from the floor up: faint where it lands, full through the middle, gone below the roof. */
+const SHAFT_PROFILE: readonly number[] = Object.freeze([0.12, 0.55, 0.85, 1, 0.9, 0.55, 0]);
+
+/**
+ * A light shaft: a feathered ribbon from a roof light or door down to the floor, `width` wide (its sides fade to nothing),
+ * turned to face `facing` (an x/z direction; by default square to its lean). `profile` sets the core brightness from the
+ * bottom up.
+ */
+export function atmosphereShaft(top: KitVec, bottom: KitVec, width: number, phase = 0,
+  options: { readonly facing?: readonly [number, number]; readonly profile?: readonly number[] } = {}): GarageAtmosphereCard {
   const dx = bottom[0] - top[0], dz = bottom[2] - top[2];
-  const len = Math.hypot(dx, dz) || 1;
-  const sx = (-dz / len) * width / 2, sz = (dx / len) * width / 2;
+  const [fx, fz] = options.facing ?? [dx, dz];
+  const len = Math.hypot(fx, fz) || 1;
+  // the ribbon's width runs square to its facing (a vertical shaft with no facing spans x)
+  const sx = Math.hypot(fx, fz) > 1e-6 ? (-fz / len) * width / 2 : width / 2;
+  const sz = Math.hypot(fx, fz) > 1e-6 ? (fx / len) * width / 2 : 0;
   return { strip: 'shaft', corners: [[bottom[0] - sx, bottom[1], bottom[2] - sz], [bottom[0] + sx, bottom[1], bottom[2] + sz],
-    [top[0] + sx, top[1], top[2] + sz], [top[0] - sx, top[1], top[2] - sz]], repeat: 0.5, phase };
+    [top[0] + sx, top[1], top[2] + sz], [top[0] - sx, top[1], top[2] - sz]], repeat: 0.5, phase,
+  profile: options.profile ?? SHAFT_PROFILE };
 }
 
 /** A plume: `count` stacked cards rising from a stack top, widening and leaning downwind. */
@@ -186,14 +210,18 @@ export function atmosphereDrips(a: KitVec, b: KitVec, drop = 0.9): GarageAtmosph
     repeat: Math.max(1, Math.hypot(b[0] - a[0], b[2] - a[2]) / 3) };
 }
 
-/** Dust motes hanging in a shaft: a few crossed cards filling the shaft's volume. */
+/**
+ * Dust motes hanging in a shaft: a few crossed cards filling the shaft's volume. Each card spans one strip height of U
+ * per strip height of V, so its texels are square and a mote stays a round speck (a 0.6-wide U span stretched them into
+ * the streaks the r9 critic saw).
+ */
 export function atmosphereMotes(center: KitVec, size: number): GarageAtmosphereCard[] {
   const cards: GarageAtmosphereCard[] = [];
   for (let i = 0; i < 3; i += 1) {
     const yaw = (i / 3) * Math.PI;
     const cx = Math.cos(yaw) * size / 2, cz = Math.sin(yaw) * size / 2;
     cards.push({ strip: 'motes', corners: [[center[0] - cx, center[1] - size / 2, center[2] - cz], [center[0] + cx, center[1] - size / 2, center[2] + cz],
-      [center[0] + cx, center[1] + size / 2, center[2] + cz], [center[0] - cx, center[1] + size / 2, center[2] - cz]], repeat: size / 4, phase: i * 0.31 });
+      [center[0] + cx, center[1] + size / 2, center[2] + cz], [center[0] - cx, center[1] + size / 2, center[2] - cz]], repeat: STRIP_H / TEX, phase: i * 0.31 });
   }
   return cards;
 }
@@ -211,10 +239,33 @@ export function setGarageAtmosphereClock(clock: (() => number) | null): void {
  */
 export function createGarageAtmosphere(recipe: GarageAtmosphereRecipe): THREE.Mesh {
   const positions: number[] = [], uvs: number[] = [];
+  const push = (p: KitVec, u: number, v: number): void => { positions.push(p[0], p[1], p[2]); uvs.push(u, v); };
+  const lerp3 = (a: KitVec, b: KitVec, t: number): KitVec => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
   for (const card of recipe.cards) {
     const index = STRIPS.indexOf(card.strip);
     // the strip's rows (flipY false: row 0 at v = 0), inset half a texel
     const v0 = (index * STRIP_H + 0.5) / TEX, v1 = ((index + 1) * STRIP_H - 0.5) / TEX;
+    if (card.profile && card.profile.length >= 2) {
+      // a feathered ribbon: rows from the bottom edge to the top, each with its left side, core and right side; the sides
+      // sample the strip's transparent first row, the core the row its brightness asks for
+      const [bl, br, tr, tl] = card.corners;
+      const rows = card.profile.length;
+      const u = card.phase ?? 0;
+      const row = (k: number): readonly [KitVec, KitVec, KitVec, number] => {
+        const t = k / (rows - 1);
+        const left = lerp3(bl, tl, t), right = lerp3(br, tr, t);
+        const core = Math.min(1, Math.max(0, card.profile![k]));
+        return [left, lerp3(left, right, 0.5), right, v0 + (v1 - v0) * core];
+      };
+      for (let k = 0; k < rows - 1; k += 1) {
+        const [l0, c0, r0, cv0] = row(k), [l1, c1, r1, cv1] = row(k + 1);
+        for (const [a, va, b, vb, c, vc, d, vd] of [[l0, v0, c0, cv0, c1, cv1, l1, v0], [c0, cv0, r0, v0, r1, v0, c1, cv1]] as const) {
+          // both windings, as the quads below
+          for (const [p, v] of [[a, va], [b, vb], [c, vc], [a, va], [c, vc], [d, vd], [a, va], [c, vc], [b, vb], [a, va], [d, vd], [c, vc]] as const) push(p, u, v);
+        }
+      }
+      continue;
+    }
     const u0 = card.phase ?? 0, u1 = u0 + (card.repeat ?? 1);
     // corners are bottom-left, bottom-right, top-right, top-left; the strip's top row is its v0
     const corner: ReadonlyArray<readonly [KitVec, number, number]> = [
@@ -223,8 +274,7 @@ export function createGarageAtmosphere(recipe: GarageAtmosphereRecipe): THREE.Me
     // both windings: the material stays single-sided (the contact shadows' program), the card reads from either side
     for (const k of [0, 1, 2, 0, 2, 3, 0, 2, 1, 0, 3, 2]) {
       const [p, u, v] = corner[k];
-      positions.push(p[0], p[1], p[2]);
-      uvs.push(u, v);
+      push(p, u, v);
     }
   }
   const geometry = new THREE.BufferGeometry();

@@ -410,8 +410,12 @@ assert.match(dressing, /FEATURED_SHOTS\.filter\(\(shot\) => shot\.maps\?\.length
   'the slideshow rotation must include current battlefield captures while excluding editor/studio frames');
 assert.match(dressing, /garage_slideshow_screen/);
 assert.match(dressing, /battleScreenMode = 'led-crossfade-slideshow'/);
-assert.match(dressing, /mix\(texture2D\(uImageA, uv\)\.rgb, texture2D\(uImageB, uv\)\.rgb, uTransition\)/,
+assert.match(dressing, /mix\(exposed\(uImageA, uv\), exposed\(uImageB, uv\), uTransition\)/,
   'the slideshow crossfades between its two resident images');
+// garage r9 (the blind critic: "a dark urban-street frame, much less legible than the bright tank still"): each still is
+// exposed by its own mean, read from its one-texel mip, lifting dark stills and leaving bright ones alone
+assert.match(dressing, /vec3 mean = texture2D\(image, vec2\(0\.5\), 16\.0\)\.rgb;[\s\S]{0,200}clamp\(log\(0\.2\) \/ log\([\s\S]{0,80}\), 0\.6, 1\.0\)/,
+  'a dark still is lifted (never past a 0.6 power), a bright one left as it is');
 assert.match(dressing, /shot\.maps\?\.includes\(mapId\)/,
   'the slideshow opens on its Garage\'s own map still');
 assert.match(dressing, /if \(!group\.parent \|\| !group\.visible \|\| !battleScreenShown \|\| document\.hidden\) return/,

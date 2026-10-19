@@ -793,7 +793,7 @@ export function createGarageStage(
         platformCollarDisplay ||= track(kit.atlas.createGarageDisplayMaterial(shadowMat));
         const lights = new THREE.Mesh(track(built.display), platformCollarDisplay);
         lights.name = 'garage_platform_pucks';
-        lights.onBeforeRender = () => { kit.atlas.ensureGarageDisplayAtlas({ anisotropy: aniso }); };
+        kit.atlas.armGarageDisplayAtlas(lights, aniso);
         collar.add(lights);
       }
       for (const mesh of collar.children) { mesh.matrixAutoUpdate = false; mesh.updateMatrix(); }
@@ -824,7 +824,9 @@ export function createGarageStage(
     };
     const paintDeck = (): void => {
       if (!platformKit) return;
-      const painter = platformKit.platform.createGarageDeckPainter(1024, 0);
+      // a mobile device paints the deck at half size (1 MB albedo instead of 4 MB; the display atlas decodes at half size
+      // there too)
+      const painter = platformKit.platform.createGarageDeckPainter(getDeviceTier() === 'mobile' ? 512 : 1024, 0);
       const step = (): void => {
         if (!painter.step(10)) { later(step, 300); return; }
         const albedo = track(new THREE.DataTexture(painter.albedo, painter.size, painter.size, THREE.RGBAFormat));
@@ -843,7 +845,7 @@ export function createGarageStage(
         podTopMat.map = albedo;
         podTopMat.normalMap = normal;
         previous?.dispose();
-        group.userData.platformDeck = 'segmented-steel-1024';
+        group.userData.platformDeck = `segmented-steel-${painter.size}`;
         requestRender();
       };
       later(step, 300);

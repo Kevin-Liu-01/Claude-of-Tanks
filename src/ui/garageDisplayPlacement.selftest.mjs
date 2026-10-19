@@ -1,13 +1,16 @@
 // garage r9 display placement receipt: in every Garage with a kit, no display, sign, banner or atmosphere card enters
-// the hero's halo in the canonical frame (the hero's screen box plus 8 %), and no display face cuts into the scene's
-// structures (the pack's buildings, facility frames and rock) by more than a centimetre.
+// the hero's halo in the canonical frame (the hero's screen box plus 8 %), no display face cuts into the scene's
+// structures (the pack's buildings, facility frames and rock) by more than a centimetre, and no atmosphere card (a
+// shaft by its visible core) stands in front of a display, print, banner or the slideshow's screen in the canonical
+// frame (the r9 blind critic: Verdant's first shafts "grey out half the image" of its one screen).
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
 import { GARAGE_PRESENTATION_POSE } from '../game/garagePresentationPose.ts';
 import { garageKitItemBounds, clearGarageKitCache } from './garageKitPlacement.ts';
 import { GARAGE_KIT_PLACEMENTS } from './garageKitPlacements.ts';
-import { garageSlideshowPose } from './garageSlideshowPlacement.ts';
+import { GARAGE_VERDANT_SLIDESHOW, garageSlideshowPose } from './garageSlideshowPlacement.ts';
 import { buildGarageVerdantKit } from './garageVerdantKit.ts';
 import {
   buildGarageEnvironment, createGarageEnvironmentAssetLibrary, prepareGarageEnvironmentAssets,
@@ -52,6 +55,45 @@ void heroBox;
 const halo = { minX: hero.minX - 0.08, maxX: hero.maxX + 0.08, minY: hero.minY - 0.08, maxY: hero.maxY + 0.08 };
 const inHalo = (rect) => rect && rect.maxX > halo.minX && rect.minX < halo.maxX && rect.maxY > halo.minY && rect.minY < halo.maxY
   && rect.maxX > 0 && rect.minX < 1 && rect.maxY > 0 && rect.minY < 1;
+const onScreen = (rect) => rect && rect.maxX > 0 && rect.minX < 1 && rect.maxY > 0 && rect.minY < 1;
+const rectsMeet = (a, b) => onScreen(a) && onScreen(b) && a.maxX > b.minX && a.minX < b.maxX && a.maxY > b.minY && a.minY < b.maxY;
+const viewRange = (box) => {
+  let near = Infinity, far = 0;
+  for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+    const d = camera.position.distanceTo(new THREE.Vector3(x, y, z));
+    near = Math.min(near, d); far = Math.max(far, d);
+  }
+  return { near, far };
+};
+/**
+ * An atmosphere card's visible parts as boxes: a quad whole, a shaft ribbon by the rows whose core reaches 30 % of its
+ * strip's peak (its feathered ends and sides fade to nothing).
+ */
+const cardBoxes = (card) => {
+  const v = (p) => new THREE.Vector3(...p);
+  if (!card.profile) return [new THREE.Box3().setFromPoints(card.corners.map(v))];
+  const [bl, br, tr, tl] = card.corners.map(v);
+  const rows = card.profile.length;
+  const boxes = [];
+  for (let k = 0; k < rows - 1; k += 1) {
+    if (Math.max(card.profile[k], card.profile[k + 1]) < 0.3) continue;
+    const t0 = k / (rows - 1), t1 = (k + 1) / (rows - 1);
+    boxes.push(new THREE.Box3().setFromPoints([bl.clone().lerp(tl, t0), br.clone().lerp(tr, t0), bl.clone().lerp(tl, t1), br.clone().lerp(tr, t1)]));
+  }
+  return boxes;
+};
+/** The atmosphere stands in front of no display: each visible part against each display face nearer than the part. */
+const assertAtmosphereClearOfDisplays = (label, cards, displayBoxes) => {
+  for (const card of cards) {
+    for (const part of cardBoxes(card)) {
+      const partRect = screenRect(part), partRange = viewRange(part);
+      for (const { name, box } of displayBoxes) {
+        if (viewRange(box).far < partRange.near) continue; // the display stands in front of the card
+        assert.ok(!rectsMeet(partRect, screenRect(box)), `${label}: an atmosphere ${card.strip} card stands in front of ${name}`);
+      }
+    }
+  }
+};
 
 // triangle / box overlap (separating axes), the box shrunk by the centimetre the rule allows
 const overlap = (() => {
@@ -153,17 +195,49 @@ for (const [architecture, placement] of Object.entries(GARAGE_KIT_PLACEMENTS)) {
     }
   }
   assert.equal(intrusions, 0, `${architecture}: displays cut into structures: ${offenders.join('; ')}`);
-  // 3. the atmosphere: no card over the halo (each strip is at least 6 % opaque at its peak)
+  // 3. the atmosphere: no card over the halo (each strip is at least 6 % opaque at its peak), none over a display
   for (const card of placement.atmosphere?.cards ?? []) {
-    const box = new THREE.Box3().setFromPoints(card.corners.map((p) => new THREE.Vector3(...p)));
-    assert.ok(!inHalo(screenRect(box)), `${architecture}: an atmosphere ${card.strip} card covers the hero's halo`);
+    for (const box of cardBoxes(card)) assert.ok(!inHalo(screenRect(box)), `${architecture}: an atmosphere ${card.strip} card covers the hero's halo`);
   }
+  const displayBoxes = [];
+  for (const { item, quads } of bounds) {
+    const isDisplay = item.kind === 'display' || item.kind === 'sign' || (item.kind === 'wall' && item.params?.mural);
+    if (isDisplay) for (const box of quads) displayBoxes.push({ name: `${item.kind}/${item.display ?? item.sign ?? item.wall}`, box });
+  }
+  assertAtmosphereClearOfDisplays(architecture, placement.atmosphere?.cards ?? [], displayBoxes);
   bare.dispose();
 }
 
-// Verdant's kit: its displays and shafts stay out of the halo too
+// Verdant's kit: its displays and shafts stay out of the halo too, and the shafts off every display and the slideshow
 {
   const kit = buildGarageVerdantKit({});
+  {
+    const dressing = await readFile(new URL('../game/garageDressing.ts', import.meta.url), 'utf8');
+    const [px, py, pz] = GARAGE_VERDANT_SLIDESHOW.position;
+    assert.ok(dressing.includes(`screenRoot.position.set(${px}, ${py}, ${pz})`) && dressing.includes('screenRoot.rotation.y = Math.PI / 2')
+      && GARAGE_VERDANT_SLIDESHOW.yaw === Math.PI / 2 && dressing.includes(`BATTLE_SCREEN_PANEL_W = ${GARAGE_VERDANT_SLIDESHOW.width};`),
+    'the Verdant slideshow pose agrees with the dressing\'s');
+  }
+  const displayBoxes = [];
+  {
+    const { position: [px, py, pz], yaw, width } = GARAGE_VERDANT_SLIDESHOW;
+    const across = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw)).multiplyScalar(width / 2);
+    const centre = new THREE.Vector3(px, py, pz);
+    displayBoxes.push({ name: 'the slideshow screen', box: new THREE.Box3().setFromPoints([
+      centre.clone().add(across).setY(py - width * 9 / 32), centre.clone().sub(across).setY(py + width * 9 / 32),
+    ]) });
+  }
+  for (const mesh of kit.meshes) {
+    if (!/displays/.test(mesh.name)) continue;
+    const position = mesh.geometry.getAttribute('position');
+    for (let t = 0; t < position.count; t += 6) {
+      const box = new THREE.Box3();
+      for (let c = 0; c < 6 && t + c < position.count; c += 1) box.expandByPoint(new THREE.Vector3().fromBufferAttribute(position, t + c));
+      displayBoxes.push({ name: `Verdant display quad ${t / 6}`, box });
+    }
+  }
+  assert.ok(displayBoxes.length >= 10, 'Verdant: the slideshow, banners, prints and station screens are measured');
+  assertAtmosphereClearOfDisplays('Verdant', kit.atmosphereCards, displayBoxes);
   for (const mesh of kit.meshes) {
     if (!/displays|atmosphere/.test(mesh.name)) continue;
     const position = mesh.geometry.getAttribute('position');

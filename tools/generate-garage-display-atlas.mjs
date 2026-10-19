@@ -94,7 +94,9 @@ function atlasItems() {
   add('stencil.wordmark', 512, 96, 'stencil', 0);
   add('brand.stripe', 320, 32, 'brand', 0.04);
   for (const garage of GARAGES) {
-    if (garage.still) add(`media.${garage.map}`, 320, 180, 'media', 0.14, { source: stillPath(garage.still) });
+    // the stills group is `still.`, never `media.`: a `media.${map}` template anywhere in the game graph makes the i18n
+    // page-catalog scan keep every media.* caption in the game's boot catalogs (the r9 engineering critic, +15.5 KB)
+    if (garage.still) add(`still.${garage.map}`, 320, 180, 'still', 0.14, { source: stillPath(garage.still) });
     add(`map.${garage.map}`, 160, 90, 'map', 0.5, { source: `public/maps/thumbs/${garage.map}.webp` });
     add(`name.${garage.map}`, 320, 64, 'name', 0.05, { garage });
   }
@@ -663,7 +665,7 @@ async function generate() {
     a.beginPath(); a.rect(r.x, r.y, r.w, r.h); a.clip();
     if (draw[item.name]) draw[item.name](a, r);
     else if (decal[item.name]) decal[item.name](a, r);
-    else if (item.kind === 'media') {
+    else if (item.kind === 'still') {
       const image = await loadImage(path.join(ROOT, item.source));
       fit(a, image, r.x, r.y, r.w, r.h, 'cover');
     } else if (item.kind === 'map' || item.kind === 'readout') {

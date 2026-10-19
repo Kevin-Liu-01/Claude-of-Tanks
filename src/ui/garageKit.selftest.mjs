@@ -19,6 +19,11 @@ import { GARAGE_PLATFORM_COLLARS, buildGaragePlatformCollar, createGarageDeckPai
 import { buildGarageKitDressing, clearGarageKitCache } from './garageKitPlacement.ts';
 import { GARAGE_KIT_PLACEMENTS } from './garageKitPlacements.ts';
 import { GARAGE_SLIDESHOW_PLACEMENTS, garageSlideshowPose } from './garageSlideshowPlacement.ts';
+import { armGarageDisplayAtlas } from './garageDisplayAtlas.ts';
+import { GARAGE_DISPLAY_ATLAS_MANIFEST } from './garageDisplayAtlas.generated.ts';
+import {
+  buildGarageEnvironment, createGarageEnvironmentAssetLibrary, prepareGarageEnvironmentAssets,
+} from './garageEnvironmentKit.ts';
 
 const build = (architecture, body, seed = 7) => {
   const b = new KitBuilder(kitRandom(seed), GARAGE_KIT_SKINS[architecture]);
@@ -123,7 +128,7 @@ assert.ok(build('field_shed', (b) => buildIndoorWallBay(b, { width: 6, height: 7
 
 // 4. displays: banners, boards, stations, nameboards and slideshow frames show atlas faces
 assert.ok(build('field_shed', (b) => buildFabricBanner(b, 'brand.banner.v', 1.2, 4.5)).result.displayTriangles >= 6);
-assert.ok(build('recovery_yard', (b) => buildNoticeBoard(b, ['media.desert', 'media.urban', 'media.foundry'], 2.6, 1.1)).result.displayTriangles >= 6);
+assert.ok(build('recovery_yard', (b) => buildNoticeBoard(b, ['still.desert', 'still.urban', 'still.foundry'], 2.6, 1.1)).result.displayTriangles >= 6);
 assert.ok(build('recovery_yard', (b) => buildComputerStation(b, { screens: ['readout.armor.k2', 'map.badlands'] })).result.displayTriangles >= 4);
 assert.ok(build('recovery_yard', (b) => buildNameboard(b, 'badlands', 2.6, 1.2)).result.displayTriangles === 2);
 for (const mount of ['freestanding', 'wall', 'column', 'trailer']) {
@@ -189,5 +194,53 @@ for (const file of ['garageKitGeometry', 'garageKitSkins', 'garagePropKit', 'gar
   assert.doesNotMatch(source, /Math\.random|Date\.now|new Date\(/, `${file}: no random numbers or dates`);
   const clocks = (source.match(/performance\.now\(\)/g) || []).length;
   assert.ok(clocks === 0 || ['garageAtmosphereKit', 'garagePlatformKit'].includes(file), `${file}: no wall clock`);
+}
+
+// 8. the atlas hook runs once: a display's first render starts the load, then the hook is a no-op (no per-frame call or
+// allocation, the r9 engineering critic), and no display anywhere arms a per-frame ensure of its own
+{
+  const mesh = new THREE.Mesh();
+  armGarageDisplayAtlas(mesh, 8);
+  const armed = mesh.onBeforeRender;
+  mesh.onBeforeRender();
+  const disarmed = mesh.onBeforeRender;
+  assert.notEqual(disarmed, armed, 'the first render disarms the hook');
+  mesh.onBeforeRender();
+  assert.equal(mesh.onBeforeRender, disarmed, 'later renders call nothing new');
+  for (const file of ['../ui/garageKitPlacement.ts', '../ui/garageVerdantKit.ts', '../ui/garageStage.ts', '../game/garageDressing.ts']) {
+    const source = await readFile(new URL(file, import.meta.url), 'utf8');
+    assert.doesNotMatch(source, /onBeforeRender\s*=\s*\(\)\s*=>\s*\{?\s*[\w.]*ensureGarageDisplayAtlas/, `${file}: a display arms the atlas once`);
+  }
+}
+
+// 9. the atlas's stills never borrow the i18n `media.` namespace: a `media.`-led template in the game graph makes the
+// page-catalog scan keep every media.* caption in the boot catalogs (+15.5 KB, the deploy gate's budget step)
+{
+  assert.ok(Object.keys(GARAGE_DISPLAY_ATLAS_MANIFEST.rects).every((name) => !name.startsWith('media.')), 'no media.* rects');
+  for (const file of ['garageDisplayAtlas', 'garageKitPlacement', 'garageKitPlacements', 'garageVerdantKit', 'garageDisplayKit',
+    'garagePlatformKit', 'garageSignKit', 'garageWallKit', 'garageStage']) {
+    const source = await readFile(new URL(`./${file}.ts`, import.meta.url), 'utf8');
+    assert.doesNotMatch(source, /[`'"]media\./, `${file}: no media.-led key or template`);
+  }
+}
+
+// 10. a disposed pack releases the cascade registrations of the materials it owns (the kit's display material
+// included): the LRU keeps two packs, and the registry grew on every switch
+{
+  const registered = new Set(), released = new Set();
+  const ctx = { anisotropy: 4, setupShadowMaterial: (material) => { registered.add(material); },
+    releaseShadowMaterial: (material) => { released.add(material); registered.delete(material); return true; } };
+  const variant = GARAGE_VARIANTS.find((v) => v.architecture === 'recovery_yard');
+  const assets = createGarageEnvironmentAssetLibrary(ctx);
+  await prepareGarageEnvironmentAssets(assets, variant);
+  clearGarageKitCache();
+  const pack = buildGarageEnvironment(ctx, assets, variant);
+  let display = null;
+  pack.root.traverse((object) => { if (object.name === 'garage_kit_displays') display = object.material; });
+  assert.ok(display && registered.has(display), 'the kit display material joins the cascades');
+  const before = registered.size;
+  pack.dispose();
+  assert.ok(released.has(display), 'and leaves them with its pack');
+  assert.ok(released.size > 0 && registered.size < before, `the pack released ${released.size} of ${before} registrations`);
 }
 console.log('garageKit.selftest: kit pieces, cranes, walls, displays, platform and placement receipts pass');

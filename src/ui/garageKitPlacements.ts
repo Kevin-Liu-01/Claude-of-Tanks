@@ -23,7 +23,7 @@ export const GARAGE_KIT_PLACEMENTS: Readonly<Partial<Record<GarageVariant['archi
       { kind: 'prop', name: 'generator', at: [22.2, 37.6], yaw: 0 },
       { kind: 'prop', name: 'cableReel', at: [21.2, 39.6], yaw: 0.4 },
       { kind: 'display', display: 'nameboard', at: [-15.4, 14.2], yaw: Math.PI / 2, width: 2.6, posts: 1.2 },
-      { kind: 'display', display: 'board', rects: ['media.desert', 'media.foundry', 'media.urban'], at: [-19.8, 27.6], yaw: Math.PI / 2, size: [2.6, 1.1], posts: 0.9 },
+      { kind: 'display', display: 'board', rects: ['still.desert', 'still.foundry', 'still.urban'], at: [-19.8, 27.6], yaw: Math.PI / 2, size: [2.6, 1.1], posts: 0.9 },
       { kind: 'sign', sign: 'post', rect: 'picto.speed10', at: [-12.4, 9.6], yaw: Math.PI / 2, size: [0.6, 0.6] },
       { kind: 'sign', sign: 'post', rect: 'picto.tankcrossing', at: [-12.4, 11.2], yaw: Math.PI / 2, size: [0.7, 0.62] },
       // the parts and fuel cell behind the trailer

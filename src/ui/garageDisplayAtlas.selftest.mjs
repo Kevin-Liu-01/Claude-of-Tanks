@@ -10,7 +10,7 @@ import { GARAGE_VARIANTS } from '../game/garageVariants.ts';
 import { GARAGE_DISPLAY_ATLAS_MANIFEST } from './garageDisplayAtlas.generated.ts';
 import {
   createGarageDecalMaterial, createGarageDisplayMaterial, garageDisplayAtlasTestHooks, garageDisplayRect,
-  garageDisplayRectNames, garageMediaRectName,
+  garageDisplayRectNames, garageStillRectName,
 } from './garageDisplayAtlas.ts';
 import { buildGarageKitDressing, clearGarageKitCache } from './garageKitPlacement.ts';
 import { GARAGE_KIT_PLACEMENTS } from './garageKitPlacements.ts';
@@ -35,13 +35,13 @@ for (let i = 0; i < rects.length; i += 1) {
 }
 // the minimum content: brand pieces, tank images, readouts, maps, nameboards and pictograms for every Garage
 assert.ok(garageDisplayRectNames('brand').length >= 6, 'brand banners, crests, wordmarks and the stripe');
-assert.ok(garageDisplayRectNames('media').length >= 8, 'eight or more battlefield stills');
+assert.ok(garageDisplayRectNames('still').length >= 8, 'eight or more battlefield stills');
 assert.ok(garageDisplayRectNames('readout').length >= 4, 'readouts for the monitors');
 assert.ok(garageDisplayRectNames('picto').length >= 15, 'the ISO-style pictograms');
 for (const mapId of manifest.garages) {
   assert.ok(garageDisplayRect(`map.${mapId}`), `${mapId}: its map for the screens`);
   assert.ok(garageDisplayRect(`name.${mapId}`), `${mapId}: its nameboard`);
-  assert.ok(garageDisplayRect(garageMediaRectName(mapId)), `${mapId}: its own (or its sister map's) still`);
+  assert.ok(garageDisplayRect(garageStillRectName(mapId)), `${mapId}: its own (or its sister map's) still`);
 }
 assert.deepEqual(new Set(manifest.garages), new Set(GARAGE_VARIANTS.map((variant) => variant.mapId)), 'the atlas covers the ten Garages');
 

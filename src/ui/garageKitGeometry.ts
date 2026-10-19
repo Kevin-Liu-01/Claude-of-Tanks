@@ -213,7 +213,8 @@ export class KitBuilder {
    * One flat triangle in the current frame. `outward` (local) fixes the winding: the face turns to agree with it.
    * `chip` marks a bevel face for edge wear.
    */
-  private tri(a: KitVec, b: KitVec, c: KitVec, color: THREE.Color, outward: KitVec | null, chip = 0, normals?: readonly [KitVec, KitVec, KitVec]): void {
+  private tri(a: KitVec, b: KitVec, c: KitVec, color: THREE.Color | readonly [THREE.Color, THREE.Color, THREE.Color],
+    outward: KitVec | null, chip = 0, normals?: readonly [KitVec, KitVec, KitVec]): void {
     this.updateNormalMatrix();
     const e1x = b[0] - a[0], e1y = b[1] - a[1], e1z = b[2] - a[2];
     const e2x = c[0] - a[0], e2y = c[1] - a[1], e2z = c[2] - a[2];
@@ -234,7 +235,8 @@ export class KitBuilder {
       else n.set(fx, fy, fz);
       n.applyMatrix3(this.normalMatrix).normalize();
       this.normals.push(n.x, n.y, n.z);
-      this.colors.push(color.r, color.g, color.b);
+      const tone = Array.isArray(color) ? color[index] : color as THREE.Color;
+      this.colors.push(tone.r, tone.g, tone.b);
       this.shading.push(local < 0 ? 0 : local > 1 ? 1 : local, chip, wear);
     };
     emit(a, 0);
@@ -553,6 +555,14 @@ export class KitBuilder {
       points.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t - drop, a[2] + (b[2] - a[2]) * t]);
     }
     return points;
+  }
+
+  /** A flat quad (corners in order) with a colour per corner blended across it: a dust gradient, a drift's feathered edge. */
+  shadedQuad(a: KitVec, b: KitVec, c: KitVec, d: KitVec, colors: readonly [KitColor, KitColor, KitColor, KitColor], outward: KitVec): this {
+    const [ca, cb, cc, cd] = colors.map((value) => this.color(value));
+    this.tri(a, b, c, [ca, cb, cc], outward);
+    this.tri(a, c, d, [ca, cc, cd], outward);
+    return this;
   }
 
   /** A flat polygon (convex, in order) with one colour, e.g. a sign plate's face or a grating panel. */
