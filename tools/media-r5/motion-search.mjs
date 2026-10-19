@@ -21,7 +21,7 @@ import { frame } from './setups.mjs';
 import { MOTION, aimFor, leadReveal, orbitRise, overtake, swoop, weave } from './moves.mjs';
 import { propProblems, routeProblems, waterBlocks } from './route-check.mjs';
 import { worldModel } from './world-model.mjs';
-import { framingScore, lensReport } from './lens-check.mjs';
+import { frameEdgeFaults, frameEdgePenalty, framingScore, lensReport } from './lens-check.mjs';
 import { blockedFraction, heroInFrameFraction } from './camera-clearance.mjs';
 import { sampleActorTrack } from '../../src/game/studioTimeline.ts';
 import { SHOTS as SHOTS_DIR } from './paths.mjs';
@@ -378,6 +378,17 @@ for (const [n, id, kind, title, set, film, still] of TAKES) {
         // (2026-10-09: S17, S30 and S40 hid the hero behind bushes for 0.6–0.9 s, which a wave's per-take mean forgives and
         // a loop on the site does not) the hero more than half behind the foreground for OCCLUDE_MS (300) is a defect
         if (longestRun(lensSeen?.perSample ?? [], (q) => (q.fore?.share ?? 0) > 0.5) >= OCCLUDE_MS) { reject('the hero behind the foreground'); continue; }
+        // the overhead wires (2026-10-14, the coordinator: wires are occluders; take-bars.mjs's bar): none across the
+        // hero, and none reading across 35 % of the frame's top, for three samples (300 ms) or more
+        const wireRun = (hit) => { let run = 0, worst = 0; for (const q of lensSeen?.perSample ?? []) { run = hit(q) ? run + 1 : 0; worst = Math.max(worst, run); } return worst * 100; };
+        if (wireRun((q) => !!q.wireHero) >= 300) { reject('a wire across the hero'); continue; }
+        if (wireRun((q) => (q.wire ?? 0) >= 0.35) >= 300) { reject('a wire across the frame\'s top'); continue; }
+        // the frame-edge rule (2026-10-14, the coordinator on wave f1; take-bars.mjs's bar, lens-check.mjs's definition),
+        // its hard part: no burst at the hero's fight cut at its peak, the hero's muzzle in the safe frame at its shots,
+        // no escort sliced for a second (the other cut bursts and plumes cost the score below)
+        // (EDGE=0 leaves the rule out: a control run, to tell the rule's cost from a re-search's own drift)
+        const edge = process.env.EDGE === '0' ? [] : frameEdgeFaults(scene, lensSeen);
+        if (edge.length) { reject(edge[0].key); continue; }
         const m = metrics(scene), range = m.far / Math.max(3, m.near), road = family.startsWith('road');
         // a FLANK take swings the hero's gun out across the frame (site50.selftest: 40° off the hull in ten takes); the
         // stabilised aim sets that angle from where the foes stand, so a route that brings it scores
@@ -394,7 +405,10 @@ for (const [n, id, kind, title, set, film, still] of TAKES) {
         const score = 4 * fr.sweet - 3 * fr.bad - 1.75 * (fr.flaw ?? 0) - 1.5 * (fr.gunTight ?? 0) - 0.5 * (fr.merger ?? 0) + 1.0 * Math.min(range, 3) / 3 + 0.2 * Math.min(m.climb, 10) / 10 + 0.8 * m.front + 0.4 * Math.min(m.speed, speed) / speed + 0.3 * closing
           + 0.3 * inFrame - 2 * blocked - USAGE_W * (usage.get(moveFamily) ?? 0) - 0.15 * (usage.get(routeFamily) ?? 0) + (scene.meta.cameraFix ? -0.2 : 0) + (road && town ? 0.15 : 0)
           - 1 * (setUse.get(setKeys(n, family, lens)[0]) ?? 0) - 3 * (setUse.get(setKeys(n, family, lens)[1]) ?? 0) - 1.5 * (setUse.get(setKeys(n, family, lens)[2]) ?? 0)
-          + 0.6 * flankSwing;
+          + 0.6 * flankSwing
+          // the frame-edge rule's soft part (wave f1: bursts and plumes cut by the frame's edge were the critics' most
+          // common defect): half a point a cut burst, at most two, and half a point for a sliced plume
+          - (process.env.EDGE === '0' ? 0 : frameEdgePenalty(lensSeen));
         results.push({ score, family, lens, routes, aim, cam: scene.meta.cameraFix ? null : cam, m, blocked, inFrame, fix: scene.meta.cameraFix ?? null, fr });
       }
     }

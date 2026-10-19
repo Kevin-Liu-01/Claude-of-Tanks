@@ -49,12 +49,23 @@ function bar(sink: PartSink, a: Vec3, b: Vec3, t: number, opts: EmitOptions): vo
   sink.member(M, a, b, t, t, out, { ...opts, exposed: true }, t / 2);
 }
 
-/** A quad turned to face `want` (its winding swapped when it faces away). */
-function quadFacing(sink: PartSink, bucket: RegionalBucket, a: Vec3, b: Vec3, c: Vec3, d: Vec3, want: Vec3, opts: EmitOptions): void {
+/** A convex polygon turned to face `want` (its winding swapped when it faces away). */
+function polygonFacing(sink: PartSink, bucket: RegionalBucket, pts: readonly Vec3[], want: Vec3, opts: EmitOptions): void {
+  const a = pts[0], b = pts[1], c = pts[2];
   const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
   const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
-  if (n[0] * want[0] + n[1] * want[1] + n[2] * want[2] >= 0) sink.quad(bucket, a, b, c, d, opts);
-  else sink.quad(bucket, d, c, b, a, opts);
+  if (n[0] * want[0] + n[1] * want[1] + n[2] * want[2] >= 0) sink.polygon(bucket, pts, opts);
+  else sink.polygon(bucket, [...pts].reverse(), opts);
+}
+
+/**
+ * A quad turned to face `want` (its winding swapped when it faces away). A quad whose first two corners are one point
+ * (a dish's vertex ring) is the triangle of its three others: PartSink.polygon finds no normal from a repeated first
+ * corner and drew nothing there (the 228 integrity gate: every dish open round its vertex, the arm meeting it ending in
+ * the hole, the relay mast's three dishes floating 0.12 to 0.49 m off their arms).
+ */
+function quadFacing(sink: PartSink, bucket: RegionalBucket, a: Vec3, b: Vec3, c: Vec3, d: Vec3, want: Vec3, opts: EmitOptions): void {
+  polygonFacing(sink, bucket, a[0] === b[0] && a[1] === b[1] && a[2] === b[2] ? [a, c, d] : [a, b, c, d], want, opts);
 }
 
 /**
@@ -646,6 +657,11 @@ const lab: RegionalBuilder = (ctx) => {
   bar(sink, [mx - 0.7, 6.6, mz], [mx + 0.7, 6.6, mz], 0.05, { colour: STEEL, decor: true });
   for (const s of [-0.65, 0.65]) sink.span(M, mx + s - 0.08, 6.63, mz - 0.08, mx + s + 0.08, 6.85, mz + 0.08, { colour: PANEL, decor: true });
   sink.revolve(M, [mx, 7.4, mz], 'y', [[0, 0.16], [0.12, 0.12], [0.2, 0.02]], 8, { colour: GOLD, decor: true });
+  // the sensor's base, closing its open foot over the pole's top: the pole ends on it (the 228 integrity gate: the gold
+  // sensor stood 0.1 m clear of the pole, its foot ring round the pole's end and nothing between)
+  const foot: Vec3[] = [];
+  for (let i = 0; i < 8; i++) { const a = -(i / 8) * Math.PI * 2; foot.push([mx + Math.cos(a) * 0.16, 7.4, mz + Math.sin(a) * 0.16]); }
+  polygonFacing(sink, M, foot, [0, -1, 0], { colour: GOLD, decor: true });
   return sink.finish();
 };
 

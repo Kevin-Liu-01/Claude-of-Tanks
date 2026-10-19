@@ -1,0 +1,453 @@
+{
+ "map": "verdant",
+ "timeOfDay": "day",
+ "seed": 1902,
+ "light": {
+  "sunAzimuthDeg": 31,
+  "sunElevationDeg": 36
+ },
+ "actors": [
+  {
+   "id": "challenger_3x",
+   "name": "hero",
+   "pos": [
+    -19.15,
+    59.14
+   ],
+   "facingDeg": 8.36,
+   "turretDeg": -58.74,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 7101,
+   "recoilAgeS": 0.04
+  },
+  {
+   "id": "t80u_x",
+   "name": "foe0",
+   "pos": [
+    -32.8,
+    70.44
+   ],
+   "facingDeg": 111.21,
+   "turretDeg": 18.41,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 7102
+  }
+ ],
+ "effects": [
+  {
+   "type": "dust",
+   "at": [
+    -20.07,
+    40.65
+   ],
+   "tMs": 5700,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 8.36
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -23.59,
+    41.17
+   ],
+   "tMs": 5700,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 8.36
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -19.59,
+    43.92
+   ],
+   "tMs": 6000,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 8.36
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -23.11,
+    44.44
+   ],
+   "tMs": 6000,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 8.36
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -19.11,
+    47.18
+   ],
+   "tMs": 6300,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 8.36
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -22.63,
+    47.7
+   ],
+   "tMs": 6300,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 8.36
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -18.71,
+    49.91
+   ],
+   "tMs": 6550,
+   "params": {
+    "count": 24,
+    "intensity": 1.3,
+    "dirDeg": 8.36
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -22.23,
+    50.42
+   ],
+   "tMs": 6550,
+   "params": {
+    "count": 24,
+    "intensity": 1.3,
+    "dirDeg": 8.36
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -18.34,
+    52.41
+   ],
+   "tMs": 6780,
+   "params": {
+    "count": 21,
+    "intensity": 1.3,
+    "dirDeg": 8.36
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -21.86,
+    52.93
+   ],
+   "tMs": 6780,
+   "params": {
+    "count": 21,
+    "intensity": 1.3,
+    "dirDeg": 8.36
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -18.13,
+    53.82
+   ],
+   "tMs": 6910,
+   "params": {
+    "count": 15,
+    "intensity": 1.3,
+    "dirDeg": 8.36
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -21.65,
+    54.34
+   ],
+   "tMs": 6910,
+   "params": {
+    "count": 15,
+    "intensity": 1.3,
+    "dirDeg": 8.36
+   }
+  },
+  {
+   "type": "muzzle_flash",
+   "actor": "hero",
+   "tMs": 6958,
+   "params": {
+    "caliberMm": 140
+   }
+  },
+  {
+   "type": "impact",
+   "at": [
+    -30.42,
+    3.84,
+    68.47
+   ],
+   "tMs": 6740,
+   "params": {
+    "kind": "ricochet",
+    "caliberMm": 125,
+    "normal": [
+     0.46,
+     0.66,
+     -0.38
+    ]
+   }
+  },
+  {
+   "type": "sparks",
+   "at": [
+    -30.42,
+    3.84,
+    68.47
+   ],
+   "tMs": 6765,
+   "params": {
+    "caliberMm": 120,
+    "normal": [
+     0.46,
+     0.66,
+     -0.38
+    ]
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    -30.42,
+    3.84,
+    68.47
+   ],
+   "tMs": 6750,
+   "params": {
+    "count": 14,
+    "speedMps": 8,
+    "hot": 0.9,
+    "scale": 0.45
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -28.53,
+    59.72
+   ],
+   "tMs": 5600,
+   "params": {
+    "munition": "he",
+    "wall": true,
+    "dirDeg": 158.26,
+    "hitH": 2.7
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    -27.6,
+    4.75,
+    58
+   ],
+   "tMs": 5900,
+   "params": {
+    "count": 36,
+    "speedMps": 9,
+    "hot": 0.3,
+    "scale": 1.2
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -27.2,
+    58.2
+   ],
+   "tMs": 5700,
+   "params": {
+    "count": 10,
+    "intensity": 1.2,
+    "dirDeg": 0
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -110.56,
+    37.29
+   ],
+   "tMs": 0,
+   "params": {
+    "size": "huge"
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -109.96,
+    37.89
+   ],
+   "tMs": 1000,
+   "params": {
+    "size": "huge"
+   }
+  },
+  {
+   "type": "fire_field",
+   "at": [
+    -56.33,
+    60.61
+   ],
+   "tMs": 0,
+   "params": {
+    "radiusM": 4,
+    "durationS": 40,
+    "intensity": 1,
+    "smoke": true
+   }
+  },
+  {
+   "type": "embers",
+   "at": [
+    -56.33,
+    60.61
+   ],
+   "tMs": 0,
+   "params": {
+    "radiusM": 3.5,
+    "rate": 50,
+    "durationS": 20,
+    "rise": 3
+   }
+  }
+ ],
+ "fxTime": 7000,
+ "timeScale": 0,
+ "storyboard": {
+  "version": 1,
+  "durationMs": 8500,
+  "shots": [],
+  "actorTracks": [
+   {
+    "actor": "hero",
+    "keys": [
+     {
+      "id": "hero-0",
+      "tMs": 5600,
+      "pos": [
+       -21.39,
+       43.9
+      ],
+      "facingDeg": 8.36,
+      "turretDeg": -58.74,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-1",
+      "tMs": 7400,
+      "pos": [
+       -18.51,
+       63.49
+      ],
+      "facingDeg": 8.36,
+      "turretDeg": -58.74,
+      "gunDeg": 1,
+      "transition": "linear"
+     }
+    ]
+   }
+  ]
+ },
+ "picture": {
+  "grain": {
+   "amount": 0.05,
+   "size": 1,
+   "color": 0.1,
+   "response": 0.7
+  },
+  "vignette": {
+   "amount": 0.36,
+   "roundness": 0.55,
+   "softness": 0.6
+  },
+  "dof": {
+   "enabled": false
+  },
+  "chromaticAberration": 0,
+  "exposure": 0.3,
+  "vibrance": 0.14,
+  "contrast": 1.05
+ },
+ "fx": {
+  "quality": "cinematic",
+  "trackDust": true
+ },
+ "autoPlace": false,
+ "meta": {
+  "id": "vs02-verdant-challenger-t80u-r6",
+  "kind": "versus-still",
+  "pair": "challenger_3x v t80u_x",
+  "round": 6,
+  "pass": 2,
+  "idea": "the village street-corner ambush, pass 2: both noses to a low Dutch-angled lens in the lane, the Challenger 3 bursting round the granary as the T-80U pushes down the schoolhouse wall",
+  "lens": "a",
+  "pick": "vs02-verdant-challenger-t80u-r6:a"
+ },
+ "camera": {
+  "name": "a",
+  "pos": [
+   -12,
+   0.55,
+   70
+  ],
+  "lookAt": [
+   -28.96,
+   1.5,
+   59.4
+  ],
+  "fov": 58,
+  "rollDeg": -8,
+  "groundRel": true
+ },
+ "cameraVariants": [
+  {
+   "name": "a",
+   "pos": [
+    -12,
+    0.55,
+    70
+   ],
+   "lookAt": [
+    -28.96,
+    1.5,
+    59.4
+   ],
+   "fov": 58,
+   "rollDeg": -8,
+   "groundRel": true
+  }
+ ]
+}

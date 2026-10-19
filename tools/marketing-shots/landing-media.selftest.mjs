@@ -65,8 +65,9 @@ for (const slide of manifest.hero) {
 }
 
 assert.equal(manifest.featureReel.video, `${site50}/films/reel.mp4`);
-assert.equal(manifest.featureReel.width, 1920);
-assert.equal(manifest.featureReel.height, 1080);
+// the reel's light web encode (2026-10-14): 1600x900 under its 4.3 Mbit/s cap; site-media-wire.mjs records the file's size
+assert.equal(manifest.featureReel.width, 1600);
+assert.equal(manifest.featureReel.height, 900);
 assert.equal(home.split(manifest.featureReel.video).length - 1, 1,
   'the former video hero appears once as a dedicated feature reel');
 assert.equal(home.includes(`poster="${manifest.featureReel.poster}"`), true,

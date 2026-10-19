@@ -123,8 +123,8 @@ export const topics: Record<string, TopicDefinition> = {
       [t('docs.topic.performance.s6.t'), t('docs.topic.performance.s6.p1'), t('docs.topic.performance.s6.p2')],
     ],
     media: [
-      ['/media/showcase-r2/17_live_player_hud.webp', t('docs.topic.performance.media1')],
-      ['/media/showcase-r2/16_mobile_garage.webp', t('docs.topic.performance.media2')],
+      ['/media/versus-r1/f6-leo2a6-steinburg-r6.webp', t('docs.topic.performance.media1')],
+      ['/media/versus-r1/f7-t90m-column-r5.webp', t('docs.topic.performance.media2')],
     ],
   },
   simulation: {

@@ -45,6 +45,7 @@ import { clearShrubsFromSolids } from './shrubClearance.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { splitProgramVariants } from '../engine/programVariants.ts';
+import { loadEarthLand, skyDrawsEarth } from '../engine/earthLandAccess.ts';
 import { createStructureGroundOcclusion, type StructureGroundOcclusionHandle } from '../engine/structureGroundOcclusion.ts';
 import { startHorizonRingBuild } from './horizonRingPrefetch.ts';
 import { supplyHinterland, withdrawHinterland } from './hinterlandHook.ts';
@@ -349,6 +350,9 @@ export function createMap(
 ): WorldRuntime {
   const engineCtx = engineContext as EngineContext;
   const config: BuildMapConfig = worldBuildConfig(mapId, terrainVariant);
+  // (the 228 entry diet) a sky that draws the Earth starts its land mask's module (earthLandAccess.ts); this synchronous
+  // build cannot await it, so the sky binds the placeholder until it arrives (createMapAsync awaits it)
+  if (skyDrawsEarth((config as { sky?: { earth?: number } }).sky)) void loadEarthLand().catch(() => undefined);
   const heightField = createHeightField(seed, config);
   const terrain = requireTerrainRoot(buildTerrainMeshes(heightField, engineCtx, config));
   const vegetation = createVegetation(heightField, engineCtx, 2001, config);
@@ -382,6 +386,10 @@ export async function createMapAsync(
   // 1.2 MB numeric JSON lived inside the map JavaScript chunk and had to be
   // parsed before even the height field could start.
   const propModelsReady = preloadPropModels();
+  // (the 228 entry diet) the land mask of a sky that draws the Earth (the Moon's) loads with its world, beside the
+  // terrain, instead of with the game's entry chunk; awaited before the world exists (earthLandAccess.ts)
+  const earthLandReady = skyDrawsEarth((config as { sky?: { earth?: number } }).sky) ? loadEarthLand() : null;
+  earthLandReady?.catch(() => undefined); // observed at its await below; a failure fails this build there
   const terrainConfig: TerrainMapConfig = config;
   const terrainSources = prepareSourcedTerrain(config.id, terrainConfig.splat || {}, { worker: true });
   // (the time-to-battle lane, 2026-10-07) the map's planned wreck bakes start in their own worker now, beside the
@@ -454,6 +462,7 @@ export async function createMapAsync(
     await finishHorizonRingAsync(terrain, sub('Sealing the battlefield', 0.96, 0.99), fineSlices);
     if (ringSource) terrain.userData.horizonRingLoad = ringSource.stats;
     if (hinterlandSource) terrain.userData.hinterlandLoad = hinterlandSource.stats;
+    if (earthLandReady) await earthLandReady;
     const world = assembleWorld(engineCtx, config, heightField, terrain, vegetation, props);
     world._buildDetail = {
       vegetation: vegetation._buildDetail || null,

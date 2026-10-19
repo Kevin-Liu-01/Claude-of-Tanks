@@ -622,11 +622,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-r5/site50.selftest.mjs',
     'tools/media-r5/motion.selftest.mjs',
     'tools/media-r5/world-model.selftest.mjs',
+    'tools/media-r5/wire-model.selftest.mjs',
     'tools/media-r5/films/restore.selftest.mjs',
     'tools/media-r5/fleet-media.selftest.mjs',
     'tools/media-r5/site-video-budget.selftest.mjs',
     'tools/media-r5/fleet.selftest.mjs',
     'tools/media-r5/fleet-rekey.selftest.mjs',
+    'tools/media-r5/combat.selftest.mjs',
     'tools/media-r5/master-filter.selftest.mjs',
     'tools/public-repo-hygiene.selftest.mjs',
     'tools/tool-only-public-files.selftest.mjs',
@@ -1007,6 +1009,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/skyCloudBake.selftest.mjs',
     'src/engine/skyHorizonCache.selftest.mjs',
     'src/engine/skyEnvironmentCache.selftest.mjs',
+    // 2026-10-18 (the 228 entry diet): the Moon's land mask loads with the world that draws it, not with the entry chunk
+    'src/engine/earthLandAccess.selftest.mjs',
     'src/engine/skyEnvironmentEnclosure.selftest.mjs',
     'src/engine/atmosphere.selftest.mjs',
     // 2026-10-01: the grounded light model (lighting lane): sun through the atmosphere, the sky's own light, the deck, the exposure law
@@ -1969,6 +1973,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/track-geometry.selftest.mjs',
     'tools/marketing-shots/battle-campaign.selftest.mjs',
     'tools/marketing-shots/showcase-r2.selftest.mjs',
+    // the multiplayer dual view: the published WebP is the one its manifest names, from one match
+    'tools/marketing-shots/capture-multiplayer-dual-screen.selftest.mjs',
+    // 2026-10-12 (home r2): the live-battle capture director's clock, freezes, bursts and staging helpers
+    'tools/marketing-shots/mode-battle-director.selftest.mjs',
   ]),
   post: Object.freeze([
     'src/audio/lazyAudio.selftest.mjs',
@@ -1996,6 +2004,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/spectatorSwitcher.selftest.mjs',
     'tools/marketing-shots/feature-evidence.selftest.mjs',
     'tools/marketing-shots/site50-media.selftest.mjs',
+    // 2026-10-15: the versus stills, the social cards' and marketing's foundations (public/media/versus-r1)
+    'tools/marketing-shots/versus-media.selftest.mjs',
     'src/ui/studioSiteTakes.selftest.mjs',
     // 2026-10-12: every tank's own take (src/ui/fleetTakes.ts) in the Gallery, the manual, the Garage and the Director
     'src/ui/fleetTakes.selftest.mjs',
