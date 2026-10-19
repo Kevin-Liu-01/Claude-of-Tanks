@@ -93,7 +93,7 @@ export interface LandmarkBodies {
 }
 
 interface LiveBody { handle: number; meshes: THREE.Mesh[]; structureIdx: number; still: number; age: number; massKg: number;
-  sounds: number; pose: Float64Array }
+  sounds: number; pose: Float64Array; laid?: boolean }
 
 /** A material's vertex layout as a span's mesh carries it (position and normal first; the mask's tags left out). */
 interface Layout { names: string[]; sizes: number[] }
@@ -524,6 +524,9 @@ export function createLandmarkBodies(o: LandmarkBodiesOptions): LandmarkBodies {
         write(b, pose);
         b.age += dtS;
         b.still = o.pool.asleep(b.handle) ? b.still + dtS : 0;
+        // (round 4; the census's delta #9: a dropped wall's plate stood on its edge in a late joiner's page, its box lying
+        // well, before the bake came round) asleep a moment: no piece of its drawing stands upright
+        if (b.still >= 0.2 && !b.laid) { b.laid = true; for (const m of b.meshes) layUprightPlates(m.geometry, m.matrix); }
         // still: it stays drawn where it lies, its body gone from the pool
         if (b.still >= BAKE_STILL_S || b.age >= BAKE_AGE_S) {
           o.pool.release(b.handle); unlist(b); baked++;

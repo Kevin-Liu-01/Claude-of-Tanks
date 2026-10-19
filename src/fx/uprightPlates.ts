@@ -55,24 +55,8 @@ function find(parent: Int32Array, i: number): number {
   return i;
 }
 
-/**
- * Lay a resting drawing's upright plates on their broad sides (in place). `matrix` takes the geometry to the world
- * (null: it is already in world space). Returns how many pieces were laid.
- */
-export function layUprightPlates(geometry: THREE.BufferGeometry, matrix: THREE.Matrix4 | null = null): number {
-  const pos = geometry.getAttribute('position') as THREE.BufferAttribute | THREE.InterleavedBufferAttribute | undefined;
-  if (!pos || pos.count < 6) return 0;
-  const nrm = geometry.getAttribute('normal') as THREE.BufferAttribute | THREE.InterleavedBufferAttribute | undefined;
-  const index = geometry.getIndex();
-  const count = pos.count;
-  // world positions
-  const w = new Float64Array(count * 3);
-  for (let i = 0; i < count; i++) {
-    _v.set(pos.getX(i), pos.getY(i), pos.getZ(i));
-    if (matrix) _v.applyMatrix4(matrix);
-    w[i * 3] = _v.x; w[i * 3 + 1] = _v.y; w[i * 3 + 2] = _v.z;
-  }
-  // corners welded at a millimetre, then the triangles' corners joined
+/** A drawing's connected pieces (corners welded at a millimetre, as the slab check splits them): each piece's vertices. */
+function piecesOf(w: Float64Array, count: number, index: THREE.BufferAttribute | null): Map<number, number[]> {
   const weld = new Map<string, number>();
   const id = new Int32Array(count);
   let ids = 0;
@@ -87,12 +71,11 @@ export function layUprightPlates(geometry: THREE.BufferGeometry, matrix: THREE.M
   const tris = index ? index.count / 3 : count / 3;
   const corner = (t: number, c: number): number => (index ? index.getX(t * 3 + c) : t * 3 + c);
   for (let t = 0; t < tris; t++) {
-    const a = find(parent, id[corner(t, 0)]!), b = find(parent, id[corner(t, 1)]!), c = find(parent, id[corner(t, 2)]!);
+    const a = find(parent, id[corner(t, 0)]!), b = find(parent, id[corner(t, 1)]!);
     if (a !== b) parent[b] = a;
-    const r = find(parent, a);
-    if (r !== find(parent, c)) parent[find(parent, c)] = r;
+    const r = find(parent, a), c = find(parent, id[corner(t, 2)]!);
+    if (r !== c) parent[c] = r;
   }
-  // each piece's vertices
   const pieces = new Map<number, number[]>();
   for (let i = 0; i < count; i++) {
     const r = find(parent, id[i]!);
@@ -100,6 +83,63 @@ export function layUprightPlates(geometry: THREE.BufferGeometry, matrix: THREE.M
     if (!list) { list = []; pieces.set(r, list); }
     list.push(i);
   }
+  return pieces;
+}
+
+/**
+ * (round 4: the census's remnant piers standing 1-7 m over the building as it was drawn at their spot — a firestation's
+ * steel stub, a stack's stump, a ruin's collapse stub over its banked heap) a standing remnant's pieces no taller than the
+ * building was drawn where their tops stand: a piece whose top stands more than `marginM` over `topAt` there (world y; not
+ * finite where the drawn form is not known: left alone) is squashed down about its foot to `marginM` over it. A piece
+ * wholly over that height (a held storey's member: DESTRUCTION.md §3.4) is left alone. World-space geometry, in place.
+ */
+export function clampPieceTops(geometry: THREE.BufferGeometry, topAt: (x: number, z: number) => number, marginM = 0.5): number {
+  const pos = geometry.getAttribute('position') as THREE.BufferAttribute | undefined;
+  if (!pos || pos.count < 4) return 0;
+  const count = pos.count;
+  const w = new Float64Array(count * 3);
+  for (let i = 0; i < count; i++) { w[i * 3] = pos.getX(i); w[i * 3 + 1] = pos.getY(i); w[i * 3 + 2] = pos.getZ(i); }
+  let squashed = 0;
+  for (const list of piecesOf(w, count, geometry.getIndex()).values()) {
+    let y0 = Infinity, y1 = -Infinity, tx = 0, tz = 0;
+    for (const i of list) {
+      const y = w[i * 3 + 1]!;
+      if (y < y0) y0 = y;
+      if (y > y1) { y1 = y; tx = w[i * 3]!; tz = w[i * 3 + 2]!; }
+    }
+    if (y1 - y0 < 1) continue;
+    const drawn = topAt(tx, tz);
+    if (!Number.isFinite(drawn)) continue;
+    const cap = drawn + marginM;
+    if (!(y1 > cap + 0.05) || !(cap > y0 + 0.15)) continue;
+    const k = (cap - y0) / (y1 - y0);
+    for (const i of list) pos.setY(i, y0 + (w[i * 3 + 1]! - y0) * k);
+    squashed++;
+  }
+  if (!squashed) return 0;
+  pos.needsUpdate = true;
+  geometry.computeBoundingSphere();
+  geometry.boundingBox = null;
+  return squashed;
+}
+
+/**
+ * Lay a resting drawing's upright plates on their broad sides (in place). `matrix` takes the geometry to the world
+ * (null: it is already in world space). Returns how many pieces were laid.
+ */
+export function layUprightPlates(geometry: THREE.BufferGeometry, matrix: THREE.Matrix4 | null = null): number {
+  const pos = geometry.getAttribute('position') as THREE.BufferAttribute | THREE.InterleavedBufferAttribute | undefined;
+  if (!pos || pos.count < 6) return 0;
+  const nrm = geometry.getAttribute('normal') as THREE.BufferAttribute | THREE.InterleavedBufferAttribute | undefined;
+  const count = pos.count;
+  // world positions
+  const w = new Float64Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    _v.set(pos.getX(i), pos.getY(i), pos.getZ(i));
+    if (matrix) _v.applyMatrix4(matrix);
+    w[i * 3] = _v.x; w[i * 3 + 1] = _v.y; w[i * 3 + 2] = _v.z;
+  }
+  const pieces = piecesOf(w, count, geometry.getIndex());
   let laid = 0;
   const changed = new Uint8Array(count);
   const cv = [0, 0, 0, 0, 0, 0];

@@ -205,7 +205,15 @@ function restPose(a: StructureDamageAnatomy, plan: LandmarkPlan, p: KeptPiece): 
     // over the stump, a crown of plates) a piece much wider than it is tall slumps only a few degrees
     const flatPiece = p.max[1] - p.min[1] < 0.35 * Math.max(p.max[0] - p.min[0], p.max[2] - p.min[2]);
     const tilt = fall === 'drop' ? (tallish ? 0.9 + rng() * 0.6 : 0.12 + rng() * 0.3) : flatPiece ? 0.05 + rng() * 0.07 : 0.14 + rng() * 0.3, ta = rng() * Math.PI * 2;
-    pose = { r: rotation(Math.cos(ta), 0, Math.sin(ta), tilt), px: cx, py: (p.min[1] + p.max[1]) / 2, pz: cz, tx: 0, ty: 0, tz: 0 };
+    // (destruction-slabs 227 round 4; saltwind #19's house row: a 5.6 x 3 m board dropped off its wall stood upright on the
+    // ground beside it — wider than it is tall, it "landed near flat" by its height alone) a plate standing up (thin in
+    // plan, a man's height and more) lies on its broad side, out from where it stood
+    const ex = p.max[0] - p.min[0], ey = p.max[1] - p.min[1], ez = p.max[2] - p.min[2], thinPlan = Math.min(ex, ez);
+    if (thinPlan <= 0.6 && thinPlan < 0.2 * Math.min(ey, Math.max(ex, ez)) && ey >= 1.2) {
+      const sign = Math.cos(ta) < 0 ? -1 : 1;
+      const lay = ez <= ex ? rotation(1, 0, 0, sign * Math.PI / 2) : rotation(0, 0, 1, sign * Math.PI / 2);
+      pose = { r: multiply(rotation(Math.cos(ta), 0, Math.sin(ta), Math.min(tilt, 0.15)), lay), px: cx, py: (p.min[1] + p.max[1]) / 2, pz: cz, tx: 0, ty: 0, tz: 0 };
+    } else pose = { r: rotation(Math.cos(ta), 0, Math.sin(ta), tilt), px: cx, py: (p.min[1] + p.max[1]) / 2, pz: cz, tx: 0, ty: 0, tz: 0 };
     if (fall === 'drop') { const out = 0.3 + rng() * 1.2; pose.tx = dx * out; pose.tz = dz * out; }
   }
   // clear of what it stood on: a piece that stood above the ground lands beyond the body's plan along its fall (a piece

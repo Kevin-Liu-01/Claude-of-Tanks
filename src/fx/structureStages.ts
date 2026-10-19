@@ -29,7 +29,8 @@ import {
   anatomyCentre, damageRng, damageSeed, type DamageFace, type DamageRole, type DamageStageResult, type DamageStorey, type DamageWriters,
   type DebrisShape, type FractureMaterial, type FractureSlot, type StructureDamageAnatomy,
 } from '../world/destructionKit.ts';
-import { clearOverEaves, faceSetback, faceSetbackMedian, roofFurnitureAt, storeyInterior } from '../world/structureEnclosure.ts';
+import { clearOverEaves, drawnOverAt, faceSetback, faceSetbackMedian, roofFurnitureAt, storeyInterior } from '../world/structureEnclosure.ts';
+import { clampPieceTops } from './uprightPlates.ts';
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
 import { toppleHingeM } from '../world/toppleHinge.ts';
 import { breachBlowFor } from './structureFx.ts';
@@ -200,6 +201,22 @@ const BUCKET_ALIASES: Readonly<Record<string, readonly string[]>> = Object.freez
 /** The world's buckets of the same stuff as `bucket`, in the order a missing one is looked for. */
 export function bucketAliases(bucket: string): readonly string[] {
   return BUCKET_ALIASES[bucket] ?? [];
+}
+
+/**
+ * (destruction-slabs 227 round 4; the census's 242 runs of remnant piers 1-7 m over the building as drawn at their spot:
+ * a firestation's steel stub, a stack's stump, a ruin's collapse stub over its banked heap) a remnant run's pieces cut
+ * down to half a metre over the drawn form where their tops stand (the anatomy's enclosure: its tallest drawn over the
+ * spot and the cells round it); where the drawn form is not known, as drawn. Its runs are world-space (structureDebris).
+ */
+function clampRemnantTops(mesh: THREE.Mesh, a: StructureDamageSeam['anatomy']): void {
+  if (!a.enclosure) return;
+  const { x: px, y: py, z: pz, yaw } = a.placement;
+  const c = Math.cos(yaw), s = Math.sin(yaw);
+  clampPieceTops(mesh.geometry, (x, z) => {
+    const dx = x - px, dz = z - pz, top = drawnOverAt(a, dx * c - dz * s, dx * s + dz * c, 1);
+    return top >= 0 && Number.isFinite(top) ? py + top : NaN;
+  }, 0.5);
 }
 
 export function createStructureStages(o: StructureStagesOptions): StructureStages {
@@ -955,6 +972,8 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
     let result: DamageStageResult | null = null;
     try { result = build(writers); } catch { result = null; }
     const made = debris.commit();
+    // (destruction-slabs 227 round 4) no remnant stands taller than the building was drawn where it stands
+    for (const mesh of made) if (mesh.name.startsWith('fx-structure-remnant-')) clampRemnantTops(mesh, seam.anatomy);
     if (owner) for (const mesh of made) mesh.userData.runOwner = owner;
     const held = !settled && delayS > 0 && result?.hides?.some((h) => h.piece) ? result.hides.filter((h) => h.piece) : null;
     if (held) heldHides.push({ seam, hides: held, at: o.now() + delayS });
