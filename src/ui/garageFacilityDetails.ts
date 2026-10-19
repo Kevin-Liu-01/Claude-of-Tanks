@@ -570,6 +570,8 @@ export function addGarageFacilityDetails({
     facilityProps += 1;
   };
 
+  // (garage r9: false while a station whose place the kit's authored pieces have taken is counted but not built)
+  let emitPrimitives = true;
   const clusterBox = (
     cluster: FacilityCluster,
     lateral: number,
@@ -583,6 +585,7 @@ export function addGarageFacilityDetails({
     rotationZ = 0,
     rotationX = 0,
   ): void => {
+    if (!emitPrimitives) return;
     boxInstances.push({
       matrix: clusterMatrix(
         cluster, lateral, longitudinal, y, [width, height, length], rotationX, rotationZ,
@@ -605,6 +608,7 @@ export function addGarageFacilityDetails({
     segments = 12,
     rotationZ = 0,
   ): void => {
+    if (!emitPrimitives) return;
     const tier = cylinderTier(segments);
     unitCylinder(tier);
     const instances = cylinderInstances.get(tier) || [];
@@ -2979,13 +2983,16 @@ export function addGarageFacilityDetails({
     avalancheKit: 'avalanche-rescue',
   });
   // garage r9 (the per-garage lanes, design K5): in Saltmere, Cinder and Ironworks the two shelter flanks beside the
-  // turntable are stocked with the kit's authored pieces instead (their placement tables, garage*Kit.ts), so their
-  // primitive piles are never built (the stations' purposes stand; the engineering critic, 2026-10-18: building them and
-  // truncating the instance arrays afterwards cost every Garage's cold build a snapshot per station)
+  // turntable are stocked with the kit's authored pieces instead (their placement tables, garage*Kit.ts: a gas cage, a
+  // pallet with drums or stores), so the stations are counted (their purposes, stock and secured cage stand) but emit no
+  // primitive (the engineering critic, 2026-10-18: building them and truncating the instance arrays afterwards cost every
+  // Garage's cold build a snapshot per station)
   const kitFlanks = variant.architecture === 'naval_drydock' || variant.architecture === 'rail_roundhouse'
     || variant.architecture === 'factory_line';
   stations.forEach(([side, depth], index) => {
-    if (!(kitFlanks && index >= 4)) kitBuilders[kit[index]](fixedCluster(side, depth));
+    emitPrimitives = !(kitFlanks && index >= 4);
+    kitBuilders[kit[index]](fixedCluster(side, depth));
+    emitPrimitives = true;
     servicePurposeTags.add(KIT_PURPOSE[kit[index]]);
   });
   const [featureSide, featureDepth] = layout.feature;
