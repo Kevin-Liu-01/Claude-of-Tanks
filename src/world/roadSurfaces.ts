@@ -46,6 +46,9 @@ export interface PavedSurfaceConfig {
   markings?: number;
   /** a shelled city's asphalt: the ragged fills of shell holes, 0..1 */
   holeFills?: number;
+  /** (the maps lane, 228) a square's setts' tone over the streets' (off any centreline: a civic square's lighter granite
+   *  setts, world/civic); absent 1 */
+  squareTone?: number;
 }
 
 /** Each paved map's surfaces (the period rulings above). Absent: the map's own splat (its R print, or none). */
@@ -55,7 +58,10 @@ export const MAP_PAVED_SURFACES: Readonly<Record<string, PavedSurfaceConfig>> = 
   // (R2, the first frames: the old town's smooth asphalt lost to main's sett print) the old town's streets in setts, the
   // roads past it a patched asphalt with its worn centre line
   urban: Object.freeze({ street: 'patched', townStreet: 'cobble', square: 'cobble', setts: 'fan', kerbs: true, gutterM: 0.36,
-    patches: 1, cracks: 1, covers: 1, puddles: 0.6, markings: 1, tone: 0.92 }),
+    patches: 1, cracks: 1, covers: 1, puddles: 0.6, markings: 1, tone: 0.92,
+    // (the maps lane, 228; the owner: the square "a huge EMPTY grey asphalt expanse") the Friedensplatz's setts the pale
+    // grey granite of a Franconian square, not the streets' dark stone
+    squareTone: 1.5 }),
   // Ruinspires (Sarajevo, 1992–96): the shelled city's asphalt, patched and cracked; its styled paths keep their own classes
   // (R2: the squares in setts — the patched asphalt squares read as empty car parks; the round fills ragged and fewer)
   ruinspires: Object.freeze({ street: 'patched', square: 'cobble', kerbs: true, gutterM: 0.24, patches: 1.3, cracks: 1.3, covers: 1,
@@ -133,8 +139,9 @@ export function roadSurfaceUniforms(mapId: string, climate: 'vegetated' | 'arid'
  * rect (centre xz, half-size xz; z 0 without kerbs) and (tone, the kerbed town's street class, centre lines, shell-hole fills). */
 export function pavedSurfaceUniforms(paved: PavedSurfaceConfig | undefined,
   town: { x0: number; x1: number; z0: number; z1: number }): { cls: [number, number, number, number];
-  wear: [number, number, number, number]; town: [number, number, number, number]; extra: [number, number, number, number] } {
-  if (!paved) return { cls: [0, 0, 0, 0], wear: [1, 1, 1, 0], town: [0, 0, 0, 0], extra: [1, 0, 0, 0] };
+  wear: [number, number, number, number]; town: [number, number, number, number]; extra: [number, number, number, number];
+  square: [number, number, number, number] } {
+  if (!paved) return { cls: [0, 0, 0, 0], wear: [1, 1, 1, 0], town: [0, 0, 0, 0], extra: [1, 0, 0, 0], square: [1, 0, 0, 0] };
   const street = paved.street ? ROAD_SURFACE_CODE[paved.street] : 0;
   const square = paved.square === 'print' ? 0 : paved.square ? ROAD_SURFACE_CODE[paved.square] : street;
   return {
@@ -142,5 +149,6 @@ export function pavedSurfaceUniforms(paved: PavedSurfaceConfig | undefined,
     wear: [paved.patches ?? 1, paved.cracks ?? 1, paved.covers ?? 1, paved.puddles ?? 0],
     town: paved.kerbs ? [(town.x0 + town.x1) / 2, (town.z0 + town.z1) / 2, (town.x1 - town.x0) / 2, (town.z1 - town.z0) / 2] : [0, 0, 0, 0],
     extra: [paved.tone ?? 1, paved.kerbs && paved.townStreet ? ROAD_SURFACE_CODE[paved.townStreet] : 0, paved.markings ?? 0, paved.holeFills ?? 0],
+    square: [paved.squareTone ?? 1, 0, 0, 0],
   };
 }

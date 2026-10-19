@@ -64,6 +64,7 @@ import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
 import { applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, crownDappleTags } from './crownShadowDapple.ts';
 import { markShadowOnly, setShadowCasterCascades, setShadowCasterDynamicMask, setShadowCasterProfile, shadowCasterCascadesOf, shadowCasterDynamicMaskOf, shadowCasterProfileOf, type ShadowCasterProfile } from '../engine/renderLayers.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
+import { civicLawnTest, civicPavedRooms, civicTreeStations } from './civic/plans/index.ts';
 import { advanceGrassChunkWork, createGrassChunkWork,
   type GrassChunkWork, type GrassChunkBuffer, type GrassChunkWorkState } from './grassChunkWork.ts';
 import { createGrassCarpetWork, advanceGrassCarpetWork,
@@ -395,6 +396,8 @@ interface TreeRecord {
   wood?: boolean;
   /** Trees lane (2026-10-06): one of a map's hedge trees (vegetation.hedgeTrees, plantHedgeTrees). */
   hedgeRow?: boolean;
+  /** (the maps lane, 228) one of a civic area's trees (plantCivicTrees): never a battle snag. */
+  civic?: boolean;
   /** Ground lane (crater-render-spec §C): the placement before a crater re-seated the trunk (base + offsetAt). */
   craterBase?: THREE.Matrix4;
   /** Trees round 5: one of the field trees (placeLoneTrees), the field law's (addFieldTree). */
@@ -4379,12 +4382,18 @@ function* vegetationBuildSteps(
   // ground lane (2026-10-08, the gauntlet's wave 260 on Cinder Junction): a cinder yard's weed clumps (the height field's
   // hook, groundRedux.ts cinderYardWeedsAt) — absent on every other map, whose villages keep the old thinning
   const yardWeedsAt = heightField._yardWeedsAt ?? null;
+  const civicLawnAt = civicLawnTest((cfg as { id?: string } | null)?.id);
+  const civicRooms = civicPavedRooms((cfg as { id?: string } | null)?.id);
   function terrainDryness(
     x: number,
     z: number,
     roll: number,
     carpet: boolean,
   ): number {
+    // (the maps lane, 228) a civic green's lawn grows its mown sward on the paved apron's ground (civic/plans)
+    if (civicLawnAt !== null && civicLawnAt(x, z)) return 0;
+    // (and the square's paving round it, out to the houses, grows none)
+    for (const r of civicRooms) if (x > r.x0 - 1 && x < r.x1 + 1 && z > r.z0 - 1 && z < r.z1 + 1) return -1;
     if ((noVeg(x, z) || heightField._railBerth?.(x, z)) && !batterAdmits(x, z)) return -1; // + a clearance rail berth
     const groundType = heightField.getGroundType(x, z);
     // ground lane (2026-10-03): the turf's edge along a road dissolves over a metre and a half (a position hash, inline:
@@ -4458,6 +4467,7 @@ function* vegetationBuildSteps(
     const hueJ = crng(), lumJ = crng(), varJ = crng(), clJ = crng();
     let dry = terrainDryness(x, z, roll, carpet);
     if (dry < 0) return null;
+    if (civicLawnAt !== null && civicLawnAt(x, z)) sy *= 0.5; // (228: the green's lawn is mown)
     if (dry > 0) sy *= 1.5;
     if (veg.tuftHeight !== undefined) sy *= veg.tuftHeight;
     // ground lane: little sward grows in a stand's shade — the forest floor is litter (the terrain draws it). The
@@ -7122,6 +7132,44 @@ function* vegetationBuildSteps(
   }
   plantHedgeTrees();
 
+  /**
+   * (the maps lane, 228) a map's civic trees (civic/plans: a green's oak rows, the paving's pits): each station admitted
+   * at least 9 m from every authored road centreline, 6.5 m from every trunk standing, and 2.5 m clear of the town's
+   * planned house plots (props.townRowPlan; the props stand later); planted on a stream of its own after every other
+   * placement (no other tree moves) and never a battle snag. Census in group.userData.civicTrees.
+   */
+  function plantCivicTrees(): void {
+    const stations = civicTreeStations((cfg as { id?: string } | null)?.id);
+    if (!stations.length) return;
+    const civicRng = mulberry32((seed ^ 0xc1f1c) >>> 0);
+    const roads = heightField._layout?.roads ?? [];
+    const rows = ((cfg?.props as { townRowPlan?: ReadonlyArray<{ x: number; z: number; w: number; d: number; rot: number }> } | undefined)?.townRowPlan) ?? [];
+    const census = { stations: stations.length, planted: 0, refused: { road: 0, spacing: 0, structure: 0 } };
+    const roadDistance = (x: number, z: number): number => {
+      let best = Infinity;
+      for (const path of roads) for (let i = 0; i + 1 < path.length; i++) {
+        const [ax, az] = path[i], [bx, bz] = path[i + 1], dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1;
+        const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / l2));
+        best = Math.min(best, Math.hypot(x - ax - dx * t, z - az - dz * t));
+      }
+      return best;
+    };
+    for (const st of stations) {
+      if (roadDistance(st.x, st.z) < 9) { census.refused.road++; continue; }
+      if (trees.some((t) => Math.hypot(t.x - st.x, t.z - st.z) < 6.5)) { census.refused.spacing++; continue; }
+      const onPlot = rows.some((p) => {
+        const dx = st.x - p.x, dz = st.z - p.z, c = Math.cos(p.rot), s = Math.sin(p.rot);
+        return Math.abs(dx * c - dz * s) < p.w / 2 + 2.5 && Math.abs(dx * s + dz * c) < p.d / 2 + 2.5;
+      });
+      if (onPlot) { census.refused.structure++; continue; }
+      pushTree(st.x, st.z, st.species as Species, st.scale[0], st.scale[1], true, civicRng, 1);
+      trees[trees.length - 1].civic = true;
+      census.planted++;
+    }
+    group.userData.civicTrees = census;
+  }
+  plantCivicTrees();
+
   // Round 77 (2026-09-26): the stand shade. A tree inside a dense stand stands under its neighbours' crowns: the
   // sky over it is mostly leaves, so it reads darker than the trees at the edge — the crown-scale contrast a far
   // forest needs to read as trees and not as a band, and the same tone the near stand's interior carries. Counted
@@ -7261,6 +7309,7 @@ function* vegetationBuildSteps(
     for (let i = 0; i < trees.length; i++) {
       const t = trees[i];
       if (t.species === 'palm' || (t.species === 'willow' && veg.willowForm === 'tidalMangrove')) continue;
+      if (t.civic) continue; // (228: a civic area's trees stand alive)
       if (!isClearOfSpawns(t.x, t.z, spawnClearings, 45)) continue;
       const middle = 1 - smoothstepJs(180, 470, Math.hypot(t.x, t.z));
       if (treePositionNoise(t.x, t.z, 9) >= snagShare * (0.35 + 1.3 * middle)) continue;

@@ -303,7 +303,7 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
           }
           col *= 0.94 + 0.12 * nzq(uv, 0.35, vec2(0.23, 0.41)).x;
           if (fr) col *= 1.0 - 0.14 * (1.0 - smoothstep(0.0, 0.45, abs(abs(rq.y) - 1.6))) * smoothstep(0.50, 0.78, nz(uv, 0.21, vec2(0.13, 0.71)).g);
-          col *= uPaveExtra.x;
+          col *= uPaveExtra.x * (fr ? 1.0 : uPaveSquare.x);
           pav = vec4(col, mix(0.86, 0.68, wheelW * (1.0 - jointS)));
         } else if ((pCls > 4.5 && pCls < 5.5) || pCls > 6.5) {
           // BRICK — clinker (5: the Dutch dyke road's klinkers in herringbone across the road, sand-jointed, red-brown to

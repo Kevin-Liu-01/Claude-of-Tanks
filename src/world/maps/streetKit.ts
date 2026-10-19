@@ -123,7 +123,7 @@ export const SIGN_FORMS: Readonly<Record<string, SignSpec>> = Object.freeze({
 interface LampSpec { form: string; kind: LampForm['kind']; metal: Hex; broken?: boolean }
 export const LAMP_FORMS: Readonly<Record<string, LampSpec>> = Object.freeze({
   blackglass: { form: 'bund-column', kind: 'victorian', metal: 0x2a3a2e }, foundry: { form: 'gaslaterne', kind: 'gas', metal: 0x3a3a38 },
-  railyard: { form: 'yard-floods', kind: 'yard', metal: 0x7a7a76 }, urban: { form: 'peitschenmast', kind: 'whip', metal: 0x9aa0a0 },
+  railyard: { form: 'yard-floods', kind: 'yard', metal: 0x7a7a76 }, urban: { form: 'gaslaterne', kind: 'gas', metal: 0x2e302e },
   ruinspires: { form: 'cobra-head-shot-out', kind: 'cobra', metal: 0x8a8c8a, broken: true },
 });
 const LAMP_DEFAULT: LampSpec = { form: 'peitschenmast', kind: 'whip', metal: 0x9aa0a0 };

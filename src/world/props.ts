@@ -154,6 +154,13 @@ import { composeLoggingYard, type FieldTimberPiece, type LoggingYardConfig } fro
 import { craterEjectaPiece, placeFieldLogsAndStumpsOf } from './maps/groundDressing.ts';
 import { felledPoleDebris } from './maps/felledPoles.ts';
 import { buildHardstandDressing } from './hardstandDressing.ts';
+// the maps lane (228): the civic-area and pathway kit a map adopts through its plan (world/civic/; Steinburg the pilot)
+import { applyCivicOverlay, civicPlanFor } from './civic/plans/index.ts';
+import { civicStyle } from './civic/styles.ts';
+import { composeCivicArea, type CivicPiece } from './civic/civicAreaKit.ts';
+import { buildPathwayNetwork } from './civic/pathwayKit.ts';
+import { CIVIC_RECORDS, civicFurnitureTypes } from './civic/civicFurnitureKit.ts';
+import type { CivicRect } from './civic/types.ts';
 import { composeReservoirWaterworks, type ReservoirWaterworksConfig, type WaterworksRubblePacket } from './reservoirWaterworks.ts';
 import { composeMangroveFisheryWharf, type FisheryPacket, type FisheryVegetation } from './mangroveFisheryWharf.ts';
 import { composeFoundryServiceCourt, type FoundryDonor, type FoundryServiceCourtConfig } from './foundryServiceCourt.ts';
@@ -3818,7 +3825,14 @@ function* propsBuildSteps(
   P.rockSoilTone = (cfg as { props?: { rockSoilTone?: ToneFunction } } | null)?.props?.rockSoilTone
     ?? (cfg as { splat?: { dirtTone?: ToneFunction } } | null)?.splat?.dirtTone ?? null;
   const mapId = cfg ? cfg.id : 'verdant';
-  const rng = mulberry32(seed);
+  // (the maps lane, 228) a map's civic plan sets its props settings over the map's own (no map config edited)
+  const civicPlan = civicPlanFor(mapId);
+  if (civicPlan) applyCivicOverlay(civicPlan, P as Parameters<typeof applyCivicOverlay>[1]);
+  // (the maps lane, 228) the main stream's draws counted (the civic receipts hold a plan's build to the map's own: every
+  // seeded pass draws as on the map without it)
+  const mainStream = mulberry32(seed);
+  let mainDraws = 0;
+  const rng: Rng = () => { mainDraws++; return mainStream(); };
   const detailUvRng = () => 0.5;
   const L = heightField._layout;
   // Symmetric deployments (modes lane, 2026-10-08): both sides' deployment slots keep the clearings the pads keep
@@ -4420,7 +4434,9 @@ ${snowCap ? `
   // eased hinge fall and persists tipped. Kind-flavored particle bursts ride
   // the destructibles.ts seam into fx.propBreak (splinters/staves/hay puff).
   // -------------------------------------------------------------------------
-  const drng = mulberry32(seed + 9001); // own stream — never shifts placements
+  const destructionStream = mulberry32(seed + 9001); // own stream — never shifts placements
+  let destructionDraws = 0;
+  const drng: Rng = () => { destructionDraws++; return destructionStream(); };
   const pendingClutter: CrushableClutter[] = [];
   const destructibles: DestructibleRecord[] = []; // records: {kind,cls,x,y,z,yaw,sc,r,h,slot,state,ob}
   const autumnCropRows: AutumnCropRow[] | null = mapId === 'autumn' ? [] : null;
@@ -4486,6 +4502,17 @@ ${snowCap ? `
         broken: (rng: () => number) => { DESTRUCTIBLE_TYPES.monument.broken!(rng).dispose(); return buildMonument(mf, ctx, true); },
       };
     }
+    return out;
+  }
+  /** (the maps lane, 228) the civic kit's furniture and the square's memorial column (civic/civicFurnitureKit.ts; the
+   *  column wellKit's 'saeule' on the kit's stone), on a map whose civic plan places them. */
+  function civicTypes(): Record<string, PropsDestructibleMeta> {
+    const out = { ...civicFurnitureTypes() } as Record<string, PropsDestructibleMeta>;
+    const ctx = { stone: wellStoneOf(regionalArchitecture), mobile: mobileProps };
+    out.memorialcolumn = {
+      ...(CIVIC_RECORDS.memorialcolumn as unknown as PropsDestructibleMeta), mat: mats.regionalStone ? 'regionalStone' : 'stone',
+      build: () => buildMonument('saeule', ctx, false), broken: () => buildMonument('saeule', ctx, true),
+    };
     return out;
   }
   const LOCAL_TYPES: Record<string, PropsDestructibleMeta> = {
@@ -4563,6 +4590,7 @@ ${snowCap ? `
     // the looks lane (2026-10-13; LOOKS-BRIEF item 5): the village well and the square's monument as the map's place built
     // them (maps/wellKit.ts), on the destruction stream's contract; the legacy builders still run first (their draws)
     ...wellTypes(),
+    ...(civicPlan ? civicTypes() : {}),
     ...waysideTypes(regionalArchitecture?.id, mapId), // the looks lane (r2 sweep): each place's crosses and Bildstock (maps/waysideKit.ts)
     // (b16) and the map's own variants by name, last (the ksar gate post at Sirocco Wadi's and Redrock's gates)
     ...Object.fromEntries(Object.entries(P.structureVariants ?? {}).map(([key, name]) => {
@@ -4608,11 +4636,11 @@ ${snowCap ? `
    * after every ordinary prop: no pool's geometry stream and no other prop's identity moves); the record's own obstacle
    * and collider then take the placeholders' places in the lists.
    */
-  const deferredSmallProps: Array<{ kind: string; x: number; y: number; z: number; ob: CollisionRecord; col: CollisionRecord }> = [];
-  function deferSmallProp(kind: string, x: number, y: number, z: number, ob: CollisionRecord, col: CollisionRecord): void {
+  const deferredSmallProps: Array<{ kind: string; x: number; y: number; z: number; ob: CollisionRecord; col: CollisionRecord; yaw: number }> = [];
+  function deferSmallProp(kind: string, x: number, y: number, z: number, ob: CollisionRecord, col: CollisionRecord, yaw = 0): void {
     obstacles.push(ob);
     colliders.push(col);
-    deferredSmallProps.push({ kind, x, y, z, ob, col });
+    deferredSmallProps.push({ kind, x, y, z, ob, col, yaw });
   }
   // The landmarks lane (round 2, 2026-10-06): the ground of the set pieces set into a finished map (a placement's
   // `ground: 'veto'`, landmarks/compose.ts). The passes after the composer draw as on the map without them; what they
@@ -4621,6 +4649,13 @@ ${snowCap ? `
   const landmarkVetoes: Array<{ x: number; z: number; c: number; s: number; hw: number; hd: number }> = [];
   const landmarkVetoed: Record<string, number> = {};
   let landmarkFurniture = false;
+  // (the maps lane, 228) a civic area's room (civic/civicAreaKit.ts): the passes after the landmarks keep their draws and
+  // leave out what they would stand in it, as a set piece's veto (the kinds the plan names keep theirs: the street
+  // lamps); the area's own pieces are exempt
+  const civicVetoes: Array<{ rect: CivicRect; exempt: ReadonlySet<string> }> = [];
+  const civicVetoed: Record<string, number> = {};
+  const civicVetoAt = (x: number, z: number, kind = ''): boolean => !landmarkFurniture && civicVetoes.some((v) =>
+    !v.exempt.has(kind) && x >= v.rect.x0 && x <= v.rect.x1 && z >= v.rect.z0 && z <= v.rect.z1);
   // the scatter round a deployment slot (a building, a regional structure and a set piece's furniture keep their seats:
   // a slot they stand on moves off them with its rotated partner in the match placement)
   const deploymentVetoed: Record<string, number> = {};
@@ -4636,6 +4671,11 @@ ${snowCap ? `
     tiltX = 0,
     tiltZ = 0,
   ): DestructibleRecord {
+    if (civicVetoes.length && civicVetoAt(x, z, kind)) {
+      const meta = resolveDestructibleMeta(destructibleContext, kind);
+      civicVetoed[kind] = (civicVetoed[kind] ?? 0) + 1;
+      return { kind, cls: meta.cls, x, y, z, yaw, sc, r: meta.r * sc, h: meta.h * sc, slot: -1, state: 0, ob: null, groundSupport: null };
+    }
     if (landmarkVetoes.length && !landmarkFurniture) {
       // (what stands on the ground: its centre inside, or within half a metre of the edge — a long wall or fence module
       // whose end only touches a piece keeps its place, so a run is not opened beside the piece)
@@ -5530,6 +5570,13 @@ ${snowCap ? `
   const rubbleDrawnFootprints: CollisionRecord[] = [];
   function addRubblePile(x: number, z: number, pr: number, rrng: Rng): void {
     const y = heightField.getHeightAt(x, z);
+    if (civicVetoes.length && civicVetoAt(x, z, 'rubble')) {
+      // (the maps lane, 228) a pile drawn into a civic area's room: its draws spent, nothing made
+      const pile = rubblePileParts(x, y, z, pr, rrng, (px, pz) => heightField.getHeightAt(px, pz));
+      for (const g of [...pile.stone, ...pile.bed, ...pile.wood]) g.dispose();
+      civicVetoed.rubble = (civicVetoed.rubble ?? 0) + 1;
+      return;
+    }
     const stoneStart = buckets.stone.length, woodStart = buckets.wood.length;
     // (props census #7: the pile's pieces are the ruin grammar's, drawn from the same stream as before)
     const pile = rubblePileParts(x, y, z, pr, rrng, (px, pz) => heightField.getHeightAt(px, pz)); // (looks r2: shards on the street)
@@ -5928,6 +5975,7 @@ ${snowCap ? `
   function bedSandbagNest(kind: string, x: number, z: number, yaw: number, scale: number,
     toward: readonly [number, number] | null = null): void {
     if (kind !== 'sandbagbig' && kind !== 'sandbagsmall' && kind !== 'sandbagwall') return;
+    if (civicVetoes.length && civicVetoAt(x, z, kind)) return; // (228: its stack left out of a civic area's room)
     sandbagBeds.push(buildSandbagBedding(kind, heightField, x, z, yaw, scale,
       (Math.round(x * 100) * 73856093) ^ (Math.round(z * 100) * 19349663) ^ 0x5bed, bedSoil, mobileProps, toward));
   }
@@ -6080,6 +6128,28 @@ ${snowCap ? `
   yield* placeDestructibleBuildings();
   // the set pieces (placeLandmarks above), on the ground the settlement, the strongpoints and the light buildings left
   yield* placeLandmarks();
+  // (the maps lane, 228) the civic areas (civic/civicAreaKit.ts): composed once the settlement and the set pieces stand
+  // (the frontage walks read their plots) and before every scatter pass, which keeps out of each area's room by the
+  // veto; their furniture, vehicles, lamps and railings join the destructibles after every seeded pass
+  const civicPieces: CivicPiece[] = [];
+  function composeCivicAreas(): void {
+    if (!civicPlan?.areas.length) return;
+    const style = civicStyle(civicPlan.style);
+    const areas: Array<{ id: string; census: Record<string, number> }> = [];
+    const debugPolys: Array<{ pts: number[]; col: [number, number, number]; fill?: [number, number, number] }> = [];
+    for (const area of civicPlan.areas) {
+      const built = composeCivicArea(area, style, {
+        ground: (x, z) => heightField.getHeightAt(x, z), tier: mobileProps ? 'mobile' : 'desktop', plots: buildingFeatures,
+      });
+      if (built.geometry) buckets.baked.push(built.geometry);
+      civicPieces.push(...built.pieces);
+      civicVetoes.push({ rect: built.veto, exempt: new Set(area.vetoExempt) });
+      areas.push({ id: area.id, census: built.census });
+      debugPolys.push(...built.debug);
+    }
+    group.userData.civic = { areas, debugPolys, vetoed: civicVetoed };
+  }
+  composeCivicAreas();
 
   // --- yard set-dressing (r2 terrain_environment): woodpiles, barrels and
   // short garden-fence runs around every free-standing building. The village
@@ -8020,6 +8090,8 @@ ${snowCap ? `
         (hrng() - 0.5) * 0.3,
         (hrng() - 0.5) * 0.3,
       ];
+      // (the maps lane, 228) one drawn into a civic area's room is taken, not made
+      if (civicVetoes.length && civicVetoAt(hx, hz, 'hedgehog')) { civicVetoed.hedgehog = (civicVetoed.hedgehog ?? 0) + 1; return true; }
       const beams = hedgehogBeamSpecs(hx, y, hz, yaw, scale, yawOffsets);
       const clutterObs: CollisionRecord[] = [], clutterCols: CollisionRecord[] = [];
       const clutter = new CrushableClutter('hedgehog', hx, y, hz, 1.2 * scale, 1.7 * scale, clutterObs, clutterCols);
@@ -9169,6 +9241,19 @@ ${snowCap ? `
   // every street inside the town rect, broken at crossings ---
   function placeStreetCurbs(): void {
     if (!P.curbs) return;
+    // (the maps lane, 228) a civic plan's pathway architecture (civic/pathwayKit.ts) in place of the legacy strips: kerbs
+    // and pavements only where houses front a main street, the lanes in setts wall to wall; the legacy draws spent first
+    if (civicPlan?.pathways) {
+      const built = buildPathwayNetwork(civicPlan.pathways, civicStyle(civicPlan.style), {
+        roads, ground: (x, z) => heightField.getHeightAt(x, z), plots: buildingFeatures, rng, town, distToOtherRoads,
+      });
+      if (built.geometry) buckets.baked.push(built.geometry);
+      for (const f of built.footprints) {
+        streetKerbFootprints.push(setConvexShape({ min: [0, f.foot, 0], max: [0, f.foot + 0.45, 0], kind: 'kerb' }, convexHull2(f.pts)));
+      }
+      group.userData.pathways = { census: built.census, debugPolys: built.debug };
+      return;
+    }
     // r6: urban kerbs/pavements read as CONCRETE, not planks — the urban
     // stone bucket is Bricks097 and its elongated courses on thin slabs read
     // as wooden boardwalk; route them to the plaster bucket on urban only
@@ -9274,6 +9359,19 @@ ${snowCap ? `
   // --- central-square monument (town maps): stepped stone obelisk ---
   function placeCentralMonument(): void {
     if (!P.monument) return;
+    // (the maps lane, 228) a civic area's monument at its authored seat, its front to the square (civic plan): the walk's
+    // draws taken as before
+    const civicMonument = civicPlan?.overlay.monumentKind ? civicPlan.areas.find((a) => a.monument)?.monument ?? null : null;
+    if (civicMonument) {
+      rng(); rng(); rng(); rng();
+      const meta = resolveDestructibleMeta(destructibleContext, civicMonument.kind);
+      const mx = civicMonument.x, mz = civicMonument.z, my = heightField.getHeightAt(mx, mz), mr = meta.collisionR ?? meta.r;
+      deferSmallProp(civicMonument.kind, mx, my, mz,
+        setCircleShape({ min: [mx - mr, my, mz - mr], max: [mx + mr, my + meta.h, mz + mr] }, mx, mz, mr),
+        setCircleShape({ min: [mx - mr, my, mz - mr], max: [mx + mr, my + meta.h, mz + mr] }, mx, mz, mr),
+        Math.atan2(civicMonument.faceX - mx, civicMonument.faceZ - mz));
+      return;
+    }
     let ox = junction.x - 8, oz = junction.z - 9;
     for (let i = 0; i < 24 && heightField._roadDist(ox, oz) < 6; i++) { ox -= 1.5; oz -= 1; }
     const oy = heightField.getHeightAt(ox, oz);
@@ -10004,8 +10102,50 @@ ${snowCap ? `
   });
   yield { fine: true, stage: 'map-extras' };
   // the landmarks lane: the set pieces' furniture, after every seeded pass (placeLandmarks above)
+  // (the maps lane, 228: the streams' draws once every seeded pass has placed, before the authored furniture and the pools'
+  // builds, which come after every pool the seeded passes opened)
+  const placementDraws = { main: mainDraws, destruction: destructionDraws };
   landmarkFurniture = true;
   for (const [kind, x, y, z, yaw, scale] of landmarkDestructibles) addDestructible(kind, x, y, z, yaw, scale);
+  // (the maps lane, 228) the civic areas' furniture, parked vehicles, lamps and railings, as authored (no veto moves them)
+  for (const piece of civicPieces) addDestructible(piece.kind, piece.x, heightField.getHeightAt(piece.x, piece.z), piece.z, piece.yaw, piece.scale);
+  // (the maps lane, 228; review R6) the lamp-seat snap of a civic plan's pathways: a street lamp the passes stood in or
+  // against a structure or a wall (within 0.3 m of its footprint) moves along its street's normal — to the lamp line
+  // (kerb + 0.5 m) on a main street, off the facade by 0.45 m on a lane. No draw; its count and order kept.
+  function snapLampSeats(): void {
+    const pw = civicPlan?.pathways;
+    if (!pw) return;
+    const solids = obstacles.filter((o) => o.kind === 'structure' || o.kind === 'wallstone' || o.structureIdx != null);
+    const against = (x: number, z: number, m: number): boolean => solids.some((o) => x > o.min[0] - m && x < o.max[0] + m
+      && z > o.min[2] - m && z < o.max[2] + m && collisionFootprintContainsPoint(o, x, z, m));
+    const moved: Array<{ from: [number, number]; to: [number, number]; road: number } | { at: [number, number]; kept: true }> = [];
+    for (const rec of destructibles) {
+      if (rec.kind !== 'lamp' || rec.slot < 0 || !rec.ob || !against(rec.x, rec.z, 0.3)) continue;
+      if (civicPieces.some((p) => p.kind === 'lamp' && Math.hypot(p.x - rec.x, p.z - rec.z) < 0.05)) continue;
+      let best = { d: Infinity, x: 0, z: 0, ri: -1 };
+      for (let ri = 0; ri < roads.length; ri++) {
+        const cls = pw.classes[ri];
+        if (cls !== 'main' && cls !== 'gasse') continue;
+        const pts = roads[ri];
+        for (let i = 0; i + 1 < pts.length; i++) {
+          const [ax, az] = pts[i], [bx, bz] = pts[i + 1], dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1;
+          const t = Math.max(0, Math.min(1, ((rec.x - ax) * dx + (rec.z - az) * dz) / l2));
+          const px = ax + dx * t, pz = az + dz * t, d = Math.hypot(rec.x - px, rec.z - pz);
+          if (d < best.d) best = { d, x: px, z: pz, ri };
+        }
+      }
+      if (best.ri < 0 || best.d < 0.1) { moved.push({ at: [rec.x, rec.z], kept: true }); continue; }
+      const nx = (rec.x - best.x) / best.d, nz = (rec.z - best.z) / best.d;
+      let tx = rec.x, tz = rec.z;
+      if (pw.classes[best.ri] === 'main') { tx = best.x + nx * (pw.kerbM + 0.5); tz = best.z + nz * (pw.kerbM + 0.5); }
+      else for (let o = best.d; o > 1.0 && against(tx, tz, 0.45); o -= 0.05) { tx = best.x + nx * o; tz = best.z + nz * o; }
+      if (against(tx, tz, 0.3)) { moved.push({ at: [rec.x, rec.z], kept: true }); continue; }
+      moved.push({ from: [+rec.x.toFixed(2), +rec.z.toFixed(2)], to: [+tx.toFixed(2), +tz.toFixed(2)], road: best.ri });
+      relocateParkedVehicleRecord(destructibleContext, rec, tx, tz);
+    }
+    group.userData.lampSnap = moved;
+  }
+  snapLampSeats();
   // (item 7) the authored set pieces, as authored (no veto moves them), seated on the ground under their corners.
   // (Lane C, #8 r2; the coordinator: the r2 rule, draws +0) each intact piece draws in the baked bucket at its pool
   // instance's own pose, as a span that hides when the instance is hidden (setPieceSpans, finalizeDestructiblePool): its
@@ -10707,7 +10847,8 @@ ${snowCap ? `
   }
   // (props lane A #19) the paved pads' render-only dressing — their concrete edge, gullies and patches, a runway's markings
   // and edge lights — on the baked material, no step in the drive surface (hardstandDressing.ts)
-  { const pads = buildHardstandDressing(L.terrain.hardstands, (cfg as { splat?: Parameters<typeof buildHardstandDressing>[1] } | null)?.splat, heightField, L.roads, L.village, seed); if (pads) buckets.baked.push(pads); }
+  { const pads = buildHardstandDressing(L.terrain.hardstands, (cfg as { splat?: Parameters<typeof buildHardstandDressing>[1] } | null)?.splat, heightField, L.roads, L.village, seed,
+    new Set(civicPlan?.areas.map((area) => area.pad) ?? [])); if (pads) buckets.baked.push(pads); }
   // (props lane A #6) the village terraces' dry-stone risers built along their contours: coping and the odd fallen stone,
   // fine dressing on the kit's stone, the painted riser their far form (maps/terraceRisers.ts)
   const riserZones = (cfg as { terrain?: { terraces?: TerraceRiserZone[] } } | null)?.terrain?.terraces;
@@ -10928,7 +11069,7 @@ ${snowCap ? `
   // the small props laid as destructibles (deferSmallProp): each record's obstacle and collider into its placeholders' places
   for (const small of deferredSmallProps) {
     const before = obstacles.length, beforeCol = colliders.length;
-    const record = addDestructibleRecord(destructibleContext, small.kind, small.x, small.y, small.z, 0);
+    const record = addDestructibleRecord(destructibleContext, small.kind, small.x, small.y, small.z, small.yaw);
     const swap = (list: CollisionRecord[], from: number, placeholder: CollisionRecord): void => {
       if (list.length !== from + 1) return;
       const at = list.indexOf(placeholder);
@@ -12093,6 +12234,7 @@ ${snowCap ? `
   mergeStructureDecks(obstacles, colliders);
   nearMeshVertexHeights = null; // (a query after the build asks the field)
   joinStructureShells(); // (Plan W) no pooled structure outlives the build, whatever path it took
+  group.userData.streamDraws = { placement: placementDraws, main: mainDraws };
   return { group, obstacles, colliders, crushables, crushProp, crushDestructible, structureDamage, structureSpans, structureMaterials, mapCraterSites,
     destructibles, looseRecords, updateProps, advanceDestructibles, resetDestructibles, tankWreckSpots, utilityNetwork,
     pressHull: (x: number, z: number, yaw: number, halfLength: number, halfWidth: number) => crushPress.pressHull(x, z, yaw, halfLength, halfWidth),

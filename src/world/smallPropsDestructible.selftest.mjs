@@ -32,11 +32,12 @@ for (const kind of ['well', 'monument']) {
   assert.ok(typeof t.broken === 'function', `${kind} has its broken build`);
 }
 
-// ---- Steinburg: the well and the monument are records of the props' destructibles, crushable, with a shell record; a
-// ram over the threshold breaks them and frees the way
-{
-  const built = await build('urban');
-  for (const kind of ['well', 'monument']) {
+// ---- Steinburg's well and the foundry town's monument are records of the props' destructibles, crushable, with a shell
+// record; a ram over the threshold breaks them and frees the way. (The maps lane, 228: Steinburg's square takes its civic
+// plan's memorial column in the monument's place — fortified cover, below.)
+for (const [mapId, kinds] of [['urban', ['well']], ['foundry', ['monument']]]) {
+  const built = await build(mapId);
+  for (const kind of kinds) {
     const index = built.destructibles.findIndex((d) => d.kind === kind);
     assert.ok(index >= 0, `Steinburg places its ${kind} as a destructible`);
     const record = built.destructibles[index];
@@ -48,6 +49,21 @@ for (const kind of ['well', 'monument']) {
     assert.ok(built.crushDestructible(index, 1, 0, 8, 'ram'), `${kind}: a hull at 8 m/s breaks it`);
     assert.ok(record.ob.crushed, `${kind}: and drives on through it`);
   }
+}
+
+// ---- Steinburg's memorial column (world/civic): the monument's place and draws, fortified cover (collision.ts): crushable,
+// no hull overruns it (crushMin 999), its shell record stops a round; no walked monument beside it
+{
+  const { isFortifiedCoverKind } = await import('./collision.ts');
+  const built = await build('urban');
+  const columns = built.destructibles.filter((d) => d.kind === 'memorialcolumn' && d.slot >= 0);
+  assert.equal(columns.length, 1, 'Steinburg places one memorial column');
+  const [c] = columns;
+  assert.ok(Math.hypot(c.x + 62.5, c.z + 19.8) < 0.05, `the column at its seat (${c.x}, ${c.z})`);
+  assert.ok(c.ob && c.ob.crushable && c.ob.crushMin === 999 && isFortifiedCoverKind(c.ob.kind), 'the column is fortified cover');
+  assert.ok(c.col && built.colliders.includes(c.col), 'the column stops a round');
+  assert.ok(Math.abs(c.h - 12.3) < 0.2, `the column stands 12.3 m (${c.h})`);
+  assert.equal(built.destructibles.filter((d) => d.kind === 'monument' && d.slot >= 0).length, 0, 'no walked monument beside it');
 }
 
 // ---- the rail yard: its coal stockpiles flatten under a hull
@@ -62,4 +78,4 @@ for (const kind of ['well', 'monument']) {
   assert.ok(coal[0].crushed, 'and drives over it');
 }
 
-console.log('smallPropsDestructible selftest: the village well and the square\'s monument break under a hull and a round, the rail yard\'s coal flattens — ok');
+console.log('smallPropsDestructible selftest: the village well and the square\'s monument break under a hull and a round, Steinburg\'s memorial column stands as fortified cover, the rail yard\'s coal flattens — ok');
