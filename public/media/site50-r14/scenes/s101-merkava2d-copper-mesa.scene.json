@@ -1,4 +1,5 @@
 {
+ "tankIdSchema": 3,
  "map": "copper_mesa",
  "timeOfDay": "night",
  "productionFormat": "landscape",
@@ -50,7 +51,7 @@
    "state": "intact"
   },
   {
-   "id": "t62mv1_x",
+   "id": "t62mv1",
    "name": "foe1",
    "pos": [
     202.94,
