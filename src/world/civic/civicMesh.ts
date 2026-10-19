@@ -20,6 +20,14 @@ export function civicHash(a: number, b: number, salt: number): number {
   h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d) >>> 0; h ^= h >>> 12; h = Math.imul(h, 0x297a2d39) >>> 0; h ^= h >>> 15;
   return (h >>> 0) / 4294967296;
 }
+/** Smooth value noise in [0, 1): the position hash on a lattice of `cell` m, bilinearly blended (a lawn's drifts). */
+export function civicNoise(x: number, z: number, cell: number, salt: number): number {
+  const gx = x / cell, gz = z / cell, ix = Math.floor(gx), iz = Math.floor(gz), fx = gx - ix, fz = gz - iz;
+  const ux = fx * fx * (3 - 2 * fx), uz = fz * fz * (3 - 2 * fz);
+  const h = (i: number, j: number) => civicHash(i * 1.031, j * 0.977, salt);
+  return (h(ix, iz) * (1 - ux) + h(ix + 1, iz) * ux) * (1 - uz) + (h(ix, iz + 1) * (1 - ux) + h(ix + 1, iz + 1) * ux) * uz;
+}
+
 /** A colour toned by a position hash (±k). */
 export const toned = (c: Rgb, x: number, z: number, k: number, salt = 0): Rgb => scaleRgb(c, 1 + (civicHash(x, z, salt) - 0.5) * 2 * k);
 
@@ -67,6 +75,23 @@ export class CivicMesh {
       const p00 = at(i, j), p10 = at(i + 1, j), p11 = at(i + 1, j + 1), p01 = at(i, j + 1);
       const k = typeof col === 'function' ? col((p00[0] + p11[0]) / 2, (p00[2] + p11[2]) / 2) : col;
       this.quad(p00, p10, p11, p01, k);
+    }
+  }
+
+  /** A flush skin whose colour is read at every vertex (a smooth field: a lawn's drifts), cells no longer than `cell`. */
+  skinShaded(x0: number, z0: number, x1: number, z1: number, lift: number, col: (x: number, z: number) => Rgb, cell = 1.0): void {
+    const nu = Math.max(1, Math.ceil((x1 - x0) / cell)), nv = Math.max(1, Math.ceil((z1 - z0) / cell));
+    const at = (i: number, j: number): [number[], Rgb] => {
+      const x = x0 + ((x1 - x0) * i) / nu, z = z0 + ((z1 - z0) * j) / nv;
+      return [[x, this.ground(x, z) + lift, z], col(x, z)];
+    };
+    const put = (q: readonly [number[], Rgb]) => {
+      this.p.push(q[0][0], q[0][1], q[0][2]); this.n.push(0, 1, 0); this.c.push(q[1][0], q[1][1], q[1][2]); this.t.push(q[0][0] * 0.3, q[0][2] * 0.3);
+    };
+    for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) {
+      const a = at(i, j), b = at(i + 1, j), c = at(i + 1, j + 1), d = at(i, j + 1);
+      // wound to face up: a, d, c and a, c, b (x right, z down the screen of the plan)
+      put(a); put(d); put(c); put(a); put(c); put(b);
     }
   }
 

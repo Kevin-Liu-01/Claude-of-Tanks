@@ -17,7 +17,7 @@
 //
 // The plan carries every seat; this file names no map.
 import type * as THREE from 'three';
-import { CivicMesh, hexRgb, mixRgb, scaleRgb, toned, civicHash, type Rgb } from './civicMesh.ts';
+import { CivicMesh, hexRgb, mixRgb, scaleRgb, toned, civicHash, civicNoise, type Rgb } from './civicMesh.ts';
 import type { RegionalCivicStyle } from './styles.ts';
 import type { CivicAreaPlan, CivicBed, CivicRect } from './types.ts';
 
@@ -163,12 +163,13 @@ function composeBed(m: CivicMesh, bed: CivicBed, style: RegionalCivicStyle, piec
   // the mown lawn inside the dwarf wall: a sward of a few greens in drifts, a worn margin along the wall's foot
   const greens = style.lawn.greens.map(hexRgb), bareCol = hexRgb(style.lawn.bare), inset = E.kerb.width + E.wall.width;
   const lawnAt = (x: number, z: number): Rgb => {
-    const n = civicHash(Math.floor(x / 2.3), Math.floor(z / 2.3), 61) * 0.6 + civicHash(Math.floor(x / 0.9), Math.floor(z / 0.9), 62) * 0.4;
+    // two octaves of drifts between the style's greens, a worn margin along the wall's foot
+    const n = civicNoise(x, z, 4.5, 61) * 0.65 + civicNoise(x, z, 1.4, 62) * 0.35, f = n * (greens.length - 1);
+    const k = Math.min(greens.length - 2, Math.floor(f)), g = mixRgb(greens[k], greens[k + 1], f - k);
     const edge = Math.min(x - r.x0, r.x1 - x, z - r.z0, r.z1 - z) - inset;
-    const g = greens[Math.min(greens.length - 1, Math.floor(n * greens.length))];
-    return edge < 0.6 ? mixRgb(g, bareCol, 0.35 * (1 - edge / 0.6)) : g;
+    return edge < 0.6 ? mixRgb(g, bareCol, 0.35 * (1 - Math.max(0, edge) / 0.6)) : g;
   };
-  m.skinRect(r.x0 + inset, r.z0 + inset, r.x1 - inset, r.z1 - inset, 0.006, lawnAt, 0.9);
+  m.skinShaded(r.x0 + inset, r.z0 + inset, r.x1 - inset, r.z1 - inset, 0.006, lawnAt, 0.9);
   census.lawnM2 = (census.lawnM2 ?? 0) + (r.x1 - r.x0 - 2 * inset) * (r.z1 - r.z0 - 2 * inset);
   const kerbCol = hexRgb(E.kerb.hex), wallCol = hexRgb(E.wall.hex), pierCol = hexRgb(E.pier.hex);
   const kw = E.kerb.width, ww = E.wall.width;
