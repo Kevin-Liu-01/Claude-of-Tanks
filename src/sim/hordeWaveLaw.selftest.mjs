@@ -118,6 +118,21 @@ for (const arrival of a.arrivals) {
   assert.ok(live(pool).length > 0, 'a stalled field takes ring points out of reach rather than stall the wave');
   assert.ok(spots.every((p) => Math.hypot(p.x, p.z + 150) >= 150), 'still never within 150 m');
 }
+// a stranded hostile (cut off by the ground, it never closes on the humans) is benched and queued again after strandedS,
+// so the wave never stalls on it; one inside strandedContactM of a human is in the fight and stays
+{
+  const d = run(35);
+  const recycled = () => d.events.filter((e) => e.type === 'mode_horde_recycled').length;
+  const opening = live(d.pool);
+  assert.equal(opening.length, 6);
+  const fighter = opening[0];
+  Object.assign(fighter.state.pos, { x: 0, z: -150 + horde.horde.strandedContactM - 10 });
+  for (let i = 0; i < 2 * (horde.horde.strandedS + 2); i++) { d.clock += 0.5; d.mode.step(1 / 60, d.clock); }
+  assert.ok(recycled() >= 5, `the five stranded hostiles are benched and queued again (${recycled()})`);
+  assert.ok(d.events.filter((e) => e.type === 'mode_horde_recycled').every((e) => e.payload.id !== fighter.id), 'the one in the fight stays');
+  assert.equal(d.mode.state.horde.remaining, 6, 'the wave still owes all six (queued again, never lost)');
+  assert.ok(d.arrivals.length > 6, 'the benched re-arrive on the ring');
+}
 // the same seed replays the same arrivals
 {
   const c = run(31);

@@ -101,7 +101,10 @@ assert.equal(HORDE_WAVE_REPAIR, 0.3);
   assert.equal(rulesetBotDifficulty(horde, 'bravo', 'normal'), 'easy', 'a Horde zombie plays one tier below the battle');
   assert.equal(rulesetBotDifficulty(horde, 'enemy', 'hard'), 'normal'); assert.equal(rulesetBotDifficulty(horde, 'enemy', 'easy'), 'easy', 'never under the easiest');
   assert.equal(rulesetBotDifficulty(horde, 'alpha', 'normal'), 'normal'); assert.equal(rulesetBotDifficulty(horde, 'player', 'hard'), 'hard', 'the human side keeps its tier');
-  for (const mode of GAME_MODE_IDS) if (mode !== 'endless_horde') assert.equal(rulesetBotDifficulty(matchRulesetFor(mode), 'bravo', 'hard'), 'hard', `${mode}: bots keep the battle's tier`);
+  // gameplay-modes-228: Frontline's defenders play a tier down too (their pressure is the line and the doctrine)
+  assert.equal(rulesetBotDifficulty(matchRulesetFor('frontline_assault'), 'bravo', 'hard'), 'normal', 'a Frontline defender plays one tier below the battle');
+  assert.equal(rulesetBotDifficulty(matchRulesetFor('frontline_assault'), 'alpha', 'hard'), 'hard', 'the attack keeps its tier');
+  for (const mode of GAME_MODE_IDS) if (mode !== 'endless_horde' && mode !== 'frontline_assault') assert.equal(rulesetBotDifficulty(matchRulesetFor(mode), 'bravo', 'hard'), 'hard', `${mode}: bots keep the battle's tier`);
 }
 
 // team arrangement (owner 2026-09-15): the co-op modes take the player's side arrangement, clamped
@@ -188,6 +191,7 @@ assert.deepEqual({ ...assault.assault, lineBandM: [...assault.assault.lineBandM]
   initialActive: 4, extraDefenders: 0, hpPerLine: 0.16, finalLineHp: 1.15, difficultyHp: 0, holdS: 20,
   defendersStartOnLine: true, lineBandM: [30, 70], counterAttack: { squad: 2, afterCaptureS: 8, forS: 40 },
   reinforceTrickleS: 30, reinforceExtra: 2, reinforceRearM: 140, regroupMaxS: 25, regroupRadiusM: 80, regroupHumanM: 250, allyReviveS: null,
+  hostileDifficultyStep: 1,
 }, 'gameplay-modes-228: every sector fought for — defenders on the line, a counter-attack, a trickle, a 25 s regroup');
 assert.deepEqual({ ...assault.assaultBots }, { pushAfterS: 15, pushMinGroup: 2, pushGroupM: 80, stageM: 20, flankShare: 0.4, flankOffsetM: 60, flankConvergeM: 80 });
 // Frontline's last line (modes lane 2026-10-08, owner decision: attackers win 40-55 % of bot tests): the third sector's

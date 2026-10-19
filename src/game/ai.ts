@@ -6142,22 +6142,27 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
    * out to noRamM plus the stopping distance, brakes the hull and turns it off the line; the orbit then takes it round.
    */
   let ramHoldOffs = 0;
+  const RAM_LOOKAHEAD_S = 0.6;
   function holdOffEnemyHulls(input: AiInput): void {
     if (!doctrineOf().rush || !entity.state.grounded) return;
     const st = entity.state, speed = st.speed;
     if (speed <= 1 && input.throttle <= 0) return;
     const fx = Math.sin(st.yaw), fz = Math.cos(st.yaw);
     const reach = ownHalfLengthM() + RUSH_DRIVE.noRamM + Math.max(0, speed) ** 2 / (2 * SOLID_STOP_MPS2);
-    const lane = (spec.dims.widthM || 3) + 1;
+    const lane = (spec.dims.widthM || 3) + 2;
     const list = deps.getEnemies();
     for (let i = 0; i < list.length; i++) {
       const other = list[i];
       if (!other || other.modeActive === false || other.combat?.destroyed || !other.state) continue;
-      const rx = other.state.pos.x - st.pos.x, rz = other.state.pos.z - st.pos.z;
-      const along = rx * fx + rz * fz;
-      if (along <= 0 || along > reach) continue;
-      const cross = fz * rx - fx * rz;
-      if (Math.abs(cross) > lane) continue;
+      // where the other hull is now, and where its own motion puts it RAM_LOOKAHEAD_S on (a hull crossing the lane)
+      const os = other.state.speed || 0, oyaw = other.state.yaw || 0;
+      let rx = other.state.pos.x - st.pos.x, rz = other.state.pos.z - st.pos.z;
+      let along = rx * fx + rz * fz, cross = fz * rx - fx * rz;
+      if (along <= 0 || along > reach || Math.abs(cross) > lane) {
+        rx += Math.sin(oyaw) * os * RAM_LOOKAHEAD_S; rz += Math.cos(oyaw) * os * RAM_LOOKAHEAD_S;
+        along = rx * fx + rz * fz; cross = fz * rx - fx * rz;
+      }
+      if (along <= 0 || along > reach || Math.abs(cross) > lane) continue;
       input.throttle = Math.min(input.throttle, 0);
       input.brake = speed > 1;
       input.steer = Math.sign(-cross) || orbitSide;

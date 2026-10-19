@@ -1125,7 +1125,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       if (!Number.isFinite(plan.stagedAtS)) plan.stagedAtS = placementTimeS;
       let group = 0;
       for (const friend of teams.alpha) {
-        if (activeFriend(friend, 'alpha') && squaredDistance(friend, bot.state.pos.x, bot.state.pos.z) <= assaultBots.pushGroupM ** 2) group++;
+        if (friend !== bot && activeFriend(friend, 'alpha') && squaredDistance(friend, bot.state.pos.x, bot.state.pos.z) <= assaultBots.pushGroupM ** 2) group++;
       }
       if (group >= assaultBots.pushMinGroup || placementTimeS - plan.stagedAtS >= assaultBots.pushAfterS) {
         plan.pushing = true; plan.x = zone.x; plan.z = zone.z; return;
@@ -1551,10 +1551,37 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     }
   };
 
+  /** The stranded hostile (strandedS): benched and queued again, so it re-arrives on the ring (checked once a second). */
+  const strandTrack = new Map<string, { bestM: number; sinceS: number }>();
+  let strandCheckAtS = -Infinity;
+  const recycleStranded = (timeS: number): void => {
+    if (hordeRules.strandedS <= 0 || timeS < strandCheckAtS + 1) return;
+    strandCheckAtS = timeS;
+    for (const hostile of hordeEnemies) {
+      if (hostile.modeActive === false || hostile.combat.destroyed) { strandTrack.delete(hostile.id); continue; }
+      let nearSq = Infinity;
+      for (const human of teams.alpha) {
+        if (human.modeActive !== false && !human.combat.destroyed) nearSq = Math.min(nearSq, squaredDistance(hostile, human.state.pos.x, human.state.pos.z));
+      }
+      if (!Number.isFinite(nearSq)) return;
+      const near = Math.sqrt(nearSq), track = strandTrack.get(hostile.id);
+      if (!track || near <= hordeRules.strandedContactM || near <= track.bestM - hordeRules.strandedGainM) {
+        strandTrack.set(hostile.id, { bestM: near, sinceS: timeS });
+        continue;
+      }
+      if (timeS - track.sinceS < hordeRules.strandedS) continue;
+      strandTrack.delete(hostile.id);
+      deactivate(hostile);
+      hordeQueued++;
+      emit('mode_horde_recycled', { id: hostile.id, wave });
+    }
+  };
+
   const stepHorde = (timeS: number): MatchModeResult | null => {
     const humansAlive = teams.alpha.some((entity) => entity.modeActive !== false &&
       !entity.combat.destroyed && !entity.bot);
     if (!humansAlive) return finish('bravo', 'horde_overrun');
+    recycleStranded(timeS);
     trickleHorde(timeS, livingHordeEnemyCount());
     publishHorde();
     updateHordeIntermission(livingHordeEnemyCount(), timeS);

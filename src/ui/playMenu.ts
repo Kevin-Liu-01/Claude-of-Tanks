@@ -1732,7 +1732,7 @@ export function createPlayMenu({
     const fillNote = next.gameMode === 'endless_horde'
       ? t('playMenu.note.hordeFill')
       : next.gameMode === 'frontline_assault'
-        ? t('playMenu.note.frontlineFill', { size: next.teamSize || 1 })
+        ? t('playMenu.note.frontlineFill')
         : t('playMenu.note.botFill', { size: next.teamSize || 1 });
     note.textContent = `${t(mode === 'lan' ? 'playMenu.note.lan' : 'playMenu.note.private')} ${fillNote}`;
   }

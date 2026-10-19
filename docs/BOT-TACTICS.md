@@ -49,12 +49,21 @@ first.
 
 | Mode | Coordination |
 | --- | --- |
-| Capture the Flag | Runner brings the flag home. Up to two nearest responders recover the home flag. Two escorts cover opposite sides of a carrier. Larger teams retain home defense; extra raiders approach separate lanes. |
-| Turbo Ball | One striker retains the role for four seconds unless a teammate becomes substantially closer. It circles behind the ball, aligns centrally and drives through contact toward the opposing goal. Other bots screen separate lanes and cover their own goal. |
+| Capture the Flag | Roles are dealt once a second in id order (`flagBots`, gameplay-modes-228): the carrier runs home; while a home flag is away at least two (half the team) recover it, since a capture needs your own flag home; three escorts drive 24 m ahead of their carrier on its home route at ±22 m; from six a side a 15 % squad defends; the rest raid on separate lanes. Pursuers lead a carrier by 2.5 s. |
+| Turbo Ball | Roles (`ballBots`): two strikers take the ball's intercept under its drag law (τ 2.08 s, two iterations, at most 3 s ahead), holding the role for 3 s unless a teammate is 25 m closer; a keeper stands 30 m off its goal; two screens cover lanes between ball and goal; the rest are wings. At most three a team come within 30 m of the ball. A bot with a clear line through the ball to the goal shoots it, and a striker jumps at a ball 4-25 m ahead on its line. |
 | Zone Control / Gravity | Once-per-second team allocation balances distance, existing assignments, ownership and contested zones. Jev can redirect a bounded reinforcement group. |
-| Frontline | Attackers and defenders work on the current sector; defenders do not navigate to hidden enemy coordinates. When the attack takes the second-to-last sector, its bots hold that sector until every living bot has come up (at most 60 s, or until a human of the side stands within 250 m of the last sector), then attack the last one together: the bots revived at the spawn no longer arrive 40-80 s behind the attack and die alone (24 seeds each: Redrock Divide 9 to 12 and Desert 4 to 8 alpha wins). |
+| Frontline | Defenders stand on each sector's line from the start (30-70 m behind its centre) and sortie only at an attacker they spot within 80 m of the zone's edge, stopping 35 m short; two fresh defenders counter-attack a sector just taken; one more arrives from the rear every 30 s while the sector is contested. Attackers advance in groups: odd ranks on flank lanes 60 m off the axis that converge in the last 80 m, and a push into the zone waits for two friends within 80 m (or 15 s at the edge). When the attack takes the second-to-last sector, its bots hold that sector until every living bot has come up (at most 25 s since gameplay-modes-228, or until a human of the side stands within 250 m of the last sector), then attack the last one together: the bots revived at the spawn no longer arrive 40-80 s behind the attack and die alone (24 seeds each: Redrock Divide 9 to 12 and Desert 4 to 8 alpha wins). Defenders never navigate to hidden enemy coordinates. |
 | Regular / combat | A mobile teammate is elected to flank a shared visible contact while an anchor keeps it engaged. Election uses mobility, health and stable IDs; existing flanks prevent duplicate commitments. |
-| Horde | Existing wave pursuit, repair, reload and survival rules continue, with the new shared abilities and terrain safety. |
+| Horde / Infected | The honest hunt (`HUNT_RULES`): hunters are assigned once a second to the nearest opponent their side spots, else the freshest sighting within 45 s, else a seeded sweep, with a crowd penalty and lane and flank offsets so the pack arrives from several bearings. The hunt is a labelled mission with the rush drive (straight in inside 70 m, an orbit at 25-35 m, never a ram). Horde allies hunt only within 120 m of the humans; Infected survivors rally on their own centroid. |
+
+Each side's fighting style is its mode's doctrine (`BotDoctrine`, `ruleset.bots` in `sim/matchRuleset.ts`; the table is
+in docs/GAME-MODES.md "Bot aggression per mode"). `CLASSIC_BOT_DOCTRINE` is the controller as it stood and every mode
+without an entry keeps it bit for bit. The knobs scale or gate existing behaviour: the hold band, engagement range,
+cover, fallback thresholds, hit reactions (`none` / `angle`), scout kiting, scooting, the spearhead guard, round
+conservation, the silent-contact push, mission speed and break-off health, the defenders' zone sortie, the rush drive,
+the striker's offensive jump, the search routing (`spotted`: only the side's own sightings) and the mission route
+refresh. A mission owns its waypoints: no search starts while a mission drives, and a route another driver left behind
+is replaced, never followed.
 
 ## Target selection and return fire
 

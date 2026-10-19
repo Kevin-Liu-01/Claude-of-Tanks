@@ -644,20 +644,39 @@ if (engine === 'solo') {
     if (combat.fire) combat.fire.burning = false;
   };
   // Frontline Assault: the fight seat plays the objective like a human attacker — its route goes to the attack's point
-  // for it (the live sector, the mode controller's botObjective) and follows the line as it advances, instead of the
-  // enemy deployment's centroid (since gameplay-modes-228 the defenders stand on the line, so the centroid drove the seat
-  // alone into the dug-in line ahead of its allies). Re-checked once a second; re-routed when the point moves 20 m.
+  // (the live sector, the mode controller's botObjective) and follows the line as it advances, instead of the enemy
+  // deployment's centroid (since gameplay-modes-228 the defenders stand on the line, so the centroid drove the seat alone
+  // into the dug-in line ahead of its allies). It attacks with its group as the allied attackers do (the ruleset's
+  // assaultBots): it stages at the sector's edge (radius + stageM) until pushMinGroup allies stand within pushGroupM of it
+  // or pushAfterS passes there, then pushes in. Re-checked once a second; re-routed when the point moves 20 m.
   const playObjective = mode === 'frontline_assault' && playerSeat === 'fight';
-  let objectiveCheckS = -Infinity, routedX = NaN, routedZ = NaN;
+  const groupRules = rules.assaultBots ?? null;
+  let objectiveCheckS = -Infinity, routedX = NaN, routedZ = NaN, lineKey = null, stagedAtS = Infinity, pushing = false;
   const followObjective = () => {
     if (!playObjective || !player.aiCtl || player.combat.destroyed || game.timeS < objectiveCheckS + 1) return;
     objectiveCheckS = game.timeS;
     const goal = game.matchModeController?.botObjective(player);
-    if (!goal || Math.hypot(goal.x - routedX, goal.z - routedZ) < 20) return;
-    routedX = goal.x; routedZ = goal.z;
-    const route = planBotRoute({ start: { x: player.state.pos.x, z: player.state.pos.z }, goal: { x: goal.x, z: goal.z }, navigation: game._botNavigation,
+    if (!goal) return;
+    const key = `${Math.round(goal.x)},${Math.round(goal.z)}`;
+    if (key !== lineKey) { lineKey = key; stagedAtS = Infinity; pushing = false; }
+    let tx = goal.x, tz = goal.z;
+    if (groupRules && !pushing) {
+      const px = player.state.pos.x, pz = player.state.pos.z;
+      const d = Math.hypot(px - goal.x, pz - goal.z) || 1, edge = (goal.radiusM ?? 30) + groupRules.stageM;
+      if (d <= edge + 10) {
+        if (!Number.isFinite(stagedAtS)) stagedAtS = game.timeS;
+        let friends = 0;
+        for (const e of game.tanks) if (e !== player && e.team === player.team && !e.combat.destroyed && e.modeActive !== false
+          && Math.hypot(e.state.pos.x - px, e.state.pos.z - pz) <= groupRules.pushGroupM) friends++;
+        if (friends >= groupRules.pushMinGroup || game.timeS - stagedAtS >= groupRules.pushAfterS) pushing = true;
+      }
+      if (!pushing) { tx = goal.x + (px - goal.x) / d * edge; tz = goal.z + (pz - goal.z) / d * edge; }
+    }
+    if (Math.hypot(tx - routedX, tz - routedZ) < 20) return;
+    routedX = tx; routedZ = tz;
+    const route = planBotRoute({ start: { x: player.state.pos.x, z: player.state.pos.z }, goal: { x: tx, z: tz }, navigation: game._botNavigation,
       rng: searchRng, role: roleOf(player.spec), spec: player.spec, useRoleDetour: false });
-    player.aiCtl.setWaypoints(route.length ? route.map((p) => (Array.isArray(p) ? [p[0], p[1]] : [p.x, p.z])) : [[goal.x, goal.z]], { loop: false });
+    player.aiCtl.setWaypoints(route.length ? route.map((p) => (Array.isArray(p) ? [p[0], p[1]] : [p.x, p.z])) : [[tx, tz]], { loop: false });
   };
   adapter = {
     playerSpecId,
@@ -858,6 +877,8 @@ function onEvent(ev, t) {
       const who = byId.get(p.id);
       if (who && normTeam(who.team) === 'bravo' && !adapter.isHuman(who)) horde.pendingArrivals.push(p.id);
     }
+    // a stranded hostile benched and queued again (HordeRules.strandedS): its re-arrival is not a new enemy of the wave
+    if (type === 'horde_recycled' && lastWave) { lastWave.arrivals--; lastWave.recycled = (lastWave.recycled ?? 0) + 1; horde.recycled = (horde.recycled ?? 0) + 1; }
     if (timeline.length < 600 && type !== 'pickup_spawned' && type !== 'respawn' && type !== 'ball_hit') timeline.push([round(t, 1), type, p.team ?? p.wave ?? p.line ?? p.by ?? null]);
     if (type === 'flag_taken') { ctf.taken[otherSide(p.team)]++; if (ctf.firstPickupS == null) ctf.firstPickupS = t; }
     else if (type === 'flag_dropped') ctf.dropped[otherSide(p.team)]++;
@@ -1230,7 +1251,7 @@ if (mode === 'endless_horde') {
     peakAlive: horde.peakAlive, poolIdentities: pool,
     spawnChecks: horde.spawnChecks, spawnNear: horde.spawnNear, spawnSeen: horde.spawnSeen, spawnMinM: Number.isFinite(horde.spawnMinM) ? Math.round(horde.spawnMinM) : null,
     firstContactPerWave: horde.waves.map((w) => w.firstShotS), intermissionPerWave: horde.waves.map((w) => w.intermissionS),
-    hullPerWave: horde.waves.map((w) => w.hostileHullOfOwn),
+    hullPerWave: horde.waves.map((w) => w.hostileHullOfOwn), recycled: horde.recycled ?? 0,
   };
 }
 if (mode === 'infected') {
@@ -1375,6 +1396,7 @@ function aggregateMode(mode, list) {
         intermissionMinS: allInter.length ? round(Math.min(...allInter), 2) : null, intermissionMaxS: allInter.length ? round(Math.max(...allInter), 2) : null,
         hullPerWave: perIndex((l) => l.hullPerWave).map((xs) => round(mean(xs), 3)),
         runsEndedBy15: list.filter((r) => r.result && r.horde.roundsReached <= 15).length,
+        recycledTotal: laws.reduce((s, l) => s + (l.recycled ?? 0), 0),
       };
     }
   }

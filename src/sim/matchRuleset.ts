@@ -197,6 +197,11 @@ interface AssaultRules {
   readonly regroupHumanM: number;
   /** Destroyed allied BOTS revive behind the last sector taken after this long (null: only when a sector falls). */
   readonly allyReviveS: number | null;
+  /**
+   * The defenders' bots play this many difficulty tiers below the battle's (the Horde's `hostileDifficultyStep`): the
+   * defence's pressure is its numbers, its line and its doctrine, not a sharper aim (gameplay-modes-228).
+   */
+  readonly hostileDifficultyStep: number;
 }
 
 /**
@@ -246,6 +251,14 @@ interface HordeRules extends ArrivalRules {
   readonly trickleS: number;
   /** …a wreck's identity only once it has lain this long (it never vanishes under the gun that killed it). */
   readonly recycleAfterS: number;
+  /**
+   * A hostile on the field that has come no `strandedGainM` closer to any human for `strandedS` while farther than
+   * `strandedContactM` from all of them (cut off by the ground, wedged) is benched and queued again: it re-arrives on the
+   * ring, so a round never stalls on hostiles that cannot reach the fight (Redrock seed 2 sat 740 s on seven).
+   */
+  readonly strandedS: number;
+  readonly strandedGainM: number;
+  readonly strandedContactM: number;
   /** The lull between waves (a clear, readable break; was a 6 s literal plus 0-49 s of travel). */
   readonly intermissionS: number;
   /** Share of maximum hull repaired on every surviving human when a wave is cleared. */
@@ -287,7 +300,7 @@ interface HordeRules extends ArrivalRules {
 interface AssaultBotRules {
   /** An attacker that has held the zone edge this long without capture progress drives into the centre… */
   readonly pushAfterS: number;
-  /** …and a push waits until `pushMinGroup` attackers (itself included) stand within `pushGroupM`, or pushAfterS passes. */
+  /** …and a push waits until `pushMinGroup` other attackers stand within `pushGroupM` of it, or pushAfterS passes. */
   readonly pushMinGroup: number;
   readonly pushGroupM: number;
   /** Where the edge is: this far outside the zone's radius, on the attack's side. */
@@ -786,7 +799,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     allies: 4, enemies: 20,
     horde: Object.freeze({
       waveSize: 6, waveStep: 3, waveCurve: 0.35, perHumanTotal: 0.25, maxAlive: 16, maxAlivePerHuman: 1, maxAliveCap: 20,
-      trickleS: 1.5, recycleAfterS: 6, spawnRingM: Object.freeze([260, 380] as const), spawnSectors: 3, sectorWidthDeg: 60, sectorSpreadDeg: 70,
+      trickleS: 1.5, recycleAfterS: 6, strandedS: 40, strandedGainM: 20, strandedContactM: 100, spawnRingM: Object.freeze([260, 380] as const), spawnSectors: 3, sectorWidthDeg: 60, sectorSpreadDeg: 70,
       spawnMinHumanM: 150, spawnOutOfSight: true, sightRangeM: 450, sightStepM: 8, sightEyeM: 2.4, sightHullM: 1.5, sightMarginM: 1,
       spawnCandidates: 12,
       intermissionS: 8, waveRepair: 0.3,
@@ -810,7 +823,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
       defendersStartOnLine: true, lineBandM: Object.freeze([30, 70] as const),
       counterAttack: Object.freeze({ squad: 2, afterCaptureS: 8, forS: 40 }),
       reinforceTrickleS: 30, reinforceExtra: 2, reinforceRearM: 140,
-      regroupMaxS: 25, regroupRadiusM: 80, regroupHumanM: 250, allyReviveS: null }),
+      regroupMaxS: 25, regroupRadiusM: 80, regroupHumanM: 250, allyReviveS: null, hostileDifficultyStep: 1 }),
     assaultBots: Object.freeze({ pushAfterS: 15, pushMinGroup: 2, pushGroupM: 80, stageM: 20, flankShare: 0.4, flankOffsetM: 60,
       flankConvergeM: 80 }),
     bots: Object.freeze({ alpha: ASSAULT_ATTACKER_DOCTRINE, bravo: ASSAULT_DEFENDER_DOCTRINE }),
@@ -1154,8 +1167,8 @@ type BotDifficultyTier = (typeof BOT_DIFFICULTY_TIERS)[number];
  * `horde.hostileDifficultyStep` tiers below it and never under the easiest (zombies come on numbers, not aim). The solo
  * battle and the network authority both read it when they build a bot.
  */
-export function rulesetBotDifficulty(ruleset: Pick<MatchRuleset, 'horde'>, team: string, difficulty: BotDifficultyTier): BotDifficultyTier {
-  const step = ruleset.horde?.hostileDifficultyStep ?? 0;
+export function rulesetBotDifficulty(ruleset: Pick<MatchRuleset, 'horde' | 'assault'>, team: string, difficulty: BotDifficultyTier): BotDifficultyTier {
+  const step = ruleset.horde?.hostileDifficultyStep ?? ruleset.assault?.hostileDifficultyStep ?? 0;
   if (step <= 0 || (team !== 'bravo' && team !== 'enemy')) return difficulty;
   const index = BOT_DIFFICULTY_TIERS.indexOf(difficulty);
   return index < 0 ? difficulty : BOT_DIFFICULTY_TIERS[Math.max(0, index - Math.floor(step))]!;

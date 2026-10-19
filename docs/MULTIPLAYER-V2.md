@@ -2338,6 +2338,38 @@ with the production lease: the host's socket and links drop at once, both peers 
 against 8.0 s), `mp-p2p-headless.selftest`, `mp-room-lifecycle.selftest`, `roomWorkerProgram.selftest` (the Worker
 program typechecks). Ships with the rooms Worker (a planned Worker release) and the client; either alone is inert.
 
+### 13.27 The room's bots: seated by one planner, TEAM NATIONS (gameplay-modes-228, 2026-10-18)
+
+**Why.** Every room bot cloned a human's pick (an empty side cloned the host's tank), and the co-op rooms seated no
+hostiles at all, so a room's Endless Horde and Frontline Assault waves came up empty forever. The owner, 2026-10-18:
+"make the allied/enemy tank country enforcement work properly", "be able to select wehtehr we want team enemies to be
+mononation or just random".
+
+**What.** `src/mp/room/roomBots.ts` `planRoomBots(settings, seats, bots, seed)` seats a room's bots from the room's
+settings and the match seed. The room's `planStart` (the rooms Worker and the LAN service) and the hosting seat's own
+derivation (`hostPlan.planFromRoom`, with `match_start.seed`) both call it, so they name the same bots; the host boots
+from its derivation and hands the roster to every seat in WELCOME, as before. Symmetric modes fill each side to the
+team size when the room fills with bots; Juggernaut, Infected and the AC-130 seal their roles; the co-op modes seat
+their hostiles always (Frontline's twelve defenders, the Horde's twenty-strong pool) and their allied bots (three, four)
+when the room fills with bots, and the authority refuses to start a wave on an empty pool. TEAM NATIONS is the host's
+room setting (`room.settings.arrangement.teamNations`, `'mono'` by default or `'random'`): MONO-NATION seats each side
+from its humans' majority country and the enemy side from one other country (the campaign operation's, the arranged
+country, or AUTO's), filling from the closest allied countries with every fill noted in the plan
+(`RoomStartPlan.teamNations`); RANDOM seats any contemporary vehicle. At most six distinct bot vehicles a side
+(`TEAM_NATIONS_RULES.mpDistinctBotSpecsPerSide`), each a vehicle profile every seat loads. Bot ids stay
+`bot-<team>-<n>` / `mode-<team>-<n>`. A guest's `set_arrangement` is refused; `set_game_mode` keeps TEAM NATIONS; a
+migrated host re-reads it from the room's settings. The rooms Worker reads countries from
+`src/sim/nationIndex.generated.ts` (it may not import `src/vehicles`; `tools/nation-index.mjs --check`).
+
+No wire change: the setting rides the arrangement JSON. The client carries the planner; RANDOM in a room needs the rooms
+Worker release that whitelists `teamNations` in `readArrangement` (an older Worker drops the field, so its rooms play
+MONO-NATION, the default), and that release also moves the Worker's own `planStart` onto the planner.
+
+Receipts: `roomBots.selftest` (every mode's seating, MONO and RANDOM, co-op hostiles, the six-vehicle budget, the host's
+decision and the mode change), `hostPlan.selftest` (planStart and planFromRoom name the same bots for a seed; co-op 20 + 4
+and 12 + 3), `roomPolicy.selftest`, `roomWorkerProgram.selftest` (the Worker program typechecks), `nationIndex.selftest`;
+the census rows `mp1`, `mp2` and `coop` of `tools/mode-aggression-harness.mjs roster` (docs/GAME-MODES.md "Team nations").
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers

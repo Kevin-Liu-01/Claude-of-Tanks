@@ -1559,6 +1559,23 @@ peak stays below the 28-vehicle 14 v 14 preset every tier already offers, and th
 allied bots (0-6) shrink a Horde for a device that needs it. Re-run both probes before raising the pool or the allies,
 and treat the Horde's `enemies` and `allies` as the field-size knobs if a mobile field budget is introduced.
 
+## Endless Horde live cap — 2026-10-19 (gameplay-modes-228)
+
+The rebuilt Horde (`docs/GAME-MODES.md` "Bot aggression per mode") grows every round without a cap (24 hostiles on round
+5, 52 on round 9), so the field is bounded by a live cap instead of the pool: at most `maxAlive` (16) hostiles at once,
++1 a further human, never over `maxAliveCap` (20) or the pool (`hordeMaxAlive` in `sim/matchRuleset.ts`); the rest queue
+and trickle in as the field thins, and the twenty pool identities rest and rotate, so the entity count never grows. The
+solo peak is 21 live vehicles (the player, four allies and sixteen hostiles), between the two fields measured above (17:
+53-54 fps; 25: 39-42 fps on the mobile tier of this host) and four under the 10-17 peak; a five-human room peaks at 25
+(five humans, twenty hostiles at the cap) — the 10-17 peak, inside the 14 v 14 preset. The harness's `horde.law.peakAliveMax`
+reads 16 on every solo run (`tools/mode-aggression-targets.json` `horde.peakAlive`).
+
+@@PERF@@
+
+A room seats at most six distinct bot vehicles a side (`TEAM_NATIONS_RULES.mpDistinctBotSpecsPerSide`): before, every bot
+cloned a human's pick, so a room loaded one or two profiles; it now loads up to twelve more. Host boot and client join on
+the mobile tier with the larger profile set are not yet measured (open).
+
 ## Vista pass — 2026-09-19
 
 The horizon vista pass (round 24: 431-column ring with a subdivided ridged ladder, the layered world-anchored

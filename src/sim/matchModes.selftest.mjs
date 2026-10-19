@@ -308,8 +308,12 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
     'sectors sit at 25/55/85 % of the way from the alpha centre to the bravo centre');
   assert.equal(match.state.horde.wave, 1);
   assert.equal(enemies.filter((target) => target.modeActive !== false).length, 4, 'wave 1 fields four defenders (gameplay-modes-228)');
-  assert.deepEqual(match.botTarget(ally), { x: match.state.zones[0].x, z: match.state.zones[0].z, mission: 'assault' },
-    'attackers push for the live sector (two together: the push needs no wait)');
+  // a push waits for two friends within 80 m (or 15 s at the edge): with one, the attacker stages at the zone's edge on
+  // the attack's side (assaultBots.stageM past the radius)
+  const staged = match.botTarget(ally), zone0 = match.state.zones[0];
+  assert.equal(staged.mission, 'assault');
+  const stagedOff = Math.hypot(staged.x - zone0.x, staged.z - zone0.z);
+  assert.ok(stagedOff > 40 && stagedOff < 60 && staged.z < zone0.z, `one friend: the attacker stages at the edge (${stagedOff.toFixed(1)} m)`);
   const defender = enemies.find((target) => target.modeActive !== false);
   assert.deepEqual(match.botTarget(defender), { x: match.state.zones[0].x, z: match.state.zones[0].z, mission: 'assault' },
     'defenders fall back on the live sector when no attacker is closer');
