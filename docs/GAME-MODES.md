@@ -24,7 +24,7 @@ rule the battle does not keep.
 | Frontline Assault | Take three trench sectors in turn, then hold the last one | unlimited rounds, three allied bots, a twelve-strong one-country formation (the operation's, the arranged country, or AUTO's), 4 / 5 / 6 defenders dug in on each sector's line from the start, a two-tank counter-attack on a sector just taken, one more defender from the rear every 30 s while a sector is contested, 12:00 clock that loses the sortie when it expires; defenders escalate per sector and per campaign operation | No | The last sector held for 20 s, the human attacker destroyed, or the clock |
 | Mars Mode | Hold the three station sectors of Olympus Basin | 0.38 g, +25 % speed, +20 % hull, −10 % damage, +11 % reload rate, rocket jump 9.5 m/s (F, boosts again in the air), ×3 recoil launch, ×0.9 impact knock, unlimited rounds; repair caches every 22 s | 6 s | First team to 750 points, or the 12:00 clock (score) |
 | Juggernaut | Defeat the boss, or survive as the boss | Choose the boss or hunter role; boss has 8× hull, half reload time and 90% speed; unlimited rounds | Hunters: 6 s; boss: none | Boss destroyed, or boss survives 10:00 |
-| Infected | Survive the outbreak, or convert every survivor | Survivors at 150 % hull; five initial infected at 30 % hull and 30 % more speed rise round the survivors (120–200 m out, out of sight where the ground allows) and rush them; destroyed survivors join them; unlimited rounds | 5 s | No survivors remain, or survivors reach 7:00 |
+| Infected | Survive the outbreak, or convert every survivor | Survivors at 150 % hull; five initial infected at 25 % hull and 30 % more speed rise round the survivors (120–200 m out, out of sight where the ground allows) and rush them; destroyed survivors join them; unlimited rounds | 5 s | No survivors remain, or survivors reach 7:00 |
 | Realistic | Destroy the opposing force through critical damage | Normal spotting; no hull HP attrition, automatic module repair or consumables | No | Crew eliminated or ammunition destruction eliminates a team; 15:00 draw |
 | Gun Game | Complete a five-weapon ladder | Two confirmed kills per stage; unlimited ammunition | 4 s | First player to complete the ladder; 15:00 score decision |
 | Drone | Destroy opponents with tanks and directly piloted drones | Launch a physical FPV quadcopter; its shaped charge interacts with cages, ERA and spaced armor at the impact point; unlimited rounds | 6 s | First team to 20 kills (configurable), or 10:00 score decision |
@@ -118,7 +118,7 @@ hunter, you join allies against one bot boss. In hosted rooms the boss role belo
 to the first participating human when that role is selected; other humans hunt it.
 The boss is 12% larger, including its armor and module hit geometry, and carries a subtle blue surface highlight that follows the hull, turret, barrel, and running gear with traveling energy bands. Shell contacts, including ricochets, create short, undulating blue-white ripples at the actual impact location; turret and gun contacts follow those moving parts. There is no enclosing bubble, and the glow does not reveal the tank through cover. Battle impact ripples and enlargement are cleared on Garage return. If Juggernaut remains selected, the Garage applies a fresh animated energy preview to the selected tank; switching modes removes it. It never respawns. Its survival clock and health are shown in the objective.
 
-**Infected** begins with five infected opponents (at least three in a custom setup). Survivors have 150% of their normal HP; infected have 30%, 30% more speed and no reload bonus, and their bots hunt the nearest survivor (`infection.hunt`, the Horde's routing law). Every respawn takes five seconds. Rounds are unlimited. A survivor's destruction changes
+**Infected** begins with five infected opponents (at least three in a custom setup). Survivors have 150% of their normal HP; infected have 25% (30% until gameplay-modes-228), 30% more speed and no reload bonus, and their bots rush the survivors their side spots (`infection.hunt`, the honest hunt). Every respawn takes five seconds. Rounds are unlimited. A survivor's destruction changes
 that player's team before their next spawn, including their allied/enemy roster
 and bot targeting. Bots discard a cached enemy as soon as either tank changes sides;
 the converted player’s spotting readout follows their new team. The remaining survivors win by lasting seven minutes; infected
@@ -579,7 +579,7 @@ numbers:
 | | Infected before | Infected now | Endless Horde before | Endless Horde now |
 | --- | --- | --- | --- | --- |
 | Human hull | 30 % | 150 % | 125 % | 200 % |
-| Zombie hull | 125 % | 30 % | 125 % + 16 % a wave | 15 % + 2 % a round (+6 % from round 11; a swarm round 10 %) |
+| Zombie hull | 125 % | 25 % (30 % until gameplay-modes-228) | 125 % + 16 % a wave | 15 % + 2 % a round (+6 % from round 11; a swarm round 10 %) |
 | Zombie speed | +40 % | +30 % | +4.5 % a wave (cap +55 %) | unchanged |
 | Zombie reload | ×0.7 | ×1 | ×1 | ×1.8 reload time (`hostileReloadScale`, gameplay-modes-228) |
 | Zombie numbers | 4 to start, 3 s respawn, every dead survivor converts | 5 to start, 5 s respawn on a ring 120–200 m round the survivors, every dead survivor converts | waves 5 / +1, pool 14 | rounds of round(6 + 3(w − 1) + 0.35(w − 1)²), at most 16 alive, pool 20 (gameplay-modes-228; 10-17: waves 6 / +2, surge every 3rd, capped at the pool) |
@@ -595,7 +595,7 @@ bounds it at 21 (16 hostiles and five humans) however large a round grows; the a
 shrink it further (`docs/PERFORMANCE.md` "Endless Horde field on the mobile tier").
 
 The rule cards (play menu, arrangement panel, pre-battle chips) show both hulls in the one hull chip, the humans' first
-and the zombies' after a slash (`rulesetLines`: Infected "+50 % / -70 % hull", the Horde "+100 % / -85 % hull"), so the
+and the zombies' after a slash (`rulesetLines`: Infected "+50 % / -75 % hull", the Horde "+100 % / -85 % hull"), so the
 zombie modes add no line of their own. The zombies' bots playing a tier down is wired into both bot builders, the
 authority's `initializeBot` (each seat's own difficulty) and the solo `createBattleBot` (the stored setting);
 `src/game/zombieBotTier.selftest.mjs` reads the tier each controller was built with (`aiCtl.difficulty`) in both.
