@@ -6,7 +6,9 @@
 // inside 30 frames by the right rung, named in its receipt, and reported once; a healthy battle, a covered entry, a
 // black lunar sky overhead and an unfocused page never open one; 600 healthy frames allocate nothing in the guard.
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { Session } from 'node:inspector/promises';
+import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
 
 // a document and a window for the guard's listeners (resume, focus) and its cover lookup
@@ -164,6 +166,38 @@ function healFrames(h, inject, limit = 120) {
   return Infinity;
 }
 
+// ---- the allocation child (spawned below): warm the path up, then three sampled windows of 600 healthy frames ----
+if (process.argv.includes('--allocation-windows')) {
+  const h = createWorld();
+  h.frames(60_000);
+  const session = new Session();
+  session.connect();
+  await session.post('HeapProfiler.enable');
+  // (one unsampled sampling window first: turning the sampler on can send the hot path back through the JIT once)
+  await session.post('HeapProfiler.startSampling', { samplingInterval: 16 });
+  h.frames(1200);
+  await session.post('HeapProfiler.stopSampling');
+  const windows = [];
+  for (let w = 0; w < 3; w++) {
+    await session.post('HeapProfiler.startSampling', { samplingInterval: 16,
+      includeObjectsCollectedByMajorGC: true, includeObjectsCollectedByMinorGC: true });
+    h.frames(600);
+    const { profile } = await session.post('HeapProfiler.stopSampling');
+    const where = [];
+    const walk = (node) => {
+      if (/blackWorldGuard\.ts/.test(node.callFrame.url) && node.selfSize > 0) {
+        where.push([`${node.callFrame.functionName || '(anonymous)'}:${node.callFrame.lineNumber + 1}`, node.selfSize]);
+      }
+      for (const next of node.children) walk(next);
+    };
+    walk(profile.head);
+    windows.push({ bytes: where.reduce((sum, [, size]) => sum + size, 0), where });
+  }
+  session.disconnect();
+  console.log(JSON.stringify({ windows, probes: h.guard.stats().probes }));
+  process.exit(0);
+}
+
 // ---- the pure parts ----
 {
   const cells = new Uint8Array(PROBE_CELLS * 4);
@@ -220,37 +254,17 @@ function healFrames(h, inject, limit = 120) {
   assert.ok(s.probes >= Math.floor(60 / PROBE_EVERY) - 1 && s.probes <= Math.ceil(60 / PROBE_EVERY) + 2, `probes on cadence: ${s.probes}`);
   assert.ok(s.readbacks >= s.probes - 1, 'every probe reads back two frames later');
   assert.equal(h.reports.length, 0);
-  // heap sampling: no allocation attributed to the guard's own frames (after the JIT has seen the path: the interpreter
-  // boxes every double it touches, which says nothing about the code)
-  h.frames(60_000);
-  // three sampled windows of 600 frames: a per-frame (or per-probe) allocation of even one 16-byte object would read
-  // 9.6 KB (0.8 KB) in every window; a stray tier-up of the JIT inside one window is not the guard's code allocating,
-  // so two windows of three stay under 256 B and at least one reads nothing at all
-  const session = new Session();
-  session.connect();
-  await session.post('HeapProfiler.enable');
-  const windows = [];
-  for (let w = 0; w < 3; w++) {
-    await session.post('HeapProfiler.startSampling', { samplingInterval: 16,
-      includeObjectsCollectedByMajorGC: true, includeObjectsCollectedByMinorGC: true });
-    h.frames(600);
-    const { profile } = await session.post('HeapProfiler.stopSampling');
-    const guardBytes = [];
-    const walk = (node) => {
-      if (/blackWorldGuard\.ts/.test(node.callFrame.url) && node.selfSize > 0) {
-        guardBytes.push([`${node.callFrame.functionName || '(anonymous)'}:${node.callFrame.lineNumber + 1}`, node.selfSize]);
-      }
-      for (const child of node.children) walk(child);
-    };
-    walk(profile.head);
-    windows.push({ bytes: guardBytes.reduce((sum, [, size]) => sum + size, 0), where: guardBytes });
-  }
-  session.disconnect();
-  // (a structural per-frame or per-probe allocation reads in every window; a JIT tier-up inside one window does not)
-  assert.ok(windows.filter((w) => w.bytes < 256).length >= 2, `no per-frame allocation in the guard: ${JSON.stringify(windows)}`);
-  assert.ok(windows.some((w) => w.bytes === 0), `a window with no guard allocation at all: ${JSON.stringify(windows)}`);
+  // heap sampling (allocationWindows, in a child on the optimizing tier alone: --no-maglev): a per-frame or per-probe
+  // allocation of even one 16-byte object would read 9.6 KB (0.8 KB) in every 600-frame window
+  const child = spawnSync(process.execPath, ['--no-maglev', '--max-old-space-size=2048', fileURLToPath(import.meta.url),
+    '--allocation-windows'], { encoding: 'utf8', maxBuffer: 16 << 20 });
+  const line = String(child.stdout).trim().split('\n').filter((l) => l.startsWith('{"windows"')).pop();
+  assert.ok(child.status === 0 && line, `the allocation child ran: ${child.status} ${String(child.stderr).slice(-400)}`);
+  const { windows } = JSON.parse(line);
+  assert.ok(windows.every((w) => w.bytes === 0), `no guard allocation in three steady 600-frame windows: ${JSON.stringify(windows)}`);
+  h.frames(600);
   assert.equal(h.guard.stats().incidents, 0);
-  assert.ok(h.guard.stats().probes >= 50, 'the probe kept its cadence through the sampled frames');
+  assert.ok(h.guard.stats().probes >= 50, 'the probe kept its cadence');
 }
 
 // ---- gating: no probe under the cover, outside battle, when disabled; no verdict while unfocused ----
