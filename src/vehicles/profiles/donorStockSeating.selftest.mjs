@@ -6,6 +6,11 @@
 // over its falling deck. Each seat is measured against the actual shell by rays, each AABB negative control (the seat
 // removed, or the louvres back at their level heights) must stand apart, and the gun's triangles keep 15 mm off the
 // periscope row through its whole pitch range.
+// The louvre field is the A2 hull's (buildZTZ99A2Hull), so its follow-up seats it on the VT-4A1 and the ZTZ-99A2
+// Prototype too, and clears the prototype turret's own floaters: its race ring 15 mm under the shell, two seam bars left
+// inside the moving mantlet when the beak walls were cut back for the gun channel, the rear slab's drip rails (9 and 10
+// mm off it) and its eight fasteners (19-48 mm off anything). Mounted fittings join the census with their boxes: the
+// prototype's rear panniers and tray case rest on its stowage rack, which no part census records.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
@@ -22,6 +27,18 @@ function build(id, quality) {
       parts.push({ bucket, box: g.boundingBox.clone(), pos: Float32Array.from(g.getAttribute('position').array) });
     } });
   tank.root.updateMatrixWorld(true);
+  // mounted fittings (every mesh under a fitting_* group) as parts of their owner, boxed in its frame
+  for (const [rigName, skip, prefix] of [['rig_hull', 'rig_turret', 'hullFitting'], ['rig_turret', 'rig_gun', 'turretFitting']]) {
+    const rig = tank.root.getObjectByName(rigName), excluded = tank.root.getObjectByName(skip), toRig = rig.matrixWorld.clone().invert();
+    rig.traverse((m) => {
+      if (!m.isMesh || m.isInstancedMesh) return;
+      let fitting = false;
+      for (let q = m; q && q !== rig; q = q.parent) { if (q === excluded) return; if (/^fitting_/.test(q.name)) fitting = true; }
+      if (!fitting) return;
+      const box = new THREE.Box3().setFromBufferAttribute(m.geometry.getAttribute('position')).applyMatrix4(toRig.clone().multiply(m.matrixWorld));
+      parts.push({ bucket: `${prefix}:${m.name}`, box, pos: null });
+    });
+  }
   return { tank, parts };
 }
 
@@ -140,29 +157,29 @@ for (const quality of ['high', 'low']) {
     } finally { tank.dispose(); }
   }
 
-  // ---- ZTZ-99A2
-  {
-    const { tank, parts } = build('ztz99a2', quality);
+  // ---- the A2 hull's three tanks: the ZTZ-99A2, its prototype and the VT-4A1
+  for (const id of ['ztz99a2', 'ztz99a', 'vt4a1']) {
+    const { tank, parts } = build(id, quality);
     try {
       for (const o of ['turret', 'gun', 'hull']) assert.deepEqual(apartOf(parts.filter((p) => owner(p.bucket) === o)).map(label), [],
-        `ztz99a2/${quality}: every ${o} part joins the ${o} by contact`);
+        `${id}/${quality}: every ${o} part joins the ${o} by contact`);
       const hull = parts.filter((p) => owner(p.bucket) === 'hull'), deck = shellOf(tank, 'hull');
       const field = (bucket, depth) => hull.filter((p) => p.bucket === bucket && near(p.box.min.x, -1.25) && near(p.box.max.x, 1.25)
         && near(p.box.getSize(new THREE.Vector3()).z, depth, .003) && p.box.max.z < -2.0 && p.box.min.z > -3.75);
       const plates = field('hullDark', .075), bars = field('hullDetail', .026);
-      assert.equal(plates.length, 7, `ztz99a2/${quality}: seven dark louvre plates`);
-      assert.equal(bars.length, 7, `ztz99a2/${quality}: seven louvre bars`);
+      assert.equal(plates.length, 7, `${id}/${quality}: seven dark louvre plates`);
+      assert.equal(bars.length, 7, `${id}/${quality}: seven louvre bars`);
       // every vertex's height over the deck under it: the plates' tops 2 mm proud, the bars' undersides 2 mm in
       const over = (p) => vertices(p).map((v) => v.y - deck(v.x, v.z));
-      for (const p of plates) { const d = over(p), top = Math.max(...d); assert.ok(top >= .0015 && top <= .0025, `ztz99a2/${quality}: plate ${label(p)} top ${(top * 1000).toFixed(2)} mm over the deck`); }
+      for (const p of plates) { const d = over(p), top = Math.max(...d); assert.ok(top >= .0015 && top <= .0025, `${id}/${quality}: plate ${label(p)} top ${(top * 1000).toFixed(2)} mm over the deck`); }
       for (const p of bars) {
         const d = over(p), foot = d.filter((v) => v < .005);
-        assert.ok(foot.length >= 4 && foot.every((v) => v >= -.0025 && v <= -.0015), `ztz99a2/${quality}: bar ${label(p)} underside ${foot.map((v) => (v * 1000).toFixed(2)).join(', ')} mm in the deck`);
+        assert.ok(foot.length >= 4 && foot.every((v) => v >= -.0025 && v <= -.0015), `${id}/${quality}: bar ${label(p)} underside ${foot.map((v) => (v * 1000).toFixed(2)).join(', ')} mm in the deck`);
       }
-      // negative control: the field at its former level heights (the VT-4A1's and the prototype's) stands apart
+      // negative control: the field at its former level heights (all three hulls carried it) stands apart
       const level = new Map([...plates.map((p) => [p, [1.703, 1.721]]), ...bars.map((p) => [p, [1.721, 1.749]])]);
       const levelled = hull.map((p) => level.has(p) ? { ...p, box: new THREE.Box3(new THREE.Vector3(p.box.min.x, level.get(p)[0], p.box.min.z), new THREE.Vector3(p.box.max.x, level.get(p)[1], p.box.max.z)) } : p);
-      assert.ok(apartOf(levelled).length >= 8, `ztz99a2/${quality}: negative control: the level louvre field stands apart`);
+      assert.ok(apartOf(levelled).length >= 8, `${id}/${quality}: negative control: the level louvre field stands apart`);
     } finally { tank.dispose(); }
   }
 }
