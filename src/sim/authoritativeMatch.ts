@@ -118,8 +118,8 @@ import {
 import { consumeAmmunition, hasAmmunition } from './ammunition.ts';
 import { createMatchModeController, normalizeGameMode } from './matchModes.ts';
 import {
-  applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetBotDifficulty, rulesetBotDoctrine,
-  rulesetLoadout, type MatchRuleset,
+  applyRulesetToCombat, endingHoldExpired, isWaveMode, matchRulesetFor, refillUnlimitedAmmunition, rulesetBotDifficulty, rulesetBotDoctrine,
+  rulesetLoadout, rulesetRoutePush, type MatchRuleset,
   type RulesetPhysics,
 } from './matchRuleset.ts';
 import { createMatchPlacement, matchPlacementAnchors, placementTankRadius, type MatchPlacement } from './matchPlacement.ts';
@@ -1181,9 +1181,6 @@ export function createAuthoritativeMatch({
     spawn: MatchModeSpawn,
     healthScale = 1,
   ): void {
-    // a revived bot takes the next route push whatever its last destination was (gameplay-modes-228)
-    tank._modeTargetX = undefined;
-    tank._modeTargetZ = undefined;
     _spawn.set(spawn.x, heightField.getHeightAt(spawn.x, spawn.z), spawn.z);
     tank.state = createTankState(tank.spec, _spawn, spawn.yaw);
     tank.input = makeInput();
@@ -2316,15 +2313,15 @@ export function createAuthoritativeMatch({
   }
 
   /**
-   * The mode route push: each side on its doctrine's cadence (routeRefreshS) re-routes a bot whose destination moved
-   * routeMoveM or more (gameplay-modes-228: one rule for the authority and the solo battle, read from the ruleset).
+   * The mode route push: each side on its cadence (sim/matchRuleset.ts rulesetRoutePush: the doctrine's, or the
+   * authority's legacy 3 s / 12 m, 1.25 s on any move in its fast modes) re-routes a bot whose destination moved that far.
    */
   function refreshModeBotRoutes(): void {
     if (normalizedGameMode === 'standard') return;
     const alphaDue = timeS >= nextModeRouteS.alpha, bravoDue = timeS >= nextModeRouteS.bravo;
     if (!alphaDue && !bravoDue) return;
-    if (alphaDue) nextModeRouteS.alpha = timeS + rulesetBotDoctrine(ruleset, 'alpha').routeRefreshS;
-    if (bravoDue) nextModeRouteS.bravo = timeS + rulesetBotDoctrine(ruleset, 'bravo').routeRefreshS;
+    if (alphaDue) nextModeRouteS.alpha = timeS + rulesetRoutePush(ruleset, 'alpha', 'authority').refreshS;
+    if (bravoDue) nextModeRouteS.bravo = timeS + rulesetRoutePush(ruleset, 'bravo', 'authority').refreshS;
     for (const entity of entities) {
       if (!entity.bot || entity.modeActive === false || entity.combat.destroyed) continue;
       if (entity.team === 'bravo' ? !bravoDue : !alphaDue) continue;
@@ -2334,7 +2331,7 @@ export function createAuthoritativeMatch({
         target.x - (entity._modeTargetX ?? Infinity),
         target.z - (entity._modeTargetZ ?? Infinity),
       );
-      if (moved < rulesetBotDoctrine(ruleset, entity.team).routeMoveM) continue;
+      if (moved < rulesetRoutePush(ruleset, entity.team, 'authority').moveM) continue;
       entity._modeTargetX = target.x;
       entity._modeTargetZ = target.z;
       entity.aiCtl?.setWaypoints([[target.x, target.z]], { loop: false });
@@ -2836,7 +2833,8 @@ export function createAuthoritativeMatch({
     },
 
     captureModeCheckpoint() {
-      if (!['juggernaut', 'infected', 'realistic', 'gun_game', 'drone', 'ac130'].includes(normalizedGameMode)) return null;
+      // the wave modes carry their waves, line and queue too (round 2: a migrated host restarted them from the beginning)
+      if (!['juggernaut', 'infected', 'realistic', 'gun_game', 'drone', 'ac130'].includes(normalizedGameMode) && !isWaveMode(normalizedGameMode)) return null;
       const flightStates: NewModeCheckpoint['flights'] = [];
       for (const entity of entities) { const flight = captureAerial(entity); if (flight) flightStates.push({ id: entity.id, flight }); }
       return { mode: modeController.captureCheckpoint(timeS + modeTimeOffsetS), flights: flightStates };

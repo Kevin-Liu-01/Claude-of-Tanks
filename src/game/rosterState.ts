@@ -12,7 +12,8 @@ import { rosterVisualAttempts } from './rosterVisualFallback.ts';
 import { ERA_NEIGHBOURS, isBotTankId, rankMatchCandidates } from './matchmaking.ts';
 import { ENEMY_NATION_OPTIONS } from './teamArrangement.ts';
 import { TEAM_NATIONS_RULES } from '../sim/matchRuleset.ts';
-import { countryOfNation, pickNationalSides, teamNationsSeed, type NationNote, type NationRow, type CountryId } from '../sim/teamNations.ts';
+import { countryOfVehicle, type CountryId } from '../sim/countries.ts';
+import { pickNationalSides, teamNationsSeed, type NationNote, type NationRow } from '../sim/teamNations.ts';
 import { tankTier } from '../vehicles/tier.ts';
 import type { SoloNationalMode, SoloNationalPlan } from './soloRosterPlan.ts';
 import { getDeviceTier } from '../engine/quality.ts';
@@ -586,7 +587,7 @@ export interface BattleTeamNations {
 /** A pool entity as the planner's row: its vehicle, country, era and tier. */
 function nationRowOf(entity: RosterEntity): NationRow {
   const spec = entity.spec as { nation?: string; era?: string } | null | undefined;
-  return { id: entity.specId, country: countryOfNation(spec?.nation), era: spec?.era ?? null, tier: tankTier(entity.specId) };
+  return { id: entity.specId, country: countryOfVehicle(entity.specId, spec?.nation), era: spec?.era ?? null, tier: tankTier(entity.specId) };
 }
 
 /**

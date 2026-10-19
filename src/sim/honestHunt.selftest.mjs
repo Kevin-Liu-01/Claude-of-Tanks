@@ -14,7 +14,7 @@ function make(mode, entities, ruleset = undefined) {
   return createMatchModeController({ mode, entities, seed: 5, terrainHeight: () => 0, ...(ruleset ? { ruleset } : {}),
     spotting: { isSpotted: (id) => spotted.has(id) },
     setActive(target, active) { target.modeActive = active; },
-    revive(target, spawn) { Object.assign(target.state.pos, { x: spawn.x, z: spawn.z }); target.combat.destroyed = false; } });
+    revive(target, spawn) { Object.assign(target.state.pos, { x: spawn.x, z: spawn.z }); target.state.yaw = spawn.yaw; target.combat.destroyed = false; } });
 }
 const at = (point, target) => Math.hypot(point.x - target.state.pos.x, point.z - target.state.pos.z);
 
@@ -79,4 +79,71 @@ const at = (point, target) => Math.hypot(point.x - target.state.pos.x, point.z -
   assert.equal(rally.mission, undefined, 'unlabelled: an engaged survivor keeps fighting at range');
   assert.equal(mode.botTarget(a), null, 'a survivor with the group holds');
 }
-console.log('honestHunt.selftest: the hunt names only spotted quarry, then its last sighting, then a sweep; the hunters spread; the allies leash; survivors rally');
+// Where the infected rise (infectionBots.arrival; round 2, the critic's E1 and M12). A bot rises on the ring round the
+// survivors' live centroid (a game-director decision no client is sent); a converted HUMAN is sent its own pose, so its
+// ring is centred on what its side has spotted and it faces that, and with nothing spotted it rises at the infected base
+// — never a pose that names the hidden survivors' bearing and range.
+{
+  spotted.clear();
+  const ring = matchRulesetFor('infected').infectionBots.arrival;
+  const [ringMin, ringMax] = ring.spawnRingM, shift = ringMin * 0.15 + 1;
+  const survivors = [tank('a', 'alpha', 0, 0), tank('b', 'alpha', 24, 0), tank('c', 'alpha', 0, 24), tank('far', 'alpha', 60, 30)];
+  const player = tank('player', 'alpha', 12, 12, false);
+  const infected = [0, 1].map((i) => tank(`i${i}`, 'bravo', i * 20, 400));
+  const mode = make('infected', [player, ...survivors, ...infected]);
+  const centroid = (list) => ({ x: list.reduce((s, e) => s + e.state.pos.x, 0) / list.length, z: list.reduce((s, e) => s + e.state.pos.z, 0) / list.length });
+  const live = centroid([player, ...survivors]);
+  for (const bot of infected) {
+    const d = Math.hypot(bot.state.pos.x - live.x, bot.state.pos.z - live.z);
+    assert.ok(d >= ringMin - shift && d <= ringMax + shift, `an infected bot rises on the ring round the survivors (${d.toFixed(0)} m), not at its base`);
+  }
+  let t = 0;
+  const step = (seconds) => { for (let k = 0; k < Math.ceil(seconds / 0.25); k++) mode.step(1 / 60, t += 0.25); };
+  step(1);
+  // the player converts with nothing spotted: it rises at the infected base, out of the survivors' ring
+  player.combat.destroyed = true; step(0.5);
+  assert.equal(player.team, 'bravo', 'the player converted');
+  step(matchRulesetFor('infected').respawnS + 1);
+  assert.equal(player.combat.destroyed, false, 'and rose again');
+  const base = centroid(infected.map(() => ({ state: { pos: { x: 10, z: 400 } } })));
+  assert.ok(Math.hypot(player.state.pos.x - base.x, player.state.pos.z - base.z) < 60,
+    `with nothing spotted the convert rises at the infected base (${player.state.pos.x.toFixed(0)}, ${player.state.pos.z.toFixed(0)}), not round the hidden survivors`);
+  // its side spots survivor a: the convert's next rise rings that sighting and faces it, not the live centroid
+  spotted.add('a'); step(1);
+  player.combat.destroyed = true; step(matchRulesetFor('infected').respawnS + 1);
+  assert.equal(player.combat.destroyed, false, 'the convert rose a second time');
+  const seen = survivors[0].state.pos;
+  const d = Math.hypot(player.state.pos.x - seen.x, player.state.pos.z - seen.z);
+  assert.ok(d >= ringMin - shift && d <= ringMax + shift, `the convert rings its side's sighting (${d.toFixed(0)} m from it)`);
+  const faces = Math.atan2(seen.x - player.state.pos.x, seen.z - player.state.pos.z);
+  const yawError = Math.abs(Math.atan2(Math.sin(player.state.yaw - faces), Math.cos(player.state.yaw - faces)));
+  assert.ok(yawError < 0.35, `and faces the sighting (${yawError.toFixed(2)} rad off its bearing)`);
+}
+// The network authority hands its own spotting to the hunt (round 2, the critic's M14: without the hook every survivor
+// read as spotted, so a room's hunters would have routed on hidden survivors). Survivors 1.1 km from the infected on a
+// flat field, past every view range: after the first seconds the infected side has no sighting at all.
+{
+  const { Vector3 } = await import('three');
+  await import('../vehicles/tankFactory.ts');
+  const { createAuthoritativeMatch } = await import('./authoritativeMatch.ts');
+  const flat = { getHeightAt: () => 0, getGroundType: () => 'hard', getNormalAt: () => new Vector3(0, 1, 0) };
+  const rules = matchRulesetFor('infected');
+  const players = [
+    ...[0, 1, 2].map((i) => ({ id: `s${i}`, specId: 'm1a1_abrams_hc', team: 'alpha', bot: true, spawn: { x: -400 + i * 14, z: -400, yaw: 0 } })),
+    ...[0, 1].map((i) => ({ id: `z${i}`, specId: 'm1a1_abrams_hc', team: 'bravo', bot: true, spawn: { x: 400 - i * 14, z: 400, yaw: Math.PI } })),
+  ];
+  const match = createAuthoritativeMatch({ gameMode: 'infected', countdownS: 0, mapId: 'verdant', seed: 31,
+    ruleset: { ...rules, infectionBots: { ...rules.infectionBots, arrival: null } },
+    worldCollision: { mapId: 'verdant', heightField: flat, getObstacles: () => [] }, players });
+  match.onMatchReady();
+  const inputs = new Map();
+  for (let i = 0; i < 180; i++) match.step({ dt: 1 / 60, inputs });
+  const zombie = match.entityById.get('z0');
+  assert.equal(match.modeController.freshestSighting(zombie), null, 'the authority\'s infected have seen no survivor 1.1 km away');
+  const hunt = match.modeController.botObjective(zombie);
+  for (const id of ['s0', 's1', 's2']) {
+    const survivor = match.entityById.get(id);
+    assert.ok(!hunt || Math.hypot(hunt.x - survivor.state.pos.x, hunt.z - survivor.state.pos.z) > 60, `the authority's hunt does not name hidden ${id}`);
+  }
+}
+console.log('honestHunt.selftest: the hunt names only spotted quarry, then its last sighting, then a sweep; the hunters spread; the allies leash; survivors rally; the infected rise on the ring, a converted human only round its side\'s sighting');

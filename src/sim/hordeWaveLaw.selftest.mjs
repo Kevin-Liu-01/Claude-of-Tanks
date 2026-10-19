@@ -1,12 +1,13 @@
 // Endless Horde's wave law (gameplay-modes-228; owner 2026-10-18: "make it work a lot more properly like youd expect,
-// more enemies per round"). The controller, headless: every wave brings its law's TOTAL (6, 9, 13, 18, 24 x 1.4 swarm,
-// 30, 37 …) through the twenty-identity pool, at most maxAlive on the field at once, the queue trickling in one
-// identity every trickleS (a wreck only once it has lain recycleAfterS); every arrival on the ring 260-380 m round the
-// humans, never within 150 m of one nor in a human's terrain sight (the ridge field), else deferred; the lull exactly
-// intermissionS; the HUD's state (total, queued, remaining = alive + queued, the special); the same seed replays it.
+// more enemies per round"). The controller, headless: every wave brings its law's TOTAL (6, 9, 13, 18, 24, 30, 37 …,
+// rising every round: a swarm wave keeps the law's total and swarms in at its weaker hull, twice as fast) through the
+// twenty-identity pool, at most maxAlive on the field at once, the queue trickling in one identity every trickleS (a
+// wreck only once it has lain recycleAfterS); every arrival on the ring round the humans, never within 150 m of one nor
+// in a human's terrain sight (the ridge field), else deferred; the lull exactly intermissionS; the HUD's state (total,
+// queued, remaining = alive + queued, the special); the same seed replays it; a migrated host takes the wave up.
 import assert from 'node:assert/strict';
 import { createMatchModeController } from './matchModes.ts';
-import { hordeMaxAlive, hordeWaveTotal, matchRulesetFor } from './matchRuleset.ts';
+import { hordeMaxAlive, hordeTrickleS, hordeWaveTotal, matchRulesetFor } from './matchRuleset.ts';
 
 const horde = matchRulesetFor('endless_horde');
 const RIDGE_R = 200;
@@ -71,7 +72,10 @@ for (let wave = 1; wave <= 6; wave++) {
   for (let i = 0; i < 40 && !startedNext(); i++) { a.clock += 0.25; a.mode.step(1 / 60, a.clock); }
   lulls.push(a.clock - clearedAt);
 }
-assert.deepEqual(totals, [6, 9, 13, 18, Math.round(24 * 1.4), 30], 'the totals rise past the old twenty cap');
+assert.deepEqual(totals, [6, 9, 13, 18, 24, 30], 'the totals rise past the old twenty cap');
+for (let w = 1; w < 40; w++) assert.ok(hordeWaveTotal(horde.horde, w + 1, 1) > hordeWaveTotal(horde.horde, w, 1), `wave ${w + 1} brings more than wave ${w}`);
+assert.equal(hordeTrickleS(horde.horde, 5), horde.horde.trickleS * horde.horde.swarmTrickleScale, 'a swarm trickles in faster');
+assert.equal(hordeTrickleS(horde.horde, 6), horde.horde.trickleS);
 assert.ok(lulls.every((s) => s >= 8 - 0.26 && s <= 8 + 0.26), `the lull is the ruleset's 8 s (${lulls.join(', ')})`);
 assert.equal(peak, 16, 'the field peaks at maxAlive');
 assert.equal(new Set(a.arrivals.map((r) => r.id)).size, 20, 'every arrival is one of the twenty pool identities');
@@ -138,6 +142,29 @@ for (const arrival of a.arrivals) {
   const c = run(31);
   for (let i = 0; i < 20; i++) { for (const z of live(c.pool)) z.combat.destroyed = true; c.clock += 0.5; c.mode.step(1 / 60, c.clock); }
   assert.deepEqual(c.arrivals.slice(0, 12).map((r) => [r.id, r.x, r.z]), a.arrivals.slice(0, 12).map((r) => [r.id, r.x, r.z]), 'deterministic');
+}
+// a migrated host takes the wave up where the old one left it (round 2, the critic's E12: wave 1 again, every hostile
+// revived): the wave, the queue, the special and which pool identities rest ride the sealed checkpoint
+{
+  const e = run(36);
+  for (let wave = 1; wave <= 3; wave++) {
+    for (let guard = 0; guard < 400 && e.mode.state.horde.wave === wave; guard++) {
+      for (const z of live(e.pool)) z.combat.destroyed = true;
+      e.clock += 0.5; e.mode.step(1 / 60, e.clock);
+    }
+  }
+  for (let i = 0; i < 3; i++) { e.clock += 0.5; e.mode.step(1 / 60, e.clock); }
+  const before = { ...e.mode.state.horde };
+  const checkpoint = JSON.parse(JSON.stringify(e.mode.captureCheckpoint(e.clock)));
+  assert.ok(before.wave >= 4 && checkpoint.waves?.horde, `the checkpoint carries wave ${before.wave}`);
+  const resting = e.pool.filter((z) => z.modeActive === false).map((z) => z.id).sort();
+  const reborn = run(36);
+  for (const [i, z] of e.pool.entries()) { reborn.pool[i].combat.destroyed = z.combat.destroyed; Object.assign(reborn.pool[i].state.pos, z.state.pos); }
+  reborn.mode.restoreCheckpoint(checkpoint);
+  const after = reborn.mode.state.horde;
+  assert.deepEqual([after.wave, after.total, after.queued, after.special], [before.wave, before.total, before.queued, before.special],
+    `the new host fields the same wave (${after.wave}), total, queue and kind`);
+  assert.deepEqual(reborn.pool.filter((z) => z.modeActive === false).map((z) => z.id).sort(), resting, 'the same identities rest');
 }
 console.log(`hordeWaveLaw.selftest: totals ${totals.join(', ')}, peak ${peak} on the field, ${a.arrivals.length} arrivals from 20 identities, `
   + 'all out of reach and sight, an 8 s lull, the trickle and the replay');

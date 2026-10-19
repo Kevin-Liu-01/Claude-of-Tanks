@@ -311,7 +311,7 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
   assert.deepEqual(match.state.zones.map((zone) => Math.round(zone.z)), [-75, 15, 105],
     'sectors sit at 25/55/85 % of the way from the alpha centre to the bravo centre');
   assert.equal(match.state.horde.wave, 1);
-  assert.equal(enemies.filter((target) => target.modeActive !== false).length, 4, 'wave 1 fields four defenders (gameplay-modes-228)');
+  assert.equal(enemies.filter((target) => target.modeActive !== false).length, 3, 'wave 1 fields three defenders (gameplay-modes-228 round 2: 3 / 4 / 5)');
   // a push waits for two friends within 80 m (or 15 s at the edge): with one, the attacker stages at the zone's edge on
   // the attack's side (assaultBots.stageM past the radius)
   const staged = match.botTarget(ally), zone0 = match.state.zones[0];
@@ -319,15 +319,17 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
   const stagedOff = Math.hypot(staged.x - zone0.x, staged.z - zone0.z);
   assert.ok(stagedOff > 40 && stagedOff < 60 && staged.z < zone0.z, `one friend: the attacker stages at the edge (${stagedOff.toFixed(1)} m)`);
   const defender = enemies.find((target) => target.modeActive !== false);
-  assert.deepEqual(match.botTarget(defender), { x: match.state.zones[0].x, z: match.state.zones[0].z, mission: 'assault' },
-    'defenders fall back on the live sector when no attacker is closer');
+  const held = match.botTarget(defender);
+  assert.equal(held.mission, 'assault', 'defenders hold the live sector');
+  assert.ok(Math.abs(Math.hypot(held.x - match.state.zones[0].x, held.z - match.state.zones[0].z) - fl.assault.holdSpreadM) < 1e-6,
+    'each on its own slot of the hold ring round the sector (holdSpreadM, round 2)');
   let timeS = 0;
   const hold = (seconds) => {
     let result = null;
     for (let i = 0; i < Math.round(seconds * 60) && !result; i++) { timeS += 1 / 60; result = match.step(1 / 60, timeS); }
     return result;
   };
-  for (const [index, expectedWave, expectedDefenders] of [[0, 2, 5], [1, 3, 6]]) {
+  for (const [index, expectedWave, expectedDefenders] of [[0, 2, 4], [1, 3, 5]]) {
     player.state.pos.x = match.state.zones[index].x; player.state.pos.z = match.state.zones[index].z;
     assert.equal(hold(9), null);
     assert.equal(match.state.line.index, index + 1, `sector ${index + 1} taken advances the line`);
@@ -354,7 +356,7 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
   const match = run.match;
   const living = () => enemies.filter((target) => target.modeActive !== false && !target.combat.destroyed);
   const wave1 = living();
-  assert.equal(wave1.length, 4, 'wave 1 fields four defenders');
+  assert.equal(wave1.length, 3, 'wave 1 fields three defenders');
   const revivesAfterWave1 = run.revives;
   const [scarred, fallen, untouched] = wave1;
   scarred.combat.hp = 37;
@@ -374,13 +376,14 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
   assert.deepEqual({ x: scarred.state.pos.x, z: scarred.state.pos.z }, scarredPos, 'and its position');
   assert.equal(scarred.modeActive !== false && untouched.modeActive !== false, true, 'living defenders stay fielded');
   assert.equal(fallen.combat.destroyed, true, 'the sector\'s wreck is not resurrected while rested identities remain');
-  assert.equal(living().length, 5, 'the counter-attack brings the line up to five living defenders');
+  assert.equal(living().length, 4, 'the counter-attack brings the line up to four living defenders');
   assert.equal(run.revives - revivesAfterWave1, 2, 'exactly the shortfall arrives fresh (two arrivals)');
   const arrivals = living().filter((target) => !wave1.includes(target));
   assert.equal(arrivals.length, 2);
   for (const arrival of arrivals) {
     assert.equal(arrival.combat.hp, arrival.combat.maxHp, 'arrivals come at the new line\'s full strength');
-    assert.ok(arrival.combat.maxHp > 100, 'with the per-line health scale');
+    // the revive scale is the line's own over the attack's hull, which the builders' ruleset stamp multiplies back
+    assert.ok(arrival.combat.maxHp * matchRulesetFor('frontline_assault').hpScale > 100, 'with the per-line health scale');
   }
 }
 {
@@ -451,10 +454,11 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
   const { match } = controller('frontline_assault', [player, ...enemies], 6000,
     { ruleset: matchRulesetFor('frontline_assault', { difficulty: 4 }) });
   assert.equal(match.ruleset.assault.extraDefenders, 1);
-  assert.equal(enemies.filter((target) => target.modeActive !== false).length, 5,
+  assert.equal(enemies.filter((target) => target.modeActive !== false).length, 4,
     'operation 4 fields an extra defender on the first sector');
   const active = enemies.find((target) => target.modeActive !== false);
-  assert.equal(active.combat.maxHp, Math.round(100 * 1.18), 'operation 4 defenders carry +18 % hull');
+  // the revive scale divides the attack's hull back out (the builders' ruleset stamp multiplies it in again)
+  assert.equal(active.combat.maxHp, Math.round(100 * 1.18 / match.ruleset.hpScale), 'operation 4 defenders carry +18 % hull');
 }
 {
   const alpha = entity('alpha', 'alpha', 0, -100);
@@ -541,7 +545,8 @@ for (const mode of ['zone_control','mars','standard','capture_the_flag','turbo_b
   const flag = match.state.flags.find(f => f.team === 'bravo');
   flag.status = 'carried'; flag.carrierId = bots[0].id;
   const escorts = bots.slice(1).map(bot => match.botObjective(bot)).filter(job => job.mission === 'escort');
-  assert.equal(escorts.length, 3, 'three escorts lead the carrier home (gameplay-modes-228)');
+  const rules = matchRulesetFor('capture_the_flag').flagBots;
+  assert.equal(escorts.length, 6 - rules.carrierGuards, 'every bot but the home guard escorts the carrier (gameplay-modes-228 round 2)');
   assert.ok(Math.hypot(escorts[0].x - escorts[1].x, escorts[0].z - escorts[1].z) > 30,
     'escorts cover opposite sides of the carrier instead of blocking its hull');
 }

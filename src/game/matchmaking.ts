@@ -1,4 +1,4 @@
-import { ERA_NEIGHBOURS } from '../sim/teamNations.ts';
+import { ERA_NEIGHBOURS } from '../sim/countries.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 // Shared garage/matchmaking eligibility and pure candidate ordering.
 //

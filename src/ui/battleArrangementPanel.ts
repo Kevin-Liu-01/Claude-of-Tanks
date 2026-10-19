@@ -3,12 +3,12 @@ import { createEnemyNationSelect } from './enemyNationSelect.ts';
 import { t } from './i18n.ts';
 import { ENEMY_NATION_OPTIONS, readTeamArrangement, readTeamNations, writeTeamArrangement, writeTeamNations } from '../game/teamArrangement.ts';
 import { isWaveMode, matchRulesetFor, rulesetLines, RULESET_SCORE_TARGETS, TEAM_ARRANGEMENT_LIMITS } from '../sim/matchRuleset.ts';
-import { countryOfNation } from '../sim/teamNations.ts';
+import type { CountryId } from '../sim/countries.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
 import { createTeamNationsControl } from './teamNationsControl.ts';
 
 /** Mode-specific controls share the exact stored arrangement read by battle creation. */
-export function createBattleArrangementPanel(host: HTMLElement, { playerNation = () => null }: { playerNation?: () => string | null } = {}): { render(mode: GameModeId): void; close(): void } {
+export function createBattleArrangementPanel(host: HTMLElement, { playerCountry = () => null }: { playerCountry?: () => CountryId | null } = {}): { render(mode: GameModeId): void; close(): void } {
   let mode: GameModeId = 'standard';
   const fields = new Map<string, { label: HTMLLabelElement; select: HTMLSelectElement }>();
   const controls = document.createElement('div'); controls.className = 'cot-mode-settings';
@@ -17,7 +17,7 @@ export function createBattleArrangementPanel(host: HTMLElement, { playerNation =
   // TEAM NATIONS (gameplay-modes-228): one preference for every mode, MONO's enemy country per mode below it
   const teams = createTeamNationsControl({
     read: () => readTeamNations(), write: (value) => { writeTeamNations(value); render(mode); },
-    playerNation, enemyCountry: () => readTeamArrangement(mode)?.enemyNation ?? null,
+    playerCountry, enemyCountry: () => readTeamArrangement(mode)?.enemyNation ?? null,
   });
   teams.root.classList.add('cot-nation-field');
   controls.append(teams.root);
@@ -42,7 +42,7 @@ export function createBattleArrangementPanel(host: HTMLElement, { playerNation =
     const arrangement = readTeamArrangement(mode);
     const rules = matchRulesetFor(mode, null, arrangement);
     const random = rules.teamNations === 'random';
-    const ownCountry = countryOfNation(playerNation());
+    const ownCountry = playerCountry();
     teams.render();
     for (const [name, { label, select }] of fields) {
       label.hidden = name === 'juggernautRole' ? mode !== 'juggernaut' : name === 'waveSize' || name === 'waveStep' ? mode !== 'endless_horde'

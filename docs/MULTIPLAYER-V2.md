@@ -2370,6 +2370,20 @@ decision and the mode change), `hostPlan.selftest` (planStart and planFromRoom n
 and 12 + 3), `roomPolicy.selftest`, `roomWorkerProgram.selftest` (the Worker program typechecks), `nationIndex.selftest`;
 the census rows `mp1`, `mp2` and `coop` of `tools/mode-aggression-harness.mjs roster` (docs/GAME-MODES.md "Team nations").
 
+**Round 2 (2026-10-19, the critic's E10-E12).** A host migration in Endless Horde or Frontline Assault now resumes the
+match where it stood: the sealed mode checkpoint (`captureModeCheckpoint`, host to host only, never a seat) carries the
+wave modes' state as well — the wave, its queue and kind, which pool identities rest and since when, the caches, and
+Frontline's live line, its zones' control, the counter-attack, the trickle and the allied revives
+(`ModeCheckpoint.waves`); before, the new host rebuilt the controller from scratch (wave 1, a fresh draw, every hostile
+revived on the ring). The lobby's arrangement reset keeps the room's TEAMS choice (it sent a null arrangement, which put a
+RANDOM room back to MONO without a word); a new room already takes the host's remembered choice
+(`playMenu.connectRoom` sends `readTeamArrangement`, which folds `cot.game.teamNations.v1` in; `roomPolicy.createRoom`
+keeps it — pinned by `roomBots.selftest`). The Worker's own copy of the protocol is unchanged by this round; RANDOM in a
+room still needs the Worker release named above (no protocol version moves: an older Worker drops the field and its rooms
+play MONO, the default). The loading screen's TEAMS flags in a room (`RoomStartPlan.teamNations`) are not yet sent to the
+seats: the match-start payload would carry them, a protocol addition left for that Worker release (open).
+Receipts: `hordeWaveLaw.selftest` (a migrated host fields the same wave, total, queue, kind and resting identities).
+
 ## 10. Decisions for the owner
 
 1. **Hosting account.** ~~Run the match containers in the existing Cloudflare account (Workers

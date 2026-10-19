@@ -16,9 +16,10 @@
  * Bot ids stay `bot-<team>-<n>` / `mode-<team>-<n>`, never a vehicle id; duplicate picks are valid.
  */
 import { NATION_INDEX } from '../../sim/nationIndex.generated.ts';
-import { matchRulesetFor, TEAM_NATIONS_RULES, type MatchRuleset, type TeamArrangement } from '../../sim/matchRuleset.ts';
+import { isWaveMode, matchRulesetFor, TEAM_NATIONS_RULES, type MatchRuleset, type TeamArrangement } from '../../sim/matchRuleset.ts';
 import { normalizeGameMode } from '../../sim/matchModes.ts';
-import { campaignOperationCountry, ERA_NEIGHBOURS, isCountryId, pickNationalSides, type NationNote, type NationRow, type CountryId } from '../../sim/teamNations.ts';
+import { campaignOperationCountry, ERA_NEIGHBOURS, isCountryId, type CountryId } from '../../sim/countries.ts';
+import { pickNationalSides, type NationNote, type NationRow } from '../../sim/teamNations.ts';
 
 interface PlanSeat { playerId: string; team: 'alpha' | 'bravo' | 'spectator'; specId: string }
 export interface PlanBot { playerId: string; name: string; team: 'alpha' | 'bravo'; specId: string }
@@ -102,7 +103,8 @@ function fillRoomBots(
     const sides = randomSides(rows, [...alphaHumans, ...bravoHumans], counts.alpha, counts.bravo);
     return { ...sides, record: Object.freeze({ teamNations: 'random', allied: null, enemy: null, notes: [] }) };
   }
-  const campaign = normalizeGameMode(settings.gameMode) === 'frontline_assault' ? campaignOperationCountry(settings.campaignOperationId) : null;
+  // a campaign operation names the formation of the sortie it is (the rooms carry one for Frontline's sorties only)
+  const campaign = matchRulesetFor(normalizeGameMode(settings.gameMode)).assault ? campaignOperationCountry(settings.campaignOperationId) : null;
   const arranged = settings.arrangement?.enemyNation;
   const plan = pickNationalSides({
     rows, alliedHumans: alphaHumans, enemyHumans: bravoHumans, alliedSeats: counts.alpha, enemySeats: counts.bravo,
@@ -139,7 +141,7 @@ export function planRoomBots<S extends PlanSeat>(
   const rules = matchRulesetFor(mode, null, settings.arrangement ?? null);
   const players = seats.filter((seat) => seat.team !== 'spectator');
   bots.length = 0;
-  const wave = mode === 'endless_horde' || mode === 'frontline_assault';
+  const wave = isWaveMode(mode);
   const asymmetric = !!(rules.juggernaut || rules.infection || rules.aerial === 'gunship');
   // who sits where, and the bot seats per side
   const slots: { team: 'alpha' | 'bravo'; playerId: string; name: string }[] = [];
@@ -159,7 +161,7 @@ export function planRoomBots<S extends PlanSeat>(
     const pool = Math.max(0, rules.enemies ?? 0);
     const allies = settings.botsFill ? Math.max(0, (rules.allies ?? 0) + 1 - humans) : 0;
     const hostiles = Math.min(pool, Math.max(0, FIELD_LIMIT - players.length));
-    for (let i = 0; i < hostiles; i++) slots.push({ team: 'bravo', playerId: `mode-bravo-${i}`, name: mode === 'endless_horde' ? `Hostile ${i + 1}` : `Defender ${i + 1}` });
+    for (let i = 0; i < hostiles; i++) slots.push({ team: 'bravo', playerId: `mode-bravo-${i}`, name: rules.assault ? `Defender ${i + 1}` : `Hostile ${i + 1}` });
     const friendlies = Math.min(allies, Math.max(0, FIELD_LIMIT - players.length - hostiles));
     for (let i = 0; i < friendlies; i++) slots.push({ team: 'alpha', playerId: `mode-alpha-${i}`, name: `Ally ${i + 1}` });
   } else if (settings.botsFill) {

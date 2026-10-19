@@ -11,8 +11,7 @@
 // fill the enemy roster first. Stars (cleared / under par / no ally lost) live in the record.
 import type { MapId } from '../world/maps/catalog.ts';
 import type { CampaignRulesetInput } from '../sim/matchRuleset.ts';
-import { CAMPAIGN_OPERATION_COUNTRY } from '../sim/teamNations.ts';
-import { COUNTRIES } from '../sim/teamNations.ts';
+import { CAMPAIGN_OPERATION_COUNTRY, COUNTRIES } from '../sim/countries.ts';
 import {
   CAMPAIGN_PAR_SHARE, readCampaignRecord, type CampaignRecord, type FrontlineMapProgress,
 } from './campaignProgress.ts';

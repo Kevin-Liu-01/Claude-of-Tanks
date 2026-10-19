@@ -7,7 +7,7 @@
  */
 import { normalizeGameMode } from '../sim/matchModes.ts';
 import { isWaveMode, matchRulesetFor, rulesetAllyCap, type MatchRuleset } from '../sim/matchRuleset.ts';
-import { isCountryId, type CountryId } from '../sim/teamNations.ts';
+import { isCountryId, type CountryId } from '../sim/countries.ts';
 import { campaignEnemyNations, campaignOperationById, campaignRulesetInput } from './campaignOperations.ts';
 import { enemyNationSpecNations, readTeamArrangement } from './teamArrangement.ts';
 

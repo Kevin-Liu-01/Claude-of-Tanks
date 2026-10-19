@@ -45,7 +45,7 @@ import type {
 // reload, ammunition, equipment slots, gravity, roster split and the clock (sim/matchRuleset.ts).
 import {
   applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetAllyCap, rulesetBotDifficulty,
-  rulesetBotDoctrine,
+  rulesetBotDoctrine, rulesetRoutePush, rulesetVerdictSide,
   rulesetLoadout, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
 import { campaignRulesetInput } from './campaignOperations.ts';
 import {
@@ -1470,9 +1470,6 @@ export function setupBattle(
       modeEntity.visual?.setVisible(active);
     },
     revive(ent: SoloEntity, spawn: MatchModeSpawn, healthScale: number) {
-      // a revived bot takes the next route push whatever its last destination was (gameplay-modes-228)
-      ent._modeTargetX = undefined;
-      ent._modeTargetZ = undefined;
       _spawnPos.set(spawn.x, world.heightField.getHeightAt(spawn.x, spawn.z), spawn.z);
       ent.state = createTankState(ent.spec, _spawnPos, spawn.yaw);
       ent.combat = createCombatState(ent.spec);
@@ -2463,16 +2460,16 @@ function stepSpotting(game: SoloGameState, bus: EventBus): void {
 }
 
 /**
- * The mode route push: each side on its doctrine's cadence (routeRefreshS) re-routes a bot whose destination moved
- * routeMoveM or more (gameplay-modes-228: one rule for the solo battle and the authority, read from the ruleset).
+ * The mode route push: each side on its cadence (sim/matchRuleset.ts rulesetRoutePush: the doctrine's, or the solo
+ * battle's legacy 4 s / 18 m) re-routes a bot whose destination moved that far or more.
  */
 function retargetObjectiveBots(game: SoloGameState): void {
   if (game.gameMode === 'standard') return;
   const due = game._nextModeRouteS ??= { player: 0, enemy: 0 };
   const alphaDue = game.timeS >= due.player, bravoDue = game.timeS >= due.enemy;
   if (!alphaDue && !bravoDue) return;
-  if (alphaDue) due.player = game.timeS + rulesetBotDoctrine(game.ruleset, 'player').routeRefreshS;
-  if (bravoDue) due.enemy = game.timeS + rulesetBotDoctrine(game.ruleset, 'enemy').routeRefreshS;
+  if (alphaDue) due.player = game.timeS + rulesetRoutePush(game.ruleset, 'player', 'solo').refreshS;
+  if (bravoDue) due.enemy = game.timeS + rulesetRoutePush(game.ruleset, 'enemy', 'solo').refreshS;
   for (const entity of game.tanks) {
     if (!entity.aiCtl || entity.modeActive === false || entity.combat.destroyed) continue;
     const bravo = entity.team === 'enemy';
@@ -2483,7 +2480,7 @@ function retargetObjectiveBots(game: SoloGameState): void {
       target.x - (entity._modeTargetX ?? Infinity),
       target.z - (entity._modeTargetZ ?? Infinity),
     );
-    if (moved < rulesetBotDoctrine(game.ruleset, entity.team).routeMoveM) continue;
+    if (moved < rulesetRoutePush(game.ruleset, entity.team, 'solo').moveM) continue;
     entity._modeTargetX = target.x;
     entity._modeTargetZ = target.z;
     entity.aiCtl.setWaypoints([[target.x, target.z]], { loop: false });
@@ -3146,7 +3143,7 @@ function settleBattleResult(
     if (entity.team === 'enemy') enemiesLeft++;
     else if (entity.id !== game.player.id) alliesLeft++;
   }
-  const playerTeam = game.player.team === 'enemy' ? 'bravo' : 'alpha';
+  const playerTeam = rulesetVerdictSide(game.ruleset, game.player.team === 'enemy' ? 'bravo' : 'alpha');
   if (modeOutcome) {
     game.result = modeOutcome.result === 'draw' ? 'draw'
       : modeOutcome.result === playerTeam ? 'victory' : 'defeat';

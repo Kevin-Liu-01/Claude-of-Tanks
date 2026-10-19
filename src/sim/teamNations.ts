@@ -11,89 +11,14 @@
  * (vehicles/nationIndex.generated.ts). Every draw is seeded by the caller's seed.
  */
 
-export type CountryId =
-  | 'russia' | 'germany' | 'usa' | 'uk' | 'france' | 'china' | 'japan' | 'sweden' | 'israel' | 'poland' | 'italy'
-  | 'south_korea' | 'ukraine';
+import {
+  COUNTRIES, COUNTRY_ALLIES, ERA_NEIGHBOURS, countryBloc, countryNation, type CountryId,
+} from './countries.ts';
 
-interface Country {
-  readonly id: CountryId;
-  /** Spec `nation` strings the fleet uses for this country. */
-  readonly specNations: readonly string[];
-  /** flag-icons code (ISO 3166-1 alpha-2). */
-  readonly flag: string;
-  /** The tree's one bloc notion (the tracer lineage): east = Russia and China, west = everyone else. */
-  readonly bloc: 'east' | 'west';
-}
-
-const country = (id: CountryId, flag: string, bloc: 'east' | 'west', ...specNations: string[]): Country =>
-  Object.freeze({ id, flag, bloc, specNations: Object.freeze(specNations) });
-
-/** Every country the fleet fields, in the order the pickers list them. */
-export const COUNTRIES: readonly Country[] = Object.freeze([
-  country('russia', 'ru', 'east', 'Russia', 'USSR', 'USSR/Russia', 'RU'),
-  country('germany', 'de', 'west', 'Germany'),
-  country('usa', 'us', 'west', 'USA', 'US'),
-  country('uk', 'gb', 'west', 'UK'),
-  country('france', 'fr', 'west', 'France'),
-  country('china', 'cn', 'east', 'China', 'CN'),
-  country('japan', 'jp', 'west', 'Japan'),
-  country('sweden', 'se', 'west', 'Sweden'),
-  country('israel', 'il', 'west', 'Israel'),
-  country('poland', 'pl', 'west', 'Poland'),
-  country('italy', 'it', 'west', 'Italy'),
-  country('south_korea', 'kr', 'west', 'South Korea'),
-  country('ukraine', 'ua', 'west', 'Ukraine'),
-]);
-
-const COUNTRY_BY_ID: ReadonlyMap<string, Country> = new Map(COUNTRIES.map((entry) => [entry.id, entry]));
-const COUNTRY_BY_NATION: ReadonlyMap<string, Country> = new Map(COUNTRIES.flatMap((entry) => entry.specNations.map((nation) => [nation, entry] as const)));
-
-/** The country a spec `nation` string belongs to, or null (a dev hull, a community entry). */
-export function countryOfNation(nation: string | null | undefined): CountryId | null {
-  return COUNTRY_BY_NATION.get(String(nation ?? ''))?.id ?? null;
-}
-
-export function isCountryId(value: unknown): value is CountryId {
-  return typeof value === 'string' && COUNTRY_BY_ID.has(value);
-}
-
-/** A country's flag-icons code ('xx' for none). */
-export function countryFlag(id: string | null | undefined): string {
-  return COUNTRY_BY_ID.get(String(id ?? ''))?.flag ?? 'xx';
-}
-
-export function countryBloc(id: string | null | undefined): 'east' | 'west' | null {
-  return COUNTRY_BY_ID.get(String(id ?? ''))?.bloc ?? null;
-}
-
-/**
- * Each country's closest allied countries, in order: the fills a short side draws from before it repeats a vehicle
- * (teamNations.selftest pins it). East fills only from east; west from west first.
- */
-const allies = (...ids: CountryId[]): readonly CountryId[] => Object.freeze(ids);
-export const COUNTRY_ALLIES: Readonly<Record<CountryId, readonly CountryId[]>> = Object.freeze({
-  usa: allies('uk', 'germany', 'france', 'italy', 'poland', 'israel', 'japan', 'south_korea', 'sweden', 'ukraine'),
-  uk: allies('usa', 'germany', 'france', 'italy', 'poland', 'sweden', 'israel', 'japan', 'south_korea', 'ukraine'),
-  germany: allies('france', 'italy', 'poland', 'uk', 'usa', 'sweden', 'ukraine', 'israel', 'japan', 'south_korea'),
-  france: allies('germany', 'italy', 'uk', 'usa', 'poland', 'sweden', 'ukraine', 'israel', 'japan', 'south_korea'),
-  italy: allies('germany', 'france', 'uk', 'usa', 'poland', 'sweden', 'ukraine', 'israel', 'japan', 'south_korea'),
-  poland: allies('ukraine', 'germany', 'usa', 'uk', 'sweden', 'france', 'italy', 'israel', 'japan', 'south_korea'),
-  ukraine: allies('poland', 'uk', 'usa', 'germany', 'sweden', 'france', 'italy', 'israel', 'japan', 'south_korea'),
-  sweden: allies('germany', 'uk', 'poland', 'france', 'usa', 'italy', 'ukraine', 'israel', 'japan', 'south_korea'),
-  israel: allies('usa', 'uk', 'germany', 'france', 'italy', 'poland', 'sweden', 'ukraine', 'japan', 'south_korea'),
-  japan: allies('usa', 'south_korea', 'uk', 'france', 'germany', 'italy', 'poland', 'sweden', 'israel', 'ukraine'),
-  south_korea: allies('usa', 'japan', 'uk', 'germany', 'france', 'italy', 'poland', 'sweden', 'israel', 'ukraine'),
-  russia: allies('china'),
-  china: allies('russia'),
-});
-
-/** Eras a roster may draw from around the player's: contemporaries only, never WW2 against modern. */
-export const ERA_NEIGHBOURS: Readonly<Record<string, readonly string[]>> = Object.freeze({
-  ww2: Object.freeze(['ww2']),
-  'cold-war': Object.freeze(['cold-war', 'modern']),
-  modern: Object.freeze(['modern', 'cold-war', 'next-generation']),
-  'next-generation': Object.freeze(['next-generation', 'modern']),
-});
+export {
+  COUNTRIES, COUNTRY_ALLIES, ERA_NEIGHBOURS, campaignOperationCountry, countryBloc, countryFlag, countryOfNation,
+  countryOfVehicle, isCountryId, CAMPAIGN_OPERATION_COUNTRY, type CountryId,
+} from './countries.ts';
 
 /** One vehicle the planner may seat: its id, country, era and tier. */
 export interface NationRow {
@@ -326,6 +251,10 @@ export function pickNationalSides(input: NationalSidesInput): NationalSidesPlan 
     return out;
   };
   const enemyOnly = new Set<CountryId>(enemy ? [enemy] : []);
+  // the allied country and the allied humans' own count as the allied side's even with no allied bot seat (round 2:
+  // Juggernaut's hunters, no allied bots, filled the enemy side from the player's own country)
+  if (allied) used.alpha.add(allied);
+  for (const human of humans) if (human.country) used.alpha.add(human.country);
   const allies = fill('alpha', allied, alliedSeats, null, enemyOnly);
   // 4. tier pairing: enemy seat k matches allied seat k (the humans first)
   const alliedTiers = [...humans.map((h) => h.tier), ...allies.map((s) => unique[rank.get(s.id)!]?.tier ?? 0)];
@@ -358,30 +287,10 @@ export function teamNationsFlags(record: { readonly teamNations: string; readonl
   readonly enemy: CountryId | null; readonly notes: readonly NationNote[] } | null | undefined):
   { allied: string | null; enemy: string | null; alliedFills: string[]; enemyFills: string[] } | null {
   if (!record || record.teamNations === 'random') return null;
-  const nation = (id: CountryId | null): string | null => COUNTRY_BY_ID.get(String(id ?? ''))?.specNations[0] ?? null;
+  const nation = (id: CountryId | null): string | null => countryNation(id);
   const fills = (side: 'alpha' | 'bravo'): string[] => [...new Set(record.notes
     .filter((note) => note.side === side && (note.reason === 'ally' || note.reason === 'clash') && note.country)
     .map((note) => nation(note.country)).filter((value): value is string => !!value))];
   return { allied: nation(record.allied), enemy: nation(record.enemy), alliedFills: fills('alpha'), enemyFills: fills('bravo') };
 }
 
-/**
- * The country each campaign operation's formation is drawn from (gameplay-modes-228): the one table the solo campaign
- * (game/campaignOperations.ts builds its ladder from it) and the multiplayer bot planner (src/mp/room/roomBots.ts, which
- * the rooms Worker reaches and which may not import src/game) both read. The story fixes it under both TEAM NATIONS
- * values. (It lives here, not in a module of its own, so the game page loads no further chunk for it.)
- */
-export const CAMPAIGN_OPERATION_COUNTRY: Readonly<Record<string, CountryId>> = Object.freeze({
-  first_light: 'russia',
-  iron_ridge: 'germany',
-  steinburg: 'germany',
-  tarkhan_steppe: 'russia',
-  frontier_basin: 'china',
-  delta_crossing: 'usa',
-});
-
-/** An operation's formation country, or null for a free sortie / an unknown id. */
-export function campaignOperationCountry(operationId: string | null | undefined): CountryId | null {
-  return operationId && Object.prototype.hasOwnProperty.call(CAMPAIGN_OPERATION_COUNTRY, operationId)
-    ? CAMPAIGN_OPERATION_COUNTRY[operationId]! : null;
-}

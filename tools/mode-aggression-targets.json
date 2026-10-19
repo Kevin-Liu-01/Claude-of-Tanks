@@ -345,7 +345,7 @@
    "id": "horde.law",
    "op": "check",
    "check": "hordeLaw",
-   "note": "every cleared wave fielded the ruleset law round(6+3(w-1)+0.35(w-1)^2), x1.4 on swarm waves"
+   "note": "every cleared wave fielded the ruleset law round(6+3(w-1)+0.35(w-1)^2) exactly (a swarm keeps the law and swarms in faster), rising every round"
   },
   {
    "id": "horde.law.team",
@@ -442,7 +442,8 @@
    "swarmEvery": 5,
    "late": 0.23,
    "dir": "horde-team",
-   "note": "zombie hull share of own, waves 1-10 (the swarm waves field 0.10 by the plan), wave 15 <= 0.23"
+   "note": "zombie hull share of own: waves 1-10 in 0.15-0.177, the swarm waves exactly 0.10 (checked), wave 15 <= 0.23",
+   "swarmHull": 0.1
   },
   {
    "id": "horde.zombie.engagedStill",

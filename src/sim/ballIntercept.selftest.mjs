@@ -25,8 +25,10 @@ const jobs = alpha.map((b) => mode.botObjective(b));
 const strikers = jobs.filter((j) => j.mission === 'striker');
 assert.equal(strikers.length, rules.ballBots.strikers, 'two strikers');
 assert.equal(jobs.filter((j) => j.mission === 'keeper').length, rules.ballBots.keepers, 'a keeper');
-const chaser = alpha.find((b) => mode.botObjective(b).ball);
-assert.ok(chaser, 'one striker carries the ball (its jump and its shot read it)');
+// the chaser: the striker nearest the ball (the support striker and any shooter carry the ball on their objective too)
+const reach = (b) => Math.hypot(b.state.pos.x - ball.x, b.state.pos.z - ball.z);
+const chaser = alpha.filter((b) => mode.botObjective(b).mission === 'striker').sort((p, q) => reach(p) - reach(q))[0];
+assert.ok(chaser && mode.botObjective(chaser).ball, 'the chaser carries the ball (its jump and its shot read it)');
 {
   const d = Math.hypot(chaser.state.pos.x, chaser.state.pos.z);
   let t = Math.min(rules.ballBots.leadMaxS, d / 10);
@@ -51,14 +53,22 @@ for (const team of [alpha, bravo]) {
   const j = mode.botObjective(keeper);
   assert.ok(Math.hypot(j.x - goal.x, j.z - goal.z) <= rules.ballBots.keeperM + 1, 'the keeper is 30 m out from its goal');
 }
-// the shot at the ball: only when the ball lies toward the opponent goal
+// the shot at the ball: only when the ball lies toward the opponent goal — and (shootBall.everyRole) from any role, so
+// the keeper and the screens move it too, the shot before a farther tank (overTanks)
 {
   Object.assign(ball, { x: 0, z: 0, vx: 0, vz: 0 });
-  const striker = alpha.find((b) => mode.botObjective(b).ball) ?? chaser;
+  const striker = chaser;
   Object.assign(striker.state.pos, { x: 0, z: -60 });
   assert.equal(mode.botObjective(striker).shootBall, true, 'behind the ball, on the line to the bravo goal: it may shoot');
   Object.assign(striker.state.pos, { x: 0, z: 60 });
   assert.equal(mode.botObjective(striker).shootBall, false, 'beyond the ball it never shoots it toward its own goal');
+  const keeper = alpha.find((b) => mode.botObjective(b).mission === 'keeper');
+  const keeperAt = { ...keeper.state.pos };
+  Object.assign(keeper.state.pos, { x: 0, z: -90 });
+  const kept = mode.botObjective(keeper);
+  assert.equal(kept.shootBall, rules.ballBots.shootBall.everyRole, 'the keeper behind the ball may clear it toward their goal');
+  assert.equal(kept.ballFirst, rules.ballBots.shootBall.everyRole && rules.ballBots.shootBall.overTanks, 'and takes that shot before a farther tank');
+  Object.assign(keeper.state.pos, keeperAt);
 }
 // the idle reset
 {

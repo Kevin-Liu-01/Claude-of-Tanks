@@ -71,4 +71,19 @@ for (const mode of GAME_MODE_IDS) for (const seed of [1, 2, 3]) {
   assert.equal(r.settings.arrangement?.teamNations, 'random', 'TEAM NATIONS survives a mode change');
   assert.equal(r.settings.arrangement?.enemyNation ?? null, null, 'the old mode\'s other fields do not');
 }
-console.log('roomBots.selftest: co-op rooms seat their hostiles, national bots (no clones, six profiles a side), host parity in every mode, the host\'s TEAM NATIONS');
+// a new room takes the host's remembered TEAM NATIONS choice (the play menu sends its stored arrangement, which folds the
+// per-player preference in): created RANDOM, it plans RANDOM (round 2, the critic's E10)
+{
+  const { readTeamArrangement, writeTeamNations } = await import('../../game/teamArrangement.ts');
+  const store = new Map();
+  const storage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, String(v)) };
+  writeTeamNations('random', storage);
+  const remembered = readTeamArrangement('standard', storage);
+  assert.equal(remembered?.teamNations, 'random', 'the stored preference rides the arrangement the menu sends');
+  const r = createRoom({ roomCode: 'BOTS02', mode: 'private', creator: { id: 'host', name: 'Host' }, selection: { specId: 'm1a3' },
+    settings: { gameMode: 'standard', mapId: 'verdant', arrangement: remembered }, now: 0 });
+  assert.equal(r.settings.arrangement?.teamNations, 'random', 'the new room keeps it');
+  for (const player of r.players) player.ready = true;
+  assert.equal(planStart(r, { seed: 3, now: 1 }).teamNations.teamNations, 'random', 'and plans by it');
+}
+console.log('roomBots.selftest: co-op rooms seat their hostiles, national bots (no clones, six profiles a side), host parity in every mode, the host\'s TEAM NATIONS, kept from its stored choice');

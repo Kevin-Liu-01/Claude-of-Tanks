@@ -413,6 +413,10 @@ export default defineConfig({
             // its own (14 boot requests of 0.1-10 KB). One group takes exactly these modules, none of their dependencies.
             { name: 'fleetLayouts', test: /[\\/]src[\\/]vehicles[\\/](?:marder2Frame|abramsUpgradeDatums|amx10pSkirtLayout|griffinViperLayout|m6LinebackerLayout|abramsSourceXDatums|aresApcXFrame|tos1aTagilLayout|escortFieldKitLayout|national(?:DonorTurrets|UkraineDesign|PolandDesign|ChinaDesign|RussiaDesign|ModernizationDesign)|profiles[\\/](?:xk2Frame|strv122XSuppliedFrame|leopardRevolutionPrototypeFrame|leopardImprovedHull|challenger1XSuppliedFrame))\.ts$/, includeDependenciesRecursively: false },
             { name: 'groundBounce', test: /(?:[\\/]three[\\/]examples[\\/]jsm[\\/]postprocessing[\\/]Pass\.js|[\\/]src[\\/]engine[\\/](?:atmosphere|cloudscapes|lightModelCore|hazeLaw|groundBounce)\.ts)$/, includeDependenciesRecursively: false },
+            // 2026-10-19 (gameplay-modes-228 round 2): TEAM NATIONS' country table and its planner are one chunk — the
+            // garage's TEAMS switch reads the table, the solo roster plans with both, the rooms read both — instead of
+            // two boot requests (the table and the planner each split off on their own)
+            { name: 'teamNations', test: /[\\/]src[\\/]sim[\\/](?:countries|teamNations)\.ts$/, includeDependenciesRecursively: false },
           ],
         },
       },

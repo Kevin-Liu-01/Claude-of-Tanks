@@ -6,31 +6,36 @@
 // reads (the closest-ally order is pinned: a change here changes every fill).
 import assert from 'node:assert/strict';
 import { NATION_INDEX } from './nationIndex.generated.ts';
-import { COUNTRIES, COUNTRY_ALLIES, ERA_NEIGHBOURS, countryBloc, countryFlag, countryOfNation, majorityCountry, pickNationalSides,
-  teamNationsFlags, teamNationsSeed } from './teamNations.ts';
+import { COUNTRIES, COUNTRY_ALLIES, ERA_NEIGHBOURS, countryBloc, countryFlag, countryOfNation, countryOfVehicle, majorityCountry,
+  pickNationalSides, teamNationsFlags, teamNationsSeed } from './teamNations.ts';
 import { TEAM_NATIONS_RULES } from './matchRuleset.ts';
 
 const rows = NATION_INDEX.map(([id, country, era, tier]) => ({ id, country, era, tier }));
 assert.ok(rows.length >= 200, 'the index lists the production fleet');
 assert.ok(rows.every((row) => row.country), 'every production vehicle maps to a country');
 
-// the country table: thirteen countries, their aliases, flags and blocs
-assert.equal(COUNTRIES.length, 13);
+// the country table: fourteen countries, their aliases, flags and blocs; a vehicle fights for its operator (round 2:
+// the Leopard 2A4M CAN is Canada's, not its German design's)
+assert.equal(COUNTRIES.length, 14);
+assert.equal(countryOfVehicle('leo2a4m_can', 'Germany'), 'canada'); assert.equal(countryOfVehicle('leo2a4m', 'Germany'), 'germany');
+assert.equal(rows.find((row) => row.id === 'leo2a4m_can')?.country, 'canada', 'the index seats it for Canada');
+assert.equal(countryFlag('canada'), 'ca');
 assert.equal(countryOfNation('USSR/Russia'), 'russia'); assert.equal(countryOfNation('US'), 'usa'); assert.equal(countryOfNation('Community'), null);
 assert.equal(countryFlag('uk'), 'gb'); assert.equal(countryFlag('nope'), 'xx');
 assert.equal(countryBloc('china'), 'east'); assert.equal(countryBloc('poland'), 'west');
 assert.deepEqual(Object.fromEntries(Object.entries(COUNTRY_ALLIES).map(([c, list]) => [c, list.join(' ')])), {
-  usa: 'uk germany france italy poland israel japan south_korea sweden ukraine',
-  uk: 'usa germany france italy poland sweden israel japan south_korea ukraine',
-  germany: 'france italy poland uk usa sweden ukraine israel japan south_korea',
-  france: 'germany italy uk usa poland sweden ukraine israel japan south_korea',
-  italy: 'germany france uk usa poland sweden ukraine israel japan south_korea',
-  poland: 'ukraine germany usa uk sweden france italy israel japan south_korea',
-  ukraine: 'poland uk usa germany sweden france italy israel japan south_korea',
-  sweden: 'germany uk poland france usa italy ukraine israel japan south_korea',
-  israel: 'usa uk germany france italy poland sweden ukraine japan south_korea',
-  japan: 'usa south_korea uk france germany italy poland sweden israel ukraine',
-  south_korea: 'usa japan uk germany france italy poland sweden israel ukraine',
+  usa: 'uk germany france italy poland israel japan south_korea sweden ukraine canada',
+  uk: 'usa germany france italy poland sweden israel japan south_korea ukraine canada',
+  germany: 'france italy poland uk usa sweden ukraine israel japan south_korea canada',
+  france: 'germany italy uk usa poland sweden ukraine israel japan south_korea canada',
+  italy: 'germany france uk usa poland sweden ukraine israel japan south_korea canada',
+  poland: 'ukraine germany usa uk sweden france italy israel japan south_korea canada',
+  ukraine: 'poland uk usa germany sweden france italy israel japan south_korea canada',
+  sweden: 'germany uk poland france usa italy ukraine israel japan south_korea canada',
+  israel: 'usa uk germany france italy poland sweden ukraine japan south_korea canada',
+  japan: 'usa south_korea uk france germany italy poland sweden israel ukraine canada',
+  south_korea: 'usa japan uk germany france italy poland sweden israel ukraine canada',
+  canada: 'usa uk france germany italy poland sweden ukraine israel japan south_korea',
   russia: 'china', china: 'russia',
 }, 'the closest-ally order (study-country 3.2)');
 for (const [c, list] of Object.entries(COUNTRY_ALLIES)) for (const ally of list) assert.equal(countryBloc(ally), countryBloc(c), `${c}: fills stay in its bloc`);
@@ -84,6 +89,24 @@ assert.ok(cases >= 250, `${cases} country x era x shape cases`);
   assert.equal(plan.enemy, 'russia', 'the story fixes the enemy');
   assert.equal(plan.allied, 'china', 'the allied bots give way to Russia\'s first ally');
   assert.ok(plan.notes.some((n) => n.reason === 'clash' && n.side === 'alpha'), 'and the receipt says so');
+}
+// no allied bot seat (Juggernaut's boss, the hunters 0 / 12) with an arranged enemy: the enemy's fills never reach the
+// player's own country (round 2: 3 of 32 census seeds filled the hunters from it — the allied side had no seat to claim it)
+{
+  let checked = 0;
+  for (const country of COUNTRIES.map((c) => c.id)) {
+    const player = rows.find((row) => row.country === country && row.era === 'modern');
+    if (!player) continue;
+    for (const arrangedEnemy of COUNTRIES.map((c) => c.id).filter((c) => c !== country && countryBloc(c) === countryBloc(country))) {
+      const plan = pickNationalSides({ rows, alliedHumans: [player], alliedSeats: 0, enemySeats: 12, arrangedEnemy, seed: teamNationsSeed(country, arrangedEnemy),
+        rivalBlocWeight: 3, autoNeedsContemporaries: true });
+      const countryOf = (id) => rows.find((row) => row.id === id).country;
+      assert.ok(plan.enemies.every((seat) => countryOf(seat.id) !== country), `juggernaut ${country} vs ${arrangedEnemy}: no hunter from the player's country`);
+      assert.ok(!plan.notes.some((n) => n.side === 'bravo' && n.country === country), `juggernaut ${country} vs ${arrangedEnemy}: no fill note names it`);
+      checked++;
+    }
+  }
+  assert.ok(checked >= 100, `${checked} juggernaut arrangements`);
 }
 // an arranged enemy country is kept unless it is the player's own (then AUTO)
 {

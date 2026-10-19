@@ -17,7 +17,7 @@ import { MATCH_MODE_ARENA_HALF_EXTENT_M as WORLD_MARGIN_M } from './matchObjecti
 import {
   FLAG_CARRIER_SPEED_SCALE, HUNT_RULES, RULESET_SCORE_TARGETS, matchRulesetFor, type MatchRuleset,
   assaultWaveHealthScale, cacheHealChance, hordeMaxAlive, hordeWaveHealthScale, hordeWaveSpecial, hordeWaveSpeedScale,
-  hordeWaveTotal, MARS_DEFAULT_RULES, GUN_GAME_WEAPONS, type ArrivalRules, type RulesetPhysics,
+  hordeTrickleS, hordeWaveTotal, MARS_DEFAULT_RULES, GUN_GAME_WEAPONS, type ArrivalRules, type RulesetPhysics,
 } from './matchRuleset.ts';
 
 /** The aerial unit's presentation view: what the mode state, the HUD, the cameras and the renderer read of a drone or
@@ -144,7 +144,6 @@ const BALL_DRAG_TAU_S = -1 / (60 * Math.log(BALL_LINEAR_DRAG));
 const BALL_GRAVITY_MPS2 = 9.81;
 const PICKUP_RADIUS_M = 7;
 /** The team's sightings are refreshed this often (the honest hunt and search read them; a once-a-second rule). */
-const INTEL_REFRESH_S = 0.5;
 // Mars mode boost caches: the first drop and the interval between drops (seconds).
 
 interface Vec3Like { x: number; y: number; z: number }
@@ -171,6 +170,9 @@ export interface MatchModeEntity {
   aerial?: AerialView;
   modeActive?: boolean;
   modeSpeedMultiplier?: number;
+  /** The destination both builders' mode route push last sent this bot; a revive clears it (the next push lands). */
+  _modeTargetX?: number;
+  _modeTargetZ?: number;
   /** Ruleset gravity scale (matchRuleset.ts) the movement and ballistics read. */
   modeGravityScale?: number;
   /** Ruleset jump launch, recoil launch and impact-knock scales (matchRuleset.ts) the sims read. */
@@ -216,11 +218,12 @@ export type BotMission = 'carrier' | 'recover' | 'escort' | 'raid' | 'defend' | 
   | 'hunt' | 'counter' | 'keeper';
 interface BotDestination {
   x: number; z: number; mission?: BotMission;
-  /** Turbo Ball strikers: the ball (public) and whether a shot at it may go toward the opponent goal now. */
-  ball?: { x: number; y: number; z: number } | null; shootBall?: boolean;
+  /** Turbo Ball: the ball (public), whether a shot at it may go toward the opponent goal now, and whether that shot comes
+   *  before a tank target farther than the ball (BallBotRules.shootBall.overTanks). */
+  ball?: { x: number; y: number; z: number } | null; shootBall?: boolean; ballFirst?: boolean;
 }
-/** A side's last sighting of an enemy, refreshed from the spotting hook. */
-interface Sighting { x: number; z: number; atS: number }
+/** A side's last sighting of an enemy, refreshed from the spotting hook (`id`: the enemy's, so a scan needs no entry). */
+interface Sighting { id: string; x: number; z: number; atS: number }
 
 interface TeamScore { alpha: number; bravo: number }
 
@@ -328,6 +331,19 @@ export interface ModeCheckpoint {
   elapsedS: number; score: TeamScore; weaponKills: [string, number][];
   teams: [string, ObjectiveTeam][]; respawns: [string, { atS: number; healthScale: number }][];
   destroyed: [string, boolean][]; scored: string[]; escortRescued?: string[]; support?:{ammoAt:number;healAt:number;sequence:number;pickups:PickupState[]};
+  /** The wave modes' own state (round 2, the critic's E12: a migrated host restarted Endless Horde at wave 1 and Frontline
+   *  at its first sector, every hostile revived). Mode time throughout (the elapsedS base). */
+  waves?: WaveCheckpoint;
+}
+/** Endless Horde's wave and queue, Frontline's line, counter-attack and trickle, and which pool identities rest. */
+interface WaveCheckpoint {
+  wave: number; inactive: string[]; restedAt: [string, number][]; lastWaveIds: string[];
+  horde?: { queued: number; special: 'runner' | 'swarm' | null; healthScale: number; nextWaveAtS: number | null;
+    nextTrickleAtS: number; spawnSector: number; stalledAtS: number | null; pickups: PickupState[]; sequence: number };
+  line?: { index: number; holdUntilS: number | null; regroup: { x: number; z: number; untilS: number; checkedS: number } | null;
+    counter: { x: number; z: number; atS: number; untilS: number; ids: string[]; line: number } | null; fresh: string[];
+    nextReinforceAtS: number | null; allyDownAt: [string, number][];
+    zones: { id: string; control: number; owner: ObjectiveTeam | null; contested: boolean }[] };
 }
 
 export interface MatchModeResult {
@@ -353,7 +369,7 @@ export interface MatchModeController<
   botTarget(entity: Entity): { x: number; z: number } | null;
   /** The objective the bot's targets are ranked against: the same point with its capture reach. */
   botObjective(entity: Entity): { x: number; z: number; radiusM: number; mission?: BotMission;
-    ball?: { x: number; y: number; z: number } | null; shootBall?: boolean } | null;
+    ball?: { x: number; y: number; z: number } | null; shootBall?: boolean; ballFirst?: boolean } | null;
   /** The bot's side's freshest sighting of an enemy within HUNT_RULES.lastSeenMaxS (the honest search), or null. */
   freshestSighting(entity: Entity): { x: number; z: number } | null;
   /** The enemy side's public deployment centre (the honest search's last resort). */
@@ -432,12 +448,13 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   // the wave law: the Horde's own, and Frontline's wave pressure reads the Horde's speed ramp
   const hordeRules = ruleset.horde ?? matchRulesetFor('endless_horde').horde!;
   const infectionStamped=new WeakSet<object>();
-  // the Horde's zombies reload slower (horde.hostileReloadScale), stamped once per combat state like the infection's
+  // a wave mode's hostiles reload slower (the Horde's or Frontline's hostileReloadScale), stamped once per combat state
+  // like the infection's
+  const hostileReloadScale = ruleset.horde?.hostileReloadScale ?? ruleset.assault?.hostileReloadScale ?? 1;
   const stampHostile=(entity:Entity):void=>{
-    if(id!=='endless_horde'||teamOf(entity)!=='bravo'||infectionStamped.has(entity.combat))return;
+    if(hostileReloadScale===1||teamOf(entity)!=='bravo'||!entity.bot||infectionStamped.has(entity.combat))return;
     infectionStamped.add(entity.combat);
-    const scale=hordeRules.hostileReloadScale;
-    if(scale!==1){const mults=entity.combat.equipMults|| (entity.combat.equipMults={});mults.reload=(mults.reload??1)*scale;}
+    const mults=entity.combat.equipMults|| (entity.combat.equipMults={});mults.reload=(mults.reload??1)*hostileReloadScale;
   };
   const stampInfection=(entity:Entity):void=>{
     stampHostile(entity);
@@ -571,7 +588,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   } : null;
   // the goals: the deployment centres, or (the ruleset's ball.goalAxisM; gameplay-modes-228) the middle ± half of it
   // along the axis — the ball's best approach to the deployment centres 794 m apart was 196 m
-  const goalAxisM = id === 'turbo_ball' ? ruleset.ball?.goalAxisM ?? null : null;
+  const goalAxisM = ball ? ruleset.ball?.goalAxisM ?? null : null;
   const goalAt = (team: ObjectiveTeam): { x: number; z: number } => (goalAxisM == null ? centers[team] : {
     x: midX + axisX * (team === 'alpha' ? -0.5 : 0.5) * goalAxisM,
     z: midZ + axisZ * (team === 'alpha' ? -0.5 : 0.5) * goalAxisM,
@@ -584,7 +601,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const pickups: PickupState[] = [];
   const hordeEnemies = teams.bravo.filter((entity) => !!entity.bot);
   // a horde with no hostile pool would clear empty waves forever (the v2 co-op rooms seated none): refuse it
-  if (id === 'endless_horde' && hordeEnemies.length === 0) {
+  if (ruleset.horde && hordeEnemies.length === 0) {
     throw new TypeError('Endless Horde needs a hostile pool: seat the bravo bots (src/mp/room/roomBots.ts planRoomBots)');
   }
   let pickupSequence = 0;
@@ -633,6 +650,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   };
 
   let placementTimeS = 0;
+  // what each side has seen (the honest hunt's intel, refreshIntel below): declared before the first revive reads it
+  const sightings: Record<ObjectiveTeam, Map<string, Sighting>> = { alpha: new Map(), bravo: new Map() };
   const occupiedBy = (entity: Entity): { x: number; z: number; radius: number }[] =>
     entities.filter(other => other !== entity && !other.combat.destroyed && other.modeActive !== false)
       .map(other => ({ x: other.state.pos.x, z: other.state.pos.z, radius: 4.5 }));
@@ -640,8 +659,14 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const reviveAtSpawn = (entity: Entity, healthScale = 1, at: MatchModeSpawn | null = null): void => {
     // the infected rise round the survivors (infectionBots.arrival), a convert's first life included
     // (out of reach and sight first; else out of reach in sight — never the far base while survivors stand)
+    // A converted HUMAN's ring is centred on what its side has spotted (its freshest sighting), never on the survivors'
+    // live centroid: the client is sent its own pose, so a live-centred ring would hand it the hidden survivors' bearing
+    // and range (round 2, E1); with no sighting it rises at its own spawn. A bot's ring is the director's decision.
     if (!at && infectionArrival && teamOf(entity) === 'bravo') {
-      at = arrivalPoint(entity, infectionArrival) ?? arrivalPoint(entity, infectionArrival, true);
+      const around = entity.bot ? null : freshestFor('bravo', entity.state.pos.x, entity.state.pos.z);
+      if (entity.bot || around) {
+        at = arrivalPoint(entity, infectionArrival, false, around) ?? arrivalPoint(entity, infectionArrival, true, around);
+      }
     }
     const spawn = at ?? spawns.get(entity.id);
     if (!spawn) return;
@@ -651,6 +676,10 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       respawnAt.set(entity.id, { atS: placementTimeS + 1, healthScale });
       return; // keep pending, but never retry a bounded search at 60 Hz
     }
+    // a revived bot takes the next route push whatever its last destination was (gameplay-modes-228; one place for
+    // both builders since round 2)
+    entity._modeTargetX = undefined;
+    entity._modeTargetZ = undefined;
     revive(entity, safeSpawn, healthScale);
     restedAt.delete(entity.id);
     stampInfection(entity);
@@ -714,7 +743,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   };
 
   // ------------------------------------------------------------------- endless horde (gameplay-modes-228) ---
-  // The wave law: a TOTAL per wave (hordeWaveTotal: the base law, the swarm's scale, the co-op scale) of which at most
+  // The wave law: a TOTAL per wave (hordeWaveTotal: the base law, the co-op scale) of which at most
   // hordeMaxAlive stand on the field at once; the rest queue and trickle back in, one rested pool identity every
   // trickleS, through the same revive (no new entities, no wire change). Humans are counted once, at the start: a co-op
   // room's seats (and the harness's measurement shims, which read as bots until the controller steps).
@@ -756,11 +785,14 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     }
     return true;
   };
-  const arrivalPoint = (entity: Entity, rules: ArrivalRules, ignoreSight = false): MatchModeSpawn | null => {
+  const arrivalPoint = (entity: Entity, rules: ArrivalRules, ignoreSight = false,
+    around: { x: number; z: number } | null = null): MatchModeSpawn | null => {
     let cx = 0, cz = 0, n = 0;
-    for (const human of teams.alpha) {
-      if (human.modeActive === false || human.combat.destroyed) continue;
-      cx += human.state.pos.x; cz += human.state.pos.z; n++;
+    if (around) { cx = around.x; cz = around.z; n = 1; } else {
+      for (const human of teams.alpha) {
+        if (human.modeActive === false || human.combat.destroyed) continue;
+        cx += human.state.pos.x; cz += human.state.pos.z; n++;
+      }
     }
     if (!n) return null;
     cx /= n; cz /= n;
@@ -789,7 +821,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
    */
   let arrivalStalledAtS: number | null = null;
   const arriveHostile = (entity: Entity): boolean => {
-    const stalled = arrivalStalledAtS != null && placementTimeS - arrivalStalledAtS >= hordeRules.trickleS * 4
+    const stalled = arrivalStalledAtS != null && placementTimeS - arrivalStalledAtS >= hordeRules.trickleS * hordeRules.stallTrickles
       && livingHordeEnemyCount() === 0;
     let at = arrivalPoint(entity, hordeRules, stalled);
     if (!at) {
@@ -816,6 +848,11 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     const opening = Math.min(hordeAliveCap, total);
     // the zombies' fodder hull (the revive's stamp multiplies by the humans' hpScale, so this divides it back out)
     hordeHealthScale = hordeWaveHealthScale(ruleset, hordeRules, wave);
+    // the fallen allies stand up first, so every arrival is placed clear of each living alpha hull (round 2: allies
+    // revived at their own deployment after the arrivals were placed stood within reach or in sight of the ring)
+    for (const ally of teams.alpha) {
+      if (ally.combat.destroyed) reviveAtSpawn(ally, 1);
+    }
     const active = drawWave(opening);
     for (const entity of hordeEnemies) if (!active.has(entity)) deactivate(entity);
     let deferred = 0;
@@ -825,10 +862,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       deferred++;
     }
     hordeQueued = total - opening + deferred;
-    nextTrickleAtS = placementTimeS + hordeRules.trickleS;
-    for (const ally of teams.alpha) {
-      if (ally.combat.destroyed) reviveAtSpawn(ally, 1);
-    }
+    nextTrickleAtS = placementTimeS + hordeTrickleS(hordeRules, wave);
     nextWaveAtS = null;
     if (state.horde) {
       state.horde.wave = wave;
@@ -850,7 +884,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       if (entity.modeActive !== false && timeS - rested < hordeRules.recycleAfterS) continue;
       if (rested < pickRested || (rested === pickRested && pick && entity.id < pick.id)) { pick = entity; pickRested = rested; }
     }
-    nextTrickleAtS = timeS + hordeRules.trickleS;
+    nextTrickleAtS = timeS + hordeTrickleS(hordeRules, wave);
     if (pick && arriveHostile(pick)) hordeQueued--;
   };
 
@@ -922,22 +956,38 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
    * facing the attack; `rear` puts it reinforceRearM back (the trickle). Null keeps the hostile's own spawn.
    */
   function lineSlot(slot: number, count: number, rear: boolean): MatchModeSpawn | null {
-    if (id !== 'frontline_assault' || !assaultRules.defendersStartOnLine) return null;
+    if (!ruleset.assault || !assaultRules.defendersStartOnLine) return null;
     const zone = liveLine();
     if (!zone) return null;
     const [near, far] = assaultRules.lineBandM;
-    const back = rear ? assaultRules.reinforceRearM : near + spawnRng() * (far - near);
-    const across = (slot - (count - 1) / 2) * 16 + (spawnRng() - 0.5) * 8;
-    return {
-      x: Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, zone.x + axisX * back + lateralX * across)),
-      z: Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, zone.z + axisZ * back + lateralZ * across)),
-      yaw: Math.atan2(-axisX, -axisZ),
-    };
+    let back = rear ? assaultRules.reinforceRearM : near + spawnRng() * (far - near);
+    const across = (slot - (count - 1) / 2) * assaultRules.lineSpacingM + (spawnRng() - 0.5) * assaultRules.lineJitterM;
+    // the line's guard: out of the attack's reach and terrain sight, stepping back along the axis (round 2, E2)
+    const guard = assaultRules.lineGuard;
+    for (let step = 0; ; step++) {
+      const x = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, zone.x + axisX * back + lateralX * across));
+      const z = Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, zone.z + axisZ * back + lateralZ * across));
+      if (!guard || step >= guard.tries || lineClear(x, z, guard)) return { x, z, yaw: Math.atan2(-axisX, -axisZ) };
+      back += guard.stepBackM;
+    }
   }
+  /** No living attacker within the guard's minAttackM of (x, z), nor (outOfSight) seeing it over the terrain. */
+  function lineClear(x: number, z: number, guard: NonNullable<typeof assaultRules.lineGuard>): boolean {
+    const minSq = guard.minAttackM ** 2, sightSq = hordeRules.sightRangeM ** 2;
+    for (const attacker of teams.alpha) {
+      if (attacker.modeActive === false || attacker.combat.destroyed) continue;
+      const dSq = squaredDistance(attacker, x, z);
+      if (dSq < minSq) return false;
+      if (guard.outOfSight && dSq <= sightSq && terrainSees(attacker, x, z, hordeRules)) return false;
+    }
+    return true;
+  }
+  /** A defender's revive scale: the sector's own, with the attack's hull (the ruleset's hpScale) divided back out. */
+  const assaultHealth = (): number => assaultWaveHealthScale(assaultRules, lineIndex, zones.length) / (ruleset.hpScale > 0 ? ruleset.hpScale : 1);
   const lineCount = (): number => assaultRules.initialActive + assaultRules.extraDefenders + lineIndex;
   const startAssaultWave = (): void => {
     const activeCount = Math.min(hordeEnemies.length, lineCount());
-    const healthScale = assaultWaveHealthScale(assaultRules, lineIndex, zones.length);
+    const healthScale = assaultHealth();
     // The opening wave is a fresh draw from the formation (owner 2026-09-15). Every later sector REINFORCES
     // the line instead of re-fielding it (owner 2026-09-17: "capturing bases in frontline assault shouldnt
     // reset tanks"): defenders still alive keep their identity, position and damage, and only the arrivals
@@ -999,15 +1049,15 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       if (timeS < down + after) continue;
       allyDownAt.delete(ally.id);
       const taken = lineIndex > 0 ? zones[lineIndex - 1] : null;
-      reviveAtSpawn(ally, 1, taken ? { x: Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, taken.x - axisX * 40)),
-        z: Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, taken.z - axisZ * 40)), yaw: Math.atan2(axisX, axisZ) } : null);
+      reviveAtSpawn(ally, 1, taken ? { x: Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, taken.x - axisX * assaultRules.allyReviveBackM)),
+        z: Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, taken.z - axisZ * assaultRules.allyReviveBackM)), yaw: Math.atan2(axisX, axisZ) } : null);
     }
   };
   /** The trickle: while the live sector is contested and its line is short, one defender arrives from the rear. */
   const stepReinforceTrickle = (zone: ZoneState, timeS: number): void => {
     if (assaultRules.reinforceTrickleS <= 0) return;
     let contested = false;
-    const reachSq = (ZONE_RADIUS_M + 60) ** 2;
+    const reachSq = (ZONE_RADIUS_M + assaultRules.contestReachM) ** 2;
     for (const attacker of teams.alpha) {
       if (activeFriend(attacker, 'alpha') && squaredDistance(attacker, zone.x, zone.z) <= reachSq) { contested = true; break; }
     }
@@ -1025,7 +1075,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       if (rested < pickRested || (rested === pickRested && pick && enemy.id < pick.id)) { pick = enemy; pickRested = rested; }
     }
     if (!pick) return;
-    reviveAtSpawn(pick, assaultWaveHealthScale(assaultRules, lineIndex, zones.length), lineSlot(0, 1, true));
+    reviveAtSpawn(pick, assaultHealth(), lineSlot(0, 1, true));
     emit('mode_line_reinforced', { line: lineIndex, id: pick.id });
   };
 
@@ -1048,7 +1098,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     stepReinforceTrickle(zone, timeS);
     stepAllyRevive(timeS);
     const occupancy = zoneOccupancy(zone);
-    advanceZoneControl(zone, Math.floor(occupancy / 16), occupancy % 16, dt);
+    advanceZoneControl(zone, Math.floor(occupancy / 16), occupancy % 16, dt, assaultRules.captureS);
     if (state.horde) state.horde.alive = livingHordeEnemyCount();
     if (lineIndex < zones.length - 1) {
       if (zone.owner === 'alpha') {
@@ -1134,6 +1184,29 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       plan.x = zone.x - axisX * (ZONE_RADIUS_M + assaultBots.stageM) + lateralX * (rank - (squad.length - 1) / 2) * 12;
       plan.z = zone.z - axisZ * (ZONE_RADIUS_M + assaultBots.stageM) + lateralZ * (rank - (squad.length - 1) / 2) * 12;
     });
+  }
+
+  /**
+   * The defenders hold the live sector spread on a ring `holdSpreadM` round its centre, one slot each by id order
+   * (round 2: all of them made for the one centre point and bunched, 9.5 % of their moving samples within 10 m of a
+   * friend). Dealt once a second; the point is moved in place.
+   */
+  const holdRanks = new Map<string, { rank: number; of: number }>();
+  let holdRanksAt = -Infinity;
+  function holdSlot(entity: Entity, point: { x: number; z: number }): void {
+    const spread = assaultRules.holdSpreadM;
+    if (spread <= 0) return;
+    if (placementTimeS >= holdRanksAt + 1) {
+      holdRanksAt = placementTimeS;
+      holdRanks.clear();
+      const squad = teams.bravo.filter((e) => e.bot && activeFriend(e, 'bravo') && !counterIds.has(e.id)).sort((a, b) => (a.id < b.id ? -1 : 1));
+      squad.forEach((e, rank) => holdRanks.set(e.id, { rank, of: squad.length }));
+    }
+    const slot = holdRanks.get(entity.id);
+    if (!slot || slot.of < 2) return;
+    // the first slot faces the attack (toward alpha's side), the rest round the ring
+    const angle = Math.atan2(-axisX, -axisZ) + slot.rank * (2 * Math.PI / slot.of);
+    point.x += Math.sin(angle) * spread; point.z += Math.cos(angle) * spread;
   }
 
   const finish = (winner: ObjectiveTeam | 'draw', reason: string): MatchModeResult => {
@@ -1289,14 +1362,14 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     incursion.inside = intruders > 0;
   };
 
-  const advanceZoneControl = (zone: ZoneState, alpha: number, bravo: number, dt: number): void => {
+  const advanceZoneControl = (zone: ZoneState, alpha: number, bravo: number, dt: number, captureS = ZONE_CAPTURE_S): void => {
     noteZoneIncursion(zone, zone.owner === 'alpha' ? bravo : zone.owner === 'bravo' ? alpha : 0, dt);
     zone.contested = alpha > 0 && bravo > 0;
     if (zone.contested || (alpha === 0 && bravo === 0)) return;
     const direction = alpha > 0 ? 1 : -1;
     const count = Math.max(alpha, bravo);
     zone.control = Math.max(-1, Math.min(1,
-      zone.control + direction * dt * (1 + (count - 1) * 0.35) / ZONE_CAPTURE_S));
+      zone.control + direction * dt * (1 + (count - 1) * 0.35) / captureS));
     const previousOwner = zone.owner;
     zone.owner = zone.control >= 0.999 ? 'alpha' : zone.control <= -0.999 ? 'bravo' : null;
     if (zone.owner && zone.owner !== previousOwner) {
@@ -1635,34 +1708,61 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   const flagRules = ruleset.flagBots ?? matchRulesetFor('capture_the_flag').flagBots!;
   type FlagRole = 'recover' | 'escort' | 'defend' | 'raid';
   const flagRoles = new Map<string, { role: FlagRole; rank: number }>();
-  let flagRolesAt = -Infinity, flagRolesKey = '';
+  let flagRolesAt = -Infinity;
+  // the flags' state the roles were dealt for (status and carrier per flag), compared in place: no key is built per call
+  const flagRolesSeen: { status: FlagState['status'] | null; carrierId: string | null }[] = [];
+  const flagsChanged = (): boolean => {
+    let changed = flagRolesSeen.length !== flags.length;
+    for (let i = 0; i < flags.length; i++) {
+      const seen = flagRolesSeen[i] ?? (flagRolesSeen[i] = { status: null, carrierId: null });
+      if (seen.status !== flags[i]!.status || seen.carrierId !== flags[i]!.carrierId) changed = true;
+      seen.status = flags[i]!.status; seen.carrierId = flags[i]!.carrierId;
+    }
+    flagRolesSeen.length = flags.length;
+    return changed;
+  };
   const byDistanceTo = (list: Entity[], x: number, z: number): Entity[] =>
     list.slice().sort((a, b) => squaredDistance(a, x, z) - squaredDistance(b, x, z) || (a.id < b.id ? -1 : 1));
+  /**
+   * The roles, per team in id order (round 2: the critic's one-sided raiding — a robbed team sent every free bot to
+   * recover and the carrying team's spare bots all defended, so the robbed side never raided back): with our flag away
+   * `recoverShare` of the squad (at least recoverMin, the nearest first) recovers; our carrier takes `escorts` escorts;
+   * with our flag home `carrierGuards` (our carrier running) or defendShare of a large squad (nothing carried) guard it;
+   * everyone else escorts our carrier when one runs, else raids — a robbed team raids back (their flag away holds their
+   * capture too, the standoff that recovery then breaks).
+   */
   function assignFlagRoles(): void {
-    const key = flags.map((flag) => `${flag.status}:${flag.carrierId ?? ''}`).join('|');
-    if (placementTimeS < flagRolesAt + 1 && key === flagRolesKey) return;
-    flagRolesAt = placementTimeS; flagRolesKey = key;
+    if (!flagsChanged() && placementTimeS < flagRolesAt + 1) return;
+    flagRolesAt = placementTimeS;
     flagRoles.clear();
     for (const team of ['alpha', 'bravo'] as const) {
       const ownFlag = flagForTeam(team), enemyFlag = flagForTeam(otherTeam(team));
       if (!ownFlag || !enemyFlag) continue;
       const squad = teams[team].filter((e) => e.bot && activeFriend(e, team) && !flagCarriedBy(e.id)).sort((a, b) => (a.id < b.id ? -1 : 1));
       const free = new Set(squad);
+      // ranks run on across two deals of one role (the escorts' leading three, then the rearguard)
+      const dealt = new Map<FlagRole, number>();
       const deal = (list: Entity[], role: FlagRole, count: number): void => {
-        let rank = 0;
-        for (const e of list) { if (rank >= count) break; if (!free.has(e)) continue; flagRoles.set(e.id, { role, rank: rank++ }); free.delete(e); }
+        let rank = dealt.get(role) ?? 0;
+        const end = rank + count;
+        for (const e of list) { if (rank >= end) break; if (!free.has(e)) continue; flagRoles.set(e.id, { role, rank: rank++ }); free.delete(e); }
+        dealt.set(role, rank);
       };
       const ownAway = ownFlag.status !== 'home';
-      if (ownAway) deal(byDistanceTo(squad, ownFlag.x, ownFlag.z), 'recover', flagRules.recoverMin);
-      if (enemyFlag.carrierId) deal(byDistanceTo(squad, enemyFlag.x, enemyFlag.z), 'escort', flagRules.escorts);
+      const carrying = !!enemyFlag.carrierId;
       if (ownAway) {
-        const more = flagRules.huntWhenHomeFlagTaken ? Infinity : Math.max(0, Math.ceil(squad.length * flagRules.recoverShare) - flagRules.recoverMin);
-        deal(byDistanceTo(squad, ownFlag.x, ownFlag.z), 'recover', more);
+        const recoverers = flagRules.huntWhenHomeFlagTaken ? Infinity
+          : Math.max(flagRules.recoverMin, Math.ceil(squad.length * flagRules.recoverShare));
+        deal(byDistanceTo(squad, ownFlag.x, ownFlag.z), 'recover', recoverers);
       }
-      if (enemyFlag.carrierId) { deal(byDistanceTo(squad, enemyFlag.x, enemyFlag.z), 'defend', Infinity); continue; }
-      const guards = squad.length >= flagRules.defendMinSquad ? Math.max(1, Math.round(squad.length * flagRules.defendShare)) : 0;
-      deal(byDistanceTo(squad, enemyFlag.x, enemyFlag.z).reverse(), 'defend', guards);
-      deal(byDistanceTo(squad, enemyFlag.x, enemyFlag.z), 'raid', Infinity);
+      if (carrying) deal(byDistanceTo(squad, enemyFlag.x, enemyFlag.z), 'escort', flagRules.escorts);
+      if (!ownAway) {
+        const guards = carrying ? flagRules.carrierGuards
+          : squad.length >= flagRules.defendMinSquad ? Math.max(1, Math.round(squad.length * flagRules.defendShare)) : 0;
+        deal(byDistanceTo(squad, ownFlag.baseX, ownFlag.baseZ), 'defend', guards);
+      }
+      if (carrying) deal(byDistanceTo(squad, enemyFlag.x, enemyFlag.z), 'escort', Infinity);
+      else deal(byDistanceTo(squad, enemyFlag.x, enemyFlag.z), 'raid', Infinity);
     }
   }
   const flagBotTarget = (entity: Entity, team: ObjectiveTeam): BotDestination | null => {
@@ -1689,10 +1789,12 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       return { x, z, mission: 'recover' };
     }
     if (job.role === 'escort') {
-      // ahead of our carrier on its route home, either side, the third straight ahead: clearing the road, not trailing it
+      // ahead of our carrier on its route home, either side, the third straight ahead: clearing the road, not trailing
+      // it; any further escort is its rearguard, between the carrier and the pursuit, either side
       const lane = job.rank === 2 ? 0 : side;
-      return { x: enemyFlag.x + nx * flagRules.escortAheadM + nz * lane * flagRules.escortSideM,
-        z: enemyFlag.z + nz * flagRules.escortAheadM - nx * lane * flagRules.escortSideM, mission: 'escort' };
+      const ahead = job.rank >= 3 ? -flagRules.escortAheadM : flagRules.escortAheadM;
+      return { x: enemyFlag.x + nx * ahead + nz * lane * flagRules.escortSideM,
+        z: enemyFlag.z + nz * ahead - nx * lane * flagRules.escortSideM, mission: 'escort' };
     }
     if (job.role === 'defend') {
       // with our carrier running: the return area, clear of its road; otherwise in front of home
@@ -1817,31 +1919,33 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     const p = ballInterceptFor(entity);
     const gx = goal.x - p.x, gz = goal.z - p.z, glen = Math.hypot(gx, gz) || 1;
     const nx = gx / glen, nz = gz / glen;
+    // a shot at the ball (shootBall): in range, past point blank, the ball inside the cone of the line to the opponent
+    // goal; every role may take it when the ruleset says so (round 2: the strikers alone moved the ball too rarely)
+    const shot = ballRules.shootBall;
+    let shootBall = false;
+    if (shot && (shot.everyRole || job.role === 'striker') && distance <= shot.maxRangeM && distance > shot.minRangeM) {
+      const dx = ball.x - entity.state.pos.x, dz = ball.z - entity.state.pos.z;
+      const cos = (dx * (goal.x - ball.x) + dz * (goal.z - ball.z)) / (distance * (Math.hypot(goal.x - ball.x, goal.z - ball.z) || 1));
+      shootBall = cos >= Math.cos(shot.coneDeg * Math.PI / 180);
+    }
+    const ballFirst = shootBall && !!shot?.overTanks;
+    const live = { x: ball.x, y: ball.y, z: ball.z };
     if (job.role === 'striker' || job.role === 'support') {
       if (job.role === 'support') {
         const side = (job.rank + (team === 'alpha' ? 0 : 1)) % 2 ? 1 : -1;
         return { x: p.x - nx * ballRules.supportBackM + nz * side * ballRules.supportSideM,
-          z: p.z - nz * ballRules.supportBackM - nx * side * ballRules.supportSideM, mission: 'striker' };
+          z: p.z - nz * ballRules.supportBackM - nx * side * ballRules.supportSideM, mission: 'striker', ball: live, shootBall, ballFirst };
       }
       const bx = entity.state.pos.x - p.x, bz = entity.state.pos.z - p.z;
       const along = bx * nx + bz * nz, lateral = bx * nz - bz * nx;
-      // a shot at the ball: in range, past point blank, the ball inside the cone of the line to the opponent goal
-      const shot = ballRules.shootBall;
-      let shootBall = false;
-      if (shot && distance <= shot.maxRangeM && distance > 20) {
-        const dx = ball.x - entity.state.pos.x, dz = ball.z - entity.state.pos.z;
-        const cos = (dx * (goal.x - ball.x) + dz * (goal.z - ball.z)) / (distance * (Math.hypot(goal.x - ball.x, goal.z - ball.z) || 1));
-        shootBall = cos >= Math.cos(shot.coneDeg * Math.PI / 180);
-      }
-      const live = { x: ball.x, y: ball.y, z: ball.z };
       // Go around from the wrong side, then line up centrally behind the ball. Keep pushing through contact: a
       // six-metre arrival stop cannot be used as the destination when the ball itself needs a physical ram.
-      if (along > -7 || Math.abs(lateral) > 7) {
+      if (along > -ballRules.lineUpM || Math.abs(lateral) > ballRules.lineUpM) {
         const side = lateral >= 0 ? 1 : -1;
-        const offset = along > -7 ? side * 16 : 0;
-        return { x: p.x - nx * 20 + nz * offset, z: p.z - nz * 20 - nx * offset, mission: 'striker', ball: live, shootBall };
+        const offset = along > -ballRules.lineUpM ? side * ballRules.goRoundM : 0;
+        return { x: p.x - nx * ballRules.behindM + nz * offset, z: p.z - nz * ballRules.behindM - nx * offset, mission: 'striker', ball: live, shootBall, ballFirst };
       }
-      return { x: p.x + nx * 18, z: p.z + nz * 18, mission: 'striker', ball: live, shootBall };
+      return { x: p.x + nx * ballRules.throughM, z: p.z + nz * ballRules.throughM, mission: 'striker', ball: live, shootBall, ballFirst };
     }
     const ox = ball.x - own.x, oz = ball.z - own.z, olen = Math.hypot(ox, oz) || 1;
     const ux = ox / olen, uz = oz / olen;
@@ -1852,33 +1956,33 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     } else {
       const weight = job.role === 'screen' ? (job.rank === 0 ? ballRules.screenNear : ballRules.screenFar) : 0.5;
       const side = job.rank % 2 ? 1 : -1;
-      const wide = job.role === 'screen' ? ballRules.screenSideM : 40 + 20 * Math.floor(job.rank / 2);
+      const wide = job.role === 'screen' ? ballRules.screenSideM : ballRules.wingM + ballRules.wingStepM * Math.floor(job.rank / 2);
       x = own.x + ox * weight + uz * side * wide; z = own.z + oz * weight - ux * side * wide;
     }
     // the crowd cap: only the strikers and the first screen close on the ball; the rest stand off it
     const crowded = !(job.role === 'screen' && job.rank === 0 && ballRules.crowdCap > ballRules.strikers);
     const bx = x - ball.x, bz = z - ball.z, bd = Math.hypot(bx, bz);
-    if (crowded && bd < ballRules.crowdM + 5) {
+    const standOff = ballRules.crowdM + ballRules.crowdMarginM;
+    if (crowded && bd < standOff) {
       const fx = bd > 0.5 ? bx / bd : -ux, fz = bd > 0.5 ? bz / bd : -uz;
-      x = ball.x + fx * (ballRules.crowdM + 5); z = ball.z + fz * (ballRules.crowdM + 5);
+      x = ball.x + fx * standOff; z = ball.z + fz * standOff;
     }
-    return { x, z, mission };
+    return shootBall ? { x, z, mission, ball: live, shootBall, ballFirst } : { x, z, mission };
   };
 
   // ------------------------------------------------------------ the honest hunt (gameplay-modes-228) ---
-  // What each side has seen: refreshed from the builders' spotting hook every INTEL_REFRESH_S. The hunt routes and the
+  // What each side has seen: refreshed from the builders' spotting hook every HUNT_RULES.intelRefreshS. The hunt routes and the
   // bots' honest search read only this; without a hook (headless fixtures) every living enemy counts as seen.
-  const sightings: Record<ObjectiveTeam, Map<string, Sighting>> = { alpha: new Map(), bravo: new Map() };
   let intelAt = -Infinity;
   const spottedBy = (target: Entity, side: ObjectiveTeam): boolean => (spotting ? spotting.isSpotted(target.id, side) : true);
   function refreshIntel(timeS: number): void {
-    if (timeS < intelAt + INTEL_REFRESH_S) return;
+    if (timeS < intelAt + HUNT_RULES.intelRefreshS) return;
     intelAt = timeS;
     for (const side of ['alpha', 'bravo'] as const) {
       for (const target of teams[otherTeam(side)]) {
         if (target.modeActive === false || target.combat.destroyed || !spottedBy(target, side)) continue;
         let seen = sightings[side].get(target.id);
-        if (!seen) { seen = { x: 0, z: 0, atS: 0 }; sightings[side].set(target.id, seen); }
+        if (!seen) { seen = { id: target.id, x: 0, z: 0, atS: 0 }; sightings[side].set(target.id, seen); }
         seen.x = target.state.pos.x; seen.z = target.state.pos.z; seen.atS = timeS;
       }
     }
@@ -1886,8 +1990,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   /** The side's freshest sighting within HUNT_RULES.lastSeenMaxS (ties: nearest to the point), or null. */
   function freshestFor(side: ObjectiveTeam, x: number, z: number): Sighting | null {
     let best: Sighting | null = null, bestD = Infinity;
-    for (const [key, seen] of sightings[side]) {
-      const target = entityById.get(key);
+    for (const seen of sightings[side].values()) {
+      const target = entityById.get(seen.id);
       // a sighting of a hull since destroyed, or since converted to this side, is no lead
       if (!target || target.combat.destroyed || target.modeActive === false || teamOf(target) === side) continue;
       if (placementTimeS - seen.atS > HUNT_RULES.lastSeenMaxS) continue;
@@ -1927,9 +2031,9 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       } else {
         const seen = freshestFor(side, hunter.state.pos.x, hunter.state.pos.z);
         if (seen) { tx = seen.x; tz = seen.z; } else {
-          // the sweep: a seeded bearing per hunter and 20 s epoch round the last contact or the opponents' deployment
+          // the sweep: a seeded bearing per hunter and sweep epoch round the last contact or the opponents' deployment
           const around = lastContact.set ? lastContact : centers[otherTeam(side)];
-          const epoch = Math.floor(placementTimeS / 20);
+          const epoch = Math.floor(placementTimeS / HUNT_RULES.sweepEpochS);
           const angle = (Math.imul((rank + 1) * 2654435761, epoch + 7) >>> 0) / 4294967296 * Math.PI * 2;
           tx = around.x + Math.sin(angle) * HUNT_RULES.sweepRingM; tz = around.z + Math.cos(angle) * HUNT_RULES.sweepRingM;
         }
@@ -2034,10 +2138,53 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       }
       if (team === 'bravo' && counter && counterIds.has(entity.id)) return { x: counter.x, z: counter.z, mission: 'counter' };
       const point = assaultBotTarget();
+      if (point && team === 'bravo' && entity.bot) holdSlot(entity, point);
       return point ? { ...point, mission: 'assault' } : null;
     }
     return null;
   };
+
+  const sightingOut = { x: 0, z: 0 }, deploymentOut = { x: 0, z: 0 };
+  /** A migrated host takes the wave modes up where the old one left them (the counters, the line, who rests). */
+  function restoreWaves(saved: WaveCheckpoint): void {
+    wave = saved.wave;
+    const inactive = new Set(saved.inactive);
+    for (const entity of entities) {
+      const rest = inactive.has(entity.id);
+      if (rest === (entity.modeActive === false)) continue;
+      entity.modeActive = !rest;
+      setActive(entity, !rest);
+    }
+    restedAt.clear(); for (const [key, at] of saved.restedAt) restedAt.set(key, at);
+    lastWaveIds = new Set(saved.lastWaveIds);
+    if (saved.horde) {
+      hordeQueued = saved.horde.queued; hordeSpecial = saved.horde.special; runnerWave = hordeSpecial === 'runner';
+      hordeHealthScale = saved.horde.healthScale; nextWaveAtS = saved.horde.nextWaveAtS; nextTrickleAtS = saved.horde.nextTrickleAtS;
+      spawnSector = saved.horde.spawnSector; arrivalStalledAtS = saved.horde.stalledAtS;
+      pickups.length = 0; pickups.push(...saved.horde.pickups.map((p) => ({ ...p }))); pickupSequence = saved.horde.sequence;
+      if (state.horde) {
+        state.horde.wave = wave; state.horde.total = hordeWaveTotal(hordeRules, wave, hordeHumans);
+        state.horde.healChance = cacheHealChance(ruleset, wave);
+      }
+      publishHorde();
+    }
+    if (saved.line) {
+      lineIndex = saved.line.index; holdUntilS = saved.line.holdUntilS;
+      regroup = saved.line.regroup ? { ...saved.line.regroup } : null;
+      counter = saved.line.counter ? { ...saved.line.counter, ids: [...saved.line.counter.ids] } : null;
+      counterIds.clear(); if (counter) for (const key of counter.ids) counterIds.add(key);
+      freshDefenders = [...saved.line.fresh];
+      nextReinforceAtS = saved.line.nextReinforceAtS ?? Infinity;
+      allyDownAt.clear(); for (const [key, at] of saved.line.allyDownAt) allyDownAt.set(key, at);
+      for (const zone of saved.line.zones) {
+        const live = zones.find((candidate) => candidate.id === zone.id);
+        if (live) { live.control = zone.control; live.owner = zone.owner; live.contested = zone.contested; }
+      }
+      attackPlan.clear();
+      if (state.line) state.line.index = lineIndex;
+      if (state.horde) { state.horde.wave = wave; state.horde.total = lineCount(); }
+    }
+  }
 
   return {
     id,
@@ -2110,17 +2257,33 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     },
     botTarget,
     botObjective,
+    // the honest search reads these every tick it searches: one scratch point each, read at once by the caller (E8)
     freshestSighting(entity) {
       const seen = freshestFor(teamOf(entity), entity.state.pos.x, entity.state.pos.z);
-      return seen ? { x: seen.x, z: seen.z } : null;
+      if (!seen) return null;
+      sightingOut.x = seen.x; sightingOut.z = seen.z;
+      return sightingOut;
     },
     enemyDeployment(entity) {
       const at = centers[otherTeam(teamOf(entity))];
-      return { x: at.x, z: at.z };
+      deploymentOut.x = at.x; deploymentOut.z = at.z;
+      return deploymentOut;
     },
     captureCheckpoint(elapsedS) {
+      const waves: WaveCheckpoint | null = id === 'endless_horde' || id === 'frontline_assault' ? {
+        wave, inactive: entities.filter((entity) => entity.modeActive === false).map((entity) => entity.id),
+        restedAt: [...restedAt], lastWaveIds: [...lastWaveIds],
+        ...(id === 'endless_horde' ? { horde: { queued: hordeQueued, special: hordeSpecial, healthScale: hordeHealthScale,
+          nextWaveAtS, nextTrickleAtS, spawnSector, stalledAtS: arrivalStalledAtS, pickups: pickups.map((p) => ({ ...p })),
+          sequence: pickupSequence } } : {}),
+        ...(id === 'frontline_assault' ? { line: { index: lineIndex, holdUntilS, regroup: regroup ? { ...regroup } : null,
+          counter: counter ? { ...counter, ids: [...counter.ids] } : null, fresh: [...freshDefenders],
+          nextReinforceAtS: Number.isFinite(nextReinforceAtS) ? nextReinforceAtS : null, allyDownAt: [...allyDownAt],
+          zones: zones.map((zone) => ({ id: zone.id, control: zone.control, owner: zone.owner, contested: zone.contested })) } } : {}),
+      } : null;
       return { elapsedS, score: { ...score }, weaponKills: [...weaponKills], teams: entities.map(entity => [entity.id, teamOf(entity)]),
-        respawns: [...respawnAt].map(([key, value]) => [key, { ...value }]), destroyed: [...destroyed], scored: [...scoredDeaths], ...(escort?{escortRescued:escort.capture(),support:{ammoAt,healAt,sequence:pickupSequence,pickups:pickups.map(p=>({...p}))}}:{}) };
+        respawns: [...respawnAt].map(([key, value]) => [key, { ...value }]), destroyed: [...destroyed], scored: [...scoredDeaths], ...(escort?{escortRescued:escort.capture(),support:{ammoAt,healAt,sequence:pickupSequence,pickups:pickups.map(p=>({...p}))}}:{}),
+        ...(waves ? { waves } : {}) };
     },
     restoreCheckpoint(checkpoint) {
       score.alpha = checkpoint.score.alpha; score.bravo = checkpoint.score.bravo;
@@ -2138,6 +2301,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       scoredDeaths.clear(); for (const key of checkpoint.scored) scoredDeaths.add(key);
       escort?.restore(checkpoint.escortRescued??[]);
       if(checkpoint.support){ammoAt=checkpoint.support.ammoAt;healAt=checkpoint.support.healAt;pickupSequence=checkpoint.support.sequence;pickups.length=0;pickups.push(...checkpoint.support.pickups.map(p=>({...p})));}
+      if (checkpoint.waves) restoreWaves(checkpoint.waves);
     },
     serialize,
   };

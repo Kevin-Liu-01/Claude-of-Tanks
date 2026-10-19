@@ -10,7 +10,7 @@ import {
   writeTeamNations,
 } from '../game/teamArrangement.ts';
 import { createTeamNationsControl } from './teamNationsControl.ts';
-import { countryOfNation } from '../sim/teamNations.ts';
+import { countryOfVehicle, type CountryId } from '../sim/countries.ts';
 import {
   BATTLE_FIELD_LIMIT, SIDES_PRESETS, TEAM_ARRANGEMENT_LIMITS, acceptsTeamArrangement, isWaveMode, modeCopyValues,
   normalizeTeamArrangement, rulesetSides, sidesPresetOf, type TeamArrangement,
@@ -1105,7 +1105,10 @@ export function createPlayMenu({
   // ---- TEAM NATIONS (gameplay-modes-228): MONO-NATION or RANDOM, one switch solo and in a lobby -------------------
   // solo it is the player's preference; in a lobby the room's arrangement holds it, the host changes it (and keeps it
   // as its own preference), the guests see it locked
-  const playerNation = (): string | null => vehicles.find((vehicle) => vehicle.id === getSelection().specId)?.nation ?? null;
+  const playerCountry = (): CountryId | null => {
+    const specId = getSelection().specId;
+    return countryOfVehicle(specId, vehicles.find((vehicle) => vehicle.id === specId)?.nation);
+  };
   let teamsFromLobby = false;
   const teamsControl = createTeamNationsControl({
     read: () => (teamsFromLobby && state ? (state.arrangement?.teamNations === 'random' ? 'random' : 'mono') : readTeamNations()),
@@ -1117,7 +1120,7 @@ export function createPlayMenu({
       renderArrangement(selectedGameMode, teamsFromLobby);
       refreshRuleLines(selectedGameMode);
     },
-    playerNation,
+    playerCountry,
     enemyCountry: () => currentArrangement(selectedGameMode)?.enemyNation ?? null,
     locked: () => teamsFromLobby && (role !== 'host' || state?.phase !== 'waiting'),
   });
@@ -1201,7 +1204,7 @@ export function createPlayMenu({
         String(arranged?.waveSize ?? defaults.horde?.waveSize ?? TEAM_ARRANGEMENT_LIMITS.waveSize[0]));
     }
     // TEAM NATIONS: MONO's enemy country (AUTO first, never the player's own); RANDOM hides and ignores it
-    const ownCountry = countryOfNation(playerNation());
+    const ownCountry = playerCountry();
     arrangeField('enemyNation').hidden = defaults.teamNations === 'random';
     fillOptions(arrangeSelect('enemyNation'),
       [['', t('teams.auto')], ...ENEMY_NATION_OPTIONS.map((option): [string, string] => [option.id, t(`campaign.enemy.${option.id}`)])],
@@ -1254,7 +1257,11 @@ export function createPlayMenu({
   arrangeSection.addEventListener('change', () => applyArrangement(readArrangementPanel(selectedGameMode)));
   arrangeSection.querySelector<HTMLButtonElement>('[data-arrange-reset]')!.addEventListener('click', () => {
     sidesCustomOpen = false;
-    applyArrangement(null);
+    // the reset clears the sides and the objective settings, never the TEAMS choice (round 2: a lobby's reset sent a null
+    // arrangement and put a RANDOM room back to MONO without a word)
+    const teams = currentArrangement(selectedGameMode)?.teamNations === 'random'
+      ? normalizeTeamArrangement(selectedGameMode, { teamNations: 'random' }) : null;
+    applyArrangement(teams);
   });
   for (const button of sidesButtons) button.addEventListener('click', () => {
     const id = button.dataset.sides;

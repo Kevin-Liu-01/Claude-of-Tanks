@@ -11,23 +11,20 @@ import { flagIconHTML } from './flags.ts';
 import { t } from './i18n.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { FONT_COND } from './fonts.ts';
-import { COUNTRIES } from '../sim/teamNations.ts';
+import { countryNation, type CountryId } from '../sim/countries.ts';
 import type { TeamNationsId } from '../sim/matchRuleset.ts';
 
 interface TeamNationsControlOptions {
   /** The value shown now (the room's in a lobby, else the player's preference). */
   read(): TeamNationsId;
   write(value: TeamNationsId): void;
-  /** The player's vehicle's spec nation (its flag leads MONO), or null. */
-  playerNation(): string | null;
+  /** The country the player's vehicle fights for (its flag leads MONO; sim/countries.ts countryOfVehicle), or null. */
+  playerCountry(): CountryId | null;
   /** The enemy country under MONO (an id), or null for AUTO. */
   enemyCountry(): string | null;
   /** A guest in a lobby, or a room that is starting: the control shows, but does not change. */
   locked?(): boolean;
 }
-
-const specNationOf = (country: string | null): string | null =>
-  COUNTRIES.find((entry) => entry.id === country)?.specNations[0] ?? null;
 
 export function createTeamNationsControl(options: TeamNationsControlOptions): { root: HTMLElement; render(): void } {
   ensureStyle('cot-team-nations-style', `
@@ -64,8 +61,8 @@ export function createTeamNationsControl(options: TeamNationsControlOptions): { 
   function render(): void {
     const value = options.read();
     const locked = !!options.locked?.();
-    const own = options.playerNation();
-    const enemy = specNationOf(options.enemyCountry());
+    const own = countryNation(options.playerCountry());
+    const enemy = countryNation(options.enemyCountry());
     mono.innerHTML = `${own ? flagIconHTML(own, 20, 14) : globe()}<span class="vs" aria-hidden="true">${t('teams.vs')}</span>`
       + `${enemy ? flagIconHTML(enemy, 20, 14) : globe()}<span>${t('teams.mono')}</span>`;
     random.innerHTML = `${globe()}<span>${t('teams.random')}</span>`;

@@ -6,6 +6,7 @@
 // unchanged. An attack target is the sector's own plan (assaultBots): a flank lane, the edge or the centre.
 import assert from 'node:assert/strict';
 import { createMatchModeController } from './matchModes.ts';
+import { matchRulesetFor } from './matchRuleset.ts';
 
 function entity(id, team, x, z, { bot = false } = {}) {
   return {
@@ -64,8 +65,11 @@ console.log('[1] after the second sector falls the bots hold it until the bots b
     assert.ok(at(target, line(1)) && target.mission === 'assault',
       `${bot.id} holds the sector just taken (target ${target.x.toFixed(0)}, ${target.z.toFixed(0)})`);
   }
+  // a defender holds its slot on the last sector's hold ring (holdSpreadM, gameplay-modes-228 round 2)
+  const spread = matchRulesetFor('frontline_assault').assault.holdSpreadM;
   for (const enemy of enemies.filter((e) => e.modeActive !== false)) {
-    assert.ok(at(match.botTarget(enemy), line(2)), `defender ${enemy.id} still goes to the last sector`);
+    const held = match.botTarget(enemy);
+    assert.ok(Math.hypot(held.x - line(2).x, held.z - line(2).z) <= spread + 1, `defender ${enemy.id} still goes to the last sector`);
   }
   console.log('  ok  all six bots hold sector 2 while two of them are 500 m back; defenders go to sector 3');
   step(20);

@@ -61,9 +61,9 @@ assert.equal(horde.enemies, 20, 'a twenty-strong pool of hostile identities');
   const h = horde.horde;
   assert.deepEqual([h.waveSize, h.waveStep, h.waveCurve, h.perHumanTotal], [6, 3, 0.35, 0.25], 'the wave-total law');
   assert.deepEqual([h.maxAlive, h.maxAlivePerHuman, h.maxAliveCap, h.trickleS, h.recycleAfterS], [16, 1, 20, 1.5, 6], 'the field and the trickle');
-  assert.deepEqual([...h.spawnRingM], [260, 380]); assert.equal(h.spawnSectors, 3); assert.equal(h.spawnMinHumanM, 150); assert.equal(h.spawnOutOfSight, true);
+  assert.deepEqual([...h.spawnRingM], [320, 440], 'the ring: first contact 8-25 s into a wave (round 2)'); assert.equal(h.spawnSectors, 3); assert.equal(h.spawnMinHumanM, 150); assert.equal(h.spawnOutOfSight, true);
   assert.deepEqual([h.intermissionS, h.waveRepair, h.hostileHpScale, h.hpPerWave, h.hpPerWaveLate, h.lateFromWave], [8, 0.3, 0.15, 0.02, 0.06, 11]);
-  assert.deepEqual([h.runnerEvery, h.runnerSpeed, h.swarmEvery, h.swarmTotalScale, h.swarmHull], [4, 1.25, 5, 1.4, 0.10], 'runner and swarm waves');
+  assert.deepEqual([h.runnerEvery, h.runnerSpeed, h.swarmEvery, h.swarmTrickleScale, h.swarmHull], [4, 1.25, 5, 0.5, 0.10], 'runner and swarm waves');
   assert.deepEqual([h.hostileDifficultyStep, h.hunt, h.allyLeashM], [1, 'spotted', 120]);
   assert.ok(h.hostileReloadScale >= 1, 'a zombie never reloads faster than its gun');
 }
@@ -73,7 +73,8 @@ assert.deepEqual(baseLaw.slice(0, 10), [6, 9, 13, 18, 24, 30, 37, 44, 52, 61], '
 for (let i = 1; i < baseLaw.length; i++) assert.ok(baseLaw[i] > baseLaw[i - 1], 'the base law rises every round');
 assert.equal(hordeWaveSpecial(horde.horde, 4), 'runner'); assert.equal(hordeWaveSpecial(horde.horde, 5), 'swarm');
 assert.equal(hordeWaveSpecial(horde.horde, 20), 'swarm', 'a swarm wins when both fall due'); assert.equal(hordeWaveSpecial(horde.horde, 3), null);
-assert.equal(hordeWaveTotal(horde.horde, 3, 1), 13); assert.equal(hordeWaveTotal(horde.horde, 5, 1), Math.round(24 * 1.4), 'a swarm brings 1.4x');
+assert.equal(hordeWaveTotal(horde.horde, 3, 1), 13); assert.equal(hordeWaveTotal(horde.horde, 5, 1), 24, 'a swarm keeps the law (it swarms in faster, weaker)');
+for (let w = 1; w < 30; w++) assert.ok(hordeWaveTotal(horde.horde, w + 1, 1) > hordeWaveTotal(horde.horde, w, 1), 'the wave total rises every round, swarms included');
 assert.equal(hordeWaveTotal(horde.horde, 3, 3), Math.round(13 * 1.5), 'each extra human adds a quarter');
 assert.equal(hordeMaxAlive(horde.horde, 1, 20), 16); assert.equal(hordeMaxAlive(horde.horde, 3, 20), 18); assert.equal(hordeMaxAlive(horde.horde, 9, 20), 20, 'never over the cap');
 assert.equal(hordeMaxAlive(horde.horde, 1, 6), 6, 'never over the pool');
@@ -158,14 +159,18 @@ assert.equal(matchRulesetFor('endless_horde', null, { allies: 13, enemies: 14 })
 
 const ctf = matchRulesetFor('capture_the_flag');
 assert.equal(ctf.respawnS, 6); assert.equal(RULESET_SCORE_TARGETS.capture_the_flag, 3);
-assert.deepEqual({ ...ctf.flagBots }, { recoverShare: 0.5, recoverMin: 2, huntWhenHomeFlagTaken: true, escorts: 3, escortAheadM: 24,
-  escortSideM: 22, defendShare: 0.15, defendMinSquad: 6, interceptLeadS: 2.5 }, 'the flag bots run the flags (gameplay-modes-228)');
+assert.deepEqual({ ...ctf.flagBots }, { recoverShare: 0.5, recoverMin: 2, huntWhenHomeFlagTaken: false, escorts: 3, carrierGuards: 1,
+  escortAheadM: 24, escortSideM: 22, defendShare: 0.15, defendMinSquad: 6, interceptLeadS: 2.5 },
+  'the flag bots run the flags: half recover, the rest raid back; a carrier\'s team escorts it with one guard home (round 2)');
 {
   const ball = matchRulesetFor('turbo_ball');
   assert.deepEqual([ball.ballBots.strikers, ball.ballBots.strikerHoldS, ball.ballBots.swapM, ball.ballBots.leadMaxS, ball.ballBots.screens,
     ball.ballBots.screenNear, ball.ballBots.screenFar, ball.ballBots.keepers, ball.ballBots.keeperM, ball.ballBots.crowdCap, ball.ballBots.crowdM],
   [2, 3, 25, 3, 2, 0.85, 0.6, 1, 30, 3, 30], 'two strikers on the intercept, two screens, a keeper, at most three on the ball');
-  assert.deepEqual({ ...ball.ballBots.shootBall }, { maxRangeM: 120, coneDeg: 25 });
+  assert.deepEqual({ ...ball.ballBots.shootBall }, { maxRangeM: 160, minRangeM: 20, coneDeg: 30, everyRole: true, overTanks: true },
+    'every role shoots the ball toward the opponent goal, before a farther tank (round 2)');
+  assert.deepEqual([ball.ballBots.crowdMarginM, ball.ballBots.wingM, ball.ballBots.wingStepM, ball.ballBots.lineUpM, ball.ballBots.goRoundM,
+    ball.ballBots.behindM, ball.ballBots.throughM], [5, 40, 20, 7, 16, 20, 18], 'the role geometry the controller reads');
   assert.equal(ball.ball.idleResetS, 30);
 }
 // TEAM NATIONS (gameplay-modes-228): MONO-NATION by default, RANDOM the one stored value; every mode has a scope row
@@ -178,7 +183,8 @@ for (const mode of GAME_MODE_IDS) {
 assert.deepEqual(normalizeTeamArrangement('standard', { teamNations: 'random' }), { allies: null, enemies: null, waveSize: null, enemyNation: null, teamNations: 'random' });
 assert.equal(normalizeTeamArrangement('standard', { teamNations: 'mono' }), null, 'mono is the absent default');
 assert.equal(normalizeTeamArrangement('standard', { alliedNation: 'player' }), null, 'the retired alliedNation reads as MONO and is dropped');
-assert.deepEqual(rulesetLines(matchRulesetFor('standard', null, { teamNations: 'random' })), [{ key: 'teamsRandom', values: {} }], 'RANDOM shows on the card');
+assert.deepEqual(rulesetLines(matchRulesetFor('standard', null, { teamNations: 'random' })), [], 'RANDOM is the switch\'s to show: no chip repeats it');
+assert.ok(!rulesetLines(matchRulesetFor('endless_horde', null, { teamNations: 'random' })).some((line) => line.key === 'teamsMono'), 'nor the fiction chip under RANDOM');
 assert.deepEqual(rulesetLines(ctf).map((line) => line.key), ['respawn', 'carrierSpeed']);
 assert.equal(rulesetLines(ctf)[1].values.value, '-15 %'); assert.equal(FLAG_CARRIER_SPEED_SCALE, 0.85);
 assert.equal(RULESET_SCORE_TARGETS.zone_control, 750, 'zone target resolves inside the clock');
@@ -187,12 +193,15 @@ const assault = matchRulesetFor('frontline_assault');
 assert.equal(assault.timeout, 'defeat', 'an expired assault clock loses the operation');
 assert.equal(assault.timeLimitS, 720); assert.equal(assault.allies, 3); assert.equal(assault.respawnS, null);
 assert.equal(assault.enemies, 12, 'twelve defenders in the formation pool'); assert.equal(assault.enemyNation, null, 'a free sortie names no nation unless arranged');
-assert.deepEqual({ ...assault.assault, lineBandM: [...assault.assault.lineBandM], counterAttack: { ...assault.assault.counterAttack } }, {
-  initialActive: 4, extraDefenders: 0, hpPerLine: 0.16, finalLineHp: 1.15, difficultyHp: 0, holdS: 20,
-  defendersStartOnLine: true, lineBandM: [70, 110], counterAttack: { squad: 2, afterCaptureS: 8, forS: 40 },
-  reinforceTrickleS: 30, reinforceExtra: 2, reinforceRearM: 140, regroupMaxS: 25, regroupRadiusM: 80, regroupHumanM: 250, allyReviveS: 30,
-  hostileDifficultyStep: 1,
-}, 'gameplay-modes-228: every sector fought for — defenders on the line, a counter-attack, a trickle, a 25 s regroup');
+assert.deepEqual({ ...assault.assault, lineBandM: [...assault.assault.lineBandM], counterAttack: { ...assault.assault.counterAttack },
+  lineGuard: { ...assault.assault.lineGuard } }, {
+  initialActive: 3, extraDefenders: 0, hpPerLine: 0.16, finalLineHp: 1.15, difficultyHp: 0, holdS: 20, captureS: 8,
+  defendersStartOnLine: true, lineBandM: [70, 110], lineGuard: { minAttackM: 200, outOfSight: true, stepBackM: 20, tries: 4 },
+  counterAttack: { squad: 2, afterCaptureS: 8, forS: 40 },
+  reinforceTrickleS: 45, reinforceExtra: 0, reinforceRearM: 140, contestReachM: 60, lineSpacingM: 16, lineJitterM: 8, allyReviveBackM: 40,
+  holdSpreadM: 14, regroupMaxS: 25, regroupRadiusM: 80, regroupHumanM: 250, allyReviveS: 30, hostileDifficultyStep: 1, hostileReloadScale: 1.5,
+}, 'every sector fought for, and winnable (round 2): 3 / 4 / 5 on the line, out of the spawn\'s reach and sight, a counter-attack, a trickle up to the count, defenders\' guns x1.5 slower, a 25 s regroup');
+assert.equal(assault.hpScale, 1.35, 'the attack\'s hull (round 2: the one-life sortie lost 0/16 to the dug-in line); the defenders field their own');
 assert.deepEqual({ ...assault.assaultBots }, { pushAfterS: 15, pushMinGroup: 2, pushGroupM: 80, stageM: 20, flankShare: 0.4, flankOffsetM: 60, flankConvergeM: 80 });
 // Frontline's last line (modes lane 2026-10-08, owner decision: attackers win 40-55 % of bot tests): the third sector's
 // counter-attack arrives at 1.15x instead of the ramp's 1.32x; the first two sectors keep 1 + sectors taken x 0.16.
@@ -214,7 +223,8 @@ assert.ok(near(assaultWaveHealthScale(op4.assault, 2, 3), 1.33), 'the operation\
 const op4Short = matchRulesetFor('frontline_assault', { difficulty: 4, timeLimitS: 600 });
 assert.equal(op4Short.timeLimitS, 600, 'an operation may shorten the clock');
 assert.equal(matchRulesetFor('standard', { difficulty: 4 }), standard, 'difficulty only folds into Frontline Assault');
-assert.ok(rulesetLines(op4).some((line) => line.key === 'assaultWaves' && line.values.value === '5' && line.values.hp === '+18 %'));
+assert.ok(rulesetLines(op4).some((line) => line.key === 'assaultWaves' && line.values.value === '4' && line.values.hp === '+18 %'));
+assert.ok(rulesetLines(assault).some((line) => line.key === 'hp' && line.values.value === '+35 % / 0 %'), 'the card pairs the attack\'s hull with the defenders\' own');
 assert.ok(rulesetLines(assault).some((line) => line.key === 'clockDefeat' && line.values.value === '12'));
 
 assert.equal(rulesetAmmoCapacity(turbo, 'AP', 24), 24, 'unlimited keeps the loadout shape (the sim refills it)');

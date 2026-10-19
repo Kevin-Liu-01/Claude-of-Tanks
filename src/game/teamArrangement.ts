@@ -10,7 +10,7 @@ import {
   DEFAULT_TEAM_NATIONS, isTeamNationsId, type TeamNationsId,
 } from '../sim/matchRuleset.ts';
 import { GAME_MODE_IDS } from '../sim/matchModes.ts';
-import { COUNTRIES } from '../sim/teamNations.ts';
+import { COUNTRIES } from '../sim/countries.ts';
 
 export const TEAM_ARRANGEMENT_STORAGE_KEY = 'cot.game.teams.v1';
 

@@ -12,7 +12,9 @@
 //                   terrain variant). Two harness shims, both outside src: (1) every vehicle gets a headless visual whose
 //                   gun pose is the authority's gunWorldPose maths (the solo step reads the muzzle from the visual), and
 //                   (2) the player seat is driven by a createAI controller built like createBattleBot's (it stays the
-//                   human seat for the mode controller: isPlayer, bot=false), so wave modes keep their human-alive rule.
+//                   human seat for the mode controller: isPlayer, bot=false), so wave modes keep their human-alive rule;
+//                   it fights under its side's doctrine like its allied bots (a tree without doctrines: the classic
+//                   controller, as its allies there), and in Frontline its objective ranks targets but never drives it.
 //                   The player seat is reported apart and left out of every per-bot aggregate.
 //   authority       the network authority (sim/authoritativeMatch.ts) with every seat a bot, seated from the same solo
 //                   roster plan; seat h1 (the player's vehicle) reads as human only while the mode controller steps
@@ -182,16 +184,19 @@ if (command === 'compare') {
       }
       return { value: `${zombies} <= ${infected} <= min(${others.length ? Math.min(...others) : '—'})`, pass: zombies <= infected && others.every((x) => infected <= x) };
     },
-    // the Horde's zombie hull per wave (waves 1-10 in [lo, hi] but the swarm waves, every `swarmEvery`th, which field
-    // their lighter hull by design; wave 15, when a run reaches it, at most `late`)
+    // the Horde's zombie hull per wave: waves 1-10 in [lo, hi], the swarm waves (every `swarmEvery`th) at exactly their
+    // `swarmHull` (round 2: checked, not left out), wave 15, when a run reaches it, at most `late`
     hordeHull(report, t) {
       const hull = report?.modes?.endless_horde?.horde?.law?.hullPerWave;
       if (!hull) return { value: null, pass: false };
       const [lo, hi] = t.band, every = t.swarmEvery ?? 0;
-      const early = hull.slice(0, 10).filter((_, i) => !every || (i + 1) % every !== 0);
+      const isSwarm = (i) => every > 0 && (i + 1) % every === 0;
+      const early = hull.slice(0, 10).filter((h, i) => h != null && !isSwarm(i));
+      const swarms = hull.slice(0, 15).filter((h, i) => h != null && isSwarm(i));
       const late = hull[14];
-      return { value: `waves 1-10 (no swarm) ${Math.min(...early)}-${Math.max(...early)}${late != null ? `, wave 15 ${late}` : ''}`,
-        pass: early.length > 0 && early.every((h) => h >= lo - 1e-9 && h <= hi + 1e-9) && (late == null || late <= t.late + 1e-9) };
+      const swarmOk = t.swarmHull == null || swarms.every((h) => Math.abs(h - t.swarmHull) <= 0.005);
+      return { value: `waves 1-10 ${Math.min(...early)}-${Math.max(...early)}; swarm waves ${swarms.join(', ') || '—'}${late != null ? `; wave 15 ${late}` : ''}`,
+        pass: early.length > 0 && early.every((h) => h >= lo - 1e-9 && h <= hi + 1e-9) && swarmOk && (late == null || late <= t.late + 1e-9) };
     },
     // the Horde's wave law: every cleared wave fielded exactly what the ruleset's law says
     hordeLaw(report) {
@@ -595,8 +600,19 @@ if (engine === 'solo') {
   const player = game.tanks[0];
   const enemyScratch = [], allyScratch = [];
   const searchRng = mulberry(18000 + 997);
+  // the seat fights as a bot of its side does (round 2): under its side's doctrine where the tree has one (the base tree
+  // has none: there the seat and its allies both play the classic controller), so the seat and its allied bots play alike
+  const seatDoctrine = typeof RULESET_MODULE.rulesetBotDoctrine === 'function' ? () => RULESET_MODULE.rulesetBotDoctrine(game.ruleset ?? rules, player.team) : undefined;
+  // Frontline's seat is routed by followObjective below like a human attacker; its objective ranks its targets but never
+  // drives its hull as a mission (round 2: since the mission owns its waypoints, the seat's 'assault' mission took it
+  // straight into the zone, ahead of its group and its own staging)
+  const seatObjective = () => {
+    const objective = game.matchModeController?.botObjective(player) ?? null;
+    if (!objective || mode !== 'frontline_assault' || playerSeat !== 'fight') return objective;
+    return { x: objective.x, z: objective.z, radiusM: objective.radiusM };
+  };
   player.aiCtl = createAI(player, {
-    difficulty, rng: mulberry(7000 + 997),
+    difficulty, rng: mulberry(7000 + 997), doctrine: seatDoctrine,
     deps: {
       heightField: world.heightField, raycast: world.raycast, getObstacles: () => world.getObstacles(),
       queryObstacles: world.queryObstacles || null, getConcealment: () => (world.getConcealment ? world.getConcealment() : []),
@@ -605,7 +621,7 @@ if (engine === 'solo') {
       getEnemies: () => { enemyScratch.length = 0; for (const c of game.tanks) if (c.team !== player.team && c.modeActive !== false && !c.combat.destroyed && c.aerial?.kind !== 'gunship') enemyScratch.push(c); return enemyScratch; },
       getAllies: () => { allyScratch.length = 0; for (const c of game.tanks) if (c !== player && c.team === player.team && !c.combat.destroyed) allyScratch.push(c); return allyScratch; },
       spotting: { isSpotted: (id, receiver) => (game.spotting ? game.spotting.isSpotted(id, player.team, receiver) : true) },
-      getObjective: () => game.matchModeController?.botObjective(player) ?? null,
+      getObjective: seatObjective,
     },
   });
   // the player seat's opening: toward the enemy deployment like an allied bot's doctrine leg (no mode target in Standard)
@@ -790,7 +806,8 @@ const ball = { touches: { alpha: 0, bravo: 0, unknown: 0 }, shotTouches: 0, ramT
   goalSamples: 0, goalDistSum: 0, goalDistMin: Infinity, endThirdSamples: 0, stillSamples: 0, axisM: null, prev: { x: 0, z: 0, set: false },
   // crowd: samples where at most 3 bots of each team stand within 30 m of the ball; bot shells that touched the ball
   crowdSamples: 0, crowdOk: 0, botShotTouches: 0 };
-const front = { lines: [], total: null, zoneSamples: { alpha: 0, bravo: 0 }, liveSamples: 0, alphaDistSum: 0, alphaDistN: 0, bravoDistSum: 0, bravoDistN: 0, maxIndex: 0 };
+const front = { lines: [], total: null, zoneSamples: { alpha: 0, bravo: 0 }, liveSamples: 0, alphaDistSum: 0, alphaDistN: 0, bravoDistSum: 0, bravoDistN: 0, maxIndex: 0,
+  pendingPlacements: [], placements: 0, placedNear: 0, placedSeen: 0, placedMinM: Infinity };
 const horde = { waves: [], humanHpSamples: [], maxWave: 0, peakAlive: 0, spawnChecks: 0, spawnNear: 0, spawnSeen: 0, spawnMinM: Infinity,
   pendingArrivals: [] };
 // rams: bot-on-bot ram deaths and the hunter rams (a Horde / Infected hostile in a ram contact with an alpha hull)
@@ -876,6 +893,11 @@ function onEvent(ev, t) {
     if (type === 'respawn' && mode === 'endless_horde' && p.id) {
       const who = byId.get(p.id);
       if (who && normTeam(who.team) === 'bravo' && !adapter.isHuman(who)) horde.pendingArrivals.push(p.id);
+    }
+    // Frontline (round 2, E2): where a defender takes its line slot — the nearest living attacker and its terrain sight
+    if (type === 'respawn' && mode === 'frontline_assault' && p.id) {
+      const who = byId.get(p.id);
+      if (who && normTeam(who.team) === 'bravo') front.pendingPlacements.push(p.id);
     }
     // a stranded hostile benched and queued again (HordeRules.strandedS): its re-arrival is not a new enemy of the wave
     if (type === 'horde_recycled' && lastWave) { lastWave.arrivals--; lastWave.recycled = (lastWave.recycled ?? 0) + 1; horde.recycled = (horde.recycled ?? 0) + 1; }
@@ -1121,16 +1143,40 @@ function settleArrivals() {
   }
 }
 
+/** Frontline line slots: a defender placed within 300 m of a living attacker, or in one's terrain sight within 450 m. */
+function settlePlacements() {
+  const ids = front.pendingPlacements.splice(0);
+  for (const id of ids) {
+    const d0 = byId.get(id);
+    if (!d0 || !alive(d0)) continue;
+    let nearest = Infinity, seen = false;
+    for (const h of ents) {
+      if (normTeam(h.team) !== 'alpha' || !alive(h)) continue;
+      const d = Math.hypot(h.state.pos.x - d0.state.pos.x, h.state.pos.z - d0.state.pos.z);
+      if (d < nearest) nearest = d;
+      if (!seen && d <= 450 && terrainSees(h.state.pos.x, h.state.pos.y + 2.4, h.state.pos.z, d0.state.pos.x, d0.state.pos.y + 1.5, d0.state.pos.z)) seen = true;
+    }
+    front.placements++;
+    if (nearest < front.placedMinM) front.placedMinM = nearest;
+    if (nearest < 300) front.placedNear++;
+    if (seen) front.placedSeen++;
+  }
+}
+
 // --- the loop --------------------------------------------------------------------------------------------------------
 const ticks = Math.round(capS / SIM_DT);
 let result = null;
 let tick = 0;
 let spentSamples = 0;
+// the opening line (placed inside setupBattle, before the recorder listens) is checked where it stands at the start
+if (mode === 'frontline_assault') for (const e of ents) if (normTeam(e.team) === 'bravo' && alive(e)) front.pendingPlacements.push(e.id);
+if (front.pendingPlacements.length) settlePlacements();
 for (; tick < ticks; tick++) {
   adapter.step();
   const t = adapter.timeS();
   for (const ev of adapter.drain()) onEvent(ev, t);
   if (horde.pendingArrivals.length) settleArrivals();
+  if (front.pendingPlacements.length) settlePlacements();
   if (tick % SAMPLE_TICKS === 0) sample(t);
   const res = adapter.result();
   if (res) { result = res; break; }
@@ -1229,6 +1275,8 @@ if (mode === 'frontline_assault') {
     attackerDistToLiveZoneM: front.alphaDistN ? Math.round(front.alphaDistSum / front.alphaDistN) : null,
     defenderDistToLiveZoneM: front.bravoDistN ? Math.round(front.bravoDistSum / front.bravoDistN) : null,
     sector1Kills: sector1.kills, counterAttacks: modeCounts.counter_attack ?? 0,
+    placements: front.placements, placedNear: front.placedNear, placedSeen: front.placedSeen,
+    placedMinM: Number.isFinite(front.placedMinM) ? Math.round(front.placedMinM) : null,
     waves: horde.waves };
 }
 if (mode === 'endless_horde') {

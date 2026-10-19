@@ -1332,6 +1332,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/ballIntercept.selftest.mjs',
     'src/sim/reviveClearsModeTarget.selftest.mjs',
     'src/game/ai.missionOwnership.selftest.mjs',
+    // round 2 (the critic's E5/E6): the scout kite, the no-ram lane and the zone sortie act only on hulls the side spots
+    'src/game/ai.honestSenses.selftest.mjs',
     'src/sim/teamNations.selftest.mjs',
     'src/sim/nationIndex.selftest.mjs',
     'src/mp/room/roomBots.selftest.mjs',

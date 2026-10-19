@@ -20,8 +20,8 @@ rule the battle does not keep.
 | Capture the Flag | Carry the enemy flag to a home flag that has not been stolen | flag carrier drives at 85 % | 6 s | First team to 3 captures, or the clock (score) |
 | Zone Control | Capture and hold three battlefield sectors | — | 6 s | First team to 750 points, or the clock (score) |
 | Turbo Ball | Drive or shoot the physical ball into the opposing goal | 0.6 g (hulls, shells and the ball), +85 % speed, +50 % hull, −50 % damage, +43 % reload rate, unlimited rounds, no equipment, no consumables, no module, crew or fire damage, F jumps 9 m/s, ×12 recoil launch, ×2.5 impact knock | 3 s | First team to 5 goals, or the 10:00 clock (score) |
-| Endless Horde | Survive rounds that grow every time, without a cap | +100 % hull for the humans, hostiles at 15 % of their own hull (+2 % a round to round 10, +6 % after) on bots one difficulty tier down that rush, unlimited rounds, four allied bots (co-op humans join alpha); round *w* fields round(6 + 3(*w* − 1) + 0.35(*w* − 1)²) hostiles — 6, 9, 13, 18, 24, 30, 37 … (every 5th a swarm, ×1.4 at 10 % hull; every 4th a runner round, +25 % speed) — at most 16 alive at once (+1 a further human, cap 20) from a twenty-strong pool that trickles in every 1.5 s on a ring round the humans, never inside 150 m of one nor in a human's terrain sight; 8 s between rounds, 30 % repair for every survivor when a round is cleared, repair caches, no clock; the player arranges both sides | No | The final human-controlled tank is destroyed |
-| Frontline Assault | Take three trench sectors in turn, then hold the last one | unlimited rounds, three allied bots, a twelve-strong one-country formation (the operation's, the arranged country, or AUTO's), 4 / 5 / 6 defenders dug in on each sector's line from the start, a two-tank counter-attack on a sector just taken, one more defender from the rear every 30 s while a sector is contested, 12:00 clock that loses the sortie when it expires; defenders escalate per sector and per campaign operation | No | The last sector held for 20 s, the human attacker destroyed, or the clock |
+| Endless Horde | Survive rounds that grow every time, without a cap | +100 % hull for the humans, hostiles at 15 % of their own hull (+2 % a round to round 10, +6 % after) on bots one difficulty tier down that rush, unlimited rounds, four allied bots (co-op humans join alpha); round *w* fields round(6 + 3(*w* − 1) + 0.35(*w* − 1)²) hostiles — 6, 9, 13, 18, 24, 30, 37 …, more every round (every 5th a swarm, the law's total at 10 % hull trickling in twice as fast; every 4th a runner round, +25 % speed) — at most 16 alive at once (+1 a further human, cap 20) from a twenty-strong pool that trickles in every 1.5 s on a ring 320–440 m round the humans, never inside 150 m of one nor in a human's terrain sight; 8 s between rounds, 30 % repair for every survivor when a round is cleared, repair caches, no clock; the player arranges both sides | No | The final human-controlled tank is destroyed |
+| Frontline Assault | Take three trench sectors in turn, then hold the last one | +35 % hull for the attack (the defenders field their own), unlimited rounds, three allied bots (back 30 s after a death), a twelve-strong one-country formation (the operation's, the arranged country, or AUTO's), 3 / 4 / 5 defenders dug in on each sector's line from the start (out of the attack's reach and terrain sight) whose guns reload 1.5× slower, a two-tank counter-attack on a sector just taken, one more defender from the rear every 45 s while a sector is contested and its line short, 12:00 clock that loses the sortie when it expires; defenders escalate per sector and per campaign operation | No | The last sector held for 20 s, the human attacker destroyed, or the clock |
 | Mars Mode | Hold the three station sectors of Olympus Basin | 0.38 g, +25 % speed, +20 % hull, −10 % damage, +11 % reload rate, rocket jump 9.5 m/s (F, boosts again in the air), ×3 recoil launch, ×0.9 impact knock, unlimited rounds; repair caches every 22 s | 6 s | First team to 750 points, or the 12:00 clock (score) |
 | Juggernaut | Defeat the boss, or survive as the boss | Choose the boss or hunter role; boss has 8× hull, half reload time and 90% speed; unlimited rounds | Hunters: 6 s; boss: none | Boss destroyed, or boss survives 10:00 |
 | Infected | Survive the outbreak, or convert every survivor | Survivors at 150 % hull; five initial infected at 25 % hull and 30 % more speed rise round the survivors (120–200 m out, out of sight where the ground allows) and rush them; destroyed survivors join them; unlimited rounds | 5 s | No survivors remain, or survivors reach 7:00 |
@@ -161,15 +161,18 @@ controls follow a mode loadout change on the same vehicle.
 Horde (owner 2026-09-15: "the horde is not endless, there's only 3 tanks every time and
 they're the same tanks each round"; 2026-10-18: "make it work a lot more properly like youd expect, more enemies per
 round") fields `hordeWaveTotal` hostiles a round: round(`waveSize` + `waveStep`(w − 1) + `waveCurve`(w − 1)²) ×
-(1 + `perHumanTotal` per further human) — 6, 9, 13, 18, 24, 30, 37, 44, 52, 61 … by default, ×`swarmTotalScale` (1.4) on
-a swarm round — with no cap. At most `hordeMaxAlive` (16, +1 a further human, cap 20) are on the field at once; the rest
+(1 + `perHumanTotal` per further human) — 6, 9, 13, 18, 24, 30, 37, 44, 52, 61 … by default, rising every round (a swarm
+round keeps the law's total and trickles in `swarmTrickleScale` (0.5) × as often apart, at its `swarmHull`; round 2: a ×1.4
+swarm total let round 5 outnumber round 6) — with no cap. At most `hordeMaxAlive` (16, +1 a further human, cap 20) are on the field at once; the rest
 queue and trickle in every `trickleS` (1.5 s) as the field thins, each a pool identity that has rested at least
 `recycleAfterS` (6 s), drawn from a pool of twenty (`ruleset.enemies`), so the entity count stays bounded while a round
-grows past the pool. A hostile arrives on a ring (`spawnRingM`, 260–380 m) round the living humans' centroid, in the next
+grows past the pool. A hostile arrives on a ring (`spawnRingM`, 320–440 m, so first contact falls 8–25 s into a round;
+260–380 m in round 1) round the living humans' centroid, in the next
 of three 60° sectors facing the hostile base, never inside `spawnMinHumanM` (150 m) of a human nor where a human within
 450 m sees it over the terrain (a height-field march; buildings only hide more); with no clear ring point it arrives at
-the hostile base if that is clear too, else it stays queued (a field left empty for four trickles takes a ring point out
-of reach but in sight). `state.horde` carries `queued`, `remaining` (alive + queued) and `special` ('runner' / 'swarm');
+the hostile base if that is clear too, else it stays queued (a field left empty for `stallTrickles` (four) trickles takes a
+ring point out of reach but in sight). A round's fallen allies stand up before its arrivals are placed, so no arrival lands
+in reach or sight of an ally revived at its base (round 2: the critic's 11 / 19 arrivals within 150 m / in sight). `state.horde` carries `queued`, `remaining` (alive + queued) and `special` ('runner' / 'swarm');
 the HUD reads "WAVE 7" and "23 / 37". The zombies rush (`ruleset.bots`, "Bot aggression per mode" below). The wave
 law and the pool are `HordeRules` / `TeamArrangement` in `sim/matchRuleset.ts`
 (`TEAM_ARRANGEMENT_LIMITS`: allies 0–6, pool 6–20, first wave 2–12). The zombies (owner 2026-10-17, "Zombie
@@ -187,9 +190,11 @@ channel). At most 12 uncollected caches remain active.
 
 Frontline Assault's opening wave is the same fresh draw; every captured sector then REINFORCES
 the line (owner 2026-09-17: "capturing bases … shouldnt reset tanks"): defenders still alive keep
-their identity, position and damage, and only the shortfall to `initialActive (4) + extraDefenders + sector`
+their identity, position and damage, and only the shortfall to `initialActive (3) + extraDefenders + sector`
 defenders arrives as fresh identities (rested first, that sector's wrecks last), on the sector's line
-(`defendersStartOnLine`: 70–110 m behind its centre, clear of the zone, facing the attack; the opening wave too) with
+(`defendersStartOnLine`: 70–110 m behind its centre, clear of the zone, facing the attack, stepped back along the axis while
+an attacker stands within 200 m of the slot or sees it over the terrain — at most four 20 m steps, `lineGuard`; the opening
+wave too) with
 `1 + 0.16 × sector + difficultyHp` hull; a campaign operation of difficulty *d* adds
 `floor((d − 1) / 2)` defenders and `(d − 1) × 6 %` hull. A level score when the clock
 expires is a draw under Standard rules and a defeat for the attackers in Frontline
@@ -492,15 +497,15 @@ harness's Standard and Juggernaut rows reproduce the baseline field for field).
 
 | Mode, side | Doctrine |
 | --- | --- |
-| Endless Horde zombies (RUSH) | no opening read, no hold band, no cover, never falls back, no kite, scoot or settle, no spearhead guard, rounds never conserved, the stalemate push after 4 s, missions at full speed and never broken off; the hunt's drive: straight at a spotted target inside 70 m, an orbit at 25–35 m with the turret laid inside 35 m, and never a ram (`RUSH_DRIVE`: inside its stopping lane an enemy hull brakes and turns it); a target is claimed inside 60 m (`claimRangeM`); hits ignored |
+| Endless Horde zombies (RUSH) | no opening read, no hold band, no cover, never falls back, no kite, scoot or settle, no spearhead guard, rounds never conserved, the stalemate push after 4 s, missions at full speed and never broken off; the hunt's drive: straight at a spotted target inside 70 m, an orbit at 25–35 m with the turret laid inside 35 m, and it steers off a ram (`RUSH_DRIVE`: inside its stopping lane a seen enemy hull brakes and turns it; a hull that turns into it can still touch it); a target is claimed inside 60 m (`claimRangeM`) and let go past 90 m (the hunt brings the hull back in); hits ignored |
 | Infected (RUSH, second only to the zombies) | the RUSH table, a target claimed at any range, the hull angled to a hit; they rise on a ring 120–200 m round the survivors (`infectionBots.arrival`: out of their sight where the ground allows, never inside 110 m) |
 | Endless Horde allies | no opening read, rounds never conserved, the spotted search; they hunt spotted zombies only within 120 m of the humans (`hordeBots.allyLeashM`) and otherwise rejoin them |
 | Infected survivors ("fight back hard") | no opening read, rounds never conserved, half the fallback, angled hits, the push after 6 s of silence, spearhead guard and scout kite kept, the full hold band (range is their weapon), the spotted search; unengaged survivors rally on their own living centroid (`infectionBots.survivorRallyM`, 90 m) |
 | Frontline attackers | no opening read, rounds never conserved, missions at full speed and never broken off, half cover and fallback, angled hits, the push after 6 s, a 0.6 hold band, the spotted search; `assaultBots`: odd ranks approach on lanes 60 m off the axis and converge in the last 80 m, and at the zone's edge a push waits for 2 friends within 80 m, or 15 s |
-| Frontline defenders | dug in on the line (`defendersStartOnLine`), no opening read, rounds never conserved, 0.75 cover, half fallback, angled hits, the push after 6 s; a spotted attacker within 80 m of the zone's edge draws a sortie that stops 35 m short (`zoneSortieM`, `SORTIE_DRIVE`) and returns; two fresh defenders counter-attack a sector just taken 8 s after it falls, for 40 s (`counterAttack`); one more arrives from the rear every 30 s while the sector is contested, up to its count + 2 (`reinforceTrickleS`); the attack regroups for at most 25 s (`regroupMaxS`, was 60) |
-| Capture the Flag | roles dealt once a second (`flagBots`): while a home flag is away at least 2 (half the team) recover it, since a capture needs your own flag home; 3 escorts drive 24 m ahead of their carrier at ±22 m; from 6 a side a 15 % squad defends; the rest raid; pursuers lead a carrier by 2.5 s. Doctrine: no opening read, missions at full speed and never broken off, half cover and fallback, angled hits |
-| Turbo Ball | roles (`ballBots`): 2 strikers on the ball's drag-law intercept (τ 2.08 s, two iterations, at most 3 s ahead), a keeper 30 m off its goal, 2 screens, the rest wings; at most 3 a team within 30 m of the ball; a bot with a clear line to the ball and the goal behind it shoots it (`shootBall`), a striker jumps at a ball 4–25 m ahead (`STRIKER_JUMP`); rounds never conserved; an idle ball resets after 30 s |
-| Mars | the station sectors re-route every 1.25 s (the authority's long-standing fast route mode, now a rule) |
+| Frontline defenders | dug in on the line (`defendersStartOnLine`, guarded from the attack's reach and sight: `lineGuard`), no opening read, rounds never conserved, 0.75 cover, half fallback, angled hits, the push after 6 s, one hold slot each on a 14 m ring round the sector (`holdSpreadM`), guns 1.5× slower (`hostileReloadScale`); a spotted attacker within 80 m of the zone's edge draws a sortie that stops 35 m short (`zoneSortieM`, `SORTIE_DRIVE`) and returns; two fresh defenders counter-attack a sector just taken 8 s after it falls, for 40 s (`counterAttack`); one more arrives from the rear every 45 s while the sector is contested and the line is short of its count (`reinforceTrickleS`, `reinforceExtra` 0); the attack regroups for at most 25 s (`regroupMaxS`, was 60) |
+| Capture the Flag | roles dealt once a second and at once when a flag changes hands (`flagBots`): while a home flag is away half the team (at least 2, the nearest first) recover it, since a capture needs your own flag home, and the rest raid back; a carrier takes 3 escorts 24 m ahead of it at ±22 m and, with its own flag home, 1 guard stays home and every other bot escorts too (the rest as a rearguard 24 m behind); with nothing carried, from 6 a side a 15 % squad defends and the rest raid; pursuers lead a carrier by 2.5 s. Doctrine: no opening read, missions at full speed and never broken off, a route ending within 60 m of its objective finished on the local router (`missionLocalReachM`), half cover and fallback, angled hits |
+| Turbo Ball | roles (`ballBots`): 2 strikers on the ball's drag-law intercept (τ 2.08 s, two iterations, at most 3 s ahead), a keeper 30 m off its goal, 2 screens, the rest wings; at most 3 a team within 30 m of the ball; any bot of any role with a clear line to the ball and the opponent goal behind it, 20–160 m off, shoots it, before a tank target farther than the ball (`shootBall.everyRole`, `overTanks`), a striker jumps at a ball 4–25 m ahead (`STRIKER_JUMP`); a seen enemy hull in the lane ahead brakes and turns a bot unless it contests the ball (`noRamLane`); rounds never conserved; the goals 480 m apart on the axis (`ball.goalAxisM`); an idle ball resets after 30 s |
+| Mars and the other classic modes | no table: each builder's own route push (`rulesetRoutePush`: the solo battle 4 s / 18 m, the authority 3 s / 12 m and its fast modes 1.25 s), so they route exactly as on integ/228 in both (round 2, the critic's E9: one 3 s / 12 m figure had changed the solo battle's) |
 
 **The honest hunt** (Horde and Infected; replaces the hunt that routed every hunter at the nearest human's live
 position). The mode controller reads the side's spotting through a hook both builders pass (`options.spotting`): every
@@ -573,9 +578,20 @@ MONO-NATION seats:
    notes it.
 5. A room seats at most six distinct bot vehicles a side (`mpDistinctBotSpecsPerSide`: each is a profile every seat
    loads). Bot ids stay `bot-<team>-<n>` / `mode-<team>-<n>`, never a vehicle id; duplicate picks are valid.
+6. A vehicle fights for its operator (`countryOfVehicle`, `sim/countries.ts`): the Leopard 2A4M CAN, whose spec names its
+   German design, is Canada's — a fourteenth country, west bloc, its allies the US and the UK first — so it no longer sits
+   in German teams or in Italy's German fill (round 2). The allied side's country and its humans' count as the allied
+   side's even with no allied bot seat, so Juggernaut's hunters never fill from the player's own country (round 2: 3 of
+   32 census seeds did with an arranged enemy).
 
-RANDOM seats any contemporary vehicle on either side, the mixed pool of before. Where a mode's fiction bends MONO-NATION
-the rule card says so (`rules.teams.scope.*`): the Horde's pool is one country; Frontline's defending formation is one
+The country table and the operator overrides are data only (`sim/countries.ts`, with the campaign's formation countries
+and the era bands); the planner (`sim/teamNations.ts`) rides with it in one chunk. The garage's mode settings and TEAMS
+switch load with the battle menu's first open, so the game's entry chunk is smaller than integ/228's (round 2, the
+critic's E3: 811,302 → 809,488 bytes; `npm run check:bundle` passes).
+
+RANDOM seats any contemporary vehicle on either side, the mixed pool of before. The switch itself shows MONO / RANDOM with
+the flags and the globe; a rule card adds one short chip only where a mode's fiction bends MONO-NATION
+(`rules.teams.scope.*`; round 2 dropped RANDOM's chip and the prose that repeated the switch): the Horde's pool is one country; Frontline's defending formation is one
 country (the operation's in the campaign); in Infected the opening survivors are the player's country and the opening
 infected one enemy country, and a convert keeps its hull, so the sides mix as the outbreak spreads; in Juggernaut the
 hunters are one country (boss role) or the player's country faces one enemy juggernaut (hunter role); the AC-130's escorts
