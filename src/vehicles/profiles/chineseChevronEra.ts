@@ -4,7 +4,6 @@ import * as THREE from 'three';
 import {sectionSolid,type SectionPoint} from './sectionSolid.ts';
 import {orientedSlab} from './kit.ts';
 import {markEraHitFaces} from './eraHitFaces.ts';
-import type {FlankStation} from './weldedFlankHousing.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
 type Point=readonly[number,number,number];
@@ -24,10 +23,10 @@ function cassette(a:THREE.Vector3,b:THREE.Vector3,height:number,depth:number){
  g.applyMatrix4(new THREE.Matrix4().makeBasis(normal,up,tangent.clone().negate()).setPosition(b));
  return {g,normal};
 }
-function addFacet(P:Port,f:Facet,side:number,depth:number):void{
+function addFacet(P:Port,f:Facet,side:number,depth:number,cassettes?:number):void{
  let a=new THREE.Vector3(...f.a),b=new THREE.Vector3(...f.b);
  if(side<0){a.x=-a.x;b.x=-b.x;[a,b]=[b,a];}
- const span=a.distanceTo(b),count=Math.max(1,Math.round(span/.37));
+ const span=a.distanceTo(b),count=cassettes??Math.max(1,Math.round(span/.37));
  const records:ChineseChevronReceipt[]=P.turretG.userData.chineseChevronEra??=[];
  for(let i=0;i<count;i++){
   const lo=a.clone().lerp(b,(i+.04)/count),hi=a.clone().lerp(b,(i+.96)/count);
@@ -45,24 +44,9 @@ function addFacet(P:Port,f:Facet,side:number,depth:number):void{
  P.turretG.userData.chineseChevronEra=records;
 }
 
-export function addChineseChevronBank(P:Port,side:number,rows:readonly FlankStation[],depth:number):void{
- for(let i=1;i<rows.length;i++){
-  const raw=rows[i-1],b=rows[i];
-  // Rear flanks overlap the cheek root; begin on the exposed forward wall.
-  const startZ=Math.max(raw[0],rows[0][0]>.7?.94:.28);
-  if(b[0]<=startZ)continue;
-  const t=(startZ-raw[0])/(b[0]-raw[0]);
-  const a:FlankStation=[startZ,raw[1]+(b[1]-raw[1])*t,raw[2]+(b[2]-raw[2])*t,raw[3]+(b[3]-raw[3])*t,raw[4]+(b[4]-raw[4])*t];
-  const bevel=(r:FlankStation)=>Math.min(.035,(r[4]-r[3])*.25,(r[2]-r[1])*.25);
-  const low=Math.max(a[3]+bevel(a),b[3]+bevel(b))+.012;
-  const top=Math.min(a[4]-bevel(a),b[4]-bevel(b))-.012;
-  if(top-low<.06)continue;
-  // Travel from bow towards rear so the right-hand normal is outward.
-  addFacet(P,{a:[b[2],low,b[0]],b:[a[2],low,a[0]],height:top-low},side,Math.min(depth,(top-low)*.43));
- }
- const nose=rows[rows.length-1];
- if(nose[0]>1.25){
-  const low=nose[3]+.045,top=nose[4]-.045;
-  addFacet(P,{a:[nose[1]+.04,low,nose[0]],b:[nose[2]-.04,low,nose[0]],height:top-low},side,Math.min(depth,(top-low)*.43));
- }
+/** One planar wall facet's bank of single-piece cassettes (release 227: the Qilin's brows carry three a side, an
+ * explicit count): `a` to `b` is the facet's lower edge (the right-hand side's coordinates, bow to rear, so the normal
+ * faces outward), `height` its height; each cassette rides its own 22 mm seat pad in sector turret_era_L/R. */
+export function addChineseChevronFacet(P:Port,f:Facet,side:number,depth:number,cassettes:number):void{
+ addFacet(P,f,side,depth,cassettes);
 }

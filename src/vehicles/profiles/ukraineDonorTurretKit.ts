@@ -15,6 +15,7 @@ import {eraCassette,supportedSensor,strappedPack} from './modernizationFittings.
 import {nationalLamp,nationalEye,nationalRoofSensor} from './nationalRoofSystems.ts';
 import {ukrainianDonorHull} from './nationalUkraine.ts';
 import {hetmanIIHullPackage} from './hetmanII.ts';
+import {hetmanIIProw,hetmanIIGlacis} from './ukraineFrontEra.ts';
 import {addNationalUkraineProtection,NATIONAL_UKRAINE_GHILLIE} from './nationalUkraineProtection.ts';
 import {markSmokeTube} from '../vehicleAuxiliaryGeometry.ts';
 import {addVehicleGhillieSuit,type GhillieConfig} from '../ghillieSuit.ts';
@@ -591,7 +592,8 @@ function commandBasket(P:TankBuilderPort,S:TurretStock):void {
   // The outer frame's front corners meet the cabinets' rear flanges.
   for(const [i,j]of [[0,0],[O.length-1,F.length-1]] as const)beam([O[i][0],floor,O[i][1]],[F[j][0],floor,F[j][1]],.020);
   // Goose-neck stays: up from the beam behind the rear boxes, over their roofs, and clamped down on the roofs' high
-  // inner ends (the casting's rear roof under them is all Relikt).
+  // inner ends (on the Hetman II the casting's rear roof under them is bare since release 227, but the stays keep their
+  // seats on the box roofs).
   for(const i of [2,3,4]){
     const [x,z]=F[i],postTop=.84,target=S.pad(x*.80,z*.80,postTop,{search:.12,radius:.022,buckets:FIXED});
     if(!target)throw new Error(`${P.spec.id}: basket stay has no pad near ${x*.8},${z*.8}`);
@@ -626,6 +628,9 @@ const hetmanIINet=():GhillieConfig=>turretSuit('t72b3m_hetman_ii',{roof:.80,x:1.
   rearFace:{zAt:(x:number)=>pathAt(HETMAN_II_BASKET,0,x),x0:-.98,x1:.98,y0:.305,y1:.63}});
 
 function hetmanII(P:TankBuilderPort,S:TurretStock):void {
+  // Release 227: the stepped prow first (ukraineFrontEra.ts), seated on the bare donor casting; the cabinets follow.
+  hetmanIIProw(P);
+  S.refresh();
   const l=NATIONAL_ROOF_LOADOUTS.t72b3m_hetman_ii,sweep=stationSweep(P);
   // Lid stations kept clear of lid ERA: the cage legs, then per flank the lamp, the sensor head and the panorama.
   const fit={l:{lamp:.74,eye:.44,pan:-.62},r:{lamp:.22,eye:-.08,pan:-.80}};
@@ -808,6 +813,8 @@ export function buildUkraineDonorKit(P:TankBuilderPort,c:NationalModernizationCo
 /** Hetman II: its own heavy hull package, then the turret fit. */
 export function buildHetmanIIDonorKit(P:TankBuilderPort):void {
   hetmanIIHullPackage(P);
+  // Release 227: the framed chevron glacis, nose sill with its LED bars, lower-plate aprons and bow modules.
+  hetmanIIGlacis(P);
   fitUkraineDonorTurret(P,'t72b3m_hetman_ii');
 }
 
@@ -819,7 +826,8 @@ export function ukraineDonorSuit(id:string):GhillieConfig|undefined {
 function fitUkraineDonorTurret(P:TankBuilderPort,id:UkraineDonorId):void {
   turretUpArmour(P,id);
   // The hull screens stay as the national protection lays them; the turret's own screens are this kit's (above).
-  addNationalUkraineProtection(P,id,{turretScreens:false});
+  // Hetman II's bow modules (ukraineFrontEra.ts) take the place of the two forward skirt-return cassettes per side.
+  addNationalUkraineProtection(P,id,{turretScreens:false,frontReturnEra:id!=='t72b3m_hetman_ii'});
   addVehicleGhillieSuit(P,ukraineDonorSuit(id)!);
 }
 void markSmokeTube;void blindTube;void cylX;void torus;
