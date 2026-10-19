@@ -677,6 +677,8 @@ function groundFixture(code = groundCandidate, streetRows = true, foundry = fals
     // (DST-04) the battle scars are crater sites now (props.ts mapCraterSites; world/mapCraters.ts lays their bowls)
     mapCraterSites: craterSites,
     roughenChunk, // (props census #7: ruinGrammar.ts)
+    // (the maps lane, 228) no civic area here (world/civic): no room or keep-out leaves a scar out
+    civicVetoes: [], civicVetoed: {}, civicGroundVetoAt: () => false,
   };
   const api = new Function(...Object.keys(dependencies), stripTypeScriptTypes(
     groundHelpers + '\nlet reconformFoundryFoundations = null;\n' + code)
