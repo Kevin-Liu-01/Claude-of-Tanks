@@ -40,7 +40,7 @@ const BEFORE = {
   saltwind: '590eec2375e191ba',
   reservoir: '863f6b8225ce9365',
   mars: 'b760ed9717fba45a',
-  moon: '7ce00910e42eb981',
+  moon: '0aa6b7fb664e549a', // 2026-10-18 re-pinned, was 7ce00910e42eb981: MAPS Earthrise 228 rebuild (item/maps-earthrise-228 8018118a90, integ/228 27adeab6a; the owner's ask, independent blind 16-0): the moon's landforms and works rebuilt
   cliffbridge: '073028df8cb5fabb',
 };
 const changed = [];

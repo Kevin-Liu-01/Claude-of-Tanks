@@ -33,7 +33,7 @@ export {
   CLAUDE_CODE_MARK, CLAUDE_SPARK_MARK, fillHeightNormalRows, applyPatchRoughnessPixels,
 } from './materialPainter.ts';
 import { bindVehicleReadabilityUniform } from './vehicleReadability.ts';
-import { VEHICLE_ALPHA_TAG } from '../engine/vehicleOcclusion.ts';
+import { VEHICLE_ALPHA_TAG, tagUnlitVehiclePixels } from '../engine/vehicleOcclusion.ts';
 
 export {
   CAMO_CATALOG_PATTERN_IDS, CAMO_PATTERN_IDS, CAMO_PATTERN_LABEL, CUSTOM_CAMO_ID,
@@ -130,10 +130,10 @@ interface CamoApplyOptions {
 
 interface ShadowEngineContext {
   anisotropy?: number;
-  setupShadowMaterial?: <T extends THREE.Material>(
-    material: T,
+  setupShadowMaterial?: (
+    material: THREE.Material,
     extraHook?: typeof vehicleAmbientFloorHook,
-  ) => T;
+  ) => unknown;
   releaseShadowMaterial?: (material: THREE.Material) => boolean;
 }
 
@@ -2487,17 +2487,22 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
 	gl_FragColor.a += ${VEHICLE_ALPHA_TAG.toFixed(1)};
 #endif`,
   );
+  // The readability floors, the ground darkening and the gear cavity. (2026-10-18, the wheel-band lane, round 3: the
+  // notes on each piece are TypeScript comments between the pieces, out of the shader text every vehicle program and the
+  // game page's bundle carried — 6 KB; the GLSL itself is unchanged.)
   shader.fragmentShader = shader.fragmentShader.replace(
     '#include <lights_fragment_end>',
     `#include <lights_fragment_end>
+	#ifndef COT_VEHICLE_FLOORLESS
 	#ifdef COT_WHEEL_PAINT_READABILITY
 	{
-		// Painted wheel bowls need their received-light differences: flooring
-		// every face to the same output erased the modeled hub/web recess.
-		// Add a bounded, paint-scaled bounce instead, using the lighting BEFORE
-		// that bounce to detect shade. The shared wheel-paint albedo floor and
-		// camouflage repainting remain independent of this lighting response.
-		float wheelLuma = max( dot( material.diffuseColor, vec3( 0.2126, 0.7152, 0.0722 ) ), 0.001 );
+`
+    // Painted wheel bowls need their received-light differences: flooring
+    // every face to the same output erased the modeled hub/web recess.
+    // Add a bounded, paint-scaled bounce instead, using the lighting BEFORE
+    // that bounce to detect shade. The shared wheel-paint albedo floor and
+    // camouflage repainting remain independent of this lighting response.
+    + `		float wheelLuma = max( dot( material.diffuseColor, vec3( 0.2126, 0.7152, 0.0722 ) ), 0.001 );
 		vec3 wheelReceived = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse;
 		float wheelIrrad = dot( wheelReceived, vec3( 0.2126, 0.7152, 0.0722 ) ) / wheelLuma;
 		float wheelShade = 1.0 - smoothstep( 0.10, 0.65, wheelIrrad );
@@ -2508,9 +2513,10 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
 	#else
 	{
 		float vehFacing = saturate( dot( normal, geometryViewDir ) );
-		// owner 2026-10-02 form fill: aim the readability floors by the plate's world orientation (sky above, the sun's
-		// bearing) as well as by the lens, so roofs and glacis lift most, flanks less and soffits least
-		vec3 vehWN = inverseTransformDirection( normal, viewMatrix );
+`
+    // owner 2026-10-02 form fill: aim the readability floors by the plate's world orientation (sky above, the sun's
+    // bearing) as well as by the lens, so roofs and glacis lift most, flanks less and soffits least
+    + `		vec3 vehWN = inverseTransformDirection( normal, viewMatrix );
 		float vehForm = ${VEHICLE_FORM_BASE.toFixed(3)} + ${VEHICLE_FORM_SKY.toFixed(3)} * smoothstep( -0.7, 0.85, vehWN.y );
 		#if defined( USE_CSM ) && defined( CSM_CASCADES )
 		{
@@ -2524,116 +2530,130 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
 		float vehAim = mix( saturate( vehForm ), vehFacing, ${VEHICLE_FORM_LENS.toFixed(3)} );
 		float vehFill = max( ${VEHICLE_AMBIENT_FLOOR.toFixed(3)},
 			${VEHICLE_VIEW_FILL.toFixed(3)} * ( ${VEHICLE_VIEW_WRAP.toFixed(3)} + ${(1 - VEHICLE_VIEW_WRAP).toFixed(3)} * vehAim ) );
-		// tank_models r10: high-albedo rolloff — on light paints (winter wash,
-		// light greys) a flat albedo-scaled floor pushes the whole hull toward
-		// clip and flattens form ("unlit near-white clay"). Cap the fill so the
-		// resulting indirect floor never exceeds ~0.30 linear luminance.
-		float vehLuma = max( dot( material.diffuseColor, vec3( 0.2126, 0.7152, 0.0722 ) ), 0.001 );
+`
+    // tank_models r10: high-albedo rolloff — on light paints (winter wash,
+    // light greys) a flat albedo-scaled floor pushes the whole hull toward
+    // clip and flattens form ("unlit near-white clay"). Cap the fill so the
+    // resulting indirect floor never exceeds ~0.30 linear luminance.
+    + `		float vehLuma = max( dot( material.diffuseColor, vec3( 0.2126, 0.7152, 0.0722 ) ), 0.001 );
 		vehFill = min( vehFill, 0.30 / vehLuma );
-		// tank_models r5 (frosted/clay GLB major): the fill is a SHADE
-		// readability device, but it ran unconditionally — under the garage
-		// spots / field sun it stacked a 0.35-0.55×albedo ambient on top of the
-		// full direct response, washing every sourced-GLB tank toward flat
-		// pastel clay (light-grey Panzer III, frosted IS-3/Wei He, sandblasted
-		// Abrams decks, blown q_heavy turret) and erasing camo pattern contrast
-		// at pedestal range. Gate it by RECEIVED direct light, normalized by
-		// albedo so dark paint gates the same as light paint: fully lit
-		// surfaces keep only 12% of the fill, shaded surfaces (the calibrated
-		// gameplay_feel case) keep 100%. The deep-shade floors below are
-		// untouched.
-		float vehIrrad = dot( reflectedLight.directDiffuse, vec3( 0.2126, 0.7152, 0.0722 ) ) / vehLuma;
+`
+    // tank_models r5 (frosted/clay GLB major): the fill is a SHADE
+    // readability device, but it ran unconditionally — under the garage
+    // spots / field sun it stacked a 0.35-0.55×albedo ambient on top of the
+    // full direct response, washing every sourced-GLB tank toward flat
+    // pastel clay (light-grey Panzer III, frosted IS-3/Wei He, sandblasted
+    // Abrams decks, blown q_heavy turret) and erasing camo pattern contrast
+    // at pedestal range. Gate it by RECEIVED direct light, normalized by
+    // albedo so dark paint gates the same as light paint: fully lit
+    // surfaces keep only 12% of the fill, shaded surfaces (the calibrated
+    // gameplay_feel case) keep 100%. The deep-shade floors below are
+    // untouched.
+    + `		float vehIrrad = dot( reflectedLight.directDiffuse, vec3( 0.2126, 0.7152, 0.0722 ) ) / vehLuma;
 		vehFill *= mix( 1.0, 0.12, smoothstep( 0.10, 0.55, vehIrrad ) );
 		vehFill *= uVehicleReadabilityScale;
 		reflectedLight.indirectDiffuse = max( reflectedLight.indirectDiffuse, material.diffuseColor * vehFill );
-		// >>> gameplay_feel r4: shadow-band luminance floor. The albedo-scaled
-		// fill above still crushes to near-black when a dark-olive skin
-		// (~0.05-0.09 linear albedo) sits sun-opposed inside a terrain/cloud
-		// shadow band (r4 drive critique: the hull reads as an unreadable
-		// black blob in drive_aim/drive_turn/drive_stop). Clamp the OUTGOING
-		// diffuse luminance to a small normal-modulated floor applied along
-		// the albedo hue: plates at different angles keep different floors so
-		// hull attitude and plate separation survive full shade, and the
-		// lighting_post r4 directional-modeling fix is untouched — the floor
-		// sits ~4x under the lit response and only engages in deep shade.
-		vec3 vehDiff = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse;
+`
+    // >>> gameplay_feel r4: shadow-band luminance floor. The albedo-scaled
+    // fill above still crushes to near-black when a dark-olive skin
+    // (~0.05-0.09 linear albedo) sits sun-opposed inside a terrain/cloud
+    // shadow band (r4 drive critique: the hull reads as an unreadable
+    // black blob in drive_aim/drive_turn/drive_stop). Clamp the OUTGOING
+    // diffuse luminance to a small normal-modulated floor applied along
+    // the albedo hue: plates at different angles keep different floors so
+    // hull attitude and plate separation survive full shade, and the
+    // lighting_post r4 directional-modeling fix is untouched — the floor
+    // sits ~4x under the lit response and only engages in deep shade.
+    + `		vec3 vehDiff = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse;
 		float vehOutL = dot( vehDiff, vec3( 0.2126, 0.7152, 0.0722 ) );
-		// >>> gameplay_feel r5: adaptive deep-canopy lift. At the 0.115 floor a
-		// hull parked/driving in DENSE forest shade (direct term ~0) still read
-		// as a light-swallowing black silhouette against sunlit foliage at the
-		// 13 m chase distance (r5 drive critique, drive_a_uphill/drive_c_rough).
-		// Blend the floor toward 0.21 as the received direct light collapses —
-		// a camera-anchored hemispheric bounce, WoT-style: sunlit and dappled
-		// response (direct luminance > ~0.10) is completely untouched, so the
-		// lighting_post r4 directional-modeling calibration holds in the open.
-		float vehDirL = dot( reflectedLight.directDiffuse, vec3( 0.2126, 0.7152, 0.0722 ) );
-		// tank_models r5 (clay-lift root cause): the shade estimate compared
-		// REFLECTED luminance to an absolute 0.02-0.10 window, so dark paint
-		// (0.05-0.08 albedo: Panzergrau, 4BO green) tested as "deep shade" even
-		// in full sun/garage light, and the absolute 0.115-0.21 output floor
-		// then clamped the whole hull to flat light-grey clay, erasing texture
-		// contrast (light-grey Panzer III, frosted IS-3 / Wei He, washed GLB
-		// decks). Normalize by albedo (-> incident-irradiance estimate, same
-		// for dark and light paints) and fade the WHOLE floor out when lit —
-		// the deep-shade/canopy behavior gameplay_feel calibrated (direct ~ 0)
-		// keeps its 0.21 lift exactly; lit surfaces keep their real shading.
-		float vehShade = 1.0 - smoothstep( 0.10, 0.45, vehDirL / vehLuma );
-		// tank_models r1 (critic: "flat pale-green clay" GLB hulls, "bone-white
-		// chalk" T-90A gear, blue-tinted pastel track links). The r5 shade test
-		// only looked at DIRECT light, so every ordinary self-shadowed face of
-		// a sunlit/garage-lit tank counted as "deep canopy" and got floored to
-		// 0.13-0.21 with a 75%-desaturated tint — dark green washed to pale
-		// sage, near-black running gear to chalk. Deep shade means direct AND
-		// ambient are both low: fade the floor out as the ambient stack
-		// (hemi + IBL, already accumulated in indirectDiffuse) approaches a
-		// healthy irradiance, so the canopy case (dim ambient ~0.15-0.30 of
-		// albedo) keeps its lift and shadow sides under open sky keep their
-		// real shading.
-		float vehIndL = dot( reflectedLight.indirectDiffuse, vec3( 0.2126, 0.7152, 0.0722 ) );
+`
+    // >>> gameplay_feel r5: adaptive deep-canopy lift. At the 0.115 floor a
+    // hull parked/driving in DENSE forest shade (direct term ~0) still read
+    // as a light-swallowing black silhouette against sunlit foliage at the
+    // 13 m chase distance (r5 drive critique, drive_a_uphill/drive_c_rough).
+    // Blend the floor toward 0.21 as the received direct light collapses —
+    // a camera-anchored hemispheric bounce, WoT-style: sunlit and dappled
+    // response (direct luminance > ~0.10) is completely untouched, so the
+    // lighting_post r4 directional-modeling calibration holds in the open.
+    + `		float vehDirL = dot( reflectedLight.directDiffuse, vec3( 0.2126, 0.7152, 0.0722 ) );
+`
+    // tank_models r5 (clay-lift root cause): the shade estimate compared
+    // REFLECTED luminance to an absolute 0.02-0.10 window, so dark paint
+    // (0.05-0.08 albedo: Panzergrau, 4BO green) tested as "deep shade" even
+    // in full sun/garage light, and the absolute 0.115-0.21 output floor
+    // then clamped the whole hull to flat light-grey clay, erasing texture
+    // contrast (light-grey Panzer III, frosted IS-3 / Wei He, washed GLB
+    // decks). Normalize by albedo (-> incident-irradiance estimate, same
+    // for dark and light paints) and fade the WHOLE floor out when lit —
+    // the deep-shade/canopy behavior gameplay_feel calibrated (direct ~ 0)
+    // keeps its 0.21 lift exactly; lit surfaces keep their real shading.
+    + `		float vehShade = 1.0 - smoothstep( 0.10, 0.45, vehDirL / vehLuma );
+`
+    // tank_models r1 (critic: "flat pale-green clay" GLB hulls, "bone-white
+    // chalk" T-90A gear, blue-tinted pastel track links). The r5 shade test
+    // only looked at DIRECT light, so every ordinary self-shadowed face of
+    // a sunlit/garage-lit tank counted as "deep canopy" and got floored to
+    // 0.13-0.21 with a 75%-desaturated tint — dark green washed to pale
+    // sage, near-black running gear to chalk. Deep shade means direct AND
+    // ambient are both low: fade the floor out as the ambient stack
+    // (hemi + IBL, already accumulated in indirectDiffuse) approaches a
+    // healthy irradiance, so the canopy case (dim ambient ~0.15-0.30 of
+    // albedo) keeps its lift and shadow sides under open sky keep their
+    // real shading.
+    + `		float vehIndL = dot( reflectedLight.indirectDiffuse, vec3( 0.2126, 0.7152, 0.0722 ) );
 		vehShade *= 1.0 - smoothstep( 0.35, 0.75, vehIndL / vehLuma );
-		// gameplay_feel r1: shadow-side rim term — grazing plates in DEEP shade
-		// keep readable form (0.084 -> ~0.18 luma at vehShade=1) while the lit
-		// response and the tank_models r5 clay calibration stay untouched
-		// (at vehShade=0 the factor is identical).
-		float vehRim = pow( 1.0 - vehFacing, 2.0 );
+`
+    // gameplay_feel r1: shadow-side rim term — grazing plates in DEEP shade
+    // keep readable form (0.084 -> ~0.18 luma at vehShade=1) while the lit
+    // response and the tank_models r5 clay calibration stay untouched
+    // (at vehShade=0 the factor is identical).
+    + `		float vehRim = pow( 1.0 - vehFacing, 2.0 );
 		float vehFloorL = mix( 0.02, 0.21, vehShade )
 			* ( 0.40 + 0.60 * vehAim + 0.45 * vehRim * vehShade );
-		// very dark hardware (rubber, track steel, oily fittings) must stay
-		// dark even in deep shade — scale the floor down below ~0.09 albedo
-		// luma so gear never lifts to chalk while dark-olive PAINT (the
-		// calibrated gameplay_feel case, ~0.05-0.09) keeps most of its lift.
-		vehFloorL *= mix( 0.30, 1.0, smoothstep( 0.025, 0.09, vehLuma ) );
+`
+    // very dark hardware (rubber, track steel, oily fittings) must stay
+    // dark even in deep shade — scale the floor down below ~0.09 albedo
+    // luma so gear never lifts to chalk while dark-olive PAINT (the
+    // calibrated gameplay_feel case, ~0.05-0.09) keeps most of its lift.
+    + `		vehFloorL *= mix( 0.30, 1.0, smoothstep( 0.025, 0.09, vehLuma ) );
 		vehFloorL *= uVehicleReadabilityScale;
-		// <<< gameplay_feel r5
-		// owner 2026-10-02 ("the camo and colours on the tank look so weird and not crisp"): the floor lifts the light a
-		// plate RECEIVES, not its output. It used to bring every texel to one luminance along its hue, so in deep shade the
-		// dark, base and pale tones of a camouflage converged into one muddy tone (desert 0.11 / 0.27 / 0.41 linear luma all
-		// to ~0.21). Now vehFloorL is where the paint's MEAN tone lands (the map's last mip is the tile's mean paint) and
-		// each texel lands in proportion to its own paint against it: the pattern keeps its light/dark contrast, solid
-		// coats (no map) land exactly where they did, dark hardware stays dark.
-		float vehRefL = vehLuma;
+`
+    // <<< gameplay_feel r5
+    // owner 2026-10-02 ("the camo and colours on the tank look so weird and not crisp"): the floor lifts the light a
+    // plate RECEIVES, not its output. It used to bring every texel to one luminance along its hue, so in deep shade the
+    // dark, base and pale tones of a camouflage converged into one muddy tone (desert 0.11 / 0.27 / 0.41 linear luma all
+    // to ~0.21). Now vehFloorL is where the paint's MEAN tone lands (the map's last mip is the tile's mean paint) and
+    // each texel lands in proportion to its own paint against it: the pattern keeps its light/dark contrast, solid
+    // coats (no map) land exactly where they did, dark hardware stays dark.
+    + `		float vehRefL = vehLuma;
 		#ifdef USE_MAP
 		vehRefL = max( dot( textureLod( map, vMapUv, ${VEHICLE_PAINT_MEAN_LOD.toFixed(1)} ).rgb * diffuse, vec3( 0.2126, 0.7152, 0.0722 ) ), 0.001 );
 		#endif
-		// a paint darker than VEHICLE_FLOOR_PAINT_REF lands by its own albedo (a received-light floor): dark schemes stay dark
-		float vehTargetL = vehFloorL * vehLuma / max( vehRefL, ${VEHICLE_FLOOR_PAINT_REF.toFixed(3)} );
+`
+    // a paint darker than VEHICLE_FLOOR_PAINT_REF lands by its own albedo (a received-light floor): dark schemes stay dark
+    + `		float vehTargetL = vehFloorL * vehLuma / max( vehRefL, ${VEHICLE_FLOOR_PAINT_REF.toFixed(3)} );
 		if ( vehOutL < vehTargetL ) {
 			reflectedLight.indirectDiffuse += material.diffuseColor * ( ( vehTargetL - vehOutL ) / vehLuma );
 		}
-		// <<< gameplay_feel r4
-	}
+`
+    // <<< gameplay_feel r4
+    + `	}
 	#endif
 	{
-		// owner 2026-10-02 ground occlusion (VEHICLE_GROUND_*): indirect light falls toward the ground along the vehicle's axis
-		vec3 vehWorldPos = cameraPosition + ( vec4( -vViewPosition, 0.0 ) * viewMatrix ).xyz;
+`
+    // owner 2026-10-02 ground occlusion (VEHICLE_GROUND_*): indirect light falls toward the ground along the vehicle's axis
+    + `		vec3 vehWorldPos = cameraPosition + ( vec4( -vViewPosition, 0.0 ) * viewMatrix ).xyz;
 		float vehHeight = dot( vehWorldPos - uVehGround.xyz, uVehUp );
 		reflectedLight.indirectDiffuse *= mix( ${VEHICLE_GROUND_DARK.toFixed(3)}, 1.0,
 			smoothstep( ${VEHICLE_GROUND_H0.toFixed(3)}, ${VEHICLE_GROUND_H1.toFixed(3)}, vehHeight ) );
 	}
+	#endif
 	#ifdef COT_GEAR_CAVITY
 	{
-		// fleet lane 2026-10-08: a wheel inset sits at the bottom of a lightening hole or hub well, whose walls take most
-		// of the light that reaches an open face (GEAR_CAVITY_*), after every lift above
-		reflectedLight.directDiffuse *= ${GEAR_CAVITY_DIRECT.toFixed(3)};
+`
+    // fleet lane 2026-10-08: a wheel inset sits at the bottom of a lightening hole or hub well, whose walls take most
+    // of the light that reaches an open face (GEAR_CAVITY_*), after every lift above
+    + `		reflectedLight.directDiffuse *= ${GEAR_CAVITY_DIRECT.toFixed(3)};
 		reflectedLight.directSpecular *= ${GEAR_CAVITY_DIRECT.toFixed(3)};
 		reflectedLight.indirectDiffuse *= ${GEAR_CAVITY_INDIRECT.toFixed(3)};
 		reflectedLight.indirectSpecular *= ${GEAR_CAVITY_INDIRECT.toFixed(3)};
@@ -2666,8 +2686,9 @@ function supportsShadowHook(engineCtx: ShadowEngineContext | null | undefined): 
 }
 
 /**
- * The registration each vehicle material was built with (createTankMaterials' `setup`): the cascade setup with the
- * readability hook through the engine context, or the hook alone in a renderer stub, and the shared program key.
+ * The registration each vehicle material was built with (vehicleMaterialSetup: createTankMaterials', the decorations'):
+ * the cascade setup with the readability hook through the engine context, or the hook alone in a renderer stub, and the
+ * shared program key.
  * 2026-10-04 (the vehicle-look lane): Material.clone() keeps none of it — three's MeshStandardMaterial.copy resets
  * `defines` to { STANDARD } (USE_CSM, CSM_CASCADES and CSM_FADE go) and Material.copy never copies onBeforeCompile or
  * customProgramCacheKey — so a cloned vehicle material (the track shoes, the thrown track, a profile's band finish, an
@@ -2675,15 +2696,163 @@ function supportsShadowHook(engineCtx: ShadowEngineContext | null | undefined): 
  * unshadowed outside its own cascade (about four times the sun on a lit face), with neither the sun state nor the
  * vehicle tag the aerial pass reads (lighting.ts, vehicleOcclusion.ts). cloneVehicleMaterial joins a clone to exactly
  * the registration its source has; the clone is disposed and released like any vehicle material.
+ * 2026-10-17 (the wheel-band lane; the owner: "in garage, on all tanks, i can see this weird shadow on wheels"): the
+ * Garage's dormant energy skin (juggernautVisual.ts, on every pedestal tank since 16f624704) still made raw clones, so
+ * every Garage tank pixel lost the vehicle tag, and since 045cdbed4 the ground occlusion (vehicleGroundOcclusion.ts)
+ * took the untagged road wheels for ground under the hull: a dark band below the belly line on every wheel. The skin
+ * now clones through here, and releases its clones through releaseVehicleMaterial.
  */
-const VEHICLE_MATERIAL_SETUP = new WeakMap<THREE.Material, <T extends THREE.Material>(material: T) => T>();
+type VehicleMaterialSetup = <T extends THREE.Material>(material: T) => T;
+type MaterialCompileHook = THREE.Material['onBeforeCompile'];
+/** One registration family (vehicleMaterialSetup): its setup, the engine context it registers through and its release. */
+interface VehicleMaterialFamily {
+  readonly setup: VehicleMaterialSetup;
+  readonly engineCtx: ShadowEngineContext | null | undefined;
+  readonly cascaded: boolean;
+  readonly release: ((material: THREE.Material) => boolean) | null;
+}
+/**
+ * Each registered material's family (cloneVehicleMaterial re-registers its clones through the same setup,
+ * cloneRehookedVehicleMaterial through the same engine context, releaseVehicleMaterial takes it out of the cascade
+ * registry) and its own registration hook (the cascade hook with the readability hook chained after it).
+ */
+const VEHICLE_REGISTRATION = new WeakMap<THREE.Material, {
+  readonly family: VehicleMaterialFamily;
+  readonly hook: MaterialCompileHook;
+}>();
+/** The registered material a hook chain is compiling for, while runVehicleHookChain runs another material's chain. */
+let vehicleCompileTarget: THREE.Material | null = null;
+
+/**
+ * One registration for a family of vehicle materials: the readability hook each material compiles with (`hookFor`
+ * makes it per material) and the program key they share. Each material's registration hook compiles for the material
+ * it is compiling: inside runVehicleHookChain, a registered clone compiles through its own registration — its own
+ * cascade entry (three's CSM keys the shader it refreshes by the material in its hook's closure), its own sky-light
+ * scale — under the source's later wrappers (the burn mask, the weapon wear, a profile's lift), which it keeps.
+ */
+function vehicleMaterialSetup(
+  engineCtx: ShadowEngineContext | null | undefined,
+  programKey: string,
+  hookFor: (material: THREE.Material) => (shader: MaterialShader) => void,
+  cascaded: boolean = supportsShadowHook(engineCtx),
+): VehicleMaterialSetup {
+  const family: VehicleMaterialFamily = {
+    engineCtx,
+    cascaded,
+    release: cascaded && typeof engineCtx?.releaseShadowMaterial === 'function'
+      ? (material: THREE.Material): boolean => engineCtx.releaseShadowMaterial?.(material) ?? false
+      : null,
+    setup: <T extends THREE.Material>(material: T): T => {
+      const hook = hookFor(material);
+      if (cascaded && typeof engineCtx?.setupShadowMaterial === 'function') engineCtx.setupShadowMaterial(material, hook);
+      else material.onBeforeCompile = hook;
+      const registration = material.onBeforeCompile;
+      VEHICLE_REGISTRATION.set(material, { family, hook: registration });
+      material.onBeforeCompile = function (this: THREE.Material, shader, renderer) {
+        const target = vehicleCompileTarget;
+        const own = target && target !== material ? VEHICLE_REGISTRATION.get(target)?.hook : undefined;
+        if (own) own.call(target, shader, renderer);
+        else registration.call(this, shader, renderer);
+      };
+      material.customProgramCacheKey = () => programKey;
+      return material;
+    },
+  };
+  return family.setup;
+}
+
+/**
+ * Register a vehicle material built outside createTankMaterials (the decorations' kit materials, a profile's re-hook)
+ * with the bare readability hook and its program key, so its clones (cloneVehicleMaterial) keep the cascade
+ * registration too. `cascaded`: the caller's own verdict on the context (the decorations probe it once themselves),
+ * else probed here.
+ */
+export function registerVehicleMaterial<T extends THREE.Material>(
+  engineCtx: ShadowEngineContext | null | undefined,
+  material: T,
+  programKey: string,
+  cascaded: boolean = supportsShadowHook(engineCtx),
+): T {
+  return vehicleMaterialSetup(engineCtx, programKey, () => vehicleAmbientFloorHook, cascaded)(material);
+}
+
+/** Take a registered vehicle material (a clone a visual owns) out of the cascade registry before it is disposed. */
+export function releaseVehicleMaterial(material: THREE.Material): boolean {
+  const release = VEHICLE_REGISTRATION.get(material)?.family.release;
+  VEHICLE_REGISTRATION.delete(material);
+  return release ? release(material) : false;
+}
+
+/**
+ * Run `source`'s whole compile hook chain for `target`, a clone drawing in its place (cloneVehicleMaterial): the
+ * source's wrappers apply, and the registration at the chain's root is the target's own (vehicleMaterialSetup).
+ */
+export function runVehicleHookChain(
+  source: THREE.Material,
+  target: THREE.Material,
+  shader: MaterialShader,
+  renderer: THREE.WebGLRenderer,
+): void {
+  const outer = vehicleCompileTarget;
+  vehicleCompileTarget = target;
+  try { source.onBeforeCompile.call(target, shader, renderer); }
+  finally { vehicleCompileTarget = outer; }
+}
+
+/** Whether a material holds its own vehicle registration (vehicleMaterialSetup; the fleet registration audit reads it). */
+export function isVehicleMaterialRegistered(material: THREE.Material): boolean {
+  return VEHICLE_REGISTRATION.has(material);
+}
+
+/** What the bare readability hook binds (vehicleAmbientFloorHook): the scene's whole sky light. */
+const VEHICLE_WHOLE_SKY = { value: 1 } as const;
+
+/**
+ * Chain a profile's shader patch after a vehicle material's compile hook — its registration (the cascade, the readability
+ * hook and the vehicle tag) and every wrapper already on it — under the patch's own program key.
+ * 2026-10-17 (the wheel-band lane, round 2): profiles that assigned their patch as the whole hook (the Abrams' pad grime,
+ * the KF51's track ceiling, the Merkava's void pockets) dropped the cascade hook of a registered material: USE_CSM stayed
+ * defined and its uniforms never bound, so those tracks drew near-black in battle and, since the Garage's energy skin
+ * clones registered materials, on the Garage pedestal too.
+ * 2026-10-18 (round 3): the patch keeps the sky light the hook it replaced compiled — the bare readability hook's
+ * whole sky (or none of the hook's scale at all: the burnt wreck) — not the material's own trim, which the replaced
+ * hook never bound (the Abrams' track bands 1 -> 0.12, the KF51's 1 -> 0.06 otherwise): the cascade comes back and the
+ * sky light stays as it was.
+ */
+export function chainVehicleMaterialHook<T extends THREE.Material>(
+  material: T,
+  programKey: string,
+  patch: (shader: MaterialShader) => void,
+): T {
+  const compile = material.onBeforeCompile;
+  material.onBeforeCompile = function (this: THREE.Material, shader, renderer) {
+    compile.call(this, shader, renderer);
+    shader.uniforms.uVehEnvScale = VEHICLE_WHOLE_SKY;
+    patch(shader);
+  };
+  material.customProgramCacheKey = () => programKey;
+  return material;
+}
 
 /**
  * The vehicle's own shader switches, which three's copy drops with the rest of the defines and a clone keeps (the wheel
  * paint's floor). The cascade's defines (USE_CSM, CSM_*, COT_CLOUD_SHADE) belong to the registration and come back
  * with it.
  */
-const VEHICLE_SHADER_SWITCHES = ['COT_WHEEL_PAINT_READABILITY', 'COT_GEAR_CAVITY'] as const;
+const VEHICLE_SHADER_SWITCHES = ['COT_WHEEL_PAINT_READABILITY', 'COT_GEAR_CAVITY', 'COT_VEHICLE_FLOORLESS'] as const;
+
+/**
+ * A clone of a cascade-registered material outside vehicleMaterialSetup: a dev build and the node receipts say so; the
+ * public build drops the check with its callers (each guarded by import.meta.env DEV).
+ */
+const UNREGISTERED_CASCADE_CLONES = new WeakSet<THREE.Material>();
+function reportUnregisteredCascadeClone(source: THREE.Material): void {
+  const defines = (source as { defines?: Record<string, unknown> }).defines;
+  if (!defines || !('USE_CSM' in defines) || UNREGISTERED_CASCADE_CLONES.has(source)) return;
+  UNREGISTERED_CASCADE_CLONES.add(source);
+  console.error('[vehicle material] a clone of a cascade-registered material outside vehicleMaterialSetup loses '
+    + 'USE_CSM: its pixels lose the sun state and the vehicle tag (register it with registerVehicleMaterial)', source.name || source.type);
+}
 
 /**
  * Clone a vehicle material into its source's cascade registration, readability hook, program key and switches.
@@ -2700,12 +2869,94 @@ export function cloneVehicleMaterial<T extends THREE.Material>(source: T, config
     target.defines = { ...target.defines, [key]: sourceDefines[key] };
   }
   configure?.(clone);
-  const setup = VEHICLE_MATERIAL_SETUP.get(source);
+  const setup = VEHICLE_REGISTRATION.get(source)?.family.setup;
   if (setup) return setup(clone);
-  // a material from outside createTankMaterials (a stub's, a receipt's): it keeps its hooks, which a plain clone drops
+  // a material from outside vehicleMaterialSetup (a stub's, a receipt's, a profile's hook-only material): it keeps its
+  // hooks, which a plain clone drops; a cascade registration cannot follow it there
+  if (import.meta.env?.DEV !== false) reportUnregisteredCascadeClone(source);
   clone.onBeforeCompile = source.onBeforeCompile;
   clone.customProgramCacheKey = source.customProgramCacheKey;
   return clone;
+}
+
+/** The program key of a material compiled through the bare readability hook (the decorations', a profile's re-hook). */
+const VEHICLE_BARE_HOOK_KEY = 'veh-ambient-floor-v2';
+
+/**
+ * A profile's re-hooked clone, registered: a clone of a vehicle material that compiles the bare readability hook under
+ * the program key 'veh-ambient-floor-v2' — what the profiles re-attached by hand after Material.clone() — through its
+ * source's cascade registration. Like the hand re-hook it keeps none of the source's shader switches and takes the
+ * scene's whole sky light (no per-material trim), so a renderer stub (the Gallery, the boards) compiles exactly what
+ * it did; under the cascades the clone now lights with its own cascade, takes the cascade shadows and writes the sun
+ * state and the vehicle tag.
+ * 2026-10-17 (the wheel-band lane, round 2; the owner: "in garage, on all tanks, i can see this weird shadow on
+ * wheels"): the hand re-hook left the cascade registration behind, so the Patton's camouflaged wheel discs, the KF51's
+ * tyres and the other re-hooked running gear drew untagged, and the ground occlusion (vehicleGroundOcclusion.ts) took
+ * them for ground under the hull: the dark band under the belly line, in the Garage and in battle.
+ */
+export function cloneRehookedVehicleMaterial<T extends THREE.Material>(source: T, configure?: (clone: T) => void): T {
+  const clone = source.clone() as T;
+  configure?.(clone);
+  const family = VEHICLE_REGISTRATION.get(source)?.family;
+  if (!family && import.meta.env?.DEV !== false) reportUnregisteredCascadeClone(source);
+  return registerVehicleMaterial(family?.engineCtx, clone, VEHICLE_BARE_HOOK_KEY, !!family?.cascaded);
+}
+
+/**
+ * A profile's re-hook of a material it found on its own build (a retone by colour): a registered vehicle material keeps
+ * its registration — assigning it the bare hook dropped its cascade hook (USE_CSM defined, the cascade uniforms never
+ * bound) — and anything else takes the bare readability hook, as the hand re-hook did.
+ */
+export function rehookVehicleMaterial<T extends THREE.Material>(material: T): T {
+  return VEHICLE_REGISTRATION.has(material) ? material : registerVehicleMaterial(null, material, VEHICLE_BARE_HOOK_KEY, false);
+}
+
+/**
+ * Draw a vehicle material without the readability floors and the ground occlusion (COT_VEHICLE_FLOORLESS): the light it
+ * receives, as a hookless material draws it, under its registration — the cascade, the sun state and the vehicle tag
+ * stay. 2026-10-17 (the wheel-band lane, round 2): the profiles' void pockets, bores and deliberately floorless wheels
+ * were raw clones left without any hook (or a set material's hook emptied), so they drew untagged.
+ */
+export function setVehicleMaterialFloorless<T extends THREE.Material>(material: T): T {
+  const surface = material as T & { defines?: Record<string, unknown> };
+  surface.defines = { ...surface.defines, COT_VEHICLE_FLOORLESS: 1 };
+  material.needsUpdate = true;
+  return material;
+}
+
+/** A floorless re-hooked clone (cloneRehookedVehicleMaterial, setVehicleMaterialFloorless): what a profile's raw, hookless clone drew. */
+export function cloneFloorlessVehicleMaterial<T extends THREE.Material>(source: T, configure?: (clone: T) => void): T {
+  return cloneRehookedVehicleMaterial(source, (clone) => {
+    setVehicleMaterialFloorless(clone);
+    configure?.(clone);
+  });
+}
+
+/** The light-immune flat parts tagUnlitVehicleMaterials has tagged (a part shared by two builds takes the tag once). */
+const UNLIT_VEHICLE_TAGGED = new WeakSet<THREE.Material>();
+
+/**
+ * Tag the unlit parts a tank draws (the light-immune flat class: an opaque MeshBasicMaterial — the KF51's mud flaps and
+ * fender boards, the bore discs) wherever the cascades run: each writes the vehicle alpha an unshadowed lit vehicle pixel
+ * does (engine/vehicleOcclusion.ts tagUnlitVehiclePixels), its own colour untouched.
+ * 2026-10-18 (the wheel-band lane, round 3): such a part never takes the cascade setup, so it wrote a card's alpha (1),
+ * and the ground occlusion took the KF51's flaps for ground under the hull — a straight edge across them at the belly
+ * + 2 cm, the band the registered materials no longer draw.
+ */
+export function tagUnlitVehicleMaterials(engineCtx: ShadowEngineContext | null | undefined, root: THREE.Object3D): void {
+  if (!supportsShadowHook(engineCtx)) return;
+  root.traverse((object) => {
+    for (const material of ([] as THREE.Material[]).concat((object as THREE.Mesh).material ?? [])) {
+      if (!(material instanceof THREE.MeshBasicMaterial) || material.transparent || UNLIT_VEHICLE_TAGGED.has(material)) continue;
+      UNLIT_VEHICLE_TAGGED.add(material);
+      const compile = material.onBeforeCompile, programKey = `${material.customProgramCacheKey()}|veh-unlit-tag`;
+      material.onBeforeCompile = function (this: THREE.Material, shader, renderer) {
+        compile.call(this, shader, renderer);
+        tagUnlitVehiclePixels(shader);
+      };
+      material.customProgramCacheKey = () => programKey;
+    }
+  });
 }
 
 /**
@@ -2723,22 +2974,15 @@ export function createTankMaterials(
   quality: string = 'high',
   camoPattern: string | null = null,
 ) {
-  const shadowSetup = engineCtx?.setupShadowMaterial;
-  const shadowHookSupported = supportsShadowHook(engineCtx);
-  const setup = <T extends THREE.Material>(material: T): T => {
+  const setup = vehicleMaterialSetup(engineCtx, 'veh-ambient-floor-v5', (material) => {
     // each material (and each clone cloneVehicleMaterial registers here) scales the sky light by its own authored
     // envMapIntensity, read live (vehicleEnvScaleUniform)
     const envScale = vehicleEnvScaleUniform(material);
-    const hook = (shader: MaterialShader): void => {
+    return (shader: MaterialShader): void => {
       vehicleAmbientFloorHook(shader);
       shader.uniforms.uVehEnvScale = envScale;
     };
-    if (shadowHookSupported && shadowSetup) shadowSetup(material, hook);
-    else material.onBeforeCompile = hook;
-    material.customProgramCacheKey = () => 'veh-ambient-floor-v5';
-    VEHICLE_MATERIAL_SETUP.set(material, setup); // cloneVehicleMaterial re-registers its clones the same way
-    return material;
-  };
+  });
   const aniso = engineCtx?.anisotropy || 8;
 
   const disposables: Array<THREE.Material | THREE.Texture> = [];
@@ -3053,7 +3297,11 @@ export function createTankMaterials(
   // soft red "spotlight" blobs (r4 wreck-closeup major). Triplanar in world
   // space gives every wreck the same soot/char frequency regardless of UV
   // layout or model unit scale; wrecks are static, so no texture swim.
-  burnt.onBeforeCompile = (shader) => {
+  // 2026-10-17 (the wheel-band lane, round 2): chained after the registration with the floors off, as the hook it replaced
+  // drew it — assigned as the whole hook it dropped the cascade hook (USE_CSM defined, the cascade uniforms never bound)
+  // and the vehicle tag of every fallback-burnt wreck panel.
+  setVehicleMaterialFloorless(burnt);
+  chainVehicleMaterialHook(burnt, 'burnt-triplanar-r6', (shader) => {
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vBwPos;\nvarying vec3 vBwNrm;')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
@@ -3091,8 +3339,7 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
   // while staying far below the sun-lit side's response.
   totalEmissiveRadiance += diffuseColor.rgb * 0.125; // r5: shadow-side floor up
 }`);
-  };
-  burnt.customProgramCacheKey = () => 'burnt-triplanar-r6';
+  });
 
   // Independent L/R UV transforms share the immutable image Source, so Three
   // can retain one GPU texture without coupling either side's scrolling.

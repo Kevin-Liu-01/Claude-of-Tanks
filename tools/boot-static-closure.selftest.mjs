@@ -61,6 +61,8 @@ const FORBIDDEN = Object.freeze({
   'src/sim/missionAttachmentSeats.generated.ts': 'the seat records with their audit hashes; the decor keep-out reads src/sim/missionDockSeats.generated.ts',
   'src/vehicles/auxiliaryInventory.generated.ts':
     '217 kB of mount geometry; the garage reads src/ui/garageAuxiliarySummary.generated.ts and combat anatomy src/vehicles/auxiliaryRoofGuns.generated.ts',
+  // (the 228 entry diet, 2026-10-18: game.entryRaw 819,657 over its 818,369 budget) the Moon's coastlines serve one sky
+  'src/engine/earthLandMask.ts': 'the lunar Earth\'s land mask loads with the world that draws it (src/engine/earthLandAccess.ts)',
 });
 const boot = staticImportClosure('src/main.ts', { root: ROOT });
 assert.ok(boot.size > 200, `the walker reached only ${boot.size} modules from src/main.ts`);

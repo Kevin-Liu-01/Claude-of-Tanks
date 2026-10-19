@@ -21,8 +21,10 @@ assert.equal(manifest.round, picks.round);
 assert.equal(manifest.draft, undefined, 'the published collection is not a draft: no older round stands in');
 
 const takes = Object.entries(manifest.takes);
-// the fifty and the owner's nine (2026-10-12, s51-s59: a take each for the tanks the owner named)
-assert.equal(takes.length, 59, 'the site fifty and the owner\'s nine');
+// the fifty, the owner's nine (2026-10-12, s51-s59: a take each for the tanks the owner named) and the combat round's
+// takes (2026-10-17: s225-s228): every take the picks name
+assert.equal(takes.length, Object.keys(picks.takes).length, 'every picked take');
+assert.ok(takes.length >= 59, 'the site fifty and the owner\'s nine at least');
 assert.deepEqual(takes.map(([id]) => id).sort(), Object.keys(picks.takes).sort());
 for (const [id, take] of takes) {
   assert.ok(take.current, `${id} is delivered in ${picks.round}`);
@@ -44,7 +46,10 @@ const media = (pattern) => manifest.files.filter((file) => pattern.test(file.pat
 const near = (value, target, tolerance) => Math.abs(value - target) <= tolerance;
 
 for (const id of Object.keys(picks.takes)) {
-  for (const name of [`stills/${id}.webp`, `stills/${id}-close.webp`, `stills/${id}-thumb.webp`, `stills/${id}-close-thumb.webp`]) {
+  // the key moment always; the close portrait unless the picks say the take has none (a combat take filmed with its key
+  // moment alone: picks.takes[id].closePortrait === false)
+  const close = picks.takes[id].closePortrait !== false;
+  for (const name of [`stills/${id}.webp`, `stills/${id}-thumb.webp`, ...(close ? [`stills/${id}-close.webp`, `stills/${id}-close-thumb.webp`] : [])]) {
     const file = files.get(`media/${picks.collection}/${name}`);
     assert.ok(file, `${id}: ${name}`);
     assert.ok(file.bytes > (name.includes('thumb') ? 8_000 : 50_000), `${name} is a substantial image`);
@@ -70,7 +75,8 @@ for (const reel of reels) {
   assert.ok(files.has(reel.path.replace(/\.mp4$/, '.webp')), `${reel.path} poster`);
 }
 const trailer = files.get(`media/${picks.collection}/films/trailer.mp4`);
-assert.equal(`${trailer?.width}x${trailer?.height}`, '1920x1080', 'the trailer at 1080p');
+// (round six, 2026-10-15: the trailers' files are checked with the films below; the manual's player plays its webm first)
+assert.equal(`${trailer?.width}x${trailer?.height}`, '1600x900', 'the trailer at its light encode\'s size');
 assert.equal(trailer.audio, 'aac', 'the trailer keeps its score');
 const reel = files.get(`media/${picks.collection}/films/reel.mp4`);
 // (2026-10-14, the light web encodes: the home reel re-encoded at 1600x900 under its 4.3 Mbit/s cap, site-media.mjs
@@ -86,8 +92,11 @@ for (const frame of manifest.frames) {
   assert.ok(files.has(`media/${picks.collection}/frames/${frame.id}-thumb.webp`), `${frame.id} preview`);
 }
 
-// the visual archive (the manual's wall and the Studio's Field Frames): the fifty frames, then each take's two stills
-assert.equal(archive.shots.length, manifest.frames.length + 2 * takes.length);
+// the visual archive (the manual's wall and the Studio's Field Frames): the fifty frames, then each take's key moment
+// and its close portrait where it has one (a combat take may have only its key moment)
+const takeStills = takes.reduce((n, [id]) => n + 1 + (files.has(`media/${picks.collection}/stills/${id}-close.webp`) ? 1 : 0), 0);
+for (const [id] of takes) assert.ok(files.has(`media/${picks.collection}/stills/${id}.webp`), `${id} key moment`);
+assert.equal(archive.shots.length, manifest.frames.length + takeStills);
 assert.deepEqual(archive.shots.map((shot) => shot.sequence), archive.shots.map((_, i) => i + 1));
 for (const shot of archive.shots) {
   for (const url of [shot.src, shot.previewSrc]) assert.ok(files.has(url.slice(1)), `archive ${url} is published`);
@@ -98,6 +107,28 @@ for (const shot of archive.shots) {
 assert.ok(proxies.files.reduce((sum, file) => sum + file.bytes, 0) < 9_000_000);
 for (const proxy of proxies.files) {
   assert.equal(statSync(join(ROOT, 'public/media/web-video-r1', proxy.path)).size, proxy.bytes, `${proxy.path} byte receipt`);
+}
+
+// the trailers (round six, 2026-10-15, the owner: "also make better new trailers"): the main cut, the 30 s cut and the
+// vertical, each a VP9 webm with Opus and an H.264 mp4 with AAC from one master and a poster, at their light encodes:
+// each holds its weight, and its VMAF against the master (every frame) is recorded, 78 at least (the floor at the cap)
+const FILMS = [
+  ['trailer.webm', '1600x900', 70.0, 'opus', 23.5],
+  ['trailer.mp4', '1600x900', 70.0, 'aac', 26.5],
+  ['trailer-30.webm', '1920x1080', 30.0, 'opus', 12.0],
+  ['trailer-30.mp4', '1920x1080', 30.0, 'aac', 15.0],
+  ['trailer-vertical.webm', '1080x1920', 20.0, 'opus', 8.0],
+  ['trailer-vertical.mp4', '1080x1920', 20.0, 'aac', 10.0],
+];
+for (const [file, size, seconds, audio, maxMb] of FILMS) {
+  const film = files.get(`media/${picks.collection}/films/${file}`);
+  assert.ok(film, `${file} ships`);
+  assert.equal(`${film.width}x${film.height}`, size, `${file} size`);
+  assert.ok(near(film.seconds, seconds, 0.25), `${file} runs ${seconds} s (${film.seconds})`);
+  assert.equal(film.audio, audio, `${file} keeps its score`);
+  assert.ok(film.bytes <= maxMb * 1048576, `${file}: ${(film.bytes / 1048576).toFixed(2)} MB, at most ${maxMb} MB`);
+  assert.ok((film.encode?.vmaf ?? 0) >= 78, `${file}: VMAF ${film.encode?.vmaf ?? 'unrecorded'} against its master`);
+  assert.ok(files.has(`media/${picks.collection}/films/${file.replace(/\.(webm|mp4)$/, '.jpg')}`), `${file} poster`);
 }
 
 console.log(`site50-media.selftest: ${manifest.files.length} files, the ${takes.length} takes with sound, the fifty frames and the films pass`);

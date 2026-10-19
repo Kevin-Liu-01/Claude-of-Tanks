@@ -1,0 +1,170 @@
+{
+ "map": "autumn",
+ "timeOfDay": "golden",
+ "seed": 1907,
+ "light": {
+  "sunAzimuthDeg": 320,
+  "sunElevationDeg": 7
+ },
+ "actors": [
+  {
+   "id": "ariete_c2_x",
+   "name": "hero",
+   "pos": [
+    -268.07,
+    -318.1
+   ],
+   "facingDeg": 270.01,
+   "turretDeg": -9.06,
+   "gunDeg": -3,
+   "camo": "factory",
+   "camoSeed": 7107,
+   "recoilAgeS": 0.04
+  },
+  {
+   "id": "t62mv1_x",
+   "name": "foe0",
+   "pos": [
+    -280,
+    -320
+   ],
+   "facingDeg": 255,
+   "turretDeg": 0,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 7207
+  }
+ ],
+ "effects": [
+  {
+   "type": "muzzle_flash",
+   "actor": "hero",
+   "tMs": 6300,
+   "params": {
+    "caliberMm": 45
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    -277.22,
+    6.18,
+    -319.56
+   ],
+   "tMs": 6700,
+   "params": {
+    "count": 12,
+    "speedMps": 4.5,
+    "hot": 0.9,
+    "scale": 0.35
+   }
+  },
+  {
+   "type": "embers",
+   "at": [
+    -277.22,
+    6.18,
+    -319.56
+   ],
+   "tMs": 6400,
+   "params": {
+    "radiusM": 0.6,
+    "rate": 18,
+    "durationS": 1.2,
+    "rise": 1
+   }
+  },
+  {
+   "type": "fire_field",
+   "at": [
+    -269.51,
+    -308.17
+   ],
+   "tMs": 0,
+   "params": {
+    "radiusM": 4,
+    "durationS": 40,
+    "intensity": 0.9,
+    "smoke": true
+   }
+  }
+ ],
+ "fxTime": 7000,
+ "timeScale": 0,
+ "storyboard": {
+  "version": 1,
+  "durationMs": 8500,
+  "shots": [],
+  "actorTracks": []
+ },
+ "picture": {
+  "grain": {
+   "amount": 0.05,
+   "size": 1,
+   "color": 0.1,
+   "response": 0.7
+  },
+  "vignette": {
+   "amount": 0.36,
+   "roundness": 0.55,
+   "softness": 0.6
+  },
+  "dof": {
+   "enabled": false
+  },
+  "chromaticAberration": 0,
+  "exposure": 0.3,
+  "vibrance": 0.14,
+  "contrast": 1.05,
+  "temperature": 18
+ },
+ "fx": {
+  "quality": "cinematic",
+  "trackDust": true
+ },
+ "autoPlace": false,
+ "meta": {
+  "id": "vs07-autumn-ariete-t62-r6",
+  "kind": "versus-still",
+  "pair": "ariete_c2_x v t62mv1_x",
+  "round": 6,
+  "idea": "the telephoto compression",
+  "stillExposureMs": 4,
+  "lens": "a",
+  "pick": "vs07-autumn-ariete-t62-r6:a"
+ },
+ "camera": {
+  "name": "a",
+  "pos": [
+   -312.91,
+   12,
+   -339
+  ],
+  "lookAt": [
+   -274.15,
+   0.62,
+   -318.82
+  ],
+  "fov": 9.8,
+  "rollDeg": -8,
+  "groundRel": true
+ },
+ "cameraVariants": [
+  {
+   "name": "a",
+   "pos": [
+    -312.91,
+    12,
+    -339
+   ],
+   "lookAt": [
+    -274.15,
+    0.62,
+    -318.82
+   ],
+   "fov": 9.8,
+   "rollDeg": -8,
+   "groundRel": true
+  }
+ ]
+}

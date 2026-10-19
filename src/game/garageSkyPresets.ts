@@ -97,7 +97,7 @@ export const GARAGE_SKY_PRESETS = Object.freeze<Readonly<Record<string, Readonly
     turbidity: 7.8, rayleigh: 1.35, mieCoefficient: 0.006, mieDirectionalG: 0.88, // round 76 (2026-09-26): mirrors foundry.sky (the deck pass re-grade)
     fogDensity: 0.00052, fogTintHex: 0x858384, fogMix: 0.45, envIntensity: 0.22,
     atmosphere: { mieTintHex: 0xd2b28c, horizonTintHex: 0xd0c6b6, horizonTintAmount: 0.5, horizonBandDeg: 11, zenithTintHex: 0x889ab0, zenithTintAmount: 0.3 }, // 2026-10-14: mirrors foundry.sky (with the SKY lane's sky grade)
-    cloudOpacity: 1.24, cloudOpacity2: 1.05, cloudTintHex: 0xc8ccca,
+    cloudOpacity: 1.05, cloudOpacity2: 0.6, cloudTintHex: 0xefebe4, cloudAltM: 620, // 2026-10-18: mirrors foundry.sky (the 228 census's cumulus)
     sunIntensity: 4.2, sunColorHex: 0xfde3c4, hemiIntensity: 0.36, // lighting 2026-09-13: mirrors foundry.sky
     postExposure: 0.96,
     lighting: { groundAlbedoHex: 0x736f69 }, // 2026-10-01: mirrors foundry.sky (the grounded light model's levers)

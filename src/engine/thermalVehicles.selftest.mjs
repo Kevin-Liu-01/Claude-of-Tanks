@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {Group,Mesh,BoxGeometry,MeshStandardMaterial} from 'three';
+import {Group,Mesh,BoxGeometry,MeshStandardMaterial,ShaderLib} from 'three';
 import {createThermalVehicles} from './thermalVehicles.ts';
 const scene=new Group(),source=new MeshStandardMaterial({color:0x476234,alphaTest:.5}),geometry=new BoxGeometry();
 const actors=Array.from({length:5},(_,i)=>{
@@ -57,3 +57,24 @@ console.log('thermalVehicles: visibility, depth, cutouts, friends, original rest
  source.dispose();mesh.geometry.dispose();
 }
 console.log('thermalVehicles: cold preparation, zero switch-time clones, hidden actors, cancellation, failure and context restore passed');
+
+// 2026-10-18 (the wheel-band lane, round 3): a heat stand-in writes the vehicle alpha on an opaque draw, or the aerial
+// pass's ground occlusion takes a hot hull's running gear under the belly line for ground (a cold band at the belly
+// + 2 cm in the sensor view); a blended stand-in keeps its alpha
+{
+ const fragmentOf=(material)=>{
+  const shader={vertexShader:ShaderLib.standard.vertexShader,fragmentShader:ShaderLib.standard.fragmentShader,uniforms:{}};
+  material.onBeforeCompile(shader,{});return shader.fragmentShader;
+ };
+ const opaque=new MeshStandardMaterial(),glass=new MeshStandardMaterial({transparent:true,opacity:.4});
+ const root=new Group();root.add(new Mesh(new BoxGeometry(),opaque),new Mesh(new BoxGeometry(),glass));new Group().add(root);
+ const heat=createThermalVehicles();heat.begin([{team:'enemy',visual:{root}}],true,'ally');
+ const [hot,hotGlass]=root.children.map((mesh)=>mesh.material);
+ assert.notEqual(hot,opaque);assert.notEqual(hotGlass,glass);
+ assert.match(fragmentOf(hot),/#ifdef OPAQUE\s*gl_FragColor\.a = 5\.0;\s*#endif/,'the heat stand-in writes the unlit vehicle tag (2 + sun 1 + tag 2) on opaque draws');
+ assert.match(fragmentOf(hot),/totalEmissiveRadiance \*= 0\.62/,'and keeps its heat falloff');
+ assert.equal(hot.customProgramCacheKey(),'thermal-vehicle-v2');
+ assert.equal(hotGlass.transparent,true,'a blended stand-in stays blended (no OPAQUE define: its alpha stays its own)');
+ heat.end();opaque.dispose();glass.dispose();
+}
+console.log('thermalVehicles: the heat stand-ins write the vehicle alpha on opaque draws passed');

@@ -16,6 +16,8 @@ interface NightLightingAccessOptions {
   getWorldRoot(): Object3D | null;
   getEntities(): Iterable<NightLightingEntity>;
   getCameraPosition(): Vector3Like;
+  /** The camera's view direction: a town's lamps light the street ahead of it (nightLightingRuntime BUILDING_FOCUS_AHEAD_M). */
+  getCameraForward?(): Vector3Like;
   isNight(): boolean;
   isBattlePresentation(): boolean;
   /** Strict spotting admission, not the retained visual's fade threshold. */
@@ -68,7 +70,7 @@ export function createNightLightingAccess(
     runtime.prepare(collectSources(), true);
     nightPrepared = true;
     // First night uniforms/light signature are warm while input is covered.
-    runtime.update(options.getCameraPosition());
+    runtime.update(options.getCameraPosition(), true, options.getCameraForward?.());
   }
   function appendEntity(entity: NightLightingEntity): void {
     if (!nightPrepared || disposed) return;
@@ -77,7 +79,7 @@ export function createNightLightingAccess(
   }
   function update(): void {
     if (!nightPrepared || disposed) return;
-    owner.current?.update(options.getCameraPosition(), options.isBattlePresentation());
+    owner.current?.update(options.getCameraPosition(), options.isBattlePresentation(), options.getCameraForward?.());
   }
   function reset(): void {
     generation++; nightPrepared = false; owner.current?.reset();

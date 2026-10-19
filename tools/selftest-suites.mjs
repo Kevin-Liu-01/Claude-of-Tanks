@@ -208,6 +208,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/existing-document-route.selftest.mjs',
     'tools/geometry-gate-policy.selftest.mjs',
     'tools/tank-sealed-check.selftest.mjs',
+    // 2026-10-17 (227 gun-gaps): the nine closed gun junctions at rest/elevation/depression and a seeded tube pull
+    'tools/gun-junction-census.selftest.mjs',
     'tools/reference-supplement.selftest.mjs',
     'tools/fidelity-component-floor.selftest.mjs',
     'tools/fidelity-visibility.selftest.mjs',
@@ -346,6 +348,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/spareTrackSeat.selftest.mjs',
     // 2026-10-16 (VEH-13 outline rule): the receipt's PROUD class and its seeded break
     'tools/spare-track-outline.selftest.mjs',
+    // 2026-10-18 (228): ledger keys hold no line number; a line-shifted tree gates green; --update then --gate round-trips
+    'tools/spare-track-key.selftest.mjs',
     'src/vehicles/turretBarrelCircularity.selftest.mjs',
     'src/vehicles/profiles/gunTopFixturePlacement.selftest.mjs',
     'src/vehicles/profiles/bradleyHullClosure.selftest.mjs',
@@ -635,11 +639,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-r5/site50.selftest.mjs',
     'tools/media-r5/motion.selftest.mjs',
     'tools/media-r5/world-model.selftest.mjs',
+    'tools/media-r5/wire-model.selftest.mjs',
     'tools/media-r5/films/restore.selftest.mjs',
     'tools/media-r5/fleet-media.selftest.mjs',
     'tools/media-r5/site-video-budget.selftest.mjs',
     'tools/media-r5/fleet.selftest.mjs',
     'tools/media-r5/fleet-rekey.selftest.mjs',
+    'tools/media-r5/combat.selftest.mjs',
     'tools/media-r5/master-filter.selftest.mjs',
     'tools/public-repo-hygiene.selftest.mjs',
     'tools/tool-only-public-files.selftest.mjs',
@@ -839,6 +845,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t14RoofFidelity.selftest.mjs',
     'src/vehicles/profiles/t90SprocketTier.selftest.mjs',
     'src/vehicles/profiles/ztz85iiiAttachment.selftest.mjs',
+    // 2026-10-17 (227 gun-gaps): CV90 Mk 4 sight head on its neck and side plates on the wall; CV90 cradle root in the shell
+    'src/vehicles/profiles/cv90TurretSeating.selftest.mjs',
+    // 2026-10-18 (227 gun-gaps r3): the chevron ERA cassettes' caps on the gun channel walls are closed (no sawtooth)
+    'src/vehicles/profiles/chineseChannelWallCaps.selftest.mjs',
     'src/vehicles/runningGearCadence.selftest.mjs',
     'src/world/sourcedTextures.selftest.mjs',
     'src/world/sourcedImageCache.selftest.mjs',
@@ -1001,10 +1011,17 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/vehicleReadability.selftest.mjs',
     // 2026-10-04 (the vehicle-look lane): a cloned vehicle material (the track shoes) joins its source's cascade registration
     'src/vehicles/vehicleMaterialClone.selftest.mjs',
+    // 2026-10-17 (the wheel-band lane): no new raw Material.clone() of a vehicle material (the Garage skin's road-wheel band)
+    'src/vehicles/vehicleMaterialRawClone.selftest.mjs',
+    // 2026-10-17 (the wheel-band lane, round 2): every opaque lit material a tank draws holds its own vehicle registration
+    // (the band's tanks: the M46/M47 wheels, the KF51 tyres, the Abrams track grime, the Merkava voids ...)
+    'src/vehicles/vehicleMaterialRegistration.selftest.mjs',
     'src/vehicles/fleetRoundOneSurfaces.selftest.mjs',
     'src/engine/skyCloudBake.selftest.mjs',
     'src/engine/skyHorizonCache.selftest.mjs',
     'src/engine/skyEnvironmentCache.selftest.mjs',
+    // 2026-10-18 (the 228 entry diet): the Moon's land mask loads with the world that draws it, not with the entry chunk
+    'src/engine/earthLandAccess.selftest.mjs',
     'src/engine/skyEnvironmentEnclosure.selftest.mjs',
     'src/engine/atmosphere.selftest.mjs',
     // 2026-10-01: the grounded light model (lighting lane): sun through the atmosphere, the sky's own light, the deck, the exposure law
@@ -1657,6 +1674,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/regional/wadiRumPosts.selftest.mjs',
     // the map-content lane (L2, wave 358a): a polar station's field works in its own stock (drums, drift fence)
     'src/world/maps/regional/polarWorks.selftest.mjs',
+    // (the Earthrise 228 rebuild, 2026-10-18) a lunar station's works and clutter in its own stock (regolith bags, the tether)
+    'src/world/maps/regional/lunarWorks.selftest.mjs',
     // props census #12 (2026-10-15): the stations as the Moon and Mars build them (maps/spaceKit.ts)
     'src/world/maps/spaceKit.selftest.mjs',
     'src/world/wireMaterial.selftest.mjs',
@@ -1819,6 +1838,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propsModelStore.selftest.mjs',
     'src/world/structureKit.selftest.mjs',
     'src/world/maps/marsSettlement.selftest.mjs',
+    // (the Earthrise 228 rebuild, 2026-10-18) Taurus-Littrow Station's plan, set pieces and stock (maps/earthriseStation.ts)
+    'src/world/maps/earthriseStation.selftest.mjs',
     'src/world/orchardBathhouse.selftest.mjs',
     // regional-buildings lane (2026-10-03): the regional architecture kits and their placement-preserving swap
     'src/world/maps/regional/regionalArchitecture.selftest.mjs',
@@ -1957,6 +1978,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/track-geometry.selftest.mjs',
     'tools/marketing-shots/battle-campaign.selftest.mjs',
     'tools/marketing-shots/showcase-r2.selftest.mjs',
+    // the multiplayer dual view: the published WebP is the one its manifest names, from one match
+    'tools/marketing-shots/capture-multiplayer-dual-screen.selftest.mjs',
+    // 2026-10-12 (home r2): the live-battle capture director's clock, freezes, bursts and staging helpers
+    'tools/marketing-shots/mode-battle-director.selftest.mjs',
   ]),
   post: Object.freeze([
     'src/audio/lazyAudio.selftest.mjs',
@@ -1984,6 +2009,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/spectatorSwitcher.selftest.mjs',
     'tools/marketing-shots/feature-evidence.selftest.mjs',
     'tools/marketing-shots/site50-media.selftest.mjs',
+    // 2026-10-15: the versus stills, the social cards' and marketing's foundations (public/media/versus-r1)
+    'tools/marketing-shots/versus-media.selftest.mjs',
     'src/ui/studioSiteTakes.selftest.mjs',
     // 2026-10-12: every tank's own take (src/ui/fleetTakes.ts) in the Gallery, the manual, the Garage and the Director
     'src/ui/fleetTakes.selftest.mjs',

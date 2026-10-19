@@ -1579,6 +1579,14 @@
    "insideOutPx": 121,
    "seeThroughPx": 0,
    "tris": 97782
+  },
+  "cv90_mk4": {
+   "sealed": true,
+   "openPx": 1,
+   "openViews": 0,
+   "insideOutPx": 569,
+   "seeThroughPx": 0,
+   "tris": 55744
   }
  }
 }
