@@ -48,7 +48,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/thermalVehicles.selftest.mjs',
     'src/engine/visionWarm.selftest.mjs',
     'src/game/juggernautVisual.selftest.mjs',
-    'src/fx/aerialTracers.selftest.mjs',
+    // 2026-10-19 (owner): the AC-130 on the October tracers and missile looks, the old ribbon retired, and its kills
+    // credited to the AC-130 (the drone's to the drone) on every surface
+    'src/fx/gunshipRounds.selftest.mjs',
+    'src/fx/retiredTracers.selftest.mjs',
+    'src/sim/killSource.selftest.mjs',
+    'src/ui/killSurfaces.selftest.mjs',
     'src/fx/timeOfDayMarks.selftest.mjs',
     'src/fx/localLights.selftest.mjs',
     'src/fx/worldWindPalette.selftest.mjs',

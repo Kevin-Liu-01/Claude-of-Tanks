@@ -275,7 +275,11 @@ export function createBattlePresentationRuntime({
     } else clearJuggernautVisual(visual.root);
     if (syncMissionAttachment) syncMissionAttachment(visual.root,entity.spec,entity.aerial,!!entity.combat?.destroyed,dtFrame ?? 0);
     else if (entity.aerial) void loadMissionAttachmentVisual();
-    if (entity.aerial?.kind === 'gunship') syncGunshipVisual(visual.root, state.pos, state.yaw, dtFrame ?? 0, !entity.isPlayer && visual.root.visible);
+    // (ac130-fx-228) the pilot's own airframe draws whenever the camera is not its gimbal lens (the killcam, the ending's
+    // replay and orbit, an external camera): before, it was never drawn for the player, so a replay of a gunship kill
+    // showed an empty sky
+    if (entity.aerial?.kind === 'gunship') syncGunshipVisual(visual.root, state.pos, state.yaw, dtFrame ?? 0,
+      visual.root.visible, entity.isPlayer && camera.position);
     else hideGunshipVisual(visual.root);
   };
 

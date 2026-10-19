@@ -5,6 +5,7 @@
  * lethal shell and reads from the destruction's cause and killer alone.
  */
 import { t } from './i18n.ts';
+import { killSourceIdentity } from './icons.ts';
 
 export interface FinalBlowLethal {
   attackerId: string | null;
@@ -19,6 +20,8 @@ export interface FinalBlowDestroyed {
   id: string;
   killerId: string | null;
   cause: string | null;
+  /** (ac130-fx-228) what the kill was made with when not the killer's vehicle (the authority's sim/aerialCombat.ts killSourceOf) */
+  source?: string | null;
 }
 
 /** impact / fall (impact physics, 2026-09-25): a hull that crashed into something hard or landed too hard. */
@@ -54,7 +57,8 @@ export function resolveFinalBlow(
   const lethalMatches = !!(lethal && lethal.targetId === destroyed.id);
   const target = nameOf(destroyed.id) || (lethalMatches && lethal ? lethal.targetName : null) || destroyed.id;
   let attackerId: string | null = destroyed.killerId;
-  let attacker: string | null = attackerId ? nameOf(attackerId) : null;
+  // (ac130-fx-228) an AC-130's or a drone's kill names its platform
+  let attacker: string | null = killSourceIdentity(destroyed.source)?.label ?? (attackerId ? nameOf(attackerId) : null);
   let shell: string | null = null;
   if ((cause === 'shot' || cause === 'ammorack') && lethalMatches && lethal) {
     attackerId = lethal.attackerId ?? attackerId;

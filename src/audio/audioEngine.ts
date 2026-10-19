@@ -274,7 +274,9 @@ interface ShellExpiredEvent { shellId?: number; shooterId?: string; hitTerrain?:
   structureId?: number;
   /** the round's type, and the destruction catalog's class and charge when published (destruction-fx lane) */
   shellType?: string; munition?: MunitionClass; chargeKg?: number }
-interface TankDestroyedEvent { id: string; killerId?: string | null; pos: Vec3; cause?: string }
+interface TankDestroyedEvent { id: string; killerId?: string | null; pos: Vec3; cause?: string;
+  /** (ac130-fx-228) the kill's platform when not the killer's vehicle (the authority's sim/aerialCombat.ts killSourceOf) */
+  source?: string }
 interface ModuleStateEvent { id: string; module: string; state: string; source?: string; repaired?: boolean }
 /** `cause`: 'impact' (a hard obstacle), 'fall' (a landing) or 'contact' (another hull); `struck`: the obstacle's record kind
  *  ('cliff' for the terrain's own face) when the solo step knows it. */
@@ -1238,7 +1240,10 @@ export function createAudio({
       radio?.silence();
     } else if (playerId != null && event.killerId === playerId) {
       const now = ctx?.currentTime ?? 0;
-      say(now - lastKillAt < 12 ? 'double_kill' : 'target_destroyed', { delayS: 0.45 + random() * 0.15 });
+      // (ac130-fx-228) the AC-130's kill is the gunship crew's call ("Splash. Target down."), never a tank crew's
+      const gunship = event.source === 'ac130';
+      say(now - lastKillAt < 12 ? (gunship ? 'gunship_double' : 'double_kill') : gunship ? 'gunship_kill' : 'target_destroyed',
+        { delayS: 0.45 + random() * 0.15 });
       lastKillAt = now;
     } else if (playerId != null && info) {
       const near = listenerValid && distanceTo(x, y, z) < 300;

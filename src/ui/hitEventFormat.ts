@@ -4,6 +4,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 
 import { penAtDistanceMm } from '../sim/ballistics.ts';
 import { RUNTIME_TANK_IDS, getSpec } from '../vehicles/specs.ts';
+import { GUNSHIP_WEAPONS } from '../sim/matchRuleset.ts';
 import { t } from './i18n.ts';
 
 export interface HitEventPresentation {
@@ -17,6 +18,8 @@ export interface HitEventPresentation {
   readonly shellType?: string;
   readonly shellName?: string;
   readonly attackerSpecId?: string | null;
+  /** (ac130-fx-228) the attacker's platform: an 'ac130' round is one of the gunship's guns, not the pilot's tank's */
+  readonly attackerSource?: string | null;
   readonly flightDistM?: number;
 }
 
@@ -253,7 +256,8 @@ export function shellDisplayName(ev: HitEventPresentation): string {
  */
 export function nominalPenFor(ev: HitEventPresentation): number {
   try {
-    const shells = ev.attackerSpecId ? shellsForSpec(ev.attackerSpecId) : undefined;
+    const shells = ev.attackerSource === 'ac130' ? GUNSHIP_WEAPONS as readonly PresentationShell[]
+      : ev.attackerSpecId ? shellsForSpec(ev.attackerSpecId) : undefined;
     const shell = matchingPresentationShell(shells, ev) || globallyUnambiguousShell(ev);
     return shell ? Math.round(penAtDistanceMm(shell, ev.flightDistM || 0)) : 0;
   } catch {

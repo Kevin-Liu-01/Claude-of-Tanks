@@ -331,6 +331,9 @@ const BY_SOUND: Readonly<Record<string, string>> = Object.freeze({
   'ataka-launch': 'ataka',
   'shillelagh-launch': 'shillelagh',
   'jyu-mat-launch': 'spike',
+  // (ac130-fx-228) the AC-130's guided missile: a Hellfire-class rail missile off the gunship's wing (its rail launch,
+  // dense persistent white trail and the hellfire airframe), not the Konkurs default
+  'gunship-missile': 'hellfire',
 });
 
 /** The fallback for a guided round that names neither (a SACLOS missile: the commonest kind in the fleet). */
@@ -351,9 +354,10 @@ export function missileLookFor(name: string | null | undefined, sound: string | 
 }
 
 /** Whether a fired round is a missile or a rocket by what its shot event carries (every guided round's sound is a
- *  '*-launch' profile; a rack's rockets carry the rocket flag). */
+ *  '*-launch' profile or another launch sound this table names, the gunship's 'gunship-missile'; a rack's rockets carry
+ *  the rocket flag). */
 export function firedIsMissile(sound: string | null | undefined, rocket: boolean | undefined): boolean {
-  return rocket === true || (typeof sound === 'string' && sound.endsWith('-launch'));
+  return rocket === true || (typeof sound === 'string' && (sound.endsWith('-launch') || Object.hasOwn(BY_SOUND, sound)));
 }
 
 /**

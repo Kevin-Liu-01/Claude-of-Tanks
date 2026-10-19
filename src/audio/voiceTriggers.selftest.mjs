@@ -444,6 +444,13 @@ frame();
 moment('gunship_cannon', () => bus.emit('ui:shellSelectionChanged', { slot: 0 }));
 moment('gunship_howitzer', () => bus.emit('ui:shellSelectionChanged', { slot: 1 }));
 moment('gunship_missile', () => bus.emit('ui:shellSelectionChanged', { slot: 2 }));
+// (ac130-fx-228) the AC-130's kills are the gunship crew's calls, by the authority's source, never a tank crew's
+{
+  const since = +ctx.currentTime.toFixed(3);
+  moment('gunship_kill', () => { foes[2].combat.destroyed = true; bus.emit('tank:destroyed', { id: 'f3', killerId: 'me', pos: [-120, 0, 120], cause: 'shot', source: 'ac130' }); });
+  moment('gunship_double', () => { foes[3].combat.destroyed = true; bus.emit('tank:destroyed', { id: 'f4', killerId: 'me', pos: [0, 0, -150], cause: 'shot', source: 'ac130' }); }, { quiet: 4 });
+  assert.ok(!['target_destroyed', 'double_kill'].some((id) => asked(id, since)), "no tank crew's kill call for the AC-130's kills");
+}
 {
   settle(6);
   const since = +ctx.currentTime.toFixed(3);

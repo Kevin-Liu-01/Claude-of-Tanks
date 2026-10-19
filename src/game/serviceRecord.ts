@@ -140,6 +140,8 @@ interface TraceStep {
   specId: string;
   distM: number;
   cause: string;
+  /** (ac130-fx-228) the kill's platform when not the player's vehicle: 'ac130', 'drone' (the authority's sim/aerialCombat.ts killSourceOf) */
+  source?: string;
 }
 
 interface AwardedTier { id: AchievementId; tier: number }
@@ -331,7 +333,8 @@ function sanitizeBattle(value: RuntimeValue): ServiceBattle | null {
   const trace: TraceStep[] = [];
   for (const entry of Array.isArray(source.trace) ? source.trace.slice(0, TRACE_LIMIT) : []) {
     const step = recordOf(entry);
-    if (step) trace.push({ t: Math.max(0, finite(step.t)), specId: text(step.specId), distM: count(step.distM), cause: text(step.cause) });
+    if (step) trace.push({ t: Math.max(0, finite(step.t)), specId: text(step.specId), distM: count(step.distM), cause: text(step.cause),
+      ...(step.source === 'ac130' || step.source === 'drone' ? { source: step.source } : {}) });
   }
   return {
     at: finite(source.at),
@@ -597,7 +600,8 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
       const shot = battle.pending.find((entry) => !entry.hit && (shellId == null || entry.id == null || entry.id === shellId));
       if (shot && freshRound.hit) { shot.hit = true; battle.aimedHits++; }
       if (event.destroyed === true) {
-        battle.killShots.set(target, { distM: Math.max(0, finite(event.flightDistM)), fresh: !battle.damaged.has(target), drone: event.shellName === 'FPV shaped charge' });
+        // (ac130-fx-228) the drone's strike by the authority's source, not by the warhead's name
+        battle.killShots.set(target, { distM: Math.max(0, finite(event.flightDistM)), fresh: !battle.damaged.has(target), drone: event.attackerSource === 'drone' });
       }
       settleShots(ctx.clockS());
     }
@@ -652,7 +656,9 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
     if (aerial === 'gunship' && battle.kills >= GUNSHIP_ACE_KILLS) award('gunship_ace');
     if (aerial === 'drone' && battle.kills >= DRONE_ACE_KILLS) award('drone_ace');
     if (battle.trace.length < TRACE_LIMIT) {
-      battle.trace.push({ t: Math.max(0, now), specId: text(event.specId), distM: Math.round(distM), cause: event.cause === 'ammorack' ? 'ammorack' : shot?.drone ? 'drone' : text(event.cause) || 'shot' });
+      const source = event.source === 'ac130' || event.source === 'drone' ? event.source : shot?.drone ? 'drone' : null;
+      battle.trace.push({ t: Math.max(0, now), specId: text(event.specId), distM: Math.round(distM),
+        cause: event.cause === 'ammorack' ? 'ammorack' : source === 'drone' ? 'drone' : text(event.cause) || 'shot', ...(source ? { source } : {}) });
     }
   });
 

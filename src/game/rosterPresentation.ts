@@ -37,6 +37,10 @@ export interface RosterPresentation {
   battleRows(entities: BattleRosterEntity[], team: string): RosterPresentationRow[];
 }
 
+/** (ac130-fx-228) a gunship pilot's row: the AC-130, no tier; it carries no name, its renderer names it through the one
+ *  identity (ui/icons.ts killSourceIdentity, battleLoad.ts) */
+const aircraftRow = (isPlayer: boolean): RosterPresentationRow => ({ id: 'ac130', name: '', tier: '', kind: 'aircraft', isPlayer });
+
 /** Keep pre-battle and online lobby roster labels on one typed policy. */
 export function createRosterPresentation({
   getVehicleName,
@@ -45,9 +49,7 @@ export function createRosterPresentation({
   const lobbyRows = (state: LobbyState, team: string, viewerId: string) => state.players
     .filter((player) => player.team === team && !!player.specId)
     .map((player): RosterPresentationRow => {
-      if (state.gameMode === 'ac130' && player.team === 'alpha' && !player.bot) {
-        return { id: 'ac130', name: 'AC-130', tier: '', kind: 'aircraft', isPlayer: player.id === viewerId };
-      }
+      if (state.gameMode === 'ac130' && player.team === 'alpha' && !player.bot) return aircraftRow(player.id === viewerId);
       const specId = player.specId!;
       return {
         id: specId,
@@ -59,9 +61,7 @@ export function createRosterPresentation({
 
   const battleRows = (entities: BattleRosterEntity[], team: string) => entities
     .filter((entity) => entity.team === team)
-    .map((entity): RosterPresentationRow => entity.aerial?.kind === 'gunship' ? {
-      id: 'ac130', name: 'AC-130', tier: '', kind: 'aircraft', isPlayer: !!entity.isPlayer,
-    } : ({
+    .map((entity): RosterPresentationRow => entity.aerial?.kind === 'gunship' ? aircraftRow(!!entity.isPlayer) : ({
       id: entity.specId,
       name: entity.spec?.name || entity.specId,
       tier: getTier(entity.specId),

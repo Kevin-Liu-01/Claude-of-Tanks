@@ -24,10 +24,15 @@
  * One instanced draw for every tracer (a capsule quad per round, built in screen space so its width is in pixels),
  * additive, depth-tested against the world in the late effects pass, no per-frame allocation (a pooled record per
  * round in flight, reused).
+ * (lane ac130-fx-228, 2026-10-19; the owner: "make our ac 130 use our new tracers ... get rid of the old ones") the
+ * AC-130's guns draw here too, each its own class (gunshipRounds.ts resolves the gun): the 30 mm autocannon a NATO belt
+ * read from the orbit, the 152 mm howitzer a heavy traced shell whose burn outlasts its slant flight. The screenshot
+ * composer's frozen round (composeFiringMoment) is a pooled static entry of the same draw, aged on the effects clock.
  */
 import * as THREE from 'three';
 import { LATE_FX_LAYER } from './layers.ts';
 import { tankSeedId } from '../vehicles/tankIdAliases.ts';
+import { gunshipRoundOf } from './gunshipRounds.ts';
 
 type ShellKey = number | string;
 
@@ -42,7 +47,8 @@ interface TracerShell {
   shooterId?: ShellKey;
   /** times the round has been deflected (sim/damage.ts deflectShell) */
   bounces?: number;
-  spec?: { type?: string; caliberMm?: number; tracer?: string; name?: string } | null;
+  spec?: { type?: string; caliberMm?: number; tracer?: string; name?: string; reloadGroup?: string; soundProfile?: string;
+    guided?: boolean } | null;
 }
 
 /** The firing vehicle, as the tracer's ammunition lineage (and, for a networked round, its weapon) needs it. */
@@ -58,6 +64,8 @@ interface TracerOptions {
   scene?: THREE.Scene | null;
   /** the effects clock (s): flicker phase */
   now(): number;
+  /** whether the firing vehicle flies the gunship (a networked round names no weapon: its aircraft does) */
+  gunship?(id: ShellKey | undefined): boolean;
   capacity?: number;
 }
 
@@ -77,6 +85,11 @@ interface TracerClass {
   igniteM: number;
   /** the streak's longest (m): a dash behind the hot point, never a lit rod */
   streakMaxM: number;
+  /** a heavy shell's trace (a tank gun's, the gunship howitzer's): the deep orange compound, the hot bead, no ricochet,
+   *  the heavier strike spray */
+  heavy?: boolean;
+  /** the bead's gain at the head */
+  bead?: number;
 }
 
 // Classes by calibre: rifle and heavy machine guns, autocannons, tank guns.
@@ -87,7 +100,18 @@ const AUTOCANNON: TracerClass = { beltEvery: 4, burnS: 3.4, halfWidthPx: 1.05, h
   igniteM: 6, streakMaxM: 24 };
 // (r2, wave 310b: "a long rod anchored to the muzzle") a tank round's trace: a short dash behind the dart's hot point
 const TANK: TracerClass = { beltEvery: 1, burnS: 3.6, halfWidthPx: 1.35, haloPx: 8, core: 3.4, halo: 0.2,
-  igniteM: 10, streakMaxM: 12 };
+  igniteM: 10, streakMaxM: 12, heavy: true, bead: 2.4 };
+// (ac130-fx-228) the gunship's guns, read from a 240 m orbit through a 55-9 degree gimbal: the 30 mm autocannon's belt
+// a little denser and its core a little wider than a ground autocannon's (every second round traced: at 7 rounds a
+// second the burst still reads as a stream of dashes, not single sparks), always NATO ammunition whatever tank the
+// pilot chose; the 152 mm howitzer every round traced, its core and halo about 1.7x a tank round's, its streak the
+// exposure's (800 m/s: ~13 m by day, ~22 m in the dark), its charge burning past the 0.3-0.5 s slant flight
+const GUNSHIP_CANNON: TracerClass = { beltEvery: 2, burnS: 3.4, halfWidthPx: 1.4, haloPx: 8.5, core: 3.3, halo: 0.22,
+  igniteM: 6, streakMaxM: 24 };
+const GUNSHIP_HOWITZER: TracerClass = { beltEvery: 1, burnS: 6, halfWidthPx: 2.3, haloPx: 14, core: 5.6, halo: 0.34,
+  igniteM: 8, streakMaxM: 24, heavy: true, bead: 2.8 };
+/** (ac130-fx-228) the screenshot composer's frozen rounds held at once (pooled; the oldest reused past it) */
+const STATIC_CAPACITY = 8;
 /** the halo's share by day (a bright scene: the spark alone reads; r2: enough of it to tint the point) */
 const HALO_DAY = 0.5;
 /** (r2, wave 310a: "by day a pale pinprick or a white orb, no warm colour") by day the core burns at this share of its
@@ -138,6 +162,18 @@ export function tracerClassFor(caliberMm: number, lineage: 'east' | 'nato'): Tra
   if (caliberMm < 15) return lineage === 'east' ? MG_EAST : MG_NATO;
   if (caliberMm < 45) return AUTOCANNON;
   return TANK;
+}
+
+/** (ac130-fx-228) A round's class and lineage: the gunship's guns their own (NATO ammunition, whatever the pilot's
+ *  garage tank), every other round by its calibre and its vehicle's lineage. */
+export function tracerRoundClass(spec: TracerShell['spec'], shooter: TracerShooter | null | undefined,
+  shooterIsGunship: boolean): { cls: TracerClass; lineage: 'east' | 'nato'; caliberMm: number } {
+  const gun = gunshipRoundOf(spec, shooterIsGunship);
+  if (gun === 'cannon') return { cls: GUNSHIP_CANNON, lineage: 'nato', caliberMm: 30 };
+  if (gun === 'howitzer') return { cls: GUNSHIP_HOWITZER, lineage: 'nato', caliberMm: 152 };
+  const lineage = tracerLineage(shooter);
+  const caliberMm = tracerCaliber(spec, shooter);
+  return { cls: tracerClassFor(caliberMm, lineage), lineage, caliberMm };
 }
 
 /**
@@ -335,10 +371,17 @@ interface ProjectileTracers {
   /** a round struck at `pos` (its terrain, prop or armour hit): its last dash reaches into the strike and, when its
    *  tracer still burns, the strike throws sparks (none off water) */
   strike(id: ShellKey | undefined, pos: readonly number[], water?: boolean): void;
+  /** (ac130-fx-228) a frozen round for the screenshot composer (composeFiringMoment): its tracer from tail to head as a
+   *  round of `caliberMm` draws it, born at `bornAtS` on the effects clock (full for 0.3 s, gone by 0.9 s); a rocket's
+   *  is its motor's hot streak */
+  compose(hx: number, hy: number, hz: number, tx: number, ty: number, tz: number, caliberMm: number, bornAtS: number,
+    rocket?: boolean): void;
+  /** the effects clock was rebased by `delta` s (fx.setFrozen / resetClock): the births keep their age */
+  shiftTime(delta: number): void;
   reset(): void;
   active(): boolean;
   /** receipts: tracer rounds drawn this frame, rounds tracked */
-  stats(): { drawn: number; tracked: number; dark: number; sparks: number };
+  stats(): { drawn: number; tracked: number; dark: number; sparks: number; statics: number };
 }
 
 export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
@@ -406,9 +449,7 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     r = free.pop() ?? { id: 0, lit: false, cls: TANK, core: TANK_CORE, day: TANK_DAY, halo: TANK_HALO, seed: 0,
       seen: false, hx: 0, hy: 0, hz: 0, tx: 0, ty: 0, tz: 0, k: 0, speed: 0 };
     const who = o.shooter(shell.shooterId);
-    const lineage = tracerLineage(who);
-    const cal = tracerCaliber(shell.spec, who);
-    const cls = tracerClassFor(cal, lineage);
+    const { cls, lineage, caliberMm: cal } = tracerRoundClass(shell.spec, who, o.gunship?.(shell.shooterId) === true);
     // the belt: a per-weapon round count (the shooter's gun of this calibre: a coax and a main gun are two belts), so a
     // burst shows its tracers at the belt's own rhythm
     const who_ = shell.shooterId;
@@ -419,7 +460,7 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     r.id = shell.id;
     r.cls = cls;
     r.lit = beltCarriesTracer(index, cls.beltEvery);
-    if (cls === TANK) { r.core = TANK_CORE; r.day = TANK_DAY; r.halo = TANK_HALO; }
+    if (cls.heavy) { r.core = TANK_CORE; r.day = TANK_DAY; r.halo = TANK_HALO; }
     else if (lineage === 'east') { r.core = GREEN_CORE; r.day = GREEN_DAY; r.halo = GREEN_HALO; }
     else { r.core = RED_CORE; r.day = RED_DAY; r.halo = RED_HALO; }
     const h = typeof shell.id === 'number' ? shell.id : hashKey(shell.id);
@@ -435,7 +476,7 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     const cls = r.cls;
     write4(r.hx, r.hy, r.hz, r.tx, r.ty, r.tz, cls.halfWidthPx * (1 + DAY_WIDTH_K * (1 - dark)) * (1 + 0.3 * wobble),
       cls.haloPx * (0.45 + 0.55 * dark), r.day, r.core, cls.core * k, r.halo, cls.halo * (HALO_DAY + (1 - HALO_DAY) * dark) * k,
-      cls === TANK ? 2.4 : 1.8);
+      cls.bead ?? 1.8);
   }
   /** One capsule: head and tail (m), half width and halo radius (1080p px), the core (its day colour by day, its hot
    *  night colour in the dark) at radiance coreK, the halo at haloK, the head's bead gain. */
@@ -484,7 +525,7 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     const R = strikeRandom(r.seed + 0.37);
     const len = Math.hypot(r.hx - r.tx, r.hy - r.ty, r.hz - r.tz) || 1;
     const dx = (r.hx - r.tx) / len, dy = (r.hy - r.ty) / len, dz = (r.hz - r.tz) / len;
-    const tank = r.cls === TANK;
+    const tank = r.cls.heavy === true;
     if (!tank && R() < 0.6) {
       // the ricochet: on along the ground's plane, kicked up 8-30 degrees, swung up to 25 degrees off the line, a third
       // to a half of its speed
@@ -531,6 +572,28 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
         write4(hx, hy, hz, tx, ty, tz, s.w, 2.0 * (0.5 + 0.5 * dark), s.day, s.core, k, s.halo,
           0.05 * (0.4 + 0.6 * dark) * (1 - u), 0.5);
       }
+    }
+  }
+
+  // ---- (ac130-fx-228) the composer's frozen rounds: a fixed pool, each drawn as its class's tracer, fading on the clock ----
+  const statics = Array.from({ length: STATIC_CAPACITY }, () => ({ hx: 0, hy: 0, hz: 0, tx: 0, ty: 0, tz: 0, born: 0,
+    live: false, cls: TANK }));
+  let staticCursor = 0, staticsLive = 0;
+  function drawStatics(): void {
+    const t = o.now();
+    staticsLive = 0;
+    for (const s of statics) {
+      if (!s.live) continue;
+      const age = t - s.born;
+      // stepped captures age the round honestly: full for 0.3 s, gone by 0.9 s (the old ribbon's composer timing)
+      const u = Math.min(1, Math.max(0, (age - 0.3) / 0.6));
+      const fade = 1 - u * u * (3 - 2 * u);
+      if (fade <= 0.001) { if (age > 0.9) s.live = false; continue; }
+      staticsLive++;
+      const cls = s.cls, heavy = cls.heavy === true;
+      write4(s.hx, s.hy, s.hz, s.tx, s.ty, s.tz, cls.halfWidthPx * (1 + DAY_WIDTH_K * (1 - dark)),
+        cls.haloPx * (0.45 + 0.55 * dark), heavy ? TANK_DAY : RED_DAY, heavy ? TANK_CORE : RED_CORE, cls.core * fade,
+        heavy ? TANK_HALO : RED_HALO, cls.halo * (HALO_DAY + (1 - HALO_DAY) * dark) * fade, cls.bead ?? 1.8);
     }
   }
 
@@ -608,6 +671,7 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
       // a round that ended since the last frame draws its last streak once more (a fast round born and gone between
       // two frames still leaves its line), then its record is reused
       records.forEach(retire);
+      drawStatics();
       drawSparks();
       geo.instanceCount = n;
       mesh.visible = n > 0;
@@ -620,6 +684,8 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
       beltCount.clear();
       for (const sp of sparks) sp.life = 0;
       sparkCursor = 0; sparksLive = 0;
+      for (const st of statics) st.live = false;
+      staticCursor = 0; staticsLive = 0;
       n = 0; drawnLast = 0;
       geo.instanceCount = 0;
       mesh.visible = false;
@@ -635,9 +701,22 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
       halo.array[i + 3] = dark;
       n++;
     },
+    compose(hx, hy, hz, tx, ty, tz, caliberMm, bornAtS, rocket = false) {
+      const s = statics[staticCursor]!;
+      staticCursor = (staticCursor + 1) % STATIC_CAPACITY;
+      s.hx = hx; s.hy = hy; s.hz = hz; s.tx = tx; s.ty = ty; s.tz = tz; s.born = bornAtS; s.live = true;
+      // a tank gun's dart (every round traced), an autocannon's lit round, a rocket's motor streak (the heavy class)
+      s.cls = rocket ? GUNSHIP_HOWITZER : caliberMm >= 45 ? TANK : AUTOCANNON;
+      staticsLive++;
+    },
+    shiftTime(delta) {
+      if (!Number.isFinite(delta) || delta === 0) return;
+      for (const st of statics) if (st.live) st.born += delta;
+      for (const sp of sparks) if (sp.life > 0) sp.t0 += delta;
+    },
     darkLevel: () => dark,
-    active: () => geo.instanceCount > 0 || sparksLive > 0,
-    stats: () => ({ drawn: geo.instanceCount, tracked: records.size, dark, sparks: sparksLive }),
+    active: () => geo.instanceCount > 0 || sparksLive > 0 || staticsLive > 0,
+    stats: () => ({ drawn: geo.instanceCount, tracked: records.size, dark, sparks: sparksLive, statics: staticsLive }),
   };
 }
 

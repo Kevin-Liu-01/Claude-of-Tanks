@@ -4261,6 +4261,7 @@
   "hud.kill.friendly": "Friendly fire",
   "hud.kill.you": "Your kill",
   "hud.kill.victim": "You were destroyed",
+  "hud.source.drone": "FPV drone",
   "hud.roster.kills": "{count} kills",
   "endScreen.finalBlow.ammorack": "{attacker} detonated {target}’s ammunition rack",
   "endScreen.comparison": "Battle comparison",

@@ -529,7 +529,8 @@ try {
         mesh.geometry?.type === 'PlaneGeometry' && mesh.renderOrder === 23);
       assert.ok(rings.some((mesh) => mesh.visible && frustum.intersectsObject(mesh)),
         'a real muzzle ring passes BOTH the angle gate and production camera frustum');
-      stagedTracer = fx.group.children.find((mesh) => mesh.geometry?.getAttribute('aA'));
+      // (ac130-fx-228) the composer's frozen round is the projectile tracers' static (the pre-October ribbon is retired)
+      stagedTracer = fx.group.children.find((mesh) => mesh.name === 'Projectile tracers');
       assert.ok(stagedTracer.geometry.instanceCount > 0,
         'the real tracer issues a nonzero instanced draw, not compile-only zero instances');
       assert.equal(flarePool.count, bodyPools.length, 'the warm stages one flare per airframe');

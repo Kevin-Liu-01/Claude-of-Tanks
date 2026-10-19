@@ -1,6 +1,8 @@
 import { createAuxiliaryPresentation, type AuxiliaryVisualEntity } from './auxiliaryPresentation.ts';
-// atmospherics lane: rounds in flight (tracers); the old ribbon block below stays for the gunship and the composer
+// atmospherics lane: rounds in flight (tracers); (ac130-fx-228) the gunship's rounds and the composer's frozen round
+// draw here too: the pre-October ribbon block is gone
 import { createProjectileTracers } from './projectileTracers.ts';
+import { gunshipCaliberMm, gunshipShotOf, type GunshipRound } from './gunshipRounds.ts';
 import { firedIsMissile, missileFlicker, missileLookFor, missileSpin, missileTrailOf, missileWobble, MISSILE_LOOKS, type MissileLook,
   type MissileTrail } from './missileLooks.ts';
 import { createMissileTrails, TRAIL_STEP_M } from './missileTrails.ts';
@@ -30,7 +32,7 @@ import { streetGritShare } from '../world/roadPave.ts';
 import { createDronePresentation, droneHiddenFromCamera } from './dronePresentation.ts';
 import { configureDroneMaterials } from './droneModel.ts';
 import {missionAttachmentVisualFrame} from '../game/missionAttachmentVisual.ts';
-import { aerialTracerProfile, aerialTracerWidth, aerialTracerLength, aerialTracerBrightness, type AerialTracerProfile } from './aerialTracers.ts';
+import { configureGunshipMaterials } from '../game/gunshipVisual.ts';
 import { waterContactMaskAt } from '../world/waterContactMask.ts';
 import { createParticleSystem, mulberry32, makeFbm } from './particles.ts';
 import { LATE_FX_LAYER } from './layers.ts';
@@ -279,10 +281,10 @@ function isRingVisible(ring: ShockRingState | MuzzleRingState): boolean {
   return ring.mesh.visible;
 }
 
+/** (fx 9a) a missile in flight: its look and where its smoke trail, its wire and its body stand (the record outlives the
+ *  round by MISSILE_RECORD_LINGER_S, so a networked round that left the snapshot still parts its wire and ends its
+ *  trail) */
 interface GuidedTrail {
-  aerialWidth?: number;
-  points: Float32Array;
-  count: number;
   age: number;
   seen: boolean;
   /** (fx 9a) the round's look, seed, launch point and the distance flown last frame; (FX lane 10-14) its smoke trail's
@@ -298,12 +300,6 @@ interface GuidedTrail {
    *  nose (m): where its wire leaves, its beacon burns and its trail is born */
   calMm?: number;
   tailM?: number;
-}
-
-interface TracerTrail {
-  d: Float32Array;
-  age: number;
-  seen: boolean;
 }
 
 interface FxTimer {
@@ -357,10 +353,6 @@ interface LiveShell {
     type?: string;
     caliberMm?: number;
   };
-}
-
-interface TracerGeometry extends THREE.InstancedBufferGeometry {
-  _lastCount?: number;
 }
 
 interface FiringMoment {
@@ -613,44 +605,16 @@ function bufferAttribute(
   return value;
 }
 
-// ---------------------------------------------------------------------------
-// Tracer presets (shells-ballistics §10 — colors/widths verbatim)
-// ---------------------------------------------------------------------------
-
-// Widths boosted ~1.7x from the ballistic-scale values: tracers are core
-// battlefield readability (WoT deliberately thickens them) and the thin r2
-// ribbons were invisible in 60 fps frames.
-const TRACER_PRESETS = {
-  ATGM:   { core: 0xffff82, glow: 0xffd21f, width: 0.16 },
-  AP:     { core: 0xffd27a, glow: 0xff9030, width: 0.16 },
-  APCR:   { core: 0xe8f4ff, glow: 0x9cc8ff, width: 0.11 },
-  HEAT:   { core: 0xff6a3c, glow: 0xff3020, width: 0.19 },
-  HE:     { core: 0xffb02e, glow: 0xffe080, width: 0.26 },
-  HESH:   { core: 0xffc46b, glow: 0xffa040, width: 0.24 },
-  // r5: teal-green APFSDS bolt was an arcade/War-Thunder tell — modern AAA
-  // presentation runs hot yellow-white tracers across the board.
-  APFSDS: { core: 0xfff2c0, glow: 0xffb060, width: 0.10 },
-};
-// Afterglow: a dying tracer streak lingers this long after the shell dies (or
-// outruns the frame) so every 60 fps frame catches a readable line of flight.
-// r4: the afterglow is no longer the BRIGHT ribbon fading in place (the
-// critic's "sci-fi laser hanging in the air at 150/300/600 ms") — it is a
-// faint desaturated VAPOR ribbon (see trail write below: alpha < 0.25, grey)
-// gone in < 300 ms, and it ages against the SHARED PARTICLE CLOCK so
-// frozen-stepped captures fade it exactly like live frames do (the old
-// `if (!frozen) age += dt` gate held a full-brightness beam through every
-// stepped capture window).
-const TRAIL_S = 0.28;
-const ATGM_TRAIL_S = 0.48;
-const ATGM_TRAIL_POINTS = 24;
-const ATGM_TRAIL_SPACING_M = 0.55;
+/** a missile's record lingers this long after its round is gone (its wire parts and its trail ends where it was) */
+const MISSILE_RECORD_LINGER_S = 0.48;
 /** (FX lane 10-14) missile bodies drawn at once: a TOS-1A's 24 rockets and a 12-tube volley in the air together */
 const MAX_ATGM_BODIES = 48;
+/** (ac130-fx-228) a gunship shot whose muzzle sits this close to the camera is the pilot's own lens (the sim fires from
+ *  the orbit centre, where the gimbal's camera rides): nothing is drawn there */
+const GUNSHIP_LENS_M = 25;
 
 // Nominal muzzle velocities used ONLY by composeFiringMoment (m/s)
-const COMPOSE_VELOCITY = { AP: 800, APCR: 1050, HEAT: 780, HE: 750, HESH: 780, APFSDS: 1700 };
-
-const MAX_TRACERS = 256;
+const COMPOSED_ROUND_MPS = { AP: 800, APCR: 1050, HEAT: 780, HE: 750, HESH: 780, APFSDS: 1700 };
 const MUZZLE_LIGHT_S = 0.14;   // lighting_post r6: composed frame catches 41% of peak
 // 210 (was 1150): the 1150 peak stamped a ~20 m saturated yellow disc onto
 // the terrain and whited out the bottom half of the scope (r6 "flashbang").
@@ -768,123 +732,6 @@ let COLUMN_WIND_X = 0.82, COLUMN_WIND_Z = 0.28;
 // kill lands, the column closest to burning out is retired early.
 const MAX_COLUMNS = 4;
 
-// ---------------------------------------------------------------------------
-// Tracer shader (instanced stretched additive ribbon, camera-facing)
-// ---------------------------------------------------------------------------
-
-const TRACER_VERT = `
-attribute vec4 aA;     // tail.xyz, width
-attribute vec4 aB;     // head.xyz, brightness
-attribute vec3 aCore;
-attribute vec3 aGlow;
-attribute float aTint;
-varying vec2 vUv;
-varying vec3 vCore;
-varying vec3 vGlow;
-varying float vBright;
-varying float vSeed;
-varying float vTint;
-varying float vHead;
-#ifdef USE_FOG
-  varying float vFogDepth;
-#endif
-uniform vec2 uNearFade;
-void main() {
-  vUv = uv; vCore = aCore; vGlow = aGlow; vBright = aB.w; vTint = min(aTint, 1.0); vHead = step(1.5, aTint);
-  vSeed = fract( dot( aA.xyz, vec3( 0.1031, 0.11369, 0.13787 ) ) );
-  if ( aB.w <= 0.0 ) {
-    gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 );
-    #ifdef USE_FOG
-      vFogDepth = 1.0;
-    #endif
-    return;
-  }
-  vec3 axisRaw = aB.xyz - aA.xyz;
-  float len = max( length( axisRaw ), 1e-4 );
-  vec3 axis = axisRaw / len;
-  vec3 wpos = mix( aA.xyz, aB.xyz, position.x + 0.5 );
-  // lens fade: a ribbon segment right at the eye (own shot leaving the scope)
-  // must not flood the frame — fade the vertex's brightness in close
-  vBright *= smoothstep( uNearFade.x, uNearFade.y, distance( wpos, cameraPosition ) );
-  vec3 viewDir = normalize( cameraPosition - wpos );
-  vec3 side = cross( axis, viewDir );
-  float sl = length( side );
-  side = sl > 1e-4 ? side / sl : vec3( viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0] );
-  // The incandescent wake starts needle-thin and blooms only around the
-  // projectile head. This silhouette reads as a shell in flight instead of
-  // a constant-width billboard/laser, while retaining combat readability.
-  float along = position.x + 0.5;
-  float widthProfile = mix( 0.38, 1.0, smoothstep( 0.08, 0.78, along ) );
-  wpos += side * position.y * aA.w * 3.2 * widthProfile;
-  // A round seen end-on needs a camera-facing hot head: the flight ribbon
-  // otherwise collapses to zero projected area in the gunship gimbal.
-  if ( vHead > 0.5 ) {
-    vec3 right = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
-    vec3 up = vec3(viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1]);
-    wpos = aB.xyz + (right * position.x + up * position.y) * aA.w * 3.2;
-    vBright = aB.w * smoothstep(uNearFade.x, uNearFade.y, distance(aB.xyz, cameraPosition));
-  }
-  vec4 mvPosition = viewMatrix * vec4( wpos, 1.0 );
-  #ifdef USE_FOG
-    vFogDepth = -mvPosition.z;
-  #endif
-  gl_Position = projectionMatrix * mvPosition;
-}
-`;
-
-const TRACER_FRAG = `
-varying vec2 vUv;
-varying vec3 vCore;
-varying vec3 vGlow;
-varying float vBright;
-varying float vSeed;
-varying float vTint;
-varying float vHead;
-#ifdef USE_FOG
-  uniform vec3 fogColor;
-  uniform float fogNear;
-  uniform float fogFar;
-  varying float vFogDepth;
-#endif
-void main() {
-  float x = clamp( vUv.x, 0.0, 1.0 );
-  float d = abs( vUv.y * 2.0 - 1.0 );
-  float core = exp( -d * d * 48.0 );
-  float corona = exp( -d * d * 7.5 );
-  // Bright projectile bead plus a turbulent incandescent wake. The wake is
-  // tapered at birth and energy rises toward the round, white-hot head.
-  float tailGate = smoothstep( 0.0, 0.12, x );
-  float tailEnergy = pow( x, 0.78 ) * tailGate;
-  float shimmer = 0.91 + 0.09 * sin( x * 58.0 + vSeed * 31.0 );
-  vec2 hp = vec2( ( x - 0.955 ) * 1.75, ( vUv.y - 0.5 ) * 2.0 );
-  float bead = exp( -dot( hp, hp ) * 15.0 );
-  float a = ((core * 0.92 + corona * 0.28) * tailEnergy * shimmer
-    + bead * 1.15) * vBright;
-  if ( vHead < 0.5 && a < 0.004 ) discard;
-  #ifdef USE_FOG
-    float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
-  #else
-    float fogFactor = 0.0;
-  #endif
-  if ( vHead > 0.5 ) {
-    vec2 p = vUv * 2.0 - 1.0;
-    float r2 = dot(p,p);
-    float hot = exp(-r2 * 30.0);
-    float halo = exp(-r2 * 6.0) * (1.0 - smoothstep(0.55,1.0,r2));
-    gl_FragColor = vec4((vCore * hot * 3.0 + vGlow * halo * 0.7) * vBright * (1.0-fogFactor), (hot + halo * 0.35) * vBright);
-    return;
-  }
-  // A neutral hot core preserves the physical incandescent read; the shell
-  // preset lives in the close corona, so AP/APCR/HE remain distinguishable.
-  vec3 neutralHot = mix( vCore, vec3( 1.0, 0.97, 0.88 ), 0.72 );
-  vec3 hot = mix( neutralHot, vCore, vTint );
-  vec3 col = ( hot * core * 3.6 + vGlow * corona * 0.95 )
-    * tailEnergy * shimmer * vBright;
-  vec3 beadColor = mix( vec3( 1.0, 0.985, 0.92 ), vCore, vTint );
-  col += beadColor * bead * vBright * 3.0;
-  gl_FragColor = vec4( col * ( 1.0 - fogFactor ), a );
-}
-`;
 
 // ---------------------------------------------------------------------------
 // Module-scope scratch (reused — no per-frame allocation)
@@ -899,6 +746,8 @@ const _v6 = new THREE.Vector3();
 const _camV = new THREE.Vector3(); // camera-relative scratch (never aliased by callers)
 const _mfPos = new THREE.Vector3(); // spawnMuzzleFlash-private origin copy
 const _mfDir = new THREE.Vector3(); // spawnMuzzleFlash-private direction copy
+const _gpPos = new THREE.Vector3(); // gunshipMuzzleFx's gun port
+const _gpSide = new THREE.Vector3(); // gunshipMuzzleFx's level heading toward the guns' target
 const _sv = new THREE.Vector3();     // recipe-internal scratch (never an argument carrier)
 const _subjectAnchor = new THREE.Vector3(); // moving-emitter attachment scratch
 const _UP = new THREE.Vector3(0, 1, 0);  // read-only
@@ -1172,6 +1021,8 @@ function* createFxSteps(
   // Drone airframes and docks are lit meshes: they join the cascade setup like every vehicle material.
   if (engineCtx?.setupShadowMaterial) {
     configureDroneMaterials({ setup: (m) => engineCtx.setupShadowMaterial?.(m), release: (m) => engineCtx.releaseShadowMaterial?.(m) });
+    // (ac130-fx-228) and the gunship's airframe
+    configureGunshipMaterials({ setup: (m) => engineCtx.setupShadowMaterial?.(m), release: (m) => engineCtx.releaseShadowMaterial?.(m) });
   }
   // A drone whose flight ends in the air flies home over the battle world and lands on its carrier's dock.
   let droneWorldSeam: FxWorldSeam | null = null;
@@ -1455,44 +1306,6 @@ function* createFxSteps(
     applyLight(state);
   }
 
-  // --- tracer instanced mesh -------------------------------------------------
-  const tracerGeo: TracerGeometry = new THREE.InstancedBufferGeometry();
-  tracerGeo.setAttribute('position', new THREE.Float32BufferAttribute(
-    [-0.5, -0.5, 0, 0.5, -0.5, 0, 0.5, 0.5, 0, -0.5, 0.5, 0], 3));
-  tracerGeo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2));
-  tracerGeo.setIndex([0, 1, 2, 0, 2, 3]);
-  const trA = new THREE.InstancedBufferAttribute(new Float32Array(MAX_TRACERS * 4), 4);
-  const trB = new THREE.InstancedBufferAttribute(new Float32Array(MAX_TRACERS * 4), 4);
-  const trCore = new THREE.InstancedBufferAttribute(new Float32Array(MAX_TRACERS * 3), 3);
-  const trGlow = new THREE.InstancedBufferAttribute(new Float32Array(MAX_TRACERS * 3), 3);
-  const trTint = new THREE.InstancedBufferAttribute(new Float32Array(MAX_TRACERS), 1);
-  const tracerAttrs = [trA, trB, trCore, trGlow, trTint];
-  for (const a of tracerAttrs) a.setUsage(THREE.DynamicDrawUsage);
-  tracerGeo.setAttribute('aA', trA);
-  tracerGeo.setAttribute('aB', trB);
-  tracerGeo.setAttribute('aCore', trCore);
-  tracerGeo.setAttribute('aGlow', trGlow);
-  tracerGeo.setAttribute('aTint', trTint);
-  tracerGeo.instanceCount = 0;
-  const tracerMat = new THREE.ShaderMaterial({
-    vertexShader: TRACER_VERT,
-    fragmentShader: TRACER_FRAG,
-    uniforms: Object.assign(THREE.UniformsUtils.clone(THREE.UniformsLib.fog), {
-      uNearFade: { value: new THREE.Vector2(1.0, 3.8) },
-    }),
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-    side: THREE.DoubleSide,   // ribbon winding flips with view direction
-    fog: true,
-  });
-  const tracerMesh = new THREE.Mesh(tracerGeo, tracerMat);
-  tracerMesh.name = 'Ballistic tracer ribbons and heads';
-  tracerMesh.frustumCulled = false;
-  tracerMesh.matrixAutoUpdate = false;
-  tracerMesh.renderOrder = 24;
-  tracerMesh.layers.set(LATE_FX_LAYER);
-  group.add(tracerMesh);
   // ---- atmospherics lane (begin): the projectile tracers (projectileTracers.ts) draw every ballistic round in flight
   // (belt mix, ammunition colour, light-keyed halo, tumble, burnout); the shooter resolves through this frame's subject
   // resolver (the Studio's actors) and else the battle's entities
@@ -1505,6 +1318,8 @@ function* createFxSteps(
     },
     scene: engineCtx.scene ?? null,
     now: () => particles.getTime(),
+    // (ac130-fx-228) a networked gunship round names no weapon: its aircraft does
+    gunship: (id) => id != null && subjectFor(id)?.aerial?.kind === 'gunship',
   });
   group.add(tracers.mesh);
   // ---- atmospherics lane (end)
@@ -1538,22 +1353,8 @@ function* createFxSteps(
   }
   group.add(bodies.group, atgmFlares);
 
-  // Static tracers (screenshot composers) survive per-frame rebuilds:
-  // [ax,ay,az, bx,by,bz, width, bright, coreR,G,B, glowR,G,B, bornAtS] × N
-  // bornAtS (r5): stepped-frozen-clock captures used to show the composed
-  // bolt persisting unfaded for 2.5 s+ — statics now age against the shared
-  // particle clock like everything else (full bright ≤0.3 s, gone by 0.9 s).
-  const staticTracers: number[][] = [];
-  // Afterglow trails: shellId -> { d: Float32Array(14), age, seen }
-  const trails = new Map<ShellId, TracerTrail>();
-  // Guided flight paths retain multiple sampled positions so steering reads
-  // as a curved yellow trace. Each record owns one fixed buffer; the hot
-  // render loop only shifts and rewrites it.
+  // every missile and rocket in flight by shell id: its look, its smoke trail's slot and its wire (fx 9a, FX lane 10-14)
   const guidedTrails = new Map<ShellId, GuidedTrail>();
-  const _trailCore: MutableVec3 = [0, 0, 0];
-  const _trailGlow: MutableVec3 = [0, 0, 0];
-  const _atgmCore: MutableVec3 = [1, 0.64, 0.015];
-  const _atgmGlow: MutableVec3 = [1, 0.36, 0];
   const _atgmFlareObject = new THREE.Object3D();
   let renderedAtgmBodies = 0;
   let renderedAtgmTrailSegments = 0;
@@ -1741,7 +1542,6 @@ function* createFxSteps(
     ...particles.softParticles,
     isActive: () => particles.softParticles.isActive()
       || (vol ? vol.isActive() : false)
-      || tracerGeo.instanceCount > 0
       || tracers.active() // atmospherics lane
       || bodies.count > 0
       // (FX lane 10-14) a parted wire settling after its missile has gone, and a trail hanging after its missile has
@@ -2017,79 +1817,6 @@ function* createFxSteps(
     printSurface.needsUpdate = true;
   }
 
-  const _coreArr: MutableVec3 = [0, 0, 0];
-  const _glowArr: MutableVec3 = [0, 0, 0];
-
-  function writeTracer(
-    i: number,
-    ax: number,
-    ay: number,
-    az: number,
-    bx: number,
-    by: number,
-    bz: number,
-    width: number,
-    bright: number,
-    core: MutableVec3,
-    glow: MutableVec3,
-    tint = 0,
-  ): void {
-    let j = i * 4;
-    trA.array[j] = ax; trA.array[j + 1] = ay; trA.array[j + 2] = az; trA.array[j + 3] = width;
-    trB.array[j] = bx; trB.array[j + 1] = by; trB.array[j + 2] = bz; trB.array[j + 3] = bright;
-    j = i * 3;
-    trCore.array[j] = core[0]; trCore.array[j + 1] = core[1]; trCore.array[j + 2] = core[2];
-    trGlow.array[j] = glow[0]; trGlow.array[j + 1] = glow[1]; trGlow.array[j + 2] = glow[2];
-    trTint.array[i] = tint;
-  }
-
-  function appendGuidedTrailPoint(
-    trail: GuidedTrail,
-    x: number,
-    y: number,
-    z: number,
-  ): void {
-    const points = trail.points;
-    const count = trail.count;
-    if (count > 0) {
-      const p = (count - 1) * 3;
-      const dx = x - points[p], dy = y - points[p + 1], dz = z - points[p + 2];
-      if (dx * dx + dy * dy + dz * dz < ATGM_TRAIL_SPACING_M * ATGM_TRAIL_SPACING_M) {
-        points[p] = x; points[p + 1] = y; points[p + 2] = z;
-        return;
-      }
-    }
-    if (trail.count >= ATGM_TRAIL_POINTS) {
-      points.copyWithin(0, 3, ATGM_TRAIL_POINTS * 3);
-      trail.count = ATGM_TRAIL_POINTS - 1;
-    }
-    const p = trail.count * 3;
-    points[p] = x; points[p + 1] = y; points[p + 2] = z;
-    trail.count++;
-  }
-
-  function writeGuidedTrail(
-    trail: GuidedTrail,
-    firstInstance: number,
-    opacity = 1,
-  ): number {
-    let instance = firstInstance;
-    const points = trail.points;
-    const denom = Math.max(1, trail.count - 1);
-    for (let i = 1; i < trail.count && instance < MAX_TRACERS; i++) {
-      const a = (i - 1) * 3;
-      const b = i * 3;
-      const head = i / denom;
-      writeTracer(instance++,
-        points[a], points[a + 1], points[a + 2],
-        points[b], points[b + 1], points[b + 2],
-        trail.aerialWidth ? trail.aerialWidth * (0.55 + 0.45 * head) : 0.08 + 0.09 * head,
-        (trail.aerialWidth ? 0.22 + 0.6 * head : 0.55 + 1.05 * head) * opacity,
-        _atgmCore, _atgmGlow, 1);
-      renderedAtgmTrailSegments++;
-    }
-    return instance;
-  }
 
   // --- timers, continuous emitters, event bookkeeping ------------------------
   /** @type {{t:number, fn:Function}[]} pending one-shot callbacks (sim-frozen aware) */
@@ -4536,28 +4263,6 @@ function* createFxSteps(
     }
   }
 
-  function writeGuidedShell(shell: LiveShell, tracerIndex: number, aerialWidth = 0): number {
-    const shellPos = shell.pos;
-    writeGuidedBody(shellPos, _v1);
-    let trail = guidedTrails.get(shell.id);
-    if (!trail) {
-      trail = {
-        points: new Float32Array(ATGM_TRAIL_POINTS * 3),
-        count: 0,
-        age: 0,
-        seen: true,
-      };
-      guidedTrails.set(shell.id, trail);
-      if (shell.prevPos) appendGuidedTrailPoint(
-        trail, shell.prevPos.x, shell.prevPos.y, shell.prevPos.z,
-      );
-    }
-    trail.age = 0;
-    trail.seen = true;
-    trail.aerialWidth = aerialWidth;
-    appendGuidedTrailPoint(trail, shellPos.x, shellPos.y, shellPos.z);
-    return writeGuidedTrail(trail, tracerIndex);
-  }
 
   // ---- (fx 9a) missiles: each round its own look (missileLooks.ts) ----------------------------------------------------
   /** launch points by shell id (shell:fired), for the command wires */
@@ -4603,10 +4308,17 @@ function* createFxSteps(
     const owner = decalEntityFor(shell.shooterId) as (FxEntity & {
       spec?: { gun?: { shells?: readonly ({ name?: string; type?: string; guided?: boolean; soundProfile?: string } | null)[] } };
     }) | null;
+    if (missileByShooter.size > 64) { missileByShooter.clear(); calibreByShooter.clear(); }
+    // (ac130-fx-228) a networked gunship's spec is its pilot's garage tank: its aircraft names the missile (the hellfire)
+    if ((owner as FxEntity | null)?.aerial?.kind === 'gunship') {
+      const look = missileLookFor(null, 'gunship-missile', false);
+      missileByShooter.set(key, look);
+      calibreByShooter.set(key, gunshipCaliberMm('missile'));
+      return look;
+    }
     const shells = owner?.spec?.gun?.shells ?? [];
     const round = shells.find((r) => r?.guided === true && (!spec?.type || r.type === spec.type)) ?? shells.find((r) => r?.guided === true);
     const look = missileLookFor(round?.name, round?.soundProfile, false);
-    if (missileByShooter.size > 64) { missileByShooter.clear(); calibreByShooter.clear(); }
     missileByShooter.set(key, look);
     calibreByShooter.set(key, (round as { caliberMm?: number } | undefined)?.caliberMm ?? 0);
     return look;
@@ -4615,7 +4327,7 @@ function* createFxSteps(
   function missileRecord(shell: LiveShell): GuidedTrail {
     let trail = guidedTrails.get(shell.id);
     if (!trail) {
-      trail = { points: new Float32Array(ATGM_TRAIL_POINTS * 3), count: 0, age: 0, seen: true };
+      trail = { age: 0, seen: true };
       guidedTrails.set(shell.id, trail);
     }
     if (!trail.look) {
@@ -4636,11 +4348,11 @@ function* createFxSteps(
   }
 
   /**
-   * A missile or rocket in flight (not the gunship's): its body (wobbling with its steering), its motor's flare and hot
-   * plume once lit, the pop where a coasting motor lights, its smoke trail on the media layer (puffs born where it
-   * passed, when it passed) and the command wires paying out behind a wire-guided round.
+   * A missile or rocket in flight (the gunship's too: its hellfire): its body (wobbling with its steering), its motor's
+   * flare and hot plume once lit, the pop where a coasting motor lights, its smoke trail on the media layer (puffs born
+   * where it passed, when it passed) and the command wires paying out behind a wire-guided round.
    */
-  function writeMissile(shell: LiveShell, tracerIndex: number): number {
+  function writeMissile(shell: LiveShell): void {
     const trail = missileRecord(shell);
     trail.age = 0;
     trail.seen = true;
@@ -4698,7 +4410,6 @@ function* createFxSteps(
     }
     if (look.wires > 0) payOutWire(trail, shell, look, dir);
     trail.lastD = d;
-    return tracerIndex;
   }
 
   /** the live presentation entity a shooter id names (the Studio's actors first, else the battle's) */
@@ -4786,6 +4497,61 @@ function* createFxSteps(
     }
   }
 
+  /**
+   * (ac130-fx-228) A gunship shot's muzzle. The simulation fires every gunship round from the orbit centre, where the
+   * pilot's gimbal camera rides: in that lens nothing is drawn at the muzzle (no tank flash cards, no propellant media a
+   * metre in front of the glass; the rig's recoil kick sells the shot). Every other view (a teammate's, the killcam, a
+   * replay, an external camera) sees the airframe's guns: a small flash at the gun port on the side that faces the
+   * target (the guns train out of the port side, at the fuselage's waist) and a puff the slipstream carries off, the
+   * howitzer's a heavier flash and a dirtier cloud; the missile leaves its rail with the hellfire's launch.
+   */
+  function gunshipMuzzleFx(e: PredictedWeaponEvent, gun: GunshipRound, seed: number): void {
+    _v3.set(e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]);
+    _v4.set(e.dir[0], e.dir[1], e.dir[2]);
+    const cam = engineCtx && engineCtx.camera;
+    if (cam && cam.position.distanceToSquared(_v3) < GUNSHIP_LENS_M * GUNSHIP_LENS_M) return;
+    _gpSide.set(_v4.x, 0, _v4.z);
+    if (_gpSide.lengthSq() < 1e-6) _gpSide.set(1, 0, 0); else _gpSide.normalize();
+    _gpPos.copy(_v3).addScaledVector(_gpSide, 2.4);
+    _gpPos.y -= 0.8;
+    if (gun === 'missile') {
+      const look = missileLookFor(null, 'gunship-missile', false);
+      flashLight(lightStates[0], _gpPos, MUZZLE_LIGHT_PEAK * 0.3 * look.launchK, 0);
+      if (blast) missileLaunch(blast, puffRandom(seed), look, _gpPos.x, _gpPos.y, _gpPos.z, _v4.x, _v4.y, _v4.z,
+        groundY(_gpPos.x, _gpPos.z), 0);
+      return;
+    }
+    const heavy = gun === 'howitzer';
+    const k = heavy ? 2.6 : 1;
+    // the gun's flash: a hot core and its orange tongue down the line of fire
+    _puffO.pos[0] = _gpPos.x + _v4.x * 0.5; _puffO.pos[1] = _gpPos.y + _v4.y * 0.5; _puffO.pos[2] = _gpPos.z + _v4.z * 0.5;
+    _puffO.vel[0] = _v4.x * 2; _puffO.vel[1] = _v4.y * 2; _puffO.vel[2] = _v4.z * 2;
+    _puffO.life = heavy ? 0.11 : 0.06; _puffO.size0 = 0.45 * k; _puffO.size1 = 1.5 * k;
+    _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = 0;
+    col3(0xfff2c8, _puffO.col0); col3(0xff9a3a, _puffO.col1);
+    _puffO.alpha = heavy ? 0.85 : 0.7; _puffO.grav = 0; _puffO.birthOffset = 0;
+    particles.emit('flash', _puffO);
+    _jetO.pos[0] = _gpPos.x; _jetO.pos[1] = _gpPos.y; _jetO.pos[2] = _gpPos.z;
+    _jetO.axis[0] = _v4.x; _jetO.axis[1] = _v4.y; _jetO.axis[2] = _v4.z;
+    _jetO.life = heavy ? 0.09 : 0.05; _jetO.width = 0.22 * k; _jetO.len0 = 0.5 * k; _jetO.len1 = 1.6 * k;
+    _jetO.seed = rng(); col3(0xffe2a8, _jetO.col); _jetO.alpha = 0.85; _jetO.birthOffset = 0;
+    particles.emit('jet', _jetO);
+    // the gas: carried off behind the airframe by the slipstream (the orbit's tangent: up the aim's level heading x up)
+    const sx = -_gpSide.z, sz = _gpSide.x;
+    const puffs = heavy ? 3 : 1;
+    for (let i = 0; i < puffs; i++) {
+      _puffO.pos[0] = _gpPos.x + _v4.x * 0.8; _puffO.pos[1] = _gpPos.y + _v4.y * 0.8; _puffO.pos[2] = _gpPos.z + _v4.z * 0.8;
+      const v = (heavy ? 10 : 7) + rng() * 6;
+      _puffO.vel[0] = _v4.x * 3 + sx * v; _puffO.vel[1] = _v4.y * 3 + (rng() - 0.5); _puffO.vel[2] = _v4.z * 3 + sz * v;
+      _puffO.life = (heavy ? 1.6 : 0.9) + rng() * 0.6; _puffO.size0 = 0.4 * k; _puffO.size1 = (heavy ? 2.4 : 1.4) * k;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 1.2;
+      col3(heavy ? 0x8f8a80 : 0xb5b0a6, _puffO.col0); col3(0x9a978f, _puffO.col1);
+      _puffO.alpha = heavy ? 0.42 : 0.26; _puffO.grav = 0; _puffO.birthOffset = 0;
+      particles.emit('smoke', _puffO);
+    }
+    flashLight(lightStates[0], _gpPos, MUZZLE_LIGHT_PEAK * (heavy ? 0.5 : 0.18) * muzzleLightScale, 0);
+  }
+
   /** the covered warm's trail (warmProjectilePresentation) */
   const WARM_TRAIL_KEY = -7;
 
@@ -4839,82 +4605,10 @@ function* createFxSteps(
     if (slot >= 0) smokeTrails.end(slot, particles.getTime(), pos?.[0], pos?.[1], pos?.[2]);
   }
 
-  function writeShellBolt(
-    shell: LiveShell,
-    camera: THREE.Camera,
-    preset: (typeof TRACER_PRESETS)[keyof typeof TRACER_PRESETS],
-    guided: boolean,
-    tracerIndex: number,
-    aerial: AerialTracerProfile | null,
-  ): number {
-    const shellPos = shell.pos;
-    col3(preset.core, _coreArr);
-    col3(preset.glow, _glowArr);
-    let widthScale = shell.isPlayer ? 1 : 1.7;
-    let brightness = shell.isPlayer ? 1.15 : 1.5;
-    _camV.copy(shellPos).sub(camera.position);
-    const cameraDistance = _camV.length();
-    if (cameraDistance > 1e-4) {
-      const alignment = THREE.MathUtils.smoothstep(
-        Math.abs(_camV.dot(_v1)) / cameraDistance,
-        0.9,
-        0.995,
-      );
-      widthScale *= 1 + 2.6 * alignment;
-      brightness *= 1 + 0.9 * alignment;
-    }
-    const dark = tracers.darkLevel();
-    const width = aerial ? aerialTracerWidth(aerial, cameraDistance, camera.projectionMatrix.elements[5], dark)
-      : Math.min(preset.width * widthScale, 0.15);
-    if (aerial) brightness = aerialTracerBrightness(aerial, dark);
-    writeTracer(
-      tracerIndex,
-      _v2.x, _v2.y, _v2.z,
-      shellPos.x, shellPos.y, shellPos.z,
-      width,
-      brightness,
-      guided && !aerial ? _atgmCore : _coreArr,
-      guided && !aerial ? _atgmGlow : _glowArr,
-      guided && !aerial ? 1 : 0,
-    );
-    if (!guided) rememberShellTrail(shell, width, brightness);
-    tracerIndex++;
-    if (aerial && tracerIndex < MAX_TRACERS) {
-      writeTracer(tracerIndex++, shellPos.x,shellPos.y,shellPos.z,
-        shellPos.x,shellPos.y,shellPos.z, width*aerial.headScale, brightness, _coreArr,_glowArr,2);
-    }
-    return tracerIndex;
-  }
 
-  function rememberShellTrail(shell: LiveShell, width: number, brightness: number): void {
-    let trail = trails.get(shell.id);
-    if (!trail) {
-      trail = { d: new Float32Array(14), age: 0, seen: true };
-      trails.set(shell.id, trail);
-    }
-    trail.age = 0;
-    trail.seen = true;
-    const data = trail.d;
-    data[0] = _v2.x;
-    data[1] = _v2.y;
-    data[2] = _v2.z;
-    data[3] = shell.pos.x;
-    data[4] = shell.pos.y;
-    data[5] = shell.pos.z;
-    data[6] = width * 1.3;
-    data[7] = brightness * 0.16;
-    data[8] = 0.45 + _coreArr[0] * 0.25;
-    data[9] = 0.44 + _coreArr[1] * 0.25;
-    data[10] = 0.43 + _coreArr[2] * 0.25;
-    data[11] = 0.30 + _glowArr[0] * 0.25;
-    data[12] = 0.30 + _glowArr[1] * 0.25;
-    data[13] = 0.30 + _glowArr[2] * 0.25;
-  }
-
-  function writeLiveShellTracers(shells: LiveShell[], camera: THREE.Camera): number {
+  function writeLiveShellTracers(shells: LiveShell[], camera: THREE.Camera): void {
     drones.begin(particles.getTime(), camera.position);
     tracers.begin(); // atmospherics lane
-    let tracerCount = 0;
     liveAtgmCount = 0;
     bodies.begin();
     renderedAtgmTrailSegments = 0;
@@ -4934,37 +4628,19 @@ function* createFxSteps(
       const sh = shells[i];
       if (!sh.dead && (sh.spec?.guided || sh.rocket === true)) liveMissiles++;
     }
-    for (let index = 0; index < shells.length && tracerCount < MAX_TRACERS; index++) {
+    for (let index = 0; index < shells.length; index++) {
       const shell = shells[index];
       if (shell.dead) continue;
       if (shell.spec?.tracer === 'DRONE') continue;
-      const guided = !!shell.spec?.guided || shell.rocket === true;
-      const tracerId = guided ? 'ATGM' : shell.spec?.tracer;
-      // Snapshot shells carry type/guidance, not the complete local gun record.
-      const aerial = aerialTracerProfile(shell.spec?.reloadGroup) ??
-        (decalEntityFor(shell.shooterId)?.aerial?.kind === 'gunship'
-          ? aerialTracerProfile(guided ? 'gunship-missile' : tracerId === 'HE' ? 'gunship-howitzer' : 'gunship-cannon') : null);
-      // atmospherics lane: a ballistic round's tracer (not a missile, rocket or the gunship's)
-      if (!guided && !aerial) { tracers.write(shell); continue; }
-      const preset = aerial ?? TRACER_PRESETS[tracerId ?? 'AP'];
-      const speed = shell.vel.length();
-      const length = aerial ? aerialTracerLength(aerial, speed, shell.distM ?? 0, tracers.darkLevel()) : Math.min(
-        THREE.MathUtils.clamp(speed * 0.0035, 3, 6),
-        Math.max(shell.distM || 0, 0.08),
-      );
+      // atmospherics lane: a ballistic round's tracer (the gunship's autocannon and howitzer rounds too: their own
+      // classes, projectileTracers.ts tracerRoundClass)
+      if (!shell.spec?.guided && shell.rocket !== true) { tracers.write(shell); continue; }
+      // (fx 9a) a missile or rocket draws its own look (the gunship's: the hellfire, missileLooks.ts)
       _v1.copy(shell.vel).normalize();
-      _v2.copy(shell.pos).addScaledVector(_v1, -length);
-      // (fx 9a) a missile or rocket draws its own look; the gunship's keep their gimbal-readable ribbon
-      if (guided && !aerial) { tracerCount = writeMissile(shell, tracerCount); continue; }
-      if (guided) {
-        tracerCount = writeGuidedShell(shell, tracerCount, aerial ? aerialTracerWidth(aerial, shell.pos.distanceTo(camera.position), camera.projectionMatrix.elements[5], tracers.darkLevel()) : 0);
-        if (tracerCount >= MAX_TRACERS) continue;
-      }
-      tracerCount = writeShellBolt(shell, camera, preset, guided, tracerCount, aerial);
+      writeMissile(shell);
     }
     tracers.end(); // atmospherics lane
     drones.end();
-    return tracerCount;
   }
 
   function commitAtgmInstances(): void {
@@ -4978,88 +4654,19 @@ function* createFxSteps(
     atgmFlares.userData.lastCount = liveAtgmCount;
   }
 
-  function writeGuidedTrailAfterglow(tracerCount: number, tickDt: number): number {
+  /** A missile's record after its round is gone: its wire parts and its trail ends where it was last seen (a networked
+   *  round that left the snapshot raised no event here), then the record is dropped. */
+  function ageMissileRecords(tickDt: number): void {
     for (const [id, trail] of guidedTrails) {
       if (trail.seen) continue;
       // (FX lane 10-14) a wire-guided round gone with no event here (a networked round that left the snapshot): its
       // wire parts where it was last seen
       if (trail.age === 0 && trail.look) { if (trail.look.wires > 0) partWire(id); endTrail(id); }
       trail.age += tickDt;
-      if (trail.age >= ATGM_TRAIL_S) {
-        guidedTrails.delete(id);
-        continue;
-      }
-      const fade = 1 - trail.age / ATGM_TRAIL_S;
-      // (fx 9a) a missile's own look draws its own trail (missileTrails.ts)
-      if (trail.look) continue;
-      tracerCount = writeGuidedTrail(trail, tracerCount, fade * fade);
+      if (trail.age >= MISSILE_RECORD_LINGER_S) guidedTrails.delete(id);
     }
-    return tracerCount;
   }
 
-  function writeShellTrailAfterglow(tracerCount: number, tickDt: number): number {
-    for (const [id, trail] of trails) {
-      if (trail.seen) {
-        trail.seen = false;
-        continue;
-      }
-      trail.age += tickDt;
-      if (trail.age >= TRAIL_S) {
-        trails.delete(id);
-        continue;
-      }
-      if (tracerCount >= MAX_TRACERS) continue;
-      const fade = 1 - trail.age / TRAIL_S;
-      const data = trail.d;
-      _trailCore[0] = data[8];
-      _trailCore[1] = data[9];
-      _trailCore[2] = data[10];
-      _trailGlow[0] = data[11];
-      _trailGlow[1] = data[12];
-      _trailGlow[2] = data[13];
-      writeTracer(
-        tracerCount++,
-        data[0], data[1], data[2],
-        data[3], data[4], data[5],
-        data[6], data[7] * fade * fade,
-        _trailCore, _trailGlow,
-      );
-    }
-    return tracerCount;
-  }
-
-  function writeStaticTracerAfterglow(tracerCount: number): number {
-    const nowS = particles.getTime();
-    for (let index = 0; index < staticTracers.length && tracerCount < MAX_TRACERS; index++) {
-      const tracer = staticTracers[index];
-      const age = tracer.length > 14 ? nowS - tracer[14] : 0;
-      const fade = 1 - THREE.MathUtils.smoothstep(age, 0.3, 0.9);
-      if (fade <= 0.001) continue;
-      _trailCore[0] = tracer[8];
-      _trailCore[1] = tracer[9];
-      _trailCore[2] = tracer[10];
-      _trailGlow[0] = tracer[11];
-      _trailGlow[1] = tracer[12];
-      _trailGlow[2] = tracer[13];
-      writeTracer(
-        tracerCount++,
-        tracer[0], tracer[1], tracer[2],
-        tracer[3], tracer[4], tracer[5],
-        tracer[6], tracer[7] * fade,
-        _trailCore,
-        _trailGlow,
-      );
-    }
-    return tracerCount;
-  }
-
-  function commitTracerInstances(tracerCount: number): void {
-    tracerGeo.instanceCount = tracerCount;
-    if (tracerCount > 0 || tracerGeo._lastCount !== 0) {
-      for (const attribute of tracerAttrs) attribute.needsUpdate = true;
-    }
-    tracerGeo._lastCount = tracerCount;
-  }
 
   function emitWetTrackDust(
     pos: THREE.Vector3,
@@ -5390,7 +4997,7 @@ function* createFxSteps(
     rubble?.shiftTime(delta);
     stages?.shiftTime(delta);
     fractureStages?.shiftTime(delta);
-    for (const tracer of staticTracers) if (tracer.length > 14) tracer[14] += delta;
+    tracers.shiftTime(delta);
     for (const state of lightStates) state.bornAt += delta;
     for (const ring of shockRings) ring.bornAt += delta;
     for (const ring of muzzleRings) ring.bornAt += delta;
@@ -6109,7 +5716,7 @@ function* createFxSteps(
       writeLocalLights();
       advanceTimedFx(tickDt);
       sweepShellsThroughProps(shells);
-      let tracerCount = writeLiveShellTracers(shells, camera);
+      writeLiveShellTracers(shells, camera);
       commitAtgmInstances();
       // (FX lane 10-14) the trails and wires after their rounds (the clock, the wind; a wire's sag, its launcher's pull, its
       // fall once parted), lit by the scene now
@@ -6118,10 +5725,7 @@ function* createFxSteps(
       if (wires.mesh.visible || smokeTrails.mesh.visible || bodies.count > 0) {
         readSceneLight((engineCtx.scene?.userData ?? null) as SceneLightData | null, missileLight);
       }
-      tracerCount = writeGuidedTrailAfterglow(tracerCount, tickDt);
-      tracerCount = writeShellTrailAfterglow(tracerCount, tickDt);
-      tracerCount = writeStaticTracerAfterglow(tracerCount);
-      commitTracerInstances(tracerCount);
+      ageMissileRecords(tickDt);
     },
 
     /**
@@ -6187,8 +5791,17 @@ function* createFxSteps(
       onFxEvent(bus, 'shell:fired', (e) => {
         _v3.set(e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]);
         _v4.set(e.dir[0], e.dir[1], e.dir[2]);
+        // (ac130-fx-228) the gunship's guns: their own muzzle (gunshipMuzzleFx), never a tank cannon's at the lens
+        const gun = gunshipShotOf(e.weaponSound, e.shooterId != null && subjectFor(e.shooterId)?.aerial?.kind === 'gunship',
+          e.shellType, e.guided);
+        if (gun) {
+          if (gun === 'missile') {
+            if (missileLaunchAt.size > 96) missileLaunchAt.clear();
+            missileLaunchAt.set(e.shellId, [e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2], e.caliberMm || gunshipCaliberMm('missile')]);
+          }
+          if (!e.feedbackPredicted) gunshipMuzzleFx(e, gun, idSeed(e.shellId));
         // (fx 9a) a missile's or rocket's launch is its own (missileRecipes.ts); its launch point anchors the wires
-        if (firedIsMissile(e.weaponSound, e.rocket)) {
+        } else if (firedIsMissile(e.weaponSound, e.rocket)) {
           if (missileLaunchAt.size > 96) missileLaunchAt.clear();
           missileLaunchAt.set(e.shellId, [e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2], e.caliberMm || 0]);
           if (!e.feedbackPredicted) missileLaunchFx(e, idSeed(e.shellId));
@@ -6212,7 +5825,9 @@ function* createFxSteps(
         _v3.set(e.muzzlePos[0], e.muzzlePos[1], e.muzzlePos[2]);
         _v4.set(e.dir[0], e.dir[1], e.dir[2]);
         // Presentation only; sabot petals and sweep/prop ownership await authority.
-        if (firedIsMissile(e.weaponSound, e.rocket)) missileLaunchFx(e, idSeed(`${e.muzzlePos.join(',')}`));
+        const gun = gunshipShotOf(e.weaponSound, false);
+        if (gun) gunshipMuzzleFx(e, gun, idSeed(`${e.muzzlePos.join(',')}`));
+        else if (firedIsMissile(e.weaponSound, e.rocket)) missileLaunchFx(e, idSeed(`${e.muzzlePos.join(',')}`));
         else fx.muzzleFlash(_v3, _v4, e.caliberMm, e.rocket);
       });
       onFxEvent(bus, 'shell:hit', (e) => {
@@ -7198,13 +6813,10 @@ function* createFxSteps(
       // fresh battle — arm the flyby exhaust start-up burst (atmospherics r2, wave 311: not for a Studio scene, whose hulls
       // are already running: its cough read as the smoke launch "bursting into dark brown-black smoke")
       battleFreshS = options?.running ? 999 : 0;
-      staticTracers.length = 0;
-      trails.clear();
       guidedTrails.clear();
       missileLaunchAt.clear();
       missileByShooter.clear();
       calibreByShooter.clear();
-      tracerGeo.instanceCount = 0;
       tracers.reset(); // atmospherics lane
       liveAtgmCount = 0;
       bodies.reset();
@@ -7276,8 +6888,7 @@ function* createFxSteps(
      *           tracerType: string, ageS: number }} o
      */
     composeFiringMoment({ muzzlePos, dir, caliberMm, tracerType, ageS, rocket = false, velocityMps }: FiringMoment): void {
-      const preset = rocket ? TRACER_PRESETS.ATGM : TRACER_PRESETS[tracerType === 'DRONE' ? 'AP' : tracerType] || TRACER_PRESETS.AP;
-      const vel = rocket ? velocityMps || 300 : COMPOSE_VELOCITY[tracerType === 'DRONE' ? 'AP' : tracerType] || 800;
+      const vel = rocket ? velocityMps || 300 : COMPOSED_ROUND_MPS[tracerType === 'DRONE' ? 'AP' : tracerType] || 800;
       // NOTE (r5): the recipe samples gunMuzzleWorld AFTER advancing the
       // recoil, and the rendered barrel is equally recoiled — the anchor
       // always matches the visible tip, so the flash spawns exactly on it.
@@ -7302,15 +6913,10 @@ function* createFxSteps(
       const len = Math.min(THREE.MathUtils.clamp(vel * 0.02, 2, 12), headDist - 0.55);
       _v1.copy(muzzlePos).addScaledVector(dir, headDist);
       _v2.copy(muzzlePos).addScaledVector(dir, Math.max(headDist - len, 0.3));
-      col3(preset.core, _coreArr); col3(preset.glow, _glowArr);
-      // ONE slim bolt (r7: the 1.3x/0.8 + 1.2x/0.32 pair read as multiple
-      // simultaneous tracers from a single shot). The flash core owns the
-      // frame's brightest pixels; the bolt just says "departed".
-      staticTracers.push([
-        _v2.x, _v2.y, _v2.z, _v1.x, _v1.y, _v1.z, preset.width * 1.05, 0.85,
-        _coreArr[0], _coreArr[1], _coreArr[2], _glowArr[0], _glowArr[1], _glowArr[2],
-        particles.getTime(), // bornAtS: stepped captures age the bolt honestly
-      ]);
+      // ONE round's tracer (r7: the 1.3x/0.8 + 1.2x/0.32 pair read as multiple simultaneous tracers from a single shot).
+      // (ac130-fx-228) drawn by the projectile tracers as a live round of this calibre draws (the media lane: the old
+      // ribbon's "white bolt reads as a beam"), aged on the effects clock so stepped captures fade it honestly
+      tracers.compose(_v1.x, _v1.y, _v1.z, _v2.x, _v2.y, _v2.z, caliberMm, particles.getTime(), rocket);
       // muzzle light state at ageS — still glowing at 50 ms (dur 120 ms).
       // r2 ON THE BORE at the tip (was muzzle - 0.9 m, +0.4 up): the pulled-
       // back overhead light pooled on the tube's TOP at mid-length and froze

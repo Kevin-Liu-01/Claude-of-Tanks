@@ -1,13 +1,26 @@
 import * as THREE from 'three';
 interface Aircraft { root: THREE.Group; rotors: THREE.Mesh[]; dispose(): void }
 const aircraft = new WeakMap<THREE.Object3D, Aircraft>();
-/** An orbiting four-engine gunship replaces the tank exterior in aerial mode. */
-export function syncGunshipVisual(tankRoot: THREE.Object3D, position: THREE.Vector3, yaw: number, dt: number, visible: boolean): void {
+/** (ac130-fx-228) The airframe's lit materials join the battle's cascade setup (engineCtx.setupShadowMaterial), as every
+ *  lit material in the scene must; the FX runtime installs the hooks when it is built (effects.ts, as it does the
+ *  drones'), before any battle frame can show the airframe. */
+interface GunshipMaterialHooks { setup(material: THREE.Material): void; release(material: THREE.Material): void }
+let materialHooks: GunshipMaterialHooks | null = null;
+export function configureGunshipMaterials(hooks: GunshipMaterialHooks | null): void { materialHooks = hooks; }
+
+/** An orbiting four-engine gunship replaces the tank exterior in aerial mode. (ac130-fx-228) `pilotLens`: the pilot's own
+ *  camera, given for the player's gunship. The gimbal lens rides the orbit centre, inside the airframe, so the airframe
+ *  draws whenever that camera is elsewhere (the killcam, the ending's replay and orbit, an external camera). */
+export function syncGunshipVisual(tankRoot: THREE.Object3D, position: THREE.Vector3, yaw: number, dt: number, visible: boolean,
+  pilotLens: THREE.Vector3 | false | null = null): void {
+  if (pilotLens) visible = pilotLens.distanceToSquared(position) > 900;
   let model=aircraft.get(tankRoot);
   if(!model){
     const root=new THREE.Group();root.name='AC-130 gunship';const rotors:THREE.Mesh[]=[];
     const gray=new THREE.MeshStandardMaterial({color:0x596469,metalness:.35,roughness:.55});
     const black=new THREE.MeshStandardMaterial({color:0x171e22,metalness:.25,roughness:.4});
+    const hooks=materialHooks;
+    if(hooks){hooks.setup(gray);hooks.setup(black);}
     const box=(w:number,h:number,d:number,x:number,y:number,z:number,mat=gray)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y,z);root.add(m);return m;};
     const hull=new THREE.Mesh(new THREE.CapsuleGeometry(1.6,23,6,12),gray);hull.rotation.x=Math.PI/2;root.add(hull);
     box(39,.4,4.4,0,.6,1);box(13,.3,3,0,1,-11);box(.3,5,4,0,2.4,-10);
@@ -21,6 +34,7 @@ export function syncGunshipVisual(tankRoot: THREE.Object3D, position: THREE.Vect
     const release = () => {
       root.removeFromParent();
       root.traverse(object => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
+      if(hooks){hooks.release(gray);hooks.release(black);}
       gray.dispose(); black.dispose(); aircraft.delete(tankRoot);
       tankRoot.removeEventListener('removed', release);
     };

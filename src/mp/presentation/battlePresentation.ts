@@ -738,6 +738,8 @@ export function createBattlePresentation({
     return roster.map((actor) => ({
       id: actor.id, name: actor.displayName || actor.spec.name || actor.specId, vehicle: actor.displayName || actor.spec.name || actor.specId,
       specId: actor.specId, team: actor.team === 'enemy' ? 'enemy' : 'ally', alive: !actor.combat.destroyed, isPlayer: actor.isPlayer,
+      // (ac130-fx-228) a gunship pilot's row names the AC-130 (ui/icons.ts killSourceIdentity)
+      ...(actor.aerial?.kind === 'gunship' ? { aircraft: true } : {}),
     }));
   }
 
@@ -1000,6 +1002,8 @@ export function createBattlePresentation({
         bus.emit('tank:destroyed', {
           id, specId: actor?.specId, killerId: payload.killerId, cause: payload.cause === 'ammo_rack' ? 'ammorack' : payload.cause,
           pos: died ? [payload.x, payload.y, payload.z] : actor ? [actor.state.pos.x, actor.state.pos.y, actor.state.pos.z] : null,
+          // (ac130-fx-228) the authority's kill source (the gunship's, the drone's), rendered, never re-derived here
+          ...(payload.source === 'ac130' || payload.source === 'drone' ? { source: payload.source } : {}),
         });
         return;
       }

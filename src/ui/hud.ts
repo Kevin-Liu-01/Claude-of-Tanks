@@ -2,7 +2,8 @@ import { isRapidFireHit } from '../game/weaponHitKind.ts';
 import { tankSeedId } from '../vehicles/tankIdAliases.ts';
 import { accumulateDamage, canAccumulateDamage, DAMAGE_BURST_GAP_MS, type DamageNumberBurst } from './damageNumberBurst.ts';
 import { BattleKillLedger } from '../game/battleEventStats.ts';
-import { killPresentation, isDroneStrike } from './killPresentation.ts';
+import { killPresentation } from './killPresentation.ts';
+import { killSourceIdentity, vehicleIdentity } from './icons.ts';
 import { createVehicleStatusStrip } from './vehicleStatus.ts';
 import { drawAerialMinimap } from './aerialMinimap.ts';
 import { createAerialHud } from './aerialHud.ts';
@@ -343,6 +344,8 @@ interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
   name?: string;
   vehicle?: string;
   cause?: 'shot' | 'fire' | 'ammorack' | 'ram' | 'impact' | 'fall';
+  /** (ac130-fx-228) what the kill was made with when not the killer's vehicle (the authority's sim/aerialCombat.ts killSourceOf) */
+  source?: 'ac130' | 'drone';
   timeS?: number;
   on?: boolean;
   shells?: string[];
@@ -1494,6 +1497,8 @@ body.cot-debug-hud .cot-net{display:none!important;}
 .cot-kf .c{color:#f0b04a;font-size:10px;letter-spacing:.1em;font-weight:700;flex:0 0 auto;}
 .cot-kf .d>svg,.cot-kf .relation>svg{display:block;flex:none;}
 .cot-kf .si{width:30px;height:12px;flex:0 0 auto;align-self:center;display:inline-block;}
+.cot-kf .si.src{display:inline-flex;align-items:center;justify-content:center;height:16px;}
+.cot-kf .si.src>svg{display:block;flex:none;}
 .cot-dmglayer{position:absolute;z-index:calc(var(--hud-layer-world) + 1);inset:0;}
 ${spectatorSwitcherStyles}
 /* while spectating, the DEAD player's own-tank furniture is meaningless and
@@ -2052,7 +2057,8 @@ export function initHud(bus: EventBus): HudRuntime {
     list.addEventListener('keyup', event => { if (!document.pointerLockElement) event.stopPropagation(); });
   }
   const killLedger = new BattleKillLedger();
-  const lethalDroneTargets = new Set<string>();
+  /** (ac130-fx-228) the combatants flying the gunship: their vehicle is the AC-130 (its icon in the silhouette's place) */
+  const aircraftById = new Set<string>();
   const earRows = new Map<string, EarRow>(); // tank id -> { root, hp, dead, name }
   window.addEventListener('keydown', event => {
     if (event.code !== 'Tab' || mode === 'hidden' || isAnyModalOpen() || document.querySelector('.cot-settings.open') ||
@@ -2874,14 +2880,14 @@ export function initHud(bus: EventBus): HudRuntime {
       `<span class="veh"><i class="tier"></i><span class="vn"></span><i class="brain" hidden></i></span></span>` +
       `<span class="kills" hidden></span><div class="hpm"><i></i></div>`;
     const iconEl = requireElement<HTMLElement>(rootEl, '.ic');
-    const gunship=tank.aerial?.kind==='gunship';
-    if(gunship)iconEl.innerHTML=uiIconSVG('modeAc130',24,ally?PEN_GREEN:PEN_RED);
+    const vehicle = vehicleIdentity(tank);
+    if (vehicle.aircraft) iconEl.innerHTML = uiIconSVG(vehicle.aircraft.icon, 24, ally ? PEN_GREEN : PEN_RED);
     else maskIcon(iconEl, spec.id, 'side_silhouette', ally ? PEN_GREEN : PEN_RED);
     if (tank.isPlayer) rootEl.classList.add('me');
-    requireElement<HTMLElement>(rootEl, '.tier').textContent = gunship ? '' : tierNumeral(spec.id) || '–';
+    requireElement<HTMLElement>(rootEl, '.tier').textContent = vehicle.aircraft ? '' : tierNumeral(spec.id) || '–';
     requireElement<HTMLElement>(rootEl, '.nick').textContent = nickFor(tank);
-    requireElement<HTMLElement>(rootEl, '.vn').textContent = gunship ? 'AC-130' : spec.name;
-    rootEl.title = `${nickFor(tank)} · ${gunship?'AC-130':spec.name}`;
+    requireElement<HTMLElement>(rootEl, '.vn').textContent = vehicle.name;
+    rootEl.title = `${nickFor(tank)} · ${vehicle.name}`;
     // Jev commander (2026-09-25): a bot under Jev's orders carries a small tag beside its vehicle
     const brainEl = requireElement<HTMLElement>(rootEl, '.brain');
     brainEl.textContent = t('hud.brain.jev');
@@ -2911,7 +2917,7 @@ export function initHud(bus: EventBus): HudRuntime {
       row.kills.textContent = String(kills);
       row.kills.hidden = kills === 0;
       row.kills.setAttribute('aria-label', t('hud.roster.kills', { count: kills }));
-      row.root.title = `${nickFor(tank)} · ${tank.aerial?.kind === 'gunship' ? 'AC-130' : tank.spec?.name} · ${t('hud.roster.kills', { count: kills })}`;
+      row.root.title = `${nickFor(tank)} · ${vehicleIdentity(tank).name} · ${t('hud.roster.kills', { count: kills })}`;
     }
     if (dead !== row.wasDead) {
       row.root.classList.toggle('dead', dead);
@@ -5716,23 +5722,29 @@ export function initHud(bus: EventBus): HudRuntime {
 
   // ---------- bus feeds ----------
   function pushKill(payload: HudEventPayload): void {
-    const killer = (payload.killerId ? nameById.get(payload.killerId) : null) || t('hud.enemy');
+    // (ac130-fx-228) the kill's source as the authority stamped it: an AC-130's or a drone's kill names its platform (and
+    // shows its icon), the player keeping the kill; a gunship pilot's own vehicle is the AC-130 whatever the source
+    const source = killSourceIdentity(payload.source)
+      ?? (payload.killerId && aircraftById.has(payload.killerId) ? killSourceIdentity('ac130') : null);
+    const killer = source?.label || (payload.killerId ? nameById.get(payload.killerId) : null) || t('hud.enemy');
     const victim = (payload.id ? nameById.get(payload.id) : null) || payload.specId || t('hud.tankFallback');
     const ownTeam = teamById.get(playerId || '');
     const alliedKill = ownTeam !== undefined && !!payload.killerId && teamById.get(payload.killerId) === ownTeam;
     const lane = alliedKill ? killLeft : killRight;
     const item = el('div', 'cot-kf', lane);
-    const presentation = killPresentation({ cause: payload.cause, drone: lethalDroneTargets.has(payload.id || ''),
+    const presentation = killPresentation({ cause: payload.cause, drone: source?.source === 'drone',
       killerId: payload.killerId, victimId: payload.id || '', playerId,
       killerTeam: teamById.get(payload.killerId || ''), victimTeam: teamById.get(payload.id || '') });
     item.dataset.killCause = presentation.cause;
+    if (source) item.dataset.killSource = source.source;
     if (presentation.relation) item.dataset.relation = presentation.relation;
     item.title = [presentation.label, presentation.relationLabel].filter(Boolean).join(' · ');
-    // side-profile silhouettes of the actual tanks flank the names
-    const kSpec = payload.killerId ? specIdById.get(payload.killerId) : null;
+    // side-profile silhouettes of the actual tanks flank the names (the platform's icon for a gunship's or drone's kill)
+    const kSpec = source ? null : payload.killerId ? specIdById.get(payload.killerId) : null;
     const vSpec = (payload.id ? specIdById.get(payload.id) : null) || payload.specId;
     item.innerHTML =
-      (kSpec ? `<span class="si ksi"></span>` : '') + `<span class="k"></span>` +
+      (source ? `<span class="si ksi src" aria-hidden="true">${uiIconSVG(source.icon, 16, '#cfe3f4')}</span>`
+        : kSpec ? `<span class="si ksi"></span>` : '') + `<span class="k"></span>` +
       `<span class="d" aria-label="${presentation.label}">${uiIconSVG(presentation.icon, 16)}${presentation.cause === 'ammorack' ? `<b>${presentation.label}</b>` : ''}</span>` +
       (vSpec ? `<span class="si vsi"></span>` : '') + `<span class="v"></span>` +
       (presentation.relation ? `<span class="relation" aria-label="${presentation.relationLabel}">${uiIconSVG(presentation.relationIcon, 13)}</span>` : '');
@@ -5951,7 +5963,6 @@ export function initHud(bus: EventBus): HudRuntime {
     if (!p.id || !killLedger.record(p.id, p.killerId, teamById.get(p.id), teamById.get(p.killerId || ''))) return;
     spotById.delete(p.id);
     pushKill(p);
-    lethalDroneTargets.delete(p.id);
     reviveCountdown.onDestroyed(p.id);
   });
   // Shell hotkeys route through input.ts actions only (main.ts emits this) —
@@ -6164,7 +6175,7 @@ export function initHud(bus: EventBus): HudRuntime {
     });
   });
   on('mode:respawn', ({ id }) => {
-    if (id) { killLedger.respawn(id); lethalDroneTargets.delete(id); }
+    if (id) killLedger.respawn(id);
     // All tanks, not just the player: events can skip the intermediate dead frame.
     if (id) spotById.delete(id);
     if (playerId != null && id !== playerId) return;
@@ -6207,7 +6218,6 @@ export function initHud(bus: EventBus): HudRuntime {
   });
   on('shell:hit', (hit) => {
     if (!isHudHitEvent(hit)) return;
-    if (hit.destroyed && hit.targetId && isDroneStrike(hit)) lethalDroneTargets.add(hit.targetId);
     if (playerId != null && hit.attackerId === playerId && hit.targetId && hit.targetId !== playerId) {
       pushDamageNumber(hit);
       // Zero-damage and pass-through outcomes use the steel confirmation;
@@ -6375,9 +6385,12 @@ export function initHud(bus: EventBus): HudRuntime {
     for (let i = 0; i < tanks.length; i++) {
       const tank = tanks[i];
       if (!tank?.spec) continue;
-      nameById.set(tank.id, tank.spec.name);
+      // (ac130-fx-228) one identity for every row: a gunship pilot's vehicle is the AC-130
+      const gunship = tank.aerial?.kind === 'gunship';
+      nameById.set(tank.id, gunship ? vehicleIdentity(tank).name : tank.spec.name);
       teamById.set(tank.id, tank.team);
       specIdById.set(tank.id, tank.spec.id);
+      if (gunship) aircraftById.add(tank.id);
     }
   }
 
@@ -6586,7 +6599,7 @@ export function initHud(bus: EventBus): HudRuntime {
       if (m === 'battle' && wasHidden) shotInfo.reset();
       if (m === 'battle' && wasHidden) {
         resetCombatPresentation();
-        killLedger.clear(); lethalDroneTargets.clear();
+        killLedger.clear(); aircraftById.clear();
         // fresh battle: drop spotting memory, nicknames and team rosters
         spotById.clear();
         nickById.clear();

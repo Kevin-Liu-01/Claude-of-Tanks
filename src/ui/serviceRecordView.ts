@@ -1,6 +1,7 @@
 import { battleMapArt, shotAccuracy } from './battleReportMedia.ts';
 import { iconUrl } from './icons.ts';
 import { killPresentation } from './killPresentation.ts';
+import { killSourceIdentity } from './icons.ts';
 import { campaignSummary } from '../game/campaignOperations.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
 import { getPlayerRecord } from '../game/profile.ts';
@@ -241,7 +242,10 @@ function trace(battle: ServiceBattle, names: RecordViewNames): string {
     return `<li class="${linked ? 'linked' : ''}"><span class="cot-record-step">${t('garage.record.traceStep', { n: num(index + 1) })}</span>` +
       `<span class="cot-record-step-time">${clock(step.t)}</span>` +
       `<b class="cot-record-trace-vehicle">${vehicleArt(step.specId, 'cot-record-trace-icon')}${safe(step.specId ? names.vehicle(step.specId) : t('endScreen.enemyVehicle'))}</b>` +
-      `<small>${uiIconSVG(killPresentation({ cause: step.cause, victimId: '' }).icon, 14)}${[step.distM ? `${num(step.distM)} m` : '', killPresentation({ cause: step.cause, drone: step.cause === 'drone', victimId: '' }).label]
+      `<small>${uiIconSVG(killSourceIdentity(step.source)?.icon ?? killPresentation({ cause: step.cause, victimId: '' }).icon, 14)}${[
+        step.distM ? `${num(step.distM)} m` : '', killPresentation({ cause: step.cause, drone: step.cause === 'drone', victimId: '' }).label,
+        // (ac130-fx-228) the AC-130's kill names the aircraft that made it
+        killSourceIdentity(step.source)?.source === 'ac130' ? killSourceIdentity(step.source)?.label : '']
         .filter(Boolean).join(' · ')}</small>` +
       `<span class="cot-record-step-gap">${linked ? t('garage.record.traceGap', { seconds: num(Math.round(gap)) }) : ''}</span></li>`;
   }).join('');

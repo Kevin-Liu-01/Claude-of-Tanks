@@ -337,3 +337,45 @@ export function restoreAerial(entity: AerialEntity, checkpoint: AerialCheckpoint
     flight.shell = shell; flight.shellId = shell.id; launchShell(shell);
   }
 }
+
+/**
+ * The kill source — what a kill was made WITH, decided where the kill is decided (lane ac130-fx-228, 2026-10-19; the owner:
+ * "in kills it still says the tank u chose instead of ac 130 having done the kill").
+ *
+ * The player who fires keeps the kill (killerId, kills, score, medals are unchanged); the source says which of the
+ * player's weapons platforms made it, so every surface that shows a kill (the feed, the killcam, the battle report, the
+ * end rosters, the radio, a multiplayer peer) names it:
+ *   - 'ac130': a round of the AC-130 gunship the player flies (its guns are the gunship's, whatever tank the pilot chose in
+ *     the garage: modeLoadout.ts keeps that tank's spec under the gunship's guns);
+ *   - 'drone': the FPV drone's shaped charge (the Drone mode's flight, any carrier's launched drone);
+ *   - 'vehicle': the firing vehicle itself (its guns, its launchers, a ram).
+ *
+ * Pure and deterministic (no clock, no state): both authorities (sim/authoritativeMatch.ts, game/state.ts) stamp it on the
+ * hit and the destruction they emit; presentation only renders it (ui/icons.ts killSourceIdentity).
+ */
+type KillSource = 'ac130' | 'drone' | 'vehicle';
+
+interface KillSourceShooter {
+  aerial?: { kind?: string } | null;
+}
+
+export interface KillSourceShell {
+  readonly name?: unknown;
+  readonly tracer?: unknown;
+  readonly reloadGroup?: unknown;
+}
+
+/** The source of a kill or a hit made by `shooter` with `shell` (a ram passes no shell: the vehicle itself). */
+export function killSourceOf(shooter: KillSourceShooter | null | undefined, shell?: KillSourceShell | null): KillSource {
+  if (shooter?.aerial?.kind === 'gunship') return 'ac130';
+  // a gunship round whose shooter record is gone (it never is: the gunship is untouchable) still names its gun
+  if (typeof shell?.reloadGroup === 'string' && shell.reloadGroup.startsWith('gunship-')) return 'ac130';
+  // the FPV warhead carries the DRONE tracer (sim/munitionBlast.ts drone_fpv); a hit event carries its name
+  if (shell && (shell.tracer === 'DRONE' || shell.name === DRONE_WARHEAD.name)) return 'drone';
+  return 'vehicle';
+}
+
+/** A source worth showing in place of the firing vehicle (a gunship's or a drone's kill), or null. */
+export function supportKillSource(source: unknown): Exclude<KillSource, 'vehicle'> | null {
+  return source === 'ac130' || source === 'drone' ? source : null;
+}

@@ -1582,11 +1582,13 @@ Fx = {
   resetSeed(seed), resetAll(),
   // --- deterministic screenshot composers ---
   composeFiringMoment({ muzzlePos, dir, caliberMm, tracerType, ageS }),  // flash + smoke
-                                         // ring + tracer streak frozen at ageS
+                                         // ring + the round's projectile tracer frozen at ageS
   composeExplosionMoment({ pos, ageS }), // fireball+debris+column frozen at ageS
 }
 ```
-Tracer colors/widths per shells doc §10 table. Dynamic light budget: ≤2 PointLights
+Rounds in flight draw through `src/fx/projectileTracers.ts` (belt mix, ammunition lineage, light-keyed halo; the AC-130's
+30 mm and 152 mm their own classes, `gunshipRounds.ts`), missiles through `missileLooks.ts` (the gunship's the hellfire);
+the pre-October ribbon tracer and its shells-doc §10 preset table are retired (lane ac130-fx-228). Dynamic light budget: ≤2 PointLights
 (muzzle 20 ms, explosion 300 ms). Tree/prop destruction: on HitEvent kind 'terrain'
 near a tree — SKIP for v1 unless cheap (props are static; do not add cross-module
 coupling for it).

@@ -1,5 +1,5 @@
 import type { ModeCheckpoint } from './matchModes.ts';
-import { initializeAerial, stepAerial, isGunship, captureAerial, restoreAerial, droneTankAlong, strikeDrone, type AerialCheckpoint, type AerialView, type AerialWorldQuery } from './aerialCombat.ts';
+import { initializeAerial, stepAerial, isGunship, captureAerial, restoreAerial, droneTankAlong, strikeDrone, killSourceOf, supportKillSource, type AerialCheckpoint, type AerialView, type AerialWorldQuery } from './aerialCombat.ts';
 import { setModeWeapon } from './modeLoadout.ts';
 import { packSmokeScreen } from './smokeReceipt.ts';
 import { requestAuxiliary, stepRoofGun, stepRoofStation, roofStationCount, auxiliaryShot, smokeBlocks, type SmokeScreen } from './auxiliarySystems.ts';
@@ -1962,9 +1962,13 @@ export function createAuthoritativeMatch({
     const chargeKg = munitionChargeKg(shell.spec, munition);
     const blast = pendingTankBlast?.shellId === shell.id && chargeKg > 0 ? pendingTankBlast.blast : null;
     if (blast) pendingTankBlast = null;
+    // (ac130-fx-228) the attacker's weapons platform when not its vehicle (sim/aerialCombat.ts killSourceOf): free event JSON, absent for a
+    // vehicle's own guns, so an older peer reads the same payload
+    const attackerSource = supportKillSource(killSourceOf(entityById.get(shell.shooterId), shell.spec));
     emit('shell_hit', {
       ...hit,
       munition, chargeKg, ...(blast ? { blast } : {}),
+      ...(attackerSource ? { attackerSource } : {}),
       shooterId: shell.shooterId,
       attackerId: shell.shooterId,
       targetName: target?.spec.name,
@@ -1998,10 +2002,13 @@ export function createAuthoritativeMatch({
   ): void {
     if (!target || wasDestroyed || !target.combat.destroyed) return;
     if (shooter) shooter.kills += 1;
+    // (ac130-fx-228) the kill stays the shooter's; its source names the gunship or the drone that made it
+    const source = supportKillSource(killSourceOf(shooter, shell.spec));
     emit('tank_destroyed', {
       id: target.id,
       killerId: shell.shooterId,
       cause: hit.ammoRacked ? 'ammo_rack' : 'shot',
+      ...(source ? { source } : {}),
     });
   }
 
