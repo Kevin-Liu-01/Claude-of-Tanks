@@ -181,7 +181,7 @@ function cheekBox(P: TankBuilderPort, casting: Stock, side: number, plan: BoxPla
   };
   const plate = (y0: number, y1: number, inner: boolean, name: string) => {
     const ys = [y0, (y0 + y1) / 2, y1], cy = (y: number) => Math.min(y1 - .001, Math.max(y0 + .001, y));
-    const faces = ys.map(y => facePoints(y, inner)), b0 = ys.map((y, k) => endBack(ends[0], faces[k][0])), b1 = ys.map((y, k) => endBack(ends[1], faces[k][faces[k].length - 1]));
+    const faces = ys.map(y => facePoints(y, inner)), b0 = ys.map((_, k) => endBack(ends[0], faces[k][0])), b1 = ys.map((_, k) => endBack(ends[1], faces[k][faces[k].length - 1]));
     const angle = (q: THREE.Vector3) => Math.atan2(Math.abs(q.x), q.z);
     const lo = Math.max(...b0.map(angle)) + .002, hi = Math.min(...b1.map(angle)) - .002;
     // the angles: every 2 degrees, then halved wherever the contour at any of the rings' heights bows more than 1.5 mm
