@@ -243,8 +243,11 @@ const CLOUD_WEATHER_RULES = Object.freeze({
    * the moon. At full night the moon's share of the layer's light is nightKey of the sun's (the forward lobe keeps its
    * shape), and the sky's is nightAmbient. QA: __LIGHT_TUNE.NIGHT_CLOUD_KEY, NIGHT_CLOUD_AMBIENT.
    */
-  nightKey: 0.3,
-  nightAmbient: 0.8,
+  // (2026-10-17, 227; the media lane's QA on live 226: Copper Mesa's night lost its moonlit clouds — a flat dark gradient
+  // where the approved frame drew silvered night clouds over the stars) the approved night keeps the layer's moonlight
+  // whole: the key and the sky's share at 1 (QA: NIGHT_CLOUD_KEY / NIGHT_CLOUD_AMBIENT still dim them)
+  nightKey: 1,
+  nightAmbient: 1,
 });
 
 function hexToLinear(hex: number): [number, number, number] {

@@ -36,9 +36,9 @@ const IDS = process.env.FRONT_ERA_IDS?.split(',') ?? ['t72b3m_hetman_ii', 't72b3
 const SECTORS = ['glacis_era_L', 'glacis_era_R', 'skirt_era_L', 'skirt_era_R', 'turret_era_L', 'turret_era_R'];
 /** New ERA modules per sector (both sides alike), as built. */
 const MODULES = {
-  t72b3m_hetman_ii: {glacis_era: 4, skirt_era: 1, turret_era: 17},
-  t72b3_zubr: {glacis_era: 18, skirt_era: 10, turret_era: 18},
-  t72b3_zubr_ii: {glacis_era: 15, skirt_era: 13, turret_era: 48},
+  t72b3m_hetman_ii: {glacis_era: 13, skirt_era: 1, turret_era: 19},
+  t72b3_zubr: {glacis_era: 18, skirt_era: 10, turret_era: 24},
+  t72b3_zubr_ii: {glacis_era: 14, skirt_era: 13, turret_era: 54},
 };
 /** The gatefix2 baseline (integ/226 c3cc76fa8, this receipt's census): drawn triangles HIGH/LOW and draws HIGH/LOW. */
 const BASELINE = {
@@ -438,9 +438,12 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
     const lenses = fresh.filter(p => p.lamp);
     // (round 4) the Zubr II's station illuminator is held to the same seat contract, on its pitch stage's lens mesh
     const illuminator = id === 't72b3_zubr_ii' ? (() => {
-      const l = NATIONAL_ROOF_LOADOUTS[id], mesh = turret.getObjectByName(l.name).getObjectByName(`${l.name}_pitch_turretGlass`);
+      const l = NATIONAL_ROOF_LOADOUTS[id], mesh = turret.getObjectByName(l.name)?.getObjectByName(`${l.name}_pitch_turretGlass`);
+      // (round 6, the critic's UAPL-R5C-9: a lens seeded onto the yaw stage crashed here instead of failing by name)
+      assert(mesh, `${label}: the illuminator's lens rides the station's pitch stage`);
       // (the merged lens mesh holds the lens alone; its registered emitter carries the aperture's centre and normal)
       const [lamp] = vehicleNightLightEmittersFor(mesh);
+      assert(lamp, `${label}: the illuminator's lens carries its registered emitter`);
       return {name: 'station illuminator lens', g: mesh.geometry, frame: mesh, aperture: lamp && {c: new THREE.Vector3(...lamp.position), n: new THREE.Vector3(...lamp.direction).normalize()}};
     })() : null;
     for (const p of [...lenses, ...(illuminator ? [illuminator] : [])]) {
@@ -506,16 +509,22 @@ for (const id of IDS) for (const quality of ['high', 'low']) {
       assert(!glass.containsPoint(moved.p), `${label}: the illuminator's emitter moves with the weapon`);
       // its runtime spot (a searchlight keeps its aim; SEARCHLIGHT_CONE_RAD half-angle, its 100 m reach) leaves the main
       // gun's barrel dark with the station level at every yaw and at the capture poses, the main gun level and at its full
-      // depression (the station depressed over the barrel lights it, as any searchlight would)
+      // depression (the station depressed over the barrel lights it, as any searchlight would). Round 6 (the critic's
+      // UAPL-R5C-2: with the station at rest the cone took in the muzzle once the main gun rose past 4 degrees; this test
+      // never raised the gun): with the station at rest, at every degree of the main gun's whole pitch range.
       if (high) {
         const barrel = gunLocal.filter(e => !e.mount).map(e => e.o), savedGun = gun.rotation.x;
         let worst = Infinity, worstAt = null;
-        for (const gp of [0, -spec.gunDepressionDeg]) {
+        const gunPitches = [0, -spec.gunDepressionDeg];
+        for (let gp = -Math.floor(spec.gunDepressionDeg); gp <= spec.gunElevationDeg; gp++) if (!gunPitches.includes(gp)) gunPitches.push(gp);
+        for (const gp of gunPitches) {
           gun.rotation.x = -gp * DEG; t.root.updateMatrixWorld(true);
           const V = []; for (const o of barrel) for (const q of vertsOf(o.geometry)) V.push(q.applyMatrix4(o.matrixWorld));
-          const poses = [];
-          for (let y = -180; y < 180; y += 2) poses.push([y, 0]);
-          poses.push([60, 20], [-40, -5], [35, 6], [-35, 6], [0, 22]);
+          const poses = [[0, 0]];
+          if (gp === 0 || gp === -spec.gunDepressionDeg) {
+            for (let y = -180; y < 180; y += 2) poses.push([y, 0]);
+            poses.push([60, 20], [-40, -5], [35, 6], [-35, 6], [0, 22]);
+          }
           for (const [y, p] of poses) {
             station.rotation.y = y * DEG; pitch.rotation.x = -p * DEG; t.root.updateMatrixWorld(true);
             const at = new THREE.Vector3(...lamp.position).applyMatrix4(mesh.matrixWorld);

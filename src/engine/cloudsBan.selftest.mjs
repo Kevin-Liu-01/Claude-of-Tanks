@@ -209,7 +209,8 @@ for (const [id, sky] of Object.entries(GARAGE_SKY_PRESETS)) {
     assert.equal(resolveTreeWind(cfg).strength, 1, `${id}: the trees sway as before`);
   }
   const by = Object.fromEntries(FORMER.map((id) => [id, dayLayer[id]]));
-  assert.ok(by.polders.coverage > verdant.coverage, 'the Dutch sky: a little more cumulus than Verdant');
+  // (227: Verdant's cumulus back to the approved round's plenty, 0.51 — the owner's bar; the Dutch sky keeps its own)
+  assert.ok(verdant.coverage >= 0.5 && by.polders.coverage >= 0.4, 'Verdant\'s plentiful cumulus; the Dutch sky a cumulus sky of its own');
   assert.ok(by.copper_mesa.coverage < verdant.coverage && by.copper_mesa.baseM > verdant.baseM, 'the dry upland: less cover, a higher base');
   assert.ok(by.fjord.baseM < verdant.baseM && getMapConfig('fjord').clouds.windDirDeg === getMapConfig('fjord').ocean.windDirDeg,
     'the fjord: a lower sea-air base, the clouds on the fjord\'s sea wind');

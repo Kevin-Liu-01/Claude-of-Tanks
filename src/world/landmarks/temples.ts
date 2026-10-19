@@ -5,7 +5,7 @@
 //
 // The frame: the front (+z) is the arched façade and the steps; y = 0 the lowest ground under the plinth.
 import { PartSink, facePoint, rgb, type Face, type RegionalBucket, type Rgb, type Vec3 } from '../maps/regional/geometry.ts';
-import { archLine, archedBody, archedFace, bar, revolve, type ArchHole, type FaceName } from './kit.ts';
+import { archLine, archRise, archedBody, archedFace, bar, revolve, type ArchHole, type FaceName } from './kit.ts';
 import type { LandmarkBuilder } from './types.ts';
 import { finishLandmark, piece } from './pieces.ts';
 
@@ -225,28 +225,38 @@ export const bengalTemple: LandmarkBuilder = (ctx) => {
     const fade = (pt: Vec3): Rgb => { const t = Math.max(0, Math.min(1, (yTop - pt[1]) / len)); return [top[0] + (1 - top[0]) * t, top[1] + (1 - top[1]) * t, top[2] + (1 - top[2]) * t]; };
     sink.quad(wall, p(u - w / 2, yTop - len), p(u + w / 2, yTop - len), p(u + w / 2, yTop), p(u - w / 2, yTop), { decor: true, tintAt: fade });
   };
+  // (wave 418a, both arms: "each of the three arches has a rectangular brick stub hanging from its crown" — a streak
+  // over an arch ran down past its crown and hung in the opening as a slab of tinted brick: a streak over an opening
+  // ends a hand above the arch's crown, and one left too short to read is not drawn; every draw is still taken)
+  const clearOf = (name: FaceName, u0: number, u1: number): number => {
+    let top = -Infinity;
+    for (const h of holes[name] ?? []) if (u1 > h.u - h.w / 2 && u0 < h.u + h.w / 2) top = Math.max(top, h.spring + archRise(h) + 0.06);
+    return top;
+  };
   for (const name of ['front', 'right', 'back', 'left'] as const) {
     const f = faces[name];
     for (let k = 0; k < 7; k++) {
       const u = -S / 2 + 0.4 + (S - 0.8) * ((k + 0.5) / 7 + (ctx.variant() - 0.5) * 0.08);
-      const yTop = cornice(u) - 0.24, len = 0.8 + ctx.variant() * 1.8;
+      const yTop = cornice(u) - 0.24, want = 0.8 + ctx.variant() * 1.8, w = 0.12 + ctx.variant() * 0.2, lime = ctx.variant() < 0.6;
       // (the front's plaque rows keep clear: its streaks run in the joints between them)
-      streak(f, u, yTop, len, 0.12 + ctx.variant() * 0.2, ctx.variant() < 0.6 ? [1.45, 1.42, 1.36] : [0.52, 0.5, 0.48]);
+      const len = Math.min(want, yTop - clearOf(name, u - w / 2, u + w / 2));
+      if (len >= 0.3) streak(f, u, yTop, len, w, lime ? [1.45, 1.42, 1.36] : [0.52, 0.5, 0.48]);
     }
-    for (const h of holes[name] ?? []) {
-      streak(f, h.u, apex + 0.55, 0.5, h.w * 0.7, [0.5, 0.48, 0.46]);
-    }
+    // (wave 389, round 2: "blocks hang in its arches" — the soot streaks over the arches' heads ran down past the
+    // pointed crowns into the openings; the arches keep the plaques' shade instead)
   }
   // the lower char-chala, the upper cella and its roof, the finial
   const h1 = S * 0.27, yRoof1 = y0 + S * 0.32;
   // (round 4: the roofs were "mushroom-cap bulges in the walls' own brick texture"): lime-plastered slopes, weathered
-  // green toward their eaves, a gentler swell, crisp terracotta rolls on the hips and the bangla cornice deep in brick
+  // green toward their eaves, a gentler swell, crisp terracotta rolls on the hips and the bangla cornice deep in brick.
+  // (wave 389, round 2: the slopes "read as thatch": the Bengal kit's plaster3 is its mud render; the lime is its plaster,
+  // and the rolls on the hips take the mud-red terracotta)
   const roofMoss = (lo: number, hi: number) => (p: Vec3): Rgb => {
     const t = Math.max(0, Math.min(1, (p[1] - lo) / Math.max(0.5, hi - lo)));
     return [0.66 + 0.36 * t, 0.74 + 0.27 * t, 0.6 + 0.36 * t];
   };
-  charChala(sink, 'plaster3', h0, y0 + 0.2, droop, h1, yRoof1, S * 0.03,
-    { fascia: wall, rib: 'plaster', fasciaH: 0.36, tintAt: roofMoss(y0 + 0.2 - droop, yRoof1) });
+  charChala(sink, 'plaster', h0, y0 + 0.2, droop, h1, yRoof1, S * 0.03,
+    { fascia: wall, rib: 'plaster3', fasciaH: 0.36, tintAt: roofMoss(y0 + 0.2 - droop, yRoof1) });
   const upperH = Math.max(1.3, S * 0.2), yUp = yRoof1 + upperH;
   // (the looks lane, 2026-10-15; WORKLIST #11 r2: the upper cella's blind openings were shaded plates 2 cm proud of its
   // walls) each face's blind arch cut 22 cm into the wall, its reveal and pointed head, its back the terracotta in its
@@ -262,8 +272,8 @@ export const bengalTemple: LandmarkBuilder = (ctx) => {
   const yApex = yUp + S * 0.33;
   // (props census E12 named pieces: the upper chala comes down when the temple is breached, the kalasa at the first damage)
   piece(sink, { name: 'roof', kind: 'detach', at: 'breached', fall: 'slump' }, (s) =>
-    charChala(s, 'plaster3', h1 + 0.35, yUp + 0.12, Math.min(0.55, S * 0.07), 0, yApex, S * 0.03,
-      { fascia: wall, rib: 'plaster', fasciaH: 0.28, tintAt: roofMoss(yUp + 0.12 - Math.min(0.55, S * 0.07), yApex) }));
+    charChala(s, 'plaster', h1 + 0.35, yUp + 0.12, Math.min(0.55, S * 0.07), 0, yApex, S * 0.03,
+      { fascia: wall, rib: 'plaster3', fasciaH: 0.28, tintAt: roofMoss(yUp + 0.12 - Math.min(0.55, S * 0.07), yApex) }));
   piece(sink, { name: 'finial', kind: 'detach', at: 'damaged', fall: 'drop' }, (s) =>
     revolve(s, 'structureMetal', 0, 0, [[0.34, yApex - 0.15], [0.42, yApex + 0.12], [0.18, yApex + 0.42], [0.3, yApex + 0.7], [0.12, yApex + 1.0], [0.03, yApex + 1.45]], 10,
       { colour: FINIAL }));

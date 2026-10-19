@@ -227,8 +227,11 @@ function chooseEmitter<T extends THREE.SpotLight | THREE.PointLight>(
     // Mild retention prevents nearly equidistant lamps swapping every frame.
     const retained = slots[index].source === candidate ? .85 : 1;
     // (release 227) a searchlight ranks half a priority step ahead of its own vehicle's lamps on a pool with room for
-    // more than one vehicle's two sides, and half a step behind them on a smaller one (they keep both of its spots)
-    const lift = candidate.emitter.searchlight ? slots.length > 2 ? .5 : -.5 : 0;
+    // more than one vehicle's two sides, and half a step behind them on a smaller one (they keep both of its spots).
+    // Round 6 (the critic's UAPL-R5C-10: the lift applied whoever carried the searchlight, so another vehicle's beam up
+    // to 180 m off outranked every nearer vehicle's lamps): only a prioritised (the player's) vehicle's searchlight is
+    // lifted; anyone else's competes by distance like any lamp.
+    const lift = candidate.emitter.searchlight && (candidate.source.priority ?? 0) > 0 ? slots.length > 2 ? .5 : -.5 : 0;
     const score = candidate.distanceSquared * retained - ((candidate.source.priority ?? 0) + lift) * 1e8;
     if (score < bestScore) { best = candidate; bestScore = score; }
   }

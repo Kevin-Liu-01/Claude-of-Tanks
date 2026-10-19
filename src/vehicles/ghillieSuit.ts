@@ -83,6 +83,13 @@ interface TopPanel {
   envelopeM?: number;
   envelopeZ?: readonly [number, number];
   /**
+   * Release 227 round 6 (the critic's UAPL-R5C-1 era census; the suit receipt: "hull net piece of 24 vertices ... nearest
+   * armour 2.4 cm"): the smallest piece (triangles) a laid sheet keeps (default 8). Over Hetman II's shingled glacis
+   * blocks the gun envelope's cut leaves two four-cell scraps lying 2.4 cm over the blocks, tied to nothing; 12 drops
+   * them and keeps every real patch.
+   */
+  minPieceTris?: number;
+  /**
    * 2026-10-09 (the netting lane; the owner: "add a ton more netting ... all over"): the carrier's authored height is
    * read from the owner's armour where the probe finds it (the highest surface within 3.5 cm), so a net laid over a
    * whole roof or deck follows every step and slope of it; `yAt` holds only where no armour answers.
@@ -1272,7 +1279,7 @@ function topCloth(panel: TopPanel, cfg: GhillieConfig, support: OwnerSupport, uv
     const a = vtx(i, j), b = vtx(i + 1, j), c = vtx(i + 1, j + 1), d = vtx(i, j + 1);
     tri(a, c, b); tri(a, d, c);
   }
-  dropIslands(positions, uvs);
+  dropIslands(positions, uvs, panel.minPieceTris ?? 8);
   const geometry = makeGeometry(positions, uvs);
   const ring = outline ?? rect(x0, x1, z0, z1);
   return {
@@ -4957,7 +4964,7 @@ function fieldOk(mesh: THREE.Object3D, ok: (p: readonly number[]) => boolean): v
 
 /** Drop a carrier's triangles with a corner the clearance refuses (the cloth's garnish is held to the same rule). */
 function clearedGeometry(geometry: THREE.BufferGeometry, ok: (p: readonly number[]) => boolean,
-  triangleOk?: (a: readonly number[], b: readonly number[], c: readonly number[]) => boolean): THREE.BufferGeometry {
+  triangleOk?: (a: readonly number[], b: readonly number[], c: readonly number[]) => boolean, minPieceTris = 8): THREE.BufferGeometry {
   const pos = geometry.attributes.position as THREE.BufferAttribute, uv = geometry.attributes.uv as THREE.BufferAttribute | undefined;
   const positions: number[] = [], uvs: number[] = [];
   // a corner shared by several triangles is asked once
@@ -4986,7 +4993,7 @@ function clearedGeometry(geometry: THREE.BufferGeometry, ok: (p: readonly number
     }
   }
   if (!dropped) return geometry;
-  dropIslands(positions, uvs);
+  dropIslands(positions, uvs, minPieceTris);
   geometry.dispose();
   return makeGeometry(positions, uvs);
 }
@@ -5230,7 +5237,7 @@ function* addGhillieOwner(
     // the netting lane: a carrier is filtered by the clearance as it is laid, and the drapes built after it see only
     // what is left of it (a drape never starts from a roof edge the clearance took away)
     if (coverOk) {
-      const geometry = clearedGeometry(laid.geometry, coverOk, coverEdgesOk);
+      const geometry = clearedGeometry(laid.geometry, coverOk, coverEdgesOk, panel.minPieceTris ?? 8);
       // the cells whose cloth is really there (torn perimeter cells, islands and what the clearance took are not): a
       // drape starts only on cloth that exists
       const { x0, x1, z0, z1, nx = 18, nz = 30 } = panel;

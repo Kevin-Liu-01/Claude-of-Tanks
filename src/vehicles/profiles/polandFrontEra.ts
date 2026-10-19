@@ -33,6 +33,18 @@ function orientedBox(size: V3, centre: THREE.Vector3, along: THREE.Vector3, norm
   return new THREE.BoxGeometry(...size).applyMatrix4(new THREE.Matrix4().makeBasis(xo, y, z)).translate(centre.x, centre.y, centre.z);
 }
 
+/** Round 6 (the critic's D1: spent, "the new frontal ERA looks almost unchanged ... what is left cannot be told apart
+ * from intact ERA"): a gunmetal bay floor under a cassette, 3 mm thick (half a millimetre into its seat), 2 mm inside the
+ * cassette's footprint all round (no side face in a cassette's plane): hidden while the cassette is live, a dark empty
+ * bay in the frame once it is spent. */
+const FLOOR_INSET = .002;
+function bayFloor(P: TankBuilderPort, owner: 'hull' | 'turret', id: string, w: number, h: number, centre: THREE.Vector3,
+  along: THREE.Vector3, normal: THREE.Vector3): void {
+  const g = orientedBox([w - 2 * FLOOR_INSET, h - 2 * FLOOR_INSET, .003], centre.clone().addScaledVector(normal.clone().normalize(), .001), along, normal);
+  if (owner === 'turret') assertTurretPart(id, 'bay floor', g); else assertHullPart(id, 'bay floor', g);
+  P.addEquipment(`${owner}Dark`, g);
+}
+
 /** A two-layer (stack) cassette's ring in its own (u outward, v up its face) plane: a base layer, a top layer inset 12
  * mm with 15 mm chamfers (near tier); a plain block on the far tier. The base sinks 4 mm into its seat. */
 function stackRing(P: TankBuilderPort, h: number, base: number, top: number, inset = .012, chamfer = .015): SectionPoint[] {
@@ -85,7 +97,9 @@ const BOXES: Readonly<Record<PolishLevel, BoxPlan>> = {
     // mitred corner at the top course, and every tile stays on its own face at every height)
     columns: [[.15], [.19, .19], [.185, .185, .185], [.185, .185]], fit: {gap: .016},
     rows: [[.13, .243], [.263, .376], [.396, .509]], bars: [[.11, .13], [.243, .263], [.376, .396], [.509, .529]],
-    tile: {base: .05, top: .035, proudPerRow: .015}, frame: {proud: .013, mullions: false}},
+    // (round 6, the critic's D4: "no module shape or arrangement carries over" between the two Zubrs): the Zubr's Krata
+    // frame, 4 cm bars with a mullion between every two columns, at both levels
+    tile: {base: .05, top: .035, proudPerRow: .015}, frame: {proud: .040, mullions: true}},
 };
 
 interface Seg { a: THREE.Vector3; b: THREE.Vector3; dir: THREE.Vector3; n: THREE.Vector3; len: number }
@@ -245,6 +259,8 @@ function cheekFaces(P: TankBuilderPort, wall: Stock, side: number, plan: BoxPlan
           [.024, .016, .008], {x: tup(s.dir), y: tup(up)})];
         eraModule(P, {owner: 'turret', sector: sectorOf('turret_era', side), geometry: g, outward: tup(n), minDot: .5,
           name: `cheek cassette ${i}.${r}`, hardware: bolt, guard: (nm, geo) => assertTurretPart(id, nm, geo)});
+        const hh = (r1 - r0) / Math.cos(plan.rake * Math.PI / 180);
+        bayFloor(P, 'turret', id, w, hh, corner.clone().addScaledVector(s.dir, w / 2).addScaledVector(up, hh / 2), s.dir, n);
       });
       at += w + gap;
       // a mullion in the gap after this column (not after the last)
@@ -290,12 +306,90 @@ function cheekFaces(P: TankBuilderPort, wall: Stock, side: number, plan: BoxPlan
   });
 }
 
-/** Zubr (level 1) or Zubr II (level 2): the welded cheek box on each side and its cassette face. */
+/** Round 6 (2026-10-18; the critic's D2: "roof-front ERA has been dropped on all three tanks ... that area is a smooth
+ * plate with seams"): the lid course, rows of cassettes on each cheek box's lid behind its outer edge on the wall grid's
+ * pitch, in the Krata frame (a rail before and behind each run and a mullion in every joint), over gunmetal bay floors.
+ * Level 1 lays single .055 m tiles, level 2 two-layer cassettes .040 m thick (their tops under the gunner's sight's
+ * lower ray over the left lid, E6). A cassette stands only where the lid carries all of it, clear of the casting and of
+ * every cassette already laid (at the box's corners the rows of two segments meet). */
+const LID: Readonly<Record<PolishLevel, {inset: number; depth: number; w: number; gap: number; rows: number; frame: number;
+  tile: {single: number} | {base: number; top: number}}>> = {
+  1: {inset: .026, depth: .17, w: .175, gap: .02, rows: 2, frame: .03, tile: {single: .055}},
+  2: {inset: .026, depth: .16, w: .155, gap: .02, rows: 2, frame: .025, tile: {base: .022, top: .018}},
+};
+type Quad = readonly THREE.Vector3[];
+/** Whether two convex plan quads (x, z) come closer than `margin` (separating axes). */
+function quadsMeet(a: Quad, b: Quad, margin: number): boolean {
+  for (const poly of [a, b]) for (let i = 0; i < poly.length; i++) {
+    const p = poly[i], q = poly[(i + 1) % poly.length], nx = q.z - p.z, nz = p.x - q.x, l = Math.hypot(nx, nz);
+    const proj = (r: Quad) => r.map(v => (v.x * nx + v.z * nz) / l);
+    const pa = proj(a), pb = proj(b);
+    if (Math.min(...pb) - Math.max(...pa) > margin || Math.min(...pa) - Math.max(...pb) > margin) return false;
+  }
+  return true;
+}
+function lidCourse(P: TankBuilderPort, wall: Stock, casting: Stock, side: number, plan: BoxPlan, level: PolishLevel): void {
+  const id = idOf(level), L = LID[level], segs = segments(side, plan.path), tan = Math.tan(plan.rake * Math.PI / 180);
+  const y1 = plan.y1, UP = new THREE.Vector3(0, 1, 0), laid: Quad[] = [];
+  const onLid = (p: THREE.Vector3): boolean => {
+    const hit = wall.tryFace([p.x, 3, p.z], [0, -1, 0]);
+    if (!hit || Math.abs(hit.point.y - y1) > .002) return false;
+    const c = casting.tryFace([p.x, 3, p.z], [0, -1, 0]);
+    return !c || c.point.y < y1 - .006;
+  };
+  const bar = (len: number, depth: number, centre: THREE.Vector3, along: THREE.Vector3, name: string) => {
+    const g = orientedBox([len, depth, L.frame + .004], centre.clone().setY(y1 - .004 + (L.frame + .004) / 2), along, UP);
+    assertTurretPart(id, name, g);
+    P.addEquipment('turretDetail', g);
+  };
+  segs.forEach((s, i) => {
+    const inward = s.n.clone().negate();
+    const edge = (along: number) => s.a.clone().addScaledVector(s.dir, along).addScaledVector(s.n, -(y1 - plan.y0) * tan).setY(y1);
+    const [f0, f1] = faceSpan(side, segs, plan, i, y1), lo = Math.max(0, f0) + .02, hi = Math.min(s.len, f1) - .02;
+    const count = Math.floor((hi - lo + L.gap) / (L.w + L.gap));
+    if (count < 1) return;
+    const start = (lo + hi - count * L.w - (count - 1) * L.gap) / 2;
+    let previousRuns: number[][] = [];
+    for (let r = 0; r < L.rows; r++) {
+      const d0 = L.inset + r * (L.depth + L.gap), d1 = d0 + L.depth, placed: number[] = [];
+      for (let k = 0; k < count; k++) {
+        const a0 = start + k * (L.w + L.gap), a1 = a0 + L.w;
+        const quad: Quad = [edge(a0).addScaledVector(inward, d0), edge(a1).addScaledVector(inward, d0), edge(a1).addScaledVector(inward, d1), edge(a0).addScaledVector(inward, d1)];
+        if (!quad.every(onLid) || !onLid(edge((a0 + a1) / 2).addScaledVector(inward, (d0 + d1) / 2))) continue;
+        if (laid.some(q => quadsMeet(q, quad, L.gap))) continue;
+        laid.push(quad); placed.push(a0);
+        const front = quad[0];
+        let g: THREE.BufferGeometry;
+        if ('single' in L.tile) {
+          const c = front.clone().addScaledVector(s.dir, L.w / 2).addScaledVector(inward, L.depth / 2).setY(y1 - .004 + (L.tile.single + .004) / 2);
+          g = orientedBox([L.w, L.depth, L.tile.single + .004], c, s.dir, UP);
+        } else g = stackTile(P, front, s.dir, inward, UP, L.w, L.depth, L.tile.base, L.tile.top);
+        eraModule(P, {owner: 'turret', sector: sectorOf('turret_era', side), geometry: g, outward: [0, 1, 0], minDot: .5,
+          name: `lid cassette ${i}.${r}.${k}`, guard: (nm, geo) => assertTurretPart(id, nm, geo)});
+        bayFloor(P, 'turret', id, L.w, L.depth, front.clone().addScaledVector(s.dir, L.w / 2).addScaledVector(inward, L.depth / 2), s.dir, UP);
+      }
+      // the Krata frame per run of neighbouring cassettes: a mullion in each joint, a rail before and behind the run
+      // (the rails stand in the rows' gaps and before the first row, 4 mm clear of the cassettes)
+      const runs: number[][] = [];
+      for (const a of placed) { const run = runs[runs.length - 1]; if (run && a - run[run.length - 1] < L.w + L.gap + 1e-6) run.push(a); else runs.push([a]); }
+      for (const run of runs) {
+        for (const a of run.slice(1)) bar(.012, L.depth, edge(a - L.gap / 2).addScaledVector(inward, (d0 + d1) / 2), s.dir, 'lid mullion');
+        const a0 = run[0], a1 = run[run.length - 1] + L.w;
+        // (the rail behind a row is the rail before the next: a run's front rail only where no run stood in front)
+        const shared = previousRuns.some(p => p[0] < a1 - 1e-6 && p[p.length - 1] + L.w > a0 + 1e-6);
+        for (const d of shared ? [d1 + .010] : [d0 - .010, d1 + .010]) bar(a1 - a0, .012, edge((a0 + a1) / 2).addScaledVector(inward, d), s.dir, 'lid rail');
+      }
+      previousRuns = runs;
+    }
+  });
+}
+
+/** Zubr (level 1) or Zubr II (level 2): the welded cheek box on each side, its cassette face and its lid course. */
 export function polishCheekBoxes(P: TankBuilderPort, casting: Stock, level: PolishLevel): void {
   const plan = BOXES[level];
   for (const side of SIDES) {
     const wall = cheekBox(P, casting, side, plan, level);
-    try { cheekFaces(P, wall, side, plan, level); } finally { wall.dispose(); }
+    try { cheekFaces(P, wall, side, plan, level); lidCourse(P, wall, casting, side, plan, level); } finally { wall.dispose(); }
   }
 }
 
@@ -332,6 +426,7 @@ export function polishRoofGrid(P: TankBuilderPort, casting: Stock, level: Polish
       if (g.boundingBox!.max.y > .67 + 1e-4) throw new Error(`${id}: roof tile top ${g.boundingBox!.max.y.toFixed(3)} over .67`);
       eraModule(P, {owner: 'turret', sector: sectorOf('turret_era', x), geometry: g, outward: tup(n), minDot: .5,
         name: 'roof tile', guard: (nm, geo) => assertTurretPart(id, nm, geo)});
+      bayFloor(P, 'turret', id, sx, sz, centre.clone().addScaledVector(n, low), new THREE.Vector3(1, 0, 0).addScaledVector(n, -n.x).normalize(), n);
     }
     // the welded frame, 12 mm round the tiles: level 1, front and rear bars across the row and one between its tiles;
     // level 2, a bar along each column's outer sides and one between the columns, and a front and a rear bar per column
@@ -399,6 +494,7 @@ function level1Glacis(P: TankBuilderPort, g: HullSurface): void {
     planeFrame(P, id, o, across.clone().multiplyScalar(width), slope, n, RAIL.w, RAIL.h);
     // the cassettes: a fitted brick bond of two courses inside the frame
     const inX = width - 2 * (RAIL.w + .006), x0 = f.x[0] + RAIL.w + .006, inV = slope.length() - 2 * (RAIL.w + .006);
+    bayFloor(P, 'hull', id, inX, inV, new THREE.Vector3(side * (x0 + inX / 2), g.glacisAt(f.z[0]), f.z[0]).addScaledVector(down, RAIL.w + .006 + inV / 2), across, n);
     const rows = 2, rowH = (inV - cassette.gap) / rows;
     for (const piece of mosaicLayout(inX, cassette.pitch, rows, .5, .09, cassette.gap)) {
       const X = x0 + (piece.start + piece.end) / 2, v0 = RAIL.w + .006 + piece.row * (rowH + cassette.gap) + rowH / 2;
@@ -441,8 +537,12 @@ function lampPockets(P: TankBuilderPort, g: HullSurface): void {
   }
 }
 
-const TERRACES = [{z: [2.22, 2.54] as const, x: 1.00, pieces: 4, stagger: 0}, {z: [2.58, 2.86] as const, x: 1.00, pieces: 4, stagger: .5},
+// (round 6, the critic's D5: "rows of long horizontal bricks ... close to the generic Kontakt-5/Relikt brick-row layout";
+// D4: no shape carried over from the Zubr): the terraces' cassettes stand in one square grid (no brick stagger), each
+// column between Krata mullions, over gunmetal bay floors
+const TERRACES = [{z: [2.22, 2.54] as const, x: 1.00, pieces: 4, stagger: 0}, {z: [2.58, 2.86] as const, x: 1.00, pieces: 4, stagger: 0},
   {z: [2.90, 3.12] as const, x: .78, pieces: 3, stagger: 0}];
+const TERRACE_MULLION = {w: .010, h: .03};
 const TERRACE_TOP = Math.tan(16.8 * Math.PI / 180);
 
 function level2Glacis(P: TankBuilderPort, g: HullSurface): void {
@@ -464,6 +564,16 @@ function level2Glacis(P: TankBuilderPort, g: HullSurface): void {
         const geo = stackTile(P, corner, new THREE.Vector3(1, 0, 0), down, n, b - a, along, cassette.base, cassette.top);
         eraModule(P, {owner: 'hull', sector: sectorOf('glacis_era', side), geometry: geo, outward: tup(n), minDot: .5,
           name: 'glacis terrace cassette', guard: (nm, geo2) => assertHullPart(id, nm, geo2)});
+        const mid = new THREE.Vector3(side * (a + b) / 2, topAt(z0 + .015), z0 + .015).addScaledVector(down, along / 2);
+        bayFloor(P, 'hull', id, b - a, along, mid, new THREE.Vector3(1, 0, 0), n);
+        // a Krata mullion in the joint after this cassette (2.5 mm clear of both)
+        if (b < t.x - .03 - 1e-6) {
+          const m = orientedBox([TERRACE_MULLION.w, along, TERRACE_MULLION.h + .004],
+            new THREE.Vector3(side * (b + cassette.gap / 2), topAt(z0 + .015), z0 + .015).addScaledVector(down, along / 2).addScaledVector(n, (TERRACE_MULLION.h - .004) / 2),
+            new THREE.Vector3(1, 0, 0), n);
+          assertHullPart(id, 'terrace mullion', m);
+          P.addEquipment('hullDetail', m);
+        }
       }
     }
   }
@@ -526,6 +636,16 @@ export function polishLowerPlate(P: TankBuilderPort, level: PolishLevel, g: Hull
     }
     // cassettes between the rails, bent over the break (level 2: a base layer and an inset top layer)
     const inner = [f.x[0] + inset, f.x[1] - inset], w = (inner[1] - inner[0] - (f.n - 1) * .012) / f.n;
+    // the field's gunmetal bay floor inside the frame, bent over the break (round 6, D1)
+    const floor = crosswiseSolid([inner[0] + FLOOR_INSET, inner[1] - FLOOR_INSET].map(X => {
+      const p = pts(X), up0 = p[1].clone().sub(p[0]).normalize(), up2 = p[2].clone().sub(p[1]).normalize();
+      p[0].addScaledVector(up0, inset + FLOOR_INSET); p[2].addScaledVector(up2, -inset - FLOOR_INSET);
+      const nn = p.map((_, i) => facing(p, i));
+      const at = (i: number, d: number) => p[i].clone().addScaledVector(nn[i], d);
+      return {x: side * X, ring: [at(0, -.0005), at(1, -.0005), at(2, -.0005), at(2, .0025), at(1, .0025), at(0, .0025)].map(q => [q.z, q.y] as [number, number])};
+    }));
+    assertHullPart(id, 'bay floor', floor);
+    P.addEquipment('hullDark', floor);
     for (let k = 0; k < f.n; k++) {
       const X0 = inner[0] + k * (w + .012), X1 = X0 + w;
       const ring = (X: number): [number, number][] => {
@@ -580,6 +700,13 @@ export function polishFrontSkirt(P: TankBuilderPort, level: PolishLevel, s: Poli
           new THREE.Vector3(0, 1, 0), n, z1 - z0, y1 - y0, .05, thick - .05);
       eraModule(P, {owner: 'hull', sector: sectorOf('skirt_era', side), geometry: geo, outward: [side, 0, 0], minDot: .5,
         name: 'front-skirt cassette', guard: (nm, g2) => assertHullPart(id, nm, g2, {skirtTop: b.high})});
+    }
+    // the grid's gunmetal bay floors on the bay's face, one per column run (round 6, D1)
+    for (const [r0, r1] of level === 1 ? [[columns[0][0], columns[0][1]], [columns[1][0], columns[1][1]]] : [[columns[0][0], columns[columns.length - 1][1]]]) {
+      const y0 = rows[0][0] + FLOOR_INSET, y1 = rows[rows.length - 1][1] - FLOOR_INSET;
+      const floor = new THREE.BoxGeometry(.003, y1 - y0, r1 - r0 - 2 * FLOOR_INSET).translate(side * (b.outer + .001), (y0 + y1) / 2, (r0 + r1) / 2);
+      assertHullPart(id, 'bay floor', floor, {skirtTop: b.high});
+      P.addEquipment('hullDark', floor);
     }
     // the grid's permanent bars: along its foot, between its rows and along its head (split round the Zubr's screen-arm
     // slot), and its column ends

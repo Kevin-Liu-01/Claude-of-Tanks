@@ -365,22 +365,22 @@ for (const [mapId, entries] of Object.entries(TOWN_LIGHT_PLANS)) {
   assert.equal(getMapConfig(mapId).props.townLightPlan, entries, `${mapId}: the map replays its recorded light buildings`);
   const obstacles = decodeCollisionManifest(JSON.parse(readFileSync(
     new URL(`../../server/world-collision-manifests/${mapId}.json`, import.meta.url), 'utf8'))).obstacles;
-  // (a map may replace a recorded kind out of place in its region at the same pose: props townLightPlanSwaps)
-  const swaps = getMapConfig(mapId).props.townLightPlanSwaps ?? {};
   const holds = (o, x, z) => x >= o.b[0] && x <= o.b[3] && z >= o.b[2] && z <= o.b[5];
   const leftOut = LIGHT_LEFT_OUT[mapId] ?? [];
   for (const [kind, x, z] of leftOut) {
     assert.ok(entries.some((e) => e.kind === kind && e.x === x && e.z === z), `${mapId}: the left-out ${kind} at (${x}, ${z}) is a recorded light building`);
   }
+  // (a map may replace a recorded kind out of place in its region at the same pose: props townLightPlanSwaps)
+  const swaps = getMapConfig(mapId).props.townLightPlanSwaps ?? {};
   let out = 0;
   for (const entry of entries) {
-    if (leftOut.some(([kind, x, z]) => kind === entry.kind && x === entry.x && z === entry.z)) {
-      assert.ok(!obstacles.some((o) => o.k === (swaps[entry.kind] ?? entry.kind) && holds(o, entry.x, entry.z)), `${mapId}: the ${entry.kind} at (${entry.x}, ${entry.z}) is left out`);
-      assert.ok(obstacles.some((o) => o.k === 'structure' && holds(o, entry.x, entry.z)), `${mapId}: a house stands over the left-out ${entry.kind}'s seat`);
+    const kind = swaps[entry.kind] ?? entry.kind;
+    if (leftOut.some(([k, x, z]) => k === entry.kind && x === entry.x && z === entry.z)) {
+      assert.ok(!obstacles.some((o) => o.k === kind && holds(o, entry.x, entry.z)), `${mapId}: the ${kind} at (${entry.x}, ${entry.z}) is left out`);
+      assert.ok(obstacles.some((o) => o.k === 'structure' && holds(o, entry.x, entry.z)), `${mapId}: a house stands over the left-out ${kind}'s seat`);
       out++;
       continue;
     }
-    const kind = swaps[entry.kind] ?? entry.kind;
     assert.ok(obstacles.some((o) => o.k === kind && holds(o, entry.x, entry.z)), `${mapId}: the ${kind} stands at its recorded (${entry.x}, ${entry.z})`);
   }
   summary.push(`${mapId} ${entries.length - out} light buildings at their recorded poses${out ? ` (${out} under the village's houses, left out)` : ''}`);
