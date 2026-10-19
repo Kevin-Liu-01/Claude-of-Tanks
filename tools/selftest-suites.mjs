@@ -590,6 +590,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/t72MaterialLifetime.selftest.mjs',
     'src/vehicles/profiles/t72TurretCleanup.selftest.mjs',
     'src/vehicles/profiles/ztz99a2RearService.selftest.mjs',
+    // release 227 (CN critic round 5): the fleet Type 96B's and ZTZ-99A2's donor parts each seated on real stock
+    'src/vehicles/profiles/donorStockSeating.selftest.mjs',
     'src/vehicles/profiles/type99AAngularTurret.selftest.mjs',
     'src/vehicles/profiles/chineseGunMountEraSpent.selftest.mjs',
     'src/vehicles/profiles/eraSeating.selftest.mjs',
