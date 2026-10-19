@@ -156,6 +156,7 @@ function drapedRibbon(
   thickness: number,
   lift: number,
   columns: number,
+  tileM = 1,
 ): void {
   const n = path.length;
   if (n < 2) return;
@@ -190,9 +191,9 @@ function drapedRibbon(
   for (let index = 0; index < n - 1; index += 1) {
     const r0 = rows[index], r1 = rows[index + 1], v0 = along[index], v1 = along[index + 1];
     for (let column = 0; column < columns; column += 1) {
-      const u0 = (column / columns) * width, u1 = ((column + 1) / columns) * width;
+      const u0 = (column / columns) * width / tileM, u1 = ((column + 1) / columns) * width / tileM;
       // wound counter-clockwise seen from above (the across direction points right of the route's heading)
-      quad(r0[column], r0[column + 1], r1[column + 1], r1[column], [u0, v0], [u1, v0], [u1, v1], [u0, v1]);
+      quad(r0[column], r0[column + 1], r1[column + 1], r1[column], [u0, v0 / tileM], [u1, v0 / tileM], [u1, v1 / tileM], [u0, v1 / tileM]);
     }
     // the edge skirts, facing out
     quad(r0[0], r1[0], below(r1[0]), below(r0[0]), [0, v0], [0, v1], [thickness, v1], [thickness, v0]);
@@ -212,6 +213,11 @@ function drapedRibbon(
   geometry.userData.maxVisibleEdgeHeightM = thickness;
   bucket.push(geometry);
 }
+
+/** Metres per texture repeat on a draped road, by surface (the render's grain at 2.5 m, a slab's worth). */
+const DRAPED_TILE_M: Readonly<Partial<Record<GarageApproachRecipe['surface'], number>>> = Object.freeze({
+  plaster: 2.5, rock: 3, snow: 4, cobble: 1.8,
+});
 
 function subdividePath(
   points: readonly CameraPoint[],
@@ -308,7 +314,7 @@ export function addGarageApproachDetails({
   const addPath = (path: readonly CameraPoint[], width: number, thickness = 0.12): void => {
     if (draped) {
       // laid on the drawn ground at every point and across the width every 2 m or less: it never sinks under a crown
-      drapedRibbon(route, groundAtWorld, path, width, thickness, 0.035, Math.max(2, Math.ceil(width / 2)));
+      drapedRibbon(route, groundAtWorld, path, width, thickness, 0.035, Math.max(2, Math.ceil(width / 2)), DRAPED_TILE_M[approach.surface] ?? 1);
       approachSegments += path.length - 1;
       return;
     }

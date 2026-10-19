@@ -528,7 +528,8 @@ function addMassif(ctx: SkylineContext, mark: GarageSkylineLandmark, salt: numbe
       if (alpine) {
         // spruce and larch in stands: three greens by stand, snow lying in the gaps and on the upper fringe
         const stand = hash1(c * 31 + Math.round(v * 20), salt + 4);
-        return colour.copy(hex(stand < 0.34 ? 0x2a4a2e : stand < 0.68 ? 0x37583a : 0x46664a))
+        // (the scene's own fog lifts the range again in the Garage: a darker green keeps the belt legible under it)
+        return colour.copy(hex(stand < 0.34 ? 0x203a26 : stand < 0.68 ? 0x2b4931 : 0x37583d))
           .lerp(hex(0xb7c5cf), (hash1(c * 5 + Math.round(v * 9), salt + 3) > 0.78 ? 0.4 : 0) + dusted * 0.45);
       }
       return colour.copy(hex(noise1(c * 1.7, salt + 4) > 0.5 ? 0x223029 : 0x2d3b33)).lerp(hex(0x9aa6ac), (hash1(c * 5 + Math.round(v * 9), salt + 3) > 0.72 ? 0.35 : 0) + dusted * 0.4);

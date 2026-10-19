@@ -335,7 +335,9 @@ export const GARAGE_ENVIRONMENT_RECIPES = Object.freeze<Record<string, GarageEnv
     treeSpecies: ['eucalyptus', 'palm'], treeCount: 22, reliefScale: 0.72,
     horizonStyle: 'rolling', horizonHeightM: 10.4,
     approach: {
-      style: 'monsoon-causeway', label: 'drained ridge causeway', surface: 'rock', width: 7.8,
+      // a concrete causeway on the render texture (garage r9 g1 r4: draped into view, the mossy rock texture read as a
+      // green carpet), the bay's floor and kerbs in the same concrete
+      style: 'monsoon-causeway', label: 'drained ridge causeway', surface: 'plaster', width: 7.8,
       waypoints: [[0, 10], [0, 25], [0, 46]], lanes: [-3.3, 3.3], // straight through the covered bay
       drapeM: 0.8,
     },
