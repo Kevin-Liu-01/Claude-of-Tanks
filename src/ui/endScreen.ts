@@ -35,6 +35,7 @@ import { awardDetails } from './awardDetails.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
 import { createElement as el, ensureStyle } from './dom.ts';
 import { iconUrl, maskIcon } from './icons.ts';
+import { loadHeroCards } from './heroCardAccess.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import type { EventBus } from '../game/stateCore.ts';
@@ -186,7 +187,7 @@ const COL = {
  * hero chunk; the packaged angle icon stays until the layers are placed, and for good when they are not.
  */
 function showHeroVehicle(card: HTMLElement, specId: string, fallback: HTMLImageElement): void {
-  import('./heroCard.ts')
+  loadHeroCards()
     .then((hero) => hero.decorateHeroTile(card, specId, { tankSizes: '220px', flagSizes: '260px', priority: true }))
     .then((decorated) => {
       if (!decorated) return;

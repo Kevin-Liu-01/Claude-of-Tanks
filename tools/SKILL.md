@@ -160,6 +160,17 @@ finite leaf, while interior rays retain the bay walls. Retain raw residuals, tes
 missing/moved stock and wrong-source negatives, and keep all geometry in the
 source and physical audits.
 
+Tank hero cards (Garage roster, end-screen tile, Gallery list): one policy in
+`src/ui/heroCardPolicy.ts` (hull bow right, turret swung 105 deg past the lens so
+the gun points left, level gun; turretless mounts keep the gun on the hull axis).
+`node tools/hero-cards-plan.mjs` names the stale ids (geometry hash and angle-render
+sha from `tank-assets.json`, flag SVG, policy keys); render only those with
+`node tools/genHeroCards.mjs --ids=<stale>` (capture lock, NORMAL band; a policy
+change needs an explicit `--all --part=i/n`), then
+`node tools/hero-cards-compose.mjs ship --layers <dir> --ids=<stale>` and
+`npm run hero-cards:check` (bow and gun sides by projection, budgets, files). Never
+hand-edit `public/icons/hero/hero-cards.json`.
+
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->
 Collision-fixture codec changes use the maintained, headless

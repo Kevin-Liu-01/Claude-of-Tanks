@@ -61,7 +61,7 @@ assert.match(garageSource,
 assert.match(garageSource, /document\.addEventListener\('cot:boot-dismiss'/,
   'Garage listens for the boot fade before revealing first-visit chrome');
 assert.match(garageSource,
-  /import\('\.\/heroCard\.ts'\)[\s\S]*?mountRosterHeroCards\(cardsEl, cardById, selectedId, \(id\) => legacyPortraits\(\[id\]\)\)[\s\S]*?\.then\(legacyPortraits, \(\) => legacyPortraits\(\[\.\.\.cardById\.keys\(\)\]\)\)/,
+  /loadHeroCards\(\)[\s\S]*?mountRosterHeroCards\(cardsEl, cardById, selectedId, \(id\) => legacyPortraits\(\[id\]\)\)[\s\S]*?\.then\(legacyPortraits, \(\) => legacyPortraits\(\[\.\.\.cardById\.keys\(\)\]\)\)/,
   'garage cards take their hero layers from the lazy hero chunk and keep the packaged portrait when it is unavailable');
 assert.match(garageSource,
   /<span class="hc-tier" aria-hidden="true">\$\{tierChipHTML\(tier\)\}<\/span>/,

@@ -141,6 +141,15 @@ for (const gunSide of ['left', 'right']) {
   const cardTs = readFileSync(new URL('../src/ui/heroCard.ts', import.meta.url), 'utf8');
   assert.match(cardTs, /\(row\.face\?\.\[1\] \?\? HERO_GUN_SIDE\) !== HERO_GUN_SIDE/, 'a row whose gun is on the other side mirrors the centre (--hc-gs)');
   assert.match(cardTs, /--hc-gs:-1/, 'the mirror is the --hc-gs custom property');
+  // The card module and its stylesheet load together at one lazy boundary, used by every surface that shows cards.
+  const access = readFileSync(new URL('../src/ui/heroCardAccess.ts', import.meta.url), 'utf8');
+  assert.match(access, /Promise\.all\(\[import\('\.\/heroCard\.ts'\), import\('\.\/heroCard\.css'\)\]\)/, 'heroCardAccess loads the module and its CSS together');
+  assert.doesNotMatch(cardTs, /^import ['"][^'"]+\.css['"]/m, 'heroCard.ts imports no stylesheet statically');
+  for (const surface of ['../src/ui/garage.ts', '../src/ui/endScreen.ts', '../src/gallery/gallery.ts']) {
+    const source = readFileSync(new URL(surface, import.meta.url), 'utf8');
+    assert.match(source, /loadHeroCards\(\)/, `${surface} loads the cards through the lazy boundary`);
+    assert.doesNotMatch(source, /import\(['"][^'"]*heroCard\.ts['"]\)/, `${surface} never imports heroCard.ts around the boundary`);
+  }
   assert.match(layerCss, /top:calc\(100cqh - var\(--hc-band\) \+ 2px - var\(--hc-cb\) \* var\(--hc-k\)\)/, 'contact line 2 px under the art box');
   assert.equal(HERO_SIDE_MARGIN, 0.035, 'the CSS margins (0.035, 0.93, 0.965) are HERO_SIDE_MARGIN');
 }

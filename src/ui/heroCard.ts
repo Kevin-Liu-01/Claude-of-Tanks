@@ -1,4 +1,4 @@
-// Tank hero cards at runtime (a lazy chunk: the Garage imports it with import()).
+// Tank hero cards at runtime (a lazy chunk with its stylesheet: heroCardAccess.ts loadHeroCards()).
 // Each card is the owner's reference composition built from layers: a CSS ground,
 // the nation's waving-cloth flag layer under the policy feather (CSS mask-image),
 // the vehicle's transparent hero render placed by the policy's placeTank rule in
@@ -9,7 +9,6 @@
 // no WebGL and no canvas reads happen here.
 // First-party: Kevin B. Liu (NOTICE.md).
 
-import './heroCard.css';
 import {
   HERO_GUN_SIDE, HERO_MANIFEST_FILE, HERO_POLICY_VERSION, HERO_PUBLIC_DIR, heroFlagFiles, heroFlagMaskCss, heroTankFiles,
   type HeroFacing,
