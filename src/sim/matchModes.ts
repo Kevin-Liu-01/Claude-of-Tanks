@@ -639,7 +639,10 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   /** Revive at the entity's own spawn, or at `at` (a Horde arrival point, a Frontline line slot) when given. */
   const reviveAtSpawn = (entity: Entity, healthScale = 1, at: MatchModeSpawn | null = null): void => {
     // the infected rise round the survivors (infectionBots.arrival), a convert's first life included
-    if (!at && infectionArrival && teamOf(entity) === 'bravo') at = arrivalPoint(entity, infectionArrival);
+    // (out of reach and sight first; else out of reach in sight — never the far base while survivors stand)
+    if (!at && infectionArrival && teamOf(entity) === 'bravo') {
+      at = arrivalPoint(entity, infectionArrival) ?? arrivalPoint(entity, infectionArrival, true);
+    }
     const spawn = at ?? spawns.get(entity.id);
     if (!spawn) return;
     const safeSpawn = placement ? placement.respawn(spawn, entity.id, occupiedBy(entity)) : spawn;
@@ -980,6 +983,26 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       counter = null;
     }
   };
+  /**
+   * The allied revive (allyReviveS, the 40-55 % attacker-win lever): a destroyed allied BOT comes back that long after
+   * its death, behind the last sector taken (its own spawn before the first falls). The human keeps the sortie's one life.
+   */
+  const allyDownAt = new Map<string, number>();
+  const stepAllyRevive = (timeS: number): void => {
+    const after = assaultRules.allyReviveS;
+    if (after == null || after <= 0) return;
+    for (const ally of teams.alpha) {
+      if (!ally.bot || respawnAt.has(ally.id)) continue;
+      if (!ally.combat.destroyed) { allyDownAt.delete(ally.id); continue; }
+      const down = allyDownAt.get(ally.id);
+      if (down == null) { allyDownAt.set(ally.id, timeS); continue; }
+      if (timeS < down + after) continue;
+      allyDownAt.delete(ally.id);
+      const taken = lineIndex > 0 ? zones[lineIndex - 1] : null;
+      reviveAtSpawn(ally, 1, taken ? { x: Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, taken.x - axisX * 40)),
+        z: Math.max(-WORLD_MARGIN_M, Math.min(WORLD_MARGIN_M, taken.z - axisZ * 40)), yaw: Math.atan2(axisX, axisZ) } : null);
+    }
+  };
   /** The trickle: while the live sector is contested and its line is short, one defender arrives from the rear. */
   const stepReinforceTrickle = (zone: ZoneState, timeS: number): void => {
     if (assaultRules.reinforceTrickleS <= 0) return;
@@ -1023,6 +1046,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     }
     stepCounterAttack(timeS);
     stepReinforceTrickle(zone, timeS);
+    stepAllyRevive(timeS);
     const occupancy = zoneOccupancy(zone);
     advanceZoneControl(zone, Math.floor(occupancy / 16), occupancy % 16, dt);
     if (state.horde) state.horde.alive = livingHordeEnemyCount();

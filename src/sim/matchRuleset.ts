@@ -132,7 +132,7 @@ type BotDoctrineOverrides = { readonly alpha?: Partial<BotDoctrine>; readonly br
 const RUSH_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
   openingRead: false, rush: true, holdBandScale: 0, coverScale: 0, fallbackScale: 0, hitReactions: 'none', scoutKite: false,
   scoot: false, spearheadGuard: false, conserveRounds: false, stalemateSilentS: 4, missionSpeed: 1, missionBreakOffHp: 0,
-  searchRouting: 'spotted', routeRefreshS: 1.25, routeMoveM: 8, claimRangeM: 120,
+  searchRouting: 'spotted', routeRefreshS: 1.25, routeMoveM: 8, claimRangeM: 60,
 });
 /**
  * The hunt's drive (mission 'hunt' with `rush`): straight at a visible target inside `directM`, an orbit at
@@ -140,6 +140,8 @@ const RUSH_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
  * steers to the tangent (a ram costs the fodder hull more than the survivor's).
  */
 export const RUSH_DRIVE = Object.freeze({ directM: 70, orbitInM: 35, orbitMinM: 25, orbitMaxM: 35, noRamM: 12 });
+/** A zone holder's sortie (`zoneSortieM`): it drives at the spotted attacker and stops `standoffM` short (a sortie, never a ram). */
+export const SORTIE_DRIVE = Object.freeze({ standoffM: 35 });
 /** The Turbo Ball striker's offensive jump (`offensiveJump`): the ball within [minM, rangeM] ahead, inside coneRad of the bow. */
 export const STRIKER_JUMP = Object.freeze({ rangeM: 25, minM: 4, coneRad: 0.35 });
 /**
@@ -835,8 +837,8 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     infection: Object.freeze({ infectedSpeed: 1.3, survivorHpScale: 1.5, infectedHpScale: .3, infectedReloadScale: 1, hunt: true }),
     bots: Object.freeze({ bravo: INFECTED_DOCTRINE, alpha: SURVIVOR_DOCTRINE }),
     infectionBots: Object.freeze({ survivorRallyM: 90, arrival: Object.freeze({
-      spawnRingM: Object.freeze([160, 260] as const), spawnSectors: 3, sectorWidthDeg: 60, sectorSpreadDeg: 70,
-      spawnMinHumanM: 140, spawnOutOfSight: true, sightRangeM: 450, sightStepM: 8, sightEyeM: 2.4, sightHullM: 1.5,
+      spawnRingM: Object.freeze([120, 200] as const), spawnSectors: 3, sectorWidthDeg: 60, sectorSpreadDeg: 70,
+      spawnMinHumanM: 110, spawnOutOfSight: true, sightRangeM: 450, sightStepM: 8, sightEyeM: 2.4, sightHullM: 1.5,
       sightMarginM: 1, spawnCandidates: 12 }) }) }),
   realistic: Object.freeze({ ...STANDARD, mode: 'realistic', alwaysVisible: false, moduleOnlyDamage: true, consumables: false }),
   gun_game: Object.freeze({ ...STANDARD, mode: 'gun_game', respawnS: 4, ammo: 'unlimited', timeLimitS: 900,

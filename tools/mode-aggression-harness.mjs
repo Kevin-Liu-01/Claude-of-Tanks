@@ -35,7 +35,8 @@
 //        mode's human-alive rule never ends the match and the clock or the mode's own verdict does; park = shielded
 //        and passive at its spawn (no controller: it neither drives nor fires), so every push and every kill on the
 //        player's side is the allied bots'. Frontline Assault ends when the player seat dies (~100 s with the fight
-//        seat), so its push and zone metrics read best with park or shield.
+//        seat), so its push and zone metrics read best with park or shield. In Frontline the fight seat routes to the
+//        attack's objective point (the live sector) and follows the line, like a human attacker (gameplay-modes-228).
 //
 // Maps: --map pins one; otherwise seed s plays MAP_ROTATION[(s - 1) % 8] (Redrock = badlands and Steinburg = urban are
 // in it), so an A/B pair on the same seeds plays the same maps. The clock cap is the ruleset's own clock (+5 s), or
@@ -625,6 +626,22 @@ if (engine === 'solo') {
     for (const module of Object.values(combat.modules ?? {})) if (module) { module.hp = module.maxHp; module.state = 'ok'; module.repairT = 0; }
     if (combat.fire) combat.fire.burning = false;
   };
+  // Frontline Assault: the fight seat plays the objective like a human attacker — its route goes to the attack's point
+  // for it (the live sector, the mode controller's botObjective) and follows the line as it advances, instead of the
+  // enemy deployment's centroid (since gameplay-modes-228 the defenders stand on the line, so the centroid drove the seat
+  // alone into the dug-in line ahead of its allies). Re-checked once a second; re-routed when the point moves 20 m.
+  const playObjective = mode === 'frontline_assault' && playerSeat === 'fight';
+  let objectiveCheckS = -Infinity, routedX = NaN, routedZ = NaN;
+  const followObjective = () => {
+    if (!playObjective || !player.aiCtl || player.combat.destroyed || game.timeS < objectiveCheckS + 1) return;
+    objectiveCheckS = game.timeS;
+    const goal = game.matchModeController?.botObjective(player);
+    if (!goal || Math.hypot(goal.x - routedX, goal.z - routedZ) < 20) return;
+    routedX = goal.x; routedZ = goal.z;
+    const route = planBotRoute({ start: { x: player.state.pos.x, z: player.state.pos.z }, goal: { x: goal.x, z: goal.z }, navigation: game._botNavigation,
+      rng: searchRng, role: roleOf(player.spec), spec: player.spec, useRoleDetour: false });
+    player.aiCtl.setWaypoints(route.length ? route.map((p) => (Array.isArray(p) ? [p[0], p[1]] : [p.x, p.z])) : [[goal.x, goal.z]], { loop: false });
+  };
   adapter = {
     playerSpecId,
     entities: () => game.tanks,
@@ -632,6 +649,7 @@ if (engine === 'solo') {
     controller: () => game.matchModeController,
     step() {
       if (playerSeat !== 'fight') shieldPlayer();
+      followObjective();
       simStep(game, bus, world, null, collider);
       if (playerSeat !== 'fight') shieldPlayer();
       if (canSelfRightTank(player.state)) requestTankSelfRight(player.state, rules.gravityScale ?? 1);

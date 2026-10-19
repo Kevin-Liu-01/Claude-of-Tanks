@@ -38,7 +38,11 @@ for(const size of [4,14,30,42])for(const solo of [false,true]){
   assert.equal(e.combat.destroyed,false);
   assert.equal(e.combat.maxHp,Math.round(spec.hp*infectedHpScale));assert.equal(e.combat.hp,e.combat.maxHp);
   assert.equal(e.combat.equipMults.reload,infectedReloadScale);assert.equal(e.modeSpeedMultiplier,infectedSpeed);
-  assert.equal(e.state.pos.z,100,'converted tanks join the infected spawn');
+  // gameplay-modes-228: a convert rises on the infected arrival ring round the living survivors (out of their reach;
+  // on this flat field every point is in sight, so the ring's in-sight fallback places it), never on top of them
+  const arrival=rules.infectionBots.arrival,living=entities.filter((s)=>s.team===names[0]&&!s.combat.destroyed);
+  const nearest=Math.min(...living.map((s)=>Math.hypot(s.state.pos.x-e.state.pos.x,s.state.pos.z-e.state.pos.z)));
+  assert.ok(nearest>=arrival.spawnMinHumanM-1e-6,`converted tanks rise out of the survivors' reach (${nearest.toFixed(1)} m)`);
  }
 }
 console.log('infectedLifecycle: solo/network team names, 4/14/30/42 tanks, repeat respawns, conversion stats and complete outbreak passed');

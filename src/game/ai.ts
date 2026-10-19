@@ -27,7 +27,7 @@ import type { BotMission } from '../sim/matchModes.ts';
 import { createBotAbilityPlanner, type BotAbilityContext } from './botAbilities.ts';
 import { computeDispersionRadM, IMPACT_SOURCE_COLLIDER } from '../sim/movement.ts';
 import { createBotTerrainSafety } from '../sim/botTerrainSafety.ts';
-import { CLASSIC_BOT_DOCTRINE, RUSH_DRIVE, STRIKER_JUMP, type BotDoctrine, type RulesetPhysics } from '../sim/matchRuleset.ts';
+import { CLASSIC_BOT_DOCTRINE, RUSH_DRIVE, SORTIE_DRIVE, STRIKER_JUMP, type BotDoctrine, type RulesetPhysics } from '../sim/matchRuleset.ts';
 import type { NavigationBridgeDeck } from '../sim/bridgeDeckNavigation.ts';
 import { createNavigationLiquidSafety } from '../sim/navigationLiquidSafety.ts';
 import { solveBallisticGunLay } from '../sim/ballistics.ts';
@@ -5884,6 +5884,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (targetOff <= objective.radiusM || targetOff > objective.radiusM + reach) return false;
     // never further from the zone than the sortie's reach: past it the hull turns for home
     if (Math.hypot(st.pos.x - objective.x, st.pos.z - objective.z) > objective.radiusM + reach) return false;
+    if (Math.hypot(tp.x - st.pos.x, tp.z - st.pos.z) <= SORTIE_DRIVE.standoffM) {
+      input.throttle = 0;
+      input.brake = Math.abs(st.speed) > 0.5;
+      return true;
+    }
     chaseToXZ(input, tp.x, tp.z, 1);
     return true;
   }
@@ -6131,8 +6136,39 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (!driveIntent) navNoProgressT = 0;
   }
 
+  /**
+   * The rush's no-ram rule (RUSH_DRIVE.noRamM): a rushing hunter never drives its hull into an enemy hull, whichever
+   * driver set the throttle (the orbit, the hunt route, the engagement's press). An enemy hull inside the lane ahead,
+   * out to noRamM plus the stopping distance, brakes the hull and turns it off the line; the orbit then takes it round.
+   */
+  let ramHoldOffs = 0;
+  function holdOffEnemyHulls(input: AiInput): void {
+    if (!doctrineOf().rush || !entity.state.grounded) return;
+    const st = entity.state, speed = st.speed;
+    if (speed <= 1 && input.throttle <= 0) return;
+    const fx = Math.sin(st.yaw), fz = Math.cos(st.yaw);
+    const reach = ownHalfLengthM() + RUSH_DRIVE.noRamM + Math.max(0, speed) ** 2 / (2 * SOLID_STOP_MPS2);
+    const lane = (spec.dims.widthM || 3) + 1;
+    const list = deps.getEnemies();
+    for (let i = 0; i < list.length; i++) {
+      const other = list[i];
+      if (!other || other.modeActive === false || other.combat?.destroyed || !other.state) continue;
+      const rx = other.state.pos.x - st.pos.x, rz = other.state.pos.z - st.pos.z;
+      const along = rx * fx + rz * fz;
+      if (along <= 0 || along > reach) continue;
+      const cross = fz * rx - fx * rz;
+      if (Math.abs(cross) > lane) continue;
+      input.throttle = Math.min(input.throttle, 0);
+      input.brake = speed > 1;
+      input.steer = Math.sign(-cross) || orbitSide;
+      ramHoldOffs++;
+      return;
+    }
+  }
+
   function finishStep(input: AiInput, dt: number, timeS: number): void {
     avoidAllies(input, dt, timeS);
+    holdOffEnemyHulls(input);
     if (liquidSafe && entity.state.grounded) {
       const st = entity.state;
       const speed = Math.abs(st.speed);
@@ -6569,7 +6605,7 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
       objectiveShiftZ: objectiveShifting ? +objectiveShiftPoint.z.toFixed(1) : null,
       zoneHoldX: Number.isFinite(zoneHoldForX) ? +zoneHold.x.toFixed(1) : null,
       zoneHoldZ: Number.isFinite(zoneHoldForZ) ? +zoneHold.z.toFixed(1) : null,
-      missionReleases, missionReleased: nowS < missionReleaseUntilS, offensiveJumps, ballShots,
+      missionReleases, missionReleased: nowS < missionReleaseUntilS, offensiveJumps, ballShots, ramHoldOffs,
       levelRouting, levelRoutes, unbearableVerdicts, unbearable: unbearableId, elevationLockT: +elevationLockT.toFixed(1),
       pressing: nowS < pressUntilS,
       pressPointX: passivePressing ? pressPoint.x : NaN, // round 67: the chosen press point (NaN while not pressing)
