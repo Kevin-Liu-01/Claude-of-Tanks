@@ -11,8 +11,8 @@
  * `layUprightPlates` reads a resting drawing in world space, splits it into its connected pieces (corners welded at a
  * millimetre, as the slab check splits them), and lays every piece that is an upright plate — thin (a hand or less through), broad (1.6 m and more
  * each way in its plane), standing 1.4 m and more — on its broad side where it stood: turned about its middle so its
- * thin axis is vertical, then down onto the highest ground under it (where the caller knows the ground; else its lowest
- * point where its lowest point was). Nothing else moves.
+ * thin axis is vertical, then down onto the ground under it (the middle of the ground's spread under it, never over its old
+ * foot, where the caller knows the ground; else its lowest point where its lowest point was). Nothing else moves.
  * Visual only: it rewrites the geometry of a drawing that no longer moves (a baked heap, a body put to rest); the
  * simulation, its records and the collision never see it. Deterministic: the same drawing lays the same way.
  */
@@ -183,14 +183,15 @@ export function layUprightPlates(geometry: THREE.BufferGeometry, matrix: THREE.M
       if (w[i * 3 + 1]! < ny0) ny0 = w[i * 3 + 1]!;
     }
     // (round 4: airfield #0's dark plate, laid at the foot it stood on up on the heap, lay half over nothing 1.5 m up) where the
-    // ground is known, onto the highest ground under where it now lies (a heap's mound, a slope), else at its old foot
+    // ground is known, onto the ground under where it now lies — the middle of its spread under the plate (a heap's mound, a
+    // slope: half of it bedded in, half on it) — never higher than its old foot; else at its old foot
     let foot = y0;
     if (groundAt) {
-      foot = -Infinity;
-      const every = Math.max(1, Math.floor(list.length / 48));
-      for (let k = 0; k < list.length; k += every) { const i = list[k]!; foot = Math.max(foot, groundAt(w[i * 3]!, w[i * 3 + 2]!)); }
-      foot = Math.max(foot, groundAt(mx, mz));
-      if (!Number.isFinite(foot)) foot = y0;
+      const every = Math.max(1, Math.floor(list.length / 48)), gs: number[] = [groundAt(mx, mz)];
+      for (let k = 0; k < list.length; k += every) { const i = list[k]!; gs.push(groundAt(w[i * 3]!, w[i * 3 + 2]!)); }
+      gs.sort((a, b) => a - b);
+      const g = gs[gs.length >> 1]!;
+      if (Number.isFinite(g)) foot = Math.min(y0, g);
     }
     const dy = foot - ny0 + 0.02;
     for (const i of list) { w[i * 3 + 1] = w[i * 3 + 1]! + dy; changed[i] = 1; }
