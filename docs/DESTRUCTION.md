@@ -1297,6 +1297,22 @@ adds:
   the first sweep built it); a kit hole asks for the sweep; its puts run in chunks and its face pieces are kept per mesh
   state. The intact and enclosure measures are made when first asked for, off the props build.
 - The slab check waits for rest before its last look and judges each phase with its records as they stood.
+- *No plate rests perched* (round 4, third pass: the census on `d139fe6ee2` at three random seeds a face found the last
+  three of the owner's floating plates — airfield #0's tower baked a 3.8 x 2.8 m chunk into its heap 1.7 m up, 57 % of it
+  over nothing; badlands #0's caravanserai a 4.5 m square plate 1.2 m up in its yard; caldera #27's fire station a roof
+  sheet 2 m up, 43 % over nothing, as it collapsed). `layPerchedPlates` (`src/fx/uprightPlates.ts`) reads what comes to
+  rest — the fracture's heap as it merges, a collapse as it bakes — for flat plates and chunks (up to 0.6 m through, 1.6 m
+  and more each way) lying 0.9 m and more over the ground with 30 % and more of them over nothing within 0.8 m: no ground,
+  no solid record, no body's contact sphere (`createPlateHold`), no other drawn piece of the heap, the building's other
+  heaps or remnants. Each is tilted off the edge of what holds it until its lowest corner meets the ground (at most 50
+  degrees: a slab leant off the heap), or, held by nothing, lowered flat onto the ground under it. A roof slab or sheet left
+  at rest is looked at again once it has moved a third of a metre off where it was left (caldera #27's sheet crept down
+  with the storey under it, never fast enough to count as moving), and a roof body's perch is judged by the plates it
+  draws before its box (that sheet's box read steep while its plate lay flat).
+- *The sweep's steps* (the round-3 critic's 12-20 ms single steps): a crowded voxel's sample pairs are read a run pair at a
+  step's share, and the ground columns a step's share at a time.
+- *The kinds receipt's KNOWN* is bounded: an entry excuses a finding of its building, mesh and reason only up to the
+  largest extent judged (the round-3 critic: any new finding of that class on that building was hidden too).
 
 **The census (2026-10-18, round 4).** On `d139fe6ee2`, every map and destructible kind from all four faces at three seeds
 each drawn at random (`r4/final/census/seeds.txt`): the A pass (60 rounds up storeys 0-3, every phase, the late joiner's

@@ -64,9 +64,10 @@ if (!isMainThread) {
   const { MAP_IDS } = await import('../src/world/maps/index.ts');
 
   /**
-   * Judged exceptions, one finding each: [`map #id`, the mesh it is drawn in, the reason the detector gives, why it is
-   * not a stray slab] (destruction-slabs 227 round 2, each looked at in the detector's renders). A finding passes only
-   * when an entry names its building, its mesh and its reason; anything else the building shows still fails it.
+   * Judged exceptions, one finding each: [`map #id`, the mesh it is drawn in, the reason the detector gives, the largest
+   * extent judged (m), why it is not a stray slab] (destruction-slabs 227 round 2, each looked at in the detector's renders;
+   * the bound since round 4). A finding passes only when an entry names its building, its mesh and its reason and it is no
+   * bigger than the one judged; anything else the building shows still fails it.
    */
   const REMNANT = /^fx-structure-remnant-/, RUBBLE = /^fx-structure-rubble-/, RIM = /^fx-structure-rim-/, BAKED = /^fx-collapse-baked-/;
   const TALL = /^too tall/, OUTSIDE = /^outside/, OFF = /^off the walls/, FLOATING = /^floating/;
@@ -74,21 +75,21 @@ if (!isMainThread) {
   const HANGING = /^hanging/, LOOSE = /^cut loose/, HEADS = /^on the wall heads/, ON_END = /^on end/;
   const KNOWN = Object.freeze([
     // held storeys (DESTRUCTION.md §3.4): what stands with a storey the simulation holds over a destroyed one
-    ['ruinspires #1', REMNANT, TALL, "a held upper storey's joist end at the megatower's top, 2.5 m proud"],
+    ['ruinspires #1', REMNANT, TALL, 15.0, "a held upper storey's joist end at the megatower's top, 2.5 m proud"],
     // round 3 (the hanging judge reads any drawn piece: held then not, cut loose; and each roofed kind's roof pass); round 4
     // left the 29 other judged findings of rounds 1-3 flagging no more (the upright plates laid, remnants cut to the drawn
     // form, fallen objects' faces read as their sides, the launched slabs and the perched roof bodies gone)
-    ['ruinspires #3', RIM, LOOSE, "an arcology's breach rim 1.8 m up left by a hole beside it — open"],
-    ['skybridge #20', WORLD, LOOSE, "the terrace tower's thin steel members 3 m up the roof pass leaves after its sections fell — open"],
+    ['ruinspires #3', RIM, LOOSE, 2.2, "an arcology's breach rim 1.8 m up left by a hole beside it — open"],
+    ['skybridge #20', WORLD, LOOSE, 3.2, "the terrace tower's thin steel members 3 m up the roof pass leaves after its sections fell — open"],
     // round 4 (the on-end rule, the remnant cut and a fresh full run on d139fe6ee2): what the round leaves, named
-    ['airfield #12', REMNANT, TALL, "a ruin post's upper length on the hall's plan edge, 2.7 m over the ground where the slab check reads nothing drawn within 0.75 m (the enclosure reads the wall there) — open"],
-    ['delta #11', REMNANT, HANGING, "a 1 m steel remnant 1.1 m up held at one end in a late joiner's destroyed set (as delta #12) — open"],
-    ['delta #31', REMNANT, TALL, "the temple's roof beam 9 m up, wholly over the drawn height at its top's spot (a held member: not cut) — open"],
-    ['foundry #0', REMNANT, OUTSIDE, "the factory's steel remnant wall at the ground, 12 % of it past the intact plan on the downhill side (1.5 m under the ground there)"],
-    ['foundry #0', REMNANT, TALL, "the same steel remnant wall's edge 2.9 m over the ground at the plan's edge where the slab check reads nothing drawn (its foot on the downhill side) — open"],
-    ['moon #11', WORLD, HANGING, "the lunar mill's vane plates 17-19 m up in a late joiner's page at its collapse (live, none: the page's sweep leaves them) — open"],
-    ['steppe #8', REMNANT, TALL, "a container row's baked remnant 1 m tall, 1.2 m over the ground where nothing is drawn — open"],
-    ['whiteout #25', RUBBLE, ON_END, "the guyed mast's two lowest guys left strung up to its fallen head's old height (two wires read as a plate) — open"],
+    ['airfield #12', REMNANT, TALL, 3.8, "a ruin post's upper length on the hall's plan edge, 2.7 m over the ground where the slab check reads nothing drawn within 0.75 m (the enclosure reads the wall there) — open"],
+    ['delta #11', REMNANT, HANGING, 1.2, "a 1 m steel remnant 1.1 m up held at one end in a late joiner's destroyed set (as delta #12) — open"],
+    ['delta #31', REMNANT, TALL, 10.0, "the temple's roof beam 9 m up, wholly over the drawn height at its top's spot (a held member: not cut) — open"],
+    ['foundry #0', REMNANT, OUTSIDE, 8.1, "the factory's steel remnant wall at the ground, 12 % of it past the intact plan on the downhill side (1.5 m under the ground there)"],
+    ['foundry #0', REMNANT, TALL, 5.7, "the same steel remnant wall's edge 2.9 m over the ground at the plan's edge where the slab check reads nothing drawn (its foot on the downhill side) — open"],
+    ['moon #11', WORLD, HANGING, 3.9, "the lunar mill's vane plates 17-19 m up in a late joiner's page at its collapse (live, none: the page's sweep leaves them) — open"],
+    ['steppe #8', REMNANT, TALL, 1.9, "a container row's baked remnant 1 m tall, 1.2 m over the ground where nothing is drawn — open"],
+    ['whiteout #25', RUBBLE, ON_END, 23.8, "the guyed mast's two lowest guys left strung up to its fallen head's old height (two wires read as a plate) — open"],
   ]);
 
   // the destruction code's hash (each entry's import closure, as the selftest cache reads it) and the passed fingerprints
@@ -152,7 +153,10 @@ if (!isMainThread) {
   let runs = 0, snaps = 0, cachedRuns = 0;
   const kinds = new Set(), flagged = [], used = new Set();
   const excused = (key, f) => {
-    const why = KNOWN.findIndex(([at, mesh, reason]) => at === key && mesh.test(f.mesh) && f.reasons.some((r) => reason.test(r)));
+    // (round 4, third pass; the round-3 critic: an entry matched on its building, mesh class and reason class, so any new
+    // finding of that class there was hidden too) and no bigger than the finding judged (its largest extent, m)
+    const why = KNOWN.findIndex(([at, mesh, reason, maxM]) => at === key && mesh.test(f.mesh) && f.reasons.some((r) => reason.test(r))
+      && Math.max(...(f.extentsM ?? [Infinity])) <= maxM);
     if (why >= 0) used.add(why);
     return why >= 0;
   };
@@ -173,7 +177,7 @@ if (!isMainThread) {
     }
   }
   assert.deepEqual(flagged, [], `every destructible kind passes the stray-slab check:\n${flagged.join('\n')}`);
-  const stale = KNOWN.filter(([at], i) => maps.includes(at.split(' ')[0]) && !used.has(i)).map(([at, mesh, reason]) => `${at} ${mesh} ${reason}`);
+  const stale = KNOWN.filter(([at], i) => maps.includes(at.split(' ')[0]) && !used.has(i)).map(([at, mesh, reason, maxM]) => `${at} ${mesh} ${reason} (${maxM} m)`);
   assert.deepEqual(stale, [], `known exceptions that no longer flag leave KNOWN: ${stale.join(', ')}`);
   console.log(`destruction-slab-kinds selftest: ${kinds.size} kinds on ${results.length} maps (${runs} runs, a face each by name; ${cachedRuns} passed before at the same fingerprint), ${snaps} snapshots, `
     + `none flags a stray slab${used.size ? ` (${used.size} judged exceptions)` : ''} — ok`);

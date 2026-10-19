@@ -15,8 +15,17 @@
  * foot, where the caller knows the ground; else its lowest point where its lowest point was). Nothing else moves.
  * Visual only: it rewrites the geometry of a drawing that no longer moves (a baked heap, a body put to rest); the
  * simulation, its records and the collision never see it. Deterministic: the same drawing lays the same way.
+ *
+ * (round 4, third pass; the census at d139fe6ee2 on three random seeds a face: airfield #0's tower baked a 3.8 x 2.8 m plate
+ * into its heap 1.7 m up, 57 % of it over nothing; badlands #0's caravanserai a 4.5 m square one 1.2 m up in its yard)
+ * `layPerchedPlates` reads drawings come to rest for flat plates perched — lying a metre and more over the ground with
+ * a third of them and more over nothing within 0.8 m under them: no ground, no solid record, no body, no other drawn
+ * piece — and lays each down: tilted off the edge of what holds it until its free side meets the ground (a slab leant
+ * off the heap), or, held by nothing or steeper than 50 degrees so, lowered flat onto the ground under it.
  */
 import * as THREE from 'three';
+import type { RigidEnvironment, RigidWorld } from '../sim/rigidBody.ts';
+import type { CollisionRecord } from '../world/collision.ts';
 
 /** A plate: through it at most this (m); in its plane at least these (m, m², m up). */
 const THIN_M = 0.6, SIDE_M = 1.6, AREA_M2 = 4, TALL_M = 1.4;
@@ -220,5 +229,335 @@ export function layUprightPlates(geometry: THREE.BufferGeometry, matrix: THREE.M
   if (nrm) { if (nrm instanceof THREE.InterleavedBufferAttribute) nrm.data.needsUpdate = true; else nrm.needsUpdate = true; }
   geometry.computeBoundingSphere();
   geometry.boundingBox = null;
+  return laid;
+}
+
+/** Perched (round 4, third pass): a flat plate (its thin axis within this of vertical) at rest this far or more over the
+ *  ground at its middle, this share or more of its area over nothing within the band under it. (The slab check flags
+ *  40 % over nothing a metre up, within 0.8 m: laid sooner.) */
+const FLAT_NY = 0.8, PERCH_LIFT_M = 0.9, PERCH_SHARE = 0.3, PERCH_BAND_M = 0.8;
+/** Tilted off its hold's edge onto the ground at most this steep (rad, 50 degrees); steeper, or held by nothing, it is
+ *  lowered flat onto the ground under it. */
+const TILT_MAX = 0.87;
+/** The drawn tops' grid cell (m): a sample is held by a drawn top in its cell or the eight round it. */
+const TOP_CELL_M = 0.25;
+/** A body's contact sphere holds a sample this far round it in plan (m), as collapseBodies' perch reads it. */
+const SPHERE_NEAR_M = 0.45;
+
+/** What holds a perched plate besides the drawings and the ground: the world's solid records and the pool's bodies. */
+interface PlateHold {
+  /** Ready for a region (world box): the records and the bodies' contact spheres round it. */
+  prepare(x0: number, y0: number, z0: number, x1: number, y1: number, z1: number): void;
+  /** Whether a record or a body holds a point (world) within `bandM` under it. */
+  held(x: number, y: number, z: number, bandM: number): boolean;
+}
+
+/** The records (a live one holds: the falling building's own standing walls with the rest) and the pool's bodies (their
+ *  contact spheres) as a plate's hold. */
+export function createPlateHold(environment: () => RigidEnvironment | null, world: RigidWorld | null): PlateHold {
+  const found: CollisionRecord[] = [], recs: CollisionRecord[] = [], spheres: number[] = [];
+  const q = new THREE.Quaternion(), v = new THREE.Vector3();
+  return {
+    prepare(x0, y0, z0, x1, y1, z1) {
+      recs.length = 0; spheres.length = 0;
+      const env = environment();
+      if (env?.queryStatic) for (const r of env.queryStatic(x0 - 0.3, z0 - 0.3, x1 + 0.3, z1 + 0.3, found)) if (!r.crushed && !r.dead) recs.push(r);
+      if (!world) return;
+      for (let slot = 0; slot < world.capacity; slot++) {
+        if (!world.active[slot]) continue;
+        const sh = world.shape(slot);
+        if (!sh) continue;
+        const cx = world.px[slot]!, cy = world.py[slot]!, cz = world.pz[slot]!, r = sh.radius + SPHERE_NEAR_M;
+        if (cx + r < x0 || cx - r > x1 || cz + r < z0 || cz - r > z1 || cy - sh.radius > y1 + 0.1 || cy + sh.radius < y0 - PERCH_BAND_M) continue;
+        q.set(world.qx[slot]!, world.qy[slot]!, world.qz[slot]!, world.qw[slot]!);
+        for (let k = 0; k < sh.sphereCount; k++) {
+          v.set(sh.spheres[k * 4]!, sh.spheres[k * 4 + 1]!, sh.spheres[k * 4 + 2]!).applyQuaternion(q);
+          spheres.push(cx + v.x, cy + v.y, cz + v.z, sh.spheres[k * 4 + 3]!);
+        }
+      }
+    },
+    held(x, y, z, bandM) {
+      for (const rec of recs) {
+        if (rec.max[1] >= y - bandM && rec.min[1] <= y + 0.05 && x >= rec.min[0] - 0.3 && x <= rec.max[0] + 0.3 && z >= rec.min[2] - 0.3
+          && z <= rec.max[2] + 0.3) return true;
+      }
+      for (let k = 0; k < spheres.length; k += 4) {
+        const sr = spheres[k + 3]!;
+        if (Math.hypot(spheres[k]! - x, spheres[k + 2]! - z) <= SPHERE_NEAR_M + sr && spheres[k + 1]! + sr >= y - bandM && spheres[k + 1]! - sr <= y + 0.1) return true;
+      }
+      return false;
+    },
+  };
+}
+
+/** A drawing for layPerchedPlates: its geometry and the matrix to the world (null: in world space already). */
+export interface PlateDrawing {
+  geometry: THREE.BufferGeometry;
+  matrix: THREE.Matrix4 | null;
+}
+
+/** A drawing's vertices in world space. */
+function worldPositions(d: PlateDrawing): Float64Array {
+  const pos = d.geometry.getAttribute('position') as THREE.BufferAttribute | THREE.InterleavedBufferAttribute | undefined;
+  if (!pos) return new Float64Array(0);
+  const w = new Float64Array(pos.count * 3);
+  for (let i = 0; i < pos.count; i++) {
+    _v.set(pos.getX(i), pos.getY(i), pos.getZ(i));
+    if (d.matrix) _v.applyMatrix4(d.matrix);
+    w[i * 3] = _v.x; w[i * 3 + 1] = _v.y; w[i * 3 + 2] = _v.z;
+  }
+  return w;
+}
+
+/** A drawing's connected pieces (as piecesOf) with each triangle's piece (its root). */
+function piecesWithTriangles(w: Float64Array, count: number, index: THREE.BufferAttribute | null): { pieces: Map<number, number[]>; tri: Int32Array } {
+  const weld = new Map<string, number>();
+  const id = new Int32Array(count);
+  let ids = 0;
+  for (let i = 0; i < count; i++) {
+    const key = `${Math.round(w[i * 3]! * 1000)},${Math.round(w[i * 3 + 1]! * 1000)},${Math.round(w[i * 3 + 2]! * 1000)}`;
+    let k = weld.get(key);
+    if (k === undefined) { k = ids++; weld.set(key, k); }
+    id[i] = k;
+  }
+  const parent = new Int32Array(ids);
+  for (let k = 0; k < ids; k++) parent[k] = k;
+  const tris = index ? index.count / 3 : count / 3;
+  const corner = (t: number, c: number): number => (index ? index.getX(t * 3 + c) : t * 3 + c);
+  for (let t = 0; t < tris; t++) {
+    const a = find(parent, id[corner(t, 0)]!), b = find(parent, id[corner(t, 1)]!);
+    if (a !== b) parent[b] = a;
+    const r = find(parent, a), c = find(parent, id[corner(t, 2)]!);
+    if (r !== c) parent[c] = r;
+  }
+  const pieces = new Map<number, number[]>();
+  for (let i = 0; i < count; i++) {
+    const r = find(parent, id[i]!);
+    let list = pieces.get(r);
+    if (!list) { list = []; pieces.set(r, list); }
+    list.push(i);
+  }
+  const tri = new Int32Array(tris);
+  for (let t = 0; t < tris; t++) tri[t] = find(parent, id[corner(t, 0)]!);
+  return { pieces, tri };
+}
+
+const _pq = new THREE.Quaternion(), _pa = new THREE.Vector3(), _pe1 = new THREE.Vector3(), _pe2 = new THREE.Vector3(), _pc = new THREE.Vector3();
+
+/**
+ * Lay the perched flat plates of drawings come to rest (in place): `edit` are laid, `also` hold them (their drawn tops)
+ * and stay as they are; `hold` reads the records and bodies (null: the drawings and the ground alone). Returns how many
+ * plates were laid. Visual only and deterministic, as layUprightPlates.
+ */
+export function layPerchedPlates(edit: readonly PlateDrawing[], also: readonly PlateDrawing[], groundAt: (x: number, z: number) => number,
+  hold: PlateHold | null = null): number {
+  const all = [...edit, ...also];
+  const worlds: Array<Float64Array | null> = all.map(() => null);
+  const worldOf = (k: number): Float64Array => (worlds[k] ??= worldPositions(all[k]!));
+  const tris: Array<Int32Array | null> = all.map(() => null);
+  let laid = 0;
+  const cv = [0, 0, 0, 0, 0, 0];
+  for (let e = 0; e < edit.length; e++) {
+    const d = edit[e]!;
+    const pos = d.geometry.getAttribute('position') as THREE.BufferAttribute | THREE.InterleavedBufferAttribute | undefined;
+    if (!pos || pos.count < 6) continue;
+    const w = worldOf(e);
+    const index = d.geometry.getIndex();
+    const { pieces, tri } = piecesWithTriangles(w, pos.count, index);
+    tris[e] = tri;
+    const corner = (t: number, c: number): number => (index ? index.getX(t * 3 + c) : t * 3 + c);
+    const changed = new Uint8Array(pos.count);
+    let any = false;
+    for (const [root, list] of pieces) {
+      if (list.length < 4) continue;
+      let mx = 0, my = 0, mz = 0, x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+      for (const i of list) {
+        const x = w[i * 3]!, y = w[i * 3 + 1]!, z = w[i * 3 + 2]!;
+        mx += x; my += y; mz += z;
+        if (x < x0) x0 = x; if (y < y0) y0 = y; if (z < z0) z0 = z; if (x > x1) x1 = x; if (y > y1) y1 = y; if (z > z1) z1 = z;
+      }
+      mx /= list.length; my /= list.length; mz /= list.length;
+      // lifted: its lowest point over the ground at its middle (the slab check's lift)
+      if (!(y0 - groundAt((x0 + x1) / 2, (z0 + z1) / 2) >= PERCH_LIFT_M)) continue;
+      cv.fill(0);
+      for (const i of list) {
+        const x = w[i * 3]! - mx, y = w[i * 3 + 1]! - my, z = w[i * 3 + 2]! - mz;
+        cv[0] += x * x; cv[1] += x * y; cv[2] += x * z; cv[3] += y * y; cv[4] += y * z; cv[5] += z * z;
+      }
+      const ax = leastAxis(cv);
+      if (!ax || Math.abs(ax[1]) < FLAT_NY) continue;
+      // a plate: thin through it, broad both ways in its plane
+      _n.set(ax[0], ax[1], ax[2]);
+      _a.set(1, 0, 0).cross(_n);
+      if (_a.lengthSq() < 0.01) _a.set(0, 0, 1).cross(_n);
+      _a.normalize();
+      _up.crossVectors(_n, _a);
+      let t0 = Infinity, t1 = -Infinity, u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
+      for (const i of list) {
+        const x = w[i * 3]! - mx, y = w[i * 3 + 1]! - my, z = w[i * 3 + 2]! - mz;
+        const t = x * _n.x + y * _n.y + z * _n.z, u = x * _a.x + y * _a.y + z * _a.z, v = x * _up.x + y * _up.y + z * _up.z;
+        if (t < t0) t0 = t; if (t > t1) t1 = t; if (u < u0) u0 = u; if (u > u1) u1 = u; if (v < v0) v0 = v; if (v > v1) v1 = v;
+      }
+      const thick = t1 - t0, eu = u1 - u0, ev = v1 - v0;
+      // (an open piece the slab check reads facet by facet — airfield #0's chunk, its top and bottom 0.5 m apart, no sides —
+      // is judged whole here: thin as a hand or as half a metre, it lies perched all the same)
+      if (thick > THIN_M || eu < SIDE_M || ev < SIDE_M || eu * ev < AREA_M2) continue;
+      // its surface sampled by area (the slab check's reading), each sample held or over nothing
+      const samples: number[] = [];
+      for (let t = 0; t < tri.length; t++) {
+        if (tri[t] !== root) continue;
+        const a = corner(t, 0), b = corner(t, 1), c = corner(t, 2);
+        _pe1.set(w[b * 3]! - w[a * 3]!, w[b * 3 + 1]! - w[a * 3 + 1]!, w[b * 3 + 2]! - w[a * 3 + 2]!);
+        _pe2.set(w[c * 3]! - w[a * 3]!, w[c * 3 + 1]! - w[a * 3 + 1]!, w[c * 3 + 2]! - w[a * 3 + 2]!);
+        const area = 0.5 * _pc.crossVectors(_pe1, _pe2).length();
+        if (!(area > 1e-4)) continue;
+        const ks = Math.max(1, Math.min(24, Math.round(area / 0.25)));
+        for (let k = 0; k < ks; k++) {
+          let u = ((k + 0.5) * 0.618034) % 1, v = ((k + 0.5) * 0.754878) % 1;
+          if (u + v > 1) { u = 1 - u; v = 1 - v; }
+          samples.push(w[a * 3]! + _pe1.x * u + _pe2.x * v, w[a * 3 + 1]! + _pe1.y * u + _pe2.y * v, w[a * 3 + 2]! + _pe1.z * u + _pe2.z * v, area / ks);
+        }
+      }
+      if (!samples.length) continue;
+      // what is drawn under it: every other piece's tops in the band under it, on a grid over its plan
+      const gx0 = x0 - TOP_CELL_M, gz0 = z0 - TOP_CELL_M;
+      const nx = Math.max(1, Math.ceil((x1 - x0) / TOP_CELL_M) + 3), nz = Math.max(1, Math.ceil((z1 - z0) / TOP_CELL_M) + 3);
+      const yLo = y0 - PERCH_BAND_M - 0.05, yHi = y1 + 0.05;
+      const tops = new Float32Array(nx * nz).fill(-Infinity);
+      const stamp = (x: number, y: number, z: number): void => {
+        if (y < yLo || y > yHi) return;
+        const i = Math.floor((x - gx0) / TOP_CELL_M), k = Math.floor((z - gz0) / TOP_CELL_M);
+        if (i < 0 || k < 0 || i >= nx || k >= nz) return;
+        if (y > tops[k * nx + i]!) tops[k * nx + i] = y;
+      };
+      const gx1 = gx0 + nx * TOP_CELL_M, gz1 = gz0 + nz * TOP_CELL_M;
+      for (let k = 0; k < all.length; k++) {
+        const ww = worldOf(k);
+        const g = all[k]!.geometry, idx = g.getIndex();
+        const n = Math.floor((idx ? idx.count : ww.length / 3) / 3);
+        const own = k === e ? tri : null;
+        for (let t = 0; t < n; t++) {
+          if (own && own[t] === root) continue;
+          const a = idx ? idx.getX(t * 3) : t * 3, b = idx ? idx.getX(t * 3 + 1) : t * 3 + 1, c = idx ? idx.getX(t * 3 + 2) : t * 3 + 2;
+          const ax_ = ww[a * 3]!, ay = ww[a * 3 + 1]!, az = ww[a * 3 + 2]!, bx = ww[b * 3]!, by = ww[b * 3 + 1]!, bz = ww[b * 3 + 2]!;
+          const cx = ww[c * 3]!, cy = ww[c * 3 + 1]!, cz = ww[c * 3 + 2]!;
+          if (Math.max(ax_, bx, cx) < gx0 || Math.min(ax_, bx, cx) > gx1 || Math.max(az, bz, cz) < gz0 || Math.min(az, bz, cz) > gz1) continue;
+          if (Math.max(ay, by, cy) < yLo || Math.min(ay, by, cy) > yHi) continue;
+          stamp(ax_, ay, az); stamp(bx, by, bz); stamp(cx, cy, cz);
+          stamp((ax_ + bx) / 2, (ay + by) / 2, (az + bz) / 2); stamp((bx + cx) / 2, (by + cy) / 2, (bz + cz) / 2); stamp((cx + ax_) / 2, (cy + ay) / 2, (cz + az) / 2);
+          stamp((ax_ + bx + cx) / 3, (ay + by + cy) / 3, (az + bz + cz) / 3);
+          // the cells whose middles it covers in plan, at its height there
+          const det = (bz - cz) * (ax_ - cx) + (cx - bx) * (az - cz);
+          if (Math.abs(det) < 1e-9) continue;
+          const i0 = Math.max(0, Math.floor((Math.min(ax_, bx, cx) - gx0) / TOP_CELL_M)), i1 = Math.min(nx - 1, Math.floor((Math.max(ax_, bx, cx) - gx0) / TOP_CELL_M));
+          const k0 = Math.max(0, Math.floor((Math.min(az, bz, cz) - gz0) / TOP_CELL_M)), k1 = Math.min(nz - 1, Math.floor((Math.max(az, bz, cz) - gz0) / TOP_CELL_M));
+          for (let kk = k0; kk <= k1; kk++) for (let ii = i0; ii <= i1; ii++) {
+            const px = gx0 + (ii + 0.5) * TOP_CELL_M, pz = gz0 + (kk + 0.5) * TOP_CELL_M;
+            const l1 = ((bz - cz) * (px - cx) + (cx - bx) * (pz - cz)) / det, l2 = ((cz - az) * (px - cx) + (ax_ - cx) * (pz - cz)) / det, l3 = 1 - l1 - l2;
+            if (l1 < -1e-6 || l2 < -1e-6 || l3 < -1e-6) continue;
+            stamp(px, l1 * ay + l2 * by + l3 * cy, pz);
+          }
+        }
+      }
+      hold?.prepare(x0, y0, z0, x1, y1, z1);
+      let total = 0, free = 0, hw = 0, hx = 0, hz = 0, fw = 0, fx = 0, fz = 0, hy = 0;
+      const heldFlags: boolean[] = [];
+      for (let s = 0; s < samples.length; s += 4) {
+        const x = samples[s]!, y = samples[s + 1]!, z = samples[s + 2]!, wt = samples[s + 3]!;
+        total += wt;
+        let held = groundAt(x, z) >= y - PERCH_BAND_M;
+        if (!held) {
+          const ci = Math.floor((x - gx0) / TOP_CELL_M), ck = Math.floor((z - gz0) / TOP_CELL_M);
+          for (let dk = -1; dk <= 1 && !held; dk++) for (let di = -1; di <= 1 && !held; di++) {
+            const i = ci + di, k = ck + dk;
+            if (i >= 0 && k >= 0 && i < nx && k < nz && tops[k * nx + i]! >= y - PERCH_BAND_M) held = true;
+          }
+        }
+        if (!held && hold) held = hold.held(x, y, z, PERCH_BAND_M);
+        heldFlags.push(held);
+        if (held) { hw += wt; hx += x * wt; hz += z * wt; hy += y * wt; } else { free += wt; fx += x * wt; fz += z * wt; fw += wt; }
+      }
+      if (!(total > 0) || free < PERCH_SHARE * total) continue;
+      // laid down: tilted off the edge of what holds it until its free side meets the ground, else lowered flat
+      let tilted = false;
+      if (hw >= 0.1 * total) {
+        hx /= hw; hz /= hw; hy /= hw; fx /= fw; fz /= fw;
+        let dx = fx - hx, dz = fz - hz;
+        const dl = Math.hypot(dx, dz);
+        if (dl > 0.05) {
+          dx /= dl; dz /= dl;
+          let edge = -Infinity;
+          for (let s = 0, j = 0; s < samples.length; s += 4, j++) if (heldFlags[j]) edge = Math.max(edge, samples[s]! * dx + samples[s + 2]! * dz);
+          let far = -Infinity;
+          for (const i of list) far = Math.max(far, w[i * 3]! * dx + w[i * 3 + 2]! * dz);
+          const L = far - edge;
+          const hp = hx * dx + hz * dz;
+          const px = hx + dx * (edge - hp), pz = hz + dz * (edge - hp), py = hy;
+          // (turned about the edge until its lowest corner over the ground meets it: bisected, at most TILT_MAX)
+          _pa.set(dz, 0, -dx);
+          const clearance = (th: number): number => {
+            _pq.setFromAxisAngle(_pa, th);
+            let m = Infinity;
+            for (const i of list) {
+              _v.set(w[i * 3]! - px, w[i * 3 + 1]! - py, w[i * 3 + 2]! - pz).applyQuaternion(_pq);
+              const c = _v.y + py - groundAt(_v.x + px, _v.z + pz);
+              if (c < m) m = c;
+            }
+            return m;
+          };
+          let theta = Infinity;
+          if (L >= 0.4 && clearance(TILT_MAX) <= 0.02) {
+            let lo = 0, hi = TILT_MAX;
+            for (let it = 0; it < 14; it++) { const mid = (lo + hi) / 2; if (clearance(mid) > 0.02) lo = mid; else hi = mid; }
+            theta = hi;
+          }
+          if (theta <= TILT_MAX) {
+            _pq.setFromAxisAngle(_pa, theta);
+            for (const i of list) {
+              _v.set(w[i * 3]! - px, w[i * 3 + 1]! - py, w[i * 3 + 2]! - pz).applyQuaternion(_pq);
+              w[i * 3] = _v.x + px; w[i * 3 + 1] = _v.y + py; w[i * 3 + 2] = _v.z + pz;
+              changed[i] = 1;
+            }
+            const nrm = d.geometry.getAttribute('normal') as THREE.BufferAttribute | THREE.InterleavedBufferAttribute | undefined;
+            if (nrm) {
+              if (d.matrix) { _nm.getNormalMatrix(d.matrix); _nmInv.copy(_nm).invert(); }
+              for (const i of list) {
+                _v.set(nrm.getX(i), nrm.getY(i), nrm.getZ(i));
+                if (d.matrix) _v.applyMatrix3(_nm);
+                _v.applyQuaternion(_pq);
+                if (d.matrix) _v.applyMatrix3(_nmInv);
+                _v.normalize();
+                nrm.setXYZ(i, _v.x, _v.y, _v.z);
+              }
+              if (nrm instanceof THREE.InterleavedBufferAttribute) nrm.data.needsUpdate = true; else nrm.needsUpdate = true;
+            }
+            tilted = true;
+          }
+        }
+      }
+      if (!tilted) {
+        const every = Math.max(1, Math.floor(list.length / 48)), gs: number[] = [groundAt(mx, mz)];
+        for (let k = 0; k < list.length; k += every) { const i = list[k]!; gs.push(groundAt(w[i * 3]!, w[i * 3 + 2]!)); }
+        gs.sort((a, b) => a - b);
+        const g = gs[gs.length >> 1]!;
+        if (!Number.isFinite(g) || !(g < y0)) continue;
+        const dy = g + 0.02 - y0;
+        for (const i of list) { w[i * 3 + 1] = w[i * 3 + 1]! + dy; changed[i] = 1; }
+      }
+      any = true;
+      laid++;
+    }
+    if (!any) continue;
+    if (d.matrix) _inv.copy(d.matrix).invert();
+    for (let i = 0; i < pos.count; i++) {
+      if (!changed[i]) continue;
+      _v.set(w[i * 3]!, w[i * 3 + 1]!, w[i * 3 + 2]!);
+      if (d.matrix) _v.applyMatrix4(_inv);
+      pos.setXYZ(i, _v.x, _v.y, _v.z);
+    }
+    if (pos instanceof THREE.InterleavedBufferAttribute) pos.data.needsUpdate = true; else pos.needsUpdate = true;
+    d.geometry.computeBoundingSphere();
+    d.geometry.boundingBox = null;
+  }
   return laid;
 }

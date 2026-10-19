@@ -242,7 +242,8 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
   const versionOf = (idx: number): number => fracture.version(idx) * 4096 + (events.get(idx) ?? 0);
 
   const fracture: StructureFracture = createStructureFracture({
-    pool, group: o.group, now: o.now, poolShare: o.poolShare ?? 48, groundAt: o.groundAt,
+    pool, group: o.group, now: o.now, poolShare: o.poolShare ?? 48, groundAt: o.groundAt, environment,
+    statics: (structureIdx) => bodies.bakedOf(structureIdx),
     keepSpan: (span) => host?.keep(span),
     holdBake: (structureIdx, y) => bodies.floorHolds(structureIdx, y),
     materialFor: (seam, bucket) => resolverOf(seam)(bucket),
@@ -367,6 +368,7 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
   }
   const bodies: CollapseBodies = createCollapseBodies({
     pool, group: o.group, materialFor: o.materialFor, groundAt: o.groundAt, environment,
+    statics: (structureIdx) => fracture.heapOf(structureIdx),
     onLanding: o.onLanding, onShards: o.onShards, hulls: o.hulls,
     alsoLive: () => fracture.liveBodies() + landmarks.liveBodies() > 0,
   });

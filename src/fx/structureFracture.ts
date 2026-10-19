@@ -23,14 +23,14 @@
  */
 import * as THREE from 'three';
 import type { MunitionClass } from '../sim/destructionEvents.ts';
-import { createRigidShape, type RigidPartSpec } from '../sim/rigidBody.ts';
+import { createRigidShape, type RigidEnvironment, type RigidPartSpec } from '../sim/rigidBody.ts';
 import { damageSeed, type FractureSlot } from '../world/destructionKit.ts';
 import { storeyInterior } from '../world/structureEnclosure.ts';
 import type { StructureDamageSeam, StructureSpan } from '../world/structureDamageSeam.ts';
 import type { DebrisPhysics } from './debrisPhysics.ts';
 import { emitDebrisLanding } from './clock.ts';
 import { profEnd, profStart } from './fxProf.ts';
-import { layUprightPlates } from './uprightPlates.ts';
+import { createPlateHold, layPerchedPlates, layUprightPlates, type PlateDrawing } from './uprightPlates.ts';
 import {
   CELL_CRACKED, CELL_FALLEN, CELL_GONE, CELL_OPENING, CELL_SPALLED, CELL_VOID, CRACK_AT, SPALL_AT, cellRect, createWallFracture,
   createWallStrikeOutcome, dropFace, gableTopAt, strikeWall, struckFace, type FaceGrid, type WallFracture, type WallStrikeKind,
@@ -72,6 +72,11 @@ interface StructureFractureOptions {
   holdBake?(structureIdx: number, y: number): boolean;
   /** The ground as the pieces land on it (world y): what a baked piece laid flat lies on (uprightPlates.ts). */
   groundAt?(x: number, z: number): number;
+  /** The world's records the bodies meet (what holds a baked plate: uprightPlates' perch). */
+  environment?(): RigidEnvironment | null;
+  /** Another owner's drawings of a building lying still (fx/collapseBodies.ts: its baked heaps and remnants): what a baked
+   *  plate rests on. */
+  statics?(structureIdx: number): readonly THREE.Mesh[];
 }
 
 export interface StructureFracture {
@@ -100,6 +105,8 @@ export interface StructureFracture {
   standing(structureIdx: number): THREE.Mesh[];
   /** Its rooms' meshes (world space). */
   rooms(structureIdx: number): THREE.Mesh[];
+  /** Its heap: the bodies baked where they lay (each mesh under its matrix). */
+  heapOf(structureIdx: number): THREE.Mesh[];
   /** One room out (its walls went round it). */
   dropRoom(structureIdx: number, mesh: THREE.Mesh): void;
   /** A building's roof fell (sections on, its roof section's fall): a room laid in its top storey from now on has no
@@ -1686,6 +1693,8 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   }
 
   const _mv = new THREE.Vector3(), _mn = new THREE.Vector3(), _mN = new THREE.Matrix3();
+  /** What holds a plate baked (the records, the pool's bodies): uprightPlates' perch. */
+  const plateHold = createPlateHold(() => o.environment?.() ?? null, o.pool.world);
   /**
    * A building's baked bodies into its merged heap: every pending mesh's interleaved vertices carried through its matrix
    * (positions and normals) and appended to its material's heap (a new buffer: the old one's vertices copied first), the
@@ -1694,10 +1703,18 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
   function mergeBaked(live: Live): void {
     if (!live.bakedPending.length) return;
     const groups = new Map<string, { material: THREE.Material; stride: number; meshes: THREE.Mesh[]; floats: number }>();
+    // (round 4; airfield #0's tower, caldera #28's warehouse: a clump's dark interior plate or a sheet face baked upright
+    // beside the ruin, its body lying well on its box) no piece of what lies still stands on its edge
+    for (const mesh of live.bakedPending) layUprightPlates(mesh.geometry, mesh.matrix, o.groundAt ? (x, z) => o.groundAt!(x, z) : null);
+    // (round 4, third pass; the census's airfield #0 tower: a 3.8 x 2.8 m plate baked into its heap 1.7 m up, 57 % of it over
+    // nothing) nor lies perched: held by what it lies on (the heap, the building's collapse lying still, the records, the
+    // bodies) or laid down onto the ground
+    if (o.groundAt) {
+      const also: PlateDrawing[] = [];
+      for (const m of [...live.baked, ...live.bakedMerged.values(), ...(o.statics?.(live.seam.structureIdx) ?? [])]) also.push({ geometry: m.geometry, matrix: m.matrix });
+      layPerchedPlates(live.bakedPending.map((m) => ({ geometry: m.geometry, matrix: m.matrix })), also, (x, z) => o.groundAt!(x, z), plateHold);
+    }
     for (const mesh of live.bakedPending) {
-      // (round 4; airfield #0's tower, caldera #28's warehouse: a clump's dark interior plate or a sheet face baked upright
-      // beside the ruin, its body lying well on its box) no piece of what lies still stands on its edge
-      layUprightPlates(mesh.geometry, mesh.matrix, o.groundAt ? (x, z) => o.groundAt!(x, z) : null);
       const pos = mesh.geometry.getAttribute('position') as THREE.InterleavedBufferAttribute;
       const data = pos?.data;
       if (!data) continue;
@@ -2030,6 +2047,10 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
       return out;
     },
     rooms: (structureIdx) => [...(lives.get(structureIdx)?.room ?? [])],
+    heapOf(structureIdx) {
+      const live = lives.get(structureIdx);
+      return live ? [...live.baked, ...live.bakedPending, ...live.bakedMerged.values()] : [];
+    },
     roofFell(structureIdx) {
       roofGone.add(structureIdx);
       // (a room laid before the fall loses its ceiling with the roof: it stood as a lid over the roofless top storey)

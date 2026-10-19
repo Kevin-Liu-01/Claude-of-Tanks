@@ -7,9 +7,13 @@
 // foot where it stood, the block untouched; a plate lying flat and a small upright tile stay; a body-frame geometry under a
 // matrix lays the same plate in world space; one standing 1.5 m up on the heap lies on the ground under it. A remnant pier 4 m tall where the building was drawn 2 m is cut to 2.5 m about
 // its foot; one wholly over the drawn height (a held storey's member) and one where the drawn form is not known stand.
+// Perched plates (round 4, third pass): a 4 x 3 m plate 1.7 m up, a third of it on a block and the rest over nothing, is
+// tilted off the block's edge until its far side meets the ground; one wholly on its block, one a hold holds (a record,
+// a body) and one lying on the ground stay; one over nothing at all is lowered flat onto the ground; a plate on another
+// drawing (`also`) is held by it; deterministic.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { clampPieceTops, layUprightPlates } from './uprightPlates.ts';
+import { clampPieceTops, layPerchedPlates, layUprightPlates } from './uprightPlates.ts';
 
 const quad = (a, b, c, d) => [...a, ...b, ...c, ...a, ...c, ...d];
 function box(x0, y0, z0, x1, y1, z1) {
@@ -90,6 +94,44 @@ assert.ok(Math.abs(pb[0].hi[1] - 2.5) < 1e-4 && Math.abs(pb[0].lo[1]) < 1e-6, `t
 assert.ok(Math.abs(pb[1].hi[1] - 7.5) < 1e-6, 'the held member stands as drawn');
 assert.ok(Math.abs(pb[2].hi[1] - 4) < 1e-6, 'unknown drawn form: as drawn');
 
+
+// perched plates: a plate 1.7 m up over a block (x 0..1.6), reaching to x 4.2: a third of it held, the rest over nothing
+const flat0 = () => 0;
+const perch = (tris) => { const gg = geometryOf(tris); return { g: gg, d: [{ geometry: gg, matrix: null }] }; };
+const pc = perch([...box(0, 0, 0, 1.6, 1.6, 3), ...box(0.2, 1.62, 0, 4.2, 1.7, 3)]);
+assert.equal(layPerchedPlates(pc.d, [], flat0), 1, 'the perched plate laid');
+const pcb = boxes(pc.g);
+assert.deepEqual(pcb[0].lo.map((x) => +x.toFixed(4)), [0, 0, 0], 'its block untouched');
+assert.ok(pcb[1].lo[1] < 0.06 && pcb[1].lo[1] > -0.01, `tilted until its far side meets the ground (lowest ${pcb[1].lo[1].toFixed(3)} m)`);
+assert.ok(pcb[1].hi[1] > 1.5, `still on the block's edge (highest ${pcb[1].hi[1].toFixed(3)} m)`);
+assert.equal(layPerchedPlates(pc.d, [], flat0), 0, 'laid once: not perched the second time');
+// wholly on its block, held by a hold, or on the ground: left alone
+const onBlock = perch([...box(0, 0, 0, 4, 1.6, 3), ...box(0, 1.62, 0, 4, 1.7, 3)]);
+assert.equal(layPerchedPlates(onBlock.d, [], flat0), 0, 'a plate on its block stays');
+const held = perch(box(0.2, 1.62, 0, 4.2, 1.7, 3));
+const hold = { prepare() {}, held: (x) => x < 3.6 };
+assert.equal(layPerchedPlates(held.d, [], flat0, hold), 0, 'a plate a record holds stays');
+const ground = perch(box(0, 0, 0, 4, 0.08, 3));
+assert.equal(layPerchedPlates(ground.d, [], flat0), 0, 'a plate on the ground stays');
+// over nothing at all: lowered flat onto the ground under it
+const air = perch(box(0, 2, 0, 4, 2.08, 3));
+assert.equal(layPerchedPlates(air.d, [], () => 0.25), 1);
+const ab = boxes(air.g)[0];
+assert.ok(Math.abs(ab.lo[1] - 0.27) < 1e-3 && ab.ext[1] < 0.1, `lowered flat onto the ground (${ab.lo[1].toFixed(3)} m)`);
+// a plate lying on another drawing (the heap: `also`) is held by it
+const onHeap = perch(box(0, 1.62, 0, 4, 1.7, 3));
+const heap = geometryOf(box(-0.5, 0, -0.5, 4.5, 1.6, 3.5));
+assert.equal(layPerchedPlates(onHeap.d, [{ geometry: heap, matrix: null }], flat0), 0, 'held by the heap drawn under it');
+// a chunk 0.45 m thick (an open piece the slab check reads facet by facet), perched the same way, is laid too
+const chunk = perch([...box(0, 0, 0, 1.4, 1.3, 2.8), ...box(0.1, 1.32, 0, 3.9, 1.77, 2.8)]);
+assert.equal(layPerchedPlates(chunk.d, [], flat0), 1, 'the perched chunk laid');
+assert.ok(boxes(chunk.g)[1].lo[1] < 0.06, `its far side on the ground (${boxes(chunk.g)[1].lo[1].toFixed(3)} m)`);
+// deterministic
+const pc2 = perch([...box(0, 0, 0, 1.6, 1.6, 3), ...box(0.2, 1.62, 0, 4.2, 1.7, 3)]);
+layPerchedPlates(pc2.d, [], flat0);
+assert.deepEqual(Array.from(pc2.g.getAttribute('position').array), Array.from(pc.g.getAttribute('position').array), 'perched: bit-identical');
+
 console.log('uprightPlates selftest: an upright plate beside a block laid on its broad side at its foot (the block untouched), '
   + 'flat plates and tiles left alone, a body plate laid in world space, deterministic; a remnant pier cut to half a metre over '
-  + 'the drawn form, a held member and an unknown spot left as drawn');
+  + 'the drawn form, a held member and an unknown spot left as drawn; a perched plate tilted off its block onto the ground, one over '
+  + 'nothing lowered flat, plates held by their block, a hold, the ground or another drawing left alone');

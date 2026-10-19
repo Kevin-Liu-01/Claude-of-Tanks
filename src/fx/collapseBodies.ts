@@ -48,7 +48,7 @@ import {
 } from './collapsePieces.ts';
 import { emitDebrisLanding } from './clock.ts';
 import { profEnd, profStart } from './fxProf.ts';
-import { layUprightPlates } from './uprightPlates.ts';
+import { createPlateHold, layPerchedPlates, layUprightPlates, type PlateDrawing } from './uprightPlates.ts';
 
 /** A live collapse's stage event (StructureStageEvent's fields this module reads). */
 export interface CollapseBodiesEvent {
@@ -85,6 +85,8 @@ interface CollapseBodiesOptions {
   alsoLive?(): boolean;
   /** Triangles a cut laid ahead takes an update (default 900); a collapse waiting for its cut takes PREPARE_WAITING. */
   prepareTris?: number;
+  /** Another owner's drawings of a building lying still (fx/structureFracture.ts: its heap): what a baked plate rests on. */
+  statics?(structureIdx: number): readonly THREE.Mesh[];
 }
 
 /** A wall panel the blow's failure reached (CollapsePiece.shatterS): its building and its place on its face. */
@@ -134,6 +136,8 @@ export interface CollapseBodies {
   /** A building's cut laid ahead is stale (its walls were redrawn as they broke: structureFracture): it is laid again
    *  from what stands. */
   forget(structureIdx: number): void;
+  /** What its collapses left lying and standing still (their baked heaps, their remnants), world drawings. */
+  bakedOf(structureIdx: number): THREE.Mesh[];
   reset(): void;
   stats(): { collapses: number; pieces: number; meshes: number; vertices: number; baked: number; prepared: number };
 }
@@ -230,6 +234,8 @@ interface LivePart {
   /** Times tipped over again, found standing on its edge past the walls (round 2; round 3: counted on a tip made, a sheet
    *  found lying is looked at again once it is knocked onto its edge). */
   retipped: number;
+  /** (round 4, third pass) Where it lay when last looked at and left (x, y, z): moved off it, it is looked at again. */
+  lookedAt?: [number, number, number];
 }
 
 /**
@@ -285,6 +291,8 @@ interface LivePiece {
   /** Times tipped over again, found standing on its edge past the walls (round 2; round 3: counted on a tip made, a sheet
    *  found lying is looked at again once it is knocked onto its edge). */
   retipped: number;
+  /** (round 4, third pass) Where it lay when last looked at and left (x, y, z): moved off it, it is looked at again. */
+  lookedAt?: [number, number, number];
 }
 
 interface LiveCollapse {
@@ -451,6 +459,14 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
   // upper floors of a building falling inside itself, and the ground as drawn less the heaps still rising under their
   // pieces
   let base: RigidEnvironment | null = null;
+  /** What holds a plate baked (the records, the pool's bodies): uprightPlates' perch. */
+  const plateHold = createPlateHold(() => env, pool.world);
+  /** A building's collapses' drawings lying still: their baked heaps and remnants. */
+  function bakedOf(structureIdx: number): THREE.Mesh[] {
+    const out: THREE.Mesh[] = [];
+    for (const c of live) if (c.structureIdx === structureIdx) out.push(...c.baked, ...c.remnant);
+    return out;
+  }
   const env: RigidEnvironment = {
     groundAt(x, z) {
       let g = o.groundAt(x, z);
@@ -1193,14 +1209,11 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     for (let k = 1; k < 3; k++) if (box[k + 3]! - box[k]! < box[thin + 3]! - box[thin]!) thin = k;
     _hv.set(thin === 0 ? 1 : 0, thin === 1 ? 1 : 0, thin === 2 ? 1 : 0).applyQuaternion(_hq);
     const upY = _hv.y;
-    // steep: its middle high over the ground
-    if (Math.abs(upY) < PERCH_STEEP) {
-      _hv.set((box[0]! + box[3]!) / 2, (box[1]! + box[4]!) / 2, (box[2]! + box[5]!) / 2).applyQuaternion(_hq);
-      const mx = at[0]! + _hv.x, my = at[1]! + _hv.y, mz = at[2]! + _hv.z;
-      return my - env.groundAt(mx, mz) >= PERCH_STEEP_LIFT_M;
-    }
     // what it draws, mesh by mesh (the detector's reading: each drawn plate's area-weighted samples, its lift its lowest
     // point over the ground at its middle; a covering on its rafters is judged as the covering), else its box's underside
+    // (round 4, third pass; the census's caldera #27 firestation: a roof sheet whose box stood steep drew its plate flat
+    // 2 m up, 43 % of it over nothing — judged by its box's middle, it was left there) each drawn plate steep or flat by its
+    // own surfaces: a steep one by its middle high over the ground, a flat one by its underside
     const selfSlot = pool.slotOf?.(self) ?? -1;
     let any = false;
     if (meshes) for (const m of meshes) {
@@ -1208,10 +1221,20 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       for (let c = 0; c < comps; c++) {
         if (!drawnSamples(m, c)) continue;
         any = true;
+        if (drawnLevel < PERCH_STEEP) {
+          if ((pb[1]! + pb[4]!) / 2 - env.groundAt((pb[0]! + pb[3]!) / 2, (pb[2]! + pb[5]!) / 2) >= PERCH_STEEP_LIFT_M) return true;
+          continue;
+        }
         if (perchedSamples(selfSlot)) return true;
       }
     }
     if (any) return false;
+    // steep: its middle high over the ground
+    if (Math.abs(upY) < PERCH_STEEP) {
+      _hv.set((box[0]! + box[3]!) / 2, (box[1]! + box[4]!) / 2, (box[2]! + box[5]!) / 2).applyQuaternion(_hq);
+      const mx = at[0]! + _hv.x, my = at[1]! + _hv.y, mz = at[2]! + _hv.z;
+      return my - env.groundAt(mx, mz) >= PERCH_STEEP_LIFT_M;
+    }
     perchSamples.length = 0;
     pb[0] = Infinity; pb[1] = Infinity; pb[2] = Infinity; pb[3] = -Infinity; pb[4] = -Infinity; pb[5] = -Infinity;
     const ua = thin === 0 ? 1 : 0, va = thin === 2 ? 1 : 2, kc = upY > 0 ? box[thin]! : box[thin + 3]!;
@@ -1240,7 +1263,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     if (!pos) return false;
     const idx = m.geometry.index;
     const n = idx ? idx.count : pos.count;
-    let areaAll = 0;
+    let areaAll = 0, levelAll = 0;
     for (let t = 0; t + 2 < n; t += 3) {
       if (perchComp[t / 3] !== comp) continue;
       for (let k = 0; k < 3; k++) {
@@ -1252,6 +1275,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       const area = 0.5 * _pv.crossVectors(_pe1, _pe2).length();
       if (!(area > 1e-4)) continue;
       areaAll += area;
+      levelAll += 0.5 * Math.abs(_pv.y);
       const ks = Math.max(1, Math.min(24, Math.round(area / 0.25)));
       for (let q = 0; q < ks; q++) {
         let u = ((q + 0.5) * 0.618034) % 1, w = ((q + 0.5) * 0.754878) % 1;
@@ -1259,8 +1283,11 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
         perchSamples.push(_pt[0]!.x + _pe1.x * u + _pe2.x * w, _pt[0]!.y + _pe1.y * u + _pe2.y * w, _pt[0]!.z + _pe1.z * u + _pe2.z * w, area / ks);
       }
     }
+    drawnLevel = areaAll > 0 ? levelAll / areaAll : 1;
     return areaAll >= PERCH_PLATE_M2;
   }
+  /** The last drawnSamples' plate: how level it lies (its surfaces' area-weighted |normal y|: 1 flat, 0 on its edge). */
+  let drawnLevel = 1;
   /** A drawn mesh's connected pieces (corners welded at a millimetre): each triangle's piece in perchComp; their count. */
   function componentsOf(m: THREE.Mesh): number {
     const pos = m.geometry.getAttribute('position') as THREE.BufferAttribute | undefined;
@@ -1688,12 +1715,14 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
   /** Every piece of a settled collapse into one static mesh a material, world space; their bodies leave the pool. */
   function bake(lc: LiveCollapse): void {
     const byMaterial = new Map<THREE.Material, THREE.BufferGeometry[]>();
+    const laying: PlateDrawing[] = [];
     for (const p of lc.pieces) {
       for (const part of p.parts) {
         for (const mesh of part.meshes) {
           const geo = mesh.geometry.clone().applyMatrix4(mesh.matrix);
           // (round 4; coastal #0's farmhouse: a gable plate baked on its edge beside the heap) no piece of it upright
           layUprightPlates(geo, null, (x, z) => env.groundAt(x, z));
+          laying.push({ geometry: geo, matrix: null });
           const list = byMaterial.get(mesh.material as THREE.Material) ?? [];
           list.push(geo);
           byMaterial.set(mesh.material as THREE.Material, list);
@@ -1704,6 +1733,14 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
         if (part.handle >= 0) { byHandle.delete(part.handle); pool.release(part.handle); part.handle = -1; }
       }
       if (p.handle >= 0) { byHandle.delete(p.handle); pool.release(p.handle); p.handle = -1; }
+    }
+    // (round 4, third pass; the census's badlands #0 caravanserai: a 4.5 m square plate baked 1.2 m up in its yard, half of
+    // it over nothing) none of it baked perched: held by what it lies on (its heap, the building's other drawings lying
+    // still, the records, the bodies) or laid down onto the ground
+    if (laying.length) {
+      const also: PlateDrawing[] = [];
+      for (const m of [...bakedOf(lc.structureIdx), ...(o.statics?.(lc.structureIdx) ?? [])]) also.push({ geometry: m.geometry, matrix: m.matrix });
+      layPerchedPlates(laying, also, (x, z) => env.groundAt(x, z), plateHold);
     }
     for (const [material, geos] of byMaterial) {
       const merged = mergeSameLayout(geos);
@@ -1724,6 +1761,10 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
 
   // the update's walk over a collapse's pieces (no closure a frame): whether all lie still, all only creep
   let allStill = true, allSlow = true;
+  /** Whether a pose has moved off a point it was left at (a third of a metre). */
+  function movedOff(at: readonly number[], q: ArrayLike<number>): boolean {
+    return Math.hypot(q[0]! - at[0]!, q[1]! - at[1]!, q[2]! - at[2]!) > 0.33;
+  }
   /** Whether a body creeps (under 0.25 m/s and 0.4 rad/s): at rest to the eye, asleep or not. */
   function creeping(handle: number): boolean {
     if (pool.asleep(handle)) return true;
@@ -1792,6 +1833,10 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
         // (round 2: looked at only once asleep, a slab lay visibly still a second first, and one balanced never slept)
         if (p.piece.kind === 'roof') p.slowS = creeping(p.handle) ? p.slowS + dtS : 0;
         if (p.shoves < 0 && p.still === 0 && p.slowS === 0) p.shoves = 0;
+        // (round 4, third pass; the census's caldera #27 firestation: a roof sheet left on its top floor crept down with the
+        // storey under it — never fast enough to be looked at again — and lay 2 m up, 43 % over nothing) one that has
+        // moved off where it was left is looked at again once it is still
+        if (p.shoves < 0 && p.lookedAt && movedOff(p.lookedAt, pose)) { p.shoves = 0; p.lookedAt = undefined; }
         if (p.shoves >= 0 && (p.still > 0.2 || p.slowS > 0.35) && p.piece.kind === 'roof' && pool.framePoseAt(p.handle, pose)) {
           lookAtRoof(c, p);
         }
@@ -1815,6 +1860,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
           // there after two shoves, it lies on the ground under it
           if (p.piece.kind === 'roof') part.slowS = creeping(part.handle) ? part.slowS + dtS : 0;
           if (part.shoves < 0 && !pool.asleep(part.handle) && part.slowS === 0) part.shoves = 0;
+          if (part.shoves < 0 && part.lookedAt && movedOff(part.lookedAt, pose)) { part.shoves = 0; part.lookedAt = undefined; }
           if (part.shoves >= 0 && spec && p.piece.kind === 'roof' && ((part.tipped && pool.asleep(part.handle)) || part.slowS > 0.35)
             && pool.framePoseAt(part.handle, pose)) {
             lookAtSheet(c, p, k);
@@ -1854,6 +1900,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       // (a shove's landing looked at once more: a slab come down on its edge goes over, as one that fell there does)
       if (p.shoves > 0) tipIfStanding(p.handle, p.half ?? pieceHalf(p.piece), p.piece.massKg, c.structureIdx * 131 + p.piece.index + 7, 0.7);
       p.shoves = -1;
+      p.lookedAt = [pose[0]!, pose[1]!, pose[2]!];
       return false;
     }
     // (round 2: a 13 m roof side on the pile hopped 0.7 m a shove) a slab of several sheets breaks into them where it lies
@@ -1911,6 +1958,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
       }
       if (part.shoves > 0) tipIfStanding(part.handle, spec.half, spec.massKg, c.structureIdx * 131 + p.piece.index * 16 + k + 7, 0.7);
       part.shoves = -1;
+      part.lookedAt = [pose[0]!, pose[1]!, pose[2]!];
       return false;
     }
     if (part.shoves === 0 && (fallenUnder(c) || !lyingFlat(pose, pbox))) part.shoves = ROOF_SHOVES;
@@ -2084,7 +2132,14 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
         const c = live[i];
         if (c.done || !c.partial || c.structureIdx !== structureIdx) continue;
         c.t0 = clockS;
-        for (const p of c.pieces) p.still = 0;
+        // (round 4, third pass; caldera #27's fire station: a roof sheet left on its top floor kept its rest when the storey
+        // went from under part of it, 43 % of it over nothing 2 m up) and each of its slabs and sheets left at rest is
+        // looked at again once still
+        for (const p of c.pieces) {
+          p.still = 0;
+          if (p.shoves < 0) { p.shoves = 0; p.lookedAt = undefined; }
+          for (const part of p.parts) if (part.shoves < 0) { part.shoves = 0; part.lookedAt = undefined; }
+        }
       }
     },
     floorHolds(structureIdx, y) {
@@ -2155,6 +2210,7 @@ export function createCollapseBodies(o: CollapseBodiesOptions): CollapseBodies {
     get active() { let n = 0; for (let i = 0; i < live.length; i++) if (!live[i].done) n++; return n; },
     took: (structureIdx) => live.some((c) => c.structureIdx === structureIdx && !c.partial) || waiting.some((w) => w.seam.structureIdx === structureIdx),
     onShatter(handler) { shatterHandler = handler; },
+    bakedOf,
     forget(structureIdx) {
       const job = prepared.get(structureIdx);
       if (!job) return;

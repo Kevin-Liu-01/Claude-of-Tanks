@@ -584,7 +584,9 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
     };
     // (a voxel's samples lie in runs of one owner — each owner's put in turn: one witness a sample of the first run)
     const runEnd = (l: number[], a: number): number => { const o = l[a + 3]; let e = a + 5; while (e < l.length && l[e + 3] === o) e += 5; return e; };
-    const pairRuns = (A: number[], B: number[] | null): void => {
+    // (round 4, third pass; the round-3 critic's frame times: single steps of 12-20 ms) a voxel's pairs read a run pair at a
+    // time, a step's share at a time: a crowded voxel (thousands of samples of many owners) no longer holds one step
+    function* pairRuns(A: number[], B: number[] | null): Generator<void, void, void> {
       const same = B === null, L = same ? A : B;
       for (let a = 0; a < A.length;) {
         const ae = runEnd(A, a), oa = A[a + 3]!;
@@ -598,22 +600,25 @@ export function createHangingSweep(o: HangingSweepOptions): HangingSweep {
             break;
           }
           b = be;
+          if (work >= SLICE) { work = 0; yield; }
         }
         a = ae;
       }
-    };
+    }
     for (const [vk, list] of sm.voxels) {
       const vi = Math.floor(vk / (LV * LV)) + vI, vj = (Math.floor(vk / LV) % LV) + vJ, vz = (vk % LV) + vK;
       work += 40;
       if (work >= SLICE) { work = 0; yield; }
-      pairRuns(list, null);
+      yield* pairRuns(list, null);
       for (let da = -1; da <= 1; da++) for (let db = -1; db <= 1; db++) for (let dc = -1; dc <= 1; dc++) {
         if (da < 0 || (da === 0 && (db < 0 || (db === 0 && dc <= 0)))) continue;
         const other = sm.voxels.get(lvk(vi + da, vj + db, vz + dc));
-        if (other) pairRuns(list, other);
+        if (other) yield* pairRuns(list, other);
       }
     }
     for (const [ck, c] of sm.column) {
+      work += c.length / 5;
+      if (work >= SLICE) { work = 0; yield; }
       const gx = (lckI(ck) + 0.5) * CELL, gz = (lckK(ck) + 0.5) * CELL;
       const g = ground(gx, gz) + TOUCH;
       for (let j = 1; j < c.length; j += 5) {
