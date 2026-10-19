@@ -189,6 +189,8 @@ for (const failureAt of ['tick', 'bake', 'import']) {
       startHorizonRingBuild: () => ({ stats: {}, dispose() {} }), supplyHorizonRing: () => {}, withdrawHorizonRing: () => {}, finishHorizonRingAsync: async () => {},
       // (the horizons stream, 2026-10-13, HL-3) a migrated map builds the Hinterland instead of the ring; Urban keeps the ring
       selectHinterland: () => false, startHinterlandBuild: () => null, supplyHinterland: () => {}, withdrawHinterland: () => {},
+      // (the 228 entry diet) the land mask of a sky that draws the Earth loads with its world (earthLandAccess.ts): Urban's draws none
+      skyDrawsEarth: (sky) => (sky?.earth ?? 0) > 0.5, loadEarthLand: () => assert.fail('Urban draws no Earth'),
       preloadPropModels: () => { events.push('archive-request'); return archive.promise; },
       prepareSourcedTerrain: () => ({ cancel() { cancelled++; } }),
       createHeightFieldAsync: async () => { clock += 10; return height; },
