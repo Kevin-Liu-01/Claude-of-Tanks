@@ -254,7 +254,8 @@ interface HordeRules extends ArrivalRules {
   /**
    * A hostile on the field that has come no `strandedGainM` closer to any human for `strandedS` while farther than
    * `strandedContactM` from all of them (cut off by the ground, wedged) is benched and queued again: it re-arrives on the
-   * ring, so a round never stalls on hostiles that cannot reach the fight (Redrock seed 2 sat 740 s on seven).
+   * ring, so a round never stalls on hostiles that cannot reach the fight (Redrock seed 2 sat 740 s on seven; at 100 m
+   * three still sat 460 s just off a ledge: the rush orbits at 25-35 m, so 50 m is out of the fight).
    */
   readonly strandedS: number;
   readonly strandedGainM: number;
@@ -799,7 +800,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     allies: 4, enemies: 20,
     horde: Object.freeze({
       waveSize: 6, waveStep: 3, waveCurve: 0.35, perHumanTotal: 0.25, maxAlive: 16, maxAlivePerHuman: 1, maxAliveCap: 20,
-      trickleS: 1.5, recycleAfterS: 6, strandedS: 40, strandedGainM: 20, strandedContactM: 100, spawnRingM: Object.freeze([260, 380] as const), spawnSectors: 3, sectorWidthDeg: 60, sectorSpreadDeg: 70,
+      trickleS: 1.5, recycleAfterS: 6, strandedS: 40, strandedGainM: 20, strandedContactM: 50, spawnRingM: Object.freeze([260, 380] as const), spawnSectors: 3, sectorWidthDeg: 60, sectorSpreadDeg: 70,
       spawnMinHumanM: 150, spawnOutOfSight: true, sightRangeM: 450, sightStepM: 8, sightEyeM: 2.4, sightHullM: 1.5, sightMarginM: 1,
       spawnCandidates: 12,
       intermissionS: 8, waveRepair: 0.3,

@@ -16,10 +16,9 @@
  * Bot ids stay `bot-<team>-<n>` / `mode-<team>-<n>`, never a vehicle id; duplicate picks are valid.
  */
 import { NATION_INDEX } from '../../sim/nationIndex.generated.ts';
-import { campaignOperationCountry } from '../../sim/campaignFormations.ts';
 import { matchRulesetFor, TEAM_NATIONS_RULES, type MatchRuleset, type TeamArrangement } from '../../sim/matchRuleset.ts';
 import { normalizeGameMode } from '../../sim/matchModes.ts';
-import { ERA_NEIGHBOURS, isCountryId, pickNationalSides, type NationNote, type NationRow, type CountryId } from '../../sim/teamNations.ts';
+import { campaignOperationCountry, ERA_NEIGHBOURS, isCountryId, pickNationalSides, type NationNote, type NationRow, type CountryId } from '../../sim/teamNations.ts';
 
 interface PlanSeat { playerId: string; team: 'alpha' | 'bravo' | 'spectator'; specId: string }
 export interface PlanBot { playerId: string; name: string; team: 'alpha' | 'bravo'; specId: string }

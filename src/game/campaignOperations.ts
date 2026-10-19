@@ -11,7 +11,7 @@
 // fill the enemy roster first. Stars (cleared / under par / no ally lost) live in the record.
 import type { MapId } from '../world/maps/catalog.ts';
 import type { CampaignRulesetInput } from '../sim/matchRuleset.ts';
-import { CAMPAIGN_OPERATION_COUNTRY } from '../sim/campaignFormations.ts';
+import { CAMPAIGN_OPERATION_COUNTRY } from '../sim/teamNations.ts';
 import { COUNTRIES } from '../sim/teamNations.ts';
 import {
   CAMPAIGN_PAR_SHARE, readCampaignRecord, type CampaignRecord, type FrontlineMapProgress,
@@ -32,7 +32,7 @@ export interface CampaignOperation {
   readonly timeLimitS: number;
 }
 
-// each operation's formation country is sim/campaignFormations.ts (the multiplayer bot planner reads the same table)
+// each operation's formation country is sim/teamNations.ts CAMPAIGN_OPERATION_COUNTRY (the multiplayer bot planner reads the same table)
 const enemyOf = (id: string): CampaignEnemy => CAMPAIGN_OPERATION_COUNTRY[id] as CampaignEnemy;
 export const CAMPAIGN_OPERATIONS: readonly CampaignOperation[] = Object.freeze([
   Object.freeze({ id: 'first_light', index: 1, mapId: 'verdant', enemy: enemyOf('first_light'), difficulty: 1, timeLimitS: 780 }),

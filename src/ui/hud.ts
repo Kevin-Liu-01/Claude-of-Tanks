@@ -1301,7 +1301,8 @@ const HUD_CSS = `
 .cot-top .fg,.cot-top .fe{font-family:${FONT_COND};font-size:28px;font-weight:800;line-height:.96;
   letter-spacing:-.02em;font-variant-numeric:tabular-nums;text-shadow:0 2px 3px rgba(0,0,0,.72);}
 .cot-top .fg{color:${PEN_GREEN};}
-.cot-top .fe{color:${PEN_RED};}
+.cot-top .fe{color:${PEN_RED};white-space:nowrap;}
+.cot-top .fe .of{font-size:.5em;font-weight:700;letter-spacing:0;margin-left:2px;opacity:.82;}
 .cot-top .tm-block{align-self:stretch;display:flex;flex-direction:column;align-items:center;
   justify-content:center;gap:4px;padding:5px 9px 9px;
   background:linear-gradient(180deg,rgba(126,148,164,.11),rgba(2,5,8,.2));
@@ -3077,7 +3078,14 @@ export function initHud(bus: EventBus): HudRuntime {
     const score = `${modeState.id}|${ownScore}:${enemyScore}|${tally.allyAlive}/${tally.allyTotal}|${tally.enemyAlive}/${tally.enemyTotal}`;
     if (score !== lastScore) {
       fgEl.textContent = String(ownScore);
-      feEl.textContent = String(enemyScore);
+      feEl.textContent = horde && horde.total ? String(remaining) : String(enemyScore);
+      // the wave's total rides small beside the count still standing, so "30 / 30" fits the score slot on one line
+      if (horde && horde.total) {
+        const of = document.createElement('small');
+        of.className = 'of';
+        of.textContent = `/${horde.total}`;
+        feEl.appendChild(of);
+      }
       allyLabelEl.textContent = horde ? (horde.special ? t(`hud.waveSpecial.${horde.special}`) : t('hud.wave')) : t('hud.allies');
       enemyLabelEl.textContent = horde ? t('hud.remaining') : t('hud.enemy');
       allyAliveEl.textContent = `${tally.allyAlive} / ${tally.allyTotal}`;
