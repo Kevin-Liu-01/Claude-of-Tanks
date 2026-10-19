@@ -66,6 +66,7 @@ const DEFAULT_MODES = ['standard', 'frontline_assault', 'endless_horde', 'captur
 const MAP_ROTATION = ['verdant', 'badlands', 'urban', 'desert', 'winter', 'autumn', 'steppe', 'coastal'];
 const SAMPLE_TICKS = 30; // 0.5 s at SIM_DT
 const MOVE_EPS_MPS = 0.75;
+const SPAWN_SETTLE_S = 1;
 
 function parseSeeds(text) {
   const out = [];
@@ -766,7 +767,7 @@ const recOf = (e) => {
   if (!r) {
     r = { id: e.id, specId: e.specId, nation: nationKey(e.spec?.nation), team0: normTeam(e.team), human: adapter.isHuman(e), hull0: e.combat?.maxHp ?? null,
       shots: 0, hits: 0, damagingHits: 0, damageDealt: 0, damageTaken: 0, kills: 0, deaths: 0, aliveS: 0,
-      move: { advance: 0, hold: 0, retreat: 0, lateral: 0 }, ai: {}, engage: { samples: 0, still: 0 },
+      move: { advance: 0, hold: 0, retreat: 0, lateral: 0 }, ai: {}, engage: { samples: 0, still: 0, settled: 0, settledStill: 0 }, liveT: null, spawnT: null,
       flags: { fallingBack: 0, kiting: 0, scooting: 0, settling: 0, reacting: 0, searching: 0, pressing: 0, passivePress: 0, missionReleased: 0, ramming: 0, samples: 0 },
       engageDistSum: 0, engageDistN: 0,
       // guards: slow-while-free time (stuck), moving samples and the ones with a friendly inside 10 m (bunching)
@@ -972,6 +973,9 @@ function sample(t) {
     const team = normTeam(e.team);
     r.lastTeam = team;
     r.aliveS += SAMPLE_TICKS * SIM_DT;
+    // a (re)spawn: the first living sample after an absence (the settled engaged-still measure skips its first second)
+    if (r.liveT == null || Math.abs(r.liveT - (t - SAMPLE_TICKS * SIM_DT)) > 1e-6) r.spawnT = t;
+    r.liveT = t;
     if (!r.ranDry && totalAmmunition(e.combat) === 0) r.ranDry = true;
     const x = e.state.pos.x, z = e.state.pos.z;
     // nearest living enemy (ground truth; the harness may know what the bot may not)
@@ -996,7 +1000,12 @@ function sample(t) {
       const cls = speed < MOVE_EPS_MPS ? 'hold' : rate < -MOVE_EPS_MPS ? 'advance' : rate > MOVE_EPS_MPS ? 'retreat' : 'lateral';
       r.move[cls]++;
       if (!r.human) bk[cls]++;
-      if (e.aiCtl?.state === 'engage') { r.engage.samples++; if (speed < MOVE_EPS_MPS) r.engage.still++; }
+      if (e.aiCtl?.state === 'engage') {
+        r.engage.samples++; if (speed < MOVE_EPS_MPS) r.engage.still++;
+        // settled: a second or more after the hull's (re)spawn, so a hull still accelerating from rest is not a hull
+        // standing in a fight (round 2: the Infected's 90-150 m ring puts a revive in a fight at its first sample)
+        if (t - r.spawnT >= SPAWN_SETTLE_S) { r.engage.settled++; if (speed < MOVE_EPS_MPS) r.engage.settledStill++; }
+      }
       if (!r.human) {
         // guards: stuck = under 0.5 m/s for over 10 s while not engaged and off its objective; bunching = a moving
         // sample with a friendly hull inside 10 m (a conga line or a pile-up)
@@ -1204,6 +1213,7 @@ const sideSummary = (list) => {
   const flags = list.reduce((acc, r) => { for (const k in r.flags) acc[k] += r.flags[k]; return acc; }, { fallingBack: 0, kiting: 0, scooting: 0, settling: 0, reacting: 0, searching: 0, pressing: 0, passivePress: 0, missionReleased: 0, ramming: 0, samples: 0 });
   const engageDist = list.reduce((s, r) => s + r.engageDistSum, 0), engageDistN = list.reduce((s, r) => s + r.engageDistN, 0);
   const engageSamples = list.reduce((s, r) => s + r.engage.samples, 0), engageStill = list.reduce((s, r) => s + r.engage.still, 0);
+  const settledSamples = list.reduce((s, r) => s + r.engage.settled, 0), settledStill = list.reduce((s, r) => s + r.engage.settledStill, 0);
   const shots = list.reduce((s, r) => s + r.shots, 0), hits = list.reduce((s, r) => s + r.hits, 0), dmgHits = list.reduce((s, r) => s + r.damagingHits, 0);
   return {
     n: list.length, aliveBotMin: round(aliveMin, 1),
@@ -1215,6 +1225,7 @@ const sideSummary = (list) => {
     ai: Object.fromEntries(Object.entries(aiStates).sort((a, b) => b[1] - a[1]).map(([k, v]) => [k, round(v / aiN, 3)])),
     flags: flags.samples ? Object.fromEntries(Object.entries(flags).filter(([k]) => k !== 'samples').map(([k, v]) => [k, round(v / flags.samples, 3)])) : {},
     engagedStillShare: engageSamples ? round(engageStill / engageSamples, 3) : null,
+    engagedStillSettledShare: settledSamples ? round(settledStill / settledSamples, 3) : null,
     engageDistM: engageDistN ? Math.round(engageDist / engageDistN) : null,
     ranDry: list.filter((r) => r.ranDry).length,
     avgHull0: round(mean(list.map((r) => r.hull0).filter((x) => x != null)), 0),
@@ -1331,7 +1342,7 @@ function aggregateMode(mode, list) {
     advance: m((r) => r[team].move.advance, 3), hold: m((r) => r[team].move.hold, 3), retreat: m((r) => r[team].move.retreat, 3), lateral: m((r) => r[team].move.lateral, 3),
     ai: (() => { const acc = {}; for (const r of list) for (const [k, v] of Object.entries(r[team].ai)) acc[k] = (acc[k] ?? 0) + v / list.length; return Object.fromEntries(Object.entries(acc).sort((a, b) => b[1] - a[1]).map(([k, v]) => [k, round(v, 3)])); })(),
     flags: (() => { const acc = {}; for (const r of list) for (const [k, v] of Object.entries(r[team].flags || {})) acc[k] = (acc[k] ?? 0) + v / list.length; return Object.fromEntries(Object.entries(acc).map(([k, v]) => [k, round(v, 3)])); })(),
-    engagedStillShare: m((r) => r[team].engagedStillShare, 3), engageDistM: m((r) => r[team].engageDistM, 0),
+    engagedStillShare: m((r) => r[team].engagedStillShare, 3), engagedStillSettledShare: m((r) => r[team].engagedStillSettledShare, 3), engageDistM: m((r) => r[team].engageDistM, 0),
     kills: m((r) => r[team].kills, 1), deaths: m((r) => r[team].deaths, 1), ranDry: m((r) => r[team].ranDry, 2), avgHull0: m((r) => r[team].avgHull0, 0),
     stuckShare: m((r) => r[team].stuckShare, 4), bunchShare: m((r) => r[team].bunchShare, 4),
     ranDryTotal: list.reduce((s, r) => s + (r[team].ranDry || 0), 0),

@@ -10,7 +10,7 @@ import { CLASSIC_BOT_DOCTRINE, HUNT_RULES, RUSH_DRIVE, STRIKER_JUMP, matchRulese
 assert.deepEqual({ ...CLASSIC_BOT_DOCTRINE }, {
   openingRead: true, holdBandScale: 1, engageRangeScale: 1, coverScale: 1, fallbackScale: 1, hitReactions: 'all',
   scoutKite: true, scoot: true, spearheadGuard: true, conserveRounds: true, stalemateSilentS: 12, missionSpeed: 0.85,
-  missionBreakOffHp: 0.25, missionLocalReachM: 0, zoneSortieM: 0, rush: false, noRamLane: false, offensiveJump: false, searchRouting: 'live',
+  missionBreakOffHp: 0.25, missionOwnsRoute: false, missionLocalReachM: 0, zoneSortieM: 0, rush: false, noRamLane: false, offensiveJump: false, searchRouting: 'live',
   routeRefreshS: null, routeMoveM: null, claimRangeM: null,
 }, 'CLASSIC is the controller as it stood on integ/228: every multiplier 1, every gate as it was, each builder\'s own route push');
 assert.ok(Object.isFrozen(CLASSIC_BOT_DOCTRINE));
@@ -82,6 +82,12 @@ for (const [mode, team] of [['frontline_assault', 'alpha'], ['capture_the_flag',
   assert.ok(!d.openingRead && d.missionSpeed === 1 && d.missionBreakOffHp === 0, `${mode} ${team}: objective pace`);
 }
 assert.equal(rulesetBotDoctrine(matchRulesetFor('frontline_assault'), 'bravo').zoneSortieM, 80, 'defenders sortie at a SPOTTED attacker');
+// a labelled mission owns its route in every tuned table; the classic controller keeps the old search (round 2, E9)
+for (const [mode, team] of [['frontline_assault', 'alpha'], ['frontline_assault', 'bravo'], ['capture_the_flag', 'alpha'], ['turbo_ball', 'bravo'],
+  ['endless_horde', 'alpha'], ['endless_horde', 'bravo'], ['infected', 'alpha'], ['infected', 'bravo']]) {
+  assert.equal(rulesetBotDoctrine(matchRulesetFor(mode), team).missionOwnsRoute, true, `${mode} ${team}: the mission owns its route`);
+}
+assert.equal(CLASSIC_BOT_DOCTRINE.missionOwnsRoute, false, 'classic: the search may take a mission hull, as on integ/228');
 assert.equal(rulesetBotDoctrine(matchRulesetFor('turbo_ball'), 'alpha').offensiveJump, true, 'strikers jump at the ball');
 // the drive and hunt tables the controller and the mode controller read
 assert.deepEqual({ ...RUSH_DRIVE }, { directM: 70, orbitInM: 35, orbitMinM: 25, orbitMaxM: 35, noRamM: 12, tangentLeadM: 18, closingLeadM: 6,

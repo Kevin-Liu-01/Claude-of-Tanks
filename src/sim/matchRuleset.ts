@@ -107,6 +107,13 @@ export interface BotDoctrine {
   /** A mission bot breaks off its mission for the fallback under this hull fraction (0 = never). */
   readonly missionBreakOffHp: number;
   /**
+   * A labelled mission owns the hull's waypoints (gameplay-modes-228 fix (a)): no no-contact search starts while it
+   * drives, and a route another driver left is taken back. Off in the classic controller, whose search may take a mission
+   * hull as it always did (round 2, the critic's E9: with it on for every mode, solo Zone Control, Mars and the AC-130
+   * no longer played as on integ/228).
+   */
+  readonly missionOwnsRoute: boolean;
+  /**
    * A mission route that ends short of its objective but within this of it is finished on the local router rather than
    * released for MISSION_RELEASE_S (0 = always released: the classic controller). Round 2: a moving objective (an escort
    * point, a carrier's intercept) or a goal off the route grid released CTF's bots 4 % of the time.
@@ -139,7 +146,7 @@ export interface BotDoctrine {
 export const CLASSIC_BOT_DOCTRINE: BotDoctrine = Object.freeze({
   openingRead: true, holdBandScale: 1, engageRangeScale: 1, coverScale: 1, fallbackScale: 1, hitReactions: 'all',
   scoutKite: true, scoot: true, spearheadGuard: true, conserveRounds: true, stalemateSilentS: 12, missionSpeed: 0.85,
-  missionBreakOffHp: 0.25, missionLocalReachM: 0, zoneSortieM: 0, rush: false, noRamLane: false, offensiveJump: false, searchRouting: 'live',
+  missionBreakOffHp: 0.25, missionOwnsRoute: false, missionLocalReachM: 0, zoneSortieM: 0, rush: false, noRamLane: false, offensiveJump: false, searchRouting: 'live',
   routeRefreshS: null, routeMoveM: null, claimRangeM: null,
 });
 /**
@@ -156,6 +163,7 @@ interface RoutePush { readonly refreshS: number; readonly moveM: number }
 type BotDoctrineOverrides = { readonly alpha?: Partial<BotDoctrine>; readonly bravo?: Partial<BotDoctrine> };
 /** The Horde's zombies (and, with the hull turn, the infected): charge, fire on the move, never duck, never retreat. */
 const RUSH_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
+  missionOwnsRoute: true,
   openingRead: false, rush: true, holdBandScale: 0, coverScale: 0, fallbackScale: 0, hitReactions: 'none', scoutKite: false,
   scoot: false, spearheadGuard: false, conserveRounds: false, stalemateSilentS: 4, missionSpeed: 1, missionBreakOffHp: 0,
   searchRouting: 'spotted', routeRefreshS: 1.25, routeMoveM: 8, claimRangeM: 60,
@@ -807,30 +815,36 @@ const STANDARD: MatchRuleset = Object.freeze({
 
 // Per-side doctrines (gameplay-modes-228). Each is a partial over CLASSIC_BOT_DOCTRINE; see BotDoctrine for the knobs.
 const HORDE_ALLY_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
+  missionOwnsRoute: true,
   openingRead: false, conserveRounds: false, searchRouting: 'spotted', routeRefreshS: 1.25, routeMoveM: 8,
 });
 // the infected keep firing at range on the way in (a zombie's long shot is wasted; the infected's is pressure)
 const INFECTED_DOCTRINE: Partial<BotDoctrine> = Object.freeze({ ...RUSH_DOCTRINE, hitReactions: 'angle', claimRangeM: null });
 const SURVIVOR_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
+  missionOwnsRoute: true,
   openingRead: false, conserveRounds: false, fallbackScale: 0.5, hitReactions: 'angle', stalemateSilentS: 6,
   spearheadGuard: true, scoutKite: true, holdBandScale: 1, searchRouting: 'spotted', routeRefreshS: 1.25, routeMoveM: 8,
 });
 const ASSAULT_ATTACKER_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
+  missionOwnsRoute: true,
   openingRead: false, conserveRounds: false, missionSpeed: 1, missionBreakOffHp: 0, missionLocalReachM: 60, spearheadGuard: false, coverScale: 0.5,
   fallbackScale: 0.5, hitReactions: 'angle', stalemateSilentS: 6, holdBandScale: 0.6, searchRouting: 'spotted',
   routeRefreshS: 1.25, routeMoveM: 8,
 });
 const ASSAULT_DEFENDER_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
+  missionOwnsRoute: true,
   openingRead: false, conserveRounds: false, missionSpeed: 1, missionBreakOffHp: 0.15, missionLocalReachM: 60, zoneSortieM: 80, coverScale: 0.75,
   fallbackScale: 0.5, hitReactions: 'angle', holdBandScale: 0.7, stalemateSilentS: 6, routeRefreshS: 1.25, routeMoveM: 8,
 });
 const FLAG_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
+  missionOwnsRoute: true,
   openingRead: false, missionSpeed: 1, missionBreakOffHp: 0, missionLocalReachM: 60, fallbackScale: 0.5, coverScale: 0.5, hitReactions: 'angle',
   stalemateSilentS: 8, searchRouting: 'spotted', routeRefreshS: 1.25, routeMoveM: 8,
 });
 const FAST_ROUTE_DOCTRINE: Partial<BotDoctrine> = Object.freeze({ routeRefreshS: 1.25, routeMoveM: 0 });
 const BALL_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
   ...FAST_ROUTE_DOCTRINE, openingRead: false, conserveRounds: false, missionSpeed: 1, missionBreakOffHp: 0, missionLocalReachM: 60, noRamLane: true,
+  missionOwnsRoute: true,
   offensiveJump: true, hitReactions: 'angle',
 });
 
@@ -937,13 +951,17 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   // gameplay-modes-228 (owner 2026-10-18: "infected should be super aggressie as well"): the infected take the Horde's
   // charge with one difference, the hull turn onto a hit (second only to the zombies); the survivors fight back hard —
   // no opening read, every round fired, a shorter fallback, their range kept — and close ranks round their own centroid
-  infected: Object.freeze({ ...STANDARD, mode: 'infected', ammo: 'unlimited', allies: 9, enemies: 5, respawnS: 5, timeLimitS: 420,
+  // Round 2 (critic: the survivors never won a round): the infected rise close (a 90-150 m ring), so the first conversion
+  // comes in about a minute (was nearly three) and an outbreak sweeps in about four; their guns reload x1.8 (their lever
+  // is the charge, not the rate of fire), and the round is five minutes, so survivors who keep their ranks hold out some
+  // rounds (docs/GAME-MODES.md "Bot aggression per mode")
+  infected: Object.freeze({ ...STANDARD, mode: 'infected', ammo: 'unlimited', allies: 9, enemies: 5, respawnS: 5, timeLimitS: 300,
     // gameplay-modes-228: the rushing infected swept 8/8 (survivors 0/8) at 30 %; the plan's lever is their hull, not their aggression
-    infection: Object.freeze({ infectedSpeed: 1.3, survivorHpScale: 1.5, infectedHpScale: .25, infectedReloadScale: 1, hunt: true }),
+    infection: Object.freeze({ infectedSpeed: 1.3, survivorHpScale: 1.5, infectedHpScale: .25, infectedReloadScale: 1.8, hunt: true }),
     bots: Object.freeze({ bravo: INFECTED_DOCTRINE, alpha: SURVIVOR_DOCTRINE }),
     infectionBots: Object.freeze({ survivorRallyM: 90, arrival: Object.freeze({
-      spawnRingM: Object.freeze([120, 200] as const), spawnSectors: 3, sectorWidthDeg: 60, sectorSpreadDeg: 70,
-      spawnMinHumanM: 110, spawnOutOfSight: true, sightRangeM: 450, sightStepM: 8, sightEyeM: 2.4, sightHullM: 1.5,
+      spawnRingM: Object.freeze([90, 150] as const), spawnSectors: 3, sectorWidthDeg: 60, sectorSpreadDeg: 70,
+      spawnMinHumanM: 80, spawnOutOfSight: true, sightRangeM: 450, sightStepM: 8, sightEyeM: 2.4, sightHullM: 1.5,
       sightMarginM: 1, spawnCandidates: 12 }) }) }),
   realistic: Object.freeze({ ...STANDARD, mode: 'realistic', alwaysVisible: false, moduleOnlyDamage: true, consumables: false }),
   gun_game: Object.freeze({ ...STANDARD, mode: 'gun_game', respawnS: 4, ammo: 'unlimited', timeLimitS: 900,

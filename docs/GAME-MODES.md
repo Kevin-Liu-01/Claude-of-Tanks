@@ -118,10 +118,10 @@ hunter, you join allies against one bot boss. In hosted rooms the boss role belo
 to the first participating human when that role is selected; other humans hunt it.
 The boss is 12% larger, including its armor and module hit geometry, and carries a subtle blue surface highlight that follows the hull, turret, barrel, and running gear with traveling energy bands. Shell contacts, including ricochets, create short, undulating blue-white ripples at the actual impact location; turret and gun contacts follow those moving parts. There is no enclosing bubble, and the glow does not reveal the tank through cover. Battle impact ripples and enlargement are cleared on Garage return. If Juggernaut remains selected, the Garage applies a fresh animated energy preview to the selected tank; switching modes removes it. It never respawns. Its survival clock and health are shown in the objective.
 
-**Infected** begins with five infected opponents (at least three in a custom setup). Survivors have 150% of their normal HP; infected have 25% (30% until gameplay-modes-228), 30% more speed and no reload bonus, and their bots rush the survivors their side spots (`infection.hunt`, the honest hunt). Every respawn takes five seconds. Rounds are unlimited. A survivor's destruction changes
+**Infected** begins with five infected opponents (at least three in a custom setup). Survivors have 150% of their normal HP; infected have 25% (30% until gameplay-modes-228), 30% more speed and an 80% longer reload (round 2; none before), and their bots rush the survivors their side spots (`infection.hunt`, the honest hunt). Every respawn takes five seconds. Rounds are unlimited. A survivor's destruction changes
 that player's team before their next spawn, including their allied/enemy roster
 and bot targeting. Bots discard a cached enemy as soon as either tank changes sides;
-the converted player’s spotting readout follows their new team. The remaining survivors win by lasting seven minutes; infected
+the converted player’s spotting readout follows their new team. The remaining survivors win by lasting five minutes (seven until round 2 of gameplay-modes-228); infected
 win when nobody remains unconverted.
 
 **Gun Game** keeps the selected chassis, armor and crew, but replaces its main
@@ -498,7 +498,7 @@ harness's Standard and Juggernaut rows reproduce the baseline field for field).
 | Mode, side | Doctrine |
 | --- | --- |
 | Endless Horde zombies (RUSH) | no opening read, no hold band, no cover, never falls back, no kite, scoot or settle, no spearhead guard, rounds never conserved, the stalemate push after 4 s, missions at full speed and never broken off; the hunt's drive: straight at a spotted target inside 70 m, an orbit at 25–35 m with the turret laid inside 35 m, and it steers off a ram (`RUSH_DRIVE`: inside its stopping lane a seen enemy hull brakes and turns it; a hull that turns into it can still touch it); a target is claimed inside 60 m (`claimRangeM`) and let go past 90 m (the hunt brings the hull back in); hits ignored |
-| Infected (RUSH, second only to the zombies) | the RUSH table, a target claimed at any range, the hull angled to a hit; they rise on a ring 120–200 m round the survivors (`infectionBots.arrival`: out of their sight where the ground allows, never inside 110 m) |
+| Infected (RUSH, second only to the zombies) | the RUSH table, a target claimed at any range, the hull angled to a hit; they rise on a ring 90–150 m round the survivors (`infectionBots.arrival`: out of their sight where the ground allows, never inside 80 m; round 2, was 120–200 m and 110 m); their guns reload ×1.8 (`infectedReloadScale`) and the round is five minutes (round 2: the survivors had never won) |
 | Endless Horde allies | no opening read, rounds never conserved, the spotted search; they hunt spotted zombies only within 120 m of the humans (`hordeBots.allyLeashM`) and otherwise rejoin them |
 | Infected survivors ("fight back hard") | no opening read, rounds never conserved, half the fallback, angled hits, the push after 6 s of silence, spearhead guard and scout kite kept, the full hold band (range is their weapon), the spotted search; unengaged survivors rally on their own living centroid (`infectionBots.survivorRallyM`, 90 m) |
 | Frontline attackers | no opening read, rounds never conserved, missions at full speed and never broken off, half cover and fallback, angled hits, the push after 6 s, a 0.6 hold band, the spotted search; `assaultBots`: odd ranks approach on lanes 60 m off the axis and converge in the last 80 m, and at the zone's edge a push waits for 2 friends within 80 m, or 15 s |
@@ -642,8 +642,8 @@ numbers:
 | Human hull | 30 % | 150 % | 125 % | 200 % |
 | Zombie hull | 125 % | 25 % (30 % until gameplay-modes-228) | 125 % + 16 % a wave | 15 % + 2 % a round (+6 % from round 11; a swarm round 10 %) |
 | Zombie speed | +40 % | +30 % | +4.5 % a wave (cap +55 %) | unchanged |
-| Zombie reload | ×0.7 | ×1 | ×1 | ×1.8 reload time (`hostileReloadScale`, gameplay-modes-228) |
-| Zombie numbers | 4 to start, 3 s respawn, every dead survivor converts | 5 to start, 5 s respawn on a ring 120–200 m round the survivors, every dead survivor converts | waves 5 / +1, pool 14 | rounds of round(6 + 3(w − 1) + 0.35(w − 1)²), at most 16 alive, pool 20 (gameplay-modes-228; 10-17: waves 6 / +2, surge every 3rd, capped at the pool) |
+| Zombie reload | ×0.7 | ×1.8 reload time (`infectedReloadScale`, gameplay-modes-228 round 2; ×1 on 10-17) | ×1 | ×1.8 reload time (`hostileReloadScale`, gameplay-modes-228) |
+| Zombie numbers | 4 to start, 3 s respawn, every dead survivor converts | 5 to start, 5 s respawn on a ring 90–150 m round the survivors (120–200 m until round 2), every dead survivor converts; a five-minute round (seven until round 2) | waves 5 / +1, pool 14 | rounds of round(6 + 3(w − 1) + 0.35(w − 1)²), at most 16 alive, pool 20 (gameplay-modes-228; 10-17: waves 6 / +2, surge every 3rd, capped at the pool) |
 | Zombie bots | roam | rush the survivors they spot (the RUSH doctrine, hits angled; gameplay-modes-228) | hunt the nearest human | rush the humans they spot (the RUSH doctrine), one difficulty tier below the battle's (`hostileDifficultyStep`) |
 | Allies / rounds | 9 survivors, spec | 9 survivors, unlimited | 2 allies, spec | 4 allies, unlimited |
 
@@ -680,6 +680,10 @@ rounds recorded (Infected 1-16 and 101-108, Horde 1-8 and 101-108, the before ro
 | Infected, gameplay-modes-228, hold-out (64) | 2 / 64 | 247 s | 176 s / 175 s | 11.79 | 2.58 | 4.56 | — |
 | Endless Horde, gameplay-modes-228 (32 seeds; the wave law, rush) | 0 / 32 | 348 s | 348 s / 318 s | 10.11 | 0.60 | 16.82 | 4.81 (7) |
 | Endless Horde, gameplay-modes-228, hold-out (24) | 0 / 24 | 353 s | 353 s / 323 s | 10.06 | 0.63 | 16.03 | 4.83 (7) |
+| Infected, round 2 (48 seeds; the 90-150 m ring, reload ×1.8, a 5:00 round) | 30 / 48 | 278 s | 225 s / 242 s | 12.49 | 1.50 | 8.31 | — |
+| Infected, round 2, hold-out (32) | 22 / 32 | 276 s | 224 s / 240 s | 13.14 | 1.54 | 8.52 | — |
+| Endless Horde, round 2 (31 seeds; the 320-440 m ring, the trickle) | 0 / 31 | 415 s | 415 s / 427 s | 9.44 | 0.61 | 15.37 | 5.19 (8) |
+| Endless Horde, round 2, hold-out (16) | 0 / 16 | 435 s | 435 s / 450 s | 9.65 | 0.58 | 16.71 | 5.5 (7) |
 
 The humans now cut through the zombies — four to ten zombies for every human lost — and the numbers still decide:
 the outbreak takes two rounds in three (the survivors won 6 of the 16 tuning seeds, 16 of 48 on seeds 17-64 and 2 of 8
@@ -700,15 +704,25 @@ every bot round, so the Infected band asserts that the survivors still win some 
 completes in 150-330 s (median) and that the survivors kill three or more infected per loss; the Horde band is unchanged
 and holds (348 s, 4.8 rounds, 16.8 zombies a loss). The before rows are the record's own (`--tags=<mode>:keep:…`).
 
+Round 2 (2026-10-19, the critic's E4: that loosened band was the receipt weakened to fit) restores the 20-70 % band: the
+infected rise on a closer ring (90-150 m, never inside 80 m), reload ×1.8 and the round is five minutes, so the outbreak
+still sweeps a round in about four minutes when it wins (median end 4:15 on the harness, first conversion at 1:11 against
+2:43 before) and the survivors hold out 30 of 48 probe rounds (22 of the 32 hold-out seeds 17-48; the rules were chosen
+on seeds 1-16 and the harness's 101-116), at 8.3 infected a survivor lost. The Horde row is re-measured on the round-2
+wave law and ring (31 seeds: seed 107 hit the probe's 40-minute wall cap under a load of 220 and is re-run; tuned seeds
+1-8 and 101-108, hold-out 9-24): 6:55 and 5.2 rounds a run, 15.4 zombies a loss, every run overrun. Seed 1 of the Horde
+re-run on the final tree matched the earlier tree's row field for field, so the r5 rows 1-12 stand beside the final
+tree's 13-24 and 101-108 (`metrics/round2/zombie-balance`).
+
 Re-measure (about 1.5-4 minutes of wall time per seed under load; gate on `headroom can-start`):
 
-    node tools/mode-balance-probe.mjs --mode=infected --seeds=1-64,101-108 --jobs=6 --out=DIR --tag=infAfter
+    node tools/mode-balance-probe.mjs --mode=infected --seeds=1-48 --jobs=6 --out=DIR --tag=infAfter
     node tools/mode-balance-probe.mjs --mode=endless_horde --seeds=1-24,101-108 --jobs=6 --out=DIR --tag=hordeAfter
     node tools/mode-balance-probe.mjs --mode=infected --before --seeds=1-8 --jobs=4 --out=DIR --tag=infBefore
     node tools/mode-balance-probe.mjs --mode=endless_horde --before --seeds=1-8 --jobs=4 --out=DIR --tag=hordeBefore
     node tools/mode-balance-probe.mjs --table DIR infBefore infAfter hordeBefore hordeAfter
     node tools/mode-balance-probe.mjs --record=src/sim/zombieBalance.measured.json --dir=DIR \
-      --tags=infected:infBefore:infAfter:1-16,endless_horde:hordeBefore:hordeAfter:1-8
+      --tags=infected:keep:infAfter:1-16,endless_horde:keep:hordeAfter:1-8+101-108
 
 ## Verification
 

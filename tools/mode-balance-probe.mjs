@@ -12,7 +12,7 @@
 //   node tools/mode-balance-probe.mjs --record=src/sim/zombieBalance.measured.json --dir=DIR \
 //     --tags=infected:<before>:<after>:<tuned>,endless_horde:<before>:<after>:<tuned>   (<before> `keep`: the record's own)
 //                                                                          the band zombieBalance.selftest checks; <tuned>
-//                                                                          (optional, e.g. 1-16) names the seeds the rules
+//                                                                          (optional, e.g. 1-16 or 1-8+101-108) names the seeds the rules
 //                                                                          were tuned on, and the record adds a hold-out
 //                                                                          aggregate of every other seed
 //
@@ -118,7 +118,7 @@ if (arg('record', null) != null) {
     const afterRows = readRows(dir, afterTag);
     record.after[mode] = aggregate(afterRows);
     if (tuned) {
-      const tunedSeeds = new Set(parseSeeds(tuned));
+      const tunedSeeds = new Set(parseSeeds(tuned.replaceAll('+', ',')));
       record.after[mode].tunedSeeds = [...tunedSeeds];
       record.after[mode].holdout = aggregate(afterRows.filter((row) => !tunedSeeds.has(row.seed)));
     }

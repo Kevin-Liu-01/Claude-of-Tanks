@@ -19,10 +19,10 @@ const infected = matchRulesetFor('infected');
 const horde = matchRulesetFor('endless_horde');
 
 // --- the rules ------------------------------------------------------------------------------------------------------
-assert.deepEqual({ ...infected.infection }, { infectedSpeed: 1.3, survivorHpScale: 1.5, infectedHpScale: 0.25, infectedReloadScale: 1, hunt: true },
-  'Infected: sturdy survivors, fragile infected that hunt at +30 % speed with no reload bonus');
+assert.deepEqual({ ...infected.infection }, { infectedSpeed: 1.3, survivorHpScale: 1.5, infectedHpScale: 0.25, infectedReloadScale: 1.8, hunt: true },
+  'Infected: sturdy survivors, fragile infected that hunt at +30 % speed and reload x1.8 (round 2: their lever is the charge)');
 assert.equal('infectedRespawnS' in infected.infection, false, 'one respawn clock: the dead infectedRespawnS is gone');
-assert.equal(infected.respawnS, 5); assert.equal(infected.hpScale, 1); assert.equal(infected.timeLimitS, 420); assert.equal(infected.ammo, 'unlimited');
+assert.equal(infected.respawnS, 5); assert.equal(infected.hpScale, 1); assert.equal(infected.timeLimitS, 300, 'a five-minute round (round 2)'); assert.equal(infected.ammo, 'unlimited');
 assert.equal(infected.enemies, 5, 'five initial infected: the outbreak comes on numbers'); assert.equal(matchRulesetFor('infected', null, { enemies: 1 }).enemies, 3, 'at least three');
 assert.equal(matchRulesetFor('infected', null, { enemies: 8 }).enemies, 8, 'an arranged outbreak keeps its size');
 assert.equal(horde.hpScale, 2, 'Horde: the humans\' hull doubled'); assert.equal(horde.horde.hostileHpScale, 0.15, 'the zombies at 15 % of their own');
@@ -136,11 +136,11 @@ for (const [label, run, minRuns, minHoldout] of [['Infected', inf, 48, 32], ['Ho
 }
 for (const [label, run] of [['all seeds', inf], ['hold-out', inf.holdout]]) {
   // Infected (gameplay-modes-228, owner 2026-10-18: "infected should be super aggressie as well"): the rushing infected
-  // take nearly every bot round (the 10-17 band of 20-70 % survivor wins was the hunting doctrine's), yet the survivors
-  // still hold out some rounds, the outbreak takes minutes, not seconds, and the survivors kill several infected per
-  // loss. On purpose (round 1): the coordinator's 1-4 survivor wins in 8 is not met yet (2 in 72 on this probe).
+  // rise close and convert inside minutes, yet the survivors hold out 20-70 % of the five-minute rounds (the 10-17 band,
+  // restored in round 2: round 1 had loosened it to "at least one win" when the rush took 70 of 72 bot rounds), the
+  // outbreak takes minutes, not seconds, and the survivors kill several infected per loss
   const share = run.humanWins / run.runs;
-  assert.ok(run.humanWins >= 1 && share <= 0.7, `Infected (${label}): survivors win some rounds, never most (${run.humanWins}/${run.runs})`);
+  assert.ok(share >= 0.2 && share <= 0.7, `Infected (${label}): survivors win 20-70 % of the rounds (${run.humanWins}/${run.runs})`);
   assert.ok(run.endS.median >= 150 && run.endS.median <= 330, `Infected (${label}): the outbreak completes in 150-330 s (median ${run.endS.median} s)`);
   assert.ok(run.killsPerMin.ratio >= 3, `Infected (${label}): survivors kill at least three infected per survivor lost (${run.killsPerMin.ratio})`);
 }

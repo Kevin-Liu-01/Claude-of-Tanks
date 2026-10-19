@@ -48,12 +48,18 @@ function scenario({ objective, doctrine = CLASSIC_BOT_DOCTRINE, intel = null, se
   return { searched, released, minObjective, goals, ctl, bot, enemy };
 }
 console.log('[1] a mission bot never begins a no-contact search, and closes on its objective');
+const OWNS = { ...CLASSIC_BOT_DOCTRINE, missionOwnsRoute: true };
 {
   const objective = { x: 0, z: 150, radiusM: 30, mission: 'capture' };
-  const r = scenario({ objective });
+  const r = scenario({ objective, doctrine: OWNS });
   ok(r.searched === 0, `no search leg in 45 s of silence (${r.searched} samples searching)`);
   ok(r.released === 0, 'no mission release');
   ok(r.minObjective < 120, `the hull closes on the objective (${r.minObjective.toFixed(0)} m at best)`);
+}
+console.log('[1b] the classic controller (missionOwnsRoute off: Zone Control, Mars, the AC-130 as on integ/228) keeps its search');
+{
+  const r = scenario({ objective: { x: 0, z: 150, radiusM: 30, mission: 'capture' } });
+  ok(r.searched > 0, `classic: the 25 s search may still take a mission hull (${r.searched} samples)`);
 }
 console.log('[2] without a mission the classic search still begins after 25 s');
 {

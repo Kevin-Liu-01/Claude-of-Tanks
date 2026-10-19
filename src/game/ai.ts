@@ -1114,11 +1114,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   const getAllies = selectAllies(deps);
   // the mode objective, read once a tick (round 2, the critic's E8: ten sites a tick each allocated the controller's
   // objective; the controller's answer cannot change inside one bot's tick, so the first read serves the rest)
+  // Only inside update(): a call between two updates (a hit's reaction, the builder's route push) reads the live answer,
+  // as it always did, so the cache never hands a pre-step objective to a post-step caller.
   const readObjective = typeof deps.getObjective === 'function' ? deps.getObjective : null;
-  let objectiveAtS = NaN;
+  let objectiveTick = 0, objectiveReadTick = -1, inUpdate = false;
   let objectiveNow: AiObjective | null = null;
   const getObjective = readObjective ? (): AiObjective | null => {
-    if (objectiveAtS !== nowS) { objectiveNow = readObjective(); objectiveAtS = nowS; }
+    if (!inUpdate) return readObjective();
+    if (objectiveReadTick !== objectiveTick) { objectiveNow = readObjective(); objectiveReadTick = objectiveTick; }
     return objectiveNow;
   } : null;
   const selfEyeM = spec.dims.heightM * EYE_FRAC;
@@ -4899,10 +4902,12 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     // Deployment limits distant opening shots, not movement toward the battle. A labelled mission owns the hull's
     // waypoints (gameplay-modes-228: the search's leg used to replace a mission's route, outlive the contact and end in
     // the 20 s mission release; 6-28 % of Frontline samples): the objective already says where to go.
+    // (missionOwnsRoute: the classic controller lets the search take a mission's hull, as it always did)
+    const ownsRoute = doctrineOf().missionOwnsRoute;
     const maySearch = timeS >= 25 && timeS - lastFiredAtS > 25 && !emptyRack // an empty rack retires, it does not hunt
-      && !getObjective?.()?.mission;
+      && !(ownsRoute && getObjective?.()?.mission);
     if (!maySearch) {
-      if (searching && getObjective?.()?.mission) { searching = false; searchFailures = 0; }
+      if (ownsRoute && searching && getObjective?.()?.mission) { searching = false; searchFailures = 0; }
       return;
     }
     const enemy = doctrineOf().searchRouting === 'spotted' ? honestSearchGoal() : nearestLivingEnemy();
@@ -5969,9 +5974,14 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     if (zoneMission && driveZoneSortie(input, objective)) return true;
     // a zone is held from ground a hull can stand on (see ZONE_HOLD_RINGS_M)
     const hold = zoneMission ? zoneHoldPoint(destination.x, destination.z, objective.radiusM) : destination;
-    // the mission owns its waypoints: a route another driver left there (a level route, a lane fallback) is taken back
-    if (missionRouteNeedsRefresh(hold.x, hold.z) || !waypointsAreMission()) {
-      missionRouteX = Infinity;
+    // the mission owns its waypoints (missionOwnsRoute): a route another driver left there (a level route, a lane
+    // fallback) is taken back; the classic controller re-plans only when the hold point moves
+    if (doctrine.missionOwnsRoute) {
+      if (missionRouteNeedsRefresh(hold.x, hold.z) || !waypointsAreMission()) {
+        missionRouteX = Infinity;
+        setWaypoints([[hold.x, hold.z]], { loop: false });
+      }
+    } else if (missionRouteNeedsRefresh(hold.x, hold.z)) {
       setWaypoints([[hold.x, hold.z]], { loop: false });
     }
     // a route used up short of the objective (the mission's own, or a search leg that took the waypoints) is no
@@ -6338,6 +6348,11 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   // ---- main update ----------------------------------------------------------
 
   function update(dt: number, timeS: number): void {
+    objectiveTick++;
+    inUpdate = true;
+    try { updateTick(dt, timeS); } finally { inUpdate = false; }
+  }
+  function updateTick(dt: number, timeS: number): void {
     if (spec !== entity.spec) { spec = entity.spec; heSlot = findHeShellSlot(spec); chosenSlot = 0; }
     nowS = timeS;
     const input = entity.input;

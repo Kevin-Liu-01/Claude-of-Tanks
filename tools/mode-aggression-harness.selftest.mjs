@@ -106,7 +106,10 @@ assert.ok(horde.huntHonesty.unspottedShare <= 0.02, 'hunts route on what the tea
 const hunters = infected.bravo;
 assert.ok(infected.infected.huntWithin150Share >= 0.8, `infected within 150 m of a survivor (${infected.infected.huntWithin150Share})`);
 assert.ok(infected.infected.huntDistToSurvivorM <= 90, `infected close on the survivors (${infected.infected.huntDistToSurvivorM} m)`);
-assert.ok(hunters.engagedStillShare <= 0.06, `the infected keep moving in a fight (${hunters.engagedStillShare})`);
+// settled: a second or more after a (re)spawn (round 2: the 90-150 m ring puts a revived infected in a fight at its first
+// sample, still accelerating from rest; in this window 15 of the 26 still samples were a hull's first second)
+assert.ok(hunters.engagedStillSettledShare <= 0.06, `the infected keep moving in a fight (${hunters.engagedStillSettledShare}; with the spawns ${hunters.engagedStillShare})`);
+assert.ok(hunters.engagedStillShare <= 0.1, `the infected keep moving in a fight, their spawns counted (${hunters.engagedStillShare})`);
 assert.ok(hunters.flags.fallingBack <= 0.02 && hunters.flags.scooting <= 0.05, 'the infected neither fall back nor scoot');
 assert.equal(infected.ramStats.hunterRams, 0, 'the infected never ram');
 assert.ok(infected.huntHonesty.unspottedShare <= 0.02, 'the infected hunt only what their side spots');
