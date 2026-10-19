@@ -66,6 +66,7 @@ import { mkdirSync, mkdtempSync, writeFileSync, appendFileSync, existsSync, rena
 import { tmpdir, homedir, loadavg } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { sampleCoverage } from './black-world-repro-summary.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
@@ -797,6 +798,8 @@ function installDiagnostics() {
           if (bad) {
             mon.empty++;
             if (mon.firstEmptyAt == null) mon.firstEmptyAt = performance.now();
+            // presented: the loading cover is off, so the player saw this frame (a covered warm frame is legitimate)
+            if (!document.querySelector('.cot-bl.on')) mon.presentedEmpty = (mon.presentedEmpty ?? 0) + 1;
             if (mon.recent.length < 40) {
               let world = null;
               try { const w = D.world; world = w?.group ? [w.group.parent === S, w.group.visible] : null; } catch { /* none */ }
@@ -1162,6 +1165,8 @@ async function sampleWindow(page, label, meta) {
   const t0 = Date.now();
   const windowS = meta?.inject ? injectSeconds : seconds;
   const total = Math.round(windowS * 1000 / intervalMs);
+  // the frame-accurate monitor's presented empty scene passes before this window (a session's earlier faults are not its own)
+  const presentedEmpty0 = plain ? 0 : await page.evaluate(() => window.__BWR_SCENE?.presentedEmpty ?? 0).catch(() => 0);
   // --drive: a player's input through the window — W held, a steer every 3 s, the cursor sweeping the view
   let steer = null, lastSteerS = -1;
   if (drive) { try { await page.mouse.move(vw / 2, vh / 2); await page.keyboard.down('KeyW'); } catch { /* none */ } }
@@ -1264,8 +1269,9 @@ async function sampleWindow(page, label, meta) {
   const scenePass = plain ? null : await page.evaluate(() => {
     const m = window.__BWR_SCENE;
     return m ? { frames: m.frames, empty: m.empty, maskBad: m.maskBad, minCalls: Number.isFinite(m.minCalls) ? m.minCalls : null, recent: m.recent.slice(0, 20),
-      incomplete: m.incomplete ?? 0, incompleteRows: (m.incompleteRows ?? []).slice(0, 20) } : null;
+      presentedEmpty: m.presentedEmpty ?? 0, incomplete: m.incomplete ?? 0, incompleteRows: (m.incompleteRows ?? []).slice(0, 20) } : null;
   }).catch(() => null);
+  if (scenePass) scenePass.presentedEmptyInWindow = Math.max(0, scenePass.presentedEmpty - presentedEmpty0);
   const zero = await page.evaluate(() => ({ count: window.__BWR?.zeroAllocCount ?? 0, rows: (window.__BWR?.zeroAlloc ?? []).slice(0, 24),
     incompleteRenders: window.__BWR_INCOMPLETE?.incomplete ?? null, renders: window.__BWR_INCOMPLETE?.renders ?? null, incompleteRows: (window.__BWR_INCOMPLETE?.rows ?? []).slice(0, 24),
     tinySizes: (window.__BWR_INCOMPLETE?.tinySizes ?? []).slice(0, 24) })).catch(() => null);
@@ -1507,7 +1513,14 @@ try {
         if (row.guard && step.action === 'inject') row.guard.incidents = 0;
         if (row.guard?.incidents && step.action !== 'inject') log(`  GUARD INCIDENTS on a natural run: ${JSON.stringify(row.guard.receipts.map((r) => [r.class, r.healedBy]))}`);
         if (realEsc && row.escape) log(`  real Esc: ${JSON.stringify(row.escape)}`);
+        row.coverage = sampleCoverage(w.frames, step.action === 'inject' ? injectSeconds : seconds);
         row.verdict = w.blackCount ? 'BLACK-WORLD' : w.suspectCount ? 'suspect' : 'ok';
+        // a window nobody watched (the page detached, every grab failed) is never a clean run
+        if (row.verdict === 'ok' && step.action !== 'inject' && !row.coverage.ok) {
+          row.verdict = 'harness-error';
+          row.error = `unwatched window: ${row.coverage.valid} readable samples over ${row.coverage.spanS} s (${row.coverage.errors} grab errors; first ${String(w.frames.find((f) => f.error)?.error ?? '-').slice(0, 120)})`;
+          log(`${label}: ${row.error}`);
+        }
         row.events = await page.evaluate(() => (window.__BWR?.events ?? []).slice(0, 20)).catch(() => null);
       } catch (error) {
         row.verdict = 'harness-error';

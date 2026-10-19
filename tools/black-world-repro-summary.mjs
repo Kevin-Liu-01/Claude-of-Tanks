@@ -29,6 +29,23 @@ export function naturalFrames(frames, control = false) {
   return (frames ?? []).filter((frame) => !frame.ctl && !(control && frame.st?.camMask === 2 ** 30));
 }
 
+/**
+ * Whether a natural window was actually watched: at least MIN_VALID_SAMPLES readable frames whose span covers at least
+ * MIN_SPAN_SHARE of the window. A run whose page detached or whose grabs all failed must never pass as 'ok' with nothing
+ * sampled (cold-maps-p3b 001 whiteout: 100 detached-frame errors, verdict ok before this rule).
+ */
+export const MIN_VALID_SAMPLES = 8;
+export const MIN_SPAN_SHARE = 0.8;
+export function sampleCoverage(frames, windowS) {
+  const valid = (frames ?? []).filter((frame) => frame.mean != null);
+  const times = valid.map((frame) => frame.at);
+  const spanS = times.length ? +(times[times.length - 1] - times[0]).toFixed(2) : 0;
+  let maxGapS = 0, prev = 0;
+  for (const at of [...times, windowS]) { maxGapS = Math.max(maxGapS, at - prev); prev = at; }
+  const ok = valid.length >= MIN_VALID_SAMPLES && spanS >= MIN_SPAN_SHARE * windowS;
+  return { valid: valid.length, errors: (frames ?? []).filter((frame) => frame.error).length, spanS, maxGapS: +maxGapS.toFixed(2), ok };
+}
+
 /** The longest run of consecutive black frames, in samples. */
 export function longestBlackRun(frames, zeroFrac = DEFAULT_ZERO_FRAC) {
   let current = 0, longest = 0;
@@ -83,12 +100,20 @@ export function summarizeParts(dirs) {
       }
       const key = `${target}|${chrome}|${scenario}|dsf${summary.dsf ?? 1}|${run.map}`;
       const row = rows.get(key) ?? { target, chrome, scenario, dsf: summary.dsf ?? 1, map: run.map, runs: 0, black: 0, suspect: 0,
-        errors: 0, incidents: 0, incidentClasses: [], frames: 0, blackFrames: 0, longestS: 0, firstAt: [], parts: new Set() };
+        errors: 0, unwatched: 0, incidents: 0, incidentClasses: [], frames: 0, blackFrames: 0, longestS: 0, maxGapS: 0, emptyPassFrames: 0,
+        firstAt: [], parts: new Set() };
       row.parts.add(path.basename(dir));
       rows.set(key, row);
       if (run.verdict === 'harness-error') { row.errors++; continue; }
-      row.runs++;
       const frames = naturalFrames(detail.frames, summary.control);
+      const coverage = sampleCoverage(frames, summary.seconds ?? 25);
+      // a window nobody watched (detached page, every grab failed) is a harness error, never a clean run
+      if (!coverage.ok && !frames.some((frame) => frameIsBlack(frame, zeroFrac))) { row.errors++; row.unwatched++; continue; }
+      row.runs++;
+      row.maxGapS = Math.max(row.maxGapS, coverage.maxGapS);
+      // the harness's frame-accurate scene-pass monitor: battle frames presented (cover lifted) whose scene pass drew nothing
+      row.emptyPassFrames += detail.scenePass?.presentedEmptyInWindow ?? (summary.scenario === 'cold'
+        ? (detail.scenePass?.recent ?? []).filter((r) => r.cover === false).length : 0);
       const black = frames.filter((frame) => frameIsBlack(frame, zeroFrac)).length;
       const suspect = frames.filter((frame) => !frameIsBlack(frame, zeroFrac) && frame.blackFrac > SUSPECT_BLACK_FRAC && frame.st?.hud !== false).length;
       if (black) row.black++;
@@ -110,22 +135,24 @@ export function summarizeParts(dirs) {
   const table = [...rows.values()].sort((a, b) => a.target.localeCompare(b.target) || a.scenario.localeCompare(b.scenario)
     || a.map.localeCompare(b.map));
   const totals = table.reduce((sum, row) => ({ runs: sum.runs + row.runs, black: sum.black + row.black, errors: sum.errors + row.errors,
-    incidents: sum.incidents + row.incidents, frames: sum.frames + row.frames, blackFrames: sum.blackFrames + row.blackFrames }),
-  { runs: 0, black: 0, errors: 0, incidents: 0, frames: 0, blackFrames: 0 });
+    unwatched: sum.unwatched + row.unwatched, incidents: sum.incidents + row.incidents, frames: sum.frames + row.frames,
+    blackFrames: sum.blackFrames + row.blackFrames, emptyPassFrames: sum.emptyPassFrames + row.emptyPassFrames }),
+  { runs: 0, black: 0, errors: 0, unwatched: 0, incidents: 0, frames: 0, blackFrames: 0, emptyPassFrames: 0 });
   return { table, injections, totals };
 }
 
 export function formatSummary({ table, injections, totals }) {
   const lines = [];
-  lines.push('| target | chrome | scenario | dsf | map | runs | BLACK-WORLD runs | suspect | harness errors | guard incidents | black frames / frames | longest black (s) | first black at (s) | parts |');
-  lines.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
+  lines.push('| target | chrome | scenario | dsf | map | runs | BLACK-WORLD runs | suspect | harness errors | guard incidents | black frames / frames | longest black (s) | first black at (s) | max sample gap (s) | empty scene-pass frames | parts |');
+  lines.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|');
   for (const r of table) {
-    lines.push(`| ${r.target} | ${r.chrome} | ${r.scenario} | ${r.dsf} | ${r.map} | ${r.runs} | ${r.black} | ${r.suspect} | ${r.errors} | `
+    lines.push(`| ${r.target} | ${r.chrome} | ${r.scenario} | ${r.dsf} | ${r.map} | ${r.runs} | ${r.black} | ${r.suspect} | ${r.errors}${r.unwatched ? ` (${r.unwatched} unwatched)` : ''} | `
       + `${r.incidents}${r.incidentClasses.length ? ` (${r.incidentClasses.join(', ')})` : ''} | ${r.blackFrames} / ${r.frames} | ${r.longestS} | `
-      + `${r.firstAt.join(', ') || '-'} | ${[...r.parts].join(' ')} |`);
+      + `${r.firstAt.join(', ') || '-'} | ${r.maxGapS} | ${r.emptyPassFrames} | ${[...r.parts].join(' ')} |`);
   }
   lines.push('');
-  lines.push(`total: ${totals.black} BLACK-WORLD runs of ${totals.runs} (${totals.errors} harness errors); ${totals.blackFrames} black frames of ${totals.frames}; `
+  lines.push(`total: ${totals.black} BLACK-WORLD runs of ${totals.runs} (${totals.errors} harness errors, ${totals.unwatched} of them unwatched windows); `
+    + `${totals.blackFrames} black frames of ${totals.frames}; ${totals.emptyPassFrames} presented empty scene-pass frames; `
     + `${totals.incidents} guard incidents on natural runs`);
   if (injections.length) {
     lines.push('');

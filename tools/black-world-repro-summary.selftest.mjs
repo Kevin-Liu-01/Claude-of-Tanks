@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { formatSummary, frameIsBlack, longestBlackRun, naturalFrames, summarizeParts } from './black-world-repro-summary.mjs';
+import { formatSummary, frameIsBlack, longestBlackRun, naturalFrames, sampleCoverage, summarizeParts } from './black-world-repro-summary.mjs';
 
 const frame = (at, zeroFrac, extra = {}) => ({ at, mean: zeroFrac > 0.5 ? 1 : 80, blackFrac: zeroFrac, zeroFrac, st: { hud: true }, ...extra });
 
@@ -18,6 +18,15 @@ assert.equal(longestBlackRun([frame(0, 0.9), frame(1, 0.9), frame(2, 0.1), frame
 assert.equal(naturalFrames([frame(0, 0.9, { ctl: true }), frame(1, 0.1)]).length, 1, 'control frames are never natural');
 assert.equal(naturalFrames([frame(0, 0.9, { st: { hud: true, camMask: 2 ** 30 } })], true).length, 0, 'an old control part by its mask');
 
+// a window is watched only with enough readable samples spread over it (a detached page's 100 errors are not a pass)
+const detached = Array.from({ length: 100 }, (_, i) => ({ at: i * 0.25, error: 'Execution context is not available in detached frame' }));
+assert.equal(sampleCoverage(detached, 25).ok, false, 'every grab failed: unwatched');
+assert.equal(sampleCoverage(detached, 25).errors, 100);
+assert.equal(sampleCoverage(Array.from({ length: 30 }, (_, i) => frame(i * 0.8, 0.01)), 25).ok, true, '30 samples over 23.2 s');
+assert.equal(sampleCoverage(Array.from({ length: 30 }, (_, i) => frame(i * 0.25, 0.01)), 25).ok, false, 'samples over 7 s of 25');
+assert.equal(sampleCoverage([frame(0, 0.01), frame(24, 0.01)], 25).ok, false, 'two samples are not a watch');
+assert.equal(sampleCoverage([frame(1, 0.01), frame(6, 0.01), frame(22, 0.01)], 25).maxGapS, 16, 'the largest gap between samples');
+
 const root = mkdtempSync(path.join(tmpdir(), 'bwr-summary-'));
 try {
   const write = (name, summary, rows) => {
@@ -28,15 +37,17 @@ try {
   };
   const healthy = Array.from({ length: 20 }, (_, i) => frame(i * 0.25, 0.01));
   const blackRun = [...healthy.slice(0, 5), frame(1.25, 0.84), frame(1.5, 0.83), frame(1.75, 0.02)];
-  const cold = write('cold', { target: 'dev', scenario: 'cold', drive: true, dsf: 2, intervalMs: 250, zeroFrac: 0.8, runs: [
+  const cold = write('cold', { target: 'dev', scenario: 'cold', drive: true, dsf: 2, intervalMs: 250, seconds: 5, zeroFrac: 0.8, runs: [
     { label: '001', map: 'badlands', verdict: 'ok', guard: { incidents: 0 } },
     { label: '002', map: 'badlands', verdict: 'BLACK-WORLD', guard: { incidents: 1, receipts: [{ class: 'camera-layer-mask', healedBy: 'H1' }] } },
     { label: '003', map: 'badlands', verdict: 'harness-error' },
     { label: '004', map: 'verdant', verdict: 'ok', guard: { incidents: 0 } },
+    { label: '005', map: 'verdant', verdict: 'ok', guard: { incidents: 0 } },
   ] }, [
-    { label: '001', frames: healthy }, { label: '002', frames: blackRun }, { label: '003' }, { label: '004', frames: healthy },
+    { label: '001', frames: healthy, scenePass: { presentedEmptyInWindow: 0 } }, { label: '002', frames: blackRun, scenePass: { presentedEmptyInWindow: 3 } },
+    { label: '003' }, { label: '004', frames: healthy }, { label: '005', frames: detached.slice(0, 20) },
   ]);
-  const heal = write('heal', { target: 'dev', scenario: 'session', drive: true, dsf: 2, intervalMs: 250, runs: [
+  const heal = write('heal', { target: 'dev', scenario: 'session', drive: true, dsf: 2, intervalMs: 250, seconds: 5, runs: [
     { label: '001', map: 'badlands', action: 'boot', verdict: 'ok', guard: { incidents: 0 } },
     { label: '002', map: 'badlands', action: 'inject-layers', verdict: 'ok' },
     { label: '003', map: 'badlands', action: 'inject-persist-layers-5', verdict: 'ok' },
@@ -57,8 +68,12 @@ try {
   assert.deepEqual(badlands.firstAt, [1.25]);
   assert.equal(badlands.incidents, 1);
   assert.deepEqual(badlands.incidentClasses, ['camera-layer-mask:H1']);
+  assert.equal(badlands.emptyPassFrames, 3, 'the presented empty scene passes in the windows');
   const verdant = table.find((row) => row.map === 'verdant');
   assert.equal(verdant.black, 0);
+  assert.equal(verdant.runs, 1, 'an unwatched window is not a run');
+  assert.equal(verdant.errors, 1);
+  assert.equal(verdant.unwatched, 1);
   const session = table.find((row) => row.scenario === 'session+drive');
   assert.equal(session.runs, 1, 'the injected rows never count as natural runs');
   assert.equal(totals.runs, 4);
@@ -69,10 +84,10 @@ try {
     [['layers', 'camera-layer-mask', 'H1', 160], ['persist-layers-5', 'camera-layer-mask', 'H1', 120]]);
   assert.equal(injections[1].repeats, 40);
   const text = formatSummary({ table, injections, totals });
-  assert.match(text, /total: 1 BLACK-WORLD runs of 4 \(1 harness errors\); 2 black frames of 68; 1 guard incidents on natural runs/);
+  assert.match(text, /total: 1 BLACK-WORLD runs of 4 \(2 harness errors, 1 of them unwatched windows\); 2 black frames of 68; 3 presented empty scene-pass frames; 1 guard incidents on natural runs/);
   assert.match(text, /\| layers \| camera-layer-mask \| H1 \| H1 \| 90 \| 160 \| 160 \|/);
 } finally {
   rmSync(root, { recursive: true, force: true });
 }
 
-console.log('black-world-repro-summary.selftest: the zero-share verdict, natural frames, longest stretch, guard incidents and the heal table');
+console.log('black-world-repro-summary.selftest: the zero-share verdict, natural frames, watched windows, longest stretch, guard incidents and the heal table');
