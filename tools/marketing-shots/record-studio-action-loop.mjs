@@ -94,6 +94,8 @@ try {
 
   browser = await puppeteer.launch({
     headless: 'new',
+    // the readiness step below may take its map, image and font limits (180 s + 30 s + 15 s)
+    protocolTimeout: 600_000,
     args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
   });
   const page = await browser.newPage();
@@ -166,7 +168,13 @@ try {
   const frameCount = Math.round(durationMs / stepMs);
   // the timeline workspace brings the cinematics timeline into view where the real-time take scrolled to it (1.65 s)
   const timelineFrame = workspace === 'director' ? -1 : Math.round(1650 / stepMs);
-  await page.evaluate(async () => {
+  // (2026-10-18) every wait before the first frame is bounded and named: on 227 this step outlived the browser's
+  // 180 s protocol limit, after the stills. An image the page loads lazily never loads while it is off screen, so its
+  // decode() never settles: the Studio's images load eagerly here, and a wait that runs out is reported, not fatal.
+  console.log('[studio-action] waiting for the map, the Studio images and the fonts');
+  const late = await page.evaluate(async () => {
+    const within = (label, promise, ms) => Promise.race([Promise.resolve(promise).then(() => null),
+      new Promise((done) => setTimeout(() => done(label), ms))]);
     const S = window.__STUDIO;
     S.pause();
     S.seek(0);
@@ -176,13 +184,19 @@ try {
     const dock = document.querySelector('.cot-studio .dock');
     if (dock) dock.scrollTop = 0;
     const world = window.__DEBUG?.world;
-    if (world) {
+    // the map's own readiness rejects after 120 s (that error still stops the film); the module load is bounded too
+    const map = world ? within('the map', (async () => {
       const { awaitMapCaptureReadiness } = await import('/src/dev/mapCaptureReadiness.ts');
       await awaitMapCaptureReadiness(world, () => window.__DEBUG.world);
-    }
-    await Promise.all([...document.querySelectorAll('.cot-studio img')].map((img) => img.decode?.().catch(() => {})));
-    await document.fonts?.ready;
+    })(), 180_000) : null;
+    const images = [...document.querySelectorAll('.cot-studio img')];
+    for (const img of images) if (img.loading === 'lazy') img.loading = 'eager';
+    const missed = [await map, await within('images', Promise.all(images.map((img) => img.decode?.().catch(() => {}))), 30_000),
+      await within('fonts', document.fonts?.ready, 15_000)].filter(Boolean);
+    return missed.map((label) => label === 'images'
+      ? `images (${images.filter((img) => !img.complete).length} of ${images.length} not loaded)` : label);
   });
+  if (late.length) console.log(`[studio-action] still waiting on ${late.join(' and ')} after the limit: filming anyway`);
   for (let frame = 0; frame < frameCount; frame++) {
     if (frame === timelineFrame) {
       await page.evaluate(() => document.querySelector('.cot-studio .timelineBoard')?.scrollIntoView({ block: 'center' }));
