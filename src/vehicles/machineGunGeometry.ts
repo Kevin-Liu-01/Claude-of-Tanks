@@ -350,8 +350,8 @@ export const RIDING_CRADLE_RECOIL_M = 0.012;
  * and the cradle, pin and shield stay on the trunnion. The cheeks stand clear of the receiver's side furniture over that
  * stroke: the pin-side cheek 3 mm outboard of the charging-handle slide, its front 3 mm ahead of the pin and the handle's
  * knob 9 mm ahead of it at full recoil; the feed-side cheek 2 mm outboard of the side-plate seam and 1.5 mm inboard of the
- * can, its front 2 mm behind the can tray's arm (which runs in under the receiver) at full recoil; the receiver bears on
- * the cradle floor. The bearing ring's
+ * can, its front 2 mm behind the can tray's arm (which runs in under the receiver) at full recoil; the receiver slides on
+ * the cradle floor (a 0.5 mm fit, round 5). The bearing ring's
  * outer radius is 20 mm, 2 mm behind the knob's stem at full recoil. The cradle (cheeks, floor, carrier bars) is painted
  * with the vehicle (`cradleSlot`, critic CN-4: the weapon steel's grain read as a crumpled silver sheet from below); the
  * pin stays steel.
@@ -360,7 +360,9 @@ export function addPintleRidingCradle(context: PintleLayout, cradle: MachineGunP
   if (context.mount === 'external-cradle') throw new Error('addPintleRidingCradle: a pintle mount only');
   const { bodyBottom, bodyW, feedSign: f, parts, recY, recZ, s, trunY, weaponSlot } = context;
   const near = context.detail === 1;
-  const floorBottom = bodyBottom - 0.010 * s;
+  // round 5 (critic CN5-01): the floor's top 0.5 mm under the receiver's floor line, a slide fit (an exact triangle test
+  // read the coincident faces as crossing at every pitch; the receiver slides on it, it never meets it)
+  const floorBottom = bodyBottom - 0.0105 * s;
   // the pin-side cheek outboard of the charging slide (bodyW/2 + 9 mm), the feed-side one between the seam strip
   // (bodyW/2 + 3.5 mm) and the can (bodyW/2 + 14 mm)
   const pinIn = bodyW / 2 + 0.012 * s, pinT = 0.012 * s, feedIn = bodyW / 2 + 0.0055 * s, feedT = 0.007 * s;

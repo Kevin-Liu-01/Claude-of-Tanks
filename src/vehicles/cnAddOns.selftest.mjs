@@ -20,6 +20,11 @@
 // irradiance it throws on any front-facing surface stays under 60 within 1.5 m of the lens and under 200 anywhere (the
 // 226 lamps reach 113 on the barrel 2.9 m out). The round-2 lamp seats beside the box sight (876 on its side face 0.7 m
 // out) must fail it.
+// Round 5 (critic CN5-03): a module glass's bezel parts (the factory adds them beside the pane, outside the tagged port)
+// take their pane's role, and the Qilin's split sensor lifted 30 mm off its foot with its glass and bezels must float.
+// Round 5 (critic CN5-02): every census part of the turret, the gun and the hull joins its owner by a chain of box
+// contacts (donor stock included), and each Type 96B gunner's sight housing rests on its cast plinth. Round 5 (critic
+// CN5-07): each reactive cassette the kit fits is bound to a registered turret ERA plate of its own side.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
@@ -38,7 +43,7 @@ const INVENTORY = {
     'smoke-tube': [8, 0], 'smoke-cradle': [2, 0], 'service-case': [3, 0], 'spine-frame': [7, 0], 'low-optic': [3, 0], cable: [2, 0], antenna: [3, 0],
     'sight-hood': [3, 0], 'spine-sensor': [3, 0], 'slit-lamp': [2, 0], 'monocle-eye': [4, 0], 'side-electronics': [6, 0],
     'gun-band': [5, 0], 'muzzle-strip': [1, 0], 'ring-race': [1, 0], 'marking-board': [2, 0], 'met-sensor': [2, 0],
-    'dock-bearer': [2, 0], 'dock-landing': [1, 0],
+    'dock-bearer': [2, 0], 'dock-landing': [1, 0], 'sight-plinth': [1, 0],
   },
   t72b3_qilin: {
     'flank-sleeve': [2, 0], 'brow-chevron': [16, 8], 'flank-tile': [12, 6], 'rail-post': [4, 0],
@@ -50,7 +55,7 @@ const INVENTORY = {
   t72b3m_kunlun: {
     chevron: [36, 12], shtora: [24, 0], lamp: [14, 0], scanner: [5, 0], 'service-case': [20, 0], cable: [7, 0], antenna: [3, 0],
     'cage-root': [2, 0], 'cage-side-rail': [2, 0], 'cage-post': [2, 0], 'cage-mid-rail': [2, 0], 'cage-rear-rail': [3, 0], 'cage-floor': [3, 0],
-    'cage-rear-post': [3, 0], 'cage-console': [12, 0],
+    'cage-rear-post': [3, 0], 'cage-console': [12, 0], 'sight-plinth': [1, 0],
   },
 };
 const LIGHTS = { t80u_yun: [6, 0], t72b3_qilin: [4, 0], t72b3m_kunlun: [6, 2] };
@@ -79,10 +84,17 @@ function allowance(p) {
 }
 
 function build(id, quality) {
-  const parts = [];
+  const parts = [], geometry = new Map();
   const tank = createTank(id, null, { proceduralOnly: true, quality, geometryReceipt: true, camoSeed: 4242,
-    partCensus(bucket, g) { parts.push({ ...censusPart(bucket, g), hit: (g.userData?.eraHitFaceVertexStarts?.length ?? 0) > 0, lens: Boolean(g.userData?.vehicleNightLens) }); } });
+    partCensus(bucket, g) { const p = { ...censusPart(bucket, g), hit: (g.userData?.eraHitFaceVertexStarts?.length ?? 0) > 0, lens: Boolean(g.userData?.vehicleNightLens) }; parts.push(p); geometry.set(g, p); } });
   tank.root.updateMatrixWorld(true);
+  // Round 5 (critic CN5-03): a module visual's glass brings its own bezel (tankFactoryCore.ts addGlassFrames, parts the
+  // tagged port never sees); each bezel belongs to its pane's add-on, so a lifted optic cannot borrow its own moving
+  // bezel as an anchor to permanent stock.
+  for (const [g, p] of geometry) if (p.role) for (const frame of g.userData?.glassFrames ?? []) {
+    const f = geometry.get(frame);
+    if (f && !f.role) f.role = p.role;
+  }
   return { tank, parts };
 }
 const owner = (p) => (p.bucket.startsWith('turret') ? 'turret' : p.bucket.startsWith('gun') ? 'gun' : 'hull');
@@ -288,6 +300,60 @@ for (const quality of ['high', 'low']) {
         const problems = seatingCensus(scope, { allowance, family });
         assert.deepEqual(problems, [], `${id}/${quality}: ${o} add-ons seated on real stock:\n  ${problems.join('\n  ')}`);
       }
+      // ---- round 5 (critic CN5-02): nothing on the vehicle stands apart. Every census part of each owner belongs to one
+      // chain of box contacts (2 mm), donor stock included (the Type 96B builder's gunner's sight housing stood 59-71 mm
+      // over its roof); on the 96B turrets the housing's floor rests on its plinth (the plinth's top 0-3 mm into it, the
+      // plinth inside its footprint).
+      const apartOf = (P) => {
+        const lead = P.map((_, i) => i), find = (i) => { while (lead[i] !== i) i = lead[i] = lead[lead[i]]; return i; };
+        const grown = P.map((p) => p.box.clone().expandByScalar(.002));
+        for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) if (grown[i].intersectsBox(grown[j])) lead[find(i)] = find(j);
+        const size = new Map(); for (let i = 0; i < P.length; i++) size.set(find(i), (size.get(find(i)) ?? 0) + 1);
+        const main = [...size].sort((a, b) => b[1] - a[1])[0][0];
+        return P.filter((_, i) => find(i) !== main);
+      };
+      const partLabel = (p) => `${p.role ?? p.bucket}[${p.box.min.toArray().map((v) => v.toFixed(3))}..${p.box.max.toArray().map((v) => v.toFixed(3))}]`;
+      for (const o of ['turret', 'gun', 'hull']) assert.deepEqual(apartOf(parts.filter((p) => owner(p) === o)).map(partLabel), [], `${id}/${quality}: every ${o} part joins the ${o} by contact`);
+      // negative control: without its plinth the Kunlun's gunner's sight housing (and its glass and bezel) stands apart
+      if (id === 't72b3m_kunlun' && quality === 'high') {
+        const apart = apartOf(parts.filter((p) => owner(p) === 'turret' && p.role !== 'sight-plinth'));
+        assert.ok(apart.some((p) => Math.abs(p.box.min.y - .729) < .002 && p.bucket === 'turretDetail'), `negative control: the Kunlun's sight housing without its plinth stands apart (${apart.length} parts)`);
+      }
+      if (id !== 't72b3_qilin') {
+        const housing = parts.filter((p) => owner(p) === 'turret' && !p.role && p.bucket === 'turretDetail' && Math.abs(p.box.min.y - .729) < .002 && Math.abs(p.box.min.x - .394) < .003 && Math.abs(p.box.max.z - .650) < .003);
+        assert.equal(housing.length, 1, `${id}: the Type 96B gunner's sight housing`);
+        const [h] = housing, plinth = parts.find((p) => p.role === 'sight-plinth');
+        assert.ok(plinth.box.max.y >= h.box.min.y && plinth.box.max.y <= h.box.min.y + .003, `${id}: the sight plinth's top 0-3 mm into the housing's floor (${((plinth.box.max.y - h.box.min.y) * 1000).toFixed(1)} mm)`);
+        assert.ok(plinth.box.min.x >= h.box.min.x && plinth.box.max.x <= h.box.max.x && plinth.box.min.z >= h.box.min.z && plinth.box.max.z <= h.box.max.z, `${id}: the plinth inside the housing's footprint`);
+      }
+      // ---- round 5 (critic CN5-07: eraBindingReceipt builds no CN tank): ERA registration. Every reactive cassette the
+      // kit fits on the turret belongs to a registered gameplay ERA plate of its own side (the packages' sector labels:
+      // chineseChevronEra.ts names the -X side _L),
+      // owned by the turret, its centre within 70 mm of that plate's polygon; each named plate is registered with cassettes
+      // (turret_era_L/R; the Qilin's 99A2 face panels keep turret_chevron_era_L/R).
+      if (quality === 'high') {
+        const rows = tank.root.userData.eraVisualBindingReceipt?.plates?.filter((r) => r.owner === 'turret') ?? [];
+        const named = ['turret_era_L', 'turret_era_R', ...(id === 't72b3_qilin' ? ['turret_chevron_era_L', 'turret_chevron_era_R'] : [])];
+        for (const name of named) {
+          const row = rows.find((r) => r.name === name);
+          assert.ok(row && row.registered && row.ownerMatches && row.partCount > 0, `${id}: ${name} registered on the turret with its parts (${JSON.stringify(row && { registered: row.registered, ownerMatches: row.ownerMatches, parts: row.partCount })})`);
+        }
+        const plates = (getSpec(id).armor?.turretPlates ?? []).filter((p) => p.kind === 'era');
+        const tri = new THREE.Triangle(), q = new THREE.Vector3();
+        const away = (c, plate) => { let best = Infinity; for (let i = 1; i + 1 < plate.verts.length; i++) { tri.set(q.fromArray(plate.verts[0]).clone(), new THREE.Vector3().fromArray(plate.verts[i]), new THREE.Vector3().fromArray(plate.verts[i + 1])); best = Math.min(best, tri.closestPointToPoint(c, new THREE.Vector3()).distanceTo(c)); } return best; };
+        const fitted = parts.filter((p) => owner(p) === 'turret' && p.hit && p.role);
+        assert.equal(fitted.length, { t80u_yun: 18, t72b3_qilin: 14, t72b3m_kunlun: 12 }[id], `${id}: the kit's reactive cassettes`);
+        let worst = 0; const onPlate = new Map();
+        for (const c of fitted) {
+          const centre = c.box.getCenter(new THREE.Vector3()), side = centre.x < 0 ? 'L' : 'R';
+          const [d, plate] = plates.map((pl) => [away(centre, pl), pl]).sort((a, b) => a[0] - b[0])[0];
+          assert.ok(plate.name.endsWith(`_${side}`) && named.includes(plate.name) && d < .07, `${id}: ${c.role} cassette at ${centre.toArray().map((v) => v.toFixed(2))} on ${plate.name} ${(d * 1000).toFixed(0)} mm`);
+          worst = Math.max(worst, d); onPlate.set(plate.name, (onPlate.get(plate.name) ?? 0) + 1);
+        }
+        // and the binding holds them: each plate's bound parts number at least the kit's cassettes on it
+        for (const [name, n] of onPlate) assert.ok(rows.find((r) => r.name === name).partCount >= n, `${id}: ${name} binds its ${n} kit cassettes`);
+        console.log(`${id}: ${fitted.length} kit cassettes on their sides' registered turret ERA plates (worst ${(worst * 1000).toFixed(0)} mm)`);
+      }
       // ---- negative controls (high quality): a lifted antenna floats; a sunk sight-hood plate is buried in the sight
       if (id === 't80u_yun' && quality === 'high') {
         const turretParts = parts.filter((p) => owner(p) === 'turret');
@@ -298,6 +364,22 @@ for (const quality of ['high', 'low']) {
         const plate = turretParts.filter((p) => p.role === 'sight-hood').sort((a, b) => (b.box.max.x - b.box.min.x) - (a.box.max.x - a.box.min.x))[0];
         const sunk = around([plate]).map((p) => (p === plate ? shifted(p, -.06) : p));
         assert.ok(seatingCensus(sunk, { allowance, family }).some((s) => s.startsWith('CROSS') && s.includes('sight-hood')), 'negative control: a sight-hood plate sunk 60 mm is buried');
+      }
+      // ---- round 5 (critic CN5-03, seed 2): the Qilin's split sensor lifted 30 mm off its foot, its glass and bezels with
+      // it, must float (its bezels were untagged and anchored it); every module glass the kit adds carries its bezel's role
+      if (quality === 'high') {
+        const turretParts = parts.filter((p) => owner(p) === 'turret');
+        const bare = turretParts.filter((p) => p.role && /Glass$/.test(p.bucket) && !p.lens).filter((pane) => !turretParts.some((q) => q !== pane && q.role === pane.role && !/Glass$/.test(q.bucket)
+          && q.box.clone().expandByScalar(.002).intersectsBox(pane.box)));
+        assert.deepEqual(bare.map((p) => p.role), [], `${id}: every kit glass sits in a frame of its own add-on`);
+        if (id === 't72b3_qilin') {
+          const sensor = turretParts.filter((p) => p.role === 'split-sensor'), foot = sensor.reduce((a, b) => (b.box.min.y < a.box.min.y ? b : a));
+          assert.ok(sensor.some((p) => /Glass$/.test(p.bucket)) && sensor.some((p) => p.bucket === 'turretDetail' && p.box.max.x - p.box.min.x < .03 && p.box.min.y > foot.box.max.y),
+            'Qilin: the split sensor census carries its glass and its bezels');
+          const around = turretParts.filter((p) => sensor.some((q) => q.box.clone().expandByScalar(.10).intersectsBox(p.box)));
+          const lifted = around.map((p) => (p.role === 'split-sensor' && p !== foot ? shifted(p, .03) : p));
+          assert.ok(seatingCensus(lifted, { allowance, family }).some((s) => s.startsWith('FLOAT split-sensor')), 'negative control: the split sensor lifted 30 mm off its foot floats');
+        }
       }
       // ---- M3: the Yun's horseshoe corner round the bustle module: its rear end 30 mm ahead of the module's rear face, its
       // top at least 20 mm over the module's, its inner edge 85-90 mm inside the module's side; one cradle a side under

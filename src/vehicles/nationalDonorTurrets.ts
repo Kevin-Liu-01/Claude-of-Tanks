@@ -84,12 +84,14 @@ export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret
       ringCollar: { z: 0, radiusM: 1.08 } } },
   // Release 227 (cnClearance, 2026-10-17): the gun's depression by turret yaw, measured: at each degree the deepest pitch
   // keeping 26 mm between the whole gun (boot, box sight, barrel at recoil 0 and 0.135 m) and every hull mesh, on both
-  // sides, then a conservative curve through each degree's shallowest neighbour. Over the front corners the barrel
-  // passes over the hull lamps' armoured brows (yaw 20-32 deg: 1.3 deg of depression left), over the side boxes at
-  // 111-115 deg, and over the rear fenders, shoulder covers and fuel drums aft of 133 deg (3.4-5.7 deg).
+  // sides, then a conservative curve through each degree's shallowest neighbour. Round 5 (critic CN5-05): the hull lamps
+  // left the deck for cowls on the glacis corners (nationalChina.ts glacisLampCowl), where the gun at -6 deg passes 25 mm
+  // over them, so the front arc depresses the full 6 deg (it had 1.3 deg left over the 226 lamp brows at yaw 20-32). Left:
+  // the skirts' tops at 111-114 deg (5.3 deg) and, aft of 133 deg, the hull deck's rear edge, the skirts' rear ends and
+  // the engine deck's cooling panels (3.4-5.7 deg): the Type 96B's trunnion stands 0.26 m over the ring, and at -6 deg
+  // the barrel meets the deck itself there.
   t72b3m_kunlun: { donor: 'type96b', pivot: TYPE96B_ON_T72B3M, roofY: .70, station: TYPE96B_CUPOLA, heightM: 3.35,
-    gunPitchByYawDeg: [[0, -6], [19, -6], [20, -4.8], [21, -2.4], [22, -1.5], [23, -1.3], [30, -1.3], [31, -1.7], [32, -3.1],
-      [33, -6], [110, -6], [111, -5.3], [114, -5.3], [116, -6], [133, -5.7], [139, -4.2], [145, -3.4], [148, -3.4], [153, -3.8],
+    gunPitchByYawDeg: [[0, -6], [110, -6], [111, -5.3], [114, -5.3], [116, -6], [133, -5.7], [139, -4.2], [145, -3.4], [148, -3.4], [153, -3.8],
       [155, -4.9], [158, -4.8], [162, -3.8], [163, -3.7], [166, -3.7], [178, -4], [180, -4.5]],
     addedTurretEra: ['turret_era_L', 'turret_era_R'],
     // The Type 96B's 3 m rear whip would make the listed height (body and roof weapon: the sim's body height) 5.2 m.
@@ -101,11 +103,12 @@ export const NATIONAL_DONOR_TURRETS: Readonly<Record<string, NationalDonorTurret
   // further from the 96B mast stem, so the station's side box keeps 25 mm from it facing right at 29 deg in recoil);
   // the 96B's open side bins and twelve cheek launchers give way to the Yun's armour housings and its own eight roof
   // smoke tubes.
-  // Its depression by turret yaw is measured as the Kunlun's (26 mm from every hull mesh): over the front corners the
-  // barrel passes over the paired lamps' armoured brows (yaw 22-33 deg: 3.4-4.9 deg left), and aft of 158 deg over the
-  // engine deck's cooling panels, their leafy net and the slatted transom (3.4-5.1 deg).
+  // Its depression by turret yaw is measured as the Kunlun's (26 mm from every hull mesh). Round 5 (critic CN5-05): its
+  // paired lamps sit in cowls on the glacis corners under the gun's -6 deg sweep, so the whole front arc to 157 deg
+  // depresses 6 deg (it had 3.4-4.9 deg over the 226 lamp brows at yaw 22-33); aft of 158 deg the barrel passes over
+  // the hull deck's rear edge, the engine deck's cooling panels, their leafy net and the slatted transom (3.4-5.1 deg).
   t80u_yun: { donor: 'type96b', pivot: TYPE96B_ON_T80U, roofY: .70, station: [.392, -.607], heightM: 3.212,
-    gunPitchByYawDeg: [[0, -6], [21, -6], [23, -4], [24, -3.8], [28, -3.6], [30, -3.6], [32, -4], [33, -4.9], [34, -6], [157, -6],
+    gunPitchByYawDeg: [[0, -6], [157, -6],
       [159, -5.1], [160, -4.9], [163, -4.5], [166, -4.5], [167, -4], [169, -3.5], [172, -3.4], [174, -3.4], [180, -3.6]],
     addedTurretEra: ['turret_era_L', 'turret_era_R'],
     builderOptions: { mastTopY: 3.20, bins: false, smoke: false, bootHeel: true, boxSightOnGun: true } },

@@ -313,6 +313,8 @@ function kunlun(P:TankBuilderPort):void {
   // the square guarded lamps ride the Shtora heads' hoods (YUN_LAMP_SEAT's note)
   kunlunEyes(kit('shtora'),{P:kit('lamp'),shape:l.lamp});
   const roof=permanentParts(P,['turret','turretDetail']);
+  // the gunner's sight seated on its plinth (type96SightPlinth)
+  type96SightPlinth(kit('sight-plinth'),permanentParts(P,['turret']));
   // The scanner head between the cupola and the loader's hatch.
   const scanner=kit('scanner');
   nationalRoofSensor(scanner,-.05,-.18,equipmentFoot(scanner,roof,-.05,-.18,.35,.33),l);
@@ -688,6 +690,19 @@ function yunSmoke(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[]):void 
   }
 }
 
+/** The Type 96B gunner's sight housing in the turret frame (type96bX.ts buildType96Turret: optic(P,'turret',.649,2.436,
+ * .36,.51,.214,.28) at source z + 0.15, height - 1.60): centre x, centre z, width, depth, floor. */
+const TYPE96_GUNNER_SIGHT={x:.649,z:.51,w:.51,d:.28,floor:.729} as const;
+/** Round 5 (critic CN5-02): the Type 96B builder draws its gunner's sight housing 59-71 mm over the roof with nothing under
+ * it (the fleet type96b too). On both CN Type 96B turrets it stands on a cast plinth: its footprint 20 mm inside the
+ * housing's sides, front and rear, its underside following the roof under its edges at three stations (6 mm in), its top
+ * 2 mm into the housing's floor. */
+function type96SightPlinth(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[]):void {
+  const s=TYPE96_GUNNER_SIGHT,x0=s.x-s.w/2+.02,x1=s.x+s.w/2-.02,z0=s.z-s.d/2+.02,z1=s.z+s.d/2-.02,top=s.floor+.002;
+  P.addEquipment('turretDetail',sectionSolid([z0,(z0+z1)/2,z1].map(z=>({z,ring:[[x0,roofAt(parts,x0,z)-.006],
+    [x1,roofAt(parts,x1,z)-.006],[x1,top],[x0,top]] as SectionPoint[]}))));
+}
+
 /** The armoured hood round the 96B gunner's sight (box x .394-.904, y .729-.943, z .37-.65): a top plate on the sight's
  * top and two side guards standing on the roof 23 mm clear of its sides, their feet following the roof's fall. */
 function yunSightHood(P:TankBuilderPort,parts:readonly THREE.BufferGeometry[]):void {
@@ -749,6 +764,7 @@ function yun(P:TankBuilderPort):void {
   // the antenna's base on a shaped foot on the sloping bustle roof, the cable plugging into the foot's side
   serviceCable(tagged(P,YUN_MODEL,'cable'),roof,[[-.806,-1.66],[-.90,-1.62],[-.9386,-1.593]],false);
   whip(tagged(P,YUN_MODEL,'antenna'),roof,-1.00,-1.55,.54);
+  type96SightPlinth(tagged(P,YUN_MODEL,'sight-plinth'),roof);
   yunSightHood(tagged(P,YUN_MODEL,'sight-hood'),roof);
   yunMetHead(tagged(P,YUN_MODEL,'met-sensor'));
   const sensor=tagged(P,YUN_MODEL,'spine-sensor');

@@ -15,7 +15,8 @@
 // (`auxiliaryWeaponRecoil`, 12 mm along its axis) and the presentation moves that group and nothing else; through the
 // whole pitch range and the whole stroke no triangle of a moving part crosses its yaw stage and the moving parts keep
 // 1.5 mm from it, the recoiling gun crosses nothing of its cradle and bears on its floor; the whole pitch group recoiled
-// 25 mm (the pre-round-4 runtime) must fail.
+// 25 mm (the pre-round-4 runtime) must fail. Round 5 (critic CN5-01): the floor stands 0.5 mm under the receiver (a slide
+// fit), so an exact triangle test finds no coincident faces at any pitch or recoil.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
@@ -100,7 +101,8 @@ for (const [id, want] of Object.entries(EXPECT)) {
       assert.ok(self.d >= .0015, `${id}: the moving parts keep 1.5 mm from their own mount through pitch and recoil (${(self.d * 1000).toFixed(1)} mm at ${(self.el * 180 / Math.PI).toFixed(1)} deg, recoil ${(self.r * 1000).toFixed(0)} mm)`);
       assert.equal(self.crossings, 0, `${id}: no moving triangle crosses the yaw stage`);
       assert.equal(self.gunCradle.crossings, 0, `${id}: the recoiling gun crosses nothing of its cradle over its stroke`);
-      assert.ok(self.gunCradle.bearing <= .0005, `${id}: the gun bears on its cradle (${(self.gunCradle.bearing * 1000).toFixed(2)} mm)`);
+      // round 5 (critic CN5-01): a 0.5 mm slide fit over the floor, never a coincident face an exact test reads as crossing
+      assert.ok(self.gunCradle.bearing >= .0003 && self.gunCradle.bearing <= .0008, `${id}: the gun slides on its cradle floor, a 0.5 mm fit (${(self.gunCradle.bearing * 1000).toFixed(2)} mm)`);
       // negative control: the whole pitch group recoiled 25 mm (the pre-round-4 runtime) pulls the pin through its bearing
       const whole = stationSelfClearance(station, pitch, { ...range, travel: .025, wholeRecoil: true });
       assert.ok(whole.d < .0015 && whole.crossings > 0, `${id}: negative control: the whole pitch group recoiling carries the pin through its bearing (${(whole.d * 1000).toFixed(1)} mm, ${whole.crossings} pairs)`);

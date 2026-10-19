@@ -304,24 +304,37 @@ function chinaHullEquipment(P:TankBuilderPort,c:NationalModernizationConfig):voi
   }
   const front=c.model===0?2.76:c.model===1?2.95:2.77;
   for(const side of [-1,1]){
-    const x=side*1.40,y=receivingRoof(P,'hull',x,front),y0=receivingRoof(P,'hull',x,front-.12),y1=receivingRoof(P,'hull',x,front+.12);
+    const x=side*1.40;
+    // the Yun's and the Kunlun's paired lamps on the glacis corners, under the Type 96B gun's sweep (glacisLampCowl)
+    if(c.model!==2){glacisLampCowl(P,c.model,x);continue;}
+    const y=receivingRoof(P,'hull',x,front),y0=receivingRoof(P,'hull',x,front-.12),y1=receivingRoof(P,'hull',x,front+.12);
     P.addEquipment('hullDetail',roofSheet([
       [front-.12,x-.13,x+.13,y0+.025,y0+.025],[front+.12,x-.13,x+.13,y1+.025,y1+.025],
     ],.030));
-    if(c.model===0){
-      // Yun's low paired rectangular driving lamps share an armored brow.
-      P.addEquipment('hullDetail',box(.238,.105,.11),x,y+.091,front+.014);
-      for(const dx of [-.061,.061])P.addEquipment('hullGlass',markVehicleNightLens(box(.089,.045,.012),'headlight'),x+dx,y+.092,front+.074);
-    }else if(c.model===1){
-      P.addEquipment('hullDetail',box(.242,.14,.13),x,y+.11,front+.004);
-      for(const dx of [-.059,.059])P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.043,.016,16),'headlight'),x+dx,y+.112,front+.074);
-    }else{
-      P.addEquipment('hullDark',cylZ(.078,.10,16),x,y+.097,front+.01);
-      P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.063,.014,16),'headlight'),x,y+.097,front+.068);
-    }
+    P.addEquipment('hullDark',cylZ(.078,.10,16),x,y+.097,front+.01);
+    P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.063,.014,16),'headlight'),x,y+.097,front+.068);
     for(const dx of [-.12,.12])P.addEquipment('hullDetail',beamBetween([x+dx,y-.005,front],[x+dx,y+.175,front],.012));
     P.addEquipment('hullDetail',box(.265,.020,.16),x,y+.18,front);
   }
+}
+
+/** Where the Yun's (model 0) and the Kunlun's (model 1) lamp cowls stand on their glacis corners: [rear z, front z]. */
+const GLACIS_LAMP_Z:Readonly<Record<0|1,readonly [number,number]>>={0:[2.99,3.10],1:[3.55,3.66]};
+/** Release 227, round 5 (critic CN5-05): on the deck at the front corners (z 2.76 Yun, 2.95 Kunlun) the 226 lamp groups
+ * stood 0.19 m tall (a lamp box between two guard posts under a brow plate) where the Type 96B gun, its trunnion 0.26 m
+ * over the ring, passes 76 mm (Kunlun) and 143 mm (Yun) over the deck at -6 degrees: the gun could depress only 1.3 and
+ * 3.6 degrees over them. Each pair now sits in one armoured cowl on the glacis corner ahead of the deck (as the T-72's and
+ * the T-80U's own lamps do), its underside following the glacis under both its edges at three stations (6 mm in), its top
+ * flat 95 mm over the glacis at its rear edge, the lenses in its front face under a 3 mm proud brow plate run 35 mm out
+ * over them; every point of it stays at least 25 mm under the gun at -6 degrees (cnClearance). Same lenses, same
+ * places across: [the Yun's low rectangular pair, the Kunlun's round pair]. */
+function glacisLampCowl(P:TankBuilderPort,model:0|1,x:number):void {
+  const [zr,zf]=GLACIS_LAMP_Z[model],w=.26,top=receivingRoof(P,'hull',x,zr)+.095;
+  P.addEquipment('hullDetail',sectionSolid([zr,(zr+zf)/2,zf].map(z=>({z,ring:[[x-w/2,receivingRoof(P,'hull',x-w/2,z)-.006],
+    [x+w/2,receivingRoof(P,'hull',x+w/2,z)-.006],[x+w/2,top],[x-w/2,top]] as SectionPoint[]}))));
+  P.addEquipment('hullDetail',box(w+.012,.016,.045),x,top-.005,zf+.0125);
+  if(model===0)for(const dx of [-.061,.061])P.addEquipment('hullGlass',markVehicleNightLens(box(.089,.045,.012),'headlight'),x+dx,top-.050,zf+.004);
+  else for(const dx of [-.059,.059])P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.043,.016,16),'headlight'),x+dx,top-.064,zf+.006);
 }
 
 
