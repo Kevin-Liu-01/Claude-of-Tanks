@@ -966,135 +966,133 @@
   },
   {
    "path": "media/site50-r14/films/trailer-30.jpg",
-   "bytes": 103336,
-   "sha256": "0baff1ab6fb8ffd882480bf7d34fc2232f9c00d9012444c446152e27e11503bd",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer-30.jpg",
+   "bytes": 112444,
+   "sha256": "22e831c3025685a33798b47a5f8a7256fc13e9736845ebc82fd990ca7c0d2a61",
+   "source": "shots/media-r5/trailers-r7/deliver/trailer-30.jpg",
    "film": "trailer-30"
   },
   {
    "path": "media/site50-r14/films/trailer-30.mp4",
-   "bytes": 13457059,
-   "sha256": "bf3dbd21f53c7d5cc06616a9123f4ee881b55e744a15c5c8712e8e81ba8a3867",
+   "bytes": 13283817,
+   "sha256": "e8513c72a6b3afc2e887c00aaca8b7df2aa8e1b1539a105d72b237af79ad74f2",
    "width": 1920,
    "height": 1080,
    "fps": 30,
    "seconds": 30,
    "audio": "aac",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer-30.mp4",
+   "source": "shots/media-r5/trailers-r7/deliver/trailer-30.mp4",
    "film": "trailer-30",
    "encode": {
     "passes": 2,
-    "kbps": 3454,
-    "vmaf": 86.37,
-    "vmafMin": 67.59,
-    "capped": true
+    "kbps": 3407,
+    "vmaf": 91.2,
+    "vmafMin": 75.3
    }
   },
   {
    "path": "media/site50-r14/films/trailer-30.webm",
-   "bytes": 10881989,
-   "sha256": "e15e14a755a7977fdd4946be6eab362af734dda9d16a7344f95ad3cc42c2b245",
+   "bytes": 10788651,
+   "sha256": "4fadc0fc468db8e81df10b63731ecba8a222545c7b213277f67a55168c3de8ed",
    "width": 1920,
    "height": 1080,
    "fps": 30,
    "seconds": 30.008,
    "audio": "opus",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer-30.webm",
+   "source": "shots/media-r5/trailers-r7/deliver/trailer-30.webm",
    "film": "trailer-30",
    "encode": {
     "crf": 32,
-    "kbps": 2820,
-    "vmaf": 90.12,
-    "vmafMin": 49.89,
+    "kbps": 2786,
+    "vmaf": 92.18,
+    "vmafMin": 62.57,
     "capped": true
    }
   },
   {
    "path": "media/site50-r14/films/trailer-vertical.jpg",
-   "bytes": 121662,
-   "sha256": "4febcfd6fa2ba4fab61254bc1f0a2cd93783a82ca0fd2ca76ce76051b7b319d5",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer-vertical.jpg",
+   "bytes": 128896,
+   "sha256": "7494fa24090afe4bec2eb4e0e93f45782427d5e15637df9a6c4f7543abed5e0c",
+   "source": "shots/media-r5/trailers-r7/deliver/trailer-vertical.jpg",
    "film": "trailer-vertical"
   },
   {
    "path": "media/site50-r14/films/trailer-vertical.mp4",
-   "bytes": 8865807,
-   "sha256": "1ea2ee9a5f45aeb589fbec1d78d12cdf99b5daca5dfd0df87946ced4942f01e4",
+   "bytes": 8813115,
+   "sha256": "6569fe0f357a8907d8f66a9f6d87bac0d07407e99909cff2f65e41926e6ad181",
    "width": 1080,
    "height": 1920,
    "fps": 30,
    "seconds": 20,
    "audio": "aac",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer-vertical.mp4",
+   "source": "shots/media-r5/trailers-r7/deliver/trailer-vertical.mp4",
    "film": "trailer-vertical",
    "encode": {
     "passes": 2,
-    "kbps": 3413,
-    "vmaf": 91.54,
-    "vmafMin": 72.52
+    "kbps": 3390,
+    "vmaf": 94.94,
+    "vmafMin": 81.85
    }
   },
   {
    "path": "media/site50-r14/films/trailer-vertical.webm",
-   "bytes": 6934025,
-   "sha256": "6240cbf06694982a0958cf7d25774f67db6c85a00b560506bc7e134f29d807e8",
+   "bytes": 6881391,
+   "sha256": "89bdc45d55d3cba919f4bb200f3cf18af60f4ba50d0f6698ad3aed5a4abcb6ef",
    "width": 1080,
    "height": 1920,
    "fps": 30,
    "seconds": 20.008,
    "audio": "opus",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer-vertical.webm",
+   "source": "shots/media-r5/trailers-r7/deliver/trailer-vertical.webm",
    "film": "trailer-vertical",
    "encode": {
     "crf": 32,
-    "kbps": 2691,
-    "vmaf": 94.48,
-    "vmafMin": 68.11,
-    "capped": true
+    "kbps": 2660,
+    "vmaf": 95.9,
+    "vmafMin": 75.69
    }
   },
   {
    "path": "media/site50-r14/films/trailer.jpg",
-   "bytes": 113358,
-   "sha256": "7eb74a345ad98c2ec73741dce567a4bbe19781dd11a868483dab166f25cdb299",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer.jpg",
+   "bytes": 145230,
+   "sha256": "f3fe41ded979cacc27df334d33feb17f9b9fc02241c82a9ae36359393cf80832",
+   "source": "shots/media-r5/trailers-r7/deliver/trailer.jpg",
    "film": "trailer"
   },
   {
    "path": "media/site50-r14/films/trailer.mp4",
-   "bytes": 24130246,
-   "sha256": "93021856f4e02d51bf3705eae6b0d937f99187ea61a7436c7b3b87dfe76ebd04",
+   "bytes": 23917390,
+   "sha256": "3add391f06ca41320a74032049f2463e1f9565961ecff6a43934c959ed58662d",
    "width": 1600,
    "height": 900,
    "fps": 30,
    "seconds": 70,
    "audio": "aac",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer.mp4",
+   "source": "shots/media-r5/trailers-r7/deliver/trailer.mp4",
    "film": "trailer",
    "encode": {
     "passes": 2,
-    "kbps": 2623,
-    "vmaf": 82.01,
-    "vmafMin": 61.43,
+    "kbps": 2598,
+    "vmaf": 88.6,
+    "vmafMin": 72.04,
     "capped": true
    }
   },
   {
    "path": "media/site50-r14/films/trailer.webm",
-   "bytes": 21206776,
-   "sha256": "9b03b86f4df2618195577fa0c98172e49b44b887643ec73d04431b15312d4c53",
+   "bytes": 21177474,
+   "sha256": "d8e398055b6c06d5d4ce53152014606fe509256c5fdae8179114a18f4e307c55",
    "width": 1600,
    "height": 900,
    "fps": 30,
    "seconds": 70.008,
    "audio": "opus",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer.webm",
+   "source": "shots/media-r5/trailers-r7/deliver/trailer.webm",
    "film": "trailer",
    "encode": {
     "crf": 31,
-    "kbps": 2343,
-    "vmaf": 87.67,
-    "vmafMin": 48.25,
+    "kbps": 2333,
+    "vmaf": 91.01,
+    "vmafMin": 59.44,
     "capped": true
    }
   },
@@ -1629,8 +1627,8 @@
   },
   {
    "path": "media/site50-r14/fleet/bwp1.jpg",
-   "bytes": 28127,
-   "sha256": "de633fa1708072033d08b15960e762981e6a0f68984cb1b1f8e0303b4e234c0a",
+   "bytes": 26153,
+   "sha256": "44d18a40f31058ef7e92cfd5eb0e05d9c391a99a87c134a8931cbcf4cbae6cb0",
    "source": "shots/media-r5/site50/deliver-fleet226/s126-bwp1-winter/s126-bwp1-winter-close-4k.png",
    "take": "s126-bwp1-winter",
    "round": "shots/media-r5/site50/deliver-fleet226",
@@ -1638,8 +1636,8 @@
   },
   {
    "path": "media/site50-r14/fleet/bwp1.webm",
-   "bytes": 433304,
-   "sha256": "dc061ff63947c28c9673bbfd60229d547099a3b479a8d71100b1a76f9d55307b",
+   "bytes": 410906,
+   "sha256": "b2bf1eb4052320966387ce0cff2808fa5b231fb43cb9460d82fb53df0d5fbd3e",
    "width": 640,
    "height": 360,
    "fps": 30,
@@ -3384,8 +3382,8 @@
   },
   {
    "path": "media/site50-r14/fleet/merkava2d.jpg",
-   "bytes": 37034,
-   "sha256": "da604bfda26ad355aaac31534f8eb41ee44663dd954a1215b602d31008c5d293",
+   "bytes": 36743,
+   "sha256": "78d327636406de39c7781838301e48cff784b21ebebff3e39e497e2d6872e8e6",
    "source": "shots/media-r5/site50/deliver-fleet226/s101-merkava2d-copper-mesa/s101-merkava2d-copper-mesa-close-4k.png",
    "take": "s101-merkava2d-copper-mesa",
    "round": "shots/media-r5/site50/deliver-fleet226",
@@ -3393,8 +3391,8 @@
   },
   {
    "path": "media/site50-r14/fleet/merkava2d.webm",
-   "bytes": 333534,
-   "sha256": "9666b1a2d6411d12b315d7ca98b6217d3ce473e73deb0f23b6b8b6cdc3c16e10",
+   "bytes": 301125,
+   "sha256": "044326843a88e092948c0d35f86c2eed2c813ea9a194e5ac989368754fde063c",
    "width": 640,
    "height": 360,
    "fps": 30,
@@ -4074,8 +4072,8 @@
   },
   {
    "path": "media/site50-r14/fleet/t14.jpg",
-   "bytes": 60466,
-   "sha256": "44e7576caab888a9d9631d160a9346a62dfb8c9826b9f644ab9d6a4981c74843",
+   "bytes": 54173,
+   "sha256": "6e4a99578ccfd0f9c2f5c210e15b9235170df3a0beaf02f59176f6c4c8d8bcf6",
    "source": "shots/media-r5/site50/deliver-fleet226/s145-t14-steppe/s145-t14-steppe-close-4k.png",
    "take": "s145-t14-steppe",
    "round": "shots/media-r5/site50/deliver-fleet226",
@@ -4083,8 +4081,8 @@
   },
   {
    "path": "media/site50-r14/fleet/t14.webm",
-   "bytes": 549604,
-   "sha256": "47624f71a7668602578eb203c931e41cd74bd5d30b27c677e0353d3c3be633be",
+   "bytes": 556268,
+   "sha256": "02654e473a21085b824f5411ac24b690c1f1099d76102bdc57cb5a0312165720",
    "width": 640,
    "height": 360,
    "fps": 30,
@@ -4925,8 +4923,8 @@
   },
   {
    "path": "media/site50-r14/fleet/type99a.jpg",
-   "bytes": 39504,
-   "sha256": "d4f37e97ff4c7f5f84bd74eb170bf4028b44c000dad450a9548deaffe5f34c6e",
+   "bytes": 40826,
+   "sha256": "448f68124a5c347f363afe0fd2a7e8ae2cbe6cfb6608539fc8e58db2b7efea1c",
    "source": "shots/media-r5/site50/deliver-fleet226/s67-type99a-titan-gorge/s67-type99a-titan-gorge-close-4k.png",
    "take": "s67-type99a-titan-gorge",
    "round": "shots/media-r5/site50/deliver-fleet226",
@@ -4934,8 +4932,8 @@
   },
   {
    "path": "media/site50-r14/fleet/type99a.webm",
-   "bytes": 432584,
-   "sha256": "083e80ce590679fd4152b768d9c07e765e886b71d4a575d15a747e5a2708f2a2",
+   "bytes": 425175,
+   "sha256": "36fff1b0f6c3838fc836dbda677241a26fa9c5fba41eae28de94246bc32bd90c",
    "width": 640,
    "height": 360,
    "fps": 30,
@@ -5201,8 +5199,8 @@
   },
   {
    "path": "media/site50-r14/fleet/udes03.jpg",
-   "bytes": 24630,
-   "sha256": "55f72f6185a6006a043e100833f40088a090bed9132f9e246baf17d2964a1f66",
+   "bytes": 33202,
+   "sha256": "233d546e0c54260769f3cdc5bc4b2358f49f2fb2e195be44223818f421095dd2",
    "source": "shots/media-r5/site50/deliver-fleet226/s168-udes03-fjord/s168-udes03-fjord-close-4k.png",
    "take": "s168-udes03-fjord",
    "round": "shots/media-r5/site50/deliver-fleet226",
@@ -5210,8 +5208,8 @@
   },
   {
    "path": "media/site50-r14/fleet/udes03.webm",
-   "bytes": 456249,
-   "sha256": "cab0706c62adcf42deb4aabf9af52fce06d83567a341fda18cf561e05c57c633",
+   "bytes": 428321,
+   "sha256": "02e189a72ffc38d3d49887416db2f9db5ae778527d6dba30a2b0227401562e6f",
    "width": 640,
    "height": 360,
    "fps": 30,
@@ -7547,8 +7545,8 @@
   },
   {
    "path": "media/site50-r14/reels/s225-verdant-duel.mp4",
-   "bytes": 2559682,
-   "sha256": "57774a013a11171f67dc6a1d2816e7bf8f167ed94b56f6450c4ec9182f86f7bf",
+   "bytes": 2570505,
+   "sha256": "6bff518530c87cf421ecc761cf6e14e692a7c5c0e442831df0317e54dbdccc16",
    "width": 1280,
    "height": 720,
    "fps": 30,
@@ -7560,8 +7558,8 @@
   },
   {
    "path": "media/site50-r14/reels/s225-verdant-duel.webp",
-   "bytes": 92210,
-   "sha256": "6742a47c368c54f42cc1ee6420efc850a1a23f75252cce987ac301a6bc7c3dfb",
+   "bytes": 91572,
+   "sha256": "90b2db48efcb08e9a51dfc7a4b2350ea55cc257900ef9a7f0ca8651a56e33cb6",
    "source": "shots/media-r5/site50/deliver-combat226/s225-verdant-duel/s225-verdant-duel-4k.png",
    "take": "s225-verdant-duel",
    "round": "shots/media-r5/site50/deliver-combat226"
@@ -7893,8 +7891,8 @@
   },
   {
    "path": "media/site50-r14/scenes/s101-merkava2d-copper-mesa.scene.json",
-   "bytes": 76338,
-   "sha256": "628d68d893d1349d23b792480e8b9b8969e1ac58ee77501350ee7f052695936d",
+   "bytes": 76356,
+   "sha256": "8a136d499152ee2bd4598f013acdace4b36026377892e693ab7ad70d462f8ef1",
    "source": "shots/media-r5/site50/deliver-fleet226/s101-merkava2d-copper-mesa/s101-merkava2d-copper-mesa.scene.json"
   },
   {
@@ -8055,8 +8053,8 @@
   },
   {
    "path": "media/site50-r14/scenes/s126-bwp1-winter.scene.json",
-   "bytes": 76887,
-   "sha256": "a86f8325f65431313a3176f5f9b7956cc34d7835e63d676c9d946a4ecccb455f",
+   "bytes": 76907,
+   "sha256": "e7be926d70ee85a55e0c0ba8cf10fd8147c8b4b9e6f9957aeec55d0a89b06acf",
    "source": "shots/media-r5/site50/deliver-fleet226/s126-bwp1-winter/s126-bwp1-winter.scene.json"
   },
   {
@@ -8169,8 +8167,8 @@
   },
   {
    "path": "media/site50-r14/scenes/s145-t14-steppe.scene.json",
-   "bytes": 80125,
-   "sha256": "ea498da361c77de7b8e860b2ddb8544a68583bb39bd4d634fedd1a99ff2a0dfd",
+   "bytes": 79911,
+   "sha256": "9e02f63da2c19878138e99519cba7656a267901b2eb2a3f731cad0086276e044",
    "source": "shots/media-r5/site50/deliver-fleet226/s145-t14-steppe/s145-t14-steppe.scene.json"
   },
   {
@@ -8271,8 +8269,8 @@
   },
   {
    "path": "media/site50-r14/scenes/s168-udes03-fjord.scene.json",
-   "bytes": 76673,
-   "sha256": "08b93644be1407781ea2ff1daa80bc49e932360a48756af03b3b0ccc3fce4391",
+   "bytes": 76691,
+   "sha256": "fb22a8dc3c1e37a84634635cc4d29aa2bbdb99b94bdc31890c59d4005af2bf93",
    "source": "shots/media-r5/site50/deliver-fleet226/s168-udes03-fjord/s168-udes03-fjord.scene.json"
   },
   {
@@ -8847,8 +8845,8 @@
   },
   {
    "path": "media/site50-r14/scenes/s67-type99a-titan-gorge.scene.json",
-   "bytes": 76002,
-   "sha256": "3917bbd92f922207ba5696d05d0de0678d0a274b99b7ab6bef54099d2fdbc0f4",
+   "bytes": 76521,
+   "sha256": "c49e640b98b55ec7a605fb563408e2776170a26029fb5280cb46ba58d595c411",
    "source": "shots/media-r5/site50/deliver-fleet226/s67-type99a-titan-gorge/s67-type99a-titan-gorge.scene.json"
   },
   {
@@ -9697,16 +9695,16 @@
   },
   {
    "path": "media/site50-r14/stills/s225-verdant-duel-thumb.webp",
-   "bytes": 29190,
-   "sha256": "9df5b25ddb4d2badc79aa0ad1a6d9237ad3dbfedb488d5a86cbef14ca1c3531c",
+   "bytes": 28492,
+   "sha256": "36e3dc830788f8444dab17e9de8dedd334edece2feba117f72eb9508c960f710",
    "source": "shots/media-r5/site50/deliver-combat226/s225-verdant-duel/s225-verdant-duel-4k.png",
    "take": "s225-verdant-duel",
    "round": "shots/media-r5/site50/deliver-combat226"
   },
   {
    "path": "media/site50-r14/stills/s225-verdant-duel.webp",
-   "bytes": 300480,
-   "sha256": "2a999f75cbc2e6b85258d43a998c8ce0bf782e2c8fdd2143a23fbf5f566fbfca",
+   "bytes": 288798,
+   "sha256": "a09853f5e0c1f903d187f221c3e5403324f97f9f664551c8d77794154d9a4b27",
    "source": "shots/media-r5/site50/deliver-combat226/s225-verdant-duel/s225-verdant-duel.webp",
    "take": "s225-verdant-duel",
    "round": "shots/media-r5/site50/deliver-combat226"
