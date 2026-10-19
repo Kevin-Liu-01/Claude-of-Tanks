@@ -3,7 +3,7 @@ import { tankSeedId } from '../vehicles/tankIdAliases.ts';
 import { accumulateDamage, canAccumulateDamage, DAMAGE_BURST_GAP_MS, type DamageNumberBurst } from './damageNumberBurst.ts';
 import { BattleKillLedger } from '../game/battleEventStats.ts';
 import { killPresentation } from './killPresentation.ts';
-import { killSourceIdentity, vehicleIdentity } from './icons.ts';
+import { killSourceIdentity, vehicleName } from './killSourceIdentity.ts';
 import { createVehicleStatusStrip } from './vehicleStatus.ts';
 import { drawAerialMinimap } from './aerialMinimap.ts';
 import { createAerialHud } from './aerialHud.ts';
@@ -2880,14 +2880,15 @@ export function initHud(bus: EventBus): HudRuntime {
       `<span class="veh"><i class="tier"></i><span class="vn"></span><i class="brain" hidden></i></span></span>` +
       `<span class="kills" hidden></span><div class="hpm"><i></i></div>`;
     const iconEl = requireElement<HTMLElement>(rootEl, '.ic');
-    const vehicle = vehicleIdentity(tank);
-    if (vehicle.aircraft) iconEl.innerHTML = uiIconSVG(vehicle.aircraft.icon, 24, ally ? PEN_GREEN : PEN_RED);
+    const aircraft = tank.aerial?.kind === 'gunship' ? killSourceIdentity('ac130') : null;
+    const vehicle = vehicleName(tank);
+    if (aircraft) iconEl.innerHTML = uiIconSVG(aircraft.icon, 24, ally ? PEN_GREEN : PEN_RED);
     else maskIcon(iconEl, spec.id, 'side_silhouette', ally ? PEN_GREEN : PEN_RED);
     if (tank.isPlayer) rootEl.classList.add('me');
-    requireElement<HTMLElement>(rootEl, '.tier').textContent = vehicle.aircraft ? '' : tierNumeral(spec.id) || '–';
+    requireElement<HTMLElement>(rootEl, '.tier').textContent = aircraft ? '' : tierNumeral(spec.id) || '–';
     requireElement<HTMLElement>(rootEl, '.nick').textContent = nickFor(tank);
-    requireElement<HTMLElement>(rootEl, '.vn').textContent = vehicle.name;
-    rootEl.title = `${nickFor(tank)} · ${vehicle.name}`;
+    requireElement<HTMLElement>(rootEl, '.vn').textContent = vehicle;
+    rootEl.title = `${nickFor(tank)} · ${vehicle}`;
     // Jev commander (2026-09-25): a bot under Jev's orders carries a small tag beside its vehicle
     const brainEl = requireElement<HTMLElement>(rootEl, '.brain');
     brainEl.textContent = t('hud.brain.jev');
@@ -2917,7 +2918,7 @@ export function initHud(bus: EventBus): HudRuntime {
       row.kills.textContent = String(kills);
       row.kills.hidden = kills === 0;
       row.kills.setAttribute('aria-label', t('hud.roster.kills', { count: kills }));
-      row.root.title = `${nickFor(tank)} · ${vehicleIdentity(tank).name} · ${t('hud.roster.kills', { count: kills })}`;
+      row.root.title = `${nickFor(tank)} · ${vehicleName(tank)} · ${t('hud.roster.kills', { count: kills })}`;
     }
     if (dead !== row.wasDead) {
       row.root.classList.toggle('dead', dead);
@@ -6387,7 +6388,7 @@ export function initHud(bus: EventBus): HudRuntime {
       if (!tank?.spec) continue;
       // (ac130-fx-228) one identity for every row: a gunship pilot's vehicle is the AC-130
       const gunship = tank.aerial?.kind === 'gunship';
-      nameById.set(tank.id, gunship ? vehicleIdentity(tank).name : tank.spec.name);
+      nameById.set(tank.id, gunship ? vehicleName(tank) : tank.spec.name);
       teamById.set(tank.id, tank.team);
       specIdById.set(tank.id, tank.spec.id);
       if (gunship) aircraftById.add(tank.id);
@@ -6423,7 +6424,9 @@ export function initHud(bus: EventBus): HudRuntime {
     }
     root.classList.toggle('realistic-mode', frame.matchModeState?.id === 'realistic');
     updateSpecialAction(frame.player || playerRef);
-    aerialHud.update(frame.player || playerRef,frame.timeS,state.camera?.fov ?? 55,frame.aim?.distM ?? 0,mode !== 'hidden',frame.auxiliaryKeyLabels?.drone || 'V',state.camera?.userData.thermalFlight===true,frame.auxiliaryKeyLabels?.aerialVision || 'I',frame.matchModeState?.support,{ammo:frame.auxiliaryKeyLabels?.supplyAmmo||'J',heal:frame.auxiliaryKeyLabels?.supplyHeal||'K'},mode==='sniper',frame.matchModeState?.escort);
+    const flier = frame.player || playerRef;
+    aerialHud.update(flier,frame.timeS,state.camera?.fov ?? 55,frame.aim?.distM ?? 0,mode !== 'hidden',frame.auxiliaryKeyLabels?.drone || 'V',state.camera?.userData.thermalFlight===true,frame.auxiliaryKeyLabels?.aerialVision || 'I',frame.matchModeState?.support,{ammo:frame.auxiliaryKeyLabels?.supplyAmmo||'J',heal:frame.auxiliaryKeyLabels?.supplyHeal||'K'},mode==='sniper',frame.matchModeState?.escort,
+      flier?.aerial?.kind !== 'gunship' || state.camera?.userData.gunshipLensId === flier.id);
     updateDriveReadout(frame.player || playerRef, frame.timeS);
     updateDamagePanelPose(state.camera);
     shotInfo.setPlayer(playerId);

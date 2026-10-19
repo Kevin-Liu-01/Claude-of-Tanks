@@ -738,7 +738,7 @@ export function createBattlePresentation({
     return roster.map((actor) => ({
       id: actor.id, name: actor.displayName || actor.spec.name || actor.specId, vehicle: actor.displayName || actor.spec.name || actor.specId,
       specId: actor.specId, team: actor.team === 'enemy' ? 'enemy' : 'ally', alive: !actor.combat.destroyed, isPlayer: actor.isPlayer,
-      // (ac130-fx-228) a gunship pilot's row names the AC-130 (ui/icons.ts killSourceIdentity)
+      // (ac130-fx-228) a gunship pilot's row names the AC-130 (ui/killSourceIdentity.ts)
       ...(actor.aerial?.kind === 'gunship' ? { aircraft: true } : {}),
     }));
   }
@@ -940,7 +940,9 @@ export function createBattlePresentation({
         emitShellFired(payload, eventContext.feedbackPredicted);
         return;
       case 'shell_hit': {
-        const hit = { type: kind, ...payload, attackerId: payload.attackerId || payload.shooterId };
+        const hit: Record<string, RuntimeValue> = { type: kind, ...payload, attackerId: payload.attackerId || payload.shooterId };
+        // (ac130-fx-228 r2) the hit's source rides only as the authority's two values (as tank_destroyed's does below)
+        if ('attackerSource' in hit && hit.attackerSource !== 'ac130' && hit.attackerSource !== 'drone') delete hit.attackerSource;
         // battle endings (2026-09-25): the killcam captures the lethal chain for any pair the match let this viewer
         // observe (the authority's reveal rules already filtered the event), so a verdict can replay the final
         // kill whoever fired it — the hook state.ts calls in solo play and the v1 bridge calls for its rooms

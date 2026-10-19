@@ -29,6 +29,8 @@ const textFile = /\.(ts|mjs|js|md|json|html|css)$/;
 
 // ---- no reference to the retired pieces ----
 const RETIRED = /aerialTracer|aerial-tracers|Ballistic tracer ribbons|TRACER_PRESETS|writeShellBolt|staticTracers|writeGuidedShell|rememberShellTrail|_atgmCore|_atgmGlow|COMPOSE_VELOCITY|writeGuidedTrail\b|appendGuidedTrailPoint|commitTracerInstances/;
+// (r2) and no prose still describes the ribbon as live (the engineering critic's three stale descriptions)
+const STALE_PROSE = /tracer ribbons rebuilt|ribbon used by supersonic|fx preset key \(shells doc|ribbon vanished when/;
 const hits = [];
 for (const top of ['src', 'tools', 'docs']) {
   for (const path of walk(join(ROOT, top))) {
@@ -37,6 +39,7 @@ for (const top of ['src', 'tools', 'docs']) {
     if (rel === SELF || rel === 'tools/gunship-fx.browser.mjs' || !textFile.test(path) || statSync(path).size > 4_000_000) continue;
     const text = readFileSync(path, 'utf8');
     if (RETIRED.test(text)) hits.push(`${rel}: ${text.match(RETIRED)[0]}`);
+    if (STALE_PROSE.test(text)) hits.push(`${rel}: ${text.match(STALE_PROSE)[0]}`);
   }
 }
 assert.deepEqual(hits, [], `retired tracer pieces are still referenced:\n${hits.join('\n')}`);

@@ -55,7 +55,7 @@ import { t } from './i18n.ts';
 import { campaignDebrief, type CampaignDebrief } from '../game/campaignDebrief.ts';
 import { getLastBattleAwards } from '../game/serviceRecord.ts';
 import { resolveFinalBlow, type FinalBlowDestroyed, type FinalBlowLethal } from './finalBlow.ts';
-import { attackerLabel, killSourceIdentity } from './icons.ts';
+import { attackerLabel, killSourceIdentity } from './killSourceIdentity.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
 

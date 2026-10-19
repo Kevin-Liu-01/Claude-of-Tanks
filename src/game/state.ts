@@ -3095,7 +3095,7 @@ function emitBattleEnded(game: SoloGameState, bus: EventBus): void {
       id: entity.id,
       specId: entity.specId,
       vehicle: entity.spec.name,
-      // (ac130-fx-228) the gunship's pilot: the report names the AC-130 (ui/icons.ts killSourceIdentity), not the garage tank
+      // (ac130-fx-228) the gunship's pilot: the report names the AC-130 (ui/killSourceIdentity.ts), not the garage tank
       ...(isGunship(entity) ? { aircraft: true } : {}),
       team: entity.team,
       alive: !entity.combat.destroyed,

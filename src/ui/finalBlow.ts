@@ -5,7 +5,7 @@
  * lethal shell and reads from the destruction's cause and killer alone.
  */
 import { t } from './i18n.ts';
-import { killSourceIdentity } from './icons.ts';
+import { killSourceIdentity } from './killSourceIdentity.ts';
 
 export interface FinalBlowLethal {
   attackerId: string | null;

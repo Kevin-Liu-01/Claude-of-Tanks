@@ -178,6 +178,15 @@ assert.equal('source' in busEvents.at(-1).payload, false);
   assert.equal(hit?.payload.attackerSource, 'ac130', "the lethal hit's AC-130 source reaches the client");
   assert.equal(hit?.payload.attackerId, 'me', 'the pilot stays the attacker');
 }
+// (r2) a forged hit source never reaches the client's bus (only the authority's two values ride)
+for (const [source, expected] of [['drone', 'drone'], ['vehicle', undefined], ['__proto__', undefined], ['<img>', undefined]]) {
+  const before = busEvents.length;
+  presentation.applyEvent({ kind: 'shell_hit', payload: { shellId: 10, shooterId: 'me', targetId: 'foe', attackerSource: source, kind: 'pen',
+    damage: 5, pos: [0, 0, 0], normal: [0, 1, 0], caliberMm: 90 } }, { own: false, feedbackPredicted: false });
+  const hit = busEvents.slice(before).find((e) => e.type === 'shell:hit');
+  assert.equal(hit?.payload.attackerSource, expected, `the ${source} hit source as the authority's values allow`);
+  if (expected === undefined) assert.equal('attackerSource' in (hit?.payload ?? {}), false, `a ${source} hit source is dropped`);
+}
 for (const [source, expected] of [['ac130', 'ac130'], ['drone', 'drone'], ['vehicle', undefined], ['<img>', undefined]]) {
   presentation.applyEvent({ kind: 'tank_destroyed', payload: { id: `src-${source}`, killerId: 'me', cause: 'shot', source, x: 1, y: 0, z: 1 } },
     { own: false, feedbackPredicted: false });

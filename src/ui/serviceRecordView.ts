@@ -1,7 +1,7 @@
 import { battleMapArt, shotAccuracy } from './battleReportMedia.ts';
 import { iconUrl } from './icons.ts';
 import { killPresentation } from './killPresentation.ts';
-import { killSourceIdentity } from './icons.ts';
+import { killSourceIdentity } from './killSourceIdentity.ts';
 import { campaignSummary } from '../game/campaignOperations.ts';
 import { frontlineSummary } from '../game/campaignProgress.ts';
 import { getPlayerRecord } from '../game/profile.ts';

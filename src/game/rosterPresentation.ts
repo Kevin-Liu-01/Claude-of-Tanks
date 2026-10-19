@@ -38,7 +38,7 @@ export interface RosterPresentation {
 }
 
 /** (ac130-fx-228) a gunship pilot's row: the AC-130, no tier; it carries no name, its renderer names it through the one
- *  identity (ui/icons.ts killSourceIdentity, battleLoad.ts) */
+ *  identity (ui/killSourceIdentity.ts, battleLoad.ts) */
 const aircraftRow = (isPlayer: boolean): RosterPresentationRow => ({ id: 'ac130', name: '', tier: '', kind: 'aircraft', isPlayer });
 
 /** Keep pre-battle and online lobby roster labels on one typed policy. */

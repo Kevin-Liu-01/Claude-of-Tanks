@@ -105,7 +105,7 @@ import type { ArmorEnvelope, CrewBox, ModuleBox } from '../vehicles/specHelpers.
 import type { FleetTankSpec } from '../vehicles/specContracts.ts';
 import type { WorldRayHit } from '../world/map.ts';
 import { t } from '../ui/i18n.ts';
-import { attackerLabel, killSourceIdentity } from '../ui/icons.ts';
+import { attackerLabel, killSourceIdentity } from '../ui/killSourceIdentity.ts';
 
 type Vec3Tuple = [number, number, number];
 type ModuleStateName = 'ok' | 'yellow' | 'red';

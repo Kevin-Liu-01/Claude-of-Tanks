@@ -17,7 +17,7 @@ import { iconUrl } from './icons.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { tierNumeral } from '../vehicles/tier.ts';
 import { t } from './i18n.ts';
-import { killSourceIdentity } from './icons.ts';
+import { killSourceIdentity } from './killSourceIdentity.ts';
 import { isImagePreloaded, preloadImage } from './imagePreload.ts';
 import { mapCardFor } from './mapBackdrop.ts';
 import { MAP_THUMBS } from './mapThumbs.ts';

@@ -326,10 +326,12 @@ void main() {
   }
   float a = 1.0 - exp( -min( T, 8.0 ) );
   if ( a < 0.003 ) discard;
-  // lit: dense smoke shows its shaded side; thin smoke is lit through
+  // lit: dense smoke shows its shaded side; thin smoke is lit through. (ac130-fx-228 r2, the motion critic: "at night it
+  // fades by breaking into separate round puffs with dark donut-like centres") the weight is this pixel's own depth, not
+  // the young trail's: a dissolving wisp is thin smoke, lit through, never a shaded core inside a lit rim
   float sN = clamp( sign( side ) * ys / 2.2, -1.0, 1.0 );
   float ndl = vM.y * sN + vM.z * sqrt( 1.0 - sN * sN );
-  float shade = mix( 1.0, 0.45 + 0.75 * max( ndl, 0.0 ), clamp( tau * 0.8, 0.0, 1.0 ) );
+  float shade = mix( 1.0, 0.45 + 0.75 * max( ndl, 0.0 ), clamp( T * 0.8, 0.0, 1.0 ) );
   vec3 col = vAmb + vSun * shade + vec3( 1.0, 0.52, 0.18 ) * vR.w;
   #ifdef USE_FOG
     #ifdef FOG_EXP2

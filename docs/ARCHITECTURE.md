@@ -185,7 +185,8 @@ ShellSpec = {
   dmg: number,                   // avg HP damage (roster values)
   velocityMps: number,           // real-ish muzzle velocity (shells doc §1)
   moduleDmg: number,             // default = caliberMm
-  tracer: 'AP'|'APCR'|'HEAT'|'HE'|'APFSDS', // fx preset key (shells doc §10)
+  tracer: 'AP'|'APCR'|'HEAT'|'HE'|'APFSDS'|'DRONE', // the round's trace class key: projectileTracers.ts reads
+                                 // calibre + lineage; 'DRONE' marks the FPV airframe
   reloadS?: number,              // PER-SHELL reload (IFV autocannon belt vs. ATGM
                                  // rail) — governs this slot in startReload;
                                  // absent ⇒ gun.reloadS. Conventional shells

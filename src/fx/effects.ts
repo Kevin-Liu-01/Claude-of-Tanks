@@ -2,7 +2,8 @@ import { createAuxiliaryPresentation, type AuxiliaryVisualEntity } from './auxil
 // atmospherics lane: rounds in flight (tracers); (ac130-fx-228) the gunship's rounds and the composer's frozen round
 // draw here too: the pre-October ribbon block is gone
 import { createProjectileTracers } from './projectileTracers.ts';
-import { gunshipCaliberMm, gunshipShotOf, type GunshipRound } from './gunshipRounds.ts';
+import { ambientRoundSource, type AmbientRoundDraw } from './ambientRounds.ts';
+import { gunshipCaliberMm, gunshipRoundOf, gunshipShotOf, type GunshipRound } from './gunshipRounds.ts';
 import { firedIsMissile, missileFlicker, missileLookFor, missileSpin, missileTrailOf, missileWobble, MISSILE_LOOKS, type MissileLook,
   type MissileTrail } from './missileLooks.ts';
 import { createMissileTrails, TRAIL_STEP_M } from './missileTrails.ts';
@@ -32,7 +33,7 @@ import { streetGritShare } from '../world/roadPave.ts';
 import { createDronePresentation, droneHiddenFromCamera } from './dronePresentation.ts';
 import { configureDroneMaterials } from './droneModel.ts';
 import {missionAttachmentVisualFrame} from '../game/missionAttachmentVisual.ts';
-import { configureGunshipMaterials } from '../game/gunshipVisual.ts';
+import { configureGunshipMaterials, GUNSHIP_BANK_RAD } from '../game/gunshipVisual.ts';
 import { waterContactMaskAt } from '../world/waterContactMask.ts';
 import { createParticleSystem, mulberry32, makeFbm } from './particles.ts';
 import { LATE_FX_LAYER } from './layers.ts';
@@ -300,6 +301,9 @@ interface GuidedTrail {
    *  nose (m): where its wire leaves, its beacon burns and its trail is born */
   calMm?: number;
   tailM?: number;
+  /** (ac130-fx-228 r2) a gunship missile's rail: where the drawn round left the wing pylon relative to its guided line
+   *  (world m), converging onto that line by GUNSHIP_PYLON_MERGE_M; null for every other round */
+  pylon?: [number, number, number] | null;
 }
 
 interface FxTimer {
@@ -612,6 +616,13 @@ const MAX_ATGM_BODIES = 48;
 /** (ac130-fx-228) a gunship shot whose muzzle sits this close to the camera is the pilot's own lens (the sim fires from
  *  the orbit centre, where the gimbal's camera rides): nothing is drawn there */
 const GUNSHIP_LENS_M = 25;
+/** (ac130-fx-228 r2) the gunship's missile leaves its rail under the port wing (gunshipAirframe.ts: between the engines,
+ *  under the wing, the airframe banked into its turn), not the orbit centre the simulation fires it from, where the
+ *  gimbal's lens rides: drawn from the pylon, it joins its guided line within GUNSHIP_PYLON_MERGE_M. In the lens it enters
+ *  from the frame's edge and its smoke reads as a line to the target, never a body or a tube seen end-on from inside it;
+ *  from outside it leaves the wing. */
+const GUNSHIP_PYLON_LOCAL = new THREE.Vector3(7.5, 1.9, 1.6);
+const GUNSHIP_PYLON_MERGE_M = 120;
 
 // Nominal muzzle velocities used ONLY by composeFiringMoment (m/s)
 const COMPOSED_ROUND_MPS = { AP: 800, APCR: 1050, HEAT: 780, HE: 750, HESH: 780, APFSDS: 1700 };
@@ -1324,10 +1335,9 @@ function* createFxSteps(
   group.add(tracers.mesh);
   // ---- atmospherics lane (end)
 
-  // Guided missiles need a readable projectile, not only the same short
-  // ribbon used by supersonic shells. Instanced pools draw the missile's
-  // airframe and its hot exhaust point without allocating meshes during
-  // flight. Geometry faces local +Z, matching projectile velocity.
+  // Guided missiles need a readable projectile, not only a tracer's
+  // streak. Instanced pools draw the missile's airframe and its hot
+  // exhaust point without allocating meshes during flight. Geometry faces local +Z, matching projectile velocity.
   // (FX lane 10-15) each family's own airframe at the round's calibre (missileBodies.ts: the TOW's probe, wings and tail
   // fins, the Kornet's canards and folding wings, the Spike's seeker dome...), lit by the time of day's rig; the flare
   // is its tracking beacon or motor's hot core at the tail, in the look's colour
@@ -1545,7 +1555,7 @@ function* createFxSteps(
       || tracers.active() // atmospherics lane
       || bodies.count > 0
       // (FX lane 10-14) a parted wire settling after its missile has gone, and a trail hanging after its missile has
-      // struck, still draw in the late pass (the old ribbon vanished when the strike's media ended)
+      // struck, still draw in the late pass
       || wires.mesh.visible
       || smokeTrails.mesh.visible
       || shockRings.some(isRingVisible)
@@ -4276,6 +4286,26 @@ function* createFxSteps(
   const _mUp = new THREE.Vector3();
   const _mPos = new THREE.Vector3();
   const _mHead = new THREE.Vector3();
+  const _mDir = new THREE.Vector3(); // the drawn round's axis (a gunship missile curving off its pylon onto its line)
+  const _pyl = new THREE.Vector3();
+  const _pylE = new THREE.Euler(), _pylQ = new THREE.Quaternion();
+
+  /** (ac130-fx-228 r2) a gunship missile's pylon off the airframe's centre (world m): the airframe's heading `yaw` when
+   *  known, else the one that turns its port side (+x) along the line of fire's level heading (dx, dz) */
+  function gunshipPylonOffset(yaw: number | undefined, dx: number, dz: number, out: THREE.Vector3): THREE.Vector3 {
+    const heading = Number.isFinite(yaw) ? yaw as number : Math.atan2(-dz, dx);
+    _pylQ.setFromEuler(_pylE.set(0, heading, GUNSHIP_BANK_RAD));
+    return out.copy(GUNSHIP_PYLON_LOCAL).applyQuaternion(_pylQ);
+  }
+  /** how much of the pylon offset remains `d` metres down the line (1 at the rail, 0 joined), and its slope */
+  function pylonK(d: number): number {
+    const x = Math.max(0, Math.min(1, d / GUNSHIP_PYLON_MERGE_M));
+    return 1 - x * x * (3 - 2 * x);
+  }
+  function pylonSlope(d: number): number {
+    const x = d / GUNSHIP_PYLON_MERGE_M;
+    return x <= 0 || x >= 1 ? 0 : -6 * x * (1 - x) / GUNSHIP_PYLON_MERGE_M;
+  }
   /** the covered warm's motor glow colour */
   const WARM_GLOW_RGB: readonly number[] = [0.82, 0.82, 0.78];
   let liveMissiles = 0;
@@ -4338,6 +4368,12 @@ function* createFxSteps(
         : shell.prevPos ? [shell.prevPos.x, shell.prevPos.y, shell.prevPos.z] : [shell.pos.x, shell.pos.y, shell.pos.z];
       trail.calMm = shell.spec?.caliberMm || (at ? at[3] ?? 0 : 0) || calibreByShooter.get(`${String(shell.shooterId)}|${shell.spec?.type ?? ''}`) || 0;
       trail.tailM = missileBodyDims(trail.look.id, trail.calMm, _bodyDims)[1];
+      // (ac130-fx-228 r2) the gunship's missile is drawn off its wing pylon (gunshipPylonOffset)
+      const shooter = shell.shooterId != null ? subjectFor(shell.shooterId) : null;
+      if (gunshipRoundOf(shell.spec, shooter?.aerial?.kind === 'gunship') === 'missile') {
+        gunshipPylonOffset(shooter?.state?.yaw, shell.vel.x, shell.vel.z, _pyl);
+        trail.pylon = [_pyl.x, _pyl.y, _pyl.z];
+      } else trail.pylon = null;
       trail.lastD = -1;
       trail.smokeSlot = -1;
       trail.nextSmokeD = trail.look.igniteM;
@@ -4376,15 +4412,24 @@ function* createFxSteps(
     _mUp.crossVectors(_mSide, dir).normalize();
     missileWobble(look, timed ? t : 0, seedU, _wob);
     _mPos.copy(shell.pos).addScaledVector(_mSide, _wob[0]).addScaledVector(_mUp, _wob[1]);
+    _mDir.copy(dir);
+    const pylon = trail.pylon;
+    if (pylon) {
+      // (ac130-fx-228 r2) off the wing pylon onto the guided line: the offset still left here, the axis along that curve
+      const k = pylonK(d), sl = pylonSlope(d);
+      _mPos.x += pylon[0] * k; _mPos.y += pylon[1] * k; _mPos.z += pylon[2] * k;
+      _mDir.x += pylon[0] * sl; _mDir.y += pylon[1] * sl; _mDir.z += pylon[2] * sl;
+      _mDir.normalize();
+    }
     const lit = d >= look.igniteM;
     const flick = missileFlicker(look, t, seedU);
     // (FX lane 10-15) a roll-stabilised round rolls at its roll rate (its fins with its tracer's helix); the others fly
     // with their fins in an X
     const roll = look.spinHz ? Math.PI * 2 * look.spinHz * (timed ? t : 0) + seedU * 6.2831853 : Math.PI / 4;
-    writeGuidedBody(_mPos, dir, look, lit, flick, trail.calMm ?? 0, roll);
+    writeGuidedBody(_mPos, _mDir, look, lit, flick, trail.calMm ?? 0, roll);
     // the motor at the body's tail; (EF.04) a roll-stabilised round's tracer rides its helix about the axis
     const tailM = trail.tailM ?? 1.3;
-    _mHead.copy(_mPos).addScaledVector(dir, -tailM);
+    _mHead.copy(_mPos).addScaledVector(_mDir, -tailM);
     if (look.spinM) {
       missileSpin(look, timed ? t : 0, seedU, _wob);
       _mHead.addScaledVector(_mSide, _wob[0]).addScaledVector(_mUp, _wob[1]);
@@ -4515,7 +4560,10 @@ function* createFxSteps(
     _gpPos.copy(_v3).addScaledVector(_gpSide, 2.4);
     _gpPos.y -= 0.8;
     if (gun === 'missile') {
+      // (ac130-fx-228 r2) off its wing pylon, where the drawn round starts (writeMissile)
       const look = missileLookFor(null, 'gunship-missile', false);
+      const shooter = (e as { shooterId?: ShellId | null }).shooterId;
+      _gpPos.copy(_v3).add(gunshipPylonOffset(shooter != null ? subjectFor(shooter)?.state?.yaw : undefined, _v4.x, _v4.z, _pyl));
       flashLight(lightStates[0], _gpPos, MUZZLE_LIGHT_PEAK * 0.3 * look.launchK, 0);
       if (blast) missileLaunch(blast, puffRandom(seed), look, _gpPos.x, _gpPos.y, _gpPos.z, _v4.x, _v4.y, _v4.z,
         groundY(_gpPos.x, _gpPos.z), 0);
@@ -4588,13 +4636,15 @@ function* createFxSteps(
       else _v6.copy(shell.pos).addScaledVector(dir, -back);
       missileWobble(look, timed ? Math.max(0, t - back / speed) : 0, seedU, _wob);
       _v6.addScaledVector(_mSide, _wob[0]).addScaledVector(_mUp, _wob[1]).addScaledVector(dir, -motorBack);
+      // (ac130-fx-228 r2) a gunship missile's smoke where its drawn body passed (off the pylon)
+      if (trail.pylon) { const k = pylonK(next); _v6.x += trail.pylon[0] * k; _v6.y += trail.pylon[1] * k; _v6.z += trail.pylon[2] * k; }
       smokeTrails.point(slot, _v6.x, _v6.y, _v6.z, now - back / speed, timed ? Math.max(0, t - back / speed - igniteS) : 99);
       next += stepM;
       n++;
     }
     trail.nextSmokeD = next;
     // the nozzle now, on the drawn body's axis
-    smokeTrails.head(slot, _mPos.x - dir.x * motorBack, _mPos.y - dir.y * motorBack, _mPos.z - dir.z * motorBack, now,
+    smokeTrails.head(slot, _mPos.x - _mDir.x * motorBack, _mPos.y - _mDir.y * motorBack, _mPos.z - _mDir.z * motorBack, now,
       timed ? Math.max(0, t - igniteS) : 99);
   }
 
@@ -4605,6 +4655,9 @@ function* createFxSteps(
     if (slot >= 0) smokeTrails.end(slot, particles.getTime(), pos?.[0], pos?.[1], pos?.[2]);
   }
 
+
+  const drawAmbientRound: AmbientRoundDraw = (hx, hy, hz, dx, dy, dz, speedMps, travelledM, k, east) =>
+    tracers.ambient(hx, hy, hz, dx, dy, dz, speedMps, travelledM, k, east);
 
   function writeLiveShellTracers(shells: LiveShell[], camera: THREE.Camera): void {
     drones.begin(particles.getTime(), camera.position);
@@ -4639,6 +4692,8 @@ function* createFxSteps(
       _v1.copy(shell.vel).normalize();
       writeMissile(shell);
     }
+    // (ac130-fx-228 r2) the backdrop's rounds that are not shells (the frontline's AA fire) in the same tracer look
+    ambientRoundSource()?.drawRounds(drawAmbientRound);
     tracers.end(); // atmospherics lane
     drones.end();
   }
@@ -5623,6 +5678,9 @@ function* createFxSteps(
         fx.propBreak(kind, pos, dir, 1.5);
       }
       fx.propCrush(pos, dir, 7);
+      // (ac130-fx-228 r2) the ground's pressure ring: a muzzle flash raises it only near the ground, so an AC-130 battle
+      // (its pilot's muzzle 240 m up) first compiled it at the first howitzer burst (107 ms in a critic's cold run)
+      spawnShockRing(pos.x, pos.z, 0);
     },
 
     /**
@@ -5665,7 +5723,8 @@ function* createFxSteps(
 
     /**
      * Per-render-frame advance: particle clock, timers, lights, smoke columns,
-     * and tracer ribbons rebuilt from live shell entities.
+     * and the rounds in flight (projectile tracers, missile bodies and trails,
+     * drones) drawn from live shell entities.
      * @param {number} dt render delta seconds
      * @param {object[]} shells live ShellEntity[] (§2.5)
      * @param {THREE.Camera} camera active camera (billboarding is GPU-side; unused)

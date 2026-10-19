@@ -1,12 +1,12 @@
 // killSurfaces.selftest.mjs — an AC-130's kill reads as the AC-130's on every surface (lane ac130-fx-228, 2026-10-19;
 // the owner: "in kills it still says the tank u chose instead of ac 130 having done the kill. fix that").
-// The one identity (ui/icons.ts killSourceIdentity / attackerLabel / vehicleIdentity), the final blow, the battle
+// The one identity (ui/killSourceIdentity.ts: killSourceIdentity / attackerLabel / vehicleName), the final blow, the battle
 // report's end rosters, the pen annotation, and a structural guard that every surface reads the authority's source
 // through that identity (the kill feed, the killcam, the battle report, the loading and HUD rosters, the service record)
 // and that the hard-coded "AC-130" literals and the client's drone-by-name heuristic are gone.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { attackerLabel, killSourceIdentity, vehicleIdentity } from './icons.ts';
+import { attackerLabel, killSourceIdentity, vehicleName } from './killSourceIdentity.ts';
 import { resolveFinalBlow, finalBlowLine } from './finalBlow.ts';
 import { mergeEndRosterRow } from './shotInfo.ts';
 import { nominalPenFor } from './hitEventFormat.ts';
@@ -20,10 +20,15 @@ for (const other of ['vehicle', undefined, null, '', '__proto__', '<b>']) assert
 assert.equal(attackerLabel({ attackerSource: 'ac130', attackerName: 'T-90M' }), 'AC-130', "the gunship's hit names the aircraft, not the pilot's T-90M");
 assert.equal(attackerLabel({ attackerName: 'Leopard 2A7' }), 'Leopard 2A7');
 assert.equal(attackerLabel({}), undefined);
-assert.deepEqual(vehicleIdentity({ aerial: { kind: 'gunship' }, spec: { name: 'T-90M', id: 't90am' } }),
-  { name: 'AC-130', specId: 't90am', aircraft: killSourceIdentity('ac130') }, "a gunship pilot's vehicle is the AC-130");
-assert.deepEqual(vehicleIdentity({ aerial: { kind: 'drone' }, spec: { name: 'BMP-3', id: 'bmp3' } }),
-  { name: 'BMP-3', specId: 'bmp3', aircraft: null }, "a drone carrier stays its tank (only its drone's kills name the drone)");
+assert.equal(vehicleName({ aerial: { kind: 'gunship' }, spec: { name: 'T-90M', id: 't90am' } }), 'AC-130', "a gunship pilot's vehicle is the AC-130");
+assert.equal(vehicleName({ aerial: { kind: 'drone' }, spec: { name: 'BMP-3', id: 'bmp3' } }), 'BMP-3',
+  "a drone carrier stays its tank (only its drone's kills name the drone)");
+// (r2) the HUD asks every frame: the same identity object each time, nothing allocated per call
+assert.equal(killSourceIdentity('ac130'), killSourceIdentity('ac130'), 'the identity is made once per locale');
+assert.ok(Object.isFrozen(killSourceIdentity('drone')));
+// (r2) icons.ts ships with the boot set: the identity (and its i18n read) stays out of it
+assert.equal(/killSourceIdentity|from '\.\/i18n\.ts'/.test(readFileSync(new URL('./icons.ts', import.meta.url), 'utf8')), false,
+  'icons.ts carries no identity and no i18n import');
 
 // ---- the final blow ----
 const names = new Map([['me', 'T-90M'], ['e1', 'M1A2']]);
@@ -63,7 +68,7 @@ const src = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const hud = src('./hud.ts'), killcam = src('../game/killcam.ts'), shotInfo = src('./shotInfo.ts'), battleLoad = src('./battleLoad.ts');
 const roster = src('../game/rosterPresentation.ts'), record = src('./serviceRecordView.ts'), endScreen = src('./endScreen.ts');
 assert.match(hud, /killSourceIdentity\(payload\.source\)/, 'the kill feed names the authority\'s source');
-assert.match(hud, /vehicleIdentity\(tank\)/, 'the HUD rosters name a gunship pilot through the identity');
+assert.match(hud, /vehicleName\(tank\)/, 'the HUD rosters name a gunship pilot through the identity');
 assert.match(killcam, /attackerLabel\(event\)/, "the killcam's header and lines");
 assert.match(killcam, /killSourceIdentity\(event\.attackerSource\)/, "the killcam's killer card");
 assert.match(shotInfo, /attackerLabel\(ev\)/, 'the battle report');

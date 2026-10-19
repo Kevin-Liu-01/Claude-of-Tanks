@@ -941,6 +941,8 @@ export function createCameraRig(
       // Shift-exit semantics (restore the pre-scope orbit step) keep the
       // arcade camera where the player last orbited.
       if (rig.mode === 'SNIPER' && isWreck(getPlayer())) rig.exitSniper(true);
+      // (ac130-fx-228 r2) the gunship's lens is the camera only on a frame the aerial camera drives it (below)
+      camera.userData.gunshipLensId = null;
       if (external) return;
 
       // A lobby spectator has no player entity. The observer chase still has
@@ -1355,6 +1357,7 @@ export function createCameraRig(
       death = null;
       trauma = 0;
       camera.userData.scoped = false;
+      camera.userData.gunshipLensId = null;
       applyPlayerVisibility(getPlayer(), true);
       camera.position.copy(pos);
       camera.up.set(0, 1, 0);

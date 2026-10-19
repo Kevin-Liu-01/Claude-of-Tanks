@@ -277,9 +277,10 @@ export function createBattlePresentationRuntime({
     else if (entity.aerial) void loadMissionAttachmentVisual();
     // (ac130-fx-228) the pilot's own airframe draws whenever the camera is not its gimbal lens (the killcam, the ending's
     // replay and orbit, an external camera): before, it was never drawn for the player, so a replay of a gunship kill
-    // showed an empty sky
+    // showed an empty sky. (r2) The lens is the camera exactly when the aerial camera drove it this frame
+    // (engine/aerialCamera.ts gunshipLensId), never by distance.
     if (entity.aerial?.kind === 'gunship') syncGunshipVisual(visual.root, state.pos, state.yaw, dtFrame ?? 0,
-      visual.root.visible, entity.isPlayer && camera.position);
+      visual.root.visible && !(entity.isPlayer && camera.userData.gunshipLensId === entity.id));
     else hideGunshipVisual(visual.root);
   };
 

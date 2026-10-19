@@ -2043,6 +2043,9 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
     prepareAtmosphere: async () => {
       await battleAtmosphere.prepare(game.battleCount, game.mapId, battlePreferences.times);
       await frontline.prepare(game.battleCount, game.mapId);
+      // (ac130-fx-228 r2) the mode's objective markers are built under the cover, so the deployment's scene compile
+      // below takes their programs: the AC-130's escort and extraction posts compiled at the reveal
+      matchModeWorld.update(game.matchModeState as Parameters<typeof matchModeWorld.update>[0], game.timeS);
     },
     prepareNightLighting: () => nightLighting.prepare(),
     runSceneWatchdog: async (assertCurrent: () => void) => {

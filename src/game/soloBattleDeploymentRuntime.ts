@@ -27,13 +27,33 @@ import type {
 import type { BattleVisualEntity, BattleVisualStreamer } from './battleVisualStreamer.ts';
 import type { CombatWarmCoordinator } from './combatWarmCoordinator.ts';
 import { prepareDeploymentFxPrograms, type DeploymentFxProgramReceipt } from './deploymentFxPrograms.ts';
+import { loadGunshipAirframe, stageGunshipVisual } from './gunshipVisual.ts';
 
 type BattleWarmEntity = TerrainWarmOptions['game']['tanks'][number];
 
 type DeploymentEntity = BattleVisualEntity & BattleWarmEntity & {
   team?: string;
   isPlayer?: boolean;
+  aerial?: { kind?: string } | null;
 };
+
+/**
+ * (ac130-fx-228 r2) An AC-130 battle's airframes, loaded (gunshipAirframe.ts, their own chunk), built and shown for the
+ * covered scene compile and the deployment's forward warm: the airframe is first seen mid-battle (a replay, the ending's
+ * orbit, a teammate's view) and compiled there. The caller hides them again; the first live frame poses them.
+ */
+async function stageGunshipAirframes(tanks: readonly DeploymentEntity[]): Promise<Object3D[]> {
+  const pilots = tanks.filter((entity) => entity.aerial?.kind === 'gunship' && entity.visual?.root && entity.state?.pos);
+  if (!pilots.length) return [];
+  await loadGunshipAirframe();
+  const staged: Object3D[] = [];
+  for (const entity of pilots) {
+    const state = entity.state as { pos: Parameters<typeof stageGunshipVisual>[1]; yaw?: number };
+    const root = stageGunshipVisual(entity.visual!.root as Object3D, state.pos, state.yaw ?? 0);
+    if (root) staged.push(root);
+  }
+  return staged;
+}
 
 type DeploymentGame = Omit<TerrainWarmOptions['game'], 'tanks' | 'player'> & {
   phase?: string;
@@ -90,6 +110,8 @@ interface DeploymentWarmTrace {
   phase: 'transition';
   stages: Record<string, number>;
   enemyVisualsDeferred?: boolean;
+  /** (ac130-fx-228 r2) gunship airframes staged for the covered compile */
+  gunshipAirframes?: number;
   deploymentCompileMs?: number;
   deploymentProgramSubmission?: ForwardProgramCompileTiming;
   /** The scene's programs submitted once the battle's light signature is final, ahead of the allied builds. */
@@ -590,6 +612,9 @@ export function createSoloBattleDeploymentRuntime(
         // cache, and the driver has linked them. Without this, every program reached the driver in that one later
         // submission, and the first FX cohort's draw waited inside getUniforms for the whole queue (6.6 s of a profiled
         // Railyard entry; the warm then missed its link budget and the covered watchdog linked the rest).
+        const airframes = await stageGunshipAirframes(game.tanks);
+        requireCurrent(generation);
+        trace.gunshipAirframes = airframes.length;
         const earlySubmission: ForwardProgramCompileTiming = {};
         trace.deploymentEarlySubmission = earlySubmission;
         for (const _ of options.forwardProgramWarm.compileSceneSteps({ sliceMs: 8, timing: earlySubmission })) {
@@ -695,6 +720,7 @@ export function createSoloBattleDeploymentRuntime(
           totalMs: forwardBatchMs.reduce((sum, ms) => sum + ms, 0),
         };
         mark('forwardPrograms');
+        for (const airframe of airframes) airframe.visible = false;
 
         // 2026-10-15 (the perf lane): the vision (thermal) variants are no longer linked under the cover. They are only
         // drawn when the player turns a vision mode on; the deferred countdown owner warms them for the whole roster

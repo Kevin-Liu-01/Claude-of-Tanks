@@ -90,6 +90,10 @@ interface TracerClass {
   heavy?: boolean;
   /** the bead's gain at the head */
   bead?: number;
+  /** (ac130-fx-228 r2) the day core's radiance and width gains over the shared day law (default 1 and DAY_WIDTH_K): a
+   *  round read from far off against a bright sky needs more than a ground gun's */
+  dayK?: number;
+  dayWidthK?: number;
 }
 
 // Classes by calibre: rifle and heavy machine guns, autocannons, tank guns.
@@ -106,8 +110,11 @@ const TANK: TracerClass = { beltEvery: 1, burnS: 3.6, halfWidthPx: 1.35, haloPx:
 // second the burst still reads as a stream of dashes, not single sparks), always NATO ammunition whatever tank the
 // pilot chose; the 152 mm howitzer every round traced, its core and halo about 1.7x a tank round's, its streak the
 // exposure's (800 m/s: ~13 m by day, ~22 m in the dark), its charge burning past the 0.3-0.5 s slant flight
-const GUNSHIP_CANNON: TracerClass = { beltEvery: 2, burnS: 3.4, halfWidthPx: 1.4, haloPx: 8.5, core: 3.3, halo: 0.22,
-  igniteM: 6, streakMaxM: 24 };
+// (r2, the motion critic: "by day, from the ground, thin pale-pink lines that nearly vanish against bright sky"; "in
+// daylight IR 1-2 px dots") by day its core burns over twice the shared day share and widens to about double, so the
+// strontium reads as a hot orange-red dash on sky and in the thermal lens
+const GUNSHIP_CANNON: TracerClass = { beltEvery: 2, burnS: 3.4, halfWidthPx: 1.5, haloPx: 9, core: 3.4, halo: 0.24,
+  igniteM: 6, streakMaxM: 24, dayK: 2.3, dayWidthK: 1.0 };
 const GUNSHIP_HOWITZER: TracerClass = { beltEvery: 1, burnS: 6, halfWidthPx: 2.3, haloPx: 14, core: 5.6, halo: 0.34,
   igniteM: 8, streakMaxM: 24, heavy: true, bead: 2.8 };
 /** (ac130-fx-228) the screenshot composer's frozen rounds held at once (pooled; the oldest reused past it) */
@@ -164,16 +171,20 @@ export function tracerClassFor(caliberMm: number, lineage: 'east' | 'nato'): Tra
   return TANK;
 }
 
+interface RoundClass { cls: TracerClass; lineage: 'east' | 'nato'; caliberMm: number }
+
 /** (ac130-fx-228) A round's class and lineage: the gunship's guns their own (NATO ammunition, whatever the pilot's
- *  garage tank), every other round by its calibre and its vehicle's lineage. */
+ *  garage tank), every other round by its calibre and its vehicle's lineage. (r2) Written into `out` (the runtime's
+ *  scratch: a new round allocates nothing). */
 export function tracerRoundClass(spec: TracerShell['spec'], shooter: TracerShooter | null | undefined,
-  shooterIsGunship: boolean): { cls: TracerClass; lineage: 'east' | 'nato'; caliberMm: number } {
+  shooterIsGunship: boolean, out: RoundClass = { cls: TANK, lineage: 'nato', caliberMm: 0 }): RoundClass {
   const gun = gunshipRoundOf(spec, shooterIsGunship);
-  if (gun === 'cannon') return { cls: GUNSHIP_CANNON, lineage: 'nato', caliberMm: 30 };
-  if (gun === 'howitzer') return { cls: GUNSHIP_HOWITZER, lineage: 'nato', caliberMm: 152 };
-  const lineage = tracerLineage(shooter);
-  const caliberMm = tracerCaliber(spec, shooter);
-  return { cls: tracerClassFor(caliberMm, lineage), lineage, caliberMm };
+  if (gun === 'cannon') { out.cls = GUNSHIP_CANNON; out.lineage = 'nato'; out.caliberMm = 30; return out; }
+  if (gun === 'howitzer') { out.cls = GUNSHIP_HOWITZER; out.lineage = 'nato'; out.caliberMm = 152; return out; }
+  out.lineage = tracerLineage(shooter);
+  out.caliberMm = tracerCaliber(spec, shooter);
+  out.cls = tracerClassFor(out.caliberMm, out.lineage);
+  return out;
 }
 
 /**
@@ -378,6 +389,11 @@ interface ProjectileTracers {
     rocket?: boolean): void;
   /** the effects clock was rebased by `delta` s (fx.setFrozen / resetClock): the births keep their age */
   shiftTime(delta: number): void;
+  /** (ac130-fx-228 r2) a round that is not a shell this frame (the frontline backdrop's AA fire, ambientRounds.ts), drawn
+   *  as an autocannon round of its lineage is: its head, unit direction, speed (m/s), distance flown (m), strength
+   *  (0..1, its own burn-out); call between begin and end */
+  ambient(hx: number, hy: number, hz: number, dx: number, dy: number, dz: number, speedMps: number, travelledM: number,
+    k: number, east: boolean): void;
   reset(): void;
   active(): boolean;
   /** receipts: tracer rounds drawn this frame, rounds tracked */
@@ -385,6 +401,7 @@ interface ProjectileTracers {
 }
 
 export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
+  const _roundClass: RoundClass = { cls: TANK, lineage: 'nato', caliberMm: 0 }; // tracerRoundClass's scratch
   const capacity = Math.max(16, o.capacity ?? 512);
   const geo = new THREE.InstancedBufferGeometry();
   geo.setAttribute('position', new THREE.Float32BufferAttribute([0, -1, 0, 1, -1, 0, 1, 1, 0, 0, 1, 0], 3));
@@ -449,7 +466,7 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
     r = free.pop() ?? { id: 0, lit: false, cls: TANK, core: TANK_CORE, day: TANK_DAY, halo: TANK_HALO, seed: 0,
       seen: false, hx: 0, hy: 0, hz: 0, tx: 0, ty: 0, tz: 0, k: 0, speed: 0 };
     const who = o.shooter(shell.shooterId);
-    const { cls, lineage, caliberMm: cal } = tracerRoundClass(shell.spec, who, o.gunship?.(shell.shooterId) === true);
+    const { cls, lineage, caliberMm: cal } = tracerRoundClass(shell.spec, who, o.gunship?.(shell.shooterId) === true, _roundClass);
     // the belt: a per-weapon round count (the shooter's gun of this calibre: a coax and a main gun are two belts), so a
     // burst shows its tracers at the belt's own rhythm
     const who_ = shell.shooterId;
@@ -474,18 +491,18 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
   function put(r: RoundRecord, k: number, wobble: number): void {
     if (!(k > 0.001)) return;
     const cls = r.cls;
-    write4(r.hx, r.hy, r.hz, r.tx, r.ty, r.tz, cls.halfWidthPx * (1 + DAY_WIDTH_K * (1 - dark)) * (1 + 0.3 * wobble),
+    write4(r.hx, r.hy, r.hz, r.tx, r.ty, r.tz, cls.halfWidthPx * (1 + (cls.dayWidthK ?? DAY_WIDTH_K) * (1 - dark)) * (1 + 0.3 * wobble),
       cls.haloPx * (0.45 + 0.55 * dark), r.day, r.core, cls.core * k, r.halo, cls.halo * (HALO_DAY + (1 - HALO_DAY) * dark) * k,
-      cls.bead ?? 1.8);
+      cls.bead ?? 1.8, cls.dayK ?? 1);
   }
   /** One capsule: head and tail (m), half width and halo radius (1080p px), the core (its day colour by day, its hot
    *  night colour in the dark) at radiance coreK, the halo at haloK, the head's bead gain. */
   function write4(hx: number, hy: number, hz: number, tx: number, ty: number, tz: number, halfW: number, haloR: number,
     dayRgb: readonly number[], nightRgb: readonly number[], coreK: number, haloRgb: readonly number[], haloK: number,
-    bead: number): void {
+    bead: number, dayK = 1): void {
     if (n >= capacity) return;
     const i = n * 4;
-    const kd = coreK * DAY_CORE_K * (1 - dark), kn = coreK * dark;
+    const kd = coreK * DAY_CORE_K * dayK * (1 - dark), kn = coreK * dark;
     head.array[i] = hx; head.array[i + 1] = hy; head.array[i + 2] = hz; head.array[i + 3] = halfW;
     tail.array[i] = tx; tail.array[i + 1] = ty; tail.array[i + 2] = tz; tail.array[i + 3] = haloR;
     core.array[i] = dayRgb[0]! * kd + nightRgb[0]! * kn;
@@ -713,6 +730,17 @@ export function createProjectileTracers(o: TracerOptions): ProjectileTracers {
       if (!Number.isFinite(delta) || delta === 0) return;
       for (const st of statics) if (st.live) st.born += delta;
       for (const sp of sparks) if (sp.life > 0) sp.t0 += delta;
+    },
+    ambient(hx, hy, hz, dx, dy, dz, speedMps, travelledM, k, east) {
+      if (!(k > 0.001)) return;
+      const cls = AUTOCANNON;
+      const alight = travelledM - cls.igniteM;
+      if (!(alight > 0)) return;
+      const exposureS = EXPOSURE_DAY_S + (EXPOSURE_NIGHT_S - EXPOSURE_DAY_S) * dark;
+      const len = Math.min(STREAK_MAX_M, cls.streakMaxM, speedMps * exposureS, alight);
+      write4(hx, hy, hz, hx - dx * len, hy - dy * len, hz - dz * len, cls.halfWidthPx * (1 + DAY_WIDTH_K * (1 - dark)),
+        cls.haloPx * (0.45 + 0.55 * dark), east ? GREEN_DAY : RED_DAY, east ? GREEN_CORE : RED_CORE, cls.core * k,
+        east ? GREEN_HALO : RED_HALO, cls.halo * (HALO_DAY + (1 - HALO_DAY) * dark) * k, 1.8);
     },
     darkLevel: () => dark,
     active: () => geo.instanceCount > 0 || sparksLive > 0 || staticsLive > 0,

@@ -351,7 +351,7 @@ export function restoreAerial(entity: AerialEntity, checkpoint: AerialCheckpoint
  *   - 'vehicle': the firing vehicle itself (its guns, its launchers, a ram).
  *
  * Pure and deterministic (no clock, no state): both authorities (sim/authoritativeMatch.ts, game/state.ts) stamp it on the
- * hit and the destruction they emit; presentation only renders it (ui/icons.ts killSourceIdentity).
+ * hit and the destruction they emit; presentation only renders it (ui/killSourceIdentity.ts).
  */
 type KillSource = 'ac130' | 'drone' | 'vehicle';
 
