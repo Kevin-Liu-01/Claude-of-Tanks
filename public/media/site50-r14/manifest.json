@@ -6299,22 +6299,22 @@
   },
   {
    "path": "media/site50-r14/home/features/studio.jpg",
-   "bytes": 264524,
-   "sha256": "cba5dc38ba4f23a68233da664c463edffdf017dcb37324b925448253a8160b05",
+   "bytes": 274994,
+   "sha256": "c58581e76f92b5441a829d107edcef166654fd0fa5a0f40f180c17cc3358ca95",
    "source": "shots/media-r5/home-r2/deliver/features/studio.webm",
    "home": "features/studio"
   },
   {
    "path": "media/site50-r14/home/features/studio.json",
    "bytes": 2456,
-   "sha256": "edfbe09df633d3476d6fe41e7a477818652d4943c0ea06274710358e6dff7706",
+   "sha256": "1eaef4846a377513f3ed0f351a392467dbc19e71947ccafa430289ed7b1d9b2e",
    "source": "shots/media-r5/home-r2/deliver/features/studio.json",
    "home": "features/studio"
   },
   {
    "path": "media/site50-r14/home/features/studio.mp4",
-   "bytes": 3254887,
-   "sha256": "d1643270d9e132a7e0bb50f091e2b9cae63e55e8c931d2978d81f1d148e3e28f",
+   "bytes": 3357285,
+   "sha256": "63b9a30a0a84a9b7657b6a28f1551f557b78ef0be6f61f396b46fc43c9cf89b8",
    "width": 1920,
    "height": 1080,
    "fps": 30,
