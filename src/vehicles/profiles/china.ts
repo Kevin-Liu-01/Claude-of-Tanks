@@ -271,6 +271,8 @@ function buildZTZ85IIIHullEdges(P: ChinaBuilderPort): void {
       P.add('hull', box(0.185, 0.030, 0.48),
         side * 1.635, 1.115, -3.60 + index * 0.518);
     }
+    // The bow tip carries the shelf on to the front flap, which hangs from its edge.
+    P.add('hull', box(0.185, 0.030, 0.13), side * 1.635, 1.115, 2.405);
     for (let index = 0; index < 8; index++) {
       P.add('hull', box(0.045, 0.16, 0.46),
         side * 1.70, 1.20, -3.38 + index * 0.78);

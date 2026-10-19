@@ -3994,6 +3994,9 @@ function pattonSideCassette(
   const x = side * 1.795;
   const depth = 0.040;
   P.add('hull', box(depth, h, len), x, y, z);
+  // Its top 6 cm lap 5 mm under the hull shoulder's outer face (x 1.765), which carries it (owner 2026-10-19 sweep:
+  // the shell stood 10 mm off the shoulder along its whole height); that band stands 16 cm over the track's top run.
+  P.add('hull', box(0.055, 0.06, len), side * 1.7875, y + h / 2 - 0.03, z);
   const faceX = side * (depth / 2 + 0.004);
   P.add('hullDetail', xform(box(0.008, h * 0.78, len * 0.84), faceX, 0, 0), x, y, z);
 }

@@ -1,8 +1,8 @@
 // Hung guards (owner 2026-10-19: "the flaps often hang off many tanks"). A guard a builder registers with
 // P.hangMudguard is hung once the profile is done (tankFactoryCore, before the spare-track seat pass): at two stations
 // along its top edge a flat steel strap runs from GRIP_M inside the guard up into the first permanent hull stock
-// straight above it, EMBED_M deep (or half that stock's thickness when it is thinner). A station already touching
-// stock gets no strap. A station with no stock above within REACH_M, or whose strap would cross the running gear, is
+// straight above it, EMBED_M deep (or half that stock's thickness when it is thinner). A station whose stretch of top
+// edge already touches stock (a hem under its skirt panel, a flap seated in its fender) gets no strap. A station with no stock above within REACH_M, or whose strap would cross the running gear, is
 // left as authored and reported in root.userData.mudguardHangers, so its builder is fixed by hand
 // (tools/hull-contact-census.mjs still lists it as floating).
 import * as THREE from 'three';
@@ -22,6 +22,10 @@ export interface MudguardHangerStation {
   readonly reason?: 'touching' | 'no-stock-above' | 'running-gear';
   /** 'arm': a horizontal arm from the top edge into the stock beside it (nothing above within reach). */
   readonly arm?: boolean;
+  /** An arm's clear run from the guard's face to the stock beside it. */
+  readonly reachM?: number;
+  /** 'tab': an L-hanger, the strap carried out from the guard's top band on a tab (the stock above stops short of it). */
+  readonly tab?: boolean;
 }
 
 export interface MudguardHangerReceipt {
@@ -30,9 +34,13 @@ export interface MudguardHangerReceipt {
 }
 
 const REACH_M = 0.65;
+/** A strap may run farther than an arm: a flap hung under a high deck overhang. */
+const STRAP_REACH_M = 0.95;
 const EMBED_M = 0.02;
 const GRIP_M = 0.03;
 const TOUCH_M = 0.004;
+/** A strap or arm longer than this is left out when the guard's top edge already touches structure. */
+const LONG_M = 0.25;
 const STRAP_WIDTH_M = 0.05;
 const STATIONS = [0.22, 0.78] as const;
 const STATION_CANDIDATES = [0.22, 0.78, 0.1, 0.9, 0.35, 0.65, 0.5] as const;
@@ -121,6 +129,17 @@ class PlanGrid {
   }
 }
 
+/** Whether a guard vertex stands inside closed stock or within TOUCH_M of a stock face (the census's contact law, read
+ * along the vertical line and four horizontal rays through it). */
+function vertexTouchesStock(v: THREE.Vector3, stock: PlanGrid, skip: ReadonlySet<number>): boolean {
+  const line = stock.crossings(v.x, v.z, skip);
+  if (line.some((h) => Math.abs(h - v.y) <= TOUCH_M) || line.filter((h) => h > v.y).length % 2 === 1) return true;
+  for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+    if (stock.horizontal(v.x, v.y, v.z, dx, dz, TOUCH_M, skip) !== null) return true;
+  }
+  return false;
+}
+
 function soupOf(geometry: THREE.BufferGeometry, matrix?: THREE.Matrix4): Float32Array {
   const position = geometry.getAttribute('position'), index = geometry.index;
   const count = index ? index.count : position.count, out = new Float32Array(count * 3), v = new THREE.Vector3();
@@ -142,17 +161,20 @@ export function hangAuthoredMudguards(
   supports: readonly THREE.BufferGeometry[],
   hullG: THREE.Object3D,
   addStrap: (request: MudguardHangRequest, geometry: THREE.BufferGeometry) => void,
+  structural: ReadonlySet<THREE.BufferGeometry> = new Set(supports),
 ): MudguardHangerReceipt[] {
   if (!requests.length) return [];
   const stock = new PlanGrid(), gear = new PlanGrid();
   // Every permanent hull part is stock, other hung guards included (a hem hangs from its hung board); each guard skips
   // only itself and what it carries (below).
-  const stockIndex = new Map<THREE.BufferGeometry, number>(), stockBoxes: THREE.Box3[] = [];
+  const stockIndex = new Map<THREE.BufferGeometry, number>(), stockBoxes: THREE.Box3[] = [], structuralIndex = new Set<number>();
   for (const part of [...new Set([...supports, ...requests.map((request) => request.part)])]) {
     if (!part.boundingBox) part.computeBoundingBox();
     if (!part.boundingBox || part.boundingBox.isEmpty()) continue;
-    stockIndex.set(part, stock.add(soupOf(part)));
+    const index = stock.add(soupOf(part));
+    stockIndex.set(part, index);
     stockBoxes.push(part.boundingBox);
+    if (structural.has(part)) structuralIndex.add(index);
   }
   hullG.updateMatrixWorld(true);
   const toHull = new THREE.Matrix4().copy(hullG.matrixWorld).invert(), matrix = new THREE.Matrix4();
@@ -168,7 +190,11 @@ export function hangAuthoredMudguards(
       gear.add(soupOf(mesh.geometry, combined.multiplyMatrices(matrix, instance)));
     }
   });
-  const receipts: MudguardHangerReceipt[] = [];
+  const receipts: MudguardHangerReceipt[] = [], scratch = new THREE.Vector3();
+  // Touching another guard anchors a guard only once that guard is itself anchored (hung, or touching stock): a hem and
+  // its board touching each other would otherwise both stand as authored, floating together.
+  const unanchored = new Set<number>();
+  for (const request of requests) { const index = stockIndex.get(request.part); if (index !== undefined) unanchored.add(index); }
   for (const request of requests) {
     const position = request.part.getAttribute('position'), bounds = request.part.boundingBox!;
     // What the guard carries is not stock to hang it from: a piece riding it (its painted strip, a bolt row) inside its
@@ -177,12 +203,23 @@ export function hangAuthoredMudguards(
     const own = stockIndex.get(request.part);
     const skip = new Set<number>(own === undefined ? [] : [own]), loads: THREE.Box3[] = [];
     const grown = bounds.clone().expandByScalar(0.03);
+    // Only a board carries a load: nothing rests on a hanging flap's or hem's thin top edge (a skirt panel standing on
+    // a hem's edge is what the hem hangs from).
+    const board = Math.min(bounds.max.x - bounds.min.x, bounds.max.z - bounds.min.z) >= 0.06;
     stockBoxes.forEach((box, index) => {
       if (index === own) return;
-      const rests = box.min.y >= bounds.max.y - 0.03 && box.min.y <= bounds.max.y + 0.01
+      const rests = board && box.min.y >= bounds.max.y - 0.03 && box.min.y <= bounds.max.y + 0.01
         && box.min.x >= grown.min.x && box.max.x <= grown.max.x && box.min.z >= grown.min.z && box.max.z <= grown.max.z;
       if (rests) loads.push(box);
       if (rests || grown.containsBox(box)) skip.add(index);
+    });
+    // Edge contact anchors a guard only on structure reaching past its neighbourhood (a skirt panel, a fender, a hull
+    // plate: structural stock, or any stock a metre across), never on a rider within 0.15 m of it or on fittings (a
+    // hanger bar, a bolt, stowage) that may hang in the air with it, nor on another guard not yet anchored.
+    const near = bounds.clone().expandByScalar(0.15);
+    const touchSkip = new Set([...skip, ...[...unanchored].filter((index) => index !== own)]);
+    stockBoxes.forEach((box, index) => {
+      if (near.containsBox(box) || (!structuralIndex.has(index) && box.getSize(scratch).length() < 1)) touchSkip.add(index);
     });
     const alongX = bounds.max.x - bounds.min.x >= bounds.max.z - bounds.min.z;
     const band = Math.min(0.04, (bounds.max.y - bounds.min.y) * 0.3);
@@ -213,6 +250,10 @@ export function hangAuthoredMudguards(
       if (chosen.length === 2) break;
       if (!underLoad(t) && chosen.every((u) => Math.abs(u - t) >= 0.25)) chosen.push(t);
     }
+    // The top edge already in contact anywhere along it (a hem whose top meets its skirt panel's lower edge beside it,
+    // a flap whose top stands in its fender's end) takes no long strap or arm: the guard hangs as authored. A short one
+    // still goes in (it may be what carries a whole skirt run whose other contacts float with it).
+    const edgeTouching = top.some((v) => vertexTouchesStock(v, stock, touchSkip));
     for (const t of chosen.length === 2 ? chosen : STATIONS) {
       const a = a0 + (a1 - a0) * t;
       let i = 0;
@@ -226,23 +267,46 @@ export function hangAuthoredMudguards(
         return { across, line, above, stockY: above.length ? above[0] : null };
       };
       const towardHull = -Math.sign(mid) || -1;
+      // ... or just past the guard's inner face (a strap bolted to that face, half in the guard), when the stock over it
+      // starts there (a rear plate whose face the flap hangs behind).
+      const innerFace = towardHull < 0 ? c0 : c1;
       let probe = lineAt(mid);
-      if (probe.stockY === null || probe.stockY - topY > REACH_M) {
-        const inward = lineAt(mid + towardHull * (c1 - c0) * 0.25);
-        if (inward.stockY !== null && inward.stockY - topY <= REACH_M) probe = inward;
+      for (const across of [mid + towardHull * (c1 - c0) * 0.25, innerFace + towardHull * 0.008]) {
+        if (probe.stockY !== null && probe.stockY - topY <= STRAP_REACH_M) break;
+        const next = lineAt(across);
+        if (next.stockY !== null && next.stockY - topY <= STRAP_REACH_M) probe = next;
+      }
+      // ... or up to 60 mm farther inboard, carried out to the guard on a tab from its top band (an L-hanger), when the
+      // stock over the guard stops just short of it.
+      let tabbed = false;
+      if (probe.stockY === null || probe.stockY - topY > STRAP_REACH_M) {
+        for (const off of [0.02, 0.04, 0.06]) {
+          const next = lineAt(innerFace + towardHull * off);
+          const inStock = (next.line.length - next.above.length) % 2 === 1;
+          if (inStock || (next.stockY !== null && next.stockY - topY <= STRAP_REACH_M)) { probe = next; tabbed = true; break; }
+        }
       }
       const { line, above, stockY } = probe, c = probe.across;
       const x = alongX ? a : c, z = alongX ? c : a;
+      // The tab: across from the guard's mid-thickness to 10 mm past the strap line, through the guard's top 30 mm.
+      const tabEnd = c + towardHull * 0.01, tabMid = (mid + tabEnd) / 2, tabLength = Math.abs(tabEnd - mid);
+      const tab = () => new THREE.BoxGeometry(alongX ? STRAP_WIDTH_M : tabLength, GRIP_M, alongX ? tabLength : STRAP_WIDTH_M)
+        .translate(alongX ? a : tabMid, topY - GRIP_M / 2, alongX ? tabMid : a);
       // An odd count of stock faces under the guard's top: the top already stands inside stock.
       const inside = (line.length - above.length) % 2 === 1;
+      if (tabbed && (inside || (stockY !== null && stockY - topY <= TOUCH_M))) {
+        addStrap(request, tab());
+        stations.push({ x, z, topY, stockY, strap: true, tab: true });
+        continue;
+      }
       if (inside || (stockY !== null && stockY - topY <= TOUCH_M)) { stations.push({ x, z, topY, stockY, strap: false, reason: 'touching' }); continue; }
-      if (stockY === null || stockY - topY > REACH_M) {
+      if (stockY === null || stockY - topY > STRAP_REACH_M) {
         // Nothing above: an arm from the top edge, inward across the guard toward the hull's centre line, into the
         // first stock beside it (a flap hung past the hull's end or outboard of its fender).
         const dir = towardHull, face = dir < 0 ? c0 : c1, armY = topY - GRIP_M / 2;
         const reach = alongX ? stock.horizontal(a, armY, face, 0, dir, REACH_M, skip) : stock.horizontal(face, armY, a, dir, 0, REACH_M, skip);
         if (reach === null) { stations.push({ x, z, topY, stockY, strap: false, reason: 'no-stock-above' }); continue; }
-        if (reach <= TOUCH_M) { stations.push({ x, z, topY, stockY, strap: false, reason: 'touching' }); continue; }
+        if (reach <= TOUCH_M || (edgeTouching && reach > LONG_M)) { stations.push({ x, z, topY, stockY, strap: false, reason: 'touching' }); continue; }
         const end = face + dir * (reach + EMBED_M), centre = (mid + end) / 2, length = Math.abs(end - mid), height = GRIP_M;
         const sx = alongX ? STRAP_WIDTH_M : length, sz = alongX ? length : STRAP_WIDTH_M;
         const ax = alongX ? a : centre, az = alongX ? centre : a;
@@ -250,19 +314,28 @@ export function hangAuthoredMudguards(
           new THREE.Vector3(ax + sx / 2, armY + height / 2, az + sz / 2));
         if (gear.touchesBox(footprint)) { stations.push({ x, z, topY, stockY, strap: false, reason: 'running-gear' }); continue; }
         addStrap(request, new THREE.BoxGeometry(sx, height, sz).translate(ax, armY, az));
-        stations.push({ x, z, topY, stockY, strap: true, arm: true });
+        stations.push({ x, z, topY, stockY, strap: true, arm: true, reachM: reach });
         continue;
       }
+      if (edgeTouching && stockY - topY > LONG_M) { stations.push({ x, z, topY, stockY, strap: false, reason: 'touching' }); continue; }
       const thickness = above.length > 1 ? above[1] - stockY : Infinity;
       const strapTop = stockY + Math.min(EMBED_M, thickness / 2), strapBottom = topY - GRIP_M;
-      // within the guard's thickness wherever the line runs (mid or the inward quarter)
-      const strapDepth = THREE.MathUtils.clamp((c1 - c0) * (c === mid ? 0.6 : 0.4), 0.008, 0.022);
+      // within the guard's thickness on the mid or inward-quarter line; straddling the inner face on the face line; on a
+      // tab's line beside the guard
+      const onFace = c !== mid && Math.abs(c - innerFace) < 0.01;
+      const strapDepth = onFace || tabbed ? 0.02 : THREE.MathUtils.clamp((c1 - c0) * (c === mid ? 0.6 : 0.4), 0.008, 0.022);
       const w = alongX ? STRAP_WIDTH_M : strapDepth, d = alongX ? strapDepth : STRAP_WIDTH_M;
       const footprint = new THREE.Box3(new THREE.Vector3(x - w / 2, strapBottom, z - d / 2), new THREE.Vector3(x + w / 2, strapTop, z + d / 2));
       if (gear.touchesBox(footprint)) { stations.push({ x, z, topY, stockY, strap: false, reason: 'running-gear' }); continue; }
+      if (tabbed) {
+        const tabBox = new THREE.Box3().setFromBufferAttribute(tab().getAttribute('position') as THREE.BufferAttribute);
+        if (gear.touchesBox(tabBox)) { stations.push({ x, z, topY, stockY, strap: false, reason: 'running-gear' }); continue; }
+        addStrap(request, tab());
+      }
       addStrap(request, new THREE.BoxGeometry(w, strapTop - strapBottom, d).translate(x, (strapTop + strapBottom) / 2, z));
-      stations.push({ x, z, topY, stockY, strap: true });
+      stations.push({ x, z, topY, stockY, strap: true, ...(tabbed ? { tab: true } : {}) });
     }
+    if (own !== undefined && stations.some((station) => station.strap || station.reason === 'touching')) unanchored.delete(own);
     receipts.push({ label: request.label, stations });
   }
   return receipts;

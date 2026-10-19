@@ -22,8 +22,9 @@ function buildHull(P: TankBuilderPort, upgraded: boolean): void {
   for (const side of [-1, 1]) {
     P.addEquipment('hullDetail', box(.035, .035, .56), side*.72, 1.60, 2.40, .447);
     // The thin fenders leave the five road wheels visible, unlike an MBT skirt.
-    P.addEquipment('hullDetail', box(.50, .045, 4.74), side*1.155, 1.17, -.03);
-    P.hangMudguard(`amx10p-front-${side}`, 'hullRubber', box(.40, .23, .025), side*1.20,1.12,2.73,-.56);
+    // They run on over the idler to the front flaps, whose top edges stand in their ends.
+    P.addEquipment('hullDetail', box(.50, .045, 5.10), side*1.155, 1.17, .15);
+    P.hangMudguard(`amx10p-front-${side}`, 'hullRubber', box(.40, .23, .025), side*1.20,1.07,2.73,-.56);
     P.hangMudguard(`amx10p-rear-${side}`, 'hullRubber', box(.40,.25,.025),side*1.20,.83,-2.78,.18);
     P.addEquipment('hullDetail', box(.23,.20,.23), side*1.12,1.62,2.17);
     P.addEquipment('hullGlass', markVehicleNightLens(cylZ(.060,.015,14), 'headlight'),side*1.12,1.64,2.292);

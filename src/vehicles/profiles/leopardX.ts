@@ -475,6 +475,9 @@ function a7Skirts(P: TankBuilderPort): void {
     a7TerminalSkirt(P,side);
     P.add('hull',box(.30,.39,1.49),side*1.71,1.76,-3.06);
     P.hangMudguard('a7v-x-front-flap','hullRubber',box(.62,.17,.045),side*1.49,1.08,3.79,-.14);
+    // Owner 2026-10-19 (flaps sweep): the front flap stood 0.11 m ahead of everything; over the track lane nothing stands
+    // behind it, so a bracket from its outer top corner runs back into the side armour's nose (x 1.80, z 3.642).
+    P.add('hullDetail',box(.06,.07,.17),side*1.80,1.135,3.705);
     P.hangMudguard('a7v-x-rear-flap','hullRubber',box(.63,.50,.045),side*1.48,.76,-3.86,.10);
   }
 }

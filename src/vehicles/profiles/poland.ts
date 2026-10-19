@@ -397,8 +397,9 @@ function buildPT91Twardy(P: PolishBuilderPort): void {
     P.add('hull', box(0.16, 0.05, 5.7), s * 1.70, 1.215, 0.30);
     // fender-slot §B2 floor: a REAL dark slot plate riding 6 cm above the
     // idler wrap arc at its z (strict clip audit proof; the v2 hole scan
-    // hides /shadow/ meshes so the leclerc_s2 shadow device cannot close B2)
-    P.add('hullDark', box(0.24, 0.01, 0.28), s * 1.53, 1.10, 3.00);
+    // hides /shadow/ meshes so the leclerc_s2 shadow device cannot close B2); it rides 5 mm into the sponson's
+    // underside and carries the bow corner fender, which stops 4 cm ahead of the sponson
+    P.add('hullDark', box(0.24, 0.01, 0.28), s * 1.53, 1.125, 3.00);
   }
 
   // ---- running gear: T-72 stance centered on the 0.065 body mid ----------

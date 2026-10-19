@@ -626,7 +626,8 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
     // inverted-whip" read. Fender bridge continues the sponson strip over
     // the idler; tip plate at the fender line; flap chained under the tip.
     P.add('hull', box(0.40, 0.030, 0.86), s * 1.42, 1.225, 2.82, -0.045, 0, 0);
-    P.add('hull', box(0.36, 0.07, 0.24), s * 1.40, 1.17, 3.26);
+    // owner 2026-10-19 (flaps sweep): the tip plate stood 20 mm under the bridge's front end; 25 mm up it runs into it
+    P.add('hull', box(0.36, 0.07, 0.24), s * 1.40, 1.195, 3.26);
     P.hangMudguard('ua-t80bv-front-flap', 'hullRubber', box(0.30, 0.28, 0.045), s * 1.40, 0.99, 3.35);
     P.add('hullRubber', box(0.34, 0.26, 0.045), s * 1.53, 1.00, -3.12);
   }
@@ -1194,7 +1195,9 @@ function buildUAOplotM(P: TankBuilderPort): void {
     // flap chained under it; the idler adjuster is authored INBOARD as a
     // crank boss pair on the nose plate. Nothing passes the fender line.
     P.add('hull', box(0.38, 0.030, 0.68), s * 1.27, 1.17, 2.96, -0.06, 0, 0);
-    P.add('hull', box(0.38, 0.07, 0.22), s * 1.27, 1.04, 3.40, -0.45, 0, 0);
+    // owner 2026-10-19 (flaps sweep): the tip plate's rear edge stood 0.15 m under the fender run's front end; raised
+    // 0.16 m, that edge runs 9 mm into the run (the flap's hangers follow it)
+    P.add('hull', box(0.38, 0.07, 0.22), s * 1.27, 1.20, 3.40, -0.45, 0, 0);
     P.hangMudguard('oplot-m-front-flap', 'hullRubber', box(0.30, 0.26, 0.045), s * 1.27, 0.80, 3.50);
     P.add('hullDetail', cylZ(0.052, 0.07, 10), s * 0.70, 0.62, 3.485);
     P.add('hullDark', cylZ(0.028, 0.05, 8), s * 0.70, 0.62, 3.52);

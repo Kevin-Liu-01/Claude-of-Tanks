@@ -988,6 +988,12 @@ function buildCarro45T(P: ItalyBuilderPort): void {
     for (const s2 of [-1, 1]) P.add('hull', slab(                                // tail plate outer courses ABOVE the band top
       [s2 * 0.94, 1.26, -3.26], [s2 * 1.38, 1.26, -3.26], [s2 * 1.38, 1.26, -3.34], [s2 * 0.94, 1.26, -3.36],
       [s2 * 0.94, 1.45, -3.29], [s2 * 1.38, 1.45, -3.29], [s2 * 1.38, 1.45, -3.34], [s2 * 0.94, 1.45, -3.36]));
+    // The belly rises from the tub's rear edge (z -2.70, y 0.49) to the raked plate's foot (z -3.24, y 0.65) on a
+    // lower rear plate (owner 2026-10-19, "the empty gaps in hulls": the engine bay stood open 0.54 m from below, up to
+    // the deck), 40 mm into the tub and 10 mm into the raked plate.
+    P.add('hull', slab(
+      [-0.944, 0.496, -2.66], [0.944, 0.496, -2.66], [0.944, 0.656, -3.25], [-0.944, 0.656, -3.25],
+      [-0.944, 0.576, -2.66], [0.944, 0.576, -2.66], [0.944, 0.736, -3.25], [-0.944, 0.736, -3.25]));
     P.add('hull', box(1.90, 0.62, 0.11), 0, 1.02, -3.405);                       // center exhaust recess block (ref plan -3.40..-3.46 across |x|<0.95)
     P.add('hullDark', box(1.82, 0.50, 0.02), 0, 1.02, -3.455);
     P.add('hull', box(2.76, 0.30, 0.10), 0, 1.30, -3.38);                        // upper rear plate band
@@ -1040,7 +1046,10 @@ function buildCarro45T(P: ItalyBuilderPort): void {
           const bz = -3.345 + 0.4596 * k + 0.2298;                                 // every 0.50 station slab contains a real end face); the run ENDS at
           const fy = k >= 13 ? 1.40 : k >= 12 ? 1.475                              // +3.09 like the print's fender line (plan front 3.005-3.093), TAPERING
             : (k >= 2 && k <= 10) ? 1.464 : 1.512;                                 // toward the bow; bays inside the turret swing ride at 1.48 (xk2_black_panther sweep law)
-          P.add('hull', box(0.27, 0.032, 0.4476), s * 1.545, fy, bz);              // toward the bow (gate tops 1.38-1.42 over the nose)
+          // owner 2026-10-19 (flaps sweep): every bay widens 15 mm inboard into the hull side the run stood 10 mm off; the
+          // stern bay (k 0) also runs 17 mm forward into bay 1 across the 12 mm seam (past the hull's end it has no other seat)
+          const bw = 0.285, bl = k === 0 ? 0.4646 : 0.4476, bc = k === 0 ? bz + 0.0085 : bz;
+          P.add('hull', box(bw, 0.032, bl), s * (1.68 - bw / 2), fy, bc);         // toward the bow (gate tops 1.38-1.42 over the nose)
           P.add('hull', box(0.035, 0.045, 0.4476), s * 1.6975, fy - 0.087, bz);    // outer hem DROOPED (gate 1.43-1.45 @ ±1.70)
           if (bz > -3.16 && bz < 2.88) P.add('hull', box(0.03, 0.56, 0.4476), s * 1.695, 1.19, bz);
         }

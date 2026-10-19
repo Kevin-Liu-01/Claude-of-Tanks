@@ -119,6 +119,9 @@ function buildCv90Hull(P: CvBuilderPort): void {
 
   P.add('hullDark', box(1.92, 1.00, 0.045), 0, 1.09, -3.48);
   P.add('hull', box(1.72, 0.84, 0.050), 0, 1.09, -3.51);
+  // lower stern wall: the belly ended at z -3.31 and the rear plates start at -3.4575 with their feet at 0.59, so the
+  // 0.15 m between them stood open from below up to the troop deck (owner 2026-10-19, "the empty gaps in hulls")
+  P.add('hull', box(2.12, 0.40, 0.20), 0, 0.44, -3.38);
   for (const x of [-0.64, 0, 0.64]) P.add('hullDark', cylX(0.050, 0.18, 12), x, 1.58, -3.54);
   // Rear corner boxes, marker lamps and deck stowage close the formerly empty
   // overhang without lengthening the suspension course.
@@ -412,6 +415,10 @@ function buildCv90MkivHull(P: CvBuilderPort): void {
   ]));
   P.add('hullDark', box(2.12, 1.09, 0.050), 0, 1.14, -3.69);
   P.add('hull', box(1.92, 0.91, 0.055), 0, 1.14, -3.725);
+  // stern floor: the belly ends at z -3.51 (its rear face carries the towing hooks) and the rear plates stand from
+  // -3.665 with their feet at 0.595, so the slot between them stood open from below up to the troop roof (owner
+  // 2026-10-19, "the empty gaps in hulls"); a floor at the plates' feet closes it over the hooks
+  P.add('hull', box(2.24, 0.04, 0.21), 0, 0.58, -3.605);
   // critic panel 2026-10-15: the four bare cylinders over the door were the fuel drums' band mounts and read as spools
   // on a rail once the drums went; they go with them.
   for (const side of [-1, 1]) {

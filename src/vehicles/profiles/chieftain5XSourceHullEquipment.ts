@@ -32,7 +32,9 @@ function foreFlap(P: TankBuilderPort, side: number): void {
   const sheet = new THREE.ExtrudeGeometry(shape, { depth: .660, bevelEnabled: false, steps: 1 })
     .rotateY(Math.PI / 2).translate(side < 0 ? -1.620 : .960, 0, 0);
   P.addMudguard(`chieftain5_x_source_front_flap_${side}`, 'hullDark', sheet);
-  for (const x of [.919, 1.635]) {
+  // Owner 2026-10-19 (flaps sweep): the inner return stood 27 mm inboard of the sheet it folds from (.960); at .949
+  // its outer face runs 3 mm into the sheet.
+  for (const x of [.949, 1.635]) {
     P.hangMudguard(`chieftain5_x_source_flap_return_${side}_${x}`, 'hullDark',
       slope(side, [[3.195, x - .014, x + .014, .802, .841],
         [3.440, x - .014, x + .014, .842, .887],

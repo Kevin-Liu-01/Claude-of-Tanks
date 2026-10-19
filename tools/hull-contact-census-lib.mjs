@@ -262,7 +262,7 @@ export function collectStock(id, options = {}) {
         if (/^gearTrackBand/.test(mesh.name) && !mesh.isInstancedMesh) gear.push(triangleSoup(mesh.geometry, matrix));
         // Wheels, sprockets, idlers and rollers turn in place: hub bolts and caps authored in hull buckets ride them.
         // Tracks move: nothing may hang from a band, a pad or a link.
-        if (!/Track/i.test(mesh.name)) for (const T of meshSoups(mesh, matrix)) {
+        if (!/Track|Shadow/i.test(mesh.name)) for (const T of meshSoups(mesh, matrix)) {
           const part = makePart(`gear:${mesh.name}`, 'gear', T);
           if (part) { part.body = 'hull'; part.gear = true; parts.push(part); }
         }
@@ -315,16 +315,22 @@ export function floatingIslands(parts, tol = CONTACT_TOL_M, anchors = [() => tru
     while (queue.length) for (const next of adjacency[queue.pop()]) if (component[next] < 0) { component[next] = count; queue.push(next); }
     count++;
   }
-  // The main structure is the largest part's component; with `anchors`, also each anchor's largest part's (the gun's
-  // recoiling tube slides in its mount's bore with designed clearance: gun-junction-census.mjs owns that seam).
+  // The main structure is the component holding the most stock (summed part volumes): a hairline seam that splits off
+  // the one longest part (a belly loft) must not make the whole armoured body and everything on it read as floating.
+  // With `anchors`, also each anchor's own heaviest component (the gun's recoiling tube slides in its mount's bore with
+  // designed clearance: gun-junction-census.mjs owns that seam).
   const mains = new Set();
+  let structure = -1;
   for (const keep of anchors) {
-    let largest = -1;
-    parts.forEach((part, i) => { if (keep(part) && (largest < 0 || part.volume > parts[largest].volume)) largest = i; });
-    if (largest >= 0) mains.add(component[largest]);
+    const held = new Map();
+    parts.forEach((part, i) => { if (keep(part)) held.set(component[i], (held.get(component[i]) ?? 0) + part.volume); });
+    let heaviest = -1, most = -1;
+    for (const [c, volume] of held) if (volume > most) { heaviest = c; most = volume; }
+    if (heaviest >= 0) { mains.add(heaviest); if (structure < 0) structure = heaviest; }
   }
+  // Clearances are measured to the structure (the first anchor's component), never to a wheel that carries a hub cap.
   const mainGrid = new TriangleGrid(0.1);
-  parts.forEach((part, i) => { if (mains.has(component[i])) mainGrid.add(part.T, i); });
+  parts.forEach((part, i) => { if (component[i] === structure) mainGrid.add(part.T, i); });
   const islands = new Map();
   parts.forEach((part, i) => {
     if (mains.has(component[i])) return;
@@ -334,14 +340,15 @@ export function floatingIslands(parts, tol = CONTACT_TOL_M, anchors = [() => tru
   return [...islands.values()].map((members) => {
     const box = new THREE.Box3();
     for (const i of members) box.union(parts[i].box);
-    let gap = Infinity;
+    let gap = Infinity, from = null, to = null, toPart = null;
     for (const reach of [0.01, 0.03, 0.1, 0.3, 0.8]) {
       for (const i of members) {
         const U = parts[i].U ||= uniqueVertices(parts[i].T);
         for (let v = 0; v < U.length; v += 3) {
           const x = U[v], y = U[v + 1], z = U[v + 2];
           mainGrid.query(x - reach, y - reach, z - reach, x + reach, y + reach, z + reach, (p, o) => {
-            gap = Math.min(gap, triangleDistance(parts[p].T, o, x, y, z));
+            const d = triangleDistance(parts[p].T, o, x, y, z);
+            if (d < gap) { gap = d; from = [x, y, z]; to = closest.toArray(); toPart = parts[p]; }
           });
         }
       }
@@ -353,6 +360,8 @@ export function floatingIslands(parts, tol = CONTACT_TOL_M, anchors = [() => tru
         ...(part.where ? { where: part.where } : {}) })),
       min: box.min.toArray(), max: box.max.toArray(),
       gapM: Number.isFinite(gap) ? gap : null,
+      // the closest pair: the island's vertex and the nearest point of the hull structure, and that structure's part
+      nearest: from ? { from, to, bucket: toPart.bucket, ...(toPart.where ? { where: toPart.where } : {}) } : null,
       flap: members_.some((part) => part.source === 'mudguard' || part.bucket === 'hullRubber' || /mudguard/i.test(part.bucket)),
     };
   });
@@ -388,7 +397,8 @@ export function bellyPits(parts, trackInnerX, options = {}) {
       const d = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz);
       if (Math.abs(d) < 1e-12) continue;
       const u = ((bz - cz) * (x - cx) + (cx - bx) * (z - cz)) / d, v = ((cz - az) * (x - cx) + (ax - cx) * (z - cz)) / d;
-      if (u < -1e-9 || v < -1e-9 || u + v > 1 + 1e-9) continue;
+      // a ray down a shared edge belongs to both triangles (float error must not open a slit along every seam)
+      if (u < -1e-6 || v < -1e-6 || u + v > 1 + 1e-6) continue;
       best = Math.min(best, u * T[o + 1] + v * T[o + 4] + (1 - u - v) * T[o + 7]);
     }
     return best;
@@ -452,9 +462,11 @@ export function hullBellyPits(parts, trackInnerX) {
   // Only the structural shell bounds an opening: stern stowage or a tow fitting hanging below an undercut is not a belly.
   const shell = parts.filter((part) => part.body === 'hull' && !part.gear && part.source !== 'mudguard'
     && (part.bucket === 'hull' || part.bucket === 'hullExternalArmor'));
-  // ... while a see-through cell (no stock at all over it, stock fore and aft) is an opening whatever bounds it.
+  // ... while a see-through cell (no stock at all over it, stock fore and aft) is an opening whatever bounds it, unless
+  // what stands beyond it is an open slat cage or basket hung off the hull's end (its air is the cage's).
   return [...bellyPits(shell, trackInnerX),
-    ...bellyPits(parts.filter((part) => part.body === 'hull' && !part.gear), trackInnerX, { seeThroughOnly: true })];
+    ...bellyPits(parts.filter((part) => part.body === 'hull' && !part.gear && !/OpenLattice/.test(part.bucket)), trackInnerX,
+      { seeThroughOnly: true })];
 }
 
 /** One tank's census: each body's floating islands (tagged with the body) and the hull's belly pits. */

@@ -1680,6 +1680,21 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
       const nfF = H.noseFillZFront ?? (tip[0] - 0.40);
       const nfB = tip[0] - 1.50;
       P.add('hull', box(GLC ? Math.min(hw * 1.6, GLC.x * 2) : hw * 1.6, 0.5, nfF - nfB), 0, tip[1] - 0.42, (nfF + nfB) / 2);
+      // Without the lower-front closure below, a tub stopping short of the nose fill left the belly open between them
+      // up to the glacis (owner 2026-10-19: "fill in the underside of the kf51u", "the empty gaps in hulls are
+      // annoying": 0.84 m on the KF51-U, 0.36 m on the 2 Improved, the 2A4 V and 2A4M, the Strv 121). One lower
+      // front plate joins them: its rear ring 30 mm inside the tub and its front ring 30 mm inside the nose fill (past
+      // their rounded edges), each 6 mm inside that section so no face is shared, its floor rising from the tub belly
+      // to the nose fill's underside.
+      const tubFrontZ = deck[0][0] - 0.05;
+      if (!UGC && tubFrontZ < nfB) {
+        const rx = innerW / 2 - 0.006, fx = (GLC ? Math.min(hw * 1.6, GLC.x * 2) : hw * 1.6) / 2 - 0.006;
+        const rearFloorY = bellyY - 0.054, rearTopY = H.sponsonY - 0.006;
+        const frontFloorY = tip[1] - 0.664, frontTopY = tip[1] - 0.176, rz = tubFrontZ - 0.03, fz = nfB + 0.03;
+        P.add('hull', slab(
+          [-rx, rearFloorY, rz], [rx, rearFloorY, rz], [fx, frontFloorY, fz], [-fx, frontFloorY, fz],
+          [-rx, rearTopY, rz], [rx, rearTopY, rz], [fx, frontTopY, fz], [-fx, frontTopY, fz]));
+      }
     }
     // Optional Leopard-family lower-front closure. The upper glacis is a
     // chain of armored slabs, but without this receding lower plate and belly
@@ -6598,6 +6613,7 @@ export function buildLeo2A4(builder: object) {
   const sideSkirtLiftY = 0.10;
   const sideSkirtTopY = 1.26 + sideSkirtLiftY;
   const outerRailX = 1.7975;
+  const outerRailOuterX = outerRailX + 0.035 / 2, railSeatX = 1.775;
   const outerRailY = sideSkirtTopY - 0.0275;
   const buildLeo2A4RunningGearStage1 = (): void => {
     for (const s of [-1, 1] as const) {
@@ -6633,10 +6649,11 @@ export function buildLeo2A4(builder: object) {
         P.add('hullDark', box(0.024, 0.40, 0.015), s * 1.76, 0.85, z0 + L * k);
       }
       P.add('hullDark', box(0.026, 0.022, z1 - z0 - 0.02), s * 1.76, 1.055, (z0 + z1) / 2); // horizontal band joint
-      // The outer rail's inner face lands exactly on the panel face at
-      // |x|=1.780. Its hangers climb from the raised armor into the fender,
+      // The outer rail's inner face lands exactly on the panel face where it
+      // seats, at the skirt top (|x| 1.775: the panels taper from 1.780 at
+      // their hems). Its hangers climb from the raised armor into the fender,
       // leaving no exposed/floating rail course above the curtain.
-      P.add('hullDetail', box(0.035, 0.055, 7.02), s * outerRailX, outerRailY, 0.06);
+      P.add('hullDetail', box(outerRailOuterX - railSeatX, 0.055, 7.02), s * (outerRailOuterX + railSeatX) / 2, outerRailY, 0.06);
       for (const zh of [-3.10, -2.325, -1.55, -0.775, 0.00, 0.775, 1.55, 2.29, 2.97, 3.22]) {
         P.add('hullDetail', box(0.030, 0.27, 0.055), s * outerRailX, 1.36, zh);
       }
@@ -6652,9 +6669,9 @@ export function buildLeo2A4(builder: object) {
         topY: sideSkirtTopY,
         foreBottomY: 0.62,
         aftBottomY: 0.64,
-        panelOuterHalfWidth: 1.78,
-        outerRailCenterHalfWidth: outerRailX,
-        outerRailInnerHalfWidth: outerRailX - 0.035 / 2,
+        panelOuterHalfWidth: railSeatX,
+        outerRailCenterHalfWidth: (outerRailOuterX + railSeatX) / 2,
+        outerRailInnerHalfWidth: railSeatX,
         outerRailY,
         outerRailTopY: outerRailY + 0.055 / 2,
         hangerBottomY: 1.36 - 0.27 / 2,
@@ -7304,6 +7321,9 @@ function buildLeo2A7V(P: TankBuilderPort) {
       P.add('hull', box(0.80, 0.20, 0.04), s * 1.60, 1.14, 3.91);                // mudguard lip (x 1.20..2.00)
       P.add('hullDetail', box(0.76, 0.022, 0.024), s * 1.60, 1.033, 3.906);      // hinge line
       P.hangMudguard('leo2-improved-front-flap', 'hullRubber', box(0.64, 0.44, 0.024), s * 1.53, 0.80, 3.895);        // rubber flap, forward of terminal shoes
+      // Owner 2026-10-19 (flaps sweep): the post, lip, hinge and flap floated as one, the lip's inner end 0.10 m short of
+      // the glacis edge; a bracket from the lip back into the glacis (clear of the terminal shoes) carries them.
+      P.add('hull', box(0.16, 0.10, 0.07), s * 1.16, 1.17, 3.875);
     }
     // rear mudflaps hanging from the fender ends (a4 recipe; sprocket orbit
     // far edge -3.725, flap z -3.80 clear).
@@ -7667,7 +7687,9 @@ function addLeo2PrototypeMudguards(P: TankBuilderPort): void {
     P.add('hullFixedPaintedBodywork', box(0.0225, 0.185, 0.38), side * 1.71875, 1.1625, 3.75);
     P.add('hull', box(0.90, 0.20, 0.04), side * 1.35, 1.14, 3.93);
     P.add('hullDetail', box(0.86, 0.022, 0.024), side * 1.35, 1.033, 3.926);
-    P.hangMudguard('leopard2-proto-front-flap', 'hullRubber', box(0.66, 0.40, 0.024), side * 1.36, 0.78, 3.849);
+    // Owner 2026-10-19 (flaps sweep): the flap hung 49 mm behind and 60 mm under the bow plate (y 1.04-1.24, z 3.91-
+    // 3.95); 56 mm forward and 70 mm up it runs 7 mm into the plate's back and 10 mm into its underside.
+    P.hangMudguard('leopard2-proto-front-flap', 'hullRubber', box(0.66, 0.40, 0.024), side * 1.36, 0.85, 3.905);
   }
   for (const side of [-1, 1] as const) {
     P.add('hullRubber', box(0.38, 0.64, 0.032), side * 1.53, 1.24, -3.80);
@@ -11350,18 +11372,8 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     P.mats.rubber.color.setHex(0x33352b);
   };
   buildKF51OwnerExactAssemblyStage1();
-  // Owner 2026-10-19 (Gallery markup, "fill in the underside"): leoHullV3 ends
-  // the tub 0.05 m behind the deck crease (z 1.50) and starts the nose fill
-  // 1.50 m behind the beak tip (z 2.34), so the belly stood open for 0.84 m
-  // between the tracks, up to the glacis plate. One lower front plate closes
-  // it: its rear ring 30 mm inside the tub and its front ring 30 mm inside the
-  // nose fill (both past their 24 mm rounded edges), each 6 mm inside that
-  // section so no face is shared; its floor rises from the tub belly (0.42) to
-  // the nose fill's underside (0.555). |x| <= 0.924 stays inside the tub/fill
-  // corridor, clear of the 0.9685 band inner face.
-  P.add('hull', slab(
-    [-0.9125, 0.426, 1.47], [0.9125, 0.426, 1.47], [0.924, 0.561, 2.37], [-0.924, 0.561, 2.37],
-    [-0.9125, 1.184, 1.47], [0.9125, 1.184, 1.47], [0.924, 1.049, 2.37], [-0.924, 1.049, 2.37]));
+  // (The belly between the tub and the nose fill, open 0.84 m in the owner's 2026-10-19 markup, is closed by leoHullV3's
+  // lower front plate.)
   // (running gear now rides INSIDE the leoHullV3 call above — the KF51B
   // wheel/course refinements and §5.262 tones live there; no second course
   // exists.)
@@ -12085,17 +12097,20 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
       // The shelf bridges the sealed side wall to the outer fender fascia.
       // A shallow camouflaged shoulder below it removes the bright background
       // slit while preserving clearance around the moving top links.
-      P.add('hullDetail', box(0.55, 0.045, 6.78), s * 1.405, fenderShelfY, -0.02);
+      // (2026-10-19, flaps sweep: 25 mm wider outboard, to the fascia it stood 14 mm short of, its end inside the fascia)
+      P.add('hullDetail', box(0.575, 0.045, 6.78), s * 1.4175, fenderShelfY, -0.02);
       P.add('hullDetail', box(0.08, 0.28, 6.16), s * 1.01, 1.195, -0.08);
       P.add('hullDetail', box(0.012, 0.18, 6.04), s * 1.70, 1.195, -0.10);
       P.add('hullDetail', slab(
         [s * 1.10, 1.27, 3.34], [s * 1.67, 1.27, 3.36], [s * 1.67, 1.27, 2.70], [s * 1.13, 1.27, 2.62],
         [s * 1.10, 1.33, 3.42], [s * 1.67, 1.33, 3.42], [s * 1.67, 1.33, 2.70], [s * 1.13, 1.33, 2.62]));
-      P.hangMudguard('leo1a5-front-skirt-hem', 'hullRubber', box(0.014, 0.31, 0.36), s * 1.715, 1.045, 3.31, -0.06, 0, 0);
-      P.hangMudguard('leo1a5-rear-skirt-hem', 'hullRubber', box(0.014, 0.34, 0.40), s * 1.715, 1.02, -3.34, 0.08, 0, 0);
+      // Owner 2026-10-19 (flaps sweep): the hems stood 2 mm outboard of the fascia's outer face (1.706); at 1.711 they
+      // overlap it by 2 mm.
+      P.hangMudguard('leo1a5-front-skirt-hem', 'hullRubber', box(0.014, 0.31, 0.36), s * 1.711, 1.045, 3.31, -0.06, 0, 0);
+      P.hangMudguard('leo1a5-rear-skirt-hem', 'hullRubber', box(0.014, 0.34, 0.40), s * 1.711, 1.02, -3.34, 0.08, 0, 0);
       for (let k = 0; k < 7; k++) {
         const z = 2.40 - k * 0.82;
-        P.hangMudguard('leo1a5-skirt-hem', 'hullRubber', box(0.014, 0.31, 0.76), s * 1.715, 0.995, z);
+        P.hangMudguard('leo1a5-skirt-hem', 'hullRubber', box(0.014, 0.31, 0.76), s * 1.711, 0.995, z);
         P.add('hullDetail', box(0.012, 0.34, 0.026), s * 1.707, 1.00, z - 0.395);
         P.add('hullDetail', box(0.36, 0.035, 0.055), s * 1.47, 1.345, z);
       }
@@ -14174,8 +14189,10 @@ function buildLeo2A4M(P: TankBuilderPort) {
         // the 17 cm fender<->skirt trench read 101 enclosed top-down cells per
         // side, the 9.5 cm rear trench 10 — the real vehicles carry exactly
         // this rail; the a6m's 10 cm gap class needed none)
-        P.add('hull', box(0.16, 0.025, 3.26), s * 1.7775, 1.322, 1.98);           // fore rail (z 0.35..3.61)
-        P.add('hull', box(0.115, 0.020, 4.40), s * 1.7175, 1.428, -0.78);         // rear rail (z -2.98..1.42)
+        // Owner 2026-10-19 (flaps sweep): both rails stopped 8-15 cm short of the hull side (x 1.56-1.58), so the whole
+        // course floated; they now run to x 1.55, into it.
+        P.add('hull', box(0.3075, 0.025, 3.26), s * 1.70375, 1.322, 1.98);        // fore rail (z 0.35..3.61)
+        P.add('hull', box(0.225, 0.020, 4.40), s * 1.6625, 1.428, -0.78);         // rear rail (z -2.98..1.42)
         // rear paneled course at the print's ±1.78 line
         {
           const z0 = -3.00, z1 = 1.44, n = 6, L = (z1 - z0) / n;
@@ -14347,12 +14364,16 @@ function buildLeo2A4M(P: TankBuilderPort) {
       P.add('hullDetail', box(0.18, 0.04, 0.034), s * 1.79, 0.92, 3.70);
       // hinge arm into the front-skirt plate (floater law — the outboard
       // flap no longer overlaps the course, so it must SEAT somewhere real)
-      P.add('hullDetail', box(0.14, 0.04, 0.10), s * 1.832, 0.92, 3.665);
+      // (2026-10-19: lengthened 35 mm aft, into the short module's front face at 3.60 it stopped 15 mm short of)
+      P.add('hullDetail', box(0.14, 0.04, 0.135), s * 1.832, 0.92, 3.6475);
       P.hangMudguard('leo2a4m-can-rear-flap', 'hullRubber', box(0.18, 0.40, 0.028), s * 1.79, 0.70, -3.58);
       P.add('hullDetail', box(0.18, 0.04, 0.034), s * 1.79, 0.92, -3.58);
       // rear hinge arm to the hull side wall (behind the sprocket wrap — no
       // course exists at z -3.58, §B4-safe)
-      P.add('hullDetail', box(0.33, 0.05, 0.05), s * 1.715, 0.92, -3.58);
+      // (2026-10-19: the arm ended 10 cm short of any stock; it now reaches x 1.50 and a post rises from its inner
+      // end 20 mm into the hull wall's underside at 1.148)
+      P.add('hullDetail', box(0.38, 0.05, 0.05), s * 1.69, 0.92, -3.58);
+      P.add('hullDetail', box(0.04, 0.27, 0.05), s * 1.52, 1.035, -3.58);
       // rear-corner light/convoy pods (ref rear view carries them proud;
       // pulled in from ±1.80/-3.66 — the quarter-view bbox grew procOnly)
       P.add('hullDark', box(0.14, 0.14, 0.10), s * 1.76, 1.44, -3.62);

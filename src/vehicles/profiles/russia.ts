@@ -469,9 +469,14 @@ export function loftHull(P: RussiaGeometryPort, o: LoftHullOptions): void {
     }
   }
   zs.sort((a, b) => a - b);
+  // owner 2026-10-19 ("the empty gaps in hulls are annoying"): a knot pair closer than 15 mm was skipped, which left
+  // that sliver open between its neighbours (the T-90 stern's 8 mm seam, where the whole stern floated); the sliver
+  // now opens the next segment instead.
+  let carried: number | null = null;
   for (let i = 0; i < zs.length - 1; i++) {
-    const z0 = zs[i], z1 = zs[i + 1];
-    if (z1 - z0 < 0.015) continue;
+    const z0: number = carried ?? zs[i], z1: number = zs[i + 1];
+    if (z1 - z0 < 0.015) { carried = z0; continue; }
+    carried = null;
     const d0 = lerpPts(o.deck, z0), d1 = lerpPts(o.deck, z1);
     const b0 = lerpPts(o.belly, z0), b1 = lerpPts(o.belly, z1);
     const s0 = Math.min(spAt(z0), d0 - 0.01), s1 = Math.min(spAt(z1), d1 - 0.01);

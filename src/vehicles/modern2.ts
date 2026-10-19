@@ -937,8 +937,9 @@ function buildType99ABaseHull(P: Modern2BuilderPort) {
                                                                                //   in the 1.50 deck recess)
   // Oracle main-fender islands terminate at z=-3.59/+3.46.  Preserve that
   // thick-body span; only the supported recovery cable is allowed to reach
-  // the published full 7.76 m hull envelope.
-  fenders(P, 1.12, 1.83, 1.47, -3.59, 3.46, 0.03);
+  // the published full 7.76 m hull envelope. The outer edge runs 5 mm into the skirt's top band (inner face 1.835),
+  // which the skirt runs and the fringe hang from.
+  fenders(P, 1.12, 1.84, 1.47, -3.59, 3.46, 0.03);
   // ---- GLACIS — TWO REAL PLANES (§B1 course lines, print-measured):
   // upper 16.3 deg y(z) = 1.50 - 0.284(z - 2.02) from the deck edge to the
   // nose break (3.02, 1.215); then the 62-deg nose plate to the toe
@@ -1126,9 +1127,10 @@ function buildType99AHullDeckAndArmor(P: Modern2BuilderPort) {
     P.add('hull', box(0.01, 0.35, 0.26), s * 1.855, 1.075, 3.34);              //   inner face clears terminal shoes)
                                                                                //   (drops to the print tip line)
     P.add('hullDark', box(0.01, 0.90, 0.024), s * 1.855, 0.92, 2.73);          // bow panel seam
-    P.add('hull', box(0.01, 0.66, 1.39), s * 1.855, 0.84, -2.755);             // source-painted rear skirt run;
-                                                                               // only its flexible lower fringe is
-                                                                               // dark rubber, not the whole panel
+    P.add('hull', box(0.01, 0.72, 1.39), s * 1.855, 0.87, -2.755);             // source-painted rear skirt run,
+                                                                               // hung 5 mm into the top band; only
+                                                                               // its flexible lower fringe is dark
+                                                                               // rubber, not the whole panel
     for (let k = 0; k < 3; k++) P.add('hullDark', box(0.01, 0.56, 0.02), s * 1.855, 0.82, -2.32 - k * 0.52);
     P.hangMudguard('ztz99-longwei-skirt-fringe', 'hullRubber', box(0.01, 0.12, 1.39), s * 1.855, 0.50, -2.755);       // lower fringe
   }

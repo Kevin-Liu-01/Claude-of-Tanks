@@ -1060,9 +1060,11 @@ function addT90ALegacyHull(P: T90BuilderPort): void {
     // The tall corner shoulders stop before the source's final thin nose
     // lip.  Extending their full 240 mm height to z=3.43 made the side
     // section blunt and hid the real low terminal plane.
-    P.add('hull', box(0.23, 0.24, 0.10), s * 1.175, 0.90, 3.30);
+    // (owner 2026-10-19, flaps sweep: the shoulders, lip and flap stood 50 mm outboard of the nose plate's outer face at
+    // 1.01; the inner shoulder and the lip now start at 1.00, inside it)
+    P.add('hull', box(0.29, 0.24, 0.10), s * 1.145, 0.90, 3.30);
     P.add('hull', box(0.34, 0.24, 0.10), s * 1.46, 0.90, 3.30);
-    P.add('hull', box(0.57, 0.08, 0.095), s * 1.345, 0.85, 3.3975);
+    P.add('hull', box(0.63, 0.08, 0.095), s * 1.315, 0.85, 3.3975);
   }
   // rear rack side plates carry the -3.43/-3.40 tail columns (x 0.14..0.75)
   for (const s of [-1, 1]) {

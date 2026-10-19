@@ -7855,16 +7855,17 @@ function* createTankOwnedSteps(
   // first permanent hull stock above its top edge, on the finished, unmerged armour (mudguardHangers.ts).
   if (mudguardHangRequests.length) {
     const live = mudguardHangRequests.filter(({ part }) => Object.values(buckets).some((list) => list.includes(part)));
-    const supports: THREE.BufferGeometry[] = [];
+    const supports: THREE.BufferGeometry[] = [], structural = new Set<THREE.BufferGeometry>();
     for (const [bucket, list] of Object.entries(buckets)) {
       if (BUCKET_DEF[bucket]?.[0] !== 'hullG' || /track|runninggear|shadow|glass/i.test(bucket)) continue;
       supports.push(...list);
+      if (bucket === 'hull' || bucket === 'hullExternalArmor') for (const part of list) structural.add(part);
     }
     root.userData.mudguardHangers = hangAuthoredMudguards(live, supports, hullG, (request, strap) => {
       (buckets[request.strapBucket] || (buckets[request.strapBucket] = [])).push(strap);
       mudguardParts.push({ label: `${request.label}-hanger`, bucket: request.strapBucket, part: strap });
       partCensus?.(request.strapBucket, strap, 'mudguard');
-    });
+    }, structural);
   }
   // VEH-13 (2026-10-15): every authored spare-link run (fittings, strips, registered hand-drawn courses) is measured on
   // the finished, unmerged armour (spareTrackSeatPass.ts): a passing run stays exactly as built, a failing one is

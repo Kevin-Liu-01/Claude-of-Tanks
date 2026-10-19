@@ -119,8 +119,9 @@ function buildSabraHull(P: TankBuilderPort): void {
       for(const y of [.83,1.36])P.addEquipment('hullDetail',box(.035,.062,.094),side*(z>.4?1.868:1.814),y,z);
     }
     for(const z of [-2.48,-1.59])P.addEquipment('hullDetail',box(.48,.25,.68),side*1.37,1.678,z);
-    P.hangMudguard('sabra-rear-'+side,'hullRubber',box(.61,.23,.055),side*1.44,1.04,-3.491,.20);
-    P.addEquipment('hullDetail',box(.61,.055,.29),side*1.44,1.175,-3.34);
+    // Owner 2026-10-19 (flaps sweep): flap and clamp 38 mm wider inboard, into the hull side they stood 33 mm off
+    P.hangMudguard('sabra-rear-'+side,'hullRubber',box(.648,.23,.055),side*1.421,1.04,-3.491,.20);
+    P.addEquipment('hullDetail',box(.648,.055,.29),side*1.421,1.175,-3.34);
     addSabraHeadlamps(P,side);
     P.addEquipment('hullDetail',box(.055,.07,.95),side*1.38,1.68,1.20);
   }

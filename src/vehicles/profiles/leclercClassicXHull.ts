@@ -159,8 +159,11 @@ function engine(P: TankBuilderPort): void {
     for (let i = 0; i < 13; i++)
       P.addEquipment('hullDetail', box(.045065, .01715, .788),
         side < 0 ? -1.67330 : 1.64536, 1.3146 + i * .024, -2.9366);
+    // Owner 2026-10-19 (flaps sweep): the left guard stood 22 mm behind and 8 mm inboard of the hull corner it hangs
+    // from (the right one meets its corner); it moves 28 mm forward and widens 15.5 mm outboard into that corner.
+    const left = side < 0;
     P.hangMudguard('leclerc-classic-rear-flexible-guard', 'hullRubber',
-      box(.653465, .283212, .015), side < 0 ? -1.314717 : 1.290715,  .972035, -3.340);
+      box(left ? .669 : .653465, .283212, .015), left ? -1.322467 : 1.290715, .972035, left ? -3.312 : -3.340);
   }
 }
 

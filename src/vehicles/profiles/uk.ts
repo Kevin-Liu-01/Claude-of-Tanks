@@ -56,6 +56,8 @@ interface UKGeometryPort {
     };
   };
   topY?: number;
+  /** Registered like addMudguard, then hung from the hull stock above its top edge (mudguardHangers.ts). */
+  hangMudguard(label: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   add(
     slot: string,
     geometry: THREE.BufferGeometry,
@@ -270,6 +272,8 @@ interface UKHullOptions {
   readonly skirtW?: number;
   readonly skirtHemSplit?: { readonly bot: number; readonly keepPanels: readonly number[] };
   readonly skirtTrimFlush?: boolean;
+  /** Hang the skirt panels from the fender above them (P.hangMudguard; the Centurions' panels stop 4-10 cm short). */
+  readonly skirtHang?: boolean;
   readonly wheelW?: number;
   readonly wheelY?: number;
   readonly wheelStyle?: string;
@@ -555,7 +559,11 @@ function ukHull(P: UKGeometryPort, g: UKHullOptions): void {
         for (let k = 0; k < panels; k++) {
           const z = sk.z1 - panelD / 2 - k * panelD;
           const b = hemBot(k);
-          P.add('hull', box(skW, sk.top - b, panelD * 0.97), side * (sk.x - skW / 2), (sk.top + b) / 2, z);
+          // owner 2026-10-19 (flaps sweep): g.skirtHang panels hang from the fender above them (mudguardHangers.ts): the
+          // Centurions' and the Strv 81's stopped 4-10 cm short of it.
+          const panel = box(skW, sk.top - b, panelD * 0.97);
+          if (g.skirtHang) P.hangMudguard('uk-skirt-panel', 'hull', panel, side * (sk.x - skW / 2), (sk.top + b) / 2, z);
+          else P.add('hull', panel, side * (sk.x - skW / 2), (sk.top + b) / 2, z);
           if (P.q) {
             P.add('hullDark', box(skW, (sk.top - b) * 0.9, 0.016), side * (sk.x - skW * 0.4), (sk.top + b) / 2, z - panelD / 2);
             P.add('hullDetail', box(0.02, 0.05, 0.2), side * (sk.x + 0.005), sk.top - 0.1, z);
@@ -1889,7 +1897,7 @@ const CENTURION_HULL = {
   // rides at ±1.695 (was misread as handles); fender lid pinned at 1.60.
   // Tracks stay INSIDE the 1.56 column — the r1 0.61-wide band's shoes lit
   // the ±1.58 front columns to the ground where the ref reads skirt hem.
-  skirt: { x: 1.61, top: 1.48, bot: 0.60, z0: -3.20, z1: 3.05 }, skirtPanels: 6,
+  skirt: { x: 1.61, top: 1.48, bot: 0.60, z0: -3.20, z1: 3.05 }, skirtPanels: 6, skirtHang: true,
   fenderY: 1.60, fenderZ0: -3.42, fenderZ1: 2.58, fenderHalfW: 1.60,
   trackXc: 1.23625, trackW: 0.5925, wheelR: 0.4, wheelY: 0.45, wheelStyle: 'dished',
   wheelZs: [2.25, 1.40, 0.55, -0.50, -1.35, -2.20],
@@ -2006,7 +2014,7 @@ export function centurionBuild(P: UKCenturionPort, mk: 3 | 5): void {
       P.add('hullDetail', box(0.03, 0.10, 0.40), s * 1.639, 1.38, 2.59);
       P.add('hull', box(0.09, 0.045, 0.42), s * 1.622, 1.478, 3.035);
       P.add('hullDetail', box(0.0155, 0.10, 0.40), s * 1.68175, 1.25, 3.025);
-      P.add('hull', box(0.082, 0.045, 0.42), s * 1.618, 1.478, 3.47);
+      P.add('hull', box(0.082, 0.045, 0.45), s * 1.618, 1.478, 3.455);          // laps 15 mm under seg2's end (the 15 mm gap left it floating)
       P.add('hullDetail', box(0.03, 0.10, 0.40), s * 1.639, 1.38, 3.46);
       // r5: falling guard-tip course past the horns — the ref hull line keeps
       // FALLING toward the mask tip. r6 retable to the live paired columns:
@@ -3846,7 +3854,7 @@ function addVickersMk1Hull(P: UKBuilderPort): void {
   for (const s of [-1, 1]) {
     P.add('hullDetail', box(0.44, 0.04, 0.30), s * 1.33, 1.525, -3.28);
     P.hangMudguard('vickers-mk1-rear-flap', 'hullRubber', box(0.40, 0.34, 0.03), s * 1.30, 1.05, -3.415, 0.06, 0, 0);
-    P.hangMudguard('vickers-mk1-front-flap', 'hullRubber', box(0.10, 0.60, 0.035), s * 1.525, 0.94, 3.31);
+    P.hangMudguard('vickers-mk1-front-flap', 'hullRubber', box(0.10, 0.60, 0.035), s * 1.495, 0.94, 3.31); // top inside the fender tip wedge (outer edge 1.548 at z 3.31)
   }
   // Fender tip wedges sloping down over the raised idler (ref side falls
   // 1.35 → 1.09 over b 3.30..3.56 at |x| up to 1.55 — thin curved mudguard
@@ -3856,6 +3864,9 @@ function addVickersMk1Hull(P: UKBuilderPort): void {
     P.add('hull', slab(
       [s * 1.06, 1.24, 3.28], [s * 1.55, 1.24, 3.28], [s * 1.53, 1.06, 3.53], [s * 1.10, 1.06, 3.53],
       [s * 1.06, 1.355, 3.28], [s * 1.55, 1.355, 3.28], [s * 1.53, 1.09, 3.555], [s * 1.10, 1.09, 3.555]));
+    // The fender runs on level to the wedge (owner 2026-10-19 sweep: the wedge and its flap stood 0.28 m ahead of the
+    // fender's end at z 3.00, carried by nothing); its 1.24 underside clears the 1.19 wrap crown.
+    P.add('hull', box(0.49, 0.115, 0.32), s * 1.305, 1.2975, 3.13);
   }
   // ---- BOW TRAVEL LOCK + REAR LENGTH CARRIER (see header law). ---------
   // The lock is stowed flat on the center beak. Its twin feet follow the

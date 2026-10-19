@@ -1311,7 +1311,8 @@ function finishK1A1Hull(P: Modern3BuilderPort) {
       [s * 1.77, 0.78, 3.08], [s * 1.80, 0.78, 3.08], [s * 1.80, 0.92, 3.52], [s * 1.77, 0.92, 3.52],
       [s * 1.77, 1.35, 3.08], [s * 1.80, 1.35, 3.08], [s * 1.80, 1.14, 3.52], [s * 1.77, 1.14, 3.52]));
     P.add('hull', box(0.13, 0.025, 0.49), s * 1.7275, 1.245, 3.30, 0.445, 0, 0); // guard top plate tracks the same prow rake
-    P.add('hullDetail', box(0.05, 0.05, 0.30), s * 1.71, 1.28, 3.28);          // tie strut into the glacis edge
+    P.add('hullDetail', box(0.135, 0.05, 0.30), s * 1.6675, 1.28, 3.28);       // tie strut into the headlight housing
+    P.add('hull', box(0.14, 0.03, 0.42), s * 1.73, 1.31, 2.90, -0.157, 0, 0);  // fender strip carries the skirt top on to the flare
     P.hangMudguard('k1e1-idler-guard-flap', 'hullRubber', box(0.13, 0.22, 0.024), s * 1.73, 0.93, 3.54, 0.22, 0, 0); // guard flap rises clear of the idler
     P.hangMudguard('k1e1-front-lane-flap', 'hullRubber', box(0.30, 0.26, 0.026), s * 1.30, 0.74, 3.66);         // center-lane front flaps
   }
@@ -1720,7 +1721,7 @@ function buildType10Native2026(
         P.add('hullDark', cylX(0.0154, 0.0198, 6), s * 1.6693, 1.089, 1.408 - k * 0.572); // bolt studs
       }
       P.hangMudguard('type10-tk-front-flap', 'hullRubber', box(0.352, 0.242, 0.0308), s * 1.067, 1.012, 3.7125);   // front mud flaps carry the print's fender-lobe plan line ×1.10, track-clear
-      P.add('hullRubber', box(0.352, 0.22, 0.0308), s * 1.298, 0.77, -3.355);     // rear flaps inside the transom outline
+      P.addMudguard('type10-tk-rear-flap', 'hullRubber', box(0.352, 0.56, 0.0308), s * 1.298, 1.032, -3.70); // rear flaps inside the transom outline, hung from its lower edge behind the sprocket wrap (-3.45)
       // §5.364 BLACK-LINE FIX (owner: "big black line on each side of hull";
       // attribution receipt shots/type10-fix/before-type10/attrib.json — flank
       // rows y 1.393..1.486 read 66/72 rays hullShadow #0b0c0a): the 11.5 cm

@@ -35,6 +35,14 @@ const flap = () => new THREE.BoxGeometry(0.6, 0.4, 0.04).translate(1.4, 0.8, -3.
   assert.equal(straps.length, 0, 'a touching flap is left as authored');
   assert.deepEqual(stations.map((s) => s.reason), ['touching', 'touching']);
 }
+{ // a hem whose top edge meets its skirt panel's lower edge beside it, with a fender far above: no strap down the skirt
+  const hem = new THREE.BoxGeometry(0.02, 0.05, 0.8).translate(1.785, 0.615, -3.0);
+  const panel = new THREE.BoxGeometry(0.04, 0.42, 0.8).translate(1.76, 0.85, -3.0);
+  const fender = new THREE.BoxGeometry(0.4, 0.03, 1).translate(1.6, 1.30, -3.0);
+  const { stations, straps } = hang(hem, [panel, fender]);
+  assert.equal(straps.length, 0, 'the hem already rides its panel');
+  assert.deepEqual(stations.map((s) => s.reason), ['touching', 'touching']);
+}
 { // a track run between the flap and the overhang: refused
   const { stations, straps } = hang(flap(), [new THREE.BoxGeometry(1, 0.2, 1).translate(1.4, 1.6, -3.4)],
     new THREE.BoxGeometry(1, 0.05, 1).translate(1.4, 1.2, -3.6));

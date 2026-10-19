@@ -2973,7 +2973,7 @@ function buildType74(P: MiscBuilderPort): void {
   }
   P.add('hull', box(2.00, 0.055, 0.60), 0, 1.4195, -2.99);                     // rear rack shelf 1.447 top (ref 1.447 flat, z -2.69..-3.29; bottom 1.392 = sprocket shoe crown 1.355 + §B4 margin)
   P.add('hull', box(1.90, 0.10, 0.08), 0, 1.246, -3.30);                       // tail corner step (ref 1.296 @ -3.23 -> lip 1.27)
-  fenders(P, 1.05, 1.57, 1.375, -2.72, 3.05, 0.028);
+  fenders(P, 1.05, 1.57, 1.375, -3.42, 3.05, 0.028);                         // full length: the rear flaps hang from the fender end over the sprocket
   // driver LEFT: flush hatch + periscopes on the fore deck
   P.add('hull', cylY(0.23, 0.23, 0.035, 14), -0.52, 1.398, 2.00);
   P.add('hullDark', cylY(0.236, 0.236, 0.012, 14), -0.52, 1.393, 2.00);
@@ -2984,7 +2984,9 @@ function buildType74(P: MiscBuilderPort): void {
   for (const s of [-1, 1]) {
     // §B4: flaps hang ABOVE the exposed wrap arcs (idler shoe top 1.075 at
     // z 3.12; sprocket shoe top 1.071 at z -3.40)
-    mudflap(P, s * 1.2835, 1.23, 3.12, 0.52, 0.22);
+    // owner 2026-10-19 (flaps sweep): the bow flap started 45 mm past the fender's end and 20 mm under it; it now hangs
+    // from that end (front face 2.5 mm past it, top 1.37 inside the 1.361-1.389 plate)
+    mudflap(P, s * 1.2835, 1.26, 3.035, 0.52, 0.22);
     mudflap(P, s * 1.2835, 1.26, -3.40, 0.52, 0.20);
     P.add('hullDetail', torus(0.075, 0.014, 10), s * 0.55, 0.58, 3.215, Math.PI / 2, 0, 0); // tow eyes on the chin plate
     // rear-view mirror arms folded low over the front fenders
@@ -3312,6 +3314,12 @@ function buildAMX30(P: MiscBuilderPort, b2: boolean): void {
       P.add('hull', convexSlab(                                                  // outer bow nose over the idler lane: bottom clears the 1.145 wrap
         [s * 1.51, 1.20, 3.10], [s * 0.92, 1.20, 3.24], [s * 0.92, 1.30, 3.02], [s * 1.51, 1.30, 2.88],
         [s * 1.51, 1.31, 3.06], [s * 0.92, 1.02, 3.27], [s * 0.92, 1.06, 3.24], [s * 1.51, 1.42, 2.72]));
+      // owner 2026-10-19 (flaps sweep): the outer bow nose stood 25-230 mm over the centre tongue along its inner seam (it,
+      // its flap, carrier and stay floated as one). A web at the seam (x .895-.935, 4 cm inboard of the 0.98 lane) runs
+      // from 12 mm inside the tongue's top to 15 mm inside the nose's underside.
+      P.add('hull', slab(
+        [s * 0.895, 1.031, 3.10], [s * 0.935, 1.031, 3.10], [s * 0.935, 0.975, 3.27], [s * 0.895, 0.975, 3.27],
+        [s * 0.895, 1.228, 3.10], [s * 0.935, 1.228, 3.10], [s * 0.935, 1.035, 3.27], [s * 0.895, 1.035, 3.27]));
       P.add('hull', slab(                                                        // casting blend: glacis edge -> sponson corner (over the wraps)
         [s * 1.51, 1.26, 1.46], [s * 1.24, 1.26, 2.28], [s * 1.24, 1.26, 2.62], [s * 1.51, 1.26, 1.94],
         [s * 1.51, 1.585, 1.46], [s * 1.24, 1.32, 2.28], [s * 1.24, 1.28, 2.60], [s * 1.51, 1.50, 1.92]));
