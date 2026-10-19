@@ -2450,6 +2450,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // flag chip: no per-card WebGL either way.
   let heroCards: HeroCardModule | null = null;
   const legacyPortraits = (ids: readonly string[]): void => {
+    if (!ids.length) return;
     for (const id of ids) {
       const card = cardById.get(id);
       const spec = specById.get(id);
